@@ -19,7 +19,7 @@ from pathlib import Path
 
 import bpy
 import numpy as np
-from mathutils import Matrix, Vector
+from mathutils import Euler, Matrix, Vector
 
 
 CONTRACT = "home-blender-canon-20260918-v1"
@@ -1872,9 +1872,20 @@ def add_royal_cat(materials):
             tuft(f"{prefix}_{n}", tuple(c + p * 0.985), tuple(axis + jitter), length * (0.8 + _hash01(n, 5, seed) * 0.5), radius * (0.8 + _hash01(n, 6, seed) * 0.4), fur if n % 3 else materials["cat_fur"])
 
     # Undercoat: slightly shaded, smooth and high-resolution so the tufts sit on a real form.
-    blob("HOME_PROP_cat_body", (cx + 0.02, cy + 0.02, top + 0.115), (0.29, 0.23, 0.125), (0, 0, 8), fur, (56, 28))
-    blob("HOME_PROP_cat_haunch", (cx + 0.19, cy + 0.10, top + 0.105), (0.16, 0.15, 0.115), (0, 0, -10), fur, (48, 24))
-    blob("HOME_PROP_cat_chest", (cx - 0.16, cy - 0.06, top + 0.095), (0.15, 0.13, 0.10), (0, 0, 12), fur, (48, 24))
+    # One organic mesh: a metaball union of ellipsoids (body, haunch, chest, neck, head, legs,
+    # tail) that Blender converts to a single seamless surface, so the outline flows like a real
+    # curled cat instead of overlapping eggs. Elements are queued here and built at the end.
+    meta_elems = []
+
+    def meta(co, radii, rot_z=0.0, rot_x=0.0, stiff=2.0):
+        meta_elems.append((co, radii, rot_z, rot_x, stiff))
+
+    meta((cx + 0.02, cy + 0.02, top + 0.115), (0.29, 0.23, 0.125), 8)                    # body
+    meta((cx + 0.19, cy + 0.10, top + 0.108), (0.17, 0.16, 0.125), -10)                  # haunch
+    meta((cx + 0.23, cy + 0.12, top + 0.150), (0.10, 0.09, 0.090), -20)                  # hip
+    meta((cx - 0.10, cy + 0.02, top + 0.150), (0.13, 0.13, 0.100), 20)                   # shoulder
+    meta((cx - 0.16, cy - 0.06, top + 0.095), (0.15, 0.13, 0.10), 12)                    # chest
+    meta((cx - 0.20, cy - 0.10, top + 0.140), (0.10, 0.095, 0.090), 10)                  # neck
 
     # Definition: the haunch is a distinct thigh (a crease along its front edge) with the hind
     # foot peeking out under it, so the body stops reading as a marshmallow loaf.
@@ -1886,14 +1897,13 @@ def add_royal_cat(materials):
     # A defined neck and rib lines. (Raised shoulder/hip bumps and a spine tube were tried and read as
     # mouse ears on the back; surface creases do the job without breaking the outline.)
     curve_tube("HOME_PROP_cat_spine_crease", [(cx - 0.14, cy + 0.03, top + 0.232), (cx, cy + 0.06, top + 0.246), (cx + 0.16, cy + 0.09, top + 0.238)], 0.0035, shade)
-    blob("HOME_PROP_cat_neck", (cx - 0.20, cy - 0.10, top + 0.150), (0.100, 0.095, 0.085), (0, 0, 10), fur, (32, 16))
     curve_tube("HOME_PROP_cat_ribs", [(cx - 0.02, cy - 0.120, top + 0.120), (cx + 0.06, cy - 0.140, top + 0.100)], 0.0030, shade)
     curve_tube("HOME_PROP_cat_ribs_2", [(cx + 0.06, cy - 0.128, top + 0.140), (cx + 0.13, cy - 0.150, top + 0.110)], 0.0030, shade)
     curve_tube("HOME_PROP_cat_shoulder_crease", [(cx - 0.06, cy - 0.040, top + 0.200), (cx - 0.03, cy - 0.100, top + 0.150), (cx - 0.05, cy - 0.150, top + 0.090)], 0.0038, shade)
 
     # Head resting on the front paws, turned to the camera.
     hx, hy, hz = cx - 0.22, cy - 0.22, top + 0.085
-    blob("HOME_PROP_cat_head", (hx, hy, hz), (0.115, 0.105, 0.092), (8, 0, -10), fur, (56, 28))
+    meta((hx, hy, hz), (0.115, 0.105, 0.092), -10, 8, 2.2)  # head
     blob("HOME_PROP_cat_cheek_l", (hx - 0.058, hy - 0.048, hz - 0.030), (0.056, 0.048, 0.042), (0, 0, 0), fur, fine)
     blob("HOME_PROP_cat_cheek_r", (hx + 0.058, hy - 0.048, hz - 0.030), (0.056, 0.048, 0.042), (0, 0, 0), fur, fine)
     blob("HOME_PROP_cat_muzzle", (hx, hy - 0.088, hz - 0.030), (0.042, 0.030, 0.028), (0, 0, 0), point, fine)
@@ -1932,7 +1942,7 @@ def add_royal_cat(materials):
         # front paw with toe grooves
         blob(f"HOME_PROP_cat_paw_{tag}", (hx + side * 0.070, hy - 0.082, top + 0.032), (0.054, 0.078, 0.032), (0, 0, 0), point, (32, 16))
         # foreleg from the chest to the paw, so the paw is attached to a leg
-        blob(f"HOME_PROP_cat_foreleg_{tag}", (hx + side * 0.075, hy + 0.045, top + 0.048), (0.042, 0.105, 0.040), (0, 0, side * 6), fur, (32, 16))
+        meta((hx + side * 0.075, hy + 0.045, top + 0.050), (0.044, 0.105, 0.042), side * 6)
         for k in (-1, 1):
             cube(f"HOME_PROP_cat_toe_{tag}_{k}", (hx + side * 0.070 + k * 0.016, hy - 0.146, top + 0.038), (0.0012, 0.012, 0.0010), shade)
     # nose (small pink heart-ish triangle) and mouth
@@ -1964,7 +1974,36 @@ def add_royal_cat(materials):
     for n, t in enumerate(tail):
         frac = n / max(1, len(tail) - 1)
         rad = 0.046 - 0.020 * frac
-        sphere(f"HOME_PROP_cat_tail_seg_{n}", t, (rad * 1.1, rad, rad * 0.92), point if frac > 0.62 else fur, detail=(20, 10))
+        if frac > 0.62:
+            sphere(f"HOME_PROP_cat_tail_seg_{n}", t, (rad * 1.1, rad, rad * 0.92), point, detail=(20, 10))
+        elif n % 3 == 0:
+            meta(t, (rad * 1.05, rad, rad * 0.92), 0.0, 0.0, 2.4)
+
+
+    # Build the metaball union and convert it to a single smooth mesh.
+    mb = bpy.data.metaballs.new("HOME_PROP_cat_body_meta")
+    mb.resolution = 0.012
+    mb.render_resolution = 0.012
+    mb.threshold = 0.6
+    scale_up = 1.55  # ellipsoid size so the polygonised surface lands near the target radii
+    for co, radii, rot_z, rot_x, stiff in meta_elems:
+        el = mb.elements.new(type="ELLIPSOID")
+        el.co = co
+        el.radius = 1.0
+        el.stiffness = stiff
+        el.size_x, el.size_y, el.size_z = (radii[0] * scale_up, radii[1] * scale_up, radii[2] * scale_up)
+        el.rotation = Euler((math.radians(rot_x), 0.0, math.radians(rot_z))).to_quaternion()
+    body = bpy.data.objects.new("HOME_PROP_cat_body", mb)
+    bpy.context.collection.objects.link(body)
+    bpy.ops.object.select_all(action="DESELECT")
+    bpy.context.view_layer.objects.active = body
+    body.select_set(True)
+    bpy.ops.object.convert(target="MESH")
+    body = bpy.context.view_layer.objects.active
+    body.name = "HOME_PROP_cat_body"
+    for poly in body.data.polygons:
+        poly.use_smooth = True
+    apply_material(body, fur)
 
 
 def add_rug_knight_tapestry(materials):
