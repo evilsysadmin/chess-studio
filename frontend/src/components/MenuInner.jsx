@@ -50,6 +50,7 @@ export default function Menu({
   error,
   rating,
   suppressHomeNudge = false,
+  quickMatchLaunchNonce = 0,
 }) {
   const [difficulty, setDifficulty] = useState(50);
   const [autoDifficulty, setAutoDifficulty] = useState(true);
@@ -167,6 +168,10 @@ export default function Menu({
     }, 7000);
     return () => window.clearTimeout(timer);
   }, [matthiasVisit?.kind]);
+
+  useEffect(() => {
+    if (quickMatchLaunchNonce > 0) setShowQuickMatch(true);
+  }, [quickMatchLaunchNonce]);
 
   useEffect(() => {
     const syncDefaultClock = () => setTimeControlId(getDefaultTimeControlId());

@@ -177,6 +177,7 @@ function AppInner({ isAdminUser }) {
   const [activeSeries, setActiveSeries] = useState(() => loadActiveSeries());
   const [shareRecord, setShareRecord] = useState(null);
   const [puzzleLaunch, setPuzzleLaunch] = useState({ source: 'curated', rush: false, filter: null, dailySlot: 'tactic' });
+  const [quickMatchLaunchNonce, setQuickMatchLaunchNonce] = useState(0);
   const [activeContract, setActiveContract] = useState(() => loadActiveContract());
   const [specialRun, setSpecialRun] = useState(() => loadSpecialRun());
   const [gameContext, setGameContext] = useState({});
@@ -597,6 +598,11 @@ function AppInner({ isAdminUser }) {
     openPuzzleMode('daily', false, null, slot);
   }
 
+  function returnToQuickMatchFromPersonalTraining() {
+    resetNavigation();
+    setQuickMatchLaunchNonce((current) => current + 1);
+  }
+
   async function launchRun(run) {
     const launch = gameLaunch.begin();
     if (!launch) return false;
@@ -937,6 +943,7 @@ function AppInner({ isAdminUser }) {
             combatProgress={combatOverview}
             suppressHomeNudge={showSettings || showGlobalAccount || showGlobalReleaseNotes || showGlobalFeedback}
             features={featureFlags}
+            quickMatchLaunchNonce={quickMatchLaunchNonce}
           />
         )}
 
@@ -976,7 +983,7 @@ function AppInner({ isAdminUser }) {
         )}
 
         {view === 'puzzle' && (
-          <PuzzleScreen key={`${puzzleLaunch.source}-${puzzleLaunch.rush}-${puzzleLaunch.filter?.opening || 'all'}-${puzzleLaunch.dailySlot || 'tactic'}`} initialSource={puzzleLaunch.source} rushMode={puzzleLaunch.rush} initialFilter={puzzleLaunch.filter} dailySlot={puzzleLaunch.dailySlot} onExit={goBack} points={tournament.points} onSpendPoints={handleSpendPoints} />
+          <PuzzleScreen key={`${puzzleLaunch.source}-${puzzleLaunch.rush}-${puzzleLaunch.filter?.opening || 'all'}-${puzzleLaunch.dailySlot || 'tactic'}`} initialSource={puzzleLaunch.source} rushMode={puzzleLaunch.rush} initialFilter={puzzleLaunch.filter} dailySlot={puzzleLaunch.dailySlot} onExit={goBack} onPlayAgain={puzzleLaunch.source === 'personal' ? returnToQuickMatchFromPersonalTraining : null} points={tournament.points} onSpendPoints={handleSpendPoints} />
         )}
 
         {view === 'spectator' && <SpectatorScreen onExit={goBack} />}
