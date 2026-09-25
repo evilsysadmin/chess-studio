@@ -3077,13 +3077,13 @@ def add_armor(materials):
         shoulder = shoulders[side]
         elbow = elbows[side]
         wrist = wrists[side]
-        curve_tube(f"HOME_PROP_armor_upperarm_{side}", [shoulder, elbow], 0.100, steel)
-        sphere(f"HOME_PROP_armor_bicep_{side}", ((shoulder[0] + elbow[0]) / 2, (shoulder[1] + elbow[1]) / 2 - 0.02, (shoulder[2] + elbow[2]) / 2 + 0.03), (0.125, 0.120, 0.170), steel)
+        curve_tube(f"HOME_PROP_armor_upperarm_{side}", [shoulder, elbow], 0.160, steel)
+        sphere(f"HOME_PROP_armor_bicep_{side}", ((shoulder[0] + elbow[0]) / 2, (shoulder[1] + elbow[1]) / 2 - 0.02, (shoulder[2] + elbow[2]) / 2 + 0.03), (0.195, 0.185, 0.225), steel)
         # Flattened elbow cops and boxy gauntlets read as plate; the previous
         # spheres read as ball-and-socket action-figure joints.
-        sphere(f"HOME_PROP_armor_couter_{side}", elbow, (0.125, 0.115, 0.115), steel)
-        curve_tube(f"HOME_PROP_armor_forearm_{side}", [elbow, wrist], 0.080, steel)
-        sphere(f"HOME_PROP_armor_forearm_bulge_{side}", (elbow[0] * 0.66 + wrist[0] * 0.34, elbow[1] * 0.66 + wrist[1] * 0.34, elbow[2] * 0.66 + wrist[2] * 0.34), (0.095, 0.095, 0.130), steel)
+        sphere(f"HOME_PROP_armor_couter_{side}", elbow, (0.190, 0.170, 0.165), steel)
+        curve_tube(f"HOME_PROP_armor_forearm_{side}", [elbow, wrist], 0.135, steel)
+        sphere(f"HOME_PROP_armor_forearm_bulge_{side}", (elbow[0] * 0.66 + wrist[0] * 0.34, elbow[1] * 0.66 + wrist[1] * 0.34, elbow[2] * 0.66 + wrist[2] * 0.34), (0.160, 0.155, 0.195), steel)
         curve_tube(f"HOME_PROP_armor_cuff_{side}", [
             (wrist[0], wrist[1] - 0.012 * side, wrist[2] - 0.010),
             (wrist[0], wrist[1] - 0.012 * side, wrist[2] + 0.015),
@@ -4878,7 +4878,8 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
 
     # Two banners only (five were too many): numbering the original five from the left, keep 2
     # (x -4.65, left of the shelf) and 4 (x 4.35, over the right hearth).
-    for name, x in (("left", -4.65), ("right", 4.35)):
+    # The left banner sits 0.45 further left than before: the bookshelf's edge hid its right half.
+    for name, x in (("left", -5.10), ("right", 4.35)):
         add_banner(name, x, materials)
 
     add_table_and_board(materials)
