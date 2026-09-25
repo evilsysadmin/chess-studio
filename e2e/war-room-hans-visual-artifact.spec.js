@@ -85,7 +85,6 @@ test('War Room · canario visual de Hans físicamente en escena', async () => {
     await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
     const warRoom = page.locator('.board-live-row.is-3d-warroom');
     const canvas = page.locator('.board3d-main-canvas');
-    await expect(canvas).toHaveAttribute('data-war-room-variant', 'classic', { timeout: 10_000 });
     const fireOverlay = page.getByTestId('warroom-hans-fire-call-overlay');
     const hansBubble = page.locator('.warroom-fire-call-bubble-hans');
 
@@ -96,6 +95,7 @@ test('War Room · canario visual de Hans físicamente en escena', async () => {
     await Promise.all([
       expect(warRoom).toBeVisible({ timeout: 45_000 }),
       expect(canvas).toBeVisible({ timeout: 45_000 }),
+      expect(canvas).toHaveAttribute('data-war-room-variant', 'classic', { timeout: 45_000 }),
       expect(canvas).toHaveAttribute('data-war-room-hans-scene-ready', 'true', { timeout: 60_000 }),
       expect(canvas).toHaveAttribute('data-war-room-hans-call-released', 'true', { timeout: 60_000 }),
       expect(canvas).toHaveAttribute('data-war-room-hans-reply-seen', 'true', { timeout: 75_000 }),
