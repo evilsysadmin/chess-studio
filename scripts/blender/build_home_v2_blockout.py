@@ -709,12 +709,18 @@ def smooth_curved_mesh(obj, *, keep_axial_caps_flat=False) -> None:
             poly.use_smooth = True
 
 
+def _bake_mesh_scale(obj, scale) -> None:
+    """Apply positive primitive scale to mesh data without a context-heavy bpy operator."""
+    sx, sy, sz = (float(value) for value in scale)
+    obj.data.transform(Matrix.Diagonal(Vector((sx, sy, sz, 1.0))))
+    obj.data.update()
+
+
 def cube(name: str, location, scale, mat, *, bevel=0.0):
     bpy.ops.mesh.primitive_cube_add(location=location)
     obj = bpy.context.object
     obj.name = name
-    obj.scale = scale
-    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    _bake_mesh_scale(obj, scale)
 
     # Perfect razor edges are one of the strongest CGI tells in the Home.
     # Give genuinely solid blocks a tiny physically plausible edge catch while
@@ -786,8 +792,7 @@ def sphere(name: str, location, scale, mat, *, detail=None):
     bpy.ops.mesh.primitive_uv_sphere_add(segments=segments, ring_count=rings, location=location)
     obj = bpy.context.object
     obj.name = name
-    obj.scale = scale
-    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    _bake_mesh_scale(obj, scale)
     smooth_curved_mesh(obj)
     apply_material(obj, mat)
     return obj
