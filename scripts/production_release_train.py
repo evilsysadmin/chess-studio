@@ -16,6 +16,7 @@ import urllib.request
 from cloudflare_health_contract import validate_health_payload
 
 ARTIFACT_NAME = "staging-promotion-accreditation"
+STAGING_DEPLOY_WORKFLOW = "staging-deploy.yml"
 _SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 
 
@@ -159,6 +160,26 @@ def diagnose_staging(sha: str, backend_url: str, frontend_url: str, ai_url: str)
         )
 
 
+def write_staging_accreditation(path: str, sha: str, run_id: int, source_workflow: str, source_event: str) -> None:
+    sha = sha.lower()
+    if _SHA_RE.fullmatch(sha) is None:
+        raise ValueError(f"SHA de staging inválido: {sha!r}")
+    if run_id <= 0:
+        raise ValueError(f"Run de staging inválido: {run_id!r}")
+    if source_workflow != STAGING_DEPLOY_WORKFLOW:
+        raise ValueError(f"Workflow de staging inesperado: {source_workflow!r}")
+    if source_event != "workflow_run":
+        raise ValueError(f"Evento de staging no acreditable: {source_event!r}")
+    payload = {
+        "schema": 2,
+        "sha": sha,
+        "staging_run_id": run_id,
+        "source_workflow": source_workflow,
+        "source_event": source_event,
+    }
+    pathlib.Path(path).write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
+
+
 def write_record(path: str, sha: str, run_id: int, event: str) -> None:
     sha = sha.lower()
     if _SHA_RE.fullmatch(sha) is None:
@@ -191,6 +212,15 @@ def self_test() -> None:
             encoding="utf-8",
         )
         assert read_accreditation(str(accreditation), 22) == "a" * 40
+        staging = pathlib.Path(tmp) / "staging-v2.json"
+        write_staging_accreditation(str(staging), "d" * 40, 91, STAGING_DEPLOY_WORKFLOW, "workflow_run")
+        assert json.loads(staging.read_text(encoding="utf-8")) == {
+            "schema": 2,
+            "sha": "d" * 40,
+            "staging_run_id": 91,
+            "source_workflow": STAGING_DEPLOY_WORKFLOW,
+            "source_event": "workflow_run",
+        }
         record = pathlib.Path(tmp) / "record.json"
         write_record(str(record), "b" * 40, 77, "schedule")
         assert json.loads(record.read_text(encoding="utf-8")) == {
@@ -236,6 +266,13 @@ def main(argv: list[str] | None = None) -> int:
     diagnostic.add_argument("--frontend-url", required=True)
     diagnostic.add_argument("--ai-url", required=True)
 
+    staging_accredit = sub.add_parser("accredit-staging")
+    staging_accredit.add_argument("--target", required=True)
+    staging_accredit.add_argument("--sha", required=True)
+    staging_accredit.add_argument("--run-id", required=True, type=int)
+    staging_accredit.add_argument("--source-workflow", required=True)
+    staging_accredit.add_argument("--source-event", required=True)
+
     record = sub.add_parser("record")
     record.add_argument("--target", required=True)
     record.add_argument("--sha", required=True)
@@ -270,6 +307,16 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if production_is_current(args.sha.lower(), args.backend_url, args.frontend_url, args.ai_url) else 1
     if args.command == "diagnose-staging":
         diagnose_staging(args.sha.lower(), args.backend_url, args.frontend_url, args.ai_url)
+        return 0
+    if args.command == "accredit-staging":
+        write_staging_accreditation(
+            args.target,
+            args.sha,
+            args.run_id,
+            args.source_workflow,
+            args.source_event,
+        )
+        print(f"Staging accreditation v2 written for {args.sha.lower()} from {args.source_workflow} run {args.run_id}.")
         return 0
     if args.command == "record":
         write_record(args.target, args.sha, args.run_id, args.event)
