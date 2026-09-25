@@ -6,7 +6,7 @@ import {
 } from './HomeCastle3DR2Asset.js';
 
 const EXPECTED_HOME_ASSETS = Object.freeze([
-  ['home.scene.runtime', '/home/scene/canonical/home-v2-runtime-1395b3bdaf50d93c.glb'],
+  ['home.scene.runtime', '/home/scene/canonical/home-v2-runtime-5ce52c0d6cdbe4c7.glb'],
   ['home.tournament.trophy.runtime', '/home/tournament/trophy/tournament-cup-v1-e4c1210500fb5b67.glb'],
   ['home.combat.heraldry.runtime', '/home/combat/heraldry/combat-heraldry-v1-c5cd00fc94b82b89.glb'],
   ['home.play.rook.runtime', '/home/play/rook/play-rook-v1-3f49c19ffd8cb894.glb'],
