@@ -19,7 +19,7 @@ from pathlib import Path
 
 import bpy
 import numpy as np
-from mathutils import Matrix, Vector
+from mathutils import Euler, Matrix, Vector
 
 
 CONTRACT = "home-blender-canon-20260918-v1"
@@ -1872,41 +1872,47 @@ def add_royal_cat(materials):
             tuft(f"{prefix}_{n}", tuple(c + p * 0.985), tuple(axis + jitter), length * (0.8 + _hash01(n, 5, seed) * 0.5), radius * (0.8 + _hash01(n, 6, seed) * 0.4), fur if n % 3 else materials["cat_fur"])
 
     # Undercoat: slightly shaded, smooth and high-resolution so the tufts sit on a real form.
-    blob("HOME_PROP_cat_body", (cx + 0.02, cy + 0.02, top + 0.115), (0.29, 0.23, 0.125), (0, 0, 8), fur, (56, 28))
-    blob("HOME_PROP_cat_haunch", (cx + 0.19, cy + 0.10, top + 0.105), (0.16, 0.15, 0.115), (0, 0, -10), fur, (48, 24))
-    blob("HOME_PROP_cat_chest", (cx - 0.16, cy - 0.06, top + 0.095), (0.15, 0.13, 0.10), (0, 0, 12), fur, (48, 24))
+    # One organic mesh: a metaball union of ellipsoids (body, haunch, chest, neck, head, legs,
+    # tail) that Blender converts to a single seamless surface, so the outline flows like a real
+    # curled cat instead of overlapping eggs. Elements are queued here and built at the end.
+    meta_elems = []
+
+    def meta(co, radii, rot_z=0.0, rot_x=0.0, stiff=2.0):
+        meta_elems.append((co, radii, rot_z, rot_x, stiff))
+
+    meta((cx + 0.02, cy + 0.02, top + 0.115), (0.29, 0.23, 0.125), 8)                    # body
+    meta((cx + 0.19, cy + 0.10, top + 0.108), (0.17, 0.16, 0.125), -10)                  # haunch
+    meta((cx + 0.23, cy + 0.12, top + 0.150), (0.10, 0.09, 0.090), -20)                  # hip
+    meta((cx - 0.10, cy + 0.02, top + 0.150), (0.13, 0.13, 0.100), 20)                   # shoulder
+    meta((cx - 0.16, cy - 0.06, top + 0.095), (0.15, 0.13, 0.10), 12)                    # chest
+    meta((cx - 0.20, cy - 0.10, top + 0.140), (0.10, 0.095, 0.090), 10)                  # neck
 
     # Definition: the haunch is a distinct thigh (a crease along its front edge) with the hind
     # foot peeking out under it, so the body stops reading as a marshmallow loaf.
-    curve_tube("HOME_PROP_cat_thigh_crease", [(cx + 0.09, cy - 0.020, top + 0.170), (cx + 0.16, cy - 0.048, top + 0.130), (cx + 0.26, cy - 0.030, top + 0.070)], 0.0042, shade)
     blob("HOME_PROP_cat_hind_foot", (cx + 0.17, cy - 0.085, top + 0.040), (0.078, 0.040, 0.034), (0, 0, -6), point, (32, 16))
     for k in (-1, 0, 1):
         curve_tube(f"HOME_PROP_cat_hind_toe_{k}", [(cx + 0.17 + k * 0.022, cy - 0.118, top + 0.048), (cx + 0.17 + k * 0.024, cy - 0.125, top + 0.030)], 0.0017, shade)
     # a short back-of-shoulder crease and a subtle spine line
     # A defined neck and rib lines. (Raised shoulder/hip bumps and a spine tube were tried and read as
     # mouse ears on the back; surface creases do the job without breaking the outline.)
-    curve_tube("HOME_PROP_cat_spine_crease", [(cx - 0.14, cy + 0.03, top + 0.232), (cx, cy + 0.06, top + 0.246), (cx + 0.16, cy + 0.09, top + 0.238)], 0.0035, shade)
-    blob("HOME_PROP_cat_neck", (cx - 0.20, cy - 0.10, top + 0.150), (0.100, 0.095, 0.085), (0, 0, 10), fur, (32, 16))
-    curve_tube("HOME_PROP_cat_ribs", [(cx - 0.02, cy - 0.120, top + 0.120), (cx + 0.06, cy - 0.140, top + 0.100)], 0.0030, shade)
-    curve_tube("HOME_PROP_cat_ribs_2", [(cx + 0.06, cy - 0.128, top + 0.140), (cx + 0.13, cy - 0.150, top + 0.110)], 0.0030, shade)
-    curve_tube("HOME_PROP_cat_shoulder_crease", [(cx - 0.06, cy - 0.040, top + 0.200), (cx - 0.03, cy - 0.100, top + 0.150), (cx - 0.05, cy - 0.150, top + 0.090)], 0.0038, shade)
 
     # Head resting on the front paws, turned to the camera.
     hx, hy, hz = cx - 0.22, cy - 0.22, top + 0.085
-    blob("HOME_PROP_cat_head", (hx, hy, hz), (0.115, 0.105, 0.092), (8, 0, -10), fur, (56, 28))
-    blob("HOME_PROP_cat_cheek_l", (hx - 0.058, hy - 0.048, hz - 0.030), (0.056, 0.048, 0.042), (0, 0, 0), fur, fine)
-    blob("HOME_PROP_cat_cheek_r", (hx + 0.058, hy - 0.048, hz - 0.030), (0.056, 0.048, 0.042), (0, 0, 0), fur, fine)
+    meta((hx, hy, hz), (0.115, 0.105, 0.092), -10, 8, 2.2)  # head
+    meta((hx - 0.055, hy - 0.040, hz - 0.028), (0.046, 0.040, 0.036))
+    meta((hx + 0.055, hy - 0.040, hz - 0.028), (0.046, 0.040, 0.036))
     blob("HOME_PROP_cat_muzzle", (hx, hy - 0.088, hz - 0.030), (0.042, 0.030, 0.028), (0, 0, 0), point, fine)
-    blob("HOME_PROP_cat_mask", (hx, hy - 0.075, hz + 0.004), (0.078, 0.030, 0.062), (8, 0, -10), point, (40, 20))
+    blob("HOME_PROP_cat_mask", (hx, hy - 0.080, hz + 0.002), (0.062, 0.022, 0.050), (8, 0, -10), point, (40, 20))
     blob("HOME_PROP_cat_chin", (hx, hy - 0.070, hz - 0.066), (0.030, 0.024, 0.020), (0, 0, 0), fur, (24, 12))
     for side, tag in ((-1, "l"), (1, "r")):
-        # Ears: flat rounded triangles leaning outward (a cone read as a party hat).
+        # Ears: small rounded wedge-shaped lumps fused into the head (flat paper triangles read as
+        # cutouts), with a small pink inner panel and a darker outer tip.
         ex = hx + side * 0.072
-        ez = hz + 0.070
-        outer = [(ex - 0.048, ez), (ex + 0.048, ez), (ex + side * 0.030 + 0.004, ez + 0.100)]
-        flat_panel(f"HOME_PROP_cat_ear_{tag}", outer, hy - 0.004, 0.030, point, bevel=0.010)
-        inner_pts = [(ex - 0.028, ez + 0.010), (ex + 0.028, ez + 0.010), (ex + side * 0.020 + 0.003, ez + 0.070)]
-        flat_panel(f"HOME_PROP_cat_ear_inner_{tag}", inner_pts, hy - 0.022, 0.014, pink, bevel=0.004)
+        ez = hz + 0.078
+        meta((ex, hy + 0.010, ez), (0.040, 0.022, 0.058), side * 12, -8, 2.2)
+        meta((ex + side * 0.012, hy + 0.008, ez + 0.045), (0.024, 0.016, 0.040), side * 16, -8, 2.2)
+        inner_pts = [(ex - 0.022, ez - 0.008), (ex + 0.022, ez - 0.008), (ex + side * 0.010, ez + 0.058)]
+        flat_panel(f"HOME_PROP_cat_ear_inner_{tag}", inner_pts, hy - 0.020, 0.010, pink, bevel=0.003)
         # Matthias's cat: asleep, but scowling. The eye is a narrow slit slanting down toward the
         # nose (inner end lowest), under a heavy brow furrowed into a V, like the pawn's glare.
         curve_tube(
@@ -1917,11 +1923,10 @@ def add_royal_cat(materials):
         )
         curve_tube(
             f"HOME_PROP_cat_brow_{tag}",
-            [(hx + side * 0.014, hy - 0.099, hz + 0.024), (hx + side * 0.050, hy - 0.104, hz + 0.045), (hx + side * 0.090, hy - 0.096, hz + 0.062)],
-            0.0085,
+            [(hx + side * 0.014, hy - 0.100, hz + 0.022), (hx + side * 0.050, hy - 0.105, hz + 0.036), (hx + side * 0.088, hy - 0.098, hz + 0.050)],
+            0.0048,
             shade,
         )
-        blob(f"HOME_PROP_cat_brow_ridge_{tag}", (hx + side * 0.050, hy - 0.086, hz + 0.038), (0.046, 0.020, 0.014), (0, side * -24, side * 10), fur, (24, 12))
         for k in (-1, 0, 1):
             curve_tube(
                 f"HOME_PROP_cat_whisker_{tag}_{k}",
@@ -1930,9 +1935,9 @@ def add_royal_cat(materials):
                 materials["cat_fur"],
             )
         # front paw with toe grooves
-        blob(f"HOME_PROP_cat_paw_{tag}", (hx + side * 0.070, hy - 0.082, top + 0.032), (0.054, 0.078, 0.032), (0, 0, 0), point, (32, 16))
+        blob(f"HOME_PROP_cat_paw_{tag}", (hx + side * 0.070, hy - 0.082, top + 0.032), (0.044, 0.064, 0.026), (0, 0, 0), point, (32, 16))
         # foreleg from the chest to the paw, so the paw is attached to a leg
-        blob(f"HOME_PROP_cat_foreleg_{tag}", (hx + side * 0.075, hy + 0.045, top + 0.048), (0.042, 0.105, 0.040), (0, 0, side * 6), fur, (32, 16))
+        meta((hx + side * 0.075, hy + 0.045, top + 0.050), (0.044, 0.105, 0.042), side * 6)
         for k in (-1, 1):
             cube(f"HOME_PROP_cat_toe_{tag}_{k}", (hx + side * 0.070 + k * 0.016, hy - 0.146, top + 0.038), (0.0012, 0.012, 0.0010), shade)
     # nose (small pink heart-ish triangle) and mouth
@@ -1964,7 +1969,36 @@ def add_royal_cat(materials):
     for n, t in enumerate(tail):
         frac = n / max(1, len(tail) - 1)
         rad = 0.046 - 0.020 * frac
-        sphere(f"HOME_PROP_cat_tail_seg_{n}", t, (rad * 1.1, rad, rad * 0.92), point if frac > 0.62 else fur, detail=(20, 10))
+        if frac > 0.62:
+            sphere(f"HOME_PROP_cat_tail_seg_{n}", t, (rad * 1.1, rad, rad * 0.92), point, detail=(20, 10))
+        else:
+            meta(t, (rad * 0.95, rad * 0.90, rad * 0.85), 0.0, 0.0, 2.6)
+
+
+    # Build the metaball union and convert it to a single smooth mesh.
+    mb = bpy.data.metaballs.new("HOME_PROP_cat_body_meta")
+    mb.resolution = 0.012
+    mb.render_resolution = 0.012
+    mb.threshold = 0.6
+    scale_up = 1.55  # ellipsoid size so the polygonised surface lands near the target radii
+    for co, radii, rot_z, rot_x, stiff in meta_elems:
+        el = mb.elements.new(type="ELLIPSOID")
+        el.co = co
+        el.radius = 1.0
+        el.stiffness = stiff
+        el.size_x, el.size_y, el.size_z = (radii[0] * scale_up, radii[1] * scale_up, radii[2] * scale_up)
+        el.rotation = Euler((math.radians(rot_x), 0.0, math.radians(rot_z))).to_quaternion()
+    body = bpy.data.objects.new("HOME_PROP_cat_body", mb)
+    bpy.context.collection.objects.link(body)
+    bpy.ops.object.select_all(action="DESELECT")
+    bpy.context.view_layer.objects.active = body
+    body.select_set(True)
+    bpy.ops.object.convert(target="MESH")
+    body = bpy.context.view_layer.objects.active
+    body.name = "HOME_PROP_cat_body"
+    for poly in body.data.polygons:
+        poly.use_smooth = True
+    apply_material(body, fur)
 
 
 def add_rug_knight_tapestry(materials):
