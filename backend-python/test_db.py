@@ -172,7 +172,7 @@ def test_concurrent_callers_share_one_mongo_connect_attempt(monkeypatch):
         "pings": 1,
         "indexes": [
             ("users", "last_activity", "users_last_activity"),
-            ("games", "owner", "games_owner"),
+            ("games", [("owner", 1), ("updatedAt", -1)], "games_owner_updated"),
             ("chronicles_runs", "owner", "chronicles_runs_owner"),
         ],
     }
@@ -241,7 +241,7 @@ def test_failed_connect_enters_fast_retry_cooldown_then_recovers(monkeypatch):
     assert calls["pings"] == 2
     assert calls["indexes"] == [
         ("users", "last_activity", "users_last_activity"),
-        ("games", "owner", "games_owner"),
+        ("games", [("owner", 1), ("updatedAt", -1)], "games_owner_updated"),
         ("chronicles_runs", "owner", "chronicles_runs_owner"),
     ]
 
@@ -267,6 +267,6 @@ def test_runtime_index_failure_does_not_skip_other_lifecycle_indexes():
 
     assert calls == [
         ("users", "last_activity", "users_last_activity"),
-        ("games", "owner", "games_owner"),
+        ("games", [("owner", 1), ("updatedAt", -1)], "games_owner_updated"),
         ("chronicles_runs", "owner", "chronicles_runs_owner"),
     ]
