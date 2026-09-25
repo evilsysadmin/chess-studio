@@ -76,12 +76,16 @@ test('War Room · canario visual de Hans físicamente en escena', async () => {
       },
     });
     await login(page);
+    await page.evaluate(() => {
+      localStorage.setItem('chess-study-war-room-variant-v1', 'classic');
+    });
     await seedGamesBeforeFire(page);
 
     await buttonWithVisibleText(page, 'Partida rápida').click();
     await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
     const warRoom = page.locator('.board-live-row.is-3d-warroom');
     const canvas = page.locator('.board3d-main-canvas');
+    await expect(canvas).toHaveAttribute('data-war-room-variant', 'classic', { timeout: 10_000 });
     const fireOverlay = page.getByTestId('warroom-hans-fire-call-overlay');
     const hansBubble = page.locator('.warroom-fire-call-bubble-hans');
 
