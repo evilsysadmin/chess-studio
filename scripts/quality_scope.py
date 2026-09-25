@@ -85,7 +85,6 @@ PACKAGE_METADATA_PATH = "frontend/package.json"
 
 PAWN_SLUG_GODOT_PATHS = {
     ".github/workflows/pawn-slug-godot-web.yml",
-    ".github/workflows/cicd.yml",
     "scripts/pawn_slug_godot_bundle.py",
     "scripts/pawn_slug_godot_2d_gate.py",
     "scripts/pawn_slug_enemy_roster_gate.py",
