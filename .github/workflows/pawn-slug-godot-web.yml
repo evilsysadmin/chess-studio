@@ -18,8 +18,6 @@ on:
       - games/pawn-slug-godot/art/sprite-forge-v1/catalog.json
       - scripts/art/sprite_forge_acceptance.py
       - games/pawn-slug-godot/art/sprite-forge-v1/acceptance.json
-      - docs/pawnslug-sprites.md
-      - skills/godot-spritesheets/SKILL.md
       - scripts/pawn_slug_enemy_roster_gate.py
       - scripts/pawn_slug_godot_live_smoke.mjs
       - scripts/pawn_slug_godot_pr_capture.mjs
@@ -43,8 +41,6 @@ on:
       - games/pawn-slug-godot/art/sprite-forge-v1/catalog.json
       - scripts/art/sprite_forge_acceptance.py
       - games/pawn-slug-godot/art/sprite-forge-v1/acceptance.json
-      - docs/pawnslug-sprites.md
-      - skills/godot-spritesheets/SKILL.md
       - scripts/pawn_slug_enemy_roster_gate.py
       - scripts/pawn_slug_godot_live_smoke.mjs
       - scripts/pawn_slug_godot_pr_capture.mjs
