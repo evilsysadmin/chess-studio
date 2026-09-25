@@ -46,6 +46,8 @@ VISUAL_PATTERNS = (
     "frontend/src/components/WarRoomPracticalLighting.js",
     "frontend/src/components/WarRoomPremiumFinishPass.js",
     "frontend/src/components/WarRoomTeutonicDecor.js",
+    "frontend/src/components/WarRoomApprovedMockContract.js",
+    "frontend/src/components/WarRoomCommandDeskLuxury.js",
     "frontend/src/components/PremiumWarRoomScene.js",
     "frontend/src/components/WarRoom3DAnimation.js",
     "frontend/src/components/Board3D*.css",
@@ -446,6 +448,8 @@ def _job_ids(scope: BrowserScope) -> list[str]:
 def self_test() -> None:
     assert classify([]) == BrowserScope()
     assert classify(["frontend/src/components/WarRoomPracticalLighting.js"]) == BrowserScope(visual=True)
+    assert classify(["frontend/src/components/WarRoomApprovedMockContract.js"]) == BrowserScope(visual=True)
+    assert classify(["frontend/src/components/WarRoomCommandDeskLuxury.js"]) == BrowserScope(visual=True)
     assert _ids(classify(["frontend/src/styles/19-game-focus.css"])) == ["desktop-scale", "android-focus"]
     assert classify(["frontend/src/components/Board3DParity.test.js"]) == BrowserScope()
     assert classify(["frontend/src/warRoomPointerCapture.test.js"]) == BrowserScope()
