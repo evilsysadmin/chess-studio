@@ -218,6 +218,221 @@ def _surface_height(profile: str, u: float, v: float, seed: int) -> float:
     return max(0.0, min(1.0, coarse * 0.50 + medium * 0.31 + fine * 0.19))
 
 
+
+def _np_hash01_exact(ix, iy, seed: int) -> "np.ndarray":
+    """Vector form of _hash01 with identical uint32 overflow semantics."""
+    ix = np.asarray(ix, dtype=np.uint64)
+    iy = np.asarray(iy, dtype=np.uint64)
+    value = (
+        ix * np.uint64(374761393)
+        + iy * np.uint64(668265263)
+        + np.uint64(seed & 0xFFFFFFFF) * np.uint64(69069)
+    ) & np.uint64(0xFFFFFFFF)
+    value ^= value >> np.uint64(13)
+    value = (value * np.uint64(1274126177)) & np.uint64(0xFFFFFFFF)
+    value ^= value >> np.uint64(16)
+    return (value & np.uint64(0xFFFF)).astype(np.float64) / 65535.0
+
+
+def _np_value_noise_exact(
+    size: int,
+    seed: int,
+    cells: int,
+    *,
+    u_scale: float = 1.0,
+    v_scale: float = 1.0,
+) -> "np.ndarray":
+    """Vector form of _value_noise sampled at x/size,y/size, bit-for-bit hash equivalent."""
+    xs = np.arange(size, dtype=np.float64) / size * u_scale * cells
+    ys = np.arange(size, dtype=np.float64) / size * v_scale * cells
+    x0 = np.floor(xs).astype(np.int64)
+    y0 = np.floor(ys).astype(np.int64)
+    tx = xs - x0
+    ty = ys - y0
+    tx = tx * tx * (3.0 - 2.0 * tx)
+    ty = ty * ty * (3.0 - 2.0 * ty)
+    x1 = x0 + 1
+    y1 = y0 + 1
+
+    x0m = np.mod(x0, cells)[None, :]
+    x1m = np.mod(x1, cells)[None, :]
+    y0m = np.mod(y0, cells)[:, None]
+    y1m = np.mod(y1, cells)[:, None]
+    a = _np_hash01_exact(x0m, y0m, seed)
+    b = _np_hash01_exact(x1m, y0m, seed)
+    c = _np_hash01_exact(x0m, y1m, seed)
+    d = _np_hash01_exact(x1m, y1m, seed)
+    ab = a + (b - a) * tx[None, :]
+    cd = c + (d - c) * tx[None, :]
+    return ab + (cd - ab) * ty[:, None]
+
+
+def _surface_height_grid(profile: str, size: int, seed: int) -> "np.ndarray":
+    """Vectorized exact equivalent of _surface_height over the authored macro grid."""
+    u = np.arange(size, dtype=np.float64)[None, :] / size
+    v = np.arange(size, dtype=np.float64)[:, None] / size
+    coarse = _np_value_noise_exact(size, seed, 5)
+    medium = _np_value_noise_exact(size, seed + 31, 13)
+    fine = _np_value_noise_exact(size, seed + 73, 37)
+
+    if profile == "stone":
+        mineral = _np_value_noise_exact(size, seed + 157, 9)
+        pores = _np_value_noise_exact(size, seed + 191, 27)
+        strata = 0.5 + 0.5 * np.sin(
+            (v * 2.6 + u * 0.72 + (coarse - 0.5) * 0.55) * math.tau
+        )
+        pitting = np.clip(0.26 - pores, 0.0, None) * 1.65
+        return np.clip(
+            0.30 + coarse * 0.34 + medium * 0.19 + mineral * 0.10
+            + strata * 0.055 + fine * 0.025 - pitting * 0.14,
+            0.0,
+            1.0,
+        )
+
+    if profile == "floor_stone":
+        rows, cols = 6, 8
+        scaled_u = u * cols
+        scaled_v = v * rows
+        row = np.floor(scaled_v).astype(np.int64)
+        stagger = np.where((row % 2) != 0, 0.5, 0.0)
+        shifted_u = scaled_u + stagger
+        col = np.floor(shifted_u).astype(np.int64)
+        local_u = shifted_u - col
+        local_v = scaled_v - row
+        edge = np.minimum(
+            np.minimum(local_u, 1.0 - local_u),
+            np.minimum(local_v, 1.0 - local_v),
+        )
+        joint_width = 0.045 + (medium - 0.5) * 0.016
+        tile_bias = (
+            _np_hash01_exact(np.mod(col, cols), np.mod(row, rows), seed + 401) - 0.5
+        ) * 0.12
+        wear = _np_value_noise_exact(size, seed + 509, 9)
+        slab = (
+            0.54 + tile_bias + (coarse - 0.5) * 0.20 + (medium - 0.5) * 0.09
+            + (wear - 0.5) * 0.055 + (fine - 0.5) * 0.035
+        )
+        joint = 0.10 + fine * 0.055
+        return np.clip(np.where(edge < joint_width, joint, slab), 0.0, 1.0)
+
+    if profile == "wood":
+        warp = (coarse - 0.5) * 0.8 + np.sin(v * math.tau * 2.0) * 0.05
+        rings = 0.5 + 0.5 * np.sin((u * 11.0 + warp) * math.tau)
+        fibres = 0.5 + 0.5 * np.sin(
+            (u * 27.0 + medium * 2.4 + coarse * 1.1) * math.tau
+        )
+        return np.clip(
+            0.5 + (rings - 0.5) * 0.13 + (fibres - 0.5) * 0.12
+            + (coarse - 0.5) * 0.22 + (fine - 0.5) * 0.12,
+            0.0,
+            1.0,
+        )
+
+    if profile == "leather":
+        wrinkles = _np_value_noise_exact(size, seed + 211, 7)
+        pebble_a = _np_value_noise_exact(size, seed + 223, 23)
+        pebble_b = _np_value_noise_exact(size, seed + 239, 41)
+        pebble = np.abs(pebble_a - pebble_b)
+        return np.clip(
+            0.12 + coarse * 0.30 + wrinkles * 0.24 + medium * 0.13
+            + pebble * 0.15 + fine * 0.06,
+            0.0,
+            1.0,
+        )
+
+    if profile == "paper":
+        fiber_x = 0.5 + 0.5 * np.sin((u * 52.0 + fine * 1.7) * math.tau)
+        fiber_y = 0.5 + 0.5 * np.sin(
+            (v * 47.0 + medium * 1.5) * math.tau + 0.45
+        )
+        return np.clip(
+            0.46 + (fiber_x + fiber_y - 1.0) * 0.11 + coarse * 0.22 + fine * 0.12,
+            0.0,
+            1.0,
+        )
+
+    if profile == "wax":
+        bloom = _np_value_noise_exact(size, seed + 307, 9)
+        soft = _np_value_noise_exact(size, seed + 353, 19)
+        return np.clip(
+            coarse * 0.36 + bloom * 0.38 + soft * 0.18 + fine * 0.08,
+            0.0,
+            1.0,
+        )
+
+    if profile == "textile":
+        drift_u = (coarse - 0.5) * 0.045 + (medium - 0.5) * 0.018
+        drift_v = (medium - 0.5) * 0.040 + (coarse - 0.5) * 0.014
+        warp = 0.5 + 0.5 * np.sin((u + drift_u) * math.tau * 30.0)
+        weft = 0.5 + 0.5 * np.sin((v + drift_v) * math.tau * 28.0 + 0.58)
+        weave = (warp - 0.5) * (weft - 0.5) * 0.22
+        return np.clip(
+            0.40 + coarse * 0.24 + medium * 0.16
+            + (warp + weft - 1.0) * 0.085 + weave + fine * 0.07,
+            0.0,
+            1.0,
+        )
+
+    if profile == "leaf":
+        rib = 0.5 + 0.5 * np.cos(
+            (u * 14.0 + (coarse - 0.5) * 0.30) * math.tau
+        )
+        cross = 0.5 + 0.5 * np.sin((v * 9.0 + u * 3.0) * math.tau)
+        return np.clip(
+            0.40 + rib ** 6 * 0.30 + (coarse - 0.5) * 0.32
+            + (cross - 0.5) * 0.06 + (fine - 0.5) * 0.08,
+            0.0,
+            1.0,
+        )
+
+    if profile == "globe":
+        coarse_lat = _np_value_noise_exact(size, seed + 601, 5, v_scale=0.55)
+        mid = _np_value_noise_exact(size, seed + 613, 9, v_scale=0.60)
+        continents = coarse_lat * 0.62 + mid * 0.38
+        land = (continents > 0.52).astype(np.float64)
+        edge_soften = _np_value_noise_exact(size, seed + 641, 23)
+        coast = np.abs(continents - 0.52) < 0.035
+        land = np.where(coast, 0.5 + (edge_soften - 0.5) * 0.6, land)
+        return np.clip(0.22 + land * 0.62 + (fine - 0.5) * 0.08, 0.0, 1.0)
+
+    if profile == "metal":
+        patina = _np_value_noise_exact(size, seed + 119, 8)
+        brushed_a = _np_value_noise_exact(
+            size, seed + 131, 19, u_scale=0.55, v_scale=2.8
+        )
+        brushed_b = _np_value_noise_exact(
+            size, seed + 149, 13, u_scale=0.75, v_scale=4.1
+        )
+        brushing = brushed_a * 0.68 + brushed_b * 0.32
+        return np.clip(
+            coarse * 0.34 + patina * 0.33 + medium * 0.15
+            + brushing * 0.11 + fine * 0.07,
+            0.0,
+            1.0,
+        )
+
+    return np.clip(coarse * 0.50 + medium * 0.31 + fine * 0.19, 0.0, 1.0)
+
+
+def _validate_surface_height_vectorization() -> None:
+    size = 17
+    seed = 2417
+    profiles = (
+        "stone", "floor_stone", "wood", "leather", "paper", "wax",
+        "textile", "leaf", "globe", "metal", "other",
+    )
+    for profile in profiles:
+        grid = _surface_height_grid(profile, size, seed)
+        for y in range(size):
+            for x in range(size):
+                expected = _surface_height(profile, x / size, y / size, seed)
+                actual = float(grid[y, x])
+                if abs(actual - expected) > 1e-12:
+                    raise RuntimeError(
+                        f"Vector macro drift {profile} at {x},{y}: {actual} != {expected}"
+                    )
+
+
 def _np_noise(size: int, seed: int, cells_u: int, cells_v: int | None = None) -> "np.ndarray":
     """Tileable smooth value noise on a size x size grid, deterministic per seed.
 
@@ -329,12 +544,7 @@ def _packed_surface_arrays(
     """
     base_size = base_size or size
     seed = sum((index + 1) * ord(char) for index, char in enumerate(name)) & 0xFFFF
-    macro = np.array(
-        [
-            [_surface_height(profile, x / base_size, y / base_size, seed) for x in range(base_size)]
-            for y in range(base_size)
-        ]
-    )
+    macro = _surface_height_grid(profile, base_size, seed)
     macro = _resample_tileable(macro, size)
     detail_gain = {
         "stone": 1.0,
@@ -5021,6 +5231,8 @@ def render(scene, path: Path) -> None:
 
 def main() -> None:
     args = parse_args()
+    if os.environ.get("HOME_VALIDATE_VECTOR_TEXTURES") == "1":
+        _validate_surface_height_vectorization()
     root = Path.cwd()
     out_dir = Path(args.out_dir).resolve()
     out_dir.mkdir(parents=True, exist_ok=True)

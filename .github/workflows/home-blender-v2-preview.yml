@@ -46,6 +46,7 @@ jobs:
           LIBGL_ALWAYS_SOFTWARE: '1'
           BLENDER_EEVEE_PREMIUM: '1'
           HOME_PREVIEW_TEXTURE_SCALE: ${{ github.event_name == 'pull_request' && '0.5' || '1' }}
+          HOME_VALIDATE_VECTOR_TEXTURES: '1'
         run: |
           set -euo pipefail
           mkdir -p /tmp/home-blender-v2
