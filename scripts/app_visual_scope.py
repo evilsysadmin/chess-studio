@@ -217,7 +217,7 @@ def _surface_groups(path: str) -> set[str] | None:
     if any(token in lower for token in ("experiment", "pawnslug", "pawn-slug", "chronicles", "trailblazer", "arcade")):
         groups.add("experiments")
     if any(token in lower for token in (
-        "training", "tutorial", "glossary", "school", "mechanic-library", "openingsscreen",
+        "training", "tutorial", "glossary", "school", "classroom", "mechanic-library", "openingsscreen",
         "insights", "career-dossier", "careerscreen", "rivalrydossier",
     )):
         groups.add("training")
@@ -230,7 +230,7 @@ def _surface_groups(path: str) -> set[str] | None:
         groups.add("training")
     if any(token in lower for token in ("illustrated-home", "homecastle", "home-castle", "/home", "castle3d")):
         groups.add("home")
-    if "matthias" in lower and "school" not in lower and "chronicles" not in lower:
+    if "matthias" in lower and "school" not in lower and "classroom" not in lower and "chronicles" not in lower:
         groups.update(("home", "warroom"))
     if groups:
         return groups
