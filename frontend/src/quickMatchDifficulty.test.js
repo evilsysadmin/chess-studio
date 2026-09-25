@@ -6,8 +6,10 @@ import {
   QUICK_MATCH_TARGET_LEAD_ELO,
   difficultyForQuickMatchRating,
   provisionalQuickMatchLeadElo,
+  quickMatchEarlyCalibrationSignal,
   quickMatchQualityAdjustment,
   quickMatchRecalibration,
+  quickMatchTargetLeadElo,
 } from './quickMatchDifficulty.js';
 
 function adaptiveGame(gameId, outcome, difficulty = 56) {
@@ -47,16 +49,44 @@ describe('quick-match Elo chaser', () => {
     expect(cpuRatingForDifficulty(difficulty) - 400).toBe(-50);
   });
 
-  it('ramps provisional players from a gentle calibration toward the +50 target', () => {
+  it('ramps provisional players from a gentle calibration to the target in five games', () => {
     expect(provisionalQuickMatchLeadElo(0)).toBe(-50);
-    expect(provisionalQuickMatchLeadElo(6)).toBe(0);
-    expect(provisionalQuickMatchLeadElo(12)).toBe(50);
+    expect(provisionalQuickMatchLeadElo(2)).toBe(-10);
+    expect(provisionalQuickMatchLeadElo(5)).toBe(50);
 
     const early = cpuRatingForDifficulty(difficultyForQuickMatchRating(800, [], 0));
-    const midpoint = cpuRatingForDifficulty(difficultyForQuickMatchRating(800, [], 6));
-    const established = cpuRatingForDifficulty(difficultyForQuickMatchRating(800, [], 12));
+    const midpoint = cpuRatingForDifficulty(difficultyForQuickMatchRating(800, [], 2));
+    const established = cpuRatingForDifficulty(difficultyForQuickMatchRating(800, [], 5));
     expect(early).toBeLessThan(midpoint);
     expect(midpoint).toBeLessThan(established);
+  });
+
+  it('converges early after three unequivocal adaptive results', () => {
+    const wins = [
+      ...adaptiveGame('w3', 'win', 45),
+      ...adaptiveGame('w2', 'win', 35),
+      ...adaptiveGame('w1', 'win', 25),
+    ];
+    const losses = [
+      ...adaptiveGame('l3', 'loss', 45),
+      ...adaptiveGame('l2', 'loss', 35),
+      ...adaptiveGame('l1', 'loss', 25),
+    ];
+
+    expect(quickMatchEarlyCalibrationSignal(wins, 3)).toBe(1);
+    expect(quickMatchEarlyCalibrationSignal(losses, 3)).toBe(-1);
+    expect(quickMatchTargetLeadElo(wins, 3, {})).toBe(50);
+    expect(quickMatchTargetLeadElo(losses, 3, {})).toBe(-75);
+  });
+
+  it('does not force early convergence on mixed provisional evidence', () => {
+    const mixed = [
+      ...adaptiveGame('m3', 'win', 45),
+      ...adaptiveGame('m2', 'draw', 35),
+      ...adaptiveGame('m1', 'loss', 25),
+    ];
+    expect(quickMatchEarlyCalibrationSignal(mixed, 3)).toBe(0);
+    expect(quickMatchTargetLeadElo(mixed, 3, {})).toBe(10);
   });
 
   it('holds the previous adaptive rival while it remains inside the hysteresis band', () => {

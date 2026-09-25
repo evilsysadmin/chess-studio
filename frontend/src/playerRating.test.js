@@ -59,17 +59,17 @@ describe('updateRating', () => {
     expect(gananciaNuevo).toBeGreaterThan(gananciaEstablecido);
   });
 
-  it('el K-factor provisional es exactamente el doble del normal', () => {
-    const nuevo = { rating: 800, games: 0 };
-    const establecido = { rating: 800, games: 20 };
-    const deltaNuevo = updateRating(nuevo, 60, 1).rating - nuevo.rating;
-    const deltaEstablecido = updateRating(establecido, 60, 1).rating - establecido.rating;
-    expect(Math.round(deltaNuevo / deltaEstablecido)).toBe(2);
+  it('el K-factor provisional converge más deprisa sin tocar el K establecido', () => {
+    const provisional = ratingChangeDetails({ rating: 800, games: 0 }, 60, 1);
+    const establecido = ratingChangeDetails({ rating: 800, games: 5 }, 60, 1);
+    expect(provisional.kFactor).toBe(56);
+    expect(establecido.kFactor).toBe(24);
+    expect(provisional.delta).toBeGreaterThan(establecido.delta);
   });
 
-  it('deja de ser provisional exactamente en PROVISIONAL_GAMES (12) partidos, no antes ni después', () => {
-    const justoAntes = { rating: 800, games: 11 };
-    const justoDespues = { rating: 800, games: 12 };
+  it('deja de ser provisional exactamente en PROVISIONAL_GAMES (5) partidos, no antes ni después', () => {
+    const justoAntes = { rating: 800, games: 4 };
+    const justoDespues = { rating: 800, games: 5 };
     const deltaAntes = updateRating(justoAntes, 60, 1).rating - justoAntes.rating;
     const deltaDespues = updateRating(justoDespues, 60, 1).rating - justoDespues.rating;
     expect(deltaAntes).toBeGreaterThan(deltaDespues);

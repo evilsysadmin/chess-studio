@@ -20,8 +20,8 @@ const RATING_HISTORY_KEY = 'chess-study-rating-history';
 const MAX_HISTORY_POINTS = 200;
 const DEFAULT_RATING = 400;
 const K_FACTOR = 24;
-const PROVISIONAL_K_FACTOR = 48;
-export const PROVISIONAL_GAMES = 12;
+const PROVISIONAL_K_FACTOR = 56;
+export const PROVISIONAL_GAMES = 5;
 
 // La forma reciente sólo afecta a la SIGUIENTE partida automática: jamás
 // hacemos rubber-banding dentro de una partida ya empezada.
@@ -352,7 +352,7 @@ export function adaptiveDifficultyAdjustment(activity = [], baseDifficulty = 0, 
 }
 
 // Traduce el rating a dificultad y añade dos correcciones deliberadamente
-// asimétricas: durante las 12 partidas provisionales ofrece una CPU algo más
+// asimétricas: durante las cinco partidas provisionales ofrece una CPU algo más
 // amable y reacciona antes a derrotas, pero sube despacio. Cuando producto no
 // pasa `games`, usamos el contador persistido del perfil; las llamadas de test
 // que pasan actividad explícita conservan el comportamiento histórico.

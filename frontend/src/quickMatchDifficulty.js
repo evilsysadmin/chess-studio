@@ -11,6 +11,7 @@ export const QUICK_MATCH_TARGET_LEAD_ELO = 50;
 export const QUICK_MATCH_HYSTERESIS_ELO = 25;
 export const QUICK_MATCH_PROVISIONAL_START_LEAD_ELO = -50;
 export const QUICK_MATCH_FORM_MAX_AGE_DAYS = 30;
+export const QUICK_MATCH_EARLY_SIGNAL_GAMES = 3;
 const QUICK_MATCH_RECENT_GAMES = 8;
 const QUICK_MATCH_MAX_FORM_BOOST_ELO = 25;
 const QUICK_MATCH_MAX_FORM_RELIEF_ELO = -50;
@@ -65,6 +66,17 @@ function recentAdaptiveResults(activity = [], nowMs = Date.now()) {
 function resultScore(event) {
   if (event?.outcome === 'win') return 1;
   if (event?.outcome === 'draw') return 0.5;
+  return 0;
+}
+
+export function quickMatchEarlyCalibrationSignal(activity = [], games = PROVISIONAL_GAMES, nowMs = Date.now()) {
+  const gameCount = Number(games);
+  if (!Number.isFinite(gameCount) || gameCount < QUICK_MATCH_EARLY_SIGNAL_GAMES || gameCount >= PROVISIONAL_GAMES) return 0;
+
+  const recent = recentAdaptiveResults(activity, nowMs).slice(0, QUICK_MATCH_EARLY_SIGNAL_GAMES);
+  if (recent.length < QUICK_MATCH_EARLY_SIGNAL_GAMES) return 0;
+  if (recent.every((event) => event?.outcome === 'win')) return 1;
+  if (recent.every((event) => event?.outcome === 'loss')) return -1;
   return 0;
 }
 
@@ -154,9 +166,17 @@ export function quickMatchQualityAdjustment(activity = [], games = PROVISIONAL_G
 
 export function quickMatchTargetLeadElo(activity = [], games = PROVISIONAL_GAMES, qualityRecords = {}, nowMs = Date.now()) {
   const provisional = Number(games) < PROVISIONAL_GAMES;
-  const baseLead = provisional
+  const earlySignal = provisional ? quickMatchEarlyCalibrationSignal(activity, games, nowMs) : 0;
+  let baseLead = provisional
     ? provisionalQuickMatchLeadElo(games)
     : QUICK_MATCH_TARGET_LEAD_ELO;
+
+  // Tres resultados adaptativos inequívocos ya son evidencia suficiente para
+  // no hacer perder al jugador dos partidas extra contra un rival mal situado.
+  // Sólo cambia la SIGUIENTE partida: nunca hacemos rubber-banding en curso.
+  if (earlySignal > 0) baseLead = QUICK_MATCH_TARGET_LEAD_ELO;
+  else if (earlySignal < 0) baseLead = QUICK_MATCH_PROVISIONAL_START_LEAD_ELO;
+
   const adjusted = baseLead
     + quickMatchRecentFormAdjustment(activity, games, nowMs)
     + quickMatchQualityAdjustment(activity, games, qualityRecords, nowMs);
