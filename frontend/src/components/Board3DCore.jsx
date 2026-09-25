@@ -299,22 +299,29 @@ function Board3DCanvas({
     const darkTileMaterial = makePremiumTileMaterial({ color: theme.dark, light: false, coarsePointer: renderLite, seed: 0xa72d });
     const tileGeometry = new THREE.BoxGeometry(0.984, 0.105, 0.984);
     const highlightGeometry = new THREE.PlaneGeometry(BOARD3D_HIGHLIGHT_SIZE, BOARD3D_HIGHLIGHT_SIZE);
+    const lightTiles = new THREE.InstancedMesh(tileGeometry, lightTileMaterial, 32);
+    const darkTiles = new THREE.InstancedMesh(tileGeometry, darkTileMaterial, 32);
+    lightTiles.name = 'board3d-light-tile-instances';
+    darkTiles.name = 'board3d-dark-tile-instances';
+    lightTiles.receiveShadow = true;
+    darkTiles.receiveShadow = true;
+    lightTiles.userData.board3DSquares = [];
+    darkTiles.userData.board3DSquares = [];
+    const tileMatrix = new THREE.Matrix4();
+    let lightTileIndex = 0;
+    let darkTileIndex = 0;
 
     for (let rank = 1; rank <= 8; rank += 1) {
       for (let fileIndex = 0; fileIndex < 8; fileIndex += 1) {
         const square = `${FILES[fileIndex]}${rank}`;
         const { x, z } = squarePosition(square);
         const light = isLightSquare(square);
-        const tile = new THREE.Mesh(
-          tileGeometry,
-          light ? lightTileMaterial : darkTileMaterial,
-        );
         const tileSettling = ((fileIndex * 13 + rank * 7) % 5 - 2) * 0.0008;
-        tile.position.set(x, 0.0525 + tileSettling, z);
-        tile.receiveShadow = true;
-        tile.userData.square = square;
-        boardGroup.add(tile);
-        pickTargets.push(tile);
+        const tile = light ? lightTiles : darkTiles;
+        const tileIndex = light ? lightTileIndex++ : darkTileIndex++;
+        tileMatrix.makeTranslation(x, 0.0525 + tileSettling, z);
+        tile.setMatrixAt(tileIndex, tileMatrix);
+        tile.userData.board3DSquares[tileIndex] = square;
 
         const marker = new THREE.Mesh(
           highlightGeometry,
@@ -356,6 +363,13 @@ function Board3DCanvas({
         boardGroup.add(marker);
         highlightMeshes.set(square, marker);
       }
+    }
+
+    for (const tiles of [lightTiles, darkTiles]) {
+      tiles.instanceMatrix.needsUpdate = true;
+      tiles.computeBoundingSphere();
+      boardGroup.add(tiles);
+      pickTargets.push(tiles);
     }
 
     boardGroup.add(terrainGroup);
@@ -462,6 +476,10 @@ function Board3DCanvas({
       raycaster.setFromCamera(pointer, camera);
       const intersections = raycaster.intersectObjects(pickTargets, true);
       for (const hit of intersections) {
+        if (Number.isInteger(hit.instanceId)) {
+          const square = hit.object?.userData?.board3DSquares?.[hit.instanceId];
+          if (square) return square;
+        }
         let object = hit.object;
         while (object && !object.userData?.square) object = object.parent;
         if (object?.userData?.square) return object.userData.square;
