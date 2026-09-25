@@ -74,50 +74,50 @@ LANE_COMMANDS: dict[str, tuple[LaneCommand, ...]] = {
             (
                 '--grep', REGRESSION_STATE_GREP,
                 '--grep-invert', REGRESSION_STATE_INVERT,
-                '--workers=1', '--retries=0', '--timeout=75000',
+                '--workers=1', '--retries=0', '--max-failures=1', '--timeout=75000',
             ),
         ),
     ),
     'regression-school': (
         LaneCommand(
             'regression-journeys.spec.js',
-            ('--grep', REGRESSION_SCHOOL_GREP, '--workers=1', '--retries=0', '--timeout=75000'),
+            ('--grep', REGRESSION_SCHOOL_GREP, '--workers=1', '--retries=0', '--max-failures=1', '--timeout=75000'),
         ),
     ),
     'learning-golden': (
-        LaneCommand('learning-golden-path.spec.js', ('--workers=1', '--retries=0')),
+        LaneCommand('learning-golden-path.spec.js', ('--workers=1', '--retries=0', '--max-failures=1')),
     ),
     'learning-observation': (
-        LaneCommand('learning-second-observation.spec.js', ('--workers=1', '--retries=0')),
+        LaneCommand('learning-second-observation.spec.js', ('--workers=1', '--retries=0', '--max-failures=1')),
     ),
     'app-boot': (
-        LaneCommand('smoke.spec.js', ('--grep', APP_BOOT_GREP, '--workers=1', '--retries=0')),
+        LaneCommand('smoke.spec.js', ('--grep', APP_BOOT_GREP, '--workers=1', '--retries=0', '--max-failures=1')),
     ),
     'admin': (
         LaneCommand(
             'regression-journeys.spec.js',
-            ('--grep', ADMIN_GREP, '--workers=1', '--retries=0', '--timeout=75000'),
+            ('--grep', ADMIN_GREP, '--workers=1', '--retries=0', '--max-failures=1', '--timeout=75000'),
         ),
     ),
     'tournament': (
-        LaneCommand('smoke.spec.js', ('--grep', TOURNAMENT_GREP, '--workers=1', '--retries=0')),
+        LaneCommand('smoke.spec.js', ('--grep', TOURNAMENT_GREP, '--workers=1', '--retries=0', '--max-failures=1')),
     ),
     'combat': (
-        LaneCommand('smoke.spec.js', ('--grep', COMBAT_GREP, '--workers=1', '--retries=0')),
+        LaneCommand('smoke.spec.js', ('--grep', COMBAT_GREP, '--workers=1', '--retries=0', '--max-failures=1')),
     ),
     'home': (
         LaneCommand(
             'regression-journeys.spec.js',
-            ('--grep', HOME_GREP, '--workers=1', '--retries=0', '--timeout=75000'),
+            ('--grep', HOME_GREP, '--workers=1', '--retries=0', '--max-failures=1', '--timeout=75000'),
         ),
         LaneCommand(
             'mobile-final-interactions.spec.js',
-            ('--grep', HOME_MOBILE_GREP, '--workers=1', '--retries=0', '--timeout=45000'),
+            ('--grep', HOME_MOBILE_GREP, '--workers=1', '--retries=0', '--max-failures=1', '--timeout=45000'),
         ),
     ),
     'smoke': (
-        LaneCommand('smoke.spec.js', ('--grep', SMOKE_GREP, '--workers=1', '--retries=0')),
-        LaneCommand('mobile-final-interactions.spec.js', ('--workers=1', '--retries=0')),
+        LaneCommand('smoke.spec.js', ('--grep', SMOKE_GREP, '--workers=1', '--retries=0', '--max-failures=1')),
+        LaneCommand('mobile-final-interactions.spec.js', ('--workers=1', '--retries=0', '--max-failures=1')),
     ),
 }
 
@@ -129,14 +129,14 @@ COMPOSITE_LANE_COMMANDS: dict[str, tuple[LaneCommand, ...]] = {
             (
                 '--grep', f'{REGRESSION_STATE_GREP}|{REGRESSION_SCHOOL_GREP}',
                 '--grep-invert', REGRESSION_STATE_INVERT,
-                '--workers=1', '--retries=0', '--timeout=75000',
+                '--workers=1', '--retries=0', '--max-failures=1', '--timeout=75000',
             ),
         ),
     ),
     'learning-golden+learning-observation': (
         LaneCommand(
             'learning-golden-path.spec.js',
-            ('--workers=1', '--retries=0'),
+            ('--workers=1', '--retries=0', '--max-failures=1'),
             ('learning-second-observation.spec.js',),
         ),
     ),
@@ -192,6 +192,8 @@ def self_test() -> None:
     ]
     assert '--grep-invert' in LANE_COMMANDS['regression-state'][0].args
     assert all(command.spec.endswith('.spec.js') for commands in LANE_COMMANDS.values() for command in commands)
+    assert all('--max-failures=1' in command.args for commands in LANE_COMMANDS.values() for command in commands)
+    assert all('--max-failures=1' in command.args for commands in COMPOSITE_LANE_COMMANDS.values() for command in commands)
 
     calls: list[tuple[list[str], Path, bool]] = []
 
@@ -200,12 +202,12 @@ def self_test() -> None:
 
     run_lane('learning-golden', fake_runner)
     assert calls == [
-        ([PLAYWRIGHT, 'test', 'learning-golden-path.spec.js', '--workers=1', '--retries=0'], E2E_DIR, True)
+        ([PLAYWRIGHT, 'test', 'learning-golden-path.spec.js', '--workers=1', '--retries=0', '--max-failures=1'], E2E_DIR, True)
     ]
     calls.clear()
     run_lane('combat', fake_runner)
     assert calls == [
-        ([PLAYWRIGHT, 'test', 'smoke.spec.js', '--grep', COMBAT_GREP, '--workers=1', '--retries=0'], E2E_DIR, True)
+        ([PLAYWRIGHT, 'test', 'smoke.spec.js', '--grep', COMBAT_GREP, '--workers=1', '--retries=0', '--max-failures=1'], E2E_DIR, True)
     ]
     calls.clear()
     run_lane('regression-state+regression-school', fake_runner)
@@ -214,7 +216,7 @@ def self_test() -> None:
             PLAYWRIGHT, 'test', 'regression-journeys.spec.js',
             '--grep', f'{REGRESSION_STATE_GREP}|{REGRESSION_SCHOOL_GREP}',
             '--grep-invert', REGRESSION_STATE_INVERT,
-            '--workers=1', '--retries=0', '--timeout=75000',
+            '--workers=1', '--retries=0', '--max-failures=1', '--timeout=75000',
         ], E2E_DIR, True)
     ]
     calls.clear()
@@ -222,14 +224,14 @@ def self_test() -> None:
     assert calls == [
         ([
             PLAYWRIGHT, 'test', 'learning-golden-path.spec.js', 'learning-second-observation.spec.js',
-            '--workers=1', '--retries=0',
+            '--workers=1', '--retries=0', '--max-failures=1',
         ], E2E_DIR, True)
     ]
     calls.clear()
     run_lane('home', fake_runner)
     assert calls == [
-        ([PLAYWRIGHT, 'test', 'regression-journeys.spec.js', '--grep', HOME_GREP, '--workers=1', '--retries=0', '--timeout=75000'], E2E_DIR, True),
-        ([PLAYWRIGHT, 'test', 'mobile-final-interactions.spec.js', '--grep', HOME_MOBILE_GREP, '--workers=1', '--retries=0', '--timeout=45000'], E2E_DIR, True),
+        ([PLAYWRIGHT, 'test', 'regression-journeys.spec.js', '--grep', HOME_GREP, '--workers=1', '--retries=0', '--max-failures=1', '--timeout=75000'], E2E_DIR, True),
+        ([PLAYWRIGHT, 'test', 'mobile-final-interactions.spec.js', '--grep', HOME_MOBILE_GREP, '--workers=1', '--retries=0', '--max-failures=1', '--timeout=45000'], E2E_DIR, True),
     ]
 
     try:
