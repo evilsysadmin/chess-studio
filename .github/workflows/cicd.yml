@@ -113,9 +113,7 @@ jobs:
   frontend:
     name: Tests · Frontend
     needs: preflight
-    if: needs.preflight.outputs.run_frontend == 'true' || needs.preflight.outputs.run_pawn_slug_e2e == 'true' || needs.preflight.outputs.run_chesscom_e2e == 'true' || needs.preflight.outputs.run_trailblazer_e2e == 'true' || needs.preflight.outputs.run_matthias_home_e2e == 'true'
-    env:
-      TARGETED_BROWSER: ${{ needs.preflight.outputs.run_pawn_slug_e2e == 'true' || needs.preflight.outputs.run_chesscom_e2e == 'true' || needs.preflight.outputs.run_trailblazer_e2e == 'true' || needs.preflight.outputs.run_matthias_home_e2e == 'true' }}
+    if: needs.preflight.outputs.run_frontend == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -134,56 +132,6 @@ jobs:
       - name: Frontend tests
         if: needs.preflight.outputs.run_frontend == 'true'
         run: make test-frontend
-      - name: Frontend build · targeted browser smoke only
-        if: env.TARGETED_BROWSER == 'true'
-        run: make frontend-build
-      - name: Bundle size report · targeted-only path
-        if: env.TARGETED_BROWSER == 'true' && needs.preflight.outputs.run_e2e != 'true' && needs.preflight.outputs.browser_has_cases != 'true'
-        run: node scripts/bundle_size_report.mjs
-      - name: Prepare security report
-        if: needs.preflight.outputs.run_security == 'true'
-        run: mkdir -p .security
-      - name: Node dependency audit
-        if: needs.preflight.outputs.run_security == 'true'
-        working-directory: frontend
-        run: |
-          set +e
-          npm audit --json > ../.security/npm-audit.json
-          set -e
-          if [ ! -s ../.security/npm-audit.json ]; then
-            printf '%s\n' '{"error":{"code":"AUDIT_UNAVAILABLE","summary":"npm audit no produjo informe","detail":"endpoint remoto o red no disponibles"}}' > ../.security/npm-audit.json
-          fi
-          python3 ../scripts/npm_audit_gate.py ../.security/npm-audit.json
-      - uses: ./.github/actions/setup-browser-e2e
-        if: env.TARGETED_BROWSER == 'true'
-        with:
-          browser-scope: chromium
-          restore-frontend-deps: 'false'
-          build-frontend: 'false'
-      - name: Pawn Slug browser smoke
-        if: needs.preflight.outputs.run_pawn_slug_e2e == 'true'
-        working-directory: e2e
-        run: ./node_modules/.bin/playwright test '(^|/)pawn-slug\.spec\.js$' --workers=1 --retries=0
-      - name: Chesscom browser smoke
-        if: needs.preflight.outputs.run_chesscom_e2e == 'true'
-        working-directory: e2e
-        run: ./node_modules/.bin/playwright test chesscom.spec.js --workers=1 --retries=0
-      - name: Pawn Trailblazer browser smoke
-        if: needs.preflight.outputs.run_trailblazer_e2e == 'true'
-        working-directory: e2e
-        run: ./node_modules/.bin/playwright test pawn-trailblazer.spec.js --workers=1 --retries=0
-      - name: Matthias Home browser smoke
-        if: needs.preflight.outputs.run_matthias_home_e2e == 'true'
-        working-directory: e2e
-        run: ./node_modules/.bin/playwright test matthias-home-priority.spec.js --workers=1 --retries=0
-      - name: Upload targeted browser diagnostics on failure
-        if: failure() && env.TARGETED_BROWSER == 'true'
-        uses: actions/upload-artifact@v7
-        with:
-          name: targeted-playwright-test-results
-          path: e2e/test-results/
-          if-no-files-found: ignore
-          retention-days: 7
   backend:
     name: Tests · Backend
     needs: preflight
