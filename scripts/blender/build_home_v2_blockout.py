@@ -4134,19 +4134,8 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     # Woven ochre/gold thread reads as textile at grazing angles instead of
     # reflecting like a strip of polished brass laid on top of the rug.
     # No straight border/inner lines: they read as ruled CAD strokes on the rug. The pile is thick
-    # and rough (textile bump), aged with irregular worn patches, and finished with a real
-    # twisted fringe on both short ends.
-    for idx in range(64):
-        fx = -3.44 + idx * (6.88 / 63.0)
-        jitter = (_hash01(idx, 0, 6101) - 0.5) * 0.030
-        droop = 0.075 + _hash01(idx, 1, 6113) * 0.085
-        for tag, ey, sgn in (("front", -2.50, -1.0), ("back", 6.40, 1.0)):
-            curve_tube(
-                f"HOME_PROP_rug_fringe_{tag}_{idx}",
-                [(fx, ey, 0.052), (fx + jitter, ey + sgn * droop * 0.55, 0.044), (fx + jitter * 1.6, ey + sgn * droop, 0.030)],
-                0.0075,
-                materials["rug_fringe"],
-            )
+    # and rough (textile bump) and aged with irregular worn patches.
+    # (No fringe: the strands read as stray hairs at the rug's short ends.)
     for idx in range(9):
         px = -2.9 + _hash01(idx, 2, 6131) * 5.8
         py = -1.6 + _hash01(idx, 3, 6143) * 7.2
