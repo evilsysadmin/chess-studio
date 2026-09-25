@@ -39,7 +39,21 @@ jobs:
         uses: actions/checkout@v7
         with:
           ref: ${{ env.DEPLOY_SHA }}
-          fetch-depth: 1
+          fetch-depth: 2
+
+      - name: Classify backend image inputs
+        id: scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          parent="$(git rev-parse "${DEPLOY_SHA}^" 2>/dev/null || true)"
+          needs_build=true
+          if [[ "$parent" =~ ^[0-9a-f]{40}$ ]] && git diff --quiet "$parent" "$DEPLOY_SHA" -- backend-python; then
+            needs_build=false
+          fi
+          echo "parent_sha=$parent" >> "$GITHUB_OUTPUT"
+          echo "needs_build=$needs_build" >> "$GITHUB_OUTPUT"
+          echo "Backend image source changed: $needs_build"
 
       - uses: docker/setup-buildx-action@v4
 
@@ -50,7 +64,28 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Reuse parent backend image when backend is unchanged
+        id: reuse
+        if: steps.scope.outputs.needs_build == 'false'
+        shell: bash
+        env:
+          PARENT_SHA: ${{ steps.scope.outputs.parent_sha }}
+        run: |
+          set -euo pipefail
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          source="ghcr.io/${owner}/chess-studio-backend:oci-${PARENT_SHA}"
+          target="ghcr.io/${owner}/chess-studio-backend:oci-${DEPLOY_SHA}"
+          if docker buildx imagetools inspect "$source" >/dev/null 2>&1; then
+            docker buildx imagetools create --tag "$target" "$source"
+            echo 'hit=true' >> "$GITHUB_OUTPUT"
+            echo "::notice title=Backend image fast-path::Reused ${PARENT_SHA} for ${DEPLOY_SHA}; backend-python unchanged."
+          else
+            echo 'hit=false' >> "$GITHUB_OUTPUT"
+            echo "::warning title=Backend image fallback::Parent image missing; building ${DEPLOY_SHA}."
+          fi
+
       - name: Build and publish immutable backend image
+        if: steps.scope.outputs.needs_build == 'true' || steps.reuse.outputs.hit != 'true'
         uses: docker/build-push-action@v7
         with:
           context: ./backend-python
