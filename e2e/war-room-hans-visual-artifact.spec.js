@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { buttonWithVisibleText, login, mockApi } from './helpers.js';
+import { activateSetupControl, buttonWithVisibleText, gameStatus, login, mockApi } from './helpers.js';
 import { warRoomHansEventForGame } from '../frontend/src/components/WarRoomHansEventContract.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
@@ -54,7 +54,7 @@ async function captureViewportPng(context, page, path) {
 }
 
 test('War Room · canario visual de Hans físicamente en escena', async ({ context, page }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(150_000);
   await mkdir(ARTIFACT_DIR, { recursive: true });
   await page.setViewportSize({ width: 1440, height: 900 });
 
@@ -65,6 +65,7 @@ test('War Room · canario visual de Hans físicamente en escena', async ({ conte
     });
     localStorage.setItem('chess-study-device-board-renderer-v1', '3d');
     localStorage.setItem('chess-study-reduced-motion', '0');
+    localStorage.setItem('chess-study-war-room-variant-v1', 'classic');
   });
 
   await page.emulateMedia({ reducedMotion: 'no-preference' });
@@ -76,16 +77,18 @@ test('War Room · canario visual de Hans físicamente en escena', async ({ conte
       },
     });
     await login(page);
-    await page.evaluate(() => {
-      localStorage.setItem('chess-study-war-room-variant-v1', 'classic');
-    });
     await seedGamesBeforeFire(page);
 
-    await buttonWithVisibleText(page, 'Partida rápida').click();
-    const startButton = page.getByRole('button', { name: 'Empezar partida', exact: true });
-    await expect(startButton).toBeVisible();
-    await expect(startButton).toBeEnabled();
-    await startButton.evaluate((button) => button.click());
+    await activateSetupControl(buttonWithVisibleText(page, 'Partida rápida'));
+    const quickMatch = page.getByRole('dialog', { name: 'Configurar partida rápida' });
+    await expect(quickMatch).toBeVisible({ timeout: 30_000 });
+    await activateSetupControl(
+      quickMatch.getByRole('button', { name: 'Empezar partida', exact: true }),
+    );
+    // Distinguish game launch from the heavier software-WebGL scene mount.
+    // A healthy v3 desktop capture in this same producer can exceed 45 s.
+    await expect(gameStatus(page)).toBeVisible({ timeout: 60_000 });
+
     const warRoom = page.locator('.board-live-row.is-3d-warroom');
     const canvas = page.locator('.board3d-main-canvas');
     const fireOverlay = page.getByTestId('warroom-hans-fire-call-overlay');
@@ -96,9 +99,9 @@ test('War Room · canario visual de Hans físicamente en escena', async ({ conte
     // These conditions describe one concurrent scene transition, so waiting in
     // parallel keeps the 120 s canary budget meaningful on software WebGL.
     await Promise.all([
-      expect(warRoom).toBeVisible({ timeout: 45_000 }),
-      expect(canvas).toBeVisible({ timeout: 45_000 }),
-      expect(canvas).toHaveAttribute('data-war-room-variant', 'classic', { timeout: 45_000 }),
+      expect(warRoom).toBeVisible({ timeout: 75_000 }),
+      expect(canvas).toBeVisible({ timeout: 75_000 }),
+      expect(canvas).toHaveAttribute('data-war-room-variant', 'classic', { timeout: 75_000 }),
       expect(canvas).toHaveAttribute('data-war-room-hans-scene-ready', 'true', { timeout: 60_000 }),
       expect(canvas).toHaveAttribute('data-war-room-hans-call-released', 'true', { timeout: 60_000 }),
       expect(canvas).toHaveAttribute('data-war-room-hans-reply-seen', 'true', { timeout: 75_000 }),
