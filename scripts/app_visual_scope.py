@@ -152,7 +152,9 @@ def _surface_groups(path: str) -> set[str] | None:
         or lower.startswith(".github/actions/app-visual-pipeline/")
     ):
         return {"experiments"}
-    if lower.startswith("scripts/app_visual_") or lower == "scripts/war_room_visual_freeze_check.mjs":
+    if lower == "scripts/war_room_visual_freeze_check.mjs":
+        return {"warroom"}
+    if lower.startswith("scripts/app_visual_"):
         return None
     if lower.startswith("e2e/"):
         if "chesscom" in name:
