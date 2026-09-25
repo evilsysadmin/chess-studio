@@ -25,9 +25,9 @@ body:has(.matthias-school-shell[data-school-section="school"]) .masthead {
 }
 
 .tutorial-shell.matthias-school-shell[data-school-section="school"] {
-  --classroom-board-max: 960px;
-  width: min(100%, 1780px);
-  max-width: 1780px;
+  --classroom-board-max: 1120px;
+  width: min(100%, 1880px);
+  max-width: 1880px;
   margin: 0 auto;
   gap: .46rem;
 }
@@ -182,8 +182,8 @@ body:has(.matthias-school-shell[data-school-section="school"]) .masthead {
 }
 
 .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-stage {
-  grid-template-columns: minmax(520px, var(--classroom-board-max)) minmax(286px, 340px);
-  gap: .78rem;
+  grid-template-columns: minmax(640px, var(--classroom-board-max)) minmax(250px, 300px);
+  gap: .62rem;
   justify-content: center;
   align-items: start;
 }
@@ -207,8 +207,8 @@ body:has(.matthias-school-shell[data-school-section="school"]) .masthead {
 }
 
 .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-board .board3d-main-shell {
-  height: clamp(620px, 78dvh, var(--classroom-board-max));
-  min-height: 560px;
+  height: clamp(680px, 82dvh, var(--classroom-board-max));
+  min-height: 620px;
 }
 
 .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-board-actions {
@@ -314,11 +314,11 @@ body:has(.matthias-school-shell[data-school-section="school"]) .masthead {
 
 @media (min-width: 1500px) and (min-height: 860px) {
   .tutorial-shell.matthias-school-shell[data-school-section="school"] {
-    --classroom-board-max: 1060px;
+    --classroom-board-max: 1220px;
   }
 
   .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-stage {
-    grid-template-columns: minmax(600px, var(--classroom-board-max)) minmax(300px, 350px);
+    grid-template-columns: minmax(720px, var(--classroom-board-max)) minmax(250px, 300px);
   }
 }
 
@@ -484,7 +484,7 @@ body:has(.matthias-school-shell[data-school-section="school"]) .masthead {
 }
 
 .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-curriculum="closed"] .matthias-school-stage {
-  grid-template-columns: minmax(560px, var(--classroom-board-max)) minmax(286px, 340px);
+  grid-template-columns: minmax(680px, var(--classroom-board-max)) minmax(250px, 300px);
   justify-content: center;
 }
 
