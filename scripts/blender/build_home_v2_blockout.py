@@ -4546,9 +4546,9 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             continue
         sphere(f"HOME_PROP_window_garden_flower_{idx}", (fx, 6.455, 2.08 + _hash01(idx, 3, 2141) * 0.14), (0.020, 0.010, 0.020), materials["plume_red"] if idx % 2 else materials["gold"])
 
-    # Two banners only (five were too many): the ones either side of the bookshelf's right edge,
-    # counted 2 and 3 from the left: x -4.65 (left of the shelf) and 0.0 (over the armour arch).
-    for name, x in (("left", -4.65), ("center", 0.0)):
+    # Two banners only (five were too many): numbering the original five from the left, keep 2
+    # (x -4.65, left of the shelf) and 4 (x 4.35, over the right hearth).
+    for name, x in (("left", -4.65), ("right", 4.35)):
         add_banner(name, x, materials)
 
     add_table_and_board(materials)
