@@ -61,4 +61,18 @@
   .tournament-panel .tournament-more {
     margin-top: .1rem;
   }
+
+  .tournament-panel .tournament-color-choice .color-btn,
+  .tournament-panel .tournament-more .reward-chip,
+  .tournament-panel .tournament-more .secondary-btn,
+  .tournament-panel .tournament-more .danger-disclosure > summary,
+  .tournament-panel .tournament-more .danger-btn {
+    min-height: 44px;
+    box-sizing: border-box;
+    touch-action: manipulation;
+  }
+
+  .tournament-panel .tournament-more .reward-chip {
+    white-space: normal;
+  }
 }
