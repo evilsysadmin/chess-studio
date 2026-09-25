@@ -183,6 +183,15 @@ test('Browser runtime · Home y Así juegas no dejan errores silenciosos', async
 test('Browser WebGL · Home 3D recupera el contexto perdido', async ({ page }) => {
   test.setTimeout(60_000);
   const { faults } = attachRuntimeErrorProbe(page);
+  // This gate validates WebGL lifecycle, not R2 latency. Serve a committed local
+  // GLB for the Home runtime so context loss/restore stays deterministic; the
+  // visual pipeline separately validates the real 10 MB Home scene from R2.
+  await page.route(/home-v2-runtime-[0-9a-f]+\.glb/, (route) => route.fulfill({
+    status:200,
+    contentType:'model/gltf-binary',
+    headers:{ 'access-control-allow-origin':'*' },
+    path:'../frontend/public/models/matthias-home-canonical.glb',
+  }));
   await page.addInitScript(() => {
     Object.defineProperty(navigator, 'hardwareConcurrency', {
       configurable:true,
