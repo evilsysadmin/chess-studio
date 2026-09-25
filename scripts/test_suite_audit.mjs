@@ -249,7 +249,7 @@ if (checkCiWiring) {
   for (const [label, block] of [['core', lanesBlock], ['specialized', specializedBlock]]) {
     if (!block.includes('needs: [preflight, e2e_build]')) fail(`Las lanes ${label} deben esperar el único build compartido`);
     if (!block.includes("build-frontend: 'false'")) fail(`Las lanes ${label} no deben recompilar el frontend`);
-    if (!block.includes('actions/download-artifact@v6')) fail(`Las lanes ${label} deben consumir el dist compartido`);
+    if (!block.includes('actions/download-artifact@v8')) fail(`Las lanes ${label} deben consumir el dist compartido`);
   }
   if (!lanesBlock.includes('name: Tests · Playwright · ${{ matrix.lane }}')) fail('Las lanes Playwright deben conservar nombre explícito por lane');
   if (!lanesBlock.includes('fail-fast: false') || !specializedBlock.includes('fail-fast: false')) fail('Las matrices Playwright deben completar diagnóstico aunque falle una lane');

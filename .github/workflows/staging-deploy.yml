@@ -77,7 +77,7 @@ jobs:
     outputs:
       superseded: ${{ steps.backend_state.outputs.superseded }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 30
     concurrency:
       group: oci-staging-mutations
       cancel-in-progress: false
@@ -99,7 +99,7 @@ jobs:
         run: |
           set -euo pipefail
           converged=false
-          for attempt in {1..76}; do
+          for attempt in {1..48}; do
             body="$RUNNER_TEMP/backend-watcher-$attempt.json"
             status="$(curl --silent --show-error --connect-timeout 1 --max-time 2 \
               --output "$body" --write-out '%{http_code}' \
@@ -229,7 +229,7 @@ jobs:
         id: prebuilt_frontend_download
         if: github.event_name == 'workflow_run'
         continue-on-error: true
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           name: staging-frontend-${{ env.DEPLOY_SHA }}
           path: frontend/dist
