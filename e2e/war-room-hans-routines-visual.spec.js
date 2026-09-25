@@ -1,6 +1,6 @@
 import { chromium, expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { activateSetupControl, buttonWithVisibleText, login, mockApi } from './helpers.js';
+import { activateSetupControl, buttonWithVisibleText, gameStatus, login, mockApi } from './helpers.js';
 import { WAR_ROOM_HANS_CHORE_EVENTS } from '../frontend/src/components/WarRoomHansChoreContract.js';
 import {
   WAR_ROOM_HANS_EVENTS,
@@ -27,7 +27,10 @@ for (const eventName of CAPTURE_EVENTS) {
   }
 }
 
-test.describe.configure({ mode: 'parallel' });
+// Each routine records a real SwiftShader/WebGL video. Running two of these
+// browsers concurrently starves the software renderer and creates false 3 min
+// timeouts, so keep this artifact producer deliberately sequential.
+test.describe.configure({ mode: 'serial' });
 
 function firstGameIndexForEvent(eventName) {
   for (let index = 1; index <= 96; index += 1) {
@@ -151,7 +154,7 @@ async function sampleRoutine(page, canvas, eventName) {
 
 for (const eventName of CAPTURE_EVENTS) {
   test(`War Room · Hans routine video · ${eventName}`, async () => {
-    test.setTimeout(180_000);
+    test.setTimeout(240_000);
     await mkdir(ARTIFACT_DIR, { recursive: true });
     await mkdir(TEMP_VIDEO_DIR, { recursive: true });
 
@@ -177,6 +180,9 @@ for (const eventName of CAPTURE_EVENTS) {
         configurable: true,
         get: () => 8,
       });
+      localStorage.setItem('chess-study-device-board-renderer-v1', '3d');
+      localStorage.setItem('chess-study-reduced-motion', '0');
+      localStorage.setItem('chess-study-war-room-variant-v1', 'classic');
       if (!emulateGpu) Math.random = () => 0.25;
 
       if (!emulateGpu) return;
@@ -209,9 +215,6 @@ for (const eventName of CAPTURE_EVENTS) {
         },
       });
       await login(page);
-    await page.evaluate(() => {
-      localStorage.setItem('chess-study-war-room-variant-v1', 'classic');
-    });
       await seedGamesBeforeEvent(page, eventName);
 
       // Home/Quick Match controls live inside animated 3D surfaces. These are
@@ -223,11 +226,14 @@ for (const eventName of CAPTURE_EVENTS) {
       await activateSetupControl(
         quickMatch.getByRole('button', { name: 'Empezar partida', exact: true }),
       );
-      await expect(page.locator('.board-live-row.is-3d-warroom')).toBeVisible({ timeout: 45_000 });
+      // Prove the game launch first; then budget the software-WebGL mount from
+      // measured healthy desktop captures instead of conflating both phases.
+      await expect(gameStatus(page)).toBeVisible({ timeout: 60_000 });
+      await expect(page.locator('.board-live-row.is-3d-warroom')).toBeVisible({ timeout: 75_000 });
 
       const canvas = page.locator('.board3d-main-canvas');
-      await expect(canvas).toBeVisible({ timeout: 45_000 });
-      await expect(canvas).toHaveAttribute('data-war-room-variant', 'classic', { timeout: 10_000 });
+      await expect(canvas).toBeVisible({ timeout: 75_000 });
+      await expect(canvas).toHaveAttribute('data-war-room-variant', 'classic', { timeout: 30_000 });
       await expect(page.locator('[data-war-room-hans-game-id]').first()).toHaveAttribute(
         'data-war-room-hans-game-id',
         expectedGameId(eventName),
