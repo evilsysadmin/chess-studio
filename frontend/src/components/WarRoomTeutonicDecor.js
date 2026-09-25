@@ -35,8 +35,25 @@ function addMesh(group, geometry, material, position, rotation = [0, 0, 0], name
   return mesh;
 }
 
+const BOX_GEOMETRY_BY_GROUP = new WeakMap();
+
+function sharedBoxGeometry(group, size) {
+  let cache = BOX_GEOMETRY_BY_GROUP.get(group);
+  if (!cache) {
+    cache = new Map();
+    BOX_GEOMETRY_BY_GROUP.set(group, cache);
+  }
+  const key = size.join('|');
+  if (!cache.has(key)) {
+    const geometry = new THREE.BoxGeometry(...size);
+    geometry.userData.warRoomGroupSharedGeometry = 'teutonic-box-pool-v1';
+    cache.set(key, geometry);
+  }
+  return cache.get(key);
+}
+
 function addBox(group, size, material, position, name = '', rotation = [0, 0, 0]) {
-  return addMesh(group, new THREE.BoxGeometry(...size), material, position, rotation, name);
+  return addMesh(group, sharedBoxGeometry(group, size), material, position, rotation, name);
 }
 
 function createHammeredSteelTexture(seed = 1) {
