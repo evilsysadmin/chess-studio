@@ -80,6 +80,17 @@ test('War Room · el número del fuego completa cotilleo, corte de Matthias y re
   await expect(canvas).toHaveAttribute('data-war-room-hans-scene-ready', 'true');
   await expect(canvas).toHaveAttribute('data-war-room-hans-screen', 'hidden');
 
+  const installerTimings = await page.evaluate(() => Object.fromEntries(
+    performance.getEntriesByType('measure')
+      .filter((entry) => entry.name.startsWith('chess-studio:war-room-finalizer:hans:'))
+      .map((entry) => [
+        entry.name.replace('chess-studio:war-room-finalizer:', ''),
+        Number(entry.duration.toFixed(3)),
+      ]),
+  ));
+  console.log(`WAR_ROOM_HANS_INSTALLER_TIMINGS ${JSON.stringify(installerTimings)}`);
+  expect(Object.keys(installerTimings).length).toBeGreaterThan(0);
+
   await expect(page.getByRole('status', { name: 'Bravuconada de Matthias al iniciar la partida' })).toHaveCount(0);
 
   await expect(canvas).toHaveAttribute('data-war-room-hans-call-released', 'true', { timeout: 8_000 });
