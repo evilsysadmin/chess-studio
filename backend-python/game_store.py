@@ -83,6 +83,46 @@ async def get_game(game_id: str) -> Optional[dict]:
     return deepcopy(row) if row is not None else None
 
 
+def _game_summary(game_id: str, row: dict) -> dict:
+    updated = row.get("updatedAt")
+    if hasattr(updated, "isoformat"):
+        updated = updated.isoformat()
+    return {
+        "id": str(game_id),
+        "updatedAt": updated,
+        "difficulty": row.get("difficulty"),
+        "humanColor": row.get("humanColor"),
+        "ply": len(row.get("moves") or []),
+        "lastMove": row.get("lastMove"),
+    }
+
+
+async def list_game_summaries_by_owner(owner: str, *, limit: int = 20) -> list[dict]:
+    """Devuelve savegames propios recientes sin depender del id guardado en cliente."""
+    safe_limit = max(1, min(int(limit), 50))
+    col = await _get_collection()
+    if col is not None:
+        try:
+            cursor = col.find(
+                {"owner": owner},
+                {"_id": 1, "updatedAt": 1, "difficulty": 1, "humanColor": 1, "moves": 1, "lastMove": 1},
+            ).sort("updatedAt", -1).limit(safe_limit)
+            return [_game_summary(str(row.get("_id")), row) async for row in cursor]
+        except PyMongoError as exc:
+            raise PersistentStorageUnavailable("MongoDB no está disponible para listar partidas.") from exc
+
+    rows = [
+        (game_id, row)
+        for game_id, row in _memory_store.items()
+        if row.get("owner") == owner
+    ]
+    rows.sort(
+        key=lambda item: item[1].get("updatedAt") or datetime.min.replace(tzinfo=timezone.utc),
+        reverse=True,
+    )
+    return [_game_summary(game_id, row) for game_id, row in rows[:safe_limit]]
+
+
 async def get_game_for_owner(game_id: str, owner: str) -> Optional[dict]:
     """Carga una partida propia sin materializar documentos de otras cuentas.
 
