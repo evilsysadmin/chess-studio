@@ -34,6 +34,12 @@ PRODUCER_ORDER = (
 )
 WARROOM_ALL = {"warroom-core", "warroom-decor", "warroom-armor", "warroom-hans"}
 WARROOM_RENDERER_SHARED = {"warroom-core", "warroom-hans"}
+WARROOM_CORE_ONLY_FILES = {
+    # Presentation shell only: these affect the canonical War Room composition
+    # and immersive viewport, but cannot change decor, armor or Hans ownership.
+    "frontend/src/components/usewarroomimmersive.js",
+    "frontend/src/components/warroomimmersive.css",
+}
 WARROOM_VARIANT_ORDER = ("classic", "v2", "v3")
 WARROOM_VARIANT_ALL = set(WARROOM_VARIANT_ORDER)
 WARROOM_CLASSIC_VARIANT_FILES = {
@@ -239,7 +245,7 @@ def classify_path(path: str) -> set[str] | None:
     if "experimentsscreen" in lower or "/experiments" in lower:
         return {"experiments-hub"}
 
-    if lower in WARROOM_VARIANT_CORE_FILES:
+    if lower in WARROOM_VARIANT_CORE_FILES or lower in WARROOM_CORE_ONLY_FILES:
         return {"warroom-core"}
 
     if any(token in lower for token in ("war-room", "warroom", "board3d", "gameboardview", "gamesidecolumn", "game3d")):
@@ -393,6 +399,8 @@ def self_test() -> None:
     assert classify(["scripts/workflow_debt_gate.py"]) == "none"
     for variant_core_file in WARROOM_VARIANT_CORE_FILES:
         assert classify([variant_core_file]) == "warroom-core"
+    for core_only_file in WARROOM_CORE_ONLY_FILES:
+        assert classify([core_only_file]) == "warroom-core"
     assert classify(["frontend/src/components/WarRoomCatDecor.js"]) == "warroom-decor"
     assert classify(["frontend/src/components/WarRoomArmorDisplay.js"]) == "warroom-armor"
     assert classify(["frontend/src/components/WarRoomHansPerGame.jsx"]) == "warroom-hans"
