@@ -1883,11 +1883,9 @@ def add_royal_cat(materials):
     for k in (-1, 0, 1):
         curve_tube(f"HOME_PROP_cat_hind_toe_{k}", [(cx + 0.17 + k * 0.022, cy - 0.118, top + 0.048), (cx + 0.17 + k * 0.024, cy - 0.125, top + 0.030)], 0.0017, shade)
     # a short back-of-shoulder crease and a subtle spine line
-    # Break the egg silhouette: a raised shoulder blade, a visible spine ridge, a lifted hip and a
-    # defined neck, so the outline has landmarks and does not read as one smooth balloon.
-    blob("HOME_PROP_cat_shoulder_blade", (cx - 0.11, cy + 0.02, top + 0.235), (0.085, 0.075, 0.060), (0, 0, 20), fur, (32, 16))
-    blob("HOME_PROP_cat_hip", (cx + 0.22, cy + 0.11, top + 0.222), (0.090, 0.085, 0.070), (0, 0, -20), fur, (32, 16))
-    curve_tube("HOME_PROP_cat_spine", [(cx - 0.16, cy + 0.02, top + 0.236), (cx - 0.02, cy + 0.05, top + 0.252), (cx + 0.14, cy + 0.08, top + 0.244), (cx + 0.24, cy + 0.11, top + 0.232)], 0.014, fur)
+    # A defined neck and rib lines. (Raised shoulder/hip bumps and a spine tube were tried and read as
+    # mouse ears on the back; surface creases do the job without breaking the outline.)
+    curve_tube("HOME_PROP_cat_spine_crease", [(cx - 0.14, cy + 0.03, top + 0.232), (cx, cy + 0.06, top + 0.246), (cx + 0.16, cy + 0.09, top + 0.238)], 0.0035, shade)
     blob("HOME_PROP_cat_neck", (cx - 0.20, cy - 0.10, top + 0.150), (0.100, 0.095, 0.085), (0, 0, 10), fur, (32, 16))
     curve_tube("HOME_PROP_cat_ribs", [(cx - 0.02, cy - 0.120, top + 0.120), (cx + 0.06, cy - 0.140, top + 0.100)], 0.0030, shade)
     curve_tube("HOME_PROP_cat_ribs_2", [(cx + 0.06, cy - 0.128, top + 0.140), (cx + 0.13, cy - 0.150, top + 0.110)], 0.0030, shade)
