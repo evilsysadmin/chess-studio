@@ -20,7 +20,8 @@ import { resolveBoardTap } from './WarRoom3DTouch.js';
 import { BOARD3D_HIGHLIGHT_SIZE, BOARD3D_HIGHLIGHT_Y, board3DHighlightStyle } from './Board3DHighlights.js';
 import { board3DCaptureWarmBoostValue, board3DPieceInteractionPose, writeBoard3DHighlightPulse } from './Board3DInteractionFx.js';
 import { BOARD_THEME_3D, FILES, resolveBoard3DThemeId } from './Board3DConfig.js';
-import { adjacentSquare, isLightSquare, parseFen, squarePosition } from './Board3DBoardMath.js';
+import { adjacentSquare, parseFen, squarePosition } from './Board3DBoardMath.js';
+import { buildBoard3DTileInstances, squareFromBoard3DIntersection } from './Board3DTileInstances.js';
 import { planBoard3DPieceReconciliation } from './Board3DPieceReconciliation.js';
 import { addCoarsePieceHitTarget, applyMatthiasCheckPose, buildPiece, disposeObject } from './Board3DPieces.js';
 import { fitBoardCamera, makeTextSprite } from './Board3DScene.js';
@@ -297,25 +298,17 @@ function Board3DCanvas({
 
     const lightTileMaterial = makePremiumTileMaterial({ color: theme.light, light: true, coarsePointer: renderLite, seed: 0x531f });
     const darkTileMaterial = makePremiumTileMaterial({ color: theme.dark, light: false, coarsePointer: renderLite, seed: 0xa72d });
-    const tileGeometry = new THREE.BoxGeometry(0.984, 0.105, 0.984);
     const highlightGeometry = new THREE.PlaneGeometry(BOARD3D_HIGHLIGHT_SIZE, BOARD3D_HIGHLIGHT_SIZE);
+    const tileInstances = buildBoard3DTileInstances({ lightTileMaterial, darkTileMaterial });
+    for (const tiles of tileInstances) {
+      boardGroup.add(tiles);
+      pickTargets.push(tiles);
+    }
 
     for (let rank = 1; rank <= 8; rank += 1) {
       for (let fileIndex = 0; fileIndex < 8; fileIndex += 1) {
         const square = `${FILES[fileIndex]}${rank}`;
         const { x, z } = squarePosition(square);
-        const light = isLightSquare(square);
-        const tile = new THREE.Mesh(
-          tileGeometry,
-          light ? lightTileMaterial : darkTileMaterial,
-        );
-        const tileSettling = ((fileIndex * 13 + rank * 7) % 5 - 2) * 0.0008;
-        tile.position.set(x, 0.0525 + tileSettling, z);
-        tile.receiveShadow = true;
-        tile.userData.square = square;
-        boardGroup.add(tile);
-        pickTargets.push(tile);
-
         const marker = new THREE.Mesh(
           highlightGeometry,
           new THREE.MeshBasicMaterial({
@@ -462,9 +455,8 @@ function Board3DCanvas({
       raycaster.setFromCamera(pointer, camera);
       const intersections = raycaster.intersectObjects(pickTargets, true);
       for (const hit of intersections) {
-        let object = hit.object;
-        while (object && !object.userData?.square) object = object.parent;
-        if (object?.userData?.square) return object.userData.square;
+        const square = squareFromBoard3DIntersection(hit);
+        if (square) return square;
       }
       return null;
     }
