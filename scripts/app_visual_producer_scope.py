@@ -170,6 +170,9 @@ def classify_path(path: str) -> set[str] | None:
     }:
         return {"warroom-core"}
 
+    if lower == ".github/workflows/staging-deploy.yml":
+        return set()
+
     if lower.startswith("e2e/"):
         return _e2e_producer(name)
 
@@ -196,7 +199,9 @@ def classify_path(path: str) -> set[str] | None:
             "scripts/blender_required_scope.py",
             "scripts/browser_quality_scope.py",
             "scripts/chess_rules_gate.mjs",
+            "scripts/production_release_train.py",
             "scripts/quality_scope.py",
+            "scripts/staging_preview_contract.py",
             "scripts/workflow_debt_gate.py",
         }:
             return set()
@@ -375,6 +380,9 @@ def self_test() -> None:
     )
     assert classify(["frontend/src/labLaunchIntent.js"]) == "none"
     assert classify(["frontend/src/usePuzzleLaunchFlow.js"]) == "none"
+    assert classify([".github/workflows/staging-deploy.yml"]) == "none"
+    assert classify(["scripts/production_release_train.py"]) == "none"
+    assert classify(["scripts/staging_preview_contract.py"]) == "none"
     assert classify(["scripts/quality_scope.py"]) == "none"
     assert classify(["scripts/browser_quality_scope.py"]) == "none"
     assert classify(["frontend/src/chroniclesOfMatthiasSpectralBishop.js"]) == "chronicles-tactics,chronicles-gameplay"

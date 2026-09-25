@@ -274,6 +274,14 @@ def main() -> int:
             "summary espera deploy lanes + browser smoke",
             errors,
         )
+        for needle, label in (
+            ("Write immutable production accreditation v2", "staging direct accreditation writer"),
+            ("python3 scripts/production_release_train.py accredit-staging", "staging accreditation helper"),
+            ("--source-workflow staging-deploy.yml", "staging accreditation workflow provenance"),
+            ("if: github.event_name == 'workflow_run'", "staging automatic-only accreditation"),
+            ("name: staging-promotion-accreditation", "staging immutable accreditation artifact"),
+        ):
+            require(blocks["summary"], needle, label, errors)
 
         parity = blocks["smoke"].find("Verify staging generation parity before browser smoke")
         browser_restore = blocks["smoke"].find("Restore staging browser runtime")

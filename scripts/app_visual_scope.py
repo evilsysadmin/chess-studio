@@ -109,7 +109,9 @@ def _surface_groups(path: str) -> set[str] | None:
         "scripts/blender_required_scope.py",
         "scripts/browser_quality_scope.py",
         "scripts/chess_rules_gate.mjs",
+        "scripts/production_release_train.py",
         "scripts/quality_scope.py",
+        "scripts/staging_preview_contract.py",
         "scripts/workflow_debt_gate.py",
     }:
         return set()
@@ -128,6 +130,8 @@ def _surface_groups(path: str) -> set[str] | None:
         ".github/workflows/war-room-v3-blender-art.yml",
     }:
         return {"warroom"}
+    if lower == ".github/workflows/staging-deploy.yml":
+        return set()
     if lower in {
         ".github/workflows/home-blender-v2-runtime.yml",
         "scripts/promote_home_scene_runtime.py",
@@ -413,6 +417,9 @@ def self_test() -> None:
     puzzle_launch = classify(["frontend/src/usePuzzleLaunchFlow.js"])
     assert puzzle_launch.capture_groups == "none"
     assert not puzzle_launch.hans and not puzzle_launch.chesscom
+    assert classify([".github/workflows/staging-deploy.yml"]).capture_groups == "none"
+    assert classify(["scripts/production_release_train.py"]).capture_groups == "none"
+    assert classify(["scripts/staging_preview_contract.py"]).capture_groups == "none"
     quality_scope = classify(["scripts/quality_scope.py"])
     assert quality_scope.capture_groups == "none"
     assert not quality_scope.hans and not quality_scope.chesscom
