@@ -188,7 +188,11 @@ test('Android · Focus convierte reacciones nuevas de Matthias en bocadillos tem
   // Matthias para sus reacciones; nada de mensajes inyectados directamente en UI.
   await clickBoardMove(page, 'e2', 'e4');
   await expect.poll(() => movePosts(requestLog).length).toBe(1);
-  await expect(page.locator('[data-board3d-war-room="true"]')).toHaveAttribute('data-board3d-selected', '');
+  const board3d = page.locator('[data-board3d-war-room="true"]');
+  await expect(board3d).toHaveAttribute('data-board3d-selected', '');
+  // The request is logged before the mocked response is committed to React.
+  // Wait for the real turn contract so the second move cannot race the CPU phase.
+  await expect(board3d).toHaveAttribute('data-board3d-turn', 'human', { timeout: 10_000 });
 
   await clickBoardMove(page, 'e4', 'd5');
   await expect.poll(() => movePosts(requestLog).length).toBe(2);
