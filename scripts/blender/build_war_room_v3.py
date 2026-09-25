@@ -189,6 +189,18 @@ def build_curved_observatory(static, palette):
             (half_length, 0.18, 1.76), palette["walnut"], static, bevel=0.075,
         )
         upper.rotation_euler.z = tangent
+        # Golden observatory: framed walnut panels add architectural depth
+        # without stealing silhouette from the board or lunar oculus.
+        panel = base.cube(
+            f"WR3_OBS_apse_panel_{index}", (x, y - 0.17, 3.42),
+            (half_length * 0.78, 0.055, 0.84), palette["walnut_dark"], static, bevel=0.045,
+        )
+        panel.rotation_euler.z = tangent
+        rail = base.cube(
+            f"WR3_OBS_apse_brass_rail_{index}", (x, y - 0.235, 2.53),
+            (half_length * 0.80, 0.022, 0.030), palette["brass_dark"], static, bevel=0.012,
+        )
+        rail.rotation_euler.z = tangent
         joints.append((theta - step / 2.0, index))
     joints.append((end, segment_count))
 
@@ -211,31 +223,31 @@ def build_curved_observatory(static, palette):
 
 def build_celestial_window(static, palette):
     """Large moon-and-stars oculus: deliberately no orbital rings or chart lines."""
-    cx, cy, cz = 0.0, 7.58, 3.80
+    cx, cy, cz = 0.0, 7.56, 4.05
     glass = base.cylinder(
-        "WR3_OBS_celestial_window", (cx, cy, cz), 2.15, 0.085,
+        "WR3_OBS_celestial_window", (cx, cy, cz), 2.78, 0.085,
         palette["night"], static, vertices=96,
     )
     glass.rotation_euler.x = math.pi / 2
     base.torus(
-        "WR3_OBS_celestial_window_outer", (cx, cy - 0.07, cz), 2.30, 0.105,
+        "WR3_OBS_celestial_window_outer", (cx, cy - 0.07, cz), 2.98, 0.125,
         palette["brass"], static, rotation=(math.pi / 2, 0, 0),
     )
     base.torus(
-        "WR3_OBS_celestial_window_inner", (cx, cy - 0.12, cz), 2.18, 0.035,
+        "WR3_OBS_celestial_window_inner", (cx, cy - 0.12, cz), 2.82, 0.050,
         palette["walnut_dark"], static, rotation=(math.pi / 2, 0, 0),
     )
 
-    crescent_center = Vector((-0.72, cy - 0.255, cz + 0.52))
+    crescent_center = Vector((-0.92, cy - 0.255, cz + 0.66))
     crescent = base.cylinder(
-        "WR3_OBS_window_crescent", crescent_center, 0.38, 0.040,
+        "WR3_OBS_window_crescent", crescent_center, 0.50, 0.040,
         palette["ivory"], static, vertices=64,
     )
     crescent.rotation_euler.x = math.pi / 2
     occluder = base.cylinder(
         "WR3_OBS_window_crescent_cutout",
         crescent_center + Vector((0.18, -0.028, 0.06)),
-        0.36, 0.046, palette["night"], static, vertices=64,
+        0.47, 0.046, palette["night"], static, vertices=64,
     )
     occluder.rotation_euler.x = math.pi / 2
 
@@ -257,21 +269,21 @@ def build_celestial_window(static, palette):
         )
 
     window_light = base.light(
-        "WR3_LIGHT_window", "AREA", (0, 5.95, 4.40), 330.0,
-        (0.22, 0.52, 1.0), static, size=4.8,
+        "WR3_LIGHT_window", "AREA", (0, 5.80, 4.55), 410.0,
+        (0.22, 0.52, 1.0), static, size=5.6,
     )
     base.look_at(window_light, (0, 0.2, 1.1))
-    base.anchor("WR_ANCHOR_window_moonlight", (0, 6.0, 4.30), static)
+    base.anchor("WR_ANCHOR_window_moonlight", (0, 5.9, 4.55), static)
 
 
 def build_round_command_table(static, palette):
-    base.cylinder("WR3_OBS_table_drum", (0, 0, 0.47), 5.93, 0.76,
+    base.cylinder("WR3_OBS_table_drum", (0, 0, 0.47), 5.24, 0.76,
                   palette["walnut_dark"], static, vertices=96)
-    base.cylinder("WR3_OBS_table_leather_top", (0, 0, 0.91), 5.72, 0.12,
+    base.cylinder("WR3_OBS_table_leather_top", (0, 0, 0.91), 5.08, 0.12,
                   palette["green_leather"], static, vertices=96)
-    base.torus("WR3_OBS_table_brass_edge", (0, 0, 0.985), 5.72, 0.060,
+    base.torus("WR3_OBS_table_brass_edge", (0, 0, 0.985), 5.08, 0.060,
                palette["brass"], static)
-    base.torus("WR3_OBS_table_copper_inlay", (0, 0, 1.005), 5.30, 0.024,
+    base.torus("WR3_OBS_table_copper_inlay", (0, 0, 1.005), 4.88, 0.024,
                palette["copper"], static)
     base.cube("WR3_OBS_board_cradle", (0, 0, 1.04), (4.62, 4.62, 0.085),
               palette["walnut"], static, bevel=0.14)
@@ -280,9 +292,9 @@ def build_round_command_table(static, palette):
                   (4.42, 0.035, 0.035), palette["brass"], static, bevel=0.018)
         base.cube(f"WR3_OBS_board_brass_y_{side}", (side * 4.49, 0, 1.135),
                   (0.035, 4.42, 0.035), palette["brass"], static, bevel=0.018)
-    base.cube("WR3_OBS_table_cartouche", (0, -5.86, 0.55), (0.92, 0.055, 0.25),
-              palette["teal"], static, bevel=0.18)
-    base.torus("WR3_OBS_table_cartouche_ring", (0, -5.93, 0.56), 0.18, 0.035,
+    base.cube("WR3_OBS_table_cartouche", (0, -5.17, 0.55), (0.78, 0.055, 0.22),
+              palette["brass_dark"], static, bevel=0.18)
+    base.torus("WR3_OBS_table_cartouche_ring", (0, -5.24, 0.56), 0.16, 0.032,
                palette["brass"], static, rotation=(math.pi / 2, 0, 0))
 
 
