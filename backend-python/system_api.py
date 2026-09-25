@@ -148,7 +148,7 @@ def build_system_router(*, auth_dependency, is_admin_check, limiter, admin_usern
         # En desarrollo sin MONGO_URL explícito el modo memoria es válido. Si
         # hay persistencia configurada, readiness exige un ping real.
         storage_required = db.persistent_storage_required()
-        if storage_required and await db.get_db() is None:
+        if storage_required and not await db.database_ready():
             raise HTTPException(503, "MongoDB no está lista.")
         storage = "mongo" if storage_required else "memory"
         cold_start_ms, first_observation = record_process_ready()
