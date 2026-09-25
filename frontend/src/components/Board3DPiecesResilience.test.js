@@ -75,6 +75,48 @@ describe('Board3D piece resilience', () => {
     roots.forEach(disposeObject);
   });
 
+  it('comparte geometría inmutable entre peones sin cruzar su ciclo de vida', () => {
+    const white = buildPiece('p', 'w', 'studio', false);
+    const black = buildPiece('p', 'b', 'studio', false);
+    const collectShared = (root) => {
+      const result = new Map();
+      root.traverse((child) => {
+        const role = child?.geometry?.userData?.board3DSharedGeometryRole;
+        if (child?.isMesh && role) result.set(role, child.geometry);
+      });
+      return result;
+    };
+    const whiteShared = collectShared(white);
+    const blackShared = collectShared(black);
+
+    for (const role of [
+      'full:base-lathe',
+      'full:base-ring',
+      'full:pawn-body',
+      'full:pawn-head',
+      'full:pawn-collar',
+      'full:pawn-signature',
+      'full:contact-shadow-inner',
+      'full:contact-shadow-outer',
+    ]) {
+      expect(whiteShared.get(role)).toBeTruthy();
+      expect(whiteShared.get(role)).toBe(blackShared.get(role));
+      expect(whiteShared.get(role)?.userData?.board3DSharedGeometry).toBe(true);
+    }
+
+    const sharedHead = whiteShared.get('full:pawn-head');
+    let sharedDisposed = false;
+    sharedHead.addEventListener('dispose', () => { sharedDisposed = true; });
+
+    disposeObject(white);
+
+    expect(sharedDisposed).toBe(false);
+    expect(blackShared.get('full:pawn-head')?.attributes?.position?.count).toBeGreaterThan(0);
+
+    disposeObject(black);
+    expect(sharedDisposed).toBe(false);
+  });
+
   it('aísla la geometría viva de cada caballo aunque parta de una plantilla cacheada', () => {
     const b1 = buildPiece('n', 'w', 'studio', false);
     const g1 = buildPiece('n', 'w', 'studio', false);
