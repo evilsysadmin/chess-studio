@@ -49,6 +49,10 @@ describe('WarRoomDeferredFinalizer', () => {
     expect(root.userData.warRoomDeferredFinalizerRuns).toBe(1);
     expect(root.userData.warRoomDeferredFinalizedTasks).toEqual(['first', 'second']);
     expect(root.userData.warRoomDeferredFinalizerResults).toEqual({ first: 3, second: 7 });
+    expect(root.userData.warRoomDeferredFinalizerDurationsMs.before).toBeGreaterThanOrEqual(0);
+    expect(root.userData.warRoomDeferredFinalizerTaskDurationsMs.before['ensure-war-room-cat']).toBeGreaterThanOrEqual(0);
+    expect(root.userData.warRoomDeferredFinalizerTaskDurationsMs.before.first).toBeGreaterThanOrEqual(0);
+    expect(root.userData.warRoomDeferredFinalizerTaskDurationsMs.before.second).toBeGreaterThanOrEqual(0);
     expect(canvas.userData.warRoomDeferredFinalizerCompleted).toBe(true);
 
     canvas.onBeforeRender();
@@ -94,6 +98,9 @@ describe('WarRoomDeferredFinalizer', () => {
     expect(plant.userData.warRoomPlantPlacement).toBe('canonical-weather-window-corner-v17');
     expect(plant.userData.warRoomCanonicalPlacement).toBe(WAR_ROOM_CANONICAL_PLANT_PLACEMENT_VERSION);
     expect(root.userData.warRoomCanonicalPlantPlacement).toBe(WAR_ROOM_CANONICAL_PLANT_PLACEMENT_VERSION);
+    expect(root.userData.warRoomDeferredFinalizerDurationsMs.after).toBeGreaterThanOrEqual(0);
+    expect(root.userData.warRoomDeferredFinalizerTaskDurationsMs.after['hans-fireplace-scene-install-v2']).toBeGreaterThanOrEqual(0);
+    expect(root.userData.warRoomDeferredFinalizerTaskDurationsMs.after['hans-post-install']).toBeGreaterThanOrEqual(0);
 
     floor.onAfterRender();
     expect(sceneTask).toHaveBeenCalledTimes(1);
