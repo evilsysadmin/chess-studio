@@ -856,6 +856,9 @@ def main():
     if width < 640 or height < 360:
         raise RuntimeError(f"WAR_ROOM_V3_PREVIEW_SIZE too small: {width}x{height}")
     base.PREVIEW_SIZE = (width, height)
+    bpy.context.scene.render.resolution_x = width
+    bpy.context.scene.render.resolution_y = height
+    bpy.context.scene.render.resolution_percentage = 100
     base.render(preview)
     export_shell_v3(glb)
     print(f"War Room v3 OK · {CONTRACT} · objects={len(bpy.context.scene.objects)}")
