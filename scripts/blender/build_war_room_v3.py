@@ -51,16 +51,16 @@ def build_v3_palette():
             rough=0.77, coat=0.014, texture="stone", scale=4.3, bump=0.068, weather=True,
         ),
         "stone_light": base.material(
-            "WR3_MAT_pale_travertine", (0.52, 0.355, 0.185, 1),
-            rough=0.72, coat=0.018, texture="stone", scale=4.0, bump=0.055, weather=True,
+            "WR3_MAT_pale_travertine", (0.60, 0.42, 0.23, 1),
+            rough=0.52, coat=0.10, texture="stone", scale=4.0, bump=0.048, weather=True,
         ),
         "slate": base.material(
             "WR3_MAT_radial_slate", (0.030, 0.070, 0.078, 1),
             rough=0.78, coat=0.014, texture="stone", scale=5.0, bump=0.052, weather=True,
         ),
         "green_marble": base.material(
-            "WR3_MAT_green_marble", (0.012, 0.090, 0.062, 1),
-            rough=0.54, coat=0.08, texture="stone", scale=4.2, bump=0.045, weather=True,
+            "WR3_MAT_green_marble", (0.010, 0.082, 0.050, 1),
+            rough=0.32, coat=0.18, texture="stone", scale=4.2, bump=0.038, weather=True,
         ),
         "rug": base.material(
             "WR3_MAT_room_rug", (0.004, 0.070, 0.046, 1),
@@ -79,36 +79,48 @@ def build_v3_palette():
             rough=0.66, coat=0.04, texture="leather", scale=40, bump=0.025,
         ),
         "teal": base.material(
-            "WR3_MAT_deep_teal_enamel", (0.006, 0.105, 0.110, 1),
-            rough=0.34, coat=0.38, texture="metal", scale=22, bump=0.018,
+            "WR3_MAT_deep_teal_enamel", (0.004, 0.082, 0.064, 1),
+            rough=0.28, coat=0.44, texture="metal", scale=22, bump=0.016,
         ),
         "copper": base.material(
             "WR3_MAT_patinated_copper", (0.055, 0.275, 0.210, 1),
             metal=0.82, rough=0.37, coat=0.12, texture="metal", scale=26, bump=0.024,
         ),
         "brass": base.material(
-            "WR3_MAT_sunlit_brass", (0.62, 0.275, 0.045, 1),
-            metal=0.92, rough=0.27, coat=0.18, texture="metal", scale=25, bump=0.021,
+            "WR3_MAT_sunlit_brass", (0.70, 0.315, 0.052, 1),
+            metal=0.94, rough=0.22, coat=0.22, texture="metal", scale=25, bump=0.018,
         ),
         "brass_dark": base.material(
             "WR3_MAT_aged_brass", (0.20, 0.075, 0.014, 1),
             metal=0.90, rough=0.39, coat=0.10, texture="metal", scale=29, bump=0.020,
         ),
         "walnut": base.material(
-            "WR3_MAT_chart_walnut", (0.105, 0.036, 0.012, 1),
-            rough=0.43, coat=0.22, texture="wood", scale=3.5, bump=0.038,
+            "WR3_MAT_chart_walnut", (0.135, 0.046, 0.014, 1),
+            rough=0.38, coat=0.26, texture="wood", scale=3.5, bump=0.034,
         ),
         "walnut_dark": base.material(
             "WR3_MAT_chart_walnut_dark", (0.032, 0.010, 0.005, 1),
             rough=0.52, coat=0.12, texture="wood", scale=3.2, bump=0.032,
         ),
         "leather": base.material(
-            "WR3_MAT_saddle_leather", (0.115, 0.028, 0.012, 1),
-            rough=0.50, coat=0.14, sheen=0.08, texture="leather", scale=44, bump=0.060,
+            "WR3_MAT_saddle_leather", (0.125, 0.030, 0.012, 1),
+            rough=0.42, coat=0.18, sheen=0.10, texture="leather", scale=44, bump=0.052,
         ),
         "green_leather": base.material(
             "WR3_MAT_chart_green_leather", (0.008, 0.120, 0.058, 1),
             rough=0.47, coat=0.18, sheen=0.08, texture="leather", scale=46, bump=0.061,
+        ),
+        "coat": base.material(
+            "WR3_MAT_officer_coat", (0.006, 0.014, 0.026, 1),
+            rough=0.54, coat=0.08, sheen=0.10, texture="leather", scale=52, bump=0.045,
+        ),
+        "fire": base.material(
+            "WR3_MAT_hearth_fire", (0.62, 0.055, 0.003, 1),
+            rough=0.18, coat=0.06, emission=(1.0, 0.11, 0.01, 1), emission_strength=3.8,
+        ),
+        "fire_core": base.material(
+            "WR3_MAT_hearth_fire_core", (1.0, 0.30, 0.025, 1),
+            rough=0.12, coat=0.04, emission=(1.0, 0.34, 0.035, 1), emission_strength=5.6,
         ),
         "night": base.material(
             "WR3_MAT_celestial_blue", (0.0015, 0.009, 0.052, 1),
@@ -133,8 +145,6 @@ def build_v3_palette():
         "ivory": bpy.data.materials["WR_MAT_ivory"],
         "iron": bpy.data.materials["WR_MAT_hearth_iron"],
         "charcoal": bpy.data.materials["WR_MAT_charcoal"],
-        "fire": bpy.data.materials["WR_MAT_fire"],
-        "fire_core": bpy.data.materials["WR_MAT_fire_core"],
     }
 
 
@@ -145,6 +155,18 @@ def cylinder_between(name, start, end, radius, material, owner, *, vertices=24):
     obj = base.cylinder(name, (start + end) / 2.0, radius, direction.length,
                         material, owner, vertices=vertices)
     obj.rotation_euler = direction.to_track_quat("Z", "Y").to_euler()
+    return obj
+
+
+def vertical_polygon(name, points, y, material, owner):
+    """Create one deterministic X/Z silhouette plane for the oculus."""
+    mesh = bpy.data.meshes.new(f"{name}_mesh")
+    vertices = [(float(x), float(y), float(z)) for x, z in points]
+    mesh.from_pydata(vertices, [], [tuple(range(len(vertices)))])
+    mesh.materials.append(material)
+    obj = bpy.data.objects.new(name, mesh)
+    owner.objects.link(obj)
+    obj["war_room_role"] = base.ROLE_STATIC
     return obj
 
 
@@ -227,6 +249,16 @@ def build_curved_observatory(static, palette):
             (half_length, 0.15, 1.76), palette["stone_light"], static, bevel=0.075,
         )
         upper.rotation_euler.z = tangent
+        seam = base.cube(
+            f"WR3_OBS_apse_seam_{index}", (x, y, 2.98),
+            (half_length, 0.205, 0.040), palette["brass_dark"], static, bevel=0.018,
+        )
+        seam.rotation_euler.z = tangent
+        crown = base.cube(
+            f"WR3_OBS_apse_crown_rail_{index}", (x, y, 6.46),
+            (half_length, 0.185, 0.035), palette["brass"], static, bevel=0.016,
+        )
+        crown.rotation_euler.z = tangent
         joints.append((theta - step / 2.0, index))
     joints.append((end, segment_count))
 
@@ -245,6 +277,12 @@ def build_curved_observatory(static, palette):
             f"WR3_OBS_apse_rib_cap_{index}", (x, y, 6.55), 0.16, 0.16,
             palette["brass"], static, vertices=36,
         )
+        for collar_index, collar_z in enumerate((2.98, 6.08)):
+            base.torus(
+                f"WR3_OBS_apse_rib_collar_{index}_{collar_index}",
+                (x, y, collar_z), 0.14, 0.028,
+                palette["brass"], static,
+            )
 
 
 def build_celestial_window(static, palette):
@@ -263,42 +301,61 @@ def build_celestial_window(static, palette):
         "WR3_OBS_celestial_window_inner", (cx, cy - 0.12, cz), 2.18, 0.035,
         palette["walnut_dark"], static, rotation=(math.pi / 2, 0, 0),
     )
-
-    # The accepted mock is a real night view, not a flat blue disc. Layered
-    # mountains and pines stay entirely inside the oculus and never reintroduce
-    # orbital/chart geometry.
-    mountain_specs = (
-        (-1.42, 2.45, 0.68, 0.60, -0.12),
-        (-0.82, 2.52, 0.86, 0.72, 0.09),
-        (-0.10, 2.50, 0.98, 0.82, -0.05),
-        (0.70, 2.48, 0.86, 0.68, 0.08),
-        (1.38, 2.44, 0.64, 0.55, -0.10),
-    )
-    for index, (mx, mz, sx, sz, tilt) in enumerate(mountain_specs):
-        mountain = base.cube(
-            f"WR3_OBS_window_mountain_{index}", (mx, cy - 0.27, mz),
-            (sx, 0.032, sz), palette["horizon_far"], static, bevel=0.04,
+    for index in range(12):
+        angle = index * math.tau / 12.0
+        base.sphere(
+            f"WR3_OBS_window_fastener_{index}",
+            (cx + math.cos(angle) * 2.22, cy - 0.20, cz + math.sin(angle) * 2.22),
+            0.050, palette["brass"], static, scale=(1.0, 0.38, 1.0),
         )
-        mountain.rotation_euler.y = math.radians(45) + tilt
+
+    # Layered skyline silhouette closer to the accepted mock: clean mountain
+    # ridges and firs instead of rotated cubes / spherical blobs.
+    vertical_polygon(
+        "WR3_OBS_window_mountain_far",
+        (
+            (-1.95, 2.02), (-1.95, 2.18), (-1.58, 2.44), (-1.28, 2.30),
+            (-0.92, 2.70), (-0.56, 2.38), (-0.12, 2.92), (0.24, 2.50),
+            (0.66, 2.78), (1.02, 2.38), (1.36, 2.62), (1.72, 2.30),
+            (1.95, 2.42), (1.95, 2.02),
+        ),
+        cy - 0.275, palette["horizon_far"], static,
+    )
+    vertical_polygon(
+        "WR3_OBS_window_mountain_near",
+        (
+            (-1.95, 1.98), (-1.95, 2.10), (-1.56, 2.25), (-1.22, 2.12),
+            (-0.86, 2.36), (-0.48, 2.17), (-0.12, 2.42), (0.30, 2.18),
+            (0.72, 2.40), (1.08, 2.16), (1.48, 2.35), (1.95, 2.16),
+            (1.95, 1.98),
+        ),
+        cy - 0.300, palette["horizon_near"], static,
+    )
 
     pine_specs = (
-        (-1.72, 2.18, 0.34), (-1.50, 2.25, 0.46), (-1.23, 2.19, 0.31),
-        (-0.98, 2.27, 0.42), (0.96, 2.24, 0.39), (1.23, 2.19, 0.30),
-        (1.47, 2.27, 0.47), (1.72, 2.18, 0.33),
+        (-1.72, 2.08, 0.48), (-1.45, 2.06, 0.64), (-1.16, 2.08, 0.44),
+        (-0.90, 2.08, 0.54), (0.94, 2.08, 0.52), (1.20, 2.08, 0.42),
+        (1.48, 2.06, 0.64), (1.74, 2.08, 0.46),
     )
-    for index, (tx, tz, scale) in enumerate(pine_specs):
-        base.cube(
-            f"WR3_OBS_window_pine_trunk_{index}", (tx, cy - 0.295, tz - 0.18),
-            (0.028, 0.025, 0.20), palette["horizon_near"], static, bevel=0.01,
+    for index, (tx, base_z, height) in enumerate(pine_specs):
+        half = height * 0.34
+        vertical_polygon(
+            f"WR3_OBS_window_pine_{index}",
+            (
+                (tx, base_z + height),
+                (tx - half * 0.46, base_z + height * 0.66),
+                (tx - half * 0.23, base_z + height * 0.66),
+                (tx - half * 0.70, base_z + height * 0.38),
+                (tx - half * 0.30, base_z + height * 0.38),
+                (tx - half, base_z),
+                (tx + half, base_z),
+                (tx + half * 0.30, base_z + height * 0.38),
+                (tx + half * 0.70, base_z + height * 0.38),
+                (tx + half * 0.23, base_z + height * 0.66),
+                (tx + half * 0.46, base_z + height * 0.66),
+            ),
+            cy - 0.320, palette["horizon_near"], static,
         )
-        for tier in range(3):
-            crown = base.sphere(
-                f"WR3_OBS_window_pine_{index}_{tier}",
-                (tx, cy - 0.30, tz + 0.06 + tier * 0.18),
-                scale * (0.58 - tier * 0.10), palette["horizon_near"], static,
-                scale=(1.0, 0.12, 0.72),
-            )
-            crown.rotation_euler.y = math.radians(45)
 
     for index, (lx, lz) in enumerate((
         (-0.58, 2.18), (-0.32, 2.23), (-0.05, 2.20), (0.22, 2.24), (0.46, 2.18),
@@ -345,11 +402,13 @@ def build_celestial_window(static, palette):
 
 
 def build_round_command_table(static, palette):
-    base.cylinder("WR3_OBS_table_drum", (0, 0, 0.47), 5.93, 0.76,
-                  palette["walnut_dark"], static, vertices=96)
-    base.cylinder("WR3_OBS_table_leather_top", (0, 0, 0.91), 5.72, 0.12,
+    base.cylinder("WR3_OBS_table_drum", (0, 0, 0.78), 5.88, 0.22,
+                  palette["walnut"], static, vertices=96)
+    base.torus("WR3_OBS_table_lower_shadow", (0, 0, 0.665), 5.76, 0.075,
+               palette["walnut_dark"], static)
+    base.cylinder("WR3_OBS_table_leather_top", (0, 0, 0.91), 5.72, 0.10,
                   palette["green_leather"], static, vertices=96)
-    base.torus("WR3_OBS_table_brass_edge", (0, 0, 0.985), 5.72, 0.060,
+    base.torus("WR3_OBS_table_brass_edge", (0, 0, 0.975), 5.72, 0.052,
                palette["brass"], static)
     base.torus("WR3_OBS_table_copper_inlay", (0, 0, 1.005), 5.30, 0.024,
                palette["copper"], static)
@@ -360,9 +419,9 @@ def build_round_command_table(static, palette):
                   (4.42, 0.035, 0.035), palette["brass"], static, bevel=0.018)
         base.cube(f"WR3_OBS_board_brass_y_{side}", (side * 4.49, 0, 1.135),
                   (0.035, 4.42, 0.035), palette["brass"], static, bevel=0.018)
-    base.cube("WR3_OBS_table_cartouche", (0, -5.86, 0.55), (0.92, 0.055, 0.25),
-              palette["teal"], static, bevel=0.18)
-    base.torus("WR3_OBS_table_cartouche_ring", (0, -5.93, 0.56), 0.18, 0.035,
+    base.cube("WR3_OBS_table_cartouche", (0, -5.82, 0.76), (0.72, 0.050, 0.14),
+              palette["teal"], static, bevel=0.12)
+    base.torus("WR3_OBS_table_cartouche_ring", (0, -5.88, 0.76), 0.14, 0.028,
                palette["brass"], static, rotation=(math.pi / 2, 0, 0))
 
 
@@ -563,6 +622,13 @@ def build_lounge_corner(static, palette):
         palette["leather"], static, bevel=0.22,
     )
     back_pad.rotation_euler.x = math.radians(-7)
+    for tuft_row, z in enumerate((1.18, 1.43)):
+        for tuft_col, dx in enumerate((-0.28, 0.0, 0.28)):
+            base.sphere(
+                f"WR3_OBS_chair_tuft_{tuft_row}_{tuft_col}",
+                (x + dx, y + 0.16, z), 0.035,
+                palette["walnut_dark"], static, scale=(1.0, 0.42, 1.0),
+            )
 
     for side in (-1, 1):
         base.cube(
@@ -765,7 +831,7 @@ def build_room_plant(static, palette):
 
 
 def build_coat_stand(static, palette):
-    """Slim coat stand and dark field coat near the entry door."""
+    """Slim brass/wood stand with the dark officer coat from the canonical mock."""
     x, y = 7.72, 0.25
     base.cylinder("WR3_OBS_coat_stand_post", (x, y, 1.38), 0.055, 2.52,
                   palette["walnut_dark"], static, vertices=24)
@@ -779,21 +845,47 @@ def build_coat_stand(static, palette):
             palette["brass"], static, vertices=14,
         )
 
-    coat = base.cube(
-        "WR3_OBS_entry_coat", (x - 0.18, y - 0.05, 1.52),
-        (0.42, 0.16, 0.74), palette["green_leather"], static, bevel=0.18,
+    coat_center = Vector((x - 0.24, y - 0.05, 1.48))
+    body = base.cube(
+        "WR3_OBS_entry_coat", coat_center,
+        (0.31, 0.11, 0.76), palette["coat"], static, bevel=0.14,
     )
-    coat.rotation_euler.z = math.radians(-6)
+    body.rotation_euler.z = math.radians(-5)
+    skirt = base.cube(
+        "WR3_OBS_entry_coat_skirt", (coat_center.x, coat_center.y, 0.82),
+        (0.38, 0.12, 0.36), palette["coat"], static, bevel=0.12,
+    )
+    skirt.rotation_euler.z = math.radians(-5)
     for side in (-1, 1):
         sleeve = base.cube(
             f"WR3_OBS_entry_coat_sleeve_{side}",
-            (x - 0.18 + side * 0.38, y - 0.03, 1.58),
-            (0.12, 0.13, 0.54), palette["green_leather"], static, bevel=0.12,
+            (coat_center.x + side * 0.34, coat_center.y - 0.01, 1.48),
+            (0.095, 0.10, 0.55), palette["coat"], static, bevel=0.10,
         )
-        sleeve.rotation_euler.y = side * math.radians(12)
-    base.torus("WR3_OBS_entry_coat_collar", (x - 0.18, y - 0.18, 2.24),
-               0.20, 0.035, palette["brass_dark"], static,
-               rotation=(math.pi / 2, 0, 0))
+        sleeve.rotation_euler.y = side * math.radians(15)
+        base.cube(
+            f"WR3_OBS_entry_coat_cuff_{side}",
+            (coat_center.x + side * 0.42, coat_center.y - 0.01, 0.98),
+            (0.11, 0.105, 0.055), palette["brass_dark"], static, bevel=0.03,
+        )
+    base.torus(
+        "WR3_OBS_entry_coat_collar", (coat_center.x, coat_center.y - 0.13, 2.20),
+        0.18, 0.032, palette["brass_dark"], static, rotation=(math.pi / 2, 0, 0),
+    )
+    # Officer cap resting on the upper hook.
+    base.cylinder(
+        "WR3_OBS_entry_cap_brim", (x + 0.08, y - 0.03, 2.72),
+        0.24, 0.045, palette["coat"], static, vertices=40,
+    )
+    cap = base.cylinder(
+        "WR3_OBS_entry_cap_crown", (x + 0.08, y - 0.03, 2.82),
+        0.17, 0.16, palette["coat"], static, vertices=40,
+    )
+    cap.scale.y = 0.78
+    base.cube(
+        "WR3_OBS_entry_cap_band", (x + 0.08, y - 0.16, 2.76),
+        (0.16, 0.025, 0.035), palette["brass"], static, bevel=0.015,
+    )
 
 
 def build_wall_lanterns(static, palette):
@@ -931,16 +1023,16 @@ def build_lighting(static):
     scene = bpy.context.scene
     scene["war_room_variant"] = "v3-celestial-observatory"
     scene["war_room_visual_canon"] = "war-room-v3-canonical-8e1e6946-2026-09-25"
-    scene.view_settings.exposure = 0.46
+    scene.view_settings.exposure = 0.60
 
-    key = base.light("WR3_LIGHT_key", "AREA", (-4.8, -3.8, 8.3), 675.0,
-                     (1.0, 0.70, 0.42), static, size=6.6)
+    key = base.light("WR3_LIGHT_key", "AREA", (-4.8, -3.8, 8.3), 760.0,
+                     (1.0, 0.72, 0.44), static, size=6.6)
     base.look_at(key, (0, 0.5, 1.0))
-    fill = base.light("WR3_LIGHT_fill", "AREA", (6.4, -2.4, 6.3), 350.0,
-                      (0.28, 0.66, 0.78), static, size=6.0)
+    fill = base.light("WR3_LIGHT_fill", "AREA", (6.4, -2.4, 6.3), 390.0,
+                      (0.30, 0.62, 0.76), static, size=6.0)
     base.look_at(fill, (0.4, 0.6, 1.5))
-    top = base.light("WR3_LIGHT_top", "AREA", (0, 1.4, 8.7), 315.0,
-                     (1.0, 0.78, 0.50), static, size=5.6)
+    top = base.light("WR3_LIGHT_top", "AREA", (0, 1.4, 8.7), 365.0,
+                     (1.0, 0.80, 0.54), static, size=5.6)
     base.look_at(top, (0, 0.4, 0.8))
 
 
