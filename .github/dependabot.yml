@@ -99,6 +99,12 @@ updates:
     commit-message:
       prefix: "deps(actions)"
     groups:
+      actions-major:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - "major"
       routine-minor-patch:
         applies-to: version-updates
         patterns:
