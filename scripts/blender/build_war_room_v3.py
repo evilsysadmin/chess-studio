@@ -159,11 +159,11 @@ def build_curved_observatory(static, palette):
             tile_index += 1
 
     # A restrained circular carpet frames the playable table without compass clutter.
-    base.cylinder("WR3_OBS_rug_field", (0, -0.05, 0.070), 6.62, 0.040,
+    base.cylinder("WR3_OBS_rug_field", (0, -0.05, 0.070), 5.72, 0.040,
                   palette["rug"], static, vertices=96)
-    base.torus("WR3_OBS_rug_outer_ring", (0, -0.05, 0.112), 6.36, 0.038,
+    base.torus("WR3_OBS_rug_outer_ring", (0, -0.05, 0.112), 5.48, 0.038,
                palette["brass_dark"], static)
-    base.torus("WR3_OBS_rug_inner_ring", (0, -0.05, 0.114), 5.92, 0.022,
+    base.torus("WR3_OBS_rug_inner_ring", (0, -0.05, 0.114), 5.16, 0.022,
                palette["brass"], static)
 
     radius = 8.72
@@ -193,7 +193,7 @@ def build_curved_observatory(static, palette):
         # without stealing silhouette from the board or lunar oculus.
         panel = base.cube(
             f"WR3_OBS_apse_panel_{index}", (x, y - 0.17, 3.42),
-            (half_length * 0.78, 0.055, 0.84), palette["walnut_dark"], static, bevel=0.045,
+            (half_length * 0.76, 0.065, 0.84), palette["walnut"], static, bevel=0.045,
         )
         panel.rotation_euler.z = tangent
         rail = base.cube(
@@ -277,20 +277,20 @@ def build_celestial_window(static, palette):
 
 
 def build_round_command_table(static, palette):
-    base.cylinder("WR3_OBS_table_drum", (0, 0, 0.47), 5.24, 0.76,
+    base.cylinder("WR3_OBS_table_drum", (0, 0, 0.47), 4.88, 0.62,
                   palette["walnut_dark"], static, vertices=96)
-    base.cylinder("WR3_OBS_table_leather_top", (0, 0, 0.91), 5.08, 0.12,
+    base.cylinder("WR3_OBS_table_leather_top", (0, 0, 0.84), 4.76, 0.10,
                   palette["green_leather"], static, vertices=96)
-    base.torus("WR3_OBS_table_brass_edge", (0, 0, 0.985), 5.08, 0.060,
+    base.torus("WR3_OBS_table_brass_edge", (0, 0, 0.905), 4.76, 0.052,
                palette["brass"], static)
-    base.torus("WR3_OBS_table_copper_inlay", (0, 0, 1.005), 4.88, 0.024,
+    base.torus("WR3_OBS_table_copper_inlay", (0, 0, 0.925), 4.64, 0.020,
                palette["copper"], static)
-    base.cube("WR3_OBS_board_cradle", (0, 0, 1.04), (4.62, 4.62, 0.085),
+    base.cube("WR3_OBS_board_cradle", (0, 0, 0.98), (4.62, 4.62, 0.085),
               palette["walnut"], static, bevel=0.14)
     for side in (-1, 1):
-        base.cube(f"WR3_OBS_board_brass_x_{side}", (0, side * 4.49, 1.135),
+        base.cube(f"WR3_OBS_board_brass_x_{side}", (0, side * 4.49, 1.075),
                   (4.42, 0.035, 0.035), palette["brass"], static, bevel=0.018)
-        base.cube(f"WR3_OBS_board_brass_y_{side}", (side * 4.49, 0, 1.135),
+        base.cube(f"WR3_OBS_board_brass_y_{side}", (side * 4.49, 0, 1.075),
                   (0.035, 4.42, 0.035), palette["brass"], static, bevel=0.018)
     base.cube("WR3_OBS_table_cartouche", (0, -5.17, 0.55), (0.78, 0.055, 0.22),
               palette["brass_dark"], static, bevel=0.18)
