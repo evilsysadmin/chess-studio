@@ -28,6 +28,7 @@ DEFAULT_REFERENCE = "scripts/blender/references/home_canon_20260918.webp.b64"
 _CUBE_TEMPLATE_MESH = None
 _SPHERE_TEMPLATE_MESHES = {}
 _CYLINDER_TEMPLATE_MESHES = {}
+_CONE_TEMPLATE_MESHES = {}
 
 
 def argv_after_double_dash() -> list[str]:
@@ -849,16 +850,47 @@ def sphere(name: str, location, scale, mat, *, detail=None):
     return obj
 
 
-def cone(name: str, location, radius1: float, radius2: float, depth: float, mat, *, vertices=32):
-    bpy.ops.mesh.primitive_cone_add(
-        vertices=vertices,
-        radius1=radius1,
-        radius2=radius2,
-        depth=depth,
-        location=location,
-    )
-    obj = bpy.context.object
+def _new_unit_cone(name: str, location, vertices: int, radius_ratio: float):
+    key = (int(vertices), round(float(radius_ratio), 12))
+    template = _CONE_TEMPLATE_MESHES.get(key)
+    if template is None:
+        bpy.ops.mesh.primitive_cone_add(
+            vertices=vertices,
+            radius1=1.0,
+            radius2=radius_ratio,
+            depth=2.0,
+            location=location,
+        )
+        obj = bpy.context.object
+        template = obj.data.copy()
+        template.name = f"HOME_TEMPLATE_cone_{vertices}_{key[1]:.12g}"
+        _CONE_TEMPLATE_MESHES[key] = template
+    else:
+        mesh = template.copy()
+        obj = bpy.data.objects.new(name, mesh)
+        bpy.context.collection.objects.link(obj)
+        obj.location = location
     obj.name = name
+    return obj
+
+
+def cone(name: str, location, radius1: float, radius2: float, depth: float, mat, *, vertices=32):
+    radius1 = float(radius1)
+    radius2 = float(radius2)
+    depth = float(depth)
+    if abs(radius1) < 1e-12:
+        bpy.ops.mesh.primitive_cone_add(
+            vertices=vertices,
+            radius1=radius1,
+            radius2=radius2,
+            depth=depth,
+            location=location,
+        )
+        obj = bpy.context.object
+        obj.name = name
+    else:
+        obj = _new_unit_cone(name, location, vertices, radius2 / radius1)
+        _bake_mesh_scale(obj, (radius1, radius1, depth / 2.0))
     smooth_curved_mesh(obj, keep_axial_caps_flat=True)
     apply_material(obj, mat)
     return obj
