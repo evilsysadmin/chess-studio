@@ -2562,6 +2562,16 @@ def add_table_and_board(materials):
     cone("HOME_PROP_table_mug_body", (mug_x, mug_y, top + 0.103), 0.092, 0.108, 0.150, ceramic, vertices=32)
     cylinder("HOME_PROP_table_mug_rim", (mug_x, mug_y, top + 0.180), 0.116, 0.010, ceramic, vertices=32)
     cylinder("HOME_PROP_table_mug_coffee", (mug_x, mug_y, top + 0.170), 0.098, 0.004, materials["dark"], vertices=32)
+    # Matthias's brand, discreet: a tiny fierce knight inked on the front of the cup (same bust as
+    # the banners), with its eye and nostril left as bare porcelain.
+    brand_scale = 0.095
+
+    def brand(pts):
+        return [(mug_x + (u + 0.035) * brand_scale, top + 0.100 + (v - 0.545) * brand_scale) for u, v in pts]
+
+    flat_panel("HOME_PROP_table_mug_brand", brand(KNIGHT_REAL), mug_y - 0.0985, 0.003, materials["book_black"], bevel=0.0004)
+    for cut in (0, 1):
+        flat_panel(f"HOME_PROP_table_mug_brand_cut_{cut}", brand(KNIGHT_REAL_CUTS[cut]), mug_y - 0.1005, 0.0015, ceramic, bevel=0.0002)
     curve_tube(
         "HOME_PROP_table_mug_handle",
         [(mug_x + 0.104, mug_y, top + 0.145), (mug_x + 0.200, mug_y, top + 0.120), (mug_x + 0.190, mug_y, top + 0.060), (mug_x + 0.104, mug_y, top + 0.035)],
@@ -4811,17 +4821,59 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     hill_pts = [(6.95 + 0.29 * k, 2.42 + 0.30 * math.sin(k * 0.9 + 0.6) + 0.10 * math.sin(k * 2.3)) for k in range(7)]
     hill_pts = [(6.95, 1.98)] + hill_pts + [(8.69, hill_pts[-1][1]), (8.69, 1.98)]
     flat_panel("HOME_PROP_window_garden_hills", hill_pts, 6.525, 0.02, materials["garden_far"], bevel=0.004)
-    for idx, (tx, crown_z, crown_r) in enumerate(((7.08, 2.95, 0.28), (7.48, 3.12, 0.34), (7.86, 2.92, 0.30), (8.30, 2.90, 0.30))):
-        cylinder(f"HOME_PROP_window_garden_trunk_{idx}", (tx, 6.53, crown_z - 0.42), 0.030, 0.52, materials["garden_far"], vertices=8)
-        sphere(f"HOME_PROP_window_garden_crown_{idx}", (tx, 6.53, crown_z), (crown_r, 0.08, crown_r * 0.92), materials["garden_mid"])
-        sphere(f"HOME_PROP_window_garden_crown_hi_{idx}", (tx + crown_r * 0.18, 6.515, crown_z + crown_r * 0.22), (crown_r * 0.55, 0.05, crown_r * 0.50), materials["garden_near"])
-    for idx, cx in enumerate((7.70, 8.06)):
-        cone(f"HOME_PROP_window_garden_cypress_{idx}", (cx, 6.53, 2.95 + idx * 0.10), 0.10, 0.012, 0.95 + idx * 0.12, materials["garden_mid"], vertices=10)
+    def lumpy(cx, cz, w, h, seed, n=22, rough=0.18):
+        """Irregular foliage outline: a lobed, noisy ellipse (a plain ellipse read as a sphere)."""
+        pts = []
+        for k in range(n):
+            a = k * math.tau / n
+            r = 1.0 + rough * math.sin(3.0 * a + seed) * 0.8 + (_hash01(k, 7, seed + 2203) - 0.5) * rough * 1.4
+            pts.append((cx + w / 2.0 * r * math.cos(a), cz + h / 2.0 * r * math.sin(a) * (0.86 if math.sin(a) < 0 else 1.0)))
+        return pts
+
+    # Distant tower with battlements on the far hill.
+    tower = [(7.22, 2.35), (7.22, 3.28), (7.20, 3.28), (7.20, 3.36), (7.26, 3.36), (7.26, 3.31), (7.32, 3.31), (7.32, 3.36), (7.38, 3.36),
+             (7.38, 3.28), (7.36, 3.28), (7.36, 2.35)]
+    flat_panel("HOME_PROP_window_garden_tower", tower, 6.535, 0.02, materials["garden_far"], bevel=0.002)
+    flat_panel("HOME_PROP_window_garden_tower_roof", [(7.17, 3.36), (7.29, 3.62), (7.41, 3.36)], 6.535, 0.02, materials["garden_far"], bevel=0.002)
+    # Broadleaf trees: trunk, a few branches, a lobed crown built from three overlapping lumps,
+    # and a moonlit rim on the upper left of each crown.
+    for idx, (tx, crown_z, cw, ch) in enumerate(((7.05, 2.98, 0.50, 0.44), (7.56, 3.14, 0.62, 0.52), (8.34, 2.98, 0.52, 0.46))):
+        cube(f"HOME_PROP_window_garden_trunk_{idx}", (tx, 6.50, crown_z - 0.34), (0.030, 0.020, 0.34), materials["garden_far"], bevel=0.006)
+        for b, (bx, bz) in enumerate(((-0.16, 0.14), (0.15, 0.20), (0.0, 0.26))):
+            curve_tube(f"HOME_PROP_window_garden_branch_{idx}_{b}", [(tx, 6.50, crown_z - 0.10), (tx + bx * 0.6, 6.50, crown_z + bz * 0.5), (tx + bx, 6.50, crown_z + bz)], 0.010, materials["garden_far"])
+        for lump, (ox, oz, sw, sh) in enumerate(((0.0, 0.0, 1.0, 1.0), (-0.20, -0.05, 0.62, 0.66), (0.20, 0.05, 0.60, 0.70))):
+            flat_panel(f"HOME_PROP_window_garden_crown_{idx}_{lump}", lumpy(tx + ox * cw, crown_z + oz * ch, cw * sw, ch * sh, 3100 + idx * 17 + lump), 6.505 - lump * 0.004, 0.030, materials["garden_mid"], bevel=0.004)
+        rim = [(tx - cw * 0.34 + 0.16 * cw * math.cos(t), crown_z + ch * 0.14 + 0.32 * ch * math.sin(t)) for t in (1.9, 2.3, 2.7, 3.1, 3.5)]
+        flat_panel(f"HOME_PROP_window_garden_crown_rim_{idx}", _polyline_strip(rim, 0.05), 6.485, 0.012, materials["garden_near"], bevel=0.002)
+    # Conifers: sawtooth tiers.
+    for idx, (cx, top_z, wdt) in enumerate(((7.82, 3.42, 0.15), (8.14, 3.05, 0.13))):
+        half = []
+        for tier in range(4):
+            zt = top_z - tier * 0.20
+            half += [(wdt * (0.35 + tier * 0.30), zt - 0.17), (wdt * (0.18 + tier * 0.30), zt - 0.15)]
+        outline = [(cx, top_z)] + [(cx + hx, hz) for hx, hz in half] + [(cx + wdt * 1.5, top_z - 0.86)] + [(cx - wdt * 1.5, top_z - 0.86)] + [(cx - hx, hz) for hx, hz in reversed(half)]
+        flat_panel(f"HOME_PROP_window_garden_conifer_{idx}", outline, 6.50 - idx * 0.003, 0.024, materials["garden_mid"], bevel=0.003)
+        cube(f"HOME_PROP_window_garden_conifer_trunk_{idx}", (cx, 6.50, top_z - 0.94), (0.020, 0.018, 0.10), materials["garden_far"])
     lawn_pts = [(6.95, 1.98)] + [(6.95 + 0.29 * k, 2.30 + 0.05 * math.sin(k * 1.7)) for k in range(7)] + [(8.69, 2.28), (8.69, 1.98)]
     flat_panel("HOME_PROP_window_garden_lawn", lawn_pts, 6.48, 0.03, materials["garden_near"], bevel=0.004)
     flat_panel("HOME_PROP_window_garden_path", [(7.72, 1.98), (7.96, 2.30), (8.16, 2.30), (8.46, 1.98)], 6.47, 0.02, materials["garden_path"], bevel=0.003)
-    for idx, hx in enumerate((7.05, 7.30, 7.55, 8.55)):
-        sphere(f"HOME_PROP_window_garden_hedge_{idx}", (hx, 6.465, 2.22), (0.14, 0.06, 0.11), materials["garden_mid"])
+    for k in range(3):
+        sx = 7.86 + k * 0.10 + (k % 2) * 0.03
+        flat_panel(f"HOME_PROP_window_garden_stepstone_{k}", [(sx - 0.050, 2.05 + k * 0.07), (sx + 0.055, 2.05 + k * 0.07), (sx + 0.040, 2.10 + k * 0.07), (sx - 0.040, 2.10 + k * 0.07)], 6.462, 0.008, materials["garden_path"], bevel=0.001)
+    # Clipped hedges with battlemented tops and round topiary, either side of the path.
+    for idx, (x0, x1) in enumerate(((6.95, 7.62), (8.24, 8.69))):
+        top = [(x0, 2.02)]
+        x = x0
+        step = 0.075
+        while x < x1 - 1e-6:
+            top += [(x, 2.32), (x + step * 0.55, 2.32), (x + step * 0.55, 2.28), (min(x + step, x1), 2.28)]
+            x += step
+        top += [(x1, 2.02)]
+        flat_panel(f"HOME_PROP_window_garden_hedge_{idx}", top, 6.466, 0.030, materials["garden_mid"], bevel=0.003)
+        sphere(f"HOME_PROP_window_garden_topiary_{idx}", ((x0 + x1) / 2.0, 6.462, 2.42), (0.075, 0.05, 0.075), materials["garden_near"], detail=(20, 10))
+    # A garden lamp with a warm lantern.
+    cube("HOME_PROP_window_garden_lamp_post", (8.10, 6.468, 2.62), (0.010, 0.010, 0.34), materials["dark"])
+    sphere("HOME_PROP_window_garden_lamp", (8.10, 6.466, 3.02), (0.034, 0.030, 0.042), materials["fire"], detail=(16, 8))
     for idx in range(9):
         fx = 7.00 + _hash01(idx, 2, 2131) * 1.65
         if 7.7 < fx < 8.5:
