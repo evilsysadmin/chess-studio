@@ -46,6 +46,17 @@ async function freezeClockAtRoutine(context, hour) {
   }, { ...FIXED_LOCAL_DATE, hour });
 }
 
+async function holdLoginGreetingForCapture(context) {
+  await context.addInitScript(() => {
+    const schedule = globalThis.setTimeout.bind(globalThis);
+    globalThis.setTimeout = (callback, delay, ...args) => schedule(
+      callback,
+      Number(delay) === 7000 ? 120_000 : delay,
+      ...args,
+    );
+  });
+}
+
 async function openDeterministicHome(page) {
   // A still artifact must show the authored activity prop, not whichever frame
   // happened to be running when the heavier hall compositor finished loading.
@@ -174,6 +185,10 @@ test('App visual artifact · Matthias Home deterministic full + crop', async () 
         ...(CAPTURE_BASE_URL ? { baseURL:CAPTURE_BASE_URL } : {}),
       });
       await freezeClockAtRoutine(context, capture.hour);
+      // Hosted SwiftShader can need >7 s to mount both Home renderers. Keep the
+      // intentional speaking/watch-post frame alive until its PNG is captured;
+      // production retains the normal seven-second greeting lifetime.
+      if (capture.keepGreeting) await holdLoginGreetingForCapture(context);
       const page = await context.newPage();
 
       try {
