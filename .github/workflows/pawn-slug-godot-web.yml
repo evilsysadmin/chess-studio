@@ -77,6 +77,7 @@ jobs:
     timeout-minutes: 8
     outputs:
       export_required: ${{ steps.classify.outputs.export_required }}
+      pr_visual_required: ${{ steps.classify.outputs.pr_visual_required }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -221,21 +222,32 @@ jobs:
         run: |
           set -euo pipefail
           export_required=false
+          pr_visual_required=false
+          if git rev-parse --verify HEAD^ >/dev/null 2>&1; then
+            changed="$(git diff --name-only HEAD^ HEAD)"
+            printf 'Changed files:\n%s\n' "$changed"
+          else
+            changed=''
+          fi
           if [[ "$GITHUB_EVENT_NAME" == 'workflow_dispatch' ]]; then
             export_required=true
           elif [[ "$GITHUB_EVENT_NAME" == 'push' ]]; then
-            if git rev-parse --verify HEAD^ >/dev/null 2>&1; then
-              changed="$(git diff --name-only HEAD^ HEAD)"
-              printf 'Changed files:\n%s\n' "$changed"
-              if grep -Eq '^(games/pawn-slug-godot/|scripts/pawn_slug_godot_bundle\.py$|scripts/pawn_slug_godot_2d_gate\.py$|scripts/pawn_slug_enemy_roster_gate\.py$|scripts/pawn_slug_godot_live_smoke\.mjs$|\.github/workflows/pawn-slug-godot-web\.yml$)' <<<"$changed"; then
-                export_required=true
-              fi
-            else
+            if [[ -z "$changed" ]]; then
               export_required=true
+            elif grep -Eq '^(games/pawn-slug-godot/|scripts/pawn_slug_godot_bundle\.py$|scripts/pawn_slug_godot_2d_gate\.py$|scripts/pawn_slug_enemy_roster_gate\.py$|scripts/pawn_slug_godot_live_smoke\.mjs$|\.github/workflows/pawn-slug-godot-web\.yml$)' <<<"$changed"; then
+              export_required=true
+            fi
+          elif [[ "$GITHUB_EVENT_NAME" == 'pull_request' ]]; then
+            if [[ -z "$changed" ]] || grep -Eq '^(games/pawn-slug-godot/|scripts/pawn_slug_godot_pr_capture\.mjs$|\.github/workflows/pawn-slug-godot-web\.yml$)' <<<"$changed"; then
+              pr_visual_required=true
             fi
           fi
           echo "export_required=$export_required" >> "$GITHUB_OUTPUT"
-          echo "Pawn Slug Godot export required: $export_required" >> "$GITHUB_STEP_SUMMARY"
+          echo "pr_visual_required=$pr_visual_required" >> "$GITHUB_OUTPUT"
+          {
+            echo "Pawn Slug Godot export required: $export_required"
+            echo "Pawn Slug PR visual required: $pr_visual_required"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   build_publish:
     name: Export + publish · Pawn Slug Godot Web
@@ -380,7 +392,7 @@ jobs:
 
   pr_visual_capture:
     name: PR visual evidence · Pawn Slug Godot
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && needs.validate.outputs.pr_visual_required == 'true'
     needs: validate
     runs-on: ubuntu-24.04
     timeout-minutes: 15
