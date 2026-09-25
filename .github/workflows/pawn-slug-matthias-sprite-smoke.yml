@@ -32,6 +32,11 @@ on:
   push:
     branches: [main]
     paths:
+      - games/pawn-slug-godot/scripts/matthias_art.gd
+      - games/pawn-slug-godot/scripts/enemy_visual.gd
+      - games/pawn-slug-godot/art/enemies-v2-worksheet.json
+      - scripts/art/export_matthias_sprite_smoke.py
+      - scripts/art/validate_matthias_sprite_continuity.py
       - scripts/art/repair_matthias_machinegun_continuity.py
       - scripts/art/repair_matthias_machinegun_hurt_alpha_v3.py
       - scripts/art/repair_matthias_pose_semantics_v1.py
@@ -41,21 +46,25 @@ on:
       - scripts/art/matthias_candidate_grinder.py
       - scripts/art/contracts/matthias_prompt_contract.yaml
       - scripts/art/test_matthias_prompt_contract.py
+      - scripts/art/export_enemy_sprite_smoke.py
+      - scripts/art/png_contract.py
+      - scripts/pawn_slug_sprite_smoke_scope.py
+      - scripts/pr_merge_diff.py
+      - scripts/art/pack_pawn_slug_enemy_v2.py
+      - scripts/art/validate_pawn_slug_enemy_v2.py
+      - scripts/art/test_pawn_slug_enemy_v2.py
+      - scripts/art/derive_pawn_slug_enemy_queen_v2.py
+      - scripts/art/test_pawn_slug_enemy_queen_v2.py
+      - scripts/art/derive_pawn_slug_enemy_scout_v2.py
+      - scripts/art/test_pawn_slug_enemy_scout_v2.py
       - .github/workflows/pawn-slug-matthias-sprite-smoke.yml
-  workflow_run:
-    workflows:
-      - Deploy to staging
-    types:
-      - completed
-    branches:
-      - main
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: pawn-slug-sprite-smoke-${{ github.event.pull_request.number || github.event.workflow_run.id || github.ref }}
+  group: pawn-slug-sprite-smoke-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -64,20 +73,19 @@ jobs:
     if: >
       github.event_name == 'workflow_dispatch' ||
       github.event_name == 'pull_request' ||
-      github.event_name == 'push' ||
-      github.event.workflow_run.conclusion == 'success'
+      github.event_name == 'push'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     env:
-      DEPLOY_SHA: ${{ github.event.pull_request.head.sha || github.event.workflow_run.head_sha || github.sha }}
+      DEPLOY_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
 
     steps:
       - name: Checkout tested commit
         uses: actions/checkout@v7
         with:
           # PRs use GitHub's synthetic merge so the classifier sees the complete
-          # contribution against the tested base. Staging keeps the deployed SHA.
-          ref: ${{ github.event_name == 'workflow_run' && env.DEPLOY_SHA || github.sha }}
+          # contribution against the tested base. Main push validates the merged SHA.
+          ref: ${{ github.sha }}
           fetch-depth: 2
 
       - name: Resolve sprite smoke scope

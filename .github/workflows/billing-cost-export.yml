@@ -1,9 +1,6 @@
 name: Observability · Billing costs
 
 on:
-  workflow_run:
-    workflows: ['Deploy to staging']
-    types: [completed]
   schedule:
     - cron: '17 */6 * * *'
   workflow_dispatch:
@@ -18,7 +15,6 @@ concurrency:
 jobs:
   export:
     name: Export OCI + Cloudflare cost
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
@@ -32,7 +28,7 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CHESS_STUDIO_BILLING_INGEST_URL: https://api-staging.chess-studio.shadowops.dpdns.org/api/internal/billing-costs
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Restore cached OCI SDK toolchain
         uses: ./.github/actions/setup-oci-sdk

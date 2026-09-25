@@ -428,16 +428,11 @@ def main() -> int:
         'GRAFANA_SLO_MAX_P95_MS',
         'GRAFANA_SLO_MAX_HOST_RAM_PERCENT',
         'GRAFANA_SLO_MIN_REQUESTS_15M',
-        'EXPECTED_STAGING_SHA',
         'STAGING_API_URL',
         'github.event.workflow_run.head_sha',
         'ref: ${{ github.event_name == \'workflow_run\' && github.event.workflow_run.head_sha || github.sha }}',
         'python3 -S scripts/grafana_live_check.py --self-test',
-        'Confirm deploy generation is still live',
-        'steps.generation.outputs.live',
-        'live=false',
-        '$STAGING_API_URL/release?sha=$EXPECTED_STAGING_SHA',
-        'Observability deploy superseded',
+        'workflows: ["Observability · Grafana dashboards"]',
         'Warm production + staging telemetry',
         'api.chess-studio.shadowops.dpdns.org/api/ready',
         'api-staging.chess-studio.shadowops.dpdns.org/api/ready',
@@ -446,6 +441,9 @@ def main() -> int:
     ):
         if token not in live_workflow:
             fail(f"workflow live Grafana incompleto: {token}")
+    if 'workflows: ["Deploy to staging"' in live_workflow or '"Deploy to staging", "Observability · Grafana dashboards"' in live_workflow:
+        fail("workflow live Grafana no debe colgar de cada Deploy to staging")
+
 
     publisher = PUBLISHER.read_text(encoding="utf-8") if PUBLISHER.exists() else ""
     for token in (
