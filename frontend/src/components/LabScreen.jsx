@@ -16,6 +16,7 @@ import './LabWorkshopHotfix.css';
 const ArenaExperiment = lazy(() => import('./ArenaExperiment.jsx'));
 const PawnTrailblazer = lazy(() => import('./PawnTrailblazer.jsx'));
 const PawnSlugGodotHost = lazy(() => import('./PawnSlugGodotHost.jsx'));
+const ChessFootballGodotHost = lazy(() => import('./ChessFootballGodotHost.jsx'));
 const Chesscom = lazy(() => import('./Chesscom.jsx'));
 const ChroniclesOfMatthias = lazy(() => import('./ChroniclesOfMatthias.jsx'));
 const ChroniclesOfMatthiasTactics = lazy(() => import('./ChroniclesOfMatthiasTactics.jsx'));
@@ -49,7 +50,7 @@ export default function LabScreen({ onExit, onStart }){
 
   useEffect(() => {
     const remembered = loadRememberedLabMode();
-    if (labMode === 'pawnslug-godot' || remembered === labMode) rememberLabMode(labMode);
+    if (labMode === 'pawnslug-godot' || labMode === 'chess-football-godot' || remembered === labMode) rememberLabMode(labMode);
     else clearRememberedLabMode();
   }, [labMode]);
 
@@ -61,7 +62,7 @@ export default function LabScreen({ onExit, onStart }){
     setLabMode(mode);
   }), []);
 
-  const childOwnsBack = labMode==='trailblazer' || labMode==='pawnslug-godot' || labMode==='chesscom' || labMode==='chronicles' || labMode==='chronicles-tactics';
+  const childOwnsBack = labMode==='trailblazer' || labMode==='pawnslug-godot' || labMode==='chess-football-godot' || labMode==='chesscom' || labMode==='chronicles' || labMode==='chronicles-tactics';
   useEscapeToClose(() => labMode==='hub' ? onExit() : setLabMode('hub'), { disabled: childOwnsBack });
 
   const fen=useMemo(()=>fenFromLabState({map,turn,castling,ep,halfmove,fullmove}),[map,turn,castling,ep,halfmove,fullmove]);
@@ -95,6 +96,7 @@ export default function LabScreen({ onExit, onStart }){
 
   if (labMode==='trailblazer') return <Suspense fallback={<LabModeFallback />}><PawnTrailblazer onExit={()=>setLabMode('hub')} /></Suspense>;
   if (labMode==='pawnslug-godot') return <Suspense fallback={<LabModeFallback />}><PawnSlugGodotHost onExit={()=>setLabMode('hub')} /></Suspense>;
+  if (labMode==='chess-football-godot') return <Suspense fallback={<LabModeFallback />}><ChessFootballGodotHost onExit={()=>setLabMode('hub')} /></Suspense>;
   if (labMode==='chesscom') return <Suspense fallback={<LabModeFallback />}><Chesscom onExit={()=>setLabMode('hub')} /></Suspense>;
   if (labMode==='chronicles') return <Suspense fallback={<LabModeFallback />}><ChroniclesOfMatthias onExit={()=>setLabMode('hub')} /></Suspense>;
   if (labMode==='chronicles-tactics') return <Suspense fallback={<LabModeFallback />}><ChroniclesOfMatthiasTactics onExit={()=>setLabMode('hub')} /></Suspense>;
@@ -148,6 +150,12 @@ export default function LabScreen({ onExit, onStart }){
               <strong>PAWN SLUG GODOT</strong>
               <span>Runtime canónico con motor propio: Godot manda; React sólo abre la puerta.</span>
               <b>Entrar en operación</b>
+            </button>
+            <button type="button" className="lab-workshop-portal lab-workshop-portal--shutter lab-workshop-portal--football" data-glyph="⚽" onClick={()=>setLabMode('chess-football-godot')}>
+              <small>{experimentMaturityLabel(EXPERIMENT_MATURITY.POC, 'Godot Web')}</small>
+              <strong>Chess Football</strong>
+              <span>Fútbol arcade 5 contra 5 con piezas de ajedrez, pases, tiros, sprint y cambio de jugador.</span>
+              <b>Saltar al césped</b>
             </button>
             <button type="button" className="lab-workshop-portal lab-workshop-portal--shutter lab-workshop-portal--trailblazer" data-glyph="♙" onClick={()=>setLabMode('trailblazer')}>
               <small>{experimentMaturityLabel(EXPERIMENT_MATURITY.POC, 'jugable')}</small>
