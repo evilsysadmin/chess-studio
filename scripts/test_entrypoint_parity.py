@@ -183,7 +183,7 @@ if sharded_playwright:
         for marker in [
             'Browser required · ${{ matrix.label }}',
             "build-frontend: 'false'",
-            'actions/download-artifact@v6',
+            'actions/download-artifact@v8',
         ]:
             if marker not in specialized:
                 raise SystemExit(f'Gate browser especializado incompleto: falta `{marker}`')
