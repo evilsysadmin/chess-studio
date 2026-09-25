@@ -85,7 +85,6 @@ PACKAGE_METADATA_PATH = "frontend/package.json"
 
 PAWN_SLUG_GODOT_PATHS = {
     ".github/workflows/pawn-slug-godot-web.yml",
-    ".github/workflows/cicd.yml",
     "scripts/pawn_slug_godot_bundle.py",
     "scripts/pawn_slug_godot_2d_gate.py",
     "scripts/pawn_slug_enemy_roster_gate.py",
@@ -207,10 +206,22 @@ def _classifier_harness_scope() -> Scope:
     return scope
 
 
+def _requires_pawn_slug_godot(changed: Iterable[str]) -> bool:
+    return any(
+        path.startswith("games/pawn-slug-godot/") or path in PAWN_SLUG_GODOT_PATHS
+        for path in changed
+    )
+
+
 def classify(paths: Iterable[str]) -> Scope:
     changed = _clean_paths(paths)
     if any(path in GLOBAL_HARNESS_PATHS for path in changed):
-        return Scope.all()
+        scope = Scope.all()
+        # Global Quality harness changes should still exercise the whole in-workflow
+        # test surface, but must not wake the separate multi-minute Godot visual
+        # workflow unless this PR also changes Pawn Slug itself.
+        scope.run_pawn_slug_godot = _requires_pawn_slug_godot(changed)
+        return scope
 
     scope = _classifier_harness_scope() if QUALITY_SCOPE_PATH in changed else Scope()
     for path in changed:
@@ -472,9 +483,16 @@ def self_test() -> None:
     assert json.loads(dict(line.split("=", 1) for line in classify(["frontend/src/combatBosses.js"]).lines())["core_e2e_matrix"]) == {"lane": ["combat"]}
     assert json.loads(dict(line.split("=", 1) for line in classify(["frontend/src/matthiasSchool.js"]).lines())["core_e2e_matrix"]) == {"lane": ["regression-school"]}
     assert json.loads(dict(line.split("=", 1) for line in classify(["frontend/src/adminDashboardInsights.js"]).lines())["core_e2e_matrix"]) == {"lane": ["admin"]}
-    assert classify([".github/workflows/cicd.yml"]) == Scope.all()
-    assert classify(["Makefile"]) == Scope.all()
-    assert classify(["scripts/pr_merge_diff.py"]) == Scope.all()
+    for harness_path in (".github/workflows/cicd.yml", "Makefile", "scripts/pr_merge_diff.py"):
+        harness_scope = classify([harness_path])
+        expected = Scope.all()
+        expected.run_pawn_slug_godot = False
+        assert harness_scope == expected
+
+    assert classify([
+        ".github/workflows/cicd.yml",
+        "games/pawn-slug-godot/scripts/player.gd",
+    ]) == Scope.all()
 
     _expect_core([QUALITY_SCOPE_PATH], lanes=("app-boot",))
     classifier_matrix = json.loads(dict(line.split("=", 1) for line in classify([QUALITY_SCOPE_PATH]).lines())["core_e2e_matrix"])["lane"]
