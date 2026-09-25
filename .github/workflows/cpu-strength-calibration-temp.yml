@@ -12,7 +12,7 @@ permissions:
 jobs:
   calibrate:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
@@ -31,12 +31,12 @@ jobs:
             echo "STOCKFISH=$(command -v stockfish)" >> "$GITHUB_ENV"
           fi
 
-      - name: Benchmark suspicious midrange CPU levels
+      - name: Benchmark low and lower-mid CPU levels
         run: |
           mkdir -p calibration-results
-          python scripts/cpu_strength_calibration.py             --engine "$STOCKFISH" --levels 45 --reference-elos 1320             --games 4 --move-time 0.03 --max-plies 200 --seed 9123             --output calibration-results/level-45-vs-1320.json
-          python scripts/cpu_strength_calibration.py             --engine "$STOCKFISH" --levels 60 --reference-elos 1320             --games 4 --move-time 0.03 --max-plies 200 --seed 9123             --output calibration-results/level-60-vs-1320.json
-          python scripts/cpu_strength_calibration.py             --engine "$STOCKFISH" --levels 70 --reference-elos 1500             --games 4 --move-time 0.03 --max-plies 200 --seed 9123             --output calibration-results/level-70-vs-1500.json
+          python scripts/cpu_strength_calibration.py             --engine "$STOCKFISH" --levels 20 --reference-elos 1320             --games 4 --move-time 0.03 --max-plies 200 --seed 9123             --output calibration-results/level-20-vs-1320.json
+          python scripts/cpu_strength_calibration.py             --engine "$STOCKFISH" --levels 30 --reference-elos 1320             --games 4 --move-time 0.03 --max-plies 200 --seed 9123             --output calibration-results/level-30-vs-1320.json
+          python scripts/cpu_strength_calibration.py             --engine "$STOCKFISH" --levels 40 --reference-elos 1320             --games 4 --move-time 0.03 --max-plies 200 --seed 9123             --output calibration-results/level-40-vs-1320.json
 
       - name: Print calibration results
         if: always()
