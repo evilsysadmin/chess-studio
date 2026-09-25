@@ -2806,12 +2806,14 @@ def add_armor(materials):
             (wrist[0], wrist[1] - 0.012 * side, wrist[2] - 0.010),
             (wrist[0], wrist[1] - 0.012 * side, wrist[2] + 0.015),
         ], 0.062, materials["brass_dark"])
-        cube(f"HOME_PROP_armor_gauntlet_{side}", wrist, (0.112, 0.098, 0.090), steel, bevel=0.028)
+        cube(f"HOME_PROP_armor_gauntlet_{side}", wrist, (0.112, 0.098, 0.090), materials["leather"] if side == 1 else steel, bevel=0.028)
+        if side == 1:
+            cylinder("HOME_PROP_armor_gauntlet_cuff", (wrist[0], wrist[1], wrist[2] + 0.118), 0.085, 0.045, materials["armor_gold"], vertices=20)
         if side == 1:
             # Fingers wrapped round the grip in front, thumb across: the hand visibly holds the sword.
             for k in range(4):
-                cube(f"HOME_PROP_armor_finger_{k}", (wrist[0], wrist[1] - 0.085, wrist[2] + 0.062 - k * 0.042), (0.075, 0.030, 0.017), steel, bevel=0.008)
-            cube("HOME_PROP_armor_thumb", (wrist[0] + 0.070, wrist[1] - 0.070, wrist[2] + 0.030), (0.020, 0.030, 0.060), steel, bevel=0.008)
+                cube(f"HOME_PROP_armor_finger_{k}", (wrist[0], wrist[1] - 0.085, wrist[2] + 0.062 - k * 0.042), (0.075, 0.030, 0.017), materials["leather"], bevel=0.008)
+            cube("HOME_PROP_armor_thumb", (wrist[0] + 0.070, wrist[1] - 0.070, wrist[2] + 0.030), (0.020, 0.030, 0.060), materials["leather"], bevel=0.008)
 
     # Heater shield in the left hand: brass backing plate behind a slightly
     # smaller steel face, a gold rim, corner rivets and a plain cross boss --
@@ -2852,27 +2854,32 @@ def add_armor(materials):
 
     # Sword held low in the right hand, point down toward the pedestal --
     # a resting guard stance instead of a two-handed ceremonial clasp.
-    hilt_x, hilt_y, hilt_z = wrists[1][0], wrists[1][1], wrists[1][2] - 0.04
-    cylinder("HOME_PROP_armor_sword_grip", (hilt_x, hilt_y, hilt_z), 0.044, 0.22, materials["dark"], vertices=16)
-    for ring_z in (hilt_z - 0.075, hilt_z + 0.075):
-        cylinder("HOME_PROP_armor_sword_grip_ring", (hilt_x, hilt_y, ring_z), 0.052, 0.014, brass, vertices=16)
-    sphere("HOME_PROP_armor_sword_pommel", (hilt_x, hilt_y, hilt_z - 0.15), (0.075, 0.075, 0.075), brass)
-    cube("HOME_PROP_armor_sword_guard", (hilt_x, hilt_y, hilt_z + 0.125), (0.320, 0.034, 0.032), brass, bevel=0.012)
+    hilt_x, hilt_y = wrists[1][0], wrists[1][1]
+    grip_z = wrists[1][2]  # the gloved fist closes round the middle of the grip
+    # Point-down sword, hilt at the TOP: pommel, wrapped grip in the fist, cross-guard below the
+    # hand, then the blade down to the pedestal. (It was inverted before: pommel underneath and
+    # the blade running through the grip, so there was nothing for the hand to hold.)
+    cylinder("HOME_PROP_armor_sword_grip", (hilt_x, hilt_y, grip_z + 0.02), 0.040, 0.26, materials["leather"], vertices=16)
+    for ring_z in (grip_z - 0.07, grip_z + 0.02, grip_z + 0.11):
+        cylinder("HOME_PROP_armor_sword_grip_ring", (hilt_x, hilt_y, ring_z), 0.046, 0.012, brass, vertices=16)
+    sphere("HOME_PROP_armor_sword_pommel", (hilt_x, hilt_y, grip_z + 0.19), (0.072, 0.072, 0.072), brass)
+    guard_z = grip_z - 0.155
+    cube("HOME_PROP_armor_sword_guard", (hilt_x, hilt_y, guard_z), (0.300, 0.034, 0.030), brass, bevel=0.012)
     for side in (-1, 1):
-        sphere(f"HOME_PROP_armor_sword_terminal_{side}", (hilt_x + side * 0.335, hilt_y, hilt_z + 0.125), (0.052, 0.052, 0.052), brass)
-    # Planted sword: centred in front of the figure, point resting on the pedestal top (z 0.48).
-    blade_base_z, blade_tip_z = hilt_z + 0.15, 0.66
+        sphere(f"HOME_PROP_armor_sword_terminal_{side}", (hilt_x + side * 0.315, hilt_y, guard_z), (0.050, 0.050, 0.050), brass)
+    # Planted sword: point resting on the pedestal top (z 0.48).
+    blade_base_z, blade_tip_z = guard_z - 0.03, 0.66
     # Bare polished steel (brighter/more metallic than the matte armor_steel
     # body) so the blade actually reads against the body and the archway
     # shadow behind it, instead of disappearing into both.
     blade_steel = materials["armor_steel"]
     cube("HOME_PROP_armor_sword_blade", (hilt_x, hilt_y, (blade_base_z + blade_tip_z) / 2),
-         (0.105, 0.022, (blade_base_z - blade_tip_z) / 2), blade_steel, bevel=0.008)
+         (0.090, 0.022, (blade_base_z - blade_tip_z) / 2), blade_steel, bevel=0.008)
     cube("HOME_PROP_armor_sword_fuller", (hilt_x, hilt_y - 0.020, (blade_base_z + blade_tip_z) / 2 - 0.04), (0.020, 0.008, (blade_base_z - blade_tip_z) / 2 * 0.86), dark, bevel=0.004)
     # cone() puts radius1 at the bottom (-Z) and radius2 at the top (+Z); the point
     # must be the bottom (lowest z) so the blade tapers down to a tip, not up.
-    tip = cone("HOME_PROP_armor_sword_tip", (hilt_x, hilt_y, blade_tip_z - 0.09), 0.001, 0.105, 0.18, blade_steel, vertices=4)
-    tip.scale.y = 0.022 / 0.105
+    tip = cone("HOME_PROP_armor_sword_tip", (hilt_x, hilt_y, blade_tip_z - 0.09), 0.001, 0.090, 0.18, blade_steel, vertices=4)
+    tip.scale.y = 0.022 / 0.090
 
     # Helmet with neck gap and a face slit, much closer to the canonical suit
     # of armour silhouette than a round pawn head. A great-helm reads as
