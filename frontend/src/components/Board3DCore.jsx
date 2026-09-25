@@ -22,8 +22,7 @@ import { board3DCaptureWarmBoostValue, board3DPieceInteractionPose, writeBoard3D
 import { BOARD_THEME_3D, FILES, resolveBoard3DThemeId } from './Board3DConfig.js';
 import { adjacentSquare, parseFen, squarePosition } from './Board3DBoardMath.js';
 import { buildBoard3DTileInstances, squareFromBoard3DIntersection } from './Board3DTileInstances.js';
-import { buildBoard3DPieceMesh, buildInitialBoard3DPieces } from './Board3DInitialPieces.js';
-import { scheduleWarRoomAfterFirstPaint } from './WarRoomAfterFirstPaint.js';
+import { buildBoard3DPieceMesh, scheduleInitialBoard3DPieces } from './Board3DInitialPieces.js';
 import { planBoard3DPieceReconciliation } from './Board3DPieceReconciliation.js';
 import { addCoarsePieceHitTarget, applyMatthiasCheckPose, buildPiece, disposeObject } from './Board3DPieces.js';
 import { fitBoardCamera, makeTextSprite } from './Board3DScene.js';
@@ -758,30 +757,12 @@ function Board3DCanvas({
       matthiasKingColor || 'none',
     ].join('|');
     const allowPieceReuse = state.pieceMeshes.size > 0 && pieceBuildSignatureRef.current === pieceBuildSignature;
-    const coldInitialBuild = state.pieceMeshes.size === 0 && !animate;
-    if (coldInitialBuild) {
-      state.renderer.domElement.dataset.board3dPiecesReady = 'false';
-      const cancelInitialPieces = scheduleWarRoomAfterFirstPaint(() => {
-        if (sceneStateRef.current !== state || state.pieceMeshes.size > 0) return;
-        const built = buildInitialBoard3DPieces({
-          state,
-          pieces: nextPieces,
-          skinId,
-          orientation,
-          matthiasKingColor,
-        });
-        pieceBuildSignatureRef.current = pieceBuildSignature;
-        previousFenRef.current = fen;
-        state.renderer.domElement.dataset.board3dPieceReconcile = 'cold-after-paint-v1';
-        state.renderer.domElement.dataset.board3dPieceReused = '0';
-        state.renderer.domElement.dataset.board3dPieceBuilt = String(built);
-        state.renderer.domElement.dataset.board3dPieceDisposed = '0';
-        state.renderer.domElement.dataset.board3dPiecesReady = 'true';
-        applyMatthiasCheckPose(state, checkSquare, orientation);
-        state.render();
-        state.ambientScheduler?.wake();
+    if (state.pieceMeshes.size === 0 && !animate) {
+      return scheduleInitialBoard3DPieces({
+        state, pieces: nextPieces, skinId, orientation, matthiasKingColor,
+        pieceBuildSignature, fen, checkSquare, pieceBuildSignatureRef, previousFenRef,
+        isCurrent: () => sceneStateRef.current === state,
       });
-      return cancelInitialPieces;
     }
 
     const reconciliation = planBoard3DPieceReconciliation({
