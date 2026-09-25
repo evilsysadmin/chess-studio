@@ -455,7 +455,10 @@ async function openCanonicalWarRoom(page, { variant = 'classic' } = {}) {
   ).toBe('3d');
 
   await buttonWithVisibleText(page, 'Partida rápida').click();
-  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  const startButton = page.getByRole('button', { name: 'Empezar partida', exact: true });
+  await expect(startButton).toBeVisible();
+  await expect(startButton).toBeEnabled();
+  await startButton.evaluate((button) => button.click());
   // Legacy desktop can take longer than the mobile/v2 captures to settle under
   // headless SwiftShader. Gate first on the semantic game state, as the other
   // War Room E2Es do, then confirm the screen wrapper rather than treating a
