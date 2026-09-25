@@ -154,6 +154,8 @@ test('Home · el avatar residente de Matthias abre Así juegas · y cierra el lo
   await page.setViewportSize({ width: 390, height: 844 });
   await clickBoardMove(page, 'a1', 'a8');
   await expect(page.getByText('¡Resuelto!', { exact: true })).toBeVisible();
+  const returnToPlay = page.getByRole('button', { name: 'Volver a jugar', exact: true });
+  await expectTouchTarget(returnToPlay);
 
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('chess-study-personal-puzzles') || '[]'));
   const trained = saved.find((item) => item.id === 'golden-fork-pending');
@@ -161,10 +163,13 @@ test('Home · el avatar residente de Matthias abre Así juegas · y cierra el lo
   expect(trained?.solves).toBeGreaterThanOrEqual(1);
   expect(trained?.cleanSolves).toBeGreaterThanOrEqual(1);
 
-  await page.getByRole('button', { name: '← Volver al menú', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: '← Volver al menú', exact: true }).click();
-  await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible();
-  await startQuickGame2D(page);
+  await returnToPlay.click();
+  const quickMatch = page.getByRole('dialog', { name: 'Configurar partida rápida' });
+  await expect(quickMatch).toBeVisible();
+  await quickMatch.locator('details.quick-match-settings > summary').click();
+  const renderer = quickMatch.getByRole('group', { name: 'Tipo de tablero' });
+  const twoD = renderer.getByRole('button', { name: '2D', exact: true });
+  if (await twoD.getAttribute('aria-pressed') !== 'true') await twoD.click();
+  await quickMatch.getByRole('button', { name: 'Empezar partida', exact: true }).click();
   await expect(gameTurn(page)).toBeVisible();
 });

@@ -30,7 +30,7 @@ const RECENT_CURATED_LIMIT = 5;
 // rival, para que se note que hubo dos jugadas separadas.
 const REPLY_DELAY_MS = 550;
 
-export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initialSource = 'curated', rushMode = false, initialFilter = null, dailySlot = 'tactic' }) {
+export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, onSpendPoints, initialSource = 'curated', rushMode = false, initialFilter = null, dailySlot = 'tactic' }) {
   useEscapeToClose(onExit);
   const [personalPuzzles, setPersonalPuzzles] = useState(() => loadPersonalPuzzles());
   const filteredInitialPersonalTotal = personalPuzzles.filter((item) => matchesPersonalPuzzleFilter(item, initialFilter)).length;
@@ -486,6 +486,9 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
               <button className="secondary-btn" onClick={revealSolution}>Ver solución</button>
             )}
             {!rushMode && source !== 'daily' && <button className="primary-btn" onClick={newPuzzle}>Siguiente puzzle</button>}
+            {!rushMode && source === 'personal' && status === 'solved' && onPlayAgain && (
+              <button className="secondary-btn" onClick={onPlayAgain}>Volver a jugar</button>
+            )}
             {rushMode && rushEnded && <button className="primary-btn" onClick={onExit}>Guardar marca y salir</button>}
           </div>
         </div>

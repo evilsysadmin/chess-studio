@@ -26,6 +26,7 @@ NONVISUAL_FRONTEND_PATHS = {
     "frontend/src/spectatorsessionrunner.js",
     "frontend/src/gamesessiondescriptor.js",
     "frontend/src/lablaunchintent.js",
+    "frontend/src/usepuzzlelaunchflow.js",
 }
 
 TRAINING_VISUAL_SURFACES = {
@@ -408,6 +409,9 @@ def self_test() -> None:
     lab_launch = classify(["frontend/src/labLaunchIntent.js"])
     assert lab_launch.capture_groups == "none"
     assert not lab_launch.hans and not lab_launch.chesscom
+    puzzle_launch = classify(["frontend/src/usePuzzleLaunchFlow.js"])
+    assert puzzle_launch.capture_groups == "none"
+    assert not puzzle_launch.hans and not puzzle_launch.chesscom
     quality_scope = classify(["scripts/quality_scope.py"])
     assert quality_scope.capture_groups == "none"
     assert not quality_scope.hans and not quality_scope.chesscom
