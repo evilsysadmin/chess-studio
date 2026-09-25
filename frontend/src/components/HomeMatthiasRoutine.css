@@ -21,9 +21,11 @@
   .illustrated-home__matthias {
     --home-matthias-zone-left: 11.8%;
     --home-matthias-zone-top: 69.5%;
+    --home-matthias-zone-width: clamp(154px, 12.8cqw, 218px);
+    --home-matthias-occlusion: 0%;
     left: var(--home-matthias-zone-left);
     top: var(--home-matthias-zone-top);
-    width: clamp(154px, 12.8cqw, 218px);
+    width: var(--home-matthias-zone-width);
     min-height: 25%;
     grid-template-columns: minmax(0, 1fr);
     align-items: center;
@@ -36,6 +38,7 @@
     transition:
       left 1050ms cubic-bezier(.2,.72,.2,1),
       top 1050ms cubic-bezier(.2,.72,.2,1),
+      width 1050ms cubic-bezier(.2,.72,.2,1),
       filter .18s ease;
   }
 
@@ -61,9 +64,58 @@
     --home-matthias-zone-top: 70.5%;
   }
 
+  /* Exact furniture stations make the hourly routine legible. Table/chair
+     stations crop only the lower pawn plinth so the existing furniture becomes
+     a foreground occluder instead of Matthias floating over it. */
+  .illustrated-home__matthias:has(.home-matthias-3d[data-home-matthias-station='chess-chair']) {
+    --home-matthias-zone-left: 15.4%;
+    --home-matthias-zone-top: 43.5%;
+    --home-matthias-zone-width: clamp(132px, 10.6cqw, 181px);
+    --home-matthias-occlusion: 24%;
+  }
+
+  .illustrated-home__matthias:has(.home-matthias-3d[data-home-matthias-station='refreshment-table']) {
+    /* Leave the bottom-right dungeon control a clean hit target at the
+       narrowest desktop width while Matthias remains beside the hearth table. */
+    --home-matthias-zone-left: 60.5%;
+    --home-matthias-zone-top: 45%;
+    --home-matthias-zone-width: clamp(128px, 10.2cqw, 174px);
+    --home-matthias-occlusion: 22%;
+  }
+
+  .illustrated-home__matthias:has(.home-matthias-3d[data-home-matthias-station='dining-table']) {
+    --home-matthias-zone-left: 60.5%;
+    --home-matthias-zone-top: 45%;
+    --home-matthias-zone-width: clamp(128px, 10.2cqw, 174px);
+    --home-matthias-occlusion: 22%;
+  }
+
+  .illustrated-home__matthias:has(.home-matthias-3d[data-home-matthias-station='library-chair']) {
+    --home-matthias-zone-left: 28.2%;
+    --home-matthias-zone-top: 42.5%;
+    --home-matthias-zone-width: clamp(130px, 10.4cqw, 178px);
+    --home-matthias-occlusion: 18%;
+  }
+
+  .illustrated-home__matthias:has(.home-matthias-3d[data-home-matthias-station='writing-desk']) {
+    --home-matthias-zone-left: 27.2%;
+    --home-matthias-zone-top: 45.5%;
+    --home-matthias-zone-width: clamp(128px, 10.2cqw, 174px);
+    --home-matthias-occlusion: 20%;
+  }
+
+  .illustrated-home__matthias:has(.home-matthias-3d[data-home-matthias-station='rest']) {
+    --home-matthias-zone-left: 7.2%;
+    --home-matthias-zone-top: 52%;
+    --home-matthias-zone-width: clamp(138px, 11.2cqw, 190px);
+    --home-matthias-occlusion: 16%;
+  }
+
   .illustrated-home__matthias.is-speaking {
     --home-matthias-zone-left: 11.8%;
     --home-matthias-zone-top: 69.5%;
+    --home-matthias-zone-width: clamp(154px, 12.8cqw, 218px);
+    --home-matthias-occlusion: 0%;
   }
 
   .illustrated-home__matthias::after {
@@ -109,6 +161,7 @@
     display: block !important;
     width: 100%;
     aspect-ratio: 4 / 5;
+    clip-path: inset(0 0 var(--home-matthias-occlusion) 0);
     transition: transform .18s ease, filter .18s ease;
   }
 
@@ -122,7 +175,7 @@
 @media (max-width: 999px) {
   /* Narrow layouts used to squeeze Matthias back into a tiny dashboard card.
    * Keep the resident diegetic and large enough for the face/pose to read. */
-  .illustrated-home__matthias {
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__matthias:has(.home-matthias-3d) {
     width: clamp(108px, 30vw, 148px) !important;
     min-width: 108px !important;
     min-height: 0 !important;
@@ -133,6 +186,7 @@
     border-radius: 0 !important;
     background: transparent !important;
     box-shadow: none !important;
+    opacity: 1 !important;
   }
 
   .illustrated-home__matthias-portrait {

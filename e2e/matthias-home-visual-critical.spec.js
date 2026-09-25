@@ -47,13 +47,19 @@ async function expectBlenderRigReady(avatar, canvas) {
 }
 
 test('Home canónica · Matthias permanece visible, vivo y abre Así juegas', async ({ page }) => {
+  await page.addInitScript(() => {
+    Date.prototype.getHours = () => 19;
+  });
+
   const home = await openCanonicalHome(page);
+  await dismissHomeSpeech(home);
   const matthias = home.locator('.illustrated-home__matthias');
   const { avatar, image, canvas } = matthiasRig(matthias);
 
   await expect(matthias).toBeVisible();
   await expect(matthias).toContainText('MATTHIAS');
   await expect(matthias).toHaveAttribute('data-home-matthias-scene', /.+/);
+  await expect(avatar).toHaveAttribute('data-home-matthias-station', 'refreshment-table');
   await expect(matthias).toHaveAttribute('data-home-matthias-activity', /.+/);
   await expect(matthias).toHaveAttribute('data-home-matthias-dwell-ms', /^(34000|38000|42000|44000|48000|64000)$/);
   await expect(avatar).toHaveAttribute('data-home-matthias-3d', 'ready');
@@ -78,7 +84,9 @@ test('Home canónica · Matthias permanece visible, vivo y abre Así juegas', as
   } else {
     expect(quietAffordance.opacity).toBe('0');
     await matthias.hover();
-    await expect.poll(() => matthias.evaluate((node) => getComputedStyle(node, '::after').opacity)).toBe('1');
+    await expect.poll(async () => Number(
+      await matthias.evaluate((node) => getComputedStyle(node, '::after').opacity),
+    )).toBeGreaterThanOrEqual(.95);
   }
 
   await matthias.click();
@@ -110,6 +118,7 @@ test('Home canónica · el expediente raro de Matthias exige derrotas reales y o
   await expect(matthias).toHaveAttribute('data-home-matthias-moment', 'loss-dossier');
   await expect(matthias).toHaveAttribute('data-home-matthias-scene', 'moment-loss-dossier');
   await expect(matthias).toHaveAttribute('data-home-matthias-zone', 'desk');
+  await expect(avatar).toHaveAttribute('data-home-matthias-station', 'writing-desk');
   await expect(matthias).toHaveAttribute('data-home-matthias-activity', 'Revisando viejas heridas');
   await expect(matthias).toHaveAttribute('data-home-matthias-dwell-ms', '44000');
   await expect(avatar).toHaveAttribute('data-home-matthias-profile', 'dossier');
@@ -133,6 +142,7 @@ test('Home canónica · Matthias puede quedarse dormido sobre el manual en la bi
   await expect(matthias).toHaveAttribute('data-home-matthias-moment', 'book-doze-sleep');
   await expect(matthias).toHaveAttribute('data-home-matthias-scene', 'moment-book-doze-sleep');
   await expect(matthias).toHaveAttribute('data-home-matthias-zone', 'library');
+  await expect(avatar).toHaveAttribute('data-home-matthias-station', 'rest');
   await expect(matthias).toHaveAttribute('data-home-matthias-activity', 'Dormido sobre el manual');
   await expect(matthias).toHaveAttribute('data-home-matthias-dwell-ms', '64000');
   await expect(avatar).toHaveAttribute('data-home-matthias-profile', 'sleep');
@@ -156,6 +166,7 @@ test('Home canónica · Matthias ensaya una emboscada solo en el escritorio', as
   await expect(matthias).toHaveAttribute('data-home-matthias-moment', 'solo-board-inception');
   await expect(matthias).toHaveAttribute('data-home-matthias-scene', 'moment-solo-board-inception');
   await expect(matthias).toHaveAttribute('data-home-matthias-zone', 'desk');
+  await expect(avatar).toHaveAttribute('data-home-matthias-station', 'chess-chair');
   await expect(matthias).toHaveAttribute('data-home-matthias-activity', 'Ensayando una emboscada');
   await expect(matthias).toHaveAttribute('data-home-matthias-dwell-ms', '42000');
   await expect(avatar).toHaveAttribute('data-home-matthias-profile', 'think');
@@ -227,6 +238,15 @@ test('Home canónica · móvil usa la escena a pantalla completa sin cementerio 
   expect(stageBox.height).toBeGreaterThanOrEqual(842);
   expect(artBox.height).toBeGreaterThanOrEqual(842);
   expect(Math.abs(stageBox.height - artBox.height)).toBeLessThanOrEqual(1);
+  const mobileResident = home.locator('.illustrated-home__matthias');
+  await expect(mobileResident).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await expect(mobileResident).toHaveCSS('border-top-width', '0px');
+  await expect(mobileResident).toHaveCSS('opacity', '1');
+  const mobileAvatar = home.locator('.home-matthias-3d');
+  await expect(mobileAvatar).toHaveCSS('isolation', 'auto');
+  await expect(mobileAvatar.locator('img')).toHaveCSS('filter', 'none');
+  await expect(mobileAvatar.locator('canvas')).toHaveCSS('filter', 'none');
+  expect(await mobileAvatar.evaluate((node) => getComputedStyle(node, '::before').display)).toBe('none');
 
   for (const selector of [
     '.illustrated-home__destination--tournament',

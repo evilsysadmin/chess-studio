@@ -33,6 +33,7 @@ from home_matthias_contract import (  # noqa: E402
     FORBIDDEN_NAME_TOKENS,
     HEAD_TO_BASE_WIDTH,
     HEAD_TO_BODY_HEIGHT,
+    HEAD_HEIGHT_TO_WIDTH,
     IVORY_HEAD_MIN_LUMA,
     MAX_BROW_TILT_DEGREES,
     MIN_BROW_TILT_DEGREES,
@@ -126,7 +127,7 @@ def main():
     assert not missing_actions, f"missing actions: {sorted(missing_actions)}"
 
     assert rig.get("canonical_identity") == CANONICAL_IDENTITY, rig.get("canonical_identity")
-    assert rig.get("matthias_asset_version") == "home-blender-classic-v18", (
+    assert rig.get("matthias_asset_version") == "home-blender-classic-v19", (
         rig.get("matthias_asset_version")
     )
     assert rig.get("canonical_reference") == CANONICAL_REFERENCE, rig.get("canonical_reference")
@@ -171,6 +172,7 @@ def main():
 
     assert_range("head/base width", head_width / base_width, HEAD_TO_BASE_WIDTH)
     assert_range("head/total height", head_height / total_height, HEAD_TO_BODY_HEIGHT)
+    assert_range("head height/width", head_height / head_width, HEAD_HEIGHT_TO_WIDTH)
     assert_range("cap/head width", cap_width / head_width, CAP_TO_HEAD_WIDTH)
     assert_range("total height/base width", total_height / base_width, BODY_HEIGHT_TO_BASE_WIDTH)
     assert_range("cap visor/head width", world_width(visor) / head_width, CAP_VISOR_TO_HEAD_WIDTH)

@@ -256,7 +256,7 @@ def classify_path(path: str) -> set[str] | None:
             return {"warroom-decor"}
         return set(WARROOM_ALL)
 
-    if lower.startswith("frontend/src/components/homematthias3d."):
+    if lower.startswith("frontend/src/components/homematthias"):
         return {"home-matthias"}
 
     if any(token in lower for token in ("illustrated-home", "homecastle", "home-castle", "/home", "castle3d")):
@@ -410,6 +410,8 @@ def self_test() -> None:
     assert classify(["frontend/public/models/matthias-home-canonical.glb"]) == "home-matthias"
     assert classify(["frontend/public/matthias-home-canonical.b64"]) == "home-matthias"
     assert classify(["frontend/src/components/HomeMatthias3D.jsx"]) == "home-matthias"
+    assert classify(["frontend/src/components/HomeMatthiasRoutine.css"]) == "home-matthias"
+    assert classify(["frontend/src/components/HomeMatthiasStations.js"]) == "home-matthias"
     assert classify(["e2e/matthias-home-visual-critical.spec.js"]) == "home-matthias"
     assert classify(["frontend/public/support-pawn.png"]) == "all"
     assert classify([

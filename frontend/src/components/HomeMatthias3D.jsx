@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { request } from '../http.js';
 import { createThreeRenderer } from '../threeRenderer.js';
+import { matthiasHomeStation } from './HomeMatthiasStations.js';
 import './HomeMatthias3D.css';
 
 const MODEL_URL = `${import.meta.env.BASE_URL}models/matthias-home-canonical.glb`;
@@ -41,7 +42,6 @@ const CLIP_BY_PROFILE = Object.freeze({
   dossier: 'Dossier',
   read: 'Read',
 });
-const ONE_SHOT_PROFILES = new Set(['sip', 'bite']);
 
 function cue(value = '') {
   return String(value || '')
@@ -78,12 +78,13 @@ export function homeMatthiasClipForProfile(profile = 'idle') {
   return CLIP_BY_PROFILE[profile] || CLIP_BY_PROFILE.idle;
 }
 
-export function homeMatthiasPlaybackPolicy(profile = 'idle') {
-  const normalized = CLIP_BY_PROFILE[profile] ? profile : 'idle';
-  const oneShot = ONE_SHOT_PROFILES.has(normalized);
+export function homeMatthiasPlaybackPolicy() {
+  // A Home routine lasts tens of seconds. Keep its authored gesture looping so
+  // coffee/dinner do not collapse back to an unrelated idle pose while Matthias
+  // is still stationed at that activity's furniture.
   return {
-    loop: oneShot ? 'once' : 'repeat',
-    returnToIdle: oneShot,
+    loop: 'repeat',
+    returnToIdle: false,
   };
 }
 
@@ -306,6 +307,7 @@ export default function HomeMatthias3D({
     [activity, scene, speaking],
   );
   const phase = useMemo(() => homeMatthiasMotionPhase({ scene, activity }), [activity, scene]);
+  const station = useMemo(() => matthiasHomeStation(scene), [scene]);
   const [modelState, setModelState] = useState('loading');
   const [fallbackSrc, setFallbackSrc] = useState(fallbackAvatar);
 
@@ -412,12 +414,14 @@ export default function HomeMatthias3D({
         || (policy.loop === 'once' && (currentProfile !== resolvedProfile || currentPhase !== safePhase));
 
       if (shouldRestart) {
-        currentAction?.fadeOut?.(0.22);
+        if (still) currentAction?.stop?.();
+        else currentAction?.fadeOut?.(0.22);
         next.reset();
         next.enabled = true;
         next.clampWhenFinished = policy.loop === 'once';
         next.setLoop(policy.loop === 'once' ? THREE.LoopOnce : THREE.LoopRepeat, policy.loop === 'once' ? 1 : Infinity);
-        next.fadeIn(0.22).play();
+        if (still) next.setEffectiveWeight(1).play();
+        else next.fadeIn(0.22).play();
         if (policy.loop === 'repeat') {
           next.time = homeMatthiasClipStartTime({ duration: clip.duration, phase: safePhase, profile: resolvedProfile });
           mixer.update(0);
@@ -649,6 +653,7 @@ export default function HomeMatthias3D({
       data-matthias-identity="canonical-blender-rig"
       data-matthias-render-source={modelState === 'ready' ? 'blender-glb' : 'bundled-scene-art-fallback'}
       data-home-matthias-profile={profile}
+      data-home-matthias-station={station}
       data-motion={reducedMotion ? 'still-rigged-model' : 'rigged-gltf-clips'}
       aria-hidden="true"
     >

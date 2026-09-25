@@ -4,14 +4,18 @@ import { login, mockApi } from './helpers.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const LOCAL_GPU_CAPTURE = process.env.HOME_MATTHIAS_LOCAL_GPU === '1';
+const LOCAL_SWIFTSHADER_CAPTURE = process.env.HOME_MATTHIAS_LOCAL_SWIFTSHADER === '1';
 const CAPTURE_BASE_URL = process.env.HOME_MATTHIAS_BASE_URL;
-const FIXED_LOCAL_TIME = { year:2026, monthIndex:8, day:14, hour:20, minute:0, second:0 };
+const FIXED_LOCAL_DATE = { year:2026, monthIndex:8, day:14, minute:0, second:0 };
 const CAPTURES = [
-  { label:'desktop-1440x900', width:1440, height:900, expectCopy:false },
-  { label:'android-390x844', width:390, height:844, hasTouch:true, expectCopy:false },
+  { label:'desktop-1440x900', width:1440, height:900, hour:20, profile:'bite', clip:'Bite', station:'dining-table', avatar:/lunch-bocata/i, expectCopy:false },
+  { label:'desktop-coffee-1440x900', width:1440, height:900, hour:6, profile:'sip', clip:'Sip', station:'refreshment-table', avatar:/morning-coffee/i, expectCopy:false },
+  { label:'desktop-chess-chair-1440x900', width:1440, height:900, hour:9, profile:'think', clip:'Think', station:'chess-chair', avatar:/afternoon-ops/i, expectCopy:false },
+  { label:'desktop-reading-1440x900', width:1440, height:900, hour:8, profile:'read', clip:'Read', station:'library-chair', avatar:/strategy-book/i, expectCopy:false },
+  { label:'android-390x844', width:390, height:844, hour:20, profile:'bite', clip:'Bite', station:'dining-table', avatar:/lunch-bocata/i, hasTouch:true, expectCopy:false },
 ];
 
-async function freezeClockAtCampaignDinner(context) {
+async function freezeClockAtRoutine(context, hour) {
   await context.addInitScript((fixed) => {
     const OriginalDate = Date;
     const timestamp = new OriginalDate(
@@ -36,11 +40,13 @@ async function freezeClockAtCampaignDinner(context) {
 
     Object.setPrototypeOf(FixedDate, OriginalDate);
     globalThis.Date = FixedDate;
-  }, FIXED_LOCAL_TIME);
+  }, { ...FIXED_LOCAL_DATE, hour });
 }
 
 async function openDeterministicHome(page) {
-  await page.emulateMedia({ reducedMotion:'no-preference' });
+  // A still artifact must show the authored activity prop, not whichever frame
+  // happened to be running when the heavier hall compositor finished loading.
+  await page.emulateMedia({ reducedMotion:'reduce' });
   await mockApi(page, {
     profileSeed: {
       'matthias.onboarded': '2',
@@ -52,6 +58,13 @@ async function openDeterministicHome(page) {
   const home = page.getByRole('region', { name:'Modos principales' });
   await expect(home).toBeVisible();
   await expect(home.locator('.illustrated-home__stage')).toBeVisible();
+  const hallArt = home.locator('.illustrated-home__art');
+  await expect(hallArt).toHaveJSProperty('complete', true);
+  await expect.poll(() => hallArt.evaluate((image) => image.naturalWidth)).toBeGreaterThan(0);
+  if (LOCAL_GPU_CAPTURE) {
+    await expect(home.locator('[data-home-castle-compositor="blender-runtime"]'))
+      .toHaveAttribute('data-home-blender-runtime', 'ready', { timeout:30_000 });
+  }
   // The castle renderer may deliberately stay on its canonical 2D fallback on
   // constrained/touch viewports. Matthias owns an independent WebGL contract,
   // so his canary waits for his Blender model below instead of another surface.
@@ -135,14 +148,16 @@ async function captureElementPng(context, page, locator, path) {
 }
 
 test('App visual artifact · Matthias Home deterministic full + crop', async () => {
-  test.setTimeout(100_000);
+  test.setTimeout(150_000);
   await mkdir(ARTIFACT_DIR, { recursive:true });
 
   const visualBrowser = await chromium.launch({
     headless:true,
     args:LOCAL_GPU_CAPTURE
       ? ['--use-angle=gl', '--use-gl=angle', '--ignore-gpu-blocklist', '--enable-gpu-rasterization']
-      : [],
+      : LOCAL_SWIFTSHADER_CAPTURE
+        ? ['--use-angle=swiftshader', '--use-gl=angle', '--enable-unsafe-swiftshader']
+        : [],
     env:LOCAL_GPU_CAPTURE
       ? { ...process.env, __NV_PRIME_RENDER_OFFLOAD:'1', __GLX_VENDOR_LIBRARY_NAME:'nvidia' }
       : process.env,
@@ -155,15 +170,17 @@ test('App visual artifact · Matthias Home deterministic full + crop', async () 
         hasTouch:capture.hasTouch === true,
         ...(CAPTURE_BASE_URL ? { baseURL:CAPTURE_BASE_URL } : {}),
       });
-      await freezeClockAtCampaignDinner(context);
+      await freezeClockAtRoutine(context, capture.hour);
       const page = await context.newPage();
 
       try {
         const home = await openDeterministicHome(page);
-        const speech = page.getByRole('region', { name:'Mensaje de Matthias', exact:true });
-        if (await speech.isVisible().catch(() => false)) {
-          await speech.getByRole('button', { name:'Cerrar comentario de Matthias', exact:true }).evaluate((button) => button.click());
-        }
+        // The greeting can expire between a visibility probe and a locator
+        // action on slow software rendering. Dismiss it atomically if it still
+        // exists; the quiet artifact does not need to wait for a vanished node.
+        await page.evaluate(() => {
+          document.querySelector('button[aria-label="Cerrar comentario de Matthias"]')?.click();
+        });
         const renderer = await page.evaluate(() => {
           const gl = document.createElement('canvas').getContext('webgl2');
           const debug = gl?.getExtension('WEBGL_debug_renderer_info');
@@ -173,9 +190,14 @@ test('App visual artifact · Matthias Home deterministic full + crop', async () 
           expect(renderer).toMatch(/NVIDIA/i);
           expect(renderer).not.toMatch(/SwiftShader/i);
         }
+        if (LOCAL_SWIFTSHADER_CAPTURE) expect(renderer).toMatch(/SwiftShader/i);
         await writeFile(
           `${ARTIFACT_DIR}/home-matthias-${capture.label}-renderer.json`,
-          `${JSON.stringify({ renderer, localGpuRequired:LOCAL_GPU_CAPTURE }, null, 2)}\n`,
+          `${JSON.stringify({
+            renderer,
+            localGpuRequired:LOCAL_GPU_CAPTURE,
+            localSwiftShaderRequired:LOCAL_SWIFTSHADER_CAPTURE,
+          }, null, 2)}\n`,
         );
         const matthias = home.locator('.illustrated-home__matthias');
         const copy = matthias.locator('.illustrated-home__matthias-copy');
@@ -183,10 +205,12 @@ test('App visual artifact · Matthias Home deterministic full + crop', async () 
         await expect(matthias).toBeVisible();
         const { avatar, image, canvas } = await expectLiveMatthiasArt(home);
         await expect(avatar).toBeVisible({ timeout:15_000 });
-        await expect(avatar).toHaveAttribute('data-motion', 'rigged-gltf-clips');
-        await expect(avatar).toHaveAttribute('data-home-matthias-profile', 'bite', { timeout:15_000 });
-        await expect(image).toHaveAttribute('src', /lunch-bocata/i);
+        await expect(avatar).toHaveAttribute('data-home-matthias-station', capture.station);
+        await expect(avatar).toHaveAttribute('data-motion', 'still-rigged-model');
+        await expect(avatar).toHaveAttribute('data-home-matthias-profile', capture.profile, { timeout:15_000 });
+        await expect(image).toHaveAttribute('src', capture.avatar);
         await expect(canvas).toHaveAttribute('data-matthias-canonical-model', 'blender');
+        await expect(canvas).toHaveAttribute('data-matthias-clip', capture.clip);
         await expect(avatar.locator('[data-matthias-layered-art="true"]')).toHaveCount(0);
 
         if (capture.expectCopy) {
