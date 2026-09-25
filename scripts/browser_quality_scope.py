@@ -575,7 +575,7 @@ def self_test() -> None:
     assert classify(["frontend/src/components/InsightsMatthiasMotion.jsx"]) == BrowserScope(matthias_insights=True)
     assert _ids(classify(["frontend/src/components/InsightsMatthiasMotion.jsx"])) == ["matthias-insights"]
     assert _ids(classify(["e2e/insights-matthias-motion.spec.js"])) == ["matthias-insights"]
-    assert _ids(classify(["frontend/src/PawnSlugLab.jsx"])) == ["pawn-slug"]
+    assert _ids(classify(["frontend/src/components/PawnSlugGodotHost.jsx"])) == ["pawn-slug"]
     assert _ids(classify(["frontend/src/components/Chesscom.jsx"])) == ["chesscom"]
     assert _ids(classify(["frontend/src/components/PawnTrailblazer.jsx"])) == ["trailblazer"]
     assert _ids(classify(["e2e/matthias-home-priority.spec.js"])) == ["matthias-priority"]
