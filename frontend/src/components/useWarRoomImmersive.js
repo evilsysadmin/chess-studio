@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 export function isWarRoomImmersiveExitKey(key) {
   return key === 'Escape' || key === 'Esc';
@@ -16,7 +16,9 @@ export function getWarRoomBrowserFullscreenElement(doc = globalThis.document) {
 export function requestWarRoomBrowserFullscreen(doc = globalThis.document) {
   const root = doc?.documentElement;
   const request = root?.requestFullscreen || root?.webkitRequestFullscreen;
-  if (!root || typeof request !== 'function') return Promise.resolve(false);
+  if (!root || typeof request !== 'function' || getWarRoomBrowserFullscreenElement(doc)) {
+    return Promise.resolve(false);
+  }
 
   try {
     return Promise.resolve(request.call(root)).then(() => true, () => false);
@@ -26,7 +28,8 @@ export function requestWarRoomBrowserFullscreen(doc = globalThis.document) {
 }
 
 export function exitWarRoomBrowserFullscreen(doc = globalThis.document) {
-  if (!doc || !getWarRoomBrowserFullscreenElement(doc)) return Promise.resolve(false);
+  const root = doc?.documentElement;
+  if (!doc || !root || getWarRoomBrowserFullscreenElement(doc) !== root) return Promise.resolve(false);
   const exit = doc.exitFullscreen || doc.webkitExitFullscreen;
   if (typeof exit !== 'function') return Promise.resolve(false);
 
@@ -40,64 +43,33 @@ export function exitWarRoomBrowserFullscreen(doc = globalThis.document) {
 export default function useWarRoomImmersive({ enabled, focusActive = false } = {}) {
   const [immersive, setImmersive] = useState(false);
   const [railCollapsed, setRailCollapsed] = useState(false);
-  const immersiveRef = useRef(false);
-  const nativeFullscreenRef = useRef(false);
 
   const exitImmersive = useCallback(() => {
-    immersiveRef.current = false;
     setImmersive(false);
     setRailCollapsed(false);
-
-    if (nativeFullscreenRef.current) {
-      nativeFullscreenRef.current = false;
-      void exitWarRoomBrowserFullscreen();
-    }
+    void exitWarRoomBrowserFullscreen();
   }, []);
 
-  const enterImmersive = useCallback(() => {
-    if (!enabled || focusActive) {
-      exitImmersive();
-      return;
-    }
-
-    let fullscreenRequest = null;
-    if (typeof document !== 'undefined' && !getWarRoomBrowserFullscreenElement(document)) {
-      // Native fullscreen must be requested in the same trusted click/tap that
-      // enters immersion. CSS fullscreen remains the fallback when the browser
-      // does not expose or permit the Fullscreen API.
-      fullscreenRequest = requestWarRoomBrowserFullscreen(document);
-    }
-
-    immersiveRef.current = true;
-    setImmersive(true);
-
-    if (fullscreenRequest) {
-      void fullscreenRequest.then((entered) => {
-        if (!entered) return;
-        if (!immersiveRef.current) {
-          void exitWarRoomBrowserFullscreen(document);
-          return;
-        }
-        nativeFullscreenRef.current = true;
-      });
-    }
-  }, [enabled, exitImmersive, focusActive]);
-
   const toggleImmersive = useCallback(() => {
-    if (immersiveRef.current) {
+    if (!enabled || focusActive || immersive) {
       exitImmersive();
       return;
     }
-    enterImmersive();
-  }, [enterImmersive, exitImmersive]);
+
+    // Request native fullscreen from the trusted click/tap. If the browser
+    // blocks or lacks the API, the existing fixed-viewport CSS remains the
+    // graceful fallback instead of making the control a no-op on mobile.
+    void requestWarRoomBrowserFullscreen();
+    setImmersive(true);
+  }, [enabled, exitImmersive, focusActive, immersive]);
 
   const toggleRail = useCallback(() => {
-    if (!immersiveRef.current) {
+    if (!immersive) {
       setRailCollapsed(false);
       return;
     }
     setRailCollapsed((current) => !current);
-  }, []);
+  }, [immersive]);
 
   useEffect(() => {
     if (!immersive) return;
@@ -105,14 +77,10 @@ export default function useWarRoomImmersive({ enabled, focusActive = false } = {
   }, [enabled, exitImmersive, focusActive, immersive]);
 
   useEffect(() => {
-    if (typeof document === 'undefined') return undefined;
+    if (!immersive || typeof document === 'undefined') return undefined;
 
     const handleFullscreenChange = () => {
-      if (!nativeFullscreenRef.current || !immersiveRef.current) return;
       if (getWarRoomBrowserFullscreenElement(document)) return;
-
-      nativeFullscreenRef.current = false;
-      immersiveRef.current = false;
       setImmersive(false);
       setRailCollapsed(false);
     };
@@ -123,7 +91,7 @@ export default function useWarRoomImmersive({ enabled, focusActive = false } = {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
       document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
     };
-  }, []);
+  }, [immersive]);
 
   useEffect(() => {
     if (!immersive || typeof document === 'undefined') return undefined;
@@ -145,9 +113,6 @@ export default function useWarRoomImmersive({ enabled, focusActive = false } = {
   }, [exitImmersive, immersive]);
 
   useEffect(() => () => {
-    immersiveRef.current = false;
-    if (!nativeFullscreenRef.current) return;
-    nativeFullscreenRef.current = false;
     void exitWarRoomBrowserFullscreen();
   }, []);
 
