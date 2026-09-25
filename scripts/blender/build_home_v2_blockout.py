@@ -3282,49 +3282,6 @@ def add_armor(materials):
         )
 
 
-def add_heraldic_shield(prefix, cx, cz, wall_y, facing, materials):
-    """Burgundy heater shield with a thick gilt border and inner line, a gold chief band with studs,
-    crossed swords reaching past the outline, a big gilt knight (facing the room's centre) and a
-    small crown. `wall_y` is the wall plane it hangs on; `facing` is -1 (knight looks left) or 1."""
-    pts = [(-0.34, 0.38), (0.34, 0.38), (0.34, 0.12), (0.25, -0.12), (0.0, -0.38), (-0.25, -0.12), (-0.34, 0.12)]
-    shield_points = [(cx + dx, cz + dz) for dx, dz in pts]
-    flat_panel(f"{prefix}", shield_points, wall_y, 0.10, materials["banner"], bevel=0.045)
-    outline = [(x, wall_y - 0.070, z) for x, z in shield_points + [shield_points[0]]]
-    curve_tube(f"{prefix}_border", outline, 0.028, materials["gold"])
-    inset = [(cx + (x - cx) * 0.86, wall_y - 0.068, cz + (z - cz) * 0.86) for x, _, z in outline]
-    curve_tube(f"{prefix}_inner_line", inset, 0.009, materials["brass_dark"])
-    cube(f"{prefix}_chief", (cx, wall_y - 0.072, cz + 0.27), (0.29, 0.010, 0.040), materials["gold"], bevel=0.006)
-    for idx, sx in enumerate((-0.20, -0.10, 0.0, 0.10, 0.20)):
-        sphere(f"{prefix}_stud_{idx}", (cx + sx, wall_y - 0.080, cz + 0.27), (0.014, 0.008, 0.014), materials["brass_dark"])
-    for side in (-1, 1):
-        ang = math.radians(44.0 * side)
-        blade = cube(f"{prefix}_sword_{side}", (cx, wall_y - 0.085, cz), (0.030, 0.010, 0.60), materials["steel"], bevel=0.006)
-        blade.rotation_euler[1] = ang
-        edge = cube(f"{prefix}_sword_fuller_{side}", (cx, wall_y - 0.092, cz), (0.008, 0.006, 0.54), materials["armor_steel"], bevel=0.003)
-        edge.rotation_euler[1] = ang
-        guard = cube(f"{prefix}_sword_guard_{side}", (cx - math.sin(ang) * 0.36, wall_y - 0.092, cz - math.cos(ang) * 0.36), (0.110, 0.014, 0.018), materials["gold"], bevel=0.006)
-        guard.rotation_euler[1] = ang
-        cylinder(f"{prefix}_sword_grip_{side}", (cx - math.sin(ang) * 0.46, wall_y - 0.090, cz - math.cos(ang) * 0.46), 0.016, 0.16, materials["leather"], vertices=10).rotation_euler[1] = ang
-        sphere(f"{prefix}_sword_pommel_{side}", (cx - math.sin(ang) * 0.56, wall_y - 0.090, cz - math.cos(ang) * 0.56), (0.032, 0.022, 0.032), materials["gold"])
-    def kp(pts, grow=1.0):
-        return [(cx - facing * (u + 0.035) * 0.44 * grow, cz - 0.02 + (v - 0.545) * 0.44 * grow) for u, v in pts]
-
-    flat_panel(f"{prefix}_knight_shadow", kp(KNIGHT_REAL, 1.08), wall_y - 0.102, 0.026, materials["velvet_dark"], bevel=0.006)
-    flat_panel(f"{prefix}_knight_gold", kp(KNIGHT_REAL), wall_y - 0.112, 0.026, materials["gilt_plain"], bevel=0.006)
-    for cut, pts in enumerate(KNIGHT_REAL_CUTS):
-        flat_panel(f"{prefix}_knight_cut_{cut}", kp(pts), wall_y - 0.126, 0.014, materials["velvet_dark"], bevel=0.002)
-    for hl, pts in enumerate(KNIGHT_REAL_HIGHLIGHTS):
-        flat_panel(f"{prefix}_knight_light_{hl}", kp(pts), wall_y - 0.132, 0.010, materials["gilt_light"], bevel=0.002)
-    flat_panel(
-        f"{prefix}_crown",
-        [(cx - 0.16, cz + 0.41), (cx - 0.16, cz + 0.50), (cx - 0.08, cz + 0.45), (cx, cz + 0.55), (cx + 0.08, cz + 0.45), (cx + 0.16, cz + 0.50), (cx + 0.16, cz + 0.41)],
-        wall_y - 0.050,
-        0.030,
-        materials["gold"],
-        bevel=0.006,
-    )
-
-
 def add_trophy(materials):
     brass = materials["brass"]
     stone = materials["stone"]
@@ -4068,19 +4025,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
                 bevel=0.018,
             )
             block.rotation_euler[1] = math.radians((_hash01(col, row, 739) - 0.5) * 0.9)
-    for soot_index, (sx, sz, sw, sh, rot) in enumerate((
-        (-6.15, 4.44, 0.58, 0.86, -1.5),
-        (-6.08, 5.08, 0.34, 0.62, 1.8),
-        (4.45, 4.30, 0.52, 0.78, 1.2),
-        (4.50, 4.88, 0.30, 0.54, -2.0),
-    )):
-        soot_patch = sphere(
-            f"HOME_ARCH_soot_haze_{soot_index}",
-            (sx, 6.674, sz),
-            (sw, 0.008, sh),
-            materials["soot_haze"],
-        )
-        soot_patch.rotation_euler[1] = math.radians(rot)
+    # (The dark soot-haze ellipses above both chimneys are gone: the wall there is plain stone.)
 
     cube("HOME_ARCH_left_wall", (-9.15, 2.9, 3.0), (0.18, 4.4, 3.2), materials["stone"], bevel=0.036)
     cube("HOME_ARCH_right_wall", (9.15, 2.9, 3.0), (0.18, 4.4, 3.2), materials["stone"], bevel=0.036)
@@ -5041,8 +4986,6 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         )
 
     add_trophy(materials)
-    # The heraldic shield stays beside the right hearth (behind the left arch's stone it was hidden).
-    add_heraldic_shield("HOME_PROP_fireplace_right_shield", 5.37, 3.22, 5.08, -1.0, materials)
     add_side_furnishings(materials)
     add_stairs(materials)
 
