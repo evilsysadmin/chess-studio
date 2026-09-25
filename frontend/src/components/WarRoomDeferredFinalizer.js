@@ -25,6 +25,20 @@ const AFTER_FINALIZER_STATES = new WeakMap();
 const NOOP_RENDER_HOOK = () => {};
 const HANS_FIREPLACE_FINALIZER_KEY = 'hans-fireplace-scene-install-v2';
 
+function timingNowMs() {
+  try {
+    const now = globalThis?.performance?.now?.();
+    if (Number.isFinite(now)) return now;
+  } catch {
+    // Diagnostics must never affect scene construction.
+  }
+  return Date.now();
+}
+
+function elapsedMs(startedAt) {
+  return Math.max(0, timingNowMs() - startedAt);
+}
+
 function sceneRoot(object) {
   let current = object;
   while (current?.parent) current = current.parent;
@@ -76,6 +90,8 @@ function attachFinalizerDriver(driver, owner, phase = 'before') {
     const root = sceneRoot(driver) || current.owner;
     const completedKeys = [];
     const results = {};
+    const taskDurationsMs = {};
+    const finalizerStartedAt = timingNowMs();
 
     // Permanent room dressing must resolve only after the complete War Room graph
     // exists. At construction time the architecture layer is built before the
@@ -83,11 +99,16 @@ function attachFinalizerDriver(driver, owner, phase = 'before') {
     // Every premium room registers this deferred pass (including coarse/touch), so
     // this is the single ownership boundary that can see the final sofas on all
     // render profiles and reparent an early legacy instance if one still exists.
+    const catStartedAt = timingNowMs();
     ensureWarRoomCat(root);
+    taskDurationsMs['ensure-war-room-cat'] = elapsedMs(catStartedAt);
 
     for (const [key, task] of current.tasks) {
+      const taskStartedAt = timingNowMs();
       results[key] = task(root);
+      taskDurationsMs[key] = elapsedMs(taskStartedAt);
       if (key === HANS_FIREPLACE_FINALIZER_KEY) {
+        const hansPostInstallStartedAt = timingNowMs();
         installWarRoomHansCanonicalButler(root);
         installWarRoomHansBoardPeekClockHold(root);
         // Hans owns one body-animation boundary. Internal animation modules are
@@ -128,10 +149,12 @@ function attachFinalizerDriver(driver, owner, phase = 'before') {
         // this final coordinate: pin it to the weather-window corner only after all
         // installers have finished touching the shared plant object.
         lockWarRoomCanonicalPlantPlacement(root);
+        taskDurationsMs['hans-post-install'] = elapsedMs(hansPostInstallStartedAt);
       }
       completedKeys.push(key);
     }
 
+    const finalizerDurationMs = elapsedMs(finalizerStartedAt);
     current.completed = true;
     current.runCount += 1;
 
@@ -140,6 +163,14 @@ function attachFinalizerDriver(driver, owner, phase = 'before') {
       root.userData.warRoomDeferredFinalizerRuns = current.runCount;
       root.userData.warRoomDeferredFinalizedTasks = completedKeys;
       root.userData.warRoomDeferredFinalizerResults = results;
+      root.userData.warRoomDeferredFinalizerDurationsMs = {
+        ...(root.userData.warRoomDeferredFinalizerDurationsMs || {}),
+        [current.phase]: finalizerDurationMs,
+      };
+      root.userData.warRoomDeferredFinalizerTaskDurationsMs = {
+        ...(root.userData.warRoomDeferredFinalizerTaskDurationsMs || {}),
+        [current.phase]: taskDurationsMs,
+      };
     }
     driver.userData.warRoomDeferredFinalizerCompleted = true;
     driver.userData.warRoomDeferredFinalizerTaskCount = completedKeys.length;
