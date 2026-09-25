@@ -28,6 +28,63 @@ async function expectLightweight2D(page) {
   await expect(page.locator('.game-layout-3d')).toHaveCount(0);
 }
 
+async function expectMinTouchTarget(locator, { square = false } = {}) {
+  await expect(locator).toBeVisible();
+  const rect = await locator.boundingBox();
+  expect(rect).not.toBeNull();
+  if (square) expect(rect.width).toBeGreaterThanOrEqual(44);
+  expect(rect.height).toBeGreaterThanOrEqual(44);
+}
+
+test('Partida rápida · configuración mantiene targets táctiles a 360/390/430 px', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockApi(page);
+  await login(page);
+  await buttonWithVisibleText(page, 'Partida rápida').click();
+
+  const dialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
+  const close = dialog.getByRole('button', { name: 'Cerrar', exact: true });
+  const start = dialog.getByRole('button', { name: 'Empezar partida', exact: true });
+  const settings = dialog.locator('details.quick-match-settings');
+  const settingsSummary = settings.locator(':scope > summary');
+
+  for (const width of [360, 390, 430]) {
+    await page.setViewportSize({ width, height: 844 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+    const rect = await dialog.boundingBox();
+    expect(rect).not.toBeNull();
+    expect(rect.x).toBeGreaterThanOrEqual(-1);
+    expect(rect.x + rect.width).toBeLessThanOrEqual(width + 1);
+    await expectMinTouchTarget(close, { square: true });
+    await expectMinTouchTarget(start);
+    await expectMinTouchTarget(settingsSummary);
+  }
+
+  await settingsSummary.click();
+  const colorButtons = dialog.getByRole('radiogroup', { name: 'Elegir color' }).getByRole('radio');
+  const clock = dialog.getByRole('combobox', { name: 'Ritmo de reloj' });
+  const series = dialog.getByRole('combobox', { name: 'Formato de serie' });
+  const renderer = dialog.getByRole('group', { name: 'Tipo de tablero' });
+  const specialRules = settings.locator('details.friendly-subdisclosure');
+  const specialSummary = specialRules.locator(':scope > summary');
+
+  for (const width of [360, 390, 430]) {
+    await page.setViewportSize({ width, height: 844 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+    for (let index = 0; index < 3; index += 1) await expectMinTouchTarget(colorButtons.nth(index));
+    await expectMinTouchTarget(clock);
+    await expectMinTouchTarget(series);
+    await expectMinTouchTarget(renderer.getByRole('button', { name: '3D', exact: true }));
+    await expectMinTouchTarget(renderer.getByRole('button', { name: '2D', exact: true }));
+    await expectMinTouchTarget(specialSummary);
+  }
+
+  await specialSummary.click();
+  const ruleLabels = specialRules.locator('label');
+  await expect(ruleLabels).toHaveCount(2);
+  for (let index = 0; index < 2; index += 1) await expectMinTouchTarget(ruleLabels.nth(index));
+});
+
 test('Partida rápida · 2D entra directo al tablero ligero con Pixel medieval por defecto', async ({ page }) => {
   await mockApi(page);
   await login(page);
