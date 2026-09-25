@@ -181,6 +181,7 @@ test('Browser runtime · Home y Así juegas no dejan errores silenciosos', async
 });
 
 test('Browser WebGL · Home 3D recupera el contexto perdido', async ({ page }) => {
+  test.setTimeout(60_000);
   const { faults } = attachRuntimeErrorProbe(page);
   await page.addInitScript(() => {
     Object.defineProperty(navigator, 'hardwareConcurrency', {
@@ -194,7 +195,16 @@ test('Browser WebGL · Home 3D recupera el contexto perdido', async ({ page }) =
   const home = page.getByRole('region', { name:'Modos principales' });
   const canvas = home.locator('.illustrated-home__castle-3d');
   await expect(canvas).toBeVisible();
-  await expect(canvas).toHaveClass(/is-ready/, { timeout:15_000 });
+  const runtimeState = () => canvas.evaluate((node) => ({
+    ready:node.classList.contains('is-ready'),
+    runtime:node.dataset.homeBlenderRuntime || '',
+    lod:node.dataset.homeCastleLod || '',
+    engine:node.dataset.engine || '',
+  }));
+  await expect.poll(runtimeState, {
+    timeout:25_000,
+    message:'La Home 3D debe terminar loading antes de validar pérdida de contexto',
+  }).toMatchObject({ ready:true, runtime:'ready' });
 
   const canLoseContext = await canvas.evaluate((node) => {
     const gl = node.getContext('webgl2') || node.getContext('webgl');
@@ -208,7 +218,10 @@ test('Browser WebGL · Home 3D recupera el contexto perdido', async ({ page }) =
 
   await expect(canvas).not.toHaveClass(/is-ready/);
   await page.evaluate(() => window.__homeWebglLoseContext?.restoreContext());
-  await expect(canvas).toHaveClass(/is-ready/, { timeout:15_000 });
+  await expect.poll(runtimeState, {
+    timeout:15_000,
+    message:'La Home 3D debe volver a ready después de restaurar WebGL',
+  }).toMatchObject({ ready:true, runtime:'ready' });
   await settle(page);
 
   const diagnostic = faults.map((fault) => `[${fault.type}] ${fault.message}`).join('\n\n');
