@@ -1193,6 +1193,7 @@ export default function HomeBlenderScene3D({
     let frame = null;
     let loadTimer = null;
     let contextRecoveryTimer = null;
+    let contextRecoveryFrame = null;
 
     let renderer;
     try {
@@ -1443,29 +1444,56 @@ export default function HomeBlenderScene3D({
       startFireAnimation();
     });
 
+    const cancelPendingContextRecoveryFrame = () => {
+      if (contextRecoveryFrame !== null) window.cancelAnimationFrame(contextRecoveryFrame);
+      contextRecoveryFrame = null;
+    };
+
+    const finishContextRestore = () => {
+      contextRecoveryFrame = null;
+      if (disposed || fallbackRequested) return;
+      try {
+        resize();
+        renderer.shadowMap.needsUpdate = true;
+        renderFrame();
+      } catch {
+        // Chromium/SwiftShader may dispatch webglcontextrestored before Three can
+        // successfully submit the first restored frame. Keep the 2D master visible
+        // and retry on the next frame; the existing recovery timer fails closed.
+        contextRecoveryFrame = window.requestAnimationFrame(finishContextRestore);
+        return;
+      }
+      if (contextRecoveryTimer !== null) {
+        window.clearTimeout(contextRecoveryTimer);
+        contextRecoveryTimer = null;
+      }
+      canvas.dataset.homeBlenderRuntime = 'ready';
+      canvas.classList.add('is-ready');
+      startFireAnimation();
+    };
+
     const onContextLost = (event) => {
       event.preventDefault();
       canvas.classList.remove('is-ready');
       canvas.dataset.homeBlenderRuntime = 'recovering';
       stopFireAnimation();
+      if (frame !== null) {
+        window.cancelAnimationFrame(frame);
+        frame = null;
+      }
+      cancelPendingContextRecoveryFrame();
       if (contextRecoveryTimer !== null) window.clearTimeout(contextRecoveryTimer);
       contextRecoveryTimer = window.setTimeout(() => {
         contextRecoveryTimer = null;
+        cancelPendingContextRecoveryFrame();
         failToFallback(true);
       }, 8_000);
     };
     const onContextRestored = () => {
-      if (disposed || fallbackRequested) return;
-      if (contextRecoveryTimer !== null) {
-        window.clearTimeout(contextRecoveryTimer);
-        contextRecoveryTimer = null;
-      }
-      resize();
-      renderer.shadowMap.needsUpdate = true;
-      renderFrame();
-      canvas.dataset.homeBlenderRuntime = 'ready';
-      canvas.classList.add('is-ready');
-      startFireAnimation();
+      if (disposed || fallbackRequested || contextRecoveryFrame !== null) return;
+      // Do not render synchronously inside webglcontextrestored. In Chromium's
+      // software renderer the event can precede the first frame Three can submit.
+      contextRecoveryFrame = window.requestAnimationFrame(finishContextRestore);
     };
     canvas.addEventListener('webglcontextlost', onContextLost);
     canvas.addEventListener('webglcontextrestored', onContextRestored);
@@ -1485,6 +1513,7 @@ export default function HomeBlenderScene3D({
       stopFireAnimation();
       if (loadTimer !== null) window.clearTimeout(loadTimer);
       if (contextRecoveryTimer !== null) window.clearTimeout(contextRecoveryTimer);
+      cancelPendingContextRecoveryFrame();
       resizeObserver?.disconnect();
       window.removeEventListener('resize', resize);
       document.removeEventListener('visibilitychange', onVisibilityChange);
