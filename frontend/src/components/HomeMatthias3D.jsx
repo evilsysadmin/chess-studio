@@ -107,7 +107,10 @@ export function homeMatthiasPortraitFrame({ minY = 0, maxY = 2.35, fovDeg = 24 }
   // complete flared base and cap inside the portrait while preserving the
   // existing on-screen scale for the canonical runtime GLB.
   const targetY = base + (height * 0.5);
-  const visibleHeight = height * 1.035;
+  // Leave animation-safe breathing room around the cap. The authored idle/work
+  // clips can lean the cap badge and right peak beyond the static rest bounds;
+  // the tighter frame clipped that silhouette in the Home portrait.
+  const visibleHeight = height * 1.14;
   const distance = Math.max(4.6, (visibleHeight * 0.5) / Math.tan(THREE.MathUtils.degToRad(safeFov * 0.5)));
   return { targetY, distance };
 }
