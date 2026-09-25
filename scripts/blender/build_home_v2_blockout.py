@@ -1949,15 +1949,15 @@ def add_royal_cat(materials):
 
     # Tail curled around the front of the body with a combed brush of fur, tip by the paws.
     tail = []
-    for i in range(16):
-        t = i / 15.0
+    for i in range(56):
+        t = i / 55.0
         ang = math.radians(20 + t * 250)
         tail.append((cx + 0.02 + 0.29 * math.cos(ang), cy + 0.02 - 0.235 * math.sin(ang) - 0.01, top + 0.034 + 0.014 * math.sin(t * math.pi)))
     # Tapered tail as overlapping spheres (thick at the rump, slim at the tip) with a darker tip;
     # a constant tube read as a balloon-animal sausage.
     for n, t in enumerate(tail):
         frac = n / max(1, len(tail) - 1)
-        rad = 0.048 - 0.022 * frac
+        rad = 0.046 - 0.020 * frac
         sphere(f"HOME_PROP_cat_tail_seg_{n}", t, (rad * 1.1, rad, rad * 0.92), point if frac > 0.62 else fur, detail=(20, 10))
 
 
