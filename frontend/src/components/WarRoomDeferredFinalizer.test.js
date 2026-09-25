@@ -101,6 +101,20 @@ describe('WarRoomDeferredFinalizer', () => {
     expect(root.userData.warRoomDeferredFinalizerDurationsMs.after).toBeGreaterThanOrEqual(0);
     expect(root.userData.warRoomDeferredFinalizerTaskDurationsMs.after['hans-fireplace-scene-install-v2']).toBeGreaterThanOrEqual(0);
     expect(root.userData.warRoomDeferredFinalizerTaskDurationsMs.after['hans-post-install']).toBeGreaterThanOrEqual(0);
+    for (const key of [
+      'hans:canonical-butler',
+      'hans:animator',
+      'hans:actor-telemetry',
+      'hans:elder-clock',
+      'hans:fire-narrative',
+      'hans:mop-routine',
+      'hans:service-routine',
+      'hans:ambient-chore-routine',
+      'hans:visible-ground-lock',
+      'hans:canonical-plant-lock',
+    ]) {
+      expect(root.userData.warRoomDeferredFinalizerTaskDurationsMs.after[key]).toBeGreaterThanOrEqual(0);
+    }
 
     floor.onAfterRender();
     expect(sceneTask).toHaveBeenCalledTimes(1);
