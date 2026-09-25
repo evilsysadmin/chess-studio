@@ -45,12 +45,6 @@ def is_valid_difficulty(value) -> bool:
         return False
 
 
-def resolve_human_color(color: str) -> str:
-    if color in ("w", "b"):
-        return color
-    return random.choice(["w", "b"])
-
-
 async def get_owned_game(game_id: str, username: str) -> dict:
     entry = await store.get_game_for_owner(game_id, username)
     if not entry:
@@ -134,7 +128,7 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
                     raise HTTPException(409, "La operación de creación ya existe con otros parámetros.")
                 return serialize_game(game_id, existing, load_stored_game_board(existing))
 
-        human_color = resolve_human_color(body.color)
+        human_color = body.color if body.color in {"w", "b"} else random.choice(["w", "b"])
         cpu_color = "b" if human_color == "w" else "w"
         rounded_difficulty = round(float(body.difficulty))
         last_move = None
@@ -190,6 +184,10 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
         else:
             await store.create_game(game_id, entry)
         return serialize_game(game_id, entry, board)
+
+    @router.get("/api/games")
+    async def list_games(username: str = Depends(auth_dependency)):
+        return {"games": await store.list_game_summaries_by_owner(username)}
 
     @router.get("/api/games/{game_id}")
     async def get_game(game_id: str, username: str = Depends(auth_dependency)):
