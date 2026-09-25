@@ -9,6 +9,29 @@ export const COARSE_PIECE_HIT_TARGET = Object.freeze({
   centerY: 0.22,
 });
 
+export const COARSE_PIECE_SNAP_RADIUS_PX = 28;
+
+export function resolveCoarsePieceIntent({
+  directSquare = null,
+  selectedSquare = null,
+  pointer = null,
+  projectedPieces = [],
+  radius = COARSE_PIECE_SNAP_RADIUS_PX,
+} = {}) {
+  if (selectedSquare) return directSquare;
+  if (projectedPieces.some((piece) => piece.square === directSquare)) return directSquare;
+  if (!pointer || !Number.isFinite(pointer.x) || !Number.isFinite(pointer.y)) return directSquare;
+
+  let nearest = null;
+  for (const piece of projectedPieces) {
+    const distance = Math.hypot(Number(piece.x) - pointer.x, Number(piece.y) - pointer.y);
+    if (!Number.isFinite(distance) || (nearest && distance >= nearest.distance)) continue;
+    nearest = { square:piece.square, distance };
+  }
+
+  return nearest && nearest.distance <= radius ? nearest.square : directSquare;
+}
+
 export function resolveBoardTap(start, end, { coarsePointer = false } = {}) {
   if (!start || !end || start.id !== end.id) return null;
   const tolerance = coarsePointer ? 18 : 8;

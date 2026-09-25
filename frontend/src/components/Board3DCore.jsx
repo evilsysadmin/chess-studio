@@ -16,7 +16,7 @@ import {
 } from './WarRoom3DAnimation.js';
 import { createWarRoomAmbientScheduler } from './WarRoomAmbientScheduler.js';
 import { applyWarRoomHansScreenDiagnostics, applyWarRoomLightDiagnostics } from './WarRoomDomDiagnostics.js';
-import { resolveBoardTap } from './WarRoom3DTouch.js';
+import { resolveBoardTap, resolveCoarsePieceIntent } from './WarRoom3DTouch.js';
 import { BOARD3D_HIGHLIGHT_SIZE, BOARD3D_HIGHLIGHT_Y, board3DHighlightStyle } from './Board3DHighlights.js';
 import { board3DCaptureWarmBoostValue, board3DPieceInteractionPose, writeBoard3DHighlightPulse } from './Board3DInteractionFx.js';
 import { BOARD_THEME_3D, FILES, resolveBoard3DThemeId } from './Board3DConfig.js';
@@ -228,6 +228,7 @@ function Board3DCanvas({
     const hansWorldProbe = new THREE.Vector3();
     const hansScreenProbe = new THREE.Vector3();
     const cameraOffsetProbe = new THREE.Vector3();
+    const coarsePieceProjection = new THREE.Vector3();
     const cameraEulerProbe = new THREE.Euler(0, 0, 0, 'YXZ');
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
@@ -262,7 +263,7 @@ function Board3DCanvas({
     renderer.domElement.dataset.board3dRendererClass = compactWebGLRendererLabel(rendererName);
     renderer.domElement.dataset.board3dSceneTier = sceneProfile.tier;
     renderer.domElement.dataset.warRoomDomDiagnostics = 'diff-only-ref-v2';
-    renderer.domElement.dataset.board3dInteractionHotPath = 'cached-pick-pulse-capture-v1';
+    renderer.domElement.dataset.board3dInteractionHotPath = 'cached-pick-pulse-capture-v2';
     renderer.domElement.dataset.board3dInspectYaw = '0.000';
     renderer.domElement.dataset.board3dInspectPitch = '0.000';
     host.appendChild(renderer.domElement);
@@ -454,11 +455,32 @@ function Board3DCanvas({
       );
       raycaster.setFromCamera(pointer, camera);
       const intersections = raycaster.intersectObjects(pickTargets, true);
+      let directSquare = null;
       for (const hit of intersections) {
         const square = squareFromBoard3DIntersection(hit);
-        if (square) return square;
+        if (square) {
+          directSquare = square;
+          break;
+        }
       }
-      return null;
+      if (!coarsePointer) return directSquare;
+
+      const projectedPieces = [];
+      for (const square of pieceMeshes.keys()) {
+        const { x, z } = squarePosition(square);
+        coarsePieceProjection.set(x, 0.58, z).project(camera);
+        projectedPieces.push({
+          square,
+          x:rect.left + ((coarsePieceProjection.x + 1) * rect.width / 2),
+          y:rect.top + ((1 - coarsePieceProjection.y) * rect.height / 2),
+        });
+      }
+      return resolveCoarsePieceIntent({
+        directSquare,
+        selectedSquare:latestPropsRef.current.selectedSquare,
+        pointer:{ x:event.clientX, y:event.clientY },
+        projectedPieces,
+      });
     }
 
     function updatePieceHover(nextSquare, event) {
