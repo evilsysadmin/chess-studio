@@ -549,28 +549,12 @@ jobs:
         shell: bash
         run: |
           {
-            echo '### Staging desplegado como una generación coherente'
+            echo '### Staging generation green'
             echo
-            echo '- Frontend: `https://staging.chess-studio.shadowops.dpdns.org`'
-            echo '- API: `https://api-staging.chess-studio.shadowops.dpdns.org/api`'
-            echo '- Workers AI: `https://ai-staging.shadowops.dpdns.org`'
-            echo '- Backend staging: `OCI A1 + Cloudflare Tunnel`'
-            echo '- Producción backend: `Render · sin cambios`'
-            echo '- Pages project: `chess-studio-staging`'
-            echo "- Generation SHA: \`$DEPLOY_SHA\`"
-            echo '- Backend SHA: `mismo generation SHA · verificado`'
-            echo '- Frontend SHA: `mismo generation SHA · verificado`'
-            echo '- Worker SHA: `mismo generation SHA · verificado por /health`'
-            echo '- Mongo staging: `ready`'
-            echo '- OCI runtime config: `CURRENT Vault + Git; runtime-sync manual para rotaciones`'
-            echo '- Canonical staging Render dependency: `none`'
-            echo '- OCI mutation ordering: `mutex nativo compartido con Terraform; sin polling a Actions API`'
-            echo '- Generation parity gate: `N/N/N · verificado dentro de cada smoke antes de Chromium`'
-            echo '- Live browser smoke: `War Room live + F5 authority · paralelos · OK`'
+            echo "- SHA: \`$DEPLOY_SHA\`"
+            echo '- Backend + frontend + Worker: `exact SHA verified`'
+            echo '- Browser smoke: `War Room live + F5 authority · OK`'
             if [[ "$GITHUB_EVENT_NAME" == workflow_run ]]; then
-              echo '- Production accreditation v2: `artifact inmutable emitido por este mismo staging verde`'
+              echo '- Production accreditation v2: `immutable artifact emitted`'
             fi
-            echo '- Visual evidence: `vídeos Chromium retenidos 7 días en staging-live-playwright-*`'
-            echo '- Identidades CI: `aleatorias por spec, eliminadas y verificadas`'
-            echo '- Deploy lanes: `Backend OCI + Pages + Worker arrancan en paralelo tras admission`'
           } >> "$GITHUB_STEP_SUMMARY"
