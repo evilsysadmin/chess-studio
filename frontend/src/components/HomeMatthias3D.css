@@ -122,7 +122,8 @@
   }
 
   .illustrated-home__matthias .home-matthias-3d img,
-  .illustrated-home__matthias .home-matthias-3d canvas {
+  .illustrated-home__matthias .home-matthias-3d canvas,
+  .illustrated-home__matthias.is-speaking .home-matthias-3d canvas {
     filter: none;
   }
 }

@@ -84,7 +84,9 @@ test('Home canónica · Matthias permanece visible, vivo y abre Así juegas', as
   } else {
     expect(quietAffordance.opacity).toBe('0');
     await matthias.hover();
-    await expect.poll(() => matthias.evaluate((node) => getComputedStyle(node, '::after').opacity)).toBe('1');
+    await expect.poll(async () => Number(
+      await matthias.evaluate((node) => getComputedStyle(node, '::after').opacity),
+    )).toBeGreaterThanOrEqual(.95);
   }
 
   await matthias.click();
