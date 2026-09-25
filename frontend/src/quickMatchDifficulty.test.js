@@ -90,12 +90,13 @@ describe('quick-match Elo chaser', () => {
   });
 
   it('holds the previous adaptive rival while it remains inside the hysteresis band', () => {
+    const previousDifficulty = difficultyForCpuRating(1000 + QUICK_MATCH_TARGET_LEAD_ELO);
     const activity = [
-      { gameId: 'previous', state: 'started', detail: 'adaptive-difficulty', difficulty: 55, mode: 'casual' },
+      { gameId: 'previous', state: 'started', detail: 'adaptive-difficulty', difficulty: previousDifficulty, mode: 'casual' },
     ];
-    const previousLead = cpuRatingForDifficulty(55) - 1000;
+    const previousLead = cpuRatingForDifficulty(previousDifficulty) - 1000;
     expect(Math.abs(previousLead - QUICK_MATCH_TARGET_LEAD_ELO)).toBeLessThanOrEqual(QUICK_MATCH_HYSTERESIS_ELO);
-    expect(difficultyForQuickMatchRating(1000, activity, 20)).toBe(55);
+    expect(difficultyForQuickMatchRating(1000, activity, 20)).toBe(previousDifficulty);
   });
 
   it('recalibrates when the previous opponent falls outside the Elo band', () => {
@@ -208,19 +209,20 @@ describe('quick-match Elo chaser', () => {
   });
 
   it('reports a factual post-game recalibration only when the opponent changes materially', () => {
+    const targetDifficulty = difficultyForCpuRating(1000 + QUICK_MATCH_TARGET_LEAD_ELO);
     const changed = quickMatchRecalibration(
       45,
       1000,
       [{ gameId: 'old', state: 'started', detail: 'adaptive-difficulty', difficulty: 45, mode: 'casual' }],
       20,
     );
-    expect(changed).toMatchObject({ difficulty: 56 });
+    expect(changed).toMatchObject({ difficulty: targetDifficulty });
     expect(changed.opponentRating - 1000).toBeGreaterThanOrEqual(25);
 
     const stable = quickMatchRecalibration(
-      55,
+      targetDifficulty,
       1000,
-      [{ gameId: 'steady', state: 'started', detail: 'adaptive-difficulty', difficulty: 55, mode: 'casual' }],
+      [{ gameId: 'steady', state: 'started', detail: 'adaptive-difficulty', difficulty: targetDifficulty, mode: 'casual' }],
       20,
     );
     expect(stable).toBeNull();

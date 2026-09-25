@@ -85,6 +85,15 @@ describe('ELO dinámico por fuerza efectiva de la CPU', () => {
     expect(cpuRatingForDifficulty(65)).toBeLessThan(cpuRatingForDifficulty(70));
   });
 
+  it('conserva los anchors empíricos conservadores del tramo 20–70', () => {
+    expect(cpuRatingForDifficulty(20)).toBe(850);
+    expect(cpuRatingForDifficulty(45)).toBe(1200);
+    expect(cpuRatingForDifficulty(60)).toBe(1375);
+    expect(cpuRatingForDifficulty(70)).toBe(1450);
+    expect(cpuRatingForDifficulty(90)).toBe(1600);
+    expect(cpuRatingForDifficulty(100)).toBe(1800);
+  });
+
   it('devuelve el delta exacto, rating rival y expectativa usados en el cálculo', () => {
     const base = { rating: 900, games: 20 };
     const win = ratingChangeDetails(base, 65, 1);
