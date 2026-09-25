@@ -1819,6 +1819,7 @@ def add_royal_cat(materials):
     sapphire. Head toward the camera."""
     fur = materials["cat_fur"]
     shade = materials["cat_shade"]
+    point = materials["cat_point"]  # colourpoint markings: mask, ears, paws, tail tip
     pink = materials["cat_pink"]
     dark = materials["cat_dark"]
     gold = materials["gold"]
@@ -1878,7 +1879,7 @@ def add_royal_cat(materials):
     # Definition: the haunch is a distinct thigh (a crease along its front edge) with the hind
     # foot peeking out under it, so the body stops reading as a marshmallow loaf.
     curve_tube("HOME_PROP_cat_thigh_crease", [(cx + 0.09, cy - 0.020, top + 0.170), (cx + 0.16, cy - 0.048, top + 0.130), (cx + 0.26, cy - 0.030, top + 0.070)], 0.0042, shade)
-    blob("HOME_PROP_cat_hind_foot", (cx + 0.17, cy - 0.085, top + 0.040), (0.078, 0.040, 0.034), (0, 0, -6), fur, (32, 16))
+    blob("HOME_PROP_cat_hind_foot", (cx + 0.17, cy - 0.085, top + 0.040), (0.078, 0.040, 0.034), (0, 0, -6), point, (32, 16))
     for k in (-1, 0, 1):
         curve_tube(f"HOME_PROP_cat_hind_toe_{k}", [(cx + 0.17 + k * 0.022, cy - 0.118, top + 0.048), (cx + 0.17 + k * 0.024, cy - 0.125, top + 0.030)], 0.0017, shade)
     # a short back-of-shoulder crease and a subtle spine line
@@ -1889,14 +1890,15 @@ def add_royal_cat(materials):
     blob("HOME_PROP_cat_head", (hx, hy, hz), (0.115, 0.105, 0.092), (8, 0, -10), fur, (56, 28))
     blob("HOME_PROP_cat_cheek_l", (hx - 0.058, hy - 0.048, hz - 0.030), (0.056, 0.048, 0.042), (0, 0, 0), fur, fine)
     blob("HOME_PROP_cat_cheek_r", (hx + 0.058, hy - 0.048, hz - 0.030), (0.056, 0.048, 0.042), (0, 0, 0), fur, fine)
-    blob("HOME_PROP_cat_muzzle", (hx, hy - 0.088, hz - 0.030), (0.042, 0.030, 0.028), (0, 0, 0), fur, fine)
+    blob("HOME_PROP_cat_muzzle", (hx, hy - 0.088, hz - 0.030), (0.042, 0.030, 0.028), (0, 0, 0), point, fine)
+    blob("HOME_PROP_cat_mask", (hx, hy - 0.075, hz + 0.004), (0.078, 0.030, 0.062), (8, 0, -10), point, (40, 20))
     blob("HOME_PROP_cat_chin", (hx, hy - 0.070, hz - 0.066), (0.030, 0.024, 0.020), (0, 0, 0), fur, (24, 12))
     for side, tag in ((-1, "l"), (1, "r")):
         # Ears: flat rounded triangles leaning outward (a cone read as a party hat).
         ex = hx + side * 0.072
         ez = hz + 0.070
         outer = [(ex - 0.048, ez), (ex + 0.048, ez), (ex + side * 0.030 + 0.004, ez + 0.100)]
-        flat_panel(f"HOME_PROP_cat_ear_{tag}", outer, hy - 0.004, 0.030, fur, bevel=0.010)
+        flat_panel(f"HOME_PROP_cat_ear_{tag}", outer, hy - 0.004, 0.030, point, bevel=0.010)
         inner_pts = [(ex - 0.028, ez + 0.010), (ex + 0.028, ez + 0.010), (ex + side * 0.020 + 0.003, ez + 0.070)]
         flat_panel(f"HOME_PROP_cat_ear_inner_{tag}", inner_pts, hy - 0.022, 0.014, pink, bevel=0.004)
         # Matthias's cat: asleep, but scowling. The eye is a narrow slit slanting down toward the
@@ -1922,7 +1924,9 @@ def add_royal_cat(materials):
                 materials["cat_fur"],
             )
         # front paw with toe grooves
-        blob(f"HOME_PROP_cat_paw_{tag}", (hx + side * 0.070, hy - 0.082, top + 0.032), (0.054, 0.078, 0.032), (0, 0, 0), fur, (32, 16))
+        blob(f"HOME_PROP_cat_paw_{tag}", (hx + side * 0.070, hy - 0.082, top + 0.032), (0.054, 0.078, 0.032), (0, 0, 0), point, (32, 16))
+        # foreleg from the chest to the paw, so the paw is attached to a leg
+        blob(f"HOME_PROP_cat_foreleg_{tag}", (hx + side * 0.075, hy + 0.045, top + 0.048), (0.042, 0.105, 0.040), (0, 0, side * 6), fur, (32, 16))
         for k in (-1, 1):
             cube(f"HOME_PROP_cat_toe_{tag}_{k}", (hx + side * 0.070 + k * 0.016, hy - 0.146, top + 0.038), (0.0012, 0.012, 0.0010), shade)
     # nose (small pink heart-ish triangle) and mouth
@@ -1949,8 +1953,12 @@ def add_royal_cat(materials):
         t = i / 15.0
         ang = math.radians(20 + t * 250)
         tail.append((cx + 0.02 + 0.29 * math.cos(ang), cy + 0.02 - 0.235 * math.sin(ang) - 0.01, top + 0.034 + 0.014 * math.sin(t * math.pi)))
-    curve_tube("HOME_PROP_cat_tail", tail, 0.040, fur)
-    sphere("HOME_PROP_cat_tail_tip", tail[-1], (0.044, 0.044, 0.038), fur, detail=(32, 16))
+    # Tapered tail as overlapping spheres (thick at the rump, slim at the tip) with a darker tip;
+    # a constant tube read as a balloon-animal sausage.
+    for n, t in enumerate(tail):
+        frac = n / max(1, len(tail) - 1)
+        rad = 0.048 - 0.022 * frac
+        sphere(f"HOME_PROP_cat_tail_seg_{n}", t, (rad * 1.1, rad, rad * 0.92), point if frac > 0.62 else fur, detail=(20, 10))
 
 
 def add_rug_knight_tapestry(materials):
@@ -3797,10 +3805,11 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             emission_strength=0.16,
             texture_profile="metal",
         ),
-        "cat_fur": material("HOME_MAT_cat_fur", (0.90, 0.87, 0.82, 1), roughness=0.94, emission=(0.05, 0.046, 0.042, 1), emission_strength=0.04, variation=0.05, variation_scale=14.0),
+        "cat_fur": material("HOME_MAT_cat_fur", (0.90, 0.87, 0.82, 1), roughness=0.94, emission=(0.05, 0.046, 0.042, 1), emission_strength=0.04, bump_scale=90.0, bump_strength=0.035, variation=0.06, variation_scale=14.0, texture_profile="textile"),
         "cat_shade": material("HOME_MAT_cat_shade", (0.66, 0.64, 0.63, 1), roughness=0.96, emission=(0.035, 0.033, 0.032, 1), emission_strength=0.08),
         "gilt_plain": material("HOME_MAT_gilt_plain", (0.50, 0.29, 0.045, 1), roughness=0.42, emission=(0.40, 0.20, 0.03, 1), emission_strength=0.05),
         "gilt_light": material("HOME_MAT_gilt_light", (0.78, 0.52, 0.13, 1), roughness=0.34, emission=(0.55, 0.32, 0.06, 1), emission_strength=0.08),
+        "cat_point": material("HOME_MAT_cat_point", (0.60, 0.54, 0.49, 1), roughness=0.95, emission=(0.03, 0.028, 0.026, 1), emission_strength=0.04),
         "cat_pink": material("HOME_MAT_cat_pink", (0.72, 0.36, 0.40, 1), roughness=0.7),
         "cat_dark": material("HOME_MAT_cat_dark", (0.03, 0.02, 0.02, 1), roughness=0.5),
         "sapphire": material("HOME_MAT_sapphire", (0.03, 0.12, 0.55, 1), roughness=0.18, emission=(0.03, 0.10, 0.50, 1), emission_strength=0.35),
@@ -3826,8 +3835,9 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         texture_profile="metal"),
         "board_light": material("HOME_MAT_board_light", (0.36, 0.22, 0.12, 1), roughness=0.60, texture_profile="wood"),
         "board_dark": material("HOME_MAT_board_dark", (0.045, 0.019, 0.009, 1), roughness=0.64, texture_profile="wood"),
-        "rug": material("HOME_MAT_rug", (0.235, 0.040, 0.026, 1), roughness=0.96, bump_scale=24.0, bump_strength=0.060, variation=0.09, variation_scale=8.2, texture_profile="textile"),
-        "rug_worn": material("HOME_MAT_rug_worn", (0.182, 0.034, 0.024, 1), roughness=0.98, bump_scale=20.0, bump_strength=0.040, variation=0.07, variation_scale=6.2, texture_profile="textile"),
+        "rug": material("HOME_MAT_rug", (0.235, 0.040, 0.026, 1), roughness=1.0, bump_scale=36.0, bump_strength=0.16, variation=0.17, variation_scale=9.0, texture_profile="textile"),
+        "rug_worn": material("HOME_MAT_rug_worn", (0.182, 0.034, 0.024, 1), roughness=1.0, bump_scale=30.0, bump_strength=0.10, variation=0.07, variation_scale=6.2, texture_profile="textile"),
+        "rug_fringe": material("HOME_MAT_rug_fringe", (0.50, 0.40, 0.28, 1), roughness=0.97),
         "rug_thread": material("HOME_MAT_rug_thread", (0.44, 0.255, 0.075, 1), roughness=0.82, metallic=0.03, bump_scale=24.0, bump_strength=0.035, variation=0.06, variation_scale=7.0, texture_profile="textile"),
         # Richer weave contrast so the drape reads as a heraldic banner rather
         # than a flat dark blob under the CONTINUAR label.
@@ -4067,7 +4077,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     # material. Randomly sized, rotated and raised "slab" faces used to sit on top of it: they
     # matched neither the grid nor each other, so the floor read as badly laid.
 
-    cube("HOME_ARCH_rug", (0, 1.95, 0.018), (3.55, 4.45, 0.018), materials["rug"], bevel=0.022)
+    cube("HOME_ARCH_rug", (0, 1.95, 0.030), (3.55, 4.45, 0.030), materials["rug"], bevel=0.030)  # a thick pile, rounded edges
     for idx, (wx, wy, sx, sy, rot) in enumerate((
         (-0.42, -0.95, 1.10, 0.22, -6.0),
         (0.36, 0.02, 0.94, 0.19, 4.0),
@@ -4075,7 +4085,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     )):
         wear = sphere(
             f"HOME_PROP_rug_wear_{idx}",
-            (wx, wy, 0.048),
+            (wx, wy, 0.062),
             (sx, sy, 0.008),
             materials["rug_worn"],
         )
@@ -4107,22 +4117,25 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
 
     # Woven ochre/gold thread reads as textile at grazing angles instead of
     # reflecting like a strip of polished brass laid on top of the rug.
-    rug_border = materials["rug_thread"]
-    cube("HOME_PROP_rug_border_front", (0, -2.34, 0.050), (3.52, 0.035, 0.014), rug_border)
-    cube("HOME_PROP_rug_border_back", (0, 6.24, 0.050), (3.52, 0.035, 0.014), rug_border)
-    cube("HOME_PROP_rug_border_left", (-3.50, 1.95, 0.050), (0.035, 4.28, 0.014), rug_border)
-    cube("HOME_PROP_rug_border_right", (3.50, 1.95, 0.050), (0.035, 4.28, 0.014), rug_border)
-    for idx, tx in enumerate((-3.20, -2.70, -2.20, -1.70, -1.20, -0.70, -0.20, 0.30, 0.80, 1.30, 1.80, 2.30, 2.80, 3.20)):
-        drift = 0.035 if idx % 2 == 0 else -0.035
-        curve_tube(
-            f"HOME_PROP_rug_front_tassel_{idx}",
-            [(tx, -2.36, 0.056), (tx + drift, -2.52, 0.046)],
-            0.010,
-            materials["brass_dark"],
-        )
-    for idx, x in enumerate((-2.95, -2.50, -2.05, -1.60, -1.15, -0.70, -0.25, 0.25, 0.70, 1.15, 1.60, 2.05, 2.50, 2.95)):
-        motif = cube(f"HOME_PROP_rug_front_motif_{idx}", (x, -2.22, 0.066), (0.040, 0.040, 0.008), rug_border)
-        motif.rotation_euler[2] = math.radians(45)
+    # No straight border/inner lines: they read as ruled CAD strokes on the rug. The pile is thick
+    # and rough (textile bump), aged with irregular worn patches, and finished with a real
+    # twisted fringe on both short ends.
+    for idx in range(64):
+        fx = -3.44 + idx * (6.88 / 63.0)
+        jitter = (_hash01(idx, 0, 6101) - 0.5) * 0.030
+        droop = 0.10 + _hash01(idx, 1, 6113) * 0.045
+        for tag, ey, sgn in (("front", -2.50, -1.0), ("back", 6.40, 1.0)):
+            curve_tube(
+                f"HOME_PROP_rug_fringe_{tag}_{idx}",
+                [(fx, ey, 0.052), (fx + jitter, ey + sgn * droop * 0.55, 0.044), (fx + jitter * 1.6, ey + sgn * droop, 0.030)],
+                0.0075,
+                materials["rug_fringe"],
+            )
+    for idx in range(9):
+        px = -2.9 + _hash01(idx, 2, 6131) * 5.8
+        py = -1.6 + _hash01(idx, 3, 6143) * 7.2
+        patch = sphere(f"HOME_PROP_rug_patina_{idx}", (px, py, 0.061), (0.30 + _hash01(idx, 4, 6151) * 0.45, 0.20 + _hash01(idx, 5, 6161) * 0.35, 0.004), materials["rug_worn"])
+        patch.rotation_euler[2] = math.radians(_hash01(idx, 6, 6173) * 180.0)
     add_rug_knight_tapestry(materials)
     add_royal_cat(materials)
     for row, y in enumerate((-0.42, 0.34)):
@@ -4134,12 +4147,6 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
                 materials["rug_thread"] if (row + col) % 3 == 0 else materials["stone_dark"],
             )
             motif.rotation_euler[2] = math.radians(45)
-    cube("HOME_PROP_rug_inner_front", (0, -0.86, 0.064), (2.86, 0.022, 0.008), materials["rug_thread"])
-    cube("HOME_PROP_rug_inner_left", (-2.86, 1.20, 0.064), (0.022, 2.62, 0.008), materials["rug_thread"])
-    cube("HOME_PROP_rug_inner_right", (2.86, 1.20, 0.064), (0.022, 2.62, 0.008), materials["rug_thread"])
-    cube("HOME_PROP_rug_inner_front_2", (0, -2.16, 0.065), (2.86, 0.018, 0.008), materials["rug_thread"])
-    cube("HOME_PROP_rug_inner_left_2", (-2.45, 0.70, 0.065), (0.018, 2.48, 0.008), materials["rug_thread"])
-    cube("HOME_PROP_rug_inner_right_2", (2.45, 0.70, 0.065), (0.018, 2.48, 0.008), materials["rug_thread"])
     rug_medallion_outer = cube(
         "HOME_PROP_rug_medallion_outer",
         (0.0, -0.72, 0.067),
