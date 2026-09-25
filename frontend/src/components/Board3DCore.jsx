@@ -439,7 +439,7 @@ function Board3DCanvas({
       const width = Math.max(280, host.clientWidth || 280);
       const height = Math.max(300, host.clientHeight || 300);
       renderer.setSize(width, height, false);
-      fitBoardCamera(camera, width, height, whiteSide, { profile: cameraProfile });
+      fitBoardCamera(camera, width, height, whiteSide, { profile: cameraProfile, variant: warRoomVariant });
       render();
     }
     resize();

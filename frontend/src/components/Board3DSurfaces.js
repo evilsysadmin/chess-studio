@@ -25,9 +25,37 @@ const DECOR_MICRO_SEEDS = Object.freeze({
   metal: 0xc0de,
 });
 
-export function getCameraFramingProfile(aspect) {
+export function getCameraFramingProfile(aspect, { variant = 'classic' } = {}) {
   const safeAspect = Math.max(0.35, Number(aspect) || 1);
   const wide = safeAspect >= 1.42;
+  const observatory = variant === 'v3';
+
+  if (observatory) {
+    return wide
+      ? {
+          version: 'v3-observatory-open-v1',
+          halfSpan: 6.25,
+          padding: 1.05,
+          minDistance: 15.2,
+          maxDistance: 36,
+          targetY: 2.48,
+          targetZ: -0.18,
+          cameraY: 6.4,
+          cameraZ: 10.8,
+        }
+      : {
+          version: 'v3-observatory-open-v1',
+          halfSpan: 6.60,
+          padding: 1.10,
+          minDistance: 16.2,
+          maxDistance: 32,
+          targetY: 1.42,
+          targetZ: -0.10,
+          cameraY: 8.4,
+          cameraZ: 11.2,
+        };
+  }
+
   return wide
     ? {
         // El tablero sigue siendo protagonista, pero la cámara mira más arriba y

@@ -64,6 +64,8 @@ test('War Room · canario visual de Hans físicamente en escena', async () => {
       configurable: true,
       get: () => 8,
     });
+    localStorage.setItem('chess-study-device-board-renderer-v1', '3d');
+    localStorage.setItem('chess-study-reduced-motion', '0');
   });
 
   const page = await context.newPage();

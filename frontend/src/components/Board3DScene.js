@@ -202,7 +202,7 @@ export function classRoomCameraFramingProfile({ aspect = 1, coarsePointer = fals
   });
 }
 
-export function fitBoardCamera(camera, width, height, whiteSide, { profile: requestedProfile = 'tactical' } = {}) {
+export function fitBoardCamera(camera, width, height, whiteSide, { profile: requestedProfile = 'tactical', variant = 'classic' } = {}) {
   const aspect = Math.max(0.35, width / Math.max(1, height));
   const coarsePointer = typeof window !== 'undefined'
     && Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
@@ -214,7 +214,7 @@ export function fitBoardCamera(camera, width, height, whiteSide, { profile: requ
     : getWarRoomMobileFramingProfile({ aspect, coarsePointer, viewportWidth });
   const profile = requestedProfile === 'classroom'
     ? classRoomCameraFramingProfile({ aspect, coarsePointer, viewportWidth })
-    : mobileProfile || getCameraFramingProfile(aspect);
+    : mobileProfile || getCameraFramingProfile(aspect, { variant });
   camera.fov = resolveBoard3DCameraFov(aspect, { mobile: Boolean(mobileProfile || (requestedProfile === 'classroom' && (coarsePointer || aspect < 1.12))) });
   const verticalFov = THREE.MathUtils.degToRad(camera.fov);
   const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * aspect);

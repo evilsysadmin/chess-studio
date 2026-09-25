@@ -31,6 +31,11 @@ async function seedGamesBeforeFire(page) {
 
 async function openFireGame(page) {
   await page.setViewportSize({ width: 1440, height: 960 });
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.addInitScript(() => {
+    localStorage.setItem('chess-study-device-board-renderer-v1', '3d');
+    localStorage.setItem('chess-study-reduced-motion', '0');
+  });
   await mockApi(page);
   await login(page);
   await seedGamesBeforeFire(page);

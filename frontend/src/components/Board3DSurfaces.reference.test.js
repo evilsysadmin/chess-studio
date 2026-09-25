@@ -86,4 +86,15 @@ describe('Board3D reference look', () => {
     expect(wide.targetZ).toBeLessThan(0);
     expect(wide.minDistance).toBeGreaterThanOrEqual(13);
   });
+
+  it('da a v3 un encuadre de observatorio más abierto sin cambiar v1/v2', () => {
+    const canonical = getCameraFramingProfile(1.9);
+    const observatory = getCameraFramingProfile(1.9, { variant: 'v3' });
+    const compactObservatory = getCameraFramingProfile(1.2, { variant: 'v3' });
+
+    expect(observatory.version).toBe('v3-observatory-open-v1');
+    expect(observatory.halfSpan).toBeGreaterThan(canonical.halfSpan + 0.6);
+    expect(observatory.targetY).toBeGreaterThan(canonical.targetY);
+    expect(compactObservatory.halfSpan).toBeGreaterThan(6.4);
+  });
 });

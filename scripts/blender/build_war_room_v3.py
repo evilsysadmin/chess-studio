@@ -111,8 +111,20 @@ def build_v3_palette():
             rough=0.47, coat=0.18, sheen=0.08, texture="leather", scale=46, bump=0.061,
         ),
         "night": base.material(
-            "WR3_MAT_celestial_blue", (0.002, 0.018, 0.120, 1),
-            rough=0.18, coat=0.52, emission=(0.006, 0.055, 0.25, 1), emission_strength=0.65,
+            "WR3_MAT_celestial_blue", (0.0015, 0.009, 0.052, 1),
+            rough=0.20, coat=0.44, emission=(0.004, 0.022, 0.090, 1), emission_strength=0.28,
+        ),
+        "moon": base.material(
+            "WR3_MAT_moon_glow", (0.92, 0.80, 0.56, 1),
+            rough=0.28, coat=0.20, emission=(1.0, 0.78, 0.42, 1), emission_strength=2.4,
+        ),
+        "horizon_far": base.material(
+            "WR3_MAT_horizon_far", (0.010, 0.026, 0.075, 1),
+            rough=0.84, coat=0.0,
+        ),
+        "horizon_near": base.material(
+            "WR3_MAT_horizon_near", (0.002, 0.012, 0.026, 1),
+            rough=0.90, coat=0.0,
         ),
         "aurora": base.material(
             "WR3_MAT_aurora_glass", (0.010, 0.235, 0.175, 1),
@@ -210,7 +222,7 @@ def build_curved_observatory(static, palette):
 
 
 def build_celestial_window(static, palette):
-    """Large moon-and-stars oculus: deliberately no orbital rings or chart lines."""
+    """Canonical moon-and-stars oculus with a quiet nocturnal landscape."""
     cx, cy, cz = 0.0, 7.58, 3.80
     glass = base.cylinder(
         "WR3_OBS_celestial_window", (cx, cy, cz), 2.15, 0.085,
@@ -226,16 +238,60 @@ def build_celestial_window(static, palette):
         palette["walnut_dark"], static, rotation=(math.pi / 2, 0, 0),
     )
 
-    crescent_center = Vector((-0.72, cy - 0.255, cz + 0.52))
+    # The accepted mock is a real night view, not a flat blue disc. Layered
+    # mountains and pines stay entirely inside the oculus and never reintroduce
+    # orbital/chart geometry.
+    mountain_specs = (
+        (-1.42, 2.45, 0.68, 0.60, -0.12),
+        (-0.82, 2.52, 0.86, 0.72, 0.09),
+        (-0.10, 2.50, 0.98, 0.82, -0.05),
+        (0.70, 2.48, 0.86, 0.68, 0.08),
+        (1.38, 2.44, 0.64, 0.55, -0.10),
+    )
+    for index, (mx, mz, sx, sz, tilt) in enumerate(mountain_specs):
+        mountain = base.cube(
+            f"WR3_OBS_window_mountain_{index}", (mx, cy - 0.27, mz),
+            (sx, 0.032, sz), palette["horizon_far"], static, bevel=0.04,
+        )
+        mountain.rotation_euler.y = math.radians(45) + tilt
+
+    pine_specs = (
+        (-1.72, 2.18, 0.34), (-1.50, 2.25, 0.46), (-1.23, 2.19, 0.31),
+        (-0.98, 2.27, 0.42), (0.96, 2.24, 0.39), (1.23, 2.19, 0.30),
+        (1.47, 2.27, 0.47), (1.72, 2.18, 0.33),
+    )
+    for index, (tx, tz, scale) in enumerate(pine_specs):
+        base.cube(
+            f"WR3_OBS_window_pine_trunk_{index}", (tx, cy - 0.295, tz - 0.18),
+            (0.028, 0.025, 0.20), palette["horizon_near"], static, bevel=0.01,
+        )
+        for tier in range(3):
+            crown = base.sphere(
+                f"WR3_OBS_window_pine_{index}_{tier}",
+                (tx, cy - 0.30, tz + 0.06 + tier * 0.18),
+                scale * (0.58 - tier * 0.10), palette["horizon_near"], static,
+                scale=(1.0, 0.12, 0.72),
+            )
+            crown.rotation_euler.y = math.radians(45)
+
+    for index, (lx, lz) in enumerate((
+        (-0.58, 2.18), (-0.32, 2.23), (-0.05, 2.20), (0.22, 2.24), (0.46, 2.18),
+    )):
+        base.sphere(
+            f"WR3_OBS_window_town_light_{index}", (lx, cy - 0.315, lz),
+            0.020, palette["moon"], static, scale=(1.0, 0.20, 1.0),
+        )
+
+    crescent_center = Vector((-0.72, cy - 0.325, cz + 0.52))
     crescent = base.cylinder(
-        "WR3_OBS_window_crescent", crescent_center, 0.38, 0.040,
-        palette["ivory"], static, vertices=64,
+        "WR3_OBS_window_crescent", crescent_center, 0.40, 0.040,
+        palette["moon"], static, vertices=64,
     )
     crescent.rotation_euler.x = math.pi / 2
     occluder = base.cylinder(
         "WR3_OBS_window_crescent_cutout",
         crescent_center + Vector((0.18, -0.028, 0.06)),
-        0.36, 0.046, palette["night"], static, vertices=64,
+        0.37, 0.046, palette["night"], static, vertices=64,
     )
     occluder.rotation_euler.x = math.pi / 2
 
@@ -246,19 +302,17 @@ def build_celestial_window(static, palette):
         (-0.30, 0.66, 0.021), (0.24, 0.78, 0.027), (0.82, 0.48, 0.021),
         (1.42, 0.28, 0.032), (-1.52, -0.08, 0.027), (-0.96, -0.36, 0.020),
         (-0.42, -0.04, 0.024), (0.18, -0.30, 0.032), (0.72, -0.02, 0.020),
-        (1.20, -0.42, 0.026), (-1.24, -0.82, 0.022), (-0.62, -1.04, 0.030),
-        (0.02, -0.78, 0.021), (0.56, -1.12, 0.026), (1.26, -0.94, 0.022),
+        (1.20, -0.42, 0.026),
     )
     for index, (dx, dz, radius) in enumerate(stars):
         base.sphere(
-            f"WR3_OBS_window_star_{index}", (cx + dx, cy - 0.25, cz + dz),
-            radius, palette["ivory"] if index % 4 else palette["brass"], static,
-            scale=(1.0, 0.24, 1.0),
+            f"WR3_OBS_window_star_{index}", (cx + dx, cy - 0.32, cz + dz),
+            radius, palette["moon"], static, scale=(1.0, 0.20, 1.0),
         )
 
     window_light = base.light(
-        "WR3_LIGHT_window", "AREA", (0, 5.95, 4.40), 330.0,
-        (0.22, 0.52, 1.0), static, size=4.8,
+        "WR3_LIGHT_window", "AREA", (0, 5.95, 4.40), 300.0,
+        (0.18, 0.38, 0.82), static, size=4.8,
     )
     base.look_at(window_light, (0, 0.2, 1.1))
     base.anchor("WR_ANCHOR_window_moonlight", (0, 6.0, 4.30), static)
@@ -645,6 +699,20 @@ def build_tower_entry(static, palette):
     rug.rotation_euler.z = angle
 
 
+def tune_v3_camera():
+    """Open the authored review camera to the accepted observatory composition."""
+    cam = bpy.data.objects.get("WR_CAMERA_hero")
+    if cam is None:
+        raise RuntimeError("War Room v3 review camera missing")
+    vertical_fov = math.radians(22.0)
+    distance = (6.25 / math.tan(vertical_fov / 2.0)) * 1.05
+    target = Vector((0.0, 0.18, 2.48))
+    direction = Vector((0.0, -10.8, 6.4)).normalized()
+    cam.location = target + direction * distance
+    base.look_at(cam, target)
+    cam["war_room_v3_framing"] = "canonical-observatory-open-v1"
+
+
 def build_lighting(static):
     scene = bpy.context.scene
     scene["war_room_variant"] = "v3-celestial-observatory"
@@ -687,6 +755,7 @@ def apply_v3_identity():
     build_celestial_globe(static, palette)
     build_tower_entry(static, palette)
     build_wall_lanterns(static, palette)
+    tune_v3_camera()
     build_lighting(static)
     bake_v3_weather()
     for obj in bpy.context.scene.objects:
