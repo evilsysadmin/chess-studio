@@ -107,6 +107,7 @@ def _surface_groups(path: str) -> set[str] | None:
     if lower in {
         "scripts/async_resilience_gate.mjs",
         "scripts/blender_required_scope.py",
+        "scripts/browser_quality_scope.py",
         "scripts/chess_rules_gate.mjs",
         "scripts/quality_scope.py",
         "scripts/workflow_debt_gate.py",
@@ -415,6 +416,9 @@ def self_test() -> None:
     quality_scope = classify(["scripts/quality_scope.py"])
     assert quality_scope.capture_groups == "none"
     assert not quality_scope.hans and not quality_scope.chesscom
+    browser_quality_scope = classify(["scripts/browser_quality_scope.py"])
+    assert browser_quality_scope.capture_groups == "none"
+    assert not browser_quality_scope.hans and not browser_quality_scope.chesscom
     chronicles_visual = classify(["e2e/chronicles-tactics-visual-artifact.spec.js"])
     assert chronicles_visual.capture_groups == "experiments"
     assert chronicles_visual.experiments_scope == "chronicles"

@@ -91,7 +91,7 @@ export default function TournamentScreen({ tournament, onPlay, onExit, onReset, 
 
         <details className="friendly-disclosure tournament-color-choice">
           <summary>Color · {colorLabel(color)}</summary>
-          <div className="friendly-disclosure-body"><ColorSelector value={color} onChange={setColor} /></div>
+          <div className="friendly-disclosure-body"><ColorSelector value={color} onChange={setColor} minTargetSize={44} /></div>
         </details>
 
         <button className="primary-btn friendly-main-cta" disabled={loading} onClick={() => onPlay(color)}>

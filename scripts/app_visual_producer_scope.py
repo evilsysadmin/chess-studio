@@ -194,6 +194,7 @@ def classify_path(path: str) -> set[str] | None:
             "scripts/css_architecture_manifest.json",
             "scripts/async_resilience_gate.mjs",
             "scripts/blender_required_scope.py",
+            "scripts/browser_quality_scope.py",
             "scripts/chess_rules_gate.mjs",
             "scripts/quality_scope.py",
             "scripts/workflow_debt_gate.py",
@@ -375,6 +376,7 @@ def self_test() -> None:
     assert classify(["frontend/src/labLaunchIntent.js"]) == "none"
     assert classify(["frontend/src/usePuzzleLaunchFlow.js"]) == "none"
     assert classify(["scripts/quality_scope.py"]) == "none"
+    assert classify(["scripts/browser_quality_scope.py"]) == "none"
     assert classify(["frontend/src/chroniclesOfMatthiasSpectralBishop.js"]) == "chronicles-tactics,chronicles-gameplay"
     assert classify(["scripts/blender/build_war_room_premium.py"]) == "warroom-core"
     assert classify(["scripts/blender/publish_war_room_v2_staging.py"]) == "warroom-core"
