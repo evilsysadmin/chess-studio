@@ -74,6 +74,27 @@ def _longest_win_streak(records: list[dict]) -> int:
     return best
 
 
+ADMIN_SUMMARY_PROFILE_KEYS = frozenset({
+    "chess-study-achievements",
+    "chess-study-analysis-archive",
+    "chess-study-career",
+    "chess-study-career-meta",
+    "chess-study-combat-history",
+    "chess-study-cpu-rivalry",
+    "chess-study-daily-challenge",
+    "chess-study-game-activity",
+    "chess-study-game-history",
+    "chess-study-personal-puzzles",
+    "chess-study-player-rating",
+    "chess-study-puzzle-best-streak",
+    "chess-study-puzzles-solved",
+    "chess-study-rating-history",
+    "chess-study-series-history",
+    "chess-study-tournament",
+    "chess-study-worst-move-cache",
+})
+
+
 def _extract_summary_stats(profile: Optional[dict]) -> dict:
     """Resumen enriquecido para el panel de admin.
 
