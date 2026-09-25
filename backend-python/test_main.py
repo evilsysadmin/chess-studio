@@ -2513,3 +2513,114 @@ def test_internal_billing_cost_ingest_rejects_malformed_signed_payload(monkeypat
         headers=_billing_headers(secret, body),
     )
     assert response.status_code == 400
+
+
+
+def test_list_games_recovers_only_authenticated_users_recent_savegames():
+    alice = raw_client.post(
+        "/api/auth/register",
+        json={"username": "games_list_alice", "password": "clave123456"},
+    )
+    bob = raw_client.post(
+        "/api/auth/register",
+        json={"username": "games_list_bob", "password": "clave123456"},
+    )
+    alice_headers = {"Authorization": f"Bearer {alice.json()['token']}"}
+    bob_headers = {"Authorization": f"Bearer {bob.json()['token']}"}
+
+    first = raw_client.post(
+        "/api/games",
+        json={"difficulty": 11, "color": "w"},
+        headers=alice_headers,
+    )
+    second = raw_client.post(
+        "/api/games",
+        json={"difficulty": 22, "color": "w"},
+        headers=alice_headers,
+    )
+    foreign = raw_client.post(
+        "/api/games",
+        json={"difficulty": 99, "color": "w"},
+        headers=bob_headers,
+    )
+    assert first.status_code == second.status_code == foreign.status_code == 201
+
+    listed = raw_client.get("/api/games", headers=alice_headers)
+
+    assert listed.status_code == 200
+    rows = listed.json()["games"]
+    assert [row["id"] for row in rows[:2]] == [second.json()["id"], first.json()["id"]]
+    assert {row["id"] for row in rows} == {first.json()["id"], second.json()["id"]}
+    assert all(row["id"] != foreign.json()["id"] for row in rows)
+    assert rows[0]["difficulty"] == 22
+    assert rows[0]["humanColor"] == "w"
+    assert rows[0]["ply"] == 0
+    assert rows[0]["updatedAt"]
+    assert raw_client.get("/api/games").status_code == 401
+
+
+def test_authenticated_password_change_revokes_old_token_and_returns_current_session():
+    registered = raw_client.post(
+        "/api/auth/register",
+        json={"username": "password_change_user", "password": "clave123456"},
+    )
+    assert registered.status_code == 201
+    old_token = registered.json()["token"]
+    old_headers = {"Authorization": f"Bearer {old_token}"}
+
+    changed = raw_client.put(
+        "/api/auth/password",
+        json={"currentPassword": "clave123456", "newPassword": "nueva-clave-987654"},
+        headers=old_headers,
+    )
+
+    assert changed.status_code == 200
+    new_token = changed.json()["token"]
+    assert new_token and new_token != old_token
+    assert raw_client.get("/api/auth/me", headers=old_headers).status_code == 401
+    assert raw_client.get(
+        "/api/auth/me",
+        headers={"Authorization": f"Bearer {new_token}"},
+    ).status_code == 200
+    assert raw_client.post(
+        "/api/auth/login",
+        json={"username": "password_change_user", "password": "clave123456"},
+    ).status_code == 401
+    assert raw_client.post(
+        "/api/auth/login",
+        json={"username": "password_change_user", "password": "nueva-clave-987654"},
+    ).status_code == 200
+
+
+def test_authenticated_password_change_rejects_wrong_current_password_without_revoking_session():
+    registered = raw_client.post(
+        "/api/auth/register",
+        json={"username": "password_change_wrong_current", "password": "clave123456"},
+    )
+    token = registered.json()["token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    changed = raw_client.put(
+        "/api/auth/password",
+        json={"currentPassword": "incorrecta", "newPassword": "otra-clave-987654"},
+        headers=headers,
+    )
+
+    assert changed.status_code == 401
+    assert raw_client.get("/api/auth/me", headers=headers).status_code == 200
+
+
+def test_authenticated_password_change_enforces_minimum_length():
+    registered = raw_client.post(
+        "/api/auth/register",
+        json={"username": "password_change_short", "password": "clave123456"},
+    )
+    headers = {"Authorization": f"Bearer {registered.json()['token']}"}
+
+    changed = raw_client.put(
+        "/api/auth/password",
+        json={"currentPassword": "clave123456", "newPassword": "corta"},
+        headers=headers,
+    )
+
+    assert changed.status_code == 400

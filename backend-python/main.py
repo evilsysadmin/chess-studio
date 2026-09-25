@@ -42,7 +42,7 @@ from email_service import send_password_reset_email
 from request_limits import RequestBodyLimitMiddleware
 from api_models import (
     ActivityHeartbeatRequest, ForgotPasswordRequest, LoginRequest, RegisterRequest, ResetPasswordRequest,
-    UpdateEmailRequest,
+    UpdateEmailRequest, UpdatePasswordRequest,
 )
 from narrative_api import build_narrative_router
 from matthias_daily_api import build_matthias_daily_router
@@ -821,6 +821,22 @@ async def reset_password(body: ResetPasswordRequest, request: Request):
     request.state.username = username
     await _touch_activity_best_effort(username, force=True)
     return {"token": create_token(username), "username": username}
+
+
+@app.put("/api/auth/password")
+@limiter.limit("10/hour")
+async def update_password(request: Request, body: UpdatePasswordRequest, username: str = Depends(get_current_user)):
+    if len(body.new_password) < NEW_PASSWORD_MIN_LENGTH:
+        raise HTTPException(400, f"La contraseña tiene que tener al menos {NEW_PASSWORD_MIN_LENGTH} caracteres.")
+    user = await ustore.get_user(username)
+    if not user or not verify_password(body.current_password, user.get("password_hash", "")):
+        raise HTTPException(401, "La contraseña actual no es correcta.")
+    version = await ustore.update_password(username, hash_password(body.new_password))
+    if version is None:
+        raise HTTPException(401, "La cuenta ya no existe.")
+    request.state.username = username
+    await _touch_activity_best_effort(username, force=True, request=request)
+    return {"token": create_token(username, version), "username": username}
 
 
 @app.put("/api/auth/email")
