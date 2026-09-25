@@ -209,6 +209,9 @@ for (const eventName of CAPTURE_EVENTS) {
         },
       });
       await login(page);
+    await page.evaluate(() => {
+      localStorage.setItem('chess-study-war-room-variant-v1', 'classic');
+    });
       await seedGamesBeforeEvent(page, eventName);
 
       await buttonWithVisibleText(page, 'Partida rápida').click();
@@ -217,6 +220,7 @@ for (const eventName of CAPTURE_EVENTS) {
 
       const canvas = page.locator('.board3d-main-canvas');
       await expect(canvas).toBeVisible({ timeout: 45_000 });
+      await expect(canvas).toHaveAttribute('data-war-room-variant', 'classic', { timeout: 10_000 });
       await expect(page.locator('[data-war-room-hans-game-id]').first()).toHaveAttribute(
         'data-war-room-hans-game-id',
         expectedGameId(eventName),

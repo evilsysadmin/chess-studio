@@ -76,6 +76,9 @@ test('War Room · canario visual de Hans físicamente en escena', async () => {
       },
     });
     await login(page);
+    await page.evaluate(() => {
+      localStorage.setItem('chess-study-war-room-variant-v1', 'classic');
+    });
     await seedGamesBeforeFire(page);
 
     await buttonWithVisibleText(page, 'Partida rápida').click();
@@ -92,6 +95,7 @@ test('War Room · canario visual de Hans físicamente en escena', async () => {
     await Promise.all([
       expect(warRoom).toBeVisible({ timeout: 45_000 }),
       expect(canvas).toBeVisible({ timeout: 45_000 }),
+      expect(canvas).toHaveAttribute('data-war-room-variant', 'classic', { timeout: 45_000 }),
       expect(canvas).toHaveAttribute('data-war-room-hans-scene-ready', 'true', { timeout: 60_000 }),
       expect(canvas).toHaveAttribute('data-war-room-hans-call-released', 'true', { timeout: 60_000 }),
       expect(canvas).toHaveAttribute('data-war-room-hans-reply-seen', 'true', { timeout: 75_000 }),
