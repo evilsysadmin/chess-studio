@@ -10,6 +10,9 @@ import { adaptiveDifficultyPresentation } from '../adaptiveDifficultyPresentatio
 import { fetchMatthiasBriefing } from '../matthiasDaily.js';
 import { matthiasTimeVisual } from '../matthiasVisuals.js';
 
+const QUICK_MATCH_TOUCH_TARGET = Object.freeze({ minHeight: 44, touchAction: 'manipulation' });
+const QUICK_MATCH_ICON_TARGET = Object.freeze({ minWidth: 44, minHeight: 44, touchAction: 'manipulation' });
+
 function colorLabel(color) {
   if (color === 'w' || color === 'white') return 'Blancas';
   if (color === 'b' || color === 'black') return 'Negras';
@@ -62,7 +65,7 @@ export default function QuickMatchModal({
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="army-card friendly-modal" role="dialog" aria-modal="true" aria-label="Configurar partida rápida" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 460 }}>
-        <button className="piece-info-close" onClick={onClose} aria-label="Cerrar">×</button>
+        <button className="piece-info-close" style={QUICK_MATCH_ICON_TARGET} onClick={onClose} aria-label="Cerrar">×</button>
         <span className="eyebrow">Partida rápida</span>
         <div className="combat-heading-row"><h3>Elige dificultad y juega</h3><MechanicTutorialHelp tutorialId="quick-match-rules" /></div>
         <p className="hint-text friendly-lead">Matthias está disponible. Los humanos, lamentablemente, también.</p>
@@ -109,7 +112,7 @@ export default function QuickMatchModal({
           </details>
         )}
 
-        {autoDifficulty && <button type="button" className="secondary-btn adaptive-manual-link" onClick={() => setAutoDifficulty(false)}>Elegir nivel manualmente</button>}
+        {autoDifficulty && <button type="button" className="secondary-btn adaptive-manual-link" style={QUICK_MATCH_TOUCH_TARGET} onClick={() => setAutoDifficulty(false)}>Elegir nivel manualmente</button>}
 
         {!autoDifficulty && handicap && (
           <p className="hint-text friendly-inline-note">
@@ -122,6 +125,7 @@ export default function QuickMatchModal({
         <button
           type="button"
           className="primary-btn friendly-main-cta"
+          style={QUICK_MATCH_TOUCH_TARGET}
           disabled={loading}
           onClick={() => onStart({ boardRenderer: selectedRenderer })}
         >
@@ -129,22 +133,23 @@ export default function QuickMatchModal({
         </button>
 
         {onOpenPvp && (
-          <button type="button" className="secondary-btn quick-match-pvp-link" onClick={onOpenPvp} disabled={loading}>
+          <button type="button" className="secondary-btn quick-match-pvp-link" style={QUICK_MATCH_TOUCH_TARGET} onClick={onOpenPvp} disabled={loading}>
             Jugar contra una persona · 1 vs 1
           </button>
         )}
 
         <details className="friendly-disclosure quick-match-settings">
-          <summary>
+          <summary style={QUICK_MATCH_TOUCH_TARGET}>
             Ajustes · {colorLabel(color)} · {timeControl?.label || 'Sin reloj'} · {series?.label || 'Una partida'}
           </summary>
           <div className="friendly-disclosure-body">
             <div className="quick-match-secondary-row">
-              <ColorSelector value={color} onChange={setColor} />
+              <ColorSelector value={color} onChange={setColor} minTargetSize={44} />
               <select
                 value={timeControlId}
                 onChange={(e) => setTimeControlId(e.target.value)}
                 className="time-control-select quick-match-clock-select"
+                style={QUICK_MATCH_TOUCH_TARGET}
                 aria-label="Ritmo de reloj"
               >
                 {TIME_CONTROLS.map((tc) => (
@@ -155,6 +160,7 @@ export default function QuickMatchModal({
                 value={seriesBestOf}
                 onChange={(e) => setSeriesBestOf(Number(e.target.value))}
                 className="time-control-select quick-match-series-select"
+                style={QUICK_MATCH_TOUCH_TARGET}
                 aria-label="Formato de serie"
               >
                 {SERIES_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
@@ -203,10 +209,10 @@ export default function QuickMatchModal({
             )}
 
             <details className="friendly-subdisclosure">
-              <summary>Reglas especiales</summary>
+              <summary style={QUICK_MATCH_TOUCH_TARGET}>Reglas especiales</summary>
               <div className="quick-match-advanced friendly-advanced-options">
-                <label><input type="checkbox" checked={suddenDeath} onChange={(e)=>setSuddenDeath(e.target.checked)} /> <b>Sudden Death</b> · 3 incidentes tácticos graves y pierdes.</label>
-                <label><input type="checkbox" checked={threatCheck} onChange={(e)=>setThreatCheck(e.target.checked)} /> <b>Control táctico</b> · ante un error grave, la CPU te pide identificar controles, capturas y amenazas.</label>
+                <label style={QUICK_MATCH_TOUCH_TARGET}><input type="checkbox" checked={suddenDeath} onChange={(e)=>setSuddenDeath(e.target.checked)} /> <b>Sudden Death</b> · 3 incidentes tácticos graves y pierdes.</label>
+                <label style={QUICK_MATCH_TOUCH_TARGET}><input type="checkbox" checked={threatCheck} onChange={(e)=>setThreatCheck(e.target.checked)} /> <b>Control táctico</b> · ante un error grave, la CPU te pide identificar controles, capturas y amenazas.</label>
               </div>
             </details>
           </div>

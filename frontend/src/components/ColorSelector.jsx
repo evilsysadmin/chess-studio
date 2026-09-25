@@ -5,7 +5,7 @@ const OPTIONS = [
   { id: 'random', label: 'Aleatorio' },
 ];
 
-export default function ColorSelector({ value, onChange }) {
+export default function ColorSelector({ value, onChange, minTargetSize = null }) {
   return (
     <div className="color-row" role="radiogroup" aria-label="Elegir color">
       {OPTIONS.map((o) => (
@@ -15,6 +15,7 @@ export default function ColorSelector({ value, onChange }) {
           role="radio"
           aria-checked={value === o.id}
           className={`color-btn ${value === o.id ? 'active' : ''}`}
+          style={minTargetSize ? { minHeight: minTargetSize, touchAction: 'manipulation' } : undefined}
           onClick={() => onChange(o.id)}
         >
           {o.label}
