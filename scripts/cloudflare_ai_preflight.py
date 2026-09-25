@@ -207,7 +207,7 @@ def static_check() -> list[str]:
         ("github.event.workflow_run.conclusion == 'success'", "promotion requires successful staging AI"),
         ("github.event.workflow_run.event == 'workflow_run'", "promotion rejects manual AI runs"),
         ("actions: write", "promotion self-cancel permission"),
-        ("actions/download-artifact@v6", "promotion downloads immutable accreditation"),
+        ("actions/download-artifact@v8", "promotion downloads immutable accreditation"),
         ("staging-promotion-accreditation", "promotion accreditation artifact name"),
         ("run-id: ${{ github.event.workflow_run.id }}", "promotion artifact bound to exact triggering run"),
         ("github-token: ${{ secrets.GITHUB_TOKEN }}", "promotion cross-run artifact permission"),
