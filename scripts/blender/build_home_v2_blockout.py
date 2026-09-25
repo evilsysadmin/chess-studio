@@ -2235,7 +2235,7 @@ def add_table_and_board(materials):
         metal,
     )
 
-    mug_x, mug_y = 3.22, 1.40
+    mug_x, mug_y = 3.10, -0.40  # front edge, right end: clear of the hearth fire behind it
     cylinder("HOME_PROP_table_mug_saucer", (mug_x, mug_y, top + 0.008), 0.175, 0.016, ceramic, vertices=32)
     cylinder("HOME_PROP_table_mug_body", (mug_x, mug_y, top + 0.095), 0.108, 0.150, ceramic, vertices=32)
     cylinder("HOME_PROP_table_mug_rim", (mug_x, mug_y, top + 0.172), 0.115, 0.008, ceramic, vertices=32)
