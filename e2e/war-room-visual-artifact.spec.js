@@ -424,6 +424,10 @@ async function captureWarRoomHealth(page, label) {
 
 async function openCanonicalWarRoom(page, { variant = 'classic' } = {}) {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.addInitScript(() => {
+    window.localStorage.setItem('chess-study-device-board-renderer-v1', '3d');
+    window.localStorage.setItem('chess-study-reduced-motion', '0');
+  });
   if (variant === 'v2') {
     await installWarRoomV2RevisionRoute(page);
   }
@@ -445,6 +449,10 @@ async function openCanonicalWarRoom(page, { variant = 'classic' } = {}) {
     await page.evaluate((key) => window.localStorage.getItem(key), WAR_ROOM_VARIANT_STORAGE_KEY),
     'requested War Room variant must survive application bootstrap',
   ).toBe(variant);
+  expect(
+    await page.evaluate(() => window.localStorage.getItem('chess-study-device-board-renderer-v1')),
+    'canonical War Room capture must bootstrap in 3D',
+  ).toBe('3d');
 
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
