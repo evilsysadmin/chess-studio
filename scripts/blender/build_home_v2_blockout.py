@@ -1486,12 +1486,20 @@ def add_royal_cat(materials):
     fine = (48, 24)
 
     # Royal cushion: rounded velvet slab, gilt piping and four tassels.
-    cube("HOME_PROP_cat_cushion", (cx, cy, 0.052), (0.42, 0.34, 0.040), materials["banner"], bevel=0.030)
-    cube("HOME_PROP_cat_cushion_piping", (cx, cy, 0.093), (0.425, 0.345, 0.008), gold, bevel=0.006)
-    for sx in (-1, 1):
-        for sy in (-1, 1):
-            sphere(f"HOME_PROP_cat_tassel_knob_{sx}_{sy}", (cx + sx * 0.435, cy + sy * 0.350, 0.062), (0.026, 0.026, 0.026), gold)
-            cone(f"HOME_PROP_cat_tassel_{sx}_{sy}", (cx + sx * 0.455, cy + sy * 0.370, 0.030), 0.024, 0.008, 0.06, gold, vertices=10)
+    # Plush crimson pillow (a slab read as a wooden tray): domed velvet, gilt piping round the
+    # seam, four tassels on the outline and a button tuft.
+    sphere("HOME_PROP_cat_cushion", (cx, cy, 0.050), (0.43, 0.35, 0.052), materials["plume_red"], detail=(48, 20))
+    curve_tube(
+        "HOME_PROP_cat_cushion_piping",
+        [(cx + 0.428 * math.cos(i * math.tau / 48), cy + 0.348 * math.sin(i * math.tau / 48), 0.050) for i in range(49)],
+        0.011,
+        gold,
+    )
+    for n, ang in enumerate((45, 135, 225, 315)):
+        a = math.radians(ang)
+        tx, ty = cx + 0.44 * math.cos(a), cy + 0.355 * math.sin(a)
+        sphere(f"HOME_PROP_cat_tassel_knob_{n}", (tx, ty, 0.050), (0.024, 0.024, 0.024), gold, detail=(16, 8))
+        cone(f"HOME_PROP_cat_tassel_{n}", (tx + 0.02 * math.cos(a), ty + 0.02 * math.sin(a), 0.020), 0.022, 0.008, 0.06, gold, vertices=10)
 
     def blob(name, loc, scale, rot=(0.0, 0.0, 0.0), mat=fur, detail=fine):
         obj = sphere(name, loc, scale, mat, detail=detail)
@@ -1526,6 +1534,15 @@ def add_royal_cat(materials):
     blob("HOME_PROP_cat_haunch", (cx + 0.19, cy + 0.10, top + 0.105), (0.16, 0.15, 0.115), (0, 0, -10), fur, (48, 24))
     blob("HOME_PROP_cat_chest", (cx - 0.16, cy - 0.06, top + 0.095), (0.15, 0.13, 0.10), (0, 0, 12), fur, (48, 24))
 
+    # Definition: the haunch is a distinct thigh (a crease along its front edge) with the hind
+    # foot peeking out under it, so the body stops reading as a marshmallow loaf.
+    curve_tube("HOME_PROP_cat_thigh_crease", [(cx + 0.09, cy - 0.020, top + 0.170), (cx + 0.16, cy - 0.048, top + 0.130), (cx + 0.26, cy - 0.030, top + 0.070)], 0.0042, shade)
+    blob("HOME_PROP_cat_hind_foot", (cx + 0.17, cy - 0.085, top + 0.040), (0.078, 0.040, 0.034), (0, 0, -6), fur, (32, 16))
+    for k in (-1, 0, 1):
+        curve_tube(f"HOME_PROP_cat_hind_toe_{k}", [(cx + 0.17 + k * 0.022, cy - 0.118, top + 0.048), (cx + 0.17 + k * 0.024, cy - 0.125, top + 0.030)], 0.0017, shade)
+    # a short back-of-shoulder crease and a subtle spine line
+    curve_tube("HOME_PROP_cat_shoulder_crease", [(cx - 0.06, cy - 0.040, top + 0.200), (cx - 0.03, cy - 0.100, top + 0.150), (cx - 0.05, cy - 0.150, top + 0.090)], 0.0038, shade)
+
     # Head resting on the front paws, turned to the camera.
     hx, hy, hz = cx - 0.22, cy - 0.22, top + 0.085
     blob("HOME_PROP_cat_head", (hx, hy, hz), (0.115, 0.105, 0.092), (8, 0, -10), fur, (56, 28))
@@ -1552,7 +1569,7 @@ def add_royal_cat(materials):
         curve_tube(
             f"HOME_PROP_cat_brow_{tag}",
             [(hx + side * 0.014, hy - 0.099, hz + 0.024), (hx + side * 0.050, hy - 0.104, hz + 0.045), (hx + side * 0.090, hy - 0.096, hz + 0.062)],
-            0.0060,
+            0.0085,
             shade,
         )
         blob(f"HOME_PROP_cat_brow_ridge_{tag}", (hx + side * 0.050, hy - 0.086, hz + 0.038), (0.046, 0.020, 0.014), (0, side * -24, side * 10), fur, (24, 12))
@@ -1571,6 +1588,8 @@ def add_royal_cat(materials):
     blob("HOME_PROP_cat_nose", (hx, hy - 0.112, hz - 0.010), (0.016, 0.010, 0.011), (0, 0, 0), pink, (16, 8))
     # grumpy frown: the mouth is an inverted arc, corners pulled down
     curve_tube("HOME_PROP_cat_mouth", [(hx - 0.030, hy - 0.108, hz - 0.048), (hx - 0.014, hy - 0.113, hz - 0.036), (hx, hy - 0.114, hz - 0.030), (hx + 0.014, hy - 0.113, hz - 0.036), (hx + 0.030, hy - 0.108, hz - 0.048)], 0.0024, dark)
+    # one small fang peeks out under the scowl
+    cone("HOME_PROP_cat_fang", (hx + 0.027, hy - 0.108, hz - 0.052), 0.0012, 0.0062, 0.016, materials["cat_fur"], vertices=8)
     curve_tube("HOME_PROP_cat_philtrum", [(hx, hy - 0.113, hz - 0.018), (hx, hy - 0.114, hz - 0.030)], 0.0016, dark)
 
     # Gilt collar with a sapphire pendant.
@@ -3485,7 +3504,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             emission_strength=0.16,
             texture_profile="metal",
         ),
-        "cat_fur": material("HOME_MAT_cat_fur", (0.86, 0.84, 0.80, 1), roughness=0.94, emission=(0.05, 0.046, 0.042, 1), emission_strength=0.10, variation=0.05, variation_scale=14.0),
+        "cat_fur": material("HOME_MAT_cat_fur", (0.90, 0.87, 0.82, 1), roughness=0.94, emission=(0.05, 0.046, 0.042, 1), emission_strength=0.04, variation=0.05, variation_scale=14.0),
         "cat_shade": material("HOME_MAT_cat_shade", (0.66, 0.64, 0.63, 1), roughness=0.96, emission=(0.035, 0.033, 0.032, 1), emission_strength=0.08),
         "cat_pink": material("HOME_MAT_cat_pink", (0.72, 0.36, 0.40, 1), roughness=0.7),
         "cat_dark": material("HOME_MAT_cat_dark", (0.03, 0.02, 0.02, 1), roughness=0.5),
