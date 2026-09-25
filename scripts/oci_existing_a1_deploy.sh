@@ -129,6 +129,10 @@ enable_deploy_watcher() {
      systemctl is-active --quiet chess-studio-deploy-watcher.service; then
     echo 'OCI_DEPLOY_WATCHER state=enabled'
   else
+    # Never leave a broken watcher in Restart=always purgatory. The Oracle
+    # Run Command fallback remains authoritative until the next successful
+    # staging deploy refreshes and starts the watcher cleanly.
+    systemctl disable --now chess-studio-deploy-watcher.service >/dev/null 2>&1 || true
     rm -f "$deploy_watcher_enable_marker"
     echo 'OCI_DEPLOY_WATCHER state=fallback-only' >&2
   fi
