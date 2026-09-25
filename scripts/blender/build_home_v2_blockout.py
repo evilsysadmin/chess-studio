@@ -1883,6 +1883,14 @@ def add_royal_cat(materials):
     for k in (-1, 0, 1):
         curve_tube(f"HOME_PROP_cat_hind_toe_{k}", [(cx + 0.17 + k * 0.022, cy - 0.118, top + 0.048), (cx + 0.17 + k * 0.024, cy - 0.125, top + 0.030)], 0.0017, shade)
     # a short back-of-shoulder crease and a subtle spine line
+    # Break the egg silhouette: a raised shoulder blade, a visible spine ridge, a lifted hip and a
+    # defined neck, so the outline has landmarks and does not read as one smooth balloon.
+    blob("HOME_PROP_cat_shoulder_blade", (cx - 0.11, cy + 0.02, top + 0.235), (0.085, 0.075, 0.060), (0, 0, 20), fur, (32, 16))
+    blob("HOME_PROP_cat_hip", (cx + 0.22, cy + 0.11, top + 0.222), (0.090, 0.085, 0.070), (0, 0, -20), fur, (32, 16))
+    curve_tube("HOME_PROP_cat_spine", [(cx - 0.16, cy + 0.02, top + 0.236), (cx - 0.02, cy + 0.05, top + 0.252), (cx + 0.14, cy + 0.08, top + 0.244), (cx + 0.24, cy + 0.11, top + 0.232)], 0.014, fur)
+    blob("HOME_PROP_cat_neck", (cx - 0.20, cy - 0.10, top + 0.150), (0.100, 0.095, 0.085), (0, 0, 10), fur, (32, 16))
+    curve_tube("HOME_PROP_cat_ribs", [(cx - 0.02, cy - 0.120, top + 0.120), (cx + 0.06, cy - 0.140, top + 0.100)], 0.0030, shade)
+    curve_tube("HOME_PROP_cat_ribs_2", [(cx + 0.06, cy - 0.128, top + 0.140), (cx + 0.13, cy - 0.150, top + 0.110)], 0.0030, shade)
     curve_tube("HOME_PROP_cat_shoulder_crease", [(cx - 0.06, cy - 0.040, top + 0.200), (cx - 0.03, cy - 0.100, top + 0.150), (cx - 0.05, cy - 0.150, top + 0.090)], 0.0038, shade)
 
     # Head resting on the front paws, turned to the camera.
@@ -2564,14 +2572,14 @@ def add_table_and_board(materials):
     cylinder("HOME_PROP_table_mug_coffee", (mug_x, mug_y, top + 0.170), 0.098, 0.004, materials["dark"], vertices=32)
     # Matthias's brand, discreet: a tiny fierce knight inked on the front of the cup (same bust as
     # the banners), with its eye and nostril left as bare porcelain.
-    brand_scale = 0.095
+    brand_scale = 0.140
 
     def brand(pts):
         return [(mug_x + (u + 0.035) * brand_scale, top + 0.100 + (v - 0.545) * brand_scale) for u, v in pts]
 
-    flat_panel("HOME_PROP_table_mug_brand", brand(KNIGHT_REAL), mug_y - 0.0985, 0.003, materials["book_black"], bevel=0.0004)
+    flat_panel("HOME_PROP_table_mug_brand", brand(KNIGHT_REAL), mug_y - 0.0985, 0.003, materials["gilt_plain"], bevel=0.0004)
     for cut in (0, 1):
-        flat_panel(f"HOME_PROP_table_mug_brand_cut_{cut}", brand(KNIGHT_REAL_CUTS[cut]), mug_y - 0.1005, 0.0015, ceramic, bevel=0.0002)
+        flat_panel(f"HOME_PROP_table_mug_brand_cut_{cut}", brand(KNIGHT_REAL_CUTS[cut]), mug_y - 0.1005, 0.0015, materials["velvet_dark"], bevel=0.0002)
     curve_tube(
         "HOME_PROP_table_mug_handle",
         [(mug_x + 0.104, mug_y, top + 0.145), (mug_x + 0.200, mug_y, top + 0.120), (mug_x + 0.190, mug_y, top + 0.060), (mug_x + 0.104, mug_y, top + 0.035)],
@@ -3847,7 +3855,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "board_dark": material("HOME_MAT_board_dark", (0.045, 0.019, 0.009, 1), roughness=0.64, texture_profile="wood"),
         "rug": material("HOME_MAT_rug", (0.235, 0.040, 0.026, 1), roughness=1.0, bump_scale=36.0, bump_strength=0.16, variation=0.17, variation_scale=9.0, texture_profile="textile"),
         "rug_worn": material("HOME_MAT_rug_worn", (0.182, 0.034, 0.024, 1), roughness=1.0, bump_scale=30.0, bump_strength=0.10, variation=0.07, variation_scale=6.2, texture_profile="textile"),
-        "rug_fringe": material("HOME_MAT_rug_fringe", (0.50, 0.40, 0.28, 1), roughness=0.97),
+        "rug_fringe": material("HOME_MAT_rug_fringe", (0.30, 0.20, 0.12, 1), roughness=1.0),
         "rug_thread": material("HOME_MAT_rug_thread", (0.44, 0.255, 0.075, 1), roughness=0.82, metallic=0.03, bump_scale=24.0, bump_strength=0.035, variation=0.06, variation_scale=7.0, texture_profile="textile"),
         # Richer weave contrast so the drape reads as a heraldic banner rather
         # than a flat dark blob under the CONTINUAR label.
@@ -3958,9 +3966,9 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             variation=0.08,
             variation_scale=5.2,
         ),
-        "garden_far": material("HOME_MAT_garden_far", (0.010, 0.026, 0.050, 1), roughness=0.9, emission=(0.012, 0.032, 0.064, 1), emission_strength=0.10),
-        "garden_mid": material("HOME_MAT_garden_mid", (0.006, 0.026, 0.022, 1), roughness=0.9, emission=(0.008, 0.030, 0.030, 1), emission_strength=0.05),
-        "garden_near": material("HOME_MAT_garden_near", (0.016, 0.046, 0.030, 1), roughness=0.9, emission=(0.016, 0.050, 0.034, 1), emission_strength=0.06),
+        "garden_far": material("HOME_MAT_garden_far", (0.008, 0.016, 0.030, 1), roughness=0.9, emission=(0.008, 0.016, 0.034, 1), emission_strength=0.05),
+        "garden_mid": material("HOME_MAT_garden_mid", (0.004, 0.018, 0.012, 1), roughness=0.9, emission=(0.004, 0.016, 0.010, 1), emission_strength=0.03),
+        "garden_near": material("HOME_MAT_garden_near", (0.05, 0.13, 0.06, 1), roughness=0.9, emission=(0.05, 0.14, 0.07, 1), emission_strength=0.20),
         "garden_path": material("HOME_MAT_garden_path", (0.30, 0.31, 0.30, 1), roughness=0.8, emission=(0.22, 0.24, 0.30, 1), emission_strength=0.16),
         "moon": material(
             "HOME_MAT_moon",
@@ -4133,7 +4141,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
     for idx in range(64):
         fx = -3.44 + idx * (6.88 / 63.0)
         jitter = (_hash01(idx, 0, 6101) - 0.5) * 0.030
-        droop = 0.10 + _hash01(idx, 1, 6113) * 0.045
+        droop = 0.075 + _hash01(idx, 1, 6113) * 0.085
         for tag, ey, sgn in (("front", -2.50, -1.0), ("back", 6.40, 1.0)):
             curve_tube(
                 f"HOME_PROP_rug_fringe_{tag}_{idx}",
