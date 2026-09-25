@@ -2328,11 +2328,22 @@ def add_table_and_board(materials):
         metal,
     )
 
-    mug_x, mug_y = 3.10, -0.40  # front edge, right end: clear of the hearth fire behind it
-    cylinder("HOME_PROP_table_mug_saucer", (mug_x, mug_y, top + 0.008), 0.175, 0.016, ceramic, vertices=32)
-    cylinder("HOME_PROP_table_mug_body", (mug_x, mug_y, top + 0.095), 0.108, 0.150, ceramic, vertices=32)
-    cylinder("HOME_PROP_table_mug_rim", (mug_x, mug_y, top + 0.172), 0.115, 0.008, ceramic, vertices=32)
-    cylinder("HOME_PROP_table_mug_coffee", (mug_x, mug_y, top + 0.164), 0.096, 0.004, materials["dark"], vertices=32)
+    mug_x, mug_y = 3.10, -0.30  # front edge, right end (clear of the bevelled edge and of the fire)
+    # Saucer: a foot ring, a shallow dish and a raised lip, so it reads as porcelain and not as
+    # a white smear on the dark table; the mug has a foot ring and a slightly tapered body.
+    cylinder("HOME_PROP_table_mug_saucer_foot", (mug_x, mug_y, top + 0.004), 0.085, 0.008, ceramic, vertices=32)
+    cylinder("HOME_PROP_table_mug_saucer", (mug_x, mug_y, top + 0.013), 0.172, 0.012, ceramic, vertices=40)
+    cylinder("HOME_PROP_table_mug_saucer_well", (mug_x, mug_y, top + 0.0205), 0.118, 0.003, materials["ceramic"], vertices=40)
+    curve_tube(
+        "HOME_PROP_table_mug_saucer_lip",
+        [(mug_x + 0.166 * math.cos(i * math.tau / 40), mug_y + 0.166 * math.sin(i * math.tau / 40), top + 0.021) for i in range(41)],
+        0.0065,
+        ceramic,
+    )
+    cylinder("HOME_PROP_table_mug_foot", (mug_x, mug_y, top + 0.026), 0.078, 0.014, ceramic, vertices=32)
+    cone("HOME_PROP_table_mug_body", (mug_x, mug_y, top + 0.103), 0.092, 0.108, 0.150, ceramic, vertices=32)
+    cylinder("HOME_PROP_table_mug_rim", (mug_x, mug_y, top + 0.180), 0.116, 0.010, ceramic, vertices=32)
+    cylinder("HOME_PROP_table_mug_coffee", (mug_x, mug_y, top + 0.170), 0.098, 0.004, materials["dark"], vertices=32)
     curve_tube(
         "HOME_PROP_table_mug_handle",
         [(mug_x + 0.104, mug_y, top + 0.145), (mug_x + 0.200, mug_y, top + 0.120), (mug_x + 0.190, mug_y, top + 0.060), (mug_x + 0.104, mug_y, top + 0.035)],
