@@ -8,7 +8,7 @@ War Room v2 and v3 use deterministic Blender generators for their static room sh
 
 - `build_war_room_premium.py` owns the v2 room.
 - `build_war_room_v3.py` owns the v3 Celestial Observatory. It reuses only the proven board anchor and camera profile; visible v2 architecture is forbidden by validation. It retains an independent art contract, publisher, R2 prefix and Blender gate.
-- v3 has one cylindrical cast-iron stove/fireplace. Its right bay belongs to a brass observatory telescope and the tower entry; a second hearth or its practical-light anchor is a regression.
+- v3 has one rectangular glass-front cast-iron stove/fireplace, matching the canonical mock. Its right bay belongs to a brass observatory telescope and the tower entry; a second hearth or its practical-light anchor is a regression.
 - v3 follows the 2026-09-25 canonical observatory mock: curved cream/teal tower walls, a green-and-cream marble checkerboard floor, circular green command rug, moon-and-stars oculus with no orbital rings, one inward-facing cast-iron stove, brass telescope, leather reading chair, compact chess-treatise bookcase, warm wall lanterns and a teal/copper tower door that visibly meets the floor. Overhead canopy bars/ribs and suspended armillary clutter are retired regressions. Its teal, travertine, walnut, brass and celestial-blue palette must not collapse back into v2's rectangular walnut hall.
 - Runtime aliases are independent: `war-room/v2/...` and `war-room/v3/...`. Never publish one variant over the other variant's alias.
 

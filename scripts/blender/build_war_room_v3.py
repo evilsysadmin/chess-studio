@@ -367,56 +367,140 @@ def build_round_command_table(static, palette):
 
 
 def build_single_stove(static, palette):
-    """One compact circular fireplace; no mirrored hearth or second anchor."""
+    """Canonical rectangular cast-iron stove with front glass and chimney."""
     x, y = -6.35, 4.30
-    base.cylinder("WR3_OBS_stove_body", (x, y, 1.56), 0.86, 1.72,
-                  palette["iron"], static, vertices=64)
-    base.cylinder("WR3_OBS_stove_crown", (x, y, 2.47), 0.96, 0.12,
-                  palette["brass_dark"], static, vertices=64)
-    base.cylinder("WR3_OBS_stove_plinth", (x, y, 0.65), 1.02, 0.14,
-                  palette["stone"], static, vertices=64)
-    for side in (-1, 1):
-        base.cube(f"WR3_OBS_stove_leg_{side}", (x + side * 0.55, y, 0.43),
-                  (0.10, 0.18, 0.26), palette["iron"], static, bevel=0.07)
-
-    # Aim the door/fire at the tactical centre rather than merely canting the
-    # flame silhouette: from the stove this is a visible ~56-degree turn.
     face_angle = math.atan2(-x, y)
     face = Vector((math.sin(face_angle), -math.cos(face_angle), 0.0))
     tangent = Vector((math.cos(face_angle), math.sin(face_angle), 0.0))
-    door_center = Vector((x, y, 1.58)) + face * 0.86
-    door = cylinder_between("WR3_OBS_stove_door", door_center - face * 0.05,
-                            door_center + face * 0.05, 0.62,
-                            palette["charcoal"], static, vertices=64)
-    base.torus("WR3_OBS_stove_door_ring", Vector((x, y, 1.58)) + face * 0.93,
-               0.63, 0.055, palette["brass"], static,
-               rotation=(math.pi / 2, 0, face_angle))
-    fire_center = Vector((x, y, 1.45)) + face * 0.995 + tangent * 0.05
-    flame_body = base.sphere("WR3_OBS_stove_flame_body", fire_center,
-                             0.27, palette["fire"], static, scale=(1.48, 0.22, 0.48))
-    flame_body.rotation_euler = (0, math.radians(9), face_angle)
+
+    body_center = Vector((x, y, 1.52))
+    body = base.cube(
+        "WR3_OBS_stove_body", body_center,
+        (0.96, 0.64, 1.02), palette["iron"], static, bevel=0.13,
+    )
+    body.rotation_euler.z = face_angle
+    crown = base.cube(
+        "WR3_OBS_stove_crown", (x, y, 2.60),
+        (1.04, 0.72, 0.10), palette["brass_dark"], static, bevel=0.08,
+    )
+    crown.rotation_euler.z = face_angle
+    plinth = base.cube(
+        "WR3_OBS_stove_plinth", (x, y, 0.42),
+        (1.06, 0.74, 0.10), palette["stone"], static, bevel=0.08,
+    )
+    plinth.rotation_euler.z = face_angle
+
+    for side in (-1, 1):
+        for depth in (-1, 1):
+            foot = body_center + tangent * (side * 0.70) + face * (depth * 0.34)
+            base.cylinder(
+                f"WR3_OBS_stove_leg_{side}_{depth}",
+                (foot.x, foot.y, 0.28), 0.075, 0.36,
+                palette["iron"], static, vertices=24,
+            )
+
+    # Deep charcoal opening and a brass-edged glass door aimed at the board.
+    opening_center = body_center + face * 0.66 + Vector((0, 0, -0.08))
+    opening = base.cube(
+        "WR3_OBS_stove_door", opening_center,
+        (0.68, 0.055, 0.62), palette["charcoal"], static, bevel=0.10,
+    )
+    opening.rotation_euler.z = face_angle
+
+    for side in (-1, 1):
+        jamb = base.cube(
+            f"WR3_OBS_stove_door_jamb_{side}",
+            opening_center + tangent * (side * 0.73),
+            (0.065, 0.075, 0.67), palette["brass_dark"], static, bevel=0.025,
+        )
+        jamb.rotation_euler.z = face_angle
+    for edge, dz in (("top", 0.67), ("bottom", -0.67)):
+        rail = base.cube(
+            f"WR3_OBS_stove_door_rail_{edge}",
+            opening_center + Vector((0, 0, dz)),
+            (0.75, 0.075, 0.055), palette["brass_dark"], static, bevel=0.025,
+        )
+        rail.rotation_euler.z = face_angle
+
+    handle_center = opening_center + tangent * 0.46 + Vector((0, 0, 0.78))
+    cylinder_between(
+        "WR3_OBS_stove_handle",
+        handle_center - tangent * 0.24,
+        handle_center + tangent * 0.24,
+        0.035, palette["brass"], static, vertices=20,
+    )
+    cylinder_between(
+        "WR3_OBS_stove_handle_mount",
+        handle_center - face * 0.09,
+        handle_center + face * 0.05,
+        0.040, palette["brass_dark"], static, vertices=18,
+    )
+
+    fire_center = opening_center + face * 0.09 + Vector((0, 0, -0.10))
+    flame_body = base.sphere(
+        "WR3_OBS_stove_flame_body", fire_center,
+        0.30, palette["fire"], static, scale=(1.55, 0.20, 0.70),
+    )
+    flame_body.rotation_euler = (0, math.radians(8), face_angle)
     flame_body["war_room_runtime_dynamic"] = "v3-fire"
     for index, (dx, dz, sx, sz, tilt) in enumerate((
-        (-0.12, 0.02, 0.48, 1.02, 0.05),
-        (0.08, 0.13, 0.42, 1.22, 0.20),
-        (0.30, -0.01, 0.36, 0.82, 0.34),
+        (-0.22, -0.02, 0.48, 0.94, 0.05),
+        (0.00, 0.10, 0.43, 1.26, 0.16),
+        (0.24, 0.00, 0.38, 0.86, 0.30),
     )):
-        tongue_center = Vector((x, y, 1.52 + dz)) + face * 1.01 + tangent * dx
-        tongue = base.sphere(f"WR3_OBS_stove_flame_{index}",
-                             tongue_center,
-                             0.22, palette["fire"] if index != 1 else palette["fire_core"],
-                             static, scale=(sx, 0.20, sz))
+        tongue_center = fire_center + tangent * dx + Vector((0, 0, dz))
+        tongue = base.sphere(
+            f"WR3_OBS_stove_flame_{index}",
+            tongue_center,
+            0.22, palette["fire"] if index != 1 else palette["fire_core"],
+            static, scale=(sx, 0.18, sz),
+        )
         tongue.rotation_euler = (0, tilt, face_angle)
         tongue["war_room_runtime_dynamic"] = "v3-fire"
-    base.cylinder("WR3_OBS_stove_flue", (x, y, 4.33), 0.23, 3.62,
+
+    # Chimney remains vertical and physically connected to the stove top.
+    base.cylinder("WR3_OBS_stove_flue", (x, y, 4.44), 0.23, 3.68,
                   palette["iron"], static, vertices=48)
-    base.torus("WR3_OBS_stove_flue_collar", (x, y, 2.63), 0.31, 0.048,
+    base.torus("WR3_OBS_stove_flue_collar", (x, y, 2.68), 0.31, 0.048,
                palette["brass_dark"], static)
-    base.cylinder("WR3_OBS_stove_flue_cap", (x, y, 6.18), 0.39, 0.10,
+    base.cylinder("WR3_OBS_stove_flue_cap", (x, y, 6.32), 0.39, 0.10,
                   palette["copper"], static, vertices=48)
-    base.light("WR3_LIGHT_stove", "POINT", Vector((x, y, 1.72)) + face * 1.25, 315.0,
-               (1.0, 0.30, 0.055), static, radius=1.62)
-    base.anchor("WR_ANCHOR_fireplace_practical", Vector((x, y, 1.76)) + face * 1.05, static)
+
+    # Small log rack and poker tools make the hearth read as used, not decorative.
+    rack_center = body_center - tangent * 1.34 + face * 0.04 + Vector((0, 0, -0.72))
+    base.cube(
+        "WR3_OBS_stove_log_rack", rack_center,
+        (0.42, 0.34, 0.10), palette["brass_dark"], static, bevel=0.06,
+    )
+    for index, (dz, lean) in enumerate(((0.02, -0.20), (0.15, 0.16), (0.28, -0.08))):
+        log = base.cylinder(
+            f"WR3_OBS_stove_log_{index}",
+            rack_center + Vector((0, 0, 0.14 + dz)),
+            0.10, 0.74, palette["walnut_dark"], static, vertices=18,
+        )
+        log.rotation_euler = (0, math.pi / 2 + lean, face_angle)
+
+    tool_base = body_center + tangent * 1.35 + face * 0.02 + Vector((0, 0, -1.00))
+    base.cylinder("WR3_OBS_stove_tool_stand", tool_base, 0.18, 0.08,
+                  palette["brass_dark"], static, vertices=28)
+    for index, offset in enumerate((-0.16, 0.0, 0.16)):
+        tool_start = tool_base + tangent * offset + Vector((0, 0, 0.08))
+        tool_end = tool_start + Vector((0, 0, 1.18))
+        cylinder_between(
+            f"WR3_OBS_stove_tool_{index}", tool_start, tool_end,
+            0.024, palette["brass"], static, vertices=12,
+        )
+
+    base.light(
+        "WR3_LIGHT_stove", "POINT",
+        Vector((x, y, 1.72)) + face * 1.28,
+        330.0, (1.0, 0.30, 0.055), static, radius=1.68,
+    )
+    base.anchor(
+        "WR_ANCHOR_fireplace_practical",
+        Vector((x, y, 1.76)) + face * 1.08,
+        static,
+    )
 
 
 def build_observatory_telescope(static, palette):
