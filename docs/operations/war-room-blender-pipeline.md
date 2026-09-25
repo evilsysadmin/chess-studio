@@ -9,7 +9,7 @@ War Room v2 and v3 use deterministic Blender generators for their static room sh
 - `build_war_room_premium.py` owns the v2 room.
 - `build_war_room_v3.py` owns the v3 Celestial Observatory. It reuses only the proven board anchor and camera profile; visible v2 architecture is forbidden by validation. It retains an independent art contract, publisher, R2 prefix and Blender gate.
 - v3 has one cylindrical cast-iron stove/fireplace. Its right bay belongs to a brass observatory telescope and the tower entry; a second hearth or its practical-light anchor is a regression.
-- v3 differentiates itself structurally through a curved tower apse, radial slate floor, circular command table, asymmetric orbital oculus, patinated-copper canopy ribs, suspended armillary light and a visible teal/copper entry door. Its teal, travertine, copper and celestial-blue palette must not collapse back into v2's rectangular walnut hall. The stove faces inward toward the board; its preserved flame nodes receive a subtle runtime flicker and must respect reduced-motion.
+- v3 follows the 2026-09-25 canonical observatory mock: curved cream/teal tower walls, a green-and-cream marble checkerboard floor, circular green command rug, moon-and-stars oculus with no orbital rings, one inward-facing cast-iron stove, brass telescope, leather reading chair, compact chess-treatise bookcase, warm wall lanterns and a teal/copper tower door that visibly meets the floor. Overhead canopy bars/ribs and suspended armillary clutter are retired regressions. Its teal, travertine, walnut, brass and celestial-blue palette must not collapse back into v2's rectangular walnut hall.
 - Runtime aliases are independent: `war-room/v2/...` and `war-room/v3/...`. Never publish one variant over the other variant's alias.
 
 ## Ownership boundary
@@ -19,6 +19,12 @@ Blender owns the static environment, materials, authored lights and named anchor
 The preview may contain representative board squares/pieces for art direction, but preview-only meshes never become the authoritative game board. `WR_ANCHOR_board_origin` is the alignment contract between the shell and the live renderer.
 
 A visual PR must not quietly change chess legality, persistence or game semantics.
+
+## War Room v3 canonical visual reference
+
+The accepted canonical snapshot is `war-room-v3-canonical.png`, SHA-256 `8e1e6946e2c9bc43968d39b79c52587b2e02edd3a771eb2acd190f97fc2ead33`. The working master is mirrored in the Chess Studio design library at `/Chess Studio/Design/War Room v3/war-room-v3-canonical.png`; deterministic Blender review artifacts are judged against its composition rather than against older v3 renders.
+
+Non-negotiable cues: open ceiling without crossing bars, moon + stars only in the oculus, cream/green tiled floor, door grounded on a threshold, board kept dominant, and sparse lived-in props (chair, small bookcase, telescope, stove) around the perimeter.
 
 ## Iteration loop
 

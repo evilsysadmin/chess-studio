@@ -100,7 +100,12 @@ jobs:
           source_names = {row['name'] for row in data['objects']}
           assert 'WR3_OBS_celestial_window' in source_names
           assert 'WR3_OBS_window_crescent' in source_names
-          assert 'WR3_OBS_window_orbit_0' in source_names
+          assert 'WR3_OBS_window_star_0' in source_names
+          assert not any(name.startswith('WR3_OBS_window_orbit_') for name in source_names)
+          assert not any(name.startswith('WR3_OBS_window_constellation_') for name in source_names)
+          assert not any(name.startswith('WR3_OBS_canopy_rib_') for name in source_names)
+          assert 'WR3_OBS_bookshelf_frame' in source_names
+          assert 'WR3_OBS_entry_rug' in source_names
           assert 'WR3_OBS_table_drum' in source_names
           assert 'WR3_OBS_stove_body' in source_names
           assert 'WR3_OBS_telescope_tube' in source_names
