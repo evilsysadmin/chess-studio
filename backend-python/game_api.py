@@ -52,14 +52,12 @@ def resolve_human_color(color: str) -> str:
 
 
 async def get_owned_game(game_id: str, username: str) -> dict:
-    entry = await store.get_game(game_id)
+    entry = await store.get_game_for_owner(game_id, username)
     if not entry:
         raise HTTPException(404, "Partida no encontrada.")
     owner = entry.get("owner")
     if owner is None:
         raise HTTPException(409, "Partida antigua sin propietario. Inicia una partida nueva.")
-    if owner != username:
-        raise HTTPException(404, "Partida no encontrada.")
     return entry
 
 
@@ -382,9 +380,8 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
 
     @router.delete("/api/games/{game_id}", status_code=204)
     async def delete_game(game_id: str, username: str = Depends(auth_dependency)):
-        await get_owned_game(game_id, username)
-        existed = await store.delete_game(game_id)
-        if not existed:
+        deleted = await store.delete_game_for_owner(game_id, username)
+        if not deleted:
             raise HTTPException(404, "Partida no encontrada.")
         return None
 
