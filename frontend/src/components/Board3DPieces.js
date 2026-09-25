@@ -55,7 +55,6 @@ const BASE_PROFILE = [
 ];
 
 const SHARED_PIECE_GEOMETRY = new Map();
-const KNIGHT_GEOMETRY_TEMPLATES = new Map();
 
 function markSharedPieceGeometry(geometry, role) {
   geometry.userData.board3DSharedGeometry = true;
