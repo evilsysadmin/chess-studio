@@ -334,8 +334,8 @@ def build_single_stove(static, palette):
                palette["brass_dark"], static)
     base.cylinder("WR3_OBS_stove_flue_cap", (x, y, 6.18), 0.39, 0.10,
                   palette["copper"], static, vertices=48)
-    base.light("WR3_LIGHT_stove", "POINT", Vector((x, y, 1.72)) + face * 1.25, 245.0,
-               (1.0, 0.25, 0.035), static, radius=1.45)
+    base.light("WR3_LIGHT_stove", "POINT", Vector((x, y, 1.72)) + face * 1.25, 315.0,
+               (1.0, 0.30, 0.055), static, radius=1.62)
     base.anchor("WR_ANCHOR_fireplace_practical", Vector((x, y, 1.76)) + face * 1.05, static)
 
 
@@ -380,29 +380,37 @@ def build_observatory_telescope(static, palette):
 
 
 def build_lounge_corner(static, palette):
-    """Compact leather reading chair and side table from the canonical mock."""
+    """Premium leather reading chair and side table from the canonical mock."""
     x, y = -6.78, -0.10
-    base.cube("WR3_OBS_chair_seat", (x, y, 0.62), (0.70, 0.58, 0.17),
-              palette["leather"], static, bevel=0.20)
-    base.cube("WR3_OBS_chair_back", (x, y + 0.53, 1.30), (0.72, 0.20, 0.82),
-              palette["leather"], static, bevel=0.24)
+
+    # Rounded leather shell instead of a stack of box primitives.
+    base.cube("WR3_OBS_chair_seat", (x, y, 0.60), (0.72, 0.60, 0.14),
+              palette["walnut_dark"], static, bevel=0.18)
+    back = base.sphere("WR3_OBS_chair_back", (x, y + 0.52, 1.36), 0.72,
+                       palette["leather"], static, scale=(1.00, 0.34, 1.22))
+    back.rotation_euler.x = math.radians(-5)
+    base.sphere("WR3_OBS_chair_back_pad", (x, y + 0.34, 1.35), 0.62,
+                palette["leather"], static, scale=(0.88, 0.22, 1.03))
+
     for side in (-1, 1):
-        base.cube(
-            f"WR3_OBS_chair_arm_{side}", (x + side * 0.78, y, 0.90),
-            (0.14, 0.58, 0.16), palette["leather"], static, bevel=0.12,
+        base.sphere(
+            f"WR3_OBS_chair_arm_{side}", (x + side * 0.78, y - 0.02, 0.91),
+            0.30, palette["leather"], static, scale=(0.55, 1.55, 0.58),
         )
         for front in (-1, 1):
             base.cylinder(
                 f"WR3_OBS_chair_leg_{side}_{front}",
-                (x + side * 0.58, y + front * 0.42, 0.28),
-                0.075, 0.36, palette["walnut_dark"], static, vertices=28,
+                (x + side * 0.57, y + front * 0.40, 0.27),
+                0.070, 0.34, palette["walnut_dark"], static, vertices=28,
             )
-    base.cube("WR3_OBS_chair_cushion", (x, y - 0.06, 0.84), (0.56, 0.47, 0.10),
-              palette["green_leather"], static, bevel=0.14)
+    base.cube("WR3_OBS_chair_cushion", (x, y - 0.07, 0.81), (0.56, 0.47, 0.105),
+              palette["green_leather"], static, bevel=0.18)
 
     tx, ty = -6.00, 2.22
     base.cylinder("WR3_OBS_side_table_top", (tx, ty, 0.78), 0.55, 0.10,
                   palette["walnut"], static, vertices=48)
+    base.torus("WR3_OBS_side_table_brass_edge", (tx, ty, 0.835), 0.49, 0.025,
+               palette["brass"], static)
     base.cylinder("WR3_OBS_side_table_pedestal", (tx, ty, 0.47), 0.12, 0.56,
                   palette["brass_dark"], static, vertices=32)
     base.cylinder("WR3_OBS_side_table_foot", (tx, ty, 0.17), 0.34, 0.08,
@@ -414,29 +422,44 @@ def build_lounge_corner(static, palette):
 
 
 def build_bookshelf(static, palette):
-    """Small chess-treatise shelf tucked against the right apse."""
+    """Small cabinet-style shelf for chess treatises, not a solid blockout."""
     x, y = 6.48, 4.52
-    base.cube("WR3_OBS_bookshelf_frame", (x, y, 1.78), (1.14, 0.28, 1.66),
-              palette["walnut_dark"], static, bevel=0.08)
-    base.cube("WR3_OBS_bookshelf_back", (x, y - 0.20, 1.78), (1.02, 0.07, 1.52),
-              palette["walnut"], static, bevel=0.04)
-    for row, z in enumerate((0.54, 1.14, 1.74, 2.34, 2.94)):
+
+    base.cube("WR3_OBS_bookshelf_frame", (x, y + 0.06, 1.80), (1.02, 0.10, 1.54),
+              palette["walnut"], static, bevel=0.05)
+    for side in (-1, 1):
         base.cube(
-            f"WR3_OBS_bookshelf_shelf_{row}", (x, y - 0.34, z),
-            (1.05, 0.34, 0.055), palette["walnut"], static, bevel=0.025,
+            f"WR3_OBS_bookshelf_post_{side}", (x + side * 1.03, y - 0.16, 1.78),
+            (0.11, 0.31, 1.68), palette["walnut_dark"], static, bevel=0.055,
         )
+    base.cube("WR3_OBS_bookshelf_crown", (x, y - 0.15, 3.50), (1.18, 0.37, 0.13),
+              palette["walnut_dark"], static, bevel=0.09)
+    base.cube("WR3_OBS_bookshelf_plinth", (x, y - 0.15, 0.16), (1.16, 0.39, 0.14),
+              palette["walnut_dark"], static, bevel=0.07)
+
+    for row, z in enumerate((0.52, 1.12, 1.72, 2.32, 2.92)):
+        base.cube(
+            f"WR3_OBS_bookshelf_shelf_{row}", (x, y - 0.24, z),
+            (1.02, 0.35, 0.050), palette["walnut"], static, bevel=0.025,
+        )
+
     book_index = 0
-    for row, z in enumerate((0.84, 1.44, 2.04, 2.64)):
+    for row, z in enumerate((0.83, 1.43, 2.03, 2.63)):
         for col in range(6):
-            bx = x - 0.78 + col * 0.30
+            bx = x - 0.76 + col * 0.30
             height = 0.22 + 0.025 * ((row + col) % 3)
-            material = (palette["book_red"], palette["book_blue"], palette["green_leather"])[(row + col) % 3]
+            material = (
+                palette["book_red"], palette["book_blue"], palette["green_leather"]
+            )[(row + col) % 3]
             base.cube(
-                f"WR3_OBS_book_{book_index}", (bx, y - 0.64, z),
-                (0.10, 0.08, height), material, static, bevel=0.018,
+                f"WR3_OBS_book_{book_index}", (bx, y - 0.60, z),
+                (0.10, 0.075, height), material, static, bevel=0.018,
             )
             book_index += 1
-    base.sphere("WR3_OBS_bookshelf_knight_bust", (x + 0.55, y - 0.58, 3.52),
+
+    base.cube("WR3_OBS_bookshelf_top_cloth", (x - 0.30, y - 0.30, 3.69),
+              (0.34, 0.18, 0.035), palette["green_leather"], static, bevel=0.025)
+    base.sphere("WR3_OBS_bookshelf_knight_bust", (x + 0.55, y - 0.40, 3.82),
                 0.20, palette["ivory"], static, scale=(0.72, 0.52, 1.15))
 
 
@@ -464,8 +487,8 @@ def build_wall_lanterns(static, palette):
                 palette["brass_dark"], static, vertices=16,
             )
         lamp = base.light(
-            f"WR3_LIGHT_wall_lantern_{side}", "POINT", (x, y - 0.50, z), 78.0,
-            (1.0, 0.48, 0.16), static, radius=1.05,
+            f"WR3_LIGHT_wall_lantern_{side}", "POINT", (x, y - 0.50, z), 118.0,
+            (1.0, 0.52, 0.18), static, radius=1.22,
         )
         lamp["war_room_runtime_dynamic"] = "v3-lantern"
     base.anchor("WR_ANCHOR_chandelier_practical", (0, 6.85, 4.72), static)
@@ -549,16 +572,16 @@ def build_lighting(static):
     scene = bpy.context.scene
     scene["war_room_variant"] = "v3-celestial-observatory"
     scene["war_room_visual_canon"] = "war-room-v3-canonical-8e1e6946-2026-09-25"
-    scene.view_settings.exposure = 0.20
+    scene.view_settings.exposure = 0.46
 
-    key = base.light("WR3_LIGHT_key", "AREA", (-4.8, -3.8, 8.3), 520.0,
-                     (1.0, 0.66, 0.36), static, size=6.2)
+    key = base.light("WR3_LIGHT_key", "AREA", (-4.8, -3.8, 8.3), 675.0,
+                     (1.0, 0.70, 0.42), static, size=6.6)
     base.look_at(key, (0, 0.5, 1.0))
-    fill = base.light("WR3_LIGHT_fill", "AREA", (6.4, -2.4, 6.3), 285.0,
-                      (0.24, 0.68, 0.82), static, size=5.8)
+    fill = base.light("WR3_LIGHT_fill", "AREA", (6.4, -2.4, 6.3), 350.0,
+                      (0.28, 0.66, 0.78), static, size=6.0)
     base.look_at(fill, (0.4, 0.6, 1.5))
-    top = base.light("WR3_LIGHT_top", "AREA", (0, 1.4, 8.7), 225.0,
-                     (1.0, 0.76, 0.46), static, size=5.2)
+    top = base.light("WR3_LIGHT_top", "AREA", (0, 1.4, 8.7), 315.0,
+                     (1.0, 0.78, 0.50), static, size=5.6)
     base.look_at(top, (0, 0.4, 0.8))
 
 
