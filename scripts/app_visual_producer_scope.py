@@ -211,7 +211,7 @@ def classify_path(path: str) -> set[str] | None:
     if name == "experimentalthreerenderer.js":
         return set(CHRONICLES_SHARED)
 
-    if lower == "frontend/src/lablaunchintent.js":
+    if lower in {"frontend/src/lablaunchintent.js", "frontend/src/usepuzzlelaunchflow.js"}:
         return set()
     if lower == "frontend/src/components/labscreen.jsx":
         return {"experiments-hub"}
@@ -373,6 +373,7 @@ def self_test() -> None:
         "training-school,training-openings,training-puzzles,training-tournament,training-progress"
     )
     assert classify(["frontend/src/labLaunchIntent.js"]) == "none"
+    assert classify(["frontend/src/usePuzzleLaunchFlow.js"]) == "none"
     assert classify(["scripts/quality_scope.py"]) == "none"
     assert classify(["frontend/src/chroniclesOfMatthiasSpectralBishop.js"]) == "chronicles-tactics,chronicles-gameplay"
     assert classify(["scripts/blender/build_war_room_premium.py"]) == "warroom-core"
