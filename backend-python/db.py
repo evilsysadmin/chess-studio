@@ -107,7 +107,7 @@ async def _close_client(client) -> None:
 
 _RUNTIME_INDEXES = (
     ("users", "last_activity", "users_last_activity"),
-    ("games", "owner", "games_owner"),
+    ("games", [("owner", 1), ("updatedAt", -1)], "games_owner_updated"),
     ("chronicles_runs", "owner", "chronicles_runs_owner"),
 )
 
