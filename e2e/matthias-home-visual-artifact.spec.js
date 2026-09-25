@@ -75,13 +75,28 @@ async function openDeterministicHome(page) {
   const hallArt = home.locator('.illustrated-home__art');
   await expect(hallArt).toHaveJSProperty('complete', true);
   await expect.poll(() => hallArt.evaluate((image) => image.naturalWidth)).toBeGreaterThan(0);
+  const hallRuntime = home.locator('[data-home-castle-compositor="blender-runtime"]');
+  // A full-page visual artifact is only evidence once the hall has settled on
+  // an actual visible surface. Hosted SwiftShader can finish Matthias first,
+  // while the Home canvas is still an intentionally dark loading placeholder.
+  await expect.poll(async () => {
+    if (await hallRuntime.count() === 0) return 'fallback';
+    return hallRuntime.getAttribute('data-home-blender-runtime');
+  }, { timeout:30_000 }).toMatch(/^(ready|fallback)$/);
   if (LOCAL_GPU_CAPTURE) {
-    await expect(home.locator('[data-home-castle-compositor="blender-runtime"]'))
-      .toHaveAttribute('data-home-blender-runtime', 'ready', { timeout:30_000 });
+    await expect(hallRuntime).toHaveAttribute('data-home-blender-runtime', 'ready');
   }
-  // The castle renderer may deliberately stay on its canonical 2D fallback on
-  // constrained/touch viewports. Matthias owns an independent WebGL contract,
-  // so his canary waits for his Blender model below instead of another surface.
+  if (await hallRuntime.count() > 0
+      && await hallRuntime.getAttribute('data-home-blender-runtime') === 'ready') {
+    await expect(hallRuntime).toBeVisible();
+    await expect(hallRuntime).toHaveCSS('opacity', '1');
+  } else {
+    await expect(hallArt).toBeVisible();
+    await expect(hallArt).toHaveCSS('opacity', '1');
+  }
+  // The castle renderer may deliberately settle on its canonical 2D fallback
+  // on constrained/touch viewports. Matthias owns an independent WebGL contract,
+  // so his canary still waits for his Blender model below.
   await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   await page.waitForTimeout(250);
   return home;
@@ -162,7 +177,7 @@ async function captureElementPng(context, page, locator, path) {
 }
 
 test('App visual artifact · Matthias Home deterministic full + crop', async () => {
-  test.setTimeout(150_000);
+  test.setTimeout(300_000);
   await mkdir(ARTIFACT_DIR, { recursive:true });
 
   const visualBrowser = await chromium.launch({
