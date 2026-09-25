@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
@@ -1038,6 +1038,7 @@ export default function HomeBlenderScene3D({
 }) {
   const canvasRef = useRef(null);
   const renderRequestRef = useRef(null);
+  const [contextGeneration, setContextGeneration] = useState(0);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -1460,12 +1461,10 @@ export default function HomeBlenderScene3D({
         window.clearTimeout(contextRecoveryTimer);
         contextRecoveryTimer = null;
       }
-      resize();
-      renderer.shadowMap.needsUpdate = true;
-      renderFrame();
-      canvas.dataset.homeBlenderRuntime = 'ready';
-      canvas.classList.add('is-ready');
-      startFireAnimation();
+      // A restored WebGL context invalidates renderer-owned GPU resources.
+      // Re-run the complete runtime effect so renderer, scene, GLTF resources,
+      // PMREM/environment, materials and animations are recreated together.
+      setContextGeneration((generation) => generation + 1);
     };
     canvas.addEventListener('webglcontextlost', onContextLost);
     canvas.addEventListener('webglcontextrestored', onContextRestored);
@@ -1519,7 +1518,7 @@ export default function HomeBlenderScene3D({
       releaseEnvironment();
       renderer.dispose();
     };
-  }, [ambient, onUnavailable]);
+  }, [ambient, contextGeneration, onUnavailable]);
 
   return (
     <canvas
