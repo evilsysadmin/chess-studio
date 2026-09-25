@@ -1,6 +1,6 @@
-import {   clampHansNarrativeDeltaMs,
-describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
+  clampHansNarrativeDeltaMs,
   fireCallPhase,
   HANS_BOARD_DIALOGUE_GAP_MS,
   HANS_BOARD_PEEK_CHOREOGRAPHY_PHASE,
