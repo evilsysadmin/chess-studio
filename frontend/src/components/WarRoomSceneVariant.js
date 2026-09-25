@@ -1,3 +1,4 @@
+import { scheduleWarRoomAfterFirstPaint } from './WarRoomAfterFirstPaint.js';
 import {
   isClassicWarRoomVariant,
   isWarRoomVariantSelectable,
@@ -23,7 +24,16 @@ function setClassicShellVisible(objects, visible) {
 }
 
 export function startWarRoomVariantScene({
-  scene, classicShellController, variant, selectable, whiteSide, renderLite, canvas, onStatus, onPaint,
+  scene,
+  classicShellController,
+  variant,
+  selectable,
+  whiteSide,
+  renderLite,
+  canvas,
+  onStatus,
+  onPaint,
+  scheduleAfterFirstPaint = scheduleWarRoomAfterFirstPaint,
 }) {
   let cancelled = false;
   let releaseShell = null;
@@ -39,12 +49,28 @@ export function startWarRoomVariantScene({
   };
 
   if (shouldShowClassicWarRoomShell({ selectable, variant })) {
-    const visibleClassicShell = ensureClassicShell?.() || classicShellObjects;
-    setClassicShellVisible(visibleClassicShell, true);
     scene.userData ||= {};
     scene.userData.warRoomRenderedVariant = 'classic';
     setStatus('idle', 'classic');
-    return () => {};
+
+    if (classicShellObjects.length > 0) {
+      setClassicShellVisible(classicShellObjects, true);
+      onPaint?.();
+      return () => {};
+    }
+
+    const cancelClassicBuild = scheduleAfterFirstPaint(() => {
+      if (cancelled) return;
+      const visibleClassicShell = ensureClassicShell?.() || classicShellController?.current?.() || [];
+      if (cancelled) return;
+      setClassicShellVisible(visibleClassicShell, true);
+      onPaint?.();
+    });
+
+    return () => {
+      cancelled = true;
+      cancelClassicBuild?.();
+    };
   }
 
   // A persisted Blender-shell session must not pay the construction cost of the procedural
