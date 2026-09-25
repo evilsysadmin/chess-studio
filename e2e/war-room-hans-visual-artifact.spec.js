@@ -1,4 +1,4 @@
-import { chromium, expect, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { buttonWithVisibleText, login, mockApi } from './helpers.js';
 import { warRoomHansEventForGame } from '../frontend/src/components/WarRoomHansEventContract.js';
@@ -6,6 +6,16 @@ import { warRoomHansEventForGame } from '../frontend/src/components/WarRoomHansE
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const LABEL = 'war-room-hans-desktop-1440x900';
 const MAX_GROUND_GAP = 0.005;
+
+test.use({
+  launchOptions: {
+    args: [
+      '--use-gl=angle',
+      '--use-angle=swiftshader',
+      '--enable-unsafe-swiftshader',
+    ],
+  },
+});
 
 function firstE2EFireGameIndex() {
   for (let index = 1; index <= 64; index += 1) {
@@ -43,22 +53,11 @@ async function captureViewportPng(context, page, path) {
   }
 }
 
-test('War Room · canario visual de Hans físicamente en escena', async () => {
+test('War Room · canario visual de Hans físicamente en escena', async ({ context, page }) => {
   test.setTimeout(120_000);
   await mkdir(ARTIFACT_DIR, { recursive: true });
+  await page.setViewportSize({ width: 1440, height: 900 });
 
-  const browser = await chromium.launch({
-    headless: true,
-    args: [
-      '--use-gl=angle',
-      '--use-angle=swiftshader',
-      '--enable-unsafe-swiftshader',
-    ],
-  });
-  const context = await browser.newContext({
-    viewport: { width: 1440, height: 900 },
-    hasTouch: false,
-  });
   await context.addInitScript(() => {
     Object.defineProperty(navigator, 'hardwareConcurrency', {
       configurable: true,
@@ -68,9 +67,8 @@ test('War Room · canario visual de Hans físicamente en escena', async () => {
     localStorage.setItem('chess-study-reduced-motion', '0');
   });
 
-  const page = await context.newPage();
-  try {
-    await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  {
     await mockApi(page, {
       profileSeed: {
         'matthias.onboarded': '2',
@@ -154,8 +152,5 @@ test('War Room · canario visual de Hans físicamente en escena', async () => {
       'utf8',
     );
     await captureViewportPng(context, page, `${ARTIFACT_DIR}/${LABEL}.png`);
-  } finally {
-    await context.close();
-    await browser.close();
   }
 });
