@@ -128,6 +128,7 @@ LANE_COMMANDS: dict[str, tuple[LaneCommand, ...]] = {
         LaneCommand(
             'browser-runtime-health.spec.js',
             ('--grep', HOME_WEBGL_GREP, '--workers=1', '--retries=0', '--max-failures=1', '--timeout=45000'),
+            canonical_critical=False,
         ),
     ),
 }
