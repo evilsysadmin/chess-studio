@@ -63,8 +63,8 @@ describe('Home Matthias canonical Blender rig', () => {
   it('frames the complete pawn silhouette instead of an accidental humanoid bust', () => {
     const frame = homeMatthiasPortraitFrame({ minY: 0, maxY: 2.35, fovDeg: 24 });
     expect(frame.targetY).toBeCloseTo(1.175, 6);
-    expect(frame.distance).toBeGreaterThan(5.7);
-    expect(frame.distance).toBeLessThan(5.8);
+    expect(frame.distance).toBeGreaterThan(6.3);
+    expect(frame.distance).toBeLessThan(6.31);
   });
 
   it('places the camera in front of the supplied facial direction without assuming Blender export axes', () => {
@@ -85,8 +85,8 @@ describe('Home Matthias canonical Blender rig', () => {
     expect(alongZ.faceZ).toBeCloseTo(-1, 6);
     expect(alongZ.cameraX).toBeCloseTo(0.2, 6);
     expect(alongZ.cameraZ).toBeLessThan(alongZ.targetZ);
-    expect(alongZ.distance).toBeGreaterThan(5.7);
-    expect(alongZ.distance).toBeLessThan(5.8);
+    expect(alongZ.distance).toBeGreaterThan(6.3);
+    expect(alongZ.distance).toBeLessThan(6.31);
 
     const alongX = homeMatthiasCameraPose({
       headX: -0.1,

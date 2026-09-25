@@ -64,14 +64,14 @@
     --home-matthias-zone-top: 70.5%;
   }
 
-  /* Exact furniture stations make the hourly routine legible. Table/chair
-     stations crop only the lower pawn plinth so the existing furniture becomes
-     a foreground occluder instead of Matthias floating over it. */
+  /* Exact furniture stations make the hourly routine legible. Chair routines
+     keep the whole, smaller pawn perched on the seat: cropping the plinth made
+     Matthias read as a floating torso in front of the backrest. */
   .illustrated-home__matthias:has(.home-matthias-3d[data-home-matthias-station='chess-chair']) {
-    --home-matthias-zone-left: 15.4%;
+    --home-matthias-zone-left: 17.2%;
     --home-matthias-zone-top: 43.5%;
-    --home-matthias-zone-width: clamp(132px, 10.6cqw, 181px);
-    --home-matthias-occlusion: 24%;
+    --home-matthias-zone-width: clamp(108px, 8.4cqw, 144px);
+    --home-matthias-occlusion: 0%;
   }
 
   .illustrated-home__matthias:has(.home-matthias-3d[data-home-matthias-station='refreshment-table']) {
@@ -92,17 +92,17 @@
   }
 
   .illustrated-home__matthias:has(.home-matthias-3d[data-home-matthias-station='library-chair']) {
-    --home-matthias-zone-left: 15.4%;
+    --home-matthias-zone-left: 17.2%;
     --home-matthias-zone-top: 43.5%;
-    --home-matthias-zone-width: clamp(130px, 10.4cqw, 178px);
-    --home-matthias-occlusion: 24%;
+    --home-matthias-zone-width: clamp(108px, 8.4cqw, 144px);
+    --home-matthias-occlusion: 0%;
   }
 
   .illustrated-home__matthias:has(.home-matthias-3d[data-home-matthias-station='writing-desk']) {
-    --home-matthias-zone-left: 15.4%;
+    --home-matthias-zone-left: 17.2%;
     --home-matthias-zone-top: 43.5%;
-    --home-matthias-zone-width: clamp(128px, 10.2cqw, 174px);
-    --home-matthias-occlusion: 24%;
+    --home-matthias-zone-width: clamp(108px, 8.4cqw, 144px);
+    --home-matthias-occlusion: 0%;
   }
 
   .illustrated-home__matthias:has(.home-matthias-3d[data-home-matthias-station='rest']) {

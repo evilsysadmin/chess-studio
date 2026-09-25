@@ -10,9 +10,9 @@ const FIXED_LOCAL_DATE = { year:2026, monthIndex:8, day:14, minute:0, second:0 }
 const CAPTURES = [
   { label:'desktop-1440x900', width:1440, height:900, hour:20, profile:'bite', clip:'Bite', station:'dining-table', avatar:/lunch-bocata/i, minStageTopRatio:.55, expectCopy:false },
   { label:'desktop-coffee-1440x900', width:1440, height:900, hour:6, profile:'sip', clip:'Sip', station:'refreshment-table', avatar:/morning-coffee/i, minStageTopRatio:.55, expectCopy:false },
-  { label:'desktop-chess-chair-1440x900', width:1440, height:900, hour:9, profile:'think', clip:'Think', station:'chess-chair', avatar:/afternoon-ops/i, expectCopy:false },
-  { label:'desktop-reading-1440x900', width:1440, height:900, hour:8, profile:'read', clip:'Read', station:'library-chair', avatar:/strategy-book/i, maxStageLeftRatio:.17, expectCopy:false },
-  { label:'desktop-writing-1440x900', width:1440, height:900, hour:16, profile:'write', clip:'Write', station:'writing-desk', avatar:/afternoon-ops/i, maxStageLeftRatio:.17, expectCopy:false },
+  { label:'desktop-chess-chair-1440x900', width:1440, height:900, hour:9, profile:'think', clip:'Think', station:'chess-chair', avatar:/afternoon-ops/i, expectFullPlinth:true, expectCopy:false },
+  { label:'desktop-reading-1440x900', width:1440, height:900, hour:8, profile:'read', clip:'Read', station:'library-chair', avatar:/strategy-book/i, maxStageLeftRatio:.19, expectFullPlinth:true, expectCopy:false },
+  { label:'desktop-writing-1440x900', width:1440, height:900, hour:16, profile:'write', clip:'Write', station:'writing-desk', avatar:/afternoon-ops/i, maxStageLeftRatio:.19, expectFullPlinth:true, expectCopy:false },
   { label:'android-390x844', width:390, height:844, hour:20, profile:'bite', clip:'Bite', station:'dining-table', avatar:/lunch-bocata/i, hasTouch:true, expectCopy:false },
 ];
 
@@ -213,6 +213,15 @@ test('App visual artifact · Matthias Home deterministic full + crop', async () 
         await expect(canvas).toHaveAttribute('data-matthias-canonical-model', 'blender');
         await expect(canvas).toHaveAttribute('data-matthias-clip', capture.clip);
         await expect(avatar.locator('[data-matthias-layered-art="true"]')).toHaveCount(0);
+        const cameraDistance = Number(await canvas.getAttribute('data-matthias-camera-distance'));
+        expect(cameraDistance).toBeGreaterThanOrEqual(4.8);
+
+        if (capture.expectFullPlinth) {
+          const occlusion = await matthias.evaluate((element) => Number.parseFloat(
+            getComputedStyle(element).getPropertyValue('--home-matthias-occlusion'),
+          ));
+          expect(occlusion).toBe(0);
+        }
 
         if (capture.minStageTopRatio) {
           const [stageBox, matthiasBox] = await Promise.all([
