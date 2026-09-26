@@ -32,6 +32,40 @@ describe('Matthias3DBubbleAnchor', () => {
     expect(Math.abs(g1.top - e1.top)).toBeLessThan(0.1);
   });
 
+  it('sigue el perfil classic V1 sin contaminar V2/V3 en desktop', () => {
+    const base = {
+      fen: '8/8/8/8/8/8/8/4K2k w - - 0 1',
+      matthiasKingColor: 'w',
+      orientation: 'black',
+      width: 1400,
+      height: 730,
+      viewportWidth: 1400,
+    };
+    const classic = projectMatthiasKingAnchor({ ...base, variant: 'classic' });
+    const tactical = projectMatthiasKingAnchor({ ...base, variant: 'v2' });
+
+    expect(classic.square).toBe('e1');
+    expect(tactical.square).toBe('e1');
+    expect(Math.abs(classic.top - tactical.top)).toBeGreaterThan(8);
+  });
+
+  it('mantiene el framing móvil independiente de la variante', () => {
+    const base = {
+      fen: '8/8/8/8/8/8/5K2/7k w - - 0 1',
+      matthiasKingColor: 'w',
+      orientation: 'black',
+      width: 390,
+      height: 368,
+      coarsePointer: true,
+      viewportWidth: 390,
+    };
+    const classic = projectMatthiasKingAnchor({ ...base, variant: 'classic' });
+    const tactical = projectMatthiasKingAnchor({ ...base, variant: 'v3' });
+
+    expect(Math.abs(classic.left - tactical.left)).toBeLessThan(0.001);
+    expect(Math.abs(classic.top - tactical.top)).toBeLessThan(0.001);
+  });
+
   it('sigue siendo proyectable con el framing móvil de la War Room', () => {
     const anchor = projectMatthiasKingAnchor({
       fen: '8/8/8/8/8/8/5K2/7k w - - 0 1',
