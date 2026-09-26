@@ -29,6 +29,7 @@ import { gameModeFromContext } from './gameModes.js';
 import { loadRoster as loadCombatRoster } from './combatRoster.js';
 import { loadCombatService, summarizeCombatService } from './combatService.js';
 import { loadRating, saveRating, ratingChangeDetails, ratingScoreForOutcome, recordRatingHistory, loadRatingHistory } from './playerRating.js';
+import { usePostGameRatingAudit } from './usePostGameRatingAudit.js';
 import { handicapForGap } from './handicap.js';
 const InsightsScreen = React.lazy(() => import('./components/InsightsScreen.jsx'));
 import { timeControlById } from './clock.js';
@@ -170,6 +171,7 @@ function AppInner({ isAdminUser }) {
   // cada vez que cambia la vista, así la cabecera se mantiene al día sin
   // tener que levantar ese estado hasta acá arriba.
   const [rating, setRating] = useState(() => loadRating());
+  const { postGameAnalysis, resetPostGameAnalysis, launchPostGameAudit } = usePostGameRatingAudit({ setRating, setCasualResult, setLastResult });
   const [combatOverview, setCombatOverview] = useState(() => {
     const roster = loadCombatRoster();
     const service = summarizeCombatService(loadCombatService());
@@ -324,6 +326,7 @@ function AppInner({ isAdminUser }) {
     if (!launch) return false;
     setExitNotice(null);
     setCasualResult(null);
+    resetPostGameAnalysis();
     setLoading(true);
     setError(null);
     try {
@@ -451,6 +454,7 @@ function AppInner({ isAdminUser }) {
       ratingSummary = {
         ratingApplied: true,
         eloDelta: details.delta,
+        eloBaseDelta: details.delta,
         eloBefore: rating.rating,
         eloAfter: details.next.rating, ratingGames: details.next.games,
       };
@@ -497,6 +501,7 @@ function AppInner({ isAdminUser }) {
       : 'Esta modalidad no afecta a tu rating.';
     const summary = { gameId: finishedGame.id, outcome, title, detail, endReason: endMeta.endReason || null, adaptiveDifficulty: !!gameContext.adaptiveDifficulty, ...ratingSummary };
     setCasualResult(summary);
+    launchPostGameAudit(finishedGame, outcome, record, { ratingEligible: ratingSummary.ratingApplied, target: 'casual' });
     if (specialRun?.active && gameContext.runMode) {
       const nextRun = recordSpecialRunResult(specialRun, outcome);
       setSpecialRun(nextRun);
@@ -634,6 +639,7 @@ function AppInner({ isAdminUser }) {
   async function handlePlayTournament(color) {
     const launch = gameLaunch.begin();
     if (!launch) return;
+    resetPostGameAnalysis();
     setLoading(true);
     setError(null);
     try {
@@ -684,6 +690,7 @@ function AppInner({ isAdminUser }) {
         setLastResult((current) => ({
           ...(current || { outcome }),
           eloDelta: details.delta,
+          eloBaseDelta: details.delta,
           eloBefore: prev.rating,
           eloAfter: details.next.rating,
           cpuRating: details.cpuRating,
@@ -701,6 +708,7 @@ function AppInner({ isAdminUser }) {
         outcome,
         moves: finishedGame.history,
         finalFen: finishedGame.fen,
+        initialFen: finishedGame.initialFen || null,
         mode: 'tournament',
         opening: identifyOpening((finishedGame.history || []).map((m) => m.san).filter(Boolean)),
         timeControl: null,
@@ -710,6 +718,7 @@ function AppInner({ isAdminUser }) {
       setHistoryList(saveGameRecord(record));
       recordGameActivity({ gameId: finishedGame.id, state: 'finished', mode: 'tournament', outcome, difficulty: finishedGame.difficulty });
       recordCareerGame(record, {});
+      launchPostGameAudit(finishedGame, outcome, record, { ratingEligible: true, target: 'tournament' });
     }
   }
 
@@ -943,6 +952,7 @@ function AppInner({ isAdminUser }) {
             onCustomize={() => setShowSettings(true)}
             onGameEnd={handleCasualGameEnd}
             resultSummary={casualResult?.gameId === game.id ? casualResult : null}
+            postGameAnalysis={postGameAnalysis?.gameId === game.id ? postGameAnalysis : null}
             abandonRatingPreview={!learningMode && !gameContext.lab && !gameContext.rescue && !gameContext.suddenDeath ? (() => { const preview = ratingChangeDetails(rating, game.difficulty, 0); return { delta: preview.delta, before: rating.rating, after: preview.next.rating }; })() : null}
             onChatUpdate={handleGameChatUpdate}
             hintMode={learningMode ? 'free' : 'off'}
@@ -1079,6 +1089,7 @@ function AppInner({ isAdminUser }) {
             onError={setError}
             onPersistenceState={setGameSaveState}
             onGameEnd={handleTournamentGameEnd}
+            postGameAnalysis={postGameAnalysis?.gameId === tournamentGame.id ? postGameAnalysis : null}
             abandonRatingPreview={(() => { const preview = ratingChangeDetails(rating, tournamentGame.difficulty, 0); return { delta: preview.delta, before: rating.rating, after: preview.next.rating }; })()}
             onChatUpdate={handleGameChatUpdate}
             hintMode="paid"
