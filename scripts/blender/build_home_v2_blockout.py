@@ -5440,10 +5440,22 @@ def main() -> None:
 
     blend_path = out_dir / "home-v2-blockout.blend"
     beauty_path = out_dir / "home-v2-preview.png"
+    mobile_path = out_dir / "home-v2-mobile-preview.png"
     clay_path = out_dir / "home-v2-clay.png"
     metadata_path = out_dir / "home-v2-camera.json"
 
     render(scene, beauty_path)
+
+    # Keep a phone-shaped evidence render beside the canonical desktop frame.
+    # This deliberately uses the same camera/scene: it exposes real portrait
+    # cropping pressure before a Home art change is accepted as mobile-safe.
+    desktop_resolution = (scene.render.resolution_x, scene.render.resolution_y, scene.render.resolution_percentage)
+    scene.render.resolution_x = 430
+    scene.render.resolution_y = 932
+    scene.render.resolution_percentage = 100
+    render(scene, mobile_path)
+    scene.render.resolution_x, scene.render.resolution_y, scene.render.resolution_percentage = desktop_resolution
+
     bpy.ops.wm.save_as_mainfile(filepath=str(blend_path))
 
     clay = material("HOME_MAT_clay_override", (0.34, 0.30, 0.26, 1), roughness=0.88)
