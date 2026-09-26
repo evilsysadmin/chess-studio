@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { cpuRatingForDifficulty, difficultyForCpuRating } from './playerRating.js';
 import {
   QUICK_MATCH_FORM_MAX_AGE_DAYS,
@@ -10,6 +10,7 @@ import {
   quickMatchQualityAdjustment,
   quickMatchRecalibration,
   quickMatchTargetLeadElo,
+  setRuntimeQuickMatchTargetLeadElo,
 } from './quickMatchDifficulty.js';
 
 function adaptiveGame(gameId, outcome, difficulty = 56) {
@@ -20,6 +21,7 @@ function adaptiveGame(gameId, outcome, difficulty = 56) {
 }
 
 describe('quick-match Elo chaser', () => {
+  afterEach(() => setRuntimeQuickMatchTargetLeadElo(QUICK_MATCH_TARGET_LEAD_ELO));
   it('uses one invertible CPU strength relationship', () => {
     for (const difficulty of [0, 20, 45, 60, 70, 90, 100]) {
       const rating = cpuRatingForDifficulty(difficulty);
@@ -275,6 +277,13 @@ describe('quick-match Elo chaser', () => {
   it('caps honestly at engine strength instead of inventing Elo above level 100', () => {
     expect(difficultyForQuickMatchRating(2200, [], 100)).toBe(100);
   });
+  it('uses the runtime Admin lead for the next automatic match', () => {
+    const baseline = difficultyForQuickMatchRating(1200, [], 20);
+    setRuntimeQuickMatchTargetLeadElo(100);
+    const harder = difficultyForQuickMatchRating(1200, [], 20);
+    expect(harder).toBeGreaterThan(baseline);
+  });
+
   it('uses the configured global target lead for established players', () => {
     const difficulty = difficultyForQuickMatchRating(1200, [], 20, {}, Date.now(), 75);
     const lead = cpuRatingForDifficulty(difficulty) - 1200;
