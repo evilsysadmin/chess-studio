@@ -5,55 +5,82 @@
 @media (pointer: coarse) and (orientation: portrait) and (max-width: 920px) {
   .war-room-landscape-gate {
     position: fixed;
-    z-index: 500;
-    inset: 0;
+    z-index: 90;
+    left: 50%;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    width: min(360px, calc(100vw - 24px));
+    min-height: 72px;
     display: grid;
-    place-content: center;
-    justify-items: center;
-    gap: .72rem;
-    padding: max(1.25rem, env(safe-area-inset-top)) max(1.25rem, env(safe-area-inset-right)) max(1.25rem, env(safe-area-inset-bottom)) max(1.25rem, env(safe-area-inset-left));
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: .7rem;
+    padding: .7rem .75rem;
     box-sizing: border-box;
-    background:
-      radial-gradient(circle at 50% 34%, rgba(185, 135, 54, .2), transparent 34%),
-      rgba(5, 8, 12, .97);
+    border: 1px solid color-mix(in srgb, var(--brass) 38%, transparent);
+    border-radius: 14px;
+    background: rgba(7, 10, 14, .92);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, .38);
     color: var(--cream);
-    text-align: center;
+    text-align: left;
+    transform: translateX(-50%);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    pointer-events: none;
   }
 
   .war-room-landscape-gate > span {
     color: var(--brass);
-    font-size: clamp(2.8rem, 15vw, 4.6rem);
-    filter: drop-shadow(0 8px 20px rgba(0, 0, 0, .4));
+    font-size: 1.55rem;
+    line-height: 1;
+    filter: drop-shadow(0 4px 10px rgba(0, 0, 0, .35));
+  }
+
+  .war-room-landscape-gate__copy {
+    min-width: 0;
   }
 
   .war-room-landscape-gate strong {
-    font: 800 clamp(1.45rem, 7vw, 2rem)/1 var(--font-display);
-    letter-spacing: .03em;
+    display: block;
+    font: 800 .83rem/1.1 var(--font-display);
+    letter-spacing: .025em;
   }
 
   .war-room-landscape-gate p {
-    max-width: 24rem;
-    margin: 0;
-    color: color-mix(in srgb, var(--cream) 78%, var(--studio-muted));
-    font-size: .9rem;
-    line-height: 1.45;
+    margin: .2rem 0 0;
+    color: color-mix(in srgb, var(--cream) 76%, var(--studio-muted));
+    font-size: .7rem;
+    line-height: 1.3;
   }
 
   .war-room-landscape-gate button {
-    min-width: 12rem;
-    min-height: 48px;
-    margin-top: .25rem;
+    min-width: 44px;
+    min-height: 44px;
+    padding: .55rem .7rem;
     border: 1px solid color-mix(in srgb, var(--brass) 68%, transparent);
-    border-radius: 999px;
+    border-radius: 10px;
     background: linear-gradient(180deg, rgba(113, 77, 29, .94), rgba(48, 31, 14, .98));
     color: var(--cream);
-    font: 800 .78rem/1 var(--font-body);
-    letter-spacing: .04em;
+    font: 800 .68rem/1.05 var(--font-body);
+    letter-spacing: .025em;
+    pointer-events: auto;
   }
 
   .war-room-landscape-gate small {
-    max-width: 22rem;
+    display: block;
+    margin-top: .18rem;
     color: var(--studio-muted);
-    font-size: .68rem;
+    font-size: .62rem;
+    line-height: 1.2;
+  }
+}
+
+@media (max-width: 370px) and (pointer: coarse) and (orientation: portrait) {
+  .war-room-landscape-gate {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .war-room-landscape-gate button {
+    grid-column: 1 / -1;
+    justify-self: stretch;
   }
 }
