@@ -721,7 +721,13 @@ async def register(body: RegisterRequest, request: Request):
 @app.post("/api/auth/login")
 @limiter.limit("10/minute")
 async def login(body: LoginRequest, request: Request):
-    username = body.username.strip().lower()
+    login_identity = body.username.strip().lower()
+    user = await (
+        ustore.get_user_by_email(login_identity)
+        if "@" in login_identity
+        else ustore.get_user(login_identity)
+    )
+    username = str((user or {}).get("username") or login_identity).strip().lower()
     synthetic_source = getattr(request.state, "synthetic_source", None)
     synthetic_identity = getattr(request.state, "synthetic_identity", None)
     trusted_synthetic = (
@@ -733,7 +739,7 @@ async def login(body: LoginRequest, request: Request):
         request.state.synthetic_identity = None
         synthetic_source = None
 
-    identity = auth_login_guard.identity_key(username, JWT_SECRET)
+    identity = auth_login_guard.identity_key(login_identity, JWT_SECRET)
     if not trusted_synthetic:
         retry_after = await auth_login_guard.retry_after(identity)
         if retry_after:
@@ -743,14 +749,13 @@ async def login(body: LoginRequest, request: Request):
                 headers={"Retry-After": str(retry_after)},
             )
 
-    user = await ustore.get_user(username)
     password_ok = bool(user and verify_password(body.password, user["password_hash"]))
     if not password_ok:
         client_ip, client_country, peer_ip, x_forwarded_for = _request_network_log_fields(request)
         emit_auth_login_failed(
             access_logger,
             request_id=_request_id(request),
-            attempted_username=username,
+            attempted_username=login_identity,
             password=body.password,
             fingerprint_key=JWT_SECRET,
             account_exists=bool(user),
