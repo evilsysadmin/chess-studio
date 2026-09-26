@@ -30,8 +30,11 @@ export function getWarRoomMobileFramingProfile({
       maxDistance: 17.2,
       targetY: 0.38,
       targetZ: 0.06,
-      cameraY: 8.4,
-      cameraZ: 9.8,
+      // Match the approved V1 wide-camera inclination exactly. fitBoardCamera
+      // normalizes this direction vector, so mobile keeps its own distance/FOV
+      // while gaining the same steeper, more selectable board pitch.
+      cameraY: 9.2,
+      cameraZ: 9.55,
     });
   }
 
