@@ -409,6 +409,10 @@ def build_observatory_telescope(static, palette):
                      axis_start + axis * 0.02, 0.115, palette["brass_dark"], static, vertices=40)
     cylinder_between("WR3_OBS_telescope_focus_ring", axis_start - axis * 0.05,
                      axis_start + axis * 0.08, 0.285, palette["copper"], static, vertices=48)
+    cylinder_between("WR3_OBS_telescope_dew_shield", axis_end - axis * 0.02,
+                     axis_end + axis * 0.28, 0.345, palette["brass_dark"], static, vertices=56)
+    base.torus("WR3_OBS_telescope_mount_trim", hub + Vector((0, 0, 0.02)),
+               0.47, 0.035, palette["brass"], static)
 
     yoke_left = hub + Vector((-0.44, 0.0, 0.35))
     yoke_right = hub + Vector((0.44, 0.0, 0.35))
