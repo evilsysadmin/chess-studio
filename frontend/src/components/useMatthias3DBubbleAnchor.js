@@ -31,6 +31,7 @@ export default function useMatthias3DBubbleAnchor({
     const update = () => {
       frame = 0;
       const rect = stage.getBoundingClientRect();
+      const canvas = stage.querySelector?.('.board3d-main-canvas') || null;
       const next = projectMatthiasKingAnchor({
         fen,
         matthiasKingColor,
@@ -39,6 +40,7 @@ export default function useMatthias3DBubbleAnchor({
         height: rect.height,
         coarsePointer: Boolean(window.matchMedia?.('(pointer: coarse)')?.matches),
         viewportWidth: Number(window.innerWidth) || rect.width,
+        variant: canvas?.dataset?.warRoomVariant || null,
       });
       setAnchor((current) => sameAnchor(current, next) ? current : next);
     };
@@ -53,11 +55,21 @@ export default function useMatthias3DBubbleAnchor({
       ? new ResizeObserver(scheduleUpdate)
       : null;
     observer?.observe(stage);
+    const variantObserver = typeof MutationObserver !== 'undefined'
+      ? new MutationObserver(scheduleUpdate)
+      : null;
+    variantObserver?.observe(stage, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ['data-war-room-variant'],
+    });
     window.addEventListener('resize', scheduleUpdate, { passive: true });
 
     return () => {
       if (frame) window.cancelAnimationFrame(frame);
       observer?.disconnect();
+      variantObserver?.disconnect();
       window.removeEventListener('resize', scheduleUpdate);
     };
   }, [enabled, fen, matthiasKingColor, orientation]);
