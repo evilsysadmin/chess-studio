@@ -809,8 +809,8 @@ const HOME_BLENDER_PORTRAIT_HORIZONTAL_FOV = 18.5;
 // Tall phone canvases used to widen the vertical lens to ~39° at 390/430px.
 // That preserved peripheral room context but exposed a large empty band above
 // the authored hall. Keep some portrait context while letting the architecture
-// fill the viewport; projected beacons remain tied to the live camera.
-const HOME_BLENDER_PORTRAIT_MAX_VERTICAL_FOV = 33;
+// fill the viewport. A 35.5° ceiling restores a little lateral castle context at\n// 390/430px without returning to the old ~39° ceiling runway; projected beacons\n// remain tied to the live camera.
+const HOME_BLENDER_PORTRAIT_MAX_VERTICAL_FOV = 35.5;
 
 export function homeBlenderCameraFovForAspect(aspect = 16 / 9) {
   const safeAspect = Number.isFinite(Number(aspect)) && Number(aspect) > 0
