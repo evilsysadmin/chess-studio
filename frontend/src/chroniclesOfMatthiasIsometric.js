@@ -888,6 +888,14 @@ export function createChroniclesIsometricRenderer(host, {
         model.userData.chroniclesIsoPlaced = true;
       }
     });
+    const expectedEnemyIds = sceneModel.enemies.filter((entry) => entry.visible && entry.cell).map((entry) => entry.id);
+    const renderedEnemyIds = expectedEnemyIds.filter((id) => {
+      const model = enemies.get(id);
+      return Boolean(model?.visible && model?.parent === scene && model?.userData?.chroniclesIsoPlaced);
+    });
+    host.dataset.chroniclesExpectedEnemyIds = expectedEnemyIds.join(',');
+    host.dataset.chroniclesRenderedEnemyIds = renderedEnemyIds.join(',');
+    host.dataset.chroniclesEnemyRenderParity = renderedEnemyIds.length === expectedEnemyIds.length ? 'true' : 'false';
 
     sceneModel.party.forEach((member) => {
       const model = party.models.get(member.id);
