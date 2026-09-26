@@ -724,17 +724,13 @@ async def login(body: LoginRequest, request: Request):
     login_identity = body.username.strip().lower()
     synthetic_source = getattr(request.state, "synthetic_source", None)
     synthetic_identity = getattr(request.state, "synthetic_identity", None)
-    trusted_synthetic = (
+    trusted_synthetic_identity = (
         synthetic_source in _STAGING_SYNTHETIC_SOURCES
-        and synthetic_identity == username
+        and synthetic_identity == login_identity
     )
-    if synthetic_source and not trusted_synthetic:
-        request.state.synthetic_source = None
-        request.state.synthetic_identity = None
-        synthetic_source = None
 
     identity = auth_login_guard.identity_key(login_identity, JWT_SECRET)
-    if not trusted_synthetic:
+    if not trusted_synthetic_identity:
         retry_after = await auth_login_guard.retry_after(identity)
         if retry_after:
             raise HTTPException(
@@ -753,6 +749,10 @@ async def login(body: LoginRequest, request: Request):
         synthetic_source in _STAGING_SYNTHETIC_SOURCES
         and synthetic_identity == username
     )
+    if synthetic_source and not trusted_synthetic:
+        request.state.synthetic_source = None
+        request.state.synthetic_identity = None
+        synthetic_source = None
 
     password_ok = bool(user and verify_password(body.password, user["password_hash"]))
     if not password_ok:
