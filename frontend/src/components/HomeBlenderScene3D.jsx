@@ -135,8 +135,8 @@ export const HOME_BLENDER_KLAUS_TAIL_MOTION = Object.freeze({
 });
 
 export const HOME_BLENDER_KLAUS_EAR_MOTION = Object.freeze({
-  twitchY: 0.003,
-  twitchZ: 0.002,
+  twitchY: 0.0024,
+  twitchZ: 0.0015,
 });
 
 export function homeBlenderKlausTailWeight(name = '') {
@@ -245,9 +245,14 @@ export function applyHomeBlenderKlausMotion(rig, timeMs = 0) {
   rig.rotation.y += pose.yaw;
   rig.rotation.z += pose.roll;
   const seconds = Math.max(0, Number(timeMs) || 0) / 1000;
-  const earPulse = Math.max(0, Math.sin(seconds * (Math.PI * 2 / 19.0) - 1.1)) ** 14;
+  // Two long, slightly mismatched pulses keep the sleeping ear flick from reading like a
+  // metronome. The second pulse is deliberately much weaker: an occasional reflex, not a loop.
+  const earPulsePrimary = Math.max(0, Math.sin(seconds * (Math.PI * 2 / 23.0) - 1.1)) ** 18;
+  const earPulseEcho = Math.max(0, Math.sin(seconds * (Math.PI * 2 / 31.0) + 2.35)) ** 24;
   for (const ear of rig.userData.homeKlausEars || []) {
     const direction = ear.index % 2 ? -1 : 1;
+    const sideWeight = ear.index % 2 ? 0.72 : 1;
+    const earPulse = (earPulsePrimary + earPulseEcho * 0.38) * sideWeight;
     ear.part.rotation.copy(ear.rotation);
     ear.part.rotation.y += direction * earPulse * HOME_BLENDER_KLAUS_EAR_MOTION.twitchY;
     ear.part.rotation.z += direction * earPulse * HOME_BLENDER_KLAUS_EAR_MOTION.twitchZ;
