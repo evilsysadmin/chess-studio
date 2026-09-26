@@ -121,13 +121,6 @@ case "$mode" in
     printf ' - %s\n' "${specs[@]}"
 
     playwright_args=(--workers=1 --retries=0)
-    if [[ "${#specs[@]}" -eq 1 && "${specs[0]}" == "chronicles-tactics-visual-artifact.spec.js" ]]; then
-      # Chronicles is dominated by repeated WebGL startup. Two isolated browser
-      # workers cut wall-clock time without sharing page/runtime state; keep
-      # broader visual sweeps serialized to avoid SwiftShader contention.
-      playwright_args=(--workers=2 --retries=0)
-      echo "Chronicles visual capture: using 2 isolated workers."
-    fi
     if [[ "${GITHUB_EVENT_NAME:-}" == "pull_request" ]]; then
       playwright_args+=(--max-failures=1)
     fi
