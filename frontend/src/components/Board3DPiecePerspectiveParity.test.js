@@ -49,6 +49,32 @@ describe('Board3D piece scale parity', () => {
     expect(apparentScaleRatio).toBeLessThan(1.16);
   });
 
+  it('usa un picado propio en War Room V1 sin mover la cámara táctica de V2/V3', () => {
+    vi.stubGlobal('window', {
+      innerWidth: 1440,
+      matchMedia: vi.fn().mockReturnValue({ matches: false }),
+    });
+
+    try {
+      const classic = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+      const tactical = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+      fitBoardCamera(classic, 1400, 730, true, { profile: 'classic' });
+      fitBoardCamera(tactical, 1400, 730, true, { profile: 'tactical' });
+
+      const classicOffset = classic.position.clone().sub(classic.userData.baseTarget);
+      const tacticalOffset = tactical.position.clone().sub(tactical.userData.baseTarget);
+      const classicElevation = THREE.MathUtils.radToDeg(Math.atan2(classicOffset.y, Math.abs(classicOffset.z)));
+      const tacticalElevation = THREE.MathUtils.radToDeg(Math.atan2(tacticalOffset.y, Math.abs(tacticalOffset.z)));
+
+      expect(classic.userData.framingProfile).toBe('classic-overhead-v1');
+      expect(classicElevation).toBeGreaterThan(39);
+      expect(classicElevation).toBeGreaterThan(tacticalElevation + 8);
+      expect(classic.fov).toBe(tactical.fov);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('sube la cámara solo en landscape móvil para separar visualmente las filas', () => {
     const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
     vi.stubGlobal('window', {
@@ -70,6 +96,27 @@ describe('Board3D piece scale parity', () => {
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+
+  it('hace que la reina tenga una silueta inequívocamente más alta que el alfil', () => {
+    const queen = buildPiece('q', 'w', 'studio', false);
+    const bishop = buildPiece('b', 'w', 'studio', false);
+    const queenSize = worldSize(queen);
+    const bishopSize = worldSize(bishop);
+    const queenParts = [];
+    queen.traverse((object) => {
+      if (object.userData?.queenPart) queenParts.push(object.userData.queenPart);
+    });
+
+    expect(queen.userData.board3DQueenSilhouetteVersion).toBe('royal-crown-v2');
+    expect(queen.userData.board3DQueenCrownProfile).toBe('eight-point-flared-v1');
+    expect(queenSize.y).toBeGreaterThan(bishopSize.y * 1.06);
+    expect(queenParts.filter((part) => part === 'crown-point')).toHaveLength(8);
+    expect(queenParts.filter((part) => part === 'crown-orb')).toHaveLength(8);
+    expect(queenParts).toContain('finial');
+
+    disposeObject(queen);
+    disposeObject(bishop);
   });
 
   it('comprime también la perspectiva móvil sin reutilizar la lente desktop', () => {
