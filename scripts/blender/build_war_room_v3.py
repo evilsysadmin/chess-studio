@@ -577,7 +577,7 @@ def build_wall_lanterns(static, palette):
             )
         lamp = base.light(
             f"WR3_LIGHT_wall_lantern_{side}", "POINT", (x, y - 0.50, z), 118.0,
-            (1.0, 0.52, 0.18), static, radius=1.22,
+            (1.0, 0.44, 0.12), static, radius=1.05,
         )
         lamp["war_room_runtime_dynamic"] = "v3-lantern"
     base.anchor("WR_ANCHOR_chandelier_practical", (0, 6.85, 4.72), static)
@@ -661,7 +661,7 @@ def build_lighting(static):
     scene = bpy.context.scene
     scene["war_room_variant"] = "v3-celestial-observatory"
     scene["war_room_visual_canon"] = "war-room-v3-canonical-8e1e6946-2026-09-25"
-    scene.view_settings.exposure = 0.46
+    scene.view_settings.exposure = 0.30
 
     key = base.light("WR3_LIGHT_key", "AREA", (-4.8, -3.8, 8.3), 675.0,
                      (1.0, 0.70, 0.42), static, size=6.6)
