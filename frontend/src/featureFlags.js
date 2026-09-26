@@ -1,21 +1,6 @@
-export const DEFAULT_MATCHMAKING_TARGET_LEAD_ELO = 50;
-let runtimeMatchmakingTargetLeadElo = DEFAULT_MATCHMAKING_TARGET_LEAD_ELO;
+import { QUICK_MATCH_TARGET_LEAD_ELO, setRuntimeQuickMatchTargetLeadElo } from './quickMatchDifficulty.js';
 
-function normalizeMatchmakingTargetLeadElo(value) {
-  const raw = Number(value);
-  return Number.isFinite(raw)
-    ? Math.max(0, Math.min(150, Math.round(raw)))
-    : DEFAULT_MATCHMAKING_TARGET_LEAD_ELO;
-}
-
-export function setRuntimeMatchmakingTargetLeadElo(value) {
-  runtimeMatchmakingTargetLeadElo = normalizeMatchmakingTargetLeadElo(value);
-  return runtimeMatchmakingTargetLeadElo;
-}
-
-export function getRuntimeMatchmakingTargetLeadElo() {
-  return runtimeMatchmakingTargetLeadElo;
-}
+export const DEFAULT_MATCHMAKING_TARGET_LEAD_ELO = QUICK_MATCH_TARGET_LEAD_ELO;
 
 export const DEFAULT_FEATURE_FLAGS = Object.freeze({
   homeGuide: true,
@@ -33,6 +18,6 @@ export function normalizeFeatureFlags(payload) {
         typeof source[key] === 'boolean' ? source[key] : defaultValue,
       ]),
     );
-  const matchmakingTargetLeadElo = setRuntimeMatchmakingTargetLeadElo(payload?.matchmaking?.targetLeadElo);
+  const matchmakingTargetLeadElo = setRuntimeQuickMatchTargetLeadElo(payload?.matchmaking?.targetLeadElo);
   return { ...flags, matchmakingTargetLeadElo };
 }
