@@ -236,7 +236,7 @@ function previousAdaptiveDifficulty(activity = [], nowMs = Date.now()) {
   return event ? clamp(Math.round(Number(event.difficulty)), 0, 100) : null;
 }
 
-export function difficultyForQuickMatchRating(rating, activity = null, games = null, qualityRecords = null, nowMs = Date.now(), targetLeadElo = QUICK_MATCH_TARGET_LEAD_ELO) {
+export function difficultyForQuickMatchRating(rating, activity = null, games = null, qualityRecords = null, nowMs = Date.now(), targetLeadElo = runtimeQuickMatchTargetLeadElo) {
   const numericRating = Number(rating);
   const playerRating = Number.isFinite(numericRating) ? numericRating : 400;
   const recent = activity == null ? loadGameActivity() : activity;
