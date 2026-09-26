@@ -123,8 +123,9 @@ describe('Partida limpia', () => {
 
 describe('competitiveGameSignals', () => {
   const report = (evaluations, overrides = {}) => ({
-    analyzedCount: evaluations.length,
-    moveReports: evaluations.map((humanEvaluation) => ({ loss: 10, humanEvaluation })),
+    analyzedCount: Math.max(CLEAN_GAME_MIN_ANALYZED_MOVES, evaluations.length),
+    moveReports: evaluations.map((humanEvaluation) => ({ loss: 10, humanEvaluation }))
+      .concat(Array.from({ length: Math.max(0, CLEAN_GAME_MIN_ANALYZED_MOVES - evaluations.length) }, () => ({ loss: 10, humanEvaluation: evaluations.at(-1) ?? 0 }))),
     ...overrides,
   });
 
