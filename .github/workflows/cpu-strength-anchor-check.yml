@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - bench/cpu-strength-anchor-check
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read
