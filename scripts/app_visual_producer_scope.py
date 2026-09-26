@@ -43,6 +43,7 @@ WARROOM_CORE_ONLY_FILES = {
 WARROOM_VARIANT_ORDER = ("classic", "v2", "v3")
 WARROOM_PROFILE_SCOPE_ALL = "all"
 WARROOM_PROFILE_SCOPE_MOBILE = "mobile"
+WARROOM_PROFILE_SCOPE_MOBILE_ENTRY = "mobile-entry"
 HOME_PROFILE_SCOPE_ALL = "all"
 HOME_PROFILE_SCOPE_QUICK_MATCH = "quickmatch"
 WARROOM_VARIANT_ALL = set(WARROOM_VARIANT_ORDER)
@@ -364,7 +365,7 @@ def classify_warroom_profile_scope(paths: list[str]) -> str:
     }
     relevant = [path for path in cleaned if ".test." not in Path(path).name and ".spec." not in Path(path).name]
     if relevant and all(path in mobile_only for path in relevant):
-        return WARROOM_PROFILE_SCOPE_MOBILE
+        return WARROOM_PROFILE_SCOPE_MOBILE_ENTRY
     return WARROOM_PROFILE_SCOPE_ALL
 
 
@@ -400,7 +401,7 @@ def self_test() -> None:
         "frontend/src/components/QuickMatchModal.jsx",
         "frontend/src/components/useWarRoomImmersive.js",
         "frontend/src/components/useWarRoomImmersive.test.js",
-    ]) == "mobile"
+    ]) == "mobile-entry"
     assert classify_warroom_profile_scope(["frontend/src/components/WarRoomV3Shell.js"]) == "all"
     assert classify(["scripts/app_visual_scope.py"]) == "none"
     assert classify(["scripts/app_visual_producer_scope.py"]) == "none"
