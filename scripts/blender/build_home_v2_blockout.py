@@ -4055,7 +4055,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             texture_profile="wood",
         ),
         "leather": material("HOME_MAT_leather", (0.205, 0.042, 0.026, 1), roughness=0.70, bump_scale=18.0, bump_strength=0.055, variation=0.12, variation_scale=6.0, texture_profile="leather"),
-        "sword_grip": material("HOME_MAT_sword_grip", (0.030, 0.010, 0.008, 1), roughness=0.84, bump_scale=16.0, bump_strength=0.070, variation=0.08, variation_scale=5.4, texture_profile="leather"),
+        "sword_grip": material("HOME_MAT_sword_grip", (0.014, 0.0045, 0.0035, 1), roughness=0.88, bump_scale=16.0, bump_strength=0.075, variation=0.07, variation_scale=5.4, texture_profile="leather"),
         "paper": material("HOME_MAT_paper", (0.31, 0.22, 0.14, 1), roughness=0.97, variation=0.035, variation_scale=5.8, texture_profile="paper"),
         "wax": material("HOME_MAT_wax", (0.24, 0.15, 0.085, 1), roughness=0.96, texture_profile="wax"),
         "globe": material(
