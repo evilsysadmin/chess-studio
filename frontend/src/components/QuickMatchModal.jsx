@@ -9,6 +9,7 @@ import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 import { adaptiveDifficultyPresentation } from '../adaptiveDifficultyPresentation.js';
 import { fetchMatthiasBriefing } from '../matthiasDaily.js';
 import { matthiasTimeVisual } from '../matthiasVisuals.js';
+import './QuickMatchMobileGoldenPath.css';
 
 const QUICK_MATCH_TOUCH_TARGET = Object.freeze({ minHeight: 44, touchAction: 'manipulation' });
 const QUICK_MATCH_ICON_TARGET = Object.freeze({ minWidth: 44, minHeight: 44, touchAction: 'manipulation' });
@@ -99,21 +100,6 @@ export default function QuickMatchModal({
           </div>
         )}
 
-        {autoDifficulty && (
-          <details className="friendly-subdisclosure adaptive-difficulty-details">
-            <summary>Cómo se ajusta Matthias</summary>
-            <div className="friendly-disclosure-body">
-              <p className="hint-text"><b>{adaptive.detailLabel}</b></p>
-              <p className="hint-text">{adaptive.evidenceCopy}</p>
-              <p className="hint-text">
-                Matthias sólo usa evidencia ya guardada antes de empezar. No cambia de fuerza durante la partida y, en una serie, mantiene el mismo nivel hasta terminar.
-              </p>
-            </div>
-          </details>
-        )}
-
-        {autoDifficulty && <button type="button" className="secondary-btn adaptive-manual-link" style={QUICK_MATCH_TOUCH_TARGET} onClick={() => setAutoDifficulty(false)}>Elegir nivel manualmente</button>}
-
         {!autoDifficulty && handicap && (
           <p className="hint-text friendly-inline-note">
             Ajuste recomendado: <b>{handicap.label.toLowerCase()}</b> para compensar la diferencia de rating.
@@ -132,10 +118,27 @@ export default function QuickMatchModal({
           {loading ? 'Creando partida…' : 'Empezar partida'}
         </button>
 
-        {onOpenPvp && (
-          <button type="button" className="secondary-btn quick-match-pvp-link" style={QUICK_MATCH_TOUCH_TARGET} onClick={onOpenPvp} disabled={loading}>
-            Jugar contra una persona · 1 vs 1
-          </button>
+        {autoDifficulty && (
+          <div className="quick-match-post-cta-tools">
+            <button
+              type="button"
+              className="secondary-btn adaptive-manual-link"
+              style={QUICK_MATCH_TOUCH_TARGET}
+              onClick={() => setAutoDifficulty(false)}
+            >
+              Ajustar nivel
+            </button>
+            <details className="friendly-subdisclosure adaptive-difficulty-details">
+              <summary style={QUICK_MATCH_TOUCH_TARGET}>Cómo se ajusta Matthias</summary>
+              <div className="friendly-disclosure-body">
+                <p className="hint-text"><b>{adaptive.detailLabel}</b></p>
+                <p className="hint-text">{adaptive.evidenceCopy}</p>
+                <p className="hint-text">
+                  Matthias sólo usa evidencia ya guardada antes de empezar. No cambia de fuerza durante la partida y, en una serie, mantiene el mismo nivel hasta terminar.
+                </p>
+              </div>
+            </details>
+          </div>
         )}
 
         <details className="friendly-disclosure quick-match-settings">
@@ -217,6 +220,12 @@ export default function QuickMatchModal({
             </details>
           </div>
         </details>
+
+        {onOpenPvp && (
+          <button type="button" className="secondary-btn quick-match-pvp-link quick-match-pvp-link--tertiary" style={QUICK_MATCH_TOUCH_TARGET} onClick={onOpenPvp} disabled={loading}>
+            Jugar contra una persona · 1 vs 1
+          </button>
+        )}
       </div>
     </div>
   );
