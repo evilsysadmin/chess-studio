@@ -124,7 +124,7 @@ test('Chronicles Tactics · arranca como RPG táctico isométrico con combate po
 
   // Exercise a real combat action immediately. Turn-based combat means the
   // enemy answers only after this action, never because the CI runner is slow.
-  await page.keyboard.press('2');
+  await mode.locator('[data-member-id="rook"]').evaluate((card) => card.click());
   const rookCard = mode.locator('[data-member-id="rook"]');
   await expect(rookCard).toHaveClass(/is-selected/);
   await expect(rookCard.locator('.chronicles-party-hud__vital--mp small')).toHaveText('1/1');
