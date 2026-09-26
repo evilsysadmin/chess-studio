@@ -131,11 +131,17 @@ export default function PostGameExperience({
             {adaptiveRecalibration && (
               <span>{adaptiveRecalibrationLabel(adaptiveRecalibration)}</span>
             )}
-            {postGameAnalysis?.status === 'loading' && <span>Revisando el cuaderno completo con minimax…</span>}
-            {postGameAnalysis?.status === 'done' && postGameAnalysis.report && (
+          </p>
+        )}
+        {postGameAnalysis && (
+          <p className="endgame-rating-impact endgame-analysis-impact" role="status">
+            <strong>Cuaderno de jugadas</strong>
+            {postGameAnalysis.status === 'loading' && <span>Revisando la partida completa con minimax…</span>}
+            {postGameAnalysis.status === 'error' && <span>La auditoría no respondió; el rating base se mantiene sin ajuste de calidad.</span>}
+            {postGameAnalysis.status === 'done' && postGameAnalysis.report && (
               <span>
-                Cuaderno revisado · {postGameAnalysis.report.analyzedCount} jugadas propias
-                {resultSummary.ratingApplied && Number(postGameAnalysis.qualityDelta) !== 0
+                Revisadas {postGameAnalysis.report.analyzedCount} jugadas propias
+                {resultSummary?.ratingApplied && Number(postGameAnalysis.qualityDelta) !== 0
                   ? ` · ajuste de calidad ${postGameAnalysis.qualityDelta > 0 ? '+' : ''}${postGameAnalysis.qualityDelta} ELO`
                   : ''}
               </span>
