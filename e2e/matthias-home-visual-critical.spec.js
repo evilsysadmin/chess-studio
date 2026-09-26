@@ -285,8 +285,12 @@ test('Home canónica · ultrapanorámica llena el viewport y mantiene la UI clav
   expect(Math.abs(stageBox.width - artBox.width)).toBeLessThanOrEqual(1);
   expect(Math.abs(stageBox.height - artBox.height)).toBeLessThanOrEqual(1);
 
-  const matthiasBox = await home.locator('.illustrated-home__matthias').boundingBox();
-  expect(matthiasBox).not.toBeNull();
+  const matthias = home.locator('.illustrated-home__matthias');
+  await expect(matthias).toBeVisible();
+  const matthiasBox = await matthias.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return { y: rect.y, height: rect.height };
+  });
   expect(matthiasBox.y).toBeGreaterThanOrEqual(-1);
   expect(matthiasBox.y + matthiasBox.height).toBeLessThanOrEqual(901);
   await expect(home.locator('.illustrated-home__brand')).toHaveCount(0);
