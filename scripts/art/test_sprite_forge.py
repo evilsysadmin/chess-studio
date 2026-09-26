@@ -555,6 +555,44 @@ class SpriteForgeCompilerTests(unittest.TestCase):
                     (right / part).read_bytes(),
                 )
 
+    def test_legacy_contract_keeps_pawn_slug_manifest_identity(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            contract, frames = self._fixture(root)
+            manifest = build_bank(contract, frames, root / "out")
+            self.assertEqual(manifest["kind"], "pawn-slug-sprite-forge-bank")
+            self.assertEqual(manifest["weapon"], "testgun")
+            self.assertNotIn("domain", manifest)
+            self.assertNotIn("variant", manifest)
+
+    def test_generic_domain_contract_builds_without_weapon_semantics(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            frames = root / "frames"
+            for name, xs in {
+                "idle": (20, 21),
+                "hurt": (19, 22),
+                "run_high_fidelity": (18, 20, 22),
+            }.items():
+                for index, x in enumerate(xs):
+                    self._write_frame(frames / name / f"{index:03d}.png", x)
+
+            data = self._contract()
+            del data["weapon"]
+            data["domain"] = "chess-football"
+            data["variant"] = "pawn-home"
+            contract = root / "contract.json"
+            contract.write_text(
+                json.dumps(data, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+
+            manifest = build_bank(contract, frames, root / "out")
+            self.assertEqual(manifest["kind"], "chess-football-sprite-forge-bank")
+            self.assertEqual(manifest["domain"], "chess-football")
+            self.assertEqual(manifest["variant"], "pawn-home")
+            self.assertNotIn("weapon", manifest)
+
     def test_manifest_distinguishes_authored_frames_from_stored_slots(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

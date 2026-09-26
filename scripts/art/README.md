@@ -28,3 +28,15 @@ Este derivador verifica el SHA antes y después y no retoca el master. **Sus dim
 Los bancos strict modernos de Godot usan sus manifests/contratos específicos hasta ser absorbidos por Sprite Forge. Otras armas siguen resolviéndose mediante los logical IDs de R2 documentados en `frontend/src/assets/pawnSlug/README.md` y `docs/visual-assets-r2-flow.md`.
 
 Compatibilidad histórica, crops y conversiones pertenecen a la trituradora/migradores. No añadir nuevas rutas de fallback o repack al game loop.
+
+
+## Reutilización multi-dominio
+
+Sprite Forge es una sola trituradora técnica. Nuevos experimentos 2D pueden reutilizar su lint, QA, pack determinista y manifest sin copiar el compiler.
+
+- Los contratos históricos de Pawn Slug que sólo declaran `weapon` conservan exactamente su identidad y manifest legacy.
+- Un dominio nuevo declara `domain` + `variant` y no necesita fingir que su variante es un arma.
+- Las reglas específicas de cada juego viven en contratos/perfiles de datos; no se crean forks `*_sprite_forge.py`.
+- Compartir el compiler no comparte runtime, gameplay, economía ni ownership entre juegos.
+
+Chess Football usará este camino para sus futuros bancos de futbolistas una vez validado el POC con placeholders.

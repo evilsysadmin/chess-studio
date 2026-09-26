@@ -8,11 +8,18 @@
     "schema",
     "quality_contract",
     "actor",
-    "weapon",
     "cell",
     "parts",
     "animations",
     "composition"
+  ],
+  "anyOf": [
+    {
+      "required": ["weapon"]
+    },
+    {
+      "required": ["domain", "variant"]
+    }
   ],
   "properties": {
     "schema": {
@@ -23,6 +30,14 @@
       "minLength": 1
     },
     "actor": {
+      "type": "string",
+      "minLength": 1
+    },
+    "domain": {
+      "type": "string",
+      "minLength": 1
+    },
+    "variant": {
       "type": "string",
       "minLength": 1
     },
