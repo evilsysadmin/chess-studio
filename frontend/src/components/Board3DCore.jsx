@@ -104,14 +104,12 @@ function Board3DCanvas({
   const [boardTheme, setBoardTheme] = useState(() => loadBoardTheme());
   const [rendererLabel, setRendererLabel] = useState('3D');
   const [focusedSquare, setFocusedSquare] = useState(() => orientation === 'black' ? 'e8' : 'e1');
-  const [hoveredSquare, setHoveredSquare] = useState(null);
-  const [inspectMode, setInspectMode] = useState(false);
+  const [hoveredSquare, setHoveredSquare] = useState(null); const [inspectMode, setInspectMode] = useState(false);
   const { selectable: warRoomVariantSelectable, variant: globalWarRoomVariant, status: warRoomVariantStatus, domData: globalWarRoomVariantDomData, setStatus: setWarRoomVariantStatus } = useWarRoomVariant();
   const presentation = resolveBoard3DPresentation({ cameraProfile, variantOverride: warRoomVariantOverride, globalVariant: globalWarRoomVariant, globalDomData: globalWarRoomVariantDomData, variantStatus: warRoomVariantStatus });
   const { classroom: classroomCamera, variant: warRoomVariant, domData: warRoomVariantDomData, playAriaLabel, inspectAriaLabel } = presentation;
   const effectiveThemeId = resolveBoard3DThemeId(themeOverride, boardTheme);
-  const currentPieces = useMemo(() => parseFen(fen), [fen]);
-  const forensicGhost = useMemo(() => board3DForensicGhost(mistakeMove, currentPieces), [mistakeMove, currentPieces]);
+  const currentPieces = useMemo(() => parseFen(fen), [fen]); const forensicGhost = useMemo(() => board3DForensicGhost(mistakeMove, currentPieces), [mistakeMove, currentPieces]);
   const terrainSquares = useMemo(() => board3DTerrainSquares(hintMove), [hintMove]);
   const techniqueTargetCount = useMemo(() => board3DTechniqueTargetCount(legalTargets), [legalTargets]);
 
@@ -439,10 +437,7 @@ function Board3DCanvas({
       const width = Math.max(280, host.clientWidth || 280);
       const height = Math.max(300, host.clientHeight || 300);
       renderer.setSize(width, height, false);
-      const resolvedCameraProfile = cameraProfile === 'classroom'
-        ? 'classroom'
-        : (warRoomVariant === 'classic' ? 'classic' : cameraProfile);
-      fitBoardCamera(camera, width, height, whiteSide, { profile: resolvedCameraProfile });
+      fitBoardCamera(camera, width, height, whiteSide, { profile: cameraProfile === 'classroom' ? 'classroom' : (warRoomVariant === 'classic' ? 'classic' : cameraProfile) });
       render();
     }
     resize();
@@ -718,6 +713,8 @@ function Board3DCanvas({
   useEffect(() => {
     const state = sceneStateRef.current;
     if (!state) return undefined;
+    const host = state.renderer.domElement.parentElement;
+    if (host) fitBoardCamera(state.camera, Math.max(280, host.clientWidth || 280), Math.max(300, host.clientHeight || 300), state.whiteSide, { profile: cameraProfile === 'classroom' ? 'classroom' : (warRoomVariant === 'classic' ? 'classic' : cameraProfile) });
     return startWarRoomVariantScene({
       scene: state.scene,
       classicShellController: state.classicShellController,
@@ -737,19 +734,6 @@ function Board3DCanvas({
     orientation,
     showCoordinates,
   ]);
-
-  useEffect(() => {
-    const state = sceneStateRef.current;
-    const host = hostRef.current;
-    if (!state || !host) return;
-    const width = Math.max(280, host.clientWidth || 280);
-    const height = Math.max(300, host.clientHeight || 300);
-    const resolvedCameraProfile = cameraProfile === 'classroom'
-      ? 'classroom'
-      : (warRoomVariant === 'classic' ? 'classic' : cameraProfile);
-    fitBoardCamera(state.camera, width, height, state.whiteSide, { profile: resolvedCameraProfile });
-    state.render();
-  }, [cameraProfile, warRoomVariant, orientation]);
 
   useEffect(() => {
     const state = sceneStateRef.current;
