@@ -117,7 +117,10 @@ runs:
         bash scripts/app_visual_capture.sh "${{ inputs.mode }}" "$groups" "$experiments" "$chronicles_avatar" "$producers"
 
     - name: Enforce War Room visual freeze
-      if: inputs.mode == 'canonical' && steps.scope.outputs.warroom == 'true'
+      if: >-
+        inputs.mode == 'canonical' &&
+        steps.scope.outputs.warroom == 'true' &&
+        (steps.scope.outputs.producer_scope == 'all' || contains(steps.scope.outputs.producer_scope, 'warroom-core'))
       env:
         APP_VISUAL_WARROOM_VARIANTS: ${{ steps.scope.outputs.warroom_variants }}
       shell: bash

@@ -123,12 +123,7 @@ export default function WarRoomHansFireCall({
       if (canvas) canvas.dataset.warRoomHansNarrativePhase = currentPhase || 'done';
       const visible = document.visibilityState !== 'hidden' && portalHost.getBoundingClientRect().width > 0;
 
-      if (visible && canvas?.dataset.warRoomHansSceneReady === 'true') {
-        const hansScreen = canvas.dataset.warRoomHansScreen || 'missing';
-        const route = canvas.dataset.warRoomHansRoute || '';
-        const logicalX = Number(canvas.dataset.warRoomHansLogicalX);
-        const choreographyPhase = canvas.dataset.warRoomHansChoreographyPhase || '';
-
+      if (visible && canvas) {
         if (currentPhase === 'loading') {
           readyPaints += 1;
           if (readyPaints >= 2) {
@@ -136,7 +131,23 @@ export default function WarRoomHansFireCall({
             setPhase('matthias');
             elapsed = 0;
           }
-        } else if (currentPhase === 'matthias') {
+        }
+
+        // Matthias' opening shout only needs the mounted board and his projected
+        // king anchor. Hans' choreography still waits for the complete Three.js
+        // scene, so a slow deferred finalizer cannot make the first bubble vanish
+        // behind a readiness timeout or release Hans before his actor exists.
+        if (canvas.dataset.warRoomHansSceneReady !== 'true') {
+          frameId = window.requestAnimationFrame(tick);
+          return;
+        }
+
+        const hansScreen = canvas.dataset.warRoomHansScreen || 'missing';
+        const route = canvas.dataset.warRoomHansRoute || '';
+        const logicalX = Number(canvas.dataset.warRoomHansLogicalX);
+        const choreographyPhase = canvas.dataset.warRoomHansChoreographyPhase || '';
+
+        if (currentPhase === 'matthias') {
           elapsed += delta;
           if (elapsed >= MATTHIAS_FIRE_CALL_MS) {
             canvas.dataset.warRoomHansCallReleased = 'true';
