@@ -275,4 +275,10 @@ describe('quick-match Elo chaser', () => {
   it('caps honestly at engine strength instead of inventing Elo above level 100', () => {
     expect(difficultyForQuickMatchRating(2200, [], 100)).toBe(100);
   });
+  it('uses the configured global target lead for established players', () => {
+    const difficulty = difficultyForQuickMatchRating(1200, [], 20, {}, Date.now(), 75);
+    const lead = cpuRatingForDifficulty(difficulty) - 1200;
+    expect(lead).toBeGreaterThanOrEqual(50);
+    expect(lead).toBeLessThanOrEqual(100);
+  });
 });
