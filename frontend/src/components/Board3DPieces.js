@@ -4,7 +4,7 @@ import { buildPlayerKing3D } from './PlayerKing3D.js';
 import { makePremiumPieceMaterial } from './Board3DSurfaces.js';
 import { SKIN_3D } from './Board3DConfig.js';
 import { addPieceSkinDetails, reinforcePieceSkinMaterial } from './Board3DSkinDecor.js';
-import { COARSE_PIECE_HIT_TARGET } from './WarRoom3DTouch.js';
+import { CLASSIC_DESKTOP_PIECE_HIT_TARGET, COARSE_PIECE_HIT_TARGET } from './WarRoom3DTouch.js';
 import { syncBoard3DRankInsignias } from './Board3DRankInsignia.js';
 
 function makeMaterial(color, skin, accent = false, side = 'w', coarsePointer = false, skinId = 'studio') {
@@ -209,15 +209,10 @@ function addContactShadow(group, coarsePointer = false, side = 'b') {
   }
 }
 
-export function addCoarsePieceHitTarget(group, square, coarsePointer = false) {
-  if (!coarsePointer || !square) return;
+function addSyntheticPieceHitTarget(group, square, profile, kind) {
+  if (!group || !square || !profile) return;
   const target = new THREE.Mesh(
-    new THREE.CylinderGeometry(
-      COARSE_PIECE_HIT_TARGET.radius,
-      COARSE_PIECE_HIT_TARGET.radius,
-      COARSE_PIECE_HIT_TARGET.height,
-      12,
-    ),
+    new THREE.CylinderGeometry(profile.radius, profile.radius, profile.height, 12),
     new THREE.MeshBasicMaterial({
       color: 0xffffff,
       transparent: true,
@@ -227,12 +222,22 @@ export function addCoarsePieceHitTarget(group, square, coarsePointer = false) {
       toneMapped: false,
     }),
   );
-  target.position.y = COARSE_PIECE_HIT_TARGET.centerY;
+  target.position.y = profile.centerY;
   target.castShadow = false;
   target.receiveShadow = false;
   target.userData.square = square;
-  target.userData.touchHitTarget = true;
+  target.userData.pieceHitTarget = kind;
   group.add(target);
+}
+
+export function addCoarsePieceHitTarget(group, square, coarsePointer = false) {
+  if (!coarsePointer) return;
+  addSyntheticPieceHitTarget(group, square, COARSE_PIECE_HIT_TARGET, 'touch-base-v1');
+}
+
+export function addClassicDesktopPieceHitTarget(group, square, enabled = false) {
+  if (!enabled) return;
+  addSyntheticPieceHitTarget(group, square, CLASSIC_DESKTOP_PIECE_HIT_TARGET, 'classic-desktop-base-v1');
 }
 
 function addSignatureDetail(group, type, accent, coarsePointer = false) {
