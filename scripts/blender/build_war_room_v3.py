@@ -524,7 +524,7 @@ def build_lounge_corner(static, palette):
 
     # Turn the complete chair inward toward the command board, matching the
     # approved golden composition without moving its lounge-corner footprint.
-    chair_parts = [obj for obj in static if obj.name.startswith("WR3_OBS_chair_")]
+    chair_parts = [obj for obj in static.objects if obj.name.startswith("WR3_OBS_chair_")]
     for obj in chair_parts:
         dx, dy = obj.location.x - x, obj.location.y - y
         obj.location.x = x + dx * math.cos(chair_yaw) - dy * math.sin(chair_yaw)
