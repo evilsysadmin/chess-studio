@@ -38,9 +38,6 @@ FRONTEND_EXCLUDES = {"test-setup.js"}
 FRONTEND_DEAD_EXPORT_BASELINE = {
     "frontend/src/ambientIdentityContrasts.js::IDENTITY_CONTRAST_IDS",
     "frontend/src/ambientRadioMatthiasRecompositions.js::RADIO_MATTHIAS_MELODIC_REWRITE_IDS",
-    "frontend/src/chesscomEnvironmentArtV4.js::CHESSCOM_ENVIRONMENT_ART_V4",
-    "frontend/src/chesscomMaterialArtV7.js::CHESSCOM_MATERIAL_ART_V7",
-    "frontend/src/chesscomOverlayArtV6.js::CHESSCOM_OVERLAY_ART_V6",
     "frontend/src/chronicles/chroniclesMapCatalog.js::chroniclesMapEnemyById",
     "frontend/src/chronicles/chroniclesMapCatalog.js::chroniclesMapInteractable",
     "frontend/src/chroniclesOfMatthias.js::chroniclesEnemyAlive",
