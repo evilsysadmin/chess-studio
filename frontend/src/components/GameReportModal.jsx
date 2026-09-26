@@ -43,10 +43,10 @@ function forensicVerdict(report) {
   return 'Dictamen: pequeñas contusiones, nada que requiera cerrar el club ni cambiar de identidad.';
 }
 
-export default function GameReportModal({ history, humanColor, onClose, onOpenCrimeScene, onShareIncident, onTrainPersonal, meta = {} }) {
+export default function GameReportModal({ history, humanColor, onClose, onOpenCrimeScene, onShareIncident, onTrainPersonal, initialReport = null, meta = {} }) {
   useEscapeToClose(onClose);
-  const [status, setStatus] = useState('loading');
-  const [report, setReport] = useState(null);
+  const [status, setStatus] = useState(initialReport ? 'done' : 'loading');
+  const [report, setReport] = useState(initialReport || null);
   const [personalPuzzleInfo, setPersonalPuzzleInfo] = useState(null);
   const [aiAutopsy, setAiAutopsy] = useState(null);
   const [aiAutopsyStatus, setAiAutopsyStatus] = useState('idle');
@@ -62,6 +62,15 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
     const controller = new AbortController();
     worstCounterfactualAbortRef.current?.abort();
     setWorstCounterfactual({ status: 'idle', line: [] });
+    if (initialReport) {
+      setReport(initialReport);
+      setStatus('done');
+      return () => {
+        cancelled = true;
+        controller.abort(new DOMException('Autopsy closed', 'AbortError'));
+        worstCounterfactualAbortRef.current?.abort();
+      };
+    }
     (async () => {
       try {
         const result = await analyzeGame(history, humanColor, api, { signal: controller.signal, initialFen: meta.initialFen || null });
@@ -75,7 +84,7 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
       controller.abort(new DOMException('Autopsy closed', 'AbortError'));
       worstCounterfactualAbortRef.current?.abort();
     };
-  }, [history, humanColor, meta.initialFen]);
+  }, [history, humanColor, meta.initialFen, initialReport]);
 
   useEffect(() => {
     if (status !== 'done' || !report || archivedRef.current) return;
@@ -218,6 +227,20 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
                   <div><span>Error medio</span><b>−{report.averageLoss} puntos de evaluación</b></div>
                   <div><span>Jugadas revisadas</span><b>{report.analyzedCount}</b></div>
                 </div>
+                <details className="autopsy-glossary" data-move-notebook="reviewed">
+                  <summary>Cuaderno revisado · {report.analyzedCount} jugadas propias</summary>
+                  <div className="autopsy-timeline">
+                    {(report.moveReports || []).filter((move) => Number.isFinite(move.loss)).map((move) => (
+                      <div className={`autopsy-incident sev-${move.severity || 'ok'}`} key={`notebook-${move.index}`}>
+                        <div className="autopsy-incident-number">#{move.moveNumber}</div>
+                        <div>
+                          <b>{move.played} → {move.suggested}</b>
+                          <p>Pérdida frente a la jugada ideal: <strong>−{move.loss} cp</strong></p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </details>
                 <button
                   type="button"
                   className="secondary-btn"
