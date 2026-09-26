@@ -15,6 +15,7 @@ const WAR_ROOM_V2_REVISION_BASE =
 const WAR_ROOM_V3_REVISION_BASE =
   'https://assets.chess-studio.shadowops.dpdns.org/war-room/v3/staging/revisions';
 const LOCAL_GPU_CAPTURE = process.env.APP_VISUAL_LOCAL_GPU === '1';
+const WAR_ROOM_PROFILE_SCOPE = String(process.env.APP_VISUAL_WARROOM_PROFILE_SCOPE || 'all').trim().toLowerCase();
 const WAR_ROOM_VISUAL_VARIANTS = new Set(
   (process.env.APP_VISUAL_WARROOM_VARIANTS || 'classic,v2,v3')
     .split(',')
@@ -207,7 +208,11 @@ const CAPTURE_PROFILES = Object.freeze([
   }),
 ]);
 const ACTIVE_CAPTURE_PROFILES = Object.freeze(
-  CAPTURE_PROFILES.filter((profile) => WAR_ROOM_VISUAL_VARIANTS.has(profile.variant || 'classic')),
+  CAPTURE_PROFILES.filter((profile) => {
+    if (!WAR_ROOM_VISUAL_VARIANTS.has(profile.variant || 'classic')) return false;
+    if (WAR_ROOM_PROFILE_SCOPE === 'mobile') return profile.hasTouch === true;
+    return true;
+  }),
 );
 
 async function open3DFromAppearance(page) {
