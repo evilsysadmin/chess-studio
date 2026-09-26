@@ -215,7 +215,9 @@ for (const eventName of CAPTURE_EVENTS) {
       await seedGamesBeforeEvent(page, eventName);
 
       await buttonWithVisibleText(page, 'Partida rápida').click();
-      await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+      const quickDialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
+      await expect(quickDialog).toBeVisible();
+      await quickDialog.getByRole('button', { name: 'Empezar partida', exact: true }).click();
       await expect(page.locator('.board-live-row.is-3d-warroom')).toBeVisible({ timeout: 45_000 });
 
       const canvas = page.locator('.board3d-main-canvas');

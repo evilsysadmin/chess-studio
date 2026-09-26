@@ -137,7 +137,10 @@ case "$mode" in
       "${playwright_args[@]}"
     ;;
   hans)
-    hans_playwright_args=(--workers=2 --retries=0)
+    # Each Hans routine owns a full SwiftShader War Room scene + video recorder.
+    # Two concurrent workers contend hard enough to hit the per-test 180 s
+    # ceiling on CI, so keep this secondary visual lane serial and deterministic.
+    hans_playwright_args=(--workers=1 --retries=0)
     if [[ "${GITHUB_EVENT_NAME:-}" == "pull_request" ]]; then
       # `fire` already has its own canonical visual canary above. Keep this
       # parallel lane focused on the ambient scheduler and order espresso last
