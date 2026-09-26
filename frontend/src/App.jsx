@@ -634,7 +634,6 @@ function AppInner({ isAdminUser }) {
   async function handlePlayTournament(color) {
     const launch = gameLaunch.begin();
     if (!launch) return;
-    resetPostGameAnalysis();
     setLoading(true);
     setError(null);
     try {
