@@ -28,7 +28,7 @@ async function openVisualMoreModes(page) {
     if (!(await pvpLobby.isVisible().catch(() => false))) throw error;
     await pvpLobby.getByRole('button', { name: /Cerrar ventana/ }).click();
     await expect(pvpLobby).toBeHidden();
-    await trigger.click();
+    await trigger.evaluate((button) => button.click());
   }
 }
 
