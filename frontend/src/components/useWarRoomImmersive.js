@@ -38,6 +38,15 @@ export function requestWarRoomLandscape(screenApi = globalThis.screen) {
   }
 }
 
+export function shouldAutoRotateWarRoomOnEntry({
+  win = globalThis.window,
+} = {}) {
+  if (!win) return false;
+  const coarsePointer = Boolean(win.matchMedia?.('(pointer: coarse)')?.matches);
+  const viewportWidth = Number(win.innerWidth) || Number.POSITIVE_INFINITY;
+  return coarsePointer && viewportWidth <= 920;
+}
+
 export async function requestWarRoomLandscapeFullscreen({
   doc = globalThis.document,
   screenApi = globalThis.screen,
