@@ -73,3 +73,26 @@ export function matchmakingTelemetrySummary(state = safeState()) {
     rematchRate: count ? countWhere('rematch') / count : null,
   };
 }
+
+
+export function recordCompletedAdaptiveMatchmakingTelemetry({
+  gameContext = {},
+  finishedGame,
+  outcome,
+  endMeta = {},
+  ratingBefore,
+  opponentRating,
+} = {}) {
+  return recordMatchmakingTelemetry({
+    gameId: finishedGame?.id,
+    adaptiveDifficulty: gameContext?.adaptiveDifficulty === true,
+    outcome,
+    difficulty: finishedGame?.difficulty,
+    playerRating: ratingBefore,
+    opponentRating,
+    closeGame: endMeta?.closeGame === true,
+    decisiveAdvantageEscaped: endMeta?.decisiveAdvantageEscaped === true,
+    stalemateFromWinning: endMeta?.stalemateFromWinning === true,
+    rematch: gameContext?.rematch === true,
+  });
+}
