@@ -202,7 +202,28 @@ body.war-room-immersive-active {
   }
 
   .game-screen .game-layout-immersive .board-live-row.is-3d-warroom {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+    grid-template-areas: 'board' !important;
+    align-items: stretch !important;
     min-height: 0;
+  }
+
+  /* Immersive is intentionally board-only on a phone. The regular landscape
+   * layout still reserves commander/chat tracks and a compact player footer;
+   * if those tracks survive the transition, the 3D stage receives only the
+   * footer remainder (or collapses entirely). */
+  .game-screen .game-layout-immersive .game-board-stack.game-board-stack-3d {
+    display: block !important;
+    align-self: stretch !important;
+    max-width: none !important;
+  }
+
+  .game-layout-immersive .game-board-stack-3d > .game-player-rail.is-human,
+  .game-layout-immersive .game-board-stack-3d > .game-command-deck,
+  .game-layout-immersive .game-3d-command-column,
+  .game-layout-immersive .game-side-column.game-side-column-3d {
+    display: none !important;
   }
 
   .game-screen .game-layout-immersive .game-board-stack-3d .board3d-main-shell {
