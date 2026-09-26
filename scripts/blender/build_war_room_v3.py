@@ -329,8 +329,12 @@ def build_single_stove(static, palette):
                   palette["iron"], static, vertices=64)
     base.cylinder("WR3_OBS_stove_crown", (x, y, 2.47), 0.96, 0.12,
                   palette["brass_dark"], static, vertices=64)
-    base.cylinder("WR3_OBS_stove_plinth", (x, y, 0.65), 1.02, 0.14,
+    base.cylinder("WR3_OBS_stove_plinth", (x, y, 0.65), 1.12, 0.16,
                   palette["stone"], static, vertices=64)
+    base.cylinder("WR3_OBS_stove_hearth_slab", (x, y - 0.10, 0.47), 1.38, 0.10,
+                  palette["green_marble"], static, vertices=64)
+    base.torus("WR3_OBS_stove_hearth_trim", (x, y - 0.10, 0.535), 1.35, 0.035,
+               palette["brass_dark"], static)
     for side in (-1, 1):
         base.cube(f"WR3_OBS_stove_leg_{side}", (x + side * 0.55, y, 0.43),
                   (0.10, 0.18, 0.26), palette["iron"], static, bevel=0.07)
