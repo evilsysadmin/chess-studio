@@ -218,7 +218,8 @@ def test_public_features_require_auth_and_expose_only_known_boolean_flags(monkey
             "homeGuide": True,
             "postGameFeedback": True,
             "spectator": False,
-        }
+        },
+        "matchmaking": {"targetLeadElo": 50},
     }
 
 

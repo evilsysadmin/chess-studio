@@ -19,6 +19,7 @@ import users_store as ustore
 import user_data_lifecycle
 import matthias_daily_store as matthias_daily_store
 import matthias_memory_store as matthias_memory_store
+import runtime_settings_store
 from admin_insights import (
     ADMIN_SUMMARY_PROFILE_KEYS,
     _extract_admin_insights_payload,
@@ -33,6 +34,7 @@ from api_models import (
     AdminInsightsRequest,
     AdminPlayerPortraitRequest,
     AdminMatthiasPreviewRequest,
+    AdminMatchmakingSettingsRequest,
     AdminUserRatingRequest,
     FeedbackRequest,
 )
@@ -482,6 +484,19 @@ def build_admin_router(*, auth_dependency, admin_dependency, limiter) -> APIRout
             raise HTTPException(404, "Usuario no encontrado.")
 
         return {"deleted": True, "username": target, "deletedGames": purged["games"]}
+
+
+    @router.get("/api/admin/matchmaking-settings")
+    async def admin_matchmaking_settings(username: str = Depends(admin_dependency)):
+        return await runtime_settings_store.get_matchmaking_settings()
+
+
+    @router.post("/api/admin/matchmaking-settings")
+    async def admin_update_matchmaking_settings(
+        body: AdminMatchmakingSettingsRequest,
+        username: str = Depends(admin_dependency),
+    ):
+        return await runtime_settings_store.set_matchmaking_target_lead_elo(body.target_lead_elo)
 
 
     # Compatibilidad con V15.2/V15.3 ya desplegadas. La UI nueva usa POST para
