@@ -51,6 +51,10 @@
     "authority": "profileStorage:rating",
     "recovery": null
   },
+  "matchmakingTelemetry": {
+    "authority": "profileStorage:matchmaking-telemetry",
+    "recovery": null
+  },
   "feedback": {
     "authority": "backend:/api/feedback",
     "recovery": null
