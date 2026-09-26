@@ -1053,8 +1053,7 @@ export function createChroniclesIsometricRenderer(host, {
   document.addEventListener('visibilitychange', onVisibility);
   renderer.domElement.addEventListener('pointerup', onPointerUp);
 
-  resize();
-  syncSelection();
+  resize(); syncSelection();
   syncInteraction();
   render();
   onReady?.('THREE.JS · ISOMETRIC');
