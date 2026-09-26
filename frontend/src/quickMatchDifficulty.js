@@ -13,6 +13,7 @@ export const QUICK_MATCH_PROVISIONAL_START_LEAD_ELO = -50;
 export const QUICK_MATCH_FORM_MAX_AGE_DAYS = 30;
 export const QUICK_MATCH_EARLY_SIGNAL_GAMES = 3;
 const QUICK_MATCH_RECENT_GAMES = 8;
+const QUICK_MATCH_FORM_MIN_DISTINCT_OPPONENTS = 2;
 const QUICK_MATCH_MAX_FORM_BOOST_ELO = 25;
 const QUICK_MATCH_MAX_FORM_RELIEF_ELO = -50;
 const QUICK_MATCH_MIN_QUALITY_GAMES = 2;
@@ -85,11 +86,24 @@ export function quickMatchRecentFormAdjustment(activity = [], games = PROVISIONA
   if (!recent.length) return 0;
 
   const provisional = Number(games) < PROVISIONAL_GAMES;
+
   let lossStreak = 0;
   for (const event of recent) {
     if (event.outcome !== 'loss') break;
     lossStreak += 1;
   }
+
+  // En perfiles establecidos evitamos sobreinterpretar evidencia ruidosa
+  // recogida contra una única fuerza de CPU. Una racha clara de tres derrotas
+  // sí conserva el alivio: no obligamos al jugador a seguir chocando contra
+  // exactamente el mismo muro sólo para conseguir una segunda muestra.
+  const distinctOpponents = new Set(recent.map((event) => cpuRatingForDifficulty(event.difficulty))).size;
+  if (
+    !provisional
+    && recent.length >= 3
+    && distinctOpponents < QUICK_MATCH_FORM_MIN_DISTINCT_OPPONENTS
+    && lossStreak < 3
+  ) return 0;
 
   if (recent.length < 3 && !provisional) return 0;
   if (recent.length === 1) return lossStreak ? -25 : 0;

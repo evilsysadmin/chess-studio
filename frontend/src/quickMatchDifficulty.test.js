@@ -144,6 +144,17 @@ describe('quick-match Elo chaser', () => {
     expect(selected).not.toBe(oldDifficulty);
   });
 
+  it('ignores noisy established form sampled against only one opponent strength', () => {
+    const baseline = difficultyForQuickMatchRating(1000, [], 20);
+    const repeated = [
+      ...adaptiveGame('same3', 'win', baseline),
+      ...adaptiveGame('same2', 'draw', baseline),
+      ...adaptiveGame('same1', 'loss', baseline),
+    ];
+
+    expect(quickMatchTargetLeadElo(repeated, 20, {})).toBe(QUICK_MATCH_TARGET_LEAD_ELO);
+  });
+
   it('reacts to a real adaptive losing streak only between games', () => {
     const baseline = difficultyForQuickMatchRating(1000, [], 20);
     const losses = [
