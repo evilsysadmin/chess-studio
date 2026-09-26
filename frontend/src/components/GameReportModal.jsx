@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
-import { analyzeGame } from '../gameReport.js';
+import { analyzeCompletedGameOnce } from '../postGameAnalysis.js';
 import { buildShortCounterfactual, counterfactualInputFromReportMove } from '../postGameCounterfactual.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { savePersonalPuzzlesFromReport } from '../personalPuzzles.js';
@@ -59,20 +59,24 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
 
   useEffect(() => {
     let cancelled = false;
-    const controller = new AbortController();
     worstCounterfactualAbortRef.current?.abort();
     setWorstCounterfactual({ status: 'idle', line: [] });
     (async () => {
       try {
-        const result = await analyzeGame(history, humanColor, api, { signal: controller.signal, initialFen: meta.initialFen || null });
+        const result = await analyzeCompletedGameOnce({
+          gameId: meta.gameId,
+          history,
+          humanColor,
+          api,
+          initialFen: meta.initialFen || null,
+        });
         if (!cancelled) { setReport(result); setStatus('done'); }
-      } catch (error) {
-        if (!cancelled && error?.name !== 'AbortError' && error?.cause?.name !== 'AbortError') setStatus('error');
+      } catch {
+        if (!cancelled) setStatus('error');
       }
     })();
     return () => {
       cancelled = true;
-      controller.abort(new DOMException('Autopsy closed', 'AbortError'));
       worstCounterfactualAbortRef.current?.abort();
     };
   }, [history, humanColor, meta.initialFen]);
