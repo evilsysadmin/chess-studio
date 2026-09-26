@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   preflight:
-    name: Preflight · contracts
+    name: Scope · classify
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     outputs:
@@ -98,6 +98,17 @@ jobs:
           printf '%s\n' "$files" | python3 -S scripts/browser_quality_scope.py \
             --github-output "$GITHUB_OUTPUT" \
             --summary "$GITHUB_STEP_SUMMARY"
+  contracts:
+    name: Preflight · contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
       - name: Static preflight + CI wiring
         run: |
           set -euo pipefail
@@ -330,14 +341,15 @@ jobs:
           retention-days: 7
   e2e:
     name: Tests · Playwright
-    needs: [preflight, e2e_lanes, e2e_specialized]
+    needs: [preflight, contracts, e2e_lanes, e2e_specialized]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 50
     steps:
       - name: Aggregate required browser + Blender gates
         env:
-          PREFLIGHT_RESULT: ${{ needs.preflight.result }}
+          SCOPE_RESULT: ${{ needs.preflight.result }}
+          CONTRACTS_RESULT: ${{ needs.contracts.result }}
           RUN_E2E: ${{ needs.preflight.outputs.run_e2e }}
           CORE_LANES_RESULT: ${{ needs.e2e_lanes.result }}
           RUN_SPECIALIZED: ${{ needs.preflight.outputs.browser_has_cases }}
@@ -349,8 +361,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          if [[ "$PREFLIGHT_RESULT" != 'success' ]]; then
-            echo "::error::Preflight no terminó con éxito: $PREFLIGHT_RESULT"
+          if [[ "$SCOPE_RESULT" != 'success' ]]; then
+            echo "::error::Scope no terminó con éxito: $SCOPE_RESULT"
+            exit 1
+          fi
+          if [[ "$CONTRACTS_RESULT" != 'success' ]]; then
+            echo "::error::Preflight contracts no terminó con éxito: $CONTRACTS_RESULT"
             exit 1
           fi
           if [[ "$RUN_E2E" == 'true' && "$CORE_LANES_RESULT" != 'success' ]]; then
