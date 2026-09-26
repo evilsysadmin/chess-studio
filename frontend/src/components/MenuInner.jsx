@@ -50,6 +50,7 @@ export default function Menu({
   error,
   rating,
   suppressHomeNudge = false,
+  features = null,
   quickMatchLaunchNonce = 0,
 }) {
   const [difficulty, setDifficulty] = useState(50);
@@ -273,7 +274,7 @@ export default function Menu({
             const previousRenderer = getBoardRenderer();
             if (requestedRenderer) setBoardRenderer(requestedRenderer);
             const started = await onNewGame(
-              autoDifficulty ? difficultyForQuickMatchRating(rating?.rating ?? 400, null, rating?.games ?? 0) : difficulty,
+              autoDifficulty ? difficultyForQuickMatchRating(rating?.rating ?? 400, null, rating?.games ?? 0, null, Date.now(), features?.matchmakingTargetLeadElo) : difficulty,
               color,
               {
                 timeControlId,
