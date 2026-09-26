@@ -522,7 +522,17 @@ def build_lounge_corner(static, palette):
     )
     pillow.rotation_euler.x = math.radians(-7)
 
-    # Turn the complete chair inward toward the command board, matching the\n    # approved golden composition without moving its lounge-corner footprint.\n    chair_parts = [obj for obj in static if obj.name.startswith("WR3_OBS_chair_")]\n    for obj in chair_parts:\n        dx, dy = obj.location.x - x, obj.location.y - y\n        obj.location.x = x + dx * math.cos(chair_yaw) - dy * math.sin(chair_yaw)\n        obj.location.y = y + dx * math.sin(chair_yaw) + dy * math.cos(chair_yaw)\n        obj.rotation_euler.z += chair_yaw\n\n    tx, ty = -6.00, 2.22\n    base.cylinder("WR3_OBS_side_table_top", (tx, ty, 0.78), 0.55, 0.10,
+    # Turn the complete chair inward toward the command board, matching the
+    # approved golden composition without moving its lounge-corner footprint.
+    chair_parts = [obj for obj in static if obj.name.startswith("WR3_OBS_chair_")]
+    for obj in chair_parts:
+        dx, dy = obj.location.x - x, obj.location.y - y
+        obj.location.x = x + dx * math.cos(chair_yaw) - dy * math.sin(chair_yaw)
+        obj.location.y = y + dx * math.sin(chair_yaw) + dy * math.cos(chair_yaw)
+        obj.rotation_euler.z += chair_yaw
+
+    tx, ty = -6.00, 2.22
+    base.cylinder("WR3_OBS_side_table_top", (tx, ty, 0.78), 0.55, 0.10,
                   palette["walnut"], static, vertices=48)
     base.torus("WR3_OBS_side_table_brass_edge", (tx, ty, 0.835), 0.49, 0.025,
                palette["brass"], static)
