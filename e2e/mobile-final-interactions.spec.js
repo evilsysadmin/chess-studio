@@ -241,6 +241,14 @@ test('Puzzles móvil · selector compacto y acciones táctiles dejan respirar al
     expect(pickerBox).not.toBeNull();
     expect(pickerBox.height).toBeLessThanOrEqual(64);
 
+    const board = page.locator('.puzzle-board-column .board-wrap, .puzzle-board-column .board-grid').first();
+    await expect(board).toBeVisible();
+    const boardBox = await board.boundingBox();
+    expect(boardBox).not.toBeNull();
+    expect(boardBox.x).toBeGreaterThanOrEqual(-1);
+    expect(boardBox.x + boardBox.width).toBeLessThanOrEqual(width + 1);
+    expect(boardBox.width).toBeGreaterThanOrEqual(Math.min(320, width - 32));
+
     const actions = page.locator('.puzzle-board-column .game-controls > button:visible');
     await expect(actions).toHaveCount(2);
     for (let index = 0; index < 2; index += 1) {
