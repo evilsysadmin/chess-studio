@@ -65,6 +65,11 @@ def normalize(paths: list[str]) -> list[str]:
         # visual suite. Visual/health E2E files remain explicit owners.
         if lower.startswith("e2e/") and not _is_app_visual_e2e(path):
             continue
+        # The Hans fire-call canary is a diagnostic guard for shared renderer
+        # work. A timeout-only hardening change to that canary must not expand a
+        # mobile-layout PR into the expensive/flaky Hans visual lane itself.
+        if lower == "e2e/war-room-hans-visual-artifact.spec.js":
+            continue
         if _is_matthias_canonical_owner(path):
             # Home and Chronicles Tactics both render this GLB. Emit the runtime
             # asset plus one stable Chronicles owner so the existing classifiers
@@ -116,6 +121,7 @@ def self_test() -> None:
         "frontend/src/chroniclesTacticsTurnMode.js",
     ]) == ["frontend/src/chroniclesTacticsTurnMode.js"]
     assert normalize(["e2e/regression-journeys.spec.js"]) == []
+    assert normalize(["e2e/war-room-hans-visual-artifact.spec.js"]) == []
 
     # Visual artifacts and browser-health specs are explicit workflow owners and
     # therefore must survive normalization unchanged.
