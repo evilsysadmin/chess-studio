@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import {
   HOME_BLENDER_RUNTIME_MIN_WIDTH,
+  homeBlenderCameraFovForAspect,
   homeBlenderFireKind,
   homeBlenderSteamMotion,
   applyHomeBlenderPieceLift,
@@ -46,6 +47,17 @@ import {
 import { tighterRuntimeLodCap } from './HomeCastle3DRenderPolicy.js';
 
 describe('HomeBlenderScene3D mobile runtime policy', () => {
+  it('keeps portrait phone framing tight enough to avoid empty ceiling runway', () => {
+    expect(homeBlenderCameraFovForAspect(16 / 9)).toBe(22.9);
+    for (const [width, height] of [[360, 800], [390, 844], [430, 932]]) {
+      const fov = homeBlenderCameraFovForAspect(width / height);
+      expect(fov).toBeGreaterThan(22.9);
+      expect(fov).toBeLessThanOrEqual(33);
+    }
+    expect(homeBlenderCameraFovForAspect(390 / 844)).toBe(33);
+    expect(homeBlenderCameraFovForAspect(430 / 932)).toBe(33);
+  });
+
   it('allows the canonical Blender Home from 360px on capable Android-class hardware', () => {
     expect(HOME_BLENDER_RUNTIME_MIN_WIDTH).toBe(360);
 
