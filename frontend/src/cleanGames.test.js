@@ -142,7 +142,7 @@ describe('competitiveGameSignals', () => {
   });
 
   it('does not manufacture drama from an insufficient or unavailable evaluation sample', () => {
-    expect(competitiveGameSignals(report([500, 500]), { outcome: 'loss' }).sufficientSample).toBe(false);
+    expect(competitiveGameSignals({ analyzedCount: 2, moveReports: [{ loss: 10, humanEvaluation: 500 }, { loss: 10, humanEvaluation: 500 }] }, { outcome: 'loss' }).sufficientSample).toBe(false);
     const noEval = { analyzedCount: 8, moveReports: Array.from({ length: 8 }, () => ({ loss: 10 })) };
     expect(competitiveGameSignals(noEval, { outcome: 'draw' }).winningPositionEscaped).toBe(false);
   });
