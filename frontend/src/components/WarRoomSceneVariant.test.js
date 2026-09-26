@@ -46,6 +46,7 @@ describe('War Room shared scene variants', () => {
     const shell = { visible: false };
     const scene = { userData: {} };
     const statuses = [];
+    let paints = 0;
     const controller = {
       current: () => [shell],
       ensure: () => [shell],
@@ -57,11 +58,13 @@ describe('War Room shared scene variants', () => {
       variant: 'classic',
       selectable: true,
       onStatus: (status) => statuses.push(status),
+      onPaint: () => { paints += 1; },
     });
 
     expect(shell.visible).toBe(true);
     expect(scene.userData.warRoomRenderedVariant).toBe('classic');
     expect(statuses).toEqual(['idle']);
+    expect(paints).toBe(1);
     expect(typeof release).toBe('function');
   });
 
