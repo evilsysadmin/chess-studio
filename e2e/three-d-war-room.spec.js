@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { resolveBoard3DCameraFov } from '../frontend/src/components/Board3DConfig.js';
+import { classicWarRoomCameraFramingProfile } from '../frontend/src/components/Board3DScene.js';
 import { activateSetupControl, buttonWithVisibleText, login, mockApi } from './helpers.js';
 
 const WAR_ROOM_READY_TIMEOUT = 45_000;
@@ -26,12 +27,10 @@ function dot(a, b) {
 
 function projectWarRoomSquare(rect, square, worldY = 0.12) {
   const aspect = Math.max(0.35, rect.width / Math.max(1, rect.height));
-  const profile = aspect >= 1.42
-    ? { halfSpan: 5.38, padding: 1.07, minDistance: 13.2, targetY: 1.08, targetZ: -0.16, cameraY: 7.35, cameraZ: 10.6 }
-    : { halfSpan: 5.78, padding: 1.13, minDistance: 14.5, targetY: 0.92, targetZ: -0.08, cameraY: 8.2, cameraZ: 10.72 };
-  // Keep the browser input projection on the same public FOV contract as the
-  // real renderer. The old helper hardcoded the historical 40° desktop lens,
-  // so a near-orthographic camera made Playwright click the wrong squares.
+  const profile = classicWarRoomCameraFramingProfile(aspect);
+  // Keep browser input projection on the same public V1 framing + FOV
+  // contracts as the real renderer. Camera experiments must move the pointer
+  // proof with the actual board instead of leaving stale test coordinates.
   const verticalFov = resolveBoard3DCameraFov(aspect) * Math.PI / 180;
   const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * aspect);
   const limitingFov = Math.min(verticalFov, horizontalFov);
