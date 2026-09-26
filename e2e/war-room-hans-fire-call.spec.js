@@ -31,11 +31,12 @@ async function seedGamesBeforeFire(page) {
 
 async function openFireGame(page) {
   await page.setViewportSize({ width: 1440, height: 960 });
+  await page.addInitScript(() => {
+    localStorage.setItem('chess-study-war-room-variant-v1', 'classic');
+    localStorage.setItem('chess-study-reduced-motion', '0');
+  });
   await mockApi(page);
   await login(page);
-  await page.evaluate(() => {
-    localStorage.setItem('chess-study-war-room-variant-v1', 'classic');
-  });
   await seedGamesBeforeFire(page);
   await buttonWithVisibleText(page, 'Partida rápida').click();
   const quickDialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
@@ -46,17 +47,24 @@ async function openFireGame(page) {
   // transient phase before starting the game instead of serially waiting for
   // the room/canvas first and only then looking for a bubble that may be gone.
   const matthiasCall = page.getByRole('status', { name: 'Matthias llama a Hans por el fuego' });
-  const callVisible = expect(matthiasCall).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
+  const callVisible = matthiasCall
+    .waitFor({ state: 'visible', timeout: WAR_ROOM_READY_TIMEOUT })
+    .then(() => true)
+    .catch(() => false);
   await quickDialog.getByRole('button', { name: 'Empezar partida', exact: true }).click();
 
+  const expectedGameId = `e2e-game-${firstE2EFireGameIndex()}`;
   const warRoom = page.locator('.board-live-row.is-3d-warroom');
   const canvas = page.locator('.board3d-main-canvas');
+  const hansMarker = page.locator('[data-war-room-hans-game-id]').first();
   await Promise.all([
-    callVisible,
     expect(warRoom).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT }),
     expect(canvas).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT }),
     expect(canvas).toHaveAttribute('data-war-room-variant', 'classic', { timeout: WAR_ROOM_READY_TIMEOUT }),
+    expect(hansMarker).toHaveAttribute('data-war-room-hans-game-id', expectedGameId, { timeout: WAR_ROOM_READY_TIMEOUT }),
+    expect(hansMarker).toHaveAttribute('data-war-room-hans-quick-request', 'true', { timeout: WAR_ROOM_READY_TIMEOUT }),
   ]);
+  expect(await callVisible, 'Hans fire-call marker was armed but Matthias never opened the sequence').toBe(true);
   return { canvas, matthiasCall };
 }
 
