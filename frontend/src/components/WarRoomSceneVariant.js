@@ -44,6 +44,7 @@ export function startWarRoomVariantScene({
     scene.userData ||= {};
     scene.userData.warRoomRenderedVariant = 'classic';
     setStatus('idle', 'classic');
+    onPaint?.();
     return () => {};
   }
 
