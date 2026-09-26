@@ -2624,3 +2624,24 @@ def test_authenticated_password_change_enforces_minimum_length():
     )
 
     assert changed.status_code == 400
+
+
+def test_matchmaking_telemetry_aggregate_is_anonymous_and_useful():
+    from admin_insights import aggregate_matchmaking_telemetry
+    profiles = {
+        "alice": {"data": {"chess-study-matchmaking-telemetry-v1": json.dumps({"version": 1, "samples": [
+            {"gameId": "a1", "outcome": "win", "closeGame": True, "rematch": True},
+            {"gameId": "a2", "outcome": "draw", "stalemateFromWinning": True, "decisiveAdvantageEscaped": True},
+        ]})}},
+        "bob": {"data": {"chess-study-matchmaking-telemetry-v1": json.dumps({"version": 1, "samples": [
+            {"gameId": "b1", "outcome": "loss", "closeGame": True},
+        ]})}},
+    }
+    summary = aggregate_matchmaking_telemetry(profiles)
+    assert summary["sampleCount"] == 3
+    assert summary["usersWithData"] == 2
+    assert summary["outcomes"] == {"win": 1, "draw": 1, "loss": 1}
+    assert summary["closeGameRate"] == 0.6667
+    assert summary["rematchRate"] == 0.3333
+    assert "alice" not in json.dumps(summary)
+    assert "a1" not in json.dumps(summary)
