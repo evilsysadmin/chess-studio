@@ -201,7 +201,7 @@ def static_check() -> list[str]:
     # later automatic Staging AI run is green and exposes its own non-expired
     # promotion accreditation artifact, and only before the first prod mutation.
     for needle, label in (
-        ("name: Production · promote", "promotion workflow name"),
+        ("name: Deploy to production", "promotion workflow name"),
         ("workflow_run:", "promotion workflow_run trigger"),
         ("Staging · AI Worker", "promotion staging AI source"),
         ("github.event.workflow_run.conclusion == 'success'", "promotion requires successful staging AI"),
