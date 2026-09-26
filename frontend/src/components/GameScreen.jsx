@@ -87,13 +87,7 @@ export default function GameScreen({
   onCustomize,
   postGameFeedbackEnabled = true,
 }) {
-  const humanColor = game.humanColor || 'w';
-  const ratingAudit = usePostGameRatingAudit({
-    gameId: game.id,
-    humanColor,
-    enabled: hintMode !== 'free' && !memoryContext.lab && !memoryContext.rescue && !memoryContext.suddenDeath,
-    onGameEnd,
-  });
+  const humanColor = game.humanColor || 'w'; const ratingAudit = usePostGameRatingAudit({ gameId: game.id, humanColor, enabled: hintMode !== 'free' && !memoryContext.lab && !memoryContext.rescue && !memoryContext.suddenDeath, onGameEnd });
   const rivalryRecord = useMemo(() => loadRivalry().record || {}, [game.id, game.status]);
   const [selected, setSelected] = useState(null);
   const [pendingPromotion, setPendingPromotion] = useState(null); // { from, to }
@@ -832,8 +826,7 @@ export default function GameScreen({
         onShareIncident={onShareIncident}
         onOpenCrimeScene={onOpenCrimeScene}
         postGameFeedbackEnabled={postGameFeedbackEnabled}
-        analysisPending={ratingAudit.analysisPending || (ratingAudit.enabled && (game.isGameOver || flagFallen) && !ratingAudit.analysisReport && !resultSummary)}
-        analysisReport={ratingAudit.analysisReport}
+        analysisPending={ratingAudit.analysisPending || (ratingAudit.enabled && (game.isGameOver || flagFallen) && !ratingAudit.analysisReport && !resultSummary)} analysisReport={ratingAudit.analysisReport}
         reportMeta={{
           gameId: game.id,
           initialFen: game.initialFen || null,
