@@ -171,6 +171,46 @@ test('Home Android 3D · secundarios dejan respirar la sala con touch real', asy
   }
 });
 
+test('Home Android 3D · apaisado libera el centro entre Matthias y 1v1', async ({ browser }) => {
+  const viewport = { width: 844, height: 390 };
+  const context = await browser.newContext({
+    viewport,
+    hasTouch: true,
+  });
+  await context.addInitScript(() => {
+    Object.defineProperty(navigator, 'hardwareConcurrency', {
+      configurable: true,
+      get: () => 8,
+    });
+  });
+  const page = await context.newPage();
+  try {
+    const home = await openHome(page);
+    expect(await page.evaluate(() => window.matchMedia('(pointer: coarse)').matches)).toBe(true);
+    await expect(home.locator('.illustrated-home__castle-3d.is-ready')).toBeVisible({ timeout: 15_000 });
+
+    const speech = home.locator('.illustrated-home__speech');
+    const pvp = page.locator('.home-pvp-roster-link:not(.home-pvp-roster-link--menu)');
+    await expect(speech).toBeVisible();
+    await expect(pvp).toBeVisible();
+
+    const [speechBox, pvpBox] = await Promise.all([
+      speech.boundingBox(),
+      pvp.boundingBox(),
+    ]);
+    expect(speechBox).not.toBeNull();
+    expect(pvpBox).not.toBeNull();
+
+    expect(speechBox.width, 'Matthias speech stays compact').toBeLessThanOrEqual(viewport.width * 0.35);
+    expect(pvpBox.width, '1v1 card stays compact').toBeLessThanOrEqual(viewport.width * 0.45);
+    expect(pvpBox.x - (speechBox.x + speechBox.width), 'central hall corridor').toBeGreaterThanOrEqual(viewport.width * 0.12);
+    expect(speechBox.y + speechBox.height).toBeLessThanOrEqual(viewport.height + 1);
+    expect(pvpBox.y + pvpBox.height).toBeLessThanOrEqual(viewport.height + 1);
+  } finally {
+    await context.close();
+  }
+});
+
 test('Home Android desktop-site · el copy visible es el touch target real', async ({ browser }) => {
   const context = await browser.newContext({
     viewport: { width: 980, height: 1740 },

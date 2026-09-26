@@ -85,6 +85,17 @@
 /* The illustrated Matthias speech reuses the legacy learning-card class as an
  * E2E/navigation contract. It must not inherit the full 146px learning-card
  * geometry: here it is a compact CTA, with a touch-safe minimum target. */
+/* Forced-desktop Android landscape crops the canonical hall vertically. The speech
+ * is positioned against that taller stage, so compensate for the cropped stage
+ * edge instead of letting its 44px CTA fall below the physical viewport. */
+@media (pointer: coarse) and (orientation: landscape) and (min-width: 760px) and (max-height: 620px) {
+  body .app-shell-home .menu.menu-illustrated
+  .illustrated-home__resident:has(> .illustrated-home__speech > button.home-learning-card)
+  > .illustrated-home__speech {
+    bottom: calc(max(10px, env(safe-area-inset-bottom, 0px)) + 14vh) !important;
+  }
+}
+
 body .app-shell-home .menu.menu-illustrated .illustrated-home__speech > button.home-learning-card {
   display: inline-flex !important;
   align-items: center !important;
