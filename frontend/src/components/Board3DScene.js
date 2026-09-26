@@ -202,7 +202,7 @@ export function classRoomCameraFramingProfile({ aspect = 1, coarsePointer = fals
   });
 }
 
-export function fitBoardCamera(camera, width, height, whiteSide, { profile: requestedProfile = 'tactical' } = {}) {
+export function fitBoardCamera(camera, width, height, whiteSide, { profile: requestedProfile = 'tactical', variant = 'classic' } = {}) {
   const aspect = Math.max(0.35, width / Math.max(1, height));
   const coarsePointer = typeof window !== 'undefined'
     && Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
@@ -212,9 +212,25 @@ export function fitBoardCamera(camera, width, height, whiteSide, { profile: requ
   const mobileProfile = requestedProfile === 'classroom'
     ? null
     : getWarRoomMobileFramingProfile({ aspect, coarsePointer, viewportWidth });
+  const standardProfile = getCameraFramingProfile(aspect);
+  const classicDesktopWide = requestedProfile !== 'classroom'
+    && !mobileProfile
+    && variant === 'classic'
+    && aspect >= 1.42;
   const profile = requestedProfile === 'classroom'
     ? classRoomCameraFramingProfile({ aspect, coarsePointer, viewportWidth })
-    : mobileProfile || getCameraFramingProfile(aspect);
+    : mobileProfile || (classicDesktopWide
+      ? {
+          ...standardProfile,
+          // V1 keeps a tactical, horizontal camera but rises a few degrees so
+          // ranks overlap less and individual pieces are easier to acquire.
+          version: 'classic-desktop-overhead-v1',
+          targetY: 1.65,
+          targetZ: -0.12,
+          cameraY: 7.1,
+          cameraZ: 10.25,
+        }
+      : standardProfile);
   camera.fov = resolveBoard3DCameraFov(aspect, { mobile: Boolean(mobileProfile || (requestedProfile === 'classroom' && (coarsePointer || aspect < 1.12))) });
   const verticalFov = THREE.MathUtils.degToRad(camera.fov);
   const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * aspect);
