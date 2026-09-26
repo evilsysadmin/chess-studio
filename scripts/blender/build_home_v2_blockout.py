@@ -4869,7 +4869,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             f"HOME_PROP_window_mullion_v_{idx}",
             (7.82 + offset, 6.40, 3.47),
             (0.024 if offset else 0.030, 0.040, 1.42),
-            materials["brass_dark"],
+            materials["forged_iron"],
             bevel=0.009,
         )
     for idx, z in enumerate((2.78, 3.46, 4.10)):
@@ -4877,7 +4877,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             f"HOME_PROP_window_transom_{idx}",
             (7.82, 6.40, z),
             (0.76, 0.040, 0.022),
-            materials["brass_dark"],
+            materials["forged_iron"],
             bevel=0.009,
         )
     # Twin upper lancets and a small rose keep the silhouette architectural
