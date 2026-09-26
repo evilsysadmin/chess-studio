@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { keyGameMoments } from './postGameHighlights.js';
+import { keyGameMoments, terseMatthiasInsight } from './postGameHighlights.js';
 
 function move(index, loss, played = `m${index}`, evals = {}) {
   return {
@@ -50,5 +50,30 @@ describe('keyGameMoments', () => {
 
   it('devuelve vacío cuando no hubo jugadas analizables', () => {
     expect(keyGameMoments({ analyzedCount: 0, moveReports: [] })).toEqual([]);
+  });
+});
+
+
+describe('terseMatthiasInsight', () => {
+  it('points at a missed mate without turning the debrief into a lecture', () => {
+    const worst = move(8, 220, 'Qe2', { before: 500, after: 0 });
+    worst.context = { suggested: { checkmate: true }, played: { checkmate: false } };
+    const insight = terseMatthiasInsight({ analyzedCount: 12, worst, moveReports: [worst], averageLoss: 40 }, 'draw');
+    expect(insight?.text).toBe('Había mate. Elegiste otra cosa.');
+    expect(insight?.action).toBe('review');
+  });
+
+  it('recognizes a clean loss without pretending it was a win', () => {
+    const insight = terseMatthiasInsight({
+      analyzedCount: 20,
+      worst: move(5, 35),
+      moveReports: [move(1, 20), move(5, 35)],
+      averageLoss: 28,
+    }, 'loss');
+    expect(insight).toEqual({ text: 'Jugaste mejor de lo que dice el resultado.', action: 'rematch' });
+  });
+
+  it('stays silent when evidence has nothing useful to say', () => {
+    expect(terseMatthiasInsight({ analyzedCount: 10, worst: move(3, 70), moveReports: [move(3, 70)], averageLoss: 60 }, 'draw')).toBeNull();
   });
 });
