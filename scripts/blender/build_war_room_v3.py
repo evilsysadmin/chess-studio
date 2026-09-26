@@ -151,7 +151,7 @@ def build_curved_observatory(static, palette):
             y = row * tile_size - 0.18
             if x * x + (y + 0.18) * (y + 0.18) > 8.28 * 8.28:
                 continue
-            material = palette["stone_light"] if (row + col) % 3 else palette["green_marble"]
+            material = palette["stone_light"] if (row + col) % 4 else palette["green_marble"]
             base.cube(
                 f"WR3_OBS_floor_tile_{tile_index}", (x, y, 0.010),
                 (tile_half, tile_half, 0.030), material, static, bevel=0.018,
@@ -229,16 +229,16 @@ def build_celestial_window(static, palette):
     """Large moon-and-stars oculus: deliberately no orbital rings or chart lines."""
     cx, cy, cz = 0.0, 7.56, 4.05
     glass = base.cylinder(
-        "WR3_OBS_celestial_window", (cx, cy, cz), 2.78, 0.085,
+        "WR3_OBS_celestial_window", (cx, cy, cz), 2.62, 0.085,
         palette["night"], static, vertices=96,
     )
     glass.rotation_euler.x = math.pi / 2
     base.torus(
-        "WR3_OBS_celestial_window_outer", (cx, cy - 0.07, cz), 2.98, 0.125,
+        "WR3_OBS_celestial_window_outer", (cx, cy - 0.07, cz), 2.94, 0.145,
         palette["brass"], static, rotation=(math.pi / 2, 0, 0),
     )
     base.torus(
-        "WR3_OBS_celestial_window_inner", (cx, cy - 0.12, cz), 2.82, 0.050,
+        "WR3_OBS_celestial_window_inner", (cx, cy - 0.12, cz), 2.70, 0.085,
         palette["walnut_dark"], static, rotation=(math.pi / 2, 0, 0),
     )
     base.torus(
