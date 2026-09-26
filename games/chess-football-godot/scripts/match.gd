@@ -11,6 +11,7 @@ var score := [0, 0]
 var match_seconds: float = 0.0
 var camera: Camera2D
 var last_goal_text: String = ""
+var match_events: Array[Dictionary] = []
 
 func _ready() -> void:
 	_spawn_match()
@@ -154,6 +155,11 @@ func _check_goal() -> void:
 func _score_goal(team_id: int) -> void:
 	score[team_id] += 1
 	last_goal_text = "GOAL · FC Matthias" if team_id == 0 else "GOAL · Real Enroque"
+	match_events.append({
+		"type": "goal",
+		"second": int(floor(match_seconds)),
+		"team_id": "fc-matthias" if team_id == 0 else "real-enroque",
+	})
 	_reset_kickoff(1 - team_id)
 
 func _reset_kickoff(team_id: int) -> void:
@@ -196,6 +202,18 @@ func debug_team_counts() -> Array[int]:
 
 func debug_ball_exists() -> bool:
 	return is_instance_valid(ball)
+
+func match_result_snapshot() -> Dictionary:
+	return {
+		"schema": 1,
+		"status": "live",
+		"resolution": "played",
+		"home": {"id": "fc-matthias", "name": "FC Matthias"},
+		"away": {"id": "real-enroque", "name": "Real Enroque"},
+		"score": {"home": score[0], "away": score[1]},
+		"duration_seconds": maxf(match_seconds, 0.0),
+		"events": match_events.duplicate(true),
+	}
 
 func _draw() -> void:
 	var pitch := ChessFootballMath.PITCH_RECT

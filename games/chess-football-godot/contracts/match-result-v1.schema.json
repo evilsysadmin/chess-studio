@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://chess-studio.local/schemas/chess-football-match-result-v1.json",
+  "title": "Chess Football MatchResult v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "status",
+    "resolution",
+    "home",
+    "away",
+    "score",
+    "duration_seconds",
+    "events"
+  ],
+  "properties": {
+    "schema": {
+      "const": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "live",
+        "final"
+      ]
+    },
+    "resolution": {
+      "type": "string",
+      "enum": [
+        "played",
+        "watched",
+        "simulated"
+      ]
+    },
+    "home": {
+      "$ref": "#/$defs/team"
+    },
+    "away": {
+      "$ref": "#/$defs/team"
+    },
+    "score": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "home",
+        "away"
+      ],
+      "properties": {
+        "home": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "away": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "duration_seconds": {
+      "type": "number",
+      "minimum": 0
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "second",
+          "team_id"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "goal"
+            ]
+          },
+          "second": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "team_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "player_id": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "team": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}
