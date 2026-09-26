@@ -22,14 +22,19 @@ jobs:
         include:
           - level: 45
             elo: 1320
+            games: 4
           - level: 60
             elo: 1320
+            games: 4
           - level: 70
             elo: 1320
+            games: 4
           - level: 90
             elo: 1600
+            games: 2
           - level: 100
             elo: 1800
+            games: 2
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
