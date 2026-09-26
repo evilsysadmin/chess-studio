@@ -115,7 +115,11 @@ test('Chronicles Tactics · arranca como RPG táctico isométrico con combate po
   await page.waitForTimeout(140);
   const moveSouth = mode.getByRole('button', { name: 'Mover al sur', exact: true });
   await expect(moveSouth).toBeEnabled();
-  await moveSouth.evaluate((button) => button.click());
+  await page.evaluate(() => {
+    const button = [...document.querySelectorAll('button')].find((node) => node.getAttribute('aria-label') === 'Mover al sur');
+    if (!button || button.disabled) throw new Error('Mover al sur no está disponible');
+    button.click();
+  });
   await expect(narrator).toContainText(/La compañía avanza hacia sur/i);
 
   // Exercise a real combat action immediately. Turn-based combat means the
