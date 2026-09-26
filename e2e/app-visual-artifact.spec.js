@@ -9,10 +9,11 @@ const CAPTURES = [
   { label:'android-desktop-site-980x1740', width:980, height:1740, reducedMotion:'no-preference', forceCores:8, hasTouch:true, expectCastleReady:true, expectBlenderRuntime:true, minStageViewportFill:.74 },
   { label:'android-desktop-site-980x1740-quiet', width:980, height:1740, reducedMotion:'no-preference', forceCores:8, hasTouch:true, expectCastleReady:true, expectBlenderRuntime:true, minStageViewportFill:.74, dismissMatthias:true },
   { label:'android-desktop-site-landscape-980x430', width:980, height:430, reducedMotion:'no-preference', forceCores:8, hasTouch:true, expectCastleReady:true, expectBlenderRuntime:true, minStageViewportFill:.98, minStageVisibleWidthFill:.98, minVisibleDestinations:6, expectMatthiasVisible:true },
-  { label:'android-360x800', width:360, height:800, reducedMotion:'no-preference' },
-  { label:'android-390x844', width:390, height:844, reducedMotion:'no-preference', forceCores:8, expectCastleReady:true, expectBlenderRuntime:true },
-  { label:'android-430x932', width:430, height:932, reducedMotion:'no-preference', forceCores:8, expectCastleReady:true, expectBlenderRuntime:true },
-  { label:'android-390x844-reduced-motion', width:390, height:844, reducedMotion:'reduce', forceCores:8, expectCastleReady:true, expectBlenderRuntime:true },
+  { label:'android-360x800', width:360, height:800, reducedMotion:'no-preference', forceCores:8, hasTouch:true, expectCastleReady:true, expectBlenderRuntime:true },
+  { label:'android-390x844', width:390, height:844, reducedMotion:'no-preference', forceCores:8, hasTouch:true, expectCastleReady:true, expectBlenderRuntime:true },
+  { label:'android-430x932', width:430, height:932, reducedMotion:'no-preference', forceCores:8, hasTouch:true, expectCastleReady:true, expectBlenderRuntime:true },
+  { label:'android-landscape-844x390', width:844, height:390, reducedMotion:'no-preference', forceCores:8, hasTouch:true, expectCastleReady:true, expectBlenderRuntime:true },
+  { label:'android-390x844-reduced-motion', width:390, height:844, reducedMotion:'reduce', forceCores:8, hasTouch:true, expectCastleReady:true, expectBlenderRuntime:true },
 ];
 
 async function openCanonicalHome(page, { reducedMotion = 'no-preference' } = {}) {
@@ -295,7 +296,7 @@ test('App · captura visual canónica desktop + Android normal/desktop-site', as
 
   await writeFile(
     `${ARTIFACT_DIR}/visual-health.json`,
-    `${JSON.stringify({ schema:9, minimumTouchTarget:MIN_TOUCH_TARGET, captures }, null, 2)}\n`,
+    `${JSON.stringify({ schema:10, minimumTouchTarget:MIN_TOUCH_TARGET, captures }, null, 2)}\n`,
     'utf8',
   );
 
