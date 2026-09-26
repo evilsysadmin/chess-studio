@@ -304,7 +304,7 @@ def build_celestial_window(static, palette):
             base.cube(
                 f"WR3_OBS_window_drape_fold_{side}_{fold:+.2f}",
                 (x + fold, 7.19, 4.22), (0.10, 0.055, 1.78),
-                palette["teal_dark"], static, bevel=0.055,
+                palette["teal"], static, bevel=0.055,
             )
         base.cube(
             f"WR3_OBS_window_drape_tie_{side}", (side * 3.43, 7.08, 3.72),
