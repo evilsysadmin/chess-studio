@@ -88,6 +88,11 @@ export function quickMatchRecentFormAdjustment(activity = [], games = PROVISIONA
   const provisional = Number(games) < PROVISIONAL_GAMES;
 
   let lossStreak = 0;
+  let winStreak = 0;
+  for (const event of recent) {
+    if (event.outcome !== 'win') break;
+    winStreak += 1;
+  }
   for (const event of recent) {
     if (event.outcome !== 'loss') break;
     lossStreak += 1;
@@ -124,6 +129,10 @@ export function quickMatchRecentFormAdjustment(activity = [], games = PROVISIONA
   else if (performance <= 0.45) adjustment = -20;
   else if (performance >= 0.80) adjustment = 25;
   else if (performance >= 0.68) adjustment = 10;
+
+  // Subir también exige continuidad: una única victoria brillante no debe
+  // disparar el rival. Sólo una racha real permite usar el boost máximo.
+  if (adjustment > 10 && winStreak < 3) adjustment = 10;
 
   if (lossStreak >= 5) adjustment -= 20;
   else if (lossStreak >= 4) adjustment -= 15;
