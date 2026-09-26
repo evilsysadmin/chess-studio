@@ -74,11 +74,12 @@ jobs:
           out = Path('/tmp/home-blender-v2')
           ref_path = out / 'home-canon-20260918.webp'
           preview_path = out / 'home-v2-preview.png'
+          mobile_path = out / 'home-v2-mobile-preview.png'
           clay_path = out / 'home-v2-clay.png'
           blend_path = out / 'home-v2-blockout.blend'
           metadata_path = out / 'home-v2-camera.json'
 
-          for path in (preview_path, clay_path, blend_path, metadata_path):
+          for path in (preview_path, mobile_path, clay_path, blend_path, metadata_path):
               assert path.is_file() and path.stat().st_size > 1_000, path
 
           quality = os.environ.get('QUALITY') or 'blockout'
@@ -87,6 +88,7 @@ jobs:
 
           reference = Image.open(ref_path).convert('RGB')
           preview = Image.open(preview_path).convert('RGB')
+          mobile = Image.open(mobile_path).convert('RGB')
           clay = Image.open(clay_path).convert('RGB')
           metadata = json.loads(metadata_path.read_text())
           assert metadata['contract'] == 'home-blender-canon-20260918-v1'
@@ -96,6 +98,7 @@ jobs:
           assert metadata['reference_size'] == list(reference.size)
           assert list(preview.size) == metadata['render_size'], (preview.size, metadata['render_size'])
           assert clay.size == preview.size, (clay.size, preview.size)
+          assert mobile.size == (430, 932), mobile.size
           assert preview.width <= expected_max_width
           assert metadata['engine'] == expected_engine
           assert metadata['object_count'] >= 80, metadata['object_count']
@@ -110,6 +113,7 @@ jobs:
           rows = [
               ('CANONICAL REFERENCE', scaled(reference)),
               (f'BLENDER 2.0 {quality.upper()}', scaled(preview)),
+              ('MOBILE PORTRAIT / CROPPING CHECK', mobile),
               ('CLAY / GEOMETRY CHECK', scaled(clay)),
           ]
           label_h = 54
