@@ -93,6 +93,13 @@ TRAINING_ALL = {
     "training-tournament",
     "training-progress",
 }
+QUICK_MATCH_EXACT_PRODUCERS = {
+    # Quick Match owns the launch/config surface and the core War Room entry
+    # contract. It cannot alter Home Matthias/focus, room decor, armor or Hans.
+    "frontend/src/components/quickmatchmodal.jsx": {"home-base", "warroom-core"},
+    "frontend/src/components/usewarroomimmersive.js": {"warroom-core"},
+}
+
 TRAINING_EXACT_PRODUCERS = {
     "frontend/src/components/puzzlescreen.jsx": {"training-puzzles"},
     "frontend/src/components/puzzlemobilepolish.css": {"training-puzzles"},
@@ -222,6 +229,8 @@ def classify_path(path: str) -> set[str] | None:
 
     if lower in {"frontend/src/lablaunchintent.js", "frontend/src/usepuzzlelaunchflow.js"}:
         return set()
+    if lower in QUICK_MATCH_EXACT_PRODUCERS:
+        return set(QUICK_MATCH_EXACT_PRODUCERS[lower])
     if lower == "frontend/src/components/labscreen.jsx":
         return {"experiments-hub"}
     if lower in TRAINING_EXACT_PRODUCERS:
@@ -367,6 +376,13 @@ def self_test() -> None:
     assert classify(["frontend/src/chroniclesDungeon.js"]) == "chronicles-gameplay"
     assert classify(["frontend/src/experimentalThreeRenderer.js"]) == "chronicles-tactics,chronicles-gameplay"
     assert classify(["frontend/src/components/LabScreen.jsx"]) == "experiments-hub"
+    assert classify(["frontend/src/components/QuickMatchModal.jsx"]) == "home-base,warroom-core"
+    assert classify(["frontend/src/components/useWarRoomImmersive.js"]) == "warroom-core"
+    assert classify([
+        "frontend/src/components/QuickMatchModal.jsx",
+        "frontend/src/components/useWarRoomImmersive.js",
+        "frontend/src/components/useWarRoomImmersive.test.js",
+    ]) == "home-base,warroom-core"
     assert classify([
         "frontend/src/components/PuzzleScreen.jsx",
         "frontend/src/components/PuzzleMobilePolish.css",
