@@ -24,6 +24,7 @@ import { api, STORAGE_KEY } from './api.js';
 import { loadTournament, saveTournament, resetTournament, applyResult, applyCaptureReward, difficultyForLevel, levelForPoints } from './tournament.js';
 import { saveGameRecord, updateGameRecordChat, statisticalHistoryRecords } from './gameHistory.js';
 import { recordGameActivity } from './gameActivity.js';
+import { recordMatchmakingTelemetry } from './matchmakingTelemetry.js';
 import { chessGameExitDisposition, isCompletedGameOutcome, shouldApplyCompetitiveProgress } from './gameOutcome.js';
 import { gameModeFromContext } from './gameModes.js';
 import { loadRoster as loadCombatRoster } from './combatRoster.js';
@@ -486,6 +487,18 @@ function AppInner({ isAdminUser }) {
     };
     setHistoryList(saveGameRecord(record));
     recordGameActivity({ gameId: finishedGame.id, state: 'finished', mode: record.mode, outcome, difficulty: finishedGame.difficulty });
+    recordMatchmakingTelemetry({
+      gameId: finishedGame.id,
+      adaptiveDifficulty: !!gameContext.adaptiveDifficulty,
+      outcome,
+      difficulty: finishedGame.difficulty,
+      playerRating: ratingSummary.eloBefore ?? rating.rating,
+      opponentRating: ratingSummary.cpuRating ?? null,
+      closeGame: endMeta.closeGame === true,
+      decisiveAdvantageEscaped: endMeta.decisiveAdvantageEscaped === true,
+      stalemateFromWinning: endMeta.stalemateFromWinning === true,
+      rematch: !!gameContext.rematch,
+    });
     recordCareerGame(record, { ...endMeta, contract: activeContract });
     clearActiveContract();
     setActiveContract(null);
