@@ -33,7 +33,10 @@ PRODUCER_ORDER = (
     "health-storage",
 )
 WARROOM_ALL = {"warroom-core", "warroom-decor", "warroom-armor", "warroom-hans"}
-WARROOM_RENDERER_SHARED = {"warroom-core", "warroom-hans"}
+WARROOM_RENDERER_SHARED = {"warroom-core"}
+# Hans has its own choreography/runtime owners and should not block unrelated
+# shared-renderer camera/layout PRs. Its dedicated canary still runs whenever
+# Hans-owned code changes.
 WARROOM_CORE_ONLY_FILES = {
     # Presentation shell only: these affect the canonical War Room composition
     # and immersive viewport, but cannot change decor, armor or Hans ownership.
@@ -457,10 +460,10 @@ def self_test() -> None:
     assert classify(["frontend/src/components/WarRoomCatDecor.js"]) == "warroom-decor"
     assert classify(["frontend/src/components/WarRoomArmorDisplay.js"]) == "warroom-armor"
     assert classify(["frontend/src/components/WarRoomHansPerGame.jsx"]) == "warroom-hans"
-    assert classify(["frontend/src/components/Board3DCore.jsx"]) == "training-school,warroom-core,warroom-hans"
-    assert classify(["frontend/src/components/Board3DScene.js"]) == "training-school,warroom-core,warroom-hans"
-    assert classify(["frontend/src/components/WarRoom3DAnimation.js"]) == "warroom-core,warroom-hans"
-    assert classify(["frontend/src/components/GameBoardView.jsx"]) == "warroom-core,warroom-hans"
+    assert classify(["frontend/src/components/Board3DCore.jsx"]) == "training-school,warroom-core"
+    assert classify(["frontend/src/components/Board3DScene.js"]) == "training-school,warroom-core"
+    assert classify(["frontend/src/components/WarRoom3DAnimation.js"]) == "warroom-core"
+    assert classify(["frontend/src/components/GameBoardView.jsx"]) == "warroom-core"
     assert classify(["frontend/src/components/WarRoomCastleArchitecture.js"]) == "warroom-core,warroom-decor,warroom-armor,warroom-hans"
     assert classify(["e2e/war-room-decor-visual-artifact.spec.js"]) == "warroom-decor"
     assert classify(["e2e/browser-storage-health.spec.js"]) == "health-storage"
