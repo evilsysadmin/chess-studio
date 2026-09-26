@@ -15,6 +15,7 @@ import { buildAdminInsights } from '../adminDashboardInsights.js';
 import { createAsyncCommitGuard } from '../asyncLifecycle.js';
 import AdminFeedbackSection from './AdminFeedbackSection.jsx';
 import AdminMatthiasStatusSection from './AdminMatthiasStatusSection.jsx';
+import AdminMatchmakingSettingsSection from './AdminMatchmakingSettingsSection.jsx';
 import AdminObservabilitySummary from './AdminObservabilitySummary.jsx';
 import AdminUserDirectory from './AdminUserDirectory.jsx';
 import ObservabilityPanel from './ObservabilityPanel.jsx';
@@ -218,6 +219,8 @@ export default function AdminScreen({ onExit }) {
         <p className="hint-text">Salud y feedback primero; usuarios y actividad quedan debajo.</p>
         <p className="hint-text admin-build-id">Release: <code>{APP_RELEASE}</code> · Build: <code>{BUILD_SHA === 'local' ? 'local' : BUILD_SHA.slice(0, 8)}</code></p>
         <AdminObservabilitySummary token={getToken()} users={users || []} currentAdmin={currentAdmin} onOpen={() => setAdminView('observability')} />
+
+        <AdminMatchmakingSettingsSection />
 
         <AdminMatthiasStatusSection
           status={matthiasStatus}
