@@ -227,7 +227,10 @@ export function fitBoardCamera(camera, width, height, whiteSide, { profile: requ
   const maxDistance = requestedProfile === 'classroom' ? profile.maxDistance : mobileProfile ? profile.maxDistance : 88;
   const distance = THREE.MathUtils.clamp(rawDistance, profile.minDistance, maxDistance);
   const target = new THREE.Vector3(0, profile.targetY, whiteSide ? -profile.targetZ : profile.targetZ);
-  const direction = new THREE.Vector3(0, profile.cameraY * (immersive && width > 1080 ? 1.075 : 1), whiteSide ? profile.cameraZ : -profile.cameraZ).normalize();
+  // Immersive desktop favours front-rank clickability: a little more elevation
+  // exposes square surface around pawns without flattening the room into top-down.
+  const immersiveElevation = immersive && width > 1080 ? 1.105 : 1;
+  const direction = new THREE.Vector3(0, profile.cameraY * immersiveElevation, whiteSide ? profile.cameraZ : -profile.cameraZ).normalize();
   camera.aspect = aspect;
   camera.far = Math.max(camera.far, distance + 25);
   camera.position.copy(target).addScaledVector(direction, distance);
