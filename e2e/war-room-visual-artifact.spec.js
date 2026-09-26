@@ -686,12 +686,19 @@ for (const profile of ACTIVE_CAPTURE_PROFILES) {
         await page.getByRole('button', { name: 'Entrar en modo inmersión', exact: true }).first().click();
         await expect(page.locator('.game-layout-immersive')).toBeVisible();
         if (profile.collapseRail) {
+          // Board-first desktop immersion intentionally removes the persistent
+          // side rail. Only exercise the legacy collapse control when a variant
+          // still exposes it.
           const collapseRail = page.getByRole('button', { name: 'Ocultar panel lateral', exact: true }).first();
-          await expect(collapseRail).toBeVisible();
-          await collapseRail.click();
-          await expect(page.locator('.game-layout-immersive')).toHaveAttribute('data-war-room-rail-collapsed', 'true');
-          await expect(page.locator('.game-side-column-3d')).toBeHidden();
-          await expect(page.getByRole('button', { name: 'Mostrar panel lateral', exact: true }).first()).toBeVisible();
+          if (await collapseRail.count()) {
+            await expect(collapseRail).toBeVisible();
+            await collapseRail.click();
+            await expect(page.locator('.game-layout-immersive')).toHaveAttribute('data-war-room-rail-collapsed', 'true');
+            await expect(page.locator('.game-side-column-3d')).toBeHidden();
+            await expect(page.getByRole('button', { name: 'Mostrar panel lateral', exact: true }).first()).toBeVisible();
+          } else {
+            await expect(page.locator('.game-side-column-3d')).toBeHidden();
+          }
         }
       }
 
