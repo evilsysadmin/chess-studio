@@ -49,6 +49,9 @@ test('Home 3D · captura Combat con foco físico', async ({ page }) => {
     path: `${ARTIFACT_DIR}/home-desktop-1440x900-combat-focus.png`,
     fullPage: false,
     animations: 'disabled',
+    // SwiftShader can need >30s to read back the live WebGL frame on busy CI runners.
+    // Keep the proof real instead of replacing it with a mocked/still canvas.
+    timeout: 60_000,
   });
 
   const tournament = home.locator('.illustrated-home__destination--tournament');
