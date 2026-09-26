@@ -39,8 +39,11 @@ import {
   homeBlenderCandleAttributes,
   HOME_BLENDER_CANDLE_PARTICLES,
   HOME_BLENDER_KLAUS_MOTION,
+  HOME_BLENDER_KLAUS_TAIL_MOTION,
   homeBlenderIsKlausPart,
   homeBlenderKlausPose,
+  homeBlenderKlausTailWeight,
+  homeBlenderKlausTailPose,
   prepareHomeBlenderKlausRig,
   applyHomeBlenderKlausMotion,
 } from './HomeBlenderScene3D.jsx';
@@ -142,13 +145,27 @@ describe('HomeBlenderScene3D Klaus idle motion', () => {
     }
   });
 
+  it('moves only the authored tail tip and keeps the gesture microscopic', () => {
+    expect(homeBlenderKlausTailWeight('HOME_PROP_cat_tail_seg_47')).toBe(0);
+    expect(homeBlenderKlausTailWeight('HOME_PROP_cat_tail_seg_48')).toBeGreaterThan(0);
+    expect(homeBlenderKlausTailWeight('HOME_PROP_cat_tail_seg_55')).toBe(1);
+    expect(homeBlenderKlausTailWeight('HOME_PROP_cat_tail_seg_72')).toBe(1);
+    expect(homeBlenderKlausTailWeight('HOME_PROP_cat_body')).toBe(0);
+
+    for (let timeMs = 0; timeMs < 60000; timeMs += 137) {
+      const pose = homeBlenderKlausTailPose(timeMs, 1);
+      expect(Math.abs(pose.offsetX)).toBeLessThanOrEqual(HOME_BLENDER_KLAUS_TAIL_MOTION.swingX);
+      expect(Math.abs(pose.offsetZ)).toBeLessThanOrEqual(HOME_BLENDER_KLAUS_TAIL_MOTION.swingZ);
+    }
+  });
+
   it('groups the authored cat around its own pivot without dragging the cushion', () => {
     const root = new THREE.Group();
     const body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.22, 0.38), new THREE.MeshBasicMaterial());
     body.name = 'HOME_PROP_cat_body';
     body.position.set(1.1, 0.3, -1.4);
     const tail = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.08, 0.08), new THREE.MeshBasicMaterial());
-    tail.name = 'HOME_PROP_cat_tail_seg_0';
+    tail.name = 'HOME_PROP_cat_tail_seg_55';
     tail.position.set(1.35, 0.32, -1.3);
     const cushion = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.08, 0.7), new THREE.MeshBasicMaterial());
     cushion.name = 'HOME_PROP_cat_cushion';
@@ -166,10 +183,13 @@ describe('HomeBlenderScene3D Klaus idle motion', () => {
     expect(cushion.parent).toBe(root);
     expect(body.getWorldPosition(new THREE.Vector3()).distanceTo(bodyBefore)).toBeLessThan(1e-6);
     expect(cushion.getWorldPosition(new THREE.Vector3()).distanceTo(cushionBefore)).toBeLessThan(1e-6);
+    const tailLocalBefore = tail.position.clone();
 
     expect(applyHomeBlenderKlausMotion(rig, 5100)).toBe(true);
     expect(body.getWorldPosition(new THREE.Vector3()).distanceTo(bodyBefore)).toBeGreaterThan(0);
     expect(body.getWorldPosition(new THREE.Vector3()).distanceTo(bodyBefore)).toBeLessThan(0.02);
+    expect(tail.position.distanceTo(tailLocalBefore)).toBeGreaterThan(0);
+    expect(tail.position.distanceTo(tailLocalBefore)).toBeLessThan(0.01);
     expect(cushion.getWorldPosition(new THREE.Vector3()).distanceTo(cushionBefore)).toBeLessThan(1e-6);
   });
 });
