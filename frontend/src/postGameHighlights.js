@@ -51,3 +51,28 @@ export function keyGameMoments(report) {
 
   return unique.slice(0, 3);
 }
+
+
+export function terseMatthiasInsight(report, outcome) {
+  if (!report?.analyzedCount) return null;
+  const worst = report.worst || null;
+  const incident = buildPostGameIncidentEvidence(worst);
+  const classification = incident?.classification;
+
+  if (classification === 'stalemate-blunder') return { text: 'No necesitabas dar jaque. Necesitabas dejarme una casilla.', action: 'review' };
+  if (classification === 'missed-mate') return { text: 'Había mate. Elegiste otra cosa.', action: 'review' };
+  if (classification === 'allowed-mate') return { text: 'Una jugada convirtió la posición en mate.', action: 'review' };
+
+  const averageLoss = Number(report.averageLoss);
+  const blunderCount = (report.moveReports || []).filter((row) => row?.severity === 'blunder' || Number(row?.loss) >= 150).length;
+  if (outcome === 'win' && blunderCount >= 2) {
+    return { text: 'Ganaste. Pero hubo errores graves que otro rival cobrará.', action: 'review' };
+  }
+  if (outcome === 'loss' && Number.isFinite(averageLoss) && averageLoss <= 35 && blunderCount === 0) {
+    return { text: 'Jugaste mejor de lo que dice el resultado.', action: 'rematch' };
+  }
+  if (Number.isFinite(averageLoss) && averageLoss <= 25 && blunderCount === 0) {
+    return { text: 'Eso sí es reproducible. Juega así otra vez.', action: 'rematch' };
+  }
+  return null;
+}
