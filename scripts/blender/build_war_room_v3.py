@@ -142,16 +142,19 @@ def build_curved_observatory(static, palette):
                   palette["slate"], static, vertices=96)
 
     # Golden observatory: ivory/green marble establishes the premium circular dais.
-    tile_size = 1.08
-    tile_half = 0.525
+    tile_size = 1.46
+    tile_half = 0.710
     tile_index = 0
-    for row in range(-7, 8):
-        for col in range(-7, 8):
+    for row in range(-6, 7):
+        for col in range(-6, 7):
             x = col * tile_size
             y = row * tile_size - 0.18
             if x * x + (y + 0.18) * (y + 0.18) > 8.28 * 8.28:
                 continue
-            material = palette["stone_light"] if (row + col) % 4 else palette["green_marble"]
+            # Ivory is the field; green appears as sparse marble inlays rather
+            # than a checkerboard competing with the playable chessboard.
+            green_inlay = ((row * 7 + col * 11) % 13 == 0)
+            material = palette["green_marble"] if green_inlay else palette["stone_light"]
             base.cube(
                 f"WR3_OBS_floor_tile_{tile_index}", (x, y, 0.010),
                 (tile_half, tile_half, 0.030), material, static, bevel=0.018,
