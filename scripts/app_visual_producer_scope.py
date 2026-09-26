@@ -271,7 +271,7 @@ def classify_path(path: str) -> set[str] | None:
     if any(token in lower for token in ("illustrated-home", "homecastle", "home-castle", "/home", "castle3d")):
         return set(HOME_ALL)
 
-    if "matthias" in lower and "school" not in lower:
+    if "matthias" in lower and "school" not in lower and "classroom" not in lower:
         return {"home-matthias", "warroom-core"}
 
     if "openingsscreen" in lower:
@@ -282,7 +282,7 @@ def classify_path(path: str) -> set[str] | None:
         return {"training-tournament"}
     if any(token in lower for token in ("insights", "career-dossier", "careerscreen", "rivalrydossier")):
         return {"training-progress"}
-    if any(token in lower for token in ("tutorial", "glossary", "school", "mechanic-library")):
+    if any(token in lower for token in ("tutorial", "glossary", "school", "classroom", "mechanic-library")):
         return {"training-school"}
     if "training" in lower:
         # Generic/shared training code may affect several destinations. Keep the
