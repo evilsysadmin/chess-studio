@@ -4,6 +4,7 @@ import {
   getWarRoomBrowserFullscreenElement,
   requestWarRoomBrowserFullscreen,
   requestWarRoomLandscape,
+  requestWarRoomLandscapeFullscreen,
   unlockWarRoomOrientation,
 } from './useWarRoomImmersive.js';
 
@@ -61,6 +62,20 @@ describe('War Room Android orientation', () => {
     const lock = vi.fn().mockResolvedValue(undefined);
     await expect(requestWarRoomLandscape({ orientation: { lock } })).resolves.toBe(true);
     expect(lock).toHaveBeenCalledWith('landscape');
+  });
+
+  it('enters fullscreen before requesting landscape on Android', async () => {
+    const order = [];
+    const requestFullscreen = vi.fn(async () => { order.push('fullscreen'); });
+    const lock = vi.fn(async () => { order.push('landscape'); });
+    const doc = { documentElement: { requestFullscreen }, fullscreenElement: null };
+    const screenApi = { orientation: { lock } };
+
+    await expect(requestWarRoomLandscapeFullscreen({ doc, screenApi })).resolves.toEqual({
+      fullscreen: true,
+      landscape: true,
+    });
+    expect(order).toEqual(['fullscreen', 'landscape']);
   });
 
   it('degrades safely when orientation lock is unavailable or rejected', async () => {
