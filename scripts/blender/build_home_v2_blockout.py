@@ -2515,8 +2515,10 @@ def add_table_and_board(materials):
     add_table_candelabra(materials, -2.72, 1.60, 1.36)
 
     add_gentleman_desk_set(materials, table_z)
-    cylinder("HOME_PROP_table_hourglass_top", (-2.10, 2.05, 1.56), 0.12, 0.045, metal, vertices=18)
-    cylinder("HOME_PROP_table_hourglass_bottom", (-2.10, 2.05, 1.34), 0.12, 0.045, metal, vertices=18)
+    # The hourglass is a handled desk tool, not ceremonial trim: give its caps
+    # the darker brass already used by the writing set and coffee service.
+    cylinder("HOME_PROP_table_hourglass_top", (-2.10, 2.05, 1.56), 0.12, 0.045, materials["brass_dark"], vertices=18)
+    cylinder("HOME_PROP_table_hourglass_bottom", (-2.10, 2.05, 1.34), 0.12, 0.045, materials["brass_dark"], vertices=18)
     sphere(
         "HOME_PROP_table_hourglass_glass_top",
         (-2.10, 2.05, 1.49),
