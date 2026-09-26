@@ -216,7 +216,25 @@
  * remain fully visible while preserving the compact wide-touch composition. */
 @media (pointer: coarse) and (orientation: landscape) and (min-width: 760px) and (max-height: 620px) {
   .illustrated-home__speech {
-    bottom: 13% !important;
+    left: max(10px, env(safe-area-inset-left)) !important;
+    right: auto !important;
+    bottom: max(10px, env(safe-area-inset-bottom)) !important;
+    width: min(270px, 32vw) !important;
+    max-height: 112px !important;
+    padding: 8px 10px !important;
+    overflow: auto !important;
+    transform: none !important;
+  }
+
+  .illustrated-home__speech strong {
+    padding-right: 38px !important;
+    font-size: .64rem !important;
+  }
+
+  .illustrated-home__speech p {
+    margin: .18rem 0 .28rem !important;
+    font-size: .72rem !important;
+    line-height: 1.2 !important;
   }
 }
 
