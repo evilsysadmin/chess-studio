@@ -451,7 +451,6 @@ function AppInner({ isAdminUser }) {
       ratingSummary = {
         ratingApplied: true,
         eloDelta: details.delta,
-        eloBaseDelta: details.delta,
         eloBefore: rating.rating,
         eloAfter: details.next.rating, ratingGames: details.next.games,
       };
@@ -686,7 +685,6 @@ function AppInner({ isAdminUser }) {
         setLastResult((current) => ({
           ...(current || { outcome }),
           eloDelta: details.delta,
-          eloBaseDelta: details.delta,
           eloBefore: prev.rating,
           eloAfter: details.next.rating,
           cpuRating: details.cpuRating,
@@ -704,7 +702,6 @@ function AppInner({ isAdminUser }) {
         outcome,
         moves: finishedGame.history,
         finalFen: finishedGame.fen,
-        initialFen: finishedGame.initialFen || null,
         mode: 'tournament',
         opening: identifyOpening((finishedGame.history || []).map((m) => m.san).filter(Boolean)),
         timeControl: null,
