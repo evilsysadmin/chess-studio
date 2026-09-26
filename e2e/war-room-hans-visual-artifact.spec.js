@@ -44,7 +44,10 @@ async function captureViewportPng(context, page, path) {
 }
 
 test('War Room · canario visual de Hans físicamente en escena', async () => {
-  test.setTimeout(120_000);
+  // SwiftShader already produced the canonical PNG + health proof before the
+  // previous 120 s ceiling, but browser/context teardown could overrun it.
+  // Keep capture assertions strict and reserve a small cleanup margin.
+  test.setTimeout(150_000);
   await mkdir(ARTIFACT_DIR, { recursive: true });
 
   const browser = await chromium.launch({
