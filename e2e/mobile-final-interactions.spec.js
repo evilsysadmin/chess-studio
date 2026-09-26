@@ -196,21 +196,33 @@ test('Home móvil · JUGAR/CONTINUAR es la acción primaria autoexplicativa y t�
   await expect(detail).toHaveText('Partida rápida o privada');
   await expect(detail).toBeVisible();
 
-  const metrics = await play.evaluate((node) => {
-    const rect = node.getBoundingClientRect();
-    const detailNode = node.querySelector('span');
-    const style = getComputedStyle(node);
-    return {
-      width: rect.width,
-      height: rect.height,
-      viewportWidth: window.innerWidth,
-      detailDisplay: detailNode ? getComputedStyle(detailNode).display : 'none',
-    };
-  });
+  for (const viewport of [
+    { width: 360, height: 800 },
+    { width: 390, height: 844 },
+    { width: 430, height: 932 },
+  ]) {
+    await page.setViewportSize(viewport);
+    const metrics = await play.evaluate((node) => {
+      const rect = node.getBoundingClientRect();
+      const detailNode = node.querySelector('span');
+      return {
+        x: rect.x,
+        right: rect.right,
+        width: rect.width,
+        height: rect.height,
+        viewportWidth: window.innerWidth,
+        viewportHeight: window.innerHeight,
+        detailDisplay: detailNode ? getComputedStyle(detailNode).display : 'none',
+      };
+    });
 
-  expect(metrics.width).toBeGreaterThanOrEqual(metrics.viewportWidth * .60);
-  expect(metrics.height).toBeGreaterThanOrEqual(60);
-  expect(metrics.detailDisplay).not.toBe('none');
+    expect(metrics.width).toBeGreaterThanOrEqual(metrics.viewportWidth * .60);
+    expect(metrics.height).toBeGreaterThanOrEqual(60);
+    expect(metrics.x).toBeGreaterThanOrEqual(-1);
+    expect(metrics.right).toBeLessThanOrEqual(metrics.viewportWidth + 1);
+    expect(metrics.detailDisplay).not.toBe('none');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+  }
 });
 
 test('Puzzles móvil · selector compacto y acciones táctiles dejan respirar al tablero', async ({ page }) => {
