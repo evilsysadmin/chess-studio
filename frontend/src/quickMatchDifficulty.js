@@ -115,6 +115,11 @@ export function quickMatchRecentFormAdjustment(activity = [], games = PROVISIONA
   else if (lossStreak >= 4) adjustment -= 15;
   else if (lossStreak >= 3) adjustment -= 10;
 
+  // Una victoria inmediata corta el castigo de una racha anterior. La media
+  // ponderada puede seguir pidiendo alivio, pero no dejamos que una recuperación
+  // real mantenga el máximo -50 como si el jugador siguiera perdiendo.
+  if (recent[0]?.outcome === 'win' && adjustment < -20) adjustment = -20;
+
   return clamp(adjustment, QUICK_MATCH_MAX_FORM_RELIEF_ELO, QUICK_MATCH_MAX_FORM_BOOST_ELO);
 }
 

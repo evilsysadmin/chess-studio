@@ -156,6 +156,19 @@ describe('quick-match Elo chaser', () => {
     expect(cpuRatingForDifficulty(relieved) - 1000).toBeLessThanOrEqual(25);
   });
 
+  it('lets a real recovery win stop maximum losing-streak relief', () => {
+    const baseline = difficultyForQuickMatchRating(1000, [], 20);
+    const recovery = [
+      ...adaptiveGame('recovery', 'win', baseline),
+      ...adaptiveGame('loss4', 'loss', baseline - 1),
+      ...adaptiveGame('loss3', 'loss', baseline - 2),
+      ...adaptiveGame('loss2', 'loss', baseline - 3),
+      ...adaptiveGame('loss1', 'loss', baseline - 4),
+    ];
+
+    expect(quickMatchTargetLeadElo(recovery, 20, {})).toBeGreaterThanOrEqual(30);
+  });
+
   it('uses analyzed move quality only after two factual adaptive-game samples', () => {
     const activity = [
       ...adaptiveGame('g2', 'win', 56),
