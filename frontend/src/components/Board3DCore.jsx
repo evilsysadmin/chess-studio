@@ -439,7 +439,10 @@ function Board3DCanvas({
       const width = Math.max(280, host.clientWidth || 280);
       const height = Math.max(300, host.clientHeight || 300);
       renderer.setSize(width, height, false);
-      fitBoardCamera(camera, width, height, whiteSide, { profile: cameraProfile });
+      const resolvedCameraProfile = cameraProfile === 'classroom'
+        ? 'classroom'
+        : (warRoomVariant === 'classic' ? 'classic' : cameraProfile);
+      fitBoardCamera(camera, width, height, whiteSide, { profile: resolvedCameraProfile });
       render();
     }
     resize();
@@ -734,6 +737,19 @@ function Board3DCanvas({
     orientation,
     showCoordinates,
   ]);
+
+  useEffect(() => {
+    const state = sceneStateRef.current;
+    const host = hostRef.current;
+    if (!state || !host) return;
+    const width = Math.max(280, host.clientWidth || 280);
+    const height = Math.max(300, host.clientHeight || 300);
+    const resolvedCameraProfile = cameraProfile === 'classroom'
+      ? 'classroom'
+      : (warRoomVariant === 'classic' ? 'classic' : cameraProfile);
+    fitBoardCamera(state.camera, width, height, state.whiteSide, { profile: resolvedCameraProfile });
+    state.render();
+  }, [cameraProfile, warRoomVariant, orientation]);
 
   useEffect(() => {
     const state = sceneStateRef.current;
