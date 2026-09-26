@@ -13,6 +13,7 @@ export const QUICK_MATCH_PROVISIONAL_START_LEAD_ELO = -50;
 export const QUICK_MATCH_FORM_MAX_AGE_DAYS = 30;
 export const QUICK_MATCH_EARLY_SIGNAL_GAMES = 3;
 const QUICK_MATCH_RECENT_GAMES = 8;
+const QUICK_MATCH_FORM_MIN_DISTINCT_OPPONENTS = 2;
 const QUICK_MATCH_MAX_FORM_BOOST_ELO = 25;
 const QUICK_MATCH_MAX_FORM_RELIEF_ELO = -50;
 const QUICK_MATCH_MIN_QUALITY_GAMES = 2;
@@ -84,7 +85,14 @@ export function quickMatchRecentFormAdjustment(activity = [], games = PROVISIONA
   const recent = recentAdaptiveResults(activity, nowMs);
   if (!recent.length) return 0;
 
+  // En perfiles establecidos no reaccionamos a una racha fabricada contra un
+  // único nivel de CPU. Exigimos al menos dos fuerzas de rival distintas para
+  // que la forma reciente mueva el matchmaking; provisional conserva la vía
+  // rápida de alivio porque ahí sí prima no machacar al jugador nuevo.
   const provisional = Number(games) < PROVISIONAL_GAMES;
+  const distinctOpponents = new Set(recent.map((event) => cpuRatingForDifficulty(event.difficulty))).size;
+  if (!provisional && recent.length >= 3 && distinctOpponents < QUICK_MATCH_FORM_MIN_DISTINCT_OPPONENTS) return 0;
+
   let lossStreak = 0;
   for (const event of recent) {
     if (event.outcome !== 'loss') break;
