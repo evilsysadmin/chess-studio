@@ -64,6 +64,7 @@ export default function GameScreen({
   onError,
   onGameEnd,
   resultSummary = null,
+  postGameAnalysis = null,
   abandonRatingPreview = null,
   hintMode = 'off',
   tournamentLevel = 1,
@@ -804,6 +805,7 @@ export default function GameScreen({
           onNotationOpenChange: setNotationOpen,
           gameChat,
           gameContextMessages,
+          postGameAnalysis,
         }}
       />
 
@@ -816,6 +818,7 @@ export default function GameScreen({
         flagFinalOutcome={flagFinalOutcome}
         forcedOutcome={forcedOutcome}
         resultSummary={resultSummary}
+        postGameAnalysis={postGameAnalysis}
         lastCpuComment={lastCpuComment}
         seriesState={seriesState}
         runState={runState}
