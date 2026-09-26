@@ -1,4 +1,4 @@
-name: Production · promote
+name: Deploy to production
 
 on:
   schedule:
