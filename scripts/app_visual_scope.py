@@ -38,6 +38,7 @@ QUICK_MATCH_VISUAL_SURFACES = {
 }
 
 TRAINING_VISUAL_SURFACES = {
+    "frontend/src/components/matthiasclassroom.css",
     "frontend/src/components/puzzlescreen.jsx",
     "frontend/src/components/puzzlemobilepolish.css",
     "frontend/src/components/tournamentscreen.jsx",
@@ -417,6 +418,9 @@ def self_test() -> None:
         "frontend/src/components/TournamentMobilePolish.css",
     ])
     assert mobile_training.capture_groups == "training"
+    classroom = classify(["frontend/src/components/MatthiasClassRoom.css"])
+    assert classroom.capture_groups == "training"
+    assert not classroom.hans and not classroom.chesscom
     assert not mobile_training.hans and not mobile_training.chesscom
 
     pawn = classify(["frontend/src/components/PawnSlugGodotHost.jsx"])
