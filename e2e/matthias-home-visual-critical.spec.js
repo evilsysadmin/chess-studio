@@ -21,7 +21,15 @@ async function openCanonicalHome(page, { reducedMotion = 'no-preference', profil
 async function dismissHomeSpeech(home) {
   const speech = home.getByRole('region', { name: 'Mensaje de Matthias', exact: true });
   if (!await speech.isVisible().catch(() => false)) return;
-  await speech.getByRole('button', { name: 'Cerrar comentario de Matthias', exact: true }).click();
+  const close = speech.getByRole('button', { name: 'Cerrar comentario de Matthias', exact: true });
+  try {
+    await close.click();
+  } catch (error) {
+    // The comment may auto-dismiss while Playwright is completing the click.
+    // That DOM detach is already the desired outcome; only force the close when
+    // the speech is still present after the interrupted pointer action.
+    if (await speech.isVisible().catch(() => false)) await close.click({ force: true });
+  }
   await expect(speech).toBeHidden();
 }
 
