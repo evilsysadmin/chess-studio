@@ -16,6 +16,10 @@ test.use({
 });
 
 test('Home 3D · captura Combat con foco físico', async ({ page }) => {
+  // The WebGL screenshot below deliberately allows 60s for SwiftShader readback.
+  // Keep the enclosing Playwright test above that budget so CI does not kill the
+  // real capture before screenshot() can reach its own timeout.
+  test.setTimeout(90_000);
   await mkdir(ARTIFACT_DIR, { recursive: true });
   await page.addInitScript(() => {
     Object.defineProperty(navigator, 'hardwareConcurrency', {
