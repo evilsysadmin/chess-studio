@@ -4,6 +4,7 @@ import PromotionModal from './PromotionModal.jsx';
 import GameBoardView from './GameBoardView.jsx';
 import PostGameExperience from './PostGameExperience.jsx';
 import { api } from '../api.js';
+import { analyzeGame, summarizeMoveReports } from '../gameReport.js';
 import { hintCost, capturePoints, streakBonus } from '../tournament.js';
 import { playMoveSound, playCaptureSound, playSuccessSound, playNoteworthySound, playIllegalMoveSound } from '../sound.js';
 import { speakCpuComment, stopCpuSpeech } from '../voiceCommentary.js';
@@ -87,6 +88,10 @@ export default function GameScreen({
   postGameFeedbackEnabled = true,
 }) {
   const humanColor = game.humanColor || 'w';
+  const ratingAuditEnabled = hintMode !== 'free'
+    && !memoryContext.lab
+    && !memoryContext.rescue
+    && !memoryContext.suddenDeath;
   const rivalryRecord = useMemo(() => loadRivalry().record || {}, [game.id, game.status]);
   const [selected, setSelected] = useState(null);
   const [pendingPromotion, setPendingPromotion] = useState(null); // { from, to }
@@ -150,6 +155,11 @@ export default function GameScreen({
   const matthiasSilentBeatTimeout = useRef(null);
   const achievementToastTimeout = useRef(null);
   const reportedResultRef = useRef(false);
+  const ratingAuditGenerationRef = useRef(0);
+  const ratingAuditRowsRef = useRef(new Map());
+  const ratingAuditQueueRef = useRef(Promise.resolve());
+  const [postGameAnalysisReport, setPostGameAnalysisReport] = useState(null);
+  const [postGameAnalysisPending, setPostGameAnalysisPending] = useState(false);
   const openingMemoryShownRef = useRef(false);
   const openingBanterShownRef = useRef(null);
   const resultMemoryTimeout = useRef(null);
@@ -192,6 +202,11 @@ export default function GameScreen({
     setCaptureFeedback(null);
     captureStreakRef.current = 0;
     reportedResultRef.current = false;
+    ratingAuditGenerationRef.current += 1;
+    ratingAuditRowsRef.current = new Map();
+    ratingAuditQueueRef.current = Promise.resolve();
+    setPostGameAnalysisReport(null);
+    setPostGameAnalysisPending(false);
     openingMemoryShownRef.current = false;
     if (resultMemoryTimeout.current) clearTimeout(resultMemoryTimeout.current);
     if (openingMemoryTimeout.current) clearTimeout(openingMemoryTimeout.current);
@@ -261,10 +276,9 @@ export default function GameScreen({
   // de más abajo — comparten `reportedResultRef` para no informar dos veces.
   useEffect(() => {
     if (!flagFallen || reportedResultRef.current) return;
-    reportedResultRef.current = true;
     const outcome = flagOutcome(flagFallen, humanColor, game.insufficientMatingMaterial);
     if (outcome === 'win') playSuccessSound();
-    onGameEnd?.(outcome, game, { hintsUsed: hintsUsedThisGame, endReason: outcome === 'draw' ? 'flag-insufficient-material' : 'flag', pressureMoves: pressureMovesRef.current, pressureIncidents: pressureIncidentsRef.current, suddenDeath: !!memoryContext.suddenDeath, gameChat: loadActiveGameChat(game.id) });
+    reportCompletedGame(outcome, game, { hintsUsed: hintsUsedThisGame, endReason: outcome === 'draw' ? 'flag-insufficient-material' : 'flag', pressureMoves: pressureMovesRef.current, pressureIncidents: pressureIncidentsRef.current, suddenDeath: !!memoryContext.suddenDeath, gameChat: loadActiveGameChat(game.id) });
     if (!seriesState) {
       resultMemoryTimeout.current = setTimeout(() => {
         const text = resultMemoryComment(outcome, loadRivalry(), { moves: game.history?.length || 0, difficulty: game.difficulty, opening: identifyOpening((game.history || []).map((move) => move?.san).filter(Boolean)) });
@@ -278,12 +292,11 @@ export default function GameScreen({
   // actualizar el rating tipo ELO ("cómo te ve la CPU").
   useEffect(() => {
     if (!game.isGameOver || reportedResultRef.current) return;
-    reportedResultRef.current = true;
     let outcome;
     if (game.status === 'checkmate') outcome = game.turn === humanColor ? 'loss' : 'win';
     else outcome = 'draw';
     if (outcome === 'win') playSuccessSound();
-    onGameEnd?.(outcome, game, { hintsUsed: hintsUsedThisGame, endReason: game.status, pressureMoves: pressureMovesRef.current, pressureIncidents: pressureIncidentsRef.current, suddenDeath: !!memoryContext.suddenDeath, gameChat: loadActiveGameChat(game.id) });
+    reportCompletedGame(outcome, game, { hintsUsed: hintsUsedThisGame, endReason: game.status, pressureMoves: pressureMovesRef.current, pressureIncidents: pressureIncidentsRef.current, suddenDeath: !!memoryContext.suddenDeath, gameChat: loadActiveGameChat(game.id) });
     if (!seriesState) {
       resultMemoryTimeout.current = setTimeout(() => {
         const text = resultMemoryComment(outcome, loadRivalry(), { moves: game.history?.length || 0, difficulty: game.difficulty, opening: identifyOpening((game.history || []).map((move) => move?.san).filter(Boolean)) });
@@ -456,6 +469,95 @@ export default function GameScreen({
     ? immobilityReason(localChess, selected, humanColor)
     : null;
 
+  function queueRatingAuditMove({ fenBefore, entry, reply = null, index }) {
+    if (!ratingAuditEnabled || !entry || !fenBefore || !Number.isInteger(index) || index < 0) return;
+    const generation = ratingAuditGenerationRef.current;
+    const miniHistory = reply ? [entry, reply] : [entry];
+    ratingAuditQueueRef.current = ratingAuditQueueRef.current
+      .catch(() => undefined)
+      .then(async () => {
+        try {
+          const mini = await analyzeGame(miniHistory, humanColor, api, {
+            maxMoves: 1,
+            initialFen: fenBefore,
+          });
+          const row = mini?.moveReports?.[0];
+          if (!row || generation !== ratingAuditGenerationRef.current) return;
+          ratingAuditRowsRef.current.set(index, {
+            ...row,
+            index,
+            moveNumber: Math.floor(index / 2) + 1,
+          });
+        } catch {
+          // El cierre de partida completará el cuaderno si una llamada puntual falló.
+        }
+      });
+  }
+
+  function expectedHumanMoveIndices(finalGame) {
+    const history = Array.isArray(finalGame?.history) ? finalGame.history : [];
+    let startTurn = 'w';
+    if (finalGame?.initialFen) {
+      const initial = chessFromFen(finalGame.initialFen);
+      if (initial) startTurn = initial.turn();
+    }
+    return history
+      .map((_, index) => index)
+      .filter((index) => (index % 2 === 0 ? startTurn : (startTurn === 'w' ? 'b' : 'w')) === humanColor);
+  }
+
+  async function finalizeRatingAudit(finalGame) {
+    if (!ratingAuditEnabled || !finalGame?.history?.length) return null;
+    await ratingAuditQueueRef.current.catch(() => undefined);
+    const expected = expectedHumanMoveIndices(finalGame);
+    const currentRows = [...ratingAuditRowsRef.current.values()]
+      .filter((row) => {
+        const played = finalGame.history?.[row.index];
+        if (!played) return false;
+        if (row.playedFrom && row.playedTo) {
+          return row.playedFrom === played.from
+            && row.playedTo === played.to
+            && String(row.playedPromotion || '') === String(played.promotion || '');
+        }
+        return row.played === played.san;
+      })
+      .sort((a, b) => a.index - b.index);
+
+    if (currentRows.length === expected.length) return summarizeMoveReports(currentRows);
+
+    // Partida reanudada, undo previo o fallo puntual: completamos el cuaderno
+    // al final para que el rating nunca dependa de una muestra accidental.
+    return analyzeGame(finalGame.history, humanColor, api, {
+      maxMoves: Math.max(1, expected.length),
+      initialFen: finalGame.initialFen || null,
+    });
+  }
+
+  function reportCompletedGame(outcome, finalGame, endMeta = {}) {
+    if (reportedResultRef.current) return;
+    reportedResultRef.current = true;
+    if (!ratingAuditEnabled) {
+      onGameEnd?.(outcome, finalGame, endMeta);
+      return;
+    }
+
+    const generation = ratingAuditGenerationRef.current;
+    setPostGameAnalysisPending(true);
+    void finalizeRatingAudit(finalGame)
+      .then((analysisReport) => {
+        if (generation !== ratingAuditGenerationRef.current) return;
+        if (analysisReport) setPostGameAnalysisReport(analysisReport);
+        onGameEnd?.(outcome, finalGame, { ...endMeta, analysisReport });
+      })
+      .catch(() => {
+        if (generation !== ratingAuditGenerationRef.current) return;
+        onGameEnd?.(outcome, finalGame, endMeta);
+      })
+      .finally(() => {
+        if (generation === ratingAuditGenerationRef.current) setPostGameAnalysisPending(false);
+      });
+  }
+
   async function sendMove(from, to, promotion) {
     setHint(null);
 
@@ -561,6 +663,19 @@ export default function GameScreen({
           if (captureFeedbackTimeout.current) clearTimeout(captureFeedbackTimeout.current);
           captureFeedbackTimeout.current = setTimeout(() => setCaptureFeedback(null), 2400);
         }
+      }
+
+      if (ratingAuditEnabled) {
+        const cpuReplied = updated.lastMove?.by === 'cpu';
+        const humanIndex = updated.history.length - (cpuReplied ? 2 : 1);
+        const confirmedHumanMove = updated.history[humanIndex] || humanMove;
+        const reply = cpuReplied ? updated.history[updated.history.length - 1] : null;
+        queueRatingAuditMove({
+          fenBefore: beforeHumanFen,
+          entry: confirmedHumanMove,
+          reply,
+          index: humanIndex,
+        });
       }
 
       setGame(updated);
@@ -827,6 +942,8 @@ export default function GameScreen({
         onShareIncident={onShareIncident}
         onOpenCrimeScene={onOpenCrimeScene}
         postGameFeedbackEnabled={postGameFeedbackEnabled}
+        analysisPending={postGameAnalysisPending || (ratingAuditEnabled && (game.isGameOver || flagFallen) && !postGameAnalysisReport && !resultSummary)}
+        analysisReport={postGameAnalysisReport}
         reportMeta={{
           gameId: game.id,
           initialFen: game.initialFen || null,
