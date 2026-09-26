@@ -245,9 +245,12 @@ export function ratingQualityAdjustment(evidence, outcome) {
   else if (blunders >= 2 || averageLoss >= 110) raw = -3;
   else if (blunders >= 1 || averageLoss >= 75) raw = -2;
 
-  if (outcome === 'win') return Math.max(-2, Math.min(4, raw));
+  // La calidad matiza el resultado; no lo contradice. Una victoria fea
+  // puede perder el bonus de calidad, pero nunca convertirse en castigo de
+  // rating. Del mismo modo, una derrota limpia no se transforma en premio.
+  if (outcome === 'win') return Math.max(0, Math.min(4, raw));
   if (outcome === 'draw') return Math.max(-2, Math.min(2, raw));
-  if (outcome === 'loss') return Math.max(-4, Math.min(2, raw));
+  if (outcome === 'loss') return Math.max(-4, Math.min(0, raw));
   return 0;
 }
 
