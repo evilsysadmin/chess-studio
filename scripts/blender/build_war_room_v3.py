@@ -252,6 +252,15 @@ def build_celestial_window(static, palette):
         "WR3_OBS_celestial_window_halo", (cx, cy - 0.10, cz), 3.08, 0.050,
         palette["brass_dark"], static, rotation=(math.pi / 2, 0, 0),
     )
+    # Deep stepped reveal keeps the oculus reading as architecture, not a flat screen.
+    base.torus(
+        "WR3_OBS_celestial_window_reveal_inner", (cx, cy - 0.155, cz), 2.79, 0.055,
+        palette["brass_dark"], static, rotation=(math.pi / 2, 0, 0),
+    )
+    base.torus(
+        "WR3_OBS_celestial_window_reveal_shadow", (cx, cy + 0.10, cz), 3.30, 0.075,
+        palette["walnut_dark"], static, rotation=(math.pi / 2, 0, 0),
+    )
 
     crescent_center = Vector((-0.92, cy - 0.255, cz + 0.66))
     crescent = base.cylinder(
