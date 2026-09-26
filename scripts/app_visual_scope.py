@@ -29,6 +29,14 @@ NONVISUAL_FRONTEND_PATHS = {
     "frontend/src/usepuzzlelaunchflow.js",
 }
 
+QUICK_MATCH_VISUAL_SURFACES = {
+    # Quick Match configuration and immersive-entry behavior only affect the
+    # launch surface and the War Room. Treating these as generic frontend
+    # forces Home + experiments + training + War Room + health captures.
+    "frontend/src/components/quickmatchmodal.jsx": {"home", "warroom"},
+    "frontend/src/components/usewarroomimmersive.js": {"warroom"},
+}
+
 TRAINING_VISUAL_SURFACES = {
     "frontend/src/components/puzzlescreen.jsx",
     "frontend/src/components/puzzlemobilepolish.css",
@@ -124,6 +132,8 @@ def _surface_groups(path: str) -> set[str] | None:
         return set()
     if lower in NONVISUAL_FRONTEND_PATHS:
         return set()
+    if lower in QUICK_MATCH_VISUAL_SURFACES:
+        return set(QUICK_MATCH_VISUAL_SURFACES[lower])
     if lower in TRAINING_VISUAL_SURFACES:
         return {"training"}
     if lower == "frontend/src/components/labscreen.jsx":
@@ -392,6 +402,14 @@ def write_outputs(scope: Scope, output_path: str) -> None:
 
 
 def self_test() -> None:
+    quick_match = classify([
+        "frontend/src/components/QuickMatchModal.jsx",
+        "frontend/src/components/useWarRoomImmersive.js",
+        "frontend/src/components/useWarRoomImmersive.test.js",
+    ])
+    assert quick_match.capture_groups == "home,warroom"
+    assert not quick_match.hans and not quick_match.chesscom
+
     mobile_training = classify([
         "frontend/src/components/PuzzleScreen.jsx",
         "frontend/src/components/PuzzleMobilePolish.css",
