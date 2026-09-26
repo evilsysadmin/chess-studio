@@ -40,6 +40,7 @@ WARROOM_CORE_ONLY_FILES = {
     "frontend/src/components/usewarroomimmersive.js",
     "frontend/src/components/warroomimmersive.css",
     "frontend/src/components/warroommobilelandscape.css",
+    "e2e/war-room-hans-visual-artifact.spec.js",
 }
 WARROOM_VARIANT_ORDER = ("classic", "v2", "v3")
 WARROOM_VARIANT_ALL = set(WARROOM_VARIANT_ORDER)
@@ -403,6 +404,7 @@ def self_test() -> None:
     for core_only_file in WARROOM_CORE_ONLY_FILES:
         assert classify([core_only_file]) == "warroom-core"
     assert classify(["frontend/src/components/WarRoomMobileLandscape.css"]) == "warroom-core"
+    assert classify(["e2e/war-room-hans-visual-artifact.spec.js"]) == "warroom-core"
     assert classify(["frontend/src/components/WarRoomCatDecor.js"]) == "warroom-decor"
     assert classify(["frontend/src/components/WarRoomArmorDisplay.js"]) == "warroom-armor"
     assert classify(["frontend/src/components/WarRoomHansPerGame.jsx"]) == "warroom-hans"
