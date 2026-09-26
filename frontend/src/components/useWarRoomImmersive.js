@@ -27,6 +27,29 @@ export function requestWarRoomBrowserFullscreen(doc = globalThis.document) {
   }
 }
 
+export function requestWarRoomLandscape(screenApi = globalThis.screen) {
+  const orientation = screenApi?.orientation;
+  if (!orientation || typeof orientation.lock !== 'function') return Promise.resolve(false);
+
+  try {
+    return Promise.resolve(orientation.lock('landscape')).then(() => true, () => false);
+  } catch {
+    return Promise.resolve(false);
+  }
+}
+
+export function unlockWarRoomOrientation(screenApi = globalThis.screen) {
+  const orientation = screenApi?.orientation;
+  if (!orientation || typeof orientation.unlock !== 'function') return false;
+
+  try {
+    orientation.unlock();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function exitWarRoomBrowserFullscreen(doc = globalThis.document) {
   const root = doc?.documentElement;
   if (!doc || !root || getWarRoomBrowserFullscreenElement(doc) !== root) return Promise.resolve(false);
@@ -48,6 +71,7 @@ export default function useWarRoomImmersive({ enabled, focusActive = false } = {
     setImmersive(false);
     setRailCollapsed(false);
     void exitWarRoomBrowserFullscreen();
+    unlockWarRoomOrientation();
   }, []);
 
   const toggleImmersive = useCallback(() => {
@@ -59,7 +83,11 @@ export default function useWarRoomImmersive({ enabled, focusActive = false } = {
     // Request native fullscreen from the trusted click/tap. If the browser
     // blocks or lacks the API, the existing fixed-viewport CSS remains the
     // graceful fallback instead of making the control a no-op on mobile.
+    // Android browsers only allow orientation locking reliably from the same
+    // trusted gesture used to enter fullscreen. Ask for both here; either API
+    // may gracefully decline without breaking the CSS immersive fallback.
     void requestWarRoomBrowserFullscreen();
+    void requestWarRoomLandscape();
     setImmersive(true);
   }, [enabled, exitImmersive, focusActive, immersive]);
 
