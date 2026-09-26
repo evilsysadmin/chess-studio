@@ -208,6 +208,10 @@ def build_curved_observatory(static, palette):
         x = radius * math.sin(theta)
         y = center_y + radius * math.cos(theta)
         base.cylinder(
+            f"WR3_OBS_apse_pilaster_{index}", (x, y - 0.10, 3.42), 0.19, 6.34,
+            palette["walnut_dark"], static, vertices=32,
+        )
+        base.cylinder(
             f"WR3_OBS_apse_rib_{index}", (x, y, 3.48), 0.105, 6.56,
             palette["walnut_dark"], static, vertices=32,
         )
@@ -236,6 +240,14 @@ def build_celestial_window(static, palette):
     base.torus(
         "WR3_OBS_celestial_window_inner", (cx, cy - 0.12, cz), 2.82, 0.050,
         palette["walnut_dark"], static, rotation=(math.pi / 2, 0, 0),
+    )
+    base.torus(
+        "WR3_OBS_celestial_window_reveal", (cx, cy + 0.02, cz), 3.18, 0.22,
+        palette["walnut_dark"], static, rotation=(math.pi / 2, 0, 0),
+    )
+    base.torus(
+        "WR3_OBS_celestial_window_halo", (cx, cy - 0.10, cz), 3.08, 0.035,
+        palette["brass_dark"], static, rotation=(math.pi / 2, 0, 0),
     )
 
     crescent_center = Vector((-0.92, cy - 0.255, cz + 0.66))
