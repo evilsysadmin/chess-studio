@@ -889,13 +889,12 @@ export function createChroniclesIsometricRenderer(host, {
       }
     });
     const expectedEnemyIds = sceneModel.enemies.filter((entry) => entry.visible && entry.cell).map((entry) => entry.id);
-    const renderedEnemyIds = expectedEnemyIds.filter((id) => {
-      const model = enemies.get(id);
-      return Boolean(model?.visible && model?.parent === scene && model?.userData?.chroniclesIsoPlaced);
+    const renderedEnemyIds = expectedEnemyIds.filter((id) => Boolean(enemies.get(id)?.visible && enemies.get(id)?.parent === scene && enemies.get(id)?.userData?.chroniclesIsoPlaced));
+    Object.assign(host.dataset, {
+      chroniclesExpectedEnemyIds: expectedEnemyIds.join(','),
+      chroniclesRenderedEnemyIds: renderedEnemyIds.join(','),
+      chroniclesEnemyRenderParity: String(renderedEnemyIds.length === expectedEnemyIds.length),
     });
-    host.dataset.chroniclesExpectedEnemyIds = expectedEnemyIds.join(',');
-    host.dataset.chroniclesRenderedEnemyIds = renderedEnemyIds.join(',');
-    host.dataset.chroniclesEnemyRenderParity = renderedEnemyIds.length === expectedEnemyIds.length ? 'true' : 'false';
 
     sceneModel.party.forEach((member) => {
       const model = party.models.get(member.id);
