@@ -121,12 +121,12 @@ test('War Room · offline→online durante /move pendiente reconcilia 3D sin rem
   });
 
   await login(page);
+  // Renderer is a device preference now; Quick Match no longer owns a 2D/3D selector.
+  // Pin this network/lifecycle test to 2D without coupling it to unrelated modal UI.
+  await page.evaluate(() => localStorage.setItem('chess-study-device-board-renderer-v1', '2d'));
   await buttonWithVisibleText(page, 'Partida rápida').click();
   const quickMatch = page.getByRole('dialog', { name: 'Configurar partida rápida' });
   await expect(quickMatch).toBeVisible();
-  const renderer = quickMatch.getByRole('group', { name: 'Tipo de tablero' });
-  await renderer.getByRole('button', { name: '2D', exact: true }).click();
-  await expect(renderer.getByRole('button', { name: '2D', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await quickMatch.getByRole('button', { name: 'Empezar partida', exact: true }).click();
   await expect(gameStatus(page)).toBeVisible();
 
