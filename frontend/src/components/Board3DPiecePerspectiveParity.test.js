@@ -66,8 +66,8 @@ describe('Board3D piece scale parity', () => {
       const classicElevation = THREE.MathUtils.radToDeg(Math.atan2(classicOffset.y, Math.abs(classicOffset.z)));
       const tacticalElevation = THREE.MathUtils.radToDeg(Math.atan2(tacticalOffset.y, Math.abs(tacticalOffset.z)));
 
-      expect(classic.userData.framingProfile).toBe('classic-overhead-v1');
-      expect(classicElevation).toBeGreaterThan(39);
+      expect(classic.userData.framingProfile).toBe('classic-overhead-v2');
+      expect(classicElevation).toBeGreaterThan(43);
       expect(classicElevation).toBeGreaterThan(tacticalElevation + 8);
       expect(classic.fov).toBe(tactical.fov);
     } finally {
