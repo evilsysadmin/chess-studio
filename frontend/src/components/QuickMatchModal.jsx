@@ -10,6 +10,11 @@ import { adaptiveDifficultyPresentation } from '../adaptiveDifficultyPresentatio
 import { fetchMatthiasBriefing } from '../matthiasDaily.js';
 import { matthiasTimeVisual } from '../matthiasVisuals.js';
 import './QuickMatchMobileGoldenPath.css';
+import {
+  exitWarRoomBrowserFullscreen,
+  requestWarRoomLandscapeFullscreen,
+  unlockWarRoomOrientation,
+} from './useWarRoomImmersive.js';
 
 const QUICK_MATCH_TOUCH_TARGET = Object.freeze({ minHeight: 44, touchAction: 'manipulation' });
 const QUICK_MATCH_ICON_TARGET = Object.freeze({ minWidth: 44, minHeight: 44, touchAction: 'manipulation' });
@@ -113,7 +118,14 @@ export default function QuickMatchModal({
           className="primary-btn friendly-main-cta"
           style={QUICK_MATCH_TOUCH_TARGET}
           disabled={loading}
-          onClick={() => onStart({ boardRenderer: selectedRenderer })}
+          onClick={async () => {
+            if (selectedRenderer === '3d') await requestWarRoomLandscapeFullscreen();
+            const started = await onStart({ boardRenderer: selectedRenderer });
+            if (!started && selectedRenderer === '3d') {
+              void exitWarRoomBrowserFullscreen();
+              unlockWarRoomOrientation();
+            }
+          }}
         >
           {loading ? 'Creando partida…' : 'Empezar partida'}
         </button>
