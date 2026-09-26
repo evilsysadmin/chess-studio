@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { updateRating, ratingChangeDetails, ratingQualityAdjustment, ratingQualityChangeDetails, cpuRatingForDifficulty, ratingScoreForOutcome, ratingLabel, ratingPeriodCheckpoints, ratingProgress, loadRating, RATING_TIERS, loadRatingHistory, recordRatingHistory, resetRatingHistory, difficultyForRating, adaptiveDifficultyAdjustment } from './playerRating.js';
+import { updateRating, ratingChangeDetails, ratingQualityAdjustment, ratingQualityChangeDetails, ratingPerformanceEstimate, cpuRatingForDifficulty, ratingScoreForOutcome, ratingLabel, ratingPeriodCheckpoints, ratingProgress, loadRating, RATING_TIERS, loadRatingHistory, recordRatingHistory, resetRatingHistory, difficultyForRating, adaptiveDifficultyAdjustment } from './playerRating.js';
 
 beforeEach(() => localStorage.clear());
 
@@ -317,5 +317,41 @@ describe('rating quality audit', () => {
   it('conserva ajustes de calidad previos al procesar una partida nueva', () => {
     const base = { rating: 900, games: 5, qualityAdjustedGameIds: ['old'] };
     expect(updateRating(base, 60, 1).qualityAdjustedGameIds).toEqual(['old']);
+  });
+});
+
+
+describe('in-game performance estimate', () => {
+  const evidence = (overrides = {}) => ({
+    sufficientSample: true,
+    analyzedCount: 20,
+    averageLoss: 45,
+    blunders: 0,
+    ...overrides,
+  });
+
+  it('estimates exceptional play above the stored rating without mutating it', () => {
+    const stored = 900;
+    const estimate = ratingPerformanceEstimate(stored, evidence({ averageLoss: 20 }));
+    expect(estimate.rating).toBeGreaterThan(stored);
+    expect(estimate.adjustment).toBeLessThanOrEqual(80);
+    expect(stored).toBe(900);
+  });
+
+  it('estimates clearly weak play below rating but keeps the global floor', () => {
+    expect(ratingPerformanceEstimate(900, evidence({ averageLoss: 170, blunders: 4 })).adjustment).toBeLessThan(0);
+    expect(ratingPerformanceEstimate(410, evidence({ averageLoss: 170, blunders: 4 })).rating).toBe(400);
+  });
+
+  it('requires enough engine evidence and exposes confidence instead of overreacting early', () => {
+    expect(ratingPerformanceEstimate(900, evidence({ sufficientSample: false, analyzedCount: 5, averageLoss: 5 }))).toEqual({
+      rating: 900,
+      confidence: 0,
+      adjustment: 0,
+    });
+    const partial = ratingPerformanceEstimate(900, evidence({ analyzedCount: 10, averageLoss: 20 }));
+    const full = ratingPerformanceEstimate(900, evidence({ analyzedCount: 20, averageLoss: 20 }));
+    expect(partial.confidence).toBe(0.5);
+    expect(Math.abs(partial.adjustment)).toBeLessThan(Math.abs(full.adjustment));
   });
 });
