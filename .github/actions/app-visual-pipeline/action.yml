@@ -13,9 +13,9 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
-        python3 -S scripts/app_visual_scope.py --self-test
-        python3 -S scripts/app_visual_producer_scope.py --self-test
-        python3 -S scripts/app_visual_changed_files.py --self-test
+        # These classifier self-tests already run in the always-on Quality
+        # preflight. Re-running them in the visual lane adds startup latency
+        # before every capture without adding independent coverage.
         if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
           python3 -S scripts/app_visual_scope.py --all --github-output "$GITHUB_OUTPUT"
           python3 -S scripts/app_visual_producer_scope.py --all --github-output "$GITHUB_OUTPUT"
