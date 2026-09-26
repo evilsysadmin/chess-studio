@@ -4,6 +4,7 @@ import { buttonWithVisibleText, login, mockApi } from './helpers.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const MIN_TOUCH_TARGET = 44;
+const HOME_PROFILE_SCOPE = String(process.env.APP_VISUAL_HOME_PROFILE_SCOPE || 'all').trim().toLowerCase();
 const CAPTURES = [
   { label:'desktop-1440x900', width:1440, height:900, reducedMotion:'no-preference', forceCores:8, expectCastleReady:true, expectBlenderRuntime:true },
   { label:'android-desktop-site-980x1740', width:980, height:1740, reducedMotion:'no-preference', forceCores:8, hasTouch:true, expectCastleReady:true, expectBlenderRuntime:true, minStageViewportFill:.74 },
@@ -206,7 +207,7 @@ test('App · captura visual canónica desktop + Android normal/desktop-site', as
 
   const captures = [];
   try {
-    for (const capture of CAPTURES) {
+    for (const capture of (HOME_PROFILE_SCOPE === 'quickmatch' ? [] : CAPTURES)) {
       const context = await visualBrowser.newContext({
         viewport:{ width:capture.width, height:capture.height },
         hasTouch:capture.hasTouch === true,
