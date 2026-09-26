@@ -43,48 +43,6 @@ def clear_inherited_room(static):
     if removed < 180:
         raise RuntimeError(f"War Room v3 inherited-room teardown suspiciously small: {removed}")
 
-V3 keeps only the live-board anchor and canonical camera from the v2 generator.
-Its authored room is rebuilt from an empty static collection: a curved tower
-apse, circular command table, celestial window, single cast-iron stove,
-brass telescope, reading nook, chess-treatise shelf and grounded tower entry
-replace v2's rectangular hall.
-"""
-from __future__ import annotations
-
-import math
-import sys
-from pathlib import Path
-
-import bpy
-from mathutils import Vector
-
-SCRIPT_DIR = Path(__file__).resolve().parent
-if str(SCRIPT_DIR) not in sys.path:
-    sys.path.insert(0, str(SCRIPT_DIR))
-
-import build_war_room_premium as base  # noqa: E402
-
-
-CONTRACT = "war-room-golden-observatory-v3"
-V3_WEATHER_MATERIALS = frozenset({
-    "WR3_MAT_warm_travertine",
-    "WR3_MAT_pale_travertine",
-    "WR3_MAT_radial_slate",
-    "WR3_MAT_green_marble",
-})
-
-
-def clear_inherited_room(static):
-    """Keep the proven camera; v3 owns every visible static mesh and light."""
-    removed = 0
-    for obj in list(static.objects):
-        if obj.name == "WR_CAMERA_hero":
-            continue
-        bpy.data.objects.remove(obj, do_unlink=True)
-        removed += 1
-    if removed < 180:
-        raise RuntimeError(f"War Room v3 inherited-room teardown suspiciously small: {removed}")
-
 
 def build_v3_palette():
     return {
