@@ -297,7 +297,19 @@ def build_celestial_window(static, palette):
         (0.22, 0.52, 1.0), static, size=5.6,
     )
     base.look_at(window_light, (0, 0.2, 1.1))
-    base.anchor("WR_ANCHOR_window_moonlight", (0, 5.9, 4.55), static)
+    # Restrained green side drapery frames the lunar focal point without
+    # covering the oculus or adding HUD-like visual noise.
+    for side in (-1, 1):
+        curtain = base.cube(
+            f"WR3_OBS_window_drape_{side}", (side * 3.38, 7.31, 4.15),
+            (0.34, 0.16, 2.18), palette["green_leather"], static, bevel=0.18,
+        )
+        curtain.rotation_euler.y = math.radians(side * 4)
+        base.torus(
+            f"WR3_OBS_window_drape_tie_{side}", (side * 3.30, 7.08, 3.72),
+            0.18, 0.035, palette["brass"], static, rotation=(math.pi / 2, 0, 0),
+        )
+        base.anchor("WR_ANCHOR_window_moonlight", (0, 5.9, 4.55), static)
 
 
 def build_round_command_table(static, palette):
