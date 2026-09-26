@@ -261,7 +261,7 @@ if (checkCiWiring) {
   if (!browserWorkflowSource.includes('workflow_dispatch:') || !browserWorkflowSource.includes('schedule:')) fail('El sweep multi-browser debe quedar disponible manualmente y por calendario');
 
   for (const required of [
-    'name: Production · promote',
+    'name: Deploy to production',
     'workflow_run:',
     'Staging · AI Worker',
     "github.event.workflow_run.conclusion == 'success'",
