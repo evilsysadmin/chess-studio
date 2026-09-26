@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { fetchAdminMatchmakingSettings, updateAdminMatchmakingSettings } from '../admin.js';
-import { setRuntimeMatchmakingTargetLeadElo } from '../featureFlags.js';
+import { setRuntimeQuickMatchTargetLeadElo } from '../quickMatchDifficulty.js';
 
 const LEAD_OPTIONS = [0, 25, 50, 75, 100, 125, 150];
 
@@ -37,7 +37,7 @@ export default function AdminMatchmakingSettingsSection() {
       const payload = await updateAdminMatchmakingSettings(lead);
       const value = Number(payload?.targetLeadElo);
       const normalized = Number.isFinite(value) ? Math.max(0, Math.min(150, Math.round(value))) : lead;
-      setRuntimeMatchmakingTargetLeadElo(normalized);
+      setRuntimeQuickMatchTargetLeadElo(normalized);
       setLead(normalized);
       setSavedLead(normalized);
     } catch (requestError) {
