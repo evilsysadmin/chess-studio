@@ -31,5 +31,25 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with: {fetch-depth: 2}
+      - name: Classify visual scope before browser setup
+        id: scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "capture=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          files="$(git diff --name-only HEAD^ HEAD)"
+          scoped_files="$(printf '%s\n' "$files" | python3 -S scripts/app_visual_changed_files.py)"
+          capture_groups="$(printf '%s\n' "$scoped_files" | python3 -S scripts/app_visual_scope.py | sed -n 's/^capture_groups=//p')"
+          producers="$(printf '%s\n' "$scoped_files" | python3 -S scripts/app_visual_producer_scope.py | sed -n 's/^producer_scope=//p')"
+          if [[ "$capture_groups" == "none" && "$producers" == "none" ]]; then
+            echo "capture=false" >> "$GITHUB_OUTPUT"
+            echo "No canonical visual output required after ownership normalization."
+          else
+            echo "capture=true" >> "$GITHUB_OUTPUT"
+          fi
       - uses: ./.github/actions/app-visual-pipeline
+        if: steps.scope.outputs.capture == 'true'
         with: {mode: canonical}
