@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   CLEAN_GAME_INCIDENT_COVERAGE_VERSION,
   CLEAN_GAME_MIN_ANALYZED_MOVES,
-  cleanGameEvidence,
+  cleanGameEvidence, competitiveGameSignals,
   cleanGameSummary,
   loadCleanGameRecords,
   recordCleanGameEvidence,
@@ -117,5 +117,32 @@ describe('Partida limpia', () => {
 
     expect(Object.keys(loadCleanGameRecords())).toHaveLength(4);
     expect(cleanGameSummary()).toMatchObject({ eligible: 4, clean: 3, rate: 75, currentStreak: 1, bestStreak: 2 });
+  });
+});
+
+
+describe('competitiveGameSignals', () => {
+  const report = (evaluations, overrides = {}) => ({
+    analyzedCount: evaluations.length,
+    moveReports: evaluations.map((humanEvaluation) => ({ loss: 10, humanEvaluation })),
+    ...overrides,
+  });
+
+  it('detects a decisive winning position that escaped without inventing it from material alone', () => {
+    const escaped = competitiveGameSignals(report([20, 80, 340, 120, 0]), { outcome: 'draw' });
+    expect(escaped.winningPositionEscaped).toBe(true);
+    expect(escaped.peakAdvantage).toBe(340);
+    expect(escaped.closeGame).toBe(true);
+  });
+
+  it('distinguishes stalemate after a winning position for targeted conversion training', () => {
+    const signal = competitiveGameSignals(report([10, 320, 500, 0]), { outcome: 'draw', termination: 'stalemate' });
+    expect(signal.stalemateFromWinningPosition).toBe(true);
+  });
+
+  it('does not manufacture drama from an insufficient or unavailable evaluation sample', () => {
+    expect(competitiveGameSignals(report([500, 500]), { outcome: 'loss' }).sufficientSample).toBe(false);
+    const noEval = { analyzedCount: 8, moveReports: Array.from({ length: 8 }, () => ({ loss: 10 })) };
+    expect(competitiveGameSignals(noEval, { outcome: 'draw' }).winningPositionEscaped).toBe(false);
   });
 });

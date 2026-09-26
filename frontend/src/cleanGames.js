@@ -122,6 +122,37 @@ export function cleanGameEvidence(report, meta = {}) {
   };
 }
 
+export function competitiveGameSignals(report, meta = {}) {
+  const rows = finiteRows(report);
+  const analyzedCount = Math.max(0, Number(report?.analyzedCount || rows.length) || 0);
+  if (analyzedCount < CLEAN_GAME_MIN_ANALYZED_MOVES) {
+    return { sufficientSample: false, closeGame: false, winningPositionEscaped: false, stalemateFromWinningPosition: false };
+  }
+
+  const humanEvaluations = rows
+    .map((row) => Number(row?.humanEvaluation ?? row?.evaluation ?? row?.eval))
+    .filter(Number.isFinite);
+  const peakAdvantage = humanEvaluations.length ? Math.max(...humanEvaluations) : null;
+  const decisiveAdvantageReached = Number.isFinite(peakAdvantage) && peakAdvantage >= 300;
+  const outcome = String(meta?.outcome || report?.outcome || '').toLowerCase();
+  const termination = String(meta?.termination || report?.termination || '').toLowerCase();
+  const escaped = decisiveAdvantageReached && outcome !== 'win';
+  const stalemate = outcome === 'draw' && /stalemate|ahogado/.test(termination);
+
+  // closeGame es deliberadamente conservador: si no tenemos una evaluación
+  // comparable no inventamos dramatismo. Sirve como señal UX, no como rating.
+  const finalEvaluation = humanEvaluations.length ? humanEvaluations.at(-1) : null;
+  const closeGame = Number.isFinite(finalEvaluation) && Math.abs(finalEvaluation) <= 150;
+
+  return {
+    sufficientSample: true,
+    closeGame,
+    winningPositionEscaped: escaped,
+    stalemateFromWinningPosition: escaped && stalemate,
+    peakAdvantage,
+  };
+}
+
 export function recordCleanGameEvidence(gameId, report, meta = {}) {
   if (!gameId || !report) return null;
   const evidence = cleanGameEvidence(report, { ...meta, gameId });
