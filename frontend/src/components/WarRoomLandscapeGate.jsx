@@ -9,7 +9,7 @@ export default function WarRoomLandscapeGate({ active = false, lockState = 'idle
         <p>Gira el móvil para un tablero más grande. Puedes seguir jugando en vertical.</p>
         {['rejected', 'unsupported'].includes(lockState) && <small>Si el navegador no gira solo, rota el teléfono.</small>}
       </div>
-      <button type="button" onClick={onActivate}>Activar apaisado</button>
+      <button type="button" aria-label="Activar apaisado" onClick={onActivate}>Girar</button>
     </section>
   );
 }
