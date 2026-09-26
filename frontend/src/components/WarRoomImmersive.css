@@ -131,6 +131,16 @@ body.war-room-immersive-active {
     pointer-events: auto;
   }
 
+  .game-screen .game-layout-immersive .game-3d-command-column-immersive {
+    inset:
+      max(.75rem, env(safe-area-inset-top))
+      max(.75rem, env(safe-area-inset-right))
+      auto auto !important;
+    width: auto !important;
+    height: auto !important;
+    pointer-events: auto;
+  }
+
   .game-screen .game-layout-immersive .board-live-row.is-3d-warroom[data-unused] {
     grid-template-columns: minmax(0, 1fr) clamp(190px, 15vw, 224px) !important;
     grid-template-areas:
