@@ -109,6 +109,10 @@ class AdminMatthiasPreviewRequest(BaseModel):
     preset: str = Field(default="veteran", max_length=32)
 
 
+class AdminMatchmakingSettingsRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    target_lead_elo: int = Field(alias="targetLeadElo", ge=0, le=150)
+
 
 class NewGameRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)

@@ -24,6 +24,7 @@ import pvp_store
 import users_store as ustore
 import user_data_lifecycle
 import release_info
+import runtime_settings_store
 from auth import verify_password
 from feature_flags import public_feature_flags
 from observability import record_process_ready
@@ -179,9 +180,13 @@ def build_system_router(*, auth_dependency, is_admin_check, limiter, admin_usern
 
     @router.get("/api/features")
     async def public_features(_username: str = Depends(auth_dependency)):
-        # Sólo expone booleanos de producto deliberadamente públicos. Nunca
-        # secretos, nombres de variables internas ni configuración sensible.
-        return {"features": public_feature_flags()}
+        # Sólo expone configuración deliberadamente pública. Nunca secretos,
+        # nombres de variables internas ni estado operativo sensible.
+        try:
+            matchmaking = await runtime_settings_store.get_matchmaking_settings()
+        except db.PersistentStorageUnavailable:
+            matchmaking = {"targetLeadElo": runtime_settings_store.DEFAULT_TARGET_LEAD_ELO}
+        return {"features": public_feature_flags(), "matchmaking": matchmaking}
 
     @router.post("/api/client-telemetry", status_code=204)
     @limiter.limit("120/minute")
