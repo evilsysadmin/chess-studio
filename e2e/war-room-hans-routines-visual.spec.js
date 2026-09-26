@@ -214,7 +214,12 @@ for (const eventName of CAPTURE_EVENTS) {
     });
       await seedGamesBeforeEvent(page, eventName);
 
-      await buttonWithVisibleText(page, 'Partida rápida').click();
+      const quickMatch = buttonWithVisibleText(page, 'Partida rápida');
+      await expect(quickMatch).toBeVisible();
+      // This visual producer validates Hans, not Home pointer latency. Trigger
+      // the already-visible diegetic action directly so SwiftShader cannot burn
+      // the capture budget scrolling a live WebGL Home.
+      await quickMatch.evaluate((button) => button.click());
       await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
       await expect(page.locator('.board-live-row.is-3d-warroom')).toBeVisible({ timeout: 45_000 });
 
