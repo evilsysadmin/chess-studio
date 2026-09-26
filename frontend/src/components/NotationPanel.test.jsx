@@ -15,3 +15,23 @@ describe('NotationPanel difficulty identity', () => {
     expect(html).not.toContain('nivel 0');
   });
 });
+
+
+describe('NotationPanel post-game review', () => {
+  it('anota sólo las jugadas que tienen comparación minimax', () => {
+    const history = [
+      { san: 'e4', from: 'e2', to: 'e4' },
+      { san: 'e5', from: 'e7', to: 'e5' },
+    ];
+    const analysisReport = {
+      moveReports: [{ index: 0, severity: 'inaccuracy', loss: 35, suggested: 'Nf3' }],
+    };
+    const html = renderToStaticMarkup(
+      <NotationPanel history={history} difficulty={45} analysisReport={analysisReport} />,
+    );
+    expect(html).toContain('Revisión minimax');
+    expect(html).toContain('?!');
+    expect(html).toContain('ideal Nf3');
+    expect(html).not.toContain('??');
+  });
+});
