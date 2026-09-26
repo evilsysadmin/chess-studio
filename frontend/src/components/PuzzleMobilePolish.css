@@ -77,11 +77,19 @@
    * are real next-step controls, so they keep the same 44px touch contract as
    * the source tabs instead of inheriting the desktop-oriented 42px default. */
   .puzzle-screen .personal-puzzle-training-panel :is(button, summary),
-  .puzzle-screen .puzzle-progress-details > summary {
+  .puzzle-screen .puzzle-progress-details > summary,
+  .puzzle-screen .puzzle-coach-panel button {
     min-height: 44px;
     max-width: 100%;
     white-space: normal;
     touch-action: manipulation;
+  }
+
+  /* Solving a personal position should end with a thumb-safe route straight
+   * back into play; keep the post-solve action from inheriting compact
+   * desktop button sizing. */
+  .puzzle-screen .puzzle-coach-panel .secondary-btn {
+    min-width: 44px;
   }
 }
 
