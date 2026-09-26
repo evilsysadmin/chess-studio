@@ -155,6 +155,19 @@ async function deriveCropsFromScene(page, scenePng, sourceClip, captures) {
   }, { png: scenePng, source: sourceClip, items: captures });
 }
 
+let sharedDecorBrowser;
+
+test.beforeAll(async () => {
+  sharedDecorBrowser = await chromium.launch({
+    headless: true,
+    args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
+  });
+});
+
+test.afterAll(async () => {
+  await sharedDecorBrowser?.close();
+});
+
 for (const profile of PROFILES) {
   test(`War Room decor · scene-first captures ${profile.label}`, async () => {
     // SwiftShader was spending minutes re-rasterizing the same frozen WebGL
@@ -163,11 +176,7 @@ for (const profile of PROFILES) {
     test.setTimeout(profile.hasTouch ? 120_000 : 180_000);
     await mkdir(ARTIFACT_DIR, { recursive: true });
 
-    const browser = await chromium.launch({
-      headless: true,
-      args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
-    });
-    const context = await browser.newContext({
+    const context = await sharedDecorBrowser.newContext({
       viewport: profile.viewport,
       hasTouch: profile.hasTouch,
       deviceScaleFactor: profile.deviceScaleFactor,
@@ -238,7 +247,6 @@ for (const profile of PROFILES) {
       );
     } finally {
       await context.close();
-      await browser.close();
     }
   });
 }

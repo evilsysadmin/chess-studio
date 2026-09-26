@@ -41,6 +41,11 @@ WARROOM_CORE_ONLY_FILES = {
     "frontend/src/components/warroomimmersive.css",
 }
 WARROOM_VARIANT_ORDER = ("classic", "v2", "v3")
+WARROOM_PROFILE_SCOPE_ALL = "all"
+WARROOM_PROFILE_SCOPE_MOBILE = "mobile"
+WARROOM_PROFILE_SCOPE_MOBILE_ENTRY = "mobile-entry"
+HOME_PROFILE_SCOPE_ALL = "all"
+HOME_PROFILE_SCOPE_QUICK_MATCH = "quickmatch"
 WARROOM_VARIANT_ALL = set(WARROOM_VARIANT_ORDER)
 WARROOM_CLASSIC_VARIANT_FILES = {
     "frontend/src/components/warroomclassicshell.js",
@@ -93,6 +98,13 @@ TRAINING_ALL = {
     "training-tournament",
     "training-progress",
 }
+QUICK_MATCH_EXACT_PRODUCERS = {
+    # Quick Match owns the launch/config surface and the core War Room entry
+    # contract. It cannot alter Home Matthias/focus, room decor, armor or Hans.
+    "frontend/src/components/quickmatchmodal.jsx": {"home-base", "warroom-core"},
+    "frontend/src/components/usewarroomimmersive.js": {"warroom-core"},
+}
+
 TRAINING_EXACT_PRODUCERS = {
     "frontend/src/components/puzzlescreen.jsx": {"training-puzzles"},
     "frontend/src/components/puzzlemobilepolish.css": {"training-puzzles"},
@@ -222,6 +234,8 @@ def classify_path(path: str) -> set[str] | None:
 
     if lower in {"frontend/src/lablaunchintent.js", "frontend/src/usepuzzlelaunchflow.js"}:
         return set()
+    if lower in QUICK_MATCH_EXACT_PRODUCERS:
+        return set(QUICK_MATCH_EXACT_PRODUCERS[lower])
     if lower == "frontend/src/components/labscreen.jsx":
         return {"experiments-hub"}
     if lower in TRAINING_EXACT_PRODUCERS:
@@ -331,6 +345,30 @@ def classify_warroom_variants(paths: list[str]) -> str:
             return _variant_csv(WARROOM_VARIANT_ALL)
     return _variant_csv(variants or WARROOM_VARIANT_ALL)
 
+def classify_home_profile_scope(paths: list[str]) -> str:
+    cleaned = [path.strip().lower().replace("\\", "/") for path in paths if path.strip()]
+    if not cleaned:
+        return HOME_PROFILE_SCOPE_ALL
+    relevant = [path for path in cleaned if ".test." not in Path(path).name and ".spec." not in Path(path).name]
+    if relevant and all(path == "frontend/src/components/quickmatchmodal.jsx" for path in relevant):
+        return HOME_PROFILE_SCOPE_QUICK_MATCH
+    return HOME_PROFILE_SCOPE_ALL
+
+
+def classify_warroom_profile_scope(paths: list[str]) -> str:
+    cleaned = [path.strip().lower().replace("\\", "/") for path in paths if path.strip()]
+    if not cleaned:
+        return WARROOM_PROFILE_SCOPE_ALL
+    mobile_only = {
+        "frontend/src/components/quickmatchmodal.jsx",
+        "frontend/src/components/usewarroomimmersive.js",
+    }
+    relevant = [path for path in cleaned if ".test." not in Path(path).name and ".spec." not in Path(path).name]
+    if relevant and all(path in mobile_only for path in relevant):
+        return WARROOM_PROFILE_SCOPE_MOBILE_ENTRY
+    return WARROOM_PROFILE_SCOPE_ALL
+
+
 def classify(paths: list[str]) -> str:
     cleaned = [path.strip() for path in paths if path.strip()]
     if not cleaned:
@@ -357,6 +395,14 @@ def self_test() -> None:
         "frontend/src/components/WarRoomV3Shell.js",
     ]) == "classic,v3"
     assert classify_warroom_variants(["frontend/src/components/PuzzleScreen.jsx"]) == "classic,v2,v3"
+    assert classify_home_profile_scope(["frontend/src/components/QuickMatchModal.jsx"]) == "quickmatch"
+    assert classify_home_profile_scope(["frontend/src/components/HomeCastle3D.jsx"]) == "all"
+    assert classify_warroom_profile_scope([
+        "frontend/src/components/QuickMatchModal.jsx",
+        "frontend/src/components/useWarRoomImmersive.js",
+        "frontend/src/components/useWarRoomImmersive.test.js",
+    ]) == "mobile-entry"
+    assert classify_warroom_profile_scope(["frontend/src/components/WarRoomV3Shell.js"]) == "all"
     assert classify(["scripts/app_visual_scope.py"]) == "none"
     assert classify(["scripts/app_visual_producer_scope.py"]) == "none"
     assert classify(["scripts/app_visual_changed_files.py"]) == "none"
@@ -367,6 +413,13 @@ def self_test() -> None:
     assert classify(["frontend/src/chroniclesDungeon.js"]) == "chronicles-gameplay"
     assert classify(["frontend/src/experimentalThreeRenderer.js"]) == "chronicles-tactics,chronicles-gameplay"
     assert classify(["frontend/src/components/LabScreen.jsx"]) == "experiments-hub"
+    assert classify(["frontend/src/components/QuickMatchModal.jsx"]) == "home-base,warroom-core"
+    assert classify(["frontend/src/components/useWarRoomImmersive.js"]) == "warroom-core"
+    assert classify([
+        "frontend/src/components/QuickMatchModal.jsx",
+        "frontend/src/components/useWarRoomImmersive.js",
+        "frontend/src/components/useWarRoomImmersive.test.js",
+    ]) == "home-base,warroom-core"
     assert classify([
         "frontend/src/components/PuzzleScreen.jsx",
         "frontend/src/components/PuzzleMobilePolish.css",
@@ -451,13 +504,19 @@ def main(argv: list[str] | None = None) -> int:
     paths = [] if args.all else sys.stdin.read().splitlines()
     result = "all" if args.all else classify(paths)
     warroom_variants = _variant_csv(WARROOM_VARIANT_ALL) if args.all else classify_warroom_variants(paths)
+    warroom_profile_scope = WARROOM_PROFILE_SCOPE_ALL if args.all else classify_warroom_profile_scope(paths)
+    home_profile_scope = HOME_PROFILE_SCOPE_ALL if args.all else classify_home_profile_scope(paths)
     if args.github_output:
         with open(args.github_output, "a", encoding="utf-8") as handle:
             handle.write(f"producer_scope={result}\n")
             handle.write(f"warroom_variants={warroom_variants}\n")
+            handle.write(f"warroom_profile_scope={warroom_profile_scope}\n")
+            handle.write(f"home_profile_scope={home_profile_scope}\n")
     else:
         print(f"producer_scope={result}")
         print(f"warroom_variants={warroom_variants}")
+        print(f"warroom_profile_scope={warroom_profile_scope}")
+        print(f"home_profile_scope={home_profile_scope}")
     return 0
 
 
