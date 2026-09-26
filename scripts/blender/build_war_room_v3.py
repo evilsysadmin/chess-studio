@@ -511,6 +511,14 @@ def build_bookshelf(static, palette):
         palette["walnut_dark"], static, bevel=0.08,
     )
     base.cube(
+        "WR3_OBS_bookshelf_crown_brass", (x, y - 0.50, 3.30), (0.86, 0.025, 0.035),
+        palette["brass"], static, bevel=0.016,
+    )
+    base.cube(
+        "WR3_OBS_bookshelf_back_panel", (x, y + 0.11, 1.72), (0.78, 0.045, 1.32),
+        palette["walnut_dark"], static, bevel=0.035,
+    )
+    base.cube(
         "WR3_OBS_bookshelf_plinth", (x, y - 0.15, 0.17), (1.02, 0.36, 0.13),
         palette["walnut_dark"], static, bevel=0.07,
     )
