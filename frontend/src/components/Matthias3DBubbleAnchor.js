@@ -1,5 +1,9 @@
+import { resolveBoard3DCameraFov } from './Board3DConfig.js';
+import { classicWarRoomCameraFramingProfile } from './Board3DCameraProfiles.js';
+import { getCameraFramingProfile } from './Board3DSurfaces.js';
+import { getWarRoomMobileFramingProfile } from './WarRoomMobileFraming.js';
+
 const FILES = 'abcdefgh';
-const VERTICAL_FOV_RADIANS = 40 * Math.PI / 180;
 const MATTHIAS_KING_TOP_Y = 1.56;
 
 function clamp(value, min, max) {
@@ -31,47 +35,14 @@ function cross([ax, ay, az], [bx, by, bz]) {
   ];
 }
 
-function cameraFramingProfile({ aspect, coarsePointer, viewportWidth }) {
-  const safeAspect = Math.max(0.35, Number(aspect) || 1);
-  const safeWidth = Math.max(0, Number(viewportWidth) || 0);
-  const mobilePortrait = Boolean(coarsePointer) && safeWidth <= 820 && safeAspect <= 1.15;
-
-  if (mobilePortrait) {
-    const phone = safeWidth <= 520;
-    return {
-      halfSpan: phone ? 4.88 : 5.02,
-      padding: phone ? 1.035 : 1.05,
-      minDistance: phone ? 12.7 : 13.0,
-      maxDistance: phone ? 18.2 : 18.8,
-      targetY: phone ? 0.58 : 0.66,
-      targetZ: phone ? 0.48 : 0.4,
-      cameraY: phone ? 6.85 : 7.05,
-      cameraZ: phone ? 10.55 : 10.6,
-    };
-  }
-
-  const wide = safeAspect >= 1.42;
-  return wide
-    ? {
-        halfSpan: 5.38,
-        padding: 1.07,
-        minDistance: 13.2,
-        maxDistance: 22.6,
-        targetY: 1.08,
-        targetZ: -0.16,
-        cameraY: 7.35,
-        cameraZ: 10.6,
-      }
-    : {
-        halfSpan: 5.78,
-        padding: 1.13,
-        minDistance: 14.5,
-        maxDistance: 25.6,
-        targetY: 0.92,
-        targetZ: -0.08,
-        cameraY: 8.2,
-        cameraZ: 10.72,
-      };
+function cameraFramingProfile({ aspect, coarsePointer, viewportWidth, variant }) {
+  const mobileProfile = getWarRoomMobileFramingProfile({ aspect, coarsePointer, viewportWidth });
+  if (mobileProfile) return { profile: mobileProfile, mobile: true };
+  const classic = String(variant || '').startsWith('classic');
+  return {
+    profile: classic ? classicWarRoomCameraFramingProfile(aspect) : getCameraFramingProfile(aspect),
+    mobile: false,
+  };
 }
 
 export function findMatthiasKingSquare(fen, matthiasKingColor) {
@@ -118,6 +89,7 @@ export function projectMatthiasKingAnchor({
   height,
   coarsePointer = false,
   viewportWidth = width,
+  variant = null,
 } = {}) {
   const safeWidth = Math.max(1, Number(width) || 0);
   const safeHeight = Math.max(1, Number(height) || 0);
@@ -128,9 +100,10 @@ export function projectMatthiasKingAnchor({
   if (!square || !point) return null;
 
   const aspect = Math.max(0.35, safeWidth / safeHeight);
-  const profile = cameraFramingProfile({ aspect, coarsePointer, viewportWidth });
-  const horizontalFov = 2 * Math.atan(Math.tan(VERTICAL_FOV_RADIANS / 2) * aspect);
-  const limitingFov = Math.min(VERTICAL_FOV_RADIANS, horizontalFov);
+  const { profile, mobile } = cameraFramingProfile({ aspect, coarsePointer, viewportWidth, variant });
+  const verticalFov = resolveBoard3DCameraFov(aspect, { mobile }) * Math.PI / 180;
+  const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * aspect);
+  const limitingFov = Math.min(verticalFov, horizontalFov);
   const distance = clamp(
     (profile.halfSpan / Math.tan(limitingFov / 2)) * profile.padding,
     profile.minDistance,
@@ -151,7 +124,7 @@ export function projectMatthiasKingAnchor({
   const cameraX = dot(cameraToPoint, right);
   const cameraY = dot(cameraToPoint, up);
   const ndcX = cameraX / (depth * Math.tan(horizontalFov / 2));
-  const ndcY = cameraY / (depth * Math.tan(VERTICAL_FOV_RADIANS / 2));
+  const ndcY = cameraY / (depth * Math.tan(verticalFov / 2));
 
   return {
     square,
