@@ -292,24 +292,31 @@ def build_celestial_window(static, palette):
             scale=(1.0, 0.24, 1.0),
         )
 
+    # Broad folded green drapery frames the lunar oculus while keeping the glass clear.
+    for side in (-1, 1):
+        x = side * 3.55
+        curtain = base.cube(
+            f"WR3_OBS_window_drape_{side}", (x, 7.34, 4.22),
+            (0.64, 0.12, 1.92), palette["green_leather"], static, bevel=0.20,
+        )
+        curtain.rotation_euler.y = math.radians(side * 3)
+        for fold in (-0.34, 0.0, 0.34):
+            base.cube(
+                f"WR3_OBS_window_drape_fold_{side}_{fold:+.2f}",
+                (x + fold, 7.19, 4.22), (0.10, 0.055, 1.78),
+                palette["teal_dark"], static, bevel=0.055,
+            )
+        base.cube(
+            f"WR3_OBS_window_drape_tie_{side}", (side * 3.43, 7.08, 3.72),
+            (0.48, 0.055, 0.055), palette["brass"], static, bevel=0.025,
+        )
+
     window_light = base.light(
         "WR3_LIGHT_window", "AREA", (0, 5.80, 4.55), 410.0,
         (0.22, 0.52, 1.0), static, size=5.6,
     )
     base.look_at(window_light, (0, 0.2, 1.1))
-    # Restrained green side drapery frames the lunar focal point without
-    # covering the oculus or adding HUD-like visual noise.
-    for side in (-1, 1):
-        curtain = base.cube(
-            f"WR3_OBS_window_drape_{side}", (side * 3.38, 7.31, 4.15),
-            (0.34, 0.16, 2.18), palette["green_leather"], static, bevel=0.18,
-        )
-        curtain.rotation_euler.y = math.radians(side * 4)
-        base.torus(
-            f"WR3_OBS_window_drape_tie_{side}", (side * 3.30, 7.08, 3.72),
-            0.18, 0.035, palette["brass"], static, rotation=(math.pi / 2, 0, 0),
-        )
-        base.anchor("WR_ANCHOR_window_moonlight", (0, 5.9, 4.55), static)
+    base.anchor("WR_ANCHOR_window_moonlight", (0, 5.9, 4.55), static)
 
 
 def build_round_command_table(static, palette):
@@ -484,6 +491,17 @@ def build_lounge_corner(static, palette):
         "WR3_OBS_chair_cushion", (x, y - 0.07, 0.82), (0.57, 0.47, 0.11),
         palette["green_leather"], static, bevel=0.20,
     )
+    # A restrained brass foot rail and buttoning make the lounge read as
+    # bespoke observatory furniture at the game camera distance.
+    base.cube(
+        "WR3_OBS_chair_front_rail", (x, y - 0.49, 0.43), (0.58, 0.055, 0.055),
+        palette["brass_dark"], static, bevel=0.025,
+    )
+    for button_x in (-0.28, 0.0, 0.28):
+        base.sphere(
+            f"WR3_OBS_chair_back_button_{button_x:+.2f}", (x + button_x, y + 0.165, 1.40),
+            0.035, palette["brass_dark"], static,
+        )
     pillow = base.cube(
         "WR3_OBS_chair_pillow", (x, y + 0.17, 1.30), (0.37, 0.08, 0.34),
         palette["green_leather"], static, bevel=0.14,
