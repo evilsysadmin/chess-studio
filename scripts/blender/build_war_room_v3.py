@@ -161,6 +161,11 @@ def build_curved_observatory(static, palette):
             )
             tile_index += 1
 
+    # A thin brass perimeter inlay makes the green/ivory marble floor read as
+    # an authored circular observatory surface without competing with the board.
+    base.torus("WR3_OBS_floor_perimeter_inlay", (0, -0.18, 0.050), 8.05, 0.026,
+               palette["brass_dark"], static)
+
     # A restrained circular carpet frames the playable table without compass clutter.
     base.cylinder("WR3_OBS_rug_field", (0, -0.05, 0.070), 5.72, 0.040,
                   palette["rug"], static, vertices=96)
