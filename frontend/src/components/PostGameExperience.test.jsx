@@ -80,3 +80,13 @@ describe('PostGameExperience', () => {
     expect(html).not.toContain('Entrenar mis errores');
   });
 });
+
+describe('PostGameExperience — auditoría de rating', () => {
+  it('explica y bloquea acciones mientras minimax termina el cuaderno', () => {
+    const html = render({ analysisPending: true });
+    expect(html).toContain('Rating en revisión');
+    expect(html).toContain('Minimax está comparando tu cuaderno jugada por jugada');
+    expect(html).toContain('Revisando cuaderno…');
+    expect(html).toContain('disabled');
+  });
+});
