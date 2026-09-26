@@ -2804,8 +2804,8 @@ def add_fireplace(name: str, x: float, materials):
     cube(f"HOME_PROP_{name}_mantel", (x, 5.83, 1.88), (1.55, 0.24, 0.16), stone, bevel=0.04)
     gothic_arch(f"HOME_ARCH_{name}_alcove", x, 6.18, 2.9, 2.62, 4.72, 0.12, materials["arch_stone"])
     for bar in (-0.54, -0.18, 0.18, 0.54):
-        cube(f"HOME_PROP_{name}_grate_{bar}", (x + bar, 5.56, 0.76), (0.028, 0.035, 0.48), materials["steel"], bevel=0.01)
-    cube(f"HOME_PROP_{name}_grate_cross", (x, 5.55, 0.62), (0.72, 0.035, 0.025), materials["steel"], bevel=0.01)
+        cube(f"HOME_PROP_{name}_grate_{bar}", (x + bar, 5.56, 0.76), (0.028, 0.035, 0.48), materials["forged_iron"], bevel=0.01)
+    cube(f"HOME_PROP_{name}_grate_cross", (x, 5.55, 0.62), (0.72, 0.035, 0.025), materials["forged_iron"], bevel=0.01)
     hot = materials["fire_hot"]
     cube(f"HOME_PROP_{name}_embers", (x, 5.65, 0.58), (0.88, 0.07, 0.08), fire, bevel=0.06)
     flame_offsets = (-0.54, -0.28, 0.00, 0.27, 0.52)
@@ -4489,13 +4489,13 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             f"HOME_PROP_fireplace_left_grate_bar_{idx}",
             [(gx, 5.30, 0.47), (gx, 5.30, 1.04)],
             0.018,
-            materials["brass_dark"],
+            materials["forged_iron"],
         )
     curve_tube(
         "HOME_PROP_fireplace_left_grate_top",
         [(-6.73, 5.30, 0.96), (-6.15, 5.28, 1.07), (-5.57, 5.30, 0.96)],
         0.024,
-        materials["brass_dark"],
+        materials["forged_iron"],
     )
     # A single lived-in hearth tool set gives the Great Hall a practical medieval
     # cue without mirroring decorative clutter around both fireplaces.
@@ -4573,7 +4573,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             if "_grate_" in obj.name:
                 if obj.data and hasattr(obj.data, "materials"):
                     obj.data.materials.clear()
-                    obj.data.materials.append(materials["brass_dark"])
+                    obj.data.materials.append(materials["forged_iron"])
                 if "grate_cross" not in obj.name:
                     obj.scale.z *= 0.52
                     obj.location.z -= 0.15
@@ -4834,13 +4834,13 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             f"HOME_PROP_fireplace_right_grate_front_bar_{idx}",
             [(gx, 5.30, 0.47), (gx, 5.30, 1.04)],
             0.018,
-            materials["brass_dark"],
+            materials["forged_iron"],
         )
     curve_tube(
         "HOME_PROP_fireplace_right_grate_front_top",
         [(4.45 - 0.58, 5.30, 0.96), (4.45, 5.28, 1.07), (4.45 + 0.58, 5.30, 0.96)],
         0.024,
-        materials["brass_dark"],
+        materials["forged_iron"],
     )
 
     for pane_index, (offset, half_width, z_shift, mat_name) in enumerate((
