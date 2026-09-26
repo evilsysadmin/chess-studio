@@ -156,6 +156,17 @@ describe('quick-match Elo chaser', () => {
     expect(cpuRatingForDifficulty(relieved) - 1000).toBeLessThanOrEqual(25);
   });
 
+  it('does not use the maximum upward form boost without a sustained win streak', () => {
+    const mixedHotForm = [
+      ...adaptiveGame('hot1', 'win', 55),
+      ...adaptiveGame('hot2', 'draw', 54),
+      ...adaptiveGame('hot3', 'win', 53),
+      ...adaptiveGame('hot4', 'win', 52),
+    ];
+
+    expect(quickMatchTargetLeadElo(mixedHotForm, 20, {})).toBeLessThanOrEqual(60);
+  });
+
   it('lets a real recovery win stop maximum losing-streak relief', () => {
     const baseline = difficultyForQuickMatchRating(1000, [], 20);
     const recovery = [
