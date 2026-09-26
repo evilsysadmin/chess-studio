@@ -216,7 +216,17 @@ body.war-room-immersive-active {
   .game-screen .game-layout-immersive .game-board-stack.game-board-stack-3d {
     display: block !important;
     align-self: stretch !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
     max-width: none !important;
+  }
+
+  .game-screen .game-layout-immersive .game-board-stack.game-board-stack-3d > .game-board-3d-stage {
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
   }
 
   .game-layout-immersive .game-board-stack-3d > .game-player-rail.is-human,
