@@ -454,6 +454,7 @@ function AppInner({ isAdminUser }) {
         eloDelta: details.delta,
         eloBefore: rating.rating,
         eloAfter: details.next.rating, ratingGames: details.next.games,
+        cpuRating: details.cpuRating,
       };
     }
 
