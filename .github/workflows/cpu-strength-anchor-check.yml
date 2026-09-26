@@ -1,0 +1,55 @@
+name: CPU strength anchor check
+
+on:
+  push:
+    branches:
+      - bench/cpu-strength-anchor-check
+
+permissions:
+  contents: read
+
+jobs:
+  calibrate:
+    name: Level ${{ matrix.level }} vs ${{ matrix.elo }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - level: 45
+            elo: 1320
+          - level: 60
+            elo: 1320
+          - level: 70
+            elo: 1320
+          - level: 90
+            elo: 1600
+          - level: 100
+            elo: 1800
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+      - name: Install calibration dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y stockfish
+          python -m pip install chess==1.11.2
+      - name: Run short empirical anchor check
+        run: |
+          python scripts/cpu_strength_calibration.py \
+            --engine /usr/games/stockfish \
+            --levels "${{ matrix.level }}" \
+            --reference-elos "${{ matrix.elo }}" \
+            --games 4 \
+            --move-time 0.03 \
+            --max-plies 80 \
+            --seed 9123 \
+            --output "cpu-strength-${{ matrix.level }}-${{ matrix.elo }}.json"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: cpu-strength-${{ matrix.level }}-${{ matrix.elo }}
+          path: cpu-strength-${{ matrix.level }}-${{ matrix.elo }}.json
+          retention-days: 3
