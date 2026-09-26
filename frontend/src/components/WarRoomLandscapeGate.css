@@ -55,7 +55,8 @@
   .war-room-landscape-gate button {
     min-width: 44px;
     min-height: 44px;
-    padding: .55rem .7rem;
+    padding: .55rem .65rem;
+    white-space: nowrap;
     border: 1px solid color-mix(in srgb, var(--brass) 68%, transparent);
     border-radius: 10px;
     background: linear-gradient(180deg, rgba(113, 77, 29, .94), rgba(48, 31, 14, .98));
@@ -74,13 +75,3 @@
   }
 }
 
-@media (max-width: 370px) and (pointer: coarse) and (orientation: portrait) {
-  .war-room-landscape-gate {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-
-  .war-room-landscape-gate button {
-    grid-column: 1 / -1;
-    justify-self: stretch;
-  }
-}
