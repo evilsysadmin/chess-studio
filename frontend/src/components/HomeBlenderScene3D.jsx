@@ -125,12 +125,18 @@ export const HOME_BLENDER_KLAUS_MOTION = Object.freeze({
 });
 
 const HOME_BLENDER_KLAUS_TAIL_SEGMENT = /^HOME_PROP_cat_tail_seg_(\d+)$/i;
+const HOME_BLENDER_KLAUS_EAR = /^HOME_PROP_cat_ear_(?:inner_)?(?:l|r)$/i;
 
 export const HOME_BLENDER_KLAUS_TAIL_MOTION = Object.freeze({
   startIndex: 48,
   endIndex: 55,
   swingX: 0.0045,
   swingZ: 0.0035,
+});
+
+export const HOME_BLENDER_KLAUS_EAR_MOTION = Object.freeze({
+  twitchY: 0.003,
+  twitchZ: 0.002,
 });
 
 export function homeBlenderKlausTailWeight(name = '') {
@@ -208,6 +214,13 @@ export function prepareHomeBlenderKlausRig(root) {
     scale: rig.scale.clone(),
     rotation: rig.rotation.clone(),
   };
+  rig.userData.homeKlausEars = parts
+    .filter((part) => HOME_BLENDER_KLAUS_EAR.test(String(part.name || '')))
+    .map((part, index) => ({
+      part,
+      index,
+      rotation: part.rotation.clone(),
+    }));
   rig.userData.homeKlausTail = parts
     .map((part) => ({
       part,
@@ -231,6 +244,14 @@ export function applyHomeBlenderKlausMotion(rig, timeMs = 0) {
   rig.rotation.copy(base.rotation);
   rig.rotation.y += pose.yaw;
   rig.rotation.z += pose.roll;
+  const seconds = Math.max(0, Number(timeMs) || 0) / 1000;
+  const earPulse = Math.max(0, Math.sin(seconds * (Math.PI * 2 / 19.0) - 1.1)) ** 14;
+  for (const ear of rig.userData.homeKlausEars || []) {
+    const direction = ear.index % 2 ? -1 : 1;
+    ear.part.rotation.copy(ear.rotation);
+    ear.part.rotation.y += direction * earPulse * HOME_BLENDER_KLAUS_EAR_MOTION.twitchY;
+    ear.part.rotation.z += direction * earPulse * HOME_BLENDER_KLAUS_EAR_MOTION.twitchZ;
+  }
   for (const tail of rig.userData.homeKlausTail || []) {
     const tailPose = homeBlenderKlausTailPose(timeMs, tail.weight);
     tail.part.position.set(
