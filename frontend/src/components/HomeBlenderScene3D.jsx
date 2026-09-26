@@ -124,6 +124,38 @@ export const HOME_BLENDER_KLAUS_MOTION = Object.freeze({
   roll: 0.0025,
 });
 
+const HOME_BLENDER_KLAUS_TAIL_SEGMENT = /^HOME_PROP_cat_tail_seg_(\d+)$/i;
+
+export const HOME_BLENDER_KLAUS_TAIL_MOTION = Object.freeze({
+  startIndex: 48,
+  endIndex: 55,
+  swingX: 0.0045,
+  swingZ: 0.0035,
+});
+
+export function homeBlenderKlausTailWeight(name = '') {
+  const match = HOME_BLENDER_KLAUS_TAIL_SEGMENT.exec(String(name || ''));
+  if (!match) return 0;
+  const index = Number(match[1]);
+  const { startIndex, endIndex } = HOME_BLENDER_KLAUS_TAIL_MOTION;
+  if (!Number.isFinite(index) || index < startIndex) return 0;
+  if (index >= endIndex) return 1;
+  return (index - startIndex + 1) / (endIndex - startIndex + 1);
+}
+
+export function homeBlenderKlausTailPose(timeMs = 0, weight = 1) {
+  const seconds = Math.max(0, Number(timeMs) || 0) / 1000;
+  const clampedWeight = Math.max(0, Math.min(1, Number(weight) || 0));
+  const slow = Math.sin(seconds * (Math.PI * 2 / 13.7) + 0.45);
+  const micro = Math.sin(seconds * (Math.PI * 2 / 5.3) + 1.7);
+  const sway = (slow * 0.72) + (micro * 0.28);
+  const curl = Math.sin(seconds * (Math.PI * 2 / 9.1) + 2.2);
+  return {
+    offsetX: sway * HOME_BLENDER_KLAUS_TAIL_MOTION.swingX * clampedWeight,
+    offsetZ: curl * HOME_BLENDER_KLAUS_TAIL_MOTION.swingZ * clampedWeight,
+  };
+}
+
 export function homeBlenderIsKlausPart(name = '') {
   const normalized = String(name || '');
   return HOME_BLENDER_KLAUS_PART.test(normalized) && !HOME_BLENDER_KLAUS_STATIC.test(normalized);
@@ -176,6 +208,13 @@ export function prepareHomeBlenderKlausRig(root) {
     scale: rig.scale.clone(),
     rotation: rig.rotation.clone(),
   };
+  rig.userData.homeKlausTail = parts
+    .map((part) => ({
+      part,
+      weight: homeBlenderKlausTailWeight(part.name),
+      position: part.position.clone(),
+    }))
+    .filter((entry) => entry.weight > 0);
   return rig;
 }
 
@@ -192,6 +231,14 @@ export function applyHomeBlenderKlausMotion(rig, timeMs = 0) {
   rig.rotation.copy(base.rotation);
   rig.rotation.y += pose.yaw;
   rig.rotation.z += pose.roll;
+  for (const tail of rig.userData.homeKlausTail || []) {
+    const tailPose = homeBlenderKlausTailPose(timeMs, tail.weight);
+    tail.part.position.set(
+      tail.position.x + tailPose.offsetX,
+      tail.position.y,
+      tail.position.z + tailPose.offsetZ,
+    );
+  }
   rig.updateMatrixWorld?.(true);
   return true;
 }
