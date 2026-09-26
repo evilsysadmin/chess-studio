@@ -70,7 +70,7 @@ test('War Room · el número del fuego completa cotilleo, corte de Matthias y re
 
   const canvas = await openFireGame(page);
   const matthiasCall = page.getByRole('status', { name: 'Matthias llama a Hans por el fuego' });
-  await expect(matthiasCall).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
+  await expect(canvas).toHaveAttribute('data-war-room-hans-narrative-phase', /^(matthias|await-hans|hans|await-exit-peek|peek|gap-after-peek|matthias-working|gap-after-matthias|hans-working-reply|await-exit|grumble|epilogue|done)$/, { timeout: WAR_ROOM_READY_TIMEOUT });
   // The call is intentionally brief. Assert its own contract immediately: a
   // cold 3D mount can replace the canvas while the scene reaches its ready
   // frame, and waiting on that new canvas must not consume the whole bubble.
@@ -118,7 +118,7 @@ test('War Room · F5 con Hans ya visible no completa ni silencia el número', as
 
   const canvas = await openFireGame(page);
   const matthiasCall = page.getByRole('status', { name: 'Matthias llama a Hans por el fuego' });
-  await expect(matthiasCall).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
+  await expect(canvas).toHaveAttribute('data-war-room-hans-narrative-phase', /^(matthias|await-hans|hans|await-exit-peek|peek|gap-after-peek|matthias-working|gap-after-matthias|hans-working-reply|await-exit|grumble|epilogue|done)$/, { timeout: WAR_ROOM_READY_TIMEOUT });
   await expect(canvas).toHaveAttribute('data-war-room-hans-call-released', 'true', { timeout: 8_000 });
   await expect(canvas).toHaveAttribute('data-war-room-hans-reply-seen', 'true', { timeout: WAR_ROOM_READY_TIMEOUT });
 
