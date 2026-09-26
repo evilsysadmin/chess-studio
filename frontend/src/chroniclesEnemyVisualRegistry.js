@@ -14,10 +14,10 @@ const VISUALS = Object.freeze({
   'gate-jailer': Object.freeze({ build: buildGateJailer, scale: 1.04 }),
   'spectral-bishop': Object.freeze({ build: buildSpectralBishop, scale: 0.9 }),
   'scavenger-knight': Object.freeze({ build: buildScavengerKnight, scale: 0.96 }),
-  'ash-goblin': Object.freeze({ build: buildAshGoblin, scale: 0.9 }),
-  'crypt-spider': Object.freeze({ build: buildCryptSpider, scale: 0.82 }),
-  'ember-wisp': Object.freeze({ build: buildEmberWisp, scale: 0.78 }),
-  'bone-hound': Object.freeze({ build: buildBoneHound, scale: 0.92 }),
+  'ash-goblin': Object.freeze({ build: buildAshGoblin, scale: 1.08 }),
+  'crypt-spider': Object.freeze({ build: buildCryptSpider, scale: 1.02 }),
+  'ember-wisp': Object.freeze({ build: buildEmberWisp, scale: 0.96 }),
+  'bone-hound': Object.freeze({ build: buildBoneHound, scale: 1.08 }),
 });
 
 export function chroniclesEnemyVisualSpec(visualType) {

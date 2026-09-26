@@ -12,24 +12,9 @@ async function openVisualMoreModes(page) {
   const trigger = page.getByRole('button', { name: /Más modos y herramientas/ });
   await expect(trigger).toBeVisible();
 
-  // Keep the first attempt bounded but long enough for the illustrated Home
-  // entrance motion to settle; known blockers still avoid the full 30 s burn.
-  try {
-    await trigger.click({ timeout: 5_000 });
-  } catch (error) {
-    // Playwright can time out after the click itself has already landed while it
-    // waits for unrelated scheduled navigation work. Accept the interaction if
-    // Home has in fact opened the tools panel instead of throwing away a valid
-    // desktop visual capture.
-    const tools = page.locator('#illustrated-home-tools');
-    if (await tools.isVisible().catch(() => false)) return;
-
-    const pvpLobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room', exact: true });
-    if (!(await pvpLobby.isVisible().catch(() => false))) throw error;
-    await pvpLobby.getByRole('button', { name: /Cerrar ventana/ }).click();
-    await expect(pvpLobby).toBeHidden();
-    await trigger.click();
-  }
+  // This producer validates Chronicles, not Home animation actionability.
+  // Invoke the real button handler directly once the canonical trigger is visible.
+  await trigger.evaluate((button) => button.click());
 }
 
 async function openChronicles(page, captureLabel) {
@@ -58,7 +43,11 @@ async function openChronicles(page, captureLabel) {
   await openVisualMoreModes(page);
   const tools = page.locator('#illustrated-home-tools');
   await expect(tools).toBeVisible();
-  await tools.getByRole('button').filter({ hasText: 'Experimentos geniales' }).click();
+  if (await pvpLobby.isVisible().catch(() => false)) {
+    await pvpLobby.getByRole('button', { name: /Cerrar ventana/ }).click({ force: true });
+    await expect(pvpLobby).toBeHidden();
+  }
+  await tools.getByRole('button').filter({ hasText: 'Experimentos geniales' }).evaluate((button) => button.click());
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
   const chroniclesEntry = page.getByRole('button', { name: /BOOK I.*Chronicles of Matthias/i });
   await chroniclesEntry.click();

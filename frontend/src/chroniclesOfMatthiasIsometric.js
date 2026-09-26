@@ -888,6 +888,7 @@ export function createChroniclesIsometricRenderer(host, {
         model.userData.chroniclesIsoPlaced = true;
       }
     });
+    host.dataset.chroniclesEnemyRenderProof = JSON.stringify([sceneModel.enemies.filter((e) => e.visible && e.cell).map((e) => e.id), sceneModel.enemies.filter((e) => e.visible && e.cell && enemies.get(e.id)?.visible && enemies.get(e.id)?.userData?.chroniclesIsoPlaced).map((e) => e.id)]);
 
     sceneModel.party.forEach((member) => {
       const model = party.models.get(member.id);
@@ -1052,8 +1053,7 @@ export function createChroniclesIsometricRenderer(host, {
   document.addEventListener('visibilitychange', onVisibility);
   renderer.domElement.addEventListener('pointerup', onPointerUp);
 
-  resize();
-  syncSelection();
+  resize(); syncSelection();
   syncInteraction();
   render();
   onReady?.('THREE.JS · ISOMETRIC');

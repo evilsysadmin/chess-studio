@@ -290,6 +290,17 @@ for (const room of AUTHORED_ROOM_VISUAL_CAPTURES) {
       expect(health.partyMemberCount, `${room.mapId}: canonical four-member party`).toBe(4);
       expectCanvasFillsViewport(health, room.mapId);
       expectDesktopCanonicalComposition(health, room.mapId);
+      if (room.mapId === 'menagerie-of-ash') {
+        const rendererHost = mode.locator('[data-chronicles-tactics-renderer="three"]');
+        const [expectedEnemyIds, renderedEnemyIds] = JSON.parse(
+          (await rendererHost.getAttribute('data-chronicles-enemy-render-proof')) || '[[],[]]',
+        );
+        expect(expectedEnemyIds.sort(), 'Menagerie gameplay must expose all four active enemies').toEqual(
+          ['ash-goblin', 'bone-hound', 'crypt-spider', 'ember-wisp'].sort(),
+        );
+        expect(renderedEnemyIds.sort(), 'Every active Menagerie enemy must own a visible placed Three.js model').toEqual(expectedEnemyIds.sort());
+        health.enemyRender = { expectedEnemyIds, renderedEnemyIds, parity: true };
+      }
 
       await captureElement(
         page,
