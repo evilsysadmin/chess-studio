@@ -1,8 +1,5 @@
 import { useState } from 'react';
 import { api } from './api.js';
-import { archiveAnalysis } from './advancedCareer.js';
-import { recordCleanGameEvidence } from './cleanGames.js';
-import { analyzeCompletedGameOnce } from './postGameAnalysis.js';
 import {
   loadRating,
   ratingQualityChangeDetails,
@@ -22,13 +19,17 @@ export function usePostGameRatingAudit({ setRating, setCasualResult, setLastResu
     const gameId = String(finishedGame.id);
     setPostGameAnalysis({ gameId, status: 'loading', report: null, qualityDelta: 0 });
 
-    void analyzeCompletedGameOnce({
+    void Promise.all([
+      import('./postGameAnalysis.js'),
+      import('./advancedCareer.js'),
+      import('./cleanGames.js'),
+    ]).then(([analysisModule, careerModule, cleanModule]) => analysisModule.analyzeCompletedGameOnce({
       gameId,
       history: finishedGame.history,
       humanColor: finishedGame.humanColor,
       api,
       initialFen: finishedGame.initialFen || null,
-    }).then((report) => {
+    }).then((report) => ({ report, careerModule, cleanModule }))).then(({ report, careerModule, cleanModule }) => {
       const meta = {
         gameId,
         date: record?.date || new Date().toISOString(),
@@ -37,8 +38,8 @@ export function usePostGameRatingAudit({ setRating, setCasualResult, setLastResu
         opening: record?.opening || null,
         timeControlId: record?.timeControl?.id || 'none',
       };
-      archiveAnalysis(gameId, report, meta);
-      const evidence = recordCleanGameEvidence(gameId, report, meta);
+      careerModule.archiveAnalysis(gameId, report, meta);
+      const evidence = cleanModule.recordCleanGameEvidence(gameId, report, meta);
       let qualityDelta = 0;
 
       if (ratingEligible) {
