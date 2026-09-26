@@ -86,7 +86,7 @@ function Board3DCanvas({
   turnState = null,
   themeOverride = null, hansDiagnosticsMarkerRef = null,
   hansDiagnosticsRequested = false, hansFireCallEnabled = false,
-  cameraProfile = 'tactical', warRoomVariantOverride = null,
+  cameraProfile = 'tactical', warRoomVariantOverride = null, immersive = false,
   onRendererFailure,
 }) {
   const hostRef = useRef(null);
@@ -439,7 +439,7 @@ function Board3DCanvas({
       const width = Math.max(280, host.clientWidth || 280);
       const height = Math.max(300, host.clientHeight || 300);
       renderer.setSize(width, height, false);
-      fitBoardCamera(camera, width, height, whiteSide, { profile: cameraProfile });
+      fitBoardCamera(camera, width, height, whiteSide, { profile: cameraProfile, immersive });
       render();
     }
     resize();
