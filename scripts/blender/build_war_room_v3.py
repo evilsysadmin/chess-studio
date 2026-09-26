@@ -472,6 +472,17 @@ def build_lounge_corner(static, palette):
         "WR3_OBS_chair_cushion", (x, y - 0.07, 0.82), (0.57, 0.47, 0.11),
         palette["green_leather"], static, bevel=0.20,
     )
+    # A restrained brass foot rail and buttoning make the lounge read as
+    # bespoke observatory furniture at the game camera distance.
+    base.cube(
+        "WR3_OBS_chair_front_rail", (x, y - 0.49, 0.43), (0.58, 0.055, 0.055),
+        palette["brass_dark"], static, bevel=0.025,
+    )
+    for button_x in (-0.28, 0.0, 0.28):
+        base.sphere(
+            f"WR3_OBS_chair_back_button_{button_x:+.2f}", (x + button_x, y + 0.165, 1.40),
+            0.035, palette["brass_dark"], static,
+        )
     pillow = base.cube(
         "WR3_OBS_chair_pillow", (x, y + 0.17, 1.30), (0.37, 0.08, 0.34),
         palette["green_leather"], static, bevel=0.14,
