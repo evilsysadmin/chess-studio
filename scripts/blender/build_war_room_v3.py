@@ -568,6 +568,12 @@ def build_bookshelf(static, palette):
             f"WR3_OBS_bookshelf_shelf_{row}", (x, y - 0.23, z),
             (0.90, 0.32, 0.045), palette["walnut"], static, bevel=0.022,
         )
+        # A hairline of aged brass catches the firelight on the cabinet without
+        # turning the bookshelf into another focal point.
+        base.cube(
+            f"WR3_OBS_bookshelf_shelf_trim_{row}", (x, y - 0.565, z + 0.018),
+            (0.82, 0.018, 0.018), palette["brass_dark"], static, bevel=0.009,
+        )
 
     book_index = 0
     for row, z in enumerate((0.79, 1.37, 1.95, 2.53)):
