@@ -8,6 +8,13 @@ const CAPTURES = [
   { label: 'android-390x844', width: 390, height: 844, hasTouch: true },
 ];
 
+async function seedAuthenticatedSession(page) {
+  await page.addInitScript(() => {
+    localStorage.setItem('chess-study-auth-token', 'e2e-token');
+    localStorage.setItem('chess-study-auth-username', 'e2e');
+  });
+}
+
 async function dismissGuide(page) {
   const guide = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
   if (!(await guide.isVisible().catch(() => false))) return;
@@ -28,7 +35,13 @@ async function openTactics(page, {
       'chess-study-home-guide-dismissed-v1': '1',
     },
   });
-  await login(page);
+  if (chroniclesRunFailureStatus === 0) {
+    await seedAuthenticatedSession(page);
+    await page.goto('./');
+    await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible();
+  } else {
+    await login(page);
+  }
   await dismissGuide(page);
   const speech = page.getByRole('region', { name: 'Mensaje de Matthias', exact: true });
   if (await speech.isVisible().catch(() => false)) {
