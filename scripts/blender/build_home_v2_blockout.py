@@ -3281,7 +3281,7 @@ def add_armor(materials):
     # Point-down sword, hilt at the TOP: pommel, wrapped grip in the fist, cross-guard below the
     # hand, then the blade down to the pedestal. (It was inverted before: pommel underneath and
     # the blade running through the grip, so there was nothing for the hand to hold.)
-    cylinder("HOME_PROP_armor_sword_grip", (hilt_x, hilt_y, grip_z + 0.02), 0.040, 0.26, materials["leather"], vertices=16)
+    cylinder("HOME_PROP_armor_sword_grip", (hilt_x, hilt_y, grip_z + 0.02), 0.040, 0.26, materials["sword_grip"], vertices=16)
     for ring_z in (grip_z - 0.07, grip_z + 0.02, grip_z + 0.11):
         cylinder("HOME_PROP_armor_sword_grip_ring", (hilt_x, hilt_y, ring_z), 0.046, 0.012, brass, vertices=16)
     sphere("HOME_PROP_armor_sword_pommel", (hilt_x, hilt_y, grip_z + 0.19), (0.072, 0.072, 0.072), brass)
@@ -4055,6 +4055,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             texture_profile="wood",
         ),
         "leather": material("HOME_MAT_leather", (0.205, 0.042, 0.026, 1), roughness=0.70, bump_scale=18.0, bump_strength=0.055, variation=0.12, variation_scale=6.0, texture_profile="leather"),
+        "sword_grip": material("HOME_MAT_sword_grip", (0.030, 0.010, 0.008, 1), roughness=0.84, bump_scale=16.0, bump_strength=0.070, variation=0.08, variation_scale=5.4, texture_profile="leather"),
         "paper": material("HOME_MAT_paper", (0.31, 0.22, 0.14, 1), roughness=0.97, variation=0.035, variation_scale=5.8, texture_profile="paper"),
         "wax": material("HOME_MAT_wax", (0.24, 0.15, 0.085, 1), roughness=0.96, texture_profile="wax"),
         "globe": material(
