@@ -595,14 +595,34 @@ export async function clickBoardMove(page, from, to, scope = page) {
   const fromSquare = scope.getByRole('button', { name: new RegExp(`^Casilla ${from},`) });
   const toSquare = scope.getByRole('button', { name: new RegExp(`^Casilla ${to},`) });
 
-  if (await fromSquare.isVisible().catch(() => false)) {
+  async function click2DIfReady() {
+    if (!(await fromSquare.isVisible().catch(() => false))) return false;
     await fromSquare.click();
     await expect(toSquare).toBeVisible();
     await toSquare.click();
-    return;
+    return true;
   }
 
-  if (scope === page && await clickWarRoomMove(page, from, to)) return;
+  if (await click2DIfReady()) return;
+
+  if (scope === page) {
+    const warRoom = page.locator('[data-board3d-war-room="true"]');
+    const canvas = page.locator('.board3d-main-canvas');
+    await expect.poll(async () => {
+      if (await fromSquare.isVisible().catch(() => false)) return '2d';
+      if (
+        await warRoom.isVisible().catch(() => false)
+        && await canvas.isVisible().catch(() => false)
+      ) return '3d';
+      return 'pending';
+    }, {
+      timeout: 20_000,
+      message: 'A playable 2D board or War Room canvas should finish mounting',
+    }).not.toBe('pending');
+
+    if (await click2DIfReady()) return;
+    if (await clickWarRoomMove(page, from, to)) return;
+  }
 
   // Keep the old semantic failure when neither renderer is available so a
   // broken board does not get disguised as a helper timeout.

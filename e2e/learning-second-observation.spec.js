@@ -260,6 +260,7 @@ test('Home · el avatar residente de Matthias abre Así juegas · entrenamiento 
   await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible();
 
   await installObservationGame(page);
+  await installObservationAnalysis(page);
   await startObservationGame2D(page);
   for (let index = 0; index < OBSERVATION_STEPS.length; index += 1) {
     const { human } = OBSERVATION_STEPS[index];
@@ -272,7 +273,6 @@ test('Home · el avatar residente de Matthias abre Así juegas · entrenamiento 
   });
   await expect(endgame).toBeVisible();
   await endgame.getByRole('button', { name: 'Más opciones', exact: true }).click();
-  await installObservationAnalysis(page);
   await endgame.getByRole('button', { name: 'Resumen de la partida', exact: true }).click();
 
   const report = page.getByRole('dialog', { name: 'Resumen de la partida', exact: true });

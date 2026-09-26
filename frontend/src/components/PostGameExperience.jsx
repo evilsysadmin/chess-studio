@@ -46,6 +46,7 @@ export default function PostGameExperience({
   flagFinalOutcome = null,
   forcedOutcome = null,
   resultSummary = null,
+  postGameAnalysis = null,
   lastCpuComment = null,
   seriesState = null,
   runState = null,
@@ -129,6 +130,21 @@ export default function PostGameExperience({
             <span>{resultSummary.detail}</span>
             {adaptiveRecalibration && (
               <span>{adaptiveRecalibrationLabel(adaptiveRecalibration)}</span>
+            )}
+          </p>
+        )}
+        {postGameAnalysis && (
+          <p className="endgame-rating-impact endgame-analysis-impact" role="status">
+            <strong>Cuaderno de jugadas</strong>
+            {postGameAnalysis.status === 'loading' && <span>Revisando la partida completa con minimax…</span>}
+            {postGameAnalysis.status === 'error' && <span>La auditoría no respondió; el rating base se mantiene sin ajuste de calidad.</span>}
+            {postGameAnalysis.status === 'done' && postGameAnalysis.report && (
+              <span>
+                Revisadas {postGameAnalysis.report.analyzedCount} jugadas propias
+                {resultSummary?.ratingApplied && Number(postGameAnalysis.qualityDelta) !== 0
+                  ? ` · ajuste de calidad ${postGameAnalysis.qualityDelta > 0 ? '+' : ''}${postGameAnalysis.qualityDelta} ELO`
+                  : ''}
+              </span>
             )}
           </p>
         )}

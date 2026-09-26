@@ -28,7 +28,7 @@ function recentNotationPairs(history, limit = 1) {
   return pairs.slice(-limit);
 }
 
-function CompactNotationPreview({ history, difficulty }) {
+function CompactNotationPreview({ history, difficulty, analysis = null }) {
   const opening = identifyOpening(history.map((move) => move.san));
   const pairs = recentNotationPairs(history);
 
@@ -45,12 +45,14 @@ function CompactNotationPreview({ history, difficulty }) {
           </div>
         ))}
       </div>
+      {analysis?.status === 'loading' && <p className="game-notation-analysis-status">Revisando cuaderno con minimax…</p>}
+      {analysis?.status === 'done' && analysis.report && <p className="game-notation-analysis-status">Cuaderno revisado · {analysis.report.analyzedCount} jugadas propias</p>}
       <details className="game-notation-full-disclosure">
         <summary>
           Ver cuaderno completo <span aria-hidden="true">→</span>
         </summary>
         <div className="game-notation-full-panel">
-          <NotationPanel history={history} difficulty={difficulty} />
+          <NotationPanel history={history} difficulty={difficulty} analysisReport={analysis?.report || null} />
         </div>
       </details>
     </div>
@@ -167,7 +169,7 @@ function WarRoomTabbedRail({ game, side }) {
           <GameChat messages={side.gameChat} contextMessages={side.gameContextMessages} />
         )}
         {activeTab === 'notebook' && (
-          <CompactNotationPreview history={game.history} difficulty={game.difficulty} />
+          <CompactNotationPreview history={game.history} difficulty={game.difficulty} analysis={side.postGameAnalysis} />
         )}
         {activeTab === 'captures' && <WarRoomCaptures history={game.history} />}
       </div>
@@ -197,7 +199,7 @@ export default function GameSideColumn({ game, side, isThreeD, compactViewport }
               Cuaderno de jugadas · {game.history.length} movimientos
             </summary>
             <div className="game-notation-row">
-              <NotationPanel history={game.history} difficulty={game.difficulty} />
+              <NotationPanel history={game.history} difficulty={game.difficulty} analysisReport={side.postGameAnalysis?.report || null} />
             </div>
           </details>
           <GameChat messages={side.gameChat} contextMessages={side.gameContextMessages} />

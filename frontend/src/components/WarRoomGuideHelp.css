@@ -16,7 +16,9 @@
 
 @media (max-width: 820px) {
   .game-screen .game-layout-3d .game-3d-turn-pill {
-    grid-template-columns: minmax(0, 1fr) 8px max-content 60px max-content 34px !important;
+    /* Compact actions really occupy 92px (2 × 44px + gap). Reserving only
+       60px made the guide button overlap the one-tap resign target on Android. */
+    grid-template-columns: minmax(0, 1fr) 8px max-content 92px max-content 44px !important;
   }
 
   .game-3d-command-column .context-help-btn.is-first-run-nudge {

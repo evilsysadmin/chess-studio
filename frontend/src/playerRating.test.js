@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { updateRating, ratingChangeDetails, cpuRatingForDifficulty, ratingScoreForOutcome, ratingLabel, ratingPeriodCheckpoints, ratingProgress, loadRating, RATING_TIERS, loadRatingHistory, recordRatingHistory, resetRatingHistory, difficultyForRating, adaptiveDifficultyAdjustment } from './playerRating.js';
+import { updateRating, ratingChangeDetails, ratingQualityAdjustment, ratingQualityChangeDetails, cpuRatingForDifficulty, ratingScoreForOutcome, ratingLabel, ratingPeriodCheckpoints, ratingProgress, loadRating, RATING_TIERS, loadRatingHistory, recordRatingHistory, resetRatingHistory, difficultyForRating, adaptiveDifficultyAdjustment } from './playerRating.js';
 
 beforeEach(() => localStorage.clear());
 
@@ -262,5 +262,51 @@ describe('difficultyForRating', () => {
       finished('loss', base, 'practice'), finished('loss', base, 'practice'), finished('loss', base, 'combat'), finished('loss', base, 'combat'),
     ];
     expect(difficultyForRating(1100, noise)).toBe(base);
+  });
+});
+
+
+describe('rating quality audit', () => {
+  const evidence = (overrides = {}) => ({
+    sufficientSample: true,
+    clean: false,
+    averageLoss: 45,
+    blunders: 0,
+    ...overrides,
+  });
+
+  it('premia una victoria limpia sin convertir una victoria fea en castigo', () => {
+    expect(ratingQualityAdjustment(evidence({ clean: true, averageLoss: 18 }), 'win')).toBe(4);
+    expect(ratingQualityAdjustment(evidence({ averageLoss: 180, blunders: 3 }), 'win')).toBe(0);
+  });
+
+  it('agrava una derrota plagada de blunders sin convertir una derrota limpia en premio', () => {
+    expect(ratingQualityAdjustment(evidence({ clean: true, averageLoss: 18 }), 'loss')).toBe(0);
+    expect(ratingQualityAdjustment(evidence({ averageLoss: 180, blunders: 3 }), 'loss')).toBe(-4);
+  });
+
+  it('deja que las tablas reflejen calidad en ambas direcciones dentro de un margen pequeño', () => {
+    expect(ratingQualityAdjustment(evidence({ clean: true, averageLoss: 18 }), 'draw')).toBe(2);
+    expect(ratingQualityAdjustment(evidence({ averageLoss: 180, blunders: 3 }), 'draw')).toBe(-2);
+  });
+
+  it('no toca rating sin muestra suficiente', () => {
+    expect(ratingQualityAdjustment(evidence({ sufficientSample: false, averageLoss: 5, clean: true }), 'win')).toBe(0);
+  });
+
+  it('aplica el ajuste una sola vez por gameId y no suma otra partida', () => {
+    const base = { rating: 900, games: 5, processedGameIds: ['g1'], qualityAdjustedGameIds: [] };
+    const first = ratingQualityChangeDetails(base, 'g1', evidence({ clean: true, averageLoss: 18 }), 'win');
+    expect(first.delta).toBe(4);
+    expect(first.next.games).toBe(5);
+    const duplicate = ratingQualityChangeDetails(first.next, 'g1', evidence({ clean: true, averageLoss: 18 }), 'win');
+    expect(duplicate.duplicate).toBe(true);
+    expect(duplicate.delta).toBe(0);
+    expect(duplicate.next.rating).toBe(first.next.rating);
+  });
+
+  it('conserva ajustes de calidad previos al procesar una partida nueva', () => {
+    const base = { rating: 900, games: 5, qualityAdjustedGameIds: ['old'] };
+    expect(updateRating(base, 60, 1).qualityAdjustedGameIds).toEqual(['old']);
   });
 });

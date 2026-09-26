@@ -23,7 +23,12 @@ async function expectAuthoritativeOpening2D(page) {
 }
 
 async function switchTo3D(page) {
-  await page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true }).click();
+  const utilityButton = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
+  await expect(utilityButton).toBeVisible({ timeout: 30_000 });
+  await utilityButton.click();
+  const appearance = page.getByRole('menuitem', { name: 'Apariencia', exact: true });
+  await expect(appearance).toBeVisible();
+  await appearance.click();
   const dialog = page.getByRole('dialog', { name: 'Ajustes' });
   await expect(dialog).toBeVisible();
   await dialog.getByRole('radio', { name: /3D$/ }).click();
@@ -121,12 +126,16 @@ test('War Room · offline→online durante /move pendiente reconcilia 3D sin rem
   });
 
   await login(page);
+  // Renderer is a device preference now; Quick Match no longer owns a 2D/3D selector.
+  // Pin this network/lifecycle test to 2D without coupling it to unrelated modal UI.
+  await page.evaluate(() => {
+    localStorage.setItem('chess-study-mechanic-tutorial-progress-v1', JSON.stringify({
+      'war-room-basics': { seen: true, completedAt: 'e2e' },
+    }));
+  });
   await buttonWithVisibleText(page, 'Partida rápida').click();
   const quickMatch = page.getByRole('dialog', { name: 'Configurar partida rápida' });
   await expect(quickMatch).toBeVisible();
-  const renderer = quickMatch.getByRole('group', { name: 'Tipo de tablero' });
-  await renderer.getByRole('button', { name: '2D', exact: true }).click();
-  await expect(renderer.getByRole('button', { name: '2D', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await quickMatch.getByRole('button', { name: 'Empezar partida', exact: true }).click();
   await expect(gameStatus(page)).toBeVisible();
 

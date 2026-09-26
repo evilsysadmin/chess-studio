@@ -25,10 +25,18 @@ async function openVisualMoreModes(page) {
     if (await tools.isVisible().catch(() => false)) return;
 
     const pvpLobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room', exact: true });
-    if (!(await pvpLobby.isVisible().catch(() => false))) throw error;
-    await pvpLobby.getByRole('button', { name: /Cerrar ventana/ }).click();
-    await expect(pvpLobby).toBeHidden();
-    await trigger.click();
+    if (await pvpLobby.isVisible().catch(() => false)) {
+      await pvpLobby.getByRole('button', { name: /Cerrar ventana/ }).click();
+      await expect(pvpLobby).toBeHidden();
+    }
+
+    // Home's authored entrance motion can keep the button's actionability box
+    // moving even though the canonical control is already visible/enabled.
+    // Re-resolve the locator and dispatch one normal click event so the visual
+    // producer does not confuse animation stability with a broken navigation.
+    await trigger.dispatchEvent('click');
+    await expect(tools).toBeVisible();
+
   }
 }
 

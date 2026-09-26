@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
-import { analyzeGame } from '../gameReport.js';
+import { analyzeCompletedGameOnce } from '../postGameAnalysis.js';
 import { buildShortCounterfactual, counterfactualInputFromReportMove } from '../postGameCounterfactual.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { savePersonalPuzzlesFromReport } from '../personalPuzzles.js';
@@ -10,6 +10,7 @@ import { keyGameMoments } from '../postGameHighlights.js';
 import { glossaryEntry } from '../chessGlossary.js';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import PostGameExam from './PostGameExam.jsx';
+import NotationPanel from './NotationPanel.jsx';
 import { getToken } from '../auth.js';
 import { requestRemoteNarrative } from '../narrativeRemote.js';
 import { buildMatthiasPositionDossier, buildPostGameAutopsyDossier } from '../aiNarrativeTasks.js';
@@ -59,23 +60,27 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
 
   useEffect(() => {
     let cancelled = false;
-    const controller = new AbortController();
     worstCounterfactualAbortRef.current?.abort();
     setWorstCounterfactual({ status: 'idle', line: [] });
     (async () => {
       try {
-        const result = await analyzeGame(history, humanColor, api, { signal: controller.signal, initialFen: meta.initialFen || null });
+        const result = await analyzeCompletedGameOnce({
+          gameId: meta.gameId,
+          history,
+          humanColor,
+          api,
+          initialFen: meta.initialFen || null,
+        });
         if (!cancelled) { setReport(result); setStatus('done'); }
-      } catch (error) {
-        if (!cancelled && error?.name !== 'AbortError' && error?.cause?.name !== 'AbortError') setStatus('error');
+      } catch {
+        if (!cancelled) setStatus('error');
       }
     })();
     return () => {
       cancelled = true;
-      controller.abort(new DOMException('Autopsy closed', 'AbortError'));
       worstCounterfactualAbortRef.current?.abort();
     };
-  }, [history, humanColor, meta.initialFen]);
+  }, [history, humanColor, meta.gameId, meta.initialFen]);
 
   useEffect(() => {
     if (status !== 'done' || !report || archivedRef.current) return;
@@ -213,6 +218,9 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
               <summary>Abrir autopsia completa</summary>
               <div className="autopsy-full-details-body">
                 <p className="hint-text">La precisión estimada es una escala propia de Chess Studio basada en la pérdida media; no pretende copiar la métrica de ninguna plataforma externa.</p>
+                <div className="autopsy-reviewed-notebook">
+                  <NotationPanel history={history} difficulty={meta.difficulty ?? 45} analysisReport={report} />
+                </div>
                 <div className="autopsy-summary">
                   <div><span>Precisión estimada</span><b>{accuracy}%</b></div>
                   <div><span>Error medio</span><b>−{report.averageLoss} puntos de evaluación</b></div>

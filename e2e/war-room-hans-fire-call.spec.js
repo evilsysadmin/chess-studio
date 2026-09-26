@@ -31,18 +31,41 @@ async function seedGamesBeforeFire(page) {
 
 async function openFireGame(page) {
   await page.setViewportSize({ width: 1440, height: 960 });
+  await page.addInitScript(() => {
+    localStorage.setItem('chess-study-war-room-variant-v1', 'classic');
+    localStorage.setItem('chess-study-reduced-motion', '0');
+  });
   await mockApi(page);
   await login(page);
   await seedGamesBeforeFire(page);
   await buttonWithVisibleText(page, 'Partida rápida').click();
   const quickDialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
   await expect(quickDialog).toBeVisible();
+
+  // The Matthias call is deliberately brief and may begin while a cold
+  // software-WebGL mount is still replacing the setup chrome. Observe the
+  // transient phase before starting the game instead of serially waiting for
+  // the room/canvas first and only then looking for a bubble that may be gone.
+  const matthiasCall = page.getByRole('status', { name: 'Matthias llama a Hans por el fuego' });
+  const callVisible = matthiasCall
+    .waitFor({ state: 'visible', timeout: WAR_ROOM_READY_TIMEOUT })
+    .then(() => true)
+    .catch(() => false);
   await quickDialog.getByRole('button', { name: 'Empezar partida', exact: true }).click();
 
-  await expect(page.locator('.board-live-row.is-3d-warroom')).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
+  const expectedGameId = `e2e-game-${firstE2EFireGameIndex()}`;
+  const warRoom = page.locator('.board-live-row.is-3d-warroom');
   const canvas = page.locator('.board3d-main-canvas');
-  await expect(canvas).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
-  return canvas;
+  const hansMarker = page.locator('[data-war-room-hans-game-id]').first();
+  await Promise.all([
+    expect(warRoom).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT }),
+    expect(canvas).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT }),
+    expect(canvas).toHaveAttribute('data-war-room-variant', 'classic', { timeout: WAR_ROOM_READY_TIMEOUT }),
+    expect(hansMarker).toHaveAttribute('data-war-room-hans-game-id', expectedGameId, { timeout: WAR_ROOM_READY_TIMEOUT }),
+    expect(hansMarker).toHaveAttribute('data-war-room-hans-quick-request', 'true', { timeout: WAR_ROOM_READY_TIMEOUT }),
+  ]);
+  expect(await callVisible, 'Hans fire-call marker was armed but Matthias never opened the sequence').toBe(true);
+  return { canvas, matthiasCall };
 }
 
 async function hansGameId(page) {
@@ -68,9 +91,7 @@ test('War Room · el número del fuego completa cotilleo, corte de Matthias y re
   // choreography enough time to reach its semantic leave-bypass route.
   test.setTimeout(180_000);
 
-  const canvas = await openFireGame(page);
-  const matthiasCall = page.getByRole('status', { name: 'Matthias llama a Hans por el fuego' });
-  await expect(matthiasCall).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
+  const { canvas, matthiasCall } = await openFireGame(page);
   // The call is intentionally brief. Assert its own contract immediately: a
   // cold 3D mount can replace the canvas while the scene reaches its ready
   // frame, and waiting on that new canvas must not consume the whole bubble.
@@ -114,9 +135,7 @@ test('War Room · el número del fuego completa cotilleo, corte de Matthias y re
 test('War Room · F5 con Hans ya visible no completa ni silencia el número', async ({ page }) => {
   test.setTimeout(120_000);
 
-  const canvas = await openFireGame(page);
-  const matthiasCall = page.getByRole('status', { name: 'Matthias llama a Hans por el fuego' });
-  await expect(matthiasCall).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
+  const { canvas, matthiasCall } = await openFireGame(page);
   await expect(canvas).toHaveAttribute('data-war-room-hans-call-released', 'true', { timeout: 8_000 });
   await expect(canvas).toHaveAttribute('data-war-room-hans-reply-seen', 'true', { timeout: WAR_ROOM_READY_TIMEOUT });
 
