@@ -44,11 +44,6 @@ export function startWarRoomVariantScene({
     scene.userData ||= {};
     scene.userData.warRoomRenderedVariant = 'classic';
     setStatus('idle', 'classic');
-    // Classic room finalizers install Hans after the first completed render.
-    // A second paint proves the newly installed actor has reached the canvas
-    // before the fire-call readiness contract can release dialogue.
-    onPaint?.();
-    onPaint?.();
     return () => {};
   }
 
