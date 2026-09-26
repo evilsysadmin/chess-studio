@@ -43,7 +43,11 @@ async function openChronicles(page, captureLabel) {
   await openVisualMoreModes(page);
   const tools = page.locator('#illustrated-home-tools');
   await expect(tools).toBeVisible();
-  await tools.getByRole('button').filter({ hasText: 'Experimentos geniales' }).click();
+  if (await pvpLobby.isVisible().catch(() => false)) {
+    await pvpLobby.getByRole('button', { name: /Cerrar ventana/ }).click({ force: true });
+    await expect(pvpLobby).toBeHidden();
+  }
+  await tools.getByRole('button').filter({ hasText: 'Experimentos geniales' }).evaluate((button) => button.click());
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
   const chroniclesEntry = page.getByRole('button', { name: /BOOK I.*Chronicles of Matthias/i });
   await chroniclesEntry.click();
