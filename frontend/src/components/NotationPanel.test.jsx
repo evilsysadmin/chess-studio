@@ -32,6 +32,6 @@ describe('NotationPanel post-game review', () => {
     expect(html).toContain('Revisión minimax');
     expect(html).toContain('?!');
     expect(html).toContain('ideal Nf3');
-    expect(html).not.toContain('??');
+    expect((html.match(/notation-review-mark/g) || [])).toHaveLength(1);
   });
 });
