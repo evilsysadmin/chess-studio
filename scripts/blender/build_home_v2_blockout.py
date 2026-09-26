@@ -2660,6 +2660,88 @@ def add_table_and_board(materials):
         add_simple_piece(f"HOME_PROP_black_pawn_{col}", px, start_y + 5.5 * square, board_z, black_pawn_mat, "pawn", trim=materials["gold"])
 
 
+
+def add_hearth_tool_set(prefix: str, x: float, y: float, materials, *, mirror=1.0):
+    """Restrained forged-iron poker/tongs/shovel stand beside a working hearth.
+
+    The silhouette is deliberately sparse: three real tools and one ring stand,
+    large enough to read at Home distance without turning the fireplace into a
+    prop display. The iron stays dark except where practical firelight catches it.
+    """
+    iron = materials["forged_iron"]
+    base_z = 0.29
+
+    cylinder(f"{prefix}_stand_base", (x, y, base_z), 0.115, 0.050, iron, vertices=20)
+    curve_tube(
+        f"{prefix}_stand_post",
+        [(x, y, base_z + 0.02), (x, y, 1.12)],
+        0.018,
+        iron,
+    )
+    ring = [
+        (x + math.cos(step * math.tau / 20) * 0.105, y, 1.12 + math.sin(step * math.tau / 20) * 0.105)
+        for step in range(21)
+    ]
+    curve_tube(f"{prefix}_stand_ring", ring, 0.013, iron)
+
+    # Poker: long, slightly hooked tip. It leans away from the post rather than
+    # forming a perfectly vertical museum display.
+    curve_tube(
+        f"{prefix}_poker",
+        [
+            (x - mirror * 0.095, y - 0.020, 0.31),
+            (x - mirror * 0.155, y - 0.016, 0.92),
+            (x - mirror * 0.130, y - 0.014, 1.08),
+            (x - mirror * 0.074, y - 0.014, 1.03),
+        ],
+        0.010,
+        iron,
+    )
+
+    # Tongs: two independent arms with a small bowed grip at the top.
+    for arm, offset in enumerate((-0.018, 0.018)):
+        curve_tube(
+            f"{prefix}_tongs_arm_{arm}",
+            [
+                (x + mirror * (0.030 + offset), y + 0.018, 0.31),
+                (x + mirror * (0.070 + offset), y + 0.016, 0.76),
+                (x + mirror * (0.050 + offset), y + 0.014, 1.00),
+            ],
+            0.008,
+            iron,
+        )
+    curve_tube(
+        f"{prefix}_tongs_grip",
+        [
+            (x + mirror * 0.032, y + 0.014, 0.995),
+            (x + mirror * 0.050, y + 0.014, 1.055),
+            (x + mirror * 0.068, y + 0.014, 0.995),
+        ],
+        0.008,
+        iron,
+    )
+
+    # Shovel: small ash blade plus a worn handle, kept low and close to the stand.
+    curve_tube(
+        f"{prefix}_shovel_handle",
+        [
+            (x + mirror * 0.105, y - 0.010, 0.36),
+            (x + mirror * 0.155, y - 0.008, 0.86),
+            (x + mirror * 0.125, y - 0.006, 1.02),
+        ],
+        0.009,
+        iron,
+    )
+    blade = cube(
+        f"{prefix}_shovel_blade",
+        (x + mirror * 0.102, y - 0.012, 0.30),
+        (0.050, 0.018, 0.075),
+        iron,
+        bevel=0.012,
+    )
+    blade.rotation_euler[1] = math.radians(-mirror * 8.0)
+
+
 def add_fireplace(name: str, x: float, materials):
     stone = materials["stone"]
     dark = materials["stone_dark"]
@@ -3874,6 +3956,10 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             texture_profile="metal",
         ),
         "brass_dark": material("HOME_MAT_brass_dark", (0.105, 0.052, 0.018, 1), roughness=0.50, metallic=0.60, texture_profile="metal"),
+        # Hand-forged hearth iron should read nearly black in shadow, with enough
+        # metallic response to catch firelight on worn edges instead of looking
+        # like painted plastic.
+        "forged_iron": material("HOME_MAT_forged_iron", (0.030, 0.026, 0.022, 1), roughness=0.72, metallic=0.58, bump_scale=8.0, bump_strength=0.08, texture_profile="metal"),
         "steel": material("HOME_MAT_steel", (0.14, 0.15, 0.16, 1), roughness=0.43, metallic=0.78, texture_profile="metal"),
         "armor_steel": material(
             "HOME_MAT_armor_steel",
@@ -4411,6 +4497,9 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         0.024,
         materials["brass_dark"],
     )
+    # A single lived-in hearth tool set gives the Great Hall a practical medieval
+    # cue without mirroring decorative clutter around both fireplaces.
+    add_hearth_tool_set("HOME_PROP_fireplace_left_tools", -7.36, 5.20, materials, mirror=-1.0)
 
     add_bookshelf(materials)
     add_library_sconces(materials)
