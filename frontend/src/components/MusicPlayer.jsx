@@ -484,7 +484,6 @@ export default function MusicPlayer({ forceExpanded = false, initiallyCollapsed 
           <button type="button" className={radioMode === 'focus' ? 'active' : ''} onClick={() => chooseExperience('focus')} aria-pressed={radioMode === 'focus'}>Concentración</button>
           <button type="button" className={radioMode === 'genre:Clásica' ? 'active' : ''} onClick={() => chooseExperience('genre:Clásica')} aria-pressed={radioMode === 'genre:Clásica'}>Clásica</button>
           <button type="button" className={radioMode === 'genre:Energía' ? 'active' : ''} onClick={() => chooseExperience('genre:Energía')} aria-pressed={radioMode === 'genre:Energía'}>Energía</button>
-          <button type="button" className={radioMode === 'genre:Ecléctica' ? 'active' : ''} onClick={() => chooseExperience('genre:Ecléctica')} aria-pressed={radioMode === 'genre:Ecléctica'}>Ecléctica</button>
           <button type="button" className={radioMode === 'all' ? 'active' : ''} onClick={() => chooseExperience('all')} aria-pressed={radioMode === 'all'}>Aleatorio</button>
         </div>
 

@@ -7,7 +7,7 @@ import { getPercussionVoiceKit } from './sound.js';
 
 describe('classical production', () => {
   it('places every classical score in its own room with a valid recurring phrase', () => {
-    expect(CLASSICAL_PRODUCTION_IDS).toHaveLength(13);
+    expect(CLASSICAL_PRODUCTION_IDS).toHaveLength(17);
     const feels = CLASSICAL_PRODUCTION_IDS.map((id) => structuredFeel(AMBIENT_THEMES[id]));
     expect(new Set(feels.map((feel) => feel.finish.name)).size).toBe(CLASSICAL_PRODUCTION_IDS.length);
     CLASSICAL_PRODUCTION_IDS.forEach((id, index) => {
