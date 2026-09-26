@@ -39,6 +39,7 @@ WARROOM_CORE_ONLY_FILES = {
     # and immersive viewport, but cannot change decor, armor or Hans ownership.
     "frontend/src/components/usewarroomimmersive.js",
     "frontend/src/components/warroomimmersive.css",
+    "frontend/src/components/warroommobilelandscape.css",
 }
 WARROOM_VARIANT_ORDER = ("classic", "v2", "v3")
 WARROOM_VARIANT_ALL = set(WARROOM_VARIANT_ORDER)
@@ -401,6 +402,7 @@ def self_test() -> None:
         assert classify([variant_core_file]) == "warroom-core"
     for core_only_file in WARROOM_CORE_ONLY_FILES:
         assert classify([core_only_file]) == "warroom-core"
+    assert classify(["frontend/src/components/WarRoomMobileLandscape.css"]) == "warroom-core"
     assert classify(["frontend/src/components/WarRoomCatDecor.js"]) == "warroom-decor"
     assert classify(["frontend/src/components/WarRoomArmorDisplay.js"]) == "warroom-armor"
     assert classify(["frontend/src/components/WarRoomHansPerGame.jsx"]) == "warroom-hans"
