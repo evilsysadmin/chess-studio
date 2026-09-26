@@ -124,6 +124,8 @@ def _surface_groups(path: str) -> set[str] | None:
         return set()
     if lower in NONVISUAL_FRONTEND_PATHS:
         return set()
+    if lower == "frontend/src/components/usegamemobilefocus.js":
+        return {"warroom"}
     if lower in TRAINING_VISUAL_SURFACES:
         return {"training"}
     if lower == "frontend/src/components/labscreen.jsx":
@@ -184,6 +186,8 @@ def _surface_groups(path: str) -> set[str] | None:
         if name == "training-visual-artifact.spec.js":
             return {"training"}
         if name.startswith("war-room-") and "visual" in name:
+            return {"warroom"}
+        if "war-room" in name or "three-d-war-room" in name:
             return {"warroom"}
         return None
     if lower.startswith("frontend/public/audio/"):
@@ -392,6 +396,14 @@ def write_outputs(scope: Scope, output_path: str) -> None:
 
 
 def self_test() -> None:
+    warroom_mobile = classify([
+        "frontend/src/components/useGameMobileFocus.js",
+        "e2e/mobile-war-room-lifecycle.spec.js",
+        "e2e/three-d-war-room-android-touch.spec.js",
+    ])
+    assert warroom_mobile.capture_groups == "warroom"
+    assert not warroom_mobile.chesscom
+
     mobile_training = classify([
         "frontend/src/components/PuzzleScreen.jsx",
         "frontend/src/components/PuzzleMobilePolish.css",
