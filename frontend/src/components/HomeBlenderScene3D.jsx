@@ -738,6 +738,11 @@ function applyRuntimeFireMotion(nodes, timeMs) {
 
 
 const HOME_BLENDER_PORTRAIT_HORIZONTAL_FOV = 18.5;
+// Tall phone canvases used to widen the vertical lens to ~39° at 390/430px.
+// That preserved peripheral room context but exposed a large empty band above
+// the authored hall. Keep some portrait context while letting the architecture
+// fill the viewport; projected beacons remain tied to the live camera.
+const HOME_BLENDER_PORTRAIT_MAX_VERTICAL_FOV = 33;
 
 export function homeBlenderCameraFovForAspect(aspect = 16 / 9) {
   const safeAspect = Number.isFinite(Number(aspect)) && Number(aspect) > 0
@@ -751,7 +756,7 @@ export function homeBlenderCameraFovForAspect(aspect = 16 / 9) {
   ) * 180 / Math.PI;
   const blend = Math.min(1, Math.max(0, (1 - safeAspect) / 0.20));
   return Math.min(
-    42,
+    HOME_BLENDER_PORTRAIT_MAX_VERTICAL_FOV,
     Math.max(
       HOME_BLENDER_CAMERA_FOV,
       HOME_BLENDER_CAMERA_FOV
