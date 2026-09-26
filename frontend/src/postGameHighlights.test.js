@@ -57,9 +57,12 @@ describe('keyGameMoments', () => {
 describe('terseMatthiasInsight', () => {
   it('points at a missed mate without turning the debrief into a lecture', () => {
     const worst = move(8, 220, 'Qe2', { before: 500, after: 0 });
-    worst.suggested = 'Qh7#';
-    worst.suggested = 'Qh7#';
-    worst.context = { suggested: { checkmate: true }, played: { checkmate: false } };
+    worst.fenBefore = 'r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4';
+    worst.playedFrom = 'h5';
+    worst.playedTo = 'e2';
+    worst.suggested = 'Qxf7#';
+    worst.suggestedFrom = 'h5';
+    worst.suggestedTo = 'f7';
     const insight = terseMatthiasInsight({ analyzedCount: 12, worst, moveReports: [worst], averageLoss: 40 }, 'draw');
     expect(insight?.text).toBe('Había mate. Elegiste otra cosa.');
     expect(insight?.action).toBe('review');
