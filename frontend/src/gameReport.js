@@ -127,6 +127,22 @@ export function mistakeSeverity(loss) {
   return 'blunder';
 }
 
+export function summarizeMoveReports(moveReports = []) {
+  const rows = Array.isArray(moveReports) ? moveReports : [];
+  const withLoss = rows.filter((move) => Number.isFinite(move?.loss));
+  const averageLoss = withLoss.length ? withLoss.reduce((sum, move) => sum + move.loss, 0) / withLoss.length : 0;
+  const worst = withLoss.length ? withLoss.reduce((a, b) => (b.loss > a.loss ? b : a)) : null;
+  const topMistakes = [...withLoss].sort((a, b) => b.loss - a.loss).slice(0, 3);
+  return {
+    analyzedCount: withLoss.length,
+    averageLoss: Math.round(averageLoss),
+    worst,
+    topMistakes,
+    label: performanceLabel(averageLoss),
+    moveReports: rows,
+  };
+}
+
 // Throttle compartido para las llamadas a analyzeMove — asegura al menos
 // ~400ms entre CUALQUIER par de llamadas, sin importar desde qué función o
 // partida vengan. Sin esto, analyzeGame/analyzeCombatLog disparan
@@ -222,19 +238,7 @@ export async function analyzeGame(history, humanColor, api, options = {}) {
     }
   }
 
-  const withLoss = moveReports.filter((m) => m.loss !== null);
-  const averageLoss = withLoss.length ? withLoss.reduce((sum, m) => sum + m.loss, 0) / withLoss.length : 0;
-  const worst = withLoss.length ? withLoss.reduce((a, b) => (b.loss > a.loss ? b : a)) : null;
-  const sortedWorst = [...withLoss].sort((a, b) => b.loss - a.loss).slice(0, 3);
-
-  return {
-    analyzedCount: withLoss.length,
-    averageLoss: Math.round(averageLoss),
-    worst,
-    topMistakes: sortedWorst,
-    label: performanceLabel(averageLoss),
-    moveReports, // el listado COMPLETO, jugada por jugada — para la reconstrucción visual
-  };
+  return summarizeMoveReports(moveReports);
 }
 
 // Igual que analyzeGame, pero para el registro de una batalla de Combate
@@ -286,19 +290,7 @@ export async function analyzeCombatLog(log, humanColor, api, options = {}) {
     }
   }
 
-  const withLoss = moveReports.filter((m) => m.loss !== null);
-  const averageLoss = withLoss.length ? withLoss.reduce((sum, m) => sum + m.loss, 0) / withLoss.length : 0;
-  const worst = withLoss.length ? withLoss.reduce((a, b) => (b.loss > a.loss ? b : a)) : null;
-  const sortedWorst = [...withLoss].sort((a, b) => b.loss - a.loss).slice(0, 3);
-
-  return {
-    analyzedCount: withLoss.length,
-    averageLoss: Math.round(averageLoss),
-    worst,
-    topMistakes: sortedWorst,
-    label: performanceLabel(averageLoss),
-    moveReports,
-  };
+  return summarizeMoveReports(moveReports);
 }
 
 // Recorre TODO el historial guardado (partidas normales/torneo/práctica +
