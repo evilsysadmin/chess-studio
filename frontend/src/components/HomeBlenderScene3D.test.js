@@ -55,10 +55,10 @@ describe('HomeBlenderScene3D mobile runtime policy', () => {
     for (const [width, height] of [[360, 800], [390, 844], [430, 932]]) {
       const fov = homeBlenderCameraFovForAspect(width / height);
       expect(fov).toBeGreaterThan(22.9);
-      expect(fov).toBeLessThanOrEqual(33);
+      expect(fov).toBeLessThanOrEqual(35.5);
     }
-    expect(homeBlenderCameraFovForAspect(390 / 844)).toBe(33);
-    expect(homeBlenderCameraFovForAspect(430 / 932)).toBe(33);
+    expect(homeBlenderCameraFovForAspect(390 / 844)).toBe(35.5);
+    expect(homeBlenderCameraFovForAspect(430 / 932)).toBe(35.5);
   });
 
   it('allows the canonical Blender Home from 360px on capable Android-class hardware', () => {

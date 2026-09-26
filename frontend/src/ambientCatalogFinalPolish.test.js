@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { AMBIENT_THEME_OPTIONS, AMBIENT_THEMES, CURATED_HIDDEN_THEME_IDS } from './ambientCatalog.js';
+import {
+  AMBIENT_THEME_OPTIONS,
+  AMBIENT_THEMES,
+  CURATED_HIDDEN_THEME_IDS,
+  RETIRED_ECLECTIC_THEME_IDS,
+} from './ambientCatalog.js';
 import { structuredFeel } from './ambientProfiles.js';
 import {
   FINAL_CATALOG_POLISH_IDS,
@@ -120,7 +125,7 @@ describe('complete music catalog audit', () => {
   });
 
   it('keeps every internal hidden score production-ready', () => {
-    const retired = new Set(RETIRED_MEDITERRANEAN_THEME_IDS);
+    const retired = new Set([...RETIRED_MEDITERRANEAN_THEME_IDS, ...RETIRED_ECLECTIC_THEME_IDS]);
     const hidden = [...CURATED_HIDDEN_THEME_IDS].filter((id) => !retired.has(id));
     hidden.push('blackArchive');
     expect(hidden).toHaveLength(7);

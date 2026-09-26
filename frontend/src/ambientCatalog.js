@@ -151,14 +151,14 @@ export const AMBIENT_THEMES = {
 // samples externos y, sobre todo, no once clones con bigote postizo.
 Object.assign(AMBIENT_THEMES, STRUCTURED_AMBIENT_THEMES);
 
-export const AMBIENT_GENRE_ORDER = ['SPA / Zen', 'Smooth Jazz', 'Tropical House', 'Energía', 'Ecléctica', 'Clásica', 'Lo-Fi / Chill', 'Trip-Hop / Downtempo', 'Bossa / Latin Lounge', 'Piano / Minimal', 'Dark Ambient', 'Jazz / Mediterráneo', 'Electrónica / Experimental', 'Ambient / Otros'];
+export const AMBIENT_GENRE_ORDER = ['SPA / Zen', 'Smooth Jazz', 'Tropical House', 'Energía', 'Clásica', 'Lo-Fi / Chill', 'Trip-Hop / Downtempo', 'Bossa / Latin Lounge', 'Piano / Minimal', 'Dark Ambient', 'Jazz / Mediterráneo', 'Electrónica / Experimental', 'Ambient / Otros'];
 const MEDITERRANEAN_IDS = new Set([
   'andalus','casablanca','velvet','alexandria241','cairo0047','beirut0113','damascusBlueHour','istanbul0326','tangierSmoke','bosphorusRain',
   'beirutRooftop0412','casablancaLastCall','cairoQuietHours','nileBalcony0152','aleppoAfterRain','ammanVelvetRoom','medinaBlueSmoke','cairoRedLantern',
   'beirutNightTaxi','tangierRedTable','istanbulBackgammon','andalusianCoast','granadaPatio','cadizLanterns','terraceFireflies','cafeFirelight','malagaLastTram','bishopBlues',
 ]);
 const ELECTRONIC_IDS = new Set(['clockwork','electricDesert','storm','orbitalMonastery','metro317','glassAsh','analogBunker','nightFreight','machineRoom']);
-export const CURATED_HIDDEN_THEME_IDS = new Set(['orbitalMonastery','metro317','glassAsh','machineRoom','abyssalArchive','redVault']);
+export const RETIRED_ECLECTIC_THEME_IDS = Object.freeze(['postRockMidnight','rookGarage','desertDriveRock','pawnMarshal','rookAfterHours']); export const CURATED_HIDDEN_THEME_IDS = new Set(['orbitalMonastery','metro317','glassAsh','machineRoom','abyssalArchive','redVault',...RETIRED_ECLECTIC_THEME_IDS]);
 const CLASSICAL_IDS = new Set(['gambit','cathedral','duel','lateEndgame','rigaRain','kingTango','zugzwangWaltz','winterLibrary','queenRequiem','endgameAdagio','knightFugue','nocturnalQuartet']);
 function ambientGenre(theme) {
   if (theme.genre) return theme.genre;

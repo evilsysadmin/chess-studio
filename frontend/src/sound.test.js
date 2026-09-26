@@ -325,24 +325,24 @@ describe('ambient music catalog', () => {
     setAmbientRadioMode('focus');
     expect(getAmbientRadioMode()).toBe('focus');
     expect(ambientRadioThemeIds().length).toBeGreaterThan(0);
-    setAmbientRadioMode('genre:Ecléctica');
-    expect(ambientRadioThemeIds().every((id) => AMBIENT_THEME_OPTIONS.find((theme) => theme.id === id)?.genre === 'Ecléctica')).toBe(true);
-    toggleAmbientFavorite('rookGarage');
-    expect(isAmbientFavorite('rookGarage')).toBe(true);
+    setAmbientRadioMode('genre:Clásica');
+    expect(ambientRadioThemeIds().every((id) => AMBIENT_THEME_OPTIONS.find((theme) => theme.id === id)?.genre === 'Clásica')).toBe(true);
+    toggleAmbientFavorite('queenSiciliana');
+    expect(isAmbientFavorite('queenSiciliana')).toBe(true);
     setAmbientRadioMode('favorites');
-    expect(ambientRadioThemeIds()).toContain('rookGarage');
-    toggleAmbientExcluded('rookGarage');
-    expect(isAmbientExcluded('rookGarage')).toBe(true);
-    expect(isAmbientFavorite('rookGarage')).toBe(false);
-    expect(ambientRadioThemeIds()).not.toContain('rookGarage');
+    expect(ambientRadioThemeIds()).toContain('queenSiciliana');
+    toggleAmbientExcluded('queenSiciliana');
+    expect(isAmbientExcluded('queenSiciliana')).toBe(true);
+    expect(isAmbientFavorite('queenSiciliana')).toBe(false);
+    expect(ambientRadioThemeIds()).not.toContain('queenSiciliana');
   });
 
   it('cambiar de estilo selecciona inmediatamente una pista de esa emisora', () => {
     setAmbientTheme('andalus');
-    const selected = selectAmbientRadioModeTheme('genre:Ecléctica');
-    expect(selected.mode).toBe('genre:Ecléctica');
+    const selected = selectAmbientRadioModeTheme('genre:Clásica');
+    expect(selected.mode).toBe('genre:Clásica');
     expect(selected.themeId).not.toBe('andalus');
-    expect(AMBIENT_THEME_OPTIONS.find((theme) => theme.id === selected.themeId)?.genre).toBe('Ecléctica');
+    expect(AMBIENT_THEME_OPTIONS.find((theme) => theme.id === selected.themeId)?.genre).toBe('Clásica');
     expect(getAmbientThemeId()).toBe(selected.themeId);
   });
 

@@ -63,7 +63,7 @@ assert(new Set(grouped.map((theme) => theme.id)).size === ids.length, 'un tema a
 
 assert(new Set(AMBIENT_THEME_GROUPS.map((group) => group.genre)).size === AMBIENT_THEME_GROUPS.length, 'hay estilos duplicados');
 assert(AMBIENT_THEME_GROUPS.every((group) => group.themes.length > 0), 'hay un estilo vacío publicado');
-for (const genre of ['SPA / Zen', 'Smooth Jazz', 'Tropical House', 'House / Afro', 'Ecléctica', 'Energía', 'Lo-Fi / Chill', 'Trip-Hop / Downtempo', 'Bossa / Latin Lounge', 'Piano / Minimal', 'Clásica']) {
+for (const genre of ['SPA / Zen', 'Smooth Jazz', 'Tropical House', 'House / Afro', 'Energía', 'Lo-Fi / Chill', 'Trip-Hop / Downtempo', 'Bossa / Latin Lounge', 'Piano / Minimal', 'Clásica']) {
   assert(AMBIENT_THEME_GROUPS.some((row) => row.genre === genre), `falta la familia musical ${genre}`);
 }
 for (const option of AMBIENT_THEME_OPTIONS) {
@@ -85,6 +85,9 @@ for (const option of AMBIENT_THEME_OPTIONS) {
 
 const curatedHidden = ['orbitalMonastery','metro317','glassAsh','machineRoom','abyssalArchive','redVault'];
 assert(curatedHidden.every((id) => !ids.includes(id)), 'han reaparecido temas experimentales retirados');
+const retiredEclectic = ['postRockMidnight','rookGarage','desertDriveRock','pawnMarshal','rookAfterHours'];
+assert(retiredEclectic.every((id) => !ids.includes(id)), 'han reaparecido temas de la familia Ecléctica retirada');
+assert(!AMBIENT_THEME_GROUPS.some((group) => group.genre === 'Ecléctica'), 'Ecléctica debería quedar fuera del catálogo curado');
 assert(!AMBIENT_THEME_GROUPS.some((group) => group.genre === 'Dark Ambient'), 'Dark Ambient debería quedar fuera del catálogo curado');
 for (const id of [...curatedHidden, 'blackArchive']) {
   const profile = getAmbientThemeSoundProfile(id);
@@ -92,7 +95,11 @@ for (const id of [...curatedHidden, 'blackArchive']) {
   assert(profile?.family, `${id}: tema oculto sin familia de producción`);
 }
 
-const added = ['mistSpa','moonOnsen','postRockMidnight','rookGarage','desertDriveRock','endgameAdagio','knightFugue','nocturnalQuartet','lofiRainTape','lofiWindowLight','neonKnight','midnightArcade'];
+const added = [
+  'mistSpa','moonOnsen','postRockMidnight','rookGarage','desertDriveRock','endgameAdagio','knightFugue','nocturnalQuartet',
+  'lofiRainTape','lofiWindowLight','neonKnight','midnightArcade','queenSiciliana','rookPassacaglia','knightScherzo',
+  'blackKingPavane','sixtyFourVariations','flagFallFive',
+];
 const mediterraneanExpansion = ['beirutHarbor2340','cairoBlueNote0211','alexandriaHarborCafe','cordobaRooftop0026','damascusCourtyard0144','tangierNightTrain0058','granadaCopperRain0232','ammanLateTable0303'];
 assert(mediterraneanExpansion.every((id) => ids.includes(id)), 'faltan pistas nuevas de jazz mediterráneo');
 
@@ -196,12 +203,12 @@ for (const theme of AMBIENT_THEME_OPTIONS) {
 setAmbientRadioMode('focus');
 assert(getAmbientRadioMode() === 'focus', 'radio focus no persiste');
 assert(ambientRadioThemeIds().length > 0, 'radio focus no tiene pistas');
-setAmbientRadioMode('genre:Ecléctica');
-assert(ambientRadioThemeIds().every((id) => AMBIENT_THEME_OPTIONS.find((theme) => theme.id === id)?.genre === 'Ecléctica'), 'radio Ecléctica filtra mal');
-toggleAmbientFavorite('rookGarage');
-assert(isAmbientFavorite('rookGarage'), 'favorito no persiste');
-toggleAmbientExcluded('rookGarage');
-assert(isAmbientExcluded('rookGarage') && !isAmbientFavorite('rookGarage'), 'excluir no invalida favorito');
-assert(!ambientRadioThemeIds().includes('rookGarage'), 'radio incluye una pista excluida');
+setAmbientRadioMode('genre:Clásica');
+assert(ambientRadioThemeIds().every((id) => AMBIENT_THEME_OPTIONS.find((theme) => theme.id === id)?.genre === 'Clásica'), 'radio Clásica filtra mal');
+toggleAmbientFavorite('queenSiciliana');
+assert(isAmbientFavorite('queenSiciliana'), 'favorito no persiste');
+toggleAmbientExcluded('queenSiciliana');
+assert(isAmbientExcluded('queenSiciliana') && !isAmbientFavorite('queenSiciliana'), 'excluir no invalida favorito');
+assert(!ambientRadioThemeIds().includes('queenSiciliana'), 'radio incluye una pista excluida');
 
 console.log(`audio-check OK · ${AMBIENT_THEME_OPTIONS.length} temas · ${AMBIENT_THEME_GROUPS.length} estilos · ${profiled.length} huellas únicas · no-chiu · loudness trim`);

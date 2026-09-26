@@ -16,7 +16,7 @@ import {
 // suite conserva el contrato histórico de la expansión transversal inicial.
 const PUBLISHED_GENRES = AMBIENT_GENRE_ORDER.filter((genre) => !['Dark Ambient', 'House / Afro'].includes(genre));
 const PUBLISHED_EXPANSION_IDS = RADIO_MATTHIAS_THEME_IDS.filter(
-  (id) => RADIO_MATTHIAS_GENRE_EXPANSION[id].genre !== 'Dark Ambient',
+  (id) => !['Dark Ambient', 'Ecléctica'].includes(RADIO_MATTHIAS_GENRE_EXPANSION[id].genre),
 );
 
 describe('Radio Matthias · expansión transversal', () => {
@@ -27,7 +27,7 @@ describe('Radio Matthias · expansión transversal', () => {
     expect(genres).toHaveLength(new Set(genres).size);
   });
 
-  it('los trece temas publicados están instalados en el dial y en su grupo correcto', () => {
+  it('los temas publicados están instalados en el dial y en su grupo correcto', () => {
     for (const id of PUBLISHED_EXPANSION_IDS) {
       const theme = RADIO_MATTHIAS_GENRE_EXPANSION[id];
       expect(AMBIENT_THEMES[id]).toBe(theme);
@@ -68,7 +68,7 @@ describe('Radio Matthias · expansión transversal', () => {
       options,
       groups,
       genreOrder: AMBIENT_GENRE_ORDER,
-      hiddenIds: new Set(['blackArchive']),
+      hiddenIds: new Set(['blackArchive', 'rookAfterHours']),
     };
     installRadioMatthiasExpansion(args);
     installRadioMatthiasExpansion(args);

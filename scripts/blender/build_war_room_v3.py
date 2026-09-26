@@ -538,7 +538,9 @@ def build_lounge_corner(static, palette):
 
 def build_bookshelf(static, palette):
     """Narrow cabinet-style shelf for chess treatises."""
-    x, y = 6.48, 4.52
+    # New canonical mock: keep the doorway side airy and anchor the library
+    # on the rear-left wall, opposite the telescope.
+    x, y = -4.55, 5.28
 
     base.cube(
         "WR3_OBS_bookshelf_frame", (x, y + 0.04, 1.72), (0.88, 0.085, 1.43),
