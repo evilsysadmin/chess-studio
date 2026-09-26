@@ -33,6 +33,9 @@ async function openFireGame(page) {
   await page.setViewportSize({ width: 1440, height: 960 });
   await mockApi(page);
   await login(page);
+  await page.evaluate(() => {
+    localStorage.setItem('chess-study-war-room-variant-v1', 'classic');
+  });
   await seedGamesBeforeFire(page);
   await buttonWithVisibleText(page, 'Partida rápida').click();
   const quickDialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
@@ -52,6 +55,7 @@ async function openFireGame(page) {
     callVisible,
     expect(warRoom).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT }),
     expect(canvas).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT }),
+    expect(canvas).toHaveAttribute('data-war-room-variant', 'classic', { timeout: WAR_ROOM_READY_TIMEOUT }),
   ]);
   return { canvas, matthiasCall };
 }
