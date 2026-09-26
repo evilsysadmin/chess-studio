@@ -210,6 +210,13 @@ const CAPTURE_PROFILES = Object.freeze([
 const ACTIVE_CAPTURE_PROFILES = Object.freeze(
   CAPTURE_PROFILES.filter((profile) => {
     if (!WAR_ROOM_VISUAL_VARIANTS.has(profile.variant || 'classic')) return false;
+    if (WAR_ROOM_PROFILE_SCOPE === 'mobile-entry') {
+      return new Set([
+        'war-room-android-390x844',
+        'war-room-android-landscape-844x390',
+        'war-room-immersive-android-landscape-844x390',
+      ]).has(profile.label);
+    }
     if (WAR_ROOM_PROFILE_SCOPE === 'mobile') return profile.hasTouch === true;
     return true;
   }),
