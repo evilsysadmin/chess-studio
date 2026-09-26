@@ -45,7 +45,6 @@ const INSPECT_PITCH_MIN = -0.08;
 const INSPECT_PITCH_MAX = 0.075;
 const INSPECT_YAW_STEP = 0.025;
 const INSPECT_PITCH_STEP = 0.018;
-
 function clearObjectGroup(group) {
   if (!group) return;
   for (const child of [...group.children]) {
@@ -53,7 +52,6 @@ function clearObjectGroup(group) {
     disposeObject(child);
   }
 }
-
 function makeObjectTranslucent(group, opacity) {
   group?.traverse?.((object) => {
     const materials = Array.isArray(object.material) ? object.material : [object.material];
@@ -65,7 +63,6 @@ function makeObjectTranslucent(group, opacity) {
     });
   });
 }
-
 function Board3DCanvas({
   fen,
   onSquareClick,
@@ -439,7 +436,7 @@ function Board3DCanvas({
       const width = Math.max(280, host.clientWidth || 280);
       const height = Math.max(300, host.clientHeight || 300);
       renderer.setSize(width, height, false);
-      fitBoardCamera(camera, width, height, whiteSide, { profile: cameraProfile });
+      fitBoardCamera(camera, width, height, whiteSide, { profile: cameraProfile === 'classroom' ? 'classroom' : (warRoomVariant === 'classic' ? 'classic' : cameraProfile) });
       render();
     }
     resize();
@@ -715,6 +712,8 @@ function Board3DCanvas({
   useEffect(() => {
     const state = sceneStateRef.current;
     if (!state) return undefined;
+    const host = state.renderer.domElement.parentElement;
+    if (host) fitBoardCamera(state.camera, Math.max(280, host.clientWidth || 280), Math.max(300, host.clientHeight || 300), state.whiteSide, { profile: cameraProfile === 'classroom' ? 'classroom' : (warRoomVariant === 'classic' ? 'classic' : cameraProfile) });
     return startWarRoomVariantScene({
       scene: state.scene,
       classicShellController: state.classicShellController,
