@@ -70,13 +70,15 @@ test('War Room · el número del fuego completa cotilleo, corte de Matthias y re
 
   const canvas = await openFireGame(page);
   const matthiasCall = page.getByRole('status', { name: 'Matthias llama a Hans por el fuego' });
+  // Do not spend the narrative budget while SwiftShader is still mounting the
+  // Three.js scene. The choreography contract starts once the scene is ready.
+  await expect(canvas).toHaveAttribute('data-war-room-hans-scene-ready', 'true', { timeout: WAR_ROOM_READY_TIMEOUT });
   await expect(canvas).toHaveAttribute('data-war-room-hans-narrative-phase', /^(matthias|await-hans|hans|await-exit-peek|peek|gap-after-peek|matthias-working|gap-after-matthias|hans-working-reply|await-exit|grumble|epilogue|done)$/, { timeout: WAR_ROOM_READY_TIMEOUT });
   // The opening shout is intentionally brief. openFireGame may return after its
   // DOM bubble has already completed, so the required E2E follows the persistent
   // narrative phase rather than racing transient copy. Focused component tests
   // keep the opening copy and king-anchor contract.
-  // Hans' choreography still waits for the complete Three.js scene.
-  await expect(canvas).toHaveAttribute('data-war-room-hans-scene-ready', 'true', { timeout: WAR_ROOM_READY_TIMEOUT });
+  // Hans' choreography is now observed only after the complete Three.js scene.
   await expect(canvas).toHaveAttribute('data-war-room-hans-screen', 'hidden');
 
   await expect(page.getByRole('status', { name: 'Bravuconada de Matthias al iniciar la partida' })).toHaveCount(0);
