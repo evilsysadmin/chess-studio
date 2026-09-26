@@ -21,7 +21,14 @@ runs:
           python3 -S scripts/app_visual_producer_scope.py --all --github-output "$GITHUB_OUTPUT"
           exit 0
         fi
-        files="$(git diff --name-only HEAD^ HEAD)"
+        if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
+          base_ref="${{ github.event.pull_request.base.ref }}"
+          git fetch --no-tags --depth=1 origin "$base_ref"
+          merge_base="$(git merge-base HEAD "origin/$base_ref")"
+          files="$(git diff --name-only "$merge_base" HEAD)"
+        else
+          files="$(git diff --name-only HEAD^ HEAD)"
+        fi
         scoped_files="$(printf '%s\n' "$files" | python3 -S scripts/app_visual_changed_files.py)"
         printf '%s\n' "$files"
         if [[ "$scoped_files" != "$files" ]]; then
