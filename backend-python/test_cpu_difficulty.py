@@ -14,16 +14,16 @@ def _snapshot(*candidates: RootCandidateAnalysis) -> RootAnalysisSnapshot:
     return RootAnalysisSnapshot(candidates=tuple(candidates), depth=2, candidate_count=len(candidates))
 
 
-def test_difficulty_bands_tighten_monotonically_until_strong_play():
-    levels = [0, 10, 20, 30, 40, 45]
+def test_human_elo_bands_tighten_monotonically_across_full_range():
+    levels = [0, 20, 45, 60, 70, 90, 100]
     bands = [policy.difficulty_band(level) for level in levels]
+    assert [band.target_elo for band in bands] == [350, 850, 1200, 1375, 1450, 1600, 1800]
     assert [band.max_loss_cp for band in bands] == sorted(
         [band.max_loss_cp for band in bands], reverse=True
     )
     assert [band.mistake_chance for band in bands] == sorted(
         [band.mistake_chance for band in bands], reverse=True
     )
-    assert bands[-1] is policy.STRONG_PLAY
 
 
 def test_beginner_can_only_choose_candidates_inside_factual_loss_band(monkeypatch):
@@ -78,7 +78,6 @@ def test_deliberate_errors_favor_smaller_factual_losses():
         alternatives,
         maximizing=True,
         band=band,
-        level=0,
     )
 
     assert len(weights) == 3
@@ -179,18 +178,21 @@ def test_low_level_override_still_precedes_forced_fast_path(monkeypatch):
     assert policy.get_factual_difficulty_cpu_move(ForcedBoard(), 20) is injected
 
 
-def test_level_45_keeps_established_engine_path(monkeypatch):
+def test_intermediate_level_uses_human_candidate_policy_not_perfect_engine_shortcut(monkeypatch):
     board = chess.Board()
-    seen = []
-
-    def strong(_board, level):
-        seen.append(level)
-        return {"from": "e2", "to": "e4", "san": "e4"}
-
-    monkeypatch.setattr(policy, "get_cpu_move", strong)
+    snap = _snapshot(
+        _candidate("e2e4", 100.0),
+        _candidate("d2d4", 90.0),
+    )
+    monkeypatch.setattr(policy, "analyze_root_iterative", lambda *_args, **_kwargs: snap)
+    monkeypatch.setattr(policy.random, "random", lambda: 1.0)
+    monkeypatch.setattr(
+        policy,
+        "get_cpu_move",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("direct strong-engine shortcut must not run")),
+    )
 
     assert policy.get_factual_difficulty_cpu_move(board, 45)["san"] == "e4"
-    assert seen == [45]
 
 
 def test_seeded_band_choice_is_reproducible(monkeypatch):
@@ -209,3 +211,21 @@ def test_seeded_band_choice_is_reproducible(monkeypatch):
     second = policy.get_factual_difficulty_cpu_move(board, 0)["san"]
 
     assert first == second
+
+
+def test_complex_positions_increase_bounded_human_error_probability():
+    board = chess.Board()
+    band = policy.difficulty_band(60)
+    quiet = 0.0
+    complex_position = 1.0
+    quiet_chance = band.mistake_chance * (0.82 + (0.38 * quiet))
+    complex_chance = band.mistake_chance * (0.82 + (0.38 * complex_position))
+    assert complex_chance > quiet_chance
+    assert complex_chance < 0.85
+
+
+def test_level_to_elo_contract_matches_frontend_calibration_anchors():
+    assert policy.elo_for_level(0) == 350
+    assert policy.elo_for_level(45) == 1200
+    assert policy.elo_for_level(70) == 1450
+    assert policy.elo_for_level(100) == 1800
