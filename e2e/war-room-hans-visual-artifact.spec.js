@@ -43,13 +43,23 @@ async function captureViewportPng(context, page, path) {
   }
 }
 
+function isWarRoomBootstrapFailure(error) {
+  const message = String(error?.message || error || '');
+  return (
+    message.includes(".board-live-row.is-3d-warroom")
+    || message.includes(".board3d-main-canvas")
+  ) && message.includes('element(s) not found');
+}
+
 test('War Room · canario visual de Hans físicamente en escena', async () => {
   // SwiftShader already produced the canonical PNG + health proof before the
   // previous 120 s ceiling, but browser/context teardown could overrun it.
   // Keep capture assertions strict and reserve a small cleanup margin.
-  test.setTimeout(150_000);
+  test.setTimeout(240_000);
   await mkdir(ARTIFACT_DIR, { recursive: true });
 
+  let lastBootstrapError = null;
+  for (let bootstrapAttempt = 1; bootstrapAttempt <= 2; bootstrapAttempt += 1) {
   const browser = await chromium.launch({
     headless: true,
     args: [
@@ -95,8 +105,9 @@ test('War Room · canario visual de Hans físicamente en escena', async () => {
 
     // Observe the transient Hans phase from the start instead of waiting for
     // every readiness marker serially and checking the phase after it vanished.
-    // These conditions describe one concurrent scene transition, so waiting in
-    // parallel keeps the 120 s canary budget meaningful on software WebGL.
+    // These conditions describe one concurrent scene transition. A missing 3D
+    // mount gets one fresh browser bootstrap; once mounted, every Hans assertion
+    // remains fail-closed.
     await Promise.all([
       expect(warRoom).toBeVisible({ timeout: 45_000 }),
       expect(canvas).toBeVisible({ timeout: 45_000 }),
@@ -157,8 +168,17 @@ test('War Room · canario visual de Hans físicamente en escena', async () => {
       'utf8',
     );
     await captureViewportPng(context, page, `${ARTIFACT_DIR}/${LABEL}.png`);
+  } catch (error) {
+    if (bootstrapAttempt === 1 && isWarRoomBootstrapFailure(error)) {
+      lastBootstrapError = error;
+      continue;
+    }
+    throw error;
   } finally {
     await context.close();
     await browser.close();
   }
+  return;
+  }
+  throw lastBootstrapError || new Error('Hans visual canary could not bootstrap War Room');
 });
