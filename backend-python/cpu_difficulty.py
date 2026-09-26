@@ -1,9 +1,10 @@
-"""Human-like CPU difficulty policy built only from factual minimax candidates.
+"""Human-Elo CPU policy built from factual root candidates.
 
-The core evaluator/search remains unchanged. This layer consumes one coherent
-root snapshot and may choose a weaker candidate only when its measured loss
-stays inside the explicit band for that difficulty. It never samples arbitrary
-legal moves.
+The search still owns legality and evaluation. This layer models how a human of
+an approximate Elo selects among plausible candidates: stronger players inspect
+more deeply, choose the best move more often, and make smaller errors. Complex
+positions widen the error distribution slightly. CPU strength never changes
+inside an active game; the caller passes the fixed difficulty chosen at launch.
 """
 from __future__ import annotations
 
@@ -21,6 +22,7 @@ from engine_analysis import RootAnalysisSnapshot, RootCandidateAnalysis, analyze
 
 @dataclass(frozen=True)
 class DifficultyBand:
+    target_elo: int
     max_loss_cp: float
     mistake_chance: float
     candidate_limit: int
@@ -28,34 +30,105 @@ class DifficultyBand:
     budget_s: float
 
 
-STRONG_PLAY = DifficultyBand(0.0, 0.0, 1, 0, 0.0)
+CPU_ELO_ANCHORS = (
+    (0, 350),
+    (20, 850),
+    (45, 1200),
+    (60, 1375),
+    (70, 1450),
+    (90, 1600),
+    (100, 1800),
+)
 MATE_GUARD_THRESHOLD = MATE_SCORE - 1000
-FACTUAL_BAND_CUTOFF = 45
 _DEFAULT_CPU_MOVE = get_cpu_move
 _NO_ENGINE_OVERRIDE = object()
 
 
+def elo_for_level(raw_level: float) -> int:
+    level = max(0.0, min(100.0, float(raw_level)))
+    for index in range(1, len(CPU_ELO_ANCHORS)):
+        right_level, right_elo = CPU_ELO_ANCHORS[index]
+        left_level, left_elo = CPU_ELO_ANCHORS[index - 1]
+        if level <= right_level:
+            span = right_level - left_level or 1
+            progress = (level - left_level) / span
+            return round(left_elo + (right_elo - left_elo) * progress)
+    return CPU_ELO_ANCHORS[-1][1]
+
+
+def _interpolate_for_elo(target_elo: int, points: tuple[tuple[int, float], ...]) -> float:
+    elo = max(points[0][0], min(points[-1][0], int(target_elo)))
+    for index in range(1, len(points)):
+        right_elo, right_value = points[index]
+        left_elo, left_value = points[index - 1]
+        if elo <= right_elo:
+            span = right_elo - left_elo or 1
+            progress = (elo - left_elo) / span
+            return left_value + ((right_value - left_value) * progress)
+    return points[-1][1]
+
+
 def difficulty_band(raw_level: float) -> DifficultyBand:
-    """Return a monotonic weakness envelope for normal CPU games."""
+    """Translate legacy 0-100 difficulty into one approximate human-Elo policy."""
     level = max(0, min(100, round(float(raw_level))))
-    if level >= FACTUAL_BAND_CUTOFF:
-        return STRONG_PLAY
-
+    target_elo = elo_for_level(level)
     settings = settings_for_level(level)
-    # Keep low-level latency bounded: depth 2 + quiescence is enough to catch
-    # immediate tactical disasters while still making beginner play responsive.
-    budget = min(0.35, max(0.10, settings.time_budget_s))
-    max_depth = min(2, settings.max_depth)
 
-    if level < 10:
-        return DifficultyBand(450.0, 0.75, 8, max_depth, budget)
-    if level < 20:
-        return DifficultyBand(320.0, 0.60, 7, max_depth, budget)
-    if level < 30:
-        return DifficultyBand(220.0, 0.45, 6, max_depth, budget)
-    if level < 40:
-        return DifficultyBand(140.0, 0.30, 5, max_depth, budget)
-    return DifficultyBand(70.0, 0.15, 4, max_depth, budget)
+    max_loss_cp = _interpolate_for_elo(target_elo, (
+        (350, 450.0),
+        (700, 340.0),
+        (900, 250.0),
+        (1100, 175.0),
+        (1300, 125.0),
+        (1500, 90.0),
+        (1650, 65.0),
+        (1800, 45.0),
+    ))
+    mistake_chance = _interpolate_for_elo(target_elo, (
+        (350, 0.74),
+        (700, 0.62),
+        (900, 0.49),
+        (1100, 0.38),
+        (1300, 0.28),
+        (1500, 0.19),
+        (1650, 0.12),
+        (1800, 0.07),
+    ))
+    candidate_limit = round(_interpolate_for_elo(target_elo, (
+        (350, 8.0),
+        (900, 7.0),
+        (1300, 6.0),
+        (1600, 5.0),
+        (1800, 4.0),
+    )))
+
+    # Search is only the factual oracle. We do not need maximum-strength search
+    # at every Elo, but stronger opponents should calculate farther before the
+    # human policy chooses among candidates.
+    max_depth = min(4, settings.max_depth)
+    budget_s = min(0.85, max(0.12, settings.time_budget_s * 0.45))
+    return DifficultyBand(
+        target_elo=target_elo,
+        max_loss_cp=max_loss_cp,
+        mistake_chance=mistake_chance,
+        candidate_limit=max(2, candidate_limit),
+        max_depth=max_depth,
+        budget_s=budget_s,
+    )
+
+
+def position_complexity(board: chess.Board) -> float:
+    """Cheap 0..1 proxy for how hard the current choice is for a human."""
+    legal = list(board.legal_moves)
+    if not legal:
+        return 0.0
+    captures = sum(1 for move in legal if board.is_capture(move))
+    checks = sum(1 for move in legal if board.gives_check(move))
+    forcing = captures + (checks * 1.5)
+    branching = min(1.0, max(0.0, (len(legal) - 18) / 24))
+    forcing_ratio = min(1.0, forcing / max(4.0, len(legal) * 0.35))
+    in_check = 1.0 if board.is_check() else 0.0
+    return min(1.0, (branching * 0.45) + (forcing_ratio * 0.40) + (in_check * 0.15))
 
 
 def _loss_from_best(best_score: float, candidate_score: float, maximizing: bool) -> float:
@@ -64,20 +137,13 @@ def _loss_from_best(best_score: float, candidate_score: float, maximizing: bool)
 
 
 def _deterministic_fallback(board: chess.Board, level: float) -> Optional[dict]:
-    """Fallback that still thinks; never substitute an arbitrary legal move."""
-    result = analyze_move(board, min(float(level), 20.0))
+    """Fallback that still thinks; never substitute arbitrary legal roulette."""
+    result = analyze_move(board, min(float(level), 35.0))
     return result.get("move") if isinstance(result, dict) else None
 
 
 def _explicit_game_engine_override(board: chess.Board, level: float):
-    """Honor the established in-process engine injection seam when replaced.
-
-    ``game_api.get_cpu_move`` has long been the boundary used by backend tests
-    and diagnostic harnesses to simulate a broken engine. Normal production
-    imports point at ``_DEFAULT_CPU_MOVE`` and therefore take the factual policy
-    below. If a harness explicitly replaces that provider, preserve the override
-    so the shared legal-fallback/error boundary is still exercised truthfully.
-    """
+    """Honor the established in-process engine injection seam used by tests."""
     game_api = sys.modules.get("game_api")
     provider = getattr(game_api, "get_cpu_move", None) if game_api is not None else None
     if provider is None or provider is _DEFAULT_CPU_MOVE:
@@ -90,14 +156,18 @@ def _eligible_alternatives(
     *,
     maximizing: bool,
     band: DifficultyBand,
+    complexity: float = 0.0,
 ) -> list[RootCandidateAnalysis]:
     if not snapshot.candidates:
         return []
     best = snapshot.candidates[0]
+    # Hard positions may admit a slightly larger human error, but never enough
+    # to turn the policy into random legal-move roulette.
+    effective_loss_cap = band.max_loss_cp * (1.0 + (0.22 * max(0.0, min(1.0, complexity))))
     alternatives = []
     for candidate in snapshot.candidates[1:]:
         loss = _loss_from_best(best.score, candidate.score, maximizing)
-        if loss <= band.max_loss_cp:
+        if loss <= effective_loss_cap:
             alternatives.append(candidate)
         if len(alternatives) >= max(0, band.candidate_limit - 1):
             break
@@ -110,43 +180,34 @@ def _imperfect_candidate_weights(
     *,
     maximizing: bool,
     band: DifficultyBand,
-    level: float,
+    complexity: float = 0.0,
 ) -> list[float]:
-    """Bias deliberate errors toward smaller factual losses.
-
-    The old policy picked uniformly inside the allowed loss band: a 350 cp
-    mistake could be as likely as a 25 cp inaccuracy once the mistake gate
-    fired. Humans do not usually distribute errors that way. Keep the hard
-    factual envelope, but make near-best mistakes more common and severe
-    blunders progressively rarer as difficulty rises.
-    """
+    """Prefer human-sized inaccuracies over spectacular self-destruction."""
     if not alternatives:
         return []
     best = snapshot.candidates[0]
-    normalized_level = max(0.0, min(float(level), float(FACTUAL_BAND_CUTOFF)))
-    progress = normalized_level / float(FACTUAL_BAND_CUTOFF)
-    temperature = max(18.0, band.max_loss_cp * (0.70 - 0.42 * progress))
-    weights = []
-    for candidate in alternatives:
-        loss = _loss_from_best(best.score, candidate.score, maximizing)
-        weights.append(max(1e-6, math.exp(-loss / temperature)))
-    return weights
+    strength = max(0.0, min(1.0, (band.target_elo - 350) / 1450))
+    temperature = max(
+        14.0,
+        band.max_loss_cp * (0.64 - (0.38 * strength)) * (1.0 + (0.20 * complexity)),
+    )
+    return [
+        max(1e-6, math.exp(-_loss_from_best(best.score, candidate.score, maximizing) / temperature))
+        for candidate in alternatives
+    ]
 
 
 def get_factual_difficulty_cpu_move(
     board: chess.Board,
     level: float = 50,
 ) -> Optional[dict]:
-    """Return a CPU move whose intentional weakness is bounded by minimax facts.
+    """Choose a factual candidate with a human-like error profile for the Elo.
 
-    Level >=45 keeps the established strong engine path, already free of
-    intentional randomness/noise. Lower levels replace arbitrary-legal roulette
-    with a bounded factual candidate policy.
+    Unlike the old policy, this remains active above level 45. A 1500-ish
+    Matthias therefore does not become perfect merely because the minimax search
+    found the best move; he still has a small, bounded chance of choosing a
+    plausible inferior candidate. Forced mates are never intentionally missed.
     """
-
-    band = difficulty_band(level)
-    if band is STRONG_PLAY:
-        return get_cpu_move(board, level)
 
     explicit_override = _explicit_game_engine_override(board, level)
     if explicit_override is not _NO_ENGINE_OVERRIDE:
@@ -157,6 +218,9 @@ def get_factual_difficulty_cpu_move(
         return None
     if len(legal_moves) == 1:
         return move_to_dict(board, legal_moves[0])
+
+    band = difficulty_band(level)
+    complexity = position_complexity(board)
 
     try:
         snapshot = analyze_root_iterative(
@@ -171,9 +235,6 @@ def get_factual_difficulty_cpu_move(
         return None
 
     best = snapshot.candidates[0]
-    # Forced mate (for or against the side to move) is not a difficulty toy.
-    # Keep the best line instead of randomly delaying/missing mate or walking
-    # into a mate sentinel merely to make Beginner look sillier.
     if abs(best.score) >= MATE_GUARD_THRESHOLD:
         return move_to_dict(board, best.move)
 
@@ -181,8 +242,13 @@ def get_factual_difficulty_cpu_move(
         snapshot,
         maximizing=board.turn == chess.WHITE,
         band=band,
+        complexity=complexity,
     )
-    if not alternatives or random.random() >= band.mistake_chance:
+    effective_mistake_chance = min(
+        0.85,
+        band.mistake_chance * (0.82 + (0.38 * complexity)),
+    )
+    if not alternatives or random.random() >= effective_mistake_chance:
         return move_to_dict(board, best.move)
 
     weights = _imperfect_candidate_weights(
@@ -190,7 +256,7 @@ def get_factual_difficulty_cpu_move(
         alternatives,
         maximizing=board.turn == chess.WHITE,
         band=band,
-        level=level,
+        complexity=complexity,
     )
     chosen = random.choices(alternatives, weights=weights, k=1)[0]
     return move_to_dict(board, chosen.move)
