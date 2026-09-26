@@ -418,13 +418,37 @@ export function buildPiece(type, color, skinId, coarsePointer = false, options =
         battlement.userData.rookPart = 'battlement';
       }
     } else if (type === 'q') {
-      addLathe(group, [[0.2, 0.28], [0.17, 0.4], [0.13, 0.61], [0.18, 0.75], [0.22, 0.8]], main, 0, detail.lathe);
-      addMesh(group, new THREE.TorusGeometry(0.205, 0.028, detail.torusRadial, detail.torusTubular), accent, [0, 0.84, 0], [Math.PI / 2, 0, 0]);
-      for (let index = 0; index < 7; index += 1) {
-        const angle = index * (Math.PI * 2 / 7);
-        addMesh(group, new THREE.ConeGeometry(0.055, 0.24, coarsePointer ? 10 : 16), accent, [Math.cos(angle) * 0.17, 0.96, Math.sin(angle) * 0.17]);
-        addMesh(group, new THREE.SphereGeometry(0.045, coarsePointer ? 10 : 14, coarsePointer ? 7 : 9), main, [Math.cos(angle) * 0.17, 1.08, Math.sin(angle) * 0.17]);
+      group.userData.board3DQueenSilhouetteVersion = coarsePointer ? 'royal-crown-lite-v2' : 'royal-crown-v2';
+      group.userData.board3DQueenHeightProfile = 'tall-132-v1';
+      group.userData.board3DQueenCrownProfile = 'eight-point-flared-v1';
+      addLathe(group, [[0.215, 0.28], [0.185, 0.4], [0.14, 0.62], [0.19, 0.78], [0.245, 0.86]], main, 0, detail.lathe);
+      const crownRing = addMesh(group, new THREE.TorusGeometry(0.24, 0.032, detail.torusRadial, detail.torusTubular), accent, [0, 0.9, 0], [Math.PI / 2, 0, 0]);
+      crownRing.userData.queenPart = 'crown-ring';
+      for (let index = 0; index < 8; index += 1) {
+        const angle = index * (Math.PI * 2 / 8);
+        const radial = coarsePointer ? 0.205 : 0.22;
+        const point = addMesh(
+          group,
+          new THREE.ConeGeometry(coarsePointer ? 0.06 : 0.065, coarsePointer ? 0.28 : 0.31, coarsePointer ? 10 : 16),
+          accent,
+          [Math.cos(angle) * radial, coarsePointer ? 1.05 : 1.065, Math.sin(angle) * radial],
+        );
+        point.userData.queenPart = 'crown-point';
+        const orb = addMesh(
+          group,
+          new THREE.SphereGeometry(coarsePointer ? 0.052 : 0.056, coarsePointer ? 10 : 14, coarsePointer ? 7 : 9),
+          main,
+          [Math.cos(angle) * radial, coarsePointer ? 1.19 : 1.225, Math.sin(angle) * radial],
+        );
+        orb.userData.queenPart = 'crown-orb';
       }
+      const finial = addMesh(
+        group,
+        new THREE.SphereGeometry(coarsePointer ? 0.066 : 0.074, coarsePointer ? 12 : 18, coarsePointer ? 8 : 12),
+        accent,
+        [0, coarsePointer ? 1.28 : 1.32, 0],
+      );
+      finial.userData.queenPart = 'finial';
     } else if (type === 'k') {
       addLathe(group, [[0.2, 0.28], [0.17, 0.42], [0.14, 0.68], [0.19, 0.81], [0.21, 0.85]], main, 0, detail.lathe);
       addMesh(group, new THREE.TorusGeometry(0.195, 0.028, detail.torusRadial, detail.torusTubular), accent, [0, 0.86, 0], [Math.PI / 2, 0, 0]);
