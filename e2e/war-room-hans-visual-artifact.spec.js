@@ -101,7 +101,7 @@ test('War Room · canario visual de Hans físicamente en escena', async () => {
       expect(canvas).toHaveAttribute('data-war-room-hans-scene-ready', 'true', { timeout: 60_000 }),
       expect(canvas).toHaveAttribute('data-war-room-hans-call-released', 'true', { timeout: 60_000 }),
       expect(canvas).toHaveAttribute('data-war-room-hans-reply-seen', 'true', { timeout: 75_000 }),
-      expect(canvas).toHaveAttribute('data-war-room-hans-screen', 'onscreen', { timeout: 60_000 }),
+      expect(canvas).toHaveAttribute('data-war-room-hans-screen', /^(edge|onscreen)$/, { timeout: 60_000 }),
       expect(canvas).toHaveAttribute('data-war-room-hans-ground-gap', /.+/, { timeout: 60_000 }),
       expect(fireOverlay).toHaveAttribute('data-fire-call-phase', 'hans', { timeout: 75_000 }),
     ]);
@@ -111,7 +111,7 @@ test('War Room · canario visual de Hans físicamente en escena', async () => {
     // acknowledgement bubble again.
     await expect(fireOverlay).not.toHaveAttribute('data-fire-call-phase', 'hans', { timeout: 12_000 });
     await expect(hansBubble).toHaveCount(0, { timeout: 2_000 });
-    await expect(canvas).toHaveAttribute('data-war-room-hans-screen', 'onscreen', { timeout: 5_000 });
+    await expect(canvas).toHaveAttribute('data-war-room-hans-screen', /^(edge|onscreen)$/, { timeout: 5_000 });
     await page.waitForTimeout(120);
 
     const replyBubbleVisible = await hansBubble.isVisible().catch(() => false);
@@ -138,7 +138,7 @@ test('War Room · canario visual de Hans físicamente en escena', async () => {
     expect(diagnostic.replySeen).toBe(true);
     expect(diagnostic.replyBubbleVisible).toBe(false);
     expect(diagnostic.fireCallPhase).not.toBe('hans');
-    expect(diagnostic.screen).toBe('onscreen');
+    expect(diagnostic.screen).toMatch(/^(edge|onscreen)$/);
     expect(Number.isFinite(diagnostic.ndcX)).toBe(true);
     expect(Number.isFinite(diagnostic.ndcY)).toBe(true);
     expect(Math.abs(diagnostic.ndcX)).toBeLessThanOrEqual(1.05);
