@@ -10,14 +10,14 @@ describe('HomeBlenderScene3D portrait framing', () => {
     expect(homeBlenderCameraFovForAspect(1)).toBe(HOME_BLENDER_CAMERA_FOV);
   });
 
-  it('widens portrait Android framing without exceeding the mobile cap', () => {
+  it('keeps portrait Android framing contextual without exposing empty ceiling runway', () => {
     const portrait390 = homeBlenderCameraFovForAspect(390 / 844);
     const portrait430 = homeBlenderCameraFovForAspect(430 / 932);
 
-    expect(portrait390).toBeGreaterThan(37);
-    expect(portrait390).toBeLessThanOrEqual(42);
-    expect(portrait430).toBeGreaterThan(37);
-    expect(portrait430).toBeLessThanOrEqual(42);
+    expect(portrait390).toBeGreaterThan(HOME_BLENDER_CAMERA_FOV);
+    expect(portrait390).toBe(33);
+    expect(portrait430).toBeGreaterThan(HOME_BLENDER_CAMERA_FOV);
+    expect(portrait430).toBe(33);
   });
 
   it('blends gently near square layouts instead of jumping lenses', () => {
