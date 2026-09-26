@@ -34,7 +34,11 @@ async function openFireGame(page) {
   await mockApi(page);
   await login(page);
   await seedGamesBeforeFire(page);
-  await buttonWithVisibleText(page, 'Partida rápida').click();
+  const quickMatch = buttonWithVisibleText(page, 'Partida rápida');
+  await expect(quickMatch).toBeVisible();
+  // Hans' contract starts after launch. Avoid coupling this choreography gate to
+  // SwiftShader's scroll-to-click latency on the live Blender Home.
+  await quickMatch.evaluate((button) => button.click());
   const quickDialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
   await expect(quickDialog).toBeVisible();
   await quickDialog.getByRole('button', { name: 'Empezar partida', exact: true }).click();
