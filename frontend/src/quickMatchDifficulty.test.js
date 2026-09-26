@@ -191,7 +191,7 @@ describe('quick-match Elo chaser', () => {
     expect(quickMatchTargetLeadElo(recovery, 20, {})).toBeGreaterThanOrEqual(30);
   });
 
-  it('uses analyzed move quality only after two factual adaptive-game samples', () => {
+  it('uses analyzed move quality only after three factual adaptive-game samples', () => {
     const activity = [
       ...adaptiveGame('g2', 'win', 56),
       ...adaptiveGame('g1', 'win', 56),
@@ -203,9 +203,18 @@ describe('quick-match Elo chaser', () => {
       ...one,
       g1: { sufficientSample: true, clean: false, averageLoss: 120, blunders: 2 },
     };
+    const activityThree = [
+      ...adaptiveGame('g3', 'loss', 55),
+      ...activity,
+    ];
+    const three = {
+      ...two,
+      g3: { sufficientSample: true, clean: false, averageLoss: 125, blunders: 2 },
+    };
 
     expect(quickMatchQualityAdjustment(activity, 20, one)).toBe(0);
-    expect(quickMatchQualityAdjustment(activity, 20, two)).toBe(-15);
+    expect(quickMatchQualityAdjustment(activity, 20, two)).toBe(0);
+    expect(quickMatchQualityAdjustment(activityThree, 20, three)).toBe(-15);
   });
 
   it('lets repeated clean analyzed play add only a small quality boost', () => {
