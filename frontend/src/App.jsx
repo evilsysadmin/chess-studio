@@ -29,6 +29,8 @@ import { gameModeFromContext } from './gameModes.js';
 import { loadRoster as loadCombatRoster } from './combatRoster.js';
 import { loadCombatService, summarizeCombatService } from './combatService.js';
 import { loadRating, saveRating, ratingChangeDetails, ratingScoreForOutcome, recordRatingHistory, loadRatingHistory } from './playerRating.js';
+import { cleanGameEvidence, recordCleanGameEvidence } from './cleanGames.js';
+import { archiveAnalysis } from './advancedCareer.js';
 import { handicapForGap } from './handicap.js';
 const InsightsScreen = React.lazy(() => import('./components/InsightsScreen.jsx'));
 import { timeControlById } from './clock.js';
@@ -416,6 +418,22 @@ function AppInner({ isAdminUser }) {
     clearClockSnapshot(finishedGame.id);
     const moveSans = (finishedGame.history || []).map((m) => m.san).filter(Boolean);
     const opening = identifyOpening(moveSans);
+    const analysisReport = endMeta.analysisReport || null;
+    const analysisMeta = {
+      gameId: finishedGame.id,
+      date: new Date().toISOString(),
+      outcome,
+      difficulty: finishedGame.difficulty,
+      opening,
+      timeControlId: activeTimeControl?.id || 'none',
+      pressureMoves: Number(endMeta.pressureMoves || 0),
+      pressureIncidents: Number(endMeta.pressureIncidents || 0),
+    };
+    const qualityEvidence = analysisReport ? cleanGameEvidence(analysisReport, analysisMeta) : null;
+    if (analysisReport) {
+      archiveAnalysis(finishedGame.id, analysisReport, analysisMeta);
+      recordCleanGameEvidence(finishedGame.id, analysisReport, analysisMeta);
+    }
     let seriesSnapshot = activeSeries;
     const trainingPosition = !!(gameContext.lab || gameContext.rescue || gameContext.suddenDeath);
 
@@ -444,7 +462,7 @@ function AppInner({ isAdminUser }) {
       pressureIncidents: Number(endMeta.pressureIncidents || 0),
       });
       const score = ratingScoreForOutcome(outcome);
-      const details = ratingChangeDetails(rating, finishedGame.difficulty, score);
+      const details = ratingChangeDetails(rating, finishedGame.difficulty, score, qualityEvidence);
       saveRating(details.next);
       recordRatingHistory(details.next.rating);
       setRating(details.next);
@@ -452,7 +470,9 @@ function AppInner({ isAdminUser }) {
         ratingApplied: true,
         eloDelta: details.delta,
         eloBefore: rating.rating,
-        eloAfter: details.next.rating, ratingGames: details.next.games,
+        eloAfter: details.next.rating,
+        ratingGames: details.next.games,
+        performanceDelta: details.performanceDelta || 0,
       };
     }
 
@@ -492,8 +512,11 @@ function AppInner({ isAdminUser }) {
     const title = endMeta.endReason === 'resignation'
       ? 'Abandono registrado como derrota'
       : outcome === 'win' ? 'Victoria' : outcome === 'draw' ? 'Tablas' : 'Derrota';
+    const qualityDetail = ratingSummary.performanceDelta
+      ? ` · cuaderno ${ratingSummary.performanceDelta > 0 ? '+' : ''}${ratingSummary.performanceDelta}`
+      : '';
     const detail = ratingSummary.ratingApplied
-      ? `Rating ${ratingSummary.eloDelta >= 0 ? '+' : ''}${ratingSummary.eloDelta} · ${ratingSummary.eloBefore} → ${ratingSummary.eloAfter}`
+      ? `Rating ${ratingSummary.eloDelta >= 0 ? '+' : ''}${ratingSummary.eloDelta} · ${ratingSummary.eloBefore} → ${ratingSummary.eloAfter}${qualityDetail}`
       : 'Esta modalidad no afecta a tu rating.';
     const summary = { gameId: finishedGame.id, outcome, title, detail, endReason: endMeta.endReason || null, adaptiveDifficulty: !!gameContext.adaptiveDifficulty, ...ratingSummary };
     setCasualResult(summary);
@@ -674,11 +697,28 @@ function AppInner({ isAdminUser }) {
     });
 
     if (finishedGame) {
+      const opening = identifyOpening((finishedGame.history || []).map((m) => m.san).filter(Boolean));
+      const analysisReport = endMeta.analysisReport || null;
+      const analysisMeta = {
+        gameId: finishedGame.id,
+        date: new Date().toISOString(),
+        outcome,
+        difficulty: finishedGame.difficulty,
+        opening,
+        timeControlId: 'none',
+        pressureMoves: Number(endMeta.pressureMoves || 0),
+        pressureIncidents: Number(endMeta.pressureIncidents || 0),
+      };
+      const qualityEvidence = analysisReport ? cleanGameEvidence(analysisReport, analysisMeta) : null;
+      if (analysisReport) {
+        archiveAnalysis(finishedGame.id, analysisReport, analysisMeta);
+        recordCleanGameEvidence(finishedGame.id, analysisReport, analysisMeta);
+      }
       // Actualizamos también el rating tipo ELO: cuenta como una partida
       // más contra una CPU de dificultad conocida.
       const score = ratingScoreForOutcome(outcome);
       setRating((prev) => {
-        const details = ratingChangeDetails(prev, finishedGame.difficulty, score);
+        const details = ratingChangeDetails(prev, finishedGame.difficulty, score, qualityEvidence);
         saveRating(details.next);
         recordRatingHistory(details.next.rating);
         setLastResult((current) => ({
@@ -688,6 +728,7 @@ function AppInner({ isAdminUser }) {
           eloAfter: details.next.rating,
           cpuRating: details.cpuRating,
           expectedScore: details.expectedScore,
+          performanceDelta: details.performanceDelta || 0,
         }));
         return details.next;
       });
