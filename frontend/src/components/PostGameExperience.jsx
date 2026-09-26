@@ -56,6 +56,8 @@ export default function PostGameExperience({
   onTrainPersonal,
   onShareIncident,
   onOpenCrimeScene,
+  analysisPending = false,
+  analysisReport = null,
   reportMeta = {},
   postGameFeedbackEnabled = true,
 }) {
@@ -123,6 +125,12 @@ export default function PostGameExperience({
               ? game.turn === humanColor ? `Ganó ${CPU_IDENTITY.name}.` : '¡Ganaste la partida!'
               : 'La partida terminó en tablas.'}
         </p>
+        {analysisPending && (
+          <p className="endgame-rating-impact" role="status">
+            <strong>Rating en revisión</strong>
+            <span>Minimax está comparando tu cuaderno jugada por jugada antes de cerrar el rating.</span>
+          </p>
+        )}
         {resultSummary && (
           <p className="endgame-rating-impact">
             <strong>{resultSummary.ratingApplied ? 'Impacto en rating' : 'Rating sin cambios'}</strong>
@@ -153,18 +161,18 @@ export default function PostGameExperience({
           </div>
         )}
         {seriesState && !seriesState.winner && onNextSeriesGame ? (
-          <button className="primary-btn" onClick={onNextSeriesGame}>{seriesNextActionLabel(seriesState)}</button>
+          <button className="primary-btn" disabled={analysisPending} onClick={onNextSeriesGame}>{analysisPending ? 'Revisando cuaderno…' : seriesNextActionLabel(seriesState)}</button>
         ) : runState?.active && onNextRunGame ? (
-          <button className="primary-btn" onClick={onNextRunGame}>Siguiente desafío</button>
+          <button className="primary-btn" disabled={analysisPending} onClick={onNextRunGame}>{analysisPending ? 'Revisando cuaderno…' : 'Siguiente desafío'}</button>
         ) : nextAction.id === 'review' ? (
-          <button className="primary-btn" onClick={() => setShowReport(true)}>{nextAction.label}</button>
+          <button className="primary-btn" disabled={analysisPending} onClick={() => setShowReport(true)}>{analysisPending ? 'Revisando cuaderno…' : nextAction.label}</button>
         ) : (
-          <button className="primary-btn" onClick={onLeave}>{nextAction.label}</button>
+          <button className="primary-btn" disabled={analysisPending} onClick={onLeave}>{analysisPending ? 'Revisando cuaderno…' : nextAction.label}</button>
         )}
         {!sequenceInProgress && <p className="endgame-next-detail">{nextAction.detail}</p>}
         {!sequenceInProgress && hasReport && nextAction.id !== 'review' && (
-          <button className="secondary-btn endgame-review-btn" onClick={() => setShowReport(true)}>
-            Resumen de la partida
+          <button className="secondary-btn endgame-review-btn" disabled={analysisPending} onClick={() => setShowReport(true)}>
+            {analysisPending ? 'Revisando cuaderno…' : 'Resumen de la partida'}
           </button>
         )}
         {sequenceInProgress && <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={onLeave}>Volver al menú</button>}
@@ -203,6 +211,7 @@ export default function PostGameExperience({
           humanColor={humanColor}
           onClose={() => setShowReport(false)}
           meta={reportMeta}
+          initialReport={analysisReport}
           onTrainPersonal={onTrainPersonal ? () => { setShowReport(false); onTrainPersonal(); } : null}
           onShareIncident={(moveReport, report) => onShareIncident?.(moveReport, report, finalOutcome)}
           onOpenCrimeScene={(moveReport, report) => onOpenCrimeScene?.(moveReport, report, { outcome: finalOutcome })}
