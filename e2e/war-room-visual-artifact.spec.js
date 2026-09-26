@@ -113,6 +113,15 @@ const CAPTURE_PROFILES = Object.freeze([
     landscapeContract: true,
   }),
   Object.freeze({
+    label: 'war-room-immersive-android-landscape-844x390',
+    title: 'Immersive Android landscape 844×390',
+    viewport: Object.freeze({ width: 844, height: 390 }),
+    hasTouch: true,
+    portraitContract: false,
+    landscapeContract: true,
+    immersive: true,
+  }),
+  Object.freeze({
     label: 'war-room-desktop-1440x900',
     title: 'Desktop 1440×900',
     viewport: Object.freeze({ width: 1440, height: 900 }),
@@ -582,11 +591,30 @@ for (const profile of ACTIVE_CAPTURE_PROFILES) {
       }
 
       if (profile.immersive) {
+        if (profile.hasTouch) {
+          await page.addInitScript(() => {
+            window.__warRoomOrientationLocks = [];
+            const orientation = screen.orientation;
+            if (orientation) {
+              Object.defineProperty(orientation, 'lock', {
+                configurable: true,
+                value: async (mode) => { window.__warRoomOrientationLocks.push(mode); },
+              });
+            }
+          });
+        }
         const enterImmersive = page.getByRole('button', { name: 'Entrar en modo inmersión', exact: true }).first();
         await expect(enterImmersive).toBeVisible();
         await enterImmersive.click();
         await expect(page.locator('.game-layout-immersive')).toBeVisible();
         await expect(page.locator('body')).toHaveClass(/war-room-immersive-active/);
+        if (profile.hasTouch) {
+          await expect.poll(() => page.evaluate(() => window.__warRoomOrientationLocks || []))
+            .toContain('landscape');
+        }
+        const immersiveCanvas = page.locator('.board3d-main-canvas');
+        await expect(immersiveCanvas).toBeVisible();
+        await expect(immersiveCanvas).toHaveAttribute('data-war-room-rendered', 'true', { timeout: 30_000 });
         await page.keyboard.press('Escape');
         await expect(page.locator('.game-layout-immersive')).toHaveCount(0);
         await page.getByRole('button', { name: 'Entrar en modo inmersión', exact: true }).first().click();
