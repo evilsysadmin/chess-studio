@@ -49,6 +49,31 @@ describe('Board3D piece scale parity', () => {
     expect(apparentScaleRatio).toBeLessThan(1.16);
   });
 
+  it('pica sólo la V1 clásica en desktop ancho y conserva eje horizontal', () => {
+    const classic = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+    const v2 = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+
+    fitBoardCamera(classic, 1185, 730, true, { variant: 'classic' });
+    fitBoardCamera(v2, 1185, 730, true, { variant: 'v2' });
+
+    const elevationDeg = (camera) => {
+      const target = camera.userData.baseTarget;
+      const offset = camera.position.clone().sub(target);
+      return THREE.MathUtils.radToDeg(Math.atan2(offset.y, Math.abs(offset.z)));
+    };
+
+    const classicElevation = elevationDeg(classic);
+    const v2Elevation = elevationDeg(v2);
+
+    expect(classic.userData.framingProfile).toBe('classic-desktop-overhead-v1');
+    expect(classicElevation).toBeGreaterThan(34);
+    expect(classicElevation).toBeLessThan(36);
+    expect(classicElevation - v2Elevation).toBeGreaterThan(4);
+    expect(v2Elevation).toBeLessThan(31);
+    expect(classic.userData.baseTarget.y).toBeLessThan(v2.userData.baseTarget.y);
+    expect(classic.position.x).toBeCloseTo(classic.userData.baseTarget.x, 8);
+  });
+
   it('sube la cámara solo en landscape móvil para separar visualmente las filas', () => {
     const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
     vi.stubGlobal('window', {
