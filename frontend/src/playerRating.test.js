@@ -275,14 +275,19 @@ describe('rating quality audit', () => {
     ...overrides,
   });
 
-  it('premia una victoria limpia y limita el castigo de una victoria fea', () => {
+  it('premia una victoria limpia sin convertir una victoria fea en castigo', () => {
     expect(ratingQualityAdjustment(evidence({ clean: true, averageLoss: 18 }), 'win')).toBe(4);
-    expect(ratingQualityAdjustment(evidence({ averageLoss: 180, blunders: 3 }), 'win')).toBe(-2);
+    expect(ratingQualityAdjustment(evidence({ averageLoss: 180, blunders: 3 }), 'win')).toBe(0);
   });
 
-  it('suaviza una derrota limpia pero agrava una derrota plagada de blunders', () => {
-    expect(ratingQualityAdjustment(evidence({ clean: true, averageLoss: 18 }), 'loss')).toBe(2);
+  it('agrava una derrota plagada de blunders sin convertir una derrota limpia en premio', () => {
+    expect(ratingQualityAdjustment(evidence({ clean: true, averageLoss: 18 }), 'loss')).toBe(0);
     expect(ratingQualityAdjustment(evidence({ averageLoss: 180, blunders: 3 }), 'loss')).toBe(-4);
+  });
+
+  it('deja que las tablas reflejen calidad en ambas direcciones dentro de un margen pequeño', () => {
+    expect(ratingQualityAdjustment(evidence({ clean: true, averageLoss: 18 }), 'draw')).toBe(2);
+    expect(ratingQualityAdjustment(evidence({ averageLoss: 180, blunders: 3 }), 'draw')).toBe(-2);
   });
 
   it('no toca rating sin muestra suficiente', () => {
