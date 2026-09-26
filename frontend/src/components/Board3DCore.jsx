@@ -108,8 +108,7 @@ function Board3DCanvas({
   const { selectable: warRoomVariantSelectable, variant: globalWarRoomVariant, status: warRoomVariantStatus, domData: globalWarRoomVariantDomData, setStatus: setWarRoomVariantStatus } = useWarRoomVariant();
   const presentation = resolveBoard3DPresentation({ cameraProfile, variantOverride: warRoomVariantOverride, globalVariant: globalWarRoomVariant, globalDomData: globalWarRoomVariantDomData, variantStatus: warRoomVariantStatus });
   const { classroom: classroomCamera, variant: warRoomVariant, domData: warRoomVariantDomData, playAriaLabel, inspectAriaLabel } = presentation;
-  const effectiveThemeId = resolveBoard3DThemeId(themeOverride, boardTheme);
-  const currentPieces = useMemo(() => parseFen(fen), [fen]); const forensicGhost = useMemo(() => board3DForensicGhost(mistakeMove, currentPieces), [mistakeMove, currentPieces]);
+  const effectiveThemeId = resolveBoard3DThemeId(themeOverride, boardTheme); const currentPieces = useMemo(() => parseFen(fen), [fen]); const forensicGhost = useMemo(() => board3DForensicGhost(mistakeMove, currentPieces), [mistakeMove, currentPieces]);
   const terrainSquares = useMemo(() => board3DTerrainSquares(hintMove), [hintMove]);
   const techniqueTargetCount = useMemo(() => board3DTechniqueTargetCount(legalTargets), [legalTargets]);
 
