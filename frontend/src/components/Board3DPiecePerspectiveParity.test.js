@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import { resolveBoard3DCameraFov } from './Board3DConfig.js';
-import { buildPiece, disposeObject } from './Board3DPieces.js';
+import { addClassicDesktopPieceHitTarget, buildPiece, disposeObject } from './Board3DPieces.js';
 import { fitBoardCamera } from './Board3DScene.js';
 
 function worldSize(root) {
@@ -117,6 +117,19 @@ describe('Board3D piece scale parity', () => {
 
     disposeObject(queen);
     disposeObject(bishop);
+  });
+
+  it('añade ayuda de selección desktop sólo cuando classic la solicita', () => {
+    const piece = buildPiece('p', 'w', 'studio', false);
+    addClassicDesktopPieceHitTarget(piece, 'e2', false);
+    expect(piece.getObjectByProperty('userData.pieceHitTarget', 'classic-desktop-base-v1')).toBeUndefined();
+
+    addClassicDesktopPieceHitTarget(piece, 'e2', true);
+    const target = piece.children.find((child) => child.userData?.pieceHitTarget === 'classic-desktop-base-v1');
+    expect(target?.userData.square).toBe('e2');
+    expect(target?.material?.colorWrite).toBe(false);
+
+    disposeObject(piece);
   });
 
   it('comprime también la perspectiva móvil sin reutilizar la lente desktop', () => {
