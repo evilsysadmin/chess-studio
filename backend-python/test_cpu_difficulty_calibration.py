@@ -14,7 +14,7 @@ def _loss(best_score: float, score: float, maximizing: bool) -> float:
 def _admitted_moves(snapshot, *, turn: chess.Color, level: int) -> set[str]:
     """Mirror the documented difficulty envelope, not engine internals."""
     band = policy.difficulty_band(level)
-    if band is policy.STRONG_PLAY or not snapshot.candidates:
+    if not snapshot.candidates:
         return set()
     best = snapshot.candidates[0]
     maximizing = turn == chess.WHITE
@@ -35,7 +35,7 @@ def test_real_start_position_has_monotonic_admissible_error_sets():
     assert snapshot.candidate_count == 20
     assert snapshot.depth >= 1
 
-    levels = (0, 10, 20, 30, 40)
+    levels = (0, 20, 45, 60, 90, 100)
     admitted = [_admitted_moves(snapshot, turn=board.turn, level=level) for level in levels]
 
     for easier, harder in zip(admitted, admitted[1:]):
