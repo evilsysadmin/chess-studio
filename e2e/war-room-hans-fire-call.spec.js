@@ -35,7 +35,11 @@ async function openFireGame(page) {
     localStorage.setItem('chess-study-war-room-variant-v1', 'classic');
     localStorage.setItem('chess-study-reduced-motion', '0');
   });
-  await mockApi(page);
+  await mockApi(page, {
+    profileSeed: {
+      'chess-study-reduced-motion': '0',
+    },
+  });
   await login(page);
   await seedGamesBeforeFire(page);
   await buttonWithVisibleText(page, 'Partida rápida').click();
