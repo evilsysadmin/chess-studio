@@ -3,6 +3,7 @@ import { resolveBoard3DCameraFov } from './Board3DConfig.js';
 import { getCameraFramingProfile } from './Board3DSurfaces.js';
 import { warRoomDecorProfile } from './WarRoom3DMobileVisuals.js';
 import { getWarRoomMobileFramingProfile } from './WarRoomMobileFraming.js';
+import { classicWarRoomCameraFramingProfile } from './Board3DCameraProfiles.js';
 
 
 const BOX_GEOMETRY_CACHES = new WeakMap();
@@ -214,7 +215,9 @@ export function fitBoardCamera(camera, width, height, whiteSide, { profile: requ
     : getWarRoomMobileFramingProfile({ aspect, coarsePointer, viewportWidth });
   const profile = requestedProfile === 'classroom'
     ? classRoomCameraFramingProfile({ aspect, coarsePointer, viewportWidth })
-    : mobileProfile || getCameraFramingProfile(aspect);
+    : mobileProfile || (requestedProfile === 'classic'
+      ? classicWarRoomCameraFramingProfile(aspect)
+      : getCameraFramingProfile(aspect));
   camera.fov = resolveBoard3DCameraFov(aspect, { mobile: Boolean(mobileProfile || (requestedProfile === 'classroom' && (coarsePointer || aspect < 1.12))) });
   const verticalFov = THREE.MathUtils.degToRad(camera.fov);
   const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * aspect);
