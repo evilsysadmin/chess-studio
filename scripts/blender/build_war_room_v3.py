@@ -292,6 +292,25 @@ def build_celestial_window(static, palette):
             scale=(1.0, 0.24, 1.0),
         )
 
+    # Broad folded green drapery frames the lunar oculus while keeping the glass clear.
+    for side in (-1, 1):
+        x = side * 3.55
+        curtain = base.cube(
+            f"WR3_OBS_window_drape_{side}", (x, 7.34, 4.22),
+            (0.64, 0.12, 1.92), palette["green_leather"], static, bevel=0.20,
+        )
+        curtain.rotation_euler.y = math.radians(side * 3)
+        for fold in (-0.34, 0.0, 0.34):
+            base.cube(
+                f"WR3_OBS_window_drape_fold_{side}_{fold:+.2f}",
+                (x + fold, 7.19, 4.22), (0.10, 0.055, 1.78),
+                palette["teal"], static, bevel=0.055,
+            )
+        base.cube(
+            f"WR3_OBS_window_drape_tie_{side}", (side * 3.43, 7.08, 3.72),
+            (0.48, 0.055, 0.055), palette["brass"], static, bevel=0.025,
+        )
+
     window_light = base.light(
         "WR3_LIGHT_window", "AREA", (0, 5.80, 4.55), 410.0,
         (0.22, 0.52, 1.0), static, size=5.6,
