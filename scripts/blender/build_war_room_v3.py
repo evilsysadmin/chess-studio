@@ -353,6 +353,8 @@ def build_single_stove(static, palette):
                   palette["iron"], static, vertices=64)
     base.cylinder("WR3_OBS_stove_crown", (x, y, 2.47), 0.96, 0.12,
                   palette["brass_dark"], static, vertices=64)
+    base.torus("WR3_OBS_stove_crown_inlay", (x, y, 2.535), 0.78, 0.024,
+               palette["brass"], static)
     base.cylinder("WR3_OBS_stove_plinth", (x, y, 0.65), 1.12, 0.16,
                   palette["stone"], static, vertices=64)
     base.cylinder("WR3_OBS_stove_hearth_slab", (x, y - 0.10, 0.47), 1.38, 0.10,
