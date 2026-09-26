@@ -1831,6 +1831,21 @@ def add_royal_cat(materials):
     # Plush crimson pillow (a slab read as a wooden tray): domed velvet, gilt piping round the
     # seam, four tassels on the outline and a button tuft.
     sphere("HOME_PROP_cat_cushion", (cx, cy, 0.050), (0.43, 0.35, 0.052), materials["plume_red"], detail=(48, 20))
+    # Klaus has claimed this cushion for years: two shallow, irregular compression seams keep the
+    # velvet from reading as a pristine showroom prop. They stay below the cat silhouette and use
+    # the darker textile already present in the scene, so the wear remains authored and restrained.
+    curve_tube(
+        "HOME_PROP_cat_cushion_settle_front",
+        [(cx - 0.27, cy - 0.255, 0.084), (cx - 0.08, cy - 0.278, 0.079), (cx + 0.14, cy - 0.270, 0.080), (cx + 0.29, cy - 0.235, 0.085)],
+        0.005,
+        materials["velvet_dark"],
+    )
+    curve_tube(
+        "HOME_PROP_cat_cushion_settle_side",
+        [(cx + 0.31, cy - 0.16, 0.081), (cx + 0.335, cy + 0.01, 0.077), (cx + 0.30, cy + 0.18, 0.082)],
+        0.004,
+        materials["velvet_dark"],
+    )
     curve_tube(
         "HOME_PROP_cat_cushion_piping",
         [(cx + 0.428 * math.cos(i * math.tau / 48), cy + 0.348 * math.sin(i * math.tau / 48), 0.050) for i in range(49)],
