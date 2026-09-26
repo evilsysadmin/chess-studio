@@ -78,9 +78,9 @@ export function loadRatingHistory() {
   return Array.isArray(parsed) ? parsed : [];
 }
 
-export function recordRatingHistory(rating) {
+export function recordRatingHistory(rating, explicitGameId = null) {
   const history = loadRatingHistory();
-  const gameId = activeRatingGameId();
+  const gameId = explicitGameId || activeRatingGameId();
   if (gameId) {
     const existing = history.findIndex((point) => point?.gameId === gameId);
     if (existing >= 0) {
