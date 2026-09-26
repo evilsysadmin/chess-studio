@@ -615,7 +615,8 @@ for (const profile of ACTIVE_CAPTURE_PROFILES) {
           await expect.poll(() => page.evaluate(() => window.__warRoomOrientationLocks || []))
             .toContain('landscape');
         }
-        const immersiveCanvas = page.locator('.board3d-main-canvas');
+        const immersiveCanvas = page.locator('.game-layout-immersive .board3d-main-canvas');
+        await expect(immersiveCanvas).toHaveCount(1);
         await expect(immersiveCanvas).toBeVisible();
         // Classic War Room decor is a stronger scene canary than a mounted
         // canvas: if Klaus exists, the room graph itself has rendered.
