@@ -116,6 +116,61 @@ for (const viewport of [
   });
 }
 
+
+test('Home Android 3D · secundarios dejan respirar la sala con touch real', async ({ browser }) => {
+  for (const viewport of [
+    { width: 360, height: 800, label: '360x800' },
+    { width: 390, height: 844, label: '390x844' },
+    { width: 430, height: 932, label: '430x932' },
+  ]) {
+    const context = await browser.newContext({
+      viewport: { width: viewport.width, height: viewport.height },
+      hasTouch: true,
+    });
+    await context.addInitScript(() => {
+      Object.defineProperty(navigator, 'hardwareConcurrency', {
+        configurable: true,
+        get: () => 8,
+      });
+    });
+    const page = await context.newPage();
+    try {
+      const home = await openHome(page);
+      expect(await page.evaluate(() => window.matchMedia('(pointer: coarse)').matches), `${viewport.label}: coarse pointer`).toBe(true);
+      await expect(home.locator('.illustrated-home__castle-3d.is-ready')).toBeVisible({ timeout: 15_000 });
+
+      const box = async (id) => {
+        const value = await home.locator(`.illustrated-home__destination--${id}`).boundingBox();
+        expect(value, `${viewport.label}:${id} box`).not.toBeNull();
+        return value;
+      };
+      const [tournament, train, combat, daily, play] = await Promise.all([
+        box('tournament'), box('train'), box('combat'), box('daily'), box('play'),
+      ]);
+
+      const firstGap = train.x - (tournament.x + tournament.width);
+      const secondGap = daily.x - (combat.x + combat.width);
+      for (const [label, value] of [
+        ['tournament', tournament],
+        ['train', train],
+        ['combat', combat],
+        ['daily', daily],
+      ]) {
+        expect(value.width, `${viewport.label}:${label} secondary width`).toBeLessThanOrEqual(viewport.width * 0.36);
+        expect(value.height, `${viewport.label}:${label} touch height`).toBeGreaterThanOrEqual(44);
+      }
+
+      expect(firstGap, `${viewport.label}: first-row central breathing room`).toBeGreaterThanOrEqual(viewport.width * 0.14);
+      expect(secondGap, `${viewport.label}: second-row central breathing room`).toBeGreaterThanOrEqual(viewport.width * 0.14);
+      expect(play.x, `${viewport.label}: play left breathing room`).toBeGreaterThanOrEqual(viewport.width * 0.18);
+      expect(viewport.width - (play.x + play.width), `${viewport.label}: play right breathing room`).toBeGreaterThanOrEqual(viewport.width * 0.18);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+    } finally {
+      await context.close();
+    }
+  }
+});
+
 test('Home Android desktop-site · el copy visible es el touch target real', async ({ browser }) => {
   const context = await browser.newContext({
     viewport: { width: 980, height: 1740 },

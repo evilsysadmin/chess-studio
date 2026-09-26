@@ -4,16 +4,78 @@
 @media (max-width: 520px) and (pointer: coarse) {
   body .app-shell-home .menu.menu-illustrated
     .illustrated-home__destination:not(.illustrated-home__destination--play) {
-    border-color: rgba(233, 191, 105, .07) !important;
-    background: linear-gradient(180deg, rgba(18, 10, 6, .22), rgba(10, 6, 4, .14)) !important;
+    border-color: rgba(233, 191, 105, .045) !important;
+    background: linear-gradient(180deg, rgba(18, 10, 6, .11), rgba(10, 6, 4, .055)) !important;
     box-shadow: none !important;
-    backdrop-filter: blur(.8px) !important;
+    backdrop-filter: none !important;
+  }
+
+  /* Android portrait used to stack four 40%-wide plaques across the middle of
+     the physical room. Preserve 44px touch targets but give the hall back its
+     negative space: narrower secondary labels, larger central gutters, and a
+     deliberately quiet icon treatment. */
+  body .app-shell-home .menu.menu-illustrated
+    .illustrated-home__destination:is(
+      .illustrated-home__destination--tournament,
+      .illustrated-home__destination--train,
+      .illustrated-home__destination--combat,
+      .illustrated-home__destination--daily
+    ) {
+    width: 34% !important;
+    min-width: 0 !important;
+    padding-inline: 4px !important;
+  }
+
+  body .app-shell-home .menu.menu-illustrated
+    .illustrated-home__destination:is(
+      .illustrated-home__destination--tournament,
+      .illustrated-home__destination--train,
+      .illustrated-home__destination--combat,
+      .illustrated-home__destination--daily
+    ) > svg {
+    width: 12px !important;
+    height: 12px !important;
+    opacity: .66;
+  }
+
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__destination--tournament {
+    left: 7% !important;
+    top: 26.2% !important;
+  }
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__destination--train {
+    left: 59% !important;
+    top: 26.2% !important;
+  }
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__destination--combat {
+    left: 7% !important;
+    top: 33.0% !important;
+  }
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__destination--daily {
+    left: 59% !important;
+    right: auto !important;
+    top: 33.0% !important;
   }
 
   body .app-shell-home .menu.menu-illustrated .illustrated-home__destination--play {
-    border-color: rgba(236, 186, 88, .34) !important;
-    background: linear-gradient(180deg, rgba(64, 33, 14, .82), rgba(24, 12, 7, .76)) !important;
-    box-shadow: 0 10px 26px rgba(0, 0, 0, .24), inset 0 0 0 1px rgba(255, 224, 153, .04) !important;
+    left: 21% !important;
+    top: 42.8% !important;
+    width: 58% !important;
+    border-color: rgba(236, 186, 88, .30) !important;
+    background: linear-gradient(180deg, rgba(64, 33, 14, .74), rgba(24, 12, 7, .66)) !important;
+    box-shadow: 0 9px 24px rgba(0, 0, 0, .20), inset 0 0 0 1px rgba(255, 224, 153, .035) !important;
+  }
+
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__destination--history {
+    left: 5% !important;
+    top: 51.3% !important;
+    width: 23% !important;
+  }
+
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__utilities {
+    top: 50.8% !important;
+    right: 5% !important;
+    width: 23% !important;
+    height: 8.5% !important;
   }
 
   body .app-shell-home .menu.menu-illustrated .illustrated-home__speech {
@@ -65,9 +127,13 @@
   }
 
   body .app-shell-home .menu.menu-illustrated .illustrated-home__matthias {
-    background: rgba(10, 6, 4, .24) !important;
-    border-color: rgba(210, 161, 82, .10) !important;
+    left: 5% !important;
+    top: 58.3% !important;
+    width: 20% !important;
+    background: rgba(10, 6, 4, .16) !important;
+    border-color: rgba(210, 161, 82, .07) !important;
     box-shadow: none !important;
+    opacity: .82 !important;
   }
 }
 
