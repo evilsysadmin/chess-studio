@@ -45,7 +45,6 @@ const INSPECT_PITCH_MIN = -0.08;
 const INSPECT_PITCH_MAX = 0.075;
 const INSPECT_YAW_STEP = 0.025;
 const INSPECT_PITCH_STEP = 0.018;
-
 function clearObjectGroup(group) {
   if (!group) return;
   for (const child of [...group.children]) {
@@ -53,7 +52,6 @@ function clearObjectGroup(group) {
     disposeObject(child);
   }
 }
-
 function makeObjectTranslucent(group, opacity) {
   group?.traverse?.((object) => {
     const materials = Array.isArray(object.material) ? object.material : [object.material];
@@ -65,7 +63,6 @@ function makeObjectTranslucent(group, opacity) {
     });
   });
 }
-
 function Board3DCanvas({
   fen,
   onSquareClick,
@@ -104,11 +101,14 @@ function Board3DCanvas({
   const [boardTheme, setBoardTheme] = useState(() => loadBoardTheme());
   const [rendererLabel, setRendererLabel] = useState('3D');
   const [focusedSquare, setFocusedSquare] = useState(() => orientation === 'black' ? 'e8' : 'e1');
-  const [hoveredSquare, setHoveredSquare] = useState(null); const [inspectMode, setInspectMode] = useState(false);
+  const [hoveredSquare, setHoveredSquare] = useState(null);
+  const [inspectMode, setInspectMode] = useState(false);
   const { selectable: warRoomVariantSelectable, variant: globalWarRoomVariant, status: warRoomVariantStatus, domData: globalWarRoomVariantDomData, setStatus: setWarRoomVariantStatus } = useWarRoomVariant();
   const presentation = resolveBoard3DPresentation({ cameraProfile, variantOverride: warRoomVariantOverride, globalVariant: globalWarRoomVariant, globalDomData: globalWarRoomVariantDomData, variantStatus: warRoomVariantStatus });
   const { classroom: classroomCamera, variant: warRoomVariant, domData: warRoomVariantDomData, playAriaLabel, inspectAriaLabel } = presentation;
-  const effectiveThemeId = resolveBoard3DThemeId(themeOverride, boardTheme); const currentPieces = useMemo(() => parseFen(fen), [fen]); const forensicGhost = useMemo(() => board3DForensicGhost(mistakeMove, currentPieces), [mistakeMove, currentPieces]);
+  const effectiveThemeId = resolveBoard3DThemeId(themeOverride, boardTheme);
+  const currentPieces = useMemo(() => parseFen(fen), [fen]);
+  const forensicGhost = useMemo(() => board3DForensicGhost(mistakeMove, currentPieces), [mistakeMove, currentPieces]);
   const terrainSquares = useMemo(() => board3DTerrainSquares(hintMove), [hintMove]);
   const techniqueTargetCount = useMemo(() => board3DTechniqueTargetCount(legalTargets), [legalTargets]);
 
