@@ -42,13 +42,19 @@ describe('War Room shared scene variants', () => {
     expect(builds).toBe(1);
   });
 
-  it('keeps the classic shell visible through the shared scene controller', () => {
+  it('paints the board before constructing a cold classic shell', () => {
     const shell = { visible: false };
     const scene = { userData: {} };
     const statuses = [];
+    const scheduled = [];
+    let builds = 0;
+    let paints = 0;
     const controller = {
-      current: () => [shell],
-      ensure: () => [shell],
+      current: () => [],
+      ensure: () => {
+        builds += 1;
+        return [shell];
+      },
     };
 
     const release = startWarRoomVariantScene({
@@ -57,12 +63,83 @@ describe('War Room shared scene variants', () => {
       variant: 'classic',
       selectable: true,
       onStatus: (status) => statuses.push(status),
+      onPaint: () => { paints += 1; },
+      scheduleAfterFirstPaint: (task) => {
+        scheduled.push(task);
+        return () => {};
+      },
+    });
+
+    expect(builds).toBe(0);
+    expect(shell.visible).toBe(false);
+    expect(scene.userData.warRoomRenderedVariant).toBe('classic');
+    expect(statuses).toEqual(['idle']);
+    expect(scheduled).toHaveLength(1);
+
+    scheduled[0]();
+    expect(builds).toBe(1);
+    expect(shell.visible).toBe(true);
+    expect(paints).toBe(1);
+    expect(typeof release).toBe('function');
+  });
+
+  it('cancels a cold classic shell build when the scene leaves before first paint work runs', () => {
+    const scene = { userData: {} };
+    let scheduled = null;
+    let cancelled = false;
+    let builds = 0;
+    const controller = {
+      current: () => [],
+      ensure: () => {
+        builds += 1;
+        return [{ visible: true }];
+      },
+    };
+
+    const release = startWarRoomVariantScene({
+      scene,
+      classicShellController: controller,
+      variant: 'classic',
+      selectable: true,
+      scheduleAfterFirstPaint: (task) => {
+        scheduled = task;
+        return () => { cancelled = true; };
+      },
+    });
+
+    release();
+    expect(cancelled).toBe(true);
+    scheduled();
+    expect(builds).toBe(0);
+  });
+
+  it('shows an already-built classic shell immediately without scheduling another build', () => {
+    const shell = { visible: false };
+    const scene = { userData: {} };
+    let scheduled = 0;
+    let paints = 0;
+    const controller = {
+      current: () => [shell],
+      ensure: () => {
+        throw new Error('already-built classic shell must not rebuild');
+      },
+    };
+
+    startWarRoomVariantScene({
+      scene,
+      classicShellController: controller,
+      variant: 'classic',
+      selectable: true,
+      onPaint: () => { paints += 1; },
+      scheduleAfterFirstPaint: () => {
+        scheduled += 1;
+        return () => {};
+      },
     });
 
     expect(shell.visible).toBe(true);
-    expect(scene.userData.warRoomRenderedVariant).toBe('classic');
-    expect(statuses).toEqual(['idle']);
-    expect(typeof release).toBe('function');
+    expect(scheduled).toBe(0);
+    expect(paints).toBe(1);
   });
 
   it('keeps classic eager behavior when the classic variant is actually active', () => {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  clampHansNarrativeDeltaMs,
   fireCallPhase,
   HANS_BOARD_DIALOGUE_GAP_MS,
   HANS_BOARD_PEEK_CHOREOGRAPHY_PHASE,
@@ -163,5 +164,12 @@ describe('War Room Hans fire call contract', () => {
     expect(initialNearTop.top).toBe(16);
     expect(coarseNearTop.top).toBe(22);
     expect(coarseInitialNearTop.top).toBe(20);
+  });
+
+  it('does not let a long render frame skip visible Hans dialogue', () => {
+    expect(clampHansNarrativeDeltaMs(16)).toBe(16);
+    expect(clampHansNarrativeDeltaMs(2500)).toBe(250);
+    expect(clampHansNarrativeDeltaMs(-1)).toBe(0);
+    expect(clampHansNarrativeDeltaMs(Number.NaN)).toBe(0);
   });
 });

@@ -4,6 +4,13 @@ export const MATTHIAS_HANS_WORKING_LINE = 'Hans, bitte. Estamos trabajando.';
 export const HANS_WORKING_REPLY_LINE = 'Claro, señor.';
 export const HANS_LEAVING_GRUMBLE_LINE = 'Grrbl… tiramo… grblx.';
 export const MATTHIAS_FIRE_CALL_MS = 2500;
+export const HANS_NARRATIVE_MAX_FRAME_DELTA_MS = 250;
+
+export function clampHansNarrativeDeltaMs(deltaMs) {
+  const value = Number(deltaMs);
+  if (!Number.isFinite(value) || value <= 0) return 0;
+  return Math.min(value, HANS_NARRATIVE_MAX_FRAME_DELTA_MS);
+}
 export const HANS_FIRE_REPLY_MS = 1600;
 export const HANS_BOARD_PEEK_MS = 2800;
 export const HANS_BOARD_DIALOGUE_GAP_MS = 3000;
