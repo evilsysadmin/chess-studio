@@ -82,7 +82,9 @@ test('War Room · canario visual de Hans físicamente en escena', async () => {
     await seedGamesBeforeFire(page);
 
     await buttonWithVisibleText(page, 'Partida rápida').click();
-    await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+    const quickDialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
+    await expect(quickDialog).toBeVisible();
+    await quickDialog.getByRole('button', { name: 'Empezar partida', exact: true }).click();
     const warRoom = page.locator('.board-live-row.is-3d-warroom');
     const canvas = page.locator('.board3d-main-canvas');
     const fireOverlay = page.getByTestId('warroom-hans-fire-call-overlay');
