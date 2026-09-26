@@ -158,16 +158,7 @@ const MEDITERRANEAN_IDS = new Set([
   'beirutNightTaxi','tangierRedTable','istanbulBackgammon','andalusianCoast','granadaPatio','cadizLanterns','terraceFireflies','cafeFirelight','malagaLastTram','bishopBlues',
 ]);
 const ELECTRONIC_IDS = new Set(['clockwork','electricDesert','storm','orbitalMonastery','metro317','glassAsh','analogBunker','nightFreight','machineRoom']);
-export const RETIRED_ECLECTIC_THEME_IDS = Object.freeze([
-  'postRockMidnight','rookGarage','desertDriveRock','pawnMarshal','rookAfterHours',
-]);
-
-export const CURATED_HIDDEN_THEME_IDS = new Set([
-  'orbitalMonastery','metro317','glassAsh','machineRoom','abyssalArchive','redVault',
-  // La familia Ecléctica queda fuera del dial: las sesiones antiguas que
-  // conserven uno de estos ids caen al tema por defecto en sound.js.
-  ...RETIRED_ECLECTIC_THEME_IDS,
-]);
+export const RETIRED_ECLECTIC_THEME_IDS = Object.freeze(['postRockMidnight','rookGarage','desertDriveRock','pawnMarshal','rookAfterHours']); export const CURATED_HIDDEN_THEME_IDS = new Set(['orbitalMonastery','metro317','glassAsh','machineRoom','abyssalArchive','redVault',...RETIRED_ECLECTIC_THEME_IDS]);
 const CLASSICAL_IDS = new Set(['gambit','cathedral','duel','lateEndgame','rigaRain','kingTango','zugzwangWaltz','winterLibrary','queenRequiem','endgameAdagio','knightFugue','nocturnalQuartet']);
 function ambientGenre(theme) {
   if (theme.genre) return theme.genre;

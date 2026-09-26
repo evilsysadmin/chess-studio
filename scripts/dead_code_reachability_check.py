@@ -35,27 +35,7 @@ DYNAMIC_IMPORT_RE = re.compile(r"\bimport\s*\(\s*['\"]([^'\"]+)['\"]\s*\)")
 REQUIRE_RE = re.compile(r"\brequire\s*\(\s*['\"]([^'\"]+)['\"]\s*\)")
 UVICORN_ENTRY_RE = re.compile(r"\buvicorn\s+([A-Za-z_][A-Za-z0-9_]*):[A-Za-z_][A-Za-z0-9_]*")
 FRONTEND_EXCLUDES = {"test-setup.js"}
-FRONTEND_DEAD_EXPORT_BASELINE = {
-    "frontend/src/ambientIdentityContrasts.js::IDENTITY_CONTRAST_IDS",
-    "frontend/src/ambientRadioMatthiasRecompositions.js::RADIO_MATTHIAS_MELODIC_REWRITE_IDS",
-    "frontend/src/chesscomEnvironmentArtV4.js::CHESSCOM_ENVIRONMENT_ART_V4",
-    "frontend/src/chesscomMaterialArtV7.js::CHESSCOM_MATERIAL_ART_V7",
-    "frontend/src/chesscomOverlayArtV6.js::CHESSCOM_OVERLAY_ART_V6",
-    "frontend/src/chronicles/chroniclesMapCatalog.js::chroniclesMapEnemyById",
-    "frontend/src/chronicles/chroniclesMapCatalog.js::chroniclesMapInteractable",
-    "frontend/src/chroniclesOfMatthias.js::chroniclesEnemyAlive",
-    "frontend/src/chroniclesOfMatthias.js::chroniclesFrontCell",
-    "frontend/src/chroniclesOfMatthiasProgression.js::resetChroniclesCharacterBuild",
-    "frontend/src/combatEconomyBalance.js::COMBAT_CAMPAIGN_ECONOMY",
-    "frontend/src/components/WarRoomCampaignArt.js::WAR_ROOM_CAMPAIGN_ART_KEYS",
-    "frontend/src/components/WarRoomHansActor.js::acquireWarRoomHansRoutine",
-    "frontend/src/components/WarRoomHansActor.js::releaseWarRoomHansRoutine",
-    "frontend/src/components/WarRoomHansActor.js::warRoomHansRoutineAvailable",
-    "frontend/src/pawnTrailblazerSprites.js::trailSprite",
-    "frontend/src/puzzleStateMachine.js::assertPuzzleInvariant",
-    "frontend/src/puzzleTacticalQuality.js::bestShallowTacticalScore",
-    "frontend/src/puzzleTacticalQuality.js::tacticalScoreForFirstMove",
-}
+FRONTEND_DEAD_EXPORT_BASELINE: set[str] = set()
 
 
 def strip_resource_query(spec: str) -> str:
