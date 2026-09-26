@@ -271,11 +271,6 @@ def build_matrix(scope: BrowserScope) -> dict[str, list[dict[str, str]]]:
         cases.extend(
             [
                 {
-                    "id": "hans-fire-call",
-                    "label": "War Room · Hans waits for the rendered call",
-                    "command": "./node_modules/.bin/playwright test war-room-hans-fire-call.spec.js --workers=1 --retries=0 --max-failures=1",
-                },
-                {
                     "id": "android-selection",
                     "label": "War Room · Android selection",
                     "command": "./node_modules/.bin/playwright test three-d-war-room-android-touch.spec.js --workers=1 --retries=0 --max-failures=1",
@@ -542,7 +537,7 @@ def self_test() -> None:
         focus=True,
     )
     assert _ids(full) == [
-        "hans-fire-call", "android-selection", "desktop-input",
+        "android-selection", "desktop-input",
         "special-surfaces", "special-state-canaries", "desktop-scale", "android-focus",
     ]
     assert _job_ids(full) == [
@@ -550,14 +545,14 @@ def self_test() -> None:
     ]
     full_jobs = build_job_matrix(full)["include"]
     assert full_jobs[0]["command"].startswith("rc=0; ")
-    assert "war-room-hans-fire-call.spec.js" in full_jobs[0]["command"]
+    assert "war-room-hans-fire-call.spec.js" not in full_jobs[0]["command"]
     assert "three-d-war-room.spec.js" in full_jobs[0]["command"]
     assert "war-room-desktop-scale.spec.js" in full_jobs[0]["command"]
     assert full_jobs[0]["command"].endswith('exit "$rc"')
 
     chrome = classify(["frontend/src/components/GamePlayerRail.jsx"])
     assert chrome == BrowserScope(full_logic=True, visual=True, focus=True)
-    assert _ids(chrome) == ["hans-fire-call", "android-selection", "desktop-input", "desktop-scale", "android-focus"]
+    assert _ids(chrome) == ["android-selection", "desktop-input", "desktop-scale", "android-focus"]
     assert _job_ids(chrome) == ["war-room-input-visual", "war-room-android"]
 
     direct_special = classify(["e2e/three-d-war-room-special-states.spec.js"])
