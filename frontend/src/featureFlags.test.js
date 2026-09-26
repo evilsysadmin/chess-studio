@@ -3,11 +3,10 @@ import { DEFAULT_FEATURE_FLAGS, DEFAULT_MATCHMAKING_TARGET_LEAD_ELO, normalizeFe
 
 describe('public feature flags', () => {
   it('mantiene defaults seguros si el backend no responde con config válida', () => {
-    expect(normalizeFeatureFlags(null)).toEqual({ ...DEFAULT_FEATURE_FLAGS, matchmakingTargetLeadElo: DEFAULT_MATCHMAKING_TARGET_LEAD_ELO   it('acepta un lead Elo público acotado', () => {
-    expect(normalizeFeatureFlags({ features: {}, matchmaking: { targetLeadElo: 75 } }).matchmakingTargetLeadElo).toBe(75);
-    expect(normalizeFeatureFlags({ features: {}, matchmaking: { targetLeadElo: 999 } }).matchmakingTargetLeadElo).toBe(150);
-  });
-});
+    expect(normalizeFeatureFlags(null)).toEqual({
+      ...DEFAULT_FEATURE_FLAGS,
+      matchmakingTargetLeadElo: DEFAULT_MATCHMAKING_TARGET_LEAD_ELO,
+    });
   });
 
   it('sólo acepta booleanos de flags conocidos', () => {
@@ -16,5 +15,10 @@ describe('public feature flags', () => {
       spectator: false,
       matchmakingTargetLeadElo: DEFAULT_MATCHMAKING_TARGET_LEAD_ELO,
     });
+  });
+
+  it('acepta un lead Elo público acotado', () => {
+    expect(normalizeFeatureFlags({ features: {}, matchmaking: { targetLeadElo: 75 } }).matchmakingTargetLeadElo).toBe(75);
+    expect(normalizeFeatureFlags({ features: {}, matchmaking: { targetLeadElo: 999 } }).matchmakingTargetLeadElo).toBe(150);
   });
 });
