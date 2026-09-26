@@ -43,6 +43,48 @@ def clear_inherited_room(static):
     if removed < 180:
         raise RuntimeError(f"War Room v3 inherited-room teardown suspiciously small: {removed}")
 
+V3 keeps only the live-board anchor and canonical camera from the v2 generator.
+Its authored room is rebuilt from an empty static collection: a curved tower
+apse, circular command table, celestial window, single cast-iron stove,
+brass telescope, reading nook, chess-treatise shelf and grounded tower entry
+replace v2's rectangular hall.
+"""
+from __future__ import annotations
+
+import math
+import sys
+from pathlib import Path
+
+import bpy
+from mathutils import Vector
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+import build_war_room_premium as base  # noqa: E402
+
+
+CONTRACT = "war-room-golden-observatory-v3"
+V3_WEATHER_MATERIALS = frozenset({
+    "WR3_MAT_warm_travertine",
+    "WR3_MAT_pale_travertine",
+    "WR3_MAT_radial_slate",
+    "WR3_MAT_green_marble",
+})
+
+
+def clear_inherited_room(static):
+    """Keep the proven camera; v3 owns every visible static mesh and light."""
+    removed = 0
+    for obj in list(static.objects):
+        if obj.name == "WR_CAMERA_hero":
+            continue
+        bpy.data.objects.remove(obj, do_unlink=True)
+        removed += 1
+    if removed < 180:
+        raise RuntimeError(f"War Room v3 inherited-room teardown suspiciously small: {removed}")
+
 
 def build_v3_palette():
     return {
@@ -409,10 +451,6 @@ def build_observatory_telescope(static, palette):
                      axis_start + axis * 0.02, 0.115, palette["brass_dark"], static, vertices=40)
     cylinder_between("WR3_OBS_telescope_focus_ring", axis_start - axis * 0.05,
                      axis_start + axis * 0.08, 0.285, palette["copper"], static, vertices=48)
-    cylinder_between("WR3_OBS_telescope_dew_shield", axis_end - axis * 0.02,
-                     axis_end + axis * 0.28, 0.345, palette["brass_dark"], static, vertices=56)
-    base.torus("WR3_OBS_telescope_mount_trim", hub + Vector((0, 0, 0.02)),
-               0.47, 0.035, palette["brass"], static)
 
     yoke_left = hub + Vector((-0.44, 0.0, 0.35))
     yoke_right = hub + Vector((0.44, 0.0, 0.35))
@@ -476,6 +514,17 @@ def build_lounge_corner(static, palette):
         "WR3_OBS_chair_cushion", (x, y - 0.07, 0.82), (0.57, 0.47, 0.11),
         palette["green_leather"], static, bevel=0.20,
     )
+    # A restrained brass foot rail and buttoning make the lounge read as
+    # bespoke observatory furniture at the game camera distance.
+    base.cube(
+        "WR3_OBS_chair_front_rail", (x, y - 0.49, 0.43), (0.58, 0.055, 0.055),
+        palette["brass_dark"], static, bevel=0.025,
+    )
+    for button_x in (-0.28, 0.0, 0.28):
+        base.sphere(
+            f"WR3_OBS_chair_back_button_{button_x:+.2f}", (x + button_x, y + 0.165, 1.40),
+            0.035, palette["brass_dark"], static,
+        )
     pillow = base.cube(
         "WR3_OBS_chair_pillow", (x, y + 0.17, 1.30), (0.37, 0.08, 0.34),
         palette["green_leather"], static, bevel=0.14,
