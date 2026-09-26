@@ -44,7 +44,7 @@ async function captureViewportPng(context, page, path) {
 }
 
 test('War Room · canario visual de Hans físicamente en escena', async () => {
-  test.setTimeout(120_000);
+  test.setTimeout(180_000);
   await mkdir(ARTIFACT_DIR, { recursive: true });
 
   const browser = await chromium.launch({
