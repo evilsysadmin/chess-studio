@@ -41,6 +41,10 @@ for (const viewport of [
     expect(startBox.y).toBeLessThan(settingsBox.y);
     expect(startBox.y + startBox.height).toBeLessThanOrEqual(viewport.height + 1);
     expect(startBox.height).toBeGreaterThanOrEqual(44);
+    expect(manualBox.height).toBeGreaterThanOrEqual(44);
+    expect(settingsBox.height).toBeGreaterThanOrEqual(44);
+    expect(startBox.x).toBeGreaterThanOrEqual(0);
+    expect(startBox.x + startBox.width).toBeLessThanOrEqual(viewport.width + 1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1)).toBe(true);
   });
 }
