@@ -833,6 +833,22 @@ export function homeBlenderCameraFovForAspect(aspect = 16 / 9) {
   );
 }
 
+export function homeBlenderCameraPoseForAspect(aspect = 16 / 9) {
+  const safeAspect = Number.isFinite(Number(aspect)) && Number(aspect) > 0
+    ? Number(aspect)
+    : 16 / 9;
+  if (safeAspect >= 1) return { position: CAMERA_BASE, target: CAMERA_TARGET };
+
+  // Phone portrait needs a touch more physical breathing room around the board,
+  // not another large lens change. Pull back only 0.45m while keeping the same
+  // authored sightline so side furnishings separate without shrinking desktop.
+  const portraitBlend = Math.min(1, Math.max(0, (1 - safeAspect) / 0.20));
+  return {
+    position: { ...CAMERA_BASE, z: CAMERA_BASE.z + 0.45 * portraitBlend },
+    target: CAMERA_TARGET,
+  };
+}
+
 export function homeBlenderRuntimePolicy({
   viewportWidth = 0,
   devicePixelRatio = 1,
@@ -1557,8 +1573,9 @@ export default function HomeBlenderScene3D({
       canvas.dataset.homeBlenderCamera = camera.aspect < 1 ? 'portrait-wide' : 'canonical';
       camera.updateProjectionMatrix();
       if (onAnchorLayout) {
-        camera.position.set(CAMERA_BASE.x, CAMERA_BASE.y, CAMERA_BASE.z);
-        camera.lookAt(CAMERA_TARGET.x, CAMERA_TARGET.y, CAMERA_TARGET.z);
+        const pose = homeBlenderCameraPoseForAspect(camera.aspect);
+        camera.position.set(pose.position.x, pose.position.y, pose.position.z);
+        camera.lookAt(pose.target.x, pose.target.y, pose.target.z);
         onAnchorLayout(homeBlenderProjectAnchors(camera));
       }
       requestRender();
