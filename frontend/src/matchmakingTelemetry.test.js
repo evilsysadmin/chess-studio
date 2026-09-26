@@ -5,6 +5,7 @@ import {
   matchmakingTelemetrySample,
   matchmakingTelemetrySummary,
   recordMatchmakingTelemetry,
+  recordCompletedAdaptiveMatchmakingTelemetry,
 } from './matchmakingTelemetry.js';
 
 beforeEach(() => localStorage.clear());
@@ -65,4 +66,17 @@ describe('matchmaking profile telemetry', () => {
       opponentRating: null,
     });
   });
+});
+
+
+it('maps a completed adaptive game without making App own telemetry semantics', () => {
+  const sample = recordCompletedAdaptiveMatchmakingTelemetry({
+    gameContext: { adaptiveDifficulty: true, rematch: true },
+    finishedGame: { id: 'g-map', difficulty: 60 },
+    outcome: 'win',
+    endMeta: { closeGame: true },
+    ratingBefore: 1100,
+    opponentRating: 1150,
+  });
+  expect(sample).toMatchObject({ gameId: 'g-map', outcome: 'win', closeGame: true, rematch: true, playerRating: 1100, opponentRating: 1150 });
 });
