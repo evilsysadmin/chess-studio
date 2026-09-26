@@ -40,6 +40,8 @@ test('Android · War Room conserva selección y jugabilidad tras rotación y bac
   await expect(warRoom).toBeVisible({ timeout: 30_000 });
   await expect(canvas).toHaveCount(1);
   await expect(landscapeGate).toBeVisible();
+  await expect(landscapeGate).not.toHaveAttribute('aria-modal', 'true');
+  await expect(page.getByRole('button', { name: 'Focus', exact: true })).toBeVisible();
 
   // Mantener una selección real durante todo el soak obliga a resize/orientation
   // a conservar el estado común de partida y no sólo a evitar un crash visual.
