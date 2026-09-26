@@ -54,7 +54,7 @@ function activeRatingGameId() {
 }
 
 function emptyState() {
-  return { rating: DEFAULT_RATING, games: 0, processedGameIds: [] };
+  return { rating: DEFAULT_RATING, games: 0, processedGameIds: [], qualityAdjustedGameIds: [] };
 }
 
 export function loadRating() {
@@ -64,6 +64,7 @@ export function loadRating() {
     rating: parsed.rating ?? DEFAULT_RATING,
     games: parsed.games || 0,
     processedGameIds: processedGameIds(parsed.processedGameIds),
+    qualityAdjustedGameIds: processedGameIds(parsed.qualityAdjustedGameIds),
   };
 }
 
@@ -77,10 +78,18 @@ export function loadRatingHistory() {
   return Array.isArray(parsed) ? parsed : [];
 }
 
-export function recordRatingHistory(rating) {
+export function recordRatingHistory(rating, explicitGameId = null) {
   const history = loadRatingHistory();
-  const gameId = activeRatingGameId();
-  if (gameId && history.some((point) => point?.gameId === gameId)) return history;
+  const gameId = explicitGameId || activeRatingGameId();
+  if (gameId) {
+    const existing = history.findIndex((point) => point?.gameId === gameId);
+    if (existing >= 0) {
+      history[existing] = { ...history[existing], rating };
+      const trimmed = history.slice(-MAX_HISTORY_POINTS);
+      setProfileStorageItem(RATING_HISTORY_KEY, JSON.stringify(trimmed));
+      return trimmed;
+    }
+  }
   history.push({ date: new Date().toISOString(), rating, ...(gameId ? { gameId } : {}) });
   const trimmed = history.slice(-MAX_HISTORY_POINTS);
   setProfileStorageItem(RATING_HISTORY_KEY, JSON.stringify(trimmed));
@@ -206,8 +215,10 @@ export function ratingChangeDetails(state, cpuDifficulty, score) {
   const unclamped = Math.round(baseRating + k * (score - expected));
   const nextRating = Math.max(400, unclamped);
   const knownGameIds = processedGameIds([...(persisted?.processedGameIds || []), ...(state?.processedGameIds || [])]);
+  const knownQualityIds = processedGameIds([...(persisted?.qualityAdjustedGameIds || []), ...(state?.qualityAdjustedGameIds || [])]);
   const next = { rating: nextRating, games: games + 1 };
   if (gameId || knownGameIds.length) next.processedGameIds = processedGameIds(gameId ? [gameId, ...knownGameIds] : knownGameIds);
+  if (knownQualityIds.length) next.qualityAdjustedGameIds = knownQualityIds;
   return {
     next,
     delta: nextRating - baseRating,
@@ -220,6 +231,46 @@ export function ratingChangeDetails(state, cpuDifficulty, score) {
 
 export function updateRating(state, cpuDifficulty, score) {
   return ratingChangeDetails(state, cpuDifficulty, score).next;
+}
+
+export function ratingQualityAdjustment(evidence, outcome) {
+  if (!evidence || evidence.sufficientSample !== true) return 0;
+  const averageLoss = Number(evidence.averageLoss);
+  if (!Number.isFinite(averageLoss)) return 0;
+  const blunders = Math.max(0, Number(evidence.blunders || 0));
+
+  let raw = 0;
+  if (evidence.clean === true && averageLoss <= 25) raw = 4;
+  else if (blunders === 0 && averageLoss <= 40) raw = 3;
+  else if (blunders === 0 && averageLoss <= 60) raw = 1;
+  else if (blunders >= 3 || averageLoss >= 150) raw = -4;
+  else if (blunders >= 2 || averageLoss >= 110) raw = -3;
+  else if (blunders >= 1 || averageLoss >= 75) raw = -2;
+
+  // La calidad matiza el resultado; no lo contradice. Una victoria fea
+  // puede perder el bonus de calidad, pero nunca convertirse en castigo de
+  // rating. Del mismo modo, una derrota limpia no se transforma en premio.
+  if (outcome === 'win') return Math.max(0, Math.min(4, raw));
+  if (outcome === 'draw') return Math.max(-2, Math.min(2, raw));
+  if (outcome === 'loss') return Math.max(-4, Math.min(0, raw));
+  return 0;
+}
+
+export function ratingQualityChangeDetails(state, gameId, evidence, outcome) {
+  const normalizedId = gameId ? String(gameId) : null;
+  const known = processedGameIds(state?.qualityAdjustedGameIds);
+  const baseRating = Number(state?.rating ?? DEFAULT_RATING);
+  if (!normalizedId || known.includes(normalizedId)) {
+    return { next: state || emptyState(), delta: 0, duplicate: Boolean(normalizedId && known.includes(normalizedId)) };
+  }
+
+  const delta = ratingQualityAdjustment(evidence, outcome);
+  const next = {
+    ...(state || emptyState()),
+    rating: Math.max(400, baseRating + delta),
+    qualityAdjustedGameIds: processedGameIds([normalizedId, ...known]),
+  };
+  return { next, delta: next.rating - baseRating, duplicate: false };
 }
 
 export function ratingLabel(rating) {
