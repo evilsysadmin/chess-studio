@@ -23,7 +23,12 @@ async function expectAuthoritativeOpening2D(page) {
 }
 
 async function switchTo3D(page) {
-  await page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true }).click();
+  const utilityButton = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
+  await expect(utilityButton).toBeVisible({ timeout: 30_000 });
+  await utilityButton.click();
+  const appearance = page.getByRole('menuitem', { name: 'Apariencia', exact: true });
+  await expect(appearance).toBeVisible();
+  await appearance.click();
   const dialog = page.getByRole('dialog', { name: 'Ajustes' });
   await expect(dialog).toBeVisible();
   await dialog.getByRole('radio', { name: /3D$/ }).click();
