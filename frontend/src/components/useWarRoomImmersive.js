@@ -88,8 +88,10 @@ export default function useWarRoomImmersive({ enabled, focusActive = false } = {
   const [immersive, setImmersive] = useState(() => Boolean(enabled && !focusActive));
   const [railCollapsed, setRailCollapsed] = useState(false);
   const autoEnteredRef = useRef(Boolean(enabled && !focusActive));
+  const userExitedRef = useRef(false);
 
   const exitImmersive = useCallback(() => {
+    userExitedRef.current = true;
     setImmersive(false);
     setRailCollapsed(false);
     void exitWarRoomBrowserFullscreen();
@@ -123,10 +125,13 @@ export default function useWarRoomImmersive({ enabled, focusActive = false } = {
   useEffect(() => {
     if (shouldExitWarRoomImmersive({ enabled, focusActive })) {
       autoEnteredRef.current = false;
-      if (immersive) exitImmersive();
+      if (immersive) {
+        setImmersive(false);
+        setRailCollapsed(false);
+      }
       return;
     }
-    if (!immersive && !autoEnteredRef.current) {
+    if (!immersive && !autoEnteredRef.current && !userExitedRef.current) {
       autoEnteredRef.current = true;
       setImmersive(true);
     }
