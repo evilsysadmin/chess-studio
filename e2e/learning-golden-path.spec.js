@@ -156,6 +156,21 @@ test('Home · el avatar residente de Matthias abre Así juegas · y cierra el lo
   await expect(page.getByText('¡Resuelto!', { exact: true })).toBeVisible();
   const returnToPlay = page.getByRole('button', { name: 'Volver a jugar', exact: true });
   await expectTouchTarget(returnToPlay);
+  for (const viewport of [
+    { width: 360, height: 800 },
+    { width: 390, height: 844 },
+    { width: 430, height: 932 },
+  ]) {
+    await page.setViewportSize(viewport);
+    const returnBox = await returnToPlay.boundingBox();
+    expect(returnBox).not.toBeNull();
+    expect(returnBox.x).toBeGreaterThanOrEqual(-1);
+    expect(returnBox.x + returnBox.width).toBeLessThanOrEqual(viewport.width + 1);
+    expect(returnBox.y).toBeGreaterThanOrEqual(-1);
+    expect(returnBox.y + returnBox.height).toBeLessThanOrEqual(viewport.height + 1);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
 
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('chess-study-personal-puzzles') || '[]'));
   const trained = saved.find((item) => item.id === 'golden-fork-pending');
