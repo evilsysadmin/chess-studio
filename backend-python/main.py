@@ -722,12 +722,6 @@ async def register(body: RegisterRequest, request: Request):
 @limiter.limit("10/minute")
 async def login(body: LoginRequest, request: Request):
     login_identity = body.username.strip().lower()
-    user = await (
-        ustore.get_user_by_email(login_identity)
-        if "@" in login_identity
-        else ustore.get_user(login_identity)
-    )
-    username = str((user or {}).get("username") or login_identity).strip().lower()
     synthetic_source = getattr(request.state, "synthetic_source", None)
     synthetic_identity = getattr(request.state, "synthetic_identity", None)
     trusted_synthetic = (
@@ -748,6 +742,17 @@ async def login(body: LoginRequest, request: Request):
                 "Demasiados intentos de acceso. Reintenta más tarde.",
                 headers={"Retry-After": str(retry_after)},
             )
+
+    user = await (
+        ustore.get_user_by_email(login_identity)
+        if "@" in login_identity
+        else ustore.get_user(login_identity)
+    )
+    username = str((user or {}).get("username") or login_identity).strip().lower()
+    trusted_synthetic = (
+        synthetic_source in _STAGING_SYNTHETIC_SOURCES
+        and synthetic_identity == username
+    )
 
     password_ok = bool(user and verify_password(body.password, user["password_hash"]))
     if not password_ok:
