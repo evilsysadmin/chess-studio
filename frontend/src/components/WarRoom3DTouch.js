@@ -9,6 +9,15 @@ export const COARSE_PIECE_HIT_TARGET = Object.freeze({
   centerY: 0.22,
 });
 
+export const CLASSIC_DESKTOP_PIECE_HIT_TARGET = Object.freeze({
+  // Desktop already has precise pointer input, so this helper only closes the
+  // narrow dead ring around a piece base. Keep it smaller than the touch helper
+  // to avoid stealing clicks from the next projected rank.
+  radius: 0.29,
+  height: 0.24,
+  centerY: 0.2,
+});
+
 export function resolveBoardTap(start, end, { coarsePointer = false } = {}) {
   if (!start || !end || start.id !== end.id) return null;
   const tolerance = coarsePointer ? 18 : 8;
