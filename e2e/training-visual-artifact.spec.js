@@ -198,7 +198,16 @@ scopedTest('puzzles', 'Entrenar · Puzzles', async ({ page }) => {
   const puzzles = page.locator('.puzzle-screen');
   await expect(puzzles).toBeVisible();
   await expect(puzzles.locator('.puzzle-training-workspace')).toBeVisible();
-  await captureAt(page, 'puzzles', { width: 390, height: 844, variant: 'mobile' });
+  for (const viewport of [
+    { width: 360, height: 800 },
+    { width: 390, height: 844 },
+    { width: 430, height: 932 },
+  ]) {
+    await captureAt(page, 'puzzles', {
+      ...viewport,
+      variant: `mobile-${viewport.width}`,
+    });
+  }
 });
 
 scopedTest('tournament', 'Entrenar · Torneo', async ({ page }) => {
