@@ -79,30 +79,37 @@ export function WarRoomUtilityMenu({
   railCollapsed = false,
   onToggleImmersive,
   onToggleRail,
+  variantOnly = false,
 }) {
   const {
     selectable: warRoomVariantSelectable,
     variant: warRoomVariant,
     setVariant: setWarRoomVariant,
   } = useWarRoomVariant();
-  const hasHint = !zenMode && controls.hintMode !== 'off' && typeof controls.onHint === 'function';
-  const hasUndo = !zenMode && controls.hintMode === 'free' && typeof controls.onUndo === 'function';
-  const hasAppearance = showAppearance && (compactViewport || typeof board?.onCustomize === 'function');
-  const hasNonDangerAction = (compactViewport && showFocus)
+  const hasHint = !variantOnly && !zenMode && controls.hintMode !== 'off' && typeof controls.onHint === 'function';
+  const hasUndo = !variantOnly && !zenMode && controls.hintMode === 'free' && typeof controls.onUndo === 'function';
+  const hasAppearance = !variantOnly && showAppearance && (compactViewport || typeof board?.onCustomize === 'function');
+  const hasNonDangerAction = (!variantOnly && compactViewport && showFocus)
     || hasHint
     || hasUndo
-    || (compactViewport && showRendererToggle)
+    || (!variantOnly && compactViewport && showRendererToggle)
     || hasAppearance
-    || typeof onToggleImmersive === 'function'
-    || (!compactViewport && immersive && typeof onToggleRail === 'function')
+    || (!variantOnly && typeof onToggleImmersive === 'function')
+    || (!variantOnly && !compactViewport && immersive && typeof onToggleRail === 'function')
     || warRoomVariantSelectable
-    || (showZen && typeof controls.onToggleZen === 'function');
+    || (!variantOnly && showZen && typeof controls.onToggleZen === 'function');
+
+  if (variantOnly && !warRoomVariantSelectable) return null;
 
   return (
     <details className="game-3d-utility-menu">
-      <summary role="button" aria-label="Más acciones de partida" title="Más acciones de partida">⋯</summary>
-      <div className="game-3d-utility-popover" role="menu" aria-label="Acciones de partida">
-        {compactViewport && showFocus && (
+      <summary
+        role="button"
+        aria-label={variantOnly ? 'Cambiar War Room' : 'Más acciones de partida'}
+        title={variantOnly ? 'Cambiar War Room' : 'Más acciones de partida'}
+      >{variantOnly ? '♜' : '⋯'}</summary>
+      <div className="game-3d-utility-popover" role="menu" aria-label={variantOnly ? 'Elegir War Room' : 'Acciones de partida'}>
+        {!variantOnly && compactViewport && showFocus && (
           <button
             type="button"
             role="menuitem"
@@ -137,7 +144,7 @@ export function WarRoomUtilityMenu({
             Deshacer jugada
           </button>
         )}
-        {compactViewport && showRendererToggle && (
+        {!variantOnly && compactViewport && showRendererToggle && (
           <button
             type="button"
             role="menuitem"
@@ -158,7 +165,7 @@ export function WarRoomUtilityMenu({
             Apariencia
           </button>
         )}
-        {typeof onToggleImmersive === 'function' && (
+        {!variantOnly && typeof onToggleImmersive === 'function' && (
           <button
             type="button"
             role="menuitem"
@@ -171,7 +178,7 @@ export function WarRoomUtilityMenu({
             {immersive ? 'Salir de inmersión' : 'Modo inmersión'}
           </button>
         )}
-        {!compactViewport && immersive && typeof onToggleRail === 'function' && (
+        {!variantOnly && !compactViewport && immersive && typeof onToggleRail === 'function' && (
           <button
             type="button"
             role="menuitem"
@@ -206,7 +213,7 @@ export function WarRoomUtilityMenu({
             ))}
           </>
         )}
-        {showZen && typeof controls.onToggleZen === 'function' && (
+        {!variantOnly && showZen && typeof controls.onToggleZen === 'function' && (
           <button
             type="button"
             role="menuitem"
@@ -220,7 +227,7 @@ export function WarRoomUtilityMenu({
             {zenMode ? 'Salir de Zen' : 'Modo Zen'}
           </button>
         )}
-        {typeof controls.onAbandon === 'function' && (
+        {!variantOnly && typeof controls.onAbandon === 'function' && (
           <>
             {hasNonDangerAction && <span className="game-3d-utility-separator" role="separator" />}
             <button
@@ -251,11 +258,12 @@ function CompactWarRoomPill({
   railCollapsed,
   onToggleImmersive,
   onToggleRail,
+  mobileLandscape = false,
 }) {
   return (
     <aside className="game-3d-command-column" aria-label="Puesto táctico de Matthias">
       <div
-        className={`game-3d-turn-pill is-${signal.tone}`}
+        className={`game-3d-turn-pill is-${signal.tone}${mobileLandscape ? ' is-mobile-landscape' : ''}`}
         data-matthias-war-room-presence="king-piece"
       >
         {CPU_IDENTITY.avatar && <img className="game-3d-turn-pill-avatar" src={CPU_IDENTITY.avatar} alt="" aria-hidden="true" />}
@@ -274,15 +282,17 @@ function CompactWarRoomPill({
         </strong>
 
         <span className="game-3d-compact-actions" aria-label="Acciones rápidas de partida">
-          <button
-            type="button"
-            className="game-3d-compact-action is-focus"
-            aria-label="Focus"
-            title="Focus"
-            onClick={(event) => triggerMountedGameAction(event, '.game-mobile-focus-toggle')}
-          >
-            <span aria-hidden="true">◎</span>
-          </button>
+          {!mobileLandscape && (
+            <button
+              type="button"
+              className="game-3d-compact-action is-focus"
+              aria-label="Focus"
+              title="Focus"
+              onClick={(event) => triggerMountedGameAction(event, '.game-mobile-focus-toggle')}
+            >
+              <span aria-hidden="true">◎</span>
+            </button>
+          )}
           {typeof controls.onAbandon === 'function' && (
             <button
               type="button"
@@ -296,7 +306,7 @@ function CompactWarRoomPill({
           )}
         </span>
 
-        <WarRoomGuideHelp />
+        {!mobileLandscape && <WarRoomGuideHelp />}
         <WarRoomUtilityMenu
           game={game}
           board={board}
@@ -307,6 +317,7 @@ function CompactWarRoomPill({
           railCollapsed={railCollapsed}
           onToggleImmersive={onToggleImmersive}
           onToggleRail={onToggleRail}
+          variantOnly={mobileLandscape}
         />
       </div>
     </aside>
@@ -324,6 +335,7 @@ export default function GameWarRoomCommandColumn({
   railCollapsed = false,
   onToggleImmersive,
   onToggleRail,
+  mobileLandscape = false,
 }) {
   const signal = resolveWarRoomSignal(game, status);
 
@@ -342,6 +354,7 @@ export default function GameWarRoomCommandColumn({
         railCollapsed={railCollapsed}
         onToggleImmersive={onToggleImmersive}
         onToggleRail={onToggleRail}
+        mobileLandscape={mobileLandscape}
       />
     );
   }

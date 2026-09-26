@@ -123,4 +123,36 @@ describe('GameWarRoomCommandColumn', () => {
     expect(compactHtml).toContain('>Focus</button>');
     expect(compactHtml).toContain('>Vista 2D</button>');
   });
+
+  it('reduce landscape móvil a abandonar y elegir v1/v2/v3', () => {
+    vi.stubEnv('VITE_WAR_ROOM_VARIANTS_ENABLE', 'true');
+    const html = renderToStaticMarkup(
+      <GameWarRoomCommandColumn
+        game={{ difficulty: 5, turn: 'w', humanColor: 'w', isGameOver: false, history: [] }}
+        status={{ statusText: 'Tu turno', busy: false }}
+        board={{ onCustomize: () => {} }}
+        controls={{
+          hintMode: 'free',
+          onHint: () => {},
+          onUndo: () => {},
+          onToggleZen: () => {},
+          onAbandon: () => {},
+        }}
+        compactViewport
+        mobileLandscape
+      />,
+    );
+    vi.unstubAllEnvs();
+
+    expect(html).toContain('aria-label="Abandonar partida"');
+    expect(html).toContain('aria-label="Cambiar War Room"');
+    expect(html).toContain('aria-label="War Room v1"');
+    expect(html).toContain('aria-label="War Room v2"');
+    expect(html).toContain('aria-label="War Room v3"');
+    expect(html).not.toContain('aria-label="Focus"');
+    expect(html).not.toContain('Abrir guía de la War Room');
+    expect(html).not.toContain('>Pista</button>');
+    expect(html).not.toContain('>Vista 2D</button>');
+    expect(html).not.toContain('>Modo Zen</button>');
+  });
 });

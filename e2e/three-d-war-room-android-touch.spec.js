@@ -133,25 +133,13 @@ async function open3DFromAppearance(page) {
   await expect(board3d).toBeVisible({ timeout: 30_000 });
 }
 
-async function openWarRoomAppearance(page) {
-  const utilityButton = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
-  await expect(utilityButton).toBeVisible({ timeout: 30_000 });
-  await utilityButton.click();
-  const appearanceItem = page.getByRole('menuitem', { name: 'Apariencia', exact: true });
-  await expect(appearanceItem).toBeVisible();
-  await appearanceItem.click();
-  const dialog = page.getByRole('dialog', { name: 'Ajustes' });
-  await expect(dialog).toBeVisible();
-  return dialog;
-}
-
 async function switchWarRoomTo2D(page) {
-  const dialog = await openWarRoomAppearance(page);
-  await dialog.getByRole('radio', { name: /2D$/ }).click();
-  const close = dialog.getByRole('button', { name: 'Cerrar', exact: true });
-  await expect(close).toBeVisible();
-  await close.evaluate((element) => element.click());
-  await expect(dialog).toBeHidden({ timeout: 10_000 });
+  // Mobile landscape deliberately removes renderer/customization chrome from
+  // the visible play surface. The mounted command owner remains the parity
+  // seam used by this cross-renderer regression.
+  const rendererToggle = page.locator('.board-renderer-toggle');
+  await expect(rendererToggle).toHaveCount(1);
+  await rendererToggle.evaluate((element) => element.click());
   await expect(page.locator('.board-grid').first()).toBeVisible({ timeout: 30_000 });
 }
 
@@ -208,6 +196,7 @@ async function installBlackQuickGameRoute(page, moveLog = []) {
 
 test('War Room · Android selecciona una pieza en pointerdown y muestra destinos reales', async ({ page }) => {
   test.setTimeout(75_000);
+  await page.setViewportSize({ width:844, height:390 });
   await page.addInitScript(() => {
     window.__warRoomPointerCaptures = [];
     const originalSetPointerCapture = Element.prototype.setPointerCapture;
@@ -250,44 +239,23 @@ test('War Room · Android selecciona una pieza en pointerdown y muestra destinos
   }).toBeGreaterThan(1.14);
 
   const turnPill = page.locator('.game-3d-turn-pill');
-  const focusButton = page.getByRole('button', { name: 'Focus', exact: true });
   const abandonButton = page.getByRole('button', { name: 'Abandonar partida', exact: true });
   const appearanceButton = page.locator('.board3d-customize');
-  const utilityButton = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
   const humanRail = page.locator('.game-board-stack-3d .game-player-rail.is-human');
-  const musicRail = page.locator('.game-side-column-3d .game-side-music .music-deck-collapsed');
-  const notationDisclosure = page.locator('.game-side-column-3d .game-notation-disclosure');
   await expect(turnPill).toBeVisible();
-  await expect(focusButton).toBeVisible();
   await expect(abandonButton).toBeVisible();
   await expect(appearanceButton).toBeHidden();
-  await expect(utilityButton).toBeVisible();
-  await expect(humanRail).toBeVisible();
-  await expect(musicRail).toBeVisible();
-  await expect(notationDisclosure).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Focus', exact: true })).toHaveCount(0);
+  await expect(humanRail).toBeHidden();
+  await expect(page.locator('.game-side-column-3d')).toBeHidden();
 
   const matthiasRect = await turnPill.boundingBox();
   const boardRect = await board3d.boundingBox();
-  const focusRect = await focusButton.boundingBox();
-  const utilityRect = await utilityButton.boundingBox();
-  const humanRect = await humanRail.boundingBox();
-  const musicRect = await musicRail.boundingBox();
-  const notationRect = await notationDisclosure.boundingBox();
   expect(matthiasRect).not.toBeNull();
   expect(boardRect).not.toBeNull();
-  expect(focusRect).not.toBeNull();
-  expect(utilityRect).not.toBeNull();
-  expect(humanRect).not.toBeNull();
-  expect(musicRect).not.toBeNull();
-  expect(notationRect).not.toBeNull();
-  expect(matthiasRect.height).toBeLessThanOrEqual(72);
-  expect(humanRect.height).toBeLessThanOrEqual(50);
-  expect(musicRect.height).toBeLessThanOrEqual(50);
-  expect(notationRect.height).toBeLessThanOrEqual(50);
-  expect(Math.abs(musicRect.y - notationRect.y)).toBeLessThanOrEqual(2);
-  expect(musicRect.x).toBeLessThan(notationRect.x);
-  expect(focusRect.y + focusRect.height).toBeLessThanOrEqual(boardRect.y + 2);
-  expect(utilityRect.y).toBeLessThan(boardRect.y + 90);
+  expect(matthiasRect.height).toBeLessThanOrEqual(48);
+  expect(boardRect.width).toBeGreaterThanOrEqual(840);
+  expect(boardRect.height).toBeGreaterThanOrEqual(388);
   expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
 
   expect(await canvas.evaluate((element) => getComputedStyle(element).touchAction)).toBe('none');
@@ -311,14 +279,17 @@ test('War Room · Android selecciona una pieza en pointerdown y muestra destinos
   const to = projectWarRoomSquare(rect, 'e4');
   const cdp = await page.context().newCDPSession(page);
 
-  await touchStart(cdp, from);
+  // Intentionally land beside the visual centre. The coarse-pointer snap may
+  // forgive selection, while exact destination raycasts remain unchanged.
+  const forgivingFrom = { x:from.x + 18, y:from.y - 12 };
+  await touchStart(cdp, forgivingFrom);
   await expect(canvas).toHaveAttribute('data-war-room-last-square', 'e2');
   await expect(board3d).toHaveAttribute('data-board3d-selected', 'e2');
   await expect.poll(async () => Number(await board3d.getAttribute('data-board3d-legal-target-count'))).toBeGreaterThan(0);
   await expect.poll(() => movePosts(requestLog).length).toBe(0);
   expect(await page.evaluate(() => window.__warRoomPointerCaptures.some((entry) => entry.className.includes('board3d-main-canvas')))).toBe(true);
 
-  await touchMove(cdp, from);
+  await touchMove(cdp, forgivingFrom);
   await touchEnd(cdp);
 
   await touchStart(cdp, to);
@@ -329,6 +300,7 @@ test('War Room · Android selecciona una pieza en pointerdown y muestra destinos
 
 test('War Room · orientación negra conserva back rank, color, raycast y navegación al alternar 3D↔2D', async ({ page }) => {
   test.setTimeout(75_000);
+  await page.setViewportSize({ width:844, height:390 });
   const moveLog = [];
   await mockApi(page);
   await installBlackQuickGameRoute(page, moveLog);
@@ -343,7 +315,7 @@ test('War Room · orientación negra conserva back rank, color, raycast y navega
   await black.click();
   await expect(black).toHaveAttribute('aria-checked', 'true');
   await quickDialog.getByRole('button', { name: 'Empezar partida', exact: true }).click();
-  await expect(gameTurn(page)).toBeVisible();
+  await expect(page.locator('.game-screen')).toBeVisible();
 
   await open3DFromAppearance(page);
   let board3d = page.locator('[data-board3d-war-room="true"]');

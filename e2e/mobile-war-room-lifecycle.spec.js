@@ -1,6 +1,8 @@
-import { expect, test } from '@playwright/test';
+import { devices, expect, test } from '@playwright/test';
 import { buttonWithVisibleText, gameStatus, login, mockApi } from './helpers.js';
 import { navigateWarRoomKeyboard } from './war-room-board-input.js';
+
+test.use({ ...devices['Pixel 5'] });
 
 async function setVisibility(page, state) {
   await page.evaluate((nextState) => {
@@ -34,8 +36,12 @@ test('Android · War Room conserva selección y jugabilidad tras rotación y bac
 
   const warRoom = page.locator('[data-board3d-war-room="true"]');
   const canvas = page.locator('.board3d-main-canvas');
+  const landscapeGate = page.getByRole('dialog', { name: 'War Room en apaisado' });
   await expect(warRoom).toBeVisible({ timeout: 30_000 });
   await expect(canvas).toHaveCount(1);
+  await expect(landscapeGate).toBeVisible();
+  await expect(landscapeGate).not.toHaveAttribute('aria-modal', 'true');
+  await expect(page.getByRole('button', { name: 'Focus', exact: true })).toBeVisible();
 
   // Mantener una selección real durante todo el soak obliga a resize/orientation
   // a conservar el estado común de partida y no sólo a evitar un crash visual.
@@ -57,14 +63,17 @@ test('Android · War Room conserva selección y jugabilidad tras rotación y bac
     await expect(canvas).toHaveCount(1);
     await expect(warRoom).toHaveAttribute('data-board3d-selected', 'e2');
     await expect(warRoom).toHaveAttribute('data-board3d-legal-target-count', '2');
+    if (landscape) await expect(landscapeGate).toBeHidden();
+    else await expect(landscapeGate).toBeVisible();
     await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
   }
 
-  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setViewportSize({ width: 844, height: 390 });
   await expect(warRoom).toBeVisible();
   await expect(canvas).toBeVisible();
   await expect(canvas).toHaveCount(1);
+  await expect(landscapeGate).toBeHidden();
 
   // Y no basta con conservar highlights: después del último resize la selección
   // tiene que seguir siendo operativa y generar exactamente una mutación real.

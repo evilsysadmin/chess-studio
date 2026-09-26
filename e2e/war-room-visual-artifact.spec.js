@@ -97,9 +97,25 @@ async function installWarRoomV3RevisionRoute(page) {
 }
 const CAPTURE_PROFILES = Object.freeze([
   Object.freeze({
+    label: 'war-room-android-360x800',
+    title: 'Android portrait 360×800',
+    viewport: Object.freeze({ width: 360, height: 800 }),
+    hasTouch: true,
+    portraitContract: true,
+    landscapeContract: false,
+  }),
+  Object.freeze({
     label: 'war-room-android-390x844',
     title: 'Android portrait',
     viewport: Object.freeze({ width: 390, height: 844 }),
+    hasTouch: true,
+    portraitContract: true,
+    landscapeContract: false,
+  }),
+  Object.freeze({
+    label: 'war-room-android-430x932',
+    title: 'Android portrait 430×932',
+    viewport: Object.freeze({ width: 430, height: 932 }),
     hasTouch: true,
     portraitContract: true,
     landscapeContract: false,
@@ -379,6 +395,7 @@ async function captureWarRoomHealth(page, label) {
     const focus = buttonBox('Focus');
     const abandon = buttonBox('Abandonar partida');
     const overflow = buttonBox('Más acciones de partida');
+    const roomSelector = buttonBox('Cambiar War Room');
     const boardVisibleWidth = board
       ? Math.max(0, Math.min(board.right, viewport.width) - Math.max(board.left, 0))
       : 0;
@@ -412,7 +429,7 @@ async function captureWarRoomHealth(page, label) {
       notation,
       legacyCommandDeck,
       immersive: document.body.classList.contains('war-room-immersive-active'),
-      quickActions: { focus, abandon, overflow },
+      quickActions: { focus, abandon, overflow, roomSelector },
       boardViewportFill: Number((boardVisibleHeight / viewport.height).toFixed(3)),
       boardWidthFill: board ? Number((board.width / viewport.width).toFixed(3)) : 0,
       boardVisibleWidthFill: Number((boardVisibleWidth / viewport.width).toFixed(3)),
@@ -422,7 +439,7 @@ async function captureWarRoomHealth(page, label) {
   }, label);
 }
 
-async function openCanonicalWarRoom(page, { variant = 'classic' } = {}) {
+async function openCanonicalWarRoom(page, { variant = 'classic', verifyClassicDecor = true } = {}) {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   if (variant === 'v2') {
     await installWarRoomV2RevisionRoute(page);
@@ -467,7 +484,7 @@ async function openCanonicalWarRoom(page, { variant = 'classic' } = {}) {
     await expect(tutorial).toBeHidden();
   }
 
-  if (!['v2', 'v3'].includes(variant)) {
+  if (verifyClassicDecor && !['v2', 'v3'].includes(variant)) {
     // The cat is classic-shell decor; keep that canary there without making
     // the Blender v2 proof depend on hidden legacy geometry.
     await expect(canvas).toHaveAttribute('data-war-room-cat-rendered', 'true', { timeout: 30_000 });
@@ -511,10 +528,16 @@ function expectImmersiveHealth(health) {
 function expectLandscapeHealth(health) {
   expect(health.verticalOverflowPx, 'Android landscape must fit the play-first War Room in one viewport').toBeLessThanOrEqual(1);
   expect(health.legacyCommandDeck?.display, 'Android landscape must not revive the legacy command row').toBe('none');
-  expect(health.board?.left, 'Android landscape keeps the board in the primary left pane').toBeLessThan(80);
-  expect(health.boardViewportFill, 'Android landscape should spend most viewport height on the board').toBeGreaterThanOrEqual(0.62);
-  expect(health.boardWidthFill, 'Android landscape keeps a substantial board surface').toBeGreaterThanOrEqual(0.58);
-  expect(health.human?.bottom, 'Android landscape player rail must stay inside the viewport').toBeLessThanOrEqual(health.viewport.height + 1);
+  expect(health.board?.left, 'Android landscape scene starts at the viewport edge').toBeLessThanOrEqual(2);
+  expect(health.boardViewportFill, 'Android landscape spends the full viewport height on play').toBeGreaterThanOrEqual(0.98);
+  expect(health.boardWidthFill, 'Android landscape spends the full viewport width on play').toBeGreaterThanOrEqual(0.98);
+  expect(health.sideColumn?.display, 'Android landscape removes the persistent secondary rail').toBe('none');
+  expect(health.human?.display, 'Android landscape removes the persistent player rail').toBe('none');
+  expect(health.quickActions?.focus, 'Android landscape removes Focus chrome').toBeNull();
+  expect(health.quickActions?.abandon?.width, 'resign remains a 44px touch target').toBeGreaterThanOrEqual(44);
+  expect(health.quickActions?.abandon?.height, 'resign remains a 44px touch target').toBeGreaterThanOrEqual(44);
+  expect(health.quickActions?.roomSelector?.width, 'room selector remains a 44px touch target').toBeGreaterThanOrEqual(44);
+  expect(health.quickActions?.roomSelector?.height, 'room selector remains a 44px touch target').toBeGreaterThanOrEqual(44);
 }
 
 for (const profile of ACTIVE_CAPTURE_PROFILES) {
@@ -551,7 +574,12 @@ for (const profile of ACTIVE_CAPTURE_PROFILES) {
 
     const page = await context.newPage();
     try {
-      const board3d = await openCanonicalWarRoom(page, { variant: profile.variant || 'classic' });
+      const board3d = await openCanonicalWarRoom(page, {
+        variant:profile.variant || 'classic',
+        // Portrait is now an intentional orientation gate; offscreen room
+        // decor is validated in landscape + desktop where players can see it.
+        verifyClassicDecor:!profile.portraitContract,
+      });
       if (LOCAL_GPU_CAPTURE) {
         const canvas = page.locator('.board3d-main-canvas');
         await expect(canvas).toHaveAttribute('data-board3d-renderer', /.+/);
@@ -571,7 +599,7 @@ for (const profile of ACTIVE_CAPTURE_PROFILES) {
         await expect(page.locator('.board3d-main-canvas'))
           .toHaveAttribute('data-war-room-variant-status', 'ready', { timeout: 30_000 });
       }
-      if (profile.variant === 'v3') {
+      if (profile.variant === 'v3' && !profile.portraitContract && !profile.landscapeContract) {
         const variantMenu = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
         await variantMenu.click();
         await expect(page.getByRole('menuitemradio', { name: 'War Room v1', exact: true })).toBeVisible();
@@ -602,9 +630,24 @@ for (const profile of ACTIVE_CAPTURE_PROFILES) {
       }
 
       if (profile.portraitContract) {
-        await expect(page.getByRole('button', { name: 'Focus', exact: true })).toBeVisible();
+        const orientationGate = page.getByRole('dialog', { name: 'War Room en apaisado', exact: true });
+        await expect(orientationGate).toBeVisible();
+        await expect(orientationGate).not.toHaveAttribute('aria-modal', 'true');
+        await expect(orientationGate.getByText('Mejor en apaisado', { exact: true })).toBeVisible();
+        await expect(orientationGate.getByText(/Puedes seguir jugando en vertical/)).toBeVisible();
+        await expect(orientationGate.getByRole('button', { name: 'Activar apaisado', exact: true })).toBeVisible();
+      }
+
+      if (profile.landscapeContract) {
         await expect(page.getByRole('button', { name: 'Abandonar partida', exact: true })).toBeVisible();
-        await expect(page.getByRole('button', { name: 'Más acciones de partida', exact: true })).toBeVisible();
+        const roomSelector = page.getByRole('button', { name: 'Cambiar War Room', exact: true });
+        await expect(roomSelector).toBeVisible();
+        await roomSelector.click();
+        await expect(page.getByRole('menuitemradio', { name: 'War Room v1', exact: true })).toBeVisible();
+        await expect(page.getByRole('menuitemradio', { name: 'War Room v2', exact: true })).toBeVisible();
+        await expect(page.getByRole('menuitemradio', { name: 'War Room v3', exact: true })).toBeVisible();
+        await roomSelector.click();
+        await expect(page.getByRole('button', { name: 'Focus', exact: true })).toHaveCount(0);
       }
 
       await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));

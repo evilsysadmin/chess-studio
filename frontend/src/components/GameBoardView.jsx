@@ -13,7 +13,9 @@ import WarRoomHansServiceDialogue from './WarRoomHansServiceDialogue.jsx';
 import useGameBoardRenderer from './useGameBoardRenderer.js';
 import useWarRoomSpatialAmbience from './useWarRoomSpatialAmbience.js';
 import useWarRoomImmersive from './useWarRoomImmersive.js';
+import useWarRoomLandscape from './useWarRoomLandscape.js';
 import { useGameFocusBubble, useGameMobileFocus } from './useGameMobileFocus.js';
+import WarRoomLandscapeGate from './WarRoomLandscapeGate.jsx';
 import useMatthias3DBubbleAnchor from './useMatthias3DBubbleAnchor.js';
 import useMatthiasBoardReactions from './useMatthiasBoardReactions.js';
 import { warRoomHansEventForGame } from './WarRoomHansEventContract.js';
@@ -28,6 +30,7 @@ import { formatLongMove } from '../notation.js';
 import { USER_PREFERENCES_CHANGED_EVENT, getEffectiveReducedMotion } from '../userPreferences.js';
 import './Matthias3DBubbleAnchor.css';
 import './WarRoomImmersive.css';
+import './WarRoomLandscapeGate.css';
 
 
 export default function GameBoardView({
@@ -55,10 +58,16 @@ export default function GameBoardView({
   }, []);
   const {
     compactViewport,
+    mobileLandscape,
     focusActive,
     enterFocus: activateFocus,
     exitFocus: deactivateFocus,
   } = useGameMobileFocus(game.id);
+  const {
+    needsRotation:warRoomNeedsRotation,
+    lockState:warRoomOrientationLock,
+    activateLandscape,
+  } = useWarRoomLandscape(isThreeD);
   const {
     immersive: warRoomImmersive,
     railCollapsed: warRoomRailCollapsed,
@@ -168,7 +177,12 @@ export default function GameBoardView({
   };
 
   return (
-    <div className={`game-layout${isThreeD ? ' game-layout-3d' : ''}${focusActive ? ' game-layout-focus' : ''}${warRoomImmersive ? ' game-layout-immersive' : ''}`} data-mobile-focus={focusActive ? 'true' : 'false'} data-war-room-immersive={warRoomImmersive ? 'true' : 'false'} data-war-room-rail-collapsed={warRoomRailCollapsed ? 'true' : 'false'}>
+    <div className={`game-layout${isThreeD ? ' game-layout-3d' : ''}${focusActive ? ' game-layout-focus' : ''}${warRoomImmersive ? ' game-layout-immersive' : ''}`} data-mobile-focus={focusActive ? 'true' : 'false'} data-war-room-mobile-landscape={mobileLandscape ? 'true' : 'false'} data-war-room-orientation-lock={warRoomOrientationLock} data-war-room-immersive={warRoomImmersive ? 'true' : 'false'} data-war-room-rail-collapsed={warRoomRailCollapsed ? 'true' : 'false'}>
+      <WarRoomLandscapeGate
+        active={warRoomNeedsRotation}
+        lockState={warRoomOrientationLock}
+        onActivate={activateLandscape}
+      />
       <div className="board-column">
         <GameStatusStrips
           game={game}
@@ -185,6 +199,7 @@ export default function GameBoardView({
               status={status}
               board={board}
               compactViewport={compactViewport}
+              mobileLandscape={mobileLandscape}
               zenMode={zenMode}
               controls={controls}
               immersive={warRoomImmersive}

@@ -21,7 +21,8 @@ import { BOARD3D_HIGHLIGHT_SIZE, BOARD3D_HIGHLIGHT_Y, board3DHighlightStyle } fr
 import { board3DCaptureWarmBoostValue, board3DPieceInteractionPose, writeBoard3DHighlightPulse } from './Board3DInteractionFx.js';
 import { BOARD_THEME_3D, FILES, resolveBoard3DThemeId } from './Board3DConfig.js';
 import { adjacentSquare, parseFen, squarePosition } from './Board3DBoardMath.js';
-import { buildBoard3DTileInstances, squareFromBoard3DIntersection } from './Board3DTileInstances.js';
+import { buildBoard3DTileInstances } from './Board3DTileInstances.js';
+import { resolveBoard3DPointerSquare } from './Board3DPointerPicking.js';
 import { planBoard3DPieceReconciliation } from './Board3DPieceReconciliation.js';
 import { addCoarsePieceHitTarget, applyMatthiasCheckPose, buildPiece, disposeObject } from './Board3DPieces.js';
 import { fitBoardCamera, makeTextSprite } from './Board3DScene.js';
@@ -262,7 +263,7 @@ function Board3DCanvas({
     renderer.domElement.dataset.board3dRendererClass = compactWebGLRendererLabel(rendererName);
     renderer.domElement.dataset.board3dSceneTier = sceneProfile.tier;
     renderer.domElement.dataset.warRoomDomDiagnostics = 'diff-only-ref-v2';
-    renderer.domElement.dataset.board3dInteractionHotPath = 'cached-pick-pulse-capture-v1';
+    renderer.domElement.dataset.board3dInteractionHotPath = 'cached-pick-pulse-capture-v2';
     renderer.domElement.dataset.board3dInspectYaw = '0.000';
     renderer.domElement.dataset.board3dInspectPitch = '0.000';
     host.appendChild(renderer.domElement);
@@ -447,18 +448,17 @@ function Board3DCanvas({
     observer?.observe(host);
 
     function squareFromPointer(event) {
-      const rect = renderer.domElement.getBoundingClientRect();
-      pointer.set(
-        ((event.clientX - rect.left) / rect.width) * 2 - 1,
-        -((event.clientY - rect.top) / rect.height) * 2 + 1,
-      );
-      raycaster.setFromCamera(pointer, camera);
-      const intersections = raycaster.intersectObjects(pickTargets, true);
-      for (const hit of intersections) {
-        const square = squareFromBoard3DIntersection(hit);
-        if (square) return square;
-      }
-      return null;
+      return resolveBoard3DPointerSquare({
+        event,
+        element:renderer.domElement,
+        camera,
+        raycaster,
+        pointer,
+        pickTargets,
+        coarsePointer,
+        pieceSquares:pieceMeshes.keys(),
+        selectedSquare:latestPropsRef.current.selectedSquare,
+      });
     }
 
     function updatePieceHover(nextSquare, event) {

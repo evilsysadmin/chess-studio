@@ -144,6 +144,8 @@ def _e2e_producer(name: str) -> set[str] | None:
         return exact[name]
     if "chesscom" in name or name == "war-room-hans-routines-visual.spec.js":
         return set()
+    if "war-room" in name or "three-d-war-room" in name:
+        return {"warroom-core"}
     return None
 
 
@@ -222,6 +224,8 @@ def classify_path(path: str) -> set[str] | None:
 
     if lower in {"frontend/src/lablaunchintent.js", "frontend/src/usepuzzlelaunchflow.js"}:
         return set()
+    if lower == "frontend/src/components/usegamemobilefocus.js":
+        return {"warroom-core"}
     if lower == "frontend/src/components/labscreen.jsx":
         return {"experiments-hub"}
     if lower in TRAINING_EXACT_PRODUCERS:
@@ -345,6 +349,11 @@ def classify(paths: list[str]) -> str:
 
 
 def self_test() -> None:
+    assert classify([
+        "frontend/src/components/useGameMobileFocus.js",
+        "e2e/mobile-war-room-lifecycle.spec.js",
+        "e2e/three-d-war-room-android-touch.spec.js",
+    ]) == "warroom-core"
     assert classify_warroom_variants(["frontend/src/components/WarRoomClassicShell.js"]) == "classic"
     assert classify_warroom_variants(["frontend/src/components/PremiumWarRoomScene.js"]) == "classic"
     assert classify_warroom_variants(["frontend/src/components/WarRoomV2Shell.js"]) == "v2"
