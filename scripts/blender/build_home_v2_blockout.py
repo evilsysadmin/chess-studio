@@ -4409,6 +4409,20 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         materials["soot_stone"],
         bevel=0.105,
     )
+    # Centuries of use leave a soft plume above the throat, not a clean stone
+    # halo. Keep it broad and low-contrast so it reads as smoke staining rather
+    # than a decal pasted onto the Gothic surround.
+    for idx, (sx, sz, px, pz, rot) in enumerate((
+        (0.52, 0.18, -6.21, 3.52, -8.0),
+        (0.34, 0.24, -6.04, 3.82, 11.0),
+    )):
+        haze = sphere(
+            f"HOME_PROP_fireplace_left_soot_haze_{idx}",
+            (px, 5.405, pz),
+            (sx, 0.010, sz),
+            materials["soot_haze"],
+        )
+        haze.rotation_euler[1] = math.radians(rot)
     for side in (-1, 1):
         px = -6.15 + side * 1.02
         cube(
@@ -4655,6 +4669,17 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         materials["soot_stone"],
         bevel=0.040,
     )
+    for idx, (sx, sz, px, pz, rot) in enumerate((
+        (0.46, 0.16, 4.42, 3.45, 7.0),
+        (0.30, 0.20, 4.58, 3.70, -10.0),
+    )):
+        haze = sphere(
+            f"HOME_PROP_fireplace_right_soot_haze_{idx}",
+            (px, 5.285, pz),
+            (sx, 0.010, sz),
+            materials["soot_haze"],
+        )
+        haze.rotation_euler[1] = math.radians(rot)
     cube(
         "HOME_PROP_fireplace_right_canon_mantel",
         (4.45, 5.18, 2.38),
