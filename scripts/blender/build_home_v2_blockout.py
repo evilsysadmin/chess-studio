@@ -1690,7 +1690,7 @@ def add_library_sconces(materials):
     library's visible reading light. They stand in front of the post column, so they
     never cover a book (the first pass hid them behind the post's front face)."""
     brass = materials["brass"]
-    dark_brass = materials["brass_dark"]
+    dark_brass = materials["library_brass_aged"]
     for idx, post_x in enumerate((-3.99, -1.31)):
         z = 3.62
         cube(f"HOME_PROP_library_sconce_plate_{idx}", (post_x, 5.755, z), (0.05, 0.02, 0.16), dark_brass, bevel=0.010)
@@ -3956,6 +3956,9 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             texture_profile="metal",
         ),
         "brass_dark": material("HOME_MAT_brass_dark", (0.105, 0.052, 0.018, 1), roughness=0.50, metallic=0.60, texture_profile="metal"),
+        # Older fittings in the library should not share the same clean brass as
+        # table/chandelier hardware: darker, rougher bronze reads as handled age.
+        "library_brass_aged": material("HOME_MAT_library_brass_aged", (0.070, 0.038, 0.018, 1), roughness=0.68, metallic=0.52, variation=0.10, variation_scale=5.0, texture_profile="metal"),
         # Hand-forged hearth iron should read nearly black in shadow, with enough
         # metallic response to catch firelight on worn edges instead of looking
         # like painted plastic.
