@@ -1,0 +1,90 @@
+/* Golden-path mobile pass: keep Partida rápida truly quick.
+ * The adaptive opponent stays the default, the main CTA wins the visual hierarchy,
+ * and tuning/PvP remain one tap away without competing above the fold. */
+@media (max-width: 520px), (pointer: coarse) and (max-width: 920px) {
+  .friendly-modal[aria-label='Configurar partida rápida'] {
+    width: min(100% - 16px, 430px);
+    max-height: min(92dvh, 760px);
+    padding: 16px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+
+  .friendly-modal[aria-label='Configurar partida rápida'] .friendly-lead {
+    margin-bottom: .55rem;
+  }
+
+  .friendly-modal[aria-label='Configurar partida rápida'] .matthias-quick-briefing {
+    margin-block: .45rem .65rem;
+    padding: .55rem .65rem;
+  }
+
+  .friendly-modal[aria-label='Configurar partida rápida'] .matthias-quick-briefing p {
+    margin-block: .2rem 0;
+    line-height: 1.35;
+  }
+
+  .friendly-modal[aria-label='Configurar partida rápida'] .adaptive-difficulty-choice {
+    min-height: 58px;
+    margin-bottom: .55rem;
+  }
+
+  .friendly-modal[aria-label='Configurar partida rápida'] .friendly-main-cta {
+    width: 100%;
+    min-height: 52px !important;
+    margin-top: .5rem;
+    font-size: 1rem;
+  }
+
+  .friendly-modal[aria-label='Configurar partida rápida'] .quick-match-post-cta-tools {
+    display: grid;
+    grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+    gap: .45rem;
+    align-items: stretch;
+    margin-top: .48rem;
+  }
+
+  .friendly-modal[aria-label='Configurar partida rápida'] .quick-match-post-cta-tools > :is(button, details) {
+    margin: 0;
+  }
+
+  .friendly-modal[aria-label='Configurar partida rápida'] .quick-match-post-cta-tools > button {
+    padding-inline: .72rem;
+    white-space: nowrap;
+  }
+
+  .friendly-modal[aria-label='Configurar partida rápida'] .quick-match-post-cta-tools > details > summary {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: .4rem .6rem;
+  }
+
+  .friendly-modal[aria-label='Configurar partida rápida'] .quick-match-settings {
+    margin-top: .48rem;
+  }
+
+  .friendly-modal[aria-label='Configurar partida rápida'] .quick-match-pvp-link--tertiary {
+    width: 100%;
+    margin-top: .45rem;
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
+    opacity: .82;
+  }
+}
+
+@media (max-width: 380px) {
+  .friendly-modal[aria-label='Configurar partida rápida'] {
+    padding: 13px;
+  }
+
+  .friendly-modal[aria-label='Configurar partida rápida'] .quick-match-post-cta-tools {
+    grid-template-columns: 1fr;
+  }
+
+  .friendly-modal[aria-label='Configurar partida rápida'] .quick-match-post-cta-tools > button {
+    width: 100%;
+  }
+}
