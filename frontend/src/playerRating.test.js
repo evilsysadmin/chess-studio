@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { updateRating, ratingChangeDetails, cpuRatingForDifficulty, ratingScoreForOutcome, ratingLabel, ratingPeriodCheckpoints, ratingProgress, loadRating, RATING_TIERS, loadRatingHistory, recordRatingHistory, resetRatingHistory, difficultyForRating, adaptiveDifficultyAdjustment } from './playerRating.js';
+import { updateRating, ratingChangeDetails, ratingPerformanceModifier, cpuRatingForDifficulty, ratingScoreForOutcome, ratingLabel, ratingPeriodCheckpoints, ratingProgress, loadRating, RATING_TIERS, loadRatingHistory, recordRatingHistory, resetRatingHistory, difficultyForRating, adaptiveDifficultyAdjustment } from './playerRating.js';
 
 beforeEach(() => localStorage.clear());
 
@@ -262,5 +262,39 @@ describe('difficultyForRating', () => {
       finished('loss', base, 'practice'), finished('loss', base, 'practice'), finished('loss', base, 'combat'), finished('loss', base, 'combat'),
     ];
     expect(difficultyForRating(1100, noise)).toBe(base);
+  });
+});
+
+describe('rating por calidad del cuaderno', () => {
+  const clean = { sufficientSample: true, clean: true, averageLoss: 18, blunders: 0 };
+  const solid = { sufficientSample: true, clean: false, averageLoss: 38, blunders: 0 };
+  const rough = { sufficientSample: true, clean: false, averageLoss: 90, blunders: 1 };
+  const awful = { sufficientSample: true, clean: false, averageLoss: 150, blunders: 3 };
+
+  it('limita la señal de calidad a una banda pequeña y exige muestra suficiente', () => {
+    expect(ratingPerformanceModifier(clean)).toBe(6);
+    expect(ratingPerformanceModifier(solid)).toBe(3);
+    expect(ratingPerformanceModifier(rough)).toBe(-3);
+    expect(ratingPerformanceModifier(awful)).toBe(-6);
+    expect(ratingPerformanceModifier({ ...clean, sufficientSample: false })).toBe(0);
+  });
+
+  it('una victoria limpia paga más y una victoria desastrosa paga menos, sin sustituir al Elo base', () => {
+    const base = { rating: 1000, games: 20 };
+    const normal = ratingChangeDetails(base, 60, 1);
+    const limpio = ratingChangeDetails(base, 60, 1, clean);
+    const desastre = ratingChangeDetails(base, 60, 1, awful);
+    expect(limpio.delta).toBe(normal.delta + 6);
+    expect(desastre.delta).toBe(normal.delta - 6);
+    expect(limpio.performanceDelta).toBe(6);
+    expect(desastre.performanceDelta).toBe(-6);
+  });
+
+  it('una derrota limpia puede doler menos pero jamás convertirse en subida', () => {
+    const base = { rating: 1000, games: 20 };
+    const normal = ratingChangeDetails(base, 60, 0);
+    const limpio = ratingChangeDetails(base, 60, 0, clean);
+    expect(limpio.delta).toBeGreaterThan(normal.delta);
+    expect(limpio.delta).toBeLessThanOrEqual(-1);
   });
 });
