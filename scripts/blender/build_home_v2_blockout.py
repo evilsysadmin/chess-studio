@@ -1689,7 +1689,7 @@ def add_library_sconces(materials):
     """Two brass candle sconces on the bookcase posts, projecting into the room: the
     library's visible reading light. They stand in front of the post column, so they
     never cover a book (the first pass hid them behind the post's front face)."""
-    brass = materials["brass"]
+    brass = materials["aged_brass"]
     dark_brass = materials["brass_dark"]
     for idx, post_x in enumerate((-3.99, -1.31)):
         z = 3.62
@@ -1707,8 +1707,8 @@ def add_library_sconces(materials):
 
 
 def add_stair_lantern(idx, px, py, pz, materials):
-    """Enclosed brass lantern: an open flame beside a wooden handrail was a fire hazard."""
-    brass = materials["brass"]
+    """Enclosed aged-brass lantern: an open flame beside a wooden handrail was a fire hazard."""
+    brass = materials["aged_brass"]
     dark_brass = materials["brass_dark"]
     cylinder(f"HOME_PROP_dungeon_lantern_base_{idx}", (px, py, pz - 0.105), 0.095, 0.03, brass, vertices=20)
     for corner, (dx, dy) in enumerate(((-0.065, -0.065), (0.065, -0.065), (-0.065, 0.065), (0.065, 0.065))):
@@ -3919,6 +3919,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "library_wood": material("HOME_MAT_library_wood", (0.052, 0.020, 0.010, 1), roughness=0.72, bump_scale=5.0, bump_strength=0.12, variation=0.24, variation_scale=2.4, grain=True, texture_profile="wood"),
         "wood_wear": material("HOME_MAT_wood_wear", (0.105, 0.042, 0.016, 1), roughness=0.76, bump_scale=4.2, bump_strength=0.055, variation=0.10, variation_scale=3.4, grain=True, texture_profile="wood"),
         "brass": material("HOME_MAT_brass", (0.24, 0.115, 0.032, 1), roughness=0.46, metallic=0.70, texture_profile="metal"),
+        "aged_brass": material("HOME_MAT_aged_brass", (0.145, 0.070, 0.020, 1), roughness=0.60, metallic=0.62, variation=0.08, variation_scale=5.0, texture_profile="metal"),
         "gold": material(
             "HOME_MAT_gold",
             (0.48, 0.27, 0.065, 1),
