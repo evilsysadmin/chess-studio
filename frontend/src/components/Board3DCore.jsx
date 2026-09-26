@@ -123,9 +123,9 @@ function Board3DCanvas({
   };
 
   useEffect(() => {
+    if (hansFireCallEnabled && hansDiagnosticsRequested) sceneStateRef.current?.render();
     sceneStateRef.current?.ambientScheduler?.wake();
-  }, [hansFireCallEnabled]);
-
+  }, [hansFireCallEnabled, hansDiagnosticsRequested]);
   useEffect(() => {
     const refreshSkin = (event) => setSkinId(event?.detail || loadSelectedSkin());
     const refreshPreferences = () => setBoardTheme(loadBoardTheme());
