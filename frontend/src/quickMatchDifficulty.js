@@ -24,13 +24,14 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
-export function provisionalQuickMatchLeadElo(games = PROVISIONAL_GAMES) {
+export function provisionalQuickMatchLeadElo(games = PROVISIONAL_GAMES, targetLeadElo = QUICK_MATCH_TARGET_LEAD_ELO) {
   const count = Number(games);
-  if (!Number.isFinite(count) || count >= PROVISIONAL_GAMES) return QUICK_MATCH_TARGET_LEAD_ELO;
+  const targetLead = clamp(Math.round(Number(targetLeadElo) || 0), 0, 150);
+  if (!Number.isFinite(count) || count >= PROVISIONAL_GAMES) return targetLead;
   const progress = clamp(count / PROVISIONAL_GAMES, 0, 1);
   return Math.round(
     QUICK_MATCH_PROVISIONAL_START_LEAD_ELO
-      + ((QUICK_MATCH_TARGET_LEAD_ELO - QUICK_MATCH_PROVISIONAL_START_LEAD_ELO) * progress),
+      + ((targetLead - QUICK_MATCH_PROVISIONAL_START_LEAD_ELO) * progress),
   );
 }
 
@@ -192,25 +193,26 @@ export function quickMatchQualityAdjustment(activity = [], games = PROVISIONAL_G
   return 0;
 }
 
-export function quickMatchTargetLeadElo(activity = [], games = PROVISIONAL_GAMES, qualityRecords = {}, nowMs = Date.now()) {
+export function quickMatchTargetLeadElo(activity = [], games = PROVISIONAL_GAMES, qualityRecords = {}, nowMs = Date.now(), targetLeadElo = QUICK_MATCH_TARGET_LEAD_ELO) {
+  const configuredLead = clamp(Math.round(Number(targetLeadElo) || 0), 0, 150);
   const provisional = Number(games) < PROVISIONAL_GAMES;
   const earlySignal = provisional ? quickMatchEarlyCalibrationSignal(activity, games, nowMs) : 0;
   let baseLead = provisional
-    ? provisionalQuickMatchLeadElo(games)
-    : QUICK_MATCH_TARGET_LEAD_ELO;
+    ? provisionalQuickMatchLeadElo(games, configuredLead)
+    : configuredLead;
 
   // Tres resultados adaptativos inequívocos ya son evidencia suficiente para
   // no hacer perder al jugador dos partidas extra contra un rival mal situado.
   // Sólo cambia la SIGUIENTE partida: nunca hacemos rubber-banding en curso.
-  if (earlySignal > 0) baseLead = QUICK_MATCH_TARGET_LEAD_ELO;
+  if (earlySignal > 0) baseLead = configuredLead;
   else if (earlySignal < 0) baseLead = QUICK_MATCH_PROVISIONAL_START_LEAD_ELO;
 
   const adjusted = baseLead
     + quickMatchRecentFormAdjustment(activity, games, nowMs)
     + quickMatchQualityAdjustment(activity, games, qualityRecords, nowMs);
   return provisional
-    ? clamp(adjusted, -75, QUICK_MATCH_TARGET_LEAD_ELO)
-    : clamp(adjusted, 0, QUICK_MATCH_TARGET_LEAD_ELO + QUICK_MATCH_MAX_FORM_BOOST_ELO);
+    ? clamp(adjusted, -75, configuredLead)
+    : clamp(adjusted, 0, configuredLead + QUICK_MATCH_MAX_FORM_BOOST_ELO);
 }
 
 function previousAdaptiveDifficulty(activity = [], nowMs = Date.now()) {
@@ -224,14 +226,14 @@ function previousAdaptiveDifficulty(activity = [], nowMs = Date.now()) {
   return event ? clamp(Math.round(Number(event.difficulty)), 0, 100) : null;
 }
 
-export function difficultyForQuickMatchRating(rating, activity = null, games = null, qualityRecords = null, nowMs = Date.now()) {
+export function difficultyForQuickMatchRating(rating, activity = null, games = null, qualityRecords = null, nowMs = Date.now(), targetLeadElo = QUICK_MATCH_TARGET_LEAD_ELO) {
   const numericRating = Number(rating);
   const playerRating = Number.isFinite(numericRating) ? numericRating : 400;
   const recent = activity == null ? loadGameActivity() : activity;
   const persistedGames = games == null ? loadRating().games : games;
   const gameCount = Number.isFinite(Number(persistedGames)) ? Number(persistedGames) : 0;
   const quality = qualityRecords == null ? loadCleanGameRecords() : qualityRecords;
-  const targetLead = quickMatchTargetLeadElo(recent, gameCount, quality, nowMs);
+  const targetLead = quickMatchTargetLeadElo(recent, gameCount, quality, nowMs, targetLeadElo);
   const targetOpponentRating = playerRating + targetLead;
 
   if (gameCount >= PROVISIONAL_GAMES) {
