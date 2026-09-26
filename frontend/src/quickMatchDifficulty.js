@@ -18,9 +18,6 @@ export function setRuntimeQuickMatchTargetLeadElo(value) {
   return runtimeQuickMatchTargetLeadElo;
 }
 
-export function getRuntimeQuickMatchTargetLeadElo() {
-  return runtimeQuickMatchTargetLeadElo;
-}
 export const QUICK_MATCH_HYSTERESIS_ELO = 25;
 export const QUICK_MATCH_PROVISIONAL_START_LEAD_ELO = -50;
 export const QUICK_MATCH_FORM_MAX_AGE_DAYS = 30;
