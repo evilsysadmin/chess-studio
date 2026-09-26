@@ -106,6 +106,7 @@ QUICK_MATCH_EXACT_PRODUCERS = {
 }
 
 TRAINING_EXACT_PRODUCERS = {
+    "frontend/src/components/matthiasclassroom.css": {"training-school"},
     "frontend/src/components/puzzlescreen.jsx": {"training-puzzles"},
     "frontend/src/components/puzzlemobilepolish.css": {"training-puzzles"},
     "frontend/src/components/tournamentscreen.jsx": {"training-tournament"},
@@ -431,6 +432,7 @@ def self_test() -> None:
     assert classify(["frontend/src/components/OpeningsScreen.jsx"]) == "training-openings"
     assert classify(["frontend/src/components/CareerScreen.jsx"]) == "training-progress"
     assert classify(["frontend/src/components/MatthiasSchool.jsx"]) == "training-school"
+    assert classify(["frontend/src/components/MatthiasClassRoom.css"]) == "training-school"
     assert classify(["e2e/training-visual-artifact.spec.js"]) == (
         "training-school,training-openings,training-puzzles,training-tournament,training-progress"
     )
