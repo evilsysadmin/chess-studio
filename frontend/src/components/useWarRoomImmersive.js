@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export function isWarRoomImmersiveExitKey(key) {
   return key === 'Escape' || key === 'Esc';
@@ -82,8 +82,12 @@ export function exitWarRoomBrowserFullscreen(doc = globalThis.document) {
 }
 
 export default function useWarRoomImmersive({ enabled, focusActive = false } = {}) {
-  const [immersive, setImmersive] = useState(false);
+  // CSS immersion is the War Room's default presentation on desktop and mobile.
+  // Native fullscreen/orientation still require a trusted user gesture, so entry
+  // never attempts those APIs automatically.
+  const [immersive, setImmersive] = useState(() => Boolean(enabled && !focusActive));
   const [railCollapsed, setRailCollapsed] = useState(false);
+  const autoEnteredRef = useRef(Boolean(enabled && !focusActive));
 
   const exitImmersive = useCallback(() => {
     setImmersive(false);
@@ -117,8 +121,15 @@ export default function useWarRoomImmersive({ enabled, focusActive = false } = {
   }, [immersive]);
 
   useEffect(() => {
-    if (!immersive) return;
-    if (shouldExitWarRoomImmersive({ enabled, focusActive })) exitImmersive();
+    if (shouldExitWarRoomImmersive({ enabled, focusActive })) {
+      autoEnteredRef.current = false;
+      if (immersive) exitImmersive();
+      return;
+    }
+    if (!immersive && !autoEnteredRef.current) {
+      autoEnteredRef.current = true;
+      setImmersive(true);
+    }
   }, [enabled, exitImmersive, focusActive, immersive]);
 
   useEffect(() => {
