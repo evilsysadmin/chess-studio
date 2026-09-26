@@ -10,6 +10,7 @@ import { keyGameMoments } from '../postGameHighlights.js';
 import { glossaryEntry } from '../chessGlossary.js';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import PostGameExam from './PostGameExam.jsx';
+import NotationPanel from './NotationPanel.jsx';
 import { getToken } from '../auth.js';
 import { requestRemoteNarrative } from '../narrativeRemote.js';
 import { buildMatthiasPositionDossier, buildPostGameAutopsyDossier } from '../aiNarrativeTasks.js';
@@ -79,7 +80,7 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
       cancelled = true;
       worstCounterfactualAbortRef.current?.abort();
     };
-  }, [history, humanColor, meta.initialFen]);
+  }, [history, humanColor, meta.gameId, meta.initialFen]);
 
   useEffect(() => {
     if (status !== 'done' || !report || archivedRef.current) return;
@@ -217,6 +218,9 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
               <summary>Abrir autopsia completa</summary>
               <div className="autopsy-full-details-body">
                 <p className="hint-text">La precisión estimada es una escala propia de Chess Studio basada en la pérdida media; no pretende copiar la métrica de ninguna plataforma externa.</p>
+                <div className="autopsy-reviewed-notebook">
+                  <NotationPanel history={history} difficulty={meta.difficulty ?? 45} analysisReport={report} />
+                </div>
                 <div className="autopsy-summary">
                   <div><span>Precisión estimada</span><b>{accuracy}%</b></div>
                   <div><span>Error medio</span><b>−{report.averageLoss} puntos de evaluación</b></div>
