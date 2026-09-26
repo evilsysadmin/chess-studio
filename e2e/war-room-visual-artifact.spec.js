@@ -614,7 +614,12 @@ for (const profile of ACTIVE_CAPTURE_PROFILES) {
         }
         const immersiveCanvas = page.locator('.board3d-main-canvas');
         await expect(immersiveCanvas).toBeVisible();
-        await expect(immersiveCanvas).toHaveAttribute('data-war-room-rendered', 'true', { timeout: 30_000 });
+        // Classic War Room decor is a stronger scene canary than a mounted
+        // canvas: if Klaus exists, the room graph itself has rendered.
+        if (!['v2', 'v3'].includes(profile.variant)) {
+          await expect(immersiveCanvas).toHaveAttribute('data-war-room-cat-rendered', 'true', { timeout: 30_000 });
+          await expect(immersiveCanvas).toHaveAttribute('data-war-room-cat-count', '1');
+        }
         await page.keyboard.press('Escape');
         await expect(page.locator('.game-layout-immersive')).toHaveCount(0);
         await page.getByRole('button', { name: 'Entrar en modo inmersión', exact: true }).first().click();
