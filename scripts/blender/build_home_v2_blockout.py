@@ -2379,7 +2379,9 @@ def add_table_and_board(materials):
     wood = materials["table_wood"]
     dark = materials["board_dark"]
     light = materials["board_light"]
-    metal = materials["brass"]
+    # The table is the most handled furniture in the hall. Keep its collars
+    # darker and less polished than ceremonial chandelier/display brass.
+    metal = materials["library_brass_aged"]
     heraldry = materials["heraldry_gold"]
     banner = materials["banner"]
 
