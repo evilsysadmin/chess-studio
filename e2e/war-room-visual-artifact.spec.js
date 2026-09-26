@@ -623,6 +623,13 @@ for (const profile of ACTIVE_CAPTURE_PROFILES) {
           await expect(immersiveCanvas).toHaveAttribute('data-war-room-cat-rendered', 'true', { timeout: 30_000 });
           await expect(immersiveCanvas).toHaveAttribute('data-war-room-cat-count', '1');
         }
+        await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+        await page.waitForTimeout(350);
+        await page.screenshot({
+          path: `${ARTIFACT_DIR}/${profile.label}.png`,
+          fullPage: false,
+          animations: 'disabled',
+        });
         await page.keyboard.press('Escape');
         await expect(page.locator('.game-layout-immersive')).toHaveCount(0);
         await page.getByRole('button', { name: 'Entrar en modo inmersión', exact: true }).first().click();
