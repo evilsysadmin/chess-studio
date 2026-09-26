@@ -176,6 +176,87 @@ body.war-room-immersive-active {
   }
 }
 
+/* Phone landscape can be wider than the portrait breakpoint while still
+ * matching the generic <=1080px immersive fallback above. In that state the
+ * fallback's auto-height chain collapses the 3D stage during fullscreen /
+ * orientation hand-off: Three keeps rendering, but the canvas has no visible
+ * box. Immersive landscape owns the viewport, so keep that chain explicitly
+ * stretched and let the room remain the playable surface. */
+@media (orientation: landscape) and (max-width: 1080px) and (max-height: 620px) {
+  .game-screen .game-layout.game-layout-3d.game-layout-immersive {
+    overflow: hidden;
+  }
+
+  .game-screen .game-layout-immersive .board-live-row.is-3d-warroom {
+    padding: 0 !important;
+    gap: 0 !important;
+    border-width: 0 !important;
+  }
+
+  .game-layout-immersive .board-column,
+  .game-screen .game-layout-immersive .board-live-row.is-3d-warroom,
+  .game-layout-immersive .game-board-stack-3d,
+  .game-layout-immersive .game-board-3d-stage {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+  }
+
+  .game-layout-immersive .board-column {
+    display: grid;
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .game-screen .game-layout-immersive .board-live-row.is-3d-warroom {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+    grid-template-areas: 'board' !important;
+    align-items: stretch !important;
+    min-height: 0;
+  }
+
+  /* Immersive is intentionally board-only on a phone. The regular landscape
+   * layout still reserves commander/chat tracks and a compact player footer;
+   * if those tracks survive the transition, the 3D stage receives only the
+   * footer remainder (or collapses entirely). */
+  .game-screen .game-layout-immersive .game-board-stack.game-board-stack-3d {
+    display: block !important;
+    align-self: stretch !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    max-width: none !important;
+  }
+
+  .game-screen .game-layout-immersive .game-board-stack.game-board-stack-3d > .game-board-3d-stage {
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+  }
+
+  .game-layout-immersive .game-board-stack-3d > .game-player-rail.is-human,
+  .game-layout-immersive .game-board-stack-3d > .game-command-deck,
+  .game-layout-immersive .game-3d-command-column,
+  .game-layout-immersive .game-side-column.game-side-column-3d {
+    display: none !important;
+  }
+
+  .game-screen .game-layout-immersive .game-board-stack-3d .board3d-main-shell {
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    aspect-ratio: auto !important;
+  }
+
+  .game-screen .game-layout-immersive .board3d-main-canvas {
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+    visibility: visible !important;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .game-screen .game-layout.game-layout-3d.game-layout-immersive {
     animation: none;

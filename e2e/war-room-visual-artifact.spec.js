@@ -113,6 +113,15 @@ const CAPTURE_PROFILES = Object.freeze([
     landscapeContract: true,
   }),
   Object.freeze({
+    label: 'war-room-immersive-android-landscape-844x390',
+    title: 'Immersive Android landscape 844×390',
+    viewport: Object.freeze({ width: 844, height: 390 }),
+    hasTouch: true,
+    portraitContract: false,
+    landscapeContract: true,
+    immersive: true,
+  }),
+  Object.freeze({
     label: 'war-room-desktop-1440x900',
     title: 'Desktop 1440×900',
     viewport: Object.freeze({ width: 1440, height: 900 }),
@@ -582,11 +591,76 @@ for (const profile of ACTIVE_CAPTURE_PROFILES) {
       }
 
       if (profile.immersive) {
+        if (profile.hasTouch) {
+          // The page is already booted here, so install the spy in the live
+          // document. addInitScript only affects the next navigation and gave
+          // us a false negative instead of observing the trusted tap.
+          await page.evaluate(() => {
+            window.__warRoomOrientationLocks = [];
+            const orientation = screen.orientation;
+            if (orientation) {
+              Object.defineProperty(orientation, 'lock', {
+                configurable: true,
+                value: async (mode) => { window.__warRoomOrientationLocks.push(mode); },
+              });
+            }
+          });
+        }
         const enterImmersive = page.getByRole('button', { name: 'Entrar en modo inmersión', exact: true }).first();
         await expect(enterImmersive).toBeVisible();
         await enterImmersive.click();
         await expect(page.locator('.game-layout-immersive')).toBeVisible();
         await expect(page.locator('body')).toHaveClass(/war-room-immersive-active/);
+        if (profile.hasTouch) {
+          await expect.poll(() => page.evaluate(() => window.__warRoomOrientationLocks || []))
+            .toContain('landscape');
+        }
+        const immersiveCanvas = page.locator('.game-layout-immersive .board3d-main-canvas');
+        await expect(immersiveCanvas).toHaveCount(1);
+        const immersiveVisibility = await page.evaluate(() => {
+          const selectors = [
+            '.game-layout-immersive .board3d-main-canvas',
+            '.game-layout-immersive .board3d-main-shell',
+            '.game-layout-immersive .game-board-3d-stage',
+            '.game-layout-immersive .game-board-stack-3d',
+            '.game-layout-immersive .board-live-row.is-3d-warroom',
+            '.game-layout-immersive .board-column',
+            '.game-layout-immersive',
+          ];
+          return selectors.map((selector) => {
+            const node = document.querySelector(selector);
+            if (!node) return { selector, missing: true };
+            const style = getComputedStyle(node);
+            const rect = node.getBoundingClientRect();
+            return {
+              selector,
+              display: style.display,
+              visibility: style.visibility,
+              opacity: style.opacity,
+              overflow: style.overflow,
+              position: style.position,
+              width: Number(rect.width.toFixed(1)),
+              height: Number(rect.height.toFixed(1)),
+              top: Number(rect.top.toFixed(1)),
+              left: Number(rect.left.toFixed(1)),
+            };
+          });
+        });
+        console.log('WAR_ROOM_IMMERSIVE_VISIBILITY', JSON.stringify(immersiveVisibility));
+        await expect(immersiveCanvas).toBeVisible();
+        // Classic War Room decor is a stronger scene canary than a mounted
+        // canvas: if Klaus exists, the room graph itself has rendered.
+        if (!['v2', 'v3'].includes(profile.variant)) {
+          await expect(immersiveCanvas).toHaveAttribute('data-war-room-cat-rendered', 'true', { timeout: 30_000 });
+          await expect(immersiveCanvas).toHaveAttribute('data-war-room-cat-count', '1');
+        }
+        await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+        await page.waitForTimeout(350);
+        await page.screenshot({
+          path: `${ARTIFACT_DIR}/${profile.label}.png`,
+          fullPage: false,
+          animations: 'disabled',
+        });
         await page.keyboard.press('Escape');
         await expect(page.locator('.game-layout-immersive')).toHaveCount(0);
         await page.getByRole('button', { name: 'Entrar en modo inmersión', exact: true }).first().click();

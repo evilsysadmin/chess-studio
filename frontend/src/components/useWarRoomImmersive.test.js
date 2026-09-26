@@ -3,6 +3,8 @@ import {
   exitWarRoomBrowserFullscreen,
   getWarRoomBrowserFullscreenElement,
   requestWarRoomBrowserFullscreen,
+  requestWarRoomLandscape,
+  unlockWarRoomOrientation,
 } from './useWarRoomImmersive.js';
 
 describe('War Room browser fullscreen bridge', () => {
@@ -50,5 +52,26 @@ describe('War Room browser fullscreen bridge', () => {
 
     await expect(exitWarRoomBrowserFullscreen(doc)).resolves.toBe(false);
     expect(exitFullscreen).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('War Room Android orientation', () => {
+  it('requests landscape from the immersive tap when supported', async () => {
+    const lock = vi.fn().mockResolvedValue(undefined);
+    await expect(requestWarRoomLandscape({ orientation: { lock } })).resolves.toBe(true);
+    expect(lock).toHaveBeenCalledWith('landscape');
+  });
+
+  it('degrades safely when orientation lock is unavailable or rejected', async () => {
+    await expect(requestWarRoomLandscape({ orientation: {} })).resolves.toBe(false);
+    const lock = vi.fn().mockRejectedValue(new Error('blocked'));
+    await expect(requestWarRoomLandscape({ orientation: { lock } })).resolves.toBe(false);
+  });
+
+  it('unlocks orientation when leaving immersion', () => {
+    const unlock = vi.fn();
+    expect(unlockWarRoomOrientation({ orientation: { unlock } })).toBe(true);
+    expect(unlock).toHaveBeenCalledOnce();
   });
 });
