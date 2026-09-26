@@ -50,7 +50,7 @@ describe('PostGameExperience', () => {
       },
     });
     expect(html).toContain('Próximo reto adaptativo');
-    expect(html).toContain('Próximo reto adaptativo · algo más exigente · Intermedio');
+    expect(html).toContain('Próximo reto adaptativo · algo más amable · Aficionado');
     expect(html).not.toContain('Matthias ≈');
     expect(html).not.toMatch(/Próximo reto adaptativo[^<]*Elo/);
 

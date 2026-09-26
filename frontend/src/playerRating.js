@@ -135,13 +135,15 @@ const CPU_RATING_ANCHORS = [
   // Nivel 0 debe poder cumplir de verdad el alivio provisional de -50 Elo
   // para un perfil nuevo en el suelo de rating (400). Con 450 como mínimo,
   // "Calibrando" prometía un rival más amable pero matemáticamente arrancaba
-  // ya +50 por encima. Esta escala sigue siendo una estimación interna hasta
-  // disponer de calibración empírica externa.
+  // ya +50 por encima. El tramo 20–70 se recalibró el 2026-09-26 contra
+  // Stockfish con UCI_LimitStrength y colores alternos. Las muestras siguen
+  // siendo pequeñas, así que usamos anchors conservadores y monotónicos en vez
+  // de copiar literalmente sus estimaciones puntuales. 90–100 ya encajaba bien.
   [0, 350],
-  [20, 650],
-  [45, 900],
-  [60, 1100],
-  [70, 1275],
+  [20, 850],
+  [45, 1200],
+  [60, 1375],
+  [70, 1450],
   [90, 1600],
   [100, 1800],
 ];
