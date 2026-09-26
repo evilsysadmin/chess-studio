@@ -724,7 +724,7 @@ function Board3DCanvas({
       renderLite: state.renderLite,
       canvas: state.renderer.domElement,
       onStatus: setWarRoomVariantStatus,
-      onPaint: () => { state.resize?.(); state.render(); },
+      onPaint: state.resize,
     });
   }, [
     warRoomVariant,
