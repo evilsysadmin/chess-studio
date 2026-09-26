@@ -38,6 +38,15 @@ export function requestWarRoomLandscape(screenApi = globalThis.screen) {
   }
 }
 
+export async function requestWarRoomLandscapeFullscreen({
+  doc = globalThis.document,
+  screenApi = globalThis.screen,
+} = {}) {
+  const fullscreen = await requestWarRoomBrowserFullscreen(doc);
+  const landscape = await requestWarRoomLandscape(screenApi);
+  return { fullscreen, landscape };
+}
+
 export function unlockWarRoomOrientation(screenApi = globalThis.screen) {
   const orientation = screenApi?.orientation;
   if (!orientation || typeof orientation.unlock !== 'function') return false;
@@ -86,8 +95,7 @@ export default function useWarRoomImmersive({ enabled, focusActive = false } = {
     // Android browsers only allow orientation locking reliably from the same
     // trusted gesture used to enter fullscreen. Ask for both here; either API
     // may gracefully decline without breaking the CSS immersive fallback.
-    void requestWarRoomBrowserFullscreen();
-    void requestWarRoomLandscape();
+    void requestWarRoomLandscapeFullscreen();
     setImmersive(true);
   }, [enabled, exitImmersive, focusActive, immersive]);
 
