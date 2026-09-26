@@ -538,28 +538,36 @@ function expectLandscapeHealth(health) {
   expect(health.human?.bottom, 'Android landscape player rail must stay inside the viewport').toBeLessThanOrEqual(health.viewport.height + 1);
 }
 
+let sharedVisualBrowser;
+
+test.beforeAll(async () => {
+  sharedVisualBrowser = await chromium.launch({
+    headless: true,
+    args: LOCAL_GPU_CAPTURE
+      ? [
+        '--use-gl=angle',
+        '--use-angle=gl',
+        '--ignore-gpu-blocklist',
+        '--enable-gpu-rasterization',
+      ]
+      : [
+        '--use-gl=angle',
+        '--use-angle=swiftshader',
+        '--enable-unsafe-swiftshader',
+      ],
+  });
+});
+
+test.afterAll(async () => {
+  await sharedVisualBrowser?.close();
+});
+
 for (const profile of ACTIVE_CAPTURE_PROFILES) {
   test(`War Room · captura visual canónica ${profile.title}`, async () => {
     test.setTimeout(120_000);
     await mkdir(ARTIFACT_DIR, { recursive: true });
 
-    const browser = await chromium.launch({
-      headless: true,
-      args: LOCAL_GPU_CAPTURE
-        ? [
-          '--use-gl=angle',
-          '--use-angle=gl',
-          '--ignore-gpu-blocklist',
-          '--enable-gpu-rasterization',
-        ]
-        : [
-          '--use-gl=angle',
-          '--use-angle=swiftshader',
-          '--enable-unsafe-swiftshader',
-        ],
-    });
-
-    const context = await browser.newContext({
+    const context = await sharedVisualBrowser.newContext({
       viewport: profile.viewport,
       hasTouch: profile.hasTouch,
     });
@@ -725,7 +733,6 @@ for (const profile of ACTIVE_CAPTURE_PROFILES) {
       );
     } finally {
       await context.close();
-      await browser.close();
     }
   });
 }
