@@ -66,4 +66,17 @@ describe('War Room mobile framing', () => {
     expect(phone.cameraZ).toBeGreaterThan(tabletPortrait.cameraZ);
     expect(phone.maxDistance).toBeGreaterThan(tabletPortrait.maxDistance);
   });
+  it('iguala el picado landscape móvil con la cámara wide canónica de V1', () => {
+    const phone = getWarRoomMobileFramingProfile({
+      aspect: 1.8,
+      coarsePointer: true,
+      viewportWidth: 844,
+    });
+
+    expect(phone.mode).toBe('landscape-board-first');
+    expect(phone.cameraY).toBe(9.2);
+    expect(phone.cameraZ).toBe(9.55);
+    expect(phone.cameraY / phone.cameraZ).toBeCloseTo(9.2 / 9.55, 6);
+  });
+
 });
