@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { moveLoss, performanceLabel, mistakeSeverity, analyzeGame, analyzeCombatLog, findWorstMoveEver, buildMoveContext } from './gameReport.js';
+import { moveLoss, performanceLabel, mistakeSeverity, summarizeMoveReports, analyzeGame, analyzeCombatLog, findWorstMoveEver, buildMoveContext } from './gameReport.js';
 import { loadCombatHistory, saveCombatBattle, clearCombatHistory } from './combatHistory.js';
 import { moveContextLines } from './advancedCareer.js';
 
@@ -296,5 +296,19 @@ describe('findWorstMoveEver', () => {
     expect(Object.keys(cache)).not.toContain('partida-borrada-hace-rato');
     // g1 SI seguia en el historial -- se conserva su entrada del cache (no se reanaliza)
     expect(cache.g1.worst.played).toBe('algo-viejo');
+  });
+});
+
+describe('summarizeMoveReports', () => {
+  it('resume un cuaderno ya auditado sin volver a llamar al motor', () => {
+    const report = summarizeMoveReports([
+      { index: 0, played: 'e4', loss: 10, severity: 'ok' },
+      { index: 2, played: 'Qh5', loss: 170, severity: 'blunder' },
+      { index: 4, played: 'Nf3', loss: 40, severity: 'inaccuracy' },
+    ]);
+    expect(report.analyzedCount).toBe(3);
+    expect(report.averageLoss).toBe(73);
+    expect(report.worst.played).toBe('Qh5');
+    expect(report.topMistakes.map((row) => row.loss)).toEqual([170, 40, 10]);
   });
 });
