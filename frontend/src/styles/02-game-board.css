@@ -624,23 +624,3 @@
   margin-top: 0.4rem;
 }
 
-
-
-/* Post-game notebook minimax audit */
-.notation-review-legend,
-.game-notation-analysis-status {
-  margin: 0.35rem 0 0.55rem;
-  font-size: 0.72rem;
-  opacity: 0.74;
-}
-.notation-review-mark {
-  display: inline-block;
-  margin-left: 0.28rem;
-  font-size: 0.72em;
-  font-weight: 900;
-  letter-spacing: -0.04em;
-  vertical-align: 0.08em;
-}
-.notation-reviewed.sev-inaccuracy .notation-review-mark { opacity: 0.78; }
-.notation-reviewed.sev-mistake .notation-review-mark { opacity: 0.9; }
-.notation-reviewed.sev-blunder .notation-review-mark { opacity: 1; }
