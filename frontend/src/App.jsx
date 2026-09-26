@@ -107,7 +107,6 @@ function AppInner({ isAdminUser }) {
   const { puzzleLaunch, quickMatchLaunchNonce, openPuzzleMode, openDailyChallengeSlot, returnToQuickMatchFromPersonalTraining } = usePuzzleLaunchFlow({ navigateTo, resetNavigation });
 
   usePresenceHeartbeat(view);
-
   useEffect(() => {
     if (view !== 'lab') clearRememberedLabMode();
   }, [view]);
@@ -137,7 +136,6 @@ function AppInner({ isAdminUser }) {
     jumpToMove, openHistoryRecord, clearAllHistory, openMovie,
   } = useReplayLibrary({ navigateTo });
   usePlayerPortraitRefresh(insights);
-
   function openGameCrimeScene(finishedGame, moveReport, mode, outcomeOverride) {
     if (!finishedGame || !moveReport) return;
     const outcome = outcomeOverride || (
