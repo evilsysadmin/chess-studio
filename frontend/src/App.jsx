@@ -415,8 +415,7 @@ function AppInner({ isAdminUser }) {
   function handleCasualGameEnd(outcome, finishedGame, endMeta = {}) {
     if (!finishedGame || !isCompletedGameOutcome(outcome)) return null;
     clearClockSnapshot(finishedGame.id);
-    const opening = identifyOpening((finishedGame.history || []).map((m) => m.san).filter(Boolean));
-    const qualityEvidence = finalizePostGameAnalysisEvidence({ finishedGame, outcome, endMeta, opening, timeControlId: activeTimeControl?.id || 'none' });
+    const opening = identifyOpening((finishedGame.history || []).map((m) => m.san).filter(Boolean)); const qualityEvidence = finalizePostGameAnalysisEvidence({ finishedGame, outcome, endMeta, opening, timeControlId: activeTimeControl?.id || 'none' });
     let seriesSnapshot = activeSeries;
     const trainingPosition = !!(gameContext.lab || gameContext.rescue || gameContext.suddenDeath);
 
