@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 export function isWarRoomImmersiveExitKey(key) {
   return key === 'Escape' || key === 'Esc';
@@ -87,11 +87,8 @@ export default function useWarRoomImmersive({ enabled, focusActive = false } = {
   // never attempts those APIs automatically.
   const [immersive, setImmersive] = useState(() => Boolean(enabled && !focusActive));
   const [railCollapsed, setRailCollapsed] = useState(false);
-  const autoEnteredRef = useRef(Boolean(enabled && !focusActive));
-  const userExitedRef = useRef(false);
 
   const exitImmersive = useCallback(() => {
-    userExitedRef.current = true;
     setImmersive(false);
     setRailCollapsed(false);
     void exitWarRoomBrowserFullscreen();
@@ -123,19 +120,11 @@ export default function useWarRoomImmersive({ enabled, focusActive = false } = {
   }, [immersive]);
 
   useEffect(() => {
-    if (shouldExitWarRoomImmersive({ enabled, focusActive })) {
-      autoEnteredRef.current = false;
-      if (immersive) {
-        setImmersive(false);
-        setRailCollapsed(false);
-      }
-      return;
+    if (shouldExitWarRoomImmersive({ enabled, focusActive }) && immersive) {
+      setImmersive(false);
+      setRailCollapsed(false);
     }
-    if (!immersive && !autoEnteredRef.current && !userExitedRef.current) {
-      autoEnteredRef.current = true;
-      setImmersive(true);
-    }
-  }, [enabled, exitImmersive, focusActive, immersive]);
+  }, [enabled, focusActive, immersive]);
 
   useEffect(() => {
     if (!immersive || typeof document === 'undefined') return undefined;
