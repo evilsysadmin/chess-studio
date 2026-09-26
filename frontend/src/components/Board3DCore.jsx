@@ -100,7 +100,6 @@ function Board3DCanvas({
   const inspectModeRef = useRef(false);
   const hoveredPieceRef = useRef(null);
   const cameraMotionRef = useRef({ x: 0, y: 0, targetX: 0, targetY: 0, yaw: 0, pitch: 0, dragging: false, lastX: 0, lastY: 0 });
-  const warRoomVariantRef = useRef('classic');
   const [skinId, setSkinId] = useState(() => loadSelectedSkin());
   const [boardTheme, setBoardTheme] = useState(() => loadBoardTheme());
   const [rendererLabel, setRendererLabel] = useState('3D');
@@ -110,7 +109,6 @@ function Board3DCanvas({
   const { selectable: warRoomVariantSelectable, variant: globalWarRoomVariant, status: warRoomVariantStatus, domData: globalWarRoomVariantDomData, setStatus: setWarRoomVariantStatus } = useWarRoomVariant();
   const presentation = resolveBoard3DPresentation({ cameraProfile, variantOverride: warRoomVariantOverride, globalVariant: globalWarRoomVariant, globalDomData: globalWarRoomVariantDomData, variantStatus: warRoomVariantStatus });
   const { classroom: classroomCamera, variant: warRoomVariant, domData: warRoomVariantDomData, playAriaLabel, inspectAriaLabel } = presentation;
-  warRoomVariantRef.current = warRoomVariant;
   const effectiveThemeId = resolveBoard3DThemeId(themeOverride, boardTheme);
   const currentPieces = useMemo(() => parseFen(fen), [fen]);
   const forensicGhost = useMemo(() => board3DForensicGhost(mistakeMove, currentPieces), [mistakeMove, currentPieces]);
@@ -441,7 +439,7 @@ function Board3DCanvas({
       const width = Math.max(280, host.clientWidth || 280);
       const height = Math.max(300, host.clientHeight || 300);
       renderer.setSize(width, height, false);
-      fitBoardCamera(camera, width, height, whiteSide, { profile: cameraProfile, variant: warRoomVariantRef.current });
+      fitBoardCamera(camera, width, height, whiteSide, { profile: cameraProfile, variant: renderer.domElement.dataset.warRoomVariant || 'classic' });
       render();
     }
     resize();
@@ -671,8 +669,7 @@ function Board3DCanvas({
       key,
       rim,
       warm,
-      render,
-      resize,
+      render, resize,
       ambientScheduler,
       clearInspectCameraDirty: () => { inspectCameraDirty = false; },
       renderScale: Math.min(window.devicePixelRatio || 1, sceneProfile.pixelRatioCap),
@@ -718,7 +715,6 @@ function Board3DCanvas({
   useEffect(() => {
     const state = sceneStateRef.current;
     if (!state) return undefined;
-    state.resize?.();
     return startWarRoomVariantScene({
       scene: state.scene,
       classicShellController: state.classicShellController,
@@ -728,7 +724,7 @@ function Board3DCanvas({
       renderLite: state.renderLite,
       canvas: state.renderer.domElement,
       onStatus: setWarRoomVariantStatus,
-      onPaint: state.render,
+      onPaint: () => { state.resize?.(); state.render(); },
     });
   }, [
     warRoomVariant,
