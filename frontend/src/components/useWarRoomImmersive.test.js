@@ -4,6 +4,8 @@ import {
   getWarRoomBrowserFullscreenElement,
   requestWarRoomBrowserFullscreen,
   requestWarRoomLandscape,
+  requestWarRoomLandscapeFullscreen,
+  shouldAutoRotateWarRoomOnEntry,
   unlockWarRoomOrientation,
 } from './useWarRoomImmersive.js';
 
@@ -57,10 +59,34 @@ describe('War Room browser fullscreen bridge', () => {
 
 
 describe('War Room Android orientation', () => {
+  it('auto-rotates only on coarse-pointer mobile viewports', () => {
+    const mobile = { innerWidth: 390, matchMedia: vi.fn(() => ({ matches: true })) };
+    const desktop = { innerWidth: 1440, matchMedia: vi.fn(() => ({ matches: false })) };
+    const wideTouch = { innerWidth: 1024, matchMedia: vi.fn(() => ({ matches: true })) };
+
+    expect(shouldAutoRotateWarRoomOnEntry({ win: mobile })).toBe(true);
+    expect(shouldAutoRotateWarRoomOnEntry({ win: desktop })).toBe(false);
+    expect(shouldAutoRotateWarRoomOnEntry({ win: wideTouch })).toBe(false);
+  });
+
   it('requests landscape from the immersive tap when supported', async () => {
     const lock = vi.fn().mockResolvedValue(undefined);
     await expect(requestWarRoomLandscape({ orientation: { lock } })).resolves.toBe(true);
     expect(lock).toHaveBeenCalledWith('landscape');
+  });
+
+  it('enters fullscreen before requesting landscape on Android', async () => {
+    const order = [];
+    const requestFullscreen = vi.fn(async () => { order.push('fullscreen'); });
+    const lock = vi.fn(async () => { order.push('landscape'); });
+    const doc = { documentElement: { requestFullscreen }, fullscreenElement: null };
+    const screenApi = { orientation: { lock } };
+
+    await expect(requestWarRoomLandscapeFullscreen({ doc, screenApi })).resolves.toEqual({
+      fullscreen: true,
+      landscape: true,
+    });
+    expect(order).toEqual(['fullscreen', 'landscape']);
   });
 
   it('degrades safely when orientation lock is unavailable or rejected', async () => {
