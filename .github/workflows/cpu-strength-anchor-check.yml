@@ -51,9 +51,9 @@ jobs:
             --engine /usr/games/stockfish \
             --levels "${{ matrix.level }}" \
             --reference-elos "${{ matrix.elo }}" \
-            --games 4 \
+            --games "${{ matrix.games }}" \
             --move-time 0.03 \
-            --max-plies 80 \
+            --max-plies 240 \
             --seed 9123 \
             --output "cpu-strength-${{ matrix.level }}-${{ matrix.elo }}.json"
       - uses: actions/upload-artifact@v7
