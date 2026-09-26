@@ -2389,9 +2389,9 @@ def add_table_and_board(materials):
     table_z = 1.12
     cube("HOME_PROP_table_top", (0.0, table_y, table_z + 0.04), (3.72, 1.72, 0.14), wood, bevel=0.085)
     for wear_index, (wx, wy, sx, sy, rot) in enumerate((
-        (-2.88, -0.52, 0.46, 0.10, -6.0),
-        (2.82, -0.48, 0.42, 0.11, 5.0),
-        (0.62, 2.49, 0.58, 0.085, -2.0),
+        (-2.88, -0.52, 0.34, 0.075, -6.0),
+        (2.82, -0.48, 0.31, 0.080, 5.0),
+        (0.62, 2.49, 0.40, 0.060, -2.0),
     )):
         wear = sphere(
             f"HOME_PROP_table_wear_{wear_index}",
