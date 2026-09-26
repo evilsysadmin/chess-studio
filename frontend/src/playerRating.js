@@ -182,7 +182,23 @@ export function ratingScoreForOutcome(outcome) {
   return outcome === 'win' ? 1 : outcome === 'draw' ? 0.5 : 0;
 }
 
-export function ratingChangeDetails(state, cpuDifficulty, score) {
+export function ratingPerformanceModifier(evidence) {
+  if (!evidence || evidence.sufficientSample !== true) return 0;
+  const averageLoss = Number(evidence.averageLoss);
+  const blunders = Math.max(0, Number(evidence.blunders || 0));
+  if (!Number.isFinite(averageLoss)) return 0;
+
+  // El resultado contra la fuerza del rival sigue mandando. El cuaderno sólo
+  // corrige el diagnóstico dentro de una banda pequeña para distinguir una
+  // partida realmente dominante de una victoria/derrota muy sucia.
+  if (evidence.clean === true && averageLoss <= 25) return 6;
+  if (blunders === 0 && averageLoss <= 45) return 3;
+  if (blunders >= 2 || averageLoss >= 120) return -6;
+  if (blunders >= 1 || averageLoss >= 80) return -3;
+  return 0;
+}
+
+export function ratingChangeDetails(state, cpuDifficulty, score, performanceEvidence = null) {
   const gameId = activeRatingGameId();
   const persisted = gameId ? loadRating() : null;
   const baseRating = state?.rating ?? DEFAULT_RATING;
@@ -197,12 +213,21 @@ export function ratingChangeDetails(state, cpuDifficulty, score) {
       cpuRating,
       expectedScore: expected,
       kFactor: k,
+      baseDelta: persisted.rating - baseRating,
+      performanceDelta: 0,
       duplicate: true,
     };
   }
 
-  const unclamped = Math.round(baseRating + k * (score - expected));
-  const nextRating = Math.max(400, unclamped);
+  const standardUnclamped = Math.round(baseRating + k * (score - expected));
+  const standardRating = Math.max(400, standardUnclamped);
+  const qualityModifier = ratingPerformanceModifier(performanceEvidence);
+  let targetDelta = (standardUnclamped - baseRating) + qualityModifier;
+  // La calidad puede suavizar una derrota o moderar una victoria, pero no
+  // puede invertir el signo competitivo del resultado.
+  if (score >= 1) targetDelta = Math.max(1, targetDelta);
+  else if (score <= 0) targetDelta = Math.min(-1, targetDelta);
+  const nextRating = Math.max(400, baseRating + targetDelta);
   const knownGameIds = processedGameIds([...(persisted?.processedGameIds || []), ...(state?.processedGameIds || [])]);
   const next = { rating: nextRating, games: games + 1 };
   if (gameId || knownGameIds.length) next.processedGameIds = processedGameIds(gameId ? [gameId, ...knownGameIds] : knownGameIds);
@@ -212,6 +237,8 @@ export function ratingChangeDetails(state, cpuDifficulty, score) {
     cpuRating,
     expectedScore: expected,
     kFactor: k,
+    baseDelta: standardRating - baseRating,
+    performanceDelta: nextRating - standardRating,
     duplicate: false,
   };
 }
