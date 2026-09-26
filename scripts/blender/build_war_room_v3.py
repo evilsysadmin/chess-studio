@@ -431,6 +431,8 @@ def build_observatory_telescope(static, palette):
                      axis_end + axis * 0.105, 0.255, palette["night"], static, vertices=56)
     cylinder_between("WR3_OBS_telescope_eyepiece", axis_start - axis * 0.34,
                      axis_start + axis * 0.02, 0.115, palette["brass_dark"], static, vertices=40)
+    cylinder_between("WR3_OBS_telescope_eyepiece_collar", axis_start - axis * 0.29,
+                     axis_start - axis * 0.23, 0.145, palette["brass"], static, vertices=40)
     cylinder_between("WR3_OBS_telescope_focus_ring", axis_start - axis * 0.05,
                      axis_start + axis * 0.08, 0.285, palette["copper"], static, vertices=48)
     cylinder_between("WR3_OBS_telescope_dew_shield", axis_end - axis * 0.02,
