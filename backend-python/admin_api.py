@@ -25,6 +25,7 @@ from admin_insights import (
     _extract_summary_stats,
     _foreground_summary,
     _presence_summary,
+    aggregate_matchmaking_telemetry,
 )
 from api_models import (
     AdminDeleteUserRequest,
@@ -303,6 +304,17 @@ def build_admin_router(*, auth_dependency, admin_dependency, limiter) -> APIRout
                 **_extract_summary_stats(profiles.get(uname)),
             })
         return {"users": result}
+
+
+    @router.get("/api/admin/matchmaking-telemetry")
+    async def admin_matchmaking_telemetry(username: str = Depends(admin_dependency)):
+        """Aggregated only: never returns usernames or per-user samples."""
+        user_rows = await ustore.list_user_overview()
+        profiles = await pstore.get_profile_data_for_users(
+            [row["username"] for row in user_rows],
+            {"chess-study-matchmaking-telemetry-v1"},
+        )
+        return {"matchmaking": aggregate_matchmaking_telemetry(profiles)}
 
 
     async def _resolve_admin_target_username(raw_username: str) -> str:

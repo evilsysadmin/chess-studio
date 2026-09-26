@@ -92,6 +92,7 @@ ADMIN_SUMMARY_PROFILE_KEYS = frozenset({
     "chess-study-series-history",
     "chess-study-tournament",
     "chess-study-worst-move-cache",
+    "chess-study-matchmaking-telemetry-v1",
 })
 
 
@@ -605,3 +606,43 @@ def _presence_summary(last_activity, presence_online=None) -> dict:
     else:
         presence = "offline"
     return {"lastActivity": parsed.astimezone(timezone.utc).isoformat(), "presence": presence, "presenceAgeSeconds": age}
+
+
+def aggregate_matchmaking_telemetry(profiles: dict[str, dict]) -> dict:
+    """Aggregate anonymous matchmaking quality signals across profile snapshots."""
+    samples = []
+    users_with_data = 0
+    for profile in (profiles or {}).values():
+        data = (profile or {}).get("data") or {}
+        payload = _profile_json(data, "chess-study-matchmaking-telemetry-v1", {})
+        rows = payload.get("samples") if isinstance(payload, dict) else None
+        if not isinstance(rows, list) or not rows:
+            continue
+        users_with_data += 1
+        samples.extend(row for row in rows if isinstance(row, dict))
+
+    outcomes = {"win": 0, "draw": 0, "loss": 0}
+    for row in samples:
+        outcome = row.get("outcome")
+        if outcome in outcomes:
+            outcomes[outcome] += 1
+
+    count = len(samples)
+    def flagged(key: str) -> int:
+        return sum(1 for row in samples if row.get(key) is True)
+    def rate(key: str):
+        return round(flagged(key) / count, 4) if count else None
+
+    return {
+        "sampleCount": count,
+        "usersWithData": users_with_data,
+        "outcomes": outcomes,
+        "closeGames": flagged("closeGame"),
+        "escapedWins": flagged("decisiveAdvantageEscaped"),
+        "winningStalemates": flagged("stalemateFromWinning"),
+        "rematches": flagged("rematch"),
+        "closeGameRate": rate("closeGame"),
+        "escapedWinRate": rate("decisiveAdvantageEscaped"),
+        "winningStalemateRate": rate("stalemateFromWinning"),
+        "rematchRate": rate("rematch"),
+    }
