@@ -52,7 +52,7 @@ jobs:
             --levels "${{ matrix.level }}" \
             --reference-elos "${{ matrix.elo }}" \
             --games "${{ matrix.games }}" \
-            --move-time 0.03 \
+            --move-time 0.10 \
             --max-plies 240 \
             --seed 9123 \
             --output "cpu-strength-${{ matrix.level }}-${{ matrix.elo }}.json"
