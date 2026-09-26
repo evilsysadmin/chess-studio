@@ -8,6 +8,19 @@ import {
 } from './playerRating.js';
 
 export const QUICK_MATCH_TARGET_LEAD_ELO = 50;
+let runtimeQuickMatchTargetLeadElo = QUICK_MATCH_TARGET_LEAD_ELO;
+
+export function setRuntimeQuickMatchTargetLeadElo(value) {
+  const numeric = Number(value);
+  runtimeQuickMatchTargetLeadElo = Number.isFinite(numeric)
+    ? Math.max(0, Math.min(150, Math.round(numeric)))
+    : QUICK_MATCH_TARGET_LEAD_ELO;
+  return runtimeQuickMatchTargetLeadElo;
+}
+
+export function getRuntimeQuickMatchTargetLeadElo() {
+  return runtimeQuickMatchTargetLeadElo;
+}
 export const QUICK_MATCH_HYSTERESIS_ELO = 25;
 export const QUICK_MATCH_PROVISIONAL_START_LEAD_ELO = -50;
 export const QUICK_MATCH_FORM_MAX_AGE_DAYS = 30;
@@ -24,7 +37,7 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
-export function provisionalQuickMatchLeadElo(games = PROVISIONAL_GAMES, targetLeadElo = QUICK_MATCH_TARGET_LEAD_ELO) {
+export function provisionalQuickMatchLeadElo(games = PROVISIONAL_GAMES, targetLeadElo = runtimeQuickMatchTargetLeadElo) {
   const count = Number(games);
   const targetLead = clamp(Math.round(Number(targetLeadElo) || 0), 0, 150);
   if (!Number.isFinite(count) || count >= PROVISIONAL_GAMES) return targetLead;
