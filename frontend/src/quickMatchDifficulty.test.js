@@ -155,21 +155,27 @@ describe('quick-match Elo chaser', () => {
     expect(cpuRatingForDifficulty(relieved) - 1000).toBeLessThanOrEqual(25);
   });
 
-  it('uses analyzed move quality only after two factual adaptive-game samples', () => {
+  it('uses analyzed move quality only after three factual adaptive-game samples', () => {
     const activity = [
+      ...adaptiveGame('g3', 'win', 56),
       ...adaptiveGame('g2', 'win', 56),
       ...adaptiveGame('g1', 'win', 56),
     ];
     const one = {
-      g2: { sufficientSample: true, clean: false, averageLoss: 130, blunders: 2 },
+      g3: { sufficientSample: true, clean: false, averageLoss: 130, blunders: 2 },
     };
     const two = {
       ...one,
-      g1: { sufficientSample: true, clean: false, averageLoss: 120, blunders: 2 },
+      g2: { sufficientSample: true, clean: false, averageLoss: 120, blunders: 2 },
+    };
+    const three = {
+      ...two,
+      g1: { sufficientSample: true, clean: false, averageLoss: 125, blunders: 2 },
     };
 
     expect(quickMatchQualityAdjustment(activity, 20, one)).toBe(0);
-    expect(quickMatchQualityAdjustment(activity, 20, two)).toBe(-15);
+    expect(quickMatchQualityAdjustment(activity, 20, two)).toBe(0);
+    expect(quickMatchQualityAdjustment(activity, 20, three)).toBe(-15);
   });
 
   it('lets repeated clean analyzed play add only a small quality boost', () => {
