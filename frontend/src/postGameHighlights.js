@@ -58,9 +58,10 @@ export function terseMatthiasInsight(report, outcome) {
   const worst = report.worst || null;
   const incident = buildPostGameIncidentEvidence(worst);
   const classification = incident?.classification;
+  const suggestedMate = incident?.suggestedEventType === 'MATE_FOUND';
 
   if (classification === 'stalemate-blunder') return { text: 'No necesitabas dar jaque. Necesitabas dejarme una casilla.', action: 'review' };
-  if (classification === 'missed-mate') return { text: 'Había mate. Elegiste otra cosa.', action: 'review' };
+  if (classification === 'missed-mate' || (suggestedMate && Number(worst?.loss) >= 80)) return { text: 'Había mate. Elegiste otra cosa.', action: 'review' };
   if (classification === 'allowed-mate') return { text: 'Una jugada convirtió la posición en mate.', action: 'review' };
 
   const averageLoss = Number(report.averageLoss);
