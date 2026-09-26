@@ -21,6 +21,14 @@ export function updateAdminUserRating(username, rating) {
   return adminPost('/admin/user-rating', { username, rating: Number(rating) });
 }
 
+export function fetchAdminMatchmakingSettings() {
+  return requestJson(`${BASE_URL}/admin/matchmaking-settings`, { headers: { ...authHeader() } });
+}
+
+export function updateAdminMatchmakingSettings(targetLeadElo) {
+  return adminPost('/admin/matchmaking-settings', { targetLeadElo: Number(targetLeadElo) });
+}
+
 export function fetchAdminMatthiasStatus() {
   return requestJson(`${BASE_URL}/admin/matthias-status`, { headers: { ...authHeader() } });
 }
