@@ -144,11 +144,11 @@ describe('quick-match Elo chaser', () => {
     expect(selected).not.toBe(oldDifficulty);
   });
 
-  it('ignores established form streaks sampled against only one opponent strength', () => {
+  it('ignores noisy established form sampled against only one opponent strength', () => {
     const baseline = difficultyForQuickMatchRating(1000, [], 20);
     const repeated = [
-      ...adaptiveGame('same3', 'loss', baseline),
-      ...adaptiveGame('same2', 'loss', baseline),
+      ...adaptiveGame('same3', 'win', baseline),
+      ...adaptiveGame('same2', 'draw', baseline),
       ...adaptiveGame('same1', 'loss', baseline),
     ];
 
