@@ -23,7 +23,7 @@ import { BOARD_THEME_3D, FILES, resolveBoard3DThemeId } from './Board3DConfig.js
 import { adjacentSquare, parseFen, squarePosition } from './Board3DBoardMath.js';
 import { buildBoard3DTileInstances, squareFromBoard3DIntersection } from './Board3DTileInstances.js';
 import { planBoard3DPieceReconciliation } from './Board3DPieceReconciliation.js';
-import { addCoarsePieceHitTarget, applyMatthiasCheckPose, buildPiece, disposeObject } from './Board3DPieces.js';
+import { addClassicDesktopPieceHitTarget, addCoarsePieceHitTarget, applyMatthiasCheckPose, buildPiece, disposeObject } from './Board3DPieces.js';
 import { fitBoardCamera, makeTextSprite } from './Board3DScene.js';
 import {
   board3DForensicGhost,
@@ -754,6 +754,7 @@ function Board3DCanvas({
       state.renderLite ? 'lite' : 'full',
       orientation,
       matthiasKingColor || 'none',
+      warRoomVariant,
     ].join('|');
     const allowPieceReuse = state.pieceMeshes.size > 0 && pieceBuildSignatureRef.current === pieceBuildSignature;
     const reconciliation = planBoard3DPieceReconciliation({
@@ -813,6 +814,7 @@ function Board3DCanvas({
       if (matthiasKing) mesh.userData.matthiasKing = true;
       mesh.traverse((object) => { object.userData.square = piece.square; });
       addCoarsePieceHitTarget(mesh, piece.square, state.coarsePointer);
+      addClassicDesktopPieceHitTarget(mesh, piece.square, !state.coarsePointer && warRoomVariant === 'classic');
       state.pieceGroup.add(mesh);
       reconciledMeshes.set(piece.square, mesh);
     }
@@ -982,7 +984,7 @@ function Board3DCanvas({
         disposeObject(capturedGhost);
       }
     };
-  }, [fen, skinId, animate, effectiveThemeId, orientation, showCoordinates, matthiasKingColor, checkSquare, gameOver]);
+  }, [fen, skinId, animate, effectiveThemeId, orientation, showCoordinates, matthiasKingColor, checkSquare, gameOver, warRoomVariant]);
 
   useEffect(() => {
     const state = sceneStateRef.current;
