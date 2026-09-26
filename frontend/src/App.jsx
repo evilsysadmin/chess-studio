@@ -488,14 +488,8 @@ function AppInner({ isAdminUser }) {
     };
     setHistoryList(saveGameRecord(record));
     recordGameActivity({ gameId: finishedGame.id, state: 'finished', mode: record.mode, outcome, difficulty: finishedGame.difficulty });
-    recordCompletedAdaptiveMatchmakingTelemetry({
-      gameContext,
-      finishedGame,
-      outcome,
-      endMeta,
-      ratingBefore: ratingSummary.eloBefore ?? rating.rating,
-      opponentRating: ratingSummary.cpuRating ?? null,
-    });
+    recordCompletedAdaptiveMatchmakingTelemetry({ gameContext, finishedGame, outcome, endMeta,
+      ratingBefore: ratingSummary.eloBefore ?? rating.rating, opponentRating: ratingSummary.cpuRating ?? null });
     recordCareerGame(record, { ...endMeta, contract: activeContract });
     clearActiveContract();
     setActiveContract(null);
