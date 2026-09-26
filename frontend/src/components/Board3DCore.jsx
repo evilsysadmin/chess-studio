@@ -753,8 +753,7 @@ function Board3DCanvas({
       skinId,
       state.renderLite ? 'lite' : 'full',
       orientation,
-      matthiasKingColor || 'none',
-      warRoomVariant,
+      matthiasKingColor || 'none', warRoomVariant,
     ].join('|');
     const allowPieceReuse = state.pieceMeshes.size > 0 && pieceBuildSignatureRef.current === pieceBuildSignature;
     const reconciliation = planBoard3DPieceReconciliation({
@@ -813,8 +812,7 @@ function Board3DCanvas({
       mesh.userData.baseScale = mesh.scale.clone();
       if (matthiasKing) mesh.userData.matthiasKing = true;
       mesh.traverse((object) => { object.userData.square = piece.square; });
-      addCoarsePieceHitTarget(mesh, piece.square, state.coarsePointer);
-      addClassicDesktopPieceHitTarget(mesh, piece.square, !state.coarsePointer && warRoomVariant === 'classic');
+      addCoarsePieceHitTarget(mesh, piece.square, state.coarsePointer); addClassicDesktopPieceHitTarget(mesh, piece.square, !state.coarsePointer && warRoomVariant === 'classic');
       state.pieceGroup.add(mesh);
       reconciledMeshes.set(piece.square, mesh);
     }
