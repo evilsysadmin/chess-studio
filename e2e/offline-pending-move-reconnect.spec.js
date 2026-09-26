@@ -124,7 +124,6 @@ test('War Room · offline→online durante /move pendiente reconcilia 3D sin rem
   // Renderer is a device preference now; Quick Match no longer owns a 2D/3D selector.
   // Pin this network/lifecycle test to 2D without coupling it to unrelated modal UI.
   await page.evaluate(() => {
-    localStorage.setItem('chess-study-device-board-renderer-v1', '2d');
     localStorage.setItem('chess-study-mechanic-tutorial-progress-v1', JSON.stringify({
       'war-room-basics': { seen: true, completedAt: 'e2e' },
     }));
