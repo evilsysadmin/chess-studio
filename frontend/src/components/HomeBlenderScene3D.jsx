@@ -5,6 +5,7 @@ import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.j
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { loadHomeCastleR2Scene } from './HomeCastle3DR2Asset.js';
 import { FIRE_SPRITE_DEFAULTS, createFireSprites, createSteamSprites, disposeFireSprites, fireSpriteSeeds } from './fireSprites.js';
+import { getEffectiveReducedMotion } from '../userPreferences.js';
 import {
   HOME_CASTLE_3D_MOBILE_ENABLE_MIN_WIDTH,
   homeCastle3DRenderPolicy,
@@ -65,24 +66,24 @@ const EXPOSURE = Object.freeze({
 // there is a night-ish sky.
 export const HOME_BLENDER_TIME_OF_DAY = Object.freeze({
   dawn: Object.freeze({
-    ambient: Object.freeze({ color: 0xb08a78, scale: 1.0 }),
-    hemi: Object.freeze({ color: 0x9aa6c8, scale: 1.05 }),
-    key: Object.freeze({ color: 0xffb48e, scale: 0.95 }),
-    fill: Object.freeze({ color: 0xc79aa8, scale: 1.3 }),
+    ambient: Object.freeze({ color: 0xb58c73, scale: 1.0 }),
+    hemi: Object.freeze({ color: 0x9aa6b9, scale: 1.0 }),
+    key: Object.freeze({ color: 0xffb77f, scale: 0.98 }),
+    fill: Object.freeze({ color: 0xb1909d, scale: 1.18 }),
     moon: true,
   }),
   day: Object.freeze({
-    ambient: Object.freeze({ color: 0xa89684, scale: 1.15 }),
-    hemi: Object.freeze({ color: 0xa9c0e0, scale: 1.3 }),
-    key: Object.freeze({ color: 0xffdcb0, scale: 1.12 }),
-    fill: Object.freeze({ color: 0x8fb2e6, scale: 1.7 }),
+    ambient: Object.freeze({ color: 0xae967d, scale: 1.12 }),
+    hemi: Object.freeze({ color: 0x9fadc0, scale: 1.18 }),
+    key: Object.freeze({ color: 0xffd6a0, scale: 1.14 }),
+    fill: Object.freeze({ color: 0x819bc2, scale: 1.45 }),
     moon: false,
   }),
   dusk: Object.freeze({
-    ambient: Object.freeze({ color: 0x9b7460, scale: 0.95 }),
-    hemi: Object.freeze({ color: 0x8a7ea8, scale: 1.0 }),
-    key: Object.freeze({ color: 0xff9a5c, scale: 0.95 }),
-    fill: Object.freeze({ color: 0x8a6a96, scale: 1.3 }),
+    ambient: Object.freeze({ color: 0xa4775f, scale: 0.98 }),
+    hemi: Object.freeze({ color: 0x86788f, scale: 0.94 }),
+    key: Object.freeze({ color: 0xff9856, scale: 1.0 }),
+    fill: Object.freeze({ color: 0x7b6688, scale: 1.15 }),
     moon: true,
   }),
   night: Object.freeze({
@@ -109,6 +110,90 @@ export function applyHomeBlenderMoonVisibility(root, ambient = 'day') {
     touched += 1;
   });
   return touched;
+}
+
+const HOME_BLENDER_KLAUS_PART = /^HOME_PROP_cat_/i;
+const HOME_BLENDER_KLAUS_STATIC = /^HOME_PROP_cat_(?:cushion|tassel)/i;
+
+export const HOME_BLENDER_KLAUS_MOTION = Object.freeze({
+  breatheScale: 0.0045,
+  breatheLift: 0.003,
+  settleX: 0.0025,
+  settleZ: 0.0015,
+  yaw: 0.0045,
+  roll: 0.0025,
+});
+
+export function homeBlenderIsKlausPart(name = '') {
+  const normalized = String(name || '');
+  return HOME_BLENDER_KLAUS_PART.test(normalized) && !HOME_BLENDER_KLAUS_STATIC.test(normalized);
+}
+
+export function homeBlenderKlausPose(timeMs = 0) {
+  const seconds = Math.max(0, Number(timeMs) || 0) / 1000;
+  const breathe = Math.sin(seconds * (Math.PI * 2 / 5.8));
+  const settle = Math.sin(seconds * (Math.PI * 2 / 17.0) + 0.8);
+  const tinyShift = Math.sin(seconds * (Math.PI * 2 / 23.0) + 2.1);
+  return {
+    scaleY: 1 + ((breathe + 1) * 0.5) * HOME_BLENDER_KLAUS_MOTION.breatheScale,
+    offsetY: ((breathe + 1) * 0.5) * HOME_BLENDER_KLAUS_MOTION.breatheLift,
+    offsetX: settle * HOME_BLENDER_KLAUS_MOTION.settleX,
+    offsetZ: tinyShift * HOME_BLENDER_KLAUS_MOTION.settleZ,
+    yaw: settle * HOME_BLENDER_KLAUS_MOTION.yaw,
+    roll: tinyShift * HOME_BLENDER_KLAUS_MOTION.roll,
+  };
+}
+
+export function prepareHomeBlenderKlausRig(root) {
+  if (!root?.traverse || !root?.add || !root?.worldToLocal) return null;
+  const parts = [];
+  root.updateMatrixWorld?.(true);
+  root.traverse((object) => {
+    if (object !== root && homeBlenderIsKlausPart(object.name) && object.parent) parts.push(object);
+  });
+  if (!parts.length) return null;
+
+  const bounds = new THREE.Box3();
+  let hasBounds = false;
+  for (const part of parts) {
+    const box = new THREE.Box3().setFromObject(part);
+    if (box.isEmpty()) continue;
+    bounds.union(box);
+    hasBounds = true;
+  }
+  if (!hasBounds) return null;
+
+  const pivot = root.worldToLocal(bounds.getCenter(new THREE.Vector3()).clone());
+  const rig = new THREE.Group();
+  rig.name = 'HOME_RUNTIME_KlausRig';
+  rig.position.copy(pivot);
+  root.add(rig);
+  rig.updateMatrixWorld(true);
+
+  for (const part of parts) rig.attach(part);
+  rig.userData.homeKlausBase = {
+    position: rig.position.clone(),
+    scale: rig.scale.clone(),
+    rotation: rig.rotation.clone(),
+  };
+  return rig;
+}
+
+export function applyHomeBlenderKlausMotion(rig, timeMs = 0) {
+  const base = rig?.userData?.homeKlausBase;
+  if (!base) return false;
+  const pose = homeBlenderKlausPose(timeMs);
+  rig.position.set(
+    base.position.x + pose.offsetX,
+    base.position.y + pose.offsetY,
+    base.position.z + pose.offsetZ,
+  );
+  rig.scale.set(base.scale.x, base.scale.y * pose.scaleY, base.scale.z);
+  rig.rotation.copy(base.rotation);
+  rig.rotation.y += pose.yaw;
+  rig.rotation.z += pose.roll;
+  rig.updateMatrixWorld?.(true);
+  return true;
 }
 
 function stableFirePhase(name = '') {
@@ -1060,6 +1145,7 @@ export default function HomeBlenderScene3D({
     let fallbackRequested = false;
     let model = null;
     let fireRig = [];
+    let klausRig = null;
     let dust = null;
     let shaft = null;
     const fireParticles = [];
@@ -1303,6 +1389,7 @@ export default function HomeBlenderScene3D({
       if (timestamp - lastFireRenderedAt >= fireIntervalMs) {
         moveDust(timestamp);
         moveFireParticles(timestamp);
+        applyHomeBlenderKlausMotion(klausRig, timestamp);
         const lightFactor = applyRuntimeFireMotion(fireRig, timestamp);
         runtimeLights.leftHearth.intensity = runtimeLights.leftHearthBase * lightFactor.left;
         runtimeLights.rightHearth.intensity = runtimeLights.rightHearthBase * lightFactor.right;
@@ -1334,29 +1421,32 @@ export default function HomeBlenderScene3D({
         if (!plan.enabled) {
           // Too expensive here: settle on the still frame and stay there.
           canvas.dataset.homeFireMotion = 'off-slow';
+          if (klausRig) canvas.dataset.homeKlausMotion = 'off-slow';
           return;
         }
       }
       fireFrame = window.requestAnimationFrame(animateFire);
     };
 
-    const prefersReducedMotion = typeof window.matchMedia === 'function'
-      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const prefersReducedMotion = getEffectiveReducedMotion();
 
     const softwareRenderer = homeBlenderIsSoftwareRenderer(readRendererName(renderer));
 
     const startFireAnimation = () => {
       if (prefersReducedMotion) {
         canvas.dataset.homeFireMotion = 'reduced';
+        if (klausRig) canvas.dataset.homeKlausMotion = 'reduced';
         return;
       }
       if (softwareRenderer) {
         canvas.dataset.homeFireMotion = 'off-software';
+        if (klausRig) canvas.dataset.homeKlausMotion = 'off-software';
         return;
       }
       if (canvas.dataset.homeFireMotion === 'off-slow') return;
       if (disposed || !model || document.hidden || fireFrame !== null) return;
       canvas.dataset.homeFireMotion = 'live';
+      if (klausRig) canvas.dataset.homeKlausMotion = 'live';
       if (effectsAllowed()) {
         ensureDust();
         ensureMoonShaft();
@@ -1434,6 +1524,8 @@ export default function HomeBlenderScene3D({
       applyHomeBlenderPieceLift(model);
       applyHomeBlenderMoonVisibility(model, ambient);
       fireRig = prepareRuntimeFireRig(model);
+      klausRig = prepareHomeBlenderKlausRig(model);
+      canvas.dataset.homeKlausMotion = klausRig ? 'ready' : 'missing';
       scene.add(model);
       resize();
       applyRuntimeFireMotion(fireRig, 0);
@@ -1529,6 +1621,7 @@ export default function HomeBlenderScene3D({
       data-home-castle-picked="none"
       data-home-blender-runtime="loading"
       data-home-blender-camera="canonical"
+      data-home-klaus-motion="loading"
       aria-hidden="true"
     />
   );
