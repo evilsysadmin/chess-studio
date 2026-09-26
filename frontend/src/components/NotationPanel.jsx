@@ -1,6 +1,7 @@
 import { difficultyLabel } from '../difficulty.js';
 import { formatLongMove } from '../notation.js';
 import { identifyOpening } from '../openings.js';
+import './NotationPanel.css';
 
 const REVIEW_MARK = Object.freeze({
   ok: { mark: '✓', label: 'Cercana a la ideal' },
