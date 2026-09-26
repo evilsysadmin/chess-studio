@@ -149,9 +149,9 @@ def build_curved_observatory(static, palette):
         for col in range(-7, 8):
             x = col * tile_size
             y = row * tile_size - 0.18
-            if x * x + (y + 0.18) * (y + 0.18) > 8.38 * 8.38:
+            if x * x + (y + 0.18) * (y + 0.18) > 8.28 * 8.28:
                 continue
-            material = palette["stone_light"] if (row + col) % 2 == 0 else palette["green_marble"]
+            material = palette["stone_light"] if (row + col) % 3 else palette["green_marble"]
             base.cube(
                 f"WR3_OBS_floor_tile_{tile_index}", (x, y, 0.010),
                 (tile_half, tile_half, 0.030), material, static, bevel=0.018,
@@ -246,7 +246,7 @@ def build_celestial_window(static, palette):
         palette["walnut_dark"], static, rotation=(math.pi / 2, 0, 0),
     )
     base.torus(
-        "WR3_OBS_celestial_window_halo", (cx, cy - 0.10, cz), 3.08, 0.035,
+        "WR3_OBS_celestial_window_halo", (cx, cy - 0.10, cz), 3.08, 0.050,
         palette["brass_dark"], static, rotation=(math.pi / 2, 0, 0),
     )
 
