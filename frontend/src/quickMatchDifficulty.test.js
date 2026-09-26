@@ -285,7 +285,7 @@ describe('quick-match Elo chaser', () => {
   });
 
   it('uses the configured global target lead for established players', () => {
-    const difficulty = difficultyForQuickMatchRating(1200, [], 20, {}, Date.now(), 75);
+    const difficulty = difficultyForQuickMatchRating(1200, [], 20, {}, new Date('2026-09-26T12:00:00Z').getTime(), 75);
     const lead = cpuRatingForDifficulty(difficulty) - 1200;
     expect(lead).toBeGreaterThanOrEqual(50);
     expect(lead).toBeLessThanOrEqual(100);
