@@ -2,6 +2,7 @@ import {
   chesscomPremiumMissOffset,
   chesscomPremiumRoundPattern,
 } from './chesscomBabylonGpu.js';
+import { clampNumber } from './numberUtils.js';
 
 const TILE = 1.55;
 const ORIGIN_X = -((10 - 1) * TILE) / 2;
@@ -14,17 +15,13 @@ const LEGACY_BALLISTIC_PREFIXES = Object.freeze([
 
 export const CHESSCOM_CANONICAL_BALLISTIC_HOT_PATH = 'reused-shot-vectors-v1';
 
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, value));
-}
-
 function easeOutCubic(value) {
-  const p = clamp(value, 0, 1);
+  const p = clampNumber(value, 0, 1);
   return 1 - Math.pow(1 - p, 3);
 }
 
 function smoothstep(value) {
-  const p = clamp(value, 0, 1);
+  const p = clampNumber(value, 0, 1);
   return p * p * (3 - 2 * p);
 }
 
@@ -185,7 +182,7 @@ function detectAttacks(previous, state) {
   for (const shooter of friendlies) {
     const oldShooter = oldFriendlies.get(shooter.id);
     if (!oldShooter || !Number.isFinite(oldShooter.ammo) || !Number.isFinite(shooter.ammo) || shooter.ammo >= oldShooter.ammo) continue;
-    const rounds = clamp(oldShooter.ammo - shooter.ammo, 1, 5);
+    const rounds = clampNumber(oldShooter.ammo - shooter.ammo, 1, 5);
     const target = damagedEnemies.find((enemy) => enemy.id === state?.targetId)
       || damagedEnemies.slice().sort((a, b) => attackDistance(shooter, a) - attackDistance(shooter, b))[0]
       || enemies.find((enemy) => enemy.id === state?.targetId)
@@ -608,14 +605,14 @@ function animateShots(B, scene, shots, now) {
     const shot = shots[index];
     if (now < shot.born) continue;
     if (!shot.initialized) initializeShot(B, scene, shot);
-    const raw = clamp((now - shot.born) / shot.flightMs, 0, 1);
+    const raw = clampNumber((now - shot.born) / shot.flightMs, 0, 1);
     const eased = easeOutCubic(raw);
     chesscomWriteLerp3(shot.current, shot.start, shot.end, eased);
     shot.bullet.position.copyFrom(shot.current);
-    const tailProgress = clamp(eased - .11, 0, 1);
+    const tailProgress = clampNumber(eased - .11, 0, 1);
     chesscomWriteLerp3(shot.tail, shot.start, shot.end, tailProgress);
     B.MeshBuilder.CreateLines(shot.trail.name, shot.trailUpdateOptions);
-    const flashProgress = clamp((now - shot.born) / 58, 0, 1);
+    const flashProgress = clampNumber((now - shot.born) / 58, 0, 1);
     shot.flash.visibility = 1 - flashProgress;
     shot.flash.scaling.set(1.6 + flashProgress * .8, .72 * (1 - flashProgress), .72 * (1 - flashProgress));
     shot.light.intensity = (1 - flashProgress) * 2.1;

@@ -1,15 +1,12 @@
 import { buildNemesisDossier } from './nemesis.js';
 import { loadPersonalPuzzles } from './personalPuzzles.js';
+import { clampNumber } from './numberUtils.js';
 
 const CAMPAIGN_MILESTONE_KINDS = new Set(['challenge_completed', 'goal_completed']);
 
 function finite(value) {
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
-}
-
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, value));
 }
 
 function matchingPersonalPuzzleCount(puzzles, incidentKey) {
@@ -26,7 +23,7 @@ function challengeChapter(challenge, puzzles) {
   const baselineGames = Math.max(0, Number(challenge.baseline_games || 0));
   const currentGames = Math.max(baselineGames, Number(challenge.current_games || baselineGames));
   const target = Math.max(1, Number(challenge.target_games || 3));
-  const progress = clamp(currentGames - baselineGames, 0, target);
+  const progress = clampNumber(currentGames - baselineGames, 0, target);
   const incidentKey = String(challenge.incident_key || '') || null;
   const material = matchingPersonalPuzzleCount(puzzles, incidentKey);
   return {
@@ -56,7 +53,7 @@ function goalProgress(goal) {
   if (goal?.metric === 'incidents_per_game' && baseline !== null && current !== null) {
     const target = baseline * 0.70;
     const denominator = baseline - target;
-    const pct = denominator > 0 ? clamp(Math.round(((baseline - current) / denominator) * 100), 0, 100) : 0;
+    const pct = denominator > 0 ? clampNumber(Math.round(((baseline - current) / denominator) * 100), 0, 100) : 0;
     return {
       pct,
       progressLabel: `${(baseline * 100).toFixed(1)} → ${(current * 100).toFixed(1)} incidentes / 100 partidas`,
@@ -67,7 +64,7 @@ function goalProgress(goal) {
   if (goal?.metric === 'opening_win_pct' && baseline !== null && current !== null) {
     const target = Math.min(100, baseline + 15);
     const denominator = Math.max(1, target - baseline);
-    const pct = clamp(Math.round(((current - baseline) / denominator) * 100), 0, 100);
+    const pct = clampNumber(Math.round(((current - baseline) / denominator) * 100), 0, 100);
     return {
       pct,
       progressLabel: `${Math.round(baseline)}% → ${Math.round(current)}%`,
