@@ -592,7 +592,10 @@ for (const profile of ACTIVE_CAPTURE_PROFILES) {
 
       if (profile.immersive) {
         if (profile.hasTouch) {
-          await page.addInitScript(() => {
+          // The page is already booted here, so install the spy in the live
+          // document. addInitScript only affects the next navigation and gave
+          // us a false negative instead of observing the trusted tap.
+          await page.evaluate(() => {
             window.__warRoomOrientationLocks = [];
             const orientation = screen.orientation;
             if (orientation) {
