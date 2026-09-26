@@ -202,6 +202,38 @@ export function classRoomCameraFramingProfile({ aspect = 1, coarsePointer = fals
   });
 }
 
+export function classicWarRoomCameraFramingProfile(aspect = 1) {
+  const safeAspect = Math.max(0.35, Number(aspect) || 1);
+  const wide = safeAspect >= 1.42;
+
+  // V1 prioritises piece separation and click readability over showing as much
+  // wall as possible. Keep the long desktop lens, but raise the eyeline so the
+  // board reads more like a playable surface and less like a low cinematic shot.
+  return wide
+    ? Object.freeze({
+        version: 'classic-overhead-v1',
+        halfSpan: 5.46,
+        padding: 1.07,
+        minDistance: 13.2,
+        maxDistance: 28,
+        targetY: 1.25,
+        targetZ: -0.1,
+        cameraY: 8.6,
+        cameraZ: 10.1,
+      })
+    : Object.freeze({
+        version: 'classic-overhead-v1',
+        halfSpan: 5.72,
+        padding: 1.12,
+        minDistance: 14.4,
+        maxDistance: 30,
+        targetY: 0.82,
+        targetZ: -0.06,
+        cameraY: 10.2,
+        cameraZ: 10.35,
+      });
+}
+
 export function fitBoardCamera(camera, width, height, whiteSide, { profile: requestedProfile = 'tactical' } = {}) {
   const aspect = Math.max(0.35, width / Math.max(1, height));
   const coarsePointer = typeof window !== 'undefined'
@@ -214,7 +246,9 @@ export function fitBoardCamera(camera, width, height, whiteSide, { profile: requ
     : getWarRoomMobileFramingProfile({ aspect, coarsePointer, viewportWidth });
   const profile = requestedProfile === 'classroom'
     ? classRoomCameraFramingProfile({ aspect, coarsePointer, viewportWidth })
-    : mobileProfile || getCameraFramingProfile(aspect);
+    : mobileProfile || (requestedProfile === 'classic'
+      ? classicWarRoomCameraFramingProfile(aspect)
+      : getCameraFramingProfile(aspect));
   camera.fov = resolveBoard3DCameraFov(aspect, { mobile: Boolean(mobileProfile || (requestedProfile === 'classroom' && (coarsePointer || aspect < 1.12))) });
   const verticalFov = THREE.MathUtils.degToRad(camera.fov);
   const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * aspect);
