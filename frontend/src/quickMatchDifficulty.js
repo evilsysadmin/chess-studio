@@ -85,19 +85,25 @@ export function quickMatchRecentFormAdjustment(activity = [], games = PROVISIONA
   const recent = recentAdaptiveResults(activity, nowMs);
   if (!recent.length) return 0;
 
-  // En perfiles establecidos no reaccionamos a una racha fabricada contra un
-  // único nivel de CPU. Exigimos al menos dos fuerzas de rival distintas para
-  // que la forma reciente mueva el matchmaking; provisional conserva la vía
-  // rápida de alivio porque ahí sí prima no machacar al jugador nuevo.
   const provisional = Number(games) < PROVISIONAL_GAMES;
-  const distinctOpponents = new Set(recent.map((event) => cpuRatingForDifficulty(event.difficulty))).size;
-  if (!provisional && recent.length >= 3 && distinctOpponents < QUICK_MATCH_FORM_MIN_DISTINCT_OPPONENTS) return 0;
 
   let lossStreak = 0;
   for (const event of recent) {
     if (event.outcome !== 'loss') break;
     lossStreak += 1;
   }
+
+  // En perfiles establecidos evitamos sobreinterpretar evidencia ruidosa
+  // recogida contra una única fuerza de CPU. Una racha clara de tres derrotas
+  // sí conserva el alivio: no obligamos al jugador a seguir chocando contra
+  // exactamente el mismo muro sólo para conseguir una segunda muestra.
+  const distinctOpponents = new Set(recent.map((event) => cpuRatingForDifficulty(event.difficulty))).size;
+  if (
+    !provisional
+    && recent.length >= 3
+    && distinctOpponents < QUICK_MATCH_FORM_MIN_DISTINCT_OPPONENTS
+    && lossStreak < 3
+  ) return 0;
 
   if (recent.length < 3 && !provisional) return 0;
   if (recent.length === 1) return lossStreak ? -25 : 0;
