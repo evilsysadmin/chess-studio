@@ -43,6 +43,8 @@ WARROOM_CORE_ONLY_FILES = {
 WARROOM_VARIANT_ORDER = ("classic", "v2", "v3")
 WARROOM_PROFILE_SCOPE_ALL = "all"
 WARROOM_PROFILE_SCOPE_MOBILE = "mobile"
+HOME_PROFILE_SCOPE_ALL = "all"
+HOME_PROFILE_SCOPE_QUICK_MATCH = "quickmatch"
 WARROOM_VARIANT_ALL = set(WARROOM_VARIANT_ORDER)
 WARROOM_CLASSIC_VARIANT_FILES = {
     "frontend/src/components/warroomclassicshell.js",
@@ -342,6 +344,16 @@ def classify_warroom_variants(paths: list[str]) -> str:
             return _variant_csv(WARROOM_VARIANT_ALL)
     return _variant_csv(variants or WARROOM_VARIANT_ALL)
 
+def classify_home_profile_scope(paths: list[str]) -> str:
+    cleaned = [path.strip().lower().replace("\\", "/") for path in paths if path.strip()]
+    if not cleaned:
+        return HOME_PROFILE_SCOPE_ALL
+    relevant = [path for path in cleaned if ".test." not in Path(path).name and ".spec." not in Path(path).name]
+    if relevant and all(path == "frontend/src/components/quickmatchmodal.jsx" for path in relevant):
+        return HOME_PROFILE_SCOPE_QUICK_MATCH
+    return HOME_PROFILE_SCOPE_ALL
+
+
 def classify_warroom_profile_scope(paths: list[str]) -> str:
     cleaned = [path.strip().lower().replace("\\", "/") for path in paths if path.strip()]
     if not cleaned:
@@ -382,6 +394,8 @@ def self_test() -> None:
         "frontend/src/components/WarRoomV3Shell.js",
     ]) == "classic,v3"
     assert classify_warroom_variants(["frontend/src/components/PuzzleScreen.jsx"]) == "classic,v2,v3"
+    assert classify_home_profile_scope(["frontend/src/components/QuickMatchModal.jsx"]) == "quickmatch"
+    assert classify_home_profile_scope(["frontend/src/components/HomeCastle3D.jsx"]) == "all"
     assert classify_warroom_profile_scope([
         "frontend/src/components/QuickMatchModal.jsx",
         "frontend/src/components/useWarRoomImmersive.js",
@@ -490,15 +504,18 @@ def main(argv: list[str] | None = None) -> int:
     result = "all" if args.all else classify(paths)
     warroom_variants = _variant_csv(WARROOM_VARIANT_ALL) if args.all else classify_warroom_variants(paths)
     warroom_profile_scope = WARROOM_PROFILE_SCOPE_ALL if args.all else classify_warroom_profile_scope(paths)
+    home_profile_scope = HOME_PROFILE_SCOPE_ALL if args.all else classify_home_profile_scope(paths)
     if args.github_output:
         with open(args.github_output, "a", encoding="utf-8") as handle:
             handle.write(f"producer_scope={result}\n")
             handle.write(f"warroom_variants={warroom_variants}\n")
             handle.write(f"warroom_profile_scope={warroom_profile_scope}\n")
+            handle.write(f"home_profile_scope={home_profile_scope}\n")
     else:
         print(f"producer_scope={result}")
         print(f"warroom_variants={warroom_variants}")
         print(f"warroom_profile_scope={warroom_profile_scope}")
+        print(f"home_profile_scope={home_profile_scope}")
     return 0
 
 
