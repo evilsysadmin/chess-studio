@@ -541,19 +541,17 @@ def self_test() -> None:
         "special-surfaces", "special-state-canaries", "desktop-scale", "android-focus",
     ]
     assert _job_ids(full) == [
-        "war-room-input-visual", "war-room-android", "war-room-special-states",
+        "war-room-android", "desktop-input", "war-room-special-states", "desktop-scale",
     ]
     full_jobs = build_job_matrix(full)["include"]
-    assert full_jobs[0]["command"].startswith("rc=0; ")
-    assert "war-room-hans-fire-call.spec.js" not in full_jobs[0]["command"]
-    assert "three-d-war-room.spec.js" in full_jobs[0]["command"]
-    assert "war-room-desktop-scale.spec.js" in full_jobs[0]["command"]
-    assert full_jobs[0]["command"].endswith('exit "$rc"')
+    assert all("war-room-hans-fire-call.spec.js" not in job["command"] for job in full_jobs)
+    assert any("three-d-war-room.spec.js" in job["command"] for job in full_jobs)
+    assert any("war-room-desktop-scale.spec.js" in job["command"] for job in full_jobs)
 
     chrome = classify(["frontend/src/components/GamePlayerRail.jsx"])
     assert chrome == BrowserScope(full_logic=True, visual=True, focus=True)
     assert _ids(chrome) == ["android-selection", "desktop-input", "desktop-scale", "android-focus"]
-    assert _job_ids(chrome) == ["war-room-input-visual", "war-room-android"]
+    assert _job_ids(chrome) == ["war-room-android", "desktop-input", "desktop-scale"]
 
     direct_special = classify(["e2e/three-d-war-room-special-states.spec.js"])
     assert direct_special == BrowserScope(special_states=True)
