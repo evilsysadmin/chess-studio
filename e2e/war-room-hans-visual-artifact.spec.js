@@ -81,8 +81,15 @@ test('War Room · canario visual de Hans físicamente en escena', async () => {
     });
     await seedGamesBeforeFire(page);
 
-    await buttonWithVisibleText(page, 'Partida rápida').click();
-    await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+    // Software WebGL startup is intentionally slow in the visual runner. Drive
+    // the same user path, but wait for each navigation surface explicitly so a
+    // delayed Home/Quick Match render cannot consume the Hans scene budget.
+    const quickMatch = buttonWithVisibleText(page, 'Partida rápida');
+    await expect(quickMatch).toBeVisible({ timeout: 45_000 });
+    await quickMatch.click();
+    const startGame = page.getByRole('button', { name: 'Empezar partida', exact: true });
+    await expect(startGame).toBeVisible({ timeout: 30_000 });
+    await startGame.click();
     const warRoom = page.locator('.board-live-row.is-3d-warroom');
     const canvas = page.locator('.board3d-main-canvas');
     const fireOverlay = page.getByTestId('warroom-hans-fire-call-overlay');
