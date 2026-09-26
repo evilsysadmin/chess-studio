@@ -286,6 +286,31 @@ describe('Chronicles of Matthias vertical slice', () => {
     expect(state.party.find((member) => member.id === 'rook')?.hp).toBe(0);
   });
 
+  it('uses runtime enemy positions for collision and targeting after creatures move', () => {
+    const base = createChroniclesState();
+    const enemy = CHRONICLES_ENEMIES.find((entry) => entry.id === 'corrupted-pawn');
+    const moved = {
+      ...base,
+      x: 2,
+      y: 5,
+      direction: 1,
+      enemyPositions: {
+        ...(base.enemyPositions || {}),
+        [enemy.id]: { x: 4, y: 5 },
+      },
+    };
+
+    const throughOldSpawn = chroniclesReduce(moved, 'forward');
+    expect([throughOldSpawn.x, throughOldSpawn.y]).toEqual([3, 5]);
+
+    const blockedAtRuntime = chroniclesReduce({ ...moved, x: 3, y: 5 }, 'forward');
+    expect([blockedAtRuntime.x, blockedAtRuntime.y]).toEqual([3, 5]);
+    expect(blockedAtRuntime.message).toMatch(/bloquea el paso/i);
+
+    const attackedAtRuntime = attack({ ...moved, x: 3, y: 5 }, 'rook');
+    expect(attackedAtRuntime[enemy.hpKey]).toBe(base[enemy.hpKey] - 2);
+  });
+
   it('does not let the party walk through stone', () => {
     const state = chroniclesReduce(createChroniclesState(), 'backward');
     expect([state.x, state.y]).toEqual([1, 5]);

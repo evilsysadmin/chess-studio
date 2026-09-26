@@ -1,6 +1,6 @@
 import {
   chroniclesEnemyIsActive,
-  chroniclesEnemyPosition,
+  chroniclesRuntimeEnemyPosition,
 } from '../chroniclesOfMatthias.js';
 import { chroniclesEnemyRenderRoster } from '../chroniclesEnemyRenderRoster.js';
 import { chroniclesPartyGridFootprint } from '../chroniclesPartyFootprint.js';
@@ -14,11 +14,6 @@ function point(value) {
   return Object.freeze({ x: Number(value.x), y: Number(value.y) });
 }
 
-function runtimeEnemyPosition(state, enemy) {
-  const runtime = state?.enemyPositions?.[enemy.id];
-  if (runtime && Number.isFinite(runtime.x) && Number.isFinite(runtime.y)) return runtime;
-  return chroniclesEnemyPosition(state, enemy);
-}
 
 function projectInteraction(interaction) {
   if (!interaction?.mode) return null;
@@ -126,7 +121,7 @@ export function chroniclesProjectSceneModel(
       visualScale: entry.visualScale,
       visualMotion: entry.visualMotion,
       visible,
-      cell: visible ? point(runtimeEnemyPosition(state, definition)) : null,
+      cell: visible ? point(chroniclesRuntimeEnemyPosition(state, definition)) : null,
     });
   }));
 

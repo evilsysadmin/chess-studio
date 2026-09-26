@@ -110,10 +110,16 @@ export function chroniclesEnemyPosition(state, enemy) {
   return keyed || { x: enemy.x, y: enemy.y };
 }
 
+export function chroniclesRuntimeEnemyPosition(state, enemy) {
+  const runtime = state?.enemyPositions?.[enemy.id];
+  if (runtime && Number.isFinite(runtime.x) && Number.isFinite(runtime.y)) return runtime;
+  return chroniclesEnemyPosition(state, enemy);
+}
+
 function chroniclesEnemyAt(state, x, y) {
   return enemiesFor(state).find((enemy) => {
     if (!enemyAlive(state, enemy)) return false;
-    const position = chroniclesEnemyPosition(state, enemy);
+    const position = chroniclesRuntimeEnemyPosition(state, enemy);
     return position.x === x && position.y === y;
   }) || null;
 }
