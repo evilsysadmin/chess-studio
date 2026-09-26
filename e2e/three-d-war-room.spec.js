@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { resolveBoard3DCameraFov } from '../frontend/src/components/Board3DConfig.js';
-import { classicWarRoomCameraFramingProfile } from '../frontend/src/components/Board3DScene.js';
+import { classicWarRoomCameraFramingProfile } from '../frontend/src/components/Board3DCameraProfiles.js';
 import { activateSetupControl, buttonWithVisibleText, login, mockApi } from './helpers.js';
 
 const WAR_ROOM_READY_TIMEOUT = 45_000;
