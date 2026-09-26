@@ -233,6 +233,39 @@ export function updateRating(state, cpuDifficulty, score) {
   return ratingChangeDetails(state, cpuDifficulty, score).next;
 }
 
+export function ratingPerformanceEstimate(rating, evidence) {
+  const baseRating = Math.max(400, Number(rating) || DEFAULT_RATING);
+  if (!evidence || evidence.sufficientSample !== true) {
+    return { rating: baseRating, confidence: 0, adjustment: 0 };
+  }
+
+  const analyzedCount = Math.max(0, Number(evidence.analyzedCount || 0));
+  const averageLoss = Number(evidence.averageLoss);
+  const blunders = Math.max(0, Number(evidence.blunders || 0));
+  if (!Number.isFinite(averageLoss) || analyzedCount < 8) {
+    return { rating: baseRating, confidence: 0, adjustment: 0 };
+  }
+
+  // El análisis de la partida estima fuerza, no cambia el rival en curso.
+  // La confianza crece gradualmente y el ajuste queda acotado para que una
+  // sola partida excepcional o desastrosa no reescriba el perfil.
+  const confidence = Math.min(1, analyzedCount / 20);
+  let rawAdjustment = 0;
+  if (blunders === 0 && averageLoss <= 25) rawAdjustment = 80;
+  else if (blunders === 0 && averageLoss <= 40) rawAdjustment = 50;
+  else if (averageLoss <= 60) rawAdjustment = 20;
+  else if (blunders >= 3 || averageLoss >= 150) rawAdjustment = -80;
+  else if (blunders >= 2 || averageLoss >= 110) rawAdjustment = -55;
+  else if (blunders >= 1 || averageLoss >= 75) rawAdjustment = -30;
+
+  const adjustment = Math.round(rawAdjustment * confidence);
+  return {
+    rating: Math.max(400, baseRating + adjustment),
+    confidence,
+    adjustment,
+  };
+}
+
 export function ratingQualityAdjustment(evidence, outcome) {
   if (!evidence || evidence.sufficientSample !== true) return 0;
   const averageLoss = Number(evidence.averageLoss);
