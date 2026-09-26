@@ -28,7 +28,10 @@ import { chessGameExitDisposition, isCompletedGameOutcome, shouldApplyCompetitiv
 import { gameModeFromContext } from './gameModes.js';
 import { loadRoster as loadCombatRoster } from './combatRoster.js';
 import { loadCombatService, summarizeCombatService } from './combatService.js';
-import { loadRating, saveRating, ratingChangeDetails, ratingScoreForOutcome, recordRatingHistory, loadRatingHistory } from './playerRating.js';
+import { loadRating, saveRating, ratingChangeDetails, ratingQualityChangeDetails, ratingScoreForOutcome, recordRatingHistory, loadRatingHistory } from './playerRating.js';
+import { analyzeCompletedGameOnce } from './postGameAnalysis.js';
+import { recordCleanGameEvidence } from './cleanGames.js';
+import { archiveAnalysis } from './advancedCareer.js';
 import { handicapForGap } from './handicap.js';
 const InsightsScreen = React.lazy(() => import('./components/InsightsScreen.jsx'));
 import { timeControlById } from './clock.js';
@@ -123,6 +126,7 @@ function AppInner({ isAdminUser }) {
   const [tournamentGame, setTournamentGame] = useState(null);
   const [lastResult, setLastResult] = useState(null);
   const [casualResult, setCasualResult] = useState(null);
+  const [postGameAnalysis, setPostGameAnalysis] = useState(null);
   const [exitNotice, setExitNotice] = useState(null);
   const {
     historyList, setHistoryList,
@@ -324,6 +328,7 @@ function AppInner({ isAdminUser }) {
     if (!launch) return false;
     setExitNotice(null);
     setCasualResult(null);
+    setPostGameAnalysis(null);
     setLoading(true);
     setError(null);
     try {
@@ -402,6 +407,83 @@ function AppInner({ isAdminUser }) {
     goBack();
   }
 
+  function launchPostGameAudit(finishedGame, outcome, record, { ratingEligible = false, target = 'casual' } = {}) {
+    if (!finishedGame?.id || !(finishedGame.history || []).length) return;
+    const gameId = String(finishedGame.id);
+    setPostGameAnalysis({ gameId, status: 'loading', report: null, qualityDelta: 0 });
+
+    void analyzeCompletedGameOnce({
+      gameId,
+      history: finishedGame.history,
+      humanColor: finishedGame.humanColor,
+      api,
+      initialFen: finishedGame.initialFen || null,
+    }).then((report) => {
+      const meta = {
+        gameId,
+        date: record?.date || new Date().toISOString(),
+        outcome,
+        difficulty: finishedGame.difficulty,
+        opening: record?.opening || null,
+        timeControlId: record?.timeControl?.id || 'none',
+      };
+      archiveAnalysis(gameId, report, meta);
+      const evidence = recordCleanGameEvidence(gameId, report, meta);
+      let qualityDelta = 0;
+
+      if (ratingEligible) {
+        const current = loadRating();
+        const quality = ratingQualityChangeDetails(current, gameId, evidence, outcome);
+        qualityDelta = quality.delta;
+        if (!quality.duplicate) {
+          saveRating(quality.next);
+          recordRatingHistory(quality.next.rating, gameId);
+          setRating(quality.next);
+
+          if (target === 'casual') {
+            setCasualResult((previous) => {
+              if (!previous?.ratingApplied || previous.gameId !== gameId) return previous;
+              const baseDelta = Number(previous.eloBaseDelta ?? previous.eloDelta ?? 0);
+              const totalDelta = baseDelta + qualityDelta;
+              return {
+                ...previous,
+                eloBaseDelta: baseDelta,
+                eloQualityDelta: qualityDelta,
+                eloDelta: totalDelta,
+                eloAfter: quality.next.rating,
+                detail: `Rating ${totalDelta >= 0 ? '+' : ''}${totalDelta} · ${previous.eloBefore} → ${quality.next.rating}${qualityDelta ? ` · calidad ${qualityDelta > 0 ? '+' : ''}${qualityDelta}` : ' · calidad revisada'}`,
+              };
+            });
+          } else if (target === 'tournament') {
+            setLastResult((previous) => {
+              if (!previous) return previous;
+              const baseDelta = Number(previous.eloBaseDelta ?? previous.eloDelta ?? 0);
+              return {
+                ...previous,
+                eloBaseDelta: baseDelta,
+                eloQualityDelta: qualityDelta,
+                eloDelta: baseDelta + qualityDelta,
+                eloAfter: quality.next.rating,
+              };
+            });
+          }
+        }
+      }
+
+      setPostGameAnalysis((previous) => (
+        previous?.gameId === gameId
+          ? { gameId, status: 'done', report, evidence, qualityDelta }
+          : previous
+      ));
+    }).catch(() => {
+      setPostGameAnalysis((previous) => (
+        previous?.gameId === gameId
+          ? { gameId, status: 'error', report: null, qualityDelta: 0 }
+          : previous
+      ));
+    });
+  }
+
   // Las partidas normales (menú "Nueva partida") también cuentan para el
   // rating tipo ELO — cualquier partida contra una CPU de dificultad
   // conocida, no hace falta que sea de torneo. "Partida de práctica" queda
@@ -451,6 +533,7 @@ function AppInner({ isAdminUser }) {
       ratingSummary = {
         ratingApplied: true,
         eloDelta: details.delta,
+        eloBaseDelta: details.delta,
         eloBefore: rating.rating,
         eloAfter: details.next.rating, ratingGames: details.next.games,
       };
@@ -497,6 +580,7 @@ function AppInner({ isAdminUser }) {
       : 'Esta modalidad no afecta a tu rating.';
     const summary = { gameId: finishedGame.id, outcome, title, detail, endReason: endMeta.endReason || null, adaptiveDifficulty: !!gameContext.adaptiveDifficulty, ...ratingSummary };
     setCasualResult(summary);
+    launchPostGameAudit(finishedGame, outcome, record, { ratingEligible: ratingSummary.ratingApplied, target: 'casual' });
     if (specialRun?.active && gameContext.runMode) {
       const nextRun = recordSpecialRunResult(specialRun, outcome);
       setSpecialRun(nextRun);
@@ -634,6 +718,7 @@ function AppInner({ isAdminUser }) {
   async function handlePlayTournament(color) {
     const launch = gameLaunch.begin();
     if (!launch) return;
+    setPostGameAnalysis(null);
     setLoading(true);
     setError(null);
     try {
@@ -684,6 +769,7 @@ function AppInner({ isAdminUser }) {
         setLastResult((current) => ({
           ...(current || { outcome }),
           eloDelta: details.delta,
+          eloBaseDelta: details.delta,
           eloBefore: prev.rating,
           eloAfter: details.next.rating,
           cpuRating: details.cpuRating,
@@ -701,6 +787,7 @@ function AppInner({ isAdminUser }) {
         outcome,
         moves: finishedGame.history,
         finalFen: finishedGame.fen,
+        initialFen: finishedGame.initialFen || null,
         mode: 'tournament',
         opening: identifyOpening((finishedGame.history || []).map((m) => m.san).filter(Boolean)),
         timeControl: null,
@@ -710,6 +797,7 @@ function AppInner({ isAdminUser }) {
       setHistoryList(saveGameRecord(record));
       recordGameActivity({ gameId: finishedGame.id, state: 'finished', mode: 'tournament', outcome, difficulty: finishedGame.difficulty });
       recordCareerGame(record, {});
+      launchPostGameAudit(finishedGame, outcome, record, { ratingEligible: true, target: 'tournament' });
     }
   }
 
@@ -943,6 +1031,7 @@ function AppInner({ isAdminUser }) {
             onCustomize={() => setShowSettings(true)}
             onGameEnd={handleCasualGameEnd}
             resultSummary={casualResult?.gameId === game.id ? casualResult : null}
+            postGameAnalysis={postGameAnalysis?.gameId === game.id ? postGameAnalysis : null}
             abandonRatingPreview={!learningMode && !gameContext.lab && !gameContext.rescue && !gameContext.suddenDeath ? (() => { const preview = ratingChangeDetails(rating, game.difficulty, 0); return { delta: preview.delta, before: rating.rating, after: preview.next.rating }; })() : null}
             onChatUpdate={handleGameChatUpdate}
             hintMode={learningMode ? 'free' : 'off'}
@@ -1079,6 +1168,7 @@ function AppInner({ isAdminUser }) {
             onError={setError}
             onPersistenceState={setGameSaveState}
             onGameEnd={handleTournamentGameEnd}
+            postGameAnalysis={postGameAnalysis?.gameId === tournamentGame.id ? postGameAnalysis : null}
             abandonRatingPreview={(() => { const preview = ratingChangeDetails(rating, tournamentGame.difficulty, 0); return { delta: preview.delta, before: rating.rating, after: preview.next.rating }; })()}
             onChatUpdate={handleGameChatUpdate}
             hintMode="paid"
