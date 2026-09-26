@@ -97,9 +97,25 @@ async function installWarRoomV3RevisionRoute(page) {
 }
 const CAPTURE_PROFILES = Object.freeze([
   Object.freeze({
+    label: 'war-room-android-360x800',
+    title: 'Android portrait 360×800',
+    viewport: Object.freeze({ width: 360, height: 800 }),
+    hasTouch: true,
+    portraitContract: true,
+    landscapeContract: false,
+  }),
+  Object.freeze({
     label: 'war-room-android-390x844',
     title: 'Android portrait',
     viewport: Object.freeze({ width: 390, height: 844 }),
+    hasTouch: true,
+    portraitContract: true,
+    landscapeContract: false,
+  }),
+  Object.freeze({
+    label: 'war-room-android-430x932',
+    title: 'Android portrait 430×932',
+    viewport: Object.freeze({ width: 430, height: 932 }),
     hasTouch: true,
     portraitContract: true,
     landscapeContract: false,
@@ -616,7 +632,9 @@ for (const profile of ACTIVE_CAPTURE_PROFILES) {
       if (profile.portraitContract) {
         const orientationGate = page.getByRole('dialog', { name: 'War Room en apaisado', exact: true });
         await expect(orientationGate).toBeVisible();
-        await expect(orientationGate.getByText('Gira el móvil', { exact: true })).toBeVisible();
+        await expect(orientationGate).not.toHaveAttribute('aria-modal', 'true');
+        await expect(orientationGate.getByText('Mejor en apaisado', { exact: true })).toBeVisible();
+        await expect(orientationGate.getByText(/Puedes seguir jugando en vertical/)).toBeVisible();
         await expect(orientationGate.getByRole('button', { name: 'Activar apaisado', exact: true })).toBeVisible();
       }
 
