@@ -244,7 +244,9 @@ test('Postpartida · autopsia y Examen caben a 360/390/430 sin spoilers ni targe
   await expect(endgame).toBeVisible();
   await expect(endgame.getByText('PARTIDA FINALIZADA', { exact: true })).toBeVisible();
   const reportButton = endgame.getByRole('button', { name: 'Resumen de la partida', exact: true });
+  const primaryAction = endgame.locator(':scope > .primary-btn');
   await expect(reportButton).toBeVisible();
+  await expect(primaryAction).toBeVisible();
 
   for (const width of [360, 390, 430]) {
     await page.setViewportSize({ width, height: 844 });
@@ -256,6 +258,11 @@ test('Postpartida · autopsia y Examen caben a 360/390/430 sin spoilers ni targe
     const buttonRect = await reportButton.boundingBox();
     expect(buttonRect).not.toBeNull();
     expect(buttonRect.height).toBeGreaterThanOrEqual(44);
+    const primaryRect = await primaryAction.boundingBox();
+    expect(primaryRect).not.toBeNull();
+    expect(primaryRect.height).toBeGreaterThanOrEqual(44);
+    expect(primaryRect.y).toBeGreaterThanOrEqual(-1);
+    expect(primaryRect.y + primaryRect.height).toBeLessThanOrEqual(844 + 1);
   }
 
   await page.setViewportSize({ width: 390, height: 844 });
