@@ -39,12 +39,27 @@ function elapsedMs(startedAt) {
   return Math.max(0, timingNowMs() - startedAt);
 }
 
+function recordFinalizerMeasure(key, startedAt, endedAt) {
+  const performanceObject = globalThis?.performance;
+  if (!performanceObject || typeof performanceObject.measure !== 'function') return;
+  try {
+    performanceObject.measure(
+      `chess-studio:war-room-finalizer:${key}`,
+      { start: startedAt, end: endedAt },
+    );
+  } catch {
+    // User Timing is diagnostic-only; unsupported runtimes must not affect the room.
+  }
+}
+
 function measureInstall(durations, key, install) {
   const startedAt = timingNowMs();
   try {
     return install();
   } finally {
-    durations[key] = elapsedMs(startedAt);
+    const endedAt = timingNowMs();
+    durations[key] = Math.max(0, endedAt - startedAt);
+    recordFinalizerMeasure(key, startedAt, endedAt);
   }
 }
 
