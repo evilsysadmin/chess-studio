@@ -7,7 +7,6 @@ import HomeIllustrated from './HomeIllustrated.jsx';
 import HomePvpRosterLink from './HomePvpRosterLink.jsx';
 import { getBoardRenderer, getDefaultTimeControlId, setBoardRenderer, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
 import { difficultyForQuickMatchRating } from '../quickMatchDifficulty.js';
-import { getRuntimeMatchmakingTargetLeadElo } from '../featureFlags.js';
 import { loadRivalry } from '../rivalry.js';
 import { buildPendingModes, loadPendingCampaignFlag } from '../homePendingModes.js';
 import { loadSpecialRun } from '../career.js';
@@ -274,7 +273,7 @@ export default function Menu({
             const previousRenderer = getBoardRenderer();
             if (requestedRenderer) setBoardRenderer(requestedRenderer);
             const started = await onNewGame(
-              autoDifficulty ? difficultyForQuickMatchRating(rating?.rating ?? 400, null, rating?.games ?? 0, null, Date.now(), getRuntimeMatchmakingTargetLeadElo()) : difficulty,
+              autoDifficulty ? difficultyForQuickMatchRating(rating?.rating ?? 400, null, rating?.games ?? 0) : difficulty,
               color,
               {
                 timeControlId,
