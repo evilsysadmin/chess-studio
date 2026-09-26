@@ -16,6 +16,10 @@ test.use({
 });
 
 test('Home 3D · captura Combat con foco físico', async ({ page }) => {
+  // The WebGL screenshot below deliberately allows 60s for SwiftShader readback.
+  // Keep the enclosing Playwright test above that budget so CI does not kill the
+  // real capture before screenshot() can reach its own timeout.
+  test.setTimeout(90_000);
   await mkdir(ARTIFACT_DIR, { recursive: true });
   await page.addInitScript(() => {
     Object.defineProperty(navigator, 'hardwareConcurrency', {
@@ -49,6 +53,9 @@ test('Home 3D · captura Combat con foco físico', async ({ page }) => {
     path: `${ARTIFACT_DIR}/home-desktop-1440x900-combat-focus.png`,
     fullPage: false,
     animations: 'disabled',
+    // SwiftShader can need >30s to read back the live WebGL frame on busy CI runners.
+    // Keep the proof real instead of replacing it with a mocked/still canvas.
+    timeout: 60_000,
   });
 
   const tournament = home.locator('.illustrated-home__destination--tournament');
