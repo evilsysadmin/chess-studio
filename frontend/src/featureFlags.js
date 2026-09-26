@@ -1,6 +1,6 @@
-import { QUICK_MATCH_TARGET_LEAD_ELO, setRuntimeQuickMatchTargetLeadElo } from './quickMatchDifficulty.js';
+import { setRuntimeQuickMatchTargetLeadElo } from './quickMatchDifficulty.js';
 
-export const DEFAULT_MATCHMAKING_TARGET_LEAD_ELO = QUICK_MATCH_TARGET_LEAD_ELO;
+export const DEFAULT_MATCHMAKING_TARGET_LEAD_ELO = 50;
 
 export const DEFAULT_FEATURE_FLAGS = Object.freeze({
   homeGuide: true,
