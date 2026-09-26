@@ -215,7 +215,7 @@ export function fitBoardCamera(camera, width, height, whiteSide, { profile: requ
   const standardProfile = getCameraFramingProfile(aspect);
   const classicDesktopWide = requestedProfile !== 'classroom'
     && !mobileProfile
-    && variant === 'classic'
+    && String(variant).startsWith('classic')
     && aspect >= 1.42;
   const profile = requestedProfile === 'classroom'
     ? classRoomCameraFramingProfile({ aspect, coarsePointer, viewportWidth })
