@@ -16,6 +16,10 @@ const ROOMS = Object.freeze({
   fugue: finish('fugue-chamber', 1.08, 0.72, 0.94, 1.06, 0.82),
   quartet: finish('quartet-stage', 0.96, 1.06, 1.2, 1.08, 1.04),
   clockwork: finish('clockwork-orchestra', 1.04, 0.88, 1.16, 1.08, 0.78),
+  siciliana: finish('siciliana-chamber', 0.94, 1.04, 1.12, 1.06, 1.04),
+  passacaglia: finish('passacaglia-stone-gallery', 0.78, 1.22, 1.1, 1.02, 1.12),
+  scherzo: finish('scherzo-wood-room', 1.1, 0.68, 1.02, 1.08, 0.78),
+  pavane: finish('pavane-torch-hall', 0.82, 1.16, 1.08, 1.02, 1.1),
 });
 
 function signature(instrument, motif, sections, repeatPeriod, durationSteps, volume = 0.18, everyCycles = 2) {
@@ -116,6 +120,31 @@ const CLASSICAL_PRODUCTION = Object.freeze({
     family:'orchestral-clockwork-overture', finish:ROOMS.clockwork,
     leadInstrument:'spiccatoStrings', counterInstrument:'feltGrand', chordInstrument:'strings', bassInstrument:'spiccatoCello',
     space:0.20, delayMs:226, chordHoldSteps:12, bassHoldSteps:3,
+  }),
+  queenSiciliana: Object.freeze({
+    family:'queen-siciliana-chamber', finish:ROOMS.siciliana,
+    leadInstrument:'strings', counterInstrument:'clarinet', chordInstrument:'strings', bassInstrument:'cello',
+    space:0.23, delayMs:248, chordHoldSteps:22, bassHoldSteps:10,
+    signature:signature('clarinet', { 3:72, 15:76, 27:74, 39:69 }, [0,2], 48, 5.8, 0.16, 3),
+  }),
+  rookPassacaglia: Object.freeze({
+    family:'rook-passacaglia-ground-bass', finish:ROOMS.passacaglia,
+    leadInstrument:'organ', counterInstrument:'strings', chordInstrument:'organ', bassInstrument:'cello',
+    space:0.31, delayMs:356, chordHoldSteps:29, bassHoldSteps:3.6,
+    signature:signature('strings', { 6:60, 14:63, 22:67, 30:62 }, [1,2], 32, 7.2, 0.14, 3),
+  }),
+  knightScherzo: Object.freeze({
+    family:'knight-scherzo-spiccato', finish:ROOMS.scherzo,
+    leadInstrument:'spiccatoStrings', counterInstrument:'pizz', chordInstrument:'harpsichord', bassInstrument:'spiccatoCello',
+    space:0.10, delayMs:108, chordHoldSteps:7, bassHoldSteps:2.2,
+    percussion:percussion('baroque-wood', 16, { 0:'W', 6:'H', 8:'W', 14:'H' }, 0.52),
+    signature:signature('spiccatoStrings', { 2:64, 10:71, 18:69, 26:76 }, [0,3], 32, 2.3, 0.17),
+  }),
+  blackKingPavane: Object.freeze({
+    family:'black-king-pavane-procession', finish:ROOMS.pavane,
+    leadInstrument:'strings', counterInstrument:'organ', chordInstrument:'strings', bassInstrument:'cello',
+    space:0.28, delayMs:324, chordHoldSteps:28, bassHoldSteps:20,
+    signature:signature('cello', { 4:50, 12:53, 20:48, 28:45 }, [0,3], 32, 8.4, 0.14, 3),
   }),
 });
 
