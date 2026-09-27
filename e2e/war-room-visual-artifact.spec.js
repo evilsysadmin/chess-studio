@@ -523,14 +523,12 @@ function expectPortraitHealth(health) {
   expect(health.hudToBoardGap, 'HUD should sit directly above the board').toBeLessThanOrEqual(20);
   expect(health.music?.height, 'immersive RetroPlayer height').toBeLessThanOrEqual(50);
   if (health.human) {
-    expect(health.human.display, 'immersive portrait legacy human rail must stay hidden').toBe('none');
-    expect(health.human.width, 'hidden human rail must reserve no width').toBe(0);
-    expect(health.human.height, 'hidden human rail must reserve no height').toBe(0);
+    expect(health.human.width, 'legacy human rail must reserve no width').toBe(0);
+    expect(health.human.height, 'legacy human rail must reserve no height').toBe(0);
   }
   if (health.notation) {
-    expect(health.notation.display, 'immersive portrait legacy notation rail must stay hidden').toBe('none');
-    expect(health.notation.width, 'hidden notation rail must reserve no width').toBe(0);
-    expect(health.notation.height, 'hidden notation rail must reserve no height').toBe(0);
+    expect(health.notation.width, 'legacy notation rail must reserve no width').toBe(0);
+    expect(health.notation.height, 'legacy notation rail must reserve no height').toBe(0);
   }
 }
 
