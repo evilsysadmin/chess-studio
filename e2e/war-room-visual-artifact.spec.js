@@ -114,6 +114,22 @@ const CAPTURE_PROFILES = Object.freeze([
     landscapeContract: true,
   }),
   Object.freeze({
+    label: 'war-room-android-landscape-800x360',
+    title: 'Android landscape 360 px short edge',
+    viewport: Object.freeze({ width: 800, height: 360 }),
+    hasTouch: true,
+    portraitContract: false,
+    landscapeContract: true,
+  }),
+  Object.freeze({
+    label: 'war-room-android-landscape-932x430',
+    title: 'Android landscape 430 px short edge',
+    viewport: Object.freeze({ width: 932, height: 430 }),
+    hasTouch: true,
+    portraitContract: false,
+    landscapeContract: true,
+  }),
+  Object.freeze({
     label: 'war-room-immersive-android-landscape-844x390',
     title: 'Immersive Android landscape 844×390',
     viewport: Object.freeze({ width: 844, height: 390 }),
@@ -213,11 +229,15 @@ const ACTIVE_CAPTURE_PROFILES = Object.freeze(
     if (WAR_ROOM_PROFILE_SCOPE === 'mobile-entry') {
       return new Set([
         'war-room-android-390x844',
+        'war-room-android-landscape-800x360',
         'war-room-android-landscape-844x390',
+        'war-room-android-landscape-932x430',
         'war-room-immersive-android-landscape-844x390',
       ]).has(profile.label);
     }
-    if (WAR_ROOM_PROFILE_SCOPE === 'mobile') return profile.hasTouch === true;
+    if (WAR_ROOM_PROFILE_SCOPE === 'mobile') {
+      return profile.hasTouch === true || profile.label === 'war-room-desktop-1440x900';
+    }
     return true;
   }),
 );
@@ -253,7 +273,7 @@ async function freezeVisualFrame(page) {
   await page.waitForTimeout(80);
 }
 
-async function captureViewportPng(context, page, path) {
+async function captureViewportPng(page, path) {
   // CDP + headless SwiftShader can omit WebGL compositor layers even when the
   // canvas is visibly rendered. Visual-artifact builds preserve the drawing
   // buffer, so rasterize that canvas into a temporary DOM image and let the
@@ -291,16 +311,28 @@ async function captureViewportPng(context, page, path) {
     );
   }
 
-  const session = await context.newCDPSession(page);
   try {
-    const { data } = await session.send('Page.captureScreenshot', {
-      format: 'png',
-      fromSurface: true,
-      captureBeyondViewport: false,
+    const viewport = page.viewportSize();
+    if (!viewport) throw new Error('War Room visual capture requires a fixed viewport');
+    const png = await page.screenshot({
+      fullPage: false,
+      animations: 'disabled',
+      caret: 'hide',
+      clip: {
+        x: 0,
+        y: 0,
+        width: viewport.width,
+        height: viewport.height,
+      },
     });
-    await writeFile(path, Buffer.from(data, 'base64'));
+    const capturedWidth = png.readUInt32BE(16);
+    const capturedHeight = png.readUInt32BE(20);
+    expect(
+      { width: capturedWidth, height: capturedHeight },
+      'canonical PNG dimensions must match the declared capture viewport',
+    ).toEqual(viewport);
+    await writeFile(path, png);
   } finally {
-    await session.detach();
     await page.evaluate(() => {
       document.querySelectorAll('img[data-war-room-webgl-capture]').forEach((image) => image.remove());
     });
@@ -727,6 +759,12 @@ for (const profile of ACTIVE_CAPTURE_PROFILES) {
       }
       if (profile.portraitContract) expectPortraitHealth(health);
       if (profile.landscapeContract) expectLandscapeHealth(health);
+      if (profile.landscapeContract) {
+        await expect(
+          page.locator('.matthias-board-bubble:not(.game-mobile-focus-bubble)'),
+          'phone landscape must not cover playable squares with opening banter',
+        ).toBeHidden();
+      }
       if (profile.immersive) expectImmersiveHealth(health);
       if (profile.collapseRail) {
         expect(health.boardWidthFill, 'collapsed immersive castle should spend almost the full viewport width on the scene').toBeGreaterThanOrEqual(0.97);
@@ -734,7 +772,6 @@ for (const profile of ACTIVE_CAPTURE_PROFILES) {
 
       await freezeVisualFrame(page);
       await captureViewportPng(
-        context,
         page,
         `${ARTIFACT_DIR}/${profile.label}.png`,
       );
