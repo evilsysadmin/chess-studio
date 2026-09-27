@@ -122,8 +122,7 @@ function Board3DCanvas({
     onPieceMouseLeave,
     hansDiagnosticsMarkerRef,
     hansDiagnosticsRequested,
-    hansFireCallEnabled,
-    warRoomVariant,
+    hansFireCallEnabled, warRoomVariant,
   };
 
   useEffect(() => {
@@ -440,8 +439,7 @@ function Board3DCanvas({
       const width = Math.max(280, host.clientWidth || 280);
       const height = Math.max(300, host.clientHeight || 300);
       renderer.setSize(width, height, false);
-      const activeVariant = latestPropsRef.current.warRoomVariant || 'classic';
-      fitBoardCamera(camera, width, height, whiteSide, { profile: cameraProfile === 'classroom' || activeVariant !== 'classic' ? cameraProfile : 'classic', immersive });
+      fitBoardCamera(camera, width, height, whiteSide, { profile: cameraProfile === 'classroom' || (latestPropsRef.current.warRoomVariant || 'classic') !== 'classic' ? cameraProfile : 'classic', immersive });
       render();
     }
     resize();
@@ -728,28 +726,14 @@ function Board3DCanvas({
       onStatus: setWarRoomVariantStatus,
       onPaint: state.render,
     });
-  }, [
-    warRoomVariant,
-    warRoomVariantSelectable,
-    setWarRoomVariantStatus,
-    effectiveThemeId,
-    orientation,
-    showCoordinates,
-  ]);
+  }, [warRoomVariant, warRoomVariantSelectable, setWarRoomVariantStatus, effectiveThemeId, orientation, showCoordinates]);
 
   useEffect(() => {
-    const state = sceneStateRef.current;
-    const host = hostRef.current;
+    const state = sceneStateRef.current, host = hostRef.current;
     if (!state || !host) return;
-    const width = Math.max(280, host.clientWidth || 280);
-    const height = Math.max(300, host.clientHeight || 300);
-    fitBoardCamera(state.camera, width, height, state.whiteSide, {
-      profile: cameraProfile === 'classroom' || warRoomVariant !== 'classic' ? cameraProfile : 'classic',
-      immersive,
-    });
+    fitBoardCamera(state.camera, Math.max(280, host.clientWidth || 280), Math.max(300, host.clientHeight || 300), state.whiteSide, { profile: cameraProfile === 'classroom' || warRoomVariant !== 'classic' ? cameraProfile : 'classic', immersive });
     state.render();
   }, [warRoomVariant, cameraProfile, immersive]);
-
 
   useEffect(() => {
     const state = sceneStateRef.current;
