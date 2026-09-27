@@ -624,17 +624,25 @@ def build_bookshelf(static, palette):
 
 
 def build_celestial_globe(static, palette):
-    """Small navigation globe beside the telescope, as in the canonical mock."""
+    """Blue navigation globe on the compact walnut console from the canonical mock."""
     x, y = 6.00, 2.72
-    base.cylinder(
-        "WR3_OBS_globe_pedestal", (x, y, 0.54), 0.12, 0.76,
-        palette["walnut_dark"], static, vertices=32,
+    base.cube(
+        "WR3_OBS_globe_console_body", (x, y, 0.54), (0.70, 0.32, 0.40),
+        palette["walnut_dark"], static, bevel=0.065,
     )
-    base.cylinder(
-        "WR3_OBS_globe_foot", (x, y, 0.14), 0.34, 0.09,
-        palette["brass_dark"], static, vertices=40,
+    base.cube(
+        "WR3_OBS_globe_console_top", (x, y, 0.98), (0.82, 0.38, 0.065),
+        palette["walnut"], static, bevel=0.055,
     )
-    center = (x, y, 1.20)
+    base.cube(
+        "WR3_OBS_globe_console_trim", (x, y - 0.34, 0.72), (0.61, 0.025, 0.025),
+        palette["brass"], static, bevel=0.012,
+    )
+    base.cube(
+        "WR3_OBS_globe_console_plinth", (x, y, 0.12), (0.76, 0.35, 0.075),
+        palette["brass_dark"], static, bevel=0.045,
+    )
+    center = (x, y, 1.43)
     base.sphere(
         "WR3_OBS_globe_sphere", center, 0.34, palette["night"], static,
         scale=(1.0, 1.0, 1.0),
