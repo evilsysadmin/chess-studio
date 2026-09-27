@@ -43,6 +43,14 @@ WARROOM_CORE_ONLY_FILES = {
     "frontend/src/components/usewarroomimmersive.js",
     "frontend/src/components/warroomimmersive.css",
 }
+
+WARROOM_MOBILE_ONLY_FILES = {
+    "frontend/src/components/usegamemobilefocus.js",
+    "frontend/src/components/usewarroomlandscape.js",
+    "frontend/src/components/warroomlandscapegate.jsx",
+    "frontend/src/components/warroomlandscapegate.css",
+    "frontend/src/components/warroommobilelandscape.css",
+}
 WARROOM_VARIANT_ORDER = ("classic", "v2", "v3")
 WARROOM_PROFILE_SCOPE_ALL = "all"
 WARROOM_PROFILE_SCOPE_MOBILE = "mobile"
@@ -263,7 +271,7 @@ def classify_path(path: str) -> set[str] | None:
     if "experimentsscreen" in lower or "/experiments" in lower:
         return {"experiments-hub"}
 
-    if lower in WARROOM_VARIANT_CORE_FILES or lower in WARROOM_CORE_ONLY_FILES:
+    if lower in WARROOM_VARIANT_CORE_FILES or lower in WARROOM_CORE_ONLY_FILES or lower in WARROOM_MOBILE_ONLY_FILES:
         return {"warroom-core"}
 
     if any(token in lower for token in ("war-room", "warroom", "board3d", "gameboardview", "gamesidecolumn", "game3d")):
@@ -363,13 +371,15 @@ def classify_warroom_profile_scope(paths: list[str]) -> str:
     cleaned = [path.strip().lower().replace("\\", "/") for path in paths if path.strip()]
     if not cleaned:
         return WARROOM_PROFILE_SCOPE_ALL
-    mobile_only = {
+    mobile_entry_only = {
         "frontend/src/components/quickmatchmodal.jsx",
         "frontend/src/components/usewarroomimmersive.js",
     }
     relevant = [path for path in cleaned if ".test." not in Path(path).name and ".spec." not in Path(path).name]
-    if relevant and all(path in mobile_only for path in relevant):
+    if relevant and all(path in mobile_entry_only for path in relevant):
         return WARROOM_PROFILE_SCOPE_MOBILE_ENTRY
+    if relevant and all(path in WARROOM_MOBILE_ONLY_FILES for path in relevant):
+        return WARROOM_PROFILE_SCOPE_MOBILE
     return WARROOM_PROFILE_SCOPE_ALL
 
 
@@ -407,6 +417,13 @@ def self_test() -> None:
         "frontend/src/components/useWarRoomImmersive.test.js",
     ]) == "mobile-entry"
     assert classify_warroom_profile_scope(["frontend/src/components/WarRoomV3Shell.js"]) == "all"
+    assert classify_warroom_profile_scope([
+        "frontend/src/components/useGameMobileFocus.js",
+        "frontend/src/components/useWarRoomLandscape.js",
+        "frontend/src/components/WarRoomLandscapeGate.jsx",
+        "frontend/src/components/WarRoomLandscapeGate.css",
+        "frontend/src/components/WarRoomMobileLandscape.css",
+    ]) == "mobile"
     assert classify(["scripts/app_visual_scope.py"]) == "none"
     assert classify(["scripts/app_visual_producer_scope.py"]) == "none"
     assert classify(["scripts/app_visual_changed_files.py"]) == "none"
@@ -459,6 +476,8 @@ def self_test() -> None:
         assert classify([variant_core_file]) == "warroom-core"
     for core_only_file in WARROOM_CORE_ONLY_FILES:
         assert classify([core_only_file]) == "warroom-core"
+    for mobile_only_file in WARROOM_MOBILE_ONLY_FILES:
+        assert classify([mobile_only_file]) == "warroom-core"
     assert classify(["frontend/src/components/WarRoomCatDecor.js"]) == "warroom-decor"
     assert classify(["frontend/src/components/WarRoomArmorDisplay.js"]) == "warroom-armor"
     assert classify(["frontend/src/components/WarRoomHansPerGame.jsx"]) == "warroom-hans"
