@@ -11,8 +11,8 @@ const WAR_ROOM_RENDER_BUDGETS = Object.freeze({
   }),
   touch: Object.freeze({
     tier: 'balanced',
-    pixelRatioCap: 1.25,
-    shadowMapSize: 1024,
+    pixelRatioCap: 1,
+    shadowMapSize: 512,
     shadowsEnabled: true,
     idleFrameIntervalMs: 150,
     // Inspection is a direct-manipulation surface: ~30 FPS felt visibly
