@@ -92,6 +92,7 @@ export const PROFILE_PREFERENCE_KEYS = Object.freeze([
   'chess-study-reduced-motion',
   'chess-study-board-coordinates',
   'chess-study-board-renderer',
+  'chess-study-war-room-variant-v1',
 ]);
 
 export const PROFILE_STORAGE_KEYS = Object.freeze([
