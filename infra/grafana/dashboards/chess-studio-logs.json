@@ -21,7 +21,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "**Acción primero.** Usa **Entorno** para production/staging sobre la vía OTLP estructurada canónica. Los 404 incluyen `request_path` normalizado y `request_id` permite correlacionar con backend. El país usa `CF-IPCountry` cuando existe y un fallback GeoIP cacheado/no bloqueante cuando no."
+        "content": "**Acción primero = tráfico orgánico.** Los paneles accionables excluyen usuarios/smokes de CI y probes internos. Los fallos sintéticos viven aparte en **Errores CI / synthetic**, para no contaminar la lectura de producto. Usa **Entorno** para production/staging sobre la vía OTLP estructurada canónica; `request_id` y `trace_id` permiten correlación."
       }
     },
     {
@@ -279,7 +279,7 @@
             "type": "loki",
             "uid": "${logs_datasource_uid}"
           },
-          "expr": "topk(15, sum by (request_path) (count_over_time(${selector:raw} | json | event=\"http_request\" | status = 404 | request_path != \"\" [$__range])))",
+          "expr": "topk(15, sum by (request_path) (count_over_time(${selector:raw} | json | event=\"http_request\" | status = 404 | request_path != \"\" | synthetic_source!~\"staging-(smoke-cleanup|browser-smoke)\" | username!~\"ci_smoke_[0-9a-f]{16}\" | route!~\"/api/(ready|health|release|internal/.*)\" [$__range])))",
           "refId": "A",
           "queryType": "instant",
           "legendFormat": "{{request_path}}"
@@ -315,7 +315,7 @@
             "type": "loki",
             "uid": "${logs_datasource_uid}"
           },
-          "expr": "topk(15, sum by (route) (count_over_time(${selector:raw} | json | event=\"http_request\" | status >= 500 [$__range])))",
+          "expr": "topk(15, sum by (route) (count_over_time(${selector:raw} | json | event=\"http_request\" | status >= 500 | synthetic_source!~\"staging-(smoke-cleanup|browser-smoke)\" | username!~\"ci_smoke_[0-9a-f]{16}\" | route!~\"/api/(ready|health|release|internal/.*)\" [$__range])))",
           "refId": "A",
           "queryType": "instant",
           "legendFormat": "{{route}}"
@@ -351,7 +351,7 @@
             "type": "loki",
             "uid": "${logs_datasource_uid}"
           },
-          "expr": "${selector:raw} | json | event=\"http_request\" | status >= 400 | line_format \"status={{.status}} method={{.method}} route={{.route}} path={{.request_path}} latency={{.duration_ms}}ms release={{.client_release}} req={{.request_id}} trace={{.trace_id}}\"",
+          "expr": "${selector:raw} | json | event=\"http_request\" | status >= 400 | synthetic_source!~\"staging-(smoke-cleanup|browser-smoke)\" | username!~\"ci_smoke_[0-9a-f]{16}\" | route!~\"/api/(ready|health|release|internal/.*)\" | line_format \"status={{.status}} method={{.method}} route={{.route}} path={{.request_path}} latency={{.duration_ms}}ms release={{.client_release}} req={{.request_id}} trace={{.trace_id}}\"",
           "refId": "A",
           "queryType": "range"
         }
@@ -389,7 +389,7 @@
             "type": "loki",
             "uid": "${logs_datasource_uid}"
           },
-          "expr": "topk(10, sum by (client_release) (count_over_time(${selector:raw} | json | event=\"http_request\" | status >= 500 | client_release != \"\" [$__range])))",
+          "expr": "topk(10, sum by (client_release) (count_over_time(${selector:raw} | json | event=\"http_request\" | status >= 500 | client_release != \"\" | synthetic_source!~\"staging-(smoke-cleanup|browser-smoke)\" | username!~\"ci_smoke_[0-9a-f]{16}\" | route!~\"/api/(ready|health|release|internal/.*)\" [$__range])))",
           "refId": "A",
           "queryType": "instant",
           "legendFormat": "{{client_release}}"
@@ -424,7 +424,7 @@
             "type": "loki",
             "uid": "${logs_datasource_uid}"
           },
-          "expr": "${selector:raw} | json | event=\"http_request\" | exception = true | line_format \"{{.status}} {{.method}} {{.route}} · {{.duration_ms}}ms · req={{.request_id}} · trace={{.trace_id}} · release={{.client_release}}\"",
+          "expr": "${selector:raw} | json | event=\"http_request\" | exception = true | synthetic_source!~\"staging-(smoke-cleanup|browser-smoke)\" | username!~\"ci_smoke_[0-9a-f]{16}\" | route!~\"/api/(ready|health|release|internal/.*)\" | line_format \"{{.status}} {{.method}} {{.route}} · {{.duration_ms}}ms · req={{.request_id}} · trace={{.trace_id}} · release={{.client_release}}\"",
           "refId": "A",
           "queryType": "range"
         }
@@ -781,6 +781,54 @@
           }
         }
       ]
+    },
+    {
+      "id": 19,
+      "title": "Errores CI / synthetic · aislados",
+      "type": "logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "${logs_datasource_uid}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 73,
+        "w": 24,
+        "h": 9
+      },
+      "description": "Errores generados por usuarios CI o smokes sintéticos. Se separan del tráfico orgánico y no forman parte de los paneles accionables.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${logs_datasource_uid}"
+          },
+          "expr": "${selector:raw} | json | event=\"http_request\" | status >= 400 | username=~\"ci_smoke_[0-9a-f]{16}\" | line_format \"CI user status={{.status}} method={{.method}} route={{.route}} source={{.synthetic_source}} req={{.request_id}} trace={{.trace_id}}\"",
+          "refId": "A",
+          "queryType": "range"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${logs_datasource_uid}"
+          },
+          "expr": "${selector:raw} | json | event=\"http_request\" | status >= 400 | synthetic_source=~\"staging-(smoke-cleanup|browser-smoke)\" | username!~\"ci_smoke_[0-9a-f]{16}\" | line_format \"synthetic status={{.status}} method={{.method}} route={{.route}} source={{.synthetic_source}} req={{.request_id}} trace={{.trace_id}}\"",
+          "refId": "B",
+          "queryType": "range"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "sortOrder": "Descending"
+      }
     }
   ],
   "refresh": "30s",
