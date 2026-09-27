@@ -68,8 +68,8 @@ describe('War Room ambient render cadence', () => {
     expect(warRoomRenderBudget({ coarsePointer: true })).toEqual({
       tier: 'balanced',
       lite: false,
-      pixelRatioCap: 1.25,
-      shadowMapSize: 1024,
+      pixelRatioCap: 1,
+      shadowMapSize: 512,
       shadowsEnabled: true,
       idleFrameIntervalMs: 150,
       inspectFrameIntervalMs: 24,
@@ -158,8 +158,8 @@ describe('War Room ambient render cadence', () => {
     expect(warRoomSceneProfile({ coarsePointer: true })).toEqual({
       tier: 'balanced',
       lite: false,
-      pixelRatioCap: 1.25,
-      shadowMapSize: 1024,
+      pixelRatioCap: 1,
+      shadowMapSize: 512,
       shadowsEnabled: true,
     });
     expect(warRoomSceneProfile({ softwareRenderer: true })).toEqual({

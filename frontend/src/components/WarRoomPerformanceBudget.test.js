@@ -232,7 +232,7 @@ describe('War Room desktop performance budget', () => {
     expect(pieceBody.castShadow).toBe(true);
   });
 
-  it('does not apply the desktop hard cut to coarse/mobile scenes', () => {
+  it('applies the hard light/shadow budget on coarse/mobile scenes too', () => {
     const scene = new THREE.Scene();
     const light = point('war-room-command-desk-strategy-lamp-light');
     const spot = new THREE.SpotLight(0xffffff, 1);
@@ -242,14 +242,13 @@ describe('War Room desktop performance budget', () => {
 
     expect(applyWarRoomPerformanceBudget(scene, { coarsePointer: true })).toEqual({
       pointLightsKept: 0,
-      pointLightsCulled: 0,
-      spotLightsCulled: 0,
-      staticShadowCastersRetired: 0,
+      pointLightsCulled: 1,
+      spotLightsCulled: 1,
+      staticShadowCastersRetired: 1,
     });
-    expect(light.visible).toBe(true);
-    expect(light.parent).toBe(scene);
-    expect(spot.visible).toBe(true);
-    expect(spot.parent).toBe(scene);
-    expect(mesh.castShadow).toBe(true);
+    expect(light.parent).toBeNull();
+    expect(spot.parent).toBeNull();
+    expect(mesh.castShadow).toBe(false);
+    expect(scene.userData.warRoomPerformanceBudget).toBe('mobile-hard-cut-v1-static-shadow-retirement');
   });
 });
