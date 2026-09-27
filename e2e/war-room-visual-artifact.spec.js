@@ -626,31 +626,22 @@ for (const profile of ACTIVE_CAPTURE_PROFILES) {
       }
 
       if (profile.immersive) {
-        if (profile.mobilePlayFirst) {
-          // Phone landscape is already the immersive/play-first surface. The
-          // renderer owns the viewport without requiring the legacy immersion
-          // toggle, so validate that contract directly.
-          await expect(page.locator('.game-layout-3d')).toHaveAttribute('data-war-room-mobile-landscape', 'true');
-          await expect(page.locator('.board-live-row.is-3d-warroom')).toBeVisible();
-          await expect(page.getByRole('button', { name: 'Entrar en modo inmersión', exact: true })).toHaveCount(0);
-        } else {
-          const enterImmersive = page.getByRole('button', { name: 'Entrar en modo inmersión', exact: true }).first();
-          await expect(enterImmersive).toBeVisible();
-          await enterImmersive.click();
-          await expect(page.locator('.game-layout-immersive')).toBeVisible();
-          await expect(page.locator('body')).toHaveClass(/war-room-immersive-active/);
-        }
+        // Immersion is the canonical War Room presentation on desktop and
+        // mobile. No legacy "enter immersion" click should be required.
+        const immersiveRoot = '.game-layout-immersive';
+        await expect(page.locator(immersiveRoot)).toBeVisible();
+        await expect(page.locator(immersiveRoot)).toHaveAttribute('data-war-room-immersive', 'true');
+        await expect(page.locator('body')).toHaveClass(/war-room-immersive-active/);
+        await expect(page.getByRole('button', { name: 'Entrar en modo inmersión', exact: true })).toHaveCount(0);
+        await expect(page.getByRole('button', { name: 'Más acciones de partida', exact: true })).toBeVisible();
         if (profile.hasTouch) {
           await expect.poll(() => page.evaluate(() => window.__warRoomOrientationLocks || []))
             .toContain('landscape');
         }
-        const immersiveRoot = profile.mobilePlayFirst ? '.game-layout-3d' : '.game-layout-immersive';
         const immersiveCanvas = page.locator(`${immersiveRoot} .board3d-main-canvas`);
         await expect(immersiveCanvas).toHaveCount(1);
         const immersiveVisibility = await page.evaluate(() => {
-          const root = document.querySelector('.game-layout-3d')?.getAttribute('data-war-room-mobile-landscape') === 'true'
-            ? '.game-layout-3d'
-            : '.game-layout-immersive';
+          const root = '.game-layout-immersive';
           const selectors = [
             `${root} .board3d-main-canvas`,
             `${root} .board3d-main-shell`,
