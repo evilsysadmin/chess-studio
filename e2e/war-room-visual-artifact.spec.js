@@ -523,6 +523,14 @@ function expectPortraitHealth(health) {
 }
 
 
+function expectDefaultImmersiveShell(health) {
+  expect(health.immersive, 'War Room 3D must start immersive by default').toBe(true);
+  expect(health.gameLayout?.left, 'immersive shell must start at the left viewport edge').toBeLessThanOrEqual(1);
+  expect(health.gameLayout?.top, 'immersive shell must start at the top viewport edge').toBeLessThanOrEqual(1);
+  expect(health.gameLayout?.width, 'immersive shell must span the viewport width').toBeGreaterThanOrEqual(health.viewport.width - 2);
+  expect(health.gameLayout?.height, 'immersive shell must span the viewport height').toBeGreaterThanOrEqual(health.viewport.height - 2);
+}
+
 function expectLandscapeHealth(health) {
   expect(health.verticalOverflowPx, 'Android landscape must fit the immersive War Room in one viewport').toBeLessThanOrEqual(1);
   expect(health.legacyCommandDeck?.display, 'Android landscape must not revive the legacy command row').toBe('none');
@@ -624,6 +632,7 @@ for (const profile of ACTIVE_CAPTURE_PROFILES) {
       );
 
       expectSharedHealth(health);
+      expectDefaultImmersiveShell(health);
       if (profile.hasTouch) {
         expect(health.coarsePointer, `${profile.title} must emulate a coarse pointer`).toBe(true);
         expect(health.touchPoints, `${profile.title} must expose touch points`).toBeGreaterThan(0);
