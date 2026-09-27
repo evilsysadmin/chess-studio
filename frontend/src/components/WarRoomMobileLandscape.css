@@ -294,6 +294,14 @@
 /* Very short browser landscape (address/nav bars still visible): preserve the
  * board before secondary rails. The right column remains scrollable. */
 @media (orientation: landscape) and (max-width: 960px) and (max-height: 430px) {
+  /* Opening banter remains available in portrait, but on a short landscape
+   * board any king-anchored bubble necessarily covers playable squares. Keep
+   * Matthias present in the side rail and leave the board fully actionable. */
+  .game-board-3d-stage > .matthias-board-bubble-tracked:not(.game-mobile-focus-bubble),
+  .game-board-stack-3d > .matthias-board-bubble:not(.game-mobile-focus-bubble) {
+    display: none !important;
+  }
+
   .game-screen .game-layout.game-layout-3d {
     --war-room-mobile-board-height: min(69dvh, 296px);
     --war-room-mobile-player-rail-height: 24px;
