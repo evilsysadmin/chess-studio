@@ -178,8 +178,8 @@ NETWORK_RACE_PATTERNS = (
 )
 BROWSER_ACTION_PATHS = {
     ".github/actions/setup-browser-e2e/action.yml",
-    ".github/actions/cache-node-modules/action.yml",
 }
+DEPENDENCY_CACHE_ACTION = ".github/actions/cache-node-modules/action.yml"
 CICD_WORKFLOW = ".github/workflows/cicd.yml"
 BROWSER_SCOPE_PATH = "scripts/browser_quality_scope.py"
 
@@ -250,6 +250,12 @@ def classify(paths: Iterable[str]) -> BrowserScope:
             full_logic = special_states = visual = focus = matthias = quick_2d = network_race = chronicles = tournament_mobile = True
             pawn_slug = chesscom = trailblazer = matthias_priority = True
             matthias_home = matthias_insights = False
+
+        if path == DEPENDENCY_CACHE_ACTION:
+            # Dependency-cache plumbing is shared infrastructure, not product
+            # behavior. One representative browser canary proves install/runtime
+            # integrity without waking every expensive browser family.
+            visual = True
 
         if path in {CICD_WORKFLOW, BROWSER_SCOPE_PATH}:
             # Prove the specialized-browser orchestration with one representative
@@ -522,6 +528,7 @@ def self_test() -> None:
     assert classify(["frontend/src/components/WarRoomApprovedMockContract.js"]) == BrowserScope(visual=True)
     assert classify(["frontend/src/components/WarRoomCommandDeskLuxury.js"]) == BrowserScope(visual=True)
     assert _ids(classify(["frontend/src/styles/19-game-focus.css"])) == ["desktop-scale", "android-focus"]
+    assert classify([".github/actions/cache-node-modules/action.yml"]) == BrowserScope(visual=True)
     assert classify(["frontend/src/components/Board3DParity.test.js"]) == BrowserScope()
     assert classify(["frontend/src/warRoomPointerCapture.test.js"]) == BrowserScope()
     assert classify(["frontend/src/components/MatthiasAvatar.spec.jsx"]) == BrowserScope()
