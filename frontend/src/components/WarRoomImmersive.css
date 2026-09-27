@@ -392,27 +392,52 @@ body.war-room-immersive-active .game-screen {
 
   .game-screen .game-layout-immersive .game-3d-command-column .game-3d-turn-pill {
     display: grid !important;
-    grid-template-columns: minmax(0, 1fr) max-content 30px !important;
-    grid-template-rows: 34px !important;
-    grid-template-areas: 'match state menu' !important;
+    grid-template-columns: minmax(0, 1fr) 8px max-content 34px 34px !important;
+    grid-template-rows: 38px !important;
+    grid-template-areas: none !important;
+    align-items: center !important;
     width: 100% !important;
-    min-height: 34px !important;
+    min-height: 38px !important;
     padding: .08rem .18rem !important;
-    gap: .16rem !important;
+    gap: .14rem !important;
     border-radius: 999px !important;
     pointer-events: auto;
   }
 
-  .game-screen .game-layout-immersive .game-3d-matchup,
-  .game-screen .game-layout-immersive .game-3d-turn-state {
+  .game-screen .game-layout-immersive .game-3d-turn-pill-avatar,
+  .game-screen .game-layout-immersive .game-3d-turn-pill-divider,
+  .game-screen .game-layout-immersive .game-3d-compact-actions {
+    display: none !important;
+  }
+
+  .game-screen .game-layout-immersive .game-3d-turn-pill-identity,
+  .game-screen .game-layout-immersive .game-3d-turn-pill-label {
     min-width: 0 !important;
-    align-items: center !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
   }
 
   .game-screen .game-layout-immersive .game-3d-turn-pill-identity strong,
   .game-screen .game-layout-immersive .game-3d-turn-pill-label {
     font-size: .55rem !important;
     line-height: 1 !important;
+  }
+
+  .game-screen .game-layout-immersive .game-3d-turn-pill-light {
+    width: 8px !important;
+    height: 8px !important;
+    margin: 0 !important;
+  }
+
+  .game-screen .game-layout-immersive .context-help-btn,
+  .game-screen .game-layout-immersive .game-3d-utility-menu,
+  .game-screen .game-layout-immersive .game-3d-utility-menu > summary {
+    width: 34px !important;
+    min-width: 34px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    padding: 0 !important;
   }
 
   .game-screen .game-layout-immersive .game-board-stack-3d .board3d-main-shell {
