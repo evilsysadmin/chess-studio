@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export function isWarRoomImmersiveExitKey(key) {
   return key === 'Escape' || key === 'Esc';
 }
 
-export function shouldExitWarRoomImmersive({ enabled, focusActive }) {
-  return !enabled || Boolean(focusActive);
+export function shouldExitWarRoomImmersive({ enabled, focusActive, gameOver = false }) {
+  return !enabled || Boolean(focusActive) || Boolean(gameOver);
 }
 
 export function getWarRoomBrowserFullscreenElement(doc = globalThis.document) {
@@ -81,12 +81,13 @@ export function exitWarRoomBrowserFullscreen(doc = globalThis.document) {
   }
 }
 
-export default function useWarRoomImmersive({ enabled, focusActive = false } = {}) {
+export default function useWarRoomImmersive({ enabled, focusActive = false, gameOver = false, sessionKey = 'default' } = {}) {
   // CSS immersion is the War Room's default presentation on desktop and mobile.
-  // Native fullscreen/orientation still require a trusted user gesture, so entry
-  // never attempts those APIs automatically.
-  const [immersive, setImmersive] = useState(false);
+  // Native fullscreen/orientation still require a trusted user gesture, so the
+  // automatic entry only enables the CSS immersive state.
+  const [immersive, setImmersive] = useState(() => Boolean(enabled && !focusActive && !gameOver));
   const [railCollapsed, setRailCollapsed] = useState(false);
+  const autoEnteredSessionRef = useRef(null);
 
   const exitImmersive = useCallback(() => {
     setImmersive(false);
@@ -120,11 +121,23 @@ export default function useWarRoomImmersive({ enabled, focusActive = false } = {
   }, [immersive]);
 
   useEffect(() => {
-    if (shouldExitWarRoomImmersive({ enabled, focusActive }) && immersive) {
-      setImmersive(false);
+    const session = String(sessionKey || 'default');
+    if (shouldExitWarRoomImmersive({ enabled, focusActive, gameOver })) {
+      if (immersive) {
+        setImmersive(false);
+        setRailCollapsed(false);
+        void exitWarRoomBrowserFullscreen();
+        unlockWarRoomOrientation();
+      }
+      return;
+    }
+
+    if (autoEnteredSessionRef.current !== session) {
+      autoEnteredSessionRef.current = session;
+      setImmersive(true);
       setRailCollapsed(false);
     }
-  }, [enabled, focusActive, immersive]);
+  }, [enabled, focusActive, gameOver, immersive, sessionKey]);
 
   useEffect(() => {
     if (!immersive || typeof document === 'undefined') return undefined;
