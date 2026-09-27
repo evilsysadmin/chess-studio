@@ -44,6 +44,7 @@ export function buildAshGoblin({ coarsePointer = false } = {}) {
   const root = new THREE.Group();
   root.name = 'chronicles-ash-goblin';
 
+  // Species palettes stay deliberately separated at gameplay zoom.
   const skin = material(0xa9b86d, { roughness: 0.72, clearcoat: 0.1 });
   const ash = material(0x26282a, { roughness: 0.84, metalness: 0.08 });
   const leather = material(0x4a3023, { roughness: 0.86 });
