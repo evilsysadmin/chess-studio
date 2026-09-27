@@ -148,37 +148,57 @@ describe('War Room ambient render cadence', () => {
   });
 
   it('mantiene geometría completa pero nace con presupuesto GPU sensato en desktop', () => {
-    expect(warRoomSceneProfile({ hardwareHints: {} })).toEqual({
+    expect(warRoomSceneProfile({ hardwareHints: {}, renderQuality: 'auto' })).toEqual({
       qualityTier: 'medium',
+      adaptiveQuality: true,
       tier: 'full',
       lite: false,
-      pixelRatioCap: 1.2,
-      shadowMapSize: 1024,
+      pixelRatioCap: 1,
+      shadowMapSize: 512,
+      shadowRadius: 1.1,
       shadowsEnabled: true,
     });
-    expect(warRoomSceneProfile({ coarsePointer: true, hardwareHints: {} })).toEqual({
+    expect(warRoomSceneProfile({ coarsePointer: true, hardwareHints: {}, renderQuality: 'auto' })).toEqual({
       qualityTier: 'medium',
+      adaptiveQuality: true,
       tier: 'balanced',
       lite: false,
       pixelRatioCap: 1,
       shadowMapSize: 512,
+      shadowRadius: 1.1,
       shadowsEnabled: true,
     });
-    expect(warRoomSceneProfile({ softwareRenderer: true, hardwareHints: {} })).toEqual({
+    expect(warRoomSceneProfile({ softwareRenderer: true, hardwareHints: {}, renderQuality: 'auto' })).toEqual({
       qualityTier: 'low',
+      adaptiveQuality: true,
       tier: 'lite',
       lite: true,
-      pixelRatioCap: 1,
+      pixelRatioCap: 0.85,
       shadowMapSize: 512,
+      shadowRadius: 1,
       shadowsEnabled: false,
     });
-    expect(warRoomSceneProfile({ coarsePointer: true, softwareRenderer: true, hardwareHints: {} })).toEqual({
+    expect(warRoomSceneProfile({ coarsePointer: true, softwareRenderer: true, hardwareHints: {}, renderQuality: 'auto' })).toEqual({
       qualityTier: 'low',
+      adaptiveQuality: true,
       tier: 'lite',
       lite: true,
-      pixelRatioCap: 1,
+      pixelRatioCap: 0.85,
       shadowMapSize: 512,
+      shadowRadius: 1,
       shadowsEnabled: false,
+    });
+  });
+
+  it('maps manual quality tiers to real renderer budgets without adaptive downgrade', () => {
+    expect(warRoomSceneProfile({ renderQuality: 'low', hardwareHints: {} })).toMatchObject({
+      qualityTier: 'low', adaptiveQuality: false, pixelRatioCap: 0.85, shadowMapSize: 512, shadowsEnabled: false,
+    });
+    expect(warRoomSceneProfile({ renderQuality: 'high', hardwareHints: {} })).toMatchObject({
+      qualityTier: 'high', adaptiveQuality: false, pixelRatioCap: 1.35, shadowMapSize: 1024, shadowRadius: 1.8, shadowsEnabled: true,
+    });
+    expect(warRoomSceneProfile({ renderQuality: 'ultra', hardwareHints: {} })).toMatchObject({
+      qualityTier: 'ultra', adaptiveQuality: false, pixelRatioCap: 1.75, shadowMapSize: 2048, shadowRadius: 2.35, shadowsEnabled: true,
     });
   });
 });
