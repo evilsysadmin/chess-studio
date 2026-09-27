@@ -1,16 +1,7 @@
 /* Android/phone landscape is an explicit play-first composition.
  * The PWA already allows any orientation; this layer simply spends the extra
  * horizontal space on the board instead of preserving the portrait stack. */
-@media (orientation: landscape) and (max-width: 960px) and (max-height: 620px) {
-  /* Single sizing authority for phone landscape. Descendants consume these
-   * tokens instead of independently re-deriving viewport and shell geometry. */
-  .game-screen .game-layout.game-layout-3d {
-    --war-room-mobile-content-width: calc(100vw - (var(--shell-gutter) * 2));
-    --war-room-mobile-board-height: min(72dvh, 430px);
-    --war-room-mobile-player-rail-height: 38px;
-    --war-room-mobile-side-height: min(42dvh, 230px);
-  }
-
+@media (orientation: landscape) and (max-width: 920px) and (max-height: 620px) {
   /* The generic game shell reserves a full 1rem footer. In phone landscape the
    * War Room itself already finishes at the visual viewport edge, so that spare
    * footer is the last source of document scroll. Preserve only a real device
@@ -43,8 +34,8 @@
    * shell content box, not the raw viewport. !important is intentional here:
    * this layout contract must beat the generic 99vw Board3D rule. */
   .game-screen .game-layout.game-layout-3d {
-    width: var(--war-room-mobile-content-width) !important;
-    max-width: var(--war-room-mobile-content-width) !important;
+    width: calc(100vw - (var(--shell-gutter) * 2)) !important;
+    max-width: calc(100vw - (var(--shell-gutter) * 2)) !important;
     margin-inline: auto;
   }
 
@@ -83,15 +74,14 @@
     width: 100%;
     max-width: 100%;
     min-height: 0;
-    height: var(--war-room-mobile-board-height);
+    height: min(72dvh, 430px);
     aspect-ratio: 1.62 / 1;
     border-radius: 10px;
     box-sizing: border-box;
   }
 
   .game-screen .game-board-stack-3d .game-player-rail.is-human {
-    min-height: var(--war-room-mobile-player-rail-height);
-    height: var(--war-room-mobile-player-rail-height);
+    min-height: 38px;
     padding-block: .25rem;
   }
 
@@ -235,7 +225,7 @@
     min-width: 0;
     max-width: 100%;
     min-height: 0;
-    max-height: var(--war-room-mobile-side-height);
+    max-height: min(42dvh, 230px);
     overflow-y: auto;
     overflow-x: hidden;
     overscroll-behavior: contain;
@@ -257,27 +247,197 @@
 
 /* Very short browser landscape (address/nav bars still visible): preserve the
  * board before secondary rails. The right column remains scrollable. */
-@media (orientation: landscape) and (max-width: 960px) and (max-height: 430px) {
+@media (orientation: landscape) and (max-width: 920px) and (max-height: 430px) {
+  .game-screen .game-board-stack-3d .board3d-main-shell {
+    height: min(72dvh, 300px);
+    min-height: 220px;
+  }
+
+  .game-screen .game-side-column.game-side-column-3d {
+    max-height: min(36dvh, 160px);
+  }
+}
+
+/* Phone War Room is a dedicated play surface. The renderer owns the complete
+ * visual viewport; only resign and room selection remain as floating controls.
+ * This applies to classic, v2 and v3 because the DOM shell is shared. */
+@media (pointer: coarse) and (orientation: landscape) and (max-width: 920px) and (max-height: 620px) {
+  html:has(.game-layout-3d),
+  body:has(.game-layout-3d) {
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  .app-shell-board-game:has(.game-layout-3d) {
+    width: 100vw;
+    min-height: 100dvh;
+    padding: 0;
+  }
+
+  .app-shell-board-game:has(.game-layout-3d) > .masthead-game-compact {
+    display: none !important;
+  }
+
+  .game-screen:has(.game-layout-3d),
+  .game-screen .game-layout.game-layout-3d,
+  .game-screen .game-layout-3d > .board-column,
+  .game-screen .board-live-row.is-3d-warroom,
+  .game-screen .game-board-stack.game-board-stack-3d,
+  .game-screen .game-board-3d-stage {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    min-height: 0 !important;
+    max-height: 100dvh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box;
+  }
+
   .game-screen .game-layout.game-layout-3d {
-    --war-room-mobile-board-height: min(69dvh, 296px);
-    --war-room-mobile-player-rail-height: 24px;
-    --war-room-mobile-side-height: min(27dvh, 116px);
+    position: fixed;
+    z-index: 300;
+    inset: 0;
+  }
+
+  .game-screen .board-live-row.is-3d-warroom {
+    position: relative;
+    display: block !important;
+    border: 0;
+    border-radius: 0;
+    background: #080a0f;
+    box-shadow: none;
+  }
+
+  .game-screen .game-board-stack.game-board-stack-3d,
+  .game-screen .game-board-3d-stage {
+    position: absolute;
+    inset: 0;
+    display: block;
   }
 
   .game-screen .game-board-stack-3d .board3d-main-shell {
-    min-height: min(190px, var(--war-room-mobile-board-height));
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+    max-height: 100dvh !important;
+    aspect-ratio: auto !important;
+    border: 0;
+    border-radius: 0;
   }
 
-  .app-shell-board-game:has(.game-layout-3d),
-  .app-shell-board-game .game-screen:has(.game-layout-3d) {
-    padding-bottom: 0 !important;
-    margin-bottom: 0 !important;
+  .game-screen .game-board-stack-3d > .game-player-rail,
+  .game-screen .game-board-stack-3d > .game-command-deck,
+  .game-screen .board3d-fixed-camera-note,
+  .game-screen .board3d-renderer-badge {
+    display: none !important;
   }
 
-  .game-screen .game-board-stack-3d .game-player-rail.is-human {
-    min-height: var(--war-room-mobile-player-rail-height) !important;
-    height: var(--war-room-mobile-player-rail-height);
-    padding-block: 0 !important;
+  /* GameSideColumn loads its tabbed-rail stylesheet after the static game
+     shell. Beat that late `display:flex !important` explicitly: landscape has
+     no persistent rail, only Matthias' occasional board bubble. */
+  .game-screen .game-layout-3d .board-live-row.is-3d-warroom > .game-side-column.game-side-column-3d {
+    display: none !important;
+  }
+
+  .game-screen .game-layout-3d .game-3d-command-column {
+    position: fixed;
+    z-index: 340;
+    top: max(.42rem, env(safe-area-inset-top));
+    right: max(.42rem, env(safe-area-inset-right));
+    display: block !important;
+    width: auto !important;
+    height: 44px;
+    pointer-events: none;
+  }
+
+  .game-screen .game-layout-3d .game-3d-turn-pill.is-mobile-landscape {
+    display: flex !important;
+    width: auto !important;
+    min-width: 0 !important;
+    min-height: 44px !important;
+    height: 44px;
+    padding: 0 !important;
+    gap: .28rem;
+    overflow: visible;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    pointer-events: none;
+  }
+
+  .game-screen .game-layout-3d .game-3d-turn-pill.is-mobile-landscape > :is(
+    .game-3d-turn-pill-avatar,
+    .game-3d-turn-pill-identity,
+    .game-3d-turn-pill-divider
+  ) {
+    display: none !important;
+  }
+
+  .game-screen .game-layout-3d .game-3d-turn-pill.is-mobile-landscape .game-3d-turn-pill-light {
+    display: block !important;
+    flex: 0 0 8px;
+    width: 8px;
+    height: 8px;
+    margin-left: .45rem;
+  }
+
+  .game-screen .game-layout-3d .game-3d-turn-pill.is-mobile-landscape .game-3d-turn-pill-label {
+    display: block !important;
+    max-width: 7rem;
+    padding: .36rem .48rem .36rem 0;
     overflow: hidden;
+    color: color-mix(in srgb, var(--cream) 84%, var(--studio-muted));
+    font-size: .58rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .game-screen .game-layout-3d .game-3d-turn-pill.is-mobile-landscape .game-3d-compact-actions {
+    display: flex;
+    width: 44px;
+    height: 44px;
+    pointer-events: auto;
+  }
+
+  .game-screen .game-layout-3d .game-3d-turn-pill.is-mobile-landscape .game-3d-compact-action.is-abandon {
+    flex: 0 0 44px;
+    width: 44px !important;
+    min-width: 44px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+  }
+
+  .game-screen .game-layout-3d .game-3d-turn-pill.is-mobile-landscape .game-3d-utility-menu {
+    position: relative !important;
+    inset: auto !important;
+    width: 44px;
+    height: 44px;
+    transform: none !important;
+    pointer-events: auto;
+  }
+
+  .game-screen .game-layout-3d .game-3d-turn-pill.is-mobile-landscape .game-3d-utility-menu > summary {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+    border-color: rgba(201, 162, 39, .42);
+    background: rgba(7, 10, 15, .86);
+    backdrop-filter: blur(8px);
+  }
+
+  .game-screen .game-layout-3d .game-3d-turn-pill.is-mobile-landscape .game-3d-utility-popover {
+    top: calc(100% + .3rem);
+    right: 0;
+    width: min(190px, calc(100vw - 1rem));
+  }
+
+  .game-screen .game-board-stack-3d > .matthias-board-bubble:not(.game-mobile-focus-bubble) {
+    top: 26%;
+    width: min(16rem, 38vw);
+    max-height: min(7rem, 42dvh);
+    overflow: auto;
   }
 }
