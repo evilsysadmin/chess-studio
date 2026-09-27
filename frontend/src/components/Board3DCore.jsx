@@ -267,7 +267,7 @@ function Board3DCanvas({
     renderer.domElement.dataset.board3dInspectPitch = '0.000';
     host.appendChild(renderer.domElement);
 
-    const releaseEnvironment = installPremiumEnvironment(renderer, scene, { coarsePointer: renderLite });
+    const releaseEnvironment = installPremiumEnvironment(renderer, scene, { coarsePointer });
 
     scene.add(new THREE.HemisphereLight(0xffefd0, 0x10192b, 1.35));
     const key = new THREE.DirectionalLight(0xffe1aa, initialLights.key);
