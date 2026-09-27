@@ -159,6 +159,14 @@ describe('HomeBlenderScene3D Klaus idle motion', () => {
     }
   });
 
+  it('rests between brief tail-tip flicks instead of swaying like a metronome', () => {
+    const resting = homeBlenderKlausTailPose(3000, 1);
+    const flicking = homeBlenderKlausTailPose(7000, 1);
+
+    expect(Math.hypot(resting.offsetX, resting.offsetZ)).toBeLessThan(1e-7);
+    expect(Math.hypot(flicking.offsetX, flicking.offsetZ)).toBeGreaterThan(0.001);
+  });
+
   it('groups the authored cat around its own pivot without dragging the cushion', () => {
     const root = new THREE.Group();
     const body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.22, 0.38), new THREE.MeshBasicMaterial());

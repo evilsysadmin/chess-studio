@@ -154,8 +154,13 @@ export function homeBlenderKlausTailPose(timeMs = 0, weight = 1) {
   const clampedWeight = Math.max(0, Math.min(1, Number(weight) || 0));
   const slow = Math.sin(seconds * (Math.PI * 2 / 13.7) + 0.45);
   const micro = Math.sin(seconds * (Math.PI * 2 / 5.3) + 1.7);
-  const sway = (slow * 0.72) + (micro * 0.28);
-  const curl = Math.sin(seconds * (Math.PI * 2 / 9.1) + 2.2);
+  // A sleeping cat rests far longer than it moves. Two narrow, mismatched envelopes
+  // wake the existing tail-tip loop for brief asymmetric flicks, then let it settle.
+  const primaryFlick = Math.max(0, Math.sin(seconds * (Math.PI * 2 / 19.0) - 0.9)) ** 16;
+  const echoFlick = Math.max(0, Math.sin(seconds * (Math.PI * 2 / 29.0) + 2.1)) ** 22;
+  const activity = Math.min(1, primaryFlick + echoFlick * 0.45);
+  const sway = ((slow * 0.72) + (micro * 0.28)) * activity;
+  const curl = Math.sin(seconds * (Math.PI * 2 / 9.1) + 2.2) * activity;
   return {
     offsetX: sway * HOME_BLENDER_KLAUS_TAIL_MOTION.swingX * clampedWeight,
     offsetZ: curl * HOME_BLENDER_KLAUS_TAIL_MOTION.swingZ * clampedWeight,
