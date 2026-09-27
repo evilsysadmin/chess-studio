@@ -634,10 +634,15 @@ def build_celestial_globe(static, palette):
         "WR3_OBS_globe_console_top", (x, y, 0.98), (0.82, 0.38, 0.065),
         palette["walnut"], static, bevel=0.055,
     )
-    base.cube(
-        "WR3_OBS_globe_console_trim", (x, y - 0.34, 0.72), (0.61, 0.025, 0.025),
-        palette["brass"], static, bevel=0.012,
-    )
+    for drawer, z in enumerate((0.43, 0.72)):
+        base.cube(
+            f"WR3_OBS_globe_console_drawer_{drawer}", (x, y - 0.345, z),
+            (0.59, 0.025, 0.11), palette["walnut"], static, bevel=0.025,
+        )
+        base.sphere(
+            f"WR3_OBS_globe_console_pull_{drawer}", (x, y - 0.39, z),
+            0.042, palette["brass"], static,
+        )
     base.cube(
         "WR3_OBS_globe_console_plinth", (x, y, 0.12), (0.76, 0.35, 0.075),
         palette["brass_dark"], static, bevel=0.045,
