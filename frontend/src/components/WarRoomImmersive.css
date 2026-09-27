@@ -60,8 +60,7 @@ body.war-room-immersive-active {
   }
 }
 
-.game-3d-immersive-toggle,
-.game-3d-rail-toggle {
+.game-3d-immersive-toggle {
   display: grid;
   place-items: center;
   box-sizing: border-box;
@@ -80,10 +79,7 @@ body.war-room-immersive-active {
 
 .game-3d-immersive-toggle:hover,
 .game-3d-immersive-toggle:focus-visible,
-.game-3d-immersive-toggle[aria-pressed='true'],
-.game-3d-rail-toggle:hover,
-.game-3d-rail-toggle:focus-visible,
-.game-3d-rail-toggle[aria-pressed='true'] {
+.game-3d-immersive-toggle[aria-pressed='true'] {
   border-color: rgba(201, 162, 39, .52);
   background: rgba(14, 18, 26, .94);
   color: var(--cream);
@@ -198,16 +194,6 @@ body.war-room-immersive-active {
     pointer-events: auto;
   }
 
-  .game-screen .game-layout-immersive .board-live-row.is-3d-warroom[data-unused] {
-    grid-template-columns: minmax(0, 1fr) clamp(190px, 15vw, 224px) !important;
-    grid-template-areas:
-      'board status'
-      'board music'
-      'board rail' !important;
-    grid-template-rows: auto auto minmax(0, 1fr) !important;
-    gap: clamp(.5rem, .75vw, .8rem);
-  }
-
   .game-layout-immersive .game-board-stack-3d {
     align-self: stretch !important;
     height: 100% !important;
@@ -218,31 +204,6 @@ body.war-room-immersive-active {
     min-height: 0;
   }
 
-  .game-screen .game-layout-immersive[data-war-room-rail-collapsed='true'] .board-live-row.is-3d-warroom {
-    grid-template-columns: minmax(0, 1fr) !important;
-    grid-template-areas: 'board' !important;
-    grid-template-rows: minmax(0, 1fr) !important;
-  }
-
-  .game-layout-immersive[data-war-room-rail-collapsed='true'] .game-side-column.game-side-column-3d {
-    display: none !important;
-  }
-
-  .game-screen .game-layout-immersive[data-war-room-rail-collapsed='true'] .game-3d-command-column {
-    position: absolute !important;
-    z-index: 40 !important;
-    inset: 0 0 auto !important;
-    width: 100% !important;
-    height: 0 !important;
-    margin: 0 !important;
-    pointer-events: none;
-  }
-
-  .game-screen .game-layout-immersive[data-war-room-rail-collapsed='true'] .game-3d-turn-pill {
-    left: 50% !important;
-    max-width: min(34rem, calc(100% - 2rem));
-    pointer-events: auto;
-  }
 }
 
 @media (max-width: 1080px) {
@@ -402,8 +363,7 @@ body.war-room-immersive-active {
     animation: none;
   }
 
-  .game-3d-immersive-toggle,
-  .game-3d-rail-toggle {
+  .game-3d-immersive-toggle {
     transition: none !important;
   }
 }
