@@ -3,7 +3,7 @@
 @media (pointer: coarse) and (orientation: portrait) and (max-width: 920px) {
   .war-room-landscape-gate {
     position: fixed;
-    z-index: 1300;
+    z-index: 110;
     left: 50%;
     bottom: max(12px, env(safe-area-inset-bottom));
     width: min(360px, calc(100vw - 24px));
