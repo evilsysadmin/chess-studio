@@ -141,6 +141,17 @@ body.war-room-immersive-active .game-screen {
   .game-screen .game-layout-immersive .board-live-row.is-3d-warroom {
     min-height: 0;
     height: 100%;
+    row-gap: .25rem !important;
+  }
+
+  /* The compact HUD is one 44px tactical row. Older War Room chrome layers
+   * may leave extra intrinsic height on the commander wrapper; that creates a
+   * visible dead band between Matthias and the board in portrait. */
+  .game-screen .game-layout-immersive .game-3d-command-column {
+    min-height: 0 !important;
+    height: 44px !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   /* Portrait must break the desktop/full-viewport percentage height chain.
