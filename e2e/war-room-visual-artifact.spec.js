@@ -632,7 +632,23 @@ for (const profile of ACTIVE_CAPTURE_PROFILES) {
         await expect(page.locator(immersiveRoot)).toHaveAttribute('data-war-room-immersive', 'true');
         await expect(page.locator('body')).toHaveClass(/war-room-immersive-active/);
         await expect(page.getByRole('button', { name: 'Entrar en modo inmersión', exact: true })).toHaveCount(0);
-        await expect(page.getByRole('button', { name: 'Más acciones de partida', exact: true })).toBeVisible();
+        const immersiveMenu = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
+        await expect(immersiveMenu).toBeVisible();
+        const menuBox = await immersiveMenu.boundingBox();
+        expect(menuBox, 'immersive overflow must have a rendered hit target').not.toBeNull();
+        expect(menuBox.x, 'immersive overflow must stay inside the left viewport edge').toBeGreaterThanOrEqual(0);
+        expect(menuBox.y, 'immersive overflow must stay inside the top viewport edge').toBeGreaterThanOrEqual(0);
+        expect(menuBox.x + menuBox.width, 'immersive overflow must stay inside the right viewport edge')
+          .toBeLessThanOrEqual(profile.viewport.width + 1);
+        expect(menuBox.y + menuBox.height, 'immersive overflow must stay inside the bottom viewport edge')
+          .toBeLessThanOrEqual(profile.viewport.height + 1);
+        if (profile.hasTouch) {
+          expect(menuBox.width, 'touch overflow target width').toBeGreaterThanOrEqual(44);
+          expect(menuBox.height, 'touch overflow target height').toBeGreaterThanOrEqual(44);
+        }
+        await immersiveMenu.click();
+        await expect(page.getByRole('menu', { name: 'Acciones de partida', exact: true })).toBeVisible();
+        await immersiveMenu.click();
         if (profile.hasTouch) {
           await expect.poll(() => page.evaluate(() => window.__warRoomOrientationLocks || []))
             .toContain('landscape');
