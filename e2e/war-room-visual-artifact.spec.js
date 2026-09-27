@@ -479,7 +479,8 @@ async function openCanonicalWarRoom(page, { variant = 'classic' } = {}) {
   const canvas = page.locator('.board3d-main-canvas');
   await expect(canvas).toBeVisible({ timeout: 30_000 });
   await expect(board3d).toHaveAttribute('data-board3d-camera', 'fixed-tactical', { timeout: 30_000 });
-  await expect(page.locator('.game-3d-turn-pill')).toBeVisible();
+  await expect(gameStatus(page)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Más acciones de partida', exact: true })).toBeVisible();
 
   const tutorial = page.locator('[data-war-room-first-run-tutorial="true"]');
   if (await tutorial.isVisible().catch(() => false)) {
