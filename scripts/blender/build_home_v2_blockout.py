@@ -3581,7 +3581,7 @@ def add_side_furnishings(materials):
             f"HOME_PROP_left_sofa_piping_{idx}",
             (-5.66 + (-0.010, 0.006)[idx], cy, 0.89 + (0.0, 0.012)[idx]),
             (0.018, 0.40, 0.022),
-            materials["dark"],
+            sofa_velvet_dark,
             bevel=0.010,
         )
     cube(
