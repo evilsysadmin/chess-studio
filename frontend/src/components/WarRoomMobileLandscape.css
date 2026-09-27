@@ -6,7 +6,7 @@
    * tokens instead of independently re-deriving viewport and shell geometry. */
   .game-screen .game-layout.game-layout-3d {
     --war-room-mobile-content-width: calc(100vw - (var(--shell-gutter) * 2));
-    --war-room-mobile-board-height: var(--war-room-mobile-board-height);
+    --war-room-mobile-board-height: min(72dvh, 430px);
     --war-room-mobile-player-rail-height: 38px;
     --war-room-mobile-side-height: min(42dvh, 230px);
   }
@@ -83,7 +83,7 @@
     width: 100%;
     max-width: 100%;
     min-height: 0;
-    height: min(72dvh, 430px);
+    height: var(--war-room-mobile-board-height);
     aspect-ratio: 1.62 / 1;
     border-radius: 10px;
     box-sizing: border-box;
