@@ -262,25 +262,25 @@
  * visual viewport; only resign and room selection remain as floating controls.
  * This applies to classic, v2 and v3 because the DOM shell is shared. */
 @media (pointer: coarse) and (orientation: landscape) and (max-width: 920px) and (max-height: 620px) {
-  html:has(.game-layout-3d),
-  body:has(.game-layout-3d) {
+  html:has(.game-layout-immersive),
+  body:has(.game-layout-immersive) {
     overflow: hidden;
     overscroll-behavior: none;
   }
 
-  .app-shell-board-game:has(.game-layout-3d) {
+  .app-shell-board-game:has(.game-layout-immersive) {
     width: 100vw;
     min-height: 100dvh;
     padding: 0;
   }
 
-  .app-shell-board-game:has(.game-layout-3d) > .masthead-game-compact {
+  .app-shell-board-game:has(.game-layout-immersive) > .masthead-game-compact {
     display: none !important;
   }
 
-  .game-screen:has(.game-layout-3d),
-  .game-screen .game-layout.game-layout-3d,
-  .game-screen .game-layout-3d > .board-column,
+  .game-screen:has(.game-layout-immersive),
+  .game-screen .game-layout.game-layout-3d.game-layout-immersive,
+  .game-screen .game-layout-3d.game-layout-immersive > .board-column,
   .game-screen .board-live-row.is-3d-warroom,
   .game-screen .game-board-stack.game-board-stack-3d,
   .game-screen .game-board-3d-stage {
@@ -294,7 +294,7 @@
     box-sizing: border-box;
   }
 
-  .game-screen .game-layout.game-layout-3d {
+  .game-screen .game-layout.game-layout-3d.game-layout-immersive {
     position: fixed;
     z-index: 300;
     inset: 0;
@@ -337,11 +337,11 @@
   /* GameSideColumn loads its tabbed-rail stylesheet after the static game
      shell. Beat that late `display:flex !important` explicitly: landscape has
      no persistent rail, only Matthias' occasional board bubble. */
-  .game-screen .game-layout-3d .board-live-row.is-3d-warroom > .game-side-column.game-side-column-3d {
+  .game-screen .game-layout-3d.game-layout-immersive .board-live-row.is-3d-warroom > .game-side-column.game-side-column-3d {
     display: none !important;
   }
 
-  .game-screen .game-layout-3d .game-3d-command-column {
+  .game-screen .game-layout-3d.game-layout-immersive .game-3d-command-column {
     position: fixed;
     z-index: 340;
     top: max(.42rem, env(safe-area-inset-top));
@@ -352,7 +352,7 @@
     pointer-events: none;
   }
 
-  .game-screen .game-layout-3d .game-3d-turn-pill.is-mobile-landscape {
+  .game-screen .game-layout-3d.game-layout-immersive .game-3d-turn-pill.is-mobile-landscape {
     display: flex !important;
     width: auto !important;
     min-width: 0 !important;
@@ -367,7 +367,7 @@
     pointer-events: none;
   }
 
-  .game-screen .game-layout-3d .game-3d-turn-pill.is-mobile-landscape > :is(
+  .game-screen .game-layout-3d.game-layout-immersive .game-3d-turn-pill.is-mobile-landscape > :is(
     .game-3d-turn-pill-avatar,
     .game-3d-turn-pill-identity,
     .game-3d-turn-pill-divider
@@ -375,7 +375,7 @@
     display: none !important;
   }
 
-  .game-screen .game-layout-3d .game-3d-turn-pill.is-mobile-landscape .game-3d-turn-pill-light {
+  .game-screen .game-layout-3d.game-layout-immersive .game-3d-turn-pill.is-mobile-landscape .game-3d-turn-pill-light {
     display: block !important;
     flex: 0 0 8px;
     width: 8px;
@@ -383,7 +383,7 @@
     margin-left: .45rem;
   }
 
-  .game-screen .game-layout-3d .game-3d-turn-pill.is-mobile-landscape .game-3d-turn-pill-label {
+  .game-screen .game-layout-3d.game-layout-immersive .game-3d-turn-pill.is-mobile-landscape .game-3d-turn-pill-label {
     display: block !important;
     max-width: 7rem;
     padding: .36rem .48rem .36rem 0;
@@ -394,14 +394,14 @@
     white-space: nowrap;
   }
 
-  .game-screen .game-layout-3d .game-3d-turn-pill.is-mobile-landscape .game-3d-compact-actions {
+  .game-screen .game-layout-3d.game-layout-immersive .game-3d-turn-pill.is-mobile-landscape .game-3d-compact-actions {
     display: flex;
     width: 44px;
     height: 44px;
     pointer-events: auto;
   }
 
-  .game-screen .game-layout-3d .game-3d-turn-pill.is-mobile-landscape .game-3d-compact-action.is-abandon {
+  .game-screen .game-layout-3d.game-layout-immersive .game-3d-turn-pill.is-mobile-landscape .game-3d-compact-action.is-abandon {
     flex: 0 0 44px;
     width: 44px !important;
     min-width: 44px !important;
@@ -409,7 +409,7 @@
     min-height: 44px !important;
   }
 
-  .game-screen .game-layout-3d .game-3d-turn-pill.is-mobile-landscape .game-3d-utility-menu {
+  .game-screen .game-layout-3d.game-layout-immersive .game-3d-turn-pill.is-mobile-landscape .game-3d-utility-menu {
     position: relative !important;
     inset: auto !important;
     width: 44px;
@@ -418,7 +418,7 @@
     pointer-events: auto;
   }
 
-  .game-screen .game-layout-3d .game-3d-turn-pill.is-mobile-landscape .game-3d-utility-menu > summary {
+  .game-screen .game-layout-3d.game-layout-immersive .game-3d-turn-pill.is-mobile-landscape .game-3d-utility-menu > summary {
     width: 44px;
     min-width: 44px;
     height: 44px;
@@ -428,7 +428,7 @@
     backdrop-filter: blur(8px);
   }
 
-  .game-screen .game-layout-3d .game-3d-turn-pill.is-mobile-landscape .game-3d-utility-popover {
+  .game-screen .game-layout-3d.game-layout-immersive .game-3d-turn-pill.is-mobile-landscape .game-3d-utility-popover {
     top: calc(100% + .3rem);
     right: 0;
     width: min(190px, calc(100vw - 1rem));
