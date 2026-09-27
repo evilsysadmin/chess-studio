@@ -12,7 +12,7 @@ import { requestLabLaunch } from '../labLaunchIntent.js';
 import { msUntilNextLocalHour } from '../matthiasRoutineClock.js';
 import { matthiasAmbientVisual, matthiasAmbientVisuals, matthiasHomeZone, matthiasRoutineDwellMs } from '../matthiasVisuals.js';
 import { reducedMotionStatus, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
-import { requestWarRoomLandscape, shouldAutoRotateWarRoomOnEntry, unlockWarRoomOrientation } from './useWarRoomImmersive.js';
+import { requestWarRoomLandscapeFullscreen, shouldAutoRotateWarRoomOnEntry, unlockWarRoomOrientation, exitWarRoomBrowserFullscreen } from './useWarRoomImmersive.js';
 import './HomeIllustrated.css';
 import './HomeIllustratedDiegetic.css';
 import './HomeDiegeticObjects.css';
@@ -81,11 +81,15 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
 
   useEffect(() => {
     if (!shouldAutoRotateWarRoomOnEntry()) return undefined;
-    // Home 3D benefits from the same phone-landscape canvas budget as the War Room.
-    // Browsers may reject orientation locking outside fullscreen/a trusted gesture; that is
-    // intentionally a no-op so the existing portrait composition remains the fallback.
-    void requestWarRoomLandscape();
+    // A normal browser tab cannot reliably lock orientation on Android until it is
+    // fullscreen and the request originates from a trusted gesture. Attempt immediately
+    // for browsers that allow it, then retry on the first pointer gesture for Brave/Chrome.
+    void requestWarRoomLandscapeFullscreen();
+    const retryLandscape = () => { void requestWarRoomLandscapeFullscreen(); };
+    window.addEventListener('pointerdown', retryLandscape, { once: true, passive: true });
     return () => {
+      window.removeEventListener('pointerdown', retryLandscape);
+      void exitWarRoomBrowserFullscreen();
       unlockWarRoomOrientation();
     };
   }, []);
