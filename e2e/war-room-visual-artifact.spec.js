@@ -114,6 +114,22 @@ const CAPTURE_PROFILES = Object.freeze([
     landscapeContract: true,
   }),
   Object.freeze({
+    label: 'war-room-android-landscape-800x360',
+    title: 'Android landscape 360 px short edge',
+    viewport: Object.freeze({ width: 800, height: 360 }),
+    hasTouch: true,
+    portraitContract: false,
+    landscapeContract: true,
+  }),
+  Object.freeze({
+    label: 'war-room-android-landscape-932x430',
+    title: 'Android landscape 430 px short edge',
+    viewport: Object.freeze({ width: 932, height: 430 }),
+    hasTouch: true,
+    portraitContract: false,
+    landscapeContract: true,
+  }),
+  Object.freeze({
     label: 'war-room-immersive-android-landscape-844x390',
     title: 'Immersive Android landscape 844×390',
     viewport: Object.freeze({ width: 844, height: 390 }),
@@ -213,7 +229,9 @@ const ACTIVE_CAPTURE_PROFILES = Object.freeze(
     if (WAR_ROOM_PROFILE_SCOPE === 'mobile-entry') {
       return new Set([
         'war-room-android-390x844',
+        'war-room-android-landscape-800x360',
         'war-room-android-landscape-844x390',
+        'war-room-android-landscape-932x430',
         'war-room-immersive-android-landscape-844x390',
       ]).has(profile.label);
     }
@@ -293,12 +311,28 @@ async function captureViewportPng(context, page, path) {
 
   const session = await context.newCDPSession(page);
   try {
+    const viewport = page.viewportSize();
+    if (!viewport) throw new Error('War Room visual capture requires a fixed viewport');
     const { data } = await session.send('Page.captureScreenshot', {
       format: 'png',
       fromSurface: true,
       captureBeyondViewport: false,
+      clip: {
+        x: 0,
+        y: 0,
+        width: viewport.width,
+        height: viewport.height,
+        scale: 1,
+      },
     });
-    await writeFile(path, Buffer.from(data, 'base64'));
+    const png = Buffer.from(data, 'base64');
+    const capturedWidth = png.readUInt32BE(16);
+    const capturedHeight = png.readUInt32BE(20);
+    expect(
+      { width: capturedWidth, height: capturedHeight },
+      'canonical PNG dimensions must match the declared capture viewport',
+    ).toEqual(viewport);
+    await writeFile(path, png);
   } finally {
     await session.detach();
     await page.evaluate(() => {
