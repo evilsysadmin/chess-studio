@@ -219,6 +219,15 @@ body.war-room-immersive-active .game-screen {
     overflow: auto;
   }
 
+  /* Mobile immersion gives the top-right touch strip to Matthias. Keeping the
+   * global account trigger here overlaps the HUD at 360–430px and can steal
+   * taps from its overflow control; account remains available outside play. */
+  body.war-room-immersive-active .app-shell-board-game > .masthead-game-compact .masthead-account-stack,
+  body.war-room-immersive-active .app-shell-board-game > .masthead-game-compact .masthead-account-menu {
+    display: none !important;
+    pointer-events: none !important;
+  }
+
   /* Portrait immersion keeps a definite height chain so the Three canvas
    * cannot exist outside a visible layout box on Android/WebView. */
   .game-layout-immersive .board-column {
@@ -263,6 +272,15 @@ body.war-room-immersive-active .game-screen {
   .game-screen .game-layout-immersive .game-3d-command-column .game-3d-turn-pill {
     width: 100% !important;
     pointer-events: auto;
+  }
+
+  /* At 360–430px tall the complete action list is taller than the available
+   * space below the HUD. Keep every action reachable without leaking the
+   * overlay beyond the viewport. */
+  .game-screen .game-layout-immersive .game-3d-utility-popover {
+    max-height: calc(100dvh - 5rem) !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
   }
 
   /* Portrait must break the desktop/full-viewport percentage height chain.

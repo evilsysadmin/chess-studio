@@ -122,7 +122,7 @@ function Board3DCanvas({
     onPieceMouseLeave,
     hansDiagnosticsMarkerRef,
     hansDiagnosticsRequested,
-    hansFireCallEnabled,
+    hansFireCallEnabled, warRoomVariant,
   };
 
   useEffect(() => {
@@ -439,7 +439,7 @@ function Board3DCanvas({
       const width = Math.max(280, host.clientWidth || 280);
       const height = Math.max(300, host.clientHeight || 300);
       renderer.setSize(width, height, false);
-      fitBoardCamera(camera, width, height, whiteSide, { profile: cameraProfile === 'classroom' || warRoomVariant !== 'classic' ? cameraProfile : 'classic', immersive });
+      fitBoardCamera(camera, width, height, whiteSide, { profile: cameraProfile === 'classroom' || (latestPropsRef.current.warRoomVariant || 'classic') !== 'classic' ? cameraProfile : 'classic', immersive });
       render();
     }
     resize();
@@ -710,7 +710,7 @@ function Board3DCanvas({
       if (renderer.domElement.parentNode === host) host.removeChild(renderer.domElement);
       sceneStateRef.current = null;
     };
-  }, [effectiveThemeId, orientation, showCoordinates, cameraProfile, warRoomVariant, playAriaLabel, inspectAriaLabel]);
+  }, [effectiveThemeId, orientation, showCoordinates, cameraProfile, playAriaLabel, inspectAriaLabel]);
 
   useEffect(() => {
     const state = sceneStateRef.current;
@@ -726,14 +726,14 @@ function Board3DCanvas({
       onStatus: setWarRoomVariantStatus,
       onPaint: state.render,
     });
-  }, [
-    warRoomVariant,
-    warRoomVariantSelectable,
-    setWarRoomVariantStatus,
-    effectiveThemeId,
-    orientation,
-    showCoordinates,
-  ]);
+  }, [warRoomVariant, warRoomVariantSelectable, setWarRoomVariantStatus, effectiveThemeId, orientation, showCoordinates]);
+
+  useEffect(() => {
+    const state = sceneStateRef.current, host = hostRef.current;
+    if (!state || !host) return;
+    fitBoardCamera(state.camera, Math.max(280, host.clientWidth || 280), Math.max(300, host.clientHeight || 300), state.whiteSide, { profile: cameraProfile === 'classroom' || warRoomVariant !== 'classic' ? cameraProfile : 'classic', immersive });
+    state.render();
+  }, [warRoomVariant, cameraProfile, immersive]);
 
   useEffect(() => {
     const state = sceneStateRef.current;
@@ -1082,7 +1082,7 @@ function Board3DCanvas({
 
     applyMatthiasCheckPose(state, checkSquare, orientation);
     state.render();
-  }, [fen, selectedSquare, legalMap, lastMove, hintMove, checkSquare, focusedSquare, hoveredSquare, effectiveThemeId, orientation, showCoordinates, warRoomVariant]);
+  }, [fen, selectedSquare, legalMap, lastMove, hintMove, checkSquare, focusedSquare, hoveredSquare, effectiveThemeId, orientation, showCoordinates]);
 
   useEffect(() => {
     const state = sceneStateRef.current;
