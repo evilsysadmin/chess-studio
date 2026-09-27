@@ -235,7 +235,9 @@ const ACTIVE_CAPTURE_PROFILES = Object.freeze(
         'war-room-immersive-android-landscape-844x390',
       ]).has(profile.label);
     }
-    if (WAR_ROOM_PROFILE_SCOPE === 'mobile') return profile.hasTouch === true;
+    if (WAR_ROOM_PROFILE_SCOPE === 'mobile') {
+      return profile.hasTouch === true || profile.label === 'war-room-desktop-1440x900';
+    }
     return true;
   }),
 );
@@ -271,7 +273,7 @@ async function freezeVisualFrame(page) {
   await page.waitForTimeout(80);
 }
 
-async function captureViewportPng(context, page, path) {
+async function captureViewportPng(page, path) {
   // CDP + headless SwiftShader can omit WebGL compositor layers even when the
   // canvas is visibly rendered. Visual-artifact builds preserve the drawing
   // buffer, so rasterize that canvas into a temporary DOM image and let the
@@ -309,23 +311,20 @@ async function captureViewportPng(context, page, path) {
     );
   }
 
-  const session = await context.newCDPSession(page);
   try {
     const viewport = page.viewportSize();
     if (!viewport) throw new Error('War Room visual capture requires a fixed viewport');
-    const { data } = await session.send('Page.captureScreenshot', {
-      format: 'png',
-      fromSurface: true,
-      captureBeyondViewport: false,
+    const png = await page.screenshot({
+      fullPage: false,
+      animations: 'disabled',
+      caret: 'hide',
       clip: {
         x: 0,
         y: 0,
         width: viewport.width,
         height: viewport.height,
-        scale: 1,
       },
     });
-    const png = Buffer.from(data, 'base64');
     const capturedWidth = png.readUInt32BE(16);
     const capturedHeight = png.readUInt32BE(20);
     expect(
@@ -334,7 +333,6 @@ async function captureViewportPng(context, page, path) {
     ).toEqual(viewport);
     await writeFile(path, png);
   } finally {
-    await session.detach();
     await page.evaluate(() => {
       document.querySelectorAll('img[data-war-room-webgl-capture]').forEach((image) => image.remove());
     });
@@ -768,7 +766,6 @@ for (const profile of ACTIVE_CAPTURE_PROFILES) {
 
       await freezeVisualFrame(page);
       await captureViewportPng(
-        context,
         page,
         `${ARTIFACT_DIR}/${profile.label}.png`,
       );
