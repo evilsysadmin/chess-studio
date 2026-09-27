@@ -171,7 +171,9 @@ def _surface_groups(path: str) -> set[str] | None:
     if lower == ".github/workflows/app-visual-artifact.yml":
         return set()
     if lower.startswith(".github/actions/app-visual-pipeline/"):
-        return {"experiments"}
+        # Visual orchestration owns no product surface. Its classifier self-tests
+        # prove routing; product captures are selected only by product owners.
+        return set()
     if lower == "scripts/war_room_visual_freeze_check.mjs":
         return {"warroom"}
     if lower.startswith("scripts/app_visual_"):
@@ -461,6 +463,8 @@ def self_test() -> None:
     assert not quality_scope.hans and not quality_scope.chesscom
     browser_quality_scope = classify(["scripts/browser_quality_scope.py"])
     assert browser_quality_scope.capture_groups == "none"
+    visual_pipeline = classify([".github/actions/app-visual-pipeline/action.yml"])
+    assert visual_pipeline.capture_groups == "none"
     assert not browser_quality_scope.hans and not browser_quality_scope.chesscom
     chronicles_visual = classify(["e2e/chronicles-tactics-visual-artifact.spec.js"])
     assert chronicles_visual.capture_groups == "experiments"
