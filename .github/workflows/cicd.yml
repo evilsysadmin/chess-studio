@@ -9,8 +9,8 @@ concurrency:
   group: chess-studio-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
-  preflight:
-    name: Preflight · contracts
+  scope:
+    name: Scope · classify
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     outputs:
@@ -98,6 +98,17 @@ jobs:
           printf '%s\n' "$files" | python3 -S scripts/browser_quality_scope.py \
             --github-output "$GITHUB_OUTPUT" \
             --summary "$GITHUB_STEP_SUMMARY"
+  preflight:
+    name: Preflight · contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
       - name: Static preflight + CI wiring
         run: |
           set -euo pipefail
@@ -112,8 +123,8 @@ jobs:
         run: python3 scripts/staging_preview_contract.py
   frontend:
     name: Tests · Frontend
-    needs: preflight
-    if: needs.preflight.outputs.run_frontend == 'true'
+    needs: scope
+    if: needs.scope.outputs.run_frontend == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -130,12 +141,12 @@ jobs:
           lockfile: frontend/package-lock.json
           node-version: '22'
       - name: Frontend tests
-        if: needs.preflight.outputs.run_frontend == 'true'
+        if: needs.scope.outputs.run_frontend == 'true'
         run: make test-frontend
   backend:
     name: Tests · Backend
-    needs: preflight
-    if: needs.preflight.outputs.run_backend == 'true'
+    needs: scope
+    if: needs.scope.outputs.run_backend == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -156,16 +167,16 @@ jobs:
       - name: Python dependency consistency
         run: make backend-check
       - name: Prepare security report
-        if: needs.preflight.outputs.run_security == 'true'
+        if: needs.scope.outputs.run_security == 'true'
         run: mkdir -p .security
       - name: Python advisory inventory (informative)
-        if: needs.preflight.outputs.run_security == 'true'
+        if: needs.scope.outputs.run_security == 'true'
         continue-on-error: true
         run: make security-be
   security:
     name: Security · Trivy + Docker
-    needs: preflight
-    if: needs.preflight.outputs.run_security == 'true'
+    needs: scope
+    if: needs.scope.outputs.run_security == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
@@ -232,8 +243,8 @@ jobs:
           python3 scripts/compose_smoke.py
   e2e_build:
     name: Build browser artifact once
-    needs: preflight
-    if: needs.preflight.outputs.run_e2e == 'true' || needs.preflight.outputs.browser_has_cases == 'true'
+    needs: scope
+    if: needs.scope.outputs.run_e2e == 'true' || needs.scope.outputs.browser_has_cases == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -263,13 +274,13 @@ jobs:
           retention-days: 1
   e2e_lanes:
     name: Tests · Playwright · ${{ matrix.lane }}
-    needs: [preflight, e2e_build]
-    if: needs.preflight.outputs.run_e2e == 'true'
+    needs: [scope, e2e_build]
+    if: needs.scope.outputs.run_e2e == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.preflight.outputs.core_e2e_matrix) }}
+      matrix: ${{ fromJSON(needs.scope.outputs.core_e2e_matrix) }}
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-browser-e2e
@@ -296,13 +307,13 @@ jobs:
           retention-days: 7
   e2e_specialized:
     name: Browser required · ${{ matrix.label }}
-    needs: [preflight, e2e_build]
-    if: needs.preflight.outputs.browser_has_cases == 'true'
+    needs: [scope, e2e_build]
+    if: needs.scope.outputs.browser_has_cases == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.preflight.outputs.browser_matrix) }}
+      matrix: ${{ fromJSON(needs.scope.outputs.browser_matrix) }}
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-browser-e2e
@@ -330,27 +341,32 @@ jobs:
           retention-days: 7
   e2e:
     name: Tests · Playwright
-    needs: [preflight, e2e_lanes, e2e_specialized]
+    needs: [scope, preflight, e2e_lanes, e2e_specialized]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 50
     steps:
       - name: Aggregate required browser + Blender gates
         env:
+          SCOPE_RESULT: ${{ needs.scope.result }}
           PREFLIGHT_RESULT: ${{ needs.preflight.result }}
-          RUN_E2E: ${{ needs.preflight.outputs.run_e2e }}
+          RUN_E2E: ${{ needs.scope.outputs.run_e2e }}
           CORE_LANES_RESULT: ${{ needs.e2e_lanes.result }}
-          RUN_SPECIALIZED: ${{ needs.preflight.outputs.browser_has_cases }}
+          RUN_SPECIALIZED: ${{ needs.scope.outputs.browser_has_cases }}
           SPECIALIZED_RESULT: ${{ needs.e2e_specialized.result }}
-          RUN_BLENDER: ${{ needs.preflight.outputs.blender_required }}
-          BLENDER_WORKFLOWS: ${{ needs.preflight.outputs.blender_workflows }}
-          RUN_PAWN_SLUG_GODOT: ${{ github.event_name == 'pull_request' && needs.preflight.outputs.run_pawn_slug_godot || 'false' }}
+          RUN_BLENDER: ${{ needs.scope.outputs.blender_required }}
+          BLENDER_WORKFLOWS: ${{ needs.scope.outputs.blender_workflows }}
+          RUN_PAWN_SLUG_GODOT: ${{ github.event_name == 'pull_request' && needs.scope.outputs.run_pawn_slug_godot || 'false' }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          if [[ "$SCOPE_RESULT" != 'success' ]]; then
+            echo "::error::Scope no terminó con éxito: $SCOPE_RESULT"
+            exit 1
+          fi
           if [[ "$PREFLIGHT_RESULT" != 'success' ]]; then
-            echo "::error::Preflight no terminó con éxito: $PREFLIGHT_RESULT"
+            echo "::error::Preflight contracts no terminó con éxito: $PREFLIGHT_RESULT"
             exit 1
           fi
           if [[ "$RUN_E2E" == 'true' && "$CORE_LANES_RESULT" != 'success' ]]; then

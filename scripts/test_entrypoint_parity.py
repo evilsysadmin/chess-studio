@@ -140,7 +140,7 @@ if sharded_playwright:
     if tuple(LANE_COMMANDS) != expected_lanes:
         raise SystemExit(f'runner core perdió las lanes canónicas: {tuple(LANE_COMMANDS)!r}')
     for marker in [
-        'matrix: ${{ fromJSON(needs.preflight.outputs.core_e2e_matrix) }}',
+        'matrix: ${{ fromJSON(needs.scope.outputs.core_e2e_matrix) }}',
         'Tests · Playwright · ${{ matrix.lane }}',
         'python3 -S scripts/run_core_e2e_lane.py "$CRITICAL_E2E_LANE"',
     ]:
@@ -187,8 +187,8 @@ if sharded_playwright:
         ]:
             if marker not in specialized:
                 raise SystemExit(f'Gate browser especializado incompleto: falta `{marker}`')
-        if 'needs: [preflight, e2e_lanes, e2e_specialized]' not in aggregate:
-            raise SystemExit('Tests · Playwright debe agregar core + browser especializado en el mismo required check')
+        if 'needs: [scope, preflight, e2e_lanes, e2e_specialized]' not in aggregate:
+            raise SystemExit('Tests · Playwright debe agregar scope + contracts + core + browser especializado en el mismo required check')
         if 'SPECIALIZED_RESULT' not in aggregate:
             raise SystemExit('Tests · Playwright no está comprobando el resultado de las lanes especializadas')
 else:
