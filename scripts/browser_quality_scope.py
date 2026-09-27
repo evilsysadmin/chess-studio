@@ -420,11 +420,9 @@ BROWSER_JOB_GROUPS = (
         "War Room · Android interaction",
         ("android-selection", "android-focus"),
     ),
-    (
-        "war-room-special-states",
-        "War Room · special states",
-        ("special-surfaces", "special-state-canaries"),
-    ),
+    # special-surfaces and special-state-canaries are both renderer-heavy.
+    # Keep them independent so hosted runners execute them in parallel instead
+    # of serializing two long 3D canaries.
     (
         "matthias-home-insights",
         "Matthias · Home + Así juegas motion",
@@ -546,7 +544,7 @@ def self_test() -> None:
         "special-surfaces", "special-state-canaries", "desktop-scale", "android-focus",
     ]
     assert _job_ids(full) == [
-        "war-room-android", "desktop-input", "war-room-special-states", "desktop-scale",
+        "war-room-android", "desktop-input", "special-surfaces", "special-state-canaries", "desktop-scale",
     ]
     full_jobs = build_job_matrix(full)["include"]
     assert all("war-room-hans-fire-call.spec.js" not in job["command"] for job in full_jobs)
@@ -561,7 +559,7 @@ def self_test() -> None:
     direct_special = classify(["e2e/three-d-war-room-special-states.spec.js"])
     assert direct_special == BrowserScope(special_states=True)
     assert _ids(direct_special) == ["special-surfaces", "special-state-canaries"]
-    assert _job_ids(direct_special) == ["war-room-special-states"]
+    assert _job_ids(direct_special) == ["special-surfaces", "special-state-canaries"]
     special_canary = build_matrix(direct_special)["include"][1]
     assert "jaque mate" in special_canary["command"]
     assert "promoción 3D" in special_canary["command"]
