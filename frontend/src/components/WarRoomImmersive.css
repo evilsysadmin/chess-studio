@@ -33,8 +33,13 @@ body.war-room-immersive-active .app-shell-board-game > .masthead-game-compact {
 
 body.war-room-immersive-active .app-shell-board-game > .masthead-game-compact .masthead-actions,
 body.war-room-immersive-active .app-shell-board-game > .masthead-game-compact .masthead-account-stack,
+body.war-room-immersive-active .app-shell-board-game > .masthead-game-compact .masthead-account-menu {
+  pointer-events: none !important;
+}
+
 body.war-room-immersive-active .app-shell-board-game > .masthead-game-compact button,
-body.war-room-immersive-active .app-shell-board-game > .masthead-game-compact [role='button'] {
+body.war-room-immersive-active .app-shell-board-game > .masthead-game-compact [role='button'],
+body.war-room-immersive-active .app-shell-board-game > .masthead-game-compact .masthead-account-popover {
   pointer-events: auto;
 }
 
