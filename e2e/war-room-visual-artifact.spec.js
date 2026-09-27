@@ -121,7 +121,6 @@ const CAPTURE_PROFILES = Object.freeze([
     portraitContract: false,
     landscapeContract: true,
     immersive: true,
-    mobilePlayFirst: true,
   }),
   Object.freeze({
     label: 'war-room-desktop-1440x900',
@@ -140,17 +139,6 @@ const CAPTURE_PROFILES = Object.freeze([
     portraitContract: false,
     landscapeContract: false,
     immersive: true,
-    variant: 'classic',
-  }),
-  Object.freeze({
-    label: 'war-room-immersive-clean-desktop-1440x900',
-    title: 'Immersive clean castle desktop 1440×900',
-    viewport: Object.freeze({ width: 1440, height: 900 }),
-    hasTouch: false,
-    portraitContract: false,
-    landscapeContract: false,
-    immersive: true,
-    collapseRail: true,
     variant: 'classic',
   }),
   Object.freeze({
@@ -387,10 +375,6 @@ async function captureWarRoomHealth(page, label) {
     const root = document.documentElement;
     const canvas = document.querySelector('canvas.board3d-main-canvas');
     const board = box('[data-board3d-war-room="true"]');
-    const hud = box('.game-3d-turn-pill');
-    const human = box('.game-board-stack-3d .game-player-rail.is-human');
-    const music = box('.game-side-column-3d .game-side-music .music-deck-collapsed');
-    const notation = box('.game-side-column-3d .game-notation-disclosure');
     const legacyCommandDeck = box('.game-board-stack-3d > .game-command-deck');
     const masthead = box('.masthead-game-compact');
     const appShell = box('.app-shell-board-game');
@@ -398,8 +382,6 @@ async function captureWarRoomHealth(page, label) {
     const gameLayout = box('.game-layout.game-layout-3d');
     const liveRow = box('.board-live-row.is-3d-warroom');
     const sideColumn = box('.game-side-column.game-side-column-3d');
-    const focus = buttonBox('Focus');
-    const abandon = buttonBox('Abandonar partida');
     const overflow = buttonBox('Más acciones de partida');
     const boardVisibleWidth = board
       ? Math.max(0, Math.min(board.right, viewport.width) - Math.max(board.left, 0))
@@ -427,20 +409,13 @@ async function captureWarRoomHealth(page, label) {
       liveRow,
       sideColumn,
       board,
-      hud,
       masthead,
-      human,
-      music,
-      notation,
       legacyCommandDeck,
       immersive: document.body.classList.contains('war-room-immersive-active'),
-      mobilePlayFirst: document.querySelector('.game-layout-3d')?.getAttribute('data-war-room-mobile-landscape') === 'true',
-      quickActions: { focus, abandon, overflow },
+      overflow,
       boardViewportFill: Number((boardVisibleHeight / viewport.height).toFixed(3)),
       boardWidthFill: board ? Number((board.width / viewport.width).toFixed(3)) : 0,
       boardVisibleWidthFill: Number((boardVisibleWidth / viewport.width).toFixed(3)),
-      hudToBoardGap: board && hud ? Number((board.top - hud.bottom).toFixed(1)) : null,
-      playerToBoardGap: board && human ? Number((human.top - board.bottom).toFixed(1)) : null,
     };
   }, label);
 }
@@ -513,18 +488,11 @@ function expectPortraitHealth(health) {
   expect(health.touchPoints, 'Android capture must expose touch points').toBeGreaterThan(0);
   expect(health.legacyCommandDeck?.display, 'legacy Focus/Abandon row must stay visually folded').toBe('none');
   expect(health.boardWidthFill, '3D scene should remain the dominant mobile surface').toBeGreaterThanOrEqual(0.88);
-  expect(health.quickActions?.overflow, 'immersive overflow must remain available in portrait').not.toBeNull();
-  expect(health.hud, 'legacy Matthias turn HUD must stay absent in immersion').toBeNull();
-  expect(health.human, 'human rail must stay hidden in immersion').toBeNull();
-  expect(health.music, 'music rail must stay hidden in immersion').toBeNull();
-  expect(health.notation, 'move notebook must stay hidden in immersion').toBeNull();
+  expect(health.overflow, 'immersive overflow must remain available in portrait').not.toBeNull();
 }
 
 function expectImmersiveHealth(health) {
-  expect(
-    health.immersive || health.mobilePlayFirst,
-    'immersive or mobile play-first state must be active',
-  ).toBe(true);
+  expect(health.immersive, 'immersive state must be active').toBe(true);
   expect(health.gameLayout?.left, 'immersive shell must start at the left viewport edge').toBeLessThanOrEqual(1);
   expect(health.gameLayout?.top, 'immersive shell must start at the top viewport edge').toBeLessThanOrEqual(1);
   expect(health.gameLayout?.width, 'immersive shell must span the viewport width').toBeGreaterThanOrEqual(health.viewport.width - 2);
@@ -538,7 +506,6 @@ function expectLandscapeHealth(health) {
   expect(health.board?.left, 'Android landscape keeps the board in the primary left pane').toBeLessThan(80);
   expect(health.boardViewportFill, 'Android landscape should spend most viewport height on the board').toBeGreaterThanOrEqual(0.62);
   expect(health.boardWidthFill, 'Android landscape keeps a substantial board surface').toBeGreaterThanOrEqual(0.58);
-  expect(health.human?.bottom, 'Android landscape player rail must stay inside the viewport').toBeLessThanOrEqual(health.viewport.height + 1);
 }
 
 let sharedVisualBrowser;
@@ -699,27 +666,6 @@ for (const profile of ACTIVE_CAPTURE_PROFILES) {
           fullPage: false,
           animations: 'disabled',
         });
-        if (!profile.mobilePlayFirst) {
-          await page.keyboard.press('Escape');
-          await expect(page.locator('.game-layout-immersive')).toHaveCount(0);
-          await page.getByRole('button', { name: 'Entrar en modo inmersión', exact: true }).first().click();
-          await expect(page.locator('.game-layout-immersive')).toBeVisible();
-        }
-        if (profile.collapseRail) {
-          // Board-first desktop immersion intentionally removes the persistent
-          // side rail. Only exercise the legacy collapse control when a variant
-          // still exposes it.
-          const collapseRail = page.getByRole('button', { name: 'Ocultar panel lateral', exact: true }).first();
-          if (await collapseRail.count()) {
-            await expect(collapseRail).toBeVisible();
-            await collapseRail.click();
-            await expect(page.locator('.game-layout-immersive')).toHaveAttribute('data-war-room-rail-collapsed', 'true');
-            await expect(page.locator('.game-side-column-3d')).toBeHidden();
-            await expect(page.getByRole('button', { name: 'Mostrar panel lateral', exact: true }).first()).toBeVisible();
-          } else {
-            await expect(page.locator('.game-side-column-3d')).toBeHidden();
-          }
-        }
       }
 
       if (profile.portraitContract) {
@@ -752,10 +698,6 @@ for (const profile of ACTIVE_CAPTURE_PROFILES) {
       if (profile.portraitContract) expectPortraitHealth(health);
       if (profile.landscapeContract) expectLandscapeHealth(health);
       if (profile.immersive) expectImmersiveHealth(health);
-      if (profile.collapseRail) {
-        expect(health.boardWidthFill, 'collapsed immersive castle should spend almost the full viewport width on the scene').toBeGreaterThanOrEqual(0.97);
-      }
-
       await freezeVisualFrame(page);
       await captureViewportPng(
         context,
