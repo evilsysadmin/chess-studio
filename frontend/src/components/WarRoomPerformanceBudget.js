@@ -248,7 +248,7 @@ export function applyWarRoomPerformanceBudget(root, { coarsePointer = false } = 
     spotLightsCulled: 0,
     staticShadowCastersRetired: 0,
   };
-  if (!root || coarsePointer || typeof root.traverse !== 'function') return stats;
+  if (!root || typeof root.traverse !== 'function') return stats;
 
   const buckets = new Map();
   const retiredLights = [];
@@ -293,7 +293,9 @@ export function applyWarRoomPerformanceBudget(root, { coarsePointer = false } = 
   armLatePracticalLightRetirement(root);
 
   root.userData ||= {};
-  root.userData.warRoomPerformanceBudget = 'desktop-hard-cut-v4-late-practical-retirement';
+  root.userData.warRoomPerformanceBudget = coarsePointer
+    ? 'mobile-hard-cut-v1-static-shadow-retirement'
+    : 'desktop-hard-cut-v4-late-practical-retirement';
   root.userData.warRoomPerformanceTraversal = 'single-pass-v1';
   root.userData.warRoomPointLightsKept = stats.pointLightsKept;
   root.userData.warRoomPointLightsCulled = stats.pointLightsCulled;
