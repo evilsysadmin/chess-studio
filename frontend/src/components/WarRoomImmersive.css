@@ -143,21 +143,28 @@ body.war-room-immersive-active .game-screen {
     height: 100%;
   }
 
-  .game-layout-immersive .game-board-stack-3d,
-  .game-layout-immersive .game-board-3d-stage {
-    height: 100%;
-    min-height: 0;
+  /* Portrait must break the desktop/full-viewport percentage height chain.
+   * Board3D.css is lazy-loaded after this file and its stack selector is more
+   * specific, so these declarations intentionally match that specificity and
+   * use !important. The shell then gets a definite height from width + ratio. */
+  .game-screen .game-layout-immersive .game-board-stack.game-board-stack-3d,
+  .game-screen .game-layout-immersive .game-board-stack.game-board-stack-3d > .game-board-3d-stage {
+    height: auto !important;
+    min-height: 0 !important;
   }
 
-  .game-layout-immersive .board3d-main-shell {
+  .game-screen .game-layout-immersive .game-board-stack-3d .board3d-main-shell {
     width: 100% !important;
     height: auto !important;
     min-height: 0 !important;
+    max-height: none !important;
     aspect-ratio: 1.15 / 1 !important;
   }
 
-  .game-layout-immersive .board3d-main-canvas {
+  .game-screen .game-layout-immersive .game-board-stack-3d .board3d-main-canvas {
     display: block !important;
+    width: 100% !important;
+    height: 100% !important;
     visibility: visible !important;
   }
 }
