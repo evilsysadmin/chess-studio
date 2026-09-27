@@ -1,5 +1,13 @@
 import { threeSurfaceShouldRender } from '../threeRenderPolicy.js';
+import { getRenderQualityPreference } from '../userPreferences.js';
 import { readWarRoomHardwareHints, resolveWarRoomRenderQuality } from './WarRoomRenderQuality.js';
+
+const WAR_ROOM_QUALITY_BUDGETS = Object.freeze({
+  low: Object.freeze({ pixelRatioCap: 0.85, shadowMapSize: 512, shadowsEnabled: false }),
+  medium: Object.freeze({ pixelRatioCap: 1.0, shadowMapSize: 512, shadowsEnabled: true }),
+  high: Object.freeze({ pixelRatioCap: 1.35, shadowMapSize: 1024, shadowsEnabled: true }),
+  ultra: Object.freeze({ pixelRatioCap: 1.75, shadowMapSize: 2048, shadowsEnabled: true }),
+});
 
 const WAR_ROOM_RENDER_BUDGETS = Object.freeze({
   desktop: Object.freeze({
@@ -99,11 +107,13 @@ export function warRoomRenderBudget({ coarsePointer = false, softwareRenderer = 
 
 export function warRoomSceneProfile(options = {}) {
   const hardwareHints = options.hardwareHints ?? readWarRoomHardwareHints();
+  const requestedQuality = options.renderQuality ?? getRenderQualityPreference();
   const qualityTier = resolveWarRoomRenderQuality({
     ...hardwareHints,
     ...options,
-    preference: options.renderQuality,
+    preference: requestedQuality,
   });
+  const qualityBudget = WAR_ROOM_QUALITY_BUDGETS[qualityTier] || WAR_ROOM_QUALITY_BUDGETS.medium;
 
   // Touch input is not a low-end GPU signal. Modern Android devices keep the
   // full War Room scene graph and save GPU budget through DPR, shadow quality
@@ -113,11 +123,12 @@ export function warRoomSceneProfile(options = {}) {
   const budget = warRoomRenderBudget(options);
   return Object.freeze({
     qualityTier,
+    adaptiveQuality: requestedQuality === 'auto',
     tier: budget.tier,
     lite: budget.lite,
-    pixelRatioCap: budget.pixelRatioCap,
-    shadowMapSize: budget.shadowMapSize,
-    shadowsEnabled: budget.shadowsEnabled,
+    pixelRatioCap: qualityBudget.pixelRatioCap,
+    shadowMapSize: qualityBudget.shadowMapSize,
+    shadowsEnabled: qualityBudget.shadowsEnabled,
   });
 }
 
