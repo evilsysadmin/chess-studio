@@ -16,7 +16,26 @@ body.war-room-immersive-active .app-shell-board-game {
 }
 
 body.war-room-immersive-active .app-shell-board-game > .masthead-game-compact {
-  display: none !important;
+  position: absolute !important;
+  z-index: 125 !important;
+  inset: 0 0 auto !important;
+  width: 100% !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+  pointer-events: none;
+}
+
+body.war-room-immersive-active .app-shell-board-game > .masthead-game-compact .masthead-actions,
+body.war-room-immersive-active .app-shell-board-game > .masthead-game-compact .masthead-account-stack,
+body.war-room-immersive-active .app-shell-board-game > .masthead-game-compact button,
+body.war-room-immersive-active .app-shell-board-game > .masthead-game-compact [role='button'] {
+  pointer-events: auto;
 }
 
 body.war-room-immersive-active .game-screen {
@@ -30,7 +49,7 @@ body.war-room-immersive-active .game-screen {
 .game-screen .game-layout.game-layout-3d.game-layout-immersive {
   position: fixed !important;
   inset: 0 !important;
-  z-index: 1200 !important;
+  z-index: 100 !important;
   width: 100vw !important;
   max-width: none !important;
   height: 100dvh !important;
