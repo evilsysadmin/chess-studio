@@ -12,7 +12,8 @@ import { requestLabLaunch } from '../labLaunchIntent.js';
 import { msUntilNextLocalHour } from '../matthiasRoutineClock.js';
 import { matthiasAmbientVisual, matthiasAmbientVisuals, matthiasHomeZone, matthiasRoutineDwellMs } from '../matthiasVisuals.js';
 import { reducedMotionStatus, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
-import { requestWarRoomLandscapeFullscreen, shouldAutoRotateWarRoomOnEntry, unlockWarRoomOrientation, exitWarRoomBrowserFullscreen } from './useWarRoomImmersive.js';
+import useWarRoomLandscape from './useWarRoomLandscape.js';
+import WarRoomLandscapeGate from './WarRoomLandscapeGate.jsx';
 import './HomeIllustrated.css';
 import './HomeIllustratedDiegetic.css';
 import './HomeDiegeticObjects.css';
@@ -79,20 +80,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
   const [matthiasRoutineClock, setMatthiasRoutineClock] = useState(() => new Date());
   const [reducedMotion, setReducedMotion] = useState(currentReducedMotion);
 
-  useEffect(() => {
-    if (!shouldAutoRotateWarRoomOnEntry()) return undefined;
-    // A normal browser tab cannot reliably lock orientation on Android until it is
-    // fullscreen and the request originates from a trusted gesture. Attempt immediately
-    // for browsers that allow it, then retry on the first pointer gesture for Brave/Chrome.
-    void requestWarRoomLandscapeFullscreen();
-    const retryLandscape = () => { void requestWarRoomLandscapeFullscreen(); };
-    window.addEventListener('pointerdown', retryLandscape, { once: true, passive: true });
-    return () => {
-      window.removeEventListener('pointerdown', retryLandscape);
-      void exitWarRoomBrowserFullscreen();
-      unlockWarRoomOrientation();
-    };
-  }, []);
+  const { needsRotation, lockState, activateLandscape } = useWarRoomLandscape(true);
   const castleLife = useMemo(() => buildHomeCastleLife({
     rivalry: loadRivalry(),
     dailyStats: dailyChallengeStats(loadDailyChallenge()),
@@ -232,6 +220,15 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
   const matthiasActionDuplicated = matthiasSpeaking && matthiasModel?.action === 'insights';
   return (
     <section className="illustrated-home" aria-label="Modos principales">
+      <WarRoomLandscapeGate
+        active={needsRotation}
+        lockState={lockState}
+        onActivate={activateLandscape}
+        title="Home 3D en apaisado"
+        copy="Toca Girar para abrir el castillo en apaisado."
+        rejectedCopy="Brave/Android necesita este toque para autorizar pantalla completa y giro."
+        icon="♞"
+      />
       <div
         className="illustrated-home__stage"
         data-home-castle-ambient={castleLife.ambient}
