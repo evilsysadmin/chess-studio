@@ -29,7 +29,10 @@ runs:
       id: modules-cache
       uses: actions/cache@v6
       with:
-        path: ${{ inputs.working-directory }}/node_modules
+        # actions/cache saves in a post-step. Keep the path absolute so the
+        # nested composite action cannot resolve it relative to a transient
+        # action directory during save.
+        path: ${{ github.workspace }}/${{ inputs.working-directory }}/node_modules
         key: node-modules-${{ runner.os }}-${{ runner.arch }}-node${{ inputs.node-version }}-${{ inputs.cache-version }}-${{ hashFiles(inputs.lockfile) }}
 
     - name: Install dependencies on cache miss
