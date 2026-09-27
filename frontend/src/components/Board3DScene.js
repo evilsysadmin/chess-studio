@@ -203,7 +203,7 @@ export function classRoomCameraFramingProfile({ aspect = 1, coarsePointer = fals
   });
 }
 
-export function fitBoardCamera(camera, width, height, whiteSide, { profile: requestedProfile = 'tactical' } = {}) {
+export function fitBoardCamera(camera, width, height, whiteSide, { profile: requestedProfile = 'tactical', immersive = false } = {}) {
   const aspect = Math.max(0.35, width / Math.max(1, height));
   const coarsePointer = typeof window !== 'undefined'
     && Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
@@ -222,7 +222,8 @@ export function fitBoardCamera(camera, width, height, whiteSide, { profile: requ
   const verticalFov = THREE.MathUtils.degToRad(camera.fov);
   const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * aspect);
   const limitingFov = Math.min(verticalFov, horizontalFov);
-  const rawDistance = (profile.halfSpan / Math.tan(limitingFov / 2)) * profile.padding;
+  const desktopImmersiveScale = immersive && !mobileProfile && requestedProfile !== 'classroom' ? 0.91 : 1;
+  const rawDistance = (profile.halfSpan / Math.tan(limitingFov / 2)) * profile.padding * desktopImmersiveScale;
   // The historical profile.maxDistance was tuned for a 40° lens. Keeping that
   // cap with a long lens zooms/crops instead of moving the camera back, which
   // defeats the whole perspective-parity fix. Mobile retains its calibrated

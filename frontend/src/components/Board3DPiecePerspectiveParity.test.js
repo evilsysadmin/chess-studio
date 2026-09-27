@@ -75,6 +75,40 @@ describe('Board3D piece scale parity', () => {
     }
   });
 
+  it('acerca V1/V2/V3 en inmersión desktop sin cambiar el framing móvil', () => {
+    vi.stubGlobal('window', {
+      innerWidth: 1440,
+      matchMedia: vi.fn().mockReturnValue({ matches: false }),
+    });
+
+    try {
+      for (const profile of ['classic', 'tactical']) {
+        const normal = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+        const immersive = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+        fitBoardCamera(normal, 1440, 900, true, { profile });
+        fitBoardCamera(immersive, 1440, 900, true, { profile, immersive: true });
+        expect(immersive.userData.cameraDistance).toBeCloseTo(normal.userData.cameraDistance * 0.91, 6);
+      }
+    } finally {
+      vi.unstubAllGlobals();
+    }
+
+    vi.stubGlobal('window', {
+      innerWidth: 851,
+      matchMedia: vi.fn().mockImplementation((query) => ({ matches: query === '(pointer: coarse)' })),
+    });
+
+    try {
+      const normalMobile = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+      const immersiveMobile = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+      fitBoardCamera(normalMobile, 851, 393, true);
+      fitBoardCamera(immersiveMobile, 851, 393, true, { immersive: true });
+      expect(immersiveMobile.userData.cameraDistance).toBeCloseTo(normalMobile.userData.cameraDistance, 6);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('sube la cámara solo en landscape móvil para separar visualmente las filas', () => {
     const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
     vi.stubGlobal('window', {
