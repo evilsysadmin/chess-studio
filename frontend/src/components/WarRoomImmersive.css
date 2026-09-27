@@ -37,6 +37,14 @@ body.war-room-immersive-active .app-shell-board-game > .masthead-game-compact .m
   pointer-events: none !important;
 }
 
+/* The global feedback trigger shares the same top-right strip as Matthias'
+ * tactical HUD. In immersion the room owns that hit area; leaving both active
+ * makes the masthead button intercept the War Room overflow menu. */
+body.war-room-immersive-active .app-shell-board-game > .masthead-game-compact .masthead-feedback-trigger {
+  display: none !important;
+  pointer-events: none !important;
+}
+
 body.war-room-immersive-active .app-shell-board-game > .masthead-game-compact button,
 body.war-room-immersive-active .app-shell-board-game > .masthead-game-compact [role='button'],
 body.war-room-immersive-active .app-shell-board-game > .masthead-game-compact .masthead-account-popover {
@@ -119,6 +127,47 @@ body.war-room-immersive-active .game-screen {
 }
 
 @media (min-width: 1081px) {
+  /* Immersion owns the top-right geometry. Force the semantic app masthead into
+   * compact icon chips here so later shared desktop sizing cannot expand
+   * Feedback / account back over the War Room overflow control. */
+  body.war-room-immersive-active .app-shell-board-game > .masthead-game-compact .masthead-actions {
+    position: absolute !important;
+    top: .5rem !important;
+    right: .65rem !important;
+    width: auto !important;
+    min-width: 0 !important;
+    padding: 0 !important;
+    gap: .32rem !important;
+    transform: none !important;
+  }
+
+  body.war-room-immersive-active .app-shell-board-game .masthead-feedback-trigger,
+  body.war-room-immersive-active .app-shell-board-game .masthead-account-trigger {
+    width: 32px !important;
+    min-width: 32px !important;
+    max-width: 32px !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    padding: 0 !important;
+  }
+
+  body.war-room-immersive-active .app-shell-board-game .masthead-feedback-trigger > span:last-child,
+  body.war-room-immersive-active .app-shell-board-game .masthead-account-trigger > span {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    overflow: hidden !important;
+    clip: rect(0 0 0 0) !important;
+    white-space: nowrap !important;
+  }
+
+  body.war-room-immersive-active .app-shell-board-game .masthead-account-trigger::after {
+    content: '⋯';
+    display: block;
+    font: 800 1rem/1 var(--font-body);
+    letter-spacing: .06em;
+  }
+
   /* Desktop immersive is board-first: the room owns the viewport and the
    * existing overflow menu remains the only persistent command surface. */
   .game-screen .game-layout-immersive .board-live-row.is-3d-warroom {
@@ -176,18 +225,22 @@ body.war-room-immersive-active .game-screen {
     display: block;
     min-height: 0;
     height: 100%;
-    overflow: auto;
+    overflow: hidden;
   }
 
   .game-screen .game-layout-immersive .board-live-row.is-3d-warroom {
     min-height: 0;
     height: 100%;
     grid-template-columns: minmax(0, 1fr) !important;
-    grid-template-areas:
-      'board'
-      'chat' !important;
-    grid-template-rows: auto auto !important;
-    row-gap: .25rem !important;
+    grid-template-areas: 'board' !important;
+    grid-template-rows: auto !important;
+    gap: 0 !important;
+  }
+
+  .game-layout-immersive .game-board-stack-3d > .game-player-rail.is-human,
+  .game-layout-immersive .game-board-stack-3d > .game-command-deck,
+  .game-layout-immersive .game-side-column.game-side-column-3d {
+    display: none !important;
   }
 
   /* Default mobile immersion has no commander row. Matthias is a floating HUD
@@ -198,8 +251,8 @@ body.war-room-immersive-active .game-screen {
     z-index: 40 !important;
     top: max(.45rem, env(safe-area-inset-top)) !important;
     right: max(.45rem, env(safe-area-inset-right)) !important;
-    left: max(.45rem, env(safe-area-inset-left)) !important;
-    width: auto !important;
+    left: auto !important;
+    width: min(360px, calc(100vw - 1rem)) !important;
     min-height: 0 !important;
     height: 44px !important;
     margin: 0 !important;
@@ -208,6 +261,7 @@ body.war-room-immersive-active .game-screen {
   }
 
   .game-screen .game-layout-immersive .game-3d-command-column .game-3d-turn-pill {
+    width: 100% !important;
     pointer-events: auto;
   }
 

@@ -64,7 +64,6 @@ function WarRoomGuideHelp() {
     />
   );
 }
-
 export function WarRoomUtilityMenu({
   game,
   board,

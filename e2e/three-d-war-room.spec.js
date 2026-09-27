@@ -246,6 +246,10 @@ test('War Room · desktop input mantiene cámara fija y juega e2→e4', async ({
   await expect(board3d).toHaveAttribute('data-board3d-scene', 'premium');
   await expect(board3d).toHaveAttribute('data-board3d-camera', 'fixed-tactical');
 
+  // Coordinate/input regression now runs in the canonical immersive view.
+  const layout = page.locator('.game-layout-3d');
+  await expect(layout).toHaveAttribute('data-war-room-immersive', 'true');
+
   const canvasRect = await canvas.boundingBox();
   expect(canvasRect).not.toBeNull();
 
