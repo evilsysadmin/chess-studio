@@ -144,8 +144,10 @@ body.war-room-immersive-active .game-screen {
   }
 
   .game-screen .game-layout-immersive .game-3d-turn-pill {
-    left: 50% !important;
-    max-width: min(34rem, calc(100% - 2rem));
+    left: auto !important;
+    right: 6rem !important;
+    max-width: min(34rem, calc(100% - 8rem));
+    transform: none !important;
     pointer-events: auto;
   }
 
