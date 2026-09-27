@@ -3698,6 +3698,14 @@ def add_side_furnishings(materials):
             wood,
             bevel=0.032,
         )
+        # A dark forged escutcheon makes the brass knob read as old working
+        # hardware rather than a decorative dot on an otherwise plain door.
+        sphere(
+            f"HOME_PROP_right_cabinet_escutcheon_{side}",
+            (7.55 + side * 0.13, 4.498, 1.08),
+            (0.075, 0.010, 0.105),
+            materials["forged_iron"],
+        )
         sphere(
             f"HOME_PROP_right_cabinet_handle_{side}",
             (7.55 + side * 0.13, 4.485, 1.08),
