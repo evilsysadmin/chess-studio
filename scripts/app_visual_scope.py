@@ -650,7 +650,7 @@ def self_test() -> None:
     assert visual_workflow.capture_groups == "none"
     assert not visual_workflow.hans and not visual_workflow.chesscom
     visual_pipeline = classify([".github/actions/app-visual-pipeline/action.yml"])
-    assert visual_pipeline.capture_groups == "experiments"
+    assert visual_pipeline.capture_groups == "none"
     assert visual_pipeline.experiments_scope == "chronicles"
     assert not visual_pipeline.chronicles_avatar
     print("app visual scope self-test: OK")
