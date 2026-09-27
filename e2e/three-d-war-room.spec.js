@@ -35,7 +35,7 @@ function projectWarRoomSquare(rect, square, worldY = 0.12) {
   const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * aspect);
   const limitingFov = Math.min(verticalFov, horizontalFov);
   const unclampedDistance = (profile.halfSpan / Math.tan(limitingFov / 2)) * profile.padding;
-  const distance = Math.max(profile.minDistance, Math.min(88, unclampedDistance));
+  const distance = Math.max(profile.minDistance, Math.min(profile.maxDistance, unclampedDistance));
   const target = [0, profile.targetY, -profile.targetZ];
   const direction = normalized([0, profile.cameraY, profile.cameraZ]);
   const camera = target.map((value, index) => value + direction[index] * distance);
