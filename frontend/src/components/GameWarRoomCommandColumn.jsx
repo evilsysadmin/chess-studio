@@ -279,7 +279,7 @@ export default function GameWarRoomCommandColumn({
   board,
   zenMode = false,
   controls = {},
-  compactViewport = false,,
+  compactViewport = false,
 }) {
   const signal = resolveWarRoomSignal(game, status);
 
