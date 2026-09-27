@@ -1,0 +1,77 @@
+.war-room-landscape-gate {
+  display: none;
+}
+
+@media (pointer: coarse) and (orientation: portrait) and (max-width: 920px) {
+  .war-room-landscape-gate {
+    position: fixed;
+    z-index: 90;
+    left: 50%;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    width: min(360px, calc(100vw - 24px));
+    min-height: 72px;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: .7rem;
+    padding: .7rem .75rem;
+    box-sizing: border-box;
+    border: 1px solid color-mix(in srgb, var(--brass) 38%, transparent);
+    border-radius: 14px;
+    background: rgba(7, 10, 14, .92);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, .38);
+    color: var(--cream);
+    text-align: left;
+    transform: translateX(-50%);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    pointer-events: none;
+  }
+
+  .war-room-landscape-gate > span {
+    color: var(--brass);
+    font-size: 1.55rem;
+    line-height: 1;
+    filter: drop-shadow(0 4px 10px rgba(0, 0, 0, .35));
+  }
+
+  .war-room-landscape-gate__copy {
+    min-width: 0;
+  }
+
+  .war-room-landscape-gate strong {
+    display: block;
+    font: 800 .83rem/1.1 var(--font-display);
+    letter-spacing: .025em;
+  }
+
+  .war-room-landscape-gate p {
+    margin: .2rem 0 0;
+    color: color-mix(in srgb, var(--cream) 76%, var(--studio-muted));
+    font-size: .7rem;
+    line-height: 1.3;
+  }
+
+  .war-room-landscape-gate button {
+    min-width: 44px;
+    min-height: 44px;
+    padding: .55rem .65rem;
+    white-space: nowrap;
+    border: 1px solid color-mix(in srgb, var(--brass) 68%, transparent);
+    border-radius: 10px;
+    background: linear-gradient(180deg, rgba(113, 77, 29, .94), rgba(48, 31, 14, .98));
+    color: var(--cream);
+    font: 800 .68rem/1.05 var(--font-body);
+    letter-spacing: .025em;
+    pointer-events: auto;
+  }
+
+  .war-room-landscape-gate small {
+    display: block;
+    margin-top: .18rem;
+    color: var(--studio-muted);
+    font-size: .62rem;
+    line-height: 1.2;
+  }
+}
+
