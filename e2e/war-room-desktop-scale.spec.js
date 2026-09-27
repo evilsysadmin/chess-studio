@@ -14,14 +14,6 @@ async function openDesktopWarRoom(page) {
   await expect(warRoom).toBeVisible({ timeout: 45_000 });
   await expect(shell).toBeVisible({ timeout: 45_000 });
 
-  // Default entry is immersive. This regression exercises the legacy desktop
-  // composition explicitly, so leave immersion before asserting its geometry.
-  const layout = page.locator('.game-layout-3d');
-  await expect(layout).toHaveAttribute('data-war-room-immersive', 'true');
-  await page.getByRole('button', { name: 'Más acciones de partida', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Salir de inmersión', exact: true }).click();
-  await expect(layout).toHaveAttribute('data-war-room-immersive', 'false');
-
   return { warRoom, shell };
 }
 
