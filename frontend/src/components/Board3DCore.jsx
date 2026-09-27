@@ -109,6 +109,9 @@ function Board3DCanvas({
   const { selectable: warRoomVariantSelectable, variant: globalWarRoomVariant, status: warRoomVariantStatus, domData: globalWarRoomVariantDomData, setStatus: setWarRoomVariantStatus } = useWarRoomVariant();
   const presentation = resolveBoard3DPresentation({ cameraProfile, variantOverride: warRoomVariantOverride, globalVariant: globalWarRoomVariant, globalDomData: globalWarRoomVariantDomData, variantStatus: warRoomVariantStatus });
   const { classroom: classroomCamera, variant: warRoomVariant, domData: warRoomVariantDomData, playAriaLabel, inspectAriaLabel } = presentation;
+  const effectiveCameraProfile = cameraProfile === 'classroom' || warRoomVariant !== 'classic'
+    ? cameraProfile
+    : 'classic';
   const effectiveThemeId = resolveBoard3DThemeId(themeOverride, boardTheme);
   const currentPieces = useMemo(() => parseFen(fen), [fen]);
   const forensicGhost = useMemo(() => board3DForensicGhost(mistakeMove, currentPieces), [mistakeMove, currentPieces]);
@@ -439,7 +442,7 @@ function Board3DCanvas({
       const width = Math.max(280, host.clientWidth || 280);
       const height = Math.max(300, host.clientHeight || 300);
       renderer.setSize(width, height, false);
-      fitBoardCamera(camera, width, height, whiteSide, { profile: cameraProfile, immersive });
+      fitBoardCamera(camera, width, height, whiteSide, { profile: effectiveCameraProfile, immersive });
       render();
     }
     resize();
@@ -710,7 +713,7 @@ function Board3DCanvas({
       if (renderer.domElement.parentNode === host) host.removeChild(renderer.domElement);
       sceneStateRef.current = null;
     };
-  }, [effectiveThemeId, orientation, showCoordinates, cameraProfile, playAriaLabel, inspectAriaLabel]);
+  }, [effectiveThemeId, orientation, showCoordinates, effectiveCameraProfile, playAriaLabel, inspectAriaLabel]);
 
   useEffect(() => {
     const state = sceneStateRef.current;
