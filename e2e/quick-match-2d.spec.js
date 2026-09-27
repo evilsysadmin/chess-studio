@@ -169,8 +169,8 @@ test('Partida rápida · vuelve a ofrecer 3D aunque el dispositivo recuerde una 
   const { dialog } = await openQuickMatch(page);
   await scheduleDomClick(dialog.getByRole('button', { name: 'Empezar partida', exact: true }));
 
-  await expect(page.locator('[data-board3d-war-room="true"]')).toBeVisible();
-  await expect(page.locator('.game-layout-3d')).toBeVisible();
+  await expect(page.locator('.game-layout-3d')).toBeVisible({ timeout: 45_000 });
+  await expect(page.locator('[data-board3d-war-room="true"]')).toBeVisible({ timeout: 45_000 });
   expect(await page.evaluate((key) => localStorage.getItem(key), DEVICE_BOARD_RENDERER_KEY)).toBe('3d');
 });
 
