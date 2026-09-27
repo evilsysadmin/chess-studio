@@ -109,7 +109,7 @@ test('Partida rápida · 2D no expone PGN ni una franja avanzada', async ({ page
   await expect(page.locator('.square-coordinate')).toHaveCount(0);
   await page.evaluate((key) => {
     localStorage.setItem(key, '1');
-    window.dispatchEvent(new Event('chess-user-preferences-changed'));
+    window.dispatchEvent(new Event('chess-study-user-preferences-changed'));
   }, BOARD_COORDINATES_KEY);
   await expect(page.locator('.square-coordinate')).toHaveCount(16);
   await expect(page.locator('.rank-labels, .file-labels')).toHaveCount(0);
