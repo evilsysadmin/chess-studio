@@ -3,10 +3,10 @@ import { getRenderQualityPreference } from '../userPreferences.js';
 import { readWarRoomHardwareHints, resolveWarRoomRenderQuality } from './WarRoomRenderQuality.js';
 
 const WAR_ROOM_QUALITY_BUDGETS = Object.freeze({
-  low: Object.freeze({ pixelRatioCap: 0.85, shadowMapSize: 512, shadowsEnabled: false }),
-  medium: Object.freeze({ pixelRatioCap: 1.0, shadowMapSize: 512, shadowsEnabled: true }),
-  high: Object.freeze({ pixelRatioCap: 1.35, shadowMapSize: 1024, shadowsEnabled: true }),
-  ultra: Object.freeze({ pixelRatioCap: 1.75, shadowMapSize: 2048, shadowsEnabled: true }),
+  low: Object.freeze({ pixelRatioCap: 0.85, shadowMapSize: 512, shadowRadius: 1.0, shadowsEnabled: false }),
+  medium: Object.freeze({ pixelRatioCap: 1.0, shadowMapSize: 512, shadowRadius: 1.1, shadowsEnabled: true }),
+  high: Object.freeze({ pixelRatioCap: 1.35, shadowMapSize: 1024, shadowRadius: 1.8, shadowsEnabled: true }),
+  ultra: Object.freeze({ pixelRatioCap: 1.75, shadowMapSize: 2048, shadowRadius: 2.35, shadowsEnabled: true }),
 });
 
 const WAR_ROOM_RENDER_BUDGETS = Object.freeze({
@@ -128,6 +128,7 @@ export function warRoomSceneProfile(options = {}) {
     lite: budget.lite,
     pixelRatioCap: qualityBudget.pixelRatioCap,
     shadowMapSize: qualityBudget.shadowMapSize,
+    shadowRadius: qualityBudget.shadowRadius,
     shadowsEnabled: qualityBudget.shadowsEnabled,
   });
 }
