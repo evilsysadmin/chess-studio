@@ -7,9 +7,24 @@ body.war-room-immersive-active {
  * Keep the owning game screen as a real viewport-sized box so Android/WebView,
  * Playwright visibility checks and shell geometry do not observe a zero-height
  * parent while the room itself is perfectly rendered. */
+body.war-room-immersive-active .app-shell-board-game {
+  width: 100%;
+  height: 100dvh;
+  min-height: 0;
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+body.war-room-immersive-active .app-shell-board-game > .masthead-game-compact {
+  display: none !important;
+}
+
 body.war-room-immersive-active .game-screen {
   width: 100%;
+  height: 100dvh;
   min-height: 100dvh;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 .game-screen .game-layout.game-layout-3d.game-layout-immersive {
