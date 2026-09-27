@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import { resolveBoard3DCameraFov } from '../frontend/src/components/Board3DConfig.js';
 import { classicWarRoomCameraFramingProfile } from '../frontend/src/components/Board3DCameraProfiles.js';
 import { activateSetupControl, buttonWithVisibleText, login, mockApi } from './helpers.js';
+import { clickWarRoomMove } from './war-room-board-input.js';
 
 const WAR_ROOM_READY_TIMEOUT = 45_000;
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
@@ -253,10 +254,7 @@ test('War Room · desktop input mantiene cámara fija y juega e2→e4', async ({
   await expect(board3d).toHaveAttribute('data-board3d-inspect', 'false');
   await expect(board3d).toHaveAttribute('data-board3d-camera', 'fixed-tactical');
 
-  await clickWarRoomSquare(page, canvasRect, 'e2');
-  await expect(board3d).toHaveAttribute('data-board3d-selected', 'e2');
-  await expect(board3d).toHaveAttribute('data-board3d-legal-target-count', '2');
-  await clickWarRoomSquare(page, canvasRect, 'e4');
+  expect(await clickWarRoomMove(page, 'e2', 'e4')).toBe(true);
   await expect.poll(() => requestLog.filter((entry) => entry.method === 'POST' && /\/games\/[^/]+\/move$/.test(entry.path)).length).toBe(1);
 
   // Primera vuelta 3D→2D: la respuesta CPU deja d5 capturable y el estado
