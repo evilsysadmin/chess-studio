@@ -185,9 +185,14 @@ def _surface_groups(path: str) -> set[str] | None:
         # adds value when browser-owned War Room code changes in the same PR.
         return set()
     if lower in {
+        ".github/workflows/home-blender-v2-preview.yml",
         ".github/workflows/home-blender-v2-runtime.yml",
+        "scripts/blender/build_home_v2_blockout.py",
+        "scripts/blender/export_home_v2_runtime.py",
         "scripts/promote_home_scene_runtime.py",
     }:
+        # Home's Blender source/runtime pipeline is Home-owned. Never let these
+        # paths fall through to the cross-product fail-safe visual sweep.
         return {"home"}
     if lower in {
         "scripts/app_visual_changed_files.py",
@@ -206,7 +211,9 @@ def _surface_groups(path: str) -> set[str] | None:
     if lower == ".github/workflows/app-visual-artifact.yml":
         return set()
     if lower.startswith(".github/actions/app-visual-pipeline/"):
-        return {"experiments"}
+        # Visual orchestration owns no product surface. Its classifier self-tests
+        # prove routing; product captures are selected only by product owners.
+        return set()
     if lower == "scripts/war_room_visual_freeze_check.mjs":
         return {"warroom"}
     if lower.startswith("scripts/app_visual_"):
@@ -453,6 +460,10 @@ def self_test() -> None:
     ])
     assert quick_match.capture_groups == "home,warroom"
     assert not quick_match.hans and not quick_match.chesscom
+    home_blender = classify(["scripts/blender/build_home_v2_blockout.py"])
+    assert home_blender.capture_groups == "home"
+    assert home_blender.experiments_scope == "none"
+    assert not home_blender.hans and not home_blender.chesscom
 
     mobile_warroom = classify([
         "frontend/src/components/useGameMobileFocus.js",
@@ -518,6 +529,8 @@ def self_test() -> None:
     assert not quality_scope.hans and not quality_scope.chesscom
     browser_quality_scope = classify(["scripts/browser_quality_scope.py"])
     assert browser_quality_scope.capture_groups == "none"
+    visual_pipeline = classify([".github/actions/app-visual-pipeline/action.yml"])
+    assert visual_pipeline.capture_groups == "none"
     assert not browser_quality_scope.hans and not browser_quality_scope.chesscom
     chronicles_visual = classify(["e2e/chronicles-tactics-visual-artifact.spec.js"])
     assert chronicles_visual.capture_groups == "experiments"
@@ -703,8 +716,8 @@ def self_test() -> None:
     assert visual_workflow.capture_groups == "none"
     assert not visual_workflow.hans and not visual_workflow.chesscom
     visual_pipeline = classify([".github/actions/app-visual-pipeline/action.yml"])
-    assert visual_pipeline.capture_groups == "experiments"
-    assert visual_pipeline.experiments_scope == "chronicles"
+    assert visual_pipeline.capture_groups == "none"
+    assert visual_pipeline.experiments_scope == "none"
     assert not visual_pipeline.chronicles_avatar
     print("app visual scope self-test: OK")
 
