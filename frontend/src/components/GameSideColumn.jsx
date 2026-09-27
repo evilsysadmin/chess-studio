@@ -175,15 +175,17 @@ function WarRoomTabbedRail({ game, side }) {
   );
 }
 
-export default function GameSideColumn({ game, side, isThreeD, compactViewport }) {
+export default function GameSideColumn({ game, side, isThreeD, compactViewport, showMusic = true }) {
   const desktopWarRoom = isThreeD && !compactViewport;
 
   return (
     <aside className={`game-side-column${isThreeD ? ' game-side-column-3d' : ''}`} aria-label="Panel lateral de partida">
-      <div className={`game-side-music${isThreeD ? ' game-side-music-warroom' : ''}`} aria-label="Música de la partida">
-        <MusicPlayer initiallyCollapsed />
-        {isThreeD && <WarRoomAmbienceToggle />}
-      </div>
+      {showMusic && (
+        <div className={`game-side-music${isThreeD ? ' game-side-music-warroom' : ''}`} aria-label="Música de la partida">
+          <MusicPlayer initiallyCollapsed />
+          {isThreeD && <WarRoomAmbienceToggle />}
+        </div>
+      )}
       {desktopWarRoom ? (
         <WarRoomTabbedRail game={game} side={side} />
       ) : (
