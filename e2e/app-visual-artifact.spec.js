@@ -256,40 +256,49 @@ test('App · captura visual canónica desktop + Android normal/desktop-site', as
       }
     }
 
-    const quickMatchContext = await visualBrowser.newContext({
-      viewport:{ width:390, height:844 },
-      hasTouch:true,
-    });
-    const quickMatchPage = await quickMatchContext.newPage();
-    try {
-      await mockApi(quickMatchPage, {
-        profileSeed: {
-          'matthias.onboarded': '2',
-          'chess-study-home-guide-dismissed-v1': '1',
-        },
+    const quickMatchCaptures = [
+      { width:360, height:800 },
+      { width:390, height:844, captureSettings:true },
+      { width:430, height:932 },
+    ];
+    for (const capture of quickMatchCaptures) {
+      const quickMatchContext = await visualBrowser.newContext({
+        viewport:{ width:capture.width, height:capture.height },
+        hasTouch:true,
       });
-      await login(quickMatchPage);
-      await buttonWithVisibleText(quickMatchPage, 'Partida rápida').click();
-      const quickMatch = quickMatchPage.getByRole('dialog', { name:'Configurar partida rápida' });
-      await expect(quickMatch).toBeVisible();
-      await quickMatchPage.waitForTimeout(120);
-      await captureViewportPng(
-        quickMatchContext,
-        quickMatchPage,
-        `${ARTIFACT_DIR}/quick-match-android-390x844.png`,
-      );
+      const quickMatchPage = await quickMatchContext.newPage();
+      try {
+        await mockApi(quickMatchPage, {
+          profileSeed: {
+            'matthias.onboarded': '2',
+            'chess-study-home-guide-dismissed-v1': '1',
+          },
+        });
+        await login(quickMatchPage);
+        await buttonWithVisibleText(quickMatchPage, 'Partida rápida').click();
+        const quickMatch = quickMatchPage.getByRole('dialog', { name:'Configurar partida rápida' });
+        await expect(quickMatch).toBeVisible();
+        await quickMatchPage.waitForTimeout(120);
+        await captureViewportPng(
+          quickMatchContext,
+          quickMatchPage,
+          `${ARTIFACT_DIR}/quick-match-android-${capture.width}x${capture.height}.png`,
+        );
 
-      const settings = quickMatch.locator('details.quick-match-settings');
-      await settings.locator(':scope > summary').click();
-      await expect(settings).toHaveAttribute('open', '');
-      await quickMatchPage.waitForTimeout(120);
-      await captureViewportPng(
-        quickMatchContext,
-        quickMatchPage,
-        `${ARTIFACT_DIR}/quick-match-settings-android-390x844.png`,
-      );
-    } finally {
-      await quickMatchContext.close();
+        if (capture.captureSettings) {
+          const settings = quickMatch.locator('details.quick-match-settings');
+          await settings.locator(':scope > summary').click();
+          await expect(settings).toHaveAttribute('open', '');
+          await quickMatchPage.waitForTimeout(120);
+          await captureViewportPng(
+            quickMatchContext,
+            quickMatchPage,
+            `${ARTIFACT_DIR}/quick-match-settings-android-${capture.width}x${capture.height}.png`,
+          );
+        }
+      } finally {
+        await quickMatchContext.close();
+      }
     }
   } finally {
     await visualBrowser.close();
