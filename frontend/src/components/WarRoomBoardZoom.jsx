@@ -5,6 +5,15 @@ export function clampWarRoomZoom(value) {
   return Math.max(1, Math.min(1.35, Number(value) || 1));
 }
 
+export function shouldShowWarRoomCenter(zoom, inspecting) {
+  return clampWarRoomZoom(zoom) > 1.01 || Boolean(inspecting);
+}
+
+export function resetWarRoomView(root, setZoom, inspecting) {
+  setZoom(1);
+  if (inspecting) root?.querySelector?.('.board3d-inspect')?.click?.();
+}
+
 export function nextWarRoomPinchZoom(startZoom, startDistance, currentDistance) {
   const safeStart = Math.max(1, Number(startDistance) || 1);
   const safeCurrent = Math.max(1, Number(currentDistance) || 1);
@@ -70,10 +79,7 @@ export default function WarRoomBoardZoom({ children }) {
   };
 
   const centered = zoom <= 1.01;
-  const centerView = () => {
-    setZoom(1);
-    if (inspecting) rootRef.current?.querySelector?.('.board3d-inspect')?.click?.();
-  };
+  const centerView = () => resetWarRoomView(rootRef.current, setZoom, inspecting);
 
   return (
     <div
@@ -86,7 +92,7 @@ export default function WarRoomBoardZoom({ children }) {
       onPointerCancelCapture={releasePointer}
     >
       {children}
-      {(!centered || inspecting) && (
+      {shouldShowWarRoomCenter(zoom, inspecting) && (
         <button type="button" className="war-room-board-center-btn" onClick={centerView}>
           Centrar
         </button>
