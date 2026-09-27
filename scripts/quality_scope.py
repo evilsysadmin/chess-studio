@@ -237,7 +237,10 @@ def classify(paths: Iterable[str]) -> Scope:
             continue
         if path in NODE_HARNESS_PATHS:
             scope.run_frontend = True
-            _enable_core_e2e(scope)
+            # Dependency-cache plumbing needs one real browser boot to prove the
+            # restored tree can execute Playwright, not the entire core journey
+            # suite. Specialized browser scope independently adds its canary.
+            _enable_core_e2e(scope, ("app-boot",))
             continue
         if path in BACKEND_HARNESS_PATHS:
             scope.run_backend = True
@@ -340,6 +343,7 @@ def self_test() -> None:
     _expect(["frontend/src/components/Chesscom.jsx"], run_frontend=True, run_chesscom_e2e=True)
     _expect_core(["frontend/src/components/Chesscom.jsx", "frontend/src/App.jsx"], run_frontend=True, run_chesscom_e2e=True)
     _expect_core(["frontend/package-lock.json"], run_frontend=True, run_security=True)
+    _expect_core([".github/actions/cache-node-modules/action.yml"], lanes=("app-boot",), run_frontend=True)
     _expect_core([PACKAGE_METADATA_PATH], lanes=("app-boot",), run_frontend=True)
     _expect_core(["frontend/src/App.jsx"], run_frontend=True)
     _expect(["frontend/src/activeGameSession.test.js"], run_frontend=True)
