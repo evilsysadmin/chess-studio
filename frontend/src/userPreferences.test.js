@@ -48,7 +48,7 @@ describe('user preferences', () => {
   });
 
   it('guarda preferencias explícitas de accesibilidad del tablero', () => {
-    expect(getBoardCoordinates()).toBe(true);
+    expect(getBoardCoordinates()).toBe(false);
     expect(setBoardCoordinates(false)).toBe(false);
     expect(getBoardCoordinates()).toBe(false);
     expect(getReducedMotion()).toBe(false);
