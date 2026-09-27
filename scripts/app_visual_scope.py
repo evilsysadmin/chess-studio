@@ -37,6 +37,16 @@ QUICK_MATCH_VISUAL_SURFACES = {
     "frontend/src/components/usewarroomimmersive.js": {"warroom"},
 }
 
+WARROOM_MOBILE_VISUAL_SURFACES = {
+    # Phone-only War Room composition/orientation. These must never wake Home,
+    # Chronicles, training or browser-health canonical captures.
+    "frontend/src/components/usegamemobilefocus.js",
+    "frontend/src/components/usewarroomlandscape.js",
+    "frontend/src/components/warroomlandscapegate.jsx",
+    "frontend/src/components/warroomlandscapegate.css",
+    "frontend/src/components/warroommobilelandscape.css",
+}
+
 TRAINING_VISUAL_SURFACES = {
     "frontend/src/components/matthiasclassroom.css",
     "frontend/src/components/puzzlescreen.jsx",
@@ -135,6 +145,8 @@ def _surface_groups(path: str) -> set[str] | None:
         return set()
     if lower in QUICK_MATCH_VISUAL_SURFACES:
         return set(QUICK_MATCH_VISUAL_SURFACES[lower])
+    if lower in WARROOM_MOBILE_VISUAL_SURFACES:
+        return {"warroom"}
     if lower in TRAINING_VISUAL_SURFACES:
         return {"training"}
     if lower == "frontend/src/components/labscreen.jsx":
@@ -413,6 +425,16 @@ def self_test() -> None:
     ])
     assert quick_match.capture_groups == "home,warroom"
     assert not quick_match.hans and not quick_match.chesscom
+
+    mobile_warroom = classify([
+        "frontend/src/components/useGameMobileFocus.js",
+        "frontend/src/components/useWarRoomLandscape.js",
+        "frontend/src/components/WarRoomLandscapeGate.jsx",
+        "frontend/src/components/WarRoomLandscapeGate.css",
+        "frontend/src/components/WarRoomMobileLandscape.css",
+    ])
+    assert mobile_warroom.capture_groups == "warroom"
+    assert not mobile_warroom.hans and not mobile_warroom.chesscom
 
     mobile_training = classify([
         "frontend/src/components/PuzzleScreen.jsx",
