@@ -6,10 +6,14 @@ import {
 } from './WarRoomRenderQuality.js';
 
 describe('War Room render quality', () => {
-  it('keeps manual quality authoritative', () => {
+  it('keeps manual quality authoritative on a real GPU', () => {
     for (const tier of ['low', 'medium', 'high', 'ultra']) {
-      expect(resolveWarRoomRenderQuality({ preference: tier, softwareRenderer: true })).toBe(tier);
+      expect(resolveWarRoomRenderQuality({ preference: tier, softwareRenderer: false })).toBe(tier);
     }
+  });
+
+  it('forces the safe low tier on a software renderer even after a manual override', () => {
+    expect(resolveWarRoomRenderQuality({ preference: 'ultra', softwareRenderer: true })).toBe('low');
   });
 
   it('degrades software renderers to low in Auto', () => {
