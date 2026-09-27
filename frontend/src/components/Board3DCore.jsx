@@ -87,6 +87,7 @@ function Board3DCanvas({
   themeOverride = null, hansDiagnosticsMarkerRef = null,
   hansDiagnosticsRequested = false, hansFireCallEnabled = false,
   cameraProfile = 'tactical', warRoomVariantOverride = null, immersive = false,
+  warRoomMobilePerformance = false,
   onRendererFailure,
 }) {
   const hostRef = useRef(null);
@@ -222,6 +223,7 @@ function Board3DCanvas({
     const coarsePointer = Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
     const sceneProfile = warRoomSceneProfile({ coarsePointer, softwareRenderer });
     const renderLite = sceneProfile.lite;
+    const sceneLite = renderLite || (coarsePointer && warRoomMobilePerformance === true);
     const scene = new THREE.Scene();
     scene.userData.warRoomHansAwaitCall = latestPropsRef.current.hansFireCallEnabled;
     const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
@@ -267,7 +269,7 @@ function Board3DCanvas({
     renderer.domElement.dataset.board3dInspectPitch = '0.000';
     host.appendChild(renderer.domElement);
 
-    const releaseEnvironment = installPremiumEnvironment(renderer, scene, { coarsePointer });
+    const releaseEnvironment = installPremiumEnvironment(renderer, scene, { coarsePointer: sceneLite });
 
     scene.add(new THREE.HemisphereLight(0xffefd0, 0x10192b, 1.35));
     const key = new THREE.DirectionalLight(0xffe1aa, initialLights.key);
@@ -282,7 +284,7 @@ function Board3DCanvas({
     key.shadow.camera.far = 28;
     key.shadow.bias = -0.00045;
     key.shadow.normalBias = 0.018;
-    key.shadow.radius = renderLite ? 1.1 : 2.35;
+    key.shadow.radius = sceneLite ? 1.1 : 2.35;
     scene.add(key);
     const rim = new THREE.PointLight(theme.glow, initialLights.rim, 19, 2);
     rim.position.set(4.8, 3.6, whiteSide ? -4.8 : 4.8);
@@ -292,12 +294,12 @@ function Board3DCanvas({
     scene.add(warm);
 
     const classicShellController = createClassicWarRoomShellController(
-      { scene, boardGroup, theme, whiteSide, renderLite },
+      { scene, boardGroup, theme, whiteSide, renderLite: sceneLite },
       shouldShowClassicWarRoomShell({ selectable: warRoomVariantSelectable, variant: warRoomVariant }),
     );
 
-    const lightTileMaterial = makePremiumTileMaterial({ color: theme.light, light: true, coarsePointer: renderLite, seed: 0x531f });
-    const darkTileMaterial = makePremiumTileMaterial({ color: theme.dark, light: false, coarsePointer: renderLite, seed: 0xa72d });
+    const lightTileMaterial = makePremiumTileMaterial({ color: theme.light, light: true, coarsePointer: sceneLite, seed: 0x531f });
+    const darkTileMaterial = makePremiumTileMaterial({ color: theme.dark, light: false, coarsePointer: sceneLite, seed: 0xa72d });
     const highlightGeometry = new THREE.PlaneGeometry(BOARD3D_HIGHLIGHT_SIZE, BOARD3D_HIGHLIGHT_SIZE);
     const tileInstances = buildBoard3DTileInstances({ lightTileMaterial, darkTileMaterial });
     for (const tiles of tileInstances) {
@@ -660,7 +662,7 @@ function Board3DCanvas({
       pieceMeshes,
       highlightMeshes,
       coarsePointer,
-      renderLite,
+      renderLite: sceneLite,
       rendererName,
       rendererAttemptId: rendererAttempt.id,
       sceneTier: sceneProfile.tier,
