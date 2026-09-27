@@ -136,10 +136,15 @@ def static_check() -> list[str]:
 
     # CI is quality-only. Production changes are forbidden here so a main push
     # cannot bypass the deployed staging + Workers AI accreditation chain.
+    require(ci, "  scope:\n", "CI contains Scope job", errors)
     require(ci, "  preflight:\n", "CI contains Preflight job", errors)
-    for job in ("frontend", "backend", "security", "e2e"):
+    for job in ("frontend", "backend", "security"):
         require(ci, f"  {job}:\n", f"CI contains parallel {job} job", errors)
-        require(ci, "needs: preflight", f"CI {job} waits for preflight", errors)
+        block = ci.split(f"  {job}:\n", 1)[1].split("\n  ", 1)[0]
+        require(block, "needs: scope", f"CI {job} waits for scope", errors)
+    require(ci, "  e2e:\n", "CI contains Playwright aggregate job", errors)
+    e2e_block = ci.split("  e2e:\n", 1)[1].split("\n  ", 1)[0]
+    require(e2e_block, "needs: [scope, preflight, e2e_lanes, e2e_specialized]", "CI e2e aggregates scope + contracts + browser lanes", errors)
     for forbidden in (
         "  terraform:\n",
         "  pages:\n",
