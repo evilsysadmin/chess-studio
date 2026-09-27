@@ -1,4 +1,5 @@
 import { threeSurfaceShouldRender } from '../threeRenderPolicy.js';
+import { readWarRoomHardwareHints, resolveWarRoomRenderQuality } from './WarRoomRenderQuality.js';
 
 const WAR_ROOM_RENDER_BUDGETS = Object.freeze({
   desktop: Object.freeze({
@@ -97,6 +98,13 @@ export function warRoomRenderBudget({ coarsePointer = false, softwareRenderer = 
 }
 
 export function warRoomSceneProfile(options = {}) {
+  const hardwareHints = options.hardwareHints ?? readWarRoomHardwareHints();
+  const qualityTier = resolveWarRoomRenderQuality({
+    ...hardwareHints,
+    ...options,
+    preference: options.renderQuality,
+  });
+
   // Touch input is not a low-end GPU signal. Modern Android devices keep the
   // full War Room scene graph and save GPU budget through DPR, shadow quality
   // and the lower ambient cadence instead of deleting narrative architecture.
@@ -104,6 +112,7 @@ export function warRoomSceneProfile(options = {}) {
   // expensive 1.75 DPR / 2048-shadow frame before the surface pass corrects it.
   const budget = warRoomRenderBudget(options);
   return Object.freeze({
+    qualityTier,
     tier: budget.tier,
     lite: budget.lite,
     pixelRatioCap: budget.pixelRatioCap,
