@@ -253,7 +253,9 @@ test('War Room · desktop input mantiene cámara fija y juega e2→e4', async ({
   await expect(board3d).toHaveAttribute('data-board3d-inspect', 'false');
   await expect(board3d).toHaveAttribute('data-board3d-camera', 'fixed-tactical');
 
-  await clickWarRoomSquare(page, canvasRect, 'e2', 0.76);
+  await clickWarRoomSquare(page, canvasRect, 'e2');
+  await expect(board3d).toHaveAttribute('data-board3d-selected', 'e2');
+  await expect(board3d).toHaveAttribute('data-board3d-legal-target-count', '2');
   await clickWarRoomSquare(page, canvasRect, 'e4');
   await expect.poll(() => requestLog.filter((entry) => entry.method === 'POST' && /\/games\/[^/]+\/move$/.test(entry.path)).length).toBe(1);
 
