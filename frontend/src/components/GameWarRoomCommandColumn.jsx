@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { getBoardCoordinates, setBoardCoordinates } from '../userPreferences.js';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
 import { zenModeSummary } from '../zenMode.js';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
@@ -83,6 +85,7 @@ export function WarRoomUtilityMenu({
   const hasHint = !zenMode && controls.hintMode !== 'off' && typeof controls.onHint === 'function';
   const hasUndo = !zenMode && controls.hintMode === 'free' && typeof controls.onUndo === 'function';
   const hasAppearance = showAppearance && (compactViewport || typeof board?.onCustomize === 'function');
+  const [showCoordinates, setShowCoordinates] = useState(() => getBoardCoordinates());
   const hasNonDangerAction = (compactViewport && showFocus)
     || hasHint
     || hasUndo
@@ -95,6 +98,22 @@ export function WarRoomUtilityMenu({
     <details className="game-3d-utility-menu">
       <summary role="button" aria-label="Más acciones de partida" title="Más acciones de partida">⋯</summary>
       <div className="game-3d-utility-popover" role="menu" aria-label="Acciones de partida">
+        {typeof controls.onAbandon === 'function' && (
+          <>
+            <button
+              type="button"
+              role="menuitem"
+              className="is-danger"
+              onClick={(event) => {
+                closeUtilityMenu(event);
+                controls.onAbandon();
+              }}
+            >
+              Abandonar partida
+            </button>
+            {hasNonDangerAction && <span className="game-3d-utility-separator" role="separator" />}
+          </>
+        )}
         {compactViewport && showFocus && (
           <button
             type="button"
@@ -151,6 +170,17 @@ export function WarRoomUtilityMenu({
             Apariencia
           </button>
         )}
+        <button
+          type="button"
+          role="menuitemcheckbox"
+          aria-checked={showCoordinates}
+          onClick={(event) => {
+            closeUtilityMenu(event);
+            setShowCoordinates(setBoardCoordinates(!showCoordinates));
+          }}
+        >
+          Coordenadas del tablero · {showCoordinates ? 'activadas' : 'desactivadas'}
+        </button>
         {warRoomVariantSelectable && (
           <>
             <span className="game-3d-utility-separator" role="separator" />
@@ -187,22 +217,6 @@ export function WarRoomUtilityMenu({
             {zenMode ? 'Salir de Zen' : 'Modo Zen'}
           </button>
         )}
-        {typeof controls.onAbandon === 'function' && (
-          <>
-            {hasNonDangerAction && <span className="game-3d-utility-separator" role="separator" />}
-            <button
-              type="button"
-              role="menuitem"
-              className="is-danger"
-              onClick={(event) => {
-                closeUtilityMenu(event);
-                controls.onAbandon();
-              }}
-            >
-              Abandonar partida
-            </button>
-          </>
-        )}
       </div>
     </details>
   );
@@ -218,7 +232,7 @@ function CompactWarRoomPill({
   return (
     <aside className="game-3d-command-column" aria-label="Puesto táctico de Matthias">
       <div
-        className={`game-3d-turn-pill is-${signal.tone}`}
+        className={`game-3d-turn-pill is-compact is-${signal.tone}`}
         data-matthias-war-room-presence="king-piece"
       >
         {CPU_IDENTITY.avatar && <img className="game-3d-turn-pill-avatar" src={CPU_IDENTITY.avatar} alt="" aria-hidden="true" />}

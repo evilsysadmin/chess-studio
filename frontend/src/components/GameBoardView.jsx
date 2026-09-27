@@ -15,6 +15,7 @@ import useWarRoomSpatialAmbience from './useWarRoomSpatialAmbience.js';
 import useWarRoomImmersive from './useWarRoomImmersive.js';
 import useWarRoomLandscape from './useWarRoomLandscape.js';
 import WarRoomLandscapeGate from './WarRoomLandscapeGate.jsx';
+import WarRoomImmersiveMusicDock from './WarRoomImmersiveMusicDock.jsx';
 import { useGameFocusBubble, useGameMobileFocus } from './useGameMobileFocus.js';
 import useMatthias3DBubbleAnchor from './useMatthias3DBubbleAnchor.js';
 import useMatthiasBoardReactions from './useMatthiasBoardReactions.js';
@@ -168,6 +169,7 @@ export default function GameBoardView({
     hansFireplaceIteration,
     hansFireCallEnabled: !zenMode && !focusActive && hansFireCallEnabled,
     immersive: warRoomImmersive,
+    warRoomMobilePerformance: true,
   };
 
   return (
@@ -177,6 +179,7 @@ export default function GameBoardView({
         lockState={warRoomOrientationLock}
         onActivate={activateLandscape}
       />
+      {warRoomImmersive && !zenMode && !focusActive && <WarRoomImmersiveMusicDock />}
       <div className="board-column">
         <GameStatusStrips
           game={game}
@@ -316,7 +319,7 @@ export default function GameBoardView({
           </div>
 
           {!zenMode && !focusActive && (
-            <GameSideColumn game={game} side={side} isThreeD={isThreeD} compactViewport={compactViewport} />
+            <GameSideColumn game={game} side={side} isThreeD={isThreeD} compactViewport={compactViewport} showMusic={!warRoomImmersive} />
           )}
         </div>
 

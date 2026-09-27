@@ -1,5 +1,6 @@
 import { lazy, memo, Suspense } from 'react';
 import Board from './Board.jsx';
+import WarRoomBoardZoom from './WarRoomBoardZoom.jsx';
 
 const Board3D = lazy(() => import('./Board3D.jsx'));
 
@@ -44,9 +45,11 @@ const WarRoomBoardSurface = memo(function WarRoomBoardSurface({
 }) {
   if (isThreeD) {
     return (
-      <Suspense fallback={<div className={loadingClassName}>{loadingLabel}</div>}>
-        <Board3D {...boardProps} />
-      </Suspense>
+      <WarRoomBoardZoom>
+        <Suspense fallback={<div className={loadingClassName}>{loadingLabel}</div>}>
+          <Board3D {...boardProps} />
+        </Suspense>
+      </WarRoomBoardZoom>
     );
   }
   return <Board {...boardProps} />;

@@ -378,14 +378,16 @@ def build_single_stove(static, palette):
                0.63, 0.055, palette["brass"], static,
                rotation=(math.pi / 2, 0, face_angle))
     fire_center = Vector((x, y, 1.45)) + face * 0.995 + tangent * 0.05
+    # Keep the hearth legible at game-camera distance: a compact ember body
+    # plus three taller tongues reads as flame instead of a pale hand-shaped blob.
     flame_body = base.sphere("WR3_OBS_stove_flame_body", fire_center,
-                             0.27, palette["fire"], static, scale=(1.48, 0.22, 0.48))
+                             0.27, palette["fire"], static, scale=(1.12, 0.18, 0.58))
     flame_body.rotation_euler = (0, math.radians(9), face_angle)
     flame_body["war_room_runtime_dynamic"] = "v3-fire"
     for index, (dx, dz, sx, sz, tilt) in enumerate((
-        (-0.12, 0.02, 0.48, 1.02, 0.05),
-        (0.08, 0.13, 0.42, 1.22, 0.20),
-        (0.30, -0.01, 0.36, 0.82, 0.34),
+        (-0.14, 0.01, 0.34, 1.20, 0.04),
+        (0.03, 0.14, 0.28, 1.48, 0.18),
+        (0.19, -0.02, 0.26, 0.98, 0.31),
     )):
         tongue_center = Vector((x, y, 1.52 + dz)) + face * 1.01 + tangent * dx
         tongue = base.sphere(f"WR3_OBS_stove_flame_{index}",

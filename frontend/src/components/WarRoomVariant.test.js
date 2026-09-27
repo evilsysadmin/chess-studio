@@ -2,13 +2,19 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { clearStorageMemoryFallback } from '../safeStorage.js';
 import {
   DEFAULT_WAR_ROOM_VARIANT,
+  DEFAULT_WAR_ROOM_VARIANT_PREFERENCE,
   WAR_ROOM_VARIANT_STORAGE_KEY,
   WAR_ROOM_VARIANTS,
+  WAR_ROOM_VARIANT_PREFERENCES,
   isClassicWarRoomVariant,
   isWarRoomVariantSelectable,
   loadWarRoomVariant,
+  loadWarRoomVariantPreference,
   normalizeWarRoomVariant,
+  normalizeWarRoomVariantPreference,
+  resolveWarRoomVariantPreference,
   saveWarRoomVariant,
+  saveWarRoomVariantPreference,
   warRoomVariantDefinition,
   warRoomVariantDomData,
 } from './WarRoomVariant.js';
@@ -39,6 +45,25 @@ describe('War Room staging variant', () => {
     expect(loadWarRoomVariant(options)).toBe('v2');
     expect(saveWarRoomVariant('v3', options)).toBe('v3');
     expect(loadWarRoomVariant(options)).toBe('v3');
+  });
+
+  it('uses a profile-backed random preference by default', () => {
+    const options = { env: { VITE_WAR_ROOM_VARIANTS_ENABLE: '1' }, location: { hostname: 'chess-studio.shadowops.dpdns.org' } };
+    expect(DEFAULT_WAR_ROOM_VARIANT_PREFERENCE).toBe('random');
+    expect(WAR_ROOM_VARIANT_PREFERENCES.map(({ id }) => id)).toEqual(['random', 'classic', 'v2', 'v3']);
+    expect(loadWarRoomVariantPreference(options)).toBe('random');
+
+    expect(saveWarRoomVariantPreference('v3', options)).toBe('v3');
+    expect(localStorage.getItem(WAR_ROOM_VARIANT_STORAGE_KEY)).toBe('v3');
+    expect(loadWarRoomVariantPreference(options)).toBe('v3');
+  });
+
+  it('resolves random once from the available room registry', () => {
+    expect(resolveWarRoomVariantPreference('random', { random: () => 0 })).toBe('classic');
+    expect(resolveWarRoomVariantPreference('random', { random: () => 0.34 })).toBe('v2');
+    expect(resolveWarRoomVariantPreference('random', { random: () => 0.99 })).toBe('v3');
+    expect(resolveWarRoomVariantPreference('v2', { random: () => 0.99 })).toBe('v2');
+    expect(normalizeWarRoomVariantPreference('basement')).toBe('random');
   });
 
   it('defaults to v2 when variants are enabled and nothing was chosen', () => {

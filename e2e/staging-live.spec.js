@@ -325,9 +325,9 @@ test('staging live · auth real → War Room v2 → recovery 3D → jugada real'
     await expect(warRoom3d).toBeVisible({ timeout: 30_000 });
     await expect(warRoomCanvas).toBeVisible({ timeout: 30_000 });
 
-    // Staging is the deliberate A/B surface for the Blender shell. Keep the
-    // experiment behind the canonical overflow menu so the room itself remains
-    // visually clean, then prove the R2 shell can replace the classic scene.
+    // V2 is the production/staging default; v1 remains the explicit rollback.
+    // Prove the exact deployed generation mounts v2, then that the overflow
+    // switch can still return safely to the classic room.
     const variantUtilityMenu = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
     await expect(variantUtilityMenu).toBeVisible();
     await variantUtilityMenu.click();
@@ -337,13 +337,11 @@ test('staging live · auth real → War Room v2 → recovery 3D → jugada real'
     await expect(classicWarRoomItem).toBeVisible();
     await expect(v2WarRoomItem).toBeVisible();
     await expect(v3WarRoomItem).toBeVisible();
-    await expect(classicWarRoomItem).toHaveAttribute('aria-checked', 'true');
-    await v2WarRoomItem.click();
+    await expect(v2WarRoomItem).toHaveAttribute('aria-checked', 'true');
     await expect(warRoom3d).toHaveAttribute('data-board3d-variant', 'v2');
     await expect(warRoom3d).toHaveAttribute('data-board3d-variant-status', 'ready', { timeout: 30_000 });
     await expect(warRoomCanvas).toBeVisible();
-    await variantUtilityMenu.click();
-    await page.getByRole('menuitemradio', { name: 'War Room v1', exact: true }).click();
+    await classicWarRoomItem.click();
     await expect(warRoom3d).toHaveAttribute('data-board3d-variant', 'classic');
     await expect(warRoom3d).toHaveAttribute('data-board3d-variant-status', 'idle');
     await expect(warRoomCanvas).toBeVisible();

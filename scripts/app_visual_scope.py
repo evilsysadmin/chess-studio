@@ -34,6 +34,7 @@ QUICK_MATCH_VISUAL_SURFACES = {
     # launch surface and the War Room. Treating these as generic frontend
     # forces Home + experiments + training + War Room + health captures.
     "frontend/src/components/quickmatchmodal.jsx": {"home", "warroom"},
+    "frontend/src/components/quickmatchmobilegoldenpath.css": {"home"},
     "frontend/src/components/usewarroomimmersive.js": {"warroom"},
 }
 
@@ -460,6 +461,9 @@ def self_test() -> None:
     ])
     assert quick_match.capture_groups == "home,warroom"
     assert not quick_match.hans and not quick_match.chesscom
+    quick_match_css = classify(["frontend/src/components/QuickMatchMobileGoldenPath.css"])
+    assert quick_match_css.capture_groups == "home"
+    assert not quick_match_css.hans and not quick_match_css.chesscom
     home_blender = classify(["scripts/blender/build_home_v2_blockout.py"])
     assert home_blender.capture_groups == "home"
     assert home_blender.experiments_scope == "none"

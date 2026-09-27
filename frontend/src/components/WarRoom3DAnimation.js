@@ -1,4 +1,13 @@
 import { threeSurfaceShouldRender } from '../threeRenderPolicy.js';
+import { getRenderQualityPreference } from '../userPreferences.js';
+import { readWarRoomHardwareHints, resolveWarRoomRenderQuality } from './WarRoomRenderQuality.js';
+
+const WAR_ROOM_QUALITY_BUDGETS = Object.freeze({
+  low: Object.freeze({ pixelRatioCap: 0.85, shadowMapSize: 512, shadowRadius: 1.0, shadowsEnabled: false }),
+  medium: Object.freeze({ pixelRatioCap: 1.0, shadowMapSize: 512, shadowRadius: 1.1, shadowsEnabled: true }),
+  high: Object.freeze({ pixelRatioCap: 1.35, shadowMapSize: 1024, shadowRadius: 1.8, shadowsEnabled: true }),
+  ultra: Object.freeze({ pixelRatioCap: 1.75, shadowMapSize: 2048, shadowRadius: 2.35, shadowsEnabled: true }),
+});
 
 const WAR_ROOM_RENDER_BUDGETS = Object.freeze({
   desktop: Object.freeze({
@@ -11,8 +20,8 @@ const WAR_ROOM_RENDER_BUDGETS = Object.freeze({
   }),
   touch: Object.freeze({
     tier: 'balanced',
-    pixelRatioCap: 1.25,
-    shadowMapSize: 1024,
+    pixelRatioCap: 1,
+    shadowMapSize: 512,
     shadowsEnabled: true,
     idleFrameIntervalMs: 150,
     // Inspection is a direct-manipulation surface: ~30 FPS felt visibly
@@ -97,6 +106,15 @@ export function warRoomRenderBudget({ coarsePointer = false, softwareRenderer = 
 }
 
 export function warRoomSceneProfile(options = {}) {
+  const hardwareHints = options.hardwareHints ?? readWarRoomHardwareHints();
+  const requestedQuality = options.renderQuality ?? getRenderQualityPreference();
+  const qualityTier = resolveWarRoomRenderQuality({
+    ...hardwareHints,
+    ...options,
+    preference: requestedQuality,
+  });
+  const qualityBudget = WAR_ROOM_QUALITY_BUDGETS[qualityTier] || WAR_ROOM_QUALITY_BUDGETS.medium;
+
   // Touch input is not a low-end GPU signal. Modern Android devices keep the
   // full War Room scene graph and save GPU budget through DPR, shadow quality
   // and the lower ambient cadence instead of deleting narrative architecture.
@@ -104,11 +122,14 @@ export function warRoomSceneProfile(options = {}) {
   // expensive 1.75 DPR / 2048-shadow frame before the surface pass corrects it.
   const budget = warRoomRenderBudget(options);
   return Object.freeze({
+    qualityTier,
+    adaptiveQuality: requestedQuality === 'auto',
     tier: budget.tier,
     lite: budget.lite,
-    pixelRatioCap: budget.pixelRatioCap,
-    shadowMapSize: budget.shadowMapSize,
-    shadowsEnabled: budget.shadowsEnabled,
+    pixelRatioCap: qualityBudget.pixelRatioCap,
+    shadowMapSize: qualityBudget.shadowMapSize,
+    shadowRadius: qualityBudget.shadowRadius,
+    shadowsEnabled: qualityBudget.shadowsEnabled,
   });
 }
 

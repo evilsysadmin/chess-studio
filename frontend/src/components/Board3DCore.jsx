@@ -16,7 +16,7 @@ import {
 } from './WarRoom3DAnimation.js';
 import { createWarRoomAmbientScheduler } from './WarRoomAmbientScheduler.js';
 import { applyWarRoomHansScreenDiagnostics, applyWarRoomLightDiagnostics } from './WarRoomDomDiagnostics.js';
-import { resolveBoardTap } from './WarRoom3DTouch.js';
+import { resolveBoardTap, selectBoardSquareOnTouch } from './WarRoom3DTouch.js';
 import { BOARD3D_HIGHLIGHT_SIZE, BOARD3D_HIGHLIGHT_Y, board3DHighlightStyle } from './Board3DHighlights.js';
 import { board3DCaptureWarmBoostValue, board3DPieceInteractionPose, writeBoard3DHighlightPulse } from './Board3DInteractionFx.js';
 import { BOARD_THEME_3D, FILES, resolveBoard3DThemeId } from './Board3DConfig.js';
@@ -87,6 +87,7 @@ function Board3DCanvas({
   themeOverride = null, hansDiagnosticsMarkerRef = null,
   hansDiagnosticsRequested = false, hansFireCallEnabled = false,
   cameraProfile = 'tactical', warRoomVariantOverride = null, immersive = false,
+  warRoomMobilePerformance = false,
   onRendererFailure,
 }) {
   const hostRef = useRef(null);
@@ -205,11 +206,11 @@ function Board3DCanvas({
       return undefined;
     }
 
-    let rendererName = '';
+    let rendererName = ''; let maxTextureSize = null;
     let softwareRenderer = Boolean(rendererAttempt.liteFallback);
     try {
       const gl = renderer.getContext();
-      const debugRendererInfo = gl.getExtension?.('WEBGL_debug_renderer_info');
+      const debugRendererInfo = gl.getExtension?.('WEBGL_debug_renderer_info'); maxTextureSize = gl.getParameter?.(gl.MAX_TEXTURE_SIZE) || null;
       rendererName = debugRendererInfo
         ? gl.getParameter(debugRendererInfo.UNMASKED_RENDERER_WEBGL)
         : gl.getParameter(gl.RENDERER);
@@ -220,10 +221,9 @@ function Board3DCanvas({
     }
 
     const coarsePointer = Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
-    const sceneProfile = warRoomSceneProfile({ coarsePointer, softwareRenderer });
-    const renderLite = sceneProfile.lite;
-    const scene = new THREE.Scene();
-    scene.userData.warRoomHansAwaitCall = latestPropsRef.current.hansFireCallEnabled;
+    const sceneProfile = warRoomSceneProfile({ coarsePointer, softwareRenderer, maxTextureSize });
+    const { lite: renderLite } = sceneProfile; const sceneLite = renderLite || (coarsePointer && warRoomMobilePerformance === true);
+    const scene = new THREE.Scene(); scene.userData.warRoomHansAwaitCall = latestPropsRef.current.hansFireCallEnabled; scene.userData.warRoomAdaptiveQuality = sceneProfile.adaptiveQuality;
     const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
     const hansWorldProbe = new THREE.Vector3();
     const hansScreenProbe = new THREE.Vector3();
@@ -260,14 +260,14 @@ function Board3DCanvas({
     renderer.domElement.dataset.board3dRenderPath = rendererAttempt.id;
     renderer.domElement.dataset.board3dRenderer = String(rendererName || 'unknown').slice(0, 180);
     renderer.domElement.dataset.board3dRendererClass = compactWebGLRendererLabel(rendererName);
-    renderer.domElement.dataset.board3dSceneTier = sceneProfile.tier;
+    renderer.domElement.dataset.board3dSceneTier = sceneProfile.tier; renderer.domElement.dataset.warRoomRenderQuality = sceneProfile.qualityTier;
     renderer.domElement.dataset.warRoomDomDiagnostics = 'diff-only-ref-v2';
     renderer.domElement.dataset.board3dInteractionHotPath = 'cached-pick-pulse-capture-v1';
     renderer.domElement.dataset.board3dInspectYaw = '0.000';
     renderer.domElement.dataset.board3dInspectPitch = '0.000';
     host.appendChild(renderer.domElement);
 
-    const releaseEnvironment = installPremiumEnvironment(renderer, scene, { coarsePointer: renderLite });
+    const releaseEnvironment = installPremiumEnvironment(renderer, scene, { coarsePointer: sceneLite, renderProfile: sceneProfile });
 
     scene.add(new THREE.HemisphereLight(0xffefd0, 0x10192b, 1.35));
     const key = new THREE.DirectionalLight(0xffe1aa, initialLights.key);
@@ -282,7 +282,7 @@ function Board3DCanvas({
     key.shadow.camera.far = 28;
     key.shadow.bias = -0.00045;
     key.shadow.normalBias = 0.018;
-    key.shadow.radius = renderLite ? 1.1 : 2.35;
+    key.shadow.radius = sceneProfile.shadowRadius;
     scene.add(key);
     const rim = new THREE.PointLight(theme.glow, initialLights.rim, 19, 2);
     rim.position.set(4.8, 3.6, whiteSide ? -4.8 : 4.8);
@@ -292,12 +292,12 @@ function Board3DCanvas({
     scene.add(warm);
 
     const classicShellController = createClassicWarRoomShellController(
-      { scene, boardGroup, theme, whiteSide, renderLite },
+      { scene, boardGroup, theme, whiteSide, renderLite: sceneLite },
       shouldShowClassicWarRoomShell({ selectable: warRoomVariantSelectable, variant: warRoomVariant }),
     );
 
-    const lightTileMaterial = makePremiumTileMaterial({ color: theme.light, light: true, coarsePointer: renderLite, seed: 0x531f });
-    const darkTileMaterial = makePremiumTileMaterial({ color: theme.dark, light: false, coarsePointer: renderLite, seed: 0xa72d });
+    const lightTileMaterial = makePremiumTileMaterial({ color: theme.light, light: true, coarsePointer: sceneLite, seed: 0x531f });
+    const darkTileMaterial = makePremiumTileMaterial({ color: theme.dark, light: false, coarsePointer: sceneLite, seed: 0xa72d });
     const highlightGeometry = new THREE.PlaneGeometry(BOARD3D_HIGHLIGHT_SIZE, BOARD3D_HIGHLIGHT_SIZE);
     const tileInstances = buildBoard3DTileInstances({ lightTileMaterial, darkTileMaterial });
     for (const tiles of tileInstances) {
@@ -469,16 +469,6 @@ function Board3DCanvas({
       setHoveredSquare(nextSquare);
       if (nextSquare) latestPropsRef.current.onPieceMouseEnter?.(nextSquare, event);
     }
-
-    function selectSquareFromTouch(event) {
-      const square = squareFromPointer(event);
-      renderer.domElement.dataset.warRoomLastSquare = square || '';
-      if (!square) return false;
-      setFocusedSquare(square);
-      latestPropsRef.current.onSquareClick?.(square);
-      return true;
-    }
-
     function onPointerDown(event) {
       const touchLike = event.pointerType === 'touch' || event.pointerType === 'pen';
       pointerStartRef.current = {
@@ -499,10 +489,9 @@ function Board3DCanvas({
       if (!touchLike) return;
       renderer.domElement.setPointerCapture?.(event.pointerId);
       renderer.domElement.dataset.warRoomTouchStage = 'down';
-      const handled = selectSquareFromTouch(event);
+      const handled = selectBoardSquareOnTouch({ event, canvas: renderer.domElement, squareFromPointer, setFocusedSquare, onSquareClick: latestPropsRef.current.onSquareClick });
       if (pointerStartRef.current) pointerStartRef.current.handled = handled;
     }
-
     function onPointerMove(event) {
       const motion = cameraMotionRef.current;
       if (inspectModeRef.current) {
@@ -529,7 +518,6 @@ function Board3DCanvas({
       renderer.domElement.style.cursor = pieceHover ? 'pointer' : 'default';
       updatePieceHover(pieceHover, event);
     }
-
     function onPointerLeave(event) {
       const motion = cameraMotionRef.current;
       motion.targetX = 0;
@@ -559,6 +547,11 @@ function Board3DCanvas({
     function onPointerUp(event) {
       const start = pointerStartRef.current;
       pointerStartRef.current = null;
+      if (renderer.domElement.dataset.warRoomPinching === 'true' && !start?.handled) {
+        renderer.domElement.dataset.warRoomTouchStage = 'pinch-end';
+        releasePointer(event);
+        return;
+      }
       if (inspectModeRef.current) {
         cameraMotionRef.current.dragging = false;
         renderer.domElement.style.cursor = 'grab';
@@ -660,7 +653,7 @@ function Board3DCanvas({
       pieceMeshes,
       highlightMeshes,
       coarsePointer,
-      renderLite,
+      renderLite: sceneLite,
       rendererName,
       rendererAttemptId: rendererAttempt.id,
       sceneTier: sceneProfile.tier,

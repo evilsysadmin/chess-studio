@@ -8,6 +8,7 @@ export const REDUCED_MOTION_KEY = 'chess-study-reduced-motion';
 export const BOARD_COORDINATES_KEY = 'chess-study-board-coordinates';
 export const BOARD_RENDERER_KEY = 'chess-study-board-renderer';
 export const DEVICE_BOARD_RENDERER_KEY = 'chess-study-device-board-renderer-v1';
+export const DEVICE_RENDER_QUALITY_KEY = 'chess-study-device-render-quality-v1';
 export const EXPLICIT_2D_BOARD_RENDERER_VALUE = '2d-explicit-v1';
 export const USER_PREFERENCES_CHANGED_EVENT = 'chess-study-user-preferences-changed';
 export const SUPPORTED_UI_LANGUAGES = [
@@ -17,6 +18,13 @@ export const SUPPORTED_UI_LANGUAGES = [
 export const BOARD_RENDERERS = [
   { id: '3d', label: '3D' },
   { id: '2d', label: '2D' },
+];
+export const RENDER_QUALITY_OPTIONS = [
+  { id: 'auto', label: 'Automática' },
+  { id: 'low', label: 'Baja' },
+  { id: 'medium', label: 'Media' },
+  { id: 'high', label: 'Alta' },
+  { id: 'ultra', label: 'Ultra' },
 ];
 
 let effectiveReducedMotionCache;
@@ -134,12 +142,24 @@ export function setReducedMotion(value) {
 }
 
 export function getBoardCoordinates() {
-  return getStorageItem(STORAGE_LOCAL, BOARD_COORDINATES_KEY) !== '0';
+  return getStorageItem(STORAGE_LOCAL, BOARD_COORDINATES_KEY) === '1';
 }
 
 export function setBoardCoordinates(value) {
   const normalized = !!value;
   setProfileStorageItem(BOARD_COORDINATES_KEY, normalized ? '1' : '0');
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(USER_PREFERENCES_CHANGED_EVENT));
+  return normalized;
+}
+
+export function getRenderQualityPreference() {
+  const stored = getStorageItem(STORAGE_LOCAL, DEVICE_RENDER_QUALITY_KEY);
+  return RENDER_QUALITY_OPTIONS.some((option) => option.id === stored) ? stored : 'auto';
+}
+
+export function setRenderQualityPreference(value) {
+  const normalized = RENDER_QUALITY_OPTIONS.some((option) => option.id === value) ? value : 'auto';
+  setStorageItem(STORAGE_LOCAL, DEVICE_RENDER_QUALITY_KEY, normalized);
   if (typeof window !== 'undefined') window.dispatchEvent(new Event(USER_PREFERENCES_CHANGED_EVENT));
   return normalized;
 }

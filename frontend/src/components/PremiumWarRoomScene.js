@@ -114,7 +114,6 @@ function attachFlameKinetics(anchor, light, baseIntensity, phase = 0, coarsePoin
 function attachFireplaceKinetics(fireCore, flames, embers, light, baseIntensity, coarsePointer = false) {
   light.userData.baseWarRoomIntensity = baseIntensity;
   fireCore.userData.warRoomFireCore = true;
-  if (coarsePointer) return;
 
   const animationAnchor = flames[0];
   if (!animationAnchor) return;

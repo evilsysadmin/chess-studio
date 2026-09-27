@@ -153,3 +153,196 @@
     line-height: 1.24;
   }
 }
+
+
+/* Portrait Home 3D is a deliberate compact composition, not the landscape
+ * scene stretched vertically. This file loads last in the Home cascade, so keep
+ * the portrait contract here instead of fighting earlier diegetic rules. */
+@media (pointer: coarse) and (orientation: portrait) and (max-width: 520px) {
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__memory-object,
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__beacon {
+    display: none !important;
+  }
+
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__stage > nav {
+    position: absolute !important;
+    z-index: 34 !important;
+    inset: auto 10px calc(max(110px, env(safe-area-inset-bottom) + 96px)) 10px !important;
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+    pointer-events: auto !important;
+  }
+
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__destination {
+    position: static !important;
+    inset: auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+    min-height: 44px !important;
+    padding: 5px 4px !important;
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: center !important;
+    gap: 5px !important;
+    border: 1px solid rgba(218, 172, 83, .16) !important;
+    border-radius: 10px !important;
+    background: rgba(12, 8, 5, .70) !important;
+    box-shadow: 0 5px 16px rgba(0, 0, 0, .20) !important;
+    backdrop-filter: blur(5px) !important;
+  }
+
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__destination svg {
+    width: 16px !important;
+    height: 16px !important;
+    flex: 0 0 auto !important;
+  }
+
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__destination strong {
+    font-size: 10px !important;
+    line-height: 1.05 !important;
+    white-space: normal !important;
+  }
+
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__destination > span,
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__destination i {
+    display: none !important;
+  }
+
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__destination--play {
+    order: -10 !important;
+    grid-column: 1 / -1 !important;
+    min-height: 54px !important;
+    border-color: rgba(229, 183, 92, .36) !important;
+    background: linear-gradient(180deg, rgba(72, 40, 17, .92), rgba(30, 15, 8, .90)) !important;
+    z-index: 40 !important;
+  }
+
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__destination--play strong {
+    font-size: 18px !important;
+    letter-spacing: .03em !important;
+  }
+
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__resident {
+    position: static !important;
+    pointer-events: none !important;
+  }
+
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__matthias {
+    position: absolute !important;
+    z-index: 30 !important;
+    left: 10px !important;
+    top: auto !important;
+    bottom: calc(max(12px, env(safe-area-inset-bottom)) + 48px) !important;
+    width: calc(30% - 10px) !important;
+    min-width: 0 !important;
+    min-height: 40px !important;
+    padding: 4px 6px !important;
+    display: grid !important;
+    place-items: center !important;
+    border-radius: 9px !important;
+    background: rgba(12, 8, 5, .76) !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__matthias-portrait {
+    display: block !important;
+    width: 24px !important;
+    height: 24px !important;
+    min-width: 24px !important;
+    min-height: 24px !important;
+    overflow: hidden !important;
+    pointer-events: none !important;
+  }
+
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__matthias-portrait .home-matthias-3d,
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__matthias-portrait .home-matthias-3d canvas,
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__matthias-portrait .home-matthias-3d img {
+    width: 24px !important;
+    height: 24px !important;
+    min-width: 24px !important;
+    min-height: 24px !important;
+  }
+
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__matthias-copy {
+    display: block !important;
+  }
+
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__matthias-copy strong {
+    display: block !important;
+    font-size: 9px !important;
+  }
+
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__matthias-copy > span,
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__matthias-copy em {
+    display: none !important;
+  }
+
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__utilities {
+    position: absolute !important;
+    z-index: 30 !important;
+    right: 10px !important;
+    left: auto !important;
+    top: auto !important;
+    bottom: calc(max(12px, env(safe-area-inset-bottom)) + 48px) !important;
+    width: calc(30% - 10px) !important;
+    height: 40px !important;
+  }
+
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__dungeon-copy {
+    inset: 0 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 40px !important;
+    display: grid !important;
+    place-content: center !important;
+    padding: 4px 6px !important;
+    border-radius: 9px !important;
+    background: rgba(12, 8, 5, .76) !important;
+  }
+
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__dungeon-copy strong {
+    font-size: 9px !important;
+  }
+
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__play-more-wrap {
+    position: absolute !important;
+    z-index: 31 !important;
+    left: 35% !important;
+    right: 35% !important;
+    top: auto !important;
+    bottom: calc(max(12px, env(safe-area-inset-bottom)) + 48px) !important;
+    width: auto !important;
+  }
+
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__play-more {
+    width: 100% !important;
+    min-height: 40px !important;
+    padding: 4px 6px !important;
+    border-radius: 9px !important;
+    background: rgba(12, 8, 5, .76) !important;
+    font-size: 9px !important;
+  }
+
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__quickbar {
+    display: none !important;
+  }
+}
+
+/* Android desktop-site portrait still uses the tall-touch composition. Keep
+ * JUGAR above the resident layer so Matthias can never steal that primary tap. */
+@media (pointer: coarse) and (orientation: portrait) and (min-width: 521px) and (max-width: 999px) {
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__resident {
+    pointer-events: none !important;
+  }
+
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__matthias {
+    z-index: 8 !important;
+    pointer-events: auto !important;
+  }
+
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__destination--play {
+    z-index: 20 !important;
+  }
+}
