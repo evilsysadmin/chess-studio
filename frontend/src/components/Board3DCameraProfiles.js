@@ -10,8 +10,8 @@ export function classicWarRoomCameraFramingProfile(aspect = 1) {
   return wide
     ? Object.freeze({
         version: 'classic-overhead-v3',
-        halfSpan: 5.46,
-        padding: 1.07,
+        halfSpan: 5.28,
+        padding: 1.04,
         minDistance: 13.2,
         maxDistance: 28,
         targetY: 1.25,
