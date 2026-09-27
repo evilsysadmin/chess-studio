@@ -1,4 +1,4 @@
-/* Android/phone landscape is an explicit play-first composition.
+/* Android/phone landscape keeps the normal non-immersive fallback usable.
  * The PWA already allows any orientation; this layer simply spends the extra
  * horizontal space on the board instead of preserving the portrait stack. */
 @media (orientation: landscape) and (max-width: 920px) and (max-height: 620px) {
