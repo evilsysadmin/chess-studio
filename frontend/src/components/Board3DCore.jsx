@@ -983,7 +983,7 @@ function Board3DCanvas({
         disposeObject(capturedGhost);
       }
     };
-  }, [fen, skinId, animate, effectiveThemeId, orientation, showCoordinates, matthiasKingColor, checkSquare, gameOver]);
+  }, [fen, skinId, animate, effectiveThemeId, orientation, showCoordinates, matthiasKingColor, checkSquare, gameOver, warRoomVariant]);
 
   useEffect(() => {
     const state = sceneStateRef.current;
