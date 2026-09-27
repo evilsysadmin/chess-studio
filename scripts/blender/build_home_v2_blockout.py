@@ -3999,7 +3999,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         "brass_dark": material("HOME_MAT_brass_dark", (0.105, 0.052, 0.018, 1), roughness=0.50, metallic=0.60, texture_profile="metal"),
         # Older fittings in the library should not share the same clean brass as
         # table/chandelier hardware: darker, rougher bronze reads as handled age.
-        "library_brass_aged": material("HOME_MAT_library_brass_aged", (0.070, 0.038, 0.018, 1), roughness=0.68, metallic=0.52, variation=0.10, variation_scale=5.0, texture_profile="metal"),
+        "library_brass_aged": material("HOME_MAT_library_brass_aged", (0.064, 0.034, 0.016, 1), roughness=0.72, metallic=0.48, bump_scale=7.0, bump_strength=0.055, variation=0.14, variation_scale=4.4, texture_profile="metal"),
         # Hand-forged hearth iron should read nearly black in shadow, with enough
         # metallic response to catch firelight on worn edges instead of looking
         # like painted plastic.
