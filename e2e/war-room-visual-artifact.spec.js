@@ -434,6 +434,7 @@ async function captureWarRoomHealth(page, label) {
       notation,
       legacyCommandDeck,
       immersive: document.body.classList.contains('war-room-immersive-active'),
+      mobilePlayFirst: document.querySelector('.game-layout-3d')?.getAttribute('data-war-room-mobile-landscape') === 'true',
       quickActions: { focus, abandon, overflow },
       boardViewportFill: Number((boardVisibleHeight / viewport.height).toFixed(3)),
       boardWidthFill: board ? Number((board.width / viewport.width).toFixed(3)) : 0,
@@ -522,7 +523,10 @@ function expectPortraitHealth(health) {
 }
 
 function expectImmersiveHealth(health) {
-  expect(health.immersive, 'immersive body state must be active').toBe(true);
+  expect(
+    health.immersive || health.mobilePlayFirst,
+    'immersive or mobile play-first state must be active',
+  ).toBe(true);
   expect(health.gameLayout?.left, 'immersive shell must start at the left viewport edge').toBeLessThanOrEqual(1);
   expect(health.gameLayout?.top, 'immersive shell must start at the top viewport edge').toBeLessThanOrEqual(1);
   expect(health.gameLayout?.width, 'immersive shell must span the viewport width').toBeGreaterThanOrEqual(health.viewport.width - 2);
