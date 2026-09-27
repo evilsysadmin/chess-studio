@@ -95,7 +95,7 @@ export function WarRoomUtilityMenu({
     <details className="game-3d-utility-menu">
       <summary role="button" aria-label="Más acciones de partida" title="Más acciones de partida">⋯</summary>
       <div className="game-3d-utility-popover" role="menu" aria-label="Acciones de partida">
-        {compactViewport && typeof controls.onAbandon === 'function' && (
+        {typeof controls.onAbandon === 'function' && (
           <>
             <button
               type="button"
@@ -202,22 +202,6 @@ export function WarRoomUtilityMenu({
           >
             {zenMode ? 'Salir de Zen' : 'Modo Zen'}
           </button>
-        )}
-        {!compactViewport && typeof controls.onAbandon === 'function' && (
-          <>
-            {hasNonDangerAction && <span className="game-3d-utility-separator" role="separator" />}
-            <button
-              type="button"
-              role="menuitem"
-              className="is-danger"
-              onClick={(event) => {
-                closeUtilityMenu(event);
-                controls.onAbandon();
-              }}
-            >
-              Abandonar partida
-            </button>
-          </>
         )}
       </div>
     </details>
