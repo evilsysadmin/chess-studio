@@ -13,6 +13,8 @@ import WarRoomHansServiceDialogue from './WarRoomHansServiceDialogue.jsx';
 import useGameBoardRenderer from './useGameBoardRenderer.js';
 import useWarRoomSpatialAmbience from './useWarRoomSpatialAmbience.js';
 import useWarRoomImmersive from './useWarRoomImmersive.js';
+import useWarRoomLandscape from './useWarRoomLandscape.js';
+import WarRoomLandscapeGate from './WarRoomLandscapeGate.jsx';
 import { useGameFocusBubble, useGameMobileFocus } from './useGameMobileFocus.js';
 import useMatthias3DBubbleAnchor from './useMatthias3DBubbleAnchor.js';
 import useMatthiasBoardReactions from './useMatthiasBoardReactions.js';
@@ -60,6 +62,11 @@ export default function GameBoardView({
     exitFocus: deactivateFocus,
   } = useGameMobileFocus(game.id);
   const { immersive: warRoomImmersive } = useWarRoomImmersive({ enabled: isThreeD, focusActive });
+  const {
+    needsRotation: warRoomNeedsRotation,
+    lockState: warRoomOrientationLock,
+    activateLandscape,
+  } = useWarRoomLandscape(Boolean(isThreeD && !focusActive));
   const {
     activeBoardBubble,
     activeMatthiasKey,
@@ -164,7 +171,12 @@ export default function GameBoardView({
   };
 
   return (
-    <div className={`game-layout${isThreeD ? ' game-layout-3d' : ''}${focusActive ? ' game-layout-focus' : ''}${warRoomImmersive ? ' game-layout-immersive' : ''}`} data-mobile-focus={focusActive ? 'true' : 'false'} data-war-room-immersive={warRoomImmersive ? 'true' : 'false'} data-war-room-rail-collapsed="false">
+    <div className={`game-layout${isThreeD ? ' game-layout-3d' : ''}${focusActive ? ' game-layout-focus' : ''}${warRoomImmersive ? ' game-layout-immersive' : ''}`} data-mobile-focus={focusActive ? 'true' : 'false'} data-war-room-immersive={warRoomImmersive ? 'true' : 'false'} data-war-room-orientation-lock={warRoomOrientationLock}>
+      <WarRoomLandscapeGate
+        active={warRoomNeedsRotation}
+        lockState={warRoomOrientationLock}
+        onActivate={activateLandscape}
+      />
       <div className="board-column">
         <GameStatusStrips
           game={game}
@@ -183,7 +195,6 @@ export default function GameBoardView({
               compactViewport={compactViewport}
               zenMode={zenMode}
               controls={controls}
-              immersive={warRoomImmersive}
             />
           )}
 
