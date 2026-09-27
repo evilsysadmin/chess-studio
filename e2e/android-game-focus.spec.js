@@ -154,7 +154,8 @@ test('Android · Focus deja sólo el tablero 3D, sigue siendo jugable y puede sa
   await exit.click();
   await expect(layout).toHaveAttribute('data-mobile-focus', 'false');
   await expect(page.locator('body')).not.toHaveClass(/game-mobile-focus-active/);
-  await expect(page.locator('.app-shell-board-game > .masthead')).toBeVisible();
+  await expect(page.locator('body')).toHaveClass(/war-room-immersive-active/);
+  await expect(layout).toHaveAttribute('data-war-room-immersive', 'true');
   await expect(page.getByRole('button', { name: 'Focus', exact: true })).toBeVisible();
 });
 

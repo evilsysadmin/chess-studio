@@ -75,10 +75,6 @@ export function WarRoomUtilityMenu({
   showRendererToggle = true,
   showAppearance = true,
   showZen = true,
-  immersive = false,
-  railCollapsed = false,
-  onToggleImmersive,
-  onToggleRail,
 }) {
   const {
     selectable: warRoomVariantSelectable,
@@ -93,8 +89,6 @@ export function WarRoomUtilityMenu({
     || hasUndo
     || (compactViewport && showRendererToggle)
     || hasAppearance
-    || typeof onToggleImmersive === 'function'
-    || (!compactViewport && immersive && typeof onToggleRail === 'function')
     || warRoomVariantSelectable
     || (showZen && typeof controls.onToggleZen === 'function');
 
@@ -156,32 +150,6 @@ export function WarRoomUtilityMenu({
             }}
           >
             Apariencia
-          </button>
-        )}
-        {typeof onToggleImmersive === 'function' && (
-          <button
-            type="button"
-            role="menuitem"
-            aria-pressed={immersive}
-            onClick={(event) => {
-              closeUtilityMenu(event);
-              onToggleImmersive();
-            }}
-          >
-            {immersive ? 'Salir de inmersión' : 'Modo inmersión'}
-          </button>
-        )}
-        {!compactViewport && immersive && typeof onToggleRail === 'function' && (
-          <button
-            type="button"
-            role="menuitem"
-            aria-pressed={railCollapsed}
-            onClick={(event) => {
-              closeUtilityMenu(event);
-              onToggleRail();
-            }}
-          >
-            {railCollapsed ? 'Mostrar panel lateral' : 'Ocultar panel lateral'}
           </button>
         )}
         {warRoomVariantSelectable && (
@@ -247,10 +215,6 @@ function CompactWarRoomPill({
   board,
   controls,
   zenMode,
-  immersive,
-  railCollapsed,
-  onToggleImmersive,
-  onToggleRail,
 }) {
   return (
     <aside className="game-3d-command-column" aria-label="Puesto táctico de Matthias">
@@ -303,10 +267,6 @@ function CompactWarRoomPill({
           controls={controls}
           zenMode={zenMode}
           compactViewport
-          immersive={immersive}
-          railCollapsed={railCollapsed}
-          onToggleImmersive={onToggleImmersive}
-          onToggleRail={onToggleRail}
         />
       </div>
     </aside>
@@ -320,29 +280,8 @@ export default function GameWarRoomCommandColumn({
   zenMode = false,
   controls = {},
   compactViewport = false,
-  immersive = false,
-  railCollapsed = false,
-  onToggleImmersive,
-  onToggleRail,
 }) {
   const signal = resolveWarRoomSignal(game, status);
-
-  if (immersive && !compactViewport) {
-    return (
-      <aside className="game-3d-command-column game-3d-command-column-immersive" aria-label="Acciones de la War Room">
-        <WarRoomUtilityMenu
-          game={game}
-          board={board}
-          controls={controls}
-          zenMode={zenMode}
-          immersive
-          railCollapsed
-          onToggleImmersive={onToggleImmersive}
-          onToggleRail={onToggleRail}
-        />
-      </aside>
-    );
-  }
 
   // Compact War Room keeps one HUD surface. Secondary actions are folded into
   // its overflow so Android does not pay for a separate command row above the
@@ -355,10 +294,6 @@ export default function GameWarRoomCommandColumn({
         board={board}
         controls={controls}
         zenMode={zenMode}
-        immersive={immersive}
-        railCollapsed={railCollapsed}
-        onToggleImmersive={onToggleImmersive}
-        onToggleRail={onToggleRail}
       />
     );
   }
@@ -388,38 +323,12 @@ export default function GameWarRoomCommandColumn({
           </strong>
         </span>
 
-        <button
-          type="button"
-          className="game-3d-immersive-toggle"
-          aria-label={immersive ? 'Salir del modo inmersión' : 'Entrar en modo inmersión'}
-          title={immersive ? 'Salir del modo inmersión' : 'Modo inmersión'}
-          aria-pressed={immersive}
-          onClick={onToggleImmersive}
-        >
-          <span aria-hidden="true">⛶</span>
-        </button>
-        {immersive && typeof onToggleRail === 'function' && (
-          <button
-            type="button"
-            className="game-3d-rail-toggle"
-            aria-label={railCollapsed ? 'Mostrar panel lateral' : 'Ocultar panel lateral'}
-            title={railCollapsed ? 'Mostrar panel lateral' : 'Ocultar panel lateral'}
-            aria-pressed={railCollapsed}
-            onClick={onToggleRail}
-          >
-            <span aria-hidden="true">{railCollapsed ? '▥' : '▤'}</span>
-          </button>
-        )}
         <WarRoomGuideHelp />
         <WarRoomUtilityMenu
           game={game}
           board={board}
           controls={controls}
           zenMode={zenMode}
-          immersive={immersive}
-          railCollapsed={railCollapsed}
-          onToggleImmersive={onToggleImmersive}
-          onToggleRail={onToggleRail}
         />
       </div>
     </aside>

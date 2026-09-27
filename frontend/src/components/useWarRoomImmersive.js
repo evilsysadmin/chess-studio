@@ -1,12 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
-
-export function isWarRoomImmersiveExitKey(key) {
-  return key === 'Escape' || key === 'Esc';
-}
-
-export function shouldExitWarRoomImmersive({ enabled, focusActive }) {
-  return !enabled || Boolean(focusActive);
-}
+import { useEffect } from 'react';
 
 export function getWarRoomBrowserFullscreenElement(doc = globalThis.document) {
   if (!doc) return null;
@@ -37,6 +29,7 @@ export function requestWarRoomLandscape(screenApi = globalThis.screen) {
     return Promise.resolve(false);
   }
 }
+
 
 export function shouldAutoRotateWarRoomOnEntry({
   win = globalThis.window,
@@ -81,96 +74,23 @@ export function exitWarRoomBrowserFullscreen(doc = globalThis.document) {
   }
 }
 
-export default function useWarRoomImmersive({ enabled, focusActive = false } = {}) {
-  // CSS immersion is the War Room's default presentation on desktop and mobile.
-  // Native fullscreen/orientation still require a trusted user gesture, so entry
-  // never attempts those APIs automatically.
-  const [immersive, setImmersive] = useState(false);
-  const [railCollapsed, setRailCollapsed] = useState(false);
+export function shouldStartWarRoomImmersive({ enabled, focusActive = false } = {}) {
+  return Boolean(enabled) && !focusActive;
+}
 
-  const exitImmersive = useCallback(() => {
-    setImmersive(false);
-    setRailCollapsed(false);
+export default function useWarRoomImmersive({ enabled, focusActive = false } = {}) {
+  const immersive = shouldStartWarRoomImmersive({ enabled, focusActive });
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return undefined;
+    document.body.classList.toggle('war-room-immersive-active', immersive);
+    return () => document.body.classList.remove('war-room-immersive-active');
+  }, [immersive]);
+
+  useEffect(() => () => {
     void exitWarRoomBrowserFullscreen();
     unlockWarRoomOrientation();
   }, []);
 
-  const toggleImmersive = useCallback(() => {
-    if (!enabled || focusActive || immersive) {
-      exitImmersive();
-      return;
-    }
-
-    // Request native fullscreen from the trusted click/tap. If the browser
-    // blocks or lacks the API, the existing fixed-viewport CSS remains the
-    // graceful fallback instead of making the control a no-op on mobile.
-    // Android browsers only allow orientation locking reliably from the same
-    // trusted gesture used to enter fullscreen. Ask for both here; either API
-    // may gracefully decline without breaking the CSS immersive fallback.
-    void requestWarRoomLandscapeFullscreen();
-    setImmersive(true);
-  }, [enabled, exitImmersive, focusActive, immersive]);
-
-  const toggleRail = useCallback(() => {
-    if (!immersive) {
-      setRailCollapsed(false);
-      return;
-    }
-    setRailCollapsed((current) => !current);
-  }, [immersive]);
-
-  useEffect(() => {
-    if (shouldExitWarRoomImmersive({ enabled, focusActive }) && immersive) {
-      setImmersive(false);
-      setRailCollapsed(false);
-    }
-  }, [enabled, focusActive, immersive]);
-
-  useEffect(() => {
-    if (!immersive || typeof document === 'undefined') return undefined;
-
-    const handleFullscreenChange = () => {
-      if (getWarRoomBrowserFullscreenElement(document)) return;
-      setImmersive(false);
-      setRailCollapsed(false);
-    };
-
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
-    return () => {
-      document.removeEventListener('fullscreenchange', handleFullscreenChange);
-      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
-    };
-  }, [immersive]);
-
-  useEffect(() => {
-    if (!immersive || typeof document === 'undefined') return undefined;
-
-    const body = document.body;
-    const handleKeyDown = (event) => {
-      if (!isWarRoomImmersiveExitKey(event.key)) return;
-      event.preventDefault();
-      exitImmersive();
-    };
-
-    body.classList.add('war-room-immersive-active');
-    document.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      body.classList.remove('war-room-immersive-active');
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [exitImmersive, immersive]);
-
-  useEffect(() => () => {
-    void exitWarRoomBrowserFullscreen();
-  }, []);
-
-  return {
-    immersive,
-    railCollapsed,
-    toggleImmersive,
-    toggleRail,
-    exitImmersive,
-  };
+  return { immersive };
 }
