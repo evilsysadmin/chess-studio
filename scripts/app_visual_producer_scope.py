@@ -182,7 +182,7 @@ def classify_path(path: str) -> set[str] | None:
         lower == ".github/workflows/app-visual-artifact.yml"
         or lower.startswith(".github/actions/app-visual-pipeline/")
     ):
-        return {"chronicles-tactics"}
+        return set()
     if lower == "scripts/app_visual_capture.sh":
         return None
     if lower in {
@@ -419,8 +419,8 @@ def self_test() -> None:
     assert classify(["scripts/app_visual_scope.py"]) == "none"
     assert classify(["scripts/app_visual_producer_scope.py"]) == "none"
     assert classify(["scripts/app_visual_changed_files.py"]) == "none"
-    assert classify([".github/actions/app-visual-pipeline/action.yml"]) == "chronicles-tactics"
-    assert classify([".github/workflows/app-visual-artifact.yml"]) == "chronicles-tactics"
+    assert classify([".github/actions/app-visual-pipeline/action.yml"]) == "none"
+    assert classify([".github/workflows/app-visual-artifact.yml"]) == "none"
     assert classify(["frontend/src/chroniclesOfMatthiasIsometric.js"]) == "chronicles-tactics"
     assert classify(["frontend/src/components/ChroniclesOfMatthiasTactics.jsx"]) == "chronicles-tactics"
     assert classify(["frontend/src/chroniclesDungeon.js"]) == "chronicles-gameplay"
