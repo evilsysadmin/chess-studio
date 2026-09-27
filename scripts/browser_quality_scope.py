@@ -129,6 +129,10 @@ MATTHIAS_INSIGHTS_PATTERNS = (
     "frontend/src/components/InsightsMatthiasMotion.jsx",
     "e2e/insights-matthias-motion.spec.js",
 )
+CHRONICLES_ART_ONLY_PATHS = frozenset({
+    "frontend/src/chroniclesFantasyEnemyArt.js",
+})
+
 CHRONICLES_PATTERNS = (
     "frontend/src/chronicles/*",
     "frontend/src/chronicles*.js",
@@ -205,6 +209,12 @@ def classify(paths: Iterable[str]) -> BrowserScope:
 
     for path in _clean_paths(paths):
         if FRONTEND_TEST_RE.search(path):
+            continue
+
+        # Pure enemy-material tuning is already covered by the dedicated app
+        # visual artifact. Do not wake the unrelated long Tactics gameplay
+        # canary for a palette-only change.
+        if path in CHRONICLES_ART_ONLY_PATHS:
             continue
 
         if _matches(path, VISUAL_PATTERNS):
@@ -522,6 +532,7 @@ def _job_ids(scope: BrowserScope) -> list[str]:
 
 def self_test() -> None:
     assert classify([]) == BrowserScope()
+    assert classify(["frontend/src/chroniclesFantasyEnemyArt.js"]) == BrowserScope()
     assert classify(["frontend/src/components/WarRoomPracticalLighting.js"]) == BrowserScope(visual=True)
     assert classify(["frontend/src/components/WarRoomApprovedMockContract.js"]) == BrowserScope(visual=True)
     assert classify(["frontend/src/components/WarRoomCommandDeskLuxury.js"]) == BrowserScope(visual=True)
