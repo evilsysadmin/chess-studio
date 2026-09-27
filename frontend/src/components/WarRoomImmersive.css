@@ -259,6 +259,25 @@ body.war-room-immersive-active {
     min-height: 0;
   }
 
+  .game-layout-immersive .game-board-3d-stage {
+    position: relative;
+  }
+
+  .game-screen .game-layout-immersive .game-board-3d-stage > .board3d-main-shell {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  .game-screen .game-layout-immersive .board3d-main-host,
+  .game-screen .game-layout-immersive .board3d-main-canvas {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
   .game-layout-immersive .board3d-main-shell {
     height: min(100%, 100dvh) !important;
     min-height: 0 !important;
