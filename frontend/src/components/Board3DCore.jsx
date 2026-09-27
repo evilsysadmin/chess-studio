@@ -470,6 +470,16 @@ function Board3DCanvas({
       if (nextSquare) latestPropsRef.current.onPieceMouseEnter?.(nextSquare, event);
     }
 
+    function selectSquareFromTouch(event) {
+      if (renderer.domElement.dataset.warRoomPinching === 'true') return false;
+      const square = squareFromPointer(event);
+      renderer.domElement.dataset.warRoomLastSquare = square || '';
+      if (!square) return false;
+      setFocusedSquare(square);
+      latestPropsRef.current.onSquareClick?.(square);
+      return true;
+    }
+
     function onPointerDown(event) {
       const touchLike = event.pointerType === 'touch' || event.pointerType === 'pen';
       pointerStartRef.current = {
@@ -490,6 +500,8 @@ function Board3DCanvas({
       if (!touchLike) return;
       renderer.domElement.setPointerCapture?.(event.pointerId);
       renderer.domElement.dataset.warRoomTouchStage = 'down';
+      const handled = selectSquareFromTouch(event);
+      if (pointerStartRef.current) pointerStartRef.current.handled = handled;
     }
 
     function onPointerMove(event) {
@@ -548,7 +560,7 @@ function Board3DCanvas({
     function onPointerUp(event) {
       const start = pointerStartRef.current;
       pointerStartRef.current = null;
-      if (renderer.domElement.dataset.warRoomPinching === 'true') {
+      if (renderer.domElement.dataset.warRoomPinching === 'true' && !start?.handled) {
         renderer.domElement.dataset.warRoomTouchStage = 'pinch-end';
         releasePointer(event);
         return;
