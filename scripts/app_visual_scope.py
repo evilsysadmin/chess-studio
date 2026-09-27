@@ -145,9 +145,14 @@ def _surface_groups(path: str) -> set[str] | None:
         # adds value when browser-owned War Room code changes in the same PR.
         return set()
     if lower in {
+        ".github/workflows/home-blender-v2-preview.yml",
         ".github/workflows/home-blender-v2-runtime.yml",
+        "scripts/blender/build_home_v2_blockout.py",
+        "scripts/blender/export_home_v2_runtime.py",
         "scripts/promote_home_scene_runtime.py",
     }:
+        # Home's Blender source/runtime pipeline is Home-owned. Never let these
+        # paths fall through to the cross-product fail-safe visual sweep.
         return {"home"}
     if lower in {
         "scripts/app_visual_changed_files.py",
@@ -413,6 +418,10 @@ def self_test() -> None:
     ])
     assert quick_match.capture_groups == "home,warroom"
     assert not quick_match.hans and not quick_match.chesscom
+    home_blender = classify(["scripts/blender/build_home_v2_blockout.py"])
+    assert home_blender.capture_groups == "home"
+    assert home_blender.experiments_scope == "none"
+    assert not home_blender.hans and not home_blender.chesscom
 
     mobile_training = classify([
         "frontend/src/components/PuzzleScreen.jsx",
