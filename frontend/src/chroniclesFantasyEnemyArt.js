@@ -44,11 +44,11 @@ export function buildAshGoblin({ coarsePointer = false } = {}) {
   const root = new THREE.Group();
   root.name = 'chronicles-ash-goblin';
 
-  const skin = material(0x87905b, { roughness: 0.78, clearcoat: 0.08 });
+  const skin = material(0xa9b86d, { roughness: 0.72, clearcoat: 0.1 });
   const ash = material(0x26282a, { roughness: 0.84, metalness: 0.08 });
   const leather = material(0x4a3023, { roughness: 0.86 });
   const iron = material(0x596164, { metalness: 0.68, roughness: 0.34 });
-  const ember = material(0xe0924e, { emissive: 0xb84418, emissiveIntensity: 1.75, roughness: 0.3 });
+  const ember = material(0xffa24f, { emissive: 0xd14b16, emissiveIntensity: 2.15, roughness: 0.26 });
 
   add(root, new THREE.CylinderGeometry(0.58, 0.7, 0.16, segments), ash, [0, 0.08, 0], [], null, 'ash-goblin-plinth');
   add(root, new THREE.SphereGeometry(0.44, segments, Math.max(8, segments / 2)), leather, [0, 0.67, 0], [], [0.92, 1.12, 0.78], 'ash-goblin-torso');
@@ -74,8 +74,8 @@ export function buildCryptSpider({ coarsePointer = false } = {}) {
   const root = new THREE.Group();
   root.name = 'chronicles-crypt-spider';
 
-  const chitin = material(0x241d26, { roughness: 0.48, clearcoat: 0.32, metalness: 0.06 });
-  const bone = material(0x9b8d72, { roughness: 0.72 });
+  const chitin = material(0x38243f, { roughness: 0.42, clearcoat: 0.38, metalness: 0.08 });
+  const bone = material(0xc0ad82, { roughness: 0.66 });
   const eye = material(0xc85c36, { emissive: 0x922b18, emissiveIntensity: 2.1, roughness: 0.24 });
 
   add(root, new THREE.SphereGeometry(0.44, segments, Math.max(8, segments / 2)), chitin, [0, 0.48, -0.18], [], [1.15, 0.7, 1.35], 'crypt-spider-abdomen');
@@ -111,7 +111,7 @@ export function buildEmberWisp({ coarsePointer = false } = {}) {
   const root = new THREE.Group();
   root.name = 'chronicles-ember-wisp';
 
-  const ember = material(0xffb45f, { emissive: 0xf05a20, emissiveIntensity: 3.1, roughness: 0.18 });
+  const ember = material(0xffd17a, { emissive: 0xff6a24, emissiveIntensity: 3.65, roughness: 0.14 });
   const coal = material(0x33201a, { emissive: 0x7a2514, emissiveIntensity: 0.7, roughness: 0.7 });
   const haze = material(0xe96b35, { emissive: 0xc83c18, emissiveIntensity: 1.5, roughness: 0.32, transparent: true, opacity: 0.42 });
 
@@ -137,10 +137,10 @@ export function buildBoneHound({ coarsePointer = false } = {}) {
   const root = new THREE.Group();
   root.name = 'chronicles-bone-hound';
 
-  const bone = material(0xc6b99d, { roughness: 0.72, clearcoat: 0.05 });
+  const bone = material(0xe0d3b3, { roughness: 0.66, clearcoat: 0.07 });
   const darkBone = material(0x645b50, { roughness: 0.88 });
   const iron = material(0x3b3e3f, { metalness: 0.42, roughness: 0.5 });
-  const eye = material(0x77c0c4, { emissive: 0x278b93, emissiveIntensity: 2.35, roughness: 0.22 });
+  const eye = material(0x91e7ec, { emissive: 0x2aaab4, emissiveIntensity: 2.8, roughness: 0.18 });
 
   add(root, new THREE.CylinderGeometry(0.42, 0.48, 0.14, segments), iron, [0, 0.07, 0], [], null, 'bone-hound-plinth');
   add(root, new THREE.BoxGeometry(0.48, 0.48, 1.05), darkBone, [0, 0.58, -0.05], [0.02, 0, 0], null, 'bone-hound-rib-cage');
