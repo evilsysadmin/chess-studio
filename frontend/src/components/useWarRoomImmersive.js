@@ -86,12 +86,10 @@ export default function useWarRoomImmersive({ enabled, focusActive = false, game
   // Native fullscreen/orientation still require a trusted user gesture, so the
   // automatic entry only enables the CSS immersive state.
   const [immersive, setImmersive] = useState(() => Boolean(enabled && !focusActive && !gameOver));
-  const [railCollapsed, setRailCollapsed] = useState(false);
   const autoEnteredSessionRef = useRef(null);
 
   const exitImmersive = useCallback(() => {
     setImmersive(false);
-    setRailCollapsed(false);
     void exitWarRoomBrowserFullscreen();
     unlockWarRoomOrientation();
   }, []);
@@ -112,21 +110,12 @@ export default function useWarRoomImmersive({ enabled, focusActive = false, game
     setImmersive(true);
   }, [enabled, exitImmersive, focusActive, immersive]);
 
-  const toggleRail = useCallback(() => {
-    if (!immersive) {
-      setRailCollapsed(false);
-      return;
-    }
-    setRailCollapsed((current) => !current);
-  }, [immersive]);
-
   useEffect(() => {
     const session = String(sessionKey || 'default');
     if (shouldExitWarRoomImmersive({ enabled, focusActive, gameOver })) {
       if (immersive) {
         setImmersive(false);
-        setRailCollapsed(false);
-        void exitWarRoomBrowserFullscreen();
+          void exitWarRoomBrowserFullscreen();
         unlockWarRoomOrientation();
       }
       return;
@@ -135,8 +124,7 @@ export default function useWarRoomImmersive({ enabled, focusActive = false, game
     if (autoEnteredSessionRef.current !== session) {
       autoEnteredSessionRef.current = session;
       setImmersive(true);
-      setRailCollapsed(false);
-    }
+      }
   }, [enabled, focusActive, gameOver, immersive, sessionKey]);
 
   useEffect(() => {
@@ -145,7 +133,6 @@ export default function useWarRoomImmersive({ enabled, focusActive = false, game
     const handleFullscreenChange = () => {
       if (getWarRoomBrowserFullscreenElement(document)) return;
       setImmersive(false);
-      setRailCollapsed(false);
     };
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
@@ -181,9 +168,7 @@ export default function useWarRoomImmersive({ enabled, focusActive = false, game
 
   return {
     immersive,
-    railCollapsed,
     toggleImmersive,
-    toggleRail,
     exitImmersive,
   };
 }
