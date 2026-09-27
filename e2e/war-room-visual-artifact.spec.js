@@ -390,7 +390,7 @@ async function captureWarRoomHealth(page, label) {
     const board = box('[data-board3d-war-room="true"]');
     const hud = box('.game-3d-turn-pill');
     const human = box('.game-board-stack-3d .game-player-rail.is-human');
-    const music = box('.game-side-column-3d .game-side-music .music-deck-collapsed');
+    const music = box('.war-room-immersive-music-dock .music-deck-collapsed') || box('.game-side-column-3d .game-side-music .music-deck-collapsed');
     const notation = box('.game-side-column-3d .game-notation-disclosure');
     const legacyCommandDeck = box('.game-board-stack-3d > .game-command-deck');
     const masthead = box('.masthead-game-compact');
@@ -521,10 +521,9 @@ function expectPortraitHealth(health) {
   expect(health.legacyCommandDeck?.display, 'legacy Focus/Abandon row must stay visually folded').toBe('none');
   expect(health.boardWidthFill, '3D scene should remain the dominant mobile surface').toBeGreaterThanOrEqual(0.88);
   expect(health.hudToBoardGap, 'HUD should sit directly above the board').toBeLessThanOrEqual(20);
-  expect(health.human?.height, 'human rail height').toBeLessThanOrEqual(50);
-  expect(health.music?.height, 'music rail height').toBeLessThanOrEqual(50);
-  expect(health.notation?.height, 'notation rail height').toBeLessThanOrEqual(50);
-  expect(Math.abs((health.music?.top ?? 0) - (health.notation?.top ?? 0)), 'music/notebook row alignment').toBeLessThanOrEqual(2);
+  expect(health.music?.height, 'immersive RetroPlayer height').toBeLessThanOrEqual(50);
+  expect(health.human, 'immersive portrait must not reserve the legacy human rail').toBeNull();
+  expect(health.notation, 'immersive portrait must not reserve the legacy notation rail').toBeNull();
 }
 
 
