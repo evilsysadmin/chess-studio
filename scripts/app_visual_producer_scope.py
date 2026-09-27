@@ -42,6 +42,7 @@ WARROOM_CORE_ONLY_FILES = {
     # and immersive viewport, but cannot change decor, armor or Hans ownership.
     "frontend/src/components/usewarroomimmersive.js",
     "frontend/src/components/warroomimmersive.css",
+    "frontend/src/components/warroommobilelandscape.css",
 }
 WARROOM_VARIANT_ORDER = ("classic", "v2", "v3")
 WARROOM_PROFILE_SCOPE_ALL = "all"
@@ -184,6 +185,14 @@ def classify_path(path: str) -> set[str] | None:
         return {"chronicles-tactics"}
     if lower == "scripts/app_visual_capture.sh":
         return None
+    if lower in {
+        ".github/workflows/home-blender-v2-preview.yml",
+        ".github/workflows/home-blender-v2-runtime.yml",
+        "scripts/blender/build_home_v2_blockout.py",
+        "scripts/blender/export_home_v2_runtime.py",
+        "scripts/promote_home_scene_runtime.py",
+    }:
+        return set(HOME_ALL)
     if lower in {
         "scripts/blender/build_war_room_premium.py",
         "scripts/blender/publish_war_room_v2_staging.py",
@@ -419,6 +428,8 @@ def self_test() -> None:
     assert classify(["frontend/src/components/LabScreen.jsx"]) == "experiments-hub"
     assert classify(["frontend/src/components/QuickMatchModal.jsx"]) == "home-base,warroom-core"
     assert classify(["frontend/src/components/useWarRoomImmersive.js"]) == "warroom-core"
+    assert classify(["frontend/src/components/WarRoomMobileLandscape.css"]) == "warroom-core"
+    assert classify(["scripts/blender/build_home_v2_blockout.py"]) == "home-base,home-matthias,home-focus"
     assert classify([
         "frontend/src/components/QuickMatchModal.jsx",
         "frontend/src/components/useWarRoomImmersive.js",
