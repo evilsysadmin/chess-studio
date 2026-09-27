@@ -16,7 +16,7 @@ import {
 } from './WarRoom3DAnimation.js';
 import { createWarRoomAmbientScheduler } from './WarRoomAmbientScheduler.js';
 import { applyWarRoomHansScreenDiagnostics, applyWarRoomLightDiagnostics } from './WarRoomDomDiagnostics.js';
-import { resolveBoardTap } from './WarRoom3DTouch.js';
+import { resolveBoardTap, selectBoardSquareOnTouch } from './WarRoom3DTouch.js';
 import { BOARD3D_HIGHLIGHT_SIZE, BOARD3D_HIGHLIGHT_Y, board3DHighlightStyle } from './Board3DHighlights.js';
 import { board3DCaptureWarmBoostValue, board3DPieceInteractionPose, writeBoard3DHighlightPulse } from './Board3DInteractionFx.js';
 import { BOARD_THEME_3D, FILES, resolveBoard3DThemeId } from './Board3DConfig.js';
@@ -469,16 +469,6 @@ function Board3DCanvas({
       setHoveredSquare(nextSquare);
       if (nextSquare) latestPropsRef.current.onPieceMouseEnter?.(nextSquare, event);
     }
-
-    function selectSquareFromTouch(event) {
-      const square = squareFromPointer(event);
-      renderer.domElement.dataset.warRoomLastSquare = square || '';
-      if (!square) return false;
-      setFocusedSquare(square);
-      latestPropsRef.current.onSquareClick?.(square);
-      return true;
-    }
-
     function onPointerDown(event) {
       const touchLike = event.pointerType === 'touch' || event.pointerType === 'pen';
       pointerStartRef.current = {
@@ -499,10 +489,9 @@ function Board3DCanvas({
       if (!touchLike) return;
       renderer.domElement.setPointerCapture?.(event.pointerId);
       renderer.domElement.dataset.warRoomTouchStage = 'down';
-      const handled = selectSquareFromTouch(event);
+      const handled = selectBoardSquareOnTouch({ event, canvas: renderer.domElement, squareFromPointer, setFocusedSquare, onSquareClick: latestPropsRef.current.onSquareClick });
       if (pointerStartRef.current) pointerStartRef.current.handled = handled;
     }
-
     function onPointerMove(event) {
       const motion = cameraMotionRef.current;
       if (inspectModeRef.current) {
@@ -529,7 +518,6 @@ function Board3DCanvas({
       renderer.domElement.style.cursor = pieceHover ? 'pointer' : 'default';
       updatePieceHover(pieceHover, event);
     }
-
     function onPointerLeave(event) {
       const motion = cameraMotionRef.current;
       motion.targetX = 0;
@@ -559,6 +547,11 @@ function Board3DCanvas({
     function onPointerUp(event) {
       const start = pointerStartRef.current;
       pointerStartRef.current = null;
+      if (renderer.domElement.dataset.warRoomPinching === 'true' && !start?.handled) {
+        renderer.domElement.dataset.warRoomTouchStage = 'pinch-end';
+        releasePointer(event);
+        return;
+      }
       if (inspectModeRef.current) {
         cameraMotionRef.current.dragging = false;
         renderer.domElement.style.cursor = 'grab';
