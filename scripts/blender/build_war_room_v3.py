@@ -648,6 +648,14 @@ def build_celestial_globe(static, palette):
         palette["brass_dark"], static, bevel=0.045,
     )
     center = (x, y, 1.43)
+    base.cylinder(
+        "WR3_OBS_globe_cradle_foot", (x, y, 1.075), 0.13, 0.08,
+        palette["brass_dark"], static, vertices=32,
+    )
+    base.torus(
+        "WR3_OBS_globe_cradle_ring", (x, y, 1.115), 0.15, 0.022,
+        palette["brass"], static,
+    )
     base.sphere(
         "WR3_OBS_globe_sphere", center, 0.34, palette["night"], static,
         scale=(1.0, 1.0, 1.0),
