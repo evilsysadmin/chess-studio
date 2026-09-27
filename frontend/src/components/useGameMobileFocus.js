@@ -14,11 +14,6 @@ export function useGameMobileFocus(gameId) {
     && typeof window.matchMedia === 'function'
     && window.matchMedia(MOBILE_FOCUS_QUERY).matches
   ));
-  const [mobileLandscape, setMobileLandscape] = useState(() => (
-    typeof window !== 'undefined'
-    && typeof window.matchMedia === 'function'
-    && window.matchMedia(MOBILE_LANDSCAPE_QUERY).matches
-  ));
   const focusActive = focusMode && compactViewport;
 
   useEffect(() => {
