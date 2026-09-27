@@ -22,10 +22,13 @@ runs:
           exit 0
         fi
         if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
-          base_ref="${{ github.event.pull_request.base.ref }}"
-          git fetch --no-tags --depth=1 origin "$base_ref"
-          merge_base="$(git merge-base HEAD "origin/$base_ref")"
-          files="$(git diff --name-only "$merge_base" HEAD)"
+          # The checkout is a synthetic merge commit. Scope against the PR's
+          # actual base/head SHAs so unrelated merge-base history cannot leak
+          # visual ownership from other domains into this run.
+          base_sha="${{ github.event.pull_request.base.sha }}"
+          head_sha="${{ github.event.pull_request.head.sha }}"
+          git fetch --no-tags --depth=1 origin "$base_sha" "$head_sha"
+          files="$(git diff --name-only "$base_sha" "$head_sha")"
         else
           files="$(git diff --name-only HEAD^ HEAD)"
         fi
