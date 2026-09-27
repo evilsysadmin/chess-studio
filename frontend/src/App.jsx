@@ -72,7 +72,7 @@ import { useReplayLibrary } from './useReplayLibrary.js';
 import { logout, reportLogoutPresence, touchActivity } from './auth.js';
 import { pushProfileToServer } from './profileBackup.js';
 import { setAdminPreviewAccess } from './adminPreview.js';
-import { DEFAULT_FEATURE_FLAGS, normalizeFeatureFlags } from './featureFlags.js';
+import { DEFAULT_FEATURE_FLAGS, normalizeFeatureFlags } from './featureFlags.js'; import { setMatchmakingTargetLeadElo } from './matchmakingSettings.js';
 import { userFacingError } from './userFacingError.js';
 import { isAbortError } from './asyncControl.js';
 import { setFrontendTelemetryContext, startFrontendTelemetry } from './frontendTelemetry.js';
@@ -201,7 +201,7 @@ function AppInner({ isAdminUser }) {
   useEffect(() => {
     let active = true;
     api.getFeatures()
-      .then((payload) => { if (active) setFeatureFlags(normalizeFeatureFlags(payload)); })
+      .then((payload) => { if (active) { setFeatureFlags(normalizeFeatureFlags(payload)); setMatchmakingTargetLeadElo(payload?.matchmaking?.targetLeadElo); } })
       .catch(() => { /* defaults mantienen el producto operativo con backend antiguo/offline */ });
     return () => { active = false; };
   }, []);

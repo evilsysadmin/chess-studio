@@ -15,6 +15,7 @@ import { buildAdminInsights } from '../adminDashboardInsights.js';
 import { createAsyncCommitGuard } from '../asyncLifecycle.js';
 import AdminFeedbackSection from './AdminFeedbackSection.jsx';
 import AdminMatthiasStatusSection from './AdminMatthiasStatusSection.jsx';
+import AdminMatchmakingSettingsSection from './AdminMatchmakingSettingsSection.jsx';
 import AdminObservabilitySummary from './AdminObservabilitySummary.jsx';
 import AdminUserDirectory from './AdminUserDirectory.jsx';
 import ObservabilityPanel from './ObservabilityPanel.jsx';
@@ -229,6 +230,8 @@ export default function AdminScreen({ onExit }) {
           onPreviewPresetChange={(preset) => { setMatthiasPreviewPreset(preset); setMatthiasPreview(null); }}
           onPreview={() => void handlePreviewMatthias()}
         />
+
+        <AdminMatchmakingSettingsSection />
 
         <AdminFeedbackSection
           feedback={feedback}

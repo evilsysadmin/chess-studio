@@ -48,3 +48,11 @@ export function deleteAdminUser(username) {
 export function reanalyzeAdminUser(username, facts) {
   return adminPost('/admin/player-portrait', { username, facts });
 }
+
+export function fetchAdminMatchmakingSettings() {
+  return requestJson(`${BASE_URL}/admin/matchmaking-settings`, { headers: { ...authHeader() } });
+}
+
+export function updateAdminMatchmakingSettings(targetLeadElo) {
+  return adminPost('/admin/matchmaking-settings', { targetLeadElo: Number(targetLeadElo) });
+}
