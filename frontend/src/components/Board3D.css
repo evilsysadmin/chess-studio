@@ -397,3 +397,32 @@
 }
 
 
+
+.board3d-center-view {
+  position: absolute;
+  z-index: 8;
+  right: .65rem;
+  bottom: .65rem;
+  min-width: 0;
+  min-height: 32px;
+  padding: .28rem .58rem;
+  border-radius: 999px;
+  background: rgba(7, 11, 16, .62);
+  backdrop-filter: blur(10px);
+  font-size: .68rem;
+  opacity: .72;
+}
+
+.board3d-center-view:is(:hover, :focus-visible) {
+  opacity: 1;
+}
+
+@media (pointer: coarse) {
+  .board3d-center-view {
+    right: max(.45rem, env(safe-area-inset-right));
+    bottom: max(.45rem, env(safe-area-inset-bottom));
+    min-height: 34px;
+    padding-inline: .54rem;
+    font-size: .62rem;
+  }
+}
