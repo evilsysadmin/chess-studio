@@ -60,7 +60,7 @@ describe('War Room browser fullscreen bridge', () => {
 
 
 describe('War Room Android orientation', () => {
-  it('auto-rotates only on coarse-pointer mobile viewports', () => {
+  it('recognizes phone-like coarse-pointer viewports for shared landscape entry', () => {
     const mobile = { innerWidth: 390, matchMedia: vi.fn(() => ({ matches: true })) };
     const desktop = { innerWidth: 1440, matchMedia: vi.fn(() => ({ matches: false })) };
     const wideTouch = { innerWidth: 1024, matchMedia: vi.fn(() => ({ matches: true })) };
@@ -69,6 +69,7 @@ describe('War Room Android orientation', () => {
     expect(shouldAutoRotateWarRoomOnEntry({ win: desktop })).toBe(false);
     expect(shouldAutoRotateWarRoomOnEntry({ win: wideTouch })).toBe(false);
   });
+
 
   it('requests landscape from the immersive tap when supported', async () => {
     const lock = vi.fn().mockResolvedValue(undefined);

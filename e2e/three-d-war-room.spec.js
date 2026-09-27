@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { resolveBoard3DCameraFov } from '../frontend/src/components/Board3DConfig.js';
+import { classicWarRoomCameraFramingProfile } from '../frontend/src/components/Board3DCameraProfiles.js';
 import { activateSetupControl, buttonWithVisibleText, login, mockApi } from './helpers.js';
+import { clickWarRoomMove } from './war-room-board-input.js';
 
 const WAR_ROOM_READY_TIMEOUT = 45_000;
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
@@ -26,17 +28,15 @@ function dot(a, b) {
 
 function projectWarRoomSquare(rect, square, worldY = 0.12) {
   const aspect = Math.max(0.35, rect.width / Math.max(1, rect.height));
-  const profile = aspect >= 1.42
-    ? { halfSpan: 5.38, padding: 1.07, minDistance: 13.2, targetY: 1.08, targetZ: -0.16, cameraY: 7.35, cameraZ: 10.6 }
-    : { halfSpan: 5.78, padding: 1.13, minDistance: 14.5, targetY: 0.92, targetZ: -0.08, cameraY: 8.2, cameraZ: 10.72 };
-  // Keep the browser input projection on the same public FOV contract as the
-  // real renderer. The old helper hardcoded the historical 40° desktop lens,
-  // so a near-orthographic camera made Playwright click the wrong squares.
+  const profile = classicWarRoomCameraFramingProfile(aspect);
+  // Keep browser input projection on the same public V1 framing + FOV
+  // contracts as the real renderer. Camera experiments must move the pointer
+  // proof with the actual board instead of leaving stale test coordinates.
   const verticalFov = resolveBoard3DCameraFov(aspect) * Math.PI / 180;
   const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * aspect);
   const limitingFov = Math.min(verticalFov, horizontalFov);
   const unclampedDistance = (profile.halfSpan / Math.tan(limitingFov / 2)) * profile.padding;
-  const distance = Math.max(profile.minDistance, Math.min(88, unclampedDistance));
+  const distance = Math.max(profile.minDistance, Math.min(profile.maxDistance, unclampedDistance));
   const target = [0, profile.targetY, -profile.targetZ];
   const direction = normalized([0, profile.cameraY, profile.cameraZ]);
   const camera = target.map((value, index) => value + direction[index] * distance);
@@ -262,8 +262,7 @@ test('War Room · desktop input mantiene cámara fija y juega e2→e4', async ({
   await expect(board3d).toHaveAttribute('data-board3d-inspect', 'false');
   await expect(board3d).toHaveAttribute('data-board3d-camera', 'fixed-tactical');
 
-  await clickWarRoomSquare(page, canvasRect, 'e2', 0.76);
-  await clickWarRoomSquare(page, canvasRect, 'e4');
+  expect(await clickWarRoomMove(page, 'e2', 'e4')).toBe(true);
   await expect.poll(() => requestLog.filter((entry) => entry.method === 'POST' && /\/games\/[^/]+\/move$/.test(entry.path)).length).toBe(1);
 
   // Primera vuelta 3D→2D: la respuesta CPU deja d5 capturable y el estado

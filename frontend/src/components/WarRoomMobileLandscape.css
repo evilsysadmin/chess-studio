@@ -6,9 +6,8 @@
    * tokens instead of independently re-deriving viewport and shell geometry. */
   .game-screen .game-layout.game-layout-3d {
     --war-room-mobile-content-width: calc(100vw - (var(--shell-gutter) * 2));
-    --war-room-mobile-board-height: min(72dvh, 430px);
+    --war-room-mobile-board-height: min(74dvh, 450px);
     --war-room-mobile-player-rail-height: 38px;
-    --war-room-mobile-side-height: min(42dvh, 230px);
   }
 
   /* The generic game shell reserves a full 1rem footer. In phone landscape the
@@ -54,20 +53,30 @@
     max-width: 100%;
   }
 
+  /* Intrinsic min-content from the compact commander must never widen the
+   * phone grid beyond its canonical shell (notably at 932×430). */
+  .game-screen .board-live-row.is-3d-warroom > *,
+  .game-screen .game-3d-command-column,
+  .game-screen .game-side-column.game-side-column-3d {
+    min-width: 0 !important;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
   /* Board3D.css arrives with the lazy 3D bundle and therefore loads after this
    * static GameScreen stylesheet. Its generic <=1080px tablet composition used
    * to win the cascade after Three mounted, flipping landscape back to
    * commander-left / board-right. These declarations are the phone-landscape
    * contract, so pin only the grid properties that must survive lazy CSS. */
   .game-screen .board-live-row.is-3d-warroom {
-    grid-template-columns: minmax(0, 1fr) minmax(148px, 188px) !important;
+    grid-template-columns: minmax(0, 1fr) clamp(96px, 13vw, 118px) !important;
     grid-template-rows: auto minmax(0, 1fr) !important;
     grid-template-areas:
       'board commander'
       'board chat' !important;
     align-items: start;
-    gap: .38rem;
-    padding: .34rem;
+    gap: .26rem;
+    padding: .28rem;
   }
 
   .game-screen .game-board-stack.game-board-stack-3d {
@@ -117,6 +126,15 @@
     box-sizing: border-box;
   }
 
+  /* The overflow menu already owns these actions in phone landscape. */
+  .game-screen .board-live-row.is-3d-warroom .game-3d-compact-actions {
+    display: none !important;
+  }
+
+  .game-screen .board-live-row.is-3d-warroom .game-3d-turn-pill {
+    grid-template-columns: minmax(0, 1fr) 8px max-content max-content 30px !important;
+  }
+
   /* At 821–920px compactViewport is false, so the desktop matchup/state wrappers
    * are mounted even though this is still a coarse-pointer phone landscape.
    * Keep those wrappers and stack them inside the narrow commander track instead
@@ -136,10 +154,10 @@
     width: 100% !important;
     max-width: 100% !important;
     min-width: 0 !important;
-    min-height: 48px !important;
+    min-height: 42px !important;
     box-sizing: border-box;
-    padding: .24rem .3rem !important;
-    gap: .08rem .22rem;
+    padding: .18rem .22rem !important;
+    gap: .04rem .14rem;
   }
 
   .game-screen .game-layout-3d .game-3d-matchup,
@@ -220,58 +238,34 @@
     right: 0;
   }
 
-  /* Same cascade issue as the room grid: Board3D's generic <=1080px rule
-   * changes this back to a two-column CSS grid after lazy mount. Landscape owns
-   * a compact vertical rail instead; make that display mode explicit. */
-  .game-screen .game-side-column.game-side-column-3d {
-    grid-area: chat;
-    display: flex !important;
-    grid-template-columns: none !important;
-    grid-template-rows: none !important;
-    grid-template-areas: none !important;
-    flex-direction: column;
-    gap: .28rem;
-    width: 100%;
-    min-width: 0;
-    max-width: 100%;
-    min-height: 0;
-    max-height: var(--war-room-mobile-side-height);
-    overflow-y: auto;
-    overflow-x: hidden;
-    overscroll-behavior: contain;
-    box-sizing: border-box;
-  }
 
-  .game-screen .game-side-column-3d .game-side-music,
-  .game-screen .game-side-column-3d .game-notation-disclosure {
-    flex: 0 0 auto;
-    margin: 0;
-  }
-
-  .game-screen .game-side-column-3d .game-chat {
-    flex: 0 0 auto;
-    min-height: 138px;
-    max-height: 176px;
-  }
 }
 
 /* Very short browser landscape (address/nav bars still visible): preserve the
  * board before secondary rails. The right column remains scrollable. */
 @media (orientation: landscape) and (max-width: 960px) and (max-height: 430px) {
+  /* Opening banter remains available in portrait, but on a short landscape
+   * board any king-anchored bubble necessarily covers playable squares. Keep
+   * the board fully actionable. */
+  .game-board-3d-stage > .matthias-board-bubble-tracked:not(.game-mobile-focus-bubble),
+  .game-board-stack-3d > .matthias-board-bubble:not(.game-mobile-focus-bubble) {
+    display: none !important;
+  }
+
   .game-screen .game-layout.game-layout-3d {
     --war-room-mobile-board-height: min(69dvh, 296px);
     --war-room-mobile-player-rail-height: 24px;
     --war-room-mobile-side-height: min(27dvh, 116px);
   }
 
-  .game-screen .game-board-stack-3d .board3d-main-shell {
-    min-height: min(190px, var(--war-room-mobile-board-height));
-  }
-
   .app-shell-board-game:has(.game-layout-3d),
   .app-shell-board-game .game-screen:has(.game-layout-3d) {
     padding-bottom: 0 !important;
     margin-bottom: 0 !important;
+  }
+
+  .game-screen .game-board-stack-3d .board3d-main-shell {
+    min-height: min(190px, var(--war-room-mobile-board-height));
   }
 
   .game-screen .game-board-stack-3d .game-player-rail.is-human {

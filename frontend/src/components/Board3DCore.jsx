@@ -439,7 +439,7 @@ function Board3DCanvas({
       const width = Math.max(280, host.clientWidth || 280);
       const height = Math.max(300, host.clientHeight || 300);
       renderer.setSize(width, height, false);
-      fitBoardCamera(camera, width, height, whiteSide, { profile: cameraProfile, immersive });
+      fitBoardCamera(camera, width, height, whiteSide, { profile: cameraProfile === 'classroom' || warRoomVariant !== 'classic' ? cameraProfile : 'classic', immersive });
       render();
     }
     resize();
@@ -710,7 +710,7 @@ function Board3DCanvas({
       if (renderer.domElement.parentNode === host) host.removeChild(renderer.domElement);
       sceneStateRef.current = null;
     };
-  }, [effectiveThemeId, orientation, showCoordinates, cameraProfile, playAriaLabel, inspectAriaLabel]);
+  }, [effectiveThemeId, orientation, showCoordinates, cameraProfile, warRoomVariant, playAriaLabel, inspectAriaLabel]);
 
   useEffect(() => {
     const state = sceneStateRef.current;
@@ -1082,7 +1082,7 @@ function Board3DCanvas({
 
     applyMatthiasCheckPose(state, checkSquare, orientation);
     state.render();
-  }, [fen, selectedSquare, legalMap, lastMove, hintMove, checkSquare, focusedSquare, hoveredSquare, effectiveThemeId, orientation, showCoordinates]);
+  }, [fen, selectedSquare, legalMap, lastMove, hintMove, checkSquare, focusedSquare, hoveredSquare, effectiveThemeId, orientation, showCoordinates, warRoomVariant]);
 
   useEffect(() => {
     const state = sceneStateRef.current;

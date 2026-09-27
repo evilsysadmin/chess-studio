@@ -22,10 +22,36 @@ runs:
           exit 0
         fi
         if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
+          # The checkout is a synthetic merge commit. Scope against the PR's
+          # actual base/head SHAs so unrelated merge-base history cannot leak
+          # visual ownership from other domains into this run.
+          base_sha="${{ github.event.pull_request.base.sha }}"
+          head_sha="${{ github.event.pull_request.head.sha }}"
           base_ref="${{ github.event.pull_request.base.ref }}"
-          git fetch --no-tags --depth=1 origin "$base_ref"
-          merge_base="$(git merge-base HEAD "origin/$base_ref")"
-          files="$(git diff --name-only "$merge_base" HEAD)"
+          pr_number="${{ github.event.pull_request.number }}"
+          if ! git cat-file -e "$base_sha^{commit}" 2>/dev/null; then
+            # A shallow fetch of the moving base ref only guarantees today's
+            # main tip, not the historical base SHA recorded when the PR was
+            # opened. Fetch the exact reachable commit first; if the server
+            # refuses an unadvertised SHA, deepen main until the base appears.
+            git fetch --no-tags --depth=1 origin "$base_sha" || true
+            for deepen in 64 256 1024; do
+              git cat-file -e "$base_sha^{commit}" 2>/dev/null && break
+              git fetch --no-tags --deepen="$deepen" origin "$base_ref"
+            done
+            git cat-file -e "$base_sha^{commit}" 2>/dev/null || {
+              echo "::error::Unable to materialize PR base SHA $base_sha"
+              exit 1
+            }
+          fi
+          if ! git cat-file -e "$head_sha^{commit}" 2>/dev/null; then
+            git fetch --no-tags --depth=1 origin "pull/$pr_number/head"
+          fi
+          git cat-file -e "$head_sha^{commit}" 2>/dev/null || {
+            echo "::error::Unable to materialize PR head SHA $head_sha"
+            exit 1
+          }
+          files="$(git diff --name-only "$base_sha" "$head_sha")"
         else
           files="$(git diff --name-only HEAD^ HEAD)"
         fi
@@ -136,7 +162,7 @@ runs:
       run: node scripts/war_room_visual_freeze_check.mjs
 
     - name: Validate canonical PNG contract
-      if: always() && inputs.mode == 'canonical' && steps.scope.outputs.capture_groups != 'none'
+      if: always() && steps.scope.outcome == 'success' && inputs.mode == 'canonical' && steps.scope.outputs.capture_groups != 'none'
       shell: bash
       run: |
         set -euo pipefail
@@ -151,17 +177,17 @@ runs:
         fi
 
     - name: Validate summary
-      if: always() && inputs.mode == 'canonical' && steps.scope.outputs.capture_groups != 'none'
+      if: always() && steps.scope.outcome == 'success' && inputs.mode == 'canonical' && steps.scope.outputs.capture_groups != 'none'
       shell: bash
       run: node scripts/app_visual_summary.mjs --self-test
 
     - name: Summary
-      if: always() && inputs.mode == 'canonical' && steps.scope.outputs.capture_groups != 'none'
+      if: always() && steps.scope.outcome == 'success' && inputs.mode == 'canonical' && steps.scope.outputs.capture_groups != 'none'
       shell: bash
       run: node scripts/app_visual_summary.mjs
 
     - name: Upload canonical artifact
-      if: always() && inputs.mode == 'canonical' && steps.scope.outputs.capture_groups != 'none'
+      if: always() && steps.scope.outcome == 'success' && inputs.mode == 'canonical' && steps.scope.outputs.capture_groups != 'none'
       uses: actions/upload-artifact@v7
       with:
         name: app-visual-${{ github.event.pull_request.number || github.run_id }}

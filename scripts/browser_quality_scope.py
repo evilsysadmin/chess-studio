@@ -178,8 +178,8 @@ NETWORK_RACE_PATTERNS = (
 )
 BROWSER_ACTION_PATHS = {
     ".github/actions/setup-browser-e2e/action.yml",
-    ".github/actions/cache-node-modules/action.yml",
 }
+DEPENDENCY_CACHE_ACTION = ".github/actions/cache-node-modules/action.yml"
 CICD_WORKFLOW = ".github/workflows/cicd.yml"
 BROWSER_SCOPE_PATH = "scripts/browser_quality_scope.py"
 
@@ -250,6 +250,12 @@ def classify(paths: Iterable[str]) -> BrowserScope:
             full_logic = special_states = visual = focus = matthias = quick_2d = network_race = chronicles = tournament_mobile = True
             pawn_slug = chesscom = trailblazer = matthias_priority = True
             matthias_home = matthias_insights = False
+
+        if path == DEPENDENCY_CACHE_ACTION:
+            # Dependency-cache plumbing is shared infrastructure, not product
+            # behavior. One representative browser canary proves install/runtime
+            # integrity without waking every expensive browser family.
+            visual = True
 
         if path in {CICD_WORKFLOW, BROWSER_SCOPE_PATH}:
             # Prove the specialized-browser orchestration with one representative
@@ -406,21 +412,17 @@ def build_matrix(scope: BrowserScope) -> dict[str, list[dict[str, str]]]:
 
 
 BROWSER_JOB_GROUPS = (
-    (
-        "war-room-input-visual",
-        "War Room · input + mount/scale",
-        ("hans-fire-call", "desktop-input", "desktop-scale"),
-    ),
+    # desktop-input and desktop-scale are intentionally independent jobs.
+    # Both are long WebGL canaries; batching them serializes ~2 minutes of work
+    # on one hosted runner for no coverage benefit.
     (
         "war-room-android",
         "War Room · Android interaction",
         ("android-selection", "android-focus"),
     ),
-    (
-        "war-room-special-states",
-        "War Room · special states",
-        ("special-surfaces", "special-state-canaries"),
-    ),
+    # special-surfaces and special-state-canaries are both renderer-heavy.
+    # Keep them independent so hosted runners execute them in parallel instead
+    # of serializing two long 3D canaries.
     (
         "matthias-home-insights",
         "Matthias · Home + Así juegas motion",
@@ -524,6 +526,7 @@ def self_test() -> None:
     assert classify(["frontend/src/components/WarRoomApprovedMockContract.js"]) == BrowserScope(visual=True)
     assert classify(["frontend/src/components/WarRoomCommandDeskLuxury.js"]) == BrowserScope(visual=True)
     assert _ids(classify(["frontend/src/styles/19-game-focus.css"])) == ["desktop-scale", "android-focus"]
+    assert classify([".github/actions/cache-node-modules/action.yml"]) == BrowserScope(visual=True)
     assert classify(["frontend/src/components/Board3DParity.test.js"]) == BrowserScope()
     assert classify(["frontend/src/warRoomPointerCapture.test.js"]) == BrowserScope()
     assert classify(["frontend/src/components/MatthiasAvatar.spec.jsx"]) == BrowserScope()
@@ -541,7 +544,7 @@ def self_test() -> None:
         "special-surfaces", "special-state-canaries", "desktop-scale", "android-focus",
     ]
     assert _job_ids(full) == [
-        "war-room-android", "war-room-input-visual", "war-room-special-states",
+        "war-room-android", "desktop-input", "special-surfaces", "special-state-canaries", "desktop-scale",
     ]
     full_jobs = build_job_matrix(full)["include"]
     assert all("war-room-hans-fire-call.spec.js" not in job["command"] for job in full_jobs)
@@ -551,12 +554,12 @@ def self_test() -> None:
     chrome = classify(["frontend/src/components/GamePlayerRail.jsx"])
     assert chrome == BrowserScope(full_logic=True, visual=True, focus=True)
     assert _ids(chrome) == ["android-selection", "desktop-input", "desktop-scale", "android-focus"]
-    assert _job_ids(chrome) == ["war-room-android", "war-room-input-visual"]
+    assert _job_ids(chrome) == ["war-room-android", "desktop-input", "desktop-scale"]
 
     direct_special = classify(["e2e/three-d-war-room-special-states.spec.js"])
     assert direct_special == BrowserScope(special_states=True)
     assert _ids(direct_special) == ["special-surfaces", "special-state-canaries"]
-    assert _job_ids(direct_special) == ["war-room-special-states"]
+    assert _job_ids(direct_special) == ["special-surfaces", "special-state-canaries"]
     special_canary = build_matrix(direct_special)["include"][1]
     assert "jaque mate" in special_canary["command"]
     assert "promoción 3D" in special_canary["command"]

@@ -114,13 +114,20 @@ const CAPTURE_PROFILES = Object.freeze([
     landscapeContract: true,
   }),
   Object.freeze({
-    label: 'war-room-immersive-android-landscape-844x390',
-    title: 'Immersive Android landscape 844×390',
-    viewport: Object.freeze({ width: 844, height: 390 }),
+    label: 'war-room-android-landscape-800x360',
+    title: 'Android landscape 360 px short edge',
+    viewport: Object.freeze({ width: 800, height: 360 }),
     hasTouch: true,
     portraitContract: false,
     landscapeContract: true,
-    immersive: true,
+  }),
+  Object.freeze({
+    label: 'war-room-android-landscape-932x430',
+    title: 'Android landscape 430 px short edge',
+    viewport: Object.freeze({ width: 932, height: 430 }),
+    hasTouch: true,
+    portraitContract: false,
+    landscapeContract: true,
   }),
   Object.freeze({
     label: 'war-room-desktop-1440x900',
@@ -129,27 +136,6 @@ const CAPTURE_PROFILES = Object.freeze([
     hasTouch: false,
     portraitContract: false,
     landscapeContract: false,
-    variant: 'classic',
-  }),
-  Object.freeze({
-    label: 'war-room-immersive-desktop-1440x900',
-    title: 'Immersive desktop 1440×900',
-    viewport: Object.freeze({ width: 1440, height: 900 }),
-    hasTouch: false,
-    portraitContract: false,
-    landscapeContract: false,
-    immersive: true,
-    variant: 'classic',
-  }),
-  Object.freeze({
-    label: 'war-room-immersive-clean-desktop-1440x900',
-    title: 'Immersive clean castle desktop 1440×900',
-    viewport: Object.freeze({ width: 1440, height: 900 }),
-    hasTouch: false,
-    portraitContract: false,
-    landscapeContract: false,
-    immersive: true,
-    collapseRail: true,
     variant: 'classic',
   }),
   Object.freeze({
@@ -213,11 +199,15 @@ const ACTIVE_CAPTURE_PROFILES = Object.freeze(
     if (WAR_ROOM_PROFILE_SCOPE === 'mobile-entry') {
       return new Set([
         'war-room-android-390x844',
+        'war-room-android-landscape-800x360',
         'war-room-android-landscape-844x390',
+        'war-room-android-landscape-932x430',
         'war-room-immersive-android-landscape-844x390',
       ]).has(profile.label);
     }
-    if (WAR_ROOM_PROFILE_SCOPE === 'mobile') return profile.hasTouch === true;
+    if (WAR_ROOM_PROFILE_SCOPE === 'mobile') {
+      return profile.hasTouch === true || profile.label === 'war-room-desktop-1440x900';
+    }
     return true;
   }),
 );
@@ -253,7 +243,7 @@ async function freezeVisualFrame(page) {
   await page.waitForTimeout(80);
 }
 
-async function captureViewportPng(context, page, path) {
+async function captureViewportPng(page, path) {
   // CDP + headless SwiftShader can omit WebGL compositor layers even when the
   // canvas is visibly rendered. Visual-artifact builds preserve the drawing
   // buffer, so rasterize that canvas into a temporary DOM image and let the
@@ -291,16 +281,28 @@ async function captureViewportPng(context, page, path) {
     );
   }
 
-  const session = await context.newCDPSession(page);
   try {
-    const { data } = await session.send('Page.captureScreenshot', {
-      format: 'png',
-      fromSurface: true,
-      captureBeyondViewport: false,
+    const viewport = page.viewportSize();
+    if (!viewport) throw new Error('War Room visual capture requires a fixed viewport');
+    const png = await page.screenshot({
+      fullPage: false,
+      animations: 'disabled',
+      caret: 'hide',
+      clip: {
+        x: 0,
+        y: 0,
+        width: viewport.width,
+        height: viewport.height,
+      },
     });
-    await writeFile(path, Buffer.from(data, 'base64'));
+    const capturedWidth = png.readUInt32BE(16);
+    const capturedHeight = png.readUInt32BE(20);
+    expect(
+      { width: capturedWidth, height: capturedHeight },
+      'canonical PNG dimensions must match the declared capture viewport',
+    ).toEqual(viewport);
+    await writeFile(path, png);
   } finally {
-    await session.detach();
     await page.evaluate(() => {
       document.querySelectorAll('img[data-war-room-webgl-capture]').forEach((image) => image.remove());
     });
@@ -525,17 +527,17 @@ function expectPortraitHealth(health) {
   expect(Math.abs((health.music?.top ?? 0) - (health.notation?.top ?? 0)), 'music/notebook row alignment').toBeLessThanOrEqual(2);
 }
 
-function expectImmersiveHealth(health) {
-  expect(health.immersive, 'immersive body state must be active').toBe(true);
+
+function expectDefaultImmersiveShell(health) {
+  expect(health.immersive, 'War Room 3D must start immersive by default').toBe(true);
   expect(health.gameLayout?.left, 'immersive shell must start at the left viewport edge').toBeLessThanOrEqual(1);
   expect(health.gameLayout?.top, 'immersive shell must start at the top viewport edge').toBeLessThanOrEqual(1);
   expect(health.gameLayout?.width, 'immersive shell must span the viewport width').toBeGreaterThanOrEqual(health.viewport.width - 2);
   expect(health.gameLayout?.height, 'immersive shell must span the viewport height').toBeGreaterThanOrEqual(health.viewport.height - 2);
-  expect(health.boardViewportFill, 'immersive scene should use nearly the full viewport height').toBeGreaterThanOrEqual(0.97);
 }
 
 function expectLandscapeHealth(health) {
-  expect(health.verticalOverflowPx, 'Android landscape must fit the play-first War Room in one viewport').toBeLessThanOrEqual(1);
+  expect(health.verticalOverflowPx, 'Android landscape must fit the immersive War Room in one viewport').toBeLessThanOrEqual(1);
   expect(health.legacyCommandDeck?.display, 'Android landscape must not revive the legacy command row').toBe('none');
   expect(health.board?.left, 'Android landscape keeps the board in the primary left pane').toBeLessThan(80);
   expect(health.boardViewportFill, 'Android landscape should spend most viewport height on the board').toBeGreaterThanOrEqual(0.62);
@@ -615,97 +617,8 @@ for (const profile of ACTIVE_CAPTURE_PROFILES) {
         await variantMenu.click();
       }
 
-      if (profile.immersive) {
-        if (profile.hasTouch) {
-          // The page is already booted here, so install the spy in the live
-          // document. addInitScript only affects the next navigation and gave
-          // us a false negative instead of observing the trusted tap.
-          await page.evaluate(() => {
-            window.__warRoomOrientationLocks = [];
-            const orientation = screen.orientation;
-            if (orientation) {
-              Object.defineProperty(orientation, 'lock', {
-                configurable: true,
-                value: async (mode) => { window.__warRoomOrientationLocks.push(mode); },
-              });
-            }
-          });
-        }
-        const enterImmersive = page.getByRole('button', { name: 'Entrar en modo inmersión', exact: true }).first();
-        await expect(enterImmersive).toBeVisible();
-        await enterImmersive.click();
-        await expect(page.locator('.game-layout-immersive')).toBeVisible();
-        await expect(page.locator('body')).toHaveClass(/war-room-immersive-active/);
-        if (profile.hasTouch) {
-          await expect.poll(() => page.evaluate(() => window.__warRoomOrientationLocks || []))
-            .toContain('landscape');
-        }
-        const immersiveCanvas = page.locator('.game-layout-immersive .board3d-main-canvas');
-        await expect(immersiveCanvas).toHaveCount(1);
-        const immersiveVisibility = await page.evaluate(() => {
-          const selectors = [
-            '.game-layout-immersive .board3d-main-canvas',
-            '.game-layout-immersive .board3d-main-shell',
-            '.game-layout-immersive .game-board-3d-stage',
-            '.game-layout-immersive .game-board-stack-3d',
-            '.game-layout-immersive .board-live-row.is-3d-warroom',
-            '.game-layout-immersive .board-column',
-            '.game-layout-immersive',
-          ];
-          return selectors.map((selector) => {
-            const node = document.querySelector(selector);
-            if (!node) return { selector, missing: true };
-            const style = getComputedStyle(node);
-            const rect = node.getBoundingClientRect();
-            return {
-              selector,
-              display: style.display,
-              visibility: style.visibility,
-              opacity: style.opacity,
-              overflow: style.overflow,
-              position: style.position,
-              width: Number(rect.width.toFixed(1)),
-              height: Number(rect.height.toFixed(1)),
-              top: Number(rect.top.toFixed(1)),
-              left: Number(rect.left.toFixed(1)),
-            };
-          });
-        });
-        console.log('WAR_ROOM_IMMERSIVE_VISIBILITY', JSON.stringify(immersiveVisibility));
-        await expect(immersiveCanvas).toBeVisible();
-        // Classic War Room decor is a stronger scene canary than a mounted
-        // canvas: if Klaus exists, the room graph itself has rendered.
-        if (!['v2', 'v3'].includes(profile.variant)) {
-          await expect(immersiveCanvas).toHaveAttribute('data-war-room-cat-rendered', 'true', { timeout: 30_000 });
-          await expect(immersiveCanvas).toHaveAttribute('data-war-room-cat-count', '1');
-        }
-        await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-        await page.waitForTimeout(350);
-        await page.screenshot({
-          path: `${ARTIFACT_DIR}/${profile.label}.png`,
-          fullPage: false,
-          animations: 'disabled',
-        });
-        await page.keyboard.press('Escape');
-        await expect(page.locator('.game-layout-immersive')).toHaveCount(0);
-        await page.getByRole('button', { name: 'Entrar en modo inmersión', exact: true }).first().click();
-        await expect(page.locator('.game-layout-immersive')).toBeVisible();
-        if (profile.collapseRail) {
-          // Board-first desktop immersion intentionally removes the persistent
-          // side rail. Only exercise the legacy collapse control when a variant
-          // still exposes it.
-          const collapseRail = page.getByRole('button', { name: 'Ocultar panel lateral', exact: true }).first();
-          if (await collapseRail.count()) {
-            await expect(collapseRail).toBeVisible();
-            await collapseRail.click();
-            await expect(page.locator('.game-layout-immersive')).toHaveAttribute('data-war-room-rail-collapsed', 'true');
-            await expect(page.locator('.game-side-column-3d')).toBeHidden();
-            await expect(page.getByRole('button', { name: 'Mostrar panel lateral', exact: true }).first()).toBeVisible();
-          } else {
-            await expect(page.locator('.game-side-column-3d')).toBeHidden();
-          }
-        }
-      }
+      await expect(page.locator('.game-layout-immersive')).toBeVisible();
+      await expect(page.locator('body')).toHaveClass(/war-room-immersive-active/);
 
       if (profile.portraitContract) {
         await expect(page.getByRole('button', { name: 'Focus', exact: true })).toBeVisible();
@@ -724,6 +637,7 @@ for (const profile of ACTIVE_CAPTURE_PROFILES) {
       );
 
       expectSharedHealth(health);
+      expectDefaultImmersiveShell(health);
       if (profile.hasTouch) {
         expect(health.coarsePointer, `${profile.title} must emulate a coarse pointer`).toBe(true);
         expect(health.touchPoints, `${profile.title} must expose touch points`).toBeGreaterThan(0);
@@ -732,14 +646,15 @@ for (const profile of ACTIVE_CAPTURE_PROFILES) {
       }
       if (profile.portraitContract) expectPortraitHealth(health);
       if (profile.landscapeContract) expectLandscapeHealth(health);
-      if (profile.immersive) expectImmersiveHealth(health);
-      if (profile.collapseRail) {
-        expect(health.boardWidthFill, 'collapsed immersive castle should spend almost the full viewport width on the scene').toBeGreaterThanOrEqual(0.97);
+      if (profile.landscapeContract) {
+        await expect(
+          page.locator('.matthias-board-bubble:not(.game-mobile-focus-bubble)'),
+          'phone landscape must not cover playable squares with opening banter',
+        ).toBeHidden();
       }
 
       await freezeVisualFrame(page);
       await captureViewportPng(
-        context,
         page,
         `${ARTIFACT_DIR}/${profile.label}.png`,
       );
