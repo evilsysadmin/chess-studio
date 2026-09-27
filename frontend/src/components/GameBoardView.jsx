@@ -59,12 +59,7 @@ export default function GameBoardView({
     enterFocus: activateFocus,
     exitFocus: deactivateFocus,
   } = useGameMobileFocus(game.id);
-  const {
-    immersive: warRoomImmersive,
-    railCollapsed: warRoomRailCollapsed,
-    toggleImmersive: toggleWarRoomImmersive,
-    toggleRail: toggleWarRoomRail,
-  } = useWarRoomImmersive({ enabled: isThreeD, focusActive });
+  const { immersive: warRoomImmersive } = useWarRoomImmersive({ enabled: isThreeD, focusActive });
   const {
     activeBoardBubble,
     activeMatthiasKey,
@@ -169,7 +164,7 @@ export default function GameBoardView({
   };
 
   return (
-    <div className={`game-layout${isThreeD ? ' game-layout-3d' : ''}${focusActive ? ' game-layout-focus' : ''}${warRoomImmersive ? ' game-layout-immersive' : ''}`} data-mobile-focus={focusActive ? 'true' : 'false'} data-war-room-immersive={warRoomImmersive ? 'true' : 'false'} data-war-room-rail-collapsed={warRoomRailCollapsed ? 'true' : 'false'}>
+    <div className={`game-layout${isThreeD ? ' game-layout-3d' : ''}${focusActive ? ' game-layout-focus' : ''}${warRoomImmersive ? ' game-layout-immersive' : ''}`} data-mobile-focus={focusActive ? 'true' : 'false'} data-war-room-immersive={warRoomImmersive ? 'true' : 'false'} data-war-room-rail-collapsed="false">
       <div className="board-column">
         <GameStatusStrips
           game={game}
@@ -189,9 +184,6 @@ export default function GameBoardView({
               zenMode={zenMode}
               controls={controls}
               immersive={warRoomImmersive}
-              railCollapsed={warRoomRailCollapsed}
-              onToggleImmersive={toggleWarRoomImmersive}
-              onToggleRail={toggleWarRoomRail}
             />
           )}
 
