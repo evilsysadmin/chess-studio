@@ -40,6 +40,17 @@ body.war-room-immersive-active {
   left: auto;
 }
 
+.game-3d-immersive-status-proxy {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 @media (pointer: coarse) {
   .game-screen .game-layout-immersive .game-3d-command-column-immersive .game-3d-utility-menu > summary {
     width: 44px;
@@ -236,7 +247,22 @@ body.war-room-immersive-active {
 
 @media (max-width: 1080px) {
   .game-screen .game-layout.game-layout-3d.game-layout-immersive {
-    overflow: auto;
+    overflow: hidden;
+  }
+
+  .game-screen .game-layout-immersive > .board-column,
+  .game-screen .game-layout-immersive .board-live-row.is-3d-warroom,
+  .game-screen .game-layout-immersive .game-board-stack.game-board-stack-3d,
+  .game-screen .game-layout-immersive .game-board-3d-stage {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    max-height: none !important;
+    margin: 0 !important;
   }
 
   /* Portrait immersion keeps a definite height chain so the Three canvas
