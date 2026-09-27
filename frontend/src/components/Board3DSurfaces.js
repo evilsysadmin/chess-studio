@@ -394,11 +394,11 @@ function tuneShadowBudget(object, budget) {
   if (Number.isFinite(shadow.radius)) shadow.radius = Math.min(shadow.radius, budget.shadowRadius);
 }
 
-export function applyPremiumDecorSurfacePass(root, { coarsePointer = false } = {}) {
+export function applyPremiumDecorSurfacePass(root, { coarsePointer = false, renderBudget = null } = {}) {
   const seen = new Set();
   const sharedMicro = new Map();
   const stats = { wood: 0, leather: 0, fabric: 0, metal: 0, total: 0 };
-  const budget = warRoomRenderBudget({ coarsePointer });
+  const budget = renderBudget || warRoomRenderBudget({ coarsePointer });
 
   root?.traverse?.((object) => {
     tuneShadowBudget(object, budget);
@@ -490,15 +490,19 @@ function scheduleAfterFirstPaint(tasks) {
   };
 }
 
-export function installPremiumEnvironment(renderer, scene, { coarsePointer = false } = {}) {
+export function installPremiumEnvironment(renderer, scene, { coarsePointer = false, renderProfile = null } = {}) {
   if (!renderer || !scene) return () => {};
   let cancelled = false;
   let target = null;
   let room = null;
-  const budget = warRoomRenderBudget({
-    coarsePointer,
-    devicePixelRatio: typeof window !== 'undefined' ? window.devicePixelRatio : 1,
-  });
+  const devicePixelRatio = typeof window !== 'undefined' ? window.devicePixelRatio : 1;
+  const budget = renderProfile
+    ? Object.freeze({
+        pixelRatio: Math.min(devicePixelRatio, renderProfile.pixelRatioCap),
+        shadowMapSize: renderProfile.shadowMapSize,
+        shadowRadius: renderProfile.shadowRadius,
+      })
+    : warRoomRenderBudget({ coarsePointer, devicePixelRatio });
   // Board3D historically started above the sustained War Room budget. Apply the
   // effective cap before the first meaningful room render instead of waiting for
   // animation heuristics to discover that fill-rate is hot.
@@ -511,7 +515,7 @@ export function installPremiumEnvironment(renderer, scene, { coarsePointer = fal
     // has finished constructing the scene. It still avoids all desktop PMREM
     // and microtexture work.
     const runLitePass = () => {
-      if (!cancelled) applyPremiumDecorSurfacePass(scene, { coarsePointer: true });
+      if (!cancelled) applyPremiumDecorSurfacePass(scene, { coarsePointer: true, renderBudget: budget });
     };
     if (typeof queueMicrotask === 'function') queueMicrotask(runLitePass);
     else Promise.resolve().then(runLitePass);
@@ -532,7 +536,7 @@ export function installPremiumEnvironment(renderer, scene, { coarsePointer = fal
   const cancelPostPaint = scheduleAfterFirstPaint([
     () => {
       if (cancelled) return;
-      applyPremiumDecorSurfacePass(scene, { coarsePointer: false });
+      applyPremiumDecorSurfacePass(scene, { coarsePointer: false, renderBudget: budget });
       finishTask('decor-surfaces');
     },
     () => {
