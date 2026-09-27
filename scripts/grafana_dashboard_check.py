@@ -38,7 +38,7 @@ def main() -> int:
         fail("UID estable ausente en dashboard portable de logs")
     panels = portable.get("panels") or []
     titles = {str(row.get("title") or "") for row in panels}
-    required_titles = {"404 accionables · request_path", "5xx por ruta", "p95 por ruta · top 10", "Errores recientes · correlación", "Frontend telemetry · 15 min", "Frontend telemetry · flujo reciente", "Auth IP bans · 1 h", "Biggest offenders · 401/403", "Tráfico legítimo por país · hits"}
+    required_titles = {"404 accionables · request_path", "5xx por ruta", "p95 por ruta · top 10", "Errores recientes · correlación", "Errores CI / synthetic · aislados", "Frontend telemetry · 15 min", "Frontend telemetry · flujo reciente", "Auth IP bans · 1 h", "Biggest offenders · 401/403", "Tráfico legítimo por país · hits"}
     missing = sorted(required_titles - titles)
     if missing:
         fail(f"faltan paneles accionables: {', '.join(missing)}")
@@ -77,7 +77,7 @@ def main() -> int:
     if 'staging OCI stdout :' in logs_raw:
         fail("logs dashboard no debe usar stdout OCI como fuente canónica")
     logs_titles = {str(row.get("title") or "") for row in (logs_data.get("panels") or [])}
-    for required_logs_title in ("Biggest offenders · 401/403", "Tráfico legítimo por país · hits"):
+    for required_logs_title in ("Biggest offenders · 401/403", "Tráfico legítimo por país · hits", "Errores CI / synthetic · aislados"):
         if required_logs_title not in logs_titles:
             fail(f"logs dashboard perdió panel: {required_logs_title}")
     logs_exprs = "\n".join(
@@ -85,7 +85,7 @@ def main() -> int:
         for panel in (logs_data.get("panels") or [])
         for target in (panel.get("targets") or [])
     )
-    for token in ('status=~"401|403"', "client_ip", 'status=~"2..|3.."', 'username != ""', "client_country", "sum by (client_country) (count_over_time", 'username!~"ci_smoke_[0-9a-f]{16}"', 'route!~"/api/(ready|health|release|internal/.*)"'):
+    for token in ('status=~"401|403"', "client_ip", 'status=~"2..|3.."', 'username != ""', "client_country", "sum by (client_country) (count_over_time", 'username!~"ci_smoke_[0-9a-f]{16}"', 'username=~"ci_smoke_[0-9a-f]{16}"', 'synthetic_source=~"staging-(smoke-cleanup|browser-smoke)"', 'route!~"/api/(ready|health|release|internal/.*)"'):
         if token not in logs_exprs:
             fail(f"logs dashboard perdió señal accionable: {token}")
 
