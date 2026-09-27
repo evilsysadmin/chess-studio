@@ -82,6 +82,7 @@ export function resolveWarRoomRenderQuality({
   preference = getRenderQualityPreference(),
   ...hardware
 } = {}) {
+  if (hardware.softwareRenderer) return 'low';
   if (WAR_ROOM_RENDER_QUALITY_TIERS.includes(preference)) return preference;
   return resolveWarRoomAutoRenderQuality(hardware);
 }
