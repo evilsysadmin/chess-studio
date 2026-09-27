@@ -23,7 +23,7 @@ import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { api, STORAGE_KEY } from './api.js';
 import { loadTournament, saveTournament, resetTournament, applyResult, applyCaptureReward, difficultyForLevel, levelForPoints } from './tournament.js';
 import { saveGameRecord, updateGameRecordChat, statisticalHistoryRecords } from './gameHistory.js';
-import { recordGameActivity } from './gameActivity.js';
+import { recordGameActivity } from './gameActivity.js'; import { recordCompletedAdaptiveMatchmakingTelemetry } from './matchmakingTelemetry.js';
 import { chessGameExitDisposition, isCompletedGameOutcome, shouldApplyCompetitiveProgress } from './gameOutcome.js';
 import { gameModeFromContext } from './gameModes.js';
 import { loadRoster as loadCombatRoster } from './combatRoster.js';
@@ -452,7 +452,7 @@ function AppInner({ isAdminUser }) {
         ratingApplied: true,
         eloDelta: details.delta,
         eloBefore: rating.rating,
-        eloAfter: details.next.rating, ratingGames: details.next.games,
+        eloAfter: details.next.rating, ratingGames: details.next.games, cpuRating: details.cpuRating,
       };
     }
 
@@ -485,7 +485,7 @@ function AppInner({ isAdminUser }) {
       } : null,
     };
     setHistoryList(saveGameRecord(record));
-    recordGameActivity({ gameId: finishedGame.id, state: 'finished', mode: record.mode, outcome, difficulty: finishedGame.difficulty });
+    recordGameActivity({ gameId: finishedGame.id, state: 'finished', mode: record.mode, outcome, difficulty: finishedGame.difficulty }); recordCompletedAdaptiveMatchmakingTelemetry({ gameContext, finishedGame, outcome, endMeta, ratingBefore: ratingSummary.eloBefore ?? rating.rating, opponentRating: ratingSummary.cpuRating ?? null });
     recordCareerGame(record, { ...endMeta, contract: activeContract });
     clearActiveContract();
     setActiveContract(null);
