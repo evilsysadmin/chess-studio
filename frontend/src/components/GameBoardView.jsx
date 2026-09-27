@@ -58,7 +58,6 @@ export default function GameBoardView({
   }, []);
   const {
     compactViewport,
-    mobileLandscape,
     focusActive,
     enterFocus: activateFocus,
     exitFocus: deactivateFocus,
@@ -182,7 +181,7 @@ export default function GameBoardView({
   };
 
   return (
-    <div className={`game-layout${isThreeD ? ' game-layout-3d' : ''}${focusActive ? ' game-layout-focus' : ''}${warRoomImmersive ? ' game-layout-immersive' : ''}`} data-mobile-focus={focusActive ? 'true' : 'false'} data-war-room-mobile-landscape={mobileLandscape ? 'true' : 'false'} data-war-room-orientation-lock={warRoomOrientationLock} data-war-room-immersive={warRoomImmersive ? 'true' : 'false'}>
+    <div className={`game-layout${isThreeD ? ' game-layout-3d' : ''}${focusActive ? ' game-layout-focus' : ''}${warRoomImmersive ? ' game-layout-immersive' : ''}`} data-mobile-focus={focusActive ? 'true' : 'false'} data-war-room-orientation-lock={warRoomOrientationLock} data-war-room-immersive={warRoomImmersive ? 'true' : 'false'}>
       <WarRoomLandscapeGate active={warRoomNeedsRotation} lockState={warRoomOrientationLock} onActivate={activateLandscape} />
       <div className="board-column">
         <GameStatusStrips
