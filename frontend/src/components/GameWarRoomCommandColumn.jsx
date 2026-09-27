@@ -218,7 +218,7 @@ function CompactWarRoomPill({
   return (
     <aside className="game-3d-command-column" aria-label="Puesto táctico de Matthias">
       <div
-        className={`game-3d-turn-pill is-${signal.tone}`}
+        className={`game-3d-turn-pill is-compact is-${signal.tone}`}
         data-matthias-war-room-presence="king-piece"
       >
         {CPU_IDENTITY.avatar && <img className="game-3d-turn-pill-avatar" src={CPU_IDENTITY.avatar} alt="" aria-hidden="true" />}

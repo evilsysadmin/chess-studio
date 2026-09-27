@@ -390,17 +390,17 @@ body.war-room-immersive-active .game-screen {
     pointer-events: none;
   }
 
-  .game-screen .game-layout-immersive .game-3d-command-column .game-3d-turn-pill {
-    display: grid !important;
-    grid-template-columns: minmax(0, 1fr) 8px max-content 34px 34px !important;
-    grid-template-rows: 38px !important;
-    grid-template-areas: none !important;
+  .game-screen .game-layout-immersive .game-3d-command-column .game-3d-turn-pill.is-compact {
+    display: flex !important;
+    flex-wrap: nowrap !important;
     align-items: center !important;
     width: 100% !important;
     min-height: 38px !important;
+    height: 38px !important;
     padding: .08rem .18rem !important;
     gap: .14rem !important;
     border-radius: 999px !important;
+    overflow: visible !important;
     pointer-events: auto;
   }
 
@@ -465,4 +465,24 @@ body.war-room-immersive-active .game-screen {
 @keyframes war-room-immersive-enter {
   from { opacity: .82; }
   to { opacity: 1; }
+}
+
+@media (orientation: landscape) and (max-width: 1080px) and (max-height: 620px) {
+  .game-screen .game-layout-immersive .game-3d-turn-pill.is-compact .game-3d-turn-pill-identity {
+    flex: 1 1 auto !important;
+  }
+
+  .game-screen .game-layout-immersive .game-3d-turn-pill.is-compact .game-3d-turn-pill-light,
+  .game-screen .game-layout-immersive .game-3d-turn-pill.is-compact .game-3d-turn-pill-label,
+  .game-screen .game-layout-immersive .game-3d-turn-pill.is-compact .context-help-btn,
+  .game-screen .game-layout-immersive .game-3d-turn-pill.is-compact .game-3d-utility-menu {
+    flex: 0 0 auto !important;
+  }
+
+  .game-screen .game-layout-immersive .game-3d-turn-pill.is-compact .game-3d-utility-menu {
+    position: relative !important;
+    top: auto !important;
+    right: auto !important;
+    transform: none !important;
+  }
 }
