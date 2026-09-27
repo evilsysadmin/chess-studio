@@ -206,11 +206,11 @@ function Board3DCanvas({
       return undefined;
     }
 
-    let rendererName = '';
+    let rendererName = ''; let maxTextureSize = null;
     let softwareRenderer = Boolean(rendererAttempt.liteFallback);
     try {
       const gl = renderer.getContext();
-      const debugRendererInfo = gl.getExtension?.('WEBGL_debug_renderer_info');
+      const debugRendererInfo = gl.getExtension?.('WEBGL_debug_renderer_info'); maxTextureSize = gl.getParameter?.(gl.MAX_TEXTURE_SIZE) || null;
       rendererName = debugRendererInfo
         ? gl.getParameter(debugRendererInfo.UNMASKED_RENDERER_WEBGL)
         : gl.getParameter(gl.RENDERER);
@@ -221,9 +221,9 @@ function Board3DCanvas({
     }
 
     const coarsePointer = Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
-    const sceneProfile = warRoomSceneProfile({ coarsePointer, softwareRenderer });
+    const sceneProfile = warRoomSceneProfile({ coarsePointer, softwareRenderer, maxTextureSize });
     const { lite: renderLite } = sceneProfile; const sceneLite = renderLite || (coarsePointer && warRoomMobilePerformance === true);
-    const scene = new THREE.Scene(); scene.userData.warRoomHansAwaitCall = latestPropsRef.current.hansFireCallEnabled;
+    const scene = new THREE.Scene(); scene.userData.warRoomHansAwaitCall = latestPropsRef.current.hansFireCallEnabled; scene.userData.warRoomAdaptiveQuality = sceneProfile.adaptiveQuality;
     const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
     const hansWorldProbe = new THREE.Vector3();
     const hansScreenProbe = new THREE.Vector3();
@@ -260,14 +260,14 @@ function Board3DCanvas({
     renderer.domElement.dataset.board3dRenderPath = rendererAttempt.id;
     renderer.domElement.dataset.board3dRenderer = String(rendererName || 'unknown').slice(0, 180);
     renderer.domElement.dataset.board3dRendererClass = compactWebGLRendererLabel(rendererName);
-    renderer.domElement.dataset.board3dSceneTier = sceneProfile.tier;
+    renderer.domElement.dataset.board3dSceneTier = sceneProfile.tier; renderer.domElement.dataset.warRoomRenderQuality = sceneProfile.qualityTier;
     renderer.domElement.dataset.warRoomDomDiagnostics = 'diff-only-ref-v2';
     renderer.domElement.dataset.board3dInteractionHotPath = 'cached-pick-pulse-capture-v1';
     renderer.domElement.dataset.board3dInspectYaw = '0.000';
     renderer.domElement.dataset.board3dInspectPitch = '0.000';
     host.appendChild(renderer.domElement);
 
-    const releaseEnvironment = installPremiumEnvironment(renderer, scene, { coarsePointer: sceneLite });
+    const releaseEnvironment = installPremiumEnvironment(renderer, scene, { coarsePointer: sceneLite, renderProfile: sceneProfile });
 
     scene.add(new THREE.HemisphereLight(0xffefd0, 0x10192b, 1.35));
     const key = new THREE.DirectionalLight(0xffe1aa, initialLights.key);
@@ -282,7 +282,7 @@ function Board3DCanvas({
     key.shadow.camera.far = 28;
     key.shadow.bias = -0.00045;
     key.shadow.normalBias = 0.018;
-    key.shadow.radius = sceneLite ? 1.1 : 2.35;
+    key.shadow.radius = sceneProfile.shadowRadius;
     scene.add(key);
     const rim = new THREE.PointLight(theme.glow, initialLights.rim, 19, 2);
     rim.position.set(4.8, 3.6, whiteSide ? -4.8 : 4.8);
