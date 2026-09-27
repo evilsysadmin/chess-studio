@@ -19,6 +19,7 @@ on:
       - e2e/browser-*-health.spec.js
       - scripts/*visual*
       - .github/actions/app-visual-pipeline/**
+      - .github/workflows/app-visual-artifact.yml
   workflow_dispatch:
 concurrency:
   group: ${{ github.ref }}
@@ -27,7 +28,7 @@ permissions: {contents: read}
 jobs:
   capture:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v7
         with: {fetch-depth: 2}
