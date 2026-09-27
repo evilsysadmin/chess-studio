@@ -134,7 +134,7 @@ export function setReducedMotion(value) {
 }
 
 export function getBoardCoordinates() {
-  return getStorageItem(STORAGE_LOCAL, BOARD_COORDINATES_KEY) !== '0';
+  return getStorageItem(STORAGE_LOCAL, BOARD_COORDINATES_KEY) === '1';
 }
 
 export function setBoardCoordinates(value) {

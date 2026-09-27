@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { getBoardCoordinates, setBoardCoordinates } from '../userPreferences.js';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
 import { zenModeSummary } from '../zenMode.js';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
@@ -83,6 +85,7 @@ export function WarRoomUtilityMenu({
   const hasHint = !zenMode && controls.hintMode !== 'off' && typeof controls.onHint === 'function';
   const hasUndo = !zenMode && controls.hintMode === 'free' && typeof controls.onUndo === 'function';
   const hasAppearance = showAppearance && (compactViewport || typeof board?.onCustomize === 'function');
+  const [showCoordinates, setShowCoordinates] = useState(() => getBoardCoordinates());
   const hasNonDangerAction = (compactViewport && showFocus)
     || hasHint
     || hasUndo
@@ -167,6 +170,17 @@ export function WarRoomUtilityMenu({
             Apariencia
           </button>
         )}
+        <button
+          type="button"
+          role="menuitemcheckbox"
+          aria-checked={showCoordinates}
+          onClick={(event) => {
+            closeUtilityMenu(event);
+            setShowCoordinates(setBoardCoordinates(!showCoordinates));
+          }}
+        >
+          Coordenadas del tablero · {showCoordinates ? 'activadas' : 'desactivadas'}
+        </button>
         {warRoomVariantSelectable && (
           <>
             <span className="game-3d-utility-separator" role="separator" />
