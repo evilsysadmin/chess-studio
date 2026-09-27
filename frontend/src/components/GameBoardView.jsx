@@ -71,9 +71,7 @@ export default function GameBoardView({
   const gameOver = Boolean(game.isGameOver || clocks.flagFallen || clocks.forcedOutcome);
   const {
     immersive: warRoomImmersive,
-    railCollapsed: warRoomRailCollapsed,
     toggleImmersive: toggleWarRoomImmersive,
-    toggleRail: toggleWarRoomRail,
   } = useWarRoomImmersive({
     enabled: isThreeD,
     focusActive,
@@ -184,7 +182,7 @@ export default function GameBoardView({
   };
 
   return (
-    <div className={`game-layout${isThreeD ? ' game-layout-3d' : ''}${focusActive ? ' game-layout-focus' : ''}${warRoomImmersive ? ' game-layout-immersive' : ''}`} data-mobile-focus={focusActive ? 'true' : 'false'} data-war-room-mobile-landscape={mobileLandscape ? 'true' : 'false'} data-war-room-orientation-lock={warRoomOrientationLock} data-war-room-immersive={warRoomImmersive ? 'true' : 'false'} data-war-room-rail-collapsed={warRoomRailCollapsed ? 'true' : 'false'}>
+    <div className={`game-layout${isThreeD ? ' game-layout-3d' : ''}${focusActive ? ' game-layout-focus' : ''}${warRoomImmersive ? ' game-layout-immersive' : ''}`} data-mobile-focus={focusActive ? 'true' : 'false'} data-war-room-mobile-landscape={mobileLandscape ? 'true' : 'false'} data-war-room-orientation-lock={warRoomOrientationLock} data-war-room-immersive={warRoomImmersive ? 'true' : 'false'}>
       <WarRoomLandscapeGate active={warRoomNeedsRotation} lockState={warRoomOrientationLock} onActivate={activateLandscape} />
       <div className="board-column">
         <GameStatusStrips
@@ -205,9 +203,7 @@ export default function GameBoardView({
               zenMode={zenMode}
               controls={controls}
               immersive={warRoomImmersive}
-              railCollapsed={warRoomRailCollapsed}
               onToggleImmersive={toggleWarRoomImmersive}
-              onToggleRail={toggleWarRoomRail}
             />
           )}
 
