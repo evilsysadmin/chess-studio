@@ -114,31 +114,12 @@ const CAPTURE_PROFILES = Object.freeze([
     landscapeContract: true,
   }),
   Object.freeze({
-    label: 'war-room-immersive-android-landscape-844x390',
-    title: 'Immersive Android landscape 844×390',
-    viewport: Object.freeze({ width: 844, height: 390 }),
-    hasTouch: true,
-    portraitContract: false,
-    landscapeContract: true,
-    immersive: true,
-  }),
-  Object.freeze({
     label: 'war-room-desktop-1440x900',
     title: 'Desktop 1440×900',
     viewport: Object.freeze({ width: 1440, height: 900 }),
     hasTouch: false,
     portraitContract: false,
     landscapeContract: false,
-    variant: 'classic',
-  }),
-  Object.freeze({
-    label: 'war-room-immersive-desktop-1440x900',
-    title: 'Immersive desktop 1440×900',
-    viewport: Object.freeze({ width: 1440, height: 900 }),
-    hasTouch: false,
-    portraitContract: false,
-    landscapeContract: false,
-    immersive: true,
     variant: 'classic',
   }),
   Object.freeze({
@@ -203,7 +184,6 @@ const ACTIVE_CAPTURE_PROFILES = Object.freeze(
       return new Set([
         'war-room-android-390x844',
         'war-room-android-landscape-844x390',
-        'war-room-immersive-android-landscape-844x390',
       ]).has(profile.label);
     }
     if (WAR_ROOM_PROFILE_SCOPE === 'mobile') return profile.hasTouch === true;
@@ -556,7 +536,7 @@ for (const profile of ACTIVE_CAPTURE_PROFILES) {
           });
         }
       }
-    }, { spyOrientation: Boolean(profile.hasTouch && profile.immersive) });
+    }, { spyOrientation: Boolean(profile.hasTouch) });
 
     const page = await context.newPage();
     try {
@@ -590,10 +570,9 @@ for (const profile of ACTIVE_CAPTURE_PROFILES) {
         await variantMenu.click();
       }
 
-      if (profile.immersive) {
-        // Immersion is the canonical War Room presentation on desktop and
-        // mobile. No legacy "enter immersion" click should be required.
-        const immersiveRoot = '.game-layout-immersive';
+      // Immersion is the canonical War Room presentation on desktop and
+      // mobile. Every visual profile must exercise the same live contract.
+      const immersiveRoot = '.game-layout-immersive';
         await expect(page.locator(immersiveRoot)).toBeVisible();
         await expect(page.locator(immersiveRoot)).toHaveAttribute('data-war-room-immersive', 'true');
         await expect(page.locator('body')).toHaveClass(/war-room-immersive-active/);
@@ -660,13 +639,12 @@ for (const profile of ACTIVE_CAPTURE_PROFILES) {
           await expect(immersiveCanvas).toHaveAttribute('data-war-room-cat-count', '1');
         }
         await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-        await page.waitForTimeout(350);
-        await page.screenshot({
-          path: `${ARTIFACT_DIR}/${profile.label}.png`,
-          fullPage: false,
-          animations: 'disabled',
-        });
-      }
+      await page.waitForTimeout(350);
+      await page.screenshot({
+        path: `${ARTIFACT_DIR}/${profile.label}.png`,
+        fullPage: false,
+        animations: 'disabled',
+      });
 
       if (profile.portraitContract) {
         const overflow = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
@@ -697,7 +675,7 @@ for (const profile of ACTIVE_CAPTURE_PROFILES) {
       }
       if (profile.portraitContract) expectPortraitHealth(health);
       if (profile.landscapeContract) expectLandscapeHealth(health);
-      if (profile.immersive) expectImmersiveHealth(health);
+      expectImmersiveHealth(health);
       await freezeVisualFrame(page);
       await captureViewportPng(
         context,
