@@ -124,9 +124,6 @@ test('War Room · offline→online durante /move pendiente reconcilia 3D sin rem
   await buttonWithVisibleText(page, 'Partida rápida').click();
   const quickMatch = page.getByRole('dialog', { name: 'Configurar partida rápida' });
   await expect(quickMatch).toBeVisible();
-  const settings = quickMatch.locator('details.quick-match-settings');
-  await settings.locator(':scope > summary').click();
-  await expect(settings).toHaveAttribute('open', '');
   const renderer = quickMatch.getByRole('group', { name: 'Tipo de tablero' });
   await renderer.getByRole('button', { name: '2D', exact: true }).click();
   await expect(renderer.getByRole('button', { name: '2D', exact: true })).toHaveAttribute('aria-pressed', 'true');
