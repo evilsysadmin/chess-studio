@@ -92,6 +92,8 @@ function Board3DCanvas({
   const hostRef = useRef(null);
   const sceneStateRef = useRef(null);
   const pointerStartRef = useRef(null);
+  const pinchRef = useRef({ pointers: new Map(), active: false, startDistance: 0, startZoom: 1 });
+  const zoomRef = useRef(1);
   const latestPropsRef = useRef({});
   const animationFrameRef = useRef(0);
   const previousFenRef = useRef(fen);
@@ -435,11 +437,22 @@ function Board3DCanvas({
       ambientScheduler?.markPaint();
     }
 
+    function applyUserZoom() {
+      const basePosition = camera.userData?.basePosition;
+      const baseTarget = camera.userData?.baseTarget;
+      if (!basePosition || !baseTarget) return;
+      const scale = THREE.MathUtils.clamp(Number(zoomRef.current) || 1, 0.72, 1.16);
+      camera.position.copy(baseTarget).add(basePosition.clone().sub(baseTarget).multiplyScalar(scale));
+      camera.lookAt(baseTarget);
+      renderer.domElement.dataset.board3dZoom = scale.toFixed(3);
+    }
+
     function resize() {
       const width = Math.max(280, host.clientWidth || 280);
       const height = Math.max(300, host.clientHeight || 300);
       renderer.setSize(width, height, false);
       fitBoardCamera(camera, width, height, whiteSide, { profile: cameraProfile === 'classroom' || (latestPropsRef.current.warRoomVariant || 'classic') !== 'classic' ? cameraProfile : 'classic', immersive });
+      applyUserZoom();
       render();
     }
     resize();
@@ -481,6 +494,29 @@ function Board3DCanvas({
 
     function onPointerDown(event) {
       const touchLike = event.pointerType === 'touch' || event.pointerType === 'pen';
+      if (touchLike) {
+        const pinch = pinchRef.current;
+        pinch.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+        if (pinch.pointers.size === 1) {
+          pointerStartRef.current = {
+            x: event.clientX,
+            y: event.clientY,
+            id: event.pointerId,
+            pointerType: event.pointerType,
+            handled: false,
+          };
+        } else if (pinch.pointers.size === 2) {
+          const [a, b] = [...pinch.pointers.values()];
+          pinch.active = true;
+          pinch.startDistance = Math.hypot(a.x - b.x, a.y - b.y);
+          pinch.startZoom = zoomRef.current;
+          if (pointerStartRef.current) pointerStartRef.current.handled = true;
+        }
+        renderer.domElement.setPointerCapture?.(event.pointerId);
+        renderer.domElement.dataset.warRoomTouchStage = pinch.active ? 'pinch' : 'down';
+        return;
+      }
+
       pointerStartRef.current = {
         x: event.clientX,
         y: event.clientY,
@@ -494,16 +530,24 @@ function Board3DCanvas({
         motion.lastX = event.clientX;
         motion.lastY = event.clientY;
         renderer.domElement.setPointerCapture?.(event.pointerId);
-        return;
       }
-      if (!touchLike) return;
-      renderer.domElement.setPointerCapture?.(event.pointerId);
-      renderer.domElement.dataset.warRoomTouchStage = 'down';
-      const handled = selectSquareFromTouch(event);
-      if (pointerStartRef.current) pointerStartRef.current.handled = handled;
     }
 
     function onPointerMove(event) {
+      const pinch = pinchRef.current;
+      if (pinch.pointers.has(event.pointerId)) {
+        pinch.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+        if (pinch.active && pinch.pointers.size >= 2) {
+          const [a, b] = [...pinch.pointers.values()];
+          const distance = Math.max(1, Math.hypot(a.x - b.x, a.y - b.y));
+          zoomRef.current = THREE.MathUtils.clamp(pinch.startZoom * (pinch.startDistance / distance), 0.72, 1.16);
+          applyUserZoom();
+          renderer.domElement.dataset.warRoomTouchStage = 'pinch';
+          render();
+          return;
+        }
+      }
+
       const motion = cameraMotionRef.current;
       if (inspectModeRef.current) {
         renderer.domElement.style.cursor = motion.dragging ? 'grabbing' : 'grab';
@@ -550,6 +594,9 @@ function Board3DCanvas({
     }
 
     function onPointerCancel(event) {
+      const pinch = pinchRef.current;
+      pinch.pointers.delete(event.pointerId);
+      if (pinch.pointers.size === 0) pinch.active = false;
       pointerStartRef.current = null;
       cameraMotionRef.current.dragging = false;
       renderer.domElement.dataset.warRoomTouchStage = 'cancel';
@@ -557,8 +604,18 @@ function Board3DCanvas({
     }
 
     function onPointerUp(event) {
+      const pinch = pinchRef.current;
+      const wasPinching = pinch.active;
+      pinch.pointers.delete(event.pointerId);
+      if (pinch.pointers.size === 0) pinch.active = false;
+
       const start = pointerStartRef.current;
       pointerStartRef.current = null;
+      if (wasPinching) {
+        renderer.domElement.dataset.warRoomTouchStage = 'pinch-end';
+        releasePointer(event);
+        return;
+      }
       if (inspectModeRef.current) {
         cameraMotionRef.current.dragging = false;
         renderer.domElement.style.cursor = 'grab';
@@ -1115,6 +1172,26 @@ function Board3DCanvas({
     state.render();
   }
 
+  function centerBoardView() {
+    const state = sceneStateRef.current;
+    const host = hostRef.current;
+    if (!state || !host) return;
+    zoomRef.current = 1;
+    cameraMotionRef.current.yaw = 0;
+    cameraMotionRef.current.pitch = 0;
+    const width = Math.max(280, host.clientWidth || 280);
+    const height = Math.max(300, host.clientHeight || 300);
+    const activeVariant = latestPropsRef.current.warRoomVariant || 'classic';
+    fitBoardCamera(state.camera, width, height, state.whiteSide, {
+      profile: cameraProfile === 'classroom' || activeVariant !== 'classic' ? cameraProfile : 'classic',
+      immersive,
+    });
+    state.renderer.domElement.dataset.board3dZoom = '1.000';
+    state.renderer.domElement.dataset.board3dInspectYaw = '0.000';
+    state.renderer.domElement.dataset.board3dInspectPitch = '0.000';
+    state.render();
+  }
+
   function handleKeyDown(event) {
     if (inspectModeRef.current) {
       const motion = cameraMotionRef.current;
@@ -1191,6 +1268,7 @@ function Board3DCanvas({
       <div className="board3d-fixed-camera-note" aria-hidden="true">{presentation.roomLabel} · {inspectMode ? 'INSPECCIÓN' : presentation.cameraLabel}</div>
       <div className="board3d-renderer-badge" aria-hidden="true">{rendererLabel}</div>
       <button type="button" className="board3d-inspect secondary-btn" aria-pressed={inspectMode} onClick={() => setInspectMode((value) => !value)}>{inspectMode ? 'Volver a jugar' : 'Inspeccionar'}</button>
+      <button type="button" className="board3d-center-view secondary-btn" onClick={centerBoardView}>Centrar</button>
       {onCustomize && <button type="button" className="board3d-customize secondary-btn" onClick={onCustomize}>Apariencia</button>}
     </div>
   );
