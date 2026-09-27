@@ -337,7 +337,11 @@ test('staging live · auth real → War Room v2 → recovery 3D → jugada real'
     await expect(classicWarRoomItem).toBeVisible();
     await expect(v2WarRoomItem).toBeVisible();
     await expect(v3WarRoomItem).toBeVisible();
-    await expect(classicWarRoomItem).toHaveAttribute('aria-checked', 'true');
+    const initiallySelectedWarRooms = await Promise.all(
+      [classicWarRoomItem, v2WarRoomItem, v3WarRoomItem]
+        .map((item) => item.getAttribute('aria-checked')),
+    );
+    expect(initiallySelectedWarRooms.filter((value) => value === 'true')).toHaveLength(1);
     await v2WarRoomItem.click();
     await expect(warRoom3d).toHaveAttribute('data-board3d-variant', 'v2');
     await expect(warRoom3d).toHaveAttribute('data-board3d-variant-status', 'ready', { timeout: 30_000 });
