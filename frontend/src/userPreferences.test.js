@@ -4,6 +4,7 @@ import {
   BOARD_RENDERERS,
   BOARD_RENDERER_KEY,
   DEVICE_BOARD_RENDERER_KEY,
+  DEVICE_RENDER_QUALITY_KEY,
   EXPLICIT_2D_BOARD_RENDERER_VALUE,
   REDUCED_MOTION_KEY,
   getBoardCoordinates,
@@ -13,12 +14,14 @@ import {
   getEffectiveReducedMotion,
   getReducedMotion,
   getReducedMotionPreference,
+  getRenderQualityPreference,
   getUiLanguage,
   reducedMotionStatus,
   setBoardCoordinates,
   setBoardRenderer,
   setDefaultTimeControlId,
   setReducedMotion,
+  setRenderQualityPreference,
   setUiLanguage,
 } from './userPreferences.js';
 
@@ -54,6 +57,16 @@ describe('user preferences', () => {
     expect(getReducedMotion()).toBe(false);
     expect(setReducedMotion(true)).toBe(true);
     expect(getReducedMotion()).toBe(true);
+  });
+
+  it('usa calidad automática por defecto y guarda el override sólo en este dispositivo', () => {
+    expect(getRenderQualityPreference()).toBe('auto');
+    expect(setRenderQualityPreference('ultra')).toBe('ultra');
+    expect(localStorage.getItem(DEVICE_RENDER_QUALITY_KEY)).toBe('ultra');
+    expect(getRenderQualityPreference()).toBe('ultra');
+
+    expect(setRenderQualityPreference('patata-cuántica')).toBe('auto');
+    expect(localStorage.getItem(DEVICE_RENDER_QUALITY_KEY)).toBe('auto');
   });
 
   it('hace 3D Sala de guerra el default y guarda el renderer nuevo sólo para este dispositivo', () => {
