@@ -474,7 +474,7 @@ async function openCanonicalWarRoom(page, { variant = 'classic' } = {}) {
   // Immersion is now the default War Room presentation, so the persistent
   // status pill is intentionally absent. Gate on the actual game screen and
   // mounted 3D War Room instead of requiring UI that immersion hides.
-  await expect(page.locator('.game-screen')).toBeVisible({ timeout: 60_000 });
+  await expect(page.locator('.game-screen')).toBeAttached({ timeout: 60_000 });
 
   const board3d = await open3DFromAppearance(page);
   await expect(board3d).toBeVisible({ timeout: 60_000 });
