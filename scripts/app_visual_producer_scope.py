@@ -373,7 +373,6 @@ def classify_warroom_profile_scope(paths: list[str]) -> str:
         return WARROOM_PROFILE_SCOPE_ALL
     mobile_entry_only = {
         "frontend/src/components/quickmatchmodal.jsx",
-        "frontend/src/components/usewarroomimmersive.js",
     }
     relevant = [path for path in cleaned if ".test." not in Path(path).name and ".spec." not in Path(path).name]
     if relevant and all(path in mobile_entry_only for path in relevant):
@@ -413,9 +412,12 @@ def self_test() -> None:
     assert classify_home_profile_scope(["frontend/src/components/HomeCastle3D.jsx"]) == "all"
     assert classify_warroom_profile_scope([
         "frontend/src/components/QuickMatchModal.jsx",
+        "frontend/src/components/QuickMatchModal.test.jsx",
+    ]) == "mobile-entry"
+    assert classify_warroom_profile_scope([
         "frontend/src/components/useWarRoomImmersive.js",
         "frontend/src/components/useWarRoomImmersive.test.js",
-    ]) == "mobile-entry"
+    ]) == "all"
     assert classify_warroom_profile_scope(["frontend/src/components/WarRoomV3Shell.js"]) == "all"
     assert classify_warroom_profile_scope([
         "frontend/src/components/useGameMobileFocus.js",
