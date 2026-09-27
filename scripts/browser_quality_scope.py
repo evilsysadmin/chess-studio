@@ -406,11 +406,9 @@ def build_matrix(scope: BrowserScope) -> dict[str, list[dict[str, str]]]:
 
 
 BROWSER_JOB_GROUPS = (
-    (
-        "war-room-input-visual",
-        "War Room · input + mount/scale",
-        ("hans-fire-call", "desktop-input", "desktop-scale"),
-    ),
+    # desktop-input and desktop-scale are intentionally independent jobs.
+    # Both are long WebGL canaries; batching them serializes ~2 minutes of work
+    # on one hosted runner for no coverage benefit.
     (
         "war-room-android",
         "War Room · Android interaction",
