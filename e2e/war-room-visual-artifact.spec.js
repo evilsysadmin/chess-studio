@@ -724,9 +724,13 @@ for (const profile of ACTIVE_CAPTURE_PROFILES) {
       }
 
       if (profile.portraitContract) {
-        await expect(page.getByRole('button', { name: 'Focus', exact: true })).toBeVisible();
-        await expect(page.getByRole('button', { name: 'Abandonar partida', exact: true })).toBeVisible();
-        await expect(page.getByRole('button', { name: 'Más acciones de partida', exact: true })).toBeVisible();
+        const overflow = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
+        await expect(overflow).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Focus', exact: true })).toHaveCount(0);
+        await expect(page.getByRole('button', { name: 'Abandonar partida', exact: true })).toHaveCount(0);
+        await overflow.click();
+        await expect(page.getByRole('menuitem', { name: 'Abandonar partida', exact: true })).toBeVisible();
+        await overflow.click();
       }
 
       await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
