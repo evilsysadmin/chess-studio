@@ -217,8 +217,7 @@ body.war-room-immersive-active {
   /* Default mobile immersion must not reserve the legacy commander/chat
    * tracks. Leaving those tracks in the portrait grid can collapse the Three
    * stage to a zero-height box before the first render. */
-  .game-layout-immersive .game-side-column.game-side-column-3d,
-  .game-layout-immersive .game-3d-command-column {
+  .game-layout-immersive .game-side-column.game-side-column-3d {
     display: none !important;
   }
 
