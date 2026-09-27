@@ -379,3 +379,31 @@
     margin-top: .05rem;
   }
 }
+
+
+/* Controlled disclosure markers: the browser marker rendered as a missing-glyph
+ * box in the canonical Linux captures. Keep the affordance authored and consistent. */
+.friendly-modal[aria-label='Configurar partida rápida'] :is(.friendly-subdisclosure, .quick-match-settings) > summary {
+  list-style: none;
+}
+
+.friendly-modal[aria-label='Configurar partida rápida'] :is(.friendly-subdisclosure, .quick-match-settings) > summary::-webkit-details-marker {
+  display: none;
+}
+
+.friendly-modal[aria-label='Configurar partida rápida'] :is(.friendly-subdisclosure, .quick-match-settings) > summary::before {
+  content: '›';
+  display: inline-block;
+  flex: 0 0 .8rem;
+  width: .8rem;
+  margin-right: .35rem;
+  color: #d7ad5c;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1rem;
+  line-height: 1;
+  text-align: center;
+}
+
+.friendly-modal[aria-label='Configurar partida rápida'] :is(.friendly-subdisclosure, .quick-match-settings)[open] > summary::before {
+  content: '−';
+}
