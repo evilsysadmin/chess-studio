@@ -511,14 +511,13 @@ function expectSharedHealth(health) {
 function expectPortraitHealth(health) {
   expect(health.coarsePointer, 'Android capture must emulate a coarse pointer').toBe(true);
   expect(health.touchPoints, 'Android capture must expose touch points').toBeGreaterThan(0);
-  expect(health.hud?.height, 'compact Matthias HUD height').toBeLessThanOrEqual(72);
   expect(health.legacyCommandDeck?.display, 'legacy Focus/Abandon row must stay visually folded').toBe('none');
   expect(health.boardWidthFill, '3D scene should remain the dominant mobile surface').toBeGreaterThanOrEqual(0.88);
-  expect(health.hudToBoardGap, 'HUD should sit directly above the board').toBeLessThanOrEqual(20);
-  expect(health.human?.height, 'human rail height').toBeLessThanOrEqual(50);
-  expect(health.music?.height, 'music rail height').toBeLessThanOrEqual(50);
-  expect(health.notation?.height, 'notation rail height').toBeLessThanOrEqual(50);
-  expect(Math.abs((health.music?.top ?? 0) - (health.notation?.top ?? 0)), 'music/notebook row alignment').toBeLessThanOrEqual(2);
+  expect(health.quickActions?.overflow, 'immersive overflow must remain available in portrait').not.toBeNull();
+  expect(health.hud, 'legacy Matthias turn HUD must stay absent in immersion').toBeNull();
+  expect(health.human, 'human rail must stay hidden in immersion').toBeNull();
+  expect(health.music, 'music rail must stay hidden in immersion').toBeNull();
+  expect(health.notation, 'move notebook must stay hidden in immersion').toBeNull();
 }
 
 function expectImmersiveHealth(health) {
