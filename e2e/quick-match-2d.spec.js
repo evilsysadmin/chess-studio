@@ -3,6 +3,7 @@ import { buttonWithVisibleText, clickBoardMove, login, mockApi, scheduleDomClick
 
 const DEVICE_BOARD_RENDERER_KEY = 'chess-study-device-board-renderer-v1';
 const PIECE_SKIN_KEY = 'chess-study-selected-skin';
+const BOARD_COORDINATES_KEY = 'chess-study-board-coordinates';
 
 async function openQuickMatch(page) {
   await buttonWithVisibleText(page, 'Partida rápida').click();
@@ -105,6 +106,11 @@ test('Partida rápida · 2D no expone PGN ni una franja avanzada', async ({ page
 
   await expect(page.getByRole('heading', { name: 'Chess Studio', exact: true })).toHaveCount(0);
   await expect(page.locator('.player-status-bar')).toHaveCount(0);
+  await expect(page.locator('.square-coordinate')).toHaveCount(0);
+  await page.evaluate((key) => {
+    localStorage.setItem(key, '1');
+    window.dispatchEvent(new Event('chess-user-preferences-changed'));
+  }, BOARD_COORDINATES_KEY);
   await expect(page.locator('.square-coordinate')).toHaveCount(16);
   await expect(page.locator('.rank-labels, .file-labels')).toHaveCount(0);
   await expect(page.getByText('Opciones avanzadas', { exact: true })).toHaveCount(0);
