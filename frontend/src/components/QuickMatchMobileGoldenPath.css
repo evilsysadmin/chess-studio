@@ -260,7 +260,7 @@
 .friendly-modal[aria-label='Configurar partida rápida'] .quick-match-post-cta-tools > details > summary,
 .friendly-modal[aria-label='Configurar partida rápida'] .quick-match-settings > summary,
 .friendly-modal[aria-label='Configurar partida rápida'] .quick-match-pvp-link--tertiary {
-  min-height: 38px !important;
+  min-height: 44px !important;
   border: 0;
   border-radius: 0;
   background: transparent;
