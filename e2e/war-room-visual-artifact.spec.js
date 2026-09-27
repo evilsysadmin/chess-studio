@@ -121,6 +121,7 @@ const CAPTURE_PROFILES = Object.freeze([
     portraitContract: false,
     landscapeContract: true,
     immersive: true,
+    mobilePlayFirst: true,
   }),
   Object.freeze({
     label: 'war-room-desktop-1440x900',
@@ -626,26 +627,39 @@ for (const profile of ACTIVE_CAPTURE_PROFILES) {
             }
           });
         }
-        const enterImmersive = page.getByRole('button', { name: 'Entrar en modo inmersión', exact: true }).first();
-        await expect(enterImmersive).toBeVisible();
-        await enterImmersive.click();
-        await expect(page.locator('.game-layout-immersive')).toBeVisible();
-        await expect(page.locator('body')).toHaveClass(/war-room-immersive-active/);
+        if (profile.mobilePlayFirst) {
+          // Phone landscape is already the immersive/play-first surface. The
+          // renderer owns the viewport without requiring the legacy immersion
+          // toggle, so validate that contract directly.
+          await expect(page.locator('.game-layout-3d')).toHaveAttribute('data-war-room-mobile-landscape', 'true');
+          await expect(page.locator('.board-live-row.is-3d-warroom')).toBeVisible();
+          await expect(page.getByRole('button', { name: 'Entrar en modo inmersión', exact: true })).toHaveCount(0);
+        } else {
+          const enterImmersive = page.getByRole('button', { name: 'Entrar en modo inmersión', exact: true }).first();
+          await expect(enterImmersive).toBeVisible();
+          await enterImmersive.click();
+          await expect(page.locator('.game-layout-immersive')).toBeVisible();
+          await expect(page.locator('body')).toHaveClass(/war-room-immersive-active/);
+        }
         if (profile.hasTouch) {
           await expect.poll(() => page.evaluate(() => window.__warRoomOrientationLocks || []))
             .toContain('landscape');
         }
-        const immersiveCanvas = page.locator('.game-layout-immersive .board3d-main-canvas');
+        const immersiveRoot = profile.mobilePlayFirst ? '.game-layout-3d' : '.game-layout-immersive';
+        const immersiveCanvas = page.locator(`${immersiveRoot} .board3d-main-canvas`);
         await expect(immersiveCanvas).toHaveCount(1);
         const immersiveVisibility = await page.evaluate(() => {
+          const root = document.querySelector('.game-layout-3d')?.getAttribute('data-war-room-mobile-landscape') === 'true'
+            ? '.game-layout-3d'
+            : '.game-layout-immersive';
           const selectors = [
-            '.game-layout-immersive .board3d-main-canvas',
-            '.game-layout-immersive .board3d-main-shell',
-            '.game-layout-immersive .game-board-3d-stage',
-            '.game-layout-immersive .game-board-stack-3d',
-            '.game-layout-immersive .board-live-row.is-3d-warroom',
-            '.game-layout-immersive .board-column',
-            '.game-layout-immersive',
+            `${root} .board3d-main-canvas`,
+            `${root} .board3d-main-shell`,
+            `${root} .game-board-3d-stage`,
+            `${root} .game-board-stack-3d`,
+            `${root} .board-live-row.is-3d-warroom`,
+            `${root} .board-column`,
+            root,
           ];
           return selectors.map((selector) => {
             const node = document.querySelector(selector);
@@ -681,10 +695,12 @@ for (const profile of ACTIVE_CAPTURE_PROFILES) {
           fullPage: false,
           animations: 'disabled',
         });
-        await page.keyboard.press('Escape');
-        await expect(page.locator('.game-layout-immersive')).toHaveCount(0);
-        await page.getByRole('button', { name: 'Entrar en modo inmersión', exact: true }).first().click();
-        await expect(page.locator('.game-layout-immersive')).toBeVisible();
+        if (!profile.mobilePlayFirst) {
+          await page.keyboard.press('Escape');
+          await expect(page.locator('.game-layout-immersive')).toHaveCount(0);
+          await page.getByRole('button', { name: 'Entrar en modo inmersión', exact: true }).first().click();
+          await expect(page.locator('.game-layout-immersive')).toBeVisible();
+        }
         if (profile.collapseRail) {
           // Board-first desktop immersion intentionally removes the persistent
           // side rail. Only exercise the legacy collapse control when a variant
