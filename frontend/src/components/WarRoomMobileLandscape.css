@@ -1,7 +1,7 @@
 /* Android/phone landscape is an explicit play-first composition.
  * The PWA already allows any orientation; this layer simply spends the extra
  * horizontal space on the board instead of preserving the portrait stack. */
-@media (orientation: landscape) and (max-width: 920px) and (max-height: 620px) {
+@media (orientation: landscape) and (max-width: 960px) and (max-height: 620px) {
   /* Single sizing authority for phone landscape. Descendants consume these
    * tokens instead of independently re-deriving viewport and shell geometry. */
   .game-screen .game-layout.game-layout-3d {
@@ -257,20 +257,27 @@
 
 /* Very short browser landscape (address/nav bars still visible): preserve the
  * board before secondary rails. The right column remains scrollable. */
-@media (orientation: landscape) and (max-width: 920px) and (max-height: 430px) {
+@media (orientation: landscape) and (max-width: 960px) and (max-height: 430px) {
   .game-screen .game-layout.game-layout-3d {
-    --war-room-mobile-board-height: min(72dvh, 300px);
-    --war-room-mobile-player-rail-height: 32px;
-    --war-room-mobile-side-height: min(36dvh, 160px);
+    --war-room-mobile-board-height: min(69dvh, 296px);
+    --war-room-mobile-player-rail-height: 24px;
+    --war-room-mobile-side-height: min(27dvh, 116px);
   }
 
   .game-screen .game-board-stack-3d .board3d-main-shell {
     min-height: min(190px, var(--war-room-mobile-board-height));
   }
 
+  .app-shell-board-game:has(.game-layout-3d),
+  .app-shell-board-game .game-screen:has(.game-layout-3d) {
+    padding-bottom: 0 !important;
+    margin-bottom: 0 !important;
+  }
+
   .game-screen .game-board-stack-3d .game-player-rail.is-human {
     min-height: var(--war-room-mobile-player-rail-height) !important;
-    padding-block: .1rem !important;
+    height: var(--war-room-mobile-player-rail-height);
+    padding-block: 0 !important;
     overflow: hidden;
   }
 }
