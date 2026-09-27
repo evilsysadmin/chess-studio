@@ -522,17 +522,9 @@ function expectPortraitHealth(health) {
   expect(Math.abs((health.music?.top ?? 0) - (health.notation?.top ?? 0)), 'music/notebook row alignment').toBeLessThanOrEqual(2);
 }
 
-function expectImmersiveHealth(health) {
-  expect(health.immersive, 'immersive body state must be active').toBe(true);
-  expect(health.gameLayout?.left, 'immersive shell must start at the left viewport edge').toBeLessThanOrEqual(1);
-  expect(health.gameLayout?.top, 'immersive shell must start at the top viewport edge').toBeLessThanOrEqual(1);
-  expect(health.gameLayout?.width, 'immersive shell must span the viewport width').toBeGreaterThanOrEqual(health.viewport.width - 2);
-  expect(health.gameLayout?.height, 'immersive shell must span the viewport height').toBeGreaterThanOrEqual(health.viewport.height - 2);
-  expect(health.boardViewportFill, 'immersive scene should use nearly the full viewport height').toBeGreaterThanOrEqual(0.97);
-}
 
 function expectLandscapeHealth(health) {
-  expect(health.verticalOverflowPx, 'Android landscape must fit the play-first War Room in one viewport').toBeLessThanOrEqual(1);
+  expect(health.verticalOverflowPx, 'Android landscape must fit the immersive War Room in one viewport').toBeLessThanOrEqual(1);
   expect(health.legacyCommandDeck?.display, 'Android landscape must not revive the legacy command row').toBe('none');
   expect(health.board?.left, 'Android landscape keeps the board in the primary left pane').toBeLessThan(80);
   expect(health.boardViewportFill, 'Android landscape should spend most viewport height on the board').toBeGreaterThanOrEqual(0.62);
