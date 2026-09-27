@@ -110,6 +110,6 @@ export function loadWarRoomVariant(options = {}) {
 export function saveWarRoomVariant(value, options = {}) {
   if (!isWarRoomVariantSelectable(options)) return 'classic';
   const normalized = normalizeWarRoomVariant(value);
-  setStorageItem(STORAGE_LOCAL, WAR_ROOM_VARIANT_STORAGE_KEY, normalized);
+  setProfileStorageItem(WAR_ROOM_VARIANT_STORAGE_KEY, normalized);
   return normalized;
 }
