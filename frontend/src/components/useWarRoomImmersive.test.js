@@ -6,6 +6,7 @@ import {
   requestWarRoomLandscape,
   requestWarRoomLandscapeFullscreen,
   shouldAutoRotateWarRoomOnEntry,
+  shouldStartWarRoomImmersive,
   unlockWarRoomOrientation,
 } from './useWarRoomImmersive.js';
 
@@ -99,5 +100,14 @@ describe('War Room Android orientation', () => {
     const unlock = vi.fn();
     expect(unlockWarRoomOrientation({ orientation: { unlock } })).toBe(true);
     expect(unlock).toHaveBeenCalledOnce();
+  });
+});
+
+
+describe('War Room immersive presentation default', () => {
+  it('starts immersive for every enabled War Room unless focus mode owns the layout', () => {
+    expect(shouldStartWarRoomImmersive({ enabled: true, focusActive: false })).toBe(true);
+    expect(shouldStartWarRoomImmersive({ enabled: false, focusActive: false })).toBe(false);
+    expect(shouldStartWarRoomImmersive({ enabled: true, focusActive: true })).toBe(false);
   });
 });

@@ -203,8 +203,32 @@ body.war-room-immersive-active {
   }
 
   .game-screen .game-layout-immersive .board-live-row.is-3d-warroom {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+    grid-template-areas: 'board' !important;
+    align-items: stretch !important;
     min-height: 0;
     height: 100%;
+    padding: 0 !important;
+    gap: 0 !important;
+  }
+
+  /* Default mobile immersion must not reserve the legacy commander/chat
+   * tracks. Leaving those tracks in the portrait grid can collapse the Three
+   * stage to a zero-height box before the first render. */
+  .game-layout-immersive .game-side-column.game-side-column-3d,
+  .game-layout-immersive .game-3d-command-column {
+    display: none !important;
+  }
+
+  .game-screen .game-layout-immersive .game-board-stack.game-board-stack-3d {
+    display: block !important;
+    align-self: stretch !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    max-width: none !important;
   }
 
   .game-layout-immersive .game-board-stack-3d,

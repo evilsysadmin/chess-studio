@@ -463,7 +463,10 @@ export async function scheduleDomClick(locator) {
 }
 
 export function gameStatus(page) {
-  return page.getByRole('status', { name: 'Estado de la partida' });
+  // War Room immersion intentionally hides the legacy status strip and exposes
+  // the same accessible live status in Matthias' turn pill. Select the visible
+  // status surface so shared journeys work in both classic/2D and immersive 3D.
+  return page.locator('[role="status"][aria-label="Estado de la partida"]:visible');
 }
 
 export function gameTurn(page, text = 'Tu turno') {

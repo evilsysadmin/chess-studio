@@ -470,11 +470,10 @@ async function openCanonicalWarRoom(page, { variant = 'classic' } = {}) {
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
   // Legacy desktop can take longer than the mobile/v2 captures to settle under
-  // headless SwiftShader. Gate first on the semantic game state, as the other
-  // War Room E2Es do, then confirm the screen wrapper rather than treating a
-  // slow renderer mount as a failed game launch.
+  // headless SwiftShader. Gate on semantic game state only: immersive War Room
+  // presentation may make the outer .game-screen wrapper non-rendered while
+  // the actual fixed viewport scene is already valid and interactive.
   await expect(gameStatus(page)).toBeVisible({ timeout: 60_000 });
-  await expect(page.locator('.game-screen')).toBeVisible({ timeout: 15_000 });
 
   const board3d = await open3DFromAppearance(page);
   const canvas = page.locator('.board3d-main-canvas');
