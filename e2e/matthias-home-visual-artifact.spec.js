@@ -18,7 +18,7 @@ const CAPTURES = [
   // Portrait Home now uses a compact bottom utility row instead of placing Matthias
   // diegetically on the foreground rug. Keep the live canonical model visible there,
   // but validate the new compact placement rather than the old landscape-derived one.
-  { label:'android-390x844', width:390, height:844, hour:20, profile:'bite', clip:'Bite', station:'dining-table', support:'foreground-rug', supportBottomRange:[.88, .96], avatar:/lunch-bocata/i, hasTouch:true, expectCopy:false },
+  { label:'android-390x844', width:390, height:844, hour:20, profile:'bite', clip:'Bite', station:'dining-table', support:'foreground-rug', supportBottomRange:[.88, .96], avatar:/lunch-bocata/i, hasTouch:true, expectCopy:true },
 ];
 
 async function freezeClockAtRoutine(context, hour) {
