@@ -469,7 +469,6 @@ function Board3DCanvas({
       setHoveredSquare(nextSquare);
       if (nextSquare) latestPropsRef.current.onPieceMouseEnter?.(nextSquare, event);
     }
-
     function onPointerDown(event) {
       const touchLike = event.pointerType === 'touch' || event.pointerType === 'pen';
       pointerStartRef.current = {
@@ -493,7 +492,6 @@ function Board3DCanvas({
       const handled = selectBoardSquareOnTouch({ event, canvas: renderer.domElement, squareFromPointer, setFocusedSquare, onSquareClick: latestPropsRef.current.onSquareClick });
       if (pointerStartRef.current) pointerStartRef.current.handled = handled;
     }
-
     function onPointerMove(event) {
       const motion = cameraMotionRef.current;
       if (inspectModeRef.current) {
@@ -520,7 +518,6 @@ function Board3DCanvas({
       renderer.domElement.style.cursor = pieceHover ? 'pointer' : 'default';
       updatePieceHover(pieceHover, event);
     }
-
     function onPointerLeave(event) {
       const motion = cameraMotionRef.current;
       motion.targetX = 0;
