@@ -383,7 +383,7 @@ body.war-room-immersive-active .game-screen {
     top: max(.35rem, env(safe-area-inset-top)) !important;
     right: max(.35rem, env(safe-area-inset-right)) !important;
     left: auto !important;
-    width: min(286px, calc(100vw - .7rem)) !important;
+    width: min(238px, calc(100vw - .7rem)) !important;
     height: auto !important;
     margin: 0 !important;
     padding: 0 !important;
@@ -397,8 +397,8 @@ body.war-room-immersive-active .game-screen {
     width: 100% !important;
     min-height: 38px !important;
     height: 38px !important;
-    padding: .08rem .18rem !important;
-    gap: .14rem !important;
+    padding: .06rem .12rem !important;
+    gap: .1rem !important;
     border-radius: 999px !important;
     overflow: visible !important;
     pointer-events: auto;
@@ -416,6 +416,14 @@ body.war-room-immersive-active .game-screen {
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     white-space: nowrap !important;
+  }
+
+  .game-screen .game-layout-immersive .game-3d-turn-pill-identity {
+    flex: 1 1 3.7rem !important;
+  }
+
+  .game-screen .game-layout-immersive .game-3d-turn-pill-label {
+    flex: 0 0 auto !important;
   }
 
   .game-screen .game-layout-immersive .game-3d-turn-pill-identity strong,
