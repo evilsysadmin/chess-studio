@@ -1,8 +1,17 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import './WarRoomBoardZoom.css';
 
 export function clampWarRoomZoom(value) {
   return Math.max(1, Math.min(1.35, Number(value) || 1));
+}
+
+export function shouldShowWarRoomCenter(zoom, inspecting) {
+  return clampWarRoomZoom(zoom) > 1.01 || Boolean(inspecting);
+}
+
+export function resetWarRoomView(root, setZoom, inspecting) {
+  setZoom(1);
+  if (inspecting) root?.querySelector?.('.board3d-inspect')?.click?.();
 }
 
 export function nextWarRoomPinchZoom(startZoom, startDistance, currentDistance) {
@@ -16,6 +25,19 @@ export default function WarRoomBoardZoom({ children }) {
   const pointersRef = useRef(new Map());
   const pinchRef = useRef({ active: false, startDistance: 0, startZoom: 1 });
   const [zoom, setZoom] = useState(1);
+  const [inspecting, setInspecting] = useState(false);
+
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return undefined;
+    const syncInspecting = () => {
+      setInspecting(root.querySelector?.('.board3d-main-shell')?.dataset?.board3dInspect === 'true');
+    };
+    syncInspecting();
+    const observer = new MutationObserver(syncInspecting);
+    observer.observe(root, { attributes: true, attributeFilter: ['data-board3d-inspect'], childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
 
   const markPinching = (active) => {
     const canvas = rootRef.current?.querySelector?.('canvas.board3d-main-canvas');
@@ -57,6 +79,7 @@ export default function WarRoomBoardZoom({ children }) {
   };
 
   const centered = zoom <= 1.01;
+  const centerView = () => resetWarRoomView(rootRef.current, setZoom, inspecting);
 
   return (
     <div
@@ -69,8 +92,8 @@ export default function WarRoomBoardZoom({ children }) {
       onPointerCancelCapture={releasePointer}
     >
       {children}
-      {!centered && (
-        <button type="button" className="war-room-board-center-btn" onClick={() => setZoom(1)}>
+      {shouldShowWarRoomCenter(zoom, inspecting) && (
+        <button type="button" className="war-room-board-center-btn" onClick={centerView}>
           Centrar
         </button>
       )}
