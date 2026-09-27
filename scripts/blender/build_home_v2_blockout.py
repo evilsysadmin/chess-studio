@@ -2974,7 +2974,7 @@ def add_bookshelf(materials):
             f"HOME_PROP_library_shelf_lip_{idx}",
             (x, y - 0.555, z - 0.040),
             (1.49, 0.018, 0.028),
-            materials["dark"],
+            sofa_velvet_dark,
             bevel=0.010,
         )
     for side in (-1, 1):
@@ -3485,17 +3485,61 @@ def add_side_furnishings(materials):
     wood = materials["wood"]
     brass = materials["brass"]
     leather = materials["leather"]
+    sofa_velvet = materials["bench_velvet"]
+    sofa_velvet_dark = materials["velvet_dark"]
     paper = materials["paper"]
     globe = materials["globe"]
     plant = materials["plant"]
     ceramic = materials["ceramic"]
     steel = materials["steel"]
 
-    # Left lived-in corner: sofa, side table, helmet/candle and book stack.
-    cube("HOME_PROP_left_sofa_base", (-6.72, -0.05, 0.42), (1.55, 1.05, 0.40), leather, bevel=0.14)
-    cube("HOME_PROP_left_sofa_back", (-7.39, 0.58, 1.32), (0.22, 1.02, 0.92), leather, bevel=0.12)
-    cube("HOME_PROP_left_sofa_arm", (-5.45, -0.02, 0.80), (0.22, 0.95, 0.48), leather, bevel=0.11)
-    cube("HOME_PROP_left_sofa_arm_outer", (-7.39, -0.02, 0.80), (0.22, 0.95, 0.48), leather, bevel=0.11)
+    # Canonical sofa: plush burgundy velvet, generous rolled volume and layered cushions.
+    # Keep the furniture mass in the same footprint, but never let it read as a wooden block.
+    cube("HOME_PROP_left_sofa_base", (-6.72, -0.05, 0.42), (1.55, 1.05, 0.40), sofa_velvet_dark, bevel=0.18)
+    cube("HOME_PROP_left_sofa_back", (-7.39, 0.58, 1.32), (0.24, 1.02, 0.92), sofa_velvet, bevel=0.20)
+    cube("HOME_PROP_left_sofa_arm", (-5.45, -0.02, 0.80), (0.24, 0.95, 0.48), sofa_velvet, bevel=0.18)
+    cube("HOME_PROP_left_sofa_arm_outer", (-7.39, -0.02, 0.80), (0.24, 0.95, 0.48), sofa_velvet, bevel=0.18)
+
+    # Soft back cushions sit proud of the structural back so the silhouette reads as upholstery.
+    for idx, cy in enumerate((-0.50, 0.50)):
+        back_cushion = cube(
+            f"HOME_PROP_left_sofa_back_cushion_{idx}",
+            (-7.08, cy, 1.36 + (0.015 if idx else 0.0)),
+            (0.22, 0.43, 0.48),
+            sofa_velvet,
+            bevel=0.18,
+        )
+        back_cushion.rotation_euler[1] = math.radians((-2.0, 1.5)[idx])
+        back_cushion.rotation_euler[2] = math.radians((-1.0, 0.7)[idx])
+
+    # Decorative loose pillows echo the approved canonical reference: one deep velvet,
+    # one warmer patterned/gilt textile. They are deliberately asymmetric and slightly slumped.
+    pillow_red = cube(
+        "HOME_PROP_left_sofa_throw_pillow_red",
+        (-6.86, -0.42, 1.29),
+        (0.20, 0.29, 0.28),
+        materials["plume_red"],
+        bevel=0.16,
+    )
+    pillow_red.rotation_euler[1] = math.radians(7.0)
+    pillow_red.rotation_euler[2] = math.radians(-7.0)
+    pillow_gold = cube(
+        "HOME_PROP_left_sofa_throw_pillow_gold",
+        (-6.83, 0.46, 1.31),
+        (0.18, 0.27, 0.25),
+        materials["rug_thread"],
+        bevel=0.15,
+    )
+    pillow_gold.rotation_euler[1] = math.radians(-5.0)
+    pillow_gold.rotation_euler[2] = math.radians(9.0)
+    for stripe in (-0.12, 0.0, 0.12):
+        cube(
+            f"HOME_PROP_left_sofa_throw_pillow_gold_trim_{stripe:+.2f}",
+            (-6.64, 0.46 + stripe, 1.31),
+            (0.012, 0.020, 0.20),
+            materials["gold"],
+            bevel=0.006,
+        )
     for idx, sx in enumerate((-7.78, -5.70)):
         sphere(
             f"HOME_PROP_left_sofa_front_foot_{idx}",
@@ -3529,8 +3573,8 @@ def add_side_furnishings(materials):
                 0.445 + (0.010, -0.008)[idx],
                 0.100 + (0.0, 0.008)[idx],
             ),
-            leather,
-            bevel=0.095,
+            sofa_velvet,
+            bevel=0.13,
         )
         cushion.rotation_euler[2] = math.radians((-0.8, 0.6)[idx])
         cube(
@@ -3544,7 +3588,7 @@ def add_side_furnishings(materials):
         "HOME_PROP_left_sofa_center_seam",
         (-6.54, 0.0, 0.90),
         (0.70, 0.018, 0.018),
-        materials["dark"],
+        sofa_velvet_dark,
         bevel=0.008,
     )
     for row, z in enumerate((0.95, 1.28, 1.58)):
@@ -3553,14 +3597,14 @@ def add_side_furnishings(materials):
                 f"HOME_PROP_left_sofa_tuft_{row}_{col}",
                 (-7.175, y, z),
                 (0.028, 0.014, 0.028),
-                materials["gold"] if (row + col) % 2 == 0 else materials["dark"],
+                materials["gold"] if (row + col) % 2 == 0 else sofa_velvet_dark,
             )
     flat_panel(
         "HOME_PROP_left_sofa_throw",
         [(-7.30, 1.38), (-6.15, 1.38), (-6.08, 0.35), (-6.72, 0.20), (-7.20, 0.42)],
         0.18,
         0.05,
-        materials["dark"],
+        sofa_velvet_dark,
         bevel=0.06,
     )
     cube("HOME_PROP_left_sideboard", (-7.55, 2.62, 0.62), (1.30, 0.48, 0.62), wood, bevel=0.06)
