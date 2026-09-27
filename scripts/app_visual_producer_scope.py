@@ -135,6 +135,7 @@ QUICK_MATCH_EXACT_PRODUCERS = {
     # Quick Match owns the launch/config surface and the core War Room entry
     # contract. It cannot alter Home Matthias/focus, room decor, armor or Hans.
     "frontend/src/components/quickmatchmodal.jsx": {"home-base", "warroom-core"},
+    "frontend/src/components/quickmatchmobilegoldenpath.css": {"home-base"},
     "frontend/src/components/usewarroomimmersive.js": {"warroom-core"},
 }
 
@@ -396,7 +397,11 @@ def classify_home_profile_scope(paths: list[str]) -> str:
     if not cleaned:
         return HOME_PROFILE_SCOPE_ALL
     relevant = [path for path in cleaned if ".test." not in Path(path).name and ".spec." not in Path(path).name]
-    if relevant and all(path == "frontend/src/components/quickmatchmodal.jsx" for path in relevant):
+    quick_match_home_files = {
+        "frontend/src/components/quickmatchmodal.jsx",
+        "frontend/src/components/quickmatchmobilegoldenpath.css",
+    }
+    if relevant and all(path in quick_match_home_files for path in relevant):
         return HOME_PROFILE_SCOPE_QUICK_MATCH
     return HOME_PROFILE_SCOPE_ALL
 
@@ -471,6 +476,8 @@ def self_test() -> None:
     assert classify(["frontend/src/experimentalThreeRenderer.js"]) == "chronicles-tactics,chronicles-gameplay"
     assert classify(["frontend/src/components/LabScreen.jsx"]) == "experiments-hub"
     assert classify(["frontend/src/components/QuickMatchModal.jsx"]) == "home-base,warroom-core"
+    assert classify(["frontend/src/components/QuickMatchMobileGoldenPath.css"]) == "home-base"
+    assert classify_home_profile_scope(["frontend/src/components/QuickMatchMobileGoldenPath.css"]) == "quickmatch"
     assert classify(["frontend/src/components/useWarRoomImmersive.js"]) == "warroom-core"
     assert classify(["frontend/src/components/WarRoomMobileLandscape.css"]) == "warroom-core"
     assert classify(["scripts/blender/build_home_v2_blockout.py"]) == "home-base,home-matthias,home-focus"
