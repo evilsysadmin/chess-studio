@@ -82,6 +82,9 @@ export function exitWarRoomBrowserFullscreen(doc = globalThis.document) {
 }
 
 export default function useWarRoomImmersive({ enabled, focusActive = false } = {}) {
+  // CSS immersion is the War Room's default presentation on desktop and mobile.
+  // Native fullscreen/orientation still require a trusted user gesture, so entry
+  // never attempts those APIs automatically.
   const [immersive, setImmersive] = useState(false);
   const [railCollapsed, setRailCollapsed] = useState(false);
 
@@ -117,9 +120,11 @@ export default function useWarRoomImmersive({ enabled, focusActive = false } = {
   }, [immersive]);
 
   useEffect(() => {
-    if (!immersive) return;
-    if (shouldExitWarRoomImmersive({ enabled, focusActive })) exitImmersive();
-  }, [enabled, exitImmersive, focusActive, immersive]);
+    if (shouldExitWarRoomImmersive({ enabled, focusActive }) && immersive) {
+      setImmersive(false);
+      setRailCollapsed(false);
+    }
+  }, [enabled, focusActive, immersive]);
 
   useEffect(() => {
     if (!immersive || typeof document === 'undefined') return undefined;

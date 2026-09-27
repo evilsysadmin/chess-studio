@@ -279,7 +279,10 @@ def _experiment_parts(path: str) -> set[str]:
 
 
 HANS_ROUTINE_SHARED_OWNERS = {
-    "frontend/src/components/gameboardview.jsx",
+    # Only owners that can alter Hans choreography/event timing belong here.
+    # GameBoardView is a generic War Room composition shell; layout/immersive
+    # changes there are already covered by canonical War Room capture and must
+    # not wake the expensive Hans routine-video sidecar.
     "frontend/src/components/warroomambientdirector.js",
 }
 
@@ -519,7 +522,7 @@ def self_test() -> None:
     board3d_scene = classify(["frontend/src/components/Board3DScene.js"])
     assert board3d_scene.capture_groups == "training,warroom" and not board3d_scene.hans
     game_board = classify(["frontend/src/components/GameBoardView.jsx"])
-    assert game_board.capture_groups == "warroom" and game_board.hans
+    assert game_board.capture_groups == "warroom" and not game_board.hans
     ambient_director = classify(["frontend/src/components/WarRoomAmbientDirector.js"])
     assert ambient_director.capture_groups == "warroom" and ambient_director.hans
     hans_actor = classify(["frontend/src/components/WarRoomHansActor.js"])

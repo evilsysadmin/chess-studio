@@ -327,6 +327,23 @@ export default function GameWarRoomCommandColumn({
 }) {
   const signal = resolveWarRoomSignal(game, status);
 
+  if (immersive && !compactViewport) {
+    return (
+      <aside className="game-3d-command-column game-3d-command-column-immersive" aria-label="Acciones de la War Room">
+        <WarRoomUtilityMenu
+          game={game}
+          board={board}
+          controls={controls}
+          zenMode={zenMode}
+          immersive
+          railCollapsed
+          onToggleImmersive={onToggleImmersive}
+          onToggleRail={onToggleRail}
+        />
+      </aside>
+    );
+  }
+
   // Compact War Room keeps one HUD surface. Secondary actions are folded into
   // its overflow so Android does not pay for a separate command row above the
   // board. Focus/resign survive as tiny one-tap affordances inside the same HUD.

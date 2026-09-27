@@ -165,6 +165,7 @@ export default function GameBoardView({
     onCustomize: stableOnCustomize,
     hansFireplaceIteration,
     hansFireCallEnabled: !zenMode && !focusActive && hansFireCallEnabled,
+    immersive: warRoomImmersive,
   };
 
   return (

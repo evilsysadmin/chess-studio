@@ -101,7 +101,47 @@ body.war-room-immersive-active {
 }
 
 @media (min-width: 1081px) {
+  /* Desktop immersive is board-first: the room owns the viewport and the
+   * existing overflow menu remains the only persistent command surface. */
   .game-screen .game-layout-immersive .board-live-row.is-3d-warroom {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-areas: 'board' !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+    padding: 0 !important;
+    gap: 0 !important;
+  }
+
+  .game-layout-immersive .game-side-column.game-side-column-3d {
+    display: none !important;
+  }
+
+  .game-screen .game-layout-immersive .game-3d-command-column {
+    position: absolute !important;
+    z-index: 40 !important;
+    inset: 0 0 auto !important;
+    width: 100% !important;
+    height: 0 !important;
+    margin: 0 !important;
+    pointer-events: none;
+  }
+
+  .game-screen .game-layout-immersive .game-3d-turn-pill {
+    left: 50% !important;
+    max-width: min(34rem, calc(100% - 2rem));
+    pointer-events: auto;
+  }
+
+  .game-screen .game-layout-immersive .game-3d-command-column-immersive {
+    inset:
+      max(.75rem, env(safe-area-inset-top))
+      max(.75rem, env(safe-area-inset-right))
+      auto auto !important;
+    width: auto !important;
+    height: auto !important;
+    pointer-events: auto;
+  }
+
+  .game-screen .game-layout-immersive .board-live-row.is-3d-warroom[data-unused] {
     grid-template-columns: minmax(0, 1fr) clamp(190px, 15vw, 224px) !important;
     grid-template-areas:
       'board status'
@@ -153,26 +193,35 @@ body.war-room-immersive-active {
     overflow: auto;
   }
 
+  /* Portrait immersion keeps a definite height chain so the Three canvas
+   * cannot exist outside a visible layout box on Android/WebView. */
   .game-layout-immersive .board-column {
     display: block;
-    min-height: 100dvh;
-    height: auto;
-    overflow: visible;
+    min-height: 0;
+    height: 100%;
+    overflow: auto;
   }
 
   .game-screen .game-layout-immersive .board-live-row.is-3d-warroom {
-    min-height: 100dvh;
-    height: auto;
+    min-height: 0;
+    height: 100%;
   }
 
   .game-layout-immersive .game-board-stack-3d,
   .game-layout-immersive .game-board-3d-stage {
-    height: auto;
+    height: 100%;
+    min-height: 0;
   }
 
   .game-layout-immersive .board3d-main-shell {
-    height: auto !important;
+    height: min(100%, 100dvh) !important;
+    min-height: 0 !important;
     aspect-ratio: 1.15 / 1 !important;
+  }
+
+  .game-layout-immersive .board3d-main-canvas {
+    display: block !important;
+    visibility: visible !important;
   }
 }
 
