@@ -170,6 +170,22 @@ describe('Board3D premium surfaces', () => {
     disposeMaterial(wood);
   });
 
+  it('respeta un presupuesto de calidad explícito en el decorado', () => {
+    const scene = new THREE.Group();
+    const key = new THREE.DirectionalLight(0xffffff, 1);
+    key.castShadow = true;
+    key.shadow.mapSize.set(4096, 4096);
+    key.shadow.radius = 4;
+    scene.add(key);
+
+    const renderBudget = { pixelRatio: 1.75, shadowMapSize: 2048, shadowRadius: 2.35 };
+    applyPremiumDecorSurfacePass(scene, { renderBudget });
+    expect(key.shadow.mapSize.width).toBe(2048);
+    expect(key.shadow.mapSize.height).toBe(2048);
+    expect(key.shadow.radius).toBe(2.35);
+    expect(scene.userData.warRoomRenderBudget).toBe(renderBudget);
+  });
+
   it('limita DPR y sombras desde el arranque antes de degradar por frames lentos', () => {
     const desktop = warRoomRenderBudget({ devicePixelRatio: 2.75 });
     const mobile = warRoomRenderBudget({ coarsePointer: true, devicePixelRatio: 3 });
