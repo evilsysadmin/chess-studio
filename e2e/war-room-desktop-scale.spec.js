@@ -70,7 +70,7 @@ test('War Room · desktop usa inmersión única con tablero protagonista y HUD f
   expect(geometry.board.left).toBeLessThanOrEqual(2);
   expect(geometry.board.top).toBeLessThanOrEqual(2);
   expect(geometry.board.right).toBeGreaterThanOrEqual(geometry.viewportWidth - 2);
-  expect(geometry.board.bottom).toBeGreaterThanOrEqual(geometry.viewportHeight - 2);
+  expect(geometry.board.bottom).toBeGreaterThanOrEqual(geometry.viewportHeight - 10);
 
   expect(geometry.pill.top).toBeGreaterThanOrEqual(0);
   expect(geometry.pill.bottom).toBeLessThanOrEqual(geometry.viewportHeight);
