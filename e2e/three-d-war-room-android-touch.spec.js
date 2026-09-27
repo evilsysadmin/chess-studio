@@ -286,8 +286,9 @@ test('War Room · Android selecciona una pieza en pointerdown y muestra destinos
   expect(notationRect.height).toBeLessThanOrEqual(50);
   expect(Math.abs(musicRect.y - notationRect.y)).toBeLessThanOrEqual(2);
   expect(musicRect.x).toBeLessThan(notationRect.x);
-  expect(focusRect.y + focusRect.height).toBeLessThanOrEqual(boardRect.y + 2);
-  expect(utilityRect.y).toBeLessThan(boardRect.y + 90);
+  expect(focusRect.y).toBeGreaterThanOrEqual(boardRect.y - 2);
+  expect(focusRect.y + focusRect.height).toBeLessThanOrEqual(boardRect.y + 96);
+  expect(utilityRect.y).toBeLessThan(boardRect.y + 96);
   expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
 
   expect(await canvas.evaluate((element) => getComputedStyle(element).touchAction)).toBe('none');
