@@ -3,6 +3,7 @@ import { resolveBoard3DCameraFov } from './Board3DConfig.js';
 import { getCameraFramingProfile } from './Board3DSurfaces.js';
 import { warRoomDecorProfile } from './WarRoom3DMobileVisuals.js';
 import { getWarRoomMobileFramingProfile } from './WarRoomMobileFraming.js';
+import { classicWarRoomCameraFramingProfile } from './Board3DCameraProfiles.js';
 
 
 const BOX_GEOMETRY_CACHES = new WeakMap();
@@ -202,7 +203,7 @@ export function classRoomCameraFramingProfile({ aspect = 1, coarsePointer = fals
   });
 }
 
-export function fitBoardCamera(camera, width, height, whiteSide, { profile: requestedProfile = 'tactical', immersive = false } = {}) {
+export function fitBoardCamera(camera, width, height, whiteSide, { profile: requestedProfile = 'tactical' } = {}) {
   const aspect = Math.max(0.35, width / Math.max(1, height));
   const coarsePointer = typeof window !== 'undefined'
     && Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
@@ -214,7 +215,9 @@ export function fitBoardCamera(camera, width, height, whiteSide, { profile: requ
     : getWarRoomMobileFramingProfile({ aspect, coarsePointer, viewportWidth });
   const profile = requestedProfile === 'classroom'
     ? classRoomCameraFramingProfile({ aspect, coarsePointer, viewportWidth })
-    : mobileProfile || getCameraFramingProfile(aspect);
+    : mobileProfile || (requestedProfile === 'classic'
+      ? classicWarRoomCameraFramingProfile(aspect)
+      : getCameraFramingProfile(aspect));
   camera.fov = resolveBoard3DCameraFov(aspect, { mobile: Boolean(mobileProfile || (requestedProfile === 'classroom' && (coarsePointer || aspect < 1.12))) });
   const verticalFov = THREE.MathUtils.degToRad(camera.fov);
   const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * aspect);
@@ -227,10 +230,7 @@ export function fitBoardCamera(camera, width, height, whiteSide, { profile: requ
   const maxDistance = requestedProfile === 'classroom' ? profile.maxDistance : mobileProfile ? profile.maxDistance : 88;
   const distance = THREE.MathUtils.clamp(rawDistance, profile.minDistance, maxDistance);
   const target = new THREE.Vector3(0, profile.targetY, whiteSide ? -profile.targetZ : profile.targetZ);
-  // Immersive desktop favours front-rank clickability: a little more elevation
-  // exposes square surface around pawns without flattening the room into top-down.
-  const immersiveElevation = immersive && width > 1080 ? 1.135 : 1;
-  const direction = new THREE.Vector3(0, profile.cameraY * immersiveElevation, whiteSide ? profile.cameraZ : -profile.cameraZ).normalize();
+  const direction = new THREE.Vector3(0, profile.cameraY, whiteSide ? profile.cameraZ : -profile.cameraZ).normalize();
   camera.aspect = aspect;
   camera.far = Math.max(camera.far, distance + 25);
   camera.position.copy(target).addScaledVector(direction, distance);
