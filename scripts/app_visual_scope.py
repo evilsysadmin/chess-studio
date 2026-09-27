@@ -47,6 +47,28 @@ WARROOM_MOBILE_VISUAL_SURFACES = {
     "frontend/src/components/warroommobilelandscape.css",
 }
 
+WARROOM_MATTHIAS_VISUAL_SURFACES = {
+    "frontend/src/components/matthias3dbubbleanchor.css",
+    "frontend/src/components/usematthias3dbubbleanchor.js",
+    "frontend/src/components/matthias3dopeningbanter.css",
+    "frontend/src/components/matthias3dopeningbanter.jsx",
+}
+
+BOARD3D_MATTHIAS_VISUAL_SURFACES = {
+    # Matthias' 3D king model is shared by War Room and the Class Room renderer.
+    "frontend/src/components/matthiasking3d.js",
+}
+
+TRAINING_PROGRESS_MATTHIAS_VISUAL_SURFACES = {
+    "frontend/src/components/insightsmatthiascampaign.jsx",
+    "frontend/src/components/insightsmatthiasmotion.jsx",
+    "frontend/src/components/matthiaslayeredart.css",
+    "frontend/src/components/matthiaslayeredart.jsx",
+    "frontend/src/components/matthiascoffeesteam.css",
+    "frontend/src/components/matthiascoffeesteam.jsx",
+    "frontend/src/components/matthiasdailyconsult.jsx",
+}
+
 TRAINING_VISUAL_SURFACES = {
     "frontend/src/components/matthiasclassroom.css",
     "frontend/src/components/puzzlescreen.jsx",
@@ -147,6 +169,12 @@ def _surface_groups(path: str) -> set[str] | None:
         return set(QUICK_MATCH_VISUAL_SURFACES[lower])
     if lower in WARROOM_MOBILE_VISUAL_SURFACES:
         return {"warroom"}
+    if lower in WARROOM_MATTHIAS_VISUAL_SURFACES:
+        return {"warroom"}
+    if lower in BOARD3D_MATTHIAS_VISUAL_SURFACES:
+        return {"training", "warroom"}
+    if lower in TRAINING_PROGRESS_MATTHIAS_VISUAL_SURFACES:
+        return {"training"}
     if lower in TRAINING_VISUAL_SURFACES:
         return {"training"}
     if lower == "frontend/src/components/labscreen.jsx":
@@ -435,6 +463,22 @@ def self_test() -> None:
     ])
     assert mobile_warroom.capture_groups == "warroom"
     assert not mobile_warroom.hans and not mobile_warroom.chesscom
+
+    warroom_matthias = classify([
+        "frontend/src/components/Matthias3DBubbleAnchor.css",
+        "frontend/src/components/useMatthias3DBubbleAnchor.js",
+        "frontend/src/components/Matthias3DOpeningBanter.jsx",
+    ])
+    assert warroom_matthias.capture_groups == "warroom"
+    board3d_matthias = classify(["frontend/src/components/MatthiasKing3D.js"])
+    assert board3d_matthias.capture_groups == "training,warroom"
+    insights_matthias = classify([
+        "frontend/src/components/InsightsMatthiasMotion.jsx",
+        "frontend/src/components/MatthiasLayeredArt.jsx",
+        "frontend/src/components/MatthiasCoffeeSteam.jsx",
+        "frontend/src/components/MatthiasDailyConsult.jsx",
+    ])
+    assert insights_matthias.capture_groups == "training"
 
     mobile_training = classify([
         "frontend/src/components/PuzzleScreen.jsx",
