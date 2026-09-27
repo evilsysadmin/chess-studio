@@ -2238,9 +2238,12 @@ def add_table_candelabra(materials, x, y, z0):
     runtime already drives as an animated candle (flicker, lean, emission)."""
     brass = materials["brass"]
     dark_brass = materials["brass_dark"]
+    aged_brass = materials["library_brass_aged"]
     wax = materials["wax"]
-    cylinder("HOME_PROP_table_candelabra_foot", (x, y, z0 + 0.025), 0.23, 0.05, dark_brass, vertices=28)
-    cylinder("HOME_PROP_table_candelabra_base", (x, y, z0 + 0.075), 0.17, 0.05, brass, vertices=28)
+    # Keep polished brass on raised/contact surfaces, but let recessed lower metal carry
+    # the darker oxidised finish expected from an old working castle fitting.
+    cylinder("HOME_PROP_table_candelabra_foot", (x, y, z0 + 0.025), 0.23, 0.05, aged_brass, vertices=28)
+    cylinder("HOME_PROP_table_candelabra_base", (x, y, z0 + 0.075), 0.17, 0.05, dark_brass, vertices=28)
     cylinder("HOME_PROP_table_candelabra_stem", (x, y, z0 + 0.36), 0.032, 0.62, brass, vertices=16)
     for idx, (kz, kr) in enumerate(((0.16, 0.070), (0.34, 0.052), (0.52, 0.062))):
         sphere(f"HOME_PROP_table_candelabra_knob_{idx}", (x, y, z0 + kz), (kr, kr, kr * 0.85), brass)
