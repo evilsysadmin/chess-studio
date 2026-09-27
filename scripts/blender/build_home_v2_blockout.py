@@ -2974,7 +2974,7 @@ def add_bookshelf(materials):
             f"HOME_PROP_library_shelf_lip_{idx}",
             (x, y - 0.555, z - 0.040),
             (1.49, 0.018, 0.028),
-            sofa_velvet_dark,
+            materials["dark"],
             bevel=0.010,
         )
     for side in (-1, 1):
