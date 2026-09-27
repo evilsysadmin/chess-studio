@@ -759,6 +759,12 @@ for (const profile of ACTIVE_CAPTURE_PROFILES) {
       }
       if (profile.portraitContract) expectPortraitHealth(health);
       if (profile.landscapeContract) expectLandscapeHealth(health);
+      if (profile.landscapeContract) {
+        await expect(
+          page.locator('.matthias-board-bubble:not(.game-mobile-focus-bubble)'),
+          'phone landscape must not cover playable squares with opening banter',
+        ).toBeHidden();
+      }
       if (profile.immersive) expectImmersiveHealth(health);
       if (profile.collapseRail) {
         expect(health.boardWidthFill, 'collapsed immersive castle should spend almost the full viewport width on the scene').toBeGreaterThanOrEqual(0.97);
