@@ -6,6 +6,7 @@ import {
   requestWarRoomLandscape,
   requestWarRoomLandscapeFullscreen,
   shouldAutoRotateWarRoomOnEntry,
+  shouldExitWarRoomImmersive,
   unlockWarRoomOrientation,
 } from './useWarRoomImmersive.js';
 
@@ -57,6 +58,18 @@ describe('War Room browser fullscreen bridge', () => {
   });
 });
 
+
+
+describe('War Room immersion session policy', () => {
+  it('keeps immersion while a live 3D game is active', () => {
+    expect(shouldExitWarRoomImmersive({ enabled: true, focusActive: false, gameOver: false })).toBe(false);
+  });
+
+  it('exits immersion for post-game review and Focus', () => {
+    expect(shouldExitWarRoomImmersive({ enabled: true, focusActive: false, gameOver: true })).toBe(true);
+    expect(shouldExitWarRoomImmersive({ enabled: true, focusActive: true, gameOver: false })).toBe(true);
+  });
+});
 
 describe('War Room Android orientation', () => {
   it('auto-rotates only on coarse-pointer mobile viewports', () => {
