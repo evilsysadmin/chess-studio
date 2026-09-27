@@ -226,7 +226,7 @@ async function captureViewportPng(context, page, path) {
   // CDP + headless SwiftShader can omit WebGL compositor layers even when the
   // canvas is visibly rendered. Visual-artifact builds preserve the drawing
   // buffer, so rasterize that canvas into a temporary DOM image and let the
-  // viewport screenshot capture scene + HUD together. Keep the raster inside
+  // viewport screenshot capture the complete immersive scene. Keep the raster inside
   // the 3D shell when possible: immersive mode creates a high-z stacking
   // context, so a body-level fallback image would sit behind the room.
   const staged = await page.evaluate(() => {
@@ -481,7 +481,7 @@ function expectImmersiveHealth(health) {
 }
 
 function expectLandscapeHealth(health) {
-  expect(health.verticalOverflowPx, 'Android landscape must fit the play-first War Room in one viewport').toBeLessThanOrEqual(1);
+  expect(health.verticalOverflowPx, 'Android landscape immersion must fit in one viewport').toBeLessThanOrEqual(1);
   expect(health.legacyCommandDeck?.display, 'Android landscape must not revive the legacy command row').toBe('none');
   expect(health.board?.left, 'Android landscape keeps the board in the primary left pane').toBeLessThan(80);
   expect(health.boardViewportFill, 'Android landscape should spend most viewport height on the board').toBeGreaterThanOrEqual(0.62);
@@ -639,13 +639,6 @@ for (const profile of ACTIVE_CAPTURE_PROFILES) {
           await expect(immersiveCanvas).toHaveAttribute('data-war-room-cat-count', '1');
         }
         await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-      await page.waitForTimeout(350);
-      await page.screenshot({
-        path: `${ARTIFACT_DIR}/${profile.label}.png`,
-        fullPage: false,
-        animations: 'disabled',
-      });
-
       if (profile.portraitContract) {
         const overflow = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
         await expect(overflow).toBeVisible();
