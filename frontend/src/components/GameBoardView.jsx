@@ -68,12 +68,18 @@ export default function GameBoardView({
     lockState: warRoomOrientationLock,
     activateLandscape,
   } = useWarRoomLandscape(isThreeD);
+  const gameOver = Boolean(game.isGameOver || clocks.flagFallen || clocks.forcedOutcome);
   const {
     immersive: warRoomImmersive,
     railCollapsed: warRoomRailCollapsed,
     toggleImmersive: toggleWarRoomImmersive,
     toggleRail: toggleWarRoomRail,
-  } = useWarRoomImmersive({ enabled: isThreeD, focusActive });
+  } = useWarRoomImmersive({
+    enabled: isThreeD,
+    focusActive,
+    gameOver,
+    sessionKey: game.id,
+  });
   const {
     activeBoardBubble,
     activeMatthiasKey,
@@ -166,7 +172,7 @@ export default function GameBoardView({
     animate: board.pendingAnim,
     hintMove: zenMode ? null : board.hint,
     checkSquare: zenMode ? null : board.kingInCheckSquare,
-    gameOver: Boolean(game.isGameOver || clocks.flagFallen || clocks.forcedOutcome),
+    gameOver,
     turnState: board.boardTurnState,
     orientation: boardOrientation,
     showCoordinates: !zenMode && board.showBoardCoordinates,
@@ -196,7 +202,6 @@ export default function GameBoardView({
               status={status}
               board={board}
               compactViewport={compactViewport}
-              mobileLandscape={mobileLandscape}
               zenMode={zenMode}
               controls={controls}
               immersive={warRoomImmersive}
