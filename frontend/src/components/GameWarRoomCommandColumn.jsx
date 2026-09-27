@@ -330,6 +330,14 @@ export default function GameWarRoomCommandColumn({
   if (immersive && !compactViewport) {
     return (
       <aside className="game-3d-command-column game-3d-command-column-immersive" aria-label="Acciones de la War Room">
+        <strong
+          className="game-3d-immersive-status-proxy"
+          role="status"
+          aria-live="polite"
+          aria-label="Estado de la partida"
+        >
+          {signal.label}
+        </strong>
         <WarRoomUtilityMenu
           game={game}
           board={board}
