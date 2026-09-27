@@ -12,6 +12,7 @@ import { requestLabLaunch } from '../labLaunchIntent.js';
 import { msUntilNextLocalHour } from '../matthiasRoutineClock.js';
 import { matthiasAmbientVisual, matthiasAmbientVisuals, matthiasHomeZone, matthiasRoutineDwellMs } from '../matthiasVisuals.js';
 import { reducedMotionStatus, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
+import { requestWarRoomLandscape, shouldAutoRotateWarRoomOnEntry, unlockWarRoomOrientation } from './useWarRoomImmersive.js';
 import './HomeIllustrated.css';
 import './HomeIllustratedDiegetic.css';
 import './HomeDiegeticObjects.css';
@@ -77,6 +78,17 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
   const [matthiasRoutineIndex, setMatthiasRoutineIndex] = useState(0);
   const [matthiasRoutineClock, setMatthiasRoutineClock] = useState(() => new Date());
   const [reducedMotion, setReducedMotion] = useState(currentReducedMotion);
+
+  useEffect(() => {
+    if (!shouldAutoRotateWarRoomOnEntry()) return undefined;
+    // Home 3D benefits from the same phone-landscape canvas budget as the War Room.
+    // Browsers may reject orientation locking outside fullscreen/a trusted gesture; that is
+    // intentionally a no-op so the existing portrait composition remains the fallback.
+    void requestWarRoomLandscape();
+    return () => {
+      unlockWarRoomOrientation();
+    };
+  }, []);
   const castleLife = useMemo(() => buildHomeCastleLife({
     rivalry: loadRivalry(),
     dailyStats: dailyChallengeStats(loadDailyChallenge()),
