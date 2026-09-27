@@ -169,6 +169,7 @@ export default function GameBoardView({
     hansFireplaceIteration,
     hansFireCallEnabled: !zenMode && !focusActive && hansFireCallEnabled,
     immersive: warRoomImmersive,
+    warRoomMobilePerformance: true,
   };
 
   return (
