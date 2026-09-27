@@ -27,8 +27,6 @@ permissions: {contents: read}
 jobs:
   capture:
     runs-on: ubuntu-24.04
-    # Broad/shared visual changes can finish canonical capture at the old ceiling.
-    # Leave cleanup/upload headroom while producer scopes are split further.
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v7
