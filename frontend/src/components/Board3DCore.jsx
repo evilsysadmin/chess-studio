@@ -1082,7 +1082,7 @@ function Board3DCanvas({
 
     applyMatthiasCheckPose(state, checkSquare, orientation);
     state.render();
-  }, [fen, selectedSquare, legalMap, lastMove, hintMove, checkSquare, focusedSquare, hoveredSquare, effectiveThemeId, orientation, showCoordinates]);
+  }, [fen, selectedSquare, legalMap, lastMove, hintMove, checkSquare, focusedSquare, hoveredSquare, effectiveThemeId, orientation, showCoordinates, warRoomVariant]);
 
   useEffect(() => {
     const state = sceneStateRef.current;
