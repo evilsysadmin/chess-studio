@@ -572,12 +572,22 @@ for (const profile of ACTIVE_CAPTURE_PROFILES) {
       viewport: profile.viewport,
       hasTouch: profile.hasTouch,
     });
-    await context.addInitScript(() => {
+    await context.addInitScript(({ spyOrientation }) => {
       Object.defineProperty(navigator, 'hardwareConcurrency', {
         configurable: true,
         get: () => 8,
       });
-    });
+      if (spyOrientation) {
+        window.__warRoomOrientationLocks = [];
+        const orientation = screen.orientation;
+        if (orientation) {
+          Object.defineProperty(orientation, 'lock', {
+            configurable: true,
+            value: async (mode) => { window.__warRoomOrientationLocks.push(mode); },
+          });
+        }
+      }
+    }, { spyOrientation: Boolean(profile.hasTouch && profile.immersive) });
 
     const page = await context.newPage();
     try {
@@ -612,21 +622,6 @@ for (const profile of ACTIVE_CAPTURE_PROFILES) {
       }
 
       if (profile.immersive) {
-        if (profile.hasTouch) {
-          // The page is already booted here, so install the spy in the live
-          // document. addInitScript only affects the next navigation and gave
-          // us a false negative instead of observing the trusted tap.
-          await page.evaluate(() => {
-            window.__warRoomOrientationLocks = [];
-            const orientation = screen.orientation;
-            if (orientation) {
-              Object.defineProperty(orientation, 'lock', {
-                configurable: true,
-                value: async (mode) => { window.__warRoomOrientationLocks.push(mode); },
-              });
-            }
-          });
-        }
         if (profile.mobilePlayFirst) {
           // Phone landscape is already the immersive/play-first surface. The
           // renderer owns the viewport without requiring the legacy immersion
