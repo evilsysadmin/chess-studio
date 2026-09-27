@@ -37,6 +37,14 @@ body.war-room-immersive-active .app-shell-board-game > .masthead-game-compact .m
   pointer-events: none !important;
 }
 
+/* The global feedback trigger shares the same top-right strip as Matthias'
+ * tactical HUD. In immersion the room owns that hit area; leaving both active
+ * makes the masthead button intercept the War Room overflow menu. */
+body.war-room-immersive-active .app-shell-board-game > .masthead-game-compact .masthead-feedback-trigger {
+  display: none !important;
+  pointer-events: none !important;
+}
+
 body.war-room-immersive-active .app-shell-board-game > .masthead-game-compact button,
 body.war-room-immersive-active .app-shell-board-game > .masthead-game-compact [role='button'],
 body.war-room-immersive-active .app-shell-board-game > .masthead-game-compact .masthead-account-popover {
