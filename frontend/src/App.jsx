@@ -83,6 +83,8 @@ import { clearRememberedLabMode } from './labLaunchIntent.js';
 import { useGameLaunchController } from './useGameLaunchController.js';
 import { usePuzzleLaunchFlow } from './usePuzzleLaunchFlow.js';
 import { runLogoutLifecycle } from './logoutLifecycle.js';
+import { getBoardRenderer } from './userPreferences.js';
+import { runUserInitiatedWarRoomEntry } from './warRoomEntry.js';
 
 // 'menu' | 'game' | 'tutorial' | 'openings' | 'tournament' | 'tournamentGame' | 'puzzle' | 'combat' | 'history' | 'replay'
 function AppInner({ isAdminUser }) {
@@ -309,6 +311,11 @@ function AppInner({ isAdminUser }) {
     setLoading,
     setError,
   });
+
+  const continueActiveSessionFromUserGesture = () => runUserInitiatedWarRoomEntry(
+    continueActiveSession,
+    { boardRenderer: getBoardRenderer() },
+  );
 
   useEffect(() => {
     setRating(loadRating());
@@ -894,7 +901,7 @@ function AppInner({ isAdminUser }) {
                 <strong>La partida sigue guardada.</strong>
                 <span>{error}</span>
                 <div className="active-session-recovery-actions">
-                  <button type="button" className="primary-btn" onClick={continueActiveSession} disabled={loading}>
+                  <button type="button" className="primary-btn" onClick={continueActiveSessionFromUserGesture} disabled={loading}>
                     {loading ? 'Reintentando…' : 'Reintentar recuperación'}
                   </button>
                   <button type="button" className="secondary-btn" onClick={resetNavigation}>Volver al menú</button>
@@ -907,7 +914,7 @@ function AppInner({ isAdminUser }) {
         {view === 'menu' && (
           <Menu
             onNewGame={handleNewGame}
-            onContinue={continueActiveSession}
+            onContinue={continueActiveSessionFromUserGesture}
             onTournament={() => navigateTo('tournament')}
             onTutorial={() => navigateTo('tutorial')}
             onOpenings={() => navigateTo('openings')}
