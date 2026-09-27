@@ -2420,6 +2420,24 @@ def add_table_and_board(materials):
         wear.rotation_euler[2] = math.radians(rot)
     cube("HOME_PROP_table_apron_front", (0.0, -0.56, 0.90), (3.40, 0.10, 0.22), wood, bevel=0.045)
     cube("HOME_PROP_table_apron_back", (0.0, 2.66, 0.90), (3.40, 0.10, 0.22), wood, bevel=0.045)
+    # Dark clenched straps make the exposed apron ends read as joined working
+    # timber. Keep them outside the central drape so the structure stays legible.
+    for side in (-1, 1):
+        strap_x = side * 2.78
+        cube(
+            f"HOME_PROP_table_apron_strap_{side}",
+            (strap_x, -0.672, 0.90),
+            (0.055, 0.012, 0.16),
+            materials["forged_iron"],
+            bevel=0.018,
+        )
+        for rivet_idx, rivet_z in enumerate((0.80, 1.00)):
+            sphere(
+                f"HOME_PROP_table_apron_strap_{side}_rivet_{rivet_idx}",
+                (strap_x, -0.688, rivet_z),
+                (0.020, 0.010, 0.020),
+                materials["forged_iron"],
+            )
     for x in (-3.20, 3.20):
         for y in (-0.30, 2.40):
             cube(f"HOME_PROP_table_leg_{x}_{y}", (x, y, 0.55), (0.15, 0.15, 0.55), wood, bevel=0.035)
@@ -3697,14 +3715,6 @@ def add_side_furnishings(materials):
             (0.39, 0.010, 0.66),
             wood,
             bevel=0.032,
-        )
-        # A dark forged escutcheon makes the brass knob read as old working
-        # hardware rather than a decorative dot on an otherwise plain door.
-        sphere(
-            f"HOME_PROP_right_cabinet_escutcheon_{side}",
-            (7.55 + side * 0.13, 4.498, 1.08),
-            (0.075, 0.010, 0.105),
-            materials["forged_iron"],
         )
         sphere(
             f"HOME_PROP_right_cabinet_handle_{side}",
