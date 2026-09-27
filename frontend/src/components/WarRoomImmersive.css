@@ -3,6 +3,15 @@ body.war-room-immersive-active {
   overscroll-behavior: none;
 }
 
+/* Immersion takes the 3D layout out of normal flow with position: fixed.
+ * Keep the owning game screen as a real viewport-sized box so Android/WebView,
+ * Playwright visibility checks and shell geometry do not observe a zero-height
+ * parent while the room itself is perfectly rendered. */
+body.war-room-immersive-active .game-screen {
+  width: 100%;
+  min-height: 100dvh;
+}
+
 .game-3d-immersive-toggle,
 .game-3d-rail-toggle {
   display: grid;
