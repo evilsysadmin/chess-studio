@@ -16,7 +16,7 @@ import {
 } from './WarRoom3DAnimation.js';
 import { createWarRoomAmbientScheduler } from './WarRoomAmbientScheduler.js';
 import { applyWarRoomHansScreenDiagnostics, applyWarRoomLightDiagnostics } from './WarRoomDomDiagnostics.js';
-import { resolveBoardTap } from './WarRoom3DTouch.js';
+import { resolveBoardTap, selectBoardSquareOnTouch } from './WarRoom3DTouch.js';
 import { BOARD3D_HIGHLIGHT_SIZE, BOARD3D_HIGHLIGHT_Y, board3DHighlightStyle } from './Board3DHighlights.js';
 import { board3DCaptureWarmBoostValue, board3DPieceInteractionPose, writeBoard3DHighlightPulse } from './Board3DInteractionFx.js';
 import { BOARD_THEME_3D, FILES, resolveBoard3DThemeId } from './Board3DConfig.js';
@@ -470,16 +470,6 @@ function Board3DCanvas({
       if (nextSquare) latestPropsRef.current.onPieceMouseEnter?.(nextSquare, event);
     }
 
-    function selectSquareFromTouch(event) {
-      if (renderer.domElement.dataset.warRoomPinching === 'true') return false;
-      const square = squareFromPointer(event);
-      renderer.domElement.dataset.warRoomLastSquare = square || '';
-      if (!square) return false;
-      setFocusedSquare(square);
-      latestPropsRef.current.onSquareClick?.(square);
-      return true;
-    }
-
     function onPointerDown(event) {
       const touchLike = event.pointerType === 'touch' || event.pointerType === 'pen';
       pointerStartRef.current = {
@@ -500,7 +490,7 @@ function Board3DCanvas({
       if (!touchLike) return;
       renderer.domElement.setPointerCapture?.(event.pointerId);
       renderer.domElement.dataset.warRoomTouchStage = 'down';
-      const handled = selectSquareFromTouch(event);
+      const handled = selectBoardSquareOnTouch({ event, canvas: renderer.domElement, squareFromPointer, setFocusedSquare, onSquareClick: latestPropsRef.current.onSquareClick });
       if (pointerStartRef.current) pointerStartRef.current.handled = handled;
     }
 
