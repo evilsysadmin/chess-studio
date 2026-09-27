@@ -222,10 +222,8 @@ function Board3DCanvas({
 
     const coarsePointer = Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
     const sceneProfile = warRoomSceneProfile({ coarsePointer, softwareRenderer });
-    const renderLite = sceneProfile.lite;
-    const sceneLite = renderLite || (coarsePointer && warRoomMobilePerformance === true);
-    const scene = new THREE.Scene();
-    scene.userData.warRoomHansAwaitCall = latestPropsRef.current.hansFireCallEnabled;
+    const { lite: renderLite } = sceneProfile; const sceneLite = renderLite || (coarsePointer && warRoomMobilePerformance === true);
+    const scene = new THREE.Scene(); scene.userData.warRoomHansAwaitCall = latestPropsRef.current.hansFireCallEnabled;
     const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
     const hansWorldProbe = new THREE.Vector3();
     const hansScreenProbe = new THREE.Vector3();
