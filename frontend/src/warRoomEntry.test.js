@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { runUserInitiatedWarRoomEntry } from './warRoomEntry.js';
 
+// Keep browser side effects injectable: the trusted gesture must be tested
+// without coupling this contract to a particular DOM/fullscreen implementation.
 describe('runUserInitiatedWarRoomEntry', () => {
   it('requests landscape before starting a user-initiated 3D War Room entry', async () => {
     const calls = [];
