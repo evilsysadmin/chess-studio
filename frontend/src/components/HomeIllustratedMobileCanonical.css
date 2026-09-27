@@ -474,3 +474,168 @@
 @media (prefers-reduced-motion: reduce) {
   .illustrated-home__destination { transition: none; }
 }
+
+
+/* Portrait phone Home: compact control deck over the same 3D castle.
+ * Landscape keeps the authored diegetic layout above; portrait deliberately
+ * prioritises reachability and hierarchy instead of scattering labels over a tall crop. */
+@media (pointer: coarse) and (orientation: portrait) and (max-width: 520px) {
+  .illustrated-home__memory-object,
+  .illustrated-home__beacon {
+    display: none !important;
+  }
+
+  .illustrated-home__brand {
+    top: calc(max(8px, env(safe-area-inset-top)) + 76px) !important;
+    left: 14% !important;
+    width: 72% !important;
+  }
+  .illustrated-home__brand h1 {
+    font-size: clamp(25px, 8vw, 33px) !important;
+  }
+  .illustrated-home__brand p:last-child {
+    display: none !important;
+  }
+
+  .illustrated-home__stage > nav {
+    position: absolute !important;
+    z-index: 24 !important;
+    inset: auto 10px calc(max(108px, env(safe-area-inset-bottom) + 96px)) 10px !important;
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+    pointer-events: auto !important;
+  }
+
+  .illustrated-home__destination {
+    position: static !important;
+    inset: auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+    min-height: 44px !important;
+    padding: 5px 4px !important;
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 5px !important;
+    border: 1px solid rgba(218, 172, 83, .16) !important;
+    border-radius: 10px !important;
+    background: rgba(12, 8, 5, .64) !important;
+    box-shadow: 0 5px 16px rgba(0, 0, 0, .20) !important;
+    backdrop-filter: blur(5px) !important;
+    text-shadow: 0 1px 3px #090401 !important;
+  }
+  .illustrated-home__destination svg {
+    width: 17px !important;
+    height: 17px !important;
+    flex: 0 0 auto;
+  }
+  .illustrated-home__destination strong {
+    font-size: 10px !important;
+    line-height: 1.05 !important;
+    white-space: normal !important;
+  }
+  .illustrated-home__destination > span,
+  .illustrated-home__destination i {
+    display: none !important;
+  }
+
+  .illustrated-home__destination--play {
+    order: -10;
+    grid-column: 1 / -1 !important;
+    min-height: 54px !important;
+    justify-content: center !important;
+    border-color: rgba(229, 183, 92, .36) !important;
+    background: linear-gradient(180deg, rgba(72, 40, 17, .90), rgba(30, 15, 8, .88)) !important;
+  }
+  .illustrated-home__destination--play strong {
+    font-size: 18px !important;
+    letter-spacing: .03em !important;
+  }
+
+  .illustrated-home__resident {
+    position: static !important;
+  }
+  .illustrated-home__matthias {
+    position: absolute !important;
+    z-index: 26 !important;
+    left: 10px !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: calc(max(12px, env(safe-area-inset-bottom)) + 46px) !important;
+    width: calc(30% - 10px) !important;
+    min-width: 0 !important;
+    min-height: 40px !important;
+    padding: 4px 6px !important;
+    border-radius: 9px !important;
+    background: rgba(12, 8, 5, .72) !important;
+  }
+  .illustrated-home__matthias-portrait {
+    display: none !important;
+  }
+  .illustrated-home__matthias strong {
+    font-size: 9px !important;
+  }
+
+  .illustrated-home__utilities {
+    position: absolute !important;
+    z-index: 26 !important;
+    right: 10px !important;
+    left: auto !important;
+    top: auto !important;
+    bottom: calc(max(12px, env(safe-area-inset-bottom)) + 46px) !important;
+    width: calc(30% - 10px) !important;
+    height: 40px !important;
+  }
+  .illustrated-home__dungeon-copy {
+    inset: 0 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 40px !important;
+    display: grid !important;
+    place-content: center !important;
+    padding: 4px 6px !important;
+    border-radius: 9px !important;
+    background: rgba(12, 8, 5, .72) !important;
+    text-align: center !important;
+  }
+  .illustrated-home__dungeon-copy strong {
+    font-size: 9px !important;
+  }
+
+  .illustrated-home__play-more-wrap {
+    position: absolute !important;
+    z-index: 27 !important;
+    left: 35% !important;
+    right: 35% !important;
+    top: auto !important;
+    bottom: calc(max(12px, env(safe-area-inset-bottom)) + 46px) !important;
+    width: auto !important;
+  }
+  .illustrated-home__play-more {
+    width: 100% !important;
+    min-height: 40px !important;
+    padding: 4px 6px !important;
+    border-radius: 9px !important;
+    background: rgba(12, 8, 5, .72) !important;
+    font-size: 9px !important;
+  }
+  .illustrated-home__play-more span {
+    white-space: normal !important;
+  }
+
+  .illustrated-home__quickbar {
+    display: none !important;
+  }
+
+  .illustrated-home__speech {
+    position: fixed !important;
+    z-index: 90 !important;
+    left: 10px !important;
+    right: 10px !important;
+    bottom: max(12px, env(safe-area-inset-bottom)) !important;
+    width: auto !important;
+    max-height: 42dvh !important;
+    overflow: auto !important;
+    transform: none !important;
+  }
+}
