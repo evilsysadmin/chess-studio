@@ -43,29 +43,33 @@
   .war-room-immersive-music-dock {
     left: max(.35rem, env(safe-area-inset-left));
     bottom: max(.35rem, env(safe-area-inset-bottom));
-    width: min(184px, calc(100vw - .7rem));
+    width: min(96px, calc(100vw - .7rem));
   }
 
   .war-room-immersive-music-dock .music-deck-collapsed {
-    min-height: 34px !important;
-    height: 34px !important;
-    grid-template-columns: minmax(0, 1fr) 34px !important;
+    min-height: 30px !important;
+    height: 30px !important;
+    grid-template-columns: minmax(0, 1fr) 30px !important;
   }
 
   .war-room-immersive-music-dock .music-deck-expand {
-    min-height: 34px !important;
-    padding: .12rem .4rem !important;
+    min-height: 30px !important;
+    padding: .08rem .3rem !important;
   }
 
   .war-room-immersive-music-dock .music-deck-collapsed-play {
-    width: 34px !important;
-    min-width: 34px !important;
-    height: 34px !important;
-    min-height: 34px !important;
+    width: 30px !important;
+    min-width: 30px !important;
+    height: 30px !important;
+    min-height: 30px !important;
   }
 
   .war-room-immersive-music-dock .music-deck-collapsed-track {
-    max-width: 7rem;
-    font-size: .58rem;
+    display: none;
+  }
+
+  .war-room-immersive-music-dock .music-deck-expand {
+    justify-content: center;
+    gap: .22rem;
   }
 }
