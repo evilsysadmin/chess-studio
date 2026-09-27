@@ -13,6 +13,7 @@ async function openDesktopWarRoom(page) {
   const shell = page.locator('.board3d-main-shell');
   await expect(warRoom).toBeVisible({ timeout: 45_000 });
   await expect(shell).toBeVisible({ timeout: 45_000 });
+
   return { warRoom, shell };
 }
 

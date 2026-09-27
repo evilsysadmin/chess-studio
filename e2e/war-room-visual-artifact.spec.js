@@ -472,17 +472,17 @@ async function openCanonicalWarRoom(page, { variant = 'classic' } = {}) {
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
   // Legacy desktop can take longer than the mobile/v2 captures to settle under
-  // headless SwiftShader. Gate first on the semantic game state, as the other
-  // War Room E2Es do, then confirm the screen wrapper rather than treating a
-  // slow renderer mount as a failed game launch.
+  // headless SwiftShader. Gate on semantic game state only: immersive War Room
+  // presentation may make the outer .game-screen wrapper non-rendered while
+  // the actual fixed viewport scene is already valid and interactive.
   await expect(gameStatus(page)).toBeVisible({ timeout: 60_000 });
-  await expect(page.locator('.game-screen')).toBeVisible({ timeout: 15_000 });
 
   const board3d = await open3DFromAppearance(page);
   const canvas = page.locator('.board3d-main-canvas');
   await expect(canvas).toBeVisible({ timeout: 30_000 });
   await expect(board3d).toHaveAttribute('data-board3d-camera', 'fixed-tactical', { timeout: 30_000 });
-  await expect(page.locator('.game-3d-turn-pill')).toBeVisible();
+  await expect(gameStatus(page)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Más acciones de partida', exact: true })).toBeVisible();
 
   const tutorial = page.locator('[data-war-room-first-run-tutorial="true"]');
   if (await tutorial.isVisible().catch(() => false)) {
@@ -491,13 +491,18 @@ async function openCanonicalWarRoom(page, { variant = 'classic' } = {}) {
   }
 
   if (!['v2', 'v3'].includes(variant)) {
-    // The cat is classic-shell decor; keep that canary there without making
-    // the Blender v2 proof depend on hidden legacy geometry.
-    await expect(canvas).toHaveAttribute('data-war-room-cat-rendered', 'true', { timeout: 30_000 });
-    await expect(canvas).toHaveAttribute('data-war-room-cat-version', WAR_ROOM_CAT_VERSION);
-    await expect(canvas).toHaveAttribute('data-war-room-cat-count', '1');
-    await expect(canvas).toHaveAttribute('data-war-room-cat-placement', /^(left|right)-sofa-sleeper-v1$/);
-    await expect(canvas).toHaveAttribute('data-war-room-cat-sofa-side', /^(left|right)$/);
+    // The cat is a full classic-room decor canary. Mobile/coarse capture may
+    // deliberately select the lite scene tier, where premium room dressing is
+    // omitted to protect frame budget; immersion must not turn that into a
+    // false visual failure.
+    const sceneTier = await canvas.getAttribute('data-board3d-scene-tier');
+    if (sceneTier !== 'lite') {
+      await expect(canvas).toHaveAttribute('data-war-room-cat-rendered', 'true', { timeout: 30_000 });
+      await expect(canvas).toHaveAttribute('data-war-room-cat-version', WAR_ROOM_CAT_VERSION);
+      await expect(canvas).toHaveAttribute('data-war-room-cat-count', '1');
+      await expect(canvas).toHaveAttribute('data-war-room-cat-placement', /^(left|right)-sofa-sleeper-v1$/);
+      await expect(canvas).toHaveAttribute('data-war-room-cat-sofa-side', /^(left|right)$/);
+    }
   }
   return board3d;
 }
