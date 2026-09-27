@@ -660,6 +660,17 @@ def build_celestial_globe(static, palette):
         "WR3_OBS_globe_equator", center, 0.36, 0.018,
         palette["brass_dark"], static,
     )
+    # Sparse brass stars make the blue sphere read as a celestial globe at the
+    # game camera without turning this secondary corner into another focal point.
+    for star, (dx, dz) in enumerate((
+        (-0.16, 0.12), (-0.05, 0.22), (0.08, 0.15),
+        (0.18, 0.03), (-0.10, -0.08), (0.10, -0.16),
+    )):
+        dy = math.sqrt(max(0.0, 0.34 ** 2 - dx ** 2 - dz ** 2))
+        base.sphere(
+            f"WR3_OBS_globe_star_{star}", (x + dx, y - dy, center[2] + dz),
+            0.016, palette["brass"], static,
+        )
 
 
 def build_wall_lanterns(static, palette):
