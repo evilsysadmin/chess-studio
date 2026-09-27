@@ -141,17 +141,33 @@ body.war-room-immersive-active .game-screen {
   .game-screen .game-layout-immersive .board-live-row.is-3d-warroom {
     min-height: 0;
     height: 100%;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-areas:
+      'board'
+      'chat' !important;
+    grid-template-rows: auto auto !important;
     row-gap: .25rem !important;
   }
 
-  /* The compact HUD is one 44px tactical row. Older War Room chrome layers
-   * may leave extra intrinsic height on the commander wrapper; that creates a
-   * visible dead band between Matthias and the board in portrait. */
+  /* Default mobile immersion has no commander row. Matthias is a floating HUD
+   * over the room, so the old compact grid must not reserve vertical space
+   * before the board. */
   .game-screen .game-layout-immersive .game-3d-command-column {
+    position: absolute !important;
+    z-index: 40 !important;
+    top: max(.45rem, env(safe-area-inset-top)) !important;
+    right: max(.45rem, env(safe-area-inset-right)) !important;
+    left: max(.45rem, env(safe-area-inset-left)) !important;
+    width: auto !important;
     min-height: 0 !important;
     height: 44px !important;
     margin: 0 !important;
     padding: 0 !important;
+    pointer-events: none;
+  }
+
+  .game-screen .game-layout-immersive .game-3d-command-column .game-3d-turn-pill {
+    pointer-events: auto;
   }
 
   /* Portrait must break the desktop/full-viewport percentage height chain.
