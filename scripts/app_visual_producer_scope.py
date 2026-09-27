@@ -51,6 +51,27 @@ WARROOM_MOBILE_ONLY_FILES = {
     "frontend/src/components/warroomlandscapegate.css",
     "frontend/src/components/warroommobilelandscape.css",
 }
+
+WARROOM_MATTHIAS_ONLY_FILES = {
+    "frontend/src/components/matthias3dbubbleanchor.css",
+    "frontend/src/components/usematthias3dbubbleanchor.js",
+    "frontend/src/components/matthias3dopeningbanter.css",
+    "frontend/src/components/matthias3dopeningbanter.jsx",
+}
+
+BOARD3D_MATTHIAS_SHARED_FILES = {
+    "frontend/src/components/matthiasking3d.js",
+}
+
+TRAINING_PROGRESS_MATTHIAS_FILES = {
+    "frontend/src/components/insightsmatthiascampaign.jsx",
+    "frontend/src/components/insightsmatthiasmotion.jsx",
+    "frontend/src/components/matthiaslayeredart.css",
+    "frontend/src/components/matthiaslayeredart.jsx",
+    "frontend/src/components/matthiascoffeesteam.css",
+    "frontend/src/components/matthiascoffeesteam.jsx",
+    "frontend/src/components/matthiasdailyconsult.jsx",
+}
 WARROOM_VARIANT_ORDER = ("classic", "v2", "v3")
 WARROOM_PROFILE_SCOPE_ALL = "all"
 WARROOM_PROFILE_SCOPE_MOBILE = "mobile"
@@ -271,8 +292,12 @@ def classify_path(path: str) -> set[str] | None:
     if "experimentsscreen" in lower or "/experiments" in lower:
         return {"experiments-hub"}
 
-    if lower in WARROOM_VARIANT_CORE_FILES or lower in WARROOM_CORE_ONLY_FILES or lower in WARROOM_MOBILE_ONLY_FILES:
+    if lower in WARROOM_VARIANT_CORE_FILES or lower in WARROOM_CORE_ONLY_FILES or lower in WARROOM_MOBILE_ONLY_FILES or lower in WARROOM_MATTHIAS_ONLY_FILES:
         return {"warroom-core"}
+    if lower in BOARD3D_MATTHIAS_SHARED_FILES:
+        return {"training-school", "warroom-core"}
+    if lower in TRAINING_PROGRESS_MATTHIAS_FILES:
+        return {"training-progress"}
 
     if any(token in lower for token in ("war-room", "warroom", "board3d", "gameboardview", "gamesidecolumn", "game3d")):
         # Class Room renders through Board3D too. Shared Board3D changes must
@@ -480,6 +505,12 @@ def self_test() -> None:
         assert classify([core_only_file]) == "warroom-core"
     for mobile_only_file in WARROOM_MOBILE_ONLY_FILES:
         assert classify([mobile_only_file]) == "warroom-core"
+    for matthias_only_file in WARROOM_MATTHIAS_ONLY_FILES:
+        assert classify([matthias_only_file]) == "warroom-core"
+    for board3d_matthias_file in BOARD3D_MATTHIAS_SHARED_FILES:
+        assert classify([board3d_matthias_file]) == "training-school,warroom-core"
+    for training_matthias_file in TRAINING_PROGRESS_MATTHIAS_FILES:
+        assert classify([training_matthias_file]) == "training-progress"
     assert classify(["frontend/src/components/WarRoomCatDecor.js"]) == "warroom-decor"
     assert classify(["frontend/src/components/WarRoomArmorDisplay.js"]) == "warroom-armor"
     assert classify(["frontend/src/components/WarRoomHansPerGame.jsx"]) == "warroom-hans"
