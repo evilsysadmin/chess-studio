@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
 const MOBILE_FOCUS_QUERY = '(max-width: 820px), (pointer: coarse) and (orientation: landscape) and (max-width: 920px) and (max-height: 620px)';
-const MOBILE_LANDSCAPE_QUERY = '(pointer: coarse) and (orientation: landscape) and (max-width: 920px) and (max-height: 620px)';
 export const FOCUS_BUBBLE_MS = 4200;
 
 export function scheduleFocusBubbleClear(callback, scheduler = globalThis) {
@@ -25,18 +24,14 @@ export function useGameMobileFocus(gameId) {
   useEffect(() => {
     if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return undefined;
     const media = window.matchMedia(MOBILE_FOCUS_QUERY);
-    const landscapeMedia = window.matchMedia(MOBILE_LANDSCAPE_QUERY);
     const refresh = () => {
       setCompactViewport(media.matches);
-      setMobileLandscape(landscapeMedia.matches);
       if (!media.matches) setFocusMode(false);
     };
     refresh();
     media.addEventListener?.('change', refresh);
-    landscapeMedia.addEventListener?.('change', refresh);
     return () => {
       media.removeEventListener?.('change', refresh);
-      landscapeMedia.removeEventListener?.('change', refresh);
     };
   }, []);
 
@@ -56,7 +51,6 @@ export function useGameMobileFocus(gameId) {
 
   return {
     compactViewport,
-    mobileLandscape,
     focusActive,
     enterFocus: () => setFocusMode(true),
     exitFocus: () => setFocusMode(false),
