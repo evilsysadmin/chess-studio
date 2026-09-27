@@ -29,8 +29,28 @@ runs:
           head_sha="${{ github.event.pull_request.head.sha }}"
           base_ref="${{ github.event.pull_request.base.ref }}"
           pr_number="${{ github.event.pull_request.number }}"
-          git cat-file -e "$base_sha^{commit}" 2>/dev/null || git fetch --no-tags --depth=1 origin "$base_ref"
-          git cat-file -e "$head_sha^{commit}" 2>/dev/null || git fetch --no-tags --depth=1 origin "pull/$pr_number/head"
+          if ! git cat-file -e "$base_sha^{commit}" 2>/dev/null; then
+            # A shallow fetch of the moving base ref only guarantees today's
+            # main tip, not the historical base SHA recorded when the PR was
+            # opened. Fetch the exact reachable commit first; if the server
+            # refuses an unadvertised SHA, deepen main until the base appears.
+            git fetch --no-tags --depth=1 origin "$base_sha" || true
+            for deepen in 64 256 1024; do
+              git cat-file -e "$base_sha^{commit}" 2>/dev/null && break
+              git fetch --no-tags --deepen="$deepen" origin "$base_ref"
+            done
+            git cat-file -e "$base_sha^{commit}" 2>/dev/null || {
+              echo "::error::Unable to materialize PR base SHA $base_sha"
+              exit 1
+            }
+          fi
+          if ! git cat-file -e "$head_sha^{commit}" 2>/dev/null; then
+            git fetch --no-tags --depth=1 origin "pull/$pr_number/head"
+          fi
+          git cat-file -e "$head_sha^{commit}" 2>/dev/null || {
+            echo "::error::Unable to materialize PR head SHA $head_sha"
+            exit 1
+          }
           files="$(git diff --name-only "$base_sha" "$head_sha")"
         else
           files="$(git diff --name-only HEAD^ HEAD)"
