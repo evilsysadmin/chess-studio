@@ -148,28 +148,32 @@ describe('War Room ambient render cadence', () => {
   });
 
   it('mantiene geometría completa pero nace con presupuesto GPU sensato en desktop', () => {
-    expect(warRoomSceneProfile()).toEqual({
+    expect(warRoomSceneProfile({ hardwareHints: {} })).toEqual({
+      qualityTier: 'medium',
       tier: 'full',
       lite: false,
       pixelRatioCap: 1.2,
       shadowMapSize: 1024,
       shadowsEnabled: true,
     });
-    expect(warRoomSceneProfile({ coarsePointer: true })).toEqual({
+    expect(warRoomSceneProfile({ coarsePointer: true, hardwareHints: {} })).toEqual({
+      qualityTier: 'medium',
       tier: 'balanced',
       lite: false,
       pixelRatioCap: 1,
       shadowMapSize: 512,
       shadowsEnabled: true,
     });
-    expect(warRoomSceneProfile({ softwareRenderer: true })).toEqual({
+    expect(warRoomSceneProfile({ softwareRenderer: true, hardwareHints: {} })).toEqual({
+      qualityTier: 'low',
       tier: 'lite',
       lite: true,
       pixelRatioCap: 1,
       shadowMapSize: 512,
       shadowsEnabled: false,
     });
-    expect(warRoomSceneProfile({ coarsePointer: true, softwareRenderer: true })).toEqual({
+    expect(warRoomSceneProfile({ coarsePointer: true, softwareRenderer: true, hardwareHints: {} })).toEqual({
+      qualityTier: 'low',
       tier: 'lite',
       lite: true,
       pixelRatioCap: 1,
