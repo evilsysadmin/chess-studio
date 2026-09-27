@@ -1162,7 +1162,7 @@ function Board3DCanvas({
     const baseTarget = state.camera?.userData?.baseTarget;
     if (basePosition && baseTarget) {
       const euler = new THREE.Euler(motion.pitch, motion.yaw, 0, 'YXZ');
-      const offset = basePosition.clone().sub(baseTarget).applyEuler(euler);
+      const offset = basePosition.clone().sub(baseTarget).multiplyScalar(zoomRef.current).applyEuler(euler);
       state.camera.position.copy(baseTarget).add(offset);
       state.camera.lookAt(baseTarget);
     }
