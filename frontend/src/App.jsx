@@ -496,7 +496,7 @@ function AppInner({ isAdminUser }) {
       ? `Rating ${ratingSummary.eloDelta >= 0 ? '+' : ''}${ratingSummary.eloDelta} · ${ratingSummary.eloBefore} → ${ratingSummary.eloAfter}`
       : 'Esta modalidad no afecta a tu rating.';
     const summary = { gameId: finishedGame.id, outcome, title, detail, endReason: endMeta.endReason || null, adaptiveDifficulty: !!gameContext.adaptiveDifficulty, ...ratingSummary };
-    setCasualResult(summary);
+    setCasualResult(summary); if (ratingSummary.ratingApplied && (finishedGame.history || []).length) void import('./postGameRatingAuditRunner.js').then(({ runPostGameRatingAudit }) => runPostGameRatingAudit({ finishedGame, outcome, record, setRating, setCasualResult })).catch(() => {});
     if (specialRun?.active && gameContext.runMode) {
       const nextRun = recordSpecialRunResult(specialRun, outcome);
       setSpecialRun(nextRun);
