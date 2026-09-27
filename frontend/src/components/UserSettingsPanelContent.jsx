@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { TIME_CONTROLS } from '../clock.js';
 import { getAmbientVolume, isFxMuted, isMusicMuted, setAmbientVolume, setFxMuted, setMusicMuted } from '../sound.js';
-import { BOARD_RENDERERS, getBoardCoordinates, getBoardRenderer, getDefaultTimeControlId, getReducedMotion, getUiLanguage, setBoardCoordinates, setBoardRenderer, setDefaultTimeControlId, setReducedMotion, setUiLanguage, SUPPORTED_UI_LANGUAGES } from '../userPreferences.js';
+import { BOARD_RENDERERS, getBoardCoordinates, getBoardRenderer, getDefaultTimeControlId, getReducedMotion, getRenderQualityPreference, getUiLanguage, RENDER_QUALITY_OPTIONS, setBoardCoordinates, setBoardRenderer, setDefaultTimeControlId, setReducedMotion, setRenderQualityPreference, setUiLanguage, SUPPORTED_UI_LANGUAGES } from '../userPreferences.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { levelForPoints, loadTournament } from '../tournament.js';
 import { loadSelectedSkin, PIECE_SKINS, saveSelectedSkin, unlockedSkins } from '../tournamentRewards.js';
@@ -53,6 +53,7 @@ export default function UserSettingsPanelContent({ onClose, isAdminUser = false 
   const [boardRenderer, setBoardRendererState] = useState(() => getBoardRenderer());
   const [reducedMotion, setReducedMotionState] = useState(() => getReducedMotion());
   const [boardCoordinates, setBoardCoordinatesState] = useState(() => getBoardCoordinates());
+  const [renderQuality, setRenderQualityState] = useState(() => getRenderQualityPreference());
   const pendingBoardRendererRef = useRef(null);
   const tournamentLevel = levelForPoints(loadTournament().progressPoints || 0);
   const availableSkinIds = new Set(unlockedSkins(tournamentLevel, { isAdmin: isAdminUser }).map((skin) => skin.id));
@@ -148,6 +149,13 @@ export default function UserSettingsPanelContent({ onClose, isAdminUser = false 
                 );
               })}
             </div>
+            <label className="settings-field">
+              <span>Calidad de renderizado</span>
+              <select value={renderQuality} onChange={(event) => setRenderQualityState(setRenderQualityPreference(event.target.value))}>
+                {RENDER_QUALITY_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+              </select>
+              <small>Automática adapta la calidad 3D al dispositivo. Puedes forzar Baja, Media, Alta o Ultra.</small>
+            </label>
             <label className="settings-toggle"><input type="checkbox" checked={boardCoordinates} onChange={(event) => setBoardCoordinatesState(setBoardCoordinates(event.target.checked))} /><span>Mostrar coordenadas del tablero</span></label>
             <label className="settings-toggle"><input type="checkbox" checked={reducedMotion} onChange={(event) => setReducedMotionState(setReducedMotion(event.target.checked))} /><span>Reducir animaciones</span></label>
           </section>
