@@ -118,8 +118,8 @@
      confirms itself briefly and then gets out of the board's way. */
   .app-shell-board-game:has(.game-layout-3d) .masthead-actions .save-status-badge {
     position: absolute;
-    top: 0;
-    right: 4.55rem;
+    top: 2.7rem;
+    right: .65rem;
     width: max-content;
     min-width: 0;
     margin: 0;
@@ -128,6 +128,28 @@
 
   .app-shell-board-game:has(.game-layout-3d) .masthead-actions .save-status-badge.is-saved {
     animation: war-room-save-confirm 1.65s ease forwards;
+  }
+
+  /* A successful save is confirmation, not a control. Keep the accessible
+     label for announcements but collapse the visible toast to its status dot
+     so it can never cover Guía / ⋯ in the tactical HUD. Saving/error/offline
+     states keep their full text. */
+  .app-shell-board-game:has(.game-layout-3d) .masthead-actions .save-status-badge.is-saved {
+    min-width: 28px;
+    width: 28px;
+    min-height: 28px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 999px;
+  }
+
+  .app-shell-board-game:has(.game-layout-3d) .masthead-actions .save-status-badge.is-saved > span:last-child {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
   }
 
   .app-shell-board-game:has(.game-layout-3d) .masthead-session-error {
