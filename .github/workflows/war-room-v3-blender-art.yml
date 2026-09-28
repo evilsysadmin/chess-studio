@@ -104,7 +104,8 @@ jobs:
           assert not any(name.startswith('WR3_OBS_window_orbit_') for name in source_names)
           assert not any(name.startswith('WR3_OBS_window_constellation_') for name in source_names)
           assert not any(name.startswith('WR3_OBS_canopy_rib_') for name in source_names)
-          assert 'WR3_OBS_bookshelf_frame' in source_names
+          assert not any(name.startswith('WR3_OBS_bookshelf_') for name in source_names)
+          assert not any(name.startswith('WR3_OBS_book_') for name in source_names)
           assert 'WR3_OBS_entry_rug' in source_names
           assert 'WR3_OBS_table_drum' in source_names
           assert 'WR3_OBS_stove_body' in source_names

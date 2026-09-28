@@ -355,7 +355,7 @@ function Board3DCanvas({
     boardGroup.add(pieceGroup);
     boardGroup.add(forensicGroup);
     boardGroup.add(coordinateGroup);
-    scene.add(boardGroup);
+    boardGroup.scale.setScalar(warRoomVariant === 'v3' ? 1.04 : 1); scene.add(boardGroup);
 
     if (showCoordinates) {
       const fileOrder = whiteSide ? FILES : [...FILES].reverse();
