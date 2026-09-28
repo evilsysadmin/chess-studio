@@ -1,6 +1,6 @@
 import { chromium, expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { buttonWithVisibleText, login, mockApi } from './helpers.js';
+import { buttonWithVisibleText, login, mockApi, openMoreGameModes } from './helpers.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const MIN_TOUCH_TARGET = 44;
@@ -253,6 +253,34 @@ test('App · captura visual canónica desktop + Android normal/desktop-site', as
         );
       } finally {
         await context.close();
+      }
+    }
+
+    if (HOME_PROFILE_SCOPE !== 'quickmatch') {
+      const dungeonContext = await visualBrowser.newContext({
+        viewport:{ width:390, height:844 },
+        hasTouch:true,
+      });
+      const dungeonPage = await dungeonContext.newPage();
+      try {
+        await mockApi(dungeonPage, {
+          profileSeed: {
+            'matthias.onboarded': '2',
+            'chess-study-home-guide-dismissed-v1': '1',
+          },
+        });
+        await login(dungeonPage);
+        await openMoreGameModes(dungeonPage);
+        const dungeon = dungeonPage.getByRole('navigation', { name:'Más modos y herramientas' });
+        await expect(dungeon).toBeVisible();
+        await dungeonPage.waitForTimeout(100);
+        await captureViewportPng(
+          dungeonContext,
+          dungeonPage,
+          `${ARTIFACT_DIR}/home-dungeon-android-390x844.png`,
+        );
+      } finally {
+        await dungeonContext.close();
       }
     }
 
