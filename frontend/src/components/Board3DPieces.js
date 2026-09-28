@@ -262,38 +262,37 @@ function applyBlackQueenOpaqueCrownFinish(group, side) {
     if (!['crown-orb', 'finial'].includes(part)) return;
 
     const source = child.material;
-    if (!source?.isMeshPhysicalMaterial) return;
-    const material = source.clone();
-    material.transparent = false;
-    material.opacity = 1;
+    if (!source?.color) return;
+
+    // v3: stop trying to tune the highly polished PhysicalMaterial. The player
+    // screenshot shows the remaining problem is still perceptual transparency:
+    // bright room/board reflections painted across the spherical crown read as
+    // if the checkerboard were visible through it. Replace only these tiny
+    // crown meshes with a deliberately non-mirror StandardMaterial.
+    const material = new THREE.MeshStandardMaterial({
+      color: source.color.clone(),
+      metalness: 0,
+      roughness: 0.96,
+      transparent: false,
+      opacity: 1,
+      depthWrite: true,
+      depthTest: true,
+      envMapIntensity: 0,
+    });
+    material.name = 'black-queen-solid-crown-v3';
     material.alphaTest = 0;
-    material.transmission = 0;
-    material.thickness = 0;
-    material.depthWrite = true;
-    material.depthTest = true;
     material.blending = THREE.NormalBlending;
-    // The tiny glossy spheres were acting like miniature mirrors: on a high-
-    // contrast board their reflection reads as if the square were visible
-    // through the queen. Keep polished ebony/metal, but make the crown read
-    // unmistakably solid at tactical camera distance.
-    // v2: do not let the environment map paint the checkerboard across the
-    // glossy black crown. The previous "opaque" fix removed transmission, but
-    // the strong IBL reflection still looked like the board was visible through
-    // the head in the gameplay camera. Make this tiny crown mass satin-black:
-    // solid, readable, and still lit by the room without mirror-like board echoes.
-    material.metalness = Math.min(material.metalness ?? 0.06, 0.02);
-    material.roughness = Math.max(material.roughness ?? 0.4, 0.72);
-    material.clearcoat = Math.min(material.clearcoat ?? 0.76, 0.18);
-    material.clearcoatRoughness = Math.max(material.clearcoatRoughness ?? 0.17, 0.42);
-    material.envMapIntensity = 0;
-    material.specularIntensity = Math.min(material.specularIntensity ?? 0.88, 0.24);
-    material.needsUpdate = true;
+    material.side = THREE.FrontSide;
+    material.toneMapped = true;
     material.userData = {
-      ...material.userData,
-      blackQueenOpaqueCrown: 'solid-v2',
+      ...(source.userData || {}),
+      blackQueenOpaqueCrown: 'solid-v3',
+      blackQueenCrownMaterial: 'matte-standard-v1',
     };
+
     child.material = material;
-    child.userData.blackQueenOpaqueCrown = 'solid-v2';
+    child.userData.blackQueenOpaqueCrown = 'solid-v3';
+    child.userData.blackQueenCrownMaterial = 'matte-standard-v1';
     count += 1;
   });
   if (group?.userData) group.userData.blackQueenOpaqueCrownCount = count;
