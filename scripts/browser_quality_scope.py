@@ -643,7 +643,7 @@ def self_test() -> None:
 
     all_scope = classify([".github/actions/setup-browser-e2e/action.yml"])
     assert all_scope == BrowserScope.all()
-    assert len(_ids(all_scope)) == 17
+    assert len(_ids(all_scope)) == 18
     assert "hans-fire-call" not in _ids(all_scope)
 
     harness = classify([CICD_WORKFLOW])
