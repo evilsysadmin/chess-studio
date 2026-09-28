@@ -226,6 +226,23 @@ def test_challenge_accept_creates_authoritative_match_and_enforces_turns():
     assert len(second.json()["match"]["history"]) == 2
 
 
+def test_active_clock_accepts_naive_mongo_turn_started_at():
+    now = pvp_store.utcnow()
+    match = {
+        "status": "active",
+        "turn": "w",
+        "white_clock_ms": 600_000,
+        "black_clock_ms": 600_000,
+        "turn_started_at": (now - timedelta(seconds=2)).replace(tzinfo=None),
+    }
+
+    clock = pvp_api._clock_snapshot(match, now)
+
+    assert clock["runningColor"] == "w"
+    assert 597_000 <= clock["whiteMs"] <= 598_500
+    assert clock["blackMs"] == 600_000
+
+
 def test_handoff_accepts_naive_mongo_datetimes_without_500(monkeypatch):
     client = make_client()
     for user in ("alice", "bob"):
