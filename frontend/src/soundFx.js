@@ -95,6 +95,48 @@ function scheduleSurfaceTick(ctx, destination, {
   return true;
 }
 
+function scheduleSurfaceFriction(ctx, destination, {
+  gain,
+  duration,
+  cutoffHz,
+  delay = 0,
+}) {
+  if (
+    typeof ctx.createBuffer !== 'function'
+    || typeof ctx.createBufferSource !== 'function'
+    || typeof ctx.createBiquadFilter !== 'function'
+  ) return false;
+
+  const frames = Math.max(1, Math.floor(ctx.sampleRate * duration));
+  const buffer = ctx.createBuffer(1, frames, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let index = 0; index < data.length; index += 1) {
+    const phase = index / data.length;
+    const envelope = Math.sin(Math.PI * phase) * (1 - phase * 0.65);
+    data[index] = (Math.random() * 2 - 1) * envelope;
+  }
+
+  const source = ctx.createBufferSource();
+  source.buffer = buffer;
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.value = cutoffHz;
+  filter.Q.value = 0.45;
+
+  const gainNode = ctx.createGain();
+  const start = ctx.currentTime + delay;
+  gainNode.gain.setValueAtTime(0.0001, start);
+  gainNode.gain.linearRampToValueAtTime(Math.max(0.0002, gain), start + Math.min(0.008, duration * 0.3));
+  gainNode.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+
+  source.connect(filter);
+  filter.connect(gainNode);
+  gainNode.connect(destination);
+  source.start(start);
+  source.stop(start + duration + 0.01);
+  return true;
+}
+
 function premiumPieceImpact(kind) {
   if (isFxMuted()) return;
   const ctx = getAudioContext();
@@ -142,6 +184,16 @@ function premiumPieceImpact(kind) {
     });
   }
 
+  // A tiny base-on-board settle sells weight better than another pitched layer.
+  // It is intentionally almost subliminal; on captures it is a little rougher
+  // because one piece leaves before the attacking piece seats.
+  const frictionWorked = scheduleSurfaceFriction(ctx, bus, {
+    gain: (capture ? 0.0105 : 0.007) * level,
+    duration: capture ? 0.046 : 0.034,
+    cutoffHz: (capture ? 980 : 1180) * pitch,
+    delay: capture ? 0.008 : 0.006,
+  });
+
   // Rounded residual resonance. A tiny downward settle avoids the static,
   // musical oscillator quality of the previous implementation.
   scheduleTone(ctx, bus, {
@@ -178,7 +230,7 @@ function premiumPieceImpact(kind) {
 
   // Minimal Web Audio fallback: if buffer noise is unavailable, retain a short
   // tactile cue. Do not recreate the full premium stack with square-wave beeps.
-  if (!contactWorked || !bodyTickWorked) {
+  if (!contactWorked || !bodyTickWorked || !frictionWorked) {
     scheduleTone(ctx, bus, {
       freq: (capture ? 820 : 1060) * pitch,
       gain: (capture ? 0.009 : 0.007) * level,
