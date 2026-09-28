@@ -22,6 +22,44 @@ function setClassicShellVisible(objects, visible) {
   }
 }
 
+export function startWarRoomVariantSceneAfterUsefulFrame(options, scheduler = {}) {
+  const {
+    deferUntilUsefulFrame = false,
+    canvas,
+  } = options || {};
+  if (!deferUntilUsefulFrame) return startWarRoomVariantScene(options);
+
+  const host = typeof globalThis !== 'undefined' ? globalThis : {};
+  const requestFrame = scheduler.requestFrame || host.requestAnimationFrame?.bind(host);
+  const cancelFrame = scheduler.cancelFrame || host.cancelAnimationFrame?.bind(host);
+  const setTimer = scheduler.setTimer || ((callback) => setTimeout(callback, 0));
+  const clearTimer = scheduler.clearTimer || ((id) => clearTimeout(id));
+
+  let cancelled = false;
+  let frameId = 0;
+  let timerId = 0;
+  let release = null;
+
+  if (canvas) canvas.dataset.warRoomFirstUsefulFrame = 'board-first-pending-room';
+
+  const start = () => {
+    if (cancelled) return;
+    if (canvas) canvas.dataset.warRoomFirstUsefulFrame = 'room-loading-after-board';
+    release = startWarRoomVariantScene(options);
+  };
+
+  if (requestFrame) frameId = requestFrame(start);
+  else timerId = setTimer(start, 0);
+
+  return () => {
+    cancelled = true;
+    if (frameId && cancelFrame) cancelFrame(frameId);
+    if (timerId) clearTimer(timerId);
+    release?.();
+    release = null;
+  };
+}
+
 export function startWarRoomVariantScene({
   scene, classicShellController, variant, selectable, whiteSide, renderLite, canvas, onStatus, onPaint,
 }) {
