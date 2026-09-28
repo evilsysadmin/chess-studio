@@ -33,9 +33,9 @@ describe('Board3D player king silhouette', () => {
 
     expect(king.userData.warRoomFallbackPiece).not.toBe(true);
     expect(king.userData.board3DPlayerKing).toBe(true);
-    expect(king.userData.board3DPlayerKingSilhouetteVersion).toBe('classic-sovereign-v3');
+    expect(king.userData.board3DPlayerKingSilhouetteVersion).toBe('classic-sovereign-v4');
     expect(king.userData.board3DPlayerKingBodyProfile).toBe('staunton-taper-v3');
-    expect(king.userData.board3DPlayerKingCrownProfile).toBe('clean-cross-crown-v2');
+    expect(king.userData.board3DPlayerKingCrownProfile).toBe('clean-cross-crown-v3');
     expect(parts(king, 'body')).toHaveLength(1);
     expect(parts(king, 'shoulder-guard')).toHaveLength(0);
     expect(parts(king, 'crown-base')).toHaveLength(1);
@@ -53,9 +53,9 @@ describe('Board3D player king silhouette', () => {
     const king = buildPiece('k', 'b', 'studio', true);
 
     expect(king.userData.warRoomFallbackPiece).not.toBe(true);
-    expect(king.userData.board3DPlayerKingSilhouetteVersion).toBe('classic-sovereign-lite-v3');
+    expect(king.userData.board3DPlayerKingSilhouetteVersion).toBe('classic-sovereign-lite-v4');
     expect(king.userData.board3DPlayerKingBodyProfile).toBe('staunton-taper-v3');
-    expect(king.userData.board3DPlayerKingCrownProfile).toBe('clean-cross-crown-v2');
+    expect(king.userData.board3DPlayerKingCrownProfile).toBe('clean-cross-crown-v3');
     expect(parts(king, 'shoulder-guard')).toHaveLength(0);
     expect(parts(king, 'crown-buttress')).toHaveLength(0);
     expect(parts(king, 'cross-horizontal')[0]?.geometry?.type).toBe('BoxGeometry');
