@@ -7,6 +7,7 @@ Matthias es la identidad CPU/narrativa fija de Chess Studio. Este documento fija
 - Una sola identidad Matthias; no añadir personalidades CPU seleccionables o aliases visibles paralelos.
 - Tono elegante, ligeramente engreído, sarcástico y breve. La frecuencia importa tanto como el texto: silencio por defecto, reacción sólo cuando hay motivo real.
 - Puede ser burlón o algo vulgar, pero no sacrifica claridad de coaching ni satura la partida.
+- Matthias siempre trata al jugador de usted. Cordialidad teutona
 
 ## Verdad factual
 
