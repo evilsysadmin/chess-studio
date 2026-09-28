@@ -204,6 +204,7 @@ def classify_path(path: str) -> set[str] | None:
         "scripts/app_visual_changed_files.py",
         "scripts/app_visual_scope.py",
         "scripts/app_visual_producer_scope.py",
+        "scripts/app_visual_capture.sh",
     }:
         return set()
     if lower == "scripts/war_room_visual_freeze_check.mjs":
@@ -213,8 +214,6 @@ def classify_path(path: str) -> set[str] | None:
         or lower.startswith(".github/actions/app-visual-pipeline/")
     ):
         return set()
-    if lower == "scripts/app_visual_capture.sh":
-        return None
     if lower in {
         ".github/workflows/home-blender-v2-preview.yml",
         ".github/workflows/home-blender-v2-runtime.yml",
@@ -468,6 +467,7 @@ def self_test() -> None:
     assert classify(["scripts/app_visual_scope.py"]) == "none"
     assert classify(["scripts/app_visual_producer_scope.py"]) == "none"
     assert classify(["scripts/app_visual_changed_files.py"]) == "none"
+    assert classify(["scripts/app_visual_capture.sh"]) == "none"
     assert classify([".github/actions/app-visual-pipeline/action.yml"]) == "none"
     assert classify([".github/workflows/app-visual-artifact.yml"]) == "none"
     assert classify(["frontend/src/chroniclesOfMatthiasIsometric.js"]) == "chronicles-tactics"
