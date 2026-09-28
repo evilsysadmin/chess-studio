@@ -72,6 +72,7 @@ export default function PvPLobbyModal({
   const [loading, setLoading] = useState(true);
   const [busyKey, setBusyKey] = useState('');
   const [messageText, setMessageText] = useState('');
+  const [selectedRival, setSelectedRival] = useState('');
   const [error, setError] = useState('');
   const externallyDriven = Boolean(lobbySnapshot && onRefreshRoster);
   const liveLobby = lobbySnapshot || lobby;
@@ -82,6 +83,13 @@ export default function PvPLobbyModal({
   const outgoing = useMemo(() => liveLobby.challenges.filter((row) => row.direction === 'outgoing' && row.status === 'pending'), [liveLobby.challenges]);
   const opponent = opponentForMatch(liveLobby.activeMatch);
   const messages = Array.isArray(liveLobby.messages) ? liveLobby.messages : [];
+  const selectedRow = rivals.find((row) => row.username === selectedRival) || null;
+  const selectedPending = selectedRow ? outgoing.find((item) => item.opponent === selectedRow.username) : null;
+  const selectedCooldownLabel = selectedRow ? pvpChallengeCooldownLabel(selectedRow.challengeCooldownUntil) : '';
+
+  useEffect(() => {
+    if (selectedRival && !rivals.some((row) => row.username === selectedRival)) setSelectedRival('');
+  }, [rivals, selectedRival]);
 
   useEffect(() => {
     if (messages.length) onMarkChatRead?.(messages);
@@ -258,7 +266,7 @@ export default function PvPLobbyModal({
               <div>
                 <small>RIVALES EN LÍNEA</small>
                 <h3 id="pvp-roster-title">Elige a quién retar</h3>
-                <p>Pulsa Retar junto al jugador que quieras desafiar.</p>
+                <p>Toca un rival para seleccionarlo o pulsa Retar directamente.</p>
               </div>
               <span>{rivalCount} rival{rivalCount === 1 ? '' : 'es'}</span>
             </header>
@@ -276,10 +284,22 @@ export default function PvPLobbyModal({
                     const coolingDown = Boolean(cooldownLabel);
                     const rowState = pending ? 'RETO ENVIADO' : coolingDown ? 'PAUSA' : 'DISPONIBLE';
                     return (
-                      <article key={row.username} className={`pvp-lobby__player${pending ? ' is-pending' : ''}${coolingDown ? ' is-cooldown' : ''}`}>
+                      <article
+                        key={row.username}
+                        className={`pvp-lobby__player${pending ? ' is-pending' : ''}${coolingDown ? ' is-cooldown' : ''}${selectedRival === row.username ? ' is-selected' : ''}`}
+                        tabIndex={0}
+                        aria-label={`Seleccionar a ${row.username} como rival`}
+                        onClick={() => setSelectedRival(row.username)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            setSelectedRival(row.username);
+                          }
+                        }}
+                      >
                         <span className="pvp-lobby__rank-mark" aria-hidden="true"><i />♟</span>
                         <div className="pvp-lobby__player-copy">
-                          <button type="button" className="pvp-lobby__mention-player" onClick={() => mentionPlayer(row.username)} title={`Mencionar a ${row.username} en el chat`}>{row.username}</button>
+                          <button type="button" className="pvp-lobby__mention-player" onClick={(event) => { event.stopPropagation(); mentionPlayer(row.username); }} title={`Mencionar a ${row.username} en el chat`}>{row.username}</button>
                           <span>{row.tier}</span>
                           {row.headToHead?.games > 0 && <small className="pvp-lobby__head-to-head">{pvpHeadToHeadLabel(row.headToHead)}</small>}
                           {coolingDown && <small className="pvp-lobby__cooldown-note">{cooldownLabel}</small>}
@@ -292,7 +312,7 @@ export default function PvPLobbyModal({
                           disabled={Boolean(pending) || coolingDown || Boolean(busyKey) || Boolean(liveLobby.activeMatch)}
                           title={coolingDown ? cooldownLabel : undefined}
                           aria-label={coolingDown ? `Espera para retar a ${row.username}. ${cooldownLabel}` : undefined}
-                          onClick={() => challengePlayer(row.username)}
+                          onClick={(event) => { event.stopPropagation(); void challengePlayer(row.username); }}
                         >
                           {pending ? 'En espera' : coolingDown ? 'Espera' : busyKey === `challenge:${row.username}` ? 'Retando…' : 'Retar'}
                         </button>
@@ -300,6 +320,27 @@ export default function PvPLobbyModal({
                     );
                   })}
                 </div>
+                {selectedRow && (
+                  <div className="pvp-lobby__selected-rival" aria-live="polite">
+                    <div>
+                      <small>RIVAL SELECCIONADO</small>
+                      <strong>{selectedRow.username}</strong>
+                      <span>{selectedRow.rating} Elo · {selectedRow.tier}</span>
+                    </div>
+                    <div className="pvp-lobby__selected-actions">
+                      <button type="button" className="text-action" onClick={() => mentionPlayer(selectedRow.username)}>Comentar</button>
+                      <button
+                        type="button"
+                        className="primary-btn"
+                        disabled={Boolean(selectedPending) || Boolean(selectedCooldownLabel) || Boolean(busyKey) || Boolean(liveLobby.activeMatch)}
+                        title={selectedCooldownLabel || undefined}
+                        onClick={() => challengePlayer(selectedRow.username)}
+                      >
+                        {selectedPending ? 'Reto enviado' : selectedCooldownLabel ? 'Espera' : busyKey === `challenge:${selectedRow.username}` ? 'Retando…' : `Retar a ${selectedRow.username}`}
+                      </button>
+                    </div>
+                  </div>
+                )}
                 {self && rivalCount === 0 && (
                   <div className="pvp-lobby__quiet-note">
                     <span aria-hidden="true">◇</span>
