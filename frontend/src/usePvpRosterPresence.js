@@ -75,12 +75,17 @@ export function usePvpRosterPresence({ enabled = true } = {}) {
   }, [enrolled]);
 
   const refresh = useCallback(async ({ signal, heartbeat = true } = {}) => {
-    if (!enrolled) return null;
     try {
       const pvpApi = await loadPvpApi();
       let next = { ...EMPTY_LOBBY, ...(await pvpApi.getLobby({ signal }) || {}) };
+      const serverSelf = next.roster.find((row) => row?.isSelf) || null;
+      if (serverSelf && !enrolled) {
+        savePvpEnrollment(username, true);
+        heartbeatAtRef.current = Date.now();
+        setEnrolled(true);
+      }
       const due = Date.now() - heartbeatAtRef.current >= ROSTER_HEARTBEAT_MS;
-      if (!next.activeMatch && heartbeat && due) {
+      if ((enrolled || serverSelf) && !next.activeMatch && heartbeat && due) {
         const joined = await pvpApi.joinRoster({ signal });
         heartbeatAtRef.current = Date.now();
         next = mergeSelfIntoRoster(next, joined?.member);
@@ -92,7 +97,7 @@ export function usePvpRosterPresence({ enabled = true } = {}) {
       if (err?.name !== 'AbortError') setError(err?.message || 'No se pudo actualizar tu disponibilidad 1v1.');
       return null;
     }
-  }, [enrolled]);
+  }, [enrolled, username]);
 
   useEffect(() => {
     if (!enabled || !enrolled) {
