@@ -2024,3 +2024,224 @@
     font-size: .66rem;
   }
 }
+
+
+/* Duel Hall PR1: diegetic shell over the existing authoritative PvP domain.
+   The later Blender room can replace the backdrop without changing actions/state. */
+.pvp-lobby-backdrop {
+  background:
+    radial-gradient(circle at 50% 13%, rgba(153, 98, 42, .2), transparent 26%),
+    linear-gradient(180deg, rgba(9, 7, 6, .88), rgba(4, 4, 4, .96));
+}
+
+.pvp-duel-hall {
+  isolation: isolate;
+  overflow: hidden auto;
+  border-color: rgba(197, 151, 81, .34);
+  background:
+    linear-gradient(90deg, rgba(26, 19, 14, .94), rgba(12, 11, 10, .98) 22%, rgba(12, 11, 10, .98) 78%, rgba(25, 18, 13, .94)),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.012) 0 2px, transparent 2px 84px);
+  box-shadow:
+    0 32px 110px rgba(0, 0, 0, .72),
+    inset 0 1px rgba(245, 213, 159, .06);
+}
+
+.pvp-duel-hall::before,
+.pvp-duel-hall::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.pvp-duel-hall::before {
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 50% -12%, rgba(227, 172, 90, .15), transparent 31%),
+    linear-gradient(90deg, rgba(82, 57, 37, .16) 0 7%, transparent 7% 93%, rgba(82, 57, 37, .16) 93% 100%);
+  mask-image: linear-gradient(#000, rgba(0,0,0,.72) 62%, transparent);
+}
+
+.pvp-duel-hall::after {
+  left: 4%;
+  right: 4%;
+  bottom: 0;
+  height: 18%;
+  border-top: 1px solid rgba(200, 153, 83, .12);
+  background:
+    linear-gradient(180deg, rgba(71, 44, 27, .09), rgba(20, 13, 9, .24)),
+    repeating-linear-gradient(90deg, transparent 0 86px, rgba(219, 171, 100, .035) 86px 88px);
+  transform: perspective(260px) rotateX(20deg);
+  transform-origin: bottom;
+}
+
+.pvp-duel-hall .pvp-lobby__header {
+  position: relative;
+  border-bottom: 1px solid rgba(207, 166, 96, .11);
+}
+
+.pvp-duel-hall__title-row {
+  display: flex;
+  align-items: center;
+  gap: .62rem;
+}
+
+.pvp-duel-hall__crest {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 1px solid rgba(220, 174, 98, .28);
+  border-radius: 50%;
+  color: #e1bd78;
+  background:
+    radial-gradient(circle, rgba(174, 113, 49, .2), rgba(64, 41, 24, .08));
+  box-shadow: 0 0 0 5px rgba(183, 125, 58, .035);
+  font-size: .92rem;
+}
+
+.pvp-duel-hall .pvp-lobby__identity {
+  border-left: 3px solid rgba(112, 169, 116, .28);
+  background:
+    linear-gradient(90deg, rgba(48, 102, 57, .12), transparent 44%),
+    rgba(12, 10, 9, .54);
+}
+
+.pvp-duel-hall .pvp-lobby__panel {
+  position: relative;
+  overflow: hidden;
+  border-color: rgba(196, 151, 86, .17);
+  background:
+    linear-gradient(180deg, rgba(255, 239, 207, .026), transparent 28%),
+    rgba(10, 8, 7, .64);
+  backdrop-filter: blur(8px);
+}
+
+.pvp-duel-hall .pvp-lobby__panel::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(225, 180, 103, .34), transparent);
+  opacity: .72;
+}
+
+.pvp-duel-hall .pvp-lobby__panel--roster {
+  background:
+    linear-gradient(180deg, rgba(91, 54, 29, .16), transparent 24%),
+    repeating-linear-gradient(0deg, rgba(231, 202, 150, .018) 0 1px, transparent 1px 5px),
+    rgba(11, 8, 6, .7);
+}
+
+.pvp-duel-hall .pvp-lobby__panel--challenges {
+  background:
+    radial-gradient(circle at 92% 8%, rgba(153, 37, 31, .1), transparent 28%),
+    linear-gradient(180deg, rgba(93, 55, 31, .12), transparent 34%),
+    rgba(10, 8, 7, .72);
+}
+
+.pvp-duel-hall .pvp-lobby__panel--chat {
+  background:
+    linear-gradient(180deg, rgba(50, 44, 38, .12), transparent 36%),
+    rgba(8, 8, 8, .62);
+}
+
+.pvp-duel-hall .pvp-lobby__player {
+  border-color: rgba(215, 171, 95, .14);
+  background:
+    linear-gradient(90deg, rgba(101, 66, 36, .13), transparent 50%),
+    rgba(255, 248, 231, .012);
+}
+
+.pvp-lobby__challenge {
+  padding-left: 3.1rem;
+}
+
+.pvp-lobby__challenge-seal {
+  position: absolute;
+  left: .75rem;
+  top: 50%;
+  width: 1.75rem;
+  height: 1.75rem;
+  display: grid;
+  place-items: center;
+  transform: translateY(-50%);
+  border: 1px solid rgba(203, 98, 79, .38);
+  border-radius: 50%;
+  color: #efc3a8;
+  background:
+    radial-gradient(circle at 38% 32%, rgba(227, 128, 99, .34), transparent 34%),
+    #5a241f;
+  box-shadow: inset 0 0 0 3px rgba(35, 12, 10, .26), 0 3px 10px rgba(0, 0, 0, .24);
+}
+
+.pvp-lobby__challenge-seal.is-outgoing {
+  border-color: rgba(210, 168, 98, .32);
+  color: #e7c98f;
+  background:
+    radial-gradient(circle at 38% 32%, rgba(221, 180, 104, .28), transparent 34%),
+    #49351e;
+}
+
+.pvp-duel-hall .pvp-lobby__selected-rival {
+  border-color: rgba(222, 179, 101, .25);
+  background:
+    linear-gradient(90deg, rgba(116, 75, 37, .16), transparent 60%),
+    rgba(13, 10, 8, .9);
+}
+
+@media (max-width: 660px) {
+  .pvp-duel-hall {
+    background:
+      radial-gradient(circle at 50% -8%, rgba(184, 121, 53, .15), transparent 24%),
+      linear-gradient(180deg, rgba(25, 18, 13, .98), rgba(9, 9, 9, .99) 34%);
+  }
+
+  .pvp-duel-hall::before {
+    background:
+      linear-gradient(90deg, rgba(89, 58, 37, .12) 0 4%, transparent 4% 96%, rgba(89, 58, 37, .12) 96% 100%);
+  }
+
+  .pvp-duel-hall::after {
+    display: none;
+  }
+
+  .pvp-duel-hall__title-row {
+    gap: .42rem;
+  }
+
+  .pvp-duel-hall__crest {
+    width: 26px;
+    height: 26px;
+    box-shadow: none;
+    font-size: .72rem;
+  }
+
+  .pvp-duel-hall .pvp-lobby__header {
+    border-bottom: 0;
+  }
+
+  .pvp-duel-hall .pvp-lobby__identity {
+    border-left-width: 2px;
+  }
+
+  .pvp-lobby__challenge {
+    padding-left: 2.65rem;
+  }
+
+  .pvp-lobby__challenge-seal {
+    left: .58rem;
+    width: 1.5rem;
+    height: 1.5rem;
+    font-size: .7rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pvp-duel-hall *,
+  .pvp-duel-hall *::before,
+  .pvp-duel-hall *::after {
+    scroll-behavior: auto !important;
+  }
+}
