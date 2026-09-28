@@ -353,16 +353,16 @@ export function buildPiece(type, color, skinId, coarsePointer = false, options =
       addMesh(group, shared.pawnHead, main, [0, 0.73, 0]);
       addMesh(group, shared.pawnCollar, accent, [0, 0.57, 0], [Math.PI / 2, 0, 0]);
     } else if (type === 'b') {
-      group.userData.board3DBishopSilhouetteVersion = coarsePointer ? 'staunton-mitre-lite-v1' : 'staunton-mitre-v1';
+      group.userData.board3DBishopSilhouetteVersion = coarsePointer ? 'staunton-mitre-lite-v2' : 'staunton-mitre-v2';
       group.userData.board3DBishopHeightProfile = 'tall-123-v1';
-      group.userData.board3DBishopSlashProfile = coarsePointer ? 'wide-diagonal-band-lite-v1' : 'wide-diagonal-band-v1';
+      group.userData.board3DBishopSlashProfile = coarsePointer ? 'deep-diagonal-mitre-lite-v2' : 'deep-diagonal-mitre-v2';
       addLathe(group, [[0.205, 0.28], [0.19, 0.34], [0.16, 0.43], [0.125, 0.58], [0.11, 0.67], [0.15, 0.74], [0.205, 0.79]], main, 0, detail.lathe);
       addMesh(group, new THREE.TorusGeometry(0.205, 0.025, detail.torusRadial, coarsePointer ? 22 : 38), accent, [0, 0.79, 0], [Math.PI / 2, 0, 0]);
-      const mitre = addLathe(group, [[0.13, 0.78], [0.17, 0.84], [0.185, 0.92], [0.17, 1.0], [0.13, 1.1], [0.075, 1.18], [0.018, 1.23]], main, 0, coarsePointer ? 18 : 34);
+      const mitre = addLathe(group, [[0.125, 0.78], [0.16, 0.84], [0.168, 0.92], [0.15, 1.0], [0.112, 1.09], [0.06, 1.165], [0.014, 1.215]], main, 0, coarsePointer ? 18 : 34);
       mitre.userData.bishopPart = 'mitre';
       const slash = addMesh(
         group,
-        new THREE.BoxGeometry(coarsePointer ? 0.055 : 0.06, coarsePointer ? 0.27 : 0.3, coarsePointer ? 0.24 : 0.27, 1, coarsePointer ? 2 : 4, 1),
+        new THREE.BoxGeometry(coarsePointer ? 0.06 : 0.068, coarsePointer ? 0.29 : 0.325, coarsePointer ? 0.255 : 0.285, 1, coarsePointer ? 2 : 4, 1),
         accent,
         [0.035, 1.01, 0],
         [0, 0, 0.68],
@@ -418,27 +418,27 @@ export function buildPiece(type, color, skinId, coarsePointer = false, options =
         battlement.userData.rookPart = 'battlement';
       }
     } else if (type === 'q') {
-      group.userData.board3DQueenSilhouetteVersion = coarsePointer ? 'royal-crown-lite-v2' : 'royal-crown-v2';
+      group.userData.board3DQueenSilhouetteVersion = coarsePointer ? 'royal-crown-lite-v3' : 'royal-crown-v3';
       group.userData.board3DQueenHeightProfile = 'tall-132-v1';
-      group.userData.board3DQueenCrownProfile = 'eight-point-flared-v1';
+      group.userData.board3DQueenCrownProfile = 'eight-point-flared-v2';
       addLathe(group, [[0.215, 0.28], [0.185, 0.4], [0.14, 0.62], [0.19, 0.78], [0.245, 0.86]], main, 0, detail.lathe);
       const crownRing = addMesh(group, new THREE.TorusGeometry(0.24, 0.032, detail.torusRadial, detail.torusTubular), accent, [0, 0.9, 0], [Math.PI / 2, 0, 0]);
       crownRing.userData.queenPart = 'crown-ring';
       for (let index = 0; index < 8; index += 1) {
         const angle = index * (Math.PI * 2 / 8);
-        const radial = coarsePointer ? 0.205 : 0.22;
+        const radial = coarsePointer ? 0.218 : 0.238;
         const point = addMesh(
           group,
-          new THREE.ConeGeometry(coarsePointer ? 0.06 : 0.065, coarsePointer ? 0.28 : 0.31, coarsePointer ? 10 : 16),
+          new THREE.ConeGeometry(coarsePointer ? 0.062 : 0.07, coarsePointer ? 0.3 : 0.34, coarsePointer ? 10 : 16),
           accent,
-          [Math.cos(angle) * radial, coarsePointer ? 1.05 : 1.065, Math.sin(angle) * radial],
+          [Math.cos(angle) * radial, coarsePointer ? 1.055 : 1.075, Math.sin(angle) * radial],
         );
         point.userData.queenPart = 'crown-point';
         const orb = addMesh(
           group,
           new THREE.SphereGeometry(coarsePointer ? 0.052 : 0.056, coarsePointer ? 10 : 14, coarsePointer ? 7 : 9),
           main,
-          [Math.cos(angle) * radial, coarsePointer ? 1.19 : 1.225, Math.sin(angle) * radial],
+          [Math.cos(angle) * radial, coarsePointer ? 1.205 : 1.245, Math.sin(angle) * radial],
         );
         orb.userData.queenPart = 'crown-orb';
       }
