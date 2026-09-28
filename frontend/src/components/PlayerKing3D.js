@@ -35,10 +35,10 @@ export function buildPlayerKing3D(mainMaterial, accentMaterial, { coarsePointer 
   group.name = 'player-sovereign-king';
   group.userData.board3DPlayerKing = true;
   group.userData.board3DPlayerKingSilhouetteVersion = coarsePointer
-    ? 'classic-sovereign-lite-v3'
-    : 'classic-sovereign-v3';
+    ? 'classic-sovereign-lite-v4'
+    : 'classic-sovereign-v4';
   group.userData.board3DPlayerKingBodyProfile = 'staunton-taper-v3';
-  group.userData.board3DPlayerKingCrownProfile = 'clean-cross-crown-v2';
+  group.userData.board3DPlayerKingCrownProfile = 'clean-cross-crown-v3';
 
   const segments = coarsePointer ? 20 : 40;
   const radialSegments = coarsePointer ? 8 : 12;
@@ -104,7 +104,7 @@ export function buildPlayerKing3D(mainMaterial, accentMaterial, { coarsePointer 
   );
   add(
     group,
-    new THREE.BoxGeometry(coarsePointer ? 0.265 : 0.295, coarsePointer ? 0.08 : 0.09, coarsePointer ? 0.085 : 0.095),
+    new THREE.BoxGeometry(coarsePointer ? 0.285 : 0.325, coarsePointer ? 0.082 : 0.092, coarsePointer ? 0.085 : 0.095),
     accentMaterial,
     [0, coarsePointer ? 1.30 : 1.325, 0],
     [0, 0, 0],
