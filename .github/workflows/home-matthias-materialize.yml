@@ -1,0 +1,127 @@
+name: Home Matthias · materialize approved canonical art
+
+on:
+  pull_request_target:
+    types: [labeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: home-matthias-materialize-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build approved Home Matthias candidate
+    if: >-
+      github.event.label.name == 'materialize-home-matthias' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      head_ref: ${{ steps.pr.outputs.head_ref }}
+      head_sha: ${{ steps.pr.outputs.head_sha }}
+    steps:
+      - name: Resolve exact PR head
+        id: pr
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          [[ "${HEAD_SHA}" =~ ^[0-9a-f]{40}$ ]]
+          echo "head_ref=${HEAD_REF}" >> "${GITHUB_OUTPUT}"
+          echo "head_sha=${HEAD_SHA}" >> "${GITHUB_OUTPUT}"
+
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.pr.outputs.head_sha }}
+          fetch-depth: 2
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-blender-canonical
+
+      - name: Build and validate candidate
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          BLENDER_PREVIEW_SAMPLES: '64'
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/home-matthias-materialize
+          blender --background \
+            --python scripts/blender/configure_eevee_premium.py \
+            --python scripts/blender/build_home_matthias.py \
+            -- \
+            --blend /tmp/home-matthias-materialize/matthias-home-canonical.blend \
+            --glb /tmp/home-matthias-materialize/matthias-home-canonical.glb \
+            --preview /tmp/home-matthias-materialize/matthias-home-canonical.png
+          blender --background \
+            /tmp/home-matthias-materialize/matthias-home-canonical.blend \
+            --python scripts/blender/validate_home_matthias_contract.py
+          blender --background \
+            /tmp/home-matthias-materialize/matthias-home-canonical.blend \
+            --python scripts/blender/validate_home_matthias_actions.py
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: home-matthias-materialize-${{ github.event.pull_request.number }}
+          path: /tmp/home-matthias-materialize/
+          if-no-files-found: error
+          retention-days: 3
+          compression-level: 0
+
+  materialize:
+    name: Commit approved Home Matthias binaries
+    needs: build
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.build.outputs.head_sha }}
+          fetch-depth: 2
+          persist-credentials: true
+
+      - uses: actions/download-artifact@v7
+        with:
+          name: home-matthias-materialize-${{ github.event.pull_request.number }}
+          path: /tmp/home-matthias-materialize
+
+      - name: Refuse stale PR head
+        env:
+          HEAD_REF: ${{ needs.build.outputs.head_ref }}
+          EXPECTED_HEAD_SHA: ${{ needs.build.outputs.head_sha }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "${HEAD_REF}"
+          actual_head="$(git rev-parse "origin/${HEAD_REF}")"
+          [[ "${actual_head}" == "${EXPECTED_HEAD_SHA}" ]] || {
+            echo "PR head advanced during render; refusing stale binaries." >&2
+            exit 1
+          }
+
+      - name: Commit generated binaries
+        env:
+          HEAD_REF: ${{ needs.build.outputs.head_ref }}
+        run: |
+          set -euo pipefail
+          cp /tmp/home-matthias-materialize/matthias-home-canonical.blend \
+            frontend/art-source/matthias-home-canonical.blend
+          cp /tmp/home-matthias-materialize/matthias-home-canonical.glb \
+            frontend/public/models/matthias-home-canonical.glb
+          git add \
+            frontend/art-source/matthias-home-canonical.blend \
+            frontend/public/models/matthias-home-canonical.glb
+          if git diff --cached --quiet; then
+            echo 'Canonical binaries are already current.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Home Matthias: materialize approved canonical binaries [matthias-art-materialized]'
+          git push origin "HEAD:${HEAD_REF}"
