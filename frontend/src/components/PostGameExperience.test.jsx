@@ -39,12 +39,12 @@ describe('PostGameExperience', () => {
     expect(html).not.toContain('Entrenar mis errores');
   });
 
-  it('mantiene el resumen duplicado sólo como acceso responsive dentro de Más opciones', () => {
+  it('mantiene una sola decisión visible antes de abrir Más opciones', () => {
     const html = render();
     expect(html).toContain('endgame-review-btn-direct');
-    expect(html).toContain('endgame-review-btn-more');
-    expect(html.match(/Resumen de la partida/g)).toHaveLength(2);
+    expect(html.match(/Resumen de la partida/g)).toHaveLength(1);
     expect(html).toContain('Más opciones');
+    expect(html).not.toContain('endgame-review-btn-more');
   });
 
   it('muestra la recalibración factual sólo cuando el resumen trae un cambio material', () => {
