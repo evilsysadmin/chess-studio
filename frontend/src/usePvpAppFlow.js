@@ -121,7 +121,8 @@ export function usePvpAppFlow({ view, replaceView }) {
     rivalCount: presence.rivalCount,
     incomingCount: presence.incomingChallenge ? 1 : 0,
     activeMatch: presence.activeMatch,
-  }), [presence.activeMatch, presence.enrolled, presence.incomingChallenge, presence.rivalCount]);
+    unreadMessageCount: presence.unreadMessageCount,
+  }), [presence.activeMatch, presence.enrolled, presence.incomingChallenge, presence.rivalCount, presence.unreadMessageCount]);
 
   return {
     ...presence,
