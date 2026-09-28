@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { APP_RELEASE } from '../frontend/src/release.js';
+import { APP_BUILD_ID, APP_RELEASE } from '../frontend/src/release.js';
 import {
   buttonWithHeading,
   buttonWithVisibleText,
@@ -234,13 +234,13 @@ test('sesión · dos contextos de navegador del mismo usuario son independientes
 
 test('deploy · una release nueva no fuerza reload mientras la partida está activa', async ({ page }) => {
   test.setTimeout(60_000);
-  let publishedRelease = APP_RELEASE;
-  const servedReleases = [];
+  let publishedManifest = { release: APP_RELEASE, build: APP_BUILD_ID };
+  const servedBuilds = [];
 
   await page.route(/\/release\.json(?:\?.*)?$/, async (route) => {
-    const releaseAtRequest = publishedRelease;
-    servedReleases.push(releaseAtRequest);
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ release: releaseAtRequest }) });
+    const manifestAtRequest = publishedManifest;
+    servedBuilds.push(manifestAtRequest.build);
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(manifestAtRequest) });
   });
 
   await mockApi(page, { gameScenario: 'opening' });
@@ -249,12 +249,12 @@ test('deploy · una release nueva no fuerza reload mientras la partida está act
   await startQuickGame(page);
   await expect(gameStatus(page)).toBeVisible();
 
-  await expect.poll(() => servedReleases.filter((release) => release === APP_RELEASE).length, { message: 'ReleaseUpdateNotice debe consultar la release actual', timeout: 5_000 }).toBeGreaterThanOrEqual(1);
+  await expect.poll(() => servedBuilds.filter((build) => build === APP_BUILD_ID).length, { message: 'ReleaseUpdateNotice debe consultar el build actual', timeout: 5_000 }).toBeGreaterThanOrEqual(1);
 
-  publishedRelease = 'v16.6dm46zzz';
+  publishedManifest = { release: 'v16.6dm46zzz', build: 'abcdef1234567890' };
   await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
 
-  await expect.poll(() => servedReleases.includes('v16.6dm46zzz'), { message: 'visibilitychange debe consultar la release recién publicada', timeout: 5_000 }).toBe(true);
+  await expect.poll(() => servedBuilds.includes('abcdef1234567890'), { message: 'visibilitychange debe consultar el build recién publicado', timeout: 5_000 }).toBe(true);
 
   const notice = page.getByRole('status').filter({ hasText: 'Nueva versión disponible' });
   await expect(notice).toBeVisible({ timeout: 5_000 });
