@@ -70,6 +70,7 @@ export default function Menu({
   const [showPvpLobby, setShowPvpLobby] = useState(false);
   const [homeTourPending, setHomeTourPending] = useState(() => !homeFirstRunTourSeen());
   const [homeTourReplay, setHomeTourReplay] = useState(false);
+  const [homeTourFocus, setHomeTourFocus] = useState('');
   const pvpFlow = usePvpRuntime();
   // Other modes the player left half-way (Combat campaign, special run): shown in the JUGAR menu.
   const pendingModes = useMemo(() => buildPendingModes({
@@ -264,6 +265,7 @@ export default function Menu({
         onInsights={onInsights}
         matthiasModel={matthiasCardModel}
         matthiasSpeaking={Boolean(matthiasVisit) && !matthiasCornerBlocked}
+        tourFocus={homeTourFocus}
         onMatthiasAction={handleMatthiasAction}
         onMatthiasDismiss={() => setMatthiasVisit(null)}
         tools={[
@@ -283,6 +285,7 @@ export default function Menu({
         active={homeTourVisible}
         onComplete={finishHomeTour}
         onSkip={finishHomeTour}
+        onFocusTarget={setHomeTourFocus}
       />
 
       {pvpEntryVisible && !homeTourVisible && renderPvpRosterLink('card')}
