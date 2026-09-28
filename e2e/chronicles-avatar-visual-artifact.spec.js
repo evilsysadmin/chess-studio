@@ -13,6 +13,10 @@ const PARTY = [
   { id: 'bishop', name: 'Aziz' },
   { id: 'knight', name: 'Faust' },
 ];
+const CAPTURE_PARTY = process.env.CHRONICLES_AVATAR_SCOPE === 'matthias'
+  ? PARTY.filter(({ id }) => id === 'matthias')
+  : PARTY;
+
 
 async function openChronicles(page) {
   await mockApi(page, {
@@ -102,7 +106,7 @@ for (const capture of CAPTURES) {
       )));
       expect(thumbnailsDecoded, `${capture.label}: authored roster portraits decoded`).toBe(true);
 
-      for (const member of PARTY) {
+      for (const member of CAPTURE_PARTY) {
         await page.getByRole('button', { name: `Seleccionar ${member.name}`, exact: true }).click();
         await expect(preview.locator('strong')).toHaveText(member.name);
         await expect(portrait).toHaveAttribute('data-member-id', member.id);
