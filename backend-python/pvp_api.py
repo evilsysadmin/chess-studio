@@ -58,9 +58,17 @@ def _rating_tier(rating: int) -> str:
     return "Maestro"
 
 
+def _as_utc(value):
+    if not isinstance(value, datetime):
+        return value
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
 def _iso(value):
     if isinstance(value, datetime):
-        return value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+        return _as_utc(value).isoformat().replace("+00:00", "Z")
     return value
 
 
@@ -217,7 +225,7 @@ async def _finish_handoff_timeout(match_id: str, match: dict, now: datetime | No
         return match
     stamp = now or store.utcnow()
     deadline = match.get("ready_deadline")
-    if not isinstance(deadline, datetime) or deadline > stamp:
+    if not isinstance(deadline, datetime) or _as_utc(deadline) > _as_utc(stamp):
         return match
     updated = await store.update_match(
         match_id,
@@ -242,7 +250,7 @@ def _player_was_recently_present(match: dict, color: chess.Color, now: datetime)
     seen_at = match.get(seen_key)
     if not isinstance(seen_at, datetime):
         return False
-    return max(0.0, (now - seen_at).total_seconds()) <= PVP_PRESENCE_RECONNECTING_SECONDS
+    return max(0.0, (_as_utc(now) - _as_utc(seen_at)).total_seconds()) <= PVP_PRESENCE_RECONNECTING_SECONDS
 
 
 async def _ensure_disconnect_grace(
@@ -292,7 +300,7 @@ async def _finish_disconnect_forfeit(
     if (
         opponent_presence != "disconnected"
         or not isinstance(grace_started_at, datetime)
-        or grace_started_at + timedelta(seconds=PVP_DISCONNECT_GRACE_SECONDS) > stamp
+        or _as_utc(grace_started_at) + timedelta(seconds=PVP_DISCONNECT_GRACE_SECONDS) > _as_utc(stamp)
     ):
         return match
 
@@ -366,7 +374,7 @@ def _opponent_presence(match: dict, username: str, now: datetime | None = None) 
     seen_at = match.get("black_seen_at") if color == chess.WHITE else match.get("white_seen_at") if color == chess.BLACK else None
     if not isinstance(seen_at, datetime):
         return "disconnected", None
-    age_seconds = max(0.0, (stamp - seen_at).total_seconds())
+    age_seconds = max(0.0, (_as_utc(stamp) - _as_utc(seen_at)).total_seconds())
     if age_seconds <= PVP_PRESENCE_ONLINE_SECONDS:
         return "online", seen_at
     if age_seconds <= PVP_PRESENCE_RECONNECTING_SECONDS:
