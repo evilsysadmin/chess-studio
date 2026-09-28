@@ -1,4 +1,5 @@
 export const WAR_ROOM_MOBILE_FRAMING_VERSION = 'mobile-v5-landscape-overhead';
+export const WAR_ROOM_PLAY_PITCH = Object.freeze({ cameraY: 9.2, cameraZ: 9.55 });
 
 export function getWarRoomMobileFramingProfile({
   aspect = 1,
@@ -33,8 +34,8 @@ export function getWarRoomMobileFramingProfile({
       // Match the approved V1 wide-camera inclination exactly. fitBoardCamera
       // normalizes this direction vector, so mobile keeps its own distance/FOV
       // while gaining the same steeper, more selectable board pitch.
-      cameraY: 9.2,
-      cameraZ: 9.55,
+      cameraY: WAR_ROOM_PLAY_PITCH.cameraY,
+      cameraZ: WAR_ROOM_PLAY_PITCH.cameraZ,
     });
   }
 
