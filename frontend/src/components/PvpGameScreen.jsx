@@ -296,13 +296,7 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
   if (!match || !opponent) return null;
 
   return (
-    <section className="game-screen pvp-war-room" aria-label="War Room 1 contra 1">
-      <div className="pvp-war-room__topbar">
-        <button type="button" className="secondary-btn" onClick={onExit}>← Lobby</button>
-        <span>WAR ROOM · 1 VS 1</span>
-        <small>{match.youAre === 'w' ? 'Blancas' : 'Negras'} · {match.youAre === 'w' ? match.whiteRating : match.blackRating} Elo 1v1</small>
-      </div>
-
+    <section className="game-screen pvp-war-room pvp-war-room--immersive" aria-label="War Room 1 contra 1">
       <div className="game-layout game-layout-3d pvp-war-room__layout">
         <div className="board-column">
           <div className="board-live-row is-3d-warroom">
