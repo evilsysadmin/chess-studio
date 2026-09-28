@@ -33,26 +33,25 @@ describe('War Room canonical rook and knight head details', () => {
   });
 
 
-  it('mantiene la corona de la reina negra realmente opaca y sin efecto cristal', () => {
+  it('convierte toda la cabeza negra superior de la reina en ébano sólido sin reflejos', () => {
     const queen = buildPiece('q', 'b', 'studio', false);
     const crown = meshesBy(queen, (mesh) => ['crown-orb', 'finial'].includes(mesh.userData?.queenPart));
+    const upperBlack = meshesBy(queen, (mesh) => mesh.userData?.blackQueenUpperHead === true);
 
-    expect(crown).toHaveLength(9);
-    expect(queen.userData.blackQueenOpaqueCrownCount).toBe(9);
-    for (const mesh of crown) {
-      expect(mesh.userData.blackQueenOpaqueCrown).toBe('solid-v3');
+    expect(crown.filter((mesh) => mesh.userData?.queenPart === 'crown-orb')).toHaveLength(8);
+    expect(queen.userData.blackQueenUpperFinish).toBe('unlit-ebony-v1');
+    expect(queen.userData.blackQueenOpaqueCrownCount).toBeGreaterThanOrEqual(8);
+    expect(upperBlack.length).toBe(queen.userData.blackQueenOpaqueCrownCount);
+
+    for (const mesh of upperBlack) {
+      expect(mesh.userData.blackQueenOpaqueCrown).toBe('solid-v4');
+      expect(mesh.userData.blackQueenCrownMaterial).toBe('unlit-ebony-v1');
+      expect(mesh.material.isMeshBasicMaterial).toBe(true);
       expect(mesh.material.transparent).toBe(false);
       expect(mesh.material.opacity).toBe(1);
-      expect(mesh.material.transmission ?? 0).toBe(0);
-      expect(mesh.material.thickness ?? 0).toBe(0);
       expect(mesh.material.depthWrite).toBe(true);
       expect(mesh.material.depthTest).toBe(true);
-      expect(mesh.userData.blackQueenCrownMaterial).toBe('matte-standard-v1');
-      expect(mesh.material.isMeshStandardMaterial).toBe(true);
-      expect(mesh.material.isMeshPhysicalMaterial).not.toBe(true);
-      expect(mesh.material.envMapIntensity).toBe(0);
-      expect(mesh.material.metalness).toBe(0);
-      expect(mesh.material.roughness).toBeGreaterThanOrEqual(0.96);
+      expect(mesh.material.color.getHex()).toBe(0x101318);
     }
 
     disposeObject(queen);
