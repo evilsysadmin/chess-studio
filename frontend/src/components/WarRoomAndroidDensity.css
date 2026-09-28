@@ -196,6 +196,25 @@
     line-height: 1;
   }
 
+  .app-shell-board-game:has(.game-layout-3d) .save-status-badge.is-saved {
+    position: relative;
+    width: 28px;
+    min-width: 28px;
+    padding: 0;
+    justify-content: center;
+    flex: 0 0 28px;
+    border-radius: 999px;
+  }
+
+  .app-shell-board-game:has(.game-layout-3d) .save-status-badge.is-saved > span:last-child {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
   /* Overflow remains the complete action surface for discoverability and for
      the less frequent tools, without turning them into permanent chrome. */
   .game-screen .game-layout-3d .game-3d-utility-popover {
