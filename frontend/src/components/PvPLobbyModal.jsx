@@ -87,7 +87,7 @@ export default function PvPLobbyModal({
 
   useEffect(() => {
     if (externallyDriven) {
-      setLoading(false);
+      void refresh({ quiet: false });
       return undefined;
     }
     let active = true;
