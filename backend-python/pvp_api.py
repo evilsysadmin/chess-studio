@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -22,6 +23,8 @@ PVP_READY_TIMEOUT_SECONDS = 30
 PVP_PRESENCE_ONLINE_SECONDS = 4
 PVP_PRESENCE_RECONNECTING_SECONDS = 12
 PVP_DISCONNECT_GRACE_SECONDS = 60
+
+logger = logging.getLogger("uvicorn.error")
 RATING_TIERS = (
     (0, 699, "Principiante"),
     (700, 999, "Aficionado"),
@@ -152,6 +155,22 @@ def _clock_snapshot(match: dict, now: datetime | None = None) -> dict:
 
 def _timeout_result(flagged_color: str) -> str:
     return "0-1" if flagged_color == "w" else "1-0"
+
+
+async def _best_effort_leave_roster(*usernames: str) -> None:
+    """Detach players from matchmaking after the match is already authoritative.
+
+    Roster cleanup is secondary to the committed match state. A cleanup failure
+    must never turn a successfully activated duel into an HTTP 500 that leaves
+    both clients stranded in the handoff screen.
+    """
+    for username in usernames:
+        if not username:
+            continue
+        try:
+            await store.leave_roster(username)
+        except Exception:
+            logger.exception("PvP roster cleanup failed after match activation", extra={"username": username})
 
 
 async def _finish_timeout(match_id: str, match: dict, now: datetime | None = None) -> dict | None:
@@ -632,8 +651,7 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
             if match.get("status") == "cancelled":
                 return {"match": _public_match(match, username)}
             if match.get("status") == "active":
-                await store.leave_roster(match["white"])
-                await store.leave_roster(match["black"])
+                await _best_effort_leave_roster(match.get("white"), match.get("black"))
                 return {"match": _public_match(match, username)}
             if match.get("status") != "starting":
                 raise HTTPException(409, "La partida ya no está preparando el arranque.")
@@ -655,8 +673,7 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
             )
             if updated:
                 if updated.get("status") == "active":
-                    await store.leave_roster(updated["white"])
-                    await store.leave_roster(updated["black"])
+                    await _best_effort_leave_roster(updated.get("white"), updated.get("black"))
                 return {"match": _public_match(updated, username)}
         raise HTTPException(409, "El duelo cambió mientras sincronizábamos a los jugadores.")
 
