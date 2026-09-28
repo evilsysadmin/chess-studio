@@ -3,6 +3,7 @@ import { createWarRoomClassicShellController } from './WarRoomClassicShell.js';
 import {
   shouldShowClassicWarRoomShell,
   startWarRoomVariantScene,
+  startWarRoomVariantSceneAfterUsefulFrame,
   warRoomVariantShellCoarsePointer,
 } from './WarRoomSceneVariant.js';
 
@@ -63,6 +64,51 @@ describe('War Room shared scene variants', () => {
     expect(scene.userData.warRoomRenderedVariant).toBe('classic');
     expect(statuses).toEqual(['idle']);
     expect(typeof release).toBe('function');
+  });
+
+  it('defers a mobile Blender shell until the board has painted once', async () => {
+    let scheduled = null;
+    let cancelledFrame = null;
+    let installed = 0;
+    const canvas = { dataset: {} };
+    const scene = { userData: {} };
+    const controller = { current: () => [], ensure: () => [] };
+    const originalLoader = WAR_ROOM_VARIANTS.find((entry) => entry.id === 'v3').loadInstaller;
+
+    try {
+      WAR_ROOM_VARIANTS.find((entry) => entry.id === 'v3').loadInstaller = async () => () => {
+        installed += 1;
+        return () => {};
+      };
+      const release = startWarRoomVariantSceneAfterUsefulFrame({
+        scene,
+        classicShellController: controller,
+        variant: 'v3',
+        selectable: true,
+        whiteSide: true,
+        renderLite: true,
+        canvas,
+        deferUntilUsefulFrame: true,
+      }, {
+        requestFrame: (callback) => { scheduled = callback; return 7; },
+        cancelFrame: (id) => { cancelledFrame = id; },
+      });
+
+      expect(installed).toBe(0);
+      expect(canvas.dataset.warRoomFirstUsefulFrame).toBe('board-first-pending-room');
+
+      scheduled();
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(canvas.dataset.warRoomFirstUsefulFrame).toBe('room-loading-after-board');
+      expect(installed).toBe(1);
+
+      release();
+      expect(cancelledFrame).toBe(7);
+    } finally {
+      WAR_ROOM_VARIANTS.find((entry) => entry.id === 'v3').loadInstaller = originalLoader;
+    }
   });
 
   it('keeps classic eager behavior when the classic variant is actually active', () => {
