@@ -470,6 +470,20 @@ export function buildPiece(type, color, skinId, coarsePointer = false, options =
       addLathe(group, [[0.215, 0.28], [0.185, 0.4], [0.14, 0.62], [0.19, 0.78], [0.245, 0.86]], main, 0, detail.lathe);
       const crownRing = addMesh(group, new THREE.TorusGeometry(0.24, 0.032, detail.torusRadial, detail.torusTubular), accent, [0, 0.9, 0], [Math.PI / 2, 0, 0]);
       crownRing.userData.queenPart = 'crown-ring';
+      const crownCore = addMesh(
+        group,
+        new THREE.SphereGeometry(
+          coarsePointer ? 0.155 : 0.17,
+          coarsePointer ? 18 : 28,
+          coarsePointer ? 12 : 18,
+        ),
+        main,
+        [0, coarsePointer ? 1.075 : 1.095, 0],
+        [0, 0, 0],
+      );
+      crownCore.scale.set(1, coarsePointer ? 0.95 : 1.0, 1);
+      crownCore.userData.queenPart = 'crown-core';
+      crownCore.userData.queenCrownOcclusion = 'solid-core-v1';
       for (let index = 0; index < 8; index += 1) {
         const angle = index * (Math.PI * 2 / 8);
         const radial = coarsePointer ? 0.205 : 0.22;
