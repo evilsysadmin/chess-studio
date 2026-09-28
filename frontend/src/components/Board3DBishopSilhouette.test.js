@@ -35,9 +35,9 @@ describe('Board3D bishop silhouette', () => {
     const mitreSize = geometrySize(mitre);
 
     expect(bishop.userData.warRoomFallbackPiece).not.toBe(true);
-    expect(bishop.userData.board3DBishopSilhouetteVersion).toBe('staunton-mitre-v1');
+    expect(bishop.userData.board3DBishopSilhouetteVersion).toBe('staunton-mitre-v2');
     expect(bishop.userData.board3DBishopHeightProfile).toBe('tall-123-v1');
-    expect(bishop.userData.board3DBishopSlashProfile).toBe('wide-diagonal-band-v1');
+    expect(bishop.userData.board3DBishopSlashProfile).toBe('deep-diagonal-mitre-v2');
     expect(mitre?.geometry?.type).toBe('LatheGeometry');
     expect(slash?.geometry?.type).toBe('BoxGeometry');
     expect(slash.rotation.z).toBeCloseTo(0.68, 5);
@@ -53,8 +53,8 @@ describe('Board3D bishop silhouette', () => {
     const slash = bishopPart(bishop, 'slash');
 
     expect(bishop.userData.warRoomFallbackPiece).not.toBe(true);
-    expect(bishop.userData.board3DBishopSilhouetteVersion).toBe('staunton-mitre-lite-v1');
-    expect(bishop.userData.board3DBishopSlashProfile).toBe('wide-diagonal-band-lite-v1');
+    expect(bishop.userData.board3DBishopSilhouetteVersion).toBe('staunton-mitre-lite-v2');
+    expect(bishop.userData.board3DBishopSlashProfile).toBe('deep-diagonal-mitre-lite-v2');
     expect(mitre?.geometry?.type).toBe('LatheGeometry');
     expect(slash?.geometry?.type).toBe('BoxGeometry');
     expect(slash.rotation.z).toBeCloseTo(0.68, 5);
