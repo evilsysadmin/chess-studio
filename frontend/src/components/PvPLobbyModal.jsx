@@ -4,7 +4,7 @@ import { opponentForMatch } from '../pvpGameModel.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import './PvPLobbyModal.css';
 
-const EMPTY_LOBBY = Object.freeze({ roster: [], challenges: [], activeMatch: null, pollAfterMs: 3000 });
+const EMPTY_LOBBY = Object.freeze({ roster: [], challenges: [], messages: [], activeMatch: null, pollAfterMs: 3000 });
 
 function challengeExpiryLabel(value) {
   const stamp = Date.parse(value || '');
@@ -58,6 +58,7 @@ export default function PvPLobbyModal({
   const [lobby, setLobby] = useState(EMPTY_LOBBY);
   const [loading, setLoading] = useState(true);
   const [busyKey, setBusyKey] = useState('');
+  const [messageText, setMessageText] = useState('');
   const [error, setError] = useState('');
   const externallyDriven = Boolean(lobbySnapshot && onRefreshRoster);
   const liveLobby = lobbySnapshot || lobby;
@@ -67,6 +68,7 @@ export default function PvPLobbyModal({
   const incoming = useMemo(() => liveLobby.challenges.filter((row) => row.direction === 'incoming' && row.status === 'pending'), [liveLobby.challenges]);
   const outgoing = useMemo(() => liveLobby.challenges.filter((row) => row.direction === 'outgoing' && row.status === 'pending'), [liveLobby.challenges]);
   const opponent = opponentForMatch(liveLobby.activeMatch);
+  const messages = Array.isArray(liveLobby.messages) ? liveLobby.messages : [];
 
   const refresh = useCallback(async ({ quiet = false, signal } = {}) => {
     if (!quiet) setLoading(true);
@@ -135,6 +137,24 @@ export default function PvPLobbyModal({
     if (result?.match) onMatchReady(result.match);
   }
 
+  async function challengePlayer(username) {
+    await run(`challenge:${username}`, async () => {
+      if (!self) {
+        if (onJoinRoster) await onJoinRoster();
+        else await pvpApi.joinRoster();
+      }
+      return onChallenge ? onChallenge(username) : pvpApi.challenge(username);
+    });
+  }
+
+  async function sendMessage(event) {
+    event.preventDefault();
+    const text = messageText.trim();
+    if (!text || busyKey) return;
+    const result = await run('chat', () => pvpApi.sendLobbyMessage(text));
+    if (result) setMessageText('');
+  }
+
   const rivalCount = rivals.length;
   const challengeCount = incoming.length + outgoing.length;
 
@@ -147,7 +167,7 @@ export default function PvPLobbyModal({
           <div className="pvp-lobby__header-copy">
             <span className="eyebrow">War Room · duelos entre jugadores</span>
             <h2>Elige rival</h2>
-            <p>Ponte disponible, elige a alguien y pulsa Retar. Puedes cerrar esta ventana: seguirás visible y los desafíos llegarán como aviso global.</p>
+            <p>Elige rival, reta y comenta en la sala. Si aún no estás visible, Chess Studio te activa automáticamente al lanzar el reto.</p>
           </div>
           <div className="pvp-lobby__header-status" aria-hidden="true">
             <span className={`pvp-lobby__availability${self ? ' is-live' : ''}`}>
@@ -165,22 +185,6 @@ export default function PvPLobbyModal({
           </div>
         </header>
 
-        {!liveLobby.activeMatch && (
-          <ol className="pvp-lobby__flow" aria-label="Cómo jugar 1 contra 1">
-            <li className={self ? 'is-done' : 'is-current'}>
-              <b aria-hidden="true">1</b>
-              <span><strong>Ponte disponible</strong><small>{self ? 'Ya estás visible' : 'Activa tu ficha'}</small></span>
-            </li>
-            <li className={!self ? '' : rivalCount > 0 ? 'is-done' : 'is-current'}>
-              <b aria-hidden="true">2</b>
-              <span><strong>Elige rival</strong><small>{rivalCount > 0 ? `${rivalCount} ahora mismo` : 'Aparecerán aquí'}</small></span>
-            </li>
-            <li className={self && rivalCount > 0 ? 'is-current' : ''}>
-              <b aria-hidden="true">3</b>
-              <span><strong>Pulsa Retar</strong><small>El rival decide si acepta</small></span>
-            </li>
-          </ol>
-        )}
 
         {liveLobby.activeMatch && opponent && (
           <aside className="pvp-lobby__active" aria-label="Partida 1 contra 1 activa">
@@ -200,8 +204,8 @@ export default function PvPLobbyModal({
             <span className="pvp-lobby__identity-mark" aria-hidden="true">♟</span>
             <div>
               <small>{self ? 'DISPONIBLE PARA RETOS' : 'NO DISPONIBLE'}</small>
-              <strong>{self ? self.username : 'Activa tu ficha para jugar 1 contra 1'}</strong>
-              <span>{self ? 'Visible para otros jugadores · puedes cerrar y seguir jugando' : 'Cuando estés disponible podrás retar y recibir desafíos.'}</span>
+              <strong>{self ? self.username : 'Listo para entrar en la sala'}</strong>
+              <span>{self ? 'Visible para otros jugadores · puedes cerrar y seguir jugando' : 'Retar a alguien te hará visible automáticamente.'}</span>
             </div>
           </div>
           {self && (
@@ -263,10 +267,10 @@ export default function PvPLobbyModal({
                         <button
                           type="button"
                           className="secondary-btn pvp-lobby__challenge-cta"
-                          disabled={!self || Boolean(pending) || coolingDown || Boolean(busyKey) || Boolean(liveLobby.activeMatch)}
+                          disabled={Boolean(pending) || coolingDown || Boolean(busyKey) || Boolean(liveLobby.activeMatch)}
                           title={coolingDown ? cooldownLabel : undefined}
                           aria-label={coolingDown ? `Espera para retar a ${row.username}. ${cooldownLabel}` : undefined}
-                          onClick={() => run(`challenge:${row.username}`, () => onChallenge ? onChallenge(row.username) : pvpApi.challenge(row.username))}
+                          onClick={() => challengePlayer(row.username)}
                         >
                           {pending ? 'En espera' : coolingDown ? 'Espera' : busyKey === `challenge:${row.username}` ? 'Retando…' : 'Retar'}
                         </button>
@@ -284,6 +288,7 @@ export default function PvPLobbyModal({
             )}
           </section>
 
+          <div className="pvp-lobby__side">
           <section className={`pvp-lobby__panel pvp-lobby__panel--challenges${challengeCount === 0 ? ' is-empty' : ' has-attention'}`} aria-labelledby="pvp-challenges-title">
             <header>
               <div>
@@ -337,6 +342,42 @@ export default function PvPLobbyModal({
               </div>
             )}
           </section>
+
+          <section className="pvp-lobby__panel pvp-lobby__panel--chat" aria-labelledby="pvp-chat-title">
+            <header>
+              <div>
+                <small>SALA</small>
+                <h3 id="pvp-chat-title">Chat</h3>
+                <p>Comentarios breves mientras eliges rival.</p>
+              </div>
+              <span>{messages.length}</span>
+            </header>
+            <div className="pvp-lobby__chat-log" role="log" aria-live="polite" aria-relevant="additions">
+              {messages.length === 0 ? (
+                <p className="pvp-lobby__chat-empty">La sala está tranquila.</p>
+              ) : messages.map((message) => (
+                <article key={message.id} className={`pvp-lobby__chat-message${message.isSelf ? ' is-self' : ''}`}>
+                  <strong>{message.username}</strong>
+                  <span>{message.text}</span>
+                </article>
+              ))}
+            </div>
+            <form className="pvp-lobby__chat-compose" onSubmit={sendMessage}>
+              <input
+                type="text"
+                value={messageText}
+                maxLength={240}
+                onChange={(event) => setMessageText(event.target.value)}
+                placeholder="Comenta algo…"
+                aria-label="Mensaje para el chat del lobby"
+                disabled={busyKey === 'chat'}
+              />
+              <button type="submit" className="secondary-btn" disabled={!messageText.trim() || Boolean(busyKey)}>
+                {busyKey === 'chat' ? 'Enviando…' : 'Enviar'}
+              </button>
+            </form>
+          </section>
+          </div>
         </div>
 
         <footer className="pvp-lobby__footer">
