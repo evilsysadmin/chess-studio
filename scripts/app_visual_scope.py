@@ -223,6 +223,8 @@ def _surface_groups(path: str) -> set[str] | None:
     if lower.startswith("e2e/"):
         if "chesscom" in name:
             return set()
+        if name == "home-first-run-tour.spec.js":
+            return set()
         if name in {"browser-runtime-health.spec.js", "browser-storage-health.spec.js"}:
             return {"health"}
         if name in {
@@ -624,6 +626,7 @@ def self_test() -> None:
     assert classify(["frontend/src/components/HomeMatthias3D.jsx"]).capture_groups == "home"
     assert classify(["frontend/src/components/HomeMatthiasRoutine.css"]).capture_groups == "home"
     assert classify(["frontend/src/components/HomeMatthiasStations.js"]).capture_groups == "home"
+    assert classify(["e2e/home-first-run-tour.spec.js"]).capture_groups == ""
     assert classify(["e2e/matthias-home-visual-critical.spec.js"]).capture_groups == "home"
     assert classify(["frontend/src/components/MatthiasAvatar.jsx"]).capture_groups == "home,warroom"
     assert classify(["frontend/src/components/MatthiasSchool.jsx"]).capture_groups == "training"
