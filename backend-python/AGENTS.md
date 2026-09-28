@@ -11,8 +11,11 @@ Lee según el área:
 - Chronicles/Tactics: `docs/operations/chronicles-tactics.md`;
 - OCI/runtime/secrets: `docs/operations/oci-backend-migration.md`, `docs/operations/oci-secret-lifecycle.md` y `skills/oci-release-observability/SKILL.md`.
 - presencia/Admin: `docs/operations/presence-admin.md`.
+- PvP/1v1: `docs/operations/pvp.md`.
 
 ## Invariantes
+
+- PvP es un bounded context propio aunque comparta proceso/DB: router valida/serializa, el dominio debe converger hacia una capa service/state-machine y el store posee primitivas de persistencia. No añadir nuevas transiciones PvP directamente en React.
 
 - Mongo/backend es autoridad para estado persistente server-owned. El navegador no puede ser la única fuente de verdad de datos que deben sobrevivir sesión/dispositivo.
 - Creates, retries y reconciliaciones deben ser idempotentes cuando la red pueda repetir la petición. Evita duplicados, doble recompensa y last-write races silenciosas.
