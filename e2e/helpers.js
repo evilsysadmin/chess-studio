@@ -180,6 +180,13 @@ export async function mockApi(page, {
     }),
     ...profileSeed,
   };
+  // First-run Home tour is read synchronously during the first Home render.
+  // Seed its local profile cache before navigation so unrelated E2E flows are
+  // deterministic and dedicated onboarding tests can explicitly opt back in.
+  await page.addInitScript((tourVersion) => {
+    localStorage.setItem('chess-study-home-tour-v1', String(tourVersion));
+  }, profileData['chess-study-home-tour-v1'] ?? '1');
+
   let profileRevisions = {};
   let nextGameId = 1;
   let nextFeedbackId = 1;
