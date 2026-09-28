@@ -12,7 +12,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-GROUP_ORDER = ("home", "experiments", "training", "warroom", "health")
+GROUP_ORDER = ("home", "experiments", "training", "warroom", "pvp", "health")
 EXPERIMENT_ORDER = ("landing", "chronicles", "pawnslug")
 
 NONVISUAL_FRONTEND_PATHS = {
@@ -76,6 +76,24 @@ TRAINING_VISUAL_SURFACES = {
     "frontend/src/components/puzzlemobilepolish.css",
     "frontend/src/components/tournamentscreen.jsx",
     "frontend/src/components/tournamentmobilepolish.css",
+}
+
+PVP_VISUAL_SURFACES = {
+    "frontend/src/components/pvplobbymodal.jsx",
+    "frontend/src/components/pvplobbymodal.css",
+    "frontend/src/components/pvphandoffmodal.jsx",
+    "frontend/src/components/pvphandoffmodal.css",
+    "frontend/src/components/homepvprosterlink.jsx",
+    "frontend/src/components/homepvprosterlink.css",
+}
+
+PVP_NONVISUAL_SURFACES = {
+    "frontend/src/pvpapi.js",
+    "frontend/src/usepvpappflow.js",
+    "frontend/src/usepvprosterpresence.js",
+    "frontend/src/pvpenrollment.js",
+    "frontend/src/pvpruntimebridge.js",
+    "frontend/src/pvpgamemodel.js",
 }
 
 PUBLIC_NONCANONICAL_PATHS = {
@@ -178,6 +196,12 @@ def _surface_groups(path: str) -> set[str] | None:
         return {"training"}
     if lower in TRAINING_VISUAL_SURFACES:
         return {"training"}
+    if lower in PVP_VISUAL_SURFACES:
+        return {"pvp"}
+    if lower in PVP_NONVISUAL_SURFACES:
+        return set()
+    if lower == "frontend/src/components/menuinner.jsx":
+        return {"home"}
     if lower == "frontend/src/components/labscreen.jsx":
         return {"experiments"}
     if lower in DEDICATED_WAR_ROOM_BLENDER_PATHS:
@@ -262,6 +286,8 @@ def _surface_groups(path: str) -> set[str] | None:
     if lower.startswith("frontend/public/"):
         return None
 
+    if lower.startswith("backend-python/"):
+        return set()
     if not lower.startswith("frontend/src/"):
         return None
     if "chesscom" in lower:
@@ -503,6 +529,18 @@ def self_test() -> None:
         "frontend/src/components/TournamentMobilePolish.css",
     ])
     assert mobile_training.capture_groups == "training"
+
+    pvp = classify([
+        "backend-python/pvp_api.py",
+        "frontend/src/pvpApi.js",
+        "frontend/src/usePvpRosterPresence.js",
+        "frontend/src/components/PvPLobbyModal.jsx",
+        "frontend/src/components/PvpHandoffModal.jsx",
+    ])
+    assert pvp.capture_groups == "pvp"
+    assert not pvp.hans and not pvp.chesscom
+    assert classify(["backend-python/test_pvp_api.py"]).capture_groups == "none"
+    assert classify(["frontend/src/components/MenuInner.jsx"]).capture_groups == "home"
     classroom = classify(["frontend/src/components/MatthiasClassRoom.css"])
     assert classroom.capture_groups == "training"
     assert not classroom.hans and not classroom.chesscom
