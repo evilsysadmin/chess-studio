@@ -12,7 +12,6 @@ import argparse
 import sys
 
 MATTHIAS_MODEL = "frontend/public/models/matthias-home-canonical.glb"
-MATTHIAS_CHRONICLES_CONSUMER = "e2e/chronicles-avatar-visual-artifact.spec.js"
 MATTHIAS_BLEND = "frontend/art-source/matthias-home-canonical.blend"
 CHRONICLES_PARTY_MODEL = "frontend/public/models/chronicles-tactics-party.glb"
 CHRONICLES_PARTY_BUILDER = "scripts/blender/build_chronicles_tactics_party.py"
@@ -68,12 +67,10 @@ def normalize(paths: list[str]) -> list[str]:
         if lower.startswith("e2e/") and not _is_app_visual_e2e(path):
             continue
         if _is_matthias_canonical_owner(path):
-            # Home and Chronicles both render this GLB. Emit the runtime asset
-            # plus the smallest Chronicles visual canary that actually exercises
-            # the shared avatar. Do not wake full Tactics/gameplay for a pawn-art
-            # change: those producers cannot validate the Home limb silhouette.
+            # Canonical Home Matthias changes are validated by the dedicated
+            # Home Matthias visual producer. Chronicles owns its authored avatar
+            # separately and must not wake for Home-only pawn geometry changes.
             add(MATTHIAS_MODEL)
-            add(MATTHIAS_CHRONICLES_CONSUMER)
             continue
         if lower in {CHRONICLES_PARTY_MODEL, CHRONICLES_PARTY_BUILDER}:
             add(CHRONICLES_PARTY_MODEL)
@@ -102,11 +99,10 @@ def self_test() -> None:
         "frontend/art-source/matthias-home-canonical-reference.txt",
         "frontend/art-source/matthias-home-canonical-reference.webp",
     ]
-    assert normalize(matthias_sources) == [MATTHIAS_MODEL, MATTHIAS_CHRONICLES_CONSUMER]
+    assert normalize(matthias_sources) == [MATTHIAS_MODEL]
     assert normalize(["frontend/src/App.css", *matthias_sources]) == [
         "frontend/src/App.css",
         MATTHIAS_MODEL,
-        MATTHIAS_CHRONICLES_CONSUMER,
     ]
     chronicles_party_sources = [CHRONICLES_PARTY_BUILDER, CHRONICLES_PARTY_MODEL]
     assert normalize(chronicles_party_sources) == [CHRONICLES_PARTY_MODEL]
