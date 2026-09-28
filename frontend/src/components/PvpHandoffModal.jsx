@@ -36,17 +36,18 @@ export default function PvpHandoffModal({ match, error = '', onComplete, onAbort
   }, [match?.id, match?.startsAt, match?.status, onComplete]);
 
   const synchronized = match?.status === 'active' && Number.isFinite(countdown);
-  const timedOut = match?.status === 'cancelled' && match?.endReason === 'handoff_timeout';
+  const cancelled = match?.status === 'cancelled';
+  const timedOut = cancelled && match?.endReason === 'handoff_timeout';
 
   return (
     <div className="pvp-handoff-backdrop" role="presentation">
       <section className="pvp-handoff-modal" role="dialog" aria-modal="true" aria-label="Entrando en 1 contra 1">
         <span className="pvp-handoff-modal__eyebrow">WAR ROOM · ENLACE ESTABLECIDO</span>
         <span className="pvp-handoff-modal__versus" aria-hidden="true">♟</span>
-        {timedOut ? (
+        {cancelled ? (
           <>
-            <h2>El duelo no llegó a arrancar</h2>
-            <p>La sincronización no se completó dentro del margen de seguridad.</p>
+            <h2>{timedOut ? 'El duelo no llegó a arrancar' : 'Entrada al duelo cancelada'}</h2>
+            <p>{timedOut ? 'La sincronización no se completó dentro del margen de seguridad.' : 'Uno de los jugadores canceló antes de que empezara la partida.'}</p>
             <small>No hubo resultado ni cambio de Elo. Puedes volver a retar desde el lobby.</small>
             <button type="button" className="primary-btn" onClick={onAbort}>Volver al lobby</button>
           </>
@@ -63,10 +64,15 @@ export default function PvpHandoffModal({ match, error = '', onComplete, onAbort
             <small>Esperando la confirmación de ambos jugadores. Si el enlace no se completa, se cancelará solo.</small>
           </>
         )}
-        {!timedOut && (
+        {!cancelled && (
           <div className="pvp-handoff-modal__ticks" aria-hidden="true">
             {[5,4,3,2,1].map((value) => <i key={value} className={synchronized && countdown <= value ? 'is-lit' : ''}>{value}</i>)}
           </div>
+        )}
+        {!cancelled && match?.status === 'starting' && (
+          <button type="button" className="secondary-btn pvp-handoff-modal__cancel" onClick={() => void onAbort?.()}>
+            Cancelar entrada
+          </button>
         )}
         {error && <em role="alert">{error}</em>}
       </section>
