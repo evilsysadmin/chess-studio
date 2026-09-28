@@ -38,6 +38,12 @@ QUICK_MATCH_VISUAL_SURFACES = {
     "frontend/src/components/usewarroomimmersive.js": {"warroom"},
 }
 
+HOME_TOUR_VISUAL_SURFACES = {
+    "frontend/src/components/homefirstruntour.jsx",
+    "frontend/src/components/homefirstruntour.css",
+    "frontend/src/homefirstruntour.js",
+}
+
 WARROOM_MOBILE_VISUAL_SURFACES = {
     # Phone-only War Room composition/orientation. These must never wake Home,
     # Chronicles, training or browser-health canonical captures.
@@ -166,6 +172,8 @@ def _surface_groups(path: str) -> set[str] | None:
         return set()
     if lower in NONVISUAL_FRONTEND_PATHS:
         return set()
+    if lower in HOME_TOUR_VISUAL_SURFACES:
+        return {"home"}
     if lower in QUICK_MATCH_VISUAL_SURFACES:
         return set(QUICK_MATCH_VISUAL_SURFACES[lower])
     if lower in WARROOM_MOBILE_VISUAL_SURFACES:
