@@ -15,6 +15,10 @@ repo="${CHESS_STUDIO_REPO:-/opt/chess-studio/repo}"
 env_file="${CHESS_STUDIO_ENV_FILE:-/etc/chess-studio/backend.env}"
 source_deploy="$repo/scripts/oci_staging_deploy_launcher.sh"
 target_deploy=/usr/local/sbin/chess-studio-deploy
+source_backup="$repo/scripts/oci_production_mongo_backup.sh"
+target_backup=/usr/local/sbin/chess-studio-mongo-backup
+source_sudoers="$repo/infra/oci/runtime/ocarun.sudoers"
+target_sudoers=/etc/sudoers.d/101-chess-studio-ocarun
 
 [[ -d "$repo/.git" ]] || { echo "missing repo checkout: $repo" >&2; exit 66; }
 [[ -s "$env_file" ]] || { echo "missing runtime env: $env_file" >&2; exit 42; }
@@ -23,6 +27,8 @@ cd "$repo"
 git fetch --no-tags --depth=1 origin "$sha"
 git checkout --detach "$sha"
 [[ -f "$source_deploy" && ! -L "$source_deploy" ]] || { echo "missing installer payload in $sha" >&2; exit 66; }
+[[ -f "$source_backup" && ! -L "$source_backup" ]] || { echo "missing production Mongo backup payload in $sha" >&2; exit 66; }
+[[ -f "$source_sudoers" && ! -L "$source_sudoers" ]] || { echo "missing ocarun sudoers payload in $sha" >&2; exit 66; }
 
 if ! docker compose version >/dev/null 2>&1; then
   export DEBIAN_FRONTEND=noninteractive
@@ -39,6 +45,10 @@ fi
 
 docker compose version >/dev/null 2>&1 || { echo 'Docker Compose v2 installation failed' >&2; exit 69; }
 install -o root -g root -m 0755 "$source_deploy" "$target_deploy"
+install -o root -g root -m 0755 "$source_backup" "$target_backup"
+visudo -cf "$source_sudoers" >/dev/null
+install -o root -g root -m 0440 "$source_sudoers" "$target_sudoers"
+visudo -cf "$target_sudoers" >/dev/null
 install -d -o root -g root -m 0755 /var/lib/chess-studio
 chmod 0600 "$env_file"
 

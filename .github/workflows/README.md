@@ -92,6 +92,7 @@ Render staging está retirado del plano de despliegue: el **release canónico y 
 | `grafana-dashboards.yml` | Publica cuatro dashboards idempotentemente con la Grafana HTTP API. **Sin Terraform, provider, state, import, plan ni apply.** |
 | `cloudflare-prometheus-exporter.yml` | Valida/despliega el exporter oficial Cloudflare cuando cambia su superficie. |
 | `synthetic-health.yml` | Canary sintético de producción cada dos horas. Vive separado para funcionar aunque no haya releases. |
+| `production-mongo-backup.yml` | Backup semanal de `chess_study` desde la A1 OCI a block storage local. Genera `mongodump --archive --gzip`, valida el archivo con `mongorestore --dryRun` y sólo entonces poda hasta conservar los 2 backups exitosos más recientes. |
 | `branch-housekeeping.yml` | Poda ramas mergeadas. Candidato a borrar cuando el repo active el ajuste nativo `Automatically delete head branches`; actualmente `delete_branch_on_merge=false`. |
 
 ## Flujo

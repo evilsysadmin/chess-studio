@@ -17,6 +17,10 @@ source_launcher="$repo/scripts/oci_staging_deploy_launcher.sh"
 target_launcher="/usr/local/sbin/chess-studio-deploy"
 source_runtime_installer="$repo/scripts/oci_runtime_install.sh"
 target_runtime_installer="/usr/local/sbin/chess-studio-install-runtime"
+mongo_backup_source="$repo/scripts/oci_production_mongo_backup.sh"
+mongo_backup_target="/usr/local/sbin/chess-studio-mongo-backup"
+ocarun_sudoers_source="$repo/infra/oci/runtime/ocarun.sudoers"
+ocarun_sudoers_target="/etc/sudoers.d/101-chess-studio-ocarun"
 tunnel_connector="$repo/scripts/oci_staging_tunnel_connector.sh"
 otel_log_probe="$repo/scripts/otel_log_ingest_probe.py"
 signal_controller_source="$repo/scripts/oci_staging_signal_controller.sh"
@@ -82,6 +86,7 @@ require python3
 require sha256sum
 require systemctl
 require flock
+require visudo
 
 docker compose version >/dev/null 2>&1 || { echo 'docker compose v2 is required' >&2; exit 69; }
 [[ -d "$repo/.git" ]] || { echo "missing repo checkout: $repo" >&2; exit 66; }
@@ -611,8 +616,14 @@ preflight_started_ms="$(now_ms)"
 python3 -S "$otel_log_probe" --self-test >/dev/null
 [[ -f "$source_launcher" && ! -L "$source_launcher" ]] || { echo "missing deploy launcher in $sha: $source_launcher" >&2; exit 66; }
 [[ -f "$source_runtime_installer" && ! -L "$source_runtime_installer" ]] || { echo "missing runtime installer in $sha: $source_runtime_installer" >&2; exit 66; }
+[[ -f "$mongo_backup_source" && ! -L "$mongo_backup_source" ]] || { echo "missing production Mongo backup helper in $sha" >&2; exit 66; }
+[[ -f "$ocarun_sudoers_source" && ! -L "$ocarun_sudoers_source" ]] || { echo "missing ocarun sudoers contract in $sha" >&2; exit 66; }
+visudo -cf "$ocarun_sudoers_source" >/dev/null
 install -o root -g root -m 0755 "$source_launcher" "$target_launcher"
 install -o root -g root -m 0755 "$source_runtime_installer" "$target_runtime_installer"
+install -o root -g root -m 0755 "$mongo_backup_source" "$mongo_backup_target"
+install -o root -g root -m 0440 "$ocarun_sudoers_source" "$ocarun_sudoers_target"
+visudo -cf "$ocarun_sudoers_target" >/dev/null
 
 if [[ "$target" == staging ]]; then
   [[ -f "$tunnel_connector" && ! -L "$tunnel_connector" ]] || { echo "missing tunnel connector in $sha: $tunnel_connector" >&2; exit 66; }

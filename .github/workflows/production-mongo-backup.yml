@@ -1,0 +1,54 @@
+name: Production · Mongo weekly backup
+
+on:
+  schedule:
+    # Sunday, off the release train and away from the top-of-hour scheduler herd.
+    - cron: '17 4 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-mongo-weekly-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    name: Backup production Mongo to OCI A1 disk
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
+      OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
+      OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
+      OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
+      OCI_REGION: ${{ vars.OCI_REGION || 'eu-frankfurt-1' }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Restore OCI SDK
+        uses: ./.github/actions/setup-oci-sdk
+
+      - name: Validate backup orchestration
+        run: |
+          set -euo pipefail
+          python3 -S scripts/oci_production_mongo_backup.py --self-test
+          bash -n scripts/oci_production_mongo_backup.sh
+
+      - name: Refresh production runtime from OCI Vault
+        run: python3 scripts/oci_production_runtime.py sync-current
+
+      - name: Create and rotate production Mongo backup
+        run: python3 scripts/oci_production_mongo_backup.py backup
+
+      - name: Summary
+        if: success()
+        run: |
+          {
+            echo '### Production Mongo backup'
+            echo '- Target: OCI A1 local block storage'
+            echo '- Database: `chess_study`'
+            echo '- Retention: newest 2 successful weekly backups'
+            echo '- New archive is dry-run validated before the older generation is pruned'
+          } >> "$GITHUB_STEP_SUMMARY"
