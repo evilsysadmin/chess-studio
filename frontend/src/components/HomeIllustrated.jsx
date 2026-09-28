@@ -420,6 +420,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
                 activity={matthiasActivity}
                 speaking={matthiasSpeaking}
                 reducedMotion={reducedMotion}
+                activeRoom={activeRoom || ''}
               />
             </span>
           )}

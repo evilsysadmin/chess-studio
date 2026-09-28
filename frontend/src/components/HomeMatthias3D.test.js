@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  homeMatthiasAttentionPose,
   homeMatthiasCameraPose,
   homeMatthiasCanonicalFallbackDataUrl,
   homeMatthiasClipForProfile,
@@ -14,6 +15,19 @@ import {
 } from './HomeMatthias3D.jsx';
 
 describe('Home Matthias canonical Blender rig', () => {
+  it('keeps destination attention restrained and collapses cleanly to rest', () => {
+    expect(homeMatthiasAttentionPose('play')).toEqual({
+      forward: 0.026,
+      lift: 0.008,
+      leanDeg: 1.1,
+    });
+    expect(homeMatthiasAttentionPose('')).toEqual({
+      forward: 0,
+      lift: 0,
+      leanDeg: 0,
+    });
+  });
+
   it('maps real Home activities onto distinct rig routines', () => {
     expect(homeMatthiasMotionProfile({ scene: 'moment-loss-dossier', activity: 'Revisando viejas heridas' })).toBe('dossier');
     expect(homeMatthiasMotionProfile({ scene: 'moment-book-doze-sleep', activity: 'Dormido sobre el manual' })).toBe('sleep');
