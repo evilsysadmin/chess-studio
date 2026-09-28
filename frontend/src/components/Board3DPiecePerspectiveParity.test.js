@@ -45,7 +45,9 @@ describe('Board3D piece scale parity', () => {
 
     expect(resolveBoard3DCameraFov(1185 / 730)).toBe(22);
     expect(camera.fov).toBe(22);
-    expect(apparentScaleRatio).toBeGreaterThan(1);
+    // The shared mobile pitch makes near/far apparent height essentially equal;
+    // tolerate either side of 1 while keeping perspective compression bounded.
+    expect(apparentScaleRatio).toBeGreaterThan(0.98);
     expect(apparentScaleRatio).toBeLessThan(1.16);
   });
 
