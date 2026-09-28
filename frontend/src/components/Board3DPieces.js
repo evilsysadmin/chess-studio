@@ -276,18 +276,24 @@ function applyBlackQueenOpaqueCrownFinish(group, side) {
     // contrast board their reflection reads as if the square were visible
     // through the queen. Keep polished ebony/metal, but make the crown read
     // unmistakably solid at tactical camera distance.
-    material.roughness = Math.max(material.roughness ?? 0.4, 0.48);
-    material.clearcoat = Math.min(material.clearcoat ?? 0.76, 0.58);
-    material.clearcoatRoughness = Math.max(material.clearcoatRoughness ?? 0.17, 0.24);
-    material.envMapIntensity = Math.min(material.envMapIntensity ?? 0.96, 0.62);
-    material.specularIntensity = Math.min(material.specularIntensity ?? 0.88, 0.68);
+    // v2: do not let the environment map paint the checkerboard across the
+    // glossy black crown. The previous "opaque" fix removed transmission, but
+    // the strong IBL reflection still looked like the board was visible through
+    // the head in the gameplay camera. Make this tiny crown mass satin-black:
+    // solid, readable, and still lit by the room without mirror-like board echoes.
+    material.metalness = Math.min(material.metalness ?? 0.06, 0.02);
+    material.roughness = Math.max(material.roughness ?? 0.4, 0.72);
+    material.clearcoat = Math.min(material.clearcoat ?? 0.76, 0.18);
+    material.clearcoatRoughness = Math.max(material.clearcoatRoughness ?? 0.17, 0.42);
+    material.envMapIntensity = 0;
+    material.specularIntensity = Math.min(material.specularIntensity ?? 0.88, 0.24);
     material.needsUpdate = true;
     material.userData = {
       ...material.userData,
-      blackQueenOpaqueCrown: 'solid-v1',
+      blackQueenOpaqueCrown: 'solid-v2',
     };
     child.material = material;
-    child.userData.blackQueenOpaqueCrown = 'solid-v1';
+    child.userData.blackQueenOpaqueCrown = 'solid-v2';
     count += 1;
   });
   if (group?.userData) group.userData.blackQueenOpaqueCrownCount = count;
