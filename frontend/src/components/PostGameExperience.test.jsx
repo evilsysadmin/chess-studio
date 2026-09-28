@@ -39,6 +39,14 @@ describe('PostGameExperience', () => {
     expect(html).not.toContain('Entrenar mis errores');
   });
 
+  it('mantiene el resumen duplicado sólo como acceso responsive dentro de Más opciones', () => {
+    const html = render();
+    expect(html).toContain('endgame-review-btn-direct');
+    expect(html).toContain('endgame-review-btn-more');
+    expect(html.match(/Resumen de la partida/g)).toHaveLength(2);
+    expect(html).toContain('Más opciones');
+  });
+
   it('muestra la recalibración factual sólo cuando el resumen trae un cambio material', () => {
     const html = render({
       resultSummary: {
