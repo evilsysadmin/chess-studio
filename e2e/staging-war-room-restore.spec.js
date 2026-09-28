@@ -106,7 +106,9 @@ test('staging authority · F5 3D descarta snapshot viejo y rehidrata la partida 
   let gameId = null;
   try {
     await loginBrowser(page, username, password);
-    await buttonWithVisibleText(page, 'Partida rápida').click();
+    const quickMatchEntry = page.locator('.illustrated-home__destination--play:visible, .home-mode-quick:visible').first();
+    await expect(quickMatchEntry).toBeVisible({ timeout: 15_000 });
+    await quickMatchEntry.click();
 
     const dialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
     await expect(dialog).toBeVisible();
