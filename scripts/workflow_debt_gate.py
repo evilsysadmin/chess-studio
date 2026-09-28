@@ -36,7 +36,6 @@ INVENTORY = {
     'home-r2-assets.yml': 'infra-assets',
     'main-admission.yml': 'delivery-admission',
     'main-backend-image.yml': 'delivery-backend-image',
-    'materialize-home-matthias-art.yml': 'art-generation-infra',
     'oci-readiness.yml': 'infra-readiness',
     'oci-staging-deploy.yml': 'infra-staging-delivery',
     'oci-staging-lab.yml': 'infra-staging-lifecycle',
