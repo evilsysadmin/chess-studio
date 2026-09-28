@@ -207,3 +207,83 @@
     transform: none;
   }
 }
+
+/* Mobile audit hardening: Mazmorras is a focused sheet, not another layer of the
+ * castle. Keep the diegetic Home visible as context, but prevent its destinations
+ * and legacy narrow rules from competing with the menu content. */
+@media (max-width: 520px) {
+  body .app-shell-home .illustrated-home__stage:has(.illustrated-home__utilities.is-open)::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 79;
+    background: rgba(5, 3, 2, .58);
+    backdrop-filter: blur(2px);
+    pointer-events: none;
+  }
+
+  body .app-shell-home .illustrated-home__utilities.is-open > .illustrated-home__dungeon-panel.is-grouped {
+    position: fixed !important;
+    z-index: 81 !important;
+    inset: max(72px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom)) 10px !important;
+    width: auto !important;
+    max-height: none !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    padding: 14px 12px 12px !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    border-radius: 18px !important;
+    background:
+      radial-gradient(ellipse at 12% 2%, rgba(232, 157, 58, .12), transparent 30%),
+      linear-gradient(180deg, rgba(24, 17, 12, .995), rgba(8, 7, 6, .998)) !important;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, .84), inset 0 0 0 1px rgba(173, 126, 66, .42) !important;
+  }
+
+  body .app-shell-home .illustrated-home__utilities.is-open > .illustrated-home__dungeon-panel.is-grouped > header {
+    flex: none;
+    margin: 0 !important;
+    padding: 2px 6px 8px 38px !important;
+  }
+
+  body .app-shell-home .illustrated-home__utilities.is-open > .illustrated-home__dungeon-panel.is-grouped .dungeon-groups {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+
+  body .app-shell-home .illustrated-home__utilities.is-open > .illustrated-home__dungeon-panel.is-grouped .dungeon-group {
+    gap: 5px;
+    padding: 9px 9px 10px;
+  }
+
+  body .app-shell-home .illustrated-home__utilities.is-open > .illustrated-home__dungeon-panel.is-grouped .dungeon-group > button,
+  body .app-shell-home .illustrated-home__utilities.is-open > .illustrated-home__dungeon-panel.is-grouped .dungeon-featured > button {
+    min-height: 44px !important;
+    width: 100% !important;
+    margin-left: 0 !important;
+    border-radius: 9px !important;
+  }
+
+  body .app-shell-home .illustrated-home__utilities.is-open > .illustrated-home__dungeon-panel.is-grouped .dungeon-links {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px !important;
+    padding: 0 !important;
+  }
+
+  body .app-shell-home .illustrated-home__utilities.is-open > .illustrated-home__dungeon-panel.is-grouped .dungeon-links > button {
+    min-height: 44px !important;
+    padding: 8px 10px !important;
+    border: 1px solid rgba(121, 88, 49, .45) !important;
+    border-radius: 9px !important;
+    background: rgba(255, 224, 162, .045) !important;
+    text-decoration: none !important;
+  }
+
+  body .app-shell-home .illustrated-home__stage:has(.illustrated-home__utilities.is-open)
+    :is(.illustrated-home__destination, .illustrated-home__play-actions, .illustrated-home__matthias, .home-pvp-roster-link) {
+    pointer-events: none !important;
+  }
+}
