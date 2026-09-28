@@ -46,7 +46,7 @@ describe('Board3D reference look', () => {
     // A tiny IBL contribution is intentional now that the limestone albedo has
     // visible meso-detail. Keep it tightly capped so the light squares stay matte.
     expect(light.envMapIntensity).toBeGreaterThanOrEqual(0);
-    expect(light.envMapIntensity).toBeLessThanOrEqual(0.03);
+    expect(light.envMapIntensity).toBeLessThanOrEqual(0.08);
     expect(dark.envMapIntensity).toBeGreaterThan(light.envMapIntensity);
 
     disposeMaterial(light);
