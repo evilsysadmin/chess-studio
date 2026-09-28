@@ -62,7 +62,7 @@ function currentReducedMotion() {
   return reducedMotionStatus().effective;
 }
 
-export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, onContinue, onPractice, pendingModes = [], pvpSlot, onTournament, onTrain, onCombat, onDaily, onHistory, onInsights, tools, matthiasModel, matthiasSpeaking, onMatthiasAction, onMatthiasDismiss }) {
+export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, onContinue, onPractice, pendingModes = [], pvpSlot, onTournament, onTrain, onCombat, onDaily, onHistory, onInsights, tools, matthiasModel, matthiasSpeaking, onMatthiasAction, onMatthiasDismiss, tourFocus = '' }) {
   const [toolsOpen, setToolsOpen] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
   const [playMenuOpen, setPlayMenuOpen] = useState(false);
@@ -77,6 +77,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
   const [matthiasRoutineIndex, setMatthiasRoutineIndex] = useState(0);
   const [matthiasRoutineClock, setMatthiasRoutineClock] = useState(() => new Date());
   const [reducedMotion, setReducedMotion] = useState(currentReducedMotion);
+  const effectiveActiveRoom = tourFocus || activeRoom;
 
   const castleLife = useMemo(() => buildHomeCastleLife({
     rivalry: loadRivalry(),
@@ -222,7 +223,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
         data-home-castle-ambient={castleLife.ambient}
         data-home-castle-memory={memories.map((memory) => memory.kind).join(' ') || 'none'}
         data-home-castle-rare={castleLife.rareSighting || 'none'}
-        data-home-castle-focus={activeRoom || 'none'}
+        data-home-castle-focus={effectiveActiveRoom || 'none'}
         data-home-beacons={anchors ? 'projected' : 'static'}
         data-home-tour-target="home"
         style={{ '--home-hall-art': `url("${hall}")` }}
@@ -230,7 +231,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
         <HomeScene3D
           artUrl={hall}
           ambient={castleLife.ambient}
-          activeRoom={activeRoom}
+          activeRoom={effectiveActiveRoom}
           onDestinationHover={setActiveRoom}
           onDestinationActivate={activateSceneDestination}
           onAnchorLayout={handleAnchorLayout}
@@ -262,7 +263,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
             <Fragment key={id}>
               <button
                 type="button"
-                className={`illustrated-home__destination illustrated-home__destination--${id}${PRIMARY_DIEGETIC_DESTINATIONS.has(id) ? ' is-diegetic-object' : ''}${activeRoom === id ? ' is-active' : ''}`}
+                className={`illustrated-home__destination illustrated-home__destination--${id}${PRIMARY_DIEGETIC_DESTINATIONS.has(id) ? ' is-diegetic-object' : ''}${effectiveActiveRoom === id ? ' is-active' : ''}`}
                 data-home-diegetic-object={PRIMARY_DIEGETIC_DESTINATIONS.has(id) ? id : undefined}
                 data-home-tour-target={id}
                 onClick={action}
@@ -287,7 +288,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
             type="button"
             tabIndex={-1}
             aria-hidden="true"
-            className={`illustrated-home__beacon illustrated-home__beacon--${id}${activeRoom === id ? ' is-active' : ''}`}
+            className={`illustrated-home__beacon illustrated-home__beacon--${id}${effectiveActiveRoom === id ? ' is-active' : ''}`}
             style={{ left: `${anchors[id].x * 100}%`, top: `${anchors[id].y * 100}%` }}
             onClick={action}
             onPointerEnter={() => setActiveRoom(id)}
@@ -372,7 +373,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
                 <button
                   key={id}
                   type="button"
-                  className={`illustrated-home__quickbar-chip illustrated-home__quickbar-chip--${id}${activeRoom === id ? ' is-active' : ''}`}
+                  className={`illustrated-home__quickbar-chip illustrated-home__quickbar-chip--${id}${effectiveActiveRoom === id ? ' is-active' : ''}`}
                   onClick={() => { setQuickOpen(false); action(); }}
                   onPointerEnter={() => setActiveRoom(id)}
                   onPointerLeave={() => setActiveRoom(null)}
@@ -423,7 +424,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
                 activity={matthiasActivity}
                 speaking={matthiasSpeaking}
                 reducedMotion={reducedMotion}
-                activeRoom={activeRoom || ''}
+                activeRoom={effectiveActiveRoom || ''}
               />
             </span>
           )}
