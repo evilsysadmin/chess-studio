@@ -283,7 +283,14 @@
   }
 
   body .app-shell-home .illustrated-home__stage:has(.illustrated-home__utilities.is-open)
-    :is(.illustrated-home__destination, .illustrated-home__play-actions, .illustrated-home__matthias, .home-pvp-roster-link) {
+    :is(
+      .illustrated-home__destination,
+      .illustrated-home__play-actions,
+      .illustrated-home__matthias,
+      .illustrated-home__speech,
+      .home-pvp-roster-link
+    ) {
+    visibility: hidden !important;
     pointer-events: none !important;
   }
 }
