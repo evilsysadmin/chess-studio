@@ -64,6 +64,13 @@ export function homeMatthiasMotionProfile({ scene = '', activity = '', speaking 
   return 'idle';
 }
 
+export function homeMatthiasAttentionPose(activeRoom = '') {
+  const active = Boolean(String(activeRoom || '').trim());
+  return active
+    ? { forward: 0.026, lift: 0.008, leanDeg: 1.1 }
+    : { forward: 0, lift: 0, leanDeg: 0 };
+}
+
 export function homeMatthiasMotionPhase({ scene = '', activity = '' } = {}) {
   const key = `${cue(scene)}|${cue(activity)}`;
   let hash = 2166136261;
@@ -301,10 +308,11 @@ export default function HomeMatthias3D({
   activity = '',
   speaking = false,
   reducedMotion = false,
+  activeRoom = '',
 }) {
   const canvasRef = useRef(null);
   const runtimeRef = useRef(null);
-  const desiredMotionRef = useRef({ profile: 'idle', reducedMotion: false, phase: 0 });
+  const desiredMotionRef = useRef({ profile: 'idle', reducedMotion: false, phase: 0, activeRoom: '' });
   const profile = useMemo(
     () => homeMatthiasMotionProfile({ scene, activity, speaking }),
     [activity, scene, speaking],
@@ -314,7 +322,7 @@ export default function HomeMatthias3D({
   const [modelState, setModelState] = useState('loading');
   const [fallbackSrc, setFallbackSrc] = useState(fallbackAvatar);
 
-  desiredMotionRef.current = { profile, reducedMotion, phase };
+  desiredMotionRef.current = { profile, reducedMotion, phase, activeRoom };
 
   useEffect(() => {
     if (modelState !== 'fallback') {
@@ -384,6 +392,12 @@ export default function HomeMatthias3D({
     let disposed = false;
     let intersecting = true;
     let firstFramePainted = false;
+    let attentionAmount = 0;
+    let attentionForward = new THREE.Vector3(0, 0, 1);
+    let attentionSide = new THREE.Vector3(1, 0, 0);
+    const baseModelPosition = new THREE.Vector3();
+    const baseModelQuaternion = new THREE.Quaternion();
+    const attentionQuaternion = new THREE.Quaternion();
 
     const renderOnce = () => {
       try {
@@ -455,7 +469,23 @@ export default function HomeMatthias3D({
     const tick = () => {
       frame = 0;
       if (!shouldAnimate()) return;
-      mixer?.update(Math.min(clock.getDelta(), 0.05));
+      const delta = Math.min(clock.getDelta(), 0.05);
+      mixer?.update(delta);
+      if (model) {
+        const desired = desiredMotionRef.current;
+        const targetAttention = desired.reducedMotion ? 0 : (desired.activeRoom ? 1 : 0);
+        const ease = 1 - Math.exp(-delta * 8.5);
+        attentionAmount += (targetAttention - attentionAmount) * ease;
+        const pose = homeMatthiasAttentionPose(desired.activeRoom);
+        model.position.copy(baseModelPosition)
+          .addScaledVector(attentionForward, pose.forward * attentionAmount);
+        model.position.y += pose.lift * attentionAmount;
+        attentionQuaternion.setFromAxisAngle(
+          attentionSide,
+          THREE.MathUtils.degToRad(pose.leanDeg * attentionAmount),
+        );
+        model.quaternion.copy(baseModelQuaternion).multiply(attentionQuaternion);
+      }
       renderOnce();
       frame = window.requestAnimationFrame(tick);
     };
@@ -496,6 +526,8 @@ export default function HomeMatthias3D({
         model.position.set(0, 0, 0);
         model.rotation.set(0, 0, 0);
         model.scale.setScalar(1.0);
+        baseModelPosition.copy(model.position);
+        baseModelQuaternion.copy(model.quaternion);
         model.updateMatrixWorld(true);
 
         const bounds = new THREE.Box3().setFromObject(model);
@@ -524,6 +556,8 @@ export default function HomeMatthias3D({
           centerZ: center.z,
           fovDeg: camera.fov,
         });
+        attentionForward.set(cameraPose.faceX, 0, cameraPose.faceZ).normalize();
+        attentionSide.set(-cameraPose.faceZ, 0, cameraPose.faceX).normalize();
         camera.position.set(cameraPose.cameraX, cameraPose.cameraY, cameraPose.cameraZ);
         camera.lookAt(cameraPose.targetX, cameraPose.targetY, cameraPose.targetZ);
         camera.updateProjectionMatrix();
