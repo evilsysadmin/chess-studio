@@ -1,5 +1,4 @@
 import { expect, test } from '@playwright/test';
-import { buttonWithVisibleText } from './helpers.js';
 import { stagingSyntheticHeaders } from './staging-synthetic.js';
 
 const STAGING_URL = process.env.STAGING_URL || 'https://staging.chess-studio.shadowops.dpdns.org';
@@ -106,7 +105,10 @@ test('staging authority · F5 3D descarta snapshot viejo y rehidrata la partida 
   let gameId = null;
   try {
     await loginBrowser(page, username, password);
-    await buttonWithVisibleText(page, 'Partida rápida').click();
+    const destinations = page.getByRole('navigation', { name: 'Destinos del gran salón', exact: true });
+    const play = destinations.getByRole('button', { name: /^JUGAR\b/ });
+    await expect(play).toBeVisible();
+    await play.click();
 
     const dialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
     await expect(dialog).toBeVisible();
