@@ -435,6 +435,7 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
                     "id": row["id"],
                     "username": row["username"],
                     "text": row["text"],
+                    "kind": row.get("kind") or "message",
                     "createdAt": _iso(row.get("created_at")),
                     "isSelf": row["username"] == username,
                 }
@@ -459,6 +460,7 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
                 "id": row["id"],
                 "username": username,
                 "text": row["text"],
+                "kind": row.get("kind") or "message",
                 "createdAt": _iso(row.get("created_at")),
                 "isSelf": True,
             }
@@ -489,8 +491,9 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
                 f"Espera {retry_after} s antes de volver a retar a este jugador.",
                 headers={"Retry-After": str(retry_after)},
             )
+        challenge_id = uuid.uuid4().hex
         row = await store.create_challenge({
-            "id": uuid.uuid4().hex,
+            "id": challenge_id,
             "challenger": username,
             "opponent": opponent,
             "challenger_rating": int(challenger_row.get("rating", DEFAULT_RATING)),
@@ -498,6 +501,12 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
             "status": "pending",
             "created_at": now,
         })
+        if row.get("id") == challenge_id:
+            await store.append_lobby_chat(
+                "Sistema",
+                f"{username} retó a {opponent}.",
+                kind="system",
+            )
         return {"challenge": _public_challenge(row, username)}
 
     @router.post("/challenges/{challenge_id}/cancel")
@@ -575,6 +584,11 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
         if not accepted:
             raise HTTPException(409, "El reto ya no está disponible.")
         _accepted_challenge, accepted_match = accepted
+        await store.append_lobby_chat(
+            "Sistema",
+            f"{username} aceptó el reto de {challenger}.",
+            kind="system",
+        )
         return {"match": _public_match(accepted_match, username)}
 
     @router.post("/matches/{match_id}/ready")
