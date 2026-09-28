@@ -717,8 +717,7 @@ function Board3DCanvas({
       renderLite: state.renderLite,
       canvas: state.renderer.domElement,
       onStatus: setWarRoomVariantStatus,
-      onPaint: state.render,
-      deferUntilUsefulFrame: state.coarsePointer && warRoomVariantSelectable && warRoomVariant !== 'classic',
+      onPaint: state.render, deferUntilUsefulFrame: state.coarsePointer && warRoomVariantSelectable && warRoomVariant !== 'classic',
     });
   }, [warRoomVariant, warRoomVariantSelectable, setWarRoomVariantStatus, effectiveThemeId, orientation, showCoordinates]);
 
@@ -835,9 +834,7 @@ function Board3DCanvas({
       if (animate?.seq) lastAnimatedSeqRef.current = animate.seq;
       applyMatthiasCheckPose(state, checkSquare, orientation);
       state.render();
-      if (state.coarsePointer && state.pieceGroup.children.length > 0) {
-        state.renderer.domElement.dataset.warRoomFirstUsefulFrame = 'interactive-board';
-      }
+      if (state.coarsePointer && state.pieceGroup.children.length > 0) state.renderer.domElement.dataset.warRoomFirstUsefulFrame = 'interactive-board';
       return undefined;
     }
 
