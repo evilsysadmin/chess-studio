@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { HOME_FIRST_RUN_TOUR_STEPS } from '../homeFirstRunTour.js';
+import HomeMatthias3D from './HomeMatthias3D.jsx';
 import './HomeFirstRunTour.css';
 
 function targetBox(target) {
@@ -17,11 +18,16 @@ function targetBox(target) {
   };
 }
 
-export default function HomeFirstRunTour({ active = false, onComplete, onSkip }) {
+export default function HomeFirstRunTour({ active = false, onComplete, onSkip, onFocusTarget }) {
   const [stepIndex, setStepIndex] = useState(0);
   const [box, setBox] = useState(null);
   const step = HOME_FIRST_RUN_TOUR_STEPS[stepIndex] || HOME_FIRST_RUN_TOUR_STEPS[0];
   const last = stepIndex === HOME_FIRST_RUN_TOUR_STEPS.length - 1;
+
+  useEffect(() => {
+    onFocusTarget?.(active ? (step?.target || '') : '');
+    return () => onFocusTarget?.('');
+  }, [active, onFocusTarget, step?.target]);
 
   useEffect(() => {
     if (!active) {
@@ -92,6 +98,16 @@ export default function HomeFirstRunTour({ active = false, onComplete, onSkip })
         />
       )}
       <article className="home-first-run-tour__briefing">
+        <div className="home-first-run-tour__matthias" aria-hidden="true">
+          <HomeMatthias3D
+            scene="base"
+            activity="Dando la visita guiada"
+            speaking
+            reducedMotion={typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches}
+            activeRoom={step?.target || ''}
+          />
+        </div>
+        <div className="home-first-run-tour__copy">
         <header>
           <span>{step.eyebrow}</span>
           <b>{stepIndex + 1}/{HOME_FIRST_RUN_TOUR_STEPS.length}</b>
@@ -120,6 +136,7 @@ export default function HomeFirstRunTour({ active = false, onComplete, onSkip })
             </button>
           </div>
         </footer>
+        </div>
       </article>
     </section>
   );
