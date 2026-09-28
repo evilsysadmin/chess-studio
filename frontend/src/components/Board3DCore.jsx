@@ -34,7 +34,7 @@ import {
 import useWarRoomVariant from './useWarRoomVariant.js';
 import { resolveBoard3DPresentation } from './Board3DPresentation.js';
 import { createClassicWarRoomShellController } from './WarRoomClassicShell.js';
-import { shouldShowClassicWarRoomShell, startWarRoomVariantScene } from './WarRoomSceneVariant.js';
+import { shouldShowClassicWarRoomShell, startWarRoomVariantSceneAfterUsefulFrame } from './WarRoomSceneVariant.js';
 import './Board3D.css';
 import './Board3DViewportTuning.css';
 import './Board3DParity.css';
@@ -708,7 +708,7 @@ function Board3DCanvas({
   useEffect(() => {
     const state = sceneStateRef.current;
     if (!state) return undefined;
-    return startWarRoomVariantScene({
+    return startWarRoomVariantSceneAfterUsefulFrame({
       scene: state.scene,
       classicShellController: state.classicShellController,
       variant: warRoomVariant,
@@ -718,6 +718,7 @@ function Board3DCanvas({
       canvas: state.renderer.domElement,
       onStatus: setWarRoomVariantStatus,
       onPaint: state.render,
+      deferUntilUsefulFrame: state.coarsePointer && warRoomVariantSelectable && warRoomVariant !== 'classic',
     });
   }, [warRoomVariant, warRoomVariantSelectable, setWarRoomVariantStatus, effectiveThemeId, orientation, showCoordinates]);
 
@@ -834,6 +835,9 @@ function Board3DCanvas({
       if (animate?.seq) lastAnimatedSeqRef.current = animate.seq;
       applyMatthiasCheckPose(state, checkSquare, orientation);
       state.render();
+      if (state.coarsePointer && state.pieceGroup.children.length > 0) {
+        state.renderer.domElement.dataset.warRoomFirstUsefulFrame = 'interactive-board';
+      }
       return undefined;
     }
 
