@@ -29,6 +29,7 @@ PRODUCER_ORDER = (
     "warroom-decor",
     "warroom-armor",
     "warroom-hans",
+    "pvp-lobby",
     "health-runtime",
     "health-storage",
 )
@@ -147,6 +148,24 @@ TRAINING_EXACT_PRODUCERS = {
     "frontend/src/components/tournamentmobilepolish.css": {"training-tournament"},
 }
 
+PVP_EXACT_PRODUCERS = {
+    "frontend/src/components/pvplobbymodal.jsx": {"pvp-lobby"},
+    "frontend/src/components/pvplobbymodal.css": {"pvp-lobby"},
+    "frontend/src/components/pvphandoffmodal.jsx": {"pvp-lobby"},
+    "frontend/src/components/pvphandoffmodal.css": {"pvp-lobby"},
+    "frontend/src/components/homepvprosterlink.jsx": {"pvp-lobby"},
+    "frontend/src/components/homepvprosterlink.css": {"pvp-lobby"},
+}
+
+PVP_NONVISUAL_FILES = {
+    "frontend/src/pvpapi.js",
+    "frontend/src/usepvpappflow.js",
+    "frontend/src/usepvprosterpresence.js",
+    "frontend/src/pvpenrollment.js",
+    "frontend/src/pvpruntimebridge.js",
+    "frontend/src/pvpgamemodel.js",
+}
+
 PUBLIC_NONCANONICAL_PATHS = {
     "frontend/public/404.html",
     "frontend/public/cname",
@@ -186,6 +205,7 @@ def _e2e_producer(name: str) -> set[str] | None:
         "war-room-hans-visual-artifact.spec.js": {"warroom-hans"},
         "browser-runtime-health.spec.js": {"health-runtime"},
         "browser-storage-health.spec.js": {"health-storage"},
+        "pvp-visual-artifact.spec.js": {"pvp-lobby"},
     }
     if name in exact:
         return exact[name]
@@ -251,6 +271,8 @@ def classify_path(path: str) -> set[str] | None:
     if lower.startswith("frontend/public/"):
         return None
 
+    if lower.startswith("backend-python/"):
+        return set()
     if not lower.startswith("frontend/src/"):
         if lower in {
             "scripts/css_architecture_manifest.json",
@@ -282,6 +304,12 @@ def classify_path(path: str) -> set[str] | None:
         return {"experiments-hub"}
     if lower in TRAINING_EXACT_PRODUCERS:
         return set(TRAINING_EXACT_PRODUCERS[lower])
+    if lower in PVP_EXACT_PRODUCERS:
+        return set(PVP_EXACT_PRODUCERS[lower])
+    if lower in PVP_NONVISUAL_FILES:
+        return set()
+    if lower == "frontend/src/components/menuinner.jsx":
+        return {"home-base"}
 
     if "chronicles" in lower:
         if "tactics" in lower or "isometric" in lower:
@@ -476,6 +504,15 @@ def self_test() -> None:
     assert classify(["frontend/src/experimentalThreeRenderer.js"]) == "chronicles-tactics,chronicles-gameplay"
     assert classify(["frontend/src/components/LabScreen.jsx"]) == "experiments-hub"
     assert classify(["frontend/src/components/QuickMatchModal.jsx"]) == "home-base,warroom-core"
+    assert classify([
+        "backend-python/pvp_api.py",
+        "frontend/src/pvpApi.js",
+        "frontend/src/usePvpRosterPresence.js",
+        "frontend/src/components/PvPLobbyModal.jsx",
+        "frontend/src/components/PvpHandoffModal.jsx",
+    ]) == "pvp-lobby"
+    assert classify(["backend-python/test_pvp_api.py"]) == "none"
+    assert classify(["frontend/src/components/MenuInner.jsx"]) == "home-base"
     assert classify(["frontend/src/components/QuickMatchMobileGoldenPath.css"]) == "home-base"
     assert classify_home_profile_scope(["frontend/src/components/QuickMatchMobileGoldenPath.css"]) == "quickmatch"
     assert classify(["frontend/src/components/useWarRoomImmersive.js"]) == "warroom-core"
