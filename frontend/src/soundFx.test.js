@@ -110,6 +110,18 @@ describe('premium piece sound', () => {
     expect(compressors).toHaveLength(1);
   });
 
+  it('keeps the mastered move present instead of over-drying the bus', () => {
+    playMoveSound();
+
+    const gains = state.ctx.nodes.filter((node) => node.kind === 'gain');
+    const compressor = state.ctx.nodes.find((node) => node.kind === 'compressor');
+
+    expect(gains[0].gain.value).toBeGreaterThan(0.8);
+    expect(gains[1].gain.value).toBeGreaterThan(1);
+    expect(compressor.ratio.value).toBeLessThan(2);
+    expect(compressor.release.value).toBeGreaterThan(0.08);
+  });
+
   it('gives captures an extra physical contact and a lower resonant body', () => {
     playMoveSound();
     const moveOscillators = state.ctx.nodes.filter((node) => node.kind === 'oscillator');
