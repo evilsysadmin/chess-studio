@@ -78,6 +78,22 @@ TRAINING_VISUAL_SURFACES = {
     "frontend/src/components/tournamentmobilepolish.css",
 }
 
+
+PVP_VISUAL_SURFACES = {
+    # PvP lobby/handoff UI lives on the Home/play shell. It must never wake
+    # unrelated deep sidecars such as Hans routine videos.
+    "frontend/src/components/pvplobbymodal.jsx",
+    "frontend/src/components/pvplobbymodal.css",
+    "frontend/src/components/pvphandoffmodal.jsx",
+    "frontend/src/components/pvphandoffmodal.css",
+    "frontend/src/components/homepvprosterlink.jsx",
+    "frontend/src/components/homepvprosterlink.css",
+    "frontend/src/pvpapi.js",
+    "frontend/src/usepvpappflow.js",
+    "frontend/src/usepvprosterpresence.js",
+    "frontend/src/pvpruntimebridge.js",
+}
+
 PUBLIC_NONCANONICAL_PATHS = {
     "frontend/public/404.html",
     "frontend/public/cname",
@@ -178,6 +194,12 @@ def _surface_groups(path: str) -> set[str] | None:
         return {"training"}
     if lower in TRAINING_VISUAL_SURFACES:
         return {"training"}
+    if lower in PVP_VISUAL_SURFACES:
+        return {"home"}
+    if lower.startswith("backend-python/"):
+        # Backend changes have no browser pixels of their own. Any accompanying
+        # frontend visual owner determines the capture scope.
+        return set()
     if lower == "frontend/src/components/labscreen.jsx":
         return {"experiments"}
     if lower in DEDICATED_WAR_ROOM_BLENDER_PATHS:
@@ -503,6 +525,19 @@ def self_test() -> None:
         "frontend/src/components/TournamentMobilePolish.css",
     ])
     assert mobile_training.capture_groups == "training"
+
+    pvp_lobby = classify([
+        "backend-python/pvp_api.py",
+        "backend-python/test_pvp_api.py",
+        "frontend/src/components/PvPLobbyModal.jsx",
+        "frontend/src/components/PvPLobbyModal.css",
+        "frontend/src/components/PvpHandoffModal.jsx",
+        "frontend/src/pvpApi.js",
+        "frontend/src/usePvpAppFlow.js",
+        "frontend/src/usePvpRosterPresence.js",
+    ])
+    assert pvp_lobby.capture_groups == "home"
+    assert not pvp_lobby.hans and not pvp_lobby.chesscom
     classroom = classify(["frontend/src/components/MatthiasClassRoom.css"])
     assert classroom.capture_groups == "training"
     assert not classroom.hans and not classroom.chesscom
