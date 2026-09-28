@@ -131,6 +131,12 @@ TRAINING_ALL = {
     "training-tournament",
     "training-progress",
 }
+HOME_TOUR_EXACT_PRODUCERS = {
+    "frontend/src/components/homefirstruntour.jsx": {"home-base", "home-matthias", "home-focus"},
+    "frontend/src/components/homefirstruntour.css": {"home-base", "home-matthias", "home-focus"},
+    "frontend/src/homefirstruntour.js": {"home-base", "home-matthias", "home-focus"},
+}
+
 QUICK_MATCH_EXACT_PRODUCERS = {
     # Quick Match owns the launch/config surface and the core War Room entry
     # contract. It cannot alter Home Matthias/focus, room decor, armor or Hans.
@@ -277,6 +283,8 @@ def classify_path(path: str) -> set[str] | None:
 
     if lower in {"frontend/src/lablaunchintent.js", "frontend/src/usepuzzlelaunchflow.js"}:
         return set()
+    if lower in HOME_TOUR_EXACT_PRODUCERS:
+        return set(HOME_TOUR_EXACT_PRODUCERS[lower])
     if lower in QUICK_MATCH_EXACT_PRODUCERS:
         return set(QUICK_MATCH_EXACT_PRODUCERS[lower])
     if lower == "frontend/src/components/labscreen.jsx":
@@ -478,6 +486,9 @@ def self_test() -> None:
     assert classify(["frontend/src/components/LabScreen.jsx"]) == "experiments-hub"
     assert classify(["frontend/src/components/QuickMatchModal.jsx"]) == "home-base,warroom-core"
     assert classify(["frontend/src/components/QuickMatchMobileGoldenPath.css"]) == "home-base"
+    assert classify(["frontend/src/components/HomeFirstRunTour.jsx"]) == "home-base,home-matthias,home-focus"
+    assert classify(["frontend/src/components/HomeFirstRunTour.css"]) == "home-base,home-matthias,home-focus"
+    assert classify(["frontend/src/homeFirstRunTour.js"]) == "home-base,home-matthias,home-focus"
     assert classify_home_profile_scope(["frontend/src/components/QuickMatchMobileGoldenPath.css"]) == "quickmatch"
     assert classify(["frontend/src/components/useWarRoomImmersive.js"]) == "warroom-core"
     assert classify(["frontend/src/components/WarRoomMobileLandscape.css"]) == "warroom-core"
