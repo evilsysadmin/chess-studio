@@ -26,6 +26,10 @@
 
 .home-first-run-tour__briefing {
   position: absolute;
+  display: grid;
+  grid-template-columns: 118px minmax(0, 1fr);
+  align-items: end;
+  gap: 14px;
   z-index: 2;
   left: clamp(14px, 4vw, 52px);
   width: min(470px, calc(100vw - 28px));
@@ -159,5 +163,47 @@
 @media (prefers-reduced-motion: reduce) {
   .home-first-run-tour__spotlight {
     transition: none;
+  }
+}
+
+
+.home-first-run-tour__matthias {
+  position: relative;
+  align-self: stretch;
+  min-height: 188px;
+  border-right: 1px solid rgba(213, 168, 82, .18);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.home-first-run-tour__matthias .home-matthias-3d {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.home-first-run-tour__copy {
+  min-width: 0;
+}
+
+@media (max-width: 620px) {
+  .home-first-run-tour__briefing {
+    grid-template-columns: 76px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .home-first-run-tour__matthias {
+    min-height: 164px;
+  }
+}
+
+@media (max-width: 360px) {
+  .home-first-run-tour__briefing {
+    grid-template-columns: 64px minmax(0, 1fr);
+  }
+
+  .home-first-run-tour__matthias {
+    min-height: 152px;
   }
 }
