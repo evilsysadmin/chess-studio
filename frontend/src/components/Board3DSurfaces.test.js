@@ -83,9 +83,9 @@ describe('Board3D premium surfaces', () => {
     expect(desktop.userData.surfaceRole).toBe('board-dark');
     expect(desktop.roughnessMap).toBeTruthy();
     expect(desktop.bumpScale).toBeGreaterThan(0);
-    expect(desktop.roughness).toBeGreaterThanOrEqual(0.68);
-    expect(desktop.clearcoat).toBeLessThanOrEqual(0.24);
-    expect(desktop.envMapIntensity).toBeLessThanOrEqual(0.52);
+    expect(desktop.roughness).toBeGreaterThanOrEqual(0.62);
+    expect(desktop.clearcoat).toBeLessThanOrEqual(0.3);
+    expect(desktop.envMapIntensity).toBeLessThanOrEqual(0.58);
     expect(mobile.roughnessMap).toBeNull();
     expect(mobile.bumpScale).toBe(0);
 
