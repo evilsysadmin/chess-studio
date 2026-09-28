@@ -90,3 +90,72 @@ test('PvP premium · F5 durante el handoff recupera el duelo y reintenta ready d
   await expect(handoff).toContainText('bob');
   await expect.poll(() => readyCalls).toBeGreaterThan(callsBeforeReload);
 });
+
+
+test('PvP premium · un 500 tardío de ready se recupera leyendo el match autoritativo', async ({ page }) => {
+  await mockApi(page);
+  const startsAt = new Date(Date.now() + 5_000).toISOString();
+  let readyCalls = 0;
+  let matchReads = 0;
+
+  await page.route('**/api/pvp/lobby', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({
+      roster: [
+        { username: 'e2e', isSelf: true, rating: 400, tier: 'Principiante' },
+        { username: 'bob', isSelf: false, rating: 416, tier: 'Principiante' },
+      ],
+      challenges: [],
+      activeMatch: startingMatch(),
+      pollAfterMs: 3000,
+    }),
+  }));
+
+  await page.route('**/api/pvp/matches/pvp-recover-1/ready', (route) => {
+    readyCalls += 1;
+    return route.fulfill({
+      status: 500,
+      contentType: 'application/json',
+      headers: { 'x-request-id': 'handoff-late-500' },
+      body: JSON.stringify({ detail: 'late cleanup failed' }),
+    });
+  });
+
+  await page.route('**/api/pvp/matches/pvp-recover-1', (route) => {
+    matchReads += 1;
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        match: {
+          ...startingMatch({ youReady: true }),
+          status: 'active',
+          startsAt,
+          opponentReady: true,
+          revision: 2,
+        },
+        pollAfterMs: 500,
+      }),
+    });
+  });
+
+  await login(page);
+  await page.evaluate(() => {
+    sessionStorage.setItem(
+      'chess-study-pvp-enrollment-v1',
+      JSON.stringify({ username: 'e2e', enrolled: true }),
+    );
+  });
+  await page.reload();
+
+  const handoff = page.getByRole('dialog', { name: 'Entrando en 1 contra 1' });
+  await expect(handoff).toBeVisible();
+  await expect.poll(() => readyCalls).toBe(1);
+  await expect.poll(() => matchReads).toBeGreaterThanOrEqual(1);
+  await expect(handoff).toContainText('Entrando en 1 vs 1 en');
+  await expect(handoff.getByRole('alert')).toHaveCount(0);
+
+  await page.waitForTimeout(1300);
+  expect(readyCalls).toBe(1);
+});
