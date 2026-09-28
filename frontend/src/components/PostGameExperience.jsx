@@ -103,7 +103,8 @@ export default function PostGameExperience({
   const hasMoreActions = Boolean(
     !sequenceInProgress
     && (
-      nextAction.id === 'review'
+      hasReport
+      || nextAction.id === 'review'
       || onShareResult
       || onTrainPersonal
     )
@@ -163,7 +164,7 @@ export default function PostGameExperience({
         )}
         {!sequenceInProgress && <p className="endgame-next-detail">{nextAction.detail}</p>}
         {!sequenceInProgress && hasReport && nextAction.id !== 'review' && (
-          <button className="secondary-btn endgame-review-btn" onClick={() => setShowReport(true)}>
+          <button className="secondary-btn endgame-review-btn endgame-review-btn-direct" onClick={() => setShowReport(true)}>
             Resumen de la partida
           </button>
         )}
@@ -182,6 +183,11 @@ export default function PostGameExperience({
         {showMoreActions && !sequenceInProgress && (
           <div className="endgame-more-actions">
             {nextAction.id === 'review' && <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={onLeave}>Volver al menú</button>}
+            {hasReport && nextAction.id !== 'review' && (
+              <button className="secondary-btn endgame-review-btn endgame-review-btn-more" onClick={() => setShowReport(true)}>
+                Resumen de la partida
+              </button>
+            )}
             {onShareResult && (
               <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={() => onShareResult(finalOutcome)}>
                 Compartir resultado
