@@ -540,6 +540,35 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
         _accepted_challenge, accepted_match = accepted
         return {"match": _public_match(accepted_match, username)}
 
+    @router.post("/matches/{match_id}/cancel-starting")
+    async def cancel_starting_match(match_id: str, username: str = Depends(auth_dependency)):
+        match = await store.get_match(match_id)
+        color = _player_color(match or {}, username)
+        if not match or color is None:
+            raise HTTPException(404, "Partida 1v1 no encontrada.")
+        if match.get("status") == "cancelled":
+            return {"match": _public_match(match, username)}
+        if match.get("status") != "starting":
+            raise HTTPException(409, "El duelo ya ha empezado y no puede cancelarse como entrada.")
+        now = store.utcnow()
+        updated = await store.update_match(
+            match_id,
+            expected_revision=int(match.get("revision", 0)),
+            changes={
+                "status": "cancelled",
+                "result": None,
+                "end_reason": "handoff_cancelled",
+                "turn_started_at": None,
+                "updated_at": now,
+            },
+        )
+        if not updated:
+            current = await store.get_match(match_id)
+            if current and current.get("status") == "cancelled":
+                return {"match": _public_match(current, username)}
+            raise HTTPException(409, "El duelo cambió mientras cancelábamos la entrada.")
+        return {"match": _public_match(updated, username)}
+
     @router.post("/matches/{match_id}/ready")
     async def ready_match(match_id: str, username: str = Depends(auth_dependency)):
         for _attempt in range(4):
