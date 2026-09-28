@@ -137,6 +137,47 @@ function scheduleSurfaceFriction(ctx, destination, {
   return true;
 }
 
+function createPremiumImpactBus(ctx, { capture }) {
+  const input = ctx.createGain();
+  input.gain.value = capture ? 0.88 : 0.75;
+
+  let tail = input;
+
+  // A gentle high cut removes the last trace of procedural fizz while keeping
+  // enough attack for phone speakers. This is tone shaping, not audible reverb.
+  if (typeof ctx.createBiquadFilter === 'function') {
+    const tone = ctx.createBiquadFilter();
+    if (tone) {
+      tone.type = 'lowpass';
+      tone.frequency.value = capture ? 4100 : 4550;
+      tone.Q.value = 0.35;
+      tail.connect(tone);
+      tail = tone;
+    }
+  }
+
+  // Glue the layered contact into one object. Keep the compressor subtle:
+  // transient still leads, but body/friction no longer feel like separate events.
+  if (typeof ctx.createDynamicsCompressor === 'function') {
+    const compressor = ctx.createDynamicsCompressor();
+    if (compressor) {
+      compressor.threshold.value = -25;
+      compressor.knee.value = 16;
+      compressor.ratio.value = capture ? 2.6 : 2.2;
+      compressor.attack.value = 0.004;
+      compressor.release.value = capture ? 0.075 : 0.06;
+      tail.connect(compressor);
+      tail = compressor;
+    }
+  }
+
+  const output = ctx.createGain();
+  output.gain.value = capture ? 0.96 : 0.9;
+  tail.connect(output);
+  output.connect(ctx.destination);
+  return input;
+}
+
 function premiumPieceImpact(kind) {
   if (isFxMuted()) return;
   const ctx = getAudioContext();
@@ -149,13 +190,11 @@ function premiumPieceImpact(kind) {
   const pitch = 1 + microVariation(0.018);
   const level = 1 + microVariation(0.045);
 
-  const bus = ctx.createGain();
-  bus.gain.value = capture ? 0.9 : 0.76;
-  bus.connect(ctx.destination);
+  const bus = createPremiumImpactBus(ctx, { capture });
 
   // Hard contact between base/plinth and board: a bright, very short transient.
   const contactWorked = scheduleSurfaceTick(ctx, bus, {
-    gain: (capture ? 0.042 : 0.032) * level,
+    gain: (capture ? 0.039 : 0.03) * level,
     duration: capture ? 0.034 : 0.026,
     centerHz: (capture ? 1120 : 1450) * pitch,
     q: capture ? 1.05 : 1.2,
@@ -164,7 +203,7 @@ function premiumPieceImpact(kind) {
   // Lower material knock gives the impact actual mass on decent speakers while
   // remaining audible on phones. This replaces some of the old tonal body.
   const bodyTickWorked = scheduleSurfaceTick(ctx, bus, {
-    gain: (capture ? 0.029 : 0.021) * level,
+    gain: (capture ? 0.031 : 0.0225) * level,
     duration: capture ? 0.07 : 0.052,
     centerHz: (capture ? 315 : 390) * pitch,
     delay: 0.0015,
@@ -188,7 +227,7 @@ function premiumPieceImpact(kind) {
   // It is intentionally almost subliminal; on captures it is a little rougher
   // because one piece leaves before the attacking piece seats.
   const frictionWorked = scheduleSurfaceFriction(ctx, bus, {
-    gain: (capture ? 0.0105 : 0.007) * level,
+    gain: (capture ? 0.0095 : 0.0064) * level,
     duration: capture ? 0.046 : 0.034,
     cutoffHz: (capture ? 980 : 1180) * pitch,
     delay: capture ? 0.008 : 0.006,
@@ -198,7 +237,7 @@ function premiumPieceImpact(kind) {
   // musical oscillator quality of the previous implementation.
   scheduleTone(ctx, bus, {
     freq: (capture ? 142 : 188) * pitch,
-    gain: (capture ? 0.034 : 0.024) * level,
+    gain: (capture ? 0.031 : 0.0215) * level,
     duration: capture ? 0.09 : 0.065,
     type: 'triangle',
     attack: 0.002,
@@ -208,7 +247,7 @@ function premiumPieceImpact(kind) {
   // Quiet collar/ceramic detail keeps definition on small speakers.
   scheduleTone(ctx, bus, {
     freq: (capture ? 470 : 610) * pitch,
-    gain: (capture ? 0.011 : 0.009) * level,
+    gain: (capture ? 0.009 : 0.0075) * level,
     duration: capture ? 0.041 : 0.033,
     type: 'sine',
     delay: 0.003,
@@ -220,7 +259,7 @@ function premiumPieceImpact(kind) {
   // reverb build-up during blitz.
   scheduleTone(ctx, bus, {
     freq: (capture ? 102 : 145) * pitch,
-    gain: (capture ? 0.008 : 0.0055) * level,
+    gain: (capture ? 0.0065 : 0.0045) * level,
     duration: capture ? 0.08 : 0.058,
     type: 'sine',
     delay: capture ? 0.019 : 0.015,
