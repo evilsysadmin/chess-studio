@@ -256,6 +256,82 @@ test('App · captura visual canónica desktop + Android normal/desktop-site', as
       }
     }
 
+    if (HOME_PROFILE_SCOPE !== 'quickmatch') {
+      const tourContext = await visualBrowser.newContext({
+        viewport:{ width:390, height:844 },
+        hasTouch:true,
+      });
+      const tourPage = await tourContext.newPage();
+      try {
+        await mockApi(tourPage, {
+          profileSeed: {
+            'matthias.onboarded': '0',
+            'chess-study-home-guide-dismissed-v1': '1',
+            'chess-study-home-tour-v1': '0',
+          },
+        });
+        await login(tourPage);
+        const tour = tourPage.getByRole('dialog', { name:'Guía rápida de Chess Studio con Matthias' });
+        await expect(tour).toBeVisible();
+        await expect(tour.locator('.home-first-run-tour__matthias .home-matthias-3d')).toBeVisible({ timeout:15_000 });
+        await expect(tourPage.locator('.illustrated-home__castle-3d.is-ready')).toBeVisible({ timeout:15_000 });
+
+        for (const size of [
+          { width:360, height:800 },
+          { width:390, height:844 },
+          { width:430, height:932 },
+        ]) {
+          await tourPage.setViewportSize(size);
+          await tourPage.waitForTimeout(120);
+          await captureViewportPng(
+            tourContext,
+            tourPage,
+            `${ARTIFACT_DIR}/home-first-run-tour-${size.width}x${size.height}.png`,
+          );
+        }
+
+        await tour.getByRole('button', { name:'Siguiente' }).click();
+        await tour.getByRole('button', { name:'Siguiente' }).click();
+        await expect(tour).toHaveAttribute('data-step', 'play');
+        await tourPage.setViewportSize({ width:390, height:844 });
+        await tourPage.waitForTimeout(120);
+        await captureViewportPng(
+          tourContext,
+          tourPage,
+          `${ARTIFACT_DIR}/home-first-run-tour-play-390x844.png`,
+        );
+      } finally {
+        await tourContext.close();
+      }
+
+      const tourDesktopContext = await visualBrowser.newContext({
+        viewport:{ width:1440, height:900 },
+      });
+      const tourDesktopPage = await tourDesktopContext.newPage();
+      try {
+        await mockApi(tourDesktopPage, {
+          profileSeed: {
+            'matthias.onboarded': '0',
+            'chess-study-home-guide-dismissed-v1': '1',
+            'chess-study-home-tour-v1': '0',
+          },
+        });
+        await login(tourDesktopPage);
+        const tour = tourDesktopPage.getByRole('dialog', { name:'Guía rápida de Chess Studio con Matthias' });
+        await expect(tour).toBeVisible();
+        await expect(tour.locator('.home-first-run-tour__matthias .home-matthias-3d')).toBeVisible({ timeout:15_000 });
+        await expect(tourDesktopPage.locator('.illustrated-home__castle-3d.is-ready')).toBeVisible({ timeout:15_000 });
+        await tourDesktopPage.waitForTimeout(120);
+        await captureViewportPng(
+          tourDesktopContext,
+          tourDesktopPage,
+          `${ARTIFACT_DIR}/home-first-run-tour-desktop-1440x900.png`,
+        );
+      } finally {
+        await tourDesktopContext.close();
+      }
+    }
+
     const quickMatchCaptures = [
       { width:360, height:800 },
       { width:390, height:844, captureSettings:true },
