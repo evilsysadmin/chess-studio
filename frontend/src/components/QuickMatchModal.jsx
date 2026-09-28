@@ -140,26 +140,24 @@ export default function QuickMatchModal({
         </button>
 
         {autoDifficulty && (
-          <div className="quick-match-post-cta-tools">
-            <button
-              type="button"
-              className="secondary-btn adaptive-manual-link"
-              style={QUICK_MATCH_TOUCH_TARGET}
-              onClick={() => setAutoDifficulty(false)}
-            >
-              Ajustar nivel
-            </button>
-            <details className="friendly-subdisclosure adaptive-difficulty-details">
-              <summary style={QUICK_MATCH_TOUCH_TARGET}>Cómo se ajusta Matthias</summary>
-              <div className="friendly-disclosure-body">
-                <p className="hint-text"><b>{adaptive.detailLabel}</b></p>
-                <p className="hint-text">{adaptive.evidenceCopy}</p>
-                <p className="hint-text">
-                  Matthias sólo usa evidencia ya guardada antes de empezar. No cambia de fuerza durante la partida y, en una serie, mantiene el mismo nivel hasta terminar.
-                </p>
-              </div>
-            </details>
-          </div>
+          <details className="friendly-subdisclosure adaptive-difficulty-details quick-match-post-cta-tools">
+            <summary style={QUICK_MATCH_TOUCH_TARGET}>Ajustar Matthias</summary>
+            <div className="friendly-disclosure-body">
+              <button
+                type="button"
+                className="secondary-btn adaptive-manual-link"
+                style={QUICK_MATCH_TOUCH_TARGET}
+                onClick={() => setAutoDifficulty(false)}
+              >
+                Elegir nivel manualmente
+              </button>
+              <p className="hint-text"><b>{adaptive.detailLabel}</b></p>
+              <p className="hint-text">{adaptive.evidenceCopy}</p>
+              <p className="hint-text">
+                Matthias sólo usa evidencia ya guardada antes de empezar. No cambia de fuerza durante la partida y, en una serie, mantiene el mismo nivel hasta terminar.
+              </p>
+            </div>
+          </details>
         )}
 
         <details className="friendly-disclosure quick-match-settings">
