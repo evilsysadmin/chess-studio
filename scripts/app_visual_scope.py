@@ -60,6 +60,12 @@ BOARD3D_MATTHIAS_VISUAL_SURFACES = {
     "frontend/src/components/matthiasking3d.js",
 }
 
+BOARD3D_SHARED_PIECE_VISUAL_SURFACES = {
+    # Piece-only geometry is rendered by the shared Board3D surface used in the
+    # War Room and Class Room. Do not wake Home/Experiments/Health for it.
+    "frontend/src/components/playerking3d.js",
+}
+
 TRAINING_PROGRESS_MATTHIAS_VISUAL_SURFACES = {
     "frontend/src/components/insightsmatthiascampaign.jsx",
     "frontend/src/components/insightsmatthiasmotion.jsx",
@@ -173,6 +179,8 @@ def _surface_groups(path: str) -> set[str] | None:
     if lower in WARROOM_MATTHIAS_VISUAL_SURFACES:
         return {"warroom"}
     if lower in BOARD3D_MATTHIAS_VISUAL_SURFACES:
+        return {"training", "warroom"}
+    if lower in BOARD3D_SHARED_PIECE_VISUAL_SURFACES:
         return {"training", "warroom"}
     if lower in TRAINING_PROGRESS_MATTHIAS_VISUAL_SURFACES:
         return {"training"}
