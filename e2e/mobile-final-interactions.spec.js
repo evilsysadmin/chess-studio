@@ -174,8 +174,36 @@ test('Home · la experiencia canónica no cambia con el viewport', async ({ page
       if (await toolsToggle.getAttribute('aria-expanded') !== 'true') await toolsToggle.click();
       await expect(toolsToggle).toHaveAttribute('aria-expanded', 'true');
 
-      const experiments = page
-        .getByRole('navigation', { name: 'Más modos y herramientas' })
+      const toolsPanel = page.getByRole('navigation', { name: 'Más modos y herramientas' });
+      if (width <= 520) {
+        const panelMetrics = await toolsPanel.evaluate((node) => {
+          const rect = node.getBoundingClientRect();
+          const actions = [...node.querySelectorAll('button')].map((button) => {
+            const box = button.getBoundingClientRect();
+            return { top: box.top, bottom: box.bottom, width: box.width, height: box.height };
+          });
+          return {
+            position: getComputedStyle(node).position,
+            left: rect.left,
+            right: rect.right,
+            top: rect.top,
+            bottom: rect.bottom,
+            viewportWidth: innerWidth,
+            viewportHeight: innerHeight,
+            minActionHeight: Math.min(...actions.map((row) => row.height)),
+            actionsInsidePanel: actions.every((row) => row.top >= rect.top - 1 && row.bottom <= rect.bottom + 1),
+          };
+        });
+        expect(panelMetrics.position).toBe('fixed');
+        expect(panelMetrics.left).toBeGreaterThanOrEqual(0);
+        expect(panelMetrics.right).toBeLessThanOrEqual(panelMetrics.viewportWidth + 1);
+        expect(panelMetrics.top).toBeGreaterThanOrEqual(0);
+        expect(panelMetrics.bottom).toBeLessThanOrEqual(panelMetrics.viewportHeight + 1);
+        expect(panelMetrics.minActionHeight).toBeGreaterThanOrEqual(44);
+        expect(panelMetrics.actionsInsidePanel).toBe(true);
+      }
+
+      const experiments = toolsPanel
         .getByRole('button', { name: 'Experimentos geniales', exact: true });
       await expect(experiments).toBeVisible();
       await experiments.click({ trial: true });
