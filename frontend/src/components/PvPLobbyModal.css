@@ -1767,3 +1767,260 @@
 
   .pvp-lobby__panel { padding: .62rem; }
 }
+
+
+/* Mobile debt pass: keep the command table readable, dense and anchored below browser chrome. */
+@media (max-width: 660px) {
+  .pvp-lobby-backdrop {
+    align-items: flex-start;
+    padding: .38rem .38rem max(.38rem, env(safe-area-inset-bottom));
+    overflow: hidden;
+  }
+
+  .pvp-lobby {
+    width: 100%;
+    max-height: calc(100dvh - .76rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scroll-padding-top: .5rem;
+    padding: .58rem;
+    border-radius: 14px;
+  }
+
+  .pvp-lobby > .piece-info-close {
+    top: .42rem;
+    right: .42rem;
+  }
+
+  .pvp-lobby__header {
+    min-height: 0;
+    gap: .28rem;
+    padding: .02rem 2rem .02rem 0;
+  }
+
+  .pvp-lobby__header-copy .eyebrow {
+    font-size: .48rem;
+    letter-spacing: .16em;
+  }
+
+  .pvp-lobby__header h2 {
+    margin: .02rem 0 .06rem;
+    font-size: 1.48rem;
+    line-height: 1;
+  }
+
+  .pvp-lobby__header p {
+    display: -webkit-box;
+    max-width: none;
+    margin: 0;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    font-size: .69rem;
+    line-height: 1.24;
+  }
+
+  .pvp-lobby__header-status {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: .24rem;
+  }
+
+  .pvp-lobby__availability,
+  .pvp-lobby__metric {
+    min-height: 30px;
+    padding: .2rem .4rem;
+    border-radius: 8px;
+  }
+
+  .pvp-lobby__availability {
+    min-width: 0;
+    font-size: .49rem;
+  }
+
+  .pvp-lobby__metric {
+    min-width: 48px;
+  }
+
+  .pvp-lobby__metric b { font-size: .9rem; }
+  .pvp-lobby__metric small { font-size: .42rem; }
+
+  .pvp-lobby__identity {
+    min-height: 0;
+    margin-top: .36rem;
+    padding: .45rem .5rem;
+    gap: .34rem;
+    border-radius: 10px;
+  }
+
+  .pvp-lobby__identity-main {
+    width: 100%;
+    gap: .34rem;
+    align-items: center;
+  }
+
+  .pvp-lobby__presence {
+    width: 10px;
+    height: 10px;
+    margin: 0;
+  }
+
+  .pvp-lobby__identity-mark {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+  }
+
+  .pvp-lobby__identity-main strong {
+    font-size: .8rem;
+    line-height: 1.05;
+  }
+
+  .pvp-lobby__identity-main > div > small {
+    font-size: .47rem;
+    letter-spacing: .12em;
+  }
+
+  .pvp-lobby__identity-main > div > span {
+    max-width: 62vw;
+    overflow: hidden;
+    font-size: .61rem;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .pvp-lobby__identity-rating {
+    width: 100%;
+    grid-template-columns: auto auto 1fr;
+    gap: .32rem;
+    padding: .34rem 0 0;
+  }
+
+  .pvp-lobby__identity-rating small { font-size: .48rem; }
+  .pvp-lobby__identity-rating strong { font-size: 1rem; }
+  .pvp-lobby__identity-rating span { font-size: .65rem; }
+
+  .pvp-lobby__identity-actions {
+    display: grid;
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: .3rem;
+  }
+
+  .pvp-lobby__identity-actions > button {
+    width: auto;
+    min-height: 32px;
+    padding: .35rem .5rem;
+    justify-content: center;
+  }
+
+  .pvp-lobby__minimize-cta {
+    font-size: .7rem;
+  }
+
+  .pvp-lobby__leave {
+    min-width: 0;
+    padding-inline: .4rem !important;
+    font-size: 0;
+    opacity: .72;
+  }
+
+  .pvp-lobby__leave::after {
+    content: 'Salir';
+    font-size: .63rem;
+  }
+
+  .pvp-lobby__grid {
+    margin-top: .36rem;
+    gap: .38rem;
+  }
+
+  .pvp-lobby__panel {
+    padding: .5rem;
+    border-radius: 10px;
+  }
+
+  .pvp-lobby__panel > header {
+    align-items: end;
+    padding-bottom: .36rem;
+  }
+
+  .pvp-lobby__panel > header > div > small {
+    font-size: .48rem;
+    letter-spacing: .14em;
+  }
+
+  .pvp-lobby__panel h3 {
+    margin-top: .06rem;
+    font-size: 1rem;
+    line-height: 1.06;
+  }
+
+  .pvp-lobby__panel header p {
+    margin-top: .16rem;
+    font-size: .61rem;
+    line-height: 1.25;
+  }
+
+  .pvp-lobby__panel > header > span {
+    padding: .18rem .34rem;
+    font-size: .62rem;
+  }
+
+  .pvp-lobby__empty-state,
+  .pvp-lobby__quiet-note {
+    min-height: 0 !important;
+    margin-top: .38rem;
+    padding: .5rem;
+    gap: .46rem;
+  }
+
+  .pvp-lobby__empty-state > span,
+  .pvp-lobby__quiet-note > span {
+    width: 30px;
+    height: 30px;
+  }
+
+  .pvp-lobby__empty-state strong,
+  .pvp-lobby__quiet-note strong {
+    font-size: .74rem;
+  }
+
+  .pvp-lobby__empty-state p,
+  .pvp-lobby__quiet-note p {
+    margin-top: .08rem;
+    font-size: .62rem;
+    line-height: 1.25;
+  }
+
+  /* When there are no rivals this repeats the empty-state message immediately
+     above it. Save a whole card-height on phones and keep the primary action visible. */
+  .pvp-lobby__panel--roster.is-empty .pvp-lobby__quiet-note {
+    display: none;
+  }
+
+  .pvp-lobby__footer {
+    margin-top: .38rem;
+    padding-top: .36rem;
+    font-size: .6rem;
+  }
+}
+
+@media (max-width: 390px) {
+  .pvp-lobby {
+    padding: .5rem;
+  }
+
+  .pvp-lobby__header p {
+    -webkit-line-clamp: 1;
+  }
+
+  .pvp-lobby__identity-main > div > span {
+    max-width: 56vw;
+  }
+
+  .pvp-lobby__minimize-cta {
+    font-size: .66rem;
+  }
+}
