@@ -23,6 +23,7 @@ def reset_memory(monkeypatch):
     pvp_store._memory_roster.clear()
     pvp_store._memory_challenges.clear()
     pvp_store._memory_matches.clear()
+    pvp_store._memory_lobby_chat.clear()
     users_store._memory_users.clear()
     users_store._memory_users.update({
         "alice": {"username": "alice"},
@@ -32,6 +33,7 @@ def reset_memory(monkeypatch):
     pvp_store._memory_roster.clear()
     pvp_store._memory_challenges.clear()
     pvp_store._memory_matches.clear()
+    pvp_store._memory_lobby_chat.clear()
     users_store._memory_users.clear()
 
 
@@ -88,6 +90,26 @@ def test_roster_uses_server_account_rating_and_hides_stale_members():
     pvp_store._memory_roster["bob"]["last_seen"] = pvp_store.utcnow() - timedelta(seconds=60)
     lobby = as_user(client, "alice", "get", "/api/pvp/lobby").json()
     assert {row["username"] for row in lobby["roster"]} == {"alice"}
+
+
+def test_lobby_chat_is_bounded_normalized_and_visible_without_roster_membership():
+    client = make_client()
+
+    posted = as_user(client, "alice", "post", "/api/pvp/lobby/chat", json={"text": "  Buenas   sala  "})
+    assert posted.status_code == 200
+    assert posted.json()["message"]["text"] == "Buenas sala"
+    assert posted.json()["message"]["isSelf"] is True
+
+    bob_lobby = as_user(client, "bob", "get", "/api/pvp/lobby")
+    assert bob_lobby.status_code == 200
+    messages = bob_lobby.json()["messages"]
+    assert messages[-1]["username"] == "alice"
+    assert messages[-1]["text"] == "Buenas sala"
+    assert messages[-1]["isSelf"] is False
+    assert bob_lobby.json()["roster"] == []
+
+    too_long = as_user(client, "alice", "post", "/api/pvp/lobby/chat", json={"text": "x" * 241})
+    assert too_long.status_code == 422
 
 
 def test_lobby_exposes_head_to_head_only_from_persisted_finished_matches():
