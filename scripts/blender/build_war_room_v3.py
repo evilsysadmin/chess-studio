@@ -462,8 +462,8 @@ def build_lounge_corner(static, palette):
         palette["walnut_dark"], static, bevel=0.18,
     )
     back = base.cube(
-        "WR3_OBS_chair_back", (x, y + 0.50, 1.34), (0.73, 0.18, 0.72),
-        palette["leather"], static, bevel=0.30,
+        "WR3_OBS_chair_back", (x, y + 0.50, 1.34), (0.76, 0.19, 0.74),
+        palette["green_leather"], static, bevel=0.32,
     )
     back.rotation_euler.x = math.radians(-7)
     back_pad = base.cube(
@@ -515,14 +515,22 @@ def build_lounge_corner(static, palette):
         "WR3_OBS_chair_front_rail", (x, y - 0.49, 0.43), (0.58, 0.055, 0.055),
         palette["brass_dark"], static, bevel=0.025,
     )
-    for button_x in (-0.28, 0.0, 0.28):
-        base.sphere(
-            f"WR3_OBS_chair_back_button_{button_x:+.2f}", (x + button_x, y + 0.165, 1.40),
-            0.035, palette["brass_dark"], static,
+    for row, z in enumerate((1.18, 1.50)):
+        for col, button_x in enumerate((-0.30, 0.0, 0.30)):
+            base.sphere(
+                f"WR3_OBS_chair_back_button_{row}_{col}",
+                (x + button_x, y + 0.165, z),
+                0.031, palette["brass_dark"], static,
+            )
+    for side in (-1, 1):
+        base.cylinder(
+            f"WR3_OBS_chair_back_brass_rail_{side}",
+            (x + side * 0.69, y + 0.305, 1.36), 0.025, 0.92,
+            palette["brass_dark"], static, vertices=20,
         )
     pillow = base.cube(
-        "WR3_OBS_chair_pillow", (x, y + 0.17, 1.30), (0.37, 0.08, 0.34),
-        palette["green_leather"], static, bevel=0.14,
+        "WR3_OBS_chair_pillow", (x, y + 0.17, 1.29), (0.39, 0.085, 0.30),
+        palette["ivory"], static, bevel=0.15,
     )
     pillow.rotation_euler.x = math.radians(-7)
 
