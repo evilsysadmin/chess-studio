@@ -113,6 +113,25 @@ def _surface_height(profile: str, u: float, v: float, seed: int) -> float:
             - pitting * 0.14
         )
         return max(0.0, min(1.0, value))
+    if profile == "medieval_wall":
+        # Massive medieval masonry wants broad quarried relief rather than fine
+        # procedural grit. Faces stay structurally plausible but imperfect:
+        # shallow chisel waves, mineral drift and occasional pits catch grazing
+        # light without turning the Great Hall into a ruin.
+        quarry = _value_noise(u, v, seed + 257, 7)
+        chisel = _value_noise(u * 1.35, v * 0.72, seed + 269, 15)
+        pores = _value_noise(u, v, seed + 281, 31)
+        pitting = max(0.0, 0.28 - pores) * 1.8
+        value = (
+            0.32
+            + coarse * 0.31
+            + quarry * 0.20
+            + medium * 0.10
+            + chisel * 0.08
+            + fine * 0.025
+            - pitting * 0.16
+        )
+        return max(0.0, min(1.0, value))
     if profile == "floor_stone":
         # Large staggered paving breaks the floor into authored stone slabs.
         # Keep the surface itself restrained: broad slab-to-slab variation and
@@ -306,6 +325,20 @@ def _surface_height_grid(profile: str, size: int, seed: int) -> "np.ndarray":
             1.0,
         )
 
+    if profile == "medieval_wall":
+        quarry = _np_value_noise_exact(size, seed + 257, 7)
+        chisel = _np_value_noise_exact(
+            size, seed + 269, 15, u_scale=1.35, v_scale=0.72
+        )
+        pores = _np_value_noise_exact(size, seed + 281, 31)
+        pitting = np.clip(0.28 - pores, 0.0, None) * 1.8
+        return np.clip(
+            0.32 + coarse * 0.31 + quarry * 0.20 + medium * 0.10
+            + chisel * 0.08 + fine * 0.025 - pitting * 0.16,
+            0.0,
+            1.0,
+        )
+
     if profile == "floor_stone":
         rows, cols = 6, 8
         scaled_u = u * cols
@@ -447,7 +480,7 @@ def _validate_surface_height_vectorization() -> None:
     size = 17
     seed = 2417
     profiles = (
-        "stone", "floor_stone", "wood", "leather", "paper", "wax",
+        "stone", "medieval_wall", "floor_stone", "wood", "leather", "paper", "wax",
         "textile", "leaf", "globe", "metal", "forged_iron", "other",
     )
     for profile in profiles:
@@ -524,10 +557,15 @@ def _micro_detail(profile: str, size: int, seed: int) -> "np.ndarray":
     magnitude finer: chisel grain and chips in stone, pores and fibre in wood,
     pebbling in leather, individual threads in cloth, scratches in metal.
     """
-    if profile in ("stone", "floor_stone"):
+    if profile in ("stone", "medieval_wall", "floor_stone"):
         grain = _np_fbm(size, seed + 601, 40, 3) - 0.5
         ridge = 1.0 - np.abs(_np_fbm(size, seed + 619, 14, 3) * 2.0 - 1.0)
         chips = np.clip(0.30 - _np_noise(size, seed + 631, 70), 0.0, None) * 3.2
+        if profile == "medieval_wall":
+            # Coarser chisel scars and shallow edge loss; no high-frequency
+            # gravel noise that would make a monumental wall look like foam.
+            chisel = _np_noise(size, seed + 637, 22, 9) - 0.5
+            return grain * 0.10 + (ridge - 0.55) * 0.045 + chisel * 0.055 - chips * 0.035
         amplitude = 0.16 if profile == "stone" else 0.10
         return (grain * 0.55 + (ridge - 0.55) * 0.20 - chips * 0.16) * amplitude / 0.16 * 0.62
     if profile == "wood":
@@ -584,6 +622,7 @@ def _packed_surface_arrays(
     macro = _resample_tileable(macro, size)
     detail_gain = {
         "stone": 1.0,
+        "medieval_wall": 1.0,
         "floor_stone": 0.85,
         "wood": 0.6,
         "metal": 1.0,
@@ -595,6 +634,7 @@ def _packed_surface_arrays(
     heights = np.clip(macro + detail, 0.0, 1.0)
     low, high = {
         "stone": (0.88, 1.08),
+        "medieval_wall": (0.80, 1.12),
         "floor_stone": (0.68, 1.10),
         "wood": (0.86, 1.12),
         "metal": (0.79, 1.15),
@@ -608,6 +648,7 @@ def _packed_surface_arrays(
     }.get(profile, (0.82, 1.14))
     rough_span = {
         "stone": 0.07,
+        "medieval_wall": 0.10,
         "floor_stone": 0.12,
         "wood": 0.08,
         "metal": 0.19,
@@ -621,6 +662,7 @@ def _packed_surface_arrays(
     }.get(profile, 0.10)
     normal_strength = {
         "stone": 2.5,
+        "medieval_wall": 3.2,
         "floor_stone": 4.0,
         "wood": 1.3,
         "metal": 2.0,
@@ -4030,8 +4072,8 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         # linear albedo deltas in shadow almost completely. Went noticeably
         # bolder so the difference actually survives that pipeline.
         "stone": material("HOME_MAT_stone", (0.160, 0.160, 0.170, 1), roughness=0.91, bump_scale=5.8, bump_strength=0.31, variation=0.26, variation_scale=3.8, texture_profile="stone"),
-        "back_wall_stone": material("HOME_MAT_back_wall_stone", (0.130, 0.110, 0.095, 1), roughness=0.93, bump_scale=5.8, bump_strength=0.30, variation=0.22, variation_scale=3.8, texture_profile="stone"),
-        "back_wall_stone_accent": material("HOME_MAT_back_wall_stone_accent", (0.190, 0.090, 0.060, 1), roughness=0.89, bump_scale=5.6, bump_strength=0.30, variation=0.22, variation_scale=3.9, texture_profile="stone"),
+        "back_wall_stone": material("HOME_MAT_back_wall_stone", (0.130, 0.110, 0.095, 1), roughness=0.95, bump_scale=4.8, bump_strength=0.34, variation=0.24, variation_scale=3.4, texture_profile="medieval_wall"),
+        "back_wall_stone_accent": material("HOME_MAT_back_wall_stone_accent", (0.190, 0.090, 0.060, 1), roughness=0.93, bump_scale=4.8, bump_strength=0.33, variation=0.22, variation_scale=3.5, texture_profile="medieval_wall"),
         "arch_stone": material("HOME_MAT_arch_stone", (0.220, 0.190, 0.140, 1), roughness=0.87, bump_scale=5.4, bump_strength=0.29, variation=0.24, variation_scale=4.0, texture_profile="stone"),
         "stair_stone": material("HOME_MAT_stair_stone", (0.075, 0.085, 0.075, 1), roughness=0.92, bump_scale=5.2, bump_strength=0.26, variation=0.20, variation_scale=4.2, texture_profile="stone"),
         "stone_dark": material("HOME_MAT_stone_dark", (0.026, 0.025, 0.025, 1), roughness=0.95, bump_scale=7.2, bump_strength=0.19, variation=0.14, variation_scale=4.8, texture_profile="stone"),
@@ -4291,9 +4333,9 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
             bx = col * 1.48 + offset + jitter_x
             if abs(bx) > 8.65:
                 continue
-            block_width = 0.64 + _hash01(col, row, 709) * 0.085
-            block_height = 0.295 + _hash01(col, row, 719) * 0.045
-            block_y = 6.706 - _hash01(col, row, 727) * 0.014
+            block_width = 0.64 + _hash01(col, row, 709) * 0.11
+            block_height = 0.295 + _hash01(col, row, 719) * 0.060
+            block_y = 6.700 - _hash01(col, row, 727) * 0.034
             block = cube(
                 f"HOME_ARCH_back_ashlar_{row}_{col}",
                 (bx, block_y, z + (_hash01(col, row, 733) - 0.5) * 0.026),
@@ -4301,7 +4343,8 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
                 materials["back_wall_stone_accent"] if (row + col) % 5 == 0 else materials["back_wall_stone"],
                 bevel=0.018,
             )
-            block.rotation_euler[1] = math.radians((_hash01(col, row, 739) - 0.5) * 0.9)
+            block.rotation_euler[1] = math.radians((_hash01(col, row, 739) - 0.5) * 1.55)
+            block.rotation_euler[2] = math.radians((_hash01(col, row, 743) - 0.5) * 0.55)
     # (The dark soot-haze ellipses above both chimneys are gone: the wall there is plain stone.)
 
     cube("HOME_ARCH_left_wall", (-9.15, 2.9, 3.0), (0.18, 4.4, 3.2), materials["stone"], bevel=0.036)
@@ -4334,11 +4377,12 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
                 face = cube(
                     f"HOME_ARCH_side_ashlar_{side}_{row}_{col}",
                     (wall_x - side * 0.012, y + y_offset + jy, z),
-                    (0.016, 0.68 + _hash01(col, row, 823 + side) * 0.08, 0.29 + _hash01(col, row, 829 + side) * 0.045),
+                    (0.024 + _hash01(col, row, 817 + side) * 0.012, 0.68 + _hash01(col, row, 823 + side) * 0.10, 0.29 + _hash01(col, row, 829 + side) * 0.055),
                     materials["back_wall_stone_accent"] if (row + col) % 6 == 0 else materials["stone"],
                     bevel=0.014,
                 )
-                face.rotation_euler[0] = math.radians((_hash01(col, row, 839 + side) - 0.5) * 0.8)
+                face.rotation_euler[0] = math.radians((_hash01(col, row, 839 + side) - 0.5) * 1.25)
+                face.rotation_euler[2] = math.radians((_hash01(col, row, 853 + side) - 0.5) * 0.45)
 
     # The paving is one regular joint grid (add_floor_joint_network above) on the floor stone
     # material. Randomly sized, rotated and raised "slab" faces used to sit on top of it: they
