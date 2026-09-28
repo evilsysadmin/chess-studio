@@ -23,15 +23,269 @@ function beep({ freq, duration, type = 'sine', gain = 0.06, delay = 0 }) {
   osc.stop(start + duration + 0.02);
 }
 
-// Clic seco al mover una pieza.
-export function playMoveSound() {
-  beep({ freq: 520, duration: 0.09, type: 'triangle', gain: 0.05 });
+function microVariation(amount = 1) {
+  return (Math.random() * 2 - 1) * amount;
 }
 
-// Golpe más grave al capturar, con un segundo "impacto" superpuesto.
+function scheduleTone(ctx, destination, {
+  freq,
+  gain,
+  duration,
+  type = 'triangle',
+  delay = 0,
+  attack = 0.003,
+  settle = 0.965,
+}) {
+  const osc = ctx.createOscillator();
+  const gainNode = ctx.createGain();
+  const start = ctx.currentTime + delay;
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, start);
+  if (settle && settle !== 1) {
+    osc.frequency.exponentialRampToValueAtTime(Math.max(20, freq * settle), start + duration);
+  }
+  gainNode.gain.setValueAtTime(0.0001, start);
+  gainNode.gain.exponentialRampToValueAtTime(Math.max(0.0002, gain), start + attack);
+  gainNode.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+  osc.connect(gainNode);
+  gainNode.connect(destination);
+  osc.start(start);
+  osc.stop(start + duration + 0.015);
+}
+
+function scheduleSurfaceTick(ctx, destination, {
+  gain,
+  duration,
+  centerHz,
+  delay = 0,
+  q = 1.15,
+}) {
+  if (
+    typeof ctx.createBuffer !== 'function'
+    || typeof ctx.createBufferSource !== 'function'
+    || typeof ctx.createBiquadFilter !== 'function'
+  ) return false;
+
+  const frames = Math.max(1, Math.floor(ctx.sampleRate * duration));
+  const buffer = ctx.createBuffer(1, frames, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let index = 0; index < data.length; index += 1) {
+    // A very short, decaying noise transient gives the contact a physical
+    // wood/stone character without shipping another runtime asset.
+    const envelope = 1 - index / data.length;
+    data[index] = (Math.random() * 2 - 1) * envelope;
+  }
+
+  const source = ctx.createBufferSource();
+  source.buffer = buffer;
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'bandpass';
+  filter.frequency.value = centerHz;
+  filter.Q.value = q;
+  const gainNode = ctx.createGain();
+  const start = ctx.currentTime + delay;
+  gainNode.gain.setValueAtTime(Math.max(0.0001, gain), start);
+  gainNode.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+
+  source.connect(filter);
+  filter.connect(gainNode);
+  gainNode.connect(destination);
+  source.start(start);
+  source.stop(start + duration + 0.01);
+  return true;
+}
+
+function scheduleSurfaceFriction(ctx, destination, {
+  gain,
+  duration,
+  cutoffHz,
+  delay = 0,
+}) {
+  if (
+    typeof ctx.createBuffer !== 'function'
+    || typeof ctx.createBufferSource !== 'function'
+    || typeof ctx.createBiquadFilter !== 'function'
+  ) return false;
+
+  const frames = Math.max(1, Math.floor(ctx.sampleRate * duration));
+  const buffer = ctx.createBuffer(1, frames, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let index = 0; index < data.length; index += 1) {
+    const phase = index / data.length;
+    const envelope = Math.sin(Math.PI * phase) * (1 - phase * 0.65);
+    data[index] = (Math.random() * 2 - 1) * envelope;
+  }
+
+  const source = ctx.createBufferSource();
+  source.buffer = buffer;
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.value = cutoffHz;
+  filter.Q.value = 0.45;
+
+  const gainNode = ctx.createGain();
+  const start = ctx.currentTime + delay;
+  gainNode.gain.setValueAtTime(0.0001, start);
+  gainNode.gain.linearRampToValueAtTime(Math.max(0.0002, gain), start + Math.min(0.008, duration * 0.3));
+  gainNode.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+
+  source.connect(filter);
+  filter.connect(gainNode);
+  gainNode.connect(destination);
+  source.start(start);
+  source.stop(start + duration + 0.01);
+  return true;
+}
+
+function createPremiumImpactBus(ctx, { capture }) {
+  const input = ctx.createGain();
+  input.gain.value = capture ? 0.88 : 0.75;
+
+  let tail = input;
+
+  // A gentle high cut removes the last trace of procedural fizz while keeping
+  // enough attack for phone speakers. This is tone shaping, not audible reverb.
+  if (typeof ctx.createBiquadFilter === 'function') {
+    const tone = ctx.createBiquadFilter();
+    if (tone) {
+      tone.type = 'lowpass';
+      tone.frequency.value = capture ? 4100 : 4550;
+      tone.Q.value = 0.35;
+      tail.connect(tone);
+      tail = tone;
+    }
+  }
+
+  // Glue the layered contact into one object. Keep the compressor subtle:
+  // transient still leads, but body/friction no longer feel like separate events.
+  if (typeof ctx.createDynamicsCompressor === 'function') {
+    const compressor = ctx.createDynamicsCompressor();
+    if (compressor) {
+      compressor.threshold.value = -25;
+      compressor.knee.value = 16;
+      compressor.ratio.value = capture ? 2.6 : 2.2;
+      compressor.attack.value = 0.004;
+      compressor.release.value = capture ? 0.075 : 0.06;
+      tail.connect(compressor);
+      tail = compressor;
+    }
+  }
+
+  const output = ctx.createGain();
+  output.gain.value = capture ? 0.96 : 0.9;
+  tail.connect(output);
+  output.connect(ctx.destination);
+  return input;
+}
+
+function premiumPieceImpact(kind) {
+  if (isFxMuted()) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+
+  // Premium pass: the ear should read material/contact first and pitch second.
+  // Keep the full gesture short so rapid play never accumulates a tail.
+  const capture = kind === 'capture';
+  const pitch = 1 + microVariation(0.018);
+  const level = 1 + microVariation(0.045);
+
+  const bus = createPremiumImpactBus(ctx, { capture });
+
+  // Hard contact between base/plinth and board: a bright, very short transient.
+  const contactWorked = scheduleSurfaceTick(ctx, bus, {
+    gain: (capture ? 0.039 : 0.03) * level,
+    duration: capture ? 0.034 : 0.026,
+    centerHz: (capture ? 1120 : 1450) * pitch,
+    q: capture ? 1.05 : 1.2,
+  });
+
+  // Lower material knock gives the impact actual mass on decent speakers while
+  // remaining audible on phones. This replaces some of the old tonal body.
+  const bodyTickWorked = scheduleSurfaceTick(ctx, bus, {
+    gain: (capture ? 0.031 : 0.0225) * level,
+    duration: capture ? 0.07 : 0.052,
+    centerHz: (capture ? 315 : 390) * pitch,
+    delay: 0.0015,
+    q: 0.8,
+  });
+
+  // Captures are physically two gestures: the taken piece leaves, then the
+  // attacker settles. A restrained second contact reads as capture without
+  // becoming a UI double-click.
+  if (capture) {
+    scheduleSurfaceTick(ctx, bus, {
+      gain: 0.017 * level,
+      duration: 0.025,
+      centerHz: 760 * pitch,
+      delay: 0.014,
+      q: 0.95,
+    });
+  }
+
+  // A tiny base-on-board settle sells weight better than another pitched layer.
+  // It is intentionally almost subliminal; on captures it is a little rougher
+  // because one piece leaves before the attacking piece seats.
+  const frictionWorked = scheduleSurfaceFriction(ctx, bus, {
+    gain: (capture ? 0.0095 : 0.0064) * level,
+    duration: capture ? 0.046 : 0.034,
+    cutoffHz: (capture ? 980 : 1180) * pitch,
+    delay: capture ? 0.008 : 0.006,
+  });
+
+  // Rounded residual resonance. A tiny downward settle avoids the static,
+  // musical oscillator quality of the previous implementation.
+  scheduleTone(ctx, bus, {
+    freq: (capture ? 142 : 188) * pitch,
+    gain: (capture ? 0.031 : 0.0215) * level,
+    duration: capture ? 0.09 : 0.065,
+    type: 'triangle',
+    attack: 0.002,
+    settle: capture ? 0.91 : 0.935,
+  });
+
+  // Quiet collar/ceramic detail keeps definition on small speakers.
+  scheduleTone(ctx, bus, {
+    freq: (capture ? 470 : 610) * pitch,
+    gain: (capture ? 0.009 : 0.0075) * level,
+    duration: capture ? 0.041 : 0.033,
+    type: 'sine',
+    delay: 0.003,
+    attack: 0.0015,
+    settle: 0.94,
+  });
+
+  // Very short low reflection places the event in the room without audible
+  // reverb build-up during blitz.
+  scheduleTone(ctx, bus, {
+    freq: (capture ? 102 : 145) * pitch,
+    gain: (capture ? 0.0065 : 0.0045) * level,
+    duration: capture ? 0.08 : 0.058,
+    type: 'sine',
+    delay: capture ? 0.019 : 0.015,
+    attack: 0.003,
+    settle: 0.9,
+  });
+
+  // Minimal Web Audio fallback: if buffer noise is unavailable, retain a short
+  // tactile cue. Do not recreate the full premium stack with square-wave beeps.
+  if (!contactWorked || !bodyTickWorked || !frictionWorked) {
+    scheduleTone(ctx, bus, {
+      freq: (capture ? 820 : 1060) * pitch,
+      gain: (capture ? 0.009 : 0.007) * level,
+      duration: 0.02,
+      type: 'square',
+      settle: 0.9,
+    });
+  }
+}
+
+export function playMoveSound() {
+  premiumPieceImpact('move');
+}
+
 export function playCaptureSound() {
-  beep({ freq: 220, duration: 0.14, type: 'square', gain: 0.05 });
-  beep({ freq: 140, duration: 0.16, type: 'square', gain: 0.045, delay: 0.02 });
+  premiumPieceImpact('capture');
 }
 
 export function playSuccessSound() {

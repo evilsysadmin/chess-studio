@@ -293,7 +293,7 @@ def classify_path(path: str) -> set[str] | None:
     if name == "experimentalthreerenderer.js":
         return set(CHRONICLES_SHARED)
 
-    if lower in {"frontend/src/lablaunchintent.js", "frontend/src/usepuzzlelaunchflow.js"}:
+    if lower in {"frontend/src/lablaunchintent.js", "frontend/src/usepuzzlelaunchflow.js", "frontend/src/soundfx.js"}:
         return set()
     if lower in QUICK_MATCH_EXACT_PRODUCERS:
         return set(QUICK_MATCH_EXACT_PRODUCERS[lower])
@@ -535,6 +535,7 @@ def self_test() -> None:
     )
     assert classify(["frontend/src/labLaunchIntent.js"]) == "none"
     assert classify(["frontend/src/usePuzzleLaunchFlow.js"]) == "none"
+    assert classify(["frontend/src/soundFx.js"]) == "none"
     assert classify(["scripts/quality_scope.py"]) == "none"
     assert classify(["scripts/browser_quality_scope.py"]) == "none"
     assert classify(["scripts/war_room_visual_freeze_check.mjs"]) == "warroom-core"
