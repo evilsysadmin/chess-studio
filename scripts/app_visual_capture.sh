@@ -36,6 +36,15 @@ case "$mode" in
       exit 0
     fi
 
+    # Canonical Matthias asset-only changes have already passed the dedicated
+    # Blender contract. Keep browser proof focused on the two actual consumers:
+    # one seated + one mobile Home composition, and Matthias' Chronicles portrait.
+    if [[ "$producer_scope" == "home-matthias,chronicles-avatar" ]]; then
+      export HOME_MATTHIAS_CAPTURE_SCOPE="canonical-model"
+      export CHRONICLES_AVATAR_SCOPE="matthias"
+      echo "Matthias canonical fast path: seated+mobile Home + Matthias-only Chronicles avatar."
+    fi
+
     specs=()
     # Runtime/storage health should run in a fresh browser process before the
     # heavyweight SwiftShader captures. This makes the gate fail fast and avoids
