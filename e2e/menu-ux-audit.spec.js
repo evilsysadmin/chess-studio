@@ -86,7 +86,7 @@ async function capture(page, label, report) {
   await page.waitForTimeout(80);
   const metrics = await measure(page, label);
   await page.screenshot({
-    path: \`\${ARTIFACT_DIR}/\${label}.png\`,
+    path: `${ARTIFACT_DIR}/${label}.png`,
     fullPage: false,
     animations: 'disabled',
     caret: 'hide',
@@ -113,7 +113,7 @@ async function openBase(page) {
 }
 
 for (const profile of CAPTURES) {
-  test(\`Menu UX audit · \${profile.label}\`, async ({ browser }) => {
+  test(`Menu UX audit · ${profile.label}`, async ({ browser }) => {
     test.setTimeout(90_000);
     await mkdir(ARTIFACT_DIR, { recursive: true });
 
@@ -133,26 +133,26 @@ for (const profile of CAPTURES) {
 
     try {
       await openBase(page);
-      await capture(page, \`\${profile.label}__home\`, report);
+      await capture(page, `${profile.label}__home`, report);
 
       await buttonWithVisibleText(page, 'Partida rápida').click();
       const quickMatch = page.getByRole('dialog', { name: 'Configurar partida rápida' });
       await expect(quickMatch).toBeVisible();
-      await capture(page, \`\${profile.label}__quick-match\`, report);
+      await capture(page, `${profile.label}__quick-match`, report);
       await page.keyboard.press('Escape');
       await expect(quickMatch).toBeHidden();
 
       await openMoreGameModes(page);
       await expect(page.locator('#illustrated-home-tools')).toBeVisible();
-      await capture(page, \`\${profile.label}__more-modes\`, report);
+      await capture(page, `${profile.label}__more-modes`, report);
 
       for (const surface of report.surfaces) {
-        expect(surface.horizontalOverflow, \`\${surface.surface}: horizontal overflow\`).toBe(false);
+        expect(surface.horizontalOverflow, `${surface.surface}: horizontal overflow`).toBe(false);
       }
     } finally {
       await writeFile(
-        \`\${ARTIFACT_DIR}/menu-ux-\${profile.label}.json\`,
-        \`\${JSON.stringify(report, null, 2)}\\n\`,
+        `${ARTIFACT_DIR}/menu-ux-${profile.label}.json`,
+        `${JSON.stringify(report, null, 2)}\\n`,
         'utf8',
       );
       await context.close();
