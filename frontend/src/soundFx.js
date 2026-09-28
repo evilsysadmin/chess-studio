@@ -139,7 +139,7 @@ function scheduleSurfaceFriction(ctx, destination, {
 
 function createPremiumImpactBus(ctx, { capture }) {
   const input = ctx.createGain();
-  input.gain.value = capture ? 0.88 : 0.75;
+  input.gain.value = capture ? 0.98 : 0.86;
 
   let tail = input;
 
@@ -149,7 +149,7 @@ function createPremiumImpactBus(ctx, { capture }) {
     const tone = ctx.createBiquadFilter();
     if (tone) {
       tone.type = 'lowpass';
-      tone.frequency.value = capture ? 4100 : 4550;
+      tone.frequency.value = capture ? 4700 : 5200;
       tone.Q.value = 0.35;
       tail.connect(tone);
       tail = tone;
@@ -161,18 +161,18 @@ function createPremiumImpactBus(ctx, { capture }) {
   if (typeof ctx.createDynamicsCompressor === 'function') {
     const compressor = ctx.createDynamicsCompressor();
     if (compressor) {
-      compressor.threshold.value = -25;
+      compressor.threshold.value = -22;
       compressor.knee.value = 16;
-      compressor.ratio.value = capture ? 2.6 : 2.2;
-      compressor.attack.value = 0.004;
-      compressor.release.value = capture ? 0.075 : 0.06;
+      compressor.ratio.value = capture ? 2.2 : 1.9;
+      compressor.attack.value = 0.006;
+      compressor.release.value = capture ? 0.1 : 0.085;
       tail.connect(compressor);
       tail = compressor;
     }
   }
 
   const output = ctx.createGain();
-  output.gain.value = capture ? 0.96 : 0.9;
+  output.gain.value = capture ? 1.12 : 1.06;
   tail.connect(output);
   output.connect(ctx.destination);
   return input;
@@ -194,7 +194,7 @@ function premiumPieceImpact(kind) {
 
   // Hard contact between base/plinth and board: a bright, very short transient.
   const contactWorked = scheduleSurfaceTick(ctx, bus, {
-    gain: (capture ? 0.039 : 0.03) * level,
+    gain: (capture ? 0.043 : 0.034) * level,
     duration: capture ? 0.034 : 0.026,
     centerHz: (capture ? 1120 : 1450) * pitch,
     q: capture ? 1.05 : 1.2,
@@ -204,7 +204,7 @@ function premiumPieceImpact(kind) {
   // remaining audible on phones. This replaces some of the old tonal body.
   const bodyTickWorked = scheduleSurfaceTick(ctx, bus, {
     gain: (capture ? 0.031 : 0.0225) * level,
-    duration: capture ? 0.07 : 0.052,
+    duration: capture ? 0.085 : 0.068,
     centerHz: (capture ? 315 : 390) * pitch,
     delay: 0.0015,
     q: 0.8,
@@ -237,8 +237,8 @@ function premiumPieceImpact(kind) {
   // musical oscillator quality of the previous implementation.
   scheduleTone(ctx, bus, {
     freq: (capture ? 142 : 188) * pitch,
-    gain: (capture ? 0.031 : 0.0215) * level,
-    duration: capture ? 0.09 : 0.065,
+    gain: (capture ? 0.036 : 0.026) * level,
+    duration: capture ? 0.115 : 0.085,
     type: 'triangle',
     attack: 0.002,
     settle: capture ? 0.91 : 0.935,
@@ -259,10 +259,10 @@ function premiumPieceImpact(kind) {
   // reverb build-up during blitz.
   scheduleTone(ctx, bus, {
     freq: (capture ? 102 : 145) * pitch,
-    gain: (capture ? 0.0065 : 0.0045) * level,
-    duration: capture ? 0.08 : 0.058,
+    gain: (capture ? 0.0105 : 0.0075) * level,
+    duration: capture ? 0.13 : 0.095,
     type: 'sine',
-    delay: capture ? 0.019 : 0.015,
+    delay: capture ? 0.024 : 0.019,
     attack: 0.003,
     settle: 0.9,
   });
