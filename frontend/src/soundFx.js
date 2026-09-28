@@ -34,12 +34,16 @@ function scheduleTone(ctx, destination, {
   type = 'triangle',
   delay = 0,
   attack = 0.003,
+  settle = 0.965,
 }) {
   const osc = ctx.createOscillator();
   const gainNode = ctx.createGain();
   const start = ctx.currentTime + delay;
   osc.type = type;
-  osc.frequency.value = freq;
+  osc.frequency.setValueAtTime(freq, start);
+  if (settle && settle !== 1) {
+    osc.frequency.exponentialRampToValueAtTime(Math.max(20, freq * settle), start + duration);
+  }
   gainNode.gain.setValueAtTime(0.0001, start);
   gainNode.gain.exponentialRampToValueAtTime(Math.max(0.0002, gain), start + attack);
   gainNode.gain.exponentialRampToValueAtTime(0.0001, start + duration);
@@ -54,6 +58,7 @@ function scheduleSurfaceTick(ctx, destination, {
   duration,
   centerHz,
   delay = 0,
+  q = 1.15,
 }) {
   if (
     typeof ctx.createBuffer !== 'function'
@@ -76,7 +81,7 @@ function scheduleSurfaceTick(ctx, destination, {
   const filter = ctx.createBiquadFilter();
   filter.type = 'bandpass';
   filter.frequency.value = centerHz;
-  filter.Q.value = 1.15;
+  filter.Q.value = q;
   const gainNode = ctx.createGain();
   const start = ctx.currentTime + delay;
   gainNode.gain.setValueAtTime(Math.max(0.0001, gain), start);
@@ -96,64 +101,90 @@ function premiumPieceImpact(kind) {
   if (!ctx) return;
   if (ctx.state === 'suspended') ctx.resume().catch(() => {});
 
-  // Keep the whole gesture extremely short. The board should feel physical,
-  // never as if the move is waiting for an audio cue to finish.
+  // Premium pass: the ear should read material/contact first and pitch second.
+  // Keep the full gesture short so rapid play never accumulates a tail.
   const capture = kind === 'capture';
-  const pitch = 1 + microVariation(0.025);
-  const level = 1 + microVariation(0.055);
+  const pitch = 1 + microVariation(0.018);
+  const level = 1 + microVariation(0.045);
 
-  // A dedicated mini-bus lets the contact, body and tiny room reflection read
-  // as one object instead of three unrelated beeps.
   const bus = ctx.createGain();
-  bus.gain.value = capture ? 0.92 : 0.78;
+  bus.gain.value = capture ? 0.9 : 0.76;
   bus.connect(ctx.destination);
 
+  // Hard contact between base/plinth and board: a bright, very short transient.
   const contactWorked = scheduleSurfaceTick(ctx, bus, {
-    gain: (capture ? 0.047 : 0.035) * level,
-    duration: capture ? 0.042 : 0.03,
-    centerHz: (capture ? 980 : 1280) * pitch,
+    gain: (capture ? 0.042 : 0.032) * level,
+    duration: capture ? 0.034 : 0.026,
+    centerHz: (capture ? 1120 : 1450) * pitch,
+    q: capture ? 1.05 : 1.2,
   });
 
-  // Main body: low, rounded resonance of a substantial chess piece meeting a
-  // hard board. Captures sit lower and carry a little more mass.
-  scheduleTone(ctx, bus, {
-    freq: (capture ? 155 : 205) * pitch,
-    gain: (capture ? 0.048 : 0.032) * level,
-    duration: capture ? 0.105 : 0.075,
-    type: 'triangle',
-    attack: 0.0025,
+  // Lower material knock gives the impact actual mass on decent speakers while
+  // remaining audible on phones. This replaces some of the old tonal body.
+  const bodyTickWorked = scheduleSurfaceTick(ctx, bus, {
+    gain: (capture ? 0.029 : 0.021) * level,
+    duration: capture ? 0.07 : 0.052,
+    centerHz: (capture ? 315 : 390) * pitch,
+    delay: 0.0015,
+    q: 0.8,
   });
 
-  // Collar/ceramic detail. This is deliberately much quieter than the body;
-  // it supplies definition on phone speakers without turning into a plastic click.
-  scheduleTone(ctx, bus, {
-    freq: (capture ? 520 : 690) * pitch,
-    gain: (capture ? 0.017 : 0.014) * level,
-    duration: capture ? 0.055 : 0.042,
-    type: 'sine',
-    delay: 0.004,
-    attack: 0.002,
-  });
-
-  // Tiny room reflection: enough to place the action inside the War Room,
-  // short enough not to smear rapid play or stack into audible reverb.
-  scheduleTone(ctx, bus, {
-    freq: (capture ? 118 : 168) * pitch,
-    gain: (capture ? 0.012 : 0.0085) * level,
-    duration: capture ? 0.105 : 0.08,
-    type: 'sine',
-    delay: capture ? 0.022 : 0.018,
-    attack: 0.004,
-  });
-
-  // Very old/minimal Web Audio implementations may lack noise-buffer support.
-  // Preserve an audible tactile cue rather than failing silently.
-  if (!contactWorked) {
-    scheduleTone(ctx, bus, {
-      freq: (capture ? 900 : 1180) * pitch,
-      gain: (capture ? 0.012 : 0.01) * level,
+  // Captures are physically two gestures: the taken piece leaves, then the
+  // attacker settles. A restrained second contact reads as capture without
+  // becoming a UI double-click.
+  if (capture) {
+    scheduleSurfaceTick(ctx, bus, {
+      gain: 0.017 * level,
       duration: 0.025,
+      centerHz: 760 * pitch,
+      delay: 0.014,
+      q: 0.95,
+    });
+  }
+
+  // Rounded residual resonance. A tiny downward settle avoids the static,
+  // musical oscillator quality of the previous implementation.
+  scheduleTone(ctx, bus, {
+    freq: (capture ? 142 : 188) * pitch,
+    gain: (capture ? 0.034 : 0.024) * level,
+    duration: capture ? 0.09 : 0.065,
+    type: 'triangle',
+    attack: 0.002,
+    settle: capture ? 0.91 : 0.935,
+  });
+
+  // Quiet collar/ceramic detail keeps definition on small speakers.
+  scheduleTone(ctx, bus, {
+    freq: (capture ? 470 : 610) * pitch,
+    gain: (capture ? 0.011 : 0.009) * level,
+    duration: capture ? 0.041 : 0.033,
+    type: 'sine',
+    delay: 0.003,
+    attack: 0.0015,
+    settle: 0.94,
+  });
+
+  // Very short low reflection places the event in the room without audible
+  // reverb build-up during blitz.
+  scheduleTone(ctx, bus, {
+    freq: (capture ? 102 : 145) * pitch,
+    gain: (capture ? 0.008 : 0.0055) * level,
+    duration: capture ? 0.08 : 0.058,
+    type: 'sine',
+    delay: capture ? 0.019 : 0.015,
+    attack: 0.003,
+    settle: 0.9,
+  });
+
+  // Minimal Web Audio fallback: if buffer noise is unavailable, retain a short
+  // tactile cue. Do not recreate the full premium stack with square-wave beeps.
+  if (!contactWorked || !bodyTickWorked) {
+    scheduleTone(ctx, bus, {
+      freq: (capture ? 820 : 1060) * pitch,
+      gain: (capture ? 0.009 : 0.007) * level,
+      duration: 0.02,
       type: 'square',
+      settle: 0.9,
     });
   }
 }
