@@ -253,6 +253,47 @@ function addSignatureDetail(group, type, accent, coarsePointer = false) {
   }
 }
 
+function applyBlackQueenOpaqueCrownFinish(group, side) {
+  if (side !== 'b') return 0;
+  let count = 0;
+  group?.traverse?.((child) => {
+    if (!child?.isMesh || !child.userData?.queenPart) return;
+    const part = child.userData.queenPart;
+    if (!['crown-orb', 'finial'].includes(part)) return;
+
+    const source = child.material;
+    if (!source?.isMeshPhysicalMaterial) return;
+    const material = source.clone();
+    material.transparent = false;
+    material.opacity = 1;
+    material.alphaTest = 0;
+    material.transmission = 0;
+    material.thickness = 0;
+    material.depthWrite = true;
+    material.depthTest = true;
+    material.blending = THREE.NormalBlending;
+    // The tiny glossy spheres were acting like miniature mirrors: on a high-
+    // contrast board their reflection reads as if the square were visible
+    // through the queen. Keep polished ebony/metal, but make the crown read
+    // unmistakably solid at tactical camera distance.
+    material.roughness = Math.max(material.roughness ?? 0.4, 0.48);
+    material.clearcoat = Math.min(material.clearcoat ?? 0.76, 0.58);
+    material.clearcoatRoughness = Math.max(material.clearcoatRoughness ?? 0.17, 0.24);
+    material.envMapIntensity = Math.min(material.envMapIntensity ?? 0.96, 0.62);
+    material.specularIntensity = Math.min(material.specularIntensity ?? 0.88, 0.68);
+    material.needsUpdate = true;
+    material.userData = {
+      ...material.userData,
+      blackQueenOpaqueCrown: 'solid-v1',
+    };
+    child.material = material;
+    child.userData.blackQueenOpaqueCrown = 'solid-v1';
+    count += 1;
+  });
+  if (group?.userData) group.userData.blackQueenOpaqueCrownCount = count;
+  return count;
+}
+
 function finalizePiece(group, type) {
   let renderableMeshCount = 0;
   group?.traverse?.((child) => {
@@ -449,6 +490,7 @@ export function buildPiece(type, color, skinId, coarsePointer = false, options =
         [0, coarsePointer ? 1.28 : 1.32, 0],
       );
       finial.userData.queenPart = 'finial';
+      applyBlackQueenOpaqueCrownFinish(group, color);
     } else if (type === 'k') {
       addLathe(group, [[0.2, 0.28], [0.17, 0.42], [0.14, 0.68], [0.19, 0.81], [0.21, 0.85]], main, 0, detail.lathe);
       addMesh(group, new THREE.TorusGeometry(0.195, 0.028, detail.torusRadial, detail.torusTubular), accent, [0, 0.86, 0], [Math.PI / 2, 0, 0]);
