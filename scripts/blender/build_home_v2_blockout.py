@@ -215,6 +215,23 @@ def _surface_height(profile: str, u: float, v: float, seed: int) -> float:
         brushing = brushed_a * 0.68 + brushed_b * 0.32
         value = coarse * 0.34 + patina * 0.33 + medium * 0.15 + brushing * 0.11 + fine * 0.07
         return max(0.0, min(1.0, value))
+    if profile == "forged_iron":
+        # Hearth hardware was hand-forged, not machine-brushed. Broad hammer
+        # peening and sparse dark pits break the generic metal read while the
+        # relief stays restrained enough to catch only grazing firelight.
+        peen_a = _value_noise(u, v, seed + 211, 11)
+        peen_b = _value_noise(u, v, seed + 223, 17)
+        peen = abs(peen_a - peen_b)
+        pits = max(0.0, 0.24 - _value_noise(u, v, seed + 239, 29)) * 2.2
+        value = (
+            0.40
+            + (coarse - 0.5) * 0.18
+            + (medium - 0.5) * 0.10
+            + peen * 0.24
+            - pits * 0.15
+            + (fine - 0.5) * 0.05
+        )
+        return max(0.0, min(1.0, value))
     return max(0.0, min(1.0, coarse * 0.50 + medium * 0.31 + fine * 0.19))
 
 
@@ -411,6 +428,18 @@ def _surface_height_grid(profile: str, size: int, seed: int) -> "np.ndarray":
             1.0,
         )
 
+    if profile == "forged_iron":
+        peen_a = _np_value_noise_exact(size, seed + 211, 11)
+        peen_b = _np_value_noise_exact(size, seed + 223, 17)
+        peen = np.abs(peen_a - peen_b)
+        pits = np.clip(0.24 - _np_value_noise_exact(size, seed + 239, 29), 0.0, None) * 2.2
+        return np.clip(
+            0.40 + (coarse - 0.5) * 0.18 + (medium - 0.5) * 0.10
+            + peen * 0.24 - pits * 0.15 + (fine - 0.5) * 0.05,
+            0.0,
+            1.0,
+        )
+
     return np.clip(coarse * 0.50 + medium * 0.31 + fine * 0.19, 0.0, 1.0)
 
 
@@ -419,7 +448,7 @@ def _validate_surface_height_vectorization() -> None:
     seed = 2417
     profiles = (
         "stone", "floor_stone", "wood", "leather", "paper", "wax",
-        "textile", "leaf", "globe", "metal", "other",
+        "textile", "leaf", "globe", "metal", "forged_iron", "other",
     )
     for profile in profiles:
         grid = _surface_height_grid(profile, size, seed)
@@ -522,6 +551,13 @@ def _micro_detail(profile: str, size: int, seed: int) -> "np.ndarray":
         hairline = _np_noise(size, seed + 691, 5, size) - 0.5
         dents = _np_fbm(size, seed + 697, 12, 3) - 0.5
         return hairline * 0.06 - scratches * 0.24 + dents * 0.10
+    if profile == "forged_iron":
+        hammer = np.abs(
+            _np_noise(size, seed + 701, 34) - _np_noise(size, seed + 709, 47)
+        ) - 0.16
+        scale = _np_fbm(size, seed + 719, 16, 2) - 0.5
+        pits = np.clip(0.23 - _np_noise(size, seed + 727, 68), 0.0, None) * 3.0
+        return hammer * 0.16 + scale * 0.08 - pits * 0.18
     return np.zeros((size, size))
 
 
@@ -551,6 +587,7 @@ def _packed_surface_arrays(
         "floor_stone": 0.85,
         "wood": 0.6,
         "metal": 1.0,
+        "forged_iron": 1.0,
         "textile": 1.0,
         "leather": 1.0,
     }.get(profile, 0.0)
@@ -561,6 +598,7 @@ def _packed_surface_arrays(
         "floor_stone": (0.68, 1.10),
         "wood": (0.86, 1.12),
         "metal": (0.79, 1.15),
+        "forged_iron": (0.72, 1.10),
         "textile": (0.78, 1.18),
         "leather": (0.70, 1.24),
         "paper": (0.88, 1.12),
@@ -573,6 +611,7 @@ def _packed_surface_arrays(
         "floor_stone": 0.12,
         "wood": 0.08,
         "metal": 0.19,
+        "forged_iron": 0.16,
         "textile": 0.07,
         "leather": 0.12,
         "paper": 0.055,
@@ -585,6 +624,7 @@ def _packed_surface_arrays(
         "floor_stone": 4.0,
         "wood": 1.3,
         "metal": 2.0,
+        "forged_iron": 2.6,
         "textile": 2.8,
         "leather": 2.4,
         "paper": 1.15,
@@ -656,6 +696,7 @@ def _apply_packed_surface_textures(mat, bsdf, *, name, color, roughness, profile
         "textile": 128,
         "leather": 128,
         "metal": 128,
+        "forged_iron": 144,
         "leaf": 128,
         "globe": 144,
     }.get(profile, 96)
@@ -677,7 +718,7 @@ def _apply_packed_surface_textures(mat, bsdf, *, name, color, roughness, profile
     if texture_size is None:
         texture_size = base_size
         if not material_key.startswith(("book_", "soot_", "stone_dark", "stone_grime", "ash")):
-            texture_size = {"textile": 160, "leather": 160, "metal": 160, "wood": 160}.get(profile, base_size)
+            texture_size = {"textile": 160, "leather": 160, "metal": 160, "forged_iron": 160, "wood": 160}.get(profile, base_size)
     texture_scale = preview_texture_scale()
     base_size = max(48, round(base_size * texture_scale))
     texture_size = max(base_size, round(texture_size * texture_scale))
@@ -713,6 +754,7 @@ def _apply_packed_surface_textures(mat, bsdf, *, name, color, roughness, profile
         "floor_stone": 0.50,
         "wood": 0.22,
         "metal": 0.36,
+        "forged_iron": 0.46,
         "textile": 0.40,
         "leather": 0.38,
         "paper": 0.18,
@@ -4047,7 +4089,7 @@ def build_scene(reference: Path, samples: int, max_width: int, engine: str):
         # Hand-forged hearth iron should read nearly black in shadow, with enough
         # metallic response to catch firelight on worn edges instead of looking
         # like painted plastic.
-        "forged_iron": material("HOME_MAT_forged_iron", (0.030, 0.026, 0.022, 1), roughness=0.72, metallic=0.58, bump_scale=8.0, bump_strength=0.08, texture_profile="metal"),
+        "forged_iron": material("HOME_MAT_forged_iron", (0.030, 0.026, 0.022, 1), roughness=0.76, metallic=0.54, bump_scale=8.0, bump_strength=0.08, texture_profile="forged_iron"),
         "steel": material("HOME_MAT_steel", (0.14, 0.15, 0.16, 1), roughness=0.43, metallic=0.78, texture_profile="metal"),
         "armor_steel": material(
             "HOME_MAT_armor_steel",
