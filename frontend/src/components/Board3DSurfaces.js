@@ -39,8 +39,11 @@ export function getCameraFramingProfile(aspect) {
         maxDistance: 22.6,
         targetY: 2.2,
         targetZ: -0.16,
-        cameraY: 6.0,
-        cameraZ: 10.6,
+        // Keep the long 22° desktop lens, but lift the camera toward the proven
+        // mobile-landscape board pitch so ranks separate better and pieces are
+        // easier to select without turning desktop into a top-down board view.
+        cameraY: 7.4,
+        cameraZ: 10.2,
       }
     : {
         halfSpan: 5.78,
