@@ -8,7 +8,7 @@ export const DUNGEON_GROUPS = Object.freeze([
   { id: 'lab', title: 'Laboratorio', labels: ['Experimentos geniales', 'Pawn Slug'] },
 ]);
 
-export const DUNGEON_LINK_LABELS = Object.freeze(['Espectador', 'Mi progreso']);
+export const DUNGEON_LINK_LABELS = Object.freeze(['Guía rápida', 'Espectador', 'Mi progreso']);
 
 const DETAILS = Object.freeze({
   'Puzzles personales': 'Tus puntos débiles, en táctica',
@@ -18,6 +18,7 @@ const DETAILS = Object.freeze({
   'Combat Chess libre': 'Recluta y despliega tu ejército',
   'Experimentos geniales': 'Prototipos y curiosidades',
   'Pawn Slug': 'Mini-juego arcade',
+  'Guía rápida': 'Tour de Home con Matthias',
 });
 
 // Accessible names the existing e2e specs (and screen readers) already rely on.
