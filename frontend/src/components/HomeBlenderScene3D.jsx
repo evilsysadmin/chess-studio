@@ -126,6 +126,12 @@ export const HOME_BLENDER_KLAUS_MOTION = Object.freeze({
 
 const HOME_BLENDER_KLAUS_TAIL_SEGMENT = /^HOME_PROP_cat_tail_seg_(\d+)$/i;
 const HOME_BLENDER_KLAUS_EAR = /^HOME_PROP_cat_ear_(?:inner_)?(?:l|r)$/i;
+const HOME_BLENDER_KLAUS_PAW = /^HOME_PROP_cat_paw_(?:l|r)$/i;
+
+export const HOME_BLENDER_KLAUS_PAW_MOTION = Object.freeze({
+  tuckY: 0.0018,
+  flexZ: 0.0012,
+});
 
 export const HOME_BLENDER_KLAUS_TAIL_MOTION = Object.freeze({
   startIndex: 48,
@@ -164,6 +170,19 @@ export function homeBlenderKlausTailPose(timeMs = 0, weight = 1) {
   return {
     offsetX: sway * HOME_BLENDER_KLAUS_TAIL_MOTION.swingX * clampedWeight,
     offsetZ: curl * HOME_BLENDER_KLAUS_TAIL_MOTION.swingZ * clampedWeight,
+  };
+}
+
+export function homeBlenderKlausPawPose(timeMs = 0, weight = 1) {
+  const seconds = Math.max(0, Number(timeMs) || 0) / 1000;
+  const clampedWeight = Math.max(0, Math.min(1, Number(weight) || 0));
+  // A rare sleeping reflex: long stillness, one soft tuck, then a weaker echo.
+  const primary = Math.max(0, Math.sin(seconds * (Math.PI * 2 / 37.0) - 1.35)) ** 24;
+  const echo = Math.max(0, Math.sin(seconds * (Math.PI * 2 / 53.0) + 2.6)) ** 30;
+  const activity = Math.min(1, primary + echo * 0.32);
+  return {
+    offsetY: activity * HOME_BLENDER_KLAUS_PAW_MOTION.tuckY * clampedWeight,
+    offsetZ: -activity * HOME_BLENDER_KLAUS_PAW_MOTION.flexZ * clampedWeight,
   };
 }
 
@@ -226,6 +245,13 @@ export function prepareHomeBlenderKlausRig(root) {
       index,
       rotation: part.rotation.clone(),
     }));
+  rig.userData.homeKlausPaws = parts
+    .filter((part) => HOME_BLENDER_KLAUS_PAW.test(String(part.name || '')))
+    .map((part, index) => ({
+      part,
+      weight: index % 2 ? 0.62 : 1,
+      position: part.position.clone(),
+    }));
   rig.userData.homeKlausTail = parts
     .map((part) => ({
       part,
@@ -261,6 +287,14 @@ export function applyHomeBlenderKlausMotion(rig, timeMs = 0) {
     ear.part.rotation.copy(ear.rotation);
     ear.part.rotation.y += direction * earPulse * HOME_BLENDER_KLAUS_EAR_MOTION.twitchY;
     ear.part.rotation.z += direction * earPulse * HOME_BLENDER_KLAUS_EAR_MOTION.twitchZ;
+  }
+  for (const paw of rig.userData.homeKlausPaws || []) {
+    const pawPose = homeBlenderKlausPawPose(timeMs, paw.weight);
+    paw.part.position.set(
+      paw.position.x,
+      paw.position.y + pawPose.offsetY,
+      paw.position.z + pawPose.offsetZ,
+    );
   }
   for (const tail of rig.userData.homeKlausTail || []) {
     const tailPose = homeBlenderKlausTailPose(timeMs, tail.weight);

@@ -40,10 +40,12 @@ import {
   HOME_BLENDER_CANDLE_PARTICLES,
   HOME_BLENDER_KLAUS_MOTION,
   HOME_BLENDER_KLAUS_TAIL_MOTION,
+  HOME_BLENDER_KLAUS_PAW_MOTION,
   homeBlenderIsKlausPart,
   homeBlenderKlausPose,
   homeBlenderKlausTailWeight,
   homeBlenderKlausTailPose,
+  homeBlenderKlausPawPose,
   prepareHomeBlenderKlausRig,
   applyHomeBlenderKlausMotion,
 } from './HomeBlenderScene3D.jsx';
@@ -167,6 +169,21 @@ describe('HomeBlenderScene3D Klaus idle motion', () => {
     expect(Math.hypot(flicking.offsetX, flicking.offsetZ)).toBeGreaterThan(0.001);
   });
 
+  it('gives the front paws a rare sub-two-millimetre sleeping reflex', () => {
+    let activeSamples = 0;
+    let restingSamples = 0;
+    for (let timeMs = 0; timeMs < 120000; timeMs += 137) {
+      const pose = homeBlenderKlausPawPose(timeMs, 1);
+      expect(pose.offsetY).toBeGreaterThanOrEqual(0);
+      expect(pose.offsetY).toBeLessThanOrEqual(HOME_BLENDER_KLAUS_PAW_MOTION.tuckY);
+      expect(Math.abs(pose.offsetZ)).toBeLessThanOrEqual(HOME_BLENDER_KLAUS_PAW_MOTION.flexZ);
+      if (Math.hypot(pose.offsetY, pose.offsetZ) > 0.00005) activeSamples += 1;
+      else restingSamples += 1;
+    }
+    expect(activeSamples).toBeGreaterThan(0);
+    expect(restingSamples).toBeGreaterThan(activeSamples * 2);
+  });
+
   it('groups the authored cat around its own pivot without dragging the cushion', () => {
     const root = new THREE.Group();
     const body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.22, 0.38), new THREE.MeshBasicMaterial());
@@ -175,10 +192,13 @@ describe('HomeBlenderScene3D Klaus idle motion', () => {
     const tail = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.08, 0.08), new THREE.MeshBasicMaterial());
     tail.name = 'HOME_PROP_cat_tail_seg_55';
     tail.position.set(1.35, 0.32, -1.3);
+    const paw = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.05, 0.12), new THREE.MeshBasicMaterial());
+    paw.name = 'HOME_PROP_cat_paw_l';
+    paw.position.set(1.02, 0.25, -1.55);
     const cushion = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.08, 0.7), new THREE.MeshBasicMaterial());
     cushion.name = 'HOME_PROP_cat_cushion';
     cushion.position.set(1.15, 0.12, -1.4);
-    root.add(body, tail, cushion);
+    root.add(body, tail, paw, cushion);
     root.updateMatrixWorld(true);
 
     const bodyBefore = body.getWorldPosition(new THREE.Vector3()).clone();
@@ -192,12 +212,23 @@ describe('HomeBlenderScene3D Klaus idle motion', () => {
     expect(body.getWorldPosition(new THREE.Vector3()).distanceTo(bodyBefore)).toBeLessThan(1e-6);
     expect(cushion.getWorldPosition(new THREE.Vector3()).distanceTo(cushionBefore)).toBeLessThan(1e-6);
     const tailLocalBefore = tail.position.clone();
+    const pawLocalBefore = paw.position.clone();
 
     expect(applyHomeBlenderKlausMotion(rig, 5100)).toBe(true);
     expect(body.getWorldPosition(new THREE.Vector3()).distanceTo(bodyBefore)).toBeGreaterThan(0);
     expect(body.getWorldPosition(new THREE.Vector3()).distanceTo(bodyBefore)).toBeLessThan(0.02);
     expect(tail.position.distanceTo(tailLocalBefore)).toBeGreaterThan(0);
     expect(tail.position.distanceTo(tailLocalBefore)).toBeLessThan(0.01);
+
+    const activePawTime = Array.from({ length: 600 }, (_, index) => index * 137)
+      .find((timeMs) => {
+        const pose = homeBlenderKlausPawPose(timeMs, 1);
+        return Math.hypot(pose.offsetY, pose.offsetZ) > 0.00005;
+      });
+    expect(activePawTime).toBeDefined();
+    expect(applyHomeBlenderKlausMotion(rig, activePawTime)).toBe(true);
+    expect(paw.position.distanceTo(pawLocalBefore)).toBeGreaterThan(0);
+    expect(paw.position.distanceTo(pawLocalBefore)).toBeLessThan(0.003);
     expect(cushion.getWorldPosition(new THREE.Vector3()).distanceTo(cushionBefore)).toBeLessThan(1e-6);
   });
 });
