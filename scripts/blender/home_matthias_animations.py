@@ -65,6 +65,18 @@ def build_actions(rig):
     bone scale; the runtime does not synthesize fake DOM accessories.
     """
     d = math.radians
+    seated_legs = {
+        'upper_leg.L': (d(-58), d(1), d(-3)),
+        'lower_leg.L': (d(82), 0, d(1)),
+        'upper_leg.R': (d(-58), d(-1), d(3)),
+        'lower_leg.R': (d(82), 0, d(-1)),
+    }
+    lounge_legs = {
+        'upper_leg.L': (d(-46), d(3), d(-7)),
+        'lower_leg.L': (d(68), 0, d(5)),
+        'upper_leg.R': (d(-42), d(-3), d(8)),
+        'lower_leg.R': (d(64), 0, d(-4)),
+    }
     specs = {
         'Idle': (112, [
             (28, {'spine': (d(.7), 0, d(-.7)), 'head': (d(-1), d(2.2), d(.8))}, {'root': (0, 0, .010)}),
@@ -78,28 +90,28 @@ def build_actions(rig):
             (36, {'head': (d(.5), d(-.5), d(.5)), 'forearm.R': (d(-14), 0, d(-8))}, {'face_mouth': (0, 0, .004)}),
         ]),
         'Think': (84, [
-            (12, {'upper_leg.L': (d(-24), 0, d(-3)), 'lower_leg.L': (d(34), 0, 0), 'upper_leg.R': (d(-24), 0, d(3)), 'lower_leg.R': (d(34), 0, 0)}, None),
+            (12, seated_legs, None),
             (24, {'head': (d(7), d(-7), d(2)), 'forearm.R': (d(-42), d(-7), d(-14)), 'spine': (d(3), 0, d(-1))}, None),
             (58, {'head': (d(4), d(5), d(-2)), 'forearm.R': (d(-34), d(-4), d(-10))}, None),
         ]),
         'Read': (88, [
-            (2, {'upper_leg.L': (d(-25), 0, d(-3)), 'lower_leg.L': (d(36), 0, 0), 'upper_leg.R': (d(-25), 0, d(3)), 'lower_leg.R': (d(36), 0, 0)}, None, show('prop_book')),
-            (26, {'head': (d(10), d(-3), d(1)), 'spine': (d(3.5), 0, 0), 'forearm.L': (d(-26), d(3), d(8)), 'forearm.R': (d(-26), d(-3), d(-8))}, None),
+            (2, seated_legs, None, show('prop_book')),
+            (26, {'head': (d(10), d(-3), d(1)), 'spine': (d(3.5), 0, 0), 'upper_arm.L': (d(-7), d(1), d(5)), 'upper_arm.R': (d(-7), d(-1), d(-5)), 'forearm.L': (d(-34), d(3), d(8)), 'forearm.R': (d(-34), d(-3), d(-8))}, None),
             (56, {'head': (d(12), d(2), d(-1)), 'spine': (d(4), 0, 0)}, None),
             (82, None, None, show('prop_book')),
             (84, None, None, hide('prop_book')),
         ]),
         'Write': (72, [
-            (2, {'upper_leg.L': (d(-25), 0, d(-3)), 'lower_leg.L': (d(36), 0, 0), 'upper_leg.R': (d(-25), 0, d(3)), 'lower_leg.R': (d(36), 0, 0)}, None, {**show('prop_book'), **show('prop_pen')}),
-            (18, {'head': (d(11), d(-5), d(1)), 'spine': (d(5), 0, d(-1)), 'forearm.R': (d(-38), d(-5), d(-12))}, None),
+            (2, seated_legs, None, {**show('prop_book'), **show('prop_pen')}),
+            (18, {'head': (d(11), d(-5), d(1)), 'spine': (d(5), 0, d(-1)), 'upper_arm.L': (d(-5), 0, d(4)), 'upper_arm.R': (d(-8), d(-2), d(-6)), 'forearm.L': (d(-24), d(2), d(6)), 'forearm.R': (d(-44), d(-5), d(-12))}, None),
             (36, {'forearm.R': (d(-28), d(-3), d(-7))}, None),
             (54, {'forearm.R': (d(-40), d(-6), d(-13))}, None),
             (66, None, None, {**show('prop_book'), **show('prop_pen')}),
             (68, None, None, {**hide('prop_book'), **hide('prop_pen')}),
         ]),
         'Dossier': (80, [
-            (2, {'upper_leg.L': (d(-25), 0, d(-3)), 'lower_leg.L': (d(36), 0, 0), 'upper_leg.R': (d(-25), 0, d(3)), 'lower_leg.R': (d(36), 0, 0)}, None, show('prop_book')),
-            (22, {'head': (d(11), d(5), d(-2)), 'spine': (d(4), 0, d(1)), 'forearm.L': (d(-28), 0, d(8))}, None),
+            (2, seated_legs, None, show('prop_book')),
+            (22, {'head': (d(11), d(5), d(-2)), 'spine': (d(4), 0, d(1)), 'upper_arm.L': (d(-7), d(1), d(5)), 'forearm.L': (d(-36), 0, d(8)), 'upper_arm.R': (d(-4), d(-1), d(-4)), 'forearm.R': (d(-20), 0, d(-6))}, None),
             (52, {'head': (d(8), d(-5), d(2)), 'forearm.R': (d(-24), 0, d(-7))}, None),
             (74, None, None, show('prop_book')),
             (76, None, None, hide('prop_book')),
@@ -121,7 +133,7 @@ def build_actions(rig):
             (70, None, None, hide('prop_bite')),
         ]),
         'Sleep': (104, [
-            (18, {'upper_leg.L': (d(-18), d(2), d(-8)), 'lower_leg.L': (d(26), 0, d(4)), 'upper_leg.R': (d(-15), d(-2), d(9)), 'lower_leg.R': (d(22), 0, d(-3))}, None),
+            (18, lounge_legs, None),
             (36, {'head': (d(11), d(-6), d(9)), 'spine': (d(5), 0, d(4))}, {'root': (0, 0, -.018)}),
             (72, {'head': (d(13), d(-5), d(10)), 'spine': (d(6), 0, d(5))}, {'root': (0, 0, -.026)}),
         ]),
