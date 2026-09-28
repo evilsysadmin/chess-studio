@@ -92,6 +92,7 @@ PVP_VISUAL_SURFACES = {
     "frontend/src/usepvpappflow.js",
     "frontend/src/usepvprosterpresence.js",
     "frontend/src/pvpruntimebridge.js",
+    "frontend/src/components/menuinner.jsx",
 }
 
 PUBLIC_NONCANONICAL_PATHS = {
@@ -532,6 +533,7 @@ def self_test() -> None:
         "frontend/src/components/PvPLobbyModal.jsx",
         "frontend/src/components/PvPLobbyModal.css",
         "frontend/src/components/PvpHandoffModal.jsx",
+        "frontend/src/components/MenuInner.jsx",
         "frontend/src/pvpApi.js",
         "frontend/src/usePvpAppFlow.js",
         "frontend/src/usePvpRosterPresence.js",
