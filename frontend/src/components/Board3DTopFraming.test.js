@@ -22,9 +22,11 @@ describe('War Room desktop top framing', () => {
 
         // The 22° desktop lens deliberately travels farther back than the old
         // 29° profile to reduce near/far piece-scale distortion. Keep a tiny
-        // projection tolerance for the architectural cap while still guarding
-        // against meaningful top/bottom cropping or runaway camera distance.
-        expect(roomTop.y).toBeLessThan(1.01);
+        // The steeper desktop play angle intentionally lets the architectural cap
+        // kiss the top edge so the board gains rank separation. Keep a bounded
+        // tolerance here: enough for the approved ~36° pitch, not enough for a
+        // runaway crop that would turn the room into a floating board.
+        expect(roomTop.y).toBeLessThan(1.12);
         expect(nearApron.y).toBeGreaterThan(-0.98);
         expect(camera.userData.cameraDistance).toBeLessThan(30);
       }
