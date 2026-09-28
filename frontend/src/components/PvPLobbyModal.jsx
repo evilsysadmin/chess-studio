@@ -114,7 +114,7 @@ export default function PvPLobbyModal({
 
   useEffect(() => {
     if (externallyDriven) {
-      setLoading(false);
+      void refresh({ quiet: false });
       return undefined;
     }
     let active = true;
@@ -233,9 +233,9 @@ export default function PvPLobbyModal({
             <span className={`pvp-lobby__presence${self ? ' is-on' : ''}`} aria-hidden="true" />
             <span className="pvp-lobby__identity-mark" aria-hidden="true">♟</span>
             <div>
-              <small>{self ? 'DISPONIBLE PARA RETOS' : 'NO DISPONIBLE'}</small>
-              <strong>{self ? self.username : 'Listo para entrar en la sala'}</strong>
-              <span>{self ? 'Visible para otros jugadores · puedes cerrar y seguir jugando' : 'Retar a alguien te hará visible automáticamente.'}</span>
+              <small>{self ? 'RECIBIENDO RETOS' : 'RECEPCIÓN DE RETOS DESACTIVADA'}</small>
+              <strong>{self ? self.username : 'Puedes retar sin activarte antes'}</strong>
+              <span>{self ? 'Visible para otros jugadores · puedes cerrar y seguir jugando' : 'Toca Retar y Chess Studio te hará visible automáticamente.'}</span>
             </div>
           </div>
           {self && (
@@ -254,7 +254,7 @@ export default function PvPLobbyModal({
               <button type="button" className="text-action pvp-lobby__leave" disabled={Boolean(busyKey) || Boolean(liveLobby.activeMatch)} onClick={() => run('leave', () => onLeaveRoster ? onLeaveRoster() : pvpApi.leaveRoster(), { refreshAfter: false })}>{busyKey === 'leave' ? 'Saliendo…' : 'Dejar de estar disponible'}</button>
             </div>
           ) : (
-            <button type="button" className="primary-btn pvp-lobby__join" disabled={Boolean(busyKey) || Boolean(liveLobby.activeMatch)} onClick={() => run('join', () => onJoinRoster ? onJoinRoster() : pvpApi.joinRoster())}>{busyKey === 'join' ? 'Activando…' : 'Ponerme disponible'}</button>
+            <button type="button" className="primary-btn pvp-lobby__join" disabled={Boolean(busyKey) || Boolean(liveLobby.activeMatch)} onClick={() => run('join', () => onJoinRoster ? onJoinRoster() : pvpApi.joinRoster())}>{busyKey === 'join' ? 'Activando…' : 'Recibir retos'}</button>
           )}
         </section>
 
@@ -273,7 +273,7 @@ export default function PvPLobbyModal({
             {loading ? <p className="pvp-lobby__empty" role="status">Consultando la sala…</p> : roster.length === 0 ? (
               <div className="pvp-lobby__empty-state">
                 <span aria-hidden="true">♟</span>
-                <div><strong>Nadie disponible aún</strong><p>{self ? 'Puedes cerrar: seguirás visible y te avisaremos si alguien te reta.' : 'Ponte disponible para aparecer aquí cuando llegue otro jugador.'}</p></div>
+                <div><strong>Nadie disponible aún</strong><p>{self ? 'Puedes cerrar: seguirás visible y te avisaremos si alguien te reta.' : 'Cuando aparezca otro jugador podrás retarlo directamente.'}</p></div>
               </div>
             ) : (
               <>
