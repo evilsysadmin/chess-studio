@@ -6,12 +6,14 @@ export default function HomePvpRosterLink({
   enrolled = false,
   rivalCount = 0,
   incomingCount = 0,
+  unreadMessageCount = 0,
   activeMatch = null,
   variant = 'card',
 }) {
   const active = Boolean(activeMatch);
   const challenged = Number(incomingCount) > 0;
   const hasRivals = Number(rivalCount) > 0;
+  const hasUnread = Number(unreadMessageCount) > 0;
   const title = active
     ? 'Duelo activo'
     : challenged
@@ -39,13 +41,14 @@ export default function HomePvpRosterLink({
   return (
     <button
       type="button"
-      className={`home-pvp-roster-link${variant === 'menu' ? ' home-pvp-roster-link--menu' : ''}${enrolled ? ' is-enrolled' : ''}${active ? ' has-active-match' : ''}${challenged ? ' has-challenge' : ''}${hasRivals ? ' has-rivals' : ''}`}
+      className={`home-pvp-roster-link${variant === 'menu' ? ' home-pvp-roster-link--menu' : ''}${enrolled ? ' is-enrolled' : ''}${active ? ' has-active-match' : ''}${challenged ? ' has-challenge' : ''}${hasRivals ? ' has-rivals' : ''}${hasUnread ? ' has-unread-chat' : ''}`}
       onClick={onOpen}
       disabled={disabled}
       aria-label="Abrir rivales 1 contra 1 de War Room"
     >
       <span className="home-pvp-roster-link__emblem" aria-hidden="true">
         <span className="home-pvp-roster-link__signal" />
+        {hasUnread && <span className="home-pvp-roster-link__unread">{Math.min(9, Number(unreadMessageCount))}{Number(unreadMessageCount) > 9 ? '+' : ''}</span>}
         <span className="home-pvp-roster-link__mark">♟</span>
       </span>
       <span className="home-pvp-roster-link__copy">
