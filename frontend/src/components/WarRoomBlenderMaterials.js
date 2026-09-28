@@ -86,31 +86,31 @@ export function warRoomBlenderRuntimeSurfaceKind(materialName = '') {
 
 export function warRoomBlenderStoneSurfaceProfile({ coarsePointer = false } = {}) {
   return coarsePointer
-    ? Object.freeze({ enabled: true, size: 24, bumpScale: 0, albedoCompensation: 1.10 })
+    ? Object.freeze({ enabled: false, size: 0, bumpScale: 0, albedoCompensation: 1.10 })
     : Object.freeze({ enabled: true, size: 32, bumpScale: 0.012, albedoCompensation: 1.10 });
 }
 
 export function warRoomBlenderWoodSurfaceProfile({ coarsePointer = false } = {}) {
   return coarsePointer
-    ? Object.freeze({ enabled: true, size: 32, bumpScale: 0, albedoCompensation: 1.055 })
+    ? Object.freeze({ enabled: false, size: 0, bumpScale: 0, albedoCompensation: 1.055 })
     : Object.freeze({ enabled: true, size: 48, bumpScale: 0.007, albedoCompensation: 1.055 });
 }
 
 export function warRoomBlenderMetalSurfaceProfile({ coarsePointer = false } = {}) {
   return coarsePointer
-    ? Object.freeze({ enabled: true, size: 24, bumpScale: 0, albedoCompensation: 1.02 })
+    ? Object.freeze({ enabled: false, size: 0, bumpScale: 0, albedoCompensation: 1.02 })
     : Object.freeze({ enabled: true, size: 48, bumpScale: 0.0045, albedoCompensation: 1.025 });
 }
 
 export function warRoomBlenderFabricSurfaceProfile({ coarsePointer = false } = {}) {
   return coarsePointer
-    ? Object.freeze({ enabled: true, size: 24, bumpScale: 0, albedoCompensation: 1.035 })
+    ? Object.freeze({ enabled: false, size: 0, bumpScale: 0, albedoCompensation: 1.035 })
     : Object.freeze({ enabled: true, size: 48, bumpScale: 0.006, albedoCompensation: 1.04 });
 }
 
 export function warRoomBlenderLeatherSurfaceProfile({ coarsePointer = false } = {}) {
   return coarsePointer
-    ? Object.freeze({ enabled: true, size: 24, bumpScale: 0, albedoCompensation: 1.025 })
+    ? Object.freeze({ enabled: false, size: 0, bumpScale: 0, albedoCompensation: 1.025 })
     : Object.freeze({ enabled: true, size: 48, bumpScale: 0.0075, albedoCompensation: 1.03 });
 }
 
