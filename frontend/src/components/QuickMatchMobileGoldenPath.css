@@ -407,3 +407,55 @@
 .friendly-modal[aria-label='Configurar partida rápida'] :is(.friendly-subdisclosure, .quick-match-settings)[open] > summary::before {
   content: '−';
 }
+
+
+/* Audit pass: one secondary decision below the CTA. Manual level selection and
+ * the explanation of adaptive strength live behind the same disclosure. */
+.friendly-modal[aria-label='Configurar partida rápida'] .quick-match-post-cta-tools {
+  display: block;
+  margin-top: .28rem;
+  border-top: 1px solid rgba(215, 173, 92, .11);
+}
+
+.friendly-modal[aria-label='Configurar partida rápida'] .quick-match-post-cta-tools > summary {
+  display: flex;
+  align-items: center;
+  min-height: 44px !important;
+  padding: .5rem .1rem .25rem;
+  color: rgba(224, 201, 158, .72);
+  cursor: pointer;
+}
+
+.friendly-modal[aria-label='Configurar partida rápida'] .quick-match-post-cta-tools .adaptive-manual-link {
+  width: 100%;
+  margin: 0 0 .55rem;
+}
+
+@media (max-width: 520px), (pointer: coarse) and (max-width: 920px) {
+  .friendly-modal[aria-label='Configurar partida rápida'] .friendly-lead {
+    display: none;
+  }
+
+  .friendly-modal[aria-label='Configurar partida rápida'] .matthias-quick-briefing {
+    grid-template-columns: 30px minmax(0,1fr);
+    margin-block: .28rem .45rem;
+    padding-left: .65rem;
+  }
+
+  .friendly-modal[aria-label='Configurar partida rápida'] .matthias-quick-briefing img {
+    width: 28px;
+    height: 28px;
+  }
+
+  .friendly-modal[aria-label='Configurar partida rápida'] .matthias-quick-briefing span {
+    display: none;
+  }
+
+  .friendly-modal[aria-label='Configurar partida rápida'] .matthias-quick-briefing p {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    margin-top: 0;
+  }
+}
