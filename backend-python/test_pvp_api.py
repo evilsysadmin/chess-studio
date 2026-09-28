@@ -616,3 +616,35 @@ def test_accept_rejects_second_concurrent_duel_for_same_player():
     duplicate = as_user(client, "bob", "post", f"/api/pvp/challenges/{second['id']}/accept")
     assert duplicate.status_code == 409
     assert "duelo 1v1 en curso" in duplicate.json()["detail"]
+
+
+def test_ready_activation_survives_roster_cleanup_failure(monkeypatch):
+    client = make_client()
+    for user in ("alice", "bob"):
+        assert as_user(client, user, "post", "/api/pvp/roster").status_code == 200
+
+    challenge = as_user(client, "alice", "post", "/api/pvp/challenges", json={"opponent": "bob"}).json()["challenge"]
+    accepted = as_user(client, "bob", "post", f"/api/pvp/challenges/{challenge['id']}/accept")
+    assert accepted.status_code == 200
+    match = accepted.json()["match"]
+
+    first_ready = as_user(client, "alice", "post", f"/api/pvp/matches/{match['id']}/ready")
+    assert first_ready.status_code == 200
+    assert first_ready.json()["match"]["status"] == "starting"
+
+    async def explode_leave(_username):
+        raise RuntimeError("synthetic roster cleanup failure")
+
+    monkeypatch.setattr(pvp_store, "leave_roster", explode_leave)
+
+    second_ready = as_user(client, "bob", "post", f"/api/pvp/matches/{match['id']}/ready")
+    assert second_ready.status_code == 200
+    payload = second_ready.json()["match"]
+    assert payload["status"] == "active"
+    assert payload["startsAt"]
+    assert payload["youReady"] is True
+    assert payload["opponentReady"] is True
+
+    recovered = as_user(client, "alice", "get", f"/api/pvp/matches/{match['id']}")
+    assert recovered.status_code == 200
+    assert recovered.json()["match"]["status"] == "active"
