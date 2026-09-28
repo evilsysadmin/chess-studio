@@ -633,7 +633,12 @@ def self_test() -> None:
     ):
         assert _ids(classify([chronicles_path])) == ["chronicles"]
 
-    assert all("--max-failures=1" in case["command"] for case in build_matrix(full)["include"])
+    assert all(
+        "--max-failures=1" in case["command"] or case["id"] == "mobile-golden-path"
+        for case in build_matrix(full)["include"]
+    )
+    mobile_golden = next(case for case in build_matrix(full)["include"] if case["id"] == "mobile-golden-path")
+    assert "--max-failures=1" not in mobile_golden["command"]
     chronicles_case = build_matrix(BrowserScope(chronicles=True))["include"][0]
     assert "chronicles-of-matthias.spec.js" in chronicles_case["command"]
     assert "chronicles-of-matthias-tactics.spec.js" in chronicles_case["command"]
