@@ -147,7 +147,7 @@ export default function PvPLobbyModal({
           <div className="pvp-lobby__header-copy">
             <span className="eyebrow">War Room · duelos entre jugadores</span>
             <h2>Elige rival</h2>
-            <p>Ponte disponible, elige a alguien y pulsa Retar. Puedes cerrar esta ventana: seguirás visible y los desafíos llegarán como aviso global.</p>
+            <p>Elige a alguien y pulsa Retar. Si quieres que otros puedan encontrarte y desafiarte primero, activa también la recepción de retos.</p>
           </div>
           <div className="pvp-lobby__header-status" aria-hidden="true">
             <span className={`pvp-lobby__availability${self ? ' is-live' : ''}`}>
@@ -167,17 +167,13 @@ export default function PvPLobbyModal({
 
         {!liveLobby.activeMatch && (
           <ol className="pvp-lobby__flow" aria-label="Cómo jugar 1 contra 1">
-            <li className={self ? 'is-done' : 'is-current'}>
+            <li className={rivalCount > 0 ? 'is-done' : 'is-current'}>
               <b aria-hidden="true">1</b>
-              <span><strong>Ponte disponible</strong><small>{self ? 'Ya estás visible' : 'Activa tu ficha'}</small></span>
-            </li>
-            <li className={!self ? '' : rivalCount > 0 ? 'is-done' : 'is-current'}>
-              <b aria-hidden="true">2</b>
               <span><strong>Elige rival</strong><small>{rivalCount > 0 ? `${rivalCount} ahora mismo` : 'Aparecerán aquí'}</small></span>
             </li>
-            <li className={self && rivalCount > 0 ? 'is-current' : ''}>
-              <b aria-hidden="true">3</b>
-              <span><strong>Pulsa Retar</strong><small>El rival decide si acepta</small></span>
+            <li className={rivalCount > 0 ? 'is-current' : ''}>
+              <b aria-hidden="true">2</b>
+              <span><strong>Pulsa Retar</strong><small>Te activamos automáticamente si hace falta</small></span>
             </li>
           </ol>
         )}
@@ -199,9 +195,9 @@ export default function PvPLobbyModal({
             <span className={`pvp-lobby__presence${self ? ' is-on' : ''}`} aria-hidden="true" />
             <span className="pvp-lobby__identity-mark" aria-hidden="true">♟</span>
             <div>
-              <small>{self ? 'DISPONIBLE PARA RETOS' : 'NO DISPONIBLE'}</small>
-              <strong>{self ? self.username : 'Activa tu ficha para jugar 1 contra 1'}</strong>
-              <span>{self ? 'Visible para otros jugadores · puedes cerrar y seguir jugando' : 'Cuando estés disponible podrás retar y recibir desafíos.'}</span>
+              <small>{self ? 'RECIBIENDO RETOS' : 'RECEPCIÓN DE RETOS DESACTIVADA'}</small>
+              <strong>{self ? self.username : '¿Quieres que otros jugadores puedan retarte primero?'}</strong>
+              <span>{self ? 'Visible para otros jugadores · puedes cerrar y seguir jugando' : 'No hace falta activarlo para retar a alguien: pulsa Retar y listo.'}</span>
             </div>
           </div>
           {self && (
@@ -220,7 +216,7 @@ export default function PvPLobbyModal({
               <button type="button" className="text-action pvp-lobby__leave" disabled={Boolean(busyKey) || Boolean(liveLobby.activeMatch)} onClick={() => run('leave', () => onLeaveRoster ? onLeaveRoster() : pvpApi.leaveRoster(), { refreshAfter: false })}>{busyKey === 'leave' ? 'Saliendo…' : 'Dejar de estar disponible'}</button>
             </div>
           ) : (
-            <button type="button" className="primary-btn pvp-lobby__join" disabled={Boolean(busyKey) || Boolean(liveLobby.activeMatch)} onClick={() => run('join', () => onJoinRoster ? onJoinRoster() : pvpApi.joinRoster())}>{busyKey === 'join' ? 'Activando…' : 'Ponerme disponible'}</button>
+            <button type="button" className="primary-btn pvp-lobby__join" disabled={Boolean(busyKey) || Boolean(liveLobby.activeMatch)} onClick={() => run('join', () => onJoinRoster ? onJoinRoster() : pvpApi.joinRoster())}>{busyKey === 'join' ? 'Activando…' : 'Recibir retos'}</button>
           )}
         </section>
 
@@ -263,7 +259,7 @@ export default function PvPLobbyModal({
                         <button
                           type="button"
                           className="secondary-btn pvp-lobby__challenge-cta"
-                          disabled={!self || Boolean(pending) || coolingDown || Boolean(busyKey) || Boolean(liveLobby.activeMatch)}
+                          disabled={Boolean(pending) || coolingDown || Boolean(busyKey) || Boolean(liveLobby.activeMatch)}
                           title={coolingDown ? cooldownLabel : undefined}
                           aria-label={coolingDown ? `Espera para retar a ${row.username}. ${cooldownLabel}` : undefined}
                           onClick={() => run(`challenge:${row.username}`, () => onChallenge ? onChallenge(row.username) : pvpApi.challenge(row.username))}
