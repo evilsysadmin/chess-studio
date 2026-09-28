@@ -7,7 +7,7 @@ const LOCAL_GPU_CAPTURE = process.env.HOME_MATTHIAS_LOCAL_GPU === '1';
 const LOCAL_SWIFTSHADER_CAPTURE = process.env.HOME_MATTHIAS_LOCAL_SWIFTSHADER === '1';
 const CAPTURE_BASE_URL = process.env.HOME_MATTHIAS_BASE_URL;
 const FIXED_LOCAL_DATE = { year:2026, monthIndex:8, day:14, minute:0, second:0 };
-const CAPTURES = [
+const ALL_CAPTURES = [
   { label:'desktop-watch-post-1440x900', width:1440, height:900, hour:12, profile:'speak', clip:'Speak', station:'watch-post', support:'foreground-rug', supportBottomRange:[.92, 1.08], avatar:/lunch-bocata/i, keepGreeting:true, expectCopy:false },
   { label:'desktop-1440x900', width:1440, height:900, hour:20, profile:'bite', clip:'Bite', station:'dining-table', support:'foreground-rug', supportBottomRange:[.82, .9], avatar:/lunch-bocata/i, minStageTopRatio:.55, expectCopy:false },
   { label:'desktop-coffee-1440x900', width:1440, height:900, hour:6, profile:'sip', clip:'Sip', station:'refreshment-table', support:'foreground-rug', supportBottomRange:[.82, .9], avatar:/morning-coffee/i, minStageTopRatio:.55, expectCopy:false },
@@ -20,6 +20,12 @@ const CAPTURES = [
   // but validate the new compact placement rather than the old landscape-derived one.
   { label:'android-390x844', width:390, height:844, hour:20, profile:'bite', clip:'Bite', station:'dining-table', support:'foreground-rug', supportBottomRange:[.88, .96], avatar:/lunch-bocata/i, hasTouch:true, expectCopy:true },
 ];
+const CAPTURES = process.env.HOME_MATTHIAS_CAPTURE_SCOPE === 'canonical-model'
+  ? ALL_CAPTURES.filter(({ label }) => (
+    label === 'desktop-chess-chair-1440x900' || label === 'android-390x844'
+  ))
+  : ALL_CAPTURES;
+
 
 async function freezeClockAtRoutine(context, hour) {
   await context.addInitScript((fixed) => {
