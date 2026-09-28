@@ -162,3 +162,37 @@ body:has([data-board3d-war-room="true"]) .game-autopsy {
     animation: none !important;
   }
 }
+
+
+/* Mobile debrief: one dominant decision. The direct report shortcut remains
+ * visible on desktop, while compact screens move it behind Más opciones so the
+ * player is never presented with three equally loud exits at once. */
+.endgame-review-btn-more {
+  display: none;
+}
+
+@media (max-width: 820px) {
+  .endgame-review-btn-direct {
+    display: none;
+  }
+
+  .endgame-review-btn-more {
+    display: block;
+    width: 100%;
+    margin-top: .6rem;
+  }
+
+  .endgame-dialog > .primary-btn,
+  .endgame-dialog > .secondary-btn[aria-expanded] {
+    width: 100%;
+  }
+
+  .endgame-dialog .endgame-next-detail {
+    margin: .38rem 0 .18rem;
+    line-height: 1.35;
+  }
+
+  .endgame-dialog .endgame-editorial-brief {
+    margin-block: .48rem;
+  }
+}
