@@ -143,13 +143,17 @@ def _clock_snapshot(match: dict, now: datetime | None = None) -> dict:
     white_ms = max(0, int(match.get("white_clock_ms", PVP_INITIAL_MS)))
     black_ms = max(0, int(match.get("black_clock_ms", PVP_INITIAL_MS)))
     started = match.get("turn_started_at")
+    normalized_started = _as_utc(started) if isinstance(started, datetime) else None
+    normalized_stamp = _as_utc(stamp)
     running = (
         match.get("turn", "w")
-        if match.get("status") == "active" and isinstance(started, datetime) and started <= stamp
+        if match.get("status") == "active"
+        and normalized_started is not None
+        and normalized_started <= normalized_stamp
         else None
     )
-    if running in {"w", "b"} and isinstance(started, datetime):
-        elapsed_ms = max(0, int((stamp - started).total_seconds() * 1000))
+    if running in {"w", "b"} and normalized_started is not None:
+        elapsed_ms = max(0, int((normalized_stamp - normalized_started).total_seconds() * 1000))
         if running == "w":
             white_ms = max(0, white_ms - elapsed_ms)
         else:
