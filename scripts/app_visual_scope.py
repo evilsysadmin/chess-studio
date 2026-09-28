@@ -27,6 +27,7 @@ NONVISUAL_FRONTEND_PATHS = {
     "frontend/src/gamesessiondescriptor.js",
     "frontend/src/lablaunchintent.js",
     "frontend/src/usepuzzlelaunchflow.js",
+    "frontend/src/soundfx.js",
 }
 
 QUICK_MATCH_VISUAL_SURFACES = {
@@ -566,6 +567,9 @@ def self_test() -> None:
     puzzle_launch = classify(["frontend/src/usePuzzleLaunchFlow.js"])
     assert puzzle_launch.capture_groups == "none"
     assert not puzzle_launch.hans and not puzzle_launch.chesscom
+    sound_fx = classify(["frontend/src/soundFx.js"])
+    assert sound_fx.capture_groups == "none"
+    assert not sound_fx.hans and not sound_fx.chesscom
     quality_scope = classify(["scripts/quality_scope.py"])
     assert quality_scope.capture_groups == "none"
     assert not quality_scope.hans and not quality_scope.chesscom
