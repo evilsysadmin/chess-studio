@@ -171,6 +171,7 @@ def _csv(values: set[str] | None) -> str:
 def _e2e_producer(name: str) -> set[str] | None:
     exact = {
         "app-visual-artifact.spec.js": {"home-base"},
+        "home-first-run-tour.spec.js": set(),
         "matthias-home-visual-artifact.spec.js": {"home-matthias"},
         "matthias-home-visual-critical.spec.js": {"home-matthias"},
         "home-3d-focus-visual.spec.js": {"home-focus"},
