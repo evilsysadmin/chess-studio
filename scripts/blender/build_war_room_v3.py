@@ -325,21 +325,21 @@ def build_celestial_window(static, palette):
 
 
 def build_round_command_table(static, palette):
-    base.cylinder("WR3_OBS_table_drum", (0, 0, 0.47), 4.88, 0.62,
+    base.cylinder("WR3_OBS_table_drum", (0, 0, 0.47), 5.02, 0.62,
                   palette["walnut_dark"], static, vertices=96)
-    base.cylinder("WR3_OBS_table_leather_top", (0, 0, 0.84), 4.76, 0.10,
+    base.cylinder("WR3_OBS_table_leather_top", (0, 0, 0.84), 4.90, 0.10,
                   palette["green_leather"], static, vertices=96)
-    base.torus("WR3_OBS_table_brass_edge", (0, 0, 0.905), 4.76, 0.052,
+    base.torus("WR3_OBS_table_brass_edge", (0, 0, 0.905), 4.90, 0.052,
                palette["brass"], static)
-    base.torus("WR3_OBS_table_copper_inlay", (0, 0, 0.925), 4.64, 0.020,
+    base.torus("WR3_OBS_table_copper_inlay", (0, 0, 0.925), 4.78, 0.020,
                palette["copper"], static)
-    base.cube("WR3_OBS_board_cradle", (0, 0, 0.98), (4.62, 4.62, 0.085),
+    base.cube("WR3_OBS_board_cradle", (0, 0, 0.98), (4.78, 4.78, 0.085),
               palette["walnut"], static, bevel=0.14)
     for side in (-1, 1):
-        base.cube(f"WR3_OBS_board_brass_x_{side}", (0, side * 4.49, 1.075),
-                  (4.42, 0.035, 0.035), palette["brass"], static, bevel=0.018)
-        base.cube(f"WR3_OBS_board_brass_y_{side}", (side * 4.49, 0, 1.075),
-                  (0.035, 4.42, 0.035), palette["brass"], static, bevel=0.018)
+        base.cube(f"WR3_OBS_board_brass_x_{side}", (0, side * 4.65, 1.075),
+                  (4.58, 0.035, 0.035), palette["brass"], static, bevel=0.018)
+        base.cube(f"WR3_OBS_board_brass_y_{side}", (side * 4.65, 0, 1.075),
+                  (0.035, 4.58, 0.035), palette["brass"], static, bevel=0.018)
     base.cube("WR3_OBS_table_cartouche", (0, -5.17, 0.55), (0.78, 0.055, 0.22),
               palette["brass_dark"], static, bevel=0.18)
     base.torus("WR3_OBS_table_cartouche_ring", (0, -5.24, 0.56), 0.16, 0.032,
@@ -408,55 +408,52 @@ def build_single_stove(static, palette):
 
 
 def build_observatory_telescope(static, palette):
-    """A single legible instrument replaces the former desk-and-scroll clutter."""
-    hub = Vector((4.82, 4.26, 1.48))
-    base.sphere("WR3_OBS_telescope_mount", hub, 0.28, palette["brass_dark"], static,
-                scale=(1.12, 1.12, 0.92))
-    base.cylinder("WR3_OBS_telescope_mount_ring", hub, 0.43, 0.10,
+    """A restrained premium telescope: legible, but secondary to the board and oculus."""
+    hub = Vector((4.82, 4.46, 1.05))
+    base.sphere("WR3_OBS_telescope_mount", hub, 0.16, palette["brass_dark"], static,
+                scale=(1.08, 1.08, 0.90))
+    base.cylinder("WR3_OBS_telescope_mount_ring", hub, 0.25, 0.060,
                   palette["copper"], static, vertices=48)
 
-    tripod_feet = ((3.96, 3.42, 0.16), (5.83, 3.52, 0.16), (5.02, 5.12, 0.16))
+    tripod_feet = ((4.34, 3.96, 0.14), (5.30, 4.02, 0.14), (4.92, 4.86, 0.14))
     for index, foot in enumerate(tripod_feet):
-        cylinder_between(f"WR3_OBS_telescope_tripod_{index}", hub, foot, 0.085,
-                         palette["brass_dark"], static, vertices=28)
-        base.cylinder(f"WR3_OBS_telescope_foot_{index}", foot, 0.19, 0.075,
-                      palette["walnut_dark"], static, vertices=36)
+        cylinder_between(f"WR3_OBS_telescope_tripod_{index}", hub, foot, 0.048,
+                         palette["brass_dark"], static, vertices=24)
+        base.cylinder(f"WR3_OBS_telescope_foot_{index}", foot, 0.105, 0.050,
+                      palette["walnut_dark"], static, vertices=32)
 
-    axis_start = Vector((4.02, 3.92, 2.18))
-    axis_end = Vector((5.78, 5.18, 3.36))
+    axis_start = Vector((4.42, 4.24, 1.48))
+    axis_end = Vector((5.30, 4.90, 2.08))
     axis = (axis_end - axis_start).normalized()
-    cylinder_between("WR3_OBS_telescope_tube", axis_start, axis_end, 0.245,
-                     palette["brass"], static, vertices=56)
-    cylinder_between("WR3_OBS_telescope_patina", axis_start + axis * 0.40,
-                     axis_end - axis * 0.43, 0.262, palette["teal"], static, vertices=56)
-    cylinder_between("WR3_OBS_telescope_front_collar", axis_end - axis * 0.18,
-                     axis_end + axis * 0.08, 0.315, palette["copper"], static, vertices=56)
-    cylinder_between("WR3_OBS_telescope_lens", axis_end + axis * 0.081,
-                     axis_end + axis * 0.105, 0.255, palette["night"], static, vertices=56)
-    cylinder_between("WR3_OBS_telescope_eyepiece", axis_start - axis * 0.34,
-                     axis_start + axis * 0.02, 0.115, palette["brass_dark"], static, vertices=40)
-    cylinder_between("WR3_OBS_telescope_eyepiece_collar", axis_start - axis * 0.29,
-                     axis_start - axis * 0.23, 0.145, palette["brass"], static, vertices=40)
-    cylinder_between("WR3_OBS_telescope_focus_ring", axis_start - axis * 0.05,
-                     axis_start + axis * 0.08, 0.285, palette["copper"], static, vertices=48)
-    cylinder_between("WR3_OBS_telescope_dew_shield", axis_end - axis * 0.02,
-                     axis_end + axis * 0.28, 0.345, palette["brass_dark"], static, vertices=56)
-    base.torus("WR3_OBS_telescope_mount_trim", hub + Vector((0, 0, 0.02)),
-               0.47, 0.035, palette["brass"], static)
+    cylinder_between("WR3_OBS_telescope_tube", axis_start, axis_end, 0.125,
+                     palette["brass"], static, vertices=48)
+    cylinder_between("WR3_OBS_telescope_patina", axis_start + axis * 0.25,
+                     axis_end - axis * 0.29, 0.138, palette["teal"], static, vertices=48)
+    cylinder_between("WR3_OBS_telescope_front_collar", axis_end - axis * 0.12,
+                     axis_end + axis * 0.055, 0.165, palette["copper"], static, vertices=48)
+    cylinder_between("WR3_OBS_telescope_lens", axis_end + axis * 0.056,
+                     axis_end + axis * 0.075, 0.132, palette["night"], static, vertices=48)
+    cylinder_between("WR3_OBS_telescope_eyepiece", axis_start - axis * 0.22,
+                     axis_start + axis * 0.015, 0.062, palette["brass_dark"], static, vertices=36)
+    cylinder_between("WR3_OBS_telescope_focus_ring", axis_start - axis * 0.035,
+                     axis_start + axis * 0.055, 0.148, palette["copper"], static, vertices=40)
+    cylinder_between("WR3_OBS_telescope_dew_shield", axis_end - axis * 0.015,
+                     axis_end + axis * 0.18, 0.176, palette["brass_dark"], static, vertices=48)
+    base.torus("WR3_OBS_telescope_mount_trim", hub + Vector((0, 0, 0.015)),
+               0.27, 0.021, palette["brass"], static)
 
-    yoke_left = hub + Vector((-0.44, 0.0, 0.35))
-    yoke_right = hub + Vector((0.44, 0.0, 0.35))
-    cylinder_between("WR3_OBS_telescope_yoke", yoke_left, yoke_right, 0.10,
-                     palette["brass"], static, vertices=32)
+    yoke_left = hub + Vector((-0.25, 0.0, 0.20))
+    yoke_right = hub + Vector((0.25, 0.0, 0.20))
+    cylinder_between("WR3_OBS_telescope_yoke", yoke_left, yoke_right, 0.056,
+                     palette["brass"], static, vertices=28)
     for side, point in (("left", yoke_left), ("right", yoke_right)):
-        base.sphere(f"WR3_OBS_telescope_yoke_cap_{side}", point, 0.16,
+        base.sphere(f"WR3_OBS_telescope_yoke_cap_{side}", point, 0.085,
                     palette["copper"], static)
-
 
 def build_lounge_corner(static, palette):
     """Compact club chair and side table from the canonical mock."""
     x, y = -6.78, -0.10
-    chair_yaw = math.radians(-24)
+    chair_yaw = math.radians(91)
 
     # Classic club-chair silhouette: padded cuboids read better at game camera
     # distance than the previous bulbous sphere-based back and arms.
@@ -471,7 +468,7 @@ def build_lounge_corner(static, palette):
     back.rotation_euler.x = math.radians(-7)
     back_pad = base.cube(
         "WR3_OBS_chair_back_pad", (x, y + 0.29, 1.34), (0.57, 0.11, 0.52),
-        palette["leather"], static, bevel=0.22,
+        palette["green_leather"], static, bevel=0.22,
     )
     back_pad.rotation_euler.x = math.radians(-7)
 
@@ -504,9 +501,14 @@ def build_lounge_corner(static, palette):
             )
 
     base.cube(
-        "WR3_OBS_chair_cushion", (x, y - 0.07, 0.82), (0.57, 0.47, 0.11),
-        palette["green_leather"], static, bevel=0.20,
+        "WR3_OBS_chair_cushion", (x, y - 0.07, 0.82), (0.61, 0.49, 0.13),
+        palette["green_leather"], static, bevel=0.22,
     )
+    for side in (-1, 1):
+        base.cube(
+            f"WR3_OBS_chair_inner_arm_{side}", (x + side * 0.60, y - 0.02, 0.96),
+            (0.055, 0.43, 0.13), palette["green_leather"], static, bevel=0.10,
+        )
     # A restrained brass foot rail and buttoning make the lounge read as
     # bespoke observatory furniture at the game camera distance.
     base.cube(
@@ -548,86 +550,9 @@ def build_lounge_corner(static, palette):
               palette["book_red"], static, bevel=0.018)
 
 
-def build_bookshelf(static, palette):
-    """Narrow cabinet-style shelf for chess treatises."""
-    # New canonical mock: keep the doorway side airy and anchor the library
-    # on the rear-left wall, opposite the telescope.
-    x, y = -4.55, 5.28
-
-    base.cube(
-        "WR3_OBS_bookshelf_frame", (x, y + 0.04, 1.72), (0.88, 0.085, 1.43),
-        palette["walnut"], static, bevel=0.045,
-    )
-    for side in (-1, 1):
-        base.cube(
-            f"WR3_OBS_bookshelf_post_{side}", (x + side * 0.91, y - 0.16, 1.71),
-            (0.09, 0.28, 1.56), palette["walnut_dark"], static, bevel=0.050,
-        )
-    base.cube(
-        "WR3_OBS_bookshelf_crown", (x, y - 0.15, 3.30), (1.03, 0.34, 0.11),
-        palette["walnut_dark"], static, bevel=0.08,
-    )
-    base.cube(
-        "WR3_OBS_bookshelf_crown_brass", (x, y - 0.50, 3.30), (0.86, 0.025, 0.035),
-        palette["brass"], static, bevel=0.016,
-    )
-    base.cube(
-        "WR3_OBS_bookshelf_back_panel", (x, y + 0.11, 1.72), (0.78, 0.045, 1.32),
-        palette["walnut_dark"], static, bevel=0.035,
-    )
-    base.cube(
-        "WR3_OBS_bookshelf_plinth", (x, y - 0.15, 0.17), (1.02, 0.36, 0.13),
-        palette["walnut_dark"], static, bevel=0.07,
-    )
-
-    shelf_levels = (0.50, 1.08, 1.66, 2.24, 2.82)
-    for row, z in enumerate(shelf_levels):
-        base.cube(
-            f"WR3_OBS_bookshelf_shelf_{row}", (x, y - 0.23, z),
-            (0.90, 0.32, 0.045), palette["walnut"], static, bevel=0.022,
-        )
-        # A hairline of aged brass catches the firelight on the cabinet without
-        # turning the bookshelf into another focal point.
-        base.cube(
-            f"WR3_OBS_bookshelf_shelf_trim_{row}", (x, y - 0.565, z + 0.018),
-            (0.82, 0.018, 0.018), palette["brass_dark"], static, bevel=0.009,
-        )
-
-    book_index = 0
-    for row, z in enumerate((0.79, 1.37, 1.95, 2.53)):
-        for col in range(5):
-            bx = x - 0.60 + col * 0.30
-            height = 0.20 + 0.032 * ((row + col) % 3)
-            material = (
-                palette["book_red"], palette["book_blue"], palette["green_leather"]
-            )[(row + col) % 3]
-            book = base.cube(
-                f"WR3_OBS_book_{book_index}", (bx, y - 0.55, z),
-                (0.095, 0.070, height), material, static, bevel=0.016,
-            )
-            book.rotation_euler.y = math.radians((-5, 0, 4, -3, 2)[col])
-            book_index += 1
-
-    for side in (-1, 1):
-        base.cube(
-            f"WR3_OBS_bookshelf_bookend_{side}",
-            (x + side * 0.74, y - 0.56, 1.38),
-            (0.055, 0.09, 0.22), palette["brass_dark"], static, bevel=0.025,
-        )
-
-    base.cube(
-        "WR3_OBS_bookshelf_top_cloth", (x - 0.26, y - 0.27, 3.44),
-        (0.30, 0.16, 0.030), palette["green_leather"], static, bevel=0.024,
-    )
-    base.sphere(
-        "WR3_OBS_bookshelf_knight_bust", (x + 0.48, y - 0.38, 3.56),
-        0.18, palette["ivory"], static, scale=(0.72, 0.52, 1.15),
-    )
-
-
 def build_celestial_globe(static, palette):
     """Blue navigation globe on the compact walnut console from the canonical mock."""
-    x, y = 6.00, 2.72
+    x, y = 6.48, -0.95
     base.cube(
         "WR3_OBS_globe_console_body", (x, y, 0.54), (0.70, 0.32, 0.40),
         palette["walnut_dark"], static, bevel=0.065,
@@ -826,7 +751,6 @@ def apply_v3_identity():
     build_single_stove(static, palette)
     build_observatory_telescope(static, palette)
     build_lounge_corner(static, palette)
-    build_bookshelf(static, palette)
     build_celestial_globe(static, palette)
     build_tower_entry(static, palette)
     build_wall_lanterns(static, palette)
@@ -856,7 +780,6 @@ def validate_v3():
         "WR3_OBS_stove_flame_body",
         "WR3_OBS_telescope_tube",
         "WR3_OBS_chair_seat",
-        "WR3_OBS_bookshelf_frame",
         "WR3_OBS_globe_sphere",
         "WR3_OBS_entry_door",
         "WR3_OBS_entry_rug",
