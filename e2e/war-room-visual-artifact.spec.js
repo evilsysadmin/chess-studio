@@ -459,6 +459,7 @@ async function openCanonicalWarRoom(page, { variant = 'classic' } = {}) {
   await mockApi(page, {
     profileSeed: {
       ...SEEN_WAR_ROOM_TUTORIAL_PROFILE,
+      [WAR_ROOM_VARIANT_STORAGE_KEY]: variant,
       'matthias.onboarded': '2',
       'chess-study-home-guide-dismissed-v1': '1',
     },
