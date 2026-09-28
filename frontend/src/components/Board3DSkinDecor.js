@@ -331,7 +331,7 @@ function applyOfficerDirectionalIvoryBodyFinish(material) {
   material.roughness = THREE.MathUtils.clamp(material.roughness ?? 0.78, 0.62, 0.68);
   material.clearcoat = THREE.MathUtils.clamp(material.clearcoat ?? 0.2, 0.22, 0.26);
   material.clearcoatRoughness = THREE.MathUtils.clamp(material.clearcoatRoughness ?? 0.48, 0.4, 0.46);
-  material.specularIntensity = THREE.MathUtils.clamp(material.specularIntensity ?? 0.24, 0.32, 0.38);
+  material.specularIntensity = THREE.MathUtils.clamp(material.specularIntensity ?? 0.34, 0.36, 0.38);
   material.envMapIntensity = 0;
   material.sheen = THREE.MathUtils.clamp(material.sheen ?? 0.02, 0.02, 0.03);
   material.sheenRoughness = THREE.MathUtils.clamp(material.sheenRoughness ?? 0.72, 0.66, 0.76);
