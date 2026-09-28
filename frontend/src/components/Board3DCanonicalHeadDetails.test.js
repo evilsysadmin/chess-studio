@@ -40,15 +40,17 @@ describe('War Room canonical rook and knight head details', () => {
     expect(crown).toHaveLength(9);
     expect(queen.userData.blackQueenOpaqueCrownCount).toBe(9);
     for (const mesh of crown) {
-      expect(mesh.userData.blackQueenOpaqueCrown).toBe('solid-v1');
+      expect(mesh.userData.blackQueenOpaqueCrown).toBe('solid-v2');
       expect(mesh.material.transparent).toBe(false);
       expect(mesh.material.opacity).toBe(1);
       expect(mesh.material.transmission ?? 0).toBe(0);
       expect(mesh.material.thickness ?? 0).toBe(0);
       expect(mesh.material.depthWrite).toBe(true);
       expect(mesh.material.depthTest).toBe(true);
-      expect(mesh.material.envMapIntensity).toBeLessThanOrEqual(0.62);
-      expect(mesh.material.roughness).toBeGreaterThanOrEqual(0.48);
+      expect(mesh.material.envMapIntensity).toBe(0);
+      expect(mesh.material.specularIntensity).toBeLessThanOrEqual(0.24);
+      expect(mesh.material.clearcoat).toBeLessThanOrEqual(0.18);
+      expect(mesh.material.roughness).toBeGreaterThanOrEqual(0.72);
     }
 
     disposeObject(queen);
