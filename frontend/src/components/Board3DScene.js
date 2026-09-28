@@ -231,7 +231,16 @@ export function fitBoardCamera(camera, width, height, whiteSide, { profile: requ
   const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * aspect);
   const limitingFov = Math.min(verticalFov, horizontalFov);
   const desktopImmersiveScale = immersive && !mobileProfile && requestedProfile !== 'classroom' ? 0.91 : 1;
-  const rawDistance = (profile.halfSpan / Math.tan(limitingFov / 2)) * profile.padding * desktopImmersiveScale;
+  // Matching the steeper mobile play pitch reduces the vertical room captured by
+  // the same long-lens desktop distance. Compensate with distance only: this keeps
+  // the approved pitch exact while preserving both the architectural cap and the
+  // near board apron. In default immersive mode 1.115 * 0.91 ~= 1.015, so board
+  // scale stays effectively unchanged from the accepted immersive framing.
+  const sharedPitchDistanceScale = !mobileProfile && requestedProfile !== 'classroom' ? 1.115 : 1;
+  const rawDistance = (profile.halfSpan / Math.tan(limitingFov / 2))
+    * profile.padding
+    * desktopImmersiveScale
+    * sharedPitchDistanceScale;
   // The historical profile.maxDistance was tuned for a 40° lens. Keeping that
   // cap with a long lens zooms/crops instead of moving the camera back, which
   // defeats the whole perspective-parity fix. Mobile retains its calibrated
