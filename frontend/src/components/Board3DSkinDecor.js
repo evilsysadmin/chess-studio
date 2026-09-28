@@ -328,7 +328,7 @@ function applyOfficerDirectionalIvoryBodyFinish(material) {
   // Keep exactly the canonical ivory albedo and separate the back rank with
   // surface response instead. A moderately tighter direct-light lobe gives the
   // taller silhouettes readable modelling without turning them glossy or white-hot.
-  material.roughness = THREE.MathUtils.clamp(material.roughness ?? 0.78, 0.62, 0.68);
+  material.roughness = THREE.MathUtils.clamp((material.roughness ?? 0.78) - 0.04, 0.62, 0.64);
   material.clearcoat = THREE.MathUtils.clamp(material.clearcoat ?? 0.2, 0.22, 0.26);
   material.clearcoatRoughness = THREE.MathUtils.clamp(material.clearcoatRoughness ?? 0.48, 0.4, 0.46);
   material.specularIntensity = THREE.MathUtils.clamp(material.specularIntensity ?? 0.34, 0.36, 0.38);

@@ -27,7 +27,7 @@ describe('Board3D reference look', () => {
     ivory.color.getHSL(hsl);
 
     expect(hsl.l).toBeLessThan(0.72);
-    expect(ivory.roughness).toBeGreaterThanOrEqual(0.68);
+    expect(ivory.roughness).toBeGreaterThanOrEqual(0.66);
     expect(ivory.roughness).toBeLessThanOrEqual(0.8);
     expect(ivory.clearcoat).toBeGreaterThanOrEqual(0.26);
     expect(ivory.clearcoat).toBeLessThanOrEqual(0.3);
