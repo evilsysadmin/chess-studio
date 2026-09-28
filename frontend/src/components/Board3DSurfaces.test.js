@@ -214,6 +214,8 @@ describe('Board3D cinematic framing', () => {
     expect(wide.halfSpan).toBeLessThan(compact.halfSpan);
     expect(wide.padding).toBeLessThan(compact.padding);
     expect(wide.cameraY).toBeLessThan(compact.cameraY);
+    expect(wide.cameraY / wide.cameraZ).toBeGreaterThan(0.7);
+    expect(wide.cameraY / wide.cameraZ).toBeLessThan(0.75);
     expect(wide.maxDistance).toBeLessThan(compact.maxDistance);
     expect(wide.targetZ).toBeLessThan(0);
     expect(compact.targetZ).toBeLessThanOrEqual(0);
