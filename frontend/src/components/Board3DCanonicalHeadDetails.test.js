@@ -32,6 +32,28 @@ describe('War Room canonical rook and knight head details', () => {
     disposeObject(knight);
   });
 
+
+  it('mantiene la corona de la reina negra realmente opaca y sin efecto cristal', () => {
+    const queen = buildPiece('q', 'b', 'studio', false);
+    const crown = meshesBy(queen, (mesh) => ['crown-orb', 'finial'].includes(mesh.userData?.queenPart));
+
+    expect(crown).toHaveLength(9);
+    expect(queen.userData.blackQueenOpaqueCrownCount).toBe(9);
+    for (const mesh of crown) {
+      expect(mesh.userData.blackQueenOpaqueCrown).toBe('solid-v1');
+      expect(mesh.material.transparent).toBe(false);
+      expect(mesh.material.opacity).toBe(1);
+      expect(mesh.material.transmission ?? 0).toBe(0);
+      expect(mesh.material.thickness ?? 0).toBe(0);
+      expect(mesh.material.depthWrite).toBe(true);
+      expect(mesh.material.depthTest).toBe(true);
+      expect(mesh.material.envMapIntensity).toBeLessThanOrEqual(0.62);
+      expect(mesh.material.roughness).toBeGreaterThanOrEqual(0.48);
+    }
+
+    disposeObject(queen);
+  });
+
   it('oscurece sólo las seis almenas blancas de la torre y mantiene la corona sin remate', () => {
     const rook = buildPiece('r', 'w', 'studio', false);
     const blackRook = buildPiece('r', 'b', 'studio', false);
