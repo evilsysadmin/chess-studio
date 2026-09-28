@@ -52,7 +52,7 @@ def build_v3_palette():
         ),
         "stone_light": base.material(
             "WR3_MAT_pale_travertine", (0.56, 0.395, 0.215, 1),
-            rough=0.67, coat=0.030, texture="stone", scale=4.0, bump=0.050, weather=True,
+            rough=0.61, coat=0.050, texture="stone", scale=3.6, bump=0.042, weather=True,
         ),
         "slate": base.material(
             "WR3_MAT_radial_slate", (0.030, 0.070, 0.078, 1),
@@ -60,7 +60,7 @@ def build_v3_palette():
         ),
         "green_marble": base.material(
             "WR3_MAT_green_marble", (0.010, 0.082, 0.052, 1),
-            rough=0.48, coat=0.12, texture="stone", scale=4.0, bump=0.038, weather=True,
+            rough=0.40, coat=0.18, texture="stone", scale=3.5, bump=0.030, weather=True,
         ),
         "rug": base.material(
             "WR3_MAT_room_rug", (0.004, 0.070, 0.046, 1),
@@ -88,27 +88,27 @@ def build_v3_palette():
         ),
         "brass": base.material(
             "WR3_MAT_sunlit_brass", (0.66, 0.305, 0.052, 1),
-            metal=0.94, rough=0.23, coat=0.22, texture="metal", scale=27, bump=0.016,
+            metal=0.94, rough=0.20, coat=0.28, texture="metal", scale=31, bump=0.012,
         ),
         "brass_dark": base.material(
             "WR3_MAT_aged_brass", (0.22, 0.086, 0.017, 1),
-            metal=0.92, rough=0.34, coat=0.14, texture="metal", scale=30, bump=0.016,
+            metal=0.92, rough=0.31, coat=0.18, texture="metal", scale=33, bump=0.013,
         ),
         "walnut": base.material(
             "WR3_MAT_chart_walnut", (0.128, 0.044, 0.014, 1),
-            rough=0.38, coat=0.27, texture="wood", scale=3.0, bump=0.048,
+            rough=0.34, coat=0.32, texture="wood", scale=2.5, bump=0.056,
         ),
         "walnut_dark": base.material(
             "WR3_MAT_chart_walnut_dark", (0.044, 0.014, 0.006, 1),
-            rough=0.46, coat=0.17, texture="wood", scale=2.9, bump=0.040,
+            rough=0.42, coat=0.22, texture="wood", scale=2.4, bump=0.048,
         ),
         "leather": base.material(
             "WR3_MAT_saddle_leather", (0.125, 0.030, 0.012, 1),
-            rough=0.44, coat=0.20, sheen=0.11, texture="leather", scale=48, bump=0.050,
+            rough=0.39, coat=0.24, sheen=0.15, texture="leather", scale=54, bump=0.044,
         ),
         "green_leather": base.material(
             "WR3_MAT_chart_green_leather", (0.007, 0.105, 0.050, 1),
-            rough=0.42, coat=0.23, sheen=0.12, texture="leather", scale=50, bump=0.052,
+            rough=0.37, coat=0.28, sheen=0.17, texture="leather", scale=56, bump=0.045,
         ),
         "night": base.material(
             "WR3_MAT_celestial_blue", (0.002, 0.018, 0.120, 1),
@@ -717,16 +717,16 @@ def build_lighting(static):
     scene = bpy.context.scene
     scene["war_room_variant"] = "v3-celestial-observatory"
     scene["war_room_visual_canon"] = "war-room-v3-canonical-8e1e6946-2026-09-25"
-    scene.view_settings.exposure = 0.24
+    scene.view_settings.exposure = 0.20
 
-    key = base.light("WR3_LIGHT_key", "AREA", (-4.8, -3.8, 8.3), 620.0,
-                     (1.0, 0.66, 0.36), static, size=6.4)
+    key = base.light("WR3_LIGHT_key", "AREA", (-4.8, -3.8, 8.3), 585.0,
+                     (1.0, 0.62, 0.32), static, size=6.1)
     base.look_at(key, (0, 0.5, 1.0))
-    fill = base.light("WR3_LIGHT_fill", "AREA", (6.4, -2.4, 6.3), 425.0,
-                      (0.20, 0.52, 0.92), static, size=6.2)
+    fill = base.light("WR3_LIGHT_fill", "AREA", (6.6, -2.6, 6.6), 500.0,
+                      (0.15, 0.42, 1.00), static, size=6.0)
     base.look_at(fill, (0.4, 0.6, 1.5))
-    top = base.light("WR3_LIGHT_top", "AREA", (0, 1.4, 8.7), 280.0,
-                     (0.92, 0.74, 0.48), static, size=5.2)
+    top = base.light("WR3_LIGHT_top", "AREA", (0, 1.4, 8.7), 245.0,
+                     (0.90, 0.70, 0.44), static, size=4.8)
     base.look_at(top, (0, 0.4, 0.8))
 
 
