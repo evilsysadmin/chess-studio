@@ -149,10 +149,17 @@ export function usePvpAppFlow({ view, replaceView }) {
   }, [handoffMatch?.id, handoffMatch?.status, replaceView]);
 
   const exitMatch = useCallback(() => {
+    // The roster snapshot can still carry this duel as active for one render
+    // after a terminal result. Suppress that stale id until the lobby refresh
+    // observes activeMatch=null, otherwise leaving the debrief immediately
+    // re-enters the same War Room.
+    if (match?.id && match.status !== 'active' && match.status !== 'starting') {
+      terminalHandoffIdRef.current = match.id;
+    }
     setMatch(null);
     setHandoffMatch(null);
     replaceView('menu');
-  }, [replaceView]);
+  }, [match?.id, match?.status, replaceView]);
 
   const menuStatus = useMemo(() => ({
     enrolled: presence.enrolled,
