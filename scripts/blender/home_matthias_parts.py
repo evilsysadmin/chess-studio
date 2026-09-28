@@ -186,8 +186,8 @@ def build_rig():
     bone('upper_arm.R',(.34,-.30,.92),(.47,-.38,.80),'spine'); bone('forearm.R',(.47,-.38,.80),(.46,-.46,.67),'upper_arm.R')
     # v21: Matthias reads as a small humanoid *inside* the pawn shell. Legs
     # emerge from beneath the plinth instead of being pasted onto its front.
-    bone('upper_leg.L',(-.20,-.02,.10),(-.22,-.03,-.02),'root'); bone('lower_leg.L',(-.22,-.03,-.02),(-.21,-.05,-.15),'upper_leg.L')
-    bone('upper_leg.R',(.20,-.02,.10),(.22,-.03,-.02),'root'); bone('lower_leg.R',(.22,-.03,-.02),(.21,-.05,-.15),'upper_leg.R')
+    bone('upper_leg.L',(-.24,-.03,.10),(-.27,-.055,-.055),'root'); bone('lower_leg.L',(-.27,-.055,-.055),(-.275,-.085,-.255),'upper_leg.L')
+    bone('upper_leg.R',(.24,-.03,.10),(.27,-.055,-.055),'root'); bone('lower_leg.R',(.27,-.055,-.055),(.275,-.085,-.255),'upper_leg.R')
     bone('prop_book',(0,-.30,.82),(0,-.30,1.00),'spine'); bone('prop_cup',(.27,-.28,1.12),(.27,-.28,1.24),'spine'); bone('prop_pen',(.14,-.31,.84),(.14,-.31,.97),'spine'); bone('prop_bite',(-.25,-.29,1.12),(-.25,-.29,1.24),'spine')
     bpy.ops.object.mode_set(mode='POSE')
     for item in rig.pose.bones: item.rotation_mode='XYZ'
@@ -204,7 +204,7 @@ def build_character():
     ivory=mat('classic warm ivory',(.70,.60,.44),.60,.00); ivory_hi=mat('classic ivory highlight',(.80,.69,.52),.56,.00)
     navy=mat('classic midnight pawn',(.0025,.0035,.0055),.38,.12); navy_soft=mat('classic navy cloth',(.006,.008,.012),.48,.04)
     leather=mat('classic black leather',(.006,.004,.003),.46,.05); brass=mat('classic aged brass',(.50,.27,.055),.34,.82); cap_red=mat('classic cap oxblood band',(.075,.012,.009),.44,.02); black=mat('classic brow eye mouth',(.0015,.002,.003),.56); paper=mat('aged dossier paper',(.42,.30,.16),.88); collar_steel=mat('classic pale steel collar',(.30,.29,.26),.40,.42); bread=mat('campaign bread',(.70,.52,.28),.82)
-    rig=build_rig(); rig['matthias_asset_version']='home-blender-classic-v21'; rig['canonical_identity']='stern-no-moustache-pawn'; rig['canonical_reference']='classic-pawn-first-avatar'; rig['canonical_reference_sha256']='beb64c1dffd6b32a64847b8f768df43e823e858acf630516e27a2cc771e2d975'; rig['canonical_pose_language']='permanently-stern'
+    rig=build_rig(); rig['matthias_asset_version']='home-blender-classic-v22'; rig['canonical_identity']='stern-no-moustache-pawn'; rig['canonical_reference']='classic-pawn-first-avatar'; rig['canonical_reference_sha256']='beb64c1dffd6b32a64847b8f768df43e823e858acf630516e27a2cc771e2d975'; rig['canonical_pose_language']='permanently-stern'
     root=[]; spine=[]; head=[]
 
     root += [
@@ -250,14 +250,17 @@ def build_character():
     cuff_l=cyl('Cuff.L',wrist_l,.031,.016,brass,verts=32,bevel=.003); cuff_r=cyl('Cuff.R',wrist_r,.031,.016,brass,verts=32,bevel=.003)
     hand_l=sphere('Hand.L',(-.458,-.474,.650),(.030,.027,.033),ivory,28); hand_r=sphere('Hand.R',(.458,-.474,.650),(.030,.027,.033),ivory,28)
 
-    hip_l=(-.200,-.020,.100); knee_l=(-.220,-.030,-.020); ankle_l=(-.210,-.050,-.150)
-    hip_r=(.200,-.020,.100); knee_r=(.220,-.030,-.020); ankle_r=(.210,-.050,-.150)
-    thigh_l=cyl_between('Upper leg.L',hip_l,knee_l,.034,navy,40,.008); thigh_r=cyl_between('Upper leg.R',hip_r,knee_r,.034,navy,40,.008)
-    shin_l=cyl_between('Lower leg.L',knee_l,ankle_l,.029,navy_soft,40,.007); shin_r=cyl_between('Lower leg.R',knee_r,ankle_r,.029,navy_soft,40,.007)
-    knee_cap_l=sphere('Knee.L',knee_l,(.036,.032,.036),navy,28)
-    knee_cap_r=sphere('Knee.R',knee_r,(.036,.032,.036),navy,28)
-    boot_l=elliptic_cyl('Boot.L',(-.210,-.090,-.190),.050,.074,.62,leather,(math.radians(78),math.radians(-4),math.radians(3)),40,.008)
-    boot_r=elliptic_cyl('Boot.R',(.210,-.090,-.190),.050,.074,.62,leather,(math.radians(78),math.radians(4),math.radians(-3)),40,.008)
+    # v22: the under-shell legs must remain readable at actual Home scale. Keep
+    # them short and pawn-subordinate, but give them enough lateral separation,
+    # drop and boot mass that they cannot disappear behind the plinth silhouette.
+    hip_l=(-.240,-.030,.100); knee_l=(-.270,-.055,-.055); ankle_l=(-.275,-.085,-.255)
+    hip_r=(.240,-.030,.100); knee_r=(.270,-.055,-.055); ankle_r=(.275,-.085,-.255)
+    thigh_l=cyl_between('Upper leg.L',hip_l,knee_l,.042,navy,40,.009); thigh_r=cyl_between('Upper leg.R',hip_r,knee_r,.042,navy,40,.009)
+    shin_l=cyl_between('Lower leg.L',knee_l,ankle_l,.036,navy_soft,40,.008); shin_r=cyl_between('Lower leg.R',knee_r,ankle_r,.036,navy_soft,40,.008)
+    knee_cap_l=sphere('Knee.L',knee_l,(.044,.038,.044),navy,28)
+    knee_cap_r=sphere('Knee.R',knee_r,(.044,.038,.044),navy,28)
+    boot_l=elliptic_cyl('Boot.L',(-.280,-.105,-.315),.062,.092,.64,leather,(math.radians(78),math.radians(-5),math.radians(4)),40,.009)
+    boot_r=elliptic_cyl('Boot.R',(.280,-.105,-.315),.062,.092,.64,leather,(math.radians(78),math.radians(5),math.radians(-4)),40,.009)
 
     book=box('RoutineBook',(0,-.485,.915),(.225,.025,.145),leather,(math.radians(5),0,0),.012); book_page=box('RoutineBookPages',(0,-.512,.915),(.166,.008,.096),paper,(math.radians(5),0,0),.004); book_badge=sphere('RoutineBookBadge',(0,-.526,.910),(.030,.008,.036),brass,20); book_hand_l=sphere('RoutineBookHand.L',(-.205,-.520,.835),(.036,.024,.041),ivory,24); book_hand_r=sphere('RoutineBookHand.R',(.205,-.520,.835),(.036,.024,.041),ivory,24); cup=cyl('RoutineCup',(.265,-.420,1.195),.090,.132,ivory_hi,verts=48,bevel=.010); cup_band=cyl('RoutineCupBand',(.265,-.420,1.253),.092,.013,brass,verts=48,bevel=.004); cup_handle=sphere('RoutineCupHandle',(.365,-.420,1.198),(.045,.021,.060),brass,24); cup_hand=sphere('RoutineCupHand',(.220,-.438,1.105),(.038,.028,.043),ivory,24); pen=cyl('RoutinePen',(.145,-.525,.935),.010,.24,leather,(0,math.radians(64),math.radians(-8)),verts=24,bevel=.004); pen_tip=cone('RoutinePenTip',(.255,-.525,.885),.016,.003,.060,brass,(0,math.radians(64),math.radians(-8)),.003)
     # Keep the campaign bite below the stern mouth. At Home scale, a prop that
