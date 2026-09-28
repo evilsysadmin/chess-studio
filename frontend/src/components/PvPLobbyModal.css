@@ -1689,3 +1689,81 @@
     width: 100%;
   }
 }
+
+
+/* Mobile command-table clamp: keep the duel action above the fold and below browser chrome. */
+@media (max-width: 660px) {
+  .pvp-lobby-backdrop {
+    align-items: flex-start;
+    padding: max(.45rem, env(safe-area-inset-top)) .45rem .45rem;
+    overflow: hidden;
+  }
+
+  .pvp-lobby {
+    width: 100%;
+    max-height: calc(100dvh - max(.9rem, env(safe-area-inset-top)));
+    padding: .72rem;
+  }
+
+  .pvp-lobby__header {
+    min-height: 0;
+    gap: .34rem;
+    padding: 0 2.15rem .1rem 0;
+  }
+
+  .pvp-lobby__header-copy .eyebrow { font-size: .52rem; }
+  .pvp-lobby__header h2 {
+    margin: .02rem 0 .08rem;
+    font-size: 1.62rem;
+    line-height: 1.05;
+  }
+
+  .pvp-lobby__header p {
+    max-width: none;
+    font-size: .76rem;
+    line-height: 1.3;
+  }
+
+  .pvp-lobby__header-status {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .28rem;
+  }
+
+  .pvp-lobby__availability,
+  .pvp-lobby__metric {
+    min-height: 34px;
+    padding: .28rem .48rem;
+  }
+
+  .pvp-lobby__identity {
+    min-height: 0;
+    margin-top: .46rem;
+    padding: .52rem .58rem;
+    gap: .42rem;
+  }
+
+  .pvp-lobby__identity-main { gap: .42rem; }
+  .pvp-lobby__identity-main strong {
+    font-size: .86rem;
+    line-height: 1.15;
+  }
+  .pvp-lobby__identity-main > div > span { font-size: .66rem; }
+  .pvp-lobby__identity-mark { width: 32px; height: 32px; }
+  .pvp-lobby__join { min-height: 36px; }
+
+  .pvp-lobby__error {
+    margin-top: .42rem;
+    padding: .44rem .54rem;
+    font-size: .68rem;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+  }
+
+  .pvp-lobby__grid {
+    margin-top: .48rem;
+    gap: .5rem;
+  }
+
+  .pvp-lobby__panel { padding: .62rem; }
+}
