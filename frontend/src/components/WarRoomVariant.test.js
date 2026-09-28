@@ -17,6 +17,7 @@ import {
   saveWarRoomVariantPreference,
   warRoomVariantDefinition,
   warRoomVariantDomData,
+  warRoomVariantRuntimeModelUrl,
 } from './WarRoomVariant.js';
 
 describe('War Room staging variant', () => {
@@ -108,6 +109,14 @@ describe('War Room staging variant', () => {
     expect(isClassicWarRoomVariant({ selectable: true, variant: 'classic' })).toBe(true);
     expect(isClassicWarRoomVariant({ selectable: true, variant: 'v2' })).toBe(false);
     expect(isClassicWarRoomVariant({ selectable: false, variant: 'v3' })).toBe(true);
+  });
+
+  it('owns cacheable runtime model URLs before the scene mounts', () => {
+    expect(warRoomVariantRuntimeModelUrl('v2', { buildSha: 'abc123' }))
+      .toBe('https://assets.chess-studio.shadowops.dpdns.org/war-room/v2/runtime/current.glb?build=abc123');
+    expect(warRoomVariantRuntimeModelUrl('v3', { buildSha: 'abc123' }))
+      .toBe('https://assets.chess-studio.shadowops.dpdns.org/war-room/v3/runtime/current.glb?build=abc123');
+    expect(warRoomVariantRuntimeModelUrl('classic', { buildSha: 'abc123' })).toBeNull();
   });
 
   it('owns generic DOM diagnostics in the variant layer', () => {
