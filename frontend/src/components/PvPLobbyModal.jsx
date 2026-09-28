@@ -35,6 +35,18 @@ export function pvpHeadToHeadLabel(record) {
   return `VS TI · ${Number(record?.wins || 0)}V ${Number(record?.draws || 0)}T ${Number(record?.losses || 0)}D`;
 }
 
+export function pvpChatRelativeTimeLabel(value, nowMs = Date.now()) {
+  const stamp = Date.parse(value || '');
+  if (!Number.isFinite(stamp)) return '';
+  const seconds = Math.max(0, Math.floor((Number(nowMs) - stamp) / 1000));
+  if (seconds < 45) return 'ahora';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  return `${Math.floor(hours / 24)}d`;
+}
+
 function sortedRoster(rows) {
   return [...(rows || [])].sort((a, b) => {
     if (a.isSelf !== b.isSelf) return a.isSelf ? -1 : 1;
@@ -53,6 +65,7 @@ export default function PvPLobbyModal({
   onCancelChallenge = null,
   onAcceptChallenge = null,
   onDeclineChallenge = null,
+  onMarkChatRead = null,
 }) {
   useEscapeToClose(onClose);
   const [lobby, setLobby] = useState(EMPTY_LOBBY);
@@ -69,6 +82,10 @@ export default function PvPLobbyModal({
   const outgoing = useMemo(() => liveLobby.challenges.filter((row) => row.direction === 'outgoing' && row.status === 'pending'), [liveLobby.challenges]);
   const opponent = opponentForMatch(liveLobby.activeMatch);
   const messages = Array.isArray(liveLobby.messages) ? liveLobby.messages : [];
+
+  useEffect(() => {
+    if (messages.length) onMarkChatRead?.(messages);
+  }, [messages, onMarkChatRead]);
 
   const refresh = useCallback(async ({ quiet = false, signal } = {}) => {
     if (!quiet) setLoading(true);
@@ -153,6 +170,11 @@ export default function PvPLobbyModal({
     if (!text || busyKey) return;
     const result = await run('chat', () => pvpApi.sendLobbyMessage(text));
     if (result) setMessageText('');
+  }
+
+  function mentionPlayer(username) {
+    const mention = `@${username} `;
+    setMessageText((current) => current.startsWith(mention) ? current : `${mention}${current}`.slice(0, 240));
   }
 
   const rivalCount = rivals.length;
@@ -257,7 +279,7 @@ export default function PvPLobbyModal({
                       <article key={row.username} className={`pvp-lobby__player${pending ? ' is-pending' : ''}${coolingDown ? ' is-cooldown' : ''}`}>
                         <span className="pvp-lobby__rank-mark" aria-hidden="true"><i />♟</span>
                         <div className="pvp-lobby__player-copy">
-                          <strong>{row.username}</strong>
+                          <button type="button" className="pvp-lobby__mention-player" onClick={() => mentionPlayer(row.username)} title={`Mencionar a ${row.username} en el chat`}>{row.username}</button>
                           <span>{row.tier}</span>
                           {row.headToHead?.games > 0 && <small className="pvp-lobby__head-to-head">{pvpHeadToHeadLabel(row.headToHead)}</small>}
                           {coolingDown && <small className="pvp-lobby__cooldown-note">{cooldownLabel}</small>}
@@ -355,12 +377,16 @@ export default function PvPLobbyModal({
             <div className="pvp-lobby__chat-log" role="log" aria-live="polite" aria-relevant="additions">
               {messages.length === 0 ? (
                 <p className="pvp-lobby__chat-empty">La sala está tranquila.</p>
-              ) : messages.map((message) => (
-                <article key={message.id} className={`pvp-lobby__chat-message${message.isSelf ? ' is-self' : ''}`}>
-                  <strong>{message.username}</strong>
-                  <span>{message.text}</span>
-                </article>
-              ))}
+              ) : messages.map((message) => {
+                const system = message.kind === 'system';
+                return (
+                  <article key={message.id} className={`pvp-lobby__chat-message${message.isSelf ? ' is-self' : ''}${system ? ' is-system' : ''}`}>
+                    {!system && <strong>{message.username}</strong>}
+                    <span>{message.text}</span>
+                    <time dateTime={message.createdAt || undefined}>{pvpChatRelativeTimeLabel(message.createdAt)}</time>
+                  </article>
+                );
+              })}
             </div>
             <form className="pvp-lobby__chat-compose" onSubmit={sendMessage}>
               <input
