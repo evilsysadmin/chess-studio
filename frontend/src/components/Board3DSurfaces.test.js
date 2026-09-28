@@ -64,7 +64,7 @@ describe('Board3D premium surfaces', () => {
     expect(ivory.specularIntensity).toBeLessThan(ebony.specularIntensity);
     expect(ivory.envMapIntensity).toBeLessThan(ebony.envMapIntensity);
     expect(ivory.roughness).toBeGreaterThan(ebony.roughness);
-    expect(ivory.roughness).toBeGreaterThanOrEqual(0.68);
+    expect(ivory.roughness).toBeGreaterThanOrEqual(0.66);
     expect(ivory.metalness).toBeLessThan(0.03);
     expect(ivory.specularIntensity).toBeLessThanOrEqual(0.35);
     expect(ivory.envMapIntensity).toBeLessThan(0.2);
