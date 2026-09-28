@@ -204,7 +204,7 @@ def build_character():
     ivory=mat('classic warm ivory',(.70,.60,.44),.60,.00); ivory_hi=mat('classic ivory highlight',(.80,.69,.52),.56,.00)
     navy=mat('classic midnight pawn',(.0025,.0035,.0055),.38,.12); navy_soft=mat('classic navy cloth',(.006,.008,.012),.48,.04)
     leather=mat('classic black leather',(.006,.004,.003),.46,.05); brass=mat('classic aged brass',(.50,.27,.055),.34,.82); cap_red=mat('classic cap oxblood band',(.075,.012,.009),.44,.02); black=mat('classic brow eye mouth',(.0015,.002,.003),.56); paper=mat('aged dossier paper',(.42,.30,.16),.88); collar_steel=mat('classic pale steel collar',(.30,.29,.26),.40,.42); bread=mat('campaign bread',(.70,.52,.28),.82)
-    rig=build_rig(); rig['matthias_asset_version']='home-blender-classic-v21'; rig['canonical_identity']='stern-no-moustache-pawn'; rig['canonical_reference']='classic-pawn-first-avatar'; rig['canonical_reference_sha256']='beb64c1dffd6b32a64847b8f768df43e823e858acf630516e27a2cc771e2d975'; rig['canonical_pose_language']='permanently-stern'
+    rig=build_rig(); rig['matthias_asset_version']='home-blender-classic-v22'; rig['canonical_identity']='stern-no-moustache-pawn'; rig['canonical_reference']='classic-pawn-first-avatar'; rig['canonical_reference_sha256']='beb64c1dffd6b32a64847b8f768df43e823e858acf630516e27a2cc771e2d975'; rig['canonical_pose_language']='permanently-stern'
     root=[]; spine=[]; head=[]
 
     root += [
