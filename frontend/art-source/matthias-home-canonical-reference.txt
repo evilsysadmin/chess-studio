@@ -17,9 +17,11 @@ Identity contract:
 - seated routines bend the short legs over the furniture edge; never replace the pawn body with a humanoid pelvis or torso
 - sarcastic/vacilón attitude belongs to dialogue context; neutral visual expression stays stern/angry
 
-The WebP above remains the visual source of truth for Matthias's pawn body, face, cap, insignia, palette and stern expression; v20 adds only the restrained articulated limbs described above. The Blender contract in scripts/blender/home_matthias_contract.py is its executable guardrail. Changing the canonical reference requires deliberately replacing the WebP and updating its SHA-256 in both this provenance file and the executable contract; silent drift is forbidden.
+The WebP above remains the visual source of truth for Matthias's pawn body, face, cap, insignia, palette and stern expression; v22 keeps the same canonical body/face/cap and makes the under-shell legs visibly readable at actual Home scale. The Blender contract in scripts/blender/home_matthias_contract.py is its executable guardrail. Changing the canonical reference requires deliberately replacing the WebP and updating its SHA-256 in both this provenance file and the executable contract; silent drift is forbidden.
 
 Materialization note: v20 canonical .blend/.glb generated and committed from validated Blender output.
 Visual ownership note: canonical Matthias changes rely on the narrowed Home-only capture scope now present on main.
 
 Materialization note: v21 under-shell leg geometry generated and committed from validated Blender output.
+
+Materialization note: v22 increases only under-shell leg readability (drop, separation and boot mass); pawn body identity is unchanged.
