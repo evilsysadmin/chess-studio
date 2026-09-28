@@ -4,7 +4,7 @@
 V3 keeps only the live-board anchor and canonical camera from the v2 generator.
 Its authored room is rebuilt from an empty static collection: a curved tower
 apse, circular command table, celestial window, single cast-iron stove,
-brass telescope, reading nook, chess-treatise shelf and grounded tower entry
+restrained brass telescope, premium reading nook, celestial globe console and grounded tower entry
 replace v2's rectangular hall.
 """
 from __future__ import annotations
@@ -51,16 +51,16 @@ def build_v3_palette():
             rough=0.77, coat=0.014, texture="stone", scale=4.3, bump=0.068, weather=True,
         ),
         "stone_light": base.material(
-            "WR3_MAT_pale_travertine", (0.52, 0.355, 0.185, 1),
-            rough=0.72, coat=0.018, texture="stone", scale=4.0, bump=0.055, weather=True,
+            "WR3_MAT_pale_travertine", (0.56, 0.395, 0.215, 1),
+            rough=0.67, coat=0.030, texture="stone", scale=4.0, bump=0.050, weather=True,
         ),
         "slate": base.material(
             "WR3_MAT_radial_slate", (0.030, 0.070, 0.078, 1),
             rough=0.78, coat=0.014, texture="stone", scale=5.0, bump=0.052, weather=True,
         ),
         "green_marble": base.material(
-            "WR3_MAT_green_marble", (0.012, 0.090, 0.062, 1),
-            rough=0.54, coat=0.08, texture="stone", scale=4.2, bump=0.045, weather=True,
+            "WR3_MAT_green_marble", (0.010, 0.082, 0.052, 1),
+            rough=0.48, coat=0.12, texture="stone", scale=4.0, bump=0.038, weather=True,
         ),
         "rug": base.material(
             "WR3_MAT_room_rug", (0.004, 0.070, 0.046, 1),
@@ -87,28 +87,28 @@ def build_v3_palette():
             metal=0.82, rough=0.37, coat=0.12, texture="metal", scale=26, bump=0.024,
         ),
         "brass": base.material(
-            "WR3_MAT_sunlit_brass", (0.62, 0.275, 0.045, 1),
-            metal=0.92, rough=0.27, coat=0.18, texture="metal", scale=25, bump=0.021,
+            "WR3_MAT_sunlit_brass", (0.66, 0.305, 0.052, 1),
+            metal=0.94, rough=0.23, coat=0.22, texture="metal", scale=27, bump=0.016,
         ),
         "brass_dark": base.material(
-            "WR3_MAT_aged_brass", (0.20, 0.075, 0.014, 1),
-            metal=0.90, rough=0.39, coat=0.10, texture="metal", scale=29, bump=0.020,
+            "WR3_MAT_aged_brass", (0.22, 0.086, 0.017, 1),
+            metal=0.92, rough=0.34, coat=0.14, texture="metal", scale=30, bump=0.016,
         ),
         "walnut": base.material(
-            "WR3_MAT_chart_walnut", (0.105, 0.036, 0.012, 1),
-            rough=0.43, coat=0.22, texture="wood", scale=3.5, bump=0.038,
+            "WR3_MAT_chart_walnut", (0.128, 0.044, 0.014, 1),
+            rough=0.38, coat=0.27, texture="wood", scale=3.0, bump=0.048,
         ),
         "walnut_dark": base.material(
-            "WR3_MAT_chart_walnut_dark", (0.032, 0.010, 0.005, 1),
-            rough=0.52, coat=0.12, texture="wood", scale=3.2, bump=0.032,
+            "WR3_MAT_chart_walnut_dark", (0.044, 0.014, 0.006, 1),
+            rough=0.46, coat=0.17, texture="wood", scale=2.9, bump=0.040,
         ),
         "leather": base.material(
-            "WR3_MAT_saddle_leather", (0.115, 0.028, 0.012, 1),
-            rough=0.50, coat=0.14, sheen=0.08, texture="leather", scale=44, bump=0.060,
+            "WR3_MAT_saddle_leather", (0.125, 0.030, 0.012, 1),
+            rough=0.44, coat=0.20, sheen=0.11, texture="leather", scale=48, bump=0.050,
         ),
         "green_leather": base.material(
-            "WR3_MAT_chart_green_leather", (0.008, 0.120, 0.058, 1),
-            rough=0.47, coat=0.18, sheen=0.08, texture="leather", scale=46, bump=0.061,
+            "WR3_MAT_chart_green_leather", (0.007, 0.105, 0.050, 1),
+            rough=0.42, coat=0.23, sheen=0.12, texture="leather", scale=50, bump=0.052,
         ),
         "night": base.material(
             "WR3_MAT_celestial_blue", (0.002, 0.018, 0.120, 1),
@@ -317,8 +317,8 @@ def build_celestial_window(static, palette):
         )
 
     window_light = base.light(
-        "WR3_LIGHT_window", "AREA", (0, 5.80, 4.55), 410.0,
-        (0.22, 0.52, 1.0), static, size=5.6,
+        "WR3_LIGHT_window", "AREA", (0, 5.80, 4.55), 485.0,
+        (0.16, 0.42, 1.0), static, size=5.8,
     )
     base.look_at(window_light, (0, 0.2, 1.1))
     base.anchor("WR_ANCHOR_window_moonlight", (0, 5.9, 4.55), static)
@@ -402,8 +402,8 @@ def build_single_stove(static, palette):
                palette["brass_dark"], static)
     base.cylinder("WR3_OBS_stove_flue_cap", (x, y, 6.18), 0.39, 0.10,
                   palette["copper"], static, vertices=48)
-    base.light("WR3_LIGHT_stove", "POINT", Vector((x, y, 1.72)) + face * 1.25, 315.0,
-               (1.0, 0.30, 0.055), static, radius=1.62)
+    base.light("WR3_LIGHT_stove", "POINT", Vector((x, y, 1.72)) + face * 1.25, 355.0,
+               (1.0, 0.26, 0.040), static, radius=1.72)
     base.anchor("WR_ANCHOR_fireplace_practical", Vector((x, y, 1.76)) + face * 1.05, static)
 
 
@@ -717,16 +717,16 @@ def build_lighting(static):
     scene = bpy.context.scene
     scene["war_room_variant"] = "v3-celestial-observatory"
     scene["war_room_visual_canon"] = "war-room-v3-canonical-8e1e6946-2026-09-25"
-    scene.view_settings.exposure = 0.30
+    scene.view_settings.exposure = 0.24
 
-    key = base.light("WR3_LIGHT_key", "AREA", (-4.8, -3.8, 8.3), 675.0,
-                     (1.0, 0.70, 0.42), static, size=6.6)
+    key = base.light("WR3_LIGHT_key", "AREA", (-4.8, -3.8, 8.3), 620.0,
+                     (1.0, 0.66, 0.36), static, size=6.4)
     base.look_at(key, (0, 0.5, 1.0))
-    fill = base.light("WR3_LIGHT_fill", "AREA", (6.4, -2.4, 6.3), 350.0,
-                      (0.28, 0.66, 0.78), static, size=6.0)
+    fill = base.light("WR3_LIGHT_fill", "AREA", (6.4, -2.4, 6.3), 425.0,
+                      (0.20, 0.52, 0.92), static, size=6.2)
     base.look_at(fill, (0.4, 0.6, 1.5))
-    top = base.light("WR3_LIGHT_top", "AREA", (0, 1.4, 8.7), 315.0,
-                     (1.0, 0.78, 0.50), static, size=5.6)
+    top = base.light("WR3_LIGHT_top", "AREA", (0, 1.4, 8.7), 280.0,
+                     (0.92, 0.74, 0.48), static, size=5.2)
     base.look_at(top, (0, 0.4, 0.8))
 
 
