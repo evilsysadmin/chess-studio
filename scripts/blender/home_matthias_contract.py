@@ -40,6 +40,18 @@ REQUIRED_OBJECTS = {
     "Mouth.R",
     "Classic chest cross brass",
     "Classic chest cross inset",
+    "Upper arm.L",
+    "Upper arm.R",
+    "Forearm.L",
+    "Forearm.R",
+    "Hand.L",
+    "Hand.R",
+    "Upper leg.L",
+    "Upper leg.R",
+    "Lower leg.L",
+    "Lower leg.R",
+    "Boot.L",
+    "Boot.R",
     "RoutineBook",
     "RoutineCup",
     "RoutinePen",
@@ -88,7 +100,8 @@ PAWN_FINISH_ROUGHNESS = (0.34, 0.50)
 PAWN_FINISH_METALLIC = (0.02, 0.18)
 AGED_BRASS_ROUGHNESS = (0.28, 0.42)
 AGED_BRASS_METALLIC = (0.72, 0.88)
-REST_ARM_MIN_Y = 0.10
+IDLE_ARM_MAX_Y = 0.04
+LIMB_MAX_RADIUS_TO_BASE = 0.085
 BITE_PROP_FACE_CLEARANCE_MIN = 0.025
 
 MIN_BROW_TILT_DEGREES = 22.0

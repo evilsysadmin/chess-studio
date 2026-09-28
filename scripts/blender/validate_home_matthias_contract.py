@@ -41,7 +41,8 @@ from home_matthias_contract import (  # noqa: E402
     PAWN_FINISH_ROUGHNESS,
     REQUIRED_ACTIONS,
     REQUIRED_OBJECTS,
-    REST_ARM_MIN_Y,
+    IDLE_ARM_MAX_Y,
+    LIMB_MAX_RADIUS_TO_BASE,
 )
 
 
@@ -127,7 +128,7 @@ def main():
     assert not missing_actions, f"missing actions: {sorted(missing_actions)}"
 
     assert rig.get("canonical_identity") == CANONICAL_IDENTITY, rig.get("canonical_identity")
-    assert rig.get("matthias_asset_version") == "home-blender-classic-v19", (
+    assert rig.get("matthias_asset_version") == "home-blender-classic-v20", (
         rig.get("matthias_asset_version")
     )
     assert rig.get("canonical_reference") == CANONICAL_REFERENCE, rig.get("canonical_reference")
@@ -232,10 +233,21 @@ def main():
             light_body_offenders.append(obj.name)
     assert not light_body_offenders, f"large light body panels/skirts forbidden: {light_body_offenders}"
 
+    # v20 keeps limbs deliberately small but actually readable in neutral Home
+    # poses. The old contract forced every arm behind the pawn body, which is why
+    # a seated Matthias read as a chess piece balanced on furniture.
     for name in ("Upper arm.L", "Upper arm.R", "Forearm.L", "Forearm.R", "Hand.L", "Hand.R"):
         obj = objects[name]
-        assert obj.matrix_world.translation.y >= REST_ARM_MIN_Y, (
-            f"{name}: visible in Idle at y={obj.matrix_world.translation.y:.3f}"
+        assert obj.matrix_world.translation.y <= IDLE_ARM_MAX_Y, (
+            f"{name}: arm drifted behind the pawn silhouette at y={obj.matrix_world.translation.y:.3f}"
+        )
+
+    max_limb_width = base_width * LIMB_MAX_RADIUS_TO_BASE * 2.0
+    for name in ("Upper arm.L", "Upper arm.R", "Forearm.L", "Forearm.R",
+                 "Upper leg.L", "Upper leg.R", "Lower leg.L", "Lower leg.R"):
+        assert world_width(objects[name]) <= max_limb_width, (
+            f"{name}: limb too bulky for pawn-first silhouette "
+            f"({world_width(objects[name]):.3f} > {max_limb_width:.3f})"
         )
 
     left_brow = world_y_rotation_degrees(objects["Brow.L"])
