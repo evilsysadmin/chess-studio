@@ -297,6 +297,95 @@
 
 .pvp-lobby__panel--roster { border-color: rgba(199, 165, 110, .19); }
 
+.pvp-lobby__side {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: .75rem;
+}
+
+.pvp-lobby__panel--challenges,
+.pvp-lobby__panel--chat { min-height: 0; }
+
+.pvp-lobby__panel--chat {
+  padding-bottom: .78rem;
+  background:
+    linear-gradient(180deg, rgba(255, 250, 238, .024), rgba(255, 255, 255, .009)),
+    rgba(8, 9, 9, .28);
+}
+
+.pvp-lobby__chat-log {
+  min-height: 92px;
+  max-height: 170px;
+  overflow: auto;
+  display: grid;
+  align-content: start;
+  gap: .38rem;
+  margin-top: .58rem;
+  padding-right: .16rem;
+  scrollbar-width: thin;
+}
+
+.pvp-lobby__chat-empty {
+  margin: .4rem 0;
+  color: rgba(236, 228, 209, .42);
+  font-size: .74rem;
+}
+
+.pvp-lobby__chat-message {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: .42rem;
+  align-items: baseline;
+  padding: .32rem .42rem;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, .018);
+}
+
+.pvp-lobby__chat-message.is-self { background: rgba(190, 153, 88, .075); }
+
+.pvp-lobby__chat-message strong {
+  color: rgba(226, 193, 128, .9);
+  font-size: .68rem;
+  white-space: nowrap;
+}
+
+.pvp-lobby__chat-message span {
+  min-width: 0;
+  color: rgba(240, 233, 218, .78);
+  font-size: .74rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.pvp-lobby__chat-compose {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: .42rem;
+  margin-top: .58rem;
+}
+
+.pvp-lobby__chat-compose input {
+  min-width: 0;
+  min-height: 38px;
+  padding: .52rem .66rem;
+  border: 1px solid rgba(199, 165, 110, .16);
+  border-radius: 10px;
+  color: var(--parchment, #f2ead7);
+  background: rgba(4, 5, 5, .38);
+  outline: none;
+}
+
+.pvp-lobby__chat-compose input:focus {
+  border-color: rgba(214, 175, 103, .42);
+  box-shadow: 0 0 0 2px rgba(214, 175, 103, .07);
+}
+
+.pvp-lobby__chat-compose button {
+  min-height: 38px;
+  padding-inline: .7rem;
+}
+
 .pvp-lobby__panel > header {
   align-items: flex-start;
   padding: 0 .08rem .74rem;
@@ -563,6 +652,7 @@
 
 @media (max-width: 820px) {
   .pvp-lobby__grid { grid-template-columns: 1fr; }
+  .pvp-lobby__side { grid-template-columns: 1fr; }
   .pvp-lobby__panel { min-height: 0; }
   .pvp-lobby__empty-state--dispatch { min-height: 110px; }
 }
