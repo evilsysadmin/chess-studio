@@ -249,21 +249,21 @@ export function makePremiumTileMaterial({ color, light = false, coarsePointer = 
     color: surfaceColor,
     map: albedo,
     metalness: 0.015,
-    roughness: micro ? (light ? 0.78 : 0.68) : (light ? 0.72 : 0.6),
+    roughness: micro ? (light ? 0.72 : 0.62) : (light ? 0.69 : 0.57),
     roughnessMap: micro,
     bumpMap: micro,
-    bumpScale: micro ? (light ? 0.005 : 0.009) : 0,
-    clearcoat: light ? 0.1 : 0.24,
-    clearcoatRoughness: light ? 0.48 : 0.3,
+    bumpScale: micro ? (light ? 0.0045 : 0.008) : 0,
+    clearcoat: light ? 0.16 : 0.3,
+    clearcoatRoughness: light ? 0.42 : 0.27,
     ior: 1.46,
-    specularIntensity: light ? 0.3 : 0.5,
+    specularIntensity: light ? 0.38 : 0.56,
     // Light squares stay mostly on direct lighting; dark walnut gets enough IBL
     // to reveal broad highlights and the grain under the room practicals.
-    envMapIntensity: light ? 0.03 : 0.52,
+    envMapIntensity: light ? 0.08 : 0.58,
   });
   material.userData.surfaceVersion = PREMIUM_SURFACE_VERSION;
   material.userData.surfaceRole = light ? 'board-light' : 'board-dark';
-  material.userData.boardHeroFinish = albedo ? 'visible-albedo-v1' : 'lite-flat-v1';
+  material.userData.boardHeroFinish = albedo ? 'premium-board-depth-v2' : 'lite-flat-v1';
   return material;
 }
 
