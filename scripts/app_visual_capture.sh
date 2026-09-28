@@ -92,6 +92,9 @@ case "$mode" in
       has_producer warroom-armor && specs+=(war-room-armor-oblique-visual-artifact.spec.js)
       has_producer warroom-hans && specs+=(war-room-hans-visual-artifact.spec.js)
     fi
+    if has_group pvp; then
+      has_producer pvp-lobby && specs+=(pvp-visual-artifact.spec.js)
+    fi
     if (( ${#specs[@]} == 0 )); then
       echo "App visual capture: groups '$groups' + producers '$producer_scope' resolved to no canonical specs."
       exit 0
