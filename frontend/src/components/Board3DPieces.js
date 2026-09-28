@@ -253,54 +253,49 @@ function addSignatureDetail(group, type, accent, coarsePointer = false) {
   }
 }
 
-function applyBlackQueenSolidUpperFinish(group, side) {
+function applyBlackQueenOpaqueCrownFinish(group, side) {
   if (side !== 'b') return 0;
-  group?.updateMatrixWorld?.(true);
   let count = 0;
-
   group?.traverse?.((child) => {
-    if (!child?.isMesh || !child.material?.color || child.userData?.contactShadow) return;
-    const role = child.material?.userData?.surfaceRole;
-    if (role !== 'ebony' && child.userData?.blackQueenOpaqueCrown !== 'solid-v3') return;
+    if (!child?.isMesh || !child.userData?.queenPart) return;
+    const part = child.userData.queenPart;
+    if (!['crown-orb', 'finial'].includes(part)) return;
 
-    const bounds = new THREE.Box3().setFromObject(child);
-    if (!Number.isFinite(bounds.min.y) || bounds.max.y < 0.94) return;
+    const source = child.material;
+    if (!source?.color) return;
 
-    // v4 is intentionally boring. The player reproduced the bright "window"
-    // on staging after both PhysicalMaterial and rough StandardMaterial fixes.
-    // At this point the safe contract is visual, not PBR: every black upper-head
-    // mesh on the queen becomes an unlit solid ebony surface after ALL skin
-    // decoration has been installed. No IBL, no specular lobe, no clearcoat,
-    // no post-skin material can paint a bright square across the head.
-    const material = new THREE.MeshBasicMaterial({
-      color: new THREE.Color(0x101318),
+    // v3: stop trying to tune the highly polished PhysicalMaterial. The player
+    // screenshot shows the remaining problem is still perceptual transparency:
+    // bright room/board reflections painted across the spherical crown read as
+    // if the checkerboard were visible through it. Replace only these tiny
+    // crown meshes with a deliberately non-mirror StandardMaterial.
+    const material = new THREE.MeshStandardMaterial({
+      color: source.color.clone(),
+      metalness: 0,
+      roughness: 0.96,
       transparent: false,
       opacity: 1,
       depthWrite: true,
       depthTest: true,
-      blending: THREE.NormalBlending,
-      side: THREE.FrontSide,
-      toneMapped: true,
+      envMapIntensity: 0,
     });
-    material.name = 'black-queen-solid-head-v4';
+    material.name = 'black-queen-solid-crown-v3';
+    material.alphaTest = 0;
+    material.blending = THREE.NormalBlending;
+    material.side = THREE.FrontSide;
+    material.toneMapped = true;
     material.userData = {
-      ...(child.material.userData || {}),
-      surfaceRole: 'ebony',
-      blackQueenOpaqueCrown: 'solid-v4',
-      blackQueenCrownMaterial: 'unlit-ebony-v1',
+      ...(source.userData || {}),
+      blackQueenOpaqueCrown: 'solid-v3',
+      blackQueenCrownMaterial: 'matte-standard-v1',
     };
 
     child.material = material;
-    child.userData.blackQueenOpaqueCrown = 'solid-v4';
-    child.userData.blackQueenCrownMaterial = 'unlit-ebony-v1';
-    child.userData.blackQueenUpperHead = true;
+    child.userData.blackQueenOpaqueCrown = 'solid-v3';
+    child.userData.blackQueenCrownMaterial = 'matte-standard-v1';
     count += 1;
   });
-
-  if (group?.userData) {
-    group.userData.blackQueenOpaqueCrownCount = count;
-    group.userData.blackQueenUpperFinish = 'unlit-ebony-v1';
-  }
+  if (group?.userData) group.userData.blackQueenOpaqueCrownCount = count;
   return count;
 }
 
@@ -475,6 +470,20 @@ export function buildPiece(type, color, skinId, coarsePointer = false, options =
       addLathe(group, [[0.215, 0.28], [0.185, 0.4], [0.14, 0.62], [0.19, 0.78], [0.245, 0.86]], main, 0, detail.lathe);
       const crownRing = addMesh(group, new THREE.TorusGeometry(0.24, 0.032, detail.torusRadial, detail.torusTubular), accent, [0, 0.9, 0], [Math.PI / 2, 0, 0]);
       crownRing.userData.queenPart = 'crown-ring';
+      const crownCore = addMesh(
+        group,
+        new THREE.SphereGeometry(
+          coarsePointer ? 0.155 : 0.17,
+          coarsePointer ? 18 : 28,
+          coarsePointer ? 12 : 18,
+        ),
+        main,
+        [0, coarsePointer ? 1.075 : 1.095, 0],
+        [0, 0, 0],
+      );
+      crownCore.scale.set(1, coarsePointer ? 0.95 : 1.0, 1);
+      crownCore.userData.queenPart = 'crown-core';
+      crownCore.userData.queenCrownOcclusion = 'solid-core-v1';
       for (let index = 0; index < 8; index += 1) {
         const angle = index * (Math.PI * 2 / 8);
         const radial = coarsePointer ? 0.205 : 0.22;
@@ -500,6 +509,7 @@ export function buildPiece(type, color, skinId, coarsePointer = false, options =
         [0, coarsePointer ? 1.28 : 1.32, 0],
       );
       finial.userData.queenPart = 'finial';
+      applyBlackQueenOpaqueCrownFinish(group, color);
     } else if (type === 'k') {
       addLathe(group, [[0.2, 0.28], [0.17, 0.42], [0.14, 0.68], [0.19, 0.81], [0.21, 0.85]], main, 0, detail.lathe);
       addMesh(group, new THREE.TorusGeometry(0.195, 0.028, detail.torusRadial, detail.torusTubular), accent, [0, 0.86, 0], [Math.PI / 2, 0, 0]);
@@ -510,7 +520,6 @@ export function buildPiece(type, color, skinId, coarsePointer = false, options =
 
     addSignatureDetail(group, type, accent, coarsePointer);
     addPieceSkinDetails(group, type, skinId, accent, coarsePointer);
-    if (type === 'q') applyBlackQueenSolidUpperFinish(group, color);
     addContactShadow(group, coarsePointer, color);
     group.scale.setScalar(premiumPieceScale(type, coarsePointer));
     group.userData.board3DPremiumPieceScale = group.scale.x;
