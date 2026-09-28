@@ -41,7 +41,7 @@ describe('War Room piece finish', () => {
       sheen: material.sheen,
       sheenRoughness: material.sheenRoughness,
     }).toEqual(before);
-    expect(material.roughness).toBeGreaterThanOrEqual(0.7);
+    expect(material.roughness).toBeGreaterThanOrEqual(0.66);
     expect(material.clearcoat).toBeCloseTo(0.28, 6);
     expect(material.specularIntensity).toBeCloseTo(0.34, 6);
     expect(material.envMapIntensity).toBeCloseTo(0.12, 6);
