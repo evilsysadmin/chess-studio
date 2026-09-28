@@ -64,6 +64,10 @@ BOARD3D_MATTHIAS_SHARED_FILES = {
     "frontend/src/components/matthiasking3d.js",
 }
 
+BOARD3D_SHARED_PIECE_FILES = {
+    "frontend/src/components/playerking3d.js",
+}
+
 TRAINING_PROGRESS_MATTHIAS_FILES = {
     "frontend/src/components/insightsmatthiascampaign.jsx",
     "frontend/src/components/insightsmatthiasmotion.jsx",
@@ -305,6 +309,8 @@ def classify_path(path: str) -> set[str] | None:
         return {"warroom-core"}
     if lower in BOARD3D_MATTHIAS_SHARED_FILES:
         return {"training-school", "warroom-core"}
+    if lower in BOARD3D_SHARED_PIECE_FILES:
+        return {"training-school", "warroom-core"}
     if lower in TRAINING_PROGRESS_MATTHIAS_FILES:
         return {"training-progress"}
 
@@ -527,6 +533,8 @@ def self_test() -> None:
         assert classify([matthias_only_file]) == "warroom-core"
     for board3d_matthias_file in BOARD3D_MATTHIAS_SHARED_FILES:
         assert classify([board3d_matthias_file]) == "training-school,warroom-core"
+    for board3d_piece_file in BOARD3D_SHARED_PIECE_FILES:
+        assert classify([board3d_piece_file]) == "training-school,warroom-core"
     for training_matthias_file in TRAINING_PROGRESS_MATTHIAS_FILES:
         assert classify([training_matthias_file]) == "training-progress"
     assert classify(["frontend/src/components/WarRoomCatDecor.js"]) == "warroom-decor"
