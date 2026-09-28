@@ -273,7 +273,7 @@ test('App · captura visual canónica desktop + Android normal/desktop-site', as
         await login(tourPage);
         const tour = tourPage.getByRole('dialog', { name:'Guía rápida de Chess Studio con Matthias' });
         await expect(tour).toBeVisible();
-        await expect(tour.locator('.home-first-run-tour__matthias .home-matthias-3d')).toBeVisible({ timeout:15_000 });
+        await expect(tour.locator('.home-first-run-tour__matthias img')).toBeVisible({ timeout:15_000 });
         await expect(tourPage.locator('.illustrated-home__castle-3d.is-ready')).toBeVisible({ timeout:15_000 });
 
         for (const size of [
@@ -319,7 +319,7 @@ test('App · captura visual canónica desktop + Android normal/desktop-site', as
         await login(tourDesktopPage);
         const tour = tourDesktopPage.getByRole('dialog', { name:'Guía rápida de Chess Studio con Matthias' });
         await expect(tour).toBeVisible();
-        await expect(tour.locator('.home-first-run-tour__matthias .home-matthias-3d')).toBeVisible({ timeout:15_000 });
+        await expect(tour.locator('.home-first-run-tour__matthias img')).toBeVisible({ timeout:15_000 });
         await expect(tourDesktopPage.locator('.illustrated-home__castle-3d.is-ready')).toBeVisible({ timeout:15_000 });
         await tourDesktopPage.waitForTimeout(120);
         await captureViewportPng(
