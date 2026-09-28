@@ -30,6 +30,7 @@ def _is_matthias_canonical_owner(path: str) -> bool:
         or lower == "frontend/art-source/matthias-home-canonical-reference.webp"
         or lower == "scripts/blender/build_home_matthias.py"
         or lower == "scripts/blender/validate_home_matthias_contract.py"
+        or lower == "scripts/blender/validate_home_matthias_actions.py"
         or lower.startswith("scripts/blender/home_matthias_")
     )
 
@@ -96,6 +97,7 @@ def self_test() -> None:
         "scripts/blender/home_matthias_parts.py",
         "scripts/blender/home_matthias_animations.py",
         "scripts/blender/validate_home_matthias_contract.py",
+        "scripts/blender/validate_home_matthias_actions.py",
         "frontend/art-source/matthias-home-canonical-reference.txt",
         "frontend/art-source/matthias-home-canonical-reference.webp",
     ]
