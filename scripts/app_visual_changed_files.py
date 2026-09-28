@@ -12,7 +12,7 @@ import argparse
 import sys
 
 MATTHIAS_MODEL = "frontend/public/models/matthias-home-canonical.glb"
-MATTHIAS_CHRONICLES_CONSUMER = "frontend/src/chroniclesOfMatthiasIsometric.js"
+MATTHIAS_CHRONICLES_CONSUMER = "e2e/chronicles-avatar-visual-artifact.spec.js"
 MATTHIAS_BLEND = "frontend/art-source/matthias-home-canonical.blend"
 CHRONICLES_PARTY_MODEL = "frontend/public/models/chronicles-tactics-party.glb"
 CHRONICLES_PARTY_BUILDER = "scripts/blender/build_chronicles_tactics_party.py"
@@ -27,6 +27,8 @@ def _is_matthias_canonical_owner(path: str) -> bool:
     return (
         lower == MATTHIAS_MODEL
         or lower == MATTHIAS_BLEND
+        or lower == "frontend/art-source/matthias-home-canonical-reference.txt"
+        or lower == "frontend/art-source/matthias-home-canonical-reference.webp"
         or lower == "scripts/blender/build_home_matthias.py"
         or lower == "scripts/blender/validate_home_matthias_contract.py"
         or lower.startswith("scripts/blender/home_matthias_")
@@ -66,9 +68,10 @@ def normalize(paths: list[str]) -> list[str]:
         if lower.startswith("e2e/") and not _is_app_visual_e2e(path):
             continue
         if _is_matthias_canonical_owner(path):
-            # Home and Chronicles Tactics both render this GLB. Emit the runtime
-            # asset plus one stable Chronicles owner so the existing classifiers
-            # resolve exactly those two visual producers.
+            # Home and Chronicles both render this GLB. Emit the runtime asset
+            # plus the smallest Chronicles visual canary that actually exercises
+            # the shared avatar. Do not wake full Tactics/gameplay for a pawn-art
+            # change: those producers cannot validate the Home limb silhouette.
             add(MATTHIAS_MODEL)
             add(MATTHIAS_CHRONICLES_CONSUMER)
             continue
@@ -96,6 +99,8 @@ def self_test() -> None:
         "scripts/blender/home_matthias_parts.py",
         "scripts/blender/home_matthias_animations.py",
         "scripts/blender/validate_home_matthias_contract.py",
+        "frontend/art-source/matthias-home-canonical-reference.txt",
+        "frontend/art-source/matthias-home-canonical-reference.webp",
     ]
     assert normalize(matthias_sources) == [MATTHIAS_MODEL, MATTHIAS_CHRONICLES_CONSUMER]
     assert normalize(["frontend/src/App.css", *matthias_sources]) == [
