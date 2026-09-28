@@ -103,12 +103,23 @@ export function usePvpAppFlow({ view, replaceView }) {
     return enterPreparedMatch(handoffMatch);
   }, [enterPreparedMatch, handoffMatch]);
 
-  const cancelHandoff = useCallback(() => {
-    if (handoffMatch?.id) terminalHandoffIdRef.current = handoffMatch.id;
+  const cancelHandoff = useCallback(async () => {
+    const matchId = handoffMatch?.id;
+    if (matchId) terminalHandoffIdRef.current = matchId;
+    if (matchId && handoffMatch?.status === 'starting') {
+      try {
+        const api = await loadPvpApi();
+        await api.cancelStartingMatch(matchId);
+      } catch (err) {
+        setHandoffError(err?.message || 'No se pudo cancelar la entrada al 1v1.');
+        return false;
+      }
+    }
     setHandoffMatch(null);
     setHandoffError('');
     replaceView('menu');
-  }, [handoffMatch?.id, replaceView]);
+    return true;
+  }, [handoffMatch?.id, handoffMatch?.status, replaceView]);
 
   const exitMatch = useCallback(() => {
     setMatch(null);

@@ -147,6 +147,23 @@ TRAINING_EXACT_PRODUCERS = {
     "frontend/src/components/tournamentmobilepolish.css": {"training-tournament"},
 }
 
+
+PVP_EXACT_PRODUCERS = {
+    # PvP lobby/handoff is rendered from the Home/play shell. It does not own
+    # Home Matthias/focus, Chronicles, training, War Room art, Hans or health.
+    "frontend/src/components/menuinner.jsx": {"home-base"},
+    "frontend/src/components/pvplobbymodal.jsx": {"home-base"},
+    "frontend/src/components/pvplobbymodal.css": {"home-base"},
+    "frontend/src/components/pvphandoffmodal.jsx": {"home-base"},
+    "frontend/src/components/pvphandoffmodal.css": {"home-base"},
+    "frontend/src/components/homepvprosterlink.jsx": {"home-base"},
+    "frontend/src/components/homepvprosterlink.css": {"home-base"},
+    "frontend/src/pvpapi.js": {"home-base"},
+    "frontend/src/usepvpappflow.js": {"home-base"},
+    "frontend/src/usepvprosterpresence.js": {"home-base"},
+    "frontend/src/pvpruntimebridge.js": {"home-base"},
+}
+
 PUBLIC_NONCANONICAL_PATHS = {
     "frontend/public/404.html",
     "frontend/public/cname",
@@ -252,6 +269,8 @@ def classify_path(path: str) -> set[str] | None:
         return None
 
     if not lower.startswith("frontend/src/"):
+        if lower.startswith("backend-python/"):
+            return set()
         if lower in {
             "scripts/css_architecture_manifest.json",
             "scripts/async_resilience_gate.mjs",
@@ -278,6 +297,8 @@ def classify_path(path: str) -> set[str] | None:
         return set()
     if lower in QUICK_MATCH_EXACT_PRODUCERS:
         return set(QUICK_MATCH_EXACT_PRODUCERS[lower])
+    if lower in PVP_EXACT_PRODUCERS:
+        return set(PVP_EXACT_PRODUCERS[lower])
     if lower == "frontend/src/components/labscreen.jsx":
         return {"experiments-hub"}
     if lower in TRAINING_EXACT_PRODUCERS:
@@ -477,6 +498,17 @@ def self_test() -> None:
     assert classify(["frontend/src/components/LabScreen.jsx"]) == "experiments-hub"
     assert classify(["frontend/src/components/QuickMatchModal.jsx"]) == "home-base,warroom-core"
     assert classify(["frontend/src/components/QuickMatchMobileGoldenPath.css"]) == "home-base"
+    assert classify([
+        "backend-python/pvp_api.py",
+        "backend-python/test_pvp_api.py",
+        "frontend/src/components/MenuInner.jsx",
+        "frontend/src/components/PvPLobbyModal.jsx",
+        "frontend/src/components/PvPLobbyModal.css",
+        "frontend/src/components/PvpHandoffModal.jsx",
+        "frontend/src/pvpApi.js",
+        "frontend/src/usePvpAppFlow.js",
+        "frontend/src/usePvpRosterPresence.js",
+    ]) == "home-base"
     assert classify_home_profile_scope(["frontend/src/components/QuickMatchMobileGoldenPath.css"]) == "quickmatch"
     assert classify(["frontend/src/components/useWarRoomImmersive.js"]) == "warroom-core"
     assert classify(["frontend/src/components/WarRoomMobileLandscape.css"]) == "warroom-core"
