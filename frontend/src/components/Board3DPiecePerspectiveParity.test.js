@@ -49,27 +49,41 @@ describe('Board3D piece scale parity', () => {
     expect(apparentScaleRatio).toBeLessThan(1.16);
   });
 
-  it('usa un picado propio en War Room V1 sin mover la cámara táctica de V2/V3', () => {
+  it('usa exactamente el pitch móvil aprobado en V1/V2/V3 desktop', () => {
+    const elevation = (camera) => {
+      const offset = camera.position.clone().sub(camera.userData.baseTarget);
+      return THREE.MathUtils.radToDeg(Math.atan2(offset.y, Math.abs(offset.z)));
+    };
+
     vi.stubGlobal('window', {
       innerWidth: 1440,
       matchMedia: vi.fn().mockReturnValue({ matches: false }),
     });
 
+    let desktopElevations;
     try {
-      const classic = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
-      const tactical = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
-      fitBoardCamera(classic, 1400, 730, true, { profile: 'classic' });
-      fitBoardCamera(tactical, 1400, 730, true, { profile: 'tactical' });
+      desktopElevations = ['classic', 'tactical'].map((profile) => {
+        const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+        fitBoardCamera(camera, 1400, 730, true, { profile });
+        expect(camera.userData.framingProfile).toContain('shared-play-pitch-v1');
+        return elevation(camera);
+      });
+    } finally {
+      vi.unstubAllGlobals();
+    }
 
-      const classicOffset = classic.position.clone().sub(classic.userData.baseTarget);
-      const tacticalOffset = tactical.position.clone().sub(tactical.userData.baseTarget);
-      const classicElevation = THREE.MathUtils.radToDeg(Math.atan2(classicOffset.y, Math.abs(classicOffset.z)));
-      const tacticalElevation = THREE.MathUtils.radToDeg(Math.atan2(tacticalOffset.y, Math.abs(tacticalOffset.z)));
+    vi.stubGlobal('window', {
+      innerWidth: 851,
+      matchMedia: vi.fn().mockImplementation((query) => ({ matches: query === '(pointer: coarse)' })),
+    });
 
-      expect(classic.userData.framingProfile).toBe('classic-overhead-v3');
-      expect(classicElevation).toBeGreaterThan(45);
-      expect(classicElevation).toBeGreaterThan(tacticalElevation + 8);
-      expect(classic.fov).toBe(tactical.fov);
+    try {
+      const mobile = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+      fitBoardCamera(mobile, 851, 393, true);
+      const mobileElevation = elevation(mobile);
+      for (const desktopElevation of desktopElevations) {
+        expect(desktopElevation).toBeCloseTo(mobileElevation, 6);
+      }
     } finally {
       vi.unstubAllGlobals();
     }
