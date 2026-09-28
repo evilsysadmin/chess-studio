@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { HOME_FIRST_RUN_TOUR_STEPS } from '../homeFirstRunTour.js';
 import HomeMatthias3D from './HomeMatthias3D.jsx';
+import { MATTHIAS_BASE_AVATAR } from '../matthiasVisuals.js';
 import './HomeFirstRunTour.css';
 
 function targetBox(target) {
@@ -100,6 +101,7 @@ export default function HomeFirstRunTour({ active = false, onComplete, onSkip, o
       <article className="home-first-run-tour__briefing">
         <div className="home-first-run-tour__matthias" aria-hidden="true">
           <HomeMatthias3D
+            fallbackAvatar={MATTHIAS_BASE_AVATAR}
             scene="base"
             activity="Dando la visita guiada"
             speaking
