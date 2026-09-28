@@ -21,3 +21,5 @@ The WebP above remains the visual source of truth for Matthias's pawn body, face
 
 Materialization note: v20 canonical .blend/.glb generated and committed from validated Blender output.
 Visual ownership note: canonical Matthias changes rely on the narrowed Home-only capture scope now present on main.
+
+Materialization note: v21 under-shell leg geometry generated and committed from validated Blender output.
