@@ -174,10 +174,20 @@ export function usePvpRosterPresence({ enabled = true } = {}) {
   const challenge = useCallback(async (opponent) => {
     if (!opponent) return null;
     const pvpApi = await loadPvpApi();
+    let member = null;
+    if (!enrolled) {
+      const joined = await pvpApi.joinRoster();
+      member = joined?.member || null;
+      savePvpEnrollment(username, true);
+      heartbeatAtRef.current = Date.now();
+      setEnrolled(true);
+    }
     const result = await pvpApi.challenge(opponent);
+    const next = { ...EMPTY_LOBBY, ...(await pvpApi.getLobby() || {}) };
+    setLobby(mergeSelfIntoRoster(next, member));
     setError('');
     return result;
-  }, []);
+  }, [enrolled, username]);
 
   const cancelChallenge = useCallback(async (challenge) => {
     const challengeId = typeof challenge === 'string' ? challenge : challenge?.id;
