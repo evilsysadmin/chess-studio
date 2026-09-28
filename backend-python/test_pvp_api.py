@@ -226,6 +226,33 @@ def test_challenge_accept_creates_authoritative_match_and_enforces_turns():
     assert len(second.json()["match"]["history"]) == 2
 
 
+def test_handoff_accepts_naive_mongo_datetimes_without_500(monkeypatch):
+    client = make_client()
+    for user in ("alice", "bob"):
+        assert as_user(client, user, "post", "/api/pvp/roster").status_code == 200
+
+    challenge = as_user(client, "alice", "post", "/api/pvp/challenges", json={"opponent": "bob"}).json()["challenge"]
+    match = as_user(client, "bob", "post", f"/api/pvp/challenges/{challenge['id']}/accept").json()["match"]
+    stored = pvp_store._memory_matches[match["id"]]
+
+    # PyMongo returns naive UTC datetimes unless tz_aware=True. Reproduce that
+    # production shape explicitly so in-memory tests do not mask the mismatch.
+    for key in ("created_at", "updated_at", "ready_deadline"):
+        if isinstance(stored.get(key), datetime):
+            stored[key] = stored[key].replace(tzinfo=None)
+
+    white = stored["white"]
+    first = as_user(client, white, "post", f"/api/pvp/matches/{match['id']}/ready")
+    assert first.status_code == 200
+    assert first.json()["match"]["youReady"] is True
+
+    # Presence written/read through Mongo can also be naive on the next poll.
+    stored["white_seen_at"] = pvp_store.utcnow().replace(tzinfo=None)
+    polled = as_user(client, white, "get", f"/api/pvp/matches/{match['id']}")
+    assert polled.status_code == 200
+    assert polled.json()["match"]["status"] in {"starting", "active"}
+
+
 def test_ready_retries_brief_storage_unavailability(monkeypatch):
     client = make_client()
     for user in ("alice", "bob"):
