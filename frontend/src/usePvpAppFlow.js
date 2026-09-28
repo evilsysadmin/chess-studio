@@ -63,11 +63,13 @@ export function usePvpAppFlow({ view, replaceView }) {
     let active = true;
     let timer = null;
     let readySent = false;
+    let consecutiveFailures = 0;
 
     const applySnapshot = (result) => {
       if (!active || !result?.match) return false;
       const nextMatch = result.match;
       setHandoffMatch((previous) => previous?.id === matchId ? nextMatch : previous);
+      consecutiveFailures = 0;
       setHandoffError('');
       if (nextMatch.status === 'starting') {
         if (nextMatch.youReady) readySent = true;
@@ -108,8 +110,11 @@ export function usePvpAppFlow({ view, replaceView }) {
           if (!active || recoveryError?.name === 'AbortError') return;
         }
 
-        setHandoffError(err?.message || 'No se pudo sincronizar el arranque del 1v1.');
-        timer = window.setTimeout(sync, 1200);
+        consecutiveFailures += 1;
+        if (consecutiveFailures >= 3) {
+          setHandoffError(err?.message || 'No se pudo sincronizar el arranque del 1v1.');
+        }
+        timer = window.setTimeout(sync, consecutiveFailures >= 3 ? 1200 : 700);
       }
     };
 
