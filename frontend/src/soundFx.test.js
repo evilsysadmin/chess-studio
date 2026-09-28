@@ -94,8 +94,8 @@ describe('premium piece sound', () => {
     const filters = state.ctx.nodes.filter((node) => node.kind === 'filter');
 
     expect(oscillators).toHaveLength(3);
-    expect(noise).toHaveLength(2);
-    expect(filters).toHaveLength(2);
+    expect(noise).toHaveLength(3);
+    expect(filters).toHaveLength(3);
   });
 
   it('gives captures an extra physical contact and a lower resonant body', () => {
@@ -110,7 +110,7 @@ describe('premium piece sound', () => {
     const captureNoise = state.ctx.nodes.filter((node) => node.kind === 'buffer-source');
 
     expect(captureOscillators).toHaveLength(3);
-    expect(captureNoise).toHaveLength(3);
+    expect(captureNoise).toHaveLength(4);
     expect(captureOscillators[0].frequency.value).toBeLessThan(moveBodyFrequency);
   });
 
