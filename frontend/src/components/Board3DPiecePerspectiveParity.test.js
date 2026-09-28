@@ -49,7 +49,7 @@ describe('Board3D piece scale parity', () => {
     expect(apparentScaleRatio).toBeLessThan(1.16);
   });
 
-  it('usa un picado propio en War Room V1 sin mover la cámara táctica de V2/V3', () => {
+  it('usa V1 a ~39.5 grados y V3 exactamente dos grados sobre V2', () => {
     vi.stubGlobal('window', {
       innerWidth: 1440,
       matchMedia: vi.fn().mockReturnValue({ matches: false }),
@@ -58,18 +58,26 @@ describe('Board3D piece scale parity', () => {
     try {
       const classic = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
       const tactical = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+      const v3 = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
       fitBoardCamera(classic, 1400, 730, true, { profile: 'classic' });
       fitBoardCamera(tactical, 1400, 730, true, { profile: 'tactical' });
+      fitBoardCamera(v3, 1400, 730, true, { profile: 'v3' });
 
-      const classicOffset = classic.position.clone().sub(classic.userData.baseTarget);
-      const tacticalOffset = tactical.position.clone().sub(tactical.userData.baseTarget);
-      const classicElevation = THREE.MathUtils.radToDeg(Math.atan2(classicOffset.y, Math.abs(classicOffset.z)));
-      const tacticalElevation = THREE.MathUtils.radToDeg(Math.atan2(tacticalOffset.y, Math.abs(tacticalOffset.z)));
+      const elevation = (camera) => {
+        const offset = camera.position.clone().sub(camera.userData.baseTarget);
+        return THREE.MathUtils.radToDeg(Math.atan2(offset.y, Math.abs(offset.z)));
+      };
+      const classicElevation = elevation(classic);
+      const tacticalElevation = elevation(tactical);
+      const v3Elevation = elevation(v3);
 
-      expect(classic.userData.framingProfile).toBe('classic-overhead-v3');
-      expect(classicElevation).toBeGreaterThan(45);
-      expect(classicElevation).toBeGreaterThan(tacticalElevation + 8);
+      expect(classic.userData.framingProfile).toBe('classic-cinematic-v5');
+      expect(classicElevation).toBeGreaterThan(39.4);
+      expect(classicElevation).toBeLessThan(39.6);
+      expect(v3.userData.framingProfile).toBe('v3-cinematic-plus-2deg-v1');
+      expect(v3Elevation - tacticalElevation).toBeCloseTo(2, 5);
       expect(classic.fov).toBe(tactical.fov);
+      expect(v3.fov).toBe(tactical.fov);
     } finally {
       vi.unstubAllGlobals();
     }
@@ -82,7 +90,7 @@ describe('Board3D piece scale parity', () => {
     });
 
     try {
-      for (const profile of ['classic', 'tactical']) {
+      for (const profile of ['classic', 'tactical', 'v3']) {
         const normal = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
         const immersive = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
         fitBoardCamera(normal, 1440, 900, true, { profile });
