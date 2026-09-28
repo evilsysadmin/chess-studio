@@ -439,7 +439,7 @@ function Board3DCanvas({
       const width = Math.max(280, host.clientWidth || 280);
       const height = Math.max(300, host.clientHeight || 300);
       renderer.setSize(width, height, false);
-      fitBoardCamera(camera, width, height, whiteSide, { profile: cameraProfile === 'classroom' || (latestPropsRef.current.warRoomVariant || 'classic') !== 'classic' ? cameraProfile : 'classic', immersive });
+      fitBoardCamera(camera, width, height, whiteSide, { profile: cameraProfile === 'classroom' ? cameraProfile : (latestPropsRef.current.warRoomVariant || 'classic') === 'v3' ? 'v3' : (latestPropsRef.current.warRoomVariant || 'classic') === 'classic' ? 'classic' : cameraProfile, immersive });
       render();
     }
     resize();
