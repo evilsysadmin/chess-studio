@@ -60,6 +60,10 @@ export const pvpApi = {
     return jsonRequest(`/matches/${matchId}/ready`, { method: 'POST', signal });
   },
 
+  cancelStartingMatch(matchId, { signal } = {}) {
+    return jsonRequest(`/matches/${matchId}/cancel-starting`, { method: 'POST', signal });
+  },
+
   playMove(matchId, from, to, promotion = null, { signal } = {}) {
     return jsonRequest(`/matches/${matchId}/move`, {
       method: 'POST',
