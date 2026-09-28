@@ -226,6 +226,39 @@ def test_challenge_accept_creates_authoritative_match_and_enforces_turns():
     assert len(second.json()["match"]["history"]) == 2
 
 
+def test_second_ready_survives_naive_mongo_activation_timestamp(monkeypatch):
+    client = make_client()
+    for user in ("alice", "bob"):
+        assert as_user(client, user, "post", "/api/pvp/roster").status_code == 200
+
+    challenge = as_user(client, "alice", "post", "/api/pvp/challenges", json={"opponent": "bob"}).json()["challenge"]
+    accepted = as_user(client, "bob", "post", f"/api/pvp/challenges/{challenge['id']}/accept")
+    assert accepted.status_code == 200
+    match = accepted.json()["match"]
+
+    first = as_user(client, match["white"], "post", f"/api/pvp/matches/{match['id']}/ready")
+    assert first.status_code == 200
+
+    original_update = pvp_store.update_match
+
+    async def mongo_shaped_update(match_id, *, expected_revision, changes):
+        updated = await original_update(match_id, expected_revision=expected_revision, changes=changes)
+        if updated and updated.get("status") == "active" and isinstance(updated.get("turn_started_at"), datetime):
+            updated = dict(updated)
+            updated["turn_started_at"] = updated["turn_started_at"].replace(tzinfo=None)
+            # Mirror what subsequent Mongo reads would return as well.
+            pvp_store._memory_matches[match_id]["turn_started_at"] = updated["turn_started_at"]
+        return updated
+
+    monkeypatch.setattr(pvp_store, "update_match", mongo_shaped_update)
+
+    second = as_user(client, match["black"], "post", f"/api/pvp/matches/{match['id']}/ready")
+    assert second.status_code == 200
+    payload = second.json()["match"]
+    assert payload["status"] == "active"
+    assert payload["startsAt"]
+
+
 def test_active_clock_accepts_naive_mongo_turn_started_at():
     now = pvp_store.utcnow()
     match = {
