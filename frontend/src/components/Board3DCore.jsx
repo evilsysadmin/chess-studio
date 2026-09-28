@@ -25,6 +25,7 @@ import { buildBoard3DTileInstances, squareFromBoard3DIntersection } from './Boar
 import { planBoard3DPieceReconciliation } from './Board3DPieceReconciliation.js';
 import { addCoarsePieceHitTarget, applyMatthiasCheckPose, buildPiece, disposeObject } from './Board3DPieces.js';
 import { fitBoardCamera, makeTextSprite } from './Board3DScene.js';
+import { resolveStableBoardViewport } from './Board3DViewportSize.js';
 import {
   board3DForensicGhost,
   board3DTechniqueTargetCount,
@@ -436,10 +437,15 @@ function Board3DCanvas({
     }
 
     function resize() {
-      const width = Math.max(280, host.clientWidth || 280);
-      const height = Math.max(300, host.clientHeight || 300);
-      renderer.setSize(width, height, false);
-      fitBoardCamera(camera, width, height, whiteSide, { profile: cameraProfile === 'classroom' || (latestPropsRef.current.warRoomVariant || 'classic') !== 'classic' ? cameraProfile : 'classic', immersive });
+      const viewport = resolveStableBoardViewport({
+        hostWidth: host.clientWidth,
+        hostHeight: host.clientHeight,
+        immersive,
+        viewportWidth: window.innerWidth,
+        viewportHeight: window.innerHeight,
+      });
+      renderer.setSize(viewport.width, viewport.height, false);
+      fitBoardCamera(camera, viewport.width, viewport.height, whiteSide, { profile: cameraProfile === 'classroom' || (latestPropsRef.current.warRoomVariant || 'classic') !== 'classic' ? cameraProfile : 'classic', immersive });
       render();
     }
     resize();
@@ -724,7 +730,14 @@ function Board3DCanvas({
   useEffect(() => {
     const state = sceneStateRef.current, host = hostRef.current;
     if (!state || !host) return;
-    fitBoardCamera(state.camera, Math.max(280, host.clientWidth || 280), Math.max(300, host.clientHeight || 300), state.whiteSide, { profile: cameraProfile === 'classroom' || warRoomVariant !== 'classic' ? cameraProfile : 'classic', immersive });
+    const viewport = resolveStableBoardViewport({
+      hostWidth: host.clientWidth,
+      hostHeight: host.clientHeight,
+      immersive,
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+    });
+    fitBoardCamera(state.camera, viewport.width, viewport.height, state.whiteSide, { profile: cameraProfile === 'classroom' || warRoomVariant !== 'classic' ? cameraProfile : 'classic', immersive });
     state.render();
   }, [warRoomVariant, cameraProfile, immersive]);
 
