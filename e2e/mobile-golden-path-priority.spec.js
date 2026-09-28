@@ -21,30 +21,38 @@ for (const viewport of [
     await expect(dialog).toBeVisible();
 
     const start = dialog.getByRole('button', { name: 'Empezar partida', exact: true });
-    const manual = dialog.getByRole('button', { name: 'Ajustar nivel', exact: true });
+    const tuning = dialog.locator('details.quick-match-post-cta-tools > summary');
+    const manual = dialog.getByRole('button', { name: 'Elegir nivel manualmente', exact: true });
     const settings = dialog.locator('details.quick-match-settings > summary');
 
     await expect(start).toBeVisible();
-    await expect(manual).toBeVisible();
+    await expect(tuning).toBeVisible();
+    await expect(manual).toBeHidden();
     await expect(settings).toBeVisible();
 
-    const [startBox, manualBox, settingsBox] = await Promise.all([
+    const [startBox, tuningBox, settingsBox] = await Promise.all([
       start.boundingBox(),
-      manual.boundingBox(),
+      tuning.boundingBox(),
       settings.boundingBox(),
     ]);
     expect(startBox).not.toBeNull();
-    expect(manualBox).not.toBeNull();
+    expect(tuningBox).not.toBeNull();
     expect(settingsBox).not.toBeNull();
 
-    expect(startBox.y).toBeLessThan(manualBox.y);
+    expect(startBox.y).toBeLessThan(tuningBox.y);
     expect(startBox.y).toBeLessThan(settingsBox.y);
     expect(startBox.y + startBox.height).toBeLessThanOrEqual(viewport.height + 1);
     expect(startBox.height).toBeGreaterThanOrEqual(44);
-    expect(manualBox.height).toBeGreaterThanOrEqual(44);
+    expect(tuningBox.height).toBeGreaterThanOrEqual(44);
     expect(settingsBox.height).toBeGreaterThanOrEqual(44);
     expect(startBox.x).toBeGreaterThanOrEqual(0);
     expect(startBox.x + startBox.width).toBeLessThanOrEqual(viewport.width + 1);
+
+    await tuning.click();
+    await expect(manual).toBeVisible();
+    const manualBox = await manual.boundingBox();
+    expect(manualBox).not.toBeNull();
+    expect(manualBox.height).toBeGreaterThanOrEqual(44);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1)).toBe(true);
   });
 }
