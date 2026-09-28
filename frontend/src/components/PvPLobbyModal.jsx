@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { pvpApi } from '../pvpApi.js';
 import { opponentForMatch } from '../pvpGameModel.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
@@ -74,6 +74,7 @@ export default function PvPLobbyModal({
   const [messageText, setMessageText] = useState('');
   const [selectedRival, setSelectedRival] = useState('');
   const [error, setError] = useState('');
+  const lobbyRef = useRef(null);
   const externallyDriven = Boolean(lobbySnapshot && onRefreshRoster);
   const liveLobby = lobbySnapshot || lobby;
   const self = useMemo(() => liveLobby.roster.find((row) => row.isSelf) || null, [liveLobby.roster]);
@@ -90,6 +91,15 @@ export default function PvPLobbyModal({
   useEffect(() => {
     if (selectedRival && !rivals.some((row) => row.username === selectedRival)) setSelectedRival('');
   }, [rivals, selectedRival]);
+
+  useEffect(() => {
+    const node = lobbyRef.current;
+    if (!node) return;
+    // Mobile browsers can restore the scroll position of a modal-like overflow
+    // container when it is reopened. The command table must always reopen at
+    // its heading, never halfway through a previous session.
+    node.scrollTop = 0;
+  }, []);
 
   useEffect(() => {
     if (messages.length) onMarkChatRead?.(messages);
@@ -190,7 +200,7 @@ export default function PvPLobbyModal({
 
   return (
     <div className="modal-backdrop pvp-lobby-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <section className="pvp-lobby" role="dialog" aria-modal="true" aria-label="Duelo 1 contra 1 · War Room">
+      <section ref={lobbyRef} className="pvp-lobby" role="dialog" aria-modal="true" aria-label="Duelo 1 contra 1 · War Room">
         <button type="button" className="piece-info-close" onClick={onClose} aria-label={self ? 'Cerrar ventana; seguirás disponible para retos' : 'Cerrar ventana de rivales'} title={self ? 'Cerrar · seguirás disponible' : 'Cerrar'}>×</button>
 
         <header className="pvp-lobby__header">
