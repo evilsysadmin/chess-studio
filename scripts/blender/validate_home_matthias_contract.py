@@ -45,6 +45,7 @@ from home_matthias_contract import (  # noqa: E402
     LIMB_MAX_RADIUS_TO_BASE,
     LEG_MAX_FRONT_Y,
     LEG_MIN_BELOW_BASE,
+    LEG_MIN_BOOT_SEPARATION_TO_BASE,
 )
 
 
@@ -130,7 +131,7 @@ def main():
     assert not missing_actions, f"missing actions: {sorted(missing_actions)}"
 
     assert rig.get("canonical_identity") == CANONICAL_IDENTITY, rig.get("canonical_identity")
-    assert rig.get("matthias_asset_version") == "home-blender-classic-v21", (
+    assert rig.get("matthias_asset_version") == "home-blender-classic-v22", (
         rig.get("matthias_asset_version")
     )
     assert rig.get("canonical_reference") == CANONICAL_REFERENCE, rig.get("canonical_reference")
@@ -257,6 +258,10 @@ def main():
     boot_bottom = min(world_z_bounds(objects["Boot.L"])[0], world_z_bounds(objects["Boot.R"])[0])
     assert base_bottom - boot_bottom >= LEG_MIN_BELOW_BASE, (
         f"legs must emerge below pawn shell: base={base_bottom:.3f} boots={boot_bottom:.3f}"
+    )
+    boot_separation = abs(world_center(objects["Boot.R"]).x - world_center(objects["Boot.L"]).x)
+    assert boot_separation / base_width >= LEG_MIN_BOOT_SEPARATION_TO_BASE, (
+        f"boots too tucked to read at Home scale: separation/base={boot_separation/base_width:.3f}"
     )
 
     max_limb_width = base_width * LIMB_MAX_RADIUS_TO_BASE * 2.0
