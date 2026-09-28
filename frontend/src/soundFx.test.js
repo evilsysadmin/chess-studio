@@ -86,7 +86,7 @@ describe('premium piece sound', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.5);
   });
 
-  it('builds a layered move impact instead of a single oscillator beep', () => {
+  it('builds a material-first move impact instead of a single oscillator beep', () => {
     playMoveSound();
 
     const oscillators = state.ctx.nodes.filter((node) => node.kind === 'oscillator');
@@ -94,18 +94,24 @@ describe('premium piece sound', () => {
     const filters = state.ctx.nodes.filter((node) => node.kind === 'filter');
 
     expect(oscillators).toHaveLength(3);
-    expect(noise).toHaveLength(1);
-    expect(filters).toHaveLength(1);
-    expect(oscillators.map((node) => Math.round(node.frequency.value))).toEqual([205, 690, 168]);
+    expect(noise).toHaveLength(2);
+    expect(filters).toHaveLength(2);
   });
 
-  it('gives captures a lower, heavier body than ordinary moves', () => {
+  it('gives captures an extra physical contact and a lower resonant body', () => {
+    playMoveSound();
+    const moveOscillators = state.ctx.nodes.filter((node) => node.kind === 'oscillator');
+    const moveBodyFrequency = moveOscillators[0].frequency.value;
+
+    state.ctx = new FakeAudioContext();
     playCaptureSound();
 
-    const oscillators = state.ctx.nodes.filter((node) => node.kind === 'oscillator');
-    expect(oscillators).toHaveLength(3);
-    expect(Math.round(oscillators[0].frequency.value)).toBe(155);
-    expect(Math.round(oscillators[2].frequency.value)).toBe(118);
+    const captureOscillators = state.ctx.nodes.filter((node) => node.kind === 'oscillator');
+    const captureNoise = state.ctx.nodes.filter((node) => node.kind === 'buffer-source');
+
+    expect(captureOscillators).toHaveLength(3);
+    expect(captureNoise).toHaveLength(3);
+    expect(captureOscillators[0].frequency.value).toBeLessThan(moveBodyFrequency);
   });
 
   it('does not allocate audio nodes when effects are muted', () => {
