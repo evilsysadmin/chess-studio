@@ -224,6 +224,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
         data-home-castle-rare={castleLife.rareSighting || 'none'}
         data-home-castle-focus={activeRoom || 'none'}
         data-home-beacons={anchors ? 'projected' : 'static'}
+        data-home-tour-target="home"
         style={{ '--home-hall-art': `url("${hall}")` }}
       >
         <HomeScene3D
@@ -263,6 +264,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
                 type="button"
                 className={`illustrated-home__destination illustrated-home__destination--${id}${PRIMARY_DIEGETIC_DESTINATIONS.has(id) ? ' is-diegetic-object' : ''}${activeRoom === id ? ' is-active' : ''}`}
                 data-home-diegetic-object={PRIMARY_DIEGETIC_DESTINATIONS.has(id) ? id : undefined}
+                data-home-tour-target={id}
                 onClick={action}
                 onPointerEnter={() => setActiveRoom(id)}
                 onPointerLeave={() => setActiveRoom(null)}
@@ -407,6 +409,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
           data-home-matthias-zone={matthiasZone}
           data-home-matthias-moment={matthiasVisual?.momentId || 'none'}
           data-home-matthias-dwell-ms={matthiasDwellMs}
+          data-home-tour-target="matthias"
         >
           {matthiasVisual && (
             <span
@@ -438,6 +441,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
             aria-label="Más modos y herramientas · Mazmorras"
             aria-expanded={toolsOpen}
             aria-controls="illustrated-home-tools"
+            data-home-tour-target="dungeon"
             onClick={() => setToolsOpen(!toolsOpen)}
             onPointerEnter={() => setActiveRoom('dungeon')}
             onPointerLeave={() => setActiveRoom(null)}
