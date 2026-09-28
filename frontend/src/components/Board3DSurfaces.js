@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import './Board3DSurfaces.css';
 
-export const PREMIUM_SURFACE_VERSION = 'premium-v11-piece-depth';
+export const PREMIUM_SURFACE_VERSION = 'premium-v12-board-hero-depth';
 export const WAR_ROOM_POST_PAINT_PREMIUM_VERSION = 'post-paint-premium-v1';
 
 const SURFACE_ROLES_TO_PRESERVE = new Set([
@@ -178,7 +178,7 @@ export function createBoardAlbedoMap({ seed = 1, light = false, coarsePointer = 
   texture.name = light ? 'war-room-board-limestone-albedo' : 'war-room-board-walnut-albedo';
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(light ? 1.15 : 1.45, light ? 1.15 : 2.6);
+  texture.repeat.set(light ? 1.2 : 1.55, light ? 1.2 : 2.9);
   texture.minFilter = THREE.LinearMipmapLinearFilter;
   texture.magFilter = THREE.LinearFilter;
   texture.generateMipmaps = true;
@@ -249,21 +249,21 @@ export function makePremiumTileMaterial({ color, light = false, coarsePointer = 
     color: surfaceColor,
     map: albedo,
     metalness: 0.015,
-    roughness: micro ? (light ? 0.72 : 0.62) : (light ? 0.69 : 0.57),
+    roughness: micro ? (light ? 0.74 : 0.64) : (light ? 0.7 : 0.58),
     roughnessMap: micro,
     bumpMap: micro,
-    bumpScale: micro ? (light ? 0.0045 : 0.008) : 0,
-    clearcoat: light ? 0.16 : 0.3,
-    clearcoatRoughness: light ? 0.42 : 0.27,
+    bumpScale: micro ? (light ? 0.0055 : 0.0105) : 0,
+    clearcoat: light ? 0.13 : 0.25,
+    clearcoatRoughness: light ? 0.48 : 0.32,
     ior: 1.46,
-    specularIntensity: light ? 0.38 : 0.56,
+    specularIntensity: light ? 0.34 : 0.5,
     // Light squares stay mostly on direct lighting; dark walnut gets enough IBL
     // to reveal broad highlights and the grain under the room practicals.
-    envMapIntensity: light ? 0.08 : 0.58,
+    envMapIntensity: light ? 0.07 : 0.5,
   });
   material.userData.surfaceVersion = PREMIUM_SURFACE_VERSION;
   material.userData.surfaceRole = light ? 'board-light' : 'board-dark';
-  material.userData.boardHeroFinish = albedo ? 'premium-board-depth-v2' : 'lite-flat-v1';
+  material.userData.boardHeroFinish = albedo ? 'premium-board-depth-v3' : 'lite-flat-v1';
   return material;
 }
 
