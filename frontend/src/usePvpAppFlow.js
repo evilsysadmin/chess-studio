@@ -64,10 +64,26 @@ export function usePvpAppFlow({ view, replaceView }) {
     let timer = null;
     let readySent = false;
 
+    const applySnapshot = (result) => {
+      if (!active || !result?.match) return false;
+      const nextMatch = result.match;
+      setHandoffMatch((previous) => previous?.id === matchId ? nextMatch : previous);
+      setHandoffError('');
+      if (nextMatch.status === 'starting') {
+        if (nextMatch.youReady) readySent = true;
+        timer = window.setTimeout(sync, 400);
+      } else if (nextMatch.status === 'active' && !nextMatch.startsAt) {
+        timer = window.setTimeout(sync, 400);
+      } else if (nextMatch.status !== 'active') {
+        terminalHandoffIdRef.current = matchId;
+      }
+      return true;
+    };
+
     const sync = async () => {
       if (!active) return;
+      const api = await loadPvpApi();
       try {
-        const api = await loadPvpApi();
         const current = handoffMatch?.id === matchId ? handoffMatch : null;
         let result;
         if (!readySent && current?.status === 'starting') {
@@ -76,18 +92,24 @@ export function usePvpAppFlow({ view, replaceView }) {
         } else {
           result = await api.getMatch(matchId);
         }
-        if (!active || !result?.match) return;
-        setHandoffMatch((previous) => previous?.id === matchId ? result.match : previous);
-        setHandoffError('');
-        if (result.match.status === 'starting' || (result.match.status === 'active' && !result.match.startsAt)) {
-          timer = window.setTimeout(sync, 400);
-        } else if (result.match.status !== 'active') {
-          terminalHandoffIdRef.current = matchId;
-        }
+        applySnapshot(result);
       } catch (err) {
         if (!active || err?.name === 'AbortError') return;
+
+        // A POST /ready can fail after the backend has already persisted the
+        // readiness transition (for example if a non-critical cleanup step
+        // fails afterwards). Re-read the authoritative match before showing a
+        // scary error or retrying the mutation. If the server says we're ready
+        // or active, continue from that fact instead of hammering /ready.
+        try {
+          const recovery = await api.getMatch(matchId);
+          if (applySnapshot(recovery)) return;
+        } catch (recoveryError) {
+          if (!active || recoveryError?.name === 'AbortError') return;
+        }
+
         setHandoffError(err?.message || 'No se pudo sincronizar el arranque del 1v1.');
-        timer = window.setTimeout(sync, 900);
+        timer = window.setTimeout(sync, 1200);
       }
     };
 
