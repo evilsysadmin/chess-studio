@@ -334,7 +334,7 @@
 
 .pvp-lobby__chat-message {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr) auto;
   gap: .42rem;
   align-items: baseline;
   padding: .32rem .42rem;
@@ -343,6 +343,13 @@
 }
 
 .pvp-lobby__chat-message.is-self { background: rgba(190, 153, 88, .075); }
+
+.pvp-lobby__chat-message.is-system {
+  grid-template-columns: minmax(0, 1fr) auto;
+  border-left: 2px solid rgba(210, 170, 105, .28);
+  color: rgba(226, 207, 171, .68);
+  background: rgba(210, 170, 105, .035);
+}
 
 .pvp-lobby__chat-message strong {
   color: rgba(226, 193, 128, .9);
@@ -356,6 +363,32 @@
   font-size: .74rem;
   line-height: 1.35;
   overflow-wrap: anywhere;
+}
+
+.pvp-lobby__chat-message time {
+  color: rgba(236, 228, 209, .34);
+  font-family: var(--font-mono);
+  font-size: .58rem;
+  white-space: nowrap;
+}
+
+.pvp-lobby__mention-player {
+  width: fit-content;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pvp-lobby__mention-player:hover,
+.pvp-lobby__mention-player:focus-visible {
+  color: #e7c680;
+  text-decoration: underline;
+  text-underline-offset: .16em;
 }
 
 .pvp-lobby__chat-compose {
