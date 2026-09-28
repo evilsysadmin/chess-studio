@@ -30,7 +30,7 @@ export function reinforcePieceSkinMaterial(material, targetColor, skinId, { acce
   // versioned material after the canonical warm-satin finish has been created.
   // Legacy/unversioned ivory keeps the compatibility path below.
   if (canonicalIvory) {
-    material.userData.pieceFinish = 'canonical-satin-ivory-v5';
+    material.userData.pieceFinish = 'canonical-carved-ivory-v6';
     material.userData.skin3DId = skinId;
     material.userData.skin3DIdentity = 'distinct-v2';
     material.userData.skinMaterialAuthority = 'Board3DSurfaces';
@@ -61,13 +61,15 @@ export function reinforcePieceSkinMaterial(material, targetColor, skinId, { acce
   }
 
   if (classicEbony) {
-    material.color.lerp(new THREE.Color(0x3a3c42), 0.12);
-    material.roughness = THREE.MathUtils.clamp(material.roughness, 0.22, 0.33);
-    material.clearcoat = Math.max(material.clearcoat ?? 0, 0.78);
-    material.clearcoatRoughness = Math.min(material.clearcoatRoughness ?? 0.16, 0.17);
-    material.specularIntensity = Math.max(material.specularIntensity ?? 0.7, 0.9);
-    material.envMapIntensity = Math.max(material.envMapIntensity ?? 0.78, 0.96);
-    material.userData.pieceFinish = 'polished-ebony-lacquer-v4';
+    material.color.lerp(new THREE.Color(0x343740), 0.16);
+    material.roughness = THREE.MathUtils.clamp(material.roughness, 0.28, 0.38);
+    material.clearcoat = Math.max(material.clearcoat ?? 0, 0.76);
+    material.clearcoatRoughness = Math.min(material.clearcoatRoughness ?? 0.18, 0.2);
+    material.specularIntensity = Math.max(material.specularIntensity ?? 0.72, 0.88);
+    material.envMapIntensity = Math.max(material.envMapIntensity ?? 0.82, 0.94);
+    material.sheen = Math.max(material.sheen ?? 0, 0.12);
+    material.sheenRoughness = Math.max(material.sheenRoughness ?? 0.32, 0.38);
+    material.userData.pieceFinish = 'polished-ebony-lacquer-v5';
   }
 
   if (profile.emissiveBoost && material.emissive) {
