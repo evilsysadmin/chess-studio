@@ -34,6 +34,10 @@ MAX_SPEAK_MOUTH_OFFSET = 0.026
 PROP_VISIBLE_SCALE = 0.20
 PROP_HIDDEN_SCALE = 0.02
 UPPER_FACE_CLEARANCE = 0.012
+SEATED_ACTIONS = {"Think", "Read", "Write", "Dossier"}
+LOUNGE_ACTIONS = {"Sleep"}
+MIN_SEATED_UPPER_LEG_DEG = 38.0
+MIN_SEATED_LOWER_LEG_DEG = 52.0
 
 
 def world_bounds(obj):
@@ -161,6 +165,22 @@ def main():
                 f"{action_name}@{frame}: spine pose too extreme"
             )
             assert_upper_face_clear(objects, action_name, frame)
+            if action_name in SEATED_ACTIONS and frame == middle:
+                for side in ("L", "R"):
+                    upper = abs(math.degrees(rig.pose.bones[f"upper_leg.{side}"].rotation_euler.x))
+                    lower = abs(math.degrees(rig.pose.bones[f"lower_leg.{side}"].rotation_euler.x))
+                    assert upper >= MIN_SEATED_UPPER_LEG_DEG, (
+                        f"{action_name}@{frame}: upper leg {side} not seated enough ({upper:.1f}deg)"
+                    )
+                    assert lower >= MIN_SEATED_LOWER_LEG_DEG, (
+                        f"{action_name}@{frame}: lower leg {side} not hanging enough ({lower:.1f}deg)"
+                    )
+            if action_name in LOUNGE_ACTIONS and frame == middle:
+                for side in ("L", "R"):
+                    upper = abs(math.degrees(rig.pose.bones[f"upper_leg.{side}"].rotation_euler.x))
+                    assert upper >= 30.0, (
+                        f"{action_name}@{frame}: lounge leg {side} reads too upright ({upper:.1f}deg)"
+                    )
             if action_name == "Speak":
                 mouth_offset = rig.pose.bones["face_mouth"].location.length
                 assert mouth_offset <= MAX_SPEAK_MOUTH_OFFSET, (
