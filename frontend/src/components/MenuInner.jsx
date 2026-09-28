@@ -102,6 +102,7 @@ export default function Menu({
     || homeTourVisible
     || Boolean(error);
   const matthiasCornerBlocked = suppressHomeNudge
+    || homeTourVisible
     || showQuickMatch
     || showPracticeMatch
     || showPvpLobby
