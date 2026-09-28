@@ -33,25 +33,45 @@ describe('War Room canonical rook and knight head details', () => {
   });
 
 
-  it('convierte toda la cabeza negra superior de la reina en ébano sólido sin reflejos', () => {
+  it('cierra geométricamente la corona de la reina para que no se vea la pieza de detrás', () => {
+    const blackQueen = buildPiece('q', 'b', 'studio', false);
+    const whiteQueen = buildPiece('q', 'w', 'studio', false);
+    const blackCore = meshesBy(blackQueen, (mesh) => mesh.userData?.queenPart === 'crown-core');
+    const whiteCore = meshesBy(whiteQueen, (mesh) => mesh.userData?.queenPart === 'crown-core');
+
+    expect(blackCore).toHaveLength(1);
+    expect(whiteCore).toHaveLength(1);
+    expect(blackCore[0].userData.queenCrownOcclusion).toBe('solid-core-v1');
+    expect(whiteCore[0].userData.queenCrownOcclusion).toBe('solid-core-v1');
+    expect(blackCore[0].material.transparent).toBe(false);
+    expect(blackCore[0].material.opacity).toBe(1);
+    expect(blackCore[0].material.depthWrite).toBe(true);
+    expect(blackCore[0].material.depthTest).toBe(true);
+
+    disposeObject(blackQueen);
+    disposeObject(whiteQueen);
+  });
+
+  it('mantiene la corona de la reina negra realmente opaca y sin efecto cristal', () => {
     const queen = buildPiece('q', 'b', 'studio', false);
     const crown = meshesBy(queen, (mesh) => ['crown-orb', 'finial'].includes(mesh.userData?.queenPart));
-    const upperBlack = meshesBy(queen, (mesh) => mesh.userData?.blackQueenUpperHead === true);
 
-    expect(crown.filter((mesh) => mesh.userData?.queenPart === 'crown-orb')).toHaveLength(8);
-    expect(queen.userData.blackQueenUpperFinish).toBe('unlit-ebony-v1');
-    expect(queen.userData.blackQueenOpaqueCrownCount).toBeGreaterThanOrEqual(8);
-    expect(upperBlack.length).toBe(queen.userData.blackQueenOpaqueCrownCount);
-
-    for (const mesh of upperBlack) {
-      expect(mesh.userData.blackQueenOpaqueCrown).toBe('solid-v4');
-      expect(mesh.userData.blackQueenCrownMaterial).toBe('unlit-ebony-v1');
-      expect(mesh.material.isMeshBasicMaterial).toBe(true);
+    expect(crown).toHaveLength(9);
+    expect(queen.userData.blackQueenOpaqueCrownCount).toBe(9);
+    for (const mesh of crown) {
+      expect(mesh.userData.blackQueenOpaqueCrown).toBe('solid-v3');
       expect(mesh.material.transparent).toBe(false);
       expect(mesh.material.opacity).toBe(1);
+      expect(mesh.material.transmission ?? 0).toBe(0);
+      expect(mesh.material.thickness ?? 0).toBe(0);
       expect(mesh.material.depthWrite).toBe(true);
       expect(mesh.material.depthTest).toBe(true);
-      expect(mesh.material.color.getHex()).toBe(0x101318);
+      expect(mesh.userData.blackQueenCrownMaterial).toBe('matte-standard-v1');
+      expect(mesh.material.isMeshStandardMaterial).toBe(true);
+      expect(mesh.material.isMeshPhysicalMaterial).not.toBe(true);
+      expect(mesh.material.envMapIntensity).toBe(0);
+      expect(mesh.material.metalness).toBe(0);
+      expect(mesh.material.roughness).toBeGreaterThanOrEqual(0.96);
     }
 
     disposeObject(queen);
