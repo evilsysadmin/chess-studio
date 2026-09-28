@@ -294,7 +294,7 @@ export default function Menu({
       {showPvpLobby && (
         <PvPLobbyModal
           onClose={() => setShowPvpLobby(false)}
-          lobbySnapshot={pvpFlow?.enrolled ? pvpFlow?.lobby : null}
+          lobbySnapshot={pvpFlow?.lobby || null}
           onRefreshRoster={pvpFlow?.refresh}
           onJoinRoster={pvpFlow?.enroll}
           onLeaveRoster={pvpFlow?.leave}
