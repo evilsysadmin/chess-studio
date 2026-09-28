@@ -29,7 +29,7 @@ test('Home · el roster 1 vs 1 abre la sala y puede minimizarse', async ({ page 
 
   const lobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room' });
   await expect(lobby).toBeVisible();
-  await expect(lobby.getByRole('heading', { name: 'Elige rival' })).toBeVisible();
+  await expect(lobby.getByRole('heading', { name: 'Sala de Duelos' })).toBeVisible();
   await expect(lobby.getByRole('list', { name: 'Cómo jugar 1 contra 1' })).toContainText('Ponte disponible');
   await expect(lobby.getByRole('list', { name: 'Cómo jugar 1 contra 1' })).toContainText('Pulsa Retar');
   await expect(rosterLink).toBeHidden();
@@ -133,7 +133,7 @@ test('Roster 1v1 móvil · abre arriba, sin título amputado ni estado vacío du
   await page.getByRole('button', { name: 'Abrir rivales 1 contra 1 de War Room' }).click();
 
   const lobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room' });
-  const heading = lobby.getByRole('heading', { name: 'Elige rival' });
+  const heading = lobby.getByRole('heading', { name: 'Sala de Duelos' });
   await expect(heading).toBeVisible();
 
   const box = await heading.boundingBox();
