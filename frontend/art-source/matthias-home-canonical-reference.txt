@@ -20,3 +20,4 @@ Identity contract:
 The WebP above remains the visual source of truth for Matthias's pawn body, face, cap, insignia, palette and stern expression; v20 adds only the restrained articulated limbs described above. The Blender contract in scripts/blender/home_matthias_contract.py is its executable guardrail. Changing the canonical reference requires deliberately replacing the WebP and updating its SHA-256 in both this provenance file and the executable contract; silent drift is forbidden.
 
 Materialization note: v20 canonical .blend/.glb generated and committed from validated Blender output.
+Visual ownership note: canonical Matthias changes rely on the narrowed Home-only capture scope now present on main.
