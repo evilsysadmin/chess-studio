@@ -199,6 +199,7 @@ def _surface_groups(path: str) -> set[str] | None:
         "scripts/app_visual_changed_files.py",
         "scripts/app_visual_scope.py",
         "scripts/app_visual_producer_scope.py",
+        "scripts/app_visual_capture.sh",
         "e2e/png-pixels.js",
         # The manifest fans out across every domain (Home, Pawn Slug sprites,
         # Chronicles...), so it can't be mapped to one group by path alone,
@@ -710,7 +711,7 @@ def self_test() -> None:
     producer_scope = classify(["scripts/app_visual_producer_scope.py"])
     assert producer_scope.capture_groups == "none"
     assert not producer_scope.hans and not producer_scope.chesscom
-    assert classify(["scripts/app_visual_capture.sh"]) == full_scope()
+    assert classify(["scripts/app_visual_capture.sh"]) == Scope(())
     assert classify(["scripts/app_visual_summary.mjs"]) == full_scope()
     global_css = classify(["frontend/src/App.css"])
     assert global_css.capture_groups == ",".join(GROUP_ORDER)
