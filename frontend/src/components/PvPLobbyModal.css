@@ -477,11 +477,70 @@
   background: rgba(205, 163, 93, .045);
 }
 
+.pvp-lobby__player:focus-visible {
+  outline: 2px solid rgba(231, 195, 124, .62);
+  outline-offset: 2px;
+}
+
+.pvp-lobby__player.is-selected {
+  border-color: rgba(226, 185, 105, .48);
+  background:
+    linear-gradient(90deg, rgba(207, 158, 80, .13), rgba(207, 158, 80, .035)),
+    rgba(255, 255, 255, .024);
+  box-shadow: inset 0 0 0 1px rgba(244, 211, 148, .035);
+}
+
 .pvp-lobby__player.is-self {
   border-color: rgba(198, 158, 92, .2);
   background:
     linear-gradient(90deg, rgba(198, 158, 92, .065), rgba(198, 158, 92, .025)),
     rgba(255, 255, 255, .016);
+}
+
+.pvp-lobby__selected-rival {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .8rem;
+  margin-top: .72rem;
+  padding: .68rem .74rem;
+  border: 1px solid rgba(218, 176, 99, .24);
+  border-radius: 12px;
+  background: rgba(190, 142, 69, .07);
+}
+
+.pvp-lobby__selected-rival > div:first-child {
+  min-width: 0;
+  display: grid;
+  gap: .06rem;
+}
+
+.pvp-lobby__selected-rival small {
+  color: rgba(210, 170, 105, .76);
+  font-family: var(--font-mono);
+  font-size: .56rem;
+  letter-spacing: .12em;
+}
+
+.pvp-lobby__selected-rival strong {
+  font-size: .92rem;
+}
+
+.pvp-lobby__selected-rival span {
+  color: rgba(236, 228, 209, .52);
+  font-size: .7rem;
+}
+
+.pvp-lobby__selected-actions {
+  display: flex;
+  align-items: center;
+  gap: .42rem;
+  flex: 0 0 auto;
+}
+
+.pvp-lobby__selected-actions .primary-btn {
+  min-height: 38px;
+  white-space: nowrap;
 }
 
 .pvp-lobby__rank-mark {
@@ -1561,4 +1620,25 @@
   font-family: var(--font-mono);
   font-size: .51rem;
   letter-spacing: .06em;
+}
+
+@media (max-width: 620px) {
+  .pvp-lobby__selected-rival {
+    position: sticky;
+    bottom: .25rem;
+    z-index: 3;
+    align-items: stretch;
+    flex-direction: column;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, .34);
+    backdrop-filter: blur(10px);
+  }
+
+  .pvp-lobby__selected-actions {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .pvp-lobby__selected-actions .primary-btn {
+    width: 100%;
+  }
 }
