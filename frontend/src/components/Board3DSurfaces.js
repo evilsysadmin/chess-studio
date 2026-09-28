@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import './Board3DSurfaces.css';
 
-export const PREMIUM_SURFACE_VERSION = 'premium-v10-visible-albedo';
+export const PREMIUM_SURFACE_VERSION = 'premium-v11-piece-depth';
 export const WAR_ROOM_POST_PAINT_PREMIUM_VERSION = 'post-paint-premium-v1';
 
 const SURFACE_ROLES_TO_PRESERVE = new Set([
@@ -204,7 +204,7 @@ export function makePremiumPieceMaterial({ color, skin, side = 'w', accent = fal
   // crema, pero sin volver al blanco porcelana. El volumen debe venir de una mezcla
   // de sombra real y highlight suave, no de quemar la exposición global.
   if (ivory) surfaceColor.lerp(new THREE.Color(0xc6a97c), 0.35);
-  const ivoryRoughness = Math.min(0.86, Math.max(0.7, baseRoughness * 1.3));
+  const ivoryRoughness = Math.min(0.8, Math.max(0.7, baseRoughness * 1.24));
 
   const material = new THREE.MeshPhysicalMaterial({
     color: surfaceColor,
@@ -215,16 +215,16 @@ export function makePremiumPieceMaterial({ color, skin, side = 'w', accent = fal
     bumpScale: 0,
     emissive: skin.emissive,
     emissiveIntensity: accent ? skin.emissiveIntensity * 1.25 : skin.emissiveIntensity,
-    clearcoat: accent ? 0.9 : ivory ? 0.2 : 0.74,
-    clearcoatRoughness: accent ? 0.08 : ivory ? 0.48 : 0.13,
-    sheen: accent ? 0.2 : ivory ? 0.02 : 0.14,
-    sheenRoughness: ivory ? 0.72 : 0.32,
-    ior: ivory ? 1.42 : 1.58,
-    specularIntensity: accent ? 1 : ivory ? 0.24 : 0.86,
-    specularColor: ivory ? new THREE.Color(0xe4cfa5) : new THREE.Color(0xa5b0bb),
+    clearcoat: accent ? 0.9 : ivory ? 0.28 : 0.76,
+    clearcoatRoughness: accent ? 0.08 : ivory ? 0.38 : 0.17,
+    sheen: accent ? 0.2 : ivory ? 0.045 : 0.16,
+    sheenRoughness: ivory ? 0.62 : 0.38,
+    ior: ivory ? 1.46 : 1.58,
+    specularIntensity: accent ? 1 : ivory ? 0.34 : 0.88,
+    specularColor: ivory ? new THREE.Color(0xead7b5) : new THREE.Color(0xb2bac3),
     // The desktop RoomEnvironment is installed after first paint. Ivory stays on
     // direct room lighting only so its value/volume cannot jump when PMREM arrives.
-    envMapIntensity: accent ? 1.2 : ivory ? 0 : 0.94,
+    envMapIntensity: accent ? 1.2 : ivory ? 0.12 : 0.96,
   });
   material.userData.surfaceVersion = PREMIUM_SURFACE_VERSION;
   material.userData.surfaceRole = accent ? 'metal-inlay' : side === 'w' ? 'ivory' : 'ebony';
