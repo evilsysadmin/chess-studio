@@ -39,9 +39,13 @@ describe('War Room board hero surface', () => {
 
     expect(dark.map).toBeTruthy();
     expect(light.map).toBeTruthy();
-    expect(dark.userData.boardHeroFinish).toBe('visible-albedo-v1');
-    expect(light.userData.boardHeroFinish).toBe('visible-albedo-v1');
+    expect(dark.userData.boardHeroFinish).toBe('premium-board-depth-v2');
+    expect(light.userData.boardHeroFinish).toBe('premium-board-depth-v2');
     expect(dark.bumpScale).toBeGreaterThan(light.bumpScale);
+    expect(light.clearcoat).toBeGreaterThanOrEqual(0.16);
+    expect(dark.clearcoat).toBeGreaterThanOrEqual(0.3);
+    expect(light.specularIntensity).toBeGreaterThanOrEqual(0.38);
+    expect(dark.specularIntensity).toBeGreaterThanOrEqual(0.56);
     expect(dark.envMapIntensity).toBeGreaterThan(light.envMapIntensity);
     expect(mobile.map).toBeNull();
     expect(mobile.userData.boardHeroFinish).toBe('lite-flat-v1');
