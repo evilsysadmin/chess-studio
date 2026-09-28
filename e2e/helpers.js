@@ -164,6 +164,7 @@ export async function mockApi(page, {
 } = {}) {
   // Seed tutorials as seen so overlays cannot intercept unrelated E2E clicks.
   let profileData = {
+    'chess-study-home-tour-v1': '1',
     'chess-study-mechanic-tutorial-progress-v1': JSON.stringify({
       'combat-basics': { seen: true },
       'combat-campaign': { seen: true },
