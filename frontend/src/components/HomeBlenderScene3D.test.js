@@ -219,6 +219,14 @@ describe('HomeBlenderScene3D Klaus idle motion', () => {
     expect(body.getWorldPosition(new THREE.Vector3()).distanceTo(bodyBefore)).toBeLessThan(0.02);
     expect(tail.position.distanceTo(tailLocalBefore)).toBeGreaterThan(0);
     expect(tail.position.distanceTo(tailLocalBefore)).toBeLessThan(0.01);
+
+    const activePawTime = Array.from({ length: 600 }, (_, index) => index * 137)
+      .find((timeMs) => {
+        const pose = homeBlenderKlausPawPose(timeMs, 1);
+        return Math.hypot(pose.offsetY, pose.offsetZ) > 0.00005;
+      });
+    expect(activePawTime).toBeDefined();
+    expect(applyHomeBlenderKlausMotion(rig, activePawTime)).toBe(true);
     expect(paw.position.distanceTo(pawLocalBefore)).toBeGreaterThan(0);
     expect(paw.position.distanceTo(pawLocalBefore)).toBeLessThan(0.003);
     expect(cushion.getWorldPosition(new THREE.Vector3()).distanceTo(cushionBefore)).toBeLessThan(1e-6);
