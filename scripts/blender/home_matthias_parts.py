@@ -186,8 +186,8 @@ def build_rig():
     bone('upper_arm.R',(.34,-.30,.92),(.47,-.38,.80),'spine'); bone('forearm.R',(.47,-.38,.80),(.46,-.46,.67),'upper_arm.R')
     # Short articulated legs sit on the front/lower pawn mass. They are an
     # anthropomorphic accent, not a replacement humanoid pelvis/torso.
-    bone('upper_leg.L',(-.22,-.46,.39),(-.24,-.55,.22),'root'); bone('lower_leg.L',(-.24,-.55,.22),(-.24,-.60,.09),'upper_leg.L')
-    bone('upper_leg.R',(.22,-.46,.39),(.24,-.55,.22),'root'); bone('lower_leg.R',(.24,-.55,.22),(.24,-.60,.09),'upper_leg.R')
+    bone('upper_leg.L',(-.22,-.46,.39),(-.265,-.565,.235),'root'); bone('lower_leg.L',(-.265,-.565,.235),(-.235,-.625,.095),'upper_leg.L')
+    bone('upper_leg.R',(.22,-.46,.39),(.265,-.565,.235),'root'); bone('lower_leg.R',(.265,-.565,.235),(.235,-.625,.095),'upper_leg.R')
     bone('prop_book',(0,-.30,.82),(0,-.30,1.00),'spine'); bone('prop_cup',(.27,-.28,1.12),(.27,-.28,1.24),'spine'); bone('prop_pen',(.14,-.31,.84),(.14,-.31,.97),'spine'); bone('prop_bite',(-.25,-.29,1.12),(-.25,-.29,1.24),'spine')
     bpy.ops.object.mode_set(mode='POSE')
     for item in rig.pose.bones: item.rotation_mode='XYZ'
@@ -250,12 +250,14 @@ def build_character():
     cuff_l=cyl('Cuff.L',wrist_l,.031,.016,brass,verts=32,bevel=.003); cuff_r=cyl('Cuff.R',wrist_r,.031,.016,brass,verts=32,bevel=.003)
     hand_l=sphere('Hand.L',(-.458,-.474,.650),(.030,.027,.033),ivory,28); hand_r=sphere('Hand.R',(.458,-.474,.650),(.030,.027,.033),ivory,28)
 
-    hip_l=(-.220,-.465,.390); knee_l=(-.242,-.552,.220); ankle_l=(-.242,-.605,.090)
-    hip_r=(.220,-.465,.390); knee_r=(.242,-.552,.220); ankle_r=(.242,-.605,.090)
+    hip_l=(-.220,-.465,.390); knee_l=(-.265,-.565,.235); ankle_l=(-.235,-.625,.095)
+    hip_r=(.220,-.465,.390); knee_r=(.265,-.565,.235); ankle_r=(.235,-.625,.095)
     thigh_l=cyl_between('Upper leg.L',hip_l,knee_l,.040,navy,40,.009); thigh_r=cyl_between('Upper leg.R',hip_r,knee_r,.040,navy,40,.009)
     shin_l=cyl_between('Lower leg.L',knee_l,ankle_l,.034,navy_soft,40,.008); shin_r=cyl_between('Lower leg.R',knee_r,ankle_r,.034,navy_soft,40,.008)
-    boot_l=elliptic_cyl('Boot.L',(-.242,-.642,.068),.056,.078,.62,leather,(math.radians(82),0,0),40,.009)
-    boot_r=elliptic_cyl('Boot.R',(.242,-.642,.068),.056,.078,.62,leather,(math.radians(82),0,0),40,.009)
+    knee_cap_l=sphere('Knee.L',(-.265,-.574,.235),(.044,.038,.043),navy,28)
+    knee_cap_r=sphere('Knee.R',(.265,-.574,.235),(.044,.038,.043),navy,28)
+    boot_l=elliptic_cyl('Boot.L',(-.235,-.663,.071),.057,.082,.64,leather,(math.radians(78),math.radians(-5),math.radians(4)),40,.009)
+    boot_r=elliptic_cyl('Boot.R',(.235,-.663,.071),.057,.082,.64,leather,(math.radians(78),math.radians(5),math.radians(-4)),40,.009)
 
     book=box('RoutineBook',(0,-.485,.915),(.225,.025,.145),leather,(math.radians(5),0,0),.012); book_page=box('RoutineBookPages',(0,-.512,.915),(.166,.008,.096),paper,(math.radians(5),0,0),.004); book_badge=sphere('RoutineBookBadge',(0,-.526,.910),(.030,.008,.036),brass,20); book_hand_l=sphere('RoutineBookHand.L',(-.205,-.520,.835),(.036,.024,.041),ivory,24); book_hand_r=sphere('RoutineBookHand.R',(.205,-.520,.835),(.036,.024,.041),ivory,24); cup=cyl('RoutineCup',(.265,-.420,1.195),.090,.132,ivory_hi,verts=48,bevel=.010); cup_band=cyl('RoutineCupBand',(.265,-.420,1.253),.092,.013,brass,verts=48,bevel=.004); cup_handle=sphere('RoutineCupHandle',(.365,-.420,1.198),(.045,.021,.060),brass,24); cup_hand=sphere('RoutineCupHand',(.220,-.438,1.105),(.038,.028,.043),ivory,24); pen=cyl('RoutinePen',(.145,-.525,.935),.010,.24,leather,(0,math.radians(64),math.radians(-8)),verts=24,bevel=.004); pen_tip=cone('RoutinePenTip',(.255,-.525,.885),.016,.003,.060,brass,(0,math.radians(64),math.radians(-8)),.003)
     # Keep the campaign bite below the stern mouth. At Home scale, a prop that
@@ -270,8 +272,8 @@ def build_character():
     for obj in (fore_l,cuff_l,hand_l): parent_bone(obj,rig,'forearm.L')
     for obj in (fore_r,cuff_r,hand_r): parent_bone(obj,rig,'forearm.R')
     parent_bone(thigh_l,rig,'upper_leg.L'); parent_bone(thigh_r,rig,'upper_leg.R')
-    for obj in (shin_l,boot_l): parent_bone(obj,rig,'lower_leg.L')
-    for obj in (shin_r,boot_r): parent_bone(obj,rig,'lower_leg.R')
+    for obj in (shin_l,knee_cap_l,boot_l): parent_bone(obj,rig,'lower_leg.L')
+    for obj in (shin_r,knee_cap_r,boot_r): parent_bone(obj,rig,'lower_leg.R')
     for obj in (book,book_page,book_badge,book_hand_l,book_hand_r): parent_bone(obj,rig,'prop_book')
     for obj in (cup,cup_band,cup_handle,cup_hand): parent_bone(obj,rig,'prop_cup')
     for obj in (pen,pen_tip): parent_bone(obj,rig,'prop_pen')
