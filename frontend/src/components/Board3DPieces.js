@@ -426,7 +426,7 @@ export function buildPiece(type, color, skinId, coarsePointer = false, options =
       crownRing.userData.queenPart = 'crown-ring';
       for (let index = 0; index < 8; index += 1) {
         const angle = index * (Math.PI * 2 / 8);
-        const radial = coarsePointer ? 0.218 : 0.238;
+        const radial = coarsePointer ? 0.34 : 0.42;
         const point = addMesh(
           group,
           new THREE.ConeGeometry(coarsePointer ? 0.062 : 0.07, coarsePointer ? 0.3 : 0.34, coarsePointer ? 10 : 16),
