@@ -43,6 +43,8 @@ from home_matthias_contract import (  # noqa: E402
     REQUIRED_OBJECTS,
     IDLE_ARM_MAX_Y,
     LIMB_MAX_RADIUS_TO_BASE,
+    LEG_MAX_FRONT_Y,
+    LEG_MIN_BELOW_BASE,
 )
 
 
@@ -128,7 +130,7 @@ def main():
     assert not missing_actions, f"missing actions: {sorted(missing_actions)}"
 
     assert rig.get("canonical_identity") == CANONICAL_IDENTITY, rig.get("canonical_identity")
-    assert rig.get("matthias_asset_version") == "home-blender-classic-v20", (
+    assert rig.get("matthias_asset_version") == "home-blender-classic-v21", (
         rig.get("matthias_asset_version")
     )
     assert rig.get("canonical_reference") == CANONICAL_REFERENCE, rig.get("canonical_reference")
@@ -241,6 +243,21 @@ def main():
         assert obj.matrix_world.translation.y <= IDLE_ARM_MAX_Y, (
             f"{name}: arm drifted behind the pawn silhouette at y={obj.matrix_world.translation.y:.3f}"
         )
+
+    leg_names = (
+        "Upper leg.L", "Upper leg.R", "Lower leg.L", "Lower leg.R",
+        "Knee.L", "Knee.R", "Boot.L", "Boot.R",
+    )
+    for name in leg_names:
+        obj = objects[name]
+        assert world_center(obj).y >= -LEG_MAX_FRONT_Y, (
+            f"{name}: leg escaped to the pawn front at y={world_center(obj).y:.3f}"
+        )
+    base_bottom = world_z_bounds(base)[0]
+    boot_bottom = min(world_z_bounds(objects["Boot.L"])[0], world_z_bounds(objects["Boot.R"])[0])
+    assert base_bottom - boot_bottom >= LEG_MIN_BELOW_BASE, (
+        f"legs must emerge below pawn shell: base={base_bottom:.3f} boots={boot_bottom:.3f}"
+    )
 
     max_limb_width = base_width * LIMB_MAX_RADIUS_TO_BASE * 2.0
     for name in ("Upper arm.L", "Upper arm.R", "Forearm.L", "Forearm.R",
