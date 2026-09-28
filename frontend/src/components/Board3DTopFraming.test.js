@@ -20,15 +20,14 @@ describe('War Room desktop top framing', () => {
         const roomTop = new THREE.Vector3(0, 5.57, farZ).project(camera);
         const nearApron = new THREE.Vector3(0, -0.55, nearZ).project(camera);
 
-        // The 22° desktop lens deliberately travels farther back than the old
-        // 29° profile to reduce near/far piece-scale distortion. Keep a tiny
-        // The steeper desktop play angle intentionally lets the architectural cap
-        // kiss the top edge so the board gains rank separation. Keep a bounded
-        // tolerance here: enough for the approved ~36° pitch, not enough for a
-        // runaway crop that would turn the room into a floating board.
+        // Desktop now shares the approved mobile play pitch exactly. The long lens
+        // travels a little farther back so that steeper angle does not amputate the
+        // room cap or the near apron. Keep both edges bounded; do not "fix" this by
+        // relaxing crop tolerances.
         expect(roomTop.y).toBeLessThan(1.12);
         expect(nearApron.y).toBeGreaterThan(-0.98);
-        expect(camera.userData.cameraDistance).toBeLessThan(30);
+        expect(camera.userData.cameraDistance).toBeGreaterThan(32);
+        expect(camera.userData.cameraDistance).toBeLessThan(34);
       }
     } finally {
       vi.unstubAllGlobals();
