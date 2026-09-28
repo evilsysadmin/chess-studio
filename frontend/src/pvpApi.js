@@ -20,6 +20,14 @@ export const pvpApi = {
     return jsonRequest('/lobby', { signal });
   },
 
+  sendLobbyMessage(text, { signal } = {}) {
+    return jsonRequest('/lobby/chat', {
+      method: 'POST',
+      body: { text },
+      signal,
+    });
+  },
+
   joinRoster({ signal } = {}) {
     return jsonRequest('/roster', { method: 'POST', signal });
   },

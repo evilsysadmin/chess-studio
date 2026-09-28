@@ -15,13 +15,17 @@ from db import PersistentStorageUnavailable, get_db, persistent_storage_required
 ROSTER_COLLECTION = "pvp_roster"
 CHALLENGE_COLLECTION = "pvp_challenges"
 MATCH_COLLECTION = "pvp_matches"
+LOBBY_CHAT_COLLECTION = "pvp_lobby_chat"
 ROSTER_TTL_SECONDS = 45
 CHALLENGE_TTL_SECONDS = 75
 CHALLENGE_PAIR_COOLDOWN_SECONDS = 20
+LOBBY_CHAT_MAX_MESSAGES = 40
+LOBBY_CHAT_TTL_HOURS = 24
 
 _memory_roster: dict[str, dict[str, Any]] = {}
 _memory_challenges: dict[str, dict[str, Any]] = {}
 _memory_matches: dict[str, dict[str, Any]] = {}
+_memory_lobby_chat: list[dict[str, Any]] = []
 _memory_lock: asyncio.Lock | None = None
 _memory_lock_loop = None
 _index_lock: asyncio.Lock | None = None
@@ -775,6 +779,52 @@ async def active_match_for_user(username: str) -> dict[str, Any] | None:
         raise PersistentStorageUnavailable("No se pudo recuperar la partida 1v1 activa.") from exc
 
 
+async def list_lobby_chat(limit: int = LOBBY_CHAT_MAX_MESSAGES) -> list[dict[str, Any]]:
+    capped = max(1, min(int(limit or LOBBY_CHAT_MAX_MESSAGES), LOBBY_CHAT_MAX_MESSAGES))
+    db = await get_db()
+    if db is None:
+        if persistent_storage_required():
+            raise PersistentStorageUnavailable("MongoDB no está disponible para el chat 1v1.")
+        async with _memory_guard():
+            return [dict(row) for row in _memory_lobby_chat[-capped:]]
+
+    collection = db[LOBBY_CHAT_COLLECTION]
+    cutoff = utcnow() - timedelta(hours=LOBBY_CHAT_TTL_HOURS)
+    try:
+        await collection.delete_many({"created_at": {"$lt": cutoff}})
+        cursor = collection.find({"created_at": {"$gte": cutoff}}).sort("created_at", -1).limit(capped)
+        rows = [_public(row) async for row in cursor]
+        return list(reversed([row for row in rows if row]))
+    except PyMongoError as exc:
+        raise PersistentStorageUnavailable("No se pudo leer el chat 1v1.") from exc
+
+
+async def append_lobby_chat(username: str, text: str, *, kind: str = "message") -> dict[str, Any]:
+    now = utcnow()
+    row = {
+        "id": hashlib.sha256(f"{username}\0{now.isoformat()}\0{text}".encode("utf-8")).hexdigest()[:24],
+        "username": username,
+        "text": text,
+        "kind": "system" if kind == "system" else "message",
+        "created_at": now,
+    }
+    db = await get_db()
+    if db is None:
+        if persistent_storage_required():
+            raise PersistentStorageUnavailable("MongoDB no está disponible para el chat 1v1.")
+        async with _memory_guard():
+            _memory_lobby_chat.append(dict(row))
+            del _memory_lobby_chat[:-LOBBY_CHAT_MAX_MESSAGES]
+            return dict(row)
+
+    collection = db[LOBBY_CHAT_COLLECTION]
+    try:
+        await collection.insert_one({"_id": row["id"], **{k: v for k, v in row.items() if k != "id"}})
+        return row
+    except PyMongoError as exc:
+        raise PersistentStorageUnavailable("No se pudo publicar el mensaje 1v1.") from exc
+
+
 async def delete_user_data(username: str) -> None:
     collections = await _collections()
     if collections is None:
@@ -784,11 +834,15 @@ async def delete_user_data(username: str) -> None:
                 _memory_challenges.pop(cid, None)
             for mid in [mid for mid, row in _memory_matches.items() if username in {row.get("white"), row.get("black")}]:
                 _memory_matches.pop(mid, None)
+            _memory_lobby_chat[:] = [row for row in _memory_lobby_chat if row.get("username") != username]
         return
     roster, challenges, matches = collections
     try:
         await roster.delete_one({"_id": username})
         await challenges.delete_many({"$or": [{"challenger": username}, {"opponent": username}]})
         await matches.delete_many({"$or": [{"white": username}, {"black": username}]})
+        db = await get_db()
+        if db is not None:
+            await db[LOBBY_CHAT_COLLECTION].delete_many({"username": username})
     except PyMongoError as exc:
         raise PersistentStorageUnavailable("No se pudieron borrar los datos 1v1 del usuario.") from exc

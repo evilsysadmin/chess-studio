@@ -36,6 +36,10 @@ class ChallengeRequest(BaseModel):
     opponent: str = Field(min_length=1, max_length=64)
 
 
+class LobbyChatRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=240)
+
+
 class MoveRequest(BaseModel):
     from_square: str = Field(alias="from", pattern=r"^[a-h][1-8]$")
     to_square: str = Field(alias="to", pattern=r"^[a-h][1-8]$")
@@ -413,6 +417,7 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
         cooldowns = await store.challenge_cooldowns_for_user(username, rivals)
         challenges = await store.list_challenges(username)
         active_match = await store.active_match_for_user(username)
+        chat = await store.list_lobby_chat()
         return {
             "roster": [
                 _public_roster(
@@ -425,8 +430,42 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
             ],
             "challenges": [_public_challenge(row, username) for row in challenges],
             "activeMatch": _public_match(active_match, username) if active_match else None,
+            "messages": [
+                {
+                    "id": row["id"],
+                    "username": row["username"],
+                    "text": row["text"],
+                    "kind": row.get("kind") or "message",
+                    "createdAt": _iso(row.get("created_at")),
+                    "isSelf": row["username"] == username,
+                }
+                for row in chat
+            ],
             "pollAfterMs": 3000,
         }
+
+    @router.post("/lobby/chat")
+    @limiter.limit("12/minute")
+    async def post_lobby_chat(
+        payload: LobbyChatRequest,
+        request: Request,
+        username: str = Depends(auth_dependency),
+    ):
+        text = " ".join(payload.text.split()).strip()
+        if not text:
+            raise HTTPException(422, "El mensaje está vacío.")
+        row = await store.append_lobby_chat(username, text)
+        return {
+            "message": {
+                "id": row["id"],
+                "username": username,
+                "text": row["text"],
+                "kind": row.get("kind") or "message",
+                "createdAt": _iso(row.get("created_at")),
+                "isSelf": True,
+            }
+        }
+
 
     @router.post("/challenges", status_code=201)
     async def challenge(body: ChallengeRequest, username: str = Depends(auth_dependency)):
@@ -452,8 +491,9 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
                 f"Espera {retry_after} s antes de volver a retar a este jugador.",
                 headers={"Retry-After": str(retry_after)},
             )
+        challenge_id = uuid.uuid4().hex
         row = await store.create_challenge({
-            "id": uuid.uuid4().hex,
+            "id": challenge_id,
             "challenger": username,
             "opponent": opponent,
             "challenger_rating": int(challenger_row.get("rating", DEFAULT_RATING)),
@@ -461,6 +501,12 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
             "status": "pending",
             "created_at": now,
         })
+        if row.get("id") == challenge_id:
+            await store.append_lobby_chat(
+                "Sistema",
+                f"{username} retó a {opponent}.",
+                kind="system",
+            )
         return {"challenge": _public_challenge(row, username)}
 
     @router.post("/challenges/{challenge_id}/cancel")
@@ -538,6 +584,11 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
         if not accepted:
             raise HTTPException(409, "El reto ya no está disponible.")
         _accepted_challenge, accepted_match = accepted
+        await store.append_lobby_chat(
+            "Sistema",
+            f"{username} aceptó el reto de {challenger}.",
+            kind="system",
+        )
         return {"match": _public_match(accepted_match, username)}
 
     @router.post("/matches/{match_id}/ready")

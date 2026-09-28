@@ -205,6 +205,7 @@ export default function Menu({
       enrolled={Boolean(pvpFlow?.enrolled)}
       rivalCount={Number(pvpFlow?.rivalCount || 0)}
       incomingCount={Number(pvpFlow?.incomingCount || 0)}
+      unreadMessageCount={Number(pvpFlow?.unreadMessageCount || 0)}
       activeMatch={pvpFlow?.activeMatch || null}
     />
   );
@@ -302,6 +303,7 @@ export default function Menu({
           onCancelChallenge={pvpFlow?.cancelChallenge}
           onAcceptChallenge={pvpFlow?.acceptChallenge}
           onDeclineChallenge={pvpFlow?.declineChallenge}
+          onMarkChatRead={pvpFlow?.markLobbyRead}
           onMatchReady={(match) => {
             setShowPvpLobby(false);
             pvpFlow?.enterMatch?.(match);

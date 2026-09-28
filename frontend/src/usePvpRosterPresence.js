@@ -1,10 +1,22 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getUsername } from './auth.js';
 import { loadPvpEnrollment, savePvpEnrollment } from './pvpEnrollment.js';
+import { STORAGE_LOCAL, getStorageItem, setStorageItem } from './safeStorage.js';
 
-const EMPTY_LOBBY = Object.freeze({ roster: [], challenges: [], activeMatch: null, pollAfterMs: 3000 });
+const EMPTY_LOBBY = Object.freeze({ roster: [], challenges: [], messages: [], activeMatch: null, pollAfterMs: 3000 });
 const ROSTER_HEARTBEAT_MS = 15000;
 const HIDDEN_HEARTBEAT_CHECK_MS = 12000;
+
+function chatReadKey(username) {
+  return `chess-study-pvp-lobby-chat-read-v1:${String(username || '').toLowerCase()}`;
+}
+
+export function pvpUnreadMessageCount(messages = [], lastReadId = '') {
+  if (!Array.isArray(messages) || messages.length === 0) return 0;
+  if (!lastReadId) return messages.length;
+  const index = messages.findIndex((message) => message?.id === lastReadId);
+  return index < 0 ? messages.length : Math.max(0, messages.length - index - 1);
+}
 
 async function loadPvpApi() {
   return (await import('./pvpApi.js')).pvpApi;
@@ -43,6 +55,7 @@ export function usePvpRosterPresence({ enabled = true } = {}) {
   const [enrolled, setEnrolled] = useState(() => loadPvpEnrollment(username));
   const [lobby, setLobby] = useState(EMPTY_LOBBY);
   const [error, setError] = useState('');
+  const [lastReadMessageId, setLastReadMessageId] = useState(() => getStorageItem(STORAGE_LOCAL, chatReadKey(username)) || '');
   const heartbeatAtRef = useRef(0);
 
   const heartbeatOnly = useCallback(async ({ signal } = {}) => {
@@ -216,6 +229,16 @@ export function usePvpRosterPresence({ enabled = true } = {}) {
 
   const incomingChallenge = useMemo(() => incomingPvpChallenge(lobby), [lobby]);
   const rivalCount = useMemo(() => pvpRivalCount(lobby), [lobby]);
+  const unreadMessageCount = useMemo(
+    () => pvpUnreadMessageCount(lobby.messages, lastReadMessageId),
+    [lastReadMessageId, lobby.messages],
+  );
+  const markLobbyRead = useCallback((messages = lobby.messages) => {
+    const latest = Array.isArray(messages) ? messages[messages.length - 1] : null;
+    if (!latest?.id) return;
+    setStorageItem(STORAGE_LOCAL, chatReadKey(username), latest.id);
+    setLastReadMessageId(latest.id);
+  }, [lobby.messages, username]);
 
   return {
     enrolled,
@@ -223,6 +246,8 @@ export function usePvpRosterPresence({ enabled = true } = {}) {
     incomingChallenge,
     rivalCount,
     activeMatch: lobby.activeMatch || null,
+    unreadMessageCount,
+    markLobbyRead,
     error,
     refresh,
     enroll,
