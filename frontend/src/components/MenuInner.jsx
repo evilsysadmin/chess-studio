@@ -5,6 +5,7 @@ const PracticeMatchModal = lazy(() => import('./PracticeMatchModal.jsx'));
 const PvPLobbyModal = lazy(() => import('./PvPLobbyModal.jsx'));
 import HomeIllustrated from './HomeIllustrated.jsx';
 import HomePvpRosterLink from './HomePvpRosterLink.jsx';
+import HomeFirstRunTour from './HomeFirstRunTour.jsx';
 import { getBoardRenderer, getDefaultTimeControlId, setBoardRenderer, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
 import { difficultyForQuickMatchRating } from '../quickMatchDifficulty.js';
 import { loadRivalry } from '../rivalry.js';
@@ -27,6 +28,11 @@ import { consumeMatthiasLoginGreeting, matthiasLoginGreetingPending } from '../m
 import { fetchMatthiasDailyStatus } from '../matthiasDaily.js';
 import { matthiasSessionContext } from '../matthiasSessionContext.js';
 import { usePvpRuntime } from '../pvpRuntimeBridge.js';
+import {
+  homeFirstRunTourSeen,
+  markHomeFirstRunTourSeen,
+  shouldOfferHomeFirstRunTour,
+} from '../homeFirstRunTour.js';
 
 export default function Menu({
   onNewGame,
@@ -62,6 +68,8 @@ export default function Menu({
   const [showQuickMatch, setShowQuickMatch] = useState(false);
   const [showPracticeMatch, setShowPracticeMatch] = useState(false);
   const [showPvpLobby, setShowPvpLobby] = useState(false);
+  const [homeTourPending, setHomeTourPending] = useState(() => !homeFirstRunTourSeen());
+  const [homeTourReplay, setHomeTourReplay] = useState(false);
   const pvpFlow = usePvpRuntime();
   // Other modes the player left half-way (Combat campaign, special run): shown in the JUGAR menu.
   const pendingModes = useMemo(() => buildPendingModes({
@@ -74,12 +82,24 @@ export default function Menu({
   const [matthiasMemory, setMatthiasMemory] = useState(null);
   const matthiasRollRef = useRef(Math.random());
 
+  const homeTourBlocked = suppressHomeNudge
+    || hasSavedGame
+    || showQuickMatch
+    || showPracticeMatch
+    || showPvpLobby
+    || Boolean(error);
+  const homeTourVisible = homeTourReplay || shouldOfferHomeFirstRunTour({
+    seen: !homeTourPending,
+    blocked: homeTourBlocked,
+    hasSavedGame,
+  });
   const matthiasIntroPending = !matthiasOnboarded();
   const matthiasIntroBlocked = suppressHomeNudge
     || hasSavedGame
     || showQuickMatch
     || showPracticeMatch
     || showPvpLobby
+    || homeTourVisible
     || Boolean(error);
   const matthiasCornerBlocked = suppressHomeNudge
     || showQuickMatch
@@ -116,8 +136,8 @@ export default function Menu({
     if (matthiasIntroPending) {
       const introPlacement = matthiasIntroPlacement({
         onboarded: false,
-        guideEnabled: false,
-        guideVisible: false,
+        guideEnabled: true,
+        guideVisible: homeTourVisible,
         blocked: matthiasIntroBlocked,
       });
       if (introPlacement !== 'visit') return;
@@ -151,6 +171,7 @@ export default function Menu({
     matthiasIntroPending,
     matthiasMemory,
     matthiasVisit,
+    homeTourVisible,
   ]);
 
   useEffect(() => {
@@ -178,6 +199,20 @@ export default function Menu({
     window.addEventListener(USER_PREFERENCES_CHANGED_EVENT, syncDefaultClock);
     return () => window.removeEventListener(USER_PREFERENCES_CHANGED_EVENT, syncDefaultClock);
   }, []);
+
+  function finishHomeTour() {
+    markHomeFirstRunTourSeen();
+    setHomeTourPending(false);
+    setHomeTourReplay(false);
+    if (!matthiasOnboarded()) markMatthiasOnboarded();
+    consumeMatthiasLoginGreeting();
+    markMatthiasHomeShown();
+  }
+
+  function openHomeTour() {
+    setMatthiasVisit(null);
+    setHomeTourReplay(true);
+  }
 
   function handleMatthiasAction() {
     const action = matthiasVisit?.action || 'insights';
@@ -239,10 +274,17 @@ export default function Menu({
           ['Espectador', onSpectator],
           ['Mi progreso', onProgress],
           ['Experimentos geniales', onLab],
+          ['Guía rápida', openHomeTour],
         ]}
       />
 
-      {pvpEntryVisible && renderPvpRosterLink('card')}
+      <HomeFirstRunTour
+        active={homeTourVisible}
+        onComplete={finishHomeTour}
+        onSkip={finishHomeTour}
+      />
+
+      {pvpEntryVisible && !homeTourVisible && renderPvpRosterLink('card')}
 
       {showQuickMatch && (
         <QuickMatchModal
