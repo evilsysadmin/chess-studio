@@ -10,6 +10,7 @@ import { adaptiveDifficultyPresentation } from '../adaptiveDifficultyPresentatio
 import { fetchMatthiasBriefing } from '../matthiasDaily.js';
 import { matthiasTimeVisual } from '../matthiasVisuals.js';
 import './QuickMatchMobileGoldenPath.css';
+import { loadWarRoomVariant, prefetchWarRoomVariant } from './WarRoomVariant.js';
 import {
   exitWarRoomBrowserFullscreen,
   requestWarRoomLandscapeFullscreen,
@@ -56,6 +57,12 @@ export default function QuickMatchModal({
   const [matthiasBriefing, setMatthiasBriefing] = useState(null);
   const [selectedRenderer, setSelectedRenderer] = useState('3d');
   const matthiasVisual = matthiasTimeVisual();
+
+  useEffect(() => {
+    if (selectedRenderer !== '3d') return undefined;
+    void prefetchWarRoomVariant(loadWarRoomVariant());
+    return undefined;
+  }, [selectedRenderer]);
 
   useEffect(() => {
     let active = true;

@@ -67,8 +67,8 @@ describe('War Room shared Blender materials', () => {
       albedoCompensation: 1.10,
     });
     expect(warRoomBlenderStoneSurfaceProfile({ coarsePointer: true })).toEqual({
-      enabled: true,
-      size: 24,
+      enabled: false,
+      size: 0,
       bumpScale: 0,
       albedoCompensation: 1.10,
     });
@@ -80,8 +80,8 @@ describe('War Room shared Blender materials', () => {
       albedoCompensation: 1.055,
     });
     expect(warRoomBlenderWoodSurfaceProfile({ coarsePointer: true })).toEqual({
-      enabled: true,
-      size: 32,
+      enabled: false,
+      size: 0,
       bumpScale: 0,
       albedoCompensation: 1.055,
     });
@@ -93,8 +93,8 @@ describe('War Room shared Blender materials', () => {
       albedoCompensation: 1.025,
     });
     expect(warRoomBlenderMetalSurfaceProfile({ coarsePointer: true })).toEqual({
-      enabled: true,
-      size: 24,
+      enabled: false,
+      size: 0,
       bumpScale: 0,
       albedoCompensation: 1.02,
     });
@@ -106,8 +106,8 @@ describe('War Room shared Blender materials', () => {
       albedoCompensation: 1.04,
     });
     expect(warRoomBlenderFabricSurfaceProfile({ coarsePointer: true })).toEqual({
-      enabled: true,
-      size: 24,
+      enabled: false,
+      size: 0,
       bumpScale: 0,
       albedoCompensation: 1.035,
     });
@@ -118,8 +118,8 @@ describe('War Room shared Blender materials', () => {
       albedoCompensation: 1.03,
     });
     expect(warRoomBlenderLeatherSurfaceProfile({ coarsePointer: true })).toEqual({
-      enabled: true,
-      size: 24,
+      enabled: false,
+      size: 0,
       bumpScale: 0,
       albedoCompensation: 1.025,
     });

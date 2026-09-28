@@ -20,12 +20,14 @@ export const WAR_ROOM_VARIANTS = Object.freeze([
     id: 'v2',
     label: 'War Room v2',
     shell: 'blender',
+    runtimeModelUrl: 'https://assets.chess-studio.shadowops.dpdns.org/war-room/v2/runtime/current.glb',
     loadInstaller: () => import('./WarRoomV2Shell.js').then(({ installWarRoomV2Shell }) => installWarRoomV2Shell),
   }),
   Object.freeze({
     id: 'v3',
     label: 'War Room v3',
     shell: 'blender',
+    runtimeModelUrl: 'https://assets.chess-studio.shadowops.dpdns.org/war-room/v3/runtime/current.glb',
     loadInstaller: () => import('./WarRoomV3Shell.js').then(({ installWarRoomV3Shell }) => installWarRoomV3Shell),
   }),
 ]);
@@ -89,6 +91,42 @@ export function loadWarRoomVariantInstaller(value) {
     return Promise.reject(new Error(`War Room ${definition?.id || value || 'unknown'} has no external shell installer`));
   }
   return definition.loadInstaller();
+}
+
+export function warRoomVariantRuntimeModelUrl(value, { buildSha = import.meta.env.VITE_BUILD_SHA } = {}) {
+  const baseUrl = warRoomVariantDefinition(value)?.runtimeModelUrl;
+  if (!baseUrl) return null;
+  const version = String(buildSha || '').trim();
+  if (!version) return baseUrl;
+  const separator = baseUrl.includes('?') ? '&' : '?';
+  return `${baseUrl}${separator}build=${encodeURIComponent(version)}`;
+}
+
+export function prefetchWarRoomVariant(value, {
+  documentRef = globalThis.document,
+  buildSha = import.meta.env.VITE_BUILD_SHA,
+} = {}) {
+  const definition = warRoomVariantDefinition(value);
+  if (!definition?.loadInstaller) return Promise.resolve(false);
+
+  // Start downloading the JS installer immediately. The model itself is warmed
+  // through <link rel=preload> so mobile browsers can stream/cache it without
+  // keeping a second ArrayBuffer alive in application memory.
+  const installerWarmup = definition.loadInstaller().then(() => true).catch(() => false);
+  const modelUrl = warRoomVariantRuntimeModelUrl(value, { buildSha });
+  if (!modelUrl || !documentRef?.head?.appendChild || !documentRef?.createElement) return installerWarmup;
+
+  const selector = `link[data-war-room-prefetch="${definition.id}"][href="${modelUrl}"]`;
+  if (!documentRef.querySelector?.(selector)) {
+    const link = documentRef.createElement('link');
+    link.rel = 'preload';
+    link.as = 'fetch';
+    link.href = modelUrl;
+    link.crossOrigin = 'anonymous';
+    link.dataset.warRoomPrefetch = definition.id;
+    documentRef.head.appendChild(link);
+  }
+  return installerWarmup;
 }
 
 export function warRoomVariantDomData(variant, status) {
