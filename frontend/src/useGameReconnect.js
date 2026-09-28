@@ -5,6 +5,7 @@ import { fetchReconnectGame, reconnectTarget } from './gameReconnect.js';
 import { SAVE_STATUS } from './saveStatus.js';
 import { ACTIVE_SESSION_EVENT, ACTIVE_SESSION_STATE, activeSessionTransition } from './activeSessionMachine.js';
 import { reportStateInvariant } from './stateMachine.js';
+import { reconnectBackoffDelayMs, RECONNECT_AUTO_RETRY_LIMIT } from './gameReconnectBackoff.js';
 
 export function shouldAttemptReconnect({ inFlight, reconnectNeeded, saveState, mutationInFlight = false }) {
   if (inFlight || mutationInFlight || saveState === SAVE_STATUS.SAVING) return false;
@@ -59,6 +60,8 @@ export function useGameReconnect({
   const reconnectAbortRef = useRef(null);
   const attemptReconnectRef = useRef(null);
   const reconnectMachineRef = useRef(ACTIVE_SESSION_STATE.ACTIVE);
+  const reconnectRetryTimerRef = useRef(null);
+  const reconnectRetryCountRef = useRef(0);
 
   function advanceReconnect(event, target = null) {
     const current = reconnectMachineRef.current;
@@ -76,6 +79,31 @@ export function useGameReconnect({
   tournamentGameRef.current = tournamentGame;
   saveStateRef.current = saveState;
   callbacksRef.current = { getGame, onGame, onTournamentGame, onPersistenceState, onError };
+
+  function clearReconnectRetry() {
+    if (reconnectRetryTimerRef.current !== null) {
+      window.clearTimeout(reconnectRetryTimerRef.current);
+      reconnectRetryTimerRef.current = null;
+    }
+  }
+
+  function resetReconnectBackoff() {
+    clearReconnectRetry();
+    reconnectRetryCountRef.current = 0;
+  }
+
+  function scheduleReconnectRetry() {
+    clearReconnectRetry();
+    if (reconnectRetryCountRef.current >= RECONNECT_AUTO_RETRY_LIMIT) return false;
+    const attempt = reconnectRetryCountRef.current;
+    reconnectRetryCountRef.current += 1;
+    const delayMs = reconnectBackoffDelayMs(attempt);
+    reconnectRetryTimerRef.current = window.setTimeout(() => {
+      reconnectRetryTimerRef.current = null;
+      void attemptReconnectRef.current?.({ announceSaving: false });
+    }, delayMs);
+    return true;
+  }
 
   useEffect(() => {
     let disposed = false;
@@ -156,19 +184,25 @@ export function useGameReconnect({
           currentGeneration: reconnectOfflineGeneration.current,
           online: typeof navigator === 'undefined' ? true : navigator.onLine,
         });
+        resetReconnectBackoff();
       } else {
         advanceReconnect(ACTIVE_SESSION_EVENT.TRANSIENT_FAILURE, target);
+        reconnectNeeded.current = true;
         callbacksRef.current.onPersistenceState?.(SAVE_STATUS.ERROR);
-        callbacksRef.current.onError?.('La conexión volvió, pero todavía no se pudo resincronizar la partida. La última posición confirmada sigue intacta.');
+        const retryScheduled = scheduleReconnectRetry();
+        callbacksRef.current.onError?.(retryScheduled
+          ? 'Servidor actualizándose · reconectando. La última posición confirmada está guardada.'
+          : 'No se pudo resincronizar todavía. La última posición confirmada está guardada; reintenta cuando vuelva el servidor.');
       }
       if (reconnectAbortRef.current === controller) reconnectAbortRef.current = null;
       reconnectInFlight.current = false;
     }
 
     attemptReconnectRef.current = attemptReconnect;
-    const handleOnline = () => { void attemptReconnect({ announceSaving: true }); };
+    const handleOnline = () => { resetReconnectBackoff(); void attemptReconnect({ announceSaving: true }); };
 
     const handleOffline = () => {
+      clearReconnectRetry();
       reconnectOfflineGeneration.current += 1;
       reconnectNeeded.current = true;
     };
@@ -181,6 +215,7 @@ export function useGameReconnect({
       reconnectAbortRef.current?.abort(new DOMException('Reconnect unmounted', 'AbortError'));
       reconnectAbortRef.current = null;
       reconnectInFlight.current = false;
+      clearReconnectRetry();
       window.removeEventListener('offline', handleOffline);
       window.removeEventListener('online', handleOnline);
     };
