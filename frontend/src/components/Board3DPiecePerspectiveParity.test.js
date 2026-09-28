@@ -142,15 +142,35 @@ describe('Board3D piece scale parity', () => {
       if (object.userData?.queenPart) queenParts.push(object.userData.queenPart);
     });
 
-    expect(queen.userData.board3DQueenSilhouetteVersion).toBe('royal-crown-v2');
-    expect(queen.userData.board3DQueenCrownProfile).toBe('eight-point-flared-v1');
-    expect(queenSize.y).toBeGreaterThan(bishopSize.y * 1.06);
+    expect(queen.userData.board3DQueenSilhouetteVersion).toBe('royal-crown-v3');
+    expect(queen.userData.board3DQueenCrownProfile).toBe('eight-point-flared-v2');
+    expect(queenSize.y).toBeGreaterThan(bishopSize.y * 1.07);
+    expect(queenSize.x).toBeGreaterThan(bishopSize.x * 1.2);
+    expect(bishop.userData.board3DBishopSilhouetteVersion).toBe('staunton-mitre-v2');
     expect(queenParts.filter((part) => part === 'crown-point')).toHaveLength(8);
     expect(queenParts.filter((part) => part === 'crown-orb')).toHaveLength(8);
     expect(queenParts).toContain('finial');
 
     disposeObject(queen);
     disposeObject(bishop);
+  });
+
+  it('mantiene el rey humano inequívoco por altura y cruz', () => {
+    const king = buildPiece('k', 'w', 'studio', false);
+    const queen = buildPiece('q', 'w', 'studio', false);
+    const parts = [];
+    king.traverse((object) => {
+      if (object.userData?.playerKingPart) parts.push(object.userData.playerKingPart);
+    });
+
+    expect(king.userData.board3DPlayerKingSilhouetteVersion).toBe('classic-sovereign-v4');
+    expect(king.userData.board3DPlayerKingCrownProfile).toBe('clean-cross-crown-v3');
+    expect(worldSize(king).y).toBeGreaterThan(worldSize(queen).y);
+    expect(parts).toContain('cross-vertical');
+    expect(parts).toContain('cross-horizontal');
+
+    disposeObject(king);
+    disposeObject(queen);
   });
 
   it('comprime también la perspectiva móvil sin reutilizar la lente desktop', () => {
