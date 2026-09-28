@@ -226,6 +226,31 @@ def test_challenge_accept_creates_authoritative_match_and_enforces_turns():
     assert len(second.json()["match"]["history"]) == 2
 
 
+def test_ready_retries_brief_storage_unavailability(monkeypatch):
+    client = make_client()
+    for user in ("alice", "bob"):
+        assert as_user(client, user, "post", "/api/pvp/roster").status_code == 200
+
+    challenge = as_user(client, "alice", "post", "/api/pvp/challenges", json={"opponent": "bob"}).json()["challenge"]
+    match = as_user(client, "bob", "post", f"/api/pvp/challenges/{challenge['id']}/accept").json()["match"]
+
+    real_get_match = pvp_store.get_match
+    calls = {"count": 0}
+
+    async def flaky_get_match(match_id):
+        calls["count"] += 1
+        if calls["count"] <= 2:
+            raise pvp_api.PersistentStorageUnavailable("temporary mongo hiccup")
+        return await real_get_match(match_id)
+
+    monkeypatch.setattr(pvp_store, "get_match", flaky_get_match)
+    response = as_user(client, match["white"], "post", f"/api/pvp/matches/{match['id']}/ready")
+
+    assert response.status_code == 200
+    assert response.json()["match"]["youReady"] is True
+    assert calls["count"] >= 3
+
+
 def test_active_match_presence_uses_existing_poll_without_revision_churn():
     client = make_client()
     for user in ("alice", "bob"):
