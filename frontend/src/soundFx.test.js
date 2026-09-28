@@ -30,6 +30,11 @@ class FakeNode {
     this.Q = new FakeParam();
     this.type = '';
     this.buffer = null;
+    this.threshold = new FakeParam();
+    this.knee = new FakeParam();
+    this.ratio = new FakeParam();
+    this.attack = new FakeParam();
+    this.release = new FakeParam();
   }
   connect() { return this; }
   start() {}
@@ -76,6 +81,11 @@ class FakeAudioContext {
     this.nodes.push(node);
     return node;
   }
+  createDynamicsCompressor() {
+    const node = new FakeNode('compressor');
+    this.nodes.push(node);
+    return node;
+  }
   resume() { return Promise.resolve(); }
 }
 
@@ -92,10 +102,12 @@ describe('premium piece sound', () => {
     const oscillators = state.ctx.nodes.filter((node) => node.kind === 'oscillator');
     const noise = state.ctx.nodes.filter((node) => node.kind === 'buffer-source');
     const filters = state.ctx.nodes.filter((node) => node.kind === 'filter');
+    const compressors = state.ctx.nodes.filter((node) => node.kind === 'compressor');
 
     expect(oscillators).toHaveLength(3);
     expect(noise).toHaveLength(3);
-    expect(filters).toHaveLength(3);
+    expect(filters).toHaveLength(4);
+    expect(compressors).toHaveLength(1);
   });
 
   it('gives captures an extra physical contact and a lower resonant body', () => {
@@ -108,9 +120,11 @@ describe('premium piece sound', () => {
 
     const captureOscillators = state.ctx.nodes.filter((node) => node.kind === 'oscillator');
     const captureNoise = state.ctx.nodes.filter((node) => node.kind === 'buffer-source');
+    const captureCompressors = state.ctx.nodes.filter((node) => node.kind === 'compressor');
 
     expect(captureOscillators).toHaveLength(3);
     expect(captureNoise).toHaveLength(4);
+    expect(captureCompressors).toHaveLength(1);
     expect(captureOscillators[0].frequency.value).toBeLessThan(moveBodyFrequency);
   });
 
