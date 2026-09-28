@@ -523,6 +523,33 @@ def test_default_10_minute_clock_flags_authoritatively(monkeypatch):
 
 
 
+def test_starting_handoff_can_be_cancelled_without_result_or_rating():
+    client = make_client()
+    for user in ("alice", "bob"):
+        assert as_user(client, user, "post", "/api/pvp/roster").status_code == 200
+
+    challenge = as_user(client, "alice", "post", "/api/pvp/challenges", json={"opponent": "bob"}).json()["challenge"]
+    accepted = as_user(client, "bob", "post", f"/api/pvp/challenges/{challenge['id']}/accept")
+    assert accepted.status_code == 200
+    match = accepted.json()["match"]
+    assert match["status"] == "starting"
+
+    cancelled = as_user(client, "bob", "post", f"/api/pvp/matches/{match['id']}/cancel-starting")
+    assert cancelled.status_code == 200
+    payload = cancelled.json()["match"]
+    assert payload["status"] == "cancelled"
+    assert payload["result"] is None
+    assert payload["endReason"] == "handoff_cancelled"
+    assert payload["ratingChange"] is None
+    assert "pvp_rating_games" not in users_store._memory_users["alice"]
+    assert "pvp_rating_games" not in users_store._memory_users["bob"]
+
+    repeated = as_user(client, "alice", "post", f"/api/pvp/matches/{match['id']}/cancel-starting")
+    assert repeated.status_code == 200
+    assert repeated.json()["match"]["status"] == "cancelled"
+    assert as_user(client, "alice", "get", "/api/pvp/lobby").json()["activeMatch"] is None
+
+
 def test_starting_handoff_expires_without_result_or_rating():
     client = make_client()
     for user in ("alice", "bob"):
