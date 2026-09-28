@@ -1,0 +1,55 @@
+name: Audit · menu UX screenshots
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: menu-ux-audit
+  cancel-in-progress: true
+
+jobs:
+  capture:
+    name: Capture menu UX inventory
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+
+      - name: Restore browser + frontend build
+        uses: ./.github/actions/setup-browser-e2e
+        env:
+          VITE_APP_VISUAL_CAPTURE: 'true'
+        with:
+          browser-scope: chromium
+          build-frontend: 'true'
+
+      - name: Capture menu inventory
+        working-directory: e2e
+        env:
+          CHESS_E2E_LIGHTWEIGHT: '1'
+        run: ./node_modules/.bin/playwright test menu-ux-audit.spec.js --workers=1 --retries=0
+
+      - name: List captured evidence
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          dir='.artifacts/menu-ux-audit'
+          [[ -d "$dir" ]] || { echo '::error::No menu UX audit artifact directory'; exit 1; }
+          echo '### Menu UX audit' >> "$GITHUB_STEP_SUMMARY"
+          find "$dir" -type f \( -name '*.png' -o -name '*.json' \) -print | sort | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload menu UX audit
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: menu-ux-audit-${{ github.run_id }}
+          path: .artifacts/menu-ux-audit/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0

@@ -37,6 +37,7 @@ INVENTORY = {
     'home-r2-assets.yml': 'infra-assets',
     'main-admission.yml': 'delivery-admission',
     'main-backend-image.yml': 'delivery-backend-image',
+    'menu-ux-audit.yml': 'ux-manual-audit',
     'oci-readiness.yml': 'infra-readiness',
     'oci-staging-deploy.yml': 'infra-staging-delivery',
     'oci-staging-lab.yml': 'infra-staging-lifecycle',
