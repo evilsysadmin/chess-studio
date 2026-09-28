@@ -16,6 +16,8 @@ from home_matthias_contract import (  # noqa: E402
     AGED_BRASS_ROUGHNESS,
     BODY_HEIGHT_TO_BASE_WIDTH,
     BITE_PROP_FACE_CLEARANCE_MIN,
+    BASE_OPENING_MIN_RADIUS,
+    BOOT_GROUND_MIN_Z,
     BRASS_MIN_METALLIC,
     CANONICAL_IDENTITY,
     CANONICAL_REFERENCE,
@@ -130,7 +132,7 @@ def main():
     assert not missing_actions, f"missing actions: {sorted(missing_actions)}"
 
     assert rig.get("canonical_identity") == CANONICAL_IDENTITY, rig.get("canonical_identity")
-    assert rig.get("matthias_asset_version") == "home-blender-classic-v21", (
+    assert rig.get("matthias_asset_version") == "home-blender-classic-v22", (
         rig.get("matthias_asset_version")
     )
     assert rig.get("canonical_reference") == CANONICAL_REFERENCE, rig.get("canonical_reference")
@@ -253,10 +255,24 @@ def main():
         assert world_center(obj).y >= -LEG_MAX_FRONT_Y, (
             f"{name}: leg escaped to the pawn front at y={world_center(obj).y:.3f}"
         )
-    base_bottom = world_z_bounds(base)[0]
+    # v22: the outer pawn base stays visually intact, but it is physically hollow.
+    # Two legs must read through that opening and land on the floor instead of
+    # disappearing inside a solid plinth or below the ground plane.
+    base_radii = [
+        math.hypot(vertex.co.x, vertex.co.y)
+        for vertex in base.data.vertices
+        if math.hypot(vertex.co.x, vertex.co.y) > 1e-5
+    ]
+    assert min(base_radii) >= BASE_OPENING_MIN_RADIUS, (
+        f"pawn base opening collapsed: inner={min(base_radii):.3f}"
+    )
+    shell_bottom = world_z_bounds(body)[0]
     boot_bottom = min(world_z_bounds(objects["Boot.L"])[0], world_z_bounds(objects["Boot.R"])[0])
-    assert base_bottom - boot_bottom >= LEG_MIN_BELOW_BASE, (
-        f"legs must emerge below pawn shell: base={base_bottom:.3f} boots={boot_bottom:.3f}"
+    assert shell_bottom - boot_bottom >= LEG_MIN_BELOW_BASE, (
+        f"legs must emerge visibly below pawn shell: shell={shell_bottom:.3f} boots={boot_bottom:.3f}"
+    )
+    assert boot_bottom >= BOOT_GROUND_MIN_Z, (
+        f"boots sank below the Home floor: {boot_bottom:.3f} < {BOOT_GROUND_MIN_Z:.3f}"
     )
 
     max_limb_width = base_width * LIMB_MAX_RADIUS_TO_BASE * 2.0
