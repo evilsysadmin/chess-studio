@@ -799,12 +799,13 @@ async def list_lobby_chat(limit: int = LOBBY_CHAT_MAX_MESSAGES) -> list[dict[str
         raise PersistentStorageUnavailable("No se pudo leer el chat 1v1.") from exc
 
 
-async def append_lobby_chat(username: str, text: str) -> dict[str, Any]:
+async def append_lobby_chat(username: str, text: str, *, kind: str = "message") -> dict[str, Any]:
     now = utcnow()
     row = {
         "id": hashlib.sha256(f"{username}\0{now.isoformat()}\0{text}".encode("utf-8")).hexdigest()[:24],
         "username": username,
         "text": text,
+        "kind": "system" if kind == "system" else "message",
         "created_at": now,
     }
     db = await get_db()
