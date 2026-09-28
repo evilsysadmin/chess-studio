@@ -183,7 +183,7 @@ for (const viewport of VIEWPORTS) {
       const { board, canvas } = await startMateGame(page, { profileSeed: profile.profileSeed, releaseState });
 
       await page.screenshot({
-        path: testInfo.outputPath(`before-${profile.id}-${viewport.width}x${viewport.height}.png`),
+        path: testInfo.outputPath(`after-${profile.id}-${viewport.width}x${viewport.height}.png`),
         fullPage: false,
         animations: 'disabled',
         caret: 'hide',
