@@ -23,3 +23,5 @@ Materialization note: v20 canonical .blend/.glb generated and committed from val
 Visual ownership note: canonical Matthias changes rely on the narrowed Home-only capture scope now present on main.
 
 Materialization note: v21 under-shell leg geometry generated and committed from validated Blender output.
+
+Materialization note: v22 seated posture generated and committed from validated Blender output.
