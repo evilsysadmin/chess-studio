@@ -66,49 +66,46 @@ describe('War Room shared scene variants', () => {
     expect(typeof release).toBe('function');
   });
 
-  it('defers a mobile Blender shell until the board has painted once', async () => {
+  it('defers room installation until the board has painted once', () => {
     let scheduled = null;
     let cancelledFrame = null;
-    let installed = 0;
+    let builds = 0;
     const canvas = { dataset: {} };
     const scene = { userData: {} };
-    const controller = { current: () => [], ensure: () => [] };
-    const originalLoader = WAR_ROOM_VARIANTS.find((entry) => entry.id === 'v3').loadInstaller;
+    const shell = { visible: false };
+    const controller = {
+      current: () => [],
+      ensure: () => {
+        builds += 1;
+        return [shell];
+      },
+    };
 
-    try {
-      WAR_ROOM_VARIANTS.find((entry) => entry.id === 'v3').loadInstaller = async () => () => {
-        installed += 1;
-        return () => {};
-      };
-      const release = startWarRoomVariantSceneAfterUsefulFrame({
-        scene,
-        classicShellController: controller,
-        variant: 'v3',
-        selectable: true,
-        whiteSide: true,
-        renderLite: true,
-        canvas,
-        deferUntilUsefulFrame: true,
-      }, {
-        requestFrame: (callback) => { scheduled = callback; return 7; },
-        cancelFrame: (id) => { cancelledFrame = id; },
-      });
+    const release = startWarRoomVariantSceneAfterUsefulFrame({
+      scene,
+      classicShellController: controller,
+      variant: 'classic',
+      selectable: true,
+      whiteSide: true,
+      renderLite: true,
+      canvas,
+      deferUntilUsefulFrame: true,
+    }, {
+      requestFrame: (callback) => { scheduled = callback; return 7; },
+      cancelFrame: (id) => { cancelledFrame = id; },
+    });
 
-      expect(installed).toBe(0);
-      expect(canvas.dataset.warRoomFirstUsefulFrame).toBe('board-first-pending-room');
+    expect(builds).toBe(0);
+    expect(canvas.dataset.warRoomFirstUsefulFrame).toBe('board-first-pending-room');
 
-      scheduled();
-      await Promise.resolve();
-      await Promise.resolve();
+    scheduled();
 
-      expect(canvas.dataset.warRoomFirstUsefulFrame).toBe('room-loading-after-board');
-      expect(installed).toBe(1);
+    expect(canvas.dataset.warRoomFirstUsefulFrame).toBe('room-loading-after-board');
+    expect(builds).toBe(1);
+    expect(shell.visible).toBe(true);
 
-      release();
-      expect(cancelledFrame).toBe(7);
-    } finally {
-      WAR_ROOM_VARIANTS.find((entry) => entry.id === 'v3').loadInstaller = originalLoader;
-    }
+    release();
+    expect(cancelledFrame).toBe(7);
   });
 
   it('keeps classic eager behavior when the classic variant is actually active', () => {
