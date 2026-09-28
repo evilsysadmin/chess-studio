@@ -711,7 +711,7 @@ def self_test() -> None:
     producer_scope = classify(["scripts/app_visual_producer_scope.py"])
     assert producer_scope.capture_groups == "none"
     assert not producer_scope.hans and not producer_scope.chesscom
-    assert classify(["scripts/app_visual_capture.sh"]) == full_scope()
+    assert classify(["scripts/app_visual_capture.sh"]) == Scope(())
     assert classify(["scripts/app_visual_summary.mjs"]) == full_scope()
     global_css = classify(["frontend/src/App.css"])
     assert global_css.capture_groups == ",".join(GROUP_ORDER)
