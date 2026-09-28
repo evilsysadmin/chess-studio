@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 
 import pvp_rating as rating_store
 import pvp_store as store
+from db import PersistentStorageUnavailable
 
 DEFAULT_RATING = rating_store.DEFAULT_RATING
 PVP_TIME_CONTROL_ID = "10+0"
@@ -155,6 +156,20 @@ def _clock_snapshot(match: dict, now: datetime | None = None) -> dict:
 
 def _timeout_result(flagged_color: str) -> str:
     return "0-1" if flagged_color == "w" else "1-0"
+
+
+async def _with_handoff_storage_retry(operation, *, attempts: int = 3):
+    """Retry brief storage hiccups only inside the bounded 1v1 handoff path."""
+    last_error = None
+    for attempt in range(max(1, attempts)):
+        try:
+            return await operation()
+        except PersistentStorageUnavailable as exc:
+            last_error = exc
+            if attempt + 1 >= attempts:
+                raise
+            await asyncio.sleep(0.12 * (attempt + 1))
+    raise last_error
 
 
 async def _best_effort_leave_roster(*usernames: str) -> None:
@@ -642,12 +657,16 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
     @router.post("/matches/{match_id}/ready")
     async def ready_match(match_id: str, username: str = Depends(auth_dependency)):
         for _attempt in range(4):
-            match = await store.get_match(match_id)
+            match = await _with_handoff_storage_retry(lambda: store.get_match(match_id))
             color = _player_color(match or {}, username)
             if not match or color is None:
                 raise HTTPException(404, "Partida 1v1 no encontrada.")
-            match = await store.touch_match_presence(match_id, username, "w" if color == chess.WHITE else "b") or match
-            match = await _finish_handoff_timeout(match_id, match) or await store.get_match(match_id) or match
+            match = await _with_handoff_storage_retry(
+                lambda: store.touch_match_presence(match_id, username, "w" if color == chess.WHITE else "b")
+            ) or match
+            match = await _with_handoff_storage_retry(
+                lambda: _finish_handoff_timeout(match_id, match)
+            ) or await _with_handoff_storage_retry(lambda: store.get_match(match_id)) or match
             if match.get("status") == "cancelled":
                 return {"match": _public_match(match, username)}
             if match.get("status") == "active":
@@ -666,11 +685,11 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
             if match.get(other_key):
                 start_at = now + timedelta(seconds=PVP_HANDOFF_SECONDS)
                 changes.update(status="active", start_at=start_at, turn_started_at=start_at)
-            updated = await store.update_match(
+            updated = await _with_handoff_storage_retry(lambda: store.update_match(
                 match_id,
                 expected_revision=int(match.get("revision", 0)),
                 changes=changes,
-            )
+            ))
             if updated:
                 if updated.get("status") == "active":
                     await _best_effort_leave_roster(updated.get("white"), updated.get("black"))
@@ -680,18 +699,18 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
     @router.get("/matches/{match_id}")
     @limiter.limit("60/minute")
     async def get_match(request: Request, match_id: str, username: str = Depends(auth_dependency)):
-        match = await store.get_match(match_id)
+        match = await _with_handoff_storage_retry(lambda: store.get_match(match_id))
         color = _player_color(match or {}, username)
         if not match or color is None:
             raise HTTPException(404, "Partida 1v1 no encontrada.")
         now = store.utcnow()
         observer_was_live = _player_was_recently_present(match, color, now)
-        match = await store.touch_match_presence(
+        match = await _with_handoff_storage_retry(lambda: store.touch_match_presence(
             match_id,
             username,
             "w" if color == chess.WHITE else "b",
             now=now,
-        ) or match
+        )) or match
         if match.get("status") == "starting":
             match = await _finish_handoff_timeout(match_id, match) or await store.get_match(match_id) or match
         if match.get("status") == "active":
