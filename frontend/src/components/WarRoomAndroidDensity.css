@@ -306,6 +306,7 @@
     top: max(8px, env(safe-area-inset-top));
     left: max(8px, env(safe-area-inset-left));
     right: auto;
+    transform: none;
     width: auto;
     max-width: min(280px, calc(100vw - 16px));
     min-height: 44px;
