@@ -61,7 +61,11 @@ VISUAL_PATTERNS = (
 )
 FOCUS_PATTERNS = (
     "frontend/src/styles/19-game-focus.css",
+    "frontend/src/components/WarRoomImmersive.css",
+    "frontend/src/components/WarRoomAndroidDensity.css",
+    "frontend/src/components/WarRoomGuideHelp.css",
     "e2e/android-game-focus.spec.js",
+    "e2e/mobile-golden-path-war-room-invariants.spec.js",
 )
 FULL_LOGIC_PATTERNS = (
     "frontend/src/components/Board3D.jsx",
@@ -326,12 +330,19 @@ def build_matrix(scope: BrowserScope) -> dict[str, list[dict[str, str]]]:
             }
         )
     if scope.focus:
-        cases.append(
-            {
-                "id": "android-focus",
-                "label": "War Room · Android Focus",
-                "command": "./node_modules/.bin/playwright test android-game-focus.spec.js --workers=1 --retries=0 --max-failures=1 --timeout=30000",
-            }
+        cases.extend(
+            [
+                {
+                    "id": "android-focus",
+                    "label": "War Room · Android Focus",
+                    "command": "./node_modules/.bin/playwright test android-game-focus.spec.js --workers=1 --retries=0 --max-failures=1 --timeout=30000",
+                },
+                {
+                    "id": "mobile-golden-path",
+                    "label": "War Room · mobile golden-path invariants",
+                    "command": "./node_modules/.bin/playwright test mobile-golden-path-war-room-invariants.spec.js --workers=1 --retries=0 --timeout=120000",
+                },
+            ]
         )
     if scope.matthias:
         cases.extend(
@@ -536,7 +547,9 @@ def self_test() -> None:
     assert classify(["frontend/src/components/WarRoomPracticalLighting.js"]) == BrowserScope(visual=True)
     assert classify(["frontend/src/components/WarRoomApprovedMockContract.js"]) == BrowserScope(visual=True)
     assert classify(["frontend/src/components/WarRoomCommandDeskLuxury.js"]) == BrowserScope(visual=True)
-    assert _ids(classify(["frontend/src/styles/19-game-focus.css"])) == ["desktop-scale", "android-focus"]
+    assert _ids(classify(["frontend/src/styles/19-game-focus.css"])) == ["desktop-scale", "android-focus", "mobile-golden-path"]
+    assert _ids(classify(["frontend/src/components/WarRoomImmersive.css"])) == ["desktop-scale", "android-focus", "mobile-golden-path"]
+    assert _ids(classify(["e2e/mobile-golden-path-war-room-invariants.spec.js"])) == ["desktop-scale", "android-focus", "mobile-golden-path"]
     assert classify([".github/actions/cache-node-modules/action.yml"]) == BrowserScope(visual=True)
     assert classify(["frontend/src/components/Board3DParity.test.js"]) == BrowserScope()
     assert classify(["frontend/src/warRoomPointerCapture.test.js"]) == BrowserScope()
@@ -552,7 +565,7 @@ def self_test() -> None:
     )
     assert _ids(full) == [
         "android-selection", "desktop-input",
-        "special-surfaces", "special-state-canaries", "desktop-scale", "android-focus",
+        "special-surfaces", "special-state-canaries", "desktop-scale", "android-focus", "mobile-golden-path",
     ]
     assert _job_ids(full) == [
         "war-room-android", "desktop-input", "special-surfaces", "special-state-canaries", "desktop-scale",
@@ -564,7 +577,7 @@ def self_test() -> None:
 
     chrome = classify(["frontend/src/components/GamePlayerRail.jsx"])
     assert chrome == BrowserScope(full_logic=True, visual=True, focus=True)
-    assert _ids(chrome) == ["android-selection", "desktop-input", "desktop-scale", "android-focus"]
+    assert _ids(chrome) == ["android-selection", "desktop-input", "desktop-scale", "android-focus", "mobile-golden-path"]
     assert _job_ids(chrome) == ["war-room-android", "desktop-input", "desktop-scale"]
 
     direct_special = classify(["e2e/three-d-war-room-special-states.spec.js"])
@@ -615,7 +628,12 @@ def self_test() -> None:
     ):
         assert _ids(classify([chronicles_path])) == ["chronicles"]
 
-    assert all("--max-failures=1" in case["command"] for case in build_matrix(full)["include"])
+    assert all(
+        "--max-failures=1" in case["command"] or case["id"] == "mobile-golden-path"
+        for case in build_matrix(full)["include"]
+    )
+    mobile_golden = next(case for case in build_matrix(full)["include"] if case["id"] == "mobile-golden-path")
+    assert "--max-failures=1" not in mobile_golden["command"]
     chronicles_case = build_matrix(BrowserScope(chronicles=True))["include"][0]
     assert "chronicles-of-matthias.spec.js" in chronicles_case["command"]
     assert "chronicles-of-matthias-tactics.spec.js" in chronicles_case["command"]
@@ -625,7 +643,7 @@ def self_test() -> None:
 
     all_scope = classify([".github/actions/setup-browser-e2e/action.yml"])
     assert all_scope == BrowserScope.all()
-    assert len(_ids(all_scope)) == 17
+    assert len(_ids(all_scope)) == 18
     assert "hans-fire-call" not in _ids(all_scope)
 
     harness = classify([CICD_WORKFLOW])
