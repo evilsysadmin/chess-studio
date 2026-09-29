@@ -195,6 +195,8 @@ def _surface_groups(path: str) -> set[str] | None:
         return set()
     if lower in QUICK_MATCH_VISUAL_SURFACES:
         return set(QUICK_MATCH_VISUAL_SURFACES[lower])
+    if lower == "frontend/src/components/homemobilegoldenpath.css":
+        return {"home"}
     if lower in WARROOM_MOBILE_VISUAL_SURFACES:
         return {"warroom"}
     if lower in WARROOM_MATTHIAS_VISUAL_SURFACES:
@@ -501,6 +503,7 @@ def self_test() -> None:
     assert not quick_match.hans and not quick_match.chesscom
     quick_match_css = classify(["frontend/src/components/QuickMatchMobileGoldenPath.css"])
     assert quick_match_css.capture_groups == "home"
+    assert classify(["frontend/src/components/HomeMobileGoldenPath.css"]).capture_groups == "home"
     assert not quick_match_css.hans and not quick_match_css.chesscom
     home_blender = classify(["scripts/blender/build_home_v2_blockout.py"])
     assert home_blender.capture_groups == "home"
