@@ -262,6 +262,8 @@ def _surface_groups(path: str) -> set[str] | None:
             return {"warroom"}
         if "chesscom" in name:
             return set()
+        if name == "smoke.spec.js":
+            return set()
         if name in {"browser-runtime-health.spec.js", "browser-storage-health.spec.js"}:
             return {"health"}
         if name in {
@@ -549,6 +551,7 @@ def write_outputs(scope: Scope, output_path: str) -> None:
 
 
 def self_test() -> None:
+    assert classify(["e2e/smoke.spec.js"]).capture_groups == "none"
     quick_match = classify([
         "frontend/src/components/QuickMatchModal.jsx",
         "frontend/src/components/useWarRoomImmersive.js",
