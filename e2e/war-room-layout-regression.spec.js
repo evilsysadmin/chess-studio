@@ -28,6 +28,15 @@ async function box(locator) {
   return value;
 }
 
+function boxesOverlap(a, b) {
+  return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+}
+
+async function expectNoOverlap(first, second, label) {
+  const [a, b] = await Promise.all([box(first), box(second)]);
+  expect(boxesOverlap(a, b), label).toBe(false);
+}
+
 async function expectNoHorizontalOverflow(page) {
   const geometry = await page.evaluate(() => ({
     scrollWidth: document.documentElement.scrollWidth,
@@ -147,3 +156,52 @@ test('War Room · chrome crítico no invade el tablero y sobrevive post-paint, 1
   await expectDesktopChromeContract(page, restored.shell);
   await expectNoHorizontalOverflow(page);
 });
+
+
+const MOBILE_OVERLAY_VIEWPORTS = [
+  { width: 360, height: 640 },
+  { width: 390, height: 844 },
+  { width: 430, height: 932 },
+];
+const SEEN_WAR_ROOM_TUTORIAL = {
+  'chess-study-mechanic-tutorial-progress-v1': JSON.stringify({ 'war-room-basics': { seen: true } }),
+  'matthias.onboarded': '2',
+  'chess-study-home-guide-dismissed-v1': '1',
+};
+
+for (const state of [
+  { label: 'nuevo', profileSeed: {} },
+  { label: 'recurrente', profileSeed: SEEN_WAR_ROOM_TUTORIAL },
+]) {
+  for (const viewport of MOBILE_OVERLAY_VIEWPORTS) {
+    test(`War Room móvil · Guardado no tapa HUD/tutorial · ${state.label} · ${viewport.width}×${viewport.height}`, async ({ page }) => {
+      test.setTimeout(90_000);
+      await page.setViewportSize(viewport);
+      await mockApi(page, { profileSeed: state.profileSeed });
+      await login(page);
+      await buttonWithVisibleText(page, 'Partida rápida').click();
+      await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+      await waitForWarRoom(page);
+
+      const saved = page.locator('.save-status-badge').filter({ hasText: 'Guardado' });
+      await expect(saved).toBeVisible();
+      for (const [label, control] of [
+        ['feedback', page.locator('.masthead-feedback-trigger')],
+        ['cuenta', page.locator('.masthead-account-trigger')],
+        ['más acciones', page.locator('.game-3d-utility-menu > summary')],
+      ]) {
+        await expect(control).toBeVisible();
+        await expectNoOverlap(saved, control, `Guardado no debe invadir ${label}`);
+      }
+
+      const tutorial = page.locator('.mechanic-tutorial-card:visible');
+      if (state.label === 'nuevo') {
+        await expect(tutorial).toBeVisible();
+        await expectNoOverlap(saved, tutorial, 'Guardado no debe tapar texto/CTA del tutorial');
+      } else {
+        await expect(tutorial).toHaveCount(0);
+      }
+      await expectNoHorizontalOverflow(page);
+    });
+  }
+}
