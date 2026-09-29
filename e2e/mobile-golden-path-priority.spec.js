@@ -222,3 +222,63 @@ test.describe('Mobile golden path · postpartida con una decisión y revancha en
     });
   }
 });
+
+
+test.describe('Mobile golden path · entrenar el error real en un toque', () => {
+  test.use({ isMobile: true, hasTouch: true });
+
+  test('postpartida → error factual → puzzle exacto en 390x844', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await mockApi(page, {
+      gameScenario: 'foolsMateLoss',
+      analysisMoves: [
+        {
+          suggested: { from: 'f2', to: 'f3', san: 'f3', piece: 'p' },
+          evalAfterSuggested: 0,
+          evalAfterPlayed: 0,
+          factualEvalAfterSuggested: 0,
+          factualEvalAfterPlayed: 0,
+          analysisDepth: 2,
+          candidateCount: 2,
+        },
+        {
+          suggested: { from: 'e2', to: 'e4', san: 'e4', piece: 'p' },
+          evalAfterSuggested: 0,
+          evalAfterPlayed: -500,
+          factualEvalAfterSuggested: 0,
+          factualEvalAfterPlayed: -500,
+          analysisDepth: 2,
+          candidateCount: 2,
+        },
+      ],
+      profileSeed: {
+        'matthias.onboarded': '2',
+        'chess-study-home-guide-dismissed-v1': '1',
+      },
+    });
+    await login(page);
+    await buttonWithVisibleText(page, 'Partida rápida').click();
+    const setup = page.getByRole('dialog', { name: 'Configurar partida rápida' });
+    await setup.locator('details.quick-match-settings > summary').click();
+    await setup.getByRole('button', { name: '2D', exact: true }).click();
+    await setup.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+
+    await clickBoardMove(page, 'f2', 'f3');
+    await clickBoardMove(page, 'g2', 'g4');
+
+    const endgame = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: /Jaque mate/i }) });
+    await expect(endgame).toBeVisible({ timeout: 15_000 });
+    const train = endgame.getByRole('button', { name: 'Entrenar este error', exact: true });
+    await expect(train).toBeVisible({ timeout: 15_000 });
+    await expect(endgame.locator('.primary-btn')).toHaveCount(1);
+    const box = await train.boundingBox();
+    expect(box.height).toBeGreaterThanOrEqual(44);
+    expect(box.y + box.height).toBeLessThanOrEqual(844);
+
+    await train.tap();
+    await expect(endgame).toBeHidden({ timeout: 15_000 });
+    await expect(page.getByRole('heading', { name: /Cuenta pendiente|Escena del crimen/ })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(/Aquí jugaste g4 y perdiste/)).toBeVisible();
+    await expect(page.getByRole('button', { name: /Tus errores/ })).toBeVisible();
+  });
+});
