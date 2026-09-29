@@ -371,6 +371,7 @@ test('Matthias · la sesión real aparece en Home, el retrato tiene presencia y 
   await clickBoardMove(page, 'g6', 'g7');
   const endgame = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Jaque mate', exact: true }) });
   await expect(endgame).toBeVisible();
+  await endgame.getByRole('button', { name: 'Más opciones', exact: true }).click();
   await endgame.getByRole('button', { name: 'Volver al menú', exact: true }).click();
 
   let corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });

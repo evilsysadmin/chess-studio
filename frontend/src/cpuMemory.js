@@ -311,7 +311,7 @@ export function resultMemoryComment(outcome, rivalry, context = {}) {
 
   const latest = Array.isArray(record.recentGames) ? record.recentGames[0] : null;
   if (outcome === 'win' && milestones.fastestWinMoves && latest?.date === milestones.fastestWinDate) {
-    return `Nueva victoria más rápida: ${context.moves} jugadas. Esto sí merece guardarse, aunque me resulte administrativamente repugnante.`;
+    return `Nueva victoria más rápida: ${context.moves} jugada${Number(context.moves) === 1 ? '' : 's'}. Esto sí merece guardarse, aunque me resulte administrativamente repugnante.`;
   }
   if (outcome === 'loss' && streak <= -3) return `${Math.abs(streak)} derrotas seguidas. El expediente ya no necesita interpretación, sólo índice.`;
   if (outcome === 'win' && streak >= 3) return `${streak} victorias seguidas. Empiezo a considerar el sabotaje como herramienta pedagógica.`;

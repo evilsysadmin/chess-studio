@@ -18,7 +18,6 @@ const RoguelikeScreen = React.lazy(() => import('./components/RoguelikeScreen.js
 import PlayerStatusBar from './components/PlayerStatusBar.jsx';
 import RatingDetailModal from './components/RatingDetailModal.jsx';
 import CombatArmySummaryModal from './components/CombatArmySummaryModal.jsx';
-const MusicPlayer = React.lazy(() => import('./components/MusicPlayer.jsx'));
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { api, STORAGE_KEY } from './api.js';
 import { loadTournament, saveTournament, resetTournament, applyResult, applyCaptureReward, difficultyForLevel, levelForPoints } from './tournament.js';
@@ -35,7 +34,8 @@ import { timeControlById } from './clock.js';
 import { clearClockSnapshot } from './clockPersistence.js';
 import { scheduleAchievementCheck } from './achievementBootstrap.js';
 const AdminScreen = React.lazy(() => import('./components/AdminScreen.jsx'));
-import LiveServiceStatus from './components/LiveServiceStatus.jsx';
+import GlobalMusicDock from './components/GlobalMusicDock.jsx';
+import { quickMatchRematchHandler, quickMatchRematchPlan } from './quickMatchRematch.js';
 import SaveStatusBadge from './components/SaveStatusBadge.jsx';
 import ReleaseUpdateNotice from './components/ReleaseUpdateNotice.jsx';
 import UserSettingsPanel from './components/UserSettingsPanel.jsx';
@@ -957,6 +957,7 @@ function AppInner({ isAdminUser }) {
             onNextRunGame={() => handleContinueRun(specialRun)}
             memoryContext={gameContext}
             onTrainPersonal={() => openPuzzleMode('personal', false)}
+            onPlayAgain={quickMatchRematchHandler(quickMatchRematchPlan({ game, gameContext, learningMode, activeSeries, rating, timeControlId: activeTimeControl?.id }), handleNewGame)}
             postGameFeedbackEnabled={featureFlags.postGameFeedback}
           />
         )}
@@ -1098,17 +1099,6 @@ function AppInner({ isAdminUser }) {
       </div>
       </ErrorBoundary>
     </>
-  );
-}
-
-function GlobalMusicDock({ isAdminUser, onAdmin }) {
-  return (
-    <div className="global-music-dock" aria-label="Reproductor global">
-      <React.Suspense fallback={null}>
-        <MusicPlayer />
-      </React.Suspense>
-      <LiveServiceStatus isAdminUser={isAdminUser} onAdmin={onAdmin} />
-    </div>
   );
 }
 

@@ -1,6 +1,17 @@
-export function nextBestAction({ outcome, moveCount = 0, hasReport = false } = {}) {
+export function nextBestAction({ outcome, moveCount = 0, hasReport = false, canPlayAgain = false, adaptive = false } = {}) {
   if (outcome === 'loss' && hasReport && moveCount >= 8) {
     return { id: 'review', eyebrow: 'Siguiente paso', title: 'Revisa el momento decisivo', detail: 'Encuentra la jugada que cambió la partida antes de volver a intentarlo.', label: 'Revisar partida' };
+  }
+  // GP-6/GP-8 (#34): si no hay un error real que revisar, lo natural es volver
+  // a jugar en un toque (revancha con colores cambiados).
+  if (canPlayAgain) {
+    return {
+      id: 'play-again',
+      eyebrow: 'Revancha',
+      title: 'Otra partida',
+      detail: adaptive ? 'Colores cambiados; Matthias recalibra el nivel con este resultado.' : 'Colores cambiados, mismo nivel y mismas reglas.',
+      label: 'Jugar otra partida',
+    };
   }
   if (outcome === 'win') {
     return { id: 'advance', eyebrow: 'Mantén el ritmo', title: 'Sube un poco la exigencia', detail: 'Tu siguiente objetivo ya puede pedirte un rival más fuerte.', label: 'Ver siguiente objetivo' };

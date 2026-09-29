@@ -1,9 +1,17 @@
 /* Post-game closure: editorial first, metrics second.
  * In War Room the board remains visually present and the debrief behaves like
  * an in-room epilogue rather than a generic application modal. */
+/* GP-6: kicker y debrief en una sola fila; menos altura antes del resultado. */
+.endgame-kicker-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: .25rem .7rem;
+}
+
 .endgame-debrief-label {
   display: block;
-  margin-top: .2rem;
+  margin-top: 0;
   color: color-mix(in srgb, var(--brass) 82%, white 18%);
   font: 800 .66rem/1 var(--font-mono);
   letter-spacing: .16em;

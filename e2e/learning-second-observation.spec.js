@@ -292,7 +292,10 @@ test('Home · el avatar residente de Matthias abre Así juegas · entrenamiento 
   expect(observation.incidentKeys).not.toContain('cpu:KNIGHT_FORK');
 
   await report.getByRole('button', { name: 'Cerrar', exact: true }).click();
-  await endgame.getByRole('button', { name: 'Ver siguiente objetivo', exact: true }).click();
+  // GP-6/GP-8: la acción principal tras una partida rápida es la revancha; el
+  // menú queda en «Más opciones».
+  await endgame.getByRole('button', { name: 'Más opciones', exact: true }).click();
+  await endgame.getByRole('button', { name: 'Volver al menú', exact: true }).click();
   await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible();
 
   const homeCorner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
