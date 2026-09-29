@@ -198,6 +198,7 @@ def _e2e_producer(name: str) -> set[str] | None:
         "matthias-home-visual-artifact.spec.js": {"home-matthias"},
         "matthias-home-visual-critical.spec.js": {"home-matthias"},
         "home-3d-focus-visual.spec.js": {"home-focus"},
+        "home-lab-visibility.spec.js": {"home-base"},
         "experiments-visual-artifact.spec.js": {"experiments-hub"},
         "pawn-slug-godot-visual-artifact.spec.js": {"experiments-hub"},
         "chronicles-tactics-visual-artifact.spec.js": {"chronicles-tactics"},
@@ -610,6 +611,7 @@ def self_test() -> None:
     assert classify(["frontend/src/components/HomeMatthiasRoutine.css"]) == "home-matthias"
     assert classify(["frontend/src/components/HomeMatthiasStations.js"]) == "home-matthias"
     assert classify(["e2e/matthias-home-visual-critical.spec.js"]) == "home-matthias"
+    assert classify(["e2e/home-lab-visibility.spec.js"]) == "home-base"
     assert classify(["frontend/public/support-pawn.png"]) == "all"
     assert classify([
         "frontend/src/chroniclesOfMatthiasIsometric.js",
