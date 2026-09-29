@@ -519,6 +519,7 @@ def self_test() -> None:
     assert classify(["frontend/src/components/LabScreen.jsx"]) == "experiments-hub"
     assert classify(["frontend/src/components/QuickMatchModal.jsx"]) == "home-base,warroom-core"
     assert classify(["frontend/src/components/QuickMatchMobileGoldenPath.css"]) == "home-base"
+    assert classify(["frontend/src/components/HomeMobileGoldenPath.css"]) == "home-base"
     assert classify([
         "backend-python/pvp_api.py",
         "backend-python/test_pvp_api.py",
