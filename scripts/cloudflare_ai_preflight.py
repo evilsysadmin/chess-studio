@@ -93,7 +93,7 @@ def static_check() -> list[str]:
     require(worker, EXPECTED_ANALYSIS_MODEL, "worker analysis model", errors)
     require(worker, "modelFor(eventType)", "worker model routing", errors)
     for voice_rule in (
-        "Tutea siempre",
+        "Trata SIEMPRE al jugador de usted",
         "Sarcasmo juguetón",
         "Para player_portrait",
         "Para comentarios de partida",

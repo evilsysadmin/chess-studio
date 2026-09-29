@@ -21,6 +21,7 @@ from typing import Any
 
 import httpx
 
+from matthias_register import USTED_ACTION_TERMS, validate_matthias_register
 from resilience import adaptive_ai_mode, try_enter_ai_bulkhead, leave_ai_bulkhead
 
 ai_logger = logging.getLogger("uvicorn.error")
@@ -252,21 +253,15 @@ def _fallback(event_type: str, facts: dict[str, Any]) -> str:
         suggested = str(clean.get("suggested") or "la alternativa del motor") if isinstance(clean, dict) else "la alternativa del motor"
         loss = clean.get("loss_cp") if isinstance(clean, dict) else None
         loss_text = f" y perdió aproximadamente {int(loss)} puntos de evaluación" if isinstance(loss, (int, float)) else ""
-        return f"{played}{loss_text}. Compara esa decisión con {suggested} y revisa qué amenaza o pieza cambia antes de volver a mover desde esta posición."
-    if event_type == "matthias_position":
-        played = str(clean.get("played") or "esa jugada") if isinstance(clean, dict) else "esa jugada"
-        suggested = str(clean.get("suggested") or "la alternativa del motor") if isinstance(clean, dict) else "la alternativa del motor"
-        loss = clean.get("loss_cp") if isinstance(clean, dict) else None
-        loss_text = f" y perdió aproximadamente {int(loss)} puntos de evaluación" if isinstance(loss, (int, float)) else ""
-        return f"{played}{loss_text}. Compara esa decisión con {suggested} y revisa qué amenaza o pieza cambia antes de volver a mover desde esta posición."
+        return f"{played}{loss_text}. Compare esa decisión con {suggested} y revise qué amenaza o pieza cambia antes de volver a mover desde esta posición."
     if event_type == "matthias_daily":
         kind = str(clean.get("question_kind") or "improve") if isinstance(clean, dict) else "improve"
         fallbacks = {
-            "tactics": "Achtung: hoy no consigo audiencia con Workers AI. Revisa tus últimos errores tácticos y, antes de mover, enumera jaques, capturas y amenazas; vuelve a preguntarme luego.",
-            "strengths": "Hoy el enlace con mi despacho está caído. Quédate con lo medible: revisa tus últimas victorias y conserva el patrón que más se repita; luego vuelve a pedirme el veredicto.",
-            "action": "Bitte, una sola tarea mientras vuelve la línea: en tu próxima partida haz una pausa de diez segundos antes de cada jugada crítica y compara dos candidatas.",
-            "openings": "Sin Workers AI no voy a inventarme teoría. Revisa la apertura que más has jugado y localiza el primer punto donde tus resultados empiezan a torcerse; luego vuelve a preguntarme.",
-            "improve": "Achtung: hoy la línea con Workers AI está de huelga. Revisa tu error recurrente más frecuente y entrena una posición relacionada antes de volver a jugar.",
+            "tactics": "Achtung: hoy no consigo audiencia con Workers AI. Revise sus últimos errores tácticos y, antes de mover, enumere jaques, capturas y amenazas; vuelva a preguntarme luego.",
+            "strengths": "Hoy el enlace con mi despacho está caído. Quédese con lo medible: revise sus últimas victorias y conserve el patrón que más se repita; luego vuelva a pedirme el veredicto.",
+            "action": "Bitte, una sola tarea mientras vuelve la línea: en su próxima partida haga una pausa de diez segundos antes de cada jugada crítica y compare dos candidatas.",
+            "openings": "Sin Workers AI no voy a inventarme teoría. Revise la apertura que más ha jugado y localice el primer punto donde sus resultados empiezan a torcerse; luego vuelva a preguntarme.",
+            "improve": "Achtung: hoy la línea con Workers AI está de huelga. Revise su error recurrente más frecuente y entrene una posición relacionada antes de volver a jugar.",
         }
         return fallbacks.get(kind, fallbacks["improve"])
     if event_type == "player_portrait":
@@ -274,10 +269,10 @@ def _fallback(event_type: str, facts: dict[str, Any]) -> str:
         losses = overall.get("losses", 0) if isinstance(overall, dict) else 0
         draws = overall.get("draws", 0) if isinstance(overall, dict) else 0
         if isinstance(losses, (int, float)) and losses > 0:
-            return "Objetivo para la próxima partida: antes de cada jugada rival, revisa jaques, capturas y amenazas; anota la primera ocasión en que esa pausa evita perder material."
+            return "Objetivo para la próxima partida: antes de cada jugada rival, revise jaques, capturas y amenazas; anote la primera ocasión en que esa pausa evita perder material."
         if isinstance(draws, (int, float)) and draws > 0:
-            return "Objetivo para la próxima partida: cuando tengas ventaja, simplifica una sola vez cambiando piezas y conserva los peones; comprueba después si el final fue más fácil de convertir."
-        return "Objetivo para la próxima partida: antes de mover, identifica la amenaza rival y compara dos jugadas candidatas; elige sólo después de esa comprobación."
+            return "Objetivo para la próxima partida: cuando tenga ventaja, simplifique una sola vez cambiando piezas y conserve los peones; compruebe después si el final fue más fácil de convertir."
+        return "Objetivo para la próxima partida: antes de mover, identifique la amenaza rival y compare dos jugadas candidatas; elija sólo después de esa comprobación."
     if event_type == "unit_bio":
         # El cliente no muestra ni persiste este fallback: una bio de unidad
         # sólo se considera válida cuando procede realmente de Workers AI.
@@ -289,14 +284,14 @@ def _fallback(event_type: str, facts: dict[str, Any]) -> str:
         if isinstance(difficulty, (int, float)) and not isinstance(difficulty, bool):
             level = int(difficulty) if float(difficulty).is_integer() else round(float(difficulty), 1)
             if human_color == "white":
-                return f"Nivel {level} y tú con blancas. Empiezas tú; no malgastes el privilegio."
+                return f"Nivel {level} y usted con blancas. Empieza usted; no malgaste el privilegio."
             return f"Nivel {level} y yo con blancas. Qué detalle dejarme empezar el interrogatorio."
         if human_color == "white":
-            return "Tú llevas blancas. Empiezas tú; la primera decisión cuestionable también te pertenece."
+            return "Usted lleva blancas. Empieza usted; la primera decisión cuestionable también le pertenece."
         return "Yo llevo blancas. Qué detalle dejarme empezar el interrogatorio."
     if event_type in RICH_ANALYSIS_EVENT_TYPES:
-        return "Siguiente paso: revisa la posición crítica, compara dos jugadas candidatas y practica una vez el patrón que decidió la partida."
-    return "Antes de tu próxima jugada, revisa jaques, capturas y amenazas; esa pausa de diez segundos evita más errores que mover por intuición."
+        return "Siguiente paso: revise la posición crítica, compare dos jugadas candidatas y practique una vez el patrón que decidió la partida."
+    return "Antes de su próxima jugada, revise jaques, capturas y amenazas; esa pausa de diez segundos evita más errores que mover por intuición."
 
 
 def _grounding_haystack(event_type: str, facts: dict[str, Any]) -> str:
@@ -398,7 +393,6 @@ _PORTRAIT_FORBIDDEN_PATTERNS = (
     r"\ba sus pies\b",
     r"\ba tus pies\b",
     r"\bverá usted\b",
-    r"\busted(?:es)?\b",
     r"\bby the way\b",
     r"\bcomo ia\b",
     r"\bla ia dice\b",
@@ -414,7 +408,7 @@ _PORTRAIT_ACTION_TERMS = (
     "deberías", "deberias", "te conviene", "procura", "mantén", "manten", "haz",
     "en las próximas", "en las proximas", "próximas partidas",
     "proximas partidas", "la próxima partida", "la proxima partida", "antes de",
-)
+) + USTED_ACTION_TERMS
 
 
 def _sentence_parts(text: str) -> list[str]:
@@ -958,6 +952,8 @@ async def request_cloud_narrative(
         grounded, concept = validate_grounded_output(text, event_type, facts)
         if not grounded:
             return _provider_failure(f"ungrounded_{concept}", elapsed, channel=channel)
+        if not (register := validate_matthias_register(text, event_type))[0]:
+            return _provider_failure(f"register_tuteo:{register[1]}", elapsed, channel=channel)
         _circuit_success(channel)
         return ProviderOutcome(text, "ok", elapsed, input_tokens, output_tokens, model or None)
     except (httpx.TimeoutException, asyncio.TimeoutError):

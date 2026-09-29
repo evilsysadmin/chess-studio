@@ -148,7 +148,7 @@ def build_matthias_daily_router(*, auth_dependency: Callable[..., Any], admin_de
             return {**result, "memory": await _memory_summary(username)}
         except Exception as exc:
             logger.warning("matthias_briefing_failed error=%s", type(exc).__name__)
-            return {"text": "Briefing corto: revisa jaques, capturas y amenazas antes de mover. El archivo está momentáneamente cerrado, pero tus piezas siguen teniendo obligaciones.", "memory": None}
+            return {"text": "Briefing corto: revise jaques, capturas y amenazas antes de mover. El archivo está momentáneamente cerrado, pero sus piezas siguen teniendo obligaciones.", "memory": None}
 
     @router.post("/api/matthias/reset-memory")
     async def reset_own_memory(username: str = Depends(auth_dependency)):

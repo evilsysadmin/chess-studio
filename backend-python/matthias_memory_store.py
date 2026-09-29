@@ -1057,32 +1057,32 @@ def briefing_text_from_summary(summary: dict[str, Any]) -> str:
     mood = _bounded_text(summary.get("mood"), 24) or "observant"
     if reunion and int(reunion.get("days") or 0) >= RETURN_AFTER_DAYS:
         if nemesis and int(nemesis.get("games") or 0) >= 3:
-            return f"Has vuelto después de {int(reunion.get('days') or 0)} días. {nemesis.get('name')} seguía en el expediente; comprueba si también sigue cobrando peaje, bitte."[:420]
-        return f"Has vuelto después de {int(reunion.get('days') or 0)} días. El expediente no se ha borrado por aburrimiento: calcula dos candidatas antes de cada decisión crítica."[:420]
+            return f"Ha vuelto usted después de {int(reunion.get('days') or 0)} días. {nemesis.get('name')} seguía en el expediente; compruebe si también sigue cobrando peaje, bitte."[:420]
+        return f"Ha vuelto usted después de {int(reunion.get('days') or 0)} días. El expediente no se ha borrado por aburrimiento: calcule dos candidatas antes de cada decisión crítica."[:420]
     if challenge:
         remaining = max(0, challenge["baseline_games"] + challenge["target_games"] - challenge["current_games"])
         if remaining > 0:
-            return f"Reto pendiente: {challenge.get('label')}. Te quedan {remaining} partida{'s' if remaining != 1 else ''} limpias para que retire oficialmente la acusación."[:420]
+            return f"Reto pendiente: {challenge.get('label')}. Le quedan {remaining} partida{'s' if remaining != 1 else ''} limpias para que retire oficialmente la acusación."[:420]
     if debt and debt.get("status") in {"struggling", "mixed"}:
         return "Mi consejo anterior sigue abierto. Los datos nuevos todavía no me permiten archivarlo, así que hoy no vamos a fingir que el problema se evaporó."
     if goals:
         goal = goals[0]
-        return f"Achtung. Mi obsesión actual sigue siendo: {goal.get('label')}. Hoy no hace falta inventar otro problema; con ése ya tienes trabajo."[:420]
+        return f"Achtung. Mi obsesión actual sigue siendo: {goal.get('label')}. Hoy no hace falta inventar otro problema; con ése ya tiene usted trabajo."[:420]
     if nemesis and int(nemesis.get("games") or 0) >= 3 and float(nemesis.get("win_pct") or 0) < 50:
-        return f"Tu expediente señala {nemesis.get('name')}: {int(round(float(nemesis.get('win_pct') or 0)))}% de victorias en {int(nemesis.get('games') or 0)} partidas. Si aparece, juega despierto, bitte."[:420]
+        return f"Su expediente señala {nemesis.get('name')}: {int(round(float(nemesis.get('win_pct') or 0)))}% de victorias en {int(nemesis.get('games') or 0)} partidas. Si aparece, juegue despierto, bitte."[:420]
     if mood == "annoyed":
-        return "Ach. El expediente reciente es bastante feo y mi paciencia estadística también tiene límites. Hoy calcula dos candidatas antes de mover y no me obligues a archivar otra autopsia."
+        return "Ach. El expediente reciente es bastante feo y mi paciencia estadística también tiene límites. Hoy calcule dos candidatas antes de mover y no me obligue a archivar otra autopsia."
     if mood == "pleased":
-        return "Sehr gut. Los datos recientes por fin apuntan en la dirección correcta. Disfrútalo cinco segundos y vuelve al trabajo: dos candidatas antes de cada jugada crítica."
+        return "Sehr gut. Los datos recientes por fin apuntan en la dirección correcta. Disfrútelo cinco segundos y vuelva al trabajo: dos candidatas antes de cada jugada crítica."
     if mood == "skeptical":
-        return "Te estoy mirando con bastante poca fe estadística. Demuéstrame lo contrario: revisa jaques, capturas y amenazas antes de cada decisión crítica."
+        return "Le estoy mirando con bastante poca fe estadística. Demuéstreme lo contrario: revise jaques, capturas y amenazas antes de cada decisión crítica."
     if mood == "impressed":
-        return "Vienes mejorando desde la última vez que miré el expediente. Eso ha sido bueno. Muy bueno. No te acostumbres a oírlo: dos candidatas antes de cada jugada crítica."
+        return "Viene mejorando desde la última vez que miré el expediente. Eso ha sido bueno. Muy bueno. No se acostumbre a oírlo: dos candidatas antes de cada jugada crítica."
     if respect.get("tier") in {"respected", "formidable"}:
-        return "Ya no necesitas ceremonia de recluta. Juega, calcula y dame una partida digna de un rival al que ya tengo que tomar en serio."
+        return "Ya no necesita ceremonia de recluta. Juegue, calcule y deme una partida digna de un rival al que ya tengo que tomar en serio."
     if relationship.get("tier") == "veteran":
-        return "Ya nos conocemos demasiado bien. Nada de calentamiento ceremonial: juega, calcula y dame menos material para el Hall of Shame."
-    return "Briefing corto: antes de mover, revisa jaques, capturas y amenazas. Si hoy no me das una tragedia nueva que archivar, lo consideraré progreso."
+        return "Ya nos conocemos demasiado bien. Nada de calentamiento ceremonial: juegue, calcule y deme menos material para el Hall of Shame."
+    return "Briefing corto: antes de mover, revise jaques, capturas y amenazas. Si hoy no me entrega una tragedia nueva que archivar, lo consideraré progreso."
 
 
 def _position_label(facts: dict[str, Any]) -> str:
