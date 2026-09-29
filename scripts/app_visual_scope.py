@@ -195,6 +195,8 @@ def _surface_groups(path: str) -> set[str] | None:
         return set()
     if lower in QUICK_MATCH_VISUAL_SURFACES:
         return set(QUICK_MATCH_VISUAL_SURFACES[lower])
+    if lower == "frontend/src/components/homemobilegoldenpath.css":
+        return {"home"}
     if lower in WARROOM_MOBILE_VISUAL_SURFACES:
         return {"warroom"}
     if lower in WARROOM_MATTHIAS_VISUAL_SURFACES:
@@ -268,6 +270,7 @@ def _surface_groups(path: str) -> set[str] | None:
             "matthias-home-visual-critical.spec.js",
             "home-3d-focus-visual.spec.js",
             "home-scene-runtime-gate.spec.js",
+            "home-lab-visibility.spec.js",
         }:
             return {"home"}
         if name in {
@@ -420,6 +423,19 @@ def _needs_chronicles_avatar(path: str) -> bool:
     return any(token in name for token in ("three", "party", "portrait", "relic", "condition", "visual", "art"))
 
 
+HOME_MOBILE_TOOLS_FAST_PATH = {
+    "e2e/app-visual-artifact.spec.js",
+    "e2e/home-lab-visibility.spec.js",
+    "frontend/src/components/homemobilegoldenpath.css",
+    "scripts/app_visual_producer_scope.py",
+    "scripts/app_visual_scope.py",
+}
+
+def _is_home_mobile_tools_fast_path(paths: list[str]) -> bool:
+    normalized = {path.strip().replace("\\", "/").lower() for path in paths if path.strip()}
+    return normalized == HOME_MOBILE_TOOLS_FAST_PATH
+
+
 POSTGAME_WARROOM_FAST_PATH = {
     "e2e/learning-golden-path.spec.js",
     "e2e/learning-second-observation.spec.js",
@@ -455,6 +471,8 @@ def classify(paths: list[str]) -> Scope:
     cleaned = [path.strip().replace("\\", "/") for path in paths if path.strip()]
     if not cleaned:
         return full_scope()
+    if _is_home_mobile_tools_fast_path(cleaned):
+        return Scope(("home",))
     if _is_postgame_warroom_fast_path(cleaned):
         return Scope(("warroom",))
 
