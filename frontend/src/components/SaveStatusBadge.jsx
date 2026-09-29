@@ -27,7 +27,7 @@ export default function SaveStatusBadge({ state = 'saved' }) {
       title={status.title}
     >
       <span className="save-status-dot" aria-hidden="true" />
-      <span>{status.label}</span>
+      <span className="save-status-label">{status.label}</span>
     </aside>
   );
 }

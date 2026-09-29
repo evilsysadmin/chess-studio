@@ -24,7 +24,7 @@ test('Partida rápida · una partida activa sobrevive a reload/deploy y vuelve a
   await login(page);
 
   await buttonWithVisibleText(page, 'Partida rápida').click();
-  await expect(page.getByRole('heading', { name: 'Elige dificultad y juega', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Partida contra Matthias', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
   await expect(gameTurn(page)).toBeVisible();
 

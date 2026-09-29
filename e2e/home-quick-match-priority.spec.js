@@ -56,7 +56,7 @@ test('Home desktop · la puerta JUGAR sustituye la tarjeta y abre Partida rápid
   const playDoor = page.locator('.illustrated-home__destination--play');
   await expect(playDoor).toBeVisible();
   await playDoor.click();
-  await expect(page.getByRole('heading', { name: 'Elige dificultad y juega', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Partida contra Matthias', exact: true })).toBeVisible();
 });
 
 test('Home desktop · el mock mantiene etiquetas visibles y acceso a herramientas', async ({ page }) => {
@@ -88,7 +88,7 @@ test('Home Android admin · player, estado y aviso no expulsan Partida rápida d
   await expect(quick).toContainText('Partida rápida');
 
   await quick.click();
-  await expect(page.getByRole('heading', { name: 'Elige dificultad y juega', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Partida contra Matthias', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Salir al menú', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Salir al menú', exact: true }).click();

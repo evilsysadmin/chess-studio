@@ -22,6 +22,7 @@ from typing import Any
 import httpx
 
 from matthias_register import USTED_ACTION_TERMS, validate_matthias_register
+from opening_banter_contract import NUMBER_RE as OPENING_NUMBER_RE, is_calibrated, opening_banter_shape_violation
 from resilience import adaptive_ai_mode, try_enter_ai_bulkhead, leave_ai_bulkhead
 
 ai_logger = logging.getLogger("uvicorn.error")
@@ -281,6 +282,9 @@ def _fallback(event_type: str, facts: dict[str, Any]) -> str:
         game = clean.get("game", {}) if isinstance(clean, dict) else {}
         difficulty = game.get("difficulty") if isinstance(game, dict) else None
         human_color = str(game.get("human_color") or "white") if isinstance(game, dict) else "white"
+        if is_calibrated(game):
+            return ("Le he calibrado yo mismo, así que hoy no tendrá coartada. Empieza usted." if human_color == "white"
+                    else "Le he calibrado yo mismo y llevo blancas. Hoy no tendrá coartada.")
         if isinstance(difficulty, (int, float)) and not isinstance(difficulty, bool):
             level = int(difficulty) if float(difficulty).is_integer() else round(float(difficulty), 1)
             if human_color == "white":
@@ -343,35 +347,19 @@ def validate_grounded_output(text: str, event_type: str, facts: dict[str, Any]) 
     return True, None
 
 
-_OPENING_FOREIGN_SCRIPT_RE = re.compile(
-    r"[\u0370-\u052f\u0600-\u06ff\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af]"
-)
-_OPENING_LEVEL_RE = re.compile(r"\b(?:nivel|dificultad|difficulty)\s*(?:de\s*)?([0-9]{1,3})\b", re.IGNORECASE)
-_OPENING_NUMBER_RE = re.compile(r"(?<![\w])([0-9]+(?:[.,][0-9]+)?)(?![\w])")
-
-
 def validate_opening_banter_contract(text: str, facts: dict[str, Any]) -> tuple[bool, str | None]:
-    """Fail closed when an opening quip changes script or invents numeric facts."""
+    """Fail closed when an opening quip breaks its shape contract or invents numbers."""
     clean_text = " ".join(str(text or "").split()).strip()
     if not clean_text:
         return False, "empty"
-    if _OPENING_FOREIGN_SCRIPT_RE.search(clean_text):
-        return False, "foreign_script"
-
     clean_facts = _sanitize(facts or {})
     game = clean_facts.get("game", {}) if isinstance(clean_facts, dict) else {}
-    difficulty = game.get("difficulty") if isinstance(game, dict) else None
-    expected_level = None
-    if isinstance(difficulty, (int, float)) and not isinstance(difficulty, bool) and math.isfinite(float(difficulty)):
-        expected_level = int(round(float(difficulty)))
-
-    for match in _OPENING_LEVEL_RE.finditer(clean_text):
-        mentioned = int(match.group(1))
-        if expected_level is None or mentioned != expected_level:
-            return False, "difficulty"
+    violation = opening_banter_shape_violation(clean_text, game if isinstance(game, dict) else {})
+    if violation:
+        return False, violation
 
     allowed_numbers = _numeric_facts(facts)
-    for match in _OPENING_NUMBER_RE.finditer(clean_text):
+    for match in OPENING_NUMBER_RE.finditer(clean_text):
         raw = match.group(1).replace(",", ".")
         try:
             value = float(raw)
