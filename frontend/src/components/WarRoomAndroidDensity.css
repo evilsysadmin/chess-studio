@@ -150,6 +150,14 @@
     touch-action: manipulation;
   }
 
+  /* Every interactive control living inside the compact tactical pill obeys
+     the same physical touch contract, including the first-run Guide trigger. */
+  .game-screen .game-layout-3d .game-3d-turn-pill :is(button, summary[role='button']) {
+    min-width: 44px;
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+
   /* Keep the app masthead functional, but make it a thin utility rail instead
      of a desktop header compressed into portrait. */
   .app-shell-board-game:has(.game-layout-3d) > .masthead-game-compact {
@@ -186,6 +194,10 @@
     min-height: 44px;
     padding: 0;
     touch-action: manipulation;
+  }
+
+  body.war-room-immersive-active .release-update-notice {
+    top: 112px;
   }
 
   .app-shell-board-game:has(.game-layout-3d) .save-status-badge {
