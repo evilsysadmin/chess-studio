@@ -180,6 +180,10 @@
 .release-update-dismiss { border: 0; background: transparent; color: var(--parchment-dim, #c9c3b5); }
 @media (max-width: 560px) {
   .release-update-notice { align-items: flex-start; }
+  .app-shell-board-game:has(.game-layout-3d) .release-update-notice {
+    top: 58px;
+    width: min(680px, calc(100vw - 12px));
+  }
   .release-update-copy span { max-width: 42ch; }
   .release-update-actions { flex-direction: column; align-items: stretch; }
 }
