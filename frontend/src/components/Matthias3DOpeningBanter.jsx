@@ -8,6 +8,7 @@ import {
   resolveWarRoomTutorialPhase,
   warRoomTutorialCopy,
 } from '../warRoomFirstRunTutorial.js';
+import useMatthiasBubbleFit from './useMatthiasBubbleFit.js';
 import './Matthias3DOpeningBanter.css';
 
 const BANTER_VISIBLE_MS = 4700;
@@ -164,6 +165,8 @@ export default function Matthias3DOpeningBanter({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameId, isThreeD, enabled, portalHost, anchorReady, tutorialSession]);
 
+  const bubbleFitRef = useMatthiasBubbleFit(portalHost, [anchorStyle?.left, anchorStyle?.top, tutorialSession, tutorialPhase, line, anchorReady]);
+
   if (!isThreeD || !portalHost) return null;
 
   const tutorialLabel = tutorialPhase === WAR_ROOM_TUTORIAL_PHASE.COMPLETE
@@ -181,6 +184,7 @@ export default function Matthias3DOpeningBanter({
       {tutorialSession && anchorReady && (
         <aside
           className="matthias-3d-opening-banter matthias-3d-opening-tutorial"
+          ref={bubbleFitRef}
           style={anchorStyle}
           data-matthias-square={trackedSquare || ''}
           data-war-room-first-run-tutorial="true"
@@ -202,6 +206,7 @@ export default function Matthias3DOpeningBanter({
       {!tutorialSession && line && anchorReady && (
         <aside
           className="matthias-3d-opening-banter"
+          ref={bubbleFitRef}
           style={anchorStyle}
           data-matthias-square={trackedSquare || ''}
           role="status"

@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { projectMatthiasKingAnchor } from './Matthias3DBubbleAnchor.js';
+import { projectMatthiasKingAnchor, projectMatthiasKingAnchorWithCamera } from './Matthias3DBubbleAnchor.js';
+import {
+  BOARD3D_PROJECTION_EVENT,
+  projectWorldPointNdc,
+  readBoard3DViewProjection,
+} from './Board3DProjectionDiagnostics.js';
 
 function sameAnchor(current, next) {
   if (current === next) return true;
@@ -31,7 +36,19 @@ export default function useMatthias3DBubbleAnchor({
     const update = () => {
       frame = 0;
       const rect = stage.getBoundingClientRect();
-      const next = projectMatthiasKingAnchor({
+      // Preferimos la cámara real publicada por Board3D; el modelo local sólo
+      // cubre el primer frame, antes de que el renderer haya pintado.
+      const canvas = stage.querySelector('.board3d-main-canvas');
+      const elements = readBoard3DViewProjection(canvas);
+      const fromCamera = elements ? projectMatthiasKingAnchorWithCamera({
+        fen,
+        matthiasKingColor,
+        elements,
+        canvasRect: canvas.getBoundingClientRect(),
+        stageRect: rect,
+        projectPoint: projectWorldPointNdc,
+      }) : null;
+      const next = fromCamera || projectMatthiasKingAnchor({
         fen,
         matthiasKingColor,
         orientation,
@@ -54,8 +71,10 @@ export default function useMatthias3DBubbleAnchor({
       : null;
     observer?.observe(stage);
     window.addEventListener('resize', scheduleUpdate, { passive: true });
+    stage.addEventListener(BOARD3D_PROJECTION_EVENT, scheduleUpdate);
 
     return () => {
+      stage.removeEventListener(BOARD3D_PROJECTION_EVENT, scheduleUpdate);
       if (frame) window.cancelAnimationFrame(frame);
       observer?.disconnect();
       window.removeEventListener('resize', scheduleUpdate);

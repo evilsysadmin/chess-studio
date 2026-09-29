@@ -15,7 +15,8 @@ import {
   warRoomSceneProfile,
 } from './WarRoom3DAnimation.js';
 import { createWarRoomAmbientScheduler } from './WarRoomAmbientScheduler.js';
-import { applyWarRoomHansScreenDiagnostics, applyWarRoomLightDiagnostics } from './WarRoomDomDiagnostics.js';
+import { applyWarRoomLightDiagnostics } from './WarRoomDomDiagnostics.js';
+import { createWarRoomHansScreenProbe } from './WarRoomHansScreenProbe.js';
 import { resolveBoardTap, selectBoardSquareOnTouch } from './WarRoom3DTouch.js';
 import { BOARD3D_HIGHLIGHT_SIZE, BOARD3D_HIGHLIGHT_Y, board3DHighlightStyle } from './Board3DHighlights.js';
 import { board3DCaptureWarmBoostValue, board3DPieceInteractionPose, writeBoard3DHighlightPulse } from './Board3DInteractionFx.js';
@@ -26,6 +27,7 @@ import { planBoard3DPieceReconciliation } from './Board3DPieceReconciliation.js'
 import { addCoarsePieceHitTarget, applyMatthiasCheckPose, buildPiece, disposeObject } from './Board3DPieces.js';
 import { fitBoardCamera, makeTextSprite } from './Board3DScene.js';
 import { resolveStableBoardViewportForHost } from './Board3DViewportSize.js';
+import { applyBoard3DProjectionDiagnostics } from './Board3DProjectionDiagnostics.js';
 import {
   board3DForensicGhost,
   board3DTechniqueTargetCount,
@@ -226,8 +228,6 @@ function Board3DCanvas({
     const { lite: renderLite } = sceneProfile; const sceneLite = renderLite || (coarsePointer && warRoomMobilePerformance === true);
     const scene = new THREE.Scene(); scene.userData.warRoomHansAwaitCall = latestPropsRef.current.hansFireCallEnabled; scene.userData.warRoomAdaptiveQuality = sceneProfile.adaptiveQuality;
     const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
-    const hansWorldProbe = new THREE.Vector3();
-    const hansScreenProbe = new THREE.Vector3();
     const cameraOffsetProbe = new THREE.Vector3();
     const cameraEulerProbe = new THREE.Euler(0, 0, 0, 'YXZ');
     const raycaster = new THREE.Raycaster();
@@ -373,44 +373,11 @@ function Board3DCanvas({
       });
     }
 
-    let cachedHansDiagnosticsObject = null;
     let cachedHansDriver = null;
     let ambientScheduler = null;
     let inspectCameraDirty = false;
 
-    function exposeHansScreenDiagnostics() {
-      const diagnostics = latestPropsRef.current;
-      if (!diagnostics.hansDiagnosticsRequested) return;
-
-      let hans = cachedHansDiagnosticsObject;
-      if (!hans) {
-        hans = scene.getObjectByName?.('war-room-hans-butler') || null;
-        if (hans) cachedHansDiagnosticsObject = hans;
-      }
-
-      let screenState = 'missing';
-      let projected = null;
-      if (hans) {
-        if (hans.visible !== true) {
-          screenState = 'hidden';
-        } else {
-          hans.getWorldPosition(hansWorldProbe);
-          hansScreenProbe.copy(hansWorldProbe).project(camera);
-          projected = hansScreenProbe;
-          const inFrustum = projected.z >= -1 && projected.z <= 1
-            && Math.abs(projected.x) <= 0.96
-            && Math.abs(projected.y) <= 0.96;
-          screenState = inFrustum ? 'onscreen' : 'offscreen';
-        }
-      }
-
-      applyWarRoomHansScreenDiagnostics({
-        canvas: renderer.domElement,
-        marker: diagnostics.hansDiagnosticsMarkerRef?.current || null,
-        screenState,
-        projected,
-      });
-    }
+    const exposeHansScreenDiagnostics = createWarRoomHansScreenProbe({ scene, camera, canvas: renderer.domElement });
 
     let hansReadyFrames = 0;
     function render() {
@@ -422,6 +389,7 @@ function Board3DCanvas({
         exposure: renderer.toneMappingExposure,
       });
       renderer.render(scene, camera);
+      applyBoard3DProjectionDiagnostics(renderer.domElement, camera);
       if (!cachedHansDriver && latestPropsRef.current.hansDiagnosticsRequested) {
         cachedHansDriver = scene.getObjectByName('war-room-hans-fireplace-driver');
       }
@@ -432,7 +400,7 @@ function Board3DCanvas({
         hansReadyFrames += 1;
         if (hansReadyFrames >= 2) renderer.domElement.dataset.warRoomHansSceneReady = 'true';
       }
-      exposeHansScreenDiagnostics();
+      exposeHansScreenDiagnostics(latestPropsRef.current);
       ambientScheduler?.markPaint();
     }
 

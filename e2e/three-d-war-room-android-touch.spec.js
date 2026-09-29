@@ -1,7 +1,6 @@
 import { devices, expect, test } from '@playwright/test';
 import { buttonWithVisibleText, gameTurn, login, mockApi, scheduleDomClick } from './helpers.js';
-import { resolveBoard3DCameraFov } from '../frontend/src/components/Board3DConfig.js';
-import { getWarRoomMobileFramingProfile } from '../frontend/src/components/WarRoomMobileFraming.js';
+import { readBoard3DProjection } from './board3d-projection.js';
 
 test.use({ ...devices['Pixel 5'] });
 
@@ -9,57 +8,6 @@ const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 const BLACK_AFTER_E4_FEN = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1';
 const BLACK_AFTER_E4_E5_FEN = 'rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e6 0 2';
 
-function normalized(vector) {
-  const length = Math.hypot(...vector);
-  return vector.map((value) => value / length);
-}
-
-function cross(a, b) {
-  return [
-    a[1] * b[2] - a[2] * b[1],
-    a[2] * b[0] - a[0] * b[2],
-    a[0] * b[1] - a[1] * b[0],
-  ];
-}
-
-function dot(a, b) {
-  return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-}
-
-function projectWarRoomSquare(rect, square, worldY = 0.12, orientation = 'white') {
-  const aspect = Math.max(0.35, rect.width / Math.max(1, rect.height));
-  const mobileProfile = getWarRoomMobileFramingProfile({
-    aspect,
-    coarsePointer: true,
-    viewportWidth: rect.width,
-  });
-  const profile = mobileProfile || (aspect >= 1.42
-    ? { halfSpan: 5.38, padding: 1.07, minDistance: 13.2, maxDistance: 22.6, targetY: 1.08, targetZ: -0.16, cameraY: 7.35, cameraZ: 10.6 }
-    : { halfSpan: 5.78, padding: 1.13, minDistance: 14.5, maxDistance: 25.6, targetY: 0.92, targetZ: -0.08, cameraY: 8.2, cameraZ: 10.72 });
-  const verticalFov = resolveBoard3DCameraFov(aspect, { mobile: Boolean(mobileProfile) }) * Math.PI / 180;
-  const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * aspect);
-  const limitingFov = Math.min(verticalFov, horizontalFov);
-  const unclampedDistance = (profile.halfSpan / Math.tan(limitingFov / 2)) * profile.padding;
-  const distance = Math.max(profile.minDistance, Math.min(profile.maxDistance, unclampedDistance));
-  const whiteSide = orientation !== 'black';
-  const target = [0, profile.targetY, whiteSide ? -profile.targetZ : profile.targetZ];
-  const direction = normalized([0, profile.cameraY, whiteSide ? profile.cameraZ : -profile.cameraZ]);
-  const camera = target.map((value, index) => value + direction[index] * distance);
-  const fileIndex = square.charCodeAt(0) - 97;
-  const rank = Number(square[1]);
-  const point = [fileIndex - 3.5, worldY, 4.5 - rank];
-  const forward = normalized(target.map((value, index) => value - camera[index]));
-  const right = normalized(cross(forward, [0, 1, 0]));
-  const up = cross(right, forward);
-  const relative = point.map((value, index) => value - camera[index]);
-  const depth = dot(relative, forward);
-  const ndcX = dot(relative, right) / (depth * Math.tan(verticalFov / 2) * aspect);
-  const ndcY = dot(relative, up) / (depth * Math.tan(verticalFov / 2));
-  return {
-    x: rect.x + ((ndcX + 1) / 2) * rect.width,
-    y: rect.y + ((1 - ndcY) / 2) * rect.height,
-  };
-}
 
 async function canvasLuminanceAt(canvas, point, radius = 3) {
   return canvas.evaluate((element, { point: samplePoint, radius: sampleRadius }) => {
@@ -244,10 +192,10 @@ test('War Room · Android selecciona una pieza en pointerdown y muestra destinos
   await expect(board3d).toBeVisible({ timeout: 30_000 });
   await expect(canvas).toBeVisible({ timeout: 30_000 });
   await expect(board3d).toHaveAttribute('data-board3d-camera', 'fixed-tactical', { timeout: 30_000 });
-  await expect.poll(async () => {
-    const rect = await shell.boundingBox();
-    return rect ? rect.width / Math.max(1, rect.height) : 0;
-  }).toBeGreaterThan(1.14);
+  // La geometría del tablero en vertical (88–100 % del ancho, 64 casillas en
+  // pantalla) la acredita mobile-golden-path-war-room-invariants.spec.js con la
+  // cámara real; aquí sólo exigimos que el shell exista antes de interactuar.
+  await expect(shell).toBeVisible();
 
   const turnPill = page.locator('.game-3d-turn-pill');
   const focusButton = page.getByRole('button', { name: 'Focus', exact: true });
@@ -291,19 +239,17 @@ test('War Room · Android selecciona una pieza en pointerdown y muestra destinos
     return value === 'transparent' || value === 'rgba(0, 0, 0, 0)';
   })).toBe(true);
 
-  const rect = await canvas.boundingBox();
-  expect(rect).not.toBeNull();
-  expect(rect.width / Math.max(1, rect.height)).toBeGreaterThan(1.14);
+  const projection = await readBoard3DProjection(canvas);
 
-  const d4Luma = await canvasLuminanceAt(canvas, projectWarRoomSquare(rect, 'd4'));
-  const e4Luma = await canvasLuminanceAt(canvas, projectWarRoomSquare(rect, 'e4'));
-  const d5Luma = await canvasLuminanceAt(canvas, projectWarRoomSquare(rect, 'd5'));
-  const e5Luma = await canvasLuminanceAt(canvas, projectWarRoomSquare(rect, 'e5'));
+  const d4Luma = await canvasLuminanceAt(canvas, projection.square('d4'));
+  const e4Luma = await canvasLuminanceAt(canvas, projection.square('e4'));
+  const d5Luma = await canvasLuminanceAt(canvas, projection.square('d5'));
+  const e5Luma = await canvasLuminanceAt(canvas, projection.square('e5'));
   expect(e4Luma - d4Luma).toBeGreaterThan(8);
   expect(d5Luma - e5Luma).toBeGreaterThan(8);
 
-  const from = projectWarRoomSquare(rect, 'e2', 0.76);
-  const to = projectWarRoomSquare(rect, 'e4');
+  const from = projection.square('e2', 0.76);
+  const to = projection.square('e4');
   const cdp = await page.context().newCDPSession(page);
 
   await touchStart(cdp, from);
@@ -355,10 +301,10 @@ test('War Room · orientación negra conserva back rank, color, raycast y navega
   await canvas.press('ArrowRight');
   await expect(board3d).toHaveAttribute('data-board3d-focused', 'd8');
 
-  const blackRect = await canvas.boundingBox();
-  expect(blackRect).not.toBeNull();
-  const blackFrom = projectWarRoomSquare(blackRect, 'e7', 0.76, 'black');
-  const blackTo = projectWarRoomSquare(blackRect, 'e5', 0.12, 'black');
+  // La matriz publicada ya incluye la orientación negra de la cámara.
+  const blackProjection = await readBoard3DProjection(canvas);
+  const blackFrom = blackProjection.square('e7', 0.76);
+  const blackTo = blackProjection.square('e5');
   const cdp = await page.context().newCDPSession(page);
 
   await touchStart(cdp, blackFrom);

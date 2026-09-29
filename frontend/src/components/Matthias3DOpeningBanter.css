@@ -40,7 +40,9 @@
   background: linear-gradient(145deg, rgba(247, 239, 216, .98), rgba(218, 202, 162, .96));
   box-shadow: .28rem .34rem 0 rgba(26, 18, 12, .48), 0 .7rem 2rem rgba(0, 0, 0, .38);
   color: #211a14;
-  transform: translate(-50%, -100%);
+  /* useMatthiasBubbleFit desplaza el bocadillo para que quepa en pantalla sin
+     tapar el HUD; la cola compensa y sigue apuntando al rey. */
+  transform: translate(calc(-50% + var(--matthias-bubble-shift-x, 0px)), calc(-100% + var(--matthias-bubble-shift-y, 0px)));
   transform-origin: 50% 100%;
   transition: left .18s cubic-bezier(.2, .8, .2, 1), top .18s cubic-bezier(.2, .8, .2, 1);
   animation: matthias-3d-banter-in .22s cubic-bezier(.2, .8, .2, 1), matthias-3d-banter-out .38s ease 4.28s forwards;
@@ -49,7 +51,7 @@
 .matthias-3d-opening-banter::before {
   content: '';
   position: absolute;
-  left: 50%;
+  left: clamp(1.2rem, calc(50% - var(--matthias-bubble-shift-x, 0px)), calc(100% - 1.2rem));
   bottom: -.72rem;
   width: 1.18rem;
   height: 1.18rem;
@@ -136,13 +138,18 @@
   outline-offset: 2px;
 }
 
+/* Si el HUD obliga a bajar el bocadillo, la cola ya no llega al rey: se oculta. */
+.matthias-3d-opening-banter[data-matthias-bubble-detached='true']::before {
+  display: none;
+}
+
 @keyframes matthias-3d-banter-in {
-  from { opacity: 0; transform: translate(-50%, calc(-100% + .42rem)) scale(.84) rotate(1.5deg); }
-  to { opacity: 1; transform: translate(-50%, -100%) scale(1) rotate(0); }
+  from { opacity: 0; transform: translate(calc(-50% + var(--matthias-bubble-shift-x, 0px)), calc(-100% + var(--matthias-bubble-shift-y, 0px) + .42rem)) scale(.84) rotate(1.5deg); }
+  to { opacity: 1; transform: translate(calc(-50% + var(--matthias-bubble-shift-x, 0px)), calc(-100% + var(--matthias-bubble-shift-y, 0px))) scale(1) rotate(0); }
 }
 
 @keyframes matthias-3d-banter-out {
-  to { opacity: 0; transform: translate(-50%, calc(-100% - .15rem)) scale(.96); }
+  to { opacity: 0; transform: translate(calc(-50% + var(--matthias-bubble-shift-x, 0px)), calc(-100% + var(--matthias-bubble-shift-y, 0px) - .15rem)) scale(.96); }
 }
 
 @media (max-width: 760px) {
@@ -163,6 +170,35 @@
   .matthias-3d-tutorial-actions button {
     min-height: 2.3rem;
     padding-inline: .8rem;
+  }
+}
+
+/* Teléfono vertical: el bocadillo vive en la franja entre el HUD y el tablero,
+   así que se compacta para caber sin tapar casillas (Código Rojo GP-3). */
+@media (max-width: 440px) {
+  .matthias-3d-opening-banter,
+  .matthias-3d-opening-tutorial {
+    width: min(22rem, calc(100% - 16px));
+    padding: .5rem .7rem .55rem;
+  }
+
+  .matthias-3d-opening-banter-name {
+    margin-bottom: .12rem;
+    font-size: .6rem;
+  }
+
+  .matthias-3d-opening-banter p {
+    font-size: .78rem;
+    line-height: 1.22;
+  }
+
+  .matthias-3d-tutorial-actions {
+    margin-top: .35rem;
+    padding-top: .3rem;
+  }
+
+  .matthias-3d-tutorial-actions button {
+    min-height: 2.1rem;
   }
 }
 

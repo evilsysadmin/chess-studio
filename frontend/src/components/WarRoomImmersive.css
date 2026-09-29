@@ -295,10 +295,14 @@ body.war-room-immersive-active .game-screen {
 
   .game-screen .game-layout-immersive .game-board-stack-3d .board3d-main-shell {
     width: 100% !important;
-    height: auto !important;
-    min-height: 0 !important;
+    height: calc(
+      100dvh
+      - max(.9rem, env(safe-area-inset-top))
+      - max(.9rem, env(safe-area-inset-bottom))
+    ) !important;
+    min-height: 70dvh !important;
     max-height: none !important;
-    aspect-ratio: 1.15 / 1 !important;
+    aspect-ratio: auto !important;
   }
 
   .game-screen .game-layout-immersive .game-board-stack-3d .board3d-main-canvas {

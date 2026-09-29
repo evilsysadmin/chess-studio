@@ -1,4 +1,4 @@
-export const WAR_ROOM_MOBILE_FRAMING_VERSION = 'mobile-v5-landscape-overhead';
+export const WAR_ROOM_MOBILE_FRAMING_VERSION = 'mobile-v7-portrait-fit-width';
 export const WAR_ROOM_PLAY_PITCH = Object.freeze({ cameraY: 9.2, cameraZ: 9.55 });
 
 export function getWarRoomMobileFramingProfile({
@@ -44,16 +44,23 @@ export function getWarRoomMobileFramingProfile({
   const phone = safeWidth <= 520;
   return Object.freeze({
     version: WAR_ROOM_MOBILE_FRAMING_VERSION,
-    mode: 'portrait-room-balanced',
-    // Portrait keeps enough room context to read as the War Room rather than a
-    // floating board, but does not pretend it has landscape's horizontal space.
-    halfSpan: phone ? 5.4 : 5.2,
-    padding: phone ? 1.04 : 1.055,
+    mode: 'portrait-board-first',
+    // Código Rojo GP-2 (#34): en vertical el tablero RENDERIZADO ocupa el
+    // 88–100 % del ancho con las 64 casillas en pantalla (medido con la cámara
+    // real, Board3DProjectionDiagnostics). En un canvas alto el campo horizontal
+    // es estrecho, así que el ajuste lo limita el ancho: halfSpan 4.5 cubre las
+    // casillas (±4) y un poco del marco, y maxDistance NO puede topar la
+    // distancia (con 22.4 la v6 hacía zoom y cortaba las columnas a y h).
+    // El picado es casi cenital; targetZ baja el tablero en pantalla para que
+    // la franja superior la ocupe la sala de Matthias (y su bocadillo) y no
+    // quede vacío negro bajo el tablero.
+    halfSpan: 4.5,
+    padding: 1.0,
     minDistance: phone ? 16.2 : 15.6,
-    maxDistance: phone ? 22.4 : 22.0,
-    targetY: phone ? 0.95 : 0.86,
-    targetZ: phone ? 0.65 : 0.56,
-    cameraY: phone ? 7.2 : 7.28,
-    cameraZ: phone ? 11.4 : 11.25,
+    maxDistance: 60,
+    targetY: -0.6,
+    targetZ: 2.6,
+    cameraY: phone ? 9.6 : 9.3,
+    cameraZ: phone ? 3.2 : 3.4,
   });
 }
