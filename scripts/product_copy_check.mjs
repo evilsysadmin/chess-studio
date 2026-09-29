@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { FACTUAL_LANGUAGE_FORBIDDEN_ABSOLUTES } from '../frontend/src/factualLanguage.js';
+import { peninsularCopyViolations } from './peninsular_copy_rules.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (relative) => fs.readFileSync(path.join(root, relative), 'utf8');
@@ -43,6 +44,40 @@ const factualLanguageViolations = productionFrontendModules(frontendSrc).flatMap
     .map((phrase) => `${path.relative(root, file).split(path.sep).join('/')}: ${JSON.stringify(phrase)}`);
 });
 
+// Ficheros que otras PRs abiertas están tocando: se retiran de aquí cuando esas PRs
+// entren y el fichero quede limpio. No añadir ficheros para silenciar un fallo.
+const PENINSULAR_PENDING_ELSEWHERE = new Set([
+  'frontend/src/App.jsx', // #4301 / #4305 / #4307 / #4353
+  'frontend/src/components/PostGameExperience.jsx', // #4385 / #4350
+  'frontend/src/components/PvpGameScreen.jsx', // #4382
+]);
+// Notas de versión ya publicadas: histórico literal.
+const PENINSULAR_HISTORICAL = new Set(['frontend/src/userReleaseNotesArchive.js']);
+const peninsularViolations = productionFrontendModules(frontendSrc).flatMap((file) => {
+  const relative = path.relative(root, file).split(path.sep).join('/');
+  if (PENINSULAR_PENDING_ELSEWHERE.has(relative) || PENINSULAR_HISTORICAL.has(relative)) return [];
+  return fs.readFileSync(file, 'utf8').split('\n').flatMap((line, index) => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('//') || trimmed.startsWith('*')) return [];
+    return peninsularCopyViolations(line).map(({ id, match }) => `${relative}:${index + 1} [${id}] «${match}»`);
+  });
+});
+
+// Autotest de las reglas: deben cazar los casos reales que las motivaron y no
+// marcar indefinido con marco temporal cerrado ni el perfecto peninsular.
+const peninsularRuleSelfTest = [
+  ['Todavía no se movió ninguna pieza.', true],
+  ['Todavía no jugaste ninguna partida.', true],
+  ["'¡Ganaste el combate!'", true],
+  ["description: 'Ganaste 5 partidas'", true],
+  ['errores que ya resolviste limpiamente', true],
+  ['quedan todas acá', true],
+  ['En esa posición jugaste Cxe5; el análisis prefería d4.', false],
+  ['Todavía no se ha movido ninguna pieza.', false],
+  ['¡Has ganado el combate!', false],
+  ['ya existe una partida en curso', false],
+].filter(([text, expected]) => (peninsularCopyViolations(text).length > 0) !== expected).map(([text]) => text);
+
 const checks = [
   [game.includes("event: 'PRONÓSTICO DE PARTIDA'"), 'el pronóstico debe llamarse «Pronóstico de partida»'],
   [game.includes("event: 'RETO DE PARTIDA'"), 'el objetivo opcional normal debe llamarse «Reto de partida»'],
@@ -54,6 +89,8 @@ const checks = [
   [admin.includes('>Retos</span>') && !admin.includes('>Contratos</span>'), 'Admin debe mostrar Retos para objetivos normales'],
   [career.includes("Reto superado ·") && career.includes('Contrato cumplido:'), 'Career debe normalizar hitos legacy al vocabulario de Retos'],
   [activityFormatting.includes("'contract-win': 'Reto superado'"), 'Actividad reciente debe etiquetar el reto completado como «Reto superado»'],
+  [peninsularRuleSelfTest.length === 0, `reglas peninsulares mal calibradas para: ${peninsularRuleSelfTest.join(' · ')}`],
+  [peninsularViolations.length === 0, `copy no peninsular (usar perfecto / tuteo peninsular): ${peninsularViolations.join(' · ')}`],
   [factualLanguageViolations.length === 0, `copy factual absoluto fuera del contrato: ${factualLanguageViolations.join(' · ')}`],
 ];
 
@@ -63,4 +100,4 @@ if (failed.length) {
   failed.forEach((message) => console.error(` - ${message}`));
   process.exit(1);
 }
-console.log('product-copy-check OK · Matthias + Retos + pronóstico + chat/voz + dificultad + lenguaje factual coherentes');
+console.log('product-copy-check OK · Matthias + Retos + pronóstico + chat/voz + dificultad + lenguaje factual + español peninsular coherentes');
