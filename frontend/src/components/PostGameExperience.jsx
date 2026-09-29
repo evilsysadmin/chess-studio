@@ -55,6 +55,8 @@ export default function PostGameExperience({
   onLeave,
   onShareResult,
   onTrainPersonal,
+  trainingOpportunity = null,
+  onTrainCurrentError = null,
   onShareIncident,
   onOpenCrimeScene,
   reportMeta = {},
@@ -86,6 +88,7 @@ export default function PostGameExperience({
     outcome: finalOutcome,
     moveCount: game.history.length,
     hasReport: game.history.length > 0,
+    canTrainCurrentError: Boolean(trainingOpportunity && onTrainCurrentError),
     canPlayAgain: typeof onPlayAgain === 'function',
     adaptive: Boolean(resultSummary?.adaptiveDifficulty),
   });
@@ -161,6 +164,8 @@ export default function PostGameExperience({
           <button className="primary-btn" onClick={onNextSeriesGame}>{seriesNextActionLabel(seriesState)}</button>
         ) : runState?.active && onNextRunGame ? (
           <button className="primary-btn" onClick={onNextRunGame}>Siguiente desafío</button>
+        ) : nextAction.id === 'train-error' ? (
+          <button className="primary-btn" onClick={onTrainCurrentError}>{nextAction.label}</button>
         ) : nextAction.id === 'review' ? (
           <button className="primary-btn" onClick={() => setShowReport(true)}>{nextAction.label}</button>
         ) : nextAction.id === 'play-again' ? (
@@ -168,7 +173,7 @@ export default function PostGameExperience({
         ) : (
           <button className="primary-btn" onClick={onLeave}>{nextAction.label}</button>
         )}
-        {!sequenceInProgress && <p className="endgame-next-detail">{nextAction.detail}</p>}
+        {!sequenceInProgress && <p className="endgame-next-detail">{nextAction.detail}{nextAction.id === 'train-error' && trainingOpportunity?.moveNumber ? ` · Jugada ${trainingOpportunity.moveNumber}: ${trainingOpportunity.played}.` : ''}</p>}
         {!sequenceInProgress && hasReport && nextAction.id !== 'review' && (
           <button className="secondary-btn endgame-review-btn" onClick={() => setShowReport(true)}>
             Resumen de la partida
