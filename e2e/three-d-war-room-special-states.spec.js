@@ -233,7 +233,7 @@ test('War Room parity · selección 2D puede rematar jaque mate desde el teclado
   await expect.poll(() => movePosts(requestLog).length).toBe(1);
   const endgame = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Jaque mate', exact: true }) });
   await expect(endgame).toBeVisible({ timeout: SPECIAL_STATE_TIMEOUT });
-  await expect(endgame.getByText('¡Ganaste la partida!', { exact: true })).toBeVisible();
+  await expect(endgame.getByText('¡Has ganado la partida!', { exact: true })).toBeVisible();
   await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
   expect(movePosts(requestLog)).toHaveLength(1);
 });

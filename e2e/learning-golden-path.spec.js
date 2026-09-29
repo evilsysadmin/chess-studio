@@ -133,7 +133,7 @@ test('Home · el avatar residente de Matthias abre Así juegas · y cierra el lo
     has: page.getByRole('heading', { name: 'Jaque mate', exact: true }),
   });
   await expect(endgame).toBeVisible();
-  await expect(endgame.getByText('¡Ganaste la partida!', { exact: true })).toBeVisible();
+  await expect(endgame.getByText('¡Has ganado la partida!', { exact: true })).toBeVisible();
   await endgame.getByRole('button', { name: 'Ver siguiente objetivo', exact: true }).click();
   await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible();
 

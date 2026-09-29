@@ -17,7 +17,7 @@ function matthiasClosingLine({ finalOutcome, flagFallen, flagFinalOutcome, force
     if (flagFinalOutcome === 'draw') return 'El reloj cayó, pero no había material para ejecutar la sentencia. Tablas. Qué manera tan burocrática de sobrevivir.';
     return flagFallen === humanColor
       ? 'El reloj ha firmado la sentencia antes que el tablero. Conviene que la próxima partida no dependa de funcionarios.'
-      : 'Ganaste por tiempo. Cuenta. No voy a exigir poesía donde ha bastado un reloj.';
+      : 'Has ganado por tiempo. Cuenta. No voy a exigir poesía donde ha bastado un reloj.';
   }
   if (finalOutcome === 'win') return 'Bien. Has ganado. Disfrútalo con moderación; ahora veremos si fue precisión, resistencia o una mezcla indecentemente eficaz de ambas.';
   if (finalOutcome === 'loss') return 'Has perdido. No hace falta decorar el cadáver. La revisión dirá exactamente dónde empezó a torcerse la posición.';
@@ -118,9 +118,9 @@ export default function PostGameExperience({
         <h2 id="game-finished-title">{forcedOutcome ? 'Sudden Death' : flagFallen ? (flagFinalOutcome === 'draw' ? 'Tablas por tiempo' : 'Se acabó el tiempo') : statusLabel}</h2>
         <p>
           {forcedOutcome ? 'Tres incidentes tácticos graves. Derrota del modo Sudden Death; no afecta al rating.' : flagFallen
-            ? (flagFinalOutcome === 'draw' ? 'Cayó una bandera, pero el rival no tenía material suficiente para dar mate.' : flagFallen === humanColor ? 'Perdiste por tiempo.' : '¡Ganaste por tiempo!')
+            ? (flagFinalOutcome === 'draw' ? 'Cayó una bandera, pero el rival no tenía material suficiente para dar mate.' : flagFallen === humanColor ? 'Perdiste por tiempo.' : '¡Has ganado por tiempo!')
             : game.status === 'checkmate'
-              ? game.turn === humanColor ? `Ganó ${CPU_IDENTITY.name}.` : '¡Ganaste la partida!'
+              ? game.turn === humanColor ? `Ganó ${CPU_IDENTITY.name}.` : '¡Has ganado la partida!'
               : 'La partida terminó en tablas.'}
         </p>
         {resultSummary && (

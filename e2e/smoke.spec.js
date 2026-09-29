@@ -625,7 +625,7 @@ test('golden journey · onboarding → partida/reload → mate → puzzle → Co
   await clickBoardMove(page, 'g6', 'g7');
   const endgame = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Jaque mate', exact: true }) });
   await expect(endgame).toBeVisible();
-  await expect(endgame.getByText('¡Ganaste la partida!', { exact: true })).toBeVisible();
+  await expect(endgame.getByText('¡Has ganado la partida!', { exact: true })).toBeVisible();
   await endgame.getByRole('button', { name: 'Volver al menú', exact: true }).click();
   await expect(page.getByRole('region', { name: 'Modos principales' })).toBeVisible();
 
