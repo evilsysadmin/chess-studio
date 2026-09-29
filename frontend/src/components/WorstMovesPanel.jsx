@@ -22,7 +22,7 @@ export default function WorstMovesPanel({ report, onJump }) {
 
   if (realMistakes.length === 0) {
     if (report.analyzedCount === 0) return null; // nada analizado todavía, no hay nada que resumir
-    return <p className="hint-text worst-moves-clean">No hubo errores destacables — jugaste bastante limpio.</p>;
+    return <p className="hint-text worst-moves-clean">No hubo errores destacables — has jugado bastante limpio.</p>;
   }
 
   return (

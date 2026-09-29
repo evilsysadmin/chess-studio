@@ -6,7 +6,7 @@ function timeLabel(iso) {
   if (!iso) return '';
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
 }
 
 export default function GameChat({ messages = [], contextMessages = [], compact = false, title = 'Chat de partida' }) {

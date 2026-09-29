@@ -49,7 +49,7 @@ test.describe('Combat Chess · jugadas críticas reales', () => {
     await clickBoardMove(page, 'g6', 'g7');
     const endgame = page.locator('.combat-battle-screen .endgame-banner');
     await expect(endgame.getByRole('heading', { name: 'Jaque mate', exact: true })).toBeVisible();
-    await expect(endgame.getByText('¡Ganaste el combate!', { exact: true })).toBeVisible();
+    await expect(endgame.getByText('¡Has ganado el combate!', { exact: true })).toBeVisible();
     await page.waitForTimeout(800); // cualquier callback CPU viejo ya habría despertado
     await expect(page.getByRole('button', { name: 'Reintentar turno de la CPU', exact: true })).toHaveCount(0);
     await expect(page.locator('.error-boundary-screen')).toHaveCount(0);

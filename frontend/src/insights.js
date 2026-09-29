@@ -627,7 +627,7 @@ export function tierTrendComment(tierLabel, trend) {
     Intermedio: 'a este nivel, "Buscar mi peor jugada de siempre" (en Así juegas) suele ser más revelador que jugar más partidas sueltas.',
     Avanzado: 'quizá subir la dificultad de la CPU en las próximas partidas — a este nivel, un rival más flojo enseña poco.',
     Experto: 'a este nivel ya no hay mucho que la app pueda "enseñarte" de forma genérica — Combat Chess al menos mantiene las cosas interesantes.',
-    Maestro: 'llegaste arriba de todo lo que mide este rating — a partir de acá, jugar más no cambia mucho el número.',
+    Maestro: 'has llegado a lo más alto de lo que mide este rating — a partir de aquí, jugar más no cambia mucho el número.',
   };
   const tip = TIER_TIPS[tierLabel] || '';
 

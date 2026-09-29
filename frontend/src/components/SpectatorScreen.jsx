@@ -243,7 +243,7 @@ export default function SpectatorScreen({ onExit }) {
           <h3>Jugadas</h3>
           {opening && <p className="opening-tag">{opening}</p>}
           <div className="notation-list">
-            {moves.length === 0 && <p className="notation-empty">Todavía no se jugó nada.</p>}
+            {moves.length === 0 && <p className="notation-empty">Todavía no se ha jugado nada.</p>}
             {moves.map((m, i) => (
               <div className="notation-row-flat" key={i}>
                 <span className="num">{Math.floor(i / 2) + 1}{m.by === 'w' ? '.' : '...'}</span>

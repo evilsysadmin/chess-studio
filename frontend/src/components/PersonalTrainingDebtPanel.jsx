@@ -77,7 +77,7 @@ export default function PersonalTrainingDebtPanel({ summary, puzzles = [], onTra
           <span className="eyebrow">REPASO 3 / 7 / 21</span>
           <p><b>{spaced.dueCount} caso{spaced.dueCount === 1 ? '' : 's'} ya toca{spaced.dueCount === 1 ? '' : 'n'}.</b></p>
           <p className="hint-text">
-            Vuelven sólo errores de autopsias reales que ya resolviste limpiamente. Si recaes, esa evidencia deja de contar y la deuda del patrón puede reabrirse.
+            Vuelven sólo errores de autopsias reales que ya has resuelto limpiamente. Si recaes, esa evidencia deja de contar y la deuda del patrón puede reabrirse.
           </p>
           <button type="button" className="secondary-btn" onClick={() => review(spaced.due[0])}>
             Repasar ahora · fase {spaced.due[0].state.stage + 1}/3 →

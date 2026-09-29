@@ -24,7 +24,7 @@ export default function NotationPanel({ history, difficulty }) {
       <h3>Cuaderno de jugadas</h3>
       {opening && <p className="opening-tag">{opening}</p>}
       <div className="notation-list">
-        {pairs.length === 0 && <p className="notation-empty">Todavía no se movió ninguna pieza.</p>}
+        {pairs.length === 0 && <p className="notation-empty">Todavía no se ha movido ninguna pieza.</p>}
         {pairs.map((p) => (
           <div className="notation-row" key={p.num}>
             <span className="num">{p.num}.</span>

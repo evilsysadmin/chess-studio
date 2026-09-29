@@ -161,7 +161,7 @@ export default function CombatBattleView({
           <h2>{statusLabel}</h2>
           <p>
             {status === 'checkmate'
-              ? localChess.turn() === humanColor ? 'Ganó la CPU.' : '¡Ganaste el combate!'
+              ? localChess.turn() === humanColor ? 'Ganó la CPU.' : '¡Has ganado el combate!'
               : 'Terminó en tablas.'}
           </p>
           {battleRecap?.debrief ? (
