@@ -80,15 +80,49 @@ const MATE_END_FEN = '7k/6Q1/5K2/8/8/8/8/8 b - - 1 1';
 const OPENING_END_FEN = 'rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e6 0 2';
 const LOSS_CAPTURE_START_FEN = 'k3r3/8/8/8/4P3/8/8/4K1N1 w - - 0 1';
 const LOSS_CAPTURE_END_FEN = 'k7/8/8/8/4r3/5N2/8/4K3 w - - 0 2';
+const FOOLS_AFTER_FIRST_PAIR_FEN = 'rnbqkbnr/pppp1ppp/8/4p3/8/5P2/PPPPP1PP/RNBQKBNR w KQkq e6 0 2';
+const FOOLS_MATE_END_FEN = 'rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 1 3';
 
 function scenarioInitialFen(scenario) {
   if (scenario === 'check') return CHECK_START_FEN;
   if (scenario === 'mate') return MATE_START_FEN;
   if (scenario === 'lossCapture') return LOSS_CAPTURE_START_FEN;
+  if (scenario === 'foolsMateLoss') return START_FEN;
   return START_FEN;
 }
 
 function scenarioMoveResult(game, payload, scenario) {
+  if (scenario === 'foolsMateLoss') {
+    if (game.history.length === 0) {
+      if (payload.from !== 'f2' || payload.to !== 'f3') throw new Error(`E2E foolsMateLoss esperaba f2-f3, recibió ${payload.from}-${payload.to}`);
+      return {
+        ...game,
+        fen: FOOLS_AFTER_FIRST_PAIR_FEN,
+        turn: 'w',
+        status: 'playing',
+        isGameOver: false,
+        history: [
+          { from: 'f2', to: 'f3', san: 'f3', piece: 'p', captured: false, by: 'human' },
+          { from: 'e7', to: 'e5', san: 'e5', piece: 'p', captured: false, by: 'cpu' },
+        ],
+        lastMove: { from: 'e7', to: 'e5', san: 'e5', piece: 'p', captured: false, by: 'cpu' },
+      };
+    }
+    if (payload.from !== 'g2' || payload.to !== 'g4') throw new Error(`E2E foolsMateLoss esperaba g2-g4, recibió ${payload.from}-${payload.to}`);
+    return {
+      ...game,
+      fen: FOOLS_MATE_END_FEN,
+      turn: 'w',
+      status: 'checkmate',
+      isGameOver: true,
+      history: [
+        ...game.history,
+        { from: 'g2', to: 'g4', san: 'g4', piece: 'p', captured: false, by: 'human' },
+        { from: 'd8', to: 'h4', san: 'Qh4#', piece: 'q', captured: false, by: 'cpu' },
+      ],
+      lastMove: { from: 'd8', to: 'h4', san: 'Qh4#', piece: 'q', captured: false, by: 'cpu' },
+    };
+  }
   if (scenario === 'lossCapture') {
     if (payload.from !== 'g1' || payload.to !== 'f3') throw new Error(`E2E lossCapture esperaba g1-f3, recibió ${payload.from}-${payload.to}`);
     return {
