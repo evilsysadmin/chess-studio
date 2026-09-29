@@ -250,6 +250,7 @@ def classify_path(path: str) -> set[str] | None:
         return {"warroom-core"}
     if lower in {
         "scripts/blender/build_pvp_duel_room.py",
+        "scripts/blender/publish_pvp_duel_room.py",
         ".github/workflows/pvp-duel-room-blender-art.yml",
     }:
         return set()
