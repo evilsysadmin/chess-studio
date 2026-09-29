@@ -275,6 +275,11 @@ test('Home canónica · móvil usa la escena a pantalla completa sin cementerio 
 });
 
 test('Home canónica · ultrapanorámica llena el viewport y mantiene la UI clave dentro de zona segura', async ({ page }) => {
+  // GP-0: this geometry contract must not depend on the runner wall clock.
+  // 19:00 is already exercised as a stable canonical Home station above.
+  await page.addInitScript(() => {
+    Date.prototype.getHours = () => 19;
+  });
   await page.setViewportSize({ width: 1920, height: 900 });
   const home = await openCanonicalHome(page);
   const stage = home.locator('.illustrated-home__stage');
