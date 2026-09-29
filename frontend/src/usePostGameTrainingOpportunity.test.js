@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const analyzeMove = vi.fn();
+const { analyzeMove } = vi.hoisted(() => ({ analyzeMove: vi.fn() }));
 vi.mock('./api.js', () => ({ api: { analyzeMove } }));
 
 import { preparePostGameTrainingOpportunity } from './usePostGameTrainingOpportunity.js';
