@@ -302,6 +302,14 @@
     height: 40px !important;
   }
 
+  /* El z-index 30 de arriba crea el stacking context del panel «Más modos».
+     Abierto, tiene que subir por encima del nav de destinos (34): si no, el
+     z-index 81 del panel sólo compite dentro de ese contexto y el nav se come
+     los taps en la franja que solapan (p. ej. «Experimentos geniales»). */
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__utilities.is-open {
+    z-index: 80 !important;
+  }
+
   body .app-shell-home .menu.menu-illustrated .illustrated-home__dungeon-copy {
     inset: 0 !important;
     width: 100% !important;
