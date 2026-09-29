@@ -78,6 +78,7 @@ GATES = (
         exact_paths=frozenset({
             "scripts/blender/build_pvp_duel_room.py",
             "scripts/blender/configure_eevee_premium.py",
+            "scripts/blender/publish_pvp_duel_room.py",
             ".github/workflows/pvp-duel-room-blender-art.yml",
         }),
     ),
