@@ -304,10 +304,10 @@
 @media (pointer: coarse) and (orientation: landscape) and (max-height: 500px) {
   body.war-room-immersive-active .release-update-notice {
     top: max(8px, env(safe-area-inset-top));
-    right: max(8px, env(safe-area-inset-right));
-    left: auto;
+    left: max(8px, env(safe-area-inset-left));
+    right: auto;
     width: auto;
-    max-width: min(320px, calc(100vw - 16px));
+    max-width: min(280px, calc(100vw - 16px));
     min-height: 44px;
     align-items: center;
     gap: 8px;
