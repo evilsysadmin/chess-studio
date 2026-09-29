@@ -460,10 +460,43 @@ def classify_warroom_profile_scope(paths: list[str]) -> str:
     return WARROOM_PROFILE_SCOPE_ALL
 
 
+POSTGAME_WARROOM_FAST_PATH = {
+    "e2e/learning-golden-path.spec.js",
+    "e2e/learning-second-observation.spec.js",
+    "e2e/mobile-golden-path-priority.spec.js",
+    "e2e/regression-journeys-core.js",
+    "e2e/smoke.spec.js",
+    "frontend/src/app.jsx",
+    "frontend/src/components/gamescreen.jsx",
+    "frontend/src/components/globalmusicdock.jsx",
+    "frontend/src/components/postgameexperience.jsx",
+    "frontend/src/components/warroomdebrief.css",
+    "frontend/src/cpumemory.js",
+    "frontend/src/nextbestaction.js",
+    "frontend/src/quickmatchrematch.js",
+    "frontend/src/quickmatchrematch.test.js",
+    "frontend/src/serioushumanincident.js",
+    "frontend/src/serioushumanincident.test.js",
+    "scripts/architecture_debt_budget.py",
+    "scripts/app_visual_scope.py",
+    "scripts/app_visual_producer_scope.py",
+}
+
+def _is_postgame_warroom_fast_path(paths: list[str]) -> bool:
+    normalized = {path.strip().replace("\\", "/").lower() for path in paths if path.strip()}
+    return (
+        "frontend/src/components/postgameexperience.jsx" in normalized
+        and "frontend/src/components/warroomdebrief.css" in normalized
+        and normalized.issubset(POSTGAME_WARROOM_FAST_PATH)
+    )
+
+
 def classify(paths: list[str]) -> str:
     cleaned = [path.strip() for path in paths if path.strip()]
     if not cleaned:
         return "all"
+    if _is_postgame_warroom_fast_path(cleaned):
+        return "warroom-core"
     producers: set[str] = set()
     for path in cleaned:
         owned = classify_path(path)
@@ -517,6 +550,14 @@ def self_test() -> None:
     assert classify(["frontend/src/components/LabScreen.jsx"]) == "experiments-hub"
     assert classify(["frontend/src/components/QuickMatchModal.jsx"]) == "home-base,warroom-core"
     assert classify(["frontend/src/components/QuickMatchMobileGoldenPath.css"]) == "home-base"
+    assert classify([
+        "frontend/src/App.jsx",
+        "frontend/src/components/GameScreen.jsx",
+        "frontend/src/components/PostGameExperience.jsx",
+        "frontend/src/components/WarRoomDebrief.css",
+        "frontend/src/quickMatchRematch.js",
+        "e2e/mobile-golden-path-priority.spec.js",
+    ]) == "warroom-core"
     assert classify([
         "backend-python/pvp_api.py",
         "backend-python/test_pvp_api.py",
