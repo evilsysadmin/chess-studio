@@ -54,6 +54,11 @@ const BASE_PROFILE = [
   [0.23, 0.21], [0.22, 0.26], [0.18, 0.29],
 ];
 
+export const QUEEN_BODY_PROFILE = Object.freeze([
+  [0.215, 0.28], [0.185, 0.4], [0.14, 0.62], [0.19, 0.78], [0.245, 0.86],
+  [0.21, 0.9], [0.13, 0.93], [0, 0.945],
+]);
+
 const SHARED_PIECE_GEOMETRY = new Map();
 
 function markSharedPieceGeometry(geometry, role) {
@@ -74,7 +79,7 @@ function sharedPieceGeometrySet(coarsePointer = false) {
       `${key}:base-ring`,
     ),
     pawnBody: markSharedPieceGeometry(
-      latheGeometry([[0.18, 0.28], [0.155, 0.36], [0.13, 0.49], [0.15, 0.55], [0.16, 0.59]], detail.lathe),
+      latheGeometry([[0.18, 0.28], [0.155, 0.36], [0.13, 0.49], [0.15, 0.55], [0.16, 0.59], [0.08, 0.61], [0, 0.62]], detail.lathe),
       `${key}:pawn-body`,
     ),
     pawnHead: markSharedPieceGeometry(
@@ -402,7 +407,9 @@ export function buildPiece(type, color, skinId, coarsePointer = false, options =
       group.userData.board3DBishopSilhouetteVersion = coarsePointer ? 'staunton-mitre-lite-v1' : 'staunton-mitre-v1';
       group.userData.board3DBishopHeightProfile = 'tall-123-v1';
       group.userData.board3DBishopSlashProfile = coarsePointer ? 'wide-diagonal-band-lite-v1' : 'wide-diagonal-band-v1';
-      addLathe(group, [[0.205, 0.28], [0.19, 0.34], [0.16, 0.43], [0.125, 0.58], [0.11, 0.67], [0.15, 0.74], [0.205, 0.79]], main, 0, detail.lathe);
+      // Closed under the mitre (see QUEEN_BODY_PROFILE): an open rim let the
+      // tactical camera look into the hollow body between mitre and collar.
+      addLathe(group, [[0.205, 0.28], [0.19, 0.34], [0.16, 0.43], [0.125, 0.58], [0.11, 0.67], [0.15, 0.74], [0.205, 0.79], [0.12, 0.805], [0, 0.81]], main, 0, detail.lathe);
       addMesh(group, new THREE.TorusGeometry(0.205, 0.025, detail.torusRadial, coarsePointer ? 22 : 38), accent, [0, 0.79, 0], [Math.PI / 2, 0, 0]);
       const mitre = addLathe(group, [[0.13, 0.78], [0.17, 0.84], [0.185, 0.92], [0.17, 1.0], [0.13, 1.1], [0.075, 1.18], [0.018, 1.23]], main, 0, coarsePointer ? 18 : 34);
       mitre.userData.bishopPart = 'mitre';
@@ -467,7 +474,14 @@ export function buildPiece(type, color, skinId, coarsePointer = false, options =
       group.userData.board3DQueenSilhouetteVersion = coarsePointer ? 'royal-crown-lite-v2' : 'royal-crown-v2';
       group.userData.board3DQueenHeightProfile = 'tall-132-v1';
       group.userData.board3DQueenCrownProfile = 'eight-point-flared-v1';
-      addLathe(group, [[0.215, 0.28], [0.185, 0.4], [0.14, 0.62], [0.19, 0.78], [0.245, 0.86]], main, 0, detail.lathe);
+      // The lathe used to stop at the flared rim (r=0.245) leaving the top open.
+      // Seen from the tactical camera, the annulus between crown-core and
+      // crown-ring looked straight into the hollow body; its inner walls are
+      // back faces (FrontSide) so the board showed through the "head". The
+      // profile now closes into a shallow dome under the crown (radius 0 = cap).
+      const queenBody = addLathe(group, QUEEN_BODY_PROFILE, main, 0, detail.lathe);
+      queenBody.userData.queenPart = 'body';
+      queenBody.userData.queenBodyClosure = 'capped-dome-v1';
       const crownRing = addMesh(group, new THREE.TorusGeometry(0.24, 0.032, detail.torusRadial, detail.torusTubular), accent, [0, 0.9, 0], [Math.PI / 2, 0, 0]);
       crownRing.userData.queenPart = 'crown-ring';
       const crownCore = addMesh(
