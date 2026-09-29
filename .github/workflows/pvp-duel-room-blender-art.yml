@@ -1,0 +1,113 @@
+name: PvP Duel Room · Blender art
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/blender/build_pvp_duel_room.py'
+      - 'scripts/blender/configure_eevee_premium.py'
+      - '.github/workflows/pvp-duel-room-blender-art.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'scripts/blender/build_pvp_duel_room.py'
+      - 'scripts/blender/configure_eevee_premium.py'
+      - '.github/workflows/pvp-duel-room-blender-art.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pvp-duel-room-blender-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  render:
+    name: Render PvP Duel Room
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+
+      - uses: ./.github/actions/setup-blender-canonical
+
+      - name: Build editable scene + runtime shell + preview
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          BLENDER_EEVEE_PREMIUM: '1'
+          BLENDER_PREVIEW_SAMPLES: ${{ github.event_name == 'workflow_dispatch' && '64' || (github.event_name == 'pull_request' && '20' || '32') }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/pvp-duel-room
+          blender --background --python-exit-code 1 \
+            --python scripts/blender/configure_eevee_premium.py \
+            --python scripts/blender/build_pvp_duel_room.py -- \
+            --blend /tmp/pvp-duel-room/pvp-duel-room.blend \
+            --glb /tmp/pvp-duel-room/pvp-duel-room-shell.glb \
+            --preview /tmp/pvp-duel-room/pvp-duel-room-preview.png \
+            --manifest /tmp/pvp-duel-room/pvp-duel-room-manifest.json
+
+      - name: Validate Duel Room artifact envelope
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          import struct
+          from PIL import Image
+
+          root = Path('/tmp/pvp-duel-room')
+          blend = root / 'pvp-duel-room.blend'
+          glb = root / 'pvp-duel-room-shell.glb'
+          preview = root / 'pvp-duel-room-preview.png'
+          manifest = root / 'pvp-duel-room-manifest.json'
+
+          assert blend.stat().st_size > 120_000, blend.stat().st_size
+          assert glb.stat().st_size > 50_000, glb.stat().st_size
+
+          image = Image.open(preview).convert('RGB')
+          assert image.size == (1600, 900), image.size
+          extrema = image.getextrema()
+          assert max(channel[1] for channel in extrema) > 90, extrema
+          assert min(channel[0] for channel in extrema) < 35, extrema
+
+          data = json.loads(manifest.read_text())
+          assert data['contract'] == 'pvp-duel-room-medieval-v1'
+          assert data['board_anchor']['name'] == 'WR_ANCHOR_board_origin'
+          names = {row['name'] for row in data['objects']}
+          required = {
+              'PVP_DUEL_dais',
+              'PVP_DUEL_banner_red',
+              'PVP_DUEL_banner_blue',
+              'PVP_ROOM_window_glass',
+              'PVP_DUEL_seat_red',
+              'PVP_DUEL_seat_blue',
+              'PVP_ANCHOR_red_identity',
+              'PVP_ANCHOR_blue_identity',
+              'PVP_ANCHOR_room_status',
+          }
+          assert not (required - names), sorted(required - names)
+          assert not any(name.startswith(('WR_ARCH_', 'WR_CANON_', 'WR3_OBS_')) for name in names)
+
+          raw = glb.read_bytes()
+          assert raw[:4] == b'glTF'
+          chunk_length, chunk_type = struct.unpack_from('<II', raw, 12)
+          assert chunk_type == 0x4E4F534A
+          gltf = json.loads(raw[20:20 + chunk_length].decode('utf-8').rstrip('\x00 \t\r\n'))
+          assert 'EXT_meshopt_compression' in gltf.get('extensionsUsed', [])
+          node_names = {row.get('name') for row in gltf.get('nodes', [])}
+          for anchor in ('PVP_ANCHOR_red_identity', 'PVP_ANCHOR_blue_identity', 'PVP_ANCHOR_room_status'):
+              assert anchor in node_names, anchor
+          PY
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: pvp-duel-room-${{ github.event.pull_request.number || github.run_number }}
+          path: /tmp/pvp-duel-room/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
