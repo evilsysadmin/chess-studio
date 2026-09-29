@@ -15,9 +15,10 @@ describe('preparePostGameTrainingOpportunity', () => {
   it('prepara un puzzle exacto sólo a partir de un error analizado y legal', async () => {
     analyzeMove.mockResolvedValue({
       suggested: { from: 'a1', to: 'a8', san: 'Ra8+', piece: 'r' },
-      evalAfterSuggested: 3,
+      loss: 300,
+      evalAfterSuggested: 300,
       evalAfterPlayed: 0,
-      factualEvalAfterSuggested: 3,
+      factualEvalAfterSuggested: 300,
       factualEvalAfterPlayed: 0,
       analysisDepth: 2,
       candidateCount: 2,
