@@ -117,7 +117,7 @@ async function openDuelRoom(page, viewport) {
 }
 
 async function assertMobileTouchTargets(room) {
-  const topbarButton = room.page().locator('.pvp-war-room__topbar button').first();
+  const topbarButton = room.locator('.pvp-war-room__topbar button').first();
   const utility = room.locator('.pvp-war-room__duel-pill .game-3d-utility-menu>summary');
   for (const target of [topbarButton, utility]) {
     const box = await target.boundingBox();
