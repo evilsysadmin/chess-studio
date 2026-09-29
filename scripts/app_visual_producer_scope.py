@@ -471,10 +471,25 @@ def classify_warroom_profile_scope(paths: list[str]) -> str:
     return WARROOM_PROFILE_SCOPE_ALL
 
 
+HOME_MOBILE_TOOLS_FAST_PATH = {
+    "e2e/app-visual-artifact.spec.js",
+    "e2e/home-lab-visibility.spec.js",
+    "frontend/src/components/homemobilegoldenpath.css",
+    "scripts/app_visual_producer_scope.py",
+    "scripts/app_visual_scope.py",
+}
+
+def _is_home_mobile_tools_fast_path(paths: list[str]) -> bool:
+    normalized = {path.strip().replace("\\", "/").lower() for path in paths if path.strip()}
+    return normalized == HOME_MOBILE_TOOLS_FAST_PATH
+
+
 def classify(paths: list[str]) -> str:
     cleaned = [path.strip() for path in paths if path.strip()]
     if not cleaned:
         return "all"
+    if _is_home_mobile_tools_fast_path(cleaned):
+        return "home-base"
     producers: set[str] = set()
     for path in cleaned:
         owned = classify_path(path)
@@ -626,6 +641,7 @@ def self_test() -> None:
     assert classify(["frontend/src/components/HomeMatthiasStations.js"]) == "home-matthias"
     assert classify(["e2e/matthias-home-visual-critical.spec.js"]) == "home-matthias"
     assert classify(["e2e/home-lab-visibility.spec.js"]) == "home-base"
+    assert classify(sorted(HOME_MOBILE_TOOLS_FAST_PATH)) == "home-base"
     assert classify(["frontend/public/support-pawn.png"]) == "all"
     assert classify([
         "frontend/src/chroniclesOfMatthiasIsometric.js",
