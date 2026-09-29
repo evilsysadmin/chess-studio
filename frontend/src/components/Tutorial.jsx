@@ -44,9 +44,9 @@ import {
 function initialCoachText(lesson) {
   if (lesson.exam) {
     const margin = Number(lesson.maxMistakes || 0);
-    return `Examen de promoción. ${lesson.objective} ${margin > 0 ? `Tienes margen para ${margin} error${margin === 1 ? '' : 'es'}.` : 'Sin margen de error.'} Y no, no hay pista.`;
+    return `Examen de promoción. ${lesson.objective} ${margin > 0 ? `Tiene margen para ${margin} error${margin === 1 ? '' : 'es'}.` : 'Sin margen de error.'} Y no, no hay pista.`;
   }
-  return `Objetivo: ${lesson.objective} Hazlo en el tablero. Si sale mal, sobrevivo; tú probablemente también.`;
+  return `Objetivo: ${lesson.objective} Hágalo en el tablero. Si sale mal, sobrevivo; usted probablemente también.`;
 }
 
 function firstSchoolIndex(progress) {
@@ -204,7 +204,7 @@ export default function Tutorial({ onExit }) {
     setHintActive(false);
     setDangerSquares(danger);
     if (lesson.exam && nextMistakes > Number(lesson.maxMistakes || 0)) {
-      setCoach({ tone: 'retry', text: `Suspendido. ${text} Has agotado el margen del examen. Repite cuando quieras; prefiero eso a promocionarte por lástima.` });
+      setCoach({ tone: 'retry', text: `Suspendido. ${text} Ha agotado el margen del examen. Repita cuando quiera; prefiero eso a promocionarle por lástima.` });
       return;
     }
     setCoach({ tone: 'retry', text });
@@ -263,7 +263,7 @@ export default function Tutorial({ onExit }) {
     setHintActive(false);
     setDangerSquares([]);
     setAttemptEpoch((current) => current + 1);
-    setCoach({ tone: 'neutral', text: 'Bien. Ahora otra vez sin que te lleve de la mano. Mis luces se apagan; tu cerebro, idealmente no.' });
+    setCoach({ tone: 'neutral', text: 'Bien. Ahora otra vez sin que le lleve de la mano. Mis luces se apagan; su cerebro, idealmente no.' });
   }
 
   async function applyCorrectHumanMove(from, to) {
@@ -275,7 +275,7 @@ export default function Tutorial({ onExit }) {
       to,
     });
     if (!playback.ok) {
-      setCoach({ tone: 'retry', text: 'La línea de la lección dejó de ser legal. He parado el ejercicio para no enseñarte basura.' });
+      setCoach({ tone: 'retry', text: 'La línea de la lección dejó de ser legal. He parado el ejercicio para no enseñarle basura.' });
       return;
     }
 
@@ -619,7 +619,7 @@ export default function Tutorial({ onExit }) {
                           disabled={playbackActive}
                           onClick={() => {
                             if (!explanation.openDemo()) {
-                              setCoach({ tone: 'retry', text: 'Esta demostración ya no es legal. No voy a enseñarte una fantasía por rellenar espacio.' });
+                              setCoach({ tone: 'retry', text: 'Esta demostración ya no es legal. No voy a enseñarle una fantasía por rellenar espacio.' });
                             }
                           }}
                         >
@@ -646,7 +646,7 @@ export default function Tutorial({ onExit }) {
                   <div><span className="section-label">{lesson.eyebrow}</span><h2>{lesson.title}</h2></div>
                   {lessonComplete && <span className="matthias-school-complete-badge">✓ {lesson.exam ? 'aprobado' : 'dominado'}</span>}
                 </div>
-                <div className="matthias-school-objective"><b>{lesson.exam ? 'Examen' : 'Tu misión'}</b><p>{lesson.objective}</p></div>
+                <div className="matthias-school-objective"><b>{lesson.exam ? 'Examen' : 'Misión'}</b><p>{lesson.objective}</p></div>
                 {explanation.open ? (
                   <SchoolExplanationStatus explanation={explanation} text={lesson.explanation} />
                 ) : (

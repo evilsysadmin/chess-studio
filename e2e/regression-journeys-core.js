@@ -436,7 +436,7 @@ test('Escuela de Matthias · el primer movimiento se aprende hands-on y persiste
 
   await expect(page.getByText('CLASS ROOM', { exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'El peón avanza', exact: true })).toBeVisible();
-  await expect(page.getByText('Lleva el peón blanco de e2 a e4.', { exact: true })).toBeVisible();
+  await expect(page.getByText('Lleve el peón blanco de e2 a e4.', { exact: true })).toBeVisible();
   await clickBoardMove(page, 'e2', 'e4');
   await expect(page.getByText(/Dos casillas y ningún tratado internacional roto/i)).toBeVisible();
   await expect(page.getByText('✓ dominado', { exact: true })).toBeVisible();

@@ -27,7 +27,7 @@ export function schoolCoachMissMessage({
     if (!canReveal) {
       return repeated
         ? 'Otra casilla vacía. Insistir no va a materializar una pieza ahí.'
-        : `${square || 'Esa casilla'} está vacía. Busca una pieza que pueda resolver el paso.`;
+        : `${square || 'Esa casilla'} está vacía. Busque una pieza que pueda resolver el paso.`;
     }
     return repeated
       ? `Otra casilla vacía. La pieza de ${expectedFrom || 'origen'} sigue esperando con una paciencia ofensiva.`
@@ -38,43 +38,43 @@ export function schoolCoachMissMessage({
     if (!canReveal) {
       return repeated
         ? 'Otra pieza equivocada. Cambiar de voluntario no cambia la posición.'
-        : 'Esa pieza no inicia la solución. Mira amenazas, geometría y turno antes de elegir.';
+        : 'Esa pieza no inicia la solución. Mire amenazas, geometría y turno antes de elegir.';
     }
     return repeated
       ? `Otra pieza distinta, mismo problema. Este paso empieza en ${expectedFrom}.`
-      : `Has elegido ${square}. Para este paso, mira la pieza de ${expectedFrom}.`;
+      : `Ha elegido ${square}. Para este paso, mire la pieza de ${expectedFrom}.`;
   }
 
   if (kind === 'illegal-target') {
     const route = selected && square ? `${selected}→${square}` : 'Ese salto';
     return repeated
       ? `${route} sigue sin ser legal. La perseverancia tiene límites reglamentarios.`
-      : `${route} no es legal. Revisa los destinos disponibles de la pieza.`;
+      : `${route} no es legal. Revise los destinos disponibles de la pieza.`;
   }
 
   if (kind === 'off-objective') {
     if (!expectedRoute) {
       return repeated
         ? 'Otra jugada legal que no resuelve el objetivo. Legal no significa útil.'
-        : 'La jugada es legal, pero no resuelve esta posición. Sigue calculando.';
+        : 'La jugada es legal, pero no resuelve esta posición. Siga calculando.';
     }
     return repeated
       ? `Otra desviación perfectamente legal. Seguimos buscando ${expectedRoute}.`
-      : `Legal, sí. Esta lección pide ${expectedRoute}. El reglamento te absuelve; Matthias todavía no.`;
+      : `Legal, sí. Esta lección pide ${expectedRoute}. El reglamento le absuelve; yo todavía no.`;
   }
 
-  return 'Eso no resuelve este paso. Revisa la posición y vuelve a intentarlo.';
+  return 'Eso no resuelve este paso. Revise la posición y vuelva a intentarlo.';
 }
 
 export function schoolCoachSelectionMessage({ square, hadRecentMiss = false, totalMoves = 1, step = 1 } = {}) {
   if (hadRecentMiss) {
     return `Ahora sí: ${square}. Ya tenemos la pieza correcta. Sus destinos legales están iluminados · paso ${step}/${totalMoves}.`;
   }
-  return `${square} seleccionado. Sus destinos legales están iluminados. Ejecuta el paso ${step} de ${totalMoves}.`;
+  return `${square} seleccionado. Sus destinos legales están iluminados. Ejecute el paso ${step} de ${totalMoves}.`;
 }
 
 export function schoolCoachHintMessage(lesson) {
-  return `${lesson?.hint || 'Mira la geometría de la posición.'} Te lo marco en el tablero; procura no convertir la pista en mobiliario permanente.`;
+  return `${lesson?.hint || 'Mire la geometría de la posición.'} Se lo marco en el tablero; procure no convertir la pista en mobiliario permanente.`;
 }
 
 export function schoolCoachStepMessage({
@@ -86,6 +86,6 @@ export function schoolCoachStepMessage({
 } = {}) {
   const reply = autoReplies ? 'Bien. El rival ha respondido.' : 'Bien.';
   const recovery = recovered ? ' El tropiezo anterior ya está corregido.' : '';
-  const continuation = note || `Sigue con la secuencia: movimiento ${nextStep} de ${totalMoves}.`;
+  const continuation = note || `Siga con la secuencia: movimiento ${nextStep} de ${totalMoves}.`;
   return `${reply}${recovery} ${continuation} No improvises una ópera todavía.`;
 }
