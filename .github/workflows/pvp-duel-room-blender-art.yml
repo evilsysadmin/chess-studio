@@ -5,6 +5,7 @@ on:
     paths:
       - 'scripts/blender/build_pvp_duel_room.py'
       - 'scripts/blender/configure_eevee_premium.py'
+      - 'scripts/blender/publish_pvp_duel_room.py'
       - '.github/workflows/pvp-duel-room-blender-art.yml'
   push:
     branches:
@@ -12,6 +13,7 @@ on:
     paths:
       - 'scripts/blender/build_pvp_duel_room.py'
       - 'scripts/blender/configure_eevee_premium.py'
+      - 'scripts/blender/publish_pvp_duel_room.py'
       - '.github/workflows/pvp-duel-room-blender-art.yml'
   workflow_dispatch:
 
@@ -102,6 +104,18 @@ jobs:
           for anchor in ('PVP_ANCHOR_red_identity', 'PVP_ANCHOR_blue_identity', 'PVP_ANCHOR_room_status'):
               assert anchor in node_names, anchor
           PY
+
+      - name: Publish PvP Duel Room shell
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          python3 -S scripts/blender/publish_pvp_duel_room.py \
+            /tmp/pvp-duel-room/pvp-duel-room-shell.glb \
+            --revision '${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}' \
+            --channel '${{ github.event_name == 'push' && 'runtime' || 'staging' }}'
 
       - uses: actions/upload-artifact@v7
         if: always()
