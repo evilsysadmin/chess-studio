@@ -78,10 +78,14 @@
     height: 8.5% !important;
   }
 
+  /* GP-4 (#4405): el aviso de Matthias vive arriba, sobre la ilustración y bajo
+     la barra superior. Anclado abajo tapaba DESAFÍO/HISTORIA/MAZMORRAS y la
+     barra fija de «Jugar 1 vs 1» le cortaba la segunda línea. */
   body .app-shell-home .menu.menu-illustrated .illustrated-home__speech {
     left: max(9px, env(safe-area-inset-left)) !important;
     right: max(9px, env(safe-area-inset-right)) !important;
-    bottom: max(9px, env(safe-area-inset-bottom)) !important;
+    top: calc(max(2px, env(safe-area-inset-top)) + 52px) !important;
+    bottom: auto !important;
     max-height: min(22dvh, 170px) !important;
     padding: 8px 10px !important;
     border-radius: 12px !important;
@@ -159,6 +163,14 @@
  * scene stretched vertically. This file loads last in the Home cascade, so keep
  * the portrait contract here instead of fighting earlier diegetic rules. */
 @media (pointer: coarse) and (orientation: portrait) and (max-width: 520px) {
+  /* GP-4 (#4405): de abajo arriba, barra fija «Jugar 1 vs 1» (18px + ~72px),
+     fila MATTHIAS/MAZMORRAS/más y rejilla de navegación. Antes la fila se
+     anclaba a 60px y quedaba medio oculta bajo la barra en cualquier teléfono. */
+  body .app-shell-home .menu.menu-illustrated {
+    --home-portrait-row-bottom: calc(max(18px, env(safe-area-inset-bottom)) + 80px);
+    --home-portrait-nav-bottom: calc(max(18px, env(safe-area-inset-bottom)) + 128px);
+  }
+
   body .app-shell-home .menu.menu-illustrated .illustrated-home__memory-object,
   body .app-shell-home .menu.menu-illustrated .illustrated-home__beacon {
     display: none !important;
@@ -167,7 +179,7 @@
   body .app-shell-home .menu.menu-illustrated .illustrated-home__stage > nav {
     position: absolute !important;
     z-index: 34 !important;
-    inset: auto 10px calc(max(110px, env(safe-area-inset-bottom) + 96px)) 10px !important;
+    inset: auto 10px var(--home-portrait-nav-bottom) 10px !important;
     display: grid !important;
     grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
     gap: 6px !important;
@@ -233,7 +245,7 @@
     z-index: 30 !important;
     left: 10px !important;
     top: auto !important;
-    bottom: calc(max(12px, env(safe-area-inset-bottom)) + 48px) !important;
+    bottom: var(--home-portrait-row-bottom) !important;
     width: calc(30% - 10px) !important;
     min-width: 0 !important;
     min-height: 40px !important;
@@ -285,7 +297,7 @@
     right: 10px !important;
     left: auto !important;
     top: auto !important;
-    bottom: calc(max(12px, env(safe-area-inset-bottom)) + 48px) !important;
+    bottom: var(--home-portrait-row-bottom) !important;
     width: calc(30% - 10px) !important;
     height: 40px !important;
   }
@@ -312,7 +324,7 @@
     left: 35% !important;
     right: 35% !important;
     top: auto !important;
-    bottom: calc(max(12px, env(safe-area-inset-bottom)) + 48px) !important;
+    bottom: var(--home-portrait-row-bottom) !important;
     width: auto !important;
   }
 
