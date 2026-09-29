@@ -80,6 +80,7 @@ WARROOM_PROFILE_SCOPE_MOBILE = "mobile"
 WARROOM_PROFILE_SCOPE_MOBILE_ENTRY = "mobile-entry"
 HOME_PROFILE_SCOPE_ALL = "all"
 HOME_PROFILE_SCOPE_QUICK_MATCH = "quickmatch"
+HOME_PROFILE_SCOPE_MOBILE_TOOLS = "mobile-tools"
 WARROOM_VARIANT_ALL = set(WARROOM_VARIANT_ORDER)
 WARROOM_CLASSIC_VARIANT_FILES = {
     "frontend/src/components/warroomclassicshell.js",
@@ -438,13 +439,20 @@ def classify_home_profile_scope(paths: list[str]) -> str:
     cleaned = [path.strip().lower().replace("\\", "/") for path in paths if path.strip()]
     if not cleaned:
         return HOME_PROFILE_SCOPE_ALL
-    relevant = [path for path in cleaned if ".test." not in Path(path).name and ".spec." not in Path(path).name]
+    relevant = [
+        path for path in cleaned
+        if ".test." not in Path(path).name
+        and ".spec." not in Path(path).name
+        and path not in {"scripts/app_visual_scope.py", "scripts/app_visual_producer_scope.py"}
+    ]
     quick_match_home_files = {
         "frontend/src/components/quickmatchmodal.jsx",
         "frontend/src/components/quickmatchmobilegoldenpath.css",
     }
     if relevant and all(path in quick_match_home_files for path in relevant):
         return HOME_PROFILE_SCOPE_QUICK_MATCH
+    if relevant and all(path == "frontend/src/components/homemobilegoldenpath.css" for path in relevant):
+        return HOME_PROFILE_SCOPE_MOBILE_TOOLS
     return HOME_PROFILE_SCOPE_ALL
 
 
@@ -491,6 +499,12 @@ def self_test() -> None:
     assert classify_warroom_variants(["frontend/src/components/PuzzleScreen.jsx"]) == "classic,v2,v3"
     assert classify_home_profile_scope(["frontend/src/components/QuickMatchModal.jsx"]) == "quickmatch"
     assert classify_home_profile_scope(["frontend/src/components/HomeCastle3D.jsx"]) == "all"
+    assert classify_home_profile_scope([
+        "frontend/src/components/HomeMobileGoldenPath.css",
+        "e2e/home-lab-visibility.spec.js",
+        "scripts/app_visual_scope.py",
+        "scripts/app_visual_producer_scope.py",
+    ]) == "mobile-tools"
     assert classify_warroom_profile_scope([
         "frontend/src/components/QuickMatchModal.jsx",
         "frontend/src/components/QuickMatchModal.test.jsx",
