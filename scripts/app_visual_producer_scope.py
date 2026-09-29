@@ -204,6 +204,7 @@ def _e2e_producer(name: str) -> set[str] | None:
         "chronicles-gameplay-visual-artifact.spec.js": {"chronicles-gameplay"},
         "chronicles-avatar-visual-artifact.spec.js": {"chronicles-avatar"},
         "training-visual-artifact.spec.js": set(TRAINING_ALL),
+        "mobile-golden-path-war-room-invariants.spec.js": {"warroom-core"},
         "war-room-pvp-duel-visual-artifact.spec.js": {"pvp-duel"},
         "war-room-pvp.spec.js": {"pvp-duel"},
         "pvp-background-roster.spec.js": {"pvp-duel"},
