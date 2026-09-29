@@ -80,6 +80,12 @@ TRAINING_VISUAL_SURFACES = {
 }
 
 
+PVP_GAME_VISUAL_SURFACES = {
+    "frontend/src/components/pvpgamescreen.jsx",
+    "frontend/src/components/pvpgamescreen.css",
+    "frontend/src/components/pvpduelroomshell.js",
+}
+
 PVP_VISUAL_SURFACES = {
     # PvP lobby/handoff UI lives on the Home/play shell. It must never wake
     # unrelated deep sidecars such as Hans routine videos.
@@ -199,6 +205,8 @@ def _surface_groups(path: str) -> set[str] | None:
         return {"training"}
     if lower in TRAINING_VISUAL_SURFACES:
         return {"training"}
+    if lower in PVP_GAME_VISUAL_SURFACES:
+        return {"warroom"}
     if lower in PVP_VISUAL_SURFACES:
         return {"home"}
     if lower.startswith("backend-python/"):
@@ -248,6 +256,8 @@ def _surface_groups(path: str) -> set[str] | None:
     if lower.startswith("scripts/app_visual_"):
         return None
     if lower.startswith("e2e/"):
+        if name in {"war-room-pvp.spec.js", "pvp-background-roster.spec.js"}:
+            return {"warroom"}
         if "chesscom" in name:
             return set()
         if name in {"browser-runtime-health.spec.js", "browser-storage-health.spec.js"}:

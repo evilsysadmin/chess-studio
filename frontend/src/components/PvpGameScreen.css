@@ -1,4 +1,4 @@
-.pvp-war-room { min-height:100dvh; padding:.55rem clamp(.45rem,1.2vw,1.1rem) 1rem; background:radial-gradient(circle at 50% 0,rgba(112,71,38,.16),transparent 32%),#07090c; }
+.pvp-war-room { box-sizing:border-box; width:100%; max-width:100vw; min-height:100dvh; padding:.55rem clamp(.45rem,1.2vw,1.1rem) 1rem; overflow-x:clip; background:radial-gradient(circle at 50% 0,rgba(112,71,38,.16),transparent 32%),#07090c; }
 .pvp-war-room__topbar { width:min(98vw,1500px); min-height:44px; margin:0 auto .45rem; display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:.8rem; color:rgba(236,228,209,.7); }
 .pvp-war-room__topbar>span { justify-self:center; font-family:var(--font-mono); font-size:.67rem; letter-spacing:.16em; color:rgba(216,183,121,.82); }
 .pvp-war-room__topbar>small { justify-self:end; font-variant-numeric:tabular-nums; }

@@ -71,7 +71,7 @@ test('War Room 1v1 · reto entrante abre una partida humana en el tablero canón
   await expect(lobby.getByText('bob', { exact: true }).first()).toBeVisible();
   await lobby.getByRole('button', { name: 'Aceptar', exact: true }).click();
 
-  const warRoom = page.getByRole('region', { name: 'War Room 1 contra 1' });
+  const warRoom = page.getByRole('region', { name: 'Sala de duelo 1 contra 1' });
   await expect(warRoom).toBeVisible();
   await expect(warRoom.getByText('bob', { exact: true })).toBeVisible();
   await expect(warRoom.getByText('Tu turno', { exact: true })).toBeVisible();
@@ -90,6 +90,8 @@ test('War Room 1v1 · reto entrante abre una partida humana en el tablero canón
   // starting army and a board that still owns the PvP room horizontally.
   const canvas = board.locator('.board3d-main-canvas');
   await expect(canvas).toBeVisible({ timeout: 45_000 });
+  await expect(canvas).toHaveAttribute('data-war-room-variant', 'duel', { timeout: 60_000 });
+  await expect(canvas).toHaveAttribute('data-war-room-variant-status', 'ready', { timeout: 60_000 });
   await expect(canvas).toHaveAttribute('data-board3d-piece-built', '32', { timeout: 45_000 });
 
   const [roomBox, boardBox] = await Promise.all([warRoom.boundingBox(), board.boundingBox()]);
