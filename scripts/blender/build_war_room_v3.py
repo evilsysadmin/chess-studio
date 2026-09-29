@@ -24,12 +24,6 @@ import build_war_room_premium as base  # noqa: E402
 
 
 CONTRACT = "war-room-golden-observatory-v3"
-V3_CANON = "war-room-v3-moonlit-royal-observatory-2026-09-29"
-V3_CAMERA_FOV_DEG = 22.0
-V3_CAMERA_HALF_SPAN = 5.10
-V3_CAMERA_PADDING = 1.015
-V3_CAMERA_TARGET = (0.0, 0.32, 1.72)
-V3_CAMERA_DIRECTION = (0.0, -10.2, 7.75)
 V3_WALL_RADIUS = 8.72
 V3_WALL_CENTER_Y = -0.72
 V3_WALL_START_DEG = -112.0
@@ -182,23 +176,13 @@ def build_curved_observatory(static, palette):
     base.torus("WR3_OBS_floor_perimeter_inlay", (0, -0.18, 0.050), 8.05, 0.026,
                palette["brass_dark"], static)
 
-    # Canonical 2026-09-29 composition: a burgundy board carpet sits over the
-    # green marble ring, with a narrow green heraldic runner aimed at the player.
-    # This gives the board a premium visual pedestal without adding UI chrome.
-    base.cylinder("WR3_OBS_rug_field", (0, -0.05, 0.070), 5.78, 0.040,
+    # A restrained circular carpet frames the playable table without compass clutter.
+    base.cylinder("WR3_OBS_rug_field", (0, -0.05, 0.070), 5.72, 0.040,
                   palette["rug"], static, vertices=96)
-    base.torus("WR3_OBS_rug_outer_ring", (0, -0.05, 0.112), 5.54, 0.038,
+    base.torus("WR3_OBS_rug_outer_ring", (0, -0.05, 0.112), 5.48, 0.038,
                palette["brass_dark"], static)
-    base.torus("WR3_OBS_rug_inner_ring", (0, -0.05, 0.114), 5.20, 0.022,
+    base.torus("WR3_OBS_rug_inner_ring", (0, -0.05, 0.114), 5.16, 0.022,
                palette["brass"], static)
-    base.cube("WR3_OBS_board_rug_border", (0, -0.06, 0.125), (5.48, 5.18, 0.028),
-              palette["brass_dark"], static, bevel=0.11)
-    base.cube("WR3_OBS_board_rug_red", (0, -0.06, 0.158), (5.33, 5.03, 0.020),
-              palette["rug_red"], static, bevel=0.10)
-    base.cube("WR3_OBS_heraldic_runner_border", (0, -5.52, 0.172), (1.20, 1.72, 0.018),
-              palette["brass_dark"], static, bevel=0.08)
-    base.cube("WR3_OBS_heraldic_runner", (0, -5.52, 0.194), (1.05, 1.62, 0.016),
-              palette["rug"], static, bevel=0.07)
 
     radius = V3_WALL_RADIUS
     center_y = V3_WALL_CENTER_Y
@@ -351,21 +335,21 @@ def build_celestial_window(static, palette):
 
 
 def build_round_command_table(static, palette):
-    base.cylinder("WR3_OBS_table_drum", (0, 0, 0.47), 5.16, 0.62,
+    base.cylinder("WR3_OBS_table_drum", (0, 0, 0.47), 5.02, 0.62,
                   palette["walnut_dark"], static, vertices=96)
-    base.cylinder("WR3_OBS_table_leather_top", (0, 0, 0.84), 5.04, 0.10,
+    base.cylinder("WR3_OBS_table_leather_top", (0, 0, 0.84), 4.90, 0.10,
                   palette["green_leather"], static, vertices=96)
-    base.torus("WR3_OBS_table_brass_edge", (0, 0, 0.905), 5.04, 0.052,
+    base.torus("WR3_OBS_table_brass_edge", (0, 0, 0.905), 4.90, 0.052,
                palette["brass"], static)
-    base.torus("WR3_OBS_table_copper_inlay", (0, 0, 0.925), 4.92, 0.020,
+    base.torus("WR3_OBS_table_copper_inlay", (0, 0, 0.925), 4.78, 0.020,
                palette["copper"], static)
-    base.cube("WR3_OBS_board_cradle", (0, 0, 0.98), (4.94, 4.94, 0.085),
+    base.cube("WR3_OBS_board_cradle", (0, 0, 0.98), (4.78, 4.78, 0.085),
               palette["walnut"], static, bevel=0.14)
     for side in (-1, 1):
-        base.cube(f"WR3_OBS_board_brass_x_{side}", (0, side * 4.81, 1.075),
-                  (4.74, 0.035, 0.035), palette["brass"], static, bevel=0.018)
-        base.cube(f"WR3_OBS_board_brass_y_{side}", (side * 4.81, 0, 1.075),
-                  (0.035, 4.74, 0.035), palette["brass"], static, bevel=0.018)
+        base.cube(f"WR3_OBS_board_brass_x_{side}", (0, side * 4.65, 1.075),
+                  (4.58, 0.035, 0.035), palette["brass"], static, bevel=0.018)
+        base.cube(f"WR3_OBS_board_brass_y_{side}", (side * 4.65, 0, 1.075),
+                  (0.035, 4.58, 0.035), palette["brass"], static, bevel=0.018)
     base.cube("WR3_OBS_table_cartouche", (0, -5.17, 0.55), (0.78, 0.055, 0.22),
               palette["brass_dark"], static, bevel=0.18)
     base.torus("WR3_OBS_table_cartouche_ring", (0, -5.24, 0.56), 0.16, 0.032,
@@ -757,7 +741,7 @@ def build_tower_entry(static, palette):
 def build_lighting(static):
     scene = bpy.context.scene
     scene["war_room_variant"] = "v3-celestial-observatory"
-    scene["war_room_visual_canon"] = V3_CANON
+    scene["war_room_visual_canon"] = "war-room-v3-canonical-8e1e6946-2026-09-25"
     scene.view_settings.exposure = 0.20
 
     key = base.light("WR3_LIGHT_key", "AREA", (-4.8, -3.8, 8.3), 585.0,
@@ -769,28 +753,6 @@ def build_lighting(static):
     top = base.light("WR3_LIGHT_top", "AREA", (0, 1.4, 8.7), 245.0,
                      (0.90, 0.70, 0.44), static, size=4.8)
     base.look_at(top, (0, 0.4, 0.8))
-
-
-def apply_v3_camera():
-    """Match the approved 2026-09-29 golden: wider board, slightly steeper play angle."""
-    scene = bpy.context.scene
-    cam = bpy.data.objects.get("WR_CAMERA_hero")
-    if cam is None or cam.type != "CAMERA":
-        raise RuntimeError("War Room v3 hero camera missing")
-    vertical_fov = math.radians(V3_CAMERA_FOV_DEG)
-    distance = (V3_CAMERA_HALF_SPAN / math.tan(vertical_fov / 2.0)) * V3_CAMERA_PADDING
-    target = Vector(V3_CAMERA_TARGET)
-    direction = Vector(V3_CAMERA_DIRECTION).normalized()
-    cam.location = target + direction * distance
-    cam.data.sensor_width = 36.0
-    sensor_height = cam.data.sensor_width / (base.PREVIEW_SIZE[0] / base.PREVIEW_SIZE[1])
-    cam.data.lens = sensor_height / (2.0 * math.tan(vertical_fov / 2.0))
-    base.look_at(cam, target)
-    cam["war_room_camera_profile"] = "v3-golden-wide-steep-v1"
-    cam["runtime_vertical_fov_deg"] = V3_CAMERA_FOV_DEG
-    cam["runtime_distance"] = round(distance, 5)
-    cam["war_room_visual_canon"] = V3_CANON
-    scene.camera = cam
 
 
 def bake_v3_weather():
@@ -818,7 +780,6 @@ def apply_v3_identity():
     build_tower_entry(static, palette)
     build_wall_lanterns(static, palette)
     build_lighting(static)
-    apply_v3_camera()
     bake_v3_weather()
     for obj in bpy.context.scene.objects:
         if obj.get("war_room_role"):
