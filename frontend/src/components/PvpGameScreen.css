@@ -76,7 +76,19 @@
 }
 @media (max-width:520px) { .pvp-war-room__divider { display:none; } .pvp-war-room__opponent-mark { width:27px; height:27px; } .pvp-war-room__duel-pill>strong[role=status] { font-size:.7rem; } .pvp-war-room__result { right:.35rem; bottom:.35rem; width:calc(100% - .7rem); padding:.82rem .85rem; } .pvp-war-room__result button { width:100%; align-self:stretch; } }
 @media (orientation:landscape) and (max-height:520px) {
-  .pvp-war-room { height:100dvh; min-height:0; padding:.18rem; overflow:hidden; }
+  .pvp-war-room {
+    position:fixed;
+    inset:0;
+    z-index:20;
+    width:100vw;
+    max-width:100vw;
+    height:100dvh;
+    max-height:100dvh;
+    min-height:0;
+    padding:.18rem;
+    overflow:hidden;
+    box-sizing:border-box;
+  }
   .pvp-war-room__topbar { width:100%; min-height:44px; margin-bottom:.18rem; padding-inline:.1rem; }
   .pvp-war-room__topbar>span { display:none; }
   .pvp-war-room__topbar button { min-height:44px; }
