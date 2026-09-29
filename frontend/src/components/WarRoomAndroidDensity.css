@@ -196,6 +196,10 @@
     touch-action: manipulation;
   }
 
+  body.war-room-immersive-active .release-update-notice {
+    top: 112px;
+  }
+
   .app-shell-board-game:has(.game-layout-3d) .save-status-badge {
     position: static;
     inset: auto;
