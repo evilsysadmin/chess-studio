@@ -63,12 +63,12 @@ function dot(a, b) {
   return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 }
 
-function projectWarRoomPoint(rect, point) {
+function projectWarRoomPoint(rect, point, viewportWidth = rect.width) {
   const aspect = Math.max(0.35, rect.width / Math.max(1, rect.height));
   const profile = getWarRoomMobileFramingProfile({
     aspect,
     coarsePointer: true,
-    viewportWidth: rect.width,
+    viewportWidth,
   });
   if (!profile) throw new Error('Mobile framing profile missing');
   const verticalFov = resolveBoard3DCameraFov(aspect, { mobile: true }) * Math.PI / 180;
@@ -96,19 +96,19 @@ function projectWarRoomPoint(rect, point) {
   };
 }
 
-function projectWarRoomSquare(rect, square, worldY = 0.12) {
+function projectWarRoomSquare(rect, square, worldY = 0.12, viewportWidth = rect.width) {
   const fileIndex = square.charCodeAt(0) - 97;
   const rank = Number(square[1]);
-  return projectWarRoomPoint(rect, [fileIndex - 3.5, worldY, 4.5 - rank]);
+  return projectWarRoomPoint(rect, [fileIndex - 3.5, worldY, 4.5 - rank], viewportWidth);
 }
 
-function projectedBoardRect(rect) {
+function projectedBoardRect(rect, viewportWidth = rect.width) {
   const corners = [
     [-4, 0.12, -4],
     [4, 0.12, -4],
     [-4, 0.12, 4],
     [4, 0.12, 4],
-  ].map((point) => projectWarRoomPoint(rect, point));
+  ].map((point) => projectWarRoomPoint(rect, point, viewportWidth));
   const xs = corners.map((point) => point.x);
   const ys = corners.map((point) => point.y);
   const x = Math.min(...xs);
@@ -228,7 +228,7 @@ for (const viewport of VIEWPORTS) {
 
       const rect = await canvas.boundingBox();
       expect(rect).not.toBeNull();
-      const projectedBoard = projectedBoardRect(rect);
+      const projectedBoard = projectedBoardRect(rect, viewport.width);
       expect(projectedBoard.width / viewport.width, 'rendered board must own >=88% viewport width').toBeGreaterThanOrEqual(.88);
 
       const hudControls = page.locator('.game-3d-turn-pill :is(button, summary[role="button"])');
@@ -284,8 +284,8 @@ for (const viewport of VIEWPORTS) {
         expect(clipped, 'key visible text must not be clipped').toBe(false);
       }
 
-      const from = projectWarRoomSquare(rect, 'g6', .22);
-      const to = projectWarRoomSquare(rect, 'g7', .12);
+      const from = projectWarRoomSquare(rect, 'g6', .22, viewport.width);
+      const to = projectWarRoomSquare(rect, 'g7', .12, viewport.width);
       const cdp = await page.context().newCDPSession(page);
 
       await touch(cdp, from);
