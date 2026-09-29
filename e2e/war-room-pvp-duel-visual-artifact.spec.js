@@ -149,13 +149,13 @@ test('PvP Duel Room · runtime Android portrait visual artifact', async ({ page 
 test('PvP Duel Room · runtime Android landscape visual artifact', async ({ page }) => {
   test.setTimeout(120_000);
   const { room } = await openDuelRoom(page, { width: 844, height: 390 });
+  await room.screenshot({
+    path: ARTIFACT_DIR + '/pvp-duel-room-android-landscape-844x390.png',
+    animations: 'disabled',
+  });
   await assertMobileTouchTargets(room);
   const verticalOverflow = await page.evaluate(
     () => document.documentElement.scrollHeight - document.documentElement.clientHeight,
   );
   expect(verticalOverflow).toBeLessThanOrEqual(1);
-  await room.screenshot({
-    path: ARTIFACT_DIR + '/pvp-duel-room-android-landscape-844x390.png',
-    animations: 'disabled',
-  });
 });
