@@ -14,6 +14,7 @@ import {
   shouldAutoReconnect,
   shouldAttemptReconnect,
 } from './useGameReconnect.js';
+import { reconnectBackoffDelayMs } from './gameReconnectBackoff.js';
 
 describe('reconexión de partida · política defensiva', () => {
   it('nunca lanza dos reconciliaciones simultáneas ni durante una mutación activa', () => {
@@ -32,6 +33,12 @@ describe('reconexión de partida · política defensiva', () => {
     expect(shouldAutoReconnect({ saveState: SAVE_STATUS.ERROR, online: false, target: { route: 'game', gameId: 'g-1' } })).toBe(false);
     expect(shouldAutoReconnect({ saveState: SAVE_STATUS.SAVED, online: true, target: { route: 'game', gameId: 'g-1' } })).toBe(false);
     expect(shouldAutoReconnect({ saveState: SAVE_STATUS.ERROR, online: true, target: null })).toBe(false);
+  });
+
+  it('el backoff de deploy no martillea el backend y alcanza una ventana razonable', () => {
+    const midpoint = () => 0.5;
+    expect([0, 1, 2, 3, 4, 5].map((attempt) => reconnectBackoffDelayMs(attempt, { random: midpoint })))
+      .toEqual([1000, 2000, 4000, 8000, 16000, 30000]);
   });
 
   it('una respuesta tardía no puede aplicarse si el usuario cambió de partida o de modo', () => {

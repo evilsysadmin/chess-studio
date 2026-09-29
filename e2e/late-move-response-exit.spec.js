@@ -27,6 +27,7 @@ test('jugada pendiente · salir aborta la operación y una respuesta tardía no 
   await buttonWithVisibleText(page, 'Partida rápida').click();
   const quickMatch = page.getByRole('dialog', { name: 'Configurar partida rápida' });
   await expect(quickMatch).toBeVisible();
+  await quickMatch.locator('details.quick-match-settings > summary').click();
   const renderer = quickMatch.getByRole('group', { name: 'Tipo de tablero' });
   await renderer.getByRole('button', { name: '2D', exact: true }).click();
   await expect(renderer.getByRole('button', { name: '2D', exact: true })).toHaveAttribute('aria-pressed', 'true');
