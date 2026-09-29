@@ -30,7 +30,7 @@ describe('PostGameExperience', () => {
     const html = render({ onShareResult: () => {}, onTrainPersonal: () => {} });
     expect(html).toContain('PARTIDA FINALIZADA');
     expect(html).toContain('MATTHIAS // DEBRIEF');
-    expect(html).toContain('¡Ganaste la partida!');
+    expect(html).toContain('¡Has ganado la partida!');
     expect(html).toContain('Bien. Has ganado.');
     expect(html).toContain('QUÉ MIRAR AHORA');
     expect(html).toContain('Resumen de la partida');
