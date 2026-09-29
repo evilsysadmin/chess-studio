@@ -73,6 +73,15 @@ GATES = (
         }),
     ),
     Gate(
+        workflow="pvp-duel-room-blender-art.yml",
+        label="PvP Duel Room art",
+        exact_paths=frozenset({
+            "scripts/blender/build_pvp_duel_room.py",
+            "scripts/blender/configure_eevee_premium.py",
+            ".github/workflows/pvp-duel-room-blender-art.yml",
+        }),
+    ),
+    Gate(
         workflow="war-room-v3-blender-art.yml",
         label="War Room v3 art",
         exact_paths=frozenset({
@@ -146,6 +155,9 @@ def self_test() -> None:
     assert [gate.workflow for gate in classify(["scripts/blender/render_chronicles_tactics_dungeon_v3.py"])] == [
         "chronicles-party-blender-art.yml"
     ]
+    assert [gate.workflow for gate in classify(["scripts/blender/build_pvp_duel_room.py"])] == [
+        "pvp-duel-room-blender-art.yml"
+    ]
     # Matthias art for Pawn Slug is raster/Godot-strict only. Legacy Blender
     # helper files must not summon an art-generation gate.
     assert classify(["scripts/blender/pawn_slug_matthias_premium_weapons.py"]) == []
@@ -164,6 +176,7 @@ def self_test() -> None:
         "home-matthias-blender-art.yml",
         "chronicles-party-blender-art.yml",
         "war-room-blender-art.yml",
+        "pvp-duel-room-blender-art.yml",
         "war-room-v3-blender-art.yml",
     ]
     assert [gate.workflow for gate in classify([

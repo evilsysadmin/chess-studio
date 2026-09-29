@@ -6,11 +6,12 @@ Lee según el área:
 
 - Home: `skills/home-blender/SKILL.md` y `skills/local-gpu-rendering/SKILL.md`;
 - War Room v2: `docs/operations/war-room-blender-pipeline.md`, `docs/operations/war-room-visual-freeze.md` y `skills/local-gpu-rendering/SKILL.md`;
+- PvP Duel Room: pipeline Blender independiente, coherente con el castillo; revisar siempre preview PNG antes de integración runtime;
 - R2/promoción: `docs/visual-assets-r2-flow.md`.
 
 ## Contrato
 
-- Blender se usa para Home 3D, War Room v2 y assets 3D explícitos; nunca para sprites runtime de Pawn Slug.
+- Blender se usa para Home 3D, War Room v2/v3, PvP Duel Room y assets 3D explícitos; nunca para sprites runtime de Pawn Slug.
 - Preferir builders/scripts reproducibles sobre retoques GUI irrepetibles. Seeds, nombres de nodos y anchors consumidos por runtime deben ser estables.
 - Cada iteración visual produce PNG de Blender y, cuando existe consumo en app, PNG runtime del GLB exacto. Uno no sustituye al otro.
 - En local usa GPU real de extremo a extremo cuando esté disponible; confirma que Chromium no cayó a SwiftShader antes de sacar conclusiones de rendimiento/visual.
