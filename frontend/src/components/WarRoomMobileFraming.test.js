@@ -20,7 +20,7 @@ describe('War Room mobile framing', () => {
     expect(phone.maxDistance).toBeGreaterThan(21);
     expect(phone.targetZ).toBeGreaterThan(0.6);
     expect(phone.targetY).toBeLessThanOrEqual(-2.1);
-    expect(phone.cameraY / phone.cameraZ).toBeGreaterThanOrEqual(3);
+    expect(phone.cameraY / phone.cameraZ).toBeCloseTo(3, 6);
   });
 
   it('mantiene el preset vertical aunque el shell sea ligeramente apaisado', () => {
@@ -37,7 +37,7 @@ describe('War Room mobile framing', () => {
     expect(screenshotLikePhone.targetY).toBe(-2.2);
   });
 
-  it('hace el landscape de teléfono más cenital, cercano y centrado en el tablero', () => {
+  it('mantiene el landscape de teléfono cercano y centrado aunque portrait sea más cenital', () => {
     const portrait = getWarRoomMobileFramingProfile({ aspect: 1.16, coarsePointer: true, viewportWidth: 390 });
     const landscape = getWarRoomMobileFramingProfile({ aspect: 1.62, coarsePointer: true, viewportWidth: 851 });
 
@@ -49,7 +49,7 @@ describe('War Room mobile framing', () => {
     expect(landscape.targetZ).toBeLessThanOrEqual(0.08);
     expect(landscape.targetY).toBeLessThanOrEqual(0.4);
     expect(landscape.cameraY / landscape.cameraZ).toBeGreaterThan(0.8);
-    expect(landscape.cameraY / landscape.cameraZ).toBeGreaterThan(portrait.cameraY / portrait.cameraZ);
+    expect(landscape.cameraY / landscape.cameraZ).toBeLessThan(portrait.cameraY / portrait.cameraZ);
     expect(landscape.halfSpan).toBeLessThan(portrait.halfSpan * 0.86);
   });
 
