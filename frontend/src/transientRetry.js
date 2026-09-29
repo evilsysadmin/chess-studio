@@ -14,37 +14,17 @@
 // No se reintentan 4xx (reglas, auth, conflicto CAS 409), ni timeouts del cliente
 // (la jugada puede seguir calculándose; duplicar carga del motor no ayuda), ni aborts.
 
+import { abortableDelay, isAbortError } from './asyncControl.js';
+
 export const TRANSIENT_RETRY_DELAYS_MS = Object.freeze([500, 1000, 2000, 4000, 8000, 8000]);
 
 const TRANSIENT_STATUSES = new Set([502, 503, 504, 520, 521, 522, 523, 524, 525, 526, 527, 530]);
 
-function isAbort(error) {
-  return error?.name === 'AbortError' || error?.cause?.name === 'AbortError';
-}
-
 export function isTransientFailure(error) {
-  if (!error || isAbort(error) || error.timedOut) return false;
+  if (!error || isAbortError(error) || error.timedOut) return false;
   if (typeof error.status === 'number') return TRANSIENT_STATUSES.has(error.status);
   // Sin status: fetch rechazó antes de tener respuesta (red / CORS opaco).
   return true;
-}
-
-function wait(ms, signal) {
-  return new Promise((resolve, reject) => {
-    if (signal?.aborted) {
-      reject(signal.reason ?? new DOMException('Aborted', 'AbortError'));
-      return;
-    }
-    const id = setTimeout(() => {
-      signal?.removeEventListener?.('abort', onAbort);
-      resolve();
-    }, ms);
-    function onAbort() {
-      clearTimeout(id);
-      reject(signal.reason ?? new DOMException('Aborted', 'AbortError'));
-    }
-    signal?.addEventListener?.('abort', onAbort, { once: true });
-  });
 }
 
 /**
@@ -63,7 +43,7 @@ export async function withTransientRetry(attempt, { idempotent, signal, delays =
       if (signal?.aborted && idempotent && isTransientFailure(error)) throw signal.reason ?? error;
       if (!idempotent || i >= delays.length || !isTransientFailure(error) || signal?.aborted) throw error;
       onRetry?.({ attempt: i + 1, delayMs: delays[i], error });
-      await wait(delays[i], signal);
+      await abortableDelay(delays[i], signal);
     }
   }
   // eslint-disable-next-line no-unreachable
