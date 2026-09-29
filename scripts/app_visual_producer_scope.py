@@ -196,6 +196,7 @@ def _csv(values: set[str] | None) -> str:
 def _e2e_producer(name: str) -> set[str] | None:
     exact = {
         "app-visual-artifact.spec.js": {"home-base"},
+        "smoke.spec.js": set(),
         "matthias-home-visual-artifact.spec.js": {"home-matthias"},
         "matthias-home-visual-critical.spec.js": {"home-matthias"},
         "home-3d-focus-visual.spec.js": {"home-focus"},
@@ -570,6 +571,7 @@ def self_test() -> None:
         "frontend/src/components/WarRoomMobileLandscape.css",
     ]) == "mobile"
     assert classify(["scripts/app_visual_scope.py"]) == "none"
+    assert classify(["e2e/smoke.spec.js"]) == "none"
     assert classify(["scripts/app_visual_producer_scope.py"]) == "none"
     assert classify(["scripts/app_visual_changed_files.py"]) == "none"
     assert classify(["scripts/app_visual_capture.sh"]) == "none"
