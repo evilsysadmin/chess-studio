@@ -78,8 +78,8 @@ test('PvP Duel Room · runtime desktop visual artifact', async ({ page }) => {
   const board = room.locator('[data-board3d-war-room="true"]');
   const canvas = board.locator('.board3d-main-canvas');
   await expect(canvas).toBeVisible({ timeout: 45_000 });
-  await expect(canvas).toHaveAttribute('data-board3d-variant', 'duel', { timeout: 60_000 });
-  await expect(canvas).toHaveAttribute('data-board3d-variant-status', 'ready', { timeout: 60_000 });
+  await expect(canvas).toHaveAttribute('data-war-room-variant', 'duel', { timeout: 60_000 });
+  await expect(canvas).toHaveAttribute('data-war-room-variant-status', 'ready', { timeout: 60_000 });
   await expect(canvas).toHaveAttribute('data-board3d-piece-built', '32', { timeout: 45_000 });
 
   const [roomBox, boardBox] = await Promise.all([room.boundingBox(), board.boundingBox()]);
