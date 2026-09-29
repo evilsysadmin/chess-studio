@@ -44,6 +44,9 @@ export function buildOpeningBanterFacts(rivalry, context = {}) {
       human_color: humanColor,
       mode: openingMode(context),
       rematch: Boolean(context.rematch),
+      // El nivel lo fijó la calibración de Matthias, no el jugador: el banter no
+      // puede burlarse de él (el backend rechaza mencionarlo, #4409).
+      difficulty_source: context.adaptiveDifficulty ? 'calibration' : 'player',
     },
   };
 
@@ -112,7 +115,12 @@ export function localOpeningBanter(rivalry, context = {}) {
   const contextual = startMemoryComment(rivalry, context);
   if (contextual) return contextual;
 
-  const difficulty = Number(context.difficulty);
+  const difficulty = context.adaptiveDifficulty ? Number.NaN : Number(context.difficulty);
+  if (context.adaptiveDifficulty) {
+    return context.humanColor === 'w'
+      ? 'Le he calibrado yo mismo, así que hoy no tendrá coartada. Empieza usted.'
+      : 'Le he calibrado yo mismo y llevo blancas. Hoy no tendrá coartada.';
+  }
   if (context.humanColor === 'w') {
     return Number.isFinite(difficulty)
       ? `Lleva usted blancas contra mi nivel ${difficulty}. Incluso le he concedido la primera excusa; aprovéchela.`

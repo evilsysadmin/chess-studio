@@ -241,6 +241,27 @@
     pointer-events: none;
   }
 
+  /* Código Rojo GP-3: en la War Room inmersiva el badge se reduce al punto de
+     estado y cabe en el hueco libre a la izquierda del HUD (antes pisaba 18 px
+     del borde del HUD). El texto sigue en el árbol accesible y en el title. */
+  body.war-room-immersive-active .app-shell-board-game:has(.game-layout-3d) .save-status-badge {
+    justify-content: center;
+    width: 28px;
+    min-width: 28px;
+    max-width: 28px;
+    margin-left: 8px;
+    padding: 0;
+  }
+
+  body.war-room-immersive-active .app-shell-board-game:has(.game-layout-3d) .save-status-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
   /* Overflow remains the complete action surface for discoverability and for
      the less frequent tools, without turning them into permanent chrome. */
   .game-screen .game-layout-3d .game-3d-utility-popover {

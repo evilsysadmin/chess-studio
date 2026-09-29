@@ -39,3 +39,29 @@ def test_opening_banter_has_a_specific_grounded_fallback():
     text = provider._fallback("game_opening_banter", _facts(50))
     assert "Nivel 50" in text
     assert "Siguiente paso" not in text
+
+
+def _calibrated_facts(level=0):
+    return {"game": {"difficulty": level, "difficulty_source": "calibration", "human_color": "white", "mode": "standard"}}
+
+
+def test_opening_banter_rechaza_signos_de_apertura_sin_cerrar():
+    # #4409: «¡Vaya, el nivel 0 otra vez. Qué cómodo.»
+    assert provider.validate_opening_banter_contract("¡Vaya, el nivel 50 otra vez. Qué cómodo.", _facts(50)) == (False, "unbalanced_marks")
+    assert provider.validate_opening_banter_contract("¿Blancas otra vez. Valiente.", _facts(50)) == (False, "unbalanced_marks")
+    assert provider.validate_opening_banter_contract("¡Vaya! ¿Blancas otra vez? Valiente.", _facts(50)) == (True, None)
+
+
+def test_opening_banter_no_se_burla_del_nivel_que_fijo_la_calibracion():
+    assert provider.validate_opening_banter_contract("Nivel 0 otra vez. Qué cómodo.", _calibrated_facts(0)) == (False, "calibrated_level")
+    assert provider.validate_opening_banter_contract("El nivel de siempre, qué cómodo.", _calibrated_facts(0)) == (False, "calibrated_level")
+    assert provider.validate_opening_banter_contract("Usted con blancas. Empiece, bitte.", _calibrated_facts(0)) == (True, None)
+
+
+def test_opening_banter_fallback_calibrado_no_cita_el_nivel():
+    for color in ("white", "black"):
+        facts = _calibrated_facts(0)
+        facts["game"]["human_color"] = color
+        text = provider._fallback("game_opening_banter", facts)
+        assert "Nivel 0" not in text
+        assert provider.validate_opening_banter_contract(text, facts) == (True, None)

@@ -45,7 +45,7 @@ describe('openingBanter', () => {
       arbitrarySecret: 'NOPE',
     });
 
-    expect(facts.game).toEqual({ difficulty: 50, human_color: 'white', mode: 'standard', rematch: true });
+    expect(facts.game).toEqual({ difficulty: 50, human_color: 'white', mode: 'standard', rematch: true, difficulty_source: 'player' });
     expect(facts.rivalry).toEqual({ games: 8, wins: 3, draws: 1, losses: 4, current_streak: -2 });
     expect(facts.last_game).toEqual({ outcome: 'loss', difficulty: 50, half_moves: 42 });
     expect(facts.repeated_incidents).toEqual([
@@ -137,5 +137,15 @@ describe('openingBanter', () => {
   it('recognizes an already persisted opening quip', () => {
     expect(hasOpeningBanterMessage([{ event: 'GAME_OPENING_BANTER', text: 'Hola' }])).toBe(true);
     expect(hasOpeningBanterMessage([{ event: 'KNIGHT_FORK', text: 'No' }])).toBe(false);
+  });
+
+  it('con nivel calibrado por Matthias no cita el nivel ni lo atribuye al jugador (#4409)', () => {
+    const facts = buildOpeningBanterFacts(null, { difficulty: 0, humanColor: 'w', adaptiveDifficulty: true });
+    expect(facts.game.difficulty_source).toBe('calibration');
+    for (const humanColor of ['w', 'b']) {
+      const text = localOpeningBanter(null, { difficulty: 0, humanColor, adaptiveDifficulty: true });
+      expect(text).not.toMatch(/nivel|dificultad/i);
+      expect(text).toMatch(/calibrado/);
+    }
   });
 });
