@@ -176,3 +176,39 @@ test('Pawn Trailblazer móvil · HUD compacto, controles táctiles y dock global
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
 });
+
+
+test('Home móvil vertical · el panel «Más modos» abierto queda por encima del nav de destinos', async ({ browser }, testInfo) => {
+  const context = await browser.newContext({
+    baseURL: testInfo.project.use.baseURL,
+    serviceWorkers: 'block',
+    reducedMotion: testInfo.project.use.reducedMotion,
+    viewport: { width: 390, height: 844 },
+    hasTouch: true,
+    isMobile: true,
+  });
+  const page = await context.newPage();
+  try {
+    await openHome(page);
+    await openMoreGameModes(page);
+    const panel = page.locator('#illustrated-home-tools');
+    await expect(panel).toBeVisible();
+    const buttons = panel.getByRole('button');
+    const blocked = await panel.evaluate((root) => [...root.querySelectorAll('button')]
+      .filter((button) => {
+        const rect = button.getBoundingClientRect();
+        if (!rect.width || !rect.height) return false;
+        const x = rect.left + rect.width / 2;
+        const y = rect.top + rect.height / 2;
+        if (y < 0 || y > window.innerHeight) return false;
+        const hit = document.elementFromPoint(x, y);
+        return !hit || !button.contains(hit);
+      })
+      .map((button) => button.getAttribute('aria-label') || button.textContent.trim()));
+    expect(blocked, 'botones del panel tapados por otra capa').toEqual([]);
+    await buttons.filter({ hasText: 'Experimentos geniales' }).tap();
+    await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
+  } finally {
+    await context.close();
+  }
+});
