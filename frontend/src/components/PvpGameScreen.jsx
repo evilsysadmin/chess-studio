@@ -296,10 +296,10 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
   if (!match || !opponent) return null;
 
   return (
-    <section className="game-screen pvp-war-room" aria-label="War Room 1 contra 1">
+    <section className="game-screen pvp-war-room" aria-label="Sala de duelo 1 contra 1">
       <div className="pvp-war-room__topbar">
         <button type="button" className="secondary-btn" onClick={onExit}>← Lobby</button>
-        <span>WAR ROOM · 1 VS 1</span>
+        <span>DUEL ROOM · 1 VS 1</span>
         <small>{match.youAre === 'w' ? 'Blancas' : 'Negras'} · {match.youAre === 'w' ? match.whiteRating : match.blackRating} Elo 1v1</small>
       </div>
 
@@ -329,6 +329,7 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
                     matthiasKingColor: null,
                     hansFireplaceIteration: false,
                     hansFireCallEnabled: false,
+                    warRoomVariantOverride: 'duel',
                   }}
                 />
 
@@ -402,7 +403,7 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
       {showResignConfirm && (
         <div className="modal-backdrop pvp-resign-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !resigning) setShowResignConfirm(false); }}>
           <div className="army-card pvp-resign-card" role="dialog" aria-modal="true" aria-labelledby="pvp-resign-title">
-            <span className="eyebrow">1 VS 1 · War Room</span>
+            <span className="eyebrow">1 VS 1 · Duel Room</span>
             <h3 id="pvp-resign-title">¿Abandonar la partida?</h3>
             <p>En un duelo humano esto cuenta como rendición y victoria del rival. El rating se liquidará en el servidor.</p>
             <div className="pvp-resign-actions">
