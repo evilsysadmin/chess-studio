@@ -180,8 +180,8 @@
 .release-update-dismiss { border: 0; background: transparent; color: var(--parchment-dim, #c9c3b5); }
 @media (max-width: 560px) {
   .release-update-notice { align-items: flex-start; }
-  .app-shell-board-game:has(.game-layout-3d) .release-update-notice {
-    top: 58px;
+  body.war-room-immersive-active .release-update-notice {
+    top: 64px;
     width: min(680px, calc(100vw - 12px));
   }
   .release-update-copy span { max-width: 42ch; }
