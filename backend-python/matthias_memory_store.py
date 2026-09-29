@@ -1062,7 +1062,7 @@ def briefing_text_from_summary(summary: dict[str, Any]) -> str:
     if challenge:
         remaining = max(0, challenge["baseline_games"] + challenge["target_games"] - challenge["current_games"])
         if remaining > 0:
-            return f"Reto pendiente: {challenge.get('label')}. Le quedan {remaining} partida{'s' if remaining != 1 else ''} limpias para que retire oficialmente la acusación."[:420]
+            return f"Reto pendiente · {challenge.get('label')}. {'Le queda 1 partida limpia' if remaining == 1 else f'Le quedan {remaining} partidas limpias'} para que retire oficialmente la acusación."[:420]
     if debt and debt.get("status") in {"struggling", "mixed"}:
         return "Mi consejo anterior sigue abierto. Los datos nuevos todavía no me permiten archivarlo, así que hoy no vamos a fingir que el problema se evaporó."
     if goals:

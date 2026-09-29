@@ -286,3 +286,25 @@ def test_admin_status_aggregates_mood_without_exposing_advice_text():
         assert "Texto privado" not in str(status)
 
     asyncio.run(scenario())
+
+
+@pytest.mark.parametrize(
+    ("current_games", "expected"),
+    [
+        (2, "Le queda 1 partida limpia para"),
+        (0, "Le quedan 3 partidas limpias para"),
+    ],
+)
+def test_challenge_briefing_concuerda_en_numero(current_games, expected):
+    summary = {
+        "activeChallenge": {
+            "id": "mate-blind",
+            "label": "3 partidas sin repetir: Ver mates antes de que sea demasiado tarde",
+            "baseline_games": 0,
+            "current_games": current_games,
+            "target_games": 3,
+        },
+    }
+    text = store.briefing_text_from_summary(summary)
+    assert expected in text
+    assert "1 partida limpias" not in text

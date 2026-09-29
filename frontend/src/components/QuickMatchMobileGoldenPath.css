@@ -95,7 +95,12 @@
  * settings dashboard. Keep one primary decision; everything else recedes. */
 .friendly-modal[aria-label='Configurar partida rápida'] {
   position: relative;
-  overflow: hidden;
+  /* Sólo recortamos en horizontal: con `overflow: hidden` esta regla anulaba el
+     scroll vertical del modal y, en un móvil con la barra del navegador, al abrir
+     Ajustes se cortaban Blancas/Negras y el resto sin poder llegar (GP-5, #34). */
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   border: 1px solid color-mix(in srgb, var(--brass) 42%, rgba(85, 51, 23, .72));
   border-radius: 18px;
   background:
