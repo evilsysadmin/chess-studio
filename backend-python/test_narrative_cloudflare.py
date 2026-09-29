@@ -199,7 +199,7 @@ def test_player_portrait_accepts_only_grounded_profile_claims(monkeypatch):
     monkeypatch.setenv("CF_AI_WORKER_URL", "https://example.workers.dev")
     monkeypatch.setenv("CHESS_AI_SHARED_SECRET", "p" * 64)
 
-    client = FakeClient(FakeResponse(200, {"ok": True, "text": "Has ganado 6 partidas y tu rating ha subido, así que algo estás haciendo bien. El problema principal todavía necesita más muestra; por una vez no voy a inventarme el incendio. En las próximas partidas, revisa tus resultados antes de cambiar de plan."}))
+    client = FakeClient(FakeResponse(200, {"ok": True, "text": "Ha ganado 6 partidas y su rating ha subido, así que algo está haciendo bien. El problema principal todavía necesita más muestra; por una vez no voy a inventarme el incendio. En las próximas partidas, revise sus resultados antes de cambiar de plan."}))
     result = asyncio.run(
         provider.generate_narrative(
             "player_portrait",
@@ -392,7 +392,7 @@ def test_rich_analysis_uses_separate_circuit_channel(monkeypatch):
     assert asyncio.run(provider.request_cloud_narrative("post_game_autopsy", {}, client=analysis_fail)).reason == "http_502"
     assert asyncio.run(provider.request_cloud_narrative("post_game_autopsy", {}, client=analysis_fail)).reason == "circuit_open"
 
-    portrait_ok = FakeClient(FakeResponse(200, {"ok": True, "text": "Has completado 8 partidas y ya hay una muestra aprovechable. Todavía hay poco detalle para señalar una catástrofe concreta, milagrosamente. En las próximas partidas, revisa tus errores repetidos antes de cambiar de plan."}))
+    portrait_ok = FakeClient(FakeResponse(200, {"ok": True, "text": "Ha completado 8 partidas y ya hay una muestra aprovechable. Todavía hay poco detalle para señalar una catástrofe concreta, milagrosamente. En las próximas partidas, revise sus errores repetidos antes de cambiar de plan."}))
     portrait = asyncio.run(provider.request_cloud_narrative("player_portrait", {"total_games": 8}, client=portrait_ok))
     assert portrait.reason == "ok"
     circuit = provider.get_ai_metrics()["circuit"]
@@ -429,9 +429,9 @@ def test_player_portrait_requires_three_grounded_sentences_and_action(monkeypatc
     monkeypatch.setenv("CF_AI_WORKER_URL", "https://example.workers.dev")
     monkeypatch.setenv("CHESS_AI_SHARED_SECRET", "n" * 64)
     good = (
-        "Has ganado 7 de 12 partidas, así que el tablero no te tiene completamente fichado. "
-        "Tus datos aún no justifican inventar una debilidad distinta, cosa que te ahorra una humillación gratuita. "
-        "En las próximas partidas, revisa tus incidentes repetidos antes de cambiar de plan."
+        "Ha ganado 7 de 12 partidas, así que el tablero no le tiene completamente fichado. "
+        "Sus datos aún no justifican inventar una debilidad distinta, cosa que le ahorra una humillación gratuita. "
+        "En las próximas partidas, revise sus incidentes repetidos antes de cambiar de plan."
     )
     client = FakeClient(FakeResponse(200, {"ok": True, "text": good}))
     outcome = asyncio.run(provider.request_cloud_narrative(
@@ -503,3 +503,21 @@ def test_event_metrics_can_slice_matthias_today_without_exposing_text(monkeypatc
     assert metrics["fallbackPercent"] == 100.0
     assert metrics["cloudflarePercent"] == 0.0
     assert "text" not in str(metrics).lower()
+
+
+def test_matthias_output_that_tutea_the_player_is_rejected(monkeypatch):
+    """Contrato: Matthias siempre trata al jugador de usted (matthias-runtime.md)."""
+    monkeypatch.setenv("AI_NARRATIVE_ENABLED", "true")
+    monkeypatch.setenv("CF_AI_WORKER_URL", "https://example.workers.dev")
+    monkeypatch.setenv("CHESS_AI_SHARED_SECRET", "u" * 64)
+    tuteo = (
+        "Has ganado 7 de 12 partidas, así que el tablero no te tiene completamente fichado. "
+        "Tus datos aún no justifican inventar una debilidad distinta. "
+        "En las próximas partidas, revisa tus incidentes repetidos antes de cambiar de plan."
+    )
+    client = FakeClient(FakeResponse(200, {"ok": True, "text": tuteo}))
+    result = asyncio.run(provider.generate_narrative(
+        "player_portrait", {"total_games": 12, "record": {"wins": 7, "losses": 5}}, client=client
+    ))
+    assert result["provider"] == "local"
+    assert any(key.startswith("register_tuteo:") for key in provider.get_ai_metrics()["reasons"])

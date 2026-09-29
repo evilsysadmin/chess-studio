@@ -206,7 +206,7 @@ def test_return_context_is_grounded_in_a_real_absence_and_expires():
         await store.observe_facts("returner", {"total_games": 20, "record": {"wins": 8, "losses": 12}})
         summary = await store.user_summary("returner")
         assert summary["returnContext"]["days"] >= store.RETURN_AFTER_DAYS
-        assert "Has vuelto" in store.briefing_text_from_summary(summary)
+        assert "Ha vuelto usted" in store.briefing_text_from_summary(summary)
 
         expired = dict(store._memory["returner"]["return_context"])
         expired["returned_at"] = (datetime.now(timezone.utc) - timedelta(days=store.RETURN_CONTEXT_TTL_DAYS + 1)).isoformat()
