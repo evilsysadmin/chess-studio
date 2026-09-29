@@ -248,6 +248,11 @@ def classify_path(path: str) -> set[str] | None:
         ".github/workflows/war-room-v3-blender-art.yml",
     }:
         return {"warroom-core"}
+    if lower in {
+        "scripts/blender/build_pvp_duel_room.py",
+        ".github/workflows/pvp-duel-room-blender-art.yml",
+    }:
+        return set()
 
     if lower.startswith("e2e/"):
         return _e2e_producer(name)
