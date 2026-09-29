@@ -171,6 +171,9 @@
 .insights-workspace-view-now .ai-player-portrait {
   position: relative;
   overflow: hidden;
+  /* Inline padding: without it the eyebrow ("Matthias // veredicto") sits on the
+     rounded border and the inset gold stripe of ::after, clipping the "M". */
+  padding-inline: clamp(.9rem, 2.2vw, 1.5rem);
   border: 1px solid rgba(198,164,93,.38);
   background:
     radial-gradient(circle at 9% 42%, rgba(198,164,93,.13), transparent 27%),
@@ -328,6 +331,14 @@
     grid-template-columns: repeat(12, minmax(0, 1fr));
     gap: .85rem;
     align-items: start;
+  }
+
+  /* Default: every card spans the full grid. Without this, any card that has no
+     explicit placement (e.g. the empty-state "Diagnóstico") collapses into a
+     single 1/12 column (~97px at 1440px). Specific layouts below override it. */
+  .insights-workspace-view-now .insights-hub > *,
+  .insights-workspace-view-errors .insights-hub > * {
+    grid-column: 1 / -1;
   }
 
   .insights-workspace-view-now .ai-player-portrait {
