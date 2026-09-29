@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { resolveBoard3DCameraFov } from './Board3DConfig.js';
 import { buildPiece, disposeObject } from './Board3DPieces.js';
 import { fitBoardCamera } from './Board3DScene.js';
+import { WAR_ROOM_MOBILE_FRAMING_VERSION } from './WarRoomMobileFraming.js';
 
 function worldSize(root) {
   root.updateMatrixWorld(true);
@@ -139,7 +140,7 @@ describe('Board3D piece scale parity', () => {
       const elevation = Math.atan2(offset.y, Math.abs(offset.z));
 
       expect(camera.fov).toBe(34);
-      expect(camera.userData.framingProfile).toBe('mobile-v5-landscape-overhead');
+      expect(camera.userData.framingProfile).toBe(WAR_ROOM_MOBILE_FRAMING_VERSION);
       expect(camera.userData.cameraDistance).toBeLessThan(16);
       expect(THREE.MathUtils.radToDeg(elevation)).toBeGreaterThan(39);
       expect(Math.abs(target.z)).toBeLessThanOrEqual(0.08);
