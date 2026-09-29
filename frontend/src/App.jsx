@@ -767,11 +767,7 @@ function AppInner({ isAdminUser }) {
   return (
     <>
       <a className="skip-link" href="#main-content">Saltar al contenido</a>
-      {!isBoardGameView && (
-        <React.Suspense fallback={null}>
-          <GlobalMusicDock isAdminUser={isAdminUser} onAdmin={() => navigateTo('admin')} />
-        </React.Suspense>
-      )}
+      {!isBoardGameView && <React.Suspense fallback={null}><GlobalMusicDock isAdminUser={isAdminUser} onAdmin={() => navigateTo('admin')} /></React.Suspense>}
       <ReleaseUpdateNotice deferReload={isBoardGameView} />
       <ErrorBoundary
         view={view}
