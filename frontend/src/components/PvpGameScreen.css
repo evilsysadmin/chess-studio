@@ -166,3 +166,16 @@
   .pvp-war-room__opponent-meta span { display:none; }
   .pvp-war-room__opponent-meta em { font-size:.46rem; }
 }
+
+/* Keep coarse PvP controls touch-safe after the compact desktop utility rules
+   above; this must remain at the end of the file so the 28px mouse treatment
+   cannot win the cascade on phones. */
+@media (pointer:coarse), (max-width:760px), (max-height:520px) {
+  .pvp-war-room__duel-pill .game-3d-utility-menu,
+  .pvp-war-room__duel-pill .game-3d-utility-menu>summary {
+    width:44px;
+    height:44px;
+    min-width:44px;
+    min-height:44px;
+  }
+}
