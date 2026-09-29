@@ -27,9 +27,8 @@ function matchPayload() {
   };
 }
 
-test('PvP Duel Room · runtime desktop visual artifact', async ({ page }) => {
-  test.setTimeout(120_000);
-  await page.setViewportSize({ width: 1440, height: 900 });
+async function openDuelRoom(page, viewport) {
+  await page.setViewportSize(viewport);
   await mockApi(page);
 
   const match = matchPayload();
@@ -91,10 +90,6 @@ test('PvP Duel Room · runtime desktop visual artifact', async ({ page }) => {
 
   await page.waitForTimeout(900);
   await mkdir(ARTIFACT_DIR, { recursive: true });
-  await room.screenshot({
-    path: ARTIFACT_DIR + '/pvp-duel-room-desktop-1440x900.png',
-    animations: 'disabled',
-  });
 
   const horizontal = await page.evaluate(() => {
     const root = document.documentElement;
@@ -118,4 +113,49 @@ test('PvP Duel Room · runtime desktop visual artifact', async ({ page }) => {
     horizontal.overflow,
     'horizontal overflow offenders: ' + JSON.stringify(horizontal.offenders),
   ).toBeLessThanOrEqual(1);
+  return { room, board, canvas };
+}
+
+async function assertMobileTouchTargets(room) {
+  const topbarButton = room.page().locator('.pvp-war-room__topbar button').first();
+  const utility = room.locator('.pvp-war-room__duel-pill .game-3d-utility-menu>summary');
+  for (const target of [topbarButton, utility]) {
+    const box = await target.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box.width).toBeGreaterThanOrEqual(44);
+    expect(box.height).toBeGreaterThanOrEqual(44);
+  }
+}
+
+test('PvP Duel Room · runtime desktop visual artifact', async ({ page }) => {
+  test.setTimeout(120_000);
+  const { room } = await openDuelRoom(page, { width: 1440, height: 900 });
+  await room.screenshot({
+    path: ARTIFACT_DIR + '/pvp-duel-room-desktop-1440x900.png',
+    animations: 'disabled',
+  });
+});
+
+test('PvP Duel Room · runtime Android portrait visual artifact', async ({ page }) => {
+  test.setTimeout(120_000);
+  const { room } = await openDuelRoom(page, { width: 390, height: 844 });
+  await assertMobileTouchTargets(room);
+  await room.screenshot({
+    path: ARTIFACT_DIR + '/pvp-duel-room-android-390x844.png',
+    animations: 'disabled',
+  });
+});
+
+test('PvP Duel Room · runtime Android landscape visual artifact', async ({ page }) => {
+  test.setTimeout(120_000);
+  const { room } = await openDuelRoom(page, { width: 844, height: 390 });
+  await assertMobileTouchTargets(room);
+  const verticalOverflow = await page.evaluate(
+    () => document.documentElement.scrollHeight - document.documentElement.clientHeight,
+  );
+  expect(verticalOverflow).toBeLessThanOrEqual(1);
+  await room.screenshot({
+    path: ARTIFACT_DIR + '/pvp-duel-room-android-landscape-844x390.png',
+    animations: 'disabled',
+  });
 });
