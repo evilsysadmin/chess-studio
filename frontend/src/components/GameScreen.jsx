@@ -756,7 +756,7 @@ export default function GameScreen({
 
   const lastCpuComment = [...gameChat].reverse().find((message) => message?.by !== 'system' && message?.text)?.text || null;
   const reportMeta = buildPostGameReportMeta({ game, finalOutcome, memoryContext, timeControlId: timeControl?.id, hintMode, pressureMoves: pressureMovesRef.current, pressureIncidents: pressureIncidentsRef.current });
-  const trainingOpportunity = usePostGameTrainingOpportunity({ game, humanColor, finished: Boolean(game.isGameOver || flagFallen || forcedOutcome), meta: reportMeta });
+  const trainingOpportunity = usePostGameTrainingOpportunity({ game, humanColor, finished: Boolean(game.isGameOver || flagFallen || forcedOutcome) && finalOutcome === 'loss', meta: reportMeta });
   function handleTrainCurrentError() {
     if (!focusPostGameTrainingOpportunity(trainingOpportunity)) return;
     onTrainPersonal?.();
