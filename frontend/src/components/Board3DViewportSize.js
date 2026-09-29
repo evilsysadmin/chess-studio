@@ -20,3 +20,13 @@ export function resolveStableBoardViewport({
     source: 'immersive-viewport',
   });
 }
+
+export function resolveStableBoardViewportForHost(host, { immersive = false, viewport = globalThis } = {}) {
+  return resolveStableBoardViewport({
+    hostWidth: host?.clientWidth,
+    hostHeight: host?.clientHeight,
+    immersive,
+    viewportWidth: viewport?.innerWidth,
+    viewportHeight: viewport?.innerHeight,
+  });
+}
