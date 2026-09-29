@@ -43,15 +43,15 @@ def clear_inherited_room(static):
 def palette():
     return {
         "wall": base.material(
-            "PVP_MAT_wall_stone", (0.22, 0.16, 0.105, 1),
-            rough=0.84, texture="stone", scale=4.4, bump=0.075, weather=True,
+            "PVP_MAT_wall_stone", (0.155, 0.142, 0.122, 1),
+            rough=0.88, texture="stone", scale=4.7, bump=0.085, weather=True,
         ),
         "floor": base.material(
             "PVP_MAT_floor_stone", (0.105, 0.115, 0.115, 1),
             rough=0.78, texture="stone", scale=4.8, bump=0.055, weather=True,
         ),
         "dais": base.material(
-            "PVP_MAT_dais_stone", (0.29, 0.24, 0.17, 1),
+            "PVP_MAT_dais_stone", (0.31, 0.265, 0.205, 1),
             rough=0.68, coat=0.03, texture="stone", scale=3.8, bump=0.045, weather=True,
         ),
         "oak": base.material(
@@ -161,6 +161,25 @@ def build_architecture(static, p):
                 0.46, 0.18, p["brass"], static, vertices=8,
             )
 
+    # Shallow, irregular ashlar relief makes the rear elevation read as old
+    # castle masonry at gameplay distance. Keep the central portal clear.
+    stone_index = 0
+    for row in range(6):
+        z = 1.42 + row * 0.78
+        offset = 0.52 if row % 2 else 0.0
+        for col in range(-8, 9):
+            x = col * 1.02 + offset
+            if abs(x) < 2.72 and z > 1.55:
+                continue
+            width = 0.455 + 0.025 * ((row + col) % 3)
+            height = 0.335 + 0.018 * ((row * 2 + col) % 3)
+            block = base.cube(
+                f"PVP_ROOM_masonry_{stone_index}", (x, 6.205, z),
+                (width, 0.045, height), p["wall"], static, bevel=0.035,
+            )
+            block.rotation_euler.z = math.radians(((row * 5 + col * 3) % 5 - 2) * 0.22)
+            stone_index += 1
+
     # Central pointed-window composition, assembled with a deep framed opening.
     # Deep stone portal around the moon window gives the rear wall an unmistakable
     # castle silhouette; oak remains an inset rather than reading as modern panelling.
@@ -190,8 +209,8 @@ def build_architecture(static, p):
         if abs(x) < 2.35:
             continue
         base.cube(
-            f"PVP_ROOM_wainscot_{col+6}", (x, 6.15, 1.18),
-            (0.54, 0.09, 1.02), p["oak_mid"], static, bevel=0.055,
+            f"PVP_ROOM_wainscot_{col+6}", (x, 6.15, 0.72),
+            (0.54, 0.09, 0.56), p["oak_mid"], static, bevel=0.055,
         )
 
 
