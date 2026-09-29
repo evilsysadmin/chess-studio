@@ -90,8 +90,8 @@ test('War Room 1v1 · reto entrante abre una partida humana en el tablero canón
   // starting army and a board that still owns the PvP room horizontally.
   const canvas = board.locator('.board3d-main-canvas');
   await expect(canvas).toBeVisible({ timeout: 45_000 });
-  await expect(canvas).toHaveAttribute('data-board3d-variant', 'duel', { timeout: 60_000 });
-  await expect(canvas).toHaveAttribute('data-board3d-variant-status', 'ready', { timeout: 60_000 });
+  await expect(canvas).toHaveAttribute('data-war-room-variant', 'duel', { timeout: 60_000 });
+  await expect(canvas).toHaveAttribute('data-war-room-variant-status', 'ready', { timeout: 60_000 });
   await expect(canvas).toHaveAttribute('data-board3d-piece-built', '32', { timeout: 45_000 });
 
   const [roomBox, boardBox] = await Promise.all([warRoom.boundingBox(), board.boundingBox()]);
