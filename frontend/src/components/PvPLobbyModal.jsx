@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { pvpApi } from '../pvpApi.js';
 import { opponentForMatch } from '../pvpGameModel.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
@@ -74,6 +74,7 @@ export default function PvPLobbyModal({
   const [messageText, setMessageText] = useState('');
   const [selectedRival, setSelectedRival] = useState('');
   const [error, setError] = useState('');
+  const lobbyRef = useRef(null);
   const externallyDriven = Boolean(lobbySnapshot && onRefreshRoster);
   const liveLobby = lobbySnapshot || lobby;
   const self = useMemo(() => liveLobby.roster.find((row) => row.isSelf) || null, [liveLobby.roster]);
@@ -90,6 +91,15 @@ export default function PvPLobbyModal({
   useEffect(() => {
     if (selectedRival && !rivals.some((row) => row.username === selectedRival)) setSelectedRival('');
   }, [rivals, selectedRival]);
+
+  useEffect(() => {
+    const node = lobbyRef.current;
+    if (!node) return;
+    // Mobile browsers can restore the scroll position of a modal-like overflow
+    // container when it is reopened. The command table must always reopen at
+    // its heading, never halfway through a previous session.
+    node.scrollTop = 0;
+  }, []);
 
   useEffect(() => {
     if (messages.length) onMarkChatRead?.(messages);
@@ -190,14 +200,17 @@ export default function PvPLobbyModal({
 
   return (
     <div className="modal-backdrop pvp-lobby-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <section className="pvp-lobby" role="dialog" aria-modal="true" aria-label="Duelo 1 contra 1 · War Room">
+      <section ref={lobbyRef} className="pvp-lobby pvp-duel-hall" role="dialog" aria-modal="true" aria-label="Duelo 1 contra 1 · War Room">
         <button type="button" className="piece-info-close" onClick={onClose} aria-label={self ? 'Cerrar ventana; seguirás disponible para retos' : 'Cerrar ventana de rivales'} title={self ? 'Cerrar · seguirás disponible' : 'Cerrar'}>×</button>
 
         <header className="pvp-lobby__header">
           <div className="pvp-lobby__header-copy">
-            <span className="eyebrow">War Room · duelos entre jugadores</span>
-            <h2>Elige rival</h2>
-            <p>Elige rival, reta y comenta en la sala. Si aún no estás visible, Chess Studio te activa automáticamente al lanzar el reto.</p>
+            <span className="eyebrow">Castillo · Sala de Duelos</span>
+            <div className="pvp-duel-hall__title-row">
+              <span className="pvp-duel-hall__crest" aria-hidden="true">⚔</span>
+              <h2>Sala de Duelos</h2>
+            </div>
+            <p>Elige rival o atiende un reto. Cuando el duelo quede concertado, la War Room te espera.</p>
           </div>
           <div className="pvp-lobby__header-status" aria-hidden="true">
             <span className={`pvp-lobby__availability${self ? ' is-live' : ''}`}>
@@ -233,7 +246,7 @@ export default function PvPLobbyModal({
             <span className={`pvp-lobby__presence${self ? ' is-on' : ''}`} aria-hidden="true" />
             <span className="pvp-lobby__identity-mark" aria-hidden="true">♟</span>
             <div>
-              <small>{self ? 'RECIBIENDO RETOS' : 'RECEPCIÓN DE RETOS DESACTIVADA'}</small>
+              <small>{self ? 'TU PUESTO · RECIBIENDO RETOS' : 'TU PUESTO · RETOS DESACTIVADOS'}</small>
               <strong>{self ? self.username : 'Puedes retar sin activarte antes'}</strong>
               <span>{self ? 'Visible para otros jugadores · puedes cerrar y seguir jugando' : 'Toca Retar y Chess Studio te hará visible automáticamente.'}</span>
             </div>
@@ -264,9 +277,9 @@ export default function PvPLobbyModal({
           <section className={`pvp-lobby__panel pvp-lobby__panel--roster${rivalCount === 0 ? ' is-empty' : ''}`} aria-labelledby="pvp-roster-title">
             <header>
               <div>
-                <small>RIVALES EN LÍNEA</small>
-                <h3 id="pvp-roster-title">Elige a quién retar</h3>
-                <p>Toca un rival para seleccionarlo o pulsa Retar directamente.</p>
+                <small>TABLÓN DE RIVALES</small>
+                <h3 id="pvp-roster-title">¿A quién retas?</h3>
+                <p>Toca un nombre para ver su ficha o pulsa Retar directamente.</p>
               </div>
               <span>{rivalCount} rival{rivalCount === 1 ? '' : 'es'}</span>
             </header>
@@ -355,9 +368,9 @@ export default function PvPLobbyModal({
           <section className={`pvp-lobby__panel pvp-lobby__panel--challenges${challengeCount === 0 ? ' is-empty' : ' has-attention'}`} aria-labelledby="pvp-challenges-title">
             <header>
               <div>
-                <small>DESPACHO DE RETOS</small>
+                <small>MESA DEL HERALDO</small>
                 <h3 id="pvp-challenges-title">Retos</h3>
-                <p>Órdenes que requieren tu atención.</p>
+                <p>Acepta, declina o cancela sin salir de la sala.</p>
               </div>
               <span>{challengeCount}</span>
             </header>
@@ -373,12 +386,14 @@ export default function PvPLobbyModal({
               <div className="pvp-lobby__challenge-list">
                 {incoming.map((challenge) => (
                   <article key={challenge.id} className="pvp-lobby__challenge is-incoming">
+                    <span className="pvp-lobby__challenge-seal" aria-hidden="true">✦</span>
                     <div><small>RETO ENTRANTE</small><strong>{challenge.challenger}</strong><span>{challenge.challengerRating} Elo 1v1{challenge.expiresAt ? ` · ${challengeExpiryLabel(challenge.expiresAt)}` : ''}</span></div>
                     <div className="pvp-lobby__challenge-actions"><button type="button" className="primary-btn" disabled={Boolean(busyKey)} onClick={() => accept(challenge)}>Aceptar</button><button type="button" className="secondary-btn" disabled={Boolean(busyKey)} onClick={() => run(`decline:${challenge.id}`, () => onDeclineChallenge ? onDeclineChallenge(challenge) : pvpApi.declineChallenge(challenge.id))}>Declinar</button></div>
                   </article>
                 ))}
                 {outgoing.map((challenge) => (
                   <article key={challenge.id} className="pvp-lobby__challenge">
+                    <span className="pvp-lobby__challenge-seal is-outgoing" aria-hidden="true">✧</span>
                     <div>
                       <small>RETO ENVIADO</small>
                       <strong>{challenge.opponent}</strong>
@@ -409,9 +424,9 @@ export default function PvPLobbyModal({
           <section className="pvp-lobby__panel pvp-lobby__panel--chat" aria-labelledby="pvp-chat-title">
             <header>
               <div>
-                <small>SALA</small>
-                <h3 id="pvp-chat-title">Chat</h3>
-                <p>Comentarios breves mientras eliges rival.</p>
+                <small>MURMULLOS DE LA SALA</small>
+                <h3 id="pvp-chat-title">Conversación</h3>
+                <p>Comentarios breves mientras se conciertan los duelos.</p>
               </div>
               <span>{messages.length}</span>
             </header>

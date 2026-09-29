@@ -1,0 +1,84 @@
+# PvP · Sala de Duelos
+
+Contrato de producto/UX para la presentación del 1v1 humano.
+
+## Tesis
+
+El matchmaking humano pertenece al castillo. No debe sentirse como un dashboard, una tabla administrativa ni un modal de settings. La superficie canónica es la **Sala de Duelos**: una estancia donde el jugador entiende físicamente cuatro cosas y nada más:
+
+1. **Tu puesto** — si estás recibiendo retos, tu Elo y cómo retirarte/minimizar.
+2. **Tablón de rivales** — quién está disponible y a quién puedes retar.
+3. **Mesa del Heraldo** — retos entrantes/salientes y su acción inmediata.
+4. **Murmullos de la sala** — conversación secundaria que nunca compite con concertar el duelo.
+
+La War Room sigue siendo el lugar donde se juega. La Sala de Duelos sólo concierta y prepara la entrada.
+
+## Authority
+
+No nace un segundo dominio PvP.
+
+- roster, challenges, activeMatch, rating, cooldowns y clocks siguen siendo autoridad del backend/hook PvP existente;
+- la Sala de Duelos sólo proyecta ese estado y emite intents existentes;
+- F5, reconnect, handoff, cancelación y recovery conservan los contratos actuales;
+- la futura escena 3D no contiene lógica de matchmaking.
+
+## Jerarquía
+
+El usuario debe poder contestar en segundos:
+
+- ¿estoy disponible?
+- ¿hay alguien a quien retar?
+- ¿me han retado?
+- ¿hay ya un duelo listo?
+
+Rivales y retos dominan. Chat, historial y metadata son secundarios.
+
+## Lenguaje visual
+
+Misma familia del castillo: piedra/hierro oscuro, madera, latón envejecido, pergamino/marfil y borgoña muy medido.
+
+- Tablón de rivales: madera/placas, lectura inmediata.
+- Reto entrante: pergamino/sello, estado ceremonial pero accionable.
+- Reto saliente: mensajero/espera, menos énfasis que un reto entrante.
+- Tu puesto: pequeño, estable y reconocible.
+- Chat: ambiente, no panel protagonista.
+
+No usar glow masivo, dashboards de tarjetas homogéneas ni texto ornamental que esconda acciones.
+
+## Transición a War Room
+
+Cuando ambos jugadores aceptan:
+
+`reto concertado → sincronización autoritativa → cuenta atrás breve → War Room`
+
+La presentación puede ser ceremonial, pero nunca retrasar o sustituir el estado real. Cualquier error/recovery debe seguir gobernado por el match autoritativo.
+
+## Móvil
+
+Viewports mínimos: 360×800, 390×844, 430×932.
+
+- sin scroll horizontal;
+- sin scroll heredado al reabrir;
+- targets táctiles >=44×44 para acciones primarias;
+- reto entrante y CTA principal visibles sin atravesar contenido irrelevante;
+- no duplicar empty states;
+- reducir decoración antes que legibilidad;
+- portrait debe ser plenamente usable; landscape puede mostrar una estancia más rica.
+
+## Evolución 3D
+
+La escena 3D propia se introduce después de validar la jerarquía y el flujo con una shell barata/reversible.
+
+La sala 3D debe:
+- ser distinta de Home y War Room;
+- conservar los mismos cuatro hotspots semánticos;
+- lazy-load al entrar y liberar canvas/RAF/listeners al salir;
+- usar un encuadre móvil simplificado;
+- permitir fallback 2D funcional si WebGL/asset falla;
+- producir PNG desktop+móvil y compararse con un golden aprobado antes de promoción.
+
+La escena no justifica un renderer paralelo ni una segunda fuente de verdad.
+
+## Criterio de cierre
+
+La superficie está lista cuando entrar al 1v1 se siente como **visitar una estancia del castillo para concertar un duelo**, y un jugador nuevo entiende sin explicación adicional dónde está él, dónde están los rivales, qué retos requieren atención y cómo entra en combate.
