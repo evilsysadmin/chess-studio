@@ -1,0 +1,26 @@
+name: PR · track label
+# GP-0 (#34 · Código Rojo): toda PR declara su pista con una etiqueta
+# (ux-mobile / ux-desktop / ux-claude / track-*). Workflow propio y barato para
+# poder re-evaluarse en labeled/unlabeled sin relanzar el CI completo.
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review, labeled, unlabeled]
+permissions:
+  contents: read
+concurrency:
+  group: pr-track-label-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  track-label:
+    name: Contracts · PR track label
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: scripts/pr_track_label_check.py
+          sparse-checkout-cone-mode: false
+      - name: Require a track label
+        env:
+          PR_LABELS_JSON: ${{ toJson(github.event.pull_request.labels.*.name) }}
+        run: python3 -S scripts/pr_track_label_check.py
