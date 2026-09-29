@@ -162,6 +162,8 @@ DEDICATED_WAR_ROOM_BLENDER_PATHS = {
     "scripts/blender/build_war_room_v3.py",
     "scripts/blender/publish_war_room_v3.py",
     ".github/workflows/war-room-v3-blender-art.yml",
+    "scripts/blender/build_pvp_duel_room.py",
+    ".github/workflows/pvp-duel-room-blender-art.yml",
 }
 
 def _surface_groups(path: str) -> set[str] | None:
