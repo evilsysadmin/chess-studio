@@ -35,7 +35,6 @@ import { clearClockSnapshot } from './clockPersistence.js';
 import { scheduleAchievementCheck } from './achievementBootstrap.js';
 const AdminScreen = React.lazy(() => import('./components/AdminScreen.jsx'));
 const GlobalMusicDock = React.lazy(() => import('./components/GlobalMusicDock.jsx'));
-import { quickMatchRematchHandler, quickMatchRematchPlan } from './quickMatchRematch.js';
 import SaveStatusBadge from './components/SaveStatusBadge.jsx';
 import ReleaseUpdateNotice from './components/ReleaseUpdateNotice.jsx';
 import UserSettingsPanel from './components/UserSettingsPanel.jsx';
@@ -957,7 +956,7 @@ function AppInner({ isAdminUser }) {
             onNextRunGame={() => handleContinueRun(specialRun)}
             memoryContext={gameContext}
             onTrainPersonal={() => openPuzzleMode('personal', false)}
-            onPlayAgain={quickMatchRematchHandler(quickMatchRematchPlan({ game, gameContext, learningMode, activeSeries, rating, timeControlId: activeTimeControl?.id }), handleNewGame)}
+            onPlayAgain={(!learningMode && !activeSeries && !gameContext.lab && !gameContext.rescue && !gameContext.runMode) ? async () => { const { quickMatchRematchPlan } = await import('./quickMatchRematch.js'); const plan = quickMatchRematchPlan({ game, gameContext, learningMode, activeSeries, rating, timeControlId: activeTimeControl?.id }); if (plan) await handleNewGame(plan.difficulty, plan.color, plan.options); } : null}
             postGameFeedbackEnabled={featureFlags.postGameFeedback}
           />
         )}
