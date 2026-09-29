@@ -1,8 +1,11 @@
 import { expect, test } from '@playwright/test';
 import { APP_RELEASE } from '../frontend/src/release.js';
-import { resolveBoard3DCameraFov } from '../frontend/src/components/Board3DConfig.js';
-import { getWarRoomMobileFramingProfile } from '../frontend/src/components/WarRoomMobileFraming.js';
 import { buttonWithVisibleText, login, mockApi } from './helpers.js';
+import { readBoard3DProjection } from './board3d-projection.js';
+
+// Un teléfono real es táctil y `pointer: coarse`: sin esto la War Room aplica el
+// encuadre de escritorio a una ventana estrecha y el test mide otra cámara.
+test.use({ isMobile: true, hasTouch: true });
 
 const VIEWPORTS = [
   { width: 360, height: 640 },
@@ -46,94 +49,40 @@ const PROFILES = [
   },
 ];
 
-function normalized(vector) {
-  const length = Math.hypot(...vector);
-  return vector.map((value) => value / length);
-}
-
-function cross(a, b) {
-  return [
-    a[1] * b[2] - a[2] * b[1],
-    a[2] * b[0] - a[0] * b[2],
-    a[0] * b[1] - a[1] * b[0],
-  ];
-}
-
-function dot(a, b) {
-  return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-}
-
-function projectWarRoomPoint(rect, point, viewportWidth = rect.width) {
-  const aspect = Math.max(0.35, rect.width / Math.max(1, rect.height));
-  const profile = getWarRoomMobileFramingProfile({
-    aspect,
-    coarsePointer: true,
-    viewportWidth,
-  });
-  if (!profile) throw new Error('Mobile framing profile missing');
-  const verticalFov = resolveBoard3DCameraFov(aspect, { mobile: true }) * Math.PI / 180;
-  const limitingFov = Math.min(
-    verticalFov,
-    2 * Math.atan(Math.tan(verticalFov / 2) * aspect),
-  );
-  const distance = Math.max(
-    profile.minDistance,
-    Math.min(profile.maxDistance, (profile.halfSpan / Math.tan(limitingFov / 2)) * profile.padding),
-  );
-  const target = [0, profile.targetY, -profile.targetZ];
-  const direction = normalized([0, profile.cameraY, profile.cameraZ]);
-  const camera = target.map((value, index) => value + direction[index] * distance);
-  const forward = normalized(target.map((value, index) => value - camera[index]));
-  const right = normalized(cross(forward, [0, 1, 0]));
-  const up = cross(right, forward);
-  const relative = point.map((value, index) => value - camera[index]);
-  const depth = dot(relative, forward);
-  const ndcX = dot(relative, right) / (depth * Math.tan(verticalFov / 2) * aspect);
-  const ndcY = dot(relative, up) / (depth * Math.tan(verticalFov / 2));
-  return {
-    x: rect.x + ((ndcX + 1) / 2) * rect.width,
-    y: rect.y + ((1 - ndcY) / 2) * rect.height,
-  };
-}
-
-function projectWarRoomSquare(rect, square, worldY = 0.12, viewportWidth = rect.width) {
-  const fileIndex = square.charCodeAt(0) - 97;
-  const rank = Number(square[1]);
-  return projectWarRoomPoint(rect, [fileIndex - 3.5, worldY, 4.5 - rank], viewportWidth);
-}
-
-function projectedBoardRect(rect, viewportWidth = rect.width) {
-  const corners = [
-    [-4, 0.12, -4],
-    [4, 0.12, -4],
-    [-4, 0.12, 4],
-    [4, 0.12, 4],
-  ].map((point) => projectWarRoomPoint(rect, point, viewportWidth));
-  const xs = corners.map((point) => point.x);
-  const ys = corners.map((point) => point.y);
-  const x = Math.min(...xs);
-  const y = Math.min(...ys);
-  return {
-    x,
-    y,
-    width: Math.max(...xs) - x,
-    height: Math.max(...ys) - y,
-  };
-}
-
-function maxVerticalGap(boxes, viewportHeight) {
-  const intervals = boxes
-    .filter(Boolean)
-    .map((box) => [Math.max(0, box.y), Math.min(viewportHeight, box.y + box.height)])
-    .filter(([start, end]) => end > start)
-    .sort((a, b) => a[0] - b[0]);
-  let cursor = 0;
-  let maxGap = 0;
-  for (const [start, end] of intervals) {
-    maxGap = Math.max(maxGap, start - cursor);
-    cursor = Math.max(cursor, end);
-  }
-  return Math.max(maxGap, viewportHeight - cursor);
+// Franja muerta = filas de píxeles casi negras y uniformes en la captura real.
+// La sala renderizada alrededor del tablero es contenido; el vacío negro no.
+async function maxDeadStripe(page) {
+  const png = await page.screenshot({ animations: 'disabled', caret: 'hide' });
+  return page.evaluate(async (base64) => {
+    const image = new Image();
+    image.src = `data:image/png;base64,${base64}`;
+    await image.decode();
+    const canvas = document.createElement('canvas');
+    canvas.width = image.naturalWidth;
+    canvas.height = image.naturalHeight;
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+    context.drawImage(image, 0, 0);
+    const { data, width, height } = context.getImageData(0, 0, canvas.width, canvas.height);
+    let run = 0;
+    let worst = 0;
+    let worstEnd = 0;
+    for (let y = 0; y < height; y += 1) {
+      let sum = 0;
+      let sumSq = 0;
+      for (let x = 0; x < width; x += 1) {
+        const i = (y * width + x) * 4;
+        const luma = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+        sum += luma;
+        sumSq += luma * luma;
+      }
+      const mean = sum / width;
+      const std = Math.sqrt(Math.max(0, sumSq / width - mean * mean));
+      const dead = mean < 22 && std < 10;
+      run = dead ? run + 1 : 0;
+      if (run > worst) { worst = run; worstEnd = y; }
+    }
+    return { px: worst, from: worstEnd - worst + 1, to: worstEnd, height };
+  }, png.toString('base64'));
 }
 
 function intersects(a, b) {
@@ -161,6 +110,15 @@ async function assertNoOverlap(aLocator, bLocator, label) {
     for (const b of right) {
       expect(intersects(a.box, b.box), label).toBe(false);
     }
+  }
+}
+
+async function assertInsideViewport(locator, viewport, label) {
+  for (const { box } of await visibleBoxes(locator)) {
+    expect(box.x, `${label}: inside viewport (left)`).toBeGreaterThanOrEqual(0);
+    expect(box.y, `${label}: inside viewport (top)`).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width, `${label}: inside viewport (right)`).toBeLessThanOrEqual(viewport.width + 0.5);
+    expect(box.y + box.height, `${label}: inside viewport (bottom)`).toBeLessThanOrEqual(viewport.height + 0.5);
   }
 }
 
@@ -226,32 +184,27 @@ for (const viewport of VIEWPORTS) {
         caret: 'hide',
       });
 
-      const rect = await canvas.boundingBox();
-      expect(rect).not.toBeNull();
-      const projectedBoard = projectedBoardRect(rect, viewport.width);
-      expect(projectedBoard.width / viewport.width, 'rendered board must own >=88% viewport width').toBeGreaterThanOrEqual(.88);
+      const projection = await readBoard3DProjection(canvas);
+      const projectedBoard = projection.board;
 
       const hudControls = page.locator('.game-3d-turn-pill :is(button, summary[role="button"])');
       await assertTargets(hudControls, 'War Room HUD');
-      const usefulControls = page.locator(
-        '.game-3d-turn-pill, .masthead-game-compact :is(button, summary[role="button"]), .matthias-3d-opening-banter, .board3d-inspect',
-      );
-      const usefulBoxes = (await visibleBoxes(usefulControls)).map(({ box }) => box);
+      const deadStripe = await maxDeadStripe(page);
       const projectedWidthPct = (projectedBoard.width / viewport.width) * 100;
-      const verticalGap = maxVerticalGap([projectedBoard, ...usefulBoxes], viewport.height);
       console.log('[mobile-golden-path-metrics]', JSON.stringify({
         profile: profile.id,
         viewport: `${viewport.width}x${viewport.height}`,
         projectedWidthPct: Number(projectedWidthPct.toFixed(2)),
-        maxVerticalGapPx: Number(verticalGap.toFixed(2)),
-        maxVerticalGapPct: Number(((verticalGap / viewport.height) * 100).toFixed(2)),
+        deadStripePct: Number(((deadStripe.px / deadStripe.height) * 100).toFixed(2)),
+        deadStripe,
         projectedBoard,
-        usefulBoxes,
       }));
-      expect(
-        verticalGap,
-        'no vertical stripe >15% may be empty of board or useful UI',
-      ).toBeLessThanOrEqual(viewport.height * .15);
+      expect(projectedBoard.width / viewport.width, 'rendered board must own >=88% viewport width').toBeGreaterThanOrEqual(.88);
+      expect(projectedBoard.x, 'all 64 squares on screen (left edge)').toBeGreaterThanOrEqual(0);
+      expect(projectedBoard.x + projectedBoard.width, 'all 64 squares on screen (right edge)').toBeLessThanOrEqual(viewport.width);
+      expect(projectedBoard.y, 'all 64 squares on screen (top edge)').toBeGreaterThanOrEqual(0);
+      expect(projectedBoard.y + projectedBoard.height, 'all 64 squares on screen (bottom edge)').toBeLessThanOrEqual(viewport.height);
+      expect(deadStripe.px, 'no near-black stripe >15% of the viewport height').toBeLessThanOrEqual(viewport.height * .15);
       expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
 
       const save = page.locator('.save-status-badge').filter({ hasText: 'Guardado' });
@@ -266,9 +219,18 @@ for (const viewport of VIEWPORTS) {
       await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
       const release = page.getByRole('status').filter({ hasText: 'Nueva versión disponible' });
       await expect(release).toBeVisible({ timeout: 5_000 });
+      await page.screenshot({
+        path: testInfo.outputPath(`release-${profile.id}-${viewport.width}x${viewport.height}.png`),
+        fullPage: false,
+        animations: 'disabled',
+        caret: 'hide',
+      });
 
       const overlays = page.locator('.save-status-badge, .release-update-notice, .matthias-3d-opening-banter');
       await assertNoOverlap(overlays, hudControls, 'overlay must not cover HUD controls');
+      await assertNoOverlap(release, matthias, 'release notice must not cover Matthias');
+      await assertInsideViewport(matthias, viewport, 'Matthias bubble');
+      await assertInsideViewport(release, viewport, 'release notice');
       if (profile.expectTutorial) {
         const tutorialInteractive = matthias.locator('button');
         await assertNoOverlap(page.locator('.save-status-badge, .release-update-notice'), tutorialInteractive, 'system overlay must not cover tutorial action');
@@ -284,8 +246,9 @@ for (const viewport of VIEWPORTS) {
         expect(clipped, 'key visible text must not be clipped').toBe(false);
       }
 
-      const from = projectWarRoomSquare(rect, 'g6', .22, viewport.width);
-      const to = projectWarRoomSquare(rect, 'g7', .12, viewport.width);
+      // Tocamos la cabeza de la pieza (como un dedo real) y la casilla destino.
+      const from = projection.square('g6', 0.6);
+      const to = projection.square('g7');
       const cdp = await page.context().newCDPSession(page);
 
       await touch(cdp, from);

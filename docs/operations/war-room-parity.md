@@ -88,6 +88,13 @@ Un renderer **no puede**:
 
 `GameBoardView` es la frontera actual: compone `boardProps` desde el estado real y elige `Board` o `Board3D`. Los slices futuros deben reforzar esta separación, no saltársela para simplificar un efecto visual.
 
+## Geometría medida con la cámara real (Código Rojo #34)
+
+- Board3D publica tras cada cambio de cámara la matriz vista-proyección real en el canvas (`data-board3d-view-projection`, `Board3DProjectionDiagnostics.js`) y emite el evento `board3d-projection`.
+- Todo lo que necesite saber dónde cae una casilla o una pieza en pantalla (specs E2E, bocadillo de Matthias) **proyecta con esa matriz** (`e2e/board3d-projection.js`, `projectWorldPointNdc`). Prohibido reconstruir la cámara a partir de perfiles de encuadre: la v6 pasó CI local con un tablero al 146 % del ancho porque el test medía un modelo, y el "toque que no selecciona" de GP-1 era el mismo modelo tocando fuera de sitio.
+- Los specs de teléfono emulan un teléfono de verdad (`isMobile` + `hasTouch`, o un `devices[...]`): sin `pointer: coarse` la War Room aplica el encuadre de escritorio y se mide otra cámara.
+- Invariante vertical (gate `mobile-golden-path-war-room-invariants.spec.js`): tablero renderizado al 88–100 % del ancho con las 64 casillas en pantalla, ninguna franja casi negra > 15 % del alto (medida en píxeles de la captura), y ni el bocadillo de Matthias ni los avisos tapan casillas, HUD o texto.
+
 ## Orden de cierre recomendado
 
 1. ~~Captura normal cross-renderer.~~ **Gateada** en `three-d-war-room.spec.js`.

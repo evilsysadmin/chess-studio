@@ -196,8 +196,35 @@
     touch-action: manipulation;
   }
 
+  /* Código Rojo GP-3: en partida el aviso de versión es una píldora de una
+     línea bajo el HUD; no tapa el tablero ni el texto de Matthias (el bocadillo
+     se recoloca por debajo, ver useMatthiasBubbleFit). */
   body.war-room-immersive-active .release-update-notice {
-    top: 112px;
+    top: 74px;
+    width: auto;
+    max-width: calc(100vw - 24px);
+    min-height: 44px;
+    align-items: center;
+    gap: 10px;
+    padding: 0 4px 0 14px;
+    border-radius: 999px;
+  }
+
+  body.war-room-immersive-active .release-update-copy span {
+    display: none;
+  }
+
+  body.war-room-immersive-active .release-update-copy strong {
+    white-space: nowrap;
+  }
+
+  body.war-room-immersive-active .release-update-actions {
+    flex-direction: row;
+  }
+
+  body.war-room-immersive-active .release-update-actions button {
+    min-height: 44px;
+    touch-action: manipulation;
   }
 
   .app-shell-board-game:has(.game-layout-3d) .save-status-badge {

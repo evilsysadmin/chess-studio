@@ -159,3 +159,32 @@ export function projectMatthiasKingAnchor({
     top: (1 - ndcY) * 50,
   };
 }
+
+/**
+ * Ancla del rey Matthias proyectada con la cámara REAL de Board3D.
+ * `elements` es la matriz vista-proyección publicada por el canvas
+ * (Board3DProjectionDiagnostics); `canvasRect`/`stageRect` son rects de cliente.
+ * Devuelve left/top en % del stage, igual que projectMatthiasKingAnchor, o null.
+ */
+export function projectMatthiasKingAnchorWithCamera({
+  fen,
+  matthiasKingColor,
+  elements,
+  canvasRect,
+  stageRect,
+  projectPoint,
+} = {}) {
+  const square = findMatthiasKingSquare(fen, matthiasKingColor);
+  const point = squareWorldPoint(square);
+  if (!square || !point || typeof projectPoint !== 'function') return null;
+  if (!canvasRect?.width || !canvasRect?.height || !stageRect?.width || !stageRect?.height) return null;
+  const ndc = projectPoint(elements, point);
+  if (!ndc) return null;
+  const clientX = canvasRect.left + ((ndc.x + 1) / 2) * canvasRect.width;
+  const clientY = canvasRect.top + ((1 - ndc.y) / 2) * canvasRect.height;
+  return {
+    square,
+    left: ((clientX - stageRect.left) / stageRect.width) * 100,
+    top: ((clientY - stageRect.top) / stageRect.height) * 100,
+  };
+}
