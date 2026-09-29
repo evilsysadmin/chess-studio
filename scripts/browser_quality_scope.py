@@ -693,7 +693,10 @@ def self_test() -> None:
         quick_2d=True,
     )
 
-    assert output_lines(BrowserScope()) == ['matrix={"include":[]}', "has_cases=false"]
+    empty_output = output_lines(BrowserScope())
+    assert empty_output[1] == "has_cases=true"
+    empty_matrix = json.loads(empty_output[0].removeprefix("matrix="))
+    assert [case["id"] for case in empty_matrix["include"]] == ["mobile-golden-path"]
     assert "War Room special-state parity: `true`" in render_summary(BrowserScope(special_states=True))
     assert "War Room mount/scale: `true`" in render_summary(BrowserScope(visual=True))
     assert "Matthias Home-only: `true`" in render_summary(BrowserScope(matthias_home=True))
