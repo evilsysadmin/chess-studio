@@ -82,6 +82,10 @@ def palette():
             "PVP_MAT_ivory", (0.56, 0.46, 0.31, 1),
             rough=0.55, coat=0.05, texture="stone", scale=3.0, bump=0.025,
         ),
+        "seat_leather": base.material(
+            "PVP_MAT_seat_leather", (0.115, 0.035, 0.018, 1),
+            rough=0.42, coat=0.22, sheen=0.12, texture="leather", scale=48, bump=0.038,
+        ),
         "fire": bpy.data.materials["WR_MAT_fire_core"],
         "night": base.material(
             "PVP_MAT_moon_glass", (0.010, 0.035, 0.12, 1),
@@ -158,6 +162,18 @@ def build_architecture(static, p):
             )
 
     # Central pointed-window composition, assembled with a deep framed opening.
+    # Deep stone portal around the moon window gives the rear wall an unmistakable
+    # castle silhouette; oak remains an inset rather than reading as modern panelling.
+    for side in (-1, 1):
+        base.cube(
+            f"PVP_ROOM_window_stone_pier_{side}", (side * 2.25, 6.15, 3.86),
+            (0.28, 0.24, 2.45), p["wall"], static, bevel=0.09,
+        )
+    base.cube("PVP_ROOM_window_stone_lintel", (0, 6.13, 6.12), (2.55, 0.25, 0.28),
+              p["wall"], static, bevel=0.10)
+    base.cube("PVP_ROOM_window_keystone", (0, 5.86, 6.02), (0.34, 0.20, 0.42),
+              p["dais"], static, bevel=0.08)
+
     base.cube("PVP_ROOM_window_reveal", (0, 6.18, 4.10), (2.12, 0.20, 2.10),
               p["oak"], static, bevel=0.22)
     base.cube("PVP_ROOM_window_glass", (0, 5.94, 4.10), (1.82, 0.035, 1.78),
@@ -240,7 +256,7 @@ def build_duelist_furniture(static, p):
         y = -2.45
         base.cube(
             f"PVP_DUEL_seat_{label}", (x, y, 0.62),
-            (0.68, 0.60, 0.16), p["oak"], static, bevel=0.13,
+            (0.68, 0.60, 0.16), p["seat_leather"], static, bevel=0.13,
         )
         back = base.cube(
             f"PVP_DUEL_seat_back_{label}", (x, y + 0.47, 1.38),
@@ -333,9 +349,9 @@ def validate_scene():
 
     # Slightly steeper framing than standard War Room improves piece selection.
     camera = bpy.context.scene.camera
-    camera.data.lens = 50.0
-    camera.location = (0.0, -12.4, 8.15)
-    base.look_at(camera, (0.0, 0.55, 1.32))
+    camera.data.lens = 48.0
+    camera.location = (0.0, -15.6, 9.35)
+    base.look_at(camera, (0.0, 0.82, 1.48))
 
 
 def export_shell(path):
