@@ -115,8 +115,8 @@ export function localOpeningBanter(rivalry, context = {}) {
   const difficulty = Number(context.difficulty);
   if (context.humanColor === 'w') {
     return Number.isFinite(difficulty)
-      ? `Llevas blancas contra mi nivel ${difficulty}. Incluso te he concedido la primera excusa; aprovéchala.`
-      : 'Llevas blancas. Empiezas tú, así que la primera decisión cuestionable también te pertenece.';
+      ? `Lleva usted blancas contra mi nivel ${difficulty}. Incluso le he concedido la primera excusa; aprovéchela.`
+      : 'Lleva usted blancas. Empieza usted, así que la primera decisión cuestionable también le pertenece.';
   }
   return Number.isFinite(difficulty)
     ? `Nivel ${difficulty} y yo con blancas. Qué detalle tan considerado dejarme empezar el interrogatorio.`

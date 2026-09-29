@@ -61,7 +61,7 @@ describe('memoria de serie y última partida', () => {
       seriesHistoryStats: { total: 1, currentStreak: 1 },
       seriesHistory: [{ winner: 'human', humanWins: 2, cpuWins: 1 }],
     });
-    expect(text).toContain('anterior fue tuya 2-1');
+    expect(text).toContain('anterior fue suya 2-1');
   });
 
 });
