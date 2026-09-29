@@ -181,7 +181,7 @@ describe('Matthias en Home', () => {
   it('el respeto ganado cambia el tono genérico sin convertirlo en halago automático', () => {
     const visit = buildMatthiasHomeVisit({ memory: { respect: { tier: 'formidable', label: 'Rival respetado', score: 80 } } });
     expect(visit.kind).toBe('generic');
-    expect(visit.text).toMatch(/no pienso regalarte/i);
+    expect(visit.text).toMatch(/no pienso regalarle/i);
   });
 
   it('convierte expediente y sesión en progreso visible sin inventar nivel RPG', () => {
