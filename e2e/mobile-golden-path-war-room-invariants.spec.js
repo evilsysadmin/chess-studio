@@ -233,10 +233,23 @@ for (const viewport of VIEWPORTS) {
 
       const hudControls = page.locator('.game-3d-turn-pill :is(button, summary[role="button"])');
       await assertTargets(hudControls, 'War Room HUD');
-      const usefulControls = page.locator('.game-3d-turn-pill, .masthead-game-compact :is(button, summary[role="button"])');
+      const usefulControls = page.locator(
+        '.game-3d-turn-pill, .masthead-game-compact :is(button, summary[role="button"]), .matthias-3d-opening-banter, .board3d-inspect',
+      );
       const usefulBoxes = (await visibleBoxes(usefulControls)).map(({ box }) => box);
+      const projectedWidthPct = (projectedBoard.width / viewport.width) * 100;
+      const verticalGap = maxVerticalGap([projectedBoard, ...usefulBoxes], viewport.height);
+      console.log('[mobile-golden-path-metrics]', JSON.stringify({
+        profile: profile.id,
+        viewport: `${viewport.width}x${viewport.height}`,
+        projectedWidthPct: Number(projectedWidthPct.toFixed(2)),
+        maxVerticalGapPx: Number(verticalGap.toFixed(2)),
+        maxVerticalGapPct: Number(((verticalGap / viewport.height) * 100).toFixed(2)),
+        projectedBoard,
+        usefulBoxes,
+      }));
       expect(
-        maxVerticalGap([projectedBoard, ...usefulBoxes], viewport.height),
+        verticalGap,
         'no vertical stripe >15% may be empty of board or useful UI',
       ).toBeLessThanOrEqual(viewport.height * .15);
       expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
