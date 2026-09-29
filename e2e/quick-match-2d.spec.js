@@ -145,7 +145,7 @@ test('Partida rápida · 2D llega a mate y postpartida sin montar War Room', asy
 
   const endgame = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Jaque mate', exact: true }) });
   await expect(endgame).toBeVisible();
-  await expect(endgame.getByText('¡Ganaste la partida!', { exact: true })).toBeVisible();
+  await expect(endgame.getByText('¡Has ganado la partida!', { exact: true })).toBeVisible();
   await expect(page.locator('[data-board3d-war-room="true"]')).toHaveCount(0);
   await expect(page.locator('.game-layout-3d')).toHaveCount(0);
   await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
