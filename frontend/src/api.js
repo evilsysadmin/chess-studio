@@ -1,6 +1,7 @@
 import { authHeader } from './auth.js';
 import { request, requestJson } from './http.js';
 import { requireGamePayload } from './gamePayload.js';
+import { withTransientRetry } from './transientRetry.js';
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
@@ -25,14 +26,16 @@ export const api = {
     });
   },
   createGame(difficulty, color = 'w', handicap = null, startingFen = null, { signal, operationId = null } = {}) {
-    return requestJson(`${BASE_URL}/games`, {
+    return withTransientRetry(() => requestJson(`${BASE_URL}/games`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...(operationId ? { 'Idempotency-Key': operationId } : {}), ...authHeader() },
       body: JSON.stringify({ difficulty, color, handicap, startingFen }),
       signal,
-    }).then((payload) => requireGamePayload(payload));
+    }), { idempotent: Boolean(operationId), signal }).then((payload) => requireGamePayload(payload));
   },
   getGame(id, { signal } = {}) {
+    // Lecturas sin reintento automático: la restauración tiene su propia UX de
+    // "La partida sigue guardada · Reintentar recuperación" (game-state-recovery.md).
     return requestJson(`${BASE_URL}/games/${id}`, { headers: { ...authHeader() }, signal })
       .then((payload) => requireGamePayload(payload, id));
   },
@@ -40,7 +43,7 @@ export const api = {
     return requestJson(`${BASE_URL}/games/${id}/hint`, { headers: { ...authHeader() }, signal });
   },
   undoMove(id, { signal, operationId = null } = {}) {
-    return requestJson(`${BASE_URL}/games/${id}/undo`, { method: 'POST', headers: { ...(operationId ? { 'Idempotency-Key': operationId } : {}), ...authHeader() }, signal })
+    return withTransientRetry(() => requestJson(`${BASE_URL}/games/${id}/undo`, { method: 'POST', headers: { ...(operationId ? { 'Idempotency-Key': operationId } : {}), ...authHeader() }, signal }), { idempotent: Boolean(operationId), signal })
       .then((payload) => requireGamePayload(payload, id));
   },
   analyzePosition(fen, level, { signal } = {}, candidateLimit = null) {
@@ -70,12 +73,15 @@ export const api = {
     });
   },
   playMove(id, from, to, promotion, { signal, operationId = null } = {}) {
-    return requestJson(`${BASE_URL}/games/${id}/move`, {
+    // Con Idempotency-Key el backend reproduce la respuesta ya aplicada si el primer
+    // intento llegó pero su respuesta se perdió (p. ej. durante un deploy): reintentar
+    // no puede mover dos veces.
+    return withTransientRetry(() => requestJson(`${BASE_URL}/games/${id}/move`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...(operationId ? { 'Idempotency-Key': operationId } : {}), ...authHeader() },
       body: JSON.stringify({ from, to, promotion }),
       signal,
-    }).then((payload) => requireGamePayload(payload, id));
+    }), { idempotent: Boolean(operationId), signal }).then((payload) => requireGamePayload(payload, id));
   },
   deleteGame(id) {
     return request(`${BASE_URL}/games/${id}`, { method: 'DELETE', headers: { ...authHeader() } });
