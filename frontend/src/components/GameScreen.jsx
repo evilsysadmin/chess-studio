@@ -267,7 +267,7 @@ export default function GameScreen({
     onGameEnd?.(outcome, game, { hintsUsed: hintsUsedThisGame, endReason: outcome === 'draw' ? 'flag-insufficient-material' : 'flag', pressureMoves: pressureMovesRef.current, pressureIncidents: pressureIncidentsRef.current, suddenDeath: !!memoryContext.suddenDeath, gameChat: loadActiveGameChat(game.id) });
     if (!seriesState) {
       resultMemoryTimeout.current = setTimeout(() => {
-        const text = resultMemoryComment(outcome, loadRivalry(), { moves: game.history?.length || 0, difficulty: game.difficulty, opening: identifyOpening((game.history || []).map((move) => move?.san).filter(Boolean)) });
+        const text = resultMemoryComment(outcome, loadRivalry(), { moves: Math.ceil((game.history?.length || 0) / 2), difficulty: game.difficulty, opening: identifyOpening((game.history || []).map((move) => move?.san).filter(Boolean)) });
         if (text) showCpuComment({ text });
       }, 1100);
     }
@@ -286,7 +286,7 @@ export default function GameScreen({
     onGameEnd?.(outcome, game, { hintsUsed: hintsUsedThisGame, endReason: game.status, pressureMoves: pressureMovesRef.current, pressureIncidents: pressureIncidentsRef.current, suddenDeath: !!memoryContext.suddenDeath, gameChat: loadActiveGameChat(game.id) });
     if (!seriesState) {
       resultMemoryTimeout.current = setTimeout(() => {
-        const text = resultMemoryComment(outcome, loadRivalry(), { moves: game.history?.length || 0, difficulty: game.difficulty, opening: identifyOpening((game.history || []).map((move) => move?.san).filter(Boolean)) });
+        const text = resultMemoryComment(outcome, loadRivalry(), { moves: Math.ceil((game.history?.length || 0) / 2), difficulty: game.difficulty, opening: identifyOpening((game.history || []).map((move) => move?.san).filter(Boolean)) });
         if (text) showCpuComment({ text });
       }, 1100);
     }
@@ -299,7 +299,7 @@ export default function GameScreen({
     if (resultMemoryTimeout.current) clearTimeout(resultMemoryTimeout.current);
     resultMemoryTimeout.current = setTimeout(() => {
       const text = resultMemoryComment(last?.outcome || 'draw', loadRivalry(), {
-        moves: game.history?.length || 0,
+        moves: Math.ceil((game.history?.length || 0) / 2),
         series: seriesState,
         difficulty: game.difficulty,
         opening: identifyOpening((game.history || []).map((move) => move?.san).filter(Boolean)),
