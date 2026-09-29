@@ -34,7 +34,8 @@ export function sameBoardSurfaceProps(previous, next) {
     && a.matthiasKingColor === b.matthiasKingColor
     && a.onCustomize === b.onCustomize
     && a.hansFireplaceIteration === b.hansFireplaceIteration
-    && a.hansFireCallEnabled === b.hansFireCallEnabled;
+    && a.hansFireCallEnabled === b.hansFireCallEnabled
+    && a.warRoomVariantOverride === b.warRoomVariantOverride;
 }
 
 const WarRoomBoardSurface = memo(function WarRoomBoardSurface({
