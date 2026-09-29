@@ -16,6 +16,19 @@ describe('memoria contextual CPU', () => {
     expect(openingMemoryComment(history, rivalry)).toContain('Defensa Siciliana');
   });
 
+  it('expresa la victoria rápida en jugadas completas, no en plies', () => {
+    const date = '2026-09-28T21:00:00.000Z';
+    const rivalry = {
+      record: {
+        currentStreak: 1,
+        recentGames: [{ date, outcome: 'win' }],
+        milestones: { fastestWinMoves: 23, fastestWinDate: date },
+      },
+    };
+    expect(resultMemoryComment('win', rivalry, { moves: 12 })).toContain('12 jugadas');
+    expect(resultMemoryComment('win', rivalry, { moves: 12 })).not.toContain('23 jugadas');
+  });
+
   it('comenta el cierre de una serie', () => {
     const text = resultMemoryComment('win', { record: {} }, { series: { winner: 'human', humanWins: 2, cpuWins: 0 } });
     expect(text).toContain('2-0');
