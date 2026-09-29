@@ -314,6 +314,8 @@ def classify_path(path: str) -> set[str] | None:
         return set()
     if lower in QUICK_MATCH_EXACT_PRODUCERS:
         return set(QUICK_MATCH_EXACT_PRODUCERS[lower])
+    if lower == "frontend/src/components/homemobilegoldenpath.css":
+        return {"home-base"}
     if lower in PVP_DUEL_EXACT_PRODUCERS:
         return set(PVP_DUEL_EXACT_PRODUCERS[lower])
     if lower in PVP_EXACT_PRODUCERS:
