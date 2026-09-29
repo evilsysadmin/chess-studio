@@ -167,6 +167,7 @@ def self_test() -> None:
     assert classify(["scripts/blender/build_pawn_slug_pows_v2.py"]) == []
     assert [gate.workflow for gate in classify(["scripts/blender/build_war_room_premium.py"])] == [
         "war-room-blender-art.yml",
+        "pvp-duel-room-blender-art.yml",
         "war-room-v3-blender-art.yml",
     ]
     assert [gate.workflow for gate in classify(["scripts/blender/build_war_room_v3.py"])] == [
