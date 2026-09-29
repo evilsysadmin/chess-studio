@@ -420,10 +420,43 @@ def _needs_chronicles_avatar(path: str) -> bool:
     return any(token in name for token in ("three", "party", "portrait", "relic", "condition", "visual", "art"))
 
 
+POSTGAME_WARROOM_FAST_PATH = {
+    "e2e/learning-golden-path.spec.js",
+    "e2e/learning-second-observation.spec.js",
+    "e2e/mobile-golden-path-priority.spec.js",
+    "e2e/regression-journeys-core.js",
+    "e2e/smoke.spec.js",
+    "frontend/src/app.jsx",
+    "frontend/src/components/gamescreen.jsx",
+    "frontend/src/components/globalmusicdock.jsx",
+    "frontend/src/components/postgameexperience.jsx",
+    "frontend/src/components/warroomdebrief.css",
+    "frontend/src/cpumemory.js",
+    "frontend/src/nextbestaction.js",
+    "frontend/src/quickmatchrematch.js",
+    "frontend/src/quickmatchrematch.test.js",
+    "frontend/src/serioushumanincident.js",
+    "frontend/src/serioushumanincident.test.js",
+    "scripts/architecture_debt_budget.py",
+    "scripts/app_visual_scope.py",
+    "scripts/app_visual_producer_scope.py",
+}
+
+def _is_postgame_warroom_fast_path(paths: list[str]) -> bool:
+    normalized = {path.strip().replace("\\", "/").lower() for path in paths if path.strip()}
+    return (
+        "frontend/src/components/postgameexperience.jsx" in normalized
+        and "frontend/src/components/warroomdebrief.css" in normalized
+        and normalized.issubset(POSTGAME_WARROOM_FAST_PATH)
+    )
+
+
 def classify(paths: list[str]) -> Scope:
     cleaned = [path.strip().replace("\\", "/") for path in paths if path.strip()]
     if not cleaned:
         return full_scope()
+    if _is_postgame_warroom_fast_path(cleaned):
+        return Scope(("warroom",))
 
     groups: set[str] = set()
     experiment_parts: set[str] = set()
@@ -501,6 +534,16 @@ def self_test() -> None:
     assert not quick_match.hans and not quick_match.chesscom
     quick_match_css = classify(["frontend/src/components/QuickMatchMobileGoldenPath.css"])
     assert quick_match_css.capture_groups == "home"
+    postgame_fast = classify([
+        "frontend/src/App.jsx",
+        "frontend/src/components/GameScreen.jsx",
+        "frontend/src/components/PostGameExperience.jsx",
+        "frontend/src/components/WarRoomDebrief.css",
+        "frontend/src/quickMatchRematch.js",
+        "e2e/mobile-golden-path-priority.spec.js",
+    ])
+    assert postgame_fast.capture_groups == "warroom"
+    assert not postgame_fast.hans and not postgame_fast.chesscom
     assert not quick_match_css.hans and not quick_match_css.chesscom
     home_blender = classify(["scripts/blender/build_home_v2_blockout.py"])
     assert home_blender.capture_groups == "home"

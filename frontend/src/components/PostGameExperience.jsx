@@ -51,6 +51,7 @@ export default function PostGameExperience({
   runState = null,
   onNextSeriesGame,
   onNextRunGame,
+  onPlayAgain = null,
   onLeave,
   onShareResult,
   onTrainPersonal,
@@ -85,6 +86,8 @@ export default function PostGameExperience({
     outcome: finalOutcome,
     moveCount: game.history.length,
     hasReport: game.history.length > 0,
+    canPlayAgain: typeof onPlayAgain === 'function',
+    adaptive: Boolean(resultSummary?.adaptiveDifficulty),
   });
   const liveSeriesMoment = seriesState ? seriesLiveMoment(seriesState) : null;
   const sequenceInProgress = Boolean((seriesState && !seriesState.winner) || runState?.active);
@@ -100,10 +103,11 @@ export default function PostGameExperience({
     humanColor,
     lastCpuComment,
   });
+  const primaryLeavesToMenu = nextAction.id === 'advance';
   const hasMoreActions = Boolean(
     !sequenceInProgress
     && (
-      nextAction.id === 'review'
+      !primaryLeavesToMenu
       || onShareResult
       || onTrainPersonal
     )
@@ -112,9 +116,10 @@ export default function PostGameExperience({
   return <>
     <div className="modal-backdrop endgame-modal-backdrop" role="presentation">
       <section className={`endgame-banner endgame-dialog outcome-${finalOutcome}`} role="dialog" aria-modal="true" aria-labelledby="game-finished-title">
-        <span className="endgame-modal-kicker">PARTIDA FINALIZADA</span>
-        <span className="endgame-debrief-label">MATTHIAS // DEBRIEF</span>
-        <span className="endgame-eyebrow">{nextAction.eyebrow}</span>
+        <span className="endgame-kicker-row">
+          <span className="endgame-modal-kicker">PARTIDA FINALIZADA</span>
+          <span className="endgame-debrief-label">MATTHIAS // DEBRIEF</span>
+        </span>
         <h2 id="game-finished-title">{forcedOutcome ? 'Sudden Death' : flagFallen ? (flagFinalOutcome === 'draw' ? 'Tablas por tiempo' : 'Se acabó el tiempo') : statusLabel}</h2>
         <p>
           {forcedOutcome ? 'Tres incidentes tácticos graves. Derrota del modo Sudden Death; no afecta al rating.' : flagFallen
@@ -158,6 +163,8 @@ export default function PostGameExperience({
           <button className="primary-btn" onClick={onNextRunGame}>Siguiente desafío</button>
         ) : nextAction.id === 'review' ? (
           <button className="primary-btn" onClick={() => setShowReport(true)}>{nextAction.label}</button>
+        ) : nextAction.id === 'play-again' ? (
+          <button className="primary-btn" onClick={onPlayAgain}>{nextAction.label}</button>
         ) : (
           <button className="primary-btn" onClick={onLeave}>{nextAction.label}</button>
         )}
@@ -181,7 +188,7 @@ export default function PostGameExperience({
         )}
         {showMoreActions && !sequenceInProgress && (
           <div className="endgame-more-actions">
-            {nextAction.id === 'review' && <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={onLeave}>Volver al menú</button>}
+            {!primaryLeavesToMenu && <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={onLeave}>Volver al menú</button>}
             {onShareResult && (
               <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={() => onShareResult(finalOutcome)}>
                 Compartir resultado

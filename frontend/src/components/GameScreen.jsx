@@ -17,6 +17,7 @@ import { loadSeriesHistory, seriesHistoryStats } from '../series.js';
 import { preGamePrediction } from '../advancedCareer.js';
 import { appendActiveGameChat, loadActiveGameChat } from '../gameChat.js';
 import { hasOpeningBanterMessage, OPENING_EVENT, requestOpeningBanter } from '../openingBanter.js';
+import { isSeriousHumanIncident } from '../seriousHumanIncident.js';
 import { immobilityReason, isKingSafetyIllegalAttempt } from '../moveAvailability.js';
 import { loadZenMode, saveZenMode } from '../zenMode.js';
 import { identifyOpening } from '../openings.js';
@@ -45,9 +46,6 @@ const MIN_CPU_THINK_MS = 350;
 // usuario no pulsa el CTA (por ejemplo porque quedó fuera del viewport), la
 // partida continúa sola y nunca aparenta haberse congelado.
 const CONTROL_PROMPT_MAX_MS = 15000;
-
-const HUMAN_SERIOUS_INCIDENTS = new Set(['MISSED_MATE','STALEMATE_BLUNDER','ALLOWED_MATE','QUEEN_EN_PRISE_TO_PAWN','QUEEN_SACRIFICE_OFFER','ROOK_SACRIFICE_OFFER']);
-function isSeriousHumanIncident(comment) { return !!comment?.event?.type && HUMAN_SERIOUS_INCIDENTS.has(comment.event.type); }
 
 
 /**
@@ -79,6 +77,7 @@ export default function GameScreen({
   activeContract = null,
   runState = null,
   onNextRunGame,
+  onPlayAgain = null,
   memoryContext = {},
   onTrainPersonal,
   onChatUpdate,
@@ -821,6 +820,7 @@ export default function GameScreen({
         runState={runState}
         onNextSeriesGame={onNextSeriesGame}
         onNextRunGame={onNextRunGame}
+        onPlayAgain={onPlayAgain}
         onLeave={handleAbandon}
         onShareResult={onShareResult}
         onTrainPersonal={onTrainPersonal}
