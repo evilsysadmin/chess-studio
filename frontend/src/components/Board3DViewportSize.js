@@ -1,0 +1,32 @@
+export function resolveStableBoardViewport({
+  hostWidth,
+  hostHeight,
+  immersive = false,
+  viewportWidth,
+  viewportHeight,
+} = {}) {
+  const safeHostWidth = Math.max(280, Number(hostWidth) || 280);
+  const safeHostHeight = Math.max(300, Number(hostHeight) || 300);
+
+  const safeViewportWidth = Math.max(280, Number(viewportWidth) || safeHostWidth);
+  const safeViewportHeight = Math.max(300, Number(viewportHeight) || safeHostHeight);
+
+  if (!immersive || safeViewportWidth <= 820) {
+    return Object.freeze({ width: safeHostWidth, height: safeHostHeight, source: 'host' });
+  }
+  return Object.freeze({
+    width: safeViewportWidth,
+    height: safeViewportHeight,
+    source: 'immersive-viewport',
+  });
+}
+
+export function resolveStableBoardViewportForHost(host, { immersive = false, viewport = globalThis } = {}) {
+  return resolveStableBoardViewport({
+    hostWidth: host?.clientWidth,
+    hostHeight: host?.clientHeight,
+    immersive,
+    viewportWidth: viewport?.innerWidth,
+    viewportHeight: viewport?.innerHeight,
+  });
+}
