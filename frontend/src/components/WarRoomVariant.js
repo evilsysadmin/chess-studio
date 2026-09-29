@@ -32,7 +32,22 @@ export const WAR_ROOM_VARIANTS = Object.freeze([
   }),
 ]);
 
-const VARIANTS_BY_ID = new Map(WAR_ROOM_VARIANTS.map((variant) => [variant.id, variant]));
+// Internal renderer variants are addressable by explicit board overrides but are
+// deliberately absent from WAR_ROOM_VARIANTS. They therefore never appear in
+// the normal room selector and are never selected by the random preference.
+const INTERNAL_WAR_ROOM_VARIANTS = Object.freeze([
+  Object.freeze({
+    id: 'duel',
+    label: 'Duel Room',
+    shell: 'blender',
+    runtimeModelUrl: 'https://assets.chess-studio.shadowops.dpdns.org/pvp/duel-room/runtime/current.glb',
+    loadInstaller: () => import('./PvpDuelRoomShell.js').then(({ installPvpDuelRoomShell }) => installPvpDuelRoomShell),
+  }),
+]);
+
+const VARIANTS_BY_ID = new Map(
+  [...WAR_ROOM_VARIANTS, ...INTERNAL_WAR_ROOM_VARIANTS].map((variant) => [variant.id, variant]),
+);
 const VALID_VARIANTS = new Set(VARIANTS_BY_ID.keys());
 const VALID_VARIANT_PREFERENCES = new Set(WAR_ROOM_VARIANT_PREFERENCES.map(({ id }) => id));
 const STAGING_HOST = 'staging.chess-studio.shadowops.dpdns.org';
