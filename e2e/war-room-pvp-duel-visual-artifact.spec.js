@@ -89,13 +89,33 @@ test('PvP Duel Room · runtime desktop visual artifact', async ({ page }) => {
   expect(Math.abs((boardBox.x + boardBox.width / 2) - (roomBox.x + roomBox.width / 2)) / roomBox.width)
     .toBeLessThan(0.12);
 
-  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-  expect(overflow).toBeLessThanOrEqual(1);
-
   await page.waitForTimeout(900);
   await mkdir(ARTIFACT_DIR, { recursive: true });
   await room.screenshot({
     path: ARTIFACT_DIR + '/pvp-duel-room-desktop-1440x900.png',
     animations: 'disabled',
   });
+
+  const horizontal = await page.evaluate(() => {
+    const root = document.documentElement;
+    const viewportWidth = root.clientWidth;
+    const offenders = [...document.querySelectorAll('body *')]
+      .map((element) => {
+        const rect = element.getBoundingClientRect();
+        return {
+          tag: element.tagName,
+          className: typeof element.className === 'string' ? element.className.slice(0, 120) : '',
+          left: Math.round(rect.left),
+          right: Math.round(rect.right),
+          width: Math.round(rect.width),
+        };
+      })
+      .filter(({ left, right }) => left < -1 || right > viewportWidth + 1)
+      .slice(0, 8);
+    return { overflow: root.scrollWidth - viewportWidth, offenders };
+  });
+  expect(
+    horizontal.overflow,
+    'horizontal overflow offenders: ' + JSON.stringify(horizontal.offenders),
+  ).toBeLessThanOrEqual(1);
 });
