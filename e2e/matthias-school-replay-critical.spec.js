@@ -92,7 +92,7 @@ test('Escuela de Matthias · Matthias guía sobre el tablero y la pista no es s�
   await page.getByRole('button', { name: 'Dame una pista', exact: true }).click();
   await expect(wrong).not.toHaveClass(/classroom-danger/);
   await expect(target).toHaveClass(/hint-move/);
-  await expect(page.getByRole('status')).toContainText('Te lo marco en el tablero');
+  await expect(page.getByRole('status')).toContainText('Se lo marco en el tablero');
 
   await origin.click();
   await expect(target).toHaveClass(/legal-move/);
