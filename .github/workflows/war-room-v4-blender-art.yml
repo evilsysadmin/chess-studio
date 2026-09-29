@@ -87,8 +87,8 @@ jobs:
           assert 50 <= runtime_meshes <= 150, runtime_meshes
           node_names = {row.get('name') for row in gltf.get('nodes', [])}
           assert 'WR_ANCHOR_right_fireplace_practical' not in node_names
-          assert 'WR4_OBS_stove_flame_body' in node_names
-          assert 'WR4_OBS_stove_flame_0' in node_names
+          assert 'WR4_OBS_fireplace_flame_body' in node_names
+          assert 'WR4_OBS_fireplace_flame_0' in node_names
 
           image = Image.open(preview).convert('RGB')
           assert image.size == (1600, 900), image.size
@@ -104,11 +104,14 @@ jobs:
           assert not any(name.startswith('WR4_OBS_window_orbit_') for name in source_names)
           assert not any(name.startswith('WR4_OBS_window_constellation_') for name in source_names)
           assert not any(name.startswith('WR4_OBS_canopy_rib_') for name in source_names)
-          assert not any(name.startswith('WR4_OBS_bookshelf_') for name in source_names)
-          assert not any(name.startswith('WR4_OBS_book_') for name in source_names)
+          assert 'WR4_OBS_library_back' in source_names
+          assert 'WR4_OBS_library_book_0' in source_names
+          assert 'WR4_OBS_oculus_desk_top' in source_names
+          assert 'WR4_OBS_armor_torso_-1' in source_names
+          assert 'WR4_OBS_armor_torso_1' in source_names
           assert 'WR4_OBS_entry_rug' in source_names
           assert 'WR4_OBS_table_drum' in source_names
-          assert 'WR4_OBS_stove_body' in source_names
+          assert 'WR4_OBS_fireplace_body' in source_names
           assert 'WR4_OBS_telescope_tube' in source_names
           assert 'WR4_OBS_entry_door' in source_names
           assert not any(name.startswith('WR_ARCH_') for name in source_names)
