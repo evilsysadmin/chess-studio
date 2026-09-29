@@ -154,13 +154,13 @@ test('1v1 · enrolado sigue disponible fuera del roster y un reto global hace ha
   await expect(handoff.getByText(/Entrando en 1 vs 1 en 5/)).toBeVisible();
   await expect(handoff.getByText('Tu progreso aquí no se perderá.', { exact: true })).toBeVisible();
 
-  const warRoom = page.getByRole('region', { name: 'War Room 1 contra 1' });
+  const warRoom = page.getByRole('region', { name: 'Sala de duelo 1 contra 1' });
   await expect(warRoom).toBeVisible({ timeout: 20_000 });
   await expect(warRoom.getByText('bob', { exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Siguiente rival', exact: true })).toHaveCount(0);
 
   await page.reload();
-  const restoredWarRoom = page.getByRole('region', { name: 'War Room 1 contra 1' });
+  const restoredWarRoom = page.getByRole('region', { name: 'Sala de duelo 1 contra 1' });
   await expect(restoredWarRoom).toBeVisible({ timeout: 12_000 });
 
   const duelStatus = restoredWarRoom.locator('.pvp-war-room__duel-pill [role="status"]');
