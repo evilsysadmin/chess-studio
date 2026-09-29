@@ -63,7 +63,7 @@ function dot(a, b) {
   return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 }
 
-function projectWarRoomSquare(rect, square, worldY = 0.12) {
+function projectWarRoomPoint(rect, point) {
   const aspect = Math.max(0.35, rect.width / Math.max(1, rect.height));
   const profile = getWarRoomMobileFramingProfile({
     aspect,
@@ -83,9 +83,6 @@ function projectWarRoomSquare(rect, square, worldY = 0.12) {
   const target = [0, profile.targetY, -profile.targetZ];
   const direction = normalized([0, profile.cameraY, profile.cameraZ]);
   const camera = target.map((value, index) => value + direction[index] * distance);
-  const fileIndex = square.charCodeAt(0) - 97;
-  const rank = Number(square[1]);
-  const point = [fileIndex - 3.5, worldY, 4.5 - rank];
   const forward = normalized(target.map((value, index) => value - camera[index]));
   const right = normalized(cross(forward, [0, 1, 0]));
   const up = cross(right, forward);
@@ -97,6 +94,46 @@ function projectWarRoomSquare(rect, square, worldY = 0.12) {
     x: rect.x + ((ndcX + 1) / 2) * rect.width,
     y: rect.y + ((1 - ndcY) / 2) * rect.height,
   };
+}
+
+function projectWarRoomSquare(rect, square, worldY = 0.12) {
+  const fileIndex = square.charCodeAt(0) - 97;
+  const rank = Number(square[1]);
+  return projectWarRoomPoint(rect, [fileIndex - 3.5, worldY, 4.5 - rank]);
+}
+
+function projectedBoardRect(rect) {
+  const corners = [
+    [-4, 0.12, -4],
+    [4, 0.12, -4],
+    [-4, 0.12, 4],
+    [4, 0.12, 4],
+  ].map((point) => projectWarRoomPoint(rect, point));
+  const xs = corners.map((point) => point.x);
+  const ys = corners.map((point) => point.y);
+  const x = Math.min(...xs);
+  const y = Math.min(...ys);
+  return {
+    x,
+    y,
+    width: Math.max(...xs) - x,
+    height: Math.max(...ys) - y,
+  };
+}
+
+function maxVerticalGap(boxes, viewportHeight) {
+  const intervals = boxes
+    .filter(Boolean)
+    .map((box) => [Math.max(0, box.y), Math.min(viewportHeight, box.y + box.height)])
+    .filter(([start, end]) => end > start)
+    .sort((a, b) => a[0] - b[0]);
+  let cursor = 0;
+  let maxGap = 0;
+  for (const [start, end] of intervals) {
+    maxGap = Math.max(maxGap, start - cursor);
+    cursor = Math.max(cursor, end);
+  }
+  return Math.max(maxGap, viewportHeight - cursor);
 }
 
 function intersects(a, b) {
@@ -189,14 +226,19 @@ for (const viewport of VIEWPORTS) {
         caret: 'hide',
       });
 
-      const shell = page.locator('.board3d-main-shell');
-      const shellBox = await shell.boundingBox();
-      expect(shellBox).not.toBeNull();
-      expect(shellBox.height / viewport.height, 'board must own >=55% viewport height').toBeGreaterThanOrEqual(.55);
-      expect(Math.max(shellBox.y, viewport.height - (shellBox.y + shellBox.height)), 'no empty viewport stripe >15%').toBeLessThanOrEqual(viewport.height * .15);
+      const rect = await canvas.boundingBox();
+      expect(rect).not.toBeNull();
+      const projectedBoard = projectedBoardRect(rect);
+      expect(projectedBoard.width / viewport.width, 'rendered board must own >=88% viewport width').toBeGreaterThanOrEqual(.88);
 
       const hudControls = page.locator('.game-3d-turn-pill :is(button, summary[role="button"])');
       await assertTargets(hudControls, 'War Room HUD');
+      const usefulControls = page.locator('.game-3d-turn-pill, .masthead-game-compact :is(button, summary[role="button"])');
+      const usefulBoxes = (await visibleBoxes(usefulControls)).map(({ box }) => box);
+      expect(
+        maxVerticalGap([projectedBoard, ...usefulBoxes], viewport.height),
+        'no vertical stripe >15% may be empty of board or useful UI',
+      ).toBeLessThanOrEqual(viewport.height * .15);
       expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
 
       const save = page.locator('.save-status-badge').filter({ hasText: 'Guardado' });
@@ -229,9 +271,7 @@ for (const viewport of VIEWPORTS) {
         expect(clipped, 'key visible text must not be clipped').toBe(false);
       }
 
-      const rect = await canvas.boundingBox();
-      expect(rect).not.toBeNull();
-      const from = projectWarRoomSquare(rect, 'g6', .76);
+      const from = projectWarRoomSquare(rect, 'g6', .22);
       const to = projectWarRoomSquare(rect, 'g7', .12);
       const cdp = await page.context().newCDPSession(page);
 
