@@ -292,9 +292,8 @@ test('Home · el avatar residente de Matthias abre Así juegas · entrenamiento 
   expect(observation.incidentKeys).not.toContain('cpu:KNIGHT_FORK');
 
   await report.getByRole('button', { name: 'Cerrar', exact: true }).click();
-  // GP-6/GP-8: la acción principal tras una partida rápida es la revancha; el
-  // menú queda en «Más opciones».
-  await endgame.getByRole('button', { name: 'Más opciones', exact: true }).click();
+  // El menú ya sigue abierto tras cerrar el resumen: no lo colapsemos antes
+  // de pulsar «Volver al menú».
   await endgame.getByRole('button', { name: 'Volver al menú', exact: true }).click();
   await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible();
 
