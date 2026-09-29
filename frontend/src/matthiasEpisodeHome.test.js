@@ -43,7 +43,7 @@ describe('Matthias episodic Home callbacks', () => {
     } }));
 
     expect(visit).toMatchObject({ kind: 'episodic-rivalry', action: 'play' });
-    expect(visit.text).toMatch(/partida 10.*me ganaste/i);
+    expect(visit.text).toMatch(/partida 10.*me ganó usted/i);
   });
 
   it('renders a repeated opening setback only from bounded structured evidence', () => {

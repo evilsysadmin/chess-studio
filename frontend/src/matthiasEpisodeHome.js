@@ -1,31 +1,31 @@
 const INCIDENT_COPY = Object.freeze({
   'human:MISSED_MATE': (count) => count > 1
-    ? `Ya van ${count} mates disponibles que dejaste pasar. Lo llamaremos reincidencia para no llamarlo vocación.`
-    : 'Hay un mate disponible ignorado en tu expediente. Sigue siendo difícil no mirarlo.',
+    ? `Ya van ${count} mates disponibles que dejó pasar. Lo llamaremos reincidencia para no llamarlo vocación.`
+    : 'Hay un mate disponible ignorado en su expediente. Sigue siendo difícil no mirarlo.',
   'human:ALLOWED_MATE': (count) => count > 1
-    ? `${count} mates permitidos. Mi archivo agradece tu generosidad; tu rey probablemente no.`
-    : 'Permitiste un mate y quedó archivado. Breve, contundente y bastante feo.',
+    ? `${count} mates permitidos. Mi archivo agradece su generosidad; su rey probablemente no.`
+    : 'Permitió un mate y quedó archivado. Breve, contundente y bastante feo.',
   'human:QUEEN_EN_PRISE_TO_PAWN': (count) => count > 1
-    ? `${count} damas expuestas a peones. Tus damas deberían solicitar protección sindical.`
-    : 'Una dama tuya quedó expuesta a un peón. Es el tipo de detalle que un expediente conserva solo.',
+    ? `${count} damas expuestas a peones. Sus damas deberían solicitar protección sindical.`
+    : 'Una dama suya quedó expuesta a un peón. Es el tipo de detalle que un expediente conserva solo.',
   'human:STALEMATE_BLUNDER': (count) => count > 1
     ? `${count} ventajas terminaron en ahogado. Convertir victoria en tablas empieza a parecer procedimiento.`
-    : 'Una ventaja tuya terminó en ahogado. El expediente lo llama conversión creativa.',
+    : 'Una ventaja suya terminó en ahogado. El expediente lo llama conversión creativa.',
   'cpu:PAWN_TAKES_QUEEN': (count) => count > 1
     ? `${count} damas capturadas por peones de Matthias. Los peones han pedido una placa conmemorativa.`
-    : 'Uno de mis peones capturó tu dama. No necesito adornar el hecho; ya viene bastante decorado.',
+    : 'Uno de mis peones capturó su dama. No necesito adornar el hecho; ya viene bastante decorado.',
   'cpu:KNIGHT_FORK': (count) => count > 1
     ? `${count} horquillas de caballo sufridas. Mis caballos ya conocen la ruta.`
     : 'Hay una horquilla de caballo reciente en el expediente. Limpia. Desagradable. Eficaz.',
   'cpu:PAWN_FORK': (count) => count > 1
-    ? `${count} horquillas de peón. Una pieza de una casilla te está haciendo estadísticas.`
+    ? `${count} horquillas de peón. Una pieza de una casilla le está haciendo estadísticas.`
     : 'Una horquilla de peón ha entrado en el expediente. Humilde y ofensivamente eficaz.',
   'human:MATE_FOUND': (count) => count > 1
     ? `${count} mates encontrados. Sehr gut. Resulta que mirar amenazas funciona.`
-    : 'Encontraste el mate cuando estaba ahí. Correcto. Casi profesional.',
+    : 'Encontró el mate cuando estaba ahí. Correcto. Casi profesional.',
   'human:PAWN_TAKES_QUEEN': (count) => count > 1
-    ? `${count} damas capturadas por tus peones. Empiezo a respetar a esos pequeños cabrones.`
-    : 'Uno de tus peones capturó una dama. Admito que fue desagradablemente elegante.',
+    ? `${count} damas capturadas por sus peones. Empiezo a respetar a esos pequeños cabrones.`
+    : 'Uno de sus peones capturó una dama. Admito que fue desagradablemente elegante.',
   'human:QUEEN_CAPTURE': (count) => count > 1
     ? `${count} capturas decisivas de dama registradas. Hay progreso que hasta yo puedo leer.`
     : 'Hay una captura decisiva de dama en el expediente. Bien. No voy a repetirlo.',
@@ -58,7 +58,7 @@ function rivalryVisit(episode) {
   if (evidence.outcome === 'win') {
     return {
       kind: 'episodic-rivalry',
-      text: `${gameNumber ? `En nuestra partida ${gameNumber}, ` : ''}me ganaste. Está registrado. No confundas registro con entusiasmo.`,
+      text: `${gameNumber ? `En nuestra partida ${gameNumber}, ` : ''}me ganó usted. Está registrado. No confunda registro con entusiasmo.`,
       action: 'play',
       actionLabel: 'Otra partida',
       episodeFingerprint: episode.fingerprint,

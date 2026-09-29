@@ -102,7 +102,7 @@ describe('generateRoast', () => {
   it('comenta un win rate bajo', () => {
     const insights = { totalGames: 10, overall: { winPct: 15 }, colorPreference: { white: 5, black: 5 }, humanCaptures: 30, favoriteOpening: null, longestWinStreak: 2, byMode: {} };
     const lines = generateRoast(insights);
-    const lowWinRatePhrases = ['menos de una de cada cuatro', 'debería empezar a cobrarte', 'Pierdes más de lo que ganas'];
+    const lowWinRatePhrases = ['menos de una de cada cuatro', 'debería empezar a cobrarle', 'Pierde más de lo que gana'];
     expect(lines.some((l) => lowWinRatePhrases.some((p) => l.includes(p)))).toBe(true);
   });
 

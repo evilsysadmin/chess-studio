@@ -14,25 +14,25 @@ export const MATTHIAS_ONBOARDED_VERSION = '2';
 
 const INCIDENT_COPY = Object.freeze({
   'human:MISSED_MATE': (count) => count > 1
-    ? `Llevas ${count} mates ignorados en el expediente. A estas alturas ya no es despiste; es una especialidad.`
-    : 'Aquel mate que dejaste pasar sigue teniendo un sitio especial en mi memoria. Una pequeña obra de arte.',
+    ? `Lleva ${count} mates ignorados en el expediente. A estas alturas ya no es despiste; es una especialidad.`
+    : 'Aquel mate que dejó pasar sigue teniendo un sitio especial en mi memoria. Una pequeña obra de arte.',
   'human:QUEEN_EN_PRISE_TO_PAWN': (count) => count > 1
-    ? `${count} damas expuestas a un peón. Tus damas deberían empezar a pedir escolta.`
-    : 'Todavía me acuerdo de aquella dama que dejaste al alcance de un peón. Yo también habría mirado hacia otro lado.',
+    ? `${count} damas expuestas a un peón. Sus damas deberían empezar a pedir escolta.`
+    : 'Todavía me acuerdo de aquella dama que dejó al alcance de un peón. Yo también habría mirado hacia otro lado.',
   'human:STALEMATE_BLUNDER': (count) => count > 1
     ? `${count} victorias convertidas en ahogado. Transformar ventaja en tablas empieza a parecer un servicio público.`
-    : 'Ese ahogado que fabricaste desde una posición ganada… sí, todavía me hace gracia.',
+    : 'Ese ahogado que fabricó desde una posición ganada… sí, todavía me hace gracia.',
   'human:ALLOWED_MATE': (count) => count > 1
     ? `${count} mates regalados. La generosidad está muy bien, pero quizá no con mi rey enfrente.`
-    : 'Aquel mate que me regalaste sigue archivado. Gracias de nuevo por las facilidades.',
+    : 'Aquel mate que me regaló sigue archivado. Gracias de nuevo por las facilidades.',
   'cpu:PAWN_TAKES_QUEEN': (count) => count > 1
-    ? `${count} damas tuyas han acabado en manos de un peón. Los peones del sindicato preguntan por ti.`
+    ? `${count} damas suyas han acabado en manos de un peón. Los peones del sindicato preguntan por usted.`
     : 'Una dama cayendo ante un peón. Hay recuerdos que uno no necesita esforzarse por conservar.',
   'cpu:KNIGHT_FORK': (count) => count > 1
-    ? `${count} horquillas de caballo sufridas. Mis caballos ya conocen tu dirección postal.`
+    ? `${count} horquillas de caballo sufridas. Mis caballos ya conocen su dirección postal.`
     : 'La última horquilla de caballo fue bastante limpia. Dolorosa, pero limpia.',
   'cpu:PAWN_FORK': (count) => count > 1
-    ? `${count} horquillas de peón. Una pieza que sólo avanza una casilla te está haciendo bullying estadístico.`
+    ? `${count} horquillas de peón. Una pieza que sólo avanza una casilla le está haciendo bullying estadístico.`
     : 'Aquella horquilla de peón fue humilde, barata y desagradablemente eficaz.',
 });
 
@@ -65,10 +65,10 @@ function rivalryVisit(rivalry) {
   }
   if (last?.outcome === 'win') {
     const level = last.difficulty != null ? ` en nivel ${last.difficulty}` : '';
-    return { kind: 'rivalry', text: `La última me la llevaste${level}. Bien jugado. No hace falta que te acostumbres.`, action: 'play', actionLabel: 'Otra partida' };
+    return { kind: 'rivalry', text: `La última se la llevó usted${level}. Bien jugado. No hace falta que se acostumbre.`, action: 'play', actionLabel: 'Otra partida' };
   }
-  if (streak <= -2) return { kind: 'rivalry', text: `Llevo ${Math.abs(streak)} seguidas. Empiezo a sospechar que te gusta financiar mi autoestima.`, action: 'play', actionLabel: 'Romper la racha' };
-  if (streak >= 2) return { kind: 'rivalry', text: `Llevas ${streak} victorias seguidas contra mí. Esto empieza a resultar administrativamente incómodo.`, action: 'play', actionLabel: 'Seguir tentando' };
+  if (streak <= -2) return { kind: 'rivalry', text: `Llevo ${Math.abs(streak)} seguidas. Empiezo a sospechar que le gusta financiar mi autoestima.`, action: 'play', actionLabel: 'Romper la racha' };
+  if (streak >= 2) return { kind: 'rivalry', text: `Lleva ${streak} victorias seguidas contra mí. Esto empieza a resultar administrativamente incómodo.`, action: 'play', actionLabel: 'Seguir tentando' };
   return null;
 }
 
@@ -96,7 +96,7 @@ export function matthiasIntroPlacement({
 export function buildMatthiasIntroVisit() {
   return {
     kind: 'intro',
-    text: 'Guten Morgen. Soy Matthias, el mayor cabronazo ajedrecista a este lado del Tajo. Te ayudaré a triunfar o fracasar; lo que tú decidas. Tschüss.',
+    text: 'Guten Morgen. Soy Matthias, el mayor cabronazo ajedrecista a este lado del Tajo. Le ayudaré a triunfar o fracasar; lo que usted decida. Tschüss.',
     action: 'play',
     actionLabel: 'Jugar con Matthias',
   };
@@ -118,7 +118,7 @@ export function buildMatthiasHomeVisit({ rivalry = {}, memory = null, hasSavedGa
   if (hasSavedGame) {
     return {
       kind: 'continue',
-      text: 'Has dejado una partida a medias. Yo no digo nada… pero el tablero sí está mirando.',
+      text: 'Ha dejado una partida a medias. Yo no digo nada… pero el tablero sí está mirando.',
       action: 'continue',
       actionLabel: 'Continuar partida',
     };
@@ -136,8 +136,8 @@ export function buildMatthiasHomeVisit({ rivalry = {}, memory = null, hasSavedGa
     return {
       kind: 'reunion',
       text: nemesis?.name
-        ? `Has vuelto después de ${Number(reunion.days)} días. ${nemesis.name} seguía aquí esperándote. Qué detalle por su parte.`
-        : `Has vuelto después de ${Number(reunion.days)} días. El expediente sigue aquí; sorprendentemente, no se ha quemado solo.`,
+        ? `Ha vuelto usted después de ${Number(reunion.days)} días. ${nemesis.name} seguía aquí esperándole. Qué detalle por su parte.`
+        : `Ha vuelto usted después de ${Number(reunion.days)} días. El expediente sigue aquí; sorprendentemente, no se ha quemado solo.`,
       action: 'insights',
       actionLabel: 'Reabrir expediente',
     };
@@ -162,7 +162,7 @@ export function buildMatthiasHomeVisit({ rivalry = {}, memory = null, hasSavedGa
   if (milestone?.kind === 'goal_completed' || milestone?.kind === 'challenge_completed') {
     return {
       kind: 'earned-respect',
-      text: `${milestone.label}. Eso ha sido bueno. Muy bueno. No te acostumbres a oírlo.`,
+      text: `${milestone.label}. Eso ha sido bueno. Muy bueno. No se acostumbre a oírlo.`,
       action: 'insights',
       actionLabel: 'Abrir expediente',
     };
@@ -172,19 +172,19 @@ export function buildMatthiasHomeVisit({ rivalry = {}, memory = null, hasSavedGa
 
   const memoryVisit = goal ? {
     kind: 'goal',
-    text: `Mi obsesión actual: ${goal.label}. Sí, sigo acordándome. Qué desgracia para ti.`,
+    text: `Mi obsesión actual: ${goal.label}. Sí, sigo acordándome. Qué desgracia para usted.`,
     action: 'insights',
     actionLabel: 'Ver objetivo',
   } : milestone?.label ? {
     kind: milestone.polarity === 'shame' ? 'memory-shame' : 'memory-fame',
     text: milestone.polarity === 'shame'
       ? `El archivo criminal conserva: ${milestone.label}.`
-      : `${milestone.label}. ${['respected', 'formidable'].includes(respectTier) ? 'Te concedo el punto.' : 'Tengo apuntado que, ocasionalmente, haces cosas bien.'}`,
+      : `${milestone.label}. ${['respected', 'formidable'].includes(respectTier) ? 'Le concedo el punto.' : 'Tengo apuntado que, ocasionalmente, hace cosas bien.'}`,
     action: 'insights',
     actionLabel: 'Abrir expediente',
   } : nemesis?.name && Number(nemesis.games || 0) >= 3 ? {
     kind: 'opening-memory',
-    text: `${nemesis.name}: ${Math.round(Number(nemesis.win_pct || 0))}% de victorias en ${Number(nemesis.games || 0)} partidas. Esa apertura y tú aún tenéis asuntos pendientes.`,
+    text: `${nemesis.name}: ${Math.round(Number(nemesis.win_pct || 0))}% de victorias en ${Number(nemesis.games || 0)} partidas. Esa apertura y usted aún tienen asuntos pendientes.`,
     action: 'insights',
     actionLabel: 'Ver aperturas',
   } : null;
@@ -194,7 +194,7 @@ export function buildMatthiasHomeVisit({ rivalry = {}, memory = null, hasSavedGa
     || {
       kind: 'generic',
       text: ['respected', 'formidable'].includes(respectTier)
-        ? 'Tengo una partida libre. A estas alturas ya sabes que no pienso regalarte ni el saludo.'
+        ? 'Tengo una partida libre. A estas alturas ya sabe que no pienso regalarle ni el saludo.'
         : 'Tengo una partida libre y una confianza francamente injustificada. ¿La ponemos a prueba?',
       action: 'play',
       actionLabel: 'Jugar una rápida',

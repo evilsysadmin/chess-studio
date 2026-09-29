@@ -157,41 +157,41 @@ export function generateRoast(insights, worstMove = null, extras = {}) {
 
   if (insights.totalGames < 3) {
     lines.push(pickRoastLine([
-      'Con tan pocas partidas esto todavía es más boceto que retrato. Vuelve cuando tengas currículum de verdad.',
-      'Muy poquitas partidas para sacar conclusiones — pero bueno, ya que insistes, aquí va igual.',
+      'Con tan pocas partidas esto todavía es más boceto que retrato. Vuelva cuando tenga currículum de verdad.',
+      'Muy pocas partidas para sacar conclusiones — pero bueno, ya que insiste, aquí va igual.',
     ], seed));
   } else if (insights.totalGames >= 50) {
     lines.push(pickRoastLine([
       `${insights.totalGames} partidas y contando. A este punto ya no es hobby, es una relación seria con la CPU.`,
-      `Llevas ${insights.totalGames} partidas jugadas. Alguien tiene tiempo libre.`,
+      `Lleva ${insights.totalGames} partidas jugadas. Alguien tiene tiempo libre.`,
     ], seed));
   } else if (insights.totalGames >= 20) {
     lines.push(pickRoastLine([
-      `${insights.totalGames} partidas ya en el historial — le estás dando en serio a esto.`,
+      `${insights.totalGames} partidas ya en el historial — se lo está tomando en serio.`,
     ], seed));
   }
 
   const pct = insights.overall.winPct;
   lines.push(pickRoastLine(
     pct < 25 ? [
-      'Ganas menos de una de cada cuatro. El ajedrez no te odia, pero tampoco te quiere.',
-      'Con ese porcentaje, la CPU debería empezar a cobrarte por las clases.',
-      'Pierdes más de lo que ganas, y por bastante. Ánimo, técnicamente.',
+      'Gana menos de una de cada cuatro. El ajedrez no le odia, pero tampoco le quiere.',
+      'Con ese porcentaje, debería empezar a cobrarle por las clases.',
+      'Pierde más de lo que gana, y por bastante. Ánimo, técnicamente.',
     ] : pct < 45 ? [
-      'Un porcentaje de victorias flojito, la verdad — ni para presumir ni para esconderte del todo.',
-      'Ganas menos de la mitad. Vas tirando, sin más.',
-      'Regulero. Ahí, ahí.',
+      'Un porcentaje de victorias flojo, la verdad — ni para presumir ni para esconderse del todo.',
+      'Gana menos de la mitad. Va tirando, sin más.',
+      'Regular. Ni fu ni fa.',
     ] : pct < 65 ? [
-      'Te defiendes decentemente. Nada del otro mundo, pero tampoco un desastre.',
+      'Se defiende decentemente. Nada del otro mundo, pero tampoco un desastre.',
       'Un porcentaje digno, de esos que no dan ni para presumir ni para llorar.',
-      'Ganas más de lo que pierdes. Felicidades, supongo.',
+      'Gana más de lo que pierde. Felicidades, supongo.',
     ] : pct < 85 ? [
-      'Ganas la mayoría. O juegas bien de verdad, o la CPU te tiene cariño.',
+      'Gana la mayoría. O juega bien de verdad, o le tengo cariño sin saberlo.',
       'Un porcentaje que ya empieza a oler a fanfarroneo en las cenas familiares.',
-      'Se te da bien esto. Raro, pero bien.',
+      'Se le da bien esto. Raro, pero bien.',
     ] : [
-      'Casi nunca pierdes. Sospechosamente bien, la verdad — ¿seguro que no hiciste trampa?',
-      'Un porcentaje casi perfecto. O eres un genio, o la CPU juega con los ojos cerrados.',
+      'Casi nunca pierde. Sospechosamente bien, la verdad — ¿seguro que no ha hecho trampa?',
+      'Un porcentaje casi perfecto. O es usted un genio, o he jugado con los ojos cerrados.',
     ],
     seed
   ));
@@ -201,13 +201,13 @@ export function generateRoast(insights, worstMove = null, extras = {}) {
   if (totalColor >= 4) {
     if (white / totalColor > 0.75) {
       lines.push(pickRoastLine([
-        'Casi siempre juegas con blancas. ¿Manía, comodidad, o le tienes respeto a mover segundo?',
-        'Blancas, blancas, y más blancas. A las negras casi ni las conoces.',
+        'Casi siempre juega con blancas. ¿Manía, comodidad, o le tiene respeto a mover segundo?',
+        'Blancas, blancas, y más blancas. A las negras casi ni las conoce.',
       ], seed));
     } else if (black / totalColor > 0.75) {
       lines.push(pickRoastLine([
-        'Rarísimo lo tuyo — casi nunca te tocan blancas. Raro gusto el de esperar a que muevan primero.',
-        'Vives instalado en las negras. Curioso, la mayoría huye de eso.',
+        'Rarísimo lo suyo — casi nunca le tocan blancas. Raro gusto el de esperar a que muevan primero.',
+        'Vive instalado en las negras. Curioso, la mayoría huye de eso.',
       ], seed));
     }
   }
@@ -216,13 +216,13 @@ export function generateRoast(insights, worstMove = null, extras = {}) {
     const capturesPerGame = insights.humanCaptures / insights.totalGames;
     if (capturesPerGame < 1.5) {
       lines.push(pickRoastLine([
-        'Capturas poquísimas piezas por partida. Juegas con una prudencia que raya en el miedo escénico.',
-        'Casi ni tocas las piezas del rival. ¿Ajedrez o meditación?',
+        'Captura poquísimas piezas por partida. Juega con una prudencia que raya en el miedo escénico.',
+        'Casi ni toca las piezas del rival. ¿Ajedrez o meditación?',
       ], seed));
     } else if (capturesPerGame > 5) {
       lines.push(pickRoastLine([
-        'Te gusta comer piezas, eso está clarísimo. Estilo agresivo, o simplemente no sabes hacer otra cosa.',
-        'Comes todo lo que se mueve. Enhorabuena, o condolencias — depende de cómo te vaya luego.',
+        'Le gusta comer piezas, eso está clarísimo. Estilo agresivo, o simplemente no sabe hacer otra cosa.',
+        'Come todo lo que se mueve. Enhorabuena, o condolencias — depende de cómo le vaya luego.',
       ], seed));
     }
   }
@@ -231,33 +231,33 @@ export function generateRoast(insights, worstMove = null, extras = {}) {
     const repeatRate = insights.favoriteOpening.count / insights.totalGames;
     if (repeatRate > 0.6) {
       lines.push(pickRoastLine([
-        `Siempre la misma apertura (${insights.favoriteOpening.name}). Repertorio de una sola carta, macho.`,
-        `${insights.favoriteOpening.name} otra vez. A este paso te la van a poner de apodo.`,
+        `Siempre la misma apertura (${insights.favoriteOpening.name}). Repertorio de una sola carta, mein Freund.`,
+        `${insights.favoriteOpening.name} otra vez. A este paso se la van a poner de apodo.`,
       ], seed));
     }
   } else if (!insights.favoriteOpening && insights.totalGames >= 4) {
     lines.push(pickRoastLine([
-      'Ni una sola apertura con nombre en todo tu historial. Juegas a lo bruto, sin libro ni nada.',
-      'Cero teoría de aperturas reconocible. Improvisas desde la primera jugada, valiente.',
+      'Ni una sola apertura con nombre en todo su historial. Juega a lo bruto, sin libro ni nada.',
+      'Cero teoría de aperturas reconocible. Improvisa desde la primera jugada, valiente.',
     ], seed));
   }
 
   if (insights.longestWinStreak <= 1 && insights.totalGames >= 5) {
     lines.push(pickRoastLine([
       'Ni una racha de dos victorias seguidas en todo este tiempo. Constancia: cero.',
-      'Ganas una y pierdes la siguiente, como un péndulo. Nada de rachas por aquí.',
+      'Gana una y pierde la siguiente, como un péndulo. Nada de rachas por aquí.',
     ], seed));
   } else if (insights.longestWinStreak >= 5) {
     lines.push(pickRoastLine([
-      `Una racha de ${insights.longestWinStreak} seguidas en algún momento — a saber contra qué estaba jugando la CPU ese día.`,
-      `${insights.longestWinStreak} victorias seguidas en tu mejor momento. Hasta tú te sorprendiste, seguro.`,
+      `Una racha de ${insights.longestWinStreak} seguidas en algún momento — a saber qué me pasaba ese día.`,
+      `${insights.longestWinStreak} victorias seguidas en su mejor momento. Hasta usted se sorprendió, seguro.`,
     ], seed));
   }
 
   if (insights.overall.draws / insights.overall.total > 0.3 && insights.totalGames >= 5) {
     lines.push(pickRoastLine([
-      'Un montón de tablas en tu historial. ¿Estrategia de manual, o simple miedo a comprometerte?',
-      'Empatas muchísimo. Ni ganar ni perder — la zona de confort hecha estilo de juego.',
+      'Un montón de tablas en su historial. ¿Estrategia de manual, o simple miedo a comprometerse?',
+      'Empata muchísimo. Ni ganar ni perder — la zona de confort hecha estilo de juego.',
     ], seed));
   }
 
@@ -267,12 +267,12 @@ export function generateRoast(insights, worstMove = null, extras = {}) {
       const gap = Math.abs(delta);
       lines.push(pickRoastLine([
         `El último rating está ${gap} puntos por debajo del primero. La gráfica ha visto días mejores.`,
-        `Acabas ${gap} puntos por debajo del primer registro. Eso sí es dato; el drama viene gratis.`,
+        `Acaba ${gap} puntos por debajo del primer registro. Eso sí es dato; el drama viene gratis.`,
       ], seed));
     } else if (delta >= 40) {
       lines.push(pickRoastLine([
-        `El último rating está ${delta} puntos por encima del primero. Puedes mirarlo con satisfacción moderada.`,
-        `Acabas ${delta} puntos por encima del primer registro. El gráfico, al menos, te concede esa.`,
+        `El último rating está ${delta} puntos por encima del primero. Puede mirarlo con satisfacción moderada.`,
+        `Acaba ${delta} puntos por encima del primer registro. El gráfico, al menos, le concede esa.`,
       ], seed));
     }
   }
@@ -285,7 +285,7 @@ export function generateRoast(insights, worstMove = null, extras = {}) {
     if (bestStats.winPct - worstStats.winPct >= 30) {
       const MODE_LABEL = { tournament: 'Torneo', practice: 'Partida de práctica', casual: 'Partida rápida', ghost: 'Rival Fantasma', combat: 'Combat Chess' };
       lines.push(pickRoastLine([
-        `Se te da bastante mejor ${MODE_LABEL[bestMode] || bestMode} que ${MODE_LABEL[worstModeName] || worstModeName}. Cuestión de estilo, o de que en un modo te dejan pensar más.`,
+        `Se le da bastante mejor ${MODE_LABEL[bestMode] || bestMode} que ${MODE_LABEL[worstModeName] || worstModeName}. Cuestión de estilo, o de que en un modo le dejan pensar más.`,
       ], seed));
     }
   }
@@ -294,13 +294,13 @@ export function generateRoast(insights, worstMove = null, extras = {}) {
     const rate = extras.achievementsUnlocked / extras.achievementsTotal;
     if (extras.achievementsUnlocked === 0) {
       lines.push(pickRoastLine([
-        `Cero logros desbloqueados. Ni uno. Hay ${extras.achievementsTotal} esperando y ni te asomaste.`,
-        'Ningún logro todavía — capaz ni sabías que existían, sinceramente.',
+        `Cero logros desbloqueados. Ni uno. Hay ${extras.achievementsTotal} esperando y ni se ha asomado.`,
+        'Ningún logro todavía — quizá ni sabía que existían, sinceramente.',
       ], seed));
     } else if (rate >= 0.7) {
       lines.push(pickRoastLine([
-        `${extras.achievementsUnlocked} de ${extras.achievementsTotal} logros — casi los tienes todos. Alguien se lo tomó personal.`,
-        `Con ${extras.achievementsUnlocked} logros desbloqueados, esto ya parece un trabajo de medio tiempo.`,
+        `${extras.achievementsUnlocked} de ${extras.achievementsTotal} logros — casi los tiene todos. Alguien se lo ha tomado como algo personal.`,
+        `Con ${extras.achievementsUnlocked} logros desbloqueados, esto ya parece un trabajo a media jornada.`,
       ], seed));
     }
   }
@@ -308,11 +308,11 @@ export function generateRoast(insights, worstMove = null, extras = {}) {
   if (typeof extras.puzzlesSolved === 'number') {
     if (extras.puzzlesSolved === 0 && insights.totalGames >= 5) {
       lines.push(pickRoastLine([
-        'Cero puzzles resueltos pese a jugar bastante. El modo Puzzle existe, por si te enterabas ahora.',
+        'Cero puzzles resueltos pese a jugar bastante. El modo Puzzle existe, por si se entera ahora.',
       ], seed));
     } else if (extras.puzzlesSolved >= 15) {
       lines.push(pickRoastLine([
-        `${extras.puzzlesSolved} puzzles resueltos. Se nota que la táctica no te da miedo.`,
+        `${extras.puzzlesSolved} puzzles resueltos. Se nota que la táctica no le da miedo.`,
       ], seed));
     }
   }
@@ -324,14 +324,14 @@ export function generateRoast(insights, worstMove = null, extras = {}) {
     const wins = Number(rivalryRecord.wins || 0);
     if (losses >= wins * 2 && losses >= 4) {
       lines.push(pickRoastLine([
-        `La CPU te lleva ${losses} derrotas por ${wins} victorias. Esto ya no es una rivalidad; es una domiciliación bancaria.`,
-        `${wins} victorias tuyas y ${losses} de la CPU. Sigues llamándolo rivalidad por autoestima, lo entiendo.`,
-        'Tu marcador contra la CPU tiene la alegría cromática de una esquela. Al menos la constancia es admirable.',
+        `Le llevo ${losses} victorias por ${wins} derrotas mías. Esto ya no es una rivalidad; es una domiciliación bancaria.`,
+        `${wins} victorias suyas y ${losses} mías. Sigue llamándolo rivalidad por autoestima, lo entiendo.`,
+        'Su marcador contra mí tiene la alegría cromática de una esquela. Al menos la constancia es admirable.',
       ], seed + losses));
     } else if (wins >= losses * 2 && wins >= 4) {
       lines.push(pickRoastLine([
-        `Le estás ganando claramente a la CPU (${wins}-${losses}). Bien. Ya puedes dejar de mirar el marcador cada treinta segundos.`,
-        `El cara a cara va ${wins}-${losses} a tu favor. Empieza a ser ofensivo. Para la máquina, digo.`,
+        `Me está ganando claramente (${wins}-${losses}). Bien. Ya puede dejar de mirar el marcador cada treinta segundos.`,
+        `El cara a cara va ${wins}-${losses} a su favor. Empieza a ser ofensivo. Para mí, digo.`,
       ], seed + wins));
     }
   }
@@ -341,26 +341,26 @@ export function generateRoast(insights, worstMove = null, extras = {}) {
     const [crime, countRaw] = incidentEntries[0];
     const count = Number(countRaw);
     const crimeRoasts = {
-      'human:MISSED_MATE': `Has ignorado mate inmediato ${count} veces. A estas alturas el botón de rematar debería parpadear y emitir humo.`,
-      'human:ALLOWED_MATE': `Has regalado mate en una ${count} veces. La hospitalidad está bien; entregar el rey en recepción ya es demasiado.`,
-      'human:QUEEN_EN_PRISE_TO_PAWN': `Has dejado la dama a tiro de peón ${count} veces. Tus damas merecen sindicato, casco y plus de peligrosidad.`,
-      'cpu:PAWN_TAKES_QUEEN': `${count} damas tuyas han muerto contra peones. No es mala suerte cuando ya puedes hacer una estadística con ello.`,
+      'human:MISSED_MATE': `Ha ignorado mate inmediato ${count} veces. A estas alturas el botón de rematar debería parpadear y emitir humo.`,
+      'human:ALLOWED_MATE': `Ha regalado mate en una ${count} veces. La hospitalidad está bien; entregar el rey en recepción ya es demasiado.`,
+      'human:QUEEN_EN_PRISE_TO_PAWN': `Ha dejado la dama a tiro de peón ${count} veces. Sus damas merecen sindicato, casco y plus de peligrosidad.`,
+      'cpu:PAWN_TAKES_QUEEN': `${count} damas suyas han muerto contra peones. No es mala suerte cuando ya puede hacer una estadística con ello.`,
       'cpu:KNIGHT_FORK': `${count} horquillas serias de caballo sufridas. Los caballos rivales ya entran al tablero con reserva.`,
-      'cpu:PAWN_FORK': `${count} horquillas de peón sufridas. Una pieza que no sabe retroceder te ha convertido en cliente recurrente.`,
-      'human:STALEMATE_BLUNDER': `${count} ahogados desde posición ganadora. La victoria te llega a casa y tú finges que no estabas esperando ningún paquete.`,
+      'cpu:PAWN_FORK': `${count} horquillas de peón sufridas. Una pieza que no sabe retroceder le ha convertido en cliente recurrente.`,
+      'human:STALEMATE_BLUNDER': `${count} ahogados desde posición ganadora. La victoria le llega a casa y usted finge que no estaba esperando ningún paquete.`,
     };
     if (crimeRoasts[crime]) lines.push(crimeRoasts[crime]);
   }
 
   if (worstMove) {
     lines.push(pickRoastLine([
-      `Y no hablemos de esa ${worstMove.moveReport.played}, que te costó ${worstMove.moveReport.loss} puntos de evaluación de un plumazo — el motor todavía se está riendo de esa.`,
-      `Esa ${worstMove.moveReport.played} tuya (-${worstMove.moveReport.loss}) va a quedar en los anales. No para bien.`,
+      `Y no hablemos de esa ${worstMove.moveReport.played}, que le costó ${worstMove.moveReport.loss} puntos de evaluación de un plumazo — el motor todavía se está riendo de esa.`,
+      `Esa ${worstMove.moveReport.played} suya (-${worstMove.moveReport.loss}) va a quedar en los anales. No para bien.`,
     ], seed));
   }
 
   if (lines.length === 0) {
-    lines.push('Juegas de forma bastante equilibrada, la verdad. Aburrido para el sarcasmo, pero bien por ti.');
+    lines.push('Juega de forma bastante equilibrada, la verdad. Aburrido para el sarcasmo, pero bien por usted.');
   }
 
   return lines;
@@ -623,7 +623,7 @@ export function tierTrendComment(tierLabel, trend) {
   const { delta } = trend;
   const TIER_TIPS = {
     Principiante: 'quizá te sirva pasar más tiempo en "Partida de práctica" (pistas del motor gratis) o repasar el Tutorial, que ya trae aperturas famosas.',
-    Aficionado: 'capaz vale la pena revisar tus partidas guardadas con la "pista inversa" — ahí ves exactamente dónde el motor prefería otra cosa.',
+    Aficionado: 'quizá merezca la pena revisar tus partidas guardadas con la "pista inversa" — ahí ves exactamente dónde el motor prefería otra cosa.',
     Intermedio: 'a este nivel, "Buscar mi peor jugada de siempre" (en Así juegas) suele ser más revelador que jugar más partidas sueltas.',
     Avanzado: 'quizá subir la dificultad de la CPU en las próximas partidas — a este nivel, un rival más flojo enseña poco.',
     Experto: 'a este nivel ya no hay mucho que la app pueda "enseñarte" de forma genérica — Combat Chess al menos mantiene las cosas interesantes.',
