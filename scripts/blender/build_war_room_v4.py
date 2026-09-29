@@ -28,7 +28,7 @@ V4_CANON = "war-room-v4-moonlit-royal-observatory-2026-09-29"
 V4_CAMERA_FOV_DEG = 22.0
 V4_CAMERA_HALF_SPAN = 5.10
 V4_CAMERA_PADDING = 1.015
-V4_CAMERA_TARGET = (0.0, 0.32, 1.72)
+V4_CAMERA_TARGET = (0.0, 0.42, 2.08)
 V4_CAMERA_DIRECTION = (0.0, -10.2, 7.75)
 V4_WALL_RADIUS = 8.72
 V4_WALL_CENTER_Y = -0.72
@@ -37,7 +37,7 @@ V4_WALL_END_DEG = 112.0
 V4_WALL_SEGMENT_COUNT = 19
 # Snap the entry to an authored wall bay so the door plane is truly tangent to
 # the same circular shell instead of looking like a freestanding prop.
-V4_ENTRY_THETA_DEG = 70.7368421053
+V4_ENTRY_THETA_DEG = -76.0
 V4_ENTRY_DOOR_Z = 1.90
 
 V4_WEATHER_MATERIALS = frozenset({
@@ -372,65 +372,126 @@ def build_round_command_table(static, palette):
                palette["brass"], static, rotation=(math.pi / 2, 0, 0))
 
 
-def build_single_stove(static, palette):
-    """One compact circular fireplace; no mirrored hearth or second anchor."""
-    x, y = -6.35, 4.30
-    base.cylinder("WR4_OBS_stove_body", (x, y, 1.56), 0.86, 1.72,
-                  palette["iron"], static, vertices=64)
-    base.cylinder("WR4_OBS_stove_crown", (x, y, 2.47), 0.96, 0.12,
-                  palette["brass_dark"], static, vertices=64)
-    base.torus("WR4_OBS_stove_crown_inlay", (x, y, 2.535), 0.78, 0.024,
-               palette["brass"], static)
-    base.cylinder("WR4_OBS_stove_plinth", (x, y, 0.65), 1.12, 0.16,
-                  palette["stone"], static, vertices=64)
-    base.cylinder("WR4_OBS_stove_hearth_slab", (x, y - 0.10, 0.47), 1.38, 0.10,
-                  palette["green_marble"], static, vertices=64)
-    base.torus("WR4_OBS_stove_hearth_trim", (x, y - 0.10, 0.535), 1.35, 0.035,
-               palette["brass_dark"], static)
+def build_white_fireplace(static, palette):
+    """Canonical pale masonry fireplace from the approved V4 golden."""
+    x, y = -5.65, 4.48
+    # Broad ivory surround: visually warm/architectural, not a freestanding stove.
+    base.cube("WR4_OBS_fireplace_plinth", (x, y, 0.30), (1.42, 0.62, 0.20),
+              palette["stone_light"], static, bevel=0.10)
+    base.cube("WR4_OBS_fireplace_body", (x, y + 0.14, 1.64), (1.48, 0.52, 1.32),
+              palette["stone_light"], static, bevel=0.12)
+    base.cube("WR4_OBS_fireplace_opening", (x, y - 0.43, 1.32), (0.88, 0.10, 0.72),
+              palette["charcoal"], static, bevel=0.10)
+    base.cube("WR4_OBS_fireplace_mantel", (x, y - 0.02, 3.03), (1.66, 0.67, 0.16),
+              palette["stone_light"], static, bevel=0.10)
+    base.cube("WR4_OBS_fireplace_mantel_trim", (x, y - 0.73, 2.89), (1.42, 0.05, 0.06),
+              palette["brass_dark"], static, bevel=0.025)
     for side in (-1, 1):
-        base.cube(f"WR4_OBS_stove_leg_{side}", (x + side * 0.55, y, 0.43),
-                  (0.10, 0.18, 0.26), palette["iron"], static, bevel=0.07)
+        base.cube(f"WR4_OBS_fireplace_jamb_{side}", (x + side * 1.08, y - 0.36, 1.50),
+                  (0.20, 0.16, 1.05), palette["stone_light"], static, bevel=0.08)
+        base.cube(f"WR4_OBS_fireplace_cap_{side}", (x + side * 1.08, y - 0.38, 2.58),
+                  (0.28, 0.18, 0.12), palette["stone"], static, bevel=0.06)
 
-    # Aim the door/fire at the tactical centre rather than merely canting the
-    # flame silhouette: from the stove this is a visible ~56-degree turn.
-    face_angle = math.atan2(-x, y)
-    face = Vector((math.sin(face_angle), -math.cos(face_angle), 0.0))
-    tangent = Vector((math.cos(face_angle), math.sin(face_angle), 0.0))
-    door_center = Vector((x, y, 1.58)) + face * 0.86
-    door = cylinder_between("WR4_OBS_stove_door", door_center - face * 0.05,
-                            door_center + face * 0.05, 0.62,
-                            palette["charcoal"], static, vertices=64)
-    base.torus("WR4_OBS_stove_door_ring", Vector((x, y, 1.58)) + face * 0.93,
-               0.63, 0.055, palette["brass"], static,
-               rotation=(math.pi / 2, 0, face_angle))
-    fire_center = Vector((x, y, 1.45)) + face * 0.995 + tangent * 0.05
-    # Keep the hearth legible at game-camera distance: a compact ember body
-    # plus three taller tongues reads as flame instead of a pale hand-shaped blob.
-    flame_body = base.sphere("WR4_OBS_stove_flame_body", fire_center,
-                             0.27, palette["fire"], static, scale=(1.12, 0.18, 0.58))
-    flame_body.rotation_euler = (0, math.radians(9), face_angle)
+    fire_center = Vector((x, y - 0.58, 1.23))
+    flame_body = base.sphere("WR4_OBS_fireplace_flame_body", fire_center,
+                             0.36, palette["fire"], static, scale=(1.45, 0.20, 0.70))
     flame_body["war_room_runtime_dynamic"] = "v4-fire"
     for index, (dx, dz, sx, sz, tilt) in enumerate((
-        (-0.14, 0.01, 0.34, 1.20, 0.04),
-        (0.03, 0.14, 0.28, 1.48, 0.18),
-        (0.19, -0.02, 0.26, 0.98, 0.31),
+        (-0.32, 0.02, 0.34, 1.10, -0.14),
+        (0.00, 0.20, 0.30, 1.55, 0.10),
+        (0.30, -0.01, 0.30, 1.02, 0.20),
     )):
-        tongue_center = Vector((x, y, 1.52 + dz)) + face * 1.01 + tangent * dx
-        tongue = base.sphere(f"WR4_OBS_stove_flame_{index}",
-                             tongue_center,
-                             0.22, palette["fire"] if index != 1 else palette["fire_core"],
-                             static, scale=(sx, 0.20, sz))
-        tongue.rotation_euler = (0, tilt, face_angle)
+        tongue = base.sphere(
+            f"WR4_OBS_fireplace_flame_{index}", fire_center + Vector((dx, -0.03, dz)),
+            0.25, palette["fire_core"] if index == 1 else palette["fire"], static,
+            scale=(sx, 0.18, sz),
+        )
+        tongue.rotation_euler.y = tilt
         tongue["war_room_runtime_dynamic"] = "v4-fire"
-    base.cylinder("WR4_OBS_stove_flue", (x, y, 4.33), 0.23, 3.62,
-                  palette["iron"], static, vertices=48)
-    base.torus("WR4_OBS_stove_flue_collar", (x, y, 2.63), 0.31, 0.048,
-               palette["brass_dark"], static)
-    base.cylinder("WR4_OBS_stove_flue_cap", (x, y, 6.18), 0.39, 0.10,
-                  palette["copper"], static, vertices=48)
-    base.light("WR4_LIGHT_stove", "POINT", Vector((x, y, 1.72)) + face * 1.25, 355.0,
-               (1.0, 0.26, 0.040), static, radius=1.72)
-    base.anchor("WR_ANCHOR_fireplace_practical", Vector((x, y, 1.76)) + face * 1.05, static)
+    for log_x in (-0.38, 0.0, 0.38):
+        log = base.cylinder(f"WR4_OBS_fireplace_log_{log_x:+.2f}",
+                            (x + log_x, y - 0.54, 0.86), 0.10, 0.95,
+                            palette["walnut_dark"], static, vertices=20)
+        log.rotation_euler.y = math.pi / 2
+
+    base.light("WR4_LIGHT_fireplace", "POINT", (x, y - 1.12, 1.58), 430.0,
+               (1.0, 0.27, 0.045), static, radius=2.05)
+    base.anchor("WR_ANCHOR_fireplace_practical", (x, y - 0.82, 1.65), static)
+
+
+def build_oculus_desk(static, palette):
+    """Low walnut writing desk directly below the lunar oculus."""
+    x, y = 0.0, 5.55
+    base.cube("WR4_OBS_oculus_desk_top", (x, y, 1.34), (2.60, 0.52, 0.09),
+              palette["walnut"], static, bevel=0.055)
+    for side in (-1, 1):
+        base.cube(f"WR4_OBS_oculus_desk_pedestal_{side}", (side * 1.72, y + 0.05, 0.73),
+                  (0.55, 0.44, 0.58), palette["walnut_dark"], static, bevel=0.05)
+        for row, z in enumerate((0.48, 0.76, 1.03)):
+            base.cube(f"WR4_OBS_oculus_desk_drawer_{side}_{row}",
+                      (side * 1.72, y - 0.43, z), (0.43, 0.035, 0.10),
+                      palette["walnut"], static, bevel=0.02)
+            base.sphere(f"WR4_OBS_oculus_desk_pull_{side}_{row}",
+                        (side * 1.72, y - 0.48, z), 0.032, palette["brass"], static)
+    # Sparse books and green-shaded lamp: recognizable at hero distance without clutter.
+    for index, (dx, mat) in enumerate(((-1.05, "book_red"), (-0.72, "book_blue"), (0.58, "book_red"))):
+        base.cube(f"WR4_OBS_oculus_desk_book_{index}", (dx, y - 0.15, 1.48 + index * 0.035),
+                  (0.25, 0.20, 0.045), palette[mat], static, bevel=0.018)
+    base.cylinder("WR4_OBS_oculus_lamp_stem", (1.32, y - 0.10, 1.72), 0.045, 0.48,
+                  palette["brass"], static, vertices=24)
+    base.cylinder("WR4_OBS_oculus_lamp_shade", (1.32, y - 0.10, 2.00), 0.28, 0.16,
+                  palette["green_leather"], static, vertices=40)
+    base.light("WR4_LIGHT_oculus_desk", "POINT", (1.32, y - 0.55, 1.86), 76.0,
+               (1.0, 0.58, 0.25), static, radius=0.85)
+
+
+def build_library_wall(static, palette):
+    """Integrated right-wall library from the golden composition."""
+    x, y = 6.15, 4.45
+    base.cube("WR4_OBS_library_back", (x, y, 2.35), (1.25, 0.34, 2.12),
+              palette["walnut_dark"], static, bevel=0.07)
+    for shelf, z in enumerate((0.62, 1.38, 2.14, 2.90, 3.66)):
+        base.cube(f"WR4_OBS_library_shelf_{shelf}", (x, y - 0.37, z), (1.18, 0.36, 0.065),
+                  palette["walnut"], static, bevel=0.03)
+    book_index = 0
+    for row, z in enumerate((0.92, 1.68, 2.44, 3.20)):
+        for col in range(8):
+            bx = x - 0.93 + col * 0.27
+            mat = palette["book_red"] if (row + col) % 3 == 0 else palette["book_blue"]
+            base.cube(f"WR4_OBS_library_book_{book_index}", (bx, y - 0.63, z),
+                      (0.09, 0.16, 0.25 + 0.025 * ((row + col) % 2)),
+                      mat, static, bevel=0.014)
+            book_index += 1
+    base.cube("WR4_OBS_library_crown", (x, y - 0.08, 4.55), (1.36, 0.42, 0.13),
+              palette["walnut"], static, bevel=0.06)
+    base.cube("WR4_OBS_library_crown_brass", (x, y - 0.52, 4.48), (1.18, 0.025, 0.035),
+              palette["brass"], static, bevel=0.015)
+
+
+def build_armor_pair(static, palette):
+    """Two restrained ceremonial suits framing the room without stealing board focus."""
+    for side in (-1, 1):
+        x, y = side * 6.55, 2.85
+        base.cylinder(f"WR4_OBS_armor_base_{side}", (x, y, 0.22), 0.48, 0.16,
+                      palette["walnut_dark"], static, vertices=36)
+        base.cube(f"WR4_OBS_armor_torso_{side}", (x, y, 1.32), (0.38, 0.25, 0.44),
+                  palette["iron"], static, bevel=0.12)
+        base.cube(f"WR4_OBS_armor_waist_{side}", (x, y, 0.93), (0.30, 0.22, 0.16),
+                  palette["charcoal"], static, bevel=0.07)
+        for leg in (-1, 1):
+            base.cube(f"WR4_OBS_armor_leg_{side}_{leg}", (x + leg * 0.16, y, 0.57),
+                      (0.10, 0.11, 0.24), palette["iron"], static, bevel=0.05)
+        for shoulder in (-1, 1):
+            base.sphere(f"WR4_OBS_armor_pauldron_{side}_{shoulder}",
+                        (x + shoulder * 0.43, y, 1.55), 0.20,
+                        palette["iron"], static, scale=(1.25, 0.75, 0.70))
+        base.cube(f"WR4_OBS_armor_helmet_{side}", (x, y, 1.99), (0.25, 0.22, 0.24),
+                  palette["iron"], static, bevel=0.12)
+        base.cube(f"WR4_OBS_armor_visor_{side}", (x, y - 0.23, 1.98), (0.20, 0.025, 0.04),
+                  palette["charcoal"], static, bevel=0.012)
+        shaft_x = x - side * 0.48
+        base.cylinder(f"WR4_OBS_armor_halberd_{side}", (shaft_x, y, 1.65), 0.025, 2.75,
+                      palette["brass_dark"], static, vertices=16)
 
 
 def build_observatory_telescope(static, palette):
@@ -478,8 +539,8 @@ def build_observatory_telescope(static, palette):
 
 def build_lounge_corner(static, palette):
     """Compact club chair and side table from the canonical mock."""
-    x, y = -6.78, -0.10
-    chair_yaw = math.radians(91)
+    x, y = 6.72, -1.72
+    chair_yaw = math.radians(-83)
 
     # Classic club-chair silhouette: padded cuboids read better at game camera
     # distance than the previous bulbous sphere-based back and arms.
@@ -569,7 +630,7 @@ def build_lounge_corner(static, palette):
         obj.location.y = y + dx * math.sin(chair_yaw) + dy * math.cos(chair_yaw)
         obj.rotation_euler.z += chair_yaw
 
-    tx, ty = -6.00, 2.22
+    tx, ty = 5.72, -2.72
     base.cylinder("WR4_OBS_side_table_top", (tx, ty, 0.78), 0.55, 0.10,
                   palette["walnut"], static, vertices=48)
     base.torus("WR4_OBS_side_table_brass_edge", (tx, ty, 0.835), 0.49, 0.025,
@@ -811,10 +872,12 @@ def apply_v4_identity():
     build_curved_observatory(static, palette)
     build_celestial_window(static, palette)
     build_round_command_table(static, palette)
-    build_single_stove(static, palette)
+    build_white_fireplace(static, palette)
+    build_oculus_desk(static, palette)
+    build_library_wall(static, palette)
+    build_armor_pair(static, palette)
     build_observatory_telescope(static, palette)
     build_lounge_corner(static, palette)
-    build_celestial_globe(static, palette)
     build_tower_entry(static, palette)
     build_wall_lanterns(static, palette)
     build_lighting(static)
@@ -840,11 +903,14 @@ def validate_v4():
         "WR4_OBS_celestial_window",
         "WR4_OBS_window_crescent",
         "WR4_OBS_window_star_0",
-        "WR4_OBS_stove_body",
-        "WR4_OBS_stove_flame_body",
+        "WR4_OBS_fireplace_body",
+        "WR4_OBS_fireplace_flame_body",
+        "WR4_OBS_oculus_desk_top",
+        "WR4_OBS_library_back",
+        "WR4_OBS_armor_torso_-1",
+        "WR4_OBS_armor_torso_1",
         "WR4_OBS_telescope_tube",
         "WR4_OBS_chair_seat",
-        "WR4_OBS_globe_sphere",
         "WR4_OBS_entry_door",
         "WR4_OBS_entry_rug",
         "WR4_OBS_wall_lantern_left_glow",
@@ -904,10 +970,10 @@ def validate_runtime_glb_v4(path, expected_factors):
         "WR_ANCHOR_fireplace_practical",
         "WR_ANCHOR_chandelier_practical",
         "WR_ANCHOR_window_moonlight",
-        "WR4_OBS_stove_flame_body",
-        "WR4_OBS_stove_flame_0",
-        "WR4_OBS_stove_flame_1",
-        "WR4_OBS_stove_flame_2",
+        "WR4_OBS_fireplace_flame_body",
+        "WR4_OBS_fireplace_flame_0",
+        "WR4_OBS_fireplace_flame_1",
+        "WR4_OBS_fireplace_flame_2",
     }
     missing = sorted(required_nodes - node_names)
     if missing:
