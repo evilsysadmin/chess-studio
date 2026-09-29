@@ -24,6 +24,16 @@ import build_war_room_premium as base  # noqa: E402
 
 
 CONTRACT = "war-room-golden-observatory-v3"
+V3_WALL_RADIUS = 8.72
+V3_WALL_CENTER_Y = -0.72
+V3_WALL_START_DEG = -112.0
+V3_WALL_END_DEG = 112.0
+V3_WALL_SEGMENT_COUNT = 19
+# Snap the entry to an authored wall bay so the door plane is truly tangent to
+# the same circular shell instead of looking like a freestanding prop.
+V3_ENTRY_THETA_DEG = 70.7368421053
+V3_ENTRY_DOOR_Z = 1.90
+
 V3_WEATHER_MATERIALS = frozenset({
     "WR3_MAT_warm_travertine",
     "WR3_MAT_pale_travertine",
@@ -174,11 +184,11 @@ def build_curved_observatory(static, palette):
     base.torus("WR3_OBS_rug_inner_ring", (0, -0.05, 0.114), 5.16, 0.022,
                palette["brass"], static)
 
-    radius = 8.72
-    center_y = -0.72
-    segment_count = 15
-    start = math.radians(-88)
-    end = math.radians(88)
+    radius = V3_WALL_RADIUS
+    center_y = V3_WALL_CENTER_Y
+    segment_count = V3_WALL_SEGMENT_COUNT
+    start = math.radians(V3_WALL_START_DEG)
+    end = math.radians(V3_WALL_END_DEG)
     step = (end - start) / segment_count
     half_length = radius * step * 0.515
     joints = []
@@ -649,13 +659,20 @@ def build_wall_lanterns(static, palette):
 
 def build_tower_entry(static, palette):
     """Tower door sits on a real threshold and has a small entry rug."""
-    theta = math.radians(68)
+    theta = math.radians(V3_ENTRY_THETA_DEG)
     radial = Vector((math.sin(theta), math.cos(theta), 0.0))
     tangent = Vector((math.cos(theta), -math.sin(theta), 0.0))
-    wall = Vector((8.72 * radial.x, -0.72 + 8.72 * radial.y, 0.0))
-    center = wall - radial * 0.27
+    wall = Vector((
+        V3_WALL_RADIUS * radial.x,
+        V3_WALL_CENTER_Y + V3_WALL_RADIUS * radial.y,
+        0.0,
+    ))
+    # Seat the leaf against the inner face of the authored wall and use the exact
+    # tangent of that circular shell. This keeps the whole portal visually welded
+    # into the observatory rather than floating a few centimetres in front of it.
+    center = wall - radial * 0.205
     angle = math.atan2(tangent.y, tangent.x)
-    door_z = 1.94
+    door_z = V3_ENTRY_DOOR_Z
 
     door = base.cube(
         "WR3_OBS_entry_door", (center.x, center.y, door_z),
@@ -809,6 +826,25 @@ def validate_v3():
         raise RuntimeError(f"War Room v3 inherited v2 visual geometry: {forbidden[:12]}")
     if sum(1 for name in names if name == "WR_ANCHOR_fireplace_practical") != 1:
         raise RuntimeError("War Room v3 must contain exactly one fireplace practical")
+
+    end_rib = bpy.data.objects.get(f"WR3_OBS_apse_rib_{V3_WALL_SEGMENT_COUNT}")
+    door = bpy.data.objects.get("WR3_OBS_entry_door")
+    if end_rib is None or door is None:
+        raise RuntimeError("War Room v3 shell/entry validation objects missing")
+    if V3_WALL_END_DEG < 108 or V3_WALL_START_DEG > -108:
+        raise RuntimeError("War Room v3 side shell no longer encloses the lateral room")
+    expected_angle = math.radians(-V3_ENTRY_THETA_DEG)
+    angle_error = abs(math.atan2(
+        math.sin(door.rotation_euler.z - expected_angle),
+        math.cos(door.rotation_euler.z - expected_angle),
+    ))
+    if angle_error > math.radians(0.25):
+        raise RuntimeError(
+            f"War Room v3 entry lost wall tangent: error={math.degrees(angle_error):.3f}deg"
+        )
+    if abs(float(door.location.z) - V3_ENTRY_DOOR_Z) > 0.01:
+        raise RuntimeError(f"War Room v3 entry door floated vertically: z={door.location.z:.3f}")
+
 
 
 def validate_runtime_glb_v3(path, expected_factors):
