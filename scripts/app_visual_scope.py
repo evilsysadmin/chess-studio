@@ -423,10 +423,25 @@ def _needs_chronicles_avatar(path: str) -> bool:
     return any(token in name for token in ("three", "party", "portrait", "relic", "condition", "visual", "art"))
 
 
+HOME_MOBILE_TOOLS_FAST_PATH = {
+    "e2e/app-visual-artifact.spec.js",
+    "e2e/home-lab-visibility.spec.js",
+    "frontend/src/components/homemobilegoldenpath.css",
+    "scripts/app_visual_producer_scope.py",
+    "scripts/app_visual_scope.py",
+}
+
+def _is_home_mobile_tools_fast_path(paths: list[str]) -> bool:
+    normalized = {path.strip().replace("\\", "/").lower() for path in paths if path.strip()}
+    return normalized == HOME_MOBILE_TOOLS_FAST_PATH
+
+
 def classify(paths: list[str]) -> Scope:
     cleaned = [path.strip().replace("\\", "/") for path in paths if path.strip()]
     if not cleaned:
         return full_scope()
+    if _is_home_mobile_tools_fast_path(cleaned):
+        return Scope(("home",))
 
     groups: set[str] = set()
     experiment_parts: set[str] = set()
@@ -684,6 +699,7 @@ def self_test() -> None:
     assert classify(["frontend/src/components/HomeMatthiasStations.js"]).capture_groups == "home"
     assert classify(["e2e/matthias-home-visual-critical.spec.js"]).capture_groups == "home"
     assert classify(["e2e/home-lab-visibility.spec.js"]).capture_groups == "home"
+    assert classify(sorted(HOME_MOBILE_TOOLS_FAST_PATH)).capture_groups == "home"
     assert classify(["frontend/src/components/MatthiasAvatar.jsx"]).capture_groups == "home,warroom"
     assert classify(["frontend/src/components/MatthiasSchool.jsx"]).capture_groups == "training"
     assert classify(["frontend/src/components/OpeningsScreen.jsx"]).capture_groups == "training"
