@@ -437,6 +437,12 @@ def _is_home_mobile_tools_fast_path(paths: list[str]) -> bool:
 
 
 POSTGAME_WARROOM_FAST_PATH = {
+    "frontend/src/usepostgametrainingopportunity.test.js",
+    "frontend/src/usepostgametrainingopportunity.js",
+    "frontend/src/postgamereportmeta.js",
+    "frontend/src/nextbestaction.test.js",
+    "frontend/src/components/postgameexperience.test.jsx",
+    "e2e/helpers.js",
     "e2e/learning-golden-path.spec.js",
     "e2e/learning-second-observation.spec.js",
     "e2e/mobile-golden-path-priority.spec.js",
@@ -462,7 +468,7 @@ def _is_postgame_warroom_fast_path(paths: list[str]) -> bool:
     normalized = {path.strip().replace("\\", "/").lower() for path in paths if path.strip()}
     return (
         "frontend/src/components/postgameexperience.jsx" in normalized
-        and "frontend/src/components/warroomdebrief.css" in normalized
+        and "frontend/src/components/gamescreen.jsx" in normalized
         and normalized.issubset(POSTGAME_WARROOM_FAST_PATH)
     )
 
