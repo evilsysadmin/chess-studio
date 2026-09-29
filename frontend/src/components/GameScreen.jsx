@@ -26,6 +26,7 @@ import { getToken } from '../auth.js';
 import { createNarrativeCooldownGate, requestRemoteNarrativeDetached } from '../narrativeRemote.js';
 import { useGameClock } from '../useGameClock.js';
 import { focusPostGameTrainingOpportunity, usePostGameTrainingOpportunity } from '../usePostGameTrainingOpportunity.js';
+import { buildPostGameReportMeta } from '../postGameReportMeta.js';
 import { getBoardCoordinates, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
 import { humanHasLostPiece } from '../gameOutcome.js';
 import { checkedKingSquare } from '../boardState.js';
@@ -754,18 +755,7 @@ export default function GameScreen({
   ].filter(Boolean);
 
   const lastCpuComment = [...gameChat].reverse().find((message) => message?.by !== 'system' && message?.text)?.text || null;
-  const reportMeta = useMemo(() => ({
-    gameId: game.id,
-    initialFen: game.initialFen || null,
-    date: new Date().toISOString(),
-    outcome: finalOutcome,
-    difficulty: game.difficulty,
-    opening: memoryContext.nemesisOpening || identifyOpening((game.history || []).map((m) => m.san).filter(Boolean)),
-    timeControlId: timeControl?.id || 'none',
-    pressureMoves: pressureMovesRef.current,
-    pressureIncidents: pressureIncidentsRef.current,
-    mode: memoryContext.suddenDeath ? 'sudden' : memoryContext.nemesis ? 'nemesis-training' : memoryContext.ghost ? 'ghost' : hintMode === 'paid' ? 'tournament' : hintMode === 'free' ? 'practice' : 'casual',
-  }), [game.id, game.initialFen, game.difficulty, finalOutcome, memoryContext.nemesisOpening, memoryContext.suddenDeath, memoryContext.nemesis, memoryContext.ghost, timeControl?.id, hintMode]);
+  const reportMeta = buildPostGameReportMeta({ game, finalOutcome, memoryContext, timeControlId: timeControl?.id, hintMode, pressureMoves: pressureMovesRef.current, pressureIncidents: pressureIncidentsRef.current });
   const trainingOpportunity = usePostGameTrainingOpportunity({
     game,
     humanColor,
