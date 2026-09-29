@@ -296,3 +296,39 @@
     min-height: 44px;
   }
 }
+
+
+/* Código Rojo GP-8 (#4406): un teléfono en apaisado puede medir 844px de
+ * ancho y sólo ~390px de alto, así que queda fuera del breakpoint max-width.
+ * Compactamos por altura/orientación: el deploy avisa sin comerse HUD ni fila 8. */
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 500px) {
+  body.war-room-immersive-active .release-update-notice {
+    top: max(8px, env(safe-area-inset-top));
+    right: max(8px, env(safe-area-inset-right));
+    left: auto;
+    width: auto;
+    max-width: min(320px, calc(100vw - 16px));
+    min-height: 44px;
+    align-items: center;
+    gap: 8px;
+    padding: 0 4px 0 12px;
+    border-radius: 999px;
+  }
+
+  body.war-room-immersive-active .release-update-copy span {
+    display: none;
+  }
+
+  body.war-room-immersive-active .release-update-copy strong {
+    white-space: nowrap;
+  }
+
+  body.war-room-immersive-active .release-update-actions {
+    flex-direction: row;
+  }
+
+  body.war-room-immersive-active .release-update-actions button {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+}
