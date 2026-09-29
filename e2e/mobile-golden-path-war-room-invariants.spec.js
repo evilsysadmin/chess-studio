@@ -260,3 +260,47 @@ for (const viewport of VIEWPORTS) {
     });
   }
 }
+
+
+test('mobile golden path · release compacta en apaisado 844x390', async ({ page }, testInfo) => {
+  test.setTimeout(120_000);
+  const viewport = { width: 844, height: 390 };
+  await page.setViewportSize(viewport);
+  const releaseState = { current: APP_RELEASE };
+  const { canvas } = await startMateGame(page, {
+    profileSeed: PROFILES[1].profileSeed,
+    releaseState,
+  });
+
+  const projection = await readBoard3DProjection(canvas);
+  const hud = page.locator('.game-3d-turn-pill');
+  await expect(hud).toBeVisible();
+  const hudBox = await hud.boundingBox();
+  expect(hudBox).not.toBeNull();
+
+  releaseState.current = 'v99.99-mobile-landscape';
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  const release = page.getByRole('status').filter({ hasText: 'Nueva versión disponible' });
+  await expect(release).toBeVisible({ timeout: 5_000 });
+
+  await page.screenshot({
+    path: testInfo.outputPath('release-returning-844x390.png'),
+    fullPage: false,
+    animations: 'disabled',
+    caret: 'hide',
+  });
+
+  const releaseBox = await release.boundingBox();
+  expect(releaseBox).not.toBeNull();
+  expect(releaseBox.x).toBeGreaterThanOrEqual(0);
+  expect(releaseBox.y).toBeGreaterThanOrEqual(0);
+  expect(releaseBox.x + releaseBox.width).toBeLessThanOrEqual(viewport.width + .5);
+  expect(releaseBox.y + releaseBox.height).toBeLessThanOrEqual(viewport.height + .5);
+  expect(releaseBox.height, 'release must stay pill-sized in short landscape').toBeLessThanOrEqual(56);
+  expect(intersects(releaseBox, hudBox), 'release must not cover HUD').toBe(false);
+  expect(intersects(releaseBox, projection.board), 'release must not cover rendered board').toBe(false);
+
+  const copy = release.locator('.release-update-copy');
+  const clipped = await copy.evaluate((node) => node.scrollWidth > node.clientWidth + 1 || node.scrollHeight > node.clientHeight + 1);
+  expect(clipped, 'release copy must not clip').toBe(false);
+});
