@@ -5,14 +5,14 @@ export const MATTHIAS_3D_OPENING_BANTER_CHANCE = 0.4;
 const MAX_SEEN_GAME_IDS = 32;
 
 export const MATTHIAS_3D_OPENING_LINES = Object.freeze([
-  'Willkommen. Disponte a ser destruido.',
-  'Achtung. He reservado esta sala para tu derrota.',
-  'Sehr gut. Has venido voluntariamente. Eso simplifica el papeleo.',
-  'Adelante. Tu rey todavía no sabe lo mal que va a terminar esto.',
-  'Ordnung. Coloca tus piezas; yo me encargo del desastre.',
-  'Guten Abend. Intentaré que tu derrota conserve cierta dignidad.',
-  'Bitte. Mueve. La artillería intelectual ya está cargada.',
-  'Bienvenido a mi sala de guerra. Procura no romper nada al perder.',
+  'Willkommen. Dispóngase a ser destruido.',
+  'Achtung. He reservado esta sala para su derrota.',
+  'Sehr gut. Ha venido usted voluntariamente. Eso simplifica el papeleo.',
+  'Adelante. Su rey todavía no sabe lo mal que va a terminar esto.',
+  'Ordnung. Coloque sus piezas; yo me encargo del desastre.',
+  'Guten Abend. Intentaré que su derrota conserve cierta dignidad.',
+  'Bitte. Mueva. La artillería intelectual ya está cargada.',
+  'Bienvenido a mi sala de guerra. Procure no romper nada al perder.',
 ]);
 
 const EMPTY_STATE = Object.freeze({
