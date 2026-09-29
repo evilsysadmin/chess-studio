@@ -25,7 +25,7 @@ import { buildBoard3DTileInstances, squareFromBoard3DIntersection } from './Boar
 import { planBoard3DPieceReconciliation } from './Board3DPieceReconciliation.js';
 import { addCoarsePieceHitTarget, applyMatthiasCheckPose, buildPiece, disposeObject } from './Board3DPieces.js';
 import { fitBoardCamera, makeTextSprite } from './Board3DScene.js';
-import { resolveStableBoardViewport } from './Board3DViewportSize.js';
+import { resolveStableBoardViewportForHost } from './Board3DViewportSize.js';
 import {
   board3DForensicGhost,
   board3DTechniqueTargetCount,
@@ -437,13 +437,7 @@ function Board3DCanvas({
     }
 
     function resize() {
-      const viewport = resolveStableBoardViewport({
-        hostWidth: host.clientWidth,
-        hostHeight: host.clientHeight,
-        immersive,
-        viewportWidth: window.innerWidth,
-        viewportHeight: window.innerHeight,
-      });
+      const viewport = resolveStableBoardViewportForHost(host, { immersive, viewport: window });
       renderer.setSize(viewport.width, viewport.height, false);
       fitBoardCamera(camera, viewport.width, viewport.height, whiteSide, { profile: cameraProfile === 'classroom' || (latestPropsRef.current.warRoomVariant || 'classic') !== 'classic' ? cameraProfile : 'classic', immersive });
       render();
@@ -730,13 +724,7 @@ function Board3DCanvas({
   useEffect(() => {
     const state = sceneStateRef.current, host = hostRef.current;
     if (!state || !host) return;
-    const viewport = resolveStableBoardViewport({
-      hostWidth: host.clientWidth,
-      hostHeight: host.clientHeight,
-      immersive,
-      viewportWidth: window.innerWidth,
-      viewportHeight: window.innerHeight,
-    });
+    const viewport = resolveStableBoardViewportForHost(host, { immersive, viewport: window });
     fitBoardCamera(state.camera, viewport.width, viewport.height, state.whiteSide, { profile: cameraProfile === 'classroom' || warRoomVariant !== 'classic' ? cameraProfile : 'classic', immersive });
     state.render();
   }, [warRoomVariant, cameraProfile, immersive]);
