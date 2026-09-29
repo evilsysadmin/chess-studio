@@ -5,7 +5,7 @@ import {
 } from './WarRoomMobileFraming.js';
 
 describe('War Room mobile framing', () => {
-  it('mantiene el teléfono vertical con sala visible y tablero táctil', () => {
+  it('prioriza el tablero táctil en teléfono vertical', () => {
     const phone = getWarRoomMobileFramingProfile({
       aspect: 1.16,
       coarsePointer: true,
@@ -13,13 +13,14 @@ describe('War Room mobile framing', () => {
     });
 
     expect(phone?.version).toBe(WAR_ROOM_MOBILE_FRAMING_VERSION);
-    expect(phone?.mode).toBe('portrait-room-balanced');
+    expect(phone?.mode).toBe('portrait-board-first');
     expect(phone.halfSpan).toBeGreaterThanOrEqual(5.35);
     expect(phone.padding).toBeLessThanOrEqual(1.05);
     expect(phone.minDistance).toBeGreaterThan(16);
     expect(phone.maxDistance).toBeGreaterThan(21);
     expect(phone.targetZ).toBeGreaterThan(0.6);
-    expect(phone.targetY).toBeGreaterThan(0.9);
+    expect(phone.targetY).toBeLessThanOrEqual(-2.1);
+    expect(phone.cameraY / phone.cameraZ).toBeGreaterThanOrEqual(3);
   });
 
   it('mantiene el preset vertical aunque el shell sea ligeramente apaisado', () => {
@@ -30,9 +31,10 @@ describe('War Room mobile framing', () => {
     });
 
     expect(screenshotLikePhone?.version).toBe(WAR_ROOM_MOBILE_FRAMING_VERSION);
-    expect(screenshotLikePhone?.mode).toBe('portrait-room-balanced');
+    expect(screenshotLikePhone?.mode).toBe('portrait-board-first');
     expect(screenshotLikePhone.halfSpan).toBe(5.4);
     expect(screenshotLikePhone.targetZ).toBe(0.65);
+    expect(screenshotLikePhone.targetY).toBe(-2.2);
   });
 
   it('hace el landscape de teléfono más cenital, cercano y centrado en el tablero', () => {
@@ -63,7 +65,7 @@ describe('War Room mobile framing', () => {
 
     expect(phone.halfSpan).toBeGreaterThan(tabletPortrait.halfSpan);
     expect(phone.targetZ).toBeGreaterThan(tabletPortrait.targetZ);
-    expect(phone.cameraZ).toBeGreaterThan(tabletPortrait.cameraZ);
+    expect(phone.cameraY / phone.cameraZ).toBeGreaterThan(tabletPortrait.cameraY / tabletPortrait.cameraZ);
     expect(phone.maxDistance).toBeGreaterThan(tabletPortrait.maxDistance);
   });
   it('iguala el picado landscape móvil con la cámara wide canónica de V1', () => {
