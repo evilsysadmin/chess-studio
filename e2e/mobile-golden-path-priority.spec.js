@@ -112,3 +112,66 @@ test.describe('Mobile golden path · Partida rápida cabe en alto útil real', (
     });
   }
 });
+
+// GP-4 (#4405): en la Home móvil el aviso de Matthias no tapa navegación ni la
+// barra fija de «Jugar 1 vs 1», y su texto no queda cortado.
+test.describe('Mobile golden path · Home no se pelea con el aviso de Matthias', () => {
+  test.use({ isMobile: true, hasTouch: true });
+
+  for (const viewport of [
+    { width: 390, height: 844 },
+    { width: 412, height: 690 },
+    { width: 360, height: 640 },
+  ]) {
+    test(`aviso de Matthias fuera de la navegación en ${viewport.width}x${viewport.height}`, async ({ page }) => {
+      await page.addInitScript(() => { Math.random = () => 0; });
+      await page.setViewportSize(viewport);
+      await mockApi(page, {
+        profileSeed: {
+          'matthias.onboarded': '2',
+          'chess-study-home-guide-dismissed-v1': '1',
+        },
+      });
+      await login(page);
+
+      const home = page.getByRole('region', { name: 'Modos principales' });
+      await expect(home).toBeVisible();
+      const speech = home.getByRole('region', { name: 'Mensaje de Matthias', exact: true });
+      await expect(speech).toBeVisible({ timeout: 10_000 });
+
+      const speechBox = await speech.boundingBox();
+      expect(speechBox.y, 'speech inside viewport (top)').toBeGreaterThanOrEqual(0);
+      expect(speechBox.y + speechBox.height, 'speech inside viewport (bottom)').toBeLessThanOrEqual(viewport.height);
+      const clipped = await speech.locator('p').evaluate((node) => node.scrollHeight > node.clientHeight + 1);
+      expect(clipped, 'speech text not clipped').toBe(false);
+
+      const targets = await page.evaluate(() => {
+        const speechNode = document.querySelector('[aria-label="Mensaje de Matthias"]');
+        const nodes = [...document.querySelectorAll('button, a, .home-pvp-roster-link')]
+          .filter((node) => !speechNode.contains(node));
+        return nodes.map((node) => {
+          const box = node.getBoundingClientRect();
+          return { label: (node.innerText || node.getAttribute('aria-label') || node.className || '').toString().trim().slice(0, 40), x: box.x, y: box.y, width: box.width, height: box.height };
+        }).filter((box) => box.width > 0 && box.height > 0 && box.y < innerHeight && box.y + box.height > 0);
+      });
+      const bar = page.locator('.home-pvp-roster-link');
+      if (await bar.isVisible().catch(() => false)) {
+        const barBox = await bar.boundingBox();
+        for (const target of targets.filter((row) => !row.label.includes('home-pvp-roster-link') && !row.label.includes('Jugar 1 vs 1'))) {
+          const hidden = barBox.x < target.x + target.width
+            && barBox.x + barBox.width > target.x
+            && barBox.y < target.y + target.height
+            && barBox.y + barBox.height > target.y;
+          expect(hidden, `«${target.label}» must not hide under the fixed 1 vs 1 bar`).toBe(false);
+        }
+      }
+      for (const target of targets) {
+        const overlaps = speechBox.x < target.x + target.width
+          && speechBox.x + speechBox.width > target.x
+          && speechBox.y < target.y + target.height
+          && speechBox.y + speechBox.height > target.y;
+        expect(overlaps, `Matthias speech must not cover «${target.label}»`).toBe(false);
+      }
+    });
+  }
+});
