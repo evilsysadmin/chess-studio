@@ -1,4 +1,7 @@
-export function nextBestAction({ outcome, moveCount = 0, hasReport = false, canPlayAgain = false, adaptive = false } = {}) {
+export function nextBestAction({ outcome, moveCount = 0, hasReport = false, canTrainCurrentError = false, canPlayAgain = false, adaptive = false } = {}) {
+  if (canTrainCurrentError) {
+    return { id: 'train-error', eyebrow: 'Siguiente paso', title: 'Corrige el error', detail: 'Vuelve a la posición real y encuentra la jugada que se te escapó.', label: 'Entrenar este error' };
+  }
   if (outcome === 'loss' && hasReport && moveCount >= 8) {
     return { id: 'review', eyebrow: 'Siguiente paso', title: 'Revisa el momento decisivo', detail: 'Encuentra la jugada que cambió la partida antes de volver a intentarlo.', label: 'Revisar partida' };
   }
