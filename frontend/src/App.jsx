@@ -34,7 +34,7 @@ import { timeControlById } from './clock.js';
 import { clearClockSnapshot } from './clockPersistence.js';
 import { scheduleAchievementCheck } from './achievementBootstrap.js';
 const AdminScreen = React.lazy(() => import('./components/AdminScreen.jsx'));
-import GlobalMusicDock from './components/GlobalMusicDock.jsx';
+const GlobalMusicDock = React.lazy(() => import('./components/GlobalMusicDock.jsx'));
 import { quickMatchRematchHandler, quickMatchRematchPlan } from './quickMatchRematch.js';
 import SaveStatusBadge from './components/SaveStatusBadge.jsx';
 import ReleaseUpdateNotice from './components/ReleaseUpdateNotice.jsx';
@@ -767,7 +767,11 @@ function AppInner({ isAdminUser }) {
   return (
     <>
       <a className="skip-link" href="#main-content">Saltar al contenido</a>
-      {!isBoardGameView && <GlobalMusicDock isAdminUser={isAdminUser} onAdmin={() => navigateTo('admin')} />}
+      {!isBoardGameView && (
+        <React.Suspense fallback={null}>
+          <GlobalMusicDock isAdminUser={isAdminUser} onAdmin={() => navigateTo('admin')} />
+        </React.Suspense>
+      )}
       <ReleaseUpdateNotice deferReload={isBoardGameView} />
       <ErrorBoundary
         view={view}
