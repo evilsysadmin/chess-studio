@@ -189,11 +189,17 @@
   }
 
   .app-shell-board-game:has(.game-layout-3d) .save-status-badge {
+    position: static;
+    inset: auto;
+    flex: 0 0 auto;
+    max-width: min(104px, calc(100vw - 100px));
     min-height: 28px;
     margin-right: auto;
     padding: .3rem .54rem;
+    transform: none;
     font-size: .58rem;
     line-height: 1;
+    pointer-events: none;
   }
 
   /* Overflow remains the complete action surface for discoverability and for
