@@ -50,6 +50,7 @@ Lección operativa: no resolver falsos positivos de CI debilitando el gate a cie
 | Workflow | Responsabilidad |
 | --- | --- |
 | `cicd.yml` | Gate principal quality-only para PR. Preflight y luego frontend/backend/security/E2E según superficie. Las lanes Playwright core + War Room/Matthias son bloqueantes bajo un único `Tests · Playwright` y consumen un build compartido. No despliega. |
+| `pr-track-label.yml` | GP-0 (#34): toda PR lleva etiqueta de pista (`ux-mobile`/`ux-desktop`/`ux-claude`/`track-*`) o falla `Contracts · PR track label`. Se re-evalúa en `labeled`/`unlabeled` sin relanzar el CI completo; sparse checkout de un único script. Debe figurar como required check de `main`. |
 | `main-admission.yml` | Clasifica el HEAD de `main`. Si procede de PR, reutiliza la acreditación Quality inmutable y hace preflight barato; si es un commit directo excepcional, ejecuta tests, security, Playwright, imágenes Docker y compose smoke sobre el SHA exacto. Sólo un run verde habilita staging. |
 | `menu-ux-audit.yml` | Auditoría visual manual/efímera de menús y superficies intermedias. Captura desktop+móvil y emite PNG/JSON de densidad, overflow y targets; no es gate requerido ni corre en cada PR. |
 | `staging-deploy.yml` | Despliega una generación coherente del mismo SHA: backend exacto en **OCI staging**, frontend en Cloudflare Pages y AI en Cloudflare Worker; después exige paridad de generación y browser smoke. No consulta Render staging para desplegar el backend. |

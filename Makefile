@@ -392,6 +392,7 @@ architecture-debt-check:
 workflow-debt-check:
 	python3 scripts/workflow_debt_gate.py --self-test
 	python3 scripts/workflow_debt_gate.py
+	python3 -S scripts/pr_track_label_check.py --self-test
 
 grafana-check:
 	$(PYTHON) scripts/grafana_dashboard_check.py
