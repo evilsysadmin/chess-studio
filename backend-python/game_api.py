@@ -17,7 +17,8 @@ import game_store as store
 from api_models import AnalyzeMoveRequest, AnalyzeRequest, MoveRequest, NewGameRequest
 from chess_ai import get_cpu_move, move_to_dict
 from cpu_difficulty import get_factual_difficulty_cpu_move
-from engine_runtime import EngineBackpressureError, run_engine_work, run_optional_engine_work
+from engine_api import run_optional_analysis
+from engine_runtime import run_engine_work
 from hint_analysis_service import build_hint_payload
 from move_analysis_service import analyze_move_payload, deterministic_analyze_move
 from root_candidate_service import factual_candidate_payloads_for_level
@@ -35,17 +36,6 @@ from operation_idempotency import (
 
 HINT_STRENGTH = 95
 logger = logging.getLogger("chess.game")
-
-
-async def run_optional_analysis(function, *args, **kwargs):
-    try:
-        return await run_optional_engine_work(function, *args, **kwargs)
-    except EngineBackpressureError as exc:
-        raise HTTPException(
-            status_code=503,
-            detail="Análisis temporalmente ocupado. Reintenta en un instante.",
-            headers={"Retry-After": "1"},
-        ) from exc
 
 
 def is_valid_difficulty(value) -> bool:
