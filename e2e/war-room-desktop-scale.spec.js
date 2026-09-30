@@ -102,7 +102,10 @@ for (const viewport of [{ width: 1024, height: 768 }, { width: 1440, height: 900
     const saved = page.locator('.save-status-badge');
     await expect(saved).toContainText('Guardado');
     await page.waitForTimeout(2_000);
-    const badge = await saved.boundingBox();
+    // A 1440×900 la escena 3D con GL por software satura el renderer en CI y un
+    // boundingBox puede tardar más de 12 s aunque el nodo ya esté en el árbol.
+    const MEASURE = { timeout: 45_000 };
+    const badge = await saved.boundingBox(MEASURE);
     expect(badge, 'Guardado sigue en el árbol').not.toBeNull();
     for (const [label, locator] of [
       ['turno', page.locator('.game-3d-command-column .game-3d-turn-pill')],
@@ -111,7 +114,7 @@ for (const viewport of [{ width: 1024, height: 768 }, { width: 1440, height: 900
       ['cuenta', page.locator('.masthead-account-trigger')],
     ]) {
       if (label !== 'cuenta') await expect(locator, label).toBeVisible();
-      const box = await locator.boundingBox();
+      const box = (await locator.count()) ? await locator.boundingBox(MEASURE) : null;
       // Entre 821 y 1080 px la cuenta se pliega fuera del HUD flotante.
       if (!box || box.width < 1 || box.height < 1) continue;
       const overlapX = Math.min(badge.x + badge.width, box.x + box.width) - Math.max(badge.x, box.x);
