@@ -172,6 +172,36 @@ def test_signed_staging_browser_probe_is_trusted_without_polluting_guards(monkey
     assert http_event["synthetic_source"] == "staging-browser-smoke"
 
 
+def test_signed_staging_capacity_gets_identity_rate_limit_bucket(monkeypatch):
+    import main as main_module
+
+    username = "ci_smoke_a1b2c3d4e5f60718"
+    secret = "staging-synthetic-test-secret"
+    monkeypatch.setattr(main_module, "ENVIRONMENT", "staging")
+    monkeypatch.setattr(main_module, "_STAGING_SYNTHETIC_SECRET", secret)
+
+    headers = _signed_staging_smoke_headers(
+        username,
+        secret,
+        source="staging-capacity",
+    )
+    scope = {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/auth/register",
+        "query_string": b"",
+        "headers": [
+            (key.lower().encode("latin-1"), value.encode("latin-1"))
+            for key, value in headers.items()
+        ],
+    }
+    request = main_module.Request(scope)
+    trusted = main_module._trusted_staging_smoke_request(request)
+    assert trusted == ("staging-capacity", username)
+    request.state.synthetic_source, request.state.synthetic_identity = trusted
+    assert main_module.rate_limit_key(request) == f"synthetic:{username}"
+
+
 def test_forged_staging_janitor_marker_cannot_hide_failed_login(monkeypatch):
     import main as main_module
 
