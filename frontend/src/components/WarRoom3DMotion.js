@@ -567,7 +567,26 @@ function installWarRoomRenderDiscipline() {
 
 installWarRoomRenderDiscipline();
 
-export function reactiveLightProfile({ check = false, gameOver = false, coarsePointer = false } = {}) {
+// The v4 golden is a warm, luminous observatory. This is the lighting path the
+// runtime actually applies (initial scene, move animation and check/game-over
+// changes), so the v4 lift lives here: more exposure and warm fill, while the
+// special-state deltas and the key that carries piece readability are unchanged.
+export const WAR_ROOM_V4_LIGHT_LIFT = Object.freeze({
+  exposure: Object.freeze({ desktop: 0.24, touch: 0.16 }),
+  warm: 1.35,
+});
+
+export function reactiveLightProfile({ check = false, gameOver = false, coarsePointer = false, variant = 'classic' } = {}) {
+  const shared = sharedReactiveLightProfile({ check, gameOver, coarsePointer });
+  if (variant !== 'v4') return shared;
+  return {
+    ...shared,
+    warm: shared.warm * WAR_ROOM_V4_LIGHT_LIFT.warm,
+    exposure: shared.exposure + WAR_ROOM_V4_LIGHT_LIFT.exposure[coarsePointer ? 'touch' : 'desktop'],
+  };
+}
+
+function sharedReactiveLightProfile({ check = false, gameOver = false, coarsePointer = false } = {}) {
   // The room now carries more of the warm luminous grade globally. Keep the
   // special-state changes readable without letting them drag the whole room back
   // into the old dim blue-grey presentation.

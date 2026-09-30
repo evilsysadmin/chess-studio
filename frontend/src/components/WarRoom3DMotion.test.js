@@ -221,6 +221,23 @@ describe('WarRoom3DMotion', () => {
     expect(terminal.fogDensity).toBeGreaterThan(normal.fogDensity);
   });
 
+  it('lifts only the v4 room: warmer fill and exposure, same key and special-state deltas', () => {
+    for (const coarsePointer of [false, true]) {
+      for (const state of [{}, { check: true }, { gameOver: true }]) {
+        const shared = reactiveLightProfile({ ...state, coarsePointer });
+        const v4 = reactiveLightProfile({ ...state, coarsePointer, variant: 'v4' });
+        expect(v4.key).toBe(shared.key);
+        expect(v4.rim).toBe(shared.rim);
+        expect(v4.fogDensity).toBe(shared.fogDensity);
+        expect(v4.warm).toBeCloseTo(shared.warm * 1.35);
+        expect(v4.exposure).toBeCloseTo(shared.exposure + (coarsePointer ? 0.16 : 0.24));
+        for (const variant of ['classic', 'v2', 'v3', 'v4-loading']) {
+          expect(reactiveLightProfile({ ...state, coarsePointer, variant })).toEqual(shared);
+        }
+      }
+    }
+  });
+
   it('keeps coarse-pointer lighting readable without adopting the brighter desktop exposure', () => {
     const desktop = reactiveLightProfile();
     const mobile = reactiveLightProfile({ coarsePointer: true });
