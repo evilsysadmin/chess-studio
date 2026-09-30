@@ -123,6 +123,7 @@ test.describe('Mobile golden path · Home no se pelea con el aviso de Matthias',
     { width: 390, height: 844 },
     { width: 412, height: 690 },
     { width: 360, height: 640 },
+    { width: 430, height: 932 },
   ]) {
     test(`aviso de Matthias fuera de la navegación en ${viewport.width}x${viewport.height}`, async ({ page }) => {
       await page.addInitScript(() => { Math.random = () => 0; });
@@ -185,8 +186,10 @@ test.describe('Mobile golden path · postpartida con una decisión y revancha en
   for (const viewport of [
     { width: 390, height: 844 },
     { width: 412, height: 690 },
+    { width: 360, height: 640 },
+    { width: 430, height: 932 },
   ]) {
-    test(`revancha en un toque en ${viewport.width}x${viewport.height}`, async ({ page }) => {
+    test(`revancha en un toque en ${viewport.width}x${viewport.height}`, async ({ page }, testInfo) => {
       await page.setViewportSize(viewport);
       const requestLog = [];
       await mockApi(page, {
@@ -215,6 +218,7 @@ test.describe('Mobile golden path · postpartida con una decisión y revancha en
       const box = await primary.boundingBox();
       expect(box.y + box.height, 'primary CTA without scrolling').toBeLessThanOrEqual(viewport.height);
       expect(box.height).toBeGreaterThanOrEqual(44);
+      await page.screenshot({ path: testInfo.outputPath(`after-postgame-${viewport.width}x${viewport.height}.png`) });
 
       const createsBefore = requestLog.filter((row) => row.method === 'POST' && /\/games\/?$/.test(row.path)).length;
       await primary.click();
@@ -298,6 +302,7 @@ test.describe('Mobile golden path · entrenar el error con el tablero mandando',
     kind: 'personal',
     source: 'autopsy',
     description: 'Caso real de horquilla.',
+    played: 'Rb1',
     fen: '6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1',
     solution: ['Ra8#'],
     incidentKeys: ['cpu:KNIGHT_FORK'],
@@ -313,8 +318,10 @@ test.describe('Mobile golden path · entrenar el error con el tablero mandando',
   for (const viewport of [
     { width: 390, height: 844 },
     { width: 412, height: 690 },
+    { width: 360, height: 640 },
+    { width: 430, height: 932 },
   ]) {
-    test(`tablero del entrenamiento sobre el pliegue en ${viewport.width}x${viewport.height}`, async ({ page }) => {
+    test(`tablero del entrenamiento sobre el pliegue en ${viewport.width}x${viewport.height}`, async ({ page }, testInfo) => {
       test.setTimeout(90_000);
       await page.setViewportSize(viewport);
       await mockApi(page, {
@@ -346,6 +353,16 @@ test.describe('Mobile golden path · entrenar el error con el tablero mandando',
       expect(board.y + board.height, 'board inside canvas (bottom)').toBeLessThanOrEqual(rect.y + rect.height + 1);
       expect(board.y + board.height, 'whole board above the fold').toBeLessThanOrEqual(viewport.height);
       await expect(page.locator('.navigation-back-hint')).toBeHidden();
+      // El título queda bajo el tablero en móvil: el objetivo va con el turno,
+      // encima del canvas, y saltar el puzzle no es el CTA principal.
+      const turn = page.locator('.puzzle-screen .puzzle-board-column > .status-line');
+      await expect(turn).toContainText('Tu turno · Jugaste Rb1: busca algo mejor');
+      const turnBox = await turn.boundingBox();
+      expect(turnBox.x, 'objective inside viewport (left)').toBeGreaterThanOrEqual(0);
+      expect(turnBox.x + turnBox.width, 'objective inside viewport (right)').toBeLessThanOrEqual(viewport.width + 1);
+      expect(turnBox.y + turnBox.height, 'objective above the board').toBeLessThanOrEqual(rect.y + 1);
+      await expect(page.getByRole('button', { name: 'Siguiente puzzle', exact: true })).not.toHaveClass(/primary-btn/);
+      await page.screenshot({ path: testInfo.outputPath(`after-training-${viewport.width}x${viewport.height}.png`) });
     });
   }
 });
