@@ -27,6 +27,10 @@
 
 .insights-recurring-errors-heading > strong {
   flex: 0 0 auto;
+  /* En móvil el heading usa align-items: stretch; la pastilla no debe
+     estirarse hasta un óvalo del alto del texto (GP-7). */
+  align-self: flex-start;
+  white-space: nowrap;
   padding: .26rem .48rem;
   border: 1px solid rgba(198,164,93,.24);
   border-radius: 999px;

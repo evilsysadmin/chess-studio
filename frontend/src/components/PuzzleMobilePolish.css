@@ -10,6 +10,14 @@
     gap: .6rem;
   }
 
+  /* GP-7 (#34): el tablero manda. Sin márgenes heredados entre volver,
+     selector y turno, el tablero del entrenamiento entra sobre el pliegue en
+     un móvil con barra de navegador (~690 px útiles). */
+  .tutorial-shell.puzzle-screen > :is(.back-link, .puzzle-source-picker, .status-line),
+  .tutorial-shell.puzzle-screen .puzzle-training-workspace .status-line {
+    margin-block: 0;
+  }
+
   .puzzle-screen > .back-link {
     min-height: 44px;
     display: inline-flex;

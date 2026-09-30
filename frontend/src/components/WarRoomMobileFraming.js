@@ -42,6 +42,11 @@ export function getWarRoomMobileFramingProfile({
   if (!phonePortrait) return null;
 
   const phone = safeWidth <= 520;
+  // En canvas altos (War Room inmersiva, aspect ~0.45) bajamos el tablero para
+  // dejar arriba la sala de Matthias; en canvas casi cuadrados (entrenamiento,
+  // aspect ~1) ese desplazamiento sacaba las filas 1-2 del canvas: centramos.
+  const tallness = Math.min(1, Math.max(0, (0.95 - safeAspect) / 0.35));
+  const targetZ = 0.2 + 2.4 * tallness;
   return Object.freeze({
     version: WAR_ROOM_MOBILE_FRAMING_VERSION,
     mode: 'portrait-board-first',
@@ -51,15 +56,15 @@ export function getWarRoomMobileFramingProfile({
     // es estrecho, así que el ajuste lo limita el ancho: halfSpan 4.5 cubre las
     // casillas (±4) y un poco del marco, y maxDistance NO puede topar la
     // distancia (con 22.4 la v6 hacía zoom y cortaba las columnas a y h).
-    // El picado es casi cenital; targetZ baja el tablero en pantalla para que
-    // la franja superior la ocupe la sala de Matthias (y su bocadillo) y no
-    // quede vacío negro bajo el tablero.
+    // El picado es casi cenital; en canvas altos targetZ baja el tablero para
+    // que la franja superior la ocupe la sala de Matthias (y su bocadillo) y no
+    // quede vacío negro bajo el tablero (ver `tallness`).
     halfSpan: 4.5,
     padding: 1.0,
     minDistance: phone ? 16.2 : 15.6,
     maxDistance: 60,
     targetY: -0.6,
-    targetZ: 2.6,
+    targetZ: Number(targetZ.toFixed(3)),
     cameraY: phone ? 9.6 : 9.3,
     cameraZ: phone ? 3.2 : 3.4,
   });
