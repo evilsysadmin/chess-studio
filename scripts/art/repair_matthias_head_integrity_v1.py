@@ -181,9 +181,14 @@ def fill_cut(target: np.ndarray, donors: list[tuple[int, np.ndarray]]) -> tuple[
         dop = don[..., 3] > ALPHA_MIN
         d0, _ = band(dop, ALIGN_BAND)
         base_dy = a0 - d0
+        # Zero-padded donor: slicing it is equivalent to shifted(dop, dy, dx)[a0:a1, :cutx + 1]
+        # but only touches the alignment band.
+        pad = CELL
+        padded = np.zeros((CELL + 2 * pad, CELL + 2 * pad), dtype=bool)
+        padded[pad:pad + CELL, pad:pad + CELL] = dop
         for dy in range(base_dy - SEARCH, base_dy + SEARCH + 1):
             for dx in range(-SEARCH, SEARCH + 1):
-                dm = shifted(dop, dy, dx)[a0:a1, :cutx + 1]
+                dm = padded[pad + a0 - dy:pad + a1 - dy, pad - dx:pad + cutx + 1 - dx]
                 union = int((dm | tmask).sum())
                 iou = int((dm & tmask).sum()) / max(1, union)
                 if best is None or iou > best[0]:
