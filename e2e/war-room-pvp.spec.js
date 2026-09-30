@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { buttonWithVisibleText, login, mockApi } from './helpers.js';
+import { readBoard3DProjection } from './board3d-projection.js';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
@@ -24,6 +25,80 @@ function matchPayload(overrides = {}) {
     ...overrides,
   };
 }
+
+test('War Room 1v1 · un 409 por carrera de turno sincroniza sin flash de error', async ({ page }) => {
+  test.setTimeout(90_000);
+  await mockApi(page);
+
+  await page.route('**/api/pvp/lobby', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({
+      roster: [
+        { username: 'e2e', rating: 1050, tier: 'Intermedio', isSelf: true },
+        { username: 'bob', rating: 1210, tier: 'Intermedio', isSelf: false },
+      ],
+      challenges: [{
+        id: 'challenge-race-1',
+        challenger: 'bob',
+        opponent: 'e2e',
+        challengerRating: 1210,
+        opponentRating: 1050,
+        status: 'pending',
+        direction: 'incoming',
+      }],
+      activeMatch: null,
+      pollAfterMs: 3000,
+    }),
+  }));
+
+  let liveMatch = matchPayload();
+  let moveAttempts = 0;
+  await page.route('**/api/pvp/challenges/challenge-race-1/accept', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ match: liveMatch }),
+  }));
+  await page.route('**/api/pvp/matches/pvp-e2e-1', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ match: liveMatch, pollAfterMs: 1250 }),
+  }));
+  await page.route('**/api/pvp/matches/pvp-e2e-1/move', async (route) => {
+    moveAttempts += 1;
+    liveMatch = matchPayload({
+      turn: 'b',
+      yourTurn: false,
+      revision: 1,
+      fen: 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1',
+      history: [{ ply: 1, uci: 'e2e4', san: 'e4', by: 'bob' }],
+      clock: { id: '10+0', whiteMs: 599500, blackMs: 600000, incrementMs: 0, runningColor: 'b' },
+    });
+    await route.fulfill({
+      status: 409,
+      contentType: 'application/json',
+      body: JSON.stringify({ detail: 'No es tu turno.' }),
+    });
+  });
+
+  await login(page);
+  await buttonWithVisibleText(page, 'Partida rápida').click();
+  await page.getByRole('button', { name: /Jugar contra una persona/ }).click();
+  const lobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room' });
+  await lobby.getByRole('button', { name: 'Aceptar', exact: true }).click();
+
+  const warRoom = page.getByRole('region', { name: 'Sala de duelo 1 contra 1' });
+  const board = page.locator('[data-board3d-war-room="true"]');
+  const canvas = board.locator('.board3d-main-canvas');
+  await expect(canvas).toBeVisible({ timeout: 45_000 });
+  const projection = await readBoard3DProjection(canvas);
+  await canvas.click(projection.square('e2'));
+  await canvas.click(projection.square('e4'));
+
+  await expect.poll(() => moveAttempts).toBe(1);
+  await expect(warRoom.getByText('bob juega', { exact: true })).toBeVisible({ timeout: 5_000 });
+  await expect(warRoom.getByRole('alert')).toHaveCount(0);
+});
 
 test('War Room 1v1 · reto entrante abre una partida humana en el tablero canónico', async ({ page }) => {
   test.setTimeout(90_000);
