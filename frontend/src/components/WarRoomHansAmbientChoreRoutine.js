@@ -41,7 +41,7 @@ import {
   warRoomHansTargetCandidatesNearObject,
 } from './WarRoomHansServiceRoute.js';
 
-export const WAR_ROOM_HANS_AMBIENT_CHORE_ROUTINE_VERSION = 'hans-ambient-chore-v10-reachable-desk-flank';
+export const WAR_ROOM_HANS_AMBIENT_CHORE_ROUTINE_VERSION = 'hans-ambient-chore-v11-retry-transient-setup';
 
 const FLOOR_NAME = 'war-room-castle-floor-slab';
 const CHORE_EVENTS = new Set(WAR_ROOM_HANS_CHORE_EVENTS);
@@ -274,13 +274,18 @@ export function installWarRoomHansAmbientChoreRoutine(root) {
         source: 'WarRoomHansAmbientChoreRoutine',
         payload: { eventName },
       })) return;
-      const abortSetupForCurrentGame = () => {
-        if (releaseWarRoomHansTask(runtime, taskId)) completedGameId = gameId;
+      const deferSetupForCurrentGame = () => {
+        releaseWarRoomHansTask(runtime, taskId);
+        // Scene furniture is installed by deferred finalizers. A missing target
+        // or temporarily unsafe route means "not ready yet", not "completed".
+        // Re-arm the normal ambient delay instead of permanently suppressing
+        // this event for the current game.
+        eligibleSince = now;
       };
       const service = warRoomHansServiceHome(root, actor.hans.parent);
       targetObject = firstNamed(root, chore.targetNames);
       if (!service?.point || !targetObject) {
-        abortSetupForCurrentGame();
+        deferSetupForCurrentGame();
         return;
       }
       home = service.point;
@@ -300,7 +305,7 @@ export function installWarRoomHansAmbientChoreRoutine(root) {
         break;
       }
       if (!target || !routeIn.length || !routeOut.length) {
-        abortSetupForCurrentGame();
+        deferSetupForCurrentGame();
         return;
       }
       prop = ensureProp(actor, chore.prop);
