@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   backup:
-    name: Backup production Mongo to OCI A1 disk
+    name: Backup production Mongo local + off-host
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     env:
@@ -39,7 +39,7 @@ jobs:
       - name: Refresh production runtime from OCI Vault
         run: python3 scripts/oci_production_runtime.py sync-current
 
-      - name: Create and rotate production Mongo backup
+      - name: Create, upload and rotate production Mongo backup
         run: python3 scripts/oci_production_mongo_backup.py backup
 
       - name: Summary
@@ -47,8 +47,9 @@ jobs:
         run: |
           {
             echo '### Production Mongo backup'
-            echo '- Target: OCI A1 local block storage'
+            echo '- Targets: OCI A1 local block storage + private OCI Object Storage'
             echo '- Database: `chess_study`'
-            echo '- Retention: newest 2 successful weekly backups'
-            echo '- New archive is dry-run validated before the older generation is pruned'
+            echo '- Retention: newest 2 local + newest 8 remote successful weekly backups'
+            echo '- Order: mongorestore dry-run → SHA-256 checked remote upload → remote verification → local prune'
+            echo '- Remote retention deletes exact object versions so bucket versioning does not defeat bounded retention'
           } >> "$GITHUB_STEP_SUMMARY"
