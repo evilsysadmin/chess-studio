@@ -124,7 +124,7 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
   useEffect(() => {
     clockAnchorRef.current = Date.now();
     setClockElapsedMs(0);
-    if (match?.status !== 'active' || !match?.clock?.runningColor) return undefined;
+    if (match?.status !== 'active') return undefined;
     const timer = window.setInterval(() => {
       setClockElapsedMs(Math.max(0, Date.now() - clockAnchorRef.current));
     }, 250);
