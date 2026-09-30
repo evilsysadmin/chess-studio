@@ -114,7 +114,7 @@ def self_test() -> None:
     assert declarative == {
         "MONGO_DB_NAME": "chess_study_staging",
         "ENVIRONMENT": "staging",
-        "CHESS_ENGINE_WORKERS": "2",
+        "CHESS_ENGINE_WORKERS": "1",
         "EXPOSE_API_DOCS": "false",
         "ALLOW_REGISTRATION": "true",
         "ENABLE_EMAIL_RECOVERY": "false",

@@ -73,6 +73,25 @@ jobs:
               handle.write(f"CHESS_CAPACITY_INVITE_CODE={invite}\n")
           PY
 
+      - name: Wait for exact staging backend generation
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Snapshot current main when the measurement starts. A PR base SHA can
+          # become permanently unreachable in staging after main advances.
+          target_sha="$(git ls-remote origin refs/heads/main | awk 'NR==1 {print $1}')"
+          [[ "$target_sha" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::unable to resolve capacity target SHA"; exit 1; }
+          echo "CAPACITY_TARGET_SHA=$target_sha" >> "$GITHUB_ENV"
+          for attempt in $(seq 1 40); do
+            if python3 scripts/staging_release_identity.py               --kind backend               --url https://api-staging.chess-studio.shadowops.dpdns.org/api/release               --sha "$target_sha"; then
+              exit 0
+            fi
+            echo "::notice::staging has not converged to $target_sha yet (attempt $attempt/40)"
+            sleep 15
+          done
+          echo "::error::staging did not converge to $target_sha before capacity test"
+          exit 1
+
       - name: Baseline telemetry
         run: python3 scripts/capacity_telemetry_snapshot.py --label baseline | tee capacity-baseline.telemetry.jsonl
 
