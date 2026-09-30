@@ -1,0 +1,207 @@
+name: Operations · staging capacity
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'ops/capacity-*'
+    paths:
+      - 'scripts/production_capacity_probe.py'
+      - 'scripts/capacity_telemetry_snapshot.py'
+      - 'docs/operations/runtime-performance.md'
+      - '.github/workflows/capacity-staging.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chess-studio-staging-capacity
+  cancel-in-progress: false
+
+jobs:
+  capacity:
+    name: A1 + Mongo service curve
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
+      OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
+      OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
+      OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
+      OCI_REGION: ${{ vars.OCI_REGION || 'eu-frankfurt-1' }}
+      CHESS_CAPACITY_BASE_URL: https://api-staging.chess-studio.shadowops.dpdns.org/api
+      GRAFANA_URL: ${{ secrets.GRAFANA_URL }}
+      GRAFANA_AUTH: ${{ secrets.GRAFANA_AUTH }}
+      GRAFANA_METRICS_DATASOURCE_UID: ${{ vars.GRAFANA_METRICS_DATASOURCE_UID || 'grafanacloud-humbletoucan355-prom' }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Static capacity contracts
+        run: |
+          python3 -S scripts/production_capacity_probe.py --self-test
+          python3 -S scripts/capacity_telemetry_snapshot.py --self-test
+
+      - name: Restore OCI SDK
+        uses: ./.github/actions/setup-oci-sdk
+
+      - name: Load staging invite from private OCI runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+          import sys
+
+          sys.path.insert(0, "scripts")
+          import oci
+          from oci_runtime_bundle import read_private_runtime_value
+
+          invite = read_private_runtime_value(oci, "INVITE_CODE")
+          if not invite:
+              raise SystemExit("missing staging INVITE_CODE")
+          print(f"::add-mask::{invite}")
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as handle:
+              handle.write(f"CHESS_CAPACITY_INVITE_CODE={invite}\n")
+          PY
+
+      - name: Baseline telemetry
+        run: python3 scripts/capacity_telemetry_snapshot.py --label baseline | tee capacity-baseline.telemetry.jsonl
+
+      - name: Engine curve · A1 executor
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +e
+          python3 scripts/production_capacity_probe.py             --scenario engine             --ephemeral             --concurrency 1,2,4,8,16             --samples-per-level 8             --timeout 20             | tee capacity-engine.jsonl
+          code=${PIPESTATUS[0]}
+          set -e
+          (( code <= 1 )) || exit "$code"
+          sleep 15
+          python3 scripts/capacity_telemetry_snapshot.py --label engine | tee capacity-engine.telemetry.jsonl
+
+      - name: Cool down
+        run: sleep 20
+
+      - name: Mongo read curve
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +e
+          python3 scripts/production_capacity_probe.py             --scenario mongo-read             --ephemeral             --concurrency 1,2,4,8,16             --samples-per-level 8             --timeout 12             | tee capacity-mongo-read.jsonl
+          code=${PIPESTATUS[0]}
+          set -e
+          (( code <= 1 )) || exit "$code"
+          sleep 15
+          python3 scripts/capacity_telemetry_snapshot.py --label mongo-read | tee capacity-mongo-read.telemetry.jsonl
+
+      - name: Cool down
+        run: sleep 20
+
+      - name: Mongo write curve
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +e
+          python3 scripts/production_capacity_probe.py             --scenario mongo-write             --ephemeral             --concurrency 1,2,4,8             --samples-per-level 8             --timeout 12             | tee capacity-mongo-write.jsonl
+          code=${PIPESTATUS[0]}
+          set -e
+          (( code <= 1 )) || exit "$code"
+          sleep 15
+          python3 scripts/capacity_telemetry_snapshot.py --label mongo-write | tee capacity-mongo-write.telemetry.jsonl
+
+      - name: Cool down
+        run: sleep 20
+
+      - name: Mixed service curve
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +e
+          python3 scripts/production_capacity_probe.py             --scenario mixed             --ephemeral             --concurrency 1,2,4,8             --samples-per-level 10             --timeout 20             | tee capacity-mixed.jsonl
+          code=${PIPESTATUS[0]}
+          set -e
+          (( code <= 1 )) || exit "$code"
+          sleep 15
+          python3 scripts/capacity_telemetry_snapshot.py --label mixed | tee capacity-mixed.telemetry.jsonl
+
+      - name: Build capacity summary
+        if: always()
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import glob
+          import json
+          import os
+          import pathlib
+
+          rows = []
+          cleanup_failed = False
+          missing = []
+          for path in sorted(glob.glob("capacity-*.jsonl")):
+              if ".telemetry." in path:
+                  continue
+              summary = None
+              for raw in pathlib.Path(path).read_text(encoding="utf-8").splitlines():
+                  try:
+                      payload = json.loads(raw)
+                  except json.JSONDecodeError:
+                      continue
+                  if "capacity_summary" in payload:
+                      summary = payload["capacity_summary"]
+              if not summary:
+                  missing.append(path)
+                  continue
+              cleanup_failed = cleanup_failed or summary.get("ephemeral_cleanup_ok") is False
+              levels = summary.get("levels") or []
+              last = levels[-1] if levels else {}
+              rows.append({
+                  "scenario": summary.get("scenario"),
+                  "max_concurrency": last.get("concurrency"),
+                  "p95_ms": (last.get("latency_ms") or {}).get("p95"),
+                  "ops_rps": last.get("throughput_ops_rps"),
+                  "errors": last.get("errors"),
+              })
+
+          telemetry = {}
+          for path in sorted(glob.glob("capacity-*.telemetry.jsonl")):
+              for raw in pathlib.Path(path).read_text(encoding="utf-8").splitlines():
+                  try:
+                      payload = json.loads(raw)
+                  except json.JSONDecodeError:
+                      continue
+                  snap = payload.get("capacity_telemetry")
+                  if snap:
+                      telemetry[snap["label"]] = snap
+
+          summary_path = pathlib.Path("capacity-summary.json")
+          summary_path.write_text(json.dumps({"curves": rows, "telemetry": telemetry}, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as handle:
+              handle.write("### Staging capacity · A1 + Mongo\n\n")
+              handle.write("| escenario | concurrencia máx | p95 ms | ops/s | errores | CPU host % | RAM host % |\n")
+              handle.write("| --- | ---: | ---: | ---: | ---: | ---: | ---: |\n")
+              for row in rows:
+                  snap = telemetry.get(row["scenario"], {})
+                  handle.write(
+                      f"| {row['scenario']} | {row['max_concurrency']} | {row['p95_ms']} | {row['ops_rps']} | "
+                      f"{row['errors']} | {snap.get('host_cpu_percent')} | {snap.get('host_ram_percent')} |\n"
+                  )
+              handle.write("\nLos errores/429/timeouts a carga alta son datos de capacidad; un fallo de harness o cleanup sí invalida la ejecución.\n")
+
+          if missing:
+              raise SystemExit("missing capacity summaries: " + ", ".join(missing))
+          if cleanup_failed:
+              raise SystemExit("one or more ephemeral capacity identities failed cleanup")
+          PY
+
+      - name: Upload capacity evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: staging-capacity-${{ github.sha }}
+          path: |
+            capacity-*.jsonl
+            capacity-summary.json
+          if-no-files-found: error
+          retention-days: 14
