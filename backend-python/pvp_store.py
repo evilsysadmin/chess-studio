@@ -240,13 +240,13 @@ async def challenge_cooldown_until(challenger: str, opponent: str, *, now: datet
     if collections is None:
         pair = {challenger, opponent}
         async with _memory_guard():
-            active = [
-                row.get("cooldown_until")
-                for row in _memory_challenges.values()
-                if {row.get("challenger"), row.get("opponent")} == pair
-                and _as_utc(row.get("cooldown_until")) is not None
-                and _as_utc(row.get("cooldown_until")) > stamp
-            ]
+            active = []
+            for row in _memory_challenges.values():
+                if {row.get("challenger"), row.get("opponent")} != pair:
+                    continue
+                cooldown_until = _as_utc(row.get("cooldown_until"))
+                if cooldown_until is not None and cooldown_until > stamp:
+                    active.append(cooldown_until)
             return max(active) if active else None
     _, challenges, _ = collections
     try:
