@@ -667,8 +667,9 @@ def build_torches(static, palette):
     for index, ((x, y), yaw) in enumerate(spots):
         # Warm pools under each torch (preview lights; runtime uses the anchors).
         face = (math.sin(yaw) * 0.6, -math.cos(yaw) * 0.6)
-        base.light(f"WR3_LIGHT_torch_{index}", "POINT", (x + face[0], y + face[1], 3.0), 70.0,
-                   (1.0, 0.46, 0.14), static, radius=0.25)
+        pool = base.light(f"WR3_LIGHT_torch_{index}", "POINT", (x + face[0], y + face[1], 3.0), 70.0,
+                          (1.0, 0.46, 0.14), static, radius=0.25)
+        pool.data.use_shadow = False  # ten shadowed points overflow EEVEE's shadow pool
     join_into(irons, "WR3_ARM_torch_irons")
     join_into(glows, "WR3_ARM_torch_flames")
     base.anchor("WR_ANCHOR_chandelier_practical", (0, V3_HALL_BACK_Y - 1.2, 3.2), static)
