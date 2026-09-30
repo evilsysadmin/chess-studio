@@ -68,9 +68,11 @@ NEW_PASSWORD_MIN_LENGTH = 8
 _STAGING_SYNTHETIC_SECRET = os.environ.get("CHESS_AI_SHARED_SECRET", "").strip()
 _STAGING_SMOKE_SYNTHETIC_SOURCE = "staging-smoke-cleanup"
 _STAGING_BROWSER_SYNTHETIC_SOURCE = "staging-browser-smoke"
+_STAGING_CAPACITY_SYNTHETIC_SOURCE = "staging-capacity"
 _STAGING_SYNTHETIC_SOURCES = frozenset({
     _STAGING_SMOKE_SYNTHETIC_SOURCE,
     _STAGING_BROWSER_SYNTHETIC_SOURCE,
+    _STAGING_CAPACITY_SYNTHETIC_SOURCE,
 })
 _STAGING_SMOKE_USER_RE = re.compile(r"^ci_smoke_[0-9a-f]{16}$")
 
@@ -232,6 +234,17 @@ def rate_limit_key(request: Request) -> str:
     username = _request_username(request)
     if username != "-":
         return f"user:{username}"
+
+    # Los probes firmados de staging pueden representar varias identidades
+    # técnicas desde un único runner. La firma ya fue validada por el
+    # middleware; separarlas aquí evita medir el bucket de la IP del runner en
+    # lugar de la capacidad real de A1/Mongo. Producción nunca confía en estas
+    # cabeceras porque _trusted_staging_smoke_request falla cerrado fuera de
+    # staging.
+    synthetic_source = getattr(request.state, "synthetic_source", None)
+    synthetic_identity = str(getattr(request.state, "synthetic_identity", "") or "").strip().lower()
+    if synthetic_source in _STAGING_SYNTHETIC_SOURCES and _STAGING_SMOKE_USER_RE.fullmatch(synthetic_identity):
+        return f"synthetic:{synthetic_identity}"
 
     # OCI ingress is loopback-only behind Cloudflare Tunnel. There the ASGI peer
     # is the local proxy/Docker gateway, so using it directly would put every
