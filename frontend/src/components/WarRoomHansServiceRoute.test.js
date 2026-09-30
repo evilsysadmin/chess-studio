@@ -6,6 +6,7 @@ import {
   installWarRoomHansServiceInfrastructure,
   moveWarRoomHansToward,
   warRoomHansServiceHome,
+  warRoomHansTargetCandidatesNearObject,
   warRoomHansTargetNearObject,
 } from './WarRoomHansServiceRoute.js';
 import { WAR_ROOM_HANS_SERVICE_EXIT_DOOR_GUARD_VERSION } from './WarRoomHansServiceExitDoorGuard.js';
@@ -76,6 +77,33 @@ describe('Hans service routing', () => {
     expect(target.z).toBeCloseTo(visibleFrontZ, 6);
     expect(Math.sign(target.z - deskArt.position.z)).toBe(frontSign);
     expect(target.x).toBeLessThanOrEqual(deskBounds.min.x - HANS_SERVICE_FURNITURE_CLEARANCE + 1e-6);
+  });
+
+  it('offers both physical desk flanks while preserving the preferred side first', () => {
+    const root = new THREE.Group();
+    const parent = new THREE.Group();
+    const deskArt = new THREE.Group();
+    deskArt.name = 'war-room-teutonic-command-desk-v28';
+    deskArt.position.z = -6.15;
+    const deskTop = new THREE.Mesh(new THREE.BoxGeometry(3.05, 0.16, 1), new THREE.MeshBasicMaterial());
+    deskTop.name = 'war-room-command-desk-top';
+    deskTop.position.y = 1.03;
+    const drawer = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.16, 0.045), new THREE.MeshBasicMaterial());
+    drawer.name = 'war-room-command-desk-drawer';
+    drawer.position.z = 0.405;
+    deskArt.add(deskTop, drawer);
+    root.add(parent, deskArt);
+    root.updateMatrixWorld(true);
+
+    const candidates = warRoomHansTargetCandidatesNearObject(
+      deskTop,
+      parent,
+      { offsetX: -1.72, offsetZ: 0.78 },
+    );
+    expect(candidates).toHaveLength(2);
+    expect(candidates[0].x).toBeLessThan(0);
+    expect(candidates[1].x).toBeGreaterThan(0);
+    expect(candidates[0].z).toBeCloseTo(candidates[1].z, 6);
   });
 
   it('approaches the command chair from beside the combined desk/chair hull instead of through the desk', () => {
