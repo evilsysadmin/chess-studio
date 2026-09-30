@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { confirmChroniclesCharacterSetup, login, mockApi } from './helpers.js';
+import { confirmChroniclesCharacterSetup, login, mockApi, openMoreGameModes } from './helpers.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const CAPTURES = [
@@ -10,7 +10,19 @@ const CAPTURES = [
 
 async function openVisualMoreModes(page) {
   const trigger = page.getByRole('button', { name: /Más modos y herramientas/ });
-  await expect(trigger).toBeVisible();
+  const portraitMore = page.locator('.illustrated-home__play-more');
+  await expect.poll(async () => {
+    if (await trigger.isVisible().catch(() => false)) return 'illustrated';
+    if (await portraitMore.isVisible().catch(() => false)) return 'portrait';
+    return 'pending';
+  }, { timeout: 20_000, message: 'Home should expose the dungeon trigger or the portrait More route' }).not.toBe('pending');
+
+  // The portrait vestibule (#4476) hides the dungeon trigger behind «Más»;
+  // the shared helper owns that route.
+  if (!(await trigger.isVisible().catch(() => false))) {
+    await openMoreGameModes(page);
+    return;
+  }
 
   // This producer validates Chronicles, not Home animation actionability.
   // Invoke the real button handler directly once the canonical trigger is visible.
