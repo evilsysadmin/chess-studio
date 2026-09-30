@@ -265,7 +265,7 @@ assert 'if attest "$sha" "$candidate_port"; then' in deploy
 assert 'render_edge "$candidate_color"' in deploy
 assert 'reload_edge' in deploy
 assert 'write_active_color "$candidate_color"' in deploy
-assert 'sleep "${CHESS_STUDIO_BLUE_GREEN_DRAIN_SECONDS:-35}"' in deploy
+assert 'sleep "${CHESS_STUDIO_BLUE_GREEN_DRAIN_SECONDS:-50}"' in deploy
 assert 'remove_service "$(slot_service "$previous_color")"' in deploy
 assert 'docker rm -f "$legacy_id"' in deploy
 assert 'compose "$sha" up -d --no-build edge' in deploy
