@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { getBoardCoordinates, setBoardCoordinates } from '../userPreferences.js';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
 import { zenModeSummary } from '../zenMode.js';
+import { requestWarRoomTutorialReplay } from '../warRoomFirstRunTutorial.js';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 import useWarRoomVariant from './useWarRoomVariant.js';
 import { WAR_ROOM_VARIANTS } from './WarRoomVariant.js';
@@ -63,6 +64,7 @@ function WarRoomGuideHelp() {
       markSeenOnClose
       firstRunLabel="Guía"
       label="Abrir guía de la War Room"
+      onTutorialClose={requestWarRoomTutorialReplay}
     />
   );
 }
