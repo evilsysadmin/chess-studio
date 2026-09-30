@@ -195,6 +195,27 @@ def build_v4_palette():
     }
 
 
+def lod_sphere(name, loc, radius, material, owner, *, scale=(1, 1, 1)):
+    """Runtime-budget sphere for small ornaments (bulbs, finials, studs, stars).
+
+    base.sphere builds a flat-shaded 32x16 UV sphere (482 verts, ~4x more once
+    split for flat normals in the GLB) even for 5 cm bulbs that cover a few
+    pixels. A smooth-shaded icosphere sized by radius reads identically at play
+    distance for a fraction of the vertices.
+    """
+    subdivisions = 1 if radius < 0.09 else 2 if radius < 0.22 else 3
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=subdivisions, radius=radius, location=loc)
+    obj = bpy.context.object
+    obj.name = name
+    obj.scale = scale
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    bpy.ops.object.shade_smooth()
+    obj.data.materials.append(material)
+    base.tag(obj)
+    base.relink(obj, owner)
+    return obj
+
+
 def cylinder_between(name, start, end, radius, material, owner, *, vertices=24):
     start = Vector(start)
     end = Vector(end)
@@ -319,7 +340,7 @@ def build_curved_observatory(static, palette):
             palette["brass"], static, vertices=36,
         )
         # Canonical crown: every pilaster ends in a polished brass finial.
-        base.sphere(
+        lod_sphere(
             f"WR4_OBS_apse_finial_{index}", (x, y, V4_WALL_TOP_Z + 0.55), 0.21,
             palette["brass"], static, scale=(1.0, 1.0, 1.15),
         )
@@ -446,7 +467,7 @@ def build_celestial_window(static, palette):
         0.37, 0.046, palette["night"], static, vertices=64,
     )
     occluder.rotation_euler.x = math.pi / 2
-    base.sphere("WR4_OBS_window_bright_star", (cx + 0.28, cy - 0.26, cz + 0.50 * r),
+    lod_sphere("WR4_OBS_window_bright_star", (cx + 0.28, cy - 0.26, cz + 0.50 * r),
                 0.075, palette["ivory"], static, scale=(1.0, 0.24, 1.0))
 
     stars = (
@@ -456,7 +477,7 @@ def build_celestial_window(static, palette):
         (-0.72, 0.30, 0.018), (0.10, 0.62, 0.021), (-1.30, 0.05, 0.018),
     )
     for index, (dx, dz, radius) in enumerate(stars):
-        base.sphere(
+        lod_sphere(
             f"WR4_OBS_window_star_{index}", (cx + dx * k * V4_OCULUS_ASPECT, cy - 0.25, cz + dz * k),
             radius, palette["ivory"] if index % 4 else palette["brass"], static,
             scale=(1.0, 0.24, 1.0),
@@ -496,7 +517,7 @@ def build_celestial_window(static, palette):
         (-0.18, -0.80), (0.62, -0.84), (-0.82, -0.40), (0.92, -0.42), (-0.40, -0.86),
         (0.20, -0.92), (0.44, -0.40), (-0.62, -0.30),
     )):
-        base.sphere(
+        lod_sphere(
             f"WR4_OBS_window_town_light_{index}",
             (cx + dx * k * V4_OCULUS_ASPECT, cy - 0.26, cz + dz * k),
             0.035, palette["fire_core"], static, scale=(1.0, 0.3, 1.0),
@@ -644,16 +665,16 @@ def build_round_command_table(static, palette):
                 bulb = [0.0, 0.0, 1.19]
                 bulb[axis] = t
                 bulb[1 - axis] = side * (fh - 0.20)
-                base.sphere(f"WR4_OBS_board_bulb_{name}_{side}_{index}", tuple(bulb), 0.050,
+                lod_sphere(f"WR4_OBS_board_bulb_{name}_{side}_{index}", tuple(bulb), 0.050,
                             palette["fire_core"], static)
     for sx in (-1, 1):
         for sy in (-1, 1):
             c = fh - 0.22
             base.cylinder(f"WR4_OBS_board_corner_post_{sx}_{sy}", (sx * c, sy * c, 1.22),
                           0.24, 0.14, palette["brass_dark"], static, vertices=32)
-            base.sphere(f"WR4_OBS_board_corner_dome_{sx}_{sy}", (sx * c, sy * c, 1.34),
+            lod_sphere(f"WR4_OBS_board_corner_dome_{sx}_{sy}", (sx * c, sy * c, 1.34),
                         0.28, palette["brass"], static, scale=(1.0, 1.0, 0.82))
-            base.sphere(f"WR4_OBS_board_corner_bulb_{sx}_{sy}", (sx * c, sy * c, 1.60),
+            lod_sphere(f"WR4_OBS_board_corner_bulb_{sx}_{sy}", (sx * c, sy * c, 1.60),
                         0.075, palette["fire_core"], static)
             base.light(f"WR4_LIGHT_board_corner_{sx}_{sy}", "POINT", (sx * c, sy * c, 1.85), 55.0,
                        (1.0, 0.52, 0.20), static, radius=0.35)
@@ -718,7 +739,7 @@ def build_oculus_desk(static, palette):
             base.cube(f"WR4_OBS_oculus_desk_drawer_{side}_{row}",
                       (side * 1.72, y - 0.43, z), (0.43, 0.035, 0.10),
                       palette["walnut"], static, bevel=0.02)
-            base.sphere(f"WR4_OBS_oculus_desk_pull_{side}_{row}",
+            lod_sphere(f"WR4_OBS_oculus_desk_pull_{side}_{row}",
                         (side * 1.72, y - 0.48, z), 0.032, palette["brass"], static)
     # Sparse books and green-shaded lamp: recognizable at hero distance without clutter.
     for index, (dx, mat) in enumerate(((-1.05, "book_red"), (-0.72, "book_blue"), (0.58, "book_red"))):
@@ -769,10 +790,10 @@ def build_armor_pair(static, palette):
             base.cube(f"WR4_OBS_armor_leg_{side}_{leg}", (x + leg * 0.16, y, 0.57),
                       (0.10, 0.11, 0.24), palette["steel"], static, bevel=0.05)
         for shoulder in (-1, 1):
-            base.sphere(f"WR4_OBS_armor_pauldron_{side}_{shoulder}",
+            lod_sphere(f"WR4_OBS_armor_pauldron_{side}_{shoulder}",
                         (x + shoulder * 0.43, y, 1.55), 0.20,
                         palette["steel"], static, scale=(1.25, 0.75, 0.70))
-        base.sphere(f"WR4_OBS_armor_helmet_{side}", (x, y, 2.00), 0.24,
+        lod_sphere(f"WR4_OBS_armor_helmet_{side}", (x, y, 2.00), 0.24,
                     palette["steel"], static, scale=(0.95, 1.0, 1.15))
         base.cube(f"WR4_OBS_armor_plume_{side}", (x, y + 0.05, 2.30), (0.04, 0.16, 0.10),
                   palette["rug_red"], static, bevel=0.035)
@@ -786,7 +807,7 @@ def build_armor_pair(static, palette):
 def build_observatory_telescope(static, palette):
     """A restrained premium telescope: legible, but secondary to the board and oculus."""
     hub = Vector((4.82, 4.46, 1.05))
-    base.sphere("WR4_OBS_telescope_mount", hub, 0.16, palette["brass_dark"], static,
+    lod_sphere("WR4_OBS_telescope_mount", hub, 0.16, palette["brass_dark"], static,
                 scale=(1.08, 1.08, 0.90))
     base.cylinder("WR4_OBS_telescope_mount_ring", hub, 0.25, 0.060,
                   palette["copper"], static, vertices=48)
@@ -823,7 +844,7 @@ def build_observatory_telescope(static, palette):
     cylinder_between("WR4_OBS_telescope_yoke", yoke_left, yoke_right, 0.056,
                      palette["brass"], static, vertices=28)
     for side, point in (("left", yoke_left), ("right", yoke_right)):
-        base.sphere(f"WR4_OBS_telescope_yoke_cap_{side}", point, 0.085,
+        lod_sphere(f"WR4_OBS_telescope_yoke_cap_{side}", point, 0.085,
                     palette["copper"], static)
 
     # Golden: a larger instrument between the desk and the library, tube
@@ -882,7 +903,7 @@ def build_lounge_corner(static, palette):
                 0.072, 0.045, palette["brass_dark"], static, vertices=28,
             )
         for stud_index, stud_y in enumerate((-0.34, -0.08, 0.18)):
-            base.sphere(
+            lod_sphere(
                 f"WR4_OBS_chair_stud_{side}_{stud_index}",
                 (x + side * 0.94, y + stud_y, 0.93),
                 0.026, palette["brass"], static,
@@ -905,7 +926,7 @@ def build_lounge_corner(static, palette):
     )
     for row, z in enumerate((1.18, 1.50)):
         for col, button_x in enumerate((-0.30, 0.0, 0.30)):
-            base.sphere(
+            lod_sphere(
                 f"WR4_OBS_chair_back_button_{row}_{col}",
                 (x + button_x, y + 0.165, z),
                 0.031, palette["brass_dark"], static,
@@ -970,7 +991,7 @@ def build_celestial_globe(static, palette):
             f"WR4_OBS_globe_console_drawer_{drawer}", (x, y - 0.345, z),
             (0.59, 0.025, 0.11), palette["walnut"], static, bevel=0.025,
         )
-        base.sphere(
+        lod_sphere(
             f"WR4_OBS_globe_console_pull_{drawer}", (x, y - 0.39, z),
             0.042, palette["brass"], static,
         )
@@ -1006,7 +1027,7 @@ def build_celestial_globe(static, palette):
         (0.18, 0.03), (-0.10, -0.08), (0.10, -0.16),
     )):
         dy = math.sqrt(max(0.0, 0.34 ** 2 - dx ** 2 - dz ** 2))
-        base.sphere(
+        lod_sphere(
             f"WR4_OBS_globe_star_{star}", (x + dx, y - dy, center[2] + dz),
             0.016, palette["brass"], static,
         )
@@ -1148,7 +1169,7 @@ def build_tower_entry(static, palette):
     ring.rotation_euler = radial.to_track_quat("Z", "Y").to_euler()
 
     handle_center = front - tangent * 0.48 + Vector((0, 0, -0.30))
-    base.sphere("WR4_OBS_entry_handle_hub", handle_center, 0.105,
+    lod_sphere("WR4_OBS_entry_handle_hub", handle_center, 0.105,
                 palette["brass_dark"], static)
     cylinder_between(
         "WR4_OBS_entry_handle", handle_center, handle_center + tangent * 0.34,
