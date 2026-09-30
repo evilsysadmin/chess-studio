@@ -25,17 +25,17 @@ import build_war_room_premium as base  # noqa: E402
 
 CONTRACT = "war-room-golden-observatory-v4"
 V4_CANON = "war-room-v4-moonlit-royal-observatory-2026-09-29"
-# Golden 2026-09-29 framing, solved against the mock's board corners: near edge
-# at ~86 % of the frame height spanning ~56 % of its width, with the whole
-# back wall (oculus, hearth, library) readable above the far rank. 33° pitch
-# stays steeper than v2/v3 (29.5°) so far-rank pieces remain easy to pick.
-V4_CAMERA_FOV_DEG = 32.0
-V4_CAMERA_HALF_SPAN = 5.45
-V4_CAMERA_PADDING = 1.015
-V4_CAMERA_TARGET = (0.0, 1.87, 1.12)
-V4_CAMERA_PITCH_DEG = 32.5
-V4_CAMERA_DIRECTION = (0.0, -math.cos(math.radians(V4_CAMERA_PITCH_DEG)),
-                       math.sin(math.radians(V4_CAMERA_PITCH_DEG)))
+# Review camera = the runtime's shared desktop play camera (Board3DScene
+# fitBoardCamera, wide 16:9, immersive): 22° lens, WAR_ROOM_PLAY_PITCH
+# (9.2, 9.55) ≈ 43.9° pitch, target (0, 2.2, 0.16) in three.js. The preview
+# therefore judges exactly what the player sees; the room is proportioned so
+# the whole circular observatory reads around the board from that angle.
+V4_CAMERA_FOV_DEG = 22.0
+V4_CAMERA_HALF_SPAN = 5.38
+# padding 1.07 · immersive 0.91 · shared-pitch distance 1.115
+V4_CAMERA_PADDING = 1.07 * 0.91 * 1.115
+V4_CAMERA_TARGET = (0.0, -0.16, 2.20)
+V4_CAMERA_DIRECTION = (0.0, -9.55, 9.2)
 V4_WALL_TOP_Z = 4.50
 V4_OCULUS_CENTER = (0.0, 7.56, 2.62)
 V4_OCULUS_RADIUS = 1.70
@@ -70,6 +70,9 @@ def clear_inherited_room(static):
         raise RuntimeError(f"War Room v4 inherited-room teardown suspiciously small: {removed}")
 
 
+# No KHR_materials_sheen on v4 materials: Blender exports the sheen colour
+# as full white regardless of weight, which washes dark leather and fabric
+# out at runtime (the runtime adds its own leather/fabric micro-surface).
 def build_v4_palette():
     return {
         "stone": base.material(
@@ -90,11 +93,11 @@ def build_v4_palette():
         ),
         "rug": base.material(
             "WR4_MAT_room_rug", (0.004, 0.070, 0.046, 1),
-            rough=0.82, coat=0.02, sheen=0.18, texture="leather", scale=60, bump=0.055,
+            rough=0.82, coat=0.02, texture="leather", scale=60, bump=0.055,
         ),
         "rug_red": base.material(
             "WR4_MAT_entry_rug", (0.22, 0.020, 0.014, 1),
-            rough=0.74, coat=0.03, sheen=0.12, texture="leather", scale=52, bump=0.050,
+            rough=0.74, coat=0.03, texture="leather", scale=52, bump=0.050,
         ),
         "book_red": base.material(
             "WR4_MAT_book_red", (0.22, 0.018, 0.012, 1),
@@ -130,11 +133,11 @@ def build_v4_palette():
         ),
         "leather": base.material(
             "WR4_MAT_saddle_leather", (0.125, 0.030, 0.012, 1),
-            rough=0.39, coat=0.24, sheen=0.15, texture="leather", scale=54, bump=0.044,
+            rough=0.39, coat=0.24, texture="leather", scale=54, bump=0.044,
         ),
         "green_leather": base.material(
             "WR4_MAT_chart_green_leather", (0.007, 0.105, 0.050, 1),
-            rough=0.37, coat=0.28, sheen=0.17, texture="leather", scale=56, bump=0.045,
+            rough=0.37, coat=0.28, texture="leather", scale=56, bump=0.045,
         ),
         "night": base.material(
             "WR4_MAT_celestial_blue", (0.002, 0.018, 0.120, 1),
@@ -146,11 +149,11 @@ def build_v4_palette():
         ),
         "rug_gold": base.material(
             "WR4_MAT_rug_gold", (0.52, 0.28, 0.055, 1),
-            rough=0.62, sheen=0.30, texture="leather", scale=60, bump=0.020,
+            rough=0.62, texture="leather", scale=60, bump=0.020,
         ),
         "navy_leather": base.material(
             "WR4_MAT_navy_leather", (0.012, 0.022, 0.060, 1),
-            rough=0.32, coat=0.30, sheen=0.18, texture="leather", scale=56, bump=0.045,
+            rough=0.32, coat=0.30, texture="leather", scale=56, bump=0.045,
         ),
         "steel": base.material(
             "WR4_MAT_polished_steel", (0.70, 0.72, 0.76, 1),
@@ -158,11 +161,11 @@ def build_v4_palette():
         ),
         "plant": base.material(
             "WR4_MAT_palm_leaf", (0.030, 0.150, 0.040, 1),
-            rough=0.55, coat=0.12, sheen=0.10, texture="leather", scale=40, bump=0.015,
+            rough=0.55, coat=0.12, texture="leather", scale=40, bump=0.015,
         ),
         "banner_blue": base.material(
             "WR4_MAT_heraldic_blue", (0.010, 0.030, 0.105, 1),
-            rough=0.72, sheen=0.25, texture="leather", scale=48, bump=0.020,
+            rough=0.72, texture="leather", scale=48, bump=0.020,
         ),
         "night_sky": base.material(
             "WR4_MAT_night_sky", (0.004, 0.012, 0.060, 1),
@@ -175,6 +178,10 @@ def build_v4_palette():
         "night_town": base.material(
             "WR4_MAT_night_town", (0.004, 0.008, 0.030, 1),
             rough=0.9, emission=(0.008, 0.018, 0.070, 1), emission_strength=0.25,
+        ),
+        "night_ground": base.material(
+            "WR4_MAT_night_ground", (0.006, 0.020, 0.030, 1), rough=0.95,
+            emission=(0.004, 0.014, 0.040, 1), emission_strength=0.25,
         ),
         "night_pine": base.material(
             "WR4_MAT_night_pine", (0.004, 0.016, 0.040, 1), rough=0.95,
@@ -564,32 +571,34 @@ def build_night_backdrop(static, palette):
     sky.data.materials.append(palette["night_sky"])
     base.tag(sky)
     base.relink(sky, static)
-    ridges = []
-    for index in range(26):
-        theta = math.radians(-120 + index * (240 / 25))
-        radius = 14.2 + (index % 3) * 0.5
-        x = radius * math.sin(theta)
-        y = -0.72 + radius * math.cos(theta)
-        height = 2.6 + ((index * 7) % 5) * 0.55
-        ridges.append(base.sphere(f"WR4_OBS_sky_ridge_{index}", (x, y, V4_WALL_TOP_Z + 1.2),
-                                  1.0, palette["night_ridge"], static,
-                                  scale=(2.4, 2.4, height)))
+    # From the steep play camera the ground beyond the open crown is visible:
+    # a dark moonlit meadow closes the sleeve, dotted with pine silhouettes.
+    bpy.ops.mesh.primitive_circle_add(vertices=96, radius=30.0, fill_type="NGON",
+                                      location=(0, -0.72, -0.30))
+    ground = bpy.context.object
+    ground.name = "WR4_OBS_night_ground"
+    ground.data.materials.append(palette["night_ground"])
+    base.tag(ground)
+    base.relink(ground, static)
+
     pines = []
-    for index in range(34):
-        theta = math.radians(-116 + index * (232 / 33) + (index % 2) * 2.5)
-        radius = 17.0 + (index % 4) * 0.45
+    for index in range(72):
+        # Deterministic golden-angle scatter in a ring outside the tower.
+        theta = index * 2.399963
+        radius = 10.6 + (index * 0.618034 % 1.0) * 14.0
         x = radius * math.sin(theta)
         y = -0.72 + radius * math.cos(theta)
-        h = 0.9 + ((index * 5) % 4) * 0.22
-        bpy.ops.mesh.primitive_cone_add(vertices=10, radius1=0.34, radius2=0.0, depth=h,
-                                        location=(x, y, V4_WALL_TOP_Z + 1.7 + h / 2.0))
+        if y < -7.5 and abs(x) < 9.0:
+            continue  # keep the player's side of the tower clear
+        h = 2.2 + ((index * 7) % 5) * 0.45
+        bpy.ops.mesh.primitive_cone_add(vertices=8, radius1=0.55 + (index % 3) * 0.12, radius2=0.0,
+                                        depth=h, location=(x, y, h / 2.0 - 0.3))
         pine = bpy.context.object
         pine.name = f"WR4_OBS_sky_pine_{index}"
         pine.data.materials.append(palette["night_pine"])
         base.tag(pine)
         base.relink(pine, static)
         pines.append(pine)
-    join_into(ridges, "WR4_OBS_sky_ridges")
     join_into(pines, "WR4_OBS_sky_pines")
 
 
@@ -1191,7 +1200,7 @@ def apply_v4_camera():
     sensor_height = cam.data.sensor_width / (base.PREVIEW_SIZE[0] / base.PREVIEW_SIZE[1])
     cam.data.lens = sensor_height / (2.0 * math.tan(vertical_fov / 2.0))
     base.look_at(cam, target)
-    cam["war_room_camera_profile"] = "v4-golden-wide-steep-v2"
+    cam["war_room_camera_profile"] = "v4-runtime-shared-play-pitch-v1"
     cam["runtime_vertical_fov_deg"] = V4_CAMERA_FOV_DEG
     cam["runtime_distance"] = round(distance, 5)
     cam["war_room_visual_canon"] = V4_CANON
