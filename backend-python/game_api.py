@@ -17,7 +17,7 @@ import game_store as store
 from api_models import AnalyzeMoveRequest, AnalyzeRequest, MoveRequest, NewGameRequest
 from chess_ai import get_cpu_move, move_to_dict
 from cpu_difficulty import get_factual_difficulty_cpu_move
-from engine_runtime import run_engine_work
+from engine_runtime import EngineBackpressureError, run_engine_work, run_optional_engine_work
 from hint_analysis_service import build_hint_payload
 from move_analysis_service import analyze_move_payload, deterministic_analyze_move
 from root_candidate_service import factual_candidate_payloads_for_level
@@ -35,6 +35,17 @@ from operation_idempotency import (
 
 HINT_STRENGTH = 95
 logger = logging.getLogger("chess.game")
+
+
+async def run_optional_analysis(function, *args, **kwargs):
+    try:
+        return await run_optional_engine_work(function, *args, **kwargs)
+    except EngineBackpressureError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Análisis temporalmente ocupado. Reintenta en un instante.",
+            headers={"Retry-After": "1"},
+        ) from exc
 
 
 def is_valid_difficulty(value) -> bool:
@@ -279,11 +290,11 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
             raise HTTPException(400, "Esa posición ya está terminada.")
 
         level = body.level if is_valid_difficulty(body.level) else HINT_STRENGTH
-        suggestion = await run_engine_work(get_cpu_move, board, level)
+        suggestion = await run_optional_analysis(get_cpu_move, board, level)
         if not suggestion:
             raise HTTPException(404, "No hay jugadas disponibles.")
         if body.candidate_limit and board.legal_moves.count() > 1:
-            candidates = await run_engine_work(factual_candidate_payloads_for_level, board, level, body.candidate_limit)
+            candidates = await run_optional_analysis(factual_candidate_payloads_for_level, board, level, body.candidate_limit)
             if candidates:
                 return {**suggestion, "candidates": candidates}
         return suggestion
@@ -300,7 +311,7 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
             raise HTTPException(400, "Esa posición ya está terminada.")
 
         level = body.level if is_valid_difficulty(body.level) else 45
-        payload, primary = await run_engine_work(
+        payload, primary = await run_optional_analysis(
             analyze_move_payload,
             board,
             from_square=body.from_square,
