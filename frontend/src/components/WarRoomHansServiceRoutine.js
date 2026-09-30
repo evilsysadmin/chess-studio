@@ -45,7 +45,7 @@ import {
   warRoomHansTargetNearObject,
 } from './WarRoomHansServiceRoute.js';
 
-export const WAR_ROOM_HANS_SERVICE_ROUTINE_VERSION = 'hans-service-routine-v12-reachable-desk-flank';
+export const WAR_ROOM_HANS_SERVICE_ROUTINE_VERSION = 'hans-service-routine-v13-retry-transient-setup';
 
 const FLOOR_NAME = 'war-room-castle-floor-slab';
 const COMMAND_DESK_TOP_NAME = 'war-room-command-desk-top';
@@ -261,13 +261,17 @@ export function installWarRoomHansServiceRoutine(root) {
         source: 'WarRoomHansServiceRoutine',
         payload: { eventName },
       })) return;
-      const abortSetupForCurrentGame = () => {
-        if (releaseWarRoomHansTask(runtime, taskId)) completedGameId = gameId;
+      const deferSetupForCurrentGame = () => {
+        releaseWarRoomHansTask(runtime, taskId);
+        // Command-desk art and other service targets can arrive through deferred
+        // scene finalizers. Treat temporary setup failure as retryable rather
+        // than recording a phantom completion for this game.
+        eligibleSince = now;
       };
       const service = warRoomHansServiceHome(root, actor.hans.parent);
       const serviceTargetObject = eventName === 'water-plant' ? plant : getCommandDeskTop(root);
       if (!service?.point || !serviceTargetObject) {
-        abortSetupForCurrentGame();
+        deferSetupForCurrentGame();
         return;
       }
       home = service.point;
@@ -290,7 +294,7 @@ export function installWarRoomHansServiceRoutine(root) {
         break;
       }
       if (!target || !routeIn.length || !routeOut.length) {
-        abortSetupForCurrentGame();
+        deferSetupForCurrentGame();
         return;
       }
       props ||= ensureCarriedProps(actor);
