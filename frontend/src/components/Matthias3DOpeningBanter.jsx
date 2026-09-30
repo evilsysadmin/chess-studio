@@ -5,6 +5,7 @@ import { loadMechanicTutorialProgress, markMechanicTutorialSeen } from '../mecha
 import {
   WAR_ROOM_TUTORIAL_ID,
   WAR_ROOM_TUTORIAL_PHASE,
+  WAR_ROOM_TUTORIAL_REPLAY_EVENT,
   resolveWarRoomTutorialPhase,
   warRoomTutorialCopy,
 } from '../warRoomFirstRunTutorial.js';
@@ -43,11 +44,13 @@ export default function Matthias3DOpeningBanter({
   const [boardSignal, setBoardSignal] = useState({ selectedSquare: '', legalTargetCount: 0, turn: '' });
   const tutorialSeenRef = useRef(false);
   const tutorialWasShownRef = useRef('');
+  const tutorialReplayRequestedRef = useRef(false);
   const anchorReady = Boolean(anchorStyle && trackedSquare);
 
   useEffect(() => {
     tutorialSeenRef.current = Boolean(loadMechanicTutorialProgress()?.[WAR_ROOM_TUTORIAL_ID]?.seen);
     tutorialWasShownRef.current = '';
+    tutorialReplayRequestedRef.current = false;
     setTutorialSession(null);
     setBoardSignal({ selectedSquare: '', legalTargetCount: 0, turn: '' });
   }, [gameId]);
@@ -83,13 +86,14 @@ export default function Matthias3DOpeningBanter({
 
       if (
         !tutorialSession
-        && !tutorialSeenRef.current
+        && (!tutorialSeenRef.current || tutorialReplayRequestedRef.current)
         && enabled
         && anchorReady
         && gameId
         && next.turn === 'human'
       ) {
         tutorialWasShownRef.current = gameId;
+        tutorialReplayRequestedRef.current = false;
         setLine('');
         setTutorialSession({
           gameId,
@@ -112,6 +116,27 @@ export default function Matthias3DOpeningBanter({
     return () => observer.disconnect();
   }, [portalHost, isThreeD, tutorialSession, enabled, anchorReady, gameId, historyLength]);
 
+  useEffect(() => {
+    if (!portalHost || !isThreeD || !gameId) return undefined;
+
+    const replayTutorial = () => {
+      tutorialReplayRequestedRef.current = true;
+      tutorialWasShownRef.current = gameId;
+      setLine('');
+      const next = readBoardSignal(portalHost);
+      setBoardSignal((current) => (sameBoardSignal(current, next) ? current : next));
+      if (!enabled || !anchorReady || next.turn !== 'human') return;
+      tutorialReplayRequestedRef.current = false;
+      setTutorialSession({
+        gameId,
+        baselineHistoryLength: Number(historyLength) || 0,
+      });
+    };
+
+    window.addEventListener(WAR_ROOM_TUTORIAL_REPLAY_EVENT, replayTutorial);
+    return () => window.removeEventListener(WAR_ROOM_TUTORIAL_REPLAY_EVENT, replayTutorial);
+  }, [portalHost, isThreeD, gameId, enabled, anchorReady, historyLength]);
+
   const tutorialPhase = tutorialSession
     ? resolveWarRoomTutorialPhase({
       selectedSquare: boardSignal.selectedSquare,
@@ -130,6 +155,7 @@ export default function Matthias3DOpeningBanter({
   }, [tutorialSession, tutorialPhase]);
 
   function dismissTutorial() {
+    tutorialReplayRequestedRef.current = false;
     tutorialSeenRef.current = true;
     markMechanicTutorialSeen(WAR_ROOM_TUTORIAL_ID);
     setTutorialSession(null);
