@@ -335,7 +335,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
             onClick={() => setPlayMenuOpen((open) => !open)}
             disabled={loading}
           >
-            <span>Más formas de jugar</span>
+            <span>{portraitVestibule ? 'Más' : 'Más formas de jugar'}</span>
             {pendingModes.length > 0 && <b className="illustrated-home__play-more-dot" aria-hidden="true" />}
             <i aria-hidden="true">{playMenuOpen ? '▴' : '▾'}</i>
           </button>
