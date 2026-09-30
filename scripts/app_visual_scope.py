@@ -259,6 +259,12 @@ def _surface_groups(path: str) -> set[str] | None:
     if lower.startswith("scripts/app_visual_"):
         return None
     if lower.startswith("e2e/"):
+        # Hans routine videos are an optional deep sidecar, not a canonical
+        # War Room PNG producer. Keep them out of the generic `warroom` group
+        # so a Hans-only change reaches the dedicated capture step instead of
+        # failing canonical-PNG validation before that step can run.
+        if name == "war-room-hans-routines-visual.spec.js":
+            return set()
         if name in {"war-room-pvp.spec.js", "pvp-background-roster.spec.js"}:
             return {"warroom"}
         if "chesscom" in name:
@@ -743,7 +749,7 @@ def self_test() -> None:
     hans_visual = classify(["e2e/war-room-hans-visual-artifact.spec.js"])
     assert hans_visual.hans
     hans_routines = classify(["e2e/war-room-hans-routines-visual.spec.js"])
-    assert hans_routines.hans
+    assert hans_routines.hans and hans_routines.capture_groups == "none"
 
     assert classify(["frontend/src/components/HomeCastle3D.jsx"]).capture_groups == "home"
     assert classify(["scripts/run_core_e2e_lane.py"]).capture_groups == "none"
