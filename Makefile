@@ -422,6 +422,7 @@ render-staging-check:
 
 capacity-probe-check:
 	python3 -S scripts/production_capacity_probe.py --self-test
+	python3 -S scripts/capacity_telemetry_snapshot.py --self-test
 
 static-preflight: capacity-probe-check test-parity-check test-flake-check audio-check data-ux-check pwa-check campaign-map-check copy-check release-check test-suite-audit-ci static-contract-risk-audit css-check css-debt-check visual-ux-check state-resilience-check idempotency-check npm-audit-parser-check architecture-debt-check workflow-debt-check dependency-cycle-check dead-code-check session-continuity-check safe-storage-check docs-index-check async-resilience-check chess-rules-check grafana-check render-staging-check security-api cf-ai-preflight worker-test
 	@python3 scripts/pawn_slug_canonical_integrity.py
