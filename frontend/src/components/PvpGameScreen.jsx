@@ -237,17 +237,28 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
       const response = await pvpApi.playMove(match.id, from, to, promotion);
       if (response?.match) setMatch((current) => mergeNewerMatch(current, response.match));
     } catch (err) {
-      setError(err?.message || 'La jugada no llegó al árbitro.');
+      // A human-vs-human match can legitimately race the 1.25 s polling window:
+      // the UI may still show our turn when the opponent's move has just been
+      // committed. The authoritative API answers 409 and the next GET already
+      // contains the new position. Do not flash a scary error for that expected
+      // synchronization race; resync silently and only surface an error when
+      // the recovery read itself fails.
+      const transientMoveConflict = Number(err?.status) === 409;
+      if (!transientMoveConflict) {
+        setError(err?.message || 'La jugada no llegó al árbitro.');
+      }
       try {
         const response = await pvpApi.getMatch(match.id);
         if (response?.match) {
           setMatch((current) => mergeNewerMatch(current, response.match));
           setConnectionState('live');
+          if (transientMoveConflict) setError('');
         }
       } catch {
         setConnectionState('reconnecting');
         setSelected(null);
         setPendingPromotion(null);
+        setError(err?.message || 'No se pudo sincronizar la partida.');
         // El polling y los eventos online/foreground reintentan contra la autoridad.
       }
     } finally {
