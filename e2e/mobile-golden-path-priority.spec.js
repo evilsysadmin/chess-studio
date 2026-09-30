@@ -125,7 +125,7 @@ test.describe('Mobile golden path · Home portrait mantiene el camino principal 
     { width: 360, height: 640 },
     { width: 430, height: 932 },
   ]) {
-    test(`aviso de Matthias fuera de la navegación en ${viewport.width}x${viewport.height}`, async ({ page }) => {
+    test(`vestíbulo limpio en ${viewport.width}x${viewport.height}`, async ({ page }) => {
       await page.addInitScript(() => { Math.random = () => 0; });
       await page.setViewportSize(viewport);
       await mockApi(page, {
@@ -165,7 +165,8 @@ test.describe('Mobile golden path · Home portrait mantiene el camino principal 
           && barBox.y < playBox.y + playBox.height
           && barBox.y + barBox.height > playBox.y;
         expect(overlap, 'fixed 1v1 bar must not cover JUGAR/CONTINUAR').toBe(false);
-      }    });
+      }
+    });
   }
 });
 
