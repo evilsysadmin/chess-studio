@@ -37,6 +37,15 @@ def utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+
+def _as_utc(value: Any) -> datetime | None:
+    """Normalize Mongo/Python timestamps before comparing them."""
+    if not isinstance(value, datetime):
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
 def _memory_guard() -> asyncio.Lock:
     global _memory_lock, _memory_lock_loop
     loop = asyncio.get_running_loop()
@@ -195,7 +204,7 @@ async def active_roster(now: datetime | None = None) -> list[dict[str, Any]]:
     collections = await _collections()
     if collections is None:
         async with _memory_guard():
-            stale = [name for name, row in _memory_roster.items() if row.get("last_seen") < cutoff]
+            stale = [name for name, row in _memory_roster.items() if (_as_utc(row.get("last_seen")) is None or _as_utc(row.get("last_seen")) < cutoff)]
             for name in stale:
                 _memory_roster.pop(name, None)
             return [dict(row) for row in _memory_roster.values()]
@@ -213,7 +222,8 @@ async def roster_member(username: str, now: datetime | None = None) -> dict[str,
     if collections is None:
         async with _memory_guard():
             row = _memory_roster.get(username)
-            if not row or row.get("last_seen") < cutoff:
+            last_seen = _as_utc(row.get("last_seen")) if row else None
+            if not row or last_seen is None or last_seen < cutoff:
                 return None
             return dict(row)
     roster, _, _ = collections
@@ -234,8 +244,8 @@ async def challenge_cooldown_until(challenger: str, opponent: str, *, now: datet
                 row.get("cooldown_until")
                 for row in _memory_challenges.values()
                 if {row.get("challenger"), row.get("opponent")} == pair
-                and isinstance(row.get("cooldown_until"), datetime)
-                and row["cooldown_until"] > stamp
+                and _as_utc(row.get("cooldown_until")) is not None
+                and _as_utc(row.get("cooldown_until")) > stamp
             ]
             return max(active) if active else None
     _, challenges, _ = collections
@@ -270,8 +280,8 @@ async def challenge_cooldowns_for_user(
                 challenger = row.get("challenger")
                 opponent = row.get("opponent")
                 rival = opponent if challenger == username else challenger if opponent == username else None
-                cooldown_until = row.get("cooldown_until")
-                if rival not in opponent_set or not isinstance(cooldown_until, datetime) or cooldown_until <= stamp:
+                cooldown_until = _as_utc(row.get("cooldown_until"))
+                if rival not in opponent_set or cooldown_until is None or cooldown_until <= stamp:
                     continue
                 previous = result.get(rival)
                 if previous is None or cooldown_until > previous:
@@ -350,7 +360,8 @@ async def list_challenges(username: str, now: datetime | None = None) -> list[di
         async with _memory_guard():
             stamp = now or utcnow()
             for row in _memory_challenges.values():
-                if row.get("status") == "pending" and row.get("created_at") < cutoff:
+                created_at = _as_utc(row.get("created_at"))
+                if row.get("status") == "pending" and (created_at is None or created_at < cutoff):
                     row["status"] = "expired"
                     row["resolved_at"] = stamp
             rows = [
@@ -406,8 +417,8 @@ async def head_to_head_for_user(username: str, opponents: list[str]) -> dict[str
             else:
                 user_won = (white == username and result == "1-0") or (black == username and result == "0-1")
                 record["wins" if user_won else "losses"] += 1
-            stamp = row.get("updated_at") or row.get("created_at")
-            if isinstance(stamp, datetime) and (record["last_played_at"] is None or stamp > record["last_played_at"]):
+            stamp = _as_utc(row.get("updated_at") or row.get("created_at"))
+            if stamp is not None and (record["last_played_at"] is None or stamp > record["last_played_at"]):
                 record["last_played_at"] = stamp
         return records
 
@@ -463,7 +474,8 @@ async def cancel_challenge(challenge_id: str, username: str) -> dict[str, Any] |
                 return None
             if row.get("status") == "cancelled":
                 return dict(row)
-            if row.get("status") != "pending" or row.get("created_at") < cutoff:
+            created_at = _as_utc(row.get("created_at"))
+            if row.get("status") != "pending" or created_at is None or created_at < cutoff:
                 return None
             row.update(
                 status="cancelled",
@@ -549,7 +561,8 @@ async def accept_challenge(
             if not row or row.get("opponent") != username:
                 return None
             if row.get("status") == "pending":
-                if row.get("created_at") < _challenge_cutoff(now):
+                created_at = _as_utc(row.get("created_at"))
+                if created_at is None or created_at < _challenge_cutoff(now):
                     row.update(status="expired", resolved_at=now)
                     return None
                 row.update(status="accepted", resolved_at=now, match_id=match_id)
@@ -711,8 +724,8 @@ async def begin_disconnect_grace(
             row = _memory_matches.get(match_id)
             if not row or row.get("status") != "active" or row.get("acceptance_state") == "staged":
                 return None
-            current = row.get(grace_field)
-            if restart or not isinstance(current, datetime) or stamp < current:
+            current = _as_utc(row.get(grace_field))
+            if restart or current is None or stamp < current:
                 row[grace_field] = stamp
             return _public(row)
 
@@ -763,7 +776,9 @@ async def active_match_for_user(username: str) -> dict[str, Any] | None:
             ]
             if not rows:
                 return None
-            return dict(max(rows, key=lambda row: row.get("updated_at") or row.get("created_at")))
+            def sort_stamp(row):
+                return _as_utc(row.get("updated_at") or row.get("created_at")) or datetime.min.replace(tzinfo=timezone.utc)
+            return dict(max(rows, key=sort_stamp))
     _, _, matches = collections
     try:
         row = await matches.find_one(
