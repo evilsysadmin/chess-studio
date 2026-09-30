@@ -164,6 +164,37 @@ async function settle(page) {
   await page.waitForTimeout(250);
 }
 
+// La Home de escritorio monta un castillo 3D que, con SwiftShader (CI), congela
+// la página varios segundos al arrancar. Antes de medir o de pulsar nada en la
+// Home: castillo listo (si la política de render lo monta) y 2 s de frames
+// fluidos. Así el snapshot se toma con la escena estable y los clics no caen
+// en mitad de un parón.
+async function settleHome(page) {
+  await expect.poll(
+    () => page.evaluate(() => {
+      const castle = document.querySelector('.illustrated-home__castle-3d');
+      return !castle || castle.classList.contains('is-ready');
+    }),
+    { timeout: 120_000, message: 'Home castle 3D never reached is-ready' },
+  ).toBe(true);
+  await expect.poll(
+    () => page.evaluate(() => new Promise((resolve) => {
+      const start = performance.now();
+      let last = start;
+      let worst = 0;
+      const tick = (now) => {
+        worst = Math.max(worst, now - last);
+        last = now;
+        if (now - start < 2_000) requestAnimationFrame(tick);
+        else resolve(Math.round(worst));
+      };
+      requestAnimationFrame(tick);
+    })),
+    { timeout: 120_000, intervals: [0], message: 'Home never painted 2 s without a frame gap over 250 ms' },
+  ).toBeLessThanOrEqual(250);
+  await settle(page);
+}
+
 // Recursos pesados (canvas, WebGL, workers, RAF, AudioContext): al volver a la
 // Home deben estar en el baseline. Listeners globales: algunos módulos instalan
 // su invalidador de caché una sola vez por página la primera vez que se usan
@@ -222,7 +253,7 @@ async function exitPawnSlug(page, frameLocator) {
 }
 
 test('Browser lifecycle · Home ⇄ War Room ×2 y Home ⇄ Pawn Slug ×2 no acumulan recursos globales', async ({ page }) => {
-  test.setTimeout(360_000);
+  test.setTimeout(600_000);
   await installGlobalResourceProbe(page);
   await mockApi(page, {
     profileSeed: {
@@ -234,7 +265,7 @@ test('Browser lifecycle · Home ⇄ War Room ×2 y Home ⇄ Pawn Slug ×2 no acu
 
   const home = page.getByRole('region', { name: 'Modos principales', exact: true });
   await expect(home).toBeVisible();
-  await settle(page);
+  await settleHome(page);
 
   const snapshot = () => page.evaluate(() => window.__chessGlobalResourceProbe.snapshot());
   const baseline = await snapshot();
@@ -259,7 +290,7 @@ test('Browser lifecycle · Home ⇄ War Room ×2 y Home ⇄ Pawn Slug ×2 no acu
     await expect(page.getByRole('heading', { name: '¿Abandonar la partida?', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Cancelar sin penalización', exact: true }).click();
     await expect(home).toBeVisible();
-    await settle(page);
+    await settleHome(page);
     return snapshot();
   };
 
@@ -277,7 +308,7 @@ test('Browser lifecycle · Home ⇄ War Room ×2 y Home ⇄ Pawn Slug ×2 no acu
     await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
     await page.getByRole('button', { name: '← Volver al menú', exact: true }).click();
     await expect(home).toBeVisible();
-    await settle(page);
+    await settleHome(page);
     return snapshot();
   };
 

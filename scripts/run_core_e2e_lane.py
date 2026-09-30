@@ -135,7 +135,7 @@ LANE_COMMANDS: dict[str, tuple[LaneCommand, ...]] = {
         # workers, AudioContexts ni listeners que crezcan por visita.
         LaneCommand(
             'global-lifecycle-resources.spec.js',
-            ('--workers=1', '--retries=0', '--max-failures=1', '--timeout=360000'),
+            ('--workers=1', '--retries=0', '--max-failures=1', '--timeout=600000'),
             canonical_critical=False,
         ),
     ),
