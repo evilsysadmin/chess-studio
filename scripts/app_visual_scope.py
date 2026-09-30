@@ -188,6 +188,7 @@ def _surface_groups(path: str) -> set[str] | None:
         "scripts/browser_quality_scope.py",
         "scripts/chess_rules_gate.mjs",
         "scripts/quality_scope.py",
+        "scripts/run_core_e2e_lane.py",
         "scripts/workflow_debt_gate.py",
     }:
         return set()
@@ -261,6 +262,8 @@ def _surface_groups(path: str) -> set[str] | None:
         if name in {"war-room-pvp.spec.js", "pvp-background-roster.spec.js"}:
             return {"warroom"}
         if "chesscom" in name:
+            return set()
+        if name == "smoke.spec.js":
             return set()
         if name in {"browser-runtime-health.spec.js", "browser-storage-health.spec.js"}:
             return {"health"}
@@ -549,6 +552,7 @@ def write_outputs(scope: Scope, output_path: str) -> None:
 
 
 def self_test() -> None:
+    assert classify(["e2e/smoke.spec.js"]).capture_groups == "none"
     quick_match = classify([
         "frontend/src/components/QuickMatchModal.jsx",
         "frontend/src/components/useWarRoomImmersive.js",
@@ -742,6 +746,7 @@ def self_test() -> None:
     assert hans_routines.hans
 
     assert classify(["frontend/src/components/HomeCastle3D.jsx"]).capture_groups == "home"
+    assert classify(["scripts/run_core_e2e_lane.py"]).capture_groups == "none"
     assert classify(["frontend/src/components/HomeMatthias3D.jsx"]).capture_groups == "home"
     assert classify(["frontend/src/components/HomeMatthiasRoutine.css"]).capture_groups == "home"
     assert classify(["frontend/src/components/HomeMatthiasStations.js"]).capture_groups == "home"

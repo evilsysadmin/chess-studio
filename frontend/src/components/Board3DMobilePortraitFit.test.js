@@ -13,6 +13,10 @@ const PHONES = [
   { viewport: [390, 844], canvas: [374, 813] },
   { viewport: [412, 915], canvas: [396, 884] },
   { viewport: [430, 932], canvas: [414, 901] },
+  // Entrenamiento / puzzles: canvas casi cuadrado bajo la cabecera (GP-7).
+  { viewport: [390, 844], canvas: [367, 383], profile: 'classic', immersive: false },
+  { viewport: [412, 690], canvas: [389, 406], profile: 'classic', immersive: false },
+  { viewport: [360, 640], canvas: [336, 350], profile: 'classic', immersive: false },
 ];
 
 describe('War Room · encaje del tablero en teléfono vertical', () => {
@@ -20,11 +24,11 @@ describe('War Room · encaje del tablero en teléfono vertical', () => {
   beforeEach(() => { previousWindow = globalThis.window; });
   afterEach(() => { globalThis.window = previousWindow; });
 
-  for (const { viewport: [vw, vh], canvas: [cw, ch] } of PHONES) {
-    it(`${vw}x${vh}: tablero al 88–100 % del ancho y 64 casillas en pantalla`, () => {
+  for (const { viewport: [vw, vh], canvas: [cw, ch], profile = 'tactical', immersive = true } of PHONES) {
+    it(`${vw}x${vh} · canvas ${cw}x${ch}: tablero al 88–100 % del ancho y 64 casillas en pantalla`, () => {
       globalThis.window = { matchMedia: () => ({ matches: true }), innerWidth: vw, innerHeight: vh };
       const camera = new THREE.PerspectiveCamera(40, cw / ch, 0.1, 200);
-      fitBoardCamera(camera, cw, ch, true, { profile: 'tactical', immersive: true });
+      fitBoardCamera(camera, cw, ch, true, { profile, immersive });
       camera.updateMatrixWorld();
       expect(camera.userData.framingProfile).toBe(WAR_ROOM_MOBILE_FRAMING_VERSION);
 

@@ -1,63 +1,18 @@
 import { expect, test } from '@playwright/test';
-import { resolveBoard3DCameraFov } from '../frontend/src/components/Board3DConfig.js';
-import { classicWarRoomCameraFramingProfile } from '../frontend/src/components/Board3DCameraProfiles.js';
 import { activateSetupControl, buttonWithVisibleText, login, mockApi } from './helpers.js';
 import { clickWarRoomMove } from './war-room-board-input.js';
+import { readBoard3DProjection } from './board3d-projection.js';
 
 const WAR_ROOM_READY_TIMEOUT = 45_000;
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 const CAPTURE_READY_FEN = 'rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 2';
 const CAPTURE_END_FEN = 'rnbqkb1r/ppp1pppp/5n2/3P4/8/8/PPPP1PPP/RNBQKBNR w KQkq - 1 3';
 
-function normalized(vector) {
-  const length = Math.hypot(...vector);
-  return vector.map((value) => value / length);
-}
-
-function cross(a, b) {
-  return [
-    a[1] * b[2] - a[2] * b[1],
-    a[2] * b[0] - a[0] * b[2],
-    a[0] * b[1] - a[1] * b[0],
-  ];
-}
-
-function dot(a, b) {
-  return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-}
-
-function projectWarRoomSquare(rect, square, worldY = 0.12) {
-  const aspect = Math.max(0.35, rect.width / Math.max(1, rect.height));
-  const profile = classicWarRoomCameraFramingProfile(aspect);
-  // Keep browser input projection on the same public V1 framing + FOV
-  // contracts as the real renderer. Camera experiments must move the pointer
-  // proof with the actual board instead of leaving stale test coordinates.
-  const verticalFov = resolveBoard3DCameraFov(aspect) * Math.PI / 180;
-  const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * aspect);
-  const limitingFov = Math.min(verticalFov, horizontalFov);
-  const unclampedDistance = (profile.halfSpan / Math.tan(limitingFov / 2)) * profile.padding;
-  const distance = Math.max(profile.minDistance, Math.min(profile.maxDistance, unclampedDistance));
-  const target = [0, profile.targetY, -profile.targetZ];
-  const direction = normalized([0, profile.cameraY, profile.cameraZ]);
-  const camera = target.map((value, index) => value + direction[index] * distance);
-  const fileIndex = square.charCodeAt(0) - 97;
-  const rank = Number(square[1]);
-  const point = [fileIndex - 3.5, worldY, 4.5 - rank];
-  const forward = normalized(target.map((value, index) => value - camera[index]));
-  const right = normalized(cross(forward, [0, 1, 0]));
-  const up = cross(right, forward);
-  const relative = point.map((value, index) => value - camera[index]);
-  const depth = dot(relative, forward);
-  const ndcX = dot(relative, right) / (depth * Math.tan(verticalFov / 2) * aspect);
-  const ndcY = dot(relative, up) / (depth * Math.tan(verticalFov / 2));
-  return {
-    x: rect.x + ((ndcX + 1) / 2) * rect.width,
-    y: rect.y + ((1 - ndcY) / 2) * rect.height,
-  };
-}
-
-async function clickWarRoomSquare(page, rect, square, worldY = 0.12) {
-  const point = projectWarRoomSquare(rect, square, worldY);
+// Clic con la cámara REAL publicada por Board3D (data-board3d-view-projection),
+// no con un modelo del encuadre reconstruido en el test (#34, war-room-parity).
+async function clickWarRoomSquare(page, canvas, square) {
+  const projection = await readBoard3DProjection(canvas);
+  const point = projection.square(square);
   await page.mouse.click(point.x, point.y);
 }
 
@@ -278,9 +233,7 @@ test('War Room · desktop input mantiene cámara fija y juega e2→e4', async ({
   await expect(board3d).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
   await expect(canvas).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
   await expect(board3d).toHaveAttribute('data-board3d-selected', 'e4');
-  const captureRect = await canvas.boundingBox();
-  expect(captureRect).not.toBeNull();
-  await clickWarRoomSquare(page, captureRect, 'd5');
+  await clickWarRoomSquare(page, canvas, 'd5');
   await expect.poll(() => requestLog.filter((entry) => entry.method === 'POST' && /\/games\/[^/]+\/move$/.test(entry.path)).length).toBe(2);
   await expect(board3d).toHaveAttribute('data-board3d-selected', '');
 

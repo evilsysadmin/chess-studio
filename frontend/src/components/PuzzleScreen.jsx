@@ -419,6 +419,12 @@ export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, o
     }
   }
 
+  // GP-7 (#34): en móvil el panel con el título queda bajo el tablero, así que
+  // el objetivo viaja con el turno, encima del tablero.
+  const boardObjective = puzzle.kind === 'personal' && puzzle.played
+    ? `Jugaste ${puzzle.played}: busca algo mejor`
+    : KIND_LABELS[puzzle.kind] || null;
+
   return (
     <div className={`tutorial-shell puzzle-screen ${source === 'personal' ? 'puzzle-screen-personal' : ''}`}>
       <button className="back-link" onClick={onExit}>← Volver al menú</button>
@@ -445,7 +451,7 @@ export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, o
           <div className={`status-line ${status === 'solved' ? 'success' : ''}`}>
             {status === 'solved' && '¡Resuelto!'}
             {status === 'revealed' && 'Esta era la solución'}
-            {status === 'playing' && (rushEnded ? `Tiempo. ${solvedCount} aciertos.` : busy ? 'El rival responde…' : 'Tu turno')}
+            {status === 'playing' && (rushEnded ? `Tiempo. ${solvedCount} aciertos.` : busy ? 'El rival responde…' : boardObjective ? `Tu turno · ${boardObjective}` : 'Tu turno')}
           </div>
           <Board
             fen={localChess ? fen : 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'}
@@ -485,7 +491,9 @@ export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, o
             {!rushMode && status === 'playing' && (
               <button className="secondary-btn" onClick={revealSolution}>Ver solución</button>
             )}
-            {!rushMode && source !== 'daily' && <button className="primary-btn" onClick={newPuzzle}>Siguiente puzzle</button>}
+            {/* Mientras se juega, la acción principal es el tablero: saltar el
+                puzzle no puede ser el CTA dorado (GP-7, #34). */}
+            {!rushMode && source !== 'daily' && <button className={status === 'playing' ? 'secondary-btn' : 'primary-btn'} onClick={newPuzzle}>Siguiente puzzle</button>}
             {!rushMode && source === 'personal' && status === 'solved' && onPlayAgain && (
               <button className="secondary-btn" onClick={onPlayAgain}>Volver a jugar</button>
             )}

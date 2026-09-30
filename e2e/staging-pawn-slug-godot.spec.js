@@ -103,6 +103,7 @@ test('staging visual · Pawn Slug Godot muestra boot, carrera y pickup SMG sin m
   const username = requiredEnv('STAGING_E2E_USERNAME');
   const password = requiredEnv('STAGING_E2E_PASSWORD');
   const inviteCode = requiredEnv('STAGING_INVITE_CODE');
+  const synthetic = stagingSyntheticHeaders(username);
 
   if (EXPECTED_SHA) {
     const releaseResponse = await request.get(`${STAGING_API_URL}/release?sha=${encodeURIComponent(EXPECTED_SHA)}`, {

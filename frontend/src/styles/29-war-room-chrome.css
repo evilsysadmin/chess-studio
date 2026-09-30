@@ -115,11 +115,16 @@
   }
 
   /* The save state becomes a toast: failures stay visible; a successful save
-     confirms itself briefly and then gets out of the board's way. */
+     confirms itself briefly and then gets out of the board's way. It sits
+     under the floating HUD, never over it: with the OS «reduce motion» setting
+     a global rule cancels every animation, so the fade-out cannot be what keeps
+     it off the turn pill, Guía and ⋯ (it used to cover them for good). */
   .app-shell-board-game:has(.game-layout-3d) .masthead-actions .save-status-badge {
     position: absolute;
-    top: 0;
-    right: 4.55rem;
+    top: 3.6rem;
+    /* Between 821 and 1080 px the actions box collapses just past the right
+       edge; 1.2rem keeps the toast inside the viewport in both layouts. */
+    right: 1.2rem;
     width: max-content;
     min-width: 0;
     margin: 0;

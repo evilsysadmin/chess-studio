@@ -167,7 +167,7 @@
      fila MATTHIAS/MAZMORRAS/más y rejilla de navegación. Antes la fila se
      anclaba a 60px y quedaba medio oculta bajo la barra en cualquier teléfono. */
   body .app-shell-home .menu.menu-illustrated {
-    --home-portrait-row-bottom: calc(max(18px, env(safe-area-inset-bottom)) + 80px);
+    --home-portrait-row-bottom: calc(max(18px, env(safe-area-inset-bottom)) + 64px);
     --home-portrait-nav-bottom: calc(max(18px, env(safe-area-inset-bottom)) + 128px);
   }
 
