@@ -102,10 +102,14 @@ test('War Room · canario visual de Hans físicamente en escena', async () => {
     });
     await seedGamesBeforeFire(page);
 
-    await buttonWithVisibleText(page, 'Partida rápida').click();
+    // Con SwiftShader la Home (castillo 3D, fuego) congela la página durante
+    // decenas de segundos y un clic no pasa la comprobación de estabilidad de
+    // Playwright. Enfocar + Enter activa el mismo botón sin depender de que la
+    // escena deje de moverse; lo que se prueba aquí es la War Room (#4438).
+    await buttonWithVisibleText(page, 'Partida rápida').press('Enter');
     const quickDialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
     await expect(quickDialog).toBeVisible();
-    await quickDialog.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+    await quickDialog.getByRole('button', { name: 'Empezar partida', exact: true }).press('Enter');
     const warRoom = page.locator('.board-live-row.is-3d-warroom');
     const canvas = page.locator('.board3d-main-canvas');
     const fireOverlay = page.getByTestId('warroom-hans-fire-call-overlay');
