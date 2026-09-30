@@ -72,7 +72,8 @@ export function applyWarRoomHemisphereGrade(scene, { coarsePointer = false } = {
   if (!hemisphere || !hemisphere.parent) {
     hemisphere = scene.children?.find((object) => (
       object?.isHemisphereLight
-      && [0xffefd0, 0xffd8b0, 0xffe4c4].includes(object.color?.getHex?.())
+      // 0xffdcb0 is the v4 warm grade (applyWarRoomV4RuntimeLightingGrade).
+      && [0xffefd0, 0xffd8b0, 0xffe4c4, 0xffdcb0].includes(object.color?.getHex?.())
       && [0x10192b, 0x1b120d].includes(object.groundColor?.getHex?.())
     )) || null;
     if (hemisphere) warRoomHemisphereState.set(scene, hemisphere);
@@ -120,6 +121,44 @@ export function applyWarRoomV2RuntimeLightingGrade(
 
   scene.userData.warRoomV2LightingGrade = profile.grade;
   scene.userData.warRoomV2Exposure = profile.exposure;
+  return profile;
+}
+
+export function warRoomV4RuntimeLightingProfile({ coarsePointer = false } = {}) {
+  // The v4 golden is a warm, luminous observatory: lift exposure and a warmer
+  // ambient fill instead of adding lights. The key and the warm fill keep the
+  // shared values that carry piece readability.
+  return {
+    exposure: coarsePointer ? 1.12 : 1.30,
+    hemisphere: coarsePointer ? 1.45 : 0.95,
+    hemisphereColor: 0xffdcb0,
+    background: 0x0a0705,
+    fog: 0x120c08,
+    grade: 'moonlit-royal-warm-v1',
+  };
+}
+
+export function applyWarRoomV4RuntimeLightingGrade(
+  scene,
+  renderer,
+  {
+    coarsePointer = false,
+    hemisphere = null,
+  } = {},
+) {
+  if (!scene || scene.userData?.warRoomRenderedVariant !== 'v4') return null;
+  const profile = warRoomV4RuntimeLightingProfile({ coarsePointer });
+
+  if (typeof scene.background?.setHex === 'function') scene.background.setHex(profile.background);
+  if (scene.fog?.isFogExp2 && typeof scene.fog.color?.setHex === 'function') scene.fog.color.setHex(profile.fog);
+  if (hemisphere) {
+    hemisphere.intensity = profile.hemisphere;
+    if (typeof hemisphere.color?.setHex === 'function') hemisphere.color.setHex(profile.hemisphereColor);
+  }
+  if (renderer && 'toneMappingExposure' in renderer) renderer.toneMappingExposure = profile.exposure;
+
+  scene.userData.warRoomV4LightingGrade = profile.grade;
+  scene.userData.warRoomV4Exposure = profile.exposure;
   return profile;
 }
 
@@ -500,6 +539,11 @@ function installWarRoomRenderDiscipline() {
     if (v2Lighting && this.domElement?.dataset) {
       this.domElement.dataset.warRoomV2LightingGrade = v2Lighting.grade;
       this.domElement.dataset.warRoomV2Exposure = Number(v2Lighting.exposure).toFixed(2);
+    }
+    const v4Lighting = applyWarRoomV4RuntimeLightingGrade(scene, this, { coarsePointer, hemisphere });
+    if (v4Lighting && this.domElement?.dataset) {
+      this.domElement.dataset.warRoomV4LightingGrade = v4Lighting.grade;
+      this.domElement.dataset.warRoomV4Exposure = Number(v4Lighting.exposure).toFixed(2);
     }
     const now = typeof performance !== 'undefined' && typeof performance.now === 'function'
       ? performance.now()
