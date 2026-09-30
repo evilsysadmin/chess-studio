@@ -143,18 +143,36 @@ def register_player(base: str, invite_code: str, synthetic_secret: str, timeout:
 
 
 def cleanup_player(base: str, player: VirtualPlayer, timeout: float) -> None:
-    status, payload, _, _ = request_json(
-        base,
-        "/auth/delete-account",
-        method="POST",
-        body={"password": player.password},
-        token=player.token,
-        timeout=timeout,
-    )
-    if status != 200 or payload.get("deleted") is not True:
-        raise RuntimeError(
-            f"cleanup de {player.username} falló HTTP {status}: {detail(payload, 'delete-account failed')}"
-        )
+    transient_statuses = {429, 502, 503, 504}
+    last_error = ""
+    for attempt in range(1, 5):
+        try:
+            status, payload, _, _ = request_json(
+                base,
+                "/auth/delete-account",
+                method="POST",
+                body={"password": player.password},
+                token=player.token,
+                timeout=timeout,
+            )
+        except (URLError, TimeoutError, OSError) as exc:
+            last_error = type(exc).__name__
+            if attempt == 4:
+                raise RuntimeError(
+                    f"cleanup de {player.username} agotó reintentos: {last_error}"
+                ) from exc
+            time.sleep(min(2 ** (attempt - 1), 8))
+            continue
+
+        if status == 200 and payload.get("deleted") is True:
+            return
+
+        last_error = f"HTTP {status}: {detail(payload, 'delete-account failed')}"
+        if status not in transient_statuses or attempt == 4:
+            raise RuntimeError(f"cleanup de {player.username} falló {last_error}")
+        time.sleep(min(2 ** (attempt - 1), 8))
+
+    raise RuntimeError(f"cleanup de {player.username} falló: {last_error}")
 
 
 def create_game(base: str, player: VirtualPlayer, difficulty: float, timeout: float) -> str:
@@ -400,12 +418,18 @@ def main() -> int:
 
     try:
         max_players = max(levels)
-        for index in range(max_players):
-            players.append(register_player(base, invite_code, synthetic_secret, args.timeout))
-            if (index + 1) % 20 == 0 or index + 1 == max_players:
-                print(json.dumps({"virtual_accounts": {"created": index + 1, "total": max_players}}))
-
         for level in levels:
+            while len(players) < level:
+                players.append(register_player(base, invite_code, synthetic_secret, args.timeout))
+                if len(players) % 20 == 0 or len(players) == level:
+                    print(json.dumps({
+                        "virtual_accounts": {
+                            "created": len(players),
+                            "target_level": level,
+                            "max_requested": max_players,
+                        }
+                    }))
+
             row = run_level(
                 base,
                 players[:level],
@@ -451,7 +475,7 @@ def main() -> int:
             try:
                 cleanup_player(base, player, args.timeout)
             except (RuntimeError, URLError, TimeoutError, OSError) as exc:
-                cleanup_errors.append(f"{player.username}:{type(exc).__name__}")
+                cleanup_errors.append(f"{player.username}:{str(exc)[:180]}")
 
     summary = {
         "base_host": urlsplit(base).hostname,
@@ -466,8 +490,9 @@ def main() -> int:
         "cleanup_ok": not cleanup_errors,
         "cleanup_errors": cleanup_errors[:5],
         "note": (
-            "Each virtual player is a distinct signed staging identity. Games are prepared before timing; "
-            "latency measures POST /move (human move -> Matthias -> persistence). Escalation stops after "
+            "Each virtual player is a distinct signed staging identity. Accounts are created incrementally "
+            "per level, games are prepared before timing, and cleanup retries transient edge/deploy failures. "
+            "Latency measures POST /move (human move -> Matthias -> persistence). Escalation stops after "
             "the first level that exceeds the configured p95/error safety threshold."
         ),
     }
