@@ -411,57 +411,149 @@ def scale_preview_board():
 V3_ARMOR_SCALE = 1.32
 
 
-def build_armor(index, x, y, static, palette):
-    """Full plate armour on a stone plinth, holding a halberd, facing the board.
+def taper(name, loc, r_bottom, r_top, depth, material, owner, *, vertices=16, smooth=True):
+    """Tapered plate tube (greave, cuisse, vambrace): a smooth truncated cone."""
+    bpy.ops.mesh.primitive_cone_add(vertices=vertices, radius1=r_bottom, radius2=r_top, depth=depth, location=loc)
+    obj = bpy.context.object
+    obj.name = name
+    obj.data.materials.append(material)
+    if smooth:
+        obj.data.shade_smooth()
+    base.tag(obj)
+    base.relink(obj, owner)
+    return obj
 
-    Authored at 1 m scale, then grown by V3_ARMOR_SCALE about its foot so the
-    suits read as life-size guards from the high play camera."""
+
+def ring(name, loc, major, minor, material, owner):
+    """Low-poly gilt edge ring (the shared torus is 48x12, too heavy x8 suits)."""
+    bpy.ops.mesh.primitive_torus_add(major_radius=major, minor_radius=minor, major_segments=20,
+                                     minor_segments=6, location=loc)
+    obj = bpy.context.object
+    obj.name = name
+    obj.data.materials.append(material)
+    obj.data.shade_smooth()
+    base.tag(obj)
+    base.relink(obj, owner)
+    return obj
+
+
+def build_armor(index, x, y, static, palette):
+    """Gothic full plate on a stepped plinth, holding a halberd, facing the board.
+
+    Authored at 1 m scale around its foot (local -y is the front), then grown
+    by V3_ARMOR_SCALE so the suits read as life-size guards from the play
+    camera. Plates are layered (lames, cops with wings, fluted cuirass with a
+    plackart, sallet-armet with a beaked visor) so the silhouette reads as
+    armour, not as a stack of primitives."""
     yaw = math.atan2(-x, y)  # rotates local -y (visor, tabard) onto the board centre
     origin = (x, y)
     prefix = f"WR3_ARM_armor_{index}"
+    teutonic = index % 2 == 1
     parts = []
+    steel, dark, gold = palette["steel"], palette["steel_dark"], palette["gold"]
 
     def add(obj):
         parts.append(obj)
         return obj
 
-    add(base.cube(f"{prefix}_plinth", (x, y, 0.22), (0.46, 0.46, 0.22), palette["stone"], static, bevel=0.04))
-    add(base.cube(f"{prefix}_plinth_cap", (x, y, 0.47), (0.50, 0.50, 0.04), palette["flag_dark"], static, bevel=0.02))
+    def sph(name, loc, r, mat, scale=(1, 1, 1)):
+        return add(lod_sphere(f"{prefix}_{name}", loc, r, mat, static, scale=scale))
+
+    def box(name, loc, half, mat, bevel=0.01, rot=None):
+        obj = add(base.cube(f"{prefix}_{name}", loc, half, mat, static, bevel=bevel))
+        if rot:
+            obj.rotation_euler = rot
+        return obj
+
+    # Stepped stone plinth with an oak top.
+    box("plinth", (x, y, 0.19), (0.46, 0.46, 0.19), palette["stone"], bevel=0.04)
+    box("plinth_step", (x, y, 0.40), (0.42, 0.42, 0.04), palette["stone"], bevel=0.02)
+    box("plinth_top", (x, y, 0.47), (0.44, 0.44, 0.03), palette["oak_dark"], bevel=0.015)
+    foot = 0.50
+
     for leg in (-1, 1):
-        lx = x + leg * 0.13
-        add(base.cylinder(f"{prefix}_greave_{leg}", (lx, y, 0.78), 0.085, 0.54, palette["steel"], static, vertices=14))
-        add(lod_sphere(f"{prefix}_knee_{leg}", (lx, y - 0.05, 1.07), 0.085, palette["steel"], static))
-        add(base.cylinder(f"{prefix}_cuisse_{leg}", (lx, y, 1.33), 0.10, 0.46, palette["steel"], static, vertices=14))
-        add(base.cube(f"{prefix}_sabaton_{leg}", (lx, y - 0.07, 0.54), (0.08, 0.15, 0.05), palette["steel_dark"], static, bevel=0.03))
-    add(base.cylinder(f"{prefix}_fauld", (x, y, 1.62), 0.25, 0.20, palette["steel"], static, vertices=18))
-    # Rounded cuirass with a raised medial ridge instead of a box torso.
-    add(lod_sphere(f"{prefix}_breastplate", (x, y - 0.02, 2.00), 0.30, palette["steel"], static, scale=(0.95, 0.62, 1.08)))
-    add(base.cube(f"{prefix}_breast_ridge", (x, y - 0.205, 2.02), (0.018, 0.012, 0.24), palette["gold"], static, bevel=0.008))
-    add(base.cube(f"{prefix}_tabard", (x, y - 0.19, 1.72), (0.19, 0.012, 0.36), palette["white" if index % 2 else "crimson"], static, bevel=0.01))
-    add(base.cube(f"{prefix}_belt", (x, y - 0.03, 1.66), (0.26, 0.16, 0.035), palette["leather"], static, bevel=0.015))
+        lx = x + leg * 0.12
+        # Pointed sabaton over lamed instep.
+        sph(f"sabaton_{leg}", (lx, y - 0.08, foot + 0.035), 0.075, dark, scale=(0.75, 1.9, 0.45))
+        sph(f"instep_{leg}", (lx, y - 0.02, foot + 0.07), 0.07, steel, scale=(0.9, 1.1, 0.6))
+        add(taper(f"{prefix}_greave_{leg}", (lx, y, foot + 0.33), 0.062, 0.086, 0.50, steel, static))
+        # Poleyn with a side wing.
+        sph(f"poleyn_{leg}", (lx, y - 0.04, foot + 0.60), 0.080, steel, scale=(1.0, 0.9, 1.0))
+        sph(f"poleyn_wing_{leg}", (lx + leg * 0.07, y - 0.03, foot + 0.60), 0.060, steel, scale=(0.35, 0.9, 1.0))
+        add(taper(f"{prefix}_cuisse_{leg}", (lx, y, foot + 0.86), 0.085, 0.108, 0.46, steel, static))
+        # Tasset plate hanging over the thigh.
+        box(f"tasset_{leg}", (lx + leg * 0.02, y - 0.10, foot + 1.02), (0.10, 0.012, 0.12), steel, bevel=0.02,
+            rot=(math.radians(-12), math.radians(leg * 10), 0))
+
+    # Fauld of three overlapping lames.
+    for lame, (z, r) in enumerate(((1.62, 0.232), (1.69, 0.240), (1.76, 0.246))):
+        add(taper(f"{prefix}_fauld_{lame}", (x, y, z), r + 0.012, r, 0.075, steel, static, vertices=22))
+    # Fluted cuirass: breastplate, plackart, gilt neckline and medial ridge.
+    sph("breastplate", (x, y - 0.01, 2.06), 0.30, steel, scale=(0.94, 0.60, 1.00))
+    sph("plackart", (x, y - 0.07, 1.86), 0.24, steel, scale=(0.95, 0.62, 0.75))
+    box("breast_ridge", (x, y - 0.188, 2.04), (0.014, 0.010, 0.22), gold, bevel=0.006)
+    for flute in (-1, 1):
+        box(f"breast_flute_{flute}", (x + flute * 0.10, y - 0.170, 2.03), (0.010, 0.010, 0.19), steel, bevel=0.005,
+            rot=(0, math.radians(flute * -8), 0))
+    add(ring(f"{prefix}_neckline", (x, y - 0.02, 2.30), 0.13, 0.018, gold, static))
+    box("belt", (x, y - 0.02, 1.58), (0.25, 0.16, 0.028), palette["leather"], bevel=0.012)
+    box("belt_buckle", (x, y - 0.18, 1.58), (0.035, 0.008, 0.030), gold, bevel=0.005)
+    # Tabard in the house colours, gold hem; Teutonic suits wear the black cross.
+    field = palette["white" if teutonic else "crimson"]
+    tilt = (math.radians(-8), 0, 0)  # hangs from the belt, falling slightly forward over the thighs
+    box("tabard", (x, y - 0.20, 1.40), (0.16, 0.010, 0.17), field, bevel=0.008, rot=tilt)
+    box("tabard_hem", (x, y - 0.225, 1.235), (0.16, 0.008, 0.016), gold, bevel=0.004, rot=tilt)
+    if teutonic:
+        box("tabard_cross_v", (x, y - 0.214, 1.41), (0.026, 0.005, 0.11), palette["black"], bevel=0.003, rot=tilt)
+        box("tabard_cross_h", (x, y - 0.212, 1.45), (0.09, 0.005, 0.026), palette["black"], bevel=0.003, rot=tilt)
+
+    # Sword at the left hip: leather scabbard, gilt hilt.
+    sx = x - 0.28
+    box("scabbard", (sx, y - 0.02, 1.18), (0.028, 0.018, 0.36), palette["leather"], bevel=0.01, rot=(0, math.radians(8), 0))
+    box("sword_guard", (sx + 0.055, y - 0.02, 1.56), (0.10, 0.018, 0.016), gold, bevel=0.006, rot=(0, math.radians(8), 0))
+    sph("sword_pommel", (sx + 0.07, y - 0.02, 1.70), 0.03, gold)
+
     for arm in (-1, 1):
-        ax = x + arm * 0.36
-        add(lod_sphere(f"{prefix}_pauldron_{arm}", (ax, y, 2.22), 0.15, palette["steel"], static, scale=(1.2, 1.0, 0.8)))
-        add(base.cylinder(f"{prefix}_vambrace_{arm}", (ax + arm * 0.02, y - 0.02, 1.90), 0.068, 0.48, palette["steel"], static, vertices=12))
-        add(lod_sphere(f"{prefix}_gauntlet_{arm}", (ax + arm * 0.02, y - 0.06, 1.63), 0.075, palette["steel_dark"], static))
-    add(base.cube(f"{prefix}_gorget", (x, y, 2.33), (0.12, 0.11, 0.05), palette["steel_dark"], static, bevel=0.03))
-    add(lod_sphere(f"{prefix}_helm", (x, y, 2.52), 0.17, palette["steel"], static, scale=(0.95, 1.0, 1.15)))
-    add(base.cube(f"{prefix}_visor", (x, y - 0.155, 2.50), (0.12, 0.02, 0.035), palette["steel_dark"], static, bevel=0.01))
-    add(base.cube(f"{prefix}_crest", (x, y + 0.03, 2.74), (0.03, 0.14, 0.07), palette["gold"], static, bevel=0.02))
-    add(lod_sphere(f"{prefix}_plume", (x, y + 0.10, 2.86), 0.10, palette["black" if index % 2 else "crimson"], static, scale=(0.6, 1.4, 1.0)))
-    # Halberd in the right hand: shaft, axe blade, spike.
+        ax = x + arm * 0.34
+        # Layered pauldron (three lames) with a gilt edge and a besagew.
+        for lame, (dz, r, sc) in enumerate(((0.0, 0.16, 0.85), (-0.08, 0.145, 0.75), (-0.15, 0.13, 0.65))):
+            sph(f"pauldron_{arm}_{lame}", (ax + arm * 0.02 * lame, y, 2.24 + dz), r, steel, scale=(1.15, 1.05, sc))
+        add(ring(f"{prefix}_pauldron_rim_{arm}", (ax, y, 2.30), 0.145, 0.012, gold, static))
+        sph(f"besagew_{arm}", (ax - arm * 0.10, y - 0.15, 2.12), 0.05, gold, scale=(1, 0.35, 1))
+        add(taper(f"{prefix}_rerebrace_{arm}", (ax + arm * 0.02, y, 1.98), 0.058, 0.066, 0.26, steel, static, vertices=14))
+        sph(f"couter_{arm}", (ax + arm * 0.025, y + 0.01, 1.84), 0.065, steel)
+        sph(f"couter_wing_{arm}", (ax + arm * 0.06, y + 0.01, 1.84), 0.055, steel, scale=(0.35, 1.0, 1.0))
+        add(taper(f"{prefix}_vambrace_{arm}", (ax + arm * 0.025, y - 0.02, 1.68), 0.050, 0.060, 0.26, steel, static, vertices=14))
+        add(taper(f"{prefix}_gauntlet_cuff_{arm}", (ax + arm * 0.025, y - 0.03, 1.53), 0.070, 0.052, 0.08, dark, static, vertices=14))
+        sph(f"gauntlet_{arm}", (ax + arm * 0.025, y - 0.04, 1.46), 0.055, dark, scale=(0.9, 1.1, 1.2))
+
+    # Gorget of two lames and a beaked armet with eye slit, comb and plume.
+    for lame, (z, r) in enumerate(((2.33, 0.125), (2.38, 0.108))):
+        add(taper(f"{prefix}_gorget_{lame}", (x, y, z), r + 0.010, r, 0.05, steel, static, vertices=18))
+    sph("helm", (x, y + 0.01, 2.56), 0.165, steel, scale=(0.92, 1.0, 1.12))
+    sph("visor", (x, y - 0.10, 2.53), 0.12, steel, scale=(0.82, 0.95, 0.80))
+    sph("visor_beak", (x, y - 0.19, 2.51), 0.06, steel, scale=(0.9, 1.3, 0.8))
+    box("eye_slit", (x, y - 0.188, 2.585), (0.085, 0.012, 0.010), palette["black"], bevel=0.002)
+    box("helm_comb", (x, y + 0.01, 2.72), (0.012, 0.13, 0.035), gold, bevel=0.006)
+    plume = palette["black" if teutonic else "crimson"]
+    for feather, (dy, dz, r) in enumerate(((0.06, 2.82, 0.085), (0.14, 2.86, 0.075), (0.22, 2.84, 0.065))):
+        sph(f"plume_{feather}", (x, y + dy, dz), r, plume, scale=(0.55, 1.35, 0.9))
+
+    # Halberd grounded beside the right foot, held at the gauntlet.
     hx = x + 0.44
-    shaft_top = 3.35
-    add(base.cylinder(f"{prefix}_halberd_shaft", (hx, y - 0.06, (0.52 + shaft_top) / 2.0), 0.025, shaft_top - 0.52,
-                      palette["oak_dark"], static, vertices=10))
-    add(base.cube(f"{prefix}_halberd_blade", (hx + 0.12, y - 0.06, shaft_top - 0.24), (0.12, 0.012, 0.15),
-                  palette["steel"], static, bevel=0.02))
-    add(base.cube(f"{prefix}_halberd_spike", (hx, y - 0.06, shaft_top + 0.14), (0.02, 0.012, 0.16),
-                  palette["steel"], static, bevel=0.01))
+    shaft_top = 3.30
+    add(base.cylinder(f"{prefix}_halberd_shaft", (hx, y - 0.05, (foot + shaft_top) / 2.0), 0.022,
+                      shaft_top - foot, palette["oak_dark"], static, vertices=10))
+    box("halberd_langet", (hx, y - 0.05, shaft_top - 0.34), (0.028, 0.028, 0.18), dark, bevel=0.006)
+    blade = box("halberd_axe", (hx + 0.12, y - 0.05, shaft_top - 0.22), (0.12, 0.010, 0.13), steel, bevel=0.02)
+    blade.rotation_euler.y = math.radians(-6)
+    box("halberd_fluke", (hx - 0.09, y - 0.05, shaft_top - 0.22), (0.08, 0.010, 0.022), steel, bevel=0.006,
+        rot=(0, math.radians(-18), 0))
+    box("halberd_spike", (hx, y - 0.05, shaft_top + 0.15), (0.018, 0.010, 0.17), steel, bevel=0.006)
+    sph("halberd_ferrule", (hx, y - 0.05, foot + 0.02), 0.028, dark)
+
     k = V3_ARMOR_SCALE
     for part in parts:
-        if part.name.rsplit("_", 1)[0].endswith(("greave", "cuisse", "vambrace")) or part.name.endswith("_fauld"):
-            part.data.shade_smooth()
         part.location.x = x + (part.location.x - x) * k
         part.location.y = y + (part.location.y - y) * k
         part.location.z *= k
@@ -630,7 +722,7 @@ def build_hearth(static, palette):
         log = base.cylinder(f"WR3_ARM_hearth_log_{log_x:+.2f}", (x + log_x, y - 0.52, 0.42), 0.10, 1.0,
                             palette["oak_dark"], static, vertices=12)
         log.rotation_euler.y = math.pi / 2
-    base.light("WR3_LIGHT_hearth", "POINT", (x, y - 1.20, 1.30), 520.0, (1.0, 0.30, 0.06), static, radius=1.8)
+    base.light("WR3_LIGHT_hearth", "POINT", (x, y - 1.20, 1.30), 700.0, (1.0, 0.32, 0.07), static, radius=1.8)
     base.anchor("WR_ANCHOR_fireplace_practical", (x, y - 0.90, 1.45), static)
 
 
@@ -651,7 +743,7 @@ def build_windows(static, palette):
                       palette["iron"], static, bevel=0.008)
         base.cube(f"WR3_ARM_window_sill_{index}", (x, back - 0.22, 1.72), (0.70, 0.16, 0.07),
                   palette["flag"], static, bevel=0.03)
-    moon = base.light("WR3_LIGHT_window", "AREA", (0, back - 1.6, 3.6), 380.0, (0.18, 0.42, 1.0), static, size=4.5)
+    moon = base.light("WR3_LIGHT_window", "AREA", (0, back - 1.6, 3.6), 170.0, (0.18, 0.42, 1.0), static, size=4.5)
     base.look_at(moon, (0, 0.5, 1.1))
     base.anchor("WR_ANCHOR_window_moonlight", (0, back - 1.4, 3.6), static)
 
@@ -690,7 +782,7 @@ def build_torches(static, palette):
         irons += parts
         glows.append(glow)
         face = (math.sin(yaw) * 0.9, -math.cos(yaw) * 0.9)
-        pool = base.light(f"WR3_LIGHT_torch_{index}", "POINT", (x + face[0], y + face[1], z + 0.6), 95.0,
+        pool = base.light(f"WR3_LIGHT_torch_{index}", "POINT", (x + face[0], y + face[1], z + 0.6), 330.0,
                           (1.0, 0.45, 0.13), static, radius=0.25)
         pool.data.use_shadow = False  # many shadowed points overflow EEVEE's shadow pool
         mount = base.anchor(f"{V3_TORCH_ANCHOR_PREFIX}{index}", (x, y, z), static)
@@ -702,18 +794,16 @@ def build_lighting(static):
     scene = bpy.context.scene
     scene["war_room_variant"] = "v3-armory-hall"
     scene["war_room_visual_canon"] = V3_CANON
-    scene.view_settings.exposure = 0.35
+    # Torchlit hall: dim fill, the torches and the hearth carry the light.
+    scene.view_settings.exposure = 0.10
 
-    key = base.light("WR3_LIGHT_key", "AREA", (-4.8, -3.8, 8.3), 470.0, (1.0, 0.64, 0.36), static, size=6.1)
+    key = base.light("WR3_LIGHT_key", "AREA", (-4.8, -3.8, 8.3), 190.0, (1.0, 0.66, 0.40), static, size=6.1)
     base.look_at(key, (0, 0.5, 1.0))
-    fill = base.light("WR3_LIGHT_fill", "AREA", (6.6, -2.6, 6.6), 420.0, (0.18, 0.40, 1.00), static, size=6.0)
+    fill = base.light("WR3_LIGHT_fill", "AREA", (6.6, -2.6, 6.6), 110.0, (0.18, 0.36, 1.00), static, size=6.0)
     base.look_at(fill, (0.4, 0.6, 1.5))
-    top = base.light("WR3_LIGHT_top", "AREA", (0, 1.4, 8.7), 300.0, (0.95, 0.72, 0.46), static, size=5.2)
-    base.look_at(top, (0, 0.4, 0.8))
-    for side in (-1, 1):
-        wall = base.light(f"WR3_LIGHT_wall_wash_{side}", "AREA", (side * 5.0, 1.0, 5.5), 150.0,
-                          (1.0, 0.55, 0.25), static, size=4.0)
-        base.look_at(wall, (side * 8.4, 1.0, 3.0))
+    # A soft pool over the board so play stays readable in the dim hall.
+    top = base.light("WR3_LIGHT_top", "AREA", (0, 0.0, 8.7), 170.0, (0.95, 0.74, 0.50), static, size=3.4)
+    base.look_at(top, (0, 0.0, 1.1))
 
 
 def apply_v3_camera():

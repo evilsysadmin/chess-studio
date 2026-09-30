@@ -323,7 +323,13 @@ function addBrazierCage(torch, iron, ironHighlight, emberMat) {
 // The v1 gothic sconce-brazier, unpositioned: backplate in the local XY plane,
 // forged arm and brazier toward +z. Other rooms (War Room v3) mount it on their
 // own wall anchors; `withLight: false` keeps the flame and halo but no real light.
-export function createWarRoomSideTorch({ side = -1, phase = 0, withLight = true } = {}) {
+export function createWarRoomSideTorch({
+  side = -1,
+  phase = 0,
+  withLight = true,
+  lightIntensity = 9.2,
+  lightDistance = 11.0,
+} = {}) {
   const torch = new THREE.Group();
   torch.name = side < 0 ? 'war-room-side-torch-left' : 'war-room-side-torch-right';
   torch.userData.warRoomPracticalDecor = 'animated-castle-torch';
@@ -447,7 +453,7 @@ export function createWarRoomSideTorch({ side = -1, phase = 0, withLight = true 
   // Keep one real light per torch, but let its warm spill reach the adjacent
   // campaign painting instead of dying on the wall before the frame. The
   // slightly softer falloff brightens canvas + gilt without adding more lights.
-  const light = new THREE.PointLight(0xff8738, withLight ? 9.2 : 0, 11.0, 1.8);
+  const light = new THREE.PointLight(0xff8738, withLight ? lightIntensity : 0, lightDistance, 1.8);
   light.name = 'war-room-side-torch-light';
   light.position.set(0, 0.62, 0.7);
   light.castShadow = false;

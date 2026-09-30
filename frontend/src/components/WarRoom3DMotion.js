@@ -576,8 +576,31 @@ export const WAR_ROOM_V4_LIGHT_LIFT = Object.freeze({
   warm: 1.35,
 });
 
+// War Room v3 is a torchlit armory: the global rig drops so the wall torches
+// and the hearth read as the main light, while the key still keeps the board
+// legible. Touch keeps more fill because its torches carry no real lights.
+export const WAR_ROOM_V3_TORCHLIT = Object.freeze({
+  // Desktop hands the board to a spot pool (WarRoomV3Shell); touch keeps the key.
+  key: Object.freeze({ desktop: 0.32, touch: 0.8 }),
+  rim: 0.45,
+  warm: 0.7,
+  exposure: Object.freeze({ desktop: -0.14, touch: -0.06 }),
+  fog: 1.25,
+});
+
 export function reactiveLightProfile({ check = false, gameOver = false, coarsePointer = false, variant = 'classic' } = {}) {
   const shared = sharedReactiveLightProfile({ check, gameOver, coarsePointer });
+  const device = coarsePointer ? 'touch' : 'desktop';
+  if (variant === 'v3') {
+    return {
+      ...shared,
+      key: shared.key * WAR_ROOM_V3_TORCHLIT.key[device],
+      rim: shared.rim * WAR_ROOM_V3_TORCHLIT.rim,
+      warm: shared.warm * WAR_ROOM_V3_TORCHLIT.warm,
+      exposure: shared.exposure + WAR_ROOM_V3_TORCHLIT.exposure[device],
+      fogDensity: shared.fogDensity * WAR_ROOM_V3_TORCHLIT.fog,
+    };
+  }
   if (variant !== 'v4') return shared;
   return {
     ...shared,

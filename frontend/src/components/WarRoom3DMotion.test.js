@@ -231,11 +231,31 @@ describe('WarRoom3DMotion', () => {
         expect(v4.fogDensity).toBe(shared.fogDensity);
         expect(v4.warm).toBeCloseTo(shared.warm * 1.35);
         expect(v4.exposure).toBeCloseTo(shared.exposure + (coarsePointer ? 0.16 : 0.24));
-        for (const variant of ['classic', 'v2', 'v3', 'v4-loading']) {
+        for (const variant of ['classic', 'v2', 'v4-loading']) {
           expect(reactiveLightProfile({ ...state, coarsePointer, variant })).toEqual(shared);
         }
       }
     }
+  });
+
+  it('dims the v3 armory so torches lead, keeping the board key and special states', () => {
+    for (const coarsePointer of [false, true]) {
+      for (const state of [{}, { check: true }, { gameOver: true }]) {
+        const shared = reactiveLightProfile({ ...state, coarsePointer });
+        const v3 = reactiveLightProfile({ ...state, coarsePointer, variant: 'v3' });
+        expect(v3.key).toBeLessThan(shared.key);
+        expect(v3.key).toBeGreaterThan(shared.key * 0.25);
+        expect(v3.rim).toBeLessThan(shared.rim);
+        expect(v3.warm).toBeLessThan(shared.warm);
+        expect(v3.exposure).toBeLessThan(shared.exposure);
+        expect(v3.fogDensity).toBeGreaterThan(shared.fogDensity);
+      }
+    }
+    // Touch has no torch lights, so it dims less than desktop.
+    const desktop = reactiveLightProfile({ variant: 'v3' });
+    const touch = reactiveLightProfile({ variant: 'v3', coarsePointer: true });
+    expect(desktop.key / reactiveLightProfile().key)
+      .toBeLessThan(touch.key / reactiveLightProfile({ coarsePointer: true }).key);
   });
 
   it('keeps coarse-pointer lighting readable without adopting the brighter desktop exposure', () => {
