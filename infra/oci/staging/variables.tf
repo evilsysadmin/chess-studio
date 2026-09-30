@@ -29,6 +29,17 @@ variable "runtime_config_bucket_name" {
   }
 }
 
+variable "production_backup_bucket_name" {
+  description = "Private Object Storage bucket for off-host production Mongo backups."
+  type        = string
+  default     = "chess-studio-production-backups"
+
+  validation {
+    condition     = can(regex("^[A-Za-z0-9._-]+$", var.production_backup_bucket_name))
+    error_message = "production_backup_bucket_name contains unsupported characters."
+  }
+}
+
 variable "availability_domain" {
   description = "Optional AD override. Null discovers the first AD visible from the staging compartment."
   type        = string
