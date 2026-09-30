@@ -87,11 +87,9 @@ async function waitForRoutineStart(page, canvas, eventName) {
     return;
   }
 
-  // Give SwiftShader its own mount budget before starting the routine clock.
-  // Otherwise a slow Home/War Room bootstrap consumes most of the route budget
-  // and reports a choreography failure even when Hans has not started yet.
-  await expect(canvas).toHaveAttribute('data-war-room-hans-scene-ready', 'true', { timeout: MOUNT_BUDGET_MS });
-
+  // The canvas mount is already accredited by the caller. Do not wait for
+  // data-war-room-hans-scene-ready here: that marker belongs specifically to
+  // the fireplace quick-iteration narrative, not to ambient chores/services.
   const route = expectedRoute(eventName);
   await expect.poll(
     () => page.evaluate((expected) => {
