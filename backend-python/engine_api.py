@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from fastapi import HTTPException
 
-from engine_runtime import EngineBackpressureError, run_optional_engine_work
+from engine_runtime import EngineBackpressureError, run_engine_work, run_optional_engine_work
 
 
 async def run_optional_analysis(function, *args, **kwargs):
