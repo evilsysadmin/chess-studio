@@ -18,7 +18,7 @@ export const WAR_ROOM_V3_HEARTH_FIRE_SHAPE = Object.freeze({
 export const WAR_ROOM_V3_TORCH_ANCHOR_PREFIX = 'WR3_ANCHOR_torch_';
 
 // Torches are the main light of the hall on desktop: brighter and wider than v1.
-export const WAR_ROOM_V3_TORCH_LIGHT = Object.freeze({ intensity: 15, distance: 10.5 });
+export const WAR_ROOM_V3_TORCH_LIGHT = Object.freeze({ intensity: 34, distance: 12 });
 
 export function installWarRoomV3Torches(root, { coarsePointer = false } = {}) {
   const anchors = [];

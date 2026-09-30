@@ -54,6 +54,9 @@ describe('War Room v3 side-wall torches', () => {
     const torch = root.getObjectByName('WR3_ANCHOR_torch_0').children[0];
     expect(torch.userData.warRoomTorchForm).toBe('gothic-wall-sconce-brazier');
     expect(lights(root)).toBe(2);
+    // The torches lead the hall: well above the v1 gallery sconce (9.2).
+    const torchLight = torch.getObjectByName('war-room-side-torch-light');
+    expect(torchLight.intensity).toBeGreaterThan(3 * 9.2);
     release();
     expect(root.getObjectByName('WR3_ANCHOR_torch_0').children).toHaveLength(0);
     expect(root.userData.warRoomV3Torches).toBeUndefined();
