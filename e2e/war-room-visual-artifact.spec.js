@@ -192,6 +192,35 @@ const CAPTURE_PROFILES = Object.freeze([
     landscapeContract: false,
     variant: 'v3',
   }),
+  // v4 is opt-in: captured only when the scope asks for it (its shell, the
+  // shared Blender runtime or the variant registry changed).
+  Object.freeze({
+    label: 'war-room-v4-android-390x844',
+    title: 'War Room v4 Android portrait',
+    viewport: Object.freeze({ width: 390, height: 844 }),
+    hasTouch: true,
+    portraitContract: true,
+    landscapeContract: false,
+    variant: 'v4',
+  }),
+  Object.freeze({
+    label: 'war-room-v4-android-landscape-844x390',
+    title: 'War Room v4 Android landscape',
+    viewport: Object.freeze({ width: 844, height: 390 }),
+    hasTouch: true,
+    portraitContract: false,
+    landscapeContract: true,
+    variant: 'v4',
+  }),
+  Object.freeze({
+    label: 'war-room-v4-desktop-1440x900',
+    title: 'War Room v4 desktop 1440×900',
+    viewport: Object.freeze({ width: 1440, height: 900 }),
+    hasTouch: false,
+    portraitContract: false,
+    landscapeContract: false,
+    variant: 'v4',
+  }),
 ]);
 const ACTIVE_CAPTURE_PROFILES = Object.freeze(
   CAPTURE_PROFILES.filter((profile) => {
@@ -491,7 +520,7 @@ async function openCanonicalWarRoom(page, { variant = 'classic' } = {}) {
     await expect(tutorial).toBeHidden();
   }
 
-  if (!['v2', 'v3'].includes(variant)) {
+  if (!['v2', 'v3', 'v4'].includes(variant)) {
     // The cat is a full classic-room decor canary. Mobile/coarse capture may
     // deliberately select the lite scene tier, where premium room dressing is
     // omitted to protect frame budget; immersion must not turn that into a
@@ -602,7 +631,7 @@ for (const profile of ACTIVE_CAPTURE_PROFILES) {
           /swiftshader|llvmpipe|software/i,
         );
       }
-      if (['v2', 'v3'].includes(profile.variant)) {
+      if (['v2', 'v3', 'v4'].includes(profile.variant)) {
         await expect(board3d).toHaveAttribute('data-board3d-variant', profile.variant);
         expect(
           await page.locator('.board3d-main-canvas').getAttribute('data-war-room-variant-error'),
@@ -612,6 +641,14 @@ for (const profile of ACTIVE_CAPTURE_PROFILES) {
           .toHaveAttribute('data-war-room-variant', profile.variant, { timeout: 30_000 });
         await expect(page.locator('.board3d-main-canvas'))
           .toHaveAttribute('data-war-room-variant-status', 'ready', { timeout: 30_000 });
+      }
+      if (profile.variant === 'v4') {
+        const variantMenu = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
+        await variantMenu.click();
+        await expect(page.getByRole('menuitemradio', { name: 'War Room v3', exact: true })).toBeVisible();
+        await expect(page.getByRole('menuitemradio', { name: 'War Room v4', exact: true }))
+          .toHaveAttribute('aria-checked', 'true');
+        await variantMenu.click();
       }
       if (profile.variant === 'v3') {
         const variantMenu = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
