@@ -1,0 +1,200 @@
+name: Operations · virtual player capacity
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend-python/main.py'
+      - 'backend-python/test_main.py'
+      - 'scripts/virtual_player_capacity_probe.py'
+      - '.github/workflows/capacity-virtual-players.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'backend-python/main.py'
+      - 'scripts/virtual_player_capacity_probe.py'
+      - '.github/workflows/capacity-virtual-players.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chess-studio-staging-capacity
+  cancel-in-progress: false
+
+jobs:
+  contracts:
+    name: Virtual players · static contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - name: Probe self-tests
+        run: |
+          python3 -S scripts/production_capacity_probe.py --self-test
+          python3 -S scripts/virtual_player_capacity_probe.py --self-test
+
+  load:
+    name: A1 + Mongo · 20/50/100 virtual players
+    needs: contracts
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
+      OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
+      OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
+      OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
+      OCI_REGION: ${{ vars.OCI_REGION || 'eu-frankfurt-1' }}
+      CHESS_CAPACITY_BASE_URL: https://api-staging.chess-studio.shadowops.dpdns.org/api
+      GRAFANA_URL: ${{ secrets.GRAFANA_URL }}
+      GRAFANA_AUTH: ${{ secrets.GRAFANA_AUTH }}
+      GRAFANA_METRICS_DATASOURCE_UID: ${{ vars.GRAFANA_METRICS_DATASOURCE_UID || 'grafanacloud-humbletoucan355-prom' }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Restore OCI SDK
+        uses: ./.github/actions/setup-oci-sdk
+
+      - name: Load signed staging capacity credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+          import sys
+
+          sys.path.insert(0, "scripts")
+          import oci
+          from oci_runtime_bundle import read_private_runtime_value
+
+          invite = read_private_runtime_value(oci, "INVITE_CODE")
+          synthetic = read_private_runtime_value(oci, "CHESS_AI_SHARED_SECRET")
+          if not invite or not synthetic:
+              raise SystemExit("missing staging capacity credentials")
+          for key, value in (
+              ("CHESS_CAPACITY_INVITE_CODE", invite),
+              ("CHESS_CAPACITY_SYNTHETIC_SECRET", synthetic),
+          ):
+              print(f"::add-mask::{value}")
+              with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as handle:
+                  handle.write(f"{key}={value}\n")
+          PY
+
+      - name: Wait for exact staging backend generation
+        shell: bash
+        run: |
+          set -euo pipefail
+          target_sha="$GITHUB_SHA"
+          [[ "$target_sha" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::invalid capacity target SHA"; exit 1; }
+          echo "CAPACITY_TARGET_SHA=$target_sha" >> "$GITHUB_ENV"
+          for attempt in $(seq 1 40); do
+            if python3 scripts/staging_release_identity.py \
+              --kind backend \
+              --url https://api-staging.chess-studio.shadowops.dpdns.org/api/release \
+              --sha "$target_sha"; then
+              exit 0
+            fi
+            echo "::notice::staging has not converged to $target_sha yet (attempt $attempt/40)"
+            sleep 15
+          done
+          echo "::error::staging did not converge to $target_sha before virtual-player capacity test"
+          exit 1
+
+      - name: Baseline telemetry
+        run: python3 scripts/capacity_telemetry_snapshot.py --label virtual-baseline | tee capacity-virtual-baseline.telemetry.jsonl
+
+      - name: Virtual players · 20 → 50 → 100
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +e
+          python3 scripts/virtual_player_capacity_probe.py \
+            --players 20,50,100 \
+            --rounds 2 \
+            --think-seconds 20 \
+            --think-jitter 0.5 \
+            --game-difficulty 50 \
+            --timeout 25 \
+            --warmup-seconds 5 \
+            --cooldown-seconds 15 \
+            --stop-p95-ms 5000 \
+            --stop-error-rate 0.02 \
+            | tee capacity-virtual-players.jsonl
+          code=${PIPESTATUS[0]}
+          set -e
+          if (( code > 1 )); then
+            exit "$code"
+          fi
+          echo "VIRTUAL_CAPACITY_EXIT=$code" >> "$GITHUB_ENV"
+
+      - name: Post-load telemetry
+        if: always()
+        run: python3 scripts/capacity_telemetry_snapshot.py --label virtual-players | tee capacity-virtual-players.telemetry.jsonl
+
+      - name: Build virtual-player summary
+        if: always()
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import pathlib
+
+          path = pathlib.Path("capacity-virtual-players.jsonl")
+          summary = None
+          if path.exists():
+              for raw in path.read_text(encoding="utf-8").splitlines():
+                  try:
+                      payload = json.loads(raw)
+                  except json.JSONDecodeError:
+                      continue
+                  if "virtual_capacity_summary" in payload:
+                      summary = payload["virtual_capacity_summary"]
+
+          if not summary:
+              raise SystemExit("missing virtual capacity summary")
+
+          pathlib.Path("capacity-virtual-summary.json").write_text(
+              json.dumps(summary, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as handle:
+              handle.write("### Staging · virtual-player service curve\n\n")
+              handle.write("| jugadores | demanda nominal turnos/s | p50 ms | p95 ms | completados/s | errores | amplificación p95 |\n")
+              handle.write("| ---: | ---: | ---: | ---: | ---: | ---: | ---: |\n")
+              for row in summary.get("levels", []):
+                  if "virtual_players" not in row:
+                      continue
+                  latency = row.get("latency_ms") or {}
+                  handle.write(
+                      f"| {row['virtual_players']} | {row.get('nominal_offered_turns_rps')} | "
+                      f"{latency.get('p50')} | {latency.get('p95')} | "
+                      f"{row.get('completed_turns_rps')} | {row.get('errors')} | "
+                      f"{row.get('p95_amplification_vs_first_level')} |\n"
+                  )
+              handle.write(
+                  "\nCada jugador es una identidad staging distinta. Las partidas se preparan antes de medir; "
+                  "el p95 corresponde a POST /move (jugada humana → Matthias → persistencia). "
+                  "El escalado se corta tras el primer nivel con p95 > 5 s o error rate > 2%.\n"
+              )
+              if os.environ.get("VIRTUAL_CAPACITY_EXIT") == "1":
+                  handle.write("\n**Safety stop alcanzado:** la curva se detuvo antes de la siguiente escalada.\n")
+
+          if summary.get("cleanup_ok") is not True:
+              raise SystemExit("virtual-player cleanup did not complete")
+          PY
+
+      - name: Upload virtual-player evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: staging-virtual-capacity-${{ github.sha }}
+          path: |
+            capacity-virtual-*.jsonl
+            capacity-virtual-summary.json
+          if-no-files-found: error
+          retention-days: 14
