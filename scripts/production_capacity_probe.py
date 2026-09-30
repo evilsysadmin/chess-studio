@@ -109,7 +109,6 @@ def request_json(
     token: str = "",
     api_key: str = "",
     timeout: float = 15.0,
-    extra_headers: dict[str, str] | None = None,
 ) -> tuple[int, dict, float, str]:
     request_id = f"capacity-{uuid.uuid4().hex[:16]}"
     headers = {
@@ -121,8 +120,6 @@ def request_json(
         headers["Authorization"] = f"Bearer {token}"
     if api_key:
         headers["X-API-Key"] = api_key
-    if extra_headers:
-        headers.update(extra_headers)
     data = None
     if body is not None:
         headers["Content-Type"] = "application/json"
