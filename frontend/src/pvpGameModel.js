@@ -95,3 +95,10 @@ export function disconnectGraceSeconds(deadline, nowMs = Date.now()) {
   if (!Number.isFinite(stamp)) return null;
   return Math.max(0, Math.ceil((stamp - Number(nowMs || 0)) / 1000));
 }
+
+
+export function pvpStartPending(match, nowMs = Date.now()) {
+  if (!match || match.status !== 'active') return false;
+  const stamp = Date.parse(match.startsAt || '');
+  return Number.isFinite(stamp) && stamp > Number(nowMs || 0);
+}
