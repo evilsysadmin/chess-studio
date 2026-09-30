@@ -18,6 +18,7 @@ export function sameBoardSurfaceProps(previous, next) {
   const b = next.boardProps;
   if (a === b) return true;
   if (!a || !b) return false;
+  if (a.cameraProfile !== b.cameraProfile) return false;
   return a.gameId === b.gameId
     && a.fen === b.fen
     && a.onSquareClick === b.onSquareClick
