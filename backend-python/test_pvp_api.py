@@ -838,3 +838,24 @@ async def test_head_to_head_normalizes_naive_mongo_timestamps():
     assert summary["bob"]["wins"] == 1
     assert summary["bob"]["last_played_at"].tzinfo == timezone.utc
     assert summary["bob"]["last_played_at"] == now - timedelta(minutes=1)
+
+
+def test_challenge_cooldown_naive_timestamp_returns_429_not_500(monkeypatch):
+    client = make_client()
+    for user in ("alice", "bob"):
+        assert as_user(client, user, "post", "/api/pvp/roster").status_code == 200
+
+    async def naive_cooldown(_challenger, _opponent, *, now=None):
+        return (pvp_store.utcnow() + timedelta(seconds=7)).replace(tzinfo=None)
+
+    monkeypatch.setattr(pvp_store, "challenge_cooldown_until", naive_cooldown)
+    response = as_user(
+        client,
+        "alice",
+        "post",
+        "/api/pvp/challenges",
+        json={"opponent": "bob"},
+    )
+
+    assert response.status_code == 429
+    assert response.headers["retry-after"] in {"7", "8"}
