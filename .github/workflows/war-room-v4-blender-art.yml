@@ -110,7 +110,12 @@ jobs:
           assert 'WR4_OBS_armor_torso_-1' in source_names
           assert 'WR4_OBS_armor_torso_1' in source_names
           assert 'WR4_OBS_entry_rug' in source_names
-          assert 'WR4_OBS_table_drum' in source_names
+          assert 'WR4_OBS_board_plinth' in source_names
+          assert 'WR4_OBS_board_corner_dome_1_1' in source_names
+          assert 'WR4_OBS_side_runner_-1' in source_names and 'WR4_OBS_side_runner_1' in source_names
+          assert 'WR4_OBS_banner_-1' in source_names and 'WR4_OBS_banner_1' in source_names
+          assert 'WR4_OBS_oculus_crest_shield' in source_names
+          assert not any(name.startswith(('WR4_OBS_table_drum', 'WR4_OBS_window_drape_')) for name in source_names)
           assert 'WR4_OBS_fireplace_body' in source_names
           assert 'WR4_OBS_telescope_tube' in source_names
           assert 'WR4_OBS_entry_door' in source_names
