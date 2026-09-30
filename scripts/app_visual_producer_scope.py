@@ -430,7 +430,11 @@ def _warroom_variant_ownership(path: str) -> set[str]:
         return {"v3"}
     if lower in WARROOM_V4_VARIANT_FILES:
         return {"v4"}
-    if lower == "frontend/src/components/warroomvariant.js":
+    if lower in {
+        "frontend/src/components/warroomvariant.js",
+        # Shared runtime lighting grades, including the v4-only grade.
+        "frontend/src/components/warroom3dmotion.js",
+    }:
         return set(WARROOM_VARIANT_ALL) | {"v4"}
     if lower in WARROOM_BLENDER_SHARED_VARIANT_FILES:
         return {"v2", "v3", "v4"}
@@ -571,6 +575,7 @@ def self_test() -> None:
     assert classify_warroom_variants(["frontend/src/components/WarRoomV4Shell.js"]) == "v4"
     assert classify_warroom_variants(["frontend/src/components/WarRoomV3Fire.js"]) == "v3,v4"
     assert classify_warroom_variants(["frontend/src/components/WarRoomVariant.js"]) == "classic,v2,v3,v4"
+    assert classify_warroom_variants(["frontend/src/components/WarRoom3DMotion.js"]) == "classic,v2,v3,v4"
     assert classify_warroom_variants([
         "frontend/src/components/Board3DScene.js",
         "frontend/src/components/WarRoomV4Shell.js",
