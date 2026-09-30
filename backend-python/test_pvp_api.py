@@ -259,6 +259,39 @@ def test_second_ready_survives_naive_mongo_activation_timestamp(monkeypatch):
     assert payload["startsAt"]
 
 
+def test_move_accepts_naive_mongo_start_at(monkeypatch):
+    client = make_client()
+    for user in ("alice", "bob"):
+        assert as_user(client, user, "post", "/api/pvp/roster").status_code == 200
+
+    challenge = as_user(
+        client, "alice", "post", "/api/pvp/challenges", json={"opponent": "bob"}
+    ).json()["challenge"]
+    match = as_user(
+        client, "bob", "post", f"/api/pvp/challenges/{challenge['id']}/accept"
+    ).json()["match"]
+    started = start_match_now(client, match)
+    match_id = started["id"]
+
+    # PyMongo's default BSON decoding can return UTC datetimes without tzinfo.
+    # This used to make play_move compare aware now with naive start_at,
+    # raising TypeError -> HTTP 500 on the first real move.
+    stored = pvp_store._memory_matches[match_id]
+    naive_start = (pvp_store.utcnow() - timedelta(seconds=1)).replace(tzinfo=None)
+    stored["start_at"] = naive_start
+    stored["turn_started_at"] = naive_start
+
+    color = stored["white"]
+    response = as_user(
+        client,
+        color,
+        "post",
+        f"/api/pvp/matches/{match_id}/move",
+        json={"from": "e2", "to": "e4"},
+    )
+    assert response.status_code == 200
+    assert response.json()["match"]["history"][0]["uci"] == "e2e4"
+
 def test_active_clock_accepts_naive_mongo_turn_started_at():
     now = pvp_store.utcnow()
     match = {
