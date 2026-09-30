@@ -530,7 +530,7 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
         if await store.active_match_for_user(opponent):
             raise HTTPException(409, "Ese jugador ya está entrando o jugando otro duelo.")
         now = store.utcnow()
-        cooldown_until = await store.challenge_cooldown_until(username, opponent, now=now)
+        cooldown_until = _as_utc(await store.challenge_cooldown_until(username, opponent, now=now))
         if cooldown_until:
             retry_after = max(1, int((cooldown_until - now).total_seconds()) + 1)
             raise HTTPException(
