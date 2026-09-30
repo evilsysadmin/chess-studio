@@ -2,6 +2,13 @@ name: Operations · staging capacity
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/production_capacity_probe.py'
+      - 'scripts/capacity_telemetry_snapshot.py'
+      - 'docs/operations/runtime-performance.md'
+      - '.github/workflows/capacity-staging.yml'
   push:
     branches:
       - 'ops/capacity-*'
@@ -21,6 +28,7 @@ concurrency:
 jobs:
   capacity:
     name: A1 + Mongo service curve
+    if: github.event_name != 'pull_request' || startsWith(github.head_ref, 'ops/capacity-')
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
