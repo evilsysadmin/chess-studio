@@ -104,7 +104,9 @@ jobs:
           assert 'WR3_ARM_armor_ring_0' in source_names
           assert 'WR3_ARM_trophies_0' in source_names
           assert 'WR3_ARM_banners_0' in source_names
-          assert 'WR3_ARM_torch_flames' in source_names
+          # Side-wall torches are runtime v1 sconces mounted on these anchors.
+          assert sum(1 for name in node_names if name and name.startswith('WR3_ANCHOR_torch_')) == 6
+          assert not any(name and name.startswith('WR3_PREVIEW_') for name in node_names)
           assert 'WR3_ARM_hearth_body' in source_names
           assert 'WR3_ARM_board_plinth' in source_names
           assert 'WR3_ARM_cornice_back' in source_names
