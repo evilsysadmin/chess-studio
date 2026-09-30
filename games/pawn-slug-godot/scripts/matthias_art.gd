@@ -16,10 +16,13 @@ const LEGACY_PISTOL_ATLAS_URL := "https://assets.chess-studio.shadowops.dpdns.or
 # Strict Godot runtime atlases use an exact 8 x 18 grid of 416 x 416 RGBA
 # cells. The weapon banks are pre-normalized to the pistol-family canonical body
 # scale; Godot consumes them directly with no runtime rescale or repack.
-const STRICT_RUNTIME_GENERATION := "pose-semantics-v1"
+# head-integrity-v1 (pistol, machinegun) = pose-semantics-v1 plus the deterministic
+# same-bank head/cap/leg repair of scripts/art/repair_matthias_head_integrity_v1.py
+# (#4447); shotgun and panzerfaust stay on pose-semantics-v1.
+const STRICT_RUNTIME_GENERATION := "head-integrity-v1"
 const FULL_ATLAS_URLS := {
-    "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/pose-semantics-v1/pistol/full/matthias-pistol-pose-semantics-v1-2000f78183cea6f5.png",
-    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/pose-semantics-v1/machinegun/full/matthias-machinegun-pose-semantics-v1-769398f427278c03.png",
+    "pistol": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/head-integrity-v1/pistol/full/matthias-pistol-head-integrity-v1-24872d1905a9e759.png",
+    "machinegun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/head-integrity-v1/machinegun/full/matthias-machinegun-head-integrity-v1-de925d7487334e37.png",
     "shotgun": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/pose-semantics-v1/shotgun/full/matthias-shotgun-pose-semantics-v1-9d2ed6f7aba558ac.png",
     "panzerfaust": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug-godot/matthias/pose-semantics-v1/panzerfaust/full/matthias-panzerfaust-pose-semantics-v1-8419aad1ba321249.png",
 }
