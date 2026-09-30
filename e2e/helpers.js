@@ -700,7 +700,7 @@ export async function openMoreGameModes(page) {
 
   if (!(await trigger.isVisible().catch(() => false)) && await portraitMore.isVisible().catch(() => false)) {
     if (await portraitMore.getAttribute('aria-expanded') !== 'true') await portraitMore.click();
-    const dungeonEntry = page.getByRole('button', { name: /Mazmorras/i }).filter({ visible: true }).first();
+    const dungeonEntry = page.locator('.illustrated-home__play-menu-item:visible').filter({ hasText: 'Mazmorras' }).first();
     await expect(dungeonEntry).toBeVisible();
     await dungeonEntry.click();
     await expect(page.locator('#illustrated-home-tools')).toBeVisible({ timeout: 5_000 });
