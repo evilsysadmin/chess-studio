@@ -413,18 +413,22 @@ describe('HomeBlenderScene3D live flame animation', () => {
       expect(plan.intervalMs).toBeLessThanOrEqual(HOME_BLENDER_FIRE_MAX_INTERVAL_MS);
     });
 
-    it('turns the fire off when animation frames arrive late even if render calls look cheap', () => {
-      // WebGL rasterises in the GPU process: the render call returns fast while the
-      // frame pacing collapses. That is the software-GL / weak-GPU case.
-      const starved = homeBlenderFireFramePlan({
-        baseIntervalMs: 42,
+    it('throttles late mobile frames instead of freezing the fire loop', () => {
+      // Mobile RAF pacing can dip well below 60 fps while WebGL render calls still look
+      // cheap. Keep the loop alive so the hearth remains animated and the runtime
+      // governor can still observe enough frames to recover or degrade the scene.
+      const lateGap = HOME_BLENDER_FIRE_MAX_FRAME_GAP_MS + 25;
+      const throttled = homeBlenderFireFramePlan({
+        baseIntervalMs: 66,
         renderCostMs: 2,
-        frameGapMs: HOME_BLENDER_FIRE_MAX_FRAME_GAP_MS + 5,
+        frameGapMs: lateGap,
         samples: 30,
       });
-      expect(starved.enabled).toBe(false);
-      for (const frameGapMs of [8, 16.7, 20, HOME_BLENDER_FIRE_MAX_FRAME_GAP_MS]) {
-        expect(homeBlenderFireFramePlan({ baseIntervalMs: 42, renderCostMs: 2, frameGapMs, samples: 30 }).enabled)
+      expect(throttled.enabled).toBe(true);
+      expect(throttled.intervalMs).toBeGreaterThanOrEqual(lateGap * 2);
+      expect(throttled.intervalMs).toBeLessThanOrEqual(HOME_BLENDER_FIRE_MAX_INTERVAL_MS);
+      for (const frameGapMs of [8, 16.7, 33.3, HOME_BLENDER_FIRE_MAX_FRAME_GAP_MS]) {
+        expect(homeBlenderFireFramePlan({ baseIntervalMs: 66, renderCostMs: 2, frameGapMs, samples: 30 }).enabled)
           .toBe(true);
       }
     });
