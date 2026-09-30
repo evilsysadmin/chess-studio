@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi import FastAPI, HTTPException, Request
@@ -783,3 +783,58 @@ def test_ready_activation_survives_roster_cleanup_failure(monkeypatch):
     recovered = as_user(client, "alice", "get", f"/api/pvp/matches/{match['id']}")
     assert recovered.status_code == 200
     assert recovered.json()["match"]["status"] == "active"
+
+
+@pytest.mark.asyncio
+async def test_store_tolerates_naive_mongo_datetimes_in_python_side_comparisons():
+    now = pvp_store.utcnow()
+
+    pvp_store._memory_roster["bob"] = {
+        "username": "bob",
+        "rating": 400,
+        "tier": "rookie",
+        "last_seen": (now - timedelta(seconds=pvp_store.ROSTER_TTL_SECONDS + 1)).replace(tzinfo=None),
+    }
+    assert await pvp_store.active_roster(now) == []
+
+    pvp_store._memory_challenges["old"] = {
+        "id": "old",
+        "challenger": "alice",
+        "opponent": "bob",
+        "status": "pending",
+        "created_at": (now - timedelta(seconds=pvp_store.CHALLENGE_TTL_SECONDS + 1)).replace(tzinfo=None),
+    }
+    assert await pvp_store.list_challenges("alice", now) == []
+
+    pvp_store._memory_challenges["cooldown"] = {
+        "id": "cooldown",
+        "challenger": "alice",
+        "opponent": "bob",
+        "status": "cancelled",
+        "cooldown_until": (now + timedelta(seconds=10)).replace(tzinfo=None),
+    }
+    cooldown = await pvp_store.challenge_cooldown_until("alice", "bob", now=now)
+    assert cooldown is not None
+    assert cooldown.tzinfo == timezone.utc
+    assert cooldown > now
+
+
+@pytest.mark.asyncio
+async def test_head_to_head_normalizes_naive_mongo_timestamps():
+    now = pvp_store.utcnow()
+    pvp_store._memory_matches["m1"] = {
+        "id": "m1",
+        "white": "alice",
+        "black": "bob",
+        "status": "finished",
+        "result": "1-0",
+        "created_at": (now - timedelta(minutes=2)).replace(tzinfo=None),
+        "updated_at": (now - timedelta(minutes=1)).replace(tzinfo=None),
+    }
+
+    summary = await pvp_store.head_to_head_for_user("alice", ["bob"])
+
+    assert summary["bob"]["games"] == 1
+    assert summary["bob"]["wins"] == 1
+    assert summary["bob"]["last_played_at"].tzinfo == timezone.utc
+    assert summary["bob"]["last_played_at"] == now - timedelta(minutes=1)
