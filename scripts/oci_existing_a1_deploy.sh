@@ -177,6 +177,214 @@ deploy_watcher_diag_summary() {
 }
 
 image_available_for_rollback() {
+  local target_sha="$1"
+  docker image inspect "$(image_ref "$target_sha")" >/dev/null 2>&1 || \
+    docker image inspect "$(legacy_image_ref "$target_sha")" >/dev/null 2>&1
+}
+
+compose() {
+  local target_sha="$1"
+  shift
+  GIT_COMMIT_SHA="$target_sha" \
+  CHESS_STUDIO_BLUE_SHA="$target_sha" \
+  CHESS_STUDIO_GREEN_SHA="$target_sha" \
+  CHESS_STUDIO_LEGACY_SHA="${previous_sha:-$target_sha}" \
+  CHESS_STUDIO_ENV_FILE="$env_file" \
+  CHESS_STUDIO_BACKEND_PORT="$port" \
+  CHESS_STUDIO_BLUE_PORT="$((port + 1))" \
+  CHESS_STUDIO_GREEN_PORT="$((port + 2))" \
+  CHESS_STUDIO_EDGE_CONFIG_DIR="$edge_config_dir" \
+  CHESS_STUDIO_CORS_ORIGINS="$cors_origin" \
+  CHESS_STUDIO_STATE_DIR="$state_dir" \
+  CHESS_STUDIO_TRUST_CLOUDFLARE_CLIENT_IP="true" \
+  CHESS_STUDIO_OCI_LOG_SERVICE_NAME="chess-studio-oci-backend-${target}-stdout" \
+  docker compose -p "$project" -f "$compose_file" "$@"
+}
+
+slot_service() {
+  case "$1" in
+    blue|green) printf 'backend_%s\n' "$1" ;;
+    *) echo "invalid backend color: $1" >&2; return 64 ;;
+  esac
+}
+
+slot_port() {
+  case "$1" in
+    blue) printf '%s\n' "$((port + 1))" ;;
+    green) printf '%s\n' "$((port + 2))" ;;
+    *) echo "invalid backend color: $1" >&2; return 64 ;;
+  esac
+}
+
+opposite_color() {
+  case "$1" in
+    blue) printf 'green\n' ;;
+    green) printf 'blue\n' ;;
+    *) echo "invalid backend color: $1" >&2; return 64 ;;
+  esac
+}
+
+read_active_color() {
+  local value=''
+  if [[ -s "$active_color_file" && ! -L "$active_color_file" ]]; then
+    value="$(tr -d '\r\n' < "$active_color_file")"
+  fi
+  case "$value" in
+    blue|green) printf '%s\n' "$value" ;;
+    *) printf '\n' ;;
+  esac
+}
+
+write_active_color() {
+  local color="$1"
+  local tmp
+  case "$color" in blue|green) ;; *) return 64 ;; esac
+  tmp="$(mktemp "$state_dir/active.color.XXXXXX")"
+  printf '%s\n' "$color" >"$tmp"
+  chmod 0644 "$tmp"
+  mv -f "$tmp" "$active_color_file"
+}
+
+render_edge() {
+  local color="$1"
+  python3 -S "$blue_green_edge" --color "$color" --output "$edge_config_file"
+}
+
+edge_container_id() {
+  compose "$sha" ps -q edge 2>/dev/null | head -n 1
+}
+
+reload_edge() {
+  local edge_id
+  edge_id="$(edge_container_id)"
+  [[ -n "$edge_id" ]] || { echo 'edge container missing' >&2; return 1; }
+  docker exec "$edge_id" nginx -t >/dev/null
+  docker exec "$edge_id" nginx -s reload >/dev/null
+}
+
+remove_service() {
+  local service="$1"
+  compose "$sha" rm -f -s "$service" >/dev/null 2>&1 || true
+}
+
+cors_attest() {
+  local target_port="$1"
+  local headers rc
+  headers="$(mktemp)"
+  set +e
+  curl --fail --silent --show-error --max-time 8 \
+    -X OPTIONS \
+    -H "Origin: $cors_origin" \
+    -H 'Access-Control-Request-Method: GET' \
+    -H 'Access-Control-Request-Headers: authorization,x-client-release' \
+    -D "$headers" \
+    -o /dev/null \
+    "http://127.0.0.1:${target_port}/api/auth/me"
+  rc=$?
+  set -e
+  if [[ "$rc" -ne 0 ]]; then
+    rm -f "$headers"
+    return "$rc"
+  fi
+  if ! python3 - "$headers" "$cors_origin" <<'PY'
+import pathlib
+import sys
+headers = pathlib.Path(sys.argv[1]).read_text(encoding='utf-8', errors='replace')
+expected = sys.argv[2].strip().lower()
+parsed = {}
+for line in headers.replace('\r\n', '\n').split('\n'):
+    if ':' not in line:
+        continue
+    name, value = line.split(':', 1)
+    parsed.setdefault(name.strip().lower(), []).append(value.strip())
+origins = [v.lower() for v in parsed.get('access-control-allow-origin', [])]
+methods = ','.join(parsed.get('access-control-allow-methods', [])).upper()
+headers_allowed = ','.join(parsed.get('access-control-allow-headers', [])).lower()
+if expected not in origins:
+    raise SystemExit(1)
+if 'GET' not in methods:
+    raise SystemExit(1)
+if 'authorization' not in headers_allowed:
+    raise SystemExit(1)
+PY
+  then
+    rm -f "$headers"
+    return 1
+  fi
+  rm -f "$headers"
+}
+
+attest() {
+  local expected="$1"
+  local target_port="${2:-$port}"
+  local ready release rc
+  ready="$(mktemp)"
+  release="$(mktemp)"
+
+  if ! curl --fail --silent --show-error --max-time 8 \
+    "http://127.0.0.1:${target_port}/api/ready" >"$ready"; then
+    rm -f "$ready" "$release"
+    return 1
+  fi
+  if ! curl --fail --silent --show-error --max-time 8 \
+    "http://127.0.0.1:${target_port}/api/release" >"$release"; then
+    rm -f "$ready" "$release"
+    return 1
+  fi
+
+  if python3 - "$ready" "$release" "$expected" <<'PY'
+import json
+import pathlib
+import sys
+ready = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+release = json.loads(pathlib.Path(sys.argv[2]).read_text(encoding='utf-8'))
+expected = sys.argv[3].lower()
+if ready.get('ok') is not True or ready.get('storage') != 'mongo':
+    raise SystemExit(1)
+if str(release.get('build') or '').lower() != expected:
+    raise SystemExit(1)
+PY
+  then
+    rc=0
+  else
+    rc=$?
+  fi
+  rm -f "$ready" "$release"
+  [[ "$rc" -eq 0 ]] || return "$rc"
+  cors_attest "$target_port"
+}
+
+public_tunnel_attest() {
+  local expected="$1"
+  local release
+  release="$(mktemp)"
+
+  if ! curl --fail --silent --show-error \
+    --connect-timeout 3 --max-time 6 \
+    -H 'Accept: application/json' \
+    -H 'Cache-Control: no-cache' \
+    "${public_api_url}/release?sha=${expected}" >"$release"; then
+    rm -f "$release"
+    return 1
+  fi
+
+  if python3 - "$release" "$expected" <<'PY'
+import json
+import pathlib
+import sys
+payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+expected = sys.argv[2].lower()
+raise SystemExit(0 if str(payload.get('build') or '').lower() == expected else 1)
+PY
+  then
+    rm -f "$release"
+    return 0
+  fi
+  rm -f "$release"
+  return 1
+}
+
+rollback() {
   local failed_sha="$1"
   local candidate_service="${candidate_service:-}"
   echo "rolling back OCI backend after failed candidate $failed_sha" >&2
@@ -195,10 +403,6 @@ image_available_for_rollback() {
     return 0
   fi
 
-  # One-time migration rollback: the pre-blue/green service owned :$port.
-  # If we already replaced it with edge, stop edge and recreate the previous
-  # image on the legacy service. Before the switch the legacy container is
-  # untouched, so only the candidate needs removing.
   if [[ "${switch_complete:-0}" == "1" && -n "$previous_sha" ]] && image_available_for_rollback "$previous_sha"; then
     compose "$failed_sha" rm -f -s edge >/dev/null 2>&1 || true
     compose "$previous_sha" up -d --no-build --force-recreate backend_legacy
@@ -553,8 +757,6 @@ candidate_port="$(slot_port "$candidate_color")"
 active_backend_service="$candidate_service"
 switch_complete=0
 
-# Pull the stable edge image before touching the serving listener. A failure
-# here leaves the currently active backend completely untouched.
 if ! compose "$sha" pull edge >/dev/null; then
   echo 'failed to pull stable blue/green edge image' >&2
   exit 1
@@ -595,9 +797,6 @@ if [[ -n "$previous_color" ]]; then
     exit 44
   fi
 else
-  # One-time migration from the legacy service that directly owns :$port.
-  # Candidate + edge image are already ready; the only unavoidable gap is this
-  # initial handoff. Every subsequent deploy is true blue/green.
   legacy_id="$(docker ps -q \
     --filter "label=com.docker.compose.project=$project" \
     --filter 'label=com.docker.compose.service=backend' | head -n 1)"
@@ -634,9 +833,6 @@ phase_done tunnel "$tunnel_started_ms"
 
 record_successful_backend "$sha"
 
-# nginx old workers keep their existing upstream sockets after reload. Keep the
-# previous backend alive long enough to finish any in-flight move/engine call,
-# then retire it. New requests have already been routed to the candidate.
 drain_started_ms="$(now_ms)"
 if [[ -n "$previous_color" ]]; then
   sleep "${CHESS_STUDIO_BLUE_GREEN_DRAIN_SECONDS:-50}"
