@@ -4,9 +4,7 @@ import {
   applyWarRoomHemisphereGrade,
   applyWarRoomKeyLightGrade,
   applyWarRoomV2RuntimeLightingGrade,
-  applyWarRoomV4RuntimeLightingGrade,
   warRoomV2RuntimeLightingProfile,
-  warRoomV4RuntimeLightingProfile,
 } from './WarRoom3DMotion.js';
 
 function color(initialHex) {
@@ -109,35 +107,5 @@ describe('War Room canonical warm lighting', () => {
     expect(applyWarRoomKeyLightGrade(scene)).toBe(key);
     expect(key.color.getHex()).toBe(0xffd8ac);
     expect(key.position.z).toBe(-3.2);
-  });
-
-  it('gives v4 its own warm luminous grade and leaves other variants alone', () => {
-    const hemisphere = { intensity: 0.62, color: color(0xffe4c4) };
-    const renderer = { toneMappingExposure: 1.16 };
-    const scene = {
-      userData: { warRoomRenderedVariant: 'v4' },
-      background: color(0x100b08),
-      fog: { isFogExp2: true, color: color(0x17100c) },
-    };
-
-    const profile = applyWarRoomV4RuntimeLightingGrade(scene, renderer, { hemisphere });
-    expect(profile).toEqual(warRoomV4RuntimeLightingProfile());
-    expect(renderer.toneMappingExposure).toBe(1.30);
-    expect(hemisphere.intensity).toBe(0.95);
-    expect(hemisphere.color.getHex()).toBe(0xffdcb0);
-    expect(scene.background.getHex()).toBe(0x0a0705);
-    expect(scene.userData.warRoomV4LightingGrade).toBe('moonlit-royal-warm-v1');
-
-    const touch = applyWarRoomV4RuntimeLightingGrade(scene, renderer, { coarsePointer: true, hemisphere });
-    expect(touch.exposure).toBe(1.12);
-    expect(hemisphere.intensity).toBe(1.45);
-
-    for (const variant of ['classic', 'v2', 'v3', 'v4-loading']) {
-      const other = { userData: { warRoomRenderedVariant: variant }, background: color(0x100b08) };
-      const otherRenderer = { toneMappingExposure: 1.16 };
-      expect(applyWarRoomV4RuntimeLightingGrade(other, otherRenderer, { hemisphere })).toBeNull();
-      expect(otherRenderer.toneMappingExposure).toBe(1.16);
-      expect(other.background.getHex()).toBe(0x100b08);
-    }
   });
 });

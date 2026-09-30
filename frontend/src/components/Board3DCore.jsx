@@ -242,7 +242,7 @@ function Board3DCanvas({
     const boardGroup = new THREE.Group();
     const theme = BOARD_THEME_3D[effectiveThemeId] || BOARD_THEME_3D.classic;
     const whiteSide = orientation !== 'black';
-    const initialLights = reactiveLightProfile({ coarsePointer });
+    const initialLights = reactiveLightProfile({ coarsePointer, variant: latestPropsRef.current.warRoomVariant });
 
     scene.background = new THREE.Color(0x080a0f);
     scene.fog = new THREE.FogExp2(0x080a0f, initialLights.fogDensity);
@@ -816,7 +816,7 @@ function Board3DCanvas({
     });
     const start = performance.now();
     const baseScale = animatedMesh.scale.clone();
-    const baseLights = reactiveLightProfile({ check: Boolean(checkSquare), gameOver, coarsePointer: state.coarsePointer });
+    const baseLights = reactiveLightProfile({ check: Boolean(checkSquare), gameOver, coarsePointer: state.coarsePointer, variant: latestPropsRef.current.warRoomVariant });
     let capturedGhost = null;
     let capturedGhostMaterials = null;
     let castleRook = null;
@@ -1047,7 +1047,7 @@ function Board3DCanvas({
   useEffect(() => {
     const state = sceneStateRef.current;
     if (!state) return;
-    const lights = reactiveLightProfile({ check: Boolean(checkSquare), gameOver, coarsePointer: state.coarsePointer });
+    const lights = reactiveLightProfile({ check: Boolean(checkSquare), gameOver, coarsePointer: state.coarsePointer, variant: warRoomVariant });
     state.key.intensity = lights.key;
     state.rim.intensity = lights.rim;
     state.warm.intensity = lights.warm;
@@ -1055,7 +1055,7 @@ function Board3DCanvas({
     if (state.scene.fog?.isFogExp2) state.scene.fog.density = lights.fogDensity;
     applyMatthiasCheckPose(state, checkSquare, orientation);
     state.render();
-  }, [checkSquare, gameOver, effectiveThemeId, orientation, showCoordinates]);
+  }, [checkSquare, gameOver, effectiveThemeId, orientation, showCoordinates, warRoomVariant]);
 
   function applyInspectKeyboardCamera() {
     const state = sceneStateRef.current;
