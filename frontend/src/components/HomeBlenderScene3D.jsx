@@ -606,13 +606,14 @@ function readRendererName(renderer) {
 // The fire re-renders the whole room every few frames, which is only worth it when
 // a frame is cheap. Two signals decide that: how long the render call takes on the
 // main thread, and how late requestAnimationFrame arrives. The second matters
-// because WebGL rasterises in the GPU process, so with software GL or a weak GPU the
-// render call returns quickly while frames still back up. Stretch the interval so
-// the fire stays a small share of the thread, and stop it (leaving the authored
-// still frame) only when a frame is truly unaffordable. The render call is mostly
-// three.js CPU overhead for ~1200 meshes, so a desktop with a modest CPU (and a
-// strong GPU) legitimately measures 30-60 ms: that must slow the fire down, not
-// kill it. Only a CPU-throttled 2x laptop already crossed the old 24 ms limit.
+// because WebGL rasterises in the GPU process, so with a weak/mobile GPU the render
+// call can return quickly while frames still back up. Late RAF delivery must only
+// stretch the fire cadence: freezing the loop here also freezes the performance
+// governor, so a phone can get stuck forever on a static hearth instead of recovering
+// or degrading the scene. Only an actually unaffordable measured render call stops
+// the fire. The render call is mostly three.js CPU overhead for ~1200 meshes, so a
+// desktop with a modest CPU (and a strong GPU) legitimately measures 30-60 ms: that
+// must slow the fire down, not kill it.
 export const HOME_BLENDER_FIRE_MIN_SAMPLES = 6;
 export const HOME_BLENDER_FIRE_MAX_RENDER_MS = 80;
 export const HOME_BLENDER_FIRE_MAX_FRAME_GAP_MS = 60;
@@ -630,10 +631,17 @@ export function homeBlenderFireFramePlan({
   if (samples < HOME_BLENDER_FIRE_MIN_SAMPLES) {
     return { enabled: true, intervalMs: baseIntervalMs };
   }
-  if (cost > HOME_BLENDER_FIRE_MAX_RENDER_MS || gap > HOME_BLENDER_FIRE_MAX_FRAME_GAP_MS) {
+  if (cost > HOME_BLENDER_FIRE_MAX_RENDER_MS) {
     return { enabled: false, intervalMs: baseIntervalMs };
   }
-  return { enabled: true, intervalMs: Math.min(HOME_BLENDER_FIRE_MAX_INTERVAL_MS, Math.max(baseIntervalMs, cost * 3)) };
+  const gapDrivenInterval = gap > HOME_BLENDER_FIRE_MAX_FRAME_GAP_MS ? gap * 2 : 0;
+  return {
+    enabled: true,
+    intervalMs: Math.min(
+      HOME_BLENDER_FIRE_MAX_INTERVAL_MS,
+      Math.max(baseIntervalMs, cost * 3, gapDrivenInterval),
+    ),
+  };
 }
 
 // The exported flame materials are dark orange *lit* surfaces with an almost zero
