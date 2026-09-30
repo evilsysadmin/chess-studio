@@ -22,6 +22,7 @@ function props(overrides = {}) {
       onCustomize: vi.fn(),
       hansFireplaceIteration: false,
       hansFireCallEnabled: false,
+      cameraProfile: 'tactical',
       ...overrides,
     },
   };
@@ -55,3 +56,12 @@ describe('WarRoom board surface memo contract', () => {
     expect(sameBoardSurfaceProps(first, second)).toBe(false);
   });
 });
+  it('rerenderiza si cambia el perfil de cámara 3D', () => {
+    const first = { ...props(), isThreeD: true };
+    const second = {
+      ...first,
+      boardProps: { ...first.boardProps, cameraProfile: 'classic' },
+    };
+    expect(sameBoardSurfaceProps(first, second)).toBe(false);
+  });
+
