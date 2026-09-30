@@ -56,7 +56,7 @@ describe('War Room v3 side-wall torches', () => {
     expect(lights(root)).toBe(2);
     // The torches lead the hall: well above the v1 gallery sconce (9.2).
     const torchLight = torch.getObjectByName('war-room-side-torch-light');
-    expect(torchLight.intensity).toBeGreaterThan(3 * 9.2);
+    expect(torchLight.intensity).toBeGreaterThan(2 * 9.2);
     release();
     expect(root.getObjectByName('WR3_ANCHOR_torch_0').children).toHaveLength(0);
     expect(root.userData.warRoomV3Torches).toBeUndefined();
@@ -82,7 +82,6 @@ describe('War Room v3 torchlit grade', () => {
     const scene = new THREE.Scene();
     const hemi = new THREE.HemisphereLight(0xffffff, 0x000000, 1.35);
     scene.add(hemi);
-    scene.environmentIntensity = 1;
     const root = new THREE.Group();
     const lantern = practical('war-room-blender-chandelier-practical', 0.92);
     const fire = practical('war-room-blender-fire-practical', 2.3);
@@ -94,13 +93,18 @@ describe('War Room v3 torchlit grade', () => {
     expect(hemi.intensity).toBe(1.35);
     scene.add(root);
     expect(hemi.intensity).toBeCloseTo(1.35 * 0.4);
-    expect(scene.environmentIntensity).toBeCloseTo(0.5);
+    expect(scene.environmentIntensity).toBeCloseTo(0.28);
+    // The desktop IBL writes its intensity after first paint: still scaled.
+    scene.environmentIntensity = 0.46;
+    expect(scene.environmentIntensity).toBeCloseTo(0.46 * 0.28);
+    expect(root.getObjectByName('war-room-v3-board-pool')?.isSpotLight).toBe(true);
 
     release();
     expect(lantern.intensity).toBe(0.92);
     expect(fire.intensity).toBe(2.3);
     expect(hemi.intensity).toBe(1.35);
-    expect(scene.environmentIntensity).toBe(1);
+    expect(scene.environmentIntensity).toBe(0.46);
+    expect(root.getObjectByName('war-room-v3-board-pool')).toBeUndefined();
   });
 
   it('keeps more fill on touch, where the torches carry no real light', () => {
@@ -111,6 +115,7 @@ describe('War Room v3 torchlit grade', () => {
     const release = tuneWarRoomV3Lighting(root, { coarsePointer: true });
     scene.add(root);
     expect(hemi.intensity).toBeCloseTo(0.65);
+    expect(root.getObjectByName('war-room-v3-board-pool')).toBeUndefined();
     release();
   });
 });

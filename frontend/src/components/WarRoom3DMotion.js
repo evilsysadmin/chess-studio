@@ -580,7 +580,8 @@ export const WAR_ROOM_V4_LIGHT_LIFT = Object.freeze({
 // and the hearth read as the main light, while the key still keeps the board
 // legible. Touch keeps more fill because its torches carry no real lights.
 export const WAR_ROOM_V3_TORCHLIT = Object.freeze({
-  key: Object.freeze({ desktop: 0.62, touch: 0.8 }),
+  // Desktop hands the board to a spot pool (WarRoomV3Shell); touch keeps the key.
+  key: Object.freeze({ desktop: 0.32, touch: 0.8 }),
   rim: 0.45,
   warm: 0.7,
   exposure: Object.freeze({ desktop: -0.14, touch: -0.06 }),

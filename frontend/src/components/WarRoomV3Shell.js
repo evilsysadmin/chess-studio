@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { createWarRoomBlenderVariantShell } from './WarRoomBlenderShellRuntime.js';
 import { installWarRoomV3FireAnimation } from './WarRoomV3Fire.js';
 import { createWarRoomSideTorch } from './WarRoomMilitaryGallery.js';
@@ -18,7 +19,7 @@ export const WAR_ROOM_V3_HEARTH_FIRE_SHAPE = Object.freeze({
 export const WAR_ROOM_V3_TORCH_ANCHOR_PREFIX = 'WR3_ANCHOR_torch_';
 
 // Torches are the main light of the hall on desktop: brighter and wider than v1.
-export const WAR_ROOM_V3_TORCH_LIGHT = Object.freeze({ intensity: 34, distance: 12 });
+export const WAR_ROOM_V3_TORCH_LIGHT = Object.freeze({ intensity: 20, distance: 11 });
 
 export function installWarRoomV3Torches(root, { coarsePointer = false } = {}) {
   const anchors = [];
@@ -64,9 +65,28 @@ export const WAR_ROOM_V3_PRACTICAL_SCALE = Object.freeze({
   'war-room-blender-fire-practical': 1.35,
   'war-room-blender-moon-practical': 0.5,
 });
+// The shared desktop IBL (RoomEnvironment) lights the hall evenly from every
+// side, which flattens torchlight. three.js applies scene.environmentIntensity
+// (not material.envMapIntensity) to materials lit by scene.environment, and
+// the IBL assigns it after first paint, so the grade scales that property for
+// as long as the hall is mounted, whatever value is written to it. Touch/lite
+// has no IBL at all.
 export const WAR_ROOM_V3_SCENE_FILL = Object.freeze({
   hemisphere: Object.freeze({ desktop: 0.4, touch: 0.65 }),
-  environment: Object.freeze({ desktop: 0.5, touch: 0.7 }),
+  environment: Object.freeze({ desktop: 0.28, touch: 1 }),
+});
+
+// Desktop: a warm pool of light over the board replaces most of the global key,
+// so the hall around it stays dark and torchlit while play stays legible.
+// Coordinates are shell-root space (board top at WR_ANCHOR_board_origin, y 1.12).
+export const WAR_ROOM_V3_BOARD_POOL = Object.freeze({
+  color: 0xffd9a8,
+  intensity: 150,
+  angle: 0.5,
+  penumbra: 0.55,
+  decay: 2,
+  position: Object.freeze([0, 12.5, 0.6]),
+  target: Object.freeze([0, 1.12, 0]),
 });
 
 export function tuneWarRoomV3Lighting(root, { coarsePointer = false } = {}) {
@@ -91,13 +111,36 @@ export function tuneWarRoomV3Lighting(root, { coarsePointer = false } = {}) {
       node.intensity *= WAR_ROOM_V3_SCENE_FILL.hemisphere[device];
       restores.push(() => { node.intensity = intensity; });
     });
-    if (Number.isFinite(scene.environmentIntensity)) {
-      const environment = scene.environmentIntensity;
-      scene.environmentIntensity *= WAR_ROOM_V3_SCENE_FILL.environment[device];
-      restores.push(() => { scene.environmentIntensity = environment; });
+    const envScale = WAR_ROOM_V3_SCENE_FILL.environment[device];
+    if (envScale !== 1 && !Object.getOwnPropertyDescriptor(scene, 'environmentIntensity')?.get) {
+      let raw = Number.isFinite(scene.environmentIntensity) ? scene.environmentIntensity : 1;
+      Object.defineProperty(scene, 'environmentIntensity', {
+        configurable: true,
+        enumerable: true,
+        get: () => raw * envScale,
+        set: (value) => { raw = value; },
+      });
+      restores.push(() => {
+        delete scene.environmentIntensity;
+        scene.environmentIntensity = raw;
+      });
     }
     root.userData.warRoomV3SceneFill = 'torchlit-v1';
   };
+  if (!coarsePointer && root?.add) {
+    const pool = WAR_ROOM_V3_BOARD_POOL;
+    const spot = new THREE.SpotLight(pool.color, pool.intensity, 0, pool.angle, pool.penumbra, pool.decay);
+    spot.name = 'war-room-v3-board-pool';
+    spot.castShadow = false;
+    spot.position.set(...pool.position);
+    spot.target.position.set(...pool.target);
+    root.add(spot, spot.target);
+    restores.push(() => {
+      spot.removeFromParent();
+      spot.target.removeFromParent();
+      spot.dispose?.();
+    });
+  }
   root?.addEventListener?.('added', dimScene);
   if (root?.parent) dimScene();
   if (root?.userData) root.userData.warRoomV3Lighting = 'torchlit-v1';

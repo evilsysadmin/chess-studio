@@ -244,7 +244,7 @@ describe('WarRoom3DMotion', () => {
         const shared = reactiveLightProfile({ ...state, coarsePointer });
         const v3 = reactiveLightProfile({ ...state, coarsePointer, variant: 'v3' });
         expect(v3.key).toBeLessThan(shared.key);
-        expect(v3.key).toBeGreaterThan(shared.key * 0.5);
+        expect(v3.key).toBeGreaterThan(shared.key * 0.25);
         expect(v3.rim).toBeLessThan(shared.rim);
         expect(v3.warm).toBeLessThan(shared.warm);
         expect(v3.exposure).toBeLessThan(shared.exposure);
