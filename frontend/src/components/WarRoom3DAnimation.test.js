@@ -3,6 +3,7 @@ import {
   compactWebGLRendererLabel,
   isSoftwareWebGLRenderer,
   warRoomAmbientFramePlan,
+  warRoomRendererMode,
   warRoomRenderBudget,
   warRoomRendererAttempts,
   warRoomSceneProfile,
@@ -106,6 +107,24 @@ describe('War Room ambient render cadence', () => {
     expect(compactWebGLRendererLabel('llvmpipe (LLVM 19.1.7, 256 bits)')).toBe('SOFTWARE');
     expect(compactWebGLRendererLabel('Mystery GPU 9000')).toBe('GPU');
     expect(compactWebGLRendererLabel('')).toBe('UNKNOWN');
+  });
+
+  it('keeps a permissive mobile fallback on lite budget without declaring the GPU software', () => {
+    expect(warRoomRendererMode({
+      rendererLabel: 'ANGLE (Qualcomm, Adreno (TM) 740, OpenGL ES 3.2)',
+      liteFallback: true,
+    })).toEqual({
+      softwareRenderer: false,
+      liteBudget: true,
+    });
+
+    expect(warRoomRendererMode({
+      rendererLabel: 'ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero)))',
+      liteFallback: false,
+    })).toEqual({
+      softwareRenderer: true,
+      liteBudget: true,
+    });
   });
 
   it('preserva el framebuffer sólo cuando la captura visual lo pide', () => {
