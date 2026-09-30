@@ -210,29 +210,19 @@ function Board3DCanvas({
     }
 
     let rendererName = ''; let maxTextureSize = null;
-    let rendererMode = warRoomRendererMode({ liteFallback: rendererAttempt.liteFallback });
     try {
       const gl = renderer.getContext();
       const debugRendererInfo = gl.getExtension?.('WEBGL_debug_renderer_info'); maxTextureSize = gl.getParameter?.(gl.MAX_TEXTURE_SIZE) || null;
       rendererName = debugRendererInfo
         ? gl.getParameter(debugRendererInfo.UNMASKED_RENDERER_WEBGL)
         : gl.getParameter(gl.RENDERER);
-      rendererMode = warRoomRendererMode({
-        rendererLabel: rendererName,
-        liteFallback: rendererAttempt.liteFallback,
-      });
     } catch {
-      // Renderer introspection is optional. The permissive fallback keeps its
-      // conservative scene budget without being treated as software rendering.
+      // Renderer introspection is optional; unknown renderers keep the normal heartbeat.
     }
+    const rendererMode = warRoomRendererMode({ rendererLabel: rendererName, liteFallback: rendererAttempt.liteFallback });
     const { softwareRenderer } = rendererMode;
-
     const coarsePointer = Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
-    const sceneProfile = warRoomSceneProfile({
-      coarsePointer,
-      softwareRenderer: rendererMode.liteBudget,
-      maxTextureSize,
-    });
+    const sceneProfile = warRoomSceneProfile({ coarsePointer, softwareRenderer: rendererMode.liteBudget, maxTextureSize });
     const { lite: renderLite } = sceneProfile; const sceneLite = renderLite || (coarsePointer && warRoomMobilePerformance === true);
     const scene = new THREE.Scene(); scene.userData.warRoomHansAwaitCall = latestPropsRef.current.hansFireCallEnabled; scene.userData.warRoomAdaptiveQuality = sceneProfile.adaptiveQuality;
     const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
