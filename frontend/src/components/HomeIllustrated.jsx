@@ -369,6 +369,38 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
                 <IconBook aria-hidden="true" />
                 <span><strong>Partida de práctica</strong><small>Entrena sin jugarte el rating</small></span>
               </button>
+              {portraitVestibule && (
+                <>
+                  <button type="button" className="illustrated-home__play-menu-item" onClick={onInsights} disabled={loading}>
+                    <IconBook aria-hidden="true" />
+                    <span><strong>Así juegas</strong><small>Revisa tus patrones y errores</small></span>
+                  </button>
+                  <button type="button" className="illustrated-home__play-menu-item" onClick={onTrain} disabled={loading}>
+                    <IconBook aria-hidden="true" />
+                    <span><strong>Entrenar</strong><small>Puzzles y práctica guiada</small></span>
+                  </button>
+                  <button type="button" className="illustrated-home__play-menu-item" onClick={onCombat} disabled={loading}>
+                    <IconSword aria-hidden="true" />
+                    <span><strong>Combat Chess</strong><small>Tu campaña y ejército</small></span>
+                  </button>
+                  <button type="button" className="illustrated-home__play-menu-item" onClick={onDaily} disabled={loading}>
+                    <Flame aria-hidden="true" />
+                    <span><strong>Desafío diario</strong><small>El reto de hoy</small></span>
+                  </button>
+                  <button type="button" className="illustrated-home__play-menu-item" onClick={onTournament} disabled={loading}>
+                    <IconTrophy aria-hidden="true" />
+                    <span><strong>Torneos</strong><small>Compite y escala</small></span>
+                  </button>
+                  <button type="button" className="illustrated-home__play-menu-item" onClick={onHistory} disabled={loading}>
+                    <IconScroll aria-hidden="true" />
+                    <span><strong>Historia</strong><small>Tu legado y partidas</small></span>
+                  </button>
+                  <button type="button" className="illustrated-home__play-menu-item" onClick={() => setToolsOpen(true)} disabled={loading}>
+                    <IconStairs aria-hidden="true" />
+                    <span><strong>Mazmorras</strong><small>Más modos y herramientas</small></span>
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
