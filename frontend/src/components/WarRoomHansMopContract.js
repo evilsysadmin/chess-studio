@@ -1,4 +1,4 @@
-export const WAR_ROOM_HANS_MOP_ROUTINE_VERSION = 'hans-mop-routine-v7-prompt-arrival-obstacle-safe-router-slow-travel-contract-terminal-setup';
+export const WAR_ROOM_HANS_MOP_ROUTINE_VERSION = 'hans-mop-routine-v8-reachable-waypoint-fallback';
 // Per-game event eligibility and deterministic start delay belong to
 // WarRoomHansEventContract. This contract begins once mop has been selected.
 export const HANS_MOP_DIALOGUE_CHANCE = 0.56;
@@ -47,4 +47,17 @@ export function hansMopDialoguePhase(elapsedMs) {
   if (elapsed < HANS_MOP_DIALOGUE_MATTHIAS_MS + HANS_MOP_DIALOGUE_HANS_MS) return 'hans';
   if (elapsed < HANS_MOP_DIALOGUE_MATTHIAS_MS + HANS_MOP_DIALOGUE_HANS_MS + HANS_MOP_DIALOGUE_SIGH_MS) return 'sigh';
   return '';
+}
+
+
+export function hansMopReachableWaypointIndex(count, startIndex, canReach) {
+  const total = Math.max(0, Math.trunc(Number(count) || 0));
+  if (!total || typeof canReach !== 'function') return -1;
+  const requested = Math.trunc(Number(startIndex) || 0);
+  const start = ((requested % total) + total) % total;
+  for (let offset = 0; offset < total; offset += 1) {
+    const index = (start + offset) % total;
+    if (canReach(index)) return index;
+  }
+  return -1;
 }
