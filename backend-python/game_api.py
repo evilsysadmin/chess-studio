@@ -17,8 +17,7 @@ import game_store as store
 from api_models import AnalyzeMoveRequest, AnalyzeRequest, MoveRequest, NewGameRequest
 from chess_ai import get_cpu_move, move_to_dict
 from cpu_difficulty import get_factual_difficulty_cpu_move
-from engine_api import run_optional_analysis
-from engine_runtime import run_engine_work
+from engine_api import run_engine_work, run_optional_analysis
 from hint_analysis_service import build_hint_payload
 from move_analysis_service import analyze_move_payload, deterministic_analyze_move
 from root_candidate_service import factual_candidate_payloads_for_level
