@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+import engine_api
 import game_api
 import move_analysis_service as service
 
@@ -238,7 +239,7 @@ def test_optional_analysis_endpoints_return_retryable_503_when_engine_busy(monke
     async def reject_optional(*_args, **_kwargs):
         raise game_api.EngineBackpressureError("busy")
 
-    monkeypatch.setattr(game_api, "run_optional_engine_work", reject_optional)
+    monkeypatch.setattr(engine_api, "run_optional_engine_work", reject_optional)
 
     cases = (
         (
