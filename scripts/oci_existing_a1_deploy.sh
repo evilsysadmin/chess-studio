@@ -639,7 +639,7 @@ record_successful_backend "$sha"
 # then retire it. New requests have already been routed to the candidate.
 drain_started_ms="$(now_ms)"
 if [[ -n "$previous_color" ]]; then
-  sleep "${CHESS_STUDIO_BLUE_GREEN_DRAIN_SECONDS:-35}"
+  sleep "${CHESS_STUDIO_BLUE_GREEN_DRAIN_SECONDS:-50}"
   remove_service "$(slot_service "$previous_color")"
 fi
 phase_done drain "$drain_started_ms"
