@@ -9,7 +9,9 @@ fi
 env_file="${CHESS_STUDIO_PRODUCTION_ENV_FILE:-/etc/chess-studio/production/backend.env}"
 backup_root="${CHESS_STUDIO_MONGO_BACKUP_ROOT:-/var/lib/chess-studio-production/backups/mongo}"
 backup_image="${CHESS_STUDIO_MONGO_BACKUP_IMAGE:-mongo:8.0.14}"
+backup_bucket="${CHESS_STUDIO_MONGO_BACKUP_BUCKET:-chess-studio-production-backups}"
 keep_count=2
+remote_keep_count=8
 expected_db=chess_study
 
 require() {
@@ -22,6 +24,7 @@ require sha256sum
 require flock
 require df
 require du
+require getent
 
 [[ -f "$env_file" && ! -L "$env_file" ]] || { echo "production runtime env missing" >&2; exit 42; }
 [[ "$(stat -c '%a' "$env_file")" == "600" ]] || { echo "production runtime env must be mode 0600" >&2; exit 42; }
@@ -141,6 +144,130 @@ chmod 0600 "$incoming/dump.archive.gz" "$incoming/SHA256SUMS" "$incoming/manifes
 mv "$incoming" "$final_dir"
 incoming=''
 
+runtime_user="${SUDO_USER:-ocarun}"
+runtime_home="$(getent passwd "$runtime_user" | awk -F: 'NR == 1 {print $6}')"
+[[ -n "$runtime_home" ]] || { echo "unable to resolve OCI runtime home for $runtime_user" >&2; exit 67; }
+runtime_python="${runtime_home}/.cache/chess-studio-oci-runtime/bin/python"
+[[ -x "$runtime_python" ]] || { echo "missing OCI runtime python: $runtime_python" >&2; exit 69; }
+"$runtime_python" -c 'import oci' >/dev/null 2>&1 || { echo 'OCI SDK missing from runtime python' >&2; exit 69; }
+
+CHESS_BACKUP_DIR="$final_dir" \
+CHESS_BACKUP_BUCKET="$backup_bucket" \
+CHESS_BACKUP_STAMP="$stamp" \
+CHESS_BACKUP_SHA256="$checksum" \
+CHESS_BACKUP_BYTES="$bytes" \
+CHESS_BACKUP_REMOTE_KEEP="$remote_keep_count" \
+"$runtime_python" - <<'PY'
+import base64
+import json
+import os
+from pathlib import Path
+import re
+
+import oci
+
+root = Path(os.environ["CHESS_BACKUP_DIR"])
+bucket = os.environ["CHESS_BACKUP_BUCKET"]
+stamp = os.environ["CHESS_BACKUP_STAMP"]
+expected_sha = os.environ["CHESS_BACKUP_SHA256"].lower()
+expected_bytes = int(os.environ["CHESS_BACKUP_BYTES"])
+remote_keep = int(os.environ["CHESS_BACKUP_REMOTE_KEEP"])
+if not re.fullmatch(r"[0-9]{8}T[0-9]{6}Z", stamp):
+    raise SystemExit("invalid backup stamp")
+if not re.fullmatch(r"[0-9a-f]{64}", expected_sha):
+    raise SystemExit("invalid backup sha256")
+if remote_keep < 3:
+    raise SystemExit("remote retention must preserve more than two generations")
+
+signer = oci.auth.signers.InstancePrincipalsSecurityTokenSigner()
+client = oci.object_storage.ObjectStorageClient(config={}, signer=signer)
+retry = oci.retry.DEFAULT_RETRY_STRATEGY
+namespace = str(client.get_namespace(retry_strategy=retry).data or "")
+if not namespace:
+    raise SystemExit("empty OCI Object Storage namespace")
+
+prefix = f"mongo/backup-{stamp}/"
+files = ("dump.archive.gz", "SHA256SUMS", "manifest.json")
+for name in files:
+    path = root / name
+    if not path.is_file() or path.stat().st_size <= 0:
+        raise SystemExit(f"missing backup artifact: {name}")
+    kwargs = {
+        "content_length": path.stat().st_size,
+        "if_none_match": "*",
+        "retry_strategy": retry,
+    }
+    if name == "dump.archive.gz":
+        kwargs.update({
+            "opc_checksum_algorithm": "SHA256",
+            "opc_content_sha256": base64.b64encode(bytes.fromhex(expected_sha)).decode("ascii"),
+            "opc_meta": {"sha256": expected_sha, "backup-stamp": stamp},
+        })
+    with path.open("rb") as handle:
+        client.put_object(namespace, bucket, prefix + name, handle, **kwargs)
+
+head = client.head_object(namespace, bucket, prefix + "dump.archive.gz", retry_strategy=retry)
+remote_length = int(head.headers.get("content-length", "-1"))
+remote_sha = str(head.headers.get("opc-meta-sha256", "")).lower()
+if remote_length != expected_bytes:
+    raise SystemExit(f"remote archive size mismatch: {remote_length} != {expected_bytes}")
+if remote_sha != expected_sha:
+    raise SystemExit("remote archive sha256 metadata mismatch")
+
+manifest = client.get_object(namespace, bucket, prefix + "manifest.json", retry_strategy=retry).data.content
+payload = json.loads(manifest.decode("utf-8"))
+if int(payload.get("archive_bytes", -1)) != expected_bytes or str(payload.get("sha256", "")).lower() != expected_sha:
+    raise SystemExit("remote manifest does not attest the uploaded archive")
+
+versions = []
+page = None
+while True:
+    response = client.list_object_versions(
+        namespace,
+        bucket,
+        prefix="mongo/backup-",
+        fields="name,size,timeCreated,timeModified",
+        page=page,
+        retry_strategy=retry,
+    )
+    versions.extend(getattr(response.data, "items", None) or getattr(response.data, "objects", None) or [])
+    page = response.headers.get("opc-next-page")
+    if not page:
+        break
+
+backup_re = re.compile(r"^mongo/backup-([0-9]{8}T[0-9]{6}Z)/")
+stamps = sorted(
+    {
+        match.group(1)
+        for item in versions
+        if (match := backup_re.match(str(getattr(item, "name", "") or "")))
+    },
+    reverse=True,
+)
+expired = set(stamps[remote_keep:])
+for item in versions:
+    name = str(getattr(item, "name", "") or "")
+    match = backup_re.match(name)
+    if not match or match.group(1) not in expired:
+        continue
+    version_id = str(getattr(item, "version_id", "") or "")
+    if not version_id:
+        raise SystemExit(f"versioned backup object missing version id: {name}")
+    client.delete_object(
+        namespace,
+        bucket,
+        name,
+        version_id=version_id,
+        retry_strategy=retry,
+    )
+
+print(
+    "CHESS_STUDIO_MONGO_BACKUP_OFFHOST_OK "
+    f"bucket={bucket} timestamp={stamp} retained={min(len(stamps), remote_keep)} "
+    f"bytes={expected_bytes} sha256={expected_sha}"
+)
+PY
+
 mapfile -t backups < <(find "$backup_root" -mindepth 1 -maxdepth 1 -type d -name 'backup-*' -printf '%f\n' | sort -r)
 retained=0
 for name in "${backups[@]}"; do
@@ -154,5 +281,5 @@ mapfile -t remaining < <(find "$backup_root" -mindepth 1 -maxdepth 1 -type d -na
 [[ "${#remaining[@]}" -le "$keep_count" ]] || { echo 'backup retention pruning failed' >&2; exit 70; }
 [[ -d "$final_dir" ]] || { echo 'new backup disappeared during retention pruning' >&2; exit 70; }
 
-printf 'CHESS_STUDIO_MONGO_BACKUP_OK timestamp=%s bytes=%s retained=%s sha256=%s\n' \
-  "$stamp" "$bytes" "${#remaining[@]}" "$checksum"
+printf 'CHESS_STUDIO_MONGO_BACKUP_OK timestamp=%s bytes=%s retained=%s remote_retained=%s bucket=%s sha256=%s\n' \
+  "$stamp" "$bytes" "${#remaining[@]}" "$remote_keep_count" "$backup_bucket" "$checksum"
