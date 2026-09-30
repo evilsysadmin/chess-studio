@@ -77,16 +77,16 @@ def build_v4_palette():
             rough=0.77, coat=0.014, texture="stone", scale=4.3, bump=0.068, weather=True,
         ),
         "stone_light": base.material(
-            "WR4_MAT_pale_travertine", (0.56, 0.395, 0.215, 1),
-            rough=0.61, coat=0.050, texture="stone", scale=3.6, bump=0.042, weather=True,
+            "WR4_MAT_pale_travertine", (0.62, 0.47, 0.30, 1),
+            rough=0.30, coat=0.34, texture="stone", scale=3.6, bump=0.030, weather=True,
         ),
         "slate": base.material(
             "WR4_MAT_radial_slate", (0.030, 0.070, 0.078, 1),
             rough=0.78, coat=0.014, texture="stone", scale=5.0, bump=0.052, weather=True,
         ),
         "green_marble": base.material(
-            "WR4_MAT_green_marble", (0.010, 0.082, 0.052, 1),
-            rough=0.40, coat=0.18, texture="stone", scale=3.5, bump=0.030, weather=True,
+            "WR4_MAT_green_marble", (0.012, 0.090, 0.072, 1),
+            rough=0.26, coat=0.40, texture="stone", scale=3.5, bump=0.024, weather=True,
         ),
         "rug": base.material(
             "WR4_MAT_room_rug", (0.004, 0.070, 0.046, 1),
@@ -347,6 +347,33 @@ def _oculus_ring(name, radius, minor, y, material, static):
     return ring
 
 
+def _oculus_band(name, cx, y, cz, a, b, *, top, bottom, material, static, samples=48):
+    """Flat silhouette between two profiles (in units of the ellipse half-height),
+    clipped to the oculus ellipse so nothing spills over the wall."""
+    verts, faces = [], []
+    for index in range(samples + 1):
+        u = -1.0 + 2.0 * index / samples
+        half = math.sqrt(max(0.0, 1.0 - u * u))
+        lo = max(bottom(u), -half)
+        hi = min(max(top(u), lo), half)
+        # Local coordinates: the object origin sits at the oculus centre so
+        # runtime batching groups it with the rest of the window.
+        verts.append((u * a, 0.0, hi * b))
+        verts.append((u * a, 0.0, lo * b))
+    for index in range(samples):
+        t0, b0, t1, b1 = 2 * index, 2 * index + 1, 2 * index + 2, 2 * index + 3
+        faces.append((t0, b0, b1, t1))
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(verts, [], faces)
+    mesh.update()
+    obj = bpy.data.objects.new(name, mesh)
+    obj.location = (cx, y, cz)
+    obj.data.materials.append(material)
+    static.objects.link(obj)
+    base.tag(obj)
+    return obj
+
+
 def _heraldic_lion(name, center, scale, material, static, *, flat=False):
     """Stylised rampant lion built from a few primitives: at hero distance it
     must read as a gold heraldic beast, not as a literal sculpture."""
@@ -400,7 +427,7 @@ def build_celestial_window(static, palette):
     _oculus_ring("WR4_OBS_celestial_window_halo", r + 0.38, 0.045, cy - 0.10, palette["brass_dark"], static)
 
     k = r / 2.62
-    crescent_center = Vector((cx - 0.55 * k * V4_OCULUS_ASPECT, cy - 0.255, cz + 0.72 * k))
+    crescent_center = Vector((cx - 0.55 * k * V4_OCULUS_ASPECT, cy - 0.255, cz + 0.50 * r))
     crescent = base.cylinder(
         "WR4_OBS_window_crescent", crescent_center, 0.40, 0.040,
         palette["ivory"], static, vertices=64,
@@ -412,7 +439,7 @@ def build_celestial_window(static, palette):
         0.37, 0.046, palette["night"], static, vertices=64,
     )
     occluder.rotation_euler.x = math.pi / 2
-    base.sphere("WR4_OBS_window_bright_star", (cx + 0.28, cy - 0.26, cz + 0.72 * k),
+    base.sphere("WR4_OBS_window_bright_star", (cx + 0.28, cy - 0.26, cz + 0.50 * r),
                 0.075, palette["ivory"], static, scale=(1.0, 0.24, 1.0))
 
     stars = (
@@ -428,18 +455,25 @@ def build_celestial_window(static, palette):
             scale=(1.0, 0.24, 1.0),
         )
 
-    # Nightscape seen through the oculus: layered ridges, pointed spires and a
-    # few warm windows. Everything stays flat against the glass (a painted view).
-    for index, (dx, width, height, material) in enumerate((
-        (-1.30, 1.10, 0.46, "night_ridge"), (1.25, 1.15, 0.40, "night_ridge"),
-        (0.00, 1.60, 0.26, "night_town"),
-    )):
-        ridge = base.sphere(
-            f"WR4_OBS_window_ridge_{index}",
-            (cx + dx * k * V4_OCULUS_ASPECT, cy - 0.22 - index * 0.01, cz - r * 0.60),
-            1.0, palette[material], static,
-            scale=(width * k * V4_OCULUS_ASPECT, 0.03, height * k),
-        )
+    # Nightscape seen through the oculus: silhouettes clipped to the window's
+    # ellipse (far range, near town hills, lake), flat against the glass.
+    a, b = r * V4_OCULUS_ASPECT * 0.985, r * 0.985
+
+    def far_range(u):
+        return -0.04 + 0.16 * abs(math.sin(u * 2.6 + 0.4)) + 0.05 * math.sin(u * 7.1)
+
+    def near_hills(u):
+        return -0.16 + 0.07 * math.sin(u * 4.3 + 1.1) + 0.04 * math.sin(u * 11.0)
+
+    _oculus_band("WR4_OBS_window_far_range", cx, cy - 0.205, cz, a, b,
+                 top=far_range, bottom=lambda u: -1.0, material=palette["night_ridge"], static=static)
+    _oculus_band("WR4_OBS_window_town_hills", cx, cy - 0.215, cz, a, b,
+                 top=near_hills, bottom=lambda u: -1.0, material=palette["night_town"], static=static)
+    _oculus_band("WR4_OBS_window_lake", cx, cy - 0.225, cz, a, b,
+                 top=lambda u: -0.60 + 0.015 * math.sin(u * 9.0), bottom=lambda u: -1.0,
+                 material=palette["night"], static=static)
+    base.cube("WR4_OBS_window_lake_glint", (crescent_center.x, cy - 0.235, cz - 0.76 * b),
+              (0.035, 0.004, 0.10), palette["ivory"], static, bevel=0.004)
     for index, (dx, dz, h) in enumerate((
         (-0.82, -0.28, 0.46), (-0.48, -0.36, 0.34), (-0.10, -0.20, 0.58),
         (0.30, -0.34, 0.40), (0.66, -0.26, 0.50), (1.00, -0.40, 0.30),
@@ -612,6 +646,8 @@ def build_round_command_table(static, palette):
                         0.28, palette["brass"], static, scale=(1.0, 1.0, 0.82))
             base.sphere(f"WR4_OBS_board_corner_bulb_{sx}_{sy}", (sx * c, sy * c, 1.60),
                         0.075, palette["fire_core"], static)
+            base.light(f"WR4_LIGHT_board_corner_{sx}_{sy}", "POINT", (sx * c, sy * c, 1.85), 55.0,
+                       (1.0, 0.52, 0.20), static, radius=0.35)
 
 
 def build_white_fireplace(static, palette):
@@ -1035,7 +1071,7 @@ def build_wall_lanterns(static, palette):
                 palette["brass_dark"], static, vertices=16,
             )
         lamp = base.light(
-            f"WR4_LIGHT_wall_lantern_{side}", "POINT", (x, y - 0.50, z), 118.0,
+            f"WR4_LIGHT_wall_lantern_{side}", "POINT", (x, y - 0.50, z), 190.0,
             (1.0, 0.44, 0.12), static, radius=1.05,
         )
         lamp["war_room_runtime_dynamic"] = "v4-lantern"
