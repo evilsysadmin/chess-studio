@@ -2115,6 +2115,11 @@ def runtime_batch_cell(obj):
     )
 
 
+# Variants whose generators pre-fuse decor by material may lower this floor.
+RUNTIME_MIN_STATIC_SOURCES = 200
+RUNTIME_MIN_MERGED = 120
+
+
 def collapse_runtime_static_shell():
     """Apply authored modifiers and batch compatible static meshes for runtime only.
 
@@ -2128,7 +2133,7 @@ def collapse_runtime_static_shell():
         if obj.type == "MESH" and obj.get("war_room_role") == ROLE_STATIC
     ]
     source_count = len(static_meshes)
-    if source_count < 200:
+    if source_count < RUNTIME_MIN_STATIC_SOURCES:
         raise RuntimeError(f"runtime static source mesh count suspiciously small: {source_count}")
 
     # Joining discards non-active object modifiers in Blender, so bake every
@@ -2189,7 +2194,7 @@ def collapse_runtime_static_shell():
     )
     if remaining > 150:
         raise RuntimeError(f"runtime static batching ineffective: {source_count} -> {remaining}")
-    if merged_away < 120:
+    if merged_away < RUNTIME_MIN_MERGED:
         raise RuntimeError(f"runtime static batching merged too little: {merged_away}")
 
     bpy.context.scene["war_room_runtime_source_meshes"] = source_count

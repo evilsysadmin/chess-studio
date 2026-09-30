@@ -24,10 +24,10 @@ describe('War Room v3 authored stove fire', () => {
     const material = new THREE.MeshStandardMaterial({ emissive: 0xff4b12 });
     material.emissiveIntensity = 1.4;
     for (const name of [
-      'WR3_OBS_stove_flame_body',
-      'WR3_OBS_stove_flame_0',
-      'WR3_OBS_stove_flame_1',
-      'WR3_OBS_stove_flame_2',
+      'WR3_ARM_hearth_flame_body',
+      'WR3_ARM_hearth_flame_0',
+      'WR3_ARM_hearth_flame_1',
+      'WR3_ARM_hearth_flame_2',
     ]) {
       const flame = new THREE.Mesh(new THREE.SphereGeometry(0.2), material);
       flame.name = name;
@@ -40,7 +40,7 @@ describe('War Room v3 authored stove fire', () => {
     anchor.add(practical);
     root.add(anchor);
 
-    const driver = root.getObjectByName('WR3_OBS_stove_flame_body');
+    const driver = root.getObjectByName('WR3_ARM_hearth_flame_body');
     const release = installWarRoomV3FireAnimation(root);
     driver.onBeforeRender({ userData: { board3DMotionNowMs: 840 } });
 

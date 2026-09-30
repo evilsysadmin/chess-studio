@@ -69,6 +69,17 @@ describe('War Room fire sprites', () => {
     dispose();
     expect(parent.children.some((child) => child.isPoints)).toBe(false);
   });
+
+  it('lets a variant widen the plume into a hearth fire', () => {
+    const parent = new THREE.Group();
+    const flame = new THREE.Object3D();
+    parent.add(flame);
+    const dispose = installWarRoomV3StoveFireSprites([flame], { shape: { height: 0.85, size: 0.22 } });
+    const points = parent.children.find((child) => child.isPoints);
+    expect(points.material.uniforms.uHeight.value).toBeCloseTo(0.85, 5);
+    expect(points.material.uniforms.uSize.value).toBeCloseTo(0.22, 5);
+    dispose();
+  });
 });
 
 describe('baked hearth flames', () => {
