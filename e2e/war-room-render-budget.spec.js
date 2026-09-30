@@ -1,6 +1,6 @@
 import { devices, expect, test } from '@playwright/test';
 import { buttonWithVisibleText, login, mockApi } from './helpers.js';
-import { warRoomRenderBudget } from '../frontend/src/components/WarRoom3DAnimation.js';
+import { warRoomRenderBudget } from '../frontend/src/components/WarRoomRenderBudget.js';
 
 const WAR_ROOM_READY_TIMEOUT = 45_000;
 const RENDER_BUDGET = Object.freeze({

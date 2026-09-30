@@ -1,41 +1,17 @@
 import { threeSurfaceShouldRender } from '../threeRenderPolicy.js';
 import { getRenderQualityPreference } from '../userPreferences.js';
 import { readWarRoomHardwareHints, resolveWarRoomRenderQuality } from './WarRoomRenderQuality.js';
+import { warRoomRenderBudget } from './WarRoomRenderBudget.js';
+
+// Pure budget contract lives in its own module so Playwright specs can import
+// it without pulling browser-only modules (import.meta.env) into Node.
+export { warRoomRenderBudget };
 
 const WAR_ROOM_QUALITY_BUDGETS = Object.freeze({
   low: Object.freeze({ pixelRatioCap: 0.85, shadowMapSize: 512, shadowRadius: 1.0, shadowsEnabled: false }),
   medium: Object.freeze({ pixelRatioCap: 1.0, shadowMapSize: 512, shadowRadius: 1.1, shadowsEnabled: true }),
   high: Object.freeze({ pixelRatioCap: 1.35, shadowMapSize: 1024, shadowRadius: 1.8, shadowsEnabled: true }),
   ultra: Object.freeze({ pixelRatioCap: 1.75, shadowMapSize: 2048, shadowRadius: 2.35, shadowsEnabled: true }),
-});
-
-const WAR_ROOM_RENDER_BUDGETS = Object.freeze({
-  desktop: Object.freeze({
-    tier: 'full',
-    pixelRatioCap: 1.2,
-    shadowMapSize: 1024,
-    shadowsEnabled: true,
-    idleFrameIntervalMs: 100,
-    inspectFrameIntervalMs: 16,
-  }),
-  touch: Object.freeze({
-    tier: 'balanced',
-    pixelRatioCap: 1,
-    shadowMapSize: 512,
-    shadowsEnabled: true,
-    idleFrameIntervalMs: 150,
-    // Inspection is a direct-manipulation surface: ~30 FPS felt visibly
-    // stepped on Android even though ambient animation needs far less cadence.
-    // Keep it below desktop 60 FPS, but give drag enough temporal resolution to
-    // feel weighted rather than sticky without changing scene complexity/DPR.
-    inspectFrameIntervalMs: 24,
-  }),
-  software: Object.freeze({
-    tier: 'lite',
-    pixelRatioCap: 1,
-    shadowMapSize: 512,
-    shadowsEnabled: false,
-  }),
 });
 
 export function isSoftwareWebGLRenderer(rendererLabel = '') {
@@ -89,20 +65,6 @@ export function warRoomRendererAttempts({ preserveDrawingBuffer = false } = {}) 
       }),
     }),
   ]);
-}
-
-export function warRoomRenderBudget({ coarsePointer = false, softwareRenderer = false } = {}) {
-  const interactionBudget = coarsePointer ? WAR_ROOM_RENDER_BUDGETS.touch : WAR_ROOM_RENDER_BUDGETS.desktop;
-  const gpuBudget = softwareRenderer ? WAR_ROOM_RENDER_BUDGETS.software : interactionBudget;
-  return Object.freeze({
-    tier: gpuBudget.tier,
-    lite: Boolean(softwareRenderer),
-    pixelRatioCap: gpuBudget.pixelRatioCap,
-    shadowMapSize: gpuBudget.shadowMapSize,
-    shadowsEnabled: gpuBudget.shadowsEnabled,
-    idleFrameIntervalMs: interactionBudget.idleFrameIntervalMs,
-    inspectFrameIntervalMs: interactionBudget.inspectFrameIntervalMs,
-  });
 }
 
 export function warRoomSceneProfile(options = {}) {
