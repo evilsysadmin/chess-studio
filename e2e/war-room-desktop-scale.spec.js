@@ -84,3 +84,42 @@ test('War Room · desktop usa inmersión única con tablero protagonista y HUD f
   await expect(warRoom).toBeVisible();
   await expect(shell).toBeVisible();
 });
+
+// Con «reducir movimiento» del sistema, una regla global anula todas las
+// animaciones, así que el aviso «Guardado» no puede depender de desvanecerse
+// para apartarse: nunca debe tapar el HUD (turno, Guía, ⋯) ni la cuenta.
+for (const viewport of [{ width: 1024, height: 768 }, { width: 1440, height: 900 }]) {
+  test(`War Room · desktop · Guardado no tapa el HUD con movimiento reducido · ${viewport.width}×${viewport.height}`, async ({ page }) => {
+    test.setTimeout(120_000);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.setViewportSize(viewport);
+    await mockApi(page);
+    await login(page);
+    await buttonWithVisibleText(page, 'Partida rápida').click();
+    await activateSetupControl(page.getByRole('button', { name: 'Empezar partida', exact: true }));
+    await expect(page.locator('.board-live-row.is-3d-warroom')).toBeVisible({ timeout: 90_000 });
+
+    const saved = page.locator('.save-status-badge');
+    await expect(saved).toContainText('Guardado');
+    await page.waitForTimeout(2_000);
+    const badge = await saved.boundingBox();
+    expect(badge, 'Guardado sigue en el árbol').not.toBeNull();
+    for (const [label, locator] of [
+      ['turno', page.locator('.game-3d-command-column .game-3d-turn-pill')],
+      ['guía', page.getByRole('button', { name: /Abrir guía de la War Room/ })],
+      ['más acciones', page.getByRole('button', { name: 'Más acciones de partida', exact: true })],
+      ['cuenta', page.locator('.masthead-account-trigger')],
+    ]) {
+      if (label !== 'cuenta') await expect(locator, label).toBeVisible();
+      const box = await locator.boundingBox();
+      // Entre 821 y 1080 px la cuenta se pliega fuera del HUD flotante.
+      if (!box || box.width < 1 || box.height < 1) continue;
+      const overlapX = Math.min(badge.x + badge.width, box.x + box.width) - Math.max(badge.x, box.x);
+      const overlapY = Math.min(badge.y + badge.height, box.y + box.height) - Math.max(badge.y, box.y);
+      expect(overlapX > 0.5 && overlapY > 0.5, `Guardado no debe tapar ${label}: ${JSON.stringify({ badge, box })}`).toBe(false);
+    }
+    expect(badge.y + badge.height, 'Guardado dentro del viewport').toBeLessThanOrEqual(viewport.height);
+    expect(badge.x, 'Guardado dentro del viewport').toBeGreaterThanOrEqual(0);
+    expect(badge.x + badge.width, 'Guardado dentro del viewport').toBeLessThanOrEqual(viewport.width);
+  });
+}
