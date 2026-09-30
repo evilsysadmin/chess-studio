@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import {
   WAR_ROOM_V3_HEARTH_FIRE_SHAPE,
   installWarRoomV3Torches,
+  tuneWarRoomV3Lighting,
   WAR_ROOM_V3_RUNTIME_MODEL_URL,
   warRoomV3ModelUrl,
 } from './WarRoomV3Shell.js';
@@ -63,6 +64,50 @@ describe('War Room v3 side-wall torches', () => {
     const release = installWarRoomV3Torches(root, { coarsePointer: true });
     expect(root.getObjectByName('war-room-side-torch-flame-outer')).toBeTruthy();
     expect(lights(root)).toBe(0);
+    release();
+  });
+});
+
+describe('War Room v3 torchlit grade', () => {
+  const practical = (name, intensity) => {
+    const light = new THREE.PointLight(0xffffff, intensity);
+    light.name = name;
+    return light;
+  };
+
+  it('drops the lantern, heats the hearth and dims the shared fill until cleanup', () => {
+    const scene = new THREE.Scene();
+    const hemi = new THREE.HemisphereLight(0xffffff, 0x000000, 1.35);
+    scene.add(hemi);
+    scene.environmentIntensity = 1;
+    const root = new THREE.Group();
+    const lantern = practical('war-room-blender-chandelier-practical', 0.92);
+    const fire = practical('war-room-blender-fire-practical', 2.3);
+    root.add(lantern, fire);
+
+    const release = tuneWarRoomV3Lighting(root);
+    expect(lantern.intensity).toBe(0);
+    expect(fire.intensity).toBeCloseTo(2.3 * 1.35);
+    expect(hemi.intensity).toBe(1.35);
+    scene.add(root);
+    expect(hemi.intensity).toBeCloseTo(1.35 * 0.4);
+    expect(scene.environmentIntensity).toBeCloseTo(0.5);
+
+    release();
+    expect(lantern.intensity).toBe(0.92);
+    expect(fire.intensity).toBe(2.3);
+    expect(hemi.intensity).toBe(1.35);
+    expect(scene.environmentIntensity).toBe(1);
+  });
+
+  it('keeps more fill on touch, where the torches carry no real light', () => {
+    const scene = new THREE.Scene();
+    const hemi = new THREE.HemisphereLight(0xffffff, 0x000000, 1);
+    scene.add(hemi);
+    const root = new THREE.Group();
+    const release = tuneWarRoomV3Lighting(root, { coarsePointer: true });
+    scene.add(root);
+    expect(hemi.intensity).toBeCloseTo(0.65);
     release();
   });
 });
