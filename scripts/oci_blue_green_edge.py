@@ -27,6 +27,7 @@ def render(color: str) -> str:
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
         proxy_set_header Connection "";
+        keepalive_timeout 5s;
         proxy_connect_timeout 2s;
         proxy_send_timeout 45s;
         proxy_read_timeout 45s;
