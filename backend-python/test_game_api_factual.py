@@ -232,3 +232,31 @@ def test_analyze_adds_bounded_candidates_when_requested(monkeypatch):
     assert response.status_code == 200
     assert seen == {"level": 70, "limit": 5}
     assert response.json() == {**suggestion, "candidates": candidates}
+
+
+def test_optional_analysis_endpoints_return_retryable_503_when_engine_busy(monkeypatch):
+    async def reject_optional(*_args, **_kwargs):
+        raise game_api.EngineBackpressureError("busy")
+
+    monkeypatch.setattr(game_api, "run_optional_engine_work", reject_optional)
+
+    cases = (
+        (
+            "/api/analyze",
+            {"fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "level": 50},
+        ),
+        (
+            "/api/analyze-move",
+            {
+                "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+                "from": "e2",
+                "to": "e4",
+                "level": 45,
+            },
+        ),
+    )
+    for path, body in cases:
+        response = _client().post(path, json=body)
+        assert response.status_code == 503
+        assert response.headers["Retry-After"] == "1"
+        assert response.json()["detail"] == "Análisis temporalmente ocupado. Reintenta en un instante."
