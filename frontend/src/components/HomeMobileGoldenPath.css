@@ -500,3 +500,122 @@
     z-index: 20 !important;
   }
 }
+
+
+/* Final portrait authority.
+ * Keep this last: older mobile composition rules above preserve legacy coverage,
+ * but the current product contract is a minimal vestibule in portrait. */
+@media (pointer: coarse) and (orientation: portrait) and (max-width: 520px) {
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__stage > nav {
+    position: absolute !important;
+    z-index: 34 !important;
+    left: 18px !important;
+    right: 18px !important;
+    top: auto !important;
+    bottom: calc(max(18px, env(safe-area-inset-bottom)) + 132px) !important;
+    display: block !important;
+    grid-template-columns: none !important;
+    pointer-events: auto !important;
+  }
+
+  body .app-shell-home .menu.menu-illustrated
+    .illustrated-home__destination:not(.illustrated-home__destination--play),
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__resident,
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__utilities:not(.is-open),
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__quickbar {
+    display: none !important;
+  }
+
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__destination--play {
+    position: static !important;
+    inset: auto !important;
+    width: 100% !important;
+    min-height: 62px !important;
+    margin: 0 !important;
+    padding: 10px 14px !important;
+    display: flex !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    border-radius: 14px !important;
+    z-index: 40 !important;
+  }
+
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__destination--play strong {
+    font-size: 20px !important;
+  }
+
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__play-more-wrap {
+    display: block !important;
+    position: absolute !important;
+    z-index: 70 !important;
+    left: 50% !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: calc(max(18px, env(safe-area-inset-bottom)) + 76px) !important;
+    width: auto !important;
+    transform: translateX(-50%) !important;
+    overflow: visible !important;
+  }
+
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__play-more {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-width: 88px !important;
+    min-height: 44px !important;
+  }
+
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__play-menu {
+    position: fixed !important;
+    z-index: 120 !important;
+    left: 12px !important;
+    right: 12px !important;
+    top: auto !important;
+    bottom: calc(max(14px, env(safe-area-inset-bottom)) + 58px) !important;
+    width: auto !important;
+    max-height: min(66dvh, 540px) !important;
+    padding: 10px !important;
+    display: grid !important;
+    gap: 7px !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    transform: none !important;
+    border: 1px solid rgba(218, 166, 78, .36) !important;
+    border-radius: 14px !important;
+    background: rgba(21, 12, 7, .97) !important;
+    box-shadow: 0 18px 44px rgba(0, 0, 0, .5) !important;
+    text-align: left !important;
+  }
+
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__play-menu-item {
+    display: grid !important;
+    grid-template-columns: 24px minmax(0, 1fr) !important;
+    align-items: center !important;
+    gap: 9px !important;
+    min-height: 48px !important;
+    padding: 8px 10px !important;
+    border: 1px solid rgba(218, 166, 78, .18) !important;
+    border-radius: 10px !important;
+    background: rgba(255, 220, 150, .045) !important;
+    color: #f0d9a8 !important;
+    text-align: left !important;
+  }
+
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__play-menu-item svg {
+    width: 20px !important;
+    height: 20px !important;
+  }
+
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__play-menu-item strong {
+    display: block !important;
+    font-size: 13px !important;
+    line-height: 1.15 !important;
+  }
+
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__play-menu-item small {
+    display: block !important;
+    margin-top: 2px !important;
+    font-size: 11px !important;
+    line-height: 1.2 !important;
+  }
+}
