@@ -22,6 +22,7 @@ INVENTORY = {
     'blender-setup-smoke.yml': 'art-generation-infra',
     'billing-cost-export.yml': 'observability',
     'capacity-staging.yml': 'capacity-readiness',
+    'capacity-virtual-players.yml': 'capacity-readiness',
     'branch-housekeeping.yml': 'housekeeping',
     'chronicles-party-blender-art.yml': 'art-generation',
     'chess-football-godot-poc.yml': 'game-runtime-experiment',
