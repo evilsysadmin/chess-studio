@@ -41,6 +41,7 @@ import {
   HANS_SERVICE_WALK_SPEED,
   setWarRoomHansServiceDoor,
   warRoomHansServiceHome,
+  warRoomHansTargetCandidatesNearObject,
   warRoomHansTargetNearObject,
 } from './WarRoomHansServiceRoute.js';
 
@@ -270,16 +271,25 @@ export function installWarRoomHansServiceRoutine(root) {
         return;
       }
       home = service.point;
-      target = eventName === 'water-plant'
-        ? warRoomHansTargetNearObject(serviceTargetObject, actor.hans.parent, { offsetX: -0.72, offsetZ: 0.06 })
-        : warRoomHansTargetNearObject(serviceTargetObject, actor.hans.parent, { offsetX: -1.78, offsetZ: 0.74 });
-      if (!target) {
-        abortSetupForCurrentGame();
-        return;
+      const targetCandidates = eventName === 'water-plant'
+        ? [warRoomHansTargetNearObject(serviceTargetObject, actor.hans.parent, { offsetX: -0.72, offsetZ: 0.06 })]
+        : warRoomHansTargetCandidatesNearObject(
+          serviceTargetObject,
+          actor.hans.parent,
+          { offsetX: -1.78, offsetZ: 0.74 },
+        );
+      for (const candidate of targetCandidates) {
+        if (!candidate) continue;
+        const candidateIn = warRoomHansBuildSafeRoute(floor, actor.hans.parent, home, candidate);
+        if (!candidateIn.length) continue;
+        const candidateOut = warRoomHansBuildSafeRoute(floor, actor.hans.parent, candidate, home);
+        if (!candidateOut.length) continue;
+        target = candidate;
+        routeIn = candidateIn;
+        routeOut = candidateOut;
+        break;
       }
-      routeIn = warRoomHansBuildSafeRoute(floor, actor.hans.parent, home, target);
-      routeOut = warRoomHansBuildSafeRoute(floor, actor.hans.parent, target, home);
-      if (!routeIn.length || !routeOut.length) {
+      if (!target || !routeIn.length || !routeOut.length) {
         abortSetupForCurrentGame();
         return;
       }
