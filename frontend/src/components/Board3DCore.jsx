@@ -17,7 +17,7 @@ import {
 import { createWarRoomAmbientScheduler } from './WarRoomAmbientScheduler.js';
 import { applyWarRoomLightDiagnostics } from './WarRoomDomDiagnostics.js';
 import { createWarRoomHansScreenProbe } from './WarRoomHansScreenProbe.js';
-import { resolveBoardTap } from './WarRoom3DTouch.js';
+import { resolveBoardTap, selectBoardSquareOnTouch } from './WarRoom3DTouch.js';
 import { applyBoard3DCameraMotion, resetBoard3DMobilePan, setBoard3DMobilePan } from './Board3DCameraMotion.js';
 import { BOARD3D_HIGHLIGHT_SIZE, BOARD3D_HIGHLIGHT_Y, board3DHighlightStyle } from './Board3DHighlights.js';
 import { board3DCaptureWarmBoostValue, board3DPieceInteractionPose, writeBoard3DHighlightPulse } from './Board3DInteractionFx.js';
@@ -444,6 +444,7 @@ function Board3DCanvas({
         y: event.clientY,
         id: event.pointerId,
         pointerType: event.pointerType,
+        handled: false,
       };
       if (inspectModeRef.current) {
         const motion = cameraMotionRef.current;
@@ -456,6 +457,8 @@ function Board3DCanvas({
       if (!touchLike) return;
       renderer.domElement.setPointerCapture?.(event.pointerId);
       renderer.domElement.dataset.warRoomTouchStage = 'down';
+      const handled = selectBoardSquareOnTouch({ event, canvas: renderer.domElement, squareFromPointer, setFocusedSquare, onSquareClick: latestPropsRef.current.onSquareClick });
+      if (pointerStartRef.current) pointerStartRef.current.handled = handled;
     }
     function onPointerMove(event) {
       const motion = cameraMotionRef.current;
@@ -510,7 +513,7 @@ function Board3DCanvas({
     function onPointerUp(event) {
       const start = pointerStartRef.current;
       pointerStartRef.current = null;
-      if (renderer.domElement.dataset.warRoomPinching === 'true') {
+      if (renderer.domElement.dataset.warRoomPinching === 'true' && !start?.handled) {
         renderer.domElement.dataset.warRoomTouchStage = 'pinch-end';
         releasePointer(event);
         return;
@@ -518,6 +521,11 @@ function Board3DCanvas({
       if (inspectModeRef.current) {
         cameraMotionRef.current.dragging = false;
         renderer.domElement.style.cursor = 'grab';
+        releasePointer(event);
+        return;
+      }
+      if (start?.handled) {
+        renderer.domElement.dataset.warRoomTouchStage = 'up';
         releasePointer(event);
         return;
       }
