@@ -204,7 +204,11 @@ async def active_roster(now: datetime | None = None) -> list[dict[str, Any]]:
     collections = await _collections()
     if collections is None:
         async with _memory_guard():
-            stale = [name for name, row in _memory_roster.items() if (_as_utc(row.get("last_seen")) is None or _as_utc(row.get("last_seen")) < cutoff)]
+            stale = [
+                name
+                for name, row in _memory_roster.items()
+                if (_as_utc(row.get("last_seen")) is None or _as_utc(row.get("last_seen")) < cutoff)
+            ]
             for name in stale:
                 _memory_roster.pop(name, None)
             return [dict(row) for row in _memory_roster.values()]
