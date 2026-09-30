@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { buttonWithVisibleText, clickBoardMove, login, mockApi } from './helpers.js';
+import { buttonWithVisibleText, clickBoardMove, gameTurn, login, mockApi } from './helpers.js';
 import { readBoard3DProjection } from './board3d-projection.js';
 
 for (const viewport of [
@@ -265,6 +265,10 @@ test.describe('Mobile golden path · entrenar el error real en un toque', () => 
     await setup.getByRole('button', { name: 'Empezar partida', exact: true }).click();
 
     await clickBoardMove(page, 'f2', 'f3');
+    // Esperar la respuesta de la CPU (e7-e5) antes de la segunda jugada: un
+    // toque mientras el rival responde se ignora y el mate nunca llega.
+    await expect(page.getByRole('button', { name: /^Casilla e5, (?!vacía)/ })).toBeVisible({ timeout: 15_000 });
+    await expect(gameTurn(page)).toBeVisible({ timeout: 15_000 });
     await clickBoardMove(page, 'g2', 'g4');
 
     const endgame = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: /Jaque mate/i }) });

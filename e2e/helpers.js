@@ -394,6 +394,13 @@ export async function mockApi(page, {
     if (path.endsWith('/auth/activity')) return json({ ok: true });
     if (path.endsWith('/health')) return json({ ok: true });
     if (path.endsWith('/features')) return json({});
+    // La postpartida analiza jugada a jugada con /analyze-move; `analysisMoves`
+    // tiene esa forma. Sólo se sirve cuando el test las declara, para no cambiar
+    // el 404 que ven los demás specs.
+    if (analysisMoves.length > 0 && path.endsWith('/analyze-move') && method === 'POST') {
+      const move = analysisMoves[analysisIndex++];
+      return move ? json(move) : json({ detail: 'E2E sin jugada de análisis preparada' }, 503);
+    }
     if (path.endsWith('/analyze') && method === 'POST') {
       const move = analysisMoves[analysisIndex++];
       return move ? json(move) : json({ detail: 'E2E sin jugada de análisis preparada' }, 503);
@@ -631,6 +638,12 @@ export async function loginAndOpenDeployment(page) {
 export async function clickBoardMove(page, from, to, scope = page) {
   const fromSquare = scope.getByRole('button', { name: new RegExp(`^Casilla ${from},`) });
   const toSquare = scope.getByRole('button', { name: new RegExp(`^Casilla ${to},`) });
+
+  // Justo tras «Empezar partida» el tablero puede no haber montado aún. Sin esta
+  // espera, ninguna rama veía un renderizador y la función volvía sin jugar
+  // (#34 · GP-7: «postpartida → error factual → puzzle exacto» nunca llegaba al mate).
+  const renderer = scope === page ? fromSquare.or(page.locator('[data-board3d-war-room="true"]')) : fromSquare;
+  await expect(renderer.first()).toBeVisible();
 
   if (await fromSquare.isVisible().catch(() => false)) {
     await fromSquare.click();
