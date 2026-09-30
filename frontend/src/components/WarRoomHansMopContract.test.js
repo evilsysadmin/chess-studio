@@ -7,6 +7,7 @@ import {
   MATTHIAS_MOP_LINE,
   MATTHIAS_MOP_SIGH_LINE,
   hansMopDialoguePhase,
+  hansMopReachableWaypointIndex,
   hansMopFatigueMs,
   hansMopPatchMs,
   hansMopTravelStep,
@@ -36,6 +37,18 @@ describe('Hans mop ambient routine contract', () => {
     expect(hansMopTravelStep(-250)).toBe(0);
     expect(hansMopTravelStep(Number.POSITIVE_INFINITY)).toBe(0);
     expect(hansMopTravelStep('nope')).toBe(0);
+  });
+
+  it('falls forward to another safe room waypoint instead of cancelling the whole mop', () => {
+    const attempted = [];
+    const index = hansMopReachableWaypointIndex(5, 3, (candidate) => {
+      attempted.push(candidate);
+      return candidate === 1;
+    });
+    expect(index).toBe(1);
+    expect(attempted).toEqual([3, 4, 0, 1]);
+    expect(hansMopReachableWaypointIndex(3, 2, () => false)).toBe(-1);
+    expect(hansMopReachableWaypointIndex(0, 0, () => true)).toBe(-1);
   });
 
   it('keeps the optional exchange ordered and readable', () => {
