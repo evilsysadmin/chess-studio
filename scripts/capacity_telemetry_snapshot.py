@@ -17,21 +17,21 @@ BACKEND_SELECTOR = 'service_name="chess-studio-backend-staging"'
 def queries() -> dict[str, str]:
     return {
         "host_cpu_percent": (
-            f'100 * (1 - avg(rate(node_cpu_seconds_total{{{HOST_SELECTOR},mode="idle"}}[1m])))'
+            f'100 * (1 - avg(rate(node_cpu_seconds_total{{{HOST_SELECTOR},mode="idle"}}[5m])))'
         ),
         "host_ram_percent": (
             f'100 * (1 - (avg(node_memory_MemAvailable_bytes{{{HOST_SELECTOR}}}) '
             f'/ avg(node_memory_MemTotal_bytes{{{HOST_SELECTOR}}})))'
         ),
         "host_load1": f'avg(node_load1{{{HOST_SELECTOR}}})',
-        "backend_rps": f'sum(rate(chess_studio_http_server_requests_total{{{BACKEND_SELECTOR}}}[1m]))',
+        "backend_rps": f'sum(rate(chess_studio_http_server_requests_total{{{BACKEND_SELECTOR}}}[5m]))',
         "backend_5xx_rps": (
             f'sum(rate(chess_studio_http_server_requests_total{{{BACKEND_SELECTOR},'
-            'http_response_status_class="5xx"}[1m]))'
+            'http_response_status_class="5xx"}[5m]))'
         ),
         "backend_p95_ms": (
             '1000 * histogram_quantile(0.95, sum by (le) '
-            f'(rate(chess_studio_http_server_duration_seconds_bucket{{{BACKEND_SELECTOR}}}[1m])))'
+            f'(rate(chess_studio_http_server_duration_seconds_bucket{{{BACKEND_SELECTOR}}}[5m])))'
         ),
     }
 
@@ -40,7 +40,7 @@ def self_test() -> int:
     values = queries()
     assert "mode=\"idle\"" in values["host_cpu_percent"]
     assert "node_memory_MemAvailable_bytes" in values["host_ram_percent"]
-    assert "chess-studio-backend-staging" in values["backend_p95_ms"]
+    assert "chess-studio-backend-staging" in values["backend_p95_ms"]\n    assert "[5m]" in values["backend_rps"]
     print("Capacity telemetry snapshot self-test: OK")
     return 0
 
