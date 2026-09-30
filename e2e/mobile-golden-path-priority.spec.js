@@ -326,7 +326,7 @@ test.describe('Mobile golden path · entrenar el error con el tablero mandando',
       await login(page);
       const more = page.locator('.illustrated-home__play-more');
       await more.click();
-      await page.getByRole('button', { name: 'Así juegas', exact: true }).click();
+      await page.locator('.illustrated-home__play-menu-item:visible').filter({ hasText: 'Así juegas' }).click();
       await page.getByRole('tab', { name: /Errores/ }).click();
       // «Así juegas → Errores» en móvil: la pastilla de recuento no se estira.
       const count = page.locator('.insights-recurring-errors-heading > strong');
