@@ -87,7 +87,11 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
   const eloChange = match?.ratingChange || null;
   const eloDeltaLabel = eloChange ? `${eloChange.delta >= 0 ? '+' : ''}${eloChange.delta}` : '';
   const connectionLive = connectionState === 'live';
-  const canInteract = connectionLive && match?.status === 'active' && match?.yourTurn && !busy;
+  const startAtMs = Date.parse(match?.startsAt || '');
+  const startPending = match?.status === 'active'
+    && Number.isFinite(startAtMs)
+    && startAtMs > Date.now();
+  const canInteract = connectionLive && match?.status === 'active' && match?.yourTurn && !startPending && !busy;
   const moves = useMemo(
     () => canInteract ? selectableMoves(match.fen, selected, match.youAre) : [],
     [canInteract, match?.fen, match?.youAre, selected],
@@ -106,9 +110,11 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
   const tone = busy || !connectionLive ? 'amber' : match?.status !== 'active' ? 'amber' : match?.yourTurn ? 'green' : 'red';
   const turnLabel = !connectionLive
     ? 'Reconectando con el árbitro…'
-    : busy
-      ? 'Transmitiendo jugada…'
-      : match?.status !== 'active'
+    : startPending
+      ? 'Preparando el duelo…'
+      : busy
+        ? 'Transmitiendo jugada…'
+        : match?.status !== 'active'
         ? resultText?.title || 'Partida terminada'
         : match?.yourTurn
           ? 'Tu turno'
