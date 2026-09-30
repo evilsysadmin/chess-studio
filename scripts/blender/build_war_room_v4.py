@@ -116,7 +116,7 @@ def build_v4_palette():
             metal=0.82, rough=0.37, coat=0.12, texture="metal", scale=26, bump=0.024,
         ),
         "brass": base.material(
-            "WR4_MAT_sunlit_brass", (0.66, 0.305, 0.052, 1),
+            "WR4_MAT_sunlit_brass", (0.80, 0.46, 0.11, 1),
             metal=0.94, rough=0.20, coat=0.28, texture="metal", scale=31, bump=0.012,
         ),
         "brass_dark": base.material(
@@ -1108,6 +1108,60 @@ def build_wall_lanterns(static, palette):
     base.anchor("WR_ANCHOR_chandelier_practical", (0, 6.85, 3.35), static)
 
 
+def build_pilaster_sconces(static, palette):
+    """Golden: a warm sconce on most pilasters rings the room with light.
+
+    Emissive glass travels to the runtime inside the GLB (Blender lights do
+    not), so this is what carries the golden's warmth into the game. Parts are
+    fused per material to keep runtime batching inside its budget.
+    """
+    radius = V4_WALL_RADIUS
+    start = math.radians(V4_WALL_START_DEG)
+    end = math.radians(V4_WALL_END_DEG)
+    step = (end - start) / V4_WALL_SEGMENT_COUNT
+    door = math.radians(V4_ENTRY_THETA_DEG)
+    plates, glows = [], []
+    for index in range(1, V4_WALL_SEGMENT_COUNT):
+        theta = start + index * step
+        if abs(theta) < math.radians(34) or abs(theta - door) < math.radians(9):
+            continue  # oculus, banners and the tower door keep their bays
+        if index % 2:
+            continue
+        radial = Vector((math.sin(theta), math.cos(theta), 0.0))
+        c = Vector((radius * radial.x, V4_WALL_CENTER_Y + radius * radial.y, 3.05)) - radial * 0.36
+        yaw = math.atan2(-math.sin(theta), math.cos(theta))
+        plate = base.cube(f"WR4_OBS_sconce_plate_{index}", c + radial * 0.06, (0.11, 0.03, 0.22),
+                          palette["brass"], static, bevel=0.02)
+        plate.rotation_euler.z = yaw
+        arm = base.cube(f"WR4_OBS_sconce_arm_{index}", c - Vector((0, 0, 0.16)), (0.03, 0.10, 0.03),
+                        palette["brass"], static, bevel=0.01)
+        arm.rotation_euler.z = yaw
+        cup = base.cylinder(f"WR4_OBS_sconce_cup_{index}", c - radial * 0.08 - Vector((0, 0, 0.10)),
+                            0.09, 0.08, palette["brass"], static, vertices=16)
+        plates += [plate, arm, cup]
+        glows.append(lod_sphere(f"WR4_OBS_sconce_glow_{index}", c - radial * 0.08 + Vector((0, 0, 0.04)),
+                                0.085, palette["fire_core"], static, scale=(1.0, 1.0, 1.35)))
+    if plates:
+        join_into(plates, "WR4_OBS_sconce_brass")
+        join_into(glows, "WR4_OBS_sconce_glow")
+
+
+def build_desk_candles(static, palette):
+    """Candelabra on the oculus desk, as in the golden."""
+    x, y, top = -0.15, 5.40, 1.43
+    parts, flames = [], []
+    parts.append(base.cube("WR4_OBS_candelabra_base", (x, y, top + 0.03), (0.42, 0.10, 0.03),
+                           palette["brass"], static, bevel=0.015))
+    for index, dx in enumerate((-0.32, -0.16, 0.0, 0.16, 0.32)):
+        h = 0.26 if index != 2 else 0.34
+        parts.append(base.cylinder(f"WR4_OBS_candle_{index}", (x + dx, y, top + 0.06 + h / 2.0),
+                                   0.035, h, palette["ivory"], static, vertices=12))
+        flames.append(lod_sphere(f"WR4_OBS_candle_flame_{index}", (x + dx, y, top + 0.10 + h),
+                                 0.04, palette["fire_core"], static, scale=(0.8, 0.8, 1.6)))
+    join_into(parts, "WR4_OBS_candelabra")
+    join_into(flames, "WR4_OBS_candle_flames")
+
+
 def build_tower_entry(static, palette):
     """Tower door sits on a real threshold and has a small entry rug."""
     theta = math.radians(V4_ENTRY_THETA_DEG)
@@ -1254,6 +1308,24 @@ def mirror_preview_sides():
         raise RuntimeError(f"War Room v4 preview mirror touched too few pieces: {moved}")
 
 
+def fuse_warm_glows(static):
+    """One runtime draw for every static warm emissive (rim bulbs, town lights,
+    lanterns, sconces, candles). They are tiny, so per-cell culling buys nothing,
+    and fusing them keeps runtime batching inside its 150-mesh budget. The
+    animated fireplace flames are runtime-dynamic and stay separate."""
+    glows = [
+        obj for obj in static.objects
+        if obj.type == "MESH"
+        and not obj.get("war_room_runtime_dynamic")
+        and len(obj.data.materials) == 1
+        and obj.data.materials[0] is not None
+        and obj.data.materials[0].name == "WR_MAT_fire_core"
+    ]
+    if len(glows) < 20:
+        raise RuntimeError(f"War Room v4 warm glow census suspiciously small: {len(glows)}")
+    join_into(glows, "WR4_OBS_warm_glows")
+
+
 def apply_v4_identity():
     static = bpy.data.collections.get("WR_STATIC_SHELL")
     if static is None:
@@ -1272,9 +1344,12 @@ def apply_v4_identity():
     build_lounge_corner(static, palette)
     build_tower_entry(static, palette)
     build_wall_lanterns(static, palette)
+    build_pilaster_sconces(static, palette)
+    build_desk_candles(static, palette)
     build_potted_plants(static, palette)
     build_wall_paintings(static, palette)
     build_lighting(static)
+    fuse_warm_glows(static)
     mirror_preview_sides()
     apply_v4_camera()
     bake_v4_weather()
@@ -1313,7 +1388,7 @@ def validate_v4():
         "WR4_OBS_chair_seat",
         "WR4_OBS_entry_door",
         "WR4_OBS_entry_rug",
-        "WR4_OBS_wall_lantern_left_glow",
+        "WR4_OBS_warm_glows",
     }
     missing = sorted(required - names)
     if missing:
