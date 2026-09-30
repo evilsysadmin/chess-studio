@@ -112,7 +112,7 @@ run "staging_vault_is_reproducible_without_secret_plaintext" {
   }
 
   assert {
-    condition     = strcontains(oci_identity_policy.staging_runtime_config.statements[3], "to manage objects") && strcontains(oci_identity_policy.staging_runtime_config.statements[3], "target.bucket.name=\'chess-studio-production-backups\'")
+    condition     = strcontains(oci_identity_policy.staging_runtime_config.statements[3], "to manage objects") && strcontains(oci_identity_policy.staging_runtime_config.statements[3], "target.bucket.name='chess-studio-production-backups'")
     error_message = "The A1 backup write permission must stay restricted to the dedicated production-backup bucket."
   }
 
