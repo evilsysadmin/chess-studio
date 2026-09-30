@@ -329,6 +329,10 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
                     matthiasKingColor: null,
                     hansFireplaceIteration: false,
                     hansFireCallEnabled: false,
+                    // Keep PvP visually in the same playable camera family as War Room v3:
+                    // steeper 45°-ish pitch and matching board framing; the Duel Room shell
+                    // supplies the distinct architecture, not a second board perspective.
+                    cameraProfile: 'classic',
                     warRoomVariantOverride: 'duel',
                   }}
                 />
