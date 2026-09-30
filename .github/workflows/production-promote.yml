@@ -728,7 +728,7 @@ jobs:
             > "$RUNNER_TEMP/production-promotion-record.json"
 
       - name: Upload immutable production promotion record
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: production-promotion-record
           path: ${{ runner.temp }}/production-promotion-record.json

@@ -52,7 +52,7 @@ jobs:
 
       - name: Setup Python for Render-only Mongo target diagnosis
         if: github.event_name == 'workflow_dispatch' && inputs.operation == 'mongo-target-diagnose'
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.13'
 

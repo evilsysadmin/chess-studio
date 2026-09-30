@@ -83,7 +83,7 @@ jobs:
           assert any(hi-lo>32 for lo,hi in dungeon.getextrema())
           PY
           sha256sum /tmp/chronicles-party/chronicles-tactics-party.blend /tmp/chronicles-party/chronicles-tactics-party.glb /tmp/chronicles-party/previews/*.png > /tmp/chronicles-party/SHA256SUMS
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: chronicles-party-canonical-${{ github.event.pull_request.number || github.run_number }}

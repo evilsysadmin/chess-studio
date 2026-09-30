@@ -126,7 +126,7 @@ jobs:
 
       - name: Upload immutable production accreditation
         if: steps.lineage.outputs.accredited == 'true' && github.event_name == 'workflow_run'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: staging-promotion-accreditation
           path: ${{ runner.temp }}/staging-promotion-accreditation.json
