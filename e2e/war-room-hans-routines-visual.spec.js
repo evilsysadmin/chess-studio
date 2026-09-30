@@ -151,8 +151,7 @@ async function sampleRoutine(page, canvas, eventName) {
 
 for (const eventName of CAPTURE_EVENTS) {
   test(`War Room · Hans routine video · ${eventName}`, async () => {
-    // + montaje SwiftShader bajo carga (≤90 s).
-    test.setTimeout(240_000);
+    test.setTimeout(180_000);
     await mkdir(ARTIFACT_DIR, { recursive: true });
     await mkdir(TEMP_VIDEO_DIR, { recursive: true });
 
@@ -215,18 +214,14 @@ for (const eventName of CAPTURE_EVENTS) {
     });
       await seedGamesBeforeEvent(page, eventName);
 
-      // Con SwiftShader la Home (castillo 3D, fuego) congela la página durante
-      // decenas de segundos y un clic no pasa la comprobación de estabilidad de
-      // Playwright. Enfocar + Enter activa el mismo botón sin depender de que la
-      // escena deje de moverse; lo que se prueba aquí es la War Room (#4438).
-      await buttonWithVisibleText(page, 'Partida rápida').press('Enter');
+      await buttonWithVisibleText(page, 'Partida rápida').click();
       const quickDialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
       await expect(quickDialog).toBeVisible();
-      await quickDialog.getByRole('button', { name: 'Empezar partida', exact: true }).press('Enter');
-      await expect(page.locator('.board-live-row.is-3d-warroom')).toBeVisible({ timeout: 90_000 });
+      await quickDialog.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+      await expect(page.locator('.board-live-row.is-3d-warroom')).toBeVisible({ timeout: 45_000 });
 
       const canvas = page.locator('.board3d-main-canvas');
-      await expect(canvas).toBeVisible({ timeout: 90_000 });
+      await expect(canvas).toBeVisible({ timeout: 45_000 });
       await expect(canvas).toHaveAttribute('data-war-room-variant', 'classic', { timeout: 10_000 });
       await expect(page.locator('[data-war-room-hans-game-id]').first()).toHaveAttribute(
         'data-war-room-hans-game-id',
