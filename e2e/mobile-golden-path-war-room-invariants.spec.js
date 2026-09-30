@@ -143,7 +143,7 @@ async function touch(cdp, point) {
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
 }
 
-async function startMateGame(page, { profileSeed, releaseState }) {
+async function startGame(page, { profileSeed, releaseState, gameScenario = 'mate' }) {
   await page.addInitScript(() => { Math.random = () => 0; });
   await page.route(/\/release\.json(?:\?.*)?$/, async (route) => {
     await route.fulfill({
@@ -152,7 +152,7 @@ async function startMateGame(page, { profileSeed, releaseState }) {
       body: JSON.stringify({ release: releaseState.current }),
     });
   });
-  await mockApi(page, { gameScenario: 'mate', profileSeed });
+  await mockApi(page, { gameScenario, profileSeed });
   await login(page);
   await buttonWithVisibleText(page, 'Partida rápida').click();
   const dialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
@@ -175,7 +175,7 @@ for (const viewport of VIEWPORTS) {
       test.setTimeout(120_000);
       await page.setViewportSize(viewport);
       const releaseState = { current: APP_RELEASE };
-      const { board, canvas } = await startMateGame(page, { profileSeed: profile.profileSeed, releaseState });
+      const { board, canvas } = await startGame(page, { profileSeed: profile.profileSeed, releaseState });
 
       await page.screenshot({
         path: testInfo.outputPath(`after-${profile.id}-${viewport.width}x${viewport.height}.png`),
@@ -254,6 +254,10 @@ for (const viewport of VIEWPORTS) {
 
       await touch(cdp, from);
       await expect(board).toHaveAttribute('data-board3d-selected', 'g6', { timeout: 3_000 });
+      if (profile.expectTutorial) {
+        await expect(matthias).toHaveAttribute('data-tutorial-phase', 'move');
+        await expect.poll(async () => Number(await board.getAttribute('data-board3d-legal-target-count'))).toBeGreaterThan(0);
+      }
 
       await touch(cdp, to);
       await expect(page.getByRole('heading', { name: /Jaque mate/i })).toBeVisible({ timeout: 15_000 });
@@ -262,12 +266,51 @@ for (const viewport of VIEWPORTS) {
 }
 
 
+test('mobile golden path · la ayuda relanza el coaching interactivo de War Room', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 390, height: 844 });
+  const releaseState = { current: APP_RELEASE };
+  const { board, canvas } = await startGame(page, {
+    profileSeed: PROFILES[0].profileSeed,
+    releaseState,
+    gameScenario: 'opening',
+  });
+
+  const tutorial = page.getByRole('region', { name: 'Tutorial de War Room con Matthias' });
+  await expect(tutorial).toBeVisible({ timeout: 10_000 });
+  await expect(tutorial).toHaveAttribute('data-tutorial-phase', 'select');
+
+  const projection = await readBoard3DProjection(canvas);
+  const cdp = await page.context().newCDPSession(page);
+  await touch(cdp, projection.square('e2', 0.6));
+  await expect(board).toHaveAttribute('data-board3d-selected', 'e2', { timeout: 3_000 });
+  await expect(tutorial).toHaveAttribute('data-tutorial-phase', 'move');
+  await expect.poll(async () => Number(await board.getAttribute('data-board3d-legal-target-count'))).toBeGreaterThan(0);
+
+  await touch(cdp, projection.square('e4'));
+  await expect(tutorial).toHaveAttribute('data-tutorial-phase', 'complete', { timeout: 15_000 });
+  await tutorial.getByRole('button', { name: 'Continuar', exact: true }).click();
+  await expect(tutorial).toBeHidden();
+
+  const help = page.getByRole('button', { name: 'Abrir guía de la War Room', exact: true });
+  await help.click();
+  const reference = page.getByRole('dialog', { name: 'Tutorial: Tu puesto de mando' });
+  await expect(reference).toBeVisible();
+  await reference.getByRole('button', { name: 'Cerrar tutorial', exact: true }).click();
+
+  await expect(tutorial).toBeVisible({ timeout: 5_000 });
+  await expect(tutorial).toHaveAttribute('data-tutorial-phase', 'select');
+  await expect(board).toHaveAttribute('data-board3d-selected', '');
+});
+
+
+
 test('mobile golden path · release compacta en apaisado 844x390', async ({ page }, testInfo) => {
   test.setTimeout(120_000);
   const viewport = { width: 844, height: 390 };
   await page.setViewportSize(viewport);
   const releaseState = { current: APP_RELEASE };
-  const { canvas } = await startMateGame(page, {
+  const { canvas } = await startGame(page, {
     profileSeed: PROFILES[1].profileSeed,
     releaseState,
   });
