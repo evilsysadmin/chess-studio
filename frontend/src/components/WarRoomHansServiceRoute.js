@@ -5,7 +5,7 @@ import { setWarRoomHansServiceDoorOpen } from './WarRoomHansServiceDoor.js';
 
 export { moveWarRoomHansToward };
 
-export const WAR_ROOM_HANS_SERVICE_ROUTE_VERSION = 'hans-service-route-v14-visible-exit-door-fireplace-front-carpet-edge-standoff-room-side-home';
+export const WAR_ROOM_HANS_SERVICE_ROUTE_VERSION = 'hans-service-route-v15-desk-flank-candidates';
 export const HANS_SERVICE_WALK_SPEED = 0.32;
 export const HANS_SERVICE_FURNITURE_CLEARANCE = 0.58;
 
@@ -274,6 +274,19 @@ export function warRoomHansServiceHome(root, parent) {
 export function setWarRoomHansServiceDoor(root, amount) {
   const refs = root?.getObjectByName?.(DOOR_NAME)?.userData?.refs || null;
   return setWarRoomHansServiceDoorOpen(refs, amount);
+}
+
+export function warRoomHansTargetCandidatesNearObject(object, parent, { offsetX = 0, offsetZ = 0 } = {}) {
+  const primary = warRoomHansTargetNearObject(object, parent, { offsetX, offsetZ });
+  if (!primary) return [];
+  const host = commandDeskHost(object);
+  if (!host || !Number(offsetX)) return [primary];
+  const mirrored = warRoomHansTargetNearObject(object, parent, {
+    offsetX: -Number(offsetX),
+    offsetZ,
+  });
+  if (!mirrored || mirrored.distanceToSquared(primary) <= 1e-8) return [primary];
+  return [primary, mirrored];
 }
 
 export function warRoomHansTargetNearObject(object, parent, { offsetX = 0, offsetZ = 0 } = {}) {
