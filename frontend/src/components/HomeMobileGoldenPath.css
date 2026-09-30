@@ -619,3 +619,14 @@
     line-height: 1.2 !important;
   }
 }
+
+.illustrated-home__play-menu-item.is-portrait-only {
+  display: none !important;
+}
+
+@media (pointer: coarse) and (orientation: portrait) and (max-width: 520px) {
+  body .app-shell-home .menu.menu-illustrated
+    .illustrated-home__play-menu-item.is-portrait-only {
+    display: grid !important;
+  }
+}
