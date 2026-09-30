@@ -15,6 +15,7 @@ Lee según el área:
 - Preferir builders/scripts reproducibles sobre retoques GUI irrepetibles. Seeds, nombres de nodos y anchors consumidos por runtime deben ser estables.
 - Cada iteración visual produce PNG de Blender y, cuando existe consumo en app, PNG runtime del GLB exacto. Uno no sustituye al otro.
 - En local usa GPU real de extremo a extremo cuando esté disponible; confirma que Chromium no cayó a SwiftShader antes de sacar conclusiones de rendimiento/visual.
+- Matthias en Home 3D debe respetar el contrato de poses diegéticas y apoyo físico de `skills/home-blender/SKILL.md`: escena/cámara canónicas, sin flotar ni clippear, y PNG desde la cámara real antes de aceptar la iteración.
 - La War Room v1 permanece restaurable y aislada mientras v2 no esté validada en visual, móvil, rendimiento y runtime.
 - Board/playability mandan sobre decoración. En Home, hotspots y destinos deben seguir alineados con la escena real.
 - Publicar un GLB en R2 no equivale a promocionarlo: el manifest debe apuntar al hash exacto y la app debe demostrar que lo cargó.

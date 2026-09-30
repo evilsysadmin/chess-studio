@@ -51,6 +51,35 @@ Home 3D no posee ni puede sustituir los overlays globales de la aplicación.
 
 Cuando una iteración toque fullscreen/layout/stacking, la validación runtime debe abrir y operar los overlays reales —no basta con comprobar que existen en DOM— y revisar al menos un viewport desktop y uno móvil.
 
+## Matthias diegético en Home 3D
+
+Matthias debe sentirse **habitante de la Home canónica**, no un avatar superpuesto. La escena, cámara y composición canónicas mandan; no rediseñar la Home alrededor del personaje.
+
+Orden recomendado de implementación:
+
+1. de pie, leyendo informes con café;
+2. atizando una chimenea;
+3. sentado leyendo;
+4. dormido en sofá como idle infrecuente.
+
+Contrato visual obligatorio:
+
+- Matthias toca físicamente el mundo: pies en suelo o cuerpo apoyado en silla/sofá, con sombras de contacto y escala coherente;
+- nada de pies, manos, faldón o props atravesando geometría, ni cuerpo suspendido sobre el asiento;
+- brazos y piernas siguen siendo cortos, simples y subordinados a la silueta de **peón antropomórfico**; no convertirlo en humano disfrazado;
+- en poses sentadas/reclinadas, el cuerpo de peón puede usar una variante/deformación específica: es preferible adaptar el mesh a conservar un faldón rígido visualmente absurdo;
+- props de acción (informes/libro, taza, atizador) deben leerse a la distancia real de la Home y estar agarrados/apoyados de forma creíble;
+- Matthias recibe la misma lógica de iluminación/materiales que la sala; evitar cualquier apariencia de elemento pegado;
+- no tapar hotspots, CTA principales ni overlays globales.
+
+### Loop de pose y aceptación
+
+Para cada pose, cambiar una preocupación principal cada vez y producir al menos un PNG desde la **cámara Home canónica**. Revisar primero apoyo/escala/silueta; después materiales y microdetalle. Cuando exista consumo runtime, validar además el GLB exacto dentro de la aplicación.
+
+Rechazar inmediatamente una iteración si Matthias flota, clippea de forma evidente, tiene escala incoherente, la acción no se entiende de un vistazo, el cuerpo sentado parece un cilindro rígido, la iluminación no pertenece a la sala o el render deja de parecer la Home canónica.
+
+La prueba de éxito es simple: **debe parecer que Matthias vive allí**.
+
 ## GLTF / runtime traps
 
 Revisar explícitamente:
