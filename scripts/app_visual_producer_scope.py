@@ -263,6 +263,14 @@ def classify_path(path: str) -> set[str] | None:
     }:
         return {"warroom-core"}
     if lower in {
+        "scripts/blender/build_war_room_v4.py",
+        "scripts/blender/publish_war_room_v4.py",
+        ".github/workflows/war-room-v4-blender-art.yml",
+    }:
+        # V4 is an isolated art experiment until it gets runtime integration.
+        # Its own Blender lane is the visual proof; do not wake canonical app captures.
+        return set()
+    if lower in {
         "scripts/blender/build_pvp_duel_room.py",
         "scripts/blender/publish_pvp_duel_room.py",
         ".github/workflows/pvp-duel-room-blender-art.yml",
@@ -640,6 +648,9 @@ def self_test() -> None:
     assert classify(["scripts/blender/build_war_room_v3.py"]) == "warroom-core"
     assert classify(["scripts/blender/publish_war_room_v3.py"]) == "warroom-core"
     assert classify([".github/workflows/war-room-v3-blender-art.yml"]) == "warroom-core"
+    assert classify(["scripts/blender/build_war_room_v4.py"]) == "none"
+    assert classify(["scripts/blender/publish_war_room_v4.py"]) == "none"
+    assert classify([".github/workflows/war-room-v4-blender-art.yml"]) == "none"
     assert classify(["docs/operations/war-room-blender-pipeline.md"]) == "none"
     assert classify([".github/workflows/README.md"]) == "none"
     assert classify(["scripts/blender_required_scope.py"]) == "none"

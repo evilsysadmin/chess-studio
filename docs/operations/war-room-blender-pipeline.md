@@ -26,6 +26,14 @@ The accepted canonical snapshot is `war-room-v3-canonical.png`, SHA-256 `8e1e694
 
 Non-negotiable cues: open ceiling without crossing bars, moon + stars only in the oculus, cream/green tiled floor, door grounded on a threshold, board kept dominant, and sparse lived-in props (chair, small bookcase, telescope, stove) around the perimeter.
 
+## War Room v4 canonical visual reference
+
+`build_war_room_v4.py` owns the v4 Moonlit Royal Observatory. v3 stays untouched as its rollback. The approved 2026-09-29 golden mock has SHA-256 `e16adf4e3a2ea0ba9f8e7a0b4a82a988b8a2bb821c491f9ff48ba4129cdf3871` and is kept in the design library, not in Git.
+
+The mock mixes perspectives (a high view of the board over a near-frontal back wall), so it cannot be matched by one camera. The v4 camera is solved against its board corners: near edge at ~88 % of the frame height spanning ~55 % of its width. It keeps a 32.5° pitch, steeper than v2/v3 (29.5°) so far-rank pieces stay easy to pick. The room is then proportioned so the whole back wall reads above the far rank: a 4.5 m wall with a brass crown and finials, open night sky, and an elliptical oculus sitting on the desk with a lion crest.
+
+Non-negotiable cues: a broad walnut board frame with brass fillets, corner domes and warm rim bulbs; crimson gold-bordered runners flanking the dais; ivory marble inside a ring of green diamonds; cream fireplace left; library and red-tripod telescope right; silver armour on both sides; blue lion banners flanking the oculus; navy club chair on a round crimson rug. The preview seats White on the camera side. The runtime draw budget of ≤150 batched static meshes still applies, so fuse many-part distant decor (sky ridges, pines) into a single mesh.
+
 ## Iteration loop
 
 Prefer small, single-purpose visual slices. The repeated loop is:

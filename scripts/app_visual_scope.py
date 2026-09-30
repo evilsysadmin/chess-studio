@@ -168,6 +168,9 @@ DEDICATED_WAR_ROOM_BLENDER_PATHS = {
     "scripts/blender/build_war_room_v3.py",
     "scripts/blender/publish_war_room_v3.py",
     ".github/workflows/war-room-v3-blender-art.yml",
+    "scripts/blender/build_war_room_v4.py",
+    "scripts/blender/publish_war_room_v4.py",
+    ".github/workflows/war-room-v4-blender-art.yml",
     "scripts/blender/build_pvp_duel_room.py",
     "scripts/blender/publish_pvp_duel_room.py",
     ".github/workflows/pvp-duel-room-blender-art.yml",
@@ -712,9 +715,15 @@ def self_test() -> None:
     blender_v3 = classify(["scripts/blender/build_war_room_v3.py"])
     blender_v3_publish = classify(["scripts/blender/publish_war_room_v3.py"])
     blender_v3_workflow = classify([".github/workflows/war-room-v3-blender-art.yml"])
+    blender_v4 = classify(["scripts/blender/build_war_room_v4.py"])
+    blender_v4_publish = classify(["scripts/blender/publish_war_room_v4.py"])
+    blender_v4_workflow = classify([".github/workflows/war-room-v4-blender-art.yml"])
     assert blender_v3.capture_groups == "none" and not blender_v3.warroom_v3_revision_required
     assert blender_v3_publish.capture_groups == "none" and not blender_v3_publish.warroom_v3_revision_required
     assert blender_v3_workflow.capture_groups == "none" and not blender_v3_workflow.warroom_v3_revision_required
+    assert blender_v4.capture_groups == "none"
+    assert blender_v4_publish.capture_groups == "none"
+    assert blender_v4_workflow.capture_groups == "none"
     assert not blender_v3.warroom_revision_required
     assert not blender_warroom.warroom_v3_revision_required
     mixed_v3 = classify([
