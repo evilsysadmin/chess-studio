@@ -131,6 +131,13 @@ LANE_COMMANDS: dict[str, tuple[LaneCommand, ...]] = {
             ('--grep', HOME_WEBGL_GREP, '--workers=1', '--retries=0', '--max-failures=1', '--timeout=45000'),
             canonical_critical=False,
         ),
+        # Gate 1.0 (#34): Home ⇄ War Room ⇄ Pawn Slug sin canvases, WebGL, RAF,
+        # workers, AudioContexts ni listeners que crezcan por visita.
+        LaneCommand(
+            'global-lifecycle-resources.spec.js',
+            ('--workers=1', '--retries=0', '--max-failures=1', '--timeout=360000'),
+            canonical_critical=False,
+        ),
     ),
 }
 
@@ -202,10 +209,12 @@ def self_test() -> None:
     assert LANE_COMMANDS['home'][1].grep == HOME_MOBILE_GREP
     assert LANE_COMMANDS['home'][2].grep == HOME_WEBGL_GREP
     assert [command.spec for command in LANE_COMMANDS['smoke']] == [
-        'smoke.spec.js', 'mobile-final-interactions.spec.js', 'browser-runtime-health.spec.js'
+        'smoke.spec.js', 'mobile-final-interactions.spec.js', 'browser-runtime-health.spec.js',
+        'global-lifecycle-resources.spec.js',
     ]
     assert LANE_COMMANDS['smoke'][2].grep == HOME_WEBGL_GREP
     assert LANE_COMMANDS['smoke'][2].canonical_critical is False
+    assert LANE_COMMANDS['smoke'][3].grep is None and LANE_COMMANDS['smoke'][3].canonical_critical is False
     assert '--grep-invert' in LANE_COMMANDS['regression-state'][0].args
     assert all(command.spec.endswith('.spec.js') for commands in LANE_COMMANDS.values() for command in commands)
     assert all('--max-failures=1' in command.args for commands in LANE_COMMANDS.values() for command in commands)

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { login, mockApi, openMoreGameModes, startQuickGame } from './helpers.js';
+import { buttonWithVisibleText, login, mockApi, openMoreGameModes } from './helpers.js';
 
 async function installGlobalResourceProbe(page) {
   await page.addInitScript(() => {
@@ -164,23 +164,31 @@ async function settle(page) {
   await page.waitForTimeout(250);
 }
 
-function expectReturnedResourcesToFitBaseline({ baseline, final }) {
-  expect(final.canvases, `canvas leak: ${JSON.stringify({ baseline, final })}`).toBeLessThanOrEqual(baseline.canvases);
-  expect(final.webglCanvases, `WebGL canvas leak: ${JSON.stringify({ baseline, final })}`).toBeLessThanOrEqual(baseline.webglCanvases);
-  expect(final.liveWebglContexts, `live WebGL context leak: ${JSON.stringify({ baseline, final })}`)
+// Recursos pesados (canvas, WebGL, workers, RAF, AudioContext): al volver a la
+// Home deben estar en el baseline. Listeners globales: algunos módulos instalan
+// su invalidador de caché una sola vez por página la primera vez que se usan
+// (p. ej. reduced motion). Eso no es una fuga; una fuga crece en cada visita.
+// Por eso los listeners se comparan entre dos visitas idénticas.
+function expectReturnedResourcesToFitBaseline({ baseline, final, listenerBaseline = null }) {
+  const context = JSON.stringify({ baseline, listenerBaseline, final });
+  expect(final.canvases, `canvas leak: ${context}`).toBeLessThanOrEqual(baseline.canvases);
+  expect(final.webglCanvases, `WebGL canvas leak: ${context}`).toBeLessThanOrEqual(baseline.webglCanvases);
+  expect(final.liveWebglContexts, `live WebGL context leak: ${context}`)
     .toBeLessThanOrEqual(baseline.liveWebglContexts);
-  expect(final.workers, `Worker leak: ${JSON.stringify({ baseline, final })}`).toBeLessThanOrEqual(baseline.workers);
-  expect(final.pendingAnimationFrames, `RAF leak: ${JSON.stringify({ baseline, final })}`)
+  expect(final.workers, `Worker leak: ${context}`).toBeLessThanOrEqual(baseline.workers);
+  expect(final.pendingAnimationFrames, `RAF leak: ${context}`)
     .toBeLessThanOrEqual(baseline.pendingAnimationFrames);
-  expect(final.windowListeners, `window listener leak: ${JSON.stringify({ baseline, final })}`)
-    .toBeLessThanOrEqual(baseline.windowListeners);
-  expect(final.documentListeners, `document listener leak: ${JSON.stringify({ baseline, final })}`)
-    .toBeLessThanOrEqual(baseline.documentListeners);
+  if (listenerBaseline) {
+    expect(final.windowListeners, `window listeners grow per visit: ${context}`)
+      .toBeLessThanOrEqual(listenerBaseline.windowListeners);
+    expect(final.documentListeners, `document listeners grow per visit: ${context}`)
+      .toBeLessThanOrEqual(listenerBaseline.documentListeners);
+  }
 
   // AudioContext has session ownership: one shared context may be lazily created
   // by the first game and intentionally survive while the authenticated session
   // remains alive. More than one live context after returning Home is a leak.
-  expect(final.audioContexts, `AudioContext leak: ${JSON.stringify({ baseline, final })}`)
+  expect(final.audioContexts, `AudioContext leak: ${context}`)
     .toBeLessThanOrEqual(Math.max(1, baseline.audioContexts));
 }
 
@@ -196,12 +204,25 @@ async function openPawnSlugFromHome(page) {
   await expect(moreModes).toBeVisible();
   await moreModes.getByRole('button').filter({ hasText: 'Experimentos geniales' }).click();
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: /Pawn Slug/ }).click();
-  await expect(page.getByRole('heading', { name: 'PAWN SLUG GODOT', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: /Pawn Slug Godot/i }).click();
 }
 
-test('Browser lifecycle · Home → War Room → Home → Pawn Slug → Home no acumula recursos globales', async ({ page }) => {
-  test.setTimeout(150_000);
+// Con el runtime listo, la salida la pide el propio Godot desde su menú de pausa
+// (`_notify_parent("exit")` → `window.parent.postMessage`). Aquí no se prueba
+// input: se emite el mismo mensaje desde el iframe. Sin runtime, el host muestra
+// su botón de reserva «Volver a Experimentos».
+async function exitPawnSlug(page, frameLocator) {
+  const fallbackExit = page.getByRole('button', { name: 'Volver a Experimentos', exact: true });
+  if (await fallbackExit.isVisible().catch(() => false)) {
+    await fallbackExit.click();
+    return;
+  }
+  const frame = await (await frameLocator.elementHandle()).contentFrame();
+  await frame.evaluate(() => window.parent.postMessage({ source: 'pawn-slug-godot', type: 'exit' }, '*'));
+}
+
+test('Browser lifecycle · Home ⇄ War Room ×2 y Home ⇄ Pawn Slug ×2 no acumulan recursos globales', async ({ page }) => {
+  test.setTimeout(360_000);
   await installGlobalResourceProbe(page);
   await mockApi(page, {
     profileSeed: {
@@ -218,39 +239,55 @@ test('Browser lifecycle · Home → War Room → Home → Pawn Slug → Home no 
   const snapshot = () => page.evaluate(() => window.__chessGlobalResourceProbe.snapshot());
   const baseline = await snapshot();
 
-  await startQuickGame(page);
-  await expect(page.locator('[data-board3d-war-room="true"]')).toBeVisible({ timeout: 30_000 });
-  await settle(page);
-  const warRoom = await snapshot();
-  expect(warRoom.webglCanvases, `War Room debe acreditar al menos un canvas WebGL: ${JSON.stringify(warRoom)}`)
-    .toBeGreaterThanOrEqual(1);
-  expect(warRoom.liveWebglContexts, `War Room debe acreditar al menos un contexto WebGL vivo: ${JSON.stringify(warRoom)}`)
-    .toBeGreaterThanOrEqual(1);
+  const visitWarRoom = async () => {
+    // Sin esperar al estado de la partida con el timeout por defecto: en CI la
+    // War Room 3D monta por SwiftShader (~24 s a 1280×720 en reposo, más con carga).
+    await buttonWithVisibleText(page, 'Partida rápida').click();
+    await page.getByRole('dialog', { name: 'Configurar partida rápida' })
+      .getByRole('button', { name: 'Empezar partida', exact: true }).click();
+    await expect(page.locator('[data-board3d-war-room="true"]')).toBeVisible({ timeout: 90_000 });
+    await settle(page);
+    const warRoom = await snapshot();
+    expect(warRoom.webglCanvases, `War Room debe acreditar al menos un canvas WebGL: ${JSON.stringify(warRoom)}`)
+      .toBeGreaterThanOrEqual(1);
+    expect(warRoom.liveWebglContexts, `War Room debe acreditar al menos un contexto WebGL vivo: ${JSON.stringify(warRoom)}`)
+      .toBeGreaterThanOrEqual(1);
 
-  await page.getByRole('button', { name: 'Salir al menú', exact: true }).click();
-  await expect(page.getByRole('heading', { name: '¿Abandonar la partida?', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Cancelar sin penalización', exact: true }).click();
-  await expect(home).toBeVisible();
-  await settle(page);
-  const afterWarRoom = await snapshot();
-  expectReturnedResourcesToFitBaseline({ baseline, final: afterWarRoom });
+    // En la War Room inmersiva la salida vive en «⋯ Más acciones de partida».
+    await page.getByRole('button', { name: 'Más acciones de partida', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Abandonar partida', exact: true }).click();
+    await expect(page.getByRole('heading', { name: '¿Abandonar la partida?', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Cancelar sin penalización', exact: true }).click();
+    await expect(home).toBeVisible();
+    await settle(page);
+    return snapshot();
+  };
 
-  await openPawnSlugFromHome(page);
-  const pawnSlugFrame = page.locator('iframe[title="Pawn Slug Godot"]');
-  await expect(pawnSlugFrame).toBeVisible({ timeout: 30_000 });
-  await expect(page.locator('[data-pawn-slug-renderer="three"]')).toHaveCount(0);
-  await settle(page);
+  const visitPawnSlug = async () => {
+    await openPawnSlugFromHome(page);
+    const pawnSlugFrame = page.locator('iframe[title="Pawn Slug Godot"]');
+    await expect(pawnSlugFrame).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator('[data-pawn-slug-renderer="three"]')).toHaveCount(0);
+    await settle(page);
+    const pawnSlugHost = await snapshot();
+    expect(pawnSlugHost.webglCanvases, `Pawn Slug Godot no debe reintroducir canvas Three en el shell: ${JSON.stringify(pawnSlugHost)}`)
+      .toBeLessThanOrEqual(baseline.webglCanvases);
 
-  const pawnSlugHost = await snapshot();
-  expect(pawnSlugHost.webglCanvases, `Pawn Slug Godot no debe reintroducir canvas Three en el shell: ${JSON.stringify(pawnSlugHost)}`)
-    .toBeLessThanOrEqual(afterWarRoom.webglCanvases);
+    await exitPawnSlug(page, pawnSlugFrame);
+    await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: '← Volver al menú', exact: true }).click();
+    await expect(home).toBeVisible();
+    await settle(page);
+    return snapshot();
+  };
 
-  await page.getByRole('button', { name: '← Experimentos', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: '← Volver al menú', exact: true }).click();
-  await expect(home).toBeVisible();
-  await settle(page);
+  const afterFirstWarRoom = await visitWarRoom();
+  expectReturnedResourcesToFitBaseline({ baseline, final: afterFirstWarRoom });
+  const afterSecondWarRoom = await visitWarRoom();
+  expectReturnedResourcesToFitBaseline({ baseline, final: afterSecondWarRoom, listenerBaseline: afterFirstWarRoom });
 
-  const final = await snapshot();
-  expectReturnedResourcesToFitBaseline({ baseline, final });
+  const afterFirstPawnSlug = await visitPawnSlug();
+  expectReturnedResourcesToFitBaseline({ baseline, final: afterFirstPawnSlug });
+  const afterSecondPawnSlug = await visitPawnSlug();
+  expectReturnedResourcesToFitBaseline({ baseline, final: afterSecondPawnSlug, listenerBaseline: afterFirstPawnSlug });
 });
