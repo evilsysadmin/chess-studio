@@ -214,12 +214,61 @@
   }
 
   body .app-shell-home .menu.menu-illustrated .illustrated-home__stage > nav {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 7px !important;
+    position: absolute !important;
+    z-index: 34 !important;
+    left: 18px !important;
+    right: 18px !important;
+    bottom: calc(max(18px, env(safe-area-inset-bottom)) + 132px) !important;
+    display: block !important;
+    pointer-events: auto !important;
+  }
+
+  body .app-shell-home .menu.menu-illustrated
+    .illustrated-home__destination:not(.illustrated-home__destination--play),
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__resident,
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__utilities,
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__quickbar {
+    display: none !important;
   }
 
   body .app-shell-home .menu.menu-illustrated .illustrated-home__destination--play {
-    grid-column: 1 / -1 !important;
+    position: static !important;
+    width: 100% !important;
+    min-height: 62px !important;
+    margin: 0 !important;
+    padding: 10px 14px !important;
+    display: flex !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    border-radius: 14px !important;
+    border-color: rgba(229, 183, 92, .42) !important;
+    background: linear-gradient(180deg, rgba(74, 41, 18, .94), rgba(31, 16, 8, .92)) !important;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, .24) !important;
+  }
+
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__destination--play strong {
+    font-size: 20px !important;
+  }
+
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__play-more-wrap {
+    position: absolute !important;
+    z-index: 36 !important;
+    left: 50% !important;
+    right: auto !important;
+    bottom: calc(max(18px, env(safe-area-inset-bottom)) + 76px) !important;
+    width: auto !important;
+    transform: translateX(-50%) !important;
+  }
+
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__play-more {
+    min-width: 88px !important;
+    min-height: 44px !important;
+    padding: 0 14px !important;
+    border-radius: 999px !important;
+    background: rgba(17, 10, 6, .62) !important;
+    border-color: rgba(218, 172, 83, .16) !important;
+    font-size: 11px !important;
+    letter-spacing: .02em !important;
   }
 }
 
