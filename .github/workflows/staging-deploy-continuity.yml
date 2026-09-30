@@ -1,0 +1,180 @@
+name: Operations · live-game deploy continuity
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/staging-deploy-continuity.yml'
+      - 'scripts/staging_deploy_continuity_probe.py'
+      - 'scripts/oci_existing_a1_deploy.sh'
+      - 'scripts/oci_blue_green_edge.py'
+      - 'infra/oci/runtime/docker-compose.yml'
+permissions:
+  contents: read
+concurrency:
+  group: chess-studio-staging-continuity-drill
+  cancel-in-progress: false
+env:
+  STAGING_API_URL: https://api-staging.chess-studio.shadowops.dpdns.org/api
+
+jobs:
+  contracts:
+    name: Continuity drill · contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v7
+      - run: python3 -S scripts/staging_deploy_continuity_probe.py --self-test
+
+  wait:
+    name: Wait for exact staging generation
+    needs: contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    outputs:
+      deploy_sha: ${{ steps.target.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: target
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha="${GITHUB_SHA}"
+          [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || exit 2
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+      - name: Wait until normal staging deploy serves this SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in {1..180}; do
+            body="$RUNNER_TEMP/release-$attempt.json"
+            status="$(curl --silent --show-error --connect-timeout 3 --max-time 8 \
+              --output "$body" --write-out '%{http_code}' \
+              -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
+              "$STAGING_API_URL/release?sha=$GITHUB_SHA" || true)"
+            if [[ "$status" == 200 ]] && python3 - "$body" "$GITHUB_SHA" <<'PY'
+          import json, pathlib, sys
+          payload=json.loads(pathlib.Path(sys.argv[1]).read_text())
+          raise SystemExit(0 if str(payload.get("build") or "").lower()==sys.argv[2].lower() else 1)
+          PY
+            then
+              echo "Exact staging generation ready: $GITHUB_SHA"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::staging never served exact SHA $GITHUB_SHA"
+          exit 1
+
+  drill:
+    name: Live game across blue-green switch
+    needs: wait
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    concurrency:
+      group: oci-staging-mutations
+      cancel-in-progress: false
+    environment:
+      name: staging
+      url: https://staging.chess-studio.shadowops.dpdns.org
+    env:
+      DEPLOY_SHA: ${{ needs.wait.outputs.deploy_sha }}
+      OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
+      OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
+      OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
+      OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
+      OCI_REGION: ${{ vars.OCI_REGION || 'eu-frankfurt-1' }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+      - name: Restore cached OCI SDK toolchain
+        uses: ./.github/actions/setup-oci-sdk
+        with:
+          version: '2.185.2'
+          python-version: '3.13'
+      - name: Load staging synthetic secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os,sys
+          sys.path.insert(0,'scripts')
+          import oci
+          from oci_runtime_bundle import read_private_runtime_value
+          values={
+            'STAGING_INVITE_CODE': read_private_runtime_value(oci,'INVITE_CODE'),
+            'STAGING_SYNTHETIC_SECRET': read_private_runtime_value(oci,'CHESS_AI_SHARED_SECRET'),
+          }
+          if not all(values.values()): raise SystemExit('missing staging continuity secret')
+          with open(os.environ['GITHUB_ENV'],'a') as handle:
+            for key,value in values.items():
+              print(f'::add-mask::{value}')
+              handle.write(f'{key}={value}\n')
+          PY
+      - name: Generate disposable continuity identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          username="ci_smoke_$(python3 -c 'import secrets; print(secrets.token_hex(8))')"
+          password="CS!$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')"
+          echo "::add-mask::$username"
+          echo "::add-mask::$password"
+          echo "STAGING_E2E_USERNAME=$username" >> "$GITHUB_ENV"
+          echo "STAGING_E2E_PASSWORD=$password" >> "$GITHUB_ENV"
+      - name: Keep a live game across a forced blue-green deploy
+        id: continuity
+        shell: bash
+        run: |
+          set -uo pipefail
+          arm="$RUNNER_TEMP/continuity-armed.json"
+          trigger="$RUNNER_TEMP/continuity-trigger"
+          done_file="$RUNNER_TEMP/continuity-done"
+          result="$RUNNER_TEMP/continuity-result.json"
+          log="$RUNNER_TEMP/continuity.log"
+          rm -f "$arm" "$trigger" "$done_file" "$result" "$log"
+
+          python3 scripts/staging_deploy_continuity_probe.py \
+            --arm-file "$arm" --trigger-file "$trigger" --done-file "$done_file" \
+            --result-file "$result" --traffic-games 8 --interval 0.35 >"$log" 2>&1 &
+          probe_pid=$!
+
+          armed=false
+          for _ in {1..240}; do
+            if [[ -s "$arm" ]]; then armed=true; break; fi
+            if ! kill -0 "$probe_pid" 2>/dev/null; then break; fi
+            sleep 0.25
+          done
+          if [[ "$armed" != true ]]; then
+            wait "$probe_pid"; rc=$?
+            cat "$log"
+            exit "${rc:-1}"
+          fi
+
+          touch "$trigger"
+          python3 scripts/oci_run_command.py deploy --repo-ref "$DEPLOY_SHA"
+          deploy_rc=$?
+          touch "$done_file"
+          wait "$probe_pid"
+          probe_rc=$?
+          cat "$log"
+          [[ -f "$result" ]] && cat "$result"
+
+          if [[ "$deploy_rc" -ne 0 || "$probe_rc" -ne 0 ]]; then
+            echo "::error::continuity drill failed: deploy=$deploy_rc probe=$probe_rc"
+            exit 1
+          fi
+      - name: Verify exact generation survived the switch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/verify_backend_staging.py \
+            --api-url "$STAGING_API_URL" --sha "$DEPLOY_SHA" --attempts 10 --interval 2
+      - name: Cleanup continuity identity
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${STAGING_E2E_USERNAME:-}" ]]; then exit 0; fi
+          python3 -S scripts/staging_smoke_user_cleanup.py
