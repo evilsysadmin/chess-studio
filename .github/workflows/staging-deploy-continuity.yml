@@ -14,7 +14,9 @@ permissions:
   contents: read
 concurrency:
   group: chess-studio-staging-continuity-drill
-  cancel-in-progress: false
+  # Only current main may run the drill. A newer main generation must evict a
+  # waiter for a SHA that can no longer be deployed.
+  cancel-in-progress: true
 env:
   STAGING_API_URL: https://api-staging.chess-studio.shadowops.dpdns.org/api
 
