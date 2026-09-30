@@ -16,6 +16,7 @@ import {
   opponentPresenceLabel,
   playerResult,
   projectPvpClock,
+  pvpStartPending,
   selectableMoves,
   uniqueLegalTargets,
 } from '../pvpGameModel.js';
@@ -87,10 +88,7 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
   const eloChange = match?.ratingChange || null;
   const eloDeltaLabel = eloChange ? `${eloChange.delta >= 0 ? '+' : ''}${eloChange.delta}` : '';
   const connectionLive = connectionState === 'live';
-  const startAtMs = Date.parse(match?.startsAt || '');
-  const startPending = match?.status === 'active'
-    && Number.isFinite(startAtMs)
-    && startAtMs > Date.now();
+  const startPending = pvpStartPending(match);
   const canInteract = connectionLive && match?.status === 'active' && match?.yourTurn && !startPending && !busy;
   const moves = useMemo(
     () => canInteract ? selectableMoves(match.fen, selected, match.youAre) : [],
