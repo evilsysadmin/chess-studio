@@ -40,7 +40,8 @@ def self_test() -> int:
     values = queries()
     assert "mode=\"idle\"" in values["host_cpu_percent"]
     assert "node_memory_MemAvailable_bytes" in values["host_ram_percent"]
-    assert "chess-studio-backend-staging" in values["backend_p95_ms"]\n    assert "[5m]" in values["backend_rps"]
+    assert "chess-studio-backend-staging" in values["backend_p95_ms"]
+    assert "[5m]" in values["backend_rps"]
     print("Capacity telemetry snapshot self-test: OK")
     return 0
 
