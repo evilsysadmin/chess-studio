@@ -70,6 +70,9 @@ jobs:
           manifest = root / 'war-room-v4-manifest.json'
           assert blend.stat().st_size > 150_000, blend.stat().st_size
           assert glb.stat().st_size > 60_000, glb.stat().st_size
+          # Mobile download budget: v3 ships ~3.6 MB. Small ornaments use LOD
+          # icospheres; a regression back to full UV spheres lands at ~6 MB.
+          assert glb.stat().st_size < 4_500_000, glb.stat().st_size
 
           raw = glb.read_bytes()
           assert raw[:4] == b'glTF'
