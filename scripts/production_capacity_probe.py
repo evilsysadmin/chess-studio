@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
-"""Measure Chess Studio engine/API capacity without mutating game state.
+"""Measure Chess Studio service capacity with bounded, explicit workloads.
 
-The probe exercises /api/analyze because it crosses the same single bounded
-engine executor used by gameplay while avoiding save-game writes. Production
-hosts are refused unless --allow-production is explicit.
+Scenarios isolate the main free-tier bottlenecks:
+- engine: CPU/engine executor through /api/analyze;
+- mongo-read: authenticated profile/savegame reads;
+- mongo-write: create/delete a disposable game for write-path latency;
+- mixed: a deterministic blend of engine + Mongo read/write operations.
+
+Production hosts are refused unless --allow-production is explicit. Ephemeral
+accounts are supported so staging runs can exercise Mongo without leaving data.
 """
 from __future__ import annotations
 
@@ -11,6 +16,7 @@ import argparse
 import json
 import math
 import os
+import secrets
 import statistics
 import sys
 import time
@@ -18,11 +24,12 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import quote, urlsplit, urlunsplit
 from urllib.request import Request, urlopen
 
 PRODUCTION_HOST = "api.chess-studio.shadowops.dpdns.org"
 DEFAULT_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+SCENARIOS = ("engine", "mongo-read", "mongo-write", "mixed")
 
 
 @dataclass(frozen=True)
@@ -30,6 +37,8 @@ class Sample:
     status: int
     latency_ms: float
     request_id: str
+    operation: str
+    http_requests: int = 1
     error: str | None = None
 
 
@@ -103,7 +112,7 @@ def request_json(
     request_id = f"capacity-{uuid.uuid4().hex[:16]}"
     headers = {
         "Accept": "application/json",
-        "User-Agent": "ChessStudioCapacityProbe/1",
+        "User-Agent": "ChessStudioCapacityProbe/2",
         "X-Request-ID": request_id,
     }
     if token:
@@ -119,14 +128,58 @@ def request_json(
         with urlopen(Request(f"{base}{path}", data=data, headers=headers, method=method), timeout=timeout) as response:
             raw = response.read().decode("utf-8")
             payload = json.loads(raw or "{}")
-            return int(response.status), payload, (time.perf_counter() - started) * 1000, response.headers.get("X-Request-ID") or request_id
+            return (
+                int(response.status),
+                payload,
+                (time.perf_counter() - started) * 1000,
+                response.headers.get("X-Request-ID") or request_id,
+            )
     except HTTPError as exc:
         raw = exc.read().decode("utf-8", errors="replace")
         try:
             payload = json.loads(raw or "{}")
         except json.JSONDecodeError:
             payload = {"detail": raw[:200]}
-        return int(exc.code), payload, (time.perf_counter() - started) * 1000, (exc.headers.get("X-Request-ID") if exc.headers else None) or request_id
+        return (
+            int(exc.code),
+            payload,
+            (time.perf_counter() - started) * 1000,
+            (exc.headers.get("X-Request-ID") if exc.headers else None) or request_id,
+        )
+
+
+def _detail(payload: dict, fallback: str = "unexpected status") -> str:
+    return str(payload.get("detail") or payload.get("error") or fallback)[:160]
+
+
+def ephemeral_credentials() -> tuple[str, str]:
+    return f"ci_smoke_{secrets.token_hex(8)}", f"CS!{secrets.token_urlsafe(32)}"
+
+
+def register_ephemeral(base: str, invite_code: str, timeout: float) -> tuple[str, str, str]:
+    username, password = ephemeral_credentials()
+    body = {"username": username, "password": password}
+    invite = str(invite_code or "").strip()
+    if invite:
+        body["inviteCode"] = invite
+    status, payload, _, _ = request_json(base, "/auth/register", method="POST", body=body, timeout=timeout)
+    token = str(payload.get("token") or "") if isinstance(payload, dict) else ""
+    if status != 201 or not token:
+        raise ValueError(f"registro efímero del probe falló con HTTP {status}: {_detail(payload)}")
+    return username, password, token
+
+
+def cleanup_ephemeral(base: str, token: str, password: str, timeout: float) -> None:
+    status, payload, _, _ = request_json(
+        base,
+        "/auth/delete-account",
+        method="POST",
+        token=token,
+        body={"password": password},
+        timeout=timeout,
+    )
+    if status != 200:
+        raise RuntimeError(f"cleanup de cuenta efímera falló con HTTP {status}: {_detail(payload)}")
 
 
 def resolve_auth(base: str, args: argparse.Namespace) -> tuple[str, str]:
@@ -155,6 +208,10 @@ def resolve_auth(base: str, args: argparse.Namespace) -> tuple[str, str]:
     return str(payload["token"]), ""
 
 
+def scenario_requires_jwt(scenario: str) -> bool:
+    return scenario in {"mongo-read", "mongo-write", "mixed"}
+
+
 def one_engine_request(base: str, token: str, api_key: str, level: float, timeout: float, fen: str) -> Sample:
     try:
         status, payload, latency, request_id = request_json(
@@ -166,17 +223,148 @@ def one_engine_request(base: str, token: str, api_key: str, level: float, timeou
             api_key=api_key,
             timeout=timeout,
         )
-        detail = None
-        if status != 200:
-            detail = str(payload.get("detail") or payload.get("error") or "unexpected status")[:160]
-        return Sample(status=status, latency_ms=latency, request_id=request_id, error=detail)
+        return Sample(
+            status=status,
+            latency_ms=latency,
+            request_id=request_id,
+            operation="engine.analyze",
+            error=None if status == 200 else _detail(payload),
+        )
     except (URLError, TimeoutError, OSError) as exc:
-        return Sample(status=0, latency_ms=timeout * 1000, request_id="", error=type(exc).__name__)
+        return Sample(
+            status=0,
+            latency_ms=timeout * 1000,
+            request_id="",
+            operation="engine.analyze",
+            error=type(exc).__name__,
+        )
+
+
+def one_mongo_read_request(base: str, token: str, timeout: float, index: int) -> Sample:
+    path, operation = (("/profile", "mongo.profile_read") if index % 2 == 0 else ("/games", "mongo.games_read"))
+    try:
+        status, payload, latency, request_id = request_json(base, path, token=token, timeout=timeout)
+        return Sample(
+            status=status,
+            latency_ms=latency,
+            request_id=request_id,
+            operation=operation,
+            error=None if status == 200 else _detail(payload),
+        )
+    except (URLError, TimeoutError, OSError) as exc:
+        return Sample(
+            status=0,
+            latency_ms=timeout * 1000,
+            request_id="",
+            operation=operation,
+            error=type(exc).__name__,
+        )
+
+
+def one_mongo_write_request(base: str, token: str, timeout: float) -> Sample:
+    started = time.perf_counter()
+    game_id = ""
+    request_ids: list[str] = []
+    try:
+        status, created, _, request_id = request_json(
+            base,
+            "/games",
+            method="POST",
+            token=token,
+            body={"difficulty": 0, "color": "w"},
+            timeout=timeout,
+        )
+        request_ids.append(request_id)
+        if status != 201:
+            return Sample(
+                status=status,
+                latency_ms=(time.perf_counter() - started) * 1000,
+                request_id=request_id,
+                operation="mongo.game_write_cycle",
+                http_requests=1,
+                error=_detail(created, "create failed"),
+            )
+        game_id = str(created.get("id") or "").strip()
+        if not game_id:
+            return Sample(
+                status=0,
+                latency_ms=(time.perf_counter() - started) * 1000,
+                request_id=request_id,
+                operation="mongo.game_write_cycle",
+                http_requests=1,
+                error="create response missing game id",
+            )
+        delete_status, deleted, _, delete_request_id = request_json(
+            base,
+            f"/games/{quote(game_id, safe='')}",
+            method="DELETE",
+            token=token,
+            timeout=timeout,
+        )
+        request_ids.append(delete_request_id)
+        return Sample(
+            status=200 if delete_status == 204 else delete_status,
+            latency_ms=(time.perf_counter() - started) * 1000,
+            request_id=",".join(item for item in request_ids if item),
+            operation="mongo.game_write_cycle",
+            http_requests=2,
+            error=None if delete_status == 204 else _detail(deleted, "delete failed"),
+        )
+    except (URLError, TimeoutError, OSError) as exc:
+        return Sample(
+            status=0,
+            latency_ms=(time.perf_counter() - started) * 1000,
+            request_id=",".join(item for item in request_ids if item),
+            operation="mongo.game_write_cycle",
+            http_requests=2 if game_id else 1,
+            error=type(exc).__name__,
+        )
+
+
+def one_scenario_request(
+    base: str,
+    *,
+    scenario: str,
+    index: int,
+    token: str,
+    api_key: str,
+    engine_level: float,
+    timeout: float,
+    fen: str,
+) -> Sample:
+    if scenario == "engine":
+        return one_engine_request(base, token, api_key, engine_level, timeout, fen)
+    if scenario == "mongo-read":
+        return one_mongo_read_request(base, token, timeout, index)
+    if scenario == "mongo-write":
+        return one_mongo_write_request(base, token, timeout)
+    mixed_slot = index % 5
+    if mixed_slot in {0, 3}:
+        return one_engine_request(base, token, api_key, engine_level, timeout, fen)
+    if mixed_slot in {1, 4}:
+        return one_mongo_read_request(base, token, timeout, index)
+    return one_mongo_write_request(base, token, timeout)
+
+
+def operation_summary(rows: list[Sample]) -> dict[str, dict]:
+    result: dict[str, dict] = {}
+    for operation in sorted({row.operation for row in rows}):
+        matches = [row for row in rows if row.operation == operation]
+        ok = [row for row in matches if row.status == 200]
+        latencies = [row.latency_ms for row in ok]
+        result[operation] = {
+            "samples": len(matches),
+            "errors": len(matches) - len(ok),
+            "p50_ms": round(percentile(latencies, 0.50), 2) if latencies else None,
+            "p95_ms": round(percentile(latencies, 0.95), 2) if latencies else None,
+        }
+    return result
 
 
 def run_level(
     base: str,
     *,
+    scenario: str,
     concurrency: int,
     samples: int,
     token: str,
@@ -190,8 +378,18 @@ def run_level(
     rows: list[Sample] = []
     with ThreadPoolExecutor(max_workers=concurrency, thread_name_prefix="capacity-probe") as pool:
         futures = [
-            pool.submit(one_engine_request, base, token, api_key, engine_level, timeout, fen)
-            for _ in range(total)
+            pool.submit(
+                one_scenario_request,
+                base,
+                scenario=scenario,
+                index=index,
+                token=token,
+                api_key=api_key,
+                engine_level=engine_level,
+                timeout=timeout,
+                fen=fen,
+            )
+            for index in range(total)
         ]
         for future in as_completed(futures):
             rows.append(future.result())
@@ -202,14 +400,18 @@ def run_level(
     for row in rows:
         key = str(row.status)
         status_counts[key] = status_counts.get(key, 0) + 1
+    http_requests = sum(row.http_requests for row in rows)
     return {
+        "scenario": scenario,
         "concurrency": concurrency,
         "samples": len(rows),
+        "http_requests": http_requests,
         "successes": len(ok),
         "errors": len(rows) - len(ok),
         "error_rate": round((len(rows) - len(ok)) / len(rows), 4),
         "elapsed_ms": round(elapsed * 1000, 2),
-        "throughput_rps": round(len(ok) / elapsed, 3),
+        "throughput_ops_rps": round(len(ok) / elapsed, 3),
+        "http_request_rate": round(http_requests / elapsed, 3),
         "latency_ms": {
             "p50": round(percentile(latencies, 0.50), 2) if latencies else None,
             "p95": round(percentile(latencies, 0.95), 2) if latencies else None,
@@ -217,6 +419,7 @@ def run_level(
             "mean": round(statistics.fmean(latencies), 2) if latencies else None,
         },
         "status_counts": status_counts,
+        "operations": operation_summary(rows),
         "sample_request_ids": [row.request_id for row in rows if row.request_id][:3],
     }
 
@@ -227,6 +430,18 @@ def self_test() -> None:
     assert parse_levels("1,2,4,8") == (1, 2, 4, 8)
     assert percentile([10, 20, 30, 40], 0.50) == 25
     assert percentile([10], 0.95) == 10
+    assert scenario_requires_jwt("mongo-read")
+    assert scenario_requires_jwt("mongo-write")
+    assert scenario_requires_jwt("mixed")
+    assert not scenario_requires_jwt("engine")
+    rows = [
+        Sample(200, 10, "a", "mongo.profile_read"),
+        Sample(200, 20, "b", "mongo.profile_read"),
+        Sample(500, 30, "c", "engine.analyze", error="boom"),
+    ]
+    summary = operation_summary(rows)
+    assert summary["mongo.profile_read"]["p50_ms"] == 15
+    assert summary["engine.analyze"]["errors"] == 1
     try:
         require_non_production(f"https://{PRODUCTION_HOST}/api", False)
     except ValueError:
@@ -250,6 +465,9 @@ def main() -> int:
     parser.add_argument("--token", default=os.getenv("CHESS_CAPACITY_TOKEN", ""))
     parser.add_argument("--username", default=os.getenv("CHESS_CAPACITY_USERNAME", ""))
     parser.add_argument("--password", default=os.getenv("CHESS_CAPACITY_PASSWORD", ""))
+    parser.add_argument("--invite-code", default=os.getenv("CHESS_CAPACITY_INVITE_CODE", ""))
+    parser.add_argument("--ephemeral", action="store_true")
+    parser.add_argument("--scenario", choices=SCENARIOS, default=os.getenv("CHESS_CAPACITY_SCENARIO", "engine"))
     parser.add_argument("--concurrency", default=os.getenv("CHESS_CAPACITY_CONCURRENCY", "1,2,4,8"))
     parser.add_argument("--samples-per-level", type=int, default=8)
     parser.add_argument("--engine-level", type=float, default=50)
@@ -268,11 +486,24 @@ def main() -> int:
         parser.error("--samples-per-level must be between 1 and 200")
     if args.timeout <= 0:
         parser.error("--timeout must be positive")
+
+    ephemeral_created = False
+    cleanup_password = ""
+    token = ""
+    api_key = ""
     try:
         base = api_base(args.base_url)
         require_non_production(base, args.allow_production)
         levels = parse_levels(args.concurrency)
-        token, api_key = resolve_auth(base, args)
+        if args.ephemeral:
+            if any((args.api_key, args.token, args.username, args.password)):
+                raise ValueError("--ephemeral no se combina con API key/token/username/password")
+            _, cleanup_password, token = register_ephemeral(base, args.invite_code, args.timeout)
+            ephemeral_created = True
+        else:
+            token, api_key = resolve_auth(base, args)
+        if scenario_requires_jwt(args.scenario) and not token:
+            raise ValueError(f"el escenario {args.scenario} requiere JWT/usuario; una API key sólo sirve para engine")
     except ValueError as exc:
         print(f"capacity-probe: {exc}", file=sys.stderr)
         return 2
@@ -280,40 +511,55 @@ def main() -> int:
     results = []
     baseline_p95 = None
     failed = False
-    for concurrency in levels:
-        row = run_level(
-            base,
-            concurrency=concurrency,
-            samples=args.samples_per_level,
-            token=token,
-            api_key=api_key,
-            engine_level=args.engine_level,
-            timeout=args.timeout,
-            fen=args.fen,
-        )
-        p95 = row["latency_ms"]["p95"]
-        if baseline_p95 is None and p95:
-            baseline_p95 = p95
-        row["p95_amplification_vs_c1"] = (
-            round(p95 / baseline_p95, 2) if p95 and baseline_p95 else None
-        )
-        print(json.dumps({"capacity_level": row}, sort_keys=True, separators=(",", ":")))
-        results.append(row)
-        if row["errors"]:
-            failed = True
-        if args.max_p95_ms and (p95 is None or p95 > args.max_p95_ms):
-            failed = True
-        if args.max_error_rate and row["error_rate"] > args.max_error_rate:
-            failed = True
+    cleanup_failed = False
+    try:
+        for concurrency in levels:
+            row = run_level(
+                base,
+                scenario=args.scenario,
+                concurrency=concurrency,
+                samples=args.samples_per_level,
+                token=token,
+                api_key=api_key,
+                engine_level=args.engine_level,
+                timeout=args.timeout,
+                fen=args.fen,
+            )
+            p95 = row["latency_ms"]["p95"]
+            if baseline_p95 is None and p95:
+                baseline_p95 = p95
+            row["p95_amplification_vs_c1"] = (
+                round(p95 / baseline_p95, 2) if p95 and baseline_p95 else None
+            )
+            print(json.dumps({"capacity_level": row}, sort_keys=True, separators=(",", ":")))
+            results.append(row)
+            if row["errors"]:
+                failed = True
+            if args.max_p95_ms and (p95 is None or p95 > args.max_p95_ms):
+                failed = True
+            if args.max_error_rate and row["error_rate"] > args.max_error_rate:
+                failed = True
+    finally:
+        if ephemeral_created:
+            try:
+                cleanup_ephemeral(base, token, cleanup_password, args.timeout)
+            except (RuntimeError, URLError, TimeoutError, OSError) as exc:
+                cleanup_failed = True
+                print(f"capacity-probe cleanup: {exc}", file=sys.stderr)
 
     summary = {
         "base_host": urlsplit(base).hostname,
+        "scenario": args.scenario,
         "engine_level": args.engine_level,
         "levels": results,
-        "note": "Correlate request ids/time window with host CPU/RAM and backend queue telemetry; do not raise engine workers from this client-side probe alone.",
+        "ephemeral_cleanup_ok": not cleanup_failed if ephemeral_created else None,
+        "note": (
+            "engine isolates A1/engine pressure; mongo-read/write isolates Atlas/free-tier persistence; "
+            "mixed approximates shared service contention. Fix the operating limit below sustained p95/error degradation."
+        ),
     }
     print(json.dumps({"capacity_summary": summary}, sort_keys=True, separators=(",", ":")))
-    return 1 if failed else 0
+    return 1 if failed or cleanup_failed else 0
 
 
 if __name__ == "__main__":
