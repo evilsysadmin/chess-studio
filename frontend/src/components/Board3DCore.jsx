@@ -17,7 +17,8 @@ import {
 import { createWarRoomAmbientScheduler } from './WarRoomAmbientScheduler.js';
 import { applyWarRoomLightDiagnostics } from './WarRoomDomDiagnostics.js';
 import { createWarRoomHansScreenProbe } from './WarRoomHansScreenProbe.js';
-import { resolveBoardTap, selectBoardSquareOnTouch } from './WarRoom3DTouch.js';
+import { resolveBoardTap } from './WarRoom3DTouch.js';
+import { applyBoard3DCameraMotion, resetBoard3DMobilePan, setBoard3DMobilePan } from './Board3DCameraMotion.js';
 import { BOARD3D_HIGHLIGHT_SIZE, BOARD3D_HIGHLIGHT_Y, board3DHighlightStyle } from './Board3DHighlights.js';
 import { board3DCaptureWarmBoostValue, board3DPieceInteractionPose, writeBoard3DHighlightPulse } from './Board3DInteractionFx.js';
 import { BOARD_THEME_3D, FILES, resolveBoard3DThemeId } from './Board3DConfig.js';
@@ -103,7 +104,7 @@ function Board3DCanvas({
   const lastAnimatedSeqRef = useRef(0);
   const inspectModeRef = useRef(false);
   const hoveredPieceRef = useRef(null);
-  const cameraMotionRef = useRef({ x: 0, y: 0, targetX: 0, targetY: 0, yaw: 0, pitch: 0, dragging: false, lastX: 0, lastY: 0 });
+  const cameraMotionRef = useRef({ x: 0, y: 0, yaw: 0, pitch: 0, dragging: false, lastX: 0, lastY: 0 });
   const [skinId, setSkinId] = useState(() => loadSelectedSkin());
   const [boardTheme, setBoardTheme] = useState(() => loadBoardTheme());
   const [rendererLabel, setRendererLabel] = useState('3D');
@@ -170,8 +171,6 @@ function Board3DCanvas({
     const motion = cameraMotionRef.current;
     motion.x = 0;
     motion.y = 0;
-    motion.targetX = 0;
-    motion.targetY = 0;
     motion.yaw = 0;
     motion.pitch = 0;
     motion.dragging = false;
@@ -229,6 +228,7 @@ function Board3DCanvas({
     const scene = new THREE.Scene(); scene.userData.warRoomHansAwaitCall = latestPropsRef.current.hansFireCallEnabled; scene.userData.warRoomAdaptiveQuality = sceneProfile.adaptiveQuality;
     const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
     const cameraOffsetProbe = new THREE.Vector3();
+    const cameraTargetProbe = new THREE.Vector3();
     const cameraEulerProbe = new THREE.Euler(0, 0, 0, 'YXZ');
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
@@ -407,6 +407,7 @@ function Board3DCanvas({
     function resize() {
       const viewport = resolveStableBoardViewportForHost(host, { immersive, viewport: window }); renderer.setSize(viewport.width, viewport.height, false);
       fitBoardCamera(camera, viewport.width, viewport.height, whiteSide, { profile: cameraProfile === 'classroom' || (latestPropsRef.current.warRoomVariant || 'classic') !== 'classic' ? cameraProfile : 'classic', immersive });
+      applyBoard3DCameraMotion(camera, cameraMotionRef.current, { euler: cameraEulerProbe, offset: cameraOffsetProbe, target: cameraTargetProbe });
       render();
     }
     resize();
@@ -443,7 +444,6 @@ function Board3DCanvas({
         y: event.clientY,
         id: event.pointerId,
         pointerType: event.pointerType,
-        handled: false,
       };
       if (inspectModeRef.current) {
         const motion = cameraMotionRef.current;
@@ -456,8 +456,6 @@ function Board3DCanvas({
       if (!touchLike) return;
       renderer.domElement.setPointerCapture?.(event.pointerId);
       renderer.domElement.dataset.warRoomTouchStage = 'down';
-      const handled = selectBoardSquareOnTouch({ event, canvas: renderer.domElement, squareFromPointer, setFocusedSquare, onSquareClick: latestPropsRef.current.onSquareClick });
-      if (pointerStartRef.current) pointerStartRef.current.handled = handled;
     }
     function onPointerMove(event) {
       const motion = cameraMotionRef.current;
@@ -487,8 +485,6 @@ function Board3DCanvas({
     }
     function onPointerLeave(event) {
       const motion = cameraMotionRef.current;
-      motion.targetX = 0;
-      motion.targetY = 0;
       motion.dragging = false;
       renderer.domElement.style.cursor = 'default';
       updatePieceHover(null, event);
@@ -514,7 +510,7 @@ function Board3DCanvas({
     function onPointerUp(event) {
       const start = pointerStartRef.current;
       pointerStartRef.current = null;
-      if (renderer.domElement.dataset.warRoomPinching === 'true' && !start?.handled) {
+      if (renderer.domElement.dataset.warRoomPinching === 'true') {
         renderer.domElement.dataset.warRoomTouchStage = 'pinch-end';
         releasePointer(event);
         return;
@@ -522,11 +518,6 @@ function Board3DCanvas({
       if (inspectModeRef.current) {
         cameraMotionRef.current.dragging = false;
         renderer.domElement.style.cursor = 'grab';
-        releasePointer(event);
-        return;
-      }
-      if (start?.handled) {
-        renderer.domElement.dataset.warRoomTouchStage = 'up';
         releasePointer(event);
         return;
       }
@@ -551,6 +542,20 @@ function Board3DCanvas({
       releasePointer(event);
     }
 
+    function onCameraPan(event) {
+      setBoard3DMobilePan(cameraMotionRef.current, event.detail, whiteSide);
+      applyBoard3DCameraMotion(camera, cameraMotionRef.current, { euler: cameraEulerProbe, offset: cameraOffsetProbe, target: cameraTargetProbe });
+      renderer.domElement.dataset.board3dMobilePan = `${cameraMotionRef.current.x.toFixed(2)},${cameraMotionRef.current.y.toFixed(2)}`;
+      render();
+    }
+
+    function onCameraCenter() {
+      resetBoard3DMobilePan(cameraMotionRef.current);
+      applyBoard3DCameraMotion(camera, cameraMotionRef.current, { euler: cameraEulerProbe, offset: cameraOffsetProbe, target: cameraTargetProbe });
+      renderer.domElement.dataset.board3dMobilePan = '0.00,0.00';
+      render();
+    }
+
     function onContextLost(event) {
       event.preventDefault();
       latestPropsRef.current.onRendererFailure?.(new Error('WebGL context lost'));
@@ -561,6 +566,8 @@ function Board3DCanvas({
     renderer.domElement.addEventListener('pointerleave', onPointerLeave, { passive: true });
     renderer.domElement.addEventListener('pointerup', onPointerUp, { passive: true });
     renderer.domElement.addEventListener('pointercancel', onPointerCancel, { passive: true });
+    renderer.domElement.addEventListener('warroom-camera-pan', onCameraPan);
+    renderer.domElement.addEventListener('warroom-camera-center', onCameraCenter);
     renderer.domElement.addEventListener('webglcontextlost', onContextLost, false);
 
     const reducedMotionQuery = window.matchMedia?.('(prefers-reduced-motion: reduce)') || null;
@@ -590,12 +597,7 @@ function Board3DCanvas({
             const motion = cameraMotionRef.current;
             const basePosition = camera.userData.basePosition;
             const baseTarget = camera.userData.baseTarget;
-            if (basePosition && baseTarget) {
-              cameraEulerProbe.set(motion.pitch, motion.yaw, 0, 'YXZ');
-              cameraOffsetProbe.copy(basePosition).sub(baseTarget).applyEuler(cameraEulerProbe);
-              camera.position.copy(baseTarget).add(cameraOffsetProbe);
-              camera.lookAt(baseTarget);
-            }
+            if (basePosition && baseTarget) applyBoard3DCameraMotion(camera, motion, { euler: cameraEulerProbe, offset: cameraOffsetProbe, target: cameraTargetProbe });
             inspectCameraDirty = false;
           }
           // Fire and premium interaction pulses update from onBeforeRender, so
@@ -658,6 +660,8 @@ function Board3DCanvas({
       renderer.domElement.removeEventListener('pointerleave', onPointerLeave);
       renderer.domElement.removeEventListener('pointerup', onPointerUp);
       renderer.domElement.removeEventListener('pointercancel', onPointerCancel);
+      renderer.domElement.removeEventListener('warroom-camera-pan', onCameraPan);
+      renderer.domElement.removeEventListener('warroom-camera-center', onCameraCenter);
       renderer.domElement.removeEventListener('webglcontextlost', onContextLost);
       scene.traverse((object) => {
         if (object.userData?.ownedTexture) object.userData.ownedTexture.dispose();
@@ -1063,12 +1067,7 @@ function Board3DCanvas({
     const motion = cameraMotionRef.current;
     const basePosition = state.camera?.userData?.basePosition;
     const baseTarget = state.camera?.userData?.baseTarget;
-    if (basePosition && baseTarget) {
-      const euler = new THREE.Euler(motion.pitch, motion.yaw, 0, 'YXZ');
-      const offset = basePosition.clone().sub(baseTarget).applyEuler(euler);
-      state.camera.position.copy(baseTarget).add(offset);
-      state.camera.lookAt(baseTarget);
-    }
+    if (basePosition && baseTarget) applyBoard3DCameraMotion(state.camera, motion);
     state.renderer.domElement.dataset.board3dInspectYaw = motion.yaw.toFixed(3);
     state.renderer.domElement.dataset.board3dInspectPitch = motion.pitch.toFixed(3);
     state.clearInspectCameraDirty?.();
