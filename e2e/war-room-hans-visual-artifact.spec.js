@@ -6,6 +6,15 @@ import { warRoomHansEventForGame } from '../frontend/src/components/WarRoomHansE
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const LABEL = 'war-room-hans-desktop-1440x900';
 const MAX_GROUND_GAP = 0.005;
+// El montaje 3D en CI va por SwiftShader: una única tarea larga nativa
+// (rasterizado + enlazado de shaders) cuyo coste crece con los píxeles del
+// canvas; en GPU real es instantáneo. Medido sobre `dist` en reposo: ~16 s a
+// 1440×900 con estos flags. En `capture`, tras ~18 min de capturas en el mismo
+// runner (#4436), superó los 45 s dos veces seguidas: el reintento con navegador
+// nuevo no ayuda si el cuello es la CPU del runner. Las marcas de Hans se miden
+// desde el mismo clic, así que conservan su margen sobre el montaje.
+const MOUNT_BUDGET_MS = 90_000;
+const hansBudget = (marginAfterMountMs) => MOUNT_BUDGET_MS + marginAfterMountMs;
 
 function firstE2EFireGameIndex() {
   for (let index = 1; index <= 64; index += 1) {
@@ -52,10 +61,9 @@ function isWarRoomBootstrapFailure(error) {
 }
 
 test('War Room · canario visual de Hans físicamente en escena', async () => {
-  // SwiftShader already produced the canonical PNG + health proof before the
-  // previous 120 s ceiling, but browser/context teardown could overrun it.
-  // Keep capture assertions strict and reserve a small cleanup margin.
-  test.setTimeout(240_000);
+  // Peor caso: un arranque fallido (MOUNT_BUDGET_MS) + un intento completo
+  // (hansBudget(30_000)) + login, captura y cierre del navegador.
+  test.setTimeout(330_000);
   await mkdir(ARTIFACT_DIR, { recursive: true });
 
   let lastBootstrapError = null;
@@ -109,15 +117,15 @@ test('War Room · canario visual de Hans físicamente en escena', async () => {
     // mount gets one fresh browser bootstrap; once mounted, every Hans assertion
     // remains fail-closed.
     await Promise.all([
-      expect(warRoom).toBeVisible({ timeout: 45_000 }),
-      expect(canvas).toBeVisible({ timeout: 45_000 }),
-      expect(canvas).toHaveAttribute('data-war-room-variant', 'classic', { timeout: 45_000 }),
-      expect(canvas).toHaveAttribute('data-war-room-hans-scene-ready', 'true', { timeout: 60_000 }),
-      expect(canvas).toHaveAttribute('data-war-room-hans-call-released', 'true', { timeout: 60_000 }),
-      expect(canvas).toHaveAttribute('data-war-room-hans-reply-seen', 'true', { timeout: 75_000 }),
-      expect(canvas).toHaveAttribute('data-war-room-hans-screen', /^(edge|onscreen)$/, { timeout: 60_000 }),
-      expect(canvas).toHaveAttribute('data-war-room-hans-ground-gap', /.+/, { timeout: 60_000 }),
-      expect(fireOverlay).toHaveAttribute('data-fire-call-phase', 'hans', { timeout: 75_000 }),
+      expect(warRoom).toBeVisible({ timeout: MOUNT_BUDGET_MS }),
+      expect(canvas).toBeVisible({ timeout: MOUNT_BUDGET_MS }),
+      expect(canvas).toHaveAttribute('data-war-room-variant', 'classic', { timeout: MOUNT_BUDGET_MS }),
+      expect(canvas).toHaveAttribute('data-war-room-hans-scene-ready', 'true', { timeout: hansBudget(15_000) }),
+      expect(canvas).toHaveAttribute('data-war-room-hans-call-released', 'true', { timeout: hansBudget(15_000) }),
+      expect(canvas).toHaveAttribute('data-war-room-hans-reply-seen', 'true', { timeout: hansBudget(30_000) }),
+      expect(canvas).toHaveAttribute('data-war-room-hans-screen', /^(edge|onscreen)$/, { timeout: hansBudget(15_000) }),
+      expect(canvas).toHaveAttribute('data-war-room-hans-ground-gap', /.+/, { timeout: hansBudget(15_000) }),
+      expect(fireOverlay).toHaveAttribute('data-fire-call-phase', 'hans', { timeout: hansBudget(30_000) }),
     ]);
 
     // Capture Hans himself, not a dialogue card covering his head and torso.
