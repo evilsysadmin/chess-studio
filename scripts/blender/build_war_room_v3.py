@@ -109,8 +109,10 @@ def build_v3_palette():
             rough=0.52, coat=0.14, texture="wood", scale=2.4, bump=0.050,
         ),
         "steel": base.material(
-            "WR3_MAT_plate_steel", (0.44, 0.46, 0.50, 1),
-            metal=0.92, rough=0.24, coat=0.20, texture="metal", scale=30, bump=0.010,
+            "WR3_MAT_plate_steel", (0.62, 0.64, 0.68, 1),
+            # Half-metal on purpose: the runtime has no environment map, so a
+            # fully metallic suit renders nearly black in three.js.
+            metal=0.55, rough=0.32, coat=0.20, texture="metal", scale=30, bump=0.010,
         ),
         "steel_dark": base.material(
             "WR3_MAT_blackened_steel", (0.10, 0.10, 0.11, 1),
