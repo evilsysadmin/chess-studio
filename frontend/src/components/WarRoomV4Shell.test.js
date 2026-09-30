@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import {
   WAR_ROOM_V4_FLAME_NAMES,
   WAR_ROOM_V4_RUNTIME_MODEL_URL,
+  tuneWarRoomV4PracticalLights,
   warRoomV4ModelUrl,
 } from './WarRoomV4Shell.js';
 import { WAR_ROOM_V3_RUNTIME_MODEL_URL } from './WarRoomV3Shell.js';
@@ -41,5 +42,31 @@ describe('War Room v4 runtime shell', () => {
     const release = installWarRoomV3FireAnimation(root, { flameNames: WAR_ROOM_V4_FLAME_NAMES });
     expect(flame.userData.warRoomV3FireDriver).toBeUndefined();
     release();
+  });
+
+  it('warms the existing practicals only and restores them on cleanup', () => {
+    const root = new THREE.Group();
+    const lantern = new THREE.PointLight(0xffb457, 0.92, 7.8, 2);
+    lantern.name = 'war-room-blender-chandelier-practical';
+    const fire = new THREE.PointLight(0xff8a38, 2.3, 10.8, 2);
+    fire.name = 'war-room-blender-fire-practical';
+    const moon = new THREE.PointLight(0x7ba6ff, 3.42, 15.2, 2);
+    moon.name = 'war-room-blender-moon-practical';
+    root.add(lantern, fire, moon);
+    const lightsBefore = root.children.length;
+
+    const release = tuneWarRoomV4PracticalLights(root);
+    expect(root.children.length).toBe(lightsBefore);
+    expect(lantern.intensity).toBeCloseTo(0.92 * 2.1);
+    expect(lantern.distance).toBeCloseTo(7.8 * 1.5);
+    expect(fire.intensity).toBeCloseTo(2.3 * 1.2);
+    expect(moon.intensity).toBe(3.42);
+    expect(root.userData.warRoomV4Lighting).toBe('warm-practicals-v1');
+
+    release();
+    expect(lantern.intensity).toBe(0.92);
+    expect(lantern.distance).toBe(7.8);
+    expect(fire.intensity).toBe(2.3);
+    expect(root.userData.warRoomV4Lighting).toBeUndefined();
   });
 });
