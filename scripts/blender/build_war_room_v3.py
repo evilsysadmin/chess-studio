@@ -59,6 +59,7 @@ V3_ARMOR_POSITIONS = (
 )
 
 V3_WEATHER_MATERIALS = frozenset({
+    "WR3_MAT_brick_wall_stone",
     "WR3_MAT_castle_stone",
     "WR3_MAT_flagstone",
     "WR3_MAT_flagstone_dark",
@@ -87,68 +88,77 @@ def clear_inherited_room(static):
 def build_v3_palette():
     # No sheen on v3 materials: Blender exports the sheen colour as full white,
     # which washes dark fabric/leather out in three.js.
+    # Material names drive the runtime surface pass (WarRoomBlenderMaterials):
+    # *stone* -> mineral mottling, *wood* -> grain, *velvet* -> weave,
+    # *armor* -> brushed metal, *leather* -> leather.
     return {
+        # Backsteingotik: dark red brick walls, limestone dressings.
+        "brick": base.material(
+            "WR3_MAT_brick_wall_stone", (0.20, 0.075, 0.048, 1),
+            rough=0.90, texture="stone", scale=5.5, bump=0.110, weather=True,
+        ),
         "stone": base.material(
-            "WR3_MAT_castle_stone", (0.24, 0.215, 0.19, 1),
+            "WR3_MAT_castle_stone", (0.19, 0.17, 0.145, 1),
             rough=0.86, coat=0.01, texture="stone", scale=3.2, bump=0.090, weather=True,
         ),
         "flag": base.material(
-            "WR3_MAT_flagstone", (0.235, 0.215, 0.19, 1),
+            "WR3_MAT_flagstone", (0.13, 0.118, 0.10, 1),
             rough=0.62, coat=0.10, texture="stone", scale=4.0, bump=0.060, weather=True,
         ),
         "flag_dark": base.material(
-            "WR3_MAT_flagstone_dark", (0.12, 0.11, 0.10, 1),
+            "WR3_MAT_flagstone_dark", (0.065, 0.058, 0.052, 1),
             rough=0.66, coat=0.08, texture="stone", scale=4.4, bump=0.060, weather=True,
         ),
         "oak": base.material(
-            "WR3_MAT_dark_oak", (0.13, 0.065, 0.028, 1),
+            "WR3_MAT_oak_wood", (0.10, 0.050, 0.022, 1),
             rough=0.46, coat=0.20, texture="wood", scale=2.6, bump=0.060,
         ),
         "oak_dark": base.material(
-            "WR3_MAT_black_oak", (0.045, 0.022, 0.010, 1),
+            "WR3_MAT_black_oak_wood", (0.040, 0.020, 0.010, 1),
             rough=0.52, coat=0.14, texture="wood", scale=2.4, bump=0.050,
         ),
         "steel": base.material(
-            "WR3_MAT_plate_steel", (0.62, 0.64, 0.68, 1),
-            # Half-metal on purpose: the runtime has no environment map, so a
-            # fully metallic suit renders nearly black in three.js.
-            metal=0.55, rough=0.32, coat=0.20, texture="metal", scale=30, bump=0.010,
+            # Half-metal on purpose: the runtime has no strong environment map,
+            # so a fully metallic suit renders nearly black in three.js.
+            "WR3_MAT_plate_armor", (0.46, 0.48, 0.52, 1),
+            metal=0.60, rough=0.34, coat=0.20, texture="metal", scale=30, bump=0.010,
         ),
         "steel_dark": base.material(
-            "WR3_MAT_blackened_steel", (0.10, 0.10, 0.11, 1),
-            metal=0.85, rough=0.38, coat=0.12, texture="metal", scale=30, bump=0.012,
+            "WR3_MAT_blackened_armor", (0.07, 0.07, 0.08, 1),
+            metal=0.70, rough=0.40, coat=0.12, texture="metal", scale=30, bump=0.012,
         ),
         "gold": base.material(
-            "WR3_MAT_gilded_trim", (0.80, 0.50, 0.14, 1),
-            metal=0.92, rough=0.24, coat=0.24, texture="metal", scale=31, bump=0.010,
+            "WR3_MAT_gilded_brass", (0.70, 0.44, 0.12, 1),
+            metal=0.85, rough=0.28, coat=0.24, texture="metal", scale=31, bump=0.010,
         ),
         "iron": base.material(
-            "WR3_MAT_forged_iron", (0.055, 0.050, 0.048, 1),
+            "WR3_MAT_forged_iron", (0.045, 0.040, 0.038, 1),
             metal=0.78, rough=0.46, texture="metal", scale=28, bump=0.020,
         ),
+        # Teutonic heraldry: white field, black cross, gold; crimson accents.
+        "white": base.material(
+            "WR3_MAT_ivory_velvet", (0.62, 0.60, 0.54, 1),
+            rough=0.80, texture="fabric", scale=40, bump=0.020,
+        ),
+        "black": base.material(
+            "WR3_MAT_black_velvet", (0.018, 0.016, 0.016, 1),
+            rough=0.78, texture="fabric", scale=40, bump=0.020,
+        ),
         "crimson": base.material(
-            "WR3_MAT_crimson_cloth", (0.28, 0.022, 0.020, 1),
-            rough=0.78, texture="leather", scale=50, bump=0.030,
-        ),
-        "royal_blue": base.material(
-            "WR3_MAT_royal_blue_cloth", (0.014, 0.040, 0.16, 1),
-            rough=0.78, texture="leather", scale=50, bump=0.030,
-        ),
-        "forest": base.material(
-            "WR3_MAT_forest_cloth", (0.012, 0.090, 0.040, 1),
-            rough=0.80, texture="leather", scale=50, bump=0.030,
+            "WR3_MAT_crimson_velvet", (0.24, 0.018, 0.016, 1),
+            rough=0.78, texture="fabric", scale=40, bump=0.030,
         ),
         "gold_thread": base.material(
-            "WR3_MAT_gold_thread", (0.55, 0.32, 0.07, 1),
+            "WR3_MAT_gold_thread", (0.50, 0.29, 0.06, 1),
             rough=0.60, texture="leather", scale=60, bump=0.020,
         ),
         "leather": base.material(
-            "WR3_MAT_saddle_leather", (0.16, 0.070, 0.030, 1),
+            "WR3_MAT_saddle_leather", (0.13, 0.058, 0.025, 1),
             rough=0.50, coat=0.16, texture="leather", scale=50, bump=0.040,
         ),
         "glass": base.material(
             "WR3_MAT_moon_glass", (0.020, 0.060, 0.19, 1),
-            rough=0.16, coat=0.50, emission=(0.030, 0.090, 0.32, 1), emission_strength=0.80,
+            rough=0.16, coat=0.50, emission=(0.030, 0.090, 0.32, 1), emission_strength=0.70,
         ),
         "night_sky": base.material(
             "WR3_MAT_night_sky", (0.004, 0.010, 0.050, 1),
@@ -263,10 +273,10 @@ def build_hall(static, palette):
     wall_z = V3_WALL_TOP_Z / 2.0
     t = V3_WALL_THICK
     base.cube("WR3_ARM_wall_back", (0, back + t / 2.0, wall_z), (hx + t, t / 2.0, wall_z),
-              palette["stone"], static, bevel=0.04)
+              palette["brick"], static, bevel=0.04)
     for side in (-1, 1):
         base.cube(f"WR3_ARM_wall_side_{side}", (side * (hx + t / 2.0), (back + front) / 2.0, wall_z),
-                  (t / 2.0, (back - front) / 2.0, wall_z), palette["stone"], static, bevel=0.04)
+                  (t / 2.0, (back - front) / 2.0, wall_z), palette["brick"], static, bevel=0.04)
 
     # Oak wainscot, a stone string course and pilasters give the walls rhythm.
     wains_h = 1.05
@@ -406,7 +416,7 @@ def build_armor(index, x, y, static, palette):
 
     Authored at 1 m scale, then grown by V3_ARMOR_SCALE about its foot so the
     suits read as life-size guards from the high play camera."""
-    yaw = math.atan2(-x, y) + math.pi  # local -y faces the board centre
+    yaw = math.atan2(-x, y)  # rotates local -y (visor, tabard) onto the board centre
     origin = (x, y)
     prefix = f"WR3_ARM_armor_{index}"
     parts = []
@@ -427,7 +437,7 @@ def build_armor(index, x, y, static, palette):
     # Rounded cuirass with a raised medial ridge instead of a box torso.
     add(lod_sphere(f"{prefix}_breastplate", (x, y - 0.02, 2.00), 0.30, palette["steel"], static, scale=(0.95, 0.62, 1.08)))
     add(base.cube(f"{prefix}_breast_ridge", (x, y - 0.205, 2.02), (0.018, 0.012, 0.24), palette["gold"], static, bevel=0.008))
-    add(base.cube(f"{prefix}_tabard", (x, y - 0.19, 1.72), (0.19, 0.012, 0.36), palette["crimson" if index % 2 else "royal_blue"], static, bevel=0.01))
+    add(base.cube(f"{prefix}_tabard", (x, y - 0.19, 1.72), (0.19, 0.012, 0.36), palette["white" if index % 2 else "crimson"], static, bevel=0.01))
     add(base.cube(f"{prefix}_belt", (x, y - 0.03, 1.66), (0.26, 0.16, 0.035), palette["leather"], static, bevel=0.015))
     for arm in (-1, 1):
         ax = x + arm * 0.36
@@ -438,7 +448,7 @@ def build_armor(index, x, y, static, palette):
     add(lod_sphere(f"{prefix}_helm", (x, y, 2.52), 0.17, palette["steel"], static, scale=(0.95, 1.0, 1.15)))
     add(base.cube(f"{prefix}_visor", (x, y - 0.155, 2.50), (0.12, 0.02, 0.035), palette["steel_dark"], static, bevel=0.01))
     add(base.cube(f"{prefix}_crest", (x, y + 0.03, 2.74), (0.03, 0.14, 0.07), palette["gold"], static, bevel=0.02))
-    add(lod_sphere(f"{prefix}_plume", (x, y + 0.10, 2.86), 0.10, palette["crimson" if index % 2 else "royal_blue"], static, scale=(0.6, 1.4, 1.0)))
+    add(lod_sphere(f"{prefix}_plume", (x, y + 0.10, 2.86), 0.10, palette["black" if index % 2 else "crimson"], static, scale=(0.6, 1.4, 1.0)))
     # Halberd in the right hand: shaft, axe blade, spike.
     hx = x + 0.44
     shaft_top = 3.35
@@ -494,51 +504,45 @@ def heater_shield_mesh(name, width, height, depth, material, static):
     return obj
 
 
-def build_trophy(index, center, yaw, field, charge, static, palette, *, scale=1.0):
-    """Heraldic shield over two crossed swords, hung on a wall."""
+def build_trophy(index, center, yaw, field, static, palette, *, scale=1.0, cross=False):
+    """Heraldic heater shield with two swords crossed on its face, hung on a wall.
+
+    The swords sit inside the shield outline (blades ±38°, hilts low), as the
+    armory's device, rather than behind it."""
     cx, cy, cz = center
     prefix = f"WR3_ARM_trophy_{index}"
-    parts = []
     s = scale
-    for side in (-1, 1):
-        # Crossed swords: blade, crossguard, grip, pommel, angled ±38°.
-        angle = math.radians(side * 38)
-        blade = base.cube(f"{prefix}_blade_{side}", (cx, cy + 0.05, cz), (0.045 * s, 0.012, 0.95 * s),
-                          palette["steel"], static, bevel=0.01)
-        blade.rotation_euler.y = angle
-        guard_off = Vector((math.sin(angle) * -0.98 * s, 0, math.cos(angle) * -0.98 * s))
-        guard = base.cube(f"{prefix}_guard_{side}", (cx + guard_off.x, cy + 0.04, cz + guard_off.z),
-                          (0.20 * s, 0.03, 0.03 * s), palette["gold"], static, bevel=0.012)
-        guard.rotation_euler.y = angle
-        grip_off = Vector((math.sin(angle) * -1.14 * s, 0, math.cos(angle) * -1.14 * s))
-        grip = base.cube(f"{prefix}_grip_{side}", (cx + grip_off.x, cy + 0.04, cz + grip_off.z),
-                         (0.03 * s, 0.03, 0.14 * s), palette["leather"], static, bevel=0.01)
-        grip.rotation_euler.y = angle
-        pommel_off = Vector((math.sin(angle) * -1.30 * s, 0, math.cos(angle) * -1.30 * s))
-        pommel = lod_sphere(f"{prefix}_pommel_{side}", (cx + pommel_off.x, cy + 0.04, cz + pommel_off.z),
-                            0.05 * s, palette["gold"], static)
-        parts += [blade, guard, grip, pommel]
-    shield = heater_shield_mesh(f"{prefix}_shield", 0.92 * s, 1.14 * s, 0.07, palette[field], static)
-    shield.location = (cx, cy - 0.02, cz + 0.05 * s)
+    parts = []
     rim = heater_shield_mesh(f"{prefix}_shield_rim", 1.02 * s, 1.24 * s, 0.05, palette["gold"], static)
-    rim.location = (cx, cy + 0.01, cz + 0.05 * s)
-    parts += [shield, rim]
-    if charge == "chevron":
-        for side in (-1, 1):
-            bar = base.cube(f"{prefix}_chevron_{side}", (cx + side * 0.17 * s, cy - 0.065, cz - 0.02 * s),
-                            (0.24 * s, 0.01, 0.055 * s), palette["gold"], static, bevel=0.008)
-            bar.rotation_euler.y = math.radians(-side * 38)
-            parts.append(bar)
-    elif charge == "cross":
-        parts.append(base.cube(f"{prefix}_cross_v", (cx, cy - 0.065, cz + 0.02 * s), (0.055 * s, 0.01, 0.42 * s),
-                               palette["gold"], static, bevel=0.008))
-        parts.append(base.cube(f"{prefix}_cross_h", (cx, cy - 0.065, cz + 0.18 * s), (0.34 * s, 0.01, 0.055 * s),
-                               palette["gold"], static, bevel=0.008))
-    else:  # fess band and a boss
-        parts.append(base.cube(f"{prefix}_fess", (cx, cy - 0.065, cz + 0.12 * s), (0.42 * s, 0.01, 0.075 * s),
-                               palette["gold"], static, bevel=0.008))
-        parts.append(lod_sphere(f"{prefix}_boss", (cx, cy - 0.07, cz - 0.10 * s), 0.07 * s, palette["gold"], static,
-                                scale=(1, 0.45, 1)))
+    rim.location = (cx, cy + 0.01, cz)
+    shield = heater_shield_mesh(f"{prefix}_shield", 0.92 * s, 1.14 * s, 0.07, palette[field], static)
+    shield.location = (cx, cy - 0.02, cz)
+    parts += [rim, shield]
+    face = cy - 0.07
+    if cross:
+        # Teutonic cross behind the swords, in black.
+        parts.append(base.cube(f"{prefix}_cross_v", (cx, face + 0.012, cz + 0.02 * s), (0.075 * s, 0.008, 0.40 * s),
+                               palette["black"], static, bevel=0.006))
+        parts.append(base.cube(f"{prefix}_cross_h", (cx, face + 0.012, cz + 0.14 * s), (0.34 * s, 0.008, 0.075 * s),
+                               palette["black"], static, bevel=0.006))
+    for side in (-1, 1):
+        # Sized so pommels and points stay inside the heater outline.
+        angle = math.radians(side * 32)
+        along = Vector((math.sin(angle), 0.0, math.cos(angle)))  # hilt low, point high
+
+        def at(t):
+            return Vector((cx, face, cz + 0.12 * s)) + along * (t * s)
+
+        pieces = (
+            (f"blade_{side}", at(0.07), (0.030 * s, 0.010, 0.255 * s), "steel"),
+            (f"guard_{side}", at(-0.20), (0.11 * s, 0.018, 0.020 * s), "gold"),
+            (f"grip_{side}", at(-0.26), (0.020 * s, 0.016, 0.05 * s), "leather"),
+        )
+        for name, loc, half, mat in pieces:
+            obj = base.cube(f"{prefix}_{name}", tuple(loc), half, palette[mat], static, bevel=0.006)
+            obj.rotation_euler.y = angle
+            parts.append(obj)
+        parts.append(lod_sphere(f"{prefix}_pommel_{side}", tuple(at(-0.33)), 0.03 * s, palette["gold"], static))
     for part in parts:
         placed(part, (cx, cy), yaw)
 
@@ -553,29 +557,29 @@ def build_wall_trophies(static, palette):
     hx = V3_HALL_HALF_X - 0.10
     trophies = (
         # back wall: flanking the hearth and the windows
-        ((-5.0, back, 2.85), 0.0, "royal_blue", "chevron"),
-        ((5.0, back, 2.85), 0.0, "crimson", "cross"),
+        ((-5.0, back, 2.85), 0.0, "white", True),
+        ((5.0, back, 2.85), 0.0, "white", True),
         # side walls, between pilasters; hung on angled brackets turned a little
         # toward the player so the play camera sees their faces, not their edges
-        ((-hx + 0.30, 3.80, 2.90), math.pi / 2 - V3_TROPHY_TURN, "crimson", "fess"),
-        ((-hx + 0.30, 0.60, 2.90), math.pi / 2 - V3_TROPHY_TURN, "forest", "chevron"),
-        ((-hx + 0.30, -2.60, 2.90), math.pi / 2 - V3_TROPHY_TURN, "royal_blue", "cross"),
-        ((hx - 0.30, 3.80, 2.90), -math.pi / 2 + V3_TROPHY_TURN, "royal_blue", "fess"),
-        ((hx - 0.30, 0.60, 2.90), -math.pi / 2 + V3_TROPHY_TURN, "crimson", "chevron"),
-        ((hx - 0.30, -2.60, 2.90), -math.pi / 2 + V3_TROPHY_TURN, "forest", "cross"),
+        ((-hx + 0.30, 3.80, 2.90), math.pi / 2 - V3_TROPHY_TURN, "crimson", False),
+        ((-hx + 0.30, 0.60, 2.90), math.pi / 2 - V3_TROPHY_TURN, "white", True),
+        ((-hx + 0.30, -2.60, 2.90), math.pi / 2 - V3_TROPHY_TURN, "black", False),
+        ((hx - 0.30, 3.80, 2.90), -math.pi / 2 + V3_TROPHY_TURN, "black", False),
+        ((hx - 0.30, 0.60, 2.90), -math.pi / 2 + V3_TROPHY_TURN, "white", True),
+        ((hx - 0.30, -2.60, 2.90), -math.pi / 2 + V3_TROPHY_TURN, "crimson", False),
     )
-    for index, (center, yaw, field, charge) in enumerate(trophies):
-        build_trophy(index, center, yaw, field, charge, static, palette, scale=1.30)
+    for index, (center, yaw, field, cross) in enumerate(trophies):
+        build_trophy(index, center, yaw, field, static, palette, scale=1.30, cross=cross)
     # The great crest on the hearth hood (its face is ~0.93 m proud of the wall).
-    build_trophy(len(trophies), (0.0, V3_HALL_BACK_Y - 0.98, 3.10), 0.0, "crimson", "chevron", static, palette,
-                 scale=0.95)
+    build_trophy(len(trophies), (0.0, V3_HALL_BACK_Y - 0.98, 3.10), 0.0, "white", static, palette,
+                 scale=0.95, cross=True)
     fuse_by_material("WR3_ARM_trophy_", static, "WR3_ARM_trophies")
 
 
 def build_banners(static, palette):
-    """Long heraldic banners between the back windows and trophies."""
+    """Long Teutonic banners on the back wall: white with the black cross, and black."""
     back = V3_HALL_BACK_Y - 0.12
-    for index, (x, field) in enumerate(((-6.6, "crimson"), (-3.3, "royal_blue"), (3.3, "royal_blue"), (6.6, "crimson"))):
+    for index, (x, field) in enumerate(((-6.6, "black"), (-3.3, "white"), (3.3, "white"), (6.6, "black"))):
         top = V3_WALL_TOP_Z - 0.75
         base.cylinder(f"WR3_ARM_banner_rod_{index}", (x, back - 0.30, top), 0.03, 1.05,
                       palette["iron"], static, vertices=10).rotation_euler.y = math.pi / 2
@@ -585,10 +589,13 @@ def build_banners(static, palette):
             point = base.cube(f"WR3_ARM_banner_tail_{index}_{tail}", (x + tail * 0.22, back - 0.32, top - 2.28),
                               (0.22, 0.02, 0.22), palette[field], static, bevel=0.01)
             point.rotation_euler.y = math.radians(45)
-        base.cube(f"WR3_ARM_banner_band_{index}", (x, back - 0.345, top - 0.55), (0.44, 0.008, 0.06),
+        base.cube(f"WR3_ARM_banner_band_{index}", (x, back - 0.345, top - 0.12), (0.44, 0.008, 0.05),
                   palette["gold_thread"], static, bevel=0.005)
-        lod_sphere(f"WR3_ARM_banner_emblem_{index}", (x, back - 0.35, top - 1.20), 0.16,
-                   palette["gold_thread"], static, scale=(1.0, 0.15, 1.2))
+        charge = "black" if field == "white" else "gold_thread"
+        base.cube(f"WR3_ARM_banner_cross_v_{index}", (x, back - 0.35, top - 1.10), (0.075, 0.008, 0.42),
+                  palette[charge], static, bevel=0.005)
+        base.cube(f"WR3_ARM_banner_cross_h_{index}", (x, back - 0.35, top - 0.98), (0.30, 0.008, 0.075),
+                  palette[charge], static, bevel=0.005)
     fuse_by_material("WR3_ARM_banner_", static, "WR3_ARM_banners")
 
 
@@ -649,35 +656,45 @@ def build_windows(static, palette):
     base.anchor("WR_ANCHOR_window_moonlight", (0, back - 1.4, 3.6), static)
 
 
+# Side-wall torches: the runtime mounts the War Room v1 gothic sconce-brazier
+# (WarRoomMilitaryGallery.createWarRoomSideTorch) on each anchor. The anchor's
+# local -y (three.js +z) points into the hall, like the v1 sconce's arm.
+V3_TORCH_ANCHOR_PREFIX = "WR3_ANCHOR_torch_"
+V3_TORCH_Z = 3.25
+V3_TORCH_YS = (2.20, -1.00, -4.20)
+
+
+def v3_torch_spots():
+    face_x = V3_HALL_HALF_X - 0.32  # pilaster face
+    spots = []
+    for y in V3_TORCH_YS:
+        spots += [((-face_x, y), math.pi / 2), ((face_x, y), -math.pi / 2)]
+    return spots
+
+
 def build_torches(static, palette):
-    """Iron wall torches with warm emissive flames (these carry warmth at runtime)."""
-    back = V3_HALL_BACK_Y - 0.12
-    hx = V3_HALL_HALF_X - 0.12
-    spots = [((-3.9, back), 0.0), ((3.9, back), 0.0)]
-    for y in (5.40, 2.20, -1.00, -4.20):
-        spots += [((-hx, y), math.pi / 2), ((hx, y), -math.pi / 2)]
     irons, glows = [], []
-    for index, ((x, y), yaw) in enumerate(spots):
-        z = 2.75
+    for index, ((x, y), yaw) in enumerate(v3_torch_spots()):
+        z = V3_TORCH_Z
+        # Preview-only stand-in for the runtime sconce: backplate, arm, brazier, flame.
         parts = [
-            base.cube(f"WR3_ARM_torch_plate_{index}", (x, y, z), (0.10, 0.03, 0.18), palette["iron"], static, bevel=0.02),
-            base.cube(f"WR3_ARM_torch_arm_{index}", (x, y - 0.14, z - 0.05), (0.025, 0.14, 0.025), palette["iron"], static, bevel=0.01),
-            base.cylinder(f"WR3_ARM_torch_cup_{index}", (x, y - 0.28, z + 0.05), 0.075, 0.16, palette["iron"], static, vertices=10),
+            base.cube(f"WR3_PREVIEW_torch_plate_{index}", (x, y - 0.04, z - 0.14), (0.11, 0.04, 0.47), palette["iron"], static, bevel=0.02),
+            base.cube(f"WR3_PREVIEW_torch_arm_{index}", (x, y - 0.27, z - 0.03), (0.05, 0.24, 0.05), palette["iron"], static, bevel=0.01),
+            base.cylinder(f"WR3_PREVIEW_torch_bowl_{index}", (x, y - 0.47, z + 0.22), 0.17, 0.16, palette["iron"], static, vertices=14),
         ]
-        glow = lod_sphere(f"WR3_ARM_torch_flame_{index}", (x, y - 0.28, z + 0.24), 0.09, palette["fire_core"], static,
-                          scale=(0.9, 0.9, 1.7))
+        glow = lod_sphere(f"WR3_PREVIEW_torch_flame_{index}", (x, y - 0.47, z + 0.52), 0.13, palette["fire_core"], static,
+                          scale=(0.9, 0.8, 1.9))
         for part in parts + [glow]:
+            base.tag(part, base.ROLE_PREVIEW)
             placed(part, (x, y), yaw)
         irons += parts
         glows.append(glow)
-    for index, ((x, y), yaw) in enumerate(spots):
-        # Warm pools under each torch (preview lights; runtime uses the anchors).
-        face = (math.sin(yaw) * 0.6, -math.cos(yaw) * 0.6)
-        pool = base.light(f"WR3_LIGHT_torch_{index}", "POINT", (x + face[0], y + face[1], 3.0), 70.0,
-                          (1.0, 0.46, 0.14), static, radius=0.25)
-        pool.data.use_shadow = False  # ten shadowed points overflow EEVEE's shadow pool
-    join_into(irons, "WR3_ARM_torch_irons")
-    join_into(glows, "WR3_ARM_torch_flames")
+        face = (math.sin(yaw) * 0.9, -math.cos(yaw) * 0.9)
+        pool = base.light(f"WR3_LIGHT_torch_{index}", "POINT", (x + face[0], y + face[1], z + 0.6), 95.0,
+                          (1.0, 0.45, 0.13), static, radius=0.25)
+        pool.data.use_shadow = False  # many shadowed points overflow EEVEE's shadow pool
+        mount = base.anchor(f"{V3_TORCH_ANCHOR_PREFIX}{index}", (x, y, z), static)
+        mount.rotation_euler.z = yaw
     base.anchor("WR_ANCHOR_chandelier_practical", (0, V3_HALL_BACK_Y - 1.2, 3.2), static)
 
 
@@ -767,7 +784,6 @@ def validate_v3():
         "WR3_ARM_board_plinth",
         "WR3_ARM_hearth_body",
         "WR3_ARM_window_glass_0",
-        "WR3_ARM_torch_flames",
         *V3_FLAME_NAMES,
     }
     missing = sorted(required - names)
@@ -816,6 +832,11 @@ def validate_runtime_glb_v3(path, expected_factors):
     missing = sorted(required_nodes - node_names)
     if missing:
         raise RuntimeError(f"War Room v3 runtime nodes missing: {missing}")
+    torch_anchors = sorted(name for name in node_names if name and name.startswith(V3_TORCH_ANCHOR_PREFIX))
+    if len(torch_anchors) != 2 * len(V3_TORCH_YS):
+        raise RuntimeError(f"War Room v3 runtime torch anchors: {torch_anchors}")
+    if any(name and name.startswith("WR3_PREVIEW_") for name in node_names):
+        raise RuntimeError("War Room v3 runtime shell exported preview-only torch stand-ins")
     if "WR_ANCHOR_right_fireplace_practical" in node_names:
         raise RuntimeError("War Room v3 runtime contains a secondary-hearth anchor")
 
@@ -823,11 +844,13 @@ def validate_runtime_glb_v3(path, expected_factors):
     required_materials = {
         "WR3_MAT_castle_stone",
         "WR3_MAT_flagstone",
-        "WR3_MAT_dark_oak",
-        "WR3_MAT_plate_steel",
-        "WR3_MAT_gilded_trim",
-        "WR3_MAT_crimson_cloth",
-        "WR3_MAT_royal_blue_cloth",
+        "WR3_MAT_brick_wall_stone",
+        "WR3_MAT_oak_wood",
+        "WR3_MAT_plate_armor",
+        "WR3_MAT_gilded_brass",
+        "WR3_MAT_crimson_velvet",
+        "WR3_MAT_ivory_velvet",
+        "WR3_MAT_black_velvet",
     }
     missing_materials = sorted(required_materials - set(materials))
     if missing_materials:
@@ -864,7 +887,9 @@ def export_shell_v3(path, batching=None):
     selected = 0
     for obj in scene.objects:
         is_static_mesh = obj.type == "MESH" and obj.get("war_room_role") == base.ROLE_STATIC
-        is_runtime_anchor = obj.type == "EMPTY" and obj.name in runtime_anchors
+        is_runtime_anchor = obj.type == "EMPTY" and (
+            obj.name in runtime_anchors or obj.name.startswith(V3_TORCH_ANCHOR_PREFIX)
+        )
         if is_static_mesh or is_runtime_anchor:
             obj.select_set(True)
             selected += 1

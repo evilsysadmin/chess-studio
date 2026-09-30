@@ -320,7 +320,10 @@ function addBrazierCage(torch, iron, ironHighlight, emberMat) {
   }
 }
 
-function addSideTorch(group, { side, wallZ, towardBoard, offset, phase }) {
+// The v1 gothic sconce-brazier, unpositioned: backplate in the local XY plane,
+// forged arm and brazier toward +z. Other rooms (War Room v3) mount it on their
+// own wall anchors; `withLight: false` keeps the flame and halo but no real light.
+export function createWarRoomSideTorch({ side = -1, phase = 0, withLight = true } = {}) {
   const torch = new THREE.Group();
   torch.name = side < 0 ? 'war-room-side-torch-left' : 'war-room-side-torch-right';
   torch.userData.warRoomPracticalDecor = 'animated-castle-torch';
@@ -444,13 +447,17 @@ function addSideTorch(group, { side, wallZ, towardBoard, offset, phase }) {
   // Keep one real light per torch, but let its warm spill reach the adjacent
   // campaign painting instead of dying on the wall before the frame. The
   // slightly softer falloff brightens canvas + gilt without adding more lights.
-  const light = new THREE.PointLight(0xff8738, 9.2, 11.0, 1.8);
+  const light = new THREE.PointLight(0xff8738, withLight ? 9.2 : 0, 11.0, 1.8);
   light.name = 'war-room-side-torch-light';
   light.position.set(0, 0.62, 0.7);
   light.castShadow = false;
-  torch.add(light);
+  if (withLight) torch.add(light);
   attachTorchKinetics(outer, inner, light, phase);
+  return torch;
+}
 
+function addSideTorch(group, { side, wallZ, towardBoard, offset, phase }) {
+  const torch = createWarRoomSideTorch({ side, phase });
   // Move the practical further toward the room entrance and slightly upward.
   // At gameplay framing this creates a clean strip of wall between painting and
   // sconce instead of reading like the torch belongs to the picture frame.
