@@ -22,6 +22,7 @@ mongo_backup_target="/usr/local/sbin/chess-studio-mongo-backup"
 ocarun_sudoers_source="$repo/infra/oci/runtime/ocarun.sudoers"
 ocarun_sudoers_target="/etc/sudoers.d/101-chess-studio-ocarun"
 tunnel_connector="$repo/scripts/oci_staging_tunnel_connector.sh"
+blue_green_edge="$repo/scripts/oci_blue_green_edge.py"
 otel_log_probe="$repo/scripts/otel_log_ingest_probe.py"
 signal_controller_source="$repo/scripts/oci_staging_signal_controller.sh"
 signal_service_source="$repo/infra/oci/runtime/chess-studio-staging-signal.service"
@@ -55,6 +56,9 @@ case "$target" in
 esac
 
 state_file="$state_dir/deployed.sha"
+active_color_file="$state_dir/active.color"
+edge_config_dir="$state_dir/edge"
+edge_config_file="$edge_config_dir/default.conf"
 observability_dir="$state_dir/observability"
 backend_log_link="$observability_dir/backend-json.log"
 deploy_watcher_enable_marker="$state_dir/DEPLOY_WATCH_ENABLED"
@@ -93,6 +97,7 @@ docker compose version >/dev/null 2>&1 || { echo 'docker compose v2 is required'
 [[ -s "$env_file" ]] || { echo "missing runtime env: $env_file" >&2; exit 42; }
 
 install -d -m 0755 "$state_dir"
+install -d -m 0755 "$edge_config_dir"
 install -d -m 0755 "$observability_dir"
 previous_sha=''
 if [[ -s "$state_file" ]]; then
@@ -181,8 +186,14 @@ compose() {
   local target_sha="$1"
   shift
   GIT_COMMIT_SHA="$target_sha" \
+  CHESS_STUDIO_BLUE_SHA="$target_sha" \
+  CHESS_STUDIO_GREEN_SHA="$target_sha" \
+  CHESS_STUDIO_LEGACY_SHA="${previous_sha:-$target_sha}" \
   CHESS_STUDIO_ENV_FILE="$env_file" \
   CHESS_STUDIO_BACKEND_PORT="$port" \
+  CHESS_STUDIO_BLUE_PORT="$((port + 1))" \
+  CHESS_STUDIO_GREEN_PORT="$((port + 2))" \
+  CHESS_STUDIO_EDGE_CONFIG_DIR="$edge_config_dir" \
   CHESS_STUDIO_CORS_ORIGINS="$cors_origin" \
   CHESS_STUDIO_STATE_DIR="$state_dir" \
   CHESS_STUDIO_TRUST_CLOUDFLARE_CLIENT_IP="true" \
@@ -190,7 +201,74 @@ compose() {
   docker compose -p "$project" -f "$compose_file" "$@"
 }
 
+slot_service() {
+  case "$1" in
+    blue|green) printf 'backend_%s\n' "$1" ;;
+    *) echo "invalid backend color: $1" >&2; return 64 ;;
+  esac
+}
+
+slot_port() {
+  case "$1" in
+    blue) printf '%s\n' "$((port + 1))" ;;
+    green) printf '%s\n' "$((port + 2))" ;;
+    *) echo "invalid backend color: $1" >&2; return 64 ;;
+  esac
+}
+
+opposite_color() {
+  case "$1" in
+    blue) printf 'green\n' ;;
+    green) printf 'blue\n' ;;
+    *) echo "invalid backend color: $1" >&2; return 64 ;;
+  esac
+}
+
+read_active_color() {
+  local value=''
+  if [[ -s "$active_color_file" && ! -L "$active_color_file" ]]; then
+    value="$(tr -d '\r\n' < "$active_color_file")"
+  fi
+  case "$value" in
+    blue|green) printf '%s\n' "$value" ;;
+    *) printf '\n' ;;
+  esac
+}
+
+write_active_color() {
+  local color="$1"
+  local tmp
+  case "$color" in blue|green) ;; *) return 64 ;; esac
+  tmp="$(mktemp "$state_dir/active.color.XXXXXX")"
+  printf '%s\n' "$color" >"$tmp"
+  chmod 0644 "$tmp"
+  mv -f "$tmp" "$active_color_file"
+}
+
+render_edge() {
+  local color="$1"
+  python3 -S "$blue_green_edge" --color "$color" --output "$edge_config_file"
+}
+
+edge_container_id() {
+  compose "$sha" ps -q edge 2>/dev/null | head -n 1
+}
+
+reload_edge() {
+  local edge_id
+  edge_id="$(edge_container_id)"
+  [[ -n "$edge_id" ]] || { echo 'edge container missing' >&2; return 1; }
+  docker exec "$edge_id" nginx -t >/dev/null
+  docker exec "$edge_id" nginx -s reload >/dev/null
+}
+
+remove_service() {
+  local service="$1"
+  compose "$sha" rm -f -s "$service" >/dev/null 2>&1 || true
+}
+
 cors_attest() {
+  local target_port="$1"
   local headers rc
   headers="$(mktemp)"
   set +e
@@ -201,7 +279,7 @@ cors_attest() {
     -H 'Access-Control-Request-Headers: authorization,x-client-release' \
     -D "$headers" \
     -o /dev/null \
-    "http://127.0.0.1:${port}/api/auth/me"
+    "http://127.0.0.1:${target_port}/api/auth/me"
   rc=$?
   set -e
   if [[ "$rc" -ne 0 ]]; then
@@ -238,17 +316,18 @@ PY
 
 attest() {
   local expected="$1"
+  local target_port="${2:-$port}"
   local ready release rc
   ready="$(mktemp)"
   release="$(mktemp)"
 
   if ! curl --fail --silent --show-error --max-time 8 \
-    "http://127.0.0.1:${port}/api/ready" >"$ready"; then
+    "http://127.0.0.1:${target_port}/api/ready" >"$ready"; then
     rm -f "$ready" "$release"
     return 1
   fi
   if ! curl --fail --silent --show-error --max-time 8 \
-    "http://127.0.0.1:${port}/api/release" >"$release"; then
+    "http://127.0.0.1:${target_port}/api/release" >"$release"; then
     rm -f "$ready" "$release"
     return 1
   fi
@@ -272,7 +351,7 @@ PY
   fi
   rm -f "$ready" "$release"
   [[ "$rc" -eq 0 ]] || return "$rc"
-  cors_attest
+  cors_attest "$target_port"
 }
 
 public_tunnel_attest() {
@@ -307,25 +386,46 @@ PY
 
 rollback() {
   local failed_sha="$1"
-  if [[ -z "$previous_sha" || "$previous_sha" == "$failed_sha" ]]; then
-    echo 'no previous deployment available for rollback' >&2
-    return 1
-  fi
-  if ! image_available_for_rollback "$previous_sha"; then
-    echo "rollback image missing for $previous_sha" >&2
-    return 1
-  fi
-  echo "rolling back OCI backend to $previous_sha" >&2
-  git -C "$repo" checkout --detach "$previous_sha" >/dev/null 2>&1 || true
-  compose "$previous_sha" up -d --no-build --force-recreate backend
-  for _ in $(seq 1 45); do
-    if attest "$previous_sha"; then
-      echo "CHESS_STUDIO_ROLLBACK_OK repo_ref=$previous_sha"
-      return 0
+  local candidate_service="${candidate_service:-}"
+  echo "rolling back OCI backend after failed candidate $failed_sha" >&2
+
+  if [[ -n "${previous_color:-}" ]]; then
+    render_edge "$previous_color"
+    # Safe both before and after the attempted switch: if edge is still on the
+    # old config this is a no-op; if reload partially succeeded, this actively
+    # restores the previous upstream.
+    reload_edge || true
+    write_active_color "$previous_color"
+    if [[ -n "$previous_sha" ]]; then
+      record_successful_backend "$previous_sha"
     fi
-    sleep 2
-  done
-  echo "rollback failed health/build/CORS attestation for $previous_sha" >&2
+    if [[ -n "$candidate_service" ]]; then
+      if [[ "${switch_complete:-0}" == "1" ]]; then
+        sleep "${CHESS_STUDIO_BLUE_GREEN_DRAIN_SECONDS:-50}"
+      fi
+      remove_service "$candidate_service"
+    fi
+    echo "CHESS_STUDIO_ROLLBACK_OK repo_ref=${previous_sha:-unknown} color=$previous_color"
+    return 0
+  fi
+
+  if [[ "${switch_complete:-0}" == "1" && -n "$previous_sha" ]] && image_available_for_rollback "$previous_sha"; then
+    compose "$failed_sha" rm -f -s edge >/dev/null 2>&1 || true
+    compose "$previous_sha" up -d --no-build --force-recreate backend_legacy
+    for _ in $(seq 1 45); do
+      if attest "$previous_sha" "$port"; then
+        rm -f "$active_color_file"
+        record_successful_backend "$previous_sha"
+        [[ -z "$candidate_service" ]] || remove_service "$candidate_service"
+        echo "CHESS_STUDIO_ROLLBACK_OK repo_ref=$previous_sha color=legacy"
+        return 0
+      fi
+      sleep 2
+    done
+  fi
+
+  [[ -z "$candidate_service" ]] || remove_service "$candidate_service"
+  echo 'rollback could not restore a previous backend' >&2
   return 1
 }
 
@@ -347,7 +447,7 @@ prepare_backend_log_link() {
     return 1
   fi
 
-  container_id="$(compose "$target_sha" ps -q backend 2>/dev/null | head -n 1)"
+  container_id="$(compose "$target_sha" ps -q "${active_backend_service:-backend}" 2>/dev/null | head -n 1)"
   if [[ -z "$container_id" ]]; then
     echo "OCI_LOGS state=degraded target=$target reason=backend-container-missing" >&2
     return 1
@@ -613,7 +713,9 @@ phase_done checkout "$checkout_started_ms"
 preflight_started_ms="$(now_ms)"
 [[ -f "$compose_file" ]] || { echo "missing compose runtime in $sha: $compose_file" >&2; exit 66; }
 [[ -f "$otel_log_probe" && ! -L "$otel_log_probe" ]] || { echo "missing OTLP log probe in $sha: $otel_log_probe" >&2; exit 66; }
+[[ -f "$blue_green_edge" && ! -L "$blue_green_edge" ]] || { echo "missing blue/green edge renderer in $sha" >&2; exit 66; }
 python3 -S "$otel_log_probe" --self-test >/dev/null
+python3 -S "$blue_green_edge" --self-test >/dev/null
 [[ -f "$source_launcher" && ! -L "$source_launcher" ]] || { echo "missing deploy launcher in $sha: $source_launcher" >&2; exit 66; }
 [[ -f "$source_runtime_installer" && ! -L "$source_runtime_installer" ]] || { echo "missing runtime installer in $sha: $source_runtime_installer" >&2; exit 66; }
 [[ -f "$mongo_backup_source" && ! -L "$mongo_backup_source" ]] || { echo "missing production Mongo backup helper in $sha" >&2; exit 66; }
@@ -650,8 +752,24 @@ fi
 phase_done image_pull "$image_pull_started_ms"
 
 recreate_started_ms="$(now_ms)"
+previous_color="$(read_active_color)"
+if [[ -n "$previous_color" ]]; then
+  candidate_color="$(opposite_color "$previous_color")"
+else
+  candidate_color=blue
+fi
+candidate_service="$(slot_service "$candidate_color")"
+candidate_port="$(slot_port "$candidate_color")"
+active_backend_service="$candidate_service"
+switch_complete=0
+
+if ! compose "$sha" pull edge >/dev/null; then
+  echo 'failed to pull stable blue/green edge image' >&2
+  exit 1
+fi
+
 compose_log="$(mktemp /tmp/chess-studio-compose-up.XXXXXX)"
-if ! compose "$sha" up -d --no-build --force-recreate backend >"$compose_log" 2>&1; then
+if ! compose "$sha" up -d --no-build --force-recreate "$candidate_service" >"$compose_log" 2>&1; then
   cat "$compose_log" >&2
   rm -f "$compose_log"
   rollback "$sha" || true
@@ -661,39 +779,85 @@ rm -f "$compose_log"
 phase_done recreate "$recreate_started_ms"
 
 readiness_started_ms="$(now_ms)"
+candidate_ready=0
 for _ in $(seq 1 60); do
-  if attest "$sha"; then
-    phase_done readiness "$readiness_started_ms"
-    tunnel_started_ms="$(now_ms)"
-    tunnel_action="local-only"
-    if [[ "$target" == staging ]]; then
-      tunnel_action="reused"
-      if public_tunnel_attest "$sha"; then
-        :
-      else
-        tunnel_action="restarted"
-        if ! /bin/bash "$tunnel_connector"; then
-          echo "OCI staging backend is healthy but Cloudflare tunnel self-heal failed for $sha" >&2
-          exit 46
-        fi
-      fi
-    fi
-    phase_done tunnel "$tunnel_started_ms"
-    record_successful_backend "$sha"
-    start_observability_best_effort "$sha"
-    if [[ "$target" == staging ]]; then
-      enable_deploy_watcher
-      deploy_watcher_diag_summary
-    fi
-    agent_diag_summary || printf '%s\n' 'OCI_AGENT_DIAG unavailable'
-    phase_done total "$total_started_ms"
-    printf 'OCI_DEPLOY_TIMINGS target=%s phases=%s tunnel=%s\n' "$target" "${deploy_phase_summary%,}" "$tunnel_action"
-    echo "CHESS_STUDIO_DEPLOY_OK target=$target repo_ref=$sha cors_origin=$cors_origin tunnel_action=$tunnel_action image=pulled observability=${observability_summary:-unknown}"
-    exit 0
+  if attest "$sha" "$candidate_port"; then
+    candidate_ready=1
+    break
   fi
   sleep 2
 done
+if [[ "$candidate_ready" != "1" ]]; then
+  echo "candidate failed readiness/build/CORS attestation: $sha color=$candidate_color" >&2
+  rollback "$sha" || true
+  exit 43
+fi
+phase_done readiness "$readiness_started_ms"
 
-echo "new deployment failed readiness/build/CORS attestation: $sha" >&2
-rollback "$sha" || true
-exit 43
+switch_started_ms="$(now_ms)"
+render_edge "$candidate_color"
+if [[ -n "$previous_color" ]]; then
+  if ! reload_edge; then
+    echo "edge reload failed for candidate color=$candidate_color" >&2
+    rollback "$sha" || true
+    exit 44
+  fi
+else
+  legacy_id="$(docker ps -q \
+    --filter "label=com.docker.compose.project=$project" \
+    --filter 'label=com.docker.compose.service=backend' | head -n 1)"
+  if [[ -z "$legacy_id" ]]; then
+    legacy_id="$(docker ps -q \
+      --filter "label=com.docker.compose.project=$project" \
+      --filter 'label=com.docker.compose.service=backend_legacy' | head -n 1)"
+  fi
+  if [[ -n "$legacy_id" ]]; then
+    docker rm -f "$legacy_id" >/dev/null
+  fi
+  if ! compose "$sha" up -d --no-build edge >/dev/null 2>&1; then
+    echo 'failed to start stable edge during blue/green migration' >&2
+    switch_complete=1
+    rollback "$sha" || true
+    exit 44
+  fi
+fi
+switch_complete=1
+write_active_color "$candidate_color"
+phase_done switch "$switch_started_ms"
+
+tunnel_started_ms="$(now_ms)"
+tunnel_action="local-only"
+if [[ "$target" == staging ]]; then
+  tunnel_action="reused"
+  if public_tunnel_attest "$sha"; then
+    :
+  else
+    tunnel_action="restarted"
+    if ! /bin/bash "$tunnel_connector" || ! public_tunnel_attest "$sha"; then
+      echo "OCI staging public path did not converge after blue/green switch for $sha" >&2
+      rollback "$sha" || true
+      exit 46
+    fi
+  fi
+fi
+phase_done tunnel "$tunnel_started_ms"
+
+record_successful_backend "$sha"
+
+drain_started_ms="$(now_ms)"
+if [[ -n "$previous_color" ]]; then
+  sleep "${CHESS_STUDIO_BLUE_GREEN_DRAIN_SECONDS:-50}"
+  remove_service "$(slot_service "$previous_color")"
+fi
+phase_done drain "$drain_started_ms"
+
+start_observability_best_effort "$sha"
+if [[ "$target" == staging ]]; then
+  enable_deploy_watcher
+  deploy_watcher_diag_summary
+fi
+agent_diag_summary || printf '%s\n' 'OCI_AGENT_DIAG unavailable'
+phase_done total "$total_started_ms"
+printf 'OCI_DEPLOY_TIMINGS target=%s phases=%s tunnel=%s color=%s\n' "$target" "${deploy_phase_summary%,}" "$tunnel_action" "$candidate_color"
+echo "CHESS_STUDIO_DEPLOY_OK target=$target repo_ref=$sha color=$candidate_color cors_origin=$cors_origin tunnel_action=$tunnel_action image=pulled observability=${observability_summary:-unknown}"
+exit 0
