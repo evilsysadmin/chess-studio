@@ -107,3 +107,5 @@ Guardarraíles:
 - el límite operativo se fija por debajo del punto donde p95 o error rate se degradan de forma sostenida.
 - no convertir ops/s de `/analyze` directamente en “usuarios simultáneos”; usar `game-turn` para medir el camino de jugada real y después traducirlo con una cadencia humana explícita y margen de ráfaga.
 - el escenario `game-turn` usa dificultad 50 como baseline representativo; dificultades extremas se miden aparte antes de prometer capacidad para ellas.
+- con un único worker, el análisis opcional no debe construir cola delante de gameplay: `/api/analyze` y `/api/analyze-move` usan admisión acotada y pueden responder `503 Retry-After: 1` cuando el slot opcional está ocupado; `move`, apertura CPU e `hint` permanecen en el camino crítico y no se rechazan por ese gate.
+- el límite opcional por defecto coincide con `CHESS_ENGINE_WORKERS`; cualquier override `CHESS_ENGINE_OPTIONAL_INFLIGHT_LIMIT` debe volver a medirse antes de producción.
