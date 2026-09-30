@@ -24,8 +24,9 @@ import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
-from urllib.error import URLError
+from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlsplit
+from urllib.request import Request, urlopen
 
 from production_capacity_probe import (
     api_base,
@@ -94,19 +95,46 @@ def detail(payload: dict, fallback: str) -> str:
     return str(payload.get("detail") or payload.get("error") or fallback)[:180]
 
 
+def signed_register_request(
+    base: str,
+    body: dict,
+    headers: dict[str, str],
+    timeout: float,
+) -> tuple[int, dict]:
+    request_headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "User-Agent": "ChessStudioVirtualCapacity/1",
+        **headers,
+    }
+    data = json.dumps(body, separators=(",", ":")).encode("utf-8")
+    try:
+        with urlopen(
+            Request(f"{base}/auth/register", data=data, headers=request_headers, method="POST"),
+            timeout=timeout,
+        ) as response:
+            raw = response.read().decode("utf-8")
+            return int(response.status), json.loads(raw or "{}")
+    except HTTPError as exc:
+        raw = exc.read().decode("utf-8", errors="replace")
+        try:
+            payload = json.loads(raw or "{}")
+        except json.JSONDecodeError:
+            payload = {"detail": raw[:200]}
+        return int(exc.code), payload
+
+
 def register_player(base: str, invite_code: str, synthetic_secret: str, timeout: float) -> VirtualPlayer:
     username = f"ci_smoke_{secrets.token_hex(8)}"
     password = f"CS!{secrets.token_urlsafe(32)}"
     body = {"username": username, "password": password}
     if invite_code:
         body["inviteCode"] = invite_code
-    status, payload, _, _ = request_json(
+    status, payload = signed_register_request(
         base,
-        "/auth/register",
-        method="POST",
-        body=body,
-        timeout=timeout,
-        extra_headers=signed_headers(username, synthetic_secret),
+        body,
+        signed_headers(username, synthetic_secret),
+        timeout,
     )
     token = str(payload.get("token") or "") if isinstance(payload, dict) else ""
     if status != 201 or not token:
