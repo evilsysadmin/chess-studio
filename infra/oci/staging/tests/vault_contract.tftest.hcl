@@ -92,8 +92,8 @@ run "staging_vault_is_reproducible_without_secret_plaintext" {
   }
 
   assert {
-    condition     = length(oci_identity_policy.staging_runtime_config.statements) == 3
-    error_message = "A1 runtime IAM must remain limited to runtime-object read, self Run Command and read-only Vault bundles."
+    condition     = length(oci_identity_policy.staging_runtime_config.statements) == 4
+    error_message = "A1 runtime IAM must remain limited to runtime-object read, self Run Command, read-only Vault bundles and the dedicated production-backup bucket."
   }
 
   assert {
@@ -109,6 +109,11 @@ run "staging_vault_is_reproducible_without_secret_plaintext" {
   assert {
     condition     = strcontains(oci_identity_policy.staging_runtime_config.statements[2], "to read secret-bundles")
     error_message = "The A1 must have read-only access to CURRENT/PENDING Vault bundles consumed by the runtime."
+  }
+
+  assert {
+    condition     = strcontains(oci_identity_policy.staging_runtime_config.statements[3], "to manage objects") && strcontains(oci_identity_policy.staging_runtime_config.statements[3], "target.bucket.name='chess-studio-production-backups'")
+    error_message = "The A1 backup write permission must stay restricted to the dedicated production-backup bucket."
   }
 
   assert {

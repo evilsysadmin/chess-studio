@@ -42,9 +42,10 @@ MAX_COUNTS = {
     "oci_kms_key": 1,
     "oci_kms_vault": 1,
     "oci_load_balancer_load_balancer": 1,
-    # Terraform state + shared staging runtime/artifact bucket. A third bucket
-    # needs an explicit zero-cost review instead of silently widening scope.
-    "oci_objectstorage_bucket": 2,
+    # Terraform state + staging runtime/artifact + private production backups.
+    # The third bucket is explicitly reviewed for production durability; any
+    # fourth bucket still requires a fresh zero-cost review.
+    "oci_objectstorage_bucket": 3,
 }
 
 
@@ -112,6 +113,9 @@ def validate(root: Path = ROOT) -> None:
     require(runtime, 'protection_mode     = "HSM"', "existing key protection mode drifted unexpectedly")
     require(runtime, 'access_type    = "NoPublicAccess"', "runtime Object Storage bucket must remain private")
     require(runtime, 'versioning     = "Disabled"', "runtime bucket must not accumulate hidden object versions")
+    require(runtime, 'name           = var.production_backup_bucket_name', "production backup bucket must remain explicit")
+    require(runtime, 'versioning     = "Enabled"', "production backup bucket must preserve object versions")
+    require(runtime, 'prevent_destroy = true', "production backup bucket must be protected from Terraform destroy")
 
     print(
         "OCI zero-cost contract: OK · "
@@ -124,7 +128,7 @@ def self_test() -> None:
     assert "oci_core_instance" in ALLOWED_RESOURCE_TYPES
     assert "oci_core_image" not in ALLOWED_RESOURCE_TYPES
     assert MAX_COUNTS["oci_core_instance"] == 1
-    assert MAX_COUNTS["oci_objectstorage_bucket"] == 2
+    assert MAX_COUNTS["oci_objectstorage_bucket"] == 3
     sample = 'resource "oci_core_instance" "x" {\n}\nresource "oci_kms_key" "k" {\n}\n'
     assert RESOURCE_RE.findall(sample) == ["oci_core_instance", "oci_kms_key"]
     data_only = 'data "oci_core_images" "arm64" {}\n'

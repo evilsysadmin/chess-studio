@@ -86,3 +86,8 @@ Temporary production uses a separate root-owned env file at `/etc/chess-studio/p
 ## Shared Cloudflare Tunnel route
 
 The existing outbound-only Cloudflare Tunnel now owns two explicit ingress rules on the same A1 connector: staging API -> `127.0.0.1:4000` and temporary production API -> `127.0.0.1:4100`. Adding the production ingress does not switch traffic by itself. `scripts/oci_production_tunnel.py prepare` only reconciles tunnel configuration and proves a live connector; `activate --sha <SHA>` performs the production CNAME cutover only after the exact OCI backend is already healthy, while `render --sha <SHA>` restores the production CNAME to Render and re-attests the known-good SHA.
+
+
+## Production backup durability
+
+Production Mongo dumps must not depend only on the A1 block volume. Terraform provisions a private, versioned `chess-studio-production-backups` Object Storage bucket and grants the A1 Instance Principal object access only to that bucket. The existing local backup remains the fast restore copy; a following runtime slice uploads the already-validated archive + checksum/manifest and applies bounded remote retention. Until that uploader is deployed and a restore drill passes, the off-host bucket is infrastructure-ready but does not by itself satisfy production-readiness backup criteria.
