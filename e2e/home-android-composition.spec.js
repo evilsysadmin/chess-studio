@@ -117,7 +117,7 @@ for (const viewport of [
 }
 
 
-test('Home Android 3D · secundarios dejan respirar la sala con touch real', async ({ browser }) => {
+test('Home Android · portrait usa vestíbulo y reserva 3D para apaisado', async ({ browser }) => {
   for (const viewport of [
     { width: 360, height: 800, label: '360x800' },
     { width: 390, height: 844, label: '390x844' },
@@ -137,7 +137,12 @@ test('Home Android 3D · secundarios dejan respirar la sala con touch real', asy
     try {
       const home = await openHome(page);
       expect(await page.evaluate(() => window.matchMedia('(pointer: coarse)').matches), `${viewport.label}: coarse pointer`).toBe(true);
-      await expect(home.locator('.illustrated-home__castle-3d.is-ready')).toBeVisible({ timeout: 15_000 });
+      await expect(home.locator('.illustrated-home__castle-3d')).toHaveCount(0);
+      const landscapeHint = home.locator('.illustrated-home__landscape-hint');
+      await expect(landscapeHint).toBeVisible();
+      const hintBox = await landscapeHint.boundingBox();
+      expect(hintBox).not.toBeNull();
+      expect(hintBox.height, `${viewport.label}: landscape hint touch height`).toBeGreaterThanOrEqual(44);
 
       const box = async (id) => {
         const value = await home.locator(`.illustrated-home__destination--${id}`).boundingBox();
