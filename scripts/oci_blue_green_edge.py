@@ -59,6 +59,7 @@ def self_test() -> None:
     assert "backend_blue:4000" in blue
     assert "backend_green:4000" in green
     assert "proxy_read_timeout 45s" in blue
+    assert "keepalive_timeout 5s" in blue
     assert "listen 8080" in blue
     for invalid in ("", "red", "../blue", "BLUE GREEN"):
         try:
