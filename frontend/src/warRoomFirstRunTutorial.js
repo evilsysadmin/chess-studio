@@ -1,4 +1,11 @@
 export const WAR_ROOM_TUTORIAL_ID = 'war-room-basics';
+export const WAR_ROOM_TUTORIAL_REPLAY_EVENT = 'chess-studio:war-room-tutorial-replay';
+
+export function requestWarRoomTutorialReplay() {
+  if (typeof window === 'undefined') return false;
+  window.dispatchEvent(new CustomEvent(WAR_ROOM_TUTORIAL_REPLAY_EVENT));
+  return true;
+}
 
 export const WAR_ROOM_TUTORIAL_PHASE = Object.freeze({
   SELECT: 'select',

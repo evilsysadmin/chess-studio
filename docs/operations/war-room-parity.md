@@ -1,6 +1,6 @@
 # War Room · matriz de paridad 2D ↔ 3D
 
-Última auditoría: 2026-09-13.
+Última auditoría: 2026-09-30.
 
 Objetivo: que 2D y War Room 3D sean dos renderers de la **misma partida**, no dos implementaciones de ajedrez. Las reglas, el turno, la posición, los clocks y la persistencia pertenecen al estado común; cambiar renderer sólo puede cambiar presentación e interacción equivalente.
 
@@ -43,7 +43,7 @@ No se eleva una fila a GATE por inspección de código o porque “parece que de
 | Abandono / salida | **GATE** | `war-room-ephemeral-cleanup.spec.js`: abandona desde War Room con selección + inspect activos, confirma vuelta única a Home, exige desmontaje total de shell/canvas 3D y eliminación del snapshot de sesión activa sin ErrorBoundary. | Mantener al tocar salida, snapshot activo o lifecycle del renderer. |
 | Reduced motion | **GATE** | `mobile-war-room-lifecycle.spec.js` corre War Room con `reducedMotion: reduce`, conserva selección durante rotaciones/background y ejecuta una jugada real; `war-room-undo-rewind.spec.js` además juega, deshace, recarga y cruza a 2D bajo la misma media feature. | Mantener al añadir nuevos FX/microanimaciones de War Room. |
 | Fallback 3D → 2D por WebGL | **GATE** | `war-room-webgl-fallback.spec.js` cubre tanto arranque sin WebGL como `webglcontextlost` en mitad de partida; en ambos casos aparece el tablero 2D, desaparece el canvas 3D y e2→e4 sigue produciendo exactamente una mutación sin ErrorBoundary. | Mantener al tocar lifecycle/context recovery/fallback. |
-| Onboarding inicial guiado por Matthias | **PENDIENTE** | Contrato fijado: Matthias guía selección de una pieza, muestra destinos legales reales y acompaña una o dos interacciones; es skippable, reabrible desde ayuda y equivalente con mouse/touch/teclado. | Añadir E2E first-run + replay desde Help verificando que los destinos vienen del estado legal compartido y que el estado tutorial se limpia al cerrar/completar. |
+| Onboarding inicial guiado por Matthias | **GATE** | `mobile-golden-path-war-room-invariants.spec.js`: first-run real pasa `select → move → complete` leyendo `data-board3d-selected` + `data-board3d-legal-target-count` de Board3D, ejecuta la jugada por touch y, tras cerrar la ayuda `?`, relanza el coaching interactivo sobre la partida actual. | Mantener el replay desde Ayuda y la legalidad compartida al tocar tutorial/HUD/input. |
 
 ## Ciclo de vida narrativo y efectos de una sola vez
 
