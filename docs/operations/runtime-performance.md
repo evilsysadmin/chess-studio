@@ -86,3 +86,22 @@ Una optimización está lista cuando:
 - no introduce oscilación visual o estado final perdido;
 - desktop/mobile afectados siguen utilizables;
 - existe regresión automatizada cuando la métrica puede medirse de forma estable.
+
+## Capacidad backend / motor
+
+Antes de abrir más tráfico o aumentar workers del motor, medir la cola real. `scripts/production_capacity_probe.py` ejerce `POST /api/analyze`, que atraviesa el mismo executor acotado del motor sin crear ni modificar partidas. La sonda exige autenticación (JWT o M2M), prueba por defecto concurrencias 1/2/4/8 y emite p50/p95, throughput, tasa de error, códigos HTTP y request IDs para correlacionar la misma ventana con CPU/RAM/logs del host.
+
+Ejemplo contra staging con una API key de automatización:
+
+```bash
+CHESS_CAPACITY_BASE_URL=https://api-staging.chess-studio.shadowops.dpdns.org/api \\
+CHESS_CAPACITY_API_KEY=... \\
+python3 scripts/production_capacity_probe.py --samples-per-level 8
+```
+
+Guardarraíles:
+- el hostname productivo se rechaza salvo `--allow-production` explícito;
+- el probe no decide por sí solo subir `max_workers`: hay que correlacionar p95/amplificación con CPU/RAM y errores;
+- usar staging para construir la curva normal; producción sólo en una ventana controlada y con muestra pequeña;
+- si aparece 429, 5xx o timeout, conservarlo como capacidad observada, no esconderlo con retries del benchmark;
+- el límite operativo se fija por debajo del punto donde p95 o error rate se degradan de forma sostenida.
