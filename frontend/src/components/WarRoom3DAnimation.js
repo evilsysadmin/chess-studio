@@ -28,6 +28,17 @@ export function compactWebGLRendererLabel(rendererLabel = '') {
   return label.trim() ? 'GPU' : 'UNKNOWN';
 }
 
+export function warRoomRendererMode({
+  rendererLabel = '',
+  liteFallback = false,
+} = {}) {
+  const softwareRenderer = isSoftwareWebGLRenderer(rendererLabel);
+  return Object.freeze({
+    softwareRenderer,
+    liteBudget: softwareRenderer || Boolean(liteFallback),
+  });
+}
+
 export function warRoomRendererAttempts({ preserveDrawingBuffer = false } = {}) {
   const captureBuffer = Boolean(preserveDrawingBuffer);
   return Object.freeze([
