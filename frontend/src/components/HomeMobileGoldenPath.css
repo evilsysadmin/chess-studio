@@ -260,6 +260,24 @@
     transform: translateX(-50%) !important;
   }
 
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__utilities.is-open {
+    display: block !important;
+    position: absolute !important;
+    z-index: 90 !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    pointer-events: none !important;
+  }
+
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__utilities.is-open > .illustrated-home__dungeon-trigger {
+    display: none !important;
+  }
+
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__utilities.is-open > .illustrated-home__dungeon-panel {
+    pointer-events: auto !important;
+  }
+
   body .app-shell-home .menu.menu-illustrated .illustrated-home__play-more {
     min-width: 88px !important;
     min-height: 44px !important;
