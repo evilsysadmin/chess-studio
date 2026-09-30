@@ -5,6 +5,7 @@ Scenarios isolate the main free-tier bottlenecks:
 - engine: CPU/engine executor through /api/analyze;
 - mongo-read: authenticated profile/savegame reads;
 - mongo-write: create/delete a disposable game for write-path latency;
+- game-turn: one real human move, Matthias reply and persistence;
 - mixed: a deterministic blend of engine + Mongo read/write operations.
 
 Production hosts are refused unless --allow-production is explicit. Ephemeral
@@ -29,7 +30,7 @@ from urllib.request import Request, urlopen
 
 PRODUCTION_HOST = "api.chess-studio.shadowops.dpdns.org"
 DEFAULT_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-SCENARIOS = ("engine", "mongo-read", "mongo-write", "mixed")
+SCENARIOS = ("engine", "mongo-read", "mongo-write", "game-turn", "mixed")
 
 
 @dataclass(frozen=True)
@@ -209,7 +210,7 @@ def resolve_auth(base: str, args: argparse.Namespace) -> tuple[str, str]:
 
 
 def scenario_requires_jwt(scenario: str) -> bool:
-    return scenario in {"mongo-read", "mongo-write", "mixed"}
+    return scenario in {"mongo-read", "mongo-write", "game-turn", "mixed"}
 
 
 def one_engine_request(base: str, token: str, api_key: str, level: float, timeout: float, fen: str) -> Sample:
@@ -321,6 +322,101 @@ def one_mongo_write_request(base: str, token: str, timeout: float) -> Sample:
         )
 
 
+def one_game_turn_request(base: str, token: str, timeout: float, difficulty: float) -> Sample:
+    """Measure the user-visible move path while keeping setup/cleanup outside latency.
+
+    Each sample gets its own disposable game so concurrent workers never race on
+    one savegame. Throughput still includes create + delete overhead, making the
+    rate conservative; latency_ms is only the human move -> Matthias reply path.
+    """
+    game_id = ""
+    request_ids: list[str] = []
+    try:
+        status, created, _, create_request_id = request_json(
+            base,
+            "/games",
+            method="POST",
+            token=token,
+            body={"difficulty": difficulty, "color": "w"},
+            timeout=timeout,
+        )
+        request_ids.append(create_request_id)
+        if status != 201:
+            return Sample(
+                status=status,
+                latency_ms=0,
+                request_id=create_request_id,
+                operation="game.turn",
+                http_requests=1,
+                error=_detail(created, "game create failed"),
+            )
+        game_id = str(created.get("id") or "").strip()
+        if not game_id:
+            return Sample(
+                status=0,
+                latency_ms=0,
+                request_id=create_request_id,
+                operation="game.turn",
+                http_requests=1,
+                error="create response missing game id",
+            )
+
+        game_path = f"/games/{quote(game_id, safe='')}"
+        move_status, moved, move_latency, move_request_id = request_json(
+            base,
+            f"{game_path}/move",
+            method="POST",
+            token=token,
+            body={"from": "e2", "to": "e4"},
+            timeout=timeout,
+        )
+        request_ids.append(move_request_id)
+
+        delete_status, deleted, _, delete_request_id = request_json(
+            base,
+            game_path,
+            method="DELETE",
+            token=token,
+            timeout=timeout,
+        )
+        request_ids.append(delete_request_id)
+
+        if move_status != 200:
+            return Sample(
+                status=move_status,
+                latency_ms=move_latency,
+                request_id=",".join(item for item in request_ids if item),
+                operation="game.turn",
+                http_requests=3,
+                error=_detail(moved, "game move failed"),
+            )
+        if delete_status != 204:
+            return Sample(
+                status=delete_status,
+                latency_ms=move_latency,
+                request_id=",".join(item for item in request_ids if item),
+                operation="game.turn",
+                http_requests=3,
+                error=_detail(deleted, "game cleanup failed"),
+            )
+        return Sample(
+            status=200,
+            latency_ms=move_latency,
+            request_id=",".join(item for item in request_ids if item),
+            operation="game.turn",
+            http_requests=3,
+        )
+    except (URLError, TimeoutError, OSError) as exc:
+        return Sample(
+            status=0,
+            latency_ms=timeout * 1000,
+            request_id=",".join(item for item in request_ids if item),
+            operation="game.turn",
+            http_requests=3 if game_id else 1,
+            error=type(exc).__name__,
+        )
+
+
 def one_scenario_request(
     base: str,
     *,
@@ -329,6 +425,7 @@ def one_scenario_request(
     token: str,
     api_key: str,
     engine_level: float,
+    game_difficulty: float,
     timeout: float,
     fen: str,
 ) -> Sample:
@@ -338,6 +435,8 @@ def one_scenario_request(
         return one_mongo_read_request(base, token, timeout, index)
     if scenario == "mongo-write":
         return one_mongo_write_request(base, token, timeout)
+    if scenario == "game-turn":
+        return one_game_turn_request(base, token, timeout, game_difficulty)
     mixed_slot = index % 5
     if mixed_slot in {0, 3}:
         return one_engine_request(base, token, api_key, engine_level, timeout, fen)
@@ -370,6 +469,7 @@ def run_level(
     token: str,
     api_key: str,
     engine_level: float,
+    game_difficulty: float,
     timeout: float,
     fen: str,
 ) -> dict:
@@ -386,6 +486,7 @@ def run_level(
                 token=token,
                 api_key=api_key,
                 engine_level=engine_level,
+                game_difficulty=game_difficulty,
                 timeout=timeout,
                 fen=fen,
             )
@@ -433,6 +534,7 @@ def self_test() -> None:
     assert scenario_requires_jwt("mongo-read")
     assert scenario_requires_jwt("mongo-write")
     assert scenario_requires_jwt("mixed")
+    assert scenario_requires_jwt("game-turn")
     assert not scenario_requires_jwt("engine")
     rows = [
         Sample(200, 10, "a", "mongo.profile_read"),
@@ -471,6 +573,7 @@ def main() -> int:
     parser.add_argument("--concurrency", default=os.getenv("CHESS_CAPACITY_CONCURRENCY", "1,2,4,8"))
     parser.add_argument("--samples-per-level", type=int, default=8)
     parser.add_argument("--engine-level", type=float, default=50)
+    parser.add_argument("--game-difficulty", type=float, default=50)
     parser.add_argument("--timeout", type=float, default=15.0)
     parser.add_argument("--fen", default=DEFAULT_FEN)
     parser.add_argument("--allow-production", action="store_true")
@@ -486,6 +589,8 @@ def main() -> int:
         parser.error("--samples-per-level must be between 1 and 200")
     if args.timeout <= 0:
         parser.error("--timeout must be positive")
+    if not 0 <= args.game_difficulty <= 100:
+        parser.error("--game-difficulty must be between 0 and 100")
 
     ephemeral_created = False
     cleanup_password = ""
@@ -522,6 +627,7 @@ def main() -> int:
                 token=token,
                 api_key=api_key,
                 engine_level=args.engine_level,
+                game_difficulty=args.game_difficulty,
                 timeout=args.timeout,
                 fen=args.fen,
             )
@@ -551,11 +657,13 @@ def main() -> int:
         "base_host": urlsplit(base).hostname,
         "scenario": args.scenario,
         "engine_level": args.engine_level,
+        "game_difficulty": args.game_difficulty,
         "levels": results,
         "ephemeral_cleanup_ok": not cleanup_failed if ephemeral_created else None,
         "note": (
             "engine isolates A1/engine pressure; mongo-read/write isolates Atlas/free-tier persistence; "
-            "mixed approximates shared service contention. Fix the operating limit below sustained p95/error degradation."
+            "game-turn measures the real human move -> Matthias reply + persistence path; mixed approximates shared "
+            "service contention. Fix the operating limit below sustained p95/error degradation."
         ),
     }
     print(json.dumps({"capacity_summary": summary}, sort_keys=True, separators=(",", ":")))

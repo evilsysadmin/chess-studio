@@ -30,7 +30,7 @@ jobs:
     name: A1 + Mongo service curve
     if: github.event_name != 'pull_request' || startsWith(github.head_ref, 'ops/capacity-')
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 25
     env:
       OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
       OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
@@ -110,6 +110,21 @@ jobs:
       - name: Cool down
         run: sleep 20
 
+      - name: Real game-turn curve · difficulty 50
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +e
+          python3 scripts/production_capacity_probe.py             --scenario game-turn             --game-difficulty 50             --ephemeral             --concurrency 1,2,4,8             --samples-per-level 8             --timeout 25             | tee capacity-game-turn.jsonl
+          code=${PIPESTATUS[0]}
+          set -e
+          (( code <= 1 )) || exit "$code"
+          sleep 15
+          python3 scripts/capacity_telemetry_snapshot.py --label game-turn | tee capacity-game-turn.telemetry.jsonl
+
+      - name: Cool down
+        run: sleep 20
+
       - name: Mongo read curve
         shell: bash
         run: |
@@ -184,6 +199,7 @@ jobs:
               last = levels[-1] if levels else {}
               rows.append({
                   "scenario": summary.get("scenario"),
+                  "game_difficulty": summary.get("game_difficulty") if summary.get("scenario") == "game-turn" else None,
                   "max_concurrency": last.get("concurrency"),
                   "p95_ms": (last.get("latency_ms") or {}).get("p95"),
                   "ops_rps": last.get("throughput_ops_rps"),
@@ -206,13 +222,14 @@ jobs:
 
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as handle:
               handle.write("### Staging capacity · A1 + Mongo\n\n")
-              handle.write("| escenario | concurrencia máx | p95 ms | ops/s | errores | CPU host % | RAM host % |\n")
-              handle.write("| --- | ---: | ---: | ---: | ---: | ---: | ---: |\n")
+              handle.write("| escenario | dificultad | concurrencia máx | p95 ms | ops/s | errores | CPU host % | RAM host % |\n")
+              handle.write("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |\n")
               for row in rows:
                   snap = telemetry.get(row["scenario"], {})
                   handle.write(
-                      f"| {row['scenario']} | {row['max_concurrency']} | {row['p95_ms']} | {row['ops_rps']} | "
-                      f"{row['errors']} | {snap.get('host_cpu_percent')} | {snap.get('host_ram_percent')} |\n"
+                      f"| {row['scenario']} | {row.get('game_difficulty') or ''} | {row['max_concurrency']} | "
+                      f"{row['p95_ms']} | {row['ops_rps']} | {row['errors']} | "
+                      f"{snap.get('host_cpu_percent')} | {snap.get('host_ram_percent')} |\n"
                   )
               handle.write("\nLos errores/429/timeouts a carga alta son datos de capacidad; un fallo de harness o cleanup sí invalida la ejecución.\n")
 

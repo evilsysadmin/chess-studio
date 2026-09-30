@@ -89,7 +89,7 @@ Una optimización está lista cuando:
 
 ## Capacidad backend / motor
 
-Antes de abrir más tráfico o aumentar workers del motor, medir la cola real. `scripts/production_capacity_probe.py` ejerce `POST /api/analyze`, que atraviesa el mismo executor acotado del motor sin crear ni modificar partidas. La sonda exige autenticación (JWT o M2M), prueba por defecto concurrencias 1/2/4/8 y emite p50/p95, throughput, tasa de error, códigos HTTP y request IDs para correlacionar la misma ventana con CPU/RAM/logs del host.
+Antes de abrir más tráfico o aumentar workers del motor, medir la cola real. `scripts/production_capacity_probe.py` separa perfiles de engine, Mongo read/write, carga mixta y `game-turn`. Este último crea una partida efímera propia por muestra, cronometra sólo `POST /api/games/{id}/move` —jugada humana → cálculo de Matthias → persistencia— y limpia la partida después; el throughput conserva también el coste de setup/cleanup, así que es deliberadamente conservador. La sonda exige autenticación, emite p50/p95, throughput, tasa de error, códigos HTTP y request IDs y correlaciona la misma ventana con CPU/RAM/load de la A1 y métricas backend en Grafana.
 
 Ejemplo contra staging con una API key de automatización:
 
@@ -105,3 +105,5 @@ Guardarraíles:
 - usar staging para construir la curva normal; producción sólo en una ventana controlada y con muestra pequeña;
 - si aparece 429, 5xx o timeout, conservarlo como capacidad observada, no esconderlo con retries del benchmark;
 - el límite operativo se fija por debajo del punto donde p95 o error rate se degradan de forma sostenida.
+- no convertir ops/s de `/analyze` directamente en “usuarios simultáneos”; usar `game-turn` para medir el camino de jugada real y después traducirlo con una cadencia humana explícita y margen de ráfaga.
+- el escenario `game-turn` usa dificultad 50 como baseline representativo; dificultades extremas se miden aparte antes de prometer capacidad para ellas.
