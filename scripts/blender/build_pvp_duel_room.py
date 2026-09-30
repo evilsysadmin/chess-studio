@@ -63,6 +63,10 @@ def palette():
             "PVP_MAT_wet_stone", (0.032, 0.042, 0.044, 1),
             rough=0.29, coat=0.34, texture="stone", scale=6.5, bump=0.025,
         ),
+        "recess": base.material(
+            "PVP_MAT_recess_stone", (0.070, 0.070, 0.064, 1),
+            rough=0.90, texture="stone", scale=5.8, bump=0.080, weather=True,
+        ),
         "oak": base.material(
             "PVP_MAT_dark_oak", (0.055, 0.019, 0.008, 1),
             rough=0.46, coat=0.18, texture="wood", scale=2.4, bump=0.060,
@@ -206,8 +210,15 @@ def build_architecture(static, p):
             stone_index += 1
 
     # Deep pointed prison portal: black recess + portcullis + limestone dressings.
-    base.cube("PVP_DUEL_portal_void", (0, 6.06, 2.60), (2.34, 0.09, 2.54),
-              p["iron"], static, bevel=0.10)
+    base.cube("PVP_DUEL_portal_void", (0, 6.16, 2.60), (2.34, 0.10, 2.54),
+              p["recess"], static, bevel=0.10)
+    # A few broad back-stones keep the portcullis readable instead of collapsing
+    # into a featureless black rectangle in the hero framing.
+    for row, z in enumerate((1.20, 2.10, 3.00, 3.90, 4.80)):
+        base.cube(
+            f"PVP_DUEL_portal_back_course_{row}", (0, 6.035, z),
+            (2.20, 0.022, 0.028), p["dais"], static, bevel=0.010,
+        )
     for side in (-1, 1):
         base.cube(
             f"PVP_DUEL_portal_pier_{side}", (side * 2.55, 5.96, 2.62),
@@ -337,9 +348,15 @@ def build_sconces_and_gate(static, p):
                 0.040, 1.16, p["iron"], static, vertices=10,
             )
             leg.rotation_euler.y = math.radians(leg_side * 9)
-        base.cube(
-            f"PVP_DUEL_brazier_fire_{label}", (x, y, 2.08),
-            (0.30, 0.24, 0.25), p["fire"], static, bevel=0.12,
+        # Layered ellipsoids read as flame at gameplay distance; the previous
+        # emissive cube looked like a lantern bulb in the generated preview.
+        base.sphere(
+            f"PVP_DUEL_brazier_flame_base_{label}", (x, y, 2.04),
+            0.19, p["fire"], static, scale=(0.86, 0.72, 1.28),
+        )
+        base.sphere(
+            f"PVP_DUEL_brazier_flame_tip_{label}", (x + side * 0.035, y - 0.010, 2.30),
+            0.12, p["fire"], static, scale=(0.62, 0.56, 1.55),
         )
         lamp = base.light(
             f"PVP_LIGHT_brazier_{label}", "POINT", (x, y - 0.28, 2.20),
@@ -398,6 +415,9 @@ def build_lighting(static):
     rim = base.light("PVP_LIGHT_dungeon_rim", "AREA", (0.0, -4.8, 5.8), 150.0,
                      (0.28, 0.34, 0.43), static, size=4.0)
     base.look_at(rim, (0.0, 1.0, 1.15))
+    gate_fill = base.light("PVP_LIGHT_gate_fill", "AREA", (0.0, 3.85, 5.45), 135.0,
+                           (0.24, 0.30, 0.40), static, size=3.2)
+    base.look_at(gate_fill, (0.0, 5.82, 2.85))
 
     base.anchor("PVP_ANCHOR_red_identity", (-4.92, 5.42, 3.42), static)
     base.anchor("PVP_ANCHOR_blue_identity", (4.92, 5.42, 3.42), static)
