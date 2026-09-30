@@ -3,6 +3,7 @@ import { IconTrophy, IconBook } from './Icons.jsx';
 import HomeScene3D from './HomeScene3D.jsx';
 import HomeMatthias3D from './HomeMatthias3D.jsx';
 import HomeDungeonPanel from './HomeDungeonPanel.jsx';
+import { requestWarRoomLandscapeFullscreen } from './useWarRoomImmersive.js';
 import { buildDungeonMenu } from '../homeDungeonMenu.js';
 import hall from '../assets/home-canonical/great-hall-dungeon.webp';
 import { loadRivalry } from '../rivalry.js';
@@ -25,6 +26,11 @@ import './HomeDestinationPlaques.css';
 import './HomeMobileGoldenPath.css';
 
 const PRIMARY_DIEGETIC_DESTINATIONS = new Set(['tournament', 'combat', 'play']);
+const HOME_PORTRAIT_QUERY = '(pointer: coarse) and (orientation: portrait) and (max-width: 520px)';
+
+function currentPortraitVestibule() {
+  return Boolean(globalThis.window?.matchMedia?.(HOME_PORTRAIT_QUERY)?.matches);
+}
 
 function IconSword(props) {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m3 3 5 2 12 14-1 1L5 8 3 3Zm18 0-5 2L4 19l1 1L19 8l2-5ZM2 16l6 6m8-20 6 6M16 22l6-6M2 8l6-6" /></svg>;
@@ -77,6 +83,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
   const [matthiasRoutineIndex, setMatthiasRoutineIndex] = useState(0);
   const [matthiasRoutineClock, setMatthiasRoutineClock] = useState(() => new Date());
   const [reducedMotion, setReducedMotion] = useState(currentReducedMotion);
+  const [portraitVestibule, setPortraitVestibule] = useState(currentPortraitVestibule);
 
   const castleLife = useMemo(() => buildHomeCastleLife({
     rivalry: loadRivalry(),
@@ -147,6 +154,15 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
       document.removeEventListener('pointerdown', onPointerDown);
     };
   }, [playMenuOpen]);
+
+  useEffect(() => {
+    const media = globalThis.window?.matchMedia?.(HOME_PORTRAIT_QUERY);
+    if (!media) return undefined;
+    const refresh = () => setPortraitVestibule(media.matches);
+    refresh();
+    media.addEventListener?.('change', refresh);
+    return () => media.removeEventListener?.('change', refresh);
+  }, []);
 
   useEffect(() => {
     const refresh = () => setReducedMotion(currentReducedMotion());
@@ -226,15 +242,27 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
         data-home-beacons={anchors ? 'projected' : 'static'}
         style={{ '--home-hall-art': `url("${hall}")` }}
       >
-        <HomeScene3D
-          artUrl={hall}
-          ambient={castleLife.ambient}
-          activeRoom={activeRoom}
-          onDestinationHover={setActiveRoom}
-          onDestinationActivate={activateSceneDestination}
-          onAnchorLayout={handleAnchorLayout}
-        />
+        {!portraitVestibule && (
+          <HomeScene3D
+            artUrl={hall}
+            ambient={castleLife.ambient}
+            activeRoom={activeRoom}
+            onDestinationHover={setActiveRoom}
+            onDestinationActivate={activateSceneDestination}
+            onAnchorLayout={handleAnchorLayout}
+          />
+        )}
         <img className="illustrated-home__art" src={hall} alt="" fetchPriority="high" draggable="false" style={{ zIndex: 0 }} />
+        {portraitVestibule && (
+          <button
+            type="button"
+            className="illustrated-home__landscape-hint"
+            onClick={() => { void requestWarRoomLandscapeFullscreen(); }}
+            aria-label="Abrir el castillo completo en apaisado"
+          >
+            <span>Castillo completo</span><i aria-hidden="true">↻</i>
+          </button>
+        )}
         {castleLife.rareSighting && (
           <span className={`illustrated-home__rare-sighting is-${castleLife.rareSighting}`} aria-hidden="true" />
         )}
