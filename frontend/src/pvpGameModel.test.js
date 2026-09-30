@@ -8,6 +8,7 @@ import {
   opponentPresenceLabel,
   playerResult,
   projectPvpClock,
+  pvpStartPending,
   selectableMoves,
   uniqueLegalTargets,
 } from './pvpGameModel.js';
@@ -35,6 +36,13 @@ describe('PvP War Room model', () => {
     expect(moves.filter((move) => move.to === 'a8')).toHaveLength(4);
     expect(uniqueLegalTargets(moves).filter((move) => move.to === 'a8')).toHaveLength(1);
     expect(chooseMoveTo(moves, 'a8')).toEqual({ kind: 'promotion', from: 'a7', to: 'a8' });
+  });
+
+  it('bloquea la interacción durante la cuenta atrás del duelo', () => {
+    const start = Date.parse('2026-09-30T23:00:04.000Z');
+    expect(pvpStartPending({ status: 'active', startsAt: new Date(start).toISOString() }, start - 1)).toBe(true);
+    expect(pvpStartPending({ status: 'active', startsAt: new Date(start).toISOString() }, start)).toBe(false);
+    expect(pvpStartPending({ status: 'starting', startsAt: new Date(start).toISOString() }, start - 1)).toBe(false);
   });
 
   it('proyecta localmente sólo el reloj que está corriendo', () => {
