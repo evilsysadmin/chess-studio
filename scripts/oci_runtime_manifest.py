@@ -26,6 +26,7 @@ VAULT_KEYS = (
 DECLARATIVE_KEYS = (
     "MONGO_DB_NAME",
     "ENVIRONMENT",
+    "CHESS_ENGINE_WORKERS",
     "EXPOSE_API_DOCS",
     "ALLOW_REGISTRATION",
     "ENABLE_EMAIL_RECOVERY",
@@ -113,6 +114,7 @@ def self_test() -> None:
     assert declarative == {
         "MONGO_DB_NAME": "chess_study_staging",
         "ENVIRONMENT": "staging",
+        "CHESS_ENGINE_WORKERS": "2",
         "EXPOSE_API_DOCS": "false",
         "ALLOW_REGISTRATION": "true",
         "ENABLE_EMAIL_RECOVERY": "false",
