@@ -6,6 +6,11 @@ describe('nextBestAction', () => {
     expect(nextBestAction({ outcome: 'loss', moveCount: 18, hasReport: true }).id).toBe('review');
   });
 
+  it('prioriza entrenar un error real sobre revisar o repetir', () => {
+    expect(nextBestAction({ outcome: 'loss', moveCount: 18, hasReport: true, canTrainCurrentError: true, canPlayAgain: true }))
+      .toMatchObject({ id: 'train-error', label: 'Entrenar este error' });
+  });
+
   it('propone avanzar tras victoria o tablas sin ofrecer revancha', () => {
     expect(nextBestAction({ outcome: 'win' }).id).toBe('advance');
     expect(nextBestAction({ outcome: 'draw' }).id).toBe('advance');

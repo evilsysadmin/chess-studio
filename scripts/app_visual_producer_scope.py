@@ -80,6 +80,7 @@ WARROOM_PROFILE_SCOPE_MOBILE = "mobile"
 WARROOM_PROFILE_SCOPE_MOBILE_ENTRY = "mobile-entry"
 HOME_PROFILE_SCOPE_ALL = "all"
 HOME_PROFILE_SCOPE_QUICK_MATCH = "quickmatch"
+HOME_PROFILE_SCOPE_MOBILE_TOOLS = "mobile-tools"
 WARROOM_VARIANT_ALL = set(WARROOM_VARIANT_ORDER)
 WARROOM_CLASSIC_VARIANT_FILES = {
     "frontend/src/components/warroomclassicshell.js",
@@ -195,9 +196,11 @@ def _csv(values: set[str] | None) -> str:
 def _e2e_producer(name: str) -> set[str] | None:
     exact = {
         "app-visual-artifact.spec.js": {"home-base"},
+        "smoke.spec.js": set(),
         "matthias-home-visual-artifact.spec.js": {"home-matthias"},
         "matthias-home-visual-critical.spec.js": {"home-matthias"},
         "home-3d-focus-visual.spec.js": {"home-focus"},
+        "home-lab-visibility.spec.js": {"home-base"},
         "experiments-visual-artifact.spec.js": {"experiments-hub"},
         "pawn-slug-godot-visual-artifact.spec.js": {"experiments-hub"},
         "chronicles-tactics-visual-artifact.spec.js": {"chronicles-tactics"},
@@ -322,6 +325,8 @@ def classify_path(path: str) -> set[str] | None:
         return set()
     if lower in QUICK_MATCH_EXACT_PRODUCERS:
         return set(QUICK_MATCH_EXACT_PRODUCERS[lower])
+    if lower == "frontend/src/components/homemobilegoldenpath.css":
+        return {"home-base"}
     if lower in PVP_DUEL_EXACT_PRODUCERS:
         return set(PVP_DUEL_EXACT_PRODUCERS[lower])
     if lower in PVP_EXACT_PRODUCERS:
@@ -443,13 +448,20 @@ def classify_home_profile_scope(paths: list[str]) -> str:
     cleaned = [path.strip().lower().replace("\\", "/") for path in paths if path.strip()]
     if not cleaned:
         return HOME_PROFILE_SCOPE_ALL
-    relevant = [path for path in cleaned if ".test." not in Path(path).name and ".spec." not in Path(path).name]
+    relevant = [
+        path for path in cleaned
+        if ".test." not in Path(path).name
+        and ".spec." not in Path(path).name
+        and path not in {"scripts/app_visual_scope.py", "scripts/app_visual_producer_scope.py"}
+    ]
     quick_match_home_files = {
         "frontend/src/components/quickmatchmodal.jsx",
         "frontend/src/components/quickmatchmobilegoldenpath.css",
     }
     if relevant and all(path in quick_match_home_files for path in relevant):
         return HOME_PROFILE_SCOPE_QUICK_MATCH
+    if relevant and all(path == "frontend/src/components/homemobilegoldenpath.css" for path in relevant):
+        return HOME_PROFILE_SCOPE_MOBILE_TOOLS
     return HOME_PROFILE_SCOPE_ALL
 
 
@@ -468,7 +480,26 @@ def classify_warroom_profile_scope(paths: list[str]) -> str:
     return WARROOM_PROFILE_SCOPE_ALL
 
 
+HOME_MOBILE_TOOLS_FAST_PATH = {
+    "e2e/app-visual-artifact.spec.js",
+    "e2e/home-lab-visibility.spec.js",
+    "frontend/src/components/homemobilegoldenpath.css",
+    "scripts/app_visual_producer_scope.py",
+    "scripts/app_visual_scope.py",
+}
+
+def _is_home_mobile_tools_fast_path(paths: list[str]) -> bool:
+    normalized = {path.strip().replace("\\", "/").lower() for path in paths if path.strip()}
+    return normalized == HOME_MOBILE_TOOLS_FAST_PATH
+
+
 POSTGAME_WARROOM_FAST_PATH = {
+    "frontend/src/usepostgametrainingopportunity.test.js",
+    "frontend/src/usepostgametrainingopportunity.js",
+    "frontend/src/postgamereportmeta.js",
+    "frontend/src/nextbestaction.test.js",
+    "frontend/src/components/postgameexperience.test.jsx",
+    "e2e/helpers.js",
     "e2e/learning-golden-path.spec.js",
     "e2e/learning-second-observation.spec.js",
     "e2e/mobile-golden-path-priority.spec.js",
@@ -494,7 +525,7 @@ def _is_postgame_warroom_fast_path(paths: list[str]) -> bool:
     normalized = {path.strip().replace("\\", "/").lower() for path in paths if path.strip()}
     return (
         "frontend/src/components/postgameexperience.jsx" in normalized
-        and "frontend/src/components/warroomdebrief.css" in normalized
+        and "frontend/src/components/gamescreen.jsx" in normalized
         and normalized.issubset(POSTGAME_WARROOM_FAST_PATH)
     )
 
@@ -503,6 +534,8 @@ def classify(paths: list[str]) -> str:
     cleaned = [path.strip() for path in paths if path.strip()]
     if not cleaned:
         return "all"
+    if _is_home_mobile_tools_fast_path(cleaned):
+        return "home-base"
     if _is_postgame_warroom_fast_path(cleaned):
         return "warroom-core"
     producers: set[str] = set()
@@ -546,6 +579,7 @@ def self_test() -> None:
         "frontend/src/components/WarRoomMobileLandscape.css",
     ]) == "mobile"
     assert classify(["scripts/app_visual_scope.py"]) == "none"
+    assert classify(["e2e/smoke.spec.js"]) == "none"
     assert classify(["scripts/app_visual_producer_scope.py"]) == "none"
     assert classify(["scripts/app_visual_changed_files.py"]) == "none"
     assert classify(["scripts/app_visual_capture.sh"]) == "none"

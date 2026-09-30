@@ -202,7 +202,7 @@ def self_test() -> None:
     assert LANE_COMMANDS['home'][1].grep == HOME_MOBILE_GREP
     assert LANE_COMMANDS['home'][2].grep == HOME_WEBGL_GREP
     assert [command.spec for command in LANE_COMMANDS['smoke']] == [
-        'smoke.spec.js', 'mobile-final-interactions.spec.js', 'browser-runtime-health.spec.js'
+        'smoke.spec.js', 'mobile-final-interactions.spec.js', 'browser-runtime-health.spec.js',
     ]
     assert LANE_COMMANDS['smoke'][2].grep == HOME_WEBGL_GREP
     assert LANE_COMMANDS['smoke'][2].canonical_critical is False

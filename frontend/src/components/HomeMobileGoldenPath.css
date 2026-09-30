@@ -167,7 +167,7 @@
      fila MATTHIAS/MAZMORRAS/más y rejilla de navegación. Antes la fila se
      anclaba a 60px y quedaba medio oculta bajo la barra en cualquier teléfono. */
   body .app-shell-home .menu.menu-illustrated {
-    --home-portrait-row-bottom: calc(max(18px, env(safe-area-inset-bottom)) + 80px);
+    --home-portrait-row-bottom: calc(max(18px, env(safe-area-inset-bottom)) + 64px);
     --home-portrait-nav-bottom: calc(max(18px, env(safe-area-inset-bottom)) + 128px);
   }
 
@@ -300,6 +300,12 @@
     bottom: var(--home-portrait-row-bottom) !important;
     width: calc(30% - 10px) !important;
     height: 40px !important;
+  }
+
+  /* El panel «Más modos» debe quedar por encima del nav de destinos.
+     Sin esto, el stacking context de utilities se come taps en móvil vertical. */
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__utilities.is-open {
+    z-index: 80 !important;
   }
 
   body .app-shell-home .menu.menu-illustrated .illustrated-home__dungeon-copy {

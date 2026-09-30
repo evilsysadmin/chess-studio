@@ -207,7 +207,12 @@ test('App · captura visual canónica desktop + Android normal/desktop-site', as
 
   const captures = [];
   try {
-    for (const capture of (HOME_PROFILE_SCOPE === 'quickmatch' ? [] : CAPTURES)) {
+    const homeCaptures = HOME_PROFILE_SCOPE === 'quickmatch'
+      ? []
+      : HOME_PROFILE_SCOPE === 'mobile-tools'
+        ? CAPTURES.filter((capture) => ['android-360x800', 'android-390x844', 'android-430x932'].includes(capture.label))
+        : CAPTURES;
+    for (const capture of homeCaptures) {
       const context = await visualBrowser.newContext({
         viewport:{ width:capture.width, height:capture.height },
         hasTouch:capture.hasTouch === true,
@@ -284,7 +289,7 @@ test('App · captura visual canónica desktop + Android normal/desktop-site', as
       }
     }
 
-    const quickMatchCaptures = [
+    const quickMatchCaptures = HOME_PROFILE_SCOPE === 'mobile-tools' ? [] : [
       { width:360, height:800 },
       { width:390, height:844, captureSettings:true },
       { width:430, height:932 },

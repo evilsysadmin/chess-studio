@@ -14,6 +14,7 @@ MATTHIAS_PATHS = {
     "scripts/art/repair_matthias_machinegun_continuity.py",
     "scripts/art/repair_matthias_machinegun_hurt_alpha_v3.py",
     "scripts/art/repair_matthias_pose_semantics_v1.py",
+    "scripts/art/repair_matthias_head_integrity_v1.py",
     "scripts/art/matthias_prompt_contract.py",
     "scripts/art/matthias_candidate_grinder.py",
     "scripts/art/contracts/matthias_prompt_contract.yaml",

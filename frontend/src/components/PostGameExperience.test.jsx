@@ -39,6 +39,19 @@ describe('PostGameExperience', () => {
     expect(html).not.toContain('Entrenar mis errores');
   });
 
+  it('hace del error factual el único CTA primario cuando ya existe un puzzle entrenable', () => {
+    const html = render({
+      trainingOpportunity: { puzzleId: 'personal-1', moveNumber: 7, played: 'Qh5?', suggested: 'Bc4' },
+      onTrainCurrentError: () => {},
+      onPlayAgain: () => {},
+      onTrainPersonal: () => {},
+    });
+    expect(html).toContain('Entrenar este error');
+    expect(html).toContain('Jugada 7: Qh5?.');
+    expect((html.match(/class="primary-btn"/g) || [])).toHaveLength(1);
+    expect(html).not.toContain('>Jugar otra partida</button>');
+  });
+
   it('muestra la recalibración factual sólo cuando el resumen trae un cambio material', () => {
     const html = render({
       resultSummary: {

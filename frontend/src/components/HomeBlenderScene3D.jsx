@@ -1256,6 +1256,7 @@ export default function HomeBlenderScene3D({
 }) {
   const canvasRef = useRef(null);
   const renderRequestRef = useRef(null);
+  const glContextRef = useRef(null);
   const [contextGeneration, setContextGeneration] = useState(0);
 
   useEffect(() => {
@@ -1427,6 +1428,7 @@ export default function HomeBlenderScene3D({
       return undefined;
     }
 
+    glContextRef.current = renderer.getContext();
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.shadowMap.enabled = initialPolicy.lod === 'full';
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -1745,6 +1747,18 @@ export default function HomeBlenderScene3D({
       renderer.dispose();
     };
   }, [ambient, contextGeneration, onUnavailable]);
+
+  // renderer.dispose() libera recursos pero no el contexto WebGL: éste vive
+  // hasta que el recolector se lleve el canvas, y cada ida y vuelta Home ⇄
+  // partida dejaba uno más (Chrome empieza a perder contextos hacia los 16).
+  // Sólo al desmontar: el efecto de arriba se reejecuta sobre el MISMO canvas
+  // (ambient, recuperación de contexto) y necesita que el contexto siga vivo.
+  // Declarado después, su limpieza corre tras la del efecto de render.
+  useEffect(() => () => {
+    const gl = glContextRef.current;
+    glContextRef.current = null;
+    gl?.getExtension?.('WEBGL_lose_context')?.loseContext?.();
+  }, []);
 
   return (
     <canvas

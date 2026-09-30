@@ -80,15 +80,49 @@ const MATE_END_FEN = '7k/6Q1/5K2/8/8/8/8/8 b - - 1 1';
 const OPENING_END_FEN = 'rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e6 0 2';
 const LOSS_CAPTURE_START_FEN = 'k3r3/8/8/8/4P3/8/8/4K1N1 w - - 0 1';
 const LOSS_CAPTURE_END_FEN = 'k7/8/8/8/4r3/5N2/8/4K3 w - - 0 2';
+const FOOLS_AFTER_FIRST_PAIR_FEN = 'rnbqkbnr/pppp1ppp/8/4p3/8/5P2/PPPPP1PP/RNBQKBNR w KQkq e6 0 2';
+const FOOLS_MATE_END_FEN = 'rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 1 3';
 
 function scenarioInitialFen(scenario) {
   if (scenario === 'check') return CHECK_START_FEN;
   if (scenario === 'mate') return MATE_START_FEN;
   if (scenario === 'lossCapture') return LOSS_CAPTURE_START_FEN;
+  if (scenario === 'foolsMateLoss') return START_FEN;
   return START_FEN;
 }
 
 function scenarioMoveResult(game, payload, scenario) {
+  if (scenario === 'foolsMateLoss') {
+    if (game.history.length === 0) {
+      if (payload.from !== 'f2' || payload.to !== 'f3') throw new Error(`E2E foolsMateLoss esperaba f2-f3, recibió ${payload.from}-${payload.to}`);
+      return {
+        ...game,
+        fen: FOOLS_AFTER_FIRST_PAIR_FEN,
+        turn: 'w',
+        status: 'playing',
+        isGameOver: false,
+        history: [
+          { from: 'f2', to: 'f3', san: 'f3', piece: 'p', captured: false, by: 'human' },
+          { from: 'e7', to: 'e5', san: 'e5', piece: 'p', captured: false, by: 'cpu' },
+        ],
+        lastMove: { from: 'e7', to: 'e5', san: 'e5', piece: 'p', captured: false, by: 'cpu' },
+      };
+    }
+    if (payload.from !== 'g2' || payload.to !== 'g4') throw new Error(`E2E foolsMateLoss esperaba g2-g4, recibió ${payload.from}-${payload.to}`);
+    return {
+      ...game,
+      fen: FOOLS_MATE_END_FEN,
+      turn: 'w',
+      status: 'checkmate',
+      isGameOver: true,
+      history: [
+        ...game.history,
+        { from: 'g2', to: 'g4', san: 'g4', piece: 'p', captured: false, by: 'human' },
+        { from: 'd8', to: 'h4', san: 'Qh4#', piece: 'q', captured: false, by: 'cpu' },
+      ],
+      lastMove: { from: 'd8', to: 'h4', san: 'Qh4#', piece: 'q', captured: false, by: 'cpu' },
+    };
+  }
   if (scenario === 'lossCapture') {
     if (payload.from !== 'g1' || payload.to !== 'f3') throw new Error(`E2E lossCapture esperaba g1-f3, recibió ${payload.from}-${payload.to}`);
     return {
@@ -360,6 +394,13 @@ export async function mockApi(page, {
     if (path.endsWith('/auth/activity')) return json({ ok: true });
     if (path.endsWith('/health')) return json({ ok: true });
     if (path.endsWith('/features')) return json({});
+    // La postpartida analiza jugada a jugada con /analyze-move; `analysisMoves`
+    // tiene esa forma. Sólo se sirve cuando el test las declara, para no cambiar
+    // el 404 que ven los demás specs.
+    if (analysisMoves.length > 0 && path.endsWith('/analyze-move') && method === 'POST') {
+      const move = analysisMoves[analysisIndex++];
+      return move ? json(move) : json({ detail: 'E2E sin jugada de análisis preparada' }, 503);
+    }
     if (path.endsWith('/analyze') && method === 'POST') {
       const move = analysisMoves[analysisIndex++];
       return move ? json(move) : json({ detail: 'E2E sin jugada de análisis preparada' }, 503);
@@ -598,6 +639,12 @@ export async function clickBoardMove(page, from, to, scope = page) {
   const fromSquare = scope.getByRole('button', { name: new RegExp(`^Casilla ${from},`) });
   const toSquare = scope.getByRole('button', { name: new RegExp(`^Casilla ${to},`) });
 
+  // Justo tras «Empezar partida» el tablero puede no haber montado aún. Sin esta
+  // espera, ninguna rama veía un renderizador y la función volvía sin jugar
+  // (#34 · GP-7: «postpartida → error factual → puzzle exacto» nunca llegaba al mate).
+  const renderer = scope === page ? fromSquare.or(page.locator('[data-board3d-war-room="true"]')) : fromSquare;
+  await expect(renderer.first()).toBeVisible();
+
   if (await fromSquare.isVisible().catch(() => false)) {
     await fromSquare.click();
     await expect(toSquare).toBeVisible();
@@ -774,62 +821,3 @@ export async function openSpectator(page) {
   await expect(page.getByRole('button', { name: 'Empezar partida', exact: true })).toBeVisible();
 }
 
-export async function openBoard3D(page) {
-  await page.getByRole('button', { name: 'Abrir menú de cuenta' }).click();
-  await page.getByRole('menuitem').filter({ hasText: 'Personalizar' }).click();
-  const settings = page.getByRole('dialog', { name: 'Ajustes' });
-  await expect(settings).toBeVisible();
-  await settings.getByRole('button', { name: 'Abrir', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Empezar', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Empezar', exact: true }).click();
-  await expect(page.locator('.board3d-canvas canvas')).toBeVisible();
-}
-
-export async function clickBoard3DSquare(page, square) {
-  const canvas = page.locator('.board3d-canvas canvas');
-  await expect(canvas).toBeVisible();
-  await canvas.evaluate((node, targetSquare) => {
-    const rect = node.getBoundingClientRect();
-    const fileIndex = targetSquare.charCodeAt(0) - 97;
-    const rank = Number(targetSquare[1]);
-    const point = [fileIndex - 3.5, 0.03, 4.5 - rank];
-    const camera = [0, 7.5, 7];
-    const forwardRaw = [0, -7.5, -7];
-    const norm = (v) => {
-      const length = Math.hypot(...v);
-      return v.map((value) => value / length);
-    };
-    const cross = (a, b) => [
-      a[1] * b[2] - a[2] * b[1],
-      a[2] * b[0] - a[0] * b[2],
-      a[0] * b[1] - a[1] * b[0],
-    ];
-    const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-    const forward = norm(forwardRaw);
-    const right = norm(cross(forward, [0, 1, 0]));
-    const up = cross(right, forward);
-    const relative = point.map((value, index) => value - camera[index]);
-    const depth = dot(relative, forward);
-    const tanHalfFov = Math.tan((45 * Math.PI / 180) / 2);
-    const aspect = rect.width / rect.height;
-    const ndcX = dot(relative, right) / (depth * tanHalfFov * aspect);
-    const ndcY = dot(relative, up) / (depth * tanHalfFov);
-    const clientX = rect.left + ((ndcX + 1) / 2) * rect.width;
-    const clientY = rect.top + ((1 - ndcY) / 2) * rect.height;
-    node.dispatchEvent(new PointerEvent('pointerdown', {
-      bubbles: true,
-      cancelable: true,
-      pointerId: 1,
-      pointerType: 'mouse',
-      clientX,
-      clientY,
-      button: 0,
-      buttons: 1,
-    }));
-  }, square);
-}
-
-export async function clickBoard3DMove(page, from, to) {
-  await clickBoard3DSquare(page, from);
-  await clickBoard3DSquare(page, to);
-}

@@ -48,6 +48,47 @@ test('Partida rápida · una partida activa sobrevive a reload/deploy y vuelve a
   await expect(buttonWithVisibleText(page, 'Partida rápida')).toHaveCount(0);
 });
 
+
+test('Partida rápida · Back del navegador conserva la misma partida activa', async ({ page }) => {
+  await mockApi(page);
+  await login(page);
+
+  await buttonWithVisibleText(page, 'Partida rápida').click();
+  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  await expect(gameTurn(page)).toBeVisible();
+
+  const activeGameId = async () => page.evaluate((sessionKey) => {
+    const raw = window.localStorage.getItem(sessionKey);
+    if (!raw) return null;
+    try { return JSON.parse(raw)?.gameId || null; } catch { return null; }
+  }, ACTIVE_GAME_SESSION_KEY);
+
+  const originalUrl = page.url();
+  const beforeGameId = await expect.poll(activeGameId, {
+    message: 'la partida activa debe estar persistida antes de Back',
+    timeout: 5_000,
+  }).not.toBeNull().then(async () => activeGameId());
+
+  await page.evaluate(() => window.history.back());
+  await page.waitForTimeout(350);
+
+  // En navegador/PWA Back puede cerrar la superficie actual o salir del
+  // documento. Ninguno de los dos gestos equivale a abandonar/rendirse.
+  if (page.url() !== originalUrl) {
+    await page.goto(originalUrl, { waitUntil: 'domcontentloaded' });
+  }
+
+  const continueButton = buttonWithVisibleText(page, 'Continuar partida');
+  if (await continueButton.isVisible().catch(() => false)) await continueButton.click();
+
+  await expect(gameTurn(page)).toBeVisible({ timeout: 20_000 });
+  await expect.poll(activeGameId, {
+    message: 'Back debe recuperar exactamente la misma partida, no crear otra',
+    timeout: 5_000,
+  }).toBe(beforeGameId);
+});
+
+
 test('Torneo · una partida activa sobrevive a reload y no vuelve al menú', async ({ page }) => {
   await mockApi(page);
   await login(page);
