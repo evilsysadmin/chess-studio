@@ -13,6 +13,8 @@ const VISIBLE_SCREEN = /^(?:onscreen|edge|offscreen)$/;
 const MAX_GROUND_GAP = 0.02;
 const SAMPLE_MS = 400;
 const OBSERVE_MS = 6_000;
+const MOUNT_BUDGET_MS = 90_000;
+const ROUTINE_START_BUDGET_MS = 90_000;
 const SERVICE_EVENTS = new Set(['water-plant', 'espresso']);
 const CHORE_EVENTS = new Set(WAR_ROOM_HANS_CHORE_EVENTS);
 const REQUESTED_EVENTS = String(process.env.HANS_ROUTINE_EVENTS || '')
@@ -85,6 +87,11 @@ async function waitForRoutineStart(page, canvas, eventName) {
     return;
   }
 
+  // Give SwiftShader its own mount budget before starting the routine clock.
+  // Otherwise a slow Home/War Room bootstrap consumes most of the route budget
+  // and reports a choreography failure even when Hans has not started yet.
+  await expect(canvas).toHaveAttribute('data-war-room-hans-scene-ready', 'true', { timeout: MOUNT_BUDGET_MS });
+
   const route = expectedRoute(eventName);
   await expect.poll(
     () => page.evaluate((expected) => {
@@ -94,7 +101,7 @@ async function waitForRoutineStart(page, canvas, eventName) {
       return node.dataset.warRoomHansRoute === expected
         && (screen === 'onscreen' || screen === 'edge' || screen === 'offscreen');
     }, route),
-    { timeout: 75_000, intervals: [100, 100, 200, 300, 500] },
+    { timeout: ROUTINE_START_BUDGET_MS, intervals: [100, 100, 200, 300, 500] },
   ).toBe(true);
 }
 
@@ -151,109 +158,131 @@ async function sampleRoutine(page, canvas, eventName) {
 
 for (const eventName of CAPTURE_EVENTS) {
   test(`War Room · Hans routine video · ${eventName}`, async () => {
-    test.setTimeout(180_000);
+    // One failed SwiftShader bootstrap may retry with a fresh browser. Once the
+    // 3D board mounts, every Hans route/choreography assertion remains fail-closed.
+    test.setTimeout(480_000);
     await mkdir(ARTIFACT_DIR, { recursive: true });
     await mkdir(TEMP_VIDEO_DIR, { recursive: true });
 
     const emulateSupportedGpu = eventName !== 'fire';
-    const browser = await chromium.launch({
-      headless: true,
-      args: [
-        '--use-gl=angle',
-        '--use-angle=swiftshader',
-        '--enable-unsafe-swiftshader',
-      ],
-    });
-    const context = await browser.newContext({
-      viewport: { width: 1280, height: 720 },
-      hasTouch: false,
-      recordVideo: {
-        dir: TEMP_VIDEO_DIR,
-        size: { width: 640, height: 400 },
-      },
-    });
-    await context.addInitScript(({ emulateGpu }) => {
-      Object.defineProperty(navigator, 'hardwareConcurrency', {
-        configurable: true,
-        get: () => 8,
+    let lastBootstrapError = null;
+
+    for (let bootstrapAttempt = 1; bootstrapAttempt <= 2; bootstrapAttempt += 1) {
+      const browser = await chromium.launch({
+        headless: true,
+        args: [
+          '--use-gl=angle',
+          '--use-angle=swiftshader',
+          '--enable-unsafe-swiftshader',
+        ],
       });
-      if (!emulateGpu) Math.random = () => 0.25;
-
-      if (!emulateGpu) return;
-      globalThis.__CHESS_E2E_HANS_AMBIENT_AUDIT__ = true;
-      const rendererName = 'ANGLE (NVIDIA GeForce RTX 3060 Direct3D11)';
-      for (const constructorName of ['WebGLRenderingContext', 'WebGL2RenderingContext']) {
-        const prototype = globalThis[constructorName]?.prototype;
-        const originalGetParameter = prototype?.getParameter;
-        if (typeof originalGetParameter !== 'function') continue;
-        Object.defineProperty(prototype, 'getParameter', {
-          configurable: true,
-          writable: true,
-          value(parameter) {
-            if (parameter === 0x9246 || parameter === 0x1F01) return rendererName;
-            return originalGetParameter.call(this, parameter);
-          },
-        });
-      }
-    }, { emulateGpu: emulateSupportedGpu });
-
-    const page = await context.newPage();
-    const video = page.video();
-    const videoPath = `${ARTIFACT_DIR}/${eventName}.webm`;
-    try {
-      await page.emulateMedia({ reducedMotion: 'no-preference' });
-      await mockApi(page, {
-        profileSeed: {
-          'matthias.onboarded': '2',
-          'chess-study-home-guide-dismissed-v1': '1',
+      const context = await browser.newContext({
+        viewport: { width: 1280, height: 720 },
+        hasTouch: false,
+        recordVideo: {
+          dir: TEMP_VIDEO_DIR,
+          size: { width: 640, height: 400 },
         },
       });
-      await login(page);
-    await page.evaluate(() => {
-      localStorage.setItem('chess-study-war-room-variant-v1', 'classic');
-    });
-      await seedGamesBeforeEvent(page, eventName);
+      await context.addInitScript(({ emulateGpu }) => {
+        Object.defineProperty(navigator, 'hardwareConcurrency', {
+          configurable: true,
+          get: () => 8,
+        });
+        if (!emulateGpu) Math.random = () => 0.25;
 
-      await buttonWithVisibleText(page, 'Partida rápida').click();
-      const quickDialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
-      await expect(quickDialog).toBeVisible();
-      await quickDialog.getByRole('button', { name: 'Empezar partida', exact: true }).click();
-      await expect(page.locator('.board-live-row.is-3d-warroom')).toBeVisible({ timeout: 45_000 });
+        if (!emulateGpu) return;
+        globalThis.__CHESS_E2E_HANS_AMBIENT_AUDIT__ = true;
+        const rendererName = 'ANGLE (NVIDIA GeForce RTX 3060 Direct3D11)';
+        for (const constructorName of ['WebGLRenderingContext', 'WebGL2RenderingContext']) {
+          const prototype = globalThis[constructorName]?.prototype;
+          const originalGetParameter = prototype?.getParameter;
+          if (typeof originalGetParameter !== 'function') continue;
+          Object.defineProperty(prototype, 'getParameter', {
+            configurable: true,
+            writable: true,
+            value(parameter) {
+              if (parameter === 0x9246 || parameter === 0x1F01) return rendererName;
+              return originalGetParameter.call(this, parameter);
+            },
+          });
+        }
+      }, { emulateGpu: emulateSupportedGpu });
 
-      const canvas = page.locator('.board3d-main-canvas');
-      await expect(canvas).toBeVisible({ timeout: 45_000 });
-      await expect(canvas).toHaveAttribute('data-war-room-variant', 'classic', { timeout: 10_000 });
-      await expect(page.locator('[data-war-room-hans-game-id]').first()).toHaveAttribute(
-        'data-war-room-hans-game-id',
-        expectedGameId(eventName),
-        { timeout: 10_000 },
-      );
-      await expect(canvas).toHaveAttribute(
-        'data-board3d-renderer-class',
-        emulateSupportedGpu ? 'NVIDIA' : 'SOFTWARE',
-        { timeout: 10_000 },
-      );
-      await expect(canvas).toHaveAttribute(
-        'data-board3d-scene-tier',
-        emulateSupportedGpu ? 'full' : 'lite',
-        { timeout: 10_000 },
-      );
-      await waitForRoutineStart(page, canvas, eventName);
+      const page = await context.newPage();
+      const video = page.video();
+      const videoPath = `${ARTIFACT_DIR}/${eventName}.webm`;
+      let mounted = false;
+      try {
+        await page.emulateMedia({ reducedMotion: 'no-preference' });
+        await mockApi(page, {
+          profileSeed: {
+            'matthias.onboarded': '2',
+            'chess-study-home-guide-dismissed-v1': '1',
+          },
+        });
+        await login(page);
+        await page.evaluate(() => {
+          localStorage.setItem('chess-study-war-room-variant-v1', 'classic');
+        });
+        await seedGamesBeforeEvent(page, eventName);
 
-      const manifest = await sampleRoutine(page, canvas, eventName);
-      manifest.rendererClass = emulateSupportedGpu ? 'NVIDIA-emulated-on-SwiftShader' : 'SOFTWARE';
-      manifest.sceneTier = emulateSupportedGpu ? 'full' : 'lite';
-      await captureViewportPng(context, page, `${ARTIFACT_DIR}/${eventName}.png`);
-      await writeFile(
-        `${ARTIFACT_DIR}/${eventName}.json`,
-        `${JSON.stringify(manifest, null, 2)}\n`,
-        'utf8',
-      );
-    } finally {
-      await page.close().catch(() => {});
-      if (video) await video.saveAs(videoPath).catch(() => {});
-      await context.close().catch(() => {});
-      await browser.close().catch(() => {});
+        // SwiftShader can leave the animated Home unstable for Playwright's click
+        // actionability checks. Keyboard activation is the same user-facing CTA
+        // and does not wait for the castle to become pixel-still.
+        await buttonWithVisibleText(page, 'Partida rápida').press('Enter');
+        const quickDialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
+        await expect(quickDialog).toBeVisible();
+        await quickDialog.getByRole('button', { name: 'Empezar partida', exact: true }).press('Enter');
+
+        const warRoom = page.locator('.board-live-row.is-3d-warroom');
+        const canvas = page.locator('.board3d-main-canvas');
+        await expect(warRoom).toBeVisible({ timeout: MOUNT_BUDGET_MS });
+        await expect(canvas).toBeVisible({ timeout: MOUNT_BUDGET_MS });
+        mounted = true;
+
+        await expect(canvas).toHaveAttribute('data-war-room-variant', 'classic', { timeout: 10_000 });
+        await expect(page.locator('[data-war-room-hans-game-id]').first()).toHaveAttribute(
+          'data-war-room-hans-game-id',
+          expectedGameId(eventName),
+          { timeout: 10_000 },
+        );
+        await expect(canvas).toHaveAttribute(
+          'data-board3d-renderer-class',
+          emulateSupportedGpu ? 'NVIDIA' : 'SOFTWARE',
+          { timeout: 10_000 },
+        );
+        await expect(canvas).toHaveAttribute(
+          'data-board3d-scene-tier',
+          emulateSupportedGpu ? 'full' : 'lite',
+          { timeout: 10_000 },
+        );
+        await waitForRoutineStart(page, canvas, eventName);
+
+        const manifest = await sampleRoutine(page, canvas, eventName);
+        manifest.rendererClass = emulateSupportedGpu ? 'NVIDIA-emulated-on-SwiftShader' : 'SOFTWARE';
+        manifest.sceneTier = emulateSupportedGpu ? 'full' : 'lite';
+        await captureViewportPng(context, page, `${ARTIFACT_DIR}/${eventName}.png`);
+        await writeFile(
+          `${ARTIFACT_DIR}/${eventName}.json`,
+          `${JSON.stringify(manifest, null, 2)}\n`,
+          'utf8',
+        );
+        return;
+      } catch (error) {
+        if (!mounted && bootstrapAttempt < 2) {
+          lastBootstrapError = error;
+          continue;
+        }
+        throw error;
+      } finally {
+        await page.close().catch(() => {});
+        if (video && (mounted || bootstrapAttempt === 2)) await video.saveAs(videoPath).catch(() => {});
+        await context.close().catch(() => {});
+        await browser.close().catch(() => {});
+      }
     }
+
+    throw lastBootstrapError || new Error(`Hans routine ${eventName}: War Room bootstrap failed twice`);
   });
 }
