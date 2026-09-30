@@ -391,9 +391,10 @@ rollback() {
 
   if [[ -n "${previous_color:-}" ]]; then
     render_edge "$previous_color"
-    if [[ "${switch_complete:-0}" == "1" ]]; then
-      reload_edge || true
-    fi
+    # Safe both before and after the attempted switch: if edge is still on the
+    # old config this is a no-op; if reload partially succeeded, this actively
+    # restores the previous upstream.
+    reload_edge || true
     write_active_color "$previous_color"
     if [[ -n "$previous_sha" ]]; then
       record_successful_backend "$previous_sha"
