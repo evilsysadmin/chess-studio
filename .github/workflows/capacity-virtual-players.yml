@@ -7,14 +7,12 @@ on:
     paths:
       - 'backend-python/main.py'
       - 'backend-python/test_main.py'
-      - 'scripts/production_capacity_probe.py'
       - 'scripts/virtual_player_capacity_probe.py'
       - '.github/workflows/capacity-virtual-players.yml'
   push:
     branches: [main]
     paths:
       - 'backend-python/main.py'
-      - 'scripts/production_capacity_probe.py'
       - 'scripts/virtual_player_capacity_probe.py'
       - '.github/workflows/capacity-virtual-players.yml'
 
