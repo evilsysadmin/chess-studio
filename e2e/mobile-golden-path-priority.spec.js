@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { buttonWithVisibleText, clickBoardMove, login, mockApi } from './helpers.js';
+import { readBoard3DProjection } from './board3d-projection.js';
 
 for (const viewport of [
   { width: 360, height: 800 },
@@ -281,4 +282,66 @@ test.describe('Mobile golden path · entrenar el error real en un toque', () => 
     await expect(page.getByText(/Aquí jugaste g4 y perdiste/)).toBeVisible();
     await expect(page.getByRole('button', { name: /Tus errores/ })).toBeVisible();
   });
+});
+
+// GP-7 (#34): en el entrenamiento personal el tablero manda. Con la cámara real,
+// ocupa ≥85 % del ancho, las 64 casillas caben en el canvas y todo el tablero
+// queda sobre el pliegue incluso con la barra del navegador (412x690).
+test.describe('Mobile golden path · entrenar el error con el tablero mandando', () => {
+  test.use({ isMobile: true, hasTouch: true });
+
+  const base = {
+    kind: 'personal',
+    source: 'autopsy',
+    description: 'Caso real de horquilla.',
+    fen: '6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1',
+    solution: ['Ra8#'],
+    incidentKeys: ['cpu:KNIGHT_FORK'],
+  };
+  // Un patrón necesita al menos dos posiciones reales: una pendiente y dos ya
+  // entrenadas (misma forma que learning-golden-path).
+  const TRAINING_SEED = JSON.stringify([
+    { ...base, id: 'gp7-fork-pending', title: 'Horquilla pendiente GP-7', sourceGameId: 'gp7-3', loss: 330, createdAt: '2026-09-12T10:00:00Z', attempts: 0, solves: 0, cleanSolves: 0 },
+    { ...base, id: 'gp7-fork-clean-2', title: 'Horquilla GP-7 dos', sourceGameId: 'gp7-2', loss: 260, createdAt: '2026-09-10T10:00:00Z', attempts: 1, solves: 1, cleanSolves: 1, masteredAt: '2026-09-10T10:05:00Z' },
+    { ...base, id: 'gp7-fork-clean-1', title: 'Horquilla GP-7 uno', sourceGameId: 'gp7-1', loss: 210, createdAt: '2026-09-08T10:00:00Z', attempts: 1, solves: 1, cleanSolves: 1, masteredAt: '2026-09-08T10:05:00Z' },
+  ]);
+
+  for (const viewport of [
+    { width: 390, height: 844 },
+    { width: 412, height: 690 },
+  ]) {
+    test(`tablero del entrenamiento sobre el pliegue en ${viewport.width}x${viewport.height}`, async ({ page }) => {
+      test.setTimeout(90_000);
+      await page.setViewportSize(viewport);
+      await mockApi(page, {
+        profileSeed: {
+          'matthias.onboarded': '2',
+          'chess-study-home-guide-dismissed-v1': '1',
+          'chess-study-personal-puzzles': TRAINING_SEED,
+        },
+      });
+      await login(page);
+      const corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
+      await corner.getByRole('button', { name: 'Abrir Así juegas con Matthias', exact: true }).click();
+      await page.getByRole('tab', { name: /Errores/ }).click();
+      // «Así juegas → Errores» en móvil: la pastilla de recuento no se estira.
+      const count = page.locator('.insights-recurring-errors-heading > strong');
+      await expect(count).toBeVisible();
+      const countBox = await count.boundingBox();
+      expect(countBox.height, 'pattern count pill keeps pill height').toBeLessThanOrEqual(36);
+      await page.getByRole('button', { name: 'Entrenar este patrón →', exact: true }).click();
+      await expect(page.getByRole('heading', { name: 'Horquilla pendiente GP-7', exact: true })).toBeVisible();
+
+      const canvas = page.locator('.board3d-main-canvas');
+      await expect(canvas).toBeVisible({ timeout: 30_000 });
+      const { board, rect } = await readBoard3DProjection(canvas);
+      expect(board.width / viewport.width, 'training board owns >=85% of the width').toBeGreaterThanOrEqual(0.85);
+      expect(board.x, 'board inside canvas (left)').toBeGreaterThanOrEqual(rect.x - 1);
+      expect(board.x + board.width, 'board inside canvas (right)').toBeLessThanOrEqual(rect.x + rect.width + 1);
+      expect(board.y, 'board inside canvas (top)').toBeGreaterThanOrEqual(rect.y - 1);
+      expect(board.y + board.height, 'board inside canvas (bottom)').toBeLessThanOrEqual(rect.y + rect.height + 1);
+      expect(board.y + board.height, 'whole board above the fold').toBeLessThanOrEqual(viewport.height);
+      await expect(page.locator('.navigation-back-hint')).toBeHidden();
+    });
+  }
 });
