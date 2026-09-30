@@ -75,15 +75,11 @@ jobs:
 
       - name: Wait for exact staging backend generation
         shell: bash
-        env:
-          PR_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
         run: |
           set -euo pipefail
-          if [[ "$PR_BASE_SHA" =~ ^[0-9a-f]{40}$ ]]; then
-            target_sha="$PR_BASE_SHA"
-          else
-            target_sha="$(git ls-remote origin refs/heads/main | awk 'NR==1 {print $1}')"
-          fi
+          # Snapshot current main when the measurement starts. A PR base SHA can
+          # become permanently unreachable in staging after main advances.
+          target_sha="$(git ls-remote origin refs/heads/main | awk 'NR==1 {print $1}')"
           [[ "$target_sha" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::unable to resolve capacity target SHA"; exit 1; }
           echo "CAPACITY_TARGET_SHA=$target_sha" >> "$GITHUB_ENV"
           for attempt in $(seq 1 40); do
