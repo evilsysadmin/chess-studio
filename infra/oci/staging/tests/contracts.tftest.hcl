@@ -213,8 +213,8 @@ run "runtime_config_channel_is_private_and_least_privilege" {
   }
 
   assert {
-    condition     = length(oci_identity_policy.staging_runtime_config.statements) == 3
-    error_message = "Runtime IAM should contain only Object Storage read, self-scoped Run Command and read-only Vault permissions."
+    condition     = length(oci_identity_policy.staging_runtime_config.statements) == 4
+    error_message = "Runtime IAM should contain only runtime Object Storage read, self-scoped Run Command, read-only Vault and backup-object access."
   }
 
   assert {
@@ -240,6 +240,21 @@ run "runtime_config_channel_is_private_and_least_privilege" {
   assert {
     condition     = strcontains(oci_identity_policy.staging_runtime_config.statements[2], "to read secret-bundles")
     error_message = "Staging instances need read-only Vault bundle access now that OCI Secrets is the active runtime source."
+  }
+
+  assert {
+    condition     = oci_objectstorage_bucket.production_backups.access_type == "NoPublicAccess"
+    error_message = "Production backups must never be publicly readable."
+  }
+
+  assert {
+    condition     = oci_objectstorage_bucket.production_backups.versioning == "Enabled"
+    error_message = "Off-host production backups must preserve object versions."
+  }
+
+  assert {
+    condition     = strcontains(oci_identity_policy.staging_runtime_config.statements[3], "to manage objects") && strcontains(oci_identity_policy.staging_runtime_config.statements[3], "target.bucket.name='chess-studio-production-backups'")
+    error_message = "The A1 may manage backup objects only in the dedicated production-backup bucket."
   }
 
   assert {
