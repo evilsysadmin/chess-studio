@@ -242,7 +242,8 @@ assert " k3s=%s" not in deploy
 # existing tunnel. Any probe failure must retain the full connector self-heal.
 assert "public_tunnel_attest" in deploy
 assert 'Cache-Control: no-cache' in deploy
-assert 'if ! /bin/bash "$tunnel_connector"; then' in deploy
+assert '/bin/bash "$tunnel_connector"' in deploy
+assert 'public_tunnel_attest "$sha"' in deploy
 assert 'tunnel_action="restarted"' in deploy
 
 # Deploy timing markers are observational only: they expose where time is spent
