@@ -20,6 +20,7 @@ import {
   hansMopDialoguePhase,
   hansMopFatigueMs,
   hansMopPatchMs,
+  hansMopReachableWaypointIndex,
   hansMopTravelStep,
   shouldHansMopDialogue,
 } from './WarRoomHansMopContract.js';
@@ -187,6 +188,17 @@ export function installWarRoomHansMopRoutine(root) {
     return travelRoute.length > 0;
   }
 
+  function prepareReachableWaypoint(startIndex) {
+    const reachableIndex = hansMopReachableWaypointIndex(
+      waypoints.length,
+      startIndex,
+      (candidateIndex) => prepareTravelRoute(waypoints[candidateIndex]),
+    );
+    if (reachableIndex < 0) return false;
+    waypointIndex = reachableIndex;
+    return true;
+  }
+
   floor.onBeforeRender = (...args) => {
     previous?.(...args);
     const now = typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now();
@@ -253,8 +265,8 @@ export function installWarRoomHansMopRoutine(root) {
         completedGameId = gameId;
         return;
       }
-      waypointIndex = Math.floor(Math.random() * waypoints.length);
-      if (!prepareTravelRoute(waypoints[waypointIndex])) {
+      const requestedWaypointIndex = Math.floor(Math.random() * waypoints.length);
+      if (!prepareReachableWaypoint(requestedWaypointIndex)) {
         clearRoutineState(actor, props, controller, root, runtime);
         active = false;
         completedGameId = gameId;
@@ -341,8 +353,8 @@ export function installWarRoomHansMopRoutine(root) {
           state = 'returning';
           setWarRoomHansTaskPhase(runtime, 'returning');
         } else {
-          waypointIndex = (waypointIndex + 1 + Math.floor(Math.random() * 3)) % waypoints.length;
-          if (!prepareTravelRoute(waypoints[waypointIndex])) {
+          const requestedWaypointIndex = (waypointIndex + 1 + Math.floor(Math.random() * 3)) % waypoints.length;
+          if (!prepareReachableWaypoint(requestedWaypointIndex)) {
             clearRoutineState(actor, props, controller, root, runtime);
             active = false;
             completedGameId = gameId;
