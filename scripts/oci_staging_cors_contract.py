@@ -247,9 +247,9 @@ assert 'tunnel_action="restarted"' in deploy
 
 # Deploy timing markers are observational only: they expose where time is spent
 # without weakening or bypassing any readiness/integrity gate.
-for phase in ("checkout", "preflight", "image_pull", "recreate", "readiness", "tunnel", "total"):
+for phase in ("checkout", "preflight", "image_pull", "recreate", "readiness", "switch", "tunnel", "drain", "total"):
     assert f"phase_done {phase}" in deploy
-assert "OCI_DEPLOY_TIMINGS target=%s phases=%s tunnel=%s" in deploy
+assert "OCI_DEPLOY_TIMINGS target=%s phases=%s tunnel=%s color=%s" in deploy
 assert 'if [[ "$target" == staging ]]; then' in deploy
 assert 'tunnel_action="local-only"' in deploy
 assert 'CHESS_STUDIO_DEPLOY_OK target=$target repo_ref=$sha' in deploy
@@ -258,8 +258,22 @@ assert 'install -o root -g root -m 0755 "$source_runtime_installer" "$target_run
 assert 'source_runtime_installer="$repo/scripts/oci_runtime_install.sh"' in deploy
 assert '/bin/bash "$tunnel_connector" --self-test >/dev/null' in deploy
 assert 'docker pull --quiet "$target_image" >/dev/null' in deploy
-assert 'compose "$sha" up -d --no-build --force-recreate backend >"$compose_log" 2>&1' in deploy
-assert 'cat "$compose_log" >&2' in deploy
+assert 'candidate_service="$(slot_service "$candidate_color")"' in deploy
+assert 'candidate_port="$(slot_port "$candidate_color")"' in deploy
+assert 'compose "$sha" up -d --no-build --force-recreate "$candidate_service"' in deploy
+assert 'if attest "$sha" "$candidate_port"; then' in deploy
+assert 'render_edge "$candidate_color"' in deploy
+assert 'reload_edge' in deploy
+assert 'write_active_color "$candidate_color"' in deploy
+assert 'sleep "${CHESS_STUDIO_BLUE_GREEN_DRAIN_SECONDS:-35}"' in deploy
+assert 'remove_service "$(slot_service "$previous_color")"' in deploy
+assert 'docker rm -f "$legacy_id"' in deploy
+assert 'compose "$sha" up -d --no-build edge' in deploy
+assert 'backend_blue:' in compose and 'backend_green:' in compose and 'edge:' in compose
+assert '127.0.0.1:${CHESS_STUDIO_BLUE_PORT:-4001}:4000' in compose
+assert '127.0.0.1:${CHESS_STUDIO_GREEN_PORT:-4002}:4000' in compose
+assert '127.0.0.1:${CHESS_STUDIO_BACKEND_PORT:-4000}:8080' in compose
+assert 'nginx:1.27.5-alpine' in compose
 assert "OCI_DEPLOY_PHASE name=%s duration_ms=%s" not in deploy
 assert 'docker pull --quiet "$target_image"' in deploy
 
@@ -297,7 +311,8 @@ assert "WantedBy=timers.target" in signal_timer
 # Active fast-path is outbound-only on the existing A1. It adds no OCI
 # resource/listener and the existing Run Command path remains the fallback.
 # The watcher already suppresses same-SHA repeats; an explicit deploy must
-# recreate the backend so a newly installed runtime is actually consumed.
+# recreate only the inactive blue/green slot so a newly installed runtime is
+# consumed without dropping the active listener.
 assert "require flock" in deploy
 assert 'flock -w 120 8' in deploy
 assert "OCI_DEPLOY_ALREADY_CURRENT" not in deploy
