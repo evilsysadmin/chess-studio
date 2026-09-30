@@ -21,20 +21,3 @@ export function resolveBoardTap(start, end, { coarsePointer = false } = {}) {
     ? { x: Number(start.x), y: Number(start.y) }
     : { x: Number(end.x), y: Number(end.y) };
 }
-
-
-export function selectBoardSquareOnTouch({
-  event,
-  canvas,
-  squareFromPointer,
-  setFocusedSquare,
-  onSquareClick,
-}) {
-  if (canvas?.dataset?.warRoomPinching === 'true') return false;
-  const square = squareFromPointer(event);
-  if (canvas?.dataset) canvas.dataset.warRoomLastSquare = square || '';
-  if (!square) return false;
-  setFocusedSquare(square);
-  onSquareClick?.(square);
-  return true;
-}
