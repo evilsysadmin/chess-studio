@@ -13,6 +13,7 @@ export const WAR_ROOM_VARIANT_PREFERENCES = Object.freeze([
   Object.freeze({ id: 'classic', label: 'War Room v1' }),
   Object.freeze({ id: 'v2', label: 'War Room v2' }),
   Object.freeze({ id: 'v3', label: 'War Room v3' }),
+  Object.freeze({ id: 'v4', label: 'War Room v4' }),
 ]);
 export const WAR_ROOM_VARIANTS = Object.freeze([
   Object.freeze({ id: 'classic', label: 'War Room v1', shell: 'procedural' }),
@@ -29,6 +30,16 @@ export const WAR_ROOM_VARIANTS = Object.freeze([
     shell: 'blender',
     runtimeModelUrl: 'https://assets.chess-studio.shadowops.dpdns.org/war-room/v3/runtime/current.glb',
     loadInstaller: () => import('./WarRoomV3Shell.js').then(({ installWarRoomV3Shell }) => installWarRoomV3Shell),
+  }),
+  Object.freeze({
+    id: 'v4',
+    label: 'War Room v4',
+    shell: 'blender',
+    // Selectable explicitly while it is validated on device; never drawn by
+    // the «Aleatoria» preference until it graduates.
+    randomPool: false,
+    runtimeModelUrl: 'https://assets.chess-studio.shadowops.dpdns.org/war-room/v4/runtime/current.glb',
+    loadInstaller: () => import('./WarRoomV4Shell.js').then(({ installWarRoomV4Shell }) => installWarRoomV4Shell),
   }),
 ]);
 
@@ -83,7 +94,7 @@ export function saveWarRoomVariantPreference(value, options = {}) {
 export function resolveWarRoomVariantPreference(value, { random = Math.random } = {}) {
   const normalized = normalizeWarRoomVariantPreference(value);
   if (normalized !== 'random') return normalizeWarRoomVariant(normalized);
-  const variants = WAR_ROOM_VARIANTS.map(({ id }) => id);
+  const variants = WAR_ROOM_VARIANTS.filter(({ randomPool }) => randomPool !== false).map(({ id }) => id);
   const sample = Math.max(0, Math.min(0.999999, Number(random?.()) || 0));
   return variants[Math.floor(sample * variants.length)] || DEFAULT_WAR_ROOM_VARIANT;
 }

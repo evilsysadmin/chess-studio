@@ -51,7 +51,7 @@ describe('War Room staging variant', () => {
   it('uses a profile-backed random preference by default', () => {
     const options = { env: { VITE_WAR_ROOM_VARIANTS_ENABLE: '1' }, location: { hostname: 'chess-studio.shadowops.dpdns.org' } };
     expect(DEFAULT_WAR_ROOM_VARIANT_PREFERENCE).toBe('random');
-    expect(WAR_ROOM_VARIANT_PREFERENCES.map(({ id }) => id)).toEqual(['random', 'classic', 'v2', 'v3']);
+    expect(WAR_ROOM_VARIANT_PREFERENCES.map(({ id }) => id)).toEqual(['random', 'classic', 'v2', 'v3', 'v4']);
     expect(loadWarRoomVariantPreference(options)).toBe('random');
 
     expect(saveWarRoomVariantPreference('v3', options)).toBe('v3');
@@ -63,6 +63,11 @@ describe('War Room staging variant', () => {
     expect(resolveWarRoomVariantPreference('random', { random: () => 0 })).toBe('classic');
     expect(resolveWarRoomVariantPreference('random', { random: () => 0.34 })).toBe('v2');
     expect(resolveWarRoomVariantPreference('random', { random: () => 0.99 })).toBe('v3');
+    // v4 is explicit-only while it is validated on device.
+    for (const sample of [0, 0.25, 0.5, 0.75, 0.999]) {
+      expect(resolveWarRoomVariantPreference('random', { random: () => sample })).not.toBe('v4');
+    }
+    expect(resolveWarRoomVariantPreference('v4')).toBe('v4');
     expect(resolveWarRoomVariantPreference('v2', { random: () => 0.99 })).toBe('v2');
     expect(normalizeWarRoomVariantPreference('basement')).toBe('random');
   });
@@ -102,7 +107,10 @@ describe('War Room staging variant', () => {
   });
 
   it('keeps shell ownership in the same registry used by the selector', () => {
-    expect(WAR_ROOM_VARIANTS.map(({ id }) => id)).toEqual(['classic', 'v2', 'v3']);
+    expect(WAR_ROOM_VARIANTS.map(({ id }) => id)).toEqual(['classic', 'v2', 'v3', 'v4']);
+    expect(warRoomVariantDefinition('v4').shell).toBe('blender');
+    expect(warRoomVariantRuntimeModelUrl('v4', { buildSha: 'abc123' }))
+      .toBe('https://assets.chess-studio.shadowops.dpdns.org/war-room/v4/runtime/current.glb?build=abc123');
     expect(warRoomVariantDefinition('classic').shell).toBe('procedural');
     expect(warRoomVariantDefinition('v2').shell).toBe('blender');
     expect(warRoomVariantDefinition('v3').shell).toBe('blender');

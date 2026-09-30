@@ -21,19 +21,22 @@ export function warRoomV3FireFrame({
   });
 }
 
+export const WAR_ROOM_V3_FLAME_NAMES = Object.freeze([
+  'WR3_OBS_stove_flame_body',
+  'WR3_OBS_stove_flame_0',
+  'WR3_OBS_stove_flame_1',
+  'WR3_OBS_stove_flame_2',
+]);
+
 export function installWarRoomV3FireAnimation(
   root,
   {
     coarsePointer = false,
     reducedMotion = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches || false,
+    flameNames = WAR_ROOM_V3_FLAME_NAMES,
   } = {},
 ) {
-  const flames = [
-    'WR3_OBS_stove_flame_body',
-    'WR3_OBS_stove_flame_0',
-    'WR3_OBS_stove_flame_1',
-    'WR3_OBS_stove_flame_2',
-  ].map((name) => root?.getObjectByName?.(name)).filter(Boolean);
+  const flames = flameNames.map((name) => root?.getObjectByName?.(name)).filter(Boolean);
   if (!flames.length) return () => {};
 
   const bases = flames.map((flame) => ({

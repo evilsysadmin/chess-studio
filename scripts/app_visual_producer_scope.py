@@ -74,14 +74,17 @@ TRAINING_PROGRESS_MATTHIAS_FILES = {
     "frontend/src/components/matthiascoffeesteam.jsx",
     "frontend/src/components/matthiasdailyconsult.jsx",
 }
-WARROOM_VARIANT_ORDER = ("classic", "v2", "v3")
+WARROOM_VARIANT_ORDER = ("classic", "v2", "v3", "v4")
 WARROOM_PROFILE_SCOPE_ALL = "all"
 WARROOM_PROFILE_SCOPE_MOBILE = "mobile"
 WARROOM_PROFILE_SCOPE_MOBILE_ENTRY = "mobile-entry"
 HOME_PROFILE_SCOPE_ALL = "all"
 HOME_PROFILE_SCOPE_QUICK_MATCH = "quickmatch"
 HOME_PROFILE_SCOPE_MOBILE_TOOLS = "mobile-tools"
-WARROOM_VARIANT_ALL = set(WARROOM_VARIANT_ORDER)
+# v4 is explicit-only while it is validated on device: it is captured when its
+# own shell/art or the shared Blender runtime changes, not on every War Room PR.
+WARROOM_VARIANT_OPT_IN = {"v4"}
+WARROOM_VARIANT_ALL = set(WARROOM_VARIANT_ORDER) - WARROOM_VARIANT_OPT_IN
 WARROOM_CLASSIC_VARIANT_FILES = {
     "frontend/src/components/warroomclassicshell.js",
     "frontend/src/components/premiumwarroomscene.js",
@@ -100,6 +103,9 @@ WARROOM_V3_VARIANT_FILES = {
     "scripts/blender/build_war_room_v3.py",
     "scripts/blender/publish_war_room_v3.py",
     ".github/workflows/war-room-v3-blender-art.yml",
+}
+WARROOM_V4_VARIANT_FILES = {
+    "frontend/src/components/warroomv4shell.js",
 }
 WARROOM_BLENDER_SHARED_VARIANT_FILES = {
     "frontend/src/components/warroomblendershellruntime.js",
@@ -122,6 +128,7 @@ WARROOM_VARIANT_CORE_FILES = {
     "frontend/src/components/warroomv2shell.js",
     "frontend/src/components/warroomv3shell.js",
     "frontend/src/components/warroomv3fire.js",
+    "frontend/src/components/warroomv4shell.js",
     "frontend/src/components/warroomvariant.js",
 }
 HOME_ALL = {"home-base", "home-matthias", "home-focus"}
@@ -416,10 +423,17 @@ def _warroom_variant_ownership(path: str) -> set[str]:
         return {"classic"}
     if lower in WARROOM_V2_VARIANT_FILES:
         return {"v2"}
+    if lower == "frontend/src/components/warroomv3fire.js":
+        # The v3 flicker driver also animates the v4 fireplace.
+        return {"v3", "v4"}
     if lower in WARROOM_V3_VARIANT_FILES:
         return {"v3"}
+    if lower in WARROOM_V4_VARIANT_FILES:
+        return {"v4"}
+    if lower == "frontend/src/components/warroomvariant.js":
+        return set(WARROOM_VARIANT_ALL) | {"v4"}
     if lower in WARROOM_BLENDER_SHARED_VARIANT_FILES:
-        return {"v2", "v3"}
+        return {"v2", "v3", "v4"}
     if lower in WARROOM_SHARED_VARIANT_FILES:
         return set(WARROOM_VARIANT_ALL)
     if any(token in lower for token in ("war-room", "warroom", "board3d", "gameboardview", "gamesidecolumn", "game3d")):
@@ -434,14 +448,14 @@ def classify_warroom_variants(paths: list[str]) -> str:
     variants: set[str] = set()
     for path in cleaned:
         owned = _warroom_variant_ownership(path)
-        if owned == WARROOM_VARIANT_ALL:
-            return _variant_csv(WARROOM_VARIANT_ALL)
         if owned:
+            # Union (not early return) so an opt-in variant touched alongside a
+            # shared file is still captured.
             variants.update(owned)
             continue
         producer_owner = classify_path(path)
         if producer_owner is None or "warroom-core" in producer_owner:
-            return _variant_csv(WARROOM_VARIANT_ALL)
+            variants.update(WARROOM_VARIANT_ALL)
     return _variant_csv(variants or WARROOM_VARIANT_ALL)
 
 def classify_home_profile_scope(paths: list[str]) -> str:
@@ -552,8 +566,15 @@ def self_test() -> None:
     assert classify_warroom_variants(["frontend/src/components/PremiumWarRoomScene.js"]) == "classic"
     assert classify_warroom_variants(["frontend/src/components/WarRoomV2Shell.js"]) == "v2"
     assert classify_warroom_variants(["frontend/src/components/WarRoomV3Shell.js"]) == "v3"
-    assert classify_warroom_variants(["frontend/src/components/WarRoomBlenderShellRuntime.js"]) == "v2,v3"
-    assert classify_warroom_variants(["scripts/blender/build_war_room_premium.py"]) == "v2,v3"
+    assert classify_warroom_variants(["frontend/src/components/WarRoomBlenderShellRuntime.js"]) == "v2,v3,v4"
+    assert classify_warroom_variants(["scripts/blender/build_war_room_premium.py"]) == "v2,v3,v4"
+    assert classify_warroom_variants(["frontend/src/components/WarRoomV4Shell.js"]) == "v4"
+    assert classify_warroom_variants(["frontend/src/components/WarRoomV3Fire.js"]) == "v3,v4"
+    assert classify_warroom_variants(["frontend/src/components/WarRoomVariant.js"]) == "classic,v2,v3,v4"
+    assert classify_warroom_variants([
+        "frontend/src/components/Board3DScene.js",
+        "frontend/src/components/WarRoomV4Shell.js",
+    ]) == "classic,v2,v3,v4"
     assert classify_warroom_variants(["frontend/src/components/Board3DScene.js"]) == "classic,v2,v3"
     assert classify_warroom_variants([
         "frontend/src/components/WarRoomClassicShell.js",
