@@ -50,3 +50,48 @@ export function adaptiveRenderScale({ coarsePointer = false, slowFrameCount = 0 
   if (coarsePointer) return slowFrameCount >= 4 ? 0.75 : 1;
   return slowFrameCount >= 4 ? 0.9 : 1.2;
 }
+
+// Interaction/GPU budget contract. Kept in this dependency-free module so the
+// Playwright render-budget ratchet can import it from Node.
+const WAR_ROOM_RENDER_BUDGETS = Object.freeze({
+  desktop: Object.freeze({
+    tier: 'full',
+    pixelRatioCap: 1.2,
+    shadowMapSize: 1024,
+    shadowsEnabled: true,
+    idleFrameIntervalMs: 100,
+    inspectFrameIntervalMs: 16,
+  }),
+  touch: Object.freeze({
+    tier: 'balanced',
+    pixelRatioCap: 1,
+    shadowMapSize: 512,
+    shadowsEnabled: true,
+    idleFrameIntervalMs: 150,
+    // Inspection is a direct-manipulation surface: ~30 FPS felt visibly
+    // stepped on Android even though ambient animation needs far less cadence.
+    // Keep it below desktop 60 FPS, but give drag enough temporal resolution to
+    // feel weighted rather than sticky without changing scene complexity/DPR.
+    inspectFrameIntervalMs: 24,
+  }),
+  software: Object.freeze({
+    tier: 'lite',
+    pixelRatioCap: 1,
+    shadowMapSize: 512,
+    shadowsEnabled: false,
+  }),
+});
+
+export function warRoomRenderBudget({ coarsePointer = false, softwareRenderer = false } = {}) {
+  const interactionBudget = coarsePointer ? WAR_ROOM_RENDER_BUDGETS.touch : WAR_ROOM_RENDER_BUDGETS.desktop;
+  const gpuBudget = softwareRenderer ? WAR_ROOM_RENDER_BUDGETS.software : interactionBudget;
+  return Object.freeze({
+    tier: gpuBudget.tier,
+    lite: Boolean(softwareRenderer),
+    pixelRatioCap: gpuBudget.pixelRatioCap,
+    shadowMapSize: gpuBudget.shadowMapSize,
+    shadowsEnabled: gpuBudget.shadowsEnabled,
+    idleFrameIntervalMs: interactionBudget.idleFrameIntervalMs,
+    inspectFrameIntervalMs: interactionBudget.inspectFrameIntervalMs,
+  });
+}
