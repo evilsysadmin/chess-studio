@@ -9,8 +9,8 @@ import { USER_PREFERENCES_CHANGED_EVENT, getEffectiveReducedMotion } from '../us
 import { adaptiveRenderScale, clamp01, deriveMoveKinetics, easeOutCubic, inferCapturedPiece, reactiveLightProfile, smoothstep } from './WarRoom3DMotion.js';
 import {
   compactWebGLRendererLabel,
-  isSoftwareWebGLRenderer,
   warRoomAmbientFramePlan,
+  warRoomRendererMode,
   warRoomRendererAttempts,
   warRoomSceneProfile,
 } from './WarRoom3DAnimation.js';
@@ -210,21 +210,29 @@ function Board3DCanvas({
     }
 
     let rendererName = ''; let maxTextureSize = null;
-    let softwareRenderer = Boolean(rendererAttempt.liteFallback);
+    let rendererMode = warRoomRendererMode({ liteFallback: rendererAttempt.liteFallback });
     try {
       const gl = renderer.getContext();
       const debugRendererInfo = gl.getExtension?.('WEBGL_debug_renderer_info'); maxTextureSize = gl.getParameter?.(gl.MAX_TEXTURE_SIZE) || null;
       rendererName = debugRendererInfo
         ? gl.getParameter(debugRendererInfo.UNMASKED_RENDERER_WEBGL)
         : gl.getParameter(gl.RENDERER);
-      softwareRenderer = softwareRenderer || isSoftwareWebGLRenderer(rendererName);
+      rendererMode = warRoomRendererMode({
+        rendererLabel: rendererName,
+        liteFallback: rendererAttempt.liteFallback,
+      });
     } catch {
-      // Renderer introspection is optional. Unknown renderers keep the normal
-      // heartbeat unless the permissive fallback path was already required.
+      // Renderer introspection is optional. The permissive fallback keeps its
+      // conservative scene budget without being treated as software rendering.
     }
+    const { softwareRenderer } = rendererMode;
 
     const coarsePointer = Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
-    const sceneProfile = warRoomSceneProfile({ coarsePointer, softwareRenderer, maxTextureSize });
+    const sceneProfile = warRoomSceneProfile({
+      coarsePointer,
+      softwareRenderer: rendererMode.liteBudget,
+      maxTextureSize,
+    });
     const { lite: renderLite } = sceneProfile; const sceneLite = renderLite || (coarsePointer && warRoomMobilePerformance === true);
     const scene = new THREE.Scene(); scene.userData.warRoomHansAwaitCall = latestPropsRef.current.hansFireCallEnabled; scene.userData.warRoomAdaptiveQuality = sceneProfile.adaptiveQuality;
     const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
