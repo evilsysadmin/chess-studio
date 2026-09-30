@@ -417,18 +417,20 @@ def build_armor(index, x, y, static, palette):
     add(base.cube(f"{prefix}_plinth_cap", (x, y, 0.47), (0.50, 0.50, 0.04), palette["flag_dark"], static, bevel=0.02))
     for leg in (-1, 1):
         lx = x + leg * 0.13
-        add(base.cube(f"{prefix}_greave_{leg}", (lx, y, 0.78), (0.085, 0.09, 0.27), palette["steel"], static, bevel=0.05))
+        add(base.cylinder(f"{prefix}_greave_{leg}", (lx, y, 0.78), 0.085, 0.54, palette["steel"], static, vertices=14))
         add(lod_sphere(f"{prefix}_knee_{leg}", (lx, y - 0.05, 1.07), 0.085, palette["steel"], static))
-        add(base.cube(f"{prefix}_cuisse_{leg}", (lx, y, 1.33), (0.095, 0.10, 0.23), palette["steel"], static, bevel=0.05))
+        add(base.cylinder(f"{prefix}_cuisse_{leg}", (lx, y, 1.33), 0.10, 0.46, palette["steel"], static, vertices=14))
         add(base.cube(f"{prefix}_sabaton_{leg}", (lx, y - 0.07, 0.54), (0.08, 0.15, 0.05), palette["steel_dark"], static, bevel=0.03))
-    add(base.cube(f"{prefix}_fauld", (x, y, 1.62), (0.25, 0.15, 0.10), palette["steel"], static, bevel=0.05))
-    add(base.cube(f"{prefix}_breastplate", (x, y - 0.02, 2.00), (0.27, 0.17, 0.30), palette["steel"], static, bevel=0.12))
+    add(base.cylinder(f"{prefix}_fauld", (x, y, 1.62), 0.25, 0.20, palette["steel"], static, vertices=18))
+    # Rounded cuirass with a raised medial ridge instead of a box torso.
+    add(lod_sphere(f"{prefix}_breastplate", (x, y - 0.02, 2.00), 0.30, palette["steel"], static, scale=(0.95, 0.62, 1.08)))
+    add(base.cube(f"{prefix}_breast_ridge", (x, y - 0.205, 2.02), (0.018, 0.012, 0.24), palette["gold"], static, bevel=0.008))
     add(base.cube(f"{prefix}_tabard", (x, y - 0.19, 1.72), (0.19, 0.012, 0.36), palette["crimson" if index % 2 else "royal_blue"], static, bevel=0.01))
     add(base.cube(f"{prefix}_belt", (x, y - 0.03, 1.66), (0.26, 0.16, 0.035), palette["leather"], static, bevel=0.015))
     for arm in (-1, 1):
         ax = x + arm * 0.36
         add(lod_sphere(f"{prefix}_pauldron_{arm}", (ax, y, 2.22), 0.15, palette["steel"], static, scale=(1.2, 1.0, 0.8)))
-        add(base.cube(f"{prefix}_vambrace_{arm}", (ax + arm * 0.02, y - 0.02, 1.90), (0.07, 0.07, 0.24), palette["steel"], static, bevel=0.04))
+        add(base.cylinder(f"{prefix}_vambrace_{arm}", (ax + arm * 0.02, y - 0.02, 1.90), 0.068, 0.48, palette["steel"], static, vertices=12))
         add(lod_sphere(f"{prefix}_gauntlet_{arm}", (ax + arm * 0.02, y - 0.06, 1.63), 0.075, palette["steel_dark"], static))
     add(base.cube(f"{prefix}_gorget", (x, y, 2.33), (0.12, 0.11, 0.05), palette["steel_dark"], static, bevel=0.03))
     add(lod_sphere(f"{prefix}_helm", (x, y, 2.52), 0.17, palette["steel"], static, scale=(0.95, 1.0, 1.15)))
@@ -446,6 +448,8 @@ def build_armor(index, x, y, static, palette):
                   palette["steel"], static, bevel=0.01))
     k = V3_ARMOR_SCALE
     for part in parts:
+        if part.name.rsplit("_", 1)[0].endswith(("greave", "cuisse", "vambrace")) or part.name.endswith("_fauld"):
+            part.data.shade_smooth()
         part.location.x = x + (part.location.x - x) * k
         part.location.y = y + (part.location.y - y) * k
         part.location.z *= k
