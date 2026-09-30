@@ -211,6 +211,10 @@ test('Browser WebGL · Home 3D recupera el contexto perdido', async ({ page }) =
     const gl = node.getContext('webgl2') || node.getContext('webgl');
     const extension = gl?.getExtension('WEBGL_lose_context');
     if (!extension) return false;
+    // Keep the exact context alive in the test page so we can prove the Home
+    // cleanup loses this same context after navigating away, without mounting a
+    // second heavyweight 3D surface just to infer it from global counts.
+    window.__homeWebglContext = gl;
     window.__homeWebglLoseContext = extension;
     extension.loseContext();
     return true;
@@ -222,6 +226,19 @@ test('Browser WebGL · Home 3D recupera el contexto perdido', async ({ page }) =
   await expect(canvas).toHaveAttribute('data-home-blender-runtime', 'ready', { timeout:15_000 });
   await expect(canvas).toHaveClass(/is-ready/, { timeout:15_000 });
   await settle(page);
+
+  // The old global soak mounted Home ⇄ War Room ⇄ Pawn Slug twice merely to
+  // catch HomeBlenderScene3D keeping its WebGL context alive after unmount. We
+  // can assert that invariant directly on the exact context already exercised
+  // above, so the required smoke gate stays cheap while the full soak remains
+  // available in the monthly/manual browser sweep.
+  const matthias = home.getByRole('button', { name:'Abrir Así juegas con Matthias', exact:true });
+  await matthias.click();
+  await expect(page.getByRole('heading', { name:'Así juegas', exact:true })).toBeVisible();
+  await expect.poll(
+    () => page.evaluate(() => window.__homeWebglContext?.isContextLost?.() === true),
+    { timeout:5_000, intervals:[50, 100, 200, 500] },
+  ).toBe(true);
 
   const diagnostic = faults.map((fault) => `[${fault.type}] ${fault.message}`).join('\n\n');
   expect(faults, diagnostic).toEqual([]);
