@@ -19,47 +19,23 @@ for (const viewport of [
   { width: 390, height: 844, label: '390x844' },
   { width: 360, height: 740, label: '360x740' },
 ]) {
-  test(`Home Android · composición compacta ${viewport.label}`, async ({ page }) => {
+  test(`Home Android · chrome y camino principal ${viewport.label}`, async ({ page }) => {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     const home = await openHome(page);
 
-    const selectors = {
-      tournament: '.illustrated-home__destination--tournament',
-      train: '.illustrated-home__destination--train',
-      combat: '.illustrated-home__destination--combat',
-      daily: '.illustrated-home__destination--daily',
-      play: '.illustrated-home__destination--play',
-      history: '.illustrated-home__destination--history',
-      matthias: '.illustrated-home__matthias',
-      utilities: '.illustrated-home__utilities',
-    };
-
-    const boxes = {};
-    for (const [name, selector] of Object.entries(selectors)) {
-      const locator = home.locator(selector);
-      await expect(locator).toBeVisible();
-      boxes[name] = await locator.boundingBox();
-      expect(boxes[name]).not.toBeNull();
-    }
-
-    const firstRowBottom = Math.max(
-      boxes.tournament.y + boxes.tournament.height,
-      boxes.train.y + boxes.train.height,
-    );
-    const secondRowTop = Math.min(boxes.combat.y, boxes.daily.y);
-    const secondRowBottom = Math.max(
-      boxes.combat.y + boxes.combat.height,
-      boxes.daily.y + boxes.daily.height,
-    );
-
-    expect(secondRowTop).toBeGreaterThanOrEqual(firstRowBottom - 3);
-    expect(boxes.play.y).toBeGreaterThan(secondRowBottom + 8);
-    expect(boxes.play.y + boxes.play.height).toBeLessThan(viewport.height * 0.58);
-    expect(boxes.history.y).toBeGreaterThan(boxes.play.y);
-    expect(boxes.matthias.y).toBeGreaterThan(boxes.history.y);
-    expect(boxes.utilities.y).toBeGreaterThan(boxes.play.y);
-
-    for (const box of Object.values(boxes)) {
+    const play = home.locator('.illustrated-home__destination--play');
+    const more = home.locator('.illustrated-home__play-more');
+    const landscapeHint = home.locator('.illustrated-home__landscape-hint');
+    for (const [label, target] of [
+      ['play', play],
+      ['more', more],
+      ['landscape', landscapeHint],
+    ]) {
+      await expect(target).toBeVisible();
+      const box = await target.boundingBox();
+      expect(box, `${label}: touch box`).not.toBeNull();
+      expect(box.width, `${label}: touch width`).toBeGreaterThanOrEqual(44);
+      expect(box.height, `${label}: touch height`).toBeGreaterThanOrEqual(44);
       expect(box.x).toBeGreaterThanOrEqual(-1);
       expect(box.x + box.width).toBeLessThanOrEqual(viewport.width + 1);
       expect(box.y).toBeGreaterThanOrEqual(-1);
@@ -96,26 +72,11 @@ for (const viewport of [
       expect(box.height, `${label}: chrome stays compact`).toBeLessThanOrEqual(48);
     }
 
-    const homeTargets = [
-      ...Object.entries(selectors)
-        .filter(([name]) => name !== 'utilities')
-        .map(([name, selector]) => [name, home.locator(selector)]),
-      ['dungeon', home.locator('.illustrated-home__dungeon-trigger')],
-    ];
-    for (const [label, target] of homeTargets) {
-      const box = await target.boundingBox();
-      expect(box, `${label}: touch box`).not.toBeNull();
-      expect(box.width, `${label}: touch width`).toBeGreaterThanOrEqual(44);
-      expect(box.height, `${label}: touch height`).toBeGreaterThanOrEqual(44);
-    }
-
     expect(releaseBox.x + releaseBox.width).toBeLessThanOrEqual(feedbackBox.x + 1);
     expect(feedbackBox.x + feedbackBox.width).toBeLessThanOrEqual(viewport.width + 1);
-
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   });
 }
-
 
 test('Home Android · portrait usa vestíbulo y reserva 3D para apaisado', async ({ browser }) => {
   for (const viewport of [
