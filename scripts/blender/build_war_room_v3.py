@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
-"""Build the independent War Room v3 "Celestial Observatory" shell.
+"""Build the independent War Room v3 "Armory Hall" shell.
 
-V3 keeps only the live-board anchor and canonical camera from the v2 generator.
-Its authored room is rebuilt from an empty static collection: a curved tower
-apse, circular command table, celestial window, single cast-iron stove,
-restrained brass telescope, premium reading nook, celestial globe console and grounded tower entry
-replace v2's rectangular hall.
+V3 keeps only the live-board anchor and the proven camera object from the v2
+generator. Its authored room is rebuilt from an empty static collection: a
+stone castle hall open to the night sky, a ring of full plate armours standing
+guard around the board, heraldic shields with crossed swords on the walls,
+torches, banners and one great hearth.
+
+The review camera reproduces the runtime's shared desktop play camera, so the
+preview is what the player sees. The v3 live board is scaled x1.08 at runtime
+(Board3DCore), so the preview board and the dais are sized for it.
 """
 from __future__ import annotations
 
@@ -23,23 +27,49 @@ if str(SCRIPT_DIR) not in sys.path:
 import build_war_room_premium as base  # noqa: E402
 
 
-CONTRACT = "war-room-golden-observatory-v3"
-V3_WALL_RADIUS = 8.72
-V3_WALL_CENTER_Y = -0.72
-V3_WALL_START_DEG = -112.0
-V3_WALL_END_DEG = 112.0
-V3_WALL_SEGMENT_COUNT = 19
-# Snap the entry to an authored wall bay so the door plane is truly tangent to
-# the same circular shell instead of looking like a freestanding prop.
-V3_ENTRY_THETA_DEG = 70.7368421053
-V3_ENTRY_DOOR_Z = 1.90
+CONTRACT = "war-room-armory-hall-v3"
+V3_CANON = "war-room-v3-armory-hall-2026-09-30"
+
+# Runtime shared desktop play camera (Board3DScene.fitBoardCamera, wide 16:9,
+# immersive): 22° lens, WAR_ROOM_PLAY_PITCH (9.2, 9.55), target (0, 2.2, 0.16).
+V3_CAMERA_FOV_DEG = 22.0
+V3_CAMERA_HALF_SPAN = 5.38
+V3_CAMERA_PADDING = 1.07 * 0.91 * 1.115
+V3_CAMERA_TARGET = (0.0, -0.16, 2.20)
+V3_CAMERA_DIRECTION = (0.0, -9.55, 9.2)
+
+# Board3DCore renders the v3 live board at x1.08; size the preview and dais for it.
+V3_RUNTIME_BOARD_SCALE = 1.08
+V3_BOARD_HALF = 4.0 * V3_RUNTIME_BOARD_SCALE
+
+# Hall footprint (Blender: +y away from the player, camera on -y).
+V3_HALL_HALF_X = 8.6
+V3_HALL_BACK_Y = 7.9
+V3_HALL_FRONT_Y = -7.6
+V3_WALL_TOP_Z = 5.0
+V3_WALL_THICK = 0.45
+
+# Armour ring: sides and back only, front pair pushed wide so no suit ever
+# stands between the play camera and the near ranks.
+V3_ARMOR_POSITIONS = (
+    (-2.75, 6.35), (2.75, 6.35),
+    (-6.05, 4.35), (6.05, 4.35),
+    (-7.15, 0.75), (7.15, 0.75),
+    (-7.15, -3.35), (7.15, -3.35),
+)
 
 V3_WEATHER_MATERIALS = frozenset({
-    "WR3_MAT_warm_travertine",
-    "WR3_MAT_pale_travertine",
-    "WR3_MAT_radial_slate",
-    "WR3_MAT_green_marble",
+    "WR3_MAT_castle_stone",
+    "WR3_MAT_flagstone",
+    "WR3_MAT_flagstone_dark",
 })
+
+V3_FLAME_NAMES = (
+    "WR3_ARM_hearth_flame_body",
+    "WR3_ARM_hearth_flame_0",
+    "WR3_ARM_hearth_flame_1",
+    "WR3_ARM_hearth_flame_2",
+)
 
 
 def clear_inherited_room(static):
@@ -55,88 +85,102 @@ def clear_inherited_room(static):
 
 
 def build_v3_palette():
+    # No sheen on v3 materials: Blender exports the sheen colour as full white,
+    # which washes dark fabric/leather out in three.js.
     return {
         "stone": base.material(
-            "WR3_MAT_warm_travertine", (0.33, 0.205, 0.105, 1),
-            rough=0.77, coat=0.014, texture="stone", scale=4.3, bump=0.068, weather=True,
+            "WR3_MAT_castle_stone", (0.24, 0.215, 0.19, 1),
+            rough=0.86, coat=0.01, texture="stone", scale=3.2, bump=0.090, weather=True,
         ),
-        "stone_light": base.material(
-            "WR3_MAT_pale_travertine", (0.56, 0.395, 0.215, 1),
-            rough=0.61, coat=0.050, texture="stone", scale=3.6, bump=0.042, weather=True,
+        "flag": base.material(
+            "WR3_MAT_flagstone", (0.235, 0.215, 0.19, 1),
+            rough=0.62, coat=0.10, texture="stone", scale=4.0, bump=0.060, weather=True,
         ),
-        "slate": base.material(
-            "WR3_MAT_radial_slate", (0.030, 0.070, 0.078, 1),
-            rough=0.78, coat=0.014, texture="stone", scale=5.0, bump=0.052, weather=True,
+        "flag_dark": base.material(
+            "WR3_MAT_flagstone_dark", (0.12, 0.11, 0.10, 1),
+            rough=0.66, coat=0.08, texture="stone", scale=4.4, bump=0.060, weather=True,
         ),
-        "green_marble": base.material(
-            "WR3_MAT_green_marble", (0.010, 0.082, 0.052, 1),
-            rough=0.40, coat=0.18, texture="stone", scale=3.5, bump=0.030, weather=True,
+        "oak": base.material(
+            "WR3_MAT_dark_oak", (0.13, 0.065, 0.028, 1),
+            rough=0.46, coat=0.20, texture="wood", scale=2.6, bump=0.060,
         ),
-        "rug": base.material(
-            "WR3_MAT_room_rug", (0.004, 0.070, 0.046, 1),
-            rough=0.82, coat=0.02, sheen=0.18, texture="leather", scale=60, bump=0.055,
+        "oak_dark": base.material(
+            "WR3_MAT_black_oak", (0.045, 0.022, 0.010, 1),
+            rough=0.52, coat=0.14, texture="wood", scale=2.4, bump=0.050,
         ),
-        "rug_red": base.material(
-            "WR3_MAT_entry_rug", (0.22, 0.020, 0.014, 1),
-            rough=0.74, coat=0.03, sheen=0.12, texture="leather", scale=52, bump=0.050,
+        "steel": base.material(
+            "WR3_MAT_plate_steel", (0.44, 0.46, 0.50, 1),
+            metal=0.92, rough=0.24, coat=0.20, texture="metal", scale=30, bump=0.010,
         ),
-        "book_red": base.material(
-            "WR3_MAT_book_red", (0.22, 0.018, 0.012, 1),
-            rough=0.68, coat=0.04, texture="leather", scale=40, bump=0.025,
+        "steel_dark": base.material(
+            "WR3_MAT_blackened_steel", (0.10, 0.10, 0.11, 1),
+            metal=0.85, rough=0.38, coat=0.12, texture="metal", scale=30, bump=0.012,
         ),
-        "book_blue": base.material(
-            "WR3_MAT_book_blue", (0.018, 0.052, 0.105, 1),
-            rough=0.66, coat=0.04, texture="leather", scale=40, bump=0.025,
+        "gold": base.material(
+            "WR3_MAT_gilded_trim", (0.80, 0.50, 0.14, 1),
+            metal=0.92, rough=0.24, coat=0.24, texture="metal", scale=31, bump=0.010,
         ),
-        "teal": base.material(
-            "WR3_MAT_deep_teal_enamel", (0.006, 0.105, 0.110, 1),
-            rough=0.34, coat=0.38, texture="metal", scale=22, bump=0.018,
+        "iron": base.material(
+            "WR3_MAT_forged_iron", (0.055, 0.050, 0.048, 1),
+            metal=0.78, rough=0.46, texture="metal", scale=28, bump=0.020,
         ),
-        "copper": base.material(
-            "WR3_MAT_patinated_copper", (0.055, 0.275, 0.210, 1),
-            metal=0.82, rough=0.37, coat=0.12, texture="metal", scale=26, bump=0.024,
+        "crimson": base.material(
+            "WR3_MAT_crimson_cloth", (0.28, 0.022, 0.020, 1),
+            rough=0.78, texture="leather", scale=50, bump=0.030,
         ),
-        "brass": base.material(
-            "WR3_MAT_sunlit_brass", (0.66, 0.305, 0.052, 1),
-            metal=0.94, rough=0.20, coat=0.28, texture="metal", scale=31, bump=0.012,
+        "royal_blue": base.material(
+            "WR3_MAT_royal_blue_cloth", (0.014, 0.040, 0.16, 1),
+            rough=0.78, texture="leather", scale=50, bump=0.030,
         ),
-        "brass_dark": base.material(
-            "WR3_MAT_aged_brass", (0.22, 0.086, 0.017, 1),
-            metal=0.92, rough=0.31, coat=0.18, texture="metal", scale=33, bump=0.013,
+        "forest": base.material(
+            "WR3_MAT_forest_cloth", (0.012, 0.090, 0.040, 1),
+            rough=0.80, texture="leather", scale=50, bump=0.030,
         ),
-        "walnut": base.material(
-            "WR3_MAT_chart_walnut", (0.128, 0.044, 0.014, 1),
-            rough=0.34, coat=0.32, texture="wood", scale=2.5, bump=0.056,
-        ),
-        "walnut_dark": base.material(
-            "WR3_MAT_chart_walnut_dark", (0.044, 0.014, 0.006, 1),
-            rough=0.42, coat=0.22, texture="wood", scale=2.4, bump=0.048,
+        "gold_thread": base.material(
+            "WR3_MAT_gold_thread", (0.55, 0.32, 0.07, 1),
+            rough=0.60, texture="leather", scale=60, bump=0.020,
         ),
         "leather": base.material(
-            "WR3_MAT_saddle_leather", (0.125, 0.030, 0.012, 1),
-            rough=0.39, coat=0.24, sheen=0.15, texture="leather", scale=54, bump=0.044,
+            "WR3_MAT_saddle_leather", (0.16, 0.070, 0.030, 1),
+            rough=0.50, coat=0.16, texture="leather", scale=50, bump=0.040,
         ),
-        "green_leather": base.material(
-            "WR3_MAT_chart_green_leather", (0.007, 0.105, 0.050, 1),
-            rough=0.37, coat=0.28, sheen=0.17, texture="leather", scale=56, bump=0.045,
+        "glass": base.material(
+            "WR3_MAT_moon_glass", (0.020, 0.060, 0.19, 1),
+            rough=0.16, coat=0.50, emission=(0.030, 0.090, 0.32, 1), emission_strength=0.80,
         ),
-        "night": base.material(
-            "WR3_MAT_celestial_blue", (0.002, 0.018, 0.120, 1),
-            rough=0.18, coat=0.52, emission=(0.006, 0.055, 0.25, 1), emission_strength=0.65,
+        "night_sky": base.material(
+            "WR3_MAT_night_sky", (0.004, 0.010, 0.050, 1),
+            rough=0.9, emission=(0.008, 0.022, 0.120, 1), emission_strength=0.50,
         ),
-        "aurora": base.material(
-            "WR3_MAT_aurora_glass", (0.010, 0.235, 0.175, 1),
-            rough=0.20, coat=0.52, emission=(0.015, 0.22, 0.14, 1), emission_strength=0.80,
+        "night_ground": base.material(
+            "WR3_MAT_night_ground", (0.006, 0.016, 0.024, 1),
+            rough=0.95, emission=(0.004, 0.012, 0.030, 1), emission_strength=0.22,
         ),
         "ivory": bpy.data.materials["WR_MAT_ivory"],
-        "iron": bpy.data.materials["WR_MAT_hearth_iron"],
         "charcoal": bpy.data.materials["WR_MAT_charcoal"],
         "fire": bpy.data.materials["WR_MAT_fire"],
         "fire_core": bpy.data.materials["WR_MAT_fire_core"],
     }
 
 
-def cylinder_between(name, start, end, radius, material, owner, *, vertices=24):
+# --- shared helpers -----------------------------------------------------------------
+
+def lod_sphere(name, loc, radius, material, owner, *, scale=(1, 1, 1)):
+    """Smooth icosphere sized by radius (runtime budget; see build_war_room_v4)."""
+    subdivisions = 1 if radius < 0.09 else 2 if radius < 0.22 else 3
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=subdivisions, radius=radius, location=loc)
+    obj = bpy.context.object
+    obj.name = name
+    obj.scale = scale
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    bpy.ops.object.shade_smooth()
+    obj.data.materials.append(material)
+    base.tag(obj)
+    base.relink(obj, owner)
+    return obj
+
+
+def cylinder_between(name, start, end, radius, material, owner, *, vertices=16):
     start = Vector(start)
     end = Vector(end)
     direction = end - start
@@ -146,613 +190,527 @@ def cylinder_between(name, start, end, radius, material, owner, *, vertices=24):
     return obj
 
 
-def build_curved_observatory(static, palette):
-    """Build the canonical circular room: tiled floor, rug and curved paneled wall."""
-    base.cylinder("WR3_OBS_floor", (0, 0.0, -0.14), 9.05, 0.24,
-                  palette["slate"], static, vertices=96)
-
-    # Golden observatory: ivory/green marble establishes the premium circular dais.
-    tile_size = 1.46
-    tile_half = 0.710
-    tile_index = 0
-    for row in range(-6, 7):
-        for col in range(-6, 7):
-            x = col * tile_size
-            y = row * tile_size - 0.18
-            if x * x + (y + 0.18) * (y + 0.18) > 8.28 * 8.28:
-                continue
-            # Ivory is the field; green appears as sparse marble inlays rather
-            # than a checkerboard competing with the playable chessboard.
-            green_inlay = ((row * 7 + col * 11) % 13 == 0)
-            material = palette["green_marble"] if green_inlay else palette["stone_light"]
-            base.cube(
-                f"WR3_OBS_floor_tile_{tile_index}", (x, y, 0.010),
-                (tile_half, tile_half, 0.030), material, static, bevel=0.018,
-            )
-            tile_index += 1
-
-    # A thin brass perimeter inlay makes the green/ivory marble floor read as
-    # an authored circular observatory surface without competing with the board.
-    base.torus("WR3_OBS_floor_perimeter_inlay", (0, -0.18, 0.050), 8.05, 0.026,
-               palette["brass_dark"], static)
-
-    # A restrained circular carpet frames the playable table without compass clutter.
-    base.cylinder("WR3_OBS_rug_field", (0, -0.05, 0.070), 5.72, 0.040,
-                  palette["rug"], static, vertices=96)
-    base.torus("WR3_OBS_rug_outer_ring", (0, -0.05, 0.112), 5.48, 0.038,
-               palette["brass_dark"], static)
-    base.torus("WR3_OBS_rug_inner_ring", (0, -0.05, 0.114), 5.16, 0.022,
-               palette["brass"], static)
-
-    radius = V3_WALL_RADIUS
-    center_y = V3_WALL_CENTER_Y
-    segment_count = V3_WALL_SEGMENT_COUNT
-    start = math.radians(V3_WALL_START_DEG)
-    end = math.radians(V3_WALL_END_DEG)
-    step = (end - start) / segment_count
-    half_length = radius * step * 0.515
-    joints = []
-    for index in range(segment_count):
-        theta = start + (index + 0.5) * step
-        x = radius * math.sin(theta)
-        y = center_y + radius * math.cos(theta)
-        tangent = math.atan2(-math.sin(theta), math.cos(theta))
-        lower = base.cube(
-            f"WR3_OBS_apse_lower_{index}", (x, y, 1.48),
-            (half_length, 0.20, 1.48), palette["walnut_dark"], static, bevel=0.055,
-        )
-        lower.rotation_euler.z = tangent
-        upper = base.cube(
-            f"WR3_OBS_apse_upper_{index}", (x, y, 4.72),
-            (half_length, 0.18, 1.76), palette["walnut"], static, bevel=0.075,
-        )
-        upper.rotation_euler.z = tangent
-        # Golden observatory: framed walnut panels add architectural depth
-        # without stealing silhouette from the board or lunar oculus.
-        panel = base.cube(
-            f"WR3_OBS_apse_panel_{index}", (x, y - 0.17, 3.42),
-            (half_length * 0.76, 0.065, 0.84), palette["walnut"], static, bevel=0.045,
-        )
-        panel.rotation_euler.z = tangent
-        rail = base.cube(
-            f"WR3_OBS_apse_brass_rail_{index}", (x, y - 0.235, 2.53),
-            (half_length * 0.80, 0.022, 0.030), palette["brass_dark"], static, bevel=0.012,
-        )
-        rail.rotation_euler.z = tangent
-        joints.append((theta - step / 2.0, index))
-    joints.append((end, segment_count))
-
-    for theta, index in joints:
-        x = radius * math.sin(theta)
-        y = center_y + radius * math.cos(theta)
-        base.cylinder(
-            f"WR3_OBS_apse_pilaster_{index}", (x, y - 0.10, 3.42), 0.19, 6.34,
-            palette["walnut_dark"], static, vertices=32,
-        )
-        base.cylinder(
-            f"WR3_OBS_apse_rib_{index}", (x, y, 3.48), 0.105, 6.56,
-            palette["walnut_dark"], static, vertices=32,
-        )
-        base.cylinder(
-            f"WR3_OBS_apse_rib_foot_{index}", (x, y, 0.30), 0.23, 0.30,
-            palette["brass_dark"], static, vertices=40,
-        )
-        base.cylinder(
-            f"WR3_OBS_apse_rib_cap_{index}", (x, y, 6.55), 0.16, 0.16,
-            palette["brass"], static, vertices=36,
-        )
+def join_into(objects, name):
+    """Fuse authored parts into one mesh (one runtime draw) under a stable name."""
+    objects = [obj for obj in objects if obj is not None]
+    if not objects:
+        return None
+    bpy.ops.object.select_all(action="DESELECT")
+    for obj in objects:
+        for modifier in list(obj.modifiers):
+            bpy.context.view_layer.objects.active = obj
+            bpy.ops.object.modifier_apply(modifier=modifier.name)
+        obj.select_set(True)
+    bpy.context.view_layer.objects.active = objects[0]
+    bpy.ops.object.join()
+    joined = bpy.context.view_layer.objects.active
+    joined.name = name
+    bpy.ops.object.select_all(action="DESELECT")
+    return joined
 
 
-def build_celestial_window(static, palette):
-    """Large moon-and-stars oculus: deliberately no orbital rings or chart lines."""
-    cx, cy, cz = 0.0, 7.56, 4.05
-    glass = base.cylinder(
-        "WR3_OBS_celestial_window", (cx, cy, cz), 2.62, 0.085,
-        palette["night"], static, vertices=96,
-    )
-    glass.rotation_euler.x = math.pi / 2
-    base.torus(
-        "WR3_OBS_celestial_window_outer", (cx, cy - 0.07, cz), 2.94, 0.145,
-        palette["brass"], static, rotation=(math.pi / 2, 0, 0),
-    )
-    base.torus(
-        "WR3_OBS_celestial_window_inner", (cx, cy - 0.12, cz), 2.70, 0.085,
-        palette["walnut_dark"], static, rotation=(math.pi / 2, 0, 0),
-    )
-    base.torus(
-        "WR3_OBS_celestial_window_reveal", (cx, cy + 0.02, cz), 3.18, 0.22,
-        palette["walnut_dark"], static, rotation=(math.pi / 2, 0, 0),
-    )
-    base.torus(
-        "WR3_OBS_celestial_window_halo", (cx, cy - 0.10, cz), 3.08, 0.050,
-        palette["brass_dark"], static, rotation=(math.pi / 2, 0, 0),
-    )
-    # Deep stepped reveal keeps the oculus reading as architecture, not a flat screen.
-    base.torus(
-        "WR3_OBS_celestial_window_reveal_inner", (cx, cy - 0.155, cz), 2.79, 0.055,
-        palette["brass_dark"], static, rotation=(math.pi / 2, 0, 0),
-    )
-    base.torus(
-        "WR3_OBS_celestial_window_reveal_shadow", (cx, cy + 0.10, cz), 3.30, 0.075,
-        palette["walnut_dark"], static, rotation=(math.pi / 2, 0, 0),
-    )
+def fuse_by_material(prefix, static, name):
+    """Fuse every static mesh whose name starts with `prefix` into one mesh per
+    single material, e.g. the eight armours become a few runtime draws."""
+    groups = {}
+    for obj in list(static.objects):
+        if obj.type != "MESH" or not obj.name.startswith(prefix) or obj.get("war_room_runtime_dynamic"):
+            continue
+        if len(obj.data.materials) != 1 or obj.data.materials[0] is None:
+            continue
+        groups.setdefault(obj.data.materials[0].name, []).append(obj)
+    for index, (_material, objects) in enumerate(sorted(groups.items())):
+        join_into(objects, f"{name}_{index}")
 
-    crescent_center = Vector((-0.92, cy - 0.255, cz + 0.66))
-    crescent = base.cylinder(
-        "WR3_OBS_window_crescent", crescent_center, 0.50, 0.040,
-        palette["ivory"], static, vertices=64,
-    )
-    crescent.rotation_euler.x = math.pi / 2
-    occluder = base.cylinder(
-        "WR3_OBS_window_crescent_cutout",
-        crescent_center + Vector((0.18, -0.028, 0.06)),
-        0.47, 0.046, palette["night"], static, vertices=64,
-    )
-    occluder.rotation_euler.x = math.pi / 2
 
-    stars = (
-        (-1.55, 1.28, 0.025), (-1.15, 1.08, 0.032), (-0.56, 1.42, 0.022),
-        (0.02, 1.22, 0.035), (0.52, 1.47, 0.024), (1.08, 1.18, 0.030),
-        (1.52, 0.92, 0.024), (-1.72, 0.55, 0.020), (-1.22, 0.36, 0.028),
-        (-0.30, 0.66, 0.021), (0.24, 0.78, 0.027), (0.82, 0.48, 0.021),
-        (1.42, 0.28, 0.032), (-1.52, -0.08, 0.027), (-0.96, -0.36, 0.020),
-        (-0.42, -0.04, 0.024), (0.18, -0.30, 0.032), (0.72, -0.02, 0.020),
-        (1.20, -0.42, 0.026), (-1.24, -0.82, 0.022), (-0.62, -1.04, 0.030),
-        (0.02, -0.78, 0.021), (0.56, -1.12, 0.026), (1.26, -0.94, 0.022),
-    )
-    for index, (dx, dz, radius) in enumerate(stars):
-        base.sphere(
-            f"WR3_OBS_window_star_{index}", (cx + dx, cy - 0.25, cz + dz),
-            radius, palette["ivory"] if index % 4 else palette["brass"], static,
-            scale=(1.0, 0.24, 1.0),
-        )
+def placed(obj, origin, yaw):
+    """Rotate a part authored around `origin` (local frame facing -y) by `yaw`."""
+    dx, dy = obj.location.x - origin[0], obj.location.y - origin[1]
+    c, s = math.cos(yaw), math.sin(yaw)
+    obj.location.x = origin[0] + dx * c - dy * s
+    obj.location.y = origin[1] + dx * s + dy * c
+    obj.rotation_euler.z += yaw
+    return obj
 
-    # Broad folded green drapery frames the lunar oculus while keeping the glass clear.
+
+# --- architecture ---------------------------------------------------------------------
+
+def build_hall(static, palette):
+    """Stone castle hall open to the sky: flagstones, walls, pilasters, battlements."""
+    hx, back, front = V3_HALL_HALF_X, V3_HALL_BACK_Y, V3_HALL_FRONT_Y
+    base.cube("WR3_ARM_floor", (0, (back + front) / 2.0, -0.12),
+              (hx + 0.6, (back - front) / 2.0 + 0.6, 0.12), palette["flag_dark"], static, bevel=0.02)
+
+    tile = 1.40
+    index = 0
+    y = front + tile / 2.0
+    row = 0
+    while y < back:
+        x = -hx + tile / 2.0 + (0.5 * tile if row % 2 else 0.0)
+        col = 0
+        while x < hx:
+            material = palette["flag"] if (row * 3 + col) % 5 else palette["flag_dark"]
+            base.cube(f"WR3_ARM_floor_tile_{index}", (x, y, 0.010),
+                      (tile * 0.485, tile * 0.485, 0.03), material, static, bevel=0.02)
+            index += 1
+            x += tile
+            col += 1
+        y += tile
+        row += 1
+
+    wall_z = V3_WALL_TOP_Z / 2.0
+    t = V3_WALL_THICK
+    base.cube("WR3_ARM_wall_back", (0, back + t / 2.0, wall_z), (hx + t, t / 2.0, wall_z),
+              palette["stone"], static, bevel=0.04)
     for side in (-1, 1):
-        x = side * 3.55
-        curtain = base.cube(
-            f"WR3_OBS_window_drape_{side}", (x, 7.34, 4.22),
-            (0.64, 0.12, 1.92), palette["green_leather"], static, bevel=0.20,
-        )
-        curtain.rotation_euler.y = math.radians(side * 3)
-        for fold in (-0.34, 0.0, 0.34):
-            base.cube(
-                f"WR3_OBS_window_drape_fold_{side}_{fold:+.2f}",
-                (x + fold, 7.19, 4.22), (0.10, 0.055, 1.78),
-                palette["teal"], static, bevel=0.055,
-            )
-        base.cube(
-            f"WR3_OBS_window_drape_tie_{side}", (side * 3.43, 7.08, 3.72),
-            (0.48, 0.055, 0.055), palette["brass"], static, bevel=0.025,
-        )
+        base.cube(f"WR3_ARM_wall_side_{side}", (side * (hx + t / 2.0), (back + front) / 2.0, wall_z),
+                  (t / 2.0, (back - front) / 2.0, wall_z), palette["stone"], static, bevel=0.04)
 
-    window_light = base.light(
-        "WR3_LIGHT_window", "AREA", (0, 5.80, 4.55), 485.0,
-        (0.16, 0.42, 1.0), static, size=5.8,
+    # Oak wainscot, a stone string course and pilasters give the walls rhythm.
+    wains_h = 1.05
+    base.cube("WR3_ARM_wainscot_back", (0, back - 0.06, wains_h / 2.0), (hx, 0.06, wains_h / 2.0),
+              palette["oak"], static, bevel=0.03)
+    for side in (-1, 1):
+        base.cube(f"WR3_ARM_wainscot_side_{side}", (side * (hx - 0.06), (back + front) / 2.0, wains_h / 2.0),
+                  (0.06, (back - front) / 2.0, wains_h / 2.0), palette["oak"], static, bevel=0.03)
+    base.cube("WR3_ARM_wainscot_rail_back", (0, back - 0.13, wains_h), (hx, 0.05, 0.05),
+              palette["oak_dark"], static, bevel=0.02)
+    for side in (-1, 1):
+        base.cube(f"WR3_ARM_wainscot_rail_side_{side}", (side * (hx - 0.13), (back + front) / 2.0, wains_h),
+                  (0.05, (back - front) / 2.0, 0.05), palette["oak_dark"], static, bevel=0.02)
+
+    for index, x in enumerate((-6.6, -3.3, 3.3, 6.6)):
+        base.cube(f"WR3_ARM_pilaster_back_{index}", (x, back - 0.16, wall_z), (0.28, 0.16, wall_z),
+                  palette["stone"], static, bevel=0.05)
+    for side in (-1, 1):
+        for index, y in enumerate((5.4, 2.2, -1.0, -4.2)):
+            base.cube(f"WR3_ARM_pilaster_side_{side}_{index}", (side * (hx - 0.16), y, wall_z),
+                      (0.16, 0.28, wall_z), palette["stone"], static, bevel=0.05)
+
+    # A projecting stone cornice on corbels crowns the walls (an interior hall,
+    # not a curtain wall: merlons read as toy teeth from the play camera).
+    top = V3_WALL_TOP_Z
+    base.cube("WR3_ARM_cornice_back", (0, back - 0.10, top - 0.10), (hx + t, t / 2.0 + 0.18, 0.12),
+              palette["stone"], static, bevel=0.03)
+    base.cube("WR3_ARM_cornice_frieze_back", (0, back - 0.02, top - 0.42), (hx, 0.05, 0.20),
+              palette["oak_dark"], static, bevel=0.02)
+    for side in (-1, 1):
+        base.cube(f"WR3_ARM_cornice_side_{side}", (side * (hx + 0.08), (back + front) / 2.0, top - 0.10),
+                  (t / 2.0 + 0.18, (back - front) / 2.0 + t, 0.12), palette["stone"], static, bevel=0.03)
+        base.cube(f"WR3_ARM_cornice_frieze_side_{side}", (side * (hx - 0.02), (back + front) / 2.0, top - 0.42),
+                  (0.05, (back - front) / 2.0, 0.20), palette["oak_dark"], static, bevel=0.02)
+    corbel = 0.95
+    for index in range(int(2 * hx / corbel) + 1):
+        x = -hx + 0.45 + index * corbel
+        if x > hx - 0.3:
+            break
+        base.cube(f"WR3_ARM_corbel_back_{index}", (x, back - 0.22, top - 0.32), (0.10, 0.18, 0.12),
+                  palette["stone"], static, bevel=0.03)
+    for side in (-1, 1):
+        y = back - 0.45
+        index = 0
+        while y > front + 0.3:
+            base.cube(f"WR3_ARM_corbel_side_{side}_{index}", (side * (hx - 0.22), y, top - 0.32), (0.18, 0.10, 0.12),
+                      palette["stone"], static, bevel=0.03)
+            y -= corbel
+            index += 1
+    fuse_by_material("WR3_ARM_corbel_", static, "WR3_ARM_corbels")
+    fuse_by_material("WR3_ARM_floor_tile_", static, "WR3_ARM_flagstones")
+
+
+def build_night_backdrop(static, palette):
+    """Sky sleeve and dark ground beyond the battlements (seen from the steep camera)."""
+    bpy.ops.mesh.primitive_cylinder_add(vertices=64, radius=30.0, depth=26.0,
+                                        end_fill_type="NOTHING", location=(0, 0, 12.0))
+    sky = bpy.context.object
+    sky.name = "WR3_ARM_sky_backdrop"
+    sky.data.materials.append(palette["night_sky"])
+    base.tag(sky)
+    base.relink(sky, static)
+    bpy.ops.mesh.primitive_circle_add(vertices=64, radius=30.0, fill_type="NGON", location=(0, 0, -0.30))
+    ground = bpy.context.object
+    ground.name = "WR3_ARM_night_ground"
+    ground.data.materials.append(palette["night_ground"])
+    base.tag(ground)
+    base.relink(ground, static)
+
+
+def build_dais_and_board(static, palette):
+    """Two-step round stone dais, crimson rug and an oak board frame sized for x1.08."""
+    base.cylinder("WR3_ARM_dais_lower", (0, 0, 0.10), 6.2, 0.20, palette["stone"], static, vertices=64)
+    base.cylinder("WR3_ARM_dais_upper", (0, 0, 0.26), 5.7, 0.12, palette["flag"], static, vertices=64)
+    base.cylinder("WR3_ARM_dais_rug", (0, 0, 0.335), 5.45, 0.03, palette["crimson"], static, vertices=64)
+    base.torus("WR3_ARM_dais_rug_ring", (0, 0, 0.355), 5.20, 0.035, palette["gold_thread"], static)
+    base.torus("WR3_ARM_dais_rug_ring_inner", (0, 0, 0.355), 4.95, 0.020, palette["gold_thread"], static)
+
+    inner = V3_BOARD_HALF + 0.05
+    outer = inner + 0.62
+    base.cube("WR3_ARM_board_plinth", (0, 0, 0.66), (outer - 0.10, outer - 0.10, 0.30),
+              palette["oak_dark"], static, bevel=0.05)
+    rim_center = (inner + outer) / 2.0
+    rim_half = (outer - inner) / 2.0
+    for side in (-1, 1):
+        for axis, name in ((0, "x"), (1, "y")):
+            loc = [0.0, 0.0, 1.06]
+            half = [outer, outer, 0.085]
+            loc[1 - axis] = side * rim_center
+            half[1 - axis] = rim_half
+            base.cube(f"WR3_ARM_board_rim_{name}_{side}", tuple(loc), tuple(half),
+                      palette["oak"], static, bevel=0.05)
+            inlay = [0.0, 0.0, 1.15]
+            inlay_half = [inner + 0.02, inner + 0.02, 0.012]
+            inlay[1 - axis] = side * (inner + 0.02)
+            inlay_half[1 - axis] = 0.022
+            base.cube(f"WR3_ARM_board_inlay_{name}_{side}", tuple(inlay), tuple(inlay_half),
+                      palette["gold"], static, bevel=0.008)
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            c = outer - 0.20
+            base.cube(f"WR3_ARM_board_corner_{sx}_{sy}", (sx * c, sy * c, 1.17), (0.24, 0.24, 0.05),
+                      palette["iron"], static, bevel=0.03)
+            lod_sphere(f"WR3_ARM_board_corner_boss_{sx}_{sy}", (sx * c, sy * c, 1.26), 0.11,
+                       palette["gold"], static)
+
+
+def scale_preview_board():
+    """Preview-only: match the x1.08 live v3 board and seat White on the player side."""
+    moved = 0
+    for obj in bpy.context.scene.objects:
+        if not obj.name.startswith("WR_PREVIEW_"):
+            continue
+        if obj.get("war_room_role") != base.ROLE_PREVIEW:
+            raise RuntimeError(f"War Room v3 refuses to move non-preview object {obj.name}")
+        if obj.name.startswith(("WR_PREVIEW_white_", "WR_PREVIEW_black_")):
+            obj.location.y = -obj.location.y
+            obj.rotation_euler.x = -obj.rotation_euler.x
+            obj.rotation_euler.z = -obj.rotation_euler.z
+        top = base.BOARD_Z
+        obj.location.x *= V3_RUNTIME_BOARD_SCALE
+        obj.location.y *= V3_RUNTIME_BOARD_SCALE
+        obj.location.z = top + (obj.location.z - top) * V3_RUNTIME_BOARD_SCALE
+        obj.scale = tuple(component * V3_RUNTIME_BOARD_SCALE for component in obj.scale)
+        moved += 1
+    if moved < 96:
+        raise RuntimeError(f"War Room v3 preview board transform touched too few objects: {moved}")
+
+
+# --- armour ring ----------------------------------------------------------------------
+
+V3_ARMOR_SCALE = 1.32
+
+
+def build_armor(index, x, y, static, palette):
+    """Full plate armour on a stone plinth, holding a halberd, facing the board.
+
+    Authored at 1 m scale, then grown by V3_ARMOR_SCALE about its foot so the
+    suits read as life-size guards from the high play camera."""
+    yaw = math.atan2(-x, y) + math.pi  # local -y faces the board centre
+    origin = (x, y)
+    prefix = f"WR3_ARM_armor_{index}"
+    parts = []
+
+    def add(obj):
+        parts.append(obj)
+        return obj
+
+    add(base.cube(f"{prefix}_plinth", (x, y, 0.22), (0.46, 0.46, 0.22), palette["stone"], static, bevel=0.04))
+    add(base.cube(f"{prefix}_plinth_cap", (x, y, 0.47), (0.50, 0.50, 0.04), palette["flag_dark"], static, bevel=0.02))
+    for leg in (-1, 1):
+        lx = x + leg * 0.13
+        add(base.cube(f"{prefix}_greave_{leg}", (lx, y, 0.78), (0.085, 0.09, 0.27), palette["steel"], static, bevel=0.05))
+        add(lod_sphere(f"{prefix}_knee_{leg}", (lx, y - 0.05, 1.07), 0.085, palette["steel"], static))
+        add(base.cube(f"{prefix}_cuisse_{leg}", (lx, y, 1.33), (0.095, 0.10, 0.23), palette["steel"], static, bevel=0.05))
+        add(base.cube(f"{prefix}_sabaton_{leg}", (lx, y - 0.07, 0.54), (0.08, 0.15, 0.05), palette["steel_dark"], static, bevel=0.03))
+    add(base.cube(f"{prefix}_fauld", (x, y, 1.62), (0.25, 0.15, 0.10), palette["steel"], static, bevel=0.05))
+    add(base.cube(f"{prefix}_breastplate", (x, y - 0.02, 2.00), (0.27, 0.17, 0.30), palette["steel"], static, bevel=0.12))
+    add(base.cube(f"{prefix}_tabard", (x, y - 0.19, 1.72), (0.19, 0.012, 0.36), palette["crimson" if index % 2 else "royal_blue"], static, bevel=0.01))
+    add(base.cube(f"{prefix}_belt", (x, y - 0.03, 1.66), (0.26, 0.16, 0.035), palette["leather"], static, bevel=0.015))
+    for arm in (-1, 1):
+        ax = x + arm * 0.36
+        add(lod_sphere(f"{prefix}_pauldron_{arm}", (ax, y, 2.22), 0.15, palette["steel"], static, scale=(1.2, 1.0, 0.8)))
+        add(base.cube(f"{prefix}_vambrace_{arm}", (ax + arm * 0.02, y - 0.02, 1.90), (0.07, 0.07, 0.24), palette["steel"], static, bevel=0.04))
+        add(lod_sphere(f"{prefix}_gauntlet_{arm}", (ax + arm * 0.02, y - 0.06, 1.63), 0.075, palette["steel_dark"], static))
+    add(base.cube(f"{prefix}_gorget", (x, y, 2.33), (0.12, 0.11, 0.05), palette["steel_dark"], static, bevel=0.03))
+    add(lod_sphere(f"{prefix}_helm", (x, y, 2.52), 0.17, palette["steel"], static, scale=(0.95, 1.0, 1.15)))
+    add(base.cube(f"{prefix}_visor", (x, y - 0.155, 2.50), (0.12, 0.02, 0.035), palette["steel_dark"], static, bevel=0.01))
+    add(base.cube(f"{prefix}_crest", (x, y + 0.03, 2.74), (0.03, 0.14, 0.07), palette["gold"], static, bevel=0.02))
+    add(lod_sphere(f"{prefix}_plume", (x, y + 0.10, 2.86), 0.10, palette["crimson" if index % 2 else "royal_blue"], static, scale=(0.6, 1.4, 1.0)))
+    # Halberd in the right hand: shaft, axe blade, spike.
+    hx = x + 0.44
+    shaft_top = 3.35
+    add(base.cylinder(f"{prefix}_halberd_shaft", (hx, y - 0.06, (0.52 + shaft_top) / 2.0), 0.025, shaft_top - 0.52,
+                      palette["oak_dark"], static, vertices=10))
+    add(base.cube(f"{prefix}_halberd_blade", (hx + 0.12, y - 0.06, shaft_top - 0.24), (0.12, 0.012, 0.15),
+                  palette["steel"], static, bevel=0.02))
+    add(base.cube(f"{prefix}_halberd_spike", (hx, y - 0.06, shaft_top + 0.14), (0.02, 0.012, 0.16),
+                  palette["steel"], static, bevel=0.01))
+    k = V3_ARMOR_SCALE
+    for part in parts:
+        part.location.x = x + (part.location.x - x) * k
+        part.location.y = y + (part.location.y - y) * k
+        part.location.z *= k
+        part.scale = tuple(component * k for component in part.scale)
+        placed(part, origin, yaw)
+
+
+def build_armor_ring(static, palette):
+    for index, (x, y) in enumerate(V3_ARMOR_POSITIONS):
+        build_armor(index, x, y, static, palette)
+    fuse_by_material("WR3_ARM_armor_", static, "WR3_ARM_armor_ring")
+
+
+# --- wall trophies ----------------------------------------------------------------------
+
+def heater_shield_mesh(name, width, height, depth, material, static):
+    """Classic heater shield: flat top, curved sides meeting in a point."""
+    profile = []
+    steps = 10
+    for i in range(steps + 1):
+        t = i / steps
+        # right edge from top corner down to the tip
+        x = (width / 2.0) * math.cos(t * math.pi / 2.0) ** 0.8
+        z = height / 2.0 - t * height * (0.35 + 0.65 * t)
+        profile.append((x, z))
+    outline = [(x, z) for x, z in profile] + [(-x, z) for x, z in reversed(profile[:-1])]
+    verts = [(x, -depth / 2.0, z) for x, z in outline] + [(x, depth / 2.0, z) for x, z in outline]
+    n = len(outline)
+    faces = [tuple(range(n))[::-1], tuple(range(n, 2 * n))]
+    for i in range(n):
+        j = (i + 1) % n
+        faces.append((i, j, n + j, n + i))
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(verts, [], faces)
+    mesh.update()
+    obj = bpy.data.objects.new(name, mesh)
+    obj.data.materials.append(material)
+    static.objects.link(obj)
+    base.tag(obj)
+    return obj
+
+
+def build_trophy(index, center, yaw, field, charge, static, palette, *, scale=1.0):
+    """Heraldic shield over two crossed swords, hung on a wall."""
+    cx, cy, cz = center
+    prefix = f"WR3_ARM_trophy_{index}"
+    parts = []
+    s = scale
+    for side in (-1, 1):
+        # Crossed swords: blade, crossguard, grip, pommel, angled ±38°.
+        angle = math.radians(side * 38)
+        blade = base.cube(f"{prefix}_blade_{side}", (cx, cy + 0.05, cz), (0.045 * s, 0.012, 0.95 * s),
+                          palette["steel"], static, bevel=0.01)
+        blade.rotation_euler.y = angle
+        guard_off = Vector((math.sin(angle) * -0.98 * s, 0, math.cos(angle) * -0.98 * s))
+        guard = base.cube(f"{prefix}_guard_{side}", (cx + guard_off.x, cy + 0.04, cz + guard_off.z),
+                          (0.20 * s, 0.03, 0.03 * s), palette["gold"], static, bevel=0.012)
+        guard.rotation_euler.y = angle
+        grip_off = Vector((math.sin(angle) * -1.14 * s, 0, math.cos(angle) * -1.14 * s))
+        grip = base.cube(f"{prefix}_grip_{side}", (cx + grip_off.x, cy + 0.04, cz + grip_off.z),
+                         (0.03 * s, 0.03, 0.14 * s), palette["leather"], static, bevel=0.01)
+        grip.rotation_euler.y = angle
+        pommel_off = Vector((math.sin(angle) * -1.30 * s, 0, math.cos(angle) * -1.30 * s))
+        pommel = lod_sphere(f"{prefix}_pommel_{side}", (cx + pommel_off.x, cy + 0.04, cz + pommel_off.z),
+                            0.05 * s, palette["gold"], static)
+        parts += [blade, guard, grip, pommel]
+    shield = heater_shield_mesh(f"{prefix}_shield", 0.92 * s, 1.14 * s, 0.07, palette[field], static)
+    shield.location = (cx, cy - 0.02, cz + 0.05 * s)
+    rim = heater_shield_mesh(f"{prefix}_shield_rim", 1.02 * s, 1.24 * s, 0.05, palette["gold"], static)
+    rim.location = (cx, cy + 0.01, cz + 0.05 * s)
+    parts += [shield, rim]
+    if charge == "chevron":
+        for side in (-1, 1):
+            bar = base.cube(f"{prefix}_chevron_{side}", (cx + side * 0.17 * s, cy - 0.065, cz - 0.02 * s),
+                            (0.24 * s, 0.01, 0.055 * s), palette["gold"], static, bevel=0.008)
+            bar.rotation_euler.y = math.radians(-side * 38)
+            parts.append(bar)
+    elif charge == "cross":
+        parts.append(base.cube(f"{prefix}_cross_v", (cx, cy - 0.065, cz + 0.02 * s), (0.055 * s, 0.01, 0.42 * s),
+                               palette["gold"], static, bevel=0.008))
+        parts.append(base.cube(f"{prefix}_cross_h", (cx, cy - 0.065, cz + 0.18 * s), (0.34 * s, 0.01, 0.055 * s),
+                               palette["gold"], static, bevel=0.008))
+    else:  # fess band and a boss
+        parts.append(base.cube(f"{prefix}_fess", (cx, cy - 0.065, cz + 0.12 * s), (0.42 * s, 0.01, 0.075 * s),
+                               palette["gold"], static, bevel=0.008))
+        parts.append(lod_sphere(f"{prefix}_boss", (cx, cy - 0.07, cz - 0.10 * s), 0.07 * s, palette["gold"], static,
+                                scale=(1, 0.45, 1)))
+    for part in parts:
+        placed(part, (cx, cy), yaw)
+
+
+# `placed` turns local -y (the display face) by yaw: +pi/2 faces +x (left wall),
+# -pi/2 faces -x (right wall).
+V3_TROPHY_TURN = math.radians(22)
+
+
+def build_wall_trophies(static, palette):
+    back = V3_HALL_BACK_Y - 0.10
+    hx = V3_HALL_HALF_X - 0.10
+    trophies = (
+        # back wall: flanking the hearth and the windows
+        ((-5.0, back, 2.85), 0.0, "royal_blue", "chevron"),
+        ((5.0, back, 2.85), 0.0, "crimson", "cross"),
+        # side walls, between pilasters; hung on angled brackets turned a little
+        # toward the player so the play camera sees their faces, not their edges
+        ((-hx + 0.30, 3.80, 2.90), math.pi / 2 - V3_TROPHY_TURN, "crimson", "fess"),
+        ((-hx + 0.30, 0.60, 2.90), math.pi / 2 - V3_TROPHY_TURN, "forest", "chevron"),
+        ((-hx + 0.30, -2.60, 2.90), math.pi / 2 - V3_TROPHY_TURN, "royal_blue", "cross"),
+        ((hx - 0.30, 3.80, 2.90), -math.pi / 2 + V3_TROPHY_TURN, "royal_blue", "fess"),
+        ((hx - 0.30, 0.60, 2.90), -math.pi / 2 + V3_TROPHY_TURN, "crimson", "chevron"),
+        ((hx - 0.30, -2.60, 2.90), -math.pi / 2 + V3_TROPHY_TURN, "forest", "cross"),
     )
-    base.look_at(window_light, (0, 0.2, 1.1))
-    base.anchor("WR_ANCHOR_window_moonlight", (0, 5.9, 4.55), static)
+    for index, (center, yaw, field, charge) in enumerate(trophies):
+        build_trophy(index, center, yaw, field, charge, static, palette, scale=1.30)
+    # The great crest on the hearth hood (its face is ~0.93 m proud of the wall).
+    build_trophy(len(trophies), (0.0, V3_HALL_BACK_Y - 0.98, 3.10), 0.0, "crimson", "chevron", static, palette,
+                 scale=0.95)
+    fuse_by_material("WR3_ARM_trophy_", static, "WR3_ARM_trophies")
 
 
-def build_round_command_table(static, palette):
-    base.cylinder("WR3_OBS_table_drum", (0, 0, 0.47), 5.02, 0.62,
-                  palette["walnut_dark"], static, vertices=96)
-    base.cylinder("WR3_OBS_table_leather_top", (0, 0, 0.84), 4.90, 0.10,
-                  palette["green_leather"], static, vertices=96)
-    base.torus("WR3_OBS_table_brass_edge", (0, 0, 0.905), 4.90, 0.052,
-               palette["brass"], static)
-    base.torus("WR3_OBS_table_copper_inlay", (0, 0, 0.925), 4.78, 0.020,
-               palette["copper"], static)
-    base.cube("WR3_OBS_board_cradle", (0, 0, 0.98), (4.78, 4.78, 0.085),
-              palette["walnut"], static, bevel=0.14)
+def build_banners(static, palette):
+    """Long heraldic banners between the back windows and trophies."""
+    back = V3_HALL_BACK_Y - 0.12
+    for index, (x, field) in enumerate(((-6.6, "crimson"), (-3.3, "royal_blue"), (3.3, "royal_blue"), (6.6, "crimson"))):
+        top = V3_WALL_TOP_Z - 0.75
+        base.cylinder(f"WR3_ARM_banner_rod_{index}", (x, back - 0.30, top), 0.03, 1.05,
+                      palette["iron"], static, vertices=10).rotation_euler.y = math.pi / 2
+        base.cube(f"WR3_ARM_banner_{index}", (x, back - 0.32, top - 1.15), (0.44, 0.02, 1.10),
+                  palette[field], static, bevel=0.01)
+        for tail in (-1, 1):
+            point = base.cube(f"WR3_ARM_banner_tail_{index}_{tail}", (x + tail * 0.22, back - 0.32, top - 2.28),
+                              (0.22, 0.02, 0.22), palette[field], static, bevel=0.01)
+            point.rotation_euler.y = math.radians(45)
+        base.cube(f"WR3_ARM_banner_band_{index}", (x, back - 0.345, top - 0.55), (0.44, 0.008, 0.06),
+                  palette["gold_thread"], static, bevel=0.005)
+        lod_sphere(f"WR3_ARM_banner_emblem_{index}", (x, back - 0.35, top - 1.20), 0.16,
+                   palette["gold_thread"], static, scale=(1.0, 0.15, 1.2))
+    fuse_by_material("WR3_ARM_banner_", static, "WR3_ARM_banners")
+
+
+# --- hearth, windows, torches -----------------------------------------------------------
+
+def build_hearth(static, palette):
+    """One great stone hearth centred on the back wall; runtime-animated flames."""
+    back = V3_HALL_BACK_Y
+    x, y = 0.0, back - 0.55
+    base.cube("WR3_ARM_hearth_body", (x, y + 0.10, 1.45), (1.55, 0.50, 1.45), palette["stone"], static, bevel=0.08)
+    base.cube("WR3_ARM_hearth_opening", (x, y - 0.38, 1.05), (0.95, 0.10, 0.80), palette["charcoal"], static, bevel=0.06)
+    base.cube("WR3_ARM_hearth_mantel", (x, y - 0.20, 2.35), (1.80, 0.45, 0.14), palette["oak_dark"], static, bevel=0.05)
+    base.cube("WR3_ARM_hearth_hood", (x, y + 0.02, 3.05), (1.30, 0.38, 0.62), palette["stone"], static, bevel=0.10)
     for side in (-1, 1):
-        base.cube(f"WR3_OBS_board_brass_x_{side}", (0, side * 4.65, 1.075),
-                  (4.58, 0.035, 0.035), palette["brass"], static, bevel=0.018)
-        base.cube(f"WR3_OBS_board_brass_y_{side}", (side * 4.65, 0, 1.075),
-                  (0.035, 4.58, 0.035), palette["brass"], static, bevel=0.018)
-    base.cube("WR3_OBS_table_cartouche", (0, -5.17, 0.55), (0.78, 0.055, 0.22),
-              palette["brass_dark"], static, bevel=0.18)
-    base.torus("WR3_OBS_table_cartouche_ring", (0, -5.24, 0.56), 0.16, 0.032,
-               palette["brass"], static, rotation=(math.pi / 2, 0, 0))
-
-
-def build_single_stove(static, palette):
-    """One compact circular fireplace; no mirrored hearth or second anchor."""
-    x, y = -6.35, 4.30
-    base.cylinder("WR3_OBS_stove_body", (x, y, 1.56), 0.86, 1.72,
-                  palette["iron"], static, vertices=64)
-    base.cylinder("WR3_OBS_stove_crown", (x, y, 2.47), 0.96, 0.12,
-                  palette["brass_dark"], static, vertices=64)
-    base.torus("WR3_OBS_stove_crown_inlay", (x, y, 2.535), 0.78, 0.024,
-               palette["brass"], static)
-    base.cylinder("WR3_OBS_stove_plinth", (x, y, 0.65), 1.12, 0.16,
-                  palette["stone"], static, vertices=64)
-    base.cylinder("WR3_OBS_stove_hearth_slab", (x, y - 0.10, 0.47), 1.38, 0.10,
-                  palette["green_marble"], static, vertices=64)
-    base.torus("WR3_OBS_stove_hearth_trim", (x, y - 0.10, 0.535), 1.35, 0.035,
-               palette["brass_dark"], static)
-    for side in (-1, 1):
-        base.cube(f"WR3_OBS_stove_leg_{side}", (x + side * 0.55, y, 0.43),
-                  (0.10, 0.18, 0.26), palette["iron"], static, bevel=0.07)
-
-    # Aim the door/fire at the tactical centre rather than merely canting the
-    # flame silhouette: from the stove this is a visible ~56-degree turn.
-    face_angle = math.atan2(-x, y)
-    face = Vector((math.sin(face_angle), -math.cos(face_angle), 0.0))
-    tangent = Vector((math.cos(face_angle), math.sin(face_angle), 0.0))
-    door_center = Vector((x, y, 1.58)) + face * 0.86
-    door = cylinder_between("WR3_OBS_stove_door", door_center - face * 0.05,
-                            door_center + face * 0.05, 0.62,
-                            palette["charcoal"], static, vertices=64)
-    base.torus("WR3_OBS_stove_door_ring", Vector((x, y, 1.58)) + face * 0.93,
-               0.63, 0.055, palette["brass"], static,
-               rotation=(math.pi / 2, 0, face_angle))
-    fire_center = Vector((x, y, 1.45)) + face * 0.995 + tangent * 0.05
-    # Keep the hearth legible at game-camera distance: a compact ember body
-    # plus three taller tongues reads as flame instead of a pale hand-shaped blob.
-    flame_body = base.sphere("WR3_OBS_stove_flame_body", fire_center,
-                             0.27, palette["fire"], static, scale=(1.12, 0.18, 0.58))
-    flame_body.rotation_euler = (0, math.radians(9), face_angle)
-    flame_body["war_room_runtime_dynamic"] = "v3-fire"
+        base.cube(f"WR3_ARM_hearth_jamb_{side}", (x + side * 1.18, y - 0.40, 1.10), (0.22, 0.18, 1.10),
+                  palette["stone"], static, bevel=0.06)
+        base.cube(f"WR3_ARM_hearth_firedog_{side}", (x + side * 0.55, y - 0.52, 0.35), (0.05, 0.20, 0.18),
+                  palette["iron"], static, bevel=0.02)
+    fire_center = Vector((x, y - 0.55, 0.78))
+    body = base.sphere(V3_FLAME_NAMES[0], fire_center, 0.36, palette["fire"], static, scale=(1.55, 0.22, 0.75))
+    body["war_room_runtime_dynamic"] = "v3-fire"
     for index, (dx, dz, sx, sz, tilt) in enumerate((
-        (-0.14, 0.01, 0.34, 1.20, 0.04),
-        (0.03, 0.14, 0.28, 1.48, 0.18),
-        (0.19, -0.02, 0.26, 0.98, 0.31),
+        (-0.34, 0.02, 0.34, 1.10, -0.14),
+        (0.00, 0.20, 0.30, 1.55, 0.10),
+        (0.32, -0.01, 0.30, 1.02, 0.20),
     )):
-        tongue_center = Vector((x, y, 1.52 + dz)) + face * 1.01 + tangent * dx
-        tongue = base.sphere(f"WR3_OBS_stove_flame_{index}",
-                             tongue_center,
-                             0.22, palette["fire"] if index != 1 else palette["fire_core"],
-                             static, scale=(sx, 0.20, sz))
-        tongue.rotation_euler = (0, tilt, face_angle)
+        tongue = base.sphere(V3_FLAME_NAMES[index + 1], fire_center + Vector((dx, -0.03, dz)), 0.25,
+                             palette["fire_core"] if index == 1 else palette["fire"], static, scale=(sx, 0.18, sz))
+        tongue.rotation_euler.y = tilt
         tongue["war_room_runtime_dynamic"] = "v3-fire"
-    base.cylinder("WR3_OBS_stove_flue", (x, y, 4.33), 0.23, 3.62,
-                  palette["iron"], static, vertices=48)
-    base.torus("WR3_OBS_stove_flue_collar", (x, y, 2.63), 0.31, 0.048,
-               palette["brass_dark"], static)
-    base.cylinder("WR3_OBS_stove_flue_cap", (x, y, 6.18), 0.39, 0.10,
-                  palette["copper"], static, vertices=48)
-    base.light("WR3_LIGHT_stove", "POINT", Vector((x, y, 1.72)) + face * 1.25, 355.0,
-               (1.0, 0.26, 0.040), static, radius=1.72)
-    base.anchor("WR_ANCHOR_fireplace_practical", Vector((x, y, 1.76)) + face * 1.05, static)
+    for log_x in (-0.40, 0.0, 0.40):
+        log = base.cylinder(f"WR3_ARM_hearth_log_{log_x:+.2f}", (x + log_x, y - 0.52, 0.42), 0.10, 1.0,
+                            palette["oak_dark"], static, vertices=12)
+        log.rotation_euler.y = math.pi / 2
+    base.light("WR3_LIGHT_hearth", "POINT", (x, y - 1.20, 1.30), 520.0, (1.0, 0.30, 0.06), static, radius=1.8)
+    base.anchor("WR_ANCHOR_fireplace_practical", (x, y - 0.90, 1.45), static)
 
 
-def build_observatory_telescope(static, palette):
-    """A restrained premium telescope: legible, but secondary to the board and oculus."""
-    hub = Vector((4.82, 4.46, 1.05))
-    base.sphere("WR3_OBS_telescope_mount", hub, 0.16, palette["brass_dark"], static,
-                scale=(1.08, 1.08, 0.90))
-    base.cylinder("WR3_OBS_telescope_mount_ring", hub, 0.25, 0.060,
-                  palette["copper"], static, vertices=48)
-
-    tripod_feet = ((4.34, 3.96, 0.14), (5.30, 4.02, 0.14), (4.92, 4.86, 0.14))
-    for index, foot in enumerate(tripod_feet):
-        cylinder_between(f"WR3_OBS_telescope_tripod_{index}", hub, foot, 0.048,
-                         palette["brass_dark"], static, vertices=24)
-        base.cylinder(f"WR3_OBS_telescope_foot_{index}", foot, 0.105, 0.050,
-                      palette["walnut_dark"], static, vertices=32)
-
-    axis_start = Vector((4.42, 4.24, 1.48))
-    axis_end = Vector((5.30, 4.90, 2.08))
-    axis = (axis_end - axis_start).normalized()
-    cylinder_between("WR3_OBS_telescope_tube", axis_start, axis_end, 0.125,
-                     palette["brass"], static, vertices=48)
-    cylinder_between("WR3_OBS_telescope_patina", axis_start + axis * 0.25,
-                     axis_end - axis * 0.29, 0.138, palette["teal"], static, vertices=48)
-    cylinder_between("WR3_OBS_telescope_front_collar", axis_end - axis * 0.12,
-                     axis_end + axis * 0.055, 0.165, palette["copper"], static, vertices=48)
-    cylinder_between("WR3_OBS_telescope_lens", axis_end + axis * 0.056,
-                     axis_end + axis * 0.075, 0.132, palette["night"], static, vertices=48)
-    cylinder_between("WR3_OBS_telescope_eyepiece", axis_start - axis * 0.22,
-                     axis_start + axis * 0.015, 0.062, palette["brass_dark"], static, vertices=36)
-    cylinder_between("WR3_OBS_telescope_focus_ring", axis_start - axis * 0.035,
-                     axis_start + axis * 0.055, 0.148, palette["copper"], static, vertices=40)
-    cylinder_between("WR3_OBS_telescope_dew_shield", axis_end - axis * 0.015,
-                     axis_end + axis * 0.18, 0.176, palette["brass_dark"], static, vertices=48)
-    base.torus("WR3_OBS_telescope_mount_trim", hub + Vector((0, 0, 0.015)),
-               0.27, 0.021, palette["brass"], static)
-
-    yoke_left = hub + Vector((-0.25, 0.0, 0.20))
-    yoke_right = hub + Vector((0.25, 0.0, 0.20))
-    cylinder_between("WR3_OBS_telescope_yoke", yoke_left, yoke_right, 0.056,
-                     palette["brass"], static, vertices=28)
-    for side, point in (("left", yoke_left), ("right", yoke_right)):
-        base.sphere(f"WR3_OBS_telescope_yoke_cap_{side}", point, 0.085,
-                    palette["copper"], static)
-
-def build_lounge_corner(static, palette):
-    """Compact club chair and side table from the canonical mock."""
-    x, y = -6.78, -0.10
-    chair_yaw = math.radians(91)
-
-    # Classic club-chair silhouette: padded cuboids read better at game camera
-    # distance than the previous bulbous sphere-based back and arms.
-    base.cube(
-        "WR3_OBS_chair_seat", (x, y, 0.58), (0.76, 0.60, 0.16),
-        palette["walnut_dark"], static, bevel=0.18,
-    )
-    back = base.cube(
-        "WR3_OBS_chair_back", (x, y + 0.50, 1.34), (0.76, 0.19, 0.74),
-        palette["green_leather"], static, bevel=0.32,
-    )
-    back.rotation_euler.x = math.radians(-7)
-    back_pad = base.cube(
-        "WR3_OBS_chair_back_pad", (x, y + 0.29, 1.34), (0.57, 0.11, 0.52),
-        palette["green_leather"], static, bevel=0.22,
-    )
-    back_pad.rotation_euler.x = math.radians(-7)
-
-    for side in (-1, 1):
-        base.cube(
-            f"WR3_OBS_chair_wing_{side}", (x + side * 0.62, y + 0.40, 1.35),
-            (0.12, 0.22, 0.54), palette["leather"], static, bevel=0.16,
-        )
-        base.cube(
-            f"WR3_OBS_chair_arm_{side}", (x + side * 0.77, y - 0.03, 0.91),
-            (0.16, 0.53, 0.17), palette["leather"], static, bevel=0.16,
-        )
-        for front in (-1, 1):
-            leg_z = 0.28
-            base.cylinder(
-                f"WR3_OBS_chair_leg_{side}_{front}",
-                (x + side * 0.57, y + front * 0.40, leg_z),
-                0.066, 0.34, palette["walnut_dark"], static, vertices=28,
-            )
-            base.cylinder(
-                f"WR3_OBS_chair_leg_tip_{side}_{front}",
-                (x + side * 0.57, y + front * 0.40, 0.095),
-                0.072, 0.045, palette["brass_dark"], static, vertices=28,
-            )
-        for stud_index, stud_y in enumerate((-0.34, -0.08, 0.18)):
-            base.sphere(
-                f"WR3_OBS_chair_stud_{side}_{stud_index}",
-                (x + side * 0.94, y + stud_y, 0.93),
-                0.026, palette["brass"], static,
-            )
-
-    base.cube(
-        "WR3_OBS_chair_cushion", (x, y - 0.07, 0.82), (0.61, 0.49, 0.13),
-        palette["green_leather"], static, bevel=0.22,
-    )
-    for side in (-1, 1):
-        base.cube(
-            f"WR3_OBS_chair_inner_arm_{side}", (x + side * 0.60, y - 0.02, 0.96),
-            (0.055, 0.43, 0.13), palette["green_leather"], static, bevel=0.10,
-        )
-    # A restrained brass foot rail and buttoning make the lounge read as
-    # bespoke observatory furniture at the game camera distance.
-    base.cube(
-        "WR3_OBS_chair_front_rail", (x, y - 0.49, 0.43), (0.58, 0.055, 0.055),
-        palette["brass_dark"], static, bevel=0.025,
-    )
-    for row, z in enumerate((1.18, 1.50)):
-        for col, button_x in enumerate((-0.30, 0.0, 0.30)):
-            base.sphere(
-                f"WR3_OBS_chair_back_button_{row}_{col}",
-                (x + button_x, y + 0.165, z),
-                0.031, palette["brass_dark"], static,
-            )
-    for side in (-1, 1):
-        base.cylinder(
-            f"WR3_OBS_chair_back_brass_rail_{side}",
-            (x + side * 0.69, y + 0.305, 1.36), 0.025, 0.92,
-            palette["brass_dark"], static, vertices=20,
-        )
-    pillow = base.cube(
-        "WR3_OBS_chair_pillow", (x, y + 0.17, 1.29), (0.39, 0.085, 0.30),
-        palette["ivory"], static, bevel=0.15,
-    )
-    pillow.rotation_euler.x = math.radians(-7)
-
-    # Turn the complete chair inward toward the command board, matching the
-    # approved golden composition without moving its lounge-corner footprint.
-    chair_parts = [obj for obj in static.objects if obj.name.startswith("WR3_OBS_chair_")]
-    for obj in chair_parts:
-        dx, dy = obj.location.x - x, obj.location.y - y
-        obj.location.x = x + dx * math.cos(chair_yaw) - dy * math.sin(chair_yaw)
-        obj.location.y = y + dx * math.sin(chair_yaw) + dy * math.cos(chair_yaw)
-        obj.rotation_euler.z += chair_yaw
-
-    tx, ty = -6.00, 2.22
-    base.cylinder("WR3_OBS_side_table_top", (tx, ty, 0.78), 0.55, 0.10,
-                  palette["walnut"], static, vertices=48)
-    base.torus("WR3_OBS_side_table_brass_edge", (tx, ty, 0.835), 0.49, 0.025,
-               palette["brass"], static)
-    base.cylinder("WR3_OBS_side_table_pedestal", (tx, ty, 0.47), 0.12, 0.56,
-                  palette["brass_dark"], static, vertices=32)
-    base.cylinder("WR3_OBS_side_table_foot", (tx, ty, 0.17), 0.34, 0.08,
-                  palette["walnut_dark"], static, vertices=40)
-    base.cylinder("WR3_OBS_side_table_cup", (tx - 0.16, ty, 0.92), 0.10, 0.19,
-                  palette["ivory"], static, vertices=32)
-    base.cube("WR3_OBS_side_table_book", (tx + 0.15, ty, 0.91), (0.22, 0.16, 0.045),
-              palette["book_red"], static, bevel=0.018)
+def build_windows(static, palette):
+    """Two tall lancet windows with moonlit glass on the back wall."""
+    back = V3_HALL_BACK_Y
+    for index, x in enumerate((-2.25, 2.25)):
+        base.cube(f"WR3_ARM_window_reveal_{index}", (x, back - 0.05, 3.00), (0.62, 0.10, 1.42),
+                  palette["stone"], static, bevel=0.06)
+        base.cube(f"WR3_ARM_window_glass_{index}", (x, back - 0.16, 2.95), (0.44, 0.02, 1.20),
+                  palette["glass"], static, bevel=0.01)
+        lod_sphere(f"WR3_ARM_window_arch_{index}", (x, back - 0.16, 4.15), 0.44, palette["glass"], static,
+                   scale=(1.0, 0.05, 0.62))
+        base.cube(f"WR3_ARM_window_mullion_{index}", (x, back - 0.19, 3.05), (0.035, 0.03, 1.30),
+                  palette["iron"], static, bevel=0.01)
+        for bar in (-0.5, 0.2, 0.9):
+            base.cube(f"WR3_ARM_window_bar_{index}_{bar:+.1f}", (x, back - 0.19, 2.95 + bar), (0.44, 0.03, 0.025),
+                      palette["iron"], static, bevel=0.008)
+        base.cube(f"WR3_ARM_window_sill_{index}", (x, back - 0.22, 1.72), (0.70, 0.16, 0.07),
+                  palette["flag"], static, bevel=0.03)
+    moon = base.light("WR3_LIGHT_window", "AREA", (0, back - 1.6, 3.6), 380.0, (0.18, 0.42, 1.0), static, size=4.5)
+    base.look_at(moon, (0, 0.5, 1.1))
+    base.anchor("WR_ANCHOR_window_moonlight", (0, back - 1.4, 3.6), static)
 
 
-def build_celestial_globe(static, palette):
-    """Blue navigation globe on the compact walnut console from the canonical mock."""
-    x, y = 6.48, -0.95
-    base.cube(
-        "WR3_OBS_globe_console_body", (x, y, 0.54), (0.70, 0.32, 0.40),
-        palette["walnut_dark"], static, bevel=0.065,
-    )
-    base.cube(
-        "WR3_OBS_globe_console_top", (x, y, 0.98), (0.82, 0.38, 0.065),
-        palette["walnut"], static, bevel=0.055,
-    )
-    for drawer, z in enumerate((0.43, 0.72)):
-        base.cube(
-            f"WR3_OBS_globe_console_drawer_{drawer}", (x, y - 0.345, z),
-            (0.59, 0.025, 0.11), palette["walnut"], static, bevel=0.025,
-        )
-        base.sphere(
-            f"WR3_OBS_globe_console_pull_{drawer}", (x, y - 0.39, z),
-            0.042, palette["brass"], static,
-        )
-    base.cube(
-        "WR3_OBS_globe_console_plinth", (x, y, 0.12), (0.76, 0.35, 0.075),
-        palette["brass_dark"], static, bevel=0.045,
-    )
-    center = (x, y, 1.43)
-    base.cylinder(
-        "WR3_OBS_globe_cradle_foot", (x, y, 1.075), 0.13, 0.08,
-        palette["brass_dark"], static, vertices=32,
-    )
-    base.torus(
-        "WR3_OBS_globe_cradle_ring", (x, y, 1.115), 0.15, 0.022,
-        palette["brass"], static,
-    )
-    base.sphere(
-        "WR3_OBS_globe_sphere", center, 0.34, palette["night"], static,
-        scale=(1.0, 1.0, 1.0),
-    )
-    base.torus(
-        "WR3_OBS_globe_meridian", center, 0.39, 0.025,
-        palette["brass"], static, rotation=(math.pi / 2, 0, 0),
-    )
-    base.torus(
-        "WR3_OBS_globe_equator", center, 0.36, 0.018,
-        palette["brass_dark"], static,
-    )
-    # Sparse brass stars make the blue sphere read as a celestial globe at the
-    # game camera without turning this secondary corner into another focal point.
-    for star, (dx, dz) in enumerate((
-        (-0.16, 0.12), (-0.05, 0.22), (0.08, 0.15),
-        (0.18, 0.03), (-0.10, -0.08), (0.10, -0.16),
-    )):
-        dy = math.sqrt(max(0.0, 0.34 ** 2 - dx ** 2 - dz ** 2))
-        base.sphere(
-            f"WR3_OBS_globe_star_{star}", (x + dx, y - dy, center[2] + dz),
-            0.016, palette["brass"], static,
-        )
-
-
-def build_wall_lanterns(static, palette):
-    """Warm wall lanterns replace the suspended armillary and keep the ceiling open."""
-    for side, x in (("left", -3.15), ("right", 3.15)):
-        y, z = 7.30, 4.70
-        base.cube(
-            f"WR3_OBS_wall_lantern_{side}_plate", (x, y, z),
-            (0.24, 0.08, 0.45), palette["walnut_dark"], static, bevel=0.06,
-        )
-        base.cube(
-            f"WR3_OBS_wall_lantern_{side}_glow", (x, y - 0.12, z),
-            (0.13, 0.08, 0.27), palette["fire_core"], static, bevel=0.05,
-        )
-        for dz in (-0.34, 0.34):
-            base.cube(
-                f"WR3_OBS_wall_lantern_{side}_cap_{dz:+.2f}", (x, y - 0.12, z + dz),
-                (0.20, 0.12, 0.055), palette["brass"], static, bevel=0.025,
-            )
-        for dx in (-0.17, 0.17):
-            base.cylinder(
-                f"WR3_OBS_wall_lantern_{side}_rail_{dx:+.2f}",
-                (x + dx, y - 0.12, z), 0.018, 0.62,
-                palette["brass_dark"], static, vertices=16,
-            )
-        lamp = base.light(
-            f"WR3_LIGHT_wall_lantern_{side}", "POINT", (x, y - 0.50, z), 118.0,
-            (1.0, 0.44, 0.12), static, radius=1.05,
-        )
-        lamp["war_room_runtime_dynamic"] = "v3-lantern"
-    base.anchor("WR_ANCHOR_chandelier_practical", (0, 6.85, 4.72), static)
-
-
-def build_tower_entry(static, palette):
-    """Tower door sits on a real threshold and has a small entry rug."""
-    theta = math.radians(V3_ENTRY_THETA_DEG)
-    radial = Vector((math.sin(theta), math.cos(theta), 0.0))
-    tangent = Vector((math.cos(theta), -math.sin(theta), 0.0))
-    wall = Vector((
-        V3_WALL_RADIUS * radial.x,
-        V3_WALL_CENTER_Y + V3_WALL_RADIUS * radial.y,
-        0.0,
-    ))
-    # Seat the leaf against the inner face of the authored wall and use the exact
-    # tangent of that circular shell. This keeps the whole portal visually welded
-    # into the observatory rather than floating a few centimetres in front of it.
-    center = wall - radial * 0.205
-    angle = math.atan2(tangent.y, tangent.x)
-    door_z = V3_ENTRY_DOOR_Z
-
-    door = base.cube(
-        "WR3_OBS_entry_door", (center.x, center.y, door_z),
-        (0.88, 0.11, 1.80), palette["teal"], static, bevel=0.14,
-    )
-    door.rotation_euler.z = angle
-    inset = base.cube(
-        "WR3_OBS_entry_door_inset",
-        (center.x - radial.x * 0.12, center.y - radial.y * 0.12, door_z),
-        (0.68, 0.035, 1.56), palette["walnut_dark"], static, bevel=0.12,
-    )
-    inset.rotation_euler.z = angle
-
-    for side in (-1, 1):
-        point = center + tangent * (side * 1.02)
-        jamb = base.cube(
-            f"WR3_OBS_entry_jamb_{side}", (point.x, point.y, 2.02),
-            (0.105, 0.20, 1.98), palette["copper"], static, bevel=0.055,
-        )
-        jamb.rotation_euler.z = angle
-    lintel = base.cube(
-        "WR3_OBS_entry_lintel", (center.x, center.y, 4.00),
-        (1.12, 0.20, 0.11), palette["copper"], static, bevel=0.055,
-    )
-    lintel.rotation_euler.z = angle
-    threshold = base.cube(
-        "WR3_OBS_entry_threshold", (center.x, center.y, 0.105),
-        (1.12, 0.24, 0.075), palette["brass_dark"], static, bevel=0.040,
-    )
-    threshold.rotation_euler.z = angle
-
-    front = Vector((center.x, center.y, door_z)) - radial * 0.17
-    glass_start = front - radial * 0.035 + Vector((0, 0, 0.72))
-    glass_end = front + radial * 0.035 + Vector((0, 0, 0.72))
-    cylinder_between(
-        "WR3_OBS_entry_porthole", glass_start, glass_end, 0.34,
-        palette["night"], static, vertices=56,
-    )
-    ring = base.torus(
-        "WR3_OBS_entry_porthole_ring", glass_start, 0.39, 0.055,
-        palette["brass"], static,
-    )
-    ring.rotation_euler = radial.to_track_quat("Z", "Y").to_euler()
-
-    handle_center = front - tangent * 0.48 + Vector((0, 0, -0.30))
-    base.sphere("WR3_OBS_entry_handle_hub", handle_center, 0.105,
-                palette["brass_dark"], static)
-    cylinder_between(
-        "WR3_OBS_entry_handle", handle_center, handle_center + tangent * 0.34,
-        0.045, palette["brass"], static, vertices=28,
-    )
-
-    rug_center = Vector((center.x, center.y, 0.105)) - radial * 1.10
-    rug_border = base.cube(
-        "WR3_OBS_entry_rug_border", rug_center, (0.92, 0.61, 0.025),
-        palette["brass_dark"], static, bevel=0.07,
-    )
-    rug_border.rotation_euler.z = angle
-    rug = base.cube(
-        "WR3_OBS_entry_rug", rug_center + Vector((0, 0, 0.030)),
-        (0.82, 0.52, 0.020), palette["rug_red"], static, bevel=0.06,
-    )
-    rug.rotation_euler.z = angle
+def build_torches(static, palette):
+    """Iron wall torches with warm emissive flames (these carry warmth at runtime)."""
+    back = V3_HALL_BACK_Y - 0.12
+    hx = V3_HALL_HALF_X - 0.12
+    spots = [((-3.9, back), 0.0), ((3.9, back), 0.0)]
+    for y in (5.40, 2.20, -1.00, -4.20):
+        spots += [((-hx, y), math.pi / 2), ((hx, y), -math.pi / 2)]
+    irons, glows = [], []
+    for index, ((x, y), yaw) in enumerate(spots):
+        z = 2.75
+        parts = [
+            base.cube(f"WR3_ARM_torch_plate_{index}", (x, y, z), (0.10, 0.03, 0.18), palette["iron"], static, bevel=0.02),
+            base.cube(f"WR3_ARM_torch_arm_{index}", (x, y - 0.14, z - 0.05), (0.025, 0.14, 0.025), palette["iron"], static, bevel=0.01),
+            base.cylinder(f"WR3_ARM_torch_cup_{index}", (x, y - 0.28, z + 0.05), 0.075, 0.16, palette["iron"], static, vertices=10),
+        ]
+        glow = lod_sphere(f"WR3_ARM_torch_flame_{index}", (x, y - 0.28, z + 0.24), 0.09, palette["fire_core"], static,
+                          scale=(0.9, 0.9, 1.7))
+        for part in parts + [glow]:
+            placed(part, (x, y), yaw)
+        irons += parts
+        glows.append(glow)
+    for index, ((x, y), yaw) in enumerate(spots):
+        # Warm pools under each torch (preview lights; runtime uses the anchors).
+        face = (math.sin(yaw) * 0.6, -math.cos(yaw) * 0.6)
+        base.light(f"WR3_LIGHT_torch_{index}", "POINT", (x + face[0], y + face[1], 3.0), 70.0,
+                   (1.0, 0.46, 0.14), static, radius=0.25)
+    join_into(irons, "WR3_ARM_torch_irons")
+    join_into(glows, "WR3_ARM_torch_flames")
+    base.anchor("WR_ANCHOR_chandelier_practical", (0, V3_HALL_BACK_Y - 1.2, 3.2), static)
 
 
 def build_lighting(static):
     scene = bpy.context.scene
-    scene["war_room_variant"] = "v3-celestial-observatory"
-    scene["war_room_visual_canon"] = "war-room-v3-canonical-8e1e6946-2026-09-25"
-    scene.view_settings.exposure = 0.20
+    scene["war_room_variant"] = "v3-armory-hall"
+    scene["war_room_visual_canon"] = V3_CANON
+    scene.view_settings.exposure = 0.35
 
-    key = base.light("WR3_LIGHT_key", "AREA", (-4.8, -3.8, 8.3), 585.0,
-                     (1.0, 0.62, 0.32), static, size=6.1)
+    key = base.light("WR3_LIGHT_key", "AREA", (-4.8, -3.8, 8.3), 470.0, (1.0, 0.64, 0.36), static, size=6.1)
     base.look_at(key, (0, 0.5, 1.0))
-    fill = base.light("WR3_LIGHT_fill", "AREA", (6.6, -2.6, 6.6), 500.0,
-                      (0.15, 0.42, 1.00), static, size=6.0)
+    fill = base.light("WR3_LIGHT_fill", "AREA", (6.6, -2.6, 6.6), 420.0, (0.18, 0.40, 1.00), static, size=6.0)
     base.look_at(fill, (0.4, 0.6, 1.5))
-    top = base.light("WR3_LIGHT_top", "AREA", (0, 1.4, 8.7), 245.0,
-                     (0.90, 0.70, 0.44), static, size=4.8)
+    top = base.light("WR3_LIGHT_top", "AREA", (0, 1.4, 8.7), 300.0, (0.95, 0.72, 0.46), static, size=5.2)
     base.look_at(top, (0, 0.4, 0.8))
+    for side in (-1, 1):
+        wall = base.light(f"WR3_LIGHT_wall_wash_{side}", "AREA", (side * 5.0, 1.0, 5.5), 150.0,
+                          (1.0, 0.55, 0.25), static, size=4.0)
+        base.look_at(wall, (side * 8.4, 1.0, 3.0))
+
+
+def apply_v3_camera():
+    scene = bpy.context.scene
+    cam = bpy.data.objects.get("WR_CAMERA_hero")
+    if cam is None or cam.type != "CAMERA":
+        raise RuntimeError("War Room v3 hero camera missing")
+    vertical_fov = math.radians(V3_CAMERA_FOV_DEG)
+    distance = (V3_CAMERA_HALF_SPAN / math.tan(vertical_fov / 2.0)) * V3_CAMERA_PADDING
+    target = Vector(V3_CAMERA_TARGET)
+    direction = Vector(V3_CAMERA_DIRECTION).normalized()
+    cam.location = target + direction * distance
+    cam.data.sensor_width = 36.0
+    sensor_height = cam.data.sensor_width / (base.PREVIEW_SIZE[0] / base.PREVIEW_SIZE[1])
+    cam.data.lens = sensor_height / (2.0 * math.tan(vertical_fov / 2.0))
+    base.look_at(cam, target)
+    cam["war_room_camera_profile"] = "v3-runtime-shared-play-pitch-v1"
+    cam["runtime_vertical_fov_deg"] = V3_CAMERA_FOV_DEG
+    cam["runtime_distance"] = round(distance, 5)
+    cam["war_room_visual_canon"] = V3_CANON
+    scene.camera = cam
 
 
 def bake_v3_weather():
@@ -770,16 +728,18 @@ def apply_v3_identity():
         raise RuntimeError("War Room v3 static shell missing")
     clear_inherited_room(static)
     palette = build_v3_palette()
-    build_curved_observatory(static, palette)
-    build_celestial_window(static, palette)
-    build_round_command_table(static, palette)
-    build_single_stove(static, palette)
-    build_observatory_telescope(static, palette)
-    build_lounge_corner(static, palette)
-    build_celestial_globe(static, palette)
-    build_tower_entry(static, palette)
-    build_wall_lanterns(static, palette)
+    build_hall(static, palette)
+    build_night_backdrop(static, palette)
+    build_dais_and_board(static, palette)
+    build_hearth(static, palette)
+    build_windows(static, palette)
+    build_armor_ring(static, palette)
+    build_wall_trophies(static, palette)
+    build_banners(static, palette)
+    build_torches(static, palette)
     build_lighting(static)
+    scale_preview_board()
+    apply_v3_camera()
     bake_v3_weather()
     for obj in bpy.context.scene.objects:
         if obj.get("war_room_role"):
@@ -794,57 +754,36 @@ def validate_v3():
         "WR_ANCHOR_fireplace_practical",
         "WR_ANCHOR_chandelier_practical",
         "WR_ANCHOR_window_moonlight",
-        "WR3_OBS_floor",
-        "WR3_OBS_floor_tile_0",
-        "WR3_OBS_rug_field",
-        "WR3_OBS_table_drum",
-        "WR3_OBS_celestial_window",
-        "WR3_OBS_window_crescent",
-        "WR3_OBS_window_star_0",
-        "WR3_OBS_stove_body",
-        "WR3_OBS_stove_flame_body",
-        "WR3_OBS_telescope_tube",
-        "WR3_OBS_chair_seat",
-        "WR3_OBS_globe_sphere",
-        "WR3_OBS_entry_door",
-        "WR3_OBS_entry_rug",
-        "WR3_OBS_wall_lantern_left_glow",
+        "WR3_ARM_floor",
+        "WR3_ARM_wall_back",
+        "WR3_ARM_dais_rug",
+        "WR3_ARM_board_plinth",
+        "WR3_ARM_hearth_body",
+        "WR3_ARM_window_glass_0",
+        "WR3_ARM_torch_flames",
+        *V3_FLAME_NAMES,
     }
     missing = sorted(required - names)
     if missing:
         raise RuntimeError(f"War Room v3 contract objects missing: {missing}")
+    for prefix, minimum in (("WR3_ARM_armor_ring_", 3), ("WR3_ARM_trophies_", 3), ("WR3_ARM_banners_", 2)):
+        count = sum(1 for name in names if name.startswith(prefix))
+        if count < minimum:
+            raise RuntimeError(f"War Room v3 armory set incomplete: {prefix}* = {count}")
     forbidden_prefixes = (
         "WR_ARCH_", "WR_TABLE_", "WR_FIREPLACE_", "WR_DESK_", "WR_CREST_",
-        "WR_WINDOW_", "WR_CANON_", "WR3_OBS_drafting_", "WR3_OBS_map_",
-        "WR_ANCHOR_right_fireplace_practical", "WR3_OBS_window_spoke_",
-        "WR3_OBS_window_moon", "WR3_OBS_aurora_", "WR3_OBS_window_orbit_",
-        "WR3_OBS_window_constellation_", "WR3_OBS_canopy_rib_", "WR3_OBS_armillary_",
-        "WR3_OBS_compass_",
+        "WR_WINDOW_", "WR_CANON_", "WR3_OBS_", "WR_ANCHOR_right_fireplace_practical",
     )
     forbidden = sorted(name for name in names if name.startswith(forbidden_prefixes))
     if forbidden:
-        raise RuntimeError(f"War Room v3 inherited v2 visual geometry: {forbidden[:12]}")
+        raise RuntimeError(f"War Room v3 inherited foreign visual geometry: {forbidden[:12]}")
     if sum(1 for name in names if name == "WR_ANCHOR_fireplace_practical") != 1:
         raise RuntimeError("War Room v3 must contain exactly one fireplace practical")
-
-    end_rib = bpy.data.objects.get(f"WR3_OBS_apse_rib_{V3_WALL_SEGMENT_COUNT}")
-    door = bpy.data.objects.get("WR3_OBS_entry_door")
-    if end_rib is None or door is None:
-        raise RuntimeError("War Room v3 shell/entry validation objects missing")
-    if V3_WALL_END_DEG < 108 or V3_WALL_START_DEG > -108:
-        raise RuntimeError("War Room v3 side shell no longer encloses the lateral room")
-    expected_angle = math.radians(-V3_ENTRY_THETA_DEG)
-    angle_error = abs(math.atan2(
-        math.sin(door.rotation_euler.z - expected_angle),
-        math.cos(door.rotation_euler.z - expected_angle),
-    ))
-    if angle_error > math.radians(0.25):
-        raise RuntimeError(
-            f"War Room v3 entry lost wall tangent: error={math.degrees(angle_error):.3f}deg"
-        )
-    if abs(float(door.location.z) - V3_ENTRY_DOOR_Z) > 0.01:
-        raise RuntimeError(f"War Room v3 entry door floated vertically: z={door.location.z:.3f}")
-
+    # No armour may stand between the play camera and the near ranks.
+    near_rank = -V3_BOARD_HALF
+    for x, y in V3_ARMOR_POSITIONS:
+        if y < near_rank + 1.2 and abs(x) < V3_BOARD_HALF + 2.0:
+            raise RuntimeError(f"War Room v3 armour at ({x}, {y}) would occlude the near ranks")
 
 
 def validate_runtime_glb_v3(path, expected_factors):
@@ -865,10 +804,7 @@ def validate_runtime_glb_v3(path, expected_factors):
         "WR_ANCHOR_fireplace_practical",
         "WR_ANCHOR_chandelier_practical",
         "WR_ANCHOR_window_moonlight",
-        "WR3_OBS_stove_flame_body",
-        "WR3_OBS_stove_flame_0",
-        "WR3_OBS_stove_flame_1",
-        "WR3_OBS_stove_flame_2",
+        *V3_FLAME_NAMES,
     }
     missing = sorted(required_nodes - node_names)
     if missing:
@@ -878,16 +814,13 @@ def validate_runtime_glb_v3(path, expected_factors):
 
     materials = {row.get("name"): row for row in data.get("materials", [])}
     required_materials = {
-        "WR3_MAT_warm_travertine",
-        "WR3_MAT_radial_slate",
-        "WR3_MAT_green_marble",
-        "WR3_MAT_room_rug",
-        "WR3_MAT_deep_teal_enamel",
-        "WR3_MAT_patinated_copper",
-        "WR3_MAT_sunlit_brass",
-        "WR3_MAT_chart_walnut",
-        "WR3_MAT_chart_green_leather",
-        "WR3_MAT_celestial_blue",
+        "WR3_MAT_castle_stone",
+        "WR3_MAT_flagstone",
+        "WR3_MAT_dark_oak",
+        "WR3_MAT_plate_steel",
+        "WR3_MAT_gilded_trim",
+        "WR3_MAT_crimson_cloth",
+        "WR3_MAT_royal_blue_cloth",
     }
     missing_materials = sorted(required_materials - set(materials))
     if missing_materials:
@@ -899,6 +832,8 @@ def validate_runtime_glb_v3(path, expected_factors):
             raise RuntimeError(f"War Room v3 material lost authored colour: {name}={factor}")
         if expected is not None and any(abs(float(factor[i]) - float(expected[i])) > 0.012 for i in range(3)):
             raise RuntimeError(f"War Room v3 material factor drift: {name}={factor} expected={expected}")
+        if "KHR_materials_sheen" in materials[name].get("extensions", {}):
+            raise RuntimeError(f"War Room v3 material exports sheen (washes out at runtime): {name}")
 
 
 def export_shell_v3(path, batching=None):
@@ -944,6 +879,8 @@ def export_shell_v3(path, batching=None):
 def main():
     options = base.args()
     base.CONTRACT = CONTRACT
+    base.RUNTIME_MIN_STATIC_SOURCES = 60
+    base.RUNTIME_MIN_MERGED = 20
     base.wipe()
     base.build()
     base.validate()

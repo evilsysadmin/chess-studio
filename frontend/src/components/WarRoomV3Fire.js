@@ -22,10 +22,10 @@ export function warRoomV3FireFrame({
 }
 
 export const WAR_ROOM_V3_FLAME_NAMES = Object.freeze([
-  'WR3_OBS_stove_flame_body',
-  'WR3_OBS_stove_flame_0',
-  'WR3_OBS_stove_flame_1',
-  'WR3_OBS_stove_flame_2',
+  'WR3_ARM_hearth_flame_body',
+  'WR3_ARM_hearth_flame_0',
+  'WR3_ARM_hearth_flame_1',
+  'WR3_ARM_hearth_flame_2',
 ]);
 
 export function installWarRoomV3FireAnimation(
@@ -34,6 +34,7 @@ export function installWarRoomV3FireAnimation(
     coarsePointer = false,
     reducedMotion = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches || false,
     flameNames = WAR_ROOM_V3_FLAME_NAMES,
+    spriteShape = {},
   } = {},
 ) {
   const flames = flameNames.map((name) => root?.getObjectByName?.(name)).filter(Boolean);
@@ -54,7 +55,7 @@ export function installWarRoomV3FireAnimation(
     ?.getObjectByProperty?.('isPointLight', true);
   const practicalBase = practical?.intensity;
   const practicalColorBase = practical?.color?.clone?.();
-  const disposeSprites = installWarRoomV3StoveFireSprites(flames, { coarsePointer, reducedMotion });
+  const disposeSprites = installWarRoomV3StoveFireSprites(flames, { coarsePointer, reducedMotion, shape: spriteShape });
   const driver = flames[0];
   const previous = driver.onBeforeRender;
 

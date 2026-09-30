@@ -78,7 +78,7 @@ export function installWarRoomV2FireSprites(root, { coarsePointer = false, reduc
   };
 }
 
-export function installWarRoomV3StoveFireSprites(flames, { coarsePointer = false, reducedMotion = false } = {}) {
+export function installWarRoomV3StoveFireSprites(flames, { coarsePointer = false, reducedMotion = false, shape = {} } = {}) {
   const parent = flames?.[0]?.parent;
   if (reducedMotion || !parent) return () => {};
   const xs = flames.map((flame) => flame.position.x);
@@ -96,6 +96,7 @@ export function installWarRoomV3StoveFireSprites(flames, { coarsePointer = false
     spreadX: 0.16,
     spreadZ: 0.10,
     size: 0.17,
+    ...shape,
   });
   parent.add(points);
   // The authored stove flames would be a second fire under the sprites: keep them rendering

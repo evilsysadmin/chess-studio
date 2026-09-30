@@ -7,9 +7,8 @@ War Room v2 and v3 use deterministic Blender generators for their static room sh
 ## Variant ownership
 
 - `build_war_room_premium.py` owns the v2 room.
-- `build_war_room_v3.py` owns the v3 Celestial Observatory. It reuses only the proven board anchor and camera profile; visible v2 architecture is forbidden by validation. It retains an independent art contract, publisher, R2 prefix and Blender gate.
-- v3 has one cylindrical cast-iron stove/fireplace. Its right bay belongs to a brass observatory telescope and the tower entry; a second hearth or its practical-light anchor is a regression.
-- v3 follows the current canonical observatory mock: curved cream/teal tower walls, a green-and-cream marble checkerboard floor, circular green command rug, moon-and-stars oculus with no orbital rings, one inward-facing cast-iron stove, a deliberately restrained brass telescope, a premium green-leather club chair turned toward the board, an open bookshelf-free rear-left wall, a blue celestial globe on a separate walnut console with breathing room, warm wall lanterns and a teal/copper tower door that visibly meets the floor. Overhead canopy bars/ribs and suspended armillary clutter are retired regressions. Its teal, travertine, walnut, brass and celestial-blue palette must not collapse back into v2's rectangular walnut hall.
+- `build_war_room_v3.py` owns the v3 Armory Hall. It reuses only the proven board anchor and camera object; visible v2 architecture and the retired observatory (`WR3_OBS_*`) are forbidden by validation. It retains an independent art contract, publisher, R2 prefix and Blender gate.
+- v3 has one great stone hearth centred on the back wall; a second hearth or its practical-light anchor is a regression.
 - Runtime aliases are independent: `war-room/v2/...` and `war-room/v3/...`. Never publish one variant over the other variant's alias.
 
 ## Ownership boundary
@@ -22,9 +21,9 @@ A visual PR must not quietly change chess legality, persistence or game semantic
 
 ## War Room v3 canonical visual reference
 
-The accepted canonical snapshot is `war-room-v3-canonical.png`, SHA-256 `8e1e6946e2c9bc43968d39b79c52587b2e02edd3a771eb2acd190f97fc2ead33`. The working master is mirrored in the Chess Studio design library at `/Chess Studio/Design/War Room v3/war-room-v3-canonical.png`; deterministic Blender review artifacts are judged against its composition rather than against older v3 renders.
+Since 2026-09-30 v3 is the Armory Hall (`war-room-armory-hall-v3`), replacing the retired celestial observatory. Like v4, its review camera is the runtime's shared desktop play camera, so the Blender preview judges what the player sees.
 
-Non-negotiable cues: open ceiling without crossing bars, moon + stars only in the oculus, cream/green tiled floor, door grounded on a threshold, board kept dominant, and sparse lived-in props (chair, small bookcase, telescope, stove) around the perimeter.
+Non-negotiable cues: a stone hall under a corbelled cornice open to the night sky; a ring of eight life-size plate armours with halberds on the sides and back, facing the board, never between the camera and the near ranks; heraldic shields over crossed swords on every wall, the side-wall ones on brackets turned toward the player so their faces read; long crimson and royal-blue banners; iron torches; one great hearth with the house crest on its hood and two moonlit lancet windows; a round stone dais with a crimson rug under an oak board frame sized for the ×1.08 live board. Crenellations inside the hall are a retired regression (they read as toy teeth). v3 materials carry no sheen, and many-part decor (armours, trophies, banners, torches) is fused by material to stay far inside the ≤150 batched-mesh budget. At runtime the hearth burns a wide log fire (`WAR_ROOM_V3_HEARTH_FIRE_SHAPE`).
 
 ## War Room v4 canonical visual reference
 

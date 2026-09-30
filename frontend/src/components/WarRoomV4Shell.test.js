@@ -37,7 +37,7 @@ describe('War Room v4 runtime shell', () => {
   it('does not animate v3 flame names when asked for v4 ones', () => {
     const root = new THREE.Group();
     const flame = new THREE.Mesh(new THREE.SphereGeometry(0.2), new THREE.MeshStandardMaterial());
-    flame.name = 'WR3_OBS_stove_flame_body';
+    flame.name = 'WR3_ARM_hearth_flame_body';
     root.add(flame);
     const release = installWarRoomV3FireAnimation(root, { flameNames: WAR_ROOM_V4_FLAME_NAMES });
     expect(flame.userData.warRoomV3FireDriver).toBeUndefined();
