@@ -237,7 +237,7 @@ def test_analyze_adds_bounded_candidates_when_requested(monkeypatch):
 
 def test_optional_analysis_endpoints_return_retryable_503_when_engine_busy(monkeypatch):
     async def reject_optional(*_args, **_kwargs):
-        raise game_api.EngineBackpressureError("busy")
+        raise engine_api.EngineBackpressureError("busy")
 
     monkeypatch.setattr(engine_api, "run_optional_engine_work", reject_optional)
 
