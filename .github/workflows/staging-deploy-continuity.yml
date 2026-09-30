@@ -34,6 +34,7 @@ jobs:
     timeout-minutes: 15
     outputs:
       deploy_sha: ${{ steps.target.outputs.sha }}
+      admitted: ${{ steps.convergence.outputs.admitted }}
     steps:
       - uses: actions/checkout@v7
       - id: target
@@ -44,10 +45,18 @@ jobs:
           [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || exit 2
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
       - name: Wait until normal staging deploy serves this SHA
+        id: convergence
         shell: bash
         run: |
           set -euo pipefail
+          echo 'admitted=false' >> "$GITHUB_OUTPUT"
           for attempt in {1..180}; do
+            current_main="$(git ls-remote origin refs/heads/main | awk 'NR == 1 {print $1}')"
+            [[ "$current_main" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::cannot resolve current main"; exit 1; }
+            if [[ "$current_main" != "$GITHUB_SHA" ]]; then
+              echo "::notice title=Continuity drill superseded::$GITHUB_SHA != main $current_main; no staging mutation."
+              exit 0
+            fi
             body="$RUNNER_TEMP/release-$attempt.json"
             status="$(curl --silent --show-error --connect-timeout 3 --max-time 8 \
               --output "$body" --write-out '%{http_code}' \
@@ -59,7 +68,8 @@ jobs:
           raise SystemExit(0 if str(payload.get("build") or "").lower()==sys.argv[2].lower() else 1)
           PY
             then
-              echo "Exact staging generation ready: $GITHUB_SHA"
+              echo 'admitted=true' >> "$GITHUB_OUTPUT"
+              echo "Exact staging generation ready and still current: $GITHUB_SHA"
               exit 0
             fi
             sleep 5
@@ -70,6 +80,7 @@ jobs:
   drill:
     name: Live game across blue-green switch
     needs: wait
+    if: needs.wait.outputs.admitted == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     concurrency:
