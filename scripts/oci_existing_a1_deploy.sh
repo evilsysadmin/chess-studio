@@ -399,7 +399,12 @@ rollback() {
     if [[ -n "$previous_sha" ]]; then
       record_successful_backend "$previous_sha"
     fi
-    [[ -z "$candidate_service" ]] || remove_service "$candidate_service"
+    if [[ -n "$candidate_service" ]]; then
+      if [[ "${switch_complete:-0}" == "1" ]]; then
+        sleep "${CHESS_STUDIO_BLUE_GREEN_DRAIN_SECONDS:-50}"
+      fi
+      remove_service "$candidate_service"
+    fi
     echo "CHESS_STUDIO_ROLLBACK_OK repo_ref=${previous_sha:-unknown} color=$previous_color"
     return 0
   fi
@@ -801,6 +806,11 @@ else
   legacy_id="$(docker ps -q \
     --filter "label=com.docker.compose.project=$project" \
     --filter 'label=com.docker.compose.service=backend' | head -n 1)"
+  if [[ -z "$legacy_id" ]]; then
+    legacy_id="$(docker ps -q \
+      --filter "label=com.docker.compose.project=$project" \
+      --filter 'label=com.docker.compose.service=backend_legacy' | head -n 1)"
+  fi
   if [[ -n "$legacy_id" ]]; then
     docker rm -f "$legacy_id" >/dev/null
   fi
