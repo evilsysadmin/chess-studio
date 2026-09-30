@@ -251,6 +251,7 @@
   }
 
   body .app-shell-home .menu.menu-illustrated .illustrated-home__play-more-wrap {
+    display: block !important;
     position: absolute !important;
     z-index: 36 !important;
     left: 50% !important;
