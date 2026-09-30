@@ -259,7 +259,7 @@ async def challenge_cooldown_until(challenger: str, opponent: str, *, now: datet
             sort=[("cooldown_until", -1)],
             projection={"cooldown_until": 1},
         )
-        return row.get("cooldown_until") if row else None
+        return _as_utc(row.get("cooldown_until")) if row else None
     except PyMongoError as exc:
         raise PersistentStorageUnavailable("No se pudo comprobar el cooldown de retos 1v1.") from exc
 
@@ -306,7 +306,8 @@ async def challenge_cooldowns_for_user(
         async for row in cursor:
             rival = pair_to_opponent.get(row.get("pair_key"))
             cooldown_until = row.get("cooldown_until")
-            if not rival or not isinstance(cooldown_until, datetime):
+            cooldown_until = _as_utc(cooldown_until)
+            if not rival or cooldown_until is None:
                 continue
             previous = result.get(rival)
             if previous is None or cooldown_until > previous:
