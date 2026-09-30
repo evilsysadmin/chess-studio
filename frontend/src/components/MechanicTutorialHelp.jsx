@@ -9,6 +9,7 @@ export default function MechanicTutorialHelp({
   label = 'Abrir tutorial',
   markSeenOnClose = false,
   firstRunLabel = '',
+  onTutorialClose = null,
 }) {
   const [seen, setSeen] = useState(() => Boolean(loadMechanicTutorialProgress()?.[tutorialId]?.seen));
   const [open, setOpen] = useState(() => autoOpen && !seen);
@@ -26,6 +27,7 @@ export default function MechanicTutorialHelp({
       setSeen(true);
     }
     setOpen(false);
+    onTutorialClose?.();
   }
 
   return (
