@@ -131,6 +131,7 @@ if (checkCiWiring) {
   const stagingPreviewPath = path.join(workflowsDir, 'staging-preview.yml');
   const coverageWorkflowPath = path.join(workflowsDir, 'coverage.yml');
   const browserWorkflowPath = path.join(workflowsDir, 'e2e-full.yml');
+  const syntheticWorkflowPath = path.join(workflowsDir, 'synthetic-health.yml');
   const setupBrowserPath = path.join(root, '.github', 'actions', 'setup-browser-e2e', 'action.yml');
   if (!fs.existsSync(mainCiPath)) fail('Falta .github/workflows/cicd.yml');
   if (!fs.existsSync(promotionPath)) fail('Falta .github/workflows/production-promote.yml');
@@ -139,6 +140,7 @@ if (checkCiWiring) {
   if (!fs.existsSync(stagingPreviewPath)) fail('Falta .github/workflows/staging-preview.yml');
   if (!fs.existsSync(coverageWorkflowPath)) fail('Coverage informativo debe vivir fuera del CI de cada push');
   if (!fs.existsSync(browserWorkflowPath)) fail('Falta el sweep Browser E2E');
+  if (!fs.existsSync(syntheticWorkflowPath)) fail('Falta el canary sintético de producción');
   if (!fs.existsSync(setupBrowserPath)) fail('Falta la acción común setup-browser-e2e');
   const mainCiSource = read(mainCiPath);
   const promotionSource = read(promotionPath);
@@ -147,6 +149,7 @@ if (checkCiWiring) {
   const stagingPreviewSource = read(stagingPreviewPath);
   const coverageWorkflowSource = read(coverageWorkflowPath);
   const browserWorkflowSource = read(browserWorkflowPath);
+  const syntheticWorkflowSource = read(syntheticWorkflowPath);
   const setupBrowserSource = read(setupBrowserPath);
 
   for (const obsolete of [
@@ -197,6 +200,8 @@ if (checkCiWiring) {
     if (!source.includes(required)) fail(`${label} debe usar ${required}`);
   }
 
+  if (!syntheticWorkflowSource.includes("- cron: '7,22,37,52 * * * *'")) fail('El synthetic de producción debe mantener una cadencia nominal de 15 minutos');
+  if (!syntheticWorkflowSource.includes("CHESS_SYNTHETIC_GAMEPLAY: '1'")) fail('El synthetic de producción debe seguir ejercitando gameplay autenticado');
   if (!setupBrowserSource.includes('playwright-${{ inputs.browser-scope }}-')) fail('Playwright debe separar la cache por browser-scope');
   if (!setupBrowserSource.includes('chromium firefox webkit')) fail('setup-browser-e2e debe conservar instalación multi-browser');
   if (!mainCiSource.includes('trivy-${{ runner.os }}-${{ runner.arch }}-v0.74.0-${{ steps.trivy_epoch.outputs.day }}')) fail('Trivy CI debe usar cache diaria/versionada, no una cache por run');
