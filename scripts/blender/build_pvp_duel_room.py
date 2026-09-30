@@ -40,60 +40,68 @@ def clear_inherited_room(static):
         bpy.data.objects.remove(obj, do_unlink=True)
 
 
+
 def palette():
     return {
         "wall": base.material(
-            "PVP_MAT_wall_stone", (0.155, 0.142, 0.122, 1),
-            rough=0.88, texture="stone", scale=4.7, bump=0.085, weather=True,
+            "PVP_MAT_wall_stone", (0.085, 0.078, 0.070, 1),
+            rough=0.92, texture="stone", scale=5.2, bump=0.105, weather=True,
         ),
         "floor": base.material(
-            "PVP_MAT_floor_stone", (0.105, 0.115, 0.115, 1),
-            rough=0.78, texture="stone", scale=4.8, bump=0.055, weather=True,
+            "PVP_MAT_floor_stone", (0.050, 0.058, 0.058, 1),
+            rough=0.84, texture="stone", scale=5.0, bump=0.070, weather=True,
         ),
         "dais": base.material(
-            "PVP_MAT_dais_stone", (0.31, 0.265, 0.205, 1),
-            rough=0.68, coat=0.03, texture="stone", scale=3.8, bump=0.045, weather=True,
+            "PVP_MAT_dais_stone", (0.205, 0.182, 0.145, 1),
+            rough=0.73, coat=0.035, texture="stone", scale=4.0, bump=0.060, weather=True,
+        ),
+        "limestone": base.material(
+            "PVP_MAT_limestone", (0.43, 0.39, 0.31, 1),
+            rough=0.82, texture="stone", scale=4.4, bump=0.060,
+        ),
+        "wet_stone": base.material(
+            "PVP_MAT_wet_stone", (0.032, 0.042, 0.044, 1),
+            rough=0.29, coat=0.34, texture="stone", scale=6.5, bump=0.025,
         ),
         "oak": base.material(
-            "PVP_MAT_dark_oak", (0.080, 0.028, 0.010, 1),
-            rough=0.40, coat=0.24, texture="wood", scale=2.2, bump=0.052,
+            "PVP_MAT_dark_oak", (0.055, 0.019, 0.008, 1),
+            rough=0.46, coat=0.18, texture="wood", scale=2.4, bump=0.060,
         ),
         "oak_mid": base.material(
-            "PVP_MAT_oak_mid", (0.16, 0.062, 0.018, 1),
-            rough=0.39, coat=0.20, texture="wood", scale=2.6, bump=0.046,
+            "PVP_MAT_oak_mid", (0.105, 0.036, 0.012, 1),
+            rough=0.45, coat=0.16, texture="wood", scale=2.8, bump=0.052,
         ),
         "iron": base.material(
-            "PVP_MAT_black_iron", (0.018, 0.021, 0.024, 1),
-            metal=0.82, rough=0.45, texture="metal", scale=26, bump=0.020,
+            "PVP_MAT_black_iron", (0.012, 0.014, 0.015, 1),
+            metal=0.90, rough=0.52, texture="metal", scale=30, bump=0.026,
         ),
         "brass": base.material(
-            "PVP_MAT_old_brass", (0.48, 0.22, 0.045, 1),
-            metal=0.90, rough=0.29, coat=0.14, texture="metal", scale=28, bump=0.014,
+            "PVP_MAT_old_brass", (0.30, 0.135, 0.025, 1),
+            metal=0.88, rough=0.38, coat=0.10, texture="metal", scale=30, bump=0.016,
         ),
         "red": base.material(
-            "PVP_MAT_banner_red", (0.30, 0.018, 0.012, 1),
-            rough=0.72, sheen=0.18, texture="fabric", scale=46, bump=0.040,
+            "PVP_MAT_banner_red", (0.185, 0.010, 0.008, 1),
+            rough=0.78, sheen=0.14, texture="fabric", scale=48, bump=0.045,
         ),
         "blue": base.material(
-            "PVP_MAT_banner_blue", (0.016, 0.060, 0.18, 1),
-            rough=0.72, sheen=0.18, texture="fabric", scale=46, bump=0.040,
+            "PVP_MAT_banner_blue", (0.008, 0.032, 0.105, 1),
+            rough=0.78, sheen=0.14, texture="fabric", scale=48, bump=0.045,
         ),
         "ivory": base.material(
-            "PVP_MAT_ivory", (0.56, 0.46, 0.31, 1),
-            rough=0.55, coat=0.05, texture="stone", scale=3.0, bump=0.025,
+            "PVP_MAT_ivory", (0.61, 0.54, 0.41, 1),
+            rough=0.66, coat=0.03, texture="fabric", scale=42, bump=0.030,
         ),
         "seat_leather": base.material(
-            "PVP_MAT_seat_leather", (0.115, 0.035, 0.018, 1),
-            rough=0.42, coat=0.22, sheen=0.12, texture="leather", scale=48, bump=0.038,
+            "PVP_MAT_seat_leather", (0.075, 0.020, 0.010, 1),
+            rough=0.50, coat=0.18, sheen=0.08, texture="leather", scale=50, bump=0.040,
         ),
         "fire": bpy.data.materials["WR_MAT_fire_core"],
         "night": base.material(
-            "PVP_MAT_moon_glass", (0.010, 0.035, 0.12, 1),
-            rough=0.18, coat=0.42,
-            emission=(0.014, 0.08, 0.28, 1), emission_strength=0.72,
+            "PVP_MAT_moon_glass", (0.006, 0.018, 0.055, 1),
+            rough=0.16, coat=0.46,
+            emission=(0.010, 0.055, 0.19, 1), emission_strength=0.82,
         ),
     }
-
 
 def cylinder_between(name, start, end, radius, material, owner, *, vertices=24):
     start = Vector(start)
@@ -105,8 +113,9 @@ def cylinder_between(name, start, end, radius, material, owner, *, vertices=24):
     return obj
 
 
+
 def build_floor_and_dais(static, p):
-    # Strong central axis: the player reads the board before the room.
+    # Dungeon flagstones: cold, irregular and slightly wet around the perimeter.
     base.cube("PVP_ROOM_floor", (0, 0.8, -0.10), (8.6, 7.0, 0.10),
               p["floor"], static, bevel=0.035)
     for row in range(-5, 6):
@@ -116,201 +125,286 @@ def build_floor_and_dais(static, p):
             if abs(x) > 7.95 or y < -4.75 or y > 6.05:
                 continue
             inset = 0.505
-            mat = p["dais"] if (row + col) % 7 == 0 else p["floor"]
-            base.cube(
+            if abs(x) > 6.0 and (row + col) % 3 == 0:
+                mat = p["wet_stone"]
+            elif (row * 2 + col) % 11 == 0:
+                mat = p["dais"]
+            else:
+                mat = p["floor"]
+            tile = base.cube(
                 f"PVP_ROOM_floor_tile_{row+5}_{col+7}", (x, y, 0.015),
                 (inset, inset, 0.025), mat, static, bevel=0.015,
             )
+            tile.rotation_euler.z = math.radians(((row * 7 + col * 3) % 5 - 2) * 0.28)
 
-    # Octagonal-looking raised stage assembled from a drum + brass rings.
+    # Raised octagonal stone fighting dais: the board is still the visual sovereign.
     base.cylinder("PVP_DUEL_dais", (0, 0.0, 0.18), 4.35, 0.34,
                   p["dais"], static, vertices=8)
-    base.torus("PVP_DUEL_dais_outer_brass", (0, 0.0, 0.365), 4.05, 0.055,
-               p["brass"], static)
-    base.torus("PVP_DUEL_dais_inner_brass", (0, 0.0, 0.372), 3.56, 0.025,
+    base.torus("PVP_DUEL_dais_outer_iron", (0, 0.0, 0.365), 4.05, 0.050,
+               p["iron"], static)
+    base.torus("PVP_DUEL_dais_inner_brass", (0, 0.0, 0.372), 3.56, 0.022,
                p["brass"], static)
 
-    # Two subtle approach runners imply two human sides without stealing space.
-    for side, mat in ((-1, p["red"]), (1, p["blue"])):
-        runner = base.cube(
-            f"PVP_DUEL_runner_{'red' if side < 0 else 'blue'}",
-            (side * 2.25, -4.20, 0.105),
-            (0.82, 2.15, 0.025), mat, static, bevel=0.08,
+    # Drainage channels sell "old fortress" without entering the board interaction cone.
+    for x in (-5.35, 5.35):
+        base.cube(
+            f"PVP_DUEL_drain_{'left' if x < 0 else 'right'}",
+            (x, 0.65, 0.055), (0.16, 4.95, 0.030), p["iron"], static, bevel=0.018,
         )
-        runner.rotation_euler.z = math.radians(side * 4.5)
+        for idx, y in enumerate((-3.7, -2.0, -0.3, 1.4, 3.1, 4.8)):
+            base.cube(
+                f"PVP_DUEL_drain_bar_{'left' if x < 0 else 'right'}_{idx}",
+                (x, y, 0.092), (0.31, 0.035, 0.018), p["iron"], static, bevel=0.012,
+            )
+
+    # Player identity is a restrained floor accent, not an esports carpet.
+    for side, mat, label in ((-1, p["red"], "red"), (1, p["blue"], "blue")):
+        base.cube(
+            f"PVP_DUEL_identity_inlay_{label}",
+            (side * 3.05, -4.05, 0.105), (0.16, 1.55, 0.018),
+            mat, static, bevel=0.035,
+        )
 
 
 def build_architecture(static, p):
-    # Rear masonry wall, buttresses and side walls. No foreground columns.
-    base.cube("PVP_ROOM_rear_wall", (0, 6.52, 3.20), (8.7, 0.26, 3.30),
+    # Heavy fortress envelope. No foreground columns: board selection remains sacred.
+    base.cube("PVP_ROOM_rear_wall", (0, 6.52, 3.55), (8.7, 0.34, 3.70),
               p["wall"], static, bevel=0.05)
-    base.cube("PVP_ROOM_left_wall", (-8.47, 0.85, 3.05), (0.25, 5.55, 3.15),
+    base.cube("PVP_ROOM_left_wall", (-8.47, 0.85, 3.35), (0.30, 5.55, 3.45),
               p["wall"], static, bevel=0.05)
-    base.cube("PVP_ROOM_right_wall", (8.47, 0.85, 3.05), (0.25, 5.55, 3.15),
+    base.cube("PVP_ROOM_right_wall", (8.47, 0.85, 3.35), (0.30, 5.55, 3.45),
               p["wall"], static, bevel=0.05)
 
     for side in (-1, 1):
-        for idx, y in enumerate((-2.9, 0.2, 3.3)):
-            x = side * 7.93
+        for idx, y in enumerate((-3.15, 0.25, 3.65)):
+            x = side * 7.88
             base.cube(
-                f"PVP_ROOM_buttress_{side}_{idx}", (x, y, 2.65),
-                (0.42, 0.48, 2.72), p["wall"], static, bevel=0.10,
+                f"PVP_ROOM_buttress_{side}_{idx}", (x, y, 2.95),
+                (0.50, 0.58, 2.98), p["wall"], static, bevel=0.11,
             )
             base.cylinder(
-                f"PVP_ROOM_buttress_cap_{side}_{idx}", (x, y, 5.43),
-                0.46, 0.18, p["brass"], static, vertices=8,
+                f"PVP_ROOM_buttress_cap_{side}_{idx}", (x, y, 5.96),
+                0.50, 0.20, p["limestone"], static, vertices=8,
             )
 
-    # Shallow, irregular ashlar relief makes the rear elevation read as old
-    # castle masonry at gameplay distance. Keep the central portal clear.
+    # Irregular ashlar relief. Leave the central prison portal clear.
     stone_index = 0
-    for row in range(6):
-        z = 1.42 + row * 0.78
+    for row in range(7):
+        z = 1.18 + row * 0.78
         offset = 0.52 if row % 2 else 0.0
         for col in range(-8, 9):
             x = col * 1.02 + offset
-            if abs(x) < 2.72 and z > 1.55:
+            if abs(x) < 2.62 and z < 5.85:
                 continue
             width = 0.455 + 0.025 * ((row + col) % 3)
             height = 0.335 + 0.018 * ((row * 2 + col) % 3)
             block = base.cube(
-                f"PVP_ROOM_masonry_{stone_index}", (x, 6.205, z),
-                (width, 0.045, height), p["wall"], static, bevel=0.035,
+                f"PVP_ROOM_masonry_{stone_index}", (x, 6.155, z),
+                (width, 0.055, height), p["wall"], static, bevel=0.035,
             )
-            block.rotation_euler.z = math.radians(((row * 5 + col * 3) % 5 - 2) * 0.22)
+            block.rotation_euler.z = math.radians(((row * 5 + col * 3) % 5 - 2) * 0.30)
             stone_index += 1
 
-    # Central pointed-window composition, assembled with a deep framed opening.
-    # Deep stone portal around the moon window gives the rear wall an unmistakable
-    # castle silhouette; oak remains an inset rather than reading as modern panelling.
+    # Deep pointed prison portal: black recess + portcullis + limestone dressings.
+    base.cube("PVP_DUEL_portal_void", (0, 6.06, 2.60), (2.34, 0.09, 2.54),
+              p["iron"], static, bevel=0.10)
     for side in (-1, 1):
         base.cube(
-            f"PVP_ROOM_window_stone_pier_{side}", (side * 2.25, 6.15, 3.86),
-            (0.28, 0.24, 2.45), p["wall"], static, bevel=0.09,
+            f"PVP_DUEL_portal_pier_{side}", (side * 2.55, 5.96, 2.62),
+            (0.30, 0.26, 2.63), p["limestone"], static, bevel=0.08,
         )
-    base.cube("PVP_ROOM_window_stone_lintel", (0, 6.13, 6.12), (2.55, 0.25, 0.28),
-              p["wall"], static, bevel=0.10)
-    base.cube("PVP_ROOM_window_keystone", (0, 5.86, 6.02), (0.34, 0.20, 0.42),
-              p["dais"], static, bevel=0.08)
+        spring = base.cube(
+            f"PVP_DUEL_portal_arch_{side}", (side * 1.30, 5.95, 5.55),
+            (1.42, 0.25, 0.27), p["limestone"], static, bevel=0.09,
+        )
+        spring.rotation_euler.y = math.radians(-side * 25.5)
+    base.cube("PVP_DUEL_portal_keystone", (0, 5.70, 6.03), (0.31, 0.22, 0.40),
+              p["dais"], static, bevel=0.07)
 
-    base.cube("PVP_ROOM_window_reveal", (0, 6.18, 4.10), (2.12, 0.20, 2.10),
-              p["oak"], static, bevel=0.22)
-    base.cube("PVP_ROOM_window_glass", (0, 5.94, 4.10), (1.82, 0.035, 1.78),
-              p["night"], static, bevel=0.16)
-    for x in (-0.60, 0.60):
-        base.cube(f"PVP_ROOM_window_mullion_{x:+.2f}", (x, 5.86, 4.10),
-                  (0.055, 0.055, 1.68), p["brass"], static, bevel=0.018)
-    base.cube("PVP_ROOM_window_transom", (0, 5.86, 4.28),
-              (1.70, 0.055, 0.045), p["brass"], static, bevel=0.018)
-
-    # Heavy oak lower panelling keeps the room castle-like and warm.
-    for col in range(-6, 7):
-        x = col * 1.22
-        if abs(x) < 2.35:
-            continue
+    # Portcullis itself: readable silhouette, safely behind the board.
+    for idx, x in enumerate((-1.85, -1.38, -0.92, -0.46, 0.0, 0.46, 0.92, 1.38, 1.85)):
+        bar = base.cylinder(
+            f"PVP_DUEL_portcullis_bar_{idx}", (x, 5.72, 2.68),
+            0.048, 4.30, p["iron"], static, vertices=12,
+        )
+        if idx == 4:
+            bar.name = "PVP_DUEL_portcullis"
+    for idx, z in enumerate((1.20, 2.08, 2.96, 3.84, 4.72)):
         base.cube(
-            f"PVP_ROOM_wainscot_{col+6}", (x, 6.15, 0.72),
-            (0.54, 0.09, 0.56), p["oak_mid"], static, bevel=0.055,
+            f"PVP_DUEL_portcullis_cross_{idx}", (0, 5.72, z),
+            (2.02, 0.055, 0.055), p["iron"], static, bevel=0.016,
         )
+
+    # Narrow moon slit above the gate: dungeon, not observatory.
+    base.cube("PVP_ROOM_window_reveal", (0, 6.02, 6.48), (0.57, 0.22, 0.78),
+              p["limestone"], static, bevel=0.14)
+    base.cube("PVP_ROOM_window_glass", (0, 5.76, 6.48), (0.38, 0.035, 0.61),
+              p["night"], static, bevel=0.11)
+    base.cube("PVP_ROOM_window_mullion", (0, 5.68, 6.48),
+              (0.040, 0.045, 0.57), p["iron"], static, bevel=0.012)
+    base.cube("PVP_ROOM_window_transom", (0, 5.68, 6.48),
+              (0.34, 0.045, 0.040), p["iron"], static, bevel=0.012)
+
+    # Side oubliette grilles reinforce the dungeon silhouette.
+    for side in (-1, 1):
+        x = side * 6.72
+        base.cube(
+            f"PVP_DUEL_side_cell_void_{side}", (x, 6.05, 2.18),
+            (0.88, 0.075, 1.48), p["iron"], static, bevel=0.06,
+        )
+        for idx, dx in enumerate((-0.58, -0.29, 0.0, 0.29, 0.58)):
+            base.cylinder(
+                f"PVP_DUEL_side_cell_bar_{side}_{idx}", (x + dx, 5.72, 2.20),
+                0.032, 2.72, p["iron"], static, vertices=10,
+            )
+
+
+def build_vault_and_chains(static, p):
+    # Gothic transverse ribs create a Teutonic fortress ceiling line without a heavy roof mesh.
+    for rib_idx, y in enumerate((-3.55, -0.15, 3.25, 5.55)):
+        points = [
+            (-8.10, y, 5.55),
+            (-5.00, y, 6.35),
+            (-2.15, y, 7.18),
+            (0.00, y, 7.82),
+            (2.15, y, 7.18),
+            (5.00, y, 6.35),
+            (8.10, y, 5.55),
+        ]
+        for seg in range(len(points) - 1):
+            cylinder_between(
+                f"PVP_DUEL_vault_rib_{rib_idx}_{seg}",
+                points[seg], points[seg + 1], 0.105, p["limestone"], static, vertices=12,
+            )
+
+    # Hanging chains stay outside the interaction cone but add a grim dungeon layer.
+    for side in (-1, 1):
+        x = side * 6.15
+        y = 3.82
+        base.torus(
+            f"PVP_DUEL_chain_anchor_{side}", (x, y, 5.30),
+            0.18, 0.045, p["iron"], static,
+        ).rotation_euler.x = math.pi / 2
+        for idx in range(7):
+            link = base.torus(
+                f"PVP_DUEL_chain_{side}_{idx}", (x, y, 4.90 - idx * 0.31),
+                0.115, 0.027, p["iron"], static,
+            )
+            link.rotation_euler.x = math.pi / 2
+            link.rotation_euler.z = math.radians(90 if idx % 2 else 0)
 
 
 def build_duel_banners(static, p):
-    # Rival banners flank the room and remain readable behind the board.
-    for side, mat, label in ((-1, p["red"], "red"), (1, p["blue"], "blue")):
-        x = side * 5.25
-        banner = base.cube(
-            f"PVP_DUEL_banner_{label}", (x, 5.85, 3.30),
-            (1.02, 0.055, 1.70), mat, static, bevel=0.09,
+    # Teutonic field: bone-white cloth and black cross. PvP colors survive only as a narrow identity edge.
+    for side, accent, label in ((-1, p["red"], "red"), (1, p["blue"], "blue")):
+        x = side * 4.92
+        base.cube(
+            f"PVP_DUEL_banner_{label}", (x, 5.70, 3.42),
+            (0.92, 0.055, 1.52), p["ivory"], static, bevel=0.075,
         )
-        banner.rotation_euler.y = math.radians(side * 2.0)
-        base.cylinder(
-            f"PVP_DUEL_banner_rail_{label}", (x, 5.78, 5.08),
-            0.07, 2.45, p["brass"], static, vertices=24,
-        ).rotation_euler.y = math.pi / 2
-        # Minimal heraldry: crossed diagonal steel bars, not ornate mascots.
-        for tilt in (-1, 1):
-            bar = base.cube(
-                f"PVP_DUEL_banner_mark_{label}_{tilt}", (x, 5.70, 3.44),
-                (0.08, 0.035, 0.70), p["brass"], static, bevel=0.028,
-            )
-            bar.rotation_euler.y = math.radians(tilt * 38)
+        base.cube(
+            f"PVP_DUEL_banner_cross_vertical_{label}", (x, 5.61, 3.50),
+            (0.105, 0.040, 0.88), p["iron"], static, bevel=0.020,
+        )
+        base.cube(
+            f"PVP_DUEL_banner_cross_horizontal_{label}", (x, 5.60, 3.66),
+            (0.55, 0.040, 0.105), p["iron"], static, bevel=0.020,
+        )
+        if label == "red":
+            bpy.data.objects[f"PVP_DUEL_banner_cross_vertical_{label}"].name = "PVP_DUEL_teutonic_cross"
+        base.cube(
+            f"PVP_DUEL_banner_identity_{label}", (x + side * 0.78, 5.59, 3.42),
+            (0.065, 0.038, 1.36), accent, static, bevel=0.018,
+        )
+        rail = base.cylinder(
+            f"PVP_DUEL_banner_rail_{label}", (x, 5.74, 5.05),
+            0.065, 2.25, p["iron"], static, vertices=20,
+        )
+        rail.rotation_euler.y = math.pi / 2
 
 
 def build_sconces_and_gate(static, p):
-    # Gate silhouette makes this feel like a guarded castle chamber rather than a lounge.
-    for side in (-1, 1):
-        x = side * 7.00
-        for post in (-0.55, 0.55):
-            base.cylinder(
-                f"PVP_DUEL_gate_bar_{side}_{post:+.2f}",
-                (x + post, 6.00, 1.55), 0.055, 2.80,
-                p["iron"], static, vertices=16,
+    # Twin iron braziers are the warm practicals. Gatework is authored into the rear portal.
+    for side, label in ((-1, "left"), (1, "right")):
+        x, y = side * 5.92, 5.42
+        base.cylinder(
+            f"PVP_DUEL_brazier_bowl_{label}", (x, y, 1.78),
+            0.46, 0.22, p["iron"], static, vertices=12,
+        )
+        for leg_side in (-1, 1):
+            leg = base.cylinder(
+                f"PVP_DUEL_brazier_leg_{label}_{leg_side}", (x + leg_side * 0.20, y, 1.10),
+                0.040, 1.16, p["iron"], static, vertices=10,
             )
+            leg.rotation_euler.y = math.radians(leg_side * 9)
         base.cube(
-            f"PVP_DUEL_gate_lintel_{side}", (x, 6.00, 2.93),
-            (0.78, 0.08, 0.08), p["iron"], static, bevel=0.025,
-        )
-
-    for side, x in (("left", -3.55), ("right", 3.55)):
-        y, z = 6.00, 2.45
-        base.cube(
-            f"PVP_DUEL_sconce_{side}_plate", (x, y, z),
-            (0.16, 0.06, 0.34), p["iron"], static, bevel=0.05,
-        )
-        base.cube(
-            f"PVP_DUEL_sconce_{side}_flame", (x, y - 0.10, z + 0.05),
-            (0.10, 0.07, 0.24), p["fire"], static, bevel=0.08,
+            f"PVP_DUEL_brazier_fire_{label}", (x, y, 2.08),
+            (0.30, 0.24, 0.25), p["fire"], static, bevel=0.12,
         )
         lamp = base.light(
-            f"PVP_LIGHT_sconce_{side}", "POINT", (x, y - 0.45, z + 0.10),
-            120.0, (1.0, 0.34, 0.08), static, radius=1.00,
+            f"PVP_LIGHT_brazier_{label}", "POINT", (x, y - 0.28, 2.20),
+            190.0, (1.0, 0.27, 0.055), static, radius=1.15,
         )
-        lamp["war_room_runtime_dynamic"] = "pvp-sconce"
+        lamp["war_room_runtime_dynamic"] = "pvp-brazier"
+
+    # Iron wall hooks and restraints: sparse, readable, not horror-prop clutter.
+    for side in (-1, 1):
+        x = side * 7.70
+        for idx, y in enumerate((-1.55, 1.25, 4.05)):
+            base.torus(
+                f"PVP_DUEL_wall_ring_{side}_{idx}", (x, y, 2.25),
+                0.16, 0.038, p["iron"], static,
+            ).rotation_euler.y = math.pi / 2
 
 
 def build_duelist_furniture(static, p):
-    # Deliberately outside the board interaction cone; seats signal human opponents.
-    for side, mat, label in ((-1, p["red"], "red"), (1, p["blue"], "blue")):
-        x = side * 6.65
-        y = -2.45
+    # Austere duelist stations: oak and iron, deliberately not lounge furniture.
+    for side, accent, label in ((-1, p["red"], "red"), (1, p["blue"], "blue")):
+        x = side * 6.55
+        y = -2.72
         base.cube(
-            f"PVP_DUEL_seat_{label}", (x, y, 0.62),
-            (0.68, 0.60, 0.16), p["seat_leather"], static, bevel=0.13,
+            f"PVP_DUEL_seat_{label}", (x, y, 0.60),
+            (0.78, 0.54, 0.12), p["oak_mid"], static, bevel=0.055,
         )
-        back = base.cube(
-            f"PVP_DUEL_seat_back_{label}", (x, y + 0.47, 1.38),
-            (0.72, 0.13, 0.82), mat, static, bevel=0.14,
+        base.cube(
+            f"PVP_DUEL_seat_front_{label}", (x, y - 0.48, 0.33),
+            (0.78, 0.08, 0.34), p["iron"], static, bevel=0.035,
         )
-        back.rotation_euler.x = math.radians(-6)
-        for sx in (-0.55, 0.55):
+        for sx in (-0.62, 0.62):
             base.cylinder(
                 f"PVP_DUEL_seat_post_{label}_{sx:+.2f}",
-                (x + sx, y + 0.46, 1.42), 0.055, 1.72,
-                p["brass"], static, vertices=20,
+                (x + sx, y + 0.40, 1.12), 0.055, 1.30,
+                p["iron"], static, vertices=12,
             )
+        base.cube(
+            f"PVP_DUEL_seat_identity_{label}", (x, y + 0.49, 1.25),
+            (0.48, 0.055, 0.10), accent, static, bevel=0.018,
+        )
 
 
 def build_lighting(static):
     scene = bpy.context.scene
     scene["war_room_variant"] = "pvp-duel-room"
     scene["pvp_duel_room_contract"] = CONTRACT
-    scene.view_settings.exposure = 0.16
+    scene.view_settings.exposure = 0.08
 
-    # Red-side warm key and blue-side moon key meet on the board.
-    warm = base.light("PVP_LIGHT_warm_side", "AREA", (-5.2, -1.8, 7.6), 520.0,
-                      (1.0, 0.40, 0.16), static, size=5.0)
-    base.look_at(warm, (-0.5, 0.2, 1.0))
-    cool = base.light("PVP_LIGHT_cool_side", "AREA", (5.2, -0.8, 7.8), 500.0,
-                      (0.16, 0.34, 1.0), static, size=5.2)
-    base.look_at(cool, (0.5, 0.2, 1.0))
-    top = base.light("PVP_LIGHT_board_top", "AREA", (0, 1.0, 8.5), 270.0,
-                     (0.95, 0.76, 0.48), static, size=4.8)
-    base.look_at(top, (0, 0.2, 0.7))
+    # Cold moon from the prison slit, warm braziers, quiet neutral board fill.
+    moon = base.light("PVP_LIGHT_moon_key", "AREA", (0.0, 5.30, 7.05), 460.0,
+                      (0.14, 0.27, 0.62), static, size=3.6)
+    base.look_at(moon, (0.0, 0.6, 1.0))
+    top = base.light("PVP_LIGHT_board_top", "AREA", (0.0, 0.4, 8.65), 245.0,
+                     (0.72, 0.68, 0.58), static, size=4.6)
+    base.look_at(top, (0.0, 0.2, 0.65))
+    rim = base.light("PVP_LIGHT_dungeon_rim", "AREA", (0.0, -4.8, 5.8), 150.0,
+                     (0.28, 0.34, 0.43), static, size=4.0)
+    base.look_at(rim, (0.0, 1.0, 1.15))
 
-    base.anchor("PVP_ANCHOR_red_identity", (-5.25, 5.60, 3.35), static)
-    base.anchor("PVP_ANCHOR_blue_identity", (5.25, 5.60, 3.35), static)
-    base.anchor("PVP_ANCHOR_room_status", (0, 5.65, 5.55), static)
-
+    base.anchor("PVP_ANCHOR_red_identity", (-4.92, 5.42, 3.42), static)
+    base.anchor("PVP_ANCHOR_blue_identity", (4.92, 5.42, 3.42), static)
+    base.anchor("PVP_ANCHOR_room_status", (0, 5.50, 5.58), static)
+    base.anchor("PVP_ANCHOR_brazier_left", (-5.92, 5.14, 2.20), static)
+    base.anchor("PVP_ANCHOR_brazier_right", (5.92, 5.14, 2.20), static)
+    base.anchor("PVP_ANCHOR_moon_fill", (0.0, 5.16, 6.48), static)
 
 def bake_weather():
     base.WEATHER_MATERIALS = DUEL_WEATHER_MATERIALS
@@ -329,6 +423,7 @@ def apply_identity():
     p = palette()
     build_floor_and_dais(static, p)
     build_architecture(static, p)
+    build_vault_and_chains(static, p)
     build_duel_banners(static, p)
     build_sconces_and_gate(static, p)
     build_duelist_furniture(static, p)
@@ -348,12 +443,19 @@ def validate_scene():
         "PVP_DUEL_dais",
         "PVP_DUEL_banner_red",
         "PVP_DUEL_banner_blue",
+        "PVP_DUEL_teutonic_cross",
+        "PVP_DUEL_portcullis",
+        "PVP_DUEL_vault_rib_0_0",
+        "PVP_DUEL_chain_-1_0",
         "PVP_ROOM_window_glass",
         "PVP_DUEL_seat_red",
         "PVP_DUEL_seat_blue",
         "PVP_ANCHOR_red_identity",
         "PVP_ANCHOR_blue_identity",
         "PVP_ANCHOR_room_status",
+        "PVP_ANCHOR_brazier_left",
+        "PVP_ANCHOR_brazier_right",
+        "PVP_ANCHOR_moon_fill",
     }
     missing = sorted(required - names)
     if missing:
@@ -389,7 +491,7 @@ def export_shell(path):
         if is_static or is_anchor:
             obj.select_set(True)
             selected += 1
-    if selected < 80:
+    if selected < 120:
         raise RuntimeError(f"PvP Duel Room runtime selection too small: {selected}")
 
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -410,7 +512,14 @@ def export_shell(path):
     if base.MESH_COMPRESSION_EXTENSION not in set(data.get("extensionsUsed", [])):
         raise RuntimeError("PvP Duel Room runtime GLB missing meshopt")
     node_names = {row.get("name") for row in data.get("nodes", [])}
-    for name in ("PVP_ANCHOR_red_identity", "PVP_ANCHOR_blue_identity", "PVP_ANCHOR_room_status"):
+    for name in (
+        "PVP_ANCHOR_red_identity",
+        "PVP_ANCHOR_blue_identity",
+        "PVP_ANCHOR_room_status",
+        "PVP_ANCHOR_brazier_left",
+        "PVP_ANCHOR_brazier_right",
+        "PVP_ANCHOR_moon_fill",
+    ):
         if name not in node_names:
             raise RuntimeError(f"PvP Duel Room runtime anchor missing: {name}")
 
