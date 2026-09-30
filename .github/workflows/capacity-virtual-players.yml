@@ -103,6 +103,21 @@ jobs:
           echo "::error::staging did not converge to $target_sha before virtual-player capacity test"
           exit 1
 
+      - name: Stabilize exact staging backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          for stable in $(seq 1 5); do
+            python3 scripts/staging_release_identity.py \
+              --kind backend \
+              --url https://api-staging.chess-studio.shadowops.dpdns.org/api/release \
+              --sha "$CAPACITY_TARGET_SHA"
+            echo "::notice::exact staging generation stable ($stable/5)"
+            if (( stable < 5 )); then
+              sleep 10
+            fi
+          done
+
       - name: Baseline telemetry
         run: python3 scripts/capacity_telemetry_snapshot.py --label virtual-baseline | tee capacity-virtual-baseline.telemetry.jsonl
 
