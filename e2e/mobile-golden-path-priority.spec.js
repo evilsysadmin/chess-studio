@@ -116,7 +116,7 @@ test.describe('Mobile golden path · Partida rápida cabe en alto útil real', (
 
 // GP-4 (#4405): en la Home móvil el aviso de Matthias no tapa navegación ni la
 // barra fija de «Jugar 1 vs 1», y su texto no queda cortado.
-test.describe('Mobile golden path · Home no se pelea con el aviso de Matthias', () => {
+test.describe('Mobile golden path · Home portrait mantiene el camino principal limpio', () => {
   test.use({ isMobile: true, hasTouch: true });
 
   for (const viewport of [
@@ -125,7 +125,7 @@ test.describe('Mobile golden path · Home no se pelea con el aviso de Matthias',
     { width: 360, height: 640 },
     { width: 430, height: 932 },
   ]) {
-    test(`aviso de Matthias fuera de la navegación en ${viewport.width}x${viewport.height}`, async ({ page }) => {
+    test(`vestíbulo limpio en ${viewport.width}x${viewport.height}`, async ({ page }) => {
       await page.addInitScript(() => { Math.random = () => 0; });
       await page.setViewportSize(viewport);
       await mockApi(page, {
@@ -138,41 +138,33 @@ test.describe('Mobile golden path · Home no se pelea con el aviso de Matthias',
 
       const home = page.getByRole('region', { name: 'Modos principales' });
       await expect(home).toBeVisible();
-      const speech = home.getByRole('region', { name: 'Mensaje de Matthias', exact: true });
-      await expect(speech).toBeVisible({ timeout: 10_000 });
+      await expect(home.getByRole('region', { name: 'Mensaje de Matthias', exact: true })).toBeHidden();
+      await expect(home.getByRole('complementary', { name: 'Rincón de Matthias' })).toBeHidden();
 
-      const speechBox = await speech.boundingBox();
-      expect(speechBox.y, 'speech inside viewport (top)').toBeGreaterThanOrEqual(0);
-      expect(speechBox.y + speechBox.height, 'speech inside viewport (bottom)').toBeLessThanOrEqual(viewport.height);
-      const clipped = await speech.locator('p').evaluate((node) => node.scrollHeight > node.clientHeight + 1);
-      expect(clipped, 'speech text not clipped').toBe(false);
+      const play = home.locator('.illustrated-home__destination--play');
+      const more = home.locator('.illustrated-home__play-more');
+      const landscape = home.locator('.illustrated-home__landscape-hint');
+      for (const [label, target] of [['play', play], ['more', more], ['landscape', landscape]]) {
+        await expect(target).toBeVisible();
+        const box = await target.boundingBox();
+        expect(box, label).not.toBeNull();
+        expect(box.width, `${label} touch width`).toBeGreaterThanOrEqual(44);
+        expect(box.height, `${label} touch height`).toBeGreaterThanOrEqual(44);
+        expect(box.x, `${label} inside left`).toBeGreaterThanOrEqual(-1);
+        expect(box.x + box.width, `${label} inside right`).toBeLessThanOrEqual(viewport.width + 1);
+        expect(box.y, `${label} inside top`).toBeGreaterThanOrEqual(-1);
+        expect(box.y + box.height, `${label} inside bottom`).toBeLessThanOrEqual(viewport.height + 1);
+      }
 
-      const targets = await page.evaluate(() => {
-        const speechNode = document.querySelector('[aria-label="Mensaje de Matthias"]');
-        const nodes = [...document.querySelectorAll('button, a, .home-pvp-roster-link')]
-          .filter((node) => !speechNode.contains(node));
-        return nodes.map((node) => {
-          const box = node.getBoundingClientRect();
-          return { label: (node.innerText || node.getAttribute('aria-label') || node.className || '').toString().trim().slice(0, 40), x: box.x, y: box.y, width: box.width, height: box.height };
-        }).filter((box) => box.width > 0 && box.height > 0 && box.y < innerHeight && box.y + box.height > 0);
-      });
       const bar = page.locator('.home-pvp-roster-link');
       if (await bar.isVisible().catch(() => false)) {
         const barBox = await bar.boundingBox();
-        for (const target of targets.filter((row) => !row.label.includes('home-pvp-roster-link') && !row.label.includes('Jugar 1 vs 1'))) {
-          const hidden = barBox.x < target.x + target.width
-            && barBox.x + barBox.width > target.x
-            && barBox.y < target.y + target.height
-            && barBox.y + barBox.height > target.y;
-          expect(hidden, `«${target.label}» must not hide under the fixed 1 vs 1 bar`).toBe(false);
-        }
-      }
-      for (const target of targets) {
-        const overlaps = speechBox.x < target.x + target.width
-          && speechBox.x + speechBox.width > target.x
-          && speechBox.y < target.y + target.height
-          && speechBox.y + speechBox.height > target.y;
-        expect(overlaps, `Matthias speech must not cover «${target.label}»`).toBe(false);
+        const playBox = await play.boundingBox();
+        const overlap = barBox.x < playBox.x + playBox.width
+          && barBox.x + barBox.width > playBox.x
+          && barBox.y < playBox.y + playBox.height
+          && barBox.y + barBox.height > playBox.y;
+        expect(overlap, 'fixed 1v1 bar must not cover JUGAR/CONTINUAR').toBe(false);
       }
     });
   }
@@ -332,8 +324,9 @@ test.describe('Mobile golden path · entrenar el error con el tablero mandando',
         },
       });
       await login(page);
-      const corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
-      await corner.getByRole('button', { name: 'Abrir Así juegas con Matthias', exact: true }).click();
+      const more = page.locator('.illustrated-home__play-more');
+      await more.click();
+      await page.locator('.illustrated-home__play-menu-item:visible').filter({ hasText: 'Así juegas' }).click();
       await page.getByRole('tab', { name: /Errores/ }).click();
       // «Así juegas → Errores» en móvil: la pastilla de recuento no se estira.
       const count = page.locator('.insights-recurring-errors-heading > strong');

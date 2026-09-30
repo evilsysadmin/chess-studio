@@ -15,14 +15,10 @@ const ALL_CAPTURES = [
   { label:'desktop-reading-1440x900', width:1440, height:900, hour:8, profile:'read', clip:'Read', station:'library-chair', support:'chair-seat', supportBottomRange:[.64, .72], avatar:/strategy-book/i, maxStageLeftRatio:.19, expectFullPlinth:true, expectCopy:false },
   { label:'desktop-writing-1440x900', width:1440, height:900, hour:16, profile:'write', clip:'Write', station:'writing-desk', support:'chair-seat', supportBottomRange:[.64, .72], avatar:/afternoon-ops/i, maxStageLeftRatio:.19, expectFullPlinth:true, expectCopy:false },
   { label:'desktop-rest-1440x900', width:1440, height:900, hour:2, profile:'sleep', clip:'Sleep', station:'rest', support:'lounge-seat', supportBottomRange:[.7, .84], avatar:/late-sleep/i, expectCopy:false },
-  // Portrait Home now uses a compact bottom utility row instead of placing Matthias
-  // diegetically on the foreground rug. Keep the live canonical model visible there,
-  // but validate the new compact placement rather than the old landscape-derived one.
-  { label:'android-390x844', width:390, height:844, hour:20, profile:'bite', clip:'Bite', station:'dining-table', support:'foreground-rug', supportBottomRange:[.88, .96], avatar:/lunch-bocata/i, hasTouch:true, expectCopy:true },
 ];
 const CAPTURES = process.env.HOME_MATTHIAS_CAPTURE_SCOPE === 'canonical-model'
   ? ALL_CAPTURES.filter(({ label }) => (
-    label === 'desktop-chess-chair-1440x900' || label === 'android-390x844'
+    label === 'desktop-chess-chair-1440x900'
   ))
   : ALL_CAPTURES;
 

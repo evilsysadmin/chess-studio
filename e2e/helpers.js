@@ -685,16 +685,27 @@ export async function startPracticeGame(page) {
 export async function openMoreGameModes(page) {
   const illustrated = page.locator('.illustrated-home__utilities');
   const trigger = illustrated.getByRole('button', { name: /Más modos y herramientas/ });
+  const portraitMore = page.locator('.illustrated-home__play-more');
   const details = page.locator('details.home-more-modes');
 
   await expect.poll(async () => {
     if (await trigger.isVisible().catch(() => false)) return 'illustrated';
+    if (await portraitMore.isVisible().catch(() => false)) return 'portrait';
     if (await details.isVisible().catch(() => false)) return 'legacy';
     return 'pending';
   }, {
     timeout: 20_000,
-    message: 'Home should expose canonical or legacy more-modes navigation',
+    message: 'Home should expose canonical, portrait, or legacy more-modes navigation',
   }).not.toBe('pending');
+
+  if (!(await trigger.isVisible().catch(() => false)) && await portraitMore.isVisible().catch(() => false)) {
+    if (await portraitMore.getAttribute('aria-expanded') !== 'true') await portraitMore.click();
+    const dungeonEntry = page.locator('.illustrated-home__play-menu-item:visible').filter({ hasText: 'Mazmorras' }).first();
+    await expect(dungeonEntry).toBeVisible();
+    await dungeonEntry.click();
+    await expect(page.locator('#illustrated-home-tools')).toBeVisible({ timeout: 5_000 });
+    return illustrated;
+  }
 
   if (await trigger.isVisible().catch(() => false)) {
     if (await trigger.getAttribute('aria-expanded') !== 'true') {

@@ -19,47 +19,23 @@ for (const viewport of [
   { width: 390, height: 844, label: '390x844' },
   { width: 360, height: 740, label: '360x740' },
 ]) {
-  test(`Home Android · composición compacta ${viewport.label}`, async ({ page }) => {
+  test(`Home Android · chrome y camino principal ${viewport.label}`, async ({ page }) => {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     const home = await openHome(page);
 
-    const selectors = {
-      tournament: '.illustrated-home__destination--tournament',
-      train: '.illustrated-home__destination--train',
-      combat: '.illustrated-home__destination--combat',
-      daily: '.illustrated-home__destination--daily',
-      play: '.illustrated-home__destination--play',
-      history: '.illustrated-home__destination--history',
-      matthias: '.illustrated-home__matthias',
-      utilities: '.illustrated-home__utilities',
-    };
-
-    const boxes = {};
-    for (const [name, selector] of Object.entries(selectors)) {
-      const locator = home.locator(selector);
-      await expect(locator).toBeVisible();
-      boxes[name] = await locator.boundingBox();
-      expect(boxes[name]).not.toBeNull();
-    }
-
-    const firstRowBottom = Math.max(
-      boxes.tournament.y + boxes.tournament.height,
-      boxes.train.y + boxes.train.height,
-    );
-    const secondRowTop = Math.min(boxes.combat.y, boxes.daily.y);
-    const secondRowBottom = Math.max(
-      boxes.combat.y + boxes.combat.height,
-      boxes.daily.y + boxes.daily.height,
-    );
-
-    expect(secondRowTop).toBeGreaterThanOrEqual(firstRowBottom - 3);
-    expect(boxes.play.y).toBeGreaterThan(secondRowBottom + 8);
-    expect(boxes.play.y + boxes.play.height).toBeLessThan(viewport.height * 0.58);
-    expect(boxes.history.y).toBeGreaterThan(boxes.play.y);
-    expect(boxes.matthias.y).toBeGreaterThan(boxes.history.y);
-    expect(boxes.utilities.y).toBeGreaterThan(boxes.play.y);
-
-    for (const box of Object.values(boxes)) {
+    const play = home.locator('.illustrated-home__destination--play');
+    const more = home.locator('.illustrated-home__play-more');
+    const landscapeHint = home.locator('.illustrated-home__landscape-hint');
+    for (const [label, target] of [
+      ['play', play],
+      ['more', more],
+      ['landscape', landscapeHint],
+    ]) {
+      await expect(target).toBeVisible();
+      const box = await target.boundingBox();
+      expect(box, `${label}: touch box`).not.toBeNull();
+      expect(box.width, `${label}: touch width`).toBeGreaterThanOrEqual(44);
+      expect(box.height, `${label}: touch height`).toBeGreaterThanOrEqual(44);
       expect(box.x).toBeGreaterThanOrEqual(-1);
       expect(box.x + box.width).toBeLessThanOrEqual(viewport.width + 1);
       expect(box.y).toBeGreaterThanOrEqual(-1);
@@ -96,28 +72,13 @@ for (const viewport of [
       expect(box.height, `${label}: chrome stays compact`).toBeLessThanOrEqual(48);
     }
 
-    const homeTargets = [
-      ...Object.entries(selectors)
-        .filter(([name]) => name !== 'utilities')
-        .map(([name, selector]) => [name, home.locator(selector)]),
-      ['dungeon', home.locator('.illustrated-home__dungeon-trigger')],
-    ];
-    for (const [label, target] of homeTargets) {
-      const box = await target.boundingBox();
-      expect(box, `${label}: touch box`).not.toBeNull();
-      expect(box.width, `${label}: touch width`).toBeGreaterThanOrEqual(44);
-      expect(box.height, `${label}: touch height`).toBeGreaterThanOrEqual(44);
-    }
-
     expect(releaseBox.x + releaseBox.width).toBeLessThanOrEqual(feedbackBox.x + 1);
     expect(feedbackBox.x + feedbackBox.width).toBeLessThanOrEqual(viewport.width + 1);
-
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   });
 }
 
-
-test('Home Android 3D · secundarios dejan respirar la sala con touch real', async ({ browser }) => {
+test('Home Android · portrait usa vestíbulo y reserva 3D para apaisado', async ({ browser }) => {
   for (const viewport of [
     { width: 360, height: 800, label: '360x800' },
     { width: 390, height: 844, label: '390x844' },
@@ -137,33 +98,33 @@ test('Home Android 3D · secundarios dejan respirar la sala con touch real', asy
     try {
       const home = await openHome(page);
       expect(await page.evaluate(() => window.matchMedia('(pointer: coarse)').matches), `${viewport.label}: coarse pointer`).toBe(true);
-      await expect(home.locator('.illustrated-home__castle-3d.is-ready')).toBeVisible({ timeout: 15_000 });
+      await expect(home.locator('.illustrated-home__castle-3d')).toHaveCount(0);
+      const landscapeHint = home.locator('.illustrated-home__landscape-hint');
+      await expect(landscapeHint).toBeVisible();
+      const hintBox = await landscapeHint.boundingBox();
+      expect(hintBox).not.toBeNull();
+      expect(hintBox.height, `${viewport.label}: landscape hint touch height`).toBeGreaterThanOrEqual(44);
 
-      const box = async (id) => {
-        const value = await home.locator(`.illustrated-home__destination--${id}`).boundingBox();
-        expect(value, `${viewport.label}:${id} box`).not.toBeNull();
-        return value;
-      };
-      const [tournament, train, combat, daily, play] = await Promise.all([
-        box('tournament'), box('train'), box('combat'), box('daily'), box('play'),
-      ]);
+      const play = home.locator('.illustrated-home__destination--play');
+      await expect(play).toBeVisible();
+      const playBox = await play.boundingBox();
+      expect(playBox).not.toBeNull();
+      expect(playBox.width, `${viewport.label}: play is the dominant action`).toBeGreaterThanOrEqual(viewport.width * 0.80);
+      expect(playBox.height, `${viewport.label}: play touch height`).toBeGreaterThanOrEqual(56);
 
-      const firstGap = train.x - (tournament.x + tournament.width);
-      const secondGap = daily.x - (combat.x + combat.width);
-      for (const [label, value] of [
-        ['tournament', tournament],
-        ['train', train],
-        ['combat', combat],
-        ['daily', daily],
-      ]) {
-        expect(value.width, `${viewport.label}:${label} secondary width`).toBeLessThanOrEqual(viewport.width * 0.36);
-        expect(value.height, `${viewport.label}:${label} touch height`).toBeGreaterThanOrEqual(44);
+      for (const id of ['tournament', 'train', 'combat', 'daily', 'history']) {
+        await expect(home.locator(`.illustrated-home__destination--${id}`)).toBeHidden();
       }
+      await expect(home.locator('.illustrated-home__matthias')).toBeHidden();
+      await expect(home.locator('.illustrated-home__utilities')).toBeHidden();
 
-      expect(firstGap, `${viewport.label}: first-row central breathing room`).toBeGreaterThanOrEqual(viewport.width * 0.14);
-      expect(secondGap, `${viewport.label}: second-row central breathing room`).toBeGreaterThanOrEqual(viewport.width * 0.14);
-      expect(play.x, `${viewport.label}: play left breathing room`).toBeGreaterThanOrEqual(viewport.width * 0.18);
-      expect(viewport.width - (play.x + play.width), `${viewport.label}: play right breathing room`).toBeGreaterThanOrEqual(viewport.width * 0.18);
+      const more = home.locator('.illustrated-home__play-more');
+      await expect(more).toBeVisible();
+      await expect(more).toHaveText(/Más/);
+      const moreBox = await more.boundingBox();
+      expect(moreBox).not.toBeNull();
+      expect(moreBox.height, `${viewport.label}: more touch height`).toBeGreaterThanOrEqual(44);
+
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
     } finally {
       await context.close();
