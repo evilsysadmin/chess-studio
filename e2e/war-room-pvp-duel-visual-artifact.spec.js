@@ -166,6 +166,20 @@ function assertRenderedDuelRoomPng(png, label) {
   expect(litFraction, label + ' is too dark/empty; Duel Room likely did not render').toBeGreaterThan(0.15);
 }
 
+async function forceFreshDuelFrame(page, viewport) {
+  // Chromium + SwiftShader may discard an idle WebGL backbuffer even though
+  // the scene is mounted and ready. Nudge the host by 1 px so ResizeObserver
+  // drives Board3D's real resize()->render() path immediately before capture.
+  const nudged = { width: Math.max(320, viewport.width - 1), height: viewport.height };
+  await page.setViewportSize(nudged);
+  await page.waitForTimeout(60);
+  await page.setViewportSize(viewport);
+  await page.evaluate(() => new Promise((resolve) => (
+    requestAnimationFrame(() => requestAnimationFrame(resolve))
+  )));
+  await page.waitForTimeout(80);
+}
+
 async function assertMobileTouchTargets(room) {
   const topbarButton = room.locator('.pvp-war-room__topbar button').first();
   const utility = room.locator('.pvp-war-room__duel-pill .game-3d-utility-menu>summary');
@@ -179,7 +193,9 @@ async function assertMobileTouchTargets(room) {
 
 test('PvP Duel Room · runtime desktop visual artifact', async ({ page }) => {
   test.setTimeout(120_000);
-  const { room } = await openDuelRoom(page, { width: 1440, height: 900 });
+  const viewport = { width: 1440, height: 900 };
+  const { room } = await openDuelRoom(page, viewport);
+  await forceFreshDuelFrame(page, viewport);
   const png = await room.screenshot({
     path: ARTIFACT_DIR + '/pvp-duel-room-desktop-1440x900.png',
     animations: 'disabled',
@@ -192,8 +208,10 @@ test.describe('PvP Duel Room · mobile touch orientation', () => {
 
   test('runtime Android portrait visual artifact', async ({ page }) => {
     test.setTimeout(120_000);
-    const { room } = await openDuelRoom(page, { width: 390, height: 844 });
+    const viewport = { width: 390, height: 844 };
+    const { room } = await openDuelRoom(page, viewport);
     await assertMobileTouchTargets(room);
+    await forceFreshDuelFrame(page, viewport);
     await expect(page.getByRole('button', { name: 'Activar apaisado', exact: true })).toBeVisible();
     const png = await room.screenshot({
       path: ARTIFACT_DIR + '/pvp-duel-room-android-390x844.png',
@@ -204,8 +222,10 @@ test.describe('PvP Duel Room · mobile touch orientation', () => {
 
   test('runtime Android landscape visual artifact', async ({ page }) => {
     test.setTimeout(120_000);
-    const { room } = await openDuelRoom(page, { width: 844, height: 390 });
+    const viewport = { width: 844, height: 390 };
+    const { room } = await openDuelRoom(page, viewport);
     await expect(page.getByRole('button', { name: 'Activar apaisado', exact: true })).toHaveCount(0);
+    await forceFreshDuelFrame(page, viewport);
     const png = await room.screenshot({
       path: ARTIFACT_DIR + '/pvp-duel-room-android-landscape-844x390.png',
       animations: 'disabled',
