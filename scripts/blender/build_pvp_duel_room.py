@@ -80,8 +80,8 @@ def palette():
             metal=0.90, rough=0.52, texture="metal", scale=30, bump=0.026,
         ),
         "armor": base.material(
-            "PVP_MAT_armor_steel", (0.105, 0.115, 0.125, 1),
-            metal=0.94, rough=0.31, coat=0.15, texture="metal", scale=28, bump=0.014,
+            "PVP_MAT_armor_steel", (0.165, 0.175, 0.185, 1),
+            metal=0.95, rough=0.24, coat=0.22, texture="metal", scale=28, bump=0.012,
         ),
         "brass": base.material(
             "PVP_MAT_old_brass", (0.30, 0.135, 0.025, 1),
@@ -621,20 +621,20 @@ def build_dungeon_population(static, p):
             tasset.rotation_euler.x = math.radians(-12)
             tasset.rotation_euler.y = math.radians(leg_side * 9)
         base.cube(
-            f"PVP_DUEL_sentinel_{label}_torso", (sx, sy, 1.88),
-            (0.38, 0.24, 0.52), p["armor"], static, bevel=0.10,
+            f"PVP_DUEL_sentinel_{label}_torso", (sx, sy + 0.02, 1.88),
+            (0.28, 0.15, 0.40), p["iron"], static, bevel=0.085,
         )
 
         # Layered gothic plate over the structural torso.
         base.sphere(
             f"PVP_DUEL_sentinel_{label}_breastplate",
-            (sx, sy - 0.04, 2.02), 0.34, p["armor"], static,
-            scale=(0.92, 0.62, 1.02),
+            (sx, sy - 0.05, 2.03), 0.365, p["armor"], static,
+            scale=(0.98, 0.64, 1.06),
         )
         base.sphere(
             f"PVP_DUEL_sentinel_{label}_plackart",
-            (sx, sy - 0.08, 1.78), 0.27, p["armor"], static,
-            scale=(0.94, 0.64, 0.72),
+            (sx, sy - 0.09, 1.78), 0.285, p["armor"], static,
+            scale=(0.98, 0.66, 0.74),
         )
         base.cube(
             f"PVP_DUEL_sentinel_{label}_breast_ridge",
@@ -672,7 +672,7 @@ def build_dungeon_population(static, p):
         for arm_idx, dx in enumerate((-0.43, 0.43)):
             arm=base.cylinder(
                 f"PVP_DUEL_sentinel_{label}_arm_{arm_idx}",
-                (sx + dx, sy, 1.90), 0.085, 0.82, p["armor"], static, vertices=14,
+                (sx + dx, sy + 0.02, 1.90), 0.060, 0.70, p["iron"], static, vertices=12,
             )
             arm.rotation_euler.y = math.radians(8 if arm_idx == 0 else -8)
 
@@ -779,8 +779,8 @@ def build_dungeon_population(static, p):
 
         sentinel_light = base.light(
             f"PVP_LIGHT_sentinel_{label}", "POINT",
-            (sx, sy - 0.38, 1.35), 72.0,
-            (0.72, 0.22, 0.06), static, radius=0.9,
+            (sx, sy - 0.44, 2.02), 105.0,
+            (0.78, 0.30, 0.10), static, radius=1.05,
         )
         sentinel_light["war_room_runtime_dynamic"] = "pvp-sentinel"
 
@@ -917,8 +917,8 @@ def build_sconces_and_gate(static, p):
 def build_duelist_furniture(static, p):
     """Premium duelist chairs, angled so both seats unmistakably face the board."""
     for side, accent, label in ((-1, p["red"], "red"), (1, p["blue"], "blue")):
-        x = side * 6.55
-        y = -2.72
+        x = side * 5.88
+        y = -1.98
         yaw = math.atan2(-x, y)  # local -y is the seated player's forward direction
         cos_yaw = math.cos(yaw)
         sin_yaw = math.sin(yaw)
