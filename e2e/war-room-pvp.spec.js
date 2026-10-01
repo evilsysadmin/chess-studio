@@ -275,9 +275,14 @@ test('War Room 1v1 · reto entrante abre una partida humana en el tablero canón
   await expect(warRoom.getByText('Tu turno', { exact: true })).toBeVisible();
   await expect(warRoom.getByText('10:00', { exact: true }).first()).toBeVisible();
   const actions = warRoom.getByRole('button', { name: 'Más acciones de partida', exact: true });
+  const exit = warRoom.getByRole('button', { name: 'Salir de la partida', exact: true });
+  const account = warRoom.getByRole('button', { name: 'Mi cuenta', exact: true });
   await expect(actions).toBeVisible();
+  await expect(exit).toBeVisible();
+  await expect(account).toBeVisible();
   await actions.click();
-  await expect(warRoom.getByRole('menuitem', { name: 'Abandonar partida', exact: true })).toBeVisible();
+  await expect(warRoom.getByRole('menuitem', { name: 'Abandonar partida', exact: true })).toHaveCount(0);
+  await actions.click();
 
   const board = page.locator('[data-board3d-war-room="true"]');
   await expect(board).toBeVisible({ timeout: 45_000 });
