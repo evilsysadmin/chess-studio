@@ -49,6 +49,16 @@ export async function requestWarRoomLandscapeFullscreen({
   return { fullscreen, landscape };
 }
 
+export async function requestWarRoomLandscapeOnEntry({
+  win = globalThis.window,
+  doc = globalThis.document,
+  screenApi = globalThis.screen,
+} = {}) {
+  if (!shouldAutoRotateWarRoomOnEntry({ win })) return false;
+  await requestWarRoomLandscapeFullscreen({ doc, screenApi });
+  return true;
+}
+
 export function unlockWarRoomOrientation(screenApi = globalThis.screen) {
   const orientation = screenApi?.orientation;
   if (!orientation || typeof orientation.unlock !== 'function') return false;
