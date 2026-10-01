@@ -397,6 +397,36 @@ def test_second_ready_survives_naive_mongo_activation_timestamp(monkeypatch):
     assert payload["startsAt"]
 
 
+def test_move_accepts_naive_mongo_start_and_turn_timestamps():
+    client = make_client()
+    for user in ("alice", "bob"):
+        assert as_user(client, user, "post", "/api/pvp/roster").status_code == 200
+
+    challenge = as_user(client, "alice", "post", "/api/pvp/challenges", json={"opponent": "bob"}).json()["challenge"]
+    match = as_user(client, "bob", "post", f"/api/pvp/challenges/{challenge['id']}/accept").json()["match"]
+    start_match_now(client, match)
+    stored = pvp_store._memory_matches[match["id"]]
+
+    # PyMongo returns UTC datetimes without tzinfo by default. The move endpoint
+    # must normalize both the countdown timestamp and running-clock timestamp
+    # before comparing them with utcnow(), which is timezone-aware.
+    started = (pvp_store.utcnow() - timedelta(seconds=1)).replace(tzinfo=None)
+    stored["start_at"] = started
+    stored["turn_started_at"] = started
+
+    moved = as_user(
+        client,
+        stored["white"],
+        "post",
+        f"/api/pvp/matches/{match['id']}/move",
+        json={"from": "e2", "to": "e4"},
+    )
+    assert moved.status_code == 200
+    payload = moved.json()["match"]
+    assert payload["history"][0]["uci"] == "e2e4"
+    assert payload["turn"] == "b"
+
+
 def test_active_clock_accepts_naive_mongo_turn_started_at():
     now = pvp_store.utcnow()
     match = {
