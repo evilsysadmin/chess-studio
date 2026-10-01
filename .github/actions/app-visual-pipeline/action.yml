@@ -232,7 +232,10 @@ runs:
         compression-level: 0
 
     - name: Capture Hans routines
-      if: inputs.mode == 'canonical' && steps.scope.outputs.hans == 'true'
+      if: >-
+        inputs.mode == 'canonical' &&
+        steps.scope.outputs.hans == 'true' &&
+        (steps.scope.outputs.producer_scope == 'all' || contains(steps.scope.outputs.producer_scope, 'warroom-hans'))
       id: hans_capture
       shell: bash
       run: bash scripts/app_visual_capture.sh hans
