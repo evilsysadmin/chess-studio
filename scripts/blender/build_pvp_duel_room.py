@@ -104,12 +104,12 @@ def palette():
             rough=0.50, coat=0.18, sheen=0.08, texture="leather", scale=50, bump=0.040,
         ),
         "fire": base.material(
-            "PVP_MAT_fire_orange", (0.62, 0.085, 0.003, 1),
-            rough=0.24, emission=(0.72, 0.055, 0.001, 1), emission_strength=0.72,
+            "PVP_MAT_fire_orange", (0.70, 0.070, 0.002, 1),
+            rough=0.28, emission=(0.42, 0.028, 0.0005, 1), emission_strength=0.38,
         ),
         "fire_core": base.material(
-            "PVP_MAT_fire_gold", (0.96, 0.24, 0.010, 1),
-            rough=0.20, emission=(0.88, 0.11, 0.002, 1), emission_strength=0.92,
+            "PVP_MAT_fire_gold", (0.98, 0.18, 0.006, 1),
+            rough=0.24, emission=(0.58, 0.055, 0.001, 1), emission_strength=0.48,
         ),
         "night": base.material(
             "PVP_MAT_moon_glass", (0.006, 0.018, 0.055, 1),
@@ -565,9 +565,37 @@ def build_dungeon_population(static, p):
                 f"PVP_DUEL_sentinel_{label}_leg_{leg_idx}",
                 (sx + dx, sy, 0.98), 0.10, 1.05, p["armor"], static, vertices=14,
             )
+
+            base.sphere(
+                f"PVP_DUEL_sentinel_{label}_knee_{leg_idx}",
+                (sx + dx, sy - 0.03, 1.42), 0.11, p["armor"], static,
+                scale=(1.0, 0.88, 1.0),
+            )
+            base.sphere(
+                f"PVP_DUEL_sentinel_{label}_sabatons_{leg_idx}",
+                (sx + dx, sy - 0.10, 0.49), 0.10, p["armor"], static,
+                scale=(0.86, 1.65, 0.52),
+            )
         base.cube(
             f"PVP_DUEL_sentinel_{label}_torso", (sx, sy, 1.88),
             (0.38, 0.24, 0.52), p["armor"], static, bevel=0.10,
+        )
+
+        # Layered gothic plate over the structural torso.
+        base.sphere(
+            f"PVP_DUEL_sentinel_{label}_breastplate",
+            (sx, sy - 0.04, 2.02), 0.34, p["armor"], static,
+            scale=(0.92, 0.62, 1.02),
+        )
+        base.sphere(
+            f"PVP_DUEL_sentinel_{label}_plackart",
+            (sx, sy - 0.08, 1.78), 0.27, p["armor"], static,
+            scale=(0.94, 0.64, 0.72),
+        )
+        base.cube(
+            f"PVP_DUEL_sentinel_{label}_breast_ridge",
+            (sx, sy - 0.225, 2.02), (0.018, 0.015, 0.25),
+            p["brass"], static, bevel=0.006,
         )
         base.cube(
             f"PVP_DUEL_sentinel_{label}_belt", (sx, sy - 0.03, 1.47),
@@ -579,13 +607,40 @@ def build_dungeon_population(static, p):
                 (sx + dx, sy, 1.90), 0.085, 0.82, p["armor"], static, vertices=14,
             )
             arm.rotation_euler.y = math.radians(8 if arm_idx == 0 else -8)
+
+            arm_side = -1 if arm_idx == 0 else 1
+            ax = sx + dx
+            for lame_idx, (dz, radius, scale_z) in enumerate(((0.12, 0.18, 0.86), (0.04, 0.16, 0.72), (-0.04, 0.14, 0.62))):
+                base.sphere(
+                    f"PVP_DUEL_sentinel_{label}_pauldron_{arm_idx}_{lame_idx}",
+                    (ax + arm_side * 0.018 * lame_idx, sy, 2.20 + dz),
+                    radius, p["armor"], static,
+                    scale=(1.12, 1.02, scale_z),
+                )
+            base.sphere(
+                f"PVP_DUEL_sentinel_{label}_elbow_{arm_idx}",
+                (ax, sy - 0.02, 1.68), 0.095, p["armor"], static,
+                scale=(1.0, 0.90, 1.0),
+            )
         base.sphere(
             f"PVP_DUEL_sentinel_{label}_helmet", (sx, sy, 2.62),
-            0.29, p["armor"], static, scale=(0.92, 0.84, 1.08),
+            0.29, p["armor"], static, scale=(0.92, 0.90, 1.10),
+        )
+        base.sphere(
+            f"PVP_DUEL_sentinel_{label}_visor_shell", (sx, sy - 0.16, 2.58),
+            0.20, p["armor"], static, scale=(0.88, 0.72, 0.78),
+        )
+        base.sphere(
+            f"PVP_DUEL_sentinel_{label}_visor_beak", (sx, sy - 0.31, 2.55),
+            0.10, p["armor"], static, scale=(0.95, 1.25, 0.72),
         )
         base.cube(
-            f"PVP_DUEL_sentinel_{label}_visor", (sx, sy - 0.25, 2.60),
-            (0.25, 0.055, 0.055), p["brass"], static, bevel=0.016,
+            f"PVP_DUEL_sentinel_{label}_visor", (sx, sy - 0.31, 2.62),
+            (0.18, 0.026, 0.018), p["iron"], static, bevel=0.006,
+        )
+        base.cube(
+            f"PVP_DUEL_sentinel_{label}_helm_comb", (sx, sy + 0.01, 2.92),
+            (0.018, 0.12, 0.055), p["brass"], static, bevel=0.008,
         )
         cylinder_between(
             f"PVP_DUEL_sentinel_{label}_halberd",
@@ -598,6 +653,13 @@ def build_dungeon_population(static, p):
             (sx - side * 0.66, sy, 3.08),
             (0.18, 0.035, 0.23), p["iron"], static, bevel=0.028,
         )
+
+        sentinel_light = base.light(
+            f"PVP_LIGHT_sentinel_{label}", "POINT",
+            (sx, sy - 0.38, 1.35), 72.0,
+            (0.72, 0.22, 0.06), static, radius=0.9,
+        )
+        sentinel_light["war_room_runtime_dynamic"] = "pvp-sentinel"
 
         # Barrel + supply crate in the rear corner make the room feel occupied.
         cx, cy = side * 6.10, 4.92
@@ -842,6 +904,7 @@ def validate_scene():
         "PVP_DUEL_hanging_brazier_left",
         "PVP_DUEL_wall_sconce_left",
         "PVP_DUEL_sentinel_left_torso",
+        "PVP_DUEL_sentinel_left_breastplate",
         "PVP_DUEL_mid_weapon_rack_left",
         "PVP_DUEL_barrel_left",
         "PVP_DUEL_floor_grate_spine_left",
