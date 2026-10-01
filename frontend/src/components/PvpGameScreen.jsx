@@ -346,7 +346,7 @@ export default function PvpGameScreen({ initialMatch, onExit, onMatchUpdate }) {
 
   return (
     <section className="game-screen pvp-war-room" aria-label="Sala de duelo 1 contra 1">
-      <div className="game-layout game-layout-3d pvp-war-room__layout">
+      <div className="game-layout game-layout-3d game-layout-immersive pvp-war-room__layout" data-war-room-immersive="true">
         <div className="board-column">
           <div className="board-live-row is-3d-warroom">
             <div className="game-board-stack game-board-stack-3d">
@@ -385,6 +385,12 @@ export default function PvpGameScreen({ initialMatch, onExit, onMatchUpdate }) {
                     matthiasKingColor: null,
                     hansFireplaceIteration: false,
                     hansFireCallEnabled: false,
+                    // Duel Room uses the same viewport/camera contract as War Room v1.
+                    // The GLB supplies the PvP room identity; framing stays immersive
+                    // instead of shrinking the room inside a wide WebGL canvas.
+                    cameraProfile: 'classic',
+                    immersive: true,
+                    warRoomMobilePerformance: true,
                     warRoomVariantOverride: 'duel',
                   }}
                 />
