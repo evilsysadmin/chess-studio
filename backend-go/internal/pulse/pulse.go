@@ -12,6 +12,7 @@ import (
 	"hash"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -22,6 +23,8 @@ import (
 const (
 	defaultPollAfter     = 3 * time.Second
 	defaultQueryTimeout  = 2 * time.Second
+	rosterJoinLimit      = 30
+	rosterJoinWindow     = time.Minute
 	rosterTTL            = 45 * time.Second
 	challengeTTL         = 75 * time.Second
 	lobbyChatTTL         = 24 * time.Hour
@@ -33,6 +36,8 @@ type Store interface {
 	AuthState(context.Context, string) (exists bool, sessionVersion int64, err error)
 	Revision(context.Context, string, time.Time) (string, error)
 	MatchState(context.Context, string, string, time.Time) (matchPulseState, error)
+	JoinRoster(context.Context, string, time.Time) (rosterRow, error)
+	LeaveRoster(context.Context, string, time.Time) error
 }
 
 type HandlerConfig struct {
@@ -40,6 +45,7 @@ type HandlerConfig struct {
 	JWTSecret      string
 	AllowedOrigins []string
 	PollAfter      time.Duration
+	EnableRoster   bool
 	Now            func() time.Time
 }
 
@@ -49,7 +55,15 @@ type Handler struct {
 	allowedOrigins map[string]struct{}
 	allowAnyOrigin bool
 	pollAfterMS    int64
+	enableRoster   bool
+	rosterMu       sync.Mutex
+	rosterWindows  map[string]rateWindow
 	now            func() time.Time
+}
+
+type rateWindow struct {
+	start time.Time
+	count int
 }
 
 type MongoConfig struct {
@@ -161,6 +175,8 @@ func NewHandler(cfg HandlerConfig) (*Handler, error) {
 		allowedOrigins: allowed,
 		allowAnyOrigin: allowAny,
 		pollAfterMS:    pollAfter.Milliseconds(),
+		enableRoster:   cfg.EnableRoster,
+		rosterWindows:  make(map[string]rateWindow),
 		now:            now,
 	}, nil
 }
@@ -225,6 +241,104 @@ func (s *MongoStore) AuthState(ctx context.Context, username string) (bool, int6
 		version = 0
 	}
 	return true, version, nil
+}
+
+func (s *MongoStore) JoinRoster(ctx context.Context, username string, now time.Time) (rosterRow, error) {
+	queryCtx, cancel := context.WithTimeout(ctx, s.timeout)
+	defer cancel()
+
+	var user bson.M
+	err := s.db.Collection("users").FindOne(
+		queryCtx,
+		bson.M{"_id": username},
+		options.FindOne().SetProjection(bson.M{"pvp_rating": 1}),
+	).Decode(&user)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return rosterRow{}, mongo.ErrNoDocuments
+	}
+	if err != nil {
+		return rosterRow{}, err
+	}
+	rating := normalizedRating(user["pvp_rating"])
+	tier := ratingTier(rating)
+	payload := bson.M{
+		"username":  username,
+		"rating":    rating,
+		"tier":      tier,
+		"last_seen": now,
+	}
+	_, err = s.db.Collection("pvp_roster").UpdateOne(
+		queryCtx,
+		bson.M{"_id": username},
+		bson.M{"$set": payload, "$setOnInsert": bson.M{"joined_at": now}},
+		options.UpdateOne().SetUpsert(true),
+	)
+	if err != nil {
+		return rosterRow{}, err
+	}
+	var row rosterRow
+	if err := s.db.Collection("pvp_roster").FindOne(
+		queryCtx,
+		bson.M{"_id": username},
+		options.FindOne().SetProjection(bson.M{"username": 1, "rating": 1, "tier": 1, "joined_at": 1}),
+	).Decode(&row); err != nil {
+		return rosterRow{}, err
+	}
+	return row, nil
+}
+
+func (s *MongoStore) LeaveRoster(ctx context.Context, username string, now time.Time) error {
+	queryCtx, cancel := context.WithTimeout(ctx, s.timeout)
+	defer cancel()
+	if _, err := s.db.Collection("pvp_roster").DeleteOne(queryCtx, bson.M{"_id": username}); err != nil {
+		return err
+	}
+	_, err := s.db.Collection("pvp_challenges").UpdateMany(
+		queryCtx,
+		bson.M{
+			"status": "pending",
+			"$or": bson.A{
+				bson.M{"challenger": username},
+				bson.M{"opponent": username},
+			},
+		},
+		bson.M{"$set": bson.M{"status": "cancelled", "resolved_at": now}},
+	)
+	return err
+}
+
+func normalizedRating(value any) int64 {
+	rating, ok := bsonInteger(value)
+	if !ok {
+		rating = 400
+	}
+	if rating < 100 {
+		return 100
+	}
+	if rating > 10000 {
+		return 10000
+	}
+	if rating == 0 {
+		return 400
+	}
+	return rating
+}
+
+func ratingTier(rating int64) string {
+	switch {
+	case rating <= 699:
+		return "Principiante"
+	case rating <= 999:
+		return "Aficionado"
+	case rating <= 1299:
+		return "Intermedio"
+	case rating <= 1599:
+		return "Avanzado"
+	case rating <= 1899:
+		return "Experto"
+	default:
+		return "Maestro"
+	}
 }
 
 func (s *MongoStore) Revision(ctx context.Context, username string, now time.Time) (string, error) {
@@ -443,15 +557,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusForbidden, map[string]any{"detail": "Origen no permitido."})
 			return
 		}
-		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Request-ID, X-Client-Release")
 		w.Header().Set("Access-Control-Max-Age", "600")
 		w.WriteHeader(http.StatusNoContent)
-		return
-	}
-	if r.Method != http.MethodGet {
-		w.Header().Set("Allow", "GET, OPTIONS")
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]any{"detail": "Método no permitido."})
 		return
 	}
 
@@ -474,6 +583,57 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	now := h.now().UTC()
+
+	if r.URL.Path == "/api/pvp/roster" {
+		if !h.enableRoster {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("X-Chess-Pvp-Native", "roster")
+		switch r.Method {
+		case http.MethodPost:
+			if allowed, retryAfter := h.allowRosterJoin(claims.Subject, now); !allowed {
+				w.Header().Set("Retry-After", fmt.Sprintf("%d", retryAfter))
+				writeJSON(w, http.StatusTooManyRequests, map[string]any{"detail": "Demasiadas actualizaciones de disponibilidad 1v1."})
+				return
+			}
+			member, err := h.store.JoinRoster(r.Context(), claims.Subject, now)
+			if errors.Is(err, mongo.ErrNoDocuments) {
+				writeJSON(w, http.StatusUnauthorized, map[string]any{"detail": "Sesión inválida o expirada. Inicia sesión de nuevo."})
+				return
+			}
+			if err != nil {
+				writeJSON(w, http.StatusServiceUnavailable, map[string]any{"detail": "No se pudo actualizar el roster 1v1."})
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"member": map[string]any{
+				"username": member.Username,
+				"rating": member.Rating,
+				"tier": member.Tier,
+				"joinedAt": stamp(member.JoinedAt),
+				"isSelf": true,
+			}})
+			return
+		case http.MethodDelete:
+			if err := h.store.LeaveRoster(r.Context(), claims.Subject, now); err != nil {
+				writeJSON(w, http.StatusServiceUnavailable, map[string]any{"detail": "No se pudo abandonar el roster 1v1."})
+				return
+			}
+			w.WriteHeader(http.StatusNoContent)
+			return
+		default:
+			w.Header().Set("Allow", "POST, DELETE, OPTIONS")
+			writeJSON(w, http.StatusMethodNotAllowed, map[string]any{"detail": "Método no permitido."})
+			return
+		}
+	}
+
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", "GET, OPTIONS")
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]any{"detail": "Método no permitido."})
+		return
+	}
+
 	if matchID, ok := matchPulseID(r.URL.Path); ok {
 		state, err := h.store.MatchState(r.Context(), claims.Subject, matchID, now)
 		if err != nil {
@@ -504,6 +664,26 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		"pollAfterMs": h.pollAfterMS,
 		"source":      "go",
 	})
+}
+
+func (h *Handler) allowRosterJoin(username string, now time.Time) (bool, int) {
+	h.rosterMu.Lock()
+	defer h.rosterMu.Unlock()
+	window := h.rosterWindows[username]
+	if window.start.IsZero() || now.Sub(window.start) >= rosterJoinWindow {
+		h.rosterWindows[username] = rateWindow{start: now, count: 1}
+		return true, 0
+	}
+	if window.count >= rosterJoinLimit {
+		retry := int(rosterJoinWindow.Seconds() - now.Sub(window.start).Seconds())
+		if retry < 1 {
+			retry = 1
+		}
+		return false, retry
+	}
+	window.count++
+	h.rosterWindows[username] = window
+	return true, 0
 }
 
 func matchPulseID(path string) (string, bool) {
