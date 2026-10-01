@@ -13,6 +13,8 @@ import {
   homeMatthiasPlaybackPolicy,
   homeMatthiasPortraitFrame,
   homeMatthiasRoutinePropPolicy,
+  homeMatthiasDossierSipPose,
+  homeMatthiasLimbScaleForMesh,
 } from './HomeMatthias3D.jsx';
 
 describe('Home Matthias canonical Blender rig', () => {
@@ -58,6 +60,22 @@ describe('Home Matthias canonical Blender rig', () => {
       anchor: null,
       signature: 'authored',
     });
+  });
+
+  it('keeps dossier coffee mostly on the reports with one restrained sip per cycle', () => {
+    expect(homeMatthiasDossierSipPose(2).phase).toBe('reading');
+    expect(homeMatthiasDossierSipPose(6.2).phase).toBe('raising');
+    expect(homeMatthiasDossierSipPose(6.9)).toMatchObject({ phase: 'sip', weight: 1 });
+    expect(homeMatthiasDossierSipPose(7.7).phase).toBe('lowering');
+    expect(homeMatthiasDossierSipPose(9).phase).toBe('reading');
+  });
+
+  it('gives limbs more presence without scaling the pawn body', () => {
+    expect(homeMatthiasLimbScaleForMesh('Upper arm.R')).toBe(1.15);
+    expect(homeMatthiasLimbScaleForMesh('Forearm.L')).toBe(1.15);
+    expect(homeMatthiasLimbScaleForMesh('Hand.R')).toBe(1.18);
+    expect(homeMatthiasLimbScaleForMesh('Boot.L')).toBe(1.12);
+    expect(homeMatthiasLimbScaleForMesh('Classic lower pawn')).toBe(1);
   });
 
   it('keeps every routine wired to a named Blender animation clip', () => {
