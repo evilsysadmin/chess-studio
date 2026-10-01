@@ -77,7 +77,6 @@ export default function PvPLobbyModal({
   const [busyKey, setBusyKey] = useState('');
   const [messageText, setMessageText] = useState('');
   const [chatOpen, setChatOpen] = useState(false);
-  const [selectedRival, setSelectedRival] = useState('');
   const [error, setError] = useState('');
   const lobbyRef = useRef(null);
   const externallyDriven = Boolean(lobbySnapshot && onRefreshRoster);
@@ -89,14 +88,6 @@ export default function PvPLobbyModal({
   const outgoing = useMemo(() => liveLobby.challenges.filter((row) => row.direction === 'outgoing' && row.status === 'pending'), [liveLobby.challenges]);
   const opponent = opponentForMatch(liveLobby.activeMatch);
   const messages = Array.isArray(liveLobby.messages) ? liveLobby.messages : [];
-  const selectedRow = rivals.find((row) => row.username === selectedRival) || null;
-  const selectedPending = selectedRow ? outgoing.find((item) => item.opponent === selectedRow.username) : null;
-  const selectedCooldownLabel = selectedRow ? pvpChallengeCooldownLabel(selectedRow.challengeCooldownUntil) : '';
-
-  useEffect(() => {
-    if (selectedRival && !rivals.some((row) => row.username === selectedRival)) setSelectedRival('');
-  }, [rivals, selectedRival]);
-
   useEffect(() => {
     const node = lobbyRef.current;
     if (!node) return;
@@ -278,7 +269,7 @@ export default function PvPLobbyModal({
               <div>
                 <small>TABLÓN DE RIVALES</small>
                 <h3 id="pvp-roster-title">¿A quién retas?</h3>
-                <p>Toca un nombre para ver su ficha o pulsa Retar directamente.</p>
+                <p>Elige rival y pulsa Retar. El historial contra ti aparece en su fila.</p>
               </div>
               <span>{rivalCount} rival{rivalCount === 1 ? '' : 'es'}</span>
             </header>
@@ -298,16 +289,7 @@ export default function PvPLobbyModal({
                     return (
                       <article
                         key={row.username}
-                        className={`pvp-lobby__player${pending ? ' is-pending' : ''}${coolingDown ? ' is-cooldown' : ''}${selectedRival === row.username ? ' is-selected' : ''}`}
-                        tabIndex={0}
-                        aria-label={`Seleccionar a ${row.username} como rival`}
-                        onClick={() => setSelectedRival(row.username)}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter' || event.key === ' ') {
-                            event.preventDefault();
-                            setSelectedRival(row.username);
-                          }
-                        }}
+                        className={`pvp-lobby__player${pending ? ' is-pending' : ''}${coolingDown ? ' is-cooldown' : ''}`}
                       >
                         <span className="pvp-lobby__rank-mark" aria-hidden="true"><i />♟</span>
                         <div className="pvp-lobby__player-copy">
@@ -323,7 +305,11 @@ export default function PvPLobbyModal({
                           className="secondary-btn pvp-lobby__challenge-cta"
                           disabled={Boolean(pending) || coolingDown || Boolean(busyKey) || Boolean(liveLobby.activeMatch)}
                           title={coolingDown ? cooldownLabel : undefined}
-                          aria-label={coolingDown ? `Espera para retar a ${row.username}. ${cooldownLabel}` : undefined}
+                          aria-label={pending
+                            ? `Reto enviado a ${row.username}`
+                            : coolingDown
+                              ? `Espera para retar a ${row.username}. ${cooldownLabel}`
+                              : `Retar a ${row.username}`}
                           onClick={(event) => { event.stopPropagation(); void challengePlayer(row.username); }}
                         >
                           {pending ? 'En espera' : coolingDown ? 'Espera' : busyKey === `challenge:${row.username}` ? 'Retando…' : 'Retar'}
@@ -332,27 +318,6 @@ export default function PvPLobbyModal({
                     );
                   })}
                 </div>
-                {selectedRow && (
-                  <div className="pvp-lobby__selected-rival" aria-live="polite">
-                    <div>
-                      <small>RIVAL SELECCIONADO</small>
-                      <strong>{selectedRow.username}</strong>
-                      <span>{selectedRow.rating} Elo · {selectedRow.tier}</span>
-                    </div>
-                    <div className="pvp-lobby__selected-actions">
-                      <button type="button" className="text-action" onClick={() => mentionPlayer(selectedRow.username)}>Comentar</button>
-                      <button
-                        type="button"
-                        className="primary-btn"
-                        disabled={Boolean(selectedPending) || Boolean(selectedCooldownLabel) || Boolean(busyKey) || Boolean(liveLobby.activeMatch)}
-                        title={selectedCooldownLabel || undefined}
-                        onClick={() => challengePlayer(selectedRow.username)}
-                      >
-                        {selectedPending ? 'Reto enviado' : selectedCooldownLabel ? 'Espera' : busyKey === `challenge:${selectedRow.username}` ? 'Retando…' : `Retar a ${selectedRow.username}`}
-                      </button>
-                    </div>
-                  </div>
-                )}
                 {self && rivalCount === 0 && (
                   <div className="pvp-lobby__quiet-note">
                     <span aria-hidden="true">◇</span>
