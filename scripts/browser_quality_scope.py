@@ -189,11 +189,16 @@ PVP_DUEL_PATTERNS = (
     "frontend/src/components/PvpAppSurface.jsx",
     "frontend/src/components/PvpGameScreen.jsx",
     "frontend/src/components/PvpHandoffModal.jsx",
+    "frontend/src/components/PvPLobbyModal.jsx",
+    "frontend/src/components/PvPLobbyModal.css",
+    "frontend/src/components/HomePvpRosterLink.jsx",
+    "frontend/src/components/HomePvpRosterLink.css",
     "frontend/src/pvpApi.js",
     "frontend/src/pvpGameModel.js",
     "frontend/src/usePvpAppFlow.js",
     "frontend/src/usePvpRosterPresence.js",
     "e2e/war-room-pvp.spec.js",
+    "e2e/home-pvp-roster-link.spec.js",
     "e2e/pvp-background-roster.spec.js",
 )
 BROWSER_ACTION_PATHS = {
@@ -426,7 +431,7 @@ def build_matrix(scope: BrowserScope) -> dict[str, list[dict[str, str]]]:
             {
                 "id": "pvp-duel-flow",
                 "label": "PvP Duel Room · authoritative flow",
-                "command": "./node_modules/.bin/playwright test war-room-pvp.spec.js --grep \"un 409 por carrera de turno|rendirse no resucita un handoff stale\" --workers=1 --retries=0 --max-failures=1 --timeout=90000",
+                "command": "./node_modules/.bin/playwright test war-room-pvp.spec.js home-pvp-roster-link.spec.js --grep \"un 409 por carrera de turno|rendirse no resucita un handoff stale|retar es directo, reto entrante domina y chat queda plegado\" --workers=1 --retries=0 --max-failures=1 --timeout=90000",
             }
         )
     if scope.chronicles:
@@ -662,10 +667,13 @@ def self_test() -> None:
     assert _ids(classify(["e2e/offline-pending-move-reconnect.spec.js"])) == ["game-network-races"]
     assert _ids(classify(["e2e/late-move-response-exit.spec.js"])) == ["game-network-races"]
     assert _ids(classify(["frontend/src/components/PvpGameScreen.jsx"])) == ["pvp-duel-flow"]
+    assert _ids(classify(["frontend/src/components/PvPLobbyModal.jsx"])) == ["pvp-duel-flow"]
     assert _ids(classify(["frontend/src/usePvpAppFlow.js"])) == ["pvp-duel-flow"]
     assert _ids(classify(["e2e/war-room-pvp.spec.js"])) == ["pvp-duel-flow"]
+    assert _ids(classify(["e2e/home-pvp-roster-link.spec.js"])) == ["pvp-duel-flow"]
     pvp_case = build_matrix(BrowserScope(pvp_duel=True))["include"][0]
     assert "rendirse no resucita un handoff stale" in pvp_case["command"]
+    assert "retar es directo, reto entrante domina y chat queda plegado" in pvp_case["command"]
     assert "reto entrante abre una partida humana" not in pvp_case["command"]
     for chronicles_path in (
         "frontend/src/chronicles/chroniclesMapCatalog.js",
