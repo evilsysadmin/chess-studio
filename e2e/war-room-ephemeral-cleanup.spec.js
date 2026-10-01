@@ -157,9 +157,7 @@ test('War Room · abandonar desde 3D destruye renderer y snapshot activo antes d
   await page.getByRole('button', { name: 'Inspeccionar', exact: true }).click();
   await expect(board3d).toHaveAttribute('data-board3d-inspect', 'true');
 
-  const utilityMenu = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
-  await utilityMenu.click();
-  await page.getByRole('menuitem', { name: 'Abandonar partida', exact: true }).click();
+  await page.getByRole('button', { name: 'Salir de la partida', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: '¿Abandonar la partida?' });
   await expect(dialog).toBeVisible();
   await dialog.getByRole('button', { name: /Cancelar sin penalización|Abandonar y asumir resultado/ }).click();
