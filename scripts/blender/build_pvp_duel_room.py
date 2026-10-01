@@ -30,7 +30,7 @@ DUEL_DAIS_RADIUS = 4.35
 SIDE_WALL_INNER_X = 8.17
 WALL_PROP_MIN_RADIUS = 6.80
 WALL_CONTACT_MAX_GAP = 0.35
-DUEL_CHAIR_X = 7.25
+DUEL_CHAIR_X = 7.55
 DUEL_CHAIR_Y = 1.15
 DUEL_CHAIR_SCALE = 0.66
 DUEL_SENTINEL_X = 7.55
@@ -1242,7 +1242,7 @@ def validate_scene():
 
     # Slightly steeper framing than standard War Room improves piece selection.
     camera = bpy.context.scene.camera
-    camera.data.lens = 44.0
+    camera.data.lens = 42.0
     camera.location = (0.0, -15.6, 9.35)
     base.look_at(camera, (0.0, 0.82, 1.48))
 
