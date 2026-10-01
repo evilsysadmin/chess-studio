@@ -262,9 +262,20 @@ def build_architecture(static, p):
     # Real gate tunnel. Its side walls and floor extend behind the masonry so
     # the portcullis reads as an entrance into the fortress, not a black decal.
     base.cube("PVP_DUEL_tunnel_left_wall", (-2.46, 7.52, 2.72), (0.18, 1.28, 2.72),
-              p["recess"], static, bevel=0.045)
+              p["wall"], static, bevel=0.045)
     base.cube("PVP_DUEL_tunnel_right_wall", (2.46, 7.52, 2.72), (0.18, 1.28, 2.72),
-              p["recess"], static, bevel=0.045)
+              p["wall"], static, bevel=0.045)
+    # Inner ashlar lips catch the cold depth light and make the corridor walls
+    # legible through the portcullis without becoming bright scenery.
+    for side, label in ((-1, "left"), (1, "right")):
+        for course_idx, (y, z) in enumerate((
+            (6.62, 1.42), (7.18, 2.15), (7.72, 2.88), (8.24, 3.61),
+        )):
+            base.cube(
+                f"PVP_DUEL_tunnel_course_{label}_{course_idx}",
+                (side * 2.255, y, z), (0.028, 0.24, 0.065),
+                p["dais"], static, bevel=0.012,
+            )
     base.cube("PVP_DUEL_tunnel_floor", (0, 7.52, 0.13), (2.42, 1.28, 0.13),
               p["wet_stone"], static, bevel=0.025)
     base.cube("PVP_DUEL_tunnel_ceiling", (0, 7.52, 5.42), (2.42, 1.28, 0.12),
@@ -1050,6 +1061,14 @@ def build_lighting(static):
     gate_fill = base.light("PVP_LIGHT_gate_fill", "AREA", (0.0, 3.85, 5.45), 135.0,
                            (0.24, 0.30, 0.40), static, size=3.2)
     base.look_at(gate_fill, (0.0, 5.82, 2.85))
+    # Preview counterpart of the runtime PVP_ANCHOR_gate_depth point light.
+    # It reveals the second arch/floor while keeping the corridor subordinate.
+    tunnel_fill = base.light(
+        "PVP_LIGHT_tunnel_depth_preview", "AREA",
+        (0.0, 7.05, 4.65), 118.0,
+        (0.18, 0.29, 0.56), static, size=2.5,
+    )
+    base.look_at(tunnel_fill, (0.0, 8.35, 2.35))
 
     for side, label in ((-1, "left"), (1, "right")):
         side_fill = base.light(
