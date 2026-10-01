@@ -89,10 +89,12 @@ def public_ip(profile: str, auth: str, instance: dict) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("action", choices=("info", "status", "ip"))
+    parser.add_argument("action", choices=("info", "status", "ip", "ssh"))
     parser.add_argument("--profile", default=os.environ.get("OCI_CLI_PROFILE", "DEFAULT"))
     parser.add_argument("--auth", default=os.environ.get("OCI_CLI_AUTH", "security_token"))
     parser.add_argument("--name", default=os.environ.get("OCI_INSTANCE_NAME", "chess-studio-staging"))
+    parser.add_argument("--ssh-user", default=os.environ.get("OCI_SSH_USER", "ubuntu"))
+    parser.add_argument("--ssh-key", default=os.environ.get("OCI_SSH_KEY", ""))
     args = parser.parse_args()
 
     instance = instance_details(args.profile, args.auth, args.name)
@@ -104,6 +106,15 @@ def main() -> int:
     if args.action == "ip":
         print(public_ip(args.profile, args.auth, instance))
         return 0
+
+    if args.action == "ssh":
+        ip = public_ip(args.profile, args.auth, instance)
+        cmd = ["ssh"]
+        if args.ssh_key:
+            cmd.extend(["-i", os.path.expanduser(args.ssh_key)])
+        cmd.append(f"{args.ssh_user}@{ip}")
+        print(f"==> SSH {args.ssh_user}@{ip}", file=sys.stderr)
+        os.execvp(cmd[0], cmd)
 
     info = {
         "name": instance.get("display-name"),
