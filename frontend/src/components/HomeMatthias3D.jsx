@@ -94,7 +94,7 @@ export function homeMatthiasRoutinePropPolicy(profile = 'idle') {
         bone: 'prop_cup',
         contentMesh: 'RoutineCup',
         handMesh: 'Hand.R',
-        offset: { x: 0.075, y: -0.18, z: 0 },
+        offset: { x: 0.055, y: 0.015, z: 0 },
       },
       signature: 'reports+coffee-in-hand',
     };
@@ -488,7 +488,7 @@ export default function HomeMatthias3D({
         });
       }
       canvas.dataset.matthiasRoutineProps = propPolicy.signature;
-      canvas.dataset.matthiasCoffeeAnchor = anchored ? 'right-hand-low' : 'authored';
+      canvas.dataset.matthiasCoffeeAnchor = anchored ? 'right-hand' : 'authored';
       if (routinePropNodes.cupMesh) {
         model.updateMatrixWorld(true);
         const cupCenter = visibleGeometryCenter(routinePropNodes.cupMesh);
