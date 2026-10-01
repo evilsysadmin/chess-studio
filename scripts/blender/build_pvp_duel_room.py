@@ -572,7 +572,7 @@ def build_dungeon_population(static, p):
         side_light["war_room_runtime_dynamic"] = "pvp-side-brazier"
 
         # Armoured sentinel on a low plinth, behind and outside the board.
-        sx, sy = side * 5.32, 3.54
+        sx, sy = side * 4.92, 3.34
         base.cube(
             f"PVP_DUEL_sentinel_{label}_plinth", (sx, sy, 0.30),
             (0.48, 0.40, 0.30), p["dais"], static, bevel=0.07,
@@ -808,7 +808,7 @@ def build_dungeon_population(static, p):
         # pulling them into the board cone. Scale authored armor around the top
         # of the plinth so feet remain planted and the halberd grows with it.
         sentinel_prefix = f"PVP_DUEL_sentinel_{label}_"
-        sentinel_scale = 1.11
+        sentinel_scale = 1.18
         for obj in list(static.objects):
             if not obj.name.startswith(sentinel_prefix) or obj.name.endswith("_plinth"):
                 continue
@@ -957,8 +957,8 @@ def build_sconces_and_gate(static, p):
 def build_duelist_furniture(static, p):
     """Premium duelist chairs, angled so both seats unmistakably face the board."""
     for side, accent, label in ((-1, p["red"], "red"), (1, p["blue"], "blue")):
-        x = side * 5.18
-        y = -3.42
+        x = side * 4.58
+        y = -2.88
         yaw = math.atan2(-x, y)  # local -y is the seated player's forward direction
         cos_yaw = math.cos(yaw)
         sin_yaw = math.sin(yaw)
@@ -1064,6 +1064,16 @@ def build_duelist_furniture(static, p):
                 at(arm_x, -0.49, 1.13), 0.090, p["brass"], static,
                 scale=(1.0, 0.72, 0.90),
             )
+
+        chair_prefix = f"PVP_DUEL_seat_{label}"
+        chair_scale = 1.12
+        for obj in list(static.objects):
+            if not obj.name.startswith(chair_prefix):
+                continue
+            obj.location.x = x + (obj.location.x - x) * chair_scale
+            obj.location.y = y + (obj.location.y - y) * chair_scale
+            obj.location.z *= chair_scale
+            obj.scale = tuple(component * chair_scale for component in obj.scale)
 
 
 def build_lighting(static):
