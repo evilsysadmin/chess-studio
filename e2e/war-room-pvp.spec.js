@@ -99,9 +99,6 @@ test('War Room 1v1 · un 409 por carrera de turno sincroniza sin flash de error'
 test('War Room 1v1 · rendirse no resucita un handoff stale del lobby', async ({ page }) => {
   test.setTimeout(90_000);
   await mockApi(page);
-  await page.addInitScript(() => {
-    sessionStorage.setItem('chess-study-pvp-enrollment-v1', JSON.stringify({ username: 'e2e', enrolled: true }));
-  });
 
   const staleStarting = matchPayload({
     black: 'sparringmeister',
@@ -194,6 +191,14 @@ test('War Room 1v1 · rendirse no resucita un handoff stale del lobby', async ({
   });
 
   await login(page);
+  // Explicit login deliberately clears ephemeral PvP enrollment so one account
+  // cannot inherit another account's roster state. Recreate the real persisted
+  // session shape after authentication, then reload like a returning player.
+  await page.evaluate(() => {
+    sessionStorage.setItem('chess-study-pvp-enrollment-v1', JSON.stringify({ username: 'e2e', enrolled: true }));
+  });
+  await page.reload();
+  await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible();
 
   const warRoom = page.getByRole('region', { name: 'Sala de duelo 1 contra 1' });
   await expect(warRoom).toBeVisible({ timeout: 15_000 });
