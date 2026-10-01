@@ -315,6 +315,19 @@
   margin-top: .25rem;
 }
 
+.pvp-handoff-modal__cancel {
+  border-color: rgba(214, 175, 103, .24);
+  color: rgba(239, 221, 188, .82);
+  background: rgba(126, 85, 42, .1);
+}
+
+.pvp-handoff-modal__cancel:hover,
+.pvp-handoff-modal__cancel:focus-visible {
+  border-color: rgba(225, 187, 113, .46);
+  color: #f3dfb6;
+  background: rgba(149, 99, 45, .16);
+}
+
 .pvp-handoff-modal__error {
   max-width: 460px;
   color: #e3a39a;
