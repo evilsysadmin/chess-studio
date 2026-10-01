@@ -324,6 +324,10 @@ assert "tail -n 2000" in deploy
 assert "poll_errors" in deploy and "backoff" in deploy and "transport_errors" in deploy
 assert "agent_diag_summary ||" in deploy
 assert 'cat "$log"' not in deploy.split("agent_diag_summary()", 1)[1].split("total_started_ms=", 1)[0]
+assert 'alloy_validate_log="$(mktemp /tmp/chess-studio-alloy-validate.XXXXXX)"' in deploy
+assert 'tail -n 40' in deploy
+assert '[redacted]' in deploy
+assert 'rm -f "$alloy_validate_log"' in deploy
 
 # The GHCR signal controller is staged but deliberately dormant in this change.
 # It adds no OCI resource, no inbound port and no polling traffic until a later
