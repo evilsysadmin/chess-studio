@@ -72,7 +72,6 @@ export default function PvPLobbyModal({
   const [loading, setLoading] = useState(true);
   const [busyKey, setBusyKey] = useState('');
   const [messageText, setMessageText] = useState('');
-  const [selectedRival, setSelectedRival] = useState('');
   const [error, setError] = useState('');
   const lobbyRef = useRef(null);
   const externallyDriven = Boolean(lobbySnapshot && onRefreshRoster);
@@ -84,14 +83,6 @@ export default function PvPLobbyModal({
   const outgoing = useMemo(() => liveLobby.challenges.filter((row) => row.direction === 'outgoing' && row.status === 'pending'), [liveLobby.challenges]);
   const opponent = opponentForMatch(liveLobby.activeMatch);
   const messages = Array.isArray(liveLobby.messages) ? liveLobby.messages : [];
-  const selectedRow = rivals.find((row) => row.username === selectedRival) || null;
-  const selectedPending = selectedRow ? outgoing.find((item) => item.opponent === selectedRow.username) : null;
-  const selectedCooldownLabel = selectedRow ? pvpChallengeCooldownLabel(selectedRow.challengeCooldownUntil) : '';
-
-  useEffect(() => {
-    if (selectedRival && !rivals.some((row) => row.username === selectedRival)) setSelectedRival('');
-  }, [rivals, selectedRival]);
-
   useEffect(() => {
     const node = lobbyRef.current;
     if (!node) return;
@@ -197,6 +188,7 @@ export default function PvPLobbyModal({
 
   const rivalCount = rivals.length;
   const challengeCount = incoming.length + outgoing.length;
+  const outgoingCount = outgoing.length;
 
   return (
     <div className="modal-backdrop pvp-lobby-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
@@ -273,13 +265,32 @@ export default function PvPLobbyModal({
 
         {error && <p className="pvp-lobby__error" role="alert">{error}</p>}
 
+        {incoming.length > 0 && (
+          <section className="pvp-lobby__incoming-priority" aria-label="Retos entrantes">
+            <div className="pvp-lobby__incoming-priority-heading">
+              <small>MESA DEL HERALDO</small>
+              <strong>{incoming.length === 1 ? 'Tienes un reto' : `Tienes ${incoming.length} retos`}</strong>
+              <span>Responde antes de elegir otro rival.</span>
+            </div>
+            <div className="pvp-lobby__incoming-priority-list">
+              {incoming.map((challenge) => (
+                <article key={challenge.id} className="pvp-lobby__challenge is-incoming">
+                  <span className="pvp-lobby__challenge-seal" aria-hidden="true">✦</span>
+                  <div><small>RETO ENTRANTE</small><strong>{challenge.challenger}</strong><span>{challenge.challengerRating} Elo 1v1{challenge.expiresAt ? ` · ${challengeExpiryLabel(challenge.expiresAt)}` : ''}</span></div>
+                  <div className="pvp-lobby__challenge-actions"><button type="button" className="primary-btn" disabled={Boolean(busyKey)} onClick={() => accept(challenge)}>Aceptar</button><button type="button" className="secondary-btn" disabled={Boolean(busyKey)} onClick={() => run(`decline:${challenge.id}`, () => onDeclineChallenge ? onDeclineChallenge(challenge) : pvpApi.declineChallenge(challenge.id))}>Declinar</button></div>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+
         <div className="pvp-lobby__grid">
           <section className={`pvp-lobby__panel pvp-lobby__panel--roster${rivalCount === 0 ? ' is-empty' : ''}`} aria-labelledby="pvp-roster-title">
             <header>
               <div>
                 <small>TABLÓN DE RIVALES</small>
                 <h3 id="pvp-roster-title">¿A quién retas?</h3>
-                <p>Toca un nombre para ver su ficha o pulsa Retar directamente.</p>
+                <p>Elige rival y pulsa Retar. El historial contra ti aparece en su fila.</p>
               </div>
               <span>{rivalCount} rival{rivalCount === 1 ? '' : 'es'}</span>
             </header>
@@ -299,16 +310,7 @@ export default function PvPLobbyModal({
                     return (
                       <article
                         key={row.username}
-                        className={`pvp-lobby__player${pending ? ' is-pending' : ''}${coolingDown ? ' is-cooldown' : ''}${selectedRival === row.username ? ' is-selected' : ''}`}
-                        tabIndex={0}
-                        aria-label={`Seleccionar a ${row.username} como rival`}
-                        onClick={() => setSelectedRival(row.username)}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter' || event.key === ' ') {
-                            event.preventDefault();
-                            setSelectedRival(row.username);
-                          }
-                        }}
+                        className={`pvp-lobby__player${pending ? ' is-pending' : ''}${coolingDown ? ' is-cooldown' : ''}`}
                       >
                         <span className="pvp-lobby__rank-mark" aria-hidden="true"><i />♟</span>
                         <div className="pvp-lobby__player-copy">
@@ -324,7 +326,15 @@ export default function PvPLobbyModal({
                           className="secondary-btn pvp-lobby__challenge-cta"
                           disabled={Boolean(pending) || coolingDown || Boolean(busyKey) || Boolean(liveLobby.activeMatch)}
                           title={coolingDown ? cooldownLabel : undefined}
-                          aria-label={coolingDown ? `Espera para retar a ${row.username}. ${cooldownLabel}` : undefined}
+                          aria-label={
+                            pending
+                              ? `Reto a ${row.username} en espera`
+                              : coolingDown
+                                ? `Espera para retar a ${row.username}. ${cooldownLabel}`
+                                : busyKey === `challenge:${row.username}`
+                                  ? `Retando a ${row.username}`
+                                  : `Retar a ${row.username}`
+                          }
                           onClick={(event) => { event.stopPropagation(); void challengePlayer(row.username); }}
                         >
                           {pending ? 'En espera' : coolingDown ? 'Espera' : busyKey === `challenge:${row.username}` ? 'Retando…' : 'Retar'}
@@ -333,27 +343,6 @@ export default function PvPLobbyModal({
                     );
                   })}
                 </div>
-                {selectedRow && (
-                  <div className="pvp-lobby__selected-rival" aria-live="polite">
-                    <div>
-                      <small>RIVAL SELECCIONADO</small>
-                      <strong>{selectedRow.username}</strong>
-                      <span>{selectedRow.rating} Elo · {selectedRow.tier}</span>
-                    </div>
-                    <div className="pvp-lobby__selected-actions">
-                      <button type="button" className="text-action" onClick={() => mentionPlayer(selectedRow.username)}>Comentar</button>
-                      <button
-                        type="button"
-                        className="primary-btn"
-                        disabled={Boolean(selectedPending) || Boolean(selectedCooldownLabel) || Boolean(busyKey) || Boolean(liveLobby.activeMatch)}
-                        title={selectedCooldownLabel || undefined}
-                        onClick={() => challengePlayer(selectedRow.username)}
-                      >
-                        {selectedPending ? 'Reto enviado' : selectedCooldownLabel ? 'Espera' : busyKey === `challenge:${selectedRow.username}` ? 'Retando…' : `Retar a ${selectedRow.username}`}
-                      </button>
-                    </div>
-                  </div>
-                )}
                 {self && rivalCount === 0 && (
                   <div className="pvp-lobby__quiet-note">
                     <span aria-hidden="true">◇</span>
@@ -365,32 +354,22 @@ export default function PvPLobbyModal({
           </section>
 
           <div className="pvp-lobby__side">
-          <section className={`pvp-lobby__panel pvp-lobby__panel--challenges${challengeCount === 0 ? ' is-empty' : ' has-attention'}`} aria-labelledby="pvp-challenges-title">
+          <section className={`pvp-lobby__panel pvp-lobby__panel--challenges${outgoingCount === 0 ? ' is-empty' : ''}`} aria-labelledby="pvp-challenges-title">
             <header>
               <div>
                 <small>MESA DEL HERALDO</small>
-                <h3 id="pvp-challenges-title">Retos</h3>
-                <p>Acepta, declina o cancela sin salir de la sala.</p>
+                <h3 id="pvp-challenges-title">Retos enviados</h3>
+                <p>Lo que ya has lanzado a otros jugadores.</p>
               </div>
-              <span>{challengeCount}</span>
+              <span>{outgoingCount}</span>
             </header>
-            {challengeCount === 0 ? (
+            {outgoingCount === 0 ? (
               <div className="pvp-lobby__empty-state pvp-lobby__empty-state--dispatch">
-                <span aria-hidden="true">✦</span>
-                <div>
-                  <strong>Sin retos pendientes</strong>
-                  <p>{self ? 'Cuando alguien te rete, la orden aparecerá aquí.' : 'Ponte disponible para poder recibir desafíos.'}</p>
-                </div>
+                <span aria-hidden="true">✧</span>
+                <div><strong>Sin retos enviados</strong><p>Cuando retes a alguien, podrás cancelar o consultar aquí la espera.</p></div>
               </div>
             ) : (
               <div className="pvp-lobby__challenge-list">
-                {incoming.map((challenge) => (
-                  <article key={challenge.id} className="pvp-lobby__challenge is-incoming">
-                    <span className="pvp-lobby__challenge-seal" aria-hidden="true">✦</span>
-                    <div><small>RETO ENTRANTE</small><strong>{challenge.challenger}</strong><span>{challenge.challengerRating} Elo 1v1{challenge.expiresAt ? ` · ${challengeExpiryLabel(challenge.expiresAt)}` : ''}</span></div>
-                    <div className="pvp-lobby__challenge-actions"><button type="button" className="primary-btn" disabled={Boolean(busyKey)} onClick={() => accept(challenge)}>Aceptar</button><button type="button" className="secondary-btn" disabled={Boolean(busyKey)} onClick={() => run(`decline:${challenge.id}`, () => onDeclineChallenge ? onDeclineChallenge(challenge) : pvpApi.declineChallenge(challenge.id))}>Declinar</button></div>
-                  </article>
-                ))}
                 {outgoing.map((challenge) => (
                   <article key={challenge.id} className="pvp-lobby__challenge">
                     <span className="pvp-lobby__challenge-seal is-outgoing" aria-hidden="true">✧</span>
@@ -421,15 +400,11 @@ export default function PvPLobbyModal({
             )}
           </section>
 
-          <section className="pvp-lobby__panel pvp-lobby__panel--chat" aria-labelledby="pvp-chat-title">
-            <header>
-              <div>
-                <small>MURMULLOS DE LA SALA</small>
-                <h3 id="pvp-chat-title">Conversación</h3>
-                <p>Comentarios breves mientras se conciertan los duelos.</p>
-              </div>
-              <span>{messages.length}</span>
-            </header>
+          <details className="pvp-lobby__panel pvp-lobby__panel--chat">
+            <summary className="pvp-lobby__chat-summary">
+              <span><small>MURMULLOS DE LA SALA</small><strong>Conversación</strong></span>
+              <span>{messages.length > 0 ? `${messages.length} mensaje${messages.length === 1 ? '' : 's'}` : 'Sala tranquila'}</span>
+            </summary>
             <div className="pvp-lobby__chat-log" role="log" aria-live="polite" aria-relevant="additions">
               {messages.length === 0 ? (
                 <p className="pvp-lobby__chat-empty">La sala está tranquila.</p>
@@ -458,7 +433,7 @@ export default function PvPLobbyModal({
                 {busyKey === 'chat' ? 'Enviando…' : 'Enviar'}
               </button>
             </form>
-          </section>
+          </details>
           </div>
         </div>
 
