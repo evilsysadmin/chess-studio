@@ -1,0 +1,80 @@
+name: OCI · bootstrap Resend recovery
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - infra/oci/runtime/resend-bootstrap-v1.txt
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: oci-staging-mutations
+  cancel-in-progress: false
+
+jobs:
+  bootstrap:
+    name: Seed Resend into OCI Vault and apply runtime
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
+      OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
+      OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
+      OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
+      OCI_REGION: ${{ vars.OCI_REGION || 'eu-frankfurt-1' }}
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Restore cached OCI SDK toolchain
+        uses: ./.github/actions/setup-oci-sdk
+        with:
+          version: '2.185.2'
+          python-version: '3.13'
+
+      - name: Validate Resend/OCI contracts
+        run: |
+          python3 -S scripts/oci_resend_secret_bootstrap.py --self-test
+          python3 -S scripts/oci_runtime_manifest.py --self-test
+          python3 -S scripts/oci_vault_runtime.py --self-test
+          python3 -S scripts/oci_vault_sync.py --self-test
+          python3 -S scripts/oci_production_runtime.py --self-test
+
+      - name: Seed environment-specific Resend secrets
+        run: python3 scripts/oci_resend_secret_bootstrap.py bootstrap
+
+      - name: Apply staging recovery runtime
+        run: |
+          python3 scripts/oci_vault_sync.py sync-current
+          python3 scripts/oci_release_deploy.py deploy --repo-ref "$GITHUB_SHA"
+
+      - name: Apply production recovery runtime without promoting a new SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$RUNNER_TEMP/production-release.json"
+          curl --fail --silent --show-error \
+            -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
+            -o "$body" https://api.chess-studio.shadowops.dpdns.org/api/release
+          production_sha="$(python3 - "$body" <<'PY'
+          import json, pathlib, re, sys
+          value=str(json.loads(pathlib.Path(sys.argv[1]).read_text()).get("build") or "").lower()
+          if not re.fullmatch(r"[0-9a-f]{40}", value):
+              raise SystemExit("production /api/release did not return an immutable build SHA")
+          print(value)
+          PY
+          )"
+          python3 scripts/oci_production_runtime.py sync-current
+          python3 scripts/oci_release_deploy.py deploy --target production --repo-ref "$production_sha"
+          verify="$RUNNER_TEMP/production-release-after.json"
+          curl --fail --silent --show-error \
+            -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
+            -o "$verify" "https://api.chess-studio.shadowops.dpdns.org/api/release?sha=$production_sha"
+          python3 - "$verify" "$production_sha" <<'PY'
+          import json, pathlib, sys
+          actual=str(json.loads(pathlib.Path(sys.argv[1]).read_text()).get("build") or "").lower()
+          raise SystemExit(0 if actual == sys.argv[2] else 1)
+          PY

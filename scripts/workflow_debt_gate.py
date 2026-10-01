@@ -41,6 +41,7 @@ INVENTORY = {
     'main-backend-image.yml': 'delivery-backend-image',
     'menu-ux-audit.yml': 'ux-manual-audit',
     'oci-readiness.yml': 'infra-readiness',
+    'oci-resend-bootstrap.yml': 'infra-runtime-secrets',
     'oci-staging-deploy.yml': 'infra-staging-delivery',
     'oci-staging-lab.yml': 'infra-staging-lifecycle',
     'oci-staging-service.yml': 'infra-staging-service-control',

@@ -22,6 +22,7 @@ OCI_SDK_VERSION = "2.185.2"
 SECRET_NAMES = (
     ("MONGO_URL", "chess-studio-staging-mongo-url"),
     ("JWT_SECRET", "chess-studio-staging-jwt-secret"),
+    ("RESEND_API_KEY", "chess-studio-staging-resend-api-key"),
     ("INVITE_CODE", "chess-studio-staging-invite-code"),
     ("CHESS_AI_SHARED_SECRET", "chess-studio-staging-ai-shared-secret"),
     ("OTEL_EXPORTER_OTLP_ENDPOINT", "chess-studio-staging-otel-endpoint"),
