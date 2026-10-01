@@ -404,19 +404,22 @@ PY
 
 pvp_edge_attest() {
   local target_port="${1:-$port}"
-  local headers body status
+  local max_attempts="${2:-20}"
+  local headers body status attempt
   headers="$(mktemp)"
   body="$(mktemp)"
-  if ! status="$(curl --silent --show-error --max-time 8 \
+
+  for attempt in $(seq 1 "$max_attempts"); do
+    : >"$headers"
+    : >"$body"
+    status="$(curl --silent --show-error --max-time 2 \
       -D "$headers" -o "$body" -w "%{http_code}" \
       -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
-      "http://127.0.0.1:${target_port}/api/pvp/_edge/ready")"; then
-    rm -f "$headers" "$body"
-    return 1
-  fi
-  if [[ "$status" != "200" ]] || \
-     ! grep -Eiq "^X-Chess-Pvp-Edge:[[:space:]]*go[[:space:]]*$" "$headers" || \
-     ! python3 - "$body" <<'PY'
+      "http://127.0.0.1:${target_port}/api/pvp/_edge/ready" || true)"
+
+    if [[ "$status" == "200" ]] && \
+       grep -Eiq "^X-Chess-Pvp-Edge:[[:space:]]*go[[:space:]]*$" "$headers" && \
+       python3 - "$body" <<'PY'
 import json
 import pathlib
 import sys
@@ -424,12 +427,17 @@ payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
 if payload.get('status') != 'ready' or payload.get('service') != 'chess-studio-pvp-go':
     raise SystemExit(1)
 PY
-  then
-    rm -f "$headers" "$body"
-    return 1
-  fi
+    then
+      rm -f "$headers" "$body"
+      return 0
+    fi
+
+    [[ "$attempt" -eq "$max_attempts" ]] || sleep 0.25
+  done
+
+  echo "PvP Go edge did not converge after nginx reload: status=${status:-error} attempts=$max_attempts" >&2
   rm -f "$headers" "$body"
-  return 0
+  return 1
 }
 
 public_tunnel_attest() {
