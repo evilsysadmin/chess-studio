@@ -24,7 +24,9 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 - Corregir CI en la misma PR; no abrir otra para esquivar fallos.
 - Mientras CI corre, avanzar trabajo útil en otra PR relacionada en vez de esperar.
 - Máximo **5 PRs por chat** en rotación simultánea.
-- Cuando todos los required checks estén verdes, pasar la PR a Ready for review y habilitar/verificar native automerge.
+- PR **no visual** y sin inspección humana de PNG/capturas/renders: armar native automerge **al crearla**. La PR sigue empezando en Draft y branch protection + required checks siguen mandando; si GitHub no permite armarlo aún por estar Draft, reintentarlo automáticamente en cuanto pase a Ready.
+- PR visual, o cualquier PR cuya aceptación dependa de revisar PNG/capturas/renders: **no** armar automerge al crearla. Mantenerla Draft hasta revisar y aceptar la evidencia visual; entonces pasar a Ready y habilitar native automerge.
+- Cuando todos los required checks estén verdes, pasar la PR a Ready for review; en PR no visual verificar que el automerge ya quedó armado, y en PR visual habilitarlo sólo después de la revisión visual obligatoria.
 - Tras merge, comprobar los workflows posteriores relevantes (main admission, staging/deploy, smoke checks) antes de cerrar la iteración.
 - Mantener las llamadas a GitHub pequeñas y dirigidas: metadata, checks, SHA, commit/PR. Evitar diffs enormes, lecturas repetidas y blobs pesados cuando el trabajo pueda hacerse sobre artefactos locales/cacheados.
 - Si el conector GitHub/git no aparece inicialmente, **redescubrirlo antes de declarar el repositorio inaccesible**. No sustituir de entrada el flujo normal por fetches web, clones repetidos o llamadas grandes.
