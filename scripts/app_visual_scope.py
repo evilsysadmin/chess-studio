@@ -629,7 +629,7 @@ def self_test() -> None:
         "frontend/src/usePvpAppFlow.js",
         "frontend/src/usePvpRosterPresence.js",
     ])
-    assert pvp_lobby.capture_groups == "home"
+    assert pvp_lobby.capture_groups == "home,warroom"
     assert not pvp_lobby.hans and not pvp_lobby.chesscom
     classroom = classify(["frontend/src/components/MatthiasClassRoom.css"])
     assert classroom.capture_groups == "training"
