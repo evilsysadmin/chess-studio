@@ -5,21 +5,20 @@ import math
 import bpy
 from mathutils import Vector
 
-PROP_BONES = ("prop_book", "prop_reports", "prop_cup", "prop_pen", "prop_bite")
+PROP_BONES = ("prop_book", "prop_cup", "prop_pen", "prop_bite")
 EXPECTED_MID_PROPS = {
     "Idle": set(),
     "Speak": set(),
     "Think": set(),
     "Read": {"prop_book"},
     "Write": {"prop_book", "prop_pen"},
-    "Dossier": {"prop_reports", "prop_cup"},
+    "Dossier": {"prop_book"},
     "Sip": {"prop_cup"},
     "Bite": {"prop_bite"},
     "Sleep": set(),
 }
 ROUTINE_PREFIXES = (
     "RoutineBook",
-    "RoutineReport",
     "RoutineCup",
     "RoutinePen",
     "RoutineSandwich",
