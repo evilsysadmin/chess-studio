@@ -97,5 +97,6 @@ La Duel Room de partida usa como canon una **mazmorra/fortaleza teutona densa pe
 - heraldry red/blue muy medida para identidad PvP; no estética esports;
 - ningún elemento decorativo puede invadir el cono interactivo ni competir con piezas, HUD o selección táctil;
 - en móvil se recorta decoración antes que tablero o controles.
+- el runtime consume el logical ID R2 `pvp.duelRoom.runtime`, promovido a un objeto content-addressed e inmutable; `runtime/current.glb` puede existir como alias de publicación/fallback, pero no es la autoridad de consumo de la app.
 
 El objetivo es que parezca una estancia ocupada y funcional del castillo, no un escenario vacío ni una sala genérica con tablero.

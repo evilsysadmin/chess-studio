@@ -124,6 +124,8 @@ describe('War Room staging variant', () => {
       .toBe('https://assets.chess-studio.shadowops.dpdns.org/war-room/v2/runtime/current.glb?build=abc123');
     expect(warRoomVariantRuntimeModelUrl('v3', { buildSha: 'abc123' }))
       .toBe('https://assets.chess-studio.shadowops.dpdns.org/war-room/v3/runtime/current.glb?build=abc123');
+    expect(warRoomVariantRuntimeModelUrl('duel', { buildSha: 'abc123' }))
+      .toBe('https://assets.chess-studio.shadowops.dpdns.org/pvp/duel-room/runtime/pvp-duel-room-shell-cbb68cebf8108a04.glb?build=abc123');
     expect(warRoomVariantRuntimeModelUrl('classic', { buildSha: 'abc123' })).toBeNull();
   });
 

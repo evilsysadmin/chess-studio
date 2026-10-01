@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { createWarRoomBlenderVariantShell } from './WarRoomBlenderShellRuntime.js';
+import { PVP_DUEL_ROOM_RUNTIME_MODEL_URL } from './PvpDuelRoomAsset.js';
 
-export const PVP_DUEL_ROOM_RUNTIME_MODEL_URL =
-  'https://assets.chess-studio.shadowops.dpdns.org/pvp/duel-room/runtime/current.glb';
+export { PVP_DUEL_ROOM_R2_ASSET_ID, PVP_DUEL_ROOM_RUNTIME_MODEL_URL } from './PvpDuelRoomAsset.js';
 
 export function installPvpDuelRoomPracticalLights(root, { coarsePointer = false } = {}) {
   const specs = [
