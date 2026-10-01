@@ -143,6 +143,11 @@ export function homeMatthiasRoutinePropPolicy(profile = 'idle') {
 }
 
 
+export function homeMatthiasSleepPose(profile = 'idle') {
+  if (profile !== 'sleep') return { active: false, rollDeg: 0, lift: 0 };
+  return { active: true, rollDeg: -82, lift: 0.02 };
+}
+
 export function homeMatthiasPlaybackPolicy() {
   // A Home routine lasts tens of seconds. Keep its authored gesture looping so
   // coffee/dinner do not collapse back to an unrelated idle pose while Matthias
@@ -461,6 +466,7 @@ export default function HomeMatthias3D({
     const baseModelPosition = new THREE.Vector3();
     const baseModelQuaternion = new THREE.Quaternion();
     const attentionQuaternion = new THREE.Quaternion();
+    const sleepQuaternion = new THREE.Quaternion();
     let routinePropNodes = null;
 
     const alignRoutinePropToHand = ({ bone, contentMesh, handMesh, offset = {} } = {}) => {
@@ -674,6 +680,18 @@ export default function HomeMatthias3D({
           THREE.MathUtils.degToRad(pose.leanDeg * attentionAmount),
         );
         model.quaternion.copy(baseModelQuaternion).multiply(attentionQuaternion);
+        const sleepPose = homeMatthiasSleepPose(currentProfile);
+        if (sleepPose.active) {
+          sleepQuaternion.setFromAxisAngle(
+            attentionForward,
+            THREE.MathUtils.degToRad(sleepPose.rollDeg),
+          );
+          model.quaternion.multiply(sleepQuaternion);
+          model.position.y += sleepPose.lift;
+          canvas.dataset.matthiasSleepPose = 'sofa-recline-v1';
+        } else {
+          canvas.dataset.matthiasSleepPose = 'standing';
+        }
       }
       renderOnce();
       frame = window.requestAnimationFrame(tick);
@@ -907,6 +925,14 @@ export default function HomeMatthias3D({
         style={reducedMotion ? undefined : { animationDelay: `${-phase}s` }}
       />
       <canvas ref={canvasRef} data-matthias-canonical-model="blender" />
+      {profile === 'sleep' && (
+        <>
+          <span className="home-matthias-3d__sleep-blanket" />
+          <span className="home-matthias-3d__sleep-bubble" aria-hidden="true">
+            <span>Z</span><span>Z</span><span>Z</span><span>Z</span>
+          </span>
+        </>
+      )}
     </span>
   );
 }
