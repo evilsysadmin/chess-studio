@@ -20,6 +20,9 @@ import {
   uniqueLegalTargets,
 } from '../pvpGameModel.js';
 import useWarRoomSpatialAmbience from './useWarRoomSpatialAmbience.js';
+import useWarRoomLandscape from './useWarRoomLandscape.js';
+import WarRoomLandscapeGate from './WarRoomLandscapeGate.jsx';
+import { exitWarRoomBrowserFullscreen } from './useWarRoomImmersive.js';
 import './WarRoomMobileLandscape.css';
 import './PvpGameScreen.css';
 
@@ -78,6 +81,15 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
   const animSeqRef = useRef(0);
   const historyLengthRef = useRef(initialMatch?.history?.length || 0);
   useWarRoomSpatialAmbience({ enabled: true });
+  const {
+    needsRotation: warRoomNeedsRotation,
+    lockState: warRoomOrientationLock,
+    activateLandscape,
+  } = useWarRoomLandscape(true);
+
+  useEffect(() => () => {
+    void exitWarRoomBrowserFullscreen();
+  }, []);
 
   const opponent = useMemo(() => opponentForMatch(match), [match]);
   const result = useMemo(() => playerResult(match), [match]);
@@ -314,7 +326,15 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
         <small>{match.youAre === 'w' ? 'Blancas' : 'Negras'} · {match.youAre === 'w' ? match.whiteRating : match.blackRating} Elo 1v1</small>
       </div>
 
-      <div className="game-layout game-layout-3d pvp-war-room__layout">
+      <div
+        className="game-layout game-layout-3d pvp-war-room__layout"
+        data-war-room-orientation-lock={warRoomOrientationLock}
+      >
+        <WarRoomLandscapeGate
+          active={warRoomNeedsRotation}
+          lockState={warRoomOrientationLock}
+          onActivate={activateLandscape}
+        />
         <div className="board-column">
           <div className="board-live-row is-3d-warroom">
             <div className="game-board-stack game-board-stack-3d">
