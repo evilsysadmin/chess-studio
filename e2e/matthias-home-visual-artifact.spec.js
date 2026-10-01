@@ -11,7 +11,7 @@ const ALL_CAPTURES = [
   { label:'desktop-watch-post-1440x900', width:1440, height:900, hour:12, profile:'speak', clip:'Speak', station:'watch-post', support:'foreground-rug', supportBottomRange:[.92, 1.08], avatar:/lunch-bocata/i, keepGreeting:true, expectCopy:false },
   { label:'desktop-1440x900', width:1440, height:900, hour:20, profile:'bite', clip:'Bite', station:'dining-table', support:'foreground-rug', supportBottomRange:[.82, .9], avatar:/lunch-bocata/i, minStageTopRatio:.55, expectCopy:false },
   { label:'desktop-coffee-1440x900', width:1440, height:900, hour:6, profile:'sip', clip:'Sip', station:'refreshment-table', support:'foreground-rug', supportBottomRange:[.82, .9], avatar:/morning-coffee/i, minStageTopRatio:.55, expectCopy:false },
-  { label:'desktop-dossier-coffee-1440x900', width:1440, height:900, hour:10, profile:'dossier', clip:'Dossier', station:'hearth-files', support:'foreground-rug', supportBottomRange:[.94, 1.02], avatar:/dossier/i, maxStageLeftRatio:.13, minStageTopRatio:.69, expectFullPlinth:true, expectedRoutineProps:'reports+coffee-in-hand', expectedCoffeeAnchor:'right-hand-low', expectCopy:false },
+  { label:'desktop-dossier-coffee-1440x900', width:1440, height:900, hour:10, profile:'dossier', clip:'Dossier', station:'hearth-files', support:'foreground-rug', supportBottomRange:[.94, 1.02], avatar:/dossier/i, maxStageLeftRatio:.13, minStageTopRatio:.69, expectFullPlinth:true, expectedRoutineProps:'reports+coffee-in-hand', expectedCoffeeAnchor:'right-hand', expectCopy:false },
   { label:'desktop-chess-chair-1440x900', width:1440, height:900, hour:9, profile:'think', clip:'Think', station:'chess-chair', support:'chair-seat', supportBottomRange:[.64, .72], avatar:/afternoon-ops/i, expectFullPlinth:true, expectCopy:false },
   { label:'desktop-reading-1440x900', width:1440, height:900, hour:8, profile:'read', clip:'Read', station:'library-chair', support:'chair-seat', supportBottomRange:[.64, .72], avatar:/strategy-book/i, maxStageLeftRatio:.19, expectFullPlinth:true, expectCopy:false },
   { label:'desktop-writing-1440x900', width:1440, height:900, hour:16, profile:'write', clip:'Write', station:'writing-desk', support:'chair-seat', supportBottomRange:[.64, .72], avatar:/afternoon-ops/i, maxStageLeftRatio:.19, expectFullPlinth:true, expectCopy:false },
@@ -253,6 +253,10 @@ test('App visual artifact · Matthias Home deterministic full + crop', async () 
         await expect(image).toHaveAttribute('src', capture.avatar);
         await expect(canvas).toHaveAttribute('data-matthias-canonical-model', 'blender');
         await expect(canvas).toHaveAttribute('data-matthias-clip', capture.clip);
+        if (capture.profile === 'dossier') {
+          await expect(canvas).toHaveAttribute('data-matthias-dossier-sip', 'procedural-v1');
+          await expect(canvas).toHaveAttribute('data-matthias-limb-scale', 'arms-1.15-hands-1.18-legs-1.12');
+        }
         if (capture.expectedRoutineProps) {
           await expect(canvas).toHaveAttribute('data-matthias-routine-props', capture.expectedRoutineProps);
         }

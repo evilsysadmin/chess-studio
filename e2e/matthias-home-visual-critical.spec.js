@@ -132,6 +132,16 @@ test('Home canónica · el expediente raro de Matthias exige derrotas reales y o
   await expect(matthias).toHaveAttribute('data-home-matthias-dwell-ms', '44000');
   await expect(avatar).toHaveAttribute('data-home-matthias-profile', 'dossier');
   await expectBlenderRigReady(avatar, canvas);
+  await expect(canvas).toHaveAttribute('data-matthias-dossier-sip', 'procedural-v1');
+  await expect(canvas).toHaveAttribute('data-matthias-limb-scale', 'arms-1.15-hands-1.18-legs-1.12');
+  await expect.poll(
+    () => canvas.getAttribute('data-matthias-dossier-sip-phase'),
+    { timeout: 11_000, intervals: [150, 250, 400] },
+  ).toBe('sip');
+  await expect.poll(
+    async () => Number(await canvas.getAttribute('data-matthias-dossier-sip-weight')),
+    { timeout: 1_500, intervals: [100, 150] },
+  ).toBeGreaterThanOrEqual(.9);
 });
 
 test('Home canónica · Matthias puede quedarse dormido sobre el manual en la biblioteca', async ({ page }) => {

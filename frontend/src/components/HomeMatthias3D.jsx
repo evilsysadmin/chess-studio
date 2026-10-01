@@ -85,6 +85,41 @@ export function homeMatthiasClipForProfile(profile = 'idle') {
   return CLIP_BY_PROFILE[profile] || CLIP_BY_PROFILE.idle;
 }
 
+export function homeMatthiasLimbScaleForMesh(name = '') {
+  const key = homeMatthiasCanonicalMeshName(name);
+  if (/^hand[lr]$/.test(key)) return 1.18;
+  if (/^(upperarm|forearm)[lr]$/.test(key)) return 1.15;
+  if (/^(upperleg|lowerleg|knee|boot)[lr]$/.test(key)) return 1.12;
+  return 1;
+}
+
+export function homeMatthiasDossierSipPose(elapsedSeconds = 0) {
+  const cycleSeconds = 9.6;
+  const elapsed = Number(elapsedSeconds);
+  const cycle = Number.isFinite(elapsed)
+    ? ((elapsed % cycleSeconds) + cycleSeconds) % cycleSeconds
+    : 0;
+  const smoothstep = (value) => {
+    const clamped = THREE.MathUtils.clamp(value, 0, 1);
+    return clamped * clamped * (3 - (2 * clamped));
+  };
+
+  let weight = 0;
+  let phase = 'reading';
+  if (cycle >= 5.8 && cycle < 6.7) {
+    weight = smoothstep((cycle - 5.8) / 0.9);
+    phase = 'raising';
+  } else if (cycle >= 6.7 && cycle < 7.25) {
+    weight = 1;
+    phase = 'sip';
+  } else if (cycle >= 7.25 && cycle < 8.2) {
+    weight = 1 - smoothstep((cycle - 7.25) / 0.95);
+    phase = 'lowering';
+  }
+
+  return { cycleSeconds, phase, weight };
+}
+
 export function homeMatthiasRoutinePropPolicy(profile = 'idle') {
   if (profile === 'dossier') {
     return {
@@ -94,7 +129,7 @@ export function homeMatthiasRoutinePropPolicy(profile = 'idle') {
         bone: 'prop_cup',
         contentMesh: 'RoutineCup',
         handMesh: 'Hand.R',
-        offset: { x: 0.075, y: -0.18, z: 0 },
+        offset: { x: 0.055, y: 0.015, z: 0 },
       },
       signature: 'reports+coffee-in-hand',
     };
@@ -416,6 +451,11 @@ export default function HomeMatthias3D({
     let intersecting = true;
     let firstFramePainted = false;
     let attentionAmount = 0;
+    let dossierElapsed = 0;
+    let dossierUpperArm = null;
+    let dossierForearm = null;
+    const dossierUpperArmOffset = new THREE.Quaternion();
+    const dossierForearmOffset = new THREE.Quaternion();
     let attentionForward = new THREE.Vector3(0, 0, 1);
     let attentionSide = new THREE.Vector3(1, 0, 0);
     const baseModelPosition = new THREE.Vector3();
@@ -488,7 +528,7 @@ export default function HomeMatthias3D({
         });
       }
       canvas.dataset.matthiasRoutineProps = propPolicy.signature;
-      canvas.dataset.matthiasCoffeeAnchor = anchored ? 'right-hand-low' : 'authored';
+      canvas.dataset.matthiasCoffeeAnchor = anchored ? 'right-hand' : 'authored';
       if (routinePropNodes.cupMesh) {
         model.updateMatrixWorld(true);
         const cupCenter = visibleGeometryCenter(routinePropNodes.cupMesh);
@@ -498,6 +538,48 @@ export default function HomeMatthias3D({
           canvas.dataset.matthiasCoffeeHeadClearance = Math.abs(headCenter.y - cupCenter.y).toFixed(3);
         }
       }
+    };
+
+    const applyDossierSipPose = (deltaSeconds = 0) => {
+      if (!model) return;
+      if (currentProfile !== 'dossier' || runtimeRef.current?.reducedMotion) {
+        canvas.dataset.matthiasDossierSip = 'procedural-v1';
+        canvas.dataset.matthiasDossierSipPhase = 'reading';
+        canvas.dataset.matthiasDossierSipWeight = '0.000';
+        return;
+      }
+
+      dossierElapsed += Math.max(0, Number(deltaSeconds) || 0);
+      const pose = homeMatthiasDossierSipPose(dossierElapsed);
+      if (!dossierUpperArm || !dossierForearm) {
+        model.traverse((node) => {
+          if (!node?.isBone) return;
+          const canonicalName = homeMatthiasCanonicalMeshName(node.name);
+          if (!dossierUpperArm && canonicalName === 'upperarmr') dossierUpperArm = node;
+          if (!dossierForearm && canonicalName === 'forearmr') dossierForearm = node;
+        });
+      }
+
+      if (dossierUpperArm && dossierForearm && pose.weight > 0) {
+        dossierUpperArmOffset.setFromEuler(new THREE.Euler(
+          THREE.MathUtils.degToRad(-13 * pose.weight),
+          THREE.MathUtils.degToRad(-4 * pose.weight),
+          THREE.MathUtils.degToRad(-8 * pose.weight),
+        ));
+        dossierForearmOffset.setFromEuler(new THREE.Euler(
+          THREE.MathUtils.degToRad(-36 * pose.weight),
+          THREE.MathUtils.degToRad(-6 * pose.weight),
+          THREE.MathUtils.degToRad(-14 * pose.weight),
+        ));
+        dossierUpperArm.quaternion.multiply(dossierUpperArmOffset);
+        dossierForearm.quaternion.multiply(dossierForearmOffset);
+        dossierUpperArm.updateMatrixWorld(true);
+        dossierForearm.updateMatrixWorld(true);
+      }
+
+      canvas.dataset.matthiasDossierSip = 'procedural-v1';
+      canvas.dataset.matthiasDossierSipPhase = pose.phase;
+      canvas.dataset.matthiasDossierSipWeight = pose.weight.toFixed(3);
     };
 
     const renderOnce = () => {
@@ -544,9 +626,10 @@ export default function HomeMatthias3D({
           next.time = homeMatthiasClipStartTime({ duration: clip.duration, phase: safePhase, profile: resolvedProfile });
           mixer.update(0);
         }
-        applyRoutinePropPolicy(resolvedProfile);
+        if (resolvedProfile !== currentProfile) dossierElapsed = 0;
         currentAction = next;
         currentProfile = resolvedProfile;
+        applyRoutinePropPolicy(resolvedProfile);
         currentPhase = safePhase;
       } else if (policy.loop === 'repeat' && currentPhase !== safePhase) {
         next.time = homeMatthiasClipStartTime({ duration: clip.duration, phase: safePhase, profile: resolvedProfile });
@@ -575,6 +658,7 @@ export default function HomeMatthias3D({
       if (!shouldAnimate()) return;
       const delta = Math.min(clock.getDelta(), 0.05);
       mixer?.update(delta);
+      applyDossierSipPose(delta);
       applyRoutinePropPolicy(currentProfile);
       if (model) {
         const desired = desiredMotionRef.current;
@@ -633,6 +717,14 @@ export default function HomeMatthias3D({
         model.scale.setScalar(1.0);
         baseModelPosition.copy(model.position);
         baseModelQuaternion.copy(model.quaternion);
+
+        // Strengthen only Matthias's extremities before deriving portrait bounds
+        // so the camera accounts for the slightly larger silhouette.
+        model.traverse((node) => {
+          if (!node?.isMesh) return;
+          const limbScale = homeMatthiasLimbScaleForMesh(node.name);
+          if (limbScale !== 1) node.scale.multiplyScalar(limbScale);
+        });
         model.updateMatrixWorld(true);
 
         const bounds = new THREE.Box3().setFromObject(model);
@@ -685,6 +777,8 @@ export default function HomeMatthias3D({
           canvas.dataset.matthiasGrounding = 'soft-contact-shadow';
         }
         canvas.dataset.matthiasLighting = 'hall-warm-cool-v1';
+        canvas.dataset.matthiasLimbScale = 'arms-1.15-hands-1.18-legs-1.12';
+        canvas.dataset.matthiasDossierSip = 'procedural-v1';
 
         model.traverse((node) => {
           if (node.isMesh) {
@@ -715,6 +809,10 @@ export default function HomeMatthias3D({
         });
         fitRenderer(renderer, camera, canvas);
         frame = window.requestAnimationFrame(() => {
+          // This first-paint RAF previously left `frame` truthy, so resume()
+          // believed the animation loop was already running. The rig rendered
+          // one frozen pose forever even though data-motion said animated.
+          frame = 0;
           renderOnce();
           resume();
         });
