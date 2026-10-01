@@ -1,3 +1,24 @@
+x-pvp-common: &pvp-common
+  pull_policy: never
+  restart: unless-stopped
+  healthcheck:
+    test:
+      - CMD
+      - wget
+      - -q
+      - -O
+      - /dev/null
+      - http://127.0.0.1:8080/healthz
+    interval: 15s
+    timeout: 3s
+    start_period: 5s
+    retries: 4
+  logging:
+    driver: json-file
+    options:
+      max-size: "5m"
+      max-file: "2"
+
 x-backend-common: &backend-common
   pull_policy: never
   env_file:
@@ -49,6 +70,24 @@ services:
       CHESS_PVP_SPARRING_USERNAME: "${CHESS_PVP_SPARRING_USERNAME:-sparringmeister}"
     ports:
       - "127.0.0.1:${CHESS_STUDIO_GREEN_PORT:-4002}:4000"
+
+  # PvP Go migration wedge. These sidecars are paired 1:1 with the Python
+  # blue/green slots but remain internal-only until nginx routing is enabled.
+  pvp_blue:
+    <<: *pvp-common
+    image: ghcr.io/evilsysadmin/chess-studio-pvp:oci-${CHESS_STUDIO_BLUE_SHA:?CHESS_STUDIO_BLUE_SHA is required}
+    environment:
+      GIT_COMMIT_SHA: ${CHESS_STUDIO_BLUE_SHA:?CHESS_STUDIO_BLUE_SHA is required}
+      PORT: "8080"
+      PVP_PYTHON_UPSTREAM: "http://backend_blue:4000"
+
+  pvp_green:
+    <<: *pvp-common
+    image: ghcr.io/evilsysadmin/chess-studio-pvp:oci-${CHESS_STUDIO_GREEN_SHA:?CHESS_STUDIO_GREEN_SHA is required}
+    environment:
+      GIT_COMMIT_SHA: ${CHESS_STUDIO_GREEN_SHA:?CHESS_STUDIO_GREEN_SHA is required}
+      PORT: "8080"
+      PVP_PYTHON_UPSTREAM: "http://backend_green:4000"
 
   # One-time rollback target for the migration from the old single-slot runtime.
   # Never runs together with edge because both own the public loopback port.
