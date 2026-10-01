@@ -198,6 +198,12 @@ export default function PvPLobbyModal({
   return (
     <div className="modal-backdrop pvp-lobby-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
       <section ref={lobbyRef} className="pvp-lobby pvp-duel-hall" role="dialog" aria-modal="true" aria-label="Duelo 1 contra 1 · War Room">
+        <div className="pvp-duel-hall__architecture" aria-hidden="true">
+          <span className="pvp-duel-hall__arch" />
+          <span className="pvp-duel-hall__torch is-left" />
+          <span className="pvp-duel-hall__torch is-right" />
+          <span className="pvp-duel-hall__gate" />
+        </div>
         <button type="button" className="piece-info-close" onClick={onClose} aria-label={self ? 'Cerrar ventana; seguirás disponible para retos' : 'Cerrar ventana de rivales'} title={self ? 'Cerrar · seguirás disponible' : 'Cerrar'}>×</button>
 
         <header className="pvp-lobby__header">
@@ -207,21 +213,7 @@ export default function PvPLobbyModal({
               <span className="pvp-duel-hall__crest" aria-hidden="true">⚔</span>
               <h2>Sala de Duelos</h2>
             </div>
-            <p>Elige rival o atiende un reto. Cuando el duelo quede concertado, la War Room te espera.</p>
-          </div>
-          <div className="pvp-lobby__header-status" aria-hidden="true">
-            <span className={`pvp-lobby__availability${self ? ' is-live' : ''}`}>
-              <i />
-              {self ? 'Disponible' : 'No disponible'}
-            </span>
-            <span className="pvp-lobby__metric">
-              <b>{rivalCount}</b>
-              <small>rivales</small>
-            </span>
-            <span className={`pvp-lobby__metric${challengeCount > 0 ? ' has-attention' : ''}`}>
-              <b>{challengeCount}</b>
-              <small>retos</small>
-            </span>
+            <p>Elige rival o atiende un reto. Cuando el duelo quede concertado, el portón de la Duel Room se abrirá.</p>
           </div>
         </header>
 
