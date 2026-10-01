@@ -77,6 +77,16 @@
 .home-matthias-3d.is-model-ready canvas { opacity: 1; }
 .home-matthias-3d.is-model-ready::before { opacity: 0; }
 
+.home-matthias-3d.is-model-ready[data-home-matthias-station='hearth-files']::before {
+  /* Runtime WebGL contact shadows live inside the portrait canvas, but the
+     Home floor needs an external grounding cue at the station itself. */
+  opacity: .68;
+  left: 20%;
+  right: 20%;
+  bottom: 3%;
+  height: 5.5%;
+}
+
 .illustrated-home__matthias.is-speaking .home-matthias-3d canvas {
   filter: brightness(1.035) drop-shadow(0 12px 14px rgba(0, 0, 0, .46));
 }
