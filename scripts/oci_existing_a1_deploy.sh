@@ -35,6 +35,7 @@ deploy_watcher_unit_source="$repo/infra/oci/runtime/chess-studio-deploy-watcher.
 deploy_watcher_target="/usr/local/libexec/chess-studio-deploy-watcher"
 deploy_watcher_unit_target="/etc/systemd/system/chess-studio-deploy-watcher.service"
 registry_image_prefix="${CHESS_STUDIO_BACKEND_IMAGE_PREFIX:-ghcr.io/evilsysadmin/chess-studio-backend:oci-}"
+pvp_registry_image_prefix="${CHESS_STUDIO_PVP_IMAGE_PREFIX:-ghcr.io/evilsysadmin/chess-studio-pvp:oci-}"
 
 case "$target" in
   staging)
@@ -115,6 +116,10 @@ fi
 
 image_ref() {
   printf '%s%s' "$registry_image_prefix" "$1"
+}
+
+pvp_image_ref() {
+  printf '%s%s' "$pvp_registry_image_prefix" "$1"
 }
 
 legacy_image_ref() {
@@ -219,6 +224,13 @@ slot_service() {
   esac
 }
 
+pvp_service() {
+  case "$1" in
+    blue|green) printf 'pvp_%s\n' "$1" ;;
+    *) echo "invalid PvP color: $1" >&2; return 64 ;;
+  esac
+}
+
 slot_port() {
   case "$1" in
     blue) printf '%s\n' "$((port + 1))" ;;
@@ -258,7 +270,8 @@ write_active_color() {
 
 render_edge() {
   local color="$1"
-  python3 -S "$blue_green_edge" --color "$color" --output "$edge_config_file"
+  local pvp_mode="${2:-go}"
+  python3 -S "$blue_green_edge" --color "$color" --pvp-mode "$pvp_mode" --output "$edge_config_file"
 }
 
 edge_container_id() {
@@ -365,6 +378,30 @@ PY
   cors_attest "$target_port"
 }
 
+pvp_attest() {
+  local service="$1"
+  local body
+  body="$(mktemp)"
+  if ! compose "$sha" exec -T "$service" wget -q -O - http://127.0.0.1:8080/readyz >"$body"; then
+    rm -f "$body"
+    return 1
+  fi
+  if python3 - "$body" <<'PY'
+import json
+import pathlib
+import sys
+payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+if payload.get('status') != 'ready' or payload.get('service') != 'chess-studio-pvp-go':
+    raise SystemExit(1)
+PY
+  then
+    rm -f "$body"
+    return 0
+  fi
+  rm -f "$body"
+  return 1
+}
+
 public_tunnel_attest() {
   local expected="$1"
   local release
@@ -398,10 +435,13 @@ PY
 rollback() {
   local failed_sha="$1"
   local candidate_service="${candidate_service:-}"
+  local candidate_pvp_service="${candidate_pvp_service:-}"
   echo "rolling back OCI backend after failed candidate $failed_sha" >&2
 
   if [[ -n "${previous_color:-}" ]]; then
-    render_edge "$previous_color"
+    # Emergency rollback deliberately bypasses Go. The previous deployed SHA
+    # may predate the PvP sidecar image entirely during the first migration.
+    render_edge "$previous_color" direct
     # Safe both before and after the attempted switch: if edge is still on the
     # old config this is a no-op; if reload partially succeeded, this actively
     # restores the previous upstream.
@@ -415,8 +455,9 @@ rollback() {
         sleep "${CHESS_STUDIO_BLUE_GREEN_DRAIN_SECONDS:-50}"
       fi
       remove_service "$candidate_service"
+      [[ -z "$candidate_pvp_service" ]] || remove_service "$candidate_pvp_service"
     fi
-    echo "CHESS_STUDIO_ROLLBACK_OK repo_ref=${previous_sha:-unknown} color=$previous_color"
+    echo "CHESS_STUDIO_ROLLBACK_OK repo_ref=${previous_sha:-unknown} color=$previous_color pvp=python-direct"
     return 0
   fi
 
@@ -428,7 +469,8 @@ rollback() {
         rm -f "$active_color_file"
         record_successful_backend "$previous_sha"
         [[ -z "$candidate_service" ]] || remove_service "$candidate_service"
-        echo "CHESS_STUDIO_ROLLBACK_OK repo_ref=$previous_sha color=legacy"
+        [[ -z "$candidate_pvp_service" ]] || remove_service "$candidate_pvp_service"
+        echo "CHESS_STUDIO_ROLLBACK_OK repo_ref=$previous_sha color=legacy pvp=python-direct"
         return 0
       fi
       sleep 2
@@ -436,6 +478,7 @@ rollback() {
   fi
 
   [[ -z "$candidate_service" ]] || remove_service "$candidate_service"
+  [[ -z "$candidate_pvp_service" ]] || remove_service "$candidate_pvp_service"
   echo 'rollback could not restore a previous backend' >&2
   return 1
 }
@@ -754,9 +797,15 @@ phase_done preflight "$preflight_started_ms"
 # immutable artifact before touching the serving container; do not invoke
 # BuildKit on the A1 merely to retag an image that already exists in GHCR.
 target_image="$(image_ref "$sha")"
+pvp_target_image="$(pvp_image_ref "$sha")"
 image_pull_started_ms="$(now_ms)"
 if ! docker pull --quiet "$target_image" >/dev/null; then
   echo "failed to pull immutable OCI backend image: $target_image" >&2
+  [[ -z "$previous_sha" ]] || git checkout --detach "$previous_sha" >/dev/null 2>&1 || true
+  exit 1
+fi
+if ! docker pull --quiet "$pvp_target_image" >/dev/null; then
+  echo "failed to pull immutable PvP Go image: $pvp_target_image" >&2
   [[ -z "$previous_sha" ]] || git checkout --detach "$previous_sha" >/dev/null 2>&1 || true
   exit 1
 fi
@@ -770,6 +819,7 @@ else
   candidate_color=blue
 fi
 candidate_service="$(slot_service "$candidate_color")"
+candidate_pvp_service="$(pvp_service "$candidate_color")"
 candidate_port="$(slot_port "$candidate_color")"
 active_backend_service="$candidate_service"
 switch_complete=0
@@ -780,7 +830,7 @@ if ! compose "$sha" pull edge >/dev/null; then
 fi
 
 compose_log="$(mktemp /tmp/chess-studio-compose-up.XXXXXX)"
-if ! compose "$sha" up -d --no-build --force-recreate "$candidate_service" >"$compose_log" 2>&1; then
+if ! compose "$sha" up -d --no-build --force-recreate "$candidate_service" "$candidate_pvp_service" >"$compose_log" 2>&1; then
   cat "$compose_log" >&2
   rm -f "$compose_log"
   rollback "$sha" || true
@@ -792,21 +842,21 @@ phase_done recreate "$recreate_started_ms"
 readiness_started_ms="$(now_ms)"
 candidate_ready=0
 for _ in $(seq 1 60); do
-  if attest "$sha" "$candidate_port"; then
+  if attest "$sha" "$candidate_port" && pvp_attest "$candidate_pvp_service"; then
     candidate_ready=1
     break
   fi
   sleep 2
 done
 if [[ "$candidate_ready" != "1" ]]; then
-  echo "candidate failed readiness/build/CORS attestation: $sha color=$candidate_color" >&2
+  echo "candidate failed Python/PvP-Go readiness/build/CORS attestation: $sha color=$candidate_color" >&2
   rollback "$sha" || true
   exit 43
 fi
 phase_done readiness "$readiness_started_ms"
 
 switch_started_ms="$(now_ms)"
-render_edge "$candidate_color"
+render_edge "$candidate_color" go
 if [[ -n "$previous_color" ]]; then
   if ! reload_edge; then
     echo "edge reload failed for candidate color=$candidate_color" >&2
@@ -859,6 +909,7 @@ drain_started_ms="$(now_ms)"
 if [[ -n "$previous_color" ]]; then
   sleep "${CHESS_STUDIO_BLUE_GREEN_DRAIN_SECONDS:-50}"
   remove_service "$(slot_service "$previous_color")"
+  remove_service "$(pvp_service "$previous_color")"
 fi
 phase_done drain "$drain_started_ms"
 
@@ -870,5 +921,5 @@ fi
 agent_diag_summary || printf '%s\n' 'OCI_AGENT_DIAG unavailable'
 phase_done total "$total_started_ms"
 printf 'OCI_DEPLOY_TIMINGS target=%s phases=%s tunnel=%s color=%s\n' "$target" "${deploy_phase_summary%,}" "$tunnel_action" "$candidate_color"
-echo "CHESS_STUDIO_DEPLOY_OK target=$target repo_ref=$sha color=$candidate_color cors_origin=$cors_origin tunnel_action=$tunnel_action image=pulled observability=${observability_summary:-unknown}"
+echo "CHESS_STUDIO_DEPLOY_OK target=$target repo_ref=$sha color=$candidate_color pvp=go cors_origin=$cors_origin tunnel_action=$tunnel_action image=pulled observability=${observability_summary:-unknown}"
 exit 0
