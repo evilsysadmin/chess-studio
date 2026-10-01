@@ -12,7 +12,7 @@ EXPECTED_MID_PROPS = {
     "Think": set(),
     "Read": {"prop_book"},
     "Write": {"prop_book", "prop_pen"},
-    "Dossier": {"prop_book"},
+    "Dossier": {"prop_book", "prop_cup"},
     "Sip": {"prop_cup"},
     "Bite": {"prop_bite"},
     "Sleep": set(),
