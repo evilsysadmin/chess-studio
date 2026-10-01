@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
-import { buttonWithVisibleText, login, mockApi } from './helpers.js';
+import { login, mockApi } from './helpers.js';
 import { decodePng } from './png-pixels.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual/pvp-duel-room';
@@ -92,8 +92,7 @@ async function openDuelRoom(page, viewport) {
   }));
 
   await login(page);
-  await buttonWithVisibleText(page, 'Partida rápida').click();
-  await page.getByRole('button', { name: /Jugar contra una persona/ }).click();
+  await page.getByRole('button', { name: 'Abrir Sala de Duelos 1 contra 1' }).click();
 
   const lobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room' });
   await expect(lobby).toBeVisible();

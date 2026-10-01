@@ -284,13 +284,28 @@
 }
 
 
-/* Desktop (>= 1000px): the 1 vs 1 entry lives inside the JUGAR "Más formas de jugar"
- * menu (variant="menu"), so the floating card is hidden there (display:none also
- * removes it from the accessibility tree, leaving exactly one control per viewport).
- * Below 1000px the card stays as the always-visible entry. */
+/* Desktop: 1 vs 1 is a canonical Home action, not a buried submenu item.
+ * Keep it compact and docked so it remains discoverable without competing with
+ * the castle scene or Matthias. */
 @media (min-width: 1000px) {
-  .home-pvp-roster-link:not(.home-pvp-roster-link--menu) {
-    display: none;
+  .home-pvp-roster-link {
+    left: auto;
+    right: max(18px, env(safe-area-inset-right));
+    bottom: max(16px, env(safe-area-inset-bottom));
+    transform: none;
+    width: min(390px, calc(100vw - 36px));
+    min-height: 58px;
+    gap: .58rem;
+    padding: .5rem .58rem;
+    border-radius: 14px;
+  }
+
+  .home-pvp-roster-link:is(:hover, :focus-visible) {
+    transform: translateY(-3px);
+  }
+
+  .home-pvp-roster-link:disabled {
+    transform: none;
   }
 }
 
