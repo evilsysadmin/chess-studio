@@ -113,11 +113,11 @@
       "url": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/shotgun/matthias_shotgun_canonical_v4-c12321f2afe18cf4.webp"
     },
     "pvp.duelRoom.runtime": {
-      "bytes": 7947936,
+      "bytes": 7952496,
       "contentType": "model/gltf-binary",
-      "key": "pvp/duel-room/runtime/pvp-duel-room-shell-e9c84b2ab7d7d853.glb",
-      "sha256": "e9c84b2ab7d7d853f032ef56d13009eee7d70da0c23cf7a40f6b8564e0c51540",
-      "url": "https://assets.chess-studio.shadowops.dpdns.org/pvp/duel-room/runtime/pvp-duel-room-shell-e9c84b2ab7d7d853.glb"
+      "key": "pvp/duel-room/runtime/pvp-duel-room-shell-bc8849ca70350d00.glb",
+      "sha256": "bc8849ca70350d006450f1a3093a1608a7d3a25518c93e04a7422deeaa23ee0b",
+      "url": "https://assets.chess-studio.shadowops.dpdns.org/pvp/duel-room/runtime/pvp-duel-room-shell-bc8849ca70350d00.glb"
     }
   },
   "baseUrl": "https://assets.chess-studio.shadowops.dpdns.org",
