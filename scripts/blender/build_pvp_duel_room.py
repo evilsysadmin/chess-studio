@@ -628,13 +628,13 @@ def build_dungeon_population(static, p):
         # Layered gothic plate over the structural torso.
         base.sphere(
             f"PVP_DUEL_sentinel_{label}_breastplate",
-            (sx, sy - 0.05, 2.03), 0.365, p["armor"], static,
-            scale=(0.98, 0.64, 1.06),
+            (sx, sy - 0.05, 2.08), 0.350, p["armor"], static,
+            scale=(0.90, 0.60, 1.12),
         )
         base.sphere(
             f"PVP_DUEL_sentinel_{label}_plackart",
-            (sx, sy - 0.09, 1.78), 0.285, p["armor"], static,
-            scale=(0.98, 0.66, 0.74),
+            (sx, sy - 0.09, 1.82), 0.272, p["armor"], static,
+            scale=(0.92, 0.62, 0.78),
         )
         base.cube(
             f"PVP_DUEL_sentinel_{label}_breast_ridge",
@@ -656,6 +656,17 @@ def build_dungeon_population(static, p):
             f"PVP_DUEL_sentinel_{label}_belt_buckle", (sx, sy - 0.295, 1.47),
             (0.050, 0.018, 0.043), p["brass"], static, bevel=0.010,
         )
+        tabard = base.cube(
+            f"PVP_DUEL_sentinel_{label}_tabard",
+            (sx, sy - 0.245, 1.31), (0.16, 0.018, 0.20),
+            p["red"] if side < 0 else p["blue"], static, bevel=0.015,
+        )
+        tabard.rotation_euler.x = math.radians(-8)
+        base.cube(
+            f"PVP_DUEL_sentinel_{label}_tabard_hem",
+            (sx, sy - 0.265, 1.12), (0.16, 0.012, 0.022),
+            p["brass"], static, bevel=0.006,
+        )
         # Fluting catches the warm practicals without turning the cuirass into
         # jewellery; the centre ridge remains the primary gilt accent.
         for flute_idx, flute_x in enumerate((-0.12, 0.12)):
@@ -669,7 +680,7 @@ def build_dungeon_population(static, p):
             f"PVP_DUEL_sentinel_{label}_neckline",
             (sx, sy - 0.02, 2.31), 0.145, 0.018, p["brass"], static,
         )
-        for arm_idx, dx in enumerate((-0.43, 0.43)):
+        for arm_idx, dx in enumerate((-0.38, 0.38)):
             arm=base.cylinder(
                 f"PVP_DUEL_sentinel_{label}_arm_{arm_idx}",
                 (sx + dx, sy + 0.02, 1.90), 0.060, 0.70, p["iron"], static, vertices=12,
@@ -679,9 +690,9 @@ def build_dungeon_population(static, p):
             arm_side = -1 if arm_idx == 0 else 1
             ax = sx + dx
             for lame_idx, (dz, half_x, half_z, lean) in enumerate((
-                (0.12, 0.19, 0.095, 8),
-                (0.045, 0.175, 0.082, 13),
-                (-0.025, 0.155, 0.070, 18),
+                (0.12, 0.165, 0.090, 10),
+                (0.045, 0.150, 0.078, 15),
+                (-0.025, 0.132, 0.066, 20),
             )):
                 pauldron = base.cube(
                     f"PVP_DUEL_sentinel_{label}_pauldron_{arm_idx}_{lame_idx}",
@@ -735,8 +746,8 @@ def build_dungeon_population(static, p):
                 p["armor"], static, vertices=18,
             )
         base.sphere(
-            f"PVP_DUEL_sentinel_{label}_helmet", (sx, sy + 0.01, 2.64),
-            0.255, p["armor"], static, scale=(0.94, 0.92, 1.08),
+            f"PVP_DUEL_sentinel_{label}_helmet", (sx, sy + 0.01, 2.69),
+            0.245, p["armor"], static, scale=(0.88, 0.90, 1.16),
         )
         base.cube(
             f"PVP_DUEL_sentinel_{label}_brow_plate",
@@ -755,8 +766,8 @@ def build_dungeon_population(static, p):
             0.20, p["armor"], static, scale=(0.88, 0.72, 0.78),
         )
         base.sphere(
-            f"PVP_DUEL_sentinel_{label}_visor_beak", (sx, sy - 0.31, 2.55),
-            0.10, p["armor"], static, scale=(0.95, 1.25, 0.72),
+            f"PVP_DUEL_sentinel_{label}_visor_beak", (sx, sy - 0.34, 2.59),
+            0.095, p["armor"], static, scale=(0.88, 1.45, 0.68),
         )
         base.cube(
             f"PVP_DUEL_sentinel_{label}_visor", (sx, sy - 0.31, 2.62),
@@ -933,8 +944,8 @@ def build_sconces_and_gate(static, p):
 def build_duelist_furniture(static, p):
     """Premium duelist chairs, angled so both seats unmistakably face the board."""
     for side, accent, label in ((-1, p["red"], "red"), (1, p["blue"], "blue")):
-        x = side * 5.28
-        y = -1.72
+        x = side * 5.02
+        y = -1.48
         yaw = math.atan2(-x, y)  # local -y is the seated player's forward direction
         cos_yaw = math.cos(yaw)
         sin_yaw = math.sin(yaw)
@@ -996,14 +1007,25 @@ def build_duelist_furniture(static, p):
                 f"PVP_DUEL_seat_{label}_finial_{post_x:+.2f}",
                 at(post_x, 0.43, 2.28), 0.115, p["brass"], static,
             )
-        chair_cube("back_frame", (0.0, 0.44, 1.64), (0.62, 0.075, 0.66),
-                   p["oak"], bevel=0.085)
-        chair_cube("back_leather", (0.0, 0.355, 1.64), (0.52, 0.040, 0.53),
-                   p["seat_leather"], bevel=0.075)
-        chair_cube("crest", (0.0, 0.335, 1.73), (0.18, 0.022, 0.20),
-                   accent, bevel=0.060)
-        chair_cube("crest_bar", (0.0, 0.31, 1.74), (0.26, 0.014, 0.045),
+        chair_cube("back_frame", (0.0, 0.44, 1.72), (0.64, 0.080, 0.76),
+                   p["oak"], bevel=0.095)
+        chair_cube("back_leather", (0.0, 0.350, 1.72), (0.54, 0.045, 0.62),
+                   p["seat_leather"], bevel=0.085)
+        chair_cube("crest", (0.0, 0.325, 1.82), (0.20, 0.024, 0.24),
+                   accent, bevel=0.065)
+        chair_cube("crest_bar", (0.0, 0.30, 1.82), (0.28, 0.014, 0.045),
                    p["brass"], bevel=0.012)
+        base.sphere(
+            f"PVP_DUEL_seat_{label}_crest_medallion",
+            at(0.0, 0.275, 1.82), 0.115, p["brass"], static,
+            scale=(1.0, 0.34, 1.0),
+        )
+        for rail_idx, rail_x in enumerate((-0.54, 0.54)):
+            chair_cube(
+                f"back_rail_{rail_idx}",
+                (rail_x, 0.405, 1.72), (0.055, 0.050, 0.62),
+                p["brass"], bevel=0.018,
+            )
 
         # Brass upholstery studs form a readable premium edge without a heavy
         # sculpt or texture dependency.
@@ -1123,6 +1145,7 @@ def validate_scene():
         "PVP_DUEL_sentinel_left_fauld_0",
         "PVP_DUEL_sentinel_left_gauntlet_0",
         "PVP_DUEL_sentinel_left_gorget_0",
+        "PVP_DUEL_sentinel_left_tabard",
         "PVP_DUEL_mid_weapon_rack_left",
         "PVP_DUEL_barrel_left",
         "PVP_DUEL_floor_grate_spine_left",
@@ -1136,6 +1159,8 @@ def validate_scene():
         "PVP_DUEL_seat_blue_back_leather",
         "PVP_DUEL_seat_red_lion_boss_0",
         "PVP_DUEL_seat_blue_lion_boss_0",
+        "PVP_DUEL_seat_red_crest_medallion",
+        "PVP_DUEL_seat_blue_crest_medallion",
         "PVP_ANCHOR_red_identity",
         "PVP_ANCHOR_blue_identity",
         "PVP_ANCHOR_room_status",
