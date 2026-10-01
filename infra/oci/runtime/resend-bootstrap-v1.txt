@@ -1,2 +1,3 @@
 One-shot trigger for environment-scoped Resend bootstrap into OCI Vault.\nHotfix retrigger after production runtime template fix.\nProduction bundle pivot retrigger after OCI Run Command size guard.\n
 Retrigger after production runtime HOME expansion fix.
+Retrigger after embedded production newline fix.
