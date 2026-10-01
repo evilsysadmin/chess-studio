@@ -45,7 +45,6 @@ export default function QuickMatchModal({
   error = null,
   rating,
   onStart,
-  onOpenPvp = null,
   onClose,
 }) {
   useEscapeToClose(onClose);
@@ -242,11 +241,6 @@ export default function QuickMatchModal({
           </div>
         </details>
 
-        {onOpenPvp && (
-          <button type="button" className="secondary-btn quick-match-pvp-link quick-match-pvp-link--tertiary" style={QUICK_MATCH_TOUCH_TARGET} onClick={onOpenPvp} disabled={loading}>
-            Jugar contra una persona · 1 vs 1
-          </button>
-        )}
       </div>
     </div>
   );
