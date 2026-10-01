@@ -9,6 +9,7 @@ export function installPvpDuelRoomPracticalLights(root, { coarsePointer = false 
     ['PVP_ANCHOR_brazier_left', 0xff6a22, coarsePointer ? 0.82 : 1.48, 8.2],
     ['PVP_ANCHOR_brazier_right', 0xff6a22, coarsePointer ? 0.82 : 1.48, 8.2],
     ['PVP_ANCHOR_moon_fill', 0x6e91d8, coarsePointer ? 0.92 : 1.72, 12.5],
+    ['PVP_ANCHOR_gate_depth', 0x5877b8, coarsePointer ? 0.18 : 0.38, 5.4],
   ];
   const lights = [];
 
