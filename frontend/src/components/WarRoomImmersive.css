@@ -222,10 +222,21 @@ body.war-room-immersive-active .game-screen {
   /* Mobile immersion gives the top-right touch strip to Matthias. Keeping the
    * global account trigger here overlaps the HUD at 360–430px and can steal
    * taps from its overflow control; account remains available outside play. */
-  body.war-room-immersive-active .app-shell-board-game > .masthead-game-compact .masthead-account-stack,
-  body.war-room-immersive-active .app-shell-board-game > .masthead-game-compact .masthead-account-menu {
-    display: none !important;
+  /* Account is triggered from the room-local gear. Keep the semantic account
+     host mounted so its existing popover works on touch, but the global trigger
+     itself stays hidden by WarRoomAccountButton.css. */
+  body.war-room-immersive-active .app-shell-board-game > .masthead-game-compact .masthead-account-stack {
+    display: grid !important;
     pointer-events: none !important;
+  }
+
+  body.war-room-immersive-active .app-shell-board-game > .masthead-game-compact .masthead-account-menu {
+    display: block !important;
+    pointer-events: none !important;
+  }
+
+  body.war-room-immersive-active .app-shell-board-game > .masthead-game-compact .masthead-account-popover {
+    pointer-events: auto !important;
   }
 
   /* Portrait immersion keeps a definite height chain so the Three canvas
