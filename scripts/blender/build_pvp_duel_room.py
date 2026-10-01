@@ -254,7 +254,7 @@ def build_architecture(static, p):
     for side, label in ((-1, "left"), (1, "right")):
         wheel_x = side * 3.18
         wheel_y = 5.72
-        wheel_z = 4.05
+        wheel_z = 3.72
 
         wheel = base.torus(
             f"PVP_DUEL_gate_winch_{label}",
@@ -289,7 +289,7 @@ def build_architecture(static, p):
 
         # Short chain run from each winch toward the portcullis head.
         chain_start = Vector((wheel_x - side * 0.40, wheel_y - 0.05, wheel_z + 0.16))
-        chain_end = Vector((side * 1.72, 5.70, 4.92))
+        chain_end = Vector((side * 1.72, 5.70, 4.68))
         direction = chain_end - chain_start
         for link_idx in range(7):
             t = link_idx / 6
