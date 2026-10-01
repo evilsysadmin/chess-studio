@@ -16,6 +16,7 @@ PRODUCER_ORDER = (
     "home-base",
     "home-matthias",
     "home-focus",
+    "pvp-lobby",
     "experiments-hub",
     "chronicles-tactics",
     "chronicles-gameplay",
@@ -168,8 +169,8 @@ PVP_EXACT_PRODUCERS = {
     # PvP lobby/handoff is rendered from the Home/play shell. It does not own
     # Home Matthias/focus, Chronicles, training, War Room art, Hans or health.
     "frontend/src/components/menuinner.jsx": {"home-base"},
-    "frontend/src/components/pvplobbymodal.jsx": {"home-base"},
-    "frontend/src/components/pvplobbymodal.css": {"home-base"},
+    "frontend/src/components/pvplobbymodal.jsx": {"pvp-lobby"},
+    "frontend/src/components/pvplobbymodal.css": {"pvp-lobby"},
     "frontend/src/components/pvphandoffmodal.jsx": {"home-base"},
     "frontend/src/components/pvphandoffmodal.css": {"home-base"},
     "frontend/src/components/homepvprosterlink.jsx": {"home-base"},
@@ -209,6 +210,7 @@ def _e2e_producer(name: str) -> set[str] | None:
         "matthias-home-visual-critical.spec.js": {"home-matthias"},
         "home-3d-focus-visual.spec.js": {"home-focus"},
         "home-lab-visibility.spec.js": {"home-base"},
+        "pvp-lobby-visual-artifact.spec.js": {"pvp-lobby"},
         "experiments-visual-artifact.spec.js": {"experiments-hub"},
         "pawn-slug-godot-visual-artifact.spec.js": {"experiments-hub"},
         "chronicles-tactics-visual-artifact.spec.js": {"chronicles-tactics"},
@@ -637,7 +639,9 @@ def self_test() -> None:
         "frontend/src/pvpApi.js",
         "frontend/src/usePvpAppFlow.js",
         "frontend/src/usePvpRosterPresence.js",
-    ]) == "home-base,pvp-duel"
+    ]) == "home-base,pvp-lobby,pvp-duel"
+    assert classify(["frontend/src/components/PvPLobbyModal.jsx"]) == "pvp-lobby"
+    assert classify(["e2e/pvp-lobby-visual-artifact.spec.js"]) == "pvp-lobby"
     assert classify_home_profile_scope(["frontend/src/components/QuickMatchMobileGoldenPath.css"]) == "quickmatch"
     assert classify(["frontend/src/components/useWarRoomImmersive.js"]) == "warroom-core"
     assert classify(["frontend/src/components/WarRoomMobileLandscape.css"]) == "warroom-core"
