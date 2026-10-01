@@ -51,6 +51,8 @@ async function openLobby(page) {
   const lobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room' });
   await expect(lobby).toBeVisible();
   await expect(lobby.getByRole('heading', { name: 'Sala de Duelos' })).toBeVisible();
+  await expect(lobby.locator('.pvp-duel-hall__architecture')).toHaveCount(1);
+  await expect(lobby.locator('.pvp-lobby__header-status')).toHaveCount(0);
   return lobby;
 }
 
