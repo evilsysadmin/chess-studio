@@ -551,8 +551,13 @@ export default function HomeMatthias3D({
 
       dossierElapsed += Math.max(0, Number(deltaSeconds) || 0);
       const pose = homeMatthiasDossierSipPose(dossierElapsed);
-      if (!dossierUpperArm) dossierUpperArm = model.getObjectByName('upper_arm.R');
-      if (!dossierForearm) dossierForearm = model.getObjectByName('forearm.R');
+      if (!dossierUpperArm || !dossierForearm) {
+        model.traverse((node) => {
+          const canonicalName = homeMatthiasCanonicalMeshName(node?.name);
+          if (!dossierUpperArm && canonicalName === 'upperarmr') dossierUpperArm = node;
+          if (!dossierForearm && canonicalName === 'forearmr') dossierForearm = node;
+        });
+      }
 
       if (dossierUpperArm && dossierForearm && pose.weight > 0) {
         dossierUpperArmOffset.setFromEuler(new THREE.Euler(
@@ -711,6 +716,14 @@ export default function HomeMatthias3D({
         model.scale.setScalar(1.0);
         baseModelPosition.copy(model.position);
         baseModelQuaternion.copy(model.quaternion);
+
+        // Strengthen only Matthias's extremities before deriving portrait bounds
+        // so the camera accounts for the slightly larger silhouette.
+        model.traverse((node) => {
+          if (!node?.isMesh) return;
+          const limbScale = homeMatthiasLimbScaleForMesh(node.name);
+          if (limbScale !== 1) node.scale.multiplyScalar(limbScale);
+        });
         model.updateMatrixWorld(true);
 
         const bounds = new THREE.Box3().setFromObject(model);
@@ -768,8 +781,6 @@ export default function HomeMatthias3D({
 
         model.traverse((node) => {
           if (node.isMesh) {
-            const limbScale = homeMatthiasLimbScaleForMesh(node.name);
-            if (limbScale !== 1) node.scale.multiplyScalar(limbScale);
             const isFrontGeometry = homeMatthiasIsFrontGeometryName(node.name);
             node.castShadow = false;
             node.receiveShadow = false;
