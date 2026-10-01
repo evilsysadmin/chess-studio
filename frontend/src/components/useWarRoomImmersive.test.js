@@ -5,6 +5,7 @@ import {
   requestWarRoomBrowserFullscreen,
   requestWarRoomLandscape,
   requestWarRoomLandscapeFullscreen,
+  requestWarRoomLandscapeOnEntry,
   shouldAutoRotateWarRoomOnEntry,
   shouldStartWarRoomImmersive,
   unlockWarRoomOrientation,
@@ -70,6 +71,25 @@ describe('War Room Android orientation', () => {
     expect(shouldAutoRotateWarRoomOnEntry({ win: wideTouch })).toBe(false);
   });
 
+
+  it('uses the same mobile-entry contract for every War Room surface', async () => {
+    const requestFullscreen = vi.fn().mockResolvedValue(undefined);
+    const lock = vi.fn().mockResolvedValue(undefined);
+    const doc = { documentElement: { requestFullscreen }, fullscreenElement: null };
+    const screenApi = { orientation: { lock } };
+    const mobile = { innerWidth: 390, matchMedia: vi.fn(() => ({ matches: true })) };
+    const desktop = { innerWidth: 1440, matchMedia: vi.fn(() => ({ matches: false })) };
+
+    await expect(requestWarRoomLandscapeOnEntry({ win: mobile, doc, screenApi })).resolves.toBe(true);
+    expect(requestFullscreen).toHaveBeenCalledTimes(1);
+    expect(lock).toHaveBeenCalledWith('landscape');
+
+    requestFullscreen.mockClear();
+    lock.mockClear();
+    await expect(requestWarRoomLandscapeOnEntry({ win: desktop, doc, screenApi })).resolves.toBe(false);
+    expect(requestFullscreen).not.toHaveBeenCalled();
+    expect(lock).not.toHaveBeenCalled();
+  });
 
   it('requests landscape from the immersive tap when supported', async () => {
     const lock = vi.fn().mockResolvedValue(undefined);
