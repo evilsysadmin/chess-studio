@@ -104,8 +104,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) health(w http.ResponseWriter) {
 	payload := map[string]any{
-		"status":  "ok",
-		"service": serviceName,
+		"status":      "ok",
+		"service":     serviceName,
+		"nativePulse": h.nativePulse != nil,
 	}
 	if h.release != "" {
 		payload["release"] = h.release
