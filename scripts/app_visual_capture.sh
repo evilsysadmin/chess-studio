@@ -56,6 +56,7 @@ case "$mode" in
     if has_group home; then
       has_producer home-base && specs+=(app-visual-artifact.spec.js)
       has_producer pvp-lobby && specs+=(pvp-lobby-visual-artifact.spec.js)
+      has_producer pvp-handoff && specs+=(pvp-handoff-visual-artifact.spec.js)
       has_producer home-matthias && specs+=(matthias-home-visual-artifact.spec.js)
       has_producer home-focus && specs+=(home-3d-focus-visual.spec.js)
     fi
