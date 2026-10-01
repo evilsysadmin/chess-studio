@@ -4,7 +4,9 @@ Contrato de producto/UX para la presentación del 1v1 humano.
 
 ## Tesis
 
-El matchmaking humano pertenece al castillo. No debe sentirse como un dashboard, una tabla administrativa ni un modal de settings. La superficie canónica es la **Sala de Duelos**: una estancia donde el jugador entiende físicamente cuatro cosas y nada más:
+El matchmaking humano pertenece al castillo. No debe sentirse como un dashboard, una tabla administrativa ni un modal de settings. La Home mantiene **una sola entrada canónica y stateful a 1v1 en todos los viewports**; no se duplica dentro de Partida rápida ni se esconde sólo en “Más formas de jugar”. Esa entrada proyecta el estado real: entrar, rivales disponibles, reto pendiente o volver a un duelo activo.
+
+La superficie canónica es la **Sala de Duelos**: una estancia donde el jugador entiende físicamente cuatro cosas y nada más:
 
 1. **Tu puesto** — si estás recibiendo retos, tu Elo y cómo retirarte/minimizar.
 2. **Tablón de rivales** — quién está disponible y a quién puedes retar.
