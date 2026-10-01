@@ -439,26 +439,17 @@ function Board3DCanvas({
     }
     function onPointerDown(event) {
       const touchLike = event.pointerType === 'touch' || event.pointerType === 'pen';
-      pointerStartRef.current = {
-        x: event.clientX,
-        y: event.clientY,
-        id: event.pointerId,
-        pointerType: event.pointerType,
-        handled: false,
-      };
+      pointerStartRef.current = { x: event.clientX, y: event.clientY, id: event.pointerId, pointerType: event.pointerType, handled: false };
       if (inspectModeRef.current) {
         const motion = cameraMotionRef.current;
-        motion.dragging = true;
-        motion.lastX = event.clientX;
-        motion.lastY = event.clientY;
+        Object.assign(motion, { dragging: true, lastX: event.clientX, lastY: event.clientY });
         renderer.domElement.setPointerCapture?.(event.pointerId);
         return;
       }
       if (!touchLike) return;
       renderer.domElement.setPointerCapture?.(event.pointerId);
       renderer.domElement.dataset.warRoomTouchStage = 'down';
-      const handled = selectBoardSquareOnTouch({ event, canvas: renderer.domElement, squareFromPointer, setFocusedSquare, onSquareClick: latestPropsRef.current.onSquareClick });
-      if (pointerStartRef.current) pointerStartRef.current.handled = handled;
+      pointerStartRef.current.handled = selectBoardSquareOnTouch({ event, canvas: renderer.domElement, squareFromPointer, setFocusedSquare, onSquareClick: latestPropsRef.current.onSquareClick });
     }
     function onPointerMove(event) {
       const motion = cameraMotionRef.current;
