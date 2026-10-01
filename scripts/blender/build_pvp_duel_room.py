@@ -15,6 +15,7 @@ import sys
 from pathlib import Path
 
 import bpy
+from bpy_extras.object_utils import world_to_camera_view
 from mathutils import Vector
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -29,6 +30,15 @@ DUEL_DAIS_RADIUS = 4.35
 SIDE_WALL_INNER_X = 8.17
 WALL_PROP_MIN_RADIUS = 6.80
 WALL_CONTACT_MAX_GAP = 0.35
+DUEL_CHAIR_X = 7.55
+DUEL_CHAIR_Y = 2.15
+DUEL_CHAIR_SCALE = 0.66
+DUEL_SENTINEL_X = 7.55
+DUEL_SENTINEL_Y = 5.25
+DUEL_SENTINEL_SCALE = 1.12
+DUEL_SIDE_BRAZIER_X = 7.25
+HERO_CAMERA_Y = -15.60
+MIN_PROJECTED_PROP_SEPARATION = 0.050
 DUEL_WEATHER_MATERIALS = frozenset({
     "PVP_MAT_wall_stone",
     "PVP_MAT_floor_stone",
@@ -668,7 +678,7 @@ def build_gothic_sentinel(static, p, side, label, sx, sy):
     box("halberd_spike", (hx, sy - 0.05, shaft_top + 0.15), (0.018, 0.010, 0.17), p["armor"], bevel=0.006)
 
     # Scale around the planted feet, then rotate local -Y to face the board centre.
-    k = 1.28
+    k = DUEL_SENTINEL_SCALE
     c, sn = math.cos(yaw), math.sin(yaw)
     for part in parts:
         part.location.x = sx + (part.location.x - sx) * k
@@ -692,7 +702,7 @@ def build_dungeon_population(static, p):
     """Populate the room like a working Teutonic fortress without touching the board cone."""
     for side, label in ((-1, "left"), (1, "right")):
         # Large chain-hung brazier near each side wall.
-        bx, by, bz = side * 6.55, 1.62, 3.28
+        bx, by, bz = side * DUEL_SIDE_BRAZIER_X, 1.62, 3.28
         base.cylinder(
             f"PVP_DUEL_hanging_brazier_{label}", (bx, by, bz),
             0.52, 0.24, p["iron"], static, vertices=16,
@@ -734,7 +744,7 @@ def build_dungeon_population(static, p):
         # Sentinels belong to the fortress envelope, not the fighting dais.
         # The plinth sits almost flush with the side wall, in the clear bay
         # between buttresses, while the armour still faces the board.
-        sx, sy = side * 7.55, 2.85
+        sx, sy = side * DUEL_SENTINEL_X, DUEL_SENTINEL_Y
         build_gothic_sentinel(static, p, side, label, sx, sy)
 
         # Barrel + supply crate in the rear corner make the room feel occupied.
@@ -872,8 +882,8 @@ def build_duelist_furniture(static, p):
     for side, accent, label in ((-1, p["red"], "red"), (1, p["blue"], "blue")):
         # Chairs frame the duel from the wall. Their tall backs sit almost
         # flush with the side masonry while the seat still faces the board.
-        x = side * 7.25
-        y = 1.15
+        x = side * DUEL_CHAIR_X
+        y = DUEL_CHAIR_Y
         yaw = math.atan2(-x, y)  # local -y is the seated player's forward direction
         cos_yaw = math.cos(yaw)
         sin_yaw = math.sin(yaw)
@@ -981,7 +991,7 @@ def build_duelist_furniture(static, p):
             )
 
         chair_prefix = f"PVP_DUEL_seat_{label}"
-        chair_scale = 1.12
+        chair_scale = DUEL_CHAIR_SCALE
         for obj in list(static.objects):
             if not obj.name.startswith(chair_prefix):
                 continue
@@ -1017,15 +1027,15 @@ def build_lighting(static):
             (side * 6.30, 0.80, 4.60), 118.0,
             (0.80, 0.28, 0.08), static, size=2.7,
         )
-        base.look_at(side_fill, (side * 7.30, 2.75, 1.90))
+        base.look_at(side_fill, (side * DUEL_SENTINEL_X, DUEL_SENTINEL_Y, 1.90))
 
     base.anchor("PVP_ANCHOR_red_identity", (-4.92, 5.42, 3.42), static)
     base.anchor("PVP_ANCHOR_blue_identity", (4.92, 5.42, 3.42), static)
     base.anchor("PVP_ANCHOR_room_status", (0, 5.50, 5.58), static)
     base.anchor("PVP_ANCHOR_brazier_left", (-5.92, 5.14, 2.20), static)
     base.anchor("PVP_ANCHOR_brazier_right", (5.92, 5.14, 2.20), static)
-    base.anchor("PVP_ANCHOR_side_brazier_left", (-6.55, 1.62, 3.62), static)
-    base.anchor("PVP_ANCHOR_side_brazier_right", (6.55, 1.62, 3.62), static)
+    base.anchor("PVP_ANCHOR_side_brazier_left", (-DUEL_SIDE_BRAZIER_X, 1.62, 3.62), static)
+    base.anchor("PVP_ANCHOR_side_brazier_right", (DUEL_SIDE_BRAZIER_X, 1.62, 3.62), static)
     base.anchor("PVP_ANCHOR_moon_fill", (0.0, 5.16, 6.48), static)
     base.anchor("PVP_ANCHOR_gate_depth", (0.0, 5.96, 3.25), static)
 
@@ -1121,6 +1131,46 @@ def validate_scene():
         outer_x = min(xs) if side < 0 else max(xs)
         return SIDE_WALL_INNER_X - abs(outer_x)
 
+    def camera_visibility(prefix):
+        scene = bpy.context.scene
+        camera = scene.camera
+        coords = []
+        for obj in scene.objects:
+            if obj.type != "MESH" or not obj.name.startswith(prefix):
+                continue
+            for corner in obj.bound_box:
+                ndc = world_to_camera_view(scene, camera, obj.matrix_world @ Vector(corner))
+                if ndc.z > 0:
+                    coords.append(ndc)
+        if not coords:
+            raise RuntimeError(f"PvP Duel Room projection target missing: {prefix}")
+        min_x = min(co.x for co in coords)
+        max_x = max(co.x for co in coords)
+        width = max(1e-6, max_x - min_x)
+        visible_width = max(0.0, min(1.0, max_x) - max(0.0, min_x))
+        return visible_width / width, width
+
+    def assert_line_of_sight(prefix, target_name):
+        scene = bpy.context.scene
+        camera = scene.camera
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        target = bpy.data.objects[target_name]
+        origin = camera.matrix_world.translation.copy()
+        destination = target.matrix_world.translation.copy()
+        direction = destination - origin
+        distance = direction.length
+        if distance <= 0.01:
+            raise RuntimeError(f"PvP Duel Room invalid sightline target: {target_name}")
+        direction.normalize()
+        hit, _loc, _normal, _face, hit_obj, _matrix = scene.ray_cast(
+            depsgraph, origin, direction, distance=distance + 0.08,
+        )
+        if not hit or hit_obj is None or not hit_obj.name.startswith(prefix):
+            blocker = hit_obj.name if hit_obj is not None else "none"
+            raise RuntimeError(
+                f"PvP Duel Room prop occluded in hero framing: {target_name} blocker={blocker}"
+            )
+
     # Both seats must genuinely face the board. Local chair forward is -Y; after
     # yaw its world-space direction is (sin(yaw), -cos(yaw)). They also belong
     # to the wall band: the back nearly touches masonry and the chair centre
@@ -1141,6 +1191,10 @@ def validate_scene():
         if seat_radius < WALL_PROP_MIN_RADIUS:
             raise RuntimeError(
                 f"PvP Duel Room {label} seat invades board safety band: radius={seat_radius:.3f}"
+            )
+        if seat.location.y <= 1.25 or seat.location.y >= 3.05:
+            raise RuntimeError(
+                f"PvP Duel Room {label} seat left the clear middle wall bay: y={seat.location.y:.3f}"
             )
         seat_gap = wall_gap_for_object(f"PVP_DUEL_seat_{label}_back_frame", side)
         if seat_gap < -0.08 or seat_gap > WALL_CONTACT_MAX_GAP:
@@ -1163,6 +1217,47 @@ def validate_scene():
                 f"PvP Duel Room {label} sentinel is not wall-adjacent: wall_gap={sentinel_gap:.3f}"
             )
 
+        # The chair owns the forward side-wall bay and the sentinel owns the
+        # middle bay. Guard the actual hero-camera projection, not just world
+        # coordinates, so a future art pass cannot stack both props on the same
+        # sightline and hide the armour behind the chair again.
+        seat = bpy.data.objects[f"PVP_DUEL_seat_{'red' if side < 0 else 'blue'}"]
+        seat_projection = abs(seat.location.x) / max(0.01, seat.location.y - HERO_CAMERA_Y)
+        sentinel_projection = abs(plinth.location.x) / max(0.01, plinth.location.y - HERO_CAMERA_Y)
+        projected_gap = abs(seat_projection - sentinel_projection)
+        if projected_gap < MIN_PROJECTED_PROP_SEPARATION:
+            raise RuntimeError(
+                f"PvP Duel Room {label} wall props overlap in hero projection: gap={projected_gap:.4f}"
+            )
+
+        if plinth.location.y <= 4.65 or plinth.location.y >= 5.80:
+            raise RuntimeError(
+                f"PvP Duel Room {label} sentinel left the clear rear wall bay: y={plinth.location.y:.3f}"
+            )
+        assert_line_of_sight(
+            f"PVP_DUEL_sentinel_{label}",
+            f"PVP_DUEL_sentinel_{label}_breastplate",
+        )
+
+    # Composition guard: furniture may frame the viewport edge, but it must not
+    # disappear completely or grow back into the oversized throne regression.
+    # Sentinels are the more important readable silhouette and must remain mostly visible.
+    for prefix, min_visible, max_width in (
+        ("PVP_DUEL_seat_red", 0.18, 0.16),
+        ("PVP_DUEL_seat_blue", 0.18, 0.16),
+        ("PVP_DUEL_sentinel_left", 0.55, 0.16),
+        ("PVP_DUEL_sentinel_right", 0.55, 0.16),
+    ):
+        visible_fraction, projected_width = camera_visibility(prefix)
+        if visible_fraction < min_visible:
+            raise RuntimeError(
+                f"PvP Duel Room prop hidden by hero framing: {prefix} visible={visible_fraction:.3f}"
+            )
+        if projected_width > max_width:
+            raise RuntimeError(
+                f"PvP Duel Room prop oversized in hero framing: {prefix} width={projected_width:.3f}"
+            )
+
     forbidden = sorted(name for name in names if name.startswith(("WR_ARCH_", "WR_CANON_", "WR3_OBS_")))
     if forbidden:
         raise RuntimeError(f"PvP Duel Room inherited visible War Room geometry: {forbidden[:12]}")
@@ -1173,7 +1268,7 @@ def validate_scene():
 
     # Slightly steeper framing than standard War Room improves piece selection.
     camera = bpy.context.scene.camera
-    camera.data.lens = 48.0
+    camera.data.lens = 42.0
     camera.location = (0.0, -15.6, 9.35)
     base.look_at(camera, (0.0, 0.82, 1.48))
 

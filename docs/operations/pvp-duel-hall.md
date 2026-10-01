@@ -113,8 +113,9 @@ La Duel Room de partida usa como canon una **mazmorra/fortaleza teutona densa pe
 - heraldry red/blue muy medida para identidad PvP; no estética esports;
 - ningún elemento decorativo puede invadir el cono interactivo ni competir con piezas, HUD o selección táctil;
 - en móvil se recorta decoración antes que tablero o controles.
-- las armaduras centinela usan full plate gótico articulado con silueta legible a distancia — grebas/cuisse, poleyn alado, fauld laminado, peto fluted, gorget, couters/gauntlets y armet — con acero pulido envejecido y latón contenido; sus pedestales viven adosados a los muros laterales, fuera del perímetro de combate;
-- las butacas son piezas premium de roble oscuro + cuero + latón/heráldica, adosadas a los muros laterales y giradas físicamente hacia el centro del tablero; una butaca que invade la plataforma, se separa del muro o mira fuera del juego es regresión visual.
+- las armaduras centinela usan full plate gótico articulado con silueta legible a distancia — grebas/cuisse, poleyn alado, fauld laminado, peto fluted, gorget, couters/gauntlets y armet — con acero pulido envejecido y latón contenido; sus pedestales viven adosados a los muros laterales, fuera del perímetro de combate y centrados en un vano libre entre pilares;
+- las butacas son piezas premium de roble oscuro + cuero + latón/heráldica, apoyadas visualmente contra el muro pero sin atravesarlo, giradas físicamente hacia el tablero y a escala subordinada al juego;
+- butacas y centinelas no comparten vano ni línea de cámara: las butacas ocupan el vano lateral delantero y los centinelas el vano central, de modo que ambos sean visibles sin invadir la plataforma; ocluir la armadura con la butaca es regresión visual.
 - el runtime consume el logical ID R2 `pvp.duelRoom.runtime`, promovido a un objeto content-addressed e inmutable; `runtime/current.glb` puede existir como alias de publicación/fallback, pero no es la autoridad de consumo de la app.
 
 El objetivo es que parezca una estancia ocupada y funcional del castillo, no un escenario vacío ni una sala genérica con tablero.
