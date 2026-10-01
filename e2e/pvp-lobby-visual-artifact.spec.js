@@ -87,10 +87,13 @@ test('PvP lobby · Android keeps the command hierarchy touchable', async ({ page
   const lobby = await openLobby(page);
   await assertPriorityHierarchy(lobby);
 
-  const chatSummary = lobby.locator('.pvp-lobby__chat-disclosure > summary');
-  const summaryBox = await chatSummary.boundingBox();
-  expect(summaryBox).not.toBeNull();
-  expect(summaryBox.height).toBeGreaterThanOrEqual(44);
+  const targets = lobby.locator('button:visible, summary:visible');
+  const targetCount = await targets.count();
+  for (let index = 0; index < targetCount; index += 1) {
+    const box = await targets.nth(index).boundingBox();
+    if (!box) continue;
+    expect(Math.min(box.width, box.height), 'mobile lobby target must be >=44px').toBeGreaterThanOrEqual(44);
+  }
 
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
