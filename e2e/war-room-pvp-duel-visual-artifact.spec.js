@@ -100,6 +100,10 @@ async function openDuelRoom(page, viewport) {
 
   const room = page.getByRole('region', { name: 'Sala de duelo 1 contra 1' });
   await expect(room).toBeVisible();
+  const layout = room.locator('.game-layout-3d');
+  await expect(layout).toHaveClass(/game-layout-immersive/);
+  await expect(layout).toHaveAttribute('data-war-room-immersive', 'true');
+
   const board = room.locator('[data-board3d-war-room="true"]');
   const canvas = board.locator('.board3d-main-canvas');
   await expect(canvas).toBeVisible({ timeout: 45_000 });
