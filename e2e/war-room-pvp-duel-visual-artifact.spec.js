@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import { buttonWithVisibleText, login, mockApi } from './helpers.js';
+import { decodePng } from './png-pixels.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual/pvp-duel-room';
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
@@ -140,6 +141,31 @@ async function openDuelRoom(page, viewport) {
   return { room, board, canvas };
 }
 
+function assertRenderedDuelRoomPng(png, label) {
+  const { width, height, pixels } = decodePng(png);
+  let lumaTotal = 0;
+  let lumaSqTotal = 0;
+  let lit = 0;
+  const samples = width * height;
+  for (let i = 0; i < samples; i += 1) {
+    const r = pixels[i * 4];
+    const g = pixels[i * 4 + 1];
+    const b = pixels[i * 4 + 2];
+    const luma = (r * 0.2126) + (g * 0.7152) + (b * 0.0722);
+    lumaTotal += luma;
+    lumaSqTotal += luma * luma;
+    if (luma > 30) lit += 1;
+  }
+  const avgLuma = samples ? lumaTotal / samples : 0;
+  const variance = samples ? Math.max(0, (lumaSqTotal / samples) - (avgLuma * avgLuma)) : 0;
+  const stdLuma = Math.sqrt(variance);
+  const litFraction = samples ? lit / samples : 0;
+
+  expect(samples, label + ' must contain sampled pixels').toBeGreaterThan(0);
+  expect(stdLuma, label + ' is visually flat/blank; Duel Room likely did not render').toBeGreaterThan(20);
+  expect(litFraction, label + ' is too dark/empty; Duel Room likely did not render').toBeGreaterThan(0.15);
+}
+
 async function assertMobileTouchTargets(room) {
   const topbarButton = room.locator('.pvp-war-room__topbar button').first();
   const utility = room.locator('.pvp-war-room__duel-pill .game-3d-utility-menu>summary');
@@ -154,10 +180,11 @@ async function assertMobileTouchTargets(room) {
 test('PvP Duel Room · runtime desktop visual artifact', async ({ page }) => {
   test.setTimeout(120_000);
   const { room } = await openDuelRoom(page, { width: 1440, height: 900 });
-  await room.screenshot({
+  const png = await room.screenshot({
     path: ARTIFACT_DIR + '/pvp-duel-room-desktop-1440x900.png',
     animations: 'disabled',
   });
+  assertRenderedDuelRoomPng(png, 'desktop Duel Room');
 });
 
 test.describe('PvP Duel Room · mobile touch orientation', () => {
@@ -168,20 +195,22 @@ test.describe('PvP Duel Room · mobile touch orientation', () => {
     const { room } = await openDuelRoom(page, { width: 390, height: 844 });
     await assertMobileTouchTargets(room);
     await expect(page.getByRole('button', { name: 'Activar apaisado', exact: true })).toBeVisible();
-    await room.screenshot({
+    const png = await room.screenshot({
       path: ARTIFACT_DIR + '/pvp-duel-room-android-390x844.png',
       animations: 'disabled',
     });
+    assertRenderedDuelRoomPng(png, 'portrait Duel Room');
   });
 
   test('runtime Android landscape visual artifact', async ({ page }) => {
     test.setTimeout(120_000);
     const { room } = await openDuelRoom(page, { width: 844, height: 390 });
     await expect(page.getByRole('button', { name: 'Activar apaisado', exact: true })).toHaveCount(0);
-    await room.screenshot({
+    const png = await room.screenshot({
       path: ARTIFACT_DIR + '/pvp-duel-room-android-landscape-844x390.png',
       animations: 'disabled',
     });
+    assertRenderedDuelRoomPng(png, 'landscape Duel Room');
     await assertMobileTouchTargets(room);
     const verticalOverflow = await page.evaluate(
       () => document.documentElement.scrollHeight - document.documentElement.clientHeight,
