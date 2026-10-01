@@ -64,15 +64,6 @@
   .friendly-modal[aria-label='Configurar partida rápida'] .quick-match-settings {
     margin-top: .48rem;
   }
-
-  .friendly-modal[aria-label='Configurar partida rápida'] .quick-match-pvp-link--tertiary {
-    width: 100%;
-    margin-top: .45rem;
-    border-color: transparent;
-    background: transparent;
-    box-shadow: none;
-    opacity: .82;
-  }
 }
 
 @media (max-width: 380px) {
@@ -263,8 +254,7 @@
 
 .friendly-modal[aria-label='Configurar partida rápida'] .quick-match-post-cta-tools > button,
 .friendly-modal[aria-label='Configurar partida rápida'] .quick-match-post-cta-tools > details > summary,
-.friendly-modal[aria-label='Configurar partida rápida'] .quick-match-settings > summary,
-.friendly-modal[aria-label='Configurar partida rápida'] .quick-match-pvp-link--tertiary {
+.friendly-modal[aria-label='Configurar partida rápida'] .quick-match-settings > summary {
   min-height: 44px !important;
   border: 0;
   border-radius: 0;
@@ -277,8 +267,7 @@
 
 .friendly-modal[aria-label='Configurar partida rápida'] .quick-match-post-cta-tools > button:hover,
 .friendly-modal[aria-label='Configurar partida rápida'] .quick-match-post-cta-tools > details > summary:hover,
-.friendly-modal[aria-label='Configurar partida rápida'] .quick-match-settings > summary:hover,
-.friendly-modal[aria-label='Configurar partida rápida'] .quick-match-pvp-link--tertiary:hover {
+.friendly-modal[aria-label='Configurar partida rápida'] .quick-match-settings > summary:hover:hover {
   color: #f0dcae;
   transform: none;
 }
@@ -378,10 +367,6 @@
 
   .friendly-modal[aria-label='Configurar partida rápida'] .quick-match-post-cta-tools > :is(button, details) {
     margin: 0;
-  }
-
-  .friendly-modal[aria-label='Configurar partida rápida'] .quick-match-pvp-link--tertiary {
-    margin-top: .05rem;
   }
 }
 
