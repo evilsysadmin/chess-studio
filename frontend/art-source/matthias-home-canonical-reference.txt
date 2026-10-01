@@ -31,4 +31,4 @@ Canonical Home activity pose · 2026-10-01
 - the whole pawn plinth and feet remain visible and grounded on the floor
 - this pose must not reuse chair-seat placement; no floating/perching on furniture
 - the Home room/camera remains canonical; this is an actor-pose change, not a scene redesign
-- v22 materializes the reports + coffee prop pair and the grounded hearth-files station
+- the existing Blender-authored dossier pages and coffee cup are composed together at runtime for this station
