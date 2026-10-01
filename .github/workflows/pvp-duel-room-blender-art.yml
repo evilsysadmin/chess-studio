@@ -86,8 +86,13 @@ jobs:
               'PVP_DUEL_banner_blue',
               'PVP_DUEL_teutonic_cross',
               'PVP_DUEL_portcullis',
+              'PVP_DUEL_inner_gate_pier_-1',
+              'PVP_DUEL_inner_gate_floor',
               'PVP_DUEL_vault_rib_0_0',
               'PVP_DUEL_chain_-1_0',
+              'PVP_DUEL_arrow_slit_left',
+              'PVP_DUEL_armory_shield_left',
+              'PVP_DUEL_halberd_left_0',
               'PVP_ROOM_window_glass',
               'PVP_DUEL_seat_red',
               'PVP_DUEL_seat_blue',
@@ -97,6 +102,7 @@ jobs:
               'PVP_ANCHOR_brazier_left',
               'PVP_ANCHOR_brazier_right',
               'PVP_ANCHOR_moon_fill',
+              'PVP_ANCHOR_gate_depth',
           }
           assert not (required - names), sorted(required - names)
           assert not any(name.startswith(('WR_ARCH_', 'WR_CANON_', 'WR3_OBS_')) for name in names)
@@ -115,6 +121,7 @@ jobs:
               'PVP_ANCHOR_brazier_left',
               'PVP_ANCHOR_brazier_right',
               'PVP_ANCHOR_moon_fill',
+              'PVP_ANCHOR_gate_depth',
           ):
               assert anchor in node_names, anchor
           PY

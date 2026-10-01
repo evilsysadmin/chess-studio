@@ -232,6 +232,23 @@ def build_architecture(static, p):
     base.cube("PVP_DUEL_portal_keystone", (0, 5.70, 6.03), (0.31, 0.22, 0.40),
               p["dais"], static, bevel=0.07)
 
+    # A second, darker pointed arch sits behind the bars. This gives the gate
+    # actual corridor depth instead of reading as one black rectangle.
+    for side in (-1, 1):
+        base.cube(
+            f"PVP_DUEL_inner_gate_pier_{side}", (side * 1.42, 6.045, 2.88),
+            (0.16, 0.030, 1.72), p["dais"], static, bevel=0.045,
+        )
+        inner_arch = base.cube(
+            f"PVP_DUEL_inner_gate_arch_{side}", (side * 0.72, 6.040, 4.78),
+            (0.82, 0.030, 0.14), p["dais"], static, bevel=0.045,
+        )
+        inner_arch.rotation_euler.y = math.radians(-side * 28.0)
+    base.cube(
+        "PVP_DUEL_inner_gate_floor", (0, 6.035, 1.05),
+        (1.28, 0.030, 0.10), p["wet_stone"], static, bevel=0.025,
+    )
+
     # Portcullis itself: readable silhouette, safely behind the board.
     for idx, x in enumerate((-1.85, -1.38, -0.92, -0.46, 0.0, 0.46, 0.92, 1.38, 1.85)):
         bar = base.cylinder(
@@ -334,6 +351,88 @@ def build_duel_banners(static, p):
         rail.rotation_euler.y = math.pi / 2
 
 
+
+
+def build_teutonic_armory(static, p):
+    """Peripheral fortress details that read in the hero camera without touching the board."""
+    for side, label in ((-1, "left"), (1, "right")):
+        # Defensive slit remains on the side wall: architectural depth, not decoration.
+        wall_x = side * 8.10
+        slit_y = 2.18
+        base.cube(
+            f"PVP_DUEL_arrow_slit_{label}", (wall_x, slit_y, 3.58),
+            (0.050, 0.13, 0.72), p["recess"], static, bevel=0.025,
+        )
+        for dz in (-0.82, 0.82):
+            base.cube(
+                f"PVP_DUEL_arrow_slit_cap_{label}_{dz:+.2f}",
+                (wall_x - side * 0.018, slit_y, 3.58 + dz),
+                (0.060, 0.25, 0.075), p["limestone"], static, bevel=0.022,
+            )
+        for dy in (-0.25, 0.25):
+            base.cube(
+                f"PVP_DUEL_arrow_slit_jamb_{label}_{dy:+.2f}",
+                (wall_x - side * 0.018, slit_y + dy, 3.58),
+                (0.060, 0.075, 0.78), p["limestone"], static, bevel=0.022,
+            )
+
+        # The armory itself sits on the rear wall, outside the banners and above
+        # the braziers, where it reads in the canonical framing.
+        shield_x = side * 6.55
+        shield_y = 5.82
+        shield_z = 3.82
+        base.cube(
+            f"PVP_DUEL_armory_shield_{label}", (shield_x, shield_y, shield_z),
+            (0.58, 0.060, 0.67), p["ivory"], static, bevel=0.12,
+        )
+        point = base.cube(
+            f"PVP_DUEL_armory_shield_point_{label}",
+            (shield_x, shield_y, shield_z - 0.63),
+            (0.31, 0.060, 0.31), p["ivory"], static, bevel=0.045,
+        )
+        point.rotation_euler.y = math.radians(45)
+        base.cube(
+            f"PVP_DUEL_armory_cross_vertical_{label}",
+            (shield_x, shield_y - 0.075, shield_z),
+            (0.105, 0.035, 0.54), p["iron"], static, bevel=0.018,
+        )
+        base.cube(
+            f"PVP_DUEL_armory_cross_horizontal_{label}",
+            (shield_x, shield_y - 0.075, shield_z + 0.14),
+            (0.42, 0.035, 0.105), p["iron"], static, bevel=0.018,
+        )
+
+        # Two wall-hung halberds flank the shield. Their shafts stay vertical,
+        # which strengthens the prison/fortress rhythm behind the board.
+        for idx, pole_x in enumerate((shield_x - 0.88, shield_x + 0.88)):
+            cylinder_between(
+                f"PVP_DUEL_halberd_{label}_{idx}",
+                (pole_x, shield_y + 0.02, 2.72),
+                (pole_x, shield_y + 0.02, 5.22),
+                0.038, p["oak_mid"], static, vertices=12,
+            )
+            blade = base.cube(
+                f"PVP_DUEL_halberd_blade_{label}_{idx}",
+                (pole_x - side * 0.10, shield_y - 0.035, 4.90),
+                (0.20, 0.035, 0.26), p["iron"], static, bevel=0.030,
+            )
+            blade.rotation_euler.y = math.radians(18 if idx == 0 else -18)
+            bpy.ops.mesh.primitive_cone_add(
+                vertices=12, radius1=0.070, radius2=0.0, depth=0.34,
+                location=(pole_x, shield_y + 0.02, 5.38),
+            )
+            spike = bpy.context.object
+            spike.name = f"PVP_DUEL_halberd_spike_{label}_{idx}"
+            spike.data.materials.append(p["iron"])
+            base.tag(spike, base.ROLE_STATIC)
+            base.relink(spike, static)
+
+        base.cube(
+            f"PVP_DUEL_armory_rack_{label}",
+            (shield_x, shield_y + 0.025, 2.62),
+            (1.26, 0.055, 0.070), p["iron"], static, bevel=0.025,
+        )
+
 def build_sconces_and_gate(static, p):
     # Twin iron braziers are the warm practicals. Gatework is authored into the rear portal.
     for side, label in ((-1, "left"), (1, "right")):
@@ -425,6 +524,7 @@ def build_lighting(static):
     base.anchor("PVP_ANCHOR_brazier_left", (-5.92, 5.14, 2.20), static)
     base.anchor("PVP_ANCHOR_brazier_right", (5.92, 5.14, 2.20), static)
     base.anchor("PVP_ANCHOR_moon_fill", (0.0, 5.16, 6.48), static)
+    base.anchor("PVP_ANCHOR_gate_depth", (0.0, 5.96, 3.25), static)
 
 def bake_weather():
     base.WEATHER_MATERIALS = DUEL_WEATHER_MATERIALS
@@ -445,6 +545,7 @@ def apply_identity():
     build_architecture(static, p)
     build_vault_and_chains(static, p)
     build_duel_banners(static, p)
+    build_teutonic_armory(static, p)
     build_sconces_and_gate(static, p)
     build_duelist_furniture(static, p)
     build_lighting(static)
@@ -465,8 +566,13 @@ def validate_scene():
         "PVP_DUEL_banner_blue",
         "PVP_DUEL_teutonic_cross",
         "PVP_DUEL_portcullis",
+        "PVP_DUEL_inner_gate_pier_-1",
+        "PVP_DUEL_inner_gate_floor",
         "PVP_DUEL_vault_rib_0_0",
         "PVP_DUEL_chain_-1_0",
+        "PVP_DUEL_arrow_slit_left",
+        "PVP_DUEL_armory_shield_left",
+        "PVP_DUEL_halberd_left_0",
         "PVP_ROOM_window_glass",
         "PVP_DUEL_seat_red",
         "PVP_DUEL_seat_blue",
@@ -476,6 +582,7 @@ def validate_scene():
         "PVP_ANCHOR_brazier_left",
         "PVP_ANCHOR_brazier_right",
         "PVP_ANCHOR_moon_fill",
+        "PVP_ANCHOR_gate_depth",
     }
     missing = sorted(required - names)
     if missing:
@@ -511,7 +618,7 @@ def export_shell(path):
         if is_static or is_anchor:
             obj.select_set(True)
             selected += 1
-    if selected < 120:
+    if selected < 140:
         raise RuntimeError(f"PvP Duel Room runtime selection too small: {selected}")
 
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -539,6 +646,7 @@ def export_shell(path):
         "PVP_ANCHOR_brazier_left",
         "PVP_ANCHOR_brazier_right",
         "PVP_ANCHOR_moon_fill",
+        "PVP_ANCHOR_gate_depth",
     ):
         if name not in node_names:
             raise RuntimeError(f"PvP Duel Room runtime anchor missing: {name}")
