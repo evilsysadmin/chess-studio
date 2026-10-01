@@ -171,6 +171,27 @@ The synthetic actor exists to exercise lobby -> challenge -> handoff -> Duel
 Room presentation. It must not become a general matchmaking bot or leak into
 normal-user rosters.
 
+### Owner-scoped resident experiment
+
+Staging may additionally expose a tiny set of synthetic **residents** only to
+the configured sparring owner account. This is an explicitly bounded product
+experiment, not public matchmaking yet.
+
+- the existing staging synthetic gate must be enabled;
+- only the configured owner can see, challenge or play residents;
+- other accounts must neither see them in roster nor challenge their usernames;
+- every resident is disclosed in DTO/UI as `RESIDENTE · IA`;
+- protocol ownership keeps the technical username while UI uses the resident display name;
+- resident matches use the same authoritative challenge/handoff/match/clocks/CAS
+  lifecycle as human PvP;
+- resident matches remain unrated and never change human PvP Elo;
+- playing strength comes from the existing calibrated human-Elo CPU policy;
+- engine work runs through the bounded engine executor, never directly on the
+  FastAPI event loop;
+- this first slice does not send proactive resident challenges. Challenge
+  initiation remains human-driven until engagement frequency/cooldown policy is
+  reviewed separately.
+
 ## Rating
 
 PvP rating is independent from CPU/Matthias rating.

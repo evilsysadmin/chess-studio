@@ -3,8 +3,22 @@ import { Chess } from 'chess.js';
 export function opponentForMatch(match) {
   if (!match) return null;
   return match.youAre === 'w'
-    ? { username: match.black, rating: Number(match.blackRating) || 400, color: 'b' }
-    : { username: match.white, rating: Number(match.whiteRating) || 400, color: 'w' };
+    ? {
+        username: match.black,
+        displayName: match.blackDisplayName || match.black,
+        actorKind: match.blackActorKind || null,
+        actorLabel: match.blackActorLabel || null,
+        rating: Number(match.blackRating) || 400,
+        color: 'b',
+      }
+    : {
+        username: match.white,
+        displayName: match.whiteDisplayName || match.white,
+        actorKind: match.whiteActorKind || null,
+        actorLabel: match.whiteActorLabel || null,
+        rating: Number(match.whiteRating) || 400,
+        color: 'w',
+      };
 }
 
 export function playerResult(match) {

@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 
+import chess
 import pytest
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.testclient import TestClient
@@ -174,6 +175,104 @@ def test_staging_sparring_is_owner_scoped_auto_accepts_and_stays_online(monkeypa
     )
     assert resigned.status_code == 200
     assert resigned.json()["match"]["status"] == "finished"
+    assert resigned.json()["match"]["ratingChange"] is None
+    assert users_store._memory_users["evilsysadmin"]["pvp_rating"] == pvp_api.DEFAULT_RATING
+    assert "pvp_rating_games" not in users_store._memory_users["evilsysadmin"]
+
+
+def test_staging_residents_are_owner_only_disclosed_and_play_by_engine_profile(monkeypatch):
+    monkeypatch.setenv("CHESS_PVP_SPARRING_ENABLED", "true")
+    monkeypatch.setenv("CHESS_PVP_SPARRING_OWNER", "evilsysadmin")
+    users_store._memory_users["evilsysadmin"] = {
+        "username": "evilsysadmin",
+        "pvp_rating": pvp_api.DEFAULT_RATING,
+    }
+    client = make_client()
+
+    assert as_user(client, "evilsysadmin", "post", "/api/pvp/roster").status_code == 200
+    owner_lobby = as_user(client, "evilsysadmin", "get", "/api/pvp/lobby").json()
+    residents = {
+        row["username"]: row
+        for row in owner_lobby["roster"]
+        if row.get("actorKind") == "resident"
+    }
+    assert set(residents) == {"otto_falk", "marta_stein", "viktor_kraus"}
+    assert residents["otto_falk"]["rating"] == 850
+    assert residents["marta_stein"]["rating"] == 1200
+    assert residents["viktor_kraus"]["rating"] == 1450
+    assert residents["marta_stein"]["displayName"] == "Marta Stein"
+    assert residents["marta_stein"]["actorLabel"] == "RESIDENTE · IA"
+
+    assert as_user(client, "alice", "post", "/api/pvp/roster").status_code == 200
+    alice_lobby = as_user(client, "alice", "get", "/api/pvp/lobby").json()
+    assert not any(row.get("actorKind") == "resident" for row in alice_lobby["roster"])
+    blocked = as_user(
+        client,
+        "alice",
+        "post",
+        "/api/pvp/challenges",
+        json={"opponent": "marta_stein"},
+    )
+    assert blocked.status_code == 409
+
+    challenged = as_user(
+        client,
+        "evilsysadmin",
+        "post",
+        "/api/pvp/challenges",
+        json={"opponent": "marta_stein"},
+    )
+    assert challenged.status_code == 201
+    assert challenged.json()["challenge"]["status"] == "accepted"
+
+    handoff = as_user(client, "evilsysadmin", "get", "/api/pvp/lobby").json()["activeMatch"]
+    assert handoff["white"] == "evilsysadmin"
+    assert handoff["black"] == "marta_stein"
+    assert handoff["blackDisplayName"] == "Marta Stein"
+    assert handoff["blackActorKind"] == "resident"
+    assert handoff["blackActorLabel"] == "RESIDENTE · IA"
+    assert handoff["blackRating"] == 1200
+    assert handoff["opponentReady"] is True
+    assert handoff["opponentPresence"] == "online"
+    assert handoff["ratingChange"] is None
+
+    ready = as_user(client, "evilsysadmin", "post", f"/api/pvp/matches/{handoff['id']}/ready")
+    assert ready.status_code == 200
+    assert ready.json()["match"]["status"] == "active"
+
+    started = pvp_store.utcnow() - timedelta(seconds=1)
+    stored = pvp_store._memory_matches[handoff["id"]]
+    stored["start_at"] = started
+    stored["turn_started_at"] = started
+
+    seen = {}
+
+    def fixed_resident_move(board, username):
+        seen["username"] = username
+        seen["fen"] = board.fen()
+        return chess.Move.from_uci("e7e5")
+
+    monkeypatch.setattr(pvp_api.residents, "choose_move", fixed_resident_move)
+    moved = as_user(
+        client,
+        "evilsysadmin",
+        "post",
+        f"/api/pvp/matches/{handoff['id']}/move",
+        json={"from": "e2", "to": "e4"},
+    )
+    assert moved.status_code == 200
+    match = moved.json()["match"]
+    assert seen["username"] == "marta_stein"
+    assert len(match["history"]) == 2
+    assert match["history"][0]["uci"] == "e2e4"
+    assert match["history"][1]["uci"] == "e7e5"
+    assert match["history"][1]["by"] == "marta_stein"
+    assert match["turn"] == "w"
+    assert match["yourTurn"] is True
+    assert match["ratingChange"] is None
+
+    resigned = as_user(client, "evilsysadmin", "post", f"/api/pvp/matches/{handoff['id']}/resign")
+    assert resigned.status_code == 200
     assert resigned.json()["match"]["ratingChange"] is None
     assert users_store._memory_users["evilsysadmin"]["pvp_rating"] == pvp_api.DEFAULT_RATING
     assert "pvp_rating_games" not in users_store._memory_users["evilsysadmin"]

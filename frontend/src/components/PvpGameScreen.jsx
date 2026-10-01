@@ -365,12 +365,12 @@ export default function PvpGameScreen({ initialMatch, onExit, onMatchUpdate }) {
                 <aside className={`pvp-war-room__duel-pill is-${tone}`} aria-label="Estado del duelo">
                   <span className="pvp-war-room__opponent-mark" aria-hidden="true">♟</span>
                   <span className="pvp-war-room__identity">
-                    <strong>{opponent.username}</strong>
+                    <strong>{opponent.displayName}</strong>
                     <small
                       className={`pvp-war-room__opponent-meta is-${match.opponentPresence || 'unknown'}`}
-                      aria-label={`Estado de ${opponent.username}: ${opponentPresence}`}
+                      aria-label={`Estado de ${opponent.displayName}: ${opponentPresence}`}
                     >
-                      <span>{opponent.rating} Elo 1v1</span>
+                      <span>{opponent.rating} Elo 1v1{opponent.actorLabel ? ` · ${opponent.actorLabel}` : ''}</span>
                       <em>{opponentPresence}</em>
                     </small>
                   </span>
@@ -383,7 +383,7 @@ export default function PvpGameScreen({ initialMatch, onExit, onMatchUpdate }) {
                         <small>TÚ</small><b>{formatClock(yourClockMs / 1000)}</b>
                       </span>
                       <span className={`pvp-war-room__clock${liveClock.runningColor === opponent.color ? ' is-active' : ''}${rivalClockMs <= 10000 ? ' is-low' : ''}`}>
-                        <small>{opponent.username}</small><b>{formatClock(rivalClockMs / 1000)}</b>
+                        <small>{opponent.displayName}</small><b>{formatClock(rivalClockMs / 1000)}</b>
                       </span>
                     </span>
                   )}

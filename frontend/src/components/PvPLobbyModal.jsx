@@ -282,6 +282,7 @@ export default function PvPLobbyModal({
               <>
                 <div className="pvp-lobby__roster-list">
                   {rivals.map((row) => {
+                    const displayName = row.displayName || row.username;
                     const pending = outgoing.find((item) => item.opponent === row.username);
                     const cooldownLabel = pvpChallengeCooldownLabel(row.challengeCooldownUntil);
                     const coolingDown = Boolean(cooldownLabel);
@@ -289,12 +290,12 @@ export default function PvPLobbyModal({
                     return (
                       <article
                         key={row.username}
-                        className={`pvp-lobby__player${pending ? ' is-pending' : ''}${coolingDown ? ' is-cooldown' : ''}`}
+                        className={`pvp-lobby__player${pending ? ' is-pending' : ''}${coolingDown ? ' is-cooldown' : ''}${row.actorKind === 'resident' ? ' is-resident' : ''}`}
                       >
                         <span className="pvp-lobby__rank-mark" aria-hidden="true"><i />♟</span>
                         <div className="pvp-lobby__player-copy">
-                          <button type="button" className="pvp-lobby__mention-player" onClick={(event) => { event.stopPropagation(); mentionPlayer(row.username); }} title={`Mencionar a ${row.username} en el chat`}>{row.username}</button>
-                          <span>{row.tier}</span>
+                          <button type="button" className="pvp-lobby__mention-player" onClick={(event) => { event.stopPropagation(); mentionPlayer(row.username); }} title={`Mencionar a ${displayName} en el chat`}>{displayName}</button>
+                          <span>{row.tier}{row.actorLabel ? ` · ${row.actorLabel}` : ''}</span>
                           {row.headToHead?.games > 0 && <small className="pvp-lobby__head-to-head">{pvpHeadToHeadLabel(row.headToHead)}</small>}
                           {coolingDown && <small className="pvp-lobby__cooldown-note">{cooldownLabel}</small>}
                         </div>
@@ -306,10 +307,10 @@ export default function PvPLobbyModal({
                           disabled={Boolean(pending) || coolingDown || Boolean(busyKey) || Boolean(liveLobby.activeMatch)}
                           title={coolingDown ? cooldownLabel : undefined}
                           aria-label={pending
-                            ? `Reto enviado a ${row.username}`
+                            ? `Reto enviado a ${displayName}`
                             : coolingDown
-                              ? `Espera para retar a ${row.username}. ${cooldownLabel}`
-                              : `Retar a ${row.username}`}
+                              ? `Espera para retar a ${displayName}. ${cooldownLabel}`
+                              : `Retar a ${displayName}`}
                           onClick={(event) => { event.stopPropagation(); void challengePlayer(row.username); }}
                         >
                           {pending ? 'En espera' : coolingDown ? 'Espera' : busyKey === `challenge:${row.username}` ? 'Retando…' : 'Retar'}

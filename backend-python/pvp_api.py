@@ -13,9 +13,11 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
 import pvp_rating as rating_store
+import pvp_residents as residents
 import pvp_sparring as sparring
 import pvp_store as store
 from db import PersistentStorageUnavailable
+from engine_runtime import run_engine_work
 
 DEFAULT_RATING = rating_store.DEFAULT_RATING
 PVP_TIME_CONTROL_ID = "10+0"
@@ -98,6 +100,9 @@ def _public_roster(
     }
     if challenge_cooldown_until and row["username"] != username:
         payload["challengeCooldownUntil"] = _iso(challenge_cooldown_until)
+    identity = residents.public_identity(row.get("username"))
+    if identity:
+        payload.update(identity)
     if head_to_head and row["username"] != username:
         payload["headToHead"] = {
             "games": int(head_to_head.get("games", 0)),
@@ -375,9 +380,27 @@ def _rating_change(match: dict, color: chess.Color | None) -> dict | None:
     return {"before": before, "after": after, "delta": after - before}
 
 
+def _is_virtual_opponent(match: dict, username: str) -> bool:
+    return sparring.is_virtual_opponent(match, username) or residents.is_virtual_opponent(match, username)
+
+
+def _is_synthetic_pair(left: str, right: str) -> bool:
+    return sparring.is_sparring_pair(left, right) or residents.is_resident_pair(left, right)
+
+
+def _virtual_username(match: dict) -> str | None:
+    resident = residents.virtual_username(match)
+    if resident:
+        return resident
+    cfg = sparring.settings()
+    if cfg.enabled and cfg.username in {match.get("white"), match.get("black")}:
+        return cfg.username
+    return None
+
+
 def _opponent_presence(match: dict, username: str, now: datetime | None = None) -> tuple[str, datetime | None]:
     stamp = now or store.utcnow()
-    if sparring.is_virtual_opponent(match, username):
+    if _is_virtual_opponent(match, username):
         return "online", stamp
     color = _player_color(match, username)
     seen_at = match.get("black_seen_at") if color == chess.WHITE else match.get("white_seen_at") if color == chess.BLACK else None
@@ -410,6 +433,12 @@ def _public_match(match: dict, username: str) -> dict:
         "id": match["id"],
         "white": match["white"],
         "black": match["black"],
+        "whiteDisplayName": residents.public_identity(match.get("white")).get("displayName", match["white"]),
+        "blackDisplayName": residents.public_identity(match.get("black")).get("displayName", match["black"]),
+        "whiteActorKind": residents.public_identity(match.get("white")).get("actorKind"),
+        "blackActorKind": residents.public_identity(match.get("black")).get("actorKind"),
+        "whiteActorLabel": residents.public_identity(match.get("white")).get("actorLabel"),
+        "blackActorLabel": residents.public_identity(match.get("black")).get("actorLabel"),
         "whiteRating": int(match.get("white_rating", DEFAULT_RATING)),
         "blackRating": int(match.get("black_rating", DEFAULT_RATING)),
         "fen": match["fen"],
@@ -442,22 +471,29 @@ def _match_result(board: chess.Board) -> tuple[str, str | None]:
     return "finished", outcome.result() if outcome else "1/2-1/2"
 
 
-async def _ensure_sparring_roster(viewer: str) -> dict | None:
-    if not sparring.visible_to(viewer):
-        return None
-    cfg = sparring.settings()
-    return await store.upsert_roster(
-        cfg.username,
-        rating=DEFAULT_RATING,
-        tier=_rating_tier(DEFAULT_RATING),
-    )
+async def _ensure_synthetic_roster(viewer: str) -> list[dict]:
+    rows = []
+    if sparring.visible_to(viewer):
+        cfg = sparring.settings()
+        rows.append(await store.upsert_roster(
+            cfg.username,
+            rating=DEFAULT_RATING,
+            tier=_rating_tier(DEFAULT_RATING),
+        ))
+    for profile in residents.profiles_for(viewer):
+        rows.append(await store.upsert_roster(
+            profile.username,
+            rating=profile.rating,
+            tier=_rating_tier(profile.rating),
+        ))
+    return rows
 
 
-async def _mark_sparring_ready(match: dict) -> dict:
-    cfg = sparring.settings()
-    if not cfg.enabled or match.get("status") != "starting":
+async def _mark_virtual_ready(match: dict) -> dict:
+    virtual_username = _virtual_username(match)
+    if not virtual_username or match.get("status") != "starting":
         return match
-    color = _player_color(match, cfg.username)
+    color = _player_color(match, virtual_username)
     if color is None:
         return match
 
@@ -468,7 +504,7 @@ async def _mark_sparring_ready(match: dict) -> dict:
     now = store.utcnow()
     match = await store.touch_match_presence(
         match["id"],
-        cfg.username,
+        virtual_username,
         "w" if color == chess.WHITE else "b",
         now=now,
     ) or match
@@ -478,6 +514,55 @@ async def _mark_sparring_ready(match: dict) -> dict:
         changes={own_key: True, "updated_at": now},
     )
     return updated or await store.get_match(match["id"]) or match
+
+
+async def _play_resident_reply(match_id: str, match: dict) -> dict:
+    if match.get("status") != "active":
+        return match
+    bot_username = match.get("white") if match.get("turn") == "w" else match.get("black")
+    if residents.active_profile(bot_username) is None:
+        return match
+
+    board = chess.Board(match["fen"])
+    move = await run_engine_work(residents.choose_move, board.copy(stack=False), bot_username)
+    if move is None or move not in board.legal_moves:
+        return match
+
+    now = store.utcnow()
+    clock = _clock_snapshot(match, now)
+    color = _player_color(match, bot_username)
+    mover_clock = clock["whiteMs"] if color == chess.WHITE else clock["blackMs"]
+    if mover_clock <= 0:
+        timed = await _finish_timeout(match_id, match, now)
+        return timed or await store.get_match(match_id) or match
+
+    san = board.san(move)
+    board.push(move)
+    status, result = _match_result(board)
+    history = [*(match.get("history") or []), {
+        "ply": len(match.get("history") or []) + 1,
+        "uci": move.uci(),
+        "san": san,
+        "by": bot_username,
+        "at": now,
+    }]
+    updated = await store.update_match(
+        match_id,
+        expected_revision=int(match.get("revision", 0)),
+        changes={
+            "fen": board.fen(),
+            "turn": "w" if board.turn == chess.WHITE else "b",
+            "status": status,
+            "result": result,
+            "end_reason": None if status == "finished" else match.get("end_reason"),
+            "history": history,
+            "white_clock_ms": clock["whiteMs"],
+            "black_clock_ms": clock["blackMs"],
+            "turn_started_at": now if status == "active" else None,
+            "updated_at": now,
+        },
+    )
+    return updated or await store.get_match(match_id) or match
 
 
 async def _accept_challenge_for_user(challenge_id: str, username: str) -> tuple[dict, bool, str]:
@@ -504,7 +589,7 @@ async def _accept_challenge_for_user(challenge_id: str, username: str) -> tuple[
             raise HTTPException(409, "Ya no figuras en el roster.")
 
     challenger = challenge_row["challenger"]
-    challenger_white = True if sparring.is_sparring_pair(challenger, username) else bool(secrets.randbits(1))
+    challenger_white = True if _is_synthetic_pair(challenger, username) else bool(secrets.randbits(1))
     white = challenger if challenger_white else username
     black = username if challenger_white else challenger
     now = store.utcnow()
@@ -521,7 +606,7 @@ async def _accept_challenge_for_user(challenge_id: str, username: str) -> tuple[
         "result": None,
         "history": [],
         "revision": 0,
-        "rated": not sparring.is_sparring_pair(challenger, username),
+        "rated": not _is_synthetic_pair(challenger, username),
         "white_clock_ms": PVP_INITIAL_MS,
         "black_clock_ms": PVP_INITIAL_MS,
         "white_ready": False,
@@ -561,10 +646,11 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
     @router.get("/lobby")
     @limiter.limit("40/minute")
     async def lobby(request: Request, username: str = Depends(auth_dependency)):
-        await _ensure_sparring_roster(username)
+        await _ensure_synthetic_roster(username)
         roster = [
             row for row in await store.active_roster()
             if not sparring.hidden_from(username, row.get("username", ""))
+            and not residents.hidden_from(username, row.get("username", ""))
         ]
         rivals = [row["username"] for row in roster if row.get("username") != username]
         head_to_head = await store.head_to_head_for_user(username, rivals)
@@ -628,10 +714,14 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
             raise HTTPException(400, "No puedes retarte a ti mismo.")
         cfg = sparring.settings()
         is_sparring_target = sparring.should_auto_accept(username, opponent)
+        is_resident_target = residents.should_auto_accept(username, opponent)
         if cfg.enabled and opponent == cfg.username and not is_sparring_target:
             raise HTTPException(409, "Ese rival de staging no está disponible para esta cuenta.")
-        if is_sparring_target:
-            await _ensure_sparring_roster(username)
+        if cfg.enabled and residents.is_resident(opponent) and not is_resident_target:
+            raise HTTPException(409, "Ese residente no está disponible para esta cuenta.")
+        is_virtual_target = is_sparring_target or is_resident_target
+        if is_virtual_target:
+            await _ensure_synthetic_roster(username)
         challenger_row = await store.roster_member(username)
         if not challenger_row:
             raise HTTPException(409, "Apúntate al roster antes de retar a otro jugador.")
@@ -667,9 +757,9 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
                 f"{username} retó a {opponent}.",
                 kind="system",
             )
-        if is_sparring_target:
-            sparring_challenge_id = row["id"]
-            accepted_match, accepted_now, _challenger = await _accept_challenge_for_user(sparring_challenge_id, opponent)
+        if is_virtual_target:
+            virtual_challenge_id = row["id"]
+            accepted_match, accepted_now, _challenger = await _accept_challenge_for_user(virtual_challenge_id, opponent)
             if accepted_now:
                 await store.append_lobby_chat(
                     "Sistema",
@@ -677,13 +767,13 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
                     kind="system",
                 )
             try:
-                await _mark_sparring_ready(accepted_match)
+                await _mark_virtual_ready(accepted_match)
             except PersistentStorageUnavailable:
                 logger.warning(
-                    "PvP staging sparring ready write deferred to handoff reconciliation",
-                    extra={"challenge_id": sparring_challenge_id},
+                    "PvP synthetic rival ready write deferred to handoff reconciliation",
+                    extra={"challenge_id": virtual_challenge_id},
                 )
-            row = await store.get_challenge(sparring_challenge_id) or row
+            row = await store.get_challenge(virtual_challenge_id) or row
         return {"challenge": _public_challenge(row, username)}
 
     @router.post("/challenges/{challenge_id}/cancel")
@@ -750,8 +840,8 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
             match = await _with_handoff_storage_retry(
                 lambda: store.touch_match_presence(match_id, username, "w" if color == chess.WHITE else "b")
             ) or match
-            if sparring.is_virtual_opponent(match, username):
-                match = await _with_handoff_storage_retry(lambda: _mark_sparring_ready(match))
+            if _is_virtual_opponent(match, username):
+                match = await _with_handoff_storage_retry(lambda: _mark_virtual_ready(match))
             match = await _with_handoff_storage_retry(
                 lambda: _finish_handoff_timeout(match_id, match)
             ) or await _with_handoff_storage_retry(lambda: store.get_match(match_id)) or match
@@ -800,8 +890,8 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
             now=now,
         )) or match
         if match.get("status") == "starting":
-            if sparring.is_virtual_opponent(match, username):
-                match = await _with_handoff_storage_retry(lambda: _mark_sparring_ready(match))
+            if _is_virtual_opponent(match, username):
+                match = await _with_handoff_storage_retry(lambda: _mark_virtual_ready(match))
             match = await _finish_handoff_timeout(match_id, match) or await store.get_match(match_id) or match
         if match.get("status") == "active":
             match = await _apply_active_lifecycle(
@@ -930,6 +1020,10 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
             if updated:
                 if updated.get("status") == "finished":
                     await rating_store.settle_match(match_id, updated)
+                else:
+                    updated = await _play_resident_reply(match_id, updated)
+                    if updated.get("status") == "finished":
+                        await rating_store.settle_match(match_id, updated)
                 return {"match": _public_match(updated, username)}
         raise HTTPException(409, "La posición cambió mientras enviabas la jugada. Actualiza e inténtalo de nuevo.")
 
