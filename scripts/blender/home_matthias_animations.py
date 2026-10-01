@@ -97,22 +97,12 @@ def build_actions(rig):
             (66, None, None, {**show('prop_book'), **show('prop_pen')}),
             (68, None, None, {**hide('prop_book'), **hide('prop_pen')}),
         ]),
-        'Dossier': (144, [
-            # Grounded work loop: read for a while, take one restrained sip,
-            # lower the mug, then return attention to the report.
-            (2, {
-                'upper_leg.L': (d(-25), 0, d(-3)), 'lower_leg.L': (d(36), 0, 0),
-                'upper_leg.R': (d(-25), 0, d(3)), 'lower_leg.R': (d(36), 0, 0),
-                'forearm.R': (d(-16), 0, d(-5)),
-            }, None, {**show('prop_book'), **show('prop_cup')}),
-            (28, {'head': (d(10), d(5), d(-2)), 'spine': (d(3.5), 0, d(1)), 'forearm.L': (d(-28), 0, d(8))}, None),
-            (62, {'head': (d(7), d(-3), d(1)), 'forearm.R': (d(-30), d(-4), d(-10))}, None),
-            (78, {'head': (d(-2), d(3), d(-1)), 'forearm.R': (d(-48), d(-7), d(-16))}, None),
-            (90, {'head': (d(-3), d(2), d(-1)), 'forearm.R': (d(-60), d(-8), d(-20))}, None),
-            (102, {'head': (d(3), d(-2), d(1)), 'forearm.R': (d(-34), d(-4), d(-11))}, None),
-            (118, {'head': (d(8), d(-4), d(2)), 'forearm.R': (d(-18), 0, d(-6))}, None),
-            (138, None, None, {**show('prop_book'), **show('prop_cup')}),
-            (140, None, None, {**hide('prop_book'), **hide('prop_cup')}),
+        'Dossier': (80, [
+            (2, {'upper_leg.L': (d(-25), 0, d(-3)), 'lower_leg.L': (d(36), 0, 0), 'upper_leg.R': (d(-25), 0, d(3)), 'lower_leg.R': (d(36), 0, 0)}, None, show('prop_book')),
+            (22, {'head': (d(11), d(5), d(-2)), 'spine': (d(4), 0, d(1)), 'forearm.L': (d(-28), 0, d(8))}, None),
+            (52, {'head': (d(8), d(-5), d(2)), 'forearm.R': (d(-24), 0, d(-7))}, None),
+            (74, None, None, show('prop_book')),
+            (76, None, None, hide('prop_book')),
         ]),
         'Sip': (72, [
             (2, None, None, show('prop_cup')),
