@@ -69,7 +69,7 @@ test('abandono · sin pieza perdida cancela sin rating ni historial competitivo'
   await clickBoardMove(page, 'e2', 'e4');
   await expect(page.getByRole('button', { name: /^Casilla e5, peón negro/i })).toBeVisible();
 
-  await page.getByRole('button', { name: 'Abandonar partida', exact: true }).click();
+  await page.getByRole('button', { name: /^(Salir de la partida|Abandonar partida)$/ }).click();
   const dialog = page.getByRole('dialog', { name: '¿Abandonar la partida?' });
   await expect(dialog.getByText(/todavía no has perdido ninguna pieza/i)).toBeVisible();
   await expect(dialog.getByText(/rating no cambiará/i)).toBeVisible();
@@ -86,7 +86,7 @@ test('abandono · después de perder una pieza registra una sola derrota', async
   await clickBoardMove(page, 'g1', 'f3');
   await expect(gameStatus(page).getByText('Jaque', { exact: true })).toBeVisible();
 
-  await page.getByRole('button', { name: 'Abandonar partida', exact: true }).click();
+  await page.getByRole('button', { name: /^(Salir de la partida|Abandonar partida)$/ }).click();
   const dialog = page.getByRole('dialog', { name: '¿Abandonar la partida?' });
   await expect(dialog.getByText(/Se registrará como derrota/i)).toBeVisible();
   await dialog.getByRole('button', { name: 'Abandonar y asumir resultado', exact: true }).click();
@@ -403,7 +403,7 @@ test('abandono · después de F5 sigue aplicando la salida sin penalización si 
 
   await page.reload();
   await expect(gameStatus(page)).toBeVisible();
-  await page.getByRole('button', { name: 'Abandonar partida', exact: true }).click();
+  await page.getByRole('button', { name: /^(Salir de la partida|Abandonar partida)$/ }).click();
   const dialog = page.getByRole('dialog', { name: '¿Abandonar la partida?' });
   await expect(dialog.getByText(/todavía no has perdido ninguna pieza/i)).toBeVisible();
   await dialog.getByRole('button', { name: 'Cancelar sin penalización', exact: true }).click();
