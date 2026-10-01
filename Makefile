@@ -60,11 +60,9 @@ oci-a1-ip: oci-session
 		$(PYTHON) scripts/oci_a1.py ip
 
 oci-a1-ssh: oci-session
-	@ip="$(OCI_CLI_PROFILE="$(OCI_PROFILE)" OCI_CLI_AUTH=security_token OCI_INSTANCE_NAME="$(OCI_INSTANCE_NAME)" $(PYTHON) scripts/oci_a1.py ip)"; \
-	key_args=""; \
-	if [ -n "$(OCI_SSH_KEY)" ]; then key_args="-i $(OCI_SSH_KEY)"; fi; \
-	echo "==> SSH $(OCI_SSH_USER)@$ip"; \
-	exec ssh $key_args "$(OCI_SSH_USER)@$ip"
+	@OCI_CLI_PROFILE="$(OCI_PROFILE)" OCI_CLI_AUTH=security_token OCI_INSTANCE_NAME="$(OCI_INSTANCE_NAME)" \
+		OCI_SSH_USER="$(OCI_SSH_USER)" OCI_SSH_KEY="$(OCI_SSH_KEY)" \
+		$(PYTHON) scripts/oci_a1.py ssh
 
 ## Probe manual de carga ligera contra una API ya desplegada. No entra en CI ni pre-push.
 ## Ejemplo: make load-probe API_BASE_URL=https://tu-backend.example
