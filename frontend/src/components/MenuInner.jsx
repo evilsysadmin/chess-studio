@@ -189,11 +189,10 @@ export default function Menu({
   }
 
   const pvpEntryVisible = !showQuickMatch && !showPracticeMatch && !showPvpLobby;
-  // One 1 vs 1 entry, two homes: the floating card below 1000px, and a row inside the
-  // JUGAR "Más formas de jugar" menu on desktop (CSS shows exactly one of them).
-  const renderPvpRosterLink = (variant) => (
+  // One canonical 1v1 entry across viewport sizes. Its copy changes with the real
+  // PvP state instead of hiding the mode behind different menus on desktop/mobile.
+  const renderPvpRosterLink = () => (
     <HomePvpRosterLink
-      variant={variant}
       onOpen={() => {
         if (pvpFlow?.activeMatch) {
           pvpFlow?.enterMatch?.(pvpFlow.activeMatch);
@@ -220,7 +219,6 @@ export default function Menu({
         onContinue={onContinue}
         onPractice={() => setShowPracticeMatch(true)}
         pendingModes={pendingModes}
-        pvpSlot={pvpEntryVisible ? renderPvpRosterLink('menu') : null}
         onTournament={onTournament}
         onTrain={onTutorial}
         onCombat={onCombatRoguelike}
@@ -243,7 +241,7 @@ export default function Menu({
         ]}
       />
 
-      {pvpEntryVisible && renderPvpRosterLink('card')}
+      {pvpEntryVisible && renderPvpRosterLink()}
 
       {showQuickMatch && (
         <QuickMatchModal
@@ -265,10 +263,6 @@ export default function Menu({
           error={error}
           rating={rating}
           boardRenderer={getBoardRenderer()}
-          onOpenPvp={() => {
-            setShowQuickMatch(false);
-            setShowPvpLobby(true);
-          }}
           onStart={async ({ boardRenderer = null } = {}) => {
             const requestedRenderer = boardRenderer === '2d' || boardRenderer === '3d' ? boardRenderer : null;
             const previousRenderer = getBoardRenderer();
