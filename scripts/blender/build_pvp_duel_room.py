@@ -80,8 +80,8 @@ def palette():
             metal=0.90, rough=0.52, texture="metal", scale=30, bump=0.026,
         ),
         "armor": base.material(
-            "PVP_MAT_armor_steel", (0.135, 0.145, 0.155, 1),
-            metal=0.91, rough=0.34, coat=0.12, texture="metal", scale=28, bump=0.014,
+            "PVP_MAT_armor_steel", (0.150, 0.160, 0.172, 1),
+            metal=0.93, rough=0.30, coat=0.14, texture="metal", scale=28, bump=0.012,
         ),
         "brass": base.material(
             "PVP_MAT_old_brass", (0.30, 0.135, 0.025, 1),
@@ -658,13 +658,13 @@ def build_dungeon_population(static, p):
         )
         tabard = base.cube(
             f"PVP_DUEL_sentinel_{label}_tabard",
-            (sx, sy - 0.245, 1.31), (0.16, 0.018, 0.20),
-            p["red"] if side < 0 else p["blue"], static, bevel=0.015,
+            (sx, sy - 0.250, 1.20), (0.145, 0.018, 0.31),
+            p["red"] if side < 0 else p["blue"], static, bevel=0.016,
         )
         tabard.rotation_euler.x = math.radians(-8)
         base.cube(
             f"PVP_DUEL_sentinel_{label}_tabard_hem",
-            (sx, sy - 0.265, 1.12), (0.16, 0.012, 0.022),
+            (sx, sy - 0.272, 0.91), (0.145, 0.012, 0.025),
             p["brass"], static, bevel=0.006,
         )
         # Fluting catches the warm practicals without turning the cuirass into
@@ -689,17 +689,17 @@ def build_dungeon_population(static, p):
 
             arm_side = -1 if arm_idx == 0 else 1
             ax = sx + dx
-            for lame_idx, (dz, half_x, half_z, lean) in enumerate((
-                (0.12, 0.165, 0.090, 10),
-                (0.045, 0.150, 0.078, 15),
-                (-0.025, 0.132, 0.066, 20),
+            for lame_idx, (dz, radius, scale_x, scale_z) in enumerate((
+                (0.12, 0.155, 1.16, 0.58),
+                (0.045, 0.142, 1.10, 0.52),
+                (-0.025, 0.126, 1.02, 0.46),
             )):
-                pauldron = base.cube(
+                base.sphere(
                     f"PVP_DUEL_sentinel_{label}_pauldron_{arm_idx}_{lame_idx}",
-                    (ax + arm_side * 0.028 * lame_idx, sy - 0.01, 2.20 + dz),
-                    (half_x, 0.15, half_z), p["armor"], static, bevel=0.075,
+                    (ax + arm_side * 0.020 * lame_idx, sy - 0.005, 2.20 + dz),
+                    radius, p["armor"], static,
+                    scale=(scale_x, 0.80, scale_z),
                 )
-                pauldron.rotation_euler.y = math.radians(arm_side * lean)
             base.torus(
                 f"PVP_DUEL_sentinel_{label}_pauldron_rim_{arm_idx}",
                 (ax, sy, 2.30), 0.155, 0.014, p["brass"], static,
@@ -808,14 +808,18 @@ def build_dungeon_population(static, p):
         # pulling them into the board cone. Scale authored armor around the top
         # of the plinth so feet remain planted and the halberd grows with it.
         sentinel_prefix = f"PVP_DUEL_sentinel_{label}_"
-        sentinel_scale = 1.18
+        scale_x, scale_y, scale_z = 1.04, 1.06, 1.30
         for obj in list(static.objects):
             if not obj.name.startswith(sentinel_prefix) or obj.name.endswith("_plinth"):
                 continue
-            obj.location.x = sx + (obj.location.x - sx) * sentinel_scale
-            obj.location.y = sy + (obj.location.y - sy) * sentinel_scale
-            obj.location.z = 0.30 + (obj.location.z - 0.30) * sentinel_scale
-            obj.scale = tuple(component * sentinel_scale for component in obj.scale)
+            obj.location.x = sx + (obj.location.x - sx) * scale_x
+            obj.location.y = sy + (obj.location.y - sy) * scale_y
+            obj.location.z = 0.30 + (obj.location.z - 0.30) * scale_z
+            obj.scale = (
+                obj.scale[0] * scale_x,
+                obj.scale[1] * scale_y,
+                obj.scale[2] * scale_z,
+            )
 
         sentinel_light = base.light(
             f"PVP_LIGHT_sentinel_{label}", "POINT",
