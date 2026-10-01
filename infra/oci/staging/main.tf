@@ -94,22 +94,6 @@ resource "oci_core_security_list" "backend" {
     stateless        = false
   }
 
-  dynamic "ingress_security_rules" {
-    for_each = var.ssh_ingress_cidr == null ? [] : [var.ssh_ingress_cidr]
-
-    content {
-      description = "Optional operator SSH; disabled by default"
-      protocol    = "6"
-      source      = ingress_security_rules.value
-      source_type = "CIDR_BLOCK"
-      stateless   = false
-
-      tcp_options {
-        min = 22
-        max = 22
-      }
-    }
-  }
 }
 
 resource "oci_core_subnet" "backend" {
@@ -207,14 +191,5 @@ resource "oci_core_instance" "backend" {
       error_message = "OCI returned no Canonical Ubuntu 24.04 platform image compatible with VM.Standard.A1.Flex."
     }
 
-    precondition {
-      condition     = var.ssh_ingress_cidr == null || var.ssh_ingress_cidr != "0.0.0.0/0"
-      error_message = "Refusing to expose SSH to 0.0.0.0/0. Use an operator CIDR or leave SSH closed."
-    }
-
-    precondition {
-      condition     = var.ssh_ingress_cidr == null || var.ssh_authorized_key != null
-      error_message = "ssh_authorized_key is required when ssh_ingress_cidr opens operator SSH."
-    }
   }
 }

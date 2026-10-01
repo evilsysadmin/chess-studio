@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 
@@ -95,7 +96,22 @@ def main() -> int:
     parser.add_argument("--name", default=os.environ.get("OCI_INSTANCE_NAME", "chess-studio-staging"))
     parser.add_argument("--ssh-user", default=os.environ.get("OCI_SSH_USER", "ubuntu"))
     parser.add_argument("--ssh-key", default=os.environ.get("OCI_SSH_KEY", ""))
+    parser.add_argument("--ssh-hostname", default=os.environ.get("OCI_SSH_HOSTNAME", "ssh-staging.chess-studio.shadowops.dpdns.org"))
     args = parser.parse_args()
+
+    if args.action == "ssh":
+        cloudflared = shutil.which("cloudflared")
+        if not cloudflared:
+            raise SystemExit("ERROR: cloudflared no está instalado o no está en PATH.")
+        ssh = shutil.which("ssh")
+        if not ssh:
+            raise SystemExit("ERROR: ssh no está instalado o no está en PATH.")
+        cmd = [ssh, "-o", f"ProxyCommand={cloudflared} access ssh --hostname %h"]
+        if args.ssh_key:
+            cmd.extend(["-i", os.path.expanduser(args.ssh_key)])
+        cmd.append(f"{args.ssh_user}@{args.ssh_hostname}")
+        print(f"==> SSH {args.ssh_user}@{args.ssh_hostname} via Cloudflare Tunnel", file=sys.stderr)
+        os.execv(ssh, cmd)
 
     instance = instance_details(args.profile, args.auth, args.name)
 
@@ -106,15 +122,6 @@ def main() -> int:
     if args.action == "ip":
         print(public_ip(args.profile, args.auth, instance))
         return 0
-
-    if args.action == "ssh":
-        ip = public_ip(args.profile, args.auth, instance)
-        cmd = ["ssh"]
-        if args.ssh_key:
-            cmd.extend(["-i", os.path.expanduser(args.ssh_key)])
-        cmd.append(f"{args.ssh_user}@{ip}")
-        print(f"==> SSH {args.ssh_user}@{ip}", file=sys.stderr)
-        os.execvp(cmd[0], cmd)
 
     info = {
         "name": instance.get("display-name"),
