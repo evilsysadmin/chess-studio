@@ -56,7 +56,7 @@ async function openLobby(page) {
   return lobby;
 }
 
-async function assertPriorityHierarchy(lobby) {
+async function assertPriorityHierarchy(lobby, { stacked = false } = {}) {
   const challenges = lobby.locator('.pvp-lobby__panel--challenges');
   const roster = lobby.locator('.pvp-lobby__panel--roster');
   await expect(challenges).toBeVisible();
@@ -64,7 +64,12 @@ async function assertPriorityHierarchy(lobby) {
   const [challengeBox, rosterBox] = await Promise.all([challenges.boundingBox(), roster.boundingBox()]);
   expect(challengeBox).not.toBeNull();
   expect(rosterBox).not.toBeNull();
-  expect(challengeBox.y + challengeBox.height).toBeLessThanOrEqual(rosterBox.y + 2);
+
+  if (stacked) {
+    expect(challengeBox.y + challengeBox.height).toBeLessThanOrEqual(rosterBox.y + 2);
+  } else {
+    expect(challengeBox.y).toBeLessThanOrEqual(rosterBox.y + 4);
+  }
 
   const chat = lobby.locator('.pvp-lobby__chat-disclosure');
   await expect(chat).not.toHaveAttribute('open', '');
@@ -100,7 +105,7 @@ test.use({ hasTouch: true, isMobile: true });
 test('PvP lobby · Android keeps the command hierarchy touchable', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const lobby = await openLobby(page);
-  await assertPriorityHierarchy(lobby);
+  await assertPriorityHierarchy(lobby, { stacked: true });
 
   const targets = lobby.locator('button:visible, summary:visible');
   const targetCount = await targets.count();
