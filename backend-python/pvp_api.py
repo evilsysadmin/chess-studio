@@ -676,7 +676,13 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
                     f"{opponent} aceptó el reto de {username}.",
                     kind="system",
                 )
-            await _mark_sparring_ready(accepted_match)
+            try:
+                await _mark_sparring_ready(accepted_match)
+            except PersistentStorageUnavailable:
+                logger.warning(
+                    "PvP staging sparring ready write deferred to handoff reconciliation",
+                    extra={"challenge_id": sparring_challenge_id},
+                )
             row = await store.get_challenge(sparring_challenge_id) or row
         return {"challenge": _public_challenge(row, username)}
 
