@@ -81,6 +81,11 @@ def palette():
             "PVP_MAT_recess_stone", (0.070, 0.070, 0.064, 1),
             rough=0.90, texture="stone", scale=5.8, bump=0.080, weather=True,
         ),
+        "gate_haze": base.material(
+            "PVP_MAT_gate_haze", (0.018, 0.026, 0.045, 1),
+            rough=0.84,
+            emission=(0.008, 0.016, 0.040, 1), emission_strength=0.16,
+        ),
         "oak": base.material(
             "PVP_MAT_dark_oak", (0.055, 0.019, 0.008, 1),
             rough=0.46, coat=0.18, texture="wood", scale=2.4, bump=0.060,
@@ -251,9 +256,10 @@ def build_architecture(static, p):
             block.rotation_euler.z = math.radians(((row * 5 + col * 3) % 5 - 2) * 0.30)
             stone_index += 1
 
-    # Deep pointed prison portal: black recess + portcullis + limestone dressings.
+    # Deep pointed prison portal: a near-black cold recess keeps depth behind
+    # the portcullis without turning the gate into a featureless void.
     base.cube("PVP_DUEL_portal_void", (0, 6.16, 2.60), (2.34, 0.10, 2.54),
-              p["recess"], static, bevel=0.10)
+              p["gate_haze"], static, bevel=0.10)
     # A few broad back-stones keep the portcullis readable instead of collapsing
     # into a featureless black rectangle in the hero framing.
     for row, z in enumerate((1.20, 2.10, 3.00, 3.90, 4.80)):
@@ -1017,6 +1023,11 @@ def build_lighting(static):
     rim = base.light("PVP_LIGHT_dungeon_rim", "AREA", (0.0, -4.8, 5.8), 150.0,
                      (0.28, 0.34, 0.43), static, size=4.0)
     base.look_at(rim, (0.0, 1.0, 1.15))
+    player_fill = base.light(
+        "PVP_LIGHT_player_fill", "AREA", (0.0, -5.8, 4.2), 95.0,
+        (0.38, 0.42, 0.50), static, size=4.8,
+    )
+    base.look_at(player_fill, (0.0, -1.4, 1.15))
     gate_fill = base.light("PVP_LIGHT_gate_fill", "AREA", (0.0, 3.85, 5.45), 135.0,
                            (0.24, 0.30, 0.40), static, size=3.2)
     base.look_at(gate_fill, (0.0, 5.82, 2.85))
@@ -1038,6 +1049,7 @@ def build_lighting(static):
     base.anchor("PVP_ANCHOR_side_brazier_right", (DUEL_SIDE_BRAZIER_X, 1.62, 3.62), static)
     base.anchor("PVP_ANCHOR_moon_fill", (0.0, 5.16, 6.48), static)
     base.anchor("PVP_ANCHOR_gate_depth", (0.0, 5.96, 3.25), static)
+    base.anchor("PVP_ANCHOR_player_fill", (0.0, -4.20, 3.00), static)
 
 def bake_weather():
     base.WEATHER_MATERIALS = DUEL_WEATHER_MATERIALS
@@ -1118,6 +1130,7 @@ def validate_scene():
         "PVP_ANCHOR_side_brazier_right",
         "PVP_ANCHOR_moon_fill",
         "PVP_ANCHOR_gate_depth",
+        "PVP_ANCHOR_player_fill",
     }
     missing = sorted(required - names)
     if missing:
@@ -1318,6 +1331,7 @@ def export_shell(path):
         "PVP_ANCHOR_brazier_right",
         "PVP_ANCHOR_moon_fill",
         "PVP_ANCHOR_gate_depth",
+        "PVP_ANCHOR_player_fill",
     ):
         if name not in node_names:
             raise RuntimeError(f"PvP Duel Room runtime anchor missing: {name}")
