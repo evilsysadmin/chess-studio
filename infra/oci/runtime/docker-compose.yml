@@ -1,5 +1,7 @@
 x-pvp-common: &pvp-common
   pull_policy: never
+  env_file:
+    - ${CHESS_STUDIO_ENV_FILE:-/etc/chess-studio/backend.env}
   restart: unless-stopped
   healthcheck:
     test:
@@ -80,6 +82,8 @@ services:
       GIT_COMMIT_SHA: ${CHESS_STUDIO_BLUE_SHA:?CHESS_STUDIO_BLUE_SHA is required}
       PORT: "8080"
       PVP_PYTHON_UPSTREAM: "http://backend_blue:4000"
+      PVP_NATIVE_PULSE_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_PULSE_ENABLED:-true}"
+      CORS_ORIGINS: "${CHESS_STUDIO_CORS_ORIGINS:-https://staging.chess-studio.shadowops.dpdns.org}"
 
   pvp_green:
     <<: *pvp-common
@@ -88,6 +92,8 @@ services:
       GIT_COMMIT_SHA: ${CHESS_STUDIO_GREEN_SHA:?CHESS_STUDIO_GREEN_SHA is required}
       PORT: "8080"
       PVP_PYTHON_UPSTREAM: "http://backend_green:4000"
+      PVP_NATIVE_PULSE_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_PULSE_ENABLED:-true}"
+      CORS_ORIGINS: "${CHESS_STUDIO_CORS_ORIGINS:-https://staging.chess-studio.shadowops.dpdns.org}"
 
   # One-time rollback target for the migration from the old single-slot runtime.
   # Never runs together with edge because both own the public loopback port.

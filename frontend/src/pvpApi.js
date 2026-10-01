@@ -20,6 +20,10 @@ export const pvpApi = {
     return jsonRequest('/lobby', { signal });
   },
 
+  getLobbyPulse({ signal } = {}) {
+    return jsonRequest('/lobby/pulse', { signal });
+  },
+
   sendLobbyMessage(text, { signal } = {}) {
     return jsonRequest('/lobby/chat', {
       method: 'POST',

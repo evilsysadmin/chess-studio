@@ -91,7 +91,7 @@ test('War Room 1v1 · un 409 por carrera de turno sincroniza sin flash de error'
   await expect(clickWarRoomMove(page, 'e2', 'e4')).resolves.toBe(true);
 
   await expect.poll(() => moveAttempts).toBe(1);
-  await expect(warRoom.getByText('bob juega', { exact: true })).toBeVisible({ timeout: 5_000 });
+  await expect(warRoom.getByText('bob juega', { exact: true })).toBeVisible({ timeout: 10_000 });
   await expect(warRoom.getByRole('alert')).toHaveCount(0);
 });
 

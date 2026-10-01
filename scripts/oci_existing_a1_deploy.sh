@@ -391,7 +391,12 @@ import json
 import pathlib
 import sys
 payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
-if payload.get('status') != 'ready' or payload.get('service') != 'chess-studio-pvp-go':
+expected_native = str(__import__('os').environ.get('CHESS_STUDIO_PVP_NATIVE_PULSE_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
+if (
+    payload.get('status') != 'ready'
+    or payload.get('service') != 'chess-studio-pvp-go'
+    or bool(payload.get('nativePulse')) != expected_native
+):
     raise SystemExit(1)
 PY
   then

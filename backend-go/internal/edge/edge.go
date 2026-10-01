@@ -17,13 +17,15 @@ type Config struct {
 	UpstreamURL  string
 	Release      string
 	ReadyTimeout time.Duration
+	NativePulse  http.Handler
 }
 
 type Handler struct {
-	upstream *url.URL
-	proxy    *httputil.ReverseProxy
-	client   *http.Client
-	release  string
+	upstream    *url.URL
+	proxy       *httputil.ReverseProxy
+	client      *http.Client
+	release     string
+	nativePulse http.Handler
 }
 
 func New(cfg Config) (*Handler, error) {
@@ -72,10 +74,11 @@ func New(cfg Config) (*Handler, error) {
 	}
 
 	return &Handler{
-		upstream: upstream,
-		proxy:    proxy,
-		client:   &http.Client{Timeout: timeout},
-		release:  strings.TrimSpace(cfg.Release),
+		upstream:    upstream,
+		proxy:       proxy,
+		client:      &http.Client{Timeout: timeout},
+		release:     strings.TrimSpace(cfg.Release),
+		nativePulse: cfg.NativePulse,
 	}, nil
 }
 
@@ -85,6 +88,13 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.health(w)
 	case r.URL.Path == "/readyz" || r.URL.Path == "/api/pvp/_edge/ready":
 		h.ready(w, r)
+	case r.URL.Path == "/api/pvp/lobby/pulse":
+		if h.nativePulse == nil {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("X-Chess-Pvp-Edge", "go")
+		h.nativePulse.ServeHTTP(w, r)
 	case r.URL.Path == "/api/pvp" || strings.HasPrefix(r.URL.Path, "/api/pvp/"):
 		h.proxy.ServeHTTP(w, r)
 	default:
@@ -94,8 +104,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) health(w http.ResponseWriter) {
 	payload := map[string]any{
-		"status":  "ok",
-		"service": serviceName,
+		"status":      "ok",
+		"service":     serviceName,
+		"nativePulse": h.nativePulse != nil,
 	}
 	if h.release != "" {
 		payload["release"] = h.release
@@ -125,7 +136,11 @@ func (h *Handler) ready(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("X-Chess-Pvp-Edge", "go")
-	writeJSON(w, http.StatusOK, map[string]any{"status": "ready", "service": serviceName})
+	writeJSON(w, http.StatusOK, map[string]any{
+		"status":      "ready",
+		"service":     serviceName,
+		"nativePulse": h.nativePulse != nil,
+	})
 }
 
 func writeJSON(w http.ResponseWriter, status int, payload map[string]any) {

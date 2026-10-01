@@ -273,6 +273,8 @@ assert 'compose "$sha" up -d --no-build --force-recreate "$candidate_service"' i
 assert 'candidate_pvp_service="$(pvp_service "$candidate_color")"' in deploy
 assert 'compose "$sha" up -d --no-build --force-recreate "$candidate_service" "$candidate_pvp_service"' in deploy
 assert 'if attest "$sha" "$candidate_port" && pvp_attest "$candidate_pvp_service"; then' in deploy
+assert "payload.get('nativePulse')" in deploy
+assert "CHESS_STUDIO_PVP_NATIVE_PULSE_ENABLED" in deploy
 assert 'pvp_target_image="$(pvp_image_ref "$sha")"' in deploy
 assert 'docker pull --quiet "$pvp_target_image"' in deploy
 assert 'render_edge "$candidate_color" go' in deploy
@@ -300,6 +302,11 @@ assert 'ghcr.io/evilsysadmin/chess-studio-pvp:oci-${CHESS_STUDIO_BLUE_SHA' in co
 assert 'ghcr.io/evilsysadmin/chess-studio-pvp:oci-${CHESS_STUDIO_GREEN_SHA' in compose
 assert 'PVP_PYTHON_UPSTREAM: "http://backend_blue:4000"' in compose
 assert 'PVP_PYTHON_UPSTREAM: "http://backend_green:4000"' in compose
+assert 'x-pvp-common: &pvp-common' in compose
+assert 'env_file:' in compose.split('x-pvp-common: &pvp-common', 1)[1].split('x-backend-common:', 1)[0]
+assert '${CHESS_STUDIO_ENV_FILE:-/etc/chess-studio/backend.env}' in compose.split('x-pvp-common: &pvp-common', 1)[1].split('x-backend-common:', 1)[0]
+assert compose.count('PVP_NATIVE_PULSE_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_PULSE_ENABLED:-true}"') == 2
+assert compose.count('CORS_ORIGINS: "${CHESS_STUDIO_CORS_ORIGINS:-https://staging.chess-studio.shadowops.dpdns.org}"') >= 4
 assert '127.0.0.1:${CHESS_STUDIO_PVP' not in compose
 assert '127.0.0.1:${CHESS_STUDIO_BLUE_PORT:-4001}:4000' in compose
 assert '127.0.0.1:${CHESS_STUDIO_GREEN_PORT:-4002}:4000' in compose
