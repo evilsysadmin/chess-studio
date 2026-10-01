@@ -3,6 +3,7 @@ import {
   STORAGE_LOCAL,
 } from '../safeStorage.js';
 import { setProfileStorageItem } from '../profileKeys.js';
+import { PVP_DUEL_ROOM_RUNTIME_MODEL_URL } from './PvpDuelRoomAsset.js';
 
 export const WAR_ROOM_VARIANT_STORAGE_KEY = 'chess-study-war-room-variant-v1';
 export const WAR_ROOM_VARIANT_CHANGED_EVENT = 'chess-war-room-variant-changed';
@@ -51,7 +52,7 @@ const INTERNAL_WAR_ROOM_VARIANTS = Object.freeze([
     id: 'duel',
     label: 'Duel Room',
     shell: 'blender',
-    runtimeModelUrl: 'https://assets.chess-studio.shadowops.dpdns.org/pvp/duel-room/runtime/current.glb',
+    runtimeModelUrl: PVP_DUEL_ROOM_RUNTIME_MODEL_URL,
     loadInstaller: () => import('./PvpDuelRoomShell.js').then(({ installPvpDuelRoomShell }) => installPvpDuelRoomShell),
   }),
 ]);
