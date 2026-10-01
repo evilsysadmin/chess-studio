@@ -206,10 +206,12 @@ test('War Room 1v1 · rendirse no resucita un handoff stale del lobby', async ({
   await expect(clickWarRoomMove(page, 'e2', 'e4')).resolves.toBe(true);
   await expect(warRoom.getByText('sparringmeister juega', { exact: true })).toBeVisible({ timeout: 5_000 });
 
-  await warRoom.getByRole('button', { name: 'Más acciones de partida', exact: true }).click();
-  await warRoom.getByRole('menuitem', { name: 'Abandonar partida', exact: true }).click();
+  await expect(warRoom.getByRole('button', { name: 'Salir de la partida', exact: true })).toBeVisible();
+  await expect(warRoom.getByRole('button', { name: 'Lobby', exact: true })).toHaveCount(0);
+  await warRoom.getByRole('button', { name: 'Salir de la partida', exact: true }).click();
   const resignDialog = page.getByRole('dialog', { name: '¿Abandonar la partida?' });
   await expect(resignDialog).toBeVisible();
+  await expect(resignDialog).toContainText('Para volver al lobby durante un duelo debes rendirte.');
   await resignDialog.getByRole('button', { name: 'Rendirse', exact: true }).click();
 
   const debrief = warRoom.getByRole('dialog', { name: 'Resumen del duelo' });
