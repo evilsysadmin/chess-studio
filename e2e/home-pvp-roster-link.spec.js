@@ -71,8 +71,7 @@ test('Roster 1v1 · retar es directo, reto entrante domina y chat queda plegado'
   });
 
   await login(page);
-  await openPlayMenu(page);
-  await page.getByRole('button', { name: 'Abrir rivales 1 contra 1 de War Room' }).click();
+  await page.getByRole('button', { name: 'Abrir Sala de Duelos 1 contra 1' }).click();
 
   const lobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room' });
   const incoming = lobby.getByRole('region', { name: 'Retos entrantes' });
