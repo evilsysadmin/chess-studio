@@ -288,7 +288,12 @@ PvP is migrating incrementally toward a dedicated Go process. The first slice is
 - while a PvP operation still belongs to Python, Go proxies it transparently to the paired Python backend and preserves auth, request path/query/body and response semantics;
 - Go readiness fails closed when the paired Python authority is not ready;
 - proxy transport failure returns a stable retryable `pvp_upstream_unavailable` envelope instead of inventing domain state;
-- the edge is stateless: Mongo/Python remain authoritative until an operation is explicitly migrated with parity tests;
+- most compatibility routes remain stateless proxies while Mongo/Python remain authoritative until an operation is explicitly migrated with parity tests;
+- the first native read is `GET /api/pvp/lobby/pulse`: Go validates the same HS256 session contract (including account `session_version`), reads Mongo directly and returns only a deterministic lobby revision plus polling cadence;
+- the browser uses that revision as invalidation: a stable lobby no longer forces FastAPI to rebuild the full roster/challenges/match/chat DTO every few seconds; a changed revision refreshes the canonical Python snapshot immediately and a bounded 30 s full reconcile remains as a compatibility safety net;
+- the pulse deliberately excludes roster `last_seen` values from its digest, so the existing 15 s availability heartbeat does not manufacture a full lobby refresh when membership did not change;
+- `PVP_NATIVE_PULSE_ENABLED` is a deploy kill switch. When disabled the exact native route returns 404 and first-party clients fall back to the existing full Python poll without changing mutation semantics;
+- moves, clocks, challenges, rating settlement and all PvP mutations still belong to Python in this slice;
 - migration is endpoint-by-endpoint. An operation moves to Go only when its auth, idempotency/CAS, persistence, error and reconnect contracts have dedicated parity coverage;
 - rollback must remain routing-level while the compatibility proxy exists.
 
