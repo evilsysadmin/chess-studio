@@ -253,6 +253,10 @@ test('App visual artifact · Matthias Home deterministic full + crop', async () 
         await expect(image).toHaveAttribute('src', capture.avatar);
         await expect(canvas).toHaveAttribute('data-matthias-canonical-model', 'blender');
         await expect(canvas).toHaveAttribute('data-matthias-clip', capture.clip);
+        if (capture.profile === 'dossier') {
+          await expect(canvas).toHaveAttribute('data-matthias-dossier-sip', 'procedural-v1');
+          await expect(canvas).toHaveAttribute('data-matthias-limb-scale', 'arms-1.15-hands-1.18-legs-1.12');
+        }
         if (capture.expectedRoutineProps) {
           await expect(canvas).toHaveAttribute('data-matthias-routine-props', capture.expectedRoutineProps);
         }
