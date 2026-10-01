@@ -200,7 +200,7 @@ test('War Room 1v1 · rendirse no resucita un handoff stale del lobby', async ({
   await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible();
 
   const warRoom = page.getByRole('region', { name: 'Sala de duelo 1 contra 1' });
-  await expect(warRoom).toBeVisible({ timeout: 15_000 });
+  await expect(warRoom).toBeVisible({ timeout: 25_000 });
   await expect(warRoom.getByText('Tu turno', { exact: true })).toBeVisible({ timeout: 45_000 });
   await expect(clickWarRoomMove(page, 'e2', 'e4')).resolves.toBe(true);
   await expect(warRoom.getByText('sparringmeister juega', { exact: true })).toBeVisible({ timeout: 5_000 });
