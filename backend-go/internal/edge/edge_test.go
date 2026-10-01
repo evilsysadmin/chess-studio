@@ -21,6 +21,9 @@ func TestProxyPreservesPvPRequest(t *testing.T) {
 		if got := r.Header.Get("Authorization"); got != "Bearer token" {
 			t.Fatalf("authorization=%q", got)
 		}
+		if got := r.Host; got != "api.chess.test" {
+			t.Fatalf("host=%q", got)
+		}
 		if got := r.Header.Get("X-Chess-Pvp-Edge"); got != "go" {
 			t.Fatalf("edge marker=%q", got)
 		}
@@ -34,7 +37,7 @@ func TestProxyPreservesPvPRequest(t *testing.T) {
 	defer upstream.Close()
 
 	h := mustHandler(t, upstream.URL)
-	req := httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/matches/m-1/move?revision=7", bytes.NewBufferString("{\"from\":\"e2\",\"to\":\"e4\"}"))
+	req := httptest.NewRequest(http.MethodPost, "http://api.chess.test/api/pvp/matches/m-1/move?revision=7", bytes.NewBufferString("{\"from\":\"e2\",\"to\":\"e4\"}"))
 	req.Header.Set("Authorization", "Bearer token")
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
