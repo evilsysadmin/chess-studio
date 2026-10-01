@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { pvpChallengeCooldownLabel, pvpChatRelativeTimeLabel, pvpHeadToHeadLabel } from './PvPLobbyModal.jsx';
+import { pvpChallengeCooldownLabel, pvpChatRelativeTimeLabel, pvpHeadToHeadLabel, shouldMarkPvpChatRead } from './PvPLobbyModal.jsx';
 
 describe('PvP roster head-to-head label', () => {
   it('stays silent when there is no persisted history', () => {
@@ -36,5 +36,15 @@ describe('PvP lobby chat relative time', () => {
 
   it('stays silent for invalid timestamps', () => {
     expect(pvpChatRelativeTimeLabel('nope', now)).toBe('');
+  });
+});
+
+
+describe('PvP lobby chat disclosure', () => {
+  it('keeps ambient messages unread until the player opens Conversation', () => {
+    const messages = [{ id: 'm1', text: 'hola' }];
+    expect(shouldMarkPvpChatRead(false, messages)).toBe(false);
+    expect(shouldMarkPvpChatRead(true, [])).toBe(false);
+    expect(shouldMarkPvpChatRead(true, messages)).toBe(true);
   });
 });

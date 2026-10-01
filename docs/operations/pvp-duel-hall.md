@@ -33,6 +33,13 @@ El usuario debe poder contestar en segundos:
 
 Rivales y retos dominan. Chat, historial y metadata son secundarios.
 
+En la jerarquía del lobby:
+- retos pendientes, especialmente entrantes, aparecen antes que el resto de la sala;
+- sin retos pendientes no se reserva un panel vacío para ellos;
+- rivales disponibles son la superficie principal de elección;
+- disponibilidad propia se presenta compacta;
+- conversación permanece plegada por defecto y sólo se considera leída cuando el jugador la abre.
+
 ## Lenguaje visual
 
 Misma familia del castillo: piedra/hierro oscuro, madera, latón envejecido, pergamino/marfil y borgoña muy medido.
