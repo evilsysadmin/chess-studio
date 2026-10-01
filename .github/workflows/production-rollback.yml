@@ -376,8 +376,8 @@ jobs:
         working-directory: rollback-source/frontend
         env:
           VITE_API_URL: ${{ env.PRODUCTION_API_URL }}
-          # Same as staging: the War Room «…» menu offers the experimental Blender rooms while
-          # v1 remains the product default. Removing this line is still the hard rollback lever.
+          # «…» keeps Blender rooms opt-in while v1 stays default.
+          # Removing this line remains the hard rollback lever.
           VITE_WAR_ROOM_VARIANTS_ENABLE: '1'
           VITE_PUBLIC_BASE: /
           VITE_BUILD_SHA: ${{ env.DEPLOY_SHA }}
