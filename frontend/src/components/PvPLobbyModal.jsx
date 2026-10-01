@@ -2,6 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { pvpApi } from '../pvpApi.js';
 import { opponentForMatch } from '../pvpGameModel.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
+import {
+  exitWarRoomBrowserFullscreen,
+  requestWarRoomLandscapeFullscreen,
+  shouldAutoRotateWarRoomOnEntry,
+  unlockWarRoomOrientation,
+} from './useWarRoomImmersive.js';
 import './PvPLobbyModal.css';
 
 const EMPTY_LOBBY = Object.freeze({ roster: [], challenges: [], messages: [], activeMatch: null, pollAfterMs: 3000 });
@@ -167,19 +173,35 @@ export default function PvPLobbyModal({
     }
   }, [busyKey, refresh]);
 
+  async function prepareLandscapeEntry() {
+    const autoRotate = shouldAutoRotateWarRoomOnEntry();
+    if (autoRotate) await requestWarRoomLandscapeFullscreen();
+    return autoRotate;
+  }
+
+  function undoLandscapeEntry(autoRotate) {
+    if (!autoRotate) return;
+    void exitWarRoomBrowserFullscreen();
+    unlockWarRoomOrientation();
+  }
+
   async function accept(challenge) {
+    const autoRotate = await prepareLandscapeEntry();
     const result = await run(`accept:${challenge.id}`, () => onAcceptChallenge ? onAcceptChallenge(challenge) : pvpApi.acceptChallenge(challenge.id));
     if (result?.match) onMatchReady(result.match);
+    else undoLandscapeEntry(autoRotate);
   }
 
   async function challengePlayer(username) {
-    await run(`challenge:${username}`, async () => {
+    const autoRotate = await prepareLandscapeEntry();
+    const result = await run(`challenge:${username}`, async () => {
       if (!self) {
         if (onJoinRoster) await onJoinRoster();
         else await pvpApi.joinRoster();
       }
       return onChallenge ? onChallenge(username) : pvpApi.challenge(username);
     });
+    if (result?.challenge?.status !== 'accepted') undoLandscapeEntry(autoRotate);
   }
 
   async function sendMessage(event) {
