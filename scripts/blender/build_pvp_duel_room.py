@@ -249,6 +249,47 @@ def build_architecture(static, p):
         (1.28, 0.030, 0.10), p["wet_stone"], static, bevel=0.025,
     )
 
+
+    # Gate machinery: two wall-mounted hoist wheels make the portcullis feel functional.
+    for side, label in ((-1, "left"), (1, "right")):
+        wheel_x = side * 3.48
+        wheel_y = 5.74
+        wheel_z = 4.62
+
+        wheel = base.torus(
+            f"PVP_DUEL_gate_winch_{label}",
+            (wheel_x, wheel_y, wheel_z),
+            0.58, 0.075, p["iron"], static,
+            rotation=(math.pi / 2, 0.0, 0.0),
+        )
+        base.cylinder(
+            f"PVP_DUEL_gate_winch_hub_{label}",
+            (wheel_x, wheel_y, wheel_z),
+            0.13, 0.28, p["oak_mid"], static, vertices=18,
+        ).rotation_euler.x = math.pi / 2
+
+        for spoke_idx, angle in enumerate((0, 45, 90, 135)):
+            spoke = base.cube(
+                f"PVP_DUEL_gate_winch_spoke_{label}_{spoke_idx}",
+                (wheel_x, wheel_y - 0.01, wheel_z),
+                (0.48, 0.030, 0.034), p["oak_mid"], static, bevel=0.020,
+            )
+            spoke.rotation_euler.y = math.radians(angle)
+
+        # Short chain run from each winch toward the portcullis head.
+        chain_start = Vector((wheel_x - side * 0.46, wheel_y - 0.05, wheel_z + 0.18))
+        chain_end = Vector((side * 1.78, 5.70, 5.05))
+        direction = chain_end - chain_start
+        for link_idx in range(7):
+            t = link_idx / 6
+            pos = chain_start + direction * t
+            link = base.torus(
+                f"PVP_DUEL_gate_chain_{label}_{link_idx}",
+                tuple(pos), 0.075, 0.020, p["iron"], static,
+            )
+            link.rotation_euler.x = math.pi / 2
+            link.rotation_euler.z = math.radians(90 if link_idx % 2 else 0)
+
     # Portcullis itself: readable silhouette, safely behind the board.
     for idx, x in enumerate((-1.85, -1.38, -0.92, -0.46, 0.0, 0.46, 0.92, 1.38, 1.85)):
         bar = base.cylinder(
@@ -262,6 +303,18 @@ def build_architecture(static, p):
             f"PVP_DUEL_portcullis_cross_{idx}", (0, 5.72, z),
             (2.02, 0.055, 0.055), p["iron"], static, bevel=0.016,
         )
+
+    # Downward spear teeth turn the gate into a real defensive portcullis.
+    for idx, x in enumerate((-1.85, -1.38, -0.92, -0.46, 0.0, 0.46, 0.92, 1.38, 1.85)):
+        bpy.ops.mesh.primitive_cone_add(
+            vertices=12, radius1=0.0, radius2=0.082, depth=0.34,
+            location=(x, 5.72, 0.37),
+        )
+        tooth = bpy.context.object
+        tooth.name = f"PVP_DUEL_portcullis_tooth_{idx}"
+        tooth.data.materials.append(p["iron"])
+        base.tag(tooth, base.ROLE_STATIC)
+        base.relink(tooth, static)
 
     # Narrow moon slit above the gate: dungeon, not observatory.
     base.cube("PVP_ROOM_window_reveal", (0, 6.02, 6.48), (0.57, 0.22, 0.78),
@@ -566,6 +619,9 @@ def validate_scene():
         "PVP_DUEL_banner_blue",
         "PVP_DUEL_teutonic_cross",
         "PVP_DUEL_portcullis",
+        "PVP_DUEL_gate_winch_left",
+        "PVP_DUEL_gate_chain_left_0",
+        "PVP_DUEL_portcullis_tooth_0",
         "PVP_DUEL_inner_gate_pier_-1",
         "PVP_DUEL_inner_gate_floor",
         "PVP_DUEL_vault_rib_0_0",
@@ -618,7 +674,7 @@ def export_shell(path):
         if is_static or is_anchor:
             obj.select_set(True)
             selected += 1
-    if selected < 140:
+    if selected < 170:
         raise RuntimeError(f"PvP Duel Room runtime selection too small: {selected}")
 
     path.parent.mkdir(parents=True, exist_ok=True)
