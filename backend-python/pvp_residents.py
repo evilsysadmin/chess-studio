@@ -42,6 +42,10 @@ def is_resident(username: str | None) -> bool:
     return profile(username) is not None
 
 
+def active_profile(username: str | None) -> ResidentProfile | None:
+    return profile(username) if sparring.settings().enabled else None
+
+
 def should_auto_accept(challenger: str, opponent: str) -> bool:
     cfg = sparring.settings()
     return bool(cfg.enabled and challenger == cfg.owner and is_resident(opponent))
@@ -74,7 +78,7 @@ def is_virtual_opponent(match: dict, viewer: str) -> bool:
 
 
 def public_identity(username: str | None) -> dict:
-    row = profile(username)
+    row = active_profile(username)
     if not row:
         return {}
     return {
@@ -85,7 +89,7 @@ def public_identity(username: str | None) -> dict:
 
 
 def choose_move(board: chess.Board, username: str) -> chess.Move | None:
-    row = profile(username)
+    row = active_profile(username)
     if not row:
         return None
     suggestion = get_factual_difficulty_cpu_move(board, row.engine_level)
