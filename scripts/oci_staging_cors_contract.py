@@ -282,7 +282,11 @@ assert 'CHESS_STUDIO_DEPLOY_OK target=$target repo_ref=$sha color=$candidate_col
 assert 'pvp_edge_attest()' in deploy
 assert '"http://127.0.0.1:${target_port}/api/pvp/_edge/ready"' in deploy
 assert "X-Chess-Pvp-Edge:" in deploy
-assert 'if ! pvp_edge_attest "$port"; then' in deploy
+assert 'wait_pvp_edge_attest()' in deploy
+assert 'CHESS_STUDIO_PVP_EDGE_ATTEST_ATTEMPTS:-20' in deploy
+assert 'sleep 0.25' in deploy
+assert 'if ! wait_pvp_edge_attest "$port"; then' in deploy
+assert 'compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge' in deploy
 assert 'render_edge "$candidate_color"' in deploy
 assert 'reload_edge' in deploy
 assert 'write_active_color "$candidate_color"' in deploy
