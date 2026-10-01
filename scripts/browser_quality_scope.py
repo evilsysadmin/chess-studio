@@ -426,7 +426,7 @@ def build_matrix(scope: BrowserScope) -> dict[str, list[dict[str, str]]]:
             {
                 "id": "pvp-duel-flow",
                 "label": "PvP Duel Room · authoritative flow",
-                "command": "./node_modules/.bin/playwright test war-room-pvp.spec.js --workers=1 --retries=0 --max-failures=1 --timeout=90000",
+                "command": "./node_modules/.bin/playwright test war-room-pvp.spec.js --grep \"un 409 por carrera de turno|rendirse no resucita un handoff stale\" --workers=1 --retries=0 --max-failures=1 --timeout=90000",
             }
         )
     if scope.chronicles:
@@ -664,6 +664,9 @@ def self_test() -> None:
     assert _ids(classify(["frontend/src/components/PvpGameScreen.jsx"])) == ["pvp-duel-flow"]
     assert _ids(classify(["frontend/src/usePvpAppFlow.js"])) == ["pvp-duel-flow"]
     assert _ids(classify(["e2e/war-room-pvp.spec.js"])) == ["pvp-duel-flow"]
+    pvp_case = build_matrix(BrowserScope(pvp_duel=True))["include"][0]
+    assert "rendirse no resucita un handoff stale" in pvp_case["command"]
+    assert "reto entrante abre una partida humana" not in pvp_case["command"]
     for chronicles_path in (
         "frontend/src/chronicles/chroniclesMapCatalog.js",
         "frontend/src/chronicles/chroniclesContentRuntime.js",
