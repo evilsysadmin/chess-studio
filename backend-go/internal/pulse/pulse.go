@@ -309,7 +309,7 @@ func (s *MongoStore) LeaveRoster(ctx context.Context, username string, now time.
 
 func normalizedRating(value any) int64 {
 	rating, ok := bsonInteger(value)
-	if !ok {
+	if !ok || rating == 0 {
 		rating = 400
 	}
 	if rating < 100 {
@@ -317,9 +317,6 @@ func normalizedRating(value any) int64 {
 	}
 	if rating > 10000 {
 		return 10000
-	}
-	if rating == 0 {
-		return 400
 	}
 	return rating
 }
