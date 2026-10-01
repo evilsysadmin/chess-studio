@@ -85,11 +85,15 @@ func TestHealthAndReadiness(t *testing.T) {
 	}{
 		{path: "/healthz", want: http.StatusOK},
 		{path: "/readyz", want: http.StatusOK},
+		{path: "/api/pvp/_edge/ready", want: http.StatusOK},
 	} {
 		rr := httptest.NewRecorder()
 		h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "http://edge"+tc.path, nil))
 		if rr.Code != tc.want {
 			t.Fatalf("%s status=%d want=%d body=%s", tc.path, rr.Code, tc.want, rr.Body.String())
+		}
+		if got := rr.Header().Get("X-Chess-Pvp-Edge"); got != "go" {
+			t.Fatalf("%s edge marker=%q", tc.path, got)
 		}
 	}
 }
@@ -121,6 +125,9 @@ func TestProxyFailureIsStableAndRetryable(t *testing.T) {
 	}
 	if body["code"] != "pvp_upstream_unavailable" || body["retryable"] != true {
 		t.Fatalf("unexpected body: %#v", body)
+	}
+	if got := rr.Header().Get("X-Chess-Pvp-Edge"); got != "go" {
+		t.Fatalf("edge marker=%q", got)
 	}
 }
 

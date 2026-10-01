@@ -63,6 +63,7 @@ func New(cfg Config) (*Handler, error) {
 		return nil
 	}
 	proxy.ErrorHandler = func(w http.ResponseWriter, _ *http.Request, _ error) {
+		w.Header().Set("X-Chess-Pvp-Edge", "go")
 		writeJSON(w, http.StatusBadGateway, map[string]any{
 			"code":      "pvp_upstream_unavailable",
 			"retryable": true,
@@ -82,7 +83,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case r.URL.Path == "/healthz":
 		h.health(w)
-	case r.URL.Path == "/readyz":
+	case r.URL.Path == "/readyz" || r.URL.Path == "/api/pvp/_edge/ready":
 		h.ready(w, r)
 	case r.URL.Path == "/api/pvp" || strings.HasPrefix(r.URL.Path, "/api/pvp/"):
 		h.proxy.ServeHTTP(w, r)
