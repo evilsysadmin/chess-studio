@@ -361,7 +361,7 @@ if email_enabled and ({PRODUCTION_ORIGIN!r} not in reset_url or "staging" in res
 if email_enabled and not values.get("RESEND_API_KEY"):
     raise SystemExit("production runtime email recovery requires Resend")
 path=Path(os.environ["RUNTIME_TMP"])
-path.write_text(text if text.endswith("\n") else text+"\n",encoding="utf-8")
+path.write_text(text if text.endswith("\\n") else text+"\\n",encoding="utf-8")
 os.chmod(path,0o600)
 PY
 sudo --non-interactive {shlex.quote(RUNTIME_INSTALLER)} "$tmp" >/dev/null
