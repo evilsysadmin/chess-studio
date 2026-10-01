@@ -520,7 +520,7 @@ async def _play_resident_reply(match_id: str, match: dict) -> dict:
     if match.get("status") != "active":
         return match
     bot_username = match.get("white") if match.get("turn") == "w" else match.get("black")
-    if not residents.is_resident(bot_username):
+    if residents.active_profile(bot_username) is None:
         return match
 
     board = chess.Board(match["fen"])
@@ -717,7 +717,7 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
         is_resident_target = residents.should_auto_accept(username, opponent)
         if cfg.enabled and opponent == cfg.username and not is_sparring_target:
             raise HTTPException(409, "Ese rival de staging no está disponible para esta cuenta.")
-        if residents.is_resident(opponent) and not is_resident_target:
+        if cfg.enabled and residents.is_resident(opponent) and not is_resident_target:
             raise HTTPException(409, "Ese residente no está disponible para esta cuenta.")
         is_virtual_target = is_sparring_target or is_resident_target
         if is_virtual_target:
