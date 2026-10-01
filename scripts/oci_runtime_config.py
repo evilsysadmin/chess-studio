@@ -44,7 +44,15 @@ REQUIRED_KEYS = (
     "OTEL_LOGS_ENABLED",
     "OTEL_EXPORTER_OTLP_PROTOCOL",
 )
-OPTIONAL_KEYS = ("OTEL_EXPORTER_OTLP_ENDPOINT", "OTEL_EXPORTER_OTLP_HEADERS", "CHESS_STUDIO_RUNTIME_SCHEMA", "CHESS_ENGINE_WORKERS")
+OPTIONAL_KEYS = (
+    "RESEND_API_KEY",
+    "PASSWORD_RESET_URL",
+    "PASSWORD_RESET_FROM",
+    "OTEL_EXPORTER_OTLP_ENDPOINT",
+    "OTEL_EXPORTER_OTLP_HEADERS",
+    "CHESS_STUDIO_RUNTIME_SCHEMA",
+    "CHESS_ENGINE_WORKERS",
+)
 ALLOWED_KEYS = REQUIRED_KEYS + OPTIONAL_KEYS
 SAFE_NAME_RE = re.compile(r"^[A-Za-z0-9._-]+$")
 SAFE_OBJECT_RE = re.compile(r"^[A-Za-z0-9._/-]+$")
@@ -380,7 +388,7 @@ def self_test() -> None:
     assert "OTEL_EXPORTER_OTLP_ENDPOINT=https://otel.example.test\n" in rendered
     assert "RENDER_API_KEY" not in ALLOWED_KEYS
     assert "OCI_PRIVATE_KEY" not in ALLOWED_KEYS
-    assert "RESEND_API_KEY" not in ALLOWED_KEYS
+    assert "RESEND_API_KEY" in ALLOWED_KEYS
 
     env_rows = unwrap_render_env_vars([
         {"envVar": {"key": "MONGO_URL", "value": "mongodb://example"}, "cursor": "c1"},
