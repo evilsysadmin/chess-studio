@@ -60,6 +60,13 @@ Cuando ambos jugadores aceptan:
 
 La presentación puede ser ceremonial, pero nunca retrasar o sustituir el estado real. Cualquier error/recovery debe seguir gobernado por el match autoritativo.
 
+La ceremonia de entrada proyecta exclusivamente el match existente:
+- `starting` → portón cerrado / “Sellando el duelo”;
+- `active + startsAt` → portón abriendo y cuenta atrás del timestamp autoritativo;
+- `cancelled` → portón cerrado, sin resultado ni cambio de Elo;
+- nombres, color, Elo y reloj salen del snapshot de match, nunca de estado visual paralelo;
+- animación y decoración pueden desaparecer con reduced-motion sin alterar timings ni transición.
+
 Mientras el duelo esté `active`, la Duel Room no se minimiza al lobby: el reloj humano sigue corriendo y salir de la sala debe ser una acción explícita de rendición. El CTA superior muestra **Salir**, abre la confirmación de rendición y sólo después de un estado terminal se habilita **Volver al lobby**. Nunca debe existir el ciclo `Lobby → activeMatch → reentrada inmediata a Duel Room`.
 
 ## Móvil
