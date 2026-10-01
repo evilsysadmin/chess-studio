@@ -273,6 +273,8 @@ assert 'compose "$sha" up -d --no-build --force-recreate "$candidate_service"' i
 assert 'candidate_pvp_service="$(pvp_service "$candidate_color")"' in deploy
 assert 'compose "$sha" up -d --no-build --force-recreate "$candidate_service" "$candidate_pvp_service"' in deploy
 assert 'if attest "$sha" "$candidate_port" && pvp_attest "$candidate_pvp_service"; then' in deploy
+assert "payload.get('nativePulse')" in deploy
+assert "CHESS_STUDIO_PVP_NATIVE_PULSE_ENABLED" in deploy
 assert 'pvp_target_image="$(pvp_image_ref "$sha")"' in deploy
 assert 'docker pull --quiet "$pvp_target_image"' in deploy
 assert 'render_edge "$candidate_color" go' in deploy
