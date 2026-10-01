@@ -75,6 +75,19 @@ test('PvP lobby · desktop prioritizes challenges over rivals', async ({ page })
   await page.setViewportSize({ width: 1440, height: 900 });
   const lobby = await openLobby(page);
   await assertPriorityHierarchy(lobby);
+
+  const roomBox = await lobby.boundingBox();
+  expect(roomBox, 'desktop Duel Hall must have a measurable room shell').not.toBeNull();
+  expect(roomBox.width / 1440, 'desktop lobby fills the castle room horizontally').toBeGreaterThan(0.9);
+  expect(roomBox.height / 900, 'desktop lobby fills the castle room vertically').toBeGreaterThan(0.9);
+
+  const roster = lobby.locator('.pvp-lobby__panel--roster');
+  const side = lobby.locator('.pvp-lobby__side');
+  const [rosterBox, sideBox] = await Promise.all([roster.boundingBox(), side.boundingBox()]);
+  expect(rosterBox).not.toBeNull();
+  expect(sideBox).not.toBeNull();
+  expect(rosterBox.x + rosterBox.width).toBeLessThanOrEqual(sideBox.x + 4);
+
   await mkdir(ARTIFACT_DIR, { recursive: true });
   await page.screenshot({
     path: ARTIFACT_DIR + '/pvp-lobby-desktop-1440x900.png',
