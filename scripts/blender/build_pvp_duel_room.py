@@ -734,7 +734,7 @@ def build_dungeon_population(static, p):
         # Sentinels belong to the fortress envelope, not the fighting dais.
         # The plinth sits almost flush with the side wall, in the clear bay
         # between buttresses, while the armour still faces the board.
-        sx, sy = side * 7.55, 2.05
+        sx, sy = side * 7.55, 2.85
         build_gothic_sentinel(static, p, side, label, sx, sy)
 
         # Barrel + supply crate in the rear corner make the room feel occupied.
@@ -873,7 +873,7 @@ def build_duelist_furniture(static, p):
         # Chairs frame the duel from the wall. Their tall backs sit almost
         # flush with the side masonry while the seat still faces the board.
         x = side * 7.25
-        y = -1.55
+        y = 1.15
         yaw = math.atan2(-x, y)  # local -y is the seated player's forward direction
         cos_yaw = math.cos(yaw)
         sin_yaw = math.sin(yaw)
@@ -1017,7 +1017,7 @@ def build_lighting(static):
             (side * 6.30, 0.80, 4.60), 118.0,
             (0.80, 0.28, 0.08), static, size=2.7,
         )
-        base.look_at(side_fill, (side * 7.30, 2.10, 1.90))
+        base.look_at(side_fill, (side * 7.30, 2.75, 1.90))
 
     base.anchor("PVP_ANCHOR_red_identity", (-4.92, 5.42, 3.42), static)
     base.anchor("PVP_ANCHOR_blue_identity", (4.92, 5.42, 3.42), static)
