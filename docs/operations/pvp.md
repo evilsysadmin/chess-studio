@@ -213,6 +213,18 @@ It must remain bounded:
 - no hidden coupling to match correctness;
 - chat failure cannot break challenge/handoff/gameplay success.
 
+## Go read-offload wedge
+
+The Go PvP edge may absorb high-frequency read coordination incrementally while Python remains the lifecycle authority.
+
+Current bounded contract:
+- lobby pulse may read Mongo natively and invalidate the full Python lobby snapshot;
+- match pulse may renew only the caller's coarse duel presence timestamp without changing gameplay revision;
+- match pulse may expose revision/status and detect clock or handoff deadlines that require an immediate Python reconciliation;
+- stable active matches still perform a bounded full Python reconciliation every few seconds;
+- timeout, disconnect grace/forfeit, handoff transitions, move legality, result and Elo settlement remain Python-authoritative until migrated explicitly with equivalent CAS/idempotency coverage;
+- a missing/disabled native pulse must fall back to the existing Python GET path.
+
 ## Health and observability
 
 PvP must gain a dedicated logical health/readiness view even while sharing the backend process.
