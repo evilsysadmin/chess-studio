@@ -1,9 +1,5 @@
-.pvp-war-room { box-sizing:border-box; width:100%; max-width:100vw; min-height:100dvh; padding:.55rem clamp(.45rem,1.2vw,1.1rem) 1rem; overflow-x:clip; background:radial-gradient(circle at 50% 0,rgba(112,71,38,.16),transparent 32%),#07090c; }
-.pvp-war-room__topbar { width:min(98vw,1500px); min-height:44px; margin:0 auto .45rem; display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:.8rem; color:rgba(236,228,209,.7); }
-.pvp-war-room__topbar>span { justify-self:center; font-family:var(--font-mono); font-size:.67rem; letter-spacing:.16em; color:rgba(216,183,121,.82); }
-.pvp-war-room__topbar>small { justify-self:end; font-variant-numeric:tabular-nums; }
-.pvp-war-room__topbar button { min-height:38px; padding:.38rem .72rem; }
-.game-screen.pvp-war-room .game-layout.game-layout-3d { width:min(98vw,1500px); }
+.pvp-war-room { box-sizing:border-box; width:100vw; max-width:100vw; min-height:100dvh; padding:0; overflow:hidden; background:#07090c; }
+.game-screen.pvp-war-room .game-layout.game-layout-3d { width:100vw; max-width:none; margin:0; }
 
 /* PvP owns a one-column War Room. The canonical GameScreen rail styles are
    loaded by the deferred 3D renderer and deliberately use !important, so pin
@@ -17,7 +13,7 @@
   align-items:stretch!important;
   justify-content:stretch!important;
   gap:0!important;
-  padding:.45rem!important;
+  padding:0!important;
   margin-bottom:0!important;
 }
 .game-screen.pvp-war-room .board-live-row.is-3d-warroom > .game-board-stack.game-board-stack-3d {
@@ -32,12 +28,15 @@
   min-width:0;
 }
 .game-screen.pvp-war-room .game-board-stack.game-board-stack-3d .board3d-main-shell {
-  height:clamp(620px,calc(100dvh - 5.6rem),940px)!important;
+  height:100dvh!important;
   min-height:0!important;
+  max-height:none!important;
   aspect-ratio:auto;
+  border-radius:0!important;
 }
 .pvp-war-room .board3d-fixed-camera-note,.pvp-war-room .board3d-renderer-badge,.pvp-war-room .board3d-customize,.pvp-war-room .board3d-inspect { display:none; }
-.pvp-war-room__stage { position:relative; }
+.pvp-war-room__stage { position:relative; height:100dvh; overflow:hidden; }
+.pvp-war-room__exit { position:absolute; z-index:13; top:.75rem; left:.75rem; min-height:44px; padding:.42rem .7rem; border-color:rgba(205,201,192,.16); color:#e9e2d3; background:rgba(12,14,16,.82); box-shadow:0 12px 30px rgba(0,0,0,.24); backdrop-filter:blur(12px); }
 .pvp-war-room__duel-pill { position:absolute; z-index:12; top:.75rem; left:50%; transform:translateX(-50%); max-width:calc(100% - 1.5rem); min-height:48px; display:flex; align-items:center; gap:.55rem; padding:.42rem .65rem; border:1px solid rgba(205,201,192,.16); border-radius:999px; color:#e9e2d3; background:rgba(12,14,16,.86); box-shadow:0 12px 30px rgba(0,0,0,.28); backdrop-filter:blur(12px); white-space:nowrap; }
 .pvp-war-room__opponent-mark { display:grid; place-items:center; width:30px; height:30px; flex:0 0 auto; border-radius:50%; color:#d6b779; background:linear-gradient(145deg,#3b3124,#171511); border:1px solid rgba(214,183,121,.2); }
 .pvp-war-room__identity { min-width:0; display:grid; line-height:1.05; }
@@ -63,13 +62,11 @@
 .pvp-war-room__error { position:fixed; z-index:30; left:50%; bottom:1rem; transform:translateX(-50%); max-width:min(90vw,560px); margin:0; padding:.65rem .8rem; border:1px solid rgba(191,88,76,.34); border-radius:10px; color:#e9b5ae; background:rgba(71,24,21,.93); box-shadow:0 12px 34px rgba(0,0,0,.38); }
 .pvp-war-room__loading { min-height:60vh; display:grid; place-items:center; color:rgba(233,226,211,.62); }
 @media (max-width:760px) {
-  .pvp-war-room { padding:.3rem; }
-  .pvp-war-room__topbar { width:100%; grid-template-columns:auto 1fr; padding-inline:.15rem; }
-  .pvp-war-room__topbar>span { justify-self:end; }
-  .pvp-war-room__topbar>small { display:none; }
-  .game-screen.pvp-war-room .game-layout.game-layout-3d { width:100%; }
-  .game-screen.pvp-war-room .board-live-row.is-3d-warroom { padding:.2rem!important; border-radius:12px; }
-  .game-screen.pvp-war-room .game-board-stack.game-board-stack-3d .board3d-main-shell { height:calc(100dvh - 4.15rem)!important; min-height:520px!important; border-radius:12px; }
+  .pvp-war-room { padding:0; }
+  .game-screen.pvp-war-room .game-layout.game-layout-3d { width:100vw; }
+  .game-screen.pvp-war-room .board-live-row.is-3d-warroom { padding:0!important; border-radius:0; }
+  .game-screen.pvp-war-room .game-board-stack.game-board-stack-3d .board3d-main-shell { height:100dvh!important; min-height:0!important; border-radius:0!important; }
+  .pvp-war-room__exit { top:.45rem; left:.45rem; }
   .pvp-war-room__duel-pill { top:.45rem; min-height:44px; max-width:calc(100% - .8rem); gap:.42rem; padding:.35rem .5rem; }
   .pvp-war-room__identity strong { max-width:110px; }
   .pvp-war-room__result { right:.55rem; bottom:.55rem; width:min(440px,calc(100% - 1.1rem)); }
@@ -89,9 +86,6 @@
     overflow:hidden;
     box-sizing:border-box;
   }
-  .pvp-war-room__topbar { width:100%; min-height:44px; margin-bottom:.18rem; padding-inline:.1rem; }
-  .pvp-war-room__topbar>span { display:none; }
-  .pvp-war-room__topbar button { min-height:44px; }
   .game-screen.pvp-war-room .game-layout.game-layout-3d { width:100%; }
   .game-screen.pvp-war-room .board-live-row.is-3d-warroom { padding:0!important; border-radius:10px; }
   .game-screen.pvp-war-room .game-board-stack.game-board-stack-3d .board3d-main-shell {
@@ -104,7 +98,7 @@
   .pvp-war-room__result { bottom:.3rem; }
 }
 @media (pointer:coarse), (max-width:760px), (max-height:520px) {
-  .pvp-war-room__topbar button { min-width:44px; min-height:44px; }
+  .pvp-war-room__exit { min-width:44px; min-height:44px; }
   .pvp-war-room__duel-pill .game-3d-utility-menu,
   .pvp-war-room__duel-pill .game-3d-utility-menu>summary { width:44px; height:44px; }
   .pvp-war-room__result button { min-height:44px; }

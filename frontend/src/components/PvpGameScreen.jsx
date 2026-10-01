@@ -314,29 +314,24 @@ export default function PvpGameScreen({ initialMatch, onExit, onMatchUpdate }) {
 
   return (
     <section className="game-screen pvp-war-room" aria-label="Sala de duelo 1 contra 1">
-      <div className="pvp-war-room__topbar">
-        {match.status === 'active' ? (
-          <button
-            type="button"
-            className="secondary-btn"
-            aria-label="Salir de la partida"
-            disabled={!connectionLive || resigning}
-            onClick={() => setShowResignConfirm(true)}
-          >
-            ← Salir
-          </button>
-        ) : (
-          <button type="button" className="secondary-btn" onClick={() => onExit?.(match)}>← Lobby</button>
-        )}
-        <span>DUEL ROOM · 1 VS 1</span>
-        <small>{match.youAre === 'w' ? 'Blancas' : 'Negras'} · {match.youAre === 'w' ? match.whiteRating : match.blackRating} Elo 1v1</small>
-      </div>
-
       <div className="game-layout game-layout-3d pvp-war-room__layout">
         <div className="board-column">
           <div className="board-live-row is-3d-warroom">
             <div className="game-board-stack game-board-stack-3d">
               <div className="game-board-3d-stage pvp-war-room__stage">
+                {match.status === 'active' ? (
+                  <button
+                    type="button"
+                    className="secondary-btn pvp-war-room__exit"
+                    aria-label="Salir de la partida"
+                    disabled={!connectionLive || resigning}
+                    onClick={() => setShowResignConfirm(true)}
+                  >
+                    ← Salir
+                  </button>
+                ) : (
+                  <button type="button" className="secondary-btn pvp-war-room__exit" onClick={() => onExit?.(match)}>← Lobby</button>
+                )}
                 <WarRoomBoardSurface
                   isThreeD
                   loadingLabel="Abriendo la sala…"

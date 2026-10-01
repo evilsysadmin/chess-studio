@@ -113,9 +113,10 @@ async function openDuelRoom(page, viewport) {
   const [roomBox, boardBox] = await Promise.all([room.boundingBox(), board.boundingBox()]);
   expect(roomBox).not.toBeNull();
   expect(boardBox).not.toBeNull();
-  expect(boardBox.width / roomBox.width).toBeGreaterThan(0.72);
+  expect(boardBox.width / roomBox.width).toBeGreaterThan(0.96);
   expect(Math.abs((boardBox.x + boardBox.width / 2) - (roomBox.x + roomBox.width / 2)) / roomBox.width)
-    .toBeLessThan(0.12);
+    .toBeLessThan(0.02);
+  await expect(room.getByText('DUEL ROOM · 1 VS 1', { exact: true })).toHaveCount(0);
 
   await page.waitForTimeout(900);
   await mkdir(ARTIFACT_DIR, { recursive: true });
@@ -198,7 +199,7 @@ async function captureDuelRoomFromCompositor(page, room, path) {
 }
 
 async function assertMobileTouchTargets(room) {
-  const topbarButton = room.locator('.pvp-war-room__topbar button').first();
+  const topbarButton = room.locator('.pvp-war-room__exit').first();
   const utility = room.locator('.pvp-war-room__duel-pill .game-3d-utility-menu>summary');
   for (const target of [topbarButton, utility]) {
     const box = await target.boundingBox();
