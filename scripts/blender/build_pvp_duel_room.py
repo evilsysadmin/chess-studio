@@ -252,33 +252,44 @@ def build_architecture(static, p):
 
     # Gate machinery: two wall-mounted hoist wheels make the portcullis feel functional.
     for side, label in ((-1, "left"), (1, "right")):
-        wheel_x = side * 3.48
-        wheel_y = 5.74
-        wheel_z = 4.62
+        wheel_x = side * 3.18
+        wheel_y = 5.72
+        wheel_z = 4.05
 
         wheel = base.torus(
             f"PVP_DUEL_gate_winch_{label}",
             (wheel_x, wheel_y, wheel_z),
-            0.58, 0.075, p["iron"], static,
+            0.49, 0.068, p["brass"], static,
             rotation=(math.pi / 2, 0.0, 0.0),
         )
         base.cylinder(
             f"PVP_DUEL_gate_winch_hub_{label}",
             (wheel_x, wheel_y, wheel_z),
-            0.13, 0.28, p["oak_mid"], static, vertices=18,
+            0.14, 0.26, p["iron"], static, vertices=18,
         ).rotation_euler.x = math.pi / 2
+
+        base.cube(
+            f"PVP_DUEL_gate_winch_mount_{label}",
+            (wheel_x, wheel_y + 0.14, wheel_z),
+            (0.62, 0.16, 0.62), p["recess"], static, bevel=0.08,
+        )
+        base.cube(
+            f"PVP_DUEL_gate_winch_mount_cap_{label}",
+            (wheel_x, wheel_y + 0.12, wheel_z + 0.66),
+            (0.70, 0.18, 0.08), p["limestone"], static, bevel=0.035,
+        )
 
         for spoke_idx, angle in enumerate((0, 45, 90, 135)):
             spoke = base.cube(
                 f"PVP_DUEL_gate_winch_spoke_{label}_{spoke_idx}",
                 (wheel_x, wheel_y - 0.01, wheel_z),
-                (0.48, 0.030, 0.034), p["oak_mid"], static, bevel=0.020,
+                (0.40, 0.030, 0.034), p["oak_mid"], static, bevel=0.020,
             )
             spoke.rotation_euler.y = math.radians(angle)
 
         # Short chain run from each winch toward the portcullis head.
-        chain_start = Vector((wheel_x - side * 0.46, wheel_y - 0.05, wheel_z + 0.18))
-        chain_end = Vector((side * 1.78, 5.70, 5.05))
+        chain_start = Vector((wheel_x - side * 0.40, wheel_y - 0.05, wheel_z + 0.16))
+        chain_end = Vector((side * 1.72, 5.70, 4.92))
         direction = chain_end - chain_start
         for link_idx in range(7):
             t = link_idx / 6
