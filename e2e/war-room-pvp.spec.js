@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { buttonWithVisibleText, login, mockApi } from './helpers.js';
-import { readBoard3DProjection } from './board3d-projection.js';
+import { clickWarRoomMove } from './war-room-board-input.js';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
@@ -88,16 +88,139 @@ test('War Room 1v1 · un 409 por carrera de turno sincroniza sin flash de error'
   await lobby.getByRole('button', { name: 'Aceptar', exact: true }).click();
 
   const warRoom = page.getByRole('region', { name: 'Sala de duelo 1 contra 1' });
-  const board = page.locator('[data-board3d-war-room="true"]');
-  const canvas = board.locator('.board3d-main-canvas');
-  await expect(canvas).toBeVisible({ timeout: 45_000 });
-  const projection = await readBoard3DProjection(canvas);
-  await canvas.click(projection.square('e2'));
-  await canvas.click(projection.square('e4'));
+  await expect(warRoom.getByText('Tu turno', { exact: true })).toBeVisible({ timeout: 45_000 });
+  await expect(clickWarRoomMove(page, 'e2', 'e4')).resolves.toBe(true);
 
   await expect.poll(() => moveAttempts).toBe(1);
   await expect(warRoom.getByText('bob juega', { exact: true })).toBeVisible({ timeout: 5_000 });
   await expect(warRoom.getByRole('alert')).toHaveCount(0);
+});
+
+test('War Room 1v1 · rendirse no resucita un handoff stale del lobby', async ({ page }) => {
+  test.setTimeout(90_000);
+  await mockApi(page);
+
+  const staleStarting = matchPayload({
+    black: 'sparringmeister',
+    blackRating: 400,
+    status: 'starting',
+    yourTurn: false,
+    youReady: false,
+    opponentReady: true,
+    startsAt: null,
+    opponentPresence: 'online',
+    clock: { id: '10+0', whiteMs: 600000, blackMs: 600000, incrementMs: 0, runningColor: null },
+  });
+  let liveMatch = matchPayload({
+    black: 'sparringmeister',
+    blackRating: 400,
+    status: 'active',
+    youReady: true,
+    opponentReady: true,
+    startsAt: '2026-09-16T04:59:59Z',
+    opponentPresence: 'online',
+  });
+
+  // Keep returning the stale pre-game snapshot from the roster on purpose.
+  // This is the exact state that used to resurrect the handoff after resigning.
+  await page.route('**/api/pvp/lobby', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({
+      roster: [
+        { username: 'e2e', rating: 1050, tier: 'Intermedio', isSelf: true },
+        { username: 'sparringmeister', rating: 400, tier: 'Principiante', isSelf: false },
+      ],
+      challenges: [],
+      activeMatch: staleStarting,
+      messages: [],
+      pollAfterMs: 3000,
+    }),
+  }));
+  await page.route('**/api/pvp/roster', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ member: { username: 'e2e', rating: 1050, tier: 'Intermedio', isSelf: true } }),
+  }));
+  await page.route('**/api/pvp/matches/pvp-e2e-1/ready', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ match: liveMatch }),
+  }));
+  await page.route('**/api/pvp/matches/pvp-e2e-1', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ match: liveMatch, pollAfterMs: 1250 }),
+  }));
+  await page.route('**/api/pvp/matches/pvp-e2e-1/move', (route) => {
+    liveMatch = matchPayload({
+      black: 'sparringmeister',
+      blackRating: 400,
+      status: 'active',
+      startsAt: '2026-09-16T04:59:59Z',
+      opponentPresence: 'online',
+      turn: 'b',
+      yourTurn: false,
+      revision: 1,
+      fen: 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1',
+      history: [{ ply: 1, uci: 'e2e4', san: 'e4', by: 'e2e' }],
+      clock: { id: '10+0', whiteMs: 599500, blackMs: 600000, incrementMs: 0, runningColor: 'b' },
+    });
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ match: liveMatch }),
+    });
+  });
+  await page.route('**/api/pvp/matches/pvp-e2e-1/resign', (route) => {
+    liveMatch = {
+      ...liveMatch,
+      status: 'finished',
+      result: '0-1',
+      endReason: 'resignation',
+      yourTurn: false,
+      revision: 2,
+      ratingChange: null,
+      clock: { ...liveMatch.clock, runningColor: null },
+    };
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ match: liveMatch }),
+    });
+  });
+
+  await login(page);
+  // Explicit login deliberately clears ephemeral PvP enrollment so one account
+  // cannot inherit another account's roster state. Recreate the real persisted
+  // session shape after authentication, then reload like a returning player.
+  await page.evaluate(() => {
+    sessionStorage.setItem('chess-study-pvp-enrollment-v1', JSON.stringify({ username: 'e2e', enrolled: true }));
+  });
+  await page.reload();
+  await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible();
+
+  const warRoom = page.getByRole('region', { name: 'Sala de duelo 1 contra 1' });
+  await expect(warRoom).toBeVisible({ timeout: 15_000 });
+  await expect(warRoom.getByText('Tu turno', { exact: true })).toBeVisible({ timeout: 45_000 });
+  await expect(clickWarRoomMove(page, 'e2', 'e4')).resolves.toBe(true);
+  await expect(warRoom.getByText('sparringmeister juega', { exact: true })).toBeVisible({ timeout: 5_000 });
+
+  await warRoom.getByRole('button', { name: 'Más acciones de partida', exact: true }).click();
+  await warRoom.getByRole('menuitem', { name: 'Abandonar partida', exact: true }).click();
+  const resignDialog = page.getByRole('dialog', { name: '¿Abandonar la partida?' });
+  await expect(resignDialog).toBeVisible();
+  await resignDialog.getByRole('button', { name: 'Rendirse', exact: true }).click();
+
+  const debrief = warRoom.getByRole('dialog', { name: 'Resumen del duelo' });
+  await expect(debrief).toBeVisible({ timeout: 5_000 });
+  await expect(debrief).toContainText('Derrota');
+  await debrief.getByRole('button', { name: 'Volver al lobby', exact: true }).click();
+
+  await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible();
+  await expect(page.getByText('Sincronizando el duelo…', { exact: true })).toHaveCount(0);
+  await page.waitForTimeout(1200);
+  await expect(page.getByText('Sincronizando el duelo…', { exact: true })).toHaveCount(0);
 });
 
 test('War Room 1v1 · reto entrante abre una partida humana en el tablero canónico', async ({ page }) => {
@@ -148,7 +271,7 @@ test('War Room 1v1 · reto entrante abre una partida humana en el tablero canón
 
   const warRoom = page.getByRole('region', { name: 'Sala de duelo 1 contra 1' });
   await expect(warRoom).toBeVisible();
-  await expect(warRoom.getByText('bob', { exact: true })).toBeVisible();
+  await expect(warRoom.getByRole('strong').filter({ hasText: /^bob$/ })).toBeVisible();
   await expect(warRoom.getByText('Tu turno', { exact: true })).toBeVisible();
   await expect(warRoom.getByText('10:00', { exact: true }).first()).toBeVisible();
   const actions = warRoom.getByRole('button', { name: 'Más acciones de partida', exact: true });

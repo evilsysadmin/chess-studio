@@ -60,7 +60,7 @@ function pvpMatthiasVerdict(result, endReason) {
   return 'Tablas. Nadie se lleva el cadáver. El resultado está claro y no hace falta disfrazarlo con estadísticas de feria.';
 }
 
-export default function PvpGameScreen({ initialMatch, onExit }) {
+export default function PvpGameScreen({ initialMatch, onExit, onMatchUpdate }) {
   const [match, setMatch] = useState(initialMatch);
   const [selected, setSelected] = useState(null);
   const [pendingPromotion, setPendingPromotion] = useState(null);
@@ -117,6 +117,12 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
   const yourClockMs = match?.youAre === 'b' ? liveClock.blackMs : liveClock.whiteMs;
   const rivalClockMs = opponent?.color === 'w' ? liveClock.whiteMs : liveClock.blackMs;
 
+  const applyAuthoritativeMatch = useCallback((nextMatch) => {
+    if (!nextMatch?.id) return;
+    setMatch((current) => mergeNewerMatch(current, nextMatch));
+    onMatchUpdate?.(nextMatch);
+  }, [onMatchUpdate]);
+
   useEffect(() => {
     clockAnchorRef.current = Date.now();
     setClockElapsedMs(0);
@@ -171,7 +177,7 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
       try {
         const response = await pvpApi.getMatch(match.id, { signal: controller.signal });
         if (!active) return;
-        setMatch((current) => mergeNewerMatch(current, response?.match));
+        applyAuthoritativeMatch(response?.match);
         setConnectionState('live');
         setError('');
         schedule(Math.max(900, Number(response?.pollAfterMs || 1250)));
@@ -227,7 +233,7 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
       window.removeEventListener('offline', handleOffline);
       window.removeEventListener('online', handleOnline);
     };
-  }, [match?.id, match?.status]);
+  }, [applyAuthoritativeMatch, match?.id, match?.status]);
 
   const submitMove = useCallback(async (from, to, promotion = null) => {
     if (!match?.id || !canInteract) return;
@@ -235,7 +241,7 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
     setError('');
     try {
       const response = await pvpApi.playMove(match.id, from, to, promotion);
-      if (response?.match) setMatch((current) => mergeNewerMatch(current, response.match));
+      if (response?.match) applyAuthoritativeMatch(response.match);
     } catch (err) {
       // A human-vs-human match can legitimately race the 1.25 s polling window:
       // the UI may still show our turn when the opponent's move has just been
@@ -250,7 +256,7 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
       try {
         const response = await pvpApi.getMatch(match.id);
         if (response?.match) {
-          setMatch((current) => mergeNewerMatch(current, response.match));
+          applyAuthoritativeMatch(response.match);
           setConnectionState('live');
           if (transientMoveConflict) setError('');
         }
@@ -264,7 +270,7 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
     } finally {
       setBusy(false);
     }
-  }, [canInteract, match?.id]);
+  }, [applyAuthoritativeMatch, canInteract, match?.id]);
 
   const onSquareClick = useCallback((square) => {
     if (!canInteract) return;
@@ -295,7 +301,7 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
     setError('');
     try {
       const response = await pvpApi.resignMatch(match.id);
-      if (response?.match) setMatch((current) => mergeNewerMatch(current, response.match));
+      if (response?.match) applyAuthoritativeMatch(response.match);
       setShowResignConfirm(false);
     } catch (err) {
       setError(err?.message || 'No se pudo registrar la rendición.');
@@ -309,7 +315,7 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
   return (
     <section className="game-screen pvp-war-room" aria-label="Sala de duelo 1 contra 1">
       <div className="pvp-war-room__topbar">
-        <button type="button" className="secondary-btn" onClick={onExit}>← Lobby</button>
+        <button type="button" className="secondary-btn" onClick={() => onExit?.(match)}>← Lobby</button>
         <span>DUEL ROOM · 1 VS 1</span>
         <small>{match.youAre === 'w' ? 'Blancas' : 'Negras'} · {match.youAre === 'w' ? match.whiteRating : match.blackRating} Elo 1v1</small>
       </div>
@@ -402,7 +408,7 @@ export default function PvpGameScreen({ initialMatch, onExit }) {
                     <p className="pvp-war-room__result-facts">
                       Contra <b>{opponent.username}</b> · {opponent.rating} Elo 1v1 inicial · {endReasonLabel} · {(match.history || []).length} jugadas registradas
                     </p>
-                    <button type="button" className="primary-btn" onClick={onExit}>Volver al lobby</button>
+                    <button type="button" className="primary-btn" onClick={() => onExit?.(match)}>Volver al lobby</button>
                   </aside>
                 )}
               </div>

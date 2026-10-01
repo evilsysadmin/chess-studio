@@ -65,7 +65,11 @@ export default function PvpAppSurface({ view, replaceView }) {
       )}
       {view === 'pvpGame' && flow.match && (
         <Suspense fallback={<div className="route-loading" role="status">Abriendo duelo 1 vs 1…</div>}>
-          <PvpGameScreen initialMatch={flow.match} onExit={flow.exitMatch} />
+          <PvpGameScreen
+            initialMatch={flow.match}
+            onMatchUpdate={flow.updateMatch}
+            onExit={flow.exitMatch}
+          />
         </Suspense>
       )}
     </>

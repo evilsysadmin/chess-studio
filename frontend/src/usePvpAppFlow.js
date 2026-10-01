@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePvpRosterPresence } from './usePvpRosterPresence.js';
 import { requestWarRoomLandscapeOnEntry } from './components/useWarRoomImmersive.js';
+import { mergeNewerMatch } from './pvpGameModel.js';
 
 async function loadPvpApi() {
   return (await import('./pvpApi.js')).pvpApi;
@@ -128,6 +129,15 @@ export function usePvpAppFlow({ view, replaceView }) {
     };
   }, [handoffMatch?.id]);
 
+  const updateMatch = useCallback((nextMatch) => {
+    if (!nextMatch?.id) return false;
+    if (nextMatch.status !== 'active' && nextMatch.status !== 'starting') {
+      terminalHandoffIdRef.current = nextMatch.id;
+    }
+    setMatch((current) => mergeNewerMatch(current, nextMatch));
+    return true;
+  }, []);
+
   const completeHandoff = useCallback(() => {
     if (!handoffMatch?.id || handoffMatch.status !== 'active') return false;
     return enterPreparedMatch(handoffMatch);
@@ -151,18 +161,23 @@ export function usePvpAppFlow({ view, replaceView }) {
     return true;
   }, [handoffMatch?.id, handoffMatch?.status, replaceView]);
 
-  const exitMatch = useCallback(() => {
+  const exitMatch = useCallback((latestMatch = null) => {
     // The roster snapshot can still carry this duel as active for one render
-    // after a terminal result. Suppress that stale id until the lobby refresh
-    // observes activeMatch=null, otherwise leaving the debrief immediately
-    // re-enters the same War Room.
-    if (match?.id && match.status !== 'active' && match.status !== 'starting') {
-      terminalHandoffIdRef.current = match.id;
+    // after a terminal result. Prefer the child's latest authoritative snapshot
+    // over the parent's render-lagged copy so a just-finished duel cannot be
+    // resurrected as a fresh handoff while the lobby refresh catches up.
+    const terminalCandidate = latestMatch?.id ? latestMatch : match;
+    if (
+      terminalCandidate?.id
+      && terminalCandidate.status !== 'active'
+      && terminalCandidate.status !== 'starting'
+    ) {
+      terminalHandoffIdRef.current = terminalCandidate.id;
     }
     setMatch(null);
     setHandoffMatch(null);
     replaceView('menu');
-  }, [match?.id, match?.status, replaceView]);
+  }, [match, replaceView]);
 
   const menuStatus = useMemo(() => ({
     enrolled: presence.enrolled,
@@ -182,6 +197,7 @@ export function usePvpAppFlow({ view, replaceView }) {
     acceptIncoming,
     completeHandoff,
     cancelHandoff,
+    updateMatch,
     exitMatch,
   };
 }
