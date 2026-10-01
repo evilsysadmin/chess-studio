@@ -100,8 +100,8 @@ def palette():
             rough=0.66, coat=0.03, texture="fabric", scale=42, bump=0.030,
         ),
         "seat_leather": base.material(
-            "PVP_MAT_seat_leather", (0.075, 0.020, 0.010, 1),
-            rough=0.50, coat=0.18, sheen=0.08, texture="leather", scale=50, bump=0.040,
+            "PVP_MAT_seat_leather", (0.155, 0.032, 0.012, 1),
+            rough=0.38, coat=0.28, sheen=0.10, texture="leather", scale=50, bump=0.034,
         ),
         "fire": base.material(
             "PVP_MAT_fire_orange", (0.70, 0.070, 0.002, 1),
@@ -572,7 +572,7 @@ def build_dungeon_population(static, p):
         side_light["war_room_runtime_dynamic"] = "pvp-side-brazier"
 
         # Armoured sentinel on a low plinth, behind and outside the board.
-        sx, sy = side * 5.72, 3.86
+        sx, sy = side * 5.32, 3.54
         base.cube(
             f"PVP_DUEL_sentinel_{label}_plinth", (sx, sy, 0.30),
             (0.48, 0.40, 0.30), p["dais"], static, bevel=0.07,
@@ -804,6 +804,19 @@ def build_dungeon_population(static, p):
         base.tag(spike, base.ROLE_STATIC)
         base.relink(spike, static)
 
+        # Give the sentinels enough physical presence in the hero camera without
+        # pulling them into the board cone. Scale authored armor around the top
+        # of the plinth so feet remain planted and the halberd grows with it.
+        sentinel_prefix = f"PVP_DUEL_sentinel_{label}_"
+        sentinel_scale = 1.11
+        for obj in list(static.objects):
+            if not obj.name.startswith(sentinel_prefix) or obj.name.endswith("_plinth"):
+                continue
+            obj.location.x = sx + (obj.location.x - sx) * sentinel_scale
+            obj.location.y = sy + (obj.location.y - sy) * sentinel_scale
+            obj.location.z = 0.30 + (obj.location.z - 0.30) * sentinel_scale
+            obj.scale = tuple(component * sentinel_scale for component in obj.scale)
+
         sentinel_light = base.light(
             f"PVP_LIGHT_sentinel_{label}", "POINT",
             (sx, sy - 0.44, 2.02), 88.0,
@@ -944,8 +957,8 @@ def build_sconces_and_gate(static, p):
 def build_duelist_furniture(static, p):
     """Premium duelist chairs, angled so both seats unmistakably face the board."""
     for side, accent, label in ((-1, p["red"], "red"), (1, p["blue"], "blue")):
-        x = side * 5.02
-        y = -1.48
+        x = side * 5.18
+        y = -3.42
         yaw = math.atan2(-x, y)  # local -y is the seated player's forward direction
         cos_yaw = math.cos(yaw)
         sin_yaw = math.sin(yaw)
@@ -980,12 +993,12 @@ def build_duelist_furniture(static, p):
         frame = base.cube(
             f"PVP_DUEL_seat_{label}",
             at(0.0, 0.0, 0.64),
-            (0.82, 0.58, 0.13), p["oak"], static, bevel=0.075,
+            (0.88, 0.62, 0.14), p["oak"], static, bevel=0.080,
         )
         frame.rotation_euler.z = yaw
         frame["pvp_duel_faces_board"] = True
-        chair_cube("cushion", (0.0, -0.02, 0.80), (0.70, 0.49, 0.12),
-                   p["seat_leather"], bevel=0.11)
+        chair_cube("cushion", (0.0, -0.02, 0.82), (0.75, 0.53, 0.13),
+                   p["seat_leather"], bevel=0.12)
 
         # Four sturdy carved legs and a low apron.
         for leg_idx, (lx, ly) in enumerate(((-0.62, -0.39), (0.62, -0.39), (-0.62, 0.39), (0.62, 0.39))):
@@ -1007,10 +1020,10 @@ def build_duelist_furniture(static, p):
                 f"PVP_DUEL_seat_{label}_finial_{post_x:+.2f}",
                 at(post_x, 0.43, 2.28), 0.115, p["brass"], static,
             )
-        chair_cube("back_frame", (0.0, 0.44, 1.72), (0.64, 0.080, 0.76),
-                   p["oak"], bevel=0.095)
-        chair_cube("back_leather", (0.0, 0.350, 1.72), (0.54, 0.045, 0.62),
-                   p["seat_leather"], bevel=0.085)
+        chair_cube("back_frame", (0.0, 0.44, 1.76), (0.70, 0.085, 0.80),
+                   p["oak"], bevel=0.10)
+        chair_cube("back_leather", (0.0, 0.345, 1.76), (0.60, 0.050, 0.66),
+                   p["seat_leather"], bevel=0.090)
         chair_cube("crest", (0.0, 0.325, 1.82), (0.20, 0.024, 0.24),
                    accent, bevel=0.065)
         chair_cube("crest_bar", (0.0, 0.30, 1.82), (0.28, 0.014, 0.045),
