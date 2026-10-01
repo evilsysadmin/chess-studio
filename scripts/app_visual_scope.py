@@ -125,6 +125,7 @@ class Scope:
     chronicles_avatar: bool = False
     warroom_revision_required: bool = False
     warroom_v3_revision_required: bool = False
+    pvp_duel_revision_required: bool = False
 
     @property
     def capture_groups(self) -> str:
@@ -408,6 +409,12 @@ WAR_ROOM_V3_REVISION_OWNERS = {
     ".github/workflows/war-room-v3-blender-art.yml",
 }
 
+PVP_DUEL_REVISION_OWNERS = {
+    "scripts/blender/build_pvp_duel_room.py",
+    "scripts/blender/publish_pvp_duel_room.py",
+    ".github/workflows/pvp-duel-room-blender-art.yml",
+}
+
 
 def _needs_warroom_revision(path: str) -> bool:
     return path.lower().replace("\\", "/") in WAR_ROOM_V2_REVISION_OWNERS
@@ -415,6 +422,10 @@ def _needs_warroom_revision(path: str) -> bool:
 
 def _needs_warroom_v3_revision(path: str) -> bool:
     return path.lower().replace("\\", "/") in WAR_ROOM_V3_REVISION_OWNERS
+
+
+def _needs_pvp_duel_revision(path: str) -> bool:
+    return path.lower().replace("\\", "/") in PVP_DUEL_REVISION_OWNERS
 
 
 def _needs_chronicles_avatar(path: str) -> bool:
@@ -498,6 +509,7 @@ def classify(paths: list[str]) -> Scope:
     chronicles_avatar = False
     has_v2_revision_owner = any(_needs_warroom_revision(path) for path in cleaned)
     has_v3_revision_owner = any(_needs_warroom_v3_revision(path) for path in cleaned)
+    has_pvp_duel_revision_owner = any(_needs_pvp_duel_revision(path) for path in cleaned)
     browser_warroom = False
 
     for path in cleaned:
@@ -518,6 +530,7 @@ def classify(paths: list[str]) -> Scope:
                 chronicles_avatar=fallback.chronicles_avatar,
                 warroom_revision_required=has_v2_revision_owner,
                 warroom_v3_revision_required=has_v3_revision_owner,
+                pvp_duel_revision_required=has_pvp_duel_revision_owner,
             )
         groups.update(surface)
         if "warroom" in surface:
@@ -538,6 +551,7 @@ def classify(paths: list[str]) -> Scope:
         chronicles_avatar=chronicles_avatar,
         warroom_revision_required=browser_warroom and has_v2_revision_owner,
         warroom_v3_revision_required=browser_warroom and has_v3_revision_owner,
+        pvp_duel_revision_required=browser_warroom and has_pvp_duel_revision_owner,
     )
 
 
@@ -551,6 +565,7 @@ def write_outputs(scope: Scope, output_path: str) -> None:
         "chesscom": str(scope.chesscom).lower(),
         "warroom_revision_required": str(scope.warroom_revision_required).lower(),
         "warroom_v3_revision_required": str(scope.warroom_v3_revision_required).lower(),
+        "pvp_duel_revision_required": str(scope.pvp_duel_revision_required).lower(),
     }
     with open(output_path, "a", encoding="utf-8") as handle:
         for key, value in values.items():
@@ -735,6 +750,16 @@ def self_test() -> None:
     ])
     assert mixed_v3.capture_groups == "warroom" and mixed_v3.warroom_v3_revision_required
 
+    duel_blender = classify(["scripts/blender/build_pvp_duel_room.py"])
+    assert duel_blender.capture_groups == "none"
+    assert not duel_blender.pvp_duel_revision_required
+    mixed_duel = classify([
+        "scripts/blender/build_pvp_duel_room.py",
+        "frontend/src/components/PvpDuelRoomShell.js",
+    ])
+    assert mixed_duel.capture_groups == "warroom"
+    assert mixed_duel.pvp_duel_revision_required
+
     warroom_3d = classify(["frontend/src/components/WarRoom3D.jsx"])
     assert warroom_3d.capture_groups == "warroom" and not warroom_3d.hans
     board3d_core = classify(["frontend/src/components/Board3DCore.jsx"])
@@ -886,6 +911,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"chesscom={str(scope.chesscom).lower()}")
         print(f"warroom_revision_required={str(scope.warroom_revision_required).lower()}")
         print(f"warroom_v3_revision_required={str(scope.warroom_v3_revision_required).lower()}")
+        print(f"pvp_duel_revision_required={str(scope.pvp_duel_revision_required).lower()}")
     return 0
 
 

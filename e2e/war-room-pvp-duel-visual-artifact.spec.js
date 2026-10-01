@@ -1,9 +1,30 @@
 import { expect, test } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import { buttonWithVisibleText, login, mockApi } from './helpers.js';
+import { decodePng } from './png-pixels.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual/pvp-duel-room';
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+const DUEL_RUNTIME_PATTERN = '**/pvp/duel-room/runtime/current.glb*';
+const DUEL_STAGING_REVISION_BASE =
+  'https://assets.chess-studio.shadowops.dpdns.org/pvp/duel-room/staging/revisions';
+
+async function routeExpectedDuelRevision(page) {
+  const revision = String(process.env.APP_VISUAL_EXPECTED_PVP_DUEL_REVISION || '').trim();
+  if (!revision) return () => 0;
+
+  let requests = 0;
+  const revisionUrl = `${DUEL_STAGING_REVISION_BASE}/${revision}.glb?visual=${revision}`;
+  await page.route(DUEL_RUNTIME_PATTERN, async (route) => {
+    requests += 1;
+    const response = await route.fetch({ url: revisionUrl });
+    if (!response.ok()) {
+      throw new Error(`PvP Duel Room staging revision failed: ${response.status()} ${revisionUrl}`);
+    }
+    await route.fulfill({ response });
+  });
+  return () => requests;
+}
 
 function matchPayload() {
   return {
@@ -30,6 +51,7 @@ function matchPayload() {
 async function openDuelRoom(page, viewport) {
   await page.setViewportSize(viewport);
   await mockApi(page);
+  const duelRevisionRequests = await routeExpectedDuelRevision(page);
 
   const match = matchPayload();
   await page.route('**/api/pvp/lobby', (route) => route.fulfill({
@@ -80,6 +102,9 @@ async function openDuelRoom(page, viewport) {
   await expect(canvas).toHaveAttribute('data-war-room-variant', 'duel', { timeout: 60_000 });
   await expect(canvas).toHaveAttribute('data-war-room-variant-status', 'ready', { timeout: 60_000 });
   await expect(canvas).toHaveAttribute('data-board3d-piece-built', '32', { timeout: 45_000 });
+  if (String(process.env.APP_VISUAL_EXPECTED_PVP_DUEL_REVISION || '').trim()) {
+    expect(duelRevisionRequests(), 'Duel Room capture must consume the PR staging revision').toBeGreaterThan(0);
+  }
 
   const [roomBox, boardBox] = await Promise.all([room.boundingBox(), board.boundingBox()]);
   expect(roomBox).not.toBeNull();
@@ -116,6 +141,58 @@ async function openDuelRoom(page, viewport) {
   return { room, board, canvas };
 }
 
+function assertRenderedDuelRoomPng(png, label) {
+  const { width, height, pixels } = decodePng(png);
+  let lumaTotal = 0;
+  let lumaSqTotal = 0;
+  let lit = 0;
+  const samples = width * height;
+  for (let i = 0; i < samples; i += 1) {
+    const r = pixels[i * 4];
+    const g = pixels[i * 4 + 1];
+    const b = pixels[i * 4 + 2];
+    const luma = (r * 0.2126) + (g * 0.7152) + (b * 0.0722);
+    lumaTotal += luma;
+    lumaSqTotal += luma * luma;
+    if (luma > 30) lit += 1;
+  }
+  const avgLuma = samples ? lumaTotal / samples : 0;
+  const variance = samples ? Math.max(0, (lumaSqTotal / samples) - (avgLuma * avgLuma)) : 0;
+  const stdLuma = Math.sqrt(variance);
+  const litFraction = samples ? lit / samples : 0;
+
+  expect(samples, label + ' must contain sampled pixels').toBeGreaterThan(0);
+  expect(stdLuma, label + ' is visually flat/blank; Duel Room likely did not render').toBeGreaterThan(20);
+  expect(litFraction, label + ' is too dark/empty; Duel Room likely did not render').toBeGreaterThan(0.15);
+}
+
+async function forceFreshDuelFrame(page, viewport) {
+  // Chromium + SwiftShader may discard an idle WebGL backbuffer even though
+  // the scene is mounted and ready. Nudge the host by 1 px so ResizeObserver
+  // drives Board3D's real resize()->render() path immediately before capture.
+  const nudged = { width: Math.max(320, viewport.width - 1), height: viewport.height };
+  await page.setViewportSize(nudged);
+  await page.waitForTimeout(60);
+  await page.setViewportSize(viewport);
+  await page.evaluate(() => new Promise((resolve) => (
+    requestAnimationFrame(() => requestAnimationFrame(resolve))
+  )));
+  await page.waitForTimeout(80);
+}
+
+async function captureDuelRoomFromCompositor(page, room, path) {
+  // Use Chromium's compositor screenshot, not Locator.screenshot(). An idle
+  // WebGL canvas does not preserve its backbuffer; element screenshots can
+  // therefore capture HUD chrome plus an empty canvas under SwiftShader.
+  const box = await room.boundingBox();
+  if (!box) throw new Error('Could not resolve Duel Room bounding box for capture');
+  return page.screenshot({
+    path,
+    clip: box,
+    animations: 'disabled',
+  });
+}
+
 async function assertMobileTouchTargets(room) {
   const topbarButton = room.locator('.pvp-war-room__topbar button').first();
   const utility = room.locator('.pvp-war-room__duel-pill .game-3d-utility-menu>summary');
@@ -129,11 +206,15 @@ async function assertMobileTouchTargets(room) {
 
 test('PvP Duel Room · runtime desktop visual artifact', async ({ page }) => {
   test.setTimeout(120_000);
-  const { room } = await openDuelRoom(page, { width: 1440, height: 900 });
-  await room.screenshot({
-    path: ARTIFACT_DIR + '/pvp-duel-room-desktop-1440x900.png',
-    animations: 'disabled',
-  });
+  const viewport = { width: 1440, height: 900 };
+  const { room } = await openDuelRoom(page, viewport);
+  await forceFreshDuelFrame(page, viewport);
+  const png = await captureDuelRoomFromCompositor(
+    page,
+    room,
+    ARTIFACT_DIR + '/pvp-duel-room-desktop-1440x900.png',
+  );
+  assertRenderedDuelRoomPng(png, 'desktop Duel Room');
 });
 
 test.describe('PvP Duel Room · mobile touch orientation', () => {
@@ -141,23 +222,29 @@ test.describe('PvP Duel Room · mobile touch orientation', () => {
 
   test('runtime Android portrait visual artifact', async ({ page }) => {
     test.setTimeout(120_000);
-    const { room } = await openDuelRoom(page, { width: 390, height: 844 });
+    const viewport = { width: 390, height: 844 };
+    const { room } = await openDuelRoom(page, viewport);
     await assertMobileTouchTargets(room);
     await expect(page.getByRole('button', { name: 'Activar apaisado', exact: true })).toBeVisible();
-    await room.screenshot({
-      path: ARTIFACT_DIR + '/pvp-duel-room-android-390x844.png',
-      animations: 'disabled',
-    });
+    const png = await captureDuelRoomFromCompositor(
+      page,
+      room,
+      ARTIFACT_DIR + '/pvp-duel-room-android-390x844.png',
+    );
+    assertRenderedDuelRoomPng(png, 'portrait Duel Room');
   });
 
   test('runtime Android landscape visual artifact', async ({ page }) => {
     test.setTimeout(120_000);
-    const { room } = await openDuelRoom(page, { width: 844, height: 390 });
+    const viewport = { width: 844, height: 390 };
+    const { room } = await openDuelRoom(page, viewport);
     await expect(page.getByRole('button', { name: 'Activar apaisado', exact: true })).toHaveCount(0);
-    await room.screenshot({
-      path: ARTIFACT_DIR + '/pvp-duel-room-android-landscape-844x390.png',
-      animations: 'disabled',
-    });
+    const png = await captureDuelRoomFromCompositor(
+      page,
+      room,
+      ARTIFACT_DIR + '/pvp-duel-room-android-landscape-844x390.png',
+    );
+    assertRenderedDuelRoomPng(png, 'landscape Duel Room');
     await assertMobileTouchTargets(room);
     const verticalOverflow = await page.evaluate(
       () => document.documentElement.scrollHeight - document.documentElement.clientHeight,
