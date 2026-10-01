@@ -553,7 +553,8 @@ export default function HomeMatthias3D({
       const pose = homeMatthiasDossierSipPose(dossierElapsed);
       if (!dossierUpperArm || !dossierForearm) {
         model.traverse((node) => {
-          const canonicalName = homeMatthiasCanonicalMeshName(node?.name);
+          if (!node?.isBone) return;
+          const canonicalName = homeMatthiasCanonicalMeshName(node.name);
           if (!dossierUpperArm && canonicalName === 'upperarmr') dossierUpperArm = node;
           if (!dossierForearm && canonicalName === 'forearmr') dossierForearm = node;
         });
