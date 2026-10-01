@@ -23,6 +23,7 @@ OCI_REGION ?= eu-frankfurt-1
 OCI_INSTANCE_NAME ?= chess-studio-staging
 OCI_SSH_USER ?= ubuntu
 OCI_SSH_KEY ?=
+OCI_SSH_HOSTNAME ?= ssh-staging.chess-studio.shadowops.dpdns.org
 CRITICAL_E2E_GREP := login → menú|Partida rápida · una partida activa|Torneo · una partida activa|Partida rápida · un 503 al restaurar|Combat Chess · Campaña permite jugar con defaults|Combat Chess · salir al menú conserva campaña|deploy · una release nueva no fuerza reload|sesión · dos contextos de navegador|admin · presencia distingue|Matthias · saluda una vez tras login y no repite el saludo con F5|Home · el avatar residente de Matthias abre Así juegas|Matthias · el briefing persistente aparece antes de una partida rápida|Matthias · banco de personalidad Admin usa sólo datos sintéticos|Escuela de Matthias · el primer movimiento se aprende hands-on y persiste tras F5|Escuela de Matthias · el examen básico bloquea la promoción hasta aprobar
 
 .PHONY: game game-bg ungame restart logs status build clean help install \
@@ -59,9 +60,8 @@ oci-a1-ip: oci-session
 	@OCI_CLI_PROFILE="$(OCI_PROFILE)" OCI_CLI_AUTH=security_token OCI_INSTANCE_NAME="$(OCI_INSTANCE_NAME)" \
 		$(PYTHON) scripts/oci_a1.py ip
 
-oci-a1-ssh: oci-session
-	@OCI_CLI_PROFILE="$(OCI_PROFILE)" OCI_CLI_AUTH=security_token OCI_INSTANCE_NAME="$(OCI_INSTANCE_NAME)" \
-		OCI_SSH_USER="$(OCI_SSH_USER)" OCI_SSH_KEY="$(OCI_SSH_KEY)" \
+oci-a1-ssh:
+	@OCI_SSH_USER="$(OCI_SSH_USER)" OCI_SSH_KEY="$(OCI_SSH_KEY)" OCI_SSH_HOSTNAME="$(OCI_SSH_HOSTNAME)" \
 		$(PYTHON) scripts/oci_a1.py ssh
 
 ## Probe manual de carga ligera contra una API ya desplegada. No entra en CI ni pre-push.
@@ -460,6 +460,7 @@ capacity-probe-check:
 static-preflight: capacity-probe-check test-parity-check test-flake-check audio-check data-ux-check pwa-check campaign-map-check copy-check release-check test-suite-audit-ci static-contract-risk-audit css-check css-debt-check visual-ux-check state-resilience-check idempotency-check npm-audit-parser-check architecture-debt-check workflow-debt-check dependency-cycle-check dead-code-check session-continuity-check safe-storage-check docs-index-check async-resilience-check chess-rules-check grafana-check render-staging-check security-api cf-ai-preflight worker-test
 	@python3 scripts/pawn_slug_canonical_integrity.py
 	@python3 scripts/synthetic_health_contract.py
+	@python3 -S scripts/oci_cloudflare_tunnel.py --self-test
 	@python3 -S scripts/oci_k3s_staging2_root.py self-test infra/oci/gitops/staging2/backend.yaml.tmpl
 	@find frontend/src scripts e2e -type f \( -name '*.js' -o -name '*.mjs' \) -print0 | xargs -0 -P $(NODE_CHECK_JOBS) -n1 node --check
 	@python3 scripts/python_syntax_check.py

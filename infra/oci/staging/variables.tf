@@ -53,7 +53,7 @@ variable "availability_domain" {
 }
 
 variable "ssh_authorized_key" {
-  description = "Optional public SSH key. Keep null while SSH ingress is disabled. Private key material must never be passed to Terraform."
+  description = "Optional public SSH key for operator access through Cloudflare Tunnel. OCI keeps zero public SSH ingress. Private key material must never be passed to Terraform."
   type        = string
   default     = null
   nullable    = true
@@ -61,21 +61,6 @@ variable "ssh_authorized_key" {
   validation {
     condition     = var.ssh_authorized_key == null || can(regex("^(ssh-|ecdsa-|sk-)", trimspace(var.ssh_authorized_key)))
     error_message = "ssh_authorized_key must be null or contain an OpenSSH public key, never a private key."
-  }
-}
-
-variable "ssh_ingress_cidr" {
-  description = "Optional operator CIDR allowed to SSH. Null keeps zero inbound rules."
-  type        = string
-  default     = null
-  nullable    = true
-
-  validation {
-    condition = (
-      var.ssh_ingress_cidr == null ||
-      (can(cidrhost(var.ssh_ingress_cidr, 0)) && var.ssh_ingress_cidr != "0.0.0.0/0")
-    )
-    error_message = "ssh_ingress_cidr must be null or a valid CIDR other than 0.0.0.0/0."
   }
 }
 

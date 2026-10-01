@@ -2,6 +2,11 @@ name: OCI staging · Cloudflare Tunnel
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/oci_cloudflare_tunnel.py'
+      - '.github/workflows/oci-staging-tunnel.yml'
 
 permissions:
   contents: read
@@ -28,9 +33,23 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          # Tunnel recovery always uses trusted tooling already merged on main.
-          ref: main
+          # Push runs reconcile the exact merged SHA. Manual recovery uses current main.
+          ref: ${{ github.event_name == 'push' && github.sha || 'main' }}
           fetch-depth: 1
+
+      - name: Reject superseded push generation before mutation
+        id: generation
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          set -euo pipefail
+          current="$(git ls-remote origin refs/heads/main | awk 'NR==1 {print $1}')"
+          if [ "$current" != "$GITHUB_SHA" ]; then
+            echo "current=false" >> "$GITHUB_OUTPUT"
+            echo "Superseded tunnel reconcile: workflow=$GITHUB_SHA current-main=$current"
+          else
+            echo "current=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Restore cached OCI SDK toolchain
         uses: ./.github/actions/setup-oci-sdk
@@ -41,5 +60,6 @@ jobs:
       - name: Validate tunnel contract
         run: python3 -S scripts/oci_cloudflare_tunnel.py --self-test
 
-      - name: Reconcile private tunnel and staging API DNS
+      - name: Reconcile private tunnel and staging API/SSH DNS
+        if: github.event_name != 'push' || steps.generation.outputs.current == 'true'
         run: python3 scripts/oci_cloudflare_tunnel.py reconcile

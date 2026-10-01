@@ -23,6 +23,7 @@ CF_API = "https://api.cloudflare.com/client/v4"
 ZONE_NAME = "shadowops.dpdns.org"
 API_HOSTNAME = "api-staging.chess-studio.shadowops.dpdns.org"
 PRODUCTION_API_HOSTNAME = "api.chess-studio.shadowops.dpdns.org"
+SSH_HOSTNAME = "ssh-staging.chess-studio.shadowops.dpdns.org"
 TUNNEL_NAME = "chess-studio-staging"
 OCI_COMPARTMENT_NAME = "chess-studio-staging"
 RUNTIME_BUCKET = "chess-studio-staging-runtime"
@@ -121,6 +122,11 @@ def desired_ingress() -> dict[str, object]:
                     "service": "http://127.0.0.1:4100",
                     "originRequest": {},
                 },
+                {
+                    "hostname": SSH_HOSTNAME,
+                    "service": "ssh://127.0.0.1:22",
+                    "originRequest": {},
+                },
                 {"service": "http_status:404"},
             ]
         }
@@ -171,6 +177,40 @@ def resolve_staging_compartment(oci: Any, config: dict[str, str]) -> str:
             f"Expected exactly one active OCI compartment named {OCI_COMPARTMENT_NAME}; found {len(matches)}"
         )
     return str(matches[0].id)
+
+
+def assert_no_public_ssh_ingress(oci: Any, config: dict[str, str]) -> None:
+    compartment_id = resolve_staging_compartment(oci, config)
+    client = oci.core.VirtualNetworkClient(config)
+    rows = oci.pagination.list_call_get_all_results(
+        client.list_security_lists,
+        compartment_id,
+        display_name=f"{OCI_COMPARTMENT_NAME}-security",
+    ).data
+    if len(rows) != 1:
+        raise SystemExit(
+            f"Expected exactly one OCI security list named {OCI_COMPARTMENT_NAME}-security; found {len(rows)}"
+        )
+    offenders: list[str] = []
+    for rule in getattr(rows[0], "ingress_security_rules", []) or []:
+        if str(getattr(rule, "protocol", "")) != "6":
+            continue
+        options = getattr(rule, "tcp_options", None)
+        port_range = getattr(options, "destination_port_range", None) if options is not None else None
+        if port_range is None:
+            allows_22 = True
+        else:
+            minimum = int(getattr(port_range, "min", 0))
+            maximum = int(getattr(port_range, "max", 65535))
+            allows_22 = minimum <= 22 <= maximum
+        if allows_22:
+            offenders.append(str(getattr(rule, "source", "unknown")))
+    if offenders:
+        raise SystemExit(
+            "Public OCI SSH ingress is still present for TCP/22; "
+            f"sources={','.join(offenders[:8])}. Apply the tunnel-only Terraform contract first."
+        )
+    print("OCI network guard OK: no inbound TCP/22 rule on staging backend security list")
 
 
 def publish_token(oci: Any, config: dict[str, str], token: str) -> tuple[str, str, str]:
@@ -296,20 +336,20 @@ def zone_id() -> str:
     return str(matches[0]["id"])
 
 
-def ensure_dns(tunnel_id: str) -> None:
+def ensure_dns(tunnel_id: str, hostname: str) -> None:
     zid = zone_id()
-    query = urllib.parse.urlencode({"name": API_HOSTNAME, "per_page": "100"})
+    query = urllib.parse.urlencode({"name": hostname, "per_page": "100"})
     result = cf_request("GET", f"/zones/{zid}/dns_records?{query}")
     rows = [row for row in (result if isinstance(result, list) else []) if isinstance(row, dict)]
     if len(rows) > 1:
-        raise SystemExit(f"More than one DNS record exists for {API_HOSTNAME}; refusing ambiguous cutover")
+        raise SystemExit(f"More than one DNS record exists for {hostname}; refusing ambiguous cutover")
     desired = {
         "type": "CNAME",
-        "name": API_HOSTNAME,
+        "name": hostname,
         "content": f"{tunnel_id}.cfargotunnel.com",
         "proxied": True,
         "ttl": 1,
-        "comment": "Chess Studio staging API · OCI Cloudflare Tunnel",
+        "comment": "Chess Studio staging · OCI Cloudflare Tunnel",
     }
     if not rows:
         cf_request("POST", f"/zones/{zid}/dns_records", desired)
@@ -317,14 +357,14 @@ def ensure_dns(tunnel_id: str) -> None:
     else:
         row = rows[0]
         if row.get("type") != "CNAME" or not row.get("id"):
-            raise SystemExit(f"Existing {API_HOSTNAME} record is not an editable CNAME")
+            raise SystemExit(f"Existing {hostname} record is not an editable CNAME")
         current = str(row.get("content") or "").rstrip(".")
         if current == desired["content"] and bool(row.get("proxied")):
             action = "unchanged"
         else:
             cf_request("PATCH", f"/zones/{zid}/dns_records/{row['id']}", desired)
             action = "updated"
-    print(f"Cloudflare DNS {action}: {API_HOSTNAME} -> {desired['content']}")
+    print(f"Cloudflare DNS {action}: {hostname} -> {desired['content']}")
 
 
 def wait_public_ready(timeout: int = 120) -> None:
@@ -350,15 +390,17 @@ def wait_public_ready(timeout: int = 120) -> None:
 
 def reconcile(oci: Any) -> None:
     config = oci_config(oci)
+    assert_no_public_ssh_ingress(oci, config)
     tunnel_id = ensure_tunnel()
     configure_tunnel(tunnel_id)
     token = tunnel_token(tunnel_id)
     namespace, bucket, object_name = publish_token(oci, config, token)
     start_connector(oci, config, namespace, bucket, object_name)
     wait_connection(tunnel_id)
-    ensure_dns(tunnel_id)
+    ensure_dns(tunnel_id, API_HOSTNAME)
+    ensure_dns(tunnel_id, SSH_HOSTNAME)
     wait_public_ready()
-    print(f"CHESS_STUDIO_OCI_TUNNEL_OK tunnel_id={tunnel_id} hostname={API_HOSTNAME}")
+    print(f"CHESS_STUDIO_OCI_TUNNEL_OK tunnel_id={tunnel_id} api_hostname={API_HOSTNAME} ssh_hostname={SSH_HOSTNAME}")
 
 
 def self_test() -> None:
@@ -368,6 +410,8 @@ def self_test() -> None:
     assert rules[0]["service"] == "http://127.0.0.1:4000"
     assert rules[1]["hostname"] == PRODUCTION_API_HOSTNAME
     assert rules[1]["service"] == "http://127.0.0.1:4100"
+    assert rules[2]["hostname"] == SSH_HOSTNAME
+    assert rules[2]["service"] == "ssh://127.0.0.1:22"
     assert rules[-1]["service"] == "http_status:404"
     command = host_command("namespace", RUNTIME_BUCKET, TOKEN_OBJECT)
     assert "--token-file" in command

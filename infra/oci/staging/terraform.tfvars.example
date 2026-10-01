@@ -5,9 +5,8 @@ repo_ref         = "0123456789abcdef0123456789abcdef01234567"
 # Runtime discovery is the default. Override only the AD when OCI capacity needs it.
 availability_domain = null
 
-# SSH is fully disabled by default; set both values together only when needed.
+# Optional operator key for SSH over Cloudflare Tunnel. OCI exposes no SSH ingress.
 ssh_authorized_key = null
-ssh_ingress_cidr   = null
 
 ocpus               = 1
 memory_gb           = 6

@@ -317,42 +317,21 @@ run "allow_narrow_load_balancer_probe" {
   }
 }
 
-run "reject_world_open_ssh" {
+run "allow_operator_key_without_public_ssh_ingress" {
   command = plan
 
   variables {
-    ssh_ingress_cidr = "0.0.0.0/0"
-  }
-
-  expect_failures = [var.ssh_ingress_cidr]
-}
-
-run "reject_ssh_ingress_without_key" {
-  command = plan
-
-  variables {
-    ssh_ingress_cidr = "198.51.100.10/32"
-  }
-
-  expect_failures = [oci_core_instance.backend]
-}
-
-run "allow_narrow_ssh_with_public_key" {
-  command = plan
-
-  variables {
-    ssh_ingress_cidr   = "198.51.100.10/32"
     ssh_authorized_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITestOnly chess-studio"
   }
 
   assert {
-    condition     = length(oci_core_security_list.backend.ingress_security_rules) == 1
-    error_message = "Explicit narrow SSH CIDR must create exactly one inbound rule."
+    condition     = length(oci_core_security_list.backend.ingress_security_rules) == 0
+    error_message = "Operator SSH keys must never create public OCI ingress; access is tunnel-only."
   }
 
   assert {
     condition     = contains(keys(oci_core_instance.backend.metadata), "ssh_authorized_keys")
-    error_message = "An explicit SSH key must be injected when operator SSH is enabled."
+    error_message = "An explicit operator key may be injected for SSH authentication through Cloudflare Tunnel."
   }
 }
 
