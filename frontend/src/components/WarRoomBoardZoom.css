@@ -39,7 +39,8 @@
 
 @media (pointer: coarse) {
   .war-room-board-center-btn {
-    min-height: 34px;
-    padding-inline: .54rem;
+    min-width: 44px;
+    min-height: 44px;
+    padding-inline: .64rem;
   }
 }
