@@ -22,7 +22,7 @@ import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { api, STORAGE_KEY } from './api.js';
 import { loadTournament, saveTournament, resetTournament, applyResult, applyCaptureReward, difficultyForLevel, levelForPoints } from './tournament.js';
 import { saveGameRecord, updateGameRecordChat, statisticalHistoryRecords } from './gameHistory.js';
-import { recordGameActivity } from './gameActivity.js';
+import { recordGameActivity, recordCompletedAdaptiveMatchmakingTelemetry } from './gameActivity.js';
 import { chessGameExitDisposition, isCompletedGameOutcome, shouldApplyCompetitiveProgress } from './gameOutcome.js';
 import { gameModeFromContext } from './gameModes.js';
 import { loadRoster as loadCombatRoster } from './combatRoster.js';
@@ -454,7 +454,6 @@ function AppInner({ isAdminUser }) {
         eloAfter: details.next.rating, ratingGames: details.next.games,
       };
     }
-
     const record = {
       id: `${finishedGame.id}-${Date.now()}`,
       sourceGameId: finishedGame.id,
@@ -485,6 +484,7 @@ function AppInner({ isAdminUser }) {
     };
     setHistoryList(saveGameRecord(record));
     recordGameActivity({ gameId: finishedGame.id, state: 'finished', mode: record.mode, outcome, difficulty: finishedGame.difficulty });
+    recordCompletedAdaptiveMatchmakingTelemetry({ gameContext, finishedGame, outcome, endMeta });
     recordCareerGame(record, { ...endMeta, contract: activeContract });
     clearActiveContract();
     setActiveContract(null);
