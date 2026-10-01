@@ -31,10 +31,10 @@ SIDE_WALL_INNER_X = 8.17
 WALL_PROP_MIN_RADIUS = 6.80
 WALL_CONTACT_MAX_GAP = 0.35
 DUEL_CHAIR_X = 7.55
-DUEL_CHAIR_Y = 1.15
+DUEL_CHAIR_Y = 2.15
 DUEL_CHAIR_SCALE = 0.66
 DUEL_SENTINEL_X = 7.55
-DUEL_SENTINEL_Y = 4.55
+DUEL_SENTINEL_Y = 5.25
 DUEL_SENTINEL_SCALE = 1.12
 HERO_CAMERA_Y = -15.60
 MIN_PROJECTED_PROP_SEPARATION = 0.050
@@ -1149,6 +1149,27 @@ def validate_scene():
         visible_width = max(0.0, min(1.0, max_x) - max(0.0, min_x))
         return visible_width / width, width
 
+    def assert_line_of_sight(prefix, target_name):
+        scene = bpy.context.scene
+        camera = scene.camera
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        target = bpy.data.objects[target_name]
+        origin = camera.matrix_world.translation.copy()
+        destination = target.matrix_world.translation.copy()
+        direction = destination - origin
+        distance = direction.length
+        if distance <= 0.01:
+            raise RuntimeError(f"PvP Duel Room invalid sightline target: {target_name}")
+        direction.normalize()
+        hit, _loc, _normal, _face, hit_obj, _matrix = scene.ray_cast(
+            depsgraph, origin, direction, distance=distance + 0.08,
+        )
+        if not hit or hit_obj is None or not hit_obj.name.startswith(prefix):
+            blocker = hit_obj.name if hit_obj is not None else "none"
+            raise RuntimeError(
+                f"PvP Duel Room prop occluded in hero framing: {target_name} blocker={blocker}"
+            )
+
     # Both seats must genuinely face the board. Local chair forward is -Y; after
     # yaw its world-space direction is (sin(yaw), -cos(yaw)). They also belong
     # to the wall band: the back nearly touches masonry and the chair centre
@@ -1170,9 +1191,9 @@ def validate_scene():
             raise RuntimeError(
                 f"PvP Duel Room {label} seat invades board safety band: radius={seat_radius:.3f}"
             )
-        if seat.location.y <= 0.55 or seat.location.y >= 2.10:
+        if seat.location.y <= 1.25 or seat.location.y >= 3.05:
             raise RuntimeError(
-                f"PvP Duel Room {label} seat left the clear forward wall bay: y={seat.location.y:.3f}"
+                f"PvP Duel Room {label} seat left the clear middle wall bay: y={seat.location.y:.3f}"
             )
         seat_gap = wall_gap_for_object(f"PVP_DUEL_seat_{label}_back_frame", side)
         if seat_gap < -0.08 or seat_gap > WALL_CONTACT_MAX_GAP:
@@ -1208,10 +1229,14 @@ def validate_scene():
                 f"PvP Duel Room {label} wall props overlap in hero projection: gap={projected_gap:.4f}"
             )
 
-        if plinth.location.y <= 3.70 or plinth.location.y >= 5.35:
+        if plinth.location.y <= 4.65 or plinth.location.y >= 5.80:
             raise RuntimeError(
                 f"PvP Duel Room {label} sentinel left the clear rear wall bay: y={plinth.location.y:.3f}"
             )
+        assert_line_of_sight(
+            f"PVP_DUEL_sentinel_{label}",
+            f"PVP_DUEL_sentinel_{label}_breastplate",
+        )
 
     # Composition guard: furniture may frame the viewport edge, but it must not
     # disappear completely or grow back into the oversized throne regression.
