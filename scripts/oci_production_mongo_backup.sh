@@ -42,9 +42,21 @@ fi
 
 runtime_env="$(mktemp /tmp/chess-studio-mongo-backup-env.XXXXXX)"
 incoming=''
+scratch_container=''
+scratch_network=''
+remote_restore_archive=''
 cleanup() {
+  local rc=$?
+  if [[ -n "$scratch_container" ]]; then
+    docker rm -f "$scratch_container" >/dev/null 2>&1 || rc=71
+  fi
+  if [[ -n "$scratch_network" ]]; then
+    docker network rm "$scratch_network" >/dev/null 2>&1 || rc=71
+  fi
+  [[ -z "$remote_restore_archive" ]] || rm -f -- "$remote_restore_archive"
   rm -f "$runtime_env"
   [[ -z "$incoming" ]] || rm -rf -- "$incoming"
+  exit "$rc"
 }
 trap cleanup EXIT
 chmod 0600 "$runtime_env"
@@ -219,6 +231,119 @@ payload = json.loads(manifest.decode("utf-8"))
 if int(payload.get("archive_bytes", -1)) != expected_bytes or str(payload.get("sha256", "")).lower() != expected_sha:
     raise SystemExit("remote manifest does not attest the uploaded archive")
 
+restore_path = root / ".remote-restore.archive.gz"
+remote = client.get_object(namespace, bucket, prefix + "dump.archive.gz", retry_strategy=retry)
+with restore_path.open("wb") as handle:
+    for chunk in iter(lambda: remote.data.raw.read(1024 * 1024), b""):
+        handle.write(chunk)
+if restore_path.stat().st_size != expected_bytes:
+    raise SystemExit("downloaded remote archive size mismatch")
+import hashlib
+digest = hashlib.sha256()
+with restore_path.open("rb") as handle:
+    for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+        digest.update(chunk)
+if digest.hexdigest().lower() != expected_sha:
+    raise SystemExit("downloaded remote archive sha256 mismatch")
+
+versions = []
+page = None
+while True:
+    response = client.list_object_versions(
+        namespace,
+        bucket,
+        prefix="mongo/backup-",
+        fields="name,size,timeCreated,timeModified",
+        page=page,
+        retry_strategy=retry,
+    )
+    versions.extend(getattr(response.data, "items", None) or getattr(response.data, "objects", None) or [])
+    page = response.headers.get("opc-next-page")
+    if not page:
+        break
+
+backup_re = re.compile(r"^mongo/backup-([0-9]{8}T[0-9]{6}Z)/")
+stamps = sorted(
+    {
+        match.group(1)
+        for item in versions
+        if (match := backup_re.match(str(getattr(item, "name", "") or "")))
+    },
+    reverse=True,
+)
+print(
+    "CHESS_STUDIO_MONGO_BACKUP_OFFHOST_STAGED "
+    f"bucket={bucket} timestamp={stamp} generations={len(stamps)} "
+    f"bytes={expected_bytes} sha256={expected_sha}"
+)
+PY
+
+remote_restore_archive="$final_dir/.remote-restore.archive.gz"
+[[ -s "$remote_restore_archive" ]] || { echo 'remote restore drill archive missing after download' >&2; exit 65; }
+printf '%s  %s\n' "$checksum" "$remote_restore_archive" | sha256sum -c - >/dev/null
+
+scratch_suffix="$(printf '%s-%s' "$stamp" "$" | tr '[:upper:]' '[:lower:]')"
+scratch_network="chess-studio-restore-$scratch_suffix"
+scratch_container="chess-studio-restore-$scratch_suffix"
+docker network create "$scratch_network" >/dev/null
+docker run -d --rm --pull=never \
+  --name "$scratch_container" \
+  --network "$scratch_network" \
+  "$backup_image" --bind_ip_all --quiet >/dev/null
+
+scratch_ready=0
+for _restore_wait in $(seq 1 30); do
+  if docker run --rm --pull=never --network "$scratch_network" "$backup_image" \
+      mongosh --quiet "mongodb://$scratch_container:27017/admin" \
+      --eval 'quit(db.adminCommand({ping: 1}).ok === 1 ? 0 : 1)' >/dev/null 2>&1; then
+    scratch_ready=1
+    break
+  fi
+  sleep 1
+done
+[[ "$scratch_ready" -eq 1 ]] || { echo 'isolated Mongo restore target did not become ready' >&2; exit 68; }
+
+docker run --rm --pull=never \
+  --network "$scratch_network" \
+  -e SCRATCH_HOST="$scratch_container" \
+  -v "$final_dir:/backup:ro" \
+  "$backup_image" \
+  sh -ec 'mongorestore --host="$SCRATCH_HOST" --archive=/backup/.remote-restore.archive.gz --gzip --nsInclude="chess_study.*" >/dev/null'
+
+restore_summary="$(docker run --rm --pull=never --network "$scratch_network" "$backup_image" \
+  mongosh --quiet "mongodb://$scratch_container:27017/chess_study" --eval '
+    const names = db.getCollectionNames();
+    if (names.length === 0) quit(41);
+    let documents = 0;
+    for (const name of names) documents += db.getCollection(name).estimatedDocumentCount();
+    print(JSON.stringify({collections: names.length, documents}));
+  ')"
+[[ "$restore_summary" == *'"collections":'* ]] || { echo 'isolated Mongo restore verification returned no collection summary' >&2; exit 65; }
+printf 'CHESS_STUDIO_MONGO_RESTORE_DRILL_OK timestamp=%s source=oci-object-storage %s\n' "$stamp" "$restore_summary"
+
+docker rm -f "$scratch_container" >/dev/null
+scratch_container=''
+docker network rm "$scratch_network" >/dev/null
+scratch_network=''
+rm -f -- "$remote_restore_archive"
+remote_restore_archive=''
+
+CHESS_BACKUP_BUCKET="$backup_bucket" \
+CHESS_BACKUP_REMOTE_KEEP="$remote_keep_count" \
+"$runtime_python" - <<'PY'
+import os
+import re
+import oci
+
+bucket = os.environ["CHESS_BACKUP_BUCKET"]
+remote_keep = int(os.environ["CHESS_BACKUP_REMOTE_KEEP"])
+signer = oci.auth.signers.InstancePrincipalsSecurityTokenSigner()
+client = oci.object_storage.ObjectStorageClient(config={}, signer=signer)
+retry = oci.retry.DEFAULT_RETRY_STRATEGY
+namespace = str(client.get_namespace(retry_strategy=retry).data or "")
+if not namespace:
+    raise SystemExit("empty OCI Object Storage namespace")
+
 versions = []
 page = None
 while True:
@@ -253,18 +378,11 @@ for item in versions:
     version_id = str(getattr(item, "version_id", "") or "")
     if not version_id:
         raise SystemExit(f"versioned backup object missing version id: {name}")
-    client.delete_object(
-        namespace,
-        bucket,
-        name,
-        version_id=version_id,
-        retry_strategy=retry,
-    )
+    client.delete_object(namespace, bucket, name, version_id=version_id, retry_strategy=retry)
 
 print(
     "CHESS_STUDIO_MONGO_BACKUP_OFFHOST_OK "
-    f"bucket={bucket} timestamp={stamp} retained={min(len(stamps), remote_keep)} "
-    f"bytes={expected_bytes} sha256={expected_sha}"
+    f"bucket={bucket} retained={min(len(stamps), remote_keep)}"
 )
 PY
 
