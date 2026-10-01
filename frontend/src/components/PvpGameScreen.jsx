@@ -3,6 +3,7 @@ import PromotionModal from './PromotionModal.jsx';
 import { WarRoomUtilityMenu } from './GameWarRoomCommandColumn.jsx';
 import WarRoomBoardSurface from './WarRoomBoardSurface.jsx';
 import WarRoomExitOverlay from './WarRoomExitOverlay.jsx';
+import WarRoomAccountButton from './WarRoomAccountButton.jsx';
 import { formatClock } from '../clock.js';
 import { pvpApi } from '../pvpApi.js';
 import { pvpMatchPulseNeedsFullRefresh } from '../pvpMatchPolling.js';
@@ -410,13 +411,14 @@ export default function PvpGameScreen({ initialMatch, onExit, onMatchUpdate }) {
                   <WarRoomUtilityMenu
                     game={match}
                     board={null}
-                    controls={{ onAbandon: match.status === 'active' && connectionLive ? () => setShowResignConfirm(true) : undefined }}
+                    controls={{}}
                     zenMode={false}
                     showFocus={false}
                     showRendererToggle={false}
                     showAppearance={false}
                     showZen={false}
                   />
+                  <WarRoomAccountButton />
                 </aside>
 
                 {resultText && (
