@@ -637,7 +637,7 @@ def self_test() -> None:
         "frontend/src/pvpApi.js",
         "frontend/src/usePvpAppFlow.js",
         "frontend/src/usePvpRosterPresence.js",
-    ]) == "home-base"
+    ]) == "home-base,pvp-duel"
     assert classify_home_profile_scope(["frontend/src/components/QuickMatchMobileGoldenPath.css"]) == "quickmatch"
     assert classify(["frontend/src/components/useWarRoomImmersive.js"]) == "warroom-core"
     assert classify(["frontend/src/components/WarRoomMobileLandscape.css"]) == "warroom-core"
