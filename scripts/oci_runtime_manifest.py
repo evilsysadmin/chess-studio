@@ -18,6 +18,7 @@ KEY_RE = re.compile(r"^[A-Z][A-Z0-9_]*$")
 VAULT_KEYS = (
     "MONGO_URL",
     "JWT_SECRET",
+    "RESEND_API_KEY",
     "INVITE_CODE",
     "CHESS_AI_SHARED_SECRET",
     "OTEL_EXPORTER_OTLP_ENDPOINT",
@@ -30,6 +31,8 @@ DECLARATIVE_KEYS = (
     "EXPOSE_API_DOCS",
     "ALLOW_REGISTRATION",
     "ENABLE_EMAIL_RECOVERY",
+    "PASSWORD_RESET_URL",
+    "PASSWORD_RESET_FROM",
     "ADMIN_USERNAMES",
     "CF_AI_WORKER_URL",
     "CORS_ORIGINS",
@@ -117,7 +120,9 @@ def self_test() -> None:
         "CHESS_ENGINE_WORKERS": "1",
         "EXPOSE_API_DOCS": "false",
         "ALLOW_REGISTRATION": "true",
-        "ENABLE_EMAIL_RECOVERY": "false",
+        "ENABLE_EMAIL_RECOVERY": "true",
+        "PASSWORD_RESET_URL": "https://staging.chess-studio.shadowops.dpdns.org/",
+        "PASSWORD_RESET_FROM": "Chess Studio <onboarding@resend.dev>",
         "ADMIN_USERNAMES": "evilsysadmin",
         "CF_AI_WORKER_URL": "https://ai-staging.shadowops.dpdns.org",
         "CORS_ORIGINS": "https://staging.chess-studio.shadowops.dpdns.org",
@@ -134,6 +139,7 @@ def self_test() -> None:
     rendered = render_env(compose_runtime(declarative, sample_vault)).decode("utf-8")
     assert rendered.startswith("MONGO_URL=sample-1\nMONGO_DB_NAME=chess_study_staging\n")
     assert "JWT_SECRET=sample-2\n" in rendered
+    assert "RESEND_API_KEY=sample-3\n" in rendered
     assert "CORS_ORIGINS=https://staging.chess-studio.shadowops.dpdns.org\n" in rendered
     assert "RENDER_API_KEY" not in rendered
 
