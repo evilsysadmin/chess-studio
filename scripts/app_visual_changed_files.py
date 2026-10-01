@@ -9,6 +9,9 @@ expanding one focused art change to every visual producer.
 from __future__ import annotations
 
 import argparse
+import json
+import os
+import subprocess
 import sys
 
 MATTHIAS_MODEL = "frontend/public/models/matthias-home-canonical.glb"
@@ -19,6 +22,9 @@ PAWN_SLUG_OWNER = "frontend/src/components/PawnSlugGodotHost.jsx"
 PAWN_SLUG_POW_MODEL = "frontend/public/models/pawn-slug/pawn_slug_pow_squad_v1.glb"
 PAWN_SLUG_POW_BLEND = "art/blender/pawn-slug/pawn_slug_pow_squad_v1.blend"
 PAWN_SLUG_POW_BUILDER = "scripts/blender/build_pawn_slug_pows.py"
+R2_MANIFEST = "frontend/src/assets/r2-assets-manifest.json"
+PVP_DUEL_MANIFEST_ASSET = "pvp.duelRoom.runtime"
+PVP_DUEL_VISUAL_OWNER = "frontend/src/components/PvpDuelRoomShell.js"
 
 
 def _is_matthias_canonical_owner(path: str) -> bool:
@@ -34,6 +40,39 @@ def _is_matthias_canonical_owner(path: str) -> bool:
     )
 
 
+def _manifest_asset_from_text(text: str, logical_id: str):
+    try:
+        payload = json.loads(text)
+    except (TypeError, json.JSONDecodeError):
+        return None
+    assets = payload.get("assets") if isinstance(payload, dict) else None
+    if not isinstance(assets, dict):
+        return None
+    value = assets.get(logical_id)
+    return value if isinstance(value, dict) else None
+
+
+def _git_show_text(revision: str, path: str) -> str | None:
+    if not revision:
+        return None
+    try:
+        return subprocess.check_output(
+            ["git", "show", f"{revision}:{path}"],
+            text=True,
+            stderr=subprocess.DEVNULL,
+        )
+    except (subprocess.CalledProcessError, OSError):
+        return None
+
+
+def _manifest_asset_changed(base_sha: str, head_sha: str, logical_id: str) -> bool:
+    before = _git_show_text(base_sha, R2_MANIFEST)
+    after = _git_show_text(head_sha, R2_MANIFEST)
+    if before is None or after is None:
+        return False
+    return _manifest_asset_from_text(before, logical_id) != _manifest_asset_from_text(after, logical_id)
+
+
 def _is_app_visual_e2e(path: str) -> bool:
     """Keep only E2E files that the app-visual workflow itself owns."""
     lower = path.lower().replace("\\", "/")
@@ -46,7 +85,12 @@ def _is_app_visual_e2e(path: str) -> bool:
     )
 
 
-def normalize(paths: list[str]) -> list[str]:
+def normalize(
+    paths: list[str],
+    *,
+    base_sha: str = "",
+    head_sha: str = "",
+) -> list[str]:
     normalized: list[str] = []
     seen: set[str] = set()
 
@@ -60,6 +104,12 @@ def normalize(paths: list[str]) -> list[str]:
         if not path:
             continue
         lower = path.lower()
+        if lower == R2_MANIFEST and _manifest_asset_changed(base_sha, head_sha, PVP_DUEL_MANIFEST_ASSET):
+            # Manifest promotions normally own no pixels. Duel Room is different:
+            # runtime consumption is pinned to the promoted immutable object, so
+            # changing this logical asset must wake the PvP Duel Room browser proof.
+            add(PVP_DUEL_VISUAL_OWNER)
+            continue
         # A push may contain functional E2E changes alongside one real visual
         # owner. Those functional specs are not part of this workflow's trigger
         # surface and must not turn a focused capture into the fail-closed full
@@ -110,6 +160,22 @@ def self_test() -> None:
     assert normalize(pawn_slug_pow_sources) == [PAWN_SLUG_OWNER]
     assert normalize(["scripts/unknown_visual_owner.py"]) == ["scripts/unknown_visual_owner.py"]
 
+    manifest_before = json.dumps({
+        "assets": {
+            PVP_DUEL_MANIFEST_ASSET: {"sha256": "old", "bytes": 1},
+            "home.scene.runtime": {"sha256": "same"},
+        }
+    })
+    manifest_after = json.dumps({
+        "assets": {
+            PVP_DUEL_MANIFEST_ASSET: {"sha256": "new", "bytes": 2},
+            "home.scene.runtime": {"sha256": "same"},
+        }
+    })
+    assert _manifest_asset_from_text(manifest_before, PVP_DUEL_MANIFEST_ASSET)["sha256"] == "old"
+    assert _manifest_asset_from_text(manifest_after, PVP_DUEL_MANIFEST_ASSET)["sha256"] == "new"
+    assert _manifest_asset_from_text("not-json", PVP_DUEL_MANIFEST_ASSET) is None
+
     # Functional browser tests can travel in the same commit as a visual owner,
     # but app-visual does not own them and must not fail closed to every surface.
     assert normalize([
@@ -138,7 +204,13 @@ def main(argv: list[str] | None = None) -> int:
     if args.self_test:
         self_test()
         return 0
-    for path in normalize(sys.stdin.read().splitlines()):
+    base_sha = os.environ.get("APP_VISUAL_BASE_SHA", "")
+    head_sha = os.environ.get("APP_VISUAL_HEAD_SHA", "")
+    for path in normalize(
+        sys.stdin.read().splitlines(),
+        base_sha=base_sha,
+        head_sha=head_sha,
+    ):
         print(path)
     return 0
 

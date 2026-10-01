@@ -53,9 +53,15 @@ runs:
           }
           files="$(git diff --name-only "$base_sha" "$head_sha")"
         else
-          files="$(git diff --name-only HEAD^ HEAD)"
+          base_sha="HEAD^"
+          head_sha="HEAD"
+          files="$(git diff --name-only "$base_sha" "$head_sha")"
         fi
-        scoped_files="$(printf '%s\n' "$files" | python3 -S scripts/app_visual_changed_files.py)"
+        scoped_files="$(
+          printf '%s\n' "$files" |
+            APP_VISUAL_BASE_SHA="$base_sha" APP_VISUAL_HEAD_SHA="$head_sha" \
+            python3 -S scripts/app_visual_changed_files.py
+        )"
         printf '%s\n' "$files"
         if [[ "$scoped_files" != "$files" ]]; then
           echo 'Normalized visual ownership:'

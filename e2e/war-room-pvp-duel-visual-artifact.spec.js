@@ -5,7 +5,7 @@ import { decodePng } from './png-pixels.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual/pvp-duel-room';
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
-const DUEL_RUNTIME_PATTERN = '**/pvp/duel-room/runtime/current.glb*';
+const DUEL_RUNTIME_PATTERN = '**/pvp/duel-room/runtime/pvp-duel-room-shell-*.glb*';
 const DUEL_STAGING_REVISION_BASE =
   'https://assets.chess-studio.shadowops.dpdns.org/pvp/duel-room/staging/revisions';
 
@@ -17,6 +17,11 @@ async function routeExpectedDuelRevision(page) {
   const revisionUrl = `${DUEL_STAGING_REVISION_BASE}/${revision}.glb?visual=${revision}`;
   await page.route(DUEL_RUNTIME_PATTERN, async (route) => {
     requests += 1;
+    const requestedUrl = route.request().url();
+    expect(
+      requestedUrl.includes('/pvp/duel-room/runtime/pvp-duel-room-shell-'),
+      'Duel Room app must request a content-addressed immutable runtime URL',
+    ).toBe(true);
     const response = await route.fetch({ url: revisionUrl });
     if (!response.ok()) {
       throw new Error(`PvP Duel Room staging revision failed: ${response.status()} ${revisionUrl}`);
@@ -103,7 +108,7 @@ async function openDuelRoom(page, viewport) {
   await expect(canvas).toHaveAttribute('data-war-room-variant-status', 'ready', { timeout: 60_000 });
   await expect(canvas).toHaveAttribute('data-board3d-piece-built', '32', { timeout: 45_000 });
   if (String(process.env.APP_VISUAL_EXPECTED_PVP_DUEL_REVISION || '').trim()) {
-    expect(duelRevisionRequests(), 'Duel Room capture must consume the PR staging revision').toBeGreaterThan(0);
+    expect(duelRevisionRequests(), 'Duel Room capture must request immutable runtime and render the PR staging revision').toBeGreaterThan(0);
   }
 
   const [roomBox, boardBox] = await Promise.all([room.boundingBox(), board.boundingBox()]);

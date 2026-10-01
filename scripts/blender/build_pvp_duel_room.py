@@ -80,8 +80,8 @@ def palette():
             metal=0.90, rough=0.52, texture="metal", scale=30, bump=0.026,
         ),
         "armor": base.material(
-            "PVP_MAT_armor_steel", (0.105, 0.115, 0.125, 1),
-            metal=0.92, rough=0.40, coat=0.08, texture="metal", scale=28, bump=0.018,
+            "PVP_MAT_armor_steel", (0.150, 0.160, 0.172, 1),
+            metal=0.93, rough=0.30, coat=0.14, texture="metal", scale=28, bump=0.012,
         ),
         "brass": base.material(
             "PVP_MAT_old_brass", (0.30, 0.135, 0.025, 1),
@@ -100,8 +100,8 @@ def palette():
             rough=0.66, coat=0.03, texture="fabric", scale=42, bump=0.030,
         ),
         "seat_leather": base.material(
-            "PVP_MAT_seat_leather", (0.075, 0.020, 0.010, 1),
-            rough=0.50, coat=0.18, sheen=0.08, texture="leather", scale=50, bump=0.040,
+            "PVP_MAT_seat_leather", (0.155, 0.032, 0.012, 1),
+            rough=0.38, coat=0.28, sheen=0.10, texture="leather", scale=50, bump=0.034,
         ),
         "fire": base.material(
             "PVP_MAT_fire_orange", (0.70, 0.070, 0.002, 1),
@@ -127,6 +127,23 @@ def cylinder_between(name, start, end, radius, material, owner, *, vertices=24):
     obj.rotation_euler = direction.to_track_quat("Z", "Y").to_euler()
     return obj
 
+
+def tapered_plate(name, loc, r_bottom, r_top, depth, material, owner, *, vertices=14):
+    """Low-poly truncated cone for articulated plate sections."""
+    bpy.ops.mesh.primitive_cone_add(
+        vertices=vertices,
+        radius1=r_bottom,
+        radius2=r_top,
+        depth=depth,
+        location=loc,
+    )
+    obj = bpy.context.object
+    obj.name = name
+    obj.data.materials.append(material)
+    obj.data.shade_smooth()
+    base.tag(obj, base.ROLE_STATIC)
+    base.relink(obj, owner)
+    return obj
 
 
 def build_floor_and_dais(static, p):
@@ -513,6 +530,160 @@ def build_teutonic_armory(static, p):
         )
 
 
+
+def build_gothic_sentinel(static, p, side, label, sx, sy):
+    """Life-size ceremonial gothic plate, authored facing local -Y then aimed at the board."""
+    prefix = f"PVP_DUEL_sentinel_{label}"
+    parts = []
+    yaw = math.atan2(-sx, sy)
+    foot = 0.50
+
+    def add(obj):
+        parts.append(obj)
+        return obj
+
+    def sph(name, loc, radius, mat, scale=(1.0, 1.0, 1.0)):
+        return add(base.sphere(
+            f"{prefix}_{name}", loc, radius, mat, static, scale=scale,
+        ))
+
+    def box(name, loc, half, mat, *, bevel=0.01, rot=None):
+        obj = add(base.cube(
+            f"{prefix}_{name}", loc, half, mat, static, bevel=bevel,
+        ))
+        if rot is not None:
+            obj.rotation_euler = rot
+        return obj
+
+    def taper(name, loc, r_bottom, r_top, depth, mat, *, vertices=16):
+        return add(tapered_plate(
+            f"{prefix}_{name}", loc, r_bottom, r_top, depth,
+            mat, static, vertices=vertices,
+        ))
+
+    # Stone pedestal stays architectural and is not rotated/scaled with the suit.
+    base.cube(
+        f"{prefix}_plinth", (sx, sy, 0.26),
+        (0.44, 0.42, 0.26), p["dais"], static, bevel=0.07,
+    )
+    base.cube(
+        f"{prefix}_plinth_top", (sx, sy, 0.48),
+        (0.40, 0.38, 0.045), p["oak"], static, bevel=0.025,
+    )
+
+    # Legs: pointed sabatons, greaves, winged poleyns, cuisses and tassets.
+    for leg in (-1, 1):
+        lx = sx + leg * 0.12
+        sph(f"sabaton_{leg}", (lx, sy - 0.08, foot + 0.04), 0.075, p["iron"],
+            scale=(0.75, 1.90, 0.45))
+        sph(f"instep_{leg}", (lx, sy - 0.02, foot + 0.08), 0.072, p["armor"],
+            scale=(0.90, 1.10, 0.62))
+        taper(f"greave_{leg}", (lx, sy, foot + 0.34), 0.062, 0.086, 0.50, p["armor"])
+        sph(f"knee_{leg}", (lx, sy - 0.04, foot + 0.61), 0.082, p["armor"],
+            scale=(1.0, 0.90, 1.0))
+        sph(f"knee_wing_{leg}", (lx + leg * 0.07, sy - 0.03, foot + 0.61), 0.060, p["armor"],
+            scale=(0.35, 0.90, 1.0))
+        taper(f"cuisse_{leg}", (lx, sy, foot + 0.87), 0.085, 0.108, 0.46, p["armor"])
+        box(
+            f"tasset_{leg}",
+            (lx + leg * 0.02, sy - 0.10, foot + 1.03),
+            (0.10, 0.012, 0.12), p["armor"], bevel=0.020,
+            rot=(math.radians(-12), math.radians(leg * 10), 0),
+        )
+
+    # Small dark core keeps gaps between articulated plates believable.
+    box("torso", (sx, sy + 0.02, 1.86), (0.20, 0.12, 0.34), p["iron"], bevel=0.07)
+
+    # Fauld + fluted cuirass.
+    for lame, (z, radius) in enumerate(((1.62, 0.232), (1.69, 0.240), (1.76, 0.246))):
+        taper(f"fauld_{lame}", (sx, sy, z), radius + 0.012, radius, 0.075, p["armor"], vertices=20)
+    sph("breastplate", (sx, sy - 0.01, 2.06), 0.30, p["armor"], scale=(0.94, 0.60, 1.00))
+    sph("plackart", (sx, sy - 0.07, 1.86), 0.24, p["armor"], scale=(0.95, 0.62, 0.75))
+    box("breast_ridge", (sx, sy - 0.188, 2.04), (0.014, 0.010, 0.22), p["brass"], bevel=0.006)
+    for flute in (-1, 1):
+        box(
+            f"breast_flute_{flute}", (sx + flute * 0.10, sy - 0.170, 2.03),
+            (0.010, 0.010, 0.19), p["armor"], bevel=0.005,
+            rot=(0, math.radians(flute * -8), 0),
+        )
+    add(base.torus(f"{prefix}_neckline", (sx, sy - 0.02, 2.30), 0.13, 0.018, p["brass"], static))
+    box("belt", (sx, sy - 0.02, 1.58), (0.25, 0.16, 0.028), p["seat_leather"], bevel=0.012)
+    box("belt_buckle", (sx, sy - 0.18, 1.58), (0.035, 0.008, 0.030), p["brass"], bevel=0.005)
+
+    # House-colour tabard gives each sentinel a PvP identity without turning it into a mascot.
+    field = p["red"] if side < 0 else p["blue"]
+    tilt = (math.radians(-8), 0, 0)
+    box("tabard", (sx, sy - 0.20, 1.38), (0.16, 0.010, 0.20), field, bevel=0.008, rot=tilt)
+    box("tabard_hem", (sx, sy - 0.225, 1.185), (0.16, 0.008, 0.018), p["brass"], bevel=0.004, rot=tilt)
+
+    # Arms: three-lame pauldrons, besagews, articulated elbows and gauntlets.
+    for arm_idx, arm in enumerate((-1, 1)):
+        ax = sx + arm * 0.34
+        for lame, (dz, radius, scale_z) in enumerate(((0.0, 0.16, 0.85), (-0.08, 0.145, 0.75), (-0.15, 0.13, 0.65))):
+            sph(
+                f"pauldron_{arm_idx}_{lame}",
+                (ax + arm * 0.02 * lame, sy, 2.24 + dz),
+                radius, p["armor"], scale=(1.15, 1.05, scale_z),
+            )
+        add(base.torus(
+            f"{prefix}_pauldron_rim_{arm_idx}",
+            (ax, sy, 2.30), 0.145, 0.012, p["brass"], static,
+        ))
+        sph(f"besagew_{arm_idx}", (ax - arm * 0.10, sy - 0.15, 2.12), 0.05, p["brass"],
+            scale=(1.0, 0.35, 1.0))
+        taper(f"rerebrace_{arm_idx}", (ax + arm * 0.02, sy, 1.98), 0.058, 0.066, 0.26, p["armor"])
+        sph(f"elbow_{arm_idx}", (ax + arm * 0.025, sy + 0.01, 1.84), 0.065, p["armor"])
+        sph(f"elbow_wing_{arm_idx}", (ax + arm * 0.06, sy + 0.01, 1.84), 0.055, p["armor"],
+            scale=(0.35, 1.0, 1.0))
+        taper(f"vambrace_{arm_idx}", (ax + arm * 0.025, sy - 0.02, 1.68), 0.050, 0.060, 0.26, p["armor"])
+        taper(f"gauntlet_cuff_{arm_idx}", (ax + arm * 0.025, sy - 0.03, 1.53), 0.070, 0.052, 0.08, p["iron"])
+        sph(f"gauntlet_{arm_idx}", (ax + arm * 0.025, sy - 0.04, 1.46), 0.055, p["iron"],
+            scale=(0.9, 1.1, 1.2))
+
+    # Two-lame gorget and beaked armet.
+    for lame, (z, radius) in enumerate(((2.33, 0.125), (2.38, 0.108))):
+        taper(f"gorget_{lame}", (sx, sy, z), radius + 0.010, radius, 0.05, p["armor"], vertices=18)
+    sph("helmet", (sx, sy + 0.01, 2.56), 0.165, p["armor"], scale=(0.92, 1.0, 1.12))
+    sph("visor_shell", (sx, sy - 0.10, 2.53), 0.12, p["armor"], scale=(0.82, 0.95, 0.80))
+    sph("visor_beak", (sx, sy - 0.19, 2.51), 0.060, p["armor"], scale=(0.90, 1.30, 0.80))
+    box("visor", (sx, sy - 0.188, 2.585), (0.085, 0.012, 0.010), p["iron"], bevel=0.002)
+    box("helm_comb", (sx, sy + 0.01, 2.72), (0.012, 0.13, 0.035), p["brass"], bevel=0.006)
+
+    # Halberd, grounded and proportioned as part of the same authored figure.
+    hx = sx + 0.44
+    shaft_top = 3.30
+    add(base.cylinder(
+        f"{prefix}_halberd", (hx, sy - 0.05, (foot + shaft_top) / 2.0),
+        0.022, shaft_top - foot, p["oak_mid"], static, vertices=10,
+    ))
+    box("halberd_langet", (hx, sy - 0.05, shaft_top - 0.34), (0.028, 0.028, 0.18), p["iron"], bevel=0.006)
+    blade = box("halberd_blade", (hx + 0.12, sy - 0.05, shaft_top - 0.22), (0.12, 0.010, 0.13), p["armor"], bevel=0.02)
+    blade.rotation_euler.y = math.radians(-6)
+    box("halberd_fluke", (hx - 0.09, sy - 0.05, shaft_top - 0.22), (0.08, 0.010, 0.022), p["armor"],
+        bevel=0.006, rot=(0, math.radians(-18), 0))
+    box("halberd_spike", (hx, sy - 0.05, shaft_top + 0.15), (0.018, 0.010, 0.17), p["armor"], bevel=0.006)
+
+    # Scale around the planted feet, then rotate local -Y to face the board centre.
+    k = 1.28
+    c, sn = math.cos(yaw), math.sin(yaw)
+    for part in parts:
+        part.location.x = sx + (part.location.x - sx) * k
+        part.location.y = sy + (part.location.y - sy) * k
+        part.location.z = foot + (part.location.z - foot) * k
+        part.scale = tuple(component * k for component in part.scale)
+
+        dx, dy = part.location.x - sx, part.location.y - sy
+        part.location.x = sx + c * dx - sn * dy
+        part.location.y = sy + sn * dx + c * dy
+        part.rotation_euler.z += yaw
+
+    sentinel_light = base.light(
+        f"PVP_LIGHT_sentinel_{label}", "POINT",
+        (sx, sy - 0.35, 2.10), 78.0,
+        (0.72, 0.27, 0.08), static, radius=0.95,
+    )
+    sentinel_light["war_room_runtime_dynamic"] = "pvp-sentinel"
+
 def build_dungeon_population(static, p):
     """Populate the room like a working Teutonic fortress without touching the board cone."""
     for side, label in ((-1, "left"), (1, "right")):
@@ -554,112 +725,10 @@ def build_dungeon_population(static, p):
         )
         side_light["war_room_runtime_dynamic"] = "pvp-side-brazier"
 
-        # Armoured sentinel on a low plinth, behind and outside the board.
-        sx, sy = side * 5.72, 3.86
-        base.cube(
-            f"PVP_DUEL_sentinel_{label}_plinth", (sx, sy, 0.30),
-            (0.48, 0.40, 0.30), p["dais"], static, bevel=0.07,
-        )
-        for leg_idx, dx in enumerate((-0.16, 0.16)):
-            base.cylinder(
-                f"PVP_DUEL_sentinel_{label}_leg_{leg_idx}",
-                (sx + dx, sy, 0.98), 0.10, 1.05, p["armor"], static, vertices=14,
-            )
-
-            base.sphere(
-                f"PVP_DUEL_sentinel_{label}_knee_{leg_idx}",
-                (sx + dx, sy - 0.03, 1.42), 0.11, p["armor"], static,
-                scale=(1.0, 0.88, 1.0),
-            )
-            base.sphere(
-                f"PVP_DUEL_sentinel_{label}_sabatons_{leg_idx}",
-                (sx + dx, sy - 0.10, 0.49), 0.10, p["armor"], static,
-                scale=(0.86, 1.65, 0.52),
-            )
-        base.cube(
-            f"PVP_DUEL_sentinel_{label}_torso", (sx, sy, 1.88),
-            (0.38, 0.24, 0.52), p["armor"], static, bevel=0.10,
-        )
-
-        # Layered gothic plate over the structural torso.
-        base.sphere(
-            f"PVP_DUEL_sentinel_{label}_breastplate",
-            (sx, sy - 0.04, 2.02), 0.34, p["armor"], static,
-            scale=(0.92, 0.62, 1.02),
-        )
-        base.sphere(
-            f"PVP_DUEL_sentinel_{label}_plackart",
-            (sx, sy - 0.08, 1.78), 0.27, p["armor"], static,
-            scale=(0.94, 0.64, 0.72),
-        )
-        base.cube(
-            f"PVP_DUEL_sentinel_{label}_breast_ridge",
-            (sx, sy - 0.225, 2.02), (0.018, 0.015, 0.25),
-            p["brass"], static, bevel=0.006,
-        )
-        base.cube(
-            f"PVP_DUEL_sentinel_{label}_belt", (sx, sy - 0.03, 1.47),
-            (0.40, 0.27, 0.07), p["brass"], static, bevel=0.025,
-        )
-        for arm_idx, dx in enumerate((-0.43, 0.43)):
-            arm=base.cylinder(
-                f"PVP_DUEL_sentinel_{label}_arm_{arm_idx}",
-                (sx + dx, sy, 1.90), 0.085, 0.82, p["armor"], static, vertices=14,
-            )
-            arm.rotation_euler.y = math.radians(8 if arm_idx == 0 else -8)
-
-            arm_side = -1 if arm_idx == 0 else 1
-            ax = sx + dx
-            for lame_idx, (dz, radius, scale_z) in enumerate(((0.12, 0.18, 0.86), (0.04, 0.16, 0.72), (-0.04, 0.14, 0.62))):
-                base.sphere(
-                    f"PVP_DUEL_sentinel_{label}_pauldron_{arm_idx}_{lame_idx}",
-                    (ax + arm_side * 0.018 * lame_idx, sy, 2.20 + dz),
-                    radius, p["armor"], static,
-                    scale=(1.12, 1.02, scale_z),
-                )
-            base.sphere(
-                f"PVP_DUEL_sentinel_{label}_elbow_{arm_idx}",
-                (ax, sy - 0.02, 1.68), 0.095, p["armor"], static,
-                scale=(1.0, 0.90, 1.0),
-            )
-        base.sphere(
-            f"PVP_DUEL_sentinel_{label}_helmet", (sx, sy, 2.62),
-            0.29, p["armor"], static, scale=(0.92, 0.90, 1.10),
-        )
-        base.sphere(
-            f"PVP_DUEL_sentinel_{label}_visor_shell", (sx, sy - 0.16, 2.58),
-            0.20, p["armor"], static, scale=(0.88, 0.72, 0.78),
-        )
-        base.sphere(
-            f"PVP_DUEL_sentinel_{label}_visor_beak", (sx, sy - 0.31, 2.55),
-            0.10, p["armor"], static, scale=(0.95, 1.25, 0.72),
-        )
-        base.cube(
-            f"PVP_DUEL_sentinel_{label}_visor", (sx, sy - 0.31, 2.62),
-            (0.18, 0.026, 0.018), p["iron"], static, bevel=0.006,
-        )
-        base.cube(
-            f"PVP_DUEL_sentinel_{label}_helm_comb", (sx, sy + 0.01, 2.92),
-            (0.018, 0.12, 0.055), p["brass"], static, bevel=0.008,
-        )
-        cylinder_between(
-            f"PVP_DUEL_sentinel_{label}_halberd",
-            (sx - side * 0.56, sy + 0.02, 0.52),
-            (sx - side * 0.56, sy + 0.02, 3.35),
-            0.035, p["oak_mid"], static, vertices=12,
-        )
-        base.cube(
-            f"PVP_DUEL_sentinel_{label}_halberd_blade",
-            (sx - side * 0.66, sy, 3.08),
-            (0.18, 0.035, 0.23), p["iron"], static, bevel=0.028,
-        )
-
-        sentinel_light = base.light(
-            f"PVP_LIGHT_sentinel_{label}", "POINT",
-            (sx, sy - 0.38, 1.35), 72.0,
-            (0.72, 0.22, 0.06), static, radius=0.9,
-        )
-        sentinel_light["war_room_runtime_dynamic"] = "pvp-sentinel"
+        # Premium ceremonial sentinel, independently authored for PvP but using
+        # the proven gothic full-plate proportions from the V3 art language.
+        sx, sy = side * 4.92, 3.34
+        build_gothic_sentinel(static, p, side, label, sx, sy)
 
         # Barrel + supply crate in the rear corner make the room feel occupied.
         cx, cy = side * 6.10, 4.92
@@ -792,28 +861,125 @@ def build_sconces_and_gate(static, p):
 
 
 def build_duelist_furniture(static, p):
-    # Austere duelist stations: oak and iron, deliberately not lounge furniture.
+    """Premium duelist chairs, angled so both seats unmistakably face the board."""
     for side, accent, label in ((-1, p["red"], "red"), (1, p["blue"], "blue")):
-        x = side * 6.55
-        y = -2.72
-        base.cube(
-            f"PVP_DUEL_seat_{label}", (x, y, 0.60),
-            (0.78, 0.54, 0.12), p["oak_mid"], static, bevel=0.055,
-        )
-        base.cube(
-            f"PVP_DUEL_seat_front_{label}", (x, y - 0.48, 0.33),
-            (0.78, 0.08, 0.34), p["iron"], static, bevel=0.035,
-        )
-        for sx in (-0.62, 0.62):
-            base.cylinder(
-                f"PVP_DUEL_seat_post_{label}_{sx:+.2f}",
-                (x + sx, y + 0.40, 1.12), 0.055, 1.30,
-                p["iron"], static, vertices=12,
+        x = side * 4.58
+        y = -2.88
+        yaw = math.atan2(-x, y)  # local -y is the seated player's forward direction
+        cos_yaw = math.cos(yaw)
+        sin_yaw = math.sin(yaw)
+
+        def at(local_x, local_y, z):
+            return (
+                x + local_x * cos_yaw - local_y * sin_yaw,
+                y + local_x * sin_yaw + local_y * cos_yaw,
+                z,
             )
-        base.cube(
-            f"PVP_DUEL_seat_identity_{label}", (x, y + 0.49, 1.25),
-            (0.48, 0.055, 0.10), accent, static, bevel=0.018,
+
+        def chair_cube(name, local, half, mat, *, bevel=0.02, local_yaw=0.0):
+            obj = base.cube(
+                f"PVP_DUEL_seat_{label}_{name}",
+                at(local[0], local[1], local[2]),
+                half, mat, static, bevel=bevel,
+            )
+            obj.rotation_euler.z = yaw + local_yaw
+            return obj
+
+        def chair_cylinder(name, local, radius, depth, mat, *, vertices=14):
+            obj = base.cylinder(
+                f"PVP_DUEL_seat_{label}_{name}",
+                at(local[0], local[1], local[2]),
+                radius, depth, mat, static, vertices=vertices,
+            )
+            obj.rotation_euler.z = yaw
+            return obj
+
+        # Seat frame + upholstered cushion. Keep the legacy seat name on the
+        # structural frame because it is already part of the GLB contract.
+        frame = base.cube(
+            f"PVP_DUEL_seat_{label}",
+            at(0.0, 0.0, 0.64),
+            (0.88, 0.62, 0.14), p["oak"], static, bevel=0.080,
         )
+        frame.rotation_euler.z = yaw
+        frame["pvp_duel_faces_board"] = True
+        chair_cube("cushion", (0.0, -0.02, 0.82), (0.75, 0.53, 0.13),
+                   p["seat_leather"], bevel=0.12)
+
+        # Four sturdy carved legs and a low apron.
+        for leg_idx, (lx, ly) in enumerate(((-0.62, -0.39), (0.62, -0.39), (-0.62, 0.39), (0.62, 0.39))):
+            chair_cylinder(f"leg_{leg_idx}", (lx, ly, 0.37), 0.085, 0.62, p["oak"], vertices=16)
+            base.sphere(
+                f"PVP_DUEL_seat_{label}_foot_{leg_idx}",
+                at(lx, ly, 0.075), 0.095, p["brass"], static,
+                scale=(1.0, 1.0, 0.55),
+            )
+        chair_cube("front_apron", (0.0, -0.50, 0.48), (0.72, 0.070, 0.18),
+                   p["oak_mid"], bevel=0.045)
+
+        # Tall throne-like back: dark oak frame, leather panel and restrained
+        # PvP heraldry. The panel stays below the HUD and outside the board cone.
+        for post_x in (-0.66, 0.66):
+            chair_cylinder(f"back_post_{post_x:+.2f}", (post_x, 0.43, 1.47),
+                           0.080, 1.62, p["oak"], vertices=16)
+            base.sphere(
+                f"PVP_DUEL_seat_{label}_finial_{post_x:+.2f}",
+                at(post_x, 0.43, 2.28), 0.115, p["brass"], static,
+            )
+        chair_cube("back_frame", (0.0, 0.44, 1.76), (0.70, 0.085, 0.80),
+                   p["oak"], bevel=0.10)
+        chair_cube("back_leather", (0.0, 0.345, 1.76), (0.60, 0.050, 0.66),
+                   p["seat_leather"], bevel=0.090)
+        chair_cube("crest", (0.0, 0.325, 1.82), (0.20, 0.024, 0.24),
+                   accent, bevel=0.065)
+        chair_cube("crest_bar", (0.0, 0.30, 1.82), (0.28, 0.014, 0.045),
+                   p["brass"], bevel=0.012)
+        base.sphere(
+            f"PVP_DUEL_seat_{label}_crest_medallion",
+            at(0.0, 0.275, 1.82), 0.115, p["brass"], static,
+            scale=(1.0, 0.34, 1.0),
+        )
+        for rail_idx, rail_x in enumerate((-0.54, 0.54)):
+            chair_cube(
+                f"back_rail_{rail_idx}",
+                (rail_x, 0.405, 1.72), (0.055, 0.050, 0.62),
+                p["brass"], bevel=0.018,
+            )
+
+        # Brass upholstery studs form a readable premium edge without a heavy
+        # sculpt or texture dependency.
+        stud_positions = (
+            (-0.42, 0.305, 1.24), (0.42, 0.305, 1.24),
+            (-0.42, 0.305, 1.64), (0.42, 0.305, 1.64),
+            (-0.42, 0.305, 2.02), (0.42, 0.305, 2.02),
+        )
+        for stud_idx, (lx, ly, lz) in enumerate(stud_positions):
+            base.sphere(
+                f"PVP_DUEL_seat_{label}_stud_{stud_idx}",
+                at(lx, ly, lz), 0.035, p["brass"], static,
+            )
+
+        # Carved armrests with a simple lion-boss cue on the forward cap.
+        for arm_idx, arm_x in enumerate((-0.72, 0.72)):
+            chair_cube(f"armrest_{arm_idx}", (arm_x, -0.02, 1.12),
+                       (0.095, 0.50, 0.070), p["oak_mid"], bevel=0.050)
+            chair_cylinder(f"arm_support_{arm_idx}", (arm_x, -0.18, 0.92),
+                           0.065, 0.45, p["oak"], vertices=14)
+            base.sphere(
+                f"PVP_DUEL_seat_{label}_lion_boss_{arm_idx}",
+                at(arm_x, -0.49, 1.13), 0.090, p["brass"], static,
+                scale=(1.0, 0.72, 0.90),
+            )
+
+        chair_prefix = f"PVP_DUEL_seat_{label}"
+        chair_scale = 1.12
+        for obj in list(static.objects):
+            if not obj.name.startswith(chair_prefix):
+                continue
+            obj.location.x = x + (obj.location.x - x) * chair_scale
+            obj.location.y = y + (obj.location.y - y) * chair_scale
+            obj.location.z *= chair_scale
+            obj.scale = tuple(component * chair_scale for component in obj.scale)
 
 
 def build_lighting(static):
@@ -905,6 +1071,10 @@ def validate_scene():
         "PVP_DUEL_wall_sconce_left",
         "PVP_DUEL_sentinel_left_torso",
         "PVP_DUEL_sentinel_left_breastplate",
+        "PVP_DUEL_sentinel_left_fauld_0",
+        "PVP_DUEL_sentinel_left_gauntlet_0",
+        "PVP_DUEL_sentinel_left_gorget_0",
+        "PVP_DUEL_sentinel_left_tabard",
         "PVP_DUEL_mid_weapon_rack_left",
         "PVP_DUEL_barrel_left",
         "PVP_DUEL_floor_grate_spine_left",
@@ -914,6 +1084,12 @@ def validate_scene():
         "PVP_ROOM_window_glass",
         "PVP_DUEL_seat_red",
         "PVP_DUEL_seat_blue",
+        "PVP_DUEL_seat_red_back_leather",
+        "PVP_DUEL_seat_blue_back_leather",
+        "PVP_DUEL_seat_red_lion_boss_0",
+        "PVP_DUEL_seat_blue_lion_boss_0",
+        "PVP_DUEL_seat_red_crest_medallion",
+        "PVP_DUEL_seat_blue_crest_medallion",
         "PVP_ANCHOR_red_identity",
         "PVP_ANCHOR_blue_identity",
         "PVP_ANCHOR_room_status",
@@ -927,6 +1103,21 @@ def validate_scene():
     missing = sorted(required - names)
     if missing:
         raise RuntimeError(f"PvP Duel Room contract objects missing: {missing}")
+
+    # Both seats must genuinely face the board. Local chair forward is -Y; after
+    # yaw its world-space direction is (sin(yaw), -cos(yaw)).
+    for label in ("red", "blue"):
+        seat = bpy.data.objects[f"PVP_DUEL_seat_{label}"]
+        to_board = Vector((-seat.location.x, -seat.location.y))
+        if to_board.length <= 0.01:
+            raise RuntimeError(f"PvP Duel Room {label} seat has invalid board vector")
+        to_board.normalize()
+        yaw = float(seat.rotation_euler.z)
+        forward = Vector((math.sin(yaw), -math.cos(yaw)))
+        if forward.dot(to_board) < 0.985:
+            raise RuntimeError(
+                f"PvP Duel Room {label} seat does not face board: dot={forward.dot(to_board):.4f}"
+            )
     forbidden = sorted(name for name in names if name.startswith(("WR_ARCH_", "WR_CANON_", "WR3_OBS_")))
     if forbidden:
         raise RuntimeError(f"PvP Duel Room inherited visible War Room geometry: {forbidden[:12]}")
