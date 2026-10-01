@@ -17,6 +17,7 @@ PRODUCER_ORDER = (
     "home-matthias",
     "home-focus",
     "pvp-lobby",
+    "pvp-handoff",
     "experiments-hub",
     "chronicles-tactics",
     "chronicles-gameplay",
@@ -171,8 +172,8 @@ PVP_EXACT_PRODUCERS = {
     "frontend/src/components/menuinner.jsx": {"home-base"},
     "frontend/src/components/pvplobbymodal.jsx": {"pvp-lobby"},
     "frontend/src/components/pvplobbymodal.css": {"pvp-lobby"},
-    "frontend/src/components/pvphandoffmodal.jsx": {"home-base"},
-    "frontend/src/components/pvphandoffmodal.css": {"home-base"},
+    "frontend/src/components/pvphandoffmodal.jsx": {"pvp-handoff"},
+    "frontend/src/components/pvphandoffmodal.css": {"pvp-handoff"},
     "frontend/src/components/homepvprosterlink.jsx": {"home-base"},
     "frontend/src/components/homepvprosterlink.css": {"home-base"},
     "frontend/src/pvpapi.js": {"home-base"},
@@ -210,6 +211,7 @@ def _e2e_producer(name: str) -> set[str] | None:
         "matthias-home-visual-critical.spec.js": {"home-matthias"},
         "home-3d-focus-visual.spec.js": {"home-focus"},
         "pvp-lobby-visual-artifact.spec.js": {"pvp-lobby"},
+        "pvp-handoff-visual-artifact.spec.js": {"pvp-handoff"},
         "home-lab-visibility.spec.js": {"home-base"},
         "experiments-visual-artifact.spec.js": {"experiments-hub"},
         "pawn-slug-godot-visual-artifact.spec.js": {"experiments-hub"},
@@ -642,6 +644,8 @@ def self_test() -> None:
     ]) == "home-base,pvp-lobby,pvp-duel"
     assert classify(["frontend/src/components/PvPLobbyModal.jsx"]) == "pvp-lobby"
     assert classify(["e2e/pvp-lobby-visual-artifact.spec.js"]) == "pvp-lobby"
+    assert classify(["frontend/src/components/PvpHandoffModal.jsx"]) == "pvp-handoff"
+    assert classify(["e2e/pvp-handoff-visual-artifact.spec.js"]) == "pvp-handoff"
     assert classify_home_profile_scope(["frontend/src/components/QuickMatchMobileGoldenPath.css"]) == "quickmatch"
     assert classify(["frontend/src/components/useWarRoomImmersive.js"]) == "warroom-core"
     assert classify(["frontend/src/components/WarRoomMobileLandscape.css"]) == "warroom-core"
