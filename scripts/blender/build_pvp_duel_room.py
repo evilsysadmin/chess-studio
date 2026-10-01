@@ -25,6 +25,10 @@ import build_war_room_premium as base  # noqa: E402
 
 
 CONTRACT = "pvp-duel-room-medieval-v1"
+DUEL_DAIS_RADIUS = 4.35
+SIDE_WALL_INNER_X = 8.17
+WALL_PROP_MIN_RADIUS = 6.80
+WALL_CONTACT_MAX_GAP = 0.35
 DUEL_WEATHER_MATERIALS = frozenset({
     "PVP_MAT_wall_stone",
     "PVP_MAT_floor_stone",
@@ -170,7 +174,7 @@ def build_floor_and_dais(static, p):
             tile.rotation_euler.z = math.radians(((row * 7 + col * 3) % 5 - 2) * 0.28)
 
     # Raised octagonal stone fighting dais: the board is still the visual sovereign.
-    base.cylinder("PVP_DUEL_dais", (0, 0.0, 0.18), 4.35, 0.34,
+    base.cylinder("PVP_DUEL_dais", (0, 0.0, 0.18), DUEL_DAIS_RADIUS, 0.34,
                   p["dais"], static, vertices=8)
     base.torus("PVP_DUEL_dais_outer_iron", (0, 0.0, 0.365), 4.05, 0.050,
                p["iron"], static)
@@ -727,7 +731,10 @@ def build_dungeon_population(static, p):
 
         # Premium ceremonial sentinel, independently authored for PvP but using
         # the proven gothic full-plate proportions from the V3 art language.
-        sx, sy = side * 4.92, 3.34
+        # Sentinels belong to the fortress envelope, not the fighting dais.
+        # The plinth sits almost flush with the side wall, in the clear bay
+        # between buttresses, while the armour still faces the board.
+        sx, sy = side * 7.55, 2.05
         build_gothic_sentinel(static, p, side, label, sx, sy)
 
         # Barrel + supply crate in the rear corner make the room feel occupied.
@@ -863,8 +870,10 @@ def build_sconces_and_gate(static, p):
 def build_duelist_furniture(static, p):
     """Premium duelist chairs, angled so both seats unmistakably face the board."""
     for side, accent, label in ((-1, p["red"], "red"), (1, p["blue"], "blue")):
-        x = side * 4.58
-        y = -2.88
+        # Chairs frame the duel from the wall. Their tall backs sit almost
+        # flush with the side masonry while the seat still faces the board.
+        x = side * 7.25
+        y = -1.55
         yaw = math.atan2(-x, y)  # local -y is the seated player's forward direction
         cos_yaw = math.cos(yaw)
         sin_yaw = math.sin(yaw)
@@ -1008,7 +1017,7 @@ def build_lighting(static):
             (side * 6.30, 0.80, 4.60), 118.0,
             (0.80, 0.28, 0.08), static, size=2.7,
         )
-        base.look_at(side_fill, (side * 5.05, 3.10, 1.90))
+        base.look_at(side_fill, (side * 7.30, 2.10, 1.90))
 
     base.anchor("PVP_ANCHOR_red_identity", (-4.92, 5.42, 3.42), static)
     base.anchor("PVP_ANCHOR_blue_identity", (4.92, 5.42, 3.42), static)
@@ -1104,9 +1113,19 @@ def validate_scene():
     if missing:
         raise RuntimeError(f"PvP Duel Room contract objects missing: {missing}")
 
+    def wall_gap_for_object(name, side):
+        obj = bpy.data.objects[name]
+        if obj.type != "MESH":
+            raise RuntimeError(f"PvP Duel Room wall-contact object is not mesh: {name}")
+        xs = [(obj.matrix_world @ Vector(corner)).x for corner in obj.bound_box]
+        outer_x = min(xs) if side < 0 else max(xs)
+        return SIDE_WALL_INNER_X - abs(outer_x)
+
     # Both seats must genuinely face the board. Local chair forward is -Y; after
-    # yaw its world-space direction is (sin(yaw), -cos(yaw)).
-    for label in ("red", "blue"):
+    # yaw its world-space direction is (sin(yaw), -cos(yaw)). They also belong
+    # to the wall band: the back nearly touches masonry and the chair centre
+    # remains well outside the fighting dais.
+    for label, side in (("red", -1), ("blue", 1)):
         seat = bpy.data.objects[f"PVP_DUEL_seat_{label}"]
         to_board = Vector((-seat.location.x, -seat.location.y))
         if to_board.length <= 0.01:
@@ -1118,6 +1137,32 @@ def validate_scene():
             raise RuntimeError(
                 f"PvP Duel Room {label} seat does not face board: dot={forward.dot(to_board):.4f}"
             )
+        seat_radius = math.hypot(seat.location.x, seat.location.y)
+        if seat_radius < WALL_PROP_MIN_RADIUS:
+            raise RuntimeError(
+                f"PvP Duel Room {label} seat invades board safety band: radius={seat_radius:.3f}"
+            )
+        seat_gap = wall_gap_for_object(f"PVP_DUEL_seat_{label}_back_frame", side)
+        if seat_gap < -0.08 or seat_gap > WALL_CONTACT_MAX_GAP:
+            raise RuntimeError(
+                f"PvP Duel Room {label} seat is not wall-adjacent: wall_gap={seat_gap:.3f}"
+            )
+
+    # Sentinel plinths obey the same spatial rule. Decorative guards must frame
+    # the room from the masonry, never creep back toward the board.
+    for label, side in (("left", -1), ("right", 1)):
+        plinth = bpy.data.objects[f"PVP_DUEL_sentinel_{label}_plinth"]
+        sentinel_radius = math.hypot(plinth.location.x, plinth.location.y)
+        if sentinel_radius < WALL_PROP_MIN_RADIUS:
+            raise RuntimeError(
+                f"PvP Duel Room {label} sentinel invades board safety band: radius={sentinel_radius:.3f}"
+            )
+        sentinel_gap = wall_gap_for_object(f"PVP_DUEL_sentinel_{label}_plinth", side)
+        if sentinel_gap < -0.08 or sentinel_gap > WALL_CONTACT_MAX_GAP:
+            raise RuntimeError(
+                f"PvP Duel Room {label} sentinel is not wall-adjacent: wall_gap={sentinel_gap:.3f}"
+            )
+
     forbidden = sorted(name for name in names if name.startswith(("WR_ARCH_", "WR_CANON_", "WR3_OBS_")))
     if forbidden:
         raise RuntimeError(f"PvP Duel Room inherited visible War Room geometry: {forbidden[:12]}")
