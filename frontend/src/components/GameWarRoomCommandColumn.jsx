@@ -268,7 +268,8 @@ export default function GameWarRoomCommandColumn({
 
   // Compact War Room keeps one HUD surface. Secondary actions are folded into
   // its overflow so Android does not pay for a separate command row above the
-  // board. Focus/resign survive as tiny one-tap affordances inside the same HUD.
+  // board. Focus stays compact; SALIR is a dedicated room overlay and account
+  // lives as the gear immediately after the overflow.
   if (compactViewport) {
     return (
       <CompactWarRoomPill
