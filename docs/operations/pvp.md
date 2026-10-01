@@ -278,3 +278,18 @@ A PvP change is not complete unless applicable items hold:
 - compatibility is explicit during API migration.
 
 Tracking: #4368.
+
+
+## Go migration wedge
+
+PvP is migrating incrementally toward a dedicated Go process. The first slice is deliberately a transport edge, not a second authority:
+
+- `backend-go/cmd/pvp-edge` accepts only `/api/pvp*` plus its internal health/readiness endpoints;
+- while a PvP operation still belongs to Python, Go proxies it transparently to the paired Python backend and preserves auth, request path/query/body and response semantics;
+- Go readiness fails closed when the paired Python authority is not ready;
+- proxy transport failure returns a stable retryable `pvp_upstream_unavailable` envelope instead of inventing domain state;
+- the edge is stateless: Mongo/Python remain authoritative until an operation is explicitly migrated with parity tests;
+- migration is endpoint-by-endpoint. An operation moves to Go only when its auth, idempotency/CAS, persistence, error and reconnect contracts have dedicated parity coverage;
+- rollback must remain routing-level while the compatibility proxy exists.
+
+Target deployment pairs each blue/green Python slot with the same-color Go PvP edge, so switching the stable nginx edge cannot route a duel to the wrong backend generation.
