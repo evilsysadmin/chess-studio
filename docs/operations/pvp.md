@@ -222,6 +222,8 @@ Current bounded contract:
 - match pulse may renew only the caller's coarse duel presence timestamp without changing gameplay revision;
 - match pulse may expose revision/status and detect clock or handoff deadlines that require an immediate Python reconciliation;
 - stable active matches still perform a bounded full Python reconciliation every few seconds;
+- roster join/heartbeat and leave may execute natively in Go with the same server-owned PvP rating/tier, a bounded join rate limit, and pending-challenge cancellation on leave;
+- roster native cutover has an independent kill-switch; disabled means the edge proxies the existing Python routes unchanged;
 - timeout, disconnect grace/forfeit, handoff transitions, move legality, result and Elo settlement remain Python-authoritative until migrated explicitly with equivalent CAS/idempotency coverage;
 - a missing/disabled native pulse must fall back to the existing Python GET path.
 
