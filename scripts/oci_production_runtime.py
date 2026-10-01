@@ -312,7 +312,7 @@ def host_sync_command(vault_id: str) -> str:
 tmp="$(mktemp /tmp/chess-studio-backend.env.production.XXXXXX)"
 trap 'rm -f "$tmp"' EXIT
 chmod 0600 "$tmp"
-venv="${HOME:-/tmp}/.cache/chess-studio-oci-runtime"
+venv="${{HOME:-/tmp}}/.cache/chess-studio-oci-runtime"
 if [ ! -x "$venv/bin/python" ]; then
   python3 -m venv "$venv"
   "$venv/bin/pip" install --disable-pip-version-check --quiet 'oci=={OCI_SDK_VERSION}'
