@@ -40,6 +40,45 @@ test('Home · el roster 1 vs 1 abre la sala y puede minimizarse', async ({ page 
 });
 
 
+test('Roster 1v1 · retar a un rival es una acción directa sin selección intermedia', async ({ page }) => {
+  await mockApi(page);
+  let challengePosts = 0;
+  await page.route('**/api/pvp/lobby', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({
+      roster: [
+        { username: 'evilsysadmin', isSelf: true, rating: 400, tier: 'Principiante' },
+        { username: 'bob', isSelf: false, rating: 416, tier: 'Principiante', headToHead: { games: 2, wins: 1, draws: 0, losses: 1 } },
+      ],
+      challenges: [],
+      activeMatch: null,
+      messages: [],
+      pollAfterMs: 3000,
+    }),
+  }));
+  await page.route('**/api/pvp/challenges', async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    challengePosts += 1;
+    return route.fulfill({
+      status: 201,
+      contentType: 'application/json',
+      body: JSON.stringify({ challenge: { id: 'c-out', opponent: 'bob', status: 'pending', direction: 'outgoing' } }),
+    });
+  });
+
+  await login(page);
+  await page.getByRole('button', { name: 'Abrir Sala de Duelos 1 contra 1' }).click();
+  const lobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room' });
+  const bobRow = lobby.locator('.pvp-lobby__player').filter({ hasText: 'bob' });
+
+  await expect(lobby.getByText('RIVAL SELECCIONADO', { exact: true })).toHaveCount(0);
+  await expect(bobRow.getByText('VS TI · 1V 0T 1D', { exact: true })).toBeVisible();
+  await bobRow.getByRole('button', { name: 'Retar a bob', exact: true }).click();
+  await expect.poll(() => challengePosts).toBe(1);
+});
+
+
 test('Roster 1v1 · un reto saliente con contrato nuevo puede cancelarse', async ({ page }) => {
   await mockApi(page);
   let cancelled = false;
