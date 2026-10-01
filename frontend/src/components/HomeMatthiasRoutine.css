@@ -116,10 +116,15 @@
   }
 
   .illustrated-home__matthias:has(.home-matthias-3d[data-home-matthias-station='rest']) {
-    --home-matthias-zone-left: 7.2%;
-    --home-matthias-zone-top: 52%;
-    --home-matthias-zone-width: clamp(138px, 11.2cqw, 190px);
-    --home-matthias-occlusion: 16%;
+    /* Sleeping is a real sofa pose, not a standing avatar parked in front of it. */
+    --home-matthias-zone-left: 1.4%;
+    --home-matthias-zone-top: 58%;
+    --home-matthias-zone-width: clamp(230px, 19cqw, 320px);
+    --home-matthias-occlusion: 0%;
+  }
+
+  .illustrated-home__matthias:has(.home-matthias-3d[data-home-matthias-station='rest']) .illustrated-home__matthias-portrait {
+    aspect-ratio: 16 / 9;
   }
 
   .illustrated-home__matthias.is-speaking {
