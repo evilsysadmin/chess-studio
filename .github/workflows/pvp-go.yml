@@ -35,15 +35,7 @@ jobs:
           go-version: '1.27.1'
           cache-dependency-path: backend-go/go.mod
       - name: Unit tests
-        run: |
-          go mod tidy
-          echo '--- BEGIN GENERATED GO.MOD ---'
-          cat go.mod
-          echo '--- END GENERATED GO.MOD ---'
-          echo '--- BEGIN GENERATED GO.SUM ---'
-          cat go.sum
-          echo '--- END GENERATED GO.SUM ---'
-          go test ./...
+        run: go test ./...
       - name: Vet
         run: go vet ./...
       - name: Build Linux ARM64
