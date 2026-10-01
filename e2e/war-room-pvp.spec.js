@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { buttonWithVisibleText, login, mockApi } from './helpers.js';
-import { readBoard3DProjection } from './board3d-projection.js';
+import { clickWarRoomMove } from './war-room-board-input.js';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
@@ -88,12 +88,8 @@ test('War Room 1v1 · un 409 por carrera de turno sincroniza sin flash de error'
   await lobby.getByRole('button', { name: 'Aceptar', exact: true }).click();
 
   const warRoom = page.getByRole('region', { name: 'Sala de duelo 1 contra 1' });
-  const board = page.locator('[data-board3d-war-room="true"]');
-  const canvas = board.locator('.board3d-main-canvas');
-  await expect(canvas).toBeVisible({ timeout: 45_000 });
-  const projection = await readBoard3DProjection(canvas);
-  await canvas.click(projection.square('e2'));
-  await canvas.click(projection.square('e4'));
+  await expect(warRoom.getByText('Tu turno', { exact: true })).toBeVisible({ timeout: 45_000 });
+  await expect(clickWarRoomMove(page, 'e2', 'e4')).resolves.toBe(true);
 
   await expect.poll(() => moveAttempts).toBe(1);
   await expect(warRoom.getByText('bob juega', { exact: true })).toBeVisible({ timeout: 5_000 });
@@ -201,11 +197,8 @@ test('War Room 1v1 · rendirse no resucita un handoff stale del lobby', async ({
 
   const warRoom = page.getByRole('region', { name: 'Sala de duelo 1 contra 1' });
   await expect(warRoom).toBeVisible({ timeout: 15_000 });
-  const canvas = page.locator('[data-board3d-war-room="true"] .board3d-main-canvas');
-  await expect(canvas).toBeVisible({ timeout: 45_000 });
-  const projection = await readBoard3DProjection(canvas);
-  await canvas.click(projection.square('e2'));
-  await canvas.click(projection.square('e4'));
+  await expect(warRoom.getByText('Tu turno', { exact: true })).toBeVisible({ timeout: 45_000 });
+  await expect(clickWarRoomMove(page, 'e2', 'e4')).resolves.toBe(true);
   await expect(warRoom.getByText('sparringmeister juega', { exact: true })).toBeVisible({ timeout: 5_000 });
 
   await warRoom.getByRole('button', { name: 'Más acciones de partida', exact: true }).click();
