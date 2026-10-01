@@ -66,6 +66,8 @@ if missing:
     raise SystemExit(42)
 if set(values)-set(ordered):
     raise SystemExit("runtime contains unexpected backend.env keys")
+if values.get("ENABLE_EMAIL_RECOVERY","").lower() in {"1","true","yes","on"} and not values.get("RESEND_API_KEY"):
+    raise SystemExit("email recovery enabled without RESEND_API_KEY")
 path=Path(os.environ["RUNTIME_TMP"])
 path.write_text("".join(f"{{key}}={{values[key]}}\\n" for key in ordered if key in values),encoding="utf-8")
 os.chmod(path,0o600)
@@ -132,6 +134,7 @@ def self_test() -> None:
     assert RUNTIME_INSTALLER in command
     assert "sudo --non-interactive" in command
     assert "CHESS_STUDIO_RUNTIME_SCHEMA" in command
+    assert "email recovery enabled without RESEND_API_KEY" in command
     assert "vault-git-v1" in command
     assert "RENDER_API_KEY" not in command
     assert "ObjectStorageClient" not in command
