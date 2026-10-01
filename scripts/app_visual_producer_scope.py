@@ -216,8 +216,8 @@ def _e2e_producer(name: str) -> set[str] | None:
         "chronicles-avatar-visual-artifact.spec.js": {"chronicles-avatar"},
         "training-visual-artifact.spec.js": set(TRAINING_ALL),
         "war-room-pvp-duel-visual-artifact.spec.js": {"pvp-duel"},
-        "war-room-pvp.spec.js": {"pvp-duel"},
-        "pvp-background-roster.spec.js": {"pvp-duel"},
+        "war-room-pvp.spec.js": set(),
+        "pvp-background-roster.spec.js": set(),
         "mobile-golden-path-war-room-invariants.spec.js": {"warroom-core"},
         "war-room-visual-artifact.spec.js": {"warroom-core"},
         "war-room-decor-visual-artifact.spec.js": {"warroom-decor"},
@@ -607,6 +607,8 @@ def self_test() -> None:
     ]) == "mobile"
     assert classify(["scripts/app_visual_scope.py"]) == "none"
     assert classify(["e2e/smoke.spec.js"]) == "none"
+    assert classify(["e2e/war-room-pvp.spec.js"]) == "none"
+    assert classify(["e2e/pvp-background-roster.spec.js"]) == "none"
     assert classify(["scripts/app_visual_producer_scope.py"]) == "none"
     assert classify(["scripts/app_visual_changed_files.py"]) == "none"
     assert classify(["scripts/app_visual_capture.sh"]) == "none"
