@@ -11,7 +11,7 @@ El matchmaking humano pertenece al castillo. No debe sentirse como un dashboard,
 3. **Mesa del Heraldo** — retos entrantes/salientes y su acción inmediata.
 4. **Murmullos de la sala** — conversación secundaria que nunca compite con concertar el duelo.
 
-La War Room sigue siendo el lugar donde se juega. La Sala de Duelos sólo concierta y prepara la entrada.
+La Sala de Duelos de lobby sólo concierta y prepara la entrada. Una vez aceptado el reto, la partida se juega en la **Duel Room 3D dedicada**, no en una War Room contra CPU.
 
 ## Authority
 
@@ -49,7 +49,7 @@ No usar glow masivo, dashboards de tarjetas homogéneas ni texto ornamental que 
 
 Cuando ambos jugadores aceptan:
 
-`reto concertado → sincronización autoritativa → cuenta atrás breve → War Room`
+`reto concertado → sincronización autoritativa → cuenta atrás breve → Duel Room`
 
 La presentación puede ser ceremonial, pero nunca retrasar o sustituir el estado real. Cualquier error/recovery debe seguir gobernado por el match autoritativo.
 
@@ -82,3 +82,20 @@ La escena no justifica un renderer paralelo ni una segunda fuente de verdad.
 ## Criterio de cierre
 
 La superficie está lista cuando entrar al 1v1 se siente como **visitar una estancia del castillo para concertar un duelo**, y un jugador nuevo entiende sin explicación adicional dónde está él, dónde están los rivales, qué retos requieren atención y cómo entra en combate.
+
+
+## Canon visual de la Duel Room
+
+La Duel Room de partida usa como canon una **mazmorra/fortaleza teutona densa pero jugable**.
+
+- tablero protagonista, con la misma lectura y framing funcional de War Room;
+- sin grandes barras, vigas o nervios claros atravesando el encuadre;
+- muros de piedra oscura, hierro, madera, latón envejecido y luz cálida de fuego;
+- rastrillo central con profundidad y maquinaria de izado legible;
+- cadenas, rejillas de suelo, armaduras centinela, armas, barriles/cajas y utilería de fortaleza en la periferia;
+- braseros laterales y traseros como prácticos cálidos, con luz fría secundaria de luna/piedra;
+- heraldry red/blue muy medida para identidad PvP; no estética esports;
+- ningún elemento decorativo puede invadir el cono interactivo ni competir con piezas, HUD o selección táctil;
+- en móvil se recorta decoración antes que tablero o controles.
+
+El objetivo es que parezca una estancia ocupada y funcional del castillo, no un escenario vacío ni una sala genérica con tablero.
