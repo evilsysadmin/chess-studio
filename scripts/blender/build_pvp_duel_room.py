@@ -249,6 +249,57 @@ def build_architecture(static, p):
         (1.28, 0.030, 0.10), p["wet_stone"], static, bevel=0.025,
     )
 
+    # Gate machinery: two wall-mounted hoist wheels make the portcullis feel functional.
+    for side, label in ((-1, "left"), (1, "right")):
+        wheel_x = side * 3.18
+        wheel_y = 5.72
+        wheel_z = 3.72
+
+        wheel = base.torus(
+            f"PVP_DUEL_gate_winch_{label}",
+            (wheel_x, wheel_y, wheel_z),
+            0.49, 0.068, p["brass"], static,
+            rotation=(math.pi / 2, 0.0, 0.0),
+        )
+        base.cylinder(
+            f"PVP_DUEL_gate_winch_hub_{label}",
+            (wheel_x, wheel_y, wheel_z),
+            0.14, 0.26, p["iron"], static, vertices=18,
+        ).rotation_euler.x = math.pi / 2
+
+        base.cube(
+            f"PVP_DUEL_gate_winch_mount_{label}",
+            (wheel_x, wheel_y + 0.14, wheel_z),
+            (0.62, 0.16, 0.62), p["recess"], static, bevel=0.08,
+        )
+        base.cube(
+            f"PVP_DUEL_gate_winch_mount_cap_{label}",
+            (wheel_x, wheel_y + 0.12, wheel_z + 0.66),
+            (0.70, 0.18, 0.08), p["limestone"], static, bevel=0.035,
+        )
+
+        for spoke_idx, angle in enumerate((0, 45, 90, 135)):
+            spoke = base.cube(
+                f"PVP_DUEL_gate_winch_spoke_{label}_{spoke_idx}",
+                (wheel_x, wheel_y - 0.01, wheel_z),
+                (0.40, 0.030, 0.034), p["oak_mid"], static, bevel=0.020,
+            )
+            spoke.rotation_euler.y = math.radians(angle)
+
+        # Short chain run from each winch toward the portcullis head.
+        chain_start = Vector((wheel_x - side * 0.40, wheel_y - 0.05, wheel_z + 0.16))
+        chain_end = Vector((side * 1.72, 5.70, 4.68))
+        direction = chain_end - chain_start
+        for link_idx in range(7):
+            t = link_idx / 6
+            pos = chain_start + direction * t
+            link = base.torus(
+                f"PVP_DUEL_gate_chain_{label}_{link_idx}",
+                tuple(pos), 0.075, 0.020, p["iron"], static,
+            )
+            link.rotation_euler.x = math.pi / 2
+            link.rotation_euler.z = math.radians(90 if link_idx % 2 else 0)
+
     # Portcullis itself: readable silhouette, safely behind the board.
     for idx, x in enumerate((-1.85, -1.38, -0.92, -0.46, 0.0, 0.46, 0.92, 1.38, 1.85)):
         bar = base.cylinder(
@@ -262,6 +313,18 @@ def build_architecture(static, p):
             f"PVP_DUEL_portcullis_cross_{idx}", (0, 5.72, z),
             (2.02, 0.055, 0.055), p["iron"], static, bevel=0.016,
         )
+
+    # Downward spear teeth turn the gate into a real defensive portcullis.
+    for idx, x in enumerate((-1.85, -1.38, -0.92, -0.46, 0.0, 0.46, 0.92, 1.38, 1.85)):
+        bpy.ops.mesh.primitive_cone_add(
+            vertices=12, radius1=0.0, radius2=0.082, depth=0.34,
+            location=(x, 5.72, 0.37),
+        )
+        tooth = bpy.context.object
+        tooth.name = f"PVP_DUEL_portcullis_tooth_{idx}"
+        tooth.data.materials.append(p["iron"])
+        base.tag(tooth, base.ROLE_STATIC)
+        base.relink(tooth, static)
 
     # Narrow moon slit above the gate: dungeon, not observatory.
     base.cube("PVP_ROOM_window_reveal", (0, 6.02, 6.48), (0.57, 0.22, 0.78),
@@ -288,39 +351,44 @@ def build_architecture(static, p):
 
 
 def build_vault_and_chains(static, p):
-    # Gothic transverse ribs create a Teutonic fortress ceiling line without a heavy roof mesh.
-    for rib_idx, y in enumerate((-3.55, -0.15, 3.25, 5.55)):
-        points = [
-            (-8.10, y, 5.55),
-            (-5.00, y, 6.35),
-            (-2.15, y, 7.18),
-            (0.00, y, 7.82),
-            (2.15, y, 7.18),
-            (5.00, y, 6.35),
-            (8.10, y, 5.55),
-        ]
-        for seg in range(len(points) - 1):
-            cylinder_between(
-                f"PVP_DUEL_vault_rib_{rib_idx}_{seg}",
-                points[seg], points[seg + 1], 0.105, p["limestone"], static, vertices=12,
+    """Frame the arena with side masonry instead of pale beams crossing the hero view."""
+    for side, label in ((-1, "left"), (1, "right")):
+        x = side * 7.72
+        for idx, y in enumerate((-3.10, 0.15, 3.40)):
+            base.cube(
+                f"PVP_DUEL_side_pier_{label}_{idx}",
+                (x, y, 2.95), (0.30, 0.44, 2.95),
+                p["wall"], static, bevel=0.09,
             )
-
-    # Hanging chains stay outside the interaction cone but add a grim dungeon layer.
-    for side in (-1, 1):
-        x = side * 6.15
-        y = 3.82
-        base.torus(
-            f"PVP_DUEL_chain_anchor_{side}", (x, y, 5.30),
-            0.18, 0.045, p["iron"], static,
-        ).rotation_euler.x = math.pi / 2
-        for idx in range(7):
-            link = base.torus(
-                f"PVP_DUEL_chain_{side}_{idx}", (x, y, 4.90 - idx * 0.31),
-                0.115, 0.027, p["iron"], static,
+            base.cube(
+                f"PVP_DUEL_side_pier_cap_{label}_{idx}",
+                (x - side * 0.10, y, 5.88), (0.36, 0.54, 0.12),
+                p["limestone"], static, bevel=0.045,
             )
-            link.rotation_euler.x = math.pi / 2
-            link.rotation_euler.z = math.radians(90 if idx % 2 else 0)
+            # A short corbel suggests the vault spring without throwing a beam
+            # through the gameplay camera.
+            corbel = base.cube(
+                f"PVP_DUEL_side_corbel_{label}_{idx}",
+                (x - side * 0.34, y, 5.52), (0.36, 0.28, 0.11),
+                p["limestone"], static, bevel=0.045,
+            )
+            corbel.rotation_euler.y = math.radians(side * 24)
 
+        # Heavy hanging chains add depth along the extreme walls only.
+        for chain_idx, y in enumerate((-2.10, 2.65)):
+            base.torus(
+                f"PVP_DUEL_chain_anchor_{label}_{chain_idx}",
+                (side * 7.28, y, 5.62), 0.18, 0.045, p["iron"], static,
+                rotation=(math.pi / 2, 0, 0),
+            )
+            for idx in range(8):
+                link = base.torus(
+                    f"PVP_DUEL_chain_{label}_{chain_idx}_{idx}",
+                    (side * 7.28, y, 5.22 - idx * 0.31),
+                    0.115, 0.027, p["iron"], static,
+                )
+                link.rotation_euler.x = math.pi / 2
+                link.rotation_euler.z = math.radians(90 if idx % 2 else 0)
 
 def build_duel_banners(static, p):
     # Teutonic field: bone-white cloth and black cross. PvP colors survive only as a narrow identity edge.
@@ -433,6 +501,113 @@ def build_teutonic_armory(static, p):
             (1.26, 0.055, 0.070), p["iron"], static, bevel=0.025,
         )
 
+
+def build_dungeon_population(static, p):
+    """Populate the room like a working Teutonic fortress without touching the board cone."""
+    for side, label in ((-1, "left"), (1, "right")):
+        # Large chain-hung brazier near each side wall.
+        bx, by, bz = side * 7.05, 2.10, 3.68
+        base.cylinder(
+            f"PVP_DUEL_hanging_brazier_{label}", (bx, by, bz),
+            0.42, 0.22, p["iron"], static, vertices=14,
+        )
+        for flame_idx, (dz, radius) in enumerate(((0.22, 0.19), (0.43, 0.11))):
+            base.sphere(
+                f"PVP_DUEL_hanging_flame_{label}_{flame_idx}",
+                (bx, by, bz + dz), radius, p["fire"], static,
+                scale=(0.80, 0.70, 1.35 if flame_idx == 0 else 1.60),
+            )
+        for chain_side in (-1, 1):
+            start=(bx + chain_side * 0.26, by, bz + 0.08)
+            end=(bx + chain_side * 0.14, by, 5.74)
+            cylinder_between(
+                f"PVP_DUEL_brazier_chain_{label}_{chain_side}",
+                start, end, 0.026, p["iron"], static, vertices=10,
+            )
+
+        # Armoured sentinel on a low plinth, behind and outside the board.
+        sx, sy = side * 6.42, 4.25
+        base.cube(
+            f"PVP_DUEL_sentinel_{label}_plinth", (sx, sy, 0.30),
+            (0.48, 0.40, 0.30), p["dais"], static, bevel=0.07,
+        )
+        for leg_idx, dx in enumerate((-0.16, 0.16)):
+            base.cylinder(
+                f"PVP_DUEL_sentinel_{label}_leg_{leg_idx}",
+                (sx + dx, sy, 0.98), 0.10, 1.05, p["iron"], static, vertices=14,
+            )
+        base.cube(
+            f"PVP_DUEL_sentinel_{label}_torso", (sx, sy, 1.88),
+            (0.38, 0.24, 0.52), p["iron"], static, bevel=0.10,
+        )
+        base.cube(
+            f"PVP_DUEL_sentinel_{label}_belt", (sx, sy - 0.03, 1.47),
+            (0.40, 0.27, 0.07), p["brass"], static, bevel=0.025,
+        )
+        for arm_idx, dx in enumerate((-0.43, 0.43)):
+            arm=base.cylinder(
+                f"PVP_DUEL_sentinel_{label}_arm_{arm_idx}",
+                (sx + dx, sy, 1.90), 0.085, 0.82, p["iron"], static, vertices=14,
+            )
+            arm.rotation_euler.y = math.radians(8 if arm_idx == 0 else -8)
+        base.sphere(
+            f"PVP_DUEL_sentinel_{label}_helmet", (sx, sy, 2.62),
+            0.29, p["iron"], static, scale=(0.92, 0.84, 1.08),
+        )
+        base.cube(
+            f"PVP_DUEL_sentinel_{label}_visor", (sx, sy - 0.25, 2.60),
+            (0.25, 0.055, 0.055), p["brass"], static, bevel=0.016,
+        )
+        cylinder_between(
+            f"PVP_DUEL_sentinel_{label}_halberd",
+            (sx - side * 0.56, sy + 0.02, 0.52),
+            (sx - side * 0.56, sy + 0.02, 3.35),
+            0.035, p["oak_mid"], static, vertices=12,
+        )
+        base.cube(
+            f"PVP_DUEL_sentinel_{label}_halberd_blade",
+            (sx - side * 0.66, sy, 3.08),
+            (0.18, 0.035, 0.23), p["iron"], static, bevel=0.028,
+        )
+
+        # Barrel + supply crate in the rear corner make the room feel occupied.
+        cx, cy = side * 7.20, 5.02
+        base.cylinder(
+            f"PVP_DUEL_barrel_{label}", (cx, cy, 0.62),
+            0.38, 1.05, p["oak_mid"], static, vertices=18,
+        )
+        for ring_idx, z in enumerate((0.20, 0.62, 1.04)):
+            base.torus(
+                f"PVP_DUEL_barrel_hoop_{label}_{ring_idx}",
+                (cx, cy, z), 0.37, 0.026, p["iron"], static,
+            )
+        base.cube(
+            f"PVP_DUEL_supply_crate_{label}", (side * 6.62, 5.10, 0.42),
+            (0.40, 0.34, 0.42), p["oak"], static, bevel=0.045,
+        )
+        for brace in (-1, 1):
+            diagonal=base.cube(
+                f"PVP_DUEL_supply_crate_brace_{label}_{brace}",
+                (side * 6.62, 4.75, 0.42),
+                (0.055, 0.026, 0.45), p["iron"], static, bevel=0.012,
+            )
+            diagonal.rotation_euler.y = math.radians(brace * 38)
+
+    # Denser floor grates flank the dais, echoing the approved canon mock.
+    for side, label in ((-1, "left"), (1, "right")):
+        gx = side * 4.95
+        base.cube(
+            f"PVP_DUEL_floor_grate_spine_{label}", (gx, 0.35, 0.075),
+            (0.10, 4.45, 0.025), p["iron"], static, bevel=0.012,
+        )
+        for idx, y in enumerate((-3.65, -3.05, -2.45, -1.85, -1.25, -0.65, -0.05, 0.55, 1.15, 1.75, 2.35, 2.95, 3.55, 4.15)):
+            base.cube(
+                f"PVP_DUEL_floor_grate_bar_{label}_{idx}",
+                (gx, y, 0.095), (0.28, 0.035, 0.018),
+                p["iron"], static, bevel=0.010,
+            )
+
+
 def build_sconces_and_gate(static, p):
     # Twin iron braziers are the warm practicals. Gatework is authored into the rear portal.
     for side, label in ((-1, "left"), (1, "right")):
@@ -523,6 +698,8 @@ def build_lighting(static):
     base.anchor("PVP_ANCHOR_room_status", (0, 5.50, 5.58), static)
     base.anchor("PVP_ANCHOR_brazier_left", (-5.92, 5.14, 2.20), static)
     base.anchor("PVP_ANCHOR_brazier_right", (5.92, 5.14, 2.20), static)
+    base.anchor("PVP_ANCHOR_side_brazier_left", (-7.05, 2.10, 3.92), static)
+    base.anchor("PVP_ANCHOR_side_brazier_right", (7.05, 2.10, 3.92), static)
     base.anchor("PVP_ANCHOR_moon_fill", (0.0, 5.16, 6.48), static)
     base.anchor("PVP_ANCHOR_gate_depth", (0.0, 5.96, 3.25), static)
 
@@ -545,6 +722,7 @@ def apply_identity():
     build_architecture(static, p)
     build_vault_and_chains(static, p)
     build_duel_banners(static, p)
+    build_dungeon_population(static, p)
     build_teutonic_armory(static, p)
     build_sconces_and_gate(static, p)
     build_duelist_furniture(static, p)
@@ -566,10 +744,16 @@ def validate_scene():
         "PVP_DUEL_banner_blue",
         "PVP_DUEL_teutonic_cross",
         "PVP_DUEL_portcullis",
+        "PVP_DUEL_gate_winch_left",
+        "PVP_DUEL_portcullis_tooth_0",
         "PVP_DUEL_inner_gate_pier_-1",
         "PVP_DUEL_inner_gate_floor",
-        "PVP_DUEL_vault_rib_0_0",
-        "PVP_DUEL_chain_-1_0",
+        "PVP_DUEL_side_pier_left_0",
+        "PVP_DUEL_chain_left_0_0",
+        "PVP_DUEL_hanging_brazier_left",
+        "PVP_DUEL_sentinel_left_torso",
+        "PVP_DUEL_barrel_left",
+        "PVP_DUEL_floor_grate_spine_left",
         "PVP_DUEL_arrow_slit_left",
         "PVP_DUEL_armory_shield_left",
         "PVP_DUEL_halberd_left_0",
@@ -581,6 +765,8 @@ def validate_scene():
         "PVP_ANCHOR_room_status",
         "PVP_ANCHOR_brazier_left",
         "PVP_ANCHOR_brazier_right",
+        "PVP_ANCHOR_side_brazier_left",
+        "PVP_ANCHOR_side_brazier_right",
         "PVP_ANCHOR_moon_fill",
         "PVP_ANCHOR_gate_depth",
     }
@@ -618,7 +804,7 @@ def export_shell(path):
         if is_static or is_anchor:
             obj.select_set(True)
             selected += 1
-    if selected < 140:
+    if selected < 190:
         raise RuntimeError(f"PvP Duel Room runtime selection too small: {selected}")
 
     path.parent.mkdir(parents=True, exist_ok=True)
