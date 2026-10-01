@@ -3,6 +3,7 @@ import { pvpApi } from '../pvpApi.js';
 import { opponentForMatch } from '../pvpGameModel.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import './PvPLobbyModal.css';
+import './PvPDuelHallRoom.css';
 
 const EMPTY_LOBBY = Object.freeze({ roster: [], challenges: [], messages: [], activeMatch: null, pollAfterMs: 3000 });
 
