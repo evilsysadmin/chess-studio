@@ -85,6 +85,22 @@ export function homeMatthiasClipForProfile(profile = 'idle') {
   return CLIP_BY_PROFILE[profile] || CLIP_BY_PROFILE.idle;
 }
 
+export function homeMatthiasRoutinePropPolicy(profile = 'idle') {
+  if (profile === 'dossier') {
+    return {
+      forceVisibleBones: ['prop_cup'],
+      hideMeshes: ['RoutineBook', 'RoutineBookBadge'],
+      signature: 'reports+coffee',
+    };
+  }
+  return {
+    forceVisibleBones: [],
+    hideMeshes: [],
+    signature: 'authored',
+  };
+}
+
+
 export function homeMatthiasPlaybackPolicy() {
   // A Home routine lasts tens of seconds. Keep its authored gesture looping so
   // coffee/dinner do not collapse back to an unrelated idle pose while Matthias
@@ -398,6 +414,34 @@ export default function HomeMatthias3D({
     const baseModelPosition = new THREE.Vector3();
     const baseModelQuaternion = new THREE.Quaternion();
     const attentionQuaternion = new THREE.Quaternion();
+    let routinePropNodes = null;
+
+    const applyRoutinePropPolicy = (requestedProfile = currentProfile) => {
+      if (!model) return;
+      if (!routinePropNodes) {
+        routinePropNodes = {
+          cupBone: model.getObjectByName('prop_cup'),
+          bookMeshes: [],
+        };
+        model.traverse((node) => {
+          const canonicalName = homeMatthiasCanonicalMeshName(node?.name);
+          if (canonicalName === 'routinebook' || canonicalName === 'routinebookbadge') {
+            routinePropNodes.bookMeshes.push(node);
+          }
+        });
+      }
+
+      const propPolicy = homeMatthiasRoutinePropPolicy(requestedProfile);
+      for (const node of routinePropNodes.bookMeshes) {
+        node.visible = !propPolicy.hideMeshes.some(
+          (name) => homeMatthiasCanonicalMeshName(name) === homeMatthiasCanonicalMeshName(node.name),
+        );
+      }
+      if (propPolicy.forceVisibleBones.includes('prop_cup') && routinePropNodes.cupBone) {
+        routinePropNodes.cupBone.scale.set(1, 1, 1);
+      }
+      canvas.dataset.matthiasRoutineProps = propPolicy.signature;
+    };
 
     const renderOnce = () => {
       try {
@@ -443,6 +487,7 @@ export default function HomeMatthias3D({
           next.time = homeMatthiasClipStartTime({ duration: clip.duration, phase: safePhase, profile: resolvedProfile });
           mixer.update(0);
         }
+        applyRoutinePropPolicy(resolvedProfile);
         currentAction = next;
         currentProfile = resolvedProfile;
         currentPhase = safePhase;
@@ -450,6 +495,7 @@ export default function HomeMatthias3D({
         next.time = homeMatthiasClipStartTime({ duration: clip.duration, phase: safePhase, profile: resolvedProfile });
         currentPhase = safePhase;
         mixer.update(0);
+        applyRoutinePropPolicy(resolvedProfile);
       }
 
       canvas.dataset.matthiasClip = clip.name;
@@ -457,6 +503,7 @@ export default function HomeMatthias3D({
 
       if (still) {
         mixer.setTime(Math.max(0, clip.duration * 0.34));
+        applyRoutinePropPolicy(resolvedProfile);
         renderOnce();
       }
     };
@@ -471,6 +518,7 @@ export default function HomeMatthias3D({
       if (!shouldAnimate()) return;
       const delta = Math.min(clock.getDelta(), 0.05);
       mixer?.update(delta);
+      applyRoutinePropPolicy(currentProfile);
       if (model) {
         const desired = desiredMotionRef.current;
         const targetAttention = desired.reducedMotion ? 0 : (desired.activeRoom ? 1 : 0);

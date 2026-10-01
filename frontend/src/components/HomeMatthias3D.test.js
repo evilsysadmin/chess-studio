@@ -12,6 +12,7 @@ import {
   homeMatthiasMotionProfile,
   homeMatthiasPlaybackPolicy,
   homeMatthiasPortraitFrame,
+  homeMatthiasRoutinePropPolicy,
 } from './HomeMatthias3D.jsx';
 
 describe('Home Matthias canonical Blender rig', () => {
@@ -37,6 +38,19 @@ describe('Home Matthias canonical Blender rig', () => {
     expect(homeMatthiasMotionProfile({ scene: 'ops', activity: 'Tomando notas' })).toBe('write');
     expect(homeMatthiasMotionProfile({ scene: 'reading', activity: 'Leyendo estrategia' })).toBe('read');
     expect(homeMatthiasMotionProfile({ scene: 'base', activity: 'Vigilando el desastre', speaking: true })).toBe('speak');
+  });
+
+  it('composes dossier review from the existing Blender reports pages and coffee prop', () => {
+    expect(homeMatthiasRoutinePropPolicy('dossier')).toEqual({
+      forceVisibleBones: ['prop_cup'],
+      hideMeshes: ['RoutineBook', 'RoutineBookBadge'],
+      signature: 'reports+coffee',
+    });
+    expect(homeMatthiasRoutinePropPolicy('read')).toEqual({
+      forceVisibleBones: [],
+      hideMeshes: [],
+      signature: 'authored',
+    });
   });
 
   it('keeps every routine wired to a named Blender animation clip', () => {

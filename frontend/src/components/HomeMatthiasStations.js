@@ -5,7 +5,8 @@ const HOME_STATION_PATTERNS = Object.freeze([
   ['chess-chair', 'chair-seat', /chess-inception|solo-board-inception/],
   ['rest', 'lounge-seat', /sleep/],
   ['library-chair', 'chair-seat', /reading|strategy-book|chess-weekly/],
-  ['writing-desk', 'chair-seat', /dossier|ops/],
+  ['hearth-files', 'foreground-rug', /dossier/],
+  ['writing-desk', 'chair-seat', /ops/],
   ['refreshment-table', 'foreground-rug', /coffee|breakfast|beer|night/],
   ['dining-table', 'foreground-rug', /lunch|dinner/],
 ]);

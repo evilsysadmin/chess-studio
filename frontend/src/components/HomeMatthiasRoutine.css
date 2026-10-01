@@ -98,6 +98,16 @@
     --home-matthias-occlusion: 0%;
   }
 
+  .illustrated-home__matthias:has(.home-matthias-3d[data-home-matthias-station='hearth-files']) {
+    /* Canonical dossier + coffee pose: Matthias stands on the floor beside the
+       left hearth and table end. Keep the entire pawn plinth/feet visible so
+       the actor reads as grounded, never perched on the chair or tabletop. */
+    --home-matthias-zone-left: 5.2%;
+    --home-matthias-zone-top: 57%;
+    --home-matthias-zone-width: clamp(128px, 10.2cqw, 174px);
+    --home-matthias-occlusion: 0%;
+  }
+
   .illustrated-home__matthias:has(.home-matthias-3d[data-home-matthias-station='writing-desk']) {
     --home-matthias-zone-left: 17.2%;
     --home-matthias-zone-top: 43.5%;

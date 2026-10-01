@@ -126,8 +126,9 @@ test('Home canónica · el expediente raro de Matthias exige derrotas reales y o
   await expect(matthias).toHaveAttribute('data-home-matthias-moment', 'loss-dossier');
   await expect(matthias).toHaveAttribute('data-home-matthias-scene', 'moment-loss-dossier');
   await expect(matthias).toHaveAttribute('data-home-matthias-zone', 'desk');
-  await expect(avatar).toHaveAttribute('data-home-matthias-station', 'writing-desk');
+  await expect(avatar).toHaveAttribute('data-home-matthias-station', 'hearth-files');
   await expect(matthias).toHaveAttribute('data-home-matthias-activity', 'Revisando viejas heridas');
+  await expect(avatar).toHaveAttribute('data-home-matthias-support', 'foreground-rug');
   await expect(matthias).toHaveAttribute('data-home-matthias-dwell-ms', '44000');
   await expect(avatar).toHaveAttribute('data-home-matthias-profile', 'dossier');
   await expectBlenderRigReady(avatar, canvas);
