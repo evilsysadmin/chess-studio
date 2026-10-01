@@ -13,8 +13,7 @@ import './QuickMatchMobileGoldenPath.css';
 import { loadWarRoomVariant, prefetchWarRoomVariant } from './WarRoomVariant.js';
 import {
   exitWarRoomBrowserFullscreen,
-  requestWarRoomLandscapeFullscreen,
-  shouldAutoRotateWarRoomOnEntry,
+  requestWarRoomLandscapeOnEntry,
   unlockWarRoomOrientation,
 } from './useWarRoomImmersive.js';
 
@@ -127,8 +126,9 @@ export default function QuickMatchModal({
           style={QUICK_MATCH_TOUCH_TARGET}
           disabled={loading}
           onClick={async () => {
-            const autoRotate = selectedRenderer === '3d' && shouldAutoRotateWarRoomOnEntry();
-            if (autoRotate) await requestWarRoomLandscapeFullscreen();
+            const autoRotate = selectedRenderer === '3d'
+              ? await requestWarRoomLandscapeOnEntry()
+              : false;
             const started = await onStart({ boardRenderer: selectedRenderer });
             if (!started && autoRotate) {
               void exitWarRoomBrowserFullscreen();
