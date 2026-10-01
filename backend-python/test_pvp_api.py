@@ -179,6 +179,57 @@ def test_staging_sparring_is_owner_scoped_auto_accepts_and_stays_online(monkeypa
     assert "pvp_rating_games" not in users_store._memory_users["evilsysadmin"]
 
 
+def test_staging_sparring_recovers_ready_after_transient_write_failure(monkeypatch):
+    monkeypatch.setenv("CHESS_PVP_SPARRING_ENABLED", "true")
+    monkeypatch.setenv("CHESS_PVP_SPARRING_OWNER", "evilsysadmin")
+    monkeypatch.setenv("CHESS_PVP_SPARRING_USERNAME", "sparringmeister")
+    users_store._memory_users["evilsysadmin"] = {"username": "evilsysadmin"}
+    client = make_client()
+    assert as_user(client, "evilsysadmin", "post", "/api/pvp/roster").status_code == 200
+
+    original_update = pvp_store.update_match
+    failed = {"done": False}
+
+    async def flaky_update(match_id, *, expected_revision, changes):
+        is_ready_only = (
+            changes.get("status") is None
+            and (changes.get("white_ready") is True or changes.get("black_ready") is True)
+        )
+        if is_ready_only and not failed["done"]:
+            failed["done"] = True
+            raise pvp_api.PersistentStorageUnavailable("temporary ready write failure")
+        return await original_update(match_id, expected_revision=expected_revision, changes=changes)
+
+    monkeypatch.setattr(pvp_store, "update_match", flaky_update)
+
+    challenged = as_user(
+        client,
+        "evilsysadmin",
+        "post",
+        "/api/pvp/challenges",
+        json={"opponent": "sparringmeister"},
+    )
+    assert challenged.status_code == 201
+    assert challenged.json()["challenge"]["status"] == "accepted"
+    assert failed["done"] is True
+
+    handoff = as_user(client, "evilsysadmin", "get", "/api/pvp/lobby").json()["activeMatch"]
+    assert handoff["status"] == "starting"
+
+    ready = as_user(
+        client,
+        "evilsysadmin",
+        "post",
+        f"/api/pvp/matches/{handoff['id']}/ready",
+    )
+    assert ready.status_code == 200
+    payload = ready.json()["match"]
+    assert payload["status"] == "active"
+    assert payload["youReady"] is True
+    assert payload["opponentReady"] is True
+    assert payload["opponentPresence"] == "online"
+
+
 def test_lobby_chat_is_bounded_normalized_and_visible_without_roster_membership():
     client = make_client()
 
