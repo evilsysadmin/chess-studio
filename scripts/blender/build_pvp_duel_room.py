@@ -79,6 +79,10 @@ def palette():
             "PVP_MAT_black_iron", (0.012, 0.014, 0.015, 1),
             metal=0.90, rough=0.52, texture="metal", scale=30, bump=0.026,
         ),
+        "armor": base.material(
+            "PVP_MAT_armor_steel", (0.105, 0.115, 0.125, 1),
+            metal=0.92, rough=0.40, coat=0.08, texture="metal", scale=28, bump=0.018,
+        ),
         "brass": base.material(
             "PVP_MAT_old_brass", (0.30, 0.135, 0.025, 1),
             metal=0.88, rough=0.38, coat=0.10, texture="metal", scale=30, bump=0.016,
@@ -99,7 +103,14 @@ def palette():
             "PVP_MAT_seat_leather", (0.075, 0.020, 0.010, 1),
             rough=0.50, coat=0.18, sheen=0.08, texture="leather", scale=50, bump=0.040,
         ),
-        "fire": bpy.data.materials["WR_MAT_fire_core"],
+        "fire": base.material(
+            "PVP_MAT_fire_orange", (0.55, 0.055, 0.004, 1),
+            rough=0.22, emission=(0.95, 0.10, 0.003, 1), emission_strength=1.55,
+        ),
+        "fire_core": base.material(
+            "PVP_MAT_fire_gold", (0.92, 0.34, 0.018, 1),
+            rough=0.18, emission=(1.0, 0.26, 0.010, 1), emission_strength=1.85,
+        ),
         "night": base.material(
             "PVP_MAT_moon_glass", (0.006, 0.018, 0.055, 1),
             rough=0.16, coat=0.46,
@@ -396,15 +407,15 @@ def build_duel_banners(static, p):
         x = side * 4.92
         base.cube(
             f"PVP_DUEL_banner_{label}", (x, 5.70, 3.42),
-            (0.92, 0.055, 1.52), p["ivory"], static, bevel=0.075,
+            (0.78, 0.055, 1.34), accent, static, bevel=0.075,
         )
         base.cube(
             f"PVP_DUEL_banner_cross_vertical_{label}", (x, 5.61, 3.50),
-            (0.105, 0.040, 0.88), p["iron"], static, bevel=0.020,
+            (0.095, 0.040, 0.74), p["ivory"], static, bevel=0.020,
         )
         base.cube(
             f"PVP_DUEL_banner_cross_horizontal_{label}", (x, 5.60, 3.66),
-            (0.55, 0.040, 0.105), p["iron"], static, bevel=0.020,
+            (0.46, 0.040, 0.095), p["ivory"], static, bevel=0.020,
         )
         if label == "red":
             bpy.data.objects[f"PVP_DUEL_banner_cross_vertical_{label}"].name = "PVP_DUEL_teutonic_cross"
@@ -506,16 +517,16 @@ def build_dungeon_population(static, p):
     """Populate the room like a working Teutonic fortress without touching the board cone."""
     for side, label in ((-1, "left"), (1, "right")):
         # Large chain-hung brazier near each side wall.
-        bx, by, bz = side * 7.05, 2.10, 3.68
+        bx, by, bz = side * 6.55, 1.62, 3.28
         base.cylinder(
             f"PVP_DUEL_hanging_brazier_{label}", (bx, by, bz),
-            0.42, 0.22, p["iron"], static, vertices=14,
+            0.52, 0.24, p["iron"], static, vertices=16,
         )
         for flame_idx, (dz, radius) in enumerate(((0.22, 0.19), (0.43, 0.11))):
             base.sphere(
                 f"PVP_DUEL_hanging_flame_{label}_{flame_idx}",
-                (bx, by, bz + dz), radius, p["fire"], static,
-                scale=(0.80, 0.70, 1.35 if flame_idx == 0 else 1.60),
+                (bx, by, bz + dz), radius, p["fire" if flame_idx == 0 else "fire_core"], static,
+                scale=(0.88, 0.76, 1.45 if flame_idx == 0 else 1.72),
             )
         for chain_side in (-1, 1):
             start=(bx + chain_side * 0.26, by, bz + 0.08)
@@ -525,8 +536,26 @@ def build_dungeon_population(static, p):
                 start, end, 0.026, p["iron"], static, vertices=10,
             )
 
+        base.torus(
+            f"PVP_DUEL_hanging_brazier_rim_{label}",
+            (bx, by, bz + 0.08), 0.50, 0.045, p["iron"], static,
+        )
+        for cage_idx, angle in enumerate((0, 45, 90, 135)):
+            cage = base.cube(
+                f"PVP_DUEL_hanging_brazier_cage_{label}_{cage_idx}",
+                (bx, by, bz + 0.16), (0.030, 0.030, 0.48),
+                p["iron"], static, bevel=0.012,
+            )
+            cage.rotation_euler.z = math.radians(angle)
+        side_light = base.light(
+            f"PVP_LIGHT_side_brazier_{label}", "POINT",
+            (bx, by - 0.16, bz + 0.34), 260.0,
+            (1.0, 0.22, 0.035), static, radius=1.55,
+        )
+        side_light["war_room_runtime_dynamic"] = "pvp-side-brazier"
+
         # Armoured sentinel on a low plinth, behind and outside the board.
-        sx, sy = side * 6.42, 4.25
+        sx, sy = side * 6.02, 4.05
         base.cube(
             f"PVP_DUEL_sentinel_{label}_plinth", (sx, sy, 0.30),
             (0.48, 0.40, 0.30), p["dais"], static, bevel=0.07,
@@ -534,11 +563,11 @@ def build_dungeon_population(static, p):
         for leg_idx, dx in enumerate((-0.16, 0.16)):
             base.cylinder(
                 f"PVP_DUEL_sentinel_{label}_leg_{leg_idx}",
-                (sx + dx, sy, 0.98), 0.10, 1.05, p["iron"], static, vertices=14,
+                (sx + dx, sy, 0.98), 0.10, 1.05, p["armor"], static, vertices=14,
             )
         base.cube(
             f"PVP_DUEL_sentinel_{label}_torso", (sx, sy, 1.88),
-            (0.38, 0.24, 0.52), p["iron"], static, bevel=0.10,
+            (0.38, 0.24, 0.52), p["armor"], static, bevel=0.10,
         )
         base.cube(
             f"PVP_DUEL_sentinel_{label}_belt", (sx, sy - 0.03, 1.47),
@@ -547,12 +576,12 @@ def build_dungeon_population(static, p):
         for arm_idx, dx in enumerate((-0.43, 0.43)):
             arm=base.cylinder(
                 f"PVP_DUEL_sentinel_{label}_arm_{arm_idx}",
-                (sx + dx, sy, 1.90), 0.085, 0.82, p["iron"], static, vertices=14,
+                (sx + dx, sy, 1.90), 0.085, 0.82, p["armor"], static, vertices=14,
             )
             arm.rotation_euler.y = math.radians(8 if arm_idx == 0 else -8)
         base.sphere(
             f"PVP_DUEL_sentinel_{label}_helmet", (sx, sy, 2.62),
-            0.29, p["iron"], static, scale=(0.92, 0.84, 1.08),
+            0.29, p["armor"], static, scale=(0.92, 0.84, 1.08),
         )
         base.cube(
             f"PVP_DUEL_sentinel_{label}_visor", (sx, sy - 0.25, 2.60),
@@ -609,7 +638,36 @@ def build_dungeon_population(static, p):
 
 
 def build_sconces_and_gate(static, p):
-    # Twin iron braziers are the warm practicals. Gatework is authored into the rear portal.
+    # Wall sconces and twin iron braziers make the fortress feel occupied.
+    for side, label in ((-1, "left"), (1, "right")):
+        wx, wy, wz = side * 3.72, 5.54, 3.72
+        bracket = base.cylinder(
+            f"PVP_DUEL_wall_sconce_bracket_{label}",
+            (wx, wy, wz - 0.28), 0.035, 0.62, p["iron"], static, vertices=10,
+        )
+        bracket.rotation_euler.x = math.radians(90)
+        base.cylinder(
+            f"PVP_DUEL_wall_sconce_{label}",
+            (wx, wy - 0.16, wz), 0.22, 0.14, p["iron"], static, vertices=12,
+        )
+        base.sphere(
+            f"PVP_DUEL_wall_sconce_flame_{label}",
+            (wx, wy - 0.17, wz + 0.25), 0.12, p["fire"], static,
+            scale=(0.72, 0.60, 1.55),
+        )
+        base.sphere(
+            f"PVP_DUEL_wall_sconce_core_{label}",
+            (wx, wy - 0.18, wz + 0.36), 0.065, p["fire_core"], static,
+            scale=(0.60, 0.52, 1.70),
+        )
+        wall_light = base.light(
+            f"PVP_LIGHT_wall_sconce_{label}", "POINT",
+            (wx, wy - 0.40, wz + 0.22), 115.0,
+            (1.0, 0.19, 0.025), static, radius=1.0,
+        )
+        wall_light["war_room_runtime_dynamic"] = "pvp-wall-sconce"
+
+    # Twin iron braziers remain the rear warm practicals.
     for side, label in ((-1, "left"), (1, "right")):
         x, y = side * 5.92, 5.42
         base.cylinder(
@@ -630,7 +688,7 @@ def build_sconces_and_gate(static, p):
         )
         base.sphere(
             f"PVP_DUEL_brazier_flame_tip_{label}", (x + side * 0.035, y - 0.010, 2.30),
-            0.12, p["fire"], static, scale=(0.62, 0.56, 1.55),
+            0.12, p["fire_core"], static, scale=(0.62, 0.56, 1.55),
         )
         lamp = base.light(
             f"PVP_LIGHT_brazier_{label}", "POINT", (x, y - 0.28, 2.20),
@@ -677,7 +735,7 @@ def build_lighting(static):
     scene = bpy.context.scene
     scene["war_room_variant"] = "pvp-duel-room"
     scene["pvp_duel_room_contract"] = CONTRACT
-    scene.view_settings.exposure = 0.08
+    scene.view_settings.exposure = 0.14
 
     # Cold moon from the prison slit, warm braziers, quiet neutral board fill.
     moon = base.light("PVP_LIGHT_moon_key", "AREA", (0.0, 5.30, 7.05), 460.0,
@@ -698,8 +756,8 @@ def build_lighting(static):
     base.anchor("PVP_ANCHOR_room_status", (0, 5.50, 5.58), static)
     base.anchor("PVP_ANCHOR_brazier_left", (-5.92, 5.14, 2.20), static)
     base.anchor("PVP_ANCHOR_brazier_right", (5.92, 5.14, 2.20), static)
-    base.anchor("PVP_ANCHOR_side_brazier_left", (-7.05, 2.10, 3.92), static)
-    base.anchor("PVP_ANCHOR_side_brazier_right", (7.05, 2.10, 3.92), static)
+    base.anchor("PVP_ANCHOR_side_brazier_left", (-6.55, 1.62, 3.62), static)
+    base.anchor("PVP_ANCHOR_side_brazier_right", (6.55, 1.62, 3.62), static)
     base.anchor("PVP_ANCHOR_moon_fill", (0.0, 5.16, 6.48), static)
     base.anchor("PVP_ANCHOR_gate_depth", (0.0, 5.96, 3.25), static)
 
@@ -751,6 +809,7 @@ def validate_scene():
         "PVP_DUEL_side_pier_left_0",
         "PVP_DUEL_chain_left_0_0",
         "PVP_DUEL_hanging_brazier_left",
+        "PVP_DUEL_wall_sconce_left",
         "PVP_DUEL_sentinel_left_torso",
         "PVP_DUEL_barrel_left",
         "PVP_DUEL_floor_grate_spine_left",
