@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
 import pvp_rating as rating_store
+import pvp_sparring as sparring
 import pvp_store as store
 from db import PersistentStorageUnavailable
 
@@ -359,6 +360,8 @@ async def _apply_active_lifecycle(
 
 
 def _rating_change(match: dict, color: chess.Color | None) -> dict | None:
+    if match.get("rated") is False:
+        return None
     if color is None or match.get("status") != "finished":
         return None
     result = str(match.get("result") or "")
@@ -374,6 +377,8 @@ def _rating_change(match: dict, color: chess.Color | None) -> dict | None:
 
 def _opponent_presence(match: dict, username: str, now: datetime | None = None) -> tuple[str, datetime | None]:
     stamp = now or store.utcnow()
+    if sparring.is_virtual_opponent(match, username):
+        return "online", stamp
     color = _player_color(match, username)
     seen_at = match.get("black_seen_at") if color == chess.WHITE else match.get("white_seen_at") if color == chess.BLACK else None
     if not isinstance(seen_at, datetime):
@@ -437,6 +442,104 @@ def _match_result(board: chess.Board) -> tuple[str, str | None]:
     return "finished", outcome.result() if outcome else "1/2-1/2"
 
 
+async def _ensure_sparring_roster(viewer: str) -> dict | None:
+    if not sparring.visible_to(viewer):
+        return None
+    cfg = sparring.settings()
+    return await store.upsert_roster(
+        cfg.username,
+        rating=DEFAULT_RATING,
+        tier=_rating_tier(DEFAULT_RATING),
+    )
+
+
+async def _mark_sparring_ready(match: dict) -> dict:
+    cfg = sparring.settings()
+    if not cfg.enabled or match.get("status") != "starting":
+        return match
+    color = _player_color(match, cfg.username)
+    if color is None:
+        return match
+
+    own_key = "white_ready" if color == chess.WHITE else "black_ready"
+    if match.get(own_key):
+        return match
+
+    now = store.utcnow()
+    match = await store.touch_match_presence(
+        match["id"],
+        cfg.username,
+        "w" if color == chess.WHITE else "b",
+        now=now,
+    ) or match
+    updated = await store.update_match(
+        match["id"],
+        expected_revision=int(match.get("revision", 0)),
+        changes={own_key: True, "updated_at": now},
+    )
+    return updated or await store.get_match(match["id"]) or match
+
+
+async def _accept_challenge_for_user(challenge_id: str, username: str) -> tuple[dict, bool]:
+    challenge_row = await store.get_challenge(challenge_id)
+    if not challenge_row or challenge_row.get("opponent") != username:
+        raise HTTPException(404, "Reto pendiente no encontrado.")
+
+    challenge_status = challenge_row.get("status")
+    if challenge_status == "accepted" and challenge_row.get("match_id"):
+        existing = await store.get_match(challenge_row["match_id"])
+        if existing:
+            return existing, False
+    elif challenge_status != "pending":
+        raise HTTPException(404, "Reto pendiente no encontrado.")
+
+    if challenge_status == "pending":
+        if await store.active_match_for_user(challenge_row["challenger"]):
+            raise HTTPException(409, "El rival ya está entrando o jugando otro duelo.")
+        if await store.active_match_for_user(username):
+            raise HTTPException(409, "Ya tienes un duelo 1v1 en curso.")
+        if not await store.roster_member(challenge_row["challenger"]):
+            raise HTTPException(409, "El rival ya no está disponible.")
+        if not await store.roster_member(username):
+            raise HTTPException(409, "Ya no figuras en el roster.")
+
+    challenger = challenge_row["challenger"]
+    challenger_white = bool(secrets.randbits(1))
+    white = challenger if challenger_white else username
+    black = username if challenger_white else challenger
+    now = store.utcnow()
+    match_id = str(challenge_row.get("match_id") or challenge_id)
+    match = {
+        "id": match_id,
+        "white": white,
+        "black": black,
+        "white_rating": int(challenge_row["challenger_rating"] if white == challenger else challenge_row["opponent_rating"]),
+        "black_rating": int(challenge_row["opponent_rating"] if black == username else challenge_row["challenger_rating"]),
+        "fen": chess.STARTING_FEN,
+        "turn": "w",
+        "status": "starting",
+        "result": None,
+        "history": [],
+        "revision": 0,
+        "rated": not sparring.is_sparring_pair(challenger, username),
+        "white_clock_ms": PVP_INITIAL_MS,
+        "black_clock_ms": PVP_INITIAL_MS,
+        "white_ready": False,
+        "black_ready": False,
+        "start_at": None,
+        "ready_deadline": now + timedelta(seconds=PVP_READY_TIMEOUT_SECONDS),
+        "turn_started_at": None,
+        "end_reason": None,
+        "created_at": now,
+        "updated_at": now,
+    }
+    accepted = await store.accept_challenge(challenge_id, username, match)
+    if not accepted:
+        raise HTTPException(409, "El reto ya no está disponible.")
+    _accepted_challenge, accepted_match = accepted
+    return accepted_match, True
+
+
 def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
     router = APIRouter(prefix="/api/pvp", tags=["pvp"])
 
@@ -458,7 +561,11 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
     @router.get("/lobby")
     @limiter.limit("40/minute")
     async def lobby(request: Request, username: str = Depends(auth_dependency)):
-        roster = await store.active_roster()
+        await _ensure_sparring_roster(username)
+        roster = [
+            row for row in await store.active_roster()
+            if not sparring.hidden_from(username, row.get("username", ""))
+        ]
         rivals = [row["username"] for row in roster if row.get("username") != username]
         head_to_head = await store.head_to_head_for_user(username, rivals)
         cooldowns = await store.challenge_cooldowns_for_user(username, rivals)
@@ -519,6 +626,12 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
         opponent = body.opponent.strip().lower()
         if opponent == username:
             raise HTTPException(400, "No puedes retarte a ti mismo.")
+        cfg = sparring.settings()
+        is_sparring_target = sparring.should_auto_accept(username, opponent)
+        if cfg.enabled and opponent == cfg.username and not is_sparring_target:
+            raise HTTPException(409, "Ese rival de staging no está disponible para esta cuenta.")
+        if is_sparring_target:
+            await _ensure_sparring_roster(username)
         challenger_row = await store.roster_member(username)
         if not challenger_row:
             raise HTTPException(409, "Apúntate al roster antes de retar a otro jugador.")
@@ -554,6 +667,16 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
                 f"{username} retó a {opponent}.",
                 kind="system",
             )
+        if is_sparring_target:
+            accepted_match, accepted_now = await _accept_challenge_for_user(challenge_id, opponent)
+            if accepted_now:
+                await store.append_lobby_chat(
+                    "Sistema",
+                    f"{opponent} aceptó el reto de {username}.",
+                    kind="system",
+                )
+            await _mark_sparring_ready(accepted_match)
+            row = await store.get_challenge(challenge_id) or row
         return {"challenge": _public_challenge(row, username)}
 
     @router.post("/challenges/{challenge_id}/cancel")
@@ -572,70 +695,14 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
 
     @router.post("/challenges/{challenge_id}/accept")
     async def accept(challenge_id: str, username: str = Depends(auth_dependency)):
-        challenge_row = await store.get_challenge(challenge_id)
-        if not challenge_row or challenge_row.get("opponent") != username:
-            raise HTTPException(404, "Reto pendiente no encontrado.")
-
-        challenge_status = challenge_row.get("status")
-        if challenge_status == "accepted" and challenge_row.get("match_id"):
-            existing = await store.get_match(challenge_row["match_id"])
-            if existing:
-                # Idempotent response after a lost HTTP response/retry.
-                return {"match": _public_match(existing, username)}
-        elif challenge_status != "pending":
-            raise HTTPException(404, "Reto pendiente no encontrado.")
-
-        # Once the challenge is already accepted we are repairing/resuming the
-        # storage saga and must not require players to still be in the ephemeral
-        # roster. Fresh acceptance still requires both live roster entries.
-        if challenge_status == "pending":
-            if await store.active_match_for_user(challenge_row["challenger"]):
-                raise HTTPException(409, "El rival ya está entrando o jugando otro duelo.")
-            if await store.active_match_for_user(username):
-                raise HTTPException(409, "Ya tienes un duelo 1v1 en curso.")
-            if not await store.roster_member(challenge_row["challenger"]):
-                raise HTTPException(409, "El rival ya no está disponible.")
-            if not await store.roster_member(username):
-                raise HTTPException(409, "Ya no figuras en el roster.")
-
-        challenger = challenge_row["challenger"]
-        challenger_white = bool(secrets.randbits(1))
-        white = challenger if challenger_white else username
-        black = username if challenger_white else challenger
-        now = store.utcnow()
-        match_id = str(challenge_row.get("match_id") or challenge_id)
-        match = {
-            "id": match_id,
-            "white": white,
-            "black": black,
-            "white_rating": int(challenge_row["challenger_rating"] if white == challenger else challenge_row["opponent_rating"]),
-            "black_rating": int(challenge_row["opponent_rating"] if black == username else challenge_row["challenger_rating"]),
-            "fen": chess.STARTING_FEN,
-            "turn": "w",
-            "status": "starting",
-            "result": None,
-            "history": [],
-            "revision": 0,
-            "white_clock_ms": PVP_INITIAL_MS,
-            "black_clock_ms": PVP_INITIAL_MS,
-            "white_ready": False,
-            "black_ready": False,
-            "start_at": None,
-            "ready_deadline": now + timedelta(seconds=PVP_READY_TIMEOUT_SECONDS),
-            "turn_started_at": None,
-            "end_reason": None,
-            "created_at": now,
-            "updated_at": now,
-        }
-        accepted = await store.accept_challenge(challenge_id, username, match)
-        if not accepted:
-            raise HTTPException(409, "El reto ya no está disponible.")
-        _accepted_challenge, accepted_match = accepted
-        await store.append_lobby_chat(
-            "Sistema",
-            f"{username} aceptó el reto de {challenger}.",
-            kind="system",
-        )
+        accepted_match, accepted_now = await _accept_challenge_for_user(challenge_id, username)
+        if accepted_now:
+            challenge_row = await store.get_challenge(challenge_id)
+            await store.append_lobby_chat(
+                "Sistema",
+                f"{username} aceptó el reto de {challenge_row['challenger']}.",
+                kind="system",
+            )
         return {"match": _public_match(accepted_match, username)}
 
     @router.post("/matches/{match_id}/cancel-starting")
