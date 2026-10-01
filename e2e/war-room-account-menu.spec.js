@@ -14,7 +14,7 @@ async function setWarRoom3D(page) {
   await expect(page.locator('.board3d-main-canvas')).toBeVisible({ timeout: 45_000 });
 }
 
-test('War Room · desktop retira la barra pero conserva Cuenta y Feedback flotantes', async ({ page }) => {
+test('War Room · cuenta vive como gear junto al overflow de partida', async ({ page }) => {
   test.setTimeout(90_000);
   await page.setViewportSize({ width: 1440, height: 960 });
   await mockApi(page);
@@ -24,49 +24,20 @@ test('War Room · desktop retira la barra pero conserva Cuenta y Feedback flotan
   await expect(gameTurn(page)).toBeVisible();
   await setWarRoom3D(page);
 
-  const account = page.getByRole('button', { name: 'Abrir menú de cuenta', exact: true });
-  const feedback = page.locator('.masthead-feedback-trigger');
-  const releases = page.locator('.masthead-release-trigger');
+  const utility = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
+  const account = page.getByRole('button', { name: 'Mi cuenta', exact: true });
+  const legacyAccount = page.locator('.masthead-account-trigger');
+  await expect(utility).toBeVisible();
   await expect(account).toBeVisible();
-  await expect(feedback).toBeVisible();
-  await expect(releases).toBeHidden();
+  await expect(legacyAccount).toBeHidden();
 
-  // The semantic masthead may stay mounted so its menus keep working, but in
-  // desktop 3D it must cost effectively zero layout pixels. Only the two small
-  // utility controls are allowed to float over the right rail.
-  const chrome = await page.evaluate(() => {
-    const mastheadNode = document.querySelector('.app-shell-board-game > .masthead-game-compact');
-    const actionsNode = mastheadNode?.querySelector('.masthead-actions');
-    const feedbackNode = mastheadNode?.querySelector('.masthead-feedback-trigger');
-    const accountNode = mastheadNode?.querySelector('.masthead-account-trigger');
-    const masthead = mastheadNode?.getBoundingClientRect();
-    const actions = actionsNode?.getBoundingClientRect();
-    const feedbackRect = feedbackNode?.getBoundingClientRect();
-    const accountRect = accountNode?.getBoundingClientRect();
-    if (!masthead || !actions || !feedbackRect || !accountRect) return null;
-    return {
-      mastheadWidth: masthead.width,
-      mastheadHeight: masthead.height,
-      actionsWidth: actions.width,
-      actionsHeight: actions.height,
-      feedbackWidth: feedbackRect.width,
-      feedbackHeight: feedbackRect.height,
-      accountWidth: accountRect.width,
-      accountHeight: accountRect.height,
-    };
-  });
-
-  expect(chrome).not.toBeNull();
-  expect(chrome.mastheadWidth).toBeLessThanOrEqual(1);
-  expect(chrome.mastheadHeight).toBeLessThanOrEqual(1);
-  expect(chrome.actionsWidth).toBeGreaterThan(60);
-  expect(chrome.actionsHeight).toBeLessThanOrEqual(34);
-  expect(chrome.feedbackWidth).toBeGreaterThanOrEqual(30);
-  expect(chrome.feedbackWidth).toBeLessThanOrEqual(34);
-  expect(chrome.feedbackHeight).toBeLessThanOrEqual(34);
-  expect(chrome.accountWidth).toBeGreaterThanOrEqual(30);
-  expect(chrome.accountWidth).toBeLessThanOrEqual(34);
-  expect(chrome.accountHeight).toBeLessThanOrEqual(34);
+  const [utilityBox, accountBox] = await Promise.all([utility.boundingBox(), account.boundingBox()]);
+  expect(utilityBox).not.toBeNull();
+  expect(accountBox).not.toBeNull();
+  expect(accountBox.x).toBeGreaterThanOrEqual(utilityBox.x + utilityBox.width - 2);
+  expect(accountBox.x - (utilityBox.x + utilityBox.width)).toBeLessThanOrEqual(14);
+  expect(accountBox.width).toBeGreaterThanOrEqual(30);
+  expect(accountBox.height).toBeGreaterThanOrEqual(30);
 
   await account.click();
   const accountItem = page.getByRole('menuitem', { name: /Mi cuenta/ });
