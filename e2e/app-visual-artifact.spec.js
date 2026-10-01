@@ -232,14 +232,7 @@ test('App · captura visual canónica desktop + Android normal/desktop-site', as
         if (capture.dismissMatthias) {
           const speech = home.locator('.illustrated-home__speech');
           if (await speech.count()) {
-            const closeSpeech = speech.getByRole('button', { name:'Cerrar comentario de Matthias' });
-            if (await closeSpeech.isVisible().catch(() => false)) {
-              await closeSpeech.click({ timeout:1500 }).catch(async (error) => {
-                // Matthias may auto-dismiss between visibility and click. That is
-                // already the desired visual state; only fail if the speech remains.
-                if (await speech.count()) throw error;
-              });
-            }
+            await speech.getByRole('button', { name:'Cerrar comentario de Matthias' }).click();
             await expect(speech).toHaveCount(0);
             await page.waitForTimeout(80);
           }
