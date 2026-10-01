@@ -29,6 +29,13 @@ DUEL_DAIS_RADIUS = 4.35
 SIDE_WALL_INNER_X = 8.17
 WALL_PROP_MIN_RADIUS = 6.80
 WALL_CONTACT_MAX_GAP = 0.35
+DUEL_CHAIR_X = 7.35
+DUEL_CHAIR_Y = -1.25
+DUEL_CHAIR_SCALE = 0.84
+DUEL_SENTINEL_X = 7.45
+DUEL_SENTINEL_Y = 2.00
+HERO_CAMERA_Y = -15.60
+MIN_PROJECTED_PROP_SEPARATION = 0.060
 DUEL_WEATHER_MATERIALS = frozenset({
     "PVP_MAT_wall_stone",
     "PVP_MAT_floor_stone",
@@ -734,7 +741,7 @@ def build_dungeon_population(static, p):
         # Sentinels belong to the fortress envelope, not the fighting dais.
         # The plinth sits almost flush with the side wall, in the clear bay
         # between buttresses, while the armour still faces the board.
-        sx, sy = side * 7.55, 2.85
+        sx, sy = side * DUEL_SENTINEL_X, DUEL_SENTINEL_Y
         build_gothic_sentinel(static, p, side, label, sx, sy)
 
         # Barrel + supply crate in the rear corner make the room feel occupied.
@@ -872,8 +879,8 @@ def build_duelist_furniture(static, p):
     for side, accent, label in ((-1, p["red"], "red"), (1, p["blue"], "blue")):
         # Chairs frame the duel from the wall. Their tall backs sit almost
         # flush with the side masonry while the seat still faces the board.
-        x = side * 7.25
-        y = 1.15
+        x = side * DUEL_CHAIR_X
+        y = DUEL_CHAIR_Y
         yaw = math.atan2(-x, y)  # local -y is the seated player's forward direction
         cos_yaw = math.cos(yaw)
         sin_yaw = math.sin(yaw)
@@ -981,7 +988,7 @@ def build_duelist_furniture(static, p):
             )
 
         chair_prefix = f"PVP_DUEL_seat_{label}"
-        chair_scale = 1.12
+        chair_scale = DUEL_CHAIR_SCALE
         for obj in list(static.objects):
             if not obj.name.startswith(chair_prefix):
                 continue
@@ -1017,7 +1024,7 @@ def build_lighting(static):
             (side * 6.30, 0.80, 4.60), 118.0,
             (0.80, 0.28, 0.08), static, size=2.7,
         )
-        base.look_at(side_fill, (side * 7.30, 2.75, 1.90))
+        base.look_at(side_fill, (side * DUEL_SENTINEL_X, DUEL_SENTINEL_Y, 1.90))
 
     base.anchor("PVP_ANCHOR_red_identity", (-4.92, 5.42, 3.42), static)
     base.anchor("PVP_ANCHOR_blue_identity", (4.92, 5.42, 3.42), static)
@@ -1142,6 +1149,10 @@ def validate_scene():
             raise RuntimeError(
                 f"PvP Duel Room {label} seat invades board safety band: radius={seat_radius:.3f}"
             )
+        if seat.location.y >= -0.45 or seat.location.y <= -2.55:
+            raise RuntimeError(
+                f"PvP Duel Room {label} seat left the clear forward wall bay: y={seat.location.y:.3f}"
+            )
         seat_gap = wall_gap_for_object(f"PVP_DUEL_seat_{label}_back_frame", side)
         if seat_gap < -0.08 or seat_gap > WALL_CONTACT_MAX_GAP:
             raise RuntimeError(
@@ -1161,6 +1172,24 @@ def validate_scene():
         if sentinel_gap < -0.08 or sentinel_gap > WALL_CONTACT_MAX_GAP:
             raise RuntimeError(
                 f"PvP Duel Room {label} sentinel is not wall-adjacent: wall_gap={sentinel_gap:.3f}"
+            )
+
+        # The chair owns the forward side-wall bay and the sentinel owns the
+        # middle bay. Guard the actual hero-camera projection, not just world
+        # coordinates, so a future art pass cannot stack both props on the same
+        # sightline and hide the armour behind the chair again.
+        seat = bpy.data.objects[f"PVP_DUEL_seat_{'red' if side < 0 else 'blue'}"]
+        seat_projection = abs(seat.location.x) / max(0.01, seat.location.y - HERO_CAMERA_Y)
+        sentinel_projection = abs(plinth.location.x) / max(0.01, plinth.location.y - HERO_CAMERA_Y)
+        projected_gap = abs(seat_projection - sentinel_projection)
+        if projected_gap < MIN_PROJECTED_PROP_SEPARATION:
+            raise RuntimeError(
+                f"PvP Duel Room {label} wall props overlap in hero projection: gap={projected_gap:.4f}"
+            )
+
+        if plinth.location.y <= 0.55 or plinth.location.y >= 2.85:
+            raise RuntimeError(
+                f"PvP Duel Room {label} sentinel left the clear middle wall bay: y={plinth.location.y:.3f}"
             )
 
     forbidden = sorted(name for name in names if name.startswith(("WR_ARCH_", "WR_CANON_", "WR3_OBS_")))
