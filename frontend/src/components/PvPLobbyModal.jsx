@@ -72,6 +72,7 @@ export default function PvPLobbyModal({
   const [loading, setLoading] = useState(true);
   const [busyKey, setBusyKey] = useState('');
   const [messageText, setMessageText] = useState('');
+  const [chatOpen, setChatOpen] = useState(false);
   const [selectedRival, setSelectedRival] = useState('');
   const [error, setError] = useState('');
   const lobbyRef = useRef(null);
@@ -102,8 +103,8 @@ export default function PvPLobbyModal({
   }, []);
 
   useEffect(() => {
-    if (messages.length) onMarkChatRead?.(messages);
-  }, [messages, onMarkChatRead]);
+    if (chatOpen && messages.length) onMarkChatRead?.(messages);
+  }, [chatOpen, messages, onMarkChatRead]);
 
   const refresh = useCallback(async ({ quiet = false, signal } = {}) => {
     if (!quiet) setLoading(true);
@@ -192,6 +193,7 @@ export default function PvPLobbyModal({
 
   function mentionPlayer(username) {
     const mention = `@${username} `;
+    setChatOpen(true);
     setMessageText((current) => current.startsWith(mention) ? current : `${mention}${current}`.slice(0, 240));
   }
 
@@ -246,18 +248,11 @@ export default function PvPLobbyModal({
             <span className={`pvp-lobby__presence${self ? ' is-on' : ''}`} aria-hidden="true" />
             <span className="pvp-lobby__identity-mark" aria-hidden="true">♟</span>
             <div>
-              <small>{self ? 'TU PUESTO · RECIBIENDO RETOS' : 'TU PUESTO · RETOS DESACTIVADOS'}</small>
-              <strong>{self ? self.username : 'Puedes retar sin activarte antes'}</strong>
-              <span>{self ? 'Visible para otros jugadores · puedes cerrar y seguir jugando' : 'Toca Retar y Chess Studio te hará visible automáticamente.'}</span>
+              <small>{self ? 'TU PUESTO · DISPONIBLE' : 'TU PUESTO'}</small>
+              <strong>{self ? `${self.username} · ${self.rating} Elo` : 'No estás recibiendo retos'}</strong>
+              <span>{self ? 'Puedes cerrar la sala y seguir disponible.' : 'Retar a alguien te hará visible automáticamente.'}</span>
             </div>
           </div>
-          {self && (
-            <div className="pvp-lobby__identity-rating" aria-label={`${self.rating} de rating, ${self.tier}`}>
-              <small>ELO 1V1</small>
-              <strong>{self.rating}</strong>
-              <span>{self.tier}</span>
-            </div>
-          )}
           {self ? (
             <div className="pvp-lobby__identity-actions">
               <button type="button" className="secondary-btn pvp-lobby__minimize-cta" onClick={onClose}>
@@ -273,7 +268,7 @@ export default function PvPLobbyModal({
 
         {error && <p className="pvp-lobby__error" role="alert">{error}</p>}
 
-        <div className="pvp-lobby__grid">
+        <div className={`pvp-lobby__grid${challengeCount > 0 ? ' has-challenges' : ''}`}>
           <section className={`pvp-lobby__panel pvp-lobby__panel--roster${rivalCount === 0 ? ' is-empty' : ''}`} aria-labelledby="pvp-roster-title">
             <header>
               <div>
@@ -421,44 +416,47 @@ export default function PvPLobbyModal({
             )}
           </section>
 
-          <section className="pvp-lobby__panel pvp-lobby__panel--chat" aria-labelledby="pvp-chat-title">
-            <header>
-              <div>
-                <small>MURMULLOS DE LA SALA</small>
-                <h3 id="pvp-chat-title">Conversación</h3>
-                <p>Comentarios breves mientras se conciertan los duelos.</p>
+          <details
+            className="pvp-lobby__chat-disclosure"
+            open={chatOpen}
+            onToggle={(event) => setChatOpen(event.currentTarget.open)}
+          >
+            <summary>
+              <span><small>MURMULLOS DE LA SALA</small><strong>Conversación</strong></span>
+              <b>{messages.length}</b>
+              <i aria-hidden="true">{chatOpen ? '▴' : '▾'}</i>
+            </summary>
+            <section className="pvp-lobby__panel pvp-lobby__panel--chat" aria-label="Conversación de la Sala de Duelos">
+              <div className="pvp-lobby__chat-log" role="log" aria-live="polite" aria-relevant="additions">
+                {messages.length === 0 ? (
+                  <p className="pvp-lobby__chat-empty">La sala está tranquila.</p>
+                ) : messages.map((message) => {
+                  const system = message.kind === 'system';
+                  return (
+                    <article key={message.id} className={`pvp-lobby__chat-message${message.isSelf ? ' is-self' : ''}${system ? ' is-system' : ''}`}>
+                      {!system && <strong>{message.username}</strong>}
+                      <span>{message.text}</span>
+                      <time dateTime={message.createdAt || undefined}>{pvpChatRelativeTimeLabel(message.createdAt)}</time>
+                    </article>
+                  );
+                })}
               </div>
-              <span>{messages.length}</span>
-            </header>
-            <div className="pvp-lobby__chat-log" role="log" aria-live="polite" aria-relevant="additions">
-              {messages.length === 0 ? (
-                <p className="pvp-lobby__chat-empty">La sala está tranquila.</p>
-              ) : messages.map((message) => {
-                const system = message.kind === 'system';
-                return (
-                  <article key={message.id} className={`pvp-lobby__chat-message${message.isSelf ? ' is-self' : ''}${system ? ' is-system' : ''}`}>
-                    {!system && <strong>{message.username}</strong>}
-                    <span>{message.text}</span>
-                    <time dateTime={message.createdAt || undefined}>{pvpChatRelativeTimeLabel(message.createdAt)}</time>
-                  </article>
-                );
-              })}
-            </div>
-            <form className="pvp-lobby__chat-compose" onSubmit={sendMessage}>
-              <input
-                type="text"
-                value={messageText}
-                maxLength={240}
-                onChange={(event) => setMessageText(event.target.value)}
-                placeholder="Comenta algo…"
-                aria-label="Mensaje para el chat del lobby"
-                disabled={busyKey === 'chat'}
-              />
-              <button type="submit" className="secondary-btn" disabled={!messageText.trim() || Boolean(busyKey)}>
-                {busyKey === 'chat' ? 'Enviando…' : 'Enviar'}
-              </button>
-            </form>
-          </section>
+              <form className="pvp-lobby__chat-compose" onSubmit={sendMessage}>
+                <input
+                  type="text"
+                  value={messageText}
+                  maxLength={240}
+                  onChange={(event) => setMessageText(event.target.value)}
+                  placeholder="Comenta algo…"
+                  aria-label="Mensaje para el chat del lobby"
+                  disabled={busyKey === 'chat'}
+                />
+                <button type="submit" className="secondary-btn" disabled={!messageText.trim() || Boolean(busyKey)}>
+                  {busyKey === 'chat' ? 'Enviando…' : 'Enviar'}
+                </button>
+              </form>
+            </section>
+          </details>
           </div>
         </div>
 
