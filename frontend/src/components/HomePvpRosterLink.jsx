@@ -8,7 +8,6 @@ export default function HomePvpRosterLink({
   incomingCount = 0,
   unreadMessageCount = 0,
   activeMatch = null,
-  variant = 'card',
 }) {
   const active = Boolean(activeMatch);
   const challenged = Number(incomingCount) > 0;
@@ -41,10 +40,10 @@ export default function HomePvpRosterLink({
   return (
     <button
       type="button"
-      className={`home-pvp-roster-link${variant === 'menu' ? ' home-pvp-roster-link--menu' : ''}${enrolled ? ' is-enrolled' : ''}${active ? ' has-active-match' : ''}${challenged ? ' has-challenge' : ''}${hasRivals ? ' has-rivals' : ''}${hasUnread ? ' has-unread-chat' : ''}`}
+      className={`home-pvp-roster-link${enrolled ? ' is-enrolled' : ''}${active ? ' has-active-match' : ''}${challenged ? ' has-challenge' : ''}${hasRivals ? ' has-rivals' : ''}${hasUnread ? ' has-unread-chat' : ''}`}
       onClick={onOpen}
       disabled={disabled}
-      aria-label="Abrir rivales 1 contra 1 de War Room"
+      aria-label="Abrir Sala de Duelos 1 contra 1"
     >
       <span className="home-pvp-roster-link__emblem" aria-hidden="true">
         <span className="home-pvp-roster-link__signal" />
@@ -52,7 +51,7 @@ export default function HomePvpRosterLink({
         <span className="home-pvp-roster-link__mark">♟</span>
       </span>
       <span className="home-pvp-roster-link__copy">
-        <small>WAR ROOM · DUELOS 1 VS 1</small>
+        <small>SALA DE DUELOS · 1 VS 1</small>
         <strong>{title}</strong>
         <span>{detail}</span>
       </span>

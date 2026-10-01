@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { buttonWithVisibleText, login, mockApi } from './helpers.js';
+import { login, mockApi } from './helpers.js';
 import { clickWarRoomMove } from './war-room-board-input.js';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
@@ -82,8 +82,7 @@ test('War Room 1v1 · un 409 por carrera de turno sincroniza sin flash de error'
   });
 
   await login(page);
-  await buttonWithVisibleText(page, 'Partida rápida').click();
-  await page.getByRole('button', { name: /Jugar contra una persona/ }).click();
+  await page.getByRole('button', { name: 'Abrir Sala de Duelos 1 contra 1' }).click();
   const lobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room' });
   await lobby.getByRole('button', { name: 'Aceptar', exact: true }).click();
 
@@ -263,8 +262,7 @@ test('War Room 1v1 · reto entrante abre una partida humana en el tablero canón
   }));
 
   await login(page);
-  await buttonWithVisibleText(page, 'Partida rápida').click();
-  await page.getByRole('button', { name: /Jugar contra una persona/ }).click();
+  await page.getByRole('button', { name: 'Abrir Sala de Duelos 1 contra 1' }).click();
 
   const lobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room' });
   await expect(lobby).toBeVisible();
