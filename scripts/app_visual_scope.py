@@ -266,8 +266,8 @@ def _surface_groups(path: str) -> set[str] | None:
     if lower.startswith("scripts/app_visual_"):
         return None
     if lower.startswith("e2e/"):
-        if name in {"war-room-pvp.spec.js", "pvp-background-roster.spec.js"}:
-            return {"warroom"}
+        if name in {"war-room-pvp.spec.js", "pvp-background-roster.spec.js", "home-pvp-roster-link.spec.js", "home-play-menu.spec.js", "home-android-composition.spec.js"}:
+            return set()
         if "chesscom" in name:
             return set()
         if name == "smoke.spec.js":
