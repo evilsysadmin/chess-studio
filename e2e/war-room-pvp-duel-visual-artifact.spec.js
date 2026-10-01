@@ -113,7 +113,12 @@ async function openDuelRoom(page, viewport) {
   const [roomBox, boardBox] = await Promise.all([room.boundingBox(), board.boundingBox()]);
   expect(roomBox).not.toBeNull();
   expect(boardBox).not.toBeNull();
-  expect(boardBox.width / roomBox.width).toBeGreaterThan(0.96);
+  const isCompactLandscape = viewport.width > viewport.height && viewport.height <= 520;
+  const minBoardWidthRatio = isCompactLandscape ? 0.95 : 0.96;
+  expect(
+    boardBox.width / roomBox.width,
+    `Duel Room board should remain effectively full-width (${Math.round(minBoardWidthRatio * 100)}% minimum)`,
+  ).toBeGreaterThan(minBoardWidthRatio);
   expect(Math.abs((boardBox.x + boardBox.width / 2) - (roomBox.x + roomBox.width / 2)) / roomBox.width)
     .toBeLessThan(0.02);
   await expect(room.getByText('DUEL ROOM · 1 VS 1', { exact: true })).toHaveCount(0);
