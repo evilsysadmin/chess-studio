@@ -48,6 +48,63 @@ test('Home · el roster 1 vs 1 abre la sala y puede minimizarse', async ({ page 
 });
 
 
+test('Roster 1v1 · retar es directo, reto entrante domina y chat queda plegado', async ({ page }) => {
+  await mockApi(page);
+  let challengePosts = 0;
+  await page.route('**/api/pvp/lobby', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({
+      roster: [
+        { username: 'evilsysadmin', isSelf: true, rating: 400, tier: 'Principiante' },
+        { username: 'bob', isSelf: false, rating: 416, tier: 'Principiante', headToHead: { games: 2, wins: 1, draws: 0, losses: 1 } },
+      ],
+      challenges: [{
+        id: 'c-in', challenger: 'alice', opponent: 'evilsysadmin', challengerRating: 430,
+        status: 'pending', direction: 'incoming', expiresAt: '2099-01-01T10:01:15Z',
+      }],
+      activeMatch: null,
+      messages: [{ id: 'm1', username: 'bob', text: '¿Duelo?', createdAt: new Date().toISOString(), isSelf: false }],
+      pollAfterMs: 3000,
+    }),
+  }));
+  await page.route('**/api/pvp/challenges', async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    challengePosts += 1;
+    return route.fulfill({
+      status: 201,
+      contentType: 'application/json',
+      body: JSON.stringify({ challenge: { id: 'c-out', opponent: 'bob', status: 'pending', direction: 'outgoing' } }),
+    });
+  });
+
+  await login(page);
+  await openPlayMenu(page);
+  await page.getByRole('button', { name: 'Abrir rivales 1 contra 1 de War Room' }).click();
+
+  const lobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room' });
+  const incoming = lobby.getByRole('region', { name: 'Retos entrantes' });
+  const roster = lobby.getByRole('heading', { name: '¿A quién retas?' });
+  await expect(incoming).toBeVisible();
+  await expect(incoming).toContainText('alice');
+  const [incomingBox, rosterBox] = await Promise.all([incoming.boundingBox(), roster.boundingBox()]);
+  expect(incomingBox?.y).toBeLessThan(rosterBox?.y);
+
+  await expect(lobby.getByText('RIVAL SELECCIONADO', { exact: true })).toHaveCount(0);
+  const bobRow = lobby.locator('.pvp-lobby__player').filter({ hasText: 'bob' });
+  await expect(bobRow.getByText('VS TI · 1V 0T 1D', { exact: true })).toBeVisible();
+  await bobRow.getByRole('button', { name: 'Retar', exact: true }).click();
+  await expect.poll(() => challengePosts).toBe(1);
+
+  const chat = lobby.locator('details.pvp-lobby__panel--chat');
+  await expect(chat).not.toHaveAttribute('open', '');
+  await expect(chat.getByText('1 mensaje', { exact: true })).toBeVisible();
+  await expect(chat.getByRole('textbox', { name: 'Mensaje para el chat del lobby' })).toBeHidden();
+  await chat.locator('summary').click();
+  await expect(chat.getByRole('textbox', { name: 'Mensaje para el chat del lobby' })).toBeVisible();
+});
+
+
 test('Roster 1v1 · un reto saliente con contrato nuevo puede cancelarse', async ({ page }) => {
   await mockApi(page);
   let cancelled = false;
