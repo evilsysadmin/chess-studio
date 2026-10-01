@@ -27,6 +27,8 @@ describe('PvP Duel Room runtime variant', () => {
     for (const name of [
       'PVP_ANCHOR_brazier_left',
       'PVP_ANCHOR_brazier_right',
+      'PVP_ANCHOR_side_brazier_left',
+      'PVP_ANCHOR_side_brazier_right',
       'PVP_ANCHOR_moon_fill',
       'PVP_ANCHOR_gate_depth',
     ]) {
@@ -36,8 +38,9 @@ describe('PvP Duel Room runtime variant', () => {
     }
 
     const dispose = installPvpDuelRoomPracticalLights(root, { coarsePointer: false });
-    expect(root.userData.pvpDuelRoomPracticalLights).toBe(4);
+    expect(root.userData.pvpDuelRoomPracticalLights).toBe(6);
     expect(root.getObjectByName('PVP_ANCHOR_brazier_left').children).toHaveLength(1);
+    expect(root.getObjectByName('PVP_ANCHOR_side_brazier_left').children[0].intensity).toBeCloseTo(0.86);
     expect(root.getObjectByName('PVP_ANCHOR_moon_fill').children[0].intensity).toBeCloseTo(1.72);
     expect(root.getObjectByName('PVP_ANCHOR_gate_depth').children[0].intensity).toBeCloseTo(0.38);
 
