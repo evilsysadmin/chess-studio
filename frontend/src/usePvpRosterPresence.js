@@ -6,6 +6,7 @@ import { STORAGE_LOCAL, getStorageItem, setStorageItem } from './safeStorage.js'
 const EMPTY_LOBBY = Object.freeze({ roster: [], challenges: [], messages: [], activeMatch: null, pollAfterMs: 3000 });
 const ROSTER_HEARTBEAT_MS = 15000;
 const HIDDEN_HEARTBEAT_CHECK_MS = 12000;
+const FULL_LOBBY_RECONCILE_MS = 30000;
 
 function chatReadKey(username) {
   return `chess-study-pvp-lobby-chat-read-v1:${String(username || '').toLowerCase()}`;
@@ -20,6 +21,17 @@ export function pvpUnreadMessageCount(messages = [], lastReadId = '') {
 
 async function loadPvpApi() {
   return (await import('./pvpApi.js')).pvpApi;
+}
+
+export function pvpPulseNeedsFullRefresh({
+  previousRevision = '',
+  nextRevision = '',
+  lastFullAt = 0,
+  nowMs = Date.now(),
+  reconcileMs = FULL_LOBBY_RECONCILE_MS,
+} = {}) {
+  if (!previousRevision || !nextRevision || previousRevision !== nextRevision) return true;
+  return !lastFullAt || Number(nowMs) - Number(lastFullAt) >= Number(reconcileMs);
 }
 
 export function pvpPollPlan({ visibilityState = 'visible', pollAfterMs = EMPTY_LOBBY.pollAfterMs } = {}) {
@@ -57,6 +69,9 @@ export function usePvpRosterPresence({ enabled = true } = {}) {
   const [error, setError] = useState('');
   const [lastReadMessageId, setLastReadMessageId] = useState(() => getStorageItem(STORAGE_LOCAL, chatReadKey(username)) || '');
   const heartbeatAtRef = useRef(0);
+  const pulseRevisionRef = useRef('');
+  const lastFullRefreshAtRef = useRef(0);
+  const pulseUnsupportedRef = useRef(false);
 
   const heartbeatOnly = useCallback(async ({ signal } = {}) => {
     if (!enrolled) return null;
@@ -101,7 +116,12 @@ export function usePvpRosterPresence({ enabled = true } = {}) {
 
   useEffect(() => {
     if (!enabled || !enrolled) {
-      if (!enrolled) setLobby(EMPTY_LOBBY);
+      if (!enrolled) {
+        setLobby(EMPTY_LOBBY);
+        pulseRevisionRef.current = '';
+        lastFullRefreshAtRef.current = 0;
+        pulseUnsupportedRef.current = false;
+      }
       return undefined;
     }
 
@@ -125,11 +145,43 @@ export function usePvpRosterPresence({ enabled = true } = {}) {
       if (plan.heartbeatOnly) {
         await heartbeatOnly({ signal: controller.signal });
       } else {
-        const next = await refresh({ signal: controller.signal, heartbeat: true });
+        let pulse = null;
+        let next = null;
+        const pvpApi = await loadPvpApi();
+
+        if (!pulseUnsupportedRef.current) {
+          try {
+            pulse = await pvpApi.getLobbyPulse({ signal: controller.signal });
+          } catch (err) {
+            if (err?.name === 'AbortError') return;
+            if ([404, 405, 501].includes(Number(err?.status))) {
+              pulseUnsupportedRef.current = true;
+            }
+          }
+        }
+
+        const nowMs = Date.now();
+        const needsFullRefresh = !pulse || pvpPulseNeedsFullRefresh({
+          previousRevision: pulseRevisionRef.current,
+          nextRevision: pulse?.revision,
+          lastFullAt: lastFullRefreshAtRef.current,
+          nowMs,
+        });
+
+        if (needsFullRefresh) {
+          next = await refresh({ signal: controller.signal, heartbeat: true });
+          if (next) {
+            lastFullRefreshAtRef.current = Date.now();
+            if (pulse?.revision) pulseRevisionRef.current = String(pulse.revision);
+          }
+        } else {
+          await heartbeatOnly({ signal: controller.signal });
+        }
+
         if (ownCycle === cycle && active) {
           const nextPlan = pvpPollPlan({
             visibilityState: document.visibilityState,
-            pollAfterMs: next?.pollAfterMs,
+            pollAfterMs: pulse?.pollAfterMs ?? next?.pollAfterMs,
           });
           schedule(nextPlan.delay, poll);
         }
@@ -184,6 +236,9 @@ export function usePvpRosterPresence({ enabled = true } = {}) {
     } finally {
       savePvpEnrollment(username, false);
       heartbeatAtRef.current = 0;
+      pulseRevisionRef.current = '';
+      lastFullRefreshAtRef.current = 0;
+      pulseUnsupportedRef.current = false;
       setEnrolled(false);
       setLobby(EMPTY_LOBBY);
     }
