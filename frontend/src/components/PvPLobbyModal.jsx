@@ -326,7 +326,15 @@ export default function PvPLobbyModal({
                           className="secondary-btn pvp-lobby__challenge-cta"
                           disabled={Boolean(pending) || coolingDown || Boolean(busyKey) || Boolean(liveLobby.activeMatch)}
                           title={coolingDown ? cooldownLabel : undefined}
-                          aria-label={coolingDown ? `Espera para retar a ${row.username}. ${cooldownLabel}` : undefined}
+                          aria-label={
+                            pending
+                              ? `Reto a ${row.username} en espera`
+                              : coolingDown
+                                ? `Espera para retar a ${row.username}. ${cooldownLabel}`
+                                : busyKey === `challenge:${row.username}`
+                                  ? `Retando a ${row.username}`
+                                  : `Retar a ${row.username}`
+                          }
                           onClick={(event) => { event.stopPropagation(); void challengePlayer(row.username); }}
                         >
                           {pending ? 'En espera' : coolingDown ? 'Espera' : busyKey === `challenge:${row.username}` ? 'Retando…' : 'Retar'}
