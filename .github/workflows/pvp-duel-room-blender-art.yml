@@ -93,6 +93,7 @@ jobs:
               'PVP_DUEL_side_pier_left_0',
               'PVP_DUEL_chain_left_0_0',
               'PVP_DUEL_hanging_brazier_left',
+              'PVP_DUEL_wall_sconce_left',
               'PVP_DUEL_sentinel_left_torso',
               'PVP_DUEL_barrel_left',
               'PVP_DUEL_floor_grate_spine_left',
