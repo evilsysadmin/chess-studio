@@ -17,13 +17,13 @@ describe('PvP Duel Room runtime variant', () => {
   it('pins the promoted immutable runtime object instead of the mutable current alias', () => {
     expect(PVP_DUEL_ROOM_R2_ASSET_ID).toBe('pvp.duelRoom.runtime');
     expect(PVP_DUEL_ROOM_RUNTIME_MODEL_URL).toBe(
-      'https://assets.chess-studio.shadowops.dpdns.org/pvp/duel-room/runtime/pvp-duel-room-shell-e96dba16fd6e7288.glb',
+      'https://assets.chess-studio.shadowops.dpdns.org/pvp/duel-room/runtime/pvp-duel-room-shell-948be882530ed35c.glb',
     );
     expect(PVP_DUEL_ROOM_RUNTIME_MODEL_URL).not.toContain('/current.glb');
     expect(r2AssetEntry(PVP_DUEL_ROOM_R2_ASSET_ID)).toMatchObject({
-      bytes: 7944140,
+      bytes: 7931572,
       contentType: 'model/gltf-binary',
-      sha256: 'e96dba16fd6e728854f7ccd48b43f970adec26765df0feaef0369b4429cd4916',
+      sha256: '948be882530ed35c54f7ccd48b43f970adec26765df0feaef0369b4429cd4916',
     });
     expect(pvpDuelRoomModelUrl({ buildSha: 'abc123' })).toBe(
       PVP_DUEL_ROOM_RUNTIME_MODEL_URL + '?build=abc123',
