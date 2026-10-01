@@ -279,6 +279,12 @@ assert 'remove_service "$(slot_service "$previous_color")"' in deploy
 assert 'docker rm -f "$legacy_id"' in deploy
 assert 'compose "$sha" up -d --no-build edge' in deploy
 assert 'backend_blue:' in compose and 'backend_green:' in compose and 'edge:' in compose
+assert 'pvp_blue:' in compose and 'pvp_green:' in compose
+assert 'ghcr.io/evilsysadmin/chess-studio-pvp:oci-${CHESS_STUDIO_BLUE_SHA' in compose
+assert 'ghcr.io/evilsysadmin/chess-studio-pvp:oci-${CHESS_STUDIO_GREEN_SHA' in compose
+assert 'PVP_PYTHON_UPSTREAM: "http://backend_blue:4000"' in compose
+assert 'PVP_PYTHON_UPSTREAM: "http://backend_green:4000"' in compose
+assert '127.0.0.1:${CHESS_STUDIO_PVP' not in compose
 assert '127.0.0.1:${CHESS_STUDIO_BLUE_PORT:-4001}:4000' in compose
 assert '127.0.0.1:${CHESS_STUDIO_GREEN_PORT:-4002}:4000' in compose
 assert '127.0.0.1:${CHESS_STUDIO_BACKEND_PORT:-4000}:8080' in compose
