@@ -225,7 +225,6 @@ test.describe('PvP Duel Room · mobile touch orientation', () => {
     const viewport = { width: 390, height: 844 };
     const { room } = await openDuelRoom(page, viewport);
     await assertMobileTouchTargets(room);
-    await forceFreshDuelFrame(page, viewport);
     await expect(page.getByRole('button', { name: 'Activar apaisado', exact: true })).toBeVisible();
     const png = await captureDuelRoomFromCompositor(
       page,
@@ -240,7 +239,6 @@ test.describe('PvP Duel Room · mobile touch orientation', () => {
     const viewport = { width: 844, height: 390 };
     const { room } = await openDuelRoom(page, viewport);
     await expect(page.getByRole('button', { name: 'Activar apaisado', exact: true })).toHaveCount(0);
-    await forceFreshDuelFrame(page, viewport);
     const png = await captureDuelRoomFromCompositor(
       page,
       room,
