@@ -100,22 +100,6 @@ export function WarRoomUtilityMenu({
     <details className="game-3d-utility-menu">
       <summary role="button" aria-label="Más acciones de partida" title="Más acciones de partida">⋯</summary>
       <div className="game-3d-utility-popover" role="menu" aria-label="Acciones de partida">
-        {typeof controls.onAbandon === 'function' && (
-          <>
-            <button
-              type="button"
-              role="menuitem"
-              className="is-danger"
-              onClick={(event) => {
-                closeUtilityMenu(event);
-                controls.onAbandon();
-              }}
-            >
-              Abandonar partida
-            </button>
-            {hasNonDangerAction && <span className="game-3d-utility-separator" role="separator" />}
-          </>
-        )}
         {compactViewport && showFocus && (
           <button
             type="button"
@@ -262,17 +246,6 @@ function CompactWarRoomPill({
           >
             <span aria-hidden="true">◎</span>
           </button>
-          {typeof controls.onAbandon === 'function' && (
-            <button
-              type="button"
-              className="game-3d-compact-action is-abandon"
-              aria-label="Abandonar partida"
-              title="Abandonar partida"
-              onClick={controls.onAbandon}
-            >
-              <span aria-hidden="true">⚑</span>
-            </button>
-          )}
         </span>
 
         <WarRoomGuideHelp />
