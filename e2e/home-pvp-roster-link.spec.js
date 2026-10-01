@@ -79,6 +79,56 @@ test('Roster 1v1 · retar a un rival es una acción directa sin selección inter
 });
 
 
+test('Roster 1v1 · residente owner-only se muestra con disclosure y reta por username técnico', async ({ page }) => {
+  await mockApi(page);
+  let challengedOpponent = null;
+  await page.route('**/api/pvp/lobby', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({
+      roster: [
+        { username: 'evilsysadmin', isSelf: true, rating: 400, tier: 'Principiante' },
+        {
+          username: 'marta_stein',
+          displayName: 'Marta Stein',
+          actorKind: 'resident',
+          actorLabel: 'RESIDENTE · IA',
+          isSelf: false,
+          rating: 1200,
+          tier: 'Intermedio',
+        },
+      ],
+      challenges: [],
+      activeMatch: null,
+      messages: [],
+      pollAfterMs: 3000,
+    }),
+  }));
+  await page.route('**/api/pvp/challenges', async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    challengedOpponent = (await route.request().postDataJSON()).opponent;
+    return route.fulfill({
+      status: 201,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        challenge: { id: 'resident-c1', opponent: 'marta_stein', status: 'accepted', direction: 'outgoing' },
+      }),
+    });
+  });
+
+  await login(page);
+  await page.getByRole('button', { name: 'Abrir Sala de Duelos 1 contra 1' }).click();
+
+  const lobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room' });
+  const row = lobby.locator('.pvp-lobby__player').filter({ hasText: 'Marta Stein' });
+  await expect(row.getByText('Marta Stein', { exact: true })).toBeVisible();
+  await expect(row.getByText('Intermedio · RESIDENTE · IA', { exact: true })).toBeVisible();
+  await expect(row.getByText('1200', { exact: true })).toBeVisible();
+  await row.getByRole('button', { name: 'Retar a Marta Stein', exact: true }).click();
+  await expect.poll(() => challengedOpponent).toBe('marta_stein');
+});
+
+
 test('Roster 1v1 · un reto saliente con contrato nuevo puede cancelarse', async ({ page }) => {
   await mockApi(page);
   let cancelled = false;
