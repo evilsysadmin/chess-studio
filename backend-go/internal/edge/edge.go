@@ -88,7 +88,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.health(w)
 	case r.URL.Path == "/readyz" || r.URL.Path == "/api/pvp/_edge/ready":
 		h.ready(w, r)
-	case r.URL.Path == "/api/pvp/lobby/pulse":
+	case r.URL.Path == "/api/pvp/lobby/pulse" || isMatchPulsePath(r.URL.Path):
 		if h.nativePulse == nil {
 			http.NotFound(w, r)
 			return
@@ -154,4 +154,16 @@ func Shutdown(ctx context.Context, server *http.Server) error {
 		return nil
 	}
 	return server.Shutdown(ctx)
+}
+
+
+func isMatchPulsePath(path string) bool {
+	const prefix = "/api/pvp/matches/"
+	const suffix = "/pulse"
+	if !strings.HasPrefix(path, prefix) || !strings.HasSuffix(path, suffix) {
+		return false
+	}
+	matchID := strings.TrimSuffix(strings.TrimPrefix(path, prefix), suffix)
+	matchID = strings.Trim(matchID, "/")
+	return matchID != "" && !strings.Contains(matchID, "/")
 }
