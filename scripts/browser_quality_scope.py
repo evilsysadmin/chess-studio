@@ -34,13 +34,14 @@ class BrowserScope:
     chesscom: bool = False
     trailblazer: bool = False
     matthias_priority: bool = False
+    pvp_duel: bool = False
 
     @classmethod
     def all(cls) -> "BrowserScope":
         # Broad Matthias already includes Home + War Room + Insights. Keep the
         # narrow specific bits false in the fail-closed aggregate to avoid
         # duplicating the same canaries.
-        return cls(True, True, True, True, True, False, False, True, True, True, True, True, True, True, True)
+        return cls(True, True, True, True, True, False, False, True, True, True, True, True, True, True, True, True)
 
 
 FRONTEND_TEST_RE = re.compile(r"^frontend/src/.*\.(?:test|spec)\.(?:js|jsx|ts|tsx)$")
@@ -184,6 +185,17 @@ NETWORK_RACE_PATTERNS = (
     "e2e/offline-pending-move-reconnect.spec.js",
     "e2e/late-move-response-exit.spec.js",
 )
+PVP_DUEL_PATTERNS = (
+    "frontend/src/components/PvpAppSurface.jsx",
+    "frontend/src/components/PvpGameScreen.jsx",
+    "frontend/src/components/PvpHandoffModal.jsx",
+    "frontend/src/pvpApi.js",
+    "frontend/src/pvpGameModel.js",
+    "frontend/src/usePvpAppFlow.js",
+    "frontend/src/usePvpRosterPresence.js",
+    "e2e/war-room-pvp.spec.js",
+    "e2e/pvp-background-roster.spec.js",
+)
 BROWSER_ACTION_PATHS = {
     ".github/actions/setup-browser-e2e/action.yml",
 }
@@ -215,7 +227,7 @@ def _matches(path: str, patterns: tuple[str, ...]) -> bool:
 
 
 def classify(paths: Iterable[str]) -> BrowserScope:
-    full_logic = special_states = visual = focus = matthias = matthias_home = matthias_insights = quick_2d = network_race = chronicles = tournament_mobile = pawn_slug = chesscom = trailblazer = matthias_priority = False
+    full_logic = special_states = visual = focus = matthias = matthias_home = matthias_insights = quick_2d = network_race = chronicles = tournament_mobile = pawn_slug = chesscom = trailblazer = matthias_priority = pvp_duel = False
 
     for path in _clean_paths(paths):
         if FRONTEND_TEST_RE.search(path):
@@ -255,6 +267,9 @@ def classify(paths: Iterable[str]) -> BrowserScope:
         if _matches(path, NETWORK_RACE_PATTERNS):
             network_race = True
 
+        if _matches(path, PVP_DUEL_PATTERNS):
+            pvp_duel = True
+
         if _matches(path, TOURNAMENT_MOBILE_PATTERNS):
             tournament_mobile = True
 
@@ -268,7 +283,7 @@ def classify(paths: Iterable[str]) -> BrowserScope:
 
         if path in BROWSER_ACTION_PATHS:
             full_logic = special_states = visual = focus = matthias = quick_2d = network_race = chronicles = tournament_mobile = True
-            pawn_slug = chesscom = trailblazer = matthias_priority = True
+            pawn_slug = chesscom = trailblazer = matthias_priority = pvp_duel = True
             matthias_home = matthias_insights = False
 
         if path == DEPENDENCY_CACHE_ACTION:
@@ -287,7 +302,7 @@ def classify(paths: Iterable[str]) -> BrowserScope:
     return BrowserScope(
         full_logic, special_states, visual, focus, matthias, matthias_home, matthias_insights,
         quick_2d, network_race, chronicles, tournament_mobile,
-        pawn_slug, chesscom, trailblazer, matthias_priority,
+        pawn_slug, chesscom, trailblazer, matthias_priority, pvp_duel,
     )
 
 
@@ -404,6 +419,14 @@ def build_matrix(scope: BrowserScope) -> dict[str, list[dict[str, str]]]:
                 "id": "game-network-races",
                 "label": "Game network · reconnect and late response",
                 "command": "./node_modules/.bin/playwright test offline-pending-move-reconnect.spec.js late-move-response-exit.spec.js --workers=1 --retries=0 --max-failures=1 --timeout=75000",
+            }
+        )
+    if scope.pvp_duel:
+        cases.append(
+            {
+                "id": "pvp-duel-flow",
+                "label": "PvP Duel Room · authoritative flow",
+                "command": "./node_modules/.bin/playwright test war-room-pvp.spec.js --workers=1 --retries=0 --max-failures=1 --timeout=90000",
             }
         )
     if scope.chronicles:
@@ -542,6 +565,7 @@ def render_summary(scope: BrowserScope) -> str:
             f"- Quick Match mobile 2D: `{yn(scope.quick_2d)}`",
             f"- Tournament mobile UX: `{yn(scope.tournament_mobile)}`",
             f"- Game network races: `{yn(scope.network_race)}`",
+            f"- PvP Duel Room authoritative flow: `{yn(scope.pvp_duel)}`",
             f"- Chronicles dungeon: `{yn(scope.chronicles)}`",
             "- Estas lanes forman parte del check requerido Tests · Playwright.",
             "",
@@ -637,6 +661,9 @@ def self_test() -> None:
     assert _ids(classify(["frontend/src/components/GameScreen.jsx"])) == ["game-network-races"]
     assert _ids(classify(["e2e/offline-pending-move-reconnect.spec.js"])) == ["game-network-races"]
     assert _ids(classify(["e2e/late-move-response-exit.spec.js"])) == ["game-network-races"]
+    assert _ids(classify(["frontend/src/components/PvpGameScreen.jsx"])) == ["pvp-duel-flow"]
+    assert _ids(classify(["frontend/src/usePvpAppFlow.js"])) == ["pvp-duel-flow"]
+    assert _ids(classify(["e2e/war-room-pvp.spec.js"])) == ["pvp-duel-flow"]
     for chronicles_path in (
         "frontend/src/chronicles/chroniclesMapCatalog.js",
         "frontend/src/chronicles/chroniclesContentRuntime.js",
@@ -667,7 +694,7 @@ def self_test() -> None:
 
     all_scope = classify([".github/actions/setup-browser-e2e/action.yml"])
     assert all_scope == BrowserScope.all()
-    assert len(_ids(all_scope)) == 18
+    assert len(_ids(all_scope)) == 19
     assert "hans-fire-call" not in _ids(all_scope)
 
     harness = classify([CICD_WORKFLOW])
@@ -703,6 +730,7 @@ def self_test() -> None:
     assert "Matthias Insights-only: `true`" in render_summary(BrowserScope(matthias_insights=True))
     assert "Tournament mobile UX: `true`" in render_summary(BrowserScope(tournament_mobile=True))
     assert "Game network races: `true`" in render_summary(BrowserScope(network_race=True))
+    assert "PvP Duel Room authoritative flow: `true`" in render_summary(BrowserScope(pvp_duel=True))
     assert "Chronicles dungeon: `true`" in render_summary(BrowserScope(chronicles=True))
 
     try:
