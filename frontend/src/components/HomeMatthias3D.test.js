@@ -43,12 +43,19 @@ describe('Home Matthias canonical Blender rig', () => {
   it('composes dossier review from the existing Blender reports pages and coffee prop', () => {
     expect(homeMatthiasRoutinePropPolicy('dossier')).toEqual({
       forceVisibleBones: ['prop_cup'],
-      hideMeshes: ['RoutineBook', 'RoutineBookBadge'],
-      signature: 'reports+coffee',
+      hideMeshes: ['RoutineBook', 'RoutineBookBadge', 'RoutineCupHand'],
+      anchor: {
+        bone: 'prop_cup',
+        contentMesh: 'RoutineCup',
+        handMesh: 'Hand.R',
+        offset: { x: 0.035, y: 0.055, z: 0 },
+      },
+      signature: 'reports+coffee-in-hand',
     });
     expect(homeMatthiasRoutinePropPolicy('read')).toEqual({
       forceVisibleBones: [],
       hideMeshes: [],
+      anchor: null,
       signature: 'authored',
     });
   });
