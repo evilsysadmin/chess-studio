@@ -17,8 +17,10 @@ type fakeStore struct {
 	exists   bool
 	version  int64
 	revision string
+	match    matchPulseState
 	authErr  error
 	revErr   error
+	matchErr error
 }
 
 func (f *fakeStore) AuthState(context.Context, string) (bool, int64, error) {
@@ -27,6 +29,10 @@ func (f *fakeStore) AuthState(context.Context, string) (bool, int64, error) {
 
 func (f *fakeStore) Revision(context.Context, string, time.Time) (string, error) {
 	return f.revision, f.revErr
+}
+
+func (f *fakeStore) MatchState(context.Context, string, string, time.Time) (matchPulseState, error) {
+	return f.match, f.matchErr
 }
 
 func TestPulseReturnsNativeRevisionForValidSession(t *testing.T) {
@@ -172,4 +178,63 @@ func signedToken(t *testing.T, subject string, version int64, expires time.Time,
 	mac := hmac.New(sha256.New, []byte(secret))
 	_, _ = mac.Write([]byte(unsigned))
 	return unsigned + "." + base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
+}
+
+
+func TestMatchPulseReturnsRevisionAndLifecycleHint(t *testing.T) {
+	now := time.Date(2026, 10, 1, 20, 0, 0, 0, time.UTC)
+	store := &fakeStore{
+		exists:  true,
+		version: 2,
+		match: matchPulseState{Found: true, Revision: 7, Status: "active", LifecycleDue: true},
+	}
+	h, err := NewHandler(HandlerConfig{Store: store, JWTSecret: "01234567890123456789012345678901", Now: func() time.Time { return now }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodGet, "http://edge/api/pvp/matches/m-7/pulse", nil)
+	req.Header.Set("Authorization", "Bearer "+signedToken(t, "alice", 2, now.Add(time.Hour), "session", "01234567890123456789012345678901"))
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	var body map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if body["revision"] != float64(7) || body["status"] != "active" || body["lifecycleDue"] != true || body["pollAfterMs"] != float64(1250) {
+		t.Fatalf("unexpected body: %#v", body)
+	}
+}
+
+func TestMatchPulseNotFoundIsExplicit(t *testing.T) {
+	now := time.Date(2026, 10, 1, 20, 0, 0, 0, time.UTC)
+	h, err := NewHandler(HandlerConfig{
+		Store:     &fakeStore{exists: true, version: 1},
+		JWTSecret: "01234567890123456789012345678901",
+		Now:       func() time.Time { return now },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodGet, "http://edge/api/pvp/matches/missing/pulse", nil)
+	req.Header.Set("Authorization", "Bearer "+signedToken(t, "alice", 1, now.Add(time.Hour), "session", "01234567890123456789012345678901"))
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("status=%d want=404 body=%s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestMatchLifecycleDueAtClockBoundary(t *testing.T) {
+	now := time.Date(2026, 10, 1, 20, 0, 10, 0, time.UTC)
+	row := matchRow{Status: "active", Turn: "w", WhiteClockMS: 5000, TurnStartedAt: now.Add(-5 * time.Second)}
+	if !matchLifecycleDue(row, now) {
+		t.Fatal("expected lifecycle due when running clock reaches zero")
+	}
+	row.WhiteClockMS = 6000
+	if matchLifecycleDue(row, now) {
+		t.Fatal("did not expect lifecycle due before clock expiry")
+	}
 }
