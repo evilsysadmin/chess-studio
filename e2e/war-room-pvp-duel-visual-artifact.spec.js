@@ -136,26 +136,32 @@ test('PvP Duel Room · runtime desktop visual artifact', async ({ page }) => {
   });
 });
 
-test('PvP Duel Room · runtime Android portrait visual artifact', async ({ page }) => {
-  test.setTimeout(120_000);
-  const { room } = await openDuelRoom(page, { width: 390, height: 844 });
-  await assertMobileTouchTargets(room);
-  await room.screenshot({
-    path: ARTIFACT_DIR + '/pvp-duel-room-android-390x844.png',
-    animations: 'disabled',
-  });
-});
+test.describe('PvP Duel Room · mobile touch orientation', () => {
+  test.use({ hasTouch: true, isMobile: true });
 
-test('PvP Duel Room · runtime Android landscape visual artifact', async ({ page }) => {
-  test.setTimeout(120_000);
-  const { room } = await openDuelRoom(page, { width: 844, height: 390 });
-  await room.screenshot({
-    path: ARTIFACT_DIR + '/pvp-duel-room-android-landscape-844x390.png',
-    animations: 'disabled',
+  test('runtime Android portrait visual artifact', async ({ page }) => {
+    test.setTimeout(120_000);
+    const { room } = await openDuelRoom(page, { width: 390, height: 844 });
+    await assertMobileTouchTargets(room);
+    await expect(page.getByRole('button', { name: 'Activar apaisado', exact: true })).toBeVisible();
+    await room.screenshot({
+      path: ARTIFACT_DIR + '/pvp-duel-room-android-390x844.png',
+      animations: 'disabled',
+    });
   });
-  await assertMobileTouchTargets(room);
-  const verticalOverflow = await page.evaluate(
-    () => document.documentElement.scrollHeight - document.documentElement.clientHeight,
-  );
-  expect(verticalOverflow).toBeLessThanOrEqual(1);
+
+  test('runtime Android landscape visual artifact', async ({ page }) => {
+    test.setTimeout(120_000);
+    const { room } = await openDuelRoom(page, { width: 844, height: 390 });
+    await expect(page.getByRole('button', { name: 'Activar apaisado', exact: true })).toHaveCount(0);
+    await room.screenshot({
+      path: ARTIFACT_DIR + '/pvp-duel-room-android-landscape-844x390.png',
+      animations: 'disabled',
+    });
+    await assertMobileTouchTargets(room);
+    const verticalOverflow = await page.evaluate(
+      () => document.documentElement.scrollHeight - document.documentElement.clientHeight,
+    );
+    expect(verticalOverflow).toBeLessThanOrEqual(1);
+  });
 });
