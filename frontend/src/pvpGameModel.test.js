@@ -17,9 +17,35 @@ const START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 describe('PvP War Room model', () => {
   it('identifica rival, resultado y última jugada desde contrato backend', () => {
     const match = { youAre: 'w', black: 'bob', blackRating: 1234, status: 'finished', result: '1-0' };
-    expect(opponentForMatch(match)).toEqual({ username: 'bob', rating: 1234, color: 'b' });
+    expect(opponentForMatch(match)).toEqual({
+      username: 'bob',
+      displayName: 'bob',
+      actorKind: null,
+      actorLabel: null,
+      rating: 1234,
+      color: 'b',
+    });
     expect(playerResult(match)).toBe('win');
     expect(lastMoveFromHistory([{ uci: 'e2e4' }])).toEqual({ from: 'e2', to: 'e4' });
+  });
+
+  it('proyecta identidad visible y disclosure de un residente', () => {
+    const match = {
+      youAre: 'w',
+      black: 'marta_stein',
+      blackDisplayName: 'Marta Stein',
+      blackActorKind: 'resident',
+      blackActorLabel: 'RESIDENTE · IA',
+      blackRating: 1200,
+    };
+    expect(opponentForMatch(match)).toEqual({
+      username: 'marta_stein',
+      displayName: 'Marta Stein',
+      actorKind: 'resident',
+      actorLabel: 'RESIDENTE · IA',
+      rating: 1200,
+      color: 'b',
+    });
   });
 
   it('sólo ofrece movimientos de una pieza propia cuando toca', () => {
