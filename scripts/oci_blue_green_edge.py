@@ -20,6 +20,7 @@ def render(color: str) -> str:
     server_name _;
 
     access_log off;
+    keepalive_timeout 5s;
 
     location / {{
         proxy_http_version 1.1;
