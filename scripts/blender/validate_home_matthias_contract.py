@@ -130,7 +130,7 @@ def main():
     assert not missing_actions, f"missing actions: {sorted(missing_actions)}"
 
     assert rig.get("canonical_identity") == CANONICAL_IDENTITY, rig.get("canonical_identity")
-    assert rig.get("matthias_asset_version") == "home-blender-classic-v21", (
+    assert rig.get("matthias_asset_version") == "home-blender-classic-v22", (
         rig.get("matthias_asset_version")
     )
     assert rig.get("canonical_reference") == CANONICAL_REFERENCE, rig.get("canonical_reference")
