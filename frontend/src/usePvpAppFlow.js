@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePvpRosterPresence } from './usePvpRosterPresence.js';
+import { requestWarRoomLandscapeOnEntry } from './components/useWarRoomImmersive.js';
 
 async function loadPvpApi() {
   return (await import('./pvpApi.js')).pvpApi;
@@ -20,6 +21,7 @@ export function usePvpAppFlow({ view, replaceView }) {
 
   const enterPreparedMatch = useCallback((nextMatch) => {
     if (!nextMatch?.id) return false;
+    void requestWarRoomLandscapeOnEntry();
     setHandoffMatch(null);
     setHandoffError('');
     setMatch(nextMatch);
@@ -38,6 +40,7 @@ export function usePvpAppFlow({ view, replaceView }) {
   }, [enterPreparedMatch]);
 
   const acceptIncoming = useCallback(async (challenge) => {
+    void requestWarRoomLandscapeOnEntry();
     const result = await presence.acceptChallenge(challenge);
     if (result?.match) {
       setHandoffMatch(result.match);
