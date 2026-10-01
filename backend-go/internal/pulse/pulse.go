@@ -32,6 +32,7 @@ const (
 type Store interface {
 	AuthState(context.Context, string) (exists bool, sessionVersion int64, err error)
 	Revision(context.Context, string, time.Time) (string, error)
+	MatchState(context.Context, string, string, time.Time) (matchPulseState, error)
 }
 
 type HandlerConfig struct {
@@ -101,12 +102,23 @@ type matchRow struct {
 	Revision                    int64     `bson:"revision"`
 	WhiteReady                  bool      `bson:"white_ready"`
 	BlackReady                  bool      `bson:"black_ready"`
+	WhiteClockMS                int64     `bson:"white_clock_ms"`
+	BlackClockMS                int64     `bson:"black_clock_ms"`
 	StartAt                     time.Time `bson:"start_at"`
+	ReadyDeadline               time.Time `bson:"ready_deadline"`
+	TurnStartedAt               time.Time `bson:"turn_started_at"`
 	UpdatedAt                   time.Time `bson:"updated_at"`
 	WhiteSeenAt                 time.Time `bson:"white_seen_at"`
 	BlackSeenAt                 time.Time `bson:"black_seen_at"`
 	WhiteDisconnectGraceStarted time.Time `bson:"white_disconnect_grace_started_at"`
 	BlackDisconnectGraceStarted time.Time `bson:"black_disconnect_grace_started_at"`
+}
+
+type matchPulseState struct {
+	Found        bool
+	Revision     int64
+	Status       string
+	LifecycleDue bool
 }
 
 type chatRow struct {
@@ -234,6 +246,79 @@ func (s *MongoStore) Revision(ctx context.Context, username string, now time.Tim
 	}
 
 	return hex.EncodeToString(h.Sum(nil))[:24], nil
+}
+
+func (s *MongoStore) MatchState(ctx context.Context, username, matchID string, now time.Time) (matchPulseState, error) {
+	queryCtx, cancel := context.WithTimeout(ctx, s.timeout)
+	defer cancel()
+
+	var row matchRow
+	err := s.db.Collection("pvp_matches").FindOne(
+		queryCtx,
+		bson.M{
+			"_id":              matchID,
+			"acceptance_state": bson.M{"$ne": "staged"},
+			"$or":              bson.A{bson.M{"white": username}, bson.M{"black": username}},
+		},
+		options.FindOne().SetProjection(bson.M{
+			"white": 1, "black": 1, "status": 1, "turn": 1, "revision": 1,
+			"white_clock_ms": 1, "black_clock_ms": 1, "start_at": 1,
+			"ready_deadline": 1, "turn_started_at": 1,
+		}),
+	).Decode(&row)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return matchPulseState{}, nil
+	}
+	if err != nil {
+		return matchPulseState{}, err
+	}
+
+	playerField := "white"
+	seenField := "white_seen_at"
+	graceField := "white_disconnect_grace_started_at"
+	if row.Black == username {
+		playerField = "black"
+		seenField = "black_seen_at"
+		graceField = "black_disconnect_grace_started_at"
+	}
+	result, err := s.db.Collection("pvp_matches").UpdateOne(
+		queryCtx,
+		bson.M{"_id": matchID, playerField: username, "acceptance_state": bson.M{"$ne": "staged"}},
+		bson.M{"$set": bson.M{seenField: now}, "$unset": bson.M{graceField: ""}},
+	)
+	if err != nil {
+		return matchPulseState{}, err
+	}
+	if result.MatchedCount == 0 {
+		return matchPulseState{}, nil
+	}
+
+	return matchPulseState{
+		Found:        true,
+		Revision:     row.Revision,
+		Status:       row.Status,
+		LifecycleDue: matchLifecycleDue(row, now),
+	}, nil
+}
+
+func matchLifecycleDue(row matchRow, now time.Time) bool {
+	if row.Status == "starting" {
+		return !row.ReadyDeadline.IsZero() && !now.Before(row.ReadyDeadline)
+	}
+	if row.Status != "active" {
+		return true
+	}
+	if row.TurnStartedAt.IsZero() || now.Before(row.TurnStartedAt) {
+		return false
+	}
+	remainingMS := row.WhiteClockMS
+	if row.Turn == "b" {
+		remainingMS = row.BlackClockMS
+	}
+	if remainingMS <= 0 {
+		return true
+	}
+	return now.Sub(row.TurnStartedAt) >= time.Duration(remainingMS)*time.Millisecond
 }
 
 func (s *MongoStore) hashRoster(ctx context.Context, h hash.Hash, now time.Time) error {
@@ -388,7 +473,28 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusUnauthorized, map[string]any{"detail": "Sesión inválida o expirada. Inicia sesión de nuevo."})
 		return
 	}
-	revision, err := h.store.Revision(r.Context(), claims.Subject, h.now().UTC())
+	now := h.now().UTC()
+	if matchID, ok := matchPulseID(r.URL.Path); ok {
+		state, err := h.store.MatchState(r.Context(), claims.Subject, matchID, now)
+		if err != nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]any{"detail": "No se pudo consultar el pulso de la partida 1v1."})
+			return
+		}
+		if !state.Found {
+			writeJSON(w, http.StatusNotFound, map[string]any{"detail": "Partida 1v1 no encontrada."})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"revision":     state.Revision,
+			"status":       state.Status,
+			"lifecycleDue": state.LifecycleDue,
+			"pollAfterMs":  1250,
+			"source":       "go",
+		})
+		return
+	}
+
+	revision, err := h.store.Revision(r.Context(), claims.Subject, now)
 	if err != nil {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]any{"detail": "No se pudo consultar el pulso 1v1."})
 		return
@@ -398,6 +504,20 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		"pollAfterMs": h.pollAfterMS,
 		"source":      "go",
 	})
+}
+
+func matchPulseID(path string) (string, bool) {
+	const prefix = "/api/pvp/matches/"
+	const suffix = "/pulse"
+	if !strings.HasPrefix(path, prefix) || !strings.HasSuffix(path, suffix) {
+		return "", false
+	}
+	matchID := strings.TrimSuffix(strings.TrimPrefix(path, prefix), suffix)
+	matchID = strings.Trim(matchID, "/")
+	if matchID == "" || strings.Contains(matchID, "/") {
+		return "", false
+	}
+	return matchID, true
 }
 
 func (h *Handler) authenticate(r *http.Request) (tokenClaims, error) {
