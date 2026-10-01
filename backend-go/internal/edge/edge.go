@@ -136,7 +136,11 @@ func (h *Handler) ready(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("X-Chess-Pvp-Edge", "go")
-	writeJSON(w, http.StatusOK, map[string]any{"status": "ready", "service": serviceName})
+	writeJSON(w, http.StatusOK, map[string]any{
+		"status":      "ready",
+		"service":     serviceName,
+		"nativePulse": h.nativePulse != nil,
+	})
 }
 
 func writeJSON(w http.ResponseWriter, status int, payload map[string]any) {
