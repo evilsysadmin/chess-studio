@@ -188,7 +188,7 @@ def build_rig():
     # emerge from beneath the plinth instead of being pasted onto its front.
     bone('upper_leg.L',(-.20,-.02,.10),(-.22,-.03,-.02),'root'); bone('lower_leg.L',(-.22,-.03,-.02),(-.21,-.05,-.15),'upper_leg.L')
     bone('upper_leg.R',(.20,-.02,.10),(.22,-.03,-.02),'root'); bone('lower_leg.R',(.22,-.03,-.02),(.21,-.05,-.15),'upper_leg.R')
-    bone('prop_book',(0,-.30,.82),(0,-.30,1.00),'spine'); bone('prop_cup',(.27,-.28,1.12),(.27,-.28,1.24),'spine'); bone('prop_pen',(.14,-.31,.84),(.14,-.31,.97),'spine'); bone('prop_bite',(-.25,-.29,1.12),(-.25,-.29,1.24),'spine')
+    bone('prop_book',(0,-.30,.82),(0,-.30,1.00),'spine'); bone('prop_reports',(-.22,-.30,.98),(-.22,-.30,1.14),'spine'); bone('prop_cup',(.27,-.28,1.12),(.27,-.28,1.24),'spine'); bone('prop_pen',(.14,-.31,.84),(.14,-.31,.97),'spine'); bone('prop_bite',(-.25,-.29,1.12),(-.25,-.29,1.24),'spine')
     bpy.ops.object.mode_set(mode='POSE')
     for item in rig.pose.bones: item.rotation_mode='XYZ'
     bpy.ops.object.mode_set(mode='OBJECT'); return rig
@@ -204,7 +204,7 @@ def build_character():
     ivory=mat('classic warm ivory',(.70,.60,.44),.60,.00); ivory_hi=mat('classic ivory highlight',(.80,.69,.52),.56,.00)
     navy=mat('classic midnight pawn',(.0025,.0035,.0055),.38,.12); navy_soft=mat('classic navy cloth',(.006,.008,.012),.48,.04)
     leather=mat('classic black leather',(.006,.004,.003),.46,.05); brass=mat('classic aged brass',(.50,.27,.055),.34,.82); cap_red=mat('classic cap oxblood band',(.075,.012,.009),.44,.02); black=mat('classic brow eye mouth',(.0015,.002,.003),.56); paper=mat('aged dossier paper',(.42,.30,.16),.88); collar_steel=mat('classic pale steel collar',(.30,.29,.26),.40,.42); bread=mat('campaign bread',(.70,.52,.28),.82)
-    rig=build_rig(); rig['matthias_asset_version']='home-blender-classic-v21'; rig['canonical_identity']='stern-no-moustache-pawn'; rig['canonical_reference']='classic-pawn-first-avatar'; rig['canonical_reference_sha256']='beb64c1dffd6b32a64847b8f768df43e823e858acf630516e27a2cc771e2d975'; rig['canonical_pose_language']='permanently-stern'
+    rig=build_rig(); rig['matthias_asset_version']='home-blender-classic-v22'; rig['canonical_identity']='stern-no-moustache-pawn'; rig['canonical_reference']='classic-pawn-first-avatar'; rig['canonical_reference_sha256']='beb64c1dffd6b32a64847b8f768df43e823e858acf630516e27a2cc771e2d975'; rig['canonical_pose_language']='permanently-stern'
     root=[]; spine=[]; head=[]
 
     root += [
@@ -259,7 +259,9 @@ def build_character():
     boot_l=elliptic_cyl('Boot.L',(-.210,-.090,-.190),.050,.074,.62,leather,(math.radians(78),math.radians(-4),math.radians(3)),40,.008)
     boot_r=elliptic_cyl('Boot.R',(.210,-.090,-.190),.050,.074,.62,leather,(math.radians(78),math.radians(4),math.radians(-3)),40,.008)
 
-    book=box('RoutineBook',(0,-.485,.915),(.225,.025,.145),leather,(math.radians(5),0,0),.012); book_page=box('RoutineBookPages',(0,-.512,.915),(.166,.008,.096),paper,(math.radians(5),0,0),.004); book_badge=sphere('RoutineBookBadge',(0,-.526,.910),(.030,.008,.036),brass,20); book_hand_l=sphere('RoutineBookHand.L',(-.205,-.520,.835),(.036,.024,.041),ivory,24); book_hand_r=sphere('RoutineBookHand.R',(.205,-.520,.835),(.036,.024,.041),ivory,24); cup=cyl('RoutineCup',(.265,-.420,1.195),.090,.132,ivory_hi,verts=48,bevel=.010); cup_band=cyl('RoutineCupBand',(.265,-.420,1.253),.092,.013,brass,verts=48,bevel=.004); cup_handle=sphere('RoutineCupHandle',(.365,-.420,1.198),(.045,.021,.060),brass,24); cup_hand=sphere('RoutineCupHand',(.220,-.438,1.105),(.038,.028,.043),ivory,24); pen=cyl('RoutinePen',(.145,-.525,.935),.010,.24,leather,(0,math.radians(64),math.radians(-8)),verts=24,bevel=.004); pen_tip=cone('RoutinePenTip',(.255,-.525,.885),.016,.003,.060,brass,(0,math.radians(64),math.radians(-8)),.003)
+    book=box('RoutineBook',(0,-.485,.915),(.225,.025,.145),leather,(math.radians(5),0,0),.012); book_page=box('RoutineBookPages',(0,-.512,.915),(.166,.008,.096),paper,(math.radians(5),0,0),.004); book_badge=sphere('RoutineBookBadge',(0,-.526,.910),(.030,.008,.036),brass,20); book_hand_l=sphere('RoutineBookHand.L',(-.205,-.520,.835),(.036,.024,.041),ivory,24); book_hand_r=sphere('RoutineBookHand.R',(.205,-.520,.835),(.036,.024,.041),ivory,24)
+    report_back=box('RoutineReportBack',(-.205,-.492,1.030),(.158,.010,.205),paper,(math.radians(7),math.radians(-7),math.radians(-5)),.004); report_front=box('RoutineReportFront',(-.170,-.505,1.045),(.155,.008,.198),ivory_hi,(math.radians(8),math.radians(-4),math.radians(2)),.003); report_clip=box('RoutineReportClip',(-.170,-.519,1.214),(.040,.006,.018),brass,(math.radians(8),math.radians(-4),math.radians(2)),.003); report_hand=sphere('RoutineReportHand',(-.300,-.500,.900),(.036,.026,.042),ivory,24)
+    cup=cyl('RoutineCup',(.265,-.420,1.195),.090,.132,ivory_hi,verts=48,bevel=.010); cup_band=cyl('RoutineCupBand',(.265,-.420,1.253),.092,.013,brass,verts=48,bevel=.004); cup_handle=sphere('RoutineCupHandle',(.365,-.420,1.198),(.045,.021,.060),brass,24); cup_hand=sphere('RoutineCupHand',(.220,-.438,1.105),(.038,.028,.043),ivory,24); pen=cyl('RoutinePen',(.145,-.525,.935),.010,.24,leather,(0,math.radians(64),math.radians(-8)),verts=24,bevel=.004); pen_tip=cone('RoutinePenTip',(.255,-.525,.885),.016,.003,.060,brass,(0,math.radians(64),math.radians(-8)),.003)
     # Keep the campaign bite below the stern mouth. At Home scale, a prop that
     # crosses the mouth reads as a replacement face instead of a short routine.
     sandwich_bread=box('RoutineSandwichBread',(-.292,-.435,1.085),(.132,.038,.049),bread,(math.radians(4),math.radians(-7),math.radians(-6)),.016); sandwich_filling=box('RoutineSandwichFilling',(-.292,-.477,1.080),(.117,.013,.037),cap_red,(math.radians(4),math.radians(-7),math.radians(-6)),.007); sandwich_hand=sphere('RoutineSandwichHand',(-.230,-.448,1.015),(.036,.027,.040),ivory,24)
@@ -275,6 +277,7 @@ def build_character():
     for obj in (shin_l,knee_cap_l,boot_l): parent_bone(obj,rig,'lower_leg.L')
     for obj in (shin_r,knee_cap_r,boot_r): parent_bone(obj,rig,'lower_leg.R')
     for obj in (book,book_page,book_badge,book_hand_l,book_hand_r): parent_bone(obj,rig,'prop_book')
+    for obj in (report_back,report_front,report_clip,report_hand): parent_bone(obj,rig,'prop_reports')
     for obj in (cup,cup_band,cup_handle,cup_hand): parent_bone(obj,rig,'prop_cup')
     for obj in (pen,pen_tip): parent_bone(obj,rig,'prop_pen')
     for obj in (sandwich_bread,sandwich_filling,sandwich_hand): parent_bone(obj,rig,'prop_bite')
