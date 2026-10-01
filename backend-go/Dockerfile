@@ -1,6 +1,7 @@
 FROM golang:1.27.1-alpine3.23 AS build
 WORKDIR /src
 COPY go.mod ./
+RUN go mod download
 COPY cmd ./cmd
 COPY internal ./internal
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags='-s -w' -o /out/pvp-edge ./cmd/pvp-edge
