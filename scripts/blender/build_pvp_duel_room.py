@@ -214,7 +214,15 @@ def build_floor_and_dais(static, p):
 
 def build_architecture(static, p):
     # Heavy fortress envelope. No foreground columns: board selection remains sacred.
-    base.cube("PVP_ROOM_rear_wall", (0, 6.52, 3.55), (8.7, 0.34, 3.70),
+    # The rear wall is genuinely open at the gate. The old single slab left a
+    # dark panel behind the portcullis, so no amount of dressing could create
+    # convincing depth. Keep the legacy rear-wall node name on the lintel and
+    # build independent wings around a real corridor opening.
+    base.cube("PVP_ROOM_rear_wall", (0, 6.52, 6.70), (2.70, 0.34, 0.55),
+              p["wall"], static, bevel=0.05)
+    base.cube("PVP_ROOM_rear_wall_left", (-5.70, 6.52, 3.55), (3.00, 0.34, 3.70),
+              p["wall"], static, bevel=0.05)
+    base.cube("PVP_ROOM_rear_wall_right", (5.70, 6.52, 3.55), (3.00, 0.34, 3.70),
               p["wall"], static, bevel=0.05)
     base.cube("PVP_ROOM_left_wall", (-8.47, 0.85, 3.35), (0.30, 5.55, 3.45),
               p["wall"], static, bevel=0.05)
@@ -251,15 +259,37 @@ def build_architecture(static, p):
             block.rotation_euler.z = math.radians(((row * 5 + col * 3) % 5 - 2) * 0.30)
             stone_index += 1
 
-    # Deep pointed prison portal: black recess + portcullis + limestone dressings.
-    base.cube("PVP_DUEL_portal_void", (0, 6.16, 2.60), (2.34, 0.10, 2.54),
+    # Real gate tunnel. Its side walls and floor extend behind the masonry so
+    # the portcullis reads as an entrance into the fortress, not a black decal.
+    base.cube("PVP_DUEL_tunnel_left_wall", (-2.46, 7.52, 2.72), (0.18, 1.28, 2.72),
+              p["recess"], static, bevel=0.045)
+    base.cube("PVP_DUEL_tunnel_right_wall", (2.46, 7.52, 2.72), (0.18, 1.28, 2.72),
+              p["recess"], static, bevel=0.045)
+    base.cube("PVP_DUEL_tunnel_floor", (0, 7.52, 0.13), (2.42, 1.28, 0.13),
+              p["wet_stone"], static, bevel=0.025)
+    base.cube("PVP_DUEL_tunnel_ceiling", (0, 7.52, 5.42), (2.42, 1.28, 0.12),
+              p["recess"], static, bevel=0.025)
+
+    # A dim far wall plus a cold slit gives the eye a genuine endpoint several
+    # metres behind the iron gate. The restrained emission remains secondary
+    # to the warm room and never competes with the board.
+    base.cube("PVP_DUEL_portal_void", (0, 8.82, 2.60), (2.30, 0.10, 2.54),
               p["recess"], static, bevel=0.10)
-    # A few broad back-stones keep the portcullis readable instead of collapsing
-    # into a featureless black rectangle in the hero framing.
+    base.cube("PVP_DUEL_tunnel_depth_slit", (0, 8.69, 3.05), (0.20, 0.025, 0.78),
+              p["night"], static, bevel=0.055)
+    base.cube("PVP_DUEL_tunnel_depth_mullion", (0, 8.64, 3.05), (0.025, 0.020, 0.72),
+              p["iron"], static, bevel=0.008)
+
+    # Floor joints and back courses create perspective cues through the bars.
+    for course_idx, y in enumerate((6.42, 7.02, 7.62, 8.22)):
+        base.cube(
+            f"PVP_DUEL_tunnel_floor_course_{course_idx}", (0, y, 0.275),
+            (2.18, 0.025, 0.018), p["dais"], static, bevel=0.008,
+        )
     for row, z in enumerate((1.20, 2.10, 3.00, 3.90, 4.80)):
         base.cube(
-            f"PVP_DUEL_portal_back_course_{row}", (0, 6.035, z),
-            (2.20, 0.022, 0.028), p["dais"], static, bevel=0.010,
+            f"PVP_DUEL_portal_back_course_{row}", (0, 8.67, z),
+            (2.16, 0.022, 0.028), p["dais"], static, bevel=0.010,
         )
     for side in (-1, 1):
         base.cube(
@@ -274,21 +304,21 @@ def build_architecture(static, p):
     base.cube("PVP_DUEL_portal_keystone", (0, 5.70, 6.03), (0.31, 0.22, 0.40),
               p["dais"], static, bevel=0.07)
 
-    # A second, darker pointed arch sits behind the bars. This gives the gate
-    # actual corridor depth instead of reading as one black rectangle.
+    # A second pointed arch now sits materially deeper in the tunnel. Its
+    # parallax against the front portcullis is the primary depth cue.
     for side in (-1, 1):
         base.cube(
-            f"PVP_DUEL_inner_gate_pier_{side}", (side * 1.42, 6.045, 2.88),
-            (0.16, 0.030, 1.72), p["dais"], static, bevel=0.045,
+            f"PVP_DUEL_inner_gate_pier_{side}", (side * 1.42, 7.48, 2.88),
+            (0.16, 0.10, 1.72), p["dais"], static, bevel=0.045,
         )
         inner_arch = base.cube(
-            f"PVP_DUEL_inner_gate_arch_{side}", (side * 0.72, 6.040, 4.78),
-            (0.82, 0.030, 0.14), p["dais"], static, bevel=0.045,
+            f"PVP_DUEL_inner_gate_arch_{side}", (side * 0.72, 7.48, 4.78),
+            (0.82, 0.10, 0.14), p["dais"], static, bevel=0.045,
         )
         inner_arch.rotation_euler.y = math.radians(-side * 28.0)
     base.cube(
-        "PVP_DUEL_inner_gate_floor", (0, 6.035, 1.05),
-        (1.28, 0.030, 0.10), p["wet_stone"], static, bevel=0.025,
+        "PVP_DUEL_inner_gate_floor", (0, 7.48, 0.33),
+        (1.28, 0.10, 0.08), p["dais"], static, bevel=0.025,
     )
 
     # Gate machinery: two wall-mounted hoist wheels make the portcullis feel functional.
@@ -1037,7 +1067,7 @@ def build_lighting(static):
     base.anchor("PVP_ANCHOR_side_brazier_left", (-DUEL_SIDE_BRAZIER_X, 1.62, 3.62), static)
     base.anchor("PVP_ANCHOR_side_brazier_right", (DUEL_SIDE_BRAZIER_X, 1.62, 3.62), static)
     base.anchor("PVP_ANCHOR_moon_fill", (0.0, 5.16, 6.48), static)
-    base.anchor("PVP_ANCHOR_gate_depth", (0.0, 5.96, 3.25), static)
+    base.anchor("PVP_ANCHOR_gate_depth", (0.0, 7.45, 3.15), static)
 
 def bake_weather():
     base.WEATHER_MATERIALS = DUEL_WEATHER_MATERIALS
@@ -1084,6 +1114,11 @@ def validate_scene():
         "PVP_DUEL_portcullis_tooth_0",
         "PVP_DUEL_inner_gate_pier_-1",
         "PVP_DUEL_inner_gate_floor",
+        "PVP_DUEL_tunnel_left_wall",
+        "PVP_DUEL_tunnel_right_wall",
+        "PVP_DUEL_tunnel_floor",
+        "PVP_DUEL_tunnel_ceiling",
+        "PVP_DUEL_tunnel_depth_slit",
         "PVP_DUEL_side_pier_left_0",
         "PVP_DUEL_chain_left_0_0",
         "PVP_DUEL_hanging_brazier_left",
