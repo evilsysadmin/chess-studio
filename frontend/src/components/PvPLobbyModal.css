@@ -2245,3 +2245,115 @@
     scroll-behavior: auto !important;
   }
 }
+
+
+/* Command hierarchy: challenges first, rivals second, ambient chat on demand. */
+.pvp-lobby__identity {
+  min-height: 64px;
+  margin-top: .65rem;
+  padding: .62rem .74rem;
+}
+
+.pvp-lobby__identity-main > div > span {
+  max-width: 520px;
+}
+
+.pvp-lobby__panel--challenges.is-empty {
+  display: none;
+}
+
+.pvp-lobby__grid.has-challenges {
+  grid-template-columns: 1fr;
+}
+
+.pvp-lobby__grid.has-challenges .pvp-lobby__side {
+  order: -1;
+  grid-template-columns: 1fr;
+}
+
+.pvp-lobby__grid.has-challenges .pvp-lobby__panel--challenges {
+  border-color: rgba(223, 176, 95, .32);
+  background:
+    linear-gradient(90deg, rgba(178, 117, 45, .075), transparent 56%),
+    rgba(8, 8, 8, .18);
+}
+
+.pvp-lobby__chat-disclosure {
+  min-width: 0;
+  border: 1px solid rgba(199, 165, 110, .1);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, .01);
+}
+
+.pvp-lobby__chat-disclosure > summary {
+  min-height: 44px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: .55rem;
+  padding: .52rem .68rem;
+  cursor: pointer;
+  list-style: none;
+  color: rgba(236, 228, 209, .7);
+}
+
+.pvp-lobby__chat-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.pvp-lobby__chat-disclosure > summary > span {
+  min-width: 0;
+  display: grid;
+  gap: .02rem;
+}
+
+.pvp-lobby__chat-disclosure > summary small {
+  color: rgba(210, 170, 105, .66);
+  font-family: var(--font-mono);
+  font-size: .5rem;
+  letter-spacing: .12em;
+}
+
+.pvp-lobby__chat-disclosure > summary strong {
+  font-size: .78rem;
+  font-weight: 600;
+}
+
+.pvp-lobby__chat-disclosure > summary b {
+  min-width: 1.55rem;
+  text-align: center;
+  color: #e4c88e;
+  font-family: var(--font-mono);
+  font-size: .62rem;
+}
+
+.pvp-lobby__chat-disclosure > summary i {
+  color: rgba(224, 193, 136, .72);
+  font-size: .7rem;
+  font-style: normal;
+}
+
+.pvp-lobby__chat-disclosure[open] > summary {
+  border-bottom: 1px solid rgba(199, 165, 110, .08);
+}
+
+.pvp-lobby__chat-disclosure .pvp-lobby__panel--chat {
+  border: 0;
+  border-radius: 0 0 11px 11px;
+  box-shadow: none;
+}
+
+@media (max-width: 660px) {
+  .pvp-lobby__identity {
+    margin-top: .45rem;
+    padding: .55rem .6rem;
+  }
+
+  .pvp-lobby__grid.has-challenges {
+    gap: .5rem;
+  }
+
+  .pvp-lobby__chat-disclosure > summary {
+    min-height: 46px;
+  }
+}
