@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { pvpPollPlan } from './usePvpRosterPresence.js';
+import { pvpPollPlan, pvpPulseNeedsFullRefresh } from './usePvpRosterPresence.js';
 
 describe('PvP roster polling lifecycle', () => {
   it('keeps only the roster heartbeat cadence while the tab is hidden', () => {
@@ -25,5 +25,44 @@ describe('PvP roster polling lifecycle', () => {
       heartbeatOnly: false,
       delay: 3000,
     });
+  });
+});
+
+
+describe('PvP native lobby pulse invalidation', () => {
+  it('requires a full lobby read until a pulse baseline exists', () => {
+    expect(pvpPulseNeedsFullRefresh({
+      previousRevision: '',
+      nextRevision: 'rev-a',
+      lastFullAt: 1000,
+      nowMs: 2000,
+    })).toBe(true);
+  });
+
+  it('skips Python while the native revision is stable inside reconcile window', () => {
+    expect(pvpPulseNeedsFullRefresh({
+      previousRevision: 'rev-a',
+      nextRevision: 'rev-a',
+      lastFullAt: 1000,
+      nowMs: 25000,
+    })).toBe(false);
+  });
+
+  it('refreshes Python immediately when native state changes', () => {
+    expect(pvpPulseNeedsFullRefresh({
+      previousRevision: 'rev-a',
+      nextRevision: 'rev-b',
+      lastFullAt: 1000,
+      nowMs: 4000,
+    })).toBe(true);
+  });
+
+  it('forces a bounded full reconcile even when the pulse stays stable', () => {
+    expect(pvpPulseNeedsFullRefresh({
+      previousRevision: 'rev-a',
+      nextRevision: 'rev-a',
+      lastFullAt: 1000,
+      nowMs: 31000,
+    })).toBe(true);
   });
 });
