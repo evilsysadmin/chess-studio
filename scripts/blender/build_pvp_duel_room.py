@@ -530,6 +530,160 @@ def build_teutonic_armory(static, p):
         )
 
 
+
+def build_gothic_sentinel(static, p, side, label, sx, sy):
+    """Life-size ceremonial gothic plate, authored facing local -Y then aimed at the board."""
+    prefix = f"PVP_DUEL_sentinel_{label}"
+    parts = []
+    yaw = math.atan2(-sx, sy)
+    foot = 0.50
+
+    def add(obj):
+        parts.append(obj)
+        return obj
+
+    def sph(name, loc, radius, mat, scale=(1.0, 1.0, 1.0)):
+        return add(base.sphere(
+            f"{prefix}_{name}", loc, radius, mat, static, scale=scale,
+        ))
+
+    def box(name, loc, half, mat, *, bevel=0.01, rot=None):
+        obj = add(base.cube(
+            f"{prefix}_{name}", loc, half, mat, static, bevel=bevel,
+        ))
+        if rot is not None:
+            obj.rotation_euler = rot
+        return obj
+
+    def taper(name, loc, r_bottom, r_top, depth, mat, *, vertices=16):
+        return add(tapered_plate(
+            f"{prefix}_{name}", loc, r_bottom, r_top, depth,
+            mat, static, vertices=vertices,
+        ))
+
+    # Stone pedestal stays architectural and is not rotated/scaled with the suit.
+    base.cube(
+        f"{prefix}_plinth", (sx, sy, 0.26),
+        (0.44, 0.42, 0.26), p["dais"], static, bevel=0.07,
+    )
+    base.cube(
+        f"{prefix}_plinth_top", (sx, sy, 0.48),
+        (0.40, 0.38, 0.045), p["oak"], static, bevel=0.025,
+    )
+
+    # Legs: pointed sabatons, greaves, winged poleyns, cuisses and tassets.
+    for leg in (-1, 1):
+        lx = sx + leg * 0.12
+        sph(f"sabaton_{leg}", (lx, sy - 0.08, foot + 0.04), 0.075, p["iron"],
+            scale=(0.75, 1.90, 0.45))
+        sph(f"instep_{leg}", (lx, sy - 0.02, foot + 0.08), 0.072, p["armor"],
+            scale=(0.90, 1.10, 0.62))
+        taper(f"greave_{leg}", (lx, sy, foot + 0.34), 0.062, 0.086, 0.50, p["armor"])
+        sph(f"knee_{leg}", (lx, sy - 0.04, foot + 0.61), 0.082, p["armor"],
+            scale=(1.0, 0.90, 1.0))
+        sph(f"knee_wing_{leg}", (lx + leg * 0.07, sy - 0.03, foot + 0.61), 0.060, p["armor"],
+            scale=(0.35, 0.90, 1.0))
+        taper(f"cuisse_{leg}", (lx, sy, foot + 0.87), 0.085, 0.108, 0.46, p["armor"])
+        box(
+            f"tasset_{leg}",
+            (lx + leg * 0.02, sy - 0.10, foot + 1.03),
+            (0.10, 0.012, 0.12), p["armor"], bevel=0.020,
+            rot=(math.radians(-12), math.radians(leg * 10), 0),
+        )
+
+    # Small dark core keeps gaps between articulated plates believable.
+    box("torso", (sx, sy + 0.02, 1.86), (0.20, 0.12, 0.34), p["iron"], bevel=0.07)
+
+    # Fauld + fluted cuirass.
+    for lame, (z, radius) in enumerate(((1.62, 0.232), (1.69, 0.240), (1.76, 0.246))):
+        taper(f"fauld_{lame}", (sx, sy, z), radius + 0.012, radius, 0.075, p["armor"], vertices=20)
+    sph("breastplate", (sx, sy - 0.01, 2.06), 0.30, p["armor"], scale=(0.94, 0.60, 1.00))
+    sph("plackart", (sx, sy - 0.07, 1.86), 0.24, p["armor"], scale=(0.95, 0.62, 0.75))
+    box("breast_ridge", (sx, sy - 0.188, 2.04), (0.014, 0.010, 0.22), p["brass"], bevel=0.006)
+    for flute in (-1, 1):
+        box(
+            f"breast_flute_{flute}", (sx + flute * 0.10, sy - 0.170, 2.03),
+            (0.010, 0.010, 0.19), p["armor"], bevel=0.005,
+            rot=(0, math.radians(flute * -8), 0),
+        )
+    add(base.torus(f"{prefix}_neckline", (sx, sy - 0.02, 2.30), 0.13, 0.018, p["brass"], static))
+    box("belt", (sx, sy - 0.02, 1.58), (0.25, 0.16, 0.028), p["seat_leather"], bevel=0.012)
+    box("belt_buckle", (sx, sy - 0.18, 1.58), (0.035, 0.008, 0.030), p["brass"], bevel=0.005)
+
+    # House-colour tabard gives each sentinel a PvP identity without turning it into a mascot.
+    field = p["red"] if side < 0 else p["blue"]
+    tilt = (math.radians(-8), 0, 0)
+    box("tabard", (sx, sy - 0.20, 1.38), (0.16, 0.010, 0.20), field, bevel=0.008, rot=tilt)
+    box("tabard_hem", (sx, sy - 0.225, 1.185), (0.16, 0.008, 0.018), p["brass"], bevel=0.004, rot=tilt)
+
+    # Arms: three-lame pauldrons, besagews, articulated elbows and gauntlets.
+    for arm_idx, arm in enumerate((-1, 1)):
+        ax = sx + arm * 0.34
+        for lame, (dz, radius, scale_z) in enumerate(((0.0, 0.16, 0.85), (-0.08, 0.145, 0.75), (-0.15, 0.13, 0.65))):
+            sph(
+                f"pauldron_{arm_idx}_{lame}",
+                (ax + arm * 0.02 * lame, sy, 2.24 + dz),
+                radius, p["armor"], scale=(1.15, 1.05, scale_z),
+            )
+        add(base.torus(
+            f"{prefix}_pauldron_rim_{arm_idx}",
+            (ax, sy, 2.30), 0.145, 0.012, p["brass"], static,
+        ))
+        sph(f"besagew_{arm_idx}", (ax - arm * 0.10, sy - 0.15, 2.12), 0.05, p["brass"],
+            scale=(1.0, 0.35, 1.0))
+        taper(f"rerebrace_{arm_idx}", (ax + arm * 0.02, sy, 1.98), 0.058, 0.066, 0.26, p["armor"])
+        sph(f"elbow_{arm_idx}", (ax + arm * 0.025, sy + 0.01, 1.84), 0.065, p["armor"])
+        sph(f"elbow_wing_{arm_idx}", (ax + arm * 0.06, sy + 0.01, 1.84), 0.055, p["armor"],
+            scale=(0.35, 1.0, 1.0))
+        taper(f"vambrace_{arm_idx}", (ax + arm * 0.025, sy - 0.02, 1.68), 0.050, 0.060, 0.26, p["armor"])
+        taper(f"gauntlet_cuff_{arm_idx}", (ax + arm * 0.025, sy - 0.03, 1.53), 0.070, 0.052, 0.08, p["iron"])
+        sph(f"gauntlet_{arm_idx}", (ax + arm * 0.025, sy - 0.04, 1.46), 0.055, p["iron"],
+            scale=(0.9, 1.1, 1.2))
+
+    # Two-lame gorget and beaked armet.
+    for lame, (z, radius) in enumerate(((2.33, 0.125), (2.38, 0.108))):
+        taper(f"gorget_{lame}", (sx, sy, z), radius + 0.010, radius, 0.05, p["armor"], vertices=18)
+    sph("helmet", (sx, sy + 0.01, 2.56), 0.165, p["armor"], scale=(0.92, 1.0, 1.12))
+    sph("visor_shell", (sx, sy - 0.10, 2.53), 0.12, p["armor"], scale=(0.82, 0.95, 0.80))
+    sph("visor_beak", (sx, sy - 0.19, 2.51), 0.060, p["armor"], scale=(0.90, 1.30, 0.80))
+    box("visor", (sx, sy - 0.188, 2.585), (0.085, 0.012, 0.010), p["iron"], bevel=0.002)
+    box("helm_comb", (sx, sy + 0.01, 2.72), (0.012, 0.13, 0.035), p["brass"], bevel=0.006)
+
+    # Halberd, grounded and proportioned as part of the same authored figure.
+    hx = sx + 0.44
+    shaft_top = 3.30
+    add(base.cylinder(
+        f"{prefix}_halberd", (hx, sy - 0.05, (foot + shaft_top) / 2.0),
+        0.022, shaft_top - foot, p["oak_mid"], static, vertices=10,
+    ))
+    box("halberd_langet", (hx, sy - 0.05, shaft_top - 0.34), (0.028, 0.028, 0.18), p["iron"], bevel=0.006)
+    blade = box("halberd_blade", (hx + 0.12, sy - 0.05, shaft_top - 0.22), (0.12, 0.010, 0.13), p["armor"], bevel=0.02)
+    blade.rotation_euler.y = math.radians(-6)
+    box("halberd_fluke", (hx - 0.09, sy - 0.05, shaft_top - 0.22), (0.08, 0.010, 0.022), p["armor"],
+        bevel=0.006, rot=(0, math.radians(-18), 0))
+    box("halberd_spike", (hx, sy - 0.05, shaft_top + 0.15), (0.018, 0.010, 0.17), p["armor"], bevel=0.006)
+
+    # Scale around the planted feet, then rotate local -Y to face the board centre.
+    k = 1.28
+    c, sn = math.cos(yaw), math.sin(yaw)
+    for part in parts:
+        part.location.x = sx + (part.location.x - sx) * k
+        part.location.y = sy + (part.location.y - sy) * k
+        part.location.z = foot + (part.location.z - foot) * k
+        part.scale = tuple(component * k for component in part.scale)
+
+        dx, dy = part.location.x - sx, part.location.y - sy
+        part.location.x = sx + c * dx - sn * dy
+        part.location.y = sy + sn * dx + c * dy
+        part.rotation_euler.z += yaw
+
+    sentinel_light = base.light(
+        f"PVP_LIGHT_sentinel_{label}", "POINT",
+        (sx, sy - 0.35, 2.10), 78.0,
+        (0.72, 0.27, 0.08), static, radius=0.95,
+    )
+    sentinel_light["war_room_runtime_dynamic"] = "pvp-sentinel"
+
 def build_dungeon_population(static, p):
     """Populate the room like a working Teutonic fortress without touching the board cone."""
     for side, label in ((-1, "left"), (1, "right")):
@@ -571,262 +725,10 @@ def build_dungeon_population(static, p):
         )
         side_light["war_room_runtime_dynamic"] = "pvp-side-brazier"
 
-        # Armoured sentinel on a low plinth, behind and outside the board.
+        # Premium ceremonial sentinel, independently authored for PvP but using
+        # the proven gothic full-plate proportions from the V3 art language.
         sx, sy = side * 4.92, 3.34
-        base.cube(
-            f"PVP_DUEL_sentinel_{label}_plinth", (sx, sy, 0.30),
-            (0.48, 0.40, 0.30), p["dais"], static, bevel=0.07,
-        )
-        for leg_idx, dx in enumerate((-0.16, 0.16)):
-            leg_side = -1 if leg_idx == 0 else 1
-            # Proper articulated leg: pointed sabaton, instep, tapered greave,
-            # winged poleyn, cuisse and a hanging tasset. These are the shapes
-            # that survive the gameplay camera and stop the suit reading as a
-            # stack of cylinders.
-            base.sphere(
-                f"PVP_DUEL_sentinel_{label}_sabatons_{leg_idx}",
-                (sx + dx, sy - 0.12, 0.49), 0.105, p["iron"], static,
-                scale=(0.82, 1.90, 0.48),
-            )
-            base.sphere(
-                f"PVP_DUEL_sentinel_{label}_instep_{leg_idx}",
-                (sx + dx, sy - 0.03, 0.57), 0.095, p["armor"], static,
-                scale=(0.92, 1.16, 0.62),
-            )
-            tapered_plate(
-                f"PVP_DUEL_sentinel_{label}_greave_{leg_idx}",
-                (sx + dx, sy, 0.82), 0.078, 0.105, 0.47,
-                p["armor"], static,
-            )
-            base.sphere(
-                f"PVP_DUEL_sentinel_{label}_knee_{leg_idx}",
-                (sx + dx, sy - 0.04, 1.10), 0.105, p["armor"], static,
-                scale=(1.0, 0.90, 1.0),
-            )
-            base.sphere(
-                f"PVP_DUEL_sentinel_{label}_knee_wing_{leg_idx}",
-                (sx + dx + leg_side * 0.085, sy - 0.03, 1.10),
-                0.065, p["armor"], static, scale=(0.38, 0.92, 1.0),
-            )
-            tapered_plate(
-                f"PVP_DUEL_sentinel_{label}_cuisse_{leg_idx}",
-                (sx + dx, sy, 1.30), 0.098, 0.120, 0.38,
-                p["armor"], static,
-            )
-            tasset = base.cube(
-                f"PVP_DUEL_sentinel_{label}_tasset_{leg_idx}",
-                (sx + dx + leg_side * 0.018, sy - 0.11, 1.43),
-                (0.115, 0.018, 0.13), p["armor"], static, bevel=0.024,
-            )
-            tasset.rotation_euler.x = math.radians(-12)
-            tasset.rotation_euler.y = math.radians(leg_side * 9)
-        base.cube(
-            f"PVP_DUEL_sentinel_{label}_torso", (sx, sy + 0.02, 1.88),
-            (0.28, 0.15, 0.40), p["iron"], static, bevel=0.085,
-        )
-
-        # Layered gothic plate over the structural torso.
-        base.sphere(
-            f"PVP_DUEL_sentinel_{label}_breastplate",
-            (sx, sy - 0.05, 2.08), 0.350, p["armor"], static,
-            scale=(0.90, 0.60, 1.12),
-        )
-        base.sphere(
-            f"PVP_DUEL_sentinel_{label}_plackart",
-            (sx, sy - 0.09, 1.82), 0.272, p["armor"], static,
-            scale=(0.92, 0.62, 0.78),
-        )
-        base.cube(
-            f"PVP_DUEL_sentinel_{label}_breast_ridge",
-            (sx, sy - 0.225, 2.02), (0.018, 0.015, 0.25),
-            p["brass"], static, bevel=0.006,
-        )
-        # Three overlapping fauld lames bridge the cuirass and thighs.
-        for lame_idx, (z, radius) in enumerate(((1.52, 0.29), (1.59, 0.30), (1.66, 0.31))):
-            tapered_plate(
-                f"PVP_DUEL_sentinel_{label}_fauld_{lame_idx}",
-                (sx, sy, z), radius + 0.014, radius, 0.075,
-                p["armor"], static, vertices=18,
-            )
-        base.cube(
-            f"PVP_DUEL_sentinel_{label}_belt", (sx, sy - 0.03, 1.47),
-            (0.40, 0.27, 0.055), p["seat_leather"], static, bevel=0.025,
-        )
-        base.cube(
-            f"PVP_DUEL_sentinel_{label}_belt_buckle", (sx, sy - 0.295, 1.47),
-            (0.050, 0.018, 0.043), p["brass"], static, bevel=0.010,
-        )
-        tabard = base.cube(
-            f"PVP_DUEL_sentinel_{label}_tabard",
-            (sx, sy - 0.250, 1.20), (0.145, 0.018, 0.31),
-            p["red"] if side < 0 else p["blue"], static, bevel=0.016,
-        )
-        tabard.rotation_euler.x = math.radians(-8)
-        base.cube(
-            f"PVP_DUEL_sentinel_{label}_tabard_hem",
-            (sx, sy - 0.272, 0.91), (0.145, 0.012, 0.025),
-            p["brass"], static, bevel=0.006,
-        )
-        # Fluting catches the warm practicals without turning the cuirass into
-        # jewellery; the centre ridge remains the primary gilt accent.
-        for flute_idx, flute_x in enumerate((-0.12, 0.12)):
-            flute = base.cube(
-                f"PVP_DUEL_sentinel_{label}_breast_flute_{flute_idx}",
-                (sx + flute_x, sy - 0.235, 2.02),
-                (0.012, 0.010, 0.205), p["armor"], static, bevel=0.006,
-            )
-            flute.rotation_euler.y = math.radians(-8 if flute_x < 0 else 8)
-        base.torus(
-            f"PVP_DUEL_sentinel_{label}_neckline",
-            (sx, sy - 0.02, 2.31), 0.145, 0.018, p["brass"], static,
-        )
-        for arm_idx, dx in enumerate((-0.38, 0.38)):
-            arm=base.cylinder(
-                f"PVP_DUEL_sentinel_{label}_arm_{arm_idx}",
-                (sx + dx, sy + 0.02, 1.90), 0.060, 0.70, p["iron"], static, vertices=12,
-            )
-            arm.rotation_euler.y = math.radians(8 if arm_idx == 0 else -8)
-
-            arm_side = -1 if arm_idx == 0 else 1
-            ax = sx + dx
-            for lame_idx, (dz, radius, scale_x, scale_z) in enumerate((
-                (0.12, 0.155, 1.16, 0.58),
-                (0.045, 0.142, 1.10, 0.52),
-                (-0.025, 0.126, 1.02, 0.46),
-            )):
-                base.sphere(
-                    f"PVP_DUEL_sentinel_{label}_pauldron_{arm_idx}_{lame_idx}",
-                    (ax + arm_side * 0.020 * lame_idx, sy - 0.005, 2.20 + dz),
-                    radius, p["armor"], static,
-                    scale=(scale_x, 0.80, scale_z),
-                )
-            base.torus(
-                f"PVP_DUEL_sentinel_{label}_pauldron_rim_{arm_idx}",
-                (ax, sy, 2.30), 0.155, 0.014, p["brass"], static,
-            )
-            base.sphere(
-                f"PVP_DUEL_sentinel_{label}_besagew_{arm_idx}",
-                (ax - arm_side * 0.11, sy - 0.15, 2.11),
-                0.060, p["brass"], static, scale=(1.0, 0.35, 1.0),
-            )
-            tapered_plate(
-                f"PVP_DUEL_sentinel_{label}_rerebrace_{arm_idx}",
-                (ax, sy, 1.93), 0.063, 0.072, 0.27,
-                p["armor"], static,
-            )
-            base.sphere(
-                f"PVP_DUEL_sentinel_{label}_elbow_{arm_idx}",
-                (ax, sy - 0.02, 1.76), 0.088, p["armor"], static,
-                scale=(1.0, 0.90, 1.0),
-            )
-            base.sphere(
-                f"PVP_DUEL_sentinel_{label}_elbow_wing_{arm_idx}",
-                (ax + arm_side * 0.075, sy - 0.015, 1.76),
-                0.060, p["armor"], static, scale=(0.36, 1.0, 1.0),
-            )
-            tapered_plate(
-                f"PVP_DUEL_sentinel_{label}_vambrace_{arm_idx}",
-                (ax, sy - 0.02, 1.59), 0.055, 0.066, 0.25,
-                p["armor"], static,
-            )
-            tapered_plate(
-                f"PVP_DUEL_sentinel_{label}_gauntlet_cuff_{arm_idx}",
-                (ax, sy - 0.035, 1.43), 0.073, 0.054, 0.09,
-                p["iron"], static,
-            )
-            base.sphere(
-                f"PVP_DUEL_sentinel_{label}_gauntlet_{arm_idx}",
-                (ax, sy - 0.05, 1.35), 0.060, p["iron"], static,
-                scale=(0.90, 1.12, 1.18),
-            )
-        for gorget_idx, (z, radius) in enumerate(((2.34, 0.155), (2.40, 0.135))):
-            tapered_plate(
-                f"PVP_DUEL_sentinel_{label}_gorget_{gorget_idx}",
-                (sx, sy, z), radius + 0.012, radius, 0.055,
-                p["armor"], static, vertices=18,
-            )
-        base.sphere(
-            f"PVP_DUEL_sentinel_{label}_helmet", (sx, sy + 0.01, 2.69),
-            0.245, p["armor"], static, scale=(0.88, 0.90, 1.16),
-        )
-        base.cube(
-            f"PVP_DUEL_sentinel_{label}_brow_plate",
-            (sx, sy - 0.20, 2.66), (0.20, 0.055, 0.055),
-            p["armor"], static, bevel=0.035,
-        )
-        for cheek_idx, cheek_x in enumerate((-0.16, 0.16)):
-            cheek = base.cube(
-                f"PVP_DUEL_sentinel_{label}_cheek_{cheek_idx}",
-                (sx + cheek_x, sy - 0.12, 2.52),
-                (0.055, 0.075, 0.15), p["armor"], static, bevel=0.045,
-            )
-            cheek.rotation_euler.y = math.radians(-6 if cheek_x < 0 else 6)
-        base.sphere(
-            f"PVP_DUEL_sentinel_{label}_visor_shell", (sx, sy - 0.16, 2.58),
-            0.20, p["armor"], static, scale=(0.88, 0.72, 0.78),
-        )
-        base.sphere(
-            f"PVP_DUEL_sentinel_{label}_visor_beak", (sx, sy - 0.34, 2.59),
-            0.095, p["armor"], static, scale=(0.88, 1.45, 0.68),
-        )
-        base.cube(
-            f"PVP_DUEL_sentinel_{label}_visor", (sx, sy - 0.31, 2.62),
-            (0.18, 0.026, 0.018), p["iron"], static, bevel=0.006,
-        )
-        for slit_idx, slit_x in enumerate((-0.075, 0.075)):
-            base.cube(
-                f"PVP_DUEL_sentinel_{label}_eye_slit_{slit_idx}",
-                (sx + slit_x, sy - 0.335, 2.635),
-                (0.052, 0.010, 0.010), p["iron"], static, bevel=0.003,
-            )
-        base.cube(
-            f"PVP_DUEL_sentinel_{label}_helm_comb", (sx, sy + 0.01, 2.92),
-            (0.018, 0.12, 0.055), p["brass"], static, bevel=0.008,
-        )
-        cylinder_between(
-            f"PVP_DUEL_sentinel_{label}_halberd",
-            (sx - side * 0.56, sy + 0.02, 0.52),
-            (sx - side * 0.56, sy + 0.02, 3.35),
-            0.035, p["oak_mid"], static, vertices=12,
-        )
-        base.cube(
-            f"PVP_DUEL_sentinel_{label}_halberd_blade",
-            (sx - side * 0.66, sy, 3.08),
-            (0.18, 0.035, 0.23), p["armor"], static, bevel=0.028,
-        )
-        bpy.ops.mesh.primitive_cone_add(
-            vertices=12, radius1=0.055, radius2=0.0, depth=0.34,
-            location=(sx - side * 0.56, sy + 0.02, 3.48),
-        )
-        spike = bpy.context.object
-        spike.name = f"PVP_DUEL_sentinel_{label}_halberd_spike"
-        spike.data.materials.append(p["armor"])
-        base.tag(spike, base.ROLE_STATIC)
-        base.relink(spike, static)
-
-        # Give the sentinels enough physical presence in the hero camera without
-        # pulling them into the board cone. Scale authored armor around the top
-        # of the plinth so feet remain planted and the halberd grows with it.
-        sentinel_prefix = f"PVP_DUEL_sentinel_{label}_"
-        scale_x, scale_y, scale_z = 1.04, 1.06, 1.30
-        for obj in list(static.objects):
-            if not obj.name.startswith(sentinel_prefix) or obj.name.endswith("_plinth"):
-                continue
-            obj.location.x = sx + (obj.location.x - sx) * scale_x
-            obj.location.y = sy + (obj.location.y - sy) * scale_y
-            obj.location.z = 0.30 + (obj.location.z - 0.30) * scale_z
-            obj.scale = (
-                obj.scale[0] * scale_x,
-                obj.scale[1] * scale_y,
-                obj.scale[2] * scale_z,
-            )
-
-        sentinel_light = base.light(
-            f"PVP_LIGHT_sentinel_{label}", "POINT",
-            (sx, sy - 0.44, 2.02), 88.0,
-            (0.74, 0.28, 0.09), static, radius=1.00,
-        )
-        sentinel_light["war_room_runtime_dynamic"] = "pvp-sentinel"
+        build_gothic_sentinel(static, p, side, label, sx, sy)
 
         # Barrel + supply crate in the rear corner make the room feel occupied.
         cx, cy = side * 6.10, 4.92
