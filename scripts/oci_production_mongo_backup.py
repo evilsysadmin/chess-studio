@@ -74,9 +74,16 @@ def self_test() -> None:
         "opc_checksum_algorithm",
         "list_object_versions",
         "version_id=version_id",
+        "CHESS_STUDIO_MONGO_BACKUP_OFFHOST_STAGED",
+        "CHESS_STUDIO_MONGO_RESTORE_DRILL_OK",
+        "source=oci-object-storage",
+        "docker network create",
+        ".remote-restore.archive.gz",
         "CHESS_STUDIO_MONGO_BACKUP_OFFHOST_OK",
     ):
         assert marker in wrapper_source, marker
+    assert wrapper_source.index("CHESS_STUDIO_MONGO_BACKUP_OFFHOST_STAGED") < wrapper_source.index("CHESS_STUDIO_MONGO_RESTORE_DRILL_OK")
+    assert wrapper_source.index("CHESS_STUDIO_MONGO_RESTORE_DRILL_OK") < wrapper_source.index("CHESS_STUDIO_MONGO_BACKUP_OFFHOST_OK")
     assert wrapper_source.index("CHESS_STUDIO_MONGO_BACKUP_OFFHOST_OK") < wrapper_source.index("mapfile -t backups")
     assert_nonsecret_command(command)
     print("OCI production Mongo backup self-test: OK")
