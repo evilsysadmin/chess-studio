@@ -1,1 +1,1 @@
-One-shot trigger for environment-scoped Resend bootstrap into OCI Vault.\n
+One-shot trigger for environment-scoped Resend bootstrap into OCI Vault.\nHotfix retrigger after production runtime template fix.\n
