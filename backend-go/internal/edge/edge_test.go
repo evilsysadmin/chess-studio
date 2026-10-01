@@ -50,6 +50,49 @@ func TestProxyPreservesPvPRequest(t *testing.T) {
 	}
 }
 
+
+func TestNativePulseBypassesPythonUpstream(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		t.Fatal("native pulse must not reach Python upstream")
+	}))
+	defer upstream.Close()
+
+	native := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/pvp/lobby/pulse" {
+			t.Fatalf("native path=%q", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"revision":"abc","source":"go"}`))
+	})
+	h, err := New(Config{UpstreamURL: upstream.URL, NativePulse: native})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "http://edge/api/pvp/lobby/pulse", nil))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	if got := rr.Header().Get("X-Chess-Pvp-Edge"); got != "go" {
+		t.Fatalf("edge marker=%q", got)
+	}
+}
+
+func TestNativePulseDisabledReturnsNotFoundInsteadOfProxying(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		t.Fatal("disabled native pulse must not silently proxy")
+	}))
+	defer upstream.Close()
+
+	h := mustHandler(t, upstream.URL)
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "http://edge/api/pvp/lobby/pulse", nil))
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("status=%d want=404", rr.Code)
+	}
+}
+
 func TestRejectsNonPvPPaths(t *testing.T) {
 	upstream := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		t.Fatal("upstream must not receive non-PvP requests")
