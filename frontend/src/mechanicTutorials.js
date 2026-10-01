@@ -12,7 +12,7 @@ export const MECHANIC_TUTORIALS = Object.freeze([
     steps: [
       { title: 'El tablero manda', text: 'La escena 3D es el tablero de juego. Selecciona una pieza y una casilla válida como siempre; la decoración de la sala no cambia las reglas del ajedrez.' },
       { title: 'Mira el semáforo de turno', text: 'La pastilla de Matthias te dice de un vistazo si te toca, si juega la CPU o si la partida está pensando o cambiando de estado.' },
-      { title: 'Los tres puntos son el cajón de mando', text: 'Matthias, el rey-peón del tablero, te señala ⋯ en tu primera War Room. Ahí puedes cambiar el tipo de sala y acceder al resto de utilidades; la War Room 3D ya funciona en inmersión por defecto.' },
+      { title: 'Los tres puntos son el cajón de mando', text: 'Matthias, el rey-peón del tablero, te señala ⋯ en tu primera War Room. Ahí viven las utilidades de partida; justo a su derecha, ⚙ abre Mi cuenta. La War Room 3D ya funciona en inmersión por defecto.' },
       { title: 'Salir siempre está a la vista', text: 'SALIR vive como overlay dentro de la propia War Room. No tienes que buscar una acción terminal dentro de ⋯; al pulsarlo verás la confirmación adecuada antes de abandonar o rendirte.' },
       { title: 'Puedes volver a esta guía', text: 'El botón ? junto a los controles vuelve a abrir este tutorial cuando quieras. Saltarlo o terminarlo evita que aparezca automáticamente en futuras partidas.' },
     ],
