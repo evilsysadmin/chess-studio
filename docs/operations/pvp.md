@@ -181,6 +181,7 @@ experiment, not public matchmaking yet.
 - only the configured owner can see, challenge or play residents;
 - other accounts must neither see them in roster nor challenge their usernames;
 - every resident is disclosed in DTO/UI as `RESIDENTE · IA`;
+- protocol ownership keeps the technical username while UI uses the resident display name;
 - resident matches use the same authoritative challenge/handoff/match/clocks/CAS
   lifecycle as human PvP;
 - resident matches remain unrated and never change human PvP Elo;
