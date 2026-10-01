@@ -55,7 +55,6 @@ func New(cfg Config) (*Handler, error) {
 	proxy.Director = func(req *http.Request) {
 		originalHost := req.Host
 		baseDirector(req)
-		req.Host = upstream.Host
 		req.Header.Set("X-Forwarded-Host", originalHost)
 		req.Header.Set("X-Chess-Pvp-Edge", "go")
 	}
