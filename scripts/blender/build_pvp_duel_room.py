@@ -404,7 +404,8 @@ def build_teutonic_armory(static, p):
             spike = bpy.context.object
             spike.name = f"PVP_DUEL_halberd_spike_{label}_{idx}"
             spike.data.materials.append(p["iron"])
-            base.own(spike, static, base.ROLE_STATIC)
+            base.tag(spike, base.ROLE_STATIC)
+            base.relink(spike, static)
 
         # Low iron rack physically ties the weapon display to the masonry.
         base.cube(
