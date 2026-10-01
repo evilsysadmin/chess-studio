@@ -232,6 +232,23 @@ def build_architecture(static, p):
     base.cube("PVP_DUEL_portal_keystone", (0, 5.70, 6.03), (0.31, 0.22, 0.40),
               p["dais"], static, bevel=0.07)
 
+    # A second, darker pointed arch sits behind the bars. This gives the gate
+    # actual corridor depth instead of reading as one black rectangle.
+    for side in (-1, 1):
+        base.cube(
+            f"PVP_DUEL_inner_gate_pier_{side}", (side * 1.42, 6.045, 2.88),
+            (0.16, 0.030, 1.72), p["dais"], static, bevel=0.045,
+        )
+        inner_arch = base.cube(
+            f"PVP_DUEL_inner_gate_arch_{side}", (side * 0.72, 6.040, 4.78),
+            (0.82, 0.030, 0.14), p["dais"], static, bevel=0.045,
+        )
+        inner_arch.rotation_euler.y = math.radians(-side * 28.0)
+    base.cube(
+        "PVP_DUEL_inner_gate_floor", (0, 6.035, 1.05),
+        (1.28, 0.030, 0.10), p["wet_stone"], static, bevel=0.025,
+    )
+
     # Portcullis itself: readable silhouette, safely behind the board.
     for idx, x in enumerate((-1.85, -1.38, -0.92, -0.46, 0.0, 0.46, 0.92, 1.38, 1.85)):
         bar = base.cylinder(
@@ -361,9 +378,9 @@ def build_teutonic_armory(static, p):
 
         # The armory itself sits on the rear wall, outside the banners and above
         # the braziers, where it reads in the canonical framing.
-        shield_x = side * 6.88
+        shield_x = side * 6.55
         shield_y = 5.82
-        shield_z = 4.18
+        shield_z = 3.82
         base.cube(
             f"PVP_DUEL_armory_shield_{label}", (shield_x, shield_y, shield_z),
             (0.58, 0.060, 0.67), p["ivory"], static, bevel=0.12,
@@ -507,6 +524,7 @@ def build_lighting(static):
     base.anchor("PVP_ANCHOR_brazier_left", (-5.92, 5.14, 2.20), static)
     base.anchor("PVP_ANCHOR_brazier_right", (5.92, 5.14, 2.20), static)
     base.anchor("PVP_ANCHOR_moon_fill", (0.0, 5.16, 6.48), static)
+    base.anchor("PVP_ANCHOR_gate_depth", (0.0, 5.96, 3.25), static)
 
 def bake_weather():
     base.WEATHER_MATERIALS = DUEL_WEATHER_MATERIALS
@@ -548,6 +566,8 @@ def validate_scene():
         "PVP_DUEL_banner_blue",
         "PVP_DUEL_teutonic_cross",
         "PVP_DUEL_portcullis",
+        "PVP_DUEL_inner_gate_pier_-1",
+        "PVP_DUEL_inner_gate_floor",
         "PVP_DUEL_vault_rib_0_0",
         "PVP_DUEL_chain_-1_0",
         "PVP_DUEL_arrow_slit_left",
@@ -562,6 +582,7 @@ def validate_scene():
         "PVP_ANCHOR_brazier_left",
         "PVP_ANCHOR_brazier_right",
         "PVP_ANCHOR_moon_fill",
+        "PVP_ANCHOR_gate_depth",
     }
     missing = sorted(required - names)
     if missing:
@@ -625,6 +646,7 @@ def export_shell(path):
         "PVP_ANCHOR_brazier_left",
         "PVP_ANCHOR_brazier_right",
         "PVP_ANCHOR_moon_fill",
+        "PVP_ANCHOR_gate_depth",
     ):
         if name not in node_names:
             raise RuntimeError(f"PvP Duel Room runtime anchor missing: {name}")
