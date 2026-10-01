@@ -236,8 +236,8 @@ def build_architecture(static, p):
             (0.30, 0.26, 2.63), p["limestone"], static, bevel=0.08,
         )
         spring = base.cube(
-            f"PVP_DUEL_portal_arch_{side}", (side * 1.30, 5.95, 5.55),
-            (1.42, 0.25, 0.27), p["limestone"], static, bevel=0.09,
+            f"PVP_DUEL_portal_arch_{side}", (side * 1.30, 6.00, 5.55),
+            (1.30, 0.18, 0.20), p["wall"], static, bevel=0.075,
         )
         spring.rotation_euler.y = math.radians(-side * 25.5)
     base.cube("PVP_DUEL_portal_keystone", (0, 5.70, 6.03), (0.31, 0.22, 0.40),
