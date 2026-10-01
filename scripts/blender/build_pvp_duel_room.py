@@ -36,6 +36,7 @@ DUEL_CHAIR_SCALE = 0.66
 DUEL_SENTINEL_X = 7.55
 DUEL_SENTINEL_Y = 5.25
 DUEL_SENTINEL_SCALE = 1.12
+DUEL_SIDE_BRAZIER_X = 7.25
 HERO_CAMERA_Y = -15.60
 MIN_PROJECTED_PROP_SEPARATION = 0.050
 DUEL_WEATHER_MATERIALS = frozenset({
@@ -701,7 +702,7 @@ def build_dungeon_population(static, p):
     """Populate the room like a working Teutonic fortress without touching the board cone."""
     for side, label in ((-1, "left"), (1, "right")):
         # Large chain-hung brazier near each side wall.
-        bx, by, bz = side * 6.55, 1.62, 3.28
+        bx, by, bz = side * DUEL_SIDE_BRAZIER_X, 1.62, 3.28
         base.cylinder(
             f"PVP_DUEL_hanging_brazier_{label}", (bx, by, bz),
             0.52, 0.24, p["iron"], static, vertices=16,
@@ -1033,8 +1034,8 @@ def build_lighting(static):
     base.anchor("PVP_ANCHOR_room_status", (0, 5.50, 5.58), static)
     base.anchor("PVP_ANCHOR_brazier_left", (-5.92, 5.14, 2.20), static)
     base.anchor("PVP_ANCHOR_brazier_right", (5.92, 5.14, 2.20), static)
-    base.anchor("PVP_ANCHOR_side_brazier_left", (-6.55, 1.62, 3.62), static)
-    base.anchor("PVP_ANCHOR_side_brazier_right", (6.55, 1.62, 3.62), static)
+    base.anchor("PVP_ANCHOR_side_brazier_left", (-DUEL_SIDE_BRAZIER_X, 1.62, 3.62), static)
+    base.anchor("PVP_ANCHOR_side_brazier_right", (DUEL_SIDE_BRAZIER_X, 1.62, 3.62), static)
     base.anchor("PVP_ANCHOR_moon_fill", (0.0, 5.16, 6.48), static)
     base.anchor("PVP_ANCHOR_gate_depth", (0.0, 5.96, 3.25), static)
 
