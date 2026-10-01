@@ -1,0 +1,68 @@
+.war-room-account-button {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0;
+  border: 1px solid rgba(205, 201, 192, .16);
+  border-radius: 999px;
+  color: rgba(233, 226, 211, .78);
+  background: rgba(12, 14, 16, .68);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .22);
+  backdrop-filter: blur(10px);
+  font-size: .88rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.war-room-account-button:hover,
+.war-room-account-button:focus-visible {
+  border-color: rgba(214, 183, 121, .32);
+  color: #f0dfbb;
+  background: rgba(31, 27, 21, .82);
+}
+
+/* In a 3D room the account trigger belongs to the room HUD, immediately after
+   the gameplay overflow. Keep the real masthead trigger mounted only as the
+   state/action owner so the existing account popover and App state stay canonical. */
+.app-shell-board-game:has(.game-layout-3d) .masthead-account-trigger {
+  display: none !important;
+}
+
+.app-shell-board-game:has(.game-layout-3d) .masthead-account-popover {
+  position: fixed !important;
+  z-index: 320 !important;
+  top: max(3.55rem, calc(env(safe-area-inset-top) + 3rem)) !important;
+  right: max(.5rem, env(safe-area-inset-right)) !important;
+  left: auto !important;
+  pointer-events: auto !important;
+}
+
+/* Mobile immersion historically hid the entire account stack. The room-local
+   gear now owns the trigger, so preserve the stack as a zero-cost popover host. */
+body.war-room-immersive-active .app-shell-board-game > .masthead-game-compact .masthead-account-stack {
+  display: grid !important;
+  pointer-events: none !important;
+}
+
+body.war-room-immersive-active .app-shell-board-game > .masthead-game-compact .masthead-account-menu {
+  display: block !important;
+  pointer-events: none !important;
+}
+
+body.war-room-immersive-active .app-shell-board-game > .masthead-game-compact .masthead-account-popover {
+  pointer-events: auto !important;
+}
+
+@media (pointer: coarse), (max-width: 760px), (max-height: 520px) {
+  .war-room-account-button {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+    font-size: 1rem;
+  }
+}
