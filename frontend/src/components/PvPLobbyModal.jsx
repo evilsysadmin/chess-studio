@@ -35,6 +35,10 @@ export function pvpHeadToHeadLabel(record) {
   return `VS TI · ${Number(record?.wins || 0)}V ${Number(record?.draws || 0)}T ${Number(record?.losses || 0)}D`;
 }
 
+export function shouldMarkPvpChatRead(chatOpen, messages) {
+  return Boolean(chatOpen) && Array.isArray(messages) && messages.length > 0;
+}
+
 export function pvpChatRelativeTimeLabel(value, nowMs = Date.now()) {
   const stamp = Date.parse(value || '');
   if (!Number.isFinite(stamp)) return '';
@@ -103,7 +107,7 @@ export default function PvPLobbyModal({
   }, []);
 
   useEffect(() => {
-    if (chatOpen && messages.length) onMarkChatRead?.(messages);
+    if (shouldMarkPvpChatRead(chatOpen, messages)) onMarkChatRead?.(messages);
   }, [chatOpen, messages, onMarkChatRead]);
 
   const refresh = useCallback(async ({ quiet = false, signal } = {}) => {
