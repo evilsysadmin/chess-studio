@@ -25,6 +25,16 @@ def render(color: str, *, pvp_mode: str = "direct") -> str:
         proxy_connect_timeout 2s;
         proxy_send_timeout 45s;
         proxy_read_timeout 45s;"""
+    probe_location = ""
+    if pvp_mode == "go":
+        probe_location = f"""
+    # Deploy-only readiness probe: nginx -> Go -> paired Python readiness.
+    location = /api/pvp/_edge/ready {{
+{proxy_common}
+        proxy_set_header Connection "";
+        proxy_pass http://{pvp_upstream};
+    }}
+"""
     return f"""map $http_upgrade $chess_connection_upgrade {{
     default upgrade;
     '' '';
@@ -37,6 +47,7 @@ server {{
     access_log off;
     keepalive_timeout 5s;
 
+{probe_location}
     # PvP is cut over independently so the rest of the product still talks
     # directly to Python while Go progressively takes ownership of the domain.
     location = /api/pvp {{
@@ -90,6 +101,8 @@ def self_test() -> None:
     assert "pvp_green:8080" in green
     assert "pvp_blue:8080" not in fallback
     assert fallback.count("backend_blue:4000") == 3
+    assert "location = /api/pvp/_edge/ready" in blue
+    assert "location = /api/pvp/_edge/ready" not in fallback
     assert "location = /api/pvp" in blue
     assert "location ^~ /api/pvp/" in blue
     assert "proxy_set_header Upgrade $http_upgrade;" in blue
