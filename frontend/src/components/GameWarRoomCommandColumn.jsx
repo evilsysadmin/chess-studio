@@ -4,6 +4,7 @@ import { CPU_IDENTITY } from '../cpuIdentity.js';
 import { zenModeSummary } from '../zenMode.js';
 import { requestWarRoomTutorialReplay } from '../warRoomFirstRunTutorial.js';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
+import WarRoomAccountButton from './WarRoomAccountButton.jsx';
 import useWarRoomVariant from './useWarRoomVariant.js';
 import { WAR_ROOM_VARIANTS } from './WarRoomVariant.js';
 import '../styles/29-war-room-chrome.css';
@@ -88,13 +89,6 @@ export function WarRoomUtilityMenu({
   const hasUndo = !zenMode && controls.hintMode === 'free' && typeof controls.onUndo === 'function';
   const hasAppearance = showAppearance && (compactViewport || typeof board?.onCustomize === 'function');
   const [showCoordinates, setShowCoordinates] = useState(() => getBoardCoordinates());
-  const hasNonDangerAction = (compactViewport && showFocus)
-    || hasHint
-    || hasUndo
-    || (compactViewport && showRendererToggle)
-    || hasAppearance
-    || warRoomVariantSelectable
-    || (showZen && typeof controls.onToggleZen === 'function');
 
   return (
     <details className="game-3d-utility-menu">
@@ -256,6 +250,7 @@ function CompactWarRoomPill({
           zenMode={zenMode}
           compactViewport
         />
+        <WarRoomAccountButton />
       </div>
     </aside>
   );
@@ -318,6 +313,7 @@ export default function GameWarRoomCommandColumn({
           controls={controls}
           zenMode={zenMode}
         />
+        <WarRoomAccountButton />
       </div>
     </aside>
   );
