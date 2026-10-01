@@ -180,6 +180,19 @@ async function forceFreshDuelFrame(page, viewport) {
   await page.waitForTimeout(80);
 }
 
+async function captureDuelRoomFromCompositor(page, room, path) {
+  // Use Chromium's compositor screenshot, not Locator.screenshot(). An idle
+  // WebGL canvas does not preserve its backbuffer; element screenshots can
+  // therefore capture HUD chrome plus an empty canvas under SwiftShader.
+  const box = await room.boundingBox();
+  if (!box) throw new Error('Could not resolve Duel Room bounding box for capture');
+  return page.screenshot({
+    path,
+    clip: box,
+    animations: 'disabled',
+  });
+}
+
 async function assertMobileTouchTargets(room) {
   const topbarButton = room.locator('.pvp-war-room__topbar button').first();
   const utility = room.locator('.pvp-war-room__duel-pill .game-3d-utility-menu>summary');
@@ -196,10 +209,11 @@ test('PvP Duel Room · runtime desktop visual artifact', async ({ page }) => {
   const viewport = { width: 1440, height: 900 };
   const { room } = await openDuelRoom(page, viewport);
   await forceFreshDuelFrame(page, viewport);
-  const png = await room.screenshot({
-    path: ARTIFACT_DIR + '/pvp-duel-room-desktop-1440x900.png',
-    animations: 'disabled',
-  });
+  const png = await captureDuelRoomFromCompositor(
+    page,
+    room,
+    ARTIFACT_DIR + '/pvp-duel-room-desktop-1440x900.png',
+  );
   assertRenderedDuelRoomPng(png, 'desktop Duel Room');
 });
 
@@ -213,10 +227,11 @@ test.describe('PvP Duel Room · mobile touch orientation', () => {
     await assertMobileTouchTargets(room);
     await forceFreshDuelFrame(page, viewport);
     await expect(page.getByRole('button', { name: 'Activar apaisado', exact: true })).toBeVisible();
-    const png = await room.screenshot({
-      path: ARTIFACT_DIR + '/pvp-duel-room-android-390x844.png',
-      animations: 'disabled',
-    });
+    const png = await captureDuelRoomFromCompositor(
+      page,
+      room,
+      ARTIFACT_DIR + '/pvp-duel-room-android-390x844.png',
+    );
     assertRenderedDuelRoomPng(png, 'portrait Duel Room');
   });
 
@@ -226,10 +241,11 @@ test.describe('PvP Duel Room · mobile touch orientation', () => {
     const { room } = await openDuelRoom(page, viewport);
     await expect(page.getByRole('button', { name: 'Activar apaisado', exact: true })).toHaveCount(0);
     await forceFreshDuelFrame(page, viewport);
-    const png = await room.screenshot({
-      path: ARTIFACT_DIR + '/pvp-duel-room-android-landscape-844x390.png',
-      animations: 'disabled',
-    });
+    const png = await captureDuelRoomFromCompositor(
+      page,
+      room,
+      ARTIFACT_DIR + '/pvp-duel-room-android-landscape-844x390.png',
+    );
     assertRenderedDuelRoomPng(png, 'landscape Duel Room');
     await assertMobileTouchTargets(room);
     const verticalOverflow = await page.evaluate(
