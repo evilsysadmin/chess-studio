@@ -5,17 +5,26 @@ import {
   warRoomVariantDefinition,
 } from './WarRoomVariant.js';
 import * as THREE from 'three';
+import { r2AssetEntry } from '../r2Assets.js';
 import {
   installPvpDuelRoomPracticalLights,
+  PVP_DUEL_ROOM_R2_ASSET_ID,
   PVP_DUEL_ROOM_RUNTIME_MODEL_URL,
   pvpDuelRoomModelUrl,
 } from './PvpDuelRoomShell.js';
 
 describe('PvP Duel Room runtime variant', () => {
-  it('uses its isolated stable runtime alias', () => {
+  it('pins the promoted immutable runtime object instead of the mutable current alias', () => {
+    expect(PVP_DUEL_ROOM_R2_ASSET_ID).toBe('pvp.duelRoom.runtime');
     expect(PVP_DUEL_ROOM_RUNTIME_MODEL_URL).toBe(
-      'https://assets.chess-studio.shadowops.dpdns.org/pvp/duel-room/runtime/current.glb',
+      'https://assets.chess-studio.shadowops.dpdns.org/pvp/duel-room/runtime/pvp-duel-room-shell-cbb68cebf8108a04.glb',
     );
+    expect(PVP_DUEL_ROOM_RUNTIME_MODEL_URL).not.toContain('/current.glb');
+    expect(r2AssetEntry(PVP_DUEL_ROOM_R2_ASSET_ID)).toMatchObject({
+      bytes: 6270964,
+      contentType: 'model/gltf-binary',
+      sha256: 'cbb68cebf8108a045be94e48d5b434be51e8ab8454ff11bf027715424616131c',
+    });
     expect(pvpDuelRoomModelUrl({ buildSha: 'abc123' })).toBe(
       PVP_DUEL_ROOM_RUNTIME_MODEL_URL + '?build=abc123',
     );
