@@ -432,6 +432,19 @@ PY
   return 0
 }
 
+wait_pvp_edge_attest() {
+  local target_port="${1:-$port}"
+  local attempts="${CHESS_STUDIO_PVP_EDGE_ATTEST_ATTEMPTS:-20}"
+  local attempt
+  for attempt in $(seq 1 "$attempts"); do
+    if pvp_edge_attest "$target_port"; then
+      return 0
+    fi
+    sleep 0.25
+  done
+  return 1
+}
+
 public_tunnel_attest() {
   local expected="$1"
   local release
@@ -913,8 +926,10 @@ else
   fi
 fi
 switch_complete=1
-if ! pvp_edge_attest "$port"; then
-  echo "edge did not route PvP through Go after candidate switch: color=$candidate_color" >&2
+if ! wait_pvp_edge_attest "$port"; then
+  echo "edge did not route PvP through Go after bounded convergence: color=$candidate_color" >&2
+  compose "$sha" ps "$candidate_service" "$candidate_pvp_service" edge >&2 || true
+  compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
   rollback "$sha" || true
   exit 45
 fi
