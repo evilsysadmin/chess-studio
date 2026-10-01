@@ -1,7 +1,7 @@
 import math
 import bpy
 
-PROP_BONES = ('prop_book', 'prop_reports', 'prop_cup', 'prop_pen', 'prop_bite')
+PROP_BONES = ('prop_book', 'prop_cup', 'prop_pen', 'prop_bite')
 HIDDEN_PROP_SCALE = (.001, .001, .001)
 VISIBLE_PROP_SCALE = (1.0, 1.0, 1.0)
 
@@ -97,15 +97,12 @@ def build_actions(rig):
             (66, None, None, {**show('prop_book'), **show('prop_pen')}),
             (68, None, None, {**hide('prop_book'), **hide('prop_pen')}),
         ]),
-        'Dossier': (96, [
-            # Canonical Home pose: standing on the floor by the left hearth,
-            # reports in the left hand, coffee in the right. No seated-leg bend.
-            (2, {'forearm.L': (d(-34), d(5), d(10)), 'forearm.R': (d(-30), d(-5), d(-12))}, None, {**show('prop_reports'), **show('prop_cup')}),
-            (24, {'head': (d(9), d(5), d(-2)), 'spine': (d(2.5), 0, d(1)), 'forearm.L': (d(-38), d(5), d(12)), 'forearm.R': (d(-22), d(-4), d(-9))}, None),
-            (52, {'head': (d(7), d(-4), d(1)), 'spine': (d(2), 0, 0), 'forearm.L': (d(-31), d(3), d(8)), 'forearm.R': (d(-48), d(-7), d(-16))}, None),
-            (76, {'head': (d(10), d(2), d(-1)), 'forearm.R': (d(-28), d(-4), d(-10))}, None),
-            (90, None, None, {**show('prop_reports'), **show('prop_cup')}),
-            (92, None, None, {**hide('prop_reports'), **hide('prop_cup')}),
+        'Dossier': (80, [
+            (2, {'upper_leg.L': (d(-25), 0, d(-3)), 'lower_leg.L': (d(36), 0, 0), 'upper_leg.R': (d(-25), 0, d(3)), 'lower_leg.R': (d(36), 0, 0)}, None, show('prop_book')),
+            (22, {'head': (d(11), d(5), d(-2)), 'spine': (d(4), 0, d(1)), 'forearm.L': (d(-28), 0, d(8))}, None),
+            (52, {'head': (d(8), d(-5), d(2)), 'forearm.R': (d(-24), 0, d(-7))}, None),
+            (74, None, None, show('prop_book')),
+            (76, None, None, hide('prop_book')),
         ]),
         'Sip': (72, [
             (2, None, None, show('prop_cup')),
