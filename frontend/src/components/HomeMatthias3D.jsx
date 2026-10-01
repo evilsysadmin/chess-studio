@@ -89,13 +89,20 @@ export function homeMatthiasRoutinePropPolicy(profile = 'idle') {
   if (profile === 'dossier') {
     return {
       forceVisibleBones: ['prop_cup'],
-      hideMeshes: ['RoutineBook', 'RoutineBookBadge'],
-      signature: 'reports+coffee',
+      hideMeshes: ['RoutineBook', 'RoutineBookBadge', 'RoutineCupHand'],
+      anchor: {
+        bone: 'prop_cup',
+        contentMesh: 'RoutineCup',
+        handMesh: 'Hand.R',
+        offset: { x: 0.035, y: 0.055, z: 0 },
+      },
+      signature: 'reports+coffee-in-hand',
     };
   }
   return {
     forceVisibleBones: [],
     hideMeshes: [],
+    anchor: null,
     signature: 'authored',
   };
 }
@@ -416,23 +423,53 @@ export default function HomeMatthias3D({
     const attentionQuaternion = new THREE.Quaternion();
     let routinePropNodes = null;
 
+    const alignRoutinePropToHand = ({ bone, contentMesh, handMesh, offset = {} } = {}) => {
+      if (!bone || !contentMesh || !handMesh || !bone.parent) return false;
+      model.updateMatrixWorld(true);
+      const cupCenter = visibleGeometryCenter(contentMesh);
+      const handCenter = visibleGeometryCenter(handMesh);
+      if (!cupCenter || !handCenter) return false;
+
+      const target = handCenter.clone().add(new THREE.Vector3(
+        Number(offset.x) || 0,
+        Number(offset.y) || 0,
+        Number(offset.z) || 0,
+      ));
+      const deltaWorld = target.sub(cupCenter);
+      const parentQuaternion = bone.parent.getWorldQuaternion(new THREE.Quaternion()).invert();
+      const parentScale = bone.parent.getWorldScale(new THREE.Vector3());
+      const deltaLocal = deltaWorld.applyQuaternion(parentQuaternion);
+      deltaLocal.set(
+        deltaLocal.x / Math.max(Math.abs(parentScale.x), 1e-6),
+        deltaLocal.y / Math.max(Math.abs(parentScale.y), 1e-6),
+        deltaLocal.z / Math.max(Math.abs(parentScale.z), 1e-6),
+      );
+      bone.position.add(deltaLocal);
+      bone.updateMatrixWorld(true);
+      return true;
+    };
+
     const applyRoutinePropPolicy = (requestedProfile = currentProfile) => {
       if (!model) return;
       if (!routinePropNodes) {
         routinePropNodes = {
           cupBone: model.getObjectByName('prop_cup'),
-          bookMeshes: [],
+          cupMesh: null,
+          rightHand: null,
+          policyMeshes: [],
         };
         model.traverse((node) => {
           const canonicalName = homeMatthiasCanonicalMeshName(node?.name);
-          if (canonicalName === 'routinebook' || canonicalName === 'routinebookbadge') {
-            routinePropNodes.bookMeshes.push(node);
+          if (canonicalName === 'routinecup') routinePropNodes.cupMesh = node;
+          if (canonicalName === 'handr') routinePropNodes.rightHand = node;
+          if (['routinebook', 'routinebookbadge', 'routinecuphand'].includes(canonicalName)) {
+            routinePropNodes.policyMeshes.push(node);
           }
         });
       }
 
       const propPolicy = homeMatthiasRoutinePropPolicy(requestedProfile);
-      for (const node of routinePropNodes.bookMeshes) {
+      for (const node of routinePropNodes.policyMeshes) {
         node.visible = !propPolicy.hideMeshes.some(
           (name) => homeMatthiasCanonicalMeshName(name) === homeMatthiasCanonicalMeshName(node.name),
         );
@@ -440,7 +477,18 @@ export default function HomeMatthias3D({
       if (propPolicy.forceVisibleBones.includes('prop_cup') && routinePropNodes.cupBone) {
         routinePropNodes.cupBone.scale.set(1, 1, 1);
       }
+
+      let anchored = false;
+      if (propPolicy.anchor?.bone === 'prop_cup') {
+        anchored = alignRoutinePropToHand({
+          bone: routinePropNodes.cupBone,
+          contentMesh: routinePropNodes.cupMesh,
+          handMesh: routinePropNodes.rightHand,
+          offset: propPolicy.anchor.offset,
+        });
+      }
       canvas.dataset.matthiasRoutineProps = propPolicy.signature;
+      canvas.dataset.matthiasCoffeeAnchor = anchored ? 'right-hand' : 'authored';
     };
 
     const renderOnce = () => {
