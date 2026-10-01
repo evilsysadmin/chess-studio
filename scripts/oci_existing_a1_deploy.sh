@@ -404,20 +404,31 @@ PY
 
 pvp_edge_attest() {
   local target_port="${1:-$port}"
-  local headers status
+  local headers body status
   headers="$(mktemp)"
+  body="$(mktemp)"
   if ! status="$(curl --silent --show-error --max-time 8 \
-      -D "$headers" -o /dev/null -w "%{http_code}" \
-      "http://127.0.0.1:${target_port}/api/pvp/lobby")"; then
-    rm -f "$headers"
+      -D "$headers" -o "$body" -w "%{http_code}" \
+      -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
+      "http://127.0.0.1:${target_port}/api/pvp/_edge/ready")"; then
+    rm -f "$headers" "$body"
     return 1
   fi
-  if [[ ! "$status" =~ ^[1-4][0-9][0-9]$ ]] || \
-     ! grep -Eiq "^X-Chess-Pvp-Edge:[[:space:]]*go[[:space:]]*$" "$headers"; then
-    rm -f "$headers"
+  if [[ "$status" != "200" ]] || \
+     ! grep -Eiq "^X-Chess-Pvp-Edge:[[:space:]]*go[[:space:]]*$" "$headers" || \
+     ! python3 - "$body" <<'PY'
+import json
+import pathlib
+import sys
+payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+if payload.get('status') != 'ready' or payload.get('service') != 'chess-studio-pvp-go':
+    raise SystemExit(1)
+PY
+  then
+    rm -f "$headers" "$body"
     return 1
   fi
-  rm -f "$headers"
+  rm -f "$headers" "$body"
   return 0
 }
 
