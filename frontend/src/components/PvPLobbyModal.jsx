@@ -188,6 +188,7 @@ export default function PvPLobbyModal({
 
   const rivalCount = rivals.length;
   const challengeCount = incoming.length + outgoing.length;
+  const outgoingCount = outgoing.length;
 
   return (
     <div className="modal-backdrop pvp-lobby-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
@@ -264,6 +265,25 @@ export default function PvPLobbyModal({
 
         {error && <p className="pvp-lobby__error" role="alert">{error}</p>}
 
+        {incoming.length > 0 && (
+          <section className="pvp-lobby__incoming-priority" aria-label="Retos entrantes">
+            <div className="pvp-lobby__incoming-priority-heading">
+              <small>MESA DEL HERALDO</small>
+              <strong>{incoming.length === 1 ? 'Tienes un reto' : `Tienes ${incoming.length} retos`}</strong>
+              <span>Responde antes de elegir otro rival.</span>
+            </div>
+            <div className="pvp-lobby__incoming-priority-list">
+              {incoming.map((challenge) => (
+                <article key={challenge.id} className="pvp-lobby__challenge is-incoming">
+                  <span className="pvp-lobby__challenge-seal" aria-hidden="true">✦</span>
+                  <div><small>RETO ENTRANTE</small><strong>{challenge.challenger}</strong><span>{challenge.challengerRating} Elo 1v1{challenge.expiresAt ? ` · ${challengeExpiryLabel(challenge.expiresAt)}` : ''}</span></div>
+                  <div className="pvp-lobby__challenge-actions"><button type="button" className="primary-btn" disabled={Boolean(busyKey)} onClick={() => accept(challenge)}>Aceptar</button><button type="button" className="secondary-btn" disabled={Boolean(busyKey)} onClick={() => run(`decline:${challenge.id}`, () => onDeclineChallenge ? onDeclineChallenge(challenge) : pvpApi.declineChallenge(challenge.id))}>Declinar</button></div>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+
         <div className="pvp-lobby__grid">
           <section className={`pvp-lobby__panel pvp-lobby__panel--roster${rivalCount === 0 ? ' is-empty' : ''}`} aria-labelledby="pvp-roster-title">
             <header>
@@ -326,32 +346,22 @@ export default function PvPLobbyModal({
           </section>
 
           <div className="pvp-lobby__side">
-          <section className={`pvp-lobby__panel pvp-lobby__panel--challenges${challengeCount === 0 ? ' is-empty' : ' has-attention'}`} aria-labelledby="pvp-challenges-title">
+          <section className={`pvp-lobby__panel pvp-lobby__panel--challenges${outgoingCount === 0 ? ' is-empty' : ''}`} aria-labelledby="pvp-challenges-title">
             <header>
               <div>
                 <small>MESA DEL HERALDO</small>
-                <h3 id="pvp-challenges-title">Retos</h3>
-                <p>Acepta, declina o cancela sin salir de la sala.</p>
+                <h3 id="pvp-challenges-title">Retos enviados</h3>
+                <p>Lo que ya has lanzado a otros jugadores.</p>
               </div>
-              <span>{challengeCount}</span>
+              <span>{outgoingCount}</span>
             </header>
-            {challengeCount === 0 ? (
+            {outgoingCount === 0 ? (
               <div className="pvp-lobby__empty-state pvp-lobby__empty-state--dispatch">
-                <span aria-hidden="true">✦</span>
-                <div>
-                  <strong>Sin retos pendientes</strong>
-                  <p>{self ? 'Cuando alguien te rete, la orden aparecerá aquí.' : 'Ponte disponible para poder recibir desafíos.'}</p>
-                </div>
+                <span aria-hidden="true">✧</span>
+                <div><strong>Sin retos enviados</strong><p>Cuando retes a alguien, podrás cancelar o consultar aquí la espera.</p></div>
               </div>
             ) : (
               <div className="pvp-lobby__challenge-list">
-                {incoming.map((challenge) => (
-                  <article key={challenge.id} className="pvp-lobby__challenge is-incoming">
-                    <span className="pvp-lobby__challenge-seal" aria-hidden="true">✦</span>
-                    <div><small>RETO ENTRANTE</small><strong>{challenge.challenger}</strong><span>{challenge.challengerRating} Elo 1v1{challenge.expiresAt ? ` · ${challengeExpiryLabel(challenge.expiresAt)}` : ''}</span></div>
-                    <div className="pvp-lobby__challenge-actions"><button type="button" className="primary-btn" disabled={Boolean(busyKey)} onClick={() => accept(challenge)}>Aceptar</button><button type="button" className="secondary-btn" disabled={Boolean(busyKey)} onClick={() => run(`decline:${challenge.id}`, () => onDeclineChallenge ? onDeclineChallenge(challenge) : pvpApi.declineChallenge(challenge.id))}>Declinar</button></div>
-                  </article>
-                ))}
                 {outgoing.map((challenge) => (
                   <article key={challenge.id} className="pvp-lobby__challenge">
                     <span className="pvp-lobby__challenge-seal is-outgoing" aria-hidden="true">✧</span>
