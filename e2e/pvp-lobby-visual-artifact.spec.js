@@ -59,11 +59,11 @@ async function openPvpLobby(page, viewport) {
 
   await login(page);
 
-  let entry = page.getByRole('button', { name: 'Abrir rivales 1 contra 1 de War Room' });
+  let entry = page.getByRole('button', { name: 'Abrir Sala de Duelos 1 contra 1' });
   if (await entry.count() === 0) {
     const more = page.getByRole('button', { name: /Más formas de jugar/ });
     if ((await more.getAttribute('aria-expanded')) !== 'true') await more.click();
-    entry = page.getByRole('button', { name: 'Abrir rivales 1 contra 1 de War Room' });
+    entry = page.getByRole('button', { name: 'Abrir Sala de Duelos 1 contra 1' });
   }
   await expect(entry).toBeVisible();
   await entry.click();
