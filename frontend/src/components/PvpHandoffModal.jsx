@@ -116,7 +116,7 @@ export default function PvpHandoffModal({ match, error = '', onComplete, onAbort
         ) : synchronized ? (
           <>
             <span className="pvp-handoff-modal__phase">PORTÓN ABRIENDO</span>
-            <h2>Entrando en 1 vs 1 en <b>{Math.max(1, countdown)}</b>…</h2>
+            <h2>Entrando en 1 vs 1 en <b>{Math.max(1, countdown)}</b></h2>
             <p>Tu progreso aquí no se perderá.</p>
             <small>Contra {rival} · {clockLabel} empezará al entrar.</small>
           </>
