@@ -26,6 +26,17 @@ function matchPayload(overrides = {}) {
   };
 }
 
+function matchPulsePayload(match) {
+  return {
+    revision: match.revision,
+    status: match.status,
+    lifecycleDue: false,
+    opponentPresence: match.opponentPresence || 'online',
+    pollAfterMs: 1250,
+    source: 'go',
+  };
+}
+
 test('War Room 1v1 · un 409 por carrera de turno sincroniza sin flash de error', async ({ page }) => {
   test.setTimeout(90_000);
   await mockApi(page);
@@ -63,6 +74,11 @@ test('War Room 1v1 · un 409 por carrera de turno sincroniza sin flash de error'
     status: 200,
     contentType: 'application/json',
     body: JSON.stringify({ match: liveMatch, pollAfterMs: 1250 }),
+  }));
+  await page.route('**/api/pvp/matches/pvp-e2e-1/pulse', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify(matchPulsePayload(liveMatch)),
   }));
   await page.route('**/api/pvp/matches/pvp-e2e-1/move', async (route) => {
     moveAttempts += 1;
@@ -151,7 +167,14 @@ test('War Room 1v1 · rendirse no resucita un handoff stale del lobby', async ({
     contentType: 'application/json',
     body: JSON.stringify({ match: liveMatch, pollAfterMs: 1250 }),
   }));
+  await page.route('**/api/pvp/matches/pvp-e2e-1/pulse', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify(matchPulsePayload(liveMatch)),
+  }));
+  let moveAttempts = 0;
   await page.route('**/api/pvp/matches/pvp-e2e-1/move', (route) => {
+    moveAttempts += 1;
     liveMatch = matchPayload({
       black: 'sparringmeister',
       blackRating: 400,
@@ -203,7 +226,8 @@ test('War Room 1v1 · rendirse no resucita un handoff stale del lobby', async ({
   await expect(warRoom).toBeVisible({ timeout: 25_000 });
   await expect(warRoom.getByText('Tu turno', { exact: true })).toBeVisible({ timeout: 45_000 });
   await expect(clickWarRoomMove(page, 'e2', 'e4')).resolves.toBe(true);
-  await expect(warRoom.getByText('sparringmeister juega', { exact: true })).toBeVisible({ timeout: 5_000 });
+  await expect.poll(() => moveAttempts).toBe(1);
+  await expect(warRoom.getByText('sparringmeister juega', { exact: true })).toBeVisible({ timeout: 10_000 });
 
   await expect(warRoom.getByRole('button', { name: 'Salir de la partida', exact: true })).toBeVisible();
   await expect(warRoom.getByRole('button', { name: 'Lobby', exact: true })).toHaveCount(0);
