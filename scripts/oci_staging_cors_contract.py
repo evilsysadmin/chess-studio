@@ -283,6 +283,10 @@ assert 'pvp_edge_attest()' in deploy
 assert '"http://127.0.0.1:${target_port}/api/pvp/_edge/ready"' in deploy
 assert "X-Chess-Pvp-Edge:" in deploy
 assert 'if ! pvp_edge_attest "$port"; then' in deploy
+assert 'local max_attempts="${2:-20}"' in deploy
+assert 'for attempt in $(seq 1 "$max_attempts"); do' in deploy
+assert 'sleep 0.25' in deploy
+assert 'PvP Go edge did not converge after nginx reload' in deploy
 assert 'render_edge "$candidate_color"' in deploy
 assert 'reload_edge' in deploy
 assert 'write_active_color "$candidate_color"' in deploy
