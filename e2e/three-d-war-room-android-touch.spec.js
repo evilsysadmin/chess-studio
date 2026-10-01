@@ -203,6 +203,7 @@ test('War Room · Android selecciona una pieza en pointerdown y muestra destinos
   const abandonButton = page.getByRole('button', { name: 'Salir de la partida', exact: true });
   const appearanceButton = page.locator('.board3d-customize');
   const utilityButton = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
+  const accountButton = page.getByRole('button', { name: 'Mi cuenta', exact: true });
   const humanRail = page.locator('.game-board-stack-3d .game-player-rail.is-human');
   const musicRail = page.locator('.game-side-column-3d .game-side-music .music-deck-collapsed');
   const notationDisclosure = page.locator('.game-side-column-3d .game-notation-disclosure');
