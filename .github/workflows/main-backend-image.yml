@@ -47,13 +47,21 @@ jobs:
         run: |
           set -euo pipefail
           parent="$(git rev-parse "${DEPLOY_SHA}^" 2>/dev/null || true)"
-          needs_build=true
-          if [[ "$parent" =~ ^[0-9a-f]{40}$ ]] && git diff --quiet "$parent" "$DEPLOY_SHA" -- backend-python; then
-            needs_build=false
+          backend_needs_build=true
+          pvp_needs_build=true
+          if [[ "$parent" =~ ^[0-9a-f]{40}$ ]]; then
+            if git diff --quiet "$parent" "$DEPLOY_SHA" -- backend-python; then
+              backend_needs_build=false
+            fi
+            if git diff --quiet "$parent" "$DEPLOY_SHA" -- backend-go; then
+              pvp_needs_build=false
+            fi
           fi
           echo "parent_sha=$parent" >> "$GITHUB_OUTPUT"
-          echo "needs_build=$needs_build" >> "$GITHUB_OUTPUT"
-          echo "Backend image source changed: $needs_build"
+          echo "backend_needs_build=$backend_needs_build" >> "$GITHUB_OUTPUT"
+          echo "pvp_needs_build=$pvp_needs_build" >> "$GITHUB_OUTPUT"
+          echo "Backend image source changed: $backend_needs_build"
+          echo "PvP Go image source changed: $pvp_needs_build"
 
       - uses: docker/setup-buildx-action@v4
 
@@ -66,7 +74,7 @@ jobs:
 
       - name: Reuse parent backend image when backend is unchanged
         id: reuse
-        if: steps.scope.outputs.needs_build == 'false'
+        if: steps.scope.outputs.backend_needs_build == 'false'
         shell: bash
         env:
           PARENT_SHA: ${{ steps.scope.outputs.parent_sha }}
@@ -85,7 +93,7 @@ jobs:
           fi
 
       - name: Build and publish immutable backend image
-        if: steps.scope.outputs.needs_build == 'true' || steps.reuse.outputs.hit != 'true'
+        if: steps.scope.outputs.backend_needs_build == 'true' || steps.reuse.outputs.hit != 'true'
         uses: docker/build-push-action@v7
         with:
           context: ./backend-python
@@ -99,14 +107,52 @@ jobs:
           cache-from: type=gha,scope=oci-backend-arm64
           cache-to: type=gha,mode=max,scope=oci-backend-arm64
 
-      - name: Verify immutable image is publicly pullable
+      - name: Reuse parent PvP Go image when Go edge is unchanged
+        id: reuse_pvp
+        if: steps.scope.outputs.pvp_needs_build == 'false'
+        shell: bash
+        env:
+          PARENT_SHA: ${{ steps.scope.outputs.parent_sha }}
+        run: |
+          set -euo pipefail
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          source="ghcr.io/${owner}/chess-studio-pvp:oci-${PARENT_SHA}"
+          target="ghcr.io/${owner}/chess-studio-pvp:oci-${DEPLOY_SHA}"
+          if docker buildx imagetools inspect "$source" >/dev/null 2>&1; then
+            docker buildx imagetools create --tag "$target" "$source"
+            echo 'hit=true' >> "$GITHUB_OUTPUT"
+            echo "::notice title=PvP Go image fast-path::Reused ${PARENT_SHA} for ${DEPLOY_SHA}; backend-go unchanged."
+          else
+            echo 'hit=false' >> "$GITHUB_OUTPUT"
+            echo "::warning title=PvP Go image fallback::Parent image missing; building ${DEPLOY_SHA}."
+          fi
+
+      - name: Build and publish immutable PvP Go image
+        if: steps.scope.outputs.pvp_needs_build == 'true' || steps.reuse_pvp.outputs.hit != 'true'
+        uses: docker/build-push-action@v7
+        with:
+          context: ./backend-go
+          file: ./backend-go/Dockerfile
+          platforms: linux/arm64
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/chess-studio-pvp:oci-${{ env.DEPLOY_SHA }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ env.DEPLOY_SHA }}
+          cache-from: type=gha,scope=oci-pvp-go-arm64
+          cache-to: type=gha,mode=max,scope=oci-pvp-go-arm64
+
+      - name: Verify immutable runtime images are publicly pullable
         shell: bash
         run: |
           set -euo pipefail
-          image="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/chess-studio-backend:oci-${DEPLOY_SHA}"
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          backend="ghcr.io/${owner}/chess-studio-backend:oci-${DEPLOY_SHA}"
+          pvp="ghcr.io/${owner}/chess-studio-pvp:oci-${DEPLOY_SHA}"
           docker logout ghcr.io >/dev/null 2>&1 || true
-          docker image rm "$image" >/dev/null 2>&1 || true
-          docker pull "$image"
+          docker image rm "$backend" "$pvp" >/dev/null 2>&1 || true
+          docker pull "$backend"
+          docker pull "$pvp"
 
       - name: Re-authenticate for approved signal
         uses: docker/login-action@v4
