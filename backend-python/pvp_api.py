@@ -480,7 +480,7 @@ async def _mark_sparring_ready(match: dict) -> dict:
     return updated or await store.get_match(match["id"]) or match
 
 
-async def _accept_challenge_for_user(challenge_id: str, username: str) -> tuple[dict, bool]:
+async def _accept_challenge_for_user(challenge_id: str, username: str) -> tuple[dict, bool, str]:
     challenge_row = await store.get_challenge(challenge_id)
     if not challenge_row or challenge_row.get("opponent") != username:
         raise HTTPException(404, "Reto pendiente no encontrado.")
@@ -489,7 +489,7 @@ async def _accept_challenge_for_user(challenge_id: str, username: str) -> tuple[
     if challenge_status == "accepted" and challenge_row.get("match_id"):
         existing = await store.get_match(challenge_row["match_id"])
         if existing:
-            return existing, False
+            return existing, False, challenge_row["challenger"]
     elif challenge_status != "pending":
         raise HTTPException(404, "Reto pendiente no encontrado.")
 
@@ -537,7 +537,7 @@ async def _accept_challenge_for_user(challenge_id: str, username: str) -> tuple[
     if not accepted:
         raise HTTPException(409, "El reto ya no está disponible.")
     _accepted_challenge, accepted_match = accepted
-    return accepted_match, True
+    return accepted_match, True, challenger
 
 
 def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
@@ -669,7 +669,7 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
             )
         if is_sparring_target:
             sparring_challenge_id = row["id"]
-            accepted_match, accepted_now = await _accept_challenge_for_user(sparring_challenge_id, opponent)
+            accepted_match, accepted_now, _challenger = await _accept_challenge_for_user(sparring_challenge_id, opponent)
             if accepted_now:
                 await store.append_lobby_chat(
                     "Sistema",
@@ -696,12 +696,11 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
 
     @router.post("/challenges/{challenge_id}/accept")
     async def accept(challenge_id: str, username: str = Depends(auth_dependency)):
-        accepted_match, accepted_now = await _accept_challenge_for_user(challenge_id, username)
+        accepted_match, accepted_now, challenger = await _accept_challenge_for_user(challenge_id, username)
         if accepted_now:
-            challenge_row = await store.get_challenge(challenge_id)
             await store.append_lobby_chat(
                 "Sistema",
-                f"{username} aceptó el reto de {challenge_row['challenger']}.",
+                f"{username} aceptó el reto de {challenger}.",
                 kind="system",
             )
         return {"match": _public_match(accepted_match, username)}
@@ -745,6 +744,8 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
             match = await _with_handoff_storage_retry(
                 lambda: store.touch_match_presence(match_id, username, "w" if color == chess.WHITE else "b")
             ) or match
+            if sparring.is_virtual_opponent(match, username):
+                match = await _with_handoff_storage_retry(lambda: _mark_sparring_ready(match))
             match = await _with_handoff_storage_retry(
                 lambda: _finish_handoff_timeout(match_id, match)
             ) or await _with_handoff_storage_retry(lambda: store.get_match(match_id)) or match
@@ -793,6 +794,8 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
             now=now,
         )) or match
         if match.get("status") == "starting":
+            if sparring.is_virtual_opponent(match, username):
+                match = await _with_handoff_storage_retry(lambda: _mark_sparring_ready(match))
             match = await _finish_handoff_timeout(match_id, match) or await store.get_match(match_id) or match
         if match.get("status") == "active":
             match = await _apply_active_lifecycle(
