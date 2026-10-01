@@ -883,7 +883,7 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
                 raise HTTPException(409, "No es tu turno.")
             now = store.utcnow()
             start_at = match.get("start_at")
-            if isinstance(start_at, datetime) and now < start_at:
+            if isinstance(start_at, datetime) and _as_utc(now) < _as_utc(start_at):
                 raise HTTPException(409, "El duelo todavía está en la cuenta atrás.")
             clock = _clock_snapshot(match, now)
             mover_clock = clock["whiteMs"] if color == chess.WHITE else clock["blackMs"]
