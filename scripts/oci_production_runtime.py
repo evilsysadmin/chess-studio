@@ -355,7 +355,7 @@ if not resend_key or any(ch in resend_key for ch in ("\\x00","\\r","\\n")):
 values["RESEND_API_KEY"]=resend_key
 values["ENABLE_EMAIL_RECOVERY"]="true"
 values["PASSWORD_RESET_URL"]={PRODUCTION_RESET_URL!r}
-values.setdefault("PASSWORD_RESET_FROM",{PRODUCTION_RESET_FROM!r})
+if not values.get("PASSWORD_RESET_FROM"):\n    values["PASSWORD_RESET_FROM"]={PRODUCTION_RESET_FROM!r}
 if required-set(values):
     raise SystemExit("production runtime is missing required keys")
 if values.get("MONGO_DB_NAME")!={PRODUCTION_DB!r} or values.get("MONGO_DB_NAME")=={STAGING_DB!r}:
