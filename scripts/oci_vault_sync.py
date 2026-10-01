@@ -35,40 +35,28 @@ import base64, os
 from pathlib import Path
 import oci
 secret_rows={SECRET_NAMES!r}
-optional=set({optional!r})
-ordered={tuple(ALLOWED_KEYS)!r}
+optional={optional!r}
 values=dict({declarative_rows!r})
 client=oci.secrets.SecretsClient(config={{}}, signer=oci.auth.signers.InstancePrincipalsSecurityTokenSigner())
-missing=[]
 for key,name in secret_rows:
     try:
         response=client.get_secret_bundle_by_name(secret_name=name,vault_id=os.environ["VAULT_ID"],stage="CURRENT")
     except oci.exceptions.ServiceError as exc:
+        if exc.status==404 and key in optional:continue
         if exc.status==404:
-            if key in optional:
-                continue
-            missing.append(name)
-            continue
+            print("OCI_VAULT_SECRET_MISSING name="+name+" stage=CURRENT")
+            raise SystemExit(42)
         print("OCI_VAULT_SECRET_ERROR name="+name+" status="+str(exc.status)+" code="+str(exc.code or "-"))
         raise SystemExit(43) from None
     content=getattr(response.data,"secret_bundle_content",None)
     encoded=str(getattr(content,"content","") or "")
-    try:
-        value=base64.b64decode(encoded,validate=True).decode("utf-8")
-    except Exception:
-        raise SystemExit("invalid CURRENT secret bundle: "+name) from None
-    if not value or any(ch in value for ch in ("\\x00","\\r","\\n")):
-        raise SystemExit("invalid CURRENT secret value shape: "+name)
+    try:value=base64.b64decode(encoded,validate=True).decode("utf-8")
+    except Exception:raise SystemExit("invalid CURRENT secret bundle: "+name) from None
+    if not value or any(ch in value for ch in ("\\x00","\\r","\\n")):raise SystemExit("invalid CURRENT secret value shape: "+name)
     values[key]=value
-if missing:
-    for name in missing:
-        print("OCI_VAULT_SECRET_MISSING name="+name+" stage=CURRENT")
-    raise SystemExit(42)
-if set(values)-set(ordered):
-    raise SystemExit("runtime contains unexpected backend.env keys")
 if values.get("ENABLE_EMAIL_RECOVERY")=="true" and not values.get("RESEND_API_KEY"):raise SystemExit("missing resend")
 path=Path(os.environ["RUNTIME_TMP"])
-path.write_text("".join(f"{{key}}={{values[key]}}\\n" for key in ordered if key in values),encoding="utf-8")
+path.write_text("".join(f"{{key}}={{value}}\\n" for key,value in values.items()),encoding="utf-8")
 os.chmod(path,0o600)
 PY
 sudo --non-interactive {shlex.quote(RUNTIME_INSTALLER)} "$tmp" >/dev/null
