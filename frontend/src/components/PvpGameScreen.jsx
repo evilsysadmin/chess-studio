@@ -315,7 +315,19 @@ export default function PvpGameScreen({ initialMatch, onExit, onMatchUpdate }) {
   return (
     <section className="game-screen pvp-war-room" aria-label="Sala de duelo 1 contra 1">
       <div className="pvp-war-room__topbar">
-        <button type="button" className="secondary-btn" onClick={() => onExit?.(match)}>← Lobby</button>
+        {match.status === 'active' ? (
+          <button
+            type="button"
+            className="secondary-btn"
+            aria-label="Salir de la partida"
+            disabled={!connectionLive || resigning}
+            onClick={() => setShowResignConfirm(true)}
+          >
+            ← Salir
+          </button>
+        ) : (
+          <button type="button" className="secondary-btn" onClick={() => onExit?.(match)}>← Lobby</button>
+        )}
         <span>DUEL ROOM · 1 VS 1</span>
         <small>{match.youAre === 'w' ? 'Blancas' : 'Negras'} · {match.youAre === 'w' ? match.whiteRating : match.blackRating} Elo 1v1</small>
       </div>
@@ -422,7 +434,7 @@ export default function PvpGameScreen({ initialMatch, onExit, onMatchUpdate }) {
           <div className="army-card pvp-resign-card" role="dialog" aria-modal="true" aria-labelledby="pvp-resign-title">
             <span className="eyebrow">1 VS 1 · Duel Room</span>
             <h3 id="pvp-resign-title">¿Abandonar la partida?</h3>
-            <p>En un duelo humano esto cuenta como rendición y victoria del rival. El rating se liquidará en el servidor.</p>
+            <p>Para volver al lobby durante un duelo debes rendirte. Cuenta como victoria del rival y el rating se liquidará en el servidor.</p>
             <div className="pvp-resign-actions">
               <button type="button" className="secondary-btn" disabled={resigning} onClick={() => setShowResignConfirm(false)}>Seguir jugando</button>
               <button type="button" className="danger-btn" disabled={resigning} onClick={() => void confirmResign()}>{resigning ? 'Registrando…' : 'Rendirse'}</button>
