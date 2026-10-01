@@ -280,7 +280,7 @@ assert 'render_edge "$previous_color" direct' in deploy
 assert 'remove_service "$(pvp_service "$previous_color")"' in deploy
 assert 'CHESS_STUDIO_DEPLOY_OK target=$target repo_ref=$sha color=$candidate_color pvp=go' in deploy
 assert 'pvp_edge_attest()' in deploy
-assert '"http://127.0.0.1:${target_port}/api/pvp/lobby"' in deploy
+assert '"http://127.0.0.1:${target_port}/api/pvp/_edge/ready"' in deploy
 assert "X-Chess-Pvp-Edge:" in deploy
 assert 'if ! pvp_edge_attest "$port"; then' in deploy
 assert 'render_edge "$candidate_color"' in deploy
@@ -302,6 +302,7 @@ assert '127.0.0.1:${CHESS_STUDIO_GREEN_PORT:-4002}:4000' in compose
 assert '127.0.0.1:${CHESS_STUDIO_BACKEND_PORT:-4000}:8080' in compose
 assert 'nginx:1.27.5-alpine' in compose
 edge_renderer = (ROOT / "scripts" / "oci_blue_green_edge.py").read_text(encoding="utf-8")
+assert 'location = /api/pvp/_edge/ready' in edge_renderer
 assert 'location = /api/pvp' in edge_renderer
 assert 'location ^~ /api/pvp/' in edge_renderer
 assert 'pvp_upstream = f"pvp_{color}:8080" if pvp_mode == "go" else backend_upstream' in edge_renderer
