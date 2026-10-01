@@ -10,14 +10,11 @@ from pathlib import Path
 from typing import Any
 
 SECRET_NAME = "chess-studio-production-runtime-env"
-RESEND_SECRET_NAME = "chess-studio-production-resend-api-key"
 VERSION_NAME = "initial-render-production-lift"
 PRODUCTION_DB = "chess_study"
 STAGING_DB = "chess_study_staging"
 PRODUCTION_ORIGIN = "https://chess-studio.shadowops.dpdns.org"
 PRODUCTION_AI_URL = "https://ai.shadowops.dpdns.org"
-PRODUCTION_RESET_URL = PRODUCTION_ORIGIN + "/"
-PRODUCTION_RESET_FROM = "Chess Studio <onboarding@resend.dev>"
 OK_MARKER = "OCI_PRODUCTION_RUNTIME_SYNC_OK"
 
 PRODUCTION_ALLOWED_KEYS = (
@@ -315,7 +312,7 @@ def host_sync_command(vault_id: str) -> str:
 tmp="$(mktemp /tmp/chess-studio-backend.env.production.XXXXXX)"
 trap 'rm -f "$tmp"' EXIT
 chmod 0600 "$tmp"
-venv="${{HOME:-/tmp}}/.cache/chess-studio-oci-runtime"
+venv="${HOME:-/tmp}/.cache/chess-studio-oci-runtime"
 if [ ! -x "$venv/bin/python" ]; then
   python3 -m venv "$venv"
   "$venv/bin/pip" install --disable-pip-version-check --quiet 'oci=={OCI_SDK_VERSION}'
@@ -325,8 +322,7 @@ import base64, os, re
 from pathlib import Path
 import oci
 required=set({PRODUCTION_ALWAYS_REQUIRED!r})
-allowed_order={PRODUCTION_ALLOWED_KEYS!r}
-allowed=set(allowed_order)
+allowed=set({PRODUCTION_ALLOWED_KEYS!r})
 client=oci.secrets.SecretsClient(config={{}}, signer=oci.auth.signers.InstancePrincipalsSecurityTokenSigner())
 response=client.get_secret_bundle_by_name(secret_name={SECRET_NAME!r}, vault_id=os.environ["VAULT_ID"], stage="CURRENT")
 encoded=str(getattr(response.data.secret_bundle_content,"content","") or "")
@@ -344,18 +340,6 @@ for line in text.splitlines():
     if key in required and not value:
         raise SystemExit("empty required production runtime value")
     values[key]=value
-resend_response=client.get_secret_bundle_by_name(secret_name={RESEND_SECRET_NAME!r}, vault_id=os.environ["VAULT_ID"], stage="CURRENT")
-resend_encoded=str(getattr(resend_response.data.secret_bundle_content,"content","") or "")
-try:
-    resend_key=base64.b64decode(resend_encoded,validate=True).decode("utf-8")
-except Exception:
-    raise SystemExit("invalid production Resend secret bundle") from None
-if not resend_key or any(ch in resend_key for ch in ("\\x00","\\r","\\n")):
-    raise SystemExit("invalid production Resend secret value shape")
-values["RESEND_API_KEY"]=resend_key
-values["ENABLE_EMAIL_RECOVERY"]="true"
-values["PASSWORD_RESET_URL"]={PRODUCTION_RESET_URL!r}
-if not values.get("PASSWORD_RESET_FROM"):\n    values["PASSWORD_RESET_FROM"]={PRODUCTION_RESET_FROM!r}
 if required-set(values):
     raise SystemExit("production runtime is missing required keys")
 if values.get("MONGO_DB_NAME")!={PRODUCTION_DB!r} or values.get("MONGO_DB_NAME")=={STAGING_DB!r}:
@@ -374,8 +358,10 @@ email_enabled=values.get("ENABLE_EMAIL_RECOVERY","").lower() in {TRUE_VALUES!r}
 reset_url=values.get("PASSWORD_RESET_URL","")
 if email_enabled and ({PRODUCTION_ORIGIN!r} not in reset_url or "staging" in reset_url.lower()):
     raise SystemExit("production runtime password reset target guard failed")
+if email_enabled and not values.get("RESEND_API_KEY"):
+    raise SystemExit("production runtime email recovery requires Resend")
 path=Path(os.environ["RUNTIME_TMP"])
-path.write_text("".join(f"{{key}}={{values[key]}}\\n" for key in allowed_order if key in values),encoding="utf-8")
+path.write_text(text if text.endswith("\n") else text+"\n",encoding="utf-8")
 os.chmod(path,0o600)
 PY
 sudo --non-interactive {shlex.quote(RUNTIME_INSTALLER)} "$tmp" >/dev/null
@@ -386,7 +372,6 @@ printf '%s\n' '{OK_MARKER} target=production db={PRODUCTION_DB} mode=0600'
     if len(command.encode("utf-8")) > RUN_COMMAND_INLINE_MAX_BYTES:
         raise SystemExit("OCI production runtime sync payload exceeds Run Command inline limit")
     return command
-
 
 def validate_sync_output(text: str) -> None:
     expected = f"{OK_MARKER} target=production db={PRODUCTION_DB} mode=0600"
@@ -505,8 +490,6 @@ def self_test() -> None:
     embedded_python = command.split("<<'PY'\n", 1)[1].split("\nPY\n", 1)[0]
     compile(embedded_python, "<oci-production-runtime-sync>", "exec")
     assert SECRET_NAME in command
-    assert RESEND_SECRET_NAME in command
-    assert PRODUCTION_RESET_URL in command
     assert "InstancePrincipalsSecurityTokenSigner" in command
     assert "chess-studio-backend.env.production.XXXXXX" in command
     assert PRODUCTION_DB in command and STAGING_DB in command
