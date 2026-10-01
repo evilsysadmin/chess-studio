@@ -21,7 +21,7 @@
 
   .game-screen .game-layout-3d .game-3d-turn-pill {
     display: grid !important;
-    grid-template-columns: minmax(0, 1fr) 8px max-content 92px 44px !important;
+    grid-template-columns: minmax(0, 1fr) 8px max-content 44px 44px 44px 44px !important;
     align-items: center;
     justify-content: stretch;
     width: 100%;
@@ -75,8 +75,8 @@
     font-size: .59rem;
   }
 
-  /* Focus and resign remain quiet one-tap actions inside the tactical HUD,
-     but their real touch rectangles stay at the 44px mobile target. */
+  /* Focus remains a quiet one-tap action inside the tactical HUD. SALIR moved
+     to the room overlay; Guide, overflow and account each own one 44px cell. */
   .game-screen .game-layout-3d .game-3d-compact-actions {
     position: relative;
     z-index: 4;
@@ -84,7 +84,7 @@
     align-items: center;
     justify-content: flex-end;
     gap: .2rem;
-    width: 92px;
+    width: 44px;
     transform: none;
     pointer-events: auto;
   }
@@ -118,15 +118,6 @@
     outline: none;
   }
 
-  .game-screen .game-layout-3d .game-3d-compact-action.is-abandon {
-    border-color: rgba(181, 91, 82, .16);
-    color: color-mix(in srgb, var(--studio-muted) 78%, #c38278);
-  }
-
-  .game-screen .game-layout-3d .game-3d-compact-action.is-abandon:is(:hover, :focus-visible) {
-    border-color: rgba(192, 92, 82, .5);
-    color: #dfaaa2;
-  }
 
   /* Override the older absolutely-positioned compact menu. It is now simply
      the final grid cell, so hit targets cannot overlap the HUD or each other. */
@@ -277,13 +268,13 @@
 
 @media (max-width: 390px) {
   .game-screen .game-layout-3d .game-3d-turn-pill {
-    grid-template-columns: minmax(0, 1fr) 7px max-content 92px 44px !important;
+    grid-template-columns: minmax(0, 1fr) 7px max-content 44px 44px 44px 44px !important;
     gap: .22rem;
     padding: .2rem .28rem !important;
   }
 
   .game-screen .game-layout-3d .game-3d-compact-actions {
-    width: 92px;
+    width: 44px;
     gap: .25rem;
   }
 
