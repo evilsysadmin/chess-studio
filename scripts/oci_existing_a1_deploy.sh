@@ -672,11 +672,18 @@ start_observability_best_effort() {
       return 0
     fi
   fi
-  if ! compose "$target_sha" run --rm --no-deps alloy validate --stability.level=public-preview /etc/alloy/config.alloy >/dev/null 2>&1; then
+  alloy_validate_log="$(mktemp /tmp/chess-studio-alloy-validate.XXXXXX)"
+  if ! compose "$target_sha" run --rm --no-deps alloy validate --stability.level=public-preview /etc/alloy/config.alloy >"$alloy_validate_log" 2>&1; then
     observability_summary="config-invalid"
     echo "OCI_ALLOY state=degraded target=$target reason=config-invalid" >&2
+    sed -E \
+      -e 's/(Authorization=)[^[:space:]]+/\\1[redacted]/Ig' \
+      -e 's/(Basic[[:space:]]+)[A-Za-z0-9+\/_=.-]+/\\1[redacted]/Ig' \
+      "$alloy_validate_log" | tail -n 40 >&2 || true
+    rm -f "$alloy_validate_log"
     return 0
   fi
+  rm -f "$alloy_validate_log"
   if ! compose "$target_sha" up -d --no-build --force-recreate alloy >/dev/null 2>&1; then
     observability_summary="start-failed"
     echo "OCI_ALLOY state=degraded target=$target reason=start-failed" >&2
