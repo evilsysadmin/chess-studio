@@ -18,6 +18,7 @@ beforeEach(() => {
 describe('War Room 1v1 API', () => {
   it('autentica lobby, roster y retos', async () => {
     await pvpApi.getLobby();
+    await pvpApi.getLobbyPulse();
     await pvpApi.joinRoster();
     await pvpApi.challenge('bob');
 
@@ -25,8 +26,9 @@ describe('War Room 1v1 API', () => {
       expect(options.headers.Authorization).toBe('Bearer pvp-token');
     }
     expect(global.fetch.mock.calls[0][0]).toContain('/pvp/lobby');
-    expect(global.fetch.mock.calls[1][0]).toContain('/pvp/roster');
-    expect(JSON.parse(global.fetch.mock.calls[2][1].body)).toEqual({ opponent: 'bob' });
+    expect(global.fetch.mock.calls[1][0]).toContain('/pvp/lobby/pulse');
+    expect(global.fetch.mock.calls[2][0]).toContain('/pvp/roster');
+    expect(JSON.parse(global.fetch.mock.calls[3][1].body)).toEqual({ opponent: 'bob' });
   });
 
   it('usa endpoints explícitos de cancelar, aceptar y rechazar reto', async () => {
