@@ -9,7 +9,7 @@ describe('Home Matthias stations', () => {
     expect(matthiasHomeStation('time-morning-coffee')).toBe('refreshment-table');
     expect(matthiasHomeStation('time-lunch-bocata')).toBe('dining-table');
     expect(matthiasHomeStation('time-strategy-book')).toBe('library-chair');
-    expect(matthiasHomeStation('moment-loss-dossier')).toBe('writing-desk');
+    expect(matthiasHomeStation('moment-loss-dossier')).toBe('hearth-files');
     expect(matthiasHomeStation('time-late-sleep')).toBe('rest');
     expect(matthiasHomeStation('base')).toBe('watch-post');
   });
