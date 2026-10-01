@@ -47,6 +47,11 @@ required_deploy_fragments = (
     'target=staging',
     'cors_origin="${CHESS_STUDIO_CORS_ORIGINS:-https://staging.chess-studio.shadowops.dpdns.org}"',
     'CHESS_STUDIO_CORS_ORIGINS="$cors_origin"',
+    'pvp_sparring_enabled=true',
+    'pvp_sparring_enabled=false',
+    'CHESS_PVP_SPARRING_ENABLED="$pvp_sparring_enabled"',
+    'CHESS_PVP_SPARRING_OWNER="$pvp_sparring_owner"',
+    'CHESS_PVP_SPARRING_USERNAME="$pvp_sparring_username"',
     'env_file="${CHESS_STUDIO_ENV_FILE:-/etc/chess-studio/production/backend.env}"',
     'state_dir="${CHESS_STUDIO_STATE_DIR:-/var/lib/chess-studio-production}"',
     'project="${CHESS_STUDIO_COMPOSE_PROJECT:-chess-studio-production}"',
@@ -67,6 +72,9 @@ for fragment in required_deploy_fragments:
     assert fragment in deploy, f"missing OCI staging CORS deploy contract: {fragment}"
 
 assert 'CORS_ORIGINS: "${CHESS_STUDIO_CORS_ORIGINS:-https://staging.chess-studio.shadowops.dpdns.org}"' in compose
+assert compose.count('CHESS_PVP_SPARRING_ENABLED: "${CHESS_PVP_SPARRING_ENABLED:-false}"') == 3
+assert compose.count('CHESS_PVP_SPARRING_OWNER: "${CHESS_PVP_SPARRING_OWNER:-evilsysadmin}"') == 3
+assert compose.count('CHESS_PVP_SPARRING_USERNAME: "${CHESS_PVP_SPARRING_USERNAME:-sparringmeister}"') == 3
 default_origins = assigned_literal_strings(backend_main, "_DEFAULT_CORS_ORIGINS")
 assert STAGING_ORIGIN in default_origins, (
     "FastAPI must always allow the canonical staging browser origin even if runtime "

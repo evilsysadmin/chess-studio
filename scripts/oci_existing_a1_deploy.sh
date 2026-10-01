@@ -55,6 +55,14 @@ case "$target" in
     ;;
 esac
 
+if [[ "$target" == "staging" ]]; then
+  pvp_sparring_enabled=true
+else
+  pvp_sparring_enabled=false
+fi
+pvp_sparring_owner="${CHESS_PVP_SPARRING_OWNER:-evilsysadmin}"
+pvp_sparring_username="${CHESS_PVP_SPARRING_USERNAME:-sparringmeister}"
+
 state_file="$state_dir/deployed.sha"
 active_color_file="$state_dir/active.color"
 edge_config_dir="$state_dir/edge"
@@ -197,6 +205,9 @@ compose() {
   CHESS_STUDIO_CORS_ORIGINS="$cors_origin" \
   CHESS_STUDIO_STATE_DIR="$state_dir" \
   CHESS_STUDIO_TRUST_CLOUDFLARE_CLIENT_IP="true" \
+  CHESS_PVP_SPARRING_ENABLED="$pvp_sparring_enabled" \
+  CHESS_PVP_SPARRING_OWNER="$pvp_sparring_owner" \
+  CHESS_PVP_SPARRING_USERNAME="$pvp_sparring_username" \
   CHESS_STUDIO_OCI_LOG_SERVICE_NAME="chess-studio-oci-backend-${target}-stdout" \
   docker compose -p "$project" -f "$compose_file" "$@"
 }

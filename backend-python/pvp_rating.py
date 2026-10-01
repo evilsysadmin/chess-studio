@@ -111,6 +111,8 @@ async def settle_match(match_id: str, match: dict | None) -> dict | None:
     """
     if not match or match.get("status") != "finished":
         return None
+    if match.get("rated") is False:
+        return None
     result = str(match.get("result") or "")
     if result not in _VALID_RESULTS:
         return None

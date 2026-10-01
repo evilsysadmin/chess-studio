@@ -149,6 +149,28 @@ Clock values are server-owned. Clients render snapshots and elapsed time derived
 
 Disconnect and reconnect policy must be deterministic, bounded and covered by tests.
 
+## Staging sparring rival
+
+Staging may expose one synthetic PvP rival for visual/flow QA. This actor is an
+environment-gated adapter around the real PvP lifecycle, not a second frontend
+mock or a browser kept alive indefinitely.
+
+Contract:
+
+- disabled outside staging;
+- visible and challengeable only by the configured owner account;
+- appears through the normal roster DTO and challenge API;
+- auto-accepts a challenge and marks itself ready through the authoritative
+  backend state, so the owner still traverses the real handoff into War Room;
+- is treated as online for disconnect policy while that synthetic duel exists;
+- matches against the sparring actor are explicitly unrated and never mutate
+  human PvP Elo;
+- production must force the feature off independently of runtime secret state.
+
+The synthetic actor exists to exercise lobby -> challenge -> handoff -> Duel
+Room presentation. It must not become a general matchmaking bot or leak into
+normal-user rosters.
+
 ## Rating
 
 PvP rating is independent from CPU/Matthias rating.

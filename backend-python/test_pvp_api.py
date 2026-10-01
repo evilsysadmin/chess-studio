@@ -12,6 +12,10 @@ import users_store
 
 @pytest.fixture(autouse=True)
 def reset_memory(monkeypatch):
+    monkeypatch.delenv("CHESS_PVP_SPARRING_ENABLED", raising=False)
+    monkeypatch.delenv("CHESS_PVP_SPARRING_OWNER", raising=False)
+    monkeypatch.delenv("CHESS_PVP_SPARRING_USERNAME", raising=False)
+
     async def memory_collections():
         return None
 
@@ -90,6 +94,140 @@ def test_roster_uses_server_account_rating_and_hides_stale_members():
     pvp_store._memory_roster["bob"]["last_seen"] = pvp_store.utcnow() - timedelta(seconds=60)
     lobby = as_user(client, "alice", "get", "/api/pvp/lobby").json()
     assert {row["username"] for row in lobby["roster"]} == {"alice"}
+
+
+def test_staging_sparring_is_owner_scoped_auto_accepts_and_stays_online(monkeypatch):
+    monkeypatch.setenv("CHESS_PVP_SPARRING_ENABLED", "true")
+    monkeypatch.setenv("CHESS_PVP_SPARRING_OWNER", "evilsysadmin")
+    monkeypatch.setenv("CHESS_PVP_SPARRING_USERNAME", "sparringmeister")
+    users_store._memory_users["evilsysadmin"] = {
+        "username": "evilsysadmin",
+        "pvp_rating": pvp_api.DEFAULT_RATING,
+    }
+    client = make_client()
+
+    assert as_user(client, "evilsysadmin", "post", "/api/pvp/roster").status_code == 200
+    owner_lobby = as_user(client, "evilsysadmin", "get", "/api/pvp/lobby").json()
+    assert "sparringmeister" in {row["username"] for row in owner_lobby["roster"]}
+
+    assert as_user(client, "alice", "post", "/api/pvp/roster").status_code == 200
+    alice_lobby = as_user(client, "alice", "get", "/api/pvp/lobby").json()
+    assert "sparringmeister" not in {row["username"] for row in alice_lobby["roster"]}
+    blocked = as_user(
+        client,
+        "alice",
+        "post",
+        "/api/pvp/challenges",
+        json={"opponent": "sparringmeister"},
+    )
+    assert blocked.status_code == 409
+
+    challenged = as_user(
+        client,
+        "evilsysadmin",
+        "post",
+        "/api/pvp/challenges",
+        json={"opponent": "sparringmeister"},
+    )
+    assert challenged.status_code == 201
+    assert challenged.json()["challenge"]["status"] == "accepted"
+
+    handoff = as_user(client, "evilsysadmin", "get", "/api/pvp/lobby").json()["activeMatch"]
+    assert handoff["status"] == "starting"
+    assert handoff["youReady"] is False
+    assert handoff["opponentReady"] is True
+    assert handoff["opponentPresence"] == "online"
+    assert {handoff["white"], handoff["black"]} == {"evilsysadmin", "sparringmeister"}
+
+    ready = as_user(
+        client,
+        "evilsysadmin",
+        "post",
+        f"/api/pvp/matches/{handoff['id']}/ready",
+    )
+    assert ready.status_code == 200
+    assert ready.json()["match"]["status"] == "active"
+    assert ready.json()["match"]["opponentReady"] is True
+    assert ready.json()["match"]["opponentPresence"] == "online"
+
+    stored = pvp_store._memory_matches[handoff["id"]]
+    stale = pvp_store.utcnow() - timedelta(minutes=5)
+    if stored["white"] == "sparringmeister":
+        stored["white_seen_at"] = stale
+    else:
+        stored["black_seen_at"] = stale
+    polled = as_user(
+        client,
+        "evilsysadmin",
+        "get",
+        f"/api/pvp/matches/{handoff['id']}",
+    )
+    assert polled.status_code == 200
+    assert polled.json()["match"]["opponentPresence"] == "online"
+    assert polled.json()["match"]["opponentDisconnectDeadline"] is None
+
+    resigned = as_user(
+        client,
+        "evilsysadmin",
+        "post",
+        f"/api/pvp/matches/{handoff['id']}/resign",
+    )
+    assert resigned.status_code == 200
+    assert resigned.json()["match"]["status"] == "finished"
+    assert resigned.json()["match"]["ratingChange"] is None
+    assert users_store._memory_users["evilsysadmin"]["pvp_rating"] == pvp_api.DEFAULT_RATING
+    assert "pvp_rating_games" not in users_store._memory_users["evilsysadmin"]
+
+
+def test_staging_sparring_recovers_ready_after_transient_write_failure(monkeypatch):
+    monkeypatch.setenv("CHESS_PVP_SPARRING_ENABLED", "true")
+    monkeypatch.setenv("CHESS_PVP_SPARRING_OWNER", "evilsysadmin")
+    monkeypatch.setenv("CHESS_PVP_SPARRING_USERNAME", "sparringmeister")
+    users_store._memory_users["evilsysadmin"] = {"username": "evilsysadmin"}
+    client = make_client()
+    assert as_user(client, "evilsysadmin", "post", "/api/pvp/roster").status_code == 200
+
+    original_update = pvp_store.update_match
+    failed = {"done": False}
+
+    async def flaky_update(match_id, *, expected_revision, changes):
+        is_ready_only = (
+            changes.get("status") is None
+            and (changes.get("white_ready") is True or changes.get("black_ready") is True)
+        )
+        if is_ready_only and not failed["done"]:
+            failed["done"] = True
+            raise pvp_api.PersistentStorageUnavailable("temporary ready write failure")
+        return await original_update(match_id, expected_revision=expected_revision, changes=changes)
+
+    monkeypatch.setattr(pvp_store, "update_match", flaky_update)
+
+    challenged = as_user(
+        client,
+        "evilsysadmin",
+        "post",
+        "/api/pvp/challenges",
+        json={"opponent": "sparringmeister"},
+    )
+    assert challenged.status_code == 201
+    assert challenged.json()["challenge"]["status"] == "accepted"
+    assert failed["done"] is True
+
+    handoff = as_user(client, "evilsysadmin", "get", "/api/pvp/lobby").json()["activeMatch"]
+    assert handoff["status"] == "starting"
+
+    ready = as_user(
+        client,
+        "evilsysadmin",
+        "post",
+        f"/api/pvp/matches/{handoff['id']}/ready",
+    )
+    assert ready.status_code == 200
+    payload = ready.json()["match"]
+    assert payload["status"] == "active"
+    assert payload["youReady"] is True
+    assert payload["opponentReady"] is True
+    assert payload["opponentPresence"] == "online"
 
 
 def test_lobby_chat_is_bounded_normalized_and_visible_without_roster_membership():
