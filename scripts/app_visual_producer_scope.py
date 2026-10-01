@@ -641,7 +641,7 @@ def self_test() -> None:
         "frontend/src/pvpApi.js",
         "frontend/src/usePvpAppFlow.js",
         "frontend/src/usePvpRosterPresence.js",
-    ]) == "home-base,pvp-lobby,pvp-duel"
+    ]) == "home-base,pvp-lobby,pvp-handoff,pvp-duel"
     assert classify(["frontend/src/components/PvPLobbyModal.jsx"]) == "pvp-lobby"
     assert classify(["e2e/pvp-lobby-visual-artifact.spec.js"]) == "pvp-lobby"
     assert classify(["frontend/src/components/PvpHandoffModal.jsx"]) == "pvp-handoff"
