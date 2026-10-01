@@ -375,7 +375,7 @@ reset_url=values.get("PASSWORD_RESET_URL","")
 if email_enabled and ({PRODUCTION_ORIGIN!r} not in reset_url or "staging" in reset_url.lower()):
     raise SystemExit("production runtime password reset target guard failed")
 path=Path(os.environ["RUNTIME_TMP"])
-path.write_text("".join(f"{key}={values[key]}\\n" for key in allowed_order if key in values),encoding="utf-8")
+path.write_text("".join(f"{{key}}={{values[key]}}\\n" for key in allowed_order if key in values),encoding="utf-8")
 os.chmod(path,0o600)
 PY
 sudo --non-interactive {shlex.quote(RUNTIME_INSTALLER)} "$tmp" >/dev/null
