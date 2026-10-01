@@ -381,7 +381,7 @@ def _rating_change(match: dict, color: chess.Color | None) -> dict | None:
 
 
 def _is_virtual_opponent(match: dict, username: str) -> bool:
-    return _is_virtual_opponent(match, username) or residents.is_virtual_opponent(match, username)
+    return sparring.is_virtual_opponent(match, username) or residents.is_virtual_opponent(match, username)
 
 
 def _is_synthetic_pair(left: str, right: str) -> bool:
@@ -770,7 +770,7 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
                 await _mark_virtual_ready(accepted_match)
             except PersistentStorageUnavailable:
                 logger.warning(
-                    "PvP staging sparring ready write deferred to handoff reconciliation",
+                    "PvP synthetic rival ready write deferred to handoff reconciliation",
                     extra={"challenge_id": virtual_challenge_id},
                 )
             row = await store.get_challenge(virtual_challenge_id) or row
