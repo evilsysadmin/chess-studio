@@ -93,7 +93,7 @@ test('Roster 1v1 · retar es directo, reto entrante domina y chat queda plegado'
   await expect(lobby.getByText('RIVAL SELECCIONADO', { exact: true })).toHaveCount(0);
   const bobRow = lobby.locator('.pvp-lobby__player').filter({ hasText: 'bob' });
   await expect(bobRow.getByText('VS TI · 1V 0T 1D', { exact: true })).toBeVisible();
-  await bobRow.getByRole('button', { name: 'Retar', exact: true }).click();
+  await bobRow.getByRole('button', { name: 'Retar a bob', exact: true }).click();
   await expect.poll(() => challengePosts).toBe(1);
 
   const chat = lobby.locator('details.pvp-lobby__panel--chat');
