@@ -95,13 +95,13 @@ export default function PvpHandoffModal({ match, error = '', onComplete, onAbort
           <span className="pvp-handoff-modal__duelist is-you">
             <small>TÚ · {participants.you.color}</small>
             <strong>{participants.you.username || 'Tú'}</strong>
-            {Number.isFinite(Number(participants.you.rating)) && <em>{participants.you.rating} Elo</em>}
+            {participants.you.rating != null && Number.isFinite(Number(participants.you.rating)) && <em>{participants.you.rating} Elo</em>}
           </span>
           <span className="pvp-handoff-modal__versus" aria-hidden="true">VS</span>
           <span className="pvp-handoff-modal__duelist is-rival">
             <small>RIVAL · {participants.rival.color}</small>
             <strong>{participants.rival.username || rival}</strong>
-            {Number.isFinite(Number(participants.rival.rating)) && <em>{participants.rival.rating} Elo</em>}
+            {participants.rival.rating != null && Number.isFinite(Number(participants.rival.rating)) && <em>{participants.rival.rating} Elo</em>}
           </span>
         </div>
 
