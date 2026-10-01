@@ -14,13 +14,17 @@ import (
 )
 
 type fakeStore struct {
-	exists   bool
-	version  int64
-	revision string
-	match    matchPulseState
-	authErr  error
-	revErr   error
-	matchErr error
+	exists    bool
+	version   int64
+	revision  string
+	match     matchPulseState
+	member    rosterRow
+	authErr   error
+	revErr    error
+	matchErr  error
+	joinErr   error
+	leaveErr  error
+	leftUsers []string
 }
 
 func (f *fakeStore) AuthState(context.Context, string) (bool, int64, error) {
@@ -33,6 +37,15 @@ func (f *fakeStore) Revision(context.Context, string, time.Time) (string, error)
 
 func (f *fakeStore) MatchState(context.Context, string, string, time.Time) (matchPulseState, error) {
 	return f.match, f.matchErr
+}
+
+func (f *fakeStore) JoinRoster(context.Context, string, time.Time) (rosterRow, error) {
+	return f.member, f.joinErr
+}
+
+func (f *fakeStore) LeaveRoster(_ context.Context, username string, _ time.Time) error {
+	f.leftUsers = append(f.leftUsers, username)
+	return f.leaveErr
 }
 
 func TestPulseReturnsNativeRevisionForValidSession(t *testing.T) {
@@ -236,5 +249,116 @@ func TestMatchLifecycleDueAtClockBoundary(t *testing.T) {
 	row.WhiteClockMS = 6000
 	if matchLifecycleDue(row, now) {
 		t.Fatal("did not expect lifecycle due before clock expiry")
+	}
+}
+
+
+func TestNativeRosterJoinAndLeave(t *testing.T) {
+	now := time.Date(2026, 10, 1, 20, 0, 0, 0, time.UTC)
+	store := &fakeStore{
+		exists:  true,
+		version: 5,
+		member: rosterRow{
+			Username: "alice",
+			Rating: 1210,
+			Tier: "Intermedio",
+			JoinedAt: now.Add(-time.Minute),
+		},
+	}
+	h, err := NewHandler(HandlerConfig{
+		Store: store,
+		JWTSecret: "01234567890123456789012345678901",
+		EnableRoster: true,
+		Now: func() time.Time { return now },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	token := signedToken(t, "alice", 5, now.Add(time.Hour), "session", "01234567890123456789012345678901")
+
+	join := httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/roster", nil)
+	join.Header.Set("Authorization", "Bearer "+token)
+	joinRR := httptest.NewRecorder()
+	h.ServeHTTP(joinRR, join)
+	if joinRR.Code != http.StatusOK {
+		t.Fatalf("join status=%d body=%s", joinRR.Code, joinRR.Body.String())
+	}
+	if got := joinRR.Header().Get("X-Chess-Pvp-Native"); got != "roster" {
+		t.Fatalf("native header=%q", got)
+	}
+	var body map[string]any
+	if err := json.Unmarshal(joinRR.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	member, ok := body["member"].(map[string]any)
+	if !ok || member["username"] != "alice" || member["rating"] != float64(1210) || member["isSelf"] != true {
+		t.Fatalf("unexpected member: %#v", body["member"])
+	}
+
+	leave := httptest.NewRequest(http.MethodDelete, "http://edge/api/pvp/roster", nil)
+	leave.Header.Set("Authorization", "Bearer "+token)
+	leaveRR := httptest.NewRecorder()
+	h.ServeHTTP(leaveRR, leave)
+	if leaveRR.Code != http.StatusNoContent {
+		t.Fatalf("leave status=%d body=%s", leaveRR.Code, leaveRR.Body.String())
+	}
+	if len(store.leftUsers) != 1 || store.leftUsers[0] != "alice" {
+		t.Fatalf("leave calls=%v", store.leftUsers)
+	}
+}
+
+func TestNativeRosterJoinRateLimit(t *testing.T) {
+	now := time.Date(2026, 10, 1, 20, 0, 0, 0, time.UTC)
+	store := &fakeStore{
+		exists: true,
+		version: 1,
+		member: rosterRow{Username: "alice", Rating: 400, Tier: "Principiante", JoinedAt: now},
+	}
+	h, err := NewHandler(HandlerConfig{
+		Store: store,
+		JWTSecret: "01234567890123456789012345678901",
+		EnableRoster: true,
+		Now: func() time.Time { return now },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	token := signedToken(t, "alice", 1, now.Add(time.Hour), "session", "01234567890123456789012345678901")
+	for i := 0; i < rosterJoinLimit; i++ {
+		req := httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/roster", nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		rr := httptest.NewRecorder()
+		h.ServeHTTP(rr, req)
+		if rr.Code != http.StatusOK {
+			t.Fatalf("request %d status=%d body=%s", i+1, rr.Code, rr.Body.String())
+		}
+	}
+	req := httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/roster", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusTooManyRequests {
+		t.Fatalf("status=%d want=429 body=%s", rr.Code, rr.Body.String())
+	}
+	if rr.Header().Get("Retry-After") == "" {
+		t.Fatal("missing Retry-After")
+	}
+}
+
+func TestRatingNormalizationMatchesPythonContract(t *testing.T) {
+	for _, tc := range []struct {
+		value any
+		want int64
+	}{
+		{nil, 400},
+		{int64(0), 400},
+		{int64(50), 100},
+		{int64(400), 400},
+		{int64(1200), 1200},
+		{int64(20000), 10000},
+	} {
+		if got := normalizedRating(tc.value); got != tc.want {
+			t.Fatalf("normalizedRating(%v)=%d want=%d", tc.value, got, tc.want)
+		}
 	}
 }

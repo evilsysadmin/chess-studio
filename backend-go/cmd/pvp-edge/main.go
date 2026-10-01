@@ -20,14 +20,17 @@ func main() {
 	port := env("PORT", "8080")
 	upstream := env("PVP_PYTHON_UPSTREAM", "http://127.0.0.1:4000")
 
+	pulseEnabled := envBool("PVP_NATIVE_PULSE_ENABLED", false)
+	rosterEnabled := envBool("PVP_NATIVE_ROSTER_ENABLED", false)
 	var nativePulse http.Handler
+	var nativeRoster http.Handler
 	var mongoStore *pulse.MongoStore
-	if envBool("PVP_NATIVE_PULSE_ENABLED", false) {
+	if pulseEnabled || rosterEnabled {
 		mongoURL := strings.TrimSpace(os.Getenv("MONGO_URL"))
 		mongoDatabase := strings.TrimSpace(os.Getenv("MONGO_DB_NAME"))
 		jwtSecret := strings.TrimSpace(os.Getenv("JWT_SECRET"))
 		if mongoURL == "" || mongoDatabase == "" || jwtSecret == "" {
-			log.Fatal("PVP_NATIVE_PULSE_ENABLED requires MONGO_URL, MONGO_DB_NAME and JWT_SECRET")
+			log.Fatal("native PvP features require MONGO_URL, MONGO_DB_NAME and JWT_SECRET")
 		}
 		startupCtx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
 		store, err := pulse.NewMongoStore(startupCtx, pulse.MongoConfig{
@@ -44,11 +47,17 @@ func main() {
 			Store:          store,
 			JWTSecret:      jwtSecret,
 			AllowedOrigins: splitCSV(os.Getenv("CORS_ORIGINS")),
+			EnableRoster:   rosterEnabled,
 		})
 		if err != nil {
 			log.Fatalf("native PvP pulse handler: %v", err)
 		}
-		nativePulse = pulseHandler
+		if pulseEnabled {
+			nativePulse = pulseHandler
+		}
+		if rosterEnabled {
+			nativeRoster = pulseHandler
+		}
 	}
 	if mongoStore != nil {
 		defer func() {
@@ -65,6 +74,7 @@ func main() {
 		Release:      os.Getenv("GIT_COMMIT_SHA"),
 		ReadyTimeout: 2 * time.Second,
 		NativePulse:  nativePulse,
+		NativeRoster: nativeRoster,
 	})
 	if err != nil {
 		log.Fatalf("invalid pvp edge configuration: %v", err)
@@ -88,7 +98,7 @@ func main() {
 		}
 	}()
 
-	log.Printf("pvp-go listening on :%s -> %s native_pulse=%t", port, upstream, nativePulse != nil)
+	log.Printf("pvp-go listening on :%s -> %s native_pulse=%t native_roster=%t", port, upstream, nativePulse != nil, nativeRoster != nil)
 	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatalf("pvp edge serve: %v", err)
 	}
