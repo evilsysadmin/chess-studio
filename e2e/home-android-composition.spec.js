@@ -151,7 +151,7 @@ test('Home Android 3D · apaisado libera el centro entre Matthias y 1v1', async 
     await expect(home.locator('.illustrated-home__castle-3d.is-ready')).toBeVisible({ timeout: 15_000 });
 
     const speech = home.locator('.illustrated-home__speech');
-    const pvp = page.locator('.home-pvp-roster-link:not(.home-pvp-roster-link--menu)');
+    const pvp = page.locator('.home-pvp-roster-link');
     await expect(speech).toBeVisible();
     await expect(pvp).toBeVisible();
 
