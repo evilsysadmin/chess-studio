@@ -159,6 +159,10 @@ def main() -> int:
         ("git ls-remote origin refs/heads/main", "backend signal current-main probe"),
         ("oci-staging-approved", "backend mutable approved signal"),
         ("docker buildx imagetools create", "backend server-side signal promotion"),
+        ("Build and publish immutable PvP Go image", "PvP Go immutable image build"),
+        ("context: ./backend-go", "PvP Go build context"),
+        ("chess-studio-pvp:oci-${{ env.DEPLOY_SHA }}", "PvP Go exact-SHA image"),
+        ('docker pull "$pvp"', "PvP Go public pullability check"),
     ):
         require(main_backend_image, needle, label, errors)
     for needle in ("OCI_TENANCY_OCID", "OCI_USER_OCID", "OCI_PRIVATE_KEY", "RENDER_API_KEY"):
