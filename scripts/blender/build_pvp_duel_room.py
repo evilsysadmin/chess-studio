@@ -80,8 +80,8 @@ def palette():
             metal=0.90, rough=0.52, texture="metal", scale=30, bump=0.026,
         ),
         "armor": base.material(
-            "PVP_MAT_armor_steel", (0.165, 0.175, 0.185, 1),
-            metal=0.95, rough=0.24, coat=0.22, texture="metal", scale=28, bump=0.012,
+            "PVP_MAT_armor_steel", (0.135, 0.145, 0.155, 1),
+            metal=0.91, rough=0.34, coat=0.12, texture="metal", scale=28, bump=0.014,
         ),
         "brass": base.material(
             "PVP_MAT_old_brass", (0.30, 0.135, 0.025, 1),
@@ -678,13 +678,17 @@ def build_dungeon_population(static, p):
 
             arm_side = -1 if arm_idx == 0 else 1
             ax = sx + dx
-            for lame_idx, (dz, radius, scale_z) in enumerate(((0.12, 0.18, 0.86), (0.04, 0.16, 0.72), (-0.04, 0.14, 0.62))):
-                base.sphere(
+            for lame_idx, (dz, half_x, half_z, lean) in enumerate((
+                (0.12, 0.19, 0.095, 8),
+                (0.045, 0.175, 0.082, 13),
+                (-0.025, 0.155, 0.070, 18),
+            )):
+                pauldron = base.cube(
                     f"PVP_DUEL_sentinel_{label}_pauldron_{arm_idx}_{lame_idx}",
-                    (ax + arm_side * 0.018 * lame_idx, sy, 2.20 + dz),
-                    radius, p["armor"], static,
-                    scale=(1.12, 1.02, scale_z),
+                    (ax + arm_side * 0.028 * lame_idx, sy - 0.01, 2.20 + dz),
+                    (half_x, 0.15, half_z), p["armor"], static, bevel=0.075,
                 )
+                pauldron.rotation_euler.y = math.radians(arm_side * lean)
             base.torus(
                 f"PVP_DUEL_sentinel_{label}_pauldron_rim_{arm_idx}",
                 (ax, sy, 2.30), 0.155, 0.014, p["brass"], static,
@@ -731,9 +735,21 @@ def build_dungeon_population(static, p):
                 p["armor"], static, vertices=18,
             )
         base.sphere(
-            f"PVP_DUEL_sentinel_{label}_helmet", (sx, sy, 2.62),
-            0.29, p["armor"], static, scale=(0.92, 0.90, 1.10),
+            f"PVP_DUEL_sentinel_{label}_helmet", (sx, sy + 0.01, 2.64),
+            0.255, p["armor"], static, scale=(0.94, 0.92, 1.08),
         )
+        base.cube(
+            f"PVP_DUEL_sentinel_{label}_brow_plate",
+            (sx, sy - 0.20, 2.66), (0.20, 0.055, 0.055),
+            p["armor"], static, bevel=0.035,
+        )
+        for cheek_idx, cheek_x in enumerate((-0.16, 0.16)):
+            cheek = base.cube(
+                f"PVP_DUEL_sentinel_{label}_cheek_{cheek_idx}",
+                (sx + cheek_x, sy - 0.12, 2.52),
+                (0.055, 0.075, 0.15), p["armor"], static, bevel=0.045,
+            )
+            cheek.rotation_euler.y = math.radians(-6 if cheek_x < 0 else 6)
         base.sphere(
             f"PVP_DUEL_sentinel_{label}_visor_shell", (sx, sy - 0.16, 2.58),
             0.20, p["armor"], static, scale=(0.88, 0.72, 0.78),
@@ -779,8 +795,8 @@ def build_dungeon_population(static, p):
 
         sentinel_light = base.light(
             f"PVP_LIGHT_sentinel_{label}", "POINT",
-            (sx, sy - 0.44, 2.02), 105.0,
-            (0.78, 0.30, 0.10), static, radius=1.05,
+            (sx, sy - 0.44, 2.02), 88.0,
+            (0.74, 0.28, 0.09), static, radius=1.00,
         )
         sentinel_light["war_room_runtime_dynamic"] = "pvp-sentinel"
 
@@ -917,8 +933,8 @@ def build_sconces_and_gate(static, p):
 def build_duelist_furniture(static, p):
     """Premium duelist chairs, angled so both seats unmistakably face the board."""
     for side, accent, label in ((-1, p["red"], "red"), (1, p["blue"], "blue")):
-        x = side * 5.88
-        y = -1.98
+        x = side * 5.28
+        y = -1.72
         yaw = math.atan2(-x, y)  # local -y is the seated player's forward direction
         cos_yaw = math.cos(yaw)
         sin_yaw = math.sin(yaw)
