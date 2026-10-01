@@ -68,6 +68,10 @@ export const pvpApi = {
     return jsonRequest(`/matches/${matchId}`, { signal });
   },
 
+  getMatchPulse(matchId, { signal } = {}) {
+    return jsonRequest(`/matches/${matchId}/pulse`, { signal });
+  },
+
   readyMatch(matchId, { signal } = {}) {
     return jsonRequest(`/matches/${matchId}/ready`, { method: 'POST', signal });
   },
