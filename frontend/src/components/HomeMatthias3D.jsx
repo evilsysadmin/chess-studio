@@ -809,6 +809,10 @@ export default function HomeMatthias3D({
         });
         fitRenderer(renderer, camera, canvas);
         frame = window.requestAnimationFrame(() => {
+          // This first-paint RAF previously left `frame` truthy, so resume()
+          // believed the animation loop was already running. The rig rendered
+          // one frozen pose forever even though data-motion said animated.
+          frame = 0;
           renderOnce();
           resume();
         });
