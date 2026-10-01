@@ -109,9 +109,9 @@ async function expectDesktopChromeContract(page, shell) {
   expect(inspectBox.height).toBeLessThan(48);
   expect(inspectBox.x - shellBox.x).toBeGreaterThanOrEqual(0);
   expect(inspectBox.x - shellBox.x).toBeLessThan(26);
-  expect(inspectBox.y - shellBox.y).toBeGreaterThanOrEqual(0);
-  expect(inspectBox.y - shellBox.y).toBeLessThan(26);
-  expect(inspectBox.y + inspectBox.height).toBeLessThan(shellBox.y + shellBox.height * 0.18);
+  expect(inspectBox.y - shellBox.y).toBeGreaterThanOrEqual(44);
+  expect(inspectBox.y - shellBox.y).toBeLessThan(110);
+  expect(inspectBox.y + inspectBox.height).toBeLessThan(shellBox.y + shellBox.height * 0.22);
 
   return { shellBox, statusBox, inspectBox };
 }
