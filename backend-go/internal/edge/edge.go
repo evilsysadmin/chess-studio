@@ -14,18 +14,20 @@ import (
 const serviceName = "chess-studio-pvp-go"
 
 type Config struct {
-	UpstreamURL  string
-	Release      string
-	ReadyTimeout time.Duration
-	NativePulse  http.Handler
+	UpstreamURL   string
+	Release       string
+	ReadyTimeout  time.Duration
+	NativePulse   http.Handler
+	NativeRoster  http.Handler
 }
 
 type Handler struct {
-	upstream    *url.URL
-	proxy       *httputil.ReverseProxy
-	client      *http.Client
-	release     string
-	nativePulse http.Handler
+	upstream     *url.URL
+	proxy        *httputil.ReverseProxy
+	client       *http.Client
+	release      string
+	nativePulse  http.Handler
+	nativeRoster http.Handler
 }
 
 func New(cfg Config) (*Handler, error) {
@@ -78,7 +80,8 @@ func New(cfg Config) (*Handler, error) {
 		proxy:       proxy,
 		client:      &http.Client{Timeout: timeout},
 		release:     strings.TrimSpace(cfg.Release),
-		nativePulse: cfg.NativePulse,
+		nativePulse:  cfg.NativePulse,
+		nativeRoster: cfg.NativeRoster,
 	}, nil
 }
 
@@ -95,6 +98,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Header().Set("X-Chess-Pvp-Edge", "go")
 		h.nativePulse.ServeHTTP(w, r)
+	case r.URL.Path == "/api/pvp/roster" && h.nativeRoster != nil:
+		w.Header().Set("X-Chess-Pvp-Edge", "go")
+		h.nativeRoster.ServeHTTP(w, r)
 	case r.URL.Path == "/api/pvp" || strings.HasPrefix(r.URL.Path, "/api/pvp/"):
 		h.proxy.ServeHTTP(w, r)
 	default:
@@ -104,9 +110,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) health(w http.ResponseWriter) {
 	payload := map[string]any{
-		"status":      "ok",
-		"service":     serviceName,
-		"nativePulse": h.nativePulse != nil,
+		"status":       "ok",
+		"service":      serviceName,
+		"nativePulse":  h.nativePulse != nil,
+		"nativeRoster": h.nativeRoster != nil,
 	}
 	if h.release != "" {
 		payload["release"] = h.release
@@ -137,9 +144,10 @@ func (h *Handler) ready(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("X-Chess-Pvp-Edge", "go")
 	writeJSON(w, http.StatusOK, map[string]any{
-		"status":      "ready",
-		"service":     serviceName,
-		"nativePulse": h.nativePulse != nil,
+		"status":       "ready",
+		"service":      serviceName,
+		"nativePulse":  h.nativePulse != nil,
+		"nativeRoster": h.nativeRoster != nil,
 	})
 }
 
