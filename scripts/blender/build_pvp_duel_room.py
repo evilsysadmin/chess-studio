@@ -335,12 +335,12 @@ def build_duel_banners(static, p):
 
 
 
-def build_teutonic_armory(static, p):
-    """Peripheral fortress details: shields, polearms and arrow slits, never the board cone."""
-    for side, label in ((-1, "left"), (1, "right")):
-        wall_x = side * 8.10
 
-        # Narrow defensive slit with limestone dressing on each side wall.
+def build_teutonic_armory(static, p):
+    """Peripheral fortress details that read in the hero camera without touching the board."""
+    for side, label in ((-1, "left"), (1, "right")):
+        # Defensive slit remains on the side wall: architectural depth, not decoration.
+        wall_x = side * 8.10
         slit_y = 2.18
         base.cube(
             f"PVP_DUEL_arrow_slit_{label}", (wall_x, slit_y, 3.58),
@@ -359,47 +359,50 @@ def build_teutonic_armory(static, p):
                 (0.060, 0.075, 0.78), p["limestone"], static, bevel=0.022,
             )
 
-        # Teutonic wall shield: ivory field, black cross, pointed lower plate.
-        shield_y = -0.35
+        # The armory itself sits on the rear wall, outside the banners and above
+        # the braziers, where it reads in the canonical framing.
+        shield_x = side * 6.88
+        shield_y = 5.82
+        shield_z = 4.18
         base.cube(
-            f"PVP_DUEL_armory_shield_{label}", (wall_x - side * 0.035, shield_y, 3.05),
-            (0.060, 0.58, 0.68), p["ivory"], static, bevel=0.12,
+            f"PVP_DUEL_armory_shield_{label}", (shield_x, shield_y, shield_z),
+            (0.58, 0.060, 0.67), p["ivory"], static, bevel=0.12,
         )
         point = base.cube(
             f"PVP_DUEL_armory_shield_point_{label}",
-            (wall_x - side * 0.035, shield_y, 2.43),
-            (0.060, 0.31, 0.31), p["ivory"], static, bevel=0.045,
+            (shield_x, shield_y, shield_z - 0.63),
+            (0.31, 0.060, 0.31), p["ivory"], static, bevel=0.045,
         )
-        point.rotation_euler.x = math.radians(45)
+        point.rotation_euler.y = math.radians(45)
         base.cube(
             f"PVP_DUEL_armory_cross_vertical_{label}",
-            (wall_x - side * 0.105, shield_y, 3.04),
-            (0.035, 0.105, 0.54), p["iron"], static, bevel=0.018,
+            (shield_x, shield_y - 0.075, shield_z),
+            (0.105, 0.035, 0.54), p["iron"], static, bevel=0.018,
         )
         base.cube(
             f"PVP_DUEL_armory_cross_horizontal_{label}",
-            (wall_x - side * 0.105, shield_y, 3.18),
-            (0.035, 0.42, 0.105), p["iron"], static, bevel=0.018,
+            (shield_x, shield_y - 0.075, shield_z + 0.14),
+            (0.42, 0.035, 0.105), p["iron"], static, bevel=0.018,
         )
 
-        # Two restrained halberds frame the shield. They live flat to the side wall,
-        # so they add silhouette without creating foreground click occluders.
-        for idx, pole_y in enumerate((shield_y - 0.88, shield_y + 0.88)):
-            shaft = cylinder_between(
+        # Two wall-hung halberds flank the shield. Their shafts stay vertical,
+        # which strengthens the prison/fortress rhythm behind the board.
+        for idx, pole_x in enumerate((shield_x - 0.88, shield_x + 0.88)):
+            cylinder_between(
                 f"PVP_DUEL_halberd_{label}_{idx}",
-                (wall_x - side * 0.08, pole_y, 1.35),
-                (wall_x - side * 0.08, pole_y, 4.72),
+                (pole_x, shield_y + 0.02, 2.72),
+                (pole_x, shield_y + 0.02, 5.22),
                 0.038, p["oak_mid"], static, vertices=12,
             )
             blade = base.cube(
                 f"PVP_DUEL_halberd_blade_{label}_{idx}",
-                (wall_x - side * 0.105, pole_y - 0.11, 4.46),
-                (0.035, 0.20, 0.26), p["iron"], static, bevel=0.030,
+                (pole_x - side * 0.10, shield_y - 0.035, 4.90),
+                (0.20, 0.035, 0.26), p["iron"], static, bevel=0.030,
             )
-            blade.rotation_euler.x = math.radians(18 if idx == 0 else -18)
+            blade.rotation_euler.y = math.radians(18 if idx == 0 else -18)
             bpy.ops.mesh.primitive_cone_add(
                 vertices=12, radius1=0.070, radius2=0.0, depth=0.34,
-                location=(wall_x - side * 0.08, pole_y, 4.92),
+                location=(pole_x, shield_y + 0.02, 5.38),
             )
             spike = bpy.context.object
             spike.name = f"PVP_DUEL_halberd_spike_{label}_{idx}"
@@ -407,11 +410,10 @@ def build_teutonic_armory(static, p):
             base.tag(spike, base.ROLE_STATIC)
             base.relink(spike, static)
 
-        # Low iron rack physically ties the weapon display to the masonry.
         base.cube(
             f"PVP_DUEL_armory_rack_{label}",
-            (wall_x - side * 0.07, shield_y, 1.18),
-            (0.055, 1.25, 0.070), p["iron"], static, bevel=0.025,
+            (shield_x, shield_y + 0.025, 2.62),
+            (1.26, 0.055, 0.070), p["iron"], static, bevel=0.025,
         )
 
 def build_sconces_and_gate(static, p):
