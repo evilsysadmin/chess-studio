@@ -158,6 +158,7 @@ TRAINING_EXACT_PRODUCERS = {
 
 
 PVP_DUEL_EXACT_PRODUCERS = {
+    "frontend/src/components/pvpappsurface.jsx": {"pvp-duel"},
     "frontend/src/components/pvpgamescreen.jsx": {"pvp-duel"},
     "frontend/src/components/pvpgamescreen.css": {"pvp-duel"},
     "frontend/src/components/pvpduelroomshell.js": {"pvp-duel"},
@@ -174,7 +175,7 @@ PVP_EXACT_PRODUCERS = {
     "frontend/src/components/homepvprosterlink.jsx": {"home-base"},
     "frontend/src/components/homepvprosterlink.css": {"home-base"},
     "frontend/src/pvpapi.js": {"home-base"},
-    "frontend/src/usepvpappflow.js": {"home-base"},
+    "frontend/src/usepvpappflow.js": {"home-base", "pvp-duel"},
     "frontend/src/usepvprosterpresence.js": {"home-base"},
     "frontend/src/pvpruntimebridge.js": {"home-base"},
 }
