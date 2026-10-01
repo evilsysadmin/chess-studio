@@ -1667,26 +1667,6 @@
   letter-spacing: .06em;
 }
 
-@media (max-width: 620px) {
-  .pvp-lobby__selected-rival {
-    position: sticky;
-    bottom: .25rem;
-    z-index: 3;
-    align-items: stretch;
-    flex-direction: column;
-    box-shadow: 0 10px 28px rgba(0, 0, 0, .34);
-    backdrop-filter: blur(10px);
-  }
-
-  .pvp-lobby__selected-actions {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-
-  .pvp-lobby__selected-actions .primary-btn {
-    width: 100%;
-  }
-}
 
 
 /* Mobile command-table clamp: keep the duel action above the fold and below browser chrome. */
@@ -2182,12 +2162,6 @@
     #49351e;
 }
 
-.pvp-duel-hall .pvp-lobby__selected-rival {
-  border-color: rgba(222, 179, 101, .25);
-  background:
-    linear-gradient(90deg, rgba(116, 75, 37, .16), transparent 60%),
-    rgba(13, 10, 8, .9);
-}
 
 @media (max-width: 660px) {
   .pvp-duel-hall {
