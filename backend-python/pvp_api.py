@@ -504,7 +504,7 @@ async def _accept_challenge_for_user(challenge_id: str, username: str) -> tuple[
             raise HTTPException(409, "Ya no figuras en el roster.")
 
     challenger = challenge_row["challenger"]
-    challenger_white = bool(secrets.randbits(1))
+    challenger_white = True if sparring.is_sparring_pair(challenger, username) else bool(secrets.randbits(1))
     white = challenger if challenger_white else username
     black = username if challenger_white else challenger
     now = store.utcnow()
@@ -668,7 +668,8 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
                 kind="system",
             )
         if is_sparring_target:
-            accepted_match, accepted_now = await _accept_challenge_for_user(challenge_id, opponent)
+            sparring_challenge_id = row["id"]
+            accepted_match, accepted_now = await _accept_challenge_for_user(sparring_challenge_id, opponent)
             if accepted_now:
                 await store.append_lobby_chat(
                     "Sistema",
@@ -676,7 +677,7 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
                     kind="system",
                 )
             await _mark_sparring_ready(accepted_match)
-            row = await store.get_challenge(challenge_id) or row
+            row = await store.get_challenge(sparring_challenge_id) or row
         return {"challenge": _public_challenge(row, username)}
 
     @router.post("/challenges/{challenge_id}/cancel")
