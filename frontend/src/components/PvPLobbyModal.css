@@ -2217,3 +2217,17 @@
     scroll-behavior: auto !important;
   }
 }
+
+
+/* Mobile Duel Hall interaction contract: every visible action remains thumb-safe. */
+@media (max-width: 660px) {
+  .pvp-lobby button,
+  .pvp-lobby summary {
+    min-height: 44px;
+  }
+
+  .pvp-lobby .piece-info-close,
+  .pvp-lobby__mention-player {
+    min-width: 44px;
+  }
+}
