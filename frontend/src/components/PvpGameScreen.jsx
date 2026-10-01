@@ -4,6 +4,7 @@ import { WarRoomUtilityMenu } from './GameWarRoomCommandColumn.jsx';
 import WarRoomBoardSurface from './WarRoomBoardSurface.jsx';
 import { formatClock } from '../clock.js';
 import { pvpApi } from '../pvpApi.js';
+import { pvpMatchPulseNeedsFullRefresh } from '../pvpMatchPolling.js';
 import { checkedKingSquare } from '../boardState.js';
 import { getBoardCoordinates, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
@@ -77,6 +78,9 @@ export default function PvpGameScreen({ initialMatch, onExit, onMatchUpdate }) {
   const clockAnchorRef = useRef(Date.now());
   const animSeqRef = useRef(0);
   const historyLengthRef = useRef(initialMatch?.history?.length || 0);
+  const matchRevisionRef = useRef(Number(initialMatch?.revision || 0));
+  const lastFullRefreshAtRef = useRef(Date.now());
+  const matchPulseUnsupportedRef = useRef(false);
   useWarRoomSpatialAmbience({ enabled: true });
 
   const opponent = useMemo(() => opponentForMatch(match), [match]);
@@ -140,6 +144,7 @@ export default function PvpGameScreen({ initialMatch, onExit, onMatchUpdate }) {
   }, []);
 
   useEffect(() => {
+    matchRevisionRef.current = Number(match?.revision || 0);
     setSelected(null);
     setPendingPromotion(null);
     const currentLength = match?.history?.length || 0;
@@ -175,12 +180,39 @@ export default function PvpGameScreen({ initialMatch, onExit, onMatchUpdate }) {
       controller?.abort();
       controller = new AbortController();
       try {
-        const response = await pvpApi.getMatch(match.id, { signal: controller.signal });
-        if (!active) return;
-        applyAuthoritativeMatch(response?.match);
+        let pulse = null;
+        if (!matchPulseUnsupportedRef.current) {
+          try {
+            pulse = await pvpApi.getMatchPulse(match.id, { signal: controller.signal });
+          } catch (pulseError) {
+            if (pulseError?.name === 'AbortError') return;
+            if ([404, 405, 501].includes(Number(pulseError?.status))) {
+              matchPulseUnsupportedRef.current = true;
+            } else {
+              throw pulseError;
+            }
+          }
+        }
+
+        const nowMs = Date.now();
+        const needsFullRefresh = !pulse || pvpMatchPulseNeedsFullRefresh({
+          currentRevision: matchRevisionRef.current,
+          pulseRevision: pulse?.revision,
+          lifecycleDue: pulse?.lifecycleDue,
+          lastFullAt: lastFullRefreshAtRef.current,
+          nowMs,
+        });
+
+        let response = null;
+        if (needsFullRefresh) {
+          response = await pvpApi.getMatch(match.id, { signal: controller.signal });
+          lastFullRefreshAtRef.current = Date.now();
+          if (!active) return;
+          applyAuthoritativeMatch(response?.match);
+        }
         setConnectionState('live');
         setError('');
-        schedule(Math.max(900, Number(response?.pollAfterMs || 1250)));
+        schedule(Math.max(900, Number(pulse?.pollAfterMs || response?.pollAfterMs || 1250)));
       } catch (err) {
         if (!active || err?.name === 'AbortError') return;
         setConnectionState('reconnecting');
