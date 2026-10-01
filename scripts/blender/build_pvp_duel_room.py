@@ -104,12 +104,12 @@ def palette():
             rough=0.50, coat=0.18, sheen=0.08, texture="leather", scale=50, bump=0.040,
         ),
         "fire": base.material(
-            "PVP_MAT_fire_orange", (0.55, 0.055, 0.004, 1),
-            rough=0.22, emission=(0.95, 0.10, 0.003, 1), emission_strength=1.55,
+            "PVP_MAT_fire_orange", (0.62, 0.085, 0.003, 1),
+            rough=0.24, emission=(0.72, 0.055, 0.001, 1), emission_strength=0.72,
         ),
         "fire_core": base.material(
-            "PVP_MAT_fire_gold", (0.92, 0.34, 0.018, 1),
-            rough=0.18, emission=(1.0, 0.26, 0.010, 1), emission_strength=1.85,
+            "PVP_MAT_fire_gold", (0.96, 0.24, 0.010, 1),
+            rough=0.20, emission=(0.88, 0.11, 0.002, 1), emission_strength=0.92,
         ),
         "night": base.material(
             "PVP_MAT_moon_glass", (0.006, 0.018, 0.055, 1),
@@ -407,15 +407,15 @@ def build_duel_banners(static, p):
         x = side * 4.92
         base.cube(
             f"PVP_DUEL_banner_{label}", (x, 5.70, 3.42),
-            (0.78, 0.055, 1.34), accent, static, bevel=0.075,
+            (0.76, 0.055, 1.28), accent, static, bevel=0.075,
         )
         base.cube(
             f"PVP_DUEL_banner_cross_vertical_{label}", (x, 5.61, 3.50),
-            (0.095, 0.040, 0.74), p["ivory"], static, bevel=0.020,
+            (0.070, 0.040, 0.54), p["ivory"], static, bevel=0.020,
         )
         base.cube(
             f"PVP_DUEL_banner_cross_horizontal_{label}", (x, 5.60, 3.66),
-            (0.46, 0.040, 0.095), p["ivory"], static, bevel=0.020,
+            (0.31, 0.040, 0.070), p["ivory"], static, bevel=0.020,
         )
         if label == "red":
             bpy.data.objects[f"PVP_DUEL_banner_cross_vertical_{label}"].name = "PVP_DUEL_teutonic_cross"
@@ -549,13 +549,13 @@ def build_dungeon_population(static, p):
             cage.rotation_euler.z = math.radians(angle)
         side_light = base.light(
             f"PVP_LIGHT_side_brazier_{label}", "POINT",
-            (bx, by - 0.16, bz + 0.34), 260.0,
-            (1.0, 0.22, 0.035), static, radius=1.55,
+            (bx, by - 0.16, bz + 0.34), 175.0,
+            (1.0, 0.14, 0.018), static, radius=1.45,
         )
         side_light["war_room_runtime_dynamic"] = "pvp-side-brazier"
 
         # Armoured sentinel on a low plinth, behind and outside the board.
-        sx, sy = side * 6.02, 4.05
+        sx, sy = side * 5.72, 3.86
         base.cube(
             f"PVP_DUEL_sentinel_{label}_plinth", (sx, sy, 0.30),
             (0.48, 0.40, 0.30), p["dais"], static, bevel=0.07,
@@ -600,7 +600,7 @@ def build_dungeon_population(static, p):
         )
 
         # Barrel + supply crate in the rear corner make the room feel occupied.
-        cx, cy = side * 7.20, 5.02
+        cx, cy = side * 6.10, 4.92
         base.cylinder(
             f"PVP_DUEL_barrel_{label}", (cx, cy, 0.62),
             0.38, 1.05, p["oak_mid"], static, vertices=18,
@@ -611,16 +611,39 @@ def build_dungeon_population(static, p):
                 (cx, cy, z), 0.37, 0.026, p["iron"], static,
             )
         base.cube(
-            f"PVP_DUEL_supply_crate_{label}", (side * 6.62, 5.10, 0.42),
+            f"PVP_DUEL_supply_crate_{label}", (side * 5.60, 5.02, 0.42),
             (0.40, 0.34, 0.42), p["oak"], static, bevel=0.045,
         )
         for brace in (-1, 1):
             diagonal=base.cube(
                 f"PVP_DUEL_supply_crate_brace_{label}_{brace}",
-                (side * 6.62, 4.75, 0.42),
+                (side * 5.60, 4.67, 0.42),
                 (0.055, 0.026, 0.45), p["iron"], static, bevel=0.012,
             )
             diagonal.rotation_euler.y = math.radians(brace * 38)
+
+
+    # Mid-wall weapon racks add readable dungeon content in the hero crop.
+    for side, label in ((-1, "left"), (1, "right")):
+        rack_x = side * 5.55
+        rack_y = 4.78
+        base.cube(
+            f"PVP_DUEL_mid_weapon_rack_{label}",
+            (rack_x, rack_y, 2.15), (0.72, 0.055, 0.10),
+            p["oak_mid"], static, bevel=0.028,
+        )
+        for weapon_idx, dx in enumerate((-0.42, 0.0, 0.42)):
+            cylinder_between(
+                f"PVP_DUEL_mid_weapon_{label}_{weapon_idx}",
+                (rack_x + dx, rack_y, 1.25),
+                (rack_x + dx, rack_y, 3.12),
+                0.026, p["oak_mid"], static, vertices=10,
+            )
+            base.cube(
+                f"PVP_DUEL_mid_weapon_blade_{label}_{weapon_idx}",
+                (rack_x + dx - side * 0.06, rack_y - 0.035, 2.96),
+                (0.10, 0.025, 0.16), p["armor"], static, bevel=0.020,
+            )
 
     # Denser floor grates flank the dais, echoing the approved canon mock.
     for side, label in ((-1, "left"), (1, "right")):
@@ -662,7 +685,7 @@ def build_sconces_and_gate(static, p):
         )
         wall_light = base.light(
             f"PVP_LIGHT_wall_sconce_{label}", "POINT",
-            (wx, wy - 0.40, wz + 0.22), 115.0,
+            (wx, wy - 0.40, wz + 0.22), 85.0,
             (1.0, 0.19, 0.025), static, radius=1.0,
         )
         wall_light["war_room_runtime_dynamic"] = "pvp-wall-sconce"
@@ -735,7 +758,7 @@ def build_lighting(static):
     scene = bpy.context.scene
     scene["war_room_variant"] = "pvp-duel-room"
     scene["pvp_duel_room_contract"] = CONTRACT
-    scene.view_settings.exposure = 0.14
+    scene.view_settings.exposure = 0.10
 
     # Cold moon from the prison slit, warm braziers, quiet neutral board fill.
     moon = base.light("PVP_LIGHT_moon_key", "AREA", (0.0, 5.30, 7.05), 460.0,
@@ -750,6 +773,14 @@ def build_lighting(static):
     gate_fill = base.light("PVP_LIGHT_gate_fill", "AREA", (0.0, 3.85, 5.45), 135.0,
                            (0.24, 0.30, 0.40), static, size=3.2)
     base.look_at(gate_fill, (0.0, 5.82, 2.85))
+
+    for side, label in ((-1, "left"), (1, "right")):
+        side_fill = base.light(
+            f"PVP_LIGHT_side_fill_{label}", "AREA",
+            (side * 6.30, 0.80, 4.60), 118.0,
+            (0.80, 0.28, 0.08), static, size=2.7,
+        )
+        base.look_at(side_fill, (side * 5.05, 3.10, 1.90))
 
     base.anchor("PVP_ANCHOR_red_identity", (-4.92, 5.42, 3.42), static)
     base.anchor("PVP_ANCHOR_blue_identity", (4.92, 5.42, 3.42), static)
@@ -811,6 +842,7 @@ def validate_scene():
         "PVP_DUEL_hanging_brazier_left",
         "PVP_DUEL_wall_sconce_left",
         "PVP_DUEL_sentinel_left_torso",
+        "PVP_DUEL_mid_weapon_rack_left",
         "PVP_DUEL_barrel_left",
         "PVP_DUEL_floor_grate_spine_left",
         "PVP_DUEL_arrow_slit_left",
