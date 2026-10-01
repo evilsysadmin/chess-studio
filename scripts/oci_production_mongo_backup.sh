@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+backup_phase="bootstrap"
+on_backup_error() {
+  local rc=$?
+  printf 'CHESS_STUDIO_MONGO_BACKUP_FAIL phase=%s line=%s rc=%s\n' "$backup_phase" "${BASH_LINENO[0]:-unknown}" "$rc" >&2
+  exit "$rc"
+}
+trap on_backup_error ERR
+
 if [[ ${EUID:-$(id -u)} -ne 0 ]]; then
   echo 'run as root (sudo)' >&2
   exit 77
@@ -48,7 +56,8 @@ remote_restore_archive=''
 cleanup() {
   local rc=$?
   if [[ -n "$scratch_container" ]]; then
-    docker rm -f "$scratch_container" >/dev/null 2>&1 || rc=71
+    backup_phase="scratch-cleanup"
+docker rm -f "$scratch_container" >/dev/null 2>&1 || rc=71
   fi
   if [[ -n "$scratch_network" ]]; then
     docker network rm "$scratch_network" >/dev/null 2>&1 || rc=71
@@ -118,6 +127,7 @@ if (( available_kb < minimum_kb )); then
   exit 74
 fi
 
+backup_phase="mongodump"
 docker run --rm --pull=never \
   --env-file "$runtime_env" \
   -v "$incoming:/backup" \
@@ -126,6 +136,7 @@ docker run --rm --pull=never \
 
 [[ -s "$incoming/dump.archive.gz" ]] || { echo 'mongodump produced an empty archive' >&2; exit 65; }
 
+backup_phase="dry-run"
 docker run --rm --pull=never \
   --env-file "$runtime_env" \
   -v "$incoming:/backup:ro" \
@@ -163,7 +174,9 @@ runtime_python="${runtime_home}/.cache/chess-studio-oci-runtime/bin/python"
 [[ -x "$runtime_python" ]] || { echo "missing OCI runtime python: $runtime_python" >&2; exit 69; }
 "$runtime_python" -c 'import oci' >/dev/null 2>&1 || { echo 'OCI SDK missing from runtime python' >&2; exit 69; }
 
+backup_phase="offhost-upload-download"
 CHESS_BACKUP_DIR="$final_dir" \
+backup_phase="remote-prune"
 CHESS_BACKUP_BUCKET="$backup_bucket" \
 CHESS_BACKUP_STAMP="$stamp" \
 CHESS_BACKUP_SHA256="$checksum" \
@@ -285,12 +298,14 @@ printf '%s  %s\n' "$checksum" "$remote_restore_archive" | sha256sum -c - >/dev/n
 scratch_suffix="$(printf '%s-%s' "$stamp" "$$" | tr '[:upper:]' '[:lower:]')"
 scratch_network="chess-studio-restore-$scratch_suffix"
 scratch_container="chess-studio-restore-$scratch_suffix"
+backup_phase="scratch-network"
 docker network create "$scratch_network" >/dev/null
 docker run -d --rm --pull=never \
   --name "$scratch_container" \
   --network "$scratch_network" \
   "$backup_image" --bind_ip_all --quiet >/dev/null
 
+backup_phase="scratch-ready"
 scratch_ready=0
 for _restore_wait in $(seq 1 30); do
   if docker run --rm --pull=never --network "$scratch_network" "$backup_image" \
@@ -303,6 +318,7 @@ for _restore_wait in $(seq 1 30); do
 done
 [[ "$scratch_ready" -eq 1 ]] || { echo 'isolated Mongo restore target did not become ready' >&2; exit 68; }
 
+backup_phase="scratch-restore"
 docker run --rm --pull=never \
   --network "$scratch_network" \
   -e SCRATCH_HOST="$scratch_container" \
@@ -310,6 +326,7 @@ docker run --rm --pull=never \
   "$backup_image" \
   sh -ec 'mongorestore --host="$SCRATCH_HOST" --archive=/backup/.remote-restore.archive.gz --gzip --nsInclude="chess_study.*" >/dev/null'
 
+backup_phase="scratch-query"
 restore_summary="$(docker run --rm --pull=never --network "$scratch_network" "$backup_image" \
   mongosh --quiet "mongodb://$scratch_container:27017/chess_study" --eval '
     const names = db.getCollectionNames();
@@ -386,6 +403,7 @@ print(
 )
 PY
 
+backup_phase="local-prune"
 mapfile -t backups < <(find "$backup_root" -mindepth 1 -maxdepth 1 -type d -name 'backup-*' -printf '%f\n' | sort -r)
 retained=0
 for name in "${backups[@]}"; do
@@ -399,5 +417,6 @@ mapfile -t remaining < <(find "$backup_root" -mindepth 1 -maxdepth 1 -type d -na
 [[ "${#remaining[@]}" -le "$keep_count" ]] || { echo 'backup retention pruning failed' >&2; exit 70; }
 [[ -d "$final_dir" ]] || { echo 'new backup disappeared during retention pruning' >&2; exit 70; }
 
+backup_phase="complete"
 printf 'CHESS_STUDIO_MONGO_BACKUP_OK timestamp=%s bytes=%s retained=%s remote_retained=%s bucket=%s sha256=%s\n' \
   "$stamp" "$bytes" "${#remaining[@]}" "$remote_keep_count" "$backup_bucket" "$checksum"
