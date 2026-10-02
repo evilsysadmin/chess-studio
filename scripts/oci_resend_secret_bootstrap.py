@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import base64
 import os
+import uuid
 from typing import Any
 
 STAGING_SECRET_NAME = "chess-studio-staging-resend-api-key"
@@ -108,6 +109,12 @@ def update_production_bundle(
 
     current = read_current_production_values(oci)
     merged = production_recovery_values(current, resend_key)
+    if merged == current:
+        print(
+            "OCI_RESEND_PRODUCTION_BUNDLE_EXISTS "
+            f"name={PRODUCTION_RUNTIME_SECRET_NAME} recovery=current"
+        )
+        return
     payload = render_production_env(merged)
     secret_id = resolve_secret_id(
         oci,
@@ -120,7 +127,7 @@ def update_production_bundle(
     details = oci.vault.models.UpdateSecretDetails(
         secret_content=oci.vault.models.Base64SecretContentDetails(
             content_type="BASE64",
-            name=VERSION_NAME,
+            name=f"{VERSION_NAME}-{uuid.uuid4().hex[:16]}",
             stage="CURRENT",
             content=encoded,
         )
@@ -204,6 +211,14 @@ def self_test() -> None:
         "re_test_456",
     )
     assert existing_sender["PASSWORD_RESET_FROM"] == "Chess Studio <mail@example.test>"
+
+    # Replaying the bootstrap with the same Resend key is a no-op. A real
+    # rotation changes the desired bundle and therefore needs a new OCI version.
+    already_configured = production_recovery_values(base, "re_test_123")
+    assert production_recovery_values(already_configured, "re_test_123") == already_configured
+    rotated = production_recovery_values(already_configured, "re_test_456")
+    assert rotated != already_configured
+    assert rotated["RESEND_API_KEY"] == "re_test_456"
 
     old = os.environ.get("RESEND_API_KEY")
     try:
