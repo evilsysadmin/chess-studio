@@ -236,3 +236,18 @@ func TestPublicLobbyRosterOmitsOptionalFieldsForSelf(t *testing.T) {
 	if _,ok:=got["headToHead"]; ok { t.Fatalf("self h2h leaked=%#v",got) }
 	if _,ok:=got["challengeCooldownUntil"]; ok { t.Fatalf("self cooldown leaked=%#v",got) }
 }
+
+
+func TestNativeLobbyReadMarksRouteBeforeAuthentication(t *testing.T) {
+	now:=time.Date(2026,10,2,14,0,0,0,time.UTC)
+	h:=newLobbyReadHandler(t,now,&fakeStore{exists:true},&fakeLobbyReadStore{},false,"","")
+	req:=httptest.NewRequest(http.MethodGet,"http://edge/api/pvp/lobby",nil)
+	rr:=httptest.NewRecorder()
+	h.ServeHTTP(rr,req)
+	if rr.Code!=http.StatusUnauthorized {
+		t.Fatalf("status=%d body=%s",rr.Code,rr.Body.String())
+	}
+	if got:=rr.Header().Get("X-Chess-Pvp-Native"); got!="lobby-read" {
+		t.Fatalf("native marker=%q",got)
+	}
+}
