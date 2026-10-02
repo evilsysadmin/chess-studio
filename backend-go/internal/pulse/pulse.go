@@ -35,6 +35,8 @@ const (
 	presenceReconnecting = 12 * time.Second
 	disconnectGrace      = 60 * time.Second
 	handoffDelay         = 5 * time.Second
+	pvpTimeControlID     = "30+0"
+	pvpInitialClockMS    = int64(30 * 60 * 1000)
 	nativeHeaderValue    = "lobby-pulse"
 	mongoApplicationName = "chess-studio-pvp-go"
 )
@@ -1737,8 +1739,8 @@ func publicHandoffMatch(row cancelMatchRow, username string, now time.Time, virt
 		}
 	}
 
-	whiteClock := pointerInt64(row.WhiteClockMS, 10*60*1000)
-	blackClock := pointerInt64(row.BlackClockMS, 10*60*1000)
+	whiteClock := pointerInt64(row.WhiteClockMS, pvpInitialClockMS)
+	blackClock := pointerInt64(row.BlackClockMS, pvpInitialClockMS)
 	if whiteClock < 0 { whiteClock = 0 }
 	if blackClock < 0 { blackClock = 0 }
 
@@ -1800,7 +1802,7 @@ func publicHandoffMatch(row cancelMatchRow, username string, now time.Time, virt
 		"opponentDisconnectDeadline": opponentDisconnectDeadline,
 		"ratingChange": ratingChangePayload(row, username),
 		"clock": map[string]any{
-			"id": "10+0",
+			"id": pvpTimeControlID,
 			"whiteMs": whiteClock,
 			"blackMs": blackClock,
 			"incrementMs": int64(0),
