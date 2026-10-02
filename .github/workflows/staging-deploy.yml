@@ -111,20 +111,30 @@ jobs:
           raise SystemExit(0 if str(payload.get('build') or '').lower() == sys.argv[2].lower() else 1)
           PY
             then
-              converged=true
-              break
+              # /release flips as soon as blue/green cuts over, before the host
+              # finishes public CORS/PvP accreditation. Only treat the watcher
+              # as complete once the same external contract used by the final
+              # generation gate passes, otherwise a later host rollback is hidden.
+              if python3 scripts/verify_backend_staging.py \
+                --api-url "$STAGING_API_URL" \
+                --sha "$DEPLOY_SHA" \
+                --attempts 1 \
+                --interval 0 >/dev/null 2>&1; then
+                converged=true
+                break
+              fi
             fi
             if (( attempt % 8 == 0 )); then
               current_main="$(git ls-remote origin refs/heads/main 2>/dev/null | awk 'NR == 1 {print $1}' || true)"
               [[ ! "$current_main" =~ ^[0-9a-f]{40}$ || "$current_main" == "$DEPLOY_SHA" ]] || break
             fi
-            [[ "$attempt" -eq 76 ]] || sleep 1
+            [[ "$attempt" -eq 48 ]] || sleep 1
           done
           echo "converged=$converged" >> "$GITHUB_OUTPUT"
           if [[ "$converged" == true ]]; then
-            echo "::notice title=OCI zero-cost fast-path::$DEPLOY_SHA aplicado por watcher."
+            echo "::notice title=OCI zero-cost fast-path::$DEPLOY_SHA acreditado completamente por watcher."
           else
-            echo "::warning title=OCI fallback::Watcher no convergió; uso Run Command."
+            echo "::warning title=OCI fallback::Watcher no quedó acreditado; uso Run Command."
           fi
       - name: Re-check main before OCI fallback
         id: fallback_admission
@@ -165,18 +175,14 @@ jobs:
           OCI_REGION: ${{ vars.OCI_REGION || 'eu-frankfurt-1' }}
         run: |
           set -euo pipefail
-          body="$RUNNER_TEMP/backend-pre-fallback.json"
-          status="$(curl --silent --show-error --connect-timeout 1 --max-time 2 \
-            --output "$body" --write-out '%{http_code}' \
-            -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
-            "$STAGING_API_URL/release?sha=$DEPLOY_SHA" || true)"
-          if [[ "$status" == 200 ]] && python3 - "$body" "$DEPLOY_SHA" <<'PY'
-          import json, pathlib, sys
-          payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
-          raise SystemExit(0 if str(payload.get('build') or '').lower() == sys.argv[2].lower() else 1)
-          PY
-          then
-            echo "::notice title=OCI fallback avoided::A1 terminó $DEPLOY_SHA; skip Run Command."
+          # A transient exact /release is not enough: the host may still be
+          # inside post-cutover accreditation and can roll back afterwards.
+          if python3 scripts/verify_backend_staging.py \
+            --api-url "$STAGING_API_URL" \
+            --sha "$DEPLOY_SHA" \
+            --attempts 1 \
+            --interval 0 >/dev/null 2>&1; then
+            echo "::notice title=OCI fallback avoided::A1 terminó y acreditó $DEPLOY_SHA; skip Run Command."
             exit 0
           fi
           python3 scripts/oci_run_command.py deploy --repo-ref "$DEPLOY_SHA"
