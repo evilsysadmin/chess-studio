@@ -39,6 +39,7 @@ type fakeStore struct {
 	readyErr error
 	readyFailures int
 	readyCalls int
+	readyUser string
 	leftUsers []string
 	chatRows  []chatMessageRow
 	handoffMatch cancelMatchRow
@@ -91,8 +92,9 @@ func (f *fakeStore) CancelStartingMatch(context.Context, string, string, time.Ti
 	return f.cancelMatch, f.cancelResult, f.cancelMatchErr
 }
 
-func (f *fakeStore) ReadyMatch(context.Context, string, string, time.Time, virtualPlayerConfig) (cancelMatchRow, readyMatchResult, error) {
+func (f *fakeStore) ReadyMatch(_ context.Context, _ string, username string, _ time.Time, _ virtualPlayerConfig) (cancelMatchRow, readyMatchResult, error) {
 	f.readyCalls++
+	f.readyUser = username
 	if f.readyCalls <= f.readyFailures {
 		return cancelMatchRow{}, "", errors.New("temporary mongo error")
 	}
