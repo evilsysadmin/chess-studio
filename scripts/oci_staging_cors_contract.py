@@ -144,6 +144,7 @@ required_public_verifier_fragments = (
     "pvp_full_go_ready",
     '"nativeChallengeCreate"',
     '"nativeMatchMove"',
+    '"nativeResidentMove"',
     "pvp_release={pvp_observed}",
     "fetch_roster_rejection",
     "native_roster_rejection_ok",
@@ -160,6 +161,7 @@ for fragment in required_public_verifier_fragments:
 assert "assert pvp_full_go_ready(full_go)" in verifier
 assert "pvp_observed == expected" in verifier
 assert 'broken["nativeChallengeCreate"] = False' in verifier
+assert 'broken["nativeResidentMove"] = False' in verifier
 assert 'broken["virtualPlayersEnabled"] = False' in verifier
 
 # Runtime configuration is operational state. Normal releases consume the
