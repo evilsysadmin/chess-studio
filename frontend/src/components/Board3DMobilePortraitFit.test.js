@@ -2,7 +2,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { fitBoardCamera } from './Board3DScene.js';
 import { board3DProjectionSnapshot } from './Board3DProjectionDiagnostics.js';
-import { WAR_ROOM_MOBILE_FRAMING_VERSION } from './WarRoomMobileFraming.js';
+import {
+  BOARD3D_LEGACY_MOBILE_FRAMING_VERSION,
+  WAR_ROOM_MOBILE_FRAMING_VERSION,
+} from './WarRoomMobileFraming.js';
 
 // Código Rojo GP-2 (#34): con la cámara REAL (fitBoardCamera) el tablero
 // renderizado ocupa el 88–100 % del ancho del viewport en teléfonos verticales
@@ -24,13 +27,17 @@ describe('War Room · encaje del tablero en teléfono vertical', () => {
   beforeEach(() => { previousWindow = globalThis.window; });
   afterEach(() => { globalThis.window = previousWindow; });
 
-  for (const { viewport: [vw, vh], canvas: [cw, ch], profile = 'tactical', immersive = true } of PHONES) {
+  for (const { viewport: [vw, vh], canvas: [cw, ch], profile = 'warroom', immersive = true } of PHONES) {
     it(`${vw}x${vh} · canvas ${cw}x${ch}: tablero al 88–100 % del ancho y 64 casillas en pantalla`, () => {
       globalThis.window = { matchMedia: () => ({ matches: true }), innerWidth: vw, innerHeight: vh };
       const camera = new THREE.PerspectiveCamera(40, cw / ch, 0.1, 200);
       fitBoardCamera(camera, cw, ch, true, { profile, immersive });
       camera.updateMatrixWorld();
-      expect(camera.userData.framingProfile).toBe(WAR_ROOM_MOBILE_FRAMING_VERSION);
+      expect(camera.userData.framingProfile).toBe(
+        profile === 'warroom'
+          ? WAR_ROOM_MOBILE_FRAMING_VERSION
+          : BOARD3D_LEGACY_MOBILE_FRAMING_VERSION,
+      );
 
       const { corners, squares } = board3DProjectionSnapshot(camera);
       const xs = corners.map(([x]) => x);
