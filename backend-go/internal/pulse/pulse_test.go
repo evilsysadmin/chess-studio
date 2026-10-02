@@ -34,6 +34,9 @@ type fakeStore struct {
 	cancelMatch cancelMatchRow
 	cancelResult cancelMatchResult
 	cancelMatchErr error
+	readyMatch publicMatchRow
+	readyResult readyMatchResult
+	readyMatchErr error
 	leftUsers []string
 	chatRows  []chatMessageRow
 }
@@ -76,6 +79,10 @@ func (f *fakeStore) DeclineChallenge(context.Context, string, string, time.Time)
 
 func (f *fakeStore) CancelStartingMatch(context.Context, string, string, time.Time) (cancelMatchRow, cancelMatchResult, error) {
 	return f.cancelMatch, f.cancelResult, f.cancelMatchErr
+}
+
+func (f *fakeStore) ReadyMatch(context.Context, string, string, time.Time) (publicMatchRow, readyMatchResult, error) {
+	return f.readyMatch, f.readyResult, f.readyMatchErr
 }
 
 func TestPulseReturnsNativeRevisionForValidSession(t *testing.T) {
@@ -655,11 +662,131 @@ func TestCancelledResidentMatchKeepsPythonIdentityAndVirtualPresence(t *testing.
 		ID: "m-resident", White: "alice", Black: "marta_stein", FEN: "start-fen",
 		Turn: "w", Status: "cancelled", Rated: &rated, Revision: 2,
 	}
-	match := publicCancelledMatch(row, "alice", now, true)
+	match := publicMatch(row, "alice", now, true)
 	if match["blackDisplayName"] != "Marta Stein" || match["blackActorKind"] != "resident" || match["blackActorLabel"] != "RESIDENTE · IA" {
 		t.Fatalf("resident identity=%#v", match)
 	}
 	if match["opponentPresence"] != "online" || match["opponentSeenAt"] == nil {
 		t.Fatalf("resident presence=%#v", match)
+	}
+}
+
+func TestMatchParticipantFilterExcludesStagedAcceptance(t *testing.T) {
+	filter := matchParticipantFilter("m-1", "alice")
+	state, ok := filter["acceptance_state"].(bson.M)
+	if !ok || state["$ne"] != "staged" {
+		t.Fatalf("acceptance_state filter=%#v", filter["acceptance_state"])
+	}
+	if filter["_id"] != "m-1" {
+		t.Fatalf("id filter=%#v", filter["_id"])
+	}
+}
+
+func TestNativeMatchReadyPreservesStartingAndActivationDTOs(t *testing.T) {
+	now := time.Date(2026, 10, 2, 10, 30, 0, 0, time.UTC)
+	for _, tc := range []struct {
+		name string
+		row publicMatchRow
+		wantStatus string
+		wantReady bool
+		wantOpponentReady bool
+		wantStarts bool
+	}{
+		{
+			name: "first-ready",
+			row: publicMatchRow{
+				ID: "m-1", White: "alice", Black: "bob", FEN: "start-fen", Turn: "w",
+				Status: "starting", WhiteReady: true, Revision: 2,
+				ReadyDeadline: now.Add(20*time.Second), CreatedAt: now.Add(-time.Minute), UpdatedAt: now,
+			},
+			wantStatus: "starting", wantReady: true, wantOpponentReady: false,
+		},
+		{
+			name: "activation",
+			row: publicMatchRow{
+				ID: "m-1", White: "alice", Black: "bob", FEN: "start-fen", Turn: "w",
+				Status: "active", WhiteReady: true, BlackReady: true, Revision: 3,
+				StartAt: now.Add(5*time.Second), TurnStartedAt: now.Add(5*time.Second),
+				ReadyDeadline: now.Add(20*time.Second), CreatedAt: now.Add(-time.Minute), UpdatedAt: now,
+			},
+			wantStatus: "active", wantReady: true, wantOpponentReady: true, wantStarts: true,
+		},
+	}
+	for _, tc := range tc {
+		t.Run(tc.name, func(t *testing.T) {
+			h, err := NewHandler(HandlerConfig{
+				Store: &fakeStore{exists: true, version: 2, readyMatch: tc.row, readyResult: readyMatchOK},
+				JWTSecret: "01234567890123456789012345678901",
+				EnableMatchReady: true,
+				Now: func() time.Time { return now },
+			})
+			if err != nil { t.Fatal(err) }
+			req := httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/matches/m-1/ready", nil)
+			req.Header.Set("Authorization", "Bearer "+signedToken(t, "alice", 2, now.Add(time.Hour), "session", "01234567890123456789012345678901"))
+			rr := httptest.NewRecorder()
+			h.ServeHTTP(rr, req)
+			if rr.Code != http.StatusOK { t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String()) }
+			if got := rr.Header().Get("X-Chess-Pvp-Native"); got != "match-ready" {
+				t.Fatalf("native header=%q", got)
+			}
+			var body map[string]any
+			if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil { t.Fatal(err) }
+			match, ok := body["match"].(map[string]any)
+			if !ok { t.Fatalf("match=%#v", body["match"]) }
+			if match["status"] != tc.wantStatus || match["youReady"] != tc.wantReady || match["opponentReady"] != tc.wantOpponentReady {
+				t.Fatalf("match=%#v", match)
+			}
+			if (match["startsAt"] != nil) != tc.wantStarts {
+				t.Fatalf("startsAt=%#v want=%v", match["startsAt"], tc.wantStarts)
+			}
+		})
+	}
+}
+
+func TestNativeMatchReadyPreservesPythonConflictSemantics(t *testing.T) {
+	now := time.Date(2026, 10, 2, 10, 30, 0, 0, time.UTC)
+	cases := []struct {
+		name string
+		result readyMatchResult
+		status int
+		detail string
+	}{
+		{"missing", readyMatchNotFound, http.StatusNotFound, "Partida 1v1 no encontrada."},
+		{"wrong-state", readyMatchWrongState, http.StatusConflict, "La partida ya no está preparando el arranque."},
+		{"race", readyMatchRevisionConflict, http.StatusConflict, "El duelo cambió mientras sincronizábamos a los jugadores."},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			h, err := NewHandler(HandlerConfig{
+				Store: &fakeStore{exists: true, version: 1, readyResult: tc.result},
+				JWTSecret: "01234567890123456789012345678901",
+				EnableMatchReady: true,
+				Now: func() time.Time { return now },
+			})
+			if err != nil { t.Fatal(err) }
+			req := httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/matches/m-x/ready", nil)
+			req.Header.Set("Authorization", "Bearer "+signedToken(t, "alice", 1, now.Add(time.Hour), "session", "01234567890123456789012345678901"))
+			rr := httptest.NewRecorder()
+			h.ServeHTTP(rr, req)
+			if rr.Code != tc.status || !strings.Contains(rr.Body.String(), tc.detail) {
+				t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+			}
+		})
+	}
+}
+
+func TestPublicMatchRunsClockOnlyAfterHandoffStart(t *testing.T) {
+	now := time.Date(2026, 10, 2, 10, 30, 10, 0, time.UTC)
+	whiteClock, blackClock := int64(600000), int64(600000)
+	row := publicMatchRow{
+		ID: "m-1", White: "alice", Black: "bob", FEN: "start-fen", Turn: "w",
+		Status: "active", WhiteReady: true, BlackReady: true,
+		WhiteClockMS: &whiteClock, BlackClockMS: &blackClock,
+		TurnStartedAt: now.Add(-2*time.Second),
+	}
+	match := publicMatch(row, "alice", now, false)
+	clock := match["clock"].(map[string]any)
+	if clock["runningColor"] != "w" || clock["whiteMs"] != int64(598000) || match["yourTurn"] != true {
+		t.Fatalf("active match=%#v", match)
 	}
 }
