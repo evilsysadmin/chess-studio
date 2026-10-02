@@ -374,6 +374,7 @@ def main() -> None:
         )
         storage = str(ready.get("storage") or "")
         observed = str(release.get("build") or "").lower()
+        pvp_observed = str(pvp_edge.get("release") or "").lower()
         allowed_origin = cors_headers.get("access-control-allow-origin", "")
         ok = ready_status == 200 and ready.get("ok") is True and storage == "mongo"
         exact = release_status == 200 and observed == expected
@@ -410,6 +411,7 @@ def main() -> None:
         )
         pvp_edge_ready_ok = (
             pvp_edge_status == 200
+            and pvp_observed == expected
             and pvp_full_go_ready(pvp_edge)
         )
         if (
@@ -427,7 +429,8 @@ def main() -> None:
                 "OCI staging public accreditation OK: "
                 f"storage=mongo build={observed} cors_origin={allowed_origin} "
                 f"pvp_roster_cors=ok pvp_roster_native_response=ok "
-                f"pvp_challenge_transport=ok pvp_full_go=ok virtual_players=on"
+                f"pvp_challenge_transport=ok pvp_full_go=ok "
+                f"pvp_release={pvp_observed} virtual_players=on"
             )
             return
 
@@ -452,6 +455,7 @@ def main() -> None:
             f"pvp_challenge_response_http={challenge_response_status or 'error'} "
             f"pvp_challenge_edge={challenge_response_headers.get('x-chess-pvp-edge', '') or '<empty>'} "
             f"pvp_edge_ready_http={pvp_edge_status or 'error'} "
+            f"pvp_release={pvp_observed or '<empty>'} "
             f"pvp_native_lobby_read={pvp_edge.get('nativeLobbyRead', '<empty>')} "
             f"pvp_full_go={pvp_full_go_ready(pvp_edge)} "
             f"pvp_virtual_players={pvp_edge.get('virtualPlayersEnabled', '<empty>')} "
