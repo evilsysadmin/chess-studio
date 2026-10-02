@@ -154,33 +154,91 @@ func TestNativeLobbyReadReturnsPythonCompatibleSnapshotAndHidesSyntheticActors(t
 	}
 }
 
-func TestNativeLobbyReadOwnerSeedsAndExposesResidentIdentity(t *testing.T) {
+func TestNativeLobbyReadOwnerMaterializesAllVirtualRivalsWithoutSnapshotTTLRows(t *testing.T) {
 	now:=time.Date(2026,10,2,14,0,0,0,time.UTC)
 	base:=&fakeStore{exists:true}
 	store:=&fakeLobbyReadStore{snapshot:lobbySnapshot{Roster:[]rosterRow{
 		{Username:"owner",Rating:400,Tier:"Principiante",JoinedAt:now},
-		{Username:"otto_falk",Rating:850,Tier:"Aficionado",JoinedAt:now},
 	}}}
 	h:=newLobbyReadHandler(t,now,base,store,true,"owner","sparringmeister")
 
 	rr:=lobbyReadRequest(t,h,now,http.MethodGet,"owner")
 	if rr.Code!=http.StatusOK { t.Fatalf("status=%d body=%s",rr.Code,rr.Body.String()) }
+	var body struct{ Roster []map[string]any `json:"roster"` }
+	if err:=json.Unmarshal(rr.Body.Bytes(),&body); err!=nil { t.Fatal(err) }
+	if len(body.Roster)!=5 { t.Fatalf("roster=%#v",body.Roster) }
+
+	byName:=map[string]map[string]any{}
+	for _,row:=range body.Roster {
+		name,_:=row["username"].(string)
+		byName[name]=row
+	}
 	for name,want:=range map[string]int64{
 		"sparringmeister":400,
 		"otto_falk":850,
 		"marta_stein":1200,
 		"viktor_kraus":1450,
 	}{
-		if got:=base.syntheticRoster[name]; got!=want {
-			t.Fatalf("synthetic %s=%d want=%d all=%#v",name,got,want,base.syntheticRoster)
+		row:=byName[name]
+		if row==nil || int64(row["rating"].(float64))!=want {
+			t.Fatalf("virtual %s=%#v",name,row)
 		}
 	}
+	for name,display:=range map[string]string{
+		"otto_falk":"Otto Falk",
+		"marta_stein":"Marta Stein",
+		"viktor_kraus":"Viktor Kraus",
+	}{
+		row:=byName[name]
+		if row["displayName"]!=display || row["actorKind"]!="resident" || row["actorLabel"]!="RESIDENTE · IA" {
+			t.Fatalf("resident %s=%#v",name,row)
+		}
+	}
+}
+
+func TestNativeLobbyReadKeepsVirtualRivalsVisibleWhenCompatibilitySeedFails(t *testing.T) {
+	now:=time.Date(2026,10,2,14,0,0,0,time.UTC)
+	base:=&fakeStore{exists:true,syntheticErr:errors.New("seed unavailable")}
+	store:=&fakeLobbyReadStore{snapshot:lobbySnapshot{Roster:[]rosterRow{
+		{Username:"owner",Rating:400,Tier:"Principiante",JoinedAt:now},
+	}}}
+	h:=newLobbyReadHandler(t,now,base,store,true,"owner","sparringmeister")
+
+	rr:=lobbyReadRequest(t,h,now,http.MethodGet,"owner")
+	if rr.Code!=http.StatusOK { t.Fatalf("status=%d body=%s",rr.Code,rr.Body.String()) }
+
 	var body struct{ Roster []map[string]any `json:"roster"` }
 	if err:=json.Unmarshal(rr.Body.Bytes(),&body); err!=nil { t.Fatal(err) }
-	if len(body.Roster)!=2 { t.Fatalf("roster=%#v",body.Roster) }
-	otto:=body.Roster[1]
-	if otto["displayName"]!="Otto Falk" || otto["actorKind"]!="resident" || otto["actorLabel"]!="RESIDENTE · IA" {
-		t.Fatalf("resident identity=%#v",otto)
+	if len(body.Roster)!=5 { t.Fatalf("roster=%#v",body.Roster) }
+	seen:=map[string]bool{}
+	for _,row:=range body.Roster {
+		name,_:=row["username"].(string)
+		seen[name]=true
+	}
+	for _,name:=range []string{"sparringmeister","otto_falk","marta_stein","viktor_kraus"} {
+		if !seen[name] { t.Fatalf("missing %s roster=%#v",name,body.Roster) }
+	}
+}
+
+func TestNativeLobbyReadDeduplicatesVirtualRowsStillPresentInMongo(t *testing.T) {
+	now:=time.Date(2026,10,2,14,0,0,0,time.UTC)
+	store:=&fakeLobbyReadStore{snapshot:lobbySnapshot{Roster:[]rosterRow{
+		{Username:"owner",Rating:400,Tier:"Principiante",JoinedAt:now},
+		{Username:"otto_falk",Rating:850,Tier:"Aficionado",JoinedAt:now},
+		{Username:"sparringmeister",Rating:400,Tier:"Principiante",JoinedAt:now},
+	}}}
+	h:=newLobbyReadHandler(t,now,&fakeStore{exists:true},store,true,"owner","sparringmeister")
+	rr:=lobbyReadRequest(t,h,now,http.MethodGet,"owner")
+	if rr.Code!=http.StatusOK { t.Fatalf("status=%d body=%s",rr.Code,rr.Body.String()) }
+	var body struct{ Roster []map[string]any `json:"roster"` }
+	if err:=json.Unmarshal(rr.Body.Bytes(),&body); err!=nil { t.Fatal(err) }
+	if len(body.Roster)!=5 { t.Fatalf("roster=%#v",body.Roster) }
+	seen:=map[string]int{}
+	for _,row:=range body.Roster {
+		if name,ok:=row["username"].(string); ok { seen[name]++ }
+	}
+	for _,name:=range []string{"sparringmeister","otto_falk","marta_stein","viktor_kraus"} {
+		if seen[name]!=1 { t.Fatalf("%s count=%d roster=%#v",name,seen[name],body.Roster) }
 	}
 }
 
