@@ -135,23 +135,48 @@ test('War Room 1v1 · rendirse no resucita un handoff stale del lobby', async ({
     startsAt: '2026-09-16T04:59:59Z',
     opponentPresence: 'online',
   });
+  let staleActiveAfterResign = null;
+  let duelFinished = false;
+  let postExitLobbyReads = 0;
+  let lobbyPulseRevision = 0;
 
-  // Keep returning the stale pre-game snapshot from the roster on purpose.
-  // This is the exact state that used to resurrect the handoff after resigning.
-  await page.route('**/api/pvp/lobby', (route) => route.fulfill({
+  // Force every visible lobby poll to reconcile the full snapshot so this test
+  // can model a real blue/green ordering race deterministically.
+  await page.route('**/api/pvp/lobby/pulse', (route) => route.fulfill({
     status: 200,
     contentType: 'application/json',
     body: JSON.stringify({
-      roster: [
-        { username: 'e2e', rating: 1050, tier: 'Intermedio', isSelf: true },
-        { username: 'sparringmeister', rating: 400, tier: 'Principiante', isSelf: false },
-      ],
-      challenges: [],
-      activeMatch: staleStarting,
-      messages: [],
-      pollAfterMs: 3000,
+      revision: `pvp-e2e-${++lobbyPulseRevision}`,
+      pollAfterMs: 2000,
+      source: 'go',
     }),
   }));
+
+  // Before the duel finishes the roster advertises the starting match. After
+  // "Volver al lobby", return one transient null snapshot and then a delayed
+  // stale active snapshot for the same match. That exact null -> stale-active
+  // ordering used to clear the terminal guard and reopen Duel Room.
+  await page.route('**/api/pvp/lobby', (route) => {
+    let activeMatch = staleStarting;
+    if (duelFinished) {
+      activeMatch = postExitLobbyReads === 0 ? null : staleActiveAfterResign;
+      postExitLobbyReads += 1;
+    }
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        roster: [
+          { username: 'e2e', rating: 1050, tier: 'Intermedio', isSelf: true },
+          { username: 'sparringmeister', rating: 400, tier: 'Principiante', isSelf: false },
+        ],
+        challenges: [],
+        activeMatch,
+        messages: [],
+        pollAfterMs: 2000,
+      }),
+    });
+  });
   await page.route('**/api/pvp/roster', (route) => route.fulfill({
     status: 200,
     contentType: 'application/json',
@@ -195,6 +220,8 @@ test('War Room 1v1 · rendirse no resucita un handoff stale del lobby', async ({
     });
   });
   await page.route('**/api/pvp/matches/pvp-e2e-1/resign', (route) => {
+    staleActiveAfterResign = { ...liveMatch };
+    duelFinished = true;
     liveMatch = {
       ...liveMatch,
       status: 'finished',
@@ -244,7 +271,12 @@ test('War Room 1v1 · rendirse no resucita un handoff stale del lobby', async ({
 
   await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible();
   await expect(page.getByText('Sincronizando el duelo…', { exact: true })).toHaveCount(0);
-  await page.waitForTimeout(1200);
+
+  // First full lobby read is null; the following poll deliberately returns the
+  // stale active snapshot. The finished duel must stay buried instead of
+  // reopening a room whose "Abandonar" action can no longer mutate anything.
+  await expect.poll(() => postExitLobbyReads, { timeout: 8_000 }).toBeGreaterThanOrEqual(2);
+  await expect(page.getByRole('region', { name: 'Sala de duelo 1 contra 1' })).toHaveCount(0);
   await expect(page.getByText('Sincronizando el duelo…', { exact: true })).toHaveCount(0);
 });
 

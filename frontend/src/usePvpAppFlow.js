@@ -52,10 +52,10 @@ export function usePvpAppFlow({ view, replaceView }) {
 
   useEffect(() => {
     const nextMatch = presence.activeMatch;
-    if (!nextMatch?.id) {
-      terminalHandoffIdRef.current = '';
-      return;
-    }
+    // A terminal match id is a local tombstone against stale lobby projections.
+    // Keep it across transient activeMatch=null snapshots: clearing it here lets
+    // the next delayed snapshot resurrect the just-finished duel.
+    if (!nextMatch?.id) return;
     if (nextMatch.id === terminalHandoffIdRef.current) return;
     if (nextMatch.id === match?.id || nextMatch.id === handoffMatch?.id) return;
     enterMatch(nextMatch);
