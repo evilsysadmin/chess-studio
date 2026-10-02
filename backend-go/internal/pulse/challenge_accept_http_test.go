@@ -17,10 +17,16 @@ type fakeChallengeAcceptService struct {
 	result challengeaccept.Result
 	err    error
 	calls  int
+	challengeID string
+	username string
+	synthetic bool
 }
 
-func (f *fakeChallengeAcceptService) Accept(context.Context, string, string, bool) (challengeaccept.Result, error) {
+func (f *fakeChallengeAcceptService) Accept(_ context.Context, challengeID, username string, synthetic bool) (challengeaccept.Result, error) {
 	f.calls++
+	f.challengeID = challengeID
+	f.username = username
+	f.synthetic = synthetic
 	return f.result, f.err
 }
 
