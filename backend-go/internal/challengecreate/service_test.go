@@ -108,6 +108,24 @@ func TestCreatePreservesPythonPreconditionOrder(t *testing.T) {
 	}
 }
 
+func TestCreateBlankNormalizedOpponentMatchesPythonAvailabilityError(t *testing.T) {
+	store := baseStore()
+	service, _ := New(Config{Store: store, NewID: func()(string,error){ return "id",nil }})
+	_, err := service.Create(context.Background(), "alice", "   ")
+	if !errors.Is(err, ErrOpponentUnavailable) {
+		t.Fatalf("err=%v want=%v", err, ErrOpponentUnavailable)
+	}
+	want := []string{"roster:alice", "roster:"}
+	if len(store.calls) != len(want) {
+		t.Fatalf("calls=%#v want=%#v", store.calls, want)
+	}
+	for i := range want {
+		if store.calls[i] != want[i] {
+			t.Fatalf("calls=%#v want=%#v", store.calls, want)
+		}
+	}
+}
+
 func TestCreateRejectsSelfBeforeStorage(t *testing.T) {
 	store := baseStore()
 	service, _ := New(Config{Store: store})
