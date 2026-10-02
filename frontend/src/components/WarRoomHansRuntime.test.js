@@ -10,6 +10,11 @@ import {
   setWarRoomHansTaskPresentation,
   warRoomHansTaskAvailable,
   WAR_ROOM_HANS_RUNTIME_VERSION,
+  WAR_ROOM_HANS_SETUP_RETRY_DELAY_MS,
+  createWarRoomHansSetupRetryState,
+  deferWarRoomHansSetupRetry,
+  resetWarRoomHansSetupRetry,
+  warRoomHansSetupRetryReady,
 } from './WarRoomHansRuntime.js';
 
 function makeActor() {
@@ -66,5 +71,25 @@ describe('War Room Hans runtime', () => {
     expect(releaseWarRoomHansTask(runtime, 'service-espresso')).toBe(true);
     expect(getWarRoomHansActiveTask(runtime)).toBeNull();
     expect(warRoomHansTaskAvailable(runtime, 'chore-mail')).toBe(true);
+  });
+  it('reintenta setup transitorio con backoff acotado y luego falla cerrado', () => {
+    const retry = createWarRoomHansSetupRetryState();
+    expect(warRoomHansSetupRetryReady(retry, 1000)).toBe(true);
+
+    expect(deferWarRoomHansSetupRetry(retry, 1000)).toBe(true);
+    expect(retry.attempts).toBe(1);
+    expect(retry.notBefore).toBe(1000 + WAR_ROOM_HANS_SETUP_RETRY_DELAY_MS);
+    expect(warRoomHansSetupRetryReady(retry, retry.notBefore - 1)).toBe(false);
+    expect(warRoomHansSetupRetryReady(retry, retry.notBefore)).toBe(true);
+
+    expect(deferWarRoomHansSetupRetry(retry, retry.notBefore)).toBe(true);
+    expect(retry.attempts).toBe(2);
+    expect(deferWarRoomHansSetupRetry(retry, retry.notBefore)).toBe(false);
+    expect(retry.attempts).toBe(3);
+    expect(warRoomHansSetupRetryReady(retry, Number.MAX_SAFE_INTEGER)).toBe(false);
+
+    expect(resetWarRoomHansSetupRetry(retry)).toBe(true);
+    expect(retry).toEqual({ attempts: 0, notBefore: 0 });
+    expect(warRoomHansSetupRetryReady(retry, 0)).toBe(true);
   });
 });
