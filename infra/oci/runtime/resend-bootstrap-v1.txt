@@ -3,3 +3,4 @@ Retrigger after production runtime HOME expansion fix.
 Retrigger after embedded production newline fix.
 Retrigger after OCI staging mutation completed successfully.
 Retrigger after compact Vault runtime sync payload.
+Retrigger after post-staging bootstrap serialization fix.
