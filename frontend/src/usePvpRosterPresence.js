@@ -216,11 +216,16 @@ export function usePvpRosterPresence({ enabled = true } = {}) {
     try {
       const pvpApi = await loadPvpApi();
       const joined = await pvpApi.joinRoster();
+
+      // El POST de roster es la confirmación autoritativa de disponibilidad.
+      // No volvemos a convertir ese éxito en fallo sólo porque el snapshot de
+      // lobby inmediatamente posterior tenga un corte de red. Pintamos al
+      // jugador desde la respuesta confirmada y el polling/reload reconciliará
+      // el resto de la sala de forma best-effort.
       savePvpEnrollment(username, true);
       heartbeatAtRef.current = Date.now();
       setEnrolled(true);
-      const next = { ...EMPTY_LOBBY, ...(await pvpApi.getLobby() || {}) };
-      setLobby(mergeSelfIntoRoster(next, joined?.member));
+      setLobby((current) => mergeSelfIntoRoster(current, joined?.member));
       setError('');
       return joined;
     } catch (err) {
