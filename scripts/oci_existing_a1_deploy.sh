@@ -477,6 +477,7 @@ import asyncio
 import json
 import os
 import sys
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -526,8 +527,15 @@ def attest_roster(url: str, *, surface: str, require_public_markers: bool = Fals
         with urllib.request.urlopen(request, timeout=8) as response:
             response_headers = {str(k).lower(): str(v).strip() for k, v in response.headers.items()}
             payload = json.load(response)
-    except Exception:
-        raise SystemExit(f"PVP_VIRTUAL_ROSTER_FAIL surface={surface} reason=lobby-request-failed")
+    except urllib.error.HTTPError as exc:
+        raise SystemExit(
+            f"PVP_VIRTUAL_ROSTER_FAIL surface={surface} reason=http-error status={exc.code}"
+        )
+    except Exception as exc:
+        raise SystemExit(
+            f"PVP_VIRTUAL_ROSTER_FAIL surface={surface} reason=lobby-request-failed "
+            f"type={type(exc).__name__} detail={str(exc)[:160]}"
+        )
 
     if require_public_markers:
         if response_headers.get("x-chess-pvp-edge", "").lower() != "go":
@@ -580,6 +588,7 @@ PY
 
 pvp_edge_attest() {
   local target_port="${1:-$port}"
+  local expected_release="${2:-$sha}"
   local headers body status
   headers="$(mktemp)"
   body="$(mktemp)"
@@ -592,7 +601,7 @@ pvp_edge_attest() {
   fi
   if [[ "$status" != "200" ]] || \
      ! grep -Eiq "^X-Chess-Pvp-Edge:[[:space:]]*go[[:space:]]*$" "$headers" || \
-     ! python3 - "$body" "$sha" <<'PY'
+     ! python3 - "$body" "$expected_release" <<'PY'
 import json
 import pathlib
 import sys
@@ -857,10 +866,11 @@ PY
 
 wait_pvp_edge_attest() {
   local target_port="${1:-$port}"
+  local expected_release="${2:-$sha}"
   local attempts="${CHESS_STUDIO_PVP_EDGE_ATTEST_ATTEMPTS:-20}"
   local attempt
   for attempt in $(seq 1 "$attempts"); do
-    if pvp_edge_attest "$target_port"; then
+    if pvp_edge_attest "$target_port" "$expected_release"; then
       return 0
     fi
     sleep 0.25
@@ -920,13 +930,24 @@ rollback() {
   echo "rolling back OCI backend after failed candidate $failed_sha" >&2
 
   if [[ -n "${previous_color:-}" ]]; then
-    # Emergency rollback deliberately bypasses Go. The previous deployed SHA
-    # may predate the PvP sidecar image entirely during the first migration.
-    render_edge "$previous_color" direct
-    # Safe both before and after the attempted switch: if edge is still on the
-    # old config this is a no-op; if reload partially succeeded, this actively
-    # restores the previous upstream.
-    reload_edge || true
+    local rollback_pvp_mode="python-direct"
+    # Modern staging generations already have a healthy PvP Go sidecar. Keep
+    # that authority on rollback when possible; degrading to Python-direct can
+    # silently hide staging-only residents even though the previous SHA itself
+    # is healthy. Direct mode remains the compatibility fallback for an older
+    # generation whose sidecar is absent or cannot pass readiness.
+    if [[ -n "$previous_sha" ]]; then
+      render_edge "$previous_color" go
+      if reload_edge && wait_pvp_edge_attest "$port" "$previous_sha"; then
+        rollback_pvp_mode="go"
+      else
+        render_edge "$previous_color" direct
+        reload_edge || true
+      fi
+    else
+      render_edge "$previous_color" direct
+      reload_edge || true
+    fi
     write_active_color "$previous_color"
     if [[ -n "$previous_sha" ]]; then
       record_successful_backend "$previous_sha"
@@ -938,7 +959,7 @@ rollback() {
       remove_service "$candidate_service"
       [[ -z "$candidate_pvp_service" ]] || remove_service "$candidate_pvp_service"
     fi
-    echo "CHESS_STUDIO_ROLLBACK_OK repo_ref=${previous_sha:-unknown} color=$previous_color pvp=python-direct"
+    echo "CHESS_STUDIO_ROLLBACK_OK repo_ref=${previous_sha:-unknown} color=$previous_color pvp=$rollback_pvp_mode"
     return 0
   fi
 
