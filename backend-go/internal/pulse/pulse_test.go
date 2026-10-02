@@ -220,13 +220,18 @@ func TestPulseOptionsHandlesCORSWithoutAuthentication(t *testing.T) {
 	}
 	req := httptest.NewRequest(http.MethodOptions, "http://edge/api/pvp/lobby/pulse", nil)
 	req.Header.Set("Origin", "https://staging.chess.test")
+	req.Header.Set("Access-Control-Request-Method", http.MethodGet)
+	req.Header.Set("Access-Control-Request-Headers", "authorization,x-request-id,x-client-release,x-presence-session")
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusNoContent {
 		t.Fatalf("status=%d want=204", rr.Code)
 	}
-	if got := rr.Header().Get("Access-Control-Allow-Headers"); got == "" {
-		t.Fatal("missing Access-Control-Allow-Headers")
+	allowedHeaders := strings.ToLower(rr.Header().Get("Access-Control-Allow-Headers"))
+	for _, required := range []string{"authorization", "x-request-id", "x-client-release", "x-presence-session"} {
+		if !strings.Contains(allowedHeaders, required) {
+			t.Fatalf("cors headers=%q missing %q", allowedHeaders, required)
+		}
 	}
 }
 
@@ -248,7 +253,7 @@ func TestCanonicalBrowserOriginsAreAllowedForNativeRosterPreflight(t *testing.T)
 			req := httptest.NewRequest(http.MethodOptions, "http://edge/api/pvp/roster", nil)
 			req.Header.Set("Origin", origin)
 			req.Header.Set("Access-Control-Request-Method", http.MethodPost)
-			req.Header.Set("Access-Control-Request-Headers", "authorization,x-client-release")
+			req.Header.Set("Access-Control-Request-Headers", "authorization,x-request-id,x-client-release,x-presence-session")
 			rr := httptest.NewRecorder()
 			h.ServeHTTP(rr, req)
 
@@ -263,8 +268,10 @@ func TestCanonicalBrowserOriginsAreAllowedForNativeRosterPreflight(t *testing.T)
 				t.Fatalf("cors methods=%q", methods)
 			}
 			allowedHeaders := strings.ToLower(rr.Header().Get("Access-Control-Allow-Headers"))
-			if !strings.Contains(allowedHeaders, "authorization") || !strings.Contains(allowedHeaders, "x-client-release") {
-				t.Fatalf("cors headers=%q", allowedHeaders)
+			for _, required := range []string{"authorization", "x-request-id", "x-client-release", "x-presence-session"} {
+				if !strings.Contains(allowedHeaders, required) {
+					t.Fatalf("cors headers=%q missing %q", allowedHeaders, required)
+				}
 			}
 		})
 	}
