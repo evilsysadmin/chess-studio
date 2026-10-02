@@ -30,10 +30,14 @@ import {
 } from './WarRoomHansNavigation.js';
 import {
   assignWarRoomHansTask,
+  createWarRoomHansSetupRetryState,
+  deferWarRoomHansSetupRetry,
   getWarRoomHansRuntime,
   releaseWarRoomHansTask,
+  resetWarRoomHansSetupRetry,
   setWarRoomHansTaskPhase,
   setWarRoomHansTaskPresentation,
+  warRoomHansSetupRetryReady,
   warRoomHansTaskAvailable,
 } from './WarRoomHansRuntime.js';
 import {
@@ -181,6 +185,7 @@ export function installWarRoomHansMopRoutine(root) {
   let dialogueElapsedMs = 0;
   let travelRoute = [];
   let routeIndex = 0;
+  const setupRetry = createWarRoomHansSetupRetryState();
 
   function prepareTravelRoute(target) {
     if (!target) return false;
@@ -233,6 +238,7 @@ export function installWarRoomHansMopRoutine(root) {
       dialogueElapsedMs = 0;
       travelRoute = [];
       routeIndex = 0;
+      resetWarRoomHansSetupRetry(setupRetry);
       setDialogue(actor, '');
       setMopDiagnostic(actor, 'waiting-delay');
     }
@@ -247,9 +253,14 @@ export function installWarRoomHansMopRoutine(root) {
         setMopDiagnostic(actor, 'waiting-delay');
         return;
       }
+      if (!warRoomHansSetupRetryReady(setupRetry, now)) {
+        setMopDiagnostic(actor, 'setup-backoff');
+        return;
+      }
       controller ||= createWarRoomHansWalkController(actor, { forward: 1 });
       if (!controller) {
         setMopDiagnostic(actor, 'missing-controller');
+        if (!deferWarRoomHansSetupRetry(setupRetry, now)) completedGameId = gameId;
         return;
       }
       if (!assignWarRoomHansTask(runtime, {
@@ -264,7 +275,8 @@ export function installWarRoomHansMopRoutine(root) {
       const service = warRoomHansServiceHome(root, actor.hans.parent);
       if (!service?.point) {
         setMopDiagnostic(actor, 'missing-service-home');
-        if (releaseWarRoomHansTask(runtime, TASK_ID)) completedGameId = gameId;
+        releaseWarRoomHansTask(runtime, TASK_ID);
+        if (!deferWarRoomHansSetupRetry(setupRetry, now)) completedGameId = gameId;
         return;
       }
       home = service.point;
@@ -286,7 +298,7 @@ export function installWarRoomHansMopRoutine(root) {
         setMopDiagnostic(actor, 'no-waypoints');
         clearRoutineState(actor, props, controller, root, runtime);
         active = false;
-        completedGameId = gameId;
+        if (!deferWarRoomHansSetupRetry(setupRetry, now)) completedGameId = gameId;
         return;
       }
       const preferredWaypoint = Math.floor(Math.random() * waypoints.length);
@@ -294,9 +306,10 @@ export function installWarRoomHansMopRoutine(root) {
         setMopDiagnostic(actor, 'no-safe-route');
         clearRoutineState(actor, props, controller, root, runtime);
         active = false;
-        completedGameId = gameId;
+        if (!deferWarRoomHansSetupRetry(setupRetry, now)) completedGameId = gameId;
         return;
       }
+      resetWarRoomHansSetupRetry(setupRetry);
       setMopDiagnostic(actor, 'active');
       state = 'walking';
       actor.hans.userData.warRoomHansMopStartStatus = 'active';
