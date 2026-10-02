@@ -387,6 +387,7 @@ export default function PvpGameScreen({ initialMatch, onExit, onMatchUpdate }) {
                     matthiasKingColor: null,
                     hansFireplaceIteration: false,
                     hansFireCallEnabled: false,
+                    immersive: true,
                     warRoomVariantOverride: 'duel',
                   }}
                 />
