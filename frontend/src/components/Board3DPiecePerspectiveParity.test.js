@@ -135,6 +135,50 @@ describe('Board3D piece scale parity', () => {
     }
   });
 
+  it('acerca Duel Room sin cambiar la óptica canónica de War Room', () => {
+    const assertSameOptics = (warRoom, duel) => {
+      expect(duel.fov).toBe(warRoom.fov);
+      expect(duel.userData.baseTarget.toArray()).toEqual(warRoom.userData.baseTarget.toArray());
+      const warDirection = warRoom.position.clone().sub(warRoom.userData.baseTarget).normalize();
+      const duelDirection = duel.position.clone().sub(duel.userData.baseTarget).normalize();
+      expect(duelDirection.x).toBeCloseTo(warDirection.x, 6);
+      expect(duelDirection.y).toBeCloseTo(warDirection.y, 6);
+      expect(duelDirection.z).toBeCloseTo(warDirection.z, 6);
+    };
+
+    vi.stubGlobal('window', {
+      innerWidth: 1440,
+      matchMedia: vi.fn().mockReturnValue({ matches: false }),
+    });
+
+    try {
+      const warRoom = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+      const duel = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+      fitBoardCamera(warRoom, 1440, 900, true, { profile: 'warroom', immersive: true });
+      fitBoardCamera(duel, 1440, 900, true, { profile: 'duel', immersive: true });
+      assertSameOptics(warRoom, duel);
+      expect(duel.userData.cameraDistance).toBeCloseTo(warRoom.userData.cameraDistance * 0.91, 6);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+
+    vi.stubGlobal('window', {
+      innerWidth: 851,
+      matchMedia: vi.fn().mockImplementation((query) => ({ matches: query === '(pointer: coarse)' })),
+    });
+
+    try {
+      const warRoom = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+      const duel = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+      fitBoardCamera(warRoom, 851, 393, true, { profile: 'warroom', immersive: true });
+      fitBoardCamera(duel, 851, 393, true, { profile: 'duel', immersive: true });
+      assertSameOptics(warRoom, duel);
+      expect(duel.userData.cameraDistance).toBeCloseTo(warRoom.userData.cameraDistance * 0.96, 6);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('adapta sólo distancia y target en landscape móvil sin cambiar lente ni pitch', () => {
     const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
     vi.stubGlobal('window', {

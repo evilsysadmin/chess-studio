@@ -217,7 +217,8 @@ export function fitBoardCamera(camera, width, height, whiteSide, { profile: requ
   const viewportWidth = typeof window !== 'undefined'
     ? Number(window.innerWidth) || width
     : width;
-  const usesWarRoomContract = requestedProfile === 'warroom';
+  const duelRoomProfile = requestedProfile === 'duel';
+  const usesWarRoomContract = requestedProfile === 'warroom' || duelRoomProfile;
   const canonicalMobileProfile = usesWarRoomContract
     ? getWarRoomMobileFramingProfile({ aspect, coarsePointer, viewportWidth })
     : null;
@@ -254,10 +255,15 @@ export function fitBoardCamera(camera, width, height, whiteSide, { profile: requ
   const limitingFov = Math.min(verticalFov, horizontalFov);
   const desktopImmersiveScale = immersive && !mobileProfile && requestedProfile !== 'classroom' ? 0.91 : 1;
   const sharedPitchDistanceScale = !mobileProfile && requestedProfile !== 'classroom' ? 1.115 : 1;
+  // Duel Room keeps the canonical War Room lens/pitch but moves the camera a
+  // little closer so the board, not the peripheral dungeon dressing, owns the
+  // composition. Mobile gets a smaller crop to preserve all pieces and HUD.
+  const duelRoomDistanceScale = duelRoomProfile ? (mobileProfile ? 0.96 : 0.91) : 1;
   const rawDistance = (profile.halfSpan / Math.tan(limitingFov / 2))
     * profile.padding
     * desktopImmersiveScale
-    * sharedPitchDistanceScale;
+    * sharedPitchDistanceScale
+    * duelRoomDistanceScale;
   const maxDistance = requestedProfile === 'classroom' ? profile.maxDistance : mobileProfile ? profile.maxDistance : 88;
   const distance = THREE.MathUtils.clamp(rawDistance, profile.minDistance, maxDistance);
   const target = new THREE.Vector3(0, profile.targetY, whiteSide ? -profile.targetZ : profile.targetZ);

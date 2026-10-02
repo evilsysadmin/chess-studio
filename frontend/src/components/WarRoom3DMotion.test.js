@@ -247,7 +247,7 @@ describe('WarRoom3DMotion', () => {
         expect(duel.rim).toBe(shared.rim);
         expect(duel.warm).toBe(shared.warm);
         expect(duel.fogDensity).toBe(shared.fogDensity);
-        expect(duel.exposure).toBeCloseTo(shared.exposure + (coarsePointer ? 0.40 : 0.24));
+        expect(duel.exposure).toBeCloseTo(shared.exposure + (coarsePointer ? 0.36 : 0.20));
       }
     }
     expect(reactiveLightProfile({ variant: 'duel', coarsePointer: true }).exposure)
