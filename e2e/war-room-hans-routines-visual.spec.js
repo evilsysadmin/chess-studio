@@ -217,7 +217,7 @@ for (const eventName of CAPTURE_EVENTS) {
       await activateSetupControl(buttonWithVisibleText(page, 'Partida rápida'));
       const quickDialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
       await expect(quickDialog).toBeVisible();
-      await quickDialog.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+      await activateSetupControl(quickDialog.getByRole('button', { name: 'Empezar partida', exact: true }));
       await expect(page.locator('.board-live-row.is-3d-warroom')).toBeVisible({ timeout: 45_000 });
 
       const canvas = page.locator('.board3d-main-canvas');
