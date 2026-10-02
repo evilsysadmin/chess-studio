@@ -50,12 +50,6 @@ jobs:
           set -euo pipefail
           echo 'admitted=false' >> "$GITHUB_OUTPUT"
           for attempt in {1..180}; do
-            current_main="$(git ls-remote origin refs/heads/main | awk 'NR == 1 {print $1}')"
-            [[ "$current_main" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::cannot resolve current main"; exit 1; }
-            if [[ "$current_main" != "$TARGET_SHA" ]]; then
-              echo "::notice title=Continuity drill superseded::$TARGET_SHA != main $current_main; no staging mutation."
-              exit 0
-            fi
             body="$RUNNER_TEMP/release-$attempt.json"
             status="$(curl --silent --show-error --connect-timeout 3 --max-time 8 \
               --output "$body" --write-out '%{http_code}' \
