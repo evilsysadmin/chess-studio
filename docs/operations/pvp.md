@@ -228,7 +228,8 @@ Current bounded contract:
 - lobby chat posting may execute natively in Go with the same 240-character normalization, per-user 12/minute limit and Mongo message schema; its kill-switch falls back to the Python route without a frontend change;
 - challenge cancel/decline may execute natively in Go using Mongo find-and-update CAS semantics and the existing 20-second pair cooldown; cancel preserves Python's idempotent repeated-cancel behavior while decline preserves its current one-shot 404-on-repeat behavior; a dedicated kill-switch falls back to Python;
 - cancelling a match that is still in `starting` may execute natively in Go with revision CAS and the same idempotent repeated-cancel semantics; this narrow transition does not activate a duel, settle rating or alter clocks, and has its own routing kill-switch;
-- readiness/activation, timeout, disconnect grace/forfeit, move legality, result and Elo settlement remain Python-authoritative until migrated explicitly with equivalent CAS/idempotency coverage;
+- handoff readiness/activation may execute natively in Go with the same four-attempt revision-CAS loop, 30-second ready timeout, 5-second activation countdown, virtual-opponent auto-ready semantics and best-effort post-commit roster cleanup; staged matches remain invisible and a dedicated kill-switch falls back to Python;
+- timeout during active play, disconnect grace/forfeit, move legality, result and Elo settlement remain Python-authoritative until migrated explicitly with equivalent CAS/idempotency coverage;
 - a missing/disabled native pulse must fall back to the existing Python GET path.
 
 ## Health and observability
