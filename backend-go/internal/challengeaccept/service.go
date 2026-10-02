@@ -115,6 +115,7 @@ func (s *Service) Accept(ctx context.Context, challengeID, username string, synt
 		return Result{}, ErrChallengeNotFound
 	}
 
+	recoverAcceptedMatch := false
 	switch challenge.Status {
 	case "accepted":
 		if challenge.MatchID == "" {
@@ -124,37 +125,44 @@ func (s *Service) Accept(ctx context.Context, challengeID, username string, synt
 		if err != nil {
 			return Result{}, err
 		}
-		if !ok {
-			return Result{}, ErrChallengeNotFound
+		if ok {
+			return Result{Match: match, AcceptedNow: false, Challenger: challenge.Challenger}, nil
 		}
-		return Result{Match: match, AcceptedNow: false, Challenger: challenge.Challenger}, nil
+		// Python deliberately lets the persistence saga repair the rare state
+		// where the challenge CAS committed but the authoritative match cannot
+		// be read. Do not re-run lobby availability checks in this recovery path.
+		recoverAcceptedMatch = true
 	case "pending":
 		// continue below
 	default:
 		return Result{}, ErrChallengeNotFound
 	}
 
-	if busy, err := s.store.HasActiveMatch(ctx, challenge.Challenger); err != nil {
+	if !recoverAcceptedMatch {
+		if busy, err := s.store.HasActiveMatch(ctx, challenge.Challenger); err != nil {
 		return Result{}, err
-	} else if busy {
-		return Result{}, ErrOpponentBusy
-	}
-	if busy, err := s.store.HasActiveMatch(ctx, username); err != nil {
-		return Result{}, err
-	} else if busy {
-		return Result{}, ErrSelfBusy
+		} else if busy {
+			return Result{}, ErrOpponentBusy
+		}
+		if busy, err := s.store.HasActiveMatch(ctx, username); err != nil {
+			return Result{}, err
+		} else if busy {
+			return Result{}, ErrSelfBusy
+		}
 	}
 
 	now := s.now().UTC()
-	if present, err := s.store.IsRosterMember(ctx, challenge.Challenger, now); err != nil {
-		return Result{}, err
-	} else if !present {
-		return Result{}, ErrOpponentUnavailable
-	}
-	if present, err := s.store.IsRosterMember(ctx, username, now); err != nil {
-		return Result{}, err
-	} else if !present {
-		return Result{}, ErrSelfUnavailable
+	if !recoverAcceptedMatch {
+		if present, err := s.store.IsRosterMember(ctx, challenge.Challenger, now); err != nil {
+			return Result{}, err
+		} else if !present {
+			return Result{}, ErrOpponentUnavailable
+		}
+		if present, err := s.store.IsRosterMember(ctx, username, now); err != nil {
+			return Result{}, err
+		} else if !present {
+			return Result{}, ErrSelfUnavailable
+		}
 	}
 
 	challengerWhite := syntheticPair
