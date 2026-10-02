@@ -44,11 +44,7 @@ func (s *MoveStore) Commit(
 	var row cancelMatchRow
 	err := s.store.db.Collection("pvp_matches").FindOneAndUpdate(
 		queryCtx,
-		bson.M{
-			"_id": matchID,
-			"revision": update.ExpectedRevision,
-			"acceptance_state": bson.M{"$ne": "staged"},
-		},
+		moveCommitFilter(matchID, update.ExpectedRevision),
 		moveUpdateDocument(update),
 		options.FindOneAndUpdate().SetReturnDocument(options.After),
 	).Decode(&row)
@@ -114,6 +110,14 @@ func moveHistoryBSON(rows []matchmove.HistoryEntry) []bson.M {
 	return history
 }
 
+func moveCommitFilter(matchID string, expectedRevision int64) bson.M {
+	return bson.M{
+		"_id": matchID,
+		"revision": expectedRevision,
+		"acceptance_state": bson.M{"$ne": "staged"},
+	}
+}
+
 func moveUpdateDocument(update matchmove.Update) bson.M {
 	var turnStarted any
 	if !update.TurnStartedAt.IsZero() {
@@ -124,8 +128,8 @@ func moveUpdateDocument(update matchmove.Update) bson.M {
 			"fen": update.FEN,
 			"turn": update.Turn,
 			"status": update.Status,
-			"result": update.Result,
-			"end_reason": update.EndReason,
+			"result": stringPointerValue(update.Result),
+			"end_reason": stringPointerValue(update.EndReason),
 			"history": moveHistoryBSON(update.History),
 			"white_clock_ms": update.WhiteClockMS,
 			"black_clock_ms": update.BlackClockMS,
@@ -134,6 +138,13 @@ func moveUpdateDocument(update matchmove.Update) bson.M {
 		},
 		"$inc": bson.M{"revision": 1},
 	}
+}
+
+func stringPointerValue(value *string) any {
+	if value == nil {
+		return nil
+	}
+	return *value
 }
 
 func cloneStringPointer(value *string) *string {
@@ -165,6 +176,12 @@ func stringFromBSON(value any) string {
 }
 
 func timeFromBSON(value any) time.Time {
-	stamp, _ := value.(time.Time)
-	return stamp
+	switch typed := value.(type) {
+	case time.Time:
+		return typed
+	case bson.DateTime:
+		return typed.Time()
+	default:
+		return time.Time{}
+	}
 }
