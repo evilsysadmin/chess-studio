@@ -920,9 +920,16 @@ rollback() {
   echo "rolling back OCI backend after failed candidate $failed_sha" >&2
 
   if [[ -n "${previous_color:-}" ]]; then
-    # Emergency rollback deliberately bypasses Go. The previous deployed SHA
-    # may predate the PvP sidecar image entirely during the first migration.
-    render_edge "$previous_color" direct
+    local previous_pvp_service rollback_pvp_mode
+    previous_pvp_service="$(pvp_service "$previous_color")"
+    rollback_pvp_mode="direct"
+    # Once staging has a healthy sidecar for the previously accredited color,
+    # preserve that full-Go contract on rollback. Python-direct remains only
+    # the first-migration / missing-sidecar escape hatch.
+    if compose "$failed_sha" ps --status running --services 2>/dev/null | grep -Fxq "$previous_pvp_service"; then
+      rollback_pvp_mode="go"
+    fi
+    render_edge "$previous_color" "$rollback_pvp_mode"
     # Safe both before and after the attempted switch: if edge is still on the
     # old config this is a no-op; if reload partially succeeded, this actively
     # restores the previous upstream.
@@ -938,7 +945,7 @@ rollback() {
       remove_service "$candidate_service"
       [[ -z "$candidate_pvp_service" ]] || remove_service "$candidate_pvp_service"
     fi
-    echo "CHESS_STUDIO_ROLLBACK_OK repo_ref=${previous_sha:-unknown} color=$previous_color pvp=python-direct"
+    echo "CHESS_STUDIO_ROLLBACK_OK repo_ref=${previous_sha:-unknown} color=$previous_color pvp=$rollback_pvp_mode"
     return 0
   fi
 
