@@ -17,6 +17,8 @@ source_deploy="$repo/scripts/oci_staging_deploy_launcher.sh"
 target_deploy=/usr/local/sbin/chess-studio-deploy
 source_backup="$repo/scripts/oci_production_mongo_backup.sh"
 target_backup=/usr/local/sbin/chess-studio-mongo-backup
+source_ssh_authorize="$repo/scripts/oci_ssh_authorize_root.py"
+target_ssh_authorize=/usr/local/sbin/chess-studio-ssh-authorize
 source_sudoers="$repo/infra/oci/runtime/ocarun.sudoers"
 target_sudoers=/etc/sudoers.d/101-chess-studio-ocarun
 
@@ -28,6 +30,7 @@ git fetch --no-tags --depth=1 origin "$sha"
 git checkout --detach "$sha"
 [[ -f "$source_deploy" && ! -L "$source_deploy" ]] || { echo "missing installer payload in $sha" >&2; exit 66; }
 [[ -f "$source_backup" && ! -L "$source_backup" ]] || { echo "missing production Mongo backup payload in $sha" >&2; exit 66; }
+[[ -f "$source_ssh_authorize" && ! -L "$source_ssh_authorize" ]] || { echo "missing SSH authorize payload in $sha" >&2; exit 66; }
 [[ -f "$source_sudoers" && ! -L "$source_sudoers" ]] || { echo "missing ocarun sudoers payload in $sha" >&2; exit 66; }
 
 if ! docker compose version >/dev/null 2>&1; then
@@ -46,6 +49,7 @@ fi
 docker compose version >/dev/null 2>&1 || { echo 'Docker Compose v2 installation failed' >&2; exit 69; }
 install -o root -g root -m 0755 "$source_deploy" "$target_deploy"
 install -o root -g root -m 0755 "$source_backup" "$target_backup"
+install -o root -g root -m 0755 "$source_ssh_authorize" "$target_ssh_authorize"
 visudo -cf "$source_sudoers" >/dev/null
 install -o root -g root -m 0440 "$source_sudoers" "$target_sudoers"
 visudo -cf "$target_sudoers" >/dev/null

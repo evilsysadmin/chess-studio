@@ -19,6 +19,8 @@ source_runtime_installer="$repo/scripts/oci_runtime_install.sh"
 target_runtime_installer="/usr/local/sbin/chess-studio-install-runtime"
 mongo_backup_source="$repo/scripts/oci_production_mongo_backup.sh"
 mongo_backup_target="/usr/local/sbin/chess-studio-mongo-backup"
+ssh_authorize_source="$repo/scripts/oci_ssh_authorize_root.py"
+ssh_authorize_target="/usr/local/sbin/chess-studio-ssh-authorize"
 ocarun_sudoers_source="$repo/infra/oci/runtime/ocarun.sudoers"
 ocarun_sudoers_target="/etc/sudoers.d/101-chess-studio-ocarun"
 tunnel_connector="$repo/scripts/oci_staging_tunnel_connector.sh"
@@ -1393,11 +1395,13 @@ python3 -S "$blue_green_edge" --self-test >/dev/null
 [[ -f "$source_launcher" && ! -L "$source_launcher" ]] || { echo "missing deploy launcher in $sha: $source_launcher" >&2; exit 66; }
 [[ -f "$source_runtime_installer" && ! -L "$source_runtime_installer" ]] || { echo "missing runtime installer in $sha: $source_runtime_installer" >&2; exit 66; }
 [[ -f "$mongo_backup_source" && ! -L "$mongo_backup_source" ]] || { echo "missing production Mongo backup helper in $sha" >&2; exit 66; }
+[[ -f "$ssh_authorize_source" && ! -L "$ssh_authorize_source" ]] || { echo "missing SSH authorize helper in $sha" >&2; exit 66; }
 [[ -f "$ocarun_sudoers_source" && ! -L "$ocarun_sudoers_source" ]] || { echo "missing ocarun sudoers contract in $sha" >&2; exit 66; }
 visudo -cf "$ocarun_sudoers_source" >/dev/null
 install -o root -g root -m 0755 "$source_launcher" "$target_launcher"
 install -o root -g root -m 0755 "$source_runtime_installer" "$target_runtime_installer"
 install -o root -g root -m 0755 "$mongo_backup_source" "$mongo_backup_target"
+install -o root -g root -m 0755 "$ssh_authorize_source" "$ssh_authorize_target"
 install -o root -g root -m 0440 "$ocarun_sudoers_source" "$ocarun_sudoers_target"
 visudo -cf "$ocarun_sudoers_target" >/dev/null
 
