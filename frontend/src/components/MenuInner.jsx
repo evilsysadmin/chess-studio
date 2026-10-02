@@ -74,6 +74,25 @@ export default function Menu({
   const [matthiasMemory, setMatthiasMemory] = useState(null);
   const matthiasRollRef = useRef(Math.random());
 
+  useEffect(() => {
+    let active = true;
+    let cancelPreload = () => {};
+
+    void import('./warRoomHomePreload.js')
+      .then(({ schedulePreferredWarRoomHomePreload }) => {
+        if (!active) return;
+        cancelPreload = schedulePreferredWarRoomHomePreload();
+      })
+      .catch(() => {
+        // Speculative warming must never affect Home or the real War Room path.
+      });
+
+    return () => {
+      active = false;
+      cancelPreload();
+    };
+  }, []);
+
   const matthiasIntroPending = !matthiasOnboarded();
   const matthiasIntroBlocked = suppressHomeNudge
     || hasSavedGame
