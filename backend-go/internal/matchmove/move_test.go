@@ -104,7 +104,10 @@ func TestPrepareGuardsParticipantStateTurnCountdownAndClock(t *testing.T) {
 	}{
 		{"outsider", func(*Match) {}, "mallory", ErrNotParticipant},
 		{"terminal", func(m *Match) { m.Status = "finished" }, "alice", ErrWrongState},
-		{"wrong turn", func(m *Match) { m.Turn = "b" }, "alice", ErrWrongTurn},
+		{"wrong turn", func(m *Match) {
+			m.Turn = "b"
+			m.FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1"
+		}, "alice", ErrWrongTurn},
 		{"countdown", func(m *Match) { m.StartAt = now.Add(time.Second) }, "alice", ErrCountdown},
 		{"expired clock", func(m *Match) {
 			m.WhiteClockMS = 500
