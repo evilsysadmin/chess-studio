@@ -166,6 +166,7 @@ export default function GameBoardView({
     showCoordinates: !zenMode && board.showBoardCoordinates,
     matthiasKingColor: topColor,
     onCustomize: stableOnCustomize,
+    cameraProfile: 'warroom',
     hansFireplaceIteration,
     hansFireCallEnabled: !zenMode && !focusActive && hansFireCallEnabled,
     immersive: warRoomImmersive,
