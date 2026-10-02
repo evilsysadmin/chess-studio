@@ -162,6 +162,7 @@ Contract:
 - disabled outside staging;
 - visible and challengeable only by the configured owner account;
 - appears through the normal roster DTO and challenge API;
+- owner-visible staging actors are materialized by the lobby projection and must not disappear merely because the ephemeral human roster TTL expires; Mongo roster rows remain compatibility/transactional state for challenge and handoff, not display authority for virtual actors;
 - auto-accepts a challenge and marks itself ready through the authoritative
   backend state, so the owner still traverses the real handoff into War Room;
 - is treated as online for disconnect policy while that synthetic duel exists;
