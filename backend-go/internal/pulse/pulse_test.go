@@ -41,6 +41,10 @@ type fakeStore struct {
 	readyCalls int
 	leftUsers []string
 	chatRows  []chatMessageRow
+	handoffMatch cancelMatchRow
+	handoffFound bool
+	handoffErr error
+	systemMessages []string
 }
 
 func (f *fakeStore) AuthState(context.Context, string) (bool, int64, error) {
@@ -89,6 +93,15 @@ func (f *fakeStore) ReadyMatch(context.Context, string, string, time.Time, virtu
 		return cancelMatchRow{}, "", errors.New("temporary mongo error")
 	}
 	return f.readyMatch, f.readyResult, f.readyErr
+}
+
+func (f *fakeStore) GetHandoffMatch(context.Context, string) (cancelMatchRow, bool, error) {
+	return f.handoffMatch, f.handoffFound, f.handoffErr
+}
+
+func (f *fakeStore) AppendLobbySystem(_ context.Context, text string, _ time.Time) error {
+	f.systemMessages = append(f.systemMessages, text)
+	return nil
 }
 
 func TestPulseReturnsNativeRevisionForValidSession(t *testing.T) {
