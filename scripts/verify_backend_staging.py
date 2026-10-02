@@ -42,6 +42,7 @@ PVP_FULL_GO_READY_KEYS = (
     "nativeMatchResign",
     "nativeMatchRead",
     "nativeMatchMove",
+    "nativeResidentMove",
 )
 
 
