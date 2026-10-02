@@ -20,6 +20,8 @@ const CHAIR_SEAT_TOP = 0.855;
 const RIGHT_CHAIR = [4.14, 1.05];
 const LEFT_CHAIR = [-4.14, 1.05];
 const KLAUS_CUSHION = { x: 4.32, y: -1.5, radius: 0.43 };
+// The stairs/Mazmorras hotspot owns the right side of the hall on screen.
+const MAZMORRAS_MIN_STAGE_X = 0.68;
 const TABLE = { minX: -3.72, maxX: 3.72, minY: -0.67, maxY: 2.77 };
 const DAYBED_SEAT = { minX: -7.25, maxX: -5.68, minY: -0.97, maxY: 0.97, top: 0.965 };
 // Rest-pose plinth radius of the canonical rig.
@@ -27,14 +29,14 @@ const PLINTH_RADIUS = 0.62;
 
 describe('Home Matthias in-scene actor', () => {
   it('maps every routine to a station whose posture makes sense for it', () => {
-    expect(homeMatthiasActorStationForProfile('sip')).toBe('hearth-coffee');
+    expect(homeMatthiasActorStationForProfile('sip')).toBe('table-coffee');
     expect(homeMatthiasActorStationForProfile('dossier')).toBe('hearth-files');
     expect(homeMatthiasActorStationForProfile('think')).toBe('chess-chair');
     expect(homeMatthiasActorStationForProfile('read')).toBe('reading-chair');
     expect(homeMatthiasActorStationForProfile('sleep')).toBe('sofa-nap');
-    expect(homeMatthiasActorStationForProfile('unknown')).toBe('hearth-coffee');
+    expect(homeMatthiasActorStationForProfile('unknown')).toBe('table-coffee');
 
-    expect(HOME_MATTHIAS_ACTOR_STATIONS['hearth-coffee'].posture).toBe('stand');
+    expect(HOME_MATTHIAS_ACTOR_STATIONS['table-coffee'].posture).toBe('stand');
     expect(HOME_MATTHIAS_ACTOR_STATIONS['hearth-files'].posture).toBe('stand');
     expect(HOME_MATTHIAS_ACTOR_STATIONS['chess-chair'].posture).toBe('seat');
     expect(HOME_MATTHIAS_ACTOR_STATIONS['reading-chair'].posture).toBe('seat');
@@ -43,7 +45,7 @@ describe('Home Matthias in-scene actor', () => {
 
   it('derives the routine from the same scene/activity cues as the portrait', () => {
     expect(homeMatthiasActorRoutine({ scene: 'time-morning-coffee' })).toMatchObject({
-      profile: 'sip', clip: 'Sip', stationId: 'hearth-coffee', posture: 'stand',
+      profile: 'sip', clip: 'Sip', stationId: 'table-coffee', posture: 'stand',
     });
     expect(homeMatthiasActorRoutine({ scene: 'time-chess-inception' })).toMatchObject({
       profile: 'think', clip: 'Think', stationId: 'chess-chair', posture: 'seat',
@@ -60,7 +62,17 @@ describe('Home Matthias in-scene actor', () => {
   });
 
   it('stands on the floor, clear of the table, the chairs and Klaus', () => {
-    for (const id of ['hearth-coffee', 'hearth-files']) {
+    for (const id of ['table-coffee', 'hearth-files', 'chess-chair', 'reading-chair', 'sofa-nap']) {
+      // No station may put his hit-area under the Mazmorras hotspot.
+      const camera = new THREE.PerspectiveCamera(22.9, 16 / 9, 0.1, 80);
+      camera.position.set(0, 4.85, 16);
+      camera.lookAt(0, 1.55, -2.3);
+      camera.updateMatrixWorld(true);
+      const world = homeMatthiasBlenderToThree(HOME_MATTHIAS_ACTOR_STATIONS[id].at);
+      const point = new THREE.Vector3(world.x, world.y + 0.8, world.z).project(camera);
+      expect((point.x * 0.5) + 0.5).toBeLessThan(MAZMORRAS_MIN_STAGE_X);
+    }
+    for (const id of ['table-coffee', 'hearth-files']) {
       const [x, y, z] = HOME_MATTHIAS_ACTOR_STATIONS[id].at;
       const radius = PLINTH_RADIUS * HOME_MATTHIAS_ACTOR_SCALE;
       expect(z).toBe(0);
@@ -75,15 +87,13 @@ describe('Home Matthias in-scene actor', () => {
   });
 
   it('sits on the real chair seats and faces the board', () => {
-    const right = HOME_MATTHIAS_ACTOR_STATIONS['chess-chair'];
-    const left = HOME_MATTHIAS_ACTOR_STATIONS['reading-chair'];
-    expect(Math.hypot(right.at[0] - RIGHT_CHAIR[0], right.at[1] - RIGHT_CHAIR[1])).toBeLessThan(0.05);
-    expect(Math.hypot(left.at[0] - LEFT_CHAIR[0], left.at[1] - LEFT_CHAIR[1])).toBeLessThan(0.05);
-    expect(right.at[2]).toBeCloseTo(CHAIR_SEAT_TOP, 3);
-    expect(left.at[2]).toBeCloseTo(CHAIR_SEAT_TOP, 3);
-    // Facing the table: right chair looks towards -x, left chair towards +x.
-    expect(Math.sin(THREE.MathUtils.degToRad(right.yawDeg))).toBeLessThan(-0.5);
-    expect(Math.sin(THREE.MathUtils.degToRad(left.yawDeg))).toBeGreaterThan(0.5);
+    for (const id of ['chess-chair', 'reading-chair']) {
+      const seat = HOME_MATTHIAS_ACTOR_STATIONS[id];
+      expect(Math.hypot(seat.at[0] - LEFT_CHAIR[0], seat.at[1] - LEFT_CHAIR[1])).toBeLessThan(0.05);
+      expect(seat.at[2]).toBeCloseTo(CHAIR_SEAT_TOP, 3);
+      // The left chair faces the table towards +x.
+      expect(Math.sin(THREE.MathUtils.degToRad(seat.yawDeg))).toBeGreaterThan(0.5);
+    }
   });
 
   it('lies on the daybed seat, not on the floor or in the air', () => {

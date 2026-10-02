@@ -78,15 +78,16 @@ Con el runtime Blender listo, Matthias **no** es un retrato superpuesto: `HomeBl
 
 | Rutina | Estación | Postura |
 | --- | --- | --- |
-| café, bocata, idle, hablando | `hearth-coffee` (suelo, extremo derecho de la mesa, libre del cojín de Klaus) | de pie |
+| café, bocata, idle, hablando | `table-coffee` (suelo, delante de la esquina izquierda de la mesa; la derecha es del hotspot de Mazmorras) | de pie |
 | expedientes | `hearth-files` (suelo, extremo izquierdo) | de pie |
-| partida / emboscada | `chess-chair` (silla derecha, mirando al tablero) | sentado |
+| partida / emboscada | `chess-chair` (silla izquierda, mirando al tablero) | sentado |
 | lectura, notas, «dormido sobre el manual» | `reading-chair` (silla izquierda) | sentado |
 | dormir | `sofa-nap` (diván, cabeza en el brazo, manta de lana) | tumbado |
 
 - El cuerpo de peón se adapta por postura (faldón corto y estrecho sentado, peón estilizado tumbado); de pie, las caderas se recogen dentro del faldón para que no quede hueco bajo la campana.
 - Los brazos reales sujetan taza/libro y los props se anclan a la mano (`HOME_MATTHIAS_PROP_ANCHORS`); las «manos falsas» de los props se ocultan.
 - El botón `.illustrated-home__matthias` pasa a `is-in-scene`: hit-area transparente sobre los bounds proyectados del actor; el retrato `HomeMatthias3D` sólo se monta como fallback (Home 2D, vestíbulo móvil o GLB de Matthias no disponible).
+- La mitad inferior derecha de la sala (escalera) es el hit-area del hotspot de Mazmorras: ninguna estación puede proyectarse ahí, o su hotspot taparía a Matthias. El test lo fija.
 - Cambiar una estación = editar `HOME_MATTHIAS_ACTOR_STATIONS` y revisar el PNG runtime; los tests de `HomeBlenderMatthiasActor.test.js` fijan holguras contra mesa, sillas, Klaus y diván.
 
 ### Loop de pose y aceptación

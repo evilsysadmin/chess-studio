@@ -102,7 +102,7 @@ test('Home canónica · Matthias permanece visible, vivo y abre Así juegas', as
   await expect(matthias).toHaveAttribute('data-home-matthias-activity', /.+/);
   await expect(matthias).toHaveAttribute('data-home-matthias-dwell-ms', /^(34000|38000|42000|44000|48000|64000)$/);
   if (render.mode === 'in-scene') {
-    await expectInSceneResident(matthias, render.hallRuntime, { station: 'hearth-coffee', posture: 'stand', clip: 'Sip' });
+    await expectInSceneResident(matthias, render.hallRuntime, { station: 'table-coffee', posture: 'stand', clip: 'Sip' });
   } else {
     await expect(avatar).toHaveAttribute('data-home-matthias-station', 'refreshment-table');
     await expect(avatar).toHaveAttribute('data-home-matthias-3d', 'ready');

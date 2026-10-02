@@ -21,12 +21,13 @@ export const HOME_MATTHIAS_ACTOR_SCALE = 0.88;
 // the up axis: 0 faces the hall camera, -90 faces -x (the table from the right
 // chair), +90 faces +x (the table from the left chair).
 export const HOME_MATTHIAS_ACTOR_STATIONS = Object.freeze({
-  // Beside the right end of the table, where his mug sits, clear of Klaus's
-  // cushion (4.32, -1.50) and of the right chair.
-  'hearth-coffee': Object.freeze({
+  // On the floor in front of the left corner of the table. The right side of
+  // the hall is not available to him: the stairs carry the Mazmorras
+  // hotspot, a large hit-area that would sit on top of his own.
+  'table-coffee': Object.freeze({
     posture: 'stand',
-    at: Object.freeze([4.62, -0.42, 0]),
-    yawDeg: -32,
+    at: Object.freeze([-3.05, -1.35, 0]),
+    yawDeg: 18,
   }),
   // Mirror spot at the left end of the table, by the left hearth.
   'hearth-files': Object.freeze({
@@ -34,10 +35,12 @@ export const HOME_MATTHIAS_ACTOR_STATIONS = Object.freeze({
     at: Object.freeze([-4.6, -0.1, 0]),
     yawDeg: 28,
   }),
+  // Both seated routines use the left chair: the right chair sits inside the
+  // on-screen footprint of the Mazmorras hotspot (see 'table-coffee').
   'chess-chair': Object.freeze({
     posture: 'seat',
-    at: Object.freeze([4.12, 1.05, 0.855]),
-    yawDeg: -62,
+    at: Object.freeze([-4.12, 1.05, 0.855]),
+    yawDeg: 62,
   }),
   'reading-chair': Object.freeze({
     posture: 'seat',
@@ -57,10 +60,10 @@ export const HOME_MATTHIAS_ACTOR_STATIONS = Object.freeze({
 });
 
 const STATION_BY_PROFILE = Object.freeze({
-  idle: 'hearth-coffee',
-  speak: 'hearth-coffee',
-  sip: 'hearth-coffee',
-  bite: 'hearth-coffee',
+  idle: 'table-coffee',
+  speak: 'table-coffee',
+  sip: 'table-coffee',
+  bite: 'table-coffee',
   dossier: 'hearth-files',
   think: 'chess-chair',
   read: 'reading-chair',
