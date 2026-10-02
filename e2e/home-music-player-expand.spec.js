@@ -28,6 +28,17 @@ test('Home desktop · el reproductor plegado no roba el hitbox de Matthias y exp
   expect(openBox).not.toBeNull();
   expect(matthiasBox).not.toBeNull();
   expect(collapsedBox.width).toBeLessThanOrEqual(70);
+  expect(openBox.y).toBeGreaterThanOrEqual(8);
+  expect(openBox.y + openBox.height).toBeLessThanOrEqual(512);
+
+  const serviceStatus = dock.locator('.live-service-status');
+  if (await serviceStatus.isVisible().catch(() => false)) {
+    const serviceBox = await serviceStatus.boundingBox();
+    expect(serviceBox).not.toBeNull();
+    expect(serviceBox.y).toBeGreaterThanOrEqual(8);
+    expect(serviceBox.y + serviceBox.height).toBeLessThanOrEqual(512);
+  }
+
   const overlapsMatthias = openBox.x < matthiasBox.x + matthiasBox.width
     && openBox.x + openBox.width > matthiasBox.x
     && openBox.y < matthiasBox.y + matthiasBox.height
