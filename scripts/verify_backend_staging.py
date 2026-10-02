@@ -90,6 +90,50 @@ def fetch_cors_preflight(
         return 0, {}
 
 
+def fetch_roster_rejection(
+    url: str,
+    origin: str,
+    request_id: str,
+) -> tuple[int, dict[str, str]]:
+    req = urllib.request.Request(
+        url,
+        method="POST",
+        headers={
+            "Origin": origin,
+            "Accept": "application/json",
+            "Authorization": "Bearer deliberately-invalid",
+            "X-Request-ID": request_id,
+            "X-Client-Release": "staging-verifier",
+            "Cache-Control": "no-cache, no-store",
+            "Pragma": "no-cache",
+            "User-Agent": "chess-studio-staging-roster/1",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=8) as response:
+            return response.status, _normalized_response_headers(response.headers)
+    except urllib.error.HTTPError as exc:
+        return exc.code, _normalized_response_headers(exc.headers)
+    except (urllib.error.URLError, TimeoutError):
+        return 0, {}
+
+
+def native_roster_rejection_ok(
+    status: int,
+    headers: dict[str, str],
+    origin: str,
+    request_id: str,
+) -> bool:
+    return (
+        status == 401
+        and headers.get("access-control-allow-origin", "").strip().lower()
+        == origin.strip().lower()
+        and headers.get("x-chess-pvp-edge", "").strip().lower() == "go"
+        and headers.get("x-chess-pvp-native", "").strip().lower() == "roster"
+        and headers.get("x-request-id", "").strip() == request_id
+    )
+
+
 def cors_contract_ok(
     status: int,
     headers: dict[str, str],
@@ -147,6 +191,18 @@ def self_test() -> None:
     )
     assert not cors_contract_ok(200, headers, "https://wrong.example")
     assert not cors_contract_ok(400, headers, STAGING_BROWSER_ORIGIN)
+    rejection_headers = {
+        "access-control-allow-origin": STAGING_BROWSER_ORIGIN,
+        "x-chess-pvp-edge": "go",
+        "x-chess-pvp-native": "roster",
+        "x-request-id": "probe-1",
+    }
+    assert native_roster_rejection_ok(
+        401, rejection_headers, STAGING_BROWSER_ORIGIN, "probe-1"
+    )
+    assert not native_roster_rejection_ok(
+        502, rejection_headers, STAGING_BROWSER_ORIGIN, "probe-1"
+    )
     print("verify-backend-staging self-test OK")
 
 
@@ -191,6 +247,12 @@ def main() -> None:
             method="POST",
             request_headers=PVP_ROSTER_CORS_HEADERS,
         )
+        pvp_request_id = f"staging-roster-{str(probe)[-16:]}"
+        pvp_response_status, pvp_response_headers = fetch_roster_rejection(
+            f"{base}/pvp/roster?probe={probe}",
+            origin,
+            pvp_request_id,
+        )
         storage = str(ready.get("storage") or "")
         observed = str(release.get("build") or "").lower()
         allowed_origin = cors_headers.get("access-control-allow-origin", "")
@@ -204,11 +266,21 @@ def main() -> None:
             required_methods=PVP_ROSTER_CORS_METHODS,
             required_headers=PVP_ROSTER_CORS_HEADERS,
         )
-        if ok and exact and cors_ok and pvp_cors_ok:
+        pvp_preflight_native = (
+            pvp_cors_headers.get("x-chess-pvp-edge", "").strip().lower() == "go"
+            and pvp_cors_headers.get("x-chess-pvp-native", "").strip().lower() == "roster"
+        )
+        pvp_response_ok = native_roster_rejection_ok(
+            pvp_response_status,
+            pvp_response_headers,
+            origin,
+            pvp_request_id,
+        )
+        if ok and exact and cors_ok and pvp_cors_ok and pvp_preflight_native and pvp_response_ok:
             print(
                 "OCI staging public accreditation OK: "
                 f"storage=mongo build={observed} cors_origin={allowed_origin} "
-                f"pvp_roster_cors=ok"
+                f"pvp_roster_cors=ok pvp_roster_native_response=ok"
             )
             return
 
@@ -225,6 +297,9 @@ def main() -> None:
             f"cors_http={cors_status or 'error'} cors_origin={allowed_origin or '<empty>'} "
             f"pvp_roster_cors_http={pvp_cors_status or 'error'} "
             f"pvp_roster_cors_origin={pvp_cors_headers.get('access-control-allow-origin', '') or '<empty>'} "
+            f"pvp_roster_native={pvp_cors_headers.get('x-chess-pvp-native', '') or '<empty>'} "
+            f"pvp_roster_response_http={pvp_response_status or 'error'} "
+            f"pvp_roster_response_native={pvp_response_headers.get('x-chess-pvp-native', '') or '<empty>'} "
             f"expected_build={expected} attempt={attempt}/{args.attempts}"
         )
 
@@ -239,7 +314,7 @@ def main() -> None:
 
     raise SystemExit(
         "public OCI staging did not converge to Mongo-ready exact build with valid browser CORS "
-        "for both core API and PvP roster within bounded verification"
+        "for core API plus native PvP roster preflight and browser-visible rejection within bounded verification"
     )
 
 

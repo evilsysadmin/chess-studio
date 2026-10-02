@@ -248,6 +248,38 @@ func TestCanonicalBrowserOriginsAreAllowedForNativeRosterPreflight(t *testing.T)
 	}
 }
 
+func TestNativeRosterUnauthorizedResponseKeepsBrowserCorsAndRouteMarker(t *testing.T) {
+	h, err := NewHandler(HandlerConfig{
+		Store:        &fakeStore{},
+		JWTSecret:    "01234567890123456789012345678901",
+		EnableRoster: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	origin := "https://staging.chess-studio.shadowops.dpdns.org"
+	req := httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/roster", nil)
+	req.Header.Set("Origin", origin)
+	req.Header.Set("Authorization", "Bearer deliberately-invalid")
+	req.Header.Set("X-Request-ID", "roster-public-probe")
+	req.Header.Set("X-Client-Release", "staging-verifier")
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("status=%d want=401 body=%s", rr.Code, rr.Body.String())
+	}
+	if got := rr.Header().Get("Access-Control-Allow-Origin"); got != origin {
+		t.Fatalf("cors origin=%q want=%q", got, origin)
+	}
+	if got := rr.Header().Get("X-Chess-Pvp-Native"); got != "roster" {
+		t.Fatalf("native route marker=%q want=roster", got)
+	}
+	if got := rr.Header().Get("X-Request-ID"); got != "roster-public-probe" {
+		t.Fatalf("request id=%q want=roster-public-probe", got)
+	}
+}
+
 func TestPulseStorageFailureFailsClosed(t *testing.T) {
 	h, err := NewHandler(HandlerConfig{
 		Store:     &fakeStore{authErr: errors.New("mongo down")},

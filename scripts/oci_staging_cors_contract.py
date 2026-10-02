@@ -71,13 +71,16 @@ required_deploy_fragments = (
     "/api/pvp/roster",
     "Access-Control-Request-Method: POST",
     "edge PvP browser CORS attestation failed after cutover",
+    "OCI staging public PvP roster did not prove native Go browser response semantics",
+    "X-Chess-Pvp-Native",
+    "deliberately-invalid",
     "readiness/build/CORS attestation",
 )
 for fragment in required_deploy_fragments:
     assert fragment in deploy, f"missing OCI staging CORS deploy contract: {fragment}"
 
 assert 'CORS_ORIGINS: "${CHESS_STUDIO_CORS_ORIGINS:-https://staging.chess-studio.shadowops.dpdns.org}"' in compose
-assert compose.count('PVP_NATIVE_ROSTER_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_ROSTER_ENABLED:-false}"') == 2
+assert compose.count('PVP_NATIVE_ROSTER_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_ROSTER_ENABLED:-true}"') == 2
 assert compose.count('PVP_NATIVE_CHAT_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_CHAT_ENABLED:-true}"') == 2
 assert compose.count('PVP_NATIVE_CHALLENGE_RESOLUTION_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_CHALLENGE_RESOLUTION_ENABLED:-true}"') == 2
 assert compose.count('PVP_NATIVE_MATCH_HANDOFF_CANCEL_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_MATCH_HANDOFF_CANCEL_ENABLED:-true}"') == 2
@@ -116,6 +119,11 @@ required_public_verifier_fragments = (
     'f"{base}/pvp/roster?probe={probe}"',
     'method="POST"',
     "pvp_roster_cors_http",
+    "fetch_roster_rejection",
+    "native_roster_rejection_ok",
+    "pvp_roster_response_http",
+    "pvp_roster_native_response=ok",
+    "x-chess-pvp-native",
 )
 for fragment in required_public_verifier_fragments:
     assert fragment in verifier, f"missing public staging CORS verifier contract: {fragment}"
@@ -306,7 +314,7 @@ assert "payload.get('nativeMatchHandoffCancel')" in deploy
 assert "payload.get('nativeMatchReady')" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_PULSE_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_ROSTER_ENABLED" in deploy
-assert "env.get('CHESS_STUDIO_PVP_NATIVE_ROSTER_ENABLED', 'false')" in deploy
+assert "env.get('CHESS_STUDIO_PVP_NATIVE_ROSTER_ENABLED', 'true')" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_CHAT_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_MATCH_HANDOFF_CANCEL_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_MATCH_READY_ENABLED" in deploy
@@ -325,7 +333,8 @@ assert 'wait_pvp_edge_attest()' in deploy
 assert 'CHESS_STUDIO_PVP_EDGE_ATTEST_ATTEMPTS:-20' in deploy
 assert 'sleep 0.25' in deploy
 assert 'if ! wait_pvp_edge_attest "$port"; then' in deploy
-assert 'if ! pvp_browser_cors_attest "$port"; then' in deploy
+assert 'if ! pvp_browser_cors_attest "http://127.0.0.1:${port}/api/pvp/roster"; then' in deploy
+assert 'if ! pvp_browser_cors_attest "${public_api_url}/pvp/roster"; then' in deploy
 assert 'compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge' in deploy
 assert 'render_edge "$candidate_color"' in deploy
 assert 'reload_edge' in deploy
