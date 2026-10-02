@@ -47,6 +47,7 @@ type Store interface {
 	AppendLobbyChat(context.Context, string, string, time.Time) (chatMessageRow, error)
 	CancelChallenge(context.Context, string, string, time.Time) (challengeRow, bool, error)
 	DeclineChallenge(context.Context, string, string, time.Time) (challengeRow, bool, error)
+	CancelStartingMatch(context.Context, string, string, time.Time) (cancelMatchRow, cancelMatchResult, error)
 }
 
 type HandlerConfig struct {
@@ -57,6 +58,8 @@ type HandlerConfig struct {
 	EnableRoster   bool
 	EnableChat     bool
 	EnableChallengeResolution bool
+	EnableMatchHandoffCancel bool
+	VirtualPlayersEnabled bool
 	Now            func() time.Time
 }
 
@@ -69,6 +72,8 @@ type Handler struct {
 	enableRoster   bool
 	enableChat     bool
 	enableChallengeResolution bool
+	enableMatchHandoffCancel bool
+	virtualPlayersEnabled bool
 	rosterMu       sync.Mutex
 	rosterWindows  map[string]rateWindow
 	chatMu         sync.Mutex
@@ -109,6 +114,41 @@ type rosterRow struct {
 	Rating   int64     `bson:"rating"`
 	Tier     string    `bson:"tier"`
 	JoinedAt time.Time `bson:"joined_at"`
+}
+
+type cancelMatchResult string
+
+const (
+	cancelMatchOK               cancelMatchResult = "ok"
+	cancelMatchNotFound         cancelMatchResult = "not_found"
+	cancelMatchWrongState       cancelMatchResult = "wrong_state"
+	cancelMatchRevisionConflict cancelMatchResult = "revision_conflict"
+)
+
+type cancelMatchRow struct {
+	ID            string     `bson:"_id"`
+	White         string     `bson:"white"`
+	Black         string     `bson:"black"`
+	WhiteRating   *int64     `bson:"white_rating"`
+	BlackRating   *int64     `bson:"black_rating"`
+	FEN           string     `bson:"fen"`
+	Turn          string     `bson:"turn"`
+	Status        string     `bson:"status"`
+	Result        *string    `bson:"result"`
+	EndReason     *string    `bson:"end_reason"`
+	StartAt       time.Time  `bson:"start_at"`
+	ReadyDeadline time.Time  `bson:"ready_deadline"`
+	WhiteReady    bool       `bson:"white_ready"`
+	BlackReady    bool       `bson:"black_ready"`
+	WhiteClockMS  *int64     `bson:"white_clock_ms"`
+	BlackClockMS  *int64     `bson:"black_clock_ms"`
+	WhiteSeenAt   time.Time  `bson:"white_seen_at"`
+	BlackSeenAt   time.Time  `bson:"black_seen_at"`
+	Rated         *bool      `bson:"rated"`
+	History       []bson.M   `bson:"history"`
+	Revision      int64      `bson:"revision"`
+	CreatedAt     time.Time  `bson:"created_at"`
+	UpdatedAt     time.Time  `bson:"updated_at"`
 }
 
 type challengeRow struct {
@@ -205,6 +245,8 @@ func NewHandler(cfg HandlerConfig) (*Handler, error) {
 		enableRoster:   cfg.EnableRoster,
 		enableChat:     cfg.EnableChat,
 		enableChallengeResolution: cfg.EnableChallengeResolution,
+		enableMatchHandoffCancel: cfg.EnableMatchHandoffCancel,
+		virtualPlayersEnabled: cfg.VirtualPlayersEnabled,
 		rosterWindows:  make(map[string]rateWindow),
 		chatWindows:    make(map[string]rateWindow),
 		now:            now,
@@ -416,6 +458,71 @@ func (s *MongoStore) DeclineChallenge(ctx context.Context, challengeID, username
 		return challengeRow{}, false, err
 	}
 	return row, true, nil
+}
+
+
+func (s *MongoStore) CancelStartingMatch(ctx context.Context, matchID, username string, now time.Time) (cancelMatchRow, cancelMatchResult, error) {
+	queryCtx, cancel := context.WithTimeout(ctx, s.timeout)
+	defer cancel()
+	participant := bson.M{
+		"_id": matchID,
+		"$or": bson.A{bson.M{"white": username}, bson.M{"black": username}},
+	}
+	var current cancelMatchRow
+	err := s.db.Collection("pvp_matches").FindOne(queryCtx, participant).Decode(&current)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return cancelMatchRow{}, cancelMatchNotFound, nil
+	}
+	if err != nil {
+		return cancelMatchRow{}, "", err
+	}
+	if current.Status == "cancelled" {
+		return current, cancelMatchOK, nil
+	}
+	if current.Status != "starting" {
+		return current, cancelMatchWrongState, nil
+	}
+
+	endReason := "handoff_cancelled"
+	var updated cancelMatchRow
+	err = s.db.Collection("pvp_matches").FindOneAndUpdate(
+		queryCtx,
+		bson.M{
+			"_id": matchID,
+			"revision": current.Revision,
+			"status": "starting",
+			"$or": bson.A{bson.M{"white": username}, bson.M{"black": username}},
+		},
+		bson.M{
+			"$set": bson.M{
+				"status": "cancelled",
+				"result": nil,
+				"end_reason": endReason,
+				"turn_started_at": nil,
+				"updated_at": now,
+			},
+			"$inc": bson.M{"revision": 1},
+		},
+		options.FindOneAndUpdate().SetReturnDocument(options.After),
+	).Decode(&updated)
+	if err == nil {
+		return updated, cancelMatchOK, nil
+	}
+	if !errors.Is(err, mongo.ErrNoDocuments) {
+		return cancelMatchRow{}, "", err
+	}
+
+	err = s.db.Collection("pvp_matches").FindOne(queryCtx, participant).Decode(&current)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return cancelMatchRow{}, cancelMatchNotFound, nil
+	}
+	if err != nil {
+		return cancelMatchRow{}, "", err
+	}
+	if current.Status == "cancelled" {
+		return current, cancelMatchOK, nil
+	}
+	return current, cancelMatchRevisionConflict, nil
 }
 
 func normalizedRating(value any) int64 {
@@ -786,6 +893,41 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if matchID, ok := matchHandoffCancelID(r.URL.Path); ok {
+		if !h.enableMatchHandoffCancel {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("X-Chess-Pvp-Native", "match-handoff-cancel")
+		if r.Method != http.MethodPost {
+			w.Header().Set("Allow", "POST, OPTIONS")
+			writeJSON(w, http.StatusMethodNotAllowed, map[string]any{"detail": "Método no permitido."})
+			return
+		}
+		row, result, err := h.store.CancelStartingMatch(r.Context(), matchID, claims.Subject, now)
+		if err != nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]any{"detail": "No se pudo actualizar la partida 1v1."})
+			return
+		}
+		switch result {
+		case cancelMatchNotFound:
+			writeJSON(w, http.StatusNotFound, map[string]any{"detail": "Partida 1v1 no encontrada."})
+			return
+		case cancelMatchWrongState:
+			writeJSON(w, http.StatusConflict, map[string]any{"detail": "El duelo ya ha empezado y no puede cancelarse como entrada."})
+			return
+		case cancelMatchRevisionConflict:
+			writeJSON(w, http.StatusConflict, map[string]any{"detail": "El duelo cambió mientras cancelábamos la entrada."})
+			return
+		case cancelMatchOK:
+			writeJSON(w, http.StatusOK, map[string]any{"match": publicCancelledMatch(row, claims.Subject, now, h.virtualPlayersEnabled)})
+			return
+		default:
+			writeJSON(w, http.StatusServiceUnavailable, map[string]any{"detail": "No se pudo actualizar la partida 1v1."})
+			return
+		}
+	}
+
 	if r.URL.Path == "/api/pvp/lobby/chat" {
 		if !h.enableChat {
 			http.NotFound(w, r)
@@ -1090,6 +1232,20 @@ func writeJSON(w http.ResponseWriter, status int, payload map[string]any) {
 	_ = json.NewEncoder(w).Encode(payload)
 }
 
+func matchHandoffCancelID(path string) (string, bool) {
+	const prefix = "/api/pvp/matches/"
+	const suffix = "/cancel-starting"
+	if !strings.HasPrefix(path, prefix) || !strings.HasSuffix(path, suffix) {
+		return "", false
+	}
+	matchID := strings.TrimSuffix(strings.TrimPrefix(path, prefix), suffix)
+	matchID = strings.Trim(matchID, "/")
+	if matchID == "" || strings.Contains(matchID, "/") {
+		return "", false
+	}
+	return matchID, true
+}
+
 func challengeResolutionPath(path string) (string, string, bool) {
 	const prefix = "/api/pvp/challenges/"
 	if !strings.HasPrefix(path, prefix) {
@@ -1101,6 +1257,137 @@ func challengeResolutionPath(path string) (string, string, bool) {
 		return "", "", false
 	}
 	return parts[0], parts[1], true
+}
+
+func nullableStamp(value time.Time) any {
+	if value.IsZero() {
+		return nil
+	}
+	return stamp(value)
+}
+
+func pointerString(value *string) any {
+	if value == nil {
+		return nil
+	}
+	return *value
+}
+
+func pointerInt64(value *int64, fallback int64) int64 {
+	if value == nil {
+		return fallback
+	}
+	return *value
+}
+
+func residentIdentity(username string, enabled bool) (string, any, any) {
+	if !enabled {
+		return username, nil, nil
+	}
+	switch strings.ToLower(strings.TrimSpace(username)) {
+	case "otto_falk":
+		return "Otto Falk", "resident", "RESIDENTE · IA"
+	case "marta_stein":
+		return "Marta Stein", "resident", "RESIDENTE · IA"
+	case "viktor_kraus":
+		return "Viktor Kraus", "resident", "RESIDENTE · IA"
+	default:
+		return username, nil, nil
+	}
+}
+
+func publicCancelledMatch(row cancelMatchRow, username string, now time.Time, virtualPlayersEnabled bool) map[string]any {
+	isWhite := row.White == username
+	turn := row.Turn
+	if turn == "" {
+		turn = "w"
+	}
+	whiteDisplay, whiteKind, whiteLabel := residentIdentity(row.White, virtualPlayersEnabled)
+	blackDisplay, blackKind, blackLabel := residentIdentity(row.Black, virtualPlayersEnabled)
+
+	opponentSeen := row.WhiteSeenAt
+	if isWhite {
+		opponentSeen = row.BlackSeenAt
+	}
+	opponentPresence := "disconnected"
+	var opponentSeenAt any
+	if row.Rated != nil && !*row.Rated {
+		opponentPresence = "online"
+		opponentSeenAt = stamp(now)
+	} else if !opponentSeen.IsZero() {
+		opponentSeenAt = stamp(opponentSeen)
+		age := now.Sub(opponentSeen)
+		if age < 0 {
+			age = 0
+		}
+		if age <= presenceOnline {
+			opponentPresence = "online"
+		} else if age <= presenceReconnecting {
+			opponentPresence = "reconnecting"
+		}
+	}
+
+	whiteClock := pointerInt64(row.WhiteClockMS, 10*60*1000)
+	blackClock := pointerInt64(row.BlackClockMS, 10*60*1000)
+	if whiteClock < 0 {
+		whiteClock = 0
+	}
+	if blackClock < 0 {
+		blackClock = 0
+	}
+	history := row.History
+	if history == nil {
+		history = []bson.M{}
+	}
+
+	youReady := row.BlackReady
+	opponentReady := row.WhiteReady
+	youAre := "b"
+	if isWhite {
+		youReady = row.WhiteReady
+		opponentReady = row.BlackReady
+		youAre = "w"
+	}
+
+	return map[string]any{
+		"id": row.ID,
+		"white": row.White,
+		"black": row.Black,
+		"whiteDisplayName": whiteDisplay,
+		"blackDisplayName": blackDisplay,
+		"whiteActorKind": whiteKind,
+		"blackActorKind": blackKind,
+		"whiteActorLabel": whiteLabel,
+		"blackActorLabel": blackLabel,
+		"whiteRating": pointerInt64(row.WhiteRating, 400),
+		"blackRating": pointerInt64(row.BlackRating, 400),
+		"fen": row.FEN,
+		"turn": turn,
+		"status": row.Status,
+		"result": pointerString(row.Result),
+		"endReason": pointerString(row.EndReason),
+		"startsAt": nullableStamp(row.StartAt),
+		"readyDeadline": nullableStamp(row.ReadyDeadline),
+		"youReady": youReady,
+		"opponentReady": opponentReady,
+		"opponentPresence": opponentPresence,
+		"opponentSeenAt": opponentSeenAt,
+		"opponentDisconnectDeadline": nil,
+		"ratingChange": nil,
+		"clock": map[string]any{
+			"id": "10+0",
+			"whiteMs": whiteClock,
+			"blackMs": blackClock,
+			"incrementMs": int64(0),
+			"runningColor": nil,
+		},
+		"history": history,
+		"revision": row.Revision,
+		"youAre": youAre,
+		"yourTurn": false,
+		"createdAt": nullableStamp(row.CreatedAt),
+		"updatedAt": nullableStamp(row.UpdatedAt),
+	}
 }
 
 func publicChallenge(row challengeRow, username string) map[string]any {
