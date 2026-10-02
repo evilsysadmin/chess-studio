@@ -3,6 +3,7 @@ package challengecreate
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 )
@@ -156,6 +157,8 @@ func TestRandomIDIsUUIDHexShape(t *testing.T) {
 	id, err := randomID()
 	if err != nil { t.Fatal(err) }
 	if len(id) != 32 { t.Fatalf("len=%d id=%q", len(id), id) }
+	if id[12] != '4' { t.Fatalf("version nibble=%q id=%q", id[12], id) }
+	if !strings.ContainsRune("89ab", rune(id[16])) { t.Fatalf("variant nibble=%q id=%q", id[16], id) }
 	for _, r := range id {
 		if !((r >= '0' && r <= '9') || (r >= 'a' && r <= 'f')) {
 			t.Fatalf("non-hex rune %q in %q", r, id)
