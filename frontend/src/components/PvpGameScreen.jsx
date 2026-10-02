@@ -385,6 +385,7 @@ export default function PvpGameScreen({ initialMatch, onExit, onMatchUpdate }) {
                     orientation,
                     showCoordinates,
                     matthiasKingColor: null,
+                    cameraProfile: 'warroom',
                     hansFireplaceIteration: false,
                     hansFireCallEnabled: false,
                     immersive: true,
