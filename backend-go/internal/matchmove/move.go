@@ -86,7 +86,11 @@ func Prepare(match Match, username string, request Request, now time.Time) (Upda
 	if match.Status != "active" {
 		return Update{}, ErrWrongState
 	}
-	if match.Turn != color {
+	boardTurn, err := chessrules.Turn(match.FEN)
+	if err != nil {
+		return Update{}, ErrInvalidPosition
+	}
+	if boardTurn != color {
 		return Update{}, ErrWrongTurn
 	}
 
