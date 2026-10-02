@@ -92,15 +92,20 @@ async function waitForRoutineStart(page, canvas, eventName) {
 
   const route = expectedRoute(eventName);
   await expect.poll(
-    () => page.evaluate((expected) => {
+    () => page.evaluate(() => {
       const node = document.querySelector('.board3d-main-canvas');
-      if (!node) return false;
-      const screen = node.dataset.warRoomHansScreen || '';
-      return node.dataset.warRoomHansRoute === expected
-        && (screen === 'onscreen' || screen === 'edge' || screen === 'offscreen');
-    }, route),
+      if (!node) return { route: 'missing-canvas', screen: 'missing', phase: 'missing' };
+      return {
+        route: node.dataset.warRoomHansRoute || '',
+        screen: node.dataset.warRoomHansScreen || '',
+        phase: node.dataset.warRoomHansChoreographyPhase || '',
+      };
+    }),
     { timeout: 75_000, intervals: [100, 100, 200, 300, 500] },
-  ).toBe(true);
+  ).toMatchObject({
+    route,
+    screen: expect.stringMatching(VISIBLE_SCREEN),
+  });
 }
 
 async function sampleRoutine(page, canvas, eventName) {
