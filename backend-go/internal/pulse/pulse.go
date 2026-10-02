@@ -77,6 +77,9 @@ type HandlerConfig struct {
 	ChallengeAccept challengeAcceptService
 	ChallengeCreate challengeCreateService
 	MatchResign matchResignService
+	MatchReadStore matchReadStore
+	MatchTimeout matchTimeoutService
+	MatchDisconnect matchDisconnectService
 	RatingSettlement ratingSettlementService
 	VirtualPlayersEnabled bool
 	VirtualOwner string
@@ -98,6 +101,9 @@ type Handler struct {
 	challengeAccept challengeAcceptService
 	challengeCreate challengeCreateService
 	matchResign matchResignService
+	matchReadStore matchReadStore
+	matchTimeout matchTimeoutService
+	matchDisconnect matchDisconnectService
 	ratingSettlement ratingSettlementService
 	virtualPlayersEnabled bool
 	virtualOwner string
@@ -106,6 +112,8 @@ type Handler struct {
 	rosterWindows  map[string]rateWindow
 	chatMu         sync.Mutex
 	chatWindows    map[string]rateWindow
+	matchReadMu    sync.Mutex
+	matchReadWindows map[string]rateWindow
 	now            func() time.Time
 }
 
@@ -299,12 +307,16 @@ func NewHandler(cfg HandlerConfig) (*Handler, error) {
 		challengeAccept: cfg.ChallengeAccept,
 		challengeCreate: cfg.ChallengeCreate,
 		matchResign: cfg.MatchResign,
+		matchReadStore: cfg.MatchReadStore,
+		matchTimeout: cfg.MatchTimeout,
+		matchDisconnect: cfg.MatchDisconnect,
 		ratingSettlement: cfg.RatingSettlement,
 		virtualPlayersEnabled: cfg.VirtualPlayersEnabled,
 		virtualOwner: strings.ToLower(strings.TrimSpace(cfg.VirtualOwner)),
 		sparringUsername: strings.ToLower(strings.TrimSpace(cfg.SparringUsername)),
 		rosterWindows:  make(map[string]rateWindow),
 		chatWindows:    make(map[string]rateWindow),
+		matchReadWindows: make(map[string]rateWindow),
 		now:            now,
 	}, nil
 }
@@ -1040,6 +1052,15 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	now := h.now().UTC()
 
+	if matchID, ok := matchReadID(r.URL.Path); ok {
+		if h.matchReadStore == nil || h.matchTimeout == nil || h.matchDisconnect == nil {
+			http.NotFound(w, r)
+			return
+		}
+		h.serveMatchRead(w, r, claims.Subject, matchID, now)
+		return
+	}
+
 	if r.URL.Path == "/api/pvp/challenges" {
 		if h.challengeCreate == nil {
 			http.NotFound(w, r)
@@ -1321,6 +1342,24 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		"pollAfterMs": h.pollAfterMS,
 		"source":      "go",
 	})
+}
+
+func (h *Handler) allowMatchRead(username string, now time.Time) (bool, int) {
+	h.matchReadMu.Lock()
+	defer h.matchReadMu.Unlock()
+	window := h.matchReadWindows[username]
+	if window.start.IsZero() || now.Sub(window.start) >= time.Minute {
+		h.matchReadWindows[username] = rateWindow{start: now, count: 1}
+		return true, 0
+	}
+	if window.count >= 60 {
+		retry := int(time.Minute.Seconds() - now.Sub(window.start).Seconds())
+		if retry < 1 { retry = 1 }
+		return false, retry
+	}
+	window.count++
+	h.matchReadWindows[username] = window
+	return true, 0
 }
 
 func (h *Handler) allowLobbyChat(username string, now time.Time) (bool, int) {
