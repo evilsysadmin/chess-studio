@@ -389,6 +389,10 @@ export default function PvpGameScreen({ initialMatch, onExit, onMatchUpdate }) {
                     hansFireplaceIteration: false,
                     hansFireCallEnabled: false,
                     immersive: true,
+                    // PvP must use the same bounded mobile scene budget as canonical War Room.
+                    // Without this, phones can paint the board while the 3D room shell is still
+                    // compiling/loading, leaving the black void seen on real Android devices.
+                    warRoomMobilePerformance: true,
                     warRoomVariantOverride: 'duel',
                   }}
                 />
