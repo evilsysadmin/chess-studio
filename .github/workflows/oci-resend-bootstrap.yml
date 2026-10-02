@@ -1,25 +1,65 @@
 name: OCI · bootstrap Resend recovery
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - infra/oci/runtime/resend-bootstrap-v1.txt
+  workflow_run:
+    workflows:
+      - Deploy to staging
+    types:
+      - completed
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
   contents: read
 
-concurrency:
-  group: oci-staging-mutations
-  cancel-in-progress: false
-
 jobs:
+  trigger:
+    name: Detect Resend bootstrap request
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      requested: ${{ steps.scope.outputs.requested }}
+      bootstrap_sha: ${{ steps.scope.outputs.bootstrap_sha }}
+    env:
+      BOOTSTRAP_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+      MARKER_PATH: infra/oci/runtime/resend-bootstrap-v1.txt
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.BOOTSTRAP_SHA }}
+          fetch-depth: 2
+
+      - name: Scope one-shot bootstrap
+        id: scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$BOOTSTRAP_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::Invalid bootstrap SHA"; exit 1; }
+          requested=false
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            requested=true
+          else
+            parent="$(git rev-parse "$BOOTSTRAP_SHA^1")"
+            if git diff --name-only "$parent" "$BOOTSTRAP_SHA" -- "$MARKER_PATH" | grep -Fxq "$MARKER_PATH"; then
+              requested=true
+            fi
+          fi
+          echo "requested=$requested" >> "$GITHUB_OUTPUT"
+          echo "bootstrap_sha=$BOOTSTRAP_SHA" >> "$GITHUB_OUTPUT"
+          echo "Resend bootstrap requested=$requested sha=$BOOTSTRAP_SHA"
+
   bootstrap:
     name: Seed Resend into OCI Vault and apply runtime
+    needs: trigger
+    if: needs.trigger.outputs.requested == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 25
+    concurrency:
+      group: oci-staging-mutations
+      cancel-in-progress: false
     env:
+      BOOTSTRAP_SHA: ${{ needs.trigger.outputs.bootstrap_sha }}
       OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
       OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
       OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
@@ -28,6 +68,8 @@ jobs:
       RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.BOOTSTRAP_SHA }}
 
       - name: Restore cached OCI SDK toolchain
         uses: ./.github/actions/setup-oci-sdk
@@ -46,19 +88,36 @@ jobs:
       - name: Seed environment-specific Resend secrets
         run: python3 scripts/oci_resend_secret_bootstrap.py bootstrap
 
-      - name: Apply staging recovery runtime
+      - name: Apply staging recovery runtime without changing served SHA
+        shell: bash
         run: |
+          set -euo pipefail
+          body="$RUNNER_TEMP/staging-release.json"
+          curl --fail --silent --show-error             -H 'Accept: application/json' -H 'Cache-Control: no-cache'             -o "$body" https://api-staging.chess-studio.shadowops.dpdns.org/api/release
+          staging_sha="$(python3 - "$body" <<'PY'
+          import json, pathlib, re, sys
+          value=str(json.loads(pathlib.Path(sys.argv[1]).read_text()).get("build") or "").lower()
+          if not re.fullmatch(r"[0-9a-f]{40}", value):
+              raise SystemExit("staging /api/release did not return an immutable build SHA")
+          print(value)
+          PY
+          )"
           python3 scripts/oci_vault_sync.py sync-current
-          python3 scripts/oci_release_deploy.py deploy --repo-ref "$GITHUB_SHA"
+          python3 scripts/oci_release_deploy.py deploy --repo-ref "$staging_sha"
+          verify="$RUNNER_TEMP/staging-release-after.json"
+          curl --fail --silent --show-error             -H 'Accept: application/json' -H 'Cache-Control: no-cache'             -o "$verify" "https://api-staging.chess-studio.shadowops.dpdns.org/api/release?sha=$staging_sha"
+          python3 - "$verify" "$staging_sha" <<'PY'
+          import json, pathlib, sys
+          actual=str(json.loads(pathlib.Path(sys.argv[1]).read_text()).get("build") or "").lower()
+          raise SystemExit(0 if actual == sys.argv[2] else 1)
+          PY
 
       - name: Apply production recovery runtime without promoting a new SHA
         shell: bash
         run: |
           set -euo pipefail
           body="$RUNNER_TEMP/production-release.json"
-          curl --fail --silent --show-error \
-            -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
-            -o "$body" https://api.chess-studio.shadowops.dpdns.org/api/release
+          curl --fail --silent --show-error             -H 'Accept: application/json' -H 'Cache-Control: no-cache'             -o "$body" https://api.chess-studio.shadowops.dpdns.org/api/release
           production_sha="$(python3 - "$body" <<'PY'
           import json, pathlib, re, sys
           value=str(json.loads(pathlib.Path(sys.argv[1]).read_text()).get("build") or "").lower()
@@ -70,9 +129,7 @@ jobs:
           python3 scripts/oci_production_runtime.py sync-current
           python3 scripts/oci_release_deploy.py deploy --target production --repo-ref "$production_sha"
           verify="$RUNNER_TEMP/production-release-after.json"
-          curl --fail --silent --show-error \
-            -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
-            -o "$verify" "https://api.chess-studio.shadowops.dpdns.org/api/release?sha=$production_sha"
+          curl --fail --silent --show-error             -H 'Accept: application/json' -H 'Cache-Control: no-cache'             -o "$verify" "https://api.chess-studio.shadowops.dpdns.org/api/release?sha=$production_sha"
           python3 - "$verify" "$production_sha" <<'PY'
           import json, pathlib, sys
           actual=str(json.loads(pathlib.Path(sys.argv[1]).read_text()).get("build") or "").lower()
