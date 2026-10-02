@@ -16,7 +16,7 @@ describe('PvP Duel Room player fill', () => {
 
     expect(root.userData.pvpDuelRoomPracticalLights).toBe(1);
     expect(anchor.children).toHaveLength(1);
-    expect(anchor.children[0].intensity).toBeCloseTo(0.46);
+    expect(anchor.children[0].intensity).toBeCloseTo(0.72);
     expect(anchor.children[0].distance).toBeCloseTo(8.8);
     expect(anchor.children[0].castShadow).toBe(false);
 
@@ -34,7 +34,7 @@ describe('PvP Duel Room player fill', () => {
     root.add(anchor);
 
     const dispose = installPvpDuelRoomPracticalLights(root, { coarsePointer: true });
-    expect(anchor.children[0].intensity).toBeCloseTo(0.40);
+    expect(anchor.children[0].intensity).toBeCloseTo(0.68);
     dispose();
   });
 });
