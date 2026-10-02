@@ -299,6 +299,7 @@ export function installWarRoomHansMopRoutine(root) {
       }
       setMopDiagnostic(actor, 'active');
       state = 'walking';
+      actor.hans.userData.warRoomHansMopStartStatus = 'active';
       dialogueEnabled = shouldHansMopDialogue();
       props.bucket.visible = true;
       props.mop.visible = true;
