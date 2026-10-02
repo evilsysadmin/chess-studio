@@ -376,4 +376,26 @@ test('War Room 1v1 · reto entrante abre una partida humana en el tablero canón
   await expect(debrief).toContainText('Perdiste por tiempo');
   await expect(debrief).toContainText('Contra bob · 1210 rating · Tiempo · 2 jugadas registradas');
   await expect(debrief.getByRole('button', { name: 'Volver al lobby' })).toBeVisible();
+
+  const verdict = debrief.locator('.pvp-war-room__result-verdict');
+  const [roomBoxAfter, debriefBox, verdictBox] = await Promise.all([
+    warRoom.boundingBox(),
+    debrief.boundingBox(),
+    verdict.boundingBox(),
+  ]);
+  expect(roomBoxAfter).not.toBeNull();
+  expect(debriefBox).not.toBeNull();
+  expect(verdictBox).not.toBeNull();
+  const roomCenterAfter = {
+    x: roomBoxAfter.x + roomBoxAfter.width / 2,
+    y: roomBoxAfter.y + roomBoxAfter.height / 2,
+  };
+  const debriefCenter = {
+    x: debriefBox.x + debriefBox.width / 2,
+    y: debriefBox.y + debriefBox.height / 2,
+  };
+  expect(Math.abs(debriefCenter.x - roomCenterAfter.x) / roomBoxAfter.width).toBeLessThan(0.06);
+  expect(Math.abs(debriefCenter.y - roomCenterAfter.y) / roomBoxAfter.height).toBeLessThan(0.12);
+  expect(debriefBox.width / roomBoxAfter.width).toBeGreaterThan(0.4);
+  expect(verdictBox.width / debriefBox.width).toBeGreaterThan(0.7);
 });
