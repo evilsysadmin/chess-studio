@@ -221,6 +221,7 @@ The Go PvP edge may absorb high-frequency read coordination incrementally while 
 
 Current bounded contract:
 - lobby pulse may read Mongo natively and invalidate the full Python lobby snapshot;
+- the canonical full lobby snapshot may execute natively in Go with the existing 40/minute bound: active roster ordering, owner-only Sparringmeister/resident seeding and visibility, persisted head-to-head summaries, active pair cooldowns, stale-challenge expiry, pending/accepted challenges, active match DTO and the 24-hour/40-message chat window all match the Python contract; its independent kill-switch falls back to Python, and deploys accredit both the sidecar readiness bit and a non-mutating public rejected GET carrying the exact `lobby-read` route marker;
 - match pulse may renew only the caller's coarse duel presence timestamp without changing gameplay revision;
 - match pulse may expose revision/status plus the rival's coarse presence band, and detect clock, handoff or disconnect-grace boundaries that require an immediate authoritative full-match reconciliation;
 - the Go pulse itself still emits lifecycle hints only; when native match reads are enabled, the full Go match-read path owns the corresponding timeout/disconnect mutations, while the kill-switch falls back to Python;
