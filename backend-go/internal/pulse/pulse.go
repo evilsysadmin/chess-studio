@@ -76,6 +76,8 @@ type HandlerConfig struct {
 	EnableMatchReady bool
 	ChallengeAccept challengeAcceptService
 	ChallengeCreate challengeCreateService
+	MatchResign matchResignService
+	RatingSettlement ratingSettlementService
 	VirtualPlayersEnabled bool
 	VirtualOwner string
 	SparringUsername string
@@ -95,6 +97,8 @@ type Handler struct {
 	enableMatchReady bool
 	challengeAccept challengeAcceptService
 	challengeCreate challengeCreateService
+	matchResign matchResignService
+	ratingSettlement ratingSettlementService
 	virtualPlayersEnabled bool
 	virtualOwner string
 	sparringUsername string
@@ -294,6 +298,8 @@ func NewHandler(cfg HandlerConfig) (*Handler, error) {
 		enableMatchReady: cfg.EnableMatchReady,
 		challengeAccept: cfg.ChallengeAccept,
 		challengeCreate: cfg.ChallengeCreate,
+		matchResign: cfg.MatchResign,
+		ratingSettlement: cfg.RatingSettlement,
 		virtualPlayersEnabled: cfg.VirtualPlayersEnabled,
 		virtualOwner: strings.ToLower(strings.TrimSpace(cfg.VirtualOwner)),
 		sparringUsername: strings.ToLower(strings.TrimSpace(cfg.SparringUsername)),
@@ -1091,6 +1097,15 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if matchID, ok := matchResignID(r.URL.Path); ok {
+		if h.matchResign == nil {
+			http.NotFound(w, r)
+			return
+		}
+		h.serveMatchResign(w, r, claims.Subject, matchID, now)
+		return
+	}
+
 	if matchID, ok := matchHandoffCancelID(r.URL.Path); ok {
 		if !h.enableMatchHandoffCancel {
 			http.NotFound(w, r)
@@ -1683,7 +1698,7 @@ func publicHandoffMatch(row cancelMatchRow, username string, now time.Time, virt
 		"opponentPresence": opponentPresence,
 		"opponentSeenAt": opponentSeenAt,
 		"opponentDisconnectDeadline": opponentDisconnectDeadline,
-		"ratingChange": nil,
+		"ratingChange": ratingChangePayload(row, username),
 		"clock": map[string]any{
 			"id": "10+0",
 			"whiteMs": whiteClock,
