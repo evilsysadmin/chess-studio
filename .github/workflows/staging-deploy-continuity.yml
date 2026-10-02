@@ -1,13 +1,12 @@
 name: Operations · live-game deploy continuity
 on:
   workflow_dispatch:
-  workflow_run:
-    workflows:
-      - Deploy to staging
-    types:
-      - completed
-    branches:
-      - main
+  workflow_call:
+    inputs:
+      deploy_sha:
+        description: Exact staging generation SHA to exercise
+        required: true
+        type: string
 permissions:
   contents: read
 concurrency:
@@ -17,14 +16,11 @@ concurrency:
   cancel-in-progress: true
 env:
   STAGING_API_URL: https://api-staging.chess-studio.shadowops.dpdns.org/api
-  TARGET_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+  TARGET_SHA: ${{ inputs.deploy_sha || github.sha }}
 
 jobs:
   contracts:
     name: Continuity drill · contracts
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-24.04
     timeout-minutes: 3
     steps:
@@ -54,12 +50,6 @@ jobs:
           set -euo pipefail
           echo 'admitted=false' >> "$GITHUB_OUTPUT"
           for attempt in {1..180}; do
-            current_main="$(git ls-remote origin refs/heads/main | awk 'NR == 1 {print $1}')"
-            [[ "$current_main" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::cannot resolve current main"; exit 1; }
-            if [[ "$current_main" != "$TARGET_SHA" ]]; then
-              echo "::notice title=Continuity drill superseded::$TARGET_SHA != main $current_main; no staging mutation."
-              exit 0
-            fi
             body="$RUNNER_TEMP/release-$attempt.json"
             status="$(curl --silent --show-error --connect-timeout 3 --max-time 8 \
               --output "$body" --write-out '%{http_code}' \
@@ -72,7 +62,7 @@ jobs:
           PY
             then
               echo 'admitted=true' >> "$GITHUB_OUTPUT"
-              echo "Exact staging generation ready and still current: $TARGET_SHA"
+              echo "Exact staging generation ready: $TARGET_SHA"
               exit 0
             fi
             sleep 5
