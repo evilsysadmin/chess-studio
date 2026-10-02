@@ -30,6 +30,7 @@ type Config struct {
 	NativeMatchRead           http.Handler
 	NativeMatchMove           http.Handler
 	VirtualPlayersEnabled     bool
+	NativeResidentMove        bool
 }
 
 type Handler struct {
@@ -50,6 +51,7 @@ type Handler struct {
 	nativeMatchRead           http.Handler
 	nativeMatchMove           http.Handler
 	virtualPlayersEnabled     bool
+	nativeResidentMove        bool
 }
 
 func New(cfg Config) (*Handler, error) {
@@ -115,6 +117,7 @@ func New(cfg Config) (*Handler, error) {
 		nativeMatchRead: cfg.NativeMatchRead,
 		nativeMatchMove: cfg.NativeMatchMove,
 		virtualPlayersEnabled: cfg.VirtualPlayersEnabled,
+		nativeResidentMove: cfg.NativeResidentMove,
 	}, nil
 }
 
@@ -188,6 +191,7 @@ func (h *Handler) health(w http.ResponseWriter) {
 		"nativeMatchRead": h.nativeMatchRead != nil,
 		"nativeMatchMove": h.nativeMatchMove != nil,
 		"virtualPlayersEnabled": h.virtualPlayersEnabled,
+		"nativeResidentMove": h.nativeResidentMove,
 	}
 	if h.release != "" {
 		payload["release"] = h.release
@@ -232,6 +236,7 @@ func (h *Handler) ready(w http.ResponseWriter, r *http.Request) {
 		"nativeMatchRead": h.nativeMatchRead != nil,
 		"nativeMatchMove": h.nativeMatchMove != nil,
 		"virtualPlayersEnabled": h.virtualPlayersEnabled,
+		"nativeResidentMove": h.nativeResidentMove,
 	}
 	if h.release != "" {
 		payload["release"] = h.release
