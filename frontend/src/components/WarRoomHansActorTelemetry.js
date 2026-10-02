@@ -34,6 +34,7 @@ export function installWarRoomHansActorTelemetry(root) {
       setDatasetIfChanged(canvas, 'warRoomHansActiveTask', actor.hans.userData?.warRoomHansActiveTask || 'none');
       setDatasetIfChanged(canvas, 'warRoomHansTaskPhase', actor.hans.userData?.warRoomHansTaskPhase || 'none');
       setDatasetIfChanged(canvas, 'warRoomHansMopState', actor.hans.userData?.warRoomHansMopState || 'none');
+      setDatasetIfChanged(canvas, 'warRoomHansMopStartStatus', actor.hans.userData?.warRoomHansMopStartStatus || 'none');
       setDatasetIfChanged(canvas, 'warRoomHansMopInstalled', actor.hans.userData?.warRoomHansMopRoutine ? 'true' : 'false');
     },
   });
