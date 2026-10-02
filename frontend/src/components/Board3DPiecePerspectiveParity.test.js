@@ -4,6 +4,11 @@ import { resolveBoard3DCameraFov } from './Board3DConfig.js';
 import { buildPiece, disposeObject } from './Board3DPieces.js';
 import { fitBoardCamera } from './Board3DScene.js';
 import { WAR_ROOM_MOBILE_FRAMING_VERSION } from './WarRoomMobileFraming.js';
+import {
+  WAR_ROOM_CANONICAL_CAMERA_FOV,
+  WAR_ROOM_CANONICAL_CAMERA_VERSION,
+  WAR_ROOM_CANONICAL_PLAY_PITCH,
+} from './Board3DCameraProfiles.js';
 
 function worldSize(root) {
   root.updateMatrixWorld(true);
@@ -52,7 +57,7 @@ describe('Board3D piece scale parity', () => {
     expect(apparentScaleRatio).toBeLessThan(1.16);
   });
 
-  it('usa exactamente el pitch móvil aprobado en V1/V2/V3 desktop', () => {
+  it('usa exactamente la cámara v4 canónica en V1/V2/V3/V4 desktop y landscape móvil', () => {
     const elevation = (camera) => {
       const offset = camera.position.clone().sub(camera.userData.baseTarget);
       return THREE.MathUtils.radToDeg(Math.atan2(offset.y, Math.abs(offset.z)));
@@ -68,7 +73,8 @@ describe('Board3D piece scale parity', () => {
       desktopElevations = ['classic', 'tactical'].map((profile) => {
         const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
         fitBoardCamera(camera, 1400, 730, true, { profile });
-        expect(camera.userData.framingProfile).toContain('shared-play-pitch-v1');
+        expect(camera.userData.framingProfile).toBe(WAR_ROOM_CANONICAL_CAMERA_VERSION);
+        expect(camera.fov).toBe(WAR_ROOM_CANONICAL_CAMERA_FOV);
         return elevation(camera);
       });
     } finally {
@@ -84,9 +90,18 @@ describe('Board3D piece scale parity', () => {
       const mobile = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
       fitBoardCamera(mobile, 851, 393, true);
       const mobileElevation = elevation(mobile);
+      expect(mobile.fov).toBe(WAR_ROOM_CANONICAL_CAMERA_FOV);
+      expect(mobile.userData.framingProfile).toBe(WAR_ROOM_MOBILE_FRAMING_VERSION);
       for (const desktopElevation of desktopElevations) {
         expect(desktopElevation).toBeCloseTo(mobileElevation, 6);
       }
+      expect(mobileElevation).toBeCloseTo(
+        THREE.MathUtils.radToDeg(Math.atan2(
+          WAR_ROOM_CANONICAL_PLAY_PITCH.cameraY,
+          WAR_ROOM_CANONICAL_PLAY_PITCH.cameraZ,
+        )),
+        6,
+      );
     } finally {
       vi.unstubAllGlobals();
     }
@@ -126,7 +141,7 @@ describe('Board3D piece scale parity', () => {
     }
   });
 
-  it('sube la cámara solo en landscape móvil para separar visualmente las filas', () => {
+  it('adapta sólo distancia y target en landscape móvil sin cambiar lente ni pitch', () => {
     const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
     vi.stubGlobal('window', {
       innerWidth: 851,
@@ -139,10 +154,17 @@ describe('Board3D piece scale parity', () => {
       const offset = camera.position.clone().sub(target);
       const elevation = Math.atan2(offset.y, Math.abs(offset.z));
 
-      expect(camera.fov).toBe(34);
+      expect(camera.fov).toBe(WAR_ROOM_CANONICAL_CAMERA_FOV);
       expect(camera.userData.framingProfile).toBe(WAR_ROOM_MOBILE_FRAMING_VERSION);
-      expect(camera.userData.cameraDistance).toBeLessThan(16);
-      expect(THREE.MathUtils.radToDeg(elevation)).toBeGreaterThan(39);
+      expect(camera.userData.cameraDistance).toBeGreaterThan(20);
+      expect(camera.userData.cameraDistance).toBeLessThan(28);
+      expect(THREE.MathUtils.radToDeg(elevation)).toBeCloseTo(
+        THREE.MathUtils.radToDeg(Math.atan2(
+          WAR_ROOM_CANONICAL_PLAY_PITCH.cameraY,
+          WAR_ROOM_CANONICAL_PLAY_PITCH.cameraZ,
+        )),
+        6,
+      );
       expect(Math.abs(target.z)).toBeLessThanOrEqual(0.08);
     } finally {
       vi.unstubAllGlobals();
@@ -170,7 +192,7 @@ describe('Board3D piece scale parity', () => {
     disposeObject(bishop);
   });
 
-  it('comprime también la perspectiva móvil sin reutilizar la lente desktop', () => {
+  it('conserva el resolver legado para superficies no gobernadas por el contrato War Room', () => {
     expect(resolveBoard3DCameraFov(1.8)).toBe(22);
     expect(resolveBoard3DCameraFov(1.1)).toBe(32);
     expect(resolveBoard3DCameraFov(1.16, { mobile: true })).toBe(34);
