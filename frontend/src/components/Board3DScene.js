@@ -1,9 +1,8 @@
 import * as THREE from 'three';
 import { resolveBoard3DCameraFov } from './Board3DConfig.js';
-import { getCameraFramingProfile } from './Board3DSurfaces.js';
 import { warRoomDecorProfile } from './WarRoom3DMobileVisuals.js';
-import { getWarRoomMobileFramingProfile, WAR_ROOM_PLAY_PITCH } from './WarRoomMobileFraming.js';
-import { classicWarRoomCameraFramingProfile } from './Board3DCameraProfiles.js';
+import { getWarRoomMobileFramingProfile } from './WarRoomMobileFraming.js';
+import { canonicalWarRoomCameraFramingProfile } from './Board3DCameraProfiles.js';
 
 
 const BOX_GEOMETRY_CACHES = new WeakMap();
@@ -213,29 +212,19 @@ export function fitBoardCamera(camera, width, height, whiteSide, { profile: requ
   const mobileProfile = requestedProfile === 'classroom'
     ? null
     : getWarRoomMobileFramingProfile({ aspect, coarsePointer, viewportWidth });
-  const baseProfile = requestedProfile === 'classroom'
+  const profile = requestedProfile === 'classroom'
     ? classRoomCameraFramingProfile({ aspect, coarsePointer, viewportWidth })
-    : mobileProfile || (requestedProfile === 'classic'
-      ? classicWarRoomCameraFramingProfile(aspect)
-      : getCameraFramingProfile(aspect));
-  const profile = !mobileProfile && requestedProfile !== 'classroom'
-    ? {
-        ...baseProfile,
-        version: `${baseProfile.version || requestedProfile}-shared-play-pitch-v1`,
-        cameraY: WAR_ROOM_PLAY_PITCH.cameraY,
-        cameraZ: WAR_ROOM_PLAY_PITCH.cameraZ,
-      }
-    : baseProfile;
-  camera.fov = resolveBoard3DCameraFov(aspect, { mobile: Boolean(mobileProfile || (requestedProfile === 'classroom' && (coarsePointer || aspect < 1.12))) });
+    : mobileProfile || canonicalWarRoomCameraFramingProfile({ aspect });
+  camera.fov = profile.fov ?? resolveBoard3DCameraFov(aspect, {
+    mobile: Boolean(requestedProfile === 'classroom' && (coarsePointer || aspect < 1.12)),
+  });
   const verticalFov = THREE.MathUtils.degToRad(camera.fov);
   const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * aspect);
   const limitingFov = Math.min(verticalFov, horizontalFov);
   const desktopImmersiveScale = immersive && !mobileProfile && requestedProfile !== 'classroom' ? 0.91 : 1;
-  // Matching the steeper mobile play pitch reduces the vertical room captured by
-  // the same long-lens desktop distance. Compensate with distance only: this keeps
-  // the approved pitch exact while preserving both the architectural cap and the
-  // near board apron. In default immersive mode 1.115 * 0.91 ~= 1.015, so board
-  // scale stays effectively unchanged from the accepted immersive framing.
+  // V4's authored preview was calibrated with this distance compensation.
+  // Keeping it here makes every desktop War Room and Duel Room reproduce that
+  // same optical contract; mobile profiles own their fitted distance explicitly.
   const sharedPitchDistanceScale = !mobileProfile && requestedProfile !== 'classroom' ? 1.115 : 1;
   const rawDistance = (profile.halfSpan / Math.tan(limitingFov / 2))
     * profile.padding
