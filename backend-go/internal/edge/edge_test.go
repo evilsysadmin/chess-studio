@@ -292,3 +292,49 @@ func TestRosterFallsBackToPythonWhenNativeDisabled(t *testing.T) {
 		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
 	}
 }
+
+
+func TestNativeChallengeResolutionBypassesPythonWhenEnabled(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		t.Fatal("native challenge resolution must not reach Python upstream")
+	}))
+	defer upstream.Close()
+
+	native := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/pvp/challenges/c-1/cancel" || r.Method != http.MethodPost {
+			t.Fatalf("native challenge request=%s %s", r.Method, r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"challenge":{"id":"c-1","status":"cancelled"}}`))
+	})
+	h, err := New(Config{UpstreamURL: upstream.URL, NativeChallengeResolution: native})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/challenges/c-1/cancel", nil))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	if got := rr.Header().Get("X-Chess-Pvp-Edge"); got != "go" {
+		t.Fatalf("edge marker=%q", got)
+	}
+}
+
+func TestChallengeResolutionFallsBackToPythonWhenNativeDisabled(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/pvp/challenges/c-1/decline" || r.Method != http.MethodPost {
+			t.Fatalf("upstream challenge request=%s %s", r.Method, r.URL.Path)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer upstream.Close()
+
+	h := mustHandler(t, upstream.URL)
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/challenges/c-1/decline", nil))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+}
