@@ -77,7 +77,7 @@ for fragment in required_deploy_fragments:
     assert fragment in deploy, f"missing OCI staging CORS deploy contract: {fragment}"
 
 assert 'CORS_ORIGINS: "${CHESS_STUDIO_CORS_ORIGINS:-https://staging.chess-studio.shadowops.dpdns.org}"' in compose
-assert compose.count('PVP_NATIVE_ROSTER_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_ROSTER_ENABLED:-true}"') == 2
+assert compose.count('PVP_NATIVE_ROSTER_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_ROSTER_ENABLED:-false}"') == 2
 assert compose.count('PVP_NATIVE_CHAT_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_CHAT_ENABLED:-true}"') == 2
 assert compose.count('PVP_NATIVE_CHALLENGE_RESOLUTION_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_CHALLENGE_RESOLUTION_ENABLED:-true}"') == 2
 assert compose.count('PVP_NATIVE_MATCH_HANDOFF_CANCEL_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_MATCH_HANDOFF_CANCEL_ENABLED:-true}"') == 2
@@ -110,6 +110,11 @@ required_public_verifier_fragments = (
     "cors_contract_ok",
     "REQUIRED_CORS_METHODS",
     "REQUIRED_CORS_HEADERS",
+    "PVP_ROSTER_CORS_METHODS",
+    "PVP_ROSTER_CORS_HEADERS",
+    'f"{base}/pvp/roster?probe={probe}"',
+    'method="POST"',
+    "pvp_roster_cors_http",
 )
 for fragment in required_public_verifier_fragments:
     assert fragment in verifier, f"missing public staging CORS verifier contract: {fragment}"
@@ -299,6 +304,7 @@ assert "payload.get('nativeMatchHandoffCancel')" in deploy
 assert "payload.get('nativeMatchReady')" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_PULSE_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_ROSTER_ENABLED" in deploy
+assert "env.get('CHESS_STUDIO_PVP_NATIVE_ROSTER_ENABLED', 'false')" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_CHAT_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_MATCH_HANDOFF_CANCEL_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_MATCH_READY_ENABLED" in deploy
