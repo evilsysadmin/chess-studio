@@ -308,6 +308,9 @@ def self_test() -> None:
     broken["nativeChallengeCreate"] = False
     assert not pvp_full_go_ready(broken)
     broken = dict(full_go)
+    broken["nativeResidentMove"] = False
+    assert not pvp_full_go_ready(broken)
+    broken = dict(full_go)
     broken["virtualPlayersEnabled"] = False
     assert not pvp_full_go_ready(broken)
     print("verify-backend-staging self-test OK")
