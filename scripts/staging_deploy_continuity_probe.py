@@ -218,7 +218,7 @@ def main() -> None:
     parser.add_argument("--traffic-games", type=int, default=8)
     parser.add_argument("--interval", type=float, default=0.35)
     parser.add_argument("--arm-timeout", type=float, default=120)
-    parser.add_argument("--max-seconds", type=float, default=240)
+    parser.add_argument("--max-seconds", type=float, default=600)
     args = parser.parse_args()
     if args.self_test:
         self_test()
