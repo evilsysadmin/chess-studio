@@ -611,13 +611,10 @@ export default function HomeMatthias3D({
 
       const sleepPose = homeMatthiasSleepPose(currentProfile);
       if (sleepPose.active) {
-        sleepQuaternion.setFromAxisAngle(
-          attentionForward,
-          THREE.MathUtils.degToRad(sleepPose.rollDeg),
-        );
-        model.quaternion.multiply(sleepQuaternion);
-        model.position.y += sleepPose.lift;
-        canvas.dataset.matthiasSleepPose = 'sofa-recline-v1';
+        /* Keep the rig inside its portrait framing. The visual recline is
+           applied to the portrait canvas itself; rotating around the GLB root
+           (at the pawn's feet) swings the whole body out of frame. */
+        canvas.dataset.matthiasSleepPose = 'sofa-recline-v2';
       } else {
         canvas.dataset.matthiasSleepPose = 'standing';
       }
