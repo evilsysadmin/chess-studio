@@ -13,7 +13,6 @@ import (
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/challengeaccept"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type challengeAcceptService interface {
@@ -175,4 +174,3 @@ func challengeAcceptID(path string) (string, bool) {
 
 var _ challengeaccept.Store = (*MongoStore)(nil)
 var _ Store = (*MongoStore)(nil)
-var _ = options.After
