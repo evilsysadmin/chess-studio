@@ -89,7 +89,7 @@ La sala 3D debe:
 - ser distinta de Home y War Room;
 - conservar los mismos cuatro hotspots semánticos;
 - lazy-load al entrar y liberar canvas/RAF/listeners al salir;
-- usar un encuadre móvil simplificado;
+- usar el mismo contrato óptico que War Room también en móvil; las adaptaciones por dispositivo se limitan a distancia/target/crop para preservar tablero, HUD y targets táctiles;
 - permitir fallback 2D funcional si WebGL/asset falla;
 - producir PNG desktop+móvil y compararse con un golden aprobado antes de promoción.
 
@@ -104,7 +104,7 @@ La superficie está lista cuando entrar al 1v1 se siente como **visitar una esta
 
 La Duel Room de partida usa como canon una **mazmorra/fortaleza teutona densa pero jugable**.
 
-- tablero protagonista, con la misma lectura y framing funcional de War Room;
+- tablero protagonista, usando el mismo contrato canónico de cámara de War Room v4 (22° de lente y ≈43.9° de pitch); desktop y móvil apaisado comparten esa óptica y sólo adaptan distancia/target/crop al viewport;
 - sin grandes barras, vigas o nervios claros atravesando el encuadre;
 - muros de piedra oscura, hierro, madera, latón envejecido y luz cálida de fuego;
 - rastrillo central con profundidad y maquinaria de izado legible;
