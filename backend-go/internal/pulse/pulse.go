@@ -1301,6 +1301,12 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				writeJSON(w, http.StatusServiceUnavailable, map[string]any{"detail": "No se pudo actualizar el roster 1v1."})
 				return
 			}
+			// Native roster heartbeats are the high-frequency availability owner now.
+			// Keep the owner-scoped staging actors alive on the same cadence so their
+			// 45 s roster TTL cannot expire between bounded full Python reconciles.
+			if h.virtualPlayersEnabled && strings.ToLower(strings.TrimSpace(claims.Subject)) == h.virtualOwner {
+				_ = h.ensureSyntheticRoster(r.Context(), now)
+			}
 			writeJSON(w, http.StatusOK, map[string]any{"member": map[string]any{
 				"username": member.Username,
 				"rating": member.Rating,
