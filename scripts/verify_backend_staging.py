@@ -29,6 +29,29 @@ PVP_CHALLENGE_CORS_HEADERS = {
     "x-request-id",
     "x-client-release",
 }
+PVP_FULL_GO_READY_KEYS = (
+    "nativePulse",
+    "nativeLobbyRead",
+    "nativeRoster",
+    "nativeChat",
+    "nativeChallengeResolution",
+    "nativeChallengeAccept",
+    "nativeChallengeCreate",
+    "nativeMatchHandoffCancel",
+    "nativeMatchReady",
+    "nativeMatchResign",
+    "nativeMatchRead",
+    "nativeMatchMove",
+)
+
+
+def pvp_full_go_ready(payload: dict) -> bool:
+    return (
+        payload.get("status") == "ready"
+        and payload.get("service") == "chess-studio-pvp-go"
+        and payload.get("virtualPlayersEnabled") is True
+        and all(payload.get(key) is True for key in PVP_FULL_GO_READY_KEYS)
+    )
 
 
 def validate_sha(value: str) -> str:
@@ -273,6 +296,19 @@ def self_test() -> None:
     assert not challenge_transport_rejection_ok(
         502, challenge_headers, STAGING_BROWSER_ORIGIN, "challenge-probe-1"
     )
+    full_go = {
+        "status": "ready",
+        "service": "chess-studio-pvp-go",
+        "virtualPlayersEnabled": True,
+        **{key: True for key in PVP_FULL_GO_READY_KEYS},
+    }
+    assert pvp_full_go_ready(full_go)
+    broken = dict(full_go)
+    broken["nativeChallengeCreate"] = False
+    assert not pvp_full_go_ready(broken)
+    broken = dict(full_go)
+    broken["virtualPlayersEnabled"] = False
+    assert not pvp_full_go_ready(broken)
     print("verify-backend-staging self-test OK")
 
 
@@ -374,10 +410,7 @@ def main() -> None:
         )
         pvp_edge_ready_ok = (
             pvp_edge_status == 200
-            and pvp_edge.get("status") == "ready"
-            and pvp_edge.get("service") == "chess-studio-pvp-go"
-            and pvp_edge.get("nativeLobbyRead") is True
-            and pvp_edge.get("virtualPlayersEnabled") is True
+            and pvp_full_go_ready(pvp_edge)
         )
         if (
             ok
@@ -394,7 +427,7 @@ def main() -> None:
                 "OCI staging public accreditation OK: "
                 f"storage=mongo build={observed} cors_origin={allowed_origin} "
                 f"pvp_roster_cors=ok pvp_roster_native_response=ok "
-                f"pvp_challenge_transport=ok pvp_lobby_read=ok virtual_players=on"
+                f"pvp_challenge_transport=ok pvp_full_go=ok virtual_players=on"
             )
             return
 
@@ -420,6 +453,7 @@ def main() -> None:
             f"pvp_challenge_edge={challenge_response_headers.get('x-chess-pvp-edge', '') or '<empty>'} "
             f"pvp_edge_ready_http={pvp_edge_status or 'error'} "
             f"pvp_native_lobby_read={pvp_edge.get('nativeLobbyRead', '<empty>')} "
+            f"pvp_full_go={pvp_full_go_ready(pvp_edge)} "
             f"pvp_virtual_players={pvp_edge.get('virtualPlayersEnabled', '<empty>')} "
             f"expected_build={expected} attempt={attempt}/{args.attempts}"
         )
