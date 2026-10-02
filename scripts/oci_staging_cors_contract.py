@@ -77,9 +77,9 @@ assert compose.count('PVP_NATIVE_CHAT_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_CHAT_E
 assert compose.count('PVP_NATIVE_CHALLENGE_RESOLUTION_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_CHALLENGE_RESOLUTION_ENABLED:-true}"') == 2
 assert compose.count('PVP_NATIVE_MATCH_HANDOFF_CANCEL_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_MATCH_HANDOFF_CANCEL_ENABLED:-true}"') == 2
 assert compose.count('PVP_NATIVE_MATCH_READY_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_MATCH_READY_ENABLED:-true}"') == 2
-assert compose.count('CHESS_PVP_SPARRING_ENABLED: "${CHESS_PVP_SPARRING_ENABLED:-false}"') == 3
-assert compose.count('CHESS_PVP_SPARRING_OWNER: "${CHESS_PVP_SPARRING_OWNER:-evilsysadmin}"') == 3
-assert compose.count('CHESS_PVP_SPARRING_USERNAME: "${CHESS_PVP_SPARRING_USERNAME:-sparringmeister}"') == 3
+assert compose.count('CHESS_PVP_SPARRING_ENABLED: "${CHESS_PVP_SPARRING_ENABLED:-false}"') == 5
+assert compose.count('CHESS_PVP_SPARRING_OWNER: "${CHESS_PVP_SPARRING_OWNER:-evilsysadmin}"') == 5
+assert compose.count('CHESS_PVP_SPARRING_USERNAME: "${CHESS_PVP_SPARRING_USERNAME:-sparringmeister}"') == 5
 default_origins = assigned_literal_strings(backend_main, "_DEFAULT_CORS_ORIGINS")
 assert STAGING_ORIGIN in default_origins, (
     "FastAPI must always allow the canonical staging browser origin even if runtime "
