@@ -117,9 +117,9 @@
 
   .illustrated-home__matthias:has(.home-matthias-3d[data-home-matthias-station='rest']) {
     /* Sleeping is a real sofa pose, not a standing avatar parked in front of it. */
-    --home-matthias-zone-left: 1.4%;
-    --home-matthias-zone-top: 58%;
-    --home-matthias-zone-width: clamp(230px, 19cqw, 320px);
+    --home-matthias-zone-left: 0.8%;
+    --home-matthias-zone-top: 49.5%;
+    --home-matthias-zone-width: clamp(250px, 20.5cqw, 338px);
     --home-matthias-occlusion: 0%;
   }
 
