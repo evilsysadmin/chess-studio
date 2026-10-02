@@ -686,7 +686,7 @@ func TestMatchParticipantFilterExcludesStagedAcceptance(t *testing.T) {
 
 func TestNativeMatchReadyPreservesStartingAndActivationDTOs(t *testing.T) {
 	now := time.Date(2026, 10, 2, 10, 30, 0, 0, time.UTC)
-	for _, tc := range []struct {
+	cases := []struct {
 		name string
 		row publicMatchRow
 		wantStatus string
@@ -714,7 +714,7 @@ func TestNativeMatchReadyPreservesStartingAndActivationDTOs(t *testing.T) {
 			wantStatus: "active", wantReady: true, wantOpponentReady: true, wantStarts: true,
 		},
 	}
-	for _, tc := range tc {
+	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			h, err := NewHandler(HandlerConfig{
 				Store: &fakeStore{exists: true, version: 2, readyMatch: tc.row, readyResult: readyMatchOK},
