@@ -36,3 +36,29 @@
   outline: 2px solid rgba(226, 190, 112, .78);
   outline-offset: 4px;
 }
+
+/* Seated at the right end of the table he sits inside the transparent hit box
+ * of the Mazmorras stairs (utilities, z-index 12 on desktop). On desktop that
+ * box paints nothing, so the resident layer (normally z-index 3, its own
+ * stacking context) rises above it and he wins inside his own small rect; the
+ * stairs keep the rest. Below 1000px the Mazmorras trigger is a visible chip
+ * and keeps its place above him. While the Mazmorras panel is open he never
+ * sits on top of it. */
+@media (min-width: 1000px) {
+  .illustrated-home__stage .illustrated-home__resident:has(> .illustrated-home__matthias.is-in-scene) {
+    z-index: 13;
+  }
+
+  .illustrated-home__stage:has(.illustrated-home__utilities.is-open) .illustrated-home__resident:has(> .illustrated-home__matthias.is-in-scene) {
+    z-index: 3;
+  }
+}
+
+/* Wide desktops shift the resident layer into the safe area
+ * (HomeIllustrated.css). The hit-area follows the hall, not the safe area, so
+ * undo that shift for it. */
+@media (min-width: 1000px) and (min-aspect-ratio: 16/9) {
+  .illustrated-home__stage .illustrated-home__matthias.is-in-scene {
+    transform: translateY(calc(28.125vw - 50dvh)) !important;
+  }
+}
