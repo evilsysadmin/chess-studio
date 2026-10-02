@@ -36,6 +36,11 @@ for path in (
     source = Path(path).read_text(encoding="utf-8")
     assert '@example.invalid' in source, f"{path} must include a non-deliverable synthetic registration email"
 
+continuity_source = Path("scripts/staging_deploy_continuity_probe.py").read_text(encoding="utf-8")
+assert 'parser.add_argument("--max-seconds", type=float, default=600)' in continuity_source, (
+    "continuity probe must outlive the observed >240 s OCI Run Command delivery/ACK path"
+)
+
 created = {"id": "game-1", "fen": "fen-after-create", "moves": []}
 loaded = {"id": "game-1", "fen": "fen-after-create", "moves": []}
 assert game_state_matches("game-1", created, loaded)
