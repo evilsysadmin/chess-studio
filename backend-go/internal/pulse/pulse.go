@@ -38,6 +38,14 @@ const (
 	mongoApplicationName = "chess-studio-pvp-go"
 )
 
+var canonicalBrowserOrigins = [...]string{
+	"http://localhost:5173",
+	"http://127.0.0.1:5173",
+	"https://evilsysadmin.github.io",
+	"https://chess-studio.shadowops.dpdns.org",
+	"https://staging.chess-studio.shadowops.dpdns.org",
+}
+
 type Store interface {
 	AuthState(context.Context, string) (exists bool, sessionVersion int64, err error)
 	Revision(context.Context, string, time.Time) (string, error)
@@ -225,7 +233,10 @@ func NewHandler(cfg HandlerConfig) (*Handler, error) {
 	}
 	allowed := make(map[string]struct{})
 	allowAny := false
-	for _, raw := range cfg.AllowedOrigins {
+	origins := make([]string, 0, len(canonicalBrowserOrigins)+len(cfg.AllowedOrigins))
+	origins = append(origins, canonicalBrowserOrigins[:]...)
+	origins = append(origins, cfg.AllowedOrigins...)
+	for _, raw := range origins {
 		origin := strings.TrimSpace(raw)
 		if origin == "" {
 			continue
