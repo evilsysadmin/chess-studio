@@ -47,6 +47,10 @@ def assigned_literal_strings(source: str, variable: str) -> set[str]:
 required_deploy_fragments = (
     'target=staging',
     'cors_origin="${CHESS_STUDIO_CORS_ORIGINS:-https://staging.chess-studio.shadowops.dpdns.org}"',
+    'canonical_cors_origin="https://staging.chess-studio.shadowops.dpdns.org"',
+    'canonical_cors_origin="https://chess-studio.shadowops.dpdns.org"',
+    '[[ "$cors_origin" != "$canonical_cors_origin" ]]',
+    'refusing non-canonical browser CORS origin',
     'CHESS_STUDIO_CORS_ORIGINS="$cors_origin"',
     'pvp_sparring_enabled=true',
     'pvp_sparring_enabled=false',
@@ -72,6 +76,10 @@ required_deploy_fragments = (
     "pvp_lobby_read_attest",
     "pvp_virtual_roster_attest",
     "PVP_VIRTUAL_ROSTER_OK",
+    "pvp_browser_token",
+    "pvp_authenticated_browser_attest",
+    "/api/pvp/lobby/pulse",
+    "PVP_AUTHENTICATED_BROWSER_OK",
     "virtualPlayersEnabled",
     "CHESS_STUDIO_PVP_ALLOW_PYTHON_FALLBACK_STAGING",
     "deployment_target == 'staging'",
@@ -83,9 +91,11 @@ required_deploy_fragments = (
     "authorization,content-type,x-request-id,x-client-release",
     "edge PvP browser CORS attestation failed after cutover",
     "edge PvP full lobby read attestation failed after cutover",
+    "edge PvP authenticated browser lobby/pulse attestation failed after cutover",
     "edge PvP challenge browser transport attestation failed after cutover",
     "OCI staging public PvP roster did not prove native Go browser response semantics",
     "OCI staging public PvP lobby did not prove native Go read semantics",
+    "OCI staging public PvP authenticated browser lobby/pulse contract failed",
     "OCI staging public PvP challenge transport did not prove browser JSON/CORS semantics",
     "X-Chess-Pvp-Native",
     "deliberately-invalid",
@@ -379,15 +389,25 @@ assert 'pvp_target_image="$(pvp_image_ref "$sha")"' in deploy
 assert 'docker pull --quiet "$pvp_target_image"' in deploy
 assert 'render_edge "$candidate_color" go' in deploy
 assert 'render_edge "$candidate_color" go "$sha"' in deploy
-assert 'render_edge "$previous_color" direct' in deploy
+assert 'render_edge "$previous_color" go "$previous_sha"' in deploy
+assert 'wait_pvp_edge_attest "$port" "$previous_sha"' in deploy
+assert 'render_edge "$previous_color" direct "$previous_sha"' in deploy
+assert 'rollback_pvp_mode="go"' in deploy
+assert 'pvp=$rollback_pvp_mode' in deploy
 assert '--committed-sha "$committed_sha"' in deploy
 assert deploy.rfind('record_successful_backend "$sha"') < deploy.rfind('render_edge "$candidate_color" go "$sha"')
 assert 'failed to publish committed OCI generation marker' in deploy
 assert 'remove_service "$(pvp_service "$previous_color")"' in deploy
 assert 'CHESS_STUDIO_DEPLOY_OK target=$target repo_ref=$sha color=$candidate_color pvp=go' in deploy
 assert 'pvp_edge_attest()' in deploy
+assert 'local expected_release="${2:-$sha}"' in deploy
+assert 'pvp_edge_attest "$target_port" "$expected_release"' in deploy
 assert 'pvp_virtual_roster_attest()' in deploy
 assert 'if ! pvp_virtual_roster_attest "$candidate_service" "$candidate_pvp_service" "$target"; then' in deploy
+assert 'pvp_browser_token()' in deploy
+assert 'pvp_authenticated_browser_attest()' in deploy
+assert 'if ! pvp_authenticated_browser_attest "$candidate_service" "http://127.0.0.1:${port}/api" "$target"; then' in deploy
+assert 'if ! pvp_authenticated_browser_attest "$candidate_service" "$public_api_url" "$target"; then' in deploy
 for virtual_rival in ("sparringmeister", "otto_falk", "marta_stein", "viktor_kraus"):
     assert virtual_rival in deploy, f"missing virtual roster deploy attestation rival: {virtual_rival}"
 virtual_roster_attest = deploy.split("pvp_virtual_roster_attest() {", 1)[1].split(
@@ -397,6 +417,29 @@ assert 'for username in required:' in virtual_roster_attest
 assert 'for username in ("otto_falk", "marta_stein", "viktor_kraus"):' in virtual_roster_attest
 assert '!= "resident"' in virtual_roster_attest
 assert 'sparring: "sparring"' not in virtual_roster_attest
+authenticated_browser_attest = deploy.split("pvp_authenticated_browser_attest() {", 1)[1].split(
+    "\npvp_edge_attest() {", 1
+)[0]
+for fragment in (
+    'endpoint="$api_base/pvp/lobby"',
+    'endpoint="$api_base/pvp/lobby/pulse"',
+    'expected_native="lobby-read"',
+    'expected_native="lobby-pulse"',
+    '-H "Origin: $cors_origin"',
+    '-H "Authorization: Bearer $token"',
+    '[[ "$status" != "200" ]]',
+    'origins != [expected_origin.strip().lower()]',
+    'parsed.get("x-chess-pvp-edge", [])',
+    'parsed.get("x-chess-pvp-native", [])',
+    'parsed.get("x-request-id", [])',
+    'payload.get("roster")',
+    'payload.get("source") != "go"',
+    '"revision" not in payload',
+    'payload.get("pollAfterMs")',
+):
+    assert fragment in authenticated_browser_attest, (
+        f"missing authenticated browser deploy attestation contract: {fragment}"
+    )
 assert "payload.get('release')" in deploy
 assert "expected_release" in deploy
 assert '"http://127.0.0.1:${target_port}/api/pvp/_edge/ready"' in deploy
@@ -410,6 +453,7 @@ assert 'sleep 0.25' in deploy
 assert 'if ! wait_pvp_edge_attest "$port"; then' in deploy
 assert 'if ! wait_pvp_browser_attest pvp_browser_cors_attest "http://127.0.0.1:${port}/api/pvp/roster"; then' in deploy
 assert 'if ! wait_pvp_browser_attest pvp_lobby_read_attest "http://127.0.0.1:${port}/api/pvp/lobby"; then' in deploy
+assert 'if ! pvp_authenticated_browser_attest "$candidate_service" "http://127.0.0.1:${port}/api" "$target"; then' in deploy
 assert 'if ! wait_pvp_browser_attest pvp_challenge_browser_attest "http://127.0.0.1:${port}/api/pvp/challenges"; then' in deploy
 roster_attest = deploy.split("pvp_browser_cors_attest() {", 1)[1].split(
     "\npvp_lobby_read_attest() {", 1
@@ -428,7 +472,15 @@ assert 'deliberately-invalid' in lobby_attest
 assert '[[ "$status" != "200" && "$status" != "204" ]]' in challenge_attest
 assert 'if ! pvp_browser_cors_attest "${public_api_url}/pvp/roster"; then' in deploy
 assert 'if ! pvp_lobby_read_attest "${public_api_url}/pvp/lobby"; then' in deploy
+assert 'if ! pvp_authenticated_browser_attest "$candidate_service" "$public_api_url" "$target"; then' in deploy
 assert 'if ! pvp_challenge_browser_attest "${public_api_url}/pvp/challenges"; then' in deploy
+public_authenticated = deploy.find(
+    'if ! pvp_authenticated_browser_attest "$candidate_service" "$public_api_url" "$target"; then'
+)
+commit_marker = deploy.rfind('record_successful_backend "$sha"')
+assert 0 <= public_authenticated < commit_marker, (
+    "authenticated public lobby/pulse browser attestation must pass before the generation is committed"
+)
 assert 'compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge' in deploy
 assert 'render_edge "$candidate_color"' in deploy
 assert 'reload_edge' in deploy
