@@ -9,6 +9,7 @@ on:
       - scripts/production_deploy_target.py
       - scripts/oci_production_runtime.py
       - scripts/synthetic_health_check.py
+      - scripts/pvp_public_transport_probe.py
   push:
     branches: [main]
     paths:
@@ -74,6 +75,13 @@ jobs:
         env:
           DEPLOY_TARGET: ${{ steps.target.outputs.deploy_target }}
         run: python3 scripts/oci_production_tunnel.py status --target "$DEPLOY_TARGET"
+
+      - name: Prove public PvP browser transport
+        run: >-
+          python3 scripts/pvp_public_transport_probe.py
+          --base-url "$CHESS_SYNTHETIC_BASE_URL"
+          --origin https://chess-studio.shadowops.dpdns.org
+          --timeout 12
 
       - name: Restore OCI SDK for ephemeral production identity
         if: github.event_name != 'pull_request' && env.CHESS_SYNTHETIC_USERNAME == '' && env.CHESS_SYNTHETIC_INVITE_CODE == ''
