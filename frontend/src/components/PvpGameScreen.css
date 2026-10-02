@@ -139,6 +139,11 @@
   .pvp-war-room__clock b { font-size:.58rem; }
 }
 @media (max-width:520px) {
+  .pvp-war-room__identity {
+    flex:0 1 88px;
+    min-width:56px;
+  }
+  .pvp-war-room__identity strong { max-width:88px; }
   .pvp-war-room__identity small { display:none; }
   .pvp-war-room__duel-pill { gap:.3rem; padding-inline:.42rem; }
   .pvp-war-room__clock { min-width:39px; }
