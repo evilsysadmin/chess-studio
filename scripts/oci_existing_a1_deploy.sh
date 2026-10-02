@@ -655,6 +655,21 @@ wait_pvp_edge_attest() {
   return 1
 }
 
+wait_pvp_browser_attest() {
+  local attest_fn="$1"
+  local endpoint="$2"
+  local attempts="${CHESS_STUDIO_PVP_BROWSER_ATTEST_ATTEMPTS:-12}"
+  local attempt
+  for attempt in $(seq 1 "$attempts"); do
+    if "$attest_fn" "$endpoint"; then
+      return 0
+    fi
+    sleep 0.25
+  done
+  return 1
+}
+
+
 public_tunnel_attest() {
   local expected="$1"
   local release
@@ -1150,13 +1165,13 @@ if ! wait_pvp_edge_attest "$port"; then
   rollback "$sha" || true
   exit 45
 fi
-if ! pvp_browser_cors_attest "http://127.0.0.1:${port}/api/pvp/roster"; then
+if ! wait_pvp_browser_attest pvp_browser_cors_attest "http://127.0.0.1:${port}/api/pvp/roster"; then
   echo "edge PvP browser CORS attestation failed after cutover: color=$candidate_color" >&2
   compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
   rollback "$sha" || true
   exit 47
 fi
-if ! pvp_challenge_browser_attest "http://127.0.0.1:${port}/api/pvp/challenges"; then
+if ! wait_pvp_browser_attest pvp_challenge_browser_attest "http://127.0.0.1:${port}/api/pvp/challenges"; then
   echo "edge PvP challenge browser transport attestation failed after cutover: color=$candidate_color" >&2
   compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
   rollback "$sha" || true
