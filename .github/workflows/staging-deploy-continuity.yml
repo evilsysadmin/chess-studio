@@ -1,15 +1,13 @@
 name: Operations · live-game deploy continuity
 on:
   workflow_dispatch:
-  push:
+  workflow_run:
+    workflows:
+      - Deploy to staging
+    types:
+      - completed
     branches:
       - main
-    paths:
-      - '.github/workflows/staging-deploy-continuity.yml'
-      - 'scripts/staging_deploy_continuity_probe.py'
-      - 'scripts/oci_existing_a1_deploy.sh'
-      - 'scripts/oci_blue_green_edge.py'
-      - 'infra/oci/runtime/docker-compose.yml'
 permissions:
   contents: read
 concurrency:
@@ -19,10 +17,14 @@ concurrency:
   cancel-in-progress: true
 env:
   STAGING_API_URL: https://api-staging.chess-studio.shadowops.dpdns.org/api
+  TARGET_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
 
 jobs:
   contracts:
     name: Continuity drill · contracts
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-24.04
     timeout-minutes: 3
     steps:
@@ -43,9 +45,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          sha="${GITHUB_SHA}"
-          [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || exit 2
-          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          [[ "$TARGET_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 2
+          echo "sha=$TARGET_SHA" >> "$GITHUB_OUTPUT"
       - name: Wait until normal staging deploy serves this SHA
         id: convergence
         shell: bash
@@ -55,28 +56,28 @@ jobs:
           for attempt in {1..180}; do
             current_main="$(git ls-remote origin refs/heads/main | awk 'NR == 1 {print $1}')"
             [[ "$current_main" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::cannot resolve current main"; exit 1; }
-            if [[ "$current_main" != "$GITHUB_SHA" ]]; then
-              echo "::notice title=Continuity drill superseded::$GITHUB_SHA != main $current_main; no staging mutation."
+            if [[ "$current_main" != "$TARGET_SHA" ]]; then
+              echo "::notice title=Continuity drill superseded::$TARGET_SHA != main $current_main; no staging mutation."
               exit 0
             fi
             body="$RUNNER_TEMP/release-$attempt.json"
             status="$(curl --silent --show-error --connect-timeout 3 --max-time 8 \
               --output "$body" --write-out '%{http_code}' \
               -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
-              "$STAGING_API_URL/release?sha=$GITHUB_SHA" || true)"
-            if [[ "$status" == 200 ]] && python3 - "$body" "$GITHUB_SHA" <<'PY'
+              "$STAGING_API_URL/release?sha=$TARGET_SHA" || true)"
+            if [[ "$status" == 200 ]] && python3 - "$body" "$TARGET_SHA" <<'PY'
           import json, pathlib, sys
           payload=json.loads(pathlib.Path(sys.argv[1]).read_text())
           raise SystemExit(0 if str(payload.get("build") or "").lower()==sys.argv[2].lower() else 1)
           PY
             then
               echo 'admitted=true' >> "$GITHUB_OUTPUT"
-              echo "Exact staging generation ready and still current: $GITHUB_SHA"
+              echo "Exact staging generation ready and still current: $TARGET_SHA"
               exit 0
             fi
             sleep 5
           done
-          echo "::error::staging never served exact SHA $GITHUB_SHA"
+          echo "::error::staging never served exact SHA $TARGET_SHA"
           exit 1
 
   drill:
