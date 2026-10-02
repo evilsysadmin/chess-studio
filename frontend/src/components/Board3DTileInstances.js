@@ -64,7 +64,7 @@ export function resolveBoard3DPointerSquare(
   if (preferLegalTargets && selectedSquare) {
     const legalSquares = new Set(
       (legalTargets || [])
-        .map((target) => typeof target === 'string' ? target : target?.to)
+        .map((target) => typeof target === 'string' ? target : target?.to || target?.square)
         .filter(Boolean),
     );
     if (legalSquares.size) {
