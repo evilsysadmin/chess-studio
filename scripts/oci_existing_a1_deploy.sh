@@ -402,6 +402,7 @@ expected_match_handoff_cancel = str(env.get('CHESS_STUDIO_PVP_NATIVE_MATCH_HANDO
 expected_match_ready = str(env.get('CHESS_STUDIO_PVP_NATIVE_MATCH_READY_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
 expected_match_resign = str(env.get('CHESS_STUDIO_PVP_NATIVE_MATCH_RESIGN_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
 expected_match_read = str(env.get('CHESS_STUDIO_PVP_NATIVE_MATCH_READ_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
+expected_match_move = str(env.get('CHESS_STUDIO_PVP_NATIVE_MATCH_MOVE_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
 if (
     payload.get('status') != 'ready'
     or payload.get('service') != 'chess-studio-pvp-go'
@@ -415,6 +416,7 @@ if (
     or bool(payload.get('nativeMatchReady')) != expected_match_ready
     or bool(payload.get('nativeMatchResign')) != expected_match_resign
     or bool(payload.get('nativeMatchRead')) != expected_match_read
+    or bool(payload.get('nativeMatchMove')) != expected_match_move
 ):
     raise SystemExit(1)
 PY
