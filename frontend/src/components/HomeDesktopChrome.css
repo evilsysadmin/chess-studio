@@ -113,51 +113,55 @@
   }
 
   /* The player sits ~74px above the bottom edge of the 1814×867 master once
-     scaled to viewport width. Anchor the real deck to that same coordinate. */
+     scaled to viewport width. Keep that canonical coordinate, but cap it on
+     wide/short desktop viewports so the collapsed deck + live-user pill never
+     fall below the visible fold. */
   html body:has(.app-shell-home) .global-music-dock {
     position: fixed !important;
     left: max(12px, .8vw) !important;
-    top: calc(47.795vw - 74px) !important;
+    top: min(calc(47.795vw - 74px), calc(100dvh - 92px)) !important;
     bottom: auto !important;
     width: clamp(230px, 15.6vw, 282px) !important;
     z-index: 72 !important;
   }
 
-  /* Collapsed means collapsed. Keeping the full 230–282px shell here made the
-     open-player button overlap Matthias' desk station and steal his click.
-     The full track metadata remains one deliberate click away in the expanded
-     deck; the idle Home keeps only two explicit controls in the radio corner. */
+  /* Keep the Home player compact, but not microscopic. The old 68px two-icon
+     rail disappeared against the room and made the live-user status feel
+     detached. A sub-200px deck still clears Matthias while restoring track
+     context and a recognisable RetroPlayer surface. */
   html body:has(.app-shell-home) .global-music-dock:has(.music-deck-collapsed) {
-    left: max(4px, .35vw) !important;
-    width: 68px !important;
+    left: max(6px, .45vw) !important;
+    width: 196px !important;
   }
 
   html body:has(.app-shell-home) .global-music-dock .music-deck.music-deck-collapsed {
-    min-height: 38px !important;
-    grid-template-columns: 30px 30px !important;
-    gap: 2px !important;
-    padding: 3px !important;
+    min-height: 42px !important;
+    grid-template-columns: minmax(0, 1fr) 34px !important;
+    gap: 4px !important;
+    padding: 4px !important;
   }
 
   html body:has(.app-shell-home) .global-music-dock .music-deck-collapsed .music-deck-expand {
-    width: 30px !important;
-    min-width: 30px !important;
-    grid-template-columns: 1fr !important;
-    place-items: center !important;
-    padding: 0 !important;
+    width: auto !important;
+    min-width: 0 !important;
+    grid-template-columns: auto auto minmax(0, 1fr) !important;
+    place-items: center start !important;
+    gap: .34rem !important;
+    padding: 0 .42rem !important;
   }
 
-  html body:has(.app-shell-home) .global-music-dock .music-deck-collapsed :is(
-    .music-deck-status-light,
-    .music-deck-collapsed-track,
-    .music-deck-collapsed-hint
-  ) {
+  html body:has(.app-shell-home) .global-music-dock .music-deck-collapsed .music-deck-collapsed-hint {
     display: none !important;
   }
 
+  html body:has(.app-shell-home) .global-music-dock .music-deck-collapsed .music-deck-status-light,
+  html body:has(.app-shell-home) .global-music-dock .music-deck-collapsed .music-deck-collapsed-track {
+    display: block !important;
+  }
+
   html body:has(.app-shell-home) .global-music-dock .music-deck-collapsed .music-deck-collapsed-play {
-    width: 30px !important;
-    height: 30px !important;
+    width: 34px !important;
+    height: 32px !important;
   }
 
   /* The canonical coordinate is correct for the compact player, but on short
