@@ -126,6 +126,13 @@ function setDialogue(actor, value) {
   if (canvas?.dataset) canvas.dataset.warRoomHansMopDialogue = value || '';
 }
 
+function setMopDiagnostic(actor, value) {
+  const diagnostic = String(value || '');
+  const canvas = getWarRoomHansCanvas(actor);
+  if (canvas?.dataset) canvas.dataset.warRoomHansMopDiagnostic = diagnostic;
+  if (actor?.hans?.userData) actor.hans.userData.warRoomHansMopDiagnostic = diagnostic;
+}
+
 function clearRoutineState(actor, props, controller, root, runtime) {
   resetWarRoomHansWalk(controller, { full: true });
   resetWarRoomHansMopProps(props);
@@ -187,6 +194,19 @@ export function installWarRoomHansMopRoutine(root) {
     return travelRoute.length > 0;
   }
 
+  function prepareReachableWaypoint(candidates, preferredIndex = 0) {
+    if (!Array.isArray(candidates) || candidates.length === 0) return false;
+    const count = candidates.length;
+    const start = Math.max(0, Math.min(count - 1, Number(preferredIndex) || 0));
+    for (let offset = 0; offset < count; offset += 1) {
+      const candidateIndex = (start + offset) % count;
+      if (!prepareTravelRoute(candidates[candidateIndex])) continue;
+      waypointIndex = candidateIndex;
+      return true;
+    }
+    return false;
+  }
+
   floor.onBeforeRender = (...args) => {
     previous?.(...args);
     const now = typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now();
@@ -214,21 +234,36 @@ export function installWarRoomHansMopRoutine(root) {
       travelRoute = [];
       routeIndex = 0;
       setDialogue(actor, '');
+      setMopDiagnostic(actor, 'waiting-delay');
     }
     if (!warRoomHansEventMatches(gameId, 'mop') || completedGameId === gameId) return;
 
     if (!active) {
-      if (!warRoomHansTaskAvailable(runtime, TASK_ID) || now - eligibleSince < delayMs) return;
+      if (!warRoomHansTaskAvailable(runtime, TASK_ID)) {
+        setMopDiagnostic(actor, 'task-busy');
+        return;
+      }
+      if (now - eligibleSince < delayMs) {
+        setMopDiagnostic(actor, 'waiting-delay');
+        return;
+      }
       controller ||= createWarRoomHansWalkController(actor, { forward: 1 });
-      if (!controller) return;
+      if (!controller) {
+        setMopDiagnostic(actor, 'missing-controller');
+        return;
+      }
       if (!assignWarRoomHansTask(runtime, {
         id: TASK_ID,
         kind: 'mop',
         source: 'WarRoomHansMopRoutine',
         payload: { gameId },
-      })) return;
+      })) {
+        setMopDiagnostic(actor, 'task-assign-rejected');
+        return;
+      }
       const service = warRoomHansServiceHome(root, actor.hans.parent);
       if (!service?.point) {
+        setMopDiagnostic(actor, 'missing-service-home');
         if (releaseWarRoomHansTask(runtime, TASK_ID)) completedGameId = gameId;
         return;
       }
@@ -248,18 +283,21 @@ export function installWarRoomHansMopRoutine(root) {
       activeElapsedMs = 0;
       waypoints = buildRoomWaypoints(floor, actor.hans.parent);
       if (!waypoints.length) {
+        setMopDiagnostic(actor, 'no-waypoints');
         clearRoutineState(actor, props, controller, root, runtime);
         active = false;
         completedGameId = gameId;
         return;
       }
-      waypointIndex = Math.floor(Math.random() * waypoints.length);
-      if (!prepareTravelRoute(waypoints[waypointIndex])) {
+      const preferredWaypoint = Math.floor(Math.random() * waypoints.length);
+      if (!prepareReachableWaypoint(waypoints, preferredWaypoint)) {
+        setMopDiagnostic(actor, 'no-safe-route');
         clearRoutineState(actor, props, controller, root, runtime);
         active = false;
         completedGameId = gameId;
         return;
       }
+      setMopDiagnostic(actor, 'active');
       state = 'walking';
       dialogueEnabled = shouldHansMopDialogue();
       props.bucket.visible = true;
@@ -333,6 +371,7 @@ export function installWarRoomHansMopRoutine(root) {
         resetWarRoomHansMopProps(props);
         if (activeElapsedMs >= fatigueMs) {
           if (!prepareTravelRoute(home)) {
+            setMopDiagnostic(actor, 'no-return-route');
             clearRoutineState(actor, props, controller, root, runtime);
             active = false;
             completedGameId = gameId;
@@ -341,8 +380,9 @@ export function installWarRoomHansMopRoutine(root) {
           state = 'returning';
           setWarRoomHansTaskPhase(runtime, 'returning');
         } else {
-          waypointIndex = (waypointIndex + 1 + Math.floor(Math.random() * 3)) % waypoints.length;
-          if (!prepareTravelRoute(waypoints[waypointIndex])) {
+          const preferredWaypoint = (waypointIndex + 1 + Math.floor(Math.random() * 3)) % waypoints.length;
+          if (!prepareReachableWaypoint(waypoints, preferredWaypoint)) {
+            setMopDiagnostic(actor, 'no-next-safe-route');
             clearRoutineState(actor, props, controller, root, runtime);
             active = false;
             completedGameId = gameId;
