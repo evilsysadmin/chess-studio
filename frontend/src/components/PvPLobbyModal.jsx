@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { pvpApi } from '../pvpApi.js';
 import { opponentForMatch } from '../pvpGameModel.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
+import { prefetchWarRoomVariant } from './WarRoomVariant.js';
 import './PvPLobbyModal.css';
 
 const EMPTY_LOBBY = Object.freeze({ roster: [], challenges: [], messages: [], activeMatch: null, pollAfterMs: 3000 });
@@ -72,6 +73,11 @@ export default function PvPLobbyModal({
   onMarkChatRead = null,
 }) {
   useEscapeToClose(onClose);
+  useEffect(() => {
+    // The lobby is intent: warm the immutable Duel Room GLB before a challenge
+    // becomes a live match instead of making mobile wait on the game screen.
+    void prefetchWarRoomVariant('duel');
+  }, []);
   const [lobby, setLobby] = useState(EMPTY_LOBBY);
   const [loading, setLoading] = useState(true);
   const [busyKey, setBusyKey] = useState('');
