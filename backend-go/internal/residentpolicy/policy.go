@@ -109,6 +109,12 @@ func Band(raw float64) DifficultyBand {
 	}
 }
 
+// SearchSettings mirrors chess_ai.settings_for_level for deterministic
+// fallback searches that are not subject to the human-Elo policy budget cap.
+func SearchSettings(raw float64) (maxDepth int, budgetSeconds float64) {
+	return searchSettings(math.RoundToEven(clamp(raw, 0, 100)))
+}
+
 func EffectiveLossCap(band DifficultyBand, complexity float64) float64 {
 	c := clamp(complexity, 0, 1)
 	return band.MaxLossCP * (1 + (0.22 * c))
