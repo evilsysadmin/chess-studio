@@ -20,6 +20,7 @@ type Config struct {
 	NativePulse   http.Handler
 	NativeRoster  http.Handler
 	NativeChat    http.Handler
+	NativeChallengeResolution http.Handler
 }
 
 type Handler struct {
@@ -30,6 +31,7 @@ type Handler struct {
 	nativePulse  http.Handler
 	nativeRoster http.Handler
 	nativeChat   http.Handler
+	nativeChallengeResolution http.Handler
 }
 
 func New(cfg Config) (*Handler, error) {
@@ -85,6 +87,7 @@ func New(cfg Config) (*Handler, error) {
 		nativePulse:  cfg.NativePulse,
 		nativeRoster: cfg.NativeRoster,
 		nativeChat:   cfg.NativeChat,
+		nativeChallengeResolution: cfg.NativeChallengeResolution,
 	}, nil
 }
 
@@ -107,6 +110,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case r.URL.Path == "/api/pvp/lobby/chat" && h.nativeChat != nil:
 		w.Header().Set("X-Chess-Pvp-Edge", "go")
 		h.nativeChat.ServeHTTP(w, r)
+	case isChallengeResolutionPath(r.URL.Path) && h.nativeChallengeResolution != nil:
+		w.Header().Set("X-Chess-Pvp-Edge", "go")
+		h.nativeChallengeResolution.ServeHTTP(w, r)
 	case r.URL.Path == "/api/pvp" || strings.HasPrefix(r.URL.Path, "/api/pvp/"):
 		h.proxy.ServeHTTP(w, r)
 	default:
@@ -121,6 +127,7 @@ func (h *Handler) health(w http.ResponseWriter) {
 		"nativePulse":  h.nativePulse != nil,
 		"nativeRoster": h.nativeRoster != nil,
 		"nativeChat":   h.nativeChat != nil,
+		"nativeChallengeResolution": h.nativeChallengeResolution != nil,
 	}
 	if h.release != "" {
 		payload["release"] = h.release
@@ -156,6 +163,7 @@ func (h *Handler) ready(w http.ResponseWriter, r *http.Request) {
 		"nativePulse":  h.nativePulse != nil,
 		"nativeRoster": h.nativeRoster != nil,
 		"nativeChat":   h.nativeChat != nil,
+		"nativeChallengeResolution": h.nativeChallengeResolution != nil,
 	})
 }
 
@@ -182,4 +190,14 @@ func isMatchPulsePath(path string) bool {
 	matchID := strings.TrimSuffix(strings.TrimPrefix(path, prefix), suffix)
 	matchID = strings.Trim(matchID, "/")
 	return matchID != "" && !strings.Contains(matchID, "/")
+}
+
+func isChallengeResolutionPath(path string) bool {
+	const prefix = "/api/pvp/challenges/"
+	if !strings.HasPrefix(path, prefix) {
+		return false
+	}
+	rest := strings.TrimPrefix(path, prefix)
+	parts := strings.Split(rest, "/")
+	return len(parts) == 2 && parts[0] != "" && (parts[1] == "cancel" || parts[1] == "decline")
 }
