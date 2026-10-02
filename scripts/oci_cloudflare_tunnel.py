@@ -13,6 +13,8 @@ import json
 import os
 import re
 import shlex
+import socket
+import ssl
 import time
 import urllib.error
 import urllib.parse
@@ -23,7 +25,7 @@ CF_API = "https://api.cloudflare.com/client/v4"
 ZONE_NAME = "shadowops.dpdns.org"
 API_HOSTNAME = "api-staging.chess-studio.shadowops.dpdns.org"
 PRODUCTION_API_HOSTNAME = "api.chess-studio.shadowops.dpdns.org"
-SSH_HOSTNAME = "ssh-staging.chess-studio.shadowops.dpdns.org"
+SSH_HOSTNAME = "ssh-chess-studio-staging.shadowops.dpdns.org"
 TUNNEL_NAME = "chess-studio-staging"
 OCI_COMPARTMENT_NAME = "chess-studio-staging"
 RUNTIME_BUCKET = "chess-studio-staging-runtime"
@@ -106,6 +108,19 @@ def ensure_tunnel() -> str:
     if not UUID_RE.fullmatch(tunnel_id):
         raise SystemExit("Cloudflare returned an invalid tunnel id")
     return tunnel_id
+
+
+def assert_ssh_hostname_tls_shape(hostname: str) -> None:
+    """Keep SSH on a first-level zone hostname covered by Universal SSL."""
+    suffix = f".{ZONE_NAME}"
+    if not hostname.endswith(suffix):
+        raise SystemExit(f"SSH hostname {hostname!r} must belong to Cloudflare zone {ZONE_NAME!r}")
+    relative = hostname[: -len(suffix)]
+    if not relative or "." in relative:
+        raise SystemExit(
+            f"SSH hostname {hostname!r} must be exactly one label below {ZONE_NAME!r}; "
+            "Cloudflare Universal SSL does not cover deeper subdomains by default."
+        )
 
 
 def desired_ingress() -> dict[str, object]:
@@ -367,6 +382,23 @@ def ensure_dns(tunnel_id: str, hostname: str) -> None:
     print(f"Cloudflare DNS {action}: {hostname} -> {desired['content']}")
 
 
+def wait_edge_tls(hostname: str, timeout: int = 120) -> None:
+    deadline = time.monotonic() + timeout
+    last = ""
+    while time.monotonic() < deadline:
+        try:
+            context = ssl.create_default_context()
+            with socket.create_connection((hostname, 443), timeout=5) as raw:
+                with context.wrap_socket(raw, server_hostname=hostname) as tls:
+                    protocol = tls.version() or "TLS"
+            print(f"Cloudflare edge TLS OK: {hostname} ({protocol})")
+            return
+        except Exception as exc:
+            last = f"{type(exc).__name__}: {exc}"
+        time.sleep(3)
+    raise SystemExit(f"Cloudflare edge TLS did not converge for {hostname}: {last[:300]}")
+
+
 def wait_public_ready(timeout: int = 120) -> None:
     deadline = time.monotonic() + timeout
     last = ""
@@ -389,6 +421,7 @@ def wait_public_ready(timeout: int = 120) -> None:
 
 
 def reconcile(oci: Any) -> None:
+    assert_ssh_hostname_tls_shape(SSH_HOSTNAME)
     config = oci_config(oci)
     assert_no_public_ssh_ingress(oci, config)
     tunnel_id = ensure_tunnel()
@@ -399,11 +432,19 @@ def reconcile(oci: Any) -> None:
     wait_connection(tunnel_id)
     ensure_dns(tunnel_id, API_HOSTNAME)
     ensure_dns(tunnel_id, SSH_HOSTNAME)
+    wait_edge_tls(SSH_HOSTNAME)
     wait_public_ready()
     print(f"CHESS_STUDIO_OCI_TUNNEL_OK tunnel_id={tunnel_id} api_hostname={API_HOSTNAME} ssh_hostname={SSH_HOSTNAME}")
 
 
 def self_test() -> None:
+    assert_ssh_hostname_tls_shape(SSH_HOSTNAME)
+    try:
+        assert_ssh_hostname_tls_shape(f"ssh-staging.chess-studio.{ZONE_NAME}")
+    except SystemExit:
+        pass
+    else:
+        raise AssertionError("nested SSH hostname must fail the Universal SSL depth contract")
     ingress = desired_ingress()
     rules = ingress["config"]["ingress"]  # type: ignore[index]
     assert rules[0]["hostname"] == API_HOSTNAME
