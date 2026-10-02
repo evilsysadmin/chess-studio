@@ -298,3 +298,85 @@ func TestMatchReadPathIsExact(t *testing.T){
 		if got!=want { t.Fatalf("%s got=%t want=%t",path,got,want) }
 	}
 }
+
+
+func TestNativeMatchReadRecoversPendingResidentReply(t *testing.T) {
+	now := time.Date(2026, 10, 2, 14, 50, 0, 0, time.UTC)
+	row := committedMoveHTTPRow(now)
+	row.Black = "marta_stein"
+
+	bot := row
+	bot.FEN = "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2"
+	bot.Turn = "w"
+	bot.Revision = 9
+
+	store := &fakeMatchReadStore{
+		readRow: row, observerWasLive: true, readFound: true,
+		canonical: []cancelMatchRow{row, row},
+		canonicalFound: []bool{true, true},
+	}
+	timeout := &fakeMatchTimeoutService{outcome: matchtimeout.OutcomeNoop}
+	disconnect := &fakeMatchDisconnectService{outcome: matchdisconnect.OutcomeNoop}
+	moveStore := &scriptedMatchMoveStore{rows: []cancelMatchRow{bot}}
+	oracle := &fakeResidentMoveOracle{uci: "e7e5"}
+
+	h := matchReadHandler(t, now, store, timeout, disconnect, nil, true)
+	h.matchMoveStore = moveStore
+	h.residentMoveOracle = oracle
+
+	rr := matchReadRequest(t, h, now, http.MethodGet, "/api/pvp/matches/m-1", "alice")
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	if oracle.calls != 1 || oracle.resident != "marta_stein" || oracle.fen != row.FEN {
+		t.Fatalf("oracle calls=%d resident=%q fen=%q", oracle.calls, oracle.resident, oracle.fen)
+	}
+	if moveStore.commitCalls != 1 || len(moveStore.updates) != 1 {
+		t.Fatalf("commits=%d updates=%#v", moveStore.commitCalls, moveStore.updates)
+	}
+	if got := rr.Header().Get("X-Chess-Pvp-Resident-Pending"); got != "" {
+		t.Fatalf("unexpected pending=%q", got)
+	}
+	var body struct { Match map[string]any `json:"match"` }
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if body.Match["turn"] != "w" {
+		t.Fatalf("match=%#v", body.Match)
+	}
+}
+
+func TestNativeMatchReadResidentOracleFailureStaysReadable(t *testing.T) {
+	now := time.Date(2026, 10, 2, 14, 50, 0, 0, time.UTC)
+	row := committedMoveHTTPRow(now)
+	row.Black = "otto_falk"
+
+	store := &fakeMatchReadStore{
+		readRow: row, observerWasLive: true, readFound: true,
+		canonical: []cancelMatchRow{row, row},
+		canonicalFound: []bool{true, true},
+	}
+	h := matchReadHandler(
+		t, now, store,
+		&fakeMatchTimeoutService{outcome: matchtimeout.OutcomeNoop},
+		&fakeMatchDisconnectService{outcome: matchdisconnect.OutcomeNoop},
+		nil, true,
+	)
+	h.matchMoveStore = &scriptedMatchMoveStore{}
+	h.residentMoveOracle = &fakeResidentMoveOracle{err: errors.New("oracle unavailable")}
+
+	rr := matchReadRequest(t, h, now, http.MethodGet, "/api/pvp/matches/m-1", "alice")
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	if got := rr.Header().Get("X-Chess-Pvp-Resident-Pending"); got != "1" {
+		t.Fatalf("pending=%q", got)
+	}
+	var body struct { Match map[string]any `json:"match"` }
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if body.Match["turn"] != "b" || body.Match["status"] != "active" {
+		t.Fatalf("match=%#v", body.Match)
+	}
+}
