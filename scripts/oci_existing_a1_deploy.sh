@@ -446,6 +446,53 @@ PY
   return 0
 }
 
+pvp_browser_cors_attest() {
+  local target_port="${1:-$port}"
+  local headers status
+  headers="$(mktemp)"
+  if ! status="$(curl --silent --show-error --max-time 8 \
+      -X OPTIONS \
+      -H "Origin: $cors_origin" \
+      -H 'Access-Control-Request-Method: POST' \
+      -H 'Access-Control-Request-Headers: authorization,x-client-release' \
+      -D "$headers" -o /dev/null -w "%{http_code}" \
+      "http://127.0.0.1:${target_port}/api/pvp/roster")"; then
+    rm -f "$headers"
+    return 1
+  fi
+  if [[ "$status" != "204" ]] || \
+     ! grep -Eiq "^X-Chess-Pvp-Edge:[[:space:]]*go[[:space:]]*$" "$headers" || \
+     ! python3 - "$headers" "$cors_origin" <<'PY'
+import pathlib
+import sys
+headers = pathlib.Path(sys.argv[1]).read_text(encoding='utf-8', errors='replace')
+expected = sys.argv[2].strip().lower()
+parsed = {}
+for line in headers.replace('\r\n', '\n').split('\n'):
+    if ':' not in line:
+        continue
+    name, value = line.split(':', 1)
+    parsed.setdefault(name.strip().lower(), []).append(value.strip())
+origins = [v.lower() for v in parsed.get('access-control-allow-origin', [])]
+methods = ','.join(parsed.get('access-control-allow-methods', [])).upper()
+allowed_headers = ','.join(parsed.get('access-control-allow-headers', [])).lower()
+if expected not in origins:
+    raise SystemExit(1)
+for required_method in ('POST', 'DELETE'):
+    if required_method not in methods:
+        raise SystemExit(1)
+for required_header in ('authorization', 'x-client-release'):
+    if required_header not in allowed_headers:
+        raise SystemExit(1)
+PY
+  then
+    rm -f "$headers"
+    return 1
+  fi
+  rm -f "$headers"
+  return 0
+}
+
 wait_pvp_edge_attest() {
   local target_port="${1:-$port}"
   local attempts="${CHESS_STUDIO_PVP_EDGE_ATTEST_ATTEMPTS:-20}"
@@ -953,6 +1000,12 @@ if ! wait_pvp_edge_attest "$port"; then
   compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
   rollback "$sha" || true
   exit 45
+fi
+if ! pvp_browser_cors_attest "$port"; then
+  echo "edge PvP browser CORS attestation failed after cutover: color=$candidate_color" >&2
+  compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
+  rollback "$sha" || true
+  exit 47
 fi
 write_active_color "$candidate_color"
 phase_done switch "$switch_started_ms"
