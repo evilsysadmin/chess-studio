@@ -66,6 +66,7 @@ type Store interface {
 
 type HandlerConfig struct {
 	Store          Store
+	LobbyReadStore lobbyReadStore
 	JWTSecret      string
 	AllowedOrigins []string
 	PollAfter      time.Duration
@@ -91,6 +92,7 @@ type HandlerConfig struct {
 
 type Handler struct {
 	store          Store
+	lobbyReadStore lobbyReadStore
 	secret         []byte
 	allowedOrigins map[string]struct{}
 	allowAnyOrigin bool
@@ -120,6 +122,8 @@ type Handler struct {
 	matchReadWindows map[string]rateWindow
 	matchMoveMu    sync.Mutex
 	matchMoveWindows map[string]rateWindow
+	lobbyReadMu    sync.Mutex
+	lobbyReadWindows map[string]rateWindow
 	now            func() time.Time
 }
 
@@ -301,6 +305,7 @@ func NewHandler(cfg HandlerConfig) (*Handler, error) {
 	}
 	return &Handler{
 		store:          cfg.Store,
+		lobbyReadStore: cfg.LobbyReadStore,
 		secret:         []byte(secret),
 		allowedOrigins: allowed,
 		allowAnyOrigin: allowAny,
@@ -326,6 +331,7 @@ func NewHandler(cfg HandlerConfig) (*Handler, error) {
 		chatWindows:    make(map[string]rateWindow),
 		matchReadWindows: make(map[string]rateWindow),
 		matchMoveWindows: make(map[string]rateWindow),
+		lobbyReadWindows: make(map[string]rateWindow),
 		now:            now,
 	}, nil
 }
@@ -1066,6 +1072,11 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	now := h.now().UTC()
+
+	if r.URL.Path == "/api/pvp/lobby" && h.lobbyReadStore != nil {
+		h.serveLobbyRead(w, r, claims.Subject, now)
+		return
+	}
 
 	if matchID, ok := matchReadID(r.URL.Path); ok {
 		if h.matchReadStore == nil || h.matchTimeout == nil || h.matchDisconnect == nil {
