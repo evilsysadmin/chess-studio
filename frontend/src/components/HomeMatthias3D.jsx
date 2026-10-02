@@ -466,7 +466,6 @@ export default function HomeMatthias3D({
     const baseModelPosition = new THREE.Vector3();
     const baseModelQuaternion = new THREE.Quaternion();
     const attentionQuaternion = new THREE.Quaternion();
-    const sleepQuaternion = new THREE.Quaternion();
     let routinePropNodes = null;
 
     const alignRoutinePropToHand = ({ bone, contentMesh, handMesh, offset = {} } = {}) => {
