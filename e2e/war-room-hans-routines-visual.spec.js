@@ -102,6 +102,7 @@ async function waitForRoutineStart(page, canvas, eventName) {
         activeTask: node.dataset.warRoomHansActiveTask || '',
         taskPhase: node.dataset.warRoomHansTaskPhase || '',
         mopState: node.dataset.warRoomHansMopState || '',
+        mopStartStatus: node.dataset.warRoomHansMopStartStatus || '',
         mopInstalled: node.dataset.warRoomHansMopInstalled || '',
       };
     }),
