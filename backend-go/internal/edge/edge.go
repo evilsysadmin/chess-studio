@@ -19,6 +19,7 @@ type Config struct {
 	ReadyTimeout  time.Duration
 	NativePulse   http.Handler
 	NativeRoster  http.Handler
+	NativeChat    http.Handler
 }
 
 type Handler struct {
@@ -28,6 +29,7 @@ type Handler struct {
 	release      string
 	nativePulse  http.Handler
 	nativeRoster http.Handler
+	nativeChat   http.Handler
 }
 
 func New(cfg Config) (*Handler, error) {
@@ -82,6 +84,7 @@ func New(cfg Config) (*Handler, error) {
 		release:     strings.TrimSpace(cfg.Release),
 		nativePulse:  cfg.NativePulse,
 		nativeRoster: cfg.NativeRoster,
+		nativeChat:   cfg.NativeChat,
 	}, nil
 }
 
@@ -101,6 +104,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case r.URL.Path == "/api/pvp/roster" && h.nativeRoster != nil:
 		w.Header().Set("X-Chess-Pvp-Edge", "go")
 		h.nativeRoster.ServeHTTP(w, r)
+	case r.URL.Path == "/api/pvp/lobby/chat" && h.nativeChat != nil:
+		w.Header().Set("X-Chess-Pvp-Edge", "go")
+		h.nativeChat.ServeHTTP(w, r)
 	case r.URL.Path == "/api/pvp" || strings.HasPrefix(r.URL.Path, "/api/pvp/"):
 		h.proxy.ServeHTTP(w, r)
 	default:
@@ -114,6 +120,7 @@ func (h *Handler) health(w http.ResponseWriter) {
 		"service":      serviceName,
 		"nativePulse":  h.nativePulse != nil,
 		"nativeRoster": h.nativeRoster != nil,
+		"nativeChat":   h.nativeChat != nil,
 	}
 	if h.release != "" {
 		payload["release"] = h.release
@@ -148,6 +155,7 @@ func (h *Handler) ready(w http.ResponseWriter, r *http.Request) {
 		"service":      serviceName,
 		"nativePulse":  h.nativePulse != nil,
 		"nativeRoster": h.nativeRoster != nil,
+		"nativeChat":   h.nativeChat != nil,
 	})
 }
 
