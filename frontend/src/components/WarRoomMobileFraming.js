@@ -50,7 +50,10 @@ export function getWarRoomMobileFramingProfile({
     fov: WAR_ROOM_CANONICAL_CAMERA_FOV,
     // Portrait is still the same camera contract. The long distance is expected:
     // the narrow horizontal FOV must fit all files without changing perspective.
-    halfSpan: 4.5,
+    // 4.72 leaves a small safety gutter for the oblique v4 pitch: the board
+    // still fills >88% of phone width while corners remain inside every known
+    // portrait/training canvas instead of clipping by 2–4%.
+    halfSpan: 4.72,
     padding: 1.0,
     minDistance: phone ? 16.2 : 15.6,
     maxDistance: 60,
