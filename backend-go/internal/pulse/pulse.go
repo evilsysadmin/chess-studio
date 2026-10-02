@@ -82,6 +82,7 @@ type HandlerConfig struct {
 	MatchTimeout matchTimeoutService
 	MatchDisconnect matchDisconnectService
 	RatingSettlement ratingSettlementService
+	ResidentMoveOracle residentMoveOracle
 	VirtualPlayersEnabled bool
 	VirtualOwner string
 	SparringUsername string
@@ -107,6 +108,7 @@ type Handler struct {
 	matchTimeout matchTimeoutService
 	matchDisconnect matchDisconnectService
 	ratingSettlement ratingSettlementService
+	residentMoveOracle residentMoveOracle
 	virtualPlayersEnabled bool
 	virtualOwner string
 	sparringUsername string
@@ -316,6 +318,7 @@ func NewHandler(cfg HandlerConfig) (*Handler, error) {
 		matchTimeout: cfg.MatchTimeout,
 		matchDisconnect: cfg.MatchDisconnect,
 		ratingSettlement: cfg.RatingSettlement,
+		residentMoveOracle: cfg.ResidentMoveOracle,
 		virtualPlayersEnabled: cfg.VirtualPlayersEnabled,
 		virtualOwner: strings.ToLower(strings.TrimSpace(cfg.VirtualOwner)),
 		sparringUsername: strings.ToLower(strings.TrimSpace(cfg.SparringUsername)),

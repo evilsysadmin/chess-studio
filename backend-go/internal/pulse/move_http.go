@@ -17,6 +17,12 @@ type matchMoveStore interface {
 	Commit(context.Context, string, matchmove.Update) (cancelMatchRow, bool, error)
 }
 
+type residentMoveOracle interface {
+	Move(context.Context, string, string) (string, error)
+}
+
+var errResidentReplyConflict = errors.New("resident reply revision conflict")
+
 func (h *Handler) serveMatchMove(
 	w http.ResponseWriter,
 	r *http.Request,
@@ -61,7 +67,7 @@ func (h *Handler) serveMatchMove(
 			writeJSON(w, http.StatusConflict, map[string]any{"detail": "La partida ya ha terminado."})
 			return
 		}
-		if residentOpponent(snapshot, username) {
+		if residentOpponent(snapshot, username) && h.residentMoveOracle == nil {
 			writeJSON(w, http.StatusServiceUnavailable, map[string]any{
 				"detail": "El movimiento nativo contra residentes aún no está disponible.",
 			})
@@ -165,6 +171,18 @@ func (h *Handler) serveMatchMove(
 		if !committed {
 			continue
 		}
+		if updated.Status == "active" && residentTurnUsername(updated) != "" {
+			replied, replyErr := h.playResidentReply(r.Context(), updated)
+			if replied.ID != "" {
+				updated = replied
+			}
+			if replyErr != nil {
+				// The human move is already authoritative. Do not turn a
+				// successful CAS into a stale client error; a later full read
+				// can reconcile the pending resident turn.
+				w.Header().Set("X-Chess-Pvp-Resident-Pending", "1")
+			}
+		}
 		if updated.Status == "finished" && !h.settleMoveMatch(w, r, updated) {
 			return
 		}
@@ -177,6 +195,101 @@ func (h *Handler) serveMatchMove(
 	writeJSON(w, http.StatusConflict, map[string]any{
 		"detail": "La posición cambió mientras enviabas la jugada. Actualiza e inténtalo de nuevo.",
 	})
+}
+
+func (h *Handler) playResidentReply(ctx context.Context, row cancelMatchRow) (cancelMatchRow, error) {
+	for attempt := 0; attempt < 3; attempt++ {
+		resident := residentTurnUsername(row)
+		if row.Status != "active" || resident == "" {
+			return row, nil
+		}
+		if h.residentMoveOracle == nil {
+			return row, errors.New("resident move oracle is not configured")
+		}
+
+		uci, err := h.residentMoveOracle.Move(ctx, row.FEN, resident)
+		if err != nil {
+			return row, err
+		}
+		request, err := moveRequestFromUCI(uci)
+		if err != nil {
+			return row, err
+		}
+
+		now := h.now().UTC()
+		update, err := matchmove.Prepare(moveDomainMatch(row), resident, request, now)
+		if errors.Is(err, matchmove.ErrClockExpired) {
+			if h.matchTimeout == nil {
+				return row, err
+			}
+			if _, _, timeoutErr := h.matchTimeout.FinishIfExpired(ctx, row.ID); timeoutErr != nil {
+				return row, timeoutErr
+			}
+			current, found, readErr := h.matchReadStore.GetHandoffMatch(ctx, row.ID)
+			if readErr != nil {
+				return row, readErr
+			}
+			if found {
+				return current, nil
+			}
+			return row, nil
+		}
+		if err != nil {
+			return row, err
+		}
+
+		updated, committed, err := h.matchMoveStore.Commit(ctx, row.ID, update)
+		if err != nil {
+			return row, err
+		}
+		if committed {
+			return updated, nil
+		}
+
+		current, found, err := h.matchReadStore.GetHandoffMatch(ctx, row.ID)
+		if err != nil {
+			return row, err
+		}
+		if !found {
+			return row, nil
+		}
+		row = current
+	}
+	return row, errResidentReplyConflict
+}
+
+func residentTurnUsername(row cancelMatchRow) string {
+	if row.Status != "active" {
+		return ""
+	}
+	username := row.White
+	if row.Turn == "b" {
+		username = row.Black
+	}
+	username = strings.ToLower(strings.TrimSpace(username))
+	if !isResidentUsername(username) {
+		return ""
+	}
+	return username
+}
+
+func moveRequestFromUCI(uci string) (matchmove.Request, error) {
+	uci = strings.ToLower(strings.TrimSpace(uci))
+	if len(uci) != 4 && len(uci) != 5 {
+		return matchmove.Request{}, matchmove.ErrInvalidMove
+	}
+	from, to := uci[:2], uci[2:4]
+	if !validMoveSquare(from) || !validMoveSquare(to) {
+		return matchmove.Request{}, matchmove.ErrInvalidMove
+	}
+	promotion := ""
+	if len(uci) == 5 {
+		promotion = uci[4:]
+		if !strings.Contains("qrbn", promotion) {
+			return matchmove.Request{}, matchmove.ErrInvalidMove
+		}
+	}
+	return matchmove.Request{From: from, To: to, Promotion: promotion}, nil
 }
 
 func (h *Handler) settleMoveMatch(w http.ResponseWriter, r *http.Request, row cancelMatchRow) bool {
