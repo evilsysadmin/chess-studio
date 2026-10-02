@@ -440,9 +440,12 @@ export default function PvpGameScreen({ initialMatch, onExit, onMatchUpdate }) {
                     <strong className="pvp-war-room__result-title">{resultText.title}</strong>
                     <p className="pvp-war-room__result-lead">{resultText.detail}</p>
                     <blockquote className="pvp-war-room__result-verdict">
-                      <span>
+                      <span className="pvp-war-room__result-speaker">
                         <img src={CPU_IDENTITY.avatar} alt="" aria-hidden="true" />
-                        <b>{CPU_IDENTITY.name}</b>
+                        <span>
+                          <b>{CPU_IDENTITY.name}</b>
+                          <small>Comentario postpartida</small>
+                        </span>
                       </span>
                       <p>{matthiasVerdict}</p>
                     </blockquote>
