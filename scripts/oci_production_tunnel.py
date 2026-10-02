@@ -11,8 +11,10 @@ import urllib.parse
 import urllib.request
 
 import oci_cloudflare_tunnel as tunnel
+import pvp_public_transport_probe as pvp_transport
 
 PRODUCTION_API_HOSTNAME = "api.chess-studio.shadowops.dpdns.org"
+PRODUCTION_FRONTEND_ORIGIN = "https://chess-studio.shadowops.dpdns.org"
 RENDER_API_CNAME_TARGET = "chess-study-backend.onrender.com"
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 
@@ -186,6 +188,15 @@ def activate(expected_sha: str) -> None:
         comment="Chess Studio production API · temporary OCI Cloudflare Tunnel",
     )
     wait_public_sha(expected_sha)
+    ok, detail = pvp_transport.probe_public_pvp_transport(
+        f"https://{PRODUCTION_API_HOSTNAME}/api",
+        PRODUCTION_FRONTEND_ORIGIN,
+        timeout=12.0,
+        require_go=True,
+    )
+    print(json.dumps(detail, separators=(",", ":"), sort_keys=True))
+    if not ok:
+        raise SystemExit("production PvP public browser transport did not converge after OCI cutover")
     print(f"CHESS_STUDIO_PRODUCTION_ROUTE_OK target=oci sha={validate_sha(expected_sha)}")
 
 
@@ -217,6 +228,7 @@ def self_test() -> None:
     assert rules[1]["service"] == "http://127.0.0.1:4100"
     assert rules[-1]["service"] == "http_status:404"
     assert RENDER_API_CNAME_TARGET.endswith(".onrender.com")
+    assert PRODUCTION_FRONTEND_ORIGIN == "https://chess-studio.shadowops.dpdns.org"
     assert "status" in ("prepare", "activate", "render", "status")
     print("OCI production tunnel self-test: OK")
 
