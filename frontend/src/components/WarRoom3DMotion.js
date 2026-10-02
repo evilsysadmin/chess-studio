@@ -590,7 +590,8 @@ export const WAR_ROOM_V3_TORCHLIT = Object.freeze({
 
 // The Duel Room is intentionally a dark fortress, but the board and occupied
 // near half must stay readable. Touch loses shell shadows and authored detail,
-// so it gets the larger exposure compensation instead of dimming practicals.
+// so it keeps the larger exposure compensation even after the practicals are
+// rebalanced to preserve ivory detail.
 export const PVP_DUEL_ROOM_LIGHT_LIFT = Object.freeze({
   exposure: Object.freeze({ desktop: 0.20, touch: 0.36 }),
 });
