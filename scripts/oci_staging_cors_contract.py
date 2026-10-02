@@ -301,6 +301,7 @@ assert "payload.get('nativePulse')" in deploy
 assert "payload.get('nativeRoster')" in deploy
 assert "payload.get('nativeChat')" in deploy
 assert "payload.get('nativeChallengeResolution')" in deploy
+assert "payload.get('nativeChallengeAccept')" in deploy
 assert "payload.get('nativeMatchHandoffCancel')" in deploy
 assert "payload.get('nativeMatchReady')" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_PULSE_ENABLED" in deploy
@@ -310,6 +311,7 @@ assert "CHESS_STUDIO_PVP_NATIVE_CHAT_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_MATCH_HANDOFF_CANCEL_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_MATCH_READY_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_CHALLENGE_RESOLUTION_ENABLED" in deploy
+assert "CHESS_STUDIO_PVP_NATIVE_CHALLENGE_ACCEPT_ENABLED" in deploy
 assert 'pvp_target_image="$(pvp_image_ref "$sha")"' in deploy
 assert 'docker pull --quiet "$pvp_target_image"' in deploy
 assert 'render_edge "$candidate_color" go' in deploy
