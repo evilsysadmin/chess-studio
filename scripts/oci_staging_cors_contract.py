@@ -91,7 +91,7 @@ for fragment in required_deploy_fragments:
 assert 'CORS_ORIGINS: "${CHESS_STUDIO_CORS_ORIGINS:-https://staging.chess-studio.shadowops.dpdns.org}"' in compose
 assert compose.count('PVP_NATIVE_LOBBY_READ_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_LOBBY_READ_ENABLED:-true}"') == 2
 assert compose.count('PVP_NATIVE_ROSTER_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_ROSTER_ENABLED:-true}"') == 2
-assert compose.count('PVP_NATIVE_CHALLENGE_CREATE_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_CHALLENGE_CREATE_ENABLED:-false}"') == 2
+assert compose.count('PVP_NATIVE_CHALLENGE_CREATE_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_CHALLENGE_CREATE_ENABLED:-true}"') == 2
 assert compose.count('PVP_NATIVE_CHAT_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_CHAT_ENABLED:-true}"') == 2
 assert compose.count('PVP_NATIVE_CHALLENGE_RESOLUTION_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_CHALLENGE_RESOLUTION_ENABLED:-true}"') == 2
 assert compose.count('PVP_NATIVE_MATCH_HANDOFF_CANCEL_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_MATCH_HANDOFF_CANCEL_ENABLED:-true}"') == 2
@@ -348,7 +348,7 @@ assert "CHESS_STUDIO_PVP_NATIVE_MATCH_MOVE_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_CHALLENGE_RESOLUTION_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_CHALLENGE_ACCEPT_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_CHALLENGE_CREATE_ENABLED" in deploy
-assert "env.get('CHESS_STUDIO_PVP_NATIVE_CHALLENGE_CREATE_ENABLED', 'false')" in deploy
+assert "env.get('CHESS_STUDIO_PVP_NATIVE_CHALLENGE_CREATE_ENABLED', 'true')" in deploy
 assert 'pvp_target_image="$(pvp_image_ref "$sha")"' in deploy
 assert 'docker pull --quiet "$pvp_target_image"' in deploy
 assert 'render_edge "$candidate_color" go' in deploy
