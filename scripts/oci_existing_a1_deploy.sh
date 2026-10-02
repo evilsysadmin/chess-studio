@@ -393,6 +393,7 @@ import sys
 payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
 env = __import__('os').environ
 expected_native = str(env.get('CHESS_STUDIO_PVP_NATIVE_PULSE_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
+expected_lobby_read = str(env.get('CHESS_STUDIO_PVP_NATIVE_LOBBY_READ_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
 expected_roster = str(env.get('CHESS_STUDIO_PVP_NATIVE_ROSTER_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
 expected_chat = str(env.get('CHESS_STUDIO_PVP_NATIVE_CHAT_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
 expected_challenge_resolution = str(env.get('CHESS_STUDIO_PVP_NATIVE_CHALLENGE_RESOLUTION_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
@@ -407,6 +408,7 @@ if (
     payload.get('status') != 'ready'
     or payload.get('service') != 'chess-studio-pvp-go'
     or bool(payload.get('nativePulse')) != expected_native
+    or bool(payload.get('nativeLobbyRead')) != expected_lobby_read
     or bool(payload.get('nativeRoster')) != expected_roster
     or bool(payload.get('nativeChat')) != expected_chat
     or bool(payload.get('nativeChallengeResolution')) != expected_challenge_resolution
@@ -542,6 +544,59 @@ PY
   fi
 
   rm -f "$preflight_headers" "$response_headers"
+  return 0
+}
+
+pvp_lobby_read_attest() {
+  local endpoint="${1:-http://127.0.0.1:${port}/api/pvp/lobby}"
+  local headers status request_id native_expected
+  headers="$(mktemp)"
+  request_id="staging-lobby-read-probe-${sha:0:12}"
+  native_expected="${CHESS_STUDIO_PVP_NATIVE_LOBBY_READ_ENABLED:-true}"
+  native_expected="${native_expected,,}"
+
+  if ! status="$(curl --silent --show-error --max-time 8 \
+      -X GET \
+      -H "Origin: $cors_origin" \
+      -H 'Accept: application/json' \
+      -H 'Authorization: Bearer deliberately-invalid' \
+      -H "X-Request-ID: $request_id" \
+      -H 'X-Client-Release: staging-verifier' \
+      -D "$headers" -o /dev/null -w "%{http_code}" \
+      "$endpoint")"; then
+    rm -f "$headers"
+    return 1
+  fi
+
+  if [[ "$status" != "401" ]] || \
+     ! grep -Eiq "^X-Chess-Pvp-Edge:[[:space:]]*go[[:space:]]*$" "$headers" || \
+     ! grep -Eiq "^X-Request-ID:[[:space:]]*$request_id[[:space:]]*$" "$headers" || \
+     ! python3 - "$headers" "$cors_origin" <<'PY'
+import pathlib
+import sys
+headers = pathlib.Path(sys.argv[1]).read_text(encoding='utf-8', errors='replace')
+expected = sys.argv[2].strip().lower()
+origins = []
+for line in headers.replace('\r\n', '\n').split('\n'):
+    if ':' not in line:
+        continue
+    name, value = line.split(':', 1)
+    if name.strip().lower() == 'access-control-allow-origin':
+        origins.append(value.strip().lower())
+raise SystemExit(0 if expected in origins else 1)
+PY
+  then
+    rm -f "$headers"
+    return 1
+  fi
+
+  if [[ "$native_expected" =~ ^(1|true|yes|on)$ ]] && \
+     ! grep -Eiq "^X-Chess-Pvp-Native:[[:space:]]*lobby-read[[:space:]]*$" "$headers"; then
+    rm -f "$headers"
+    return 1
+  fi
+
+  rm -f "$headers"
   return 0
 }
 
@@ -1171,6 +1226,12 @@ if ! wait_pvp_browser_attest pvp_browser_cors_attest "http://127.0.0.1:${port}/a
   rollback "$sha" || true
   exit 47
 fi
+if ! wait_pvp_browser_attest pvp_lobby_read_attest "http://127.0.0.1:${port}/api/pvp/lobby"; then
+  echo "edge PvP full lobby read attestation failed after cutover: color=$candidate_color" >&2
+  compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
+  rollback "$sha" || true
+  exit 51
+fi
 if ! wait_pvp_browser_attest pvp_challenge_browser_attest "http://127.0.0.1:${port}/api/pvp/challenges"; then
   echo "edge PvP challenge browser transport attestation failed after cutover: color=$candidate_color" >&2
   compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
@@ -1198,6 +1259,11 @@ if [[ "$target" == staging ]]; then
     echo "OCI staging public PvP roster did not prove native Go browser response semantics for $sha" >&2
     rollback "$sha" || true
     exit 48
+  fi
+  if ! pvp_lobby_read_attest "${public_api_url}/pvp/lobby"; then
+    echo "OCI staging public PvP lobby did not prove native Go read semantics for $sha" >&2
+    rollback "$sha" || true
+    exit 52
   fi
   if ! pvp_challenge_browser_attest "${public_api_url}/pvp/challenges"; then
     echo "OCI staging public PvP challenge transport did not prove browser JSON/CORS semantics for $sha" >&2
