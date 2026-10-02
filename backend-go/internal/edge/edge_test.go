@@ -735,3 +735,82 @@ func TestMatchMovePathIsExactAtEdge(t *testing.T) {
 		if got:=isMatchMovePath(path); got!=want { t.Fatalf("%s got=%t want=%t",path,got,want) }
 	}
 }
+
+
+func TestNativeLobbyReadBypassesPythonWhenEnabled(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		t.Fatal("native lobby read must not reach Python upstream")
+	}))
+	defer upstream.Close()
+	native := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/pvp/lobby" || r.Method != http.MethodGet {
+			t.Fatalf("native lobby request=%s %s", r.Method, r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"roster":[],"challenges":[],"activeMatch":null,"messages":[],"pollAfterMs":3000}`))
+	})
+	h, err := New(Config{UpstreamURL: upstream.URL, NativeLobbyRead: native})
+	if err != nil { t.Fatal(err) }
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "http://edge/api/pvp/lobby", nil))
+	if rr.Code != http.StatusOK { t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String()) }
+	if got:=rr.Header().Get("X-Chess-Pvp-Edge"); got!="go" { t.Fatalf("edge=%q",got) }
+}
+
+func TestLobbyReadFallsBackToPythonWhenNativeDisabled(t *testing.T) {
+	called := false
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		if r.URL.Path != "/api/pvp/lobby" || r.Method != http.MethodGet {
+			t.Fatalf("upstream lobby request=%s %s", r.Method, r.URL.Path)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer upstream.Close()
+	h := mustHandler(t, upstream.URL)
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "http://edge/api/pvp/lobby", nil))
+	if rr.Code != http.StatusOK || !called {
+		t.Fatalf("fallback status=%d called=%t body=%s", rr.Code, called, rr.Body.String())
+	}
+}
+
+func TestLobbyReadDoesNotCaptureLobbyPulse(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		t.Fatal("native routes must not reach Python upstream")
+	}))
+	defer upstream.Close()
+	lobby := http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		t.Fatal("full lobby handler must not receive pulse")
+	})
+	pulse := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/pvp/lobby/pulse" {
+			t.Fatalf("pulse path=%s", r.URL.Path)
+		}
+		w.WriteHeader(http.StatusOK)
+	})
+	h, err := New(Config{UpstreamURL: upstream.URL, NativeLobbyRead: lobby, NativePulse: pulse})
+	if err != nil { t.Fatal(err) }
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "http://edge/api/pvp/lobby/pulse", nil))
+	if rr.Code != http.StatusOK { t.Fatalf("status=%d body=%s",rr.Code,rr.Body.String()) }
+}
+
+func TestReadinessReportsNativeLobbyReadState(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/ready" { w.WriteHeader(http.StatusOK); return }
+		http.NotFound(w, r)
+	}))
+	defer upstream.Close()
+	native := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
+	h, err := New(Config{UpstreamURL: upstream.URL, NativeLobbyRead: native})
+	if err != nil { t.Fatal(err) }
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "http://edge/readyz", nil))
+	if rr.Code != http.StatusOK { t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String()) }
+	var body map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil { t.Fatal(err) }
+	if body["nativeLobbyRead"] != true {
+		t.Fatalf("nativeLobbyRead=%#v want=true", body["nativeLobbyRead"])
+	}
+}
