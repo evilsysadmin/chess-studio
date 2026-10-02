@@ -24,8 +24,8 @@ from db import PersistentStorageUnavailable
 from engine_runtime import run_engine_work
 
 DEFAULT_RATING = rating_store.DEFAULT_RATING
-PVP_TIME_CONTROL_ID = "10+0"
-PVP_INITIAL_MS = 10 * 60 * 1000
+PVP_TIME_CONTROL_ID = "30+0"
+PVP_INITIAL_MS = 30 * 60 * 1000
 PVP_INCREMENT_MS = 0
 PVP_HANDOFF_SECONDS = 5
 PVP_READY_TIMEOUT_SECONDS = 30
