@@ -72,6 +72,24 @@ Contrato visual obligatorio:
 - Matthias recibe la misma lógica de iluminación/materiales que la sala; evitar cualquier apariencia de elemento pegado;
 - no tapar hotspots, CTA principales ni overlays globales.
 
+### Implementación runtime (actor en escena)
+
+Con el runtime Blender listo, Matthias **no** es un retrato superpuesto: `HomeBlenderMatthiasActor.js` carga el GLB canónico dentro de la misma escena, cámara y luces de `HomeBlenderScene3D`, anclado a mobiliario real en coordenadas de mundo (marco Blender de `build_home_v2_blockout.py`):
+
+| Rutina | Estación | Postura |
+| --- | --- | --- |
+| café, bocata, idle, hablando | `table-coffee` (suelo, delante de la esquina izquierda de la mesa; la derecha es del hotspot de Mazmorras) | de pie |
+| expedientes | `hearth-files` (suelo, extremo izquierdo) | de pie |
+| partida / emboscada | `chess-chair` (silla izquierda, mirando al tablero) | sentado |
+| lectura, notas, «dormido sobre el manual» | `reading-chair` (silla izquierda) | sentado |
+| dormir | `sofa-nap` (diván, cabeza en el brazo, manta de lana) | tumbado |
+
+- El cuerpo de peón se adapta por postura (faldón corto y estrecho sentado, peón estilizado tumbado); de pie, las caderas se recogen dentro del faldón para que no quede hueco bajo la campana.
+- Los brazos reales sujetan taza/libro y los props se anclan a la mano (`HOME_MATTHIAS_PROP_ANCHORS`); las «manos falsas» de los props se ocultan.
+- El botón `.illustrated-home__matthias` pasa a `is-in-scene`: hit-area transparente sobre los bounds proyectados del actor; el retrato `HomeMatthias3D` sólo se monta como fallback (Home 2D, vestíbulo móvil o GLB de Matthias no disponible).
+- La mitad inferior derecha de la sala (escalera) es el hit-area del hotspot de Mazmorras: ninguna estación puede proyectarse ahí, o su hotspot taparía a Matthias. El test lo fija.
+- Cambiar una estación = editar `HOME_MATTHIAS_ACTOR_STATIONS` y revisar el PNG runtime; los tests de `HomeBlenderMatthiasActor.test.js` fijan holguras contra mesa, sillas, Klaus y diván.
+
 ### Loop de pose y aceptación
 
 Para cada pose, cambiar una preocupación principal cada vez y producir al menos un PNG desde la **cámara Home canónica**. Revisar primero apoyo/escala/silueta; después materiales y microdetalle. Cuando exista consumo runtime, validar además el GLB exacto dentro de la aplicación.

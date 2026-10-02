@@ -1,0 +1,38 @@
+/* Matthias rendered inside the Blender hall (HomeBlenderMatthiasActor). The
+ * resident is drawn by the scene itself — seated, standing on the floor or
+ * asleep on the sofa — so this button is only a transparent hit-area laid over
+ * his projected bounds. It must never paint a card, a portrait or a frame, and
+ * it keeps the legacy station/zone rules out of the way with explicit values.
+ * The !important flags beat the viewport-specific placement rules written for
+ * the floating portrait; they only apply while `.is-in-scene` is present. */
+.illustrated-home__stage .illustrated-home__matthias.is-in-scene {
+  position: absolute !important;
+  inset: auto !important;
+  left: var(--home-matthias-scene-left) !important;
+  top: var(--home-matthias-scene-top) !important;
+  width: var(--home-matthias-scene-width) !important;
+  height: var(--home-matthias-scene-height) !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  transform: none !important;
+  border: 0 !important;
+  border-radius: 18px;
+  background: transparent !important;
+  box-shadow: none !important;
+  filter: none !important;
+  transition: none !important;
+  cursor: pointer;
+}
+
+.illustrated-home__stage .illustrated-home__matthias.is-in-scene::before {
+  display: none !important;
+}
+
+.illustrated-home__stage .illustrated-home__matthias.is-in-scene:focus-visible {
+  outline: 2px solid rgba(226, 190, 112, .78);
+  outline-offset: 4px;
+}
