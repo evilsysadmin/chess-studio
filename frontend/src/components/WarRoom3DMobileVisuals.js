@@ -5,6 +5,7 @@ export function warRoomDecorProfile(coarsePointer = false) {
       // fills were washing out the brushed steel, gilding and canvas textures.
       bankerLamp: 3.45,
       wallSconce: 4.7,
+      fireplace: 4.55,
       crest: 7.6,
       moon: 1.45,
       palette: 1.55,
@@ -16,13 +17,15 @@ export function warRoomDecorProfile(coarsePointer = false) {
 
   // En móvil la resolución, el tone mapping y la geometría compacta aplastan
   // los fondos y el antiguo burdeos terminaba pareciendo rojo/negro. Conserva
-  // la identidad teutónica, pero mueve el decorado hacia oliva, pizarra cálida,
-  // latón y verde grisáceo para separar mejor la sala de las piezas.
+  // la identidad teutónica, pero recupera lectura desde las fuentes que existen
+  // físicamente en la sala (apliques, lámpara, chimenea y luna), sin subir una
+  // exposición global que lave sombras o materiales.
   return Object.freeze({
-    bankerLamp: 3.0,
-    wallSconce: 3.8,
+    bankerLamp: 4.1,
+    wallSconce: 5.2,
+    fireplace: 3.65,
     crest: 8.0,
-    moon: 2.7,
+    moon: 3.2,
     palette: 2.9,
     curtainLight: 0x596650,
     curtainDark: 0x354039,
