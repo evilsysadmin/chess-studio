@@ -182,7 +182,12 @@ for (const eventName of CAPTURE_EVENTS) {
         configurable: true,
         get: () => 8,
       });
-      if (!emulateGpu) Math.random = () => 0.25;
+      // Keep ambient captures deterministic. Mop chooses its first safe-room
+      // waypoint through Math.random; leaving that random under CI can select a
+      // route that aborts in the same render frame before telemetry ever exposes
+      // `mop-room`. The original routine-video contract fixed this value for
+      // every event; GPU emulation is a separate concern.
+      Math.random = () => 0.25;
 
       if (!emulateGpu) return;
       globalThis.__CHESS_E2E_HANS_AMBIENT_AUDIT__ = true;
