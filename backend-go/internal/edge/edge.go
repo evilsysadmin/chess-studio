@@ -18,6 +18,7 @@ type Config struct {
 	Release       string
 	ReadyTimeout  time.Duration
 	NativePulse   http.Handler
+	NativeLobbyRead http.Handler
 	NativeRoster  http.Handler
 	NativeChat    http.Handler
 	NativeChallengeResolution http.Handler
@@ -36,6 +37,7 @@ type Handler struct {
 	client       *http.Client
 	release      string
 	nativePulse  http.Handler
+	nativeLobbyRead http.Handler
 	nativeRoster http.Handler
 	nativeChat   http.Handler
 	nativeChallengeResolution http.Handler
@@ -99,6 +101,7 @@ func New(cfg Config) (*Handler, error) {
 		client:      &http.Client{Timeout: timeout},
 		release:     strings.TrimSpace(cfg.Release),
 		nativePulse:  cfg.NativePulse,
+		nativeLobbyRead: cfg.NativeLobbyRead,
 		nativeRoster: cfg.NativeRoster,
 		nativeChat:   cfg.NativeChat,
 		nativeChallengeResolution: cfg.NativeChallengeResolution,
@@ -118,6 +121,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.health(w)
 	case r.URL.Path == "/readyz" || r.URL.Path == "/api/pvp/_edge/ready":
 		h.ready(w, r)
+	case r.URL.Path == "/api/pvp/lobby" && h.nativeLobbyRead != nil:
+		w.Header().Set("X-Chess-Pvp-Edge", "go")
+		h.nativeLobbyRead.ServeHTTP(w, r)
 	case r.URL.Path == "/api/pvp/lobby/pulse" || isMatchPulsePath(r.URL.Path):
 		if h.nativePulse == nil {
 			http.NotFound(w, r)
@@ -167,6 +173,7 @@ func (h *Handler) health(w http.ResponseWriter) {
 		"status":       "ok",
 		"service":      serviceName,
 		"nativePulse":  h.nativePulse != nil,
+		"nativeLobbyRead": h.nativeLobbyRead != nil,
 		"nativeRoster": h.nativeRoster != nil,
 		"nativeChat":   h.nativeChat != nil,
 		"nativeChallengeResolution": h.nativeChallengeResolution != nil,
@@ -210,6 +217,7 @@ func (h *Handler) ready(w http.ResponseWriter, r *http.Request) {
 		"status":       "ready",
 		"service":      serviceName,
 		"nativePulse":  h.nativePulse != nil,
+		"nativeLobbyRead": h.nativeLobbyRead != nil,
 		"nativeRoster": h.nativeRoster != nil,
 		"nativeChat":   h.nativeChat != nil,
 		"nativeChallengeResolution": h.nativeChallengeResolution != nil,
