@@ -588,6 +588,13 @@ export const WAR_ROOM_V3_TORCHLIT = Object.freeze({
   fog: 1.25,
 });
 
+// The Duel Room is intentionally a dark fortress, but the board and occupied
+// near half must stay readable. Touch loses shell shadows and authored detail,
+// so it gets the larger exposure compensation instead of dimming practicals.
+export const PVP_DUEL_ROOM_LIGHT_LIFT = Object.freeze({
+  exposure: Object.freeze({ desktop: 0.14, touch: 0.28 }),
+});
+
 export function reactiveLightProfile({ check = false, gameOver = false, coarsePointer = false, variant = 'classic' } = {}) {
   const shared = sharedReactiveLightProfile({ check, gameOver, coarsePointer });
   const device = coarsePointer ? 'touch' : 'desktop';
@@ -601,11 +608,17 @@ export function reactiveLightProfile({ check = false, gameOver = false, coarsePo
       fogDensity: shared.fogDensity * WAR_ROOM_V3_TORCHLIT.fog,
     };
   }
+  if (variant === 'duel') {
+    return {
+      ...shared,
+      exposure: shared.exposure + PVP_DUEL_ROOM_LIGHT_LIFT.exposure[device],
+    };
+  }
   if (variant !== 'v4') return shared;
   return {
     ...shared,
     warm: shared.warm * WAR_ROOM_V4_LIGHT_LIFT.warm,
-    exposure: shared.exposure + WAR_ROOM_V4_LIGHT_LIFT.exposure[coarsePointer ? 'touch' : 'desktop'],
+    exposure: shared.exposure + WAR_ROOM_V4_LIGHT_LIFT.exposure[device],
   };
 }
 
