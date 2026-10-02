@@ -27,10 +27,14 @@ import {
 } from './WarRoomHansNavigation.js';
 import {
   assignWarRoomHansTask,
+  createWarRoomHansSetupRetryState,
+  deferWarRoomHansSetupRetry,
   getWarRoomHansRuntime,
   releaseWarRoomHansTask,
+  resetWarRoomHansSetupRetry,
   setWarRoomHansTaskPhase,
   setWarRoomHansTaskPresentation,
+  warRoomHansSetupRetryReady,
   warRoomHansTaskAvailable,
 } from './WarRoomHansRuntime.js';
 import {
@@ -44,7 +48,7 @@ import {
   warRoomHansTargetNearObject,
 } from './WarRoomHansServiceRoute.js';
 
-export const WAR_ROOM_HANS_SERVICE_ROUTINE_VERSION = 'hans-service-routine-v11-prompt-arrival-reset-prop-baselines-terminal-setup-delivered-continuity-persistent-effect';
+export const WAR_ROOM_HANS_SERVICE_ROUTINE_VERSION = 'hans-service-routine-v12-bounded-setup-retry';
 
 const FLOOR_NAME = 'war-room-castle-floor-slab';
 const COMMAND_DESK_TOP_NAME = 'war-room-command-desk-top';
@@ -213,6 +217,7 @@ export function installWarRoomHansServiceRoutine(root) {
   let routeIndex = 0;
   let actionElapsed = 0;
   let lastNow = null;
+  const setupRetry = createWarRoomHansSetupRetryState();
 
   floor.onBeforeRender = (...args) => {
     previous?.(...args);
@@ -236,6 +241,7 @@ export function installWarRoomHansServiceRoutine(root) {
       routeIn = [];
       routeOut = [];
       routeIndex = 0;
+      resetWarRoomHansSetupRetry(setupRetry);
       if (clearDeliveredArtifacts && deliveredEspresso) deliveredEspresso.visible = false;
       const persisted = warRoomHansAmbientCompletionState(gameId, eventName);
       if (persisted.completed && persisted.deliveryArtifact === 'espresso') {
@@ -252,8 +258,12 @@ export function installWarRoomHansServiceRoutine(root) {
 
     if (!active) {
       if (!warRoomHansTaskAvailable(runtime, taskId) || now - eligibleSince < delayMs) return;
+      if (!warRoomHansSetupRetryReady(setupRetry, now)) return;
       controller ||= createWarRoomHansWalkController(actor, { forward: 1 });
-      if (!controller) return;
+      if (!controller) {
+        if (!deferWarRoomHansSetupRetry(setupRetry, now)) completedGameId = gameId;
+        return;
+      }
       if (!assignWarRoomHansTask(runtime, {
         id: taskId,
         kind: 'service',
@@ -261,7 +271,8 @@ export function installWarRoomHansServiceRoutine(root) {
         payload: { eventName },
       })) return;
       const abortSetupForCurrentGame = () => {
-        if (releaseWarRoomHansTask(runtime, taskId)) completedGameId = gameId;
+        releaseWarRoomHansTask(runtime, taskId);
+        if (!deferWarRoomHansSetupRetry(setupRetry, now)) completedGameId = gameId;
       };
       const service = warRoomHansServiceHome(root, actor.hans.parent);
       const serviceTargetObject = eventName === 'water-plant' ? plant : getCommandDeskTop(root);
@@ -296,6 +307,7 @@ export function installWarRoomHansServiceRoutine(root) {
       setWarRoomHansServiceDoor(root, 1);
       props.can.visible = eventName === 'water-plant';
       props.tray.visible = eventName === 'espresso';
+      resetWarRoomHansSetupRetry(setupRetry);
       state = 'walking-in';
       active = true;
       actionElapsed = 0;
