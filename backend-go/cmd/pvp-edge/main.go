@@ -28,6 +28,7 @@ func main() {
 	upstream := env("PVP_PYTHON_UPSTREAM", "http://127.0.0.1:4000")
 
 	pulseEnabled := envBool("PVP_NATIVE_PULSE_ENABLED", false)
+	lobbyReadEnabled := envBool("PVP_NATIVE_LOBBY_READ_ENABLED", false)
 	rosterEnabled := envBool("PVP_NATIVE_ROSTER_ENABLED", false)
 	chatEnabled := envBool("PVP_NATIVE_CHAT_ENABLED", false)
 	challengeResolutionEnabled := envBool("PVP_NATIVE_CHALLENGE_RESOLUTION_ENABLED", false)
@@ -39,6 +40,7 @@ func main() {
 	matchReadEnabled := envBool("PVP_NATIVE_MATCH_READ_ENABLED", false)
 	matchMoveEnabled := envBool("PVP_NATIVE_MATCH_MOVE_ENABLED", false)
 	var nativePulse http.Handler
+	var nativeLobbyRead http.Handler
 	var nativeRoster http.Handler
 	var nativeChat http.Handler
 	var nativeChallengeResolution http.Handler
@@ -50,7 +52,7 @@ func main() {
 	var nativeMatchRead http.Handler
 	var nativeMatchMove http.Handler
 	var mongoStore *pulse.MongoStore
-	if pulseEnabled || rosterEnabled || chatEnabled || challengeResolutionEnabled || challengeAcceptEnabled || challengeCreateEnabled || matchHandoffCancelEnabled || matchReadyEnabled || matchResignEnabled || matchReadEnabled || matchMoveEnabled {
+	if pulseEnabled || lobbyReadEnabled || rosterEnabled || chatEnabled || challengeResolutionEnabled || challengeAcceptEnabled || challengeCreateEnabled || matchHandoffCancelEnabled || matchReadyEnabled || matchResignEnabled || matchReadEnabled || matchMoveEnabled {
 		mongoURL := strings.TrimSpace(os.Getenv("MONGO_URL"))
 		mongoDatabase := strings.TrimSpace(os.Getenv("MONGO_DB_NAME"))
 		jwtSecret := strings.TrimSpace(os.Getenv("JWT_SECRET"))
@@ -120,8 +122,13 @@ func main() {
 				log.Fatalf("native PvP resident move oracle: %v", err)
 			}
 		}
+		var lobbyReadStore *pulse.MongoStore
+		if lobbyReadEnabled {
+			lobbyReadStore = store
+		}
 		pulseHandler, err := pulse.NewHandler(pulse.HandlerConfig{
 			Store:          store,
+			LobbyReadStore: lobbyReadStore,
 			JWTSecret:      jwtSecret,
 			AllowedOrigins: splitCSV(os.Getenv("CORS_ORIGINS")),
 			EnableRoster:   rosterEnabled,
@@ -147,6 +154,9 @@ func main() {
 		}
 		if pulseEnabled {
 			nativePulse = pulseHandler
+		}
+		if lobbyReadEnabled {
+			nativeLobbyRead = pulseHandler
 		}
 		if rosterEnabled {
 			nativeRoster = pulseHandler
@@ -194,6 +204,7 @@ func main() {
 		Release:      os.Getenv("GIT_COMMIT_SHA"),
 		ReadyTimeout: 2 * time.Second,
 		NativePulse:  nativePulse,
+		NativeLobbyRead: nativeLobbyRead,
 		NativeRoster: nativeRoster,
 		NativeChat:   nativeChat,
 		NativeChallengeResolution: nativeChallengeResolution,
@@ -227,7 +238,7 @@ func main() {
 		}
 	}()
 
-	log.Printf("pvp-go listening on :%s -> %s native_pulse=%t native_roster=%t native_chat=%t native_challenge_resolution=%t native_challenge_accept=%t native_challenge_create=%t native_match_handoff_cancel=%t native_match_ready=%t native_match_resign=%t native_match_read=%t native_match_move=%t", port, upstream, nativePulse != nil, nativeRoster != nil, nativeChat != nil, nativeChallengeResolution != nil, nativeChallengeAccept != nil, nativeChallengeCreate != nil, nativeMatchHandoffCancel != nil, nativeMatchReady != nil, nativeMatchResign != nil, nativeMatchRead != nil, nativeMatchMove != nil)
+	log.Printf("pvp-go listening on :%s -> %s native_pulse=%t native_lobby_read=%t native_roster=%t native_chat=%t native_challenge_resolution=%t native_challenge_accept=%t native_challenge_create=%t native_match_handoff_cancel=%t native_match_ready=%t native_match_resign=%t native_match_read=%t native_match_move=%t", port, upstream, nativePulse != nil, nativeLobbyRead != nil, nativeRoster != nil, nativeChat != nil, nativeChallengeResolution != nil, nativeChallengeAccept != nil, nativeChallengeCreate != nil, nativeMatchHandoffCancel != nil, nativeMatchReady != nil, nativeMatchResign != nil, nativeMatchRead != nil, nativeMatchMove != nil)
 	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatalf("pvp edge serve: %v", err)
 	}
