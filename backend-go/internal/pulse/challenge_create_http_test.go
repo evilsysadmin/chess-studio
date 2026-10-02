@@ -22,6 +22,64 @@ type fakeChallengeCreateService struct {
 	opponent string
 }
 
+
+func TestNativeChallengeCreateBrowserTransportBeforeAuthentication(t *testing.T) {
+	now := time.Date(2026, 10, 2, 12, 30, 0, 0, time.UTC)
+	h, err := NewHandler(HandlerConfig{
+		Store:           &fakeStore{},
+		JWTSecret:       "01234567890123456789012345678901",
+		ChallengeCreate: &fakeChallengeCreateService{},
+		Now:             func() time.Time { return now },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	origin := "https://staging.chess-studio.shadowops.dpdns.org"
+
+	preflight := httptest.NewRequest(http.MethodOptions, "http://edge/api/pvp/challenges", nil)
+	preflight.Header.Set("Origin", origin)
+	preflight.Header.Set("Access-Control-Request-Method", "POST")
+	preflight.Header.Set("Access-Control-Request-Headers", "authorization,content-type,x-request-id,x-client-release")
+	preflightRR := httptest.NewRecorder()
+	h.ServeHTTP(preflightRR, preflight)
+	if preflightRR.Code != http.StatusNoContent {
+		t.Fatalf("preflight status=%d body=%s", preflightRR.Code, preflightRR.Body.String())
+	}
+	if got := preflightRR.Header().Get("Access-Control-Allow-Origin"); got != origin {
+		t.Fatalf("preflight cors origin=%q want=%q", got, origin)
+	}
+	if got := preflightRR.Header().Get("X-Chess-Pvp-Native"); got != "challenge-create" {
+		t.Fatalf("preflight native route marker=%q want=challenge-create", got)
+	}
+	allowedHeaders := strings.ToLower(preflightRR.Header().Get("Access-Control-Allow-Headers"))
+	for _, required := range []string{"authorization", "content-type", "x-request-id", "x-client-release"} {
+		if !strings.Contains(allowedHeaders, required) {
+			t.Fatalf("preflight headers=%q missing=%q", allowedHeaders, required)
+		}
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/challenges", strings.NewReader(`{"opponent":"otto_falk"}`))
+	req.Header.Set("Origin", origin)
+	req.Header.Set("Authorization", "Bearer deliberately-invalid")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Request-ID", "challenge-public-probe")
+	req.Header.Set("X-Client-Release", "staging-verifier")
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("status=%d want=401 body=%s", rr.Code, rr.Body.String())
+	}
+	if got := rr.Header().Get("Access-Control-Allow-Origin"); got != origin {
+		t.Fatalf("cors origin=%q want=%q", got, origin)
+	}
+	if got := rr.Header().Get("X-Chess-Pvp-Native"); got != "challenge-create" {
+		t.Fatalf("native route marker=%q want=challenge-create", got)
+	}
+	if got := rr.Header().Get("X-Request-ID"); got != "challenge-public-probe" {
+		t.Fatalf("request id=%q want=challenge-public-probe", got)
+	}
+}
+
 func (f *fakeChallengeCreateService) Create(_ context.Context, username, opponent string) (challengecreate.Result, error) {
 	f.calls++
 	f.username = username
