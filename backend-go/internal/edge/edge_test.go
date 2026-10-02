@@ -138,6 +138,13 @@ func TestHealthAndReadiness(t *testing.T) {
 		if got := rr.Header().Get("X-Chess-Pvp-Edge"); got != "go" {
 			t.Fatalf("%s edge marker=%q", tc.path, got)
 		}
+		var body map[string]any
+		if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+			t.Fatalf("%s decode readiness body: %v", tc.path, err)
+		}
+		if got := body["release"]; got != "deadbeef" {
+			t.Fatalf("%s release=%#v want=deadbeef", tc.path, got)
+		}
 	}
 }
 
