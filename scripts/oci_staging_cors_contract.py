@@ -374,6 +374,8 @@ assert "any(payload.get(key) is not True for key in required_native)" in deploy
 assert 'pvp_target_image="$(pvp_image_ref "$sha")"' in deploy
 assert 'docker pull --quiet "$pvp_target_image"' in deploy
 assert 'render_edge "$candidate_color" go' in deploy
+assert 'render_edge "$previous_color" go' in deploy
+assert 'wait_pvp_edge_attest "$port" "$previous_sha"' in deploy
 assert 'render_edge "$previous_color" direct' in deploy
 assert 'remove_service "$(pvp_service "$previous_color")"' in deploy
 assert 'CHESS_STUDIO_DEPLOY_OK target=$target repo_ref=$sha color=$candidate_color pvp=go' in deploy
@@ -392,6 +394,8 @@ assert '!= "resident"' in virtual_roster_attest
 assert 'surface == "sidecar"' in virtual_roster_attest
 assert 'surface == "public"' in virtual_roster_attest
 assert 'require_public_markers=True' in virtual_roster_attest
+assert 'reason=http-error status={exc.code}' in virtual_roster_attest
+assert 'type={type(exc).__name__}' in virtual_roster_attest
 assert '"x-chess-pvp-edge"' in virtual_roster_attest
 assert '"x-chess-pvp-native"' in virtual_roster_attest
 assert '"lobby-read"' in virtual_roster_attest
