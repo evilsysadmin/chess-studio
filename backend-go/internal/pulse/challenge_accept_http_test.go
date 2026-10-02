@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/challengeaccept"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 type fakeChallengeAcceptService struct {
