@@ -22,6 +22,11 @@ signal_service = (ROOT / "infra" / "oci" / "runtime" / "chess-studio-staging-sig
 signal_timer = (ROOT / "infra" / "oci" / "runtime" / "chess-studio-staging-signal.timer").read_text(encoding="utf-8")
 deploy_watcher = (ROOT / "scripts" / "oci_staging_deploy_watcher.py").read_text(encoding="utf-8")
 deploy_watcher_unit = (ROOT / "infra" / "oci" / "runtime" / "chess-studio-deploy-watcher.service").read_text(encoding="utf-8")
+existing_install = (ROOT / "scripts" / "oci_existing_a1_install.sh").read_text(encoding="utf-8")
+sudoers = (ROOT / "infra" / "oci" / "runtime" / "ocarun.sudoers").read_text(encoding="utf-8")
+ssh_authorize_root = (ROOT / "scripts" / "oci_ssh_authorize_root.py").read_text(encoding="utf-8")
+ssh_authorize_client = (ROOT / "scripts" / "oci_ssh_authorize.py").read_text(encoding="utf-8")
+makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
 
 STAGING_ORIGIN = "https://staging.chess-studio.shadowops.dpdns.org"
 
@@ -103,6 +108,82 @@ required_deploy_fragments = (
 )
 for fragment in required_deploy_fragments:
     assert fragment in deploy, f"missing OCI staging CORS deploy contract: {fragment}"
+
+staging_live = (ROOT / "e2e" / "staging-live.spec.js").read_text(encoding="utf-8")
+for fragment in (
+    "assertLivePvpBrowserPath",
+    "page.on('requestfailed', onRequestFailed)",
+    "headers['access-control-allow-origin']",
+    "x-chess-pvp-edge",
+    "x-chess-pvp-native",
+    "'/lobby/pulse'",
+    "'Recibir retos'",
+):
+    assert fragment in staging_live, f"missing real Chromium PvP CORS staging gate: {fragment}"
+
+# Human SSH remains tunnel-only, but the already-created A1 still needs a
+# controlled way to authorize an operator public key. Keep this recovery path
+# narrower than general root Run Command access.
+for fragment in (
+    'ssh_authorize_source="$repo/scripts/oci_ssh_authorize_root.py"',
+    'ssh_authorize_target="/usr/local/sbin/chess-studio-ssh-authorize"',
+    'install -o root -g root -m 0755 "$ssh_authorize_source" "$ssh_authorize_target"',
+):
+    assert fragment in deploy, f"missing SSH authorization deploy contract: {fragment}"
+for fragment in (
+    'source_ssh_authorize="$repo/scripts/oci_ssh_authorize_root.py"',
+    'target_ssh_authorize=/usr/local/sbin/chess-studio-ssh-authorize',
+    'install -o root -g root -m 0755 "$source_ssh_authorize" "$target_ssh_authorize"',
+):
+    assert fragment in existing_install, f"missing SSH authorization adoption contract: {fragment}"
+
+ssh_sudoers = (
+    "Cmnd_Alias CHESS_STUDIO_SSH_AUTHORIZE = "
+    "/usr/local/sbin/chess-studio-ssh-authorize /tmp/chess-studio-operator-key.*"
+)
+assert ssh_sudoers in sudoers
+assert "/usr/local/sbin/chess-studio-ssh-authorize *" not in sudoers
+assert "CHESS_STUDIO_SSH_AUTHORIZE" in sudoers.split("NOPASSWD:", 1)[1]
+for fragment in (
+    'getattr(os, "O_NOFOLLOW", 0)',
+    "os.fstat(fd)",
+    'pwd.getpwnam("ubuntu")',
+    "os.chmod(authorized, 0o600)",
+    "CHESS_STUDIO_SSH_OPERATOR_KEY_OK",
+    'source.parent != Path("/tmp")',
+    'source.name.startswith(TMP_PREFIX)',
+):
+    assert fragment in ssh_authorize_root, f"missing narrow root SSH key guard: {fragment}"
+for fragment in (
+    "OCI_SSH_PUBLIC_KEY",
+    '"instance-agent"',
+    '"command-execution"',
+    "base64.b64encode((public_key",
+    "sudo --non-interactive /usr/local/sbin/chess-studio-ssh-authorize",
+    "CHESS_STUDIO_SSH_OPERATOR_KEY_OK",
+):
+    assert fragment in ssh_authorize_client, f"missing operator SSH authorization client contract: {fragment}"
+assert "oci-a1-authorize-ssh: oci-session" in makefile
+
+
+# The human ubuntu operator intentionally has Docker socket access. The docker
+# group is root-equivalent, so this is limited to the operator account and must
+# be reconciled by both adoption and every immutable deploy.
+for source, label in (
+    (deploy, "deploy"),
+    (existing_install, "adoption"),
+):
+    for fragment in (
+        "ensure_operator_docker_access()",
+        "getent group docker",
+        "id -nG ubuntu | grep -qw docker",
+        "usermod -aG docker ubuntu",
+        "failed to grant ubuntu docker group membership",
+        "OCI_OPERATOR_DOCKER_ACCESS state=added",
+        "OCI_OPERATOR_DOCKER_ACCESS state=already",
+        "ensure_operator_docker_access",
+    ):
+        assert fragment in source, f"missing operator Docker access contract ({label}): {fragment}"
 
 assert 'CORS_ORIGINS: "${CHESS_STUDIO_CORS_ORIGINS:-https://staging.chess-studio.shadowops.dpdns.org}"' in compose
 assert compose.count('PVP_NATIVE_LOBBY_READ_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_LOBBY_READ_ENABLED:-true}"') == 2
@@ -436,6 +517,14 @@ for fragment in (
     'expected_native="lobby-read"',
     'expected_native="lobby-pulse"',
     '-H "Origin: $cors_origin"',
+    "-H 'Access-Control-Request-Method: GET'",
+    "-H 'Access-Control-Request-Headers: authorization,x-request-id,x-client-release,x-presence-session'",
+    '[[ "$preflight_status" != "204" ]]',
+    'authenticated preflight must expose exactly one canonical ACAO',
+    'authenticated preflight does not allow GET',
+    'for required in ("authorization", "x-request-id", "x-client-release", "x-presence-session")',
+    'authenticated preflight did not traverse Go edge',
+    'authenticated preflight hit the wrong native route',
     '-H "Authorization: Bearer $token"',
     '[[ "$status" != "200" ]]',
     'origins != [expected_origin.strip().lower()]',

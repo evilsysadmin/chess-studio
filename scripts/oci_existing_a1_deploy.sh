@@ -19,6 +19,8 @@ source_runtime_installer="$repo/scripts/oci_runtime_install.sh"
 target_runtime_installer="/usr/local/sbin/chess-studio-install-runtime"
 mongo_backup_source="$repo/scripts/oci_production_mongo_backup.sh"
 mongo_backup_target="/usr/local/sbin/chess-studio-mongo-backup"
+ssh_authorize_source="$repo/scripts/oci_ssh_authorize_root.py"
+ssh_authorize_target="/usr/local/sbin/chess-studio-ssh-authorize"
 ocarun_sudoers_source="$repo/infra/oci/runtime/ocarun.sudoers"
 ocarun_sudoers_target="/etc/sudoers.d/101-chess-studio-ocarun"
 tunnel_connector="$repo/scripts/oci_staging_tunnel_connector.sh"
@@ -94,6 +96,18 @@ now_ms() {
   printf '%s%s\n' "$seconds" "${micros:0:3}"
 }
 
+ensure_operator_docker_access() {
+  id ubuntu >/dev/null 2>&1 || { echo 'missing operator user: ubuntu' >&2; exit 66; }
+  getent group docker >/dev/null 2>&1 || { echo 'missing docker group' >&2; exit 69; }
+  if id -nG ubuntu | grep -qw docker; then
+    echo 'OCI_OPERATOR_DOCKER_ACCESS state=already'
+    return
+  fi
+  usermod -aG docker ubuntu
+  id -nG ubuntu | grep -qw docker || { echo 'failed to grant ubuntu docker group membership' >&2; exit 70; }
+  echo 'OCI_OPERATOR_DOCKER_ACCESS state=added'
+}
+
 phase_done() {
   local name="$1"
   local started_ms="$2"
@@ -111,8 +125,13 @@ require sha256sum
 require systemctl
 require flock
 require visudo
+require id
+require getent
+require grep
+require usermod
 
 docker compose version >/dev/null 2>&1 || { echo 'docker compose v2 is required' >&2; exit 69; }
+ensure_operator_docker_access
 [[ -d "$repo/.git" ]] || { echo "missing repo checkout: $repo" >&2; exit 66; }
 [[ -s "$env_file" ]] || { echo "missing runtime env: $env_file" >&2; exit 42; }
 
@@ -599,7 +618,8 @@ pvp_authenticated_browser_attest() {
   local backend_service="$1"
   local api_base="${2%/}"
   local deployment_target="${3:-$target}"
-  local token token_output token_line line probe endpoint expected_native request_id headers body status
+  local token token_output token_line line probe endpoint expected_native request_id
+  local preflight_headers preflight_status headers body status
 
   if [[ "$deployment_target" != "staging" ]]; then
     return 0
@@ -637,11 +657,69 @@ pvp_authenticated_browser_attest() {
         ;;
     esac
     request_id="staging-authenticated-${probe}-${sha:0:12}"
+    preflight_headers="$(mktemp)"
     headers="$(mktemp)"
     body="$(mktemp)"
 
-    if ! status="$(curl --silent --show-error --max-time 10         -X GET         -H "Origin: $cors_origin"         -H 'Accept: application/json'         -H "Authorization: Bearer $token"         -H "X-Request-ID: $request_id"         -H 'X-Client-Release: staging-authenticated-verifier'         -H 'Cache-Control: no-cache, no-store'         -D "$headers" -o "$body" -w "%{http_code}"         "$endpoint")"; then
-      rm -f "$headers" "$body"
+    # Reproduce the browser's non-simple authenticated GET before sending it.
+    # A direct curl GET can look healthy while Chromium refuses to dispatch the
+    # request because the OPTIONS response does not authorize one of its headers.
+    if ! preflight_status="$(curl --silent --show-error --max-time 10 \
+        -X OPTIONS \
+        -H "Origin: $cors_origin" \
+        -H 'Access-Control-Request-Method: GET' \
+        -H 'Access-Control-Request-Headers: authorization,x-request-id,x-client-release,x-presence-session' \
+        -D "$preflight_headers" -o /dev/null -w "%{http_code}" \
+        "$endpoint")"; then
+      rm -f "$preflight_headers" "$headers" "$body"
+      return 1
+    fi
+
+    if [[ "$preflight_status" != "204" ]] || ! python3 - "$preflight_headers" "$cors_origin" "$expected_native" <<'PY'
+import pathlib
+import sys
+
+headers_path, expected_origin, expected_native = sys.argv[1:]
+raw_headers = pathlib.Path(headers_path).read_text(encoding="utf-8", errors="replace")
+parsed = {}
+for line in raw_headers.replace("\r\n", "\n").split("\n"):
+    if ":" not in line:
+        continue
+    name, value = line.split(":", 1)
+    parsed.setdefault(name.strip().lower(), []).append(value.strip())
+
+origins = [value.lower() for value in parsed.get("access-control-allow-origin", [])]
+if origins != [expected_origin.strip().lower()]:
+    raise SystemExit("authenticated preflight must expose exactly one canonical ACAO")
+methods = ",".join(parsed.get("access-control-allow-methods", [])).upper()
+if "GET" not in methods:
+    raise SystemExit("authenticated preflight does not allow GET")
+allowed_headers = ",".join(parsed.get("access-control-allow-headers", [])).lower()
+for required in ("authorization", "x-request-id", "x-client-release", "x-presence-session"):
+    if required not in allowed_headers:
+        raise SystemExit(f"authenticated preflight does not allow {required}")
+if [value.lower() for value in parsed.get("x-chess-pvp-edge", [])] != ["go"]:
+    raise SystemExit("authenticated preflight did not traverse Go edge")
+if [value.lower() for value in parsed.get("x-chess-pvp-native", [])] != [expected_native.lower()]:
+    raise SystemExit("authenticated preflight hit the wrong native route")
+PY
+    then
+      echo "authenticated PvP browser preflight failed: probe=$probe endpoint=$endpoint http=$preflight_status" >&2
+      rm -f "$preflight_headers" "$headers" "$body"
+      return 1
+    fi
+
+    if ! status="$(curl --silent --show-error --max-time 10 \
+        -X GET \
+        -H "Origin: $cors_origin" \
+        -H 'Accept: application/json' \
+        -H "Authorization: Bearer $token" \
+        -H "X-Request-ID: $request_id" \
+        -H 'X-Client-Release: staging-authenticated-verifier' \
+        -H 'Cache-Control: no-cache, no-store' \
+        -D "$headers" -o "$body" -w "%{http_code}" \
+        "$endpoint")"; then
+      rm -f "$preflight_headers" "$headers" "$body"
       return 1
     fi
 
@@ -688,10 +766,10 @@ else:
 PY
     then
       echo "authenticated PvP browser probe failed: probe=$probe endpoint=$endpoint http=$status" >&2
-      rm -f "$headers" "$body"
+      rm -f "$preflight_headers" "$headers" "$body"
       return 1
     fi
-    rm -f "$headers" "$body"
+    rm -f "$preflight_headers" "$headers" "$body"
   done
 
   echo "PVP_AUTHENTICATED_BROWSER_OK base=$api_base origin=$cors_origin"
@@ -1393,11 +1471,13 @@ python3 -S "$blue_green_edge" --self-test >/dev/null
 [[ -f "$source_launcher" && ! -L "$source_launcher" ]] || { echo "missing deploy launcher in $sha: $source_launcher" >&2; exit 66; }
 [[ -f "$source_runtime_installer" && ! -L "$source_runtime_installer" ]] || { echo "missing runtime installer in $sha: $source_runtime_installer" >&2; exit 66; }
 [[ -f "$mongo_backup_source" && ! -L "$mongo_backup_source" ]] || { echo "missing production Mongo backup helper in $sha" >&2; exit 66; }
+[[ -f "$ssh_authorize_source" && ! -L "$ssh_authorize_source" ]] || { echo "missing SSH authorize helper in $sha" >&2; exit 66; }
 [[ -f "$ocarun_sudoers_source" && ! -L "$ocarun_sudoers_source" ]] || { echo "missing ocarun sudoers contract in $sha" >&2; exit 66; }
 visudo -cf "$ocarun_sudoers_source" >/dev/null
 install -o root -g root -m 0755 "$source_launcher" "$target_launcher"
 install -o root -g root -m 0755 "$source_runtime_installer" "$target_runtime_installer"
 install -o root -g root -m 0755 "$mongo_backup_source" "$mongo_backup_target"
+install -o root -g root -m 0755 "$ssh_authorize_source" "$ssh_authorize_target"
 install -o root -g root -m 0440 "$ocarun_sudoers_source" "$ocarun_sudoers_target"
 visudo -cf "$ocarun_sudoers_target" >/dev/null
 

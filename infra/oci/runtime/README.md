@@ -33,6 +33,34 @@ The P0 public path is Cloudflare Tunnel, not direct A1 ingress. `api-staging.che
 
 The staging Pages reconciler owns only the frontend DNS. `scripts/oci_cloudflare_tunnel.py` owns staging API/SSH tunnel DNS, preventing later frontend deploys from silently reverting those hostnames. Human SSH uses `cloudflared access ssh` plus the host SSH key; automated operations continue to use OCI Run Command. The SSH hostname intentionally stays exactly one label below `shadowops.dpdns.org` so it is covered by the zone's Universal SSL wildcard; tunnel reconciliation proves the edge TLS handshake before reporting success.
 
+## Operator SSH key authorization
+
+Tunnel reachability and host-user authentication are separate contracts. `make oci-a1-ssh-check` proves the Cloudflare DNS/TLS edge, while the already-created A1 must also trust the operator's SSH public key.
+
+Authorize or rotate a local operator key through the existing OCI Run Command control plane:
+
+```bash
+make oci-a1-authorize-ssh
+```
+
+The helper selects `OCI_SSH_PUBLIC_KEY`, then `${OCI_SSH_KEY}.pub`, then the standard `~/.ssh/id_ed25519.pub`, `id_ecdsa.pub` or `id_rsa.pub`. A non-standard pair can be explicit:
+
+```bash
+make oci-a1-authorize-ssh OCI_SSH_PUBLIC_KEY=~/.ssh/chess-studio.pub
+make oci-a1-ssh OCI_SSH_KEY=~/.ssh/chess-studio
+```
+
+Only the public key crosses OCI Run Command. The private key remains on the operator workstation, public TCP/22 remains closed, and the host-side root capability accepts only a validated public-key file in the fixed `/tmp/chess-studio-operator-key.*` namespace before updating `ubuntu/.ssh/authorized_keys`.
+
+Terraform's optional `ssh_authorized_key` metadata is useful only when an instance is launched with a key. Post-launch authorization and rotation use this Run Command path so repairing human access never requires exposing SSH directly to the Internet.
+
+## Operator Docker access
+
+The human operator account is `ubuntu`. Bootstrap, one-time adoption and every immutable deploy reconcile `ubuntu` into the host `docker` group, so routine diagnostics such as `docker ps` and `docker compose ps` do not require a `sudo` prefix.
+
+Membership in the Docker group is effectively root-equivalent on the host. This access is therefore deliberate only for the trusted operator account; application/service users do not receive it. A session that was already open before the group change must reconnect (or otherwise refresh supplementary groups) before the new membership is visible.
+
+
 ## One-time adoption of the existing A1
 
 Cloud-init does not rerun on an already-created VM, so the legacy systemd + `docker run` host needs one explicit adoption step after this PR is merged:
