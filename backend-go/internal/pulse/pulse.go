@@ -1029,6 +1029,11 @@ func (s *MongoStore) hashLatestChat(ctx context.Context, h hash.Hash, now time.T
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.decorateResponse(w, r)
+	if r.URL.Path == "/api/pvp/lobby" && h.lobbyReadStore != nil {
+		// Set before auth so deployment probes can prove the exact full-lobby
+		// route rather than mistaking the generic pulse marker for success.
+		w.Header().Set("X-Chess-Pvp-Native", "lobby-read")
+	}
 	if r.URL.Path == "/api/pvp/roster" && h.enableRoster {
 		// Set the route marker before authentication so deployment probes can prove
 		// that browser-visible failures came from the native roster handler rather
