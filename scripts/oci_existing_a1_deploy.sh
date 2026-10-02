@@ -271,7 +271,12 @@ write_active_color() {
 render_edge() {
   local color="$1"
   local pvp_mode="${2:-go}"
-  python3 -S "$blue_green_edge" --color "$color" --pvp-mode "$pvp_mode" --output "$edge_config_file"
+  local committed_sha="${3:-${previous_sha:-}}"
+  python3 -S "$blue_green_edge" \
+    --color "$color" \
+    --pvp-mode "$pvp_mode" \
+    --committed-sha "$committed_sha" \
+    --output "$edge_config_file"
 }
 
 edge_container_id() {
@@ -1408,6 +1413,11 @@ fi
 phase_done tunnel "$tunnel_started_ms"
 
 record_successful_backend "$sha"
+if ! render_edge "$candidate_color" go "$sha" || ! reload_edge; then
+  echo "failed to publish committed OCI generation marker: $sha color=$candidate_color" >&2
+  rollback "$sha" || true
+  exit 55
+fi
 
 drain_started_ms="$(now_ms)"
 if [[ -n "$previous_color" ]]; then
