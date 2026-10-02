@@ -29,12 +29,7 @@ import { addCoarsePieceHitTarget, applyMatthiasCheckPose, buildPiece, disposeObj
 import { fitBoardCamera, makeTextSprite } from './Board3DScene.js';
 import { resolveStableBoardViewportForHost } from './Board3DViewportSize.js';
 import { applyBoard3DProjectionDiagnostics } from './Board3DProjectionDiagnostics.js';
-import {
-  board3DForensicGhost,
-  board3DTechniqueTargetCount,
-  board3DTerrainSquares,
-  buildBoard3DLegalMap,
-} from './Board3DParityVisuals.js';
+import { board3DForensicGhost, board3DTechniqueTargetCount, board3DTerrainSquares, buildBoard3DLegalMap } from './Board3DParityVisuals.js';
 import useWarRoomVariant from './useWarRoomVariant.js';
 import { resolveBoard3DPresentation } from './Board3DPresentation.js';
 import { createClassicWarRoomShellController } from './WarRoomClassicShell.js';
