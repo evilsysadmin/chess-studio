@@ -588,6 +588,41 @@ export default function HomeMatthias3D({
       canvas.dataset.matthiasDossierSipWeight = pose.weight.toFixed(3);
     };
 
+    const applyActorPose = (deltaSeconds = 0) => {
+      if (!model) return;
+      const desired = desiredMotionRef.current;
+      const targetAttention = desired.reducedMotion ? 0 : (desired.activeRoom ? 1 : 0);
+      if (desired.reducedMotion) {
+        attentionAmount = 0;
+      } else {
+        const ease = 1 - Math.exp(-Math.max(0, deltaSeconds) * 8.5);
+        attentionAmount += (targetAttention - attentionAmount) * ease;
+      }
+
+      const pose = homeMatthiasAttentionPose(desired.activeRoom);
+      model.position.copy(baseModelPosition)
+        .addScaledVector(attentionForward, pose.forward * attentionAmount);
+      model.position.y += pose.lift * attentionAmount;
+      attentionQuaternion.setFromAxisAngle(
+        attentionSide,
+        THREE.MathUtils.degToRad(pose.leanDeg * attentionAmount),
+      );
+      model.quaternion.copy(baseModelQuaternion).multiply(attentionQuaternion);
+
+      const sleepPose = homeMatthiasSleepPose(currentProfile);
+      if (sleepPose.active) {
+        sleepQuaternion.setFromAxisAngle(
+          attentionForward,
+          THREE.MathUtils.degToRad(sleepPose.rollDeg),
+        );
+        model.quaternion.multiply(sleepQuaternion);
+        model.position.y += sleepPose.lift;
+        canvas.dataset.matthiasSleepPose = 'sofa-recline-v1';
+      } else {
+        canvas.dataset.matthiasSleepPose = 'standing';
+      }
+    };
+
     const renderOnce = () => {
       try {
         renderer.render(threeScene, camera);
@@ -650,6 +685,7 @@ export default function HomeMatthias3D({
       if (still) {
         mixer.setTime(Math.max(0, clip.duration * 0.34));
         applyRoutinePropPolicy(resolvedProfile);
+        applyActorPose(0);
         renderOnce();
       }
     };
@@ -666,33 +702,7 @@ export default function HomeMatthias3D({
       mixer?.update(delta);
       applyDossierSipPose(delta);
       applyRoutinePropPolicy(currentProfile);
-      if (model) {
-        const desired = desiredMotionRef.current;
-        const targetAttention = desired.reducedMotion ? 0 : (desired.activeRoom ? 1 : 0);
-        const ease = 1 - Math.exp(-delta * 8.5);
-        attentionAmount += (targetAttention - attentionAmount) * ease;
-        const pose = homeMatthiasAttentionPose(desired.activeRoom);
-        model.position.copy(baseModelPosition)
-          .addScaledVector(attentionForward, pose.forward * attentionAmount);
-        model.position.y += pose.lift * attentionAmount;
-        attentionQuaternion.setFromAxisAngle(
-          attentionSide,
-          THREE.MathUtils.degToRad(pose.leanDeg * attentionAmount),
-        );
-        model.quaternion.copy(baseModelQuaternion).multiply(attentionQuaternion);
-        const sleepPose = homeMatthiasSleepPose(currentProfile);
-        if (sleepPose.active) {
-          sleepQuaternion.setFromAxisAngle(
-            attentionForward,
-            THREE.MathUtils.degToRad(sleepPose.rollDeg),
-          );
-          model.quaternion.multiply(sleepQuaternion);
-          model.position.y += sleepPose.lift;
-          canvas.dataset.matthiasSleepPose = 'sofa-recline-v1';
-        } else {
-          canvas.dataset.matthiasSleepPose = 'standing';
-        }
-      }
+      applyActorPose(delta);
       renderOnce();
       frame = window.requestAnimationFrame(tick);
     };
