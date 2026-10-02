@@ -82,7 +82,7 @@ func New(cfg Config) (*Service, error) {
 func (s *Service) Create(ctx context.Context, username, opponent string) (Result, error) {
 	username = strings.ToLower(strings.TrimSpace(username))
 	opponent = strings.ToLower(strings.TrimSpace(opponent))
-	if opponent == "" || opponent == username {
+	if opponent == username {
 		return Result{}, ErrSelfChallenge
 	}
 
