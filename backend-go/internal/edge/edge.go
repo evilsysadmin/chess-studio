@@ -185,6 +185,7 @@ func (h *Handler) ready(w http.ResponseWriter, r *http.Request) {
 		"nativeRoster": h.nativeRoster != nil,
 		"nativeChat":   h.nativeChat != nil,
 		"nativeChallengeResolution": h.nativeChallengeResolution != nil,
+		"nativeChallengeAccept": h.nativeChallengeAccept != nil,
 		"nativeMatchHandoffCancel": h.nativeMatchHandoffCancel != nil,
 		"nativeMatchReady": h.nativeMatchReady != nil,
 	})
