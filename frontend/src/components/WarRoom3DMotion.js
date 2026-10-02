@@ -592,7 +592,7 @@ export const WAR_ROOM_V3_TORCHLIT = Object.freeze({
 // near half must stay readable. Touch loses shell shadows and authored detail,
 // so it gets the larger exposure compensation instead of dimming practicals.
 export const PVP_DUEL_ROOM_LIGHT_LIFT = Object.freeze({
-  exposure: Object.freeze({ desktop: 0.24, touch: 0.40 }),
+  exposure: Object.freeze({ desktop: 0.20, touch: 0.36 }),
 });
 
 export function reactiveLightProfile({ check = false, gameOver = false, coarsePointer = false, variant = 'classic' } = {}) {
