@@ -24,7 +24,7 @@ function startingMatch() {
     opponentReady: true,
     startsAt: null,
     opponentPresence: 'online',
-    clock: { id: '10+0', whiteMs: 600000, blackMs: 600000, incrementMs: 0, runningColor: null },
+    clock: { id: '30+0', whiteMs: 1800000, blackMs: 1800000, incrementMs: 0, runningColor: null },
   };
 }
 
@@ -36,7 +36,7 @@ function activeMatch() {
     opponentReady: true,
     yourTurn: true,
     startsAt: new Date(Date.now() + 5000).toISOString(),
-    clock: { id: '10+0', whiteMs: 600000, blackMs: 600000, incrementMs: 0, runningColor: null },
+    clock: { id: '30+0', whiteMs: 1800000, blackMs: 1800000, incrementMs: 0, runningColor: null },
   };
 }
 
