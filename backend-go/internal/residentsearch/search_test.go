@@ -13,10 +13,11 @@ import (
 )
 
 func TestAnalyzeFENPrefersMateOverImmediateStalemate(t *testing.T) {
+	const fen = "7k/5K2/8/6Q1/8/8/8/8 w - - 0 1"
 	searcher := New()
 	snapshot, err := searcher.AnalyzeFEN(
 		context.Background(),
-		"7k/5K2/8/6Q1/8/8/8/8 w - - 0 1",
+		fen,
 		1,
 		2*time.Second,
 	)
@@ -26,11 +27,33 @@ func TestAnalyzeFENPrefersMateOverImmediateStalemate(t *testing.T) {
 	if len(snapshot.Candidates) == 0 {
 		t.Fatal("expected legal candidates")
 	}
-	if got := snapshot.Candidates[0].UCI; got != "g5g7" {
-		t.Fatalf("best=%s score=%v want=g5g7", got, snapshot.Candidates[0].Score)
-	}
 	if snapshot.Candidates[0].Score < mateScore-2 {
 		t.Fatalf("mate score=%v", snapshot.Candidates[0].Score)
+	}
+
+	option, err := chess.FEN(fen)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pos := chess.NewGame(option).Position()
+	found := false
+	for _, candidate := range pos.ValidMovesUnsafe() {
+		move := candidate
+		if move.String() != snapshot.Candidates[0].UCI {
+			continue
+		}
+		found = true
+		child := pos.Update(&move)
+		if child.Status() != chess.Checkmate {
+			t.Fatalf("best=%s score=%v is not checkmate", snapshot.Candidates[0].UCI, snapshot.Candidates[0].Score)
+		}
+		if child.Status() == chess.Stalemate {
+			t.Fatalf("best=%s chose stalemate instead of mate", snapshot.Candidates[0].UCI)
+		}
+		break
+	}
+	if !found {
+		t.Fatalf("best move %s is not legal in fixture", snapshot.Candidates[0].UCI)
 	}
 }
 
