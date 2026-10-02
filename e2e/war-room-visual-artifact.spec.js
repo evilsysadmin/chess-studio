@@ -665,7 +665,7 @@ for (const profile of ACTIVE_CAPTURE_PROFILES) {
 
       if (profile.portraitContract) {
         await expect(page.getByRole('button', { name: 'Focus', exact: true })).toBeVisible();
-        await expect(page.getByRole('button', { name: 'Abandonar partida', exact: true })).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Salir de la partida', exact: true })).toBeVisible();
         await expect(page.getByRole('button', { name: 'Más acciones de partida', exact: true })).toBeVisible();
       }
 
