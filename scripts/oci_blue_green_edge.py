@@ -10,12 +10,22 @@ import tempfile
 VALID_COLORS = {"blue", "green"}
 
 
-def render(color: str, *, pvp_mode: str = "direct") -> str:
+def normalize_committed_sha(value: str) -> str:
+    normalized = str(value or "").strip().lower()
+    if not normalized:
+        return ""
+    if len(normalized) != 40 or any(ch not in "0123456789abcdef" for ch in normalized):
+        raise SystemExit(f"invalid committed backend SHA: {value!r}")
+    return normalized
+
+
+def render(color: str, *, pvp_mode: str = "direct", committed_sha: str = "") -> str:
     color = str(color or "").strip().lower()
     if color not in VALID_COLORS:
         raise SystemExit(f"invalid backend color: {color!r}")
     if pvp_mode not in {"direct", "go"}:
         raise SystemExit(f"invalid PvP mode: {pvp_mode!r}")
+    committed_sha = normalize_committed_sha(committed_sha)
     backend_upstream = f"backend_{color}:4000"
     pvp_upstream = f"pvp_{color}:8080" if pvp_mode == "go" else backend_upstream
     proxy_common = """        proxy_http_version 1.1;
@@ -25,6 +35,23 @@ def render(color: str, *, pvp_mode: str = "direct") -> str:
         proxy_connect_timeout 2s;
         proxy_send_timeout 45s;
         proxy_read_timeout 45s;"""
+    committed_response = (
+        f'        return 200 "{committed_sha}\\n";'
+        if committed_sha
+        else '        return 503 "uncommitted\\n";'
+    )
+    committed_location = f"""
+    # Host-committed generation. This is intentionally independent from the
+    # candidate upstream: it changes only after every post-cutover attestation
+    # has passed and rollback restores the previous committed SHA.
+    location = /api/_deploy/committed {{
+        default_type text/plain;
+        add_header Cache-Control "no-store, no-cache, must-revalidate" always;
+        add_header Pragma "no-cache" always;
+{committed_response}
+    }}
+"""
+
     probe_location = ""
     if pvp_mode == "go":
         probe_location = f"""
@@ -47,6 +74,7 @@ server {{
     access_log off;
     keepalive_timeout 5s;
 
+{committed_location}
 {probe_location}
     # PvP is cut over independently so the rest of the product still talks
     # directly to Python while Go progressively takes ownership of the domain.
@@ -92,9 +120,11 @@ def atomic_write(path: pathlib.Path, content: str) -> None:
 
 
 def self_test() -> None:
-    blue = render("blue", pvp_mode="go")
-    green = render("green", pvp_mode="go")
-    fallback = render("blue", pvp_mode="direct")
+    sample = "0123456789abcdef0123456789abcdef01234567"
+    blue = render("blue", pvp_mode="go", committed_sha=sample)
+    green = render("green", pvp_mode="go", committed_sha=sample)
+    fallback = render("blue", pvp_mode="direct", committed_sha=sample)
+    uncommitted = render("blue", pvp_mode="direct")
     assert "backend_blue:4000" in blue
     assert "backend_green:4000" in green
     assert "pvp_blue:8080" in blue
@@ -110,6 +140,17 @@ def self_test() -> None:
     assert "proxy_read_timeout 45s" in blue
     assert "keepalive_timeout 5s" in blue
     assert "listen 8080" in blue
+    assert "location = /api/_deploy/committed" in blue
+    assert f'return 200 "{sample}\\n";' in blue
+    assert 'return 503 "uncommitted\\n";' in uncommitted
+    assert normalize_committed_sha(sample.upper()) == sample
+    for invalid_sha in ("main", "g" * 40, sample[:-1]):
+        try:
+            render("blue", committed_sha=invalid_sha)
+        except SystemExit:
+            pass
+        else:
+            raise AssertionError(f"accepted invalid committed SHA: {invalid_sha!r}")
     for invalid in ("", "red", "../blue", "BLUE GREEN"):
         try:
             render(invalid)
@@ -126,13 +167,17 @@ def main() -> None:
     parser.add_argument("--color", choices=sorted(VALID_COLORS))
     parser.add_argument("--output")
     parser.add_argument("--pvp-mode", choices=("direct", "go"), default="direct")
+    parser.add_argument("--committed-sha", default="")
     args = parser.parse_args()
     if args.self_test:
         self_test()
         return
     if not args.color or not args.output:
         parser.error("--color and --output are required")
-    atomic_write(pathlib.Path(args.output), render(args.color, pvp_mode=args.pvp_mode))
+    atomic_write(
+        pathlib.Path(args.output),
+        render(args.color, pvp_mode=args.pvp_mode, committed_sha=args.committed_sha),
+    )
 
 
 if __name__ == "__main__":
