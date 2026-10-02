@@ -100,4 +100,9 @@ run "bootstrap_contract_is_privileged_without_open_ended_sudo" {
     condition     = strcontains(base64decode(oci_core_instance.backend.metadata["user_data"]), "python3-venv")
     error_message = "Future instance-principal runtime fetches require an isolated Python venv."
   }
+
+  assert {
+    condition     = strcontains(base64decode(oci_core_instance.backend.metadata["user_data"]), "usermod, -aG, docker, ubuntu")
+    error_message = "Bootstrap must grant the human ubuntu operator Docker socket access without opening public SSH ingress."
+  }
 }

@@ -90,7 +90,7 @@ El workflow obtiene el Object Storage namespace mediante el provider Terraform y
 - imagen ARM64 obligatoriamente descubierta como Canonical Ubuntu 24.04 platform image; Custom Image e `image_ocid` arbitrario quedan fuera del contrato.
 - OCI Flexible Load Balancer fijado a 10 Mbps mientras siga siendo la ruta de ingress del staging actual.
 - cero ingress por defecto; `0.0.0.0/0` para SSH está rechazado.
-- SSH no requiere ni inyecta public key mientras el ingress siga cerrado.
+- SSH humano entra únicamente por Cloudflare Tunnel; la clave pública de operador se autoriza explícitamente y `ubuntu` pertenece al grupo `docker` para operar Compose sin `sudo` en cada comando. TCP/22 público sigue cerrado.
 - `repo_ref` debe ser SHA Git completo de 40 caracteres.
 - FastAPI liga a `127.0.0.1:4000`; la VM es reemplazable y Mongo sigue fuera.
 - ningún secreto de aplicación ni private key entra en Terraform state/backend config.

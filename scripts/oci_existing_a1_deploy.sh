@@ -96,6 +96,18 @@ now_ms() {
   printf '%s%s\n' "$seconds" "${micros:0:3}"
 }
 
+ensure_operator_docker_access() {
+  id ubuntu >/dev/null 2>&1 || { echo 'missing operator user: ubuntu' >&2; exit 66; }
+  getent group docker >/dev/null 2>&1 || { echo 'missing docker group' >&2; exit 69; }
+  if id -nG ubuntu | grep -qw docker; then
+    echo 'OCI_OPERATOR_DOCKER_ACCESS state=already'
+    return
+  fi
+  usermod -aG docker ubuntu
+  id -nG ubuntu | grep -qw docker || { echo 'failed to grant ubuntu docker group membership' >&2; exit 70; }
+  echo 'OCI_OPERATOR_DOCKER_ACCESS state=added'
+}
+
 phase_done() {
   local name="$1"
   local started_ms="$2"
@@ -113,8 +125,13 @@ require sha256sum
 require systemctl
 require flock
 require visudo
+require id
+require getent
+require grep
+require usermod
 
 docker compose version >/dev/null 2>&1 || { echo 'docker compose v2 is required' >&2; exit 69; }
+ensure_operator_docker_access
 [[ -d "$repo/.git" ]] || { echo "missing repo checkout: $repo" >&2; exit 66; }
 [[ -s "$env_file" ]] || { echo "missing runtime env: $env_file" >&2; exit 42; }
 
