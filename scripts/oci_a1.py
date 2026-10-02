@@ -7,6 +7,8 @@ import argparse
 import json
 import os
 import shutil
+import socket
+import ssl
 import subprocess
 import sys
 
@@ -88,24 +90,59 @@ def public_ip(profile: str, auth: str, instance: dict) -> str:
     return ip
 
 
+def assert_ssh_edge_tls(hostname: str, timeout: float = 8.0) -> None:
+    """Fail early with an actionable error when the Cloudflare SSH edge is not TLS-ready."""
+    try:
+        context = ssl.create_default_context()
+        with socket.create_connection((hostname, 443), timeout=timeout) as raw:
+            with context.wrap_socket(raw, server_hostname=hostname) as tls:
+                protocol = tls.version() or "TLS"
+    except socket.gaierror as exc:
+        raise SystemExit(
+            f"ERROR: DNS no resuelve {hostname!r}: {exc}. "
+            "El hostname del túnel SSH no está publicado o tu resolver no lo ve."
+        ) from None
+    except ssl.SSLCertVerificationError as exc:
+        raise SystemExit(
+            f"ERROR: Cloudflare presenta un certificado TLS no válido para {hostname!r}: {exc}. "
+            "Comprueba cobertura del certificado edge; los subdominios multinivel no entran "
+            "en Universal SSL por defecto."
+        ) from None
+    except ssl.SSLError as exc:
+        raise SystemExit(
+            f"ERROR: handshake TLS con Cloudflare falló para {hostname!r}: {exc}. "
+            "No lanzo SSH porque cloudflared fallaría después con un error opaco."
+        ) from None
+    except OSError as exc:
+        raise SystemExit(
+            f"ERROR: no puedo alcanzar el edge Cloudflare de {hostname!r}: {exc}."
+        ) from None
+    print(f"==> Cloudflare SSH edge TLS OK: {hostname} ({protocol})", file=sys.stderr)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("action", choices=("info", "status", "ip", "ssh"))
+    parser.add_argument("action", choices=("info", "status", "ip", "ssh-check", "ssh"))
     parser.add_argument("--profile", default=os.environ.get("OCI_CLI_PROFILE", "DEFAULT"))
     parser.add_argument("--auth", default=os.environ.get("OCI_CLI_AUTH", "security_token"))
     parser.add_argument("--name", default=os.environ.get("OCI_INSTANCE_NAME", "chess-studio-staging"))
     parser.add_argument("--ssh-user", default=os.environ.get("OCI_SSH_USER", "ubuntu"))
     parser.add_argument("--ssh-key", default=os.environ.get("OCI_SSH_KEY", ""))
-    parser.add_argument("--ssh-hostname", default=os.environ.get("OCI_SSH_HOSTNAME", "ssh-staging.chess-studio.shadowops.dpdns.org"))
+    parser.add_argument("--ssh-hostname", default=os.environ.get("OCI_SSH_HOSTNAME", "ssh-chess-studio-staging.shadowops.dpdns.org"))
     args = parser.parse_args()
 
-    if args.action == "ssh":
+    if args.action in ("ssh-check", "ssh"):
         cloudflared = shutil.which("cloudflared")
         if not cloudflared:
             raise SystemExit("ERROR: cloudflared no está instalado o no está en PATH.")
         ssh = shutil.which("ssh")
         if not ssh:
             raise SystemExit("ERROR: ssh no está instalado o no está en PATH.")
+        assert_ssh_edge_tls(args.ssh_hostname)
+        if args.action == "ssh-check":
+            print(f"==> cloudflared listo: {cloudflared}", file=sys.stderr)
+            print(f"==> ssh listo: {ssh}", file=sys.stderr)
+            return 0
         cmd = [ssh, "-o", f"ProxyCommand={cloudflared} access ssh --hostname %h"]
         if args.ssh_key:
             cmd.extend(["-i", os.path.expanduser(args.ssh_key)])
