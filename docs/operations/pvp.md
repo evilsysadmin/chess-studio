@@ -216,9 +216,11 @@ It must remain bounded:
 - no hidden coupling to match correctness;
 - chat failure cannot break challenge/handoff/gameplay success.
 
-## Go read-offload wedge
+## Go authority boundary
 
-The Go PvP edge absorbs PvP authority incrementally while Python remains the compatibility fallback and, where noted, the machine-only resident move oracle.
+All public PvP routes are now intended to execute through the Go edge by default. Python remains a compatibility rollback path and, where noted, the machine-only resident move oracle.
+
+Staging is the enforcement environment for that boundary: a normal staging generation must report every native PvP readiness bit as enabled and must expose the owner-scoped resident gate. Any Python public-route fallback in staging requires the explicit emergency override `CHESS_STUDIO_PVP_ALLOW_PYTHON_FALLBACK_STAGING=true`; without that override the deploy fails before the generation is accepted. The public staging verifier also requires the full-Go readiness set through `/api/pvp/_edge/ready`, so an internally healthy sidecar is not sufficient if the external path is serving a fallback generation.
 
 Current bounded contract:
 - lobby pulse may read Mongo natively and invalidate the full Python lobby snapshot;

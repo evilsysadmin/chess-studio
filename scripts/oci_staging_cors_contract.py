@@ -71,6 +71,9 @@ required_deploy_fragments = (
     "/api/pvp/roster",
     "pvp_lobby_read_attest",
     "virtualPlayersEnabled",
+    "CHESS_STUDIO_PVP_ALLOW_PYTHON_FALLBACK_STAGING",
+    "deployment_target == 'staging'",
+    "required_native",
     "/api/pvp/lobby",
     "pvp_challenge_browser_attest",
     "/api/pvp/challenges",
@@ -135,9 +138,11 @@ required_public_verifier_fragments = (
     'method="POST"',
     "pvp_roster_cors_http",
     'f"{base}/pvp/_edge/ready?{ready_query}"',
-    'pvp_edge.get("nativeLobbyRead") is True',
-    'pvp_edge.get("virtualPlayersEnabled") is True',
-    "pvp_lobby_read=ok virtual_players=on",
+    "PVP_FULL_GO_READY_KEYS",
+    "pvp_full_go_ready",
+    '"nativeChallengeCreate"',
+    '"nativeMatchMove"',
+    "pvp_full_go=ok virtual_players=on",
     "fetch_roster_rejection",
     "native_roster_rejection_ok",
     "pvp_roster_response_http",
@@ -150,6 +155,9 @@ required_public_verifier_fragments = (
 )
 for fragment in required_public_verifier_fragments:
     assert fragment in verifier, f"missing public staging CORS verifier contract: {fragment}"
+assert "assert pvp_full_go_ready(full_go)" in verifier
+assert 'broken["nativeChallengeCreate"] = False' in verifier
+assert 'broken["virtualPlayersEnabled"] = False' in verifier
 
 # Runtime configuration is operational state. Normal releases consume the
 # already-installed runtime on both the host-watcher path and the Run Command
@@ -327,7 +335,7 @@ assert 'candidate_port="$(slot_port "$candidate_color")"' in deploy
 assert 'compose "$sha" up -d --no-build --force-recreate "$candidate_service"' in deploy
 assert 'candidate_pvp_service="$(pvp_service "$candidate_color")"' in deploy
 assert 'compose "$sha" up -d --no-build --force-recreate "$candidate_service" "$candidate_pvp_service"' in deploy
-assert 'if attest "$sha" "$candidate_port" && pvp_attest "$candidate_pvp_service"; then' in deploy
+assert 'if attest "$sha" "$candidate_port" && pvp_attest "$candidate_pvp_service" "$target"; then' in deploy
 assert "payload.get('nativePulse')" in deploy
 assert "payload.get('nativeLobbyRead')" in deploy
 assert "payload.get('nativeRoster')" in deploy
@@ -354,6 +362,10 @@ assert "CHESS_STUDIO_PVP_NATIVE_CHALLENGE_RESOLUTION_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_CHALLENGE_ACCEPT_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_CHALLENGE_CREATE_ENABLED" in deploy
 assert "env.get('CHESS_STUDIO_PVP_NATIVE_CHALLENGE_CREATE_ENABLED', 'true')" in deploy
+assert "CHESS_STUDIO_PVP_ALLOW_PYTHON_FALLBACK_STAGING" in deploy
+assert "deployment_target == 'staging'" in deploy
+assert "required_native = (" in deploy
+assert "any(payload.get(key) is not True for key in required_native)" in deploy
 assert 'pvp_target_image="$(pvp_image_ref "$sha")"' in deploy
 assert 'docker pull --quiet "$pvp_target_image"' in deploy
 assert 'render_edge "$candidate_color" go' in deploy

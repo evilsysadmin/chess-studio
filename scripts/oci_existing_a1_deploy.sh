@@ -380,18 +380,21 @@ PY
 
 pvp_attest() {
   local service="$1"
+  local deployment_target="${2:-$target}"
   local body
   body="$(mktemp)"
   if ! compose "$sha" exec -T "$service" wget -q -O - http://127.0.0.1:8080/readyz >"$body"; then
     rm -f "$body"
     return 1
   fi
-  if python3 - "$body" "$pvp_sparring_enabled" <<'PY'
+  if python3 - "$body" "$pvp_sparring_enabled" "$deployment_target" <<'PY'
 import json
 import pathlib
 import sys
 payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
 env = __import__('os').environ
+deployment_target = str(sys.argv[3]).strip().lower()
+allow_staging_fallback = str(env.get('CHESS_STUDIO_PVP_ALLOW_PYTHON_FALLBACK_STAGING', 'false')).strip().lower() in {'1', 'true', 'yes', 'on'}
 expected_native = str(env.get('CHESS_STUDIO_PVP_NATIVE_PULSE_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
 expected_lobby_read = str(env.get('CHESS_STUDIO_PVP_NATIVE_LOBBY_READ_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
 expected_virtual_players = str(sys.argv[2]).strip().lower() in {'1', 'true', 'yes', 'on'}
@@ -423,6 +426,26 @@ if (
     or bool(payload.get('nativeMatchMove')) != expected_match_move
 ):
     raise SystemExit(1)
+
+if deployment_target == 'staging' and not allow_staging_fallback:
+    required_native = (
+        'nativePulse',
+        'nativeLobbyRead',
+        'nativeRoster',
+        'nativeChat',
+        'nativeChallengeResolution',
+        'nativeChallengeAccept',
+        'nativeChallengeCreate',
+        'nativeMatchHandoffCancel',
+        'nativeMatchReady',
+        'nativeMatchResign',
+        'nativeMatchRead',
+        'nativeMatchMove',
+    )
+    if any(payload.get(key) is not True for key in required_native):
+        raise SystemExit(1)
+    if payload.get('virtualPlayersEnabled') is not True:
+        raise SystemExit(1)
 PY
   then
     rm -f "$body"
@@ -1179,7 +1202,7 @@ phase_done recreate "$recreate_started_ms"
 readiness_started_ms="$(now_ms)"
 candidate_ready=0
 for _ in $(seq 1 60); do
-  if attest "$sha" "$candidate_port" && pvp_attest "$candidate_pvp_service"; then
+  if attest "$sha" "$candidate_port" && pvp_attest "$candidate_pvp_service" "$target"; then
     candidate_ready=1
     break
   fi
