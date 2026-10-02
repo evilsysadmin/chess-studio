@@ -45,6 +45,10 @@ type fakeStore struct {
 	handoffFound bool
 	handoffErr error
 	systemMessages []string
+	syntheticRoster map[string]int64
+	challengeSnapshot challengeRow
+	challengeSnapshotFound bool
+	challengeSnapshotErr error
 }
 
 func (f *fakeStore) AuthState(context.Context, string) (bool, int64, error) {
@@ -102,6 +106,18 @@ func (f *fakeStore) GetHandoffMatch(context.Context, string) (cancelMatchRow, bo
 func (f *fakeStore) AppendLobbySystem(_ context.Context, text string, _ time.Time) error {
 	f.systemMessages = append(f.systemMessages, text)
 	return nil
+}
+
+func (f *fakeStore) UpsertSyntheticRoster(_ context.Context, username string, rating int64, _ time.Time) error {
+	if f.syntheticRoster == nil {
+		f.syntheticRoster = map[string]int64{}
+	}
+	f.syntheticRoster[username] = rating
+	return nil
+}
+
+func (f *fakeStore) ChallengeSnapshot(context.Context, string) (challengeRow, bool, error) {
+	return f.challengeSnapshot, f.challengeSnapshotFound, f.challengeSnapshotErr
 }
 
 func TestPulseReturnsNativeRevisionForValidSession(t *testing.T) {
