@@ -23,15 +23,15 @@ export const WAR_ROOM_V3_TORCH_LIGHT = Object.freeze({ intensity: 20, distance: 
 // Touch keeps every authored flame, but only one real point light per side wall.
 // This preserves the torchlit identity without paying for all six practicals.
 export const WAR_ROOM_V3_TOUCH_TORCH_LIGHT = Object.freeze({
-  intensity: 13.5,
-  distance: 9.5,
+  intensity: 16.5,
+  distance: 11,
   maxLights: 2,
 });
 
 export const WAR_ROOM_V3_TOUCH_HEARTH_WASH = Object.freeze({
   color: 0xffb36b,
-  intensity: 38,
-  distance: 13.5,
+  intensity: 46,
+  distance: 15,
   angle: Math.PI / 2.8,
   penumbra: 0.72,
   decay: 2,
@@ -107,7 +107,7 @@ export const WAR_ROOM_V3_PRACTICAL_SCALE = Object.freeze({
   // Portrait crops the side-wall torches, so touch lets the visible hearth carry
   // more of the central room instead of compensating with non-diegetic exposure.
   'war-room-blender-fire-practical': Object.freeze({ desktop: 1.35, touch: 2.05 }),
-  'war-room-blender-moon-practical': Object.freeze({ desktop: 0.5, touch: 0.72 }),
+  'war-room-blender-moon-practical': Object.freeze({ desktop: 0.5, touch: 0.82 }),
 });
 // The shared desktop IBL (RoomEnvironment) lights the hall evenly from every
 // side, which flattens torchlight. three.js applies scene.environmentIntensity
