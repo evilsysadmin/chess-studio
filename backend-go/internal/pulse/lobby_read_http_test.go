@@ -196,6 +196,30 @@ func TestNativeLobbyReadOwnerMaterializesAllVirtualRivalsWithoutSnapshotTTLRows(
 	}
 }
 
+func TestNativeLobbyReadKeepsVirtualRivalsVisibleWhenCompatibilitySeedFails(t *testing.T) {
+	now:=time.Date(2026,10,2,14,0,0,0,time.UTC)
+	base:=&fakeStore{exists:true,syntheticErr:errors.New("seed unavailable")}
+	store:=&fakeLobbyReadStore{snapshot:lobbySnapshot{Roster:[]rosterRow{
+		{Username:"owner",Rating:400,Tier:"Principiante",JoinedAt:now},
+	}}}
+	h:=newLobbyReadHandler(t,now,base,store,true,"owner","sparringmeister")
+
+	rr:=lobbyReadRequest(t,h,now,http.MethodGet,"owner")
+	if rr.Code!=http.StatusOK { t.Fatalf("status=%d body=%s",rr.Code,rr.Body.String()) }
+
+	var body struct{ Roster []map[string]any `json:"roster"` }
+	if err:=json.Unmarshal(rr.Body.Bytes(),&body); err!=nil { t.Fatal(err) }
+	if len(body.Roster)!=5 { t.Fatalf("roster=%#v",body.Roster) }
+	seen:=map[string]bool{}
+	for _,row:=range body.Roster {
+		name,_:=row["username"].(string)
+		seen[name]=true
+	}
+	for _,name:=range []string{"sparringmeister","otto_falk","marta_stein","viktor_kraus"} {
+		if !seen[name] { t.Fatalf("missing %s roster=%#v",name,body.Roster) }
+	}
+}
+
 func TestNativeLobbyReadDeduplicatesVirtualRowsStillPresentInMongo(t *testing.T) {
 	now:=time.Date(2026,10,2,14,0,0,0,time.UTC)
 	store:=&fakeLobbyReadStore{snapshot:lobbySnapshot{Roster:[]rosterRow{
