@@ -1,0 +1,231 @@
+/* Duel Hall room pass: desktop should feel like entering a castle room,
+   not opening a centered dashboard. Presentation only; PvP state remains owned elsewhere. */
+
+@media (min-width: 821px) {
+  .pvp-lobby-backdrop {
+    align-items: stretch;
+    justify-content: center;
+    padding: .5rem;
+    background:
+      radial-gradient(circle at 50% 8%, rgba(116, 77, 42, .16), transparent 28%),
+      linear-gradient(180deg, rgba(4, 4, 4, .94), rgba(2, 2, 2, .99));
+  }
+
+  .pvp-duel-hall {
+    width: min(1480px, calc(100vw - 1rem));
+    height: calc(100dvh - 1rem);
+    max-height: none;
+    padding: clamp(1rem, 1.6vw, 1.5rem) clamp(1.1rem, 2vw, 2rem) 1.25rem;
+    border-radius: 10px;
+    border-color: rgba(169, 126, 70, .34);
+    background:
+      radial-gradient(circle at 13% 26%, rgba(211, 118, 46, .11), transparent 16%),
+      radial-gradient(circle at 87% 26%, rgba(211, 118, 46, .11), transparent 16%),
+      linear-gradient(90deg, rgba(50, 34, 24, .18), transparent 12% 88%, rgba(50, 34, 24, .18)),
+      linear-gradient(180deg, rgba(10, 9, 8, .76), rgba(5, 5, 5, .94));
+    box-shadow:
+      0 36px 110px rgba(0, 0, 0, .82),
+      inset 0 0 0 1px rgba(238, 201, 142, .03);
+  }
+
+  .pvp-duel-hall__architecture::after {
+    content: '';
+    position: absolute;
+    inset: 8% 3.5% 12%;
+    border-left: 2px solid rgba(119, 91, 62, .18);
+    border-right: 2px solid rgba(119, 91, 62, .18);
+    background:
+      linear-gradient(90deg,
+        rgba(53, 40, 31, .32) 0 6%,
+        transparent 6% 47.5%,
+        rgba(92, 68, 43, .09) 47.5% 52.5%,
+        transparent 52.5% 94%,
+        rgba(53, 40, 31, .32) 94% 100%);
+    box-shadow: inset 0 18px 44px rgba(0, 0, 0, .22);
+    opacity: .84;
+  }
+
+  .pvp-duel-hall__arch {
+    top: -150px;
+    width: min(880px, 68%);
+    height: 330px;
+    border-width: 42px;
+    opacity: .86;
+  }
+
+  .pvp-duel-hall__gate {
+    top: 2px;
+    width: min(440px, 34%);
+    height: 154px;
+    opacity: .26;
+  }
+
+  .pvp-duel-hall__torch {
+    top: 118px;
+  }
+
+  .pvp-duel-hall__torch.is-left { left: 4.8%; }
+  .pvp-duel-hall__torch.is-right { right: 4.8%; }
+
+  .pvp-duel-hall > :not(.pvp-duel-hall__architecture) {
+    position: relative;
+    z-index: 1;
+  }
+
+  .pvp-duel-hall .pvp-lobby__header {
+    width: min(780px, 68vw);
+    margin-inline: auto;
+    padding: .1rem 3rem .8rem 0;
+    text-align: center;
+    border-bottom-color: rgba(198, 157, 91, .12);
+  }
+
+  .pvp-duel-hall .pvp-lobby__header-copy {
+    max-width: none;
+  }
+
+  .pvp-duel-hall__title-row {
+    justify-content: center;
+  }
+
+  .pvp-duel-hall .pvp-lobby__header p {
+    max-width: 640px;
+    margin-inline: auto;
+  }
+
+  .pvp-duel-hall .pvp-lobby__identity {
+    width: min(760px, 62vw);
+    min-height: 54px;
+    margin: .65rem auto 0;
+    padding: .55rem .7rem;
+    border-left-width: 2px;
+    background:
+      linear-gradient(90deg, rgba(55, 104, 62, .12), rgba(12, 11, 10, .66) 42%, rgba(12, 11, 10, .42));
+    box-shadow: 0 12px 28px rgba(0, 0, 0, .14);
+  }
+
+  .pvp-duel-hall .pvp-lobby__grid {
+    width: min(1320px, 100%);
+    margin: .8rem auto 0;
+    grid-template-columns: minmax(0, 1.45fr) minmax(310px, .55fr);
+    align-items: start;
+    gap: clamp(.8rem, 1.3vw, 1.25rem);
+  }
+
+  .pvp-duel-hall .pvp-lobby__grid.has-challenges {
+    grid-template-columns: minmax(0, 1.45fr) minmax(330px, .6fr);
+  }
+
+  .pvp-duel-hall .pvp-lobby__grid.has-challenges .pvp-lobby__side {
+    order: 0;
+    grid-template-columns: 1fr;
+  }
+
+  .pvp-duel-hall .pvp-lobby__panel {
+    backdrop-filter: none;
+  }
+
+  .pvp-duel-hall .pvp-lobby__panel::before {
+    opacity: .26;
+  }
+
+  .pvp-duel-hall .pvp-lobby__panel--roster {
+    min-height: 360px;
+    padding: 1rem 1.05rem 1.15rem;
+    border: 7px solid rgba(73, 45, 25, .66);
+    border-radius: 4px;
+    background:
+      linear-gradient(90deg, rgba(105, 63, 30, .16), transparent 38%),
+      repeating-linear-gradient(0deg, rgba(230, 192, 132, .02) 0 1px, transparent 1px 5px),
+      linear-gradient(145deg, rgba(38, 23, 13, .96), rgba(14, 10, 8, .97));
+    box-shadow:
+      inset 0 0 0 1px rgba(202, 151, 86, .13),
+      0 16px 28px rgba(0, 0, 0, .24);
+  }
+
+  .pvp-duel-hall .pvp-lobby__panel--roster::after {
+    content: '';
+    position: absolute;
+    inset: 9px;
+    pointer-events: none;
+    border: 1px solid rgba(204, 157, 92, .055);
+  }
+
+  .pvp-duel-hall .pvp-lobby__player {
+    border-left: 2px solid rgba(178, 128, 67, .18);
+    border-right: 0;
+    border-top-color: rgba(205, 159, 92, .08);
+    border-bottom-color: rgba(47, 28, 16, .72);
+    border-radius: 1px;
+    background:
+      linear-gradient(90deg, rgba(123, 78, 38, .13), rgba(16, 11, 8, .7) 62%);
+    box-shadow: none;
+  }
+
+  .pvp-duel-hall .pvp-lobby__side {
+    gap: .8rem;
+  }
+
+  .pvp-duel-hall .pvp-lobby__panel--challenges {
+    border: 0;
+    border-radius: 3px;
+    padding: .85rem;
+    background:
+      linear-gradient(165deg, rgba(104, 77, 47, .2), rgba(17, 12, 9, .86));
+    box-shadow:
+      inset 0 0 0 1px rgba(191, 146, 81, .16),
+      0 14px 26px rgba(0, 0, 0, .18);
+  }
+
+  .pvp-duel-hall .pvp-lobby__challenge {
+    border-radius: 2px;
+  }
+
+  .pvp-duel-hall .pvp-lobby__challenge.is-incoming {
+    border: 1px solid rgba(186, 132, 74, .22);
+    background:
+      linear-gradient(100deg, rgba(150, 106, 59, .18), rgba(56, 36, 21, .13)),
+      rgba(24, 17, 12, .78);
+    box-shadow: 0 8px 22px rgba(0, 0, 0, .18);
+  }
+
+  .pvp-duel-hall .pvp-lobby__chat-disclosure {
+    margin-top: .1rem;
+    border: 0;
+    border-top: 1px solid rgba(166, 132, 82, .12);
+    border-radius: 0;
+    background: rgba(4, 4, 4, .22);
+  }
+
+  .pvp-duel-hall .pvp-lobby__chat-disclosure > summary {
+    padding-inline: .45rem;
+  }
+
+  .pvp-duel-hall .pvp-lobby__footer {
+    width: min(1320px, 100%);
+    margin: .7rem auto 0;
+    border-top-color: rgba(183, 145, 86, .08);
+  }
+}
+
+@media (min-width: 821px) and (max-height: 760px) {
+  .pvp-duel-hall {
+    padding-top: .72rem;
+  }
+
+  .pvp-duel-hall .pvp-lobby__header p {
+    display: none;
+  }
+
+  .pvp-duel-hall .pvp-lobby__identity {
+    margin-top: .4rem;
+  }
+
+  .pvp-duel-hall .pvp-lobby__grid {
+    margin-top: .5rem;
+  }
+
+  .pvp-duel-hall .pvp-lobby__panel--roster {
+    min-height: 300px;
+  }
+}
