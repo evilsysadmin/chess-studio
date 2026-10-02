@@ -17,7 +17,11 @@ The normal release chain is intentionally boring:
 - `staging-deploy.yml` starts only from a successful `Main · admission` run and deploys that approved SHA.
 - `workflow_dispatch` on `cicd.yml` remains only as a manual operator escape hatch; it is not part of the normal PR delivery path.
 
-When tooling or an operator opens a PR that should merge automatically, it enables GitHub native auto-merge on that PR. No Actions runner needs to stay alive waiting for required checks, and the expensive Quality suite is paid once per normal change rather than once on the PR and again on `main`.
+When tooling or an operator opens a **non-visual** PR that does not require human inspection of captured PNGs, screenshots or other visual evidence, it enables GitHub native auto-merge **as part of PR creation**. The PR still starts as Draft: arming auto-merge early does not bypass Draft state, branch protection or required checks; it only removes the need for a later manual merge action. If GitHub refuses to arm native auto-merge while the PR is Draft, treat that as a deferred arm and retry automatically at the first moment GitHub permits it, normally when the PR becomes Ready.
+
+Visual PRs, or any PR whose acceptance requires human inspection of PNG/screenshot/render evidence, are the exception: do **not** arm auto-merge at creation. Keep them Draft until the required visual evidence has been reviewed against the relevant baseline and accepted. Only then may they become Ready and have native auto-merge enabled.
+
+No Actions runner needs to stay alive waiting for required checks, and the expensive Quality suite is paid once per normal change rather than once on the PR and again on `main`.
 
 The static delivery contracts protect this topology and the staging exact-SHA handoff. `Main · admission` is intentionally fail-closed: a direct push, stale provenance receipt, missing required check, ambiguous PR association, or unreadable artifact blocks staging instead of silently deploying an unaccredited generation.
 
@@ -30,8 +34,10 @@ Repository automation and human/agent workflow deliberately complement each othe
 - Keep it Draft while required checks are pending, cancelled or red. Fix failures in the same PR instead of opening a replacement just to obtain a fresh CI run.
 - Do not busy-wait on Actions. Once a Draft PR is functionally complete and CI is running, move to the next useful, naturally related slice. Up to five PRs may be rotated in one chat/work session before a mandatory review pass.
 - Before pushing the next PR, take a small checkpoint on the previous ones: metadata/check status only. Green required checks allow **Ready for review**; red checks require a targeted fix; pending remains Draft.
-- Enable/verify native auto-merge only after the PR is Ready for review.
-- GitHub GraphQL may reject `enablePullRequestAutoMerge` with `UNPROCESSABLE` when the PR is already `clean`/immediately mergeable. In that narrow case, after re-verifying the exact head SHA and all required checks green, merge immediately with an `expected_head_sha` guard instead of leaving a green PR stranded. This is a delivery fallback, not permission to bypass pending/red checks or merge a moved head.
+- **Non-visual PR without human PNG/screenshot review:** arm native auto-merge when the PR is created. Keep the PR Draft while required checks are pending/cancelled/red; early auto-merge is only a queued delivery intent and must never be treated as permission to skip review state or checks.
+- **Visual PR, or any PR requiring human inspection of captured PNGs/screenshots/renders:** do not arm auto-merge at creation. Keep it Draft until the visual evidence has been inspected and accepted; then move it to Ready and enable native auto-merge.
+- If GitHub refuses to enable native auto-merge while a non-visual PR is Draft, retry automatically as soon as the PR becomes Ready; do not wait for a separate operator/user prompt.
+- GitHub GraphQL may reject `enablePullRequestAutoMerge` with `UNPROCESSABLE` when the PR is already `clean`/immediately mergeable. In that narrow case, after re-verifying the exact head SHA and all required checks green, merge immediately with an `expected_head_sha` guard instead of leaving a green PR stranded. This is a delivery fallback, not permission to bypass pending/red checks, required visual review, or merge a moved head.
 - After merge, inspect the relevant post-merge chain (Main admission, staging deployment/accreditation and any surface-specific smoke). A PR is not operationally finished merely because GitHub merged it.
 
 ### GitHub access discipline
