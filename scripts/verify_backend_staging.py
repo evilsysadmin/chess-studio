@@ -20,6 +20,8 @@ REQUIRED_CORS_HEADERS = {
     "x-client-release",
     "x-presence-session",
 }
+PVP_ROSTER_CORS_METHODS = {"POST", "DELETE", "OPTIONS"}
+PVP_ROSTER_CORS_HEADERS = {"authorization", "x-request-id", "x-client-release"}
 
 
 def validate_sha(value: str) -> str:
@@ -60,17 +62,23 @@ def _normalized_response_headers(headers) -> dict[str, str]:
     return {name: ",".join(values) for name, values in normalized.items()}
 
 
-def fetch_cors_preflight(url: str, origin: str) -> tuple[int, dict[str, str]]:
+def fetch_cors_preflight(
+    url: str,
+    origin: str,
+    *,
+    method: str = "PATCH",
+    request_headers: set[str] = REQUIRED_CORS_HEADERS,
+) -> tuple[int, dict[str, str]]:
     req = urllib.request.Request(
         url,
         method="OPTIONS",
         headers={
             "Origin": origin,
-            "Access-Control-Request-Method": "PATCH",
-            "Access-Control-Request-Headers": ",".join(sorted(REQUIRED_CORS_HEADERS)),
+            "Access-Control-Request-Method": method,
+            "Access-Control-Request-Headers": ",".join(sorted(request_headers)),
             "Cache-Control": "no-cache, no-store",
             "Pragma": "no-cache",
-            "User-Agent": "chess-studio-staging-cors/2",
+            "User-Agent": "chess-studio-staging-cors/3",
         },
     )
     try:
@@ -82,7 +90,14 @@ def fetch_cors_preflight(url: str, origin: str) -> tuple[int, dict[str, str]]:
         return 0, {}
 
 
-def cors_contract_ok(status: int, headers: dict[str, str], origin: str) -> bool:
+def cors_contract_ok(
+    status: int,
+    headers: dict[str, str],
+    origin: str,
+    *,
+    required_methods: set[str] = REQUIRED_CORS_METHODS,
+    required_headers: set[str] = REQUIRED_CORS_HEADERS,
+) -> bool:
     if status < 200 or status >= 300:
         return False
     allowed_origin = headers.get("access-control-allow-origin", "").strip().lower()
@@ -98,7 +113,7 @@ def cors_contract_ok(status: int, headers: dict[str, str], origin: str) -> bool:
         for item in headers.get("access-control-allow-headers", "").split(",")
         if item.strip()
     }
-    return REQUIRED_CORS_METHODS <= allowed_methods and REQUIRED_CORS_HEADERS <= allowed_headers
+    return required_methods <= allowed_methods and required_headers <= allowed_headers
 
 
 def self_test() -> None:
@@ -123,6 +138,13 @@ def self_test() -> None:
         ),
     }
     assert cors_contract_ok(200, headers, STAGING_BROWSER_ORIGIN)
+    assert cors_contract_ok(
+        200,
+        headers,
+        STAGING_BROWSER_ORIGIN,
+        required_methods=PVP_ROSTER_CORS_METHODS,
+        required_headers=PVP_ROSTER_CORS_HEADERS,
+    )
     assert not cors_contract_ok(200, headers, "https://wrong.example")
     assert not cors_contract_ok(400, headers, STAGING_BROWSER_ORIGIN)
     print("verify-backend-staging self-test OK")
@@ -163,16 +185,30 @@ def main() -> None:
         ready_status, ready = fetch_json(f"{base}/ready?{ready_query}")
         release_status, release = fetch_json(f"{base}/release?{release_query}")
         cors_status, cors_headers = fetch_cors_preflight(f"{base}/auth/me?probe={probe}", origin)
+        pvp_cors_status, pvp_cors_headers = fetch_cors_preflight(
+            f"{base}/pvp/roster?probe={probe}",
+            origin,
+            method="POST",
+            request_headers=PVP_ROSTER_CORS_HEADERS,
+        )
         storage = str(ready.get("storage") or "")
         observed = str(release.get("build") or "").lower()
         allowed_origin = cors_headers.get("access-control-allow-origin", "")
         ok = ready_status == 200 and ready.get("ok") is True and storage == "mongo"
         exact = release_status == 200 and observed == expected
         cors_ok = cors_contract_ok(cors_status, cors_headers, origin)
-        if ok and exact and cors_ok:
+        pvp_cors_ok = cors_contract_ok(
+            pvp_cors_status,
+            pvp_cors_headers,
+            origin,
+            required_methods=PVP_ROSTER_CORS_METHODS,
+            required_headers=PVP_ROSTER_CORS_HEADERS,
+        )
+        if ok and exact and cors_ok and pvp_cors_ok:
             print(
                 "OCI staging public accreditation OK: "
-                f"storage=mongo build={observed} cors_origin={allowed_origin}"
+                f"storage=mongo build={observed} cors_origin={allowed_origin} "
+                f"pvp_roster_cors=ok"
             )
             return
 
@@ -187,6 +223,8 @@ def main() -> None:
             f"ready_http={ready_status or 'error'} storage={storage or '<empty>'} "
             f"release_http={release_status or 'error'} observed_build={observed or '<empty>'} "
             f"cors_http={cors_status or 'error'} cors_origin={allowed_origin or '<empty>'} "
+            f"pvp_roster_cors_http={pvp_cors_status or 'error'} "
+            f"pvp_roster_cors_origin={pvp_cors_headers.get('access-control-allow-origin', '') or '<empty>'} "
             f"expected_build={expected} attempt={attempt}/{args.attempts}"
         )
 
@@ -201,7 +239,7 @@ def main() -> None:
 
     raise SystemExit(
         "public OCI staging did not converge to Mongo-ready exact build with valid browser CORS "
-        "within bounded verification"
+        "for both core API and PvP roster within bounded verification"
     )
 
 
