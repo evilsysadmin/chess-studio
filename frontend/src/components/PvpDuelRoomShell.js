@@ -39,6 +39,9 @@ const PVP_DUEL_ROOM = createWarRoomBlenderVariantShell({
   runtimeModelUrl: PVP_DUEL_ROOM_RUNTIME_MODEL_URL,
   rootName: 'pvp-duel-room-medieval-shell',
   runtimeFinish: 'gltf-pbr-pvp-teutonic-dungeon-v3',
+  // This URL is content-addressed by the R2 manifest. Adding the frontend build SHA
+  // only defeats browser/CDN reuse of the same ~8 MB GLB on every staging deploy.
+  cacheBustBuild: false,
   installRuntimeEffects: installPvpDuelRoomPracticalLights,
 });
 
