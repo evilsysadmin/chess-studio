@@ -1029,6 +1029,12 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// than the Python fallback or an upstream/tunnel error.
 		w.Header().Set("X-Chess-Pvp-Native", "roster")
 	}
+	if r.URL.Path == "/api/pvp/challenges" && h.challengeCreate != nil {
+		// Challenge creation carries a JSON body, so the browser preflights it.
+		// Mark OPTIONS and auth failures too: public accreditation must prove the
+		// exact route instead of mistaking a generic edge response for success.
+		w.Header().Set("X-Chess-Pvp-Native", "challenge-create")
+	}
 	if r.Method == http.MethodOptions {
 		if !h.originAllowed(r.Header.Get("Origin")) {
 			writeJSON(w, http.StatusForbidden, map[string]any{"detail": "Origen no permitido."})
