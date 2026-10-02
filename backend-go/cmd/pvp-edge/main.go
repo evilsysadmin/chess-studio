@@ -24,12 +24,14 @@ func main() {
 	rosterEnabled := envBool("PVP_NATIVE_ROSTER_ENABLED", false)
 	chatEnabled := envBool("PVP_NATIVE_CHAT_ENABLED", false)
 	challengeResolutionEnabled := envBool("PVP_NATIVE_CHALLENGE_RESOLUTION_ENABLED", false)
+	matchHandoffCancelEnabled := envBool("PVP_NATIVE_MATCH_HANDOFF_CANCEL_ENABLED", false)
 	var nativePulse http.Handler
 	var nativeRoster http.Handler
 	var nativeChat http.Handler
 	var nativeChallengeResolution http.Handler
+	var nativeMatchHandoffCancel http.Handler
 	var mongoStore *pulse.MongoStore
-	if pulseEnabled || rosterEnabled || chatEnabled || challengeResolutionEnabled {
+	if pulseEnabled || rosterEnabled || chatEnabled || challengeResolutionEnabled || matchHandoffCancelEnabled {
 		mongoURL := strings.TrimSpace(os.Getenv("MONGO_URL"))
 		mongoDatabase := strings.TrimSpace(os.Getenv("MONGO_DB_NAME"))
 		jwtSecret := strings.TrimSpace(os.Getenv("JWT_SECRET"))
@@ -54,6 +56,8 @@ func main() {
 			EnableRoster:   rosterEnabled,
 			EnableChat:     chatEnabled,
 			EnableChallengeResolution: challengeResolutionEnabled,
+			EnableMatchHandoffCancel: matchHandoffCancelEnabled,
+			VirtualPlayersEnabled: envBool("CHESS_PVP_SPARRING_ENABLED", false),
 		})
 		if err != nil {
 			log.Fatalf("native PvP pulse handler: %v", err)
@@ -69,6 +73,9 @@ func main() {
 		}
 		if challengeResolutionEnabled {
 			nativeChallengeResolution = pulseHandler
+		}
+		if matchHandoffCancelEnabled {
+			nativeMatchHandoffCancel = pulseHandler
 		}
 	}
 	if mongoStore != nil {
@@ -89,6 +96,7 @@ func main() {
 		NativeRoster: nativeRoster,
 		NativeChat:   nativeChat,
 		NativeChallengeResolution: nativeChallengeResolution,
+		NativeMatchHandoffCancel: nativeMatchHandoffCancel,
 	})
 	if err != nil {
 		log.Fatalf("invalid pvp edge configuration: %v", err)
@@ -112,7 +120,7 @@ func main() {
 		}
 	}()
 
-	log.Printf("pvp-go listening on :%s -> %s native_pulse=%t native_roster=%t native_chat=%t native_challenge_resolution=%t", port, upstream, nativePulse != nil, nativeRoster != nil, nativeChat != nil, nativeChallengeResolution != nil)
+	log.Printf("pvp-go listening on :%s -> %s native_pulse=%t native_roster=%t native_chat=%t native_challenge_resolution=%t native_match_handoff_cancel=%t", port, upstream, nativePulse != nil, nativeRoster != nil, nativeChat != nil, nativeChallengeResolution != nil, nativeMatchHandoffCancel != nil)
 	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatalf("pvp edge serve: %v", err)
 	}
