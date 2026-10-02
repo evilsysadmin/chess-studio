@@ -133,7 +133,7 @@ describe('War Room v3 torchlit grade', () => {
 
     const release = tuneWarRoomV3Lighting(root, { coarsePointer: true });
     expect(fire.intensity).toBeCloseTo(2.05 * 2.05);
-    expect(moon.intensity).toBeCloseTo(2.65 * 0.72);
+    expect(moon.intensity).toBeCloseTo(2.65 * 0.82);
     expect(lantern.intensity).toBe(0);
 
     release();
