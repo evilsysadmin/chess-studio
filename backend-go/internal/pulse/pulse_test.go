@@ -47,6 +47,7 @@ type fakeStore struct {
 	handoffErr error
 	systemMessages []string
 	syntheticRoster map[string]int64
+	syntheticErr error
 	challengeSnapshot challengeRow
 	challengeSnapshotFound bool
 	challengeSnapshotErr error
@@ -111,6 +112,9 @@ func (f *fakeStore) AppendLobbySystem(_ context.Context, text string, _ time.Tim
 }
 
 func (f *fakeStore) UpsertSyntheticRoster(_ context.Context, username string, rating int64, _ time.Time) error {
+	if f.syntheticErr != nil {
+		return f.syntheticErr
+	}
 	if f.syntheticRoster == nil {
 		f.syntheticRoster = map[string]int64{}
 	}
