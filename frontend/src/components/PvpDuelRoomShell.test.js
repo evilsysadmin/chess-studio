@@ -25,9 +25,8 @@ describe('PvP Duel Room runtime variant', () => {
       contentType: 'model/gltf-binary',
       sha256: 'bc8849ca70350d006450f1a3093a1608a7d3a25518c93e04a7422deeaa23ee0b',
     });
-    expect(pvpDuelRoomModelUrl({ buildSha: 'abc123' })).toBe(
-      PVP_DUEL_ROOM_RUNTIME_MODEL_URL + '?build=abc123',
-    );
+    expect(pvpDuelRoomModelUrl({ buildSha: 'abc123' })).toBe(PVP_DUEL_ROOM_RUNTIME_MODEL_URL);
+    expect(pvpDuelRoomModelUrl({ buildSha: 'def456' })).toBe(PVP_DUEL_ROOM_RUNTIME_MODEL_URL);
   });
 
   it('installs restrained dungeon practicals from authored anchors', () => {
