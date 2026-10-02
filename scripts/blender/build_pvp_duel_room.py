@@ -43,6 +43,7 @@ DUEL_WEATHER_MATERIALS = frozenset({
     "PVP_MAT_wall_stone",
     "PVP_MAT_floor_stone",
     "PVP_MAT_dais_stone",
+    "PVP_MAT_limestone",
 })
 
 
@@ -70,8 +71,8 @@ def palette():
             rough=0.73, coat=0.035, texture="stone", scale=4.0, bump=0.060, weather=True,
         ),
         "limestone": base.material(
-            "PVP_MAT_limestone", (0.43, 0.39, 0.31, 1),
-            rough=0.82, texture="stone", scale=4.4, bump=0.060,
+            "PVP_MAT_limestone", (0.31, 0.275, 0.225, 1),
+            rough=0.88, texture="stone", scale=4.4, bump=0.072, weather=True,
         ),
         "wet_stone": base.material(
             "PVP_MAT_wet_stone", (0.032, 0.042, 0.044, 1),
