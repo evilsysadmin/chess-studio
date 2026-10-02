@@ -396,6 +396,7 @@ expected_native = str(env.get('CHESS_STUDIO_PVP_NATIVE_PULSE_ENABLED', 'true')).
 expected_roster = str(env.get('CHESS_STUDIO_PVP_NATIVE_ROSTER_ENABLED', 'false')).strip().lower() in {'1', 'true', 'yes', 'on'}
 expected_chat = str(env.get('CHESS_STUDIO_PVP_NATIVE_CHAT_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
 expected_challenge_resolution = str(env.get('CHESS_STUDIO_PVP_NATIVE_CHALLENGE_RESOLUTION_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
+expected_challenge_accept = str(env.get('CHESS_STUDIO_PVP_NATIVE_CHALLENGE_ACCEPT_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
 expected_match_handoff_cancel = str(env.get('CHESS_STUDIO_PVP_NATIVE_MATCH_HANDOFF_CANCEL_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
 expected_match_ready = str(env.get('CHESS_STUDIO_PVP_NATIVE_MATCH_READY_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
 if (
@@ -405,6 +406,7 @@ if (
     or bool(payload.get('nativeRoster')) != expected_roster
     or bool(payload.get('nativeChat')) != expected_chat
     or bool(payload.get('nativeChallengeResolution')) != expected_challenge_resolution
+    or bool(payload.get('nativeChallengeAccept')) != expected_challenge_accept
     or bool(payload.get('nativeMatchHandoffCancel')) != expected_match_handoff_cancel
     or bool(payload.get('nativeMatchReady')) != expected_match_ready
 ):
