@@ -375,5 +375,24 @@ test('War Room 1v1 · reto entrante abre una partida humana en el tablero canón
   await expect(debrief).toContainText('Derrota');
   await expect(debrief).toContainText('Perdiste por tiempo');
   await expect(debrief).toContainText('Contra bob · 1210 rating · Tiempo · 2 jugadas registradas');
+
+  const verdict = debrief.locator('.pvp-war-room__result-verdict');
+  const avatar = verdict.locator('img');
+  const lead = debrief.locator('.pvp-war-room__result-lead');
+  const [debriefBox, roomAfterBox, avatarBox, verdictFontPx, leadFontPx] = await Promise.all([
+    debrief.boundingBox(),
+    warRoom.boundingBox(),
+    avatar.boundingBox(),
+    verdict.locator('p').evaluate((node) => Number.parseFloat(getComputedStyle(node).fontSize)),
+    lead.evaluate((node) => Number.parseFloat(getComputedStyle(node).fontSize)),
+  ]);
+  expect(debriefBox).not.toBeNull();
+  expect(roomAfterBox).not.toBeNull();
+  expect(avatarBox).not.toBeNull();
+  expect(Math.abs((debriefBox.x + debriefBox.width / 2) - (roomAfterBox.x + roomAfterBox.width / 2)) / roomAfterBox.width).toBeLessThan(0.06);
+  expect(Math.abs((debriefBox.y + debriefBox.height / 2) - (roomAfterBox.y + roomAfterBox.height / 2)) / roomAfterBox.height).toBeLessThan(0.12);
+  expect(avatarBox.width).toBeGreaterThanOrEqual(42);
+  expect(verdictFontPx).toBeGreaterThan(leadFontPx * 1.2);
+
   await expect(debrief.getByRole('button', { name: 'Volver al lobby' })).toBeVisible();
 });
