@@ -256,7 +256,7 @@ test('App visual artifact · Matthias Home deterministic full + crop', async () 
         if (capture.expectedSleepDecor) {
           await expect(avatar.locator('.home-matthias-3d__sleep-blanket')).toHaveCount(1);
           await expect(avatar.locator('.home-matthias-3d__sleep-bubble')).toHaveCount(1);
-          await expect(canvas).toHaveAttribute('data-matthias-sleep-pose', 'sofa-recline-v1');
+          await expect(canvas).toHaveAttribute('data-matthias-sleep-pose', 'sofa-recline-v2');
         }
         if (capture.profile === 'dossier') {
           await expect(canvas).toHaveAttribute('data-matthias-dossier-sip', 'procedural-v1');
