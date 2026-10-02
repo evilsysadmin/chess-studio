@@ -2333,3 +2333,88 @@
     min-height: 44px;
   }
 }
+
+
+/* Duel Hall architecture · presentation only. */
+.pvp-duel-hall__architecture {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.pvp-duel-hall__architecture::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -15%;
+  width: 118%;
+  height: 48%;
+  transform: translateX(-50%) perspective(520px) rotateX(63deg);
+  transform-origin: center bottom;
+  background:
+    linear-gradient(90deg, transparent 49.7%, rgba(206,165,100,.08) 50%, transparent 50.3%),
+    repeating-linear-gradient(90deg, rgba(181,150,105,.055) 0 1px, transparent 1px 94px),
+    repeating-linear-gradient(0deg, rgba(181,150,105,.05) 0 1px, transparent 1px 64px);
+  opacity: .7;
+}
+.pvp-duel-hall__arch {
+  position: absolute;
+  top: -125px;
+  left: 50%;
+  width: min(760px,72%);
+  height: 290px;
+  transform: translateX(-50%);
+  border: 34px solid rgba(72,60,49,.35);
+  border-bottom: 0;
+  border-radius: 52% 52% 0 0 / 88% 88% 0 0;
+}
+.pvp-duel-hall__gate {
+  position: absolute;
+  z-index: -1;
+  top: 0;
+  left: 50%;
+  width: min(360px,38%);
+  height: 118px;
+  transform: translateX(-50%);
+  opacity: .2;
+  border-inline: 9px solid rgba(70,59,48,.52);
+  background:
+    repeating-linear-gradient(90deg, transparent 0 25px, rgba(88,82,72,.66) 25px 29px),
+    repeating-linear-gradient(0deg, transparent 0 24px, rgba(88,82,72,.48) 24px 28px);
+  mask-image: linear-gradient(to bottom,#000 10%,transparent 100%);
+}
+.pvp-duel-hall__torch {
+  position: absolute;
+  top: 112px;
+  width: 8px;
+  height: 54px;
+  border-radius: 5px;
+  background: linear-gradient(#59442d,#201913);
+}
+.pvp-duel-hall__torch::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -17px;
+  width: 16px;
+  height: 24px;
+  transform: translateX(-50%);
+  border-radius: 52% 52% 62% 62%;
+  background: radial-gradient(circle at 50% 70%,#ffd68a 0 15%,#d27432 42%,rgba(130,45,19,.18) 70%,transparent 72%);
+  filter: drop-shadow(0 0 11px rgba(214,117,49,.72));
+}
+.pvp-duel-hall__torch.is-left { left: 6%; }
+.pvp-duel-hall__torch.is-right { right: 6%; }
+@media (max-width:820px) {
+  .pvp-duel-hall__torch { opacity:.5; }
+  .pvp-duel-hall__arch { width:84%; }
+}
+@media (max-width:660px) {
+  .pvp-duel-hall__architecture::before,
+  .pvp-duel-hall__gate { opacity:.32; }
+  .pvp-duel-hall__torch { top:88px; opacity:.36; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .pvp-duel-hall__torch::before { filter:none; }
+}
