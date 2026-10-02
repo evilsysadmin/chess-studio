@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { login, mockApi } from './helpers.js';
 
-async function openHome(page) {
-  await mockApi(page);
+async function openHome(page, apiOptions = {}) {
+  await mockApi(page, apiOptions);
   await login(page);
   const guide = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
   if (await guide.isVisible().catch(() => false)) {
@@ -12,7 +12,7 @@ async function openHome(page) {
 
 test('Home desktop · el reproductor plegado no roba el hitbox de Matthias y expandido cabe en viewport', async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 520 });
-  await openHome(page);
+  await openHome(page, { isAdmin: true });
 
   const dock = page.locator('.global-music-dock');
   const openPlayer = page.getByRole('button', { name: 'Abrir reproductor de música', exact: true });
@@ -34,12 +34,12 @@ test('Home desktop · el reproductor plegado no roba el hitbox de Matthias y exp
   expect(openBox.y + openBox.height).toBeLessThanOrEqual(512);
 
   const serviceStatus = dock.locator('.live-service-status');
-  if (await serviceStatus.isVisible().catch(() => false)) {
-    const serviceBox = await serviceStatus.boundingBox();
-    expect(serviceBox).not.toBeNull();
-    expect(serviceBox.y).toBeGreaterThanOrEqual(8);
-    expect(serviceBox.y + serviceBox.height).toBeLessThanOrEqual(512);
-  }
+  await expect(serviceStatus).toBeVisible();
+  await expect(page.getByRole('button', { name: '2 usuarios online', exact: true })).toBeVisible();
+  const serviceBox = await serviceStatus.boundingBox();
+  expect(serviceBox).not.toBeNull();
+  expect(serviceBox.y).toBeGreaterThanOrEqual(8);
+  expect(serviceBox.y + serviceBox.height).toBeLessThanOrEqual(512);
 
   const overlapsMatthias = openBox.x < matthiasBox.x + matthiasBox.width
     && openBox.x + openBox.width > matthiasBox.x
