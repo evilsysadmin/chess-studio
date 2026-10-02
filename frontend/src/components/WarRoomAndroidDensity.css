@@ -276,6 +276,13 @@
 }
 
 @media (max-width: 390px) {
+  /* The immersive HUD otherwise consumes almost the entire top strip at
+     360/390px, leaving no physical slot for the 28px save-status dot. Reserve
+     one compact status lane on the left; 430px already has enough free space. */
+  body.war-room-immersive-active .game-screen .game-layout-immersive .game-3d-command-column {
+    width: calc(100vw - 3.5rem) !important;
+  }
+
   .game-screen .game-layout-3d .game-3d-turn-pill {
     grid-template-columns: minmax(0, 1fr) 7px max-content 92px 44px !important;
     gap: .22rem;
