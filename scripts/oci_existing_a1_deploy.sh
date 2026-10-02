@@ -394,11 +394,13 @@ payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
 env = __import__('os').environ
 expected_native = str(env.get('CHESS_STUDIO_PVP_NATIVE_PULSE_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
 expected_roster = str(env.get('CHESS_STUDIO_PVP_NATIVE_ROSTER_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
+expected_chat = str(env.get('CHESS_STUDIO_PVP_NATIVE_CHAT_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
 if (
     payload.get('status') != 'ready'
     or payload.get('service') != 'chess-studio-pvp-go'
     or bool(payload.get('nativePulse')) != expected_native
     or bool(payload.get('nativeRoster')) != expected_roster
+    or bool(payload.get('nativeChat')) != expected_chat
 ):
     raise SystemExit(1)
 PY

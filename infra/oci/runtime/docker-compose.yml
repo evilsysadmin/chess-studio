@@ -84,6 +84,7 @@ services:
       PVP_PYTHON_UPSTREAM: "http://backend_blue:4000"
       PVP_NATIVE_PULSE_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_PULSE_ENABLED:-true}"
       PVP_NATIVE_ROSTER_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_ROSTER_ENABLED:-true}"
+      PVP_NATIVE_CHAT_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_CHAT_ENABLED:-true}"
       CORS_ORIGINS: "${CHESS_STUDIO_CORS_ORIGINS:-https://staging.chess-studio.shadowops.dpdns.org}"
 
   pvp_green:
@@ -95,6 +96,7 @@ services:
       PVP_PYTHON_UPSTREAM: "http://backend_green:4000"
       PVP_NATIVE_PULSE_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_PULSE_ENABLED:-true}"
       PVP_NATIVE_ROSTER_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_ROSTER_ENABLED:-true}"
+      PVP_NATIVE_CHAT_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_CHAT_ENABLED:-true}"
       CORS_ORIGINS: "${CHESS_STUDIO_CORS_ORIGINS:-https://staging.chess-studio.shadowops.dpdns.org}"
 
   # One-time rollback target for the migration from the old single-slot runtime.

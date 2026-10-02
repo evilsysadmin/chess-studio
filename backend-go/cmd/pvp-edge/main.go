@@ -22,10 +22,12 @@ func main() {
 
 	pulseEnabled := envBool("PVP_NATIVE_PULSE_ENABLED", false)
 	rosterEnabled := envBool("PVP_NATIVE_ROSTER_ENABLED", false)
+	chatEnabled := envBool("PVP_NATIVE_CHAT_ENABLED", false)
 	var nativePulse http.Handler
 	var nativeRoster http.Handler
+	var nativeChat http.Handler
 	var mongoStore *pulse.MongoStore
-	if pulseEnabled || rosterEnabled {
+	if pulseEnabled || rosterEnabled || chatEnabled {
 		mongoURL := strings.TrimSpace(os.Getenv("MONGO_URL"))
 		mongoDatabase := strings.TrimSpace(os.Getenv("MONGO_DB_NAME"))
 		jwtSecret := strings.TrimSpace(os.Getenv("JWT_SECRET"))
@@ -48,6 +50,7 @@ func main() {
 			JWTSecret:      jwtSecret,
 			AllowedOrigins: splitCSV(os.Getenv("CORS_ORIGINS")),
 			EnableRoster:   rosterEnabled,
+			EnableChat:     chatEnabled,
 		})
 		if err != nil {
 			log.Fatalf("native PvP pulse handler: %v", err)
@@ -57,6 +60,9 @@ func main() {
 		}
 		if rosterEnabled {
 			nativeRoster = pulseHandler
+		}
+		if chatEnabled {
+			nativeChat = pulseHandler
 		}
 	}
 	if mongoStore != nil {
@@ -75,6 +81,7 @@ func main() {
 		ReadyTimeout: 2 * time.Second,
 		NativePulse:  nativePulse,
 		NativeRoster: nativeRoster,
+		NativeChat:   nativeChat,
 	})
 	if err != nil {
 		log.Fatalf("invalid pvp edge configuration: %v", err)
@@ -98,7 +105,7 @@ func main() {
 		}
 	}()
 
-	log.Printf("pvp-go listening on :%s -> %s native_pulse=%t native_roster=%t", port, upstream, nativePulse != nil, nativeRoster != nil)
+	log.Printf("pvp-go listening on :%s -> %s native_pulse=%t native_roster=%t native_chat=%t", port, upstream, nativePulse != nil, nativeRoster != nil, nativeChat != nil)
 	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatalf("pvp edge serve: %v", err)
 	}

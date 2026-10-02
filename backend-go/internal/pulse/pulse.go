@@ -25,6 +25,8 @@ const (
 	defaultQueryTimeout  = 2 * time.Second
 	rosterJoinLimit      = 30
 	rosterJoinWindow     = time.Minute
+	lobbyChatLimit       = 12
+	lobbyChatWindow      = time.Minute
 	rosterTTL            = 45 * time.Second
 	challengeTTL         = 75 * time.Second
 	lobbyChatTTL         = 24 * time.Hour
@@ -41,6 +43,7 @@ type Store interface {
 	MatchState(context.Context, string, string, time.Time) (matchPulseState, error)
 	JoinRoster(context.Context, string, time.Time) (rosterRow, error)
 	LeaveRoster(context.Context, string, time.Time) error
+	AppendLobbyChat(context.Context, string, string, time.Time) (chatMessageRow, error)
 }
 
 type HandlerConfig struct {
@@ -49,6 +52,7 @@ type HandlerConfig struct {
 	AllowedOrigins []string
 	PollAfter      time.Duration
 	EnableRoster   bool
+	EnableChat     bool
 	Now            func() time.Time
 }
 
@@ -59,8 +63,11 @@ type Handler struct {
 	allowAnyOrigin bool
 	pollAfterMS    int64
 	enableRoster   bool
+	enableChat     bool
 	rosterMu       sync.Mutex
 	rosterWindows  map[string]rateWindow
+	chatMu         sync.Mutex
+	chatWindows    map[string]rateWindow
 	now            func() time.Time
 }
 
@@ -145,6 +152,14 @@ type chatRow struct {
 	CreatedAt time.Time `bson:"created_at"`
 }
 
+type chatMessageRow struct {
+	ID        string
+	Username  string
+	Text      string
+	Kind      string
+	CreatedAt time.Time
+}
+
 func NewHandler(cfg HandlerConfig) (*Handler, error) {
 	if cfg.Store == nil {
 		return nil, errors.New("pulse store is required")
@@ -181,7 +196,9 @@ func NewHandler(cfg HandlerConfig) (*Handler, error) {
 		allowAnyOrigin: allowAny,
 		pollAfterMS:    pollAfter.Milliseconds(),
 		enableRoster:   cfg.EnableRoster,
+		enableChat:     cfg.EnableChat,
 		rosterWindows:  make(map[string]rateWindow),
+		chatWindows:    make(map[string]rateWindow),
 		now:            now,
 	}, nil
 }
@@ -310,6 +327,26 @@ func (s *MongoStore) LeaveRoster(ctx context.Context, username string, now time.
 		bson.M{"$set": bson.M{"status": "cancelled", "resolved_at": now}},
 	)
 	return err
+}
+
+func (s *MongoStore) AppendLobbyChat(ctx context.Context, username, text string, now time.Time) (chatMessageRow, error) {
+	queryCtx, cancel := context.WithTimeout(ctx, s.timeout)
+	defer cancel()
+	stampValue := now.UTC()
+	sum := sha256.Sum256([]byte(username + "\x00" + stampValue.Format(time.RFC3339Nano) + "\x00" + text))
+	id := hex.EncodeToString(sum[:])[:24]
+	row := chatMessageRow{ID: id, Username: username, Text: text, Kind: "message", CreatedAt: stampValue}
+	_, err := s.db.Collection("pvp_lobby_chat").InsertOne(queryCtx, bson.M{
+		"_id": id,
+		"username": username,
+		"text": text,
+		"kind": "message",
+		"created_at": stampValue,
+	})
+	if err != nil {
+		return chatMessageRow{}, err
+	}
+	return row, nil
 }
 
 func normalizedRating(value any) int64 {
@@ -641,6 +678,50 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	now := h.now().UTC()
 
+	if r.URL.Path == "/api/pvp/lobby/chat" {
+		if !h.enableChat {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("X-Chess-Pvp-Native", "lobby-chat")
+		if r.Method != http.MethodPost {
+			w.Header().Set("Allow", "POST, OPTIONS")
+			writeJSON(w, http.StatusMethodNotAllowed, map[string]any{"detail": "Método no permitido."})
+			return
+		}
+		if allowed, retryAfter := h.allowLobbyChat(claims.Subject, now); !allowed {
+			w.Header().Set("Retry-After", fmt.Sprintf("%d", retryAfter))
+			writeJSON(w, http.StatusTooManyRequests, map[string]any{"detail": "Demasiados mensajes 1v1."})
+			return
+		}
+		var payload struct { Text string `json:"text"` }
+		decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 2048))
+		if err := decoder.Decode(&payload); err != nil {
+			writeJSON(w, http.StatusUnprocessableEntity, map[string]any{"detail": "Mensaje inválido."})
+			return
+		}
+		rawLen := len([]rune(payload.Text))
+		if rawLen < 1 || rawLen > 240 {
+			writeJSON(w, http.StatusUnprocessableEntity, map[string]any{"detail": "El mensaje debe tener entre 1 y 240 caracteres."})
+			return
+		}
+		text := strings.Join(strings.Fields(payload.Text), " ")
+		if text == "" {
+			writeJSON(w, http.StatusUnprocessableEntity, map[string]any{"detail": "El mensaje está vacío."})
+			return
+		}
+		row, err := h.store.AppendLobbyChat(r.Context(), claims.Subject, text, now)
+		if err != nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]any{"detail": "No se pudo publicar el mensaje 1v1."})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"message": map[string]any{
+			"id": row.ID, "username": row.Username, "text": row.Text, "kind": row.Kind,
+			"createdAt": stamp(row.CreatedAt), "isSelf": true,
+		}})
+		return
+	}
+
 	if r.URL.Path == "/api/pvp/roster" {
 		if !h.enableRoster {
 			http.NotFound(w, r)
@@ -722,6 +803,24 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		"pollAfterMs": h.pollAfterMS,
 		"source":      "go",
 	})
+}
+
+func (h *Handler) allowLobbyChat(username string, now time.Time) (bool, int) {
+	h.chatMu.Lock()
+	defer h.chatMu.Unlock()
+	window := h.chatWindows[username]
+	if window.start.IsZero() || now.Sub(window.start) >= lobbyChatWindow {
+		h.chatWindows[username] = rateWindow{start: now, count: 1}
+		return true, 0
+	}
+	if window.count >= lobbyChatLimit {
+		retry := int(lobbyChatWindow.Seconds() - now.Sub(window.start).Seconds())
+		if retry < 1 { retry = 1 }
+		return false, retry
+	}
+	window.count++
+	h.chatWindows[username] = window
+	return true, 0
 }
 
 func (h *Handler) allowRosterJoin(username string, now time.Time) (bool, int) {
