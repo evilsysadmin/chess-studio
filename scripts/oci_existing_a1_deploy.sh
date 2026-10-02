@@ -601,7 +601,8 @@ pvp_authenticated_browser_attest() {
   local backend_service="$1"
   local api_base="${2%/}"
   local deployment_target="${3:-$target}"
-  local token token_output token_line line probe endpoint expected_native request_id headers body status
+  local token token_output token_line line probe endpoint expected_native request_id
+  local preflight_headers preflight_status headers body status
 
   if [[ "$deployment_target" != "staging" ]]; then
     return 0
@@ -639,11 +640,69 @@ pvp_authenticated_browser_attest() {
         ;;
     esac
     request_id="staging-authenticated-${probe}-${sha:0:12}"
+    preflight_headers="$(mktemp)"
     headers="$(mktemp)"
     body="$(mktemp)"
 
-    if ! status="$(curl --silent --show-error --max-time 10         -X GET         -H "Origin: $cors_origin"         -H 'Accept: application/json'         -H "Authorization: Bearer $token"         -H "X-Request-ID: $request_id"         -H 'X-Client-Release: staging-authenticated-verifier'         -H 'Cache-Control: no-cache, no-store'         -D "$headers" -o "$body" -w "%{http_code}"         "$endpoint")"; then
-      rm -f "$headers" "$body"
+    # Reproduce the browser's non-simple authenticated GET before sending it.
+    # A direct curl GET can look healthy while Chromium refuses to dispatch the
+    # request because the OPTIONS response does not authorize one of its headers.
+    if ! preflight_status="$(curl --silent --show-error --max-time 10 \
+        -X OPTIONS \
+        -H "Origin: $cors_origin" \
+        -H 'Access-Control-Request-Method: GET' \
+        -H 'Access-Control-Request-Headers: authorization,x-request-id,x-client-release' \
+        -D "$preflight_headers" -o /dev/null -w "%{http_code}" \
+        "$endpoint")"; then
+      rm -f "$preflight_headers" "$headers" "$body"
+      return 1
+    fi
+
+    if [[ "$preflight_status" != "204" ]] || ! python3 - "$preflight_headers" "$cors_origin" "$expected_native" <<'PY'
+import pathlib
+import sys
+
+headers_path, expected_origin, expected_native = sys.argv[1:]
+raw_headers = pathlib.Path(headers_path).read_text(encoding="utf-8", errors="replace")
+parsed = {}
+for line in raw_headers.replace("\r\n", "\n").split("\n"):
+    if ":" not in line:
+        continue
+    name, value = line.split(":", 1)
+    parsed.setdefault(name.strip().lower(), []).append(value.strip())
+
+origins = [value.lower() for value in parsed.get("access-control-allow-origin", [])]
+if origins != [expected_origin.strip().lower()]:
+    raise SystemExit("authenticated preflight must expose exactly one canonical ACAO")
+methods = ",".join(parsed.get("access-control-allow-methods", [])).upper()
+if "GET" not in methods:
+    raise SystemExit("authenticated preflight does not allow GET")
+allowed_headers = ",".join(parsed.get("access-control-allow-headers", [])).lower()
+for required in ("authorization", "x-request-id", "x-client-release"):
+    if required not in allowed_headers:
+        raise SystemExit(f"authenticated preflight does not allow {required}")
+if [value.lower() for value in parsed.get("x-chess-pvp-edge", [])] != ["go"]:
+    raise SystemExit("authenticated preflight did not traverse Go edge")
+if [value.lower() for value in parsed.get("x-chess-pvp-native", [])] != [expected_native.lower()]:
+    raise SystemExit("authenticated preflight hit the wrong native route")
+PY
+    then
+      echo "authenticated PvP browser preflight failed: probe=$probe endpoint=$endpoint http=$preflight_status" >&2
+      rm -f "$preflight_headers" "$headers" "$body"
+      return 1
+    fi
+
+    if ! status="$(curl --silent --show-error --max-time 10 \
+        -X GET \
+        -H "Origin: $cors_origin" \
+        -H 'Accept: application/json' \
+        -H "Authorization: Bearer $token" \
+        -H "X-Request-ID: $request_id" \
+        -H 'X-Client-Release: staging-authenticated-verifier' \
+        -H 'Cache-Control: no-cache, no-store' \
+        -D "$headers" -o "$body" -w "%{http_code}" \
+        "$endpoint")"; then
+      rm -f "$preflight_headers" "$headers" "$body"
       return 1
     fi
 
@@ -690,10 +749,10 @@ else:
 PY
     then
       echo "authenticated PvP browser probe failed: probe=$probe endpoint=$endpoint http=$status" >&2
-      rm -f "$headers" "$body"
+      rm -f "$preflight_headers" "$headers" "$body"
       return 1
     fi
-    rm -f "$headers" "$body"
+    rm -f "$preflight_headers" "$headers" "$body"
   done
 
   echo "PVP_AUTHENTICATED_BROWSER_OK base=$api_base origin=$cors_origin"

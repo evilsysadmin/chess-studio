@@ -109,6 +109,18 @@ required_deploy_fragments = (
 for fragment in required_deploy_fragments:
     assert fragment in deploy, f"missing OCI staging CORS deploy contract: {fragment}"
 
+staging_live = (ROOT / "e2e" / "staging-live.spec.js").read_text(encoding="utf-8")
+for fragment in (
+    "assertLivePvpBrowserPath",
+    "page.on('requestfailed', onRequestFailed)",
+    "headers['access-control-allow-origin']",
+    "x-chess-pvp-edge",
+    "x-chess-pvp-native",
+    "'/lobby/pulse'",
+    "'Recibir retos'",
+):
+    assert fragment in staging_live, f"missing real Chromium PvP CORS staging gate: {fragment}"
+
 # Human SSH remains tunnel-only, but the already-created A1 still needs a
 # controlled way to authorize an operator public key. Keep this recovery path
 # narrower than general root Run Command access.
@@ -485,6 +497,14 @@ for fragment in (
     'expected_native="lobby-read"',
     'expected_native="lobby-pulse"',
     '-H "Origin: $cors_origin"',
+    "-H 'Access-Control-Request-Method: GET'",
+    "-H 'Access-Control-Request-Headers: authorization,x-request-id,x-client-release'",
+    '[[ "$preflight_status" != "204" ]]',
+    'authenticated preflight must expose exactly one canonical ACAO',
+    'authenticated preflight does not allow GET',
+    'for required in ("authorization", "x-request-id", "x-client-release")',
+    'authenticated preflight did not traverse Go edge',
+    'authenticated preflight hit the wrong native route',
     '-H "Authorization: Bearer $token"',
     '[[ "$status" != "200" ]]',
     'origins != [expected_origin.strip().lower()]',

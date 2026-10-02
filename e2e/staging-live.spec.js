@@ -187,6 +187,95 @@ function attachUxAuditProbe(page) {
   return runtime;
 }
 
+function isPvpApiPath(rawUrl, suffix) {
+  try {
+    const url = new URL(rawUrl);
+    return url.origin + url.pathname === `${STAGING_API_URL}/pvp${suffix}`;
+  } catch {
+    return false;
+  }
+}
+
+function assertPvpBrowserResponse(response, { suffix, native }) {
+  expect(response.status(), `GET ${suffix} debe ser browser-visible`).toBe(200);
+  const headers = response.headers();
+  expect(
+    headers['access-control-allow-origin'],
+    `GET ${suffix} debe exponer el ACAO canónico al Chromium real`,
+  ).toBe(new URL(STAGING_URL).origin);
+  expect(headers['x-chess-pvp-edge'], `GET ${suffix} debe atravesar Go`).toBe('go');
+  expect(headers['x-chess-pvp-native'], `GET ${suffix} debe acreditar la ruta nativa`).toBe(native);
+}
+
+async function assertLivePvpBrowserPath(page) {
+  const failed = [];
+  const onRequestFailed = (request) => {
+    if (request.url().includes('/api/pvp/')) {
+      failed.push({
+        method: request.method(),
+        url: request.url(),
+        failure: request.failure()?.errorText || 'requestfailed',
+      });
+    }
+  };
+  page.on('requestfailed', onRequestFailed);
+
+  const waitLobby = () => page.waitForResponse(
+    (response) => response.request().method() === 'GET' && isPvpApiPath(response.url(), '/lobby'),
+    { timeout: 25_000 },
+  );
+  const waitPulse = () => page.waitForResponse(
+    (response) => response.request().method() === 'GET' && isPvpApiPath(response.url(), '/lobby/pulse'),
+    { timeout: 25_000 },
+  );
+
+  try {
+    const firstLobby = waitLobby();
+    await page.getByRole('button', { name: 'Abrir Sala de Duelos 1 contra 1' }).click();
+    assertPvpBrowserResponse(await firstLobby, { suffix: '/lobby', native: 'lobby-read' });
+
+    const lobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room' });
+    await expect(lobby).toBeVisible();
+    await expect(lobby.getByRole('heading', { name: 'Sala de Duelos' })).toBeVisible();
+    await expect(lobby.locator('.pvp-lobby__error')).toHaveCount(0);
+
+    // Enrolarnos fuerza el mismo polling que usa una sesión humana real:
+    // pulse nativo + reconciliación full-lobby. El antiguo gate con curl podía
+    // quedar verde aunque Chromium terminara viendo exactamente estos GET como
+    // CORS/network error.
+    const join = page.waitForResponse(
+      (response) => response.request().method() === 'POST' && isPvpApiPath(response.url(), '/roster'),
+      { timeout: 25_000 },
+    );
+    const firstPulse = waitPulse();
+    const reconciledLobby = waitLobby();
+    await lobby.getByRole('button', { name: 'Recibir retos', exact: true }).click();
+
+    expect((await join).status(), 'POST /roster debe confirmar disponibilidad').toBe(200);
+    assertPvpBrowserResponse(await firstPulse, { suffix: '/lobby/pulse', native: 'lobby-pulse' });
+    assertPvpBrowserResponse(await reconciledLobby, { suffix: '/lobby', native: 'lobby-read' });
+
+    // Dos ciclos adicionales evitan acreditar sólo la primera respuesta feliz
+    // del sidecar y reproducen el patrón repetido que ve el navegador.
+    for (let cycle = 0; cycle < 2; cycle += 1) {
+      assertPvpBrowserResponse(await waitPulse(), { suffix: '/lobby/pulse', native: 'lobby-pulse' });
+    }
+    await expect(lobby.locator('.pvp-lobby__error')).toHaveCount(0);
+    expect(failed, `PvP browser requestfailed: ${JSON.stringify(failed)}`).toEqual([]);
+
+    const leave = page.waitForResponse(
+      (response) => response.request().method() === 'DELETE' && isPvpApiPath(response.url(), '/roster'),
+      { timeout: 25_000 },
+    );
+    await lobby.getByRole('button', { name: 'Dejar de estar disponible', exact: true }).click();
+    expect((await leave).status(), 'DELETE /roster debe limpiar la identidad técnica').toBe(204);
+    await lobby.getByRole('button', { name: 'Cerrar ventana de rivales', exact: true }).click();
+    await expect(lobby).toBeHidden();
+  } finally {
+    page.off('requestfailed', onRequestFailed);
+  }
+}
+
 async function captureUxCheckpoint(page, testInfo, report, name) {
   await page.waitForTimeout(350);
   const metrics = await page.evaluate(() => {
@@ -297,6 +386,10 @@ test('staging live · auth real → War Room v2 → recovery 3D → jugada real'
 
     await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible({ timeout: 25_000 });
     await expect(page.getByRole('complementary', { name: 'Rincón de Matthias' })).toBeVisible({ timeout: 10_000 });
+
+    // P0 staging: acredita el 1v1 con fetch real de Chromium, no sólo curl.
+    await assertLivePvpBrowserPath(page);
+
     await expect(buttonWithVisibleText(page, 'Partida rápida')).toBeVisible();
     await buttonWithVisibleText(page, 'Partida rápida').click();
 
