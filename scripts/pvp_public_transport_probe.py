@@ -112,6 +112,52 @@ def self_test() -> None:
     print("pvp public transport self-test: OK")
 
 
+def probe_public_pvp_transport(base_url: str, origin: str, *, timeout: float = 12.0, require_go: bool = False) -> tuple[bool, dict]:
+    base = api_base(base_url)
+    endpoint = f"{base}/pvp/roster"
+    request_id = f"prod-pvp-probe-{uuid.uuid4().hex[:12]}"
+    preflight_status, preflight_headers = transport_request(
+        endpoint,
+        method="OPTIONS",
+        headers={
+            "Origin": origin,
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "authorization,x-request-id,x-client-release",
+            "User-Agent": "ChessStudioPvpTransportProbe/1",
+        },
+        timeout=timeout,
+    )
+    response_status, response_headers = transport_request(
+        endpoint,
+        method="POST",
+        headers={
+            "Origin": origin,
+            "Accept": "application/json",
+            "Authorization": "Bearer deliberately-invalid",
+            "X-Request-ID": request_id,
+            "X-Client-Release": "production-transport-probe",
+            "User-Agent": "ChessStudioPvpTransportProbe/1",
+        },
+        timeout=timeout,
+    )
+    errors = [
+        *validate_preflight(preflight_status, preflight_headers, origin, require_go=require_go),
+        *validate_rejection(response_status, response_headers, origin, request_id, require_go=require_go),
+    ]
+    detail = {
+        "check": "pvp_public_browser_transport",
+        "ok": not errors,
+        "endpoint": endpoint,
+        "origin": origin,
+        "preflight_status": preflight_status,
+        "post_status": response_status,
+        "edge": response_headers.get("x-chess-pvp-edge"),
+        "native": response_headers.get("x-chess-pvp-native"),
+        "errors": errors,
+    }
+    return not errors, detail
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--base-url", default="")
@@ -139,58 +185,23 @@ def main() -> int:
         print("pvp transport probe: origin inválido", file=sys.stderr)
         return 2
 
-    endpoint = f"{base}/pvp/roster"
-    request_id = f"prod-pvp-probe-{uuid.uuid4().hex[:12]}"
     try:
-        preflight_status, preflight_headers = transport_request(
-            endpoint,
-            method="OPTIONS",
-            headers={
-                "Origin": origin,
-                "Access-Control-Request-Method": "POST",
-                "Access-Control-Request-Headers": "authorization,x-request-id,x-client-release",
-                "User-Agent": "ChessStudioPvpTransportProbe/1",
-            },
+        ok, detail = probe_public_pvp_transport(
+            base,
+            origin,
             timeout=args.timeout,
-        )
-        response_status, response_headers = transport_request(
-            endpoint,
-            method="POST",
-            headers={
-                "Origin": origin,
-                "Accept": "application/json",
-                "Authorization": "Bearer deliberately-invalid",
-                "X-Request-ID": request_id,
-                "X-Client-Release": "production-transport-probe",
-                "User-Agent": "ChessStudioPvpTransportProbe/1",
-            },
-            timeout=args.timeout,
+            require_go=args.require_go,
         )
     except (URLError, TimeoutError, OSError) as exc:
-        print(json.dumps({
+        detail = {
             "check": "pvp_public_browser_transport",
             "ok": False,
             "error": type(exc).__name__,
             "detail": str(exc)[:200],
-        }, separators=(",", ":"), sort_keys=True))
-        return 1
-
-    errors = [
-        *validate_preflight(preflight_status, preflight_headers, origin, require_go=args.require_go),
-        *validate_rejection(response_status, response_headers, origin, request_id, require_go=args.require_go),
-    ]
-    print(json.dumps({
-        "check": "pvp_public_browser_transport",
-        "ok": not errors,
-        "endpoint": endpoint,
-        "origin": origin,
-        "preflight_status": preflight_status,
-        "post_status": response_status,
-        "edge": response_headers.get("x-chess-pvp-edge"),
-        "native": response_headers.get("x-chess-pvp-native"),
-        "errors": errors,
-    }, separators=(",", ":"), sort_keys=True))
-    return 0 if not errors else 1
+        }
+        ok = False
+    print(json.dumps(detail, separators=(",", ":"), sort_keys=True))
+    return 0 if ok else 1
 
 
 if __name__ == "__main__":
