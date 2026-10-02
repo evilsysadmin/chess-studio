@@ -162,6 +162,36 @@ func TestAcceptRetryReturnsExistingAcceptedMatch(t *testing.T) {
 	}
 }
 
+func TestAcceptRepairsAcceptedChallengeWhenMatchIsMissing(t *testing.T) {
+	now := time.Date(2026, 10, 2, 10, 0, 0, 0, time.UTC)
+	challenge := pendingChallenge()
+	challenge.Status = "accepted"
+	challenge.MatchID = "match-1"
+	store := &fakeStore{
+		challenge:      challenge,
+		challengeFound: true,
+		matchFound:     false,
+		active:         map[string]bool{"alice": true, "bob": true},
+		roster:         map[string]bool{},
+		commitOK:       true,
+	}
+	service, _ := New(Config{
+		Store: store,
+		Now:   func() time.Time { return now },
+		Coin:  func() (bool, error) { return false, nil },
+	})
+	result, err := service.Accept(context.Background(), challenge.ID, "bob", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.AcceptedNow || store.commitCalls != 1 {
+		t.Fatalf("accepted recovery did not resume saga: %#v calls=%d", result, store.commitCalls)
+	}
+	if store.committedDraft.ID != "match-1" {
+		t.Fatalf("recovery changed deterministic match id: %#v", store.committedDraft)
+	}
+}
+
 func TestAcceptPreservesPythonPreconditionOrder(t *testing.T) {
 	tests := []struct {
 		name   string
