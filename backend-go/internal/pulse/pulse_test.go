@@ -182,6 +182,46 @@ func TestPulseOptionsHandlesCORSWithoutAuthentication(t *testing.T) {
 	}
 }
 
+func TestCanonicalBrowserOriginsAreAllowedForNativeRosterPreflight(t *testing.T) {
+	h, err := NewHandler(HandlerConfig{
+		Store:        &fakeStore{},
+		JWTSecret:    "01234567890123456789012345678901",
+		EnableRoster: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, origin := range []string{
+		"https://staging.chess-studio.shadowops.dpdns.org",
+		"https://chess-studio.shadowops.dpdns.org",
+	} {
+		t.Run(origin, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodOptions, "http://edge/api/pvp/roster", nil)
+			req.Header.Set("Origin", origin)
+			req.Header.Set("Access-Control-Request-Method", http.MethodPost)
+			req.Header.Set("Access-Control-Request-Headers", "authorization,x-client-release")
+			rr := httptest.NewRecorder()
+			h.ServeHTTP(rr, req)
+
+			if rr.Code != http.StatusNoContent {
+				t.Fatalf("status=%d want=204 body=%s", rr.Code, rr.Body.String())
+			}
+			if got := rr.Header().Get("Access-Control-Allow-Origin"); got != origin {
+				t.Fatalf("cors origin=%q want=%q", got, origin)
+			}
+			methods := rr.Header().Get("Access-Control-Allow-Methods")
+			if !strings.Contains(methods, http.MethodPost) || !strings.Contains(methods, http.MethodDelete) {
+				t.Fatalf("cors methods=%q", methods)
+			}
+			allowedHeaders := strings.ToLower(rr.Header().Get("Access-Control-Allow-Headers"))
+			if !strings.Contains(allowedHeaders, "authorization") || !strings.Contains(allowedHeaders, "x-client-release") {
+				t.Fatalf("cors headers=%q", allowedHeaders)
+			}
+		})
+	}
+}
+
 func TestPulseStorageFailureFailsClosed(t *testing.T) {
 	h, err := NewHandler(HandlerConfig{
 		Store:     &fakeStore{authErr: errors.New("mongo down")},
