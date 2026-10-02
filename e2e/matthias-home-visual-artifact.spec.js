@@ -15,7 +15,7 @@ const ALL_CAPTURES = [
   { label:'desktop-chess-chair-1440x900', width:1440, height:900, hour:9, profile:'think', clip:'Think', station:'chess-chair', support:'chair-seat', supportBottomRange:[.64, .72], avatar:/afternoon-ops/i, expectFullPlinth:true, expectCopy:false },
   { label:'desktop-reading-1440x900', width:1440, height:900, hour:8, profile:'read', clip:'Read', station:'library-chair', support:'chair-seat', supportBottomRange:[.64, .72], avatar:/strategy-book/i, maxStageLeftRatio:.19, expectFullPlinth:true, expectCopy:false },
   { label:'desktop-writing-1440x900', width:1440, height:900, hour:16, profile:'write', clip:'Write', station:'writing-desk', support:'chair-seat', supportBottomRange:[.64, .72], avatar:/afternoon-ops/i, maxStageLeftRatio:.19, expectFullPlinth:true, expectCopy:false },
-  { label:'desktop-rest-1440x900', width:1440, height:900, hour:2, profile:'sleep', clip:'Sleep', station:'rest', support:'lounge-seat', supportBottomRange:[.7, .84], avatar:/late-sleep/i, expectCopy:false },
+  { label:'desktop-rest-1440x900', width:1440, height:900, hour:2, profile:'sleep', clip:'Sleep', station:'rest', support:'lounge-seat', supportBottomRange:[.7, .88], avatar:/late-sleep/i, expectedSleepDecor:true, expectCopy:false },
 ];
 const CAPTURES = process.env.HOME_MATTHIAS_CAPTURE_SCOPE === 'canonical-model'
   ? ALL_CAPTURES.filter(({ label }) => (
@@ -253,6 +253,11 @@ test('App visual artifact · Matthias Home deterministic full + crop', async () 
         await expect(image).toHaveAttribute('src', capture.avatar);
         await expect(canvas).toHaveAttribute('data-matthias-canonical-model', 'blender');
         await expect(canvas).toHaveAttribute('data-matthias-clip', capture.clip);
+        if (capture.expectedSleepDecor) {
+          await expect(avatar.locator('.home-matthias-3d__sleep-blanket')).toHaveCount(1);
+          await expect(avatar.locator('.home-matthias-3d__sleep-bubble')).toHaveCount(1);
+          await expect(canvas).toHaveAttribute('data-matthias-sleep-pose', 'sofa-recline-v2');
+        }
         if (capture.profile === 'dossier') {
           await expect(canvas).toHaveAttribute('data-matthias-dossier-sip', 'procedural-v1');
           await expect(canvas).toHaveAttribute('data-matthias-limb-scale', 'arms-1.15-hands-1.18-legs-1.12');

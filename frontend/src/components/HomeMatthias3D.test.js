@@ -13,6 +13,7 @@ import {
   homeMatthiasPlaybackPolicy,
   homeMatthiasPortraitFrame,
   homeMatthiasRoutinePropPolicy,
+  homeMatthiasSleepPose,
   homeMatthiasDossierSipPose,
   homeMatthiasLimbScaleForMesh,
 } from './HomeMatthias3D.jsx';
@@ -76,6 +77,11 @@ describe('Home Matthias canonical Blender rig', () => {
     expect(homeMatthiasLimbScaleForMesh('Hand.R')).toBe(1.18);
     expect(homeMatthiasLimbScaleForMesh('Boot.L')).toBe(1.12);
     expect(homeMatthiasLimbScaleForMesh('Classic lower pawn')).toBe(1);
+  });
+
+  it('reclines only the sleeping Home routine onto the sofa', () => {
+    expect(homeMatthiasSleepPose('sleep')).toEqual({ active: true, rollDeg: -82, lift: 0.02 });
+    expect(homeMatthiasSleepPose('dossier')).toEqual({ active: false, rollDeg: 0, lift: 0 });
   });
 
   it('keeps every routine wired to a named Blender animation clip', () => {

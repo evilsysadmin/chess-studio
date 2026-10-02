@@ -146,3 +146,91 @@
     transform: none !important;
   }
 }
+
+
+/* Sleep is intentionally diegetic: Matthias lies on the lounge, is partly
+ * tucked under a blanket, and gets a small comic snore bubble. */
+.home-matthias-3d__sleep-blanket,
+.home-matthias-3d__sleep-bubble {
+  position: absolute;
+  pointer-events: none;
+}
+
+.home-matthias-3d[data-home-matthias-station='rest'] canvas {
+  transform: rotate(-82deg) scale(.78);
+  transform-origin: 50% 54%;
+}
+
+.home-matthias-3d__sleep-blanket {
+  z-index: 2;
+  left: 38%;
+  right: 14%;
+  bottom: 17%;
+  height: 30%;
+  border: 1px solid rgba(180, 128, 62, .36);
+  border-radius: 42% 36% 24% 26% / 36% 34% 24% 26%;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.05) 0 2%, transparent 2% 10%, rgba(0,0,0,.06) 10% 12%, transparent 12% 20%),
+    linear-gradient(180deg, rgba(107,61,43,.95) 0%, rgba(78,42,34,.96) 60%, rgba(50,29,26,.98) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 221, 156, .1),
+    0 4px 9px rgba(0,0,0,.2);
+  transform: rotate(-3deg);
+  transform-origin: 72% 62%;
+}
+
+.home-matthias-3d__sleep-bubble {
+  z-index: 3;
+  top: 1%;
+  right: 2%;
+  display: flex;
+  align-items: baseline;
+  gap: .12em;
+  min-width: 4.6em;
+  padding: .32em .52em .38em;
+  border: 2px solid rgba(55, 42, 30, .82);
+  border-radius: 52% 48% 55% 45%;
+  background: rgba(246, 228, 181, .96);
+  box-shadow: 0 3px 8px rgba(0,0,0,.26);
+  color: #3b2a1d;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(13px, 1.15cqw, 19px);
+  font-weight: 800;
+  letter-spacing: .02em;
+  transform: rotate(-5deg);
+}
+
+.home-matthias-3d__sleep-bubble::after {
+  content: '';
+  position: absolute;
+  left: 9%;
+  bottom: -13%;
+  width: .65em;
+  height: .65em;
+  border-right: 2px solid rgba(55, 42, 30, .82);
+  border-bottom: 2px solid rgba(55, 42, 30, .82);
+  background: rgba(246, 228, 181, .96);
+  transform: rotate(42deg);
+}
+
+.home-matthias-3d__sleep-bubble span {
+  display: inline-block;
+  animation: home-matthias-snore-z 1.8s ease-in-out infinite;
+}
+
+.home-matthias-3d__sleep-bubble span:nth-child(2) { animation-delay: .18s; }
+.home-matthias-3d__sleep-bubble span:nth-child(3) { animation-delay: .36s; }
+.home-matthias-3d__sleep-bubble span:nth-child(4) { animation-delay: .54s; }
+
+@keyframes home-matthias-snore-z {
+  0%, 55%, 100% { transform: translateY(0) scale(.82); opacity: .58; }
+  22% { transform: translateY(-18%) scale(1.12); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-matthias-3d__sleep-bubble span {
+    animation: none;
+    opacity: .9;
+    transform: none;
+  }
+}

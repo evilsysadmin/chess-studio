@@ -143,6 +143,11 @@ export function homeMatthiasRoutinePropPolicy(profile = 'idle') {
 }
 
 
+export function homeMatthiasSleepPose(profile = 'idle') {
+  if (profile !== 'sleep') return { active: false, rollDeg: 0, lift: 0 };
+  return { active: true, rollDeg: -82, lift: 0.02 };
+}
+
 export function homeMatthiasPlaybackPolicy() {
   // A Home routine lasts tens of seconds. Keep its authored gesture looping so
   // coffee/dinner do not collapse back to an unrelated idle pose while Matthias
@@ -582,6 +587,38 @@ export default function HomeMatthias3D({
       canvas.dataset.matthiasDossierSipWeight = pose.weight.toFixed(3);
     };
 
+    const applyActorPose = (deltaSeconds = 0) => {
+      if (!model) return;
+      const desired = desiredMotionRef.current;
+      const targetAttention = desired.reducedMotion ? 0 : (desired.activeRoom ? 1 : 0);
+      if (desired.reducedMotion) {
+        attentionAmount = 0;
+      } else {
+        const ease = 1 - Math.exp(-Math.max(0, deltaSeconds) * 8.5);
+        attentionAmount += (targetAttention - attentionAmount) * ease;
+      }
+
+      const pose = homeMatthiasAttentionPose(desired.activeRoom);
+      model.position.copy(baseModelPosition)
+        .addScaledVector(attentionForward, pose.forward * attentionAmount);
+      model.position.y += pose.lift * attentionAmount;
+      attentionQuaternion.setFromAxisAngle(
+        attentionSide,
+        THREE.MathUtils.degToRad(pose.leanDeg * attentionAmount),
+      );
+      model.quaternion.copy(baseModelQuaternion).multiply(attentionQuaternion);
+
+      const sleepPose = homeMatthiasSleepPose(currentProfile);
+      if (sleepPose.active) {
+        /* Keep the rig inside its portrait framing. The visual recline is
+           applied to the portrait canvas itself; rotating around the GLB root
+           (at the pawn's feet) swings the whole body out of frame. */
+        canvas.dataset.matthiasSleepPose = 'sofa-recline-v2';
+      } else {
+        canvas.dataset.matthiasSleepPose = 'standing';
+      }
+    };
+
     const renderOnce = () => {
       try {
         renderer.render(threeScene, camera);
@@ -644,6 +681,7 @@ export default function HomeMatthias3D({
       if (still) {
         mixer.setTime(Math.max(0, clip.duration * 0.34));
         applyRoutinePropPolicy(resolvedProfile);
+        applyActorPose(0);
         renderOnce();
       }
     };
@@ -660,21 +698,7 @@ export default function HomeMatthias3D({
       mixer?.update(delta);
       applyDossierSipPose(delta);
       applyRoutinePropPolicy(currentProfile);
-      if (model) {
-        const desired = desiredMotionRef.current;
-        const targetAttention = desired.reducedMotion ? 0 : (desired.activeRoom ? 1 : 0);
-        const ease = 1 - Math.exp(-delta * 8.5);
-        attentionAmount += (targetAttention - attentionAmount) * ease;
-        const pose = homeMatthiasAttentionPose(desired.activeRoom);
-        model.position.copy(baseModelPosition)
-          .addScaledVector(attentionForward, pose.forward * attentionAmount);
-        model.position.y += pose.lift * attentionAmount;
-        attentionQuaternion.setFromAxisAngle(
-          attentionSide,
-          THREE.MathUtils.degToRad(pose.leanDeg * attentionAmount),
-        );
-        model.quaternion.copy(baseModelQuaternion).multiply(attentionQuaternion);
-      }
+      applyActorPose(delta);
       renderOnce();
       frame = window.requestAnimationFrame(tick);
     };
@@ -907,6 +931,14 @@ export default function HomeMatthias3D({
         style={reducedMotion ? undefined : { animationDelay: `${-phase}s` }}
       />
       <canvas ref={canvasRef} data-matthias-canonical-model="blender" />
+      {profile === 'sleep' && (
+        <>
+          <span className="home-matthias-3d__sleep-blanket" />
+          <span className="home-matthias-3d__sleep-bubble" aria-hidden="true">
+            <span>Z</span><span>Z</span><span>Z</span><span>Z</span>
+          </span>
+        </>
+      )}
     </span>
   );
 }
