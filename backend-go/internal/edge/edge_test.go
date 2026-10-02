@@ -412,3 +412,56 @@ func TestMatchReadyFallsBackToPythonWhenNativeDisabled(t *testing.T) {
 	h.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/matches/m-1/ready", nil))
 	if rr.Code != http.StatusOK { t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String()) }
 }
+
+
+func TestNativeChallengeAcceptBypassesPythonWhenEnabled(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		t.Fatal("native challenge accept must not reach Python upstream")
+	}))
+	defer upstream.Close()
+	native := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/pvp/challenges/c-1/accept" || r.Method != http.MethodPost {
+			t.Fatalf("native accept request=%s %s", r.Method, r.URL.Path)
+		}
+		_, _ = w.Write([]byte(`{"match":{"id":"c-1","status":"starting"}}`))
+	})
+	h, err := New(Config{UpstreamURL: upstream.URL, NativeChallengeAccept: native})
+	if err != nil { t.Fatal(err) }
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/challenges/c-1/accept", nil))
+	if rr.Code != http.StatusOK { t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String()) }
+	if got := rr.Header().Get("X-Chess-Pvp-Edge"); got != "go" { t.Fatalf("edge marker=%q", got) }
+}
+
+func TestChallengeAcceptFallsBackToPythonWhenNativeDisabled(t *testing.T) {
+	called := false
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		if r.URL.Path != "/api/pvp/challenges/c-1/accept" || r.Method != http.MethodPost {
+			t.Fatalf("upstream accept request=%s %s", r.Method, r.URL.Path)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer upstream.Close()
+	h := mustHandler(t, upstream.URL)
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/challenges/c-1/accept", nil))
+	if rr.Code != http.StatusOK || !called { t.Fatalf("fallback status=%d called=%t body=%s", rr.Code, called, rr.Body.String()) }
+}
+
+func TestReadinessReportsNativeChallengeAcceptState(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/ready" { w.WriteHeader(http.StatusOK); return }
+		http.NotFound(w, r)
+	}))
+	defer upstream.Close()
+	native := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
+	h, err := New(Config{UpstreamURL: upstream.URL, NativeChallengeAccept: native})
+	if err != nil { t.Fatal(err) }
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "http://edge/readyz", nil))
+	if rr.Code != http.StatusOK { t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String()) }
+	var body map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil { t.Fatal(err) }
+	if body["nativeChallengeAccept"] != true { t.Fatalf("nativeChallengeAccept=%#v want=true", body["nativeChallengeAccept"]) }
+}
