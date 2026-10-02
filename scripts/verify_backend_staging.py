@@ -310,6 +310,7 @@ def main() -> None:
         release_query = urllib.parse.urlencode({"sha": expected, "probe": probe})
         ready_status, ready = fetch_json(f"{base}/ready?{ready_query}")
         release_status, release = fetch_json(f"{base}/release?{release_query}")
+        pvp_edge_status, pvp_edge = fetch_json(f"{base}/pvp/_edge/ready?{ready_query}")
         cors_status, cors_headers = fetch_cors_preflight(f"{base}/auth/me?probe={probe}", origin)
         pvp_cors_status, pvp_cors_headers = fetch_cors_preflight(
             f"{base}/pvp/roster?probe={probe}",
@@ -371,6 +372,13 @@ def main() -> None:
             origin,
             challenge_request_id,
         )
+        pvp_edge_ready_ok = (
+            pvp_edge_status == 200
+            and pvp_edge.get("status") == "ready"
+            and pvp_edge.get("service") == "chess-studio-pvp-go"
+            and pvp_edge.get("nativeLobbyRead") is True
+            and pvp_edge.get("virtualPlayersEnabled") is True
+        )
         if (
             ok
             and exact
@@ -380,12 +388,13 @@ def main() -> None:
             and pvp_response_ok
             and challenge_cors_ok
             and challenge_response_ok
+            and pvp_edge_ready_ok
         ):
             print(
                 "OCI staging public accreditation OK: "
                 f"storage=mongo build={observed} cors_origin={allowed_origin} "
                 f"pvp_roster_cors=ok pvp_roster_native_response=ok "
-                f"pvp_challenge_transport=ok"
+                f"pvp_challenge_transport=ok pvp_lobby_read=ok virtual_players=on"
             )
             return
 
@@ -409,6 +418,9 @@ def main() -> None:
             f"pvp_challenge_cors_origin={challenge_cors_headers.get('access-control-allow-origin', '') or '<empty>'} "
             f"pvp_challenge_response_http={challenge_response_status or 'error'} "
             f"pvp_challenge_edge={challenge_response_headers.get('x-chess-pvp-edge', '') or '<empty>'} "
+            f"pvp_edge_ready_http={pvp_edge_status or 'error'} "
+            f"pvp_native_lobby_read={pvp_edge.get('nativeLobbyRead', '<empty>')} "
+            f"pvp_virtual_players={pvp_edge.get('virtualPlayersEnabled', '<empty>')} "
             f"expected_build={expected} attempt={attempt}/{args.attempts}"
         )
 
