@@ -9,6 +9,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -24,7 +25,9 @@ type fakeStore struct {
 	matchErr  error
 	joinErr   error
 	leaveErr  error
+	chatErr   error
 	leftUsers []string
+	chatRows  []chatMessageRow
 }
 
 func (f *fakeStore) AuthState(context.Context, string) (bool, int64, error) {
@@ -46,6 +49,13 @@ func (f *fakeStore) JoinRoster(context.Context, string, time.Time) (rosterRow, e
 func (f *fakeStore) LeaveRoster(_ context.Context, username string, _ time.Time) error {
 	f.leftUsers = append(f.leftUsers, username)
 	return f.leaveErr
+}
+
+func (f *fakeStore) AppendLobbyChat(_ context.Context, username, text string, now time.Time) (chatMessageRow, error) {
+	if f.chatErr != nil { return chatMessageRow{}, f.chatErr }
+	row := chatMessageRow{ID: "chat-1", Username: username, Text: text, Kind: "message", CreatedAt: now}
+	f.chatRows = append(f.chatRows, row)
+	return row, nil
 }
 
 func TestPulseReturnsNativeRevisionForValidSession(t *testing.T) {
@@ -403,4 +413,67 @@ func TestRatingNormalizationMatchesPythonContract(t *testing.T) {
 			t.Fatalf("normalizedRating(%v)=%d want=%d", tc.value, got, tc.want)
 		}
 	}
+}
+
+
+func TestNativeLobbyChatMatchesPythonContract(t *testing.T) {
+	now := time.Date(2026, 10, 2, 8, 0, 0, 123000000, time.UTC)
+	store := &fakeStore{exists: true, version: 6}
+	h, err := NewHandler(HandlerConfig{Store: store, JWTSecret: "01234567890123456789012345678901", EnableChat: true, Now: func() time.Time { return now }})
+	if err != nil { t.Fatal(err) }
+	token := signedToken(t, "alice", 6, now.Add(time.Hour), "session", "01234567890123456789012345678901")
+	req := httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/lobby/chat", strings.NewReader("{\"text\":\"  hola   mundo  \"}"))
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK { t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String()) }
+	if got := rr.Header().Get("X-Chess-Pvp-Native"); got != "lobby-chat" { t.Fatalf("native header=%q", got) }
+	if len(store.chatRows) != 1 || store.chatRows[0].Text != "hola mundo" || store.chatRows[0].Username != "alice" { t.Fatalf("chat rows=%#v", store.chatRows) }
+	var body map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil { t.Fatal(err) }
+	msg, ok := body["message"].(map[string]any)
+	if !ok || msg["id"] != "chat-1" || msg["username"] != "alice" || msg["text"] != "hola mundo" || msg["kind"] != "message" || msg["isSelf"] != true {
+		t.Fatalf("unexpected message=%#v", body["message"])
+	}
+}
+
+func TestNativeLobbyChatValidationAndRateLimit(t *testing.T) {
+	now := time.Date(2026, 10, 2, 8, 0, 0, 0, time.UTC)
+	store := &fakeStore{exists: true, version: 1}
+	h, err := NewHandler(HandlerConfig{Store: store, JWTSecret: "01234567890123456789012345678901", EnableChat: true, Now: func() time.Time { return now }})
+	if err != nil { t.Fatal(err) }
+	token := signedToken(t, "alice", 1, now.Add(time.Hour), "session", "01234567890123456789012345678901")
+
+	bad := httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/lobby/chat", strings.NewReader("{\"text\":\"   \"}"))
+	bad.Header.Set("Authorization", "Bearer "+token)
+	badRR := httptest.NewRecorder()
+	h.ServeHTTP(badRR, bad)
+	if badRR.Code != http.StatusUnprocessableEntity { t.Fatalf("blank status=%d body=%s", badRR.Code, badRR.Body.String()) }
+
+	for i := 0; i < lobbyChatLimit-1; i++ {
+		req := httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/lobby/chat", strings.NewReader("{\"text\":\"hola\"}"))
+		req.Header.Set("Authorization", "Bearer "+token)
+		rr := httptest.NewRecorder()
+		h.ServeHTTP(rr, req)
+		if rr.Code != http.StatusOK { t.Fatalf("request %d status=%d body=%s", i+1, rr.Code, rr.Body.String()) }
+	}
+	req := httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/lobby/chat", strings.NewReader("{\"text\":\"uno más\"}"))
+	req.Header.Set("Authorization", "Bearer "+token)
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusTooManyRequests { t.Fatalf("rate status=%d want=429 body=%s", rr.Code, rr.Body.String()) }
+	if rr.Header().Get("Retry-After") == "" { t.Fatal("missing Retry-After") }
+}
+
+func TestNativeLobbyChatDisabledReturnsNotFound(t *testing.T) {
+	now := time.Date(2026, 10, 2, 8, 0, 0, 0, time.UTC)
+	h, err := NewHandler(HandlerConfig{Store: &fakeStore{exists: true, version: 1}, JWTSecret: "01234567890123456789012345678901", Now: func() time.Time { return now }})
+	if err != nil { t.Fatal(err) }
+	token := signedToken(t, "alice", 1, now.Add(time.Hour), "session", "01234567890123456789012345678901")
+	req := httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/lobby/chat", strings.NewReader("{\"text\":\"hola\"}"))
+	req.Header.Set("Authorization", "Bearer "+token)
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusNotFound { t.Fatalf("status=%d want=404 body=%s", rr.Code, rr.Body.String()) }
 }
