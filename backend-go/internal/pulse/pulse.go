@@ -78,6 +78,7 @@ type HandlerConfig struct {
 	ChallengeCreate challengeCreateService
 	MatchResign matchResignService
 	MatchReadStore matchReadStore
+	MatchMoveStore matchMoveStore
 	MatchTimeout matchTimeoutService
 	MatchDisconnect matchDisconnectService
 	RatingSettlement ratingSettlementService
@@ -102,6 +103,7 @@ type Handler struct {
 	challengeCreate challengeCreateService
 	matchResign matchResignService
 	matchReadStore matchReadStore
+	matchMoveStore matchMoveStore
 	matchTimeout matchTimeoutService
 	matchDisconnect matchDisconnectService
 	ratingSettlement ratingSettlementService
@@ -114,6 +116,8 @@ type Handler struct {
 	chatWindows    map[string]rateWindow
 	matchReadMu    sync.Mutex
 	matchReadWindows map[string]rateWindow
+	matchMoveMu    sync.Mutex
+	matchMoveWindows map[string]rateWindow
 	now            func() time.Time
 }
 
@@ -308,6 +312,7 @@ func NewHandler(cfg HandlerConfig) (*Handler, error) {
 		challengeCreate: cfg.ChallengeCreate,
 		matchResign: cfg.MatchResign,
 		matchReadStore: cfg.MatchReadStore,
+		matchMoveStore: cfg.MatchMoveStore,
 		matchTimeout: cfg.MatchTimeout,
 		matchDisconnect: cfg.MatchDisconnect,
 		ratingSettlement: cfg.RatingSettlement,
@@ -317,6 +322,7 @@ func NewHandler(cfg HandlerConfig) (*Handler, error) {
 		rosterWindows:  make(map[string]rateWindow),
 		chatWindows:    make(map[string]rateWindow),
 		matchReadWindows: make(map[string]rateWindow),
+		matchMoveWindows: make(map[string]rateWindow),
 		now:            now,
 	}, nil
 }
@@ -1061,6 +1067,15 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if matchID, ok := matchMoveID(r.URL.Path); ok {
+		if h.matchMoveStore == nil || h.matchReadStore == nil || h.matchTimeout == nil || h.matchDisconnect == nil {
+			http.NotFound(w, r)
+			return
+		}
+		h.serveMatchMove(w, r, claims.Subject, matchID, now)
+		return
+	}
+
 	if r.URL.Path == "/api/pvp/challenges" {
 		if h.challengeCreate == nil {
 			http.NotFound(w, r)
@@ -1359,6 +1374,26 @@ func (h *Handler) allowMatchRead(username string, now time.Time) (bool, int) {
 	}
 	window.count++
 	h.matchReadWindows[username] = window
+	return true, 0
+}
+
+func (h *Handler) allowMatchMove(username string, now time.Time) (bool, int) {
+	h.matchMoveMu.Lock()
+	defer h.matchMoveMu.Unlock()
+	window := h.matchMoveWindows[username]
+	if window.start.IsZero() || now.Sub(window.start) >= time.Minute {
+		h.matchMoveWindows[username] = rateWindow{start: now, count: 1}
+		return true, 0
+	}
+	if window.count >= 45 {
+		retry := int(time.Minute.Seconds() - now.Sub(window.start).Seconds())
+		if retry < 1 {
+			retry = 1
+		}
+		return false, retry
+	}
+	window.count++
+	h.matchMoveWindows[username] = window
 	return true, 0
 }
 
