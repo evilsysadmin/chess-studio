@@ -1,33 +1,47 @@
-export function classicWarRoomCameraFramingProfile(aspect = 1) {
+export const WAR_ROOM_CANONICAL_CAMERA_VERSION = 'v4-play-camera-v1';
+export const WAR_ROOM_CANONICAL_CAMERA_FOV = 22;
+export const WAR_ROOM_CANONICAL_PLAY_PITCH = Object.freeze({ cameraY: 9.2, cameraZ: 9.55 });
+
+export function canonicalWarRoomCameraFramingProfile({ aspect = 1 } = {}) {
   const safeAspect = Math.max(0.35, Number(aspect) || 1);
   const wide = safeAspect >= 1.42;
+  const shared = {
+    fov: WAR_ROOM_CANONICAL_CAMERA_FOV,
+    cameraY: WAR_ROOM_CANONICAL_PLAY_PITCH.cameraY,
+    cameraZ: WAR_ROOM_CANONICAL_PLAY_PITCH.cameraZ,
+  };
 
-  // V1 prioritises piece separation and click readability over showing as much
-  // wall as possible. Keep the long desktop lens, but raise the eyeline so the
-  // board reads more like a playable surface and less like a low cinematic shot.
-  // Wide desktop keeps just over 45° of elevation: enough piece-base separation
-  // for selection, but a touch more room depth than the steeper previous tune.
+  // War Room v4 is the optical canon for every playable castle room. Shells may
+  // change, but camera angle and lens do not. Narrow viewports may move/scale the
+  // framing so all 64 squares remain usable; that is a crop adaptation, not a
+  // second camera language.
   return wide
     ? Object.freeze({
-        version: 'classic-overhead-v3',
-        halfSpan: 5.28,
-        padding: 1.04,
+        ...shared,
+        version: WAR_ROOM_CANONICAL_CAMERA_VERSION,
+        mode: 'canonical-wide',
+        halfSpan: 5.38,
+        padding: 1.07,
         minDistance: 13.2,
-        maxDistance: 28,
-        targetY: 1.25,
-        targetZ: -0.1,
-        cameraY: 9.34,
-        cameraZ: 9.3,
+        maxDistance: 88,
+        targetY: 2.2,
+        targetZ: -0.16,
       })
     : Object.freeze({
-        version: 'classic-overhead-v3',
-        halfSpan: 5.72,
-        padding: 1.12,
-        minDistance: 14.4,
-        maxDistance: 30,
-        targetY: 0.82,
-        targetZ: -0.06,
-        cameraY: 10.2,
-        cameraZ: 10.35,
+        ...shared,
+        version: `${WAR_ROOM_CANONICAL_CAMERA_VERSION}-compact`,
+        mode: 'canonical-compact',
+        halfSpan: 5.78,
+        padding: 1.13,
+        minDistance: 14.5,
+        maxDistance: 88,
+        targetY: 0.92,
+        targetZ: -0.08,
       });
+}
+
+// Compatibility export for older callers/tests. V1 no longer owns a separate
+// optical profile: it follows the same v4-derived play camera as every room.
+export function classicWarRoomCameraFramingProfile(aspect = 1) {
+  return canonicalWarRoomCameraFramingProfile({ aspect });
 }
