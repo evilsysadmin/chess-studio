@@ -464,17 +464,20 @@ pvp_virtual_roster_attest() {
   local backend_service="$1"
   local pvp_service="$2"
   local deployment_target="${3:-$target}"
+  local surface="${4:-sidecar}"
+  local public_base="${5:-$public_api_url}"
   local enabled="${pvp_sparring_enabled,,}"
 
   if [[ "$deployment_target" != "staging" ]] || [[ ! "$enabled" =~ ^(1|true|yes|on)$ ]]; then
     return 0
   fi
 
-  compose "$sha" exec -T "$backend_service" python - "$pvp_service" <<'PY'
+  compose "$sha" exec -T "$backend_service" python - "$pvp_service" "$surface" "$public_base" <<'PY'
 import asyncio
 import json
 import os
 import sys
+import urllib.parse
 import urllib.request
 
 from auth import create_token
@@ -482,6 +485,8 @@ from db import close_db
 from users_store import get_auth_state
 
 pvp_service = str(sys.argv[1]).strip()
+surface = str(sys.argv[2]).strip().lower()
+public_base = str(sys.argv[3]).strip().rstrip("/")
 owner = str(os.environ.get("CHESS_PVP_SPARRING_OWNER") or "evilsysadmin").strip().lower()
 sparring = str(os.environ.get("CHESS_PVP_SPARRING_USERNAME") or "sparringmeister").strip().lower()
 
@@ -502,28 +507,10 @@ if not exists:
     raise SystemExit("PVP_VIRTUAL_ROSTER_FAIL reason=owner-account-missing")
 
 token = create_token(owner, session_version)
-request = urllib.request.Request(
-    f"http://{pvp_service}:8080/api/pvp/lobby",
-    headers={
-        "Accept": "application/json",
-        "Authorization": f"Bearer {token}",
-        "Cache-Control": "no-cache",
-    },
-)
-try:
-    with urllib.request.urlopen(request, timeout=8) as response:
-        payload = json.load(response)
-except Exception:
-    raise SystemExit("PVP_VIRTUAL_ROSTER_FAIL reason=lobby-request-failed")
-
-rows = payload.get("roster")
-if not isinstance(rows, list):
-    raise SystemExit("PVP_VIRTUAL_ROSTER_FAIL reason=roster-not-list")
-
-by_name = {
-    str(row.get("username") or "").strip().lower(): row
-    for row in rows
-    if isinstance(row, dict)
+headers = {
+    "Accept": "application/json",
+    "Authorization": f"Bearer {token}",
+    "Cache-Control": "no-cache",
 }
 required = (
     sparring,
@@ -531,22 +518,63 @@ required = (
     "marta_stein",
     "viktor_kraus",
 )
-for username in required:
-    row = by_name.get(username)
-    if row is None:
-        raise SystemExit(f"PVP_VIRTUAL_ROSTER_FAIL reason=missing-rival rival={username}")
-    if row.get("isSelf") is True:
-        raise SystemExit(f"PVP_VIRTUAL_ROSTER_FAIL reason=virtual-rival-marked-self rival={username}")
 
-for username in ("otto_falk", "marta_stein", "viktor_kraus"):
-    row = by_name[username]
-    if str(row.get("actorKind") or "").strip().lower() != "resident":
-        raise SystemExit(f"PVP_VIRTUAL_ROSTER_FAIL reason=wrong-actor-kind rival={username}")
 
-print(
-    "PVP_VIRTUAL_ROSTER_OK "
-    f"sparring={sparring} residents=otto_falk,marta_stein,viktor_kraus"
-)
+def attest_roster(url: str, *, surface: str, require_public_markers: bool = False) -> None:
+    request = urllib.request.Request(url, headers=headers)
+    try:
+        with urllib.request.urlopen(request, timeout=8) as response:
+            response_headers = {str(k).lower(): str(v).strip() for k, v in response.headers.items()}
+            payload = json.load(response)
+    except Exception:
+        raise SystemExit(f"PVP_VIRTUAL_ROSTER_FAIL surface={surface} reason=lobby-request-failed")
+
+    if require_public_markers:
+        if response_headers.get("x-chess-pvp-edge", "").lower() != "go":
+            raise SystemExit(f"PVP_VIRTUAL_ROSTER_FAIL surface={surface} reason=wrong-edge")
+        if response_headers.get("x-chess-pvp-native", "").lower() != "lobby-read":
+            raise SystemExit(f"PVP_VIRTUAL_ROSTER_FAIL surface={surface} reason=wrong-native-route")
+
+    rows = payload.get("roster")
+    if not isinstance(rows, list):
+        raise SystemExit(f"PVP_VIRTUAL_ROSTER_FAIL surface={surface} reason=roster-not-list")
+
+    by_name = {
+        str(row.get("username") or "").strip().lower(): row
+        for row in rows
+        if isinstance(row, dict)
+    }
+    for username in required:
+        row = by_name.get(username)
+        if row is None:
+            raise SystemExit(
+                f"PVP_VIRTUAL_ROSTER_FAIL surface={surface} reason=missing-rival rival={username}"
+            )
+        if row.get("isSelf") is True:
+            raise SystemExit(
+                f"PVP_VIRTUAL_ROSTER_FAIL surface={surface} reason=virtual-rival-marked-self rival={username}"
+            )
+
+    for username in ("otto_falk", "marta_stein", "viktor_kraus"):
+        row = by_name[username]
+        if str(row.get("actorKind") or "").strip().lower() != "resident":
+            raise SystemExit(
+                f"PVP_VIRTUAL_ROSTER_FAIL surface={surface} reason=wrong-actor-kind rival={username}"
+            )
+
+    print(
+        "PVP_VIRTUAL_ROSTER_OK "
+        f"surface={surface} sparring={sparring} residents=otto_falk,marta_stein,viktor_kraus"
+    )
+
+
+if surface == "sidecar":
+    attest_roster(f"http://{pvp_service}:8080/api/pvp/lobby", surface="sidecar")
+elif surface == "public":
+    public_url = f"{public_base}/pvp/lobby?" + urllib.parse.urlencode({"probe": os.getpid()})
+    attest_roster(public_url, surface="public", require_public_markers=True)
+else:
+    raise SystemExit(f"PVP_VIRTUAL_ROSTER_FAIL reason=invalid-surface surface={surface}")
 PY
 }
 
@@ -1313,7 +1341,7 @@ if [[ "$candidate_ready" != "1" ]]; then
   rollback "$sha" || true
   exit 43
 fi
-if ! pvp_virtual_roster_attest "$candidate_service" "$candidate_pvp_service" "$target"; then
+if ! pvp_virtual_roster_attest "$candidate_service" "$candidate_pvp_service" "$target" sidecar "$public_api_url"; then
   echo "candidate failed authenticated staging virtual-roster attestation: $sha color=$candidate_color" >&2
   rollback "$sha" || true
   exit 53
@@ -1389,6 +1417,11 @@ if [[ "$target" == staging ]]; then
       rollback "$sha" || true
       exit 46
     fi
+  fi
+  if ! pvp_virtual_roster_attest "$candidate_service" "$candidate_pvp_service" "$target" public "$public_api_url"; then
+    echo "OCI staging public authenticated virtual roster did not contain the canonical rivals for $sha" >&2
+    rollback "$sha" || true
+    exit 54
   fi
   if ! pvp_browser_cors_attest "${public_api_url}/pvp/roster"; then
     echo "OCI staging public PvP roster did not prove native Go browser response semantics for $sha" >&2
