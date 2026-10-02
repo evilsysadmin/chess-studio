@@ -75,6 +75,7 @@ assert 'CORS_ORIGINS: "${CHESS_STUDIO_CORS_ORIGINS:-https://staging.chess-studio
 assert compose.count('PVP_NATIVE_ROSTER_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_ROSTER_ENABLED:-true}"') == 2
 assert compose.count('PVP_NATIVE_CHAT_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_CHAT_ENABLED:-true}"') == 2
 assert compose.count('PVP_NATIVE_CHALLENGE_RESOLUTION_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_CHALLENGE_RESOLUTION_ENABLED:-true}"') == 2
+assert compose.count('PVP_NATIVE_MATCH_HANDOFF_CANCEL_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_MATCH_HANDOFF_CANCEL_ENABLED:-true}"') == 2
 assert compose.count('CHESS_PVP_SPARRING_ENABLED: "${CHESS_PVP_SPARRING_ENABLED:-false}"') == 3
 assert compose.count('CHESS_PVP_SPARRING_OWNER: "${CHESS_PVP_SPARRING_OWNER:-evilsysadmin}"') == 3
 assert compose.count('CHESS_PVP_SPARRING_USERNAME: "${CHESS_PVP_SPARRING_USERNAME:-sparringmeister}"') == 3
@@ -280,9 +281,11 @@ assert "payload.get('nativePulse')" in deploy
 assert "payload.get('nativeRoster')" in deploy
 assert "payload.get('nativeChat')" in deploy
 assert "payload.get('nativeChallengeResolution')" in deploy
+assert "payload.get('nativeMatchHandoffCancel')" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_PULSE_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_ROSTER_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_CHAT_ENABLED" in deploy
+assert "CHESS_STUDIO_PVP_NATIVE_MATCH_HANDOFF_CANCEL_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_CHALLENGE_RESOLUTION_ENABLED" in deploy
 assert 'pvp_target_image="$(pvp_image_ref "$sha")"' in deploy
 assert 'docker pull --quiet "$pvp_target_image"' in deploy
