@@ -53,6 +53,7 @@ const INTERNAL_WAR_ROOM_VARIANTS = Object.freeze([
     label: 'Duel Room',
     shell: 'blender',
     runtimeModelUrl: PVP_DUEL_ROOM_RUNTIME_MODEL_URL,
+    cacheBustBuild: false,
     loadInstaller: () => import('./PvpDuelRoomShell.js').then(({ installPvpDuelRoomShell }) => installPvpDuelRoomShell),
   }),
 ]);
@@ -121,8 +122,10 @@ export function loadWarRoomVariantInstaller(value) {
 }
 
 export function warRoomVariantRuntimeModelUrl(value, { buildSha = import.meta.env.VITE_BUILD_SHA } = {}) {
-  const baseUrl = warRoomVariantDefinition(value)?.runtimeModelUrl;
+  const definition = warRoomVariantDefinition(value);
+  const baseUrl = definition?.runtimeModelUrl;
   if (!baseUrl) return null;
+  if (definition?.cacheBustBuild === false) return baseUrl;
   const version = String(buildSha || '').trim();
   if (!version) return baseUrl;
   const separator = baseUrl.includes('?') ? '&' : '?';
