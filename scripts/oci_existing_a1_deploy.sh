@@ -475,10 +475,7 @@ pvp_browser_cors_attest() {
     rm -f "$preflight_headers" "$response_headers"
     return 1
   fi
-  # Native Go answers successful preflight with 204; the Python/FastAPI
-  # compatibility route answers 200. Both are valid browser CORS responses, and
-  # the header contract below remains authoritative for this migration gate.
-  if [[ "$status" != "200" && "$status" != "204" ]] || \
+  if [[ "$status" != "204" ]] || \
      ! grep -Eiq "^X-Chess-Pvp-Edge:[[:space:]]*go[[:space:]]*$" "$preflight_headers" || \
      ! grep -Eiq "^X-Chess-Pvp-Native:[[:space:]]*roster[[:space:]]*$" "$preflight_headers" || \
      ! python3 - "$preflight_headers" "$cors_origin" <<'PY'
@@ -566,7 +563,11 @@ pvp_challenge_browser_attest() {
     rm -f "$preflight_headers" "$response_headers"
     return 1
   fi
-  if [[ "$status" != "204" ]] || \
+  # Go-native challenge creation returns 204, while the deliberate Python
+  # compatibility fallback is served by FastAPI/Starlette and returns 200.
+  # Both are valid successful preflights; the CORS/header contract below is
+  # still required before the deploy may commit.
+  if [[ "$status" != "200" && "$status" != "204" ]] || \
      ! grep -Eiq "^X-Chess-Pvp-Edge:[[:space:]]*go[[:space:]]*$" "$preflight_headers" || \
      ! python3 - "$preflight_headers" "$cors_origin" <<'PY'
 import pathlib
