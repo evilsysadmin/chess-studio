@@ -386,7 +386,7 @@ pvp_attest() {
     rm -f "$body"
     return 1
   fi
-  if python3 - "$body" <<'PY'
+  if python3 - "$body" "$pvp_sparring_enabled" <<'PY'
 import json
 import pathlib
 import sys
@@ -394,6 +394,7 @@ payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
 env = __import__('os').environ
 expected_native = str(env.get('CHESS_STUDIO_PVP_NATIVE_PULSE_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
 expected_lobby_read = str(env.get('CHESS_STUDIO_PVP_NATIVE_LOBBY_READ_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
+expected_virtual_players = str(sys.argv[2]).strip().lower() in {'1', 'true', 'yes', 'on'}
 expected_roster = str(env.get('CHESS_STUDIO_PVP_NATIVE_ROSTER_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
 expected_chat = str(env.get('CHESS_STUDIO_PVP_NATIVE_CHAT_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
 expected_challenge_resolution = str(env.get('CHESS_STUDIO_PVP_NATIVE_CHALLENGE_RESOLUTION_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
@@ -409,6 +410,7 @@ if (
     or payload.get('service') != 'chess-studio-pvp-go'
     or bool(payload.get('nativePulse')) != expected_native
     or bool(payload.get('nativeLobbyRead')) != expected_lobby_read
+    or bool(payload.get('virtualPlayersEnabled')) != expected_virtual_players
     or bool(payload.get('nativeRoster')) != expected_roster
     or bool(payload.get('nativeChat')) != expected_chat
     or bool(payload.get('nativeChallengeResolution')) != expected_challenge_resolution
