@@ -495,6 +495,71 @@ func TestNativeRosterJoinAndLeave(t *testing.T) {
 	}
 }
 
+func TestNativeRosterOwnerHeartbeatKeepsSyntheticRivalsAlive(t *testing.T) {
+	now := time.Date(2026, 10, 2, 13, 30, 0, 0, time.UTC)
+	store := &fakeStore{
+		exists: true,
+		version: 1,
+		member: rosterRow{Username: "evilsysadmin", Rating: 400, Tier: "Principiante", JoinedAt: now},
+	}
+	h, err := NewHandler(HandlerConfig{
+		Store: store,
+		JWTSecret: "01234567890123456789012345678901",
+		EnableRoster: true,
+		VirtualPlayersEnabled: true,
+		VirtualOwner: "evilsysadmin",
+		SparringUsername: "sparringmeister",
+		Now: func() time.Time { return now },
+	})
+	if err != nil { t.Fatal(err) }
+	token := signedToken(t, "evilsysadmin", 1, now.Add(time.Hour), "session", "01234567890123456789012345678901")
+	req := httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/roster", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK { t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String()) }
+
+	want := map[string]int64{
+		"sparringmeister": 400,
+		"otto_falk": 850,
+		"marta_stein": 1200,
+		"viktor_kraus": 1450,
+	}
+	for username, rating := range want {
+		if got := store.syntheticRoster[username]; got != rating {
+			t.Fatalf("%s rating=%d want=%d roster=%#v", username, got, rating, store.syntheticRoster)
+		}
+	}
+}
+
+func TestNativeRosterNonOwnerHeartbeatDoesNotSeedSyntheticRivals(t *testing.T) {
+	now := time.Date(2026, 10, 2, 13, 30, 0, 0, time.UTC)
+	store := &fakeStore{
+		exists: true,
+		version: 1,
+		member: rosterRow{Username: "alice", Rating: 400, Tier: "Principiante", JoinedAt: now},
+	}
+	h, err := NewHandler(HandlerConfig{
+		Store: store,
+		JWTSecret: "01234567890123456789012345678901",
+		EnableRoster: true,
+		VirtualPlayersEnabled: true,
+		VirtualOwner: "evilsysadmin",
+		SparringUsername: "sparringmeister",
+		Now: func() time.Time { return now },
+	})
+	if err != nil { t.Fatal(err) }
+	token := signedToken(t, "alice", 1, now.Add(time.Hour), "session", "01234567890123456789012345678901")
+	req := httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/roster", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK { t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String()) }
+	if len(store.syntheticRoster) != 0 {
+		t.Fatalf("non-owner seeded synthetic roster=%#v", store.syntheticRoster)
+	}
+}
+
 func TestNativeRosterJoinRateLimit(t *testing.T) {
 	now := time.Date(2026, 10, 1, 20, 0, 0, 0, time.UTC)
 	store := &fakeStore{
