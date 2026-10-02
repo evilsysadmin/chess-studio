@@ -40,8 +40,34 @@ export function canonicalWarRoomCameraFramingProfile({ aspect = 1 } = {}) {
       });
 }
 
-// Compatibility export for older callers/tests. V1 no longer owns a separate
-// optical profile: it follows the same v4-derived play camera as every room.
+// Legacy/classic Board3D callers outside the playable War Room domain keep
+// their historical framing. Actual War Room v1 now opts into cameraProfile
+// "warroom" explicitly, so this compatibility profile no longer defines v1.
 export function classicWarRoomCameraFramingProfile(aspect = 1) {
-  return canonicalWarRoomCameraFramingProfile({ aspect });
+  const safeAspect = Math.max(0.35, Number(aspect) || 1);
+  const wide = safeAspect >= 1.42;
+
+  return wide
+    ? Object.freeze({
+        version: 'classic-overhead-v3',
+        halfSpan: 5.28,
+        padding: 1.04,
+        minDistance: 13.2,
+        maxDistance: 28,
+        targetY: 1.25,
+        targetZ: -0.1,
+        cameraY: 9.34,
+        cameraZ: 9.3,
+      })
+    : Object.freeze({
+        version: 'classic-overhead-v3',
+        halfSpan: 5.72,
+        padding: 1.12,
+        minDistance: 14.4,
+        maxDistance: 30,
+        targetY: 0.82,
+        targetZ: -0.06,
+        cameraY: 10.2,
+        cameraZ: 10.35,
+      });
 }
