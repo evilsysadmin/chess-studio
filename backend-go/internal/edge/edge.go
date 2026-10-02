@@ -29,6 +29,7 @@ type Config struct {
 	NativeMatchResign         http.Handler
 	NativeMatchRead           http.Handler
 	NativeMatchMove           http.Handler
+	NativeResidentEngine      bool
 	VirtualPlayersEnabled     bool
 }
 
@@ -49,6 +50,7 @@ type Handler struct {
 	nativeMatchResign         http.Handler
 	nativeMatchRead           http.Handler
 	nativeMatchMove           http.Handler
+	nativeResidentEngine      bool
 	virtualPlayersEnabled     bool
 }
 
@@ -114,6 +116,7 @@ func New(cfg Config) (*Handler, error) {
 		nativeMatchResign: cfg.NativeMatchResign,
 		nativeMatchRead: cfg.NativeMatchRead,
 		nativeMatchMove: cfg.NativeMatchMove,
+		nativeResidentEngine: cfg.NativeResidentEngine,
 		virtualPlayersEnabled: cfg.VirtualPlayersEnabled,
 	}, nil
 }
@@ -187,6 +190,7 @@ func (h *Handler) health(w http.ResponseWriter) {
 		"nativeMatchResign": h.nativeMatchResign != nil,
 		"nativeMatchRead": h.nativeMatchRead != nil,
 		"nativeMatchMove": h.nativeMatchMove != nil,
+		"nativeResidentEngine": h.nativeResidentEngine,
 		"virtualPlayersEnabled": h.virtualPlayersEnabled,
 	}
 	if h.release != "" {
@@ -231,6 +235,7 @@ func (h *Handler) ready(w http.ResponseWriter, r *http.Request) {
 		"nativeMatchResign": h.nativeMatchResign != nil,
 		"nativeMatchRead": h.nativeMatchRead != nil,
 		"nativeMatchMove": h.nativeMatchMove != nil,
+		"nativeResidentEngine": h.nativeResidentEngine,
 		"virtualPlayersEnabled": h.virtualPlayersEnabled,
 	}
 	if h.release != "" {
