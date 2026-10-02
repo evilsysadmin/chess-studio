@@ -313,12 +313,14 @@ assert "payload.get('nativeChallengeAccept')" in deploy
 assert "payload.get('nativeChallengeCreate')" in deploy
 assert "payload.get('nativeMatchHandoffCancel')" in deploy
 assert "payload.get('nativeMatchReady')" in deploy
+assert "payload.get('nativeMatchResign')" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_PULSE_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_ROSTER_ENABLED" in deploy
 assert "env.get('CHESS_STUDIO_PVP_NATIVE_ROSTER_ENABLED', 'true')" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_CHAT_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_MATCH_HANDOFF_CANCEL_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_MATCH_READY_ENABLED" in deploy
+assert "CHESS_STUDIO_PVP_NATIVE_MATCH_RESIGN_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_CHALLENGE_RESOLUTION_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_CHALLENGE_ACCEPT_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_CHALLENGE_CREATE_ENABLED" in deploy
