@@ -69,13 +69,17 @@ required_deploy_fragments = (
     "cors_attest",
     "pvp_browser_cors_attest",
     "/api/pvp/roster",
+    "pvp_lobby_read_attest",
+    "/api/pvp/lobby",
     "pvp_challenge_browser_attest",
     "/api/pvp/challenges",
     "Access-Control-Request-Method: POST",
     "authorization,content-type,x-request-id,x-client-release",
     "edge PvP browser CORS attestation failed after cutover",
+    "edge PvP full lobby read attestation failed after cutover",
     "edge PvP challenge browser transport attestation failed after cutover",
     "OCI staging public PvP roster did not prove native Go browser response semantics",
+    "OCI staging public PvP lobby did not prove native Go read semantics",
     "OCI staging public PvP challenge transport did not prove browser JSON/CORS semantics",
     "X-Chess-Pvp-Native",
     "deliberately-invalid",
@@ -85,6 +89,7 @@ for fragment in required_deploy_fragments:
     assert fragment in deploy, f"missing OCI staging CORS deploy contract: {fragment}"
 
 assert 'CORS_ORIGINS: "${CHESS_STUDIO_CORS_ORIGINS:-https://staging.chess-studio.shadowops.dpdns.org}"' in compose
+assert compose.count('PVP_NATIVE_LOBBY_READ_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_LOBBY_READ_ENABLED:-true}"') == 2
 assert compose.count('PVP_NATIVE_ROSTER_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_ROSTER_ENABLED:-true}"') == 2
 assert compose.count('PVP_NATIVE_CHALLENGE_CREATE_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_CHALLENGE_CREATE_ENABLED:-false}"') == 2
 assert compose.count('PVP_NATIVE_CHAT_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_CHAT_ENABLED:-true}"') == 2
@@ -319,6 +324,7 @@ assert 'candidate_pvp_service="$(pvp_service "$candidate_color")"' in deploy
 assert 'compose "$sha" up -d --no-build --force-recreate "$candidate_service" "$candidate_pvp_service"' in deploy
 assert 'if attest "$sha" "$candidate_port" && pvp_attest "$candidate_pvp_service"; then' in deploy
 assert "payload.get('nativePulse')" in deploy
+assert "payload.get('nativeLobbyRead')" in deploy
 assert "payload.get('nativeRoster')" in deploy
 assert "payload.get('nativeChat')" in deploy
 assert "payload.get('nativeChallengeResolution')" in deploy
@@ -330,6 +336,7 @@ assert "payload.get('nativeMatchResign')" in deploy
 assert "payload.get('nativeMatchRead')" in deploy
 assert "payload.get('nativeMatchMove')" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_PULSE_ENABLED" in deploy
+assert "CHESS_STUDIO_PVP_NATIVE_LOBBY_READ_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_ROSTER_ENABLED" in deploy
 assert "env.get('CHESS_STUDIO_PVP_NATIVE_ROSTER_ENABLED', 'true')" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_CHAT_ENABLED" in deploy
@@ -359,9 +366,11 @@ assert 'if "$attest_fn" "$endpoint"; then' in deploy
 assert 'sleep 0.25' in deploy
 assert 'if ! wait_pvp_edge_attest "$port"; then' in deploy
 assert 'if ! wait_pvp_browser_attest pvp_browser_cors_attest "http://127.0.0.1:${port}/api/pvp/roster"; then' in deploy
+assert 'if ! wait_pvp_browser_attest pvp_lobby_read_attest "http://127.0.0.1:${port}/api/pvp/lobby"; then' in deploy
 assert 'if ! wait_pvp_browser_attest pvp_challenge_browser_attest "http://127.0.0.1:${port}/api/pvp/challenges"; then' in deploy
 assert '[[ "$status" != "200" && "$status" != "204" ]]' in deploy
 assert 'if ! pvp_browser_cors_attest "${public_api_url}/pvp/roster"; then' in deploy
+assert 'if ! pvp_lobby_read_attest "${public_api_url}/pvp/lobby"; then' in deploy
 assert 'if ! pvp_challenge_browser_attest "${public_api_url}/pvp/challenges"; then' in deploy
 assert 'compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge' in deploy
 assert 'render_edge "$candidate_color"' in deploy
