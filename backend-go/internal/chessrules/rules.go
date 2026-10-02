@@ -89,16 +89,52 @@ func ApplyUCI(fen, uci string) (Result, error) {
 func matchResult(game *chess.Game) (string, *string) {
 	outcome := game.Outcome()
 	if outcome == chess.NoOutcome {
-		for _, method := range game.EligibleDraws() {
-			if method == chess.FiftyMoveRule {
-				draw := chess.Draw.String()
-				return "finished", &draw
-			}
+		if canClaimFiftyMove(game) {
+			draw := chess.Draw.String()
+			return "finished", &draw
 		}
 		return "active", nil
 	}
 	result := outcome.String()
 	return "finished", &result
+}
+
+// canClaimFiftyMove mirrors python-chess Board.can_claim_fifty_moves() for
+// the FEN-only PvP contract. Besides an already-reached 100 halfmoves, a
+// player may claim before making a legal move that would reach 100.
+//
+// PvP reconstructs python-chess Board(match["fen"]) for every request, so the
+// historical move stack is intentionally absent on both sides here; historical
+// threefold-repetition claims therefore remain unavailable exactly as today.
+func canClaimFiftyMove(game *chess.Game) bool {
+	if eligibleFiftyMove(game) {
+		return true
+	}
+
+	position := game.Position()
+	for _, candidate := range game.ValidMoves() {
+		move := candidate
+		uci := (chess.UCINotation{}).Encode(position, &move)
+		next := game.Clone()
+		if err := next.PushNotationMove(uci, chess.UCINotation{}, nil); err != nil {
+			continue
+		}
+		// python-chess is_fifty_moves() also requires that the announced
+		// position still has a legal move, so mate/stalemate take precedence.
+		if eligibleFiftyMove(next) && len(next.ValidMoves()) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+func eligibleFiftyMove(game *chess.Game) bool {
+	for _, method := range game.EligibleDraws() {
+		if method == chess.FiftyMoveRule {
+			return len(game.ValidMoves()) > 0
+		}
+	}
+	return false
 }
 
 func pythonCompatibleFEN(position *chess.Position) string {
