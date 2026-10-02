@@ -1032,6 +1032,11 @@ func (s *MongoStore) hashLatestChat(ctx context.Context, h hash.Hash, now time.T
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.decorateResponse(w, r)
 	if r.URL.Path == "/api/pvp/lobby" && h.lobbyReadStore != nil {
+		// Mark before auth so public deploy probes can prove the full native
+		// lobby route without needing a real user token.
+		w.Header().Set("X-Chess-Pvp-Native", "lobby-read")
+	}
+	if r.URL.Path == "/api/pvp/lobby" && h.lobbyReadStore != nil {
 		// Set before auth so deployment probes can prove the exact full-lobby
 		// route rather than mistaking the generic pulse marker for success.
 		w.Header().Set("X-Chess-Pvp-Native", "lobby-read")
