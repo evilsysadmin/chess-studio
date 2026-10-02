@@ -234,12 +234,13 @@ def _e2e_producer(name: str) -> set[str] | None:
         "war-room-decor-visual-artifact.spec.js": {"warroom-decor"},
         "war-room-armor-oblique-visual-artifact.spec.js": {"warroom-armor"},
         "war-room-hans-visual-artifact.spec.js": {"warroom-hans"},
+        "war-room-hans-routines-visual.spec.js": {"warroom-hans"},
         "browser-runtime-health.spec.js": {"health-runtime"},
         "browser-storage-health.spec.js": {"health-storage"},
     }
     if name in exact:
         return exact[name]
-    if "chesscom" in name or name == "war-room-hans-routines-visual.spec.js":
+    if "chesscom" in name:
         return set()
     return None
 
@@ -727,6 +728,7 @@ def self_test() -> None:
     assert classify(["frontend/src/components/WarRoomCatDecor.js"]) == "warroom-decor"
     assert classify(["frontend/src/components/WarRoomArmorDisplay.js"]) == "warroom-armor"
     assert classify(["frontend/src/components/WarRoomHansPerGame.jsx"]) == "warroom-hans"
+    assert classify(["e2e/war-room-hans-routines-visual.spec.js"]) == "warroom-hans"
     assert classify(["frontend/src/components/Board3DCore.jsx"]) == "training-school,warroom-core"
     assert classify(["frontend/src/components/Board3DScene.js"]) == "training-school,warroom-core"
     assert classify(["frontend/src/components/WarRoom3DAnimation.js"]) == "warroom-core"
