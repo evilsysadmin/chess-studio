@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Cheap no-network contract for the production synthetic probe."""
+"""Cheap no-network contract for the synthetic registration probes."""
+from pathlib import Path
+
 from synthetic_health_check import _check, api_base, env_enabled, ephemeral_credentials, game_state_matches
 
 assert api_base("https://api.example.test") == "https://api.example.test/api"
@@ -24,6 +26,15 @@ assert len(ephemeral_user) == len("ci_smoke_") + 16
 assert all(ch in "0123456789abcdef" for ch in ephemeral_user.removeprefix("ci_smoke_"))
 assert ephemeral_password.startswith("CS!")
 assert len(ephemeral_password) >= 32
+
+for path in (
+    "scripts/staging_deploy_continuity_probe.py",
+    "scripts/synthetic_health_check.py",
+    "scripts/production_capacity_probe.py",
+    "scripts/virtual_player_capacity_probe.py",
+):
+    source = Path(path).read_text(encoding="utf-8")
+    assert '@example.invalid' in source, f"{path} must include a non-deliverable synthetic registration email"
 
 created = {"id": "game-1", "fen": "fen-after-create", "moves": []}
 loaded = {"id": "game-1", "fen": "fen-after-create", "moves": []}
