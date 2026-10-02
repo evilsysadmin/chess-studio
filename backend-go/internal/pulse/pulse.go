@@ -28,6 +28,9 @@ const (
 	rosterTTL            = 45 * time.Second
 	challengeTTL         = 75 * time.Second
 	lobbyChatTTL         = 24 * time.Hour
+	presenceOnline       = 4 * time.Second
+	presenceReconnecting = 12 * time.Second
+	disconnectGrace      = 60 * time.Second
 	nativeHeaderValue    = "lobby-pulse"
 	mongoApplicationName = "chess-studio-pvp-go"
 )
@@ -126,13 +129,15 @@ type matchRow struct {
 	BlackSeenAt                 time.Time `bson:"black_seen_at"`
 	WhiteDisconnectGraceStarted time.Time `bson:"white_disconnect_grace_started_at"`
 	BlackDisconnectGraceStarted time.Time `bson:"black_disconnect_grace_started_at"`
+	Rated                       *bool     `bson:"rated"`
 }
 
 type matchPulseState struct {
-	Found        bool
-	Revision     int64
-	Status       string
-	LifecycleDue bool
+	Found            bool
+	Revision         int64
+	Status           string
+	LifecycleDue     bool
+	OpponentPresence string
 }
 
 type chatRow struct {
@@ -374,7 +379,9 @@ func (s *MongoStore) MatchState(ctx context.Context, username, matchID string, n
 		options.FindOne().SetProjection(bson.M{
 			"white": 1, "black": 1, "status": 1, "turn": 1, "revision": 1,
 			"white_clock_ms": 1, "black_clock_ms": 1, "start_at": 1,
-			"ready_deadline": 1, "turn_started_at": 1,
+			"ready_deadline": 1, "turn_started_at": 1, "rated": 1,
+			"white_seen_at": 1, "black_seen_at": 1,
+			"white_disconnect_grace_started_at": 1, "black_disconnect_grace_started_at": 1,
 		}),
 	).Decode(&row)
 	if errors.Is(err, mongo.ErrNoDocuments) {
@@ -387,10 +394,16 @@ func (s *MongoStore) MatchState(ctx context.Context, username, matchID string, n
 	playerField := "white"
 	seenField := "white_seen_at"
 	graceField := "white_disconnect_grace_started_at"
+	callerSeen := row.WhiteSeenAt
+	opponentSeen := row.BlackSeenAt
+	opponentGrace := row.BlackDisconnectGraceStarted
 	if row.Black == username {
 		playerField = "black"
 		seenField = "black_seen_at"
 		graceField = "black_disconnect_grace_started_at"
+		callerSeen = row.BlackSeenAt
+		opponentSeen = row.WhiteSeenAt
+		opponentGrace = row.WhiteDisconnectGraceStarted
 	}
 	result, err := s.db.Collection("pvp_matches").UpdateOne(
 		queryCtx,
@@ -404,12 +417,59 @@ func (s *MongoStore) MatchState(ctx context.Context, username, matchID string, n
 		return matchPulseState{}, nil
 	}
 
+	opponentPresence := matchOpponentPresence(row, opponentSeen, now)
 	return matchPulseState{
-		Found:        true,
-		Revision:     row.Revision,
-		Status:       row.Status,
-		LifecycleDue: matchLifecycleDue(row, now),
+		Found:            true,
+		Revision:         row.Revision,
+		Status:           row.Status,
+		LifecycleDue:     matchLifecycleDue(row, now) || disconnectLifecycleDue(row, callerSeen, opponentPresence, opponentGrace, now),
+		OpponentPresence: opponentPresence,
 	}, nil
+}
+
+func matchOpponentPresence(row matchRow, seenAt, now time.Time) string {
+	// Current unrated PvP matches are the environment-gated synthetic residents
+	// and sparring rival. Python pins those actors online as well.
+	if row.Rated != nil && !*row.Rated {
+		return "online"
+	}
+	if seenAt.IsZero() {
+		return "disconnected"
+	}
+	age := now.Sub(seenAt)
+	if age < 0 {
+		age = 0
+	}
+	if age <= presenceOnline {
+		return "online"
+	}
+	if age <= presenceReconnecting {
+		return "reconnecting"
+	}
+	return "disconnected"
+}
+
+func recentlyPresent(seenAt, now time.Time) bool {
+	if seenAt.IsZero() {
+		return false
+	}
+	age := now.Sub(seenAt)
+	return age >= 0 && age <= presenceReconnecting
+}
+
+func disconnectLifecycleDue(row matchRow, callerSeen time.Time, opponentPresence string, opponentGrace, now time.Time) bool {
+	if row.Status != "active" || opponentPresence != "disconnected" {
+		return false
+	}
+	// A returning observer asks Python to restart the rival grace window, matching
+	// the existing authoritative reconnect contract.
+	if !recentlyPresent(callerSeen, now) {
+		return true
+	}
+	if opponentGrace.IsZero() {
+		return true
+	}
+	return !now.Before(opponentGrace.Add(disconnectGrace))
 }
 
 func matchLifecycleDue(row matchRow, now time.Time) bool {
@@ -642,10 +702,11 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]any{
-			"revision":     state.Revision,
-			"status":       state.Status,
-			"lifecycleDue": state.LifecycleDue,
-			"pollAfterMs":  1250,
+			"revision":         state.Revision,
+			"status":           state.Status,
+			"lifecycleDue":     state.LifecycleDue,
+			"opponentPresence": state.OpponentPresence,
+			"pollAfterMs":      1250,
 			"source":       "go",
 		})
 		return

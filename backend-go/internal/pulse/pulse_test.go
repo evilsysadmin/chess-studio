@@ -199,7 +199,7 @@ func TestMatchPulseReturnsRevisionAndLifecycleHint(t *testing.T) {
 	store := &fakeStore{
 		exists:  true,
 		version: 2,
-		match: matchPulseState{Found: true, Revision: 7, Status: "active", LifecycleDue: true},
+		match: matchPulseState{Found: true, Revision: 7, Status: "active", LifecycleDue: true, OpponentPresence: "reconnecting"},
 	}
 	h, err := NewHandler(HandlerConfig{Store: store, JWTSecret: "01234567890123456789012345678901", Now: func() time.Time { return now }})
 	if err != nil {
@@ -216,7 +216,7 @@ func TestMatchPulseReturnsRevisionAndLifecycleHint(t *testing.T) {
 	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
 		t.Fatal(err)
 	}
-	if body["revision"] != float64(7) || body["status"] != "active" || body["lifecycleDue"] != true || body["pollAfterMs"] != float64(1250) {
+	if body["revision"] != float64(7) || body["status"] != "active" || body["lifecycleDue"] != true || body["opponentPresence"] != "reconnecting" || body["pollAfterMs"] != float64(1250) {
 		t.Fatalf("unexpected body: %#v", body)
 	}
 }
@@ -252,6 +252,48 @@ func TestMatchLifecycleDueAtClockBoundary(t *testing.T) {
 	}
 }
 
+func TestMatchOpponentPresenceBandsMatchPythonContract(t *testing.T) {
+	now := time.Date(2026, 10, 1, 20, 0, 20, 0, time.UTC)
+	row := matchRow{Status: "active"}
+	if got := matchOpponentPresence(row, now.Add(-3*time.Second), now); got != "online" {
+		t.Fatalf("presence=%q want=online", got)
+	}
+	if got := matchOpponentPresence(row, now.Add(-8*time.Second), now); got != "reconnecting" {
+		t.Fatalf("presence=%q want=reconnecting", got)
+	}
+	if got := matchOpponentPresence(row, now.Add(-13*time.Second), now); got != "disconnected" {
+		t.Fatalf("presence=%q want=disconnected", got)
+	}
+	unrated := false
+	row.Rated = &unrated
+	if got := matchOpponentPresence(row, time.Time{}, now); got != "online" {
+		t.Fatalf("synthetic presence=%q want=online", got)
+	}
+}
+
+func TestDisconnectLifecycleOnlyEscalatesAtAuthoritativeBoundaries(t *testing.T) {
+	now := time.Date(2026, 10, 1, 20, 1, 0, 0, time.UTC)
+	row := matchRow{Status: "active"}
+	callerSeen := now.Add(-time.Second)
+
+	if !disconnectLifecycleDue(row, callerSeen, "disconnected", time.Time{}, now) {
+		t.Fatal("missing grace must reconcile through Python")
+	}
+	grace := now.Add(-30 * time.Second)
+	if disconnectLifecycleDue(row, callerSeen, "disconnected", grace, now) {
+		t.Fatal("active grace should stay on the Go pulse")
+	}
+	grace = now.Add(-disconnectGrace)
+	if !disconnectLifecycleDue(row, callerSeen, "disconnected", grace, now) {
+		t.Fatal("expired grace must reconcile through Python")
+	}
+	if !disconnectLifecycleDue(row, now.Add(-13*time.Second), "disconnected", now.Add(-10*time.Second), now) {
+		t.Fatal("returning observer must restart grace through Python")
+	}
+	if disconnectLifecycleDue(row, callerSeen, "reconnecting", time.Time{}, now) {
+		t.Fatal("reconnecting rival should not mutate lifecycle")
+	}
+}
 
 func TestNativeRosterJoinAndLeave(t *testing.T) {
 	now := time.Date(2026, 10, 1, 20, 0, 0, 0, time.UTC)

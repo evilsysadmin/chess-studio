@@ -198,6 +198,8 @@ export default function PvpGameScreen({ initialMatch, onExit, onMatchUpdate }) {
         const needsFullRefresh = !pulse || pvpMatchPulseNeedsFullRefresh({
           currentRevision: matchRevisionRef.current,
           pulseRevision: pulse?.revision,
+          currentOpponentPresence: match?.opponentPresence,
+          pulseOpponentPresence: pulse?.opponentPresence,
           lifecycleDue: pulse?.lifecycleDue,
           lastFullAt: lastFullRefreshAtRef.current,
           nowMs,
