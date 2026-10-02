@@ -464,14 +464,15 @@ pvp_virtual_roster_attest() {
   local backend_service="$1"
   local pvp_service="$2"
   local deployment_target="${3:-$target}"
-  local public_base="${4:-$public_api_url}"
+  local surface="${4:-sidecar}"
+  local public_base="${5:-$public_api_url}"
   local enabled="${pvp_sparring_enabled,,}"
 
   if [[ "$deployment_target" != "staging" ]] || [[ ! "$enabled" =~ ^(1|true|yes|on)$ ]]; then
     return 0
   fi
 
-  compose "$sha" exec -T "$backend_service" python - "$pvp_service" "$public_base" <<'PY'
+  compose "$sha" exec -T "$backend_service" python - "$pvp_service" "$surface" "$public_base" <<'PY'
 import asyncio
 import json
 import os
@@ -484,7 +485,8 @@ from db import close_db
 from users_store import get_auth_state
 
 pvp_service = str(sys.argv[1]).strip()
-public_base = str(sys.argv[2]).strip().rstrip("/")
+surface = str(sys.argv[2]).strip().lower()
+public_base = str(sys.argv[3]).strip().rstrip("/")
 owner = str(os.environ.get("CHESS_PVP_SPARRING_OWNER") or "evilsysadmin").strip().lower()
 sparring = str(os.environ.get("CHESS_PVP_SPARRING_USERNAME") or "sparringmeister").strip().lower()
 
@@ -566,9 +568,13 @@ def attest_roster(url: str, *, surface: str, require_public_markers: bool = Fals
     )
 
 
-attest_roster(f"http://{pvp_service}:8080/api/pvp/lobby", surface="sidecar")
-public_url = f"{public_base}/pvp/lobby?" + urllib.parse.urlencode({"probe": os.getpid()})
-attest_roster(public_url, surface="public", require_public_markers=True)
+if surface == "sidecar":
+    attest_roster(f"http://{pvp_service}:8080/api/pvp/lobby", surface="sidecar")
+elif surface == "public":
+    public_url = f"{public_base}/pvp/lobby?" + urllib.parse.urlencode({"probe": os.getpid()})
+    attest_roster(public_url, surface="public", require_public_markers=True)
+else:
+    raise SystemExit(f"PVP_VIRTUAL_ROSTER_FAIL reason=invalid-surface surface={surface}")
 PY
 }
 
@@ -1335,7 +1341,7 @@ if [[ "$candidate_ready" != "1" ]]; then
   rollback "$sha" || true
   exit 43
 fi
-if ! pvp_virtual_roster_attest "$candidate_service" "$candidate_pvp_service" "$target" "$public_api_url"; then
+if ! pvp_virtual_roster_attest "$candidate_service" "$candidate_pvp_service" "$target" sidecar "$public_api_url"; then
   echo "candidate failed authenticated staging virtual-roster attestation: $sha color=$candidate_color" >&2
   rollback "$sha" || true
   exit 53
@@ -1411,6 +1417,11 @@ if [[ "$target" == staging ]]; then
       rollback "$sha" || true
       exit 46
     fi
+  fi
+  if ! pvp_virtual_roster_attest "$candidate_service" "$candidate_pvp_service" "$target" public "$public_api_url"; then
+    echo "OCI staging public authenticated virtual roster did not contain the canonical rivals for $sha" >&2
+    rollback "$sha" || true
+    exit 54
   fi
   if ! pvp_browser_cors_attest "${public_api_url}/pvp/roster"; then
     echo "OCI staging public PvP roster did not prove native Go browser response semantics for $sha" >&2
