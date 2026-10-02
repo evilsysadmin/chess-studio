@@ -155,7 +155,11 @@ def main() -> int:
 
         if not username and args.ephemeral:
             username, password = ephemeral_credentials()
-            registration_body = {"username": username, "password": password}
+            registration_body = {
+                "username": username,
+                "password": password,
+                "email": f"{username}@example.invalid",
+            }
             invite_code = str(args.invite_code or "").strip()
             if invite_code:
                 registration_body["inviteCode"] = invite_code

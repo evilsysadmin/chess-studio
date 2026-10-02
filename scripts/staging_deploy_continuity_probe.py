@@ -128,7 +128,12 @@ def run(args: argparse.Namespace) -> dict:
     if not username.startswith("ci_smoke_") or len(username) != len("ci_smoke_") + 16:
         raise RuntimeError("refusing non-ci_smoke identity")
 
-    register_body = {"username": username, "password": password, "inviteCode": invite}
+    register_body = {
+        "username": username,
+        "password": password,
+        "email": f"{username}@example.invalid",
+        "inviteCode": invite,
+    }
     status, registered, _ = request_json(
         "POST",
         f"{api}/auth/register",

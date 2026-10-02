@@ -159,7 +159,7 @@ def ephemeral_credentials() -> tuple[str, str]:
 
 def register_ephemeral(base: str, invite_code: str, timeout: float) -> tuple[str, str, str]:
     username, password = ephemeral_credentials()
-    body = {"username": username, "password": password}
+    body = {"username": username, "password": password, "email": f"{username}@example.invalid"}
     invite = str(invite_code or "").strip()
     if invite:
         body["inviteCode"] = invite
