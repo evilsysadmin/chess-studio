@@ -113,11 +113,13 @@
   }
 
   /* The player sits ~74px above the bottom edge of the 1814×867 master once
-     scaled to viewport width. Anchor the real deck to that same coordinate. */
+     scaled to viewport width. Keep that canonical coordinate, but cap it on
+     wide/short desktop viewports so the collapsed deck + live-user pill never
+     fall below the visible fold. */
   html body:has(.app-shell-home) .global-music-dock {
     position: fixed !important;
     left: max(12px, .8vw) !important;
-    top: calc(47.795vw - 74px) !important;
+    top: min(calc(47.795vw - 74px), calc(100dvh - 84px)) !important;
     bottom: auto !important;
     width: clamp(230px, 15.6vw, 282px) !important;
     z-index: 72 !important;
