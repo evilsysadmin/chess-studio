@@ -225,14 +225,13 @@ async function captureUxCheckpoint(page, testInfo, report, name) {
 }
 
 async function leaveCurrentGameThroughUi(page) {
-  const direct = page.getByRole('button', { name: 'Abandonar partida', exact: true });
-  if (await direct.isVisible().catch(() => false)) {
-    await direct.click();
+  const roomExit = page.getByRole('button', { name: 'Salir de la partida', exact: true });
+  const legacy2d = page.getByRole('button', { name: 'Abandonar partida', exact: true });
+  if (await roomExit.isVisible().catch(() => false)) {
+    await roomExit.click();
   } else {
-    const more = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
-    await expect(more).toBeVisible();
-    await more.click();
-    await page.getByRole('menuitem', { name: 'Abandonar partida', exact: true }).click();
+    await expect(legacy2d).toBeVisible();
+    await legacy2d.click();
   }
   const dialog = page.getByRole('dialog', { name: '¿Abandonar la partida?' });
   await expect(dialog).toBeVisible();

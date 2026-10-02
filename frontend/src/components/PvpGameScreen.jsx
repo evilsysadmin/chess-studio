@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import PromotionModal from './PromotionModal.jsx';
 import { WarRoomUtilityMenu } from './GameWarRoomCommandColumn.jsx';
 import WarRoomBoardSurface from './WarRoomBoardSurface.jsx';
+import WarRoomExitOverlay from './WarRoomExitOverlay.jsx';
+import WarRoomAccountButton from './WarRoomAccountButton.jsx';
 import { formatClock } from '../clock.js';
 import { pvpApi } from '../pvpApi.js';
 import { pvpMatchPulseNeedsFullRefresh } from '../pvpMatchPolling.js';
@@ -353,19 +355,11 @@ export default function PvpGameScreen({ initialMatch, onExit, onMatchUpdate }) {
           <div className="board-live-row is-3d-warroom">
             <div className="game-board-stack game-board-stack-3d">
               <div className="game-board-3d-stage pvp-war-room__stage">
-                {match.status === 'active' ? (
-                  <button
-                    type="button"
-                    className="secondary-btn pvp-war-room__exit"
-                    aria-label="Salir de la partida"
-                    disabled={!connectionLive || resigning}
-                    onClick={() => setShowResignConfirm(true)}
-                  >
-                    ← Salir
-                  </button>
-                ) : (
-                  <button type="button" className="secondary-btn pvp-war-room__exit" onClick={() => onExit?.(match)}>← Lobby</button>
-                )}
+                <WarRoomExitOverlay
+                  disabled={match.status === 'active' && (!connectionLive || resigning)}
+                  onClick={match.status === 'active' ? () => setShowResignConfirm(true) : () => onExit?.(match)}
+                  ariaLabel={match.status === 'active' ? 'Salir de la partida' : 'Salir al lobby'}
+                />
                 <WarRoomBoardSurface
                   isThreeD
                   loadingLabel="Abriendo la sala…"
@@ -425,13 +419,14 @@ export default function PvpGameScreen({ initialMatch, onExit, onMatchUpdate }) {
                   <WarRoomUtilityMenu
                     game={match}
                     board={null}
-                    controls={{ onAbandon: match.status === 'active' && connectionLive ? () => setShowResignConfirm(true) : undefined }}
+                    controls={{}}
                     zenMode={false}
                     showFocus={false}
                     showRendererToggle={false}
                     showAppearance={false}
                     showZen={false}
                   />
+                  <WarRoomAccountButton />
                 </aside>
 
                 {resultText && (

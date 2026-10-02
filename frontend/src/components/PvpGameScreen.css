@@ -36,7 +36,6 @@
 }
 .pvp-war-room .board3d-fixed-camera-note,.pvp-war-room .board3d-renderer-badge,.pvp-war-room .board3d-customize,.pvp-war-room .board3d-inspect { display:none; }
 .pvp-war-room__stage { position:relative; height:100dvh; overflow:hidden; }
-.pvp-war-room__exit { position:absolute; z-index:13; top:.75rem; left:.75rem; min-height:44px; padding:.42rem .7rem; border-color:rgba(205,201,192,.16); color:#e9e2d3; background:rgba(12,14,16,.82); box-shadow:0 12px 30px rgba(0,0,0,.24); backdrop-filter:blur(12px); }
 .pvp-war-room__duel-pill { position:absolute; z-index:12; top:.75rem; left:50%; transform:translateX(-50%); max-width:calc(100% - 1.5rem); min-height:48px; display:flex; align-items:center; gap:.55rem; padding:.42rem .65rem; border:1px solid rgba(205,201,192,.16); border-radius:999px; color:#e9e2d3; background:rgba(12,14,16,.86); box-shadow:0 12px 30px rgba(0,0,0,.28); backdrop-filter:blur(12px); white-space:nowrap; }
 .pvp-war-room__opponent-mark { display:grid; place-items:center; width:30px; height:30px; flex:0 0 auto; border-radius:50%; color:#d6b779; background:linear-gradient(145deg,#3b3124,#171511); border:1px solid rgba(214,183,121,.2); }
 .pvp-war-room__identity { min-width:0; display:grid; line-height:1.05; }
@@ -69,8 +68,7 @@
   .game-screen.pvp-war-room .game-layout.game-layout-3d { width:100vw; }
   .game-screen.pvp-war-room .board-live-row.is-3d-warroom { padding:0!important; border-radius:0; }
   .game-screen.pvp-war-room .game-board-stack.game-board-stack-3d .board3d-main-shell { height:100dvh!important; min-height:0!important; border-radius:0!important; }
-  .pvp-war-room__exit { top:.45rem; left:.45rem; }
-  .pvp-war-room__duel-pill { top:.45rem; min-height:44px; max-width:calc(100% - .8rem); gap:.42rem; padding:.35rem .5rem; }
+    .pvp-war-room__duel-pill { top:.45rem; min-height:44px; max-width:calc(100% - .8rem); gap:.42rem; padding:.35rem .5rem; }
   .pvp-war-room__identity strong { max-width:110px; }
   .pvp-war-room__result { width:min(520px,calc(100% - 1rem)); max-height:calc(100dvh - 1rem); }
 }
@@ -120,8 +118,7 @@
   .pvp-war-room__result-facts { font-size:.57rem; }
 }
 @media (pointer:coarse), (max-width:760px), (max-height:520px) {
-  .pvp-war-room__exit { min-width:44px; min-height:44px; }
-  .pvp-war-room__duel-pill .game-3d-utility-menu,
+    .pvp-war-room__duel-pill .game-3d-utility-menu,
   .pvp-war-room__duel-pill .game-3d-utility-menu>summary { width:44px; height:44px; }
   .pvp-war-room__result button { min-height:44px; }
 }

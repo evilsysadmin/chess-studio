@@ -284,9 +284,8 @@ test('Browser lifecycle · Home ⇄ War Room ×2 y Home ⇄ Pawn Slug ×2 no acu
     expect(warRoom.liveWebglContexts, `War Room debe acreditar al menos un contexto WebGL vivo: ${JSON.stringify(warRoom)}`)
       .toBeGreaterThanOrEqual(1);
 
-    // En la War Room inmersiva la salida vive en «⋯ Más acciones de partida».
-    await page.getByRole('button', { name: 'Más acciones de partida', exact: true }).click();
-    await page.getByRole('menuitem', { name: 'Abandonar partida', exact: true }).click();
+    // En la War Room inmersiva SALIR es una acción visible de primer nivel.
+    await page.getByRole('button', { name: 'Salir de la partida', exact: true }).click();
     await expect(page.getByRole('heading', { name: '¿Abandonar la partida?', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Cancelar sin penalización', exact: true }).click();
     await expect(home).toBeVisible();

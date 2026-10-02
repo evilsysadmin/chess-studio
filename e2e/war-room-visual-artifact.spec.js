@@ -429,7 +429,7 @@ async function captureWarRoomHealth(page, label) {
     const liveRow = box('.board-live-row.is-3d-warroom');
     const sideColumn = box('.game-side-column.game-side-column-3d');
     const focus = buttonBox('Focus');
-    const abandon = buttonBox('Abandonar partida');
+    const abandon = buttonBox('Salir de la partida');
     const overflow = buttonBox('Más acciones de partida');
     const boardVisibleWidth = board
       ? Math.max(0, Math.min(board.right, viewport.width) - Math.max(board.left, 0))
@@ -665,7 +665,7 @@ for (const profile of ACTIVE_CAPTURE_PROFILES) {
 
       if (profile.portraitContract) {
         await expect(page.getByRole('button', { name: 'Focus', exact: true })).toBeVisible();
-        await expect(page.getByRole('button', { name: 'Abandonar partida', exact: true })).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Salir de la partida', exact: true })).toBeVisible();
         await expect(page.getByRole('button', { name: 'Más acciones de partida', exact: true })).toBeVisible();
       }
 

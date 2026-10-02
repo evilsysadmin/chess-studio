@@ -5,6 +5,7 @@ import GameSideColumn from './GameSideColumn.jsx';
 import GameStatusStrips from './GameStatusStrips.jsx';
 import GameWarRoomCommandColumn from './GameWarRoomCommandColumn.jsx';
 import WarRoomBoardSurface from './WarRoomBoardSurface.jsx';
+import WarRoomExitOverlay from './WarRoomExitOverlay.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import Matthias3DOpeningBanter from './Matthias3DOpeningBanter.jsx';
 import WarRoomHansFireCall from './WarRoomHansFireCall.jsx';
@@ -217,6 +218,10 @@ export default function GameBoardView({
             {isThreeD ? (
               <div ref={matthias3DStageRef} className="game-board-3d-stage">
                 <WarRoomBoardSurface isThreeD boardProps={boardProps} />
+                <WarRoomExitOverlay
+                  onClick={controls.onAbandon}
+                  ariaLabel="Salir de la partida"
+                />
                 {!zenMode && !focusActive && activeBoardBubble && matthias3DBubbleStyle && (
                   <aside
                     key={activeBoardBubble.id}

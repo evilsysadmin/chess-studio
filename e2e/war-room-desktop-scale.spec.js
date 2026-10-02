@@ -24,6 +24,8 @@ test('War Room · desktop usa inmersión única con tablero protagonista y HUD f
   const layout = page.locator('.game-layout-3d');
   const turnPill = page.locator('.game-3d-command-column .game-3d-turn-pill');
   const utility = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
+  const exit = page.getByRole('button', { name: 'Salir de la partida', exact: true });
+  const account = page.getByRole('button', { name: 'Mi cuenta', exact: true });
 
   await expect(layout).toHaveClass(/game-layout-immersive/);
   await expect(layout).toHaveAttribute('data-war-room-immersive', 'true');
@@ -31,6 +33,8 @@ test('War Room · desktop usa inmersión única con tablero protagonista y HUD f
   await expect(turnPill).toBeVisible();
   await expect(turnPill).toContainText('Matthias');
   await expect(utility).toBeVisible();
+  await expect(exit).toBeVisible();
+  await expect(account).toBeVisible();
 
   await expect(page.locator('.game-side-column.game-side-column-3d')).toBeHidden();
   await expect(page.locator('.game-board-stack-3d > .game-player-rail.is-human')).toBeHidden();
