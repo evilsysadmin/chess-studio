@@ -26,6 +26,11 @@ type fakeStore struct {
 	joinErr   error
 	leaveErr  error
 	chatErr   error
+	challengeErr error
+	cancelChallenge challengeRow
+	declineChallenge challengeRow
+	cancelFound bool
+	declineFound bool
 	leftUsers []string
 	chatRows  []chatMessageRow
 }
@@ -56,6 +61,14 @@ func (f *fakeStore) AppendLobbyChat(_ context.Context, username, text string, no
 	row := chatMessageRow{ID: "chat-1", Username: username, Text: text, Kind: "message", CreatedAt: now}
 	f.chatRows = append(f.chatRows, row)
 	return row, nil
+}
+
+func (f *fakeStore) CancelChallenge(context.Context, string, string, time.Time) (challengeRow, bool, error) {
+	return f.cancelChallenge, f.cancelFound, f.challengeErr
+}
+
+func (f *fakeStore) DeclineChallenge(context.Context, string, string, time.Time) (challengeRow, bool, error) {
+	return f.declineChallenge, f.declineFound, f.challengeErr
 }
 
 func TestPulseReturnsNativeRevisionForValidSession(t *testing.T) {
@@ -476,4 +489,76 @@ func TestNativeLobbyChatDisabledReturnsNotFound(t *testing.T) {
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusNotFound { t.Fatalf("status=%d want=404 body=%s", rr.Code, rr.Body.String()) }
+}
+
+
+func TestNativeChallengeCancelAndDeclineParity(t *testing.T) {
+	now := time.Date(2026, 10, 2, 9, 0, 0, 0, time.UTC)
+	base := challengeRow{
+		ID: "c-1", Challenger: "alice", Opponent: "bob",
+		ChallengerRating: 1200, OpponentRating: 1300,
+		CreatedAt: now.Add(-10*time.Second), ResolvedAt: now,
+	}
+	store := &fakeStore{exists: true, version: 3, cancelFound: true, declineFound: true}
+	store.cancelChallenge = base
+	store.cancelChallenge.Status = "cancelled"
+	store.declineChallenge = base
+	store.declineChallenge.Status = "declined"
+	h, err := NewHandler(HandlerConfig{
+		Store: store,
+		JWTSecret: "01234567890123456789012345678901",
+		EnableChallengeResolution: true,
+		Now: func() time.Time { return now },
+	})
+	if err != nil { t.Fatal(err) }
+
+	aliceToken := signedToken(t, "alice", 3, now.Add(time.Hour), "session", "01234567890123456789012345678901")
+	cancelReq := httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/challenges/c-1/cancel", nil)
+	cancelReq.Header.Set("Authorization", "Bearer "+aliceToken)
+	cancelRR := httptest.NewRecorder()
+	h.ServeHTTP(cancelRR, cancelReq)
+	if cancelRR.Code != http.StatusOK { t.Fatalf("cancel status=%d body=%s", cancelRR.Code, cancelRR.Body.String()) }
+	var cancelBody map[string]any
+	if err := json.Unmarshal(cancelRR.Body.Bytes(), &cancelBody); err != nil { t.Fatal(err) }
+	cancelChallenge, ok := cancelBody["challenge"].(map[string]any)
+	if !ok || cancelChallenge["status"] != "cancelled" || cancelChallenge["direction"] != "outgoing" || cancelChallenge["matchId"] != nil {
+		t.Fatalf("cancel challenge=%#v", cancelBody["challenge"])
+	}
+
+	bobToken := signedToken(t, "bob", 3, now.Add(time.Hour), "session", "01234567890123456789012345678901")
+	declineReq := httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/challenges/c-1/decline", nil)
+	declineReq.Header.Set("Authorization", "Bearer "+bobToken)
+	declineRR := httptest.NewRecorder()
+	h.ServeHTTP(declineRR, declineReq)
+	if declineRR.Code != http.StatusOK { t.Fatalf("decline status=%d body=%s", declineRR.Code, declineRR.Body.String()) }
+	var declineBody map[string]any
+	if err := json.Unmarshal(declineRR.Body.Bytes(), &declineBody); err != nil { t.Fatal(err) }
+	declined, ok := declineBody["challenge"].(map[string]any)
+	if !ok || declined["status"] != "declined" || declined["direction"] != "incoming" {
+		t.Fatalf("decline challenge=%#v", declineBody["challenge"])
+	}
+}
+
+func TestNativeChallengeResolutionPreservesNotFoundSemantics(t *testing.T) {
+	now := time.Date(2026, 10, 2, 9, 0, 0, 0, time.UTC)
+	h, err := NewHandler(HandlerConfig{
+		Store: &fakeStore{exists: true, version: 1},
+		JWTSecret: "01234567890123456789012345678901",
+		EnableChallengeResolution: true,
+		Now: func() time.Time { return now },
+	})
+	if err != nil { t.Fatal(err) }
+	token := signedToken(t, "alice", 1, now.Add(time.Hour), "session", "01234567890123456789012345678901")
+	for _, tc := range []struct{ suffix, detail string }{
+		{"cancel", "Reto saliente pendiente no encontrado."},
+		{"decline", "Reto pendiente no encontrado."},
+	} {
+		req := httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/challenges/c-missing/"+tc.suffix, nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		rr := httptest.NewRecorder()
+		h.ServeHTTP(rr, req)
+		if rr.Code != http.StatusNotFound || !strings.Contains(rr.Body.String(), tc.detail) {
+			t.Fatalf("%s status=%d body=%s", tc.suffix, rr.Code, rr.Body.String())
+		}
+	}
 }
