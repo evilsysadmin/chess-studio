@@ -465,3 +465,59 @@ func TestReadinessReportsNativeChallengeAcceptState(t *testing.T) {
 	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil { t.Fatal(err) }
 	if body["nativeChallengeAccept"] != true { t.Fatalf("nativeChallengeAccept=%#v want=true", body["nativeChallengeAccept"]) }
 }
+
+
+func TestNativeChallengeCreateBypassesPythonWhenEnabled(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		t.Fatal("native challenge create must not reach Python upstream")
+	}))
+	defer upstream.Close()
+	native := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/pvp/challenges" || r.Method != http.MethodPost {
+			t.Fatalf("native create request=%s %s", r.Method, r.URL.Path)
+		}
+		w.WriteHeader(http.StatusCreated)
+	})
+	h, err := New(Config{UpstreamURL: upstream.URL, NativeChallengeCreate: native})
+	if err != nil { t.Fatal(err) }
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/challenges", nil))
+	if rr.Code != http.StatusCreated { t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String()) }
+}
+
+func TestChallengeCreateFallsBackToPythonWhenNativeDisabled(t *testing.T) {
+	called := false
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		if r.URL.Path != "/api/pvp/challenges" || r.Method != http.MethodPost {
+			t.Fatalf("upstream create request=%s %s", r.Method, r.URL.Path)
+		}
+		w.WriteHeader(http.StatusCreated)
+	}))
+	defer upstream.Close()
+	h := mustHandler(t, upstream.URL)
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/challenges", nil))
+	if rr.Code != http.StatusCreated || !called {
+		t.Fatalf("fallback status=%d called=%t", rr.Code, called)
+	}
+}
+
+func TestReadinessReportsNativeChallengeCreateState(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/ready" { w.WriteHeader(http.StatusOK); return }
+		http.NotFound(w, r)
+	}))
+	defer upstream.Close()
+	native := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusCreated) })
+	h, err := New(Config{UpstreamURL: upstream.URL, NativeChallengeCreate: native})
+	if err != nil { t.Fatal(err) }
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "http://edge/readyz", nil))
+	if rr.Code != http.StatusOK { t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String()) }
+	var body map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil { t.Fatal(err) }
+	if body["nativeChallengeCreate"] != true {
+		t.Fatalf("nativeChallengeCreate=%#v want=true", body["nativeChallengeCreate"])
+	}
+}
