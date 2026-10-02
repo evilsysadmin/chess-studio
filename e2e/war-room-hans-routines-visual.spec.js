@@ -1,6 +1,6 @@
 import { chromium, expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { buttonWithVisibleText, login, mockApi } from './helpers.js';
+import { activateSetupControl, buttonWithVisibleText, login, mockApi } from './helpers.js';
 import { WAR_ROOM_HANS_CHORE_EVENTS } from '../frontend/src/components/WarRoomHansChoreContract.js';
 import {
   WAR_ROOM_HANS_EVENTS,
@@ -214,7 +214,7 @@ for (const eventName of CAPTURE_EVENTS) {
     });
       await seedGamesBeforeEvent(page, eventName);
 
-      await buttonWithVisibleText(page, 'Partida rápida').click();
+      await activateSetupControl(buttonWithVisibleText(page, 'Partida rápida'));
       const quickDialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
       await expect(quickDialog).toBeVisible();
       await quickDialog.getByRole('button', { name: 'Empezar partida', exact: true }).click();
