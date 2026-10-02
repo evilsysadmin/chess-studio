@@ -39,12 +39,17 @@ type fakeStore struct {
 	readyErr error
 	readyFailures int
 	readyCalls int
+	readyUser string
 	leftUsers []string
 	chatRows  []chatMessageRow
 	handoffMatch cancelMatchRow
 	handoffFound bool
 	handoffErr error
 	systemMessages []string
+	syntheticRoster map[string]int64
+	challengeSnapshot challengeRow
+	challengeSnapshotFound bool
+	challengeSnapshotErr error
 }
 
 func (f *fakeStore) AuthState(context.Context, string) (bool, int64, error) {
@@ -87,8 +92,9 @@ func (f *fakeStore) CancelStartingMatch(context.Context, string, string, time.Ti
 	return f.cancelMatch, f.cancelResult, f.cancelMatchErr
 }
 
-func (f *fakeStore) ReadyMatch(context.Context, string, string, time.Time, virtualPlayerConfig) (cancelMatchRow, readyMatchResult, error) {
+func (f *fakeStore) ReadyMatch(_ context.Context, _ string, username string, _ time.Time, _ virtualPlayerConfig) (cancelMatchRow, readyMatchResult, error) {
 	f.readyCalls++
+	f.readyUser = username
 	if f.readyCalls <= f.readyFailures {
 		return cancelMatchRow{}, "", errors.New("temporary mongo error")
 	}
@@ -102,6 +108,18 @@ func (f *fakeStore) GetHandoffMatch(context.Context, string) (cancelMatchRow, bo
 func (f *fakeStore) AppendLobbySystem(_ context.Context, text string, _ time.Time) error {
 	f.systemMessages = append(f.systemMessages, text)
 	return nil
+}
+
+func (f *fakeStore) UpsertSyntheticRoster(_ context.Context, username string, rating int64, _ time.Time) error {
+	if f.syntheticRoster == nil {
+		f.syntheticRoster = map[string]int64{}
+	}
+	f.syntheticRoster[username] = rating
+	return nil
+}
+
+func (f *fakeStore) ChallengeSnapshot(context.Context, string) (challengeRow, bool, error) {
+	return f.challengeSnapshot, f.challengeSnapshotFound, f.challengeSnapshotErr
 }
 
 func TestPulseReturnsNativeRevisionForValidSession(t *testing.T) {

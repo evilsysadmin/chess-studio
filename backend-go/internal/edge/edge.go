@@ -22,6 +22,7 @@ type Config struct {
 	NativeChat    http.Handler
 	NativeChallengeResolution http.Handler
 	NativeChallengeAccept     http.Handler
+	NativeChallengeCreate     http.Handler
 	NativeMatchHandoffCancel  http.Handler
 	NativeMatchReady          http.Handler
 }
@@ -36,6 +37,7 @@ type Handler struct {
 	nativeChat   http.Handler
 	nativeChallengeResolution http.Handler
 	nativeChallengeAccept     http.Handler
+	nativeChallengeCreate     http.Handler
 	nativeMatchHandoffCancel  http.Handler
 	nativeMatchReady          http.Handler
 }
@@ -95,6 +97,7 @@ func New(cfg Config) (*Handler, error) {
 		nativeChat:   cfg.NativeChat,
 		nativeChallengeResolution: cfg.NativeChallengeResolution,
 		nativeChallengeAccept: cfg.NativeChallengeAccept,
+		nativeChallengeCreate: cfg.NativeChallengeCreate,
 		nativeMatchHandoffCancel: cfg.NativeMatchHandoffCancel,
 		nativeMatchReady: cfg.NativeMatchReady,
 	}, nil
@@ -119,6 +122,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case r.URL.Path == "/api/pvp/lobby/chat" && h.nativeChat != nil:
 		w.Header().Set("X-Chess-Pvp-Edge", "go")
 		h.nativeChat.ServeHTTP(w, r)
+	case r.URL.Path == "/api/pvp/challenges" && h.nativeChallengeCreate != nil:
+		w.Header().Set("X-Chess-Pvp-Edge", "go")
+		h.nativeChallengeCreate.ServeHTTP(w, r)
 	case isChallengeAcceptPath(r.URL.Path) && h.nativeChallengeAccept != nil:
 		w.Header().Set("X-Chess-Pvp-Edge", "go")
 		h.nativeChallengeAccept.ServeHTTP(w, r)
@@ -147,6 +153,7 @@ func (h *Handler) health(w http.ResponseWriter) {
 		"nativeChat":   h.nativeChat != nil,
 		"nativeChallengeResolution": h.nativeChallengeResolution != nil,
 		"nativeChallengeAccept": h.nativeChallengeAccept != nil,
+		"nativeChallengeCreate": h.nativeChallengeCreate != nil,
 		"nativeMatchHandoffCancel": h.nativeMatchHandoffCancel != nil,
 		"nativeMatchReady": h.nativeMatchReady != nil,
 	}
@@ -186,6 +193,7 @@ func (h *Handler) ready(w http.ResponseWriter, r *http.Request) {
 		"nativeChat":   h.nativeChat != nil,
 		"nativeChallengeResolution": h.nativeChallengeResolution != nil,
 		"nativeChallengeAccept": h.nativeChallengeAccept != nil,
+		"nativeChallengeCreate": h.nativeChallengeCreate != nil,
 		"nativeMatchHandoffCancel": h.nativeMatchHandoffCancel != nil,
 		"nativeMatchReady": h.nativeMatchReady != nil,
 	})

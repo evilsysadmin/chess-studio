@@ -60,6 +60,8 @@ type Store interface {
 	ReadyMatch(context.Context, string, string, time.Time, virtualPlayerConfig) (cancelMatchRow, readyMatchResult, error)
 	GetHandoffMatch(context.Context, string) (cancelMatchRow, bool, error)
 	AppendLobbySystem(context.Context, string, time.Time) error
+	UpsertSyntheticRoster(context.Context, string, int64, time.Time) error
+	ChallengeSnapshot(context.Context, string) (challengeRow, bool, error)
 }
 
 type HandlerConfig struct {
@@ -73,6 +75,7 @@ type HandlerConfig struct {
 	EnableMatchHandoffCancel bool
 	EnableMatchReady bool
 	ChallengeAccept challengeAcceptService
+	ChallengeCreate challengeCreateService
 	VirtualPlayersEnabled bool
 	VirtualOwner string
 	SparringUsername string
@@ -91,6 +94,7 @@ type Handler struct {
 	enableMatchHandoffCancel bool
 	enableMatchReady bool
 	challengeAccept challengeAcceptService
+	challengeCreate challengeCreateService
 	virtualPlayersEnabled bool
 	virtualOwner string
 	sparringUsername string
@@ -289,6 +293,7 @@ func NewHandler(cfg HandlerConfig) (*Handler, error) {
 		enableMatchHandoffCancel: cfg.EnableMatchHandoffCancel,
 		enableMatchReady: cfg.EnableMatchReady,
 		challengeAccept: cfg.ChallengeAccept,
+		challengeCreate: cfg.ChallengeCreate,
 		virtualPlayersEnabled: cfg.VirtualPlayersEnabled,
 		virtualOwner: strings.ToLower(strings.TrimSpace(cfg.VirtualOwner)),
 		sparringUsername: strings.ToLower(strings.TrimSpace(cfg.SparringUsername)),
@@ -1029,6 +1034,15 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	now := h.now().UTC()
 
+	if r.URL.Path == "/api/pvp/challenges" {
+		if h.challengeCreate == nil {
+			http.NotFound(w, r)
+			return
+		}
+		h.serveChallengeCreate(w, r, claims.Subject, now)
+		return
+	}
+
 	if challengeID, ok := challengeAcceptID(r.URL.Path); ok {
 		if h.challengeAccept == nil {
 			http.NotFound(w, r)
@@ -1713,7 +1727,7 @@ func publicChallenge(row challengeRow, username string) map[string]any {
 		"direction": direction,
 		"createdAt": stamp(row.CreatedAt),
 		"expiresAt": stamp(row.CreatedAt.Add(challengeTTL)),
-		"resolvedAt": stamp(row.ResolvedAt),
+		"resolvedAt": nullableStamp(row.ResolvedAt),
 		"matchId": matchID,
 	}
 }
