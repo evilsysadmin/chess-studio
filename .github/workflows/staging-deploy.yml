@@ -100,21 +100,16 @@ jobs:
           set -euo pipefail
           converged=false
           for attempt in {1..48}; do
-            body="$RUNNER_TEMP/backend-watcher-$attempt.json"
+            body="$RUNNER_TEMP/backend-watcher-$attempt.txt"
             status="$(curl --silent --show-error --connect-timeout 1 --max-time 2 \
               --output "$body" --write-out '%{http_code}' \
-              -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
-              "$STAGING_API_URL/release?sha=$DEPLOY_SHA" || true)"
-            if [[ "$status" == 200 ]] && python3 - "$body" "$DEPLOY_SHA" <<'PY'
-          import json, pathlib, sys
-          payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
-          raise SystemExit(0 if str(payload.get('build') or '').lower() == sys.argv[2].lower() else 1)
-          PY
-            then
-              # /release flips as soon as blue/green cuts over, before the host
-              # finishes public CORS/PvP accreditation. Only treat the watcher
-              # as complete once the same external contract used by the final
-              # generation gate passes, otherwise a later host rollback is hidden.
+              -H 'Accept: text/plain' -H 'Cache-Control: no-cache, no-store' \
+              "$STAGING_API_URL/_deploy/committed?probe=$attempt" || true)"
+            committed="$(tr -d '\r\n' < "$body" 2>/dev/null || true)"
+            if [[ "$status" == 200 && "$committed" == "$DEPLOY_SHA" ]]; then
+              # The host publishes this marker only after all post-cutover
+              # attestations pass. A rollback restores the previous committed
+              # SHA, so a transient blue/green candidate cannot fool this gate.
               if python3 scripts/verify_backend_staging.py \
                 --api-url "$STAGING_API_URL" \
                 --sha "$DEPLOY_SHA" \

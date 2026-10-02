@@ -1,6 +1,6 @@
 # GitHub Actions · mapa operativo
 
-Última auditoría: 2026-09-24.
+Última auditoría: 2026-10-02.
 
 Regla: cada workflow debe representar un dominio operativo o blast radius real. Se fusiona duplicación histórica; no se fusionan promoción, rollback o acreditación sólo para bajar el contador.
 
@@ -19,6 +19,7 @@ Regla: cada workflow debe representar un dominio operativo o blast radius real. 
 - Las PR usan **GitHub native auto-merge**. Ningún workflow del repo espera checks para ejecutar `gh pr merge`, ni existe un handoff que redispare CI después del merge.
 - Un push directo excepcional a `main` no recibe bypass: `Main · admission` lo detecta y ejecuta un gate completo sobre ese HEAD exacto antes de permitir staging.
 - El release canónico de staging no aplica Terraform ni arranca K3s. El fast-path normal consume el runtime instalado; si cae al control-plane, reconcilia el contrato CURRENT Vault + Git antes del deploy para no acreditar runtime legado.
+- El fast-path del backend no acredita un `/release` transitorio: el edge expone `/api/_deploy/committed` con el SHA que el host sólo publica después de superar todas las attestations post-cutover. Un rollback restaura el marcador anterior y GitHub exige ese SHA comprometido antes de declarar convergencia.
 - `oci-staging-mutations` se reserva para operaciones que realmente mutan OCI/host. Diagnósticos y probes read-only no deben bloquear un deploy por compartir un mutex innecesario.
 - La concurrencia distingue **cancelable work** de **remote mutation**. Lanes read-only, visuales o de post-check pueden usar `cancel-in-progress: true` para matar trabajo stale. Un deploy/Terraform/runtime-sync que ya está mutando OCI/host se serializa con `cancel-in-progress: false`: abortarlo a mitad puede dejar estado parcial. La generación obsoleta se descarta mediante exact-SHA/supersession al adquirir el lock, antes de su siguiente mutación; no se deja sobrescribir una generación más nueva.
 
