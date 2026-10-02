@@ -43,6 +43,7 @@ case "$target" in
     state_dir="${CHESS_STUDIO_STATE_DIR:-/var/lib/chess-studio}"
     project="${CHESS_STUDIO_COMPOSE_PROJECT:-chess-studio-staging}"
     port="${CHESS_STUDIO_BACKEND_PORT:-4000}"
+    canonical_cors_origin="https://staging.chess-studio.shadowops.dpdns.org"
     cors_origin="${CHESS_STUDIO_CORS_ORIGINS:-https://staging.chess-studio.shadowops.dpdns.org}"
     public_api_url="${CHESS_STUDIO_PUBLIC_API_URL:-https://api-staging.chess-studio.shadowops.dpdns.org/api}"
     ;;
@@ -51,10 +52,20 @@ case "$target" in
     state_dir="${CHESS_STUDIO_STATE_DIR:-/var/lib/chess-studio-production}"
     project="${CHESS_STUDIO_COMPOSE_PROJECT:-chess-studio-production}"
     port="${CHESS_STUDIO_BACKEND_PORT:-4100}"
+    canonical_cors_origin="https://chess-studio.shadowops.dpdns.org"
     cors_origin="${CHESS_STUDIO_CORS_ORIGINS:-https://chess-studio.shadowops.dpdns.org}"
     public_api_url="${CHESS_STUDIO_PUBLIC_API_URL:-https://api.chess-studio.shadowops.dpdns.org/api}"
     ;;
 esac
+
+# The browser contract is credentialed/authenticated. Never accredit "*" or an
+# alternate origin here: that can make OPTIONS look green while the real fetch
+# is rejected by the browser. Runtime and deploy accreditation must agree on
+# the one canonical frontend origin for the selected environment.
+if [[ "$cors_origin" != "$canonical_cors_origin" ]]; then
+  echo "refusing non-canonical browser CORS origin: target=$target expected=$canonical_cors_origin observed=$cors_origin" >&2
+  exit 64
+fi
 
 if [[ "$target" == "staging" ]]; then
   pvp_sparring_enabled=true
@@ -554,8 +565,127 @@ print(
 )
 PY
 }
+pvp_browser_token() {
+  local backend_service="$1"
+  compose "$sha" exec -T "$backend_service" python - <<'PY'
+import asyncio
+import os
+
+from auth import create_token
+from db import close_db
+from users_store import get_auth_state
+
+owner = str(os.environ.get("CHESS_PVP_SPARRING_OWNER") or "evilsysadmin").strip().lower()
+
+
+async def load_owner_state():
+    try:
+        return await get_auth_state(owner, force=True)
+    finally:
+        await close_db()
+
+
+try:
+    exists, session_version = asyncio.run(load_owner_state())
+except Exception:
+    raise SystemExit("PVP_BROWSER_AUTH_FAIL reason=owner-auth-state-unavailable")
+if not exists:
+    raise SystemExit("PVP_BROWSER_AUTH_FAIL reason=owner-account-missing")
+print(create_token(owner, session_version), end="")
+PY
+}
+
+pvp_authenticated_browser_attest() {
+  local backend_service="$1"
+  local api_base="${2%/}"
+  local deployment_target="${3:-$target}"
+  local token probe endpoint expected_native request_id headers body status
+
+  if [[ "$deployment_target" != "staging" ]]; then
+    return 0
+  fi
+
+  if ! token="$(pvp_browser_token "$backend_service")" || [[ "$token" != *.*.* ]]; then
+    echo "authenticated PvP browser probe could not mint a staging owner token" >&2
+    return 1
+  fi
+
+  for probe in lobby pulse; do
+    case "$probe" in
+      lobby)
+        endpoint="$api_base/pvp/lobby"
+        expected_native="lobby-read"
+        ;;
+      pulse)
+        endpoint="$api_base/pvp/lobby/pulse"
+        expected_native="lobby-pulse"
+        ;;
+    esac
+    request_id="staging-authenticated-${probe}-${sha:0:12}"
+    headers="$(mktemp)"
+    body="$(mktemp)"
+
+    if ! status="$(curl --silent --show-error --max-time 10         -X GET         -H "Origin: $cors_origin"         -H 'Accept: application/json'         -H "Authorization: Bearer $token"         -H "X-Request-ID: $request_id"         -H 'X-Client-Release: staging-authenticated-verifier'         -H 'Cache-Control: no-cache, no-store'         -D "$headers" -o "$body" -w "%{http_code}"         "$endpoint")"; then
+      rm -f "$headers" "$body"
+      return 1
+    fi
+
+    if [[ "$status" != "200" ]] || ! python3 - "$headers" "$body" "$cors_origin" "$request_id" "$expected_native" "$probe" <<'PY'
+import json
+import pathlib
+import sys
+
+headers_path, body_path, expected_origin, expected_request_id, expected_native, probe = sys.argv[1:]
+raw_headers = pathlib.Path(headers_path).read_text(encoding="utf-8", errors="replace")
+parsed = {}
+for line in raw_headers.replace("\r\n", "\n").split("\n"):
+    if ":" not in line:
+        continue
+    name, value = line.split(":", 1)
+    parsed.setdefault(name.strip().lower(), []).append(value.strip())
+
+origins = [value.lower() for value in parsed.get("access-control-allow-origin", [])]
+if origins != [expected_origin.strip().lower()]:
+    raise SystemExit("authenticated response must expose exactly one canonical ACAO")
+if [value.lower() for value in parsed.get("x-chess-pvp-edge", [])] != ["go"]:
+    raise SystemExit("authenticated response did not traverse Go edge")
+if [value.lower() for value in parsed.get("x-chess-pvp-native", [])] != [expected_native.lower()]:
+    raise SystemExit("authenticated response hit the wrong native route")
+if parsed.get("x-request-id", []) != [expected_request_id]:
+    raise SystemExit("authenticated response did not echo request id")
+
+payload = json.loads(pathlib.Path(body_path).read_text(encoding="utf-8"))
+if not isinstance(payload, dict):
+    raise SystemExit("authenticated response is not an object")
+if probe == "lobby":
+    if not isinstance(payload.get("roster"), list):
+        raise SystemExit("authenticated lobby response has no roster list")
+elif probe == "pulse":
+    if payload.get("source") != "go":
+        raise SystemExit("authenticated pulse response is not Go-native")
+    if "revision" not in payload:
+        raise SystemExit("authenticated pulse response has no revision")
+    poll_after = payload.get("pollAfterMs")
+    if not isinstance(poll_after, (int, float)) or poll_after <= 0:
+        raise SystemExit("authenticated pulse response has invalid pollAfterMs")
+else:
+    raise SystemExit("unknown authenticated browser probe")
+PY
+    then
+      echo "authenticated PvP browser probe failed: probe=$probe endpoint=$endpoint http=$status" >&2
+      rm -f "$headers" "$body"
+      return 1
+    fi
+    rm -f "$headers" "$body"
+  done
+
+  echo "PVP_AUTHENTICATED_BROWSER_OK base=$api_base origin=$cors_origin"
+  return 0
+}
+
 pvp_edge_attest() {
   local target_port="${1:-$port}"
+  local expected_release="${2:-$sha}"
   local headers body status
   headers="$(mktemp)"
   body="$(mktemp)"
@@ -568,7 +698,7 @@ pvp_edge_attest() {
   fi
   if [[ "$status" != "200" ]] || \
      ! grep -Eiq "^X-Chess-Pvp-Edge:[[:space:]]*go[[:space:]]*$" "$headers" || \
-     ! python3 - "$body" "$sha" <<'PY'
+     ! python3 - "$body" "$expected_release" <<'PY'
 import json
 import pathlib
 import sys
@@ -833,10 +963,11 @@ PY
 
 wait_pvp_edge_attest() {
   local target_port="${1:-$port}"
+  local expected_release="${2:-$sha}"
   local attempts="${CHESS_STUDIO_PVP_EDGE_ATTEST_ATTEMPTS:-20}"
   local attempt
   for attempt in $(seq 1 "$attempts"); do
-    if pvp_edge_attest "$target_port"; then
+    if pvp_edge_attest "$target_port" "$expected_release"; then
       return 0
     fi
     sleep 0.25
@@ -896,13 +1027,23 @@ rollback() {
   echo "rolling back OCI backend after failed candidate $failed_sha" >&2
 
   if [[ -n "${previous_color:-}" ]]; then
-    # Emergency rollback deliberately bypasses Go. The previous deployed SHA
-    # may predate the PvP sidecar image entirely during the first migration.
-    render_edge "$previous_color" direct
-    # Safe both before and after the attempted switch: if edge is still on the
-    # old config this is a no-op; if reload partially succeeded, this actively
-    # restores the previous upstream.
-    reload_edge || true
+    local rollback_pvp_mode="python-direct"
+    # Preserve the previously accredited full-Go PvP authority whenever its
+    # paired sidecar is still healthy. Python-direct is only a compatibility
+    # escape hatch for a pre-sidecar generation or a genuinely unhealthy
+    # previous sidecar; a failed candidate must not silently downgrade PvP.
+    if [[ -n "$previous_sha" ]]; then
+      render_edge "$previous_color" go "$previous_sha"
+      if reload_edge && wait_pvp_edge_attest "$port" "$previous_sha"; then
+        rollback_pvp_mode="go"
+      else
+        render_edge "$previous_color" direct "$previous_sha"
+        reload_edge || true
+      fi
+    else
+      render_edge "$previous_color" direct
+      reload_edge || true
+    fi
     write_active_color "$previous_color"
     if [[ -n "$previous_sha" ]]; then
       record_successful_backend "$previous_sha"
@@ -914,7 +1055,7 @@ rollback() {
       remove_service "$candidate_service"
       [[ -z "$candidate_pvp_service" ]] || remove_service "$candidate_pvp_service"
     fi
-    echo "CHESS_STUDIO_ROLLBACK_OK repo_ref=${previous_sha:-unknown} color=$previous_color pvp=python-direct"
+    echo "CHESS_STUDIO_ROLLBACK_OK repo_ref=${previous_sha:-unknown} color=$previous_color pvp=$rollback_pvp_mode"
     return 0
   fi
 
@@ -1371,6 +1512,12 @@ if ! wait_pvp_browser_attest pvp_lobby_read_attest "http://127.0.0.1:${port}/api
   rollback "$sha" || true
   exit 51
 fi
+if ! pvp_authenticated_browser_attest "$candidate_service" "http://127.0.0.1:${port}/api" "$target"; then
+  echo "edge PvP authenticated browser lobby/pulse attestation failed after cutover: color=$candidate_color" >&2
+  compose "$sha" logs --no-color --tail=60 "$candidate_pvp_service" edge >&2 || true
+  rollback "$sha" || true
+  exit 56
+fi
 if ! wait_pvp_browser_attest pvp_challenge_browser_attest "http://127.0.0.1:${port}/api/pvp/challenges"; then
   echo "edge PvP challenge browser transport attestation failed after cutover: color=$candidate_color" >&2
   compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
@@ -1403,6 +1550,11 @@ if [[ "$target" == staging ]]; then
     echo "OCI staging public PvP lobby did not prove native Go read semantics for $sha" >&2
     rollback "$sha" || true
     exit 52
+  fi
+  if ! pvp_authenticated_browser_attest "$candidate_service" "$public_api_url" "$target"; then
+    echo "OCI staging public PvP authenticated browser lobby/pulse contract failed for $sha" >&2
+    rollback "$sha" || true
+    exit 57
   fi
   if ! pvp_challenge_browser_attest "${public_api_url}/pvp/challenges"; then
     echo "OCI staging public PvP challenge transport did not prove browser JSON/CORS semantics for $sha" >&2
