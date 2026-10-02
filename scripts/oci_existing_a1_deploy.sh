@@ -475,7 +475,10 @@ pvp_browser_cors_attest() {
     rm -f "$preflight_headers" "$response_headers"
     return 1
   fi
-  if [[ "$status" != "204" ]] || \
+  # Native Go answers successful preflight with 204; the Python/FastAPI
+  # compatibility route answers 200. Both are valid browser CORS responses, and
+  # the header contract below remains authoritative for this migration gate.
+  if [[ "$status" != "200" && "$status" != "204" ]] || \
      ! grep -Eiq "^X-Chess-Pvp-Edge:[[:space:]]*go[[:space:]]*$" "$preflight_headers" || \
      ! grep -Eiq "^X-Chess-Pvp-Native:[[:space:]]*roster[[:space:]]*$" "$preflight_headers" || \
      ! python3 - "$preflight_headers" "$cors_origin" <<'PY'
