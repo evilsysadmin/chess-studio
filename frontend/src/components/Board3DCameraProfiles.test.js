@@ -36,8 +36,12 @@ describe('canonical War Room play camera', () => {
     expect(compact.targetY).not.toBe(wide.targetY);
   });
 
-  it('makes legacy V1 callers consume the same canonical profile', () => {
-    expect(classicWarRoomCameraFramingProfile(16 / 9))
-      .toEqual(canonicalWarRoomCameraFramingProfile({ aspect: 16 / 9 }));
+  it('keeps generic classic Board3D framing outside the explicit War Room domain', () => {
+    const legacy = classicWarRoomCameraFramingProfile(16 / 9);
+    const canonical = canonicalWarRoomCameraFramingProfile({ aspect: 16 / 9 });
+
+    expect(legacy.version).toBe('classic-overhead-v3');
+    expect(legacy).not.toEqual(canonical);
+    expect(legacy.fov).toBeUndefined();
   });
 });
