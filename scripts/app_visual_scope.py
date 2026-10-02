@@ -93,6 +93,7 @@ PVP_VISUAL_SURFACES = {
     # unrelated deep sidecars such as Hans routine videos.
     "frontend/src/components/pvplobbymodal.jsx",
     "frontend/src/components/pvplobbymodal.css",
+    "frontend/src/components/pvpduelhallroom.css",
     "frontend/src/components/pvphandoffmodal.jsx",
     "frontend/src/components/pvphandoffmodal.css",
     "frontend/src/components/homepvprosterlink.jsx",
@@ -189,6 +190,7 @@ def _surface_groups(path: str) -> set[str] | None:
     if lower == "scripts/css_architecture_manifest.json":
         return set()
     if lower in {
+        "scripts/architecture_debt_budget.py",
         "scripts/async_resilience_gate.mjs",
         "scripts/blender_required_scope.py",
         "scripts/browser_quality_scope.py",
@@ -267,6 +269,8 @@ def _surface_groups(path: str) -> set[str] | None:
     if lower.startswith("scripts/app_visual_"):
         return None
     if lower.startswith("e2e/"):
+        if name in {"pvp-lobby-visual-artifact.spec.js", "pvp-handoff-visual-artifact.spec.js"}:
+            return {"home"}
         if name in {"war-room-pvp.spec.js", "pvp-background-roster.spec.js"}:
             return {"warroom"}
         if "chesscom" in name:
@@ -647,6 +651,15 @@ def self_test() -> None:
     ])
     assert pvp_lobby.capture_groups == "home,warroom"
     assert not pvp_lobby.hans and not pvp_lobby.chesscom
+    pvp_lobby_room = classify([
+        "frontend/src/components/PvPDuelHallRoom.css",
+        "e2e/pvp-lobby-visual-artifact.spec.js",
+    ])
+    assert pvp_lobby_room.capture_groups == "home"
+    assert not pvp_lobby_room.hans and not pvp_lobby_room.chesscom
+    architecture_budget = classify(["scripts/architecture_debt_budget.py"])
+    assert architecture_budget.capture_groups == "none"
+    assert not architecture_budget.hans and not architecture_budget.chesscom
     pvp_match_polling = classify([
         "backend-go/internal/pulse/pulse.go",
         "backend-go/internal/pulse/pulse_test.go",
