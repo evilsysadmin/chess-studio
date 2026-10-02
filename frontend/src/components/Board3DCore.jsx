@@ -22,7 +22,10 @@ import { BOARD3D_HIGHLIGHT_SIZE, BOARD3D_HIGHLIGHT_Y, board3DHighlightStyle } fr
 import { board3DCaptureWarmBoostValue, board3DPieceInteractionPose, writeBoard3DHighlightPulse } from './Board3DInteractionFx.js';
 import { BOARD_THEME_3D, FILES, resolveBoard3DThemeId } from './Board3DConfig.js';
 import { adjacentSquare, parseFen, squarePosition } from './Board3DBoardMath.js';
-import { buildBoard3DTileInstances, squareFromBoard3DIntersection } from './Board3DTileInstances.js';
+import {
+  buildBoard3DTileInstances,
+  resolveBoard3DPointerSquare,
+} from './Board3DTileInstances.js';
 import { planBoard3DPieceReconciliation } from './Board3DPieceReconciliation.js';
 import { addCoarsePieceHitTarget, applyMatthiasCheckPose, buildPiece, disposeObject } from './Board3DPieces.js';
 import { fitBoardCamera, makeTextSprite } from './Board3DScene.js';
@@ -126,7 +129,10 @@ function Board3DCanvas({
     onPieceMouseLeave,
     hansDiagnosticsMarkerRef,
     hansDiagnosticsRequested,
-    hansFireCallEnabled, warRoomVariant,
+    hansFireCallEnabled,
+    warRoomVariant,
+    selectedSquare,
+    legalTargets,
   };
 
   useEffect(() => {
@@ -413,7 +419,7 @@ function Board3DCanvas({
     const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(resize) : null;
     observer?.observe(host);
 
-    function squareFromPointer(event) {
+    function squareFromPointer(event, { preferLegalTargets = false } = {}) {
       const rect = renderer.domElement.getBoundingClientRect();
       pointer.set(
         ((event.clientX - rect.left) / rect.width) * 2 - 1,
@@ -421,11 +427,11 @@ function Board3DCanvas({
       );
       raycaster.setFromCamera(pointer, camera);
       const intersections = raycaster.intersectObjects(pickTargets, true);
-      for (const hit of intersections) {
-        const square = squareFromBoard3DIntersection(hit);
-        if (square) return square;
-      }
-      return null;
+      return resolveBoard3DPointerSquare(intersections, {
+        selectedSquare: latestPropsRef.current.selectedSquare,
+        legalTargets: latestPropsRef.current.legalTargets,
+        preferLegalTargets,
+      });
     }
 
     function updatePieceHover(nextSquare, event) {
@@ -456,7 +462,13 @@ function Board3DCanvas({
       if (!touchLike) return;
       renderer.domElement.setPointerCapture?.(event.pointerId);
       renderer.domElement.dataset.warRoomTouchStage = 'down';
-      const handled = selectBoardSquareOnTouch({ event, canvas: renderer.domElement, squareFromPointer, setFocusedSquare, onSquareClick: latestPropsRef.current.onSquareClick });
+      const handled = selectBoardSquareOnTouch({
+        event,
+        canvas: renderer.domElement,
+        squareFromPointer: (pointerEvent) => squareFromPointer(pointerEvent, { preferLegalTargets: true }),
+        setFocusedSquare,
+        onSquareClick: latestPropsRef.current.onSquareClick,
+      });
       if (pointerStartRef.current) pointerStartRef.current.handled = handled;
     }
     function onPointerMove(event) {
@@ -540,7 +552,10 @@ function Board3DCanvas({
         releasePointer(event);
         return;
       }
-      const square = squareFromPointer({ clientX: tap.x, clientY: tap.y });
+      const square = squareFromPointer(
+        { clientX: tap.x, clientY: tap.y },
+        { preferLegalTargets: touchLike },
+      );
       renderer.domElement.dataset.warRoomLastSquare = square || '';
       if (!square) {
         releasePointer(event);
