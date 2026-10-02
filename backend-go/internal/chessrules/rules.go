@@ -23,6 +23,18 @@ type Result struct {
 	Result *string
 }
 
+// Turn returns the authoritative side to move encoded in FEN.
+// PvP Python constructs chess.Board(fen) before checking whose turn it is,
+// so callers must not substitute a duplicated database turn field here.
+func Turn(fen string) (string, error) {
+	fenOption, err := chess.FEN(strings.TrimSpace(fen))
+	if err != nil {
+		return "", fmt.Errorf("%w: %v", ErrInvalidFEN, err)
+	}
+	game := chess.NewGame(fenOption)
+	return game.Position().Turn().String(), nil
+}
+
 // ApplyUCI applies exactly one UCI move to a FEN position.
 //
 // The returned FEN deliberately matches python-chess Board.fen() defaults:
