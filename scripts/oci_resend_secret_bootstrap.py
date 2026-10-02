@@ -69,6 +69,15 @@ def production_recovery_values(values: dict[str, str], resend_key: str) -> dict[
     return merged
 
 
+def production_secret_content_kwargs(payload: bytes) -> dict[str, str]:
+    """Build an OCI content update without reusing a secret-version name."""
+    return {
+        "content_type": "BASE64",
+        "stage": "CURRENT",
+        "content": base64.b64encode(payload).decode("ascii"),
+    }
+
+
 def resolve_secret_id(
     oci: Any,
     client: Any,
@@ -116,13 +125,9 @@ def update_production_bundle(
         vault_id=vault_id,
         secret_name=PRODUCTION_RUNTIME_SECRET_NAME,
     )
-    encoded = base64.b64encode(payload).decode("ascii")
     details = oci.vault.models.UpdateSecretDetails(
         secret_content=oci.vault.models.Base64SecretContentDetails(
-            content_type="BASE64",
-            name=VERSION_NAME,
-            stage="CURRENT",
-            content=encoded,
+            **production_secret_content_kwargs(payload)
         )
     )
     composite = oci.vault.VaultsClientCompositeOperations(client)
@@ -204,6 +209,12 @@ def self_test() -> None:
         "re_test_456",
     )
     assert existing_sender["PASSWORD_RESET_FROM"] == "Chess Studio <mail@example.test>"
+
+    update_kwargs = production_secret_content_kwargs(b"ENVIRONMENT=production\n")
+    assert update_kwargs["content_type"] == "BASE64"
+    assert update_kwargs["stage"] == "CURRENT"
+    assert "name" not in update_kwargs
+    assert base64.b64decode(update_kwargs["content"]).decode("utf-8") == "ENVIRONMENT=production\n"
 
     old = os.environ.get("RESEND_API_KEY")
     try:
