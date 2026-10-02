@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import hmac
 import logging
 import secrets
+import time
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -12,6 +15,7 @@ import chess
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
+from auth import JWT_SECRET
 import pvp_rating as rating_store
 import pvp_residents as residents
 import pvp_sparring as sparring
@@ -52,6 +56,44 @@ class MoveRequest(BaseModel):
     from_square: str = Field(alias="from", pattern=r"^[a-h][1-8]$")
     to_square: str = Field(alias="to", pattern=r"^[a-h][1-8]$")
     promotion: str | None = Field(default=None, pattern=r"^[qrbnQRBN]$")
+
+
+class ResidentMoveOracleRequest(BaseModel):
+    fen: str = Field(min_length=1, max_length=128)
+    resident: str = Field(min_length=1, max_length=64)
+
+
+_RESIDENT_ORACLE_LABEL = b"chess-studio:pvp-resident-oracle:v1"
+_RESIDENT_ORACLE_MAX_SKEW_SECONDS = 30
+
+
+def _resident_oracle_key(secret: str = JWT_SECRET) -> bytes:
+    return hmac.new(secret.encode("utf-8"), _RESIDENT_ORACLE_LABEL, hashlib.sha256).digest()
+
+
+def _resident_oracle_signature_valid(
+    timestamp: str,
+    signature: str,
+    body: bytes,
+    *,
+    secret: str = JWT_SECRET,
+    now: int | None = None,
+) -> bool:
+    if not timestamp or not signature:
+        return False
+    try:
+        stamp = int(timestamp)
+    except (TypeError, ValueError):
+        return False
+    current = int(time.time()) if now is None else int(now)
+    if abs(current - stamp) > _RESIDENT_ORACLE_MAX_SKEW_SECONDS:
+        return False
+    digest = hmac.new(
+        _resident_oracle_key(secret),
+        timestamp.encode("ascii") + b"." + body,
+        hashlib.sha256,
+    ).hexdigest()
+    return hmac.compare_digest(signature, f"sha256={digest}")
 
 
 def _rating_tier(rating: int) -> str:
@@ -627,6 +669,33 @@ async def _accept_challenge_for_user(challenge_id: str, username: str) -> tuple[
 
 def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
     router = APIRouter(prefix="/api/pvp", tags=["pvp"])
+
+    @router.post("/_internal/resident-move")
+    async def resident_move_oracle(request: Request, body: ResidentMoveOracleRequest):
+        raw = await request.body()
+        if not _resident_oracle_signature_valid(
+            request.headers.get("x-chess-timestamp", ""),
+            request.headers.get("x-chess-signature", ""),
+            raw,
+        ):
+            raise HTTPException(401, "Invalid resident oracle signature.")
+
+        profile = residents.active_profile(body.resident)
+        if profile is None:
+            raise HTTPException(404, "Resident not available.")
+        try:
+            board = chess.Board(body.fen)
+        except ValueError as exc:
+            raise HTTPException(400, "Invalid FEN.") from exc
+        if not board.is_valid():
+            raise HTTPException(400, "Invalid FEN.")
+        if board.is_game_over(claim_draw=True):
+            raise HTTPException(409, "Position already finished.")
+
+        move = await run_engine_work(residents.choose_move, board.copy(stack=False), profile.username)
+        if move is None or move not in board.legal_moves:
+            raise HTTPException(409, "Resident has no legal move.")
+        return {"uci": move.uci()}
 
     @router.post("/roster")
     @limiter.limit("30/minute")
