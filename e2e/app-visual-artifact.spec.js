@@ -232,8 +232,17 @@ test('App · captura visual canónica desktop + Android normal/desktop-site', as
         if (capture.dismissMatthias) {
           const speech = home.locator('.illustrated-home__speech');
           if (await speech.count()) {
-            await speech.getByRole('button', { name:'Cerrar comentario de Matthias' }).click();
-            await expect(speech).toHaveCount(0);
+            const close = speech.getByRole('button', { name:'Cerrar comentario de Matthias' });
+            try {
+              await close.click({ timeout:2_500 });
+            } catch {
+              // Matthias may auto-dismiss while Playwright waits for click
+              // stability. A detached speech is already the desired state.
+              if (await speech.isVisible().catch(() => false)) {
+                await close.click({ force:true, timeout:2_500 });
+              }
+            }
+            await expect(speech).toHaveCount(0, { timeout:5_000 });
             await page.waitForTimeout(80);
           }
         }
