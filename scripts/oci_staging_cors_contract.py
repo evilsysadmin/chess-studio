@@ -380,6 +380,13 @@ assert 'pvp_virtual_roster_attest()' in deploy
 assert 'if ! pvp_virtual_roster_attest "$candidate_service" "$candidate_pvp_service" "$target"; then' in deploy
 for virtual_rival in ("sparringmeister", "otto_falk", "marta_stein", "viktor_kraus"):
     assert virtual_rival in deploy, f"missing virtual roster deploy attestation rival: {virtual_rival}"
+virtual_roster_attest = deploy.split("pvp_virtual_roster_attest() {", 1)[1].split(
+    "\npvp_edge_attest() {", 1
+)[0]
+assert 'for username in required:' in virtual_roster_attest
+assert 'for username in ("otto_falk", "marta_stein", "viktor_kraus"):' in virtual_roster_attest
+assert '!= "resident"' in virtual_roster_attest
+assert 'sparring: "sparring"' not in virtual_roster_attest
 assert "payload.get('release')" in deploy
 assert "expected_release" in deploy
 assert '"http://127.0.0.1:${target_port}/api/pvp/_edge/ready"' in deploy
