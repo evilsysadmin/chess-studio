@@ -2,7 +2,6 @@ package pulse
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -177,4 +176,3 @@ func matchReadID(path string) (string, bool) {
 	return matchID, true
 }
 
-var _ = errors.Is
