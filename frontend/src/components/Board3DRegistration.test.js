@@ -33,6 +33,14 @@ describe('Board3D bootstrap boundary', () => {
     expect(requestIdleCallback).not.toHaveBeenCalled();
   });
 
+  it('can warm Board3D without installing gameplay listeners on Home', async () => {
+    const registration = await import('./Board3DRegistration.js');
+
+    await registration.preloadBoard3DRenderer();
+
+    expect(installWarRoomPointerCapture).not.toHaveBeenCalled();
+  });
+
   it('installs War Room pointer recovery only when the 3D renderer is requested', async () => {
     await import('./Board3DRegistration.js');
 
