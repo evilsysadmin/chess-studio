@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/matchmove"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 type fakeMatchMoveStore struct {
@@ -280,6 +281,162 @@ func TestMatchMovePathIsExact(t *testing.T) {
 		_, got := matchMoveID(path)
 		if got != want {
 			t.Fatalf("%s got=%t want=%t", path, got, want)
+		}
+	}
+}
+
+
+type fakeResidentMoveOracle struct {
+	uci string
+	err error
+	calls int
+	fen string
+	resident string
+}
+
+func (f *fakeResidentMoveOracle) Move(_ context.Context, fen, resident string) (string, error) {
+	f.calls++
+	f.fen = fen
+	f.resident = resident
+	return f.uci, f.err
+}
+
+type scriptedMatchMoveStore struct {
+	match matchmove.Match
+	found bool
+	rows []cancelMatchRow
+	commitCalls int
+	updates []matchmove.Update
+}
+
+func (s *scriptedMatchMoveStore) GetMatch(context.Context, string) (matchmove.Match, bool, error) {
+	return s.match, s.found, nil
+}
+
+func (s *scriptedMatchMoveStore) Commit(_ context.Context, _ string, update matchmove.Update) (cancelMatchRow, bool, error) {
+	s.updates = append(s.updates, update)
+	index := s.commitCalls
+	s.commitCalls++
+	if index >= len(s.rows) {
+		return cancelMatchRow{}, false, nil
+	}
+	return s.rows[index], true, nil
+}
+
+func TestNativeMoveResidentRepliesViaOracleAndSecondCAS(t *testing.T) {
+	now := time.Date(2026, 10, 2, 14, 45, 0, 0, time.UTC)
+	row := moveHTTPRow(now)
+	row.Black = "marta_stein"
+
+	human := committedMoveHTTPRow(now)
+	human.Black = "marta_stein"
+	human.History = []bson.M{{
+		"ply": 1, "uci": "e2e4", "san": "e4", "by": "alice", "at": now,
+	}}
+
+	bot := human
+	bot.FEN = "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2"
+	bot.Turn = "w"
+	bot.Revision = 9
+	bot.History = []bson.M{
+		{"ply": 1, "uci": "e2e4", "san": "e4", "by": "alice", "at": now},
+		{"ply": 2, "uci": "e7e5", "san": "e5", "by": "marta_stein", "at": now},
+	}
+
+	moveStore := &scriptedMatchMoveStore{
+		match: moveDomainMatch(row),
+		found: true,
+		rows: []cancelMatchRow{human, bot},
+	}
+	readStore := &fakeMatchReadStore{
+		readRow: row, observerWasLive: true, readFound: true,
+		canonical: []cancelMatchRow{row, row},
+		canonicalFound: []bool{true, true},
+	}
+	h := newMoveHandlerForTest(t, now, moveStore, readStore)
+	oracle := &fakeResidentMoveOracle{uci: "e7e5"}
+	h.residentMoveOracle = oracle
+
+	rr := moveRequest(t, h, now, `{"from":"e2","to":"e4"}`)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	if got := rr.Header().Get("X-Chess-Pvp-Resident-Pending"); got != "" {
+		t.Fatalf("unexpected pending header=%q", got)
+	}
+	if oracle.calls != 1 || oracle.resident != "marta_stein" || oracle.fen != human.FEN {
+		t.Fatalf("oracle calls=%d resident=%q fen=%q", oracle.calls, oracle.resident, oracle.fen)
+	}
+	if moveStore.commitCalls != 2 || len(moveStore.updates) != 2 {
+		t.Fatalf("commits=%d updates=%#v", moveStore.commitCalls, moveStore.updates)
+	}
+	residentUpdate := moveStore.updates[1]
+	if residentUpdate.ExpectedRevision != 8 || residentUpdate.UCI != "e7e5" ||
+		residentUpdate.SAN != "e5" || residentUpdate.Turn != "w" {
+		t.Fatalf("resident update=%#v", residentUpdate)
+	}
+	if len(residentUpdate.History) != 2 || residentUpdate.History[1].By != "marta_stein" {
+		t.Fatalf("resident history=%#v", residentUpdate.History)
+	}
+	var body struct { Match map[string]any `json:"match"` }
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if body.Match["turn"] != "w" || body.Match["opponentReady"] != false {
+		t.Fatalf("match=%#v", body.Match)
+	}
+}
+
+func TestNativeMoveResidentOracleFailureKeepsCommittedHumanMove(t *testing.T) {
+	now := time.Date(2026, 10, 2, 14, 45, 0, 0, time.UTC)
+	row := moveHTTPRow(now)
+	row.Black = "otto_falk"
+	human := committedMoveHTTPRow(now)
+	human.Black = "otto_falk"
+	human.History = []bson.M{{
+		"ply": 1, "uci": "e2e4", "san": "e4", "by": "alice", "at": now,
+	}}
+	moveStore := &scriptedMatchMoveStore{
+		match: moveDomainMatch(row), found: true, rows: []cancelMatchRow{human},
+	}
+	readStore := &fakeMatchReadStore{
+		readRow: row, observerWasLive: true, readFound: true,
+		canonical: []cancelMatchRow{row, row},
+		canonicalFound: []bool{true, true},
+	}
+	h := newMoveHandlerForTest(t, now, moveStore, readStore)
+	h.residentMoveOracle = &fakeResidentMoveOracle{err: errors.New("oracle unavailable")}
+
+	rr := moveRequest(t, h, now, `{"from":"e2","to":"e4"}`)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	if got := rr.Header().Get("X-Chess-Pvp-Resident-Pending"); got != "1" {
+		t.Fatalf("pending=%q", got)
+	}
+	if moveStore.commitCalls != 1 {
+		t.Fatalf("commits=%d want human commit only", moveStore.commitCalls)
+	}
+	var body struct { Match map[string]any `json:"match"` }
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if body.Match["turn"] != "b" || body.Match["status"] != "active" {
+		t.Fatalf("committed human match=%#v", body.Match)
+	}
+}
+
+func TestMoveRequestFromUCI(t *testing.T) {
+	got, err := moveRequestFromUCI("A7A8Q")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.From != "a7" || got.To != "a8" || got.Promotion != "q" {
+		t.Fatalf("request=%#v", got)
+	}
+	for _, raw := range []string{"e2", "e2e9", "e7e8k", "drop table"} {
+		if _, err := moveRequestFromUCI(raw); !errors.Is(err, matchmove.ErrInvalidMove) {
+			t.Fatalf("raw=%q err=%v", raw, err)
 		}
 	}
 }
