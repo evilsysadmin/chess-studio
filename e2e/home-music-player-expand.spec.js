@@ -27,7 +27,9 @@ test('Home desktop · el reproductor plegado no roba el hitbox de Matthias y exp
   expect(collapsedBox).not.toBeNull();
   expect(openBox).not.toBeNull();
   expect(matthiasBox).not.toBeNull();
-  expect(collapsedBox.width).toBeLessThanOrEqual(70);
+  expect(collapsedBox.width).toBeGreaterThanOrEqual(180);
+  expect(collapsedBox.width).toBeLessThanOrEqual(200);
+  expect(openBox.width).toBeGreaterThanOrEqual(145);
   expect(openBox.y).toBeGreaterThanOrEqual(8);
   expect(openBox.y + openBox.height).toBeLessThanOrEqual(512);
 
