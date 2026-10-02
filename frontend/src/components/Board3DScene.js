@@ -1,8 +1,16 @@
 import * as THREE from 'three';
 import { resolveBoard3DCameraFov } from './Board3DConfig.js';
+import { getCameraFramingProfile } from './Board3DSurfaces.js';
 import { warRoomDecorProfile } from './WarRoom3DMobileVisuals.js';
-import { getWarRoomMobileFramingProfile } from './WarRoomMobileFraming.js';
-import { canonicalWarRoomCameraFramingProfile } from './Board3DCameraProfiles.js';
+import {
+  getLegacyBoard3DMobileFramingProfile,
+  getWarRoomMobileFramingProfile,
+  WAR_ROOM_PLAY_PITCH,
+} from './WarRoomMobileFraming.js';
+import {
+  canonicalWarRoomCameraFramingProfile,
+  classicWarRoomCameraFramingProfile,
+} from './Board3DCameraProfiles.js';
 
 
 const BOX_GEOMETRY_CACHES = new WeakMap();
@@ -203,6 +211,68 @@ export function classRoomCameraFramingProfile({ aspect = 1, coarsePointer = fals
 }
 
 export function fitBoardCamera(camera, width, height, whiteSide, { profile: requestedProfile = 'tactical', immersive = false } = {}) {
+  const aspect = Math.max(0.35, width / Math.max(1, height));
+  const coarsePointer = typeof window !== 'undefined'
+    && Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
+  const viewportWidth = typeof window !== 'undefined'
+    ? Number(window.innerWidth) || width
+    : width;
+  const usesWarRoomContract = requestedProfile === 'warroom';
+  const canonicalMobileProfile = usesWarRoomContract
+    ? getWarRoomMobileFramingProfile({ aspect, coarsePointer, viewportWidth })
+    : null;
+  const legacyMobileProfile = !usesWarRoomContract && requestedProfile !== 'classroom'
+    ? getLegacyBoard3DMobileFramingProfile({ aspect, coarsePointer, viewportWidth })
+    : null;
+  const mobileProfile = canonicalMobileProfile || legacyMobileProfile;
+
+  const baseProfile = requestedProfile === 'classroom'
+    ? classRoomCameraFramingProfile({ aspect, coarsePointer, viewportWidth })
+    : usesWarRoomContract
+      ? mobileProfile || canonicalWarRoomCameraFramingProfile({ aspect })
+      : mobileProfile || (requestedProfile === 'classic'
+        ? classicWarRoomCameraFramingProfile(aspect)
+        : getCameraFramingProfile(aspect));
+
+  // Existing non-WarRoom Board3D surfaces retain their prior desktop pitch.
+  // Playable War Rooms do not need this shim: the v4 canonical profile already
+  // owns both lens and pitch as one explicit contract.
+  const profile = !usesWarRoomContract && !mobileProfile && requestedProfile !== 'classroom'
+    ? {
+        ...baseProfile,
+        version: `${baseProfile.version || requestedProfile}-shared-play-pitch-v1`,
+        cameraY: WAR_ROOM_PLAY_PITCH.cameraY,
+        cameraZ: WAR_ROOM_PLAY_PITCH.cameraZ,
+      }
+    : baseProfile;
+
+  camera.fov = profile.fov ?? resolveBoard3DCameraFov(aspect, {
+    mobile: Boolean(mobileProfile || (requestedProfile === 'classroom' && (coarsePointer || aspect < 1.12))),
+  });
+  const verticalFov = THREE.MathUtils.degToRad(camera.fov);
+  const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * aspect);
+  const limitingFov = Math.min(verticalFov, horizontalFov);
+  const desktopImmersiveScale = immersive && !mobileProfile && requestedProfile !== 'classroom' ? 0.91 : 1;
+  const sharedPitchDistanceScale = !mobileProfile && requestedProfile !== 'classroom' ? 1.115 : 1;
+  const rawDistance = (profile.halfSpan / Math.tan(limitingFov / 2))
+    * profile.padding
+    * desktopImmersiveScale
+    * sharedPitchDistanceScale;
+  const maxDistance = requestedProfile === 'classroom' ? profile.maxDistance : mobileProfile ? profile.maxDistance : 88;
+  const distance = THREE.MathUtils.clamp(rawDistance, profile.minDistance, maxDistance);
+  const target = new THREE.Vector3(0, profile.targetY, whiteSide ? -profile.targetZ : profile.targetZ);
+  const direction = new THREE.Vector3(0, profile.cameraY, whiteSide ? profile.cameraZ : -profile.cameraZ).normalize();
+  camera.aspect = aspect;
+  camera.far = Math.max(camera.far, distance + 25);
+  camera.position.copy(target).addScaledVector(direction, distance);
+  camera.lookAt(target);
+  camera.userData.basePosition = camera.position.clone();
+  camera.userData.baseTarget = target.clone();
+  camera.userData.framingProfile = profile?.version || mobileProfile?.version || 'standard';
+  camera.userData.cameraFov = camera.fov;
+  camera.userData.cameraDistance = distance;
+  camera.updateProjectionMatrix();
+} = {}) {
   const aspect = Math.max(0.35, width / Math.max(1, height));
   const coarsePointer = typeof window !== 'undefined'
     && Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
