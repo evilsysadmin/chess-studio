@@ -374,7 +374,12 @@ assert "any(payload.get(key) is not True for key in required_native)" in deploy
 assert 'pvp_target_image="$(pvp_image_ref "$sha")"' in deploy
 assert 'docker pull --quiet "$pvp_target_image"' in deploy
 assert 'render_edge "$candidate_color" go' in deploy
-assert 'render_edge "$previous_color" direct' in deploy
+assert 'rollback_pvp_mode="direct"' in deploy
+assert 'previous_pvp_service="$(pvp_service "$previous_color")"' in deploy
+assert 'grep -Fxq "$previous_pvp_service"' in deploy
+assert 'rollback_pvp_mode="go"' in deploy
+assert 'render_edge "$previous_color" "$rollback_pvp_mode"' in deploy
+assert 'pvp=$rollback_pvp_mode' in deploy
 assert 'remove_service "$(pvp_service "$previous_color")"' in deploy
 assert 'CHESS_STUDIO_DEPLOY_OK target=$target repo_ref=$sha color=$candidate_color pvp=go' in deploy
 assert 'pvp_edge_attest()' in deploy
