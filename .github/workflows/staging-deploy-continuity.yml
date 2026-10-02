@@ -141,6 +141,10 @@ jobs:
         id: continuity
         shell: bash
         run: |
+          # GitHub's bash wrapper starts with -e. This drill intentionally
+          # captures the probe/deploy return codes so it can print diagnostics
+          # before failing; disable inherited errexit explicitly.
+          set +e
           set -uo pipefail
           arm="$RUNNER_TEMP/continuity-armed.json"
           trigger="$RUNNER_TEMP/continuity-trigger"
