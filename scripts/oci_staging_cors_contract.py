@@ -69,9 +69,14 @@ required_deploy_fragments = (
     "cors_attest",
     "pvp_browser_cors_attest",
     "/api/pvp/roster",
+    "pvp_challenge_browser_attest",
+    "/api/pvp/challenges",
     "Access-Control-Request-Method: POST",
+    "authorization,content-type,x-request-id,x-client-release",
     "edge PvP browser CORS attestation failed after cutover",
+    "edge PvP challenge browser transport attestation failed after cutover",
     "OCI staging public PvP roster did not prove native Go browser response semantics",
+    "OCI staging public PvP challenge transport did not prove browser JSON/CORS semantics",
     "X-Chess-Pvp-Native",
     "deliberately-invalid",
     "readiness/build/CORS attestation",
@@ -81,6 +86,7 @@ for fragment in required_deploy_fragments:
 
 assert 'CORS_ORIGINS: "${CHESS_STUDIO_CORS_ORIGINS:-https://staging.chess-studio.shadowops.dpdns.org}"' in compose
 assert compose.count('PVP_NATIVE_ROSTER_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_ROSTER_ENABLED:-true}"') == 2
+assert compose.count('PVP_NATIVE_CHALLENGE_CREATE_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_CHALLENGE_CREATE_ENABLED:-false}"') == 2
 assert compose.count('PVP_NATIVE_CHAT_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_CHAT_ENABLED:-true}"') == 2
 assert compose.count('PVP_NATIVE_CHALLENGE_RESOLUTION_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_CHALLENGE_RESOLUTION_ENABLED:-true}"') == 2
 assert compose.count('PVP_NATIVE_MATCH_HANDOFF_CANCEL_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_MATCH_HANDOFF_CANCEL_ENABLED:-true}"') == 2
@@ -116,13 +122,20 @@ required_public_verifier_fragments = (
     "REQUIRED_CORS_HEADERS",
     "PVP_ROSTER_CORS_METHODS",
     "PVP_ROSTER_CORS_HEADERS",
+    "PVP_CHALLENGE_CORS_METHODS",
+    "PVP_CHALLENGE_CORS_HEADERS",
     'f"{base}/pvp/roster?probe={probe}"',
+    'f"{base}/pvp/challenges?probe={probe}"',
     'method="POST"',
     "pvp_roster_cors_http",
     "fetch_roster_rejection",
     "native_roster_rejection_ok",
     "pvp_roster_response_http",
     "pvp_roster_native_response=ok",
+    "fetch_challenge_rejection",
+    "challenge_transport_rejection_ok",
+    "pvp_challenge_cors_http",
+    "pvp_challenge_transport=ok",
     "x-chess-pvp-native",
 )
 for fragment in required_public_verifier_fragments:
@@ -328,6 +341,7 @@ assert "CHESS_STUDIO_PVP_NATIVE_MATCH_MOVE_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_CHALLENGE_RESOLUTION_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_CHALLENGE_ACCEPT_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_CHALLENGE_CREATE_ENABLED" in deploy
+assert "env.get('CHESS_STUDIO_PVP_NATIVE_CHALLENGE_CREATE_ENABLED', 'false')" in deploy
 assert 'pvp_target_image="$(pvp_image_ref "$sha")"' in deploy
 assert 'docker pull --quiet "$pvp_target_image"' in deploy
 assert 'render_edge "$candidate_color" go' in deploy
@@ -342,7 +356,9 @@ assert 'CHESS_STUDIO_PVP_EDGE_ATTEST_ATTEMPTS:-20' in deploy
 assert 'sleep 0.25' in deploy
 assert 'if ! wait_pvp_edge_attest "$port"; then' in deploy
 assert 'if ! pvp_browser_cors_attest "http://127.0.0.1:${port}/api/pvp/roster"; then' in deploy
+assert 'if ! pvp_challenge_browser_attest "http://127.0.0.1:${port}/api/pvp/challenges"; then' in deploy
 assert 'if ! pvp_browser_cors_attest "${public_api_url}/pvp/roster"; then' in deploy
+assert 'if ! pvp_challenge_browser_attest "${public_api_url}/pvp/challenges"; then' in deploy
 assert 'compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge' in deploy
 assert 'render_edge "$candidate_color"' in deploy
 assert 'reload_edge' in deploy
