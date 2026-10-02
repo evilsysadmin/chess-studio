@@ -351,6 +351,7 @@ assert "payload.get('nativeMatchReady')" in deploy
 assert "payload.get('nativeMatchResign')" in deploy
 assert "payload.get('nativeMatchRead')" in deploy
 assert "payload.get('nativeMatchMove')" in deploy
+assert "payload.get('nativeResidentMove')" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_PULSE_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_LOBBY_READ_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_ROSTER_ENABLED" in deploy
@@ -361,6 +362,7 @@ assert "CHESS_STUDIO_PVP_NATIVE_MATCH_READY_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_MATCH_RESIGN_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_MATCH_READ_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_MATCH_MOVE_ENABLED" in deploy
+assert "CHESS_STUDIO_PVP_NATIVE_RESIDENT_MOVE_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_CHALLENGE_RESOLUTION_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_CHALLENGE_ACCEPT_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_CHALLENGE_CREATE_ENABLED" in deploy
