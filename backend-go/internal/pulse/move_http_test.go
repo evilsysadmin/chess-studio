@@ -77,15 +77,20 @@ func newMoveHandlerForTest(
 	now time.Time,
 	moveStore matchMoveStore,
 	readStore matchReadStore,
+	logs ...*[]string,
 ) *Handler {
 	t.Helper()
+	var log *[]string
+	if len(logs) > 0 {
+		log = logs[0]
+	}
 	h, err := NewHandler(HandlerConfig{
 		Store:           &fakeStore{exists: true},
 		JWTSecret:       "01234567890123456789012345678901",
 		MatchMoveStore:  moveStore,
 		MatchReadStore:  readStore,
-		MatchTimeout:    &fakeMatchTimeoutService{},
-		MatchDisconnect: &fakeMatchDisconnectService{},
+		MatchTimeout:    &fakeMatchTimeoutService{log: log},
+		MatchDisconnect: &fakeMatchDisconnectService{log: log},
 		Now:             func() time.Time { return now },
 	})
 	if err != nil {
@@ -118,7 +123,7 @@ func TestNativeMoveHumanCommitsPreparedCAS(t *testing.T) {
 		canonical: []cancelMatchRow{row, row},
 		canonicalFound: []bool{true, true},
 	}
-	h := newMoveHandlerForTest(t, now, moveStore, readStore)
+	h := newMoveHandlerForTest(t, now, moveStore, readStore, &log)
 
 	rr := moveRequest(t, h, now, `{"from":"e2","to":"e4","promotion":null}`)
 	if rr.Code != http.StatusOK {
