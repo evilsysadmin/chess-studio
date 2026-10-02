@@ -74,6 +74,8 @@ required_deploy_fragments = (
     "CHESS_STUDIO_PVP_ALLOW_PYTHON_FALLBACK_STAGING",
     "deployment_target == 'staging'",
     "required_native",
+    "nativeResidentEngine",
+    "CHESS_STUDIO_PVP_NATIVE_RESIDENT_ENGINE_ENABLED",
     "/api/pvp/lobby",
     "pvp_challenge_browser_attest",
     "/api/pvp/challenges",
@@ -100,6 +102,7 @@ assert compose.count('PVP_NATIVE_CHAT_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_CHAT_E
 assert compose.count('PVP_NATIVE_CHALLENGE_RESOLUTION_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_CHALLENGE_RESOLUTION_ENABLED:-true}"') == 2
 assert compose.count('PVP_NATIVE_MATCH_HANDOFF_CANCEL_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_MATCH_HANDOFF_CANCEL_ENABLED:-true}"') == 2
 assert compose.count('PVP_NATIVE_MATCH_READY_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_MATCH_READY_ENABLED:-true}"') == 2
+assert compose.count('PVP_NATIVE_RESIDENT_ENGINE_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_RESIDENT_ENGINE_ENABLED:-true}"') == 2
 assert compose.count('CHESS_PVP_SPARRING_ENABLED: "${CHESS_PVP_SPARRING_ENABLED:-false}"') == 5
 assert compose.count('CHESS_PVP_SPARRING_OWNER: "${CHESS_PVP_SPARRING_OWNER:-evilsysadmin}"') == 5
 assert compose.count('CHESS_PVP_SPARRING_USERNAME: "${CHESS_PVP_SPARRING_USERNAME:-sparringmeister}"') == 5
@@ -142,6 +145,7 @@ required_public_verifier_fragments = (
     "pvp_full_go_ready",
     '"nativeChallengeCreate"',
     '"nativeMatchMove"',
+    '"nativeResidentEngine"',
     "pvp_full_go=ok virtual_players=on",
     "fetch_roster_rejection",
     "native_roster_rejection_ok",
@@ -157,6 +161,7 @@ for fragment in required_public_verifier_fragments:
     assert fragment in verifier, f"missing public staging CORS verifier contract: {fragment}"
 assert "assert pvp_full_go_ready(full_go)" in verifier
 assert 'broken["nativeChallengeCreate"] = False' in verifier
+assert '"nativeResidentEngine"' in verifier
 assert 'broken["virtualPlayersEnabled"] = False' in verifier
 
 # Runtime configuration is operational state. Normal releases consume the
