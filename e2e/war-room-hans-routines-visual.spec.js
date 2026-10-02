@@ -13,6 +13,11 @@ const VISIBLE_SCREEN = /^(?:onscreen|edge|offscreen)$/;
 const MAX_GROUND_GAP = 0.02;
 const SAMPLE_MS = 400;
 const OBSERVE_MS = 6_000;
+// SwiftShader can spend tens of seconds compiling/rasterizing the first War Room
+// frame on a loaded hosted runner. The canonical Hans canary already measured
+// >45 s after a long visual sweep, so routine capture uses the same 90 s mount
+// envelope instead of treating runner CPU contention as a product regression.
+const MOUNT_BUDGET_MS = 90_000;
 const SERVICE_EVENTS = new Set(['water-plant', 'espresso']);
 const CHORE_EVENTS = new Set(WAR_ROOM_HANS_CHORE_EVENTS);
 const REQUESTED_EVENTS = String(process.env.HANS_ROUTINE_EVENTS || '')
@@ -151,7 +156,7 @@ async function sampleRoutine(page, canvas, eventName) {
 
 for (const eventName of CAPTURE_EVENTS) {
   test(`War Room · Hans routine video · ${eventName}`, async () => {
-    test.setTimeout(180_000);
+    test.setTimeout(300_000);
     await mkdir(ARTIFACT_DIR, { recursive: true });
     await mkdir(TEMP_VIDEO_DIR, { recursive: true });
 
@@ -214,14 +219,14 @@ for (const eventName of CAPTURE_EVENTS) {
     });
       await seedGamesBeforeEvent(page, eventName);
 
-      await buttonWithVisibleText(page, 'Partida rápida').click();
+      await buttonWithVisibleText(page, 'Partida rápida').press('Enter');
       const quickDialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
       await expect(quickDialog).toBeVisible();
-      await quickDialog.getByRole('button', { name: 'Empezar partida', exact: true }).click();
-      await expect(page.locator('.board-live-row.is-3d-warroom')).toBeVisible({ timeout: 45_000 });
+      await quickDialog.getByRole('button', { name: 'Empezar partida', exact: true }).press('Enter');
+      await expect(page.locator('.board-live-row.is-3d-warroom')).toBeVisible({ timeout: MOUNT_BUDGET_MS });
 
       const canvas = page.locator('.board3d-main-canvas');
-      await expect(canvas).toBeVisible({ timeout: 45_000 });
+      await expect(canvas).toBeVisible({ timeout: MOUNT_BUDGET_MS });
       await expect(canvas).toHaveAttribute('data-war-room-variant', 'classic', { timeout: 10_000 });
       await expect(page.locator('[data-war-room-hans-game-id]').first()).toHaveAttribute(
         'data-war-room-hans-game-id',
