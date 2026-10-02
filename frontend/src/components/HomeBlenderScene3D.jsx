@@ -12,6 +12,12 @@ import {
   tighterRuntimeLodCap,
 } from './HomeCastle3DRenderPolicy.js';
 import { createHomeCastle3DPerformanceGovernor } from './HomeCastle3DPerformanceGovernor.js';
+import {
+  HOME_MATTHIAS_ACTOR_MODEL_PATH,
+  createHomeMatthiasActor,
+  homeMatthiasActorRoutine,
+  homeMatthiasProjectBounds,
+} from './HomeBlenderMatthiasActor.js';
 
 export const HOME_BLENDER_RUNTIME_LOGICAL_ID = 'home.scene.runtime';
 export const HOME_BLENDER_RUNTIME_MIN_WIDTH = HOME_CASTLE_3D_MOBILE_ENABLE_MIN_WIDTH;
@@ -1253,9 +1259,16 @@ export default function HomeBlenderScene3D({
   ambient = 'day',
   onUnavailable = null,
   onAnchorLayout = null,
+  matthias = null,
+  onMatthiasLayout = null,
 }) {
   const canvasRef = useRef(null);
   const renderRequestRef = useRef(null);
+  const matthiasPropsRef = useRef(matthias);
+  const matthiasLayoutRef = useRef(onMatthiasLayout);
+  const matthiasApplyRef = useRef(null);
+  matthiasPropsRef.current = matthias;
+  matthiasLayoutRef.current = onMatthiasLayout;
   const glContextRef = useRef(null);
   const [contextGeneration, setContextGeneration] = useState(0);
 
@@ -1280,6 +1293,8 @@ export default function HomeBlenderScene3D({
     let model = null;
     let fireRig = [];
     let klausRig = null;
+    let matthiasActor = null;
+    let lastActorTickAt = null;
     let dust = null;
     let shaft = null;
     const fireParticles = [];
@@ -1525,6 +1540,11 @@ export default function HomeBlenderScene3D({
         moveDust(timestamp);
         moveFireParticles(timestamp);
         applyHomeBlenderKlausMotion(klausRig, timestamp);
+        if (matthiasActor) {
+          const dt = lastActorTickAt === null ? 0 : (timestamp - lastActorTickAt) / 1000;
+          lastActorTickAt = timestamp;
+          matthiasActor.update(dt);
+        }
         const lightFactor = applyRuntimeFireMotion(fireRig, timestamp);
         runtimeLights.leftHearth.intensity = runtimeLights.leftHearthBase * lightFactor.left;
         runtimeLights.rightHearth.intensity = runtimeLights.rightHearthBase * lightFactor.right;
@@ -1624,12 +1644,67 @@ export default function HomeBlenderScene3D({
         camera.lookAt(pose.target.x, pose.target.y, pose.target.z);
         onAnchorLayout(homeBlenderProjectAnchors(camera));
       }
+      reportMatthiasLayout();
       requestRender();
+    };
+
+    const reportMatthiasLayout = () => {
+      const report = matthiasLayoutRef.current;
+      if (!report) return;
+      if (!matthiasActor || disposed || fallbackRequested) {
+        report(null);
+        return;
+      }
+      const pose = homeBlenderCameraPoseForAspect(camera.aspect);
+      camera.position.set(pose.position.x, pose.position.y, pose.position.z);
+      camera.lookAt(pose.target.x, pose.target.y, pose.target.z);
+      const rect = homeMatthiasProjectBounds(matthiasActor.bounds(), camera);
+      const routine = matthiasActor.routine;
+      report(rect ? { ...rect, station: routine.stationId, posture: routine.posture, profile: routine.profile } : null);
+    };
+
+    const applyMatthiasRoutine = () => {
+      if (!matthiasActor || disposed) return;
+      const props = matthiasPropsRef.current || {};
+      const routine = homeMatthiasActorRoutine(props);
+      const moved = matthiasActor.setRoutine(routine, {
+        reducedMotion: prefersReducedMotion || softwareRenderer,
+      });
+      canvas.dataset.homeMatthiasActor = 'ready';
+      canvas.dataset.homeMatthiasStation = routine.stationId;
+      canvas.dataset.homeMatthiasPosture = routine.posture;
+      canvas.dataset.homeMatthiasClip = routine.clip;
+      if (moved && renderer.shadowMap.enabled) renderer.shadowMap.needsUpdate = true;
+      reportMatthiasLayout();
+      requestRender();
+    };
+    matthiasApplyRef.current = applyMatthiasRoutine;
+
+    const loadMatthiasActor = () => {
+      if (!matthiasPropsRef.current || matthiasActor) return;
+      canvas.dataset.homeMatthiasActor = 'loading';
+      const actorLoader = new GLTFLoader();
+      actorLoader.load(
+        `${import.meta.env.BASE_URL}${HOME_MATTHIAS_ACTOR_MODEL_PATH}`,
+        (gltf) => {
+          if (disposed || fallbackRequested) return;
+          matthiasActor = createHomeMatthiasActor(gltf, { shadowsEnabled: renderer.shadowMap.enabled });
+          scene.add(matthiasActor.object);
+          applyMatthiasRoutine();
+        },
+        undefined,
+        () => {
+          if (disposed) return;
+          canvas.dataset.homeMatthiasActor = 'unavailable';
+          matthiasLayoutRef.current?.(null);
+        },
+      );
     };
 
     const failToFallback = (force = false) => {
       if (disposed || fallbackRequested || (!force && model)) return;
       fallbackRequested = true;
+      matthiasLayoutRef.current?.(null);
       canvas.classList.remove('is-ready');
       canvas.dataset.homeBlenderRuntime = 'fallback';
       onUnavailable?.();
@@ -1670,6 +1745,7 @@ export default function HomeBlenderScene3D({
       canvas.dataset.homeBlenderRuntime = 'ready';
       canvas.classList.add('is-ready');
       startFireAnimation();
+      loadMatthiasActor();
     });
 
     const onContextLost = (event) => {
@@ -1718,6 +1794,12 @@ export default function HomeBlenderScene3D({
       canvas.removeEventListener('webglcontextlost', onContextLost);
       canvas.removeEventListener('webglcontextrestored', onContextRestored);
       canvas.classList.remove('is-ready');
+      matthiasApplyRef.current = null;
+      if (matthiasActor) {
+        matthiasActor.dispose();
+        matthiasActor = null;
+      }
+      matthiasLayoutRef.current?.(null);
       if (model) {
         scene.remove(model);
         disposeRuntimeScene(model);
@@ -1747,6 +1829,15 @@ export default function HomeBlenderScene3D({
       renderer.dispose();
     };
   }, [ambient, contextGeneration, onUnavailable]);
+
+  // Routine changes (hourly schedule, greeting) move the resident between
+  // stations without reloading the hall or the rig.
+  const matthiasScene = matthias?.scene || '';
+  const matthiasActivity = matthias?.activity || '';
+  const matthiasSpeaking = Boolean(matthias?.speaking);
+  useEffect(() => {
+    matthiasApplyRef.current?.();
+  }, [matthiasScene, matthiasActivity, matthiasSpeaking]);
 
   // renderer.dispose() libera recursos pero no el contexto WebGL: éste vive
   // hasta que el recolector se lleve el canvas, y cada ida y vuelta Home ⇄

@@ -8,14 +8,14 @@ const LOCAL_SWIFTSHADER_CAPTURE = process.env.HOME_MATTHIAS_LOCAL_SWIFTSHADER ==
 const CAPTURE_BASE_URL = process.env.HOME_MATTHIAS_BASE_URL;
 const FIXED_LOCAL_DATE = { year:2026, monthIndex:8, day:14, minute:0, second:0 };
 const ALL_CAPTURES = [
-  { label:'desktop-watch-post-1440x900', width:1440, height:900, hour:12, profile:'speak', clip:'Speak', station:'watch-post', support:'foreground-rug', supportBottomRange:[.92, 1.08], avatar:/lunch-bocata/i, keepGreeting:true, expectCopy:false },
-  { label:'desktop-1440x900', width:1440, height:900, hour:20, profile:'bite', clip:'Bite', station:'dining-table', support:'foreground-rug', supportBottomRange:[.82, .9], avatar:/lunch-bocata/i, minStageTopRatio:.55, expectCopy:false },
-  { label:'desktop-coffee-1440x900', width:1440, height:900, hour:6, profile:'sip', clip:'Sip', station:'refreshment-table', support:'foreground-rug', supportBottomRange:[.82, .9], avatar:/morning-coffee/i, minStageTopRatio:.55, expectCopy:false },
-  { label:'desktop-dossier-coffee-1440x900', width:1440, height:900, hour:10, profile:'dossier', clip:'Dossier', station:'hearth-files', support:'foreground-rug', supportBottomRange:[.94, 1.02], avatar:/dossier/i, maxStageLeftRatio:.13, minStageTopRatio:.69, expectFullPlinth:true, expectedRoutineProps:'reports+coffee-in-hand', expectedCoffeeAnchor:'right-hand', expectCopy:false },
-  { label:'desktop-chess-chair-1440x900', width:1440, height:900, hour:9, profile:'think', clip:'Think', station:'chess-chair', support:'chair-seat', supportBottomRange:[.64, .72], avatar:/afternoon-ops/i, expectFullPlinth:true, expectCopy:false },
-  { label:'desktop-reading-1440x900', width:1440, height:900, hour:8, profile:'read', clip:'Read', station:'library-chair', support:'chair-seat', supportBottomRange:[.64, .72], avatar:/strategy-book/i, maxStageLeftRatio:.19, expectFullPlinth:true, expectCopy:false },
-  { label:'desktop-writing-1440x900', width:1440, height:900, hour:16, profile:'write', clip:'Write', station:'writing-desk', support:'chair-seat', supportBottomRange:[.64, .72], avatar:/afternoon-ops/i, maxStageLeftRatio:.19, expectFullPlinth:true, expectCopy:false },
-  { label:'desktop-rest-1440x900', width:1440, height:900, hour:2, profile:'sleep', clip:'Sleep', station:'rest', support:'lounge-seat', supportBottomRange:[.7, .84], avatar:/late-sleep/i, expectCopy:false },
+  { label:'desktop-watch-post-1440x900', width:1440, height:900, hour:12, profile:'speak', clip:'Speak', station:'watch-post', support:'foreground-rug', supportBottomRange:[.92, 1.08], avatar:/lunch-bocata/i, keepGreeting:true, expectCopy:false, scene:{ station:'hearth-coffee', posture:'stand', leftRange:[.6, .95], bottomRange:[.72, .97] } },
+  { label:'desktop-1440x900', width:1440, height:900, hour:20, profile:'bite', clip:'Bite', station:'dining-table', support:'foreground-rug', supportBottomRange:[.82, .9], avatar:/lunch-bocata/i, minStageTopRatio:.55, expectCopy:false, scene:{ station:'hearth-coffee', posture:'stand', leftRange:[.6, .95], bottomRange:[.72, .97] } },
+  { label:'desktop-coffee-1440x900', width:1440, height:900, hour:6, profile:'sip', clip:'Sip', station:'refreshment-table', support:'foreground-rug', supportBottomRange:[.82, .9], avatar:/morning-coffee/i, minStageTopRatio:.55, expectCopy:false, scene:{ station:'hearth-coffee', posture:'stand', leftRange:[.6, .95], bottomRange:[.72, .97] } },
+  { label:'desktop-dossier-coffee-1440x900', width:1440, height:900, hour:10, profile:'dossier', clip:'Dossier', station:'hearth-files', support:'foreground-rug', supportBottomRange:[.94, 1.02], avatar:/dossier/i, maxStageLeftRatio:.13, minStageTopRatio:.69, expectFullPlinth:true, expectedRoutineProps:'reports+coffee-in-hand', expectedCoffeeAnchor:'right-hand', expectCopy:false, scene:{ station:'hearth-files', posture:'stand', leftRange:[.03, .3], bottomRange:[.7, .97] } },
+  { label:'desktop-chess-chair-1440x900', width:1440, height:900, hour:9, profile:'think', clip:'Think', station:'chess-chair', support:'chair-seat', supportBottomRange:[.64, .72], avatar:/afternoon-ops/i, expectFullPlinth:true, expectCopy:false, scene:{ station:'chess-chair', posture:'seat', leftRange:[.62, .9], bottomRange:[.55, .78] } },
+  { label:'desktop-reading-1440x900', width:1440, height:900, hour:8, profile:'read', clip:'Read', station:'library-chair', support:'chair-seat', supportBottomRange:[.64, .72], avatar:/strategy-book/i, maxStageLeftRatio:.19, expectFullPlinth:true, expectCopy:false, scene:{ station:'reading-chair', posture:'seat', leftRange:[.1, .35], bottomRange:[.55, .78] } },
+  { label:'desktop-writing-1440x900', width:1440, height:900, hour:16, profile:'write', clip:'Write', station:'writing-desk', support:'chair-seat', supportBottomRange:[.64, .72], avatar:/afternoon-ops/i, maxStageLeftRatio:.19, expectFullPlinth:true, expectCopy:false, scene:{ station:'reading-chair', posture:'seat', leftRange:[.1, .35], bottomRange:[.55, .78] } },
+  { label:'desktop-rest-1440x900', width:1440, height:900, hour:2, profile:'sleep', clip:'Sleep', station:'rest', support:'lounge-seat', supportBottomRange:[.7, .84], avatar:/late-sleep/i, expectCopy:false, scene:{ station:'sofa-nap', posture:'lie', leftRange:[0, .12], bottomRange:[.55, .85] } },
 ];
 const CAPTURES = process.env.HOME_MATTHIAS_CAPTURE_SCOPE === 'canonical-model'
   ? ALL_CAPTURES.filter(({ label }) => (
@@ -106,6 +106,57 @@ async function openDeterministicHome(page) {
   await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   await page.waitForTimeout(250);
   return home;
+}
+
+// With the Blender hall ready, Matthias is drawn inside the hall itself
+// (HomeBlenderMatthiasActor): seated, standing on the floor or asleep on the
+// sofa, and the DOM button is only a transparent hit-area over him. If the hall
+// settled on its 2D fallback, the floating portrait keeps the old contract.
+async function settleMatthiasRender(home) {
+  const hallRuntime = home.locator('[data-home-castle-compositor="blender-runtime"]');
+  if (await hallRuntime.count() === 0
+      || await hallRuntime.getAttribute('data-home-blender-runtime') !== 'ready') {
+    return { mode:'portrait', hallRuntime };
+  }
+  await expect.poll(
+    () => hallRuntime.getAttribute('data-home-matthias-actor'),
+    { timeout:30_000 },
+  ).toMatch(/^(ready|unavailable)$/);
+  const actor = await hallRuntime.getAttribute('data-home-matthias-actor');
+  return { mode:actor === 'ready' ? 'in-scene' : 'portrait', hallRuntime };
+}
+
+async function expectInSceneMatthias(home, hallRuntime, capture) {
+  const matthias = home.locator('.illustrated-home__matthias');
+  await expect(matthias).toHaveAttribute('data-home-matthias-render', 'in-scene', { timeout:15_000 });
+  await expect(matthias).toHaveClass(/is-in-scene/);
+  await expect(matthias.locator('.illustrated-home__matthias-portrait')).toHaveCount(0);
+  await expect(matthias).toHaveAttribute('data-home-matthias-station', capture.scene.station);
+  await expect(matthias).toHaveAttribute('data-home-matthias-posture', capture.scene.posture);
+  await expect(hallRuntime).toHaveAttribute('data-home-matthias-station', capture.scene.station);
+  await expect(hallRuntime).toHaveAttribute('data-home-matthias-posture', capture.scene.posture);
+  await expect(hallRuntime).toHaveAttribute('data-home-matthias-clip', capture.clip);
+
+  const [stageBox, matthiasBox] = await Promise.all([
+    home.locator('.illustrated-home__stage').boundingBox(),
+    matthias.boundingBox(),
+  ]);
+  expect(stageBox).not.toBeNull();
+  expect(matthiasBox).not.toBeNull();
+  const leftRatio = (matthiasBox.x - stageBox.x) / stageBox.width;
+  const bottomRatio = (matthiasBox.y + matthiasBox.height - stageBox.y) / stageBox.height;
+  expect(leftRatio).toBeGreaterThanOrEqual(capture.scene.leftRange[0]);
+  expect(leftRatio).toBeLessThanOrEqual(capture.scene.leftRange[1]);
+  expect(bottomRatio).toBeGreaterThanOrEqual(capture.scene.bottomRange[0]);
+  expect(bottomRatio).toBeLessThanOrEqual(capture.scene.bottomRange[1]);
+  // The hit-area must stay transparent: the resident is painted by the hall.
+  const paint = await matthias.evaluate((node) => {
+    const style = getComputedStyle(node);
+    return { background:style.backgroundColor, boxShadow:style.boxShadow };
+  });
+  expect(paint.background).toMatch(/rgba\(0, 0, 0, 0\)|transparent/);
+  expect(paint.boxShadow).toBe('none');
+  return matthias;
 }
 
 async function expectLiveMatthiasArt(home) {
@@ -240,87 +291,97 @@ test('App visual artifact · Matthias Home deterministic full + crop', async () 
             localSwiftShaderRequired:LOCAL_SWIFTSHADER_CAPTURE,
           }, null, 2)}\n`,
         );
-        const matthias = home.locator('.illustrated-home__matthias');
-        const copy = matthias.locator('.illustrated-home__matthias-copy');
-
-        await expect(matthias).toBeVisible();
-        const { avatar, image, canvas } = await expectLiveMatthiasArt(home);
-        await expect(avatar).toBeVisible({ timeout:15_000 });
-        await expect(avatar).toHaveAttribute('data-home-matthias-station', capture.station);
-        await expect(avatar).toHaveAttribute('data-home-matthias-support', capture.support);
-        await expect(avatar).toHaveAttribute('data-motion', 'still-rigged-model');
-        await expect(avatar).toHaveAttribute('data-home-matthias-profile', capture.profile, { timeout:15_000 });
-        await expect(image).toHaveAttribute('src', capture.avatar);
-        await expect(canvas).toHaveAttribute('data-matthias-canonical-model', 'blender');
-        await expect(canvas).toHaveAttribute('data-matthias-clip', capture.clip);
-        if (capture.profile === 'dossier') {
-          await expect(canvas).toHaveAttribute('data-matthias-dossier-sip', 'procedural-v1');
-          await expect(canvas).toHaveAttribute('data-matthias-limb-scale', 'arms-1.15-hands-1.18-legs-1.12');
-        }
-        if (capture.expectedRoutineProps) {
-          await expect(canvas).toHaveAttribute('data-matthias-routine-props', capture.expectedRoutineProps);
-        }
-        if (capture.expectedCoffeeAnchor) {
-          await expect(canvas).toHaveAttribute('data-matthias-coffee-anchor', capture.expectedCoffeeAnchor);
-          const coffeeHeadClearance = Number(await canvas.getAttribute('data-matthias-coffee-head-clearance'));
-          expect(coffeeHeadClearance).toBeGreaterThanOrEqual(.18);
-        }
-        await expect(avatar.locator('[data-matthias-layered-art="true"]')).toHaveCount(0);
-        const cameraDistance = Number(await canvas.getAttribute('data-matthias-camera-distance'));
-        expect(cameraDistance).toBeGreaterThanOrEqual(4.8);
-
-        if (capture.expectFullPlinth) {
-          const occlusion = await matthias.evaluate((element) => Number.parseFloat(
-            getComputedStyle(element).getPropertyValue('--home-matthias-occlusion'),
-          ));
-          expect(occlusion).toBe(0);
-        }
-
-        if (capture.supportBottomRange) {
-          const [stageBox, portraitBox, occlusion] = await Promise.all([
-            home.locator('.illustrated-home__stage').boundingBox(),
-            matthias.locator('.illustrated-home__matthias-portrait').boundingBox(),
-            matthias.evaluate((element) => Number.parseFloat(
-              getComputedStyle(element).getPropertyValue('--home-matthias-occlusion'),
-            ) || 0),
-          ]);
-          expect(stageBox).not.toBeNull();
-          expect(portraitBox).not.toBeNull();
-          const visibleBottom = portraitBox.y + (portraitBox.height * (1 - (occlusion / 100)));
-          const supportBottomRatio = (visibleBottom - stageBox.y) / stageBox.height;
-          expect(supportBottomRatio).toBeGreaterThanOrEqual(capture.supportBottomRange[0]);
-          expect(supportBottomRatio).toBeLessThanOrEqual(capture.supportBottomRange[1]);
-        }
-
-        if (capture.minStageTopRatio) {
-          const [stageBox, matthiasBox] = await Promise.all([
-            home.locator('.illustrated-home__stage').boundingBox(),
-            matthias.boundingBox(),
-          ]);
-          expect(stageBox).not.toBeNull();
-          expect(matthiasBox).not.toBeNull();
-          const stageTopRatio = (matthiasBox.y - stageBox.y) / stageBox.height;
-          expect(stageTopRatio).toBeGreaterThanOrEqual(capture.minStageTopRatio);
-        }
-        if (capture.maxStageLeftRatio) {
-          const [stageBox, matthiasBox] = await Promise.all([
-            home.locator('.illustrated-home__stage').boundingBox(),
-            matthias.boundingBox(),
-          ]);
-          expect(stageBox).not.toBeNull();
-          expect(matthiasBox).not.toBeNull();
-          const stageLeftRatio = (matthiasBox.x - stageBox.x) / stageBox.width;
-          expect(stageLeftRatio).toBeLessThanOrEqual(capture.maxStageLeftRatio);
-        }
-
-        if (capture.expectCopy) {
-          await expect(copy).toBeVisible();
-          await expect(copy.locator('strong')).toHaveText('MATTHIAS');
-          await expect(copy.locator('span')).toHaveText('Cena de campaña');
+        const render = await settleMatthiasRender(home);
+        await writeFile(
+          `${ARTIFACT_DIR}/home-matthias-${capture.label}-render.json`,
+          `${JSON.stringify({ mode:render.mode }, null, 2)}\n`,
+        );
+        let matthias = home.locator('.illustrated-home__matthias');
+        if (render.mode === 'in-scene') {
+          matthias = await expectInSceneMatthias(home, render.hallRuntime, capture);
         } else {
-          await expect(copy).toBeHidden();
-        }
+          const matthias = home.locator('.illustrated-home__matthias');
+          const copy = matthias.locator('.illustrated-home__matthias-copy');
 
+          await expect(matthias).toBeVisible();
+          const { avatar, image, canvas } = await expectLiveMatthiasArt(home);
+          await expect(avatar).toBeVisible({ timeout:15_000 });
+          await expect(avatar).toHaveAttribute('data-home-matthias-station', capture.station);
+          await expect(avatar).toHaveAttribute('data-home-matthias-support', capture.support);
+          await expect(avatar).toHaveAttribute('data-motion', 'still-rigged-model');
+          await expect(avatar).toHaveAttribute('data-home-matthias-profile', capture.profile, { timeout:15_000 });
+          await expect(image).toHaveAttribute('src', capture.avatar);
+          await expect(canvas).toHaveAttribute('data-matthias-canonical-model', 'blender');
+          await expect(canvas).toHaveAttribute('data-matthias-clip', capture.clip);
+          if (capture.profile === 'dossier') {
+            await expect(canvas).toHaveAttribute('data-matthias-dossier-sip', 'procedural-v1');
+            await expect(canvas).toHaveAttribute('data-matthias-limb-scale', 'arms-1.15-hands-1.18-legs-1.12');
+          }
+          if (capture.expectedRoutineProps) {
+            await expect(canvas).toHaveAttribute('data-matthias-routine-props', capture.expectedRoutineProps);
+          }
+          if (capture.expectedCoffeeAnchor) {
+            await expect(canvas).toHaveAttribute('data-matthias-coffee-anchor', capture.expectedCoffeeAnchor);
+            const coffeeHeadClearance = Number(await canvas.getAttribute('data-matthias-coffee-head-clearance'));
+            expect(coffeeHeadClearance).toBeGreaterThanOrEqual(.18);
+          }
+          await expect(avatar.locator('[data-matthias-layered-art="true"]')).toHaveCount(0);
+          const cameraDistance = Number(await canvas.getAttribute('data-matthias-camera-distance'));
+          expect(cameraDistance).toBeGreaterThanOrEqual(4.8);
+
+          if (capture.expectFullPlinth) {
+            const occlusion = await matthias.evaluate((element) => Number.parseFloat(
+              getComputedStyle(element).getPropertyValue('--home-matthias-occlusion'),
+            ));
+            expect(occlusion).toBe(0);
+          }
+
+          if (capture.supportBottomRange) {
+            const [stageBox, portraitBox, occlusion] = await Promise.all([
+              home.locator('.illustrated-home__stage').boundingBox(),
+              matthias.locator('.illustrated-home__matthias-portrait').boundingBox(),
+              matthias.evaluate((element) => Number.parseFloat(
+                getComputedStyle(element).getPropertyValue('--home-matthias-occlusion'),
+              ) || 0),
+            ]);
+            expect(stageBox).not.toBeNull();
+            expect(portraitBox).not.toBeNull();
+            const visibleBottom = portraitBox.y + (portraitBox.height * (1 - (occlusion / 100)));
+            const supportBottomRatio = (visibleBottom - stageBox.y) / stageBox.height;
+            expect(supportBottomRatio).toBeGreaterThanOrEqual(capture.supportBottomRange[0]);
+            expect(supportBottomRatio).toBeLessThanOrEqual(capture.supportBottomRange[1]);
+          }
+
+          if (capture.minStageTopRatio) {
+            const [stageBox, matthiasBox] = await Promise.all([
+              home.locator('.illustrated-home__stage').boundingBox(),
+              matthias.boundingBox(),
+            ]);
+            expect(stageBox).not.toBeNull();
+            expect(matthiasBox).not.toBeNull();
+            const stageTopRatio = (matthiasBox.y - stageBox.y) / stageBox.height;
+            expect(stageTopRatio).toBeGreaterThanOrEqual(capture.minStageTopRatio);
+          }
+          if (capture.maxStageLeftRatio) {
+            const [stageBox, matthiasBox] = await Promise.all([
+              home.locator('.illustrated-home__stage').boundingBox(),
+              matthias.boundingBox(),
+            ]);
+            expect(stageBox).not.toBeNull();
+            expect(matthiasBox).not.toBeNull();
+            const stageLeftRatio = (matthiasBox.x - stageBox.x) / stageBox.width;
+            expect(stageLeftRatio).toBeLessThanOrEqual(capture.maxStageLeftRatio);
+          }
+
+          if (capture.expectCopy) {
+            await expect(copy).toBeVisible();
+            await expect(copy.locator('strong')).toHaveText('MATTHIAS');
+            await expect(copy.locator('span')).toHaveText('Cena de campaña');
+          } else {
+            await expect(copy).toBeHidden();
+          }
+
+        }
         await freezeForScreenshot(page);
         await captureViewportPng(
           context,

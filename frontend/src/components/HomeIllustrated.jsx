@@ -24,6 +24,7 @@ import './HomeIllustratedTallTouch.css';
 import './HomeMatthiasRoutine.css';
 import './HomeDestinationPlaques.css';
 import './HomeMobileGoldenPath.css';
+import './HomeMatthiasInScene.css';
 
 const PRIMARY_DIEGETIC_DESTINATIONS = new Set(['tournament', 'combat', 'play']);
 const HOME_PORTRAIT_QUERY = '(pointer: coarse) and (orientation: portrait) and (max-width: 520px)';
@@ -54,6 +55,14 @@ function sameAnchorLayout(a, b) {
   return ids.every((id) => b[id] && Math.abs(a[id].x - b[id].x) < 0.0005 && Math.abs(a[id].y - b[id].y) < 0.0005);
 }
 
+function sameMatthiasLayout(a, b) {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return a.station === b.station
+    && a.posture === b.posture
+    && ['left', 'top', 'width', 'height'].every((key) => Math.abs(a[key] - b[key]) < 0.0005);
+}
+
 function Flame() {
   return <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 1c1 6 7 7 7 14a8 8 0 0 1-16 0c0-4 2-7 5-10 0 4 1 5 2 6 2-3 3-6 2-10Zm-1 12c-1 3-3 4-3 6a3 3 0 0 0 6 0c0-2-2-3-3-6Z" /></svg>;
 }
@@ -78,6 +87,12 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
   const [anchors, setAnchors] = useState(null);
   const handleAnchorLayout = useCallback((next) => {
     setAnchors((current) => (sameAnchorLayout(current, next) ? current : next));
+  }, []);
+  // Projected bounds of Matthias when he lives inside the Blender hall (seated,
+  // standing or asleep on the sofa). null keeps the legacy floating portrait.
+  const [matthiasInScene, setMatthiasInScene] = useState(null);
+  const handleMatthiasLayout = useCallback((next) => {
+    setMatthiasInScene((current) => (sameMatthiasLayout(current, next) ? current : next));
   }, []);
   const [activeRoom, setActiveRoom] = useState(null);
   const [matthiasRoutineIndex, setMatthiasRoutineIndex] = useState(0);
@@ -250,6 +265,8 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
             onDestinationHover={setActiveRoom}
             onDestinationActivate={activateSceneDestination}
             onAnchorLayout={handleAnchorLayout}
+            matthias={{ scene: matthiasSceneKey, activity: matthiasActivity, speaking: Boolean(matthiasSpeaking) }}
+            onMatthiasLayout={handleMatthiasLayout}
           />
         )}
         <img className="illustrated-home__art" src={hall} alt="" fetchPriority="high" draggable="false" style={{ zIndex: 0 }} />
@@ -452,7 +469,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
           <button type="button" onClick={onMatthiasDismiss} aria-label="Cerrar comentario de Matthias">×</button>
         </section>}
         <button
-          className={`illustrated-home__matthias${matthiasSpeaking ? ' is-speaking' : ''}`}
+          className={`illustrated-home__matthias${matthiasSpeaking ? ' is-speaking' : ''}${matthiasInScene ? ' is-in-scene' : ''}`}
           type="button"
           onClick={onInsights}
           aria-label={matthiasActionDuplicated ? `Matthias · ${matthiasActivity}` : 'Abrir Así juegas con Matthias'}
@@ -462,8 +479,17 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
           data-home-matthias-zone={matthiasZone}
           data-home-matthias-moment={matthiasVisual?.momentId || 'none'}
           data-home-matthias-dwell-ms={matthiasDwellMs}
+          data-home-matthias-render={matthiasInScene ? 'in-scene' : 'portrait'}
+          data-home-matthias-station={matthiasInScene?.station}
+          data-home-matthias-posture={matthiasInScene?.posture}
+          style={matthiasInScene ? {
+            '--home-matthias-scene-left': `${matthiasInScene.left * 100}%`,
+            '--home-matthias-scene-top': `${matthiasInScene.top * 100}%`,
+            '--home-matthias-scene-width': `${matthiasInScene.width * 100}%`,
+            '--home-matthias-scene-height': `${matthiasInScene.height * 100}%`,
+          } : undefined}
         >
-          {matthiasVisual && (
+          {matthiasVisual && !matthiasInScene && (
             <span
               className="illustrated-home__matthias-portrait"
               data-reduced-motion={reducedMotion ? 'true' : 'false'}
