@@ -48,17 +48,20 @@
 .pvp-war-room__duel-pill.is-red .pvp-war-room__light { background:#bd6059; box-shadow:0 0 12px rgba(189,96,89,.58); }
 .pvp-war-room__duel-pill.is-amber .pvp-war-room__light { background:#d1a34f; box-shadow:0 0 12px rgba(209,163,79,.52); }
 .pvp-war-room__duel-pill>strong[role=status] { font-size:.78rem; font-weight:650; }
-.pvp-war-room__result { position:absolute; z-index:13; right:1rem; bottom:1rem; width:min(460px,calc(100% - 2rem)); display:flex; flex-direction:column; gap:.48rem; padding:1rem 1.05rem; border:1px solid rgba(201,162,93,.34); border-radius:13px; color:#eee5d4; background:radial-gradient(circle at 88% 4%,rgba(201,162,93,.09),transparent 34%),rgba(12,14,16,.94); box-shadow:0 22px 52px rgba(0,0,0,.46); backdrop-filter:blur(14px); }
-.pvp-war-room__result-kicker { color:#caa76c; font-family:var(--font-mono); font-size:.61rem; font-weight:800; letter-spacing:.15em; }
-.pvp-war-room__result-title { font-family:Georgia,'Times New Roman',serif; font-size:clamp(1.45rem,3vw,2rem); line-height:1; }
-.pvp-war-room__result-lead { margin:0; color:rgba(238,229,212,.68); font-size:.78rem; line-height:1.45; }
-.pvp-war-room__result-verdict { margin:.16rem 0 0; padding:.68rem 0; border-top:1px solid rgba(238,229,212,.09); border-bottom:1px solid rgba(238,229,212,.09); }
-.pvp-war-room__result-verdict>span { display:flex; align-items:center; gap:.48rem; margin-bottom:.38rem; color:#d6b779; font-family:var(--font-mono); font-size:.64rem; letter-spacing:.1em; text-transform:uppercase; }
-.pvp-war-room__result-verdict img { width:30px; height:30px; object-fit:contain; filter:drop-shadow(0 3px 8px rgba(0,0,0,.35)); }
-.pvp-war-room__result-verdict p { margin:0; color:#eee5d4; font-size:.82rem; line-height:1.48; }
-.pvp-war-room__result-facts { margin:0; color:rgba(238,229,212,.5); font-size:.68rem; line-height:1.4; }
-.pvp-war-room__result-facts b { color:rgba(238,229,212,.78); }
-.pvp-war-room__result button { align-self:flex-end; min-height:42px; margin-top:.12rem; }
+.pvp-war-room__result { position:absolute; z-index:13; top:50%; left:50%; width:min(560px,calc(100% - 2rem)); max-height:calc(100dvh - 2rem); display:flex; flex-direction:column; align-items:center; gap:.56rem; padding:1.35rem 1.45rem 1.2rem; overflow:auto; border:1px solid rgba(201,162,93,.32); border-radius:18px; color:#eee5d4; text-align:center; background:radial-gradient(circle at 50% 17%,rgba(201,162,93,.14),transparent 34%),linear-gradient(180deg,rgba(18,18,17,.95),rgba(9,11,13,.96)); box-shadow:0 28px 72px rgba(0,0,0,.58),inset 0 1px rgba(255,255,255,.025); backdrop-filter:blur(16px); transform:translate(-50%,-50%); }
+.pvp-war-room__result-kicker { color:#caa76c; font-family:var(--font-mono); font-size:.6rem; font-weight:800; letter-spacing:.16em; }
+.pvp-war-room__result-title { font-family:Georgia,'Times New Roman',serif; font-size:clamp(1.7rem,4vw,2.35rem); line-height:.98; }
+.pvp-war-room__result-lead { max-width:42ch; margin:0; color:rgba(238,229,212,.64); font-size:.78rem; line-height:1.45; }
+.pvp-war-room__result-verdict { width:min(100%,440px); margin:.12rem 0 .05rem; padding:.62rem .2rem .8rem; border:0; }
+.pvp-war-room__result-speaker { display:flex; flex-direction:column; align-items:center; gap:.34rem; margin-bottom:.58rem; color:#d6b779; font-family:var(--font-mono); letter-spacing:.1em; text-transform:uppercase; }
+.pvp-war-room__result-speaker>span { display:grid; gap:.06rem; }
+.pvp-war-room__result-speaker b { font-size:.7rem; }
+.pvp-war-room__result-speaker small { color:rgba(238,229,212,.42); font-size:.48rem; letter-spacing:.12em; }
+.pvp-war-room__result-verdict img { width:58px; height:58px; object-fit:contain; filter:drop-shadow(0 7px 18px rgba(0,0,0,.42)); }
+.pvp-war-room__result-verdict p { margin:0 auto; color:#f3eadb; font-family:Georgia,'Times New Roman',serif; font-size:clamp(1.02rem,2.3vw,1.28rem); font-style:italic; line-height:1.5; text-wrap:balance; }
+.pvp-war-room__result-facts { max-width:50ch; margin:.08rem 0 0; color:rgba(238,229,212,.42); font-size:.64rem; line-height:1.4; }
+.pvp-war-room__result-facts b { color:rgba(238,229,212,.7); }
+.pvp-war-room__result button { align-self:center; min-height:44px; margin-top:.2rem; }
 .pvp-war-room__error { position:fixed; z-index:30; left:50%; bottom:1rem; transform:translateX(-50%); max-width:min(90vw,560px); margin:0; padding:.65rem .8rem; border:1px solid rgba(191,88,76,.34); border-radius:10px; color:#e9b5ae; background:rgba(71,24,21,.93); box-shadow:0 12px 34px rgba(0,0,0,.38); }
 .pvp-war-room__loading { min-height:60vh; display:grid; place-items:center; color:rgba(233,226,211,.62); }
 @media (max-width:760px) {
@@ -69,9 +72,9 @@
   .pvp-war-room__exit { top:.45rem; left:.45rem; }
   .pvp-war-room__duel-pill { top:.45rem; min-height:44px; max-width:calc(100% - .8rem); gap:.42rem; padding:.35rem .5rem; }
   .pvp-war-room__identity strong { max-width:110px; }
-  .pvp-war-room__result { right:.55rem; bottom:.55rem; width:min(440px,calc(100% - 1.1rem)); }
+  .pvp-war-room__result { width:min(520px,calc(100% - 1rem)); max-height:calc(100dvh - 1rem); }
 }
-@media (max-width:520px) { .pvp-war-room__divider { display:none; } .pvp-war-room__opponent-mark { width:27px; height:27px; } .pvp-war-room__duel-pill>strong[role=status] { font-size:.7rem; } .pvp-war-room__result { right:.35rem; bottom:.35rem; width:calc(100% - .7rem); padding:.82rem .85rem; } .pvp-war-room__result button { width:100%; align-self:stretch; } }
+@media (max-width:520px) { .pvp-war-room__divider { display:none; } .pvp-war-room__opponent-mark { width:27px; height:27px; } .pvp-war-room__duel-pill>strong[role=status] { font-size:.7rem; } .pvp-war-room__result { width:calc(100% - .8rem); max-height:calc(100dvh - .8rem); padding:1rem .9rem .9rem; } .pvp-war-room__result-verdict img { width:52px; height:52px; } .pvp-war-room__result button { width:100%; align-self:stretch; } }
 @media (orientation:landscape) and (max-height:520px) {
   .pvp-war-room {
     position:fixed;
@@ -108,7 +111,13 @@
   }
   .pvp-war-room__duel-pill { top:.28rem; min-height:44px; max-width:calc(100% - .65rem); padding:.28rem .42rem; }
   .pvp-war-room__identity small { display:none; }
-  .pvp-war-room__result { bottom:.3rem; }
+  .pvp-war-room__result { width:min(520px,calc(100% - .8rem)); max-height:calc(100dvh - .6rem); gap:.3rem; padding:.72rem 1rem .68rem; }
+  .pvp-war-room__result-title { font-size:clamp(1.32rem,4vw,1.7rem); }
+  .pvp-war-room__result-lead { font-size:.68rem; line-height:1.3; }
+  .pvp-war-room__result-verdict { margin:0; padding:.34rem .15rem .42rem; }
+  .pvp-war-room__result-verdict img { width:42px; height:42px; }
+  .pvp-war-room__result-verdict p { font-size:.88rem; line-height:1.36; }
+  .pvp-war-room__result-facts { font-size:.57rem; }
 }
 @media (pointer:coarse), (max-width:760px), (max-height:520px) {
   .pvp-war-room__exit { min-width:44px; min-height:44px; }
@@ -144,7 +153,7 @@
   .pvp-war-room__clock { min-width:39px; }
 }
 
-.pvp-war-room__elo-change { display:flex; align-items:center; justify-content:space-between; gap:.8rem; padding:.55rem .65rem; border:1px solid rgba(214,183,121,.18); border-radius:10px; background:rgba(214,183,121,.045); }
+.pvp-war-room__elo-change { display:flex; align-items:center; justify-content:center; gap:.8rem; padding:.22rem .1rem; border:0; background:none; }
 .pvp-war-room__elo-change>small { color:rgba(226,199,148,.56); font-family:var(--font-mono); font-size:.52rem; letter-spacing:.12em; }
 .pvp-war-room__elo-change>span { display:flex; align-items:baseline; gap:.34rem; font-variant-numeric:tabular-nums; }
 .pvp-war-room__elo-change b { color:rgba(241,231,211,.55); font-size:.78rem; }
