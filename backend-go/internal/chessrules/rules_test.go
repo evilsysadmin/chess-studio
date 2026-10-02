@@ -103,6 +103,16 @@ func TestApplyUCIParityVectors(t *testing.T) {
 			wantResult: strptr("1/2-1/2"),
 		},
 		{
+			name:       "claimable fifty move draw by announced next move",
+			fen:        "4k2r/8/8/8/8/8/8/R3K3 w Qk - 98 50",
+			uci:        "a1a2",
+			wantSAN:    "Ra2",
+			wantFEN:    "4k2r/8/8/8/8/8/R7/4K3 b k - 99 50",
+			wantTurn:   "b",
+			wantStatus: "finished",
+			wantResult: strptr("1/2-1/2"),
+		},
+		{
 			name:       "claimable fifty move draw",
 			fen:        "4k2r/8/8/8/8/8/8/R3K3 w Qk - 99 50",
 			uci:        "a1a2",
@@ -166,5 +176,20 @@ func TestApplyUCISeparatesMalformedFromIllegal(t *testing.T) {
 func TestApplyUCIRejectsInvalidFEN(t *testing.T) {
 	if _, err := ApplyUCI("not a fen", "e2e4"); !errors.Is(err, ErrInvalidFEN) {
 		t.Fatalf("err=%v", err)
+	}
+}
+
+
+func TestTurnReadsAuthoritativeFENSide(t *testing.T) {
+	for fen,want:=range map[string]string{
+		"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1":"w",
+		"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1":"b",
+	}{
+		got,err:=Turn(fen)
+		if err!=nil { t.Fatal(err) }
+		if got!=want { t.Fatalf("fen=%q turn=%q want=%q",fen,got,want) }
+	}
+	if _,err:=Turn("not a fen"); !errors.Is(err,ErrInvalidFEN) {
+		t.Fatalf("err=%v",err)
 	}
 }

@@ -3,6 +3,7 @@ package chessrules
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	chess "github.com/corentings/chess/v2"
@@ -21,6 +22,18 @@ type Result struct {
 	Turn   string
 	Status string
 	Result *string
+}
+
+// Turn returns the authoritative side to move encoded in FEN.
+// PvP Python constructs chess.Board(fen) before checking whose turn it is,
+// so callers must not substitute a duplicated database turn field here.
+func Turn(fen string) (string, error) {
+	fenOption, err := chess.FEN(strings.TrimSpace(fen))
+	if err != nil {
+		return "", fmt.Errorf("%w: %v", ErrInvalidFEN, err)
+	}
+	game := chess.NewGame(fenOption)
+	return game.Position().Turn().String(), nil
 }
 
 // ApplyUCI applies exactly one UCI move to a FEN position.
@@ -77,16 +90,67 @@ func ApplyUCI(fen, uci string) (Result, error) {
 func matchResult(game *chess.Game) (string, *string) {
 	outcome := game.Outcome()
 	if outcome == chess.NoOutcome {
-		for _, method := range game.EligibleDraws() {
-			if method == chess.FiftyMoveRule {
-				draw := chess.Draw.String()
-				return "finished", &draw
-			}
+		if canClaimFiftyMove(game) {
+			draw := chess.Draw.String()
+			return "finished", &draw
 		}
 		return "active", nil
 	}
 	result := outcome.String()
 	return "finished", &result
+}
+
+// canClaimFiftyMove mirrors python-chess Board.can_claim_fifty_moves() for
+// the FEN-only PvP contract. Besides an already-reached 100 halfmoves, a
+// player may claim before making a legal move that would reach 100.
+//
+// PvP reconstructs python-chess Board(match["fen"]) for every request, so the
+// historical move stack is intentionally absent on both sides here; historical
+// threefold-repetition claims therefore remain unavailable exactly as today.
+func canClaimFiftyMove(game *chess.Game) bool {
+	if eligibleFiftyMove(game) {
+		return true
+	}
+
+	position := game.Position()
+	if halfMoveClock(position) < 99 {
+		return false
+	}
+	for _, candidate := range game.ValidMoves() {
+		move := candidate
+		uci := (chess.UCINotation{}).Encode(position, &move)
+		next := game.Clone()
+		if err := next.PushNotationMove(uci, chess.UCINotation{}, nil); err != nil {
+			continue
+		}
+		// python-chess is_fifty_moves() also requires that the announced
+		// position still has a legal move, so mate/stalemate take precedence.
+		if eligibleFiftyMove(next) && len(next.ValidMoves()) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+func halfMoveClock(position *chess.Position) int {
+	parts := strings.Fields(position.String())
+	if len(parts) != 6 {
+		return 0
+	}
+	value, err := strconv.Atoi(parts[4])
+	if err != nil || value < 0 {
+		return 0
+	}
+	return value
+}
+
+func eligibleFiftyMove(game *chess.Game) bool {
+	for _, method := range game.EligibleDraws() {
+		if method == chess.FiftyMoveRule {
+			return len(game.ValidMoves()) > 0
+		}
+	}
+	return false
 }
 
 func pythonCompatibleFEN(position *chess.Position) string {

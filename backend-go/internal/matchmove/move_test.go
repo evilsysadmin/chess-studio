@@ -104,7 +104,10 @@ func TestPrepareGuardsParticipantStateTurnCountdownAndClock(t *testing.T) {
 	}{
 		{"outsider", func(*Match) {}, "mallory", ErrNotParticipant},
 		{"terminal", func(m *Match) { m.Status = "finished" }, "alice", ErrWrongState},
-		{"wrong turn", func(m *Match) { m.Turn = "b" }, "alice", ErrWrongTurn},
+		{"wrong turn", func(m *Match) {
+			m.Turn = "b"
+			m.FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1"
+		}, "alice", ErrWrongTurn},
 		{"countdown", func(m *Match) { m.StartAt = now.Add(time.Second) }, "alice", ErrCountdown},
 		{"expired clock", func(m *Match) {
 			m.WhiteClockMS = 500
@@ -178,5 +181,35 @@ func TestPrepareNormalizesPromotionThroughRulesAdapter(t *testing.T) {
 	}
 	if got.UCI != "a7a8q" || got.SAN != "a8=Q+" {
 		t.Fatalf("promotion=%#v", got)
+	}
+}
+
+
+func TestPrepareUsesFENTurnButPersistedTurnForClock(t *testing.T) {
+	now:=time.Date(2026,10,2,14,10,0,0,time.UTC)
+	match:=startMatch(now)
+	// Deliberately reproduce a duplicated-field drift. Python decides move
+	// ownership from chess.Board(fen).turn, but _clock_snapshot still charges
+	// the persisted match["turn"] field.
+	match.Turn="b"
+
+	got,err:=Prepare(match,"alice",Request{From:"e2",To:"e4"},now)
+	if err!=nil { t.Fatal(err) }
+	if got.Turn!="b" || got.UCI!="e2e4" {
+		t.Fatalf("move=%#v",got)
+	}
+	if got.WhiteClockMS!=600000 || got.BlackClockMS!=598500 {
+		t.Fatalf("clocks=%d/%d want=600000/598500",got.WhiteClockMS,got.BlackClockMS)
+	}
+}
+
+func TestPrepareRejectsUserWhenFENSideDisagreesWithPersistedTurn(t *testing.T) {
+	now:=time.Date(2026,10,2,14,10,0,0,time.UTC)
+	match:=startMatch(now)
+	match.FEN="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1"
+	match.Turn="w"
+
+	if _,err:=Prepare(match,"alice",Request{From:"e2",To:"e4"},now); !errors.Is(err,ErrWrongTurn) {
+		t.Fatalf("err=%v want=%v",err,ErrWrongTurn)
 	}
 }
