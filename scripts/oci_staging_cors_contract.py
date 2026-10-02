@@ -78,7 +78,7 @@ required_deploy_fragments = (
     "PVP_VIRTUAL_ROSTER_OK",
     "pvp_browser_token",
     "pvp_authenticated_browser_attest",
-    "/api/pvp/lobby/pulse",
+    'endpoint="$api_base/pvp/lobby/pulse"',
     "PVP_AUTHENTICATED_BROWSER_OK",
     "virtualPlayersEnabled",
     "CHESS_STUDIO_PVP_ALLOW_PYTHON_FALLBACK_STAGING",
