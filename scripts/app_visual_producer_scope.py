@@ -120,6 +120,11 @@ WARROOM_SHARED_VARIANT_FILES = {
     "frontend/src/components/warroomsharedviewport.css",
     "frontend/src/components/warroomvariant.js",
 }
+WARROOM_CAMERA_CONTRACT_FILES = {
+    "frontend/src/components/board3dcameraprofiles.js",
+    "frontend/src/components/board3dscene.js",
+    "frontend/src/components/warroommobileframing.js",
+}
 WARROOM_VARIANT_CORE_FILES = {
     "frontend/src/components/gamewarroomcommandcolumn.jsx",
     "frontend/src/components/warroomscenevariant.js",
@@ -444,6 +449,8 @@ def _warroom_variant_ownership(path: str) -> set[str]:
         return set(WARROOM_VARIANT_ALL) | {"v4"}
     if lower in WARROOM_BLENDER_SHARED_VARIANT_FILES:
         return {"v2", "v3", "v4"}
+    if lower in WARROOM_CAMERA_CONTRACT_FILES:
+        return set(WARROOM_VARIANT_ALL) | set(WARROOM_VARIANT_OPT_IN)
     if lower in WARROOM_SHARED_VARIANT_FILES:
         return set(WARROOM_VARIANT_ALL)
     if any(token in lower for token in ("war-room", "warroom", "board3d", "gameboardview", "gamesidecolumn", "game3d")):
@@ -586,7 +593,9 @@ def self_test() -> None:
         "frontend/src/components/Board3DScene.js",
         "frontend/src/components/WarRoomV4Shell.js",
     ]) == "classic,v2,v3,v4"
-    assert classify_warroom_variants(["frontend/src/components/Board3DScene.js"]) == "classic,v2,v3"
+    assert classify_warroom_variants(["frontend/src/components/Board3DScene.js"]) == "classic,v2,v3,v4"
+    assert classify_warroom_variants(["frontend/src/components/Board3DCameraProfiles.js"]) == "classic,v2,v3,v4"
+    assert classify_warroom_variants(["frontend/src/components/WarRoomMobileFraming.js"]) == "classic,v2,v3,v4"
     assert classify_warroom_variants([
         "frontend/src/components/WarRoomClassicShell.js",
         "frontend/src/components/WarRoomV3Shell.js",
