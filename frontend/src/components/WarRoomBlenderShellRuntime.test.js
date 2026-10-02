@@ -142,5 +142,8 @@ describe('War Room shared Blender runtime', () => {
     expect(desktop.chandelier.distance).toBe(7.8);
     expect(desktop.moon.intensity).toBe(3.42);
     expect(desktop.moon.distance).toBe(15.2);
+    expect(coarse.fire.intensity).toBe(2.05);
+    expect(coarse.rightFire.intensity).toBe(1.25);
+    expect(coarse.moon.intensity).toBe(2.65);
   });
 });
