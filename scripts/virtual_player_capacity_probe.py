@@ -127,7 +127,7 @@ def signed_register_request(
 def register_player(base: str, invite_code: str, synthetic_secret: str, timeout: float) -> VirtualPlayer:
     username = f"ci_smoke_{secrets.token_hex(8)}"
     password = f"CS!{secrets.token_urlsafe(32)}"
-    body = {"username": username, "password": password}
+    body = {"username": username, "password": password, "email": f"{username}@example.invalid"}
     if invite_code:
         body["inviteCode"] = invite_code
     status, payload = signed_register_request(
