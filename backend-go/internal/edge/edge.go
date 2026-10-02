@@ -21,6 +21,7 @@ type Config struct {
 	NativeRoster  http.Handler
 	NativeChat    http.Handler
 	NativeChallengeResolution http.Handler
+	NativeMatchHandoffCancel  http.Handler
 }
 
 type Handler struct {
@@ -32,6 +33,7 @@ type Handler struct {
 	nativeRoster http.Handler
 	nativeChat   http.Handler
 	nativeChallengeResolution http.Handler
+	nativeMatchHandoffCancel  http.Handler
 }
 
 func New(cfg Config) (*Handler, error) {
@@ -88,6 +90,7 @@ func New(cfg Config) (*Handler, error) {
 		nativeRoster: cfg.NativeRoster,
 		nativeChat:   cfg.NativeChat,
 		nativeChallengeResolution: cfg.NativeChallengeResolution,
+		nativeMatchHandoffCancel: cfg.NativeMatchHandoffCancel,
 	}, nil
 }
 
@@ -113,6 +116,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case isChallengeResolutionPath(r.URL.Path) && h.nativeChallengeResolution != nil:
 		w.Header().Set("X-Chess-Pvp-Edge", "go")
 		h.nativeChallengeResolution.ServeHTTP(w, r)
+	case isMatchHandoffCancelPath(r.URL.Path) && h.nativeMatchHandoffCancel != nil:
+		w.Header().Set("X-Chess-Pvp-Edge", "go")
+		h.nativeMatchHandoffCancel.ServeHTTP(w, r)
 	case r.URL.Path == "/api/pvp" || strings.HasPrefix(r.URL.Path, "/api/pvp/"):
 		h.proxy.ServeHTTP(w, r)
 	default:
@@ -128,6 +134,7 @@ func (h *Handler) health(w http.ResponseWriter) {
 		"nativeRoster": h.nativeRoster != nil,
 		"nativeChat":   h.nativeChat != nil,
 		"nativeChallengeResolution": h.nativeChallengeResolution != nil,
+		"nativeMatchHandoffCancel": h.nativeMatchHandoffCancel != nil,
 	}
 	if h.release != "" {
 		payload["release"] = h.release
@@ -164,6 +171,7 @@ func (h *Handler) ready(w http.ResponseWriter, r *http.Request) {
 		"nativeRoster": h.nativeRoster != nil,
 		"nativeChat":   h.nativeChat != nil,
 		"nativeChallengeResolution": h.nativeChallengeResolution != nil,
+		"nativeMatchHandoffCancel": h.nativeMatchHandoffCancel != nil,
 	})
 }
 
@@ -200,4 +208,15 @@ func isChallengeResolutionPath(path string) bool {
 	rest := strings.TrimPrefix(path, prefix)
 	parts := strings.Split(rest, "/")
 	return len(parts) == 2 && parts[0] != "" && (parts[1] == "cancel" || parts[1] == "decline")
+}
+
+func isMatchHandoffCancelPath(path string) bool {
+	const prefix = "/api/pvp/matches/"
+	const suffix = "/cancel-starting"
+	if !strings.HasPrefix(path, prefix) || !strings.HasSuffix(path, suffix) {
+		return false
+	}
+	matchID := strings.TrimSuffix(strings.TrimPrefix(path, prefix), suffix)
+	matchID = strings.Trim(matchID, "/")
+	return matchID != "" && !strings.Contains(matchID, "/")
 }
