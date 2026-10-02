@@ -29,9 +29,9 @@ The default target remains `staging`. The host deploy contract also accepts an e
 
 ## Staging exposure
 
-The P0 public path is Cloudflare Tunnel, not direct A1 ingress. `api-staging.chess-studio.shadowops.dpdns.org` is reconciled only after the backend is locally ready and Cloudflare reports a live connector. The tunnel routes the API to `http://127.0.0.1:4000` and operator SSH at `ssh-staging.chess-studio.shadowops.dpdns.org` to `ssh://127.0.0.1:22`. The A1 public IPv4 is not an application or SSH origin: ports 22, 4000 and 4100 remain closed externally.
+The P0 public path is Cloudflare Tunnel, not direct A1 ingress. `api-staging.chess-studio.shadowops.dpdns.org` is reconciled only after the backend is locally ready and Cloudflare reports a live connector. The tunnel routes the API to `http://127.0.0.1:4000` and operator SSH at `ssh-chess-studio-staging.shadowops.dpdns.org` to `ssh://127.0.0.1:22`. The A1 public IPv4 is not an application or SSH origin: ports 22, 4000 and 4100 remain closed externally.
 
-The staging Pages reconciler owns only the frontend DNS. `scripts/oci_cloudflare_tunnel.py` owns staging API/SSH tunnel DNS, preventing later frontend deploys from silently reverting those hostnames. Human SSH uses `cloudflared access ssh` plus the host SSH key; automated operations continue to use OCI Run Command.
+The staging Pages reconciler owns only the frontend DNS. `scripts/oci_cloudflare_tunnel.py` owns staging API/SSH tunnel DNS, preventing later frontend deploys from silently reverting those hostnames. Human SSH uses `cloudflared access ssh` plus the host SSH key; automated operations continue to use OCI Run Command. The SSH hostname intentionally stays exactly one label below `shadowops.dpdns.org` so it is covered by the zone's Universal SSL wildcard; tunnel reconciliation proves the edge TLS handshake before reporting success.
 
 ## One-time adoption of the existing A1
 
