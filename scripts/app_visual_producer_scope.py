@@ -178,6 +178,7 @@ PVP_EXACT_PRODUCERS = {
     "frontend/src/components/menuinner.jsx": {"home-base"},
     "frontend/src/components/pvplobbymodal.jsx": {"pvp-lobby"},
     "frontend/src/components/pvplobbymodal.css": {"pvp-lobby"},
+    "frontend/src/components/pvpduelhallroom.css": {"pvp-lobby"},
     "frontend/src/components/pvphandoffmodal.jsx": {"pvp-handoff"},
     "frontend/src/components/pvphandoffmodal.css": {"pvp-handoff"},
     "frontend/src/components/homepvprosterlink.jsx": {"home-base"},
@@ -319,6 +320,7 @@ def classify_path(path: str) -> set[str] | None:
             return set()
         if lower in {
             "scripts/css_architecture_manifest.json",
+            "scripts/architecture_debt_budget.py",
             "scripts/async_resilience_gate.mjs",
             "scripts/blender_required_scope.py",
             "scripts/browser_quality_scope.py",
@@ -653,6 +655,8 @@ def self_test() -> None:
         "frontend/src/usePvpRosterPresence.js",
     ]) == "home-base,pvp-lobby,pvp-handoff,pvp-duel"
     assert classify(["frontend/src/components/PvPLobbyModal.jsx"]) == "pvp-lobby"
+    assert classify(["frontend/src/components/PvPDuelHallRoom.css"]) == "pvp-lobby"
+    assert classify(["scripts/architecture_debt_budget.py"]) == "none"
     assert classify(["e2e/pvp-lobby-visual-artifact.spec.js"]) == "pvp-lobby"
     assert classify(["frontend/src/components/PvpHandoffModal.jsx"]) == "pvp-handoff"
     assert classify(["e2e/pvp-handoff-visual-artifact.spec.js"]) == "pvp-handoff"
