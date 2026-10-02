@@ -7,6 +7,7 @@ import base64
 import os
 from pathlib import Path
 import pwd
+import stat
 import re
 import sys
 
@@ -46,15 +47,24 @@ def main() -> int:
     source = Path(sys.argv[1])
     if source.parent != Path("/tmp") or not source.name.startswith(TMP_PREFIX):
         raise SystemExit("refusing SSH key path outside the fixed /tmp operator-key namespace")
-    stat = source.lstat()
-    if not source.is_file() or source.is_symlink():
-        raise SystemExit("operator SSH key source must be a regular non-symlink file")
-    if stat.st_mode & 0o077:
-        raise SystemExit("operator SSH key source must not be group/world accessible")
-    if stat.st_size <= 0 or stat.st_size > 8192:
-        raise SystemExit("operator SSH key source has an invalid size")
 
-    line, identity = validate_public_key(source.read_text(encoding="utf-8"))
+    flags = os.O_RDONLY
+    flags |= getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(source, flags)
+    try:
+        observed = os.fstat(fd)
+        if not stat.S_ISREG(observed.st_mode):
+            raise SystemExit("operator SSH key source must be a regular file")
+        if observed.st_mode & 0o077:
+            raise SystemExit("operator SSH key source must not be group/world accessible")
+        if observed.st_size <= 0 or observed.st_size > 8192:
+            raise SystemExit("operator SSH key source has an invalid size")
+        with os.fdopen(fd, "r", encoding="utf-8", closefd=False) as handle:
+            raw = handle.read(8193)
+    finally:
+        os.close(fd)
+
+    line, identity = validate_public_key(raw)
 
     user = pwd.getpwnam("ubuntu")
     ssh_dir = Path(user.pw_dir) / ".ssh"
