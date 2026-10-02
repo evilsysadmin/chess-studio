@@ -71,7 +71,7 @@ required_deploy_fragments = (
     'git -C "$repo" ls-remote --exit-code origin refs/heads/main',
     'OCI_DEPLOY_SUPERSEDED repo_ref=$sha current_main=$current_main',
     'Access-Control-Request-Method: GET',
-    'Access-Control-Request-Headers: authorization,x-client-release',
+    'Access-Control-Request-Headers: authorization,x-request-id,x-client-release,x-presence-session',
     "access-control-allow-origin",
     "access-control-allow-methods",
     "access-control-allow-headers",
@@ -93,7 +93,7 @@ required_deploy_fragments = (
     "pvp_challenge_browser_attest",
     "/api/pvp/challenges",
     "Access-Control-Request-Method: POST",
-    "authorization,content-type,x-request-id,x-client-release",
+    "authorization,content-type,x-request-id,x-client-release,x-presence-session",
     "edge PvP browser CORS attestation failed after cutover",
     "edge PvP full lobby read attestation failed after cutover",
     "edge PvP authenticated browser lobby/pulse attestation failed after cutover",
@@ -185,6 +185,9 @@ assert STAGING_ORIGIN in default_origins, (
 assert STAGING_ORIGIN in go_pulse, (
     "native Go PvP handlers must retain the canonical staging browser origin "
     "independently of runtime CORS_ORIGINS"
+)
+assert "X-Presence-Session" in go_pulse, (
+    "native Go PvP CORS must allow the presence header injected by authHeader()"
 )
 assert "https://chess-studio.shadowops.dpdns.org" in go_pulse, (
     "native Go PvP handlers must retain the canonical production browser origin"
@@ -498,11 +501,11 @@ for fragment in (
     'expected_native="lobby-pulse"',
     '-H "Origin: $cors_origin"',
     "-H 'Access-Control-Request-Method: GET'",
-    "-H 'Access-Control-Request-Headers: authorization,x-request-id,x-client-release'",
+    "-H 'Access-Control-Request-Headers: authorization,x-request-id,x-client-release,x-presence-session'",
     '[[ "$preflight_status" != "204" ]]',
     'authenticated preflight must expose exactly one canonical ACAO',
     'authenticated preflight does not allow GET',
-    'for required in ("authorization", "x-request-id", "x-client-release")',
+    'for required in ("authorization", "x-request-id", "x-client-release", "x-presence-session")',
     'authenticated preflight did not traverse Go edge',
     'authenticated preflight hit the wrong native route',
     '-H "Authorization: Bearer $token"',
