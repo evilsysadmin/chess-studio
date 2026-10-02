@@ -154,6 +154,10 @@ required_public_verifier_fragments = (
     "pvp_challenge_cors_http",
     "pvp_challenge_transport=ok",
     "x-chess-pvp-native",
+    "fetch_text",
+    'f"{base}/_deploy/committed?{ready_query}"',
+    "committed == expected",
+    "committed_build=",
 )
 for fragment in required_public_verifier_fragments:
     assert fragment in verifier, f"missing public staging CORS verifier contract: {fragment}"
@@ -374,7 +378,11 @@ assert "any(payload.get(key) is not True for key in required_native)" in deploy
 assert 'pvp_target_image="$(pvp_image_ref "$sha")"' in deploy
 assert 'docker pull --quiet "$pvp_target_image"' in deploy
 assert 'render_edge "$candidate_color" go' in deploy
+assert 'render_edge "$candidate_color" go "$sha"' in deploy
 assert 'render_edge "$previous_color" direct' in deploy
+assert '--committed-sha "$committed_sha"' in deploy
+assert deploy.rfind('record_successful_backend "$sha"') < deploy.rfind('render_edge "$candidate_color" go "$sha"')
+assert 'failed to publish committed OCI generation marker' in deploy
 assert 'remove_service "$(pvp_service "$previous_color")"' in deploy
 assert 'CHESS_STUDIO_DEPLOY_OK target=$target repo_ref=$sha color=$candidate_color pvp=go' in deploy
 assert 'pvp_edge_attest()' in deploy
@@ -447,6 +455,9 @@ assert '127.0.0.1:${CHESS_STUDIO_BACKEND_PORT:-4000}:8080' in compose
 assert 'nginx:1.27.5-alpine' in compose
 edge_renderer = (ROOT / "scripts" / "oci_blue_green_edge.py").read_text(encoding="utf-8")
 assert 'location = /api/pvp/_edge/ready' in edge_renderer
+assert 'location = /api/_deploy/committed' in edge_renderer
+assert 'return 503 "uncommitted' in edge_renderer
+assert 'parser.add_argument("--committed-sha", default="")' in edge_renderer
 assert 'location = /api/pvp' in edge_renderer
 assert 'location ^~ /api/pvp/' in edge_renderer
 assert 'pvp_upstream = f"pvp_{color}:8080" if pvp_mode == "go" else backend_upstream' in edge_renderer
@@ -510,6 +521,8 @@ assert "ai-staging.shadowops.dpdns.org/health" in deploy_watcher
 assert "refs/heads/main" not in deploy_watcher
 assert "ls-remote" not in deploy_watcher
 assert "OCI_DEPLOY_WATCH_SUPERSEDED" in deploy_watcher
+assert '"$STAGING_API_URL/_deploy/committed?probe=$attempt"' in staging_deploy
+assert 'committed="$(tr -d' in staging_deploy
 assert "OCI_DEPLOY_WATCH_IMAGE_PENDING" in deploy_watcher
 assert '["docker", "manifest", "inspect", backend_image_ref(candidate)]' in deploy_watcher
 assert 'git -C "$repo" ls-remote --exit-code origin refs/heads/main' in deploy
