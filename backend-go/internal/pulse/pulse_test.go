@@ -789,7 +789,7 @@ func TestNativeMatchHandoffCancelPreservesPythonSemantics(t *testing.T) {
 		t.Fatalf("unexpected match=%#v", match)
 	}
 	clock, ok := match["clock"].(map[string]any)
-	if !ok || clock["id"] != "10+0" || clock["whiteMs"] != float64(600000) || clock["runningColor"] != nil {
+	if !ok || clock["id"] != pvpTimeControlID || clock["whiteMs"] != float64(pvpInitialClockMS) || clock["runningColor"] != nil {
 		t.Fatalf("clock=%#v", match["clock"])
 	}
 	if match["ratingChange"] != nil || match["result"] != nil || match["opponentDisconnectDeadline"] != nil {

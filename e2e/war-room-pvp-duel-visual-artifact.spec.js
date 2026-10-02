@@ -49,7 +49,7 @@ function matchPayload() {
     createdAt: '2026-09-29T05:00:00Z',
     updatedAt: '2026-09-29T05:00:00Z',
     opponentPresence: 'online',
-    clock: { id: '10+0', whiteMs: 600000, blackMs: 600000, incrementMs: 0, runningColor: 'w' },
+    clock: { id: '30+0', whiteMs: 1800000, blackMs: 1800000, incrementMs: 0, runningColor: 'w' },
   };
 }
 

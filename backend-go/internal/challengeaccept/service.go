@@ -11,7 +11,7 @@ import (
 
 const (
 	StartingFEN         = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-	InitialClockMS      = int64(10 * 60 * 1000)
+	InitialClockMS      = int64(30 * 60 * 1000)
 	ReadyTimeout        = 30 * time.Second
 )
 

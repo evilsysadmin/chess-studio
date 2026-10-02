@@ -59,7 +59,7 @@ func TestDisconnectDomainMatchPreservesPresenceAndGrace(t *testing.T) {
 
 func TestDisconnectDomainMatchDefaultsMissingClocks(t *testing.T) {
 	got:=disconnectDomainMatch(cancelMatchRow{ID:"m",Status:"active"})
-	if got.WhiteClockMS!=10*60*1000 || got.BlackClockMS!=10*60*1000 {
+	if got.WhiteClockMS!=pvpInitialClockMS || got.BlackClockMS!=pvpInitialClockMS {
 		t.Fatalf("clocks=%d/%d",got.WhiteClockMS,got.BlackClockMS)
 	}
 }

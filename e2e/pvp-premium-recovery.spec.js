@@ -20,9 +20,9 @@ function startingMatch({ youReady = false } = {}) {
     opponentReady: false,
     ratingChange: null,
     clock: {
-      id: '10+0',
-      whiteMs: 600000,
-      blackMs: 600000,
+      id: '30+0',
+      whiteMs: 1800000,
+      blackMs: 1800000,
       incrementMs: 0,
       runningColor: null,
     },
