@@ -99,6 +99,10 @@ async function waitForRoutineStart(page, canvas, eventName) {
         route: node.dataset.warRoomHansRoute || '',
         screen: node.dataset.warRoomHansScreen || '',
         phase: node.dataset.warRoomHansChoreographyPhase || '',
+        activeTask: node.dataset.warRoomHansActiveTask || '',
+        taskPhase: node.dataset.warRoomHansTaskPhase || '',
+        mopState: node.dataset.warRoomHansMopState || '',
+        mopInstalled: node.dataset.warRoomHansMopInstalled || '',
       };
     }),
     { timeout: 75_000, intervals: [100, 100, 200, 300, 500] },
