@@ -39,19 +39,22 @@ async function dismissHomeSpeech(home) {
 // contract. Settle first so the assertions never race the hall's load.
 async function matthiasRenderMode(home) {
   const hallRuntime = home.locator('[data-home-castle-compositor="blender-runtime"]');
-  await expect.poll(async () => {
-    if (await hallRuntime.count() === 0) return 'fallback';
-    return hallRuntime.getAttribute('data-home-blender-runtime');
-  }, { timeout: 30_000 }).toMatch(/^(ready|fallback)$/);
-  if (await hallRuntime.count() === 0
-      || await hallRuntime.getAttribute('data-home-blender-runtime') !== 'ready') {
-    return { mode: 'portrait', hallRuntime };
-  }
-  await expect.poll(
-    () => hallRuntime.getAttribute('data-home-matthias-actor'),
-    { timeout: 30_000 },
-  ).toMatch(/^(ready|unavailable)$/);
-  const actor = await hallRuntime.getAttribute('data-home-matthias-actor');
+  // Read the hall state in one DOM pass: the Blender canvas can be swapped for
+  // the 2D fallback between a count() and a getAttribute().
+  const hallState = () => home.evaluate((node) => {
+    const canvas = node.querySelector('[data-home-castle-compositor="blender-runtime"]');
+    if (!canvas) return { runtime: 'fallback', actor: 'none' };
+    return {
+      runtime: canvas.getAttribute('data-home-blender-runtime') || 'loading',
+      actor: canvas.getAttribute('data-home-matthias-actor') || 'loading',
+    };
+  });
+  await expect.poll(async () => (await hallState()).runtime, { timeout: 30_000 })
+    .toMatch(/^(ready|fallback)$/);
+  if ((await hallState()).runtime !== 'ready') return { mode: 'portrait', hallRuntime };
+  await expect.poll(async () => (await hallState()).actor, { timeout: 30_000 })
+    .toMatch(/^(ready|unavailable|none)$/);
+  const { actor } = await hallState();
   return { mode: actor === 'ready' ? 'in-scene' : 'portrait', hallRuntime };
 }
 
@@ -252,6 +255,12 @@ test('Home canónica · conserva el render aprobado si el GLB de Matthias no pue
   const matthias = home.locator('.illustrated-home__matthias');
   const { avatar, image, canvas } = matthiasRig(matthias);
 
+  // Without his rig the hall cannot host him: the approved portrait art is
+  // the resident, whichever renderer the hall itself settled on.
+  const render = await matthiasRenderMode(home);
+  expect(render.mode).toBe('portrait');
+  await expect(matthias).toHaveAttribute('data-home-matthias-render', 'portrait', { timeout: 15_000 });
+
   await expect(avatar).toHaveAttribute('data-home-matthias-model-state', 'fallback', { timeout: 15_000 });
   await expect(avatar).toHaveAttribute('data-matthias-render-source', 'bundled-scene-art-fallback');
   await expect(image).toBeVisible();
@@ -380,11 +389,19 @@ test('Home canónica · reduced motion congela el rig y elimina transiciones dec
   const { avatar, image, canvas } = matthiasRig(matthias);
 
   await expect(destination).toBeVisible();
-  await expect(avatar).toHaveAttribute('data-home-matthias-3d', 'ready');
-  await expect(avatar).toHaveAttribute('data-motion', 'still-rigged-model');
-  await expectBlenderRigReady(avatar, canvas);
-  expect(await image.evaluate((node) => getComputedStyle(node).animationName)).toBe('none');
-  expect(await canvas.evaluate((node) => Number.parseFloat(getComputedStyle(node).transitionDuration) || 0)).toBeLessThanOrEqual(0.001);
+  const render = await matthiasRenderMode(home);
+  if (render.mode === 'in-scene') {
+    // In the hall, reduced motion holds him in a still authored pose.
+    await expect(matthias).toHaveAttribute('data-home-matthias-render', 'in-scene', { timeout: 15_000 });
+    await expect(render.hallRuntime).toHaveAttribute('data-home-matthias-clip', /.+/);
+    expect(await matthias.evaluate((node) => Number.parseFloat(getComputedStyle(node).transitionDuration) || 0)).toBeLessThanOrEqual(0.001);
+  } else {
+    await expect(avatar).toHaveAttribute('data-home-matthias-3d', 'ready');
+    await expect(avatar).toHaveAttribute('data-motion', 'still-rigged-model');
+    await expectBlenderRigReady(avatar, canvas);
+    expect(await image.evaluate((node) => getComputedStyle(node).animationName)).toBe('none');
+    expect(await canvas.evaluate((node) => Number.parseFloat(getComputedStyle(node).transitionDuration) || 0)).toBeLessThanOrEqual(0.001);
+  }
 
   const transitionSeconds = await destination.evaluate((node) => Number.parseFloat(getComputedStyle(node).transitionDuration) || 0);
   expect(transitionSeconds).toBeLessThanOrEqual(0.001);

@@ -114,15 +114,20 @@ async function openDeterministicHome(page) {
 // settled on its 2D fallback, the floating portrait keeps the old contract.
 async function settleMatthiasRender(home) {
   const hallRuntime = home.locator('[data-home-castle-compositor="blender-runtime"]');
-  if (await hallRuntime.count() === 0
-      || await hallRuntime.getAttribute('data-home-blender-runtime') !== 'ready') {
-    return { mode:'portrait', hallRuntime };
-  }
-  await expect.poll(
-    () => hallRuntime.getAttribute('data-home-matthias-actor'),
-    { timeout:30_000 },
-  ).toMatch(/^(ready|unavailable)$/);
-  const actor = await hallRuntime.getAttribute('data-home-matthias-actor');
+  // One DOM pass per read: the Blender canvas can be swapped for the 2D
+  // fallback between separate locator calls.
+  const hallState = () => home.evaluate((node) => {
+    const canvas = node.querySelector('[data-home-castle-compositor="blender-runtime"]');
+    if (!canvas) return { runtime:'fallback', actor:'none' };
+    return {
+      runtime:canvas.getAttribute('data-home-blender-runtime') || 'loading',
+      actor:canvas.getAttribute('data-home-matthias-actor') || 'loading',
+    };
+  });
+  if ((await hallState()).runtime !== 'ready') return { mode:'portrait', hallRuntime };
+  await expect.poll(async () => (await hallState()).actor, { timeout:30_000 })
+    .toMatch(/^(ready|unavailable|none)$/);
+  const { actor } = await hallState();
   return { mode:actor === 'ready' ? 'in-scene' : 'portrait', hallRuntime };
 }
 

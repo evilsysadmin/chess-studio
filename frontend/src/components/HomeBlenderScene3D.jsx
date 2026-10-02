@@ -1651,10 +1651,13 @@ export default function HomeBlenderScene3D({
     const reportMatthiasLayout = () => {
       const report = matthiasLayoutRef.current;
       if (!report) return;
-      if (!matthiasActor || disposed || fallbackRequested) {
+      if (disposed) return;
+      if (fallbackRequested) {
         report(null);
         return;
       }
+      // Still loading the rig: stay pending, never fall back to the portrait.
+      if (!matthiasActor) return;
       const pose = homeBlenderCameraPoseForAspect(camera.aspect);
       camera.position.set(pose.position.x, pose.position.y, pose.position.z);
       camera.lookAt(pose.target.x, pose.target.y, pose.target.z);
@@ -1799,7 +1802,9 @@ export default function HomeBlenderScene3D({
         matthiasActor.dispose();
         matthiasActor = null;
       }
-      matthiasLayoutRef.current?.(null);
+      // Unmount or a re-run (ambient change, context restore): back to pending,
+      // not to the portrait, so the resident does not flash out of the hall.
+      matthiasLayoutRef.current?.(undefined);
       if (model) {
         scene.remove(model);
         disposeRuntimeScene(model);
