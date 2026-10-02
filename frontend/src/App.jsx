@@ -454,7 +454,6 @@ function AppInner({ isAdminUser }) {
         eloAfter: details.next.rating, ratingGames: details.next.games,
       };
     }
-
     const record = {
       id: `${finishedGame.id}-${Date.now()}`,
       sourceGameId: finishedGame.id,
