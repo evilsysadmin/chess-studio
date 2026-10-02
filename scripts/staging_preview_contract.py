@@ -241,6 +241,8 @@ def main() -> int:
         require(blocks["backend"], "id: watcher", "backend watcher convergence output", errors)
         require(blocks["backend"], "steps.watcher.outputs.converged != 'true'", "backend Run Command fallback condicional", errors)
         require(blocks["backend"], "Validate zero-cost host watcher contract", "backend watcher self-test", errors)
+        require(blocks["backend"], "for stable_attempt in {1..6}; do", "backend watcher exige estabilidad pública post-cutover", errors)
+        require(blocks["backend"], 'if [[ "$stable" == true ]]; then', "backend watcher no acepta candidato transitorio", errors)
         forbid(
             blocks["backend"],
             "python3 scripts/oci_vault_sync.py sync-current",
