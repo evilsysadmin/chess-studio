@@ -19,8 +19,9 @@ var (
 	ErrWrongTurn      = errors.New("not player's turn")
 	ErrCountdown      = errors.New("match countdown is still active")
 	ErrClockExpired   = errors.New("mover clock already expired")
-	ErrInvalidMove    = errors.New("invalid move")
-	ErrIllegalMove    = errors.New("illegal move")
+	ErrInvalidPosition = errors.New("invalid persisted position")
+	ErrInvalidMove     = errors.New("invalid move")
+	ErrIllegalMove     = errors.New("illegal move")
 )
 
 type HistoryEntry struct {
@@ -103,7 +104,9 @@ func Prepare(match Match, username string, request Request, now time.Time) (Upda
 	applied, err := chessrules.ApplyUCI(match.FEN, uci)
 	if err != nil {
 		switch {
-		case errors.Is(err, chessrules.ErrInvalidMove), errors.Is(err, chessrules.ErrInvalidFEN):
+		case errors.Is(err, chessrules.ErrInvalidFEN):
+			return Update{}, ErrInvalidPosition
+		case errors.Is(err, chessrules.ErrInvalidMove):
 			return Update{}, ErrInvalidMove
 		case errors.Is(err, chessrules.ErrIllegalMove):
 			return Update{}, ErrIllegalMove
@@ -158,12 +161,6 @@ func Prepare(match Match, username string, request Request, now time.Time) (Upda
 func ClockSnapshot(match Match, now time.Time) (int64, int64) {
 	white := match.WhiteClockMS
 	black := match.BlackClockMS
-	if white <= 0 && match.WhiteClockMS == 0 {
-		white = InitialClockMS
-	}
-	if black <= 0 && match.BlackClockMS == 0 {
-		black = InitialClockMS
-	}
 	if white < 0 {
 		white = 0
 	}
