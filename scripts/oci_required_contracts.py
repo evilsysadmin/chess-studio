@@ -28,6 +28,7 @@ SECRET_RE = re.compile(
 )
 OCI_WORKFLOWS = {
     ".github/workflows/oci-readiness.yml",
+    ".github/workflows/oci-resend-bootstrap.yml",
     ".github/workflows/oci-staging-lab.yml",
     ".github/workflows/oci-staging-deploy.yml",
     ".github/workflows/oci-staging-service.yml",

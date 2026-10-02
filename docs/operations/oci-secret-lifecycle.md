@@ -53,6 +53,7 @@ The migration uses one Vault entry per independently rotatable or environment-sp
 | --- | --- | --- |
 | `MONGO_URL` | `chess-studio-staging-mongo-url` | Secret connection string. |
 | `JWT_SECRET` | `chess-studio-staging-jwt-secret` | Authentication signing secret. Rotation requires compatibility planning for existing tokens. |
+| `RESEND_API_KEY` | `chess-studio-staging-resend-api-key` | Resend transport key for password recovery; runtime reads it from Vault through the instance principal. |
 | `INVITE_CODE` | `chess-studio-staging-invite-code` | Keep secret while invite-gated registration exists. |
 | `CHESS_AI_SHARED_SECRET` | `chess-studio-staging-ai-shared-secret` | Coordinate rotation with the staging AI Worker. |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | `chess-studio-staging-otel-endpoint` | Not credential material, but kept with the Grafana runtime pair so staging no longer depends on Render for an environment-specific endpoint. |
@@ -69,6 +70,8 @@ These values are configuration, not secrets, and should remain declarative/versi
 - `EXPOSE_API_DOCS`
 - `ALLOW_REGISTRATION`
 - `ENABLE_EMAIL_RECOVERY`
+- `PASSWORD_RESET_URL`
+- `PASSWORD_RESET_FROM`
 - `ADMIN_USERNAMES`
 - `CF_AI_WORKER_URL`
 - `CORS_ORIGINS`
