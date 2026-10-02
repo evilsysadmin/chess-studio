@@ -1,4 +1,8 @@
 from datetime import datetime, timedelta
+import hashlib
+import hmac
+import json
+import time
 
 import chess
 import pytest
@@ -1017,3 +1021,98 @@ def test_ready_activation_survives_roster_cleanup_failure(monkeypatch):
     recovered = as_user(client, "alice", "get", f"/api/pvp/matches/{match['id']}")
     assert recovered.status_code == 200
     assert recovered.json()["match"]["status"] == "active"
+
+
+def _resident_oracle_headers(raw: bytes, *, timestamp: int | None = None, secret: str | None = None):
+    stamp = str(int(time.time()) if timestamp is None else int(timestamp))
+    key = hmac.new(
+        (secret or pvp_api.JWT_SECRET).encode("utf-8"),
+        pvp_api._RESIDENT_ORACLE_LABEL,
+        hashlib.sha256,
+    ).digest()
+    digest = hmac.new(key, stamp.encode("ascii") + b"." + raw, hashlib.sha256).hexdigest()
+    return {
+        "content-type": "application/json",
+        "x-chess-timestamp": stamp,
+        "x-chess-signature": f"sha256={digest}",
+    }
+
+
+def test_resident_move_oracle_returns_legal_uci_without_mutating_match_store(monkeypatch):
+    monkeypatch.setenv("CHESS_PVP_SPARRING_ENABLED", "true")
+    monkeypatch.setattr(
+        pvp_api.residents,
+        "choose_move",
+        lambda board, username: chess.Move.from_uci("e2e4"),
+    )
+    client = make_client()
+    raw = json.dumps(
+        {
+            "fen": chess.STARTING_FEN,
+            "resident": "otto_falk",
+        },
+        separators=(",", ":"),
+    ).encode("utf-8")
+
+    before = dict(pvp_store._memory_matches)
+    response = client.post(
+        "/api/pvp/_internal/resident-move",
+        content=raw,
+        headers=_resident_oracle_headers(raw),
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"uci": "e2e4"}
+    assert pvp_store._memory_matches == before
+
+
+def test_resident_move_oracle_rejects_bad_or_stale_signatures(monkeypatch):
+    monkeypatch.setenv("CHESS_PVP_SPARRING_ENABLED", "true")
+    client = make_client()
+    raw = b'{"fen":"' + chess.STARTING_FEN.encode("ascii") + b'","resident":"otto_falk"}'
+
+    bad = client.post(
+        "/api/pvp/_internal/resident-move",
+        content=raw,
+        headers={
+            "content-type": "application/json",
+            "x-chess-timestamp": str(int(time.time())),
+            "x-chess-signature": "sha256=deadbeef",
+        },
+    )
+    assert bad.status_code == 401
+
+    stale = client.post(
+        "/api/pvp/_internal/resident-move",
+        content=raw,
+        headers=_resident_oracle_headers(
+            raw,
+            timestamp=int(time.time()) - pvp_api._RESIDENT_ORACLE_MAX_SKEW_SECONDS - 1,
+        ),
+    )
+    assert stale.status_code == 401
+
+
+def test_resident_move_oracle_rejects_invalid_inputs_before_engine(monkeypatch):
+    monkeypatch.setenv("CHESS_PVP_SPARRING_ENABLED", "true")
+    calls = []
+    monkeypatch.setattr(
+        pvp_api.residents,
+        "choose_move",
+        lambda board, username: calls.append((board.fen(), username)),
+    )
+    client = make_client()
+
+    for payload, expected in (
+        ({"fen": "not a fen", "resident": "otto_falk"}, 400),
+        ({"fen": chess.STARTING_FEN, "resident": "not_a_resident"}, 404),
+    ):
+        raw = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+        response = client.post(
+            "/api/pvp/_internal/resident-move",
+            content=raw,
+            headers=_resident_oracle_headers(raw),
+        )
+        assert response.status_code == expected
+
+    assert calls == []
