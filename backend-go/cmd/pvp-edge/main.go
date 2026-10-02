@@ -25,13 +25,15 @@ func main() {
 	chatEnabled := envBool("PVP_NATIVE_CHAT_ENABLED", false)
 	challengeResolutionEnabled := envBool("PVP_NATIVE_CHALLENGE_RESOLUTION_ENABLED", false)
 	matchHandoffCancelEnabled := envBool("PVP_NATIVE_MATCH_HANDOFF_CANCEL_ENABLED", false)
+	matchReadyEnabled := envBool("PVP_NATIVE_MATCH_READY_ENABLED", false)
 	var nativePulse http.Handler
 	var nativeRoster http.Handler
 	var nativeChat http.Handler
 	var nativeChallengeResolution http.Handler
 	var nativeMatchHandoffCancel http.Handler
+	var nativeMatchReady http.Handler
 	var mongoStore *pulse.MongoStore
-	if pulseEnabled || rosterEnabled || chatEnabled || challengeResolutionEnabled || matchHandoffCancelEnabled {
+	if pulseEnabled || rosterEnabled || chatEnabled || challengeResolutionEnabled || matchHandoffCancelEnabled || matchReadyEnabled {
 		mongoURL := strings.TrimSpace(os.Getenv("MONGO_URL"))
 		mongoDatabase := strings.TrimSpace(os.Getenv("MONGO_DB_NAME"))
 		jwtSecret := strings.TrimSpace(os.Getenv("JWT_SECRET"))
@@ -57,7 +59,10 @@ func main() {
 			EnableChat:     chatEnabled,
 			EnableChallengeResolution: challengeResolutionEnabled,
 			EnableMatchHandoffCancel: matchHandoffCancelEnabled,
+			EnableMatchReady: matchReadyEnabled,
 			VirtualPlayersEnabled: envBool("CHESS_PVP_SPARRING_ENABLED", false),
+			VirtualOwner: env("CHESS_PVP_SPARRING_OWNER", "evilsysadmin"),
+			SparringUsername: env("CHESS_PVP_SPARRING_USERNAME", "sparringmeister"),
 		})
 		if err != nil {
 			log.Fatalf("native PvP pulse handler: %v", err)
@@ -76,6 +81,9 @@ func main() {
 		}
 		if matchHandoffCancelEnabled {
 			nativeMatchHandoffCancel = pulseHandler
+		}
+		if matchReadyEnabled {
+			nativeMatchReady = pulseHandler
 		}
 	}
 	if mongoStore != nil {
@@ -97,6 +105,7 @@ func main() {
 		NativeChat:   nativeChat,
 		NativeChallengeResolution: nativeChallengeResolution,
 		NativeMatchHandoffCancel: nativeMatchHandoffCancel,
+		NativeMatchReady: nativeMatchReady,
 	})
 	if err != nil {
 		log.Fatalf("invalid pvp edge configuration: %v", err)
@@ -120,7 +129,7 @@ func main() {
 		}
 	}()
 
-	log.Printf("pvp-go listening on :%s -> %s native_pulse=%t native_roster=%t native_chat=%t native_challenge_resolution=%t native_match_handoff_cancel=%t", port, upstream, nativePulse != nil, nativeRoster != nil, nativeChat != nil, nativeChallengeResolution != nil, nativeMatchHandoffCancel != nil)
+	log.Printf("pvp-go listening on :%s -> %s native_pulse=%t native_roster=%t native_chat=%t native_challenge_resolution=%t native_match_handoff_cancel=%t native_match_ready=%t", port, upstream, nativePulse != nil, nativeRoster != nil, nativeChat != nil, nativeChallengeResolution != nil, nativeMatchHandoffCancel != nil, nativeMatchReady != nil)
 	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatalf("pvp edge serve: %v", err)
 	}
