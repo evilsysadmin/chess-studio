@@ -157,3 +157,24 @@ func (h *Handler) lobbyRosterVisible(viewer, rosterUsername string) bool {
 	}
 	return true
 }
+
+
+func (h *Handler) allowLobbyRead(username string, now time.Time) (bool, int) {
+	h.lobbyReadMu.Lock()
+	defer h.lobbyReadMu.Unlock()
+	window := h.lobbyReadWindows[username]
+	if window.start.IsZero() || now.Sub(window.start) >= time.Minute {
+		h.lobbyReadWindows[username] = rateWindow{start: now, count: 1}
+		return true, 0
+	}
+	if window.count >= 40 {
+		retry := int(time.Minute.Seconds() - now.Sub(window.start).Seconds())
+		if retry < 1 {
+			retry = 1
+		}
+		return false, retry
+	}
+	window.count++
+	h.lobbyReadWindows[username] = window
+	return true, 0
+}
