@@ -156,22 +156,27 @@
   pointer-events: none;
 }
 
+.home-matthias-3d[data-home-matthias-station='rest'] canvas {
+  transform: rotate(-82deg) scale(.78);
+  transform-origin: 50% 54%;
+}
+
 .home-matthias-3d__sleep-blanket {
   z-index: 2;
-  left: 31%;
-  right: 7%;
-  bottom: 13%;
-  height: 47%;
-  border: 1px solid rgba(180, 128, 62, .42);
-  border-radius: 48% 42% 24% 28% / 34% 38% 28% 30%;
+  left: 38%;
+  right: 14%;
+  bottom: 17%;
+  height: 30%;
+  border: 1px solid rgba(180, 128, 62, .36);
+  border-radius: 42% 36% 24% 26% / 36% 34% 24% 26%;
   background:
-    linear-gradient(135deg, rgba(255,255,255,.06) 0 2%, transparent 2% 8%, rgba(0,0,0,.07) 8% 10%, transparent 10% 16%),
-    linear-gradient(180deg, #6b3d2b 0%, #4e2a22 58%, #321d1a 100%);
+    linear-gradient(135deg, rgba(255,255,255,.05) 0 2%, transparent 2% 10%, rgba(0,0,0,.06) 10% 12%, transparent 12% 20%),
+    linear-gradient(180deg, rgba(107,61,43,.95) 0%, rgba(78,42,34,.96) 60%, rgba(50,29,26,.98) 100%);
   box-shadow:
-    inset 0 1px 0 rgba(255, 221, 156, .12),
-    0 7px 12px rgba(0,0,0,.22);
-  transform: rotate(-4deg);
-  transform-origin: 70% 60%;
+    inset 0 1px 0 rgba(255, 221, 156, .1),
+    0 4px 9px rgba(0,0,0,.2);
+  transform: rotate(-3deg);
+  transform-origin: 72% 62%;
 }
 
 .home-matthias-3d__sleep-bubble {
