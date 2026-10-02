@@ -164,6 +164,7 @@ PVP_DUEL_EXACT_PRODUCERS = {
     "frontend/src/components/pvpgamescreen.jsx": {"pvp-duel"},
     "frontend/src/components/pvpgamescreen.css": {"pvp-duel"},
     "frontend/src/components/pvpduelroomshell.js": {"pvp-duel"},
+    "frontend/src/pvpmatchpolling.js": {"pvp-duel"},
 }
 
 PVP_EXACT_PRODUCERS = {
@@ -309,7 +310,7 @@ def classify_path(path: str) -> set[str] | None:
         return None
 
     if not lower.startswith("frontend/src/"):
-        if lower.startswith("backend-python/"):
+        if lower.startswith(("backend-python/", "backend-go/")):
             return set()
         if lower in {
             "scripts/css_architecture_manifest.json",
@@ -646,6 +647,14 @@ def self_test() -> None:
     assert classify(["e2e/pvp-lobby-visual-artifact.spec.js"]) == "pvp-lobby"
     assert classify(["frontend/src/components/PvpHandoffModal.jsx"]) == "pvp-handoff"
     assert classify(["e2e/pvp-handoff-visual-artifact.spec.js"]) == "pvp-handoff"
+    assert classify([
+        "backend-go/internal/pulse/pulse.go",
+        "backend-go/internal/pulse/pulse_test.go",
+        "frontend/src/components/PvpGameScreen.jsx",
+        "frontend/src/pvpMatchPolling.js",
+        "frontend/src/pvpMatchPolling.test.js",
+        "e2e/war-room-pvp.spec.js",
+    ]) == "pvp-duel"
     assert classify_home_profile_scope(["frontend/src/components/QuickMatchMobileGoldenPath.css"]) == "quickmatch"
     assert classify(["frontend/src/components/useWarRoomImmersive.js"]) == "warroom-core"
     assert classify(["frontend/src/components/WarRoomMobileLandscape.css"]) == "warroom-core"

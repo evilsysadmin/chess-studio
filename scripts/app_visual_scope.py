@@ -85,6 +85,7 @@ PVP_GAME_VISUAL_SURFACES = {
     "frontend/src/components/pvpgamescreen.jsx",
     "frontend/src/components/pvpgamescreen.css",
     "frontend/src/components/pvpduelroomshell.js",
+    "frontend/src/pvpmatchpolling.js",
 }
 
 PVP_VISUAL_SURFACES = {
@@ -219,7 +220,7 @@ def _surface_groups(path: str) -> set[str] | None:
         return {"warroom"}
     if lower in PVP_VISUAL_SURFACES:
         return {"home"}
-    if lower.startswith("backend-python/"):
+    if lower.startswith(("backend-python/", "backend-go/")):
         # Backend changes have no browser pixels of their own. Any accompanying
         # frontend visual owner determines the capture scope.
         return set()
@@ -646,6 +647,16 @@ def self_test() -> None:
     ])
     assert pvp_lobby.capture_groups == "home,warroom"
     assert not pvp_lobby.hans and not pvp_lobby.chesscom
+    pvp_match_polling = classify([
+        "backend-go/internal/pulse/pulse.go",
+        "backend-go/internal/pulse/pulse_test.go",
+        "frontend/src/components/PvpGameScreen.jsx",
+        "frontend/src/pvpMatchPolling.js",
+        "frontend/src/pvpMatchPolling.test.js",
+        "e2e/war-room-pvp.spec.js",
+    ])
+    assert pvp_match_polling.capture_groups == "warroom"
+    assert not pvp_match_polling.hans and not pvp_match_polling.chesscom
     classroom = classify(["frontend/src/components/MatthiasClassRoom.css"])
     assert classroom.capture_groups == "training"
     assert not classroom.hans and not classroom.chesscom
