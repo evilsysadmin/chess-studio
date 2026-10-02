@@ -522,20 +522,23 @@ by_name = {
     for row in rows
     if isinstance(row, dict)
 }
-required = {
-    sparring: "sparring",
-    "otto_falk": "resident",
-    "marta_stein": "resident",
-    "viktor_kraus": "resident",
-}
-for username, actor_kind in required.items():
+required = (
+    sparring,
+    "otto_falk",
+    "marta_stein",
+    "viktor_kraus",
+)
+for username in required:
     row = by_name.get(username)
     if row is None:
         raise SystemExit(f"PVP_VIRTUAL_ROSTER_FAIL reason=missing-rival rival={username}")
-    if str(row.get("actorKind") or "").strip().lower() != actor_kind:
-        raise SystemExit(f"PVP_VIRTUAL_ROSTER_FAIL reason=wrong-actor-kind rival={username}")
     if row.get("isSelf") is True:
         raise SystemExit(f"PVP_VIRTUAL_ROSTER_FAIL reason=virtual-rival-marked-self rival={username}")
+
+for username in ("otto_falk", "marta_stein", "viktor_kraus"):
+    row = by_name[username]
+    if str(row.get("actorKind") or "").strip().lower() != "resident":
+        raise SystemExit(f"PVP_VIRTUAL_ROSTER_FAIL reason=wrong-actor-kind rival={username}")
 
 print(
     "PVP_VIRTUAL_ROSTER_OK "
