@@ -417,10 +417,20 @@ assert 'for username in required:' in virtual_roster_attest
 assert 'for username in ("otto_falk", "marta_stein", "viktor_kraus"):' in virtual_roster_attest
 assert '!= "resident"' in virtual_roster_attest
 assert 'sparring: "sparring"' not in virtual_roster_attest
+browser_token = deploy.split("pvp_browser_token() {", 1)[1].split(
+    "\npvp_authenticated_browser_attest() {", 1
+)[0]
+assert 'PVP_BROWSER_TOKEN=' in browser_token
+assert 'print(f"PVP_BROWSER_TOKEN={create_token(owner, session_version)}")' in browser_token
 authenticated_browser_attest = deploy.split("pvp_authenticated_browser_attest() {", 1)[1].split(
     "\npvp_edge_attest() {", 1
 )[0]
 for fragment in (
+    'token_output="$(pvp_browser_token "$backend_service")"',
+    '[[ "$line" == PVP_BROWSER_TOKEN=* ]]',
+    'token_line="${line#PVP_BROWSER_TOKEN=}"',
+    'multiple token sentinels',
+    'did not receive one framed JWT',
     'endpoint="$api_base/pvp/lobby"',
     'endpoint="$api_base/pvp/lobby/pulse"',
     'expected_native="lobby-read"',

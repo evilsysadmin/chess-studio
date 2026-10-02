@@ -591,7 +591,7 @@ except Exception:
     raise SystemExit("PVP_BROWSER_AUTH_FAIL reason=owner-auth-state-unavailable")
 if not exists:
     raise SystemExit("PVP_BROWSER_AUTH_FAIL reason=owner-account-missing")
-print(create_token(owner, session_version), end="")
+print(f"PVP_BROWSER_TOKEN={create_token(owner, session_version)}")
 PY
 }
 
@@ -599,14 +599,29 @@ pvp_authenticated_browser_attest() {
   local backend_service="$1"
   local api_base="${2%/}"
   local deployment_target="${3:-$target}"
-  local token probe endpoint expected_native request_id headers body status
+  local token token_output token_line line probe endpoint expected_native request_id headers body status
 
   if [[ "$deployment_target" != "staging" ]]; then
     return 0
   fi
 
-  if ! token="$(pvp_browser_token "$backend_service")" || [[ "$token" != *.*.* ]]; then
+  if ! token_output="$(pvp_browser_token "$backend_service")"; then
     echo "authenticated PvP browser probe could not mint a staging owner token" >&2
+    return 1
+  fi
+  token_line=""
+  while IFS= read -r line; do
+    if [[ "$line" == PVP_BROWSER_TOKEN=* ]]; then
+      if [[ -n "$token_line" ]]; then
+        echo "authenticated PvP browser probe received multiple token sentinels" >&2
+        return 1
+      fi
+      token_line="${line#PVP_BROWSER_TOKEN=}"
+    fi
+  done <<< "$token_output"
+  token="$token_line"
+  if [[ ! "$token" =~ ^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$ ]]; then
+    echo "authenticated PvP browser probe did not receive one framed JWT" >&2
     return 1
   fi
 
