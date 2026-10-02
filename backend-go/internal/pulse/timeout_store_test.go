@@ -29,7 +29,7 @@ func TestTimeoutDomainMatchPreservesLifecycleState(t *testing.T) {
 
 func TestTimeoutDomainMatchDefaultsMissingClocks(t *testing.T) {
 	got:=timeoutDomainMatch(cancelMatchRow{ID:"m",Status:"active"})
-	if got.WhiteClockMS!=10*60*1000 || got.BlackClockMS!=10*60*1000 {
+	if got.WhiteClockMS!=pvpInitialClockMS || got.BlackClockMS!=pvpInitialClockMS {
 		t.Fatalf("clocks=%d/%d",got.WhiteClockMS,got.BlackClockMS)
 	}
 }
