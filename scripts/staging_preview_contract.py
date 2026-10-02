@@ -131,6 +131,8 @@ def main() -> int:
         ("attempt % 8 == 0", "generation watcher periodic stale-generation probe"),
         ("OCI zero-cost fast-path", "generation watcher success marker"),
         ("OCI fallback avoided", "late watcher completion re-check"),
+        ("acreditado completamente por watcher", "watcher requires complete public accreditation"),
+        ("A1 terminó y acreditó $DEPLOY_SHA", "late fallback skip requires complete public accreditation"),
         ("Re-check main before OCI fallback", "late stale-generation guard"),
         ("OCI fallback superseded", "stale fallback short-circuit"),
         ("Resolve backend generation state", "backend supersession output"),
@@ -146,6 +148,11 @@ def main() -> int:
         ("Live browser smoke against deployed staging", "generation live smoke"),
     ):
         require(staging_deploy, needle, label, errors)
+
+    if staging_deploy.count("python3 scripts/verify_backend_staging.py") < 3:
+        errors.append("staging fast-path/fallback must reuse full public backend accreditation before skipping Run Command")
+    if staging_deploy.count("--attempts 1") < 2:
+        errors.append("staging watcher and pre-fallback checks must use one-shot full public accreditation probes")
 
     # Staging has one Pages deployment owner. The retired fast lane duplicated\n    # checkout/build/deploy/verify logic and must not return as a second mutation path.\n    if RETIRED_STAGING_PAGES_FAST.exists():\n        errors.append("staging Pages fast lane resurrected; canonical staging owns Pages deployment")\n\n    # Backend image publication is decoupled from admission/Pages. It may build
     # immutable images in parallel, but only current main may move the mutable
