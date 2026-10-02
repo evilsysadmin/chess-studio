@@ -115,11 +115,25 @@ jobs:
               # finishes public CORS/PvP accreditation. Only treat the watcher
               # as complete once the same external contract used by the final
               # generation gate passes, otherwise a later host rollback is hidden.
-              if python3 scripts/verify_backend_staging.py \
-                --api-url "$STAGING_API_URL" \
-                --sha "$DEPLOY_SHA" \
-                --attempts 1 \
-                --interval 0 >/dev/null 2>&1; then
+              # A single green public sample can still race the host wrapper:
+              # /release and the Go edge flip before late public accreditation has
+              # finished, and that late gate may still roll back. Require a short
+              # stable window before declaring the zero-cost watcher complete.
+              stable=true
+              for stable_sample in 1 2 3 4; do
+                if (( stable_sample > 1 )); then
+                  sleep 5
+                fi
+                if ! python3 scripts/verify_backend_staging.py \
+                  --api-url "$STAGING_API_URL" \
+                  --sha "$DEPLOY_SHA" \
+                  --attempts 1 \
+                  --interval 0 >/dev/null 2>&1; then
+                  stable=false
+                  break
+                fi
+              done
+              if [[ "$stable" == true ]]; then
                 converged=true
                 break
               fi
