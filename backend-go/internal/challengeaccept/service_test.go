@@ -260,3 +260,9 @@ func TestAcceptPropagatesEntropyFailureWithoutWriting(t *testing.T) {
 		t.Fatalf("commit called after entropy failure: %d", store.commitCalls)
 	}
 }
+
+func TestInitialClockIsThirtyMinutes(t *testing.T) {
+	if InitialClockMS != int64(30*60*1000) {
+		t.Fatalf("InitialClockMS=%d want=%d", InitialClockMS, int64(30*60*1000))
+	}
+}
