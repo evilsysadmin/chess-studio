@@ -15,7 +15,9 @@ import (
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/challengeaccept"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/challengecreate"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/edge"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/matchdisconnect"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/matchresign"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/matchtimeout"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/pulse"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/pvprating"
 )
@@ -33,6 +35,7 @@ func main() {
 	matchHandoffCancelEnabled := envBool("PVP_NATIVE_MATCH_HANDOFF_CANCEL_ENABLED", false)
 	matchReadyEnabled := envBool("PVP_NATIVE_MATCH_READY_ENABLED", false)
 	matchResignEnabled := envBool("PVP_NATIVE_MATCH_RESIGN_ENABLED", false)
+	matchReadEnabled := envBool("PVP_NATIVE_MATCH_READ_ENABLED", false)
 	var nativePulse http.Handler
 	var nativeRoster http.Handler
 	var nativeChat http.Handler
@@ -42,8 +45,9 @@ func main() {
 	var nativeMatchHandoffCancel http.Handler
 	var nativeMatchReady http.Handler
 	var nativeMatchResign http.Handler
+	var nativeMatchRead http.Handler
 	var mongoStore *pulse.MongoStore
-	if pulseEnabled || rosterEnabled || chatEnabled || challengeResolutionEnabled || challengeAcceptEnabled || challengeCreateEnabled || matchHandoffCancelEnabled || matchReadyEnabled || matchResignEnabled {
+	if pulseEnabled || rosterEnabled || chatEnabled || challengeResolutionEnabled || challengeAcceptEnabled || challengeCreateEnabled || matchHandoffCancelEnabled || matchReadyEnabled || matchResignEnabled || matchReadEnabled {
 		mongoURL := strings.TrimSpace(os.Getenv("MONGO_URL"))
 		mongoDatabase := strings.TrimSpace(os.Getenv("MONGO_DB_NAME"))
 		jwtSecret := strings.TrimSpace(os.Getenv("JWT_SECRET"))
@@ -76,12 +80,26 @@ func main() {
 			}
 		}
 		var resignService *matchresign.Service
+		var timeoutService *matchtimeout.Service
+		var disconnectService *matchdisconnect.Service
 		var ratingService *pvprating.Service
 		if matchResignEnabled {
 			resignService, err = matchresign.New(matchresign.Config{Store: pulse.NewResignStore(store)})
 			if err != nil {
 				log.Fatalf("native PvP resign service: %v", err)
 			}
+		}
+		if matchReadEnabled {
+			timeoutService, err = matchtimeout.New(matchtimeout.Config{Store: pulse.NewTimeoutStore(store)})
+			if err != nil {
+				log.Fatalf("native PvP timeout service: %v", err)
+			}
+			disconnectService, err = matchdisconnect.New(matchdisconnect.Config{Store: pulse.NewDisconnectStore(store)})
+			if err != nil {
+				log.Fatalf("native PvP disconnect service: %v", err)
+			}
+		}
+		if matchResignEnabled || matchReadEnabled {
 			ratingService, err = pvprating.New(store)
 			if err != nil {
 				log.Fatalf("native PvP rating settlement service: %v", err)
@@ -97,6 +115,9 @@ func main() {
 			ChallengeAccept: acceptService,
 			ChallengeCreate: createService,
 			MatchResign: resignService,
+			MatchReadStore: store,
+			MatchTimeout: timeoutService,
+			MatchDisconnect: disconnectService,
 			RatingSettlement: ratingService,
 			EnableMatchHandoffCancel: matchHandoffCancelEnabled,
 			EnableMatchReady: matchReadyEnabled,
@@ -134,6 +155,9 @@ func main() {
 		if matchResignEnabled {
 			nativeMatchResign = pulseHandler
 		}
+		if matchReadEnabled {
+			nativeMatchRead = pulseHandler
+		}
 	}
 	if mongoStore != nil {
 		defer func() {
@@ -158,6 +182,7 @@ func main() {
 		NativeMatchHandoffCancel: nativeMatchHandoffCancel,
 		NativeMatchReady: nativeMatchReady,
 		NativeMatchResign: nativeMatchResign,
+		NativeMatchRead: nativeMatchRead,
 	})
 	if err != nil {
 		log.Fatalf("invalid pvp edge configuration: %v", err)
@@ -181,7 +206,7 @@ func main() {
 		}
 	}()
 
-	log.Printf("pvp-go listening on :%s -> %s native_pulse=%t native_roster=%t native_chat=%t native_challenge_resolution=%t native_challenge_accept=%t native_challenge_create=%t native_match_handoff_cancel=%t native_match_ready=%t native_match_resign=%t", port, upstream, nativePulse != nil, nativeRoster != nil, nativeChat != nil, nativeChallengeResolution != nil, nativeChallengeAccept != nil, nativeChallengeCreate != nil, nativeMatchHandoffCancel != nil, nativeMatchReady != nil, nativeMatchResign != nil)
+	log.Printf("pvp-go listening on :%s -> %s native_pulse=%t native_roster=%t native_chat=%t native_challenge_resolution=%t native_challenge_accept=%t native_challenge_create=%t native_match_handoff_cancel=%t native_match_ready=%t native_match_resign=%t native_match_read=%t", port, upstream, nativePulse != nil, nativeRoster != nil, nativeChat != nil, nativeChallengeResolution != nil, nativeChallengeAccept != nil, nativeChallengeCreate != nil, nativeMatchHandoffCancel != nil, nativeMatchReady != nil, nativeMatchResign != nil, nativeMatchRead != nil)
 	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatalf("pvp edge serve: %v", err)
 	}
