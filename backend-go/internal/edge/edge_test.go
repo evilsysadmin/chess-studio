@@ -665,3 +665,73 @@ func TestMatchReadPathIsExactAtEdge(t *testing.T) {
 		if got:=isMatchReadPath(path); got!=want { t.Fatalf("%s got=%t want=%t",path,got,want) }
 	}
 }
+
+
+func TestNativeMatchMoveBypassesPythonWhenEnabled(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		t.Fatal("native match move must not reach Python upstream")
+	}))
+	defer upstream.Close()
+	native := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/pvp/matches/m-1/move" || r.Method != http.MethodPost {
+			t.Fatalf("native match move request=%s %s", r.Method, r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"match":{"id":"m-1","revision":8}}`))
+	})
+	h, err := New(Config{UpstreamURL: upstream.URL, NativeMatchMove: native})
+	if err != nil { t.Fatal(err) }
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/matches/m-1/move", nil))
+	if rr.Code != http.StatusOK { t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String()) }
+	if got:=rr.Header().Get("X-Chess-Pvp-Edge"); got!="go" { t.Fatalf("edge=%q",got) }
+}
+
+func TestMatchMoveFallsBackToPythonWhenNativeDisabled(t *testing.T) {
+	called := false
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		if r.URL.Path != "/api/pvp/matches/m-1/move" || r.Method != http.MethodPost {
+			t.Fatalf("upstream match move request=%s %s", r.Method, r.URL.Path)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer upstream.Close()
+	h := mustHandler(t, upstream.URL)
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/matches/m-1/move", nil))
+	if rr.Code != http.StatusOK || !called {
+		t.Fatalf("fallback status=%d called=%t body=%s", rr.Code, called, rr.Body.String())
+	}
+}
+
+func TestReadinessReportsNativeMatchMoveState(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/ready" { w.WriteHeader(http.StatusOK); return }
+		http.NotFound(w, r)
+	}))
+	defer upstream.Close()
+	native := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
+	h, err := New(Config{UpstreamURL: upstream.URL, NativeMatchMove: native})
+	if err != nil { t.Fatal(err) }
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "http://edge/readyz", nil))
+	if rr.Code != http.StatusOK { t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String()) }
+	var body map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil { t.Fatal(err) }
+	if body["nativeMatchMove"] != true {
+		t.Fatalf("nativeMatchMove=%#v want=true", body["nativeMatchMove"])
+	}
+}
+
+func TestMatchMovePathIsExactAtEdge(t *testing.T) {
+	for path,want:=range map[string]bool{
+		"/api/pvp/matches/m-1/move":true,
+		"/api/pvp/matches/m-1/move/":false,
+		"/api/pvp/matches//move":false,
+		"/api/pvp/matches/m-1":false,
+		"/api/pvp/matches/m-1/resign":false,
+	}{
+		if got:=isMatchMovePath(path); got!=want { t.Fatalf("%s got=%t want=%t",path,got,want) }
+	}
+}
