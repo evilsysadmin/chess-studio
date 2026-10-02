@@ -23,7 +23,7 @@ OCI_REGION ?= eu-frankfurt-1
 OCI_INSTANCE_NAME ?= chess-studio-staging
 OCI_SSH_USER ?= ubuntu
 OCI_SSH_KEY ?=
-OCI_SSH_HOSTNAME ?= ssh-staging.chess-studio.shadowops.dpdns.org
+OCI_SSH_HOSTNAME ?= ssh-chess-studio-staging.shadowops.dpdns.org
 CRITICAL_E2E_GREP := login → menú|Partida rápida · una partida activa|Torneo · una partida activa|Partida rápida · un 503 al restaurar|Combat Chess · Campaña permite jugar con defaults|Combat Chess · salir al menú conserva campaña|deploy · una release nueva no fuerza reload|sesión · dos contextos de navegador|admin · presencia distingue|Matthias · saluda una vez tras login y no repite el saludo con F5|Home · el avatar residente de Matthias abre Así juegas|Matthias · el briefing persistente aparece antes de una partida rápida|Matthias · banco de personalidad Admin usa sólo datos sintéticos|Escuela de Matthias · el primer movimiento se aprende hands-on y persiste tras F5|Escuela de Matthias · el examen básico bloquea la promoción hasta aprobar
 
 .PHONY: game game-bg ungame restart logs status build clean help install \
@@ -32,7 +32,7 @@ CRITICAL_E2E_GREP := login → menú|Partida rápida · una partida activa|Torne
 	test-frontend test-frontend-smoke test-frontend-unit test-frontend-contract test-backend test-backend-smoke test-backend-integration backend-check quality-gate gate-core \
 	gate-frontend-critical gate-critical combat-smoke frontend-build bundle-report puzzles-check audio-check data-ux-check pwa-check campaign-map-check copy-check release-check test-suite-audit test-suite-audit-ci static-contract-risk-audit css-check css-debt-check visual-ux-check state-resilience-check idempotency-check npm-audit-parser-check architecture-debt-check workflow-debt-check dependency-cycle-check dead-code-check session-continuity-check safe-storage-check async-resilience-check chess-rules-check grafana-check render-staging-check static-preflight \
 	security security-full security-images security-fe security-be security-trivy security-api ensure-trivy deps-status doctor worker-test load-probe synthetic-check bootstrap-test test-all-local test-in-docker ensure-e2e-deps e2e-critical test-parity-check \
-	oci-login oci-session oci-a1-info oci-a1-status oci-a1-ip oci-a1-ssh
+	oci-login oci-session oci-a1-info oci-a1-status oci-a1-ip oci-a1-ssh-check oci-a1-ssh
 
 ## Diagnóstico local sin instalar nada: runtimes, lockfiles, CI y tooling opcional.
 doctor:
@@ -59,6 +59,9 @@ oci-a1-status: oci-session
 oci-a1-ip: oci-session
 	@OCI_CLI_PROFILE="$(OCI_PROFILE)" OCI_CLI_AUTH=security_token OCI_INSTANCE_NAME="$(OCI_INSTANCE_NAME)" \
 		$(PYTHON) scripts/oci_a1.py ip
+
+oci-a1-ssh-check:
+	@OCI_SSH_HOSTNAME="$(OCI_SSH_HOSTNAME)" $(PYTHON) scripts/oci_a1.py ssh-check
 
 oci-a1-ssh:
 	@OCI_SSH_USER="$(OCI_SSH_USER)" OCI_SSH_KEY="$(OCI_SSH_KEY)" OCI_SSH_HOSTNAME="$(OCI_SSH_HOSTNAME)" \
