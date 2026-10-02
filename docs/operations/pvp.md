@@ -231,7 +231,8 @@ Current bounded contract:
 - challenge creation may execute natively in Go with authoritative roster ratings, pending-pair idempotency, the existing 20-second pair cooldown, owner-scoped Sparringmeister/resident availability, synthetic roster seeding, native synthetic auto-accept and virtual-ready handoff; its own kill-switch falls back to Python without changing the client contract;
 - cancelling a match that is still in `starting` may execute natively in Go with revision CAS and the same idempotent repeated-cancel semantics; this narrow transition does not activate a duel, settle rating or alter clocks, and has its own routing kill-switch;
 - match readiness/handoff may execute natively in Go: caller presence is renewed, staging virtual rivals are auto-readied under the same owner gate, ready timeout is monotonic, the second ready CAS-activates the duel with the same five-second countdown, and roster cleanup remains best-effort after the committed activation; its independent kill-switch falls back to Python;
-- active-match timeout, disconnect grace/forfeit, move legality, result and Elo settlement remain Python-authoritative until migrated explicitly with equivalent CAS/idempotency coverage;
+- match resignation may execute natively in Go with participant/state validation, revision CAS, terminal clock snapshot and idempotent two-sided Elo settlement from the frozen match-start ratings; terminal responses expose the same deterministic rating delta, and its independent kill-switch falls back to Python;
+- active-match timeout, disconnect grace/forfeit, move legality, non-resignation terminal results and their settlement remain Python-authoritative until migrated explicitly with equivalent CAS/idempotency coverage;
 - a missing/disabled native pulse must fall back to the existing Python GET path.
 
 ## Health and observability
