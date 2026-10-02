@@ -410,10 +410,10 @@ def test_challenge_accept_creates_authoritative_match_and_enforces_turns():
     assert match["revision"] == 0
     assert match["whiteRating"] == pvp_api.DEFAULT_RATING
     assert match["blackRating"] == pvp_api.DEFAULT_RATING
-    assert match["clock"]["id"] == "10+0"
+    assert match["clock"]["id"] == "30+0"
     assert match["clock"]["runningColor"] is None
-    assert 590_000 <= match["clock"]["whiteMs"] <= 600_000
-    assert 590_000 <= match["clock"]["blackMs"] <= 600_000
+    assert 1_790_000 <= match["clock"]["whiteMs"] <= 1_800_000
+    assert 1_790_000 <= match["clock"]["blackMs"] <= 1_800_000
     assert match["id"] == challenge_id
 
     retried = as_user(client, "bob", "post", f"/api/pvp/challenges/{challenge_id}/accept")
@@ -893,7 +893,7 @@ def test_resignation_is_authoritative_and_settles_rating(monkeypatch):
     assert users_store._memory_users["alice"]["pvp_rating_games"] == 1
 
 
-def test_default_10_minute_clock_flags_authoritatively(monkeypatch):
+def test_default_30_minute_clock_flags_authoritatively(monkeypatch):
     monkeypatch.setattr(pvp_api.secrets, "randbits", lambda _bits: 1)
     client = make_client()
     for user in ("alice", "bob"):
@@ -903,8 +903,8 @@ def test_default_10_minute_clock_flags_authoritatively(monkeypatch):
     start_match_now(client, match)
     match_id = match["id"]
 
-    # Blancas empiezan: simula una pestaña que deja correr más de los 10 min.
-    pvp_store._memory_matches[match_id]["turn_started_at"] = pvp_store.utcnow() - timedelta(seconds=601)
+    # Blancas empiezan: simula una pestaña que deja correr más de los 30 min.
+    pvp_store._memory_matches[match_id]["turn_started_at"] = pvp_store.utcnow() - timedelta(seconds=1801)
     flagged = as_user(client, "alice", "get", f"/api/pvp/matches/{match_id}")
     assert flagged.status_code == 200
     payload = flagged.json()["match"]

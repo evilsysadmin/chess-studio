@@ -24,7 +24,7 @@ function matchPayload({ status = 'active', startsAt = null, ...overrides } = {})
     opponentPresence: 'online',
     opponentSeenAt: new Date().toISOString(),
     opponentDisconnectDeadline: null,
-    clock: { id: '10+0', whiteMs: 600000, blackMs: 600000, incrementMs: 0, runningColor: status === 'active' && startsAt && Date.parse(startsAt) <= Date.now() ? 'w' : null },
+    clock: { id: '30+0', whiteMs: 1800000, blackMs: 1800000, incrementMs: 0, runningColor: status === 'active' && startsAt && Date.parse(startsAt) <= Date.now() ? 'w' : null },
     ...overrides,
   };
 }

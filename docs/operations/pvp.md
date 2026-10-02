@@ -145,6 +145,8 @@ Requirements:
 
 Presence is advisory input to lifecycle policy, not a second match authority.
 
+New 1v1 matches use a relaxed fixed `30+0` control: 30 minutes per side with no increment. Existing matches keep their persisted clock state.
+
 Clock values are server-owned. Clients render snapshots and elapsed time derived from server timestamps but cannot settle timeout independently.
 
 Disconnect and reconnect policy must be deterministic, bounded and covered by tests.

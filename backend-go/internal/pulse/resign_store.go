@@ -105,8 +105,8 @@ func resignDomainMatch(row cancelMatchRow) matchresign.Match {
 		Result: result,
 		EndReason: endReason,
 		Revision: row.Revision,
-		WhiteClockMS: pointerInt64(row.WhiteClockMS, 10*60*1000),
-		BlackClockMS: pointerInt64(row.BlackClockMS, 10*60*1000),
+		WhiteClockMS: pointerInt64(row.WhiteClockMS, pvpInitialClockMS),
+		BlackClockMS: pointerInt64(row.BlackClockMS, pvpInitialClockMS),
 		TurnStartedAt: row.TurnStartedAt,
 		UpdatedAt: row.UpdatedAt,
 	}
