@@ -26,6 +26,7 @@ type Config struct {
 	NativeMatchHandoffCancel  http.Handler
 	NativeMatchReady          http.Handler
 	NativeMatchResign         http.Handler
+	NativeMatchRead           http.Handler
 }
 
 type Handler struct {
@@ -42,6 +43,7 @@ type Handler struct {
 	nativeMatchHandoffCancel  http.Handler
 	nativeMatchReady          http.Handler
 	nativeMatchResign         http.Handler
+	nativeMatchRead           http.Handler
 }
 
 func New(cfg Config) (*Handler, error) {
@@ -103,6 +105,7 @@ func New(cfg Config) (*Handler, error) {
 		nativeMatchHandoffCancel: cfg.NativeMatchHandoffCancel,
 		nativeMatchReady: cfg.NativeMatchReady,
 		nativeMatchResign: cfg.NativeMatchResign,
+		nativeMatchRead: cfg.NativeMatchRead,
 	}, nil
 }
 
@@ -143,6 +146,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case isMatchResignPath(r.URL.Path) && h.nativeMatchResign != nil:
 		w.Header().Set("X-Chess-Pvp-Edge", "go")
 		h.nativeMatchResign.ServeHTTP(w, r)
+	case isMatchReadPath(r.URL.Path) && h.nativeMatchRead != nil:
+		w.Header().Set("X-Chess-Pvp-Edge", "go")
+		h.nativeMatchRead.ServeHTTP(w, r)
 	case r.URL.Path == "/api/pvp" || strings.HasPrefix(r.URL.Path, "/api/pvp/"):
 		h.proxy.ServeHTTP(w, r)
 	default:
@@ -163,6 +169,7 @@ func (h *Handler) health(w http.ResponseWriter) {
 		"nativeMatchHandoffCancel": h.nativeMatchHandoffCancel != nil,
 		"nativeMatchReady": h.nativeMatchReady != nil,
 		"nativeMatchResign": h.nativeMatchResign != nil,
+		"nativeMatchRead": h.nativeMatchRead != nil,
 	}
 	if h.release != "" {
 		payload["release"] = h.release
@@ -204,6 +211,7 @@ func (h *Handler) ready(w http.ResponseWriter, r *http.Request) {
 		"nativeMatchHandoffCancel": h.nativeMatchHandoffCancel != nil,
 		"nativeMatchReady": h.nativeMatchReady != nil,
 		"nativeMatchResign": h.nativeMatchResign != nil,
+		"nativeMatchRead": h.nativeMatchRead != nil,
 	})
 }
 
@@ -251,6 +259,15 @@ func isChallengeResolutionPath(path string) bool {
 	rest := strings.TrimPrefix(path, prefix)
 	parts := strings.Split(rest, "/")
 	return len(parts) == 2 && parts[0] != "" && (parts[1] == "cancel" || parts[1] == "decline")
+}
+
+func isMatchReadPath(path string) bool {
+	const prefix = "/api/pvp/matches/"
+	if !strings.HasPrefix(path, prefix) {
+		return false
+	}
+	matchID := strings.TrimPrefix(path, prefix)
+	return matchID != "" && !strings.Contains(matchID, "/")
 }
 
 func isMatchResignPath(path string) bool {

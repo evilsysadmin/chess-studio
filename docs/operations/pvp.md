@@ -220,9 +220,9 @@ The Go PvP edge may absorb high-frequency read coordination incrementally while 
 Current bounded contract:
 - lobby pulse may read Mongo natively and invalidate the full Python lobby snapshot;
 - match pulse may renew only the caller's coarse duel presence timestamp without changing gameplay revision;
-- match pulse may expose revision/status plus the rival's coarse presence band, and detect clock, handoff or disconnect-grace boundaries that require an immediate Python reconciliation;
-- the Go pulse only emits lifecycle hints: Python remains the authority that starts/restarts disconnect grace and commits timeout/forfeit/result transitions;
-- stable active matches with unchanged revision and presence perform a bounded full Python reconciliation every 15 seconds; during blue/green compatibility with an older pulse that lacks presence hints, clients retain the previous 3-second safety reconcile;
+- match pulse may expose revision/status plus the rival's coarse presence band, and detect clock, handoff or disconnect-grace boundaries that require an immediate authoritative full-match reconciliation;
+- the Go pulse itself still emits lifecycle hints only; when native match reads are enabled, the full Go match-read path owns the corresponding timeout/disconnect mutations, while the kill-switch falls back to Python;
+- stable active matches with unchanged revision and presence perform a bounded full authoritative reconciliation every 15 seconds; during blue/green compatibility with an older pulse that lacks presence hints, clients retain the previous 3-second safety reconcile;
 - roster join/heartbeat and leave may execute natively in Go with the same server-owned PvP rating/tier, a bounded join rate limit, and pending-challenge cancellation on leave;
 - roster native cutover has an independent kill-switch; disabled means the edge proxies the existing Python routes unchanged; re-enabling the default requires deployment accreditation of both the public browser preflight and a real public roster POST rejected by Go before mutation, proving CORS and native routing through the external edge;
 - lobby chat posting may execute natively in Go with the same 240-character normalization, per-user 12/minute limit and Mongo message schema; its kill-switch falls back to the Python route without a frontend change;
@@ -232,8 +232,9 @@ Current bounded contract:
 - cancelling a match that is still in `starting` may execute natively in Go with revision CAS and the same idempotent repeated-cancel semantics; this narrow transition does not activate a duel, settle rating or alter clocks, and has its own routing kill-switch;
 - match readiness/handoff may execute natively in Go: caller presence is renewed, staging virtual rivals are auto-readied under the same owner gate, ready timeout is monotonic, the second ready CAS-activates the duel with the same five-second countdown, and roster cleanup remains best-effort after the committed activation; its independent kill-switch falls back to Python;
 - match resignation may execute natively in Go with participant/state validation, revision CAS, terminal clock snapshot and idempotent two-sided Elo settlement from the frozen match-start ratings; terminal responses expose the same deterministic rating delta, and its independent kill-switch falls back to Python;
-- active-match timeout, disconnect grace/forfeit, move legality, non-resignation terminal results and their settlement remain Python-authoritative until migrated explicitly with equivalent CAS/idempotency coverage;
-- a missing/disabled native pulse must fall back to the existing Python GET path.
+- full match reads may execute natively in Go with the existing 60/minute bound: pre-touch observer liveness is preserved, caller presence is renewed without a revision bump, virtual rivals may be marked ready without implicitly activating the duel, expired handoffs are cancelled by revision CAS, active clock timeout runs before disconnect grace/forfeit, and finished rated matches retry idempotent Elo settlement; its independent kill-switch falls back to the Python GET route;
+- move legality, move-triggered board/result transitions, resident engine replies and non-resignation terminal results produced by moves remain Python-authoritative until migrated explicitly with equivalent chess-rule/CAS coverage; Python move handling continues to reconcile timeout/disconnect defensively until that write path moves to Go;
+- a missing/disabled native pulse falls back to the existing Python pulse behavior, and a missing/disabled native match-read route falls back to the existing Python GET path.
 
 ## Health and observability
 
