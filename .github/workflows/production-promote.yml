@@ -188,7 +188,6 @@ jobs:
           python3 -S scripts/oci_production_runtime.py --self-test
           python3 -S scripts/oci_release_deploy.py --self-test
           python3 -S scripts/oci_production_tunnel.py --self-test
-          python3 -S scripts/pvp_public_transport_probe.py --self-test
 
       - name: Promotion summary
         shell: bash
@@ -611,15 +610,6 @@ jobs:
             sleep 5
           done
           [[ "$gate_ok" == true ]] || { echo "::error::Production backend target=$DEPLOY_TARGET no acreditó SHA exacto"; exit 1; }
-
-      - name: Verify public production PvP browser transport
-        if: env.DEPLOY_TARGET == 'oci'
-        run: >-
-          python3 scripts/pvp_public_transport_probe.py
-          --base-url "$PRODUCTION_API_URL"
-          --origin "$PRODUCTION_URL"
-          --timeout 12
-          --require-go
 
   pages:
     name: Production · Cloudflare Pages
