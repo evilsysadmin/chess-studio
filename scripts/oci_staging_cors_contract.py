@@ -70,6 +70,8 @@ required_deploy_fragments = (
     "pvp_browser_cors_attest",
     "/api/pvp/roster",
     "pvp_lobby_read_attest",
+    "pvp_virtual_roster_attest",
+    "PVP_VIRTUAL_ROSTER_OK",
     "virtualPlayersEnabled",
     "CHESS_STUDIO_PVP_ALLOW_PYTHON_FALLBACK_STAGING",
     "deployment_target == 'staging'",
@@ -142,7 +144,7 @@ required_public_verifier_fragments = (
     "pvp_full_go_ready",
     '"nativeChallengeCreate"',
     '"nativeMatchMove"',
-    "pvp_full_go=ok virtual_players=on",
+    "pvp_release={pvp_observed}",
     "fetch_roster_rejection",
     "native_roster_rejection_ok",
     "pvp_roster_response_http",
@@ -156,6 +158,7 @@ required_public_verifier_fragments = (
 for fragment in required_public_verifier_fragments:
     assert fragment in verifier, f"missing public staging CORS verifier contract: {fragment}"
 assert "assert pvp_full_go_ready(full_go)" in verifier
+assert "pvp_observed == expected" in verifier
 assert 'broken["nativeChallengeCreate"] = False' in verifier
 assert 'broken["virtualPlayersEnabled"] = False' in verifier
 
@@ -373,6 +376,12 @@ assert 'render_edge "$previous_color" direct' in deploy
 assert 'remove_service "$(pvp_service "$previous_color")"' in deploy
 assert 'CHESS_STUDIO_DEPLOY_OK target=$target repo_ref=$sha color=$candidate_color pvp=go' in deploy
 assert 'pvp_edge_attest()' in deploy
+assert 'pvp_virtual_roster_attest()' in deploy
+assert 'if ! pvp_virtual_roster_attest "$candidate_service" "$candidate_pvp_service" "$target"; then' in deploy
+for virtual_rival in ("sparringmeister", "otto_falk", "marta_stein", "viktor_kraus"):
+    assert virtual_rival in deploy, f"missing virtual roster deploy attestation rival: {virtual_rival}"
+assert "payload.get('release')" in deploy
+assert "expected_release" in deploy
 assert '"http://127.0.0.1:${target_port}/api/pvp/_edge/ready"' in deploy
 assert "X-Chess-Pvp-Edge:" in deploy
 assert 'wait_pvp_edge_attest()' in deploy

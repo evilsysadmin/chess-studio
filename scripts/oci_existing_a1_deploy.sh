@@ -387,13 +387,14 @@ pvp_attest() {
     rm -f "$body"
     return 1
   fi
-  if python3 - "$body" "$pvp_sparring_enabled" "$deployment_target" <<'PY'
+  if python3 - "$body" "$pvp_sparring_enabled" "$deployment_target" "$sha" <<'PY'
 import json
 import pathlib
 import sys
 payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
 env = __import__('os').environ
 deployment_target = str(sys.argv[3]).strip().lower()
+expected_release = str(sys.argv[4]).strip().lower()
 allow_staging_fallback = str(env.get('CHESS_STUDIO_PVP_ALLOW_PYTHON_FALLBACK_STAGING', 'false')).strip().lower() in {'1', 'true', 'yes', 'on'}
 expected_native = str(env.get('CHESS_STUDIO_PVP_NATIVE_PULSE_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
 expected_lobby_read = str(env.get('CHESS_STUDIO_PVP_NATIVE_LOBBY_READ_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
@@ -411,6 +412,7 @@ expected_match_move = str(env.get('CHESS_STUDIO_PVP_NATIVE_MATCH_MOVE_ENABLED', 
 if (
     payload.get('status') != 'ready'
     or payload.get('service') != 'chess-studio-pvp-go'
+    or str(payload.get('release') or '').strip().lower() != expected_release
     or bool(payload.get('nativePulse')) != expected_native
     or bool(payload.get('nativeLobbyRead')) != expected_lobby_read
     or bool(payload.get('virtualPlayersEnabled')) != expected_virtual_players
@@ -455,6 +457,93 @@ PY
   return 1
 }
 
+pvp_virtual_roster_attest() {
+  local backend_service="$1"
+  local pvp_service="$2"
+  local deployment_target="${3:-$target}"
+  local enabled="${pvp_sparring_enabled,,}"
+
+  if [[ "$deployment_target" != "staging" ]] || [[ ! "$enabled" =~ ^(1|true|yes|on)$ ]]; then
+    return 0
+  fi
+
+  compose "$sha" exec -T "$backend_service" python - "$pvp_service" <<'PY'
+import asyncio
+import json
+import os
+import sys
+import urllib.request
+
+from auth import create_token
+from db import close_db
+from users_store import get_auth_state
+
+pvp_service = str(sys.argv[1]).strip()
+owner = str(os.environ.get("CHESS_PVP_SPARRING_OWNER") or "evilsysadmin").strip().lower()
+sparring = str(os.environ.get("CHESS_PVP_SPARRING_USERNAME") or "sparringmeister").strip().lower()
+
+
+async def load_owner_state():
+    try:
+        return await get_auth_state(owner, force=True)
+    finally:
+        await close_db()
+
+
+try:
+    exists, session_version = asyncio.run(load_owner_state())
+except Exception:
+    raise SystemExit("PVP_VIRTUAL_ROSTER_FAIL reason=owner-auth-state-unavailable")
+
+if not exists:
+    raise SystemExit("PVP_VIRTUAL_ROSTER_FAIL reason=owner-account-missing")
+
+token = create_token(owner, session_version)
+request = urllib.request.Request(
+    f"http://{pvp_service}:8080/api/pvp/lobby",
+    headers={
+        "Accept": "application/json",
+        "Authorization": f"Bearer {token}",
+        "Cache-Control": "no-cache",
+    },
+)
+try:
+    with urllib.request.urlopen(request, timeout=8) as response:
+        payload = json.load(response)
+except Exception:
+    raise SystemExit("PVP_VIRTUAL_ROSTER_FAIL reason=lobby-request-failed")
+
+rows = payload.get("roster")
+if not isinstance(rows, list):
+    raise SystemExit("PVP_VIRTUAL_ROSTER_FAIL reason=roster-not-list")
+
+by_name = {
+    str(row.get("username") or "").strip().lower(): row
+    for row in rows
+    if isinstance(row, dict)
+}
+required = {
+    sparring: "sparring",
+    "otto_falk": "resident",
+    "marta_stein": "resident",
+    "viktor_kraus": "resident",
+}
+for username, actor_kind in required.items():
+    row = by_name.get(username)
+    if row is None:
+        raise SystemExit(f"PVP_VIRTUAL_ROSTER_FAIL reason=missing-rival rival={username}")
+    if str(row.get("actorKind") or "").strip().lower() != actor_kind:
+        raise SystemExit(f"PVP_VIRTUAL_ROSTER_FAIL reason=wrong-actor-kind rival={username}")
+    if row.get("isSelf") is True:
+        raise SystemExit(f"PVP_VIRTUAL_ROSTER_FAIL reason=virtual-rival-marked-self rival={username}")
+
+print(
+    "PVP_VIRTUAL_ROSTER_OK "
+    f"sparring={sparring} residents=otto_falk,marta_stein,viktor_kraus"
+)
+PY
+}
+
 pvp_edge_attest() {
   local target_port="${1:-$port}"
   local headers body status
@@ -469,12 +558,17 @@ pvp_edge_attest() {
   fi
   if [[ "$status" != "200" ]] || \
      ! grep -Eiq "^X-Chess-Pvp-Edge:[[:space:]]*go[[:space:]]*$" "$headers" || \
-     ! python3 - "$body" <<'PY'
+     ! python3 - "$body" "$sha" <<'PY'
 import json
 import pathlib
 import sys
 payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
-if payload.get('status') != 'ready' or payload.get('service') != 'chess-studio-pvp-go':
+expected_release = str(sys.argv[2]).strip().lower()
+if (
+    payload.get('status') != 'ready'
+    or payload.get('service') != 'chess-studio-pvp-go'
+    or str(payload.get('release') or '').strip().lower() != expected_release
+):
     raise SystemExit(1)
 PY
   then
@@ -1212,6 +1306,11 @@ if [[ "$candidate_ready" != "1" ]]; then
   echo "candidate failed Python/PvP-Go readiness/build/CORS attestation: $sha color=$candidate_color" >&2
   rollback "$sha" || true
   exit 43
+fi
+if ! pvp_virtual_roster_attest "$candidate_service" "$candidate_pvp_service" "$target"; then
+  echo "candidate failed authenticated staging virtual-roster attestation: $sha color=$candidate_color" >&2
+  rollback "$sha" || true
+  exit 53
 fi
 phase_done readiness "$readiness_started_ms"
 
