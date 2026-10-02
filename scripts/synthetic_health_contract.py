@@ -27,6 +27,11 @@ assert all(ch in "0123456789abcdef" for ch in ephemeral_user.removeprefix("ci_sm
 assert ephemeral_password.startswith("CS!")
 assert len(ephemeral_password) >= 32
 
+continuity_probe = Path("scripts/staging_deploy_continuity_probe.py").read_text(encoding="utf-8")
+continuity_workflow = Path(".github/workflows/staging-deploy-continuity.yml").read_text(encoding="utf-8")
+assert 'parser.add_argument("--max-seconds", type=float, default=600)' in continuity_probe
+assert '--max-seconds 600' in continuity_workflow
+
 for path in (
     "scripts/staging_deploy_continuity_probe.py",
     "scripts/synthetic_health_check.py",
