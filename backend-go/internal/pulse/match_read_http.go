@@ -151,6 +151,17 @@ func (h *Handler) serveMatchRead(
 		}
 	}
 
+	if row.Status == "active" && residentTurnUsername(row) != "" &&
+		h.residentMoveOracle != nil && h.matchMoveStore != nil {
+		replied, replyErr := h.playResidentReply(r.Context(), row)
+		if replied.ID != "" {
+			row = replied
+		}
+		if replyErr != nil {
+			w.Header().Set("X-Chess-Pvp-Resident-Pending", "1")
+		}
+	}
+
 	if row.Status == "finished" && h.ratingSettlement != nil {
 		if _, err := h.ratingSettlement.Settle(r.Context(), ratingMatchFromRow(row)); err != nil {
 			writeJSON(w, http.StatusServiceUnavailable, map[string]any{"detail": "La partida terminó, pero el rating sigue pendiente de liquidar."})
