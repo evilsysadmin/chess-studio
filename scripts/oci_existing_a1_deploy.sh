@@ -398,7 +398,7 @@ expected_roster = str(env.get('CHESS_STUDIO_PVP_NATIVE_ROSTER_ENABLED', 'true'))
 expected_chat = str(env.get('CHESS_STUDIO_PVP_NATIVE_CHAT_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
 expected_challenge_resolution = str(env.get('CHESS_STUDIO_PVP_NATIVE_CHALLENGE_RESOLUTION_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
 expected_challenge_accept = str(env.get('CHESS_STUDIO_PVP_NATIVE_CHALLENGE_ACCEPT_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
-expected_challenge_create = str(env.get('CHESS_STUDIO_PVP_NATIVE_CHALLENGE_CREATE_ENABLED', 'false')).strip().lower() in {'1', 'true', 'yes', 'on'}
+expected_challenge_create = str(env.get('CHESS_STUDIO_PVP_NATIVE_CHALLENGE_CREATE_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
 expected_match_handoff_cancel = str(env.get('CHESS_STUDIO_PVP_NATIVE_MATCH_HANDOFF_CANCEL_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
 expected_match_ready = str(env.get('CHESS_STUDIO_PVP_NATIVE_MATCH_READY_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
 expected_match_resign = str(env.get('CHESS_STUDIO_PVP_NATIVE_MATCH_RESIGN_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
@@ -604,7 +604,7 @@ PY
 pvp_challenge_browser_attest() {
   local endpoint="${1:-http://127.0.0.1:${port}/api/pvp/challenges}"
   local preflight_headers response_headers status response_status request_id
-  local native_expected="${CHESS_STUDIO_PVP_NATIVE_CHALLENGE_CREATE_ENABLED:-false}"
+  local native_expected="${CHESS_STUDIO_PVP_NATIVE_CHALLENGE_CREATE_ENABLED:-true}"
   preflight_headers="$(mktemp)"
   response_headers="$(mktemp)"
   request_id="staging-challenge-probe-${sha:0:12}"
