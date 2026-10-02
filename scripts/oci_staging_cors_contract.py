@@ -357,6 +357,7 @@ assert 'sleep 0.25' in deploy
 assert 'if ! wait_pvp_edge_attest "$port"; then' in deploy
 assert 'if ! pvp_browser_cors_attest "http://127.0.0.1:${port}/api/pvp/roster"; then' in deploy
 assert 'if ! pvp_challenge_browser_attest "http://127.0.0.1:${port}/api/pvp/challenges"; then' in deploy
+assert '[[ "$status" != "200" && "$status" != "204" ]]' in deploy
 assert 'if ! pvp_browser_cors_attest "${public_api_url}/pvp/roster"; then' in deploy
 assert 'if ! pvp_challenge_browser_attest "${public_api_url}/pvp/challenges"; then' in deploy
 assert 'compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge' in deploy
