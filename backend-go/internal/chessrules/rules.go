@@ -3,6 +3,7 @@ package chessrules
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	chess "github.com/corentings/chess/v2"
@@ -112,6 +113,9 @@ func canClaimFiftyMove(game *chess.Game) bool {
 	}
 
 	position := game.Position()
+	if halfMoveClock(position) < 99 {
+		return false
+	}
 	for _, candidate := range game.ValidMoves() {
 		move := candidate
 		uci := (chess.UCINotation{}).Encode(position, &move)
@@ -126,6 +130,18 @@ func canClaimFiftyMove(game *chess.Game) bool {
 		}
 	}
 	return false
+}
+
+func halfMoveClock(position *chess.Position) int {
+	parts := strings.Fields(position.String())
+	if len(parts) != 6 {
+		return 0
+	}
+	value, err := strconv.Atoi(parts[4])
+	if err != nil || value < 0 {
+		return 0
+	}
+	return value
 }
 
 func eligibleFiftyMove(game *chess.Game) bool {
