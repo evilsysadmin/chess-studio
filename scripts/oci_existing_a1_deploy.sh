@@ -545,6 +545,103 @@ PY
   return 0
 }
 
+pvp_challenge_browser_attest() {
+  local endpoint="${1:-http://127.0.0.1:${port}/api/pvp/challenges}"
+  local preflight_headers response_headers status response_status request_id
+  local native_expected="${CHESS_STUDIO_PVP_NATIVE_CHALLENGE_CREATE_ENABLED:-false}"
+  preflight_headers="$(mktemp)"
+  response_headers="$(mktemp)"
+  request_id="staging-challenge-probe-${sha:0:12}"
+
+  if ! status="$(curl --silent --show-error --max-time 8 \
+      -X OPTIONS \
+      -H "Origin: $cors_origin" \
+      -H 'Access-Control-Request-Method: POST' \
+      -H 'Access-Control-Request-Headers: authorization,content-type,x-request-id,x-client-release' \
+      -D "$preflight_headers" -o /dev/null -w "%{http_code}" \
+      "$endpoint")"; then
+    rm -f "$preflight_headers" "$response_headers"
+    return 1
+  fi
+  if [[ "$status" != "204" ]] || \
+     ! grep -Eiq "^X-Chess-Pvp-Edge:[[:space:]]*go[[:space:]]*$" "$preflight_headers" || \
+     ! python3 - "$preflight_headers" "$cors_origin" <<'PY'
+import pathlib
+import sys
+headers = pathlib.Path(sys.argv[1]).read_text(encoding='utf-8', errors='replace')
+expected = sys.argv[2].strip().lower()
+parsed = {}
+for line in headers.replace('\r\n', '\n').split('\n'):
+    if ':' not in line:
+        continue
+    name, value = line.split(':', 1)
+    parsed.setdefault(name.strip().lower(), []).append(value.strip())
+origins = [v.lower() for v in parsed.get('access-control-allow-origin', [])]
+methods = ','.join(parsed.get('access-control-allow-methods', [])).upper()
+allowed_headers = ','.join(parsed.get('access-control-allow-headers', [])).lower()
+if expected not in origins or 'POST' not in methods:
+    raise SystemExit(1)
+for required_header in ('authorization', 'content-type', 'x-request-id', 'x-client-release'):
+    if required_header not in allowed_headers:
+        raise SystemExit(1)
+PY
+  then
+    rm -f "$preflight_headers" "$response_headers"
+    return 1
+  fi
+
+  if [[ "$native_expected" =~ ^(1|true|yes|on)$ ]] && \
+     ! grep -Eiq "^X-Chess-Pvp-Native:[[:space:]]*challenge-create[[:space:]]*$" "$preflight_headers"; then
+    rm -f "$preflight_headers" "$response_headers"
+    return 1
+  fi
+
+  if ! response_status="$(curl --silent --show-error --max-time 8 \
+      -X POST \
+      -H "Origin: $cors_origin" \
+      -H 'Accept: application/json' \
+      -H 'Authorization: Bearer deliberately-invalid' \
+      -H 'Content-Type: application/json' \
+      -H "X-Request-ID: $request_id" \
+      -H 'X-Client-Release: staging-verifier' \
+      --data '{"opponent":"otto_falk"}' \
+      -D "$response_headers" -o /dev/null -w "%{http_code}" \
+      "$endpoint")"; then
+    rm -f "$preflight_headers" "$response_headers"
+    return 1
+  fi
+  if [[ "$response_status" != "401" ]] || \
+     ! grep -Eiq "^X-Chess-Pvp-Edge:[[:space:]]*go[[:space:]]*$" "$response_headers" || \
+     ! grep -Eiq "^X-Request-ID:[[:space:]]*$request_id[[:space:]]*$" "$response_headers" || \
+     ! python3 - "$response_headers" "$cors_origin" <<'PY'
+import pathlib
+import sys
+headers = pathlib.Path(sys.argv[1]).read_text(encoding='utf-8', errors='replace')
+expected = sys.argv[2].strip().lower()
+origins = []
+for line in headers.replace('\r\n', '\n').split('\n'):
+    if ':' not in line:
+        continue
+    name, value = line.split(':', 1)
+    if name.strip().lower() == 'access-control-allow-origin':
+        origins.append(value.strip().lower())
+raise SystemExit(0 if expected in origins else 1)
+PY
+  then
+    rm -f "$preflight_headers" "$response_headers"
+    return 1
+  fi
+
+  if [[ "$native_expected" =~ ^(1|true|yes|on)$ ]] && \
+     ! grep -Eiq "^X-Chess-Pvp-Native:[[:space:]]*challenge-create[[:space:]]*$" "$response_headers"; then
+    rm -f "$preflight_headers" "$response_headers"
+    return 1
+  fi
+
+  rm -f "$preflight_headers" "$response_headers"
+  return 0
+}
+
 wait_pvp_edge_attest() {
   local target_port="${1:-$port}"
   local attempts="${CHESS_STUDIO_PVP_EDGE_ATTEST_ATTEMPTS:-20}"
@@ -1059,6 +1156,12 @@ if ! pvp_browser_cors_attest "http://127.0.0.1:${port}/api/pvp/roster"; then
   rollback "$sha" || true
   exit 47
 fi
+if ! pvp_challenge_browser_attest "http://127.0.0.1:${port}/api/pvp/challenges"; then
+  echo "edge PvP challenge browser transport attestation failed after cutover: color=$candidate_color" >&2
+  compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
+  rollback "$sha" || true
+  exit 49
+fi
 write_active_color "$candidate_color"
 phase_done switch "$switch_started_ms"
 
@@ -1080,6 +1183,11 @@ if [[ "$target" == staging ]]; then
     echo "OCI staging public PvP roster did not prove native Go browser response semantics for $sha" >&2
     rollback "$sha" || true
     exit 48
+  fi
+  if ! pvp_challenge_browser_attest "${public_api_url}/pvp/challenges"; then
+    echo "OCI staging public PvP challenge transport did not prove browser JSON/CORS semantics for $sha" >&2
+    rollback "$sha" || true
+    exit 50
   fi
 fi
 phase_done tunnel "$tunnel_started_ms"
