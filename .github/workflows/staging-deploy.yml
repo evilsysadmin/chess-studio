@@ -120,8 +120,26 @@ jobs:
                 --sha "$DEPLOY_SHA" \
                 --attempts 1 \
                 --interval 0 >/dev/null 2>&1; then
-                converged=true
-                break
+                # The public edge can transiently expose the candidate before
+                # host-side authenticated PvP accreditation finishes. Require
+                # several spaced exact-generation passes so a late rollback
+                # cannot be mistaken for watcher success.
+                stable=true
+                for stable_attempt in {1..6}; do
+                  sleep 2
+                  if ! python3 scripts/verify_backend_staging.py \
+                    --api-url "$STAGING_API_URL" \
+                    --sha "$DEPLOY_SHA" \
+                    --attempts 1 \
+                    --interval 0 >/dev/null 2>&1; then
+                    stable=false
+                    break
+                  fi
+                done
+                if [[ "$stable" == true ]]; then
+                  converged=true
+                  break
+                fi
               fi
             fi
             if (( attempt % 8 == 0 )); then
