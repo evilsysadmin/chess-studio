@@ -396,6 +396,7 @@ expected_native = str(env.get('CHESS_STUDIO_PVP_NATIVE_PULSE_ENABLED', 'true')).
 expected_roster = str(env.get('CHESS_STUDIO_PVP_NATIVE_ROSTER_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
 expected_chat = str(env.get('CHESS_STUDIO_PVP_NATIVE_CHAT_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
 expected_challenge_resolution = str(env.get('CHESS_STUDIO_PVP_NATIVE_CHALLENGE_RESOLUTION_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
+expected_match_handoff_cancel = str(env.get('CHESS_STUDIO_PVP_NATIVE_MATCH_HANDOFF_CANCEL_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
 if (
     payload.get('status') != 'ready'
     or payload.get('service') != 'chess-studio-pvp-go'
@@ -403,6 +404,7 @@ if (
     or bool(payload.get('nativeRoster')) != expected_roster
     or bool(payload.get('nativeChat')) != expected_chat
     or bool(payload.get('nativeChallengeResolution')) != expected_challenge_resolution
+    or bool(payload.get('nativeMatchHandoffCancel')) != expected_match_handoff_cancel
 ):
     raise SystemExit(1)
 PY
