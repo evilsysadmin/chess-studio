@@ -151,5 +151,9 @@ func randomID() (string, error) {
 	if _, err := rand.Read(raw[:]); err != nil {
 		return "", err
 	}
+	// Match uuid.uuid4().hex: RFC 4122 version 4 + variant bits, rendered
+	// without dashes as 32 lowercase hexadecimal characters.
+	raw[6] = (raw[6] & 0x0f) | 0x40
+	raw[8] = (raw[8] & 0x3f) | 0x80
 	return hex.EncodeToString(raw[:]), nil
 }
