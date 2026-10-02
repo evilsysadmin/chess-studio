@@ -10,6 +10,7 @@ deploy = (ROOT / "scripts" / "oci_existing_a1_deploy.sh").read_text(encoding="ut
 compose = (ROOT / "infra" / "oci" / "runtime" / "docker-compose.yml").read_text(encoding="utf-8")
 backend_main_path = ROOT / "backend-python" / "main.py"
 backend_main = backend_main_path.read_text(encoding="utf-8")
+go_pulse = (ROOT / "backend-go" / "internal" / "pulse" / "pulse.go").read_text(encoding="utf-8")
 verifier = (ROOT / "scripts" / "verify_backend_staging.py").read_text(encoding="utf-8")
 staging_deploy = (ROOT / ".github" / "workflows" / "staging-deploy.yml").read_text(encoding="utf-8")
 service_control = (ROOT / ".github" / "workflows" / "oci-staging-service.yml").read_text(encoding="utf-8")
@@ -66,6 +67,10 @@ required_deploy_fragments = (
     "access-control-allow-methods",
     "access-control-allow-headers",
     "cors_attest",
+    "pvp_browser_cors_attest",
+    "/api/pvp/roster",
+    "Access-Control-Request-Method: POST",
+    "edge PvP browser CORS attestation failed after cutover",
     "readiness/build/CORS attestation",
 )
 for fragment in required_deploy_fragments:
@@ -83,6 +88,14 @@ default_origins = assigned_literal_strings(backend_main, "_DEFAULT_CORS_ORIGINS"
 assert STAGING_ORIGIN in default_origins, (
     "FastAPI must always allow the canonical staging browser origin even if runtime "
     "CORS_ORIGINS is stale or missing"
+)
+
+assert STAGING_ORIGIN in go_pulse, (
+    "native Go PvP handlers must retain the canonical staging browser origin "
+    "independently of runtime CORS_ORIGINS"
+)
+assert "https://chess-studio.shadowops.dpdns.org" in go_pulse, (
+    "native Go PvP handlers must retain the canonical production browser origin"
 )
 
 required_public_verifier_fragments = (
@@ -300,6 +313,7 @@ assert 'wait_pvp_edge_attest()' in deploy
 assert 'CHESS_STUDIO_PVP_EDGE_ATTEST_ATTEMPTS:-20' in deploy
 assert 'sleep 0.25' in deploy
 assert 'if ! wait_pvp_edge_attest "$port"; then' in deploy
+assert 'if ! pvp_browser_cors_attest "$port"; then' in deploy
 assert 'compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge' in deploy
 assert 'render_edge "$candidate_color"' in deploy
 assert 'reload_edge' in deploy
