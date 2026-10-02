@@ -21,7 +21,7 @@ function matchPayload(overrides = {}) {
     yourTurn: true,
     createdAt: '2026-09-16T05:00:00Z',
     updatedAt: '2026-09-16T05:00:00Z',
-    clock: { id: '10+0', whiteMs: 600000, blackMs: 600000, incrementMs: 0, runningColor: 'w' },
+    clock: { id: '30+0', whiteMs: 1800000, blackMs: 1800000, incrementMs: 0, runningColor: 'w' },
     ...overrides,
   };
 }
@@ -88,7 +88,7 @@ test('War Room 1v1 · un 409 por carrera de turno sincroniza sin flash de error'
       revision: 1,
       fen: 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1',
       history: [{ ply: 1, uci: 'e2e4', san: 'e4', by: 'bob' }],
-      clock: { id: '10+0', whiteMs: 599500, blackMs: 600000, incrementMs: 0, runningColor: 'b' },
+      clock: { id: '30+0', whiteMs: 1799500, blackMs: 1800000, incrementMs: 0, runningColor: 'b' },
     });
     await route.fulfill({
       status: 409,
@@ -124,7 +124,7 @@ test('War Room 1v1 · rendirse no resucita un handoff stale del lobby', async ({
     opponentReady: true,
     startsAt: null,
     opponentPresence: 'online',
-    clock: { id: '10+0', whiteMs: 600000, blackMs: 600000, incrementMs: 0, runningColor: null },
+    clock: { id: '30+0', whiteMs: 1800000, blackMs: 1800000, incrementMs: 0, runningColor: null },
   });
   let liveMatch = matchPayload({
     black: 'sparringmeister',
@@ -186,7 +186,7 @@ test('War Room 1v1 · rendirse no resucita un handoff stale del lobby', async ({
       revision: 1,
       fen: 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1',
       history: [{ ply: 1, uci: 'e2e4', san: 'e4', by: 'e2e' }],
-      clock: { id: '10+0', whiteMs: 599500, blackMs: 600000, incrementMs: 0, runningColor: 'b' },
+      clock: { id: '30+0', whiteMs: 1799500, blackMs: 1800000, incrementMs: 0, runningColor: 'b' },
     });
     return route.fulfill({
       status: 200,
@@ -297,7 +297,7 @@ test('War Room 1v1 · reto entrante abre una partida humana en el tablero canón
   await expect(warRoom).toBeVisible();
   await expect(warRoom.getByRole('strong').filter({ hasText: /^bob$/ })).toBeVisible();
   await expect(warRoom.getByText('Tu turno', { exact: true })).toBeVisible();
-  await expect(warRoom.getByText('10:00', { exact: true }).first()).toBeVisible();
+  await expect(warRoom.getByText('30:00', { exact: true }).first()).toBeVisible();
   const actions = warRoom.getByRole('button', { name: 'Más acciones de partida', exact: true });
   await expect(actions).toBeVisible();
   await actions.click();
@@ -334,7 +334,7 @@ test('War Room 1v1 · reto entrante abre una partida humana en el tablero canón
       { ply: 1, uci: 'e2e4', san: 'e4', by: 'e2e' },
       { ply: 2, uci: 'e7e5', san: 'e5', by: 'bob' },
     ],
-    clock: { id: '10+0', whiteMs: 0, blackMs: 584000, incrementMs: 0, runningColor: null },
+    clock: { id: '30+0', whiteMs: 0, blackMs: 1784000, incrementMs: 0, runningColor: null },
   });
 
   const debrief = warRoom.getByRole('dialog', { name: 'Resumen del duelo' });
