@@ -216,6 +216,7 @@ func main() {
 		NativeMatchRead: nativeMatchRead,
 		NativeMatchMove: nativeMatchMove,
 		VirtualPlayersEnabled: virtualPlayersEnabled,
+		NativeResidentMove: matchMoveEnabled && nativeResidentMoveEnabled,
 	})
 	if err != nil {
 		log.Fatalf("invalid pvp edge configuration: %v", err)
