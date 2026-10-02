@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { squarePosition } from './Board3DBoardMath.js';
-import { buildBoard3DTileInstances, squareFromBoard3DIntersection } from './Board3DTileInstances.js';
+import {
+  buildBoard3DTileInstances,
+  resolveBoard3DPointerSquare,
+  squareFromBoard3DIntersection,
+} from './Board3DTileInstances.js';
 
 describe('Board3D tile instances', () => {
   it('packs the 64 board squares into two shared-geometry batches', () => {
@@ -57,4 +61,35 @@ describe('Board3D tile instances', () => {
     expect(squareFromBoard3DIntersection({ object: child })).toBe('g7');
     expect(squareFromBoard3DIntersection(null)).toBeNull();
   });
+  it('prefiere un destino legal táctil aunque la pieza seleccionada lo ocluya en perspectiva', () => {
+    const tile = new THREE.InstancedMesh(
+      new THREE.BoxGeometry(1, 0.1, 1),
+      new THREE.MeshBasicMaterial(),
+      1,
+    );
+    tile.userData.board3DSquares = ['g7'];
+
+    const source = new THREE.Group();
+    source.userData.square = 'g6';
+    const sourceMesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
+    source.add(sourceMesh);
+
+    const intersections = [
+      { object: sourceMesh, distance: 2 },
+      { object: tile, instanceId: 0, distance: 3 },
+    ];
+
+    expect(resolveBoard3DPointerSquare(intersections)).toBe('g6');
+    expect(resolveBoard3DPointerSquare(intersections, {
+      selectedSquare: 'g6',
+      legalTargets: [{ to: 'g7' }],
+      preferLegalTargets: true,
+    })).toBe('g7');
+    expect(resolveBoard3DPointerSquare(intersections, {
+      selectedSquare: 'g6',
+      legalTargets: [{ to: 'f7' }],
+      preferLegalTargets: true,
+    })).toBe('g6');
+  });
+
 });
