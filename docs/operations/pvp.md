@@ -226,6 +226,7 @@ Current bounded contract:
 - roster join/heartbeat and leave may execute natively in Go with the same server-owned PvP rating/tier, a bounded join rate limit, and pending-challenge cancellation on leave;
 - roster native cutover has an independent kill-switch; disabled means the edge proxies the existing Python routes unchanged;
 - lobby chat posting may execute natively in Go with the same 240-character normalization, per-user 12/minute limit and Mongo message schema; its kill-switch falls back to the Python route without a frontend change;
+- challenge cancel/decline may execute natively in Go using Mongo find-and-update CAS semantics and the existing 20-second pair cooldown; cancel preserves Python's idempotent repeated-cancel behavior while decline preserves its current one-shot 404-on-repeat behavior; a dedicated kill-switch falls back to Python;
 - timeout, disconnect grace/forfeit, handoff transitions, move legality, result and Elo settlement remain Python-authoritative until migrated explicitly with equivalent CAS/idempotency coverage;
 - a missing/disabled native pulse must fall back to the existing Python GET path.
 

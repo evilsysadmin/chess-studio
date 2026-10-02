@@ -27,6 +27,7 @@ const (
 	rosterJoinWindow     = time.Minute
 	lobbyChatLimit       = 12
 	lobbyChatWindow      = time.Minute
+	challengeCooldown    = 20 * time.Second
 	rosterTTL            = 45 * time.Second
 	challengeTTL         = 75 * time.Second
 	lobbyChatTTL         = 24 * time.Hour
@@ -44,6 +45,8 @@ type Store interface {
 	JoinRoster(context.Context, string, time.Time) (rosterRow, error)
 	LeaveRoster(context.Context, string, time.Time) error
 	AppendLobbyChat(context.Context, string, string, time.Time) (chatMessageRow, error)
+	CancelChallenge(context.Context, string, string, time.Time) (challengeRow, bool, error)
+	DeclineChallenge(context.Context, string, string, time.Time) (challengeRow, bool, error)
 }
 
 type HandlerConfig struct {
@@ -53,6 +56,7 @@ type HandlerConfig struct {
 	PollAfter      time.Duration
 	EnableRoster   bool
 	EnableChat     bool
+	EnableChallengeResolution bool
 	Now            func() time.Time
 }
 
@@ -64,6 +68,7 @@ type Handler struct {
 	pollAfterMS    int64
 	enableRoster   bool
 	enableChat     bool
+	enableChallengeResolution bool
 	rosterMu       sync.Mutex
 	rosterWindows  map[string]rateWindow
 	chatMu         sync.Mutex
@@ -110,6 +115,8 @@ type challengeRow struct {
 	ID            string    `bson:"_id"`
 	Challenger    string    `bson:"challenger"`
 	Opponent      string    `bson:"opponent"`
+	ChallengerRating int64   `bson:"challenger_rating"`
+	OpponentRating   int64   `bson:"opponent_rating"`
 	Status        string    `bson:"status"`
 	MatchID       string    `bson:"match_id"`
 	CreatedAt     time.Time `bson:"created_at"`
@@ -197,6 +204,7 @@ func NewHandler(cfg HandlerConfig) (*Handler, error) {
 		pollAfterMS:    pollAfter.Milliseconds(),
 		enableRoster:   cfg.EnableRoster,
 		enableChat:     cfg.EnableChat,
+		enableChallengeResolution: cfg.EnableChallengeResolution,
 		rosterWindows:  make(map[string]rateWindow),
 		chatWindows:    make(map[string]rateWindow),
 		now:            now,
@@ -347,6 +355,67 @@ func (s *MongoStore) AppendLobbyChat(ctx context.Context, username, text string,
 		return chatMessageRow{}, err
 	}
 	return row, nil
+}
+
+func (s *MongoStore) CancelChallenge(ctx context.Context, challengeID, username string, now time.Time) (challengeRow, bool, error) {
+	queryCtx, cancel := context.WithTimeout(ctx, s.timeout)
+	defer cancel()
+	var row challengeRow
+	err := s.db.Collection("pvp_challenges").FindOneAndUpdate(
+		queryCtx,
+		bson.M{
+			"_id": challengeID,
+			"status": "pending",
+			"challenger": username,
+			"created_at": bson.M{"$gte": now.Add(-challengeTTL)},
+		},
+		bson.M{"$set": bson.M{
+			"status": "cancelled",
+			"resolved_at": now,
+			"cooldown_until": now.Add(challengeCooldown),
+		}},
+		options.FindOneAndUpdate().SetReturnDocument(options.After),
+	).Decode(&row)
+	if err == nil {
+		return row, true, nil
+	}
+	if !errors.Is(err, mongo.ErrNoDocuments) {
+		return challengeRow{}, false, err
+	}
+	err = s.db.Collection("pvp_challenges").FindOne(
+		queryCtx,
+		bson.M{"_id": challengeID, "status": "cancelled", "challenger": username},
+	).Decode(&row)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return challengeRow{}, false, nil
+	}
+	if err != nil {
+		return challengeRow{}, false, err
+	}
+	return row, true, nil
+}
+
+func (s *MongoStore) DeclineChallenge(ctx context.Context, challengeID, username string, now time.Time) (challengeRow, bool, error) {
+	queryCtx, cancel := context.WithTimeout(ctx, s.timeout)
+	defer cancel()
+	var row challengeRow
+	err := s.db.Collection("pvp_challenges").FindOneAndUpdate(
+		queryCtx,
+		bson.M{"_id": challengeID, "status": "pending", "opponent": username},
+		bson.M{"$set": bson.M{
+			"status": "declined",
+			"resolved_at": now,
+			"cooldown_until": now.Add(challengeCooldown),
+		}},
+		options.FindOneAndUpdate().SetReturnDocument(options.After),
+	).Decode(&row)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return challengeRow{}, false, nil
+	}
+	if err != nil {
+		return challengeRow{}, false, err
+	}
+	return row, true, nil
 }
 
 func normalizedRating(value any) int64 {
@@ -678,6 +747,45 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	now := h.now().UTC()
 
+	if challengeID, action, ok := challengeResolutionPath(r.URL.Path); ok {
+		if !h.enableChallengeResolution {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("X-Chess-Pvp-Native", "challenge-resolution")
+		if r.Method != http.MethodPost {
+			w.Header().Set("Allow", "POST, OPTIONS")
+			writeJSON(w, http.StatusMethodNotAllowed, map[string]any{"detail": "Método no permitido."})
+			return
+		}
+		var row challengeRow
+		var found bool
+		var err error
+		if action == "cancel" {
+			row, found, err = h.store.CancelChallenge(r.Context(), challengeID, claims.Subject, now)
+		} else {
+			row, found, err = h.store.DeclineChallenge(r.Context(), challengeID, claims.Subject, now)
+		}
+		if err != nil {
+			detail := "No se pudo cancelar el reto 1v1."
+			if action == "decline" {
+				detail = "No se pudo rechazar el reto 1v1."
+			}
+			writeJSON(w, http.StatusServiceUnavailable, map[string]any{"detail": detail})
+			return
+		}
+		if !found {
+			detail := "Reto saliente pendiente no encontrado."
+			if action == "decline" {
+				detail = "Reto pendiente no encontrado."
+			}
+			writeJSON(w, http.StatusNotFound, map[string]any{"detail": detail})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"challenge": publicChallenge(row, claims.Subject)})
+		return
+	}
+
 	if r.URL.Path == "/api/pvp/lobby/chat" {
 		if !h.enableChat {
 			http.NotFound(w, r)
@@ -980,4 +1088,49 @@ func writeJSON(w http.ResponseWriter, status int, payload map[string]any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(payload)
+}
+
+func challengeResolutionPath(path string) (string, string, bool) {
+	const prefix = "/api/pvp/challenges/"
+	if !strings.HasPrefix(path, prefix) {
+		return "", "", false
+	}
+	rest := strings.TrimPrefix(path, prefix)
+	parts := strings.Split(rest, "/")
+	if len(parts) != 2 || parts[0] == "" || (parts[1] != "cancel" && parts[1] != "decline") {
+		return "", "", false
+	}
+	return parts[0], parts[1], true
+}
+
+func publicChallenge(row challengeRow, username string) map[string]any {
+	challengerRating := row.ChallengerRating
+	if challengerRating == 0 {
+		challengerRating = 400
+	}
+	opponentRating := row.OpponentRating
+	if opponentRating == 0 {
+		opponentRating = 400
+	}
+	direction := "outgoing"
+	if row.Opponent == username {
+		direction = "incoming"
+	}
+	var matchID any
+	if strings.TrimSpace(row.MatchID) != "" {
+		matchID = row.MatchID
+	}
+	return map[string]any{
+		"id": row.ID,
+		"challenger": row.Challenger,
+		"opponent": row.Opponent,
+		"challengerRating": challengerRating,
+		"opponentRating": opponentRating,
+		"status": row.Status,
+		"direction": direction,
+		"createdAt": stamp(row.CreatedAt),
+		"expiresAt": stamp(row.CreatedAt.Add(challengeTTL)),
+		"resolvedAt": stamp(row.ResolvedAt),
+		"matchId": matchID,
+	}
 }
