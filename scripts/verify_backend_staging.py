@@ -319,6 +319,7 @@ def main() -> None:
     parser.add_argument("--origin", default=STAGING_BROWSER_ORIGIN)
     parser.add_argument("--attempts", type=int, default=20)
     parser.add_argument("--interval", type=float, default=2.0)
+    parser.add_argument("--required-successes", type=int, default=1)
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
 
@@ -331,6 +332,8 @@ def main() -> None:
         parser.error("--attempts must be >= 1")
     if args.interval < 0:
         parser.error("--interval must be >= 0")
+    if args.required_successes < 1 or args.required_successes > args.attempts:
+        parser.error("--required-successes must be between 1 and --attempts")
     origin = str(args.origin or "").strip()
     if not origin.startswith("https://"):
         parser.error("--origin must be an https browser origin")
@@ -339,6 +342,7 @@ def main() -> None:
     base = args.api_url.rstrip("/")
     last_signature: tuple[int, str, int, str] | None = None
     stable_wrong_build = 0
+    consecutive_successes = 0
 
     for attempt in range(1, args.attempts + 1):
         probe = time.time_ns()
@@ -414,7 +418,7 @@ def main() -> None:
             and pvp_observed == expected
             and pvp_full_go_ready(pvp_edge)
         )
-        if (
+        passed = (
             ok
             and exact
             and cors_ok
@@ -424,15 +428,27 @@ def main() -> None:
             and challenge_cors_ok
             and challenge_response_ok
             and pvp_edge_ready_ok
-        ):
+        )
+        if passed:
+            consecutive_successes += 1
+            if consecutive_successes >= args.required_successes:
+                print(
+                    "OCI staging public accreditation OK: "
+                    f"storage=mongo build={observed} cors_origin={allowed_origin} "
+                    f"pvp_roster_cors=ok pvp_roster_native_response=ok "
+                    f"pvp_challenge_transport=ok pvp_full_go=ok "
+                    f"pvp_release={pvp_observed} virtual_players=on "
+                    f"stable={consecutive_successes}/{args.required_successes}"
+                )
+                return
             print(
-                "OCI staging public accreditation OK: "
-                f"storage=mongo build={observed} cors_origin={allowed_origin} "
-                f"pvp_roster_cors=ok pvp_roster_native_response=ok "
-                f"pvp_challenge_transport=ok pvp_full_go=ok "
-                f"pvp_release={pvp_observed} virtual_players=on"
+                "OCI staging public accreditation stabilizing: "
+                f"build={observed} stable={consecutive_successes}/{args.required_successes}"
             )
-            return
+            if attempt < args.attempts:
+                time.sleep(args.interval)
+            continue
+        consecutive_successes = 0
 
         signature = (ready_status, storage, release_status, observed)
         if signature == last_signature and observed and observed != expected:
