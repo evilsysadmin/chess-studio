@@ -1,5 +1,3 @@
-//go:build checksum_probe
-
 package chessrules
 
 import (
