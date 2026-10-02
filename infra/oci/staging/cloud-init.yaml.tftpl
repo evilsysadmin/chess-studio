@@ -90,6 +90,7 @@ runcmd:
   - [ bash, -lc, "for attempt in $(seq 1 60); do snap version >/dev/null 2>&1 && break; sleep 2; done; snap version >/dev/null 2>&1 || { echo 'snapd unavailable' >&2; exit 70; }; if ! snap list oracle-cloud-agent >/dev/null 2>&1; then snap install oracle-cloud-agent --classic; fi; snap start --enable oracle-cloud-agent.oracle-cloud-agent >/dev/null 2>&1 || true; for attempt in $(seq 1 60); do snap services oracle-cloud-agent 2>/dev/null | grep -Eq '^oracle-cloud-agent\\.oracle-cloud-agent[[:space:]]+enabled[[:space:]]+active' && exit 0; sleep 2; done; snap services oracle-cloud-agent >&2 || true; echo 'oracle-cloud-agent failed to become active' >&2; exit 70" ]
   - [ visudo, -cf, /etc/sudoers.d/101-chess-studio-ocarun ]
   - [ systemctl, enable, --now, docker ]
+  - [ usermod, -aG, docker, ubuntu ]
   - [ bash, -lc, "if ! docker compose version >/dev/null 2>&1; then if apt-cache show docker-compose-v2 >/dev/null 2>&1; then apt-get install -y docker-compose-v2; elif apt-cache show docker-compose-plugin >/dev/null 2>&1; then apt-get install -y docker-compose-plugin; else echo 'no Docker Compose v2 package available' >&2; exit 69; fi; fi" ]
   - [ git, clone, "${repo_url}", /opt/chess-studio/repo ]
   - [ bash, -lc, "cd /opt/chess-studio/repo && git checkout --detach '${repo_ref}'" ]

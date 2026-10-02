@@ -165,6 +165,26 @@ for fragment in (
     assert fragment in ssh_authorize_client, f"missing operator SSH authorization client contract: {fragment}"
 assert "oci-a1-authorize-ssh: oci-session" in makefile
 
+
+# The human ubuntu operator intentionally has Docker socket access. The docker
+# group is root-equivalent, so this is limited to the operator account and must
+# be reconciled by both adoption and every immutable deploy.
+for source, label in (
+    (deploy, "deploy"),
+    (existing_install, "adoption"),
+):
+    for fragment in (
+        "ensure_operator_docker_access()",
+        "getent group docker",
+        "id -nG ubuntu | grep -qw docker",
+        "usermod -aG docker ubuntu",
+        "failed to grant ubuntu docker group membership",
+        "OCI_OPERATOR_DOCKER_ACCESS state=added",
+        "OCI_OPERATOR_DOCKER_ACCESS state=already",
+        "ensure_operator_docker_access",
+    ):
+        assert fragment in source, f"missing operator Docker access contract ({label}): {fragment}"
+
 assert 'CORS_ORIGINS: "${CHESS_STUDIO_CORS_ORIGINS:-https://staging.chess-studio.shadowops.dpdns.org}"' in compose
 assert compose.count('PVP_NATIVE_LOBBY_READ_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_LOBBY_READ_ENABLED:-true}"') == 2
 assert compose.count('PVP_NATIVE_ROSTER_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_ROSTER_ENABLED:-true}"') == 2

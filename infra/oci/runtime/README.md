@@ -54,6 +54,13 @@ Only the public key crosses OCI Run Command. The private key remains on the oper
 
 Terraform's optional `ssh_authorized_key` metadata is useful only when an instance is launched with a key. Post-launch authorization and rotation use this Run Command path so repairing human access never requires exposing SSH directly to the Internet.
 
+## Operator Docker access
+
+The human operator account is `ubuntu`. Bootstrap, one-time adoption and every immutable deploy reconcile `ubuntu` into the host `docker` group, so routine diagnostics such as `docker ps` and `docker compose ps` do not require a `sudo` prefix.
+
+Membership in the Docker group is effectively root-equivalent on the host. This access is therefore deliberate only for the trusted operator account; application/service users do not receive it. A session that was already open before the group change must reconnect (or otherwise refresh supplementary groups) before the new membership is visible.
+
+
 ## One-time adoption of the existing A1
 
 Cloud-init does not rerun on an already-created VM, so the legacy systemd + `docker run` host needs one explicit adoption step after this PR is merged:
