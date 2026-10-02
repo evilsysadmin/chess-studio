@@ -120,7 +120,7 @@ func (c *Chooser) chooseLevel(ctx context.Context, fen string, level float64) (s
 		complexity,
 	)
 	if len(alternatives) == 0 ||
-		c.random() >= residentpolicy.EffectiveMistakeChance(band, complexity) {
+		c.rand() >= residentpolicy.EffectiveMistakeChance(band, complexity) {
 		return best.UCI, nil
 	}
 
@@ -135,7 +135,7 @@ func (c *Chooser) chooseLevel(ctx context.Context, fen string, level float64) (s
 		band,
 		complexity,
 	)
-	return alternatives[weightedIndex(weights, c.random())].UCI, nil
+	return alternatives[weightedIndex(weights, c.rand())].UCI, nil
 }
 
 func (c *Chooser) deterministicFallback(
