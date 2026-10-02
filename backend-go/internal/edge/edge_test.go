@@ -171,6 +171,25 @@ func TestReadinessReportsNativePulseState(t *testing.T) {
 	}
 }
 
+func TestReadinessReportsVirtualPlayerGate(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/ready" { w.WriteHeader(http.StatusOK); return }
+		http.NotFound(w, r)
+	}))
+	defer upstream.Close()
+
+	h, err := New(Config{UpstreamURL: upstream.URL, VirtualPlayersEnabled: true})
+	if err != nil { t.Fatal(err) }
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "http://edge/readyz", nil))
+	if rr.Code != http.StatusOK { t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String()) }
+	var body map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil { t.Fatal(err) }
+	if body["virtualPlayersEnabled"] != true {
+		t.Fatalf("virtualPlayersEnabled=%#v want=true", body["virtualPlayersEnabled"])
+	}
+}
+
 func TestReadinessFailsClosed(t *testing.T) {
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
