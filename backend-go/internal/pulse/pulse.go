@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"hash"
+	"log"
 	"net/http"
 	"strings"
 	"sync"
@@ -48,6 +49,7 @@ type Store interface {
 	CancelChallenge(context.Context, string, string, time.Time) (challengeRow, bool, error)
 	DeclineChallenge(context.Context, string, string, time.Time) (challengeRow, bool, error)
 	CancelStartingMatch(context.Context, string, string, time.Time) (cancelMatchRow, cancelMatchResult, error)
+	ReadyMatch(context.Context, string, string, time.Time) (publicMatchRow, readyMatchResult, error)
 }
 
 type HandlerConfig struct {
@@ -59,6 +61,7 @@ type HandlerConfig struct {
 	EnableChat     bool
 	EnableChallengeResolution bool
 	EnableMatchHandoffCancel bool
+	EnableMatchReady bool
 	VirtualPlayersEnabled bool
 	Now            func() time.Time
 }
@@ -73,6 +76,7 @@ type Handler struct {
 	enableChat     bool
 	enableChallengeResolution bool
 	enableMatchHandoffCancel bool
+	enableMatchReady bool
 	virtualPlayersEnabled bool
 	rosterMu       sync.Mutex
 	rosterWindows  map[string]rateWindow
@@ -125,7 +129,7 @@ const (
 	cancelMatchRevisionConflict cancelMatchResult = "revision_conflict"
 )
 
-type cancelMatchRow struct {
+type publicMatchRow struct {
 	ID            string     `bson:"_id"`
 	White         string     `bson:"white"`
 	Black         string     `bson:"black"`
@@ -149,7 +153,21 @@ type cancelMatchRow struct {
 	Revision      int64      `bson:"revision"`
 	CreatedAt     time.Time  `bson:"created_at"`
 	UpdatedAt     time.Time  `bson:"updated_at"`
+	TurnStartedAt time.Time  `bson:"turn_started_at"`
+	WhiteDisconnectGraceStarted time.Time `bson:"white_disconnect_grace_started_at"`
+	BlackDisconnectGraceStarted time.Time `bson:"black_disconnect_grace_started_at"`
 }
+
+type cancelMatchRow = publicMatchRow
+
+type readyMatchResult string
+
+const (
+	readyMatchOK               readyMatchResult = "ok"
+	readyMatchNotFound         readyMatchResult = "not_found"
+	readyMatchWrongState       readyMatchResult = "wrong_state"
+	readyMatchRevisionConflict readyMatchResult = "revision_conflict"
+)
 
 type challengeRow struct {
 	ID            string    `bson:"_id"`
@@ -246,6 +264,7 @@ func NewHandler(cfg HandlerConfig) (*Handler, error) {
 		enableChat:     cfg.EnableChat,
 		enableChallengeResolution: cfg.EnableChallengeResolution,
 		enableMatchHandoffCancel: cfg.EnableMatchHandoffCancel,
+		enableMatchReady: cfg.EnableMatchReady,
 		virtualPlayersEnabled: cfg.VirtualPlayersEnabled,
 		rosterWindows:  make(map[string]rateWindow),
 		chatWindows:    make(map[string]rateWindow),
@@ -461,13 +480,18 @@ func (s *MongoStore) DeclineChallenge(ctx context.Context, challengeID, username
 }
 
 
+func matchParticipantFilter(matchID, username string) bson.M {
+	return bson.M{
+		"_id": matchID,
+		"acceptance_state": bson.M{"$ne": "staged"},
+		"$or": bson.A{bson.M{"white": username}, bson.M{"black": username}},
+	}
+}
+
 func (s *MongoStore) CancelStartingMatch(ctx context.Context, matchID, username string, now time.Time) (cancelMatchRow, cancelMatchResult, error) {
 	queryCtx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
-	participant := bson.M{
-		"_id": matchID,
-		"$or": bson.A{bson.M{"white": username}, bson.M{"black": username}},
-	}
+	participant := matchParticipantFilter(matchID, username)
 	var current cancelMatchRow
 	err := s.db.Collection("pvp_matches").FindOne(queryCtx, participant).Decode(&current)
 	if errors.Is(err, mongo.ErrNoDocuments) {
@@ -491,6 +515,7 @@ func (s *MongoStore) CancelStartingMatch(ctx context.Context, matchID, username 
 			"_id": matchID,
 			"revision": current.Revision,
 			"status": "starting",
+			"acceptance_state": bson.M{"$ne": "staged"},
 			"$or": bson.A{bson.M{"white": username}, bson.M{"black": username}},
 		},
 		bson.M{
@@ -523,6 +548,182 @@ func (s *MongoStore) CancelStartingMatch(ctx context.Context, matchID, username 
 		return current, cancelMatchOK, nil
 	}
 	return current, cancelMatchRevisionConflict, nil
+}
+
+
+func (s *MongoStore) ReadyMatch(ctx context.Context, matchID, username string, now time.Time) (publicMatchRow, readyMatchResult, error) {
+	queryCtx, cancel := context.WithTimeout(ctx, s.timeout)
+	defer cancel()
+	matches := s.db.Collection("pvp_matches")
+	participant := matchParticipantFilter(matchID, username)
+
+	for attempt := 0; attempt < 4; attempt++ {
+		var current publicMatchRow
+		err := matches.FindOne(queryCtx, participant).Decode(&current)
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return publicMatchRow{}, readyMatchNotFound, nil
+		}
+		if err != nil {
+			return publicMatchRow{}, "", err
+		}
+
+		isWhite := current.White == username
+		seenField, graceField := "black_seen_at", "black_disconnect_grace_started_at"
+		if isWhite {
+			seenField, graceField = "white_seen_at", "white_disconnect_grace_started_at"
+		}
+		err = matches.FindOneAndUpdate(
+			queryCtx,
+			participant,
+			bson.M{"$set": bson.M{seenField: now}, "$unset": bson.M{graceField: ""}},
+			options.FindOneAndUpdate().SetReturnDocument(options.After),
+		).Decode(&current)
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return publicMatchRow{}, readyMatchNotFound, nil
+		}
+		if err != nil {
+			return publicMatchRow{}, "", err
+		}
+
+		// Current unrated PvP is reserved for the environment-gated virtual rivals.
+		// Mirror Python's virtual-ready step before handoff timeout reconciliation.
+		if current.Status == "starting" && current.Rated != nil && !*current.Rated {
+			virtualReadyField := "white_ready"
+			virtualSeenField := "white_seen_at"
+			virtualGraceField := "white_disconnect_grace_started_at"
+			virtualAlreadyReady := current.WhiteReady
+			if isWhite {
+				virtualReadyField = "black_ready"
+				virtualSeenField = "black_seen_at"
+				virtualGraceField = "black_disconnect_grace_started_at"
+				virtualAlreadyReady = current.BlackReady
+			}
+			if !virtualAlreadyReady {
+				var virtualUpdated publicMatchRow
+				err = matches.FindOneAndUpdate(
+					queryCtx,
+					bson.M{
+						"_id": matchID,
+						"revision": current.Revision,
+						"status": "starting",
+						"acceptance_state": bson.M{"$ne": "staged"},
+					},
+					bson.M{
+						"$set": bson.M{
+							virtualReadyField: true,
+							virtualSeenField: now,
+							"updated_at": now,
+						},
+						"$unset": bson.M{virtualGraceField: ""},
+						"$inc": bson.M{"revision": 1},
+					},
+					options.FindOneAndUpdate().SetReturnDocument(options.After),
+				).Decode(&virtualUpdated)
+				if err == nil {
+					current = virtualUpdated
+				} else if errors.Is(err, mongo.ErrNoDocuments) {
+					continue
+				} else {
+					return publicMatchRow{}, "", err
+				}
+			}
+		}
+
+		if current.Status == "starting" && !current.ReadyDeadline.IsZero() && !now.Before(current.ReadyDeadline) {
+			endReason := "handoff_timeout"
+			var timedOut publicMatchRow
+			err = matches.FindOneAndUpdate(
+				queryCtx,
+				bson.M{
+					"_id": matchID,
+					"revision": current.Revision,
+					"status": "starting",
+					"acceptance_state": bson.M{"$ne": "staged"},
+				},
+				bson.M{
+					"$set": bson.M{
+						"status": "cancelled",
+						"result": nil,
+						"end_reason": endReason,
+						"turn_started_at": nil,
+						"updated_at": now,
+					},
+					"$inc": bson.M{"revision": 1},
+				},
+				options.FindOneAndUpdate().SetReturnDocument(options.After),
+			).Decode(&timedOut)
+			if err == nil {
+				return timedOut, readyMatchOK, nil
+			}
+			if errors.Is(err, mongo.ErrNoDocuments) {
+				continue
+			}
+			return publicMatchRow{}, "", err
+		}
+
+		if current.Status == "cancelled" {
+			return current, readyMatchOK, nil
+		}
+		if current.Status == "active" {
+			s.cleanupRosterAfterActivation(ctx, current, now)
+			return current, readyMatchOK, nil
+		}
+		if current.Status != "starting" {
+			return current, readyMatchWrongState, nil
+		}
+
+		ownReady, otherReady := current.BlackReady, current.WhiteReady
+		ownReadyField := "black_ready"
+		if isWhite {
+			ownReady, otherReady = current.WhiteReady, current.BlackReady
+			ownReadyField = "white_ready"
+		}
+		if ownReady && !otherReady {
+			return current, readyMatchOK, nil
+		}
+
+		changes := bson.M{ownReadyField: true, "updated_at": now}
+		if otherReady {
+			startAt := now.Add(5 * time.Second)
+			changes["status"] = "active"
+			changes["start_at"] = startAt
+			changes["turn_started_at"] = startAt
+		}
+		var updated publicMatchRow
+		err = matches.FindOneAndUpdate(
+			queryCtx,
+			bson.M{
+				"_id": matchID,
+				"revision": current.Revision,
+				"status": "starting",
+				"acceptance_state": bson.M{"$ne": "staged"},
+			},
+			bson.M{"$set": changes, "$inc": bson.M{"revision": 1}},
+			options.FindOneAndUpdate().SetReturnDocument(options.After),
+		).Decode(&updated)
+		if err == nil {
+			if updated.Status == "active" {
+				s.cleanupRosterAfterActivation(ctx, updated, now)
+			}
+			return updated, readyMatchOK, nil
+		}
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			continue
+		}
+		return publicMatchRow{}, "", err
+	}
+	return publicMatchRow{}, readyMatchRevisionConflict, nil
+}
+
+func (s *MongoStore) cleanupRosterAfterActivation(ctx context.Context, row publicMatchRow, now time.Time) {
+	for _, username := range []string{row.White, row.Black} {
+		if strings.TrimSpace(username) == "" {
+			continue
+		}
+		if err := s.LeaveRoster(ctx, username, now); err != nil {
+			log.Printf("native PvP roster cleanup failed after match activation user=%s: %v", username, err)
+		}
+	}
 }
 
 func normalizedRating(value any) int64 {
@@ -920,7 +1121,42 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusConflict, map[string]any{"detail": "El duelo cambió mientras cancelábamos la entrada."})
 			return
 		case cancelMatchOK:
-			writeJSON(w, http.StatusOK, map[string]any{"match": publicCancelledMatch(row, claims.Subject, now, h.virtualPlayersEnabled)})
+			writeJSON(w, http.StatusOK, map[string]any{"match": publicMatch(row, claims.Subject, now, h.virtualPlayersEnabled)})
+			return
+		default:
+			writeJSON(w, http.StatusServiceUnavailable, map[string]any{"detail": "No se pudo actualizar la partida 1v1."})
+			return
+		}
+	}
+
+	if matchID, ok := matchReadyID(r.URL.Path); ok {
+		if !h.enableMatchReady {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("X-Chess-Pvp-Native", "match-ready")
+		if r.Method != http.MethodPost {
+			w.Header().Set("Allow", "POST, OPTIONS")
+			writeJSON(w, http.StatusMethodNotAllowed, map[string]any{"detail": "Método no permitido."})
+			return
+		}
+		row, result, err := h.store.ReadyMatch(r.Context(), matchID, claims.Subject, now)
+		if err != nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]any{"detail": "No se pudo actualizar la partida 1v1."})
+			return
+		}
+		switch result {
+		case readyMatchNotFound:
+			writeJSON(w, http.StatusNotFound, map[string]any{"detail": "Partida 1v1 no encontrada."})
+			return
+		case readyMatchWrongState:
+			writeJSON(w, http.StatusConflict, map[string]any{"detail": "La partida ya no está preparando el arranque."})
+			return
+		case readyMatchRevisionConflict:
+			writeJSON(w, http.StatusConflict, map[string]any{"detail": "El duelo cambió mientras sincronizábamos a los jugadores."})
+			return
+		case readyMatchOK:
+			writeJSON(w, http.StatusOK, map[string]any{"match": publicMatch(row, claims.Subject, now, h.virtualPlayersEnabled)})
 			return
 		default:
 			writeJSON(w, http.StatusServiceUnavailable, map[string]any{"detail": "No se pudo actualizar la partida 1v1."})
@@ -1246,6 +1482,20 @@ func matchHandoffCancelID(path string) (string, bool) {
 	return matchID, true
 }
 
+func matchReadyID(path string) (string, bool) {
+	const prefix = "/api/pvp/matches/"
+	const suffix = "/ready"
+	if !strings.HasPrefix(path, prefix) || !strings.HasSuffix(path, suffix) {
+		return "", false
+	}
+	matchID := strings.TrimSuffix(strings.TrimPrefix(path, prefix), suffix)
+	matchID = strings.Trim(matchID, "/")
+	if matchID == "" || strings.Contains(matchID, "/") {
+		return "", false
+	}
+	return matchID, true
+}
+
 func challengeResolutionPath(path string) (string, string, bool) {
 	const prefix = "/api/pvp/challenges/"
 	if !strings.HasPrefix(path, prefix) {
@@ -1296,7 +1546,7 @@ func residentIdentity(username string, enabled bool) (string, any, any) {
 	}
 }
 
-func publicCancelledMatch(row cancelMatchRow, username string, now time.Time, virtualPlayersEnabled bool) map[string]any {
+func publicMatch(row publicMatchRow, username string, now time.Time, virtualPlayersEnabled bool) map[string]any {
 	isWhite := row.White == username
 	turn := row.Turn
 	if turn == "" {
@@ -1329,11 +1579,20 @@ func publicCancelledMatch(row cancelMatchRow, username string, now time.Time, vi
 
 	whiteClock := pointerInt64(row.WhiteClockMS, 10*60*1000)
 	blackClock := pointerInt64(row.BlackClockMS, 10*60*1000)
-	if whiteClock < 0 {
-		whiteClock = 0
-	}
-	if blackClock < 0 {
-		blackClock = 0
+	if whiteClock < 0 { whiteClock = 0 }
+	if blackClock < 0 { blackClock = 0 }
+	var runningColor any
+	if row.Status == "active" && !row.TurnStartedAt.IsZero() && !now.Before(row.TurnStartedAt) {
+		elapsed := now.Sub(row.TurnStartedAt).Milliseconds()
+		if elapsed < 0 { elapsed = 0 }
+		if turn == "b" {
+			blackClock -= elapsed
+			if blackClock < 0 { blackClock = 0 }
+		} else {
+			whiteClock -= elapsed
+			if whiteClock < 0 { whiteClock = 0 }
+		}
+		runningColor = turn
 	}
 	history := row.History
 	if history == nil {
@@ -1343,10 +1602,16 @@ func publicCancelledMatch(row cancelMatchRow, username string, now time.Time, vi
 	youReady := row.BlackReady
 	opponentReady := row.WhiteReady
 	youAre := "b"
+	opponentGrace := row.WhiteDisconnectGraceStarted
 	if isWhite {
 		youReady = row.WhiteReady
 		opponentReady = row.BlackReady
 		youAre = "w"
+		opponentGrace = row.BlackDisconnectGraceStarted
+	}
+	var opponentDisconnectDeadline any
+	if row.Status == "active" && opponentPresence == "disconnected" && !opponentGrace.IsZero() {
+		opponentDisconnectDeadline = stamp(opponentGrace.Add(disconnectGrace))
 	}
 
 	return map[string]any{
@@ -1372,19 +1637,19 @@ func publicCancelledMatch(row cancelMatchRow, username string, now time.Time, vi
 		"opponentReady": opponentReady,
 		"opponentPresence": opponentPresence,
 		"opponentSeenAt": opponentSeenAt,
-		"opponentDisconnectDeadline": nil,
+		"opponentDisconnectDeadline": opponentDisconnectDeadline,
 		"ratingChange": nil,
 		"clock": map[string]any{
 			"id": "10+0",
 			"whiteMs": whiteClock,
 			"blackMs": blackClock,
 			"incrementMs": int64(0),
-			"runningColor": nil,
+			"runningColor": runningColor,
 		},
 		"history": history,
 		"revision": row.Revision,
 		"youAre": youAre,
-		"yourTurn": false,
+		"yourTurn": row.Status == "active" && ((turn == "w") == isWhite),
 		"createdAt": nullableStamp(row.CreatedAt),
 		"updatedAt": nullableStamp(row.UpdatedAt),
 	}
