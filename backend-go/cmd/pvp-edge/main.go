@@ -20,6 +20,7 @@ import (
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/matchtimeout"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/pulse"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/pvprating"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/residentmove"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/residentoracle"
 )
 
@@ -39,6 +40,7 @@ func main() {
 	matchResignEnabled := envBool("PVP_NATIVE_MATCH_RESIGN_ENABLED", false)
 	matchReadEnabled := envBool("PVP_NATIVE_MATCH_READ_ENABLED", false)
 	matchMoveEnabled := envBool("PVP_NATIVE_MATCH_MOVE_ENABLED", false)
+	residentEngineEnabled := envBool("PVP_NATIVE_RESIDENT_ENGINE_ENABLED", false)
 	virtualPlayersEnabled := envBool("CHESS_PVP_SPARRING_ENABLED", false)
 	var nativePulse http.Handler
 	var nativeLobbyRead http.Handler
@@ -112,15 +114,22 @@ func main() {
 			}
 		}
 		var moveStore *pulse.MoveStore
-		var residentOracle *residentoracle.Client
+		var residentMoveProvider interface {
+			Move(context.Context, string, string) (string, error)
+		}
 		if matchMoveEnabled {
 			moveStore = pulse.NewMoveStore(store)
-			residentOracle, err = residentoracle.New(residentoracle.Config{
-				UpstreamURL: upstream,
-				JWTSecret: jwtSecret,
-			})
-			if err != nil {
-				log.Fatalf("native PvP resident move oracle: %v", err)
+			if residentEngineEnabled {
+				residentMoveProvider = residentmove.New()
+			} else {
+				residentOracle, oracleErr := residentoracle.New(residentoracle.Config{
+					UpstreamURL: upstream,
+					JWTSecret: jwtSecret,
+				})
+				if oracleErr != nil {
+					log.Fatalf("native PvP resident move oracle: %v", oracleErr)
+				}
+				residentMoveProvider = residentOracle
 			}
 		}
 		var lobbyReadStore *pulse.MongoStore
@@ -143,7 +152,7 @@ func main() {
 			MatchTimeout: timeoutService,
 			MatchDisconnect: disconnectService,
 			RatingSettlement: ratingService,
-			ResidentMoveOracle: residentOracle,
+			ResidentMoveOracle: residentMoveProvider,
 			EnableMatchHandoffCancel: matchHandoffCancelEnabled,
 			EnableMatchReady: matchReadyEnabled,
 			VirtualPlayersEnabled: virtualPlayersEnabled,
@@ -216,6 +225,7 @@ func main() {
 		NativeMatchResign: nativeMatchResign,
 		NativeMatchRead: nativeMatchRead,
 		NativeMatchMove: nativeMatchMove,
+		NativeResidentEngine: matchMoveEnabled && residentEngineEnabled,
 		VirtualPlayersEnabled: virtualPlayersEnabled,
 	})
 	if err != nil {
@@ -240,7 +250,7 @@ func main() {
 		}
 	}()
 
-	log.Printf("pvp-go listening on :%s -> %s native_pulse=%t native_lobby_read=%t native_roster=%t native_chat=%t native_challenge_resolution=%t native_challenge_accept=%t native_challenge_create=%t native_match_handoff_cancel=%t native_match_ready=%t native_match_resign=%t native_match_read=%t native_match_move=%t", port, upstream, nativePulse != nil, nativeLobbyRead != nil, nativeRoster != nil, nativeChat != nil, nativeChallengeResolution != nil, nativeChallengeAccept != nil, nativeChallengeCreate != nil, nativeMatchHandoffCancel != nil, nativeMatchReady != nil, nativeMatchResign != nil, nativeMatchRead != nil, nativeMatchMove != nil)
+	log.Printf("pvp-go listening on :%s -> %s native_pulse=%t native_lobby_read=%t native_roster=%t native_chat=%t native_challenge_resolution=%t native_challenge_accept=%t native_challenge_create=%t native_match_handoff_cancel=%t native_match_ready=%t native_match_resign=%t native_match_read=%t native_match_move=%t native_resident_engine=%t", port, upstream, nativePulse != nil, nativeLobbyRead != nil, nativeRoster != nil, nativeChat != nil, nativeChallengeResolution != nil, nativeChallengeAccept != nil, nativeChallengeCreate != nil, nativeMatchHandoffCancel != nil, nativeMatchReady != nil, nativeMatchResign != nil, nativeMatchRead != nil, nativeMatchMove != nil, matchMoveEnabled && residentEngineEnabled)
 	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatalf("pvp edge serve: %v", err)
 	}
