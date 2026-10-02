@@ -58,6 +58,8 @@ type Store interface {
 	DeclineChallenge(context.Context, string, string, time.Time) (challengeRow, bool, error)
 	CancelStartingMatch(context.Context, string, string, time.Time) (cancelMatchRow, cancelMatchResult, error)
 	ReadyMatch(context.Context, string, string, time.Time, virtualPlayerConfig) (cancelMatchRow, readyMatchResult, error)
+	GetHandoffMatch(context.Context, string) (cancelMatchRow, bool, error)
+	AppendLobbySystem(context.Context, string, time.Time) error
 }
 
 type HandlerConfig struct {
@@ -70,6 +72,7 @@ type HandlerConfig struct {
 	EnableChallengeResolution bool
 	EnableMatchHandoffCancel bool
 	EnableMatchReady bool
+	ChallengeAccept challengeAcceptService
 	VirtualPlayersEnabled bool
 	VirtualOwner string
 	SparringUsername string
@@ -87,6 +90,7 @@ type Handler struct {
 	enableChallengeResolution bool
 	enableMatchHandoffCancel bool
 	enableMatchReady bool
+	challengeAccept challengeAcceptService
 	virtualPlayersEnabled bool
 	virtualOwner string
 	sparringUsername string
@@ -284,6 +288,7 @@ func NewHandler(cfg HandlerConfig) (*Handler, error) {
 		enableChallengeResolution: cfg.EnableChallengeResolution,
 		enableMatchHandoffCancel: cfg.EnableMatchHandoffCancel,
 		enableMatchReady: cfg.EnableMatchReady,
+		challengeAccept: cfg.ChallengeAccept,
 		virtualPlayersEnabled: cfg.VirtualPlayersEnabled,
 		virtualOwner: strings.ToLower(strings.TrimSpace(cfg.VirtualOwner)),
 		sparringUsername: strings.ToLower(strings.TrimSpace(cfg.SparringUsername)),
@@ -1017,6 +1022,15 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	now := h.now().UTC()
+
+	if challengeID, ok := challengeAcceptID(r.URL.Path); ok {
+		if h.challengeAccept == nil {
+			http.NotFound(w, r)
+			return
+		}
+		h.serveChallengeAccept(w, r, claims.Subject, challengeID, now)
+		return
+	}
 
 	if challengeID, action, ok := challengeResolutionPath(r.URL.Path); ok {
 		if !h.enableChallengeResolution {
