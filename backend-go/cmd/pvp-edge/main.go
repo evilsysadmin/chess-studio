@@ -39,6 +39,7 @@ func main() {
 	matchResignEnabled := envBool("PVP_NATIVE_MATCH_RESIGN_ENABLED", false)
 	matchReadEnabled := envBool("PVP_NATIVE_MATCH_READ_ENABLED", false)
 	matchMoveEnabled := envBool("PVP_NATIVE_MATCH_MOVE_ENABLED", false)
+	virtualPlayersEnabled := envBool("CHESS_PVP_SPARRING_ENABLED", false)
 	var nativePulse http.Handler
 	var nativeLobbyRead http.Handler
 	var nativeRoster http.Handler
@@ -145,7 +146,7 @@ func main() {
 			ResidentMoveOracle: residentOracle,
 			EnableMatchHandoffCancel: matchHandoffCancelEnabled,
 			EnableMatchReady: matchReadyEnabled,
-			VirtualPlayersEnabled: envBool("CHESS_PVP_SPARRING_ENABLED", false),
+			VirtualPlayersEnabled: virtualPlayersEnabled,
 			VirtualOwner: env("CHESS_PVP_SPARRING_OWNER", "evilsysadmin"),
 			SparringUsername: env("CHESS_PVP_SPARRING_USERNAME", "sparringmeister"),
 		})
@@ -215,6 +216,7 @@ func main() {
 		NativeMatchResign: nativeMatchResign,
 		NativeMatchRead: nativeMatchRead,
 		NativeMatchMove: nativeMatchMove,
+		VirtualPlayersEnabled: virtualPlayersEnabled,
 	})
 	if err != nil {
 		log.Fatalf("invalid pvp edge configuration: %v", err)
