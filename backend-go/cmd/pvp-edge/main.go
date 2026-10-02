@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/challengeaccept"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/edge"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/pulse"
 )
@@ -24,16 +25,18 @@ func main() {
 	rosterEnabled := envBool("PVP_NATIVE_ROSTER_ENABLED", false)
 	chatEnabled := envBool("PVP_NATIVE_CHAT_ENABLED", false)
 	challengeResolutionEnabled := envBool("PVP_NATIVE_CHALLENGE_RESOLUTION_ENABLED", false)
+	challengeAcceptEnabled := envBool("PVP_NATIVE_CHALLENGE_ACCEPT_ENABLED", false)
 	matchHandoffCancelEnabled := envBool("PVP_NATIVE_MATCH_HANDOFF_CANCEL_ENABLED", false)
 	matchReadyEnabled := envBool("PVP_NATIVE_MATCH_READY_ENABLED", false)
 	var nativePulse http.Handler
 	var nativeRoster http.Handler
 	var nativeChat http.Handler
 	var nativeChallengeResolution http.Handler
+	var nativeChallengeAccept http.Handler
 	var nativeMatchHandoffCancel http.Handler
 	var nativeMatchReady http.Handler
 	var mongoStore *pulse.MongoStore
-	if pulseEnabled || rosterEnabled || chatEnabled || challengeResolutionEnabled || matchHandoffCancelEnabled || matchReadyEnabled {
+	if pulseEnabled || rosterEnabled || chatEnabled || challengeResolutionEnabled || challengeAcceptEnabled || matchHandoffCancelEnabled || matchReadyEnabled {
 		mongoURL := strings.TrimSpace(os.Getenv("MONGO_URL"))
 		mongoDatabase := strings.TrimSpace(os.Getenv("MONGO_DB_NAME"))
 		jwtSecret := strings.TrimSpace(os.Getenv("JWT_SECRET"))
@@ -51,6 +54,13 @@ func main() {
 			log.Fatalf("native PvP pulse storage: %v", err)
 		}
 		mongoStore = store
+		var acceptService *challengeaccept.Service
+		if challengeAcceptEnabled {
+			acceptService, err = challengeaccept.New(challengeaccept.Config{Store: store})
+			if err != nil {
+				log.Fatalf("native PvP challenge accept service: %v", err)
+			}
+		}
 		pulseHandler, err := pulse.NewHandler(pulse.HandlerConfig{
 			Store:          store,
 			JWTSecret:      jwtSecret,
@@ -58,6 +68,7 @@ func main() {
 			EnableRoster:   rosterEnabled,
 			EnableChat:     chatEnabled,
 			EnableChallengeResolution: challengeResolutionEnabled,
+			ChallengeAccept: acceptService,
 			EnableMatchHandoffCancel: matchHandoffCancelEnabled,
 			EnableMatchReady: matchReadyEnabled,
 			VirtualPlayersEnabled: envBool("CHESS_PVP_SPARRING_ENABLED", false),
@@ -78,6 +89,9 @@ func main() {
 		}
 		if challengeResolutionEnabled {
 			nativeChallengeResolution = pulseHandler
+		}
+		if challengeAcceptEnabled {
+			nativeChallengeAccept = pulseHandler
 		}
 		if matchHandoffCancelEnabled {
 			nativeMatchHandoffCancel = pulseHandler
@@ -104,6 +118,7 @@ func main() {
 		NativeRoster: nativeRoster,
 		NativeChat:   nativeChat,
 		NativeChallengeResolution: nativeChallengeResolution,
+		NativeChallengeAccept: nativeChallengeAccept,
 		NativeMatchHandoffCancel: nativeMatchHandoffCancel,
 		NativeMatchReady: nativeMatchReady,
 	})
@@ -129,7 +144,7 @@ func main() {
 		}
 	}()
 
-	log.Printf("pvp-go listening on :%s -> %s native_pulse=%t native_roster=%t native_chat=%t native_challenge_resolution=%t native_match_handoff_cancel=%t native_match_ready=%t", port, upstream, nativePulse != nil, nativeRoster != nil, nativeChat != nil, nativeChallengeResolution != nil, nativeMatchHandoffCancel != nil, nativeMatchReady != nil)
+	log.Printf("pvp-go listening on :%s -> %s native_pulse=%t native_roster=%t native_chat=%t native_challenge_resolution=%t native_challenge_accept=%t native_match_handoff_cancel=%t native_match_ready=%t", port, upstream, nativePulse != nil, nativeRoster != nil, nativeChat != nil, nativeChallengeResolution != nil, nativeChallengeAccept != nil, nativeMatchHandoffCancel != nil, nativeMatchReady != nil)
 	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatalf("pvp edge serve: %v", err)
 	}
