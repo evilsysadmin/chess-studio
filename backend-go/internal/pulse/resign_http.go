@@ -2,7 +2,6 @@ package pulse
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"strings"
 	"time"
