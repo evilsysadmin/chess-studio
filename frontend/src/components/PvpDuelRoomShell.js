@@ -9,13 +9,13 @@ export function installPvpDuelRoomPracticalLights(root, { coarsePointer = false 
     // Duel Room is authored as a dense stone dungeon, so its practicals need to
     // carry more of the room than the generic War Room rig. Touch previously
     // cut these lights almost in half and made the same room read much darker.
-    ['PVP_ANCHOR_brazier_left', 0xff6a22, coarsePointer ? 1.28 : 1.72, 8.2],
-    ['PVP_ANCHOR_brazier_right', 0xff6a22, coarsePointer ? 1.28 : 1.72, 8.2],
-    ['PVP_ANCHOR_side_brazier_left', 0xff7a2a, coarsePointer ? 0.72 : 1.02, 7.0],
-    ['PVP_ANCHOR_side_brazier_right', 0xff7a2a, coarsePointer ? 0.72 : 1.02, 7.0],
-    ['PVP_ANCHOR_moon_fill', 0x6e91d8, coarsePointer ? 1.55 : 1.95, 12.5],
-    ['PVP_ANCHOR_gate_depth', 0x5877b8, coarsePointer ? 0.34 : 0.46, 5.4],
-    ['PVP_ANCHOR_player_fill', 0x8b96ad, coarsePointer ? 0.40 : 0.46, 8.8],
+    ['PVP_ANCHOR_brazier_left', 0xff6a22, coarsePointer ? 1.75 : 2.10, 8.2],
+    ['PVP_ANCHOR_brazier_right', 0xff6a22, coarsePointer ? 1.75 : 2.10, 8.2],
+    ['PVP_ANCHOR_side_brazier_left', 0xff7a2a, coarsePointer ? 1.05 : 1.32, 7.0],
+    ['PVP_ANCHOR_side_brazier_right', 0xff7a2a, coarsePointer ? 1.05 : 1.32, 7.0],
+    ['PVP_ANCHOR_moon_fill', 0x6e91d8, coarsePointer ? 2.00 : 2.45, 12.5],
+    ['PVP_ANCHOR_gate_depth', 0x5877b8, coarsePointer ? 0.55 : 0.68, 5.4],
+    ['PVP_ANCHOR_player_fill', 0x8b96ad, coarsePointer ? 0.68 : 0.72, 8.8],
   ];
   const lights = [];
 
