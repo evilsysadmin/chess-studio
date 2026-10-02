@@ -216,8 +216,7 @@ func (h *Handler) ready(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]any{"status": "not_ready", "service": serviceName})
 		return
 	}
-	w.Header().Set("X-Chess-Pvp-Edge", "go")
-	writeJSON(w, http.StatusOK, map[string]any{
+	payload := map[string]any{
 		"status":       "ready",
 		"service":      serviceName,
 		"nativePulse":  h.nativePulse != nil,
@@ -233,7 +232,12 @@ func (h *Handler) ready(w http.ResponseWriter, r *http.Request) {
 		"nativeMatchRead": h.nativeMatchRead != nil,
 		"nativeMatchMove": h.nativeMatchMove != nil,
 		"virtualPlayersEnabled": h.virtualPlayersEnabled,
-	})
+	}
+	if h.release != "" {
+		payload["release"] = h.release
+	}
+	w.Header().Set("X-Chess-Pvp-Edge", "go")
+	writeJSON(w, http.StatusOK, payload)
 }
 
 func writeJSON(w http.ResponseWriter, status int, payload map[string]any) {
