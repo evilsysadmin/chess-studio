@@ -31,6 +31,9 @@ type fakeStore struct {
 	declineChallenge challengeRow
 	cancelFound bool
 	declineFound bool
+	cancelMatch cancelMatchRow
+	cancelResult cancelMatchResult
+	cancelMatchErr error
 	leftUsers []string
 	chatRows  []chatMessageRow
 }
@@ -69,6 +72,10 @@ func (f *fakeStore) CancelChallenge(context.Context, string, string, time.Time) 
 
 func (f *fakeStore) DeclineChallenge(context.Context, string, string, time.Time) (challengeRow, bool, error) {
 	return f.declineChallenge, f.declineFound, f.challengeErr
+}
+
+func (f *fakeStore) CancelStartingMatch(context.Context, string, string, time.Time) (cancelMatchRow, cancelMatchResult, error) {
+	return f.cancelMatch, f.cancelResult, f.cancelMatchErr
 }
 
 func TestPulseReturnsNativeRevisionForValidSession(t *testing.T) {
@@ -560,5 +567,99 @@ func TestNativeChallengeResolutionPreservesNotFoundSemantics(t *testing.T) {
 		if rr.Code != http.StatusNotFound || !strings.Contains(rr.Body.String(), tc.detail) {
 			t.Fatalf("%s status=%d body=%s", tc.suffix, rr.Code, rr.Body.String())
 		}
+	}
+}
+
+func TestNativeMatchHandoffCancelPreservesPythonSemantics(t *testing.T) {
+	now := time.Date(2026, 10, 2, 10, 0, 0, 0, time.UTC)
+	endReason := "handoff_cancelled"
+	store := &fakeStore{
+		exists: true,
+		version: 2,
+		cancelResult: cancelMatchOK,
+		cancelMatch: cancelMatchRow{
+			ID: "m-1", White: "alice", Black: "bob", FEN: "start-fen", Turn: "w",
+			Status: "cancelled", EndReason: &endReason, Revision: 4,
+			CreatedAt: now.Add(-time.Minute), UpdatedAt: now,
+			ReadyDeadline: now.Add(20 * time.Second),
+		},
+	}
+	h, err := NewHandler(HandlerConfig{
+		Store: store,
+		JWTSecret: "01234567890123456789012345678901",
+		EnableMatchHandoffCancel: true,
+		Now: func() time.Time { return now },
+	})
+	if err != nil { t.Fatal(err) }
+
+	req := httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/matches/m-1/cancel-starting", nil)
+	req.Header.Set("Authorization", "Bearer "+signedToken(t, "alice", 2, now.Add(time.Hour), "session", "01234567890123456789012345678901"))
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK { t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String()) }
+	if got := rr.Header().Get("X-Chess-Pvp-Native"); got != "match-handoff-cancel" {
+		t.Fatalf("native header=%q", got)
+	}
+	var body map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil { t.Fatal(err) }
+	match, ok := body["match"].(map[string]any)
+	if !ok { t.Fatalf("match=%#v", body["match"]) }
+	if match["status"] != "cancelled" || match["endReason"] != "handoff_cancelled" || match["youAre"] != "w" || match["yourTurn"] != false {
+		t.Fatalf("unexpected match=%#v", match)
+	}
+	clock, ok := match["clock"].(map[string]any)
+	if !ok || clock["id"] != "10+0" || clock["whiteMs"] != float64(600000) || clock["runningColor"] != nil {
+		t.Fatalf("clock=%#v", match["clock"])
+	}
+	if match["ratingChange"] != nil || match["result"] != nil || match["opponentDisconnectDeadline"] != nil {
+		t.Fatalf("terminal metadata=%#v", match)
+	}
+}
+
+func TestNativeMatchHandoffCancelPreservesConflictAndNotFoundSemantics(t *testing.T) {
+	now := time.Date(2026, 10, 2, 10, 0, 0, 0, time.UTC)
+	cases := []struct {
+		name string
+		result cancelMatchResult
+		status int
+		detail string
+	}{
+		{"missing", cancelMatchNotFound, http.StatusNotFound, "Partida 1v1 no encontrada."},
+		{"active", cancelMatchWrongState, http.StatusConflict, "El duelo ya ha empezado y no puede cancelarse como entrada."},
+		{"race", cancelMatchRevisionConflict, http.StatusConflict, "El duelo cambió mientras cancelábamos la entrada."},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			h, err := NewHandler(HandlerConfig{
+				Store: &fakeStore{exists: true, version: 1, cancelResult: tc.result},
+				JWTSecret: "01234567890123456789012345678901",
+				EnableMatchHandoffCancel: true,
+				Now: func() time.Time { return now },
+			})
+			if err != nil { t.Fatal(err) }
+			req := httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/matches/m-x/cancel-starting", nil)
+			req.Header.Set("Authorization", "Bearer "+signedToken(t, "alice", 1, now.Add(time.Hour), "session", "01234567890123456789012345678901"))
+			rr := httptest.NewRecorder()
+			h.ServeHTTP(rr, req)
+			if rr.Code != tc.status || !strings.Contains(rr.Body.String(), tc.detail) {
+				t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+			}
+		})
+	}
+}
+
+func TestCancelledResidentMatchKeepsPythonIdentityAndVirtualPresence(t *testing.T) {
+	now := time.Date(2026, 10, 2, 10, 0, 0, 0, time.UTC)
+	rated := false
+	row := cancelMatchRow{
+		ID: "m-resident", White: "alice", Black: "marta_stein", FEN: "start-fen",
+		Turn: "w", Status: "cancelled", Rated: &rated, Revision: 2,
+	}
+	match := publicCancelledMatch(row, "alice", now, true)
+	if match["blackDisplayName"] != "Marta Stein" || match["blackActorKind"] != "resident" || match["blackActorLabel"] != "RESIDENTE · IA" {
+		t.Fatalf("resident identity=%#v", match)
+	}
+	if match["opponentPresence"] != "online" || match["opponentSeenAt"] == nil {
+		t.Fatalf("resident presence=%#v", match)
 	}
 }
