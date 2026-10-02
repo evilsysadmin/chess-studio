@@ -103,6 +103,16 @@ func TestApplyUCIParityVectors(t *testing.T) {
 			wantResult: strptr("1/2-1/2"),
 		},
 		{
+			name:       "claimable fifty move draw by announced next move",
+			fen:        "4k2r/8/8/8/8/8/8/R3K3 w Qk - 98 50",
+			uci:        "a1a2",
+			wantSAN:    "Ra2",
+			wantFEN:    "4k2r/8/8/8/8/8/R7/4K3 b k - 99 50",
+			wantTurn:   "b",
+			wantStatus: "finished",
+			wantResult: strptr("1/2-1/2"),
+		},
+		{
 			name:       "claimable fifty move draw",
 			fen:        "4k2r/8/8/8/8/8/8/R3K3 w Qk - 99 50",
 			uci:        "a1a2",
