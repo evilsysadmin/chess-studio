@@ -4,6 +4,7 @@ import { gameModeLabel } from './gameModes.js';
 import { isCompletedGameOutcome } from './gameOutcome.js';
 import { recordMatthiasSessionResult } from './matthiasSessionContext.js';
 import { BOARD_RENDERERS, getBoardRenderer } from './userPreferences.js';
+export { recordCompletedAdaptiveMatchmakingTelemetry } from './matchmakingTelemetry.js';
 
 const KEY = 'chess-study-game-activity';
 const MAX_EVENTS = 160;
