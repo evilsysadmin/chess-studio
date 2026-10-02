@@ -2,8 +2,15 @@ import * as THREE from 'three';
 import { resolveBoard3DCameraFov } from './Board3DConfig.js';
 import { getCameraFramingProfile } from './Board3DSurfaces.js';
 import { warRoomDecorProfile } from './WarRoom3DMobileVisuals.js';
-import { getWarRoomMobileFramingProfile, WAR_ROOM_PLAY_PITCH } from './WarRoomMobileFraming.js';
-import { classicWarRoomCameraFramingProfile } from './Board3DCameraProfiles.js';
+import {
+  getLegacyBoard3DMobileFramingProfile,
+  getWarRoomMobileFramingProfile,
+  WAR_ROOM_PLAY_PITCH,
+} from './WarRoomMobileFraming.js';
+import {
+  canonicalWarRoomCameraFramingProfile,
+  classicWarRoomCameraFramingProfile,
+} from './Board3DCameraProfiles.js';
 
 
 const BOX_GEOMETRY_CACHES = new WeakMap();
@@ -210,15 +217,27 @@ export function fitBoardCamera(camera, width, height, whiteSide, { profile: requ
   const viewportWidth = typeof window !== 'undefined'
     ? Number(window.innerWidth) || width
     : width;
-  const mobileProfile = requestedProfile === 'classroom'
-    ? null
-    : getWarRoomMobileFramingProfile({ aspect, coarsePointer, viewportWidth });
+  const usesWarRoomContract = requestedProfile === 'warroom';
+  const canonicalMobileProfile = usesWarRoomContract
+    ? getWarRoomMobileFramingProfile({ aspect, coarsePointer, viewportWidth })
+    : null;
+  const legacyMobileProfile = !usesWarRoomContract && requestedProfile !== 'classroom'
+    ? getLegacyBoard3DMobileFramingProfile({ aspect, coarsePointer, viewportWidth })
+    : null;
+  const mobileProfile = canonicalMobileProfile || legacyMobileProfile;
+
   const baseProfile = requestedProfile === 'classroom'
     ? classRoomCameraFramingProfile({ aspect, coarsePointer, viewportWidth })
-    : mobileProfile || (requestedProfile === 'classic'
-      ? classicWarRoomCameraFramingProfile(aspect)
-      : getCameraFramingProfile(aspect));
-  const profile = !mobileProfile && requestedProfile !== 'classroom'
+    : usesWarRoomContract
+      ? mobileProfile || canonicalWarRoomCameraFramingProfile({ aspect })
+      : mobileProfile || (requestedProfile === 'classic'
+        ? classicWarRoomCameraFramingProfile(aspect)
+        : getCameraFramingProfile(aspect));
+
+  // Existing non-WarRoom Board3D surfaces retain their prior desktop pitch.
+  // Playable War Rooms do not need this shim: the v4 canonical profile already
+  // owns both lens and pitch as one explicit contract.
+  const profile = !usesWarRoomContract && !mobileProfile && requestedProfile !== 'classroom'
     ? {
         ...baseProfile,
         version: `${baseProfile.version || requestedProfile}-shared-play-pitch-v1`,
@@ -226,25 +245,19 @@ export function fitBoardCamera(camera, width, height, whiteSide, { profile: requ
         cameraZ: WAR_ROOM_PLAY_PITCH.cameraZ,
       }
     : baseProfile;
-  camera.fov = resolveBoard3DCameraFov(aspect, { mobile: Boolean(mobileProfile || (requestedProfile === 'classroom' && (coarsePointer || aspect < 1.12))) });
+
+  camera.fov = profile.fov ?? resolveBoard3DCameraFov(aspect, {
+    mobile: Boolean(mobileProfile || (requestedProfile === 'classroom' && (coarsePointer || aspect < 1.12))),
+  });
   const verticalFov = THREE.MathUtils.degToRad(camera.fov);
   const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * aspect);
   const limitingFov = Math.min(verticalFov, horizontalFov);
   const desktopImmersiveScale = immersive && !mobileProfile && requestedProfile !== 'classroom' ? 0.91 : 1;
-  // Matching the steeper mobile play pitch reduces the vertical room captured by
-  // the same long-lens desktop distance. Compensate with distance only: this keeps
-  // the approved pitch exact while preserving both the architectural cap and the
-  // near board apron. In default immersive mode 1.115 * 0.91 ~= 1.015, so board
-  // scale stays effectively unchanged from the accepted immersive framing.
   const sharedPitchDistanceScale = !mobileProfile && requestedProfile !== 'classroom' ? 1.115 : 1;
   const rawDistance = (profile.halfSpan / Math.tan(limitingFov / 2))
     * profile.padding
     * desktopImmersiveScale
     * sharedPitchDistanceScale;
-  // The historical profile.maxDistance was tuned for a 40° lens. Keeping that
-  // cap with a long lens zooms/crops instead of moving the camera back, which
-  // defeats the whole perspective-parity fix. Mobile retains its calibrated
-  // cap; desktop gets enough travel for the near-orthographic lens.
   const maxDistance = requestedProfile === 'classroom' ? profile.maxDistance : mobileProfile ? profile.maxDistance : 88;
   const distance = THREE.MathUtils.clamp(rawDistance, profile.minDistance, maxDistance);
   const target = new THREE.Vector3(0, profile.targetY, whiteSide ? -profile.targetZ : profile.targetZ);

@@ -4,6 +4,11 @@ import { resolveBoard3DCameraFov } from './Board3DConfig.js';
 import { buildPiece, disposeObject } from './Board3DPieces.js';
 import { fitBoardCamera } from './Board3DScene.js';
 import { WAR_ROOM_MOBILE_FRAMING_VERSION } from './WarRoomMobileFraming.js';
+import {
+  WAR_ROOM_CANONICAL_CAMERA_FOV,
+  WAR_ROOM_CANONICAL_CAMERA_VERSION,
+  WAR_ROOM_CANONICAL_PLAY_PITCH,
+} from './Board3DCameraProfiles.js';
 
 function worldSize(root) {
   root.updateMatrixWorld(true);
@@ -38,7 +43,7 @@ describe('Board3D piece scale parity', () => {
 
   it('usa lente desktop más larga para que primera y última fila no parezcan sets de escalas distintas', () => {
     const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
-    fitBoardCamera(camera, 1185, 730, true);
+    fitBoardCamera(camera, 1185, 730, true, { profile: 'warroom' });
 
     const nearHeight = projectedHeight(camera, 3.5);
     const farHeight = projectedHeight(camera, -3.5);
@@ -52,7 +57,7 @@ describe('Board3D piece scale parity', () => {
     expect(apparentScaleRatio).toBeLessThan(1.16);
   });
 
-  it('usa exactamente el pitch móvil aprobado en V1/V2/V3 desktop', () => {
+  it('usa exactamente la cámara v4 canónica en V1/V2/V3/V4 desktop y landscape móvil', () => {
     const elevation = (camera) => {
       const offset = camera.position.clone().sub(camera.userData.baseTarget);
       return THREE.MathUtils.radToDeg(Math.atan2(offset.y, Math.abs(offset.z)));
@@ -63,14 +68,13 @@ describe('Board3D piece scale parity', () => {
       matchMedia: vi.fn().mockReturnValue({ matches: false }),
     });
 
-    let desktopElevations;
+    let desktopElevation;
     try {
-      desktopElevations = ['classic', 'tactical'].map((profile) => {
-        const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
-        fitBoardCamera(camera, 1400, 730, true, { profile });
-        expect(camera.userData.framingProfile).toContain('shared-play-pitch-v1');
-        return elevation(camera);
-      });
+      const desktop = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+      fitBoardCamera(desktop, 1400, 730, true, { profile: 'warroom' });
+      expect(desktop.userData.framingProfile).toBe(WAR_ROOM_CANONICAL_CAMERA_VERSION);
+      expect(desktop.fov).toBe(WAR_ROOM_CANONICAL_CAMERA_FOV);
+      desktopElevation = elevation(desktop);
     } finally {
       vi.unstubAllGlobals();
     }
@@ -82,30 +86,35 @@ describe('Board3D piece scale parity', () => {
 
     try {
       const mobile = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
-      fitBoardCamera(mobile, 851, 393, true);
+      fitBoardCamera(mobile, 851, 393, true, { profile: 'warroom' });
       const mobileElevation = elevation(mobile);
-      for (const desktopElevation of desktopElevations) {
-        expect(desktopElevation).toBeCloseTo(mobileElevation, 6);
-      }
+      expect(mobile.fov).toBe(WAR_ROOM_CANONICAL_CAMERA_FOV);
+      expect(mobile.userData.framingProfile).toBe(WAR_ROOM_MOBILE_FRAMING_VERSION);
+      expect(desktopElevation).toBeCloseTo(mobileElevation, 6);
+      expect(mobileElevation).toBeCloseTo(
+        THREE.MathUtils.radToDeg(Math.atan2(
+          WAR_ROOM_CANONICAL_PLAY_PITCH.cameraY,
+          WAR_ROOM_CANONICAL_PLAY_PITCH.cameraZ,
+        )),
+        6,
+      );
     } finally {
       vi.unstubAllGlobals();
     }
   });
 
-  it('acerca V1/V2/V3 en inmersión desktop sin cambiar el framing móvil', () => {
+  it('acerca el contrato War Room en inmersión desktop sin cambiar su framing móvil', () => {
     vi.stubGlobal('window', {
       innerWidth: 1440,
       matchMedia: vi.fn().mockReturnValue({ matches: false }),
     });
 
     try {
-      for (const profile of ['classic', 'tactical']) {
-        const normal = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
-        const immersive = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
-        fitBoardCamera(normal, 1440, 900, true, { profile });
-        fitBoardCamera(immersive, 1440, 900, true, { profile, immersive: true });
-        expect(immersive.userData.cameraDistance).toBeCloseTo(normal.userData.cameraDistance * 0.91, 6);
-      }
+      const normal = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+      const immersive = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+      fitBoardCamera(normal, 1440, 900, true, { profile: 'warroom' });
+      fitBoardCamera(immersive, 1440, 900, true, { profile: 'warroom', immersive: true });
+      expect(immersive.userData.cameraDistance).toBeCloseTo(normal.userData.cameraDistance * 0.91, 6);
     } finally {
       vi.unstubAllGlobals();
     }
@@ -118,15 +127,15 @@ describe('Board3D piece scale parity', () => {
     try {
       const normalMobile = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
       const immersiveMobile = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
-      fitBoardCamera(normalMobile, 851, 393, true);
-      fitBoardCamera(immersiveMobile, 851, 393, true, { immersive: true });
+      fitBoardCamera(normalMobile, 851, 393, true, { profile: 'warroom' });
+      fitBoardCamera(immersiveMobile, 851, 393, true, { profile: 'warroom', immersive: true });
       expect(immersiveMobile.userData.cameraDistance).toBeCloseTo(normalMobile.userData.cameraDistance, 6);
     } finally {
       vi.unstubAllGlobals();
     }
   });
 
-  it('sube la cámara solo en landscape móvil para separar visualmente las filas', () => {
+  it('adapta sólo distancia y target en landscape móvil sin cambiar lente ni pitch', () => {
     const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
     vi.stubGlobal('window', {
       innerWidth: 851,
@@ -134,15 +143,22 @@ describe('Board3D piece scale parity', () => {
     });
 
     try {
-      fitBoardCamera(camera, 851, 393, true);
+      fitBoardCamera(camera, 851, 393, true, { profile: 'warroom' });
       const target = camera.userData.baseTarget;
       const offset = camera.position.clone().sub(target);
       const elevation = Math.atan2(offset.y, Math.abs(offset.z));
 
-      expect(camera.fov).toBe(34);
+      expect(camera.fov).toBe(WAR_ROOM_CANONICAL_CAMERA_FOV);
       expect(camera.userData.framingProfile).toBe(WAR_ROOM_MOBILE_FRAMING_VERSION);
-      expect(camera.userData.cameraDistance).toBeLessThan(16);
-      expect(THREE.MathUtils.radToDeg(elevation)).toBeGreaterThan(39);
+      expect(camera.userData.cameraDistance).toBeGreaterThan(20);
+      expect(camera.userData.cameraDistance).toBeLessThan(28);
+      expect(THREE.MathUtils.radToDeg(elevation)).toBeCloseTo(
+        THREE.MathUtils.radToDeg(Math.atan2(
+          WAR_ROOM_CANONICAL_PLAY_PITCH.cameraY,
+          WAR_ROOM_CANONICAL_PLAY_PITCH.cameraZ,
+        )),
+        6,
+      );
       expect(Math.abs(target.z)).toBeLessThanOrEqual(0.08);
     } finally {
       vi.unstubAllGlobals();
@@ -170,7 +186,23 @@ describe('Board3D piece scale parity', () => {
     disposeObject(bishop);
   });
 
-  it('comprime también la perspectiva móvil sin reutilizar la lente desktop', () => {
+  it('mantiene la cámara táctica genérica fuera del dominio War Room', () => {
+    vi.stubGlobal('window', {
+      innerWidth: 1440,
+      matchMedia: vi.fn().mockReturnValue({ matches: false }),
+    });
+
+    try {
+      const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+      fitBoardCamera(camera, 1400, 730, true, { profile: 'tactical' });
+      expect(camera.userData.framingProfile).toContain('shared-play-pitch-v1');
+      expect(camera.userData.framingProfile).not.toBe(WAR_ROOM_CANONICAL_CAMERA_VERSION);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('conserva el resolver legado para superficies no gobernadas por el contrato War Room', () => {
     expect(resolveBoard3DCameraFov(1.8)).toBe(22);
     expect(resolveBoard3DCameraFov(1.1)).toBe(32);
     expect(resolveBoard3DCameraFov(1.16, { mobile: true })).toBe(34);

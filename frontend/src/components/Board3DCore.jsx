@@ -22,18 +22,14 @@ import { BOARD3D_HIGHLIGHT_SIZE, BOARD3D_HIGHLIGHT_Y, board3DHighlightStyle } fr
 import { board3DCaptureWarmBoostValue, board3DPieceInteractionPose, writeBoard3DHighlightPulse } from './Board3DInteractionFx.js';
 import { BOARD_THEME_3D, FILES, resolveBoard3DThemeId } from './Board3DConfig.js';
 import { adjacentSquare, parseFen, squarePosition } from './Board3DBoardMath.js';
-import { buildBoard3DTileInstances, squareFromBoard3DIntersection } from './Board3DTileInstances.js';
+import { buildBoard3DTileInstances } from './Board3DTileInstances.js';
+import { pickBoard3DSquare } from './Board3DPointerPicking.js';
 import { planBoard3DPieceReconciliation } from './Board3DPieceReconciliation.js';
 import { addCoarsePieceHitTarget, applyMatthiasCheckPose, buildPiece, disposeObject } from './Board3DPieces.js';
 import { fitBoardCamera, makeTextSprite } from './Board3DScene.js';
 import { resolveStableBoardViewportForHost } from './Board3DViewportSize.js';
 import { applyBoard3DProjectionDiagnostics } from './Board3DProjectionDiagnostics.js';
-import {
-  board3DForensicGhost,
-  board3DTechniqueTargetCount,
-  board3DTerrainSquares,
-  buildBoard3DLegalMap,
-} from './Board3DParityVisuals.js';
+import { board3DForensicGhost, board3DTechniqueTargetCount, board3DTerrainSquares, buildBoard3DLegalMap } from './Board3DParityVisuals.js';
 import useWarRoomVariant from './useWarRoomVariant.js';
 import { resolveBoard3DPresentation } from './Board3DPresentation.js';
 import { createClassicWarRoomShellController } from './WarRoomClassicShell.js';
@@ -126,7 +122,10 @@ function Board3DCanvas({
     onPieceMouseLeave,
     hansDiagnosticsMarkerRef,
     hansDiagnosticsRequested,
-    hansFireCallEnabled, warRoomVariant,
+    hansFireCallEnabled,
+    warRoomVariant,
+    selectedSquare,
+    legalTargets,
   };
 
   useEffect(() => {
@@ -406,26 +405,18 @@ function Board3DCanvas({
 
     function resize() {
       const viewport = resolveStableBoardViewportForHost(host, { immersive, viewport: window }); renderer.setSize(viewport.width, viewport.height, false);
-      fitBoardCamera(camera, viewport.width, viewport.height, whiteSide, { profile: cameraProfile === 'classroom' || (latestPropsRef.current.warRoomVariant || 'classic') !== 'classic' ? cameraProfile : 'classic', immersive });
+      fitBoardCamera(camera, viewport.width, viewport.height, whiteSide, { profile: cameraProfile === 'classroom' || cameraProfile === 'warroom' || (latestPropsRef.current.warRoomVariant || 'classic') !== 'classic' ? cameraProfile : 'classic', immersive });
       render();
     }
     resize();
     const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(resize) : null;
     observer?.observe(host);
 
-    function squareFromPointer(event) {
-      const rect = renderer.domElement.getBoundingClientRect();
-      pointer.set(
-        ((event.clientX - rect.left) / rect.width) * 2 - 1,
-        -((event.clientY - rect.top) / rect.height) * 2 + 1,
-      );
-      raycaster.setFromCamera(pointer, camera);
-      const intersections = raycaster.intersectObjects(pickTargets, true);
-      for (const hit of intersections) {
-        const square = squareFromBoard3DIntersection(hit);
-        if (square) return square;
-      }
-      return null;
+    function squareFromPointer(event, { preferLegalTargets = false } = {}) {
+      return pickBoard3DSquare({
+        event, canvas: renderer.domElement, pointer, raycaster, camera, pickTargets,
+        latestProps: latestPropsRef.current, preferLegalTargets,
+      });
     }
 
     function updatePieceHover(nextSquare, event) {
@@ -456,7 +447,13 @@ function Board3DCanvas({
       if (!touchLike) return;
       renderer.domElement.setPointerCapture?.(event.pointerId);
       renderer.domElement.dataset.warRoomTouchStage = 'down';
-      const handled = selectBoardSquareOnTouch({ event, canvas: renderer.domElement, squareFromPointer, setFocusedSquare, onSquareClick: latestPropsRef.current.onSquareClick });
+      const handled = selectBoardSquareOnTouch({
+        event,
+        canvas: renderer.domElement,
+        squareFromPointer: (pointerEvent) => squareFromPointer(pointerEvent, { preferLegalTargets: true }),
+        setFocusedSquare,
+        onSquareClick: latestPropsRef.current.onSquareClick,
+      });
       if (pointerStartRef.current) pointerStartRef.current.handled = handled;
     }
     function onPointerMove(event) {
@@ -540,7 +537,10 @@ function Board3DCanvas({
         releasePointer(event);
         return;
       }
-      const square = squareFromPointer({ clientX: tap.x, clientY: tap.y });
+      const square = squareFromPointer(
+        { clientX: tap.x, clientY: tap.y },
+        { preferLegalTargets: touchLike },
+      );
       renderer.domElement.dataset.warRoomLastSquare = square || '';
       if (!square) {
         releasePointer(event);
@@ -691,7 +691,7 @@ function Board3DCanvas({
   useEffect(() => {
     const state = sceneStateRef.current, host = hostRef.current;
     if (!state || !host) return;
-    const viewport = resolveStableBoardViewportForHost(host, { immersive, viewport: window }); fitBoardCamera(state.camera, viewport.width, viewport.height, state.whiteSide, { profile: cameraProfile === 'classroom' || warRoomVariant !== 'classic' ? cameraProfile : 'classic', immersive });
+    const viewport = resolveStableBoardViewportForHost(host, { immersive, viewport: window }); fitBoardCamera(state.camera, viewport.width, viewport.height, state.whiteSide, { profile: cameraProfile === 'classroom' || cameraProfile === 'warroom' || warRoomVariant !== 'classic' ? cameraProfile : 'classic', immersive });
     state.render();
   }, [warRoomVariant, cameraProfile, immersive]);
 

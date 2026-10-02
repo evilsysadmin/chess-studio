@@ -3,6 +3,10 @@ import {
   WAR_ROOM_MOBILE_FRAMING_VERSION,
   getWarRoomMobileFramingProfile,
 } from './WarRoomMobileFraming.js';
+import {
+  WAR_ROOM_CANONICAL_CAMERA_FOV,
+  WAR_ROOM_CANONICAL_PLAY_PITCH,
+} from './Board3DCameraProfiles.js';
 
 describe('War Room mobile framing', () => {
   it('usa el perfil vertical board-first en teléfono táctil, también con shell ligeramente apaisado', () => {
@@ -13,7 +17,7 @@ describe('War Room mobile framing', () => {
     }
   });
 
-  it('mantiene el landscape de teléfono cercano y centrado aunque portrait sea más cenital', () => {
+  it('mantiene el mismo contrato óptico v4 en portrait y landscape y sólo adapta framing', () => {
     const portrait = getWarRoomMobileFramingProfile({ aspect: 1.16, coarsePointer: true, viewportWidth: 390 });
     const landscape = getWarRoomMobileFramingProfile({ aspect: 1.62, coarsePointer: true, viewportWidth: 851 });
 
@@ -21,11 +25,14 @@ describe('War Room mobile framing', () => {
     expect(landscape?.mode).toBe('landscape-board-first');
     expect(landscape.halfSpan).toBeLessThanOrEqual(4.5);
     expect(landscape.padding).toBe(1);
-    expect(landscape.maxDistance).toBeLessThan(18);
+    expect(landscape.maxDistance).toBeGreaterThan(22);
     expect(landscape.targetZ).toBeLessThanOrEqual(0.08);
     expect(landscape.targetY).toBeLessThanOrEqual(0.4);
-    expect(landscape.cameraY / landscape.cameraZ).toBeGreaterThan(0.8);
-    expect(landscape.cameraY / landscape.cameraZ).toBeLessThan(portrait.cameraY / portrait.cameraZ);
+    for (const profile of [portrait, landscape]) {
+      expect(profile.fov).toBe(WAR_ROOM_CANONICAL_CAMERA_FOV);
+      expect(profile.cameraY).toBe(WAR_ROOM_CANONICAL_PLAY_PITCH.cameraY);
+      expect(profile.cameraZ).toBe(WAR_ROOM_CANONICAL_PLAY_PITCH.cameraZ);
+    }
   });
 
   it('aplica el cambio solo a móvil táctil y no toca desktop, tablet ancho ni puntero fino', () => {
@@ -34,7 +41,7 @@ describe('War Room mobile framing', () => {
     expect(getWarRoomMobileFramingProfile({ aspect: 1.06, coarsePointer: true, viewportWidth: 1080 })).toBeNull();
   });
 
-  it('iguala el picado landscape móvil con la cámara wide canónica de V1', () => {
+  it('iguala el landscape móvil con la cámara canónica de War Room v4', () => {
     const phone = getWarRoomMobileFramingProfile({
       aspect: 1.8,
       coarsePointer: true,
@@ -42,9 +49,13 @@ describe('War Room mobile framing', () => {
     });
 
     expect(phone.mode).toBe('landscape-board-first');
-    expect(phone.cameraY).toBe(9.2);
-    expect(phone.cameraZ).toBe(9.55);
-    expect(phone.cameraY / phone.cameraZ).toBeCloseTo(9.2 / 9.55, 6);
+    expect(phone.fov).toBe(WAR_ROOM_CANONICAL_CAMERA_FOV);
+    expect(phone.cameraY).toBe(WAR_ROOM_CANONICAL_PLAY_PITCH.cameraY);
+    expect(phone.cameraZ).toBe(WAR_ROOM_CANONICAL_PLAY_PITCH.cameraZ);
+    expect(phone.cameraY / phone.cameraZ).toBeCloseTo(
+      WAR_ROOM_CANONICAL_PLAY_PITCH.cameraY / WAR_ROOM_CANONICAL_PLAY_PITCH.cameraZ,
+      6,
+    );
   });
 
 });

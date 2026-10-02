@@ -33,6 +33,11 @@ export function sameBoardSurfaceProps(previous, next) {
     && a.showCoordinates === b.showCoordinates
     && a.matthiasKingColor === b.matthiasKingColor
     && a.onCustomize === b.onCustomize
+    && a.cameraProfile === b.cameraProfile
+    && a.immersive === b.immersive
+    && a.warRoomVariantOverride === b.warRoomVariantOverride
+    && a.warRoomMobilePerformance === b.warRoomMobilePerformance
+    && a.themeOverride === b.themeOverride
     && a.hansFireplaceIteration === b.hansFireplaceIteration
     && a.hansFireCallEnabled === b.hansFireCallEnabled;
 }

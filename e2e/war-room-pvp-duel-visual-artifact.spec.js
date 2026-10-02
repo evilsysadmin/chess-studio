@@ -121,6 +121,16 @@ async function openDuelRoom(page, viewport) {
   ).toBeGreaterThan(minBoardWidthRatio);
   expect(Math.abs((boardBox.x + boardBox.width / 2) - (roomBox.x + roomBox.width / 2)) / roomBox.width)
     .toBeLessThan(0.02);
+  if (isCompactLandscape) {
+    expect(
+      boardBox.height / roomBox.height,
+      'compact landscape Duel Room board must fill the room height like canonical War Room',
+    ).toBeGreaterThan(0.98);
+    expect(
+      Math.abs((boardBox.y + boardBox.height) - (roomBox.y + roomBox.height)),
+      'compact landscape Duel Room must not leave a bottom black moat',
+    ).toBeLessThanOrEqual(2);
+  }
   await expect(room.getByText('DUEL ROOM · 1 VS 1', { exact: true })).toHaveCount(0);
 
   await page.waitForTimeout(900);

@@ -82,16 +82,29 @@
     height:100dvh;
     max-height:100dvh;
     min-height:0;
-    padding:.18rem;
+    padding:0;
     overflow:hidden;
     box-sizing:border-box;
   }
-  .game-screen.pvp-war-room .game-layout.game-layout-3d { width:100%; }
-  .game-screen.pvp-war-room .board-live-row.is-3d-warroom { padding:0!important; border-radius:10px; }
+  /* Duel Room is fixed to the visual viewport, unlike the normal War Room
+     which lives inside app-shell gutters. Beat WarRoomMobileLandscape's
+     calc(100vw - 2 * shell-gutter) contract here so PvP truly uses edge-to-edge
+     geometry while keeping the same v4 camera/framing language. */
+  .game-screen.pvp-war-room .game-layout.game-layout-3d {
+    width:100vw!important;
+    max-width:100vw!important;
+    height:100dvh;
+    margin-inline:0!important;
+  }
+  .game-screen.pvp-war-room .board-live-row.is-3d-warroom { height:100dvh; padding:0!important; border-radius:0; }
+  .game-screen.pvp-war-room .game-board-stack.game-board-stack-3d,
+  .game-screen.pvp-war-room .game-board-stack.game-board-stack-3d > .pvp-war-room__stage {
+    height:100dvh;
+  }
   .game-screen.pvp-war-room .game-board-stack.game-board-stack-3d .board3d-main-shell {
-    height:calc(100dvh - 3.1rem)!important;
-    min-height:0!important;
-    border-radius:10px;
+    height:100dvh!important;
+    min-height:100dvh!important;
+    border-radius:0!important;
   }
   .pvp-war-room__duel-pill { top:.28rem; min-height:44px; max-width:calc(100% - .65rem); padding:.28rem .42rem; }
   .pvp-war-room__identity small { display:none; }
