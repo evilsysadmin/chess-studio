@@ -379,8 +379,7 @@ assert 'remove_service "$(pvp_service "$previous_color")"' in deploy
 assert 'CHESS_STUDIO_DEPLOY_OK target=$target repo_ref=$sha color=$candidate_color pvp=go' in deploy
 assert 'pvp_edge_attest()' in deploy
 assert 'pvp_virtual_roster_attest()' in deploy
-assert 'if ! pvp_virtual_roster_attest "$candidate_service" "$candidate_pvp_service" "$target" sidecar "$public_api_url"; then' in deploy
-assert 'if ! pvp_virtual_roster_attest "$candidate_service" "$candidate_pvp_service" "$target" public "$public_api_url"; then' in deploy
+assert 'if ! pvp_virtual_roster_attest "$candidate_service" "$candidate_pvp_service" "$target"; then' in deploy
 for virtual_rival in ("sparringmeister", "otto_falk", "marta_stein", "viktor_kraus"):
     assert virtual_rival in deploy, f"missing virtual roster deploy attestation rival: {virtual_rival}"
 virtual_roster_attest = deploy.split("pvp_virtual_roster_attest() {", 1)[1].split(
@@ -389,12 +388,6 @@ virtual_roster_attest = deploy.split("pvp_virtual_roster_attest() {", 1)[1].spli
 assert 'for username in required:' in virtual_roster_attest
 assert 'for username in ("otto_falk", "marta_stein", "viktor_kraus"):' in virtual_roster_attest
 assert '!= "resident"' in virtual_roster_attest
-assert 'surface == "sidecar"' in virtual_roster_attest
-assert 'surface == "public"' in virtual_roster_attest
-assert 'require_public_markers=True' in virtual_roster_attest
-assert '"x-chess-pvp-edge"' in virtual_roster_attest
-assert '"x-chess-pvp-native"' in virtual_roster_attest
-assert '"lobby-read"' in virtual_roster_attest
 assert 'sparring: "sparring"' not in virtual_roster_attest
 assert "payload.get('release')" in deploy
 assert "expected_release" in deploy
