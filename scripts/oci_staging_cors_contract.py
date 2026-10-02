@@ -333,7 +333,8 @@ assert 'wait_pvp_edge_attest()' in deploy
 assert 'CHESS_STUDIO_PVP_EDGE_ATTEST_ATTEMPTS:-20' in deploy
 assert 'sleep 0.25' in deploy
 assert 'if ! wait_pvp_edge_attest "$port"; then' in deploy
-assert 'if ! pvp_browser_cors_attest "$port"; then' in deploy
+assert 'if ! pvp_browser_cors_attest "http://127.0.0.1:${port}/api/pvp/roster"; then' in deploy
+assert 'if ! pvp_browser_cors_attest "${public_api_url}/pvp/roster"; then' in deploy
 assert 'compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge' in deploy
 assert 'render_edge "$candidate_color"' in deploy
 assert 'reload_edge' in deploy
