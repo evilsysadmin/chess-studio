@@ -71,7 +71,12 @@ test('1v1 · un join confirmado no se deshace si falla la reconciliación inmedi
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
-        roster: enrolled ? [{ username: 'e2e', rating: 1050, tier: 'Intermedio', isSelf: true }] : [],
+        roster: [
+          ...(enrolled ? [{ username: 'e2e', rating: 1050, tier: 'Intermedio', isSelf: true }] : []),
+          { username: 'otto_falk', displayName: 'Otto Falk', rating: 850, tier: 'Aficionado', actorKind: 'resident', actorLabel: 'RESIDENTE · IA', isSelf: false },
+          { username: 'marta_stein', displayName: 'Marta Stein', rating: 1200, tier: 'Intermedio', actorKind: 'resident', actorLabel: 'RESIDENTE · IA', isSelf: false },
+          { username: 'viktor_kraus', displayName: 'Viktor Kraus', rating: 1450, tier: 'Avanzado', actorKind: 'resident', actorLabel: 'RESIDENTE · IA', isSelf: false },
+        ],
         challenges: [],
         activeMatch: null,
         pollAfterMs: 3000,
@@ -83,8 +88,15 @@ test('1v1 · un join confirmado no se deshace si falla la reconciliación inmedi
   await page.getByRole('button', { name: 'Abrir Sala de Duelos 1 contra 1' }).click();
   const lobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room' });
 
+  await expect(lobby.getByText('Otto Falk', { exact: true })).toBeVisible();
+  await expect(lobby.getByText('Marta Stein', { exact: true })).toBeVisible();
+  await expect(lobby.getByText('Viktor Kraus', { exact: true })).toBeVisible();
+
   await lobby.getByRole('button', { name: 'Recibir retos', exact: true }).click();
 
+  await expect(lobby.getByText('Otto Falk', { exact: true })).toBeVisible();
+  await expect(lobby.getByText('Marta Stein', { exact: true })).toBeVisible();
+  await expect(lobby.getByText('Viktor Kraus', { exact: true })).toBeVisible();
   await expect(lobby.getByText('RECIBIENDO RETOS', { exact: true })).toBeVisible();
   await expect(lobby.getByRole('button', { name: 'Recibir retos', exact: true })).toHaveCount(0);
   await expect(lobby.locator('.pvp-lobby__error')).toHaveCount(0);
