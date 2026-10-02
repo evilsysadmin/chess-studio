@@ -215,6 +215,7 @@ func main() {
 		NativeMatchResign: nativeMatchResign,
 		NativeMatchRead: nativeMatchRead,
 		NativeMatchMove: nativeMatchMove,
+		NativeResidentEngine: matchMoveEnabled && nativeResidentMoveEnabled,
 		VirtualPlayersEnabled: virtualPlayersEnabled,
 	})
 	if err != nil {
