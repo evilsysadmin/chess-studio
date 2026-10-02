@@ -78,7 +78,7 @@ async function assertPriorityHierarchy(lobby, { stacked = false } = {}) {
 test('PvP lobby · desktop prioritizes challenges over rivals', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   const lobby = await openLobby(page);
-  await assertPriorityHierarchy(lobby, { stacked: true });
+  await assertPriorityHierarchy(lobby);
 
   const roomBox = await lobby.boundingBox();
   expect(roomBox, 'desktop Duel Hall must have a measurable room shell').not.toBeNull();
@@ -104,7 +104,7 @@ test.use({ hasTouch: true, isMobile: true });
 test('PvP lobby · Android keeps the command hierarchy touchable', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const lobby = await openLobby(page);
-  await assertPriorityHierarchy(lobby);
+  await assertPriorityHierarchy(lobby, { stacked: true });
 
   const targets = lobby.locator('button:visible, summary:visible');
   const targetCount = await targets.count();
