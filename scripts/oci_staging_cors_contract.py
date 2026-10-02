@@ -102,8 +102,9 @@ assert "https://chess-studio.shadowops.dpdns.org" in go_pulse, (
 required_public_verifier_fragments = (
     f'STAGING_BROWSER_ORIGIN = "{STAGING_ORIGIN}"',
     'method="OPTIONS"',
-    '"Access-Control-Request-Method": "PATCH"',
-    '"Access-Control-Request-Headers": ",".join(sorted(REQUIRED_CORS_HEADERS))',
+    'method: str = "PATCH"',
+    '"Access-Control-Request-Method": method',
+    '"Access-Control-Request-Headers": ",".join(sorted(request_headers))',
     '"access-control-allow-origin"',
     '"access-control-allow-methods"',
     '"access-control-allow-headers"',
