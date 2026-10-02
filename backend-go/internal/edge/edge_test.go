@@ -521,3 +521,76 @@ func TestReadinessReportsNativeChallengeCreateState(t *testing.T) {
 		t.Fatalf("nativeChallengeCreate=%#v want=true", body["nativeChallengeCreate"])
 	}
 }
+
+
+func TestNativeMatchResignBypassesPythonWhenEnabled(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		t.Fatal("native resign must not reach Python upstream")
+	}))
+	defer upstream.Close()
+
+	native := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/pvp/matches/m-1/resign" || r.Method != http.MethodPost {
+			t.Fatalf("native resign request=%s %s", r.Method, r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"match":{"id":"m-1","status":"finished"}}`))
+	})
+	h, err := New(Config{UpstreamURL: upstream.URL, NativeMatchResign: native})
+	if err != nil { t.Fatal(err) }
+
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/matches/m-1/resign", nil))
+	if rr.Code != http.StatusOK { t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String()) }
+	if got:=rr.Header().Get("X-Chess-Pvp-Edge"); got!="go" { t.Fatalf("edge=%q",got) }
+}
+
+func TestMatchResignFallsBackToPythonWhenNativeDisabled(t *testing.T) {
+	called := false
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		if r.URL.Path != "/api/pvp/matches/m-1/resign" || r.Method != http.MethodPost {
+			t.Fatalf("upstream resign request=%s %s", r.Method, r.URL.Path)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer upstream.Close()
+
+	h := mustHandler(t, upstream.URL)
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/matches/m-1/resign", nil))
+	if rr.Code != http.StatusOK || !called {
+		t.Fatalf("fallback status=%d called=%t body=%s", rr.Code, called, rr.Body.String())
+	}
+}
+
+func TestReadinessReportsNativeMatchResignState(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/ready" { w.WriteHeader(http.StatusOK); return }
+		http.NotFound(w, r)
+	}))
+	defer upstream.Close()
+
+	native := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
+	h, err := New(Config{UpstreamURL: upstream.URL, NativeMatchResign: native})
+	if err != nil { t.Fatal(err) }
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "http://edge/readyz", nil))
+	if rr.Code != http.StatusOK { t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String()) }
+	var body map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil { t.Fatal(err) }
+	if body["nativeMatchResign"] != true {
+		t.Fatalf("nativeMatchResign=%#v want=true", body["nativeMatchResign"])
+	}
+}
+
+func TestMatchResignPathIsExact(t *testing.T) {
+	for path,want:=range map[string]bool{
+		"/api/pvp/matches/m-1/resign":true,
+		"/api/pvp/matches/m-1/resign/":false,
+		"/api/pvp/matches//resign":false,
+		"/api/pvp/matches/m-1/ready":false,
+	}{
+		if got:=isMatchResignPath(path); got!=want { t.Fatalf("%s got=%t want=%t",path,got,want) }
+	}
+}
