@@ -375,3 +375,40 @@ func TestMatchHandoffCancelFallsBackToPythonWhenNativeDisabled(t *testing.T) {
 	h.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/matches/m-1/cancel-starting", nil))
 	if rr.Code != http.StatusOK { t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String()) }
 }
+
+func TestNativeMatchReadyBypassesPythonWhenEnabled(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		t.Fatal("native match ready must not reach Python upstream")
+	}))
+	defer upstream.Close()
+
+	native := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/pvp/matches/m-1/ready" || r.Method != http.MethodPost {
+			t.Fatalf("native ready request=%s %s", r.Method, r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"match":{"id":"m-1","status":"starting"}}`))
+	})
+	h, err := New(Config{UpstreamURL: upstream.URL, NativeMatchReady: native})
+	if err != nil { t.Fatal(err) }
+
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/matches/m-1/ready", nil))
+	if rr.Code != http.StatusOK { t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String()) }
+	if got := rr.Header().Get("X-Chess-Pvp-Edge"); got != "go" { t.Fatalf("edge marker=%q", got) }
+}
+
+func TestMatchReadyFallsBackToPythonWhenNativeDisabled(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/pvp/matches/m-1/ready" || r.Method != http.MethodPost {
+			t.Fatalf("upstream ready request=%s %s", r.Method, r.URL.Path)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer upstream.Close()
+
+	h := mustHandler(t, upstream.URL)
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/matches/m-1/ready", nil))
+	if rr.Code != http.StatusOK { t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String()) }
+}
