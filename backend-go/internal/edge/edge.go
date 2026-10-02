@@ -21,6 +21,7 @@ type Config struct {
 	NativeRoster  http.Handler
 	NativeChat    http.Handler
 	NativeChallengeResolution http.Handler
+	NativeChallengeAccept     http.Handler
 	NativeMatchHandoffCancel  http.Handler
 	NativeMatchReady          http.Handler
 }
@@ -34,6 +35,7 @@ type Handler struct {
 	nativeRoster http.Handler
 	nativeChat   http.Handler
 	nativeChallengeResolution http.Handler
+	nativeChallengeAccept     http.Handler
 	nativeMatchHandoffCancel  http.Handler
 	nativeMatchReady          http.Handler
 }
@@ -92,6 +94,7 @@ func New(cfg Config) (*Handler, error) {
 		nativeRoster: cfg.NativeRoster,
 		nativeChat:   cfg.NativeChat,
 		nativeChallengeResolution: cfg.NativeChallengeResolution,
+		nativeChallengeAccept: cfg.NativeChallengeAccept,
 		nativeMatchHandoffCancel: cfg.NativeMatchHandoffCancel,
 		nativeMatchReady: cfg.NativeMatchReady,
 	}, nil
@@ -116,6 +119,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case r.URL.Path == "/api/pvp/lobby/chat" && h.nativeChat != nil:
 		w.Header().Set("X-Chess-Pvp-Edge", "go")
 		h.nativeChat.ServeHTTP(w, r)
+	case isChallengeAcceptPath(r.URL.Path) && h.nativeChallengeAccept != nil:
+		w.Header().Set("X-Chess-Pvp-Edge", "go")
+		h.nativeChallengeAccept.ServeHTTP(w, r)
 	case isChallengeResolutionPath(r.URL.Path) && h.nativeChallengeResolution != nil:
 		w.Header().Set("X-Chess-Pvp-Edge", "go")
 		h.nativeChallengeResolution.ServeHTTP(w, r)
@@ -140,6 +146,7 @@ func (h *Handler) health(w http.ResponseWriter) {
 		"nativeRoster": h.nativeRoster != nil,
 		"nativeChat":   h.nativeChat != nil,
 		"nativeChallengeResolution": h.nativeChallengeResolution != nil,
+		"nativeChallengeAccept": h.nativeChallengeAccept != nil,
 		"nativeMatchHandoffCancel": h.nativeMatchHandoffCancel != nil,
 		"nativeMatchReady": h.nativeMatchReady != nil,
 	}
@@ -178,6 +185,7 @@ func (h *Handler) ready(w http.ResponseWriter, r *http.Request) {
 		"nativeRoster": h.nativeRoster != nil,
 		"nativeChat":   h.nativeChat != nil,
 		"nativeChallengeResolution": h.nativeChallengeResolution != nil,
+		"nativeChallengeAccept": h.nativeChallengeAccept != nil,
 		"nativeMatchHandoffCancel": h.nativeMatchHandoffCancel != nil,
 		"nativeMatchReady": h.nativeMatchReady != nil,
 	})
@@ -206,6 +214,17 @@ func isMatchPulsePath(path string) bool {
 	matchID := strings.TrimSuffix(strings.TrimPrefix(path, prefix), suffix)
 	matchID = strings.Trim(matchID, "/")
 	return matchID != "" && !strings.Contains(matchID, "/")
+}
+
+func isChallengeAcceptPath(path string) bool {
+	const prefix = "/api/pvp/challenges/"
+	const suffix = "/accept"
+	if !strings.HasPrefix(path, prefix) || !strings.HasSuffix(path, suffix) {
+		return false
+	}
+	challengeID := strings.TrimSuffix(strings.TrimPrefix(path, prefix), suffix)
+	challengeID = strings.Trim(challengeID, "/")
+	return challengeID != "" && !strings.Contains(challengeID, "/")
 }
 
 func isChallengeResolutionPath(path string) bool {
