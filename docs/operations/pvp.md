@@ -220,8 +220,9 @@ The Go PvP edge may absorb high-frequency read coordination incrementally while 
 Current bounded contract:
 - lobby pulse may read Mongo natively and invalidate the full Python lobby snapshot;
 - match pulse may renew only the caller's coarse duel presence timestamp without changing gameplay revision;
-- match pulse may expose revision/status and detect clock or handoff deadlines that require an immediate Python reconciliation;
-- stable active matches still perform a bounded full Python reconciliation every few seconds;
+- match pulse may expose revision/status plus the rival's coarse presence band, and detect clock, handoff or disconnect-grace boundaries that require an immediate Python reconciliation;
+- the Go pulse only emits lifecycle hints: Python remains the authority that starts/restarts disconnect grace and commits timeout/forfeit/result transitions;
+- stable active matches with unchanged revision and presence perform a bounded full Python reconciliation every 15 seconds; during blue/green compatibility with an older pulse that lacks presence hints, clients retain the previous 3-second safety reconcile;
 - roster join/heartbeat and leave may execute natively in Go with the same server-owned PvP rating/tier, a bounded join rate limit, and pending-challenge cancellation on leave;
 - roster native cutover has an independent kill-switch; disabled means the edge proxies the existing Python routes unchanged;
 - timeout, disconnect grace/forfeit, handoff transitions, move legality, result and Elo settlement remain Python-authoritative until migrated explicitly with equivalent CAS/idempotency coverage;
