@@ -52,7 +52,7 @@ func TestNativeChallengeCreateBrowserTransportBeforeAuthentication(t *testing.T)
 		t.Fatalf("preflight native route marker=%q want=challenge-create", got)
 	}
 	allowedHeaders := strings.ToLower(preflightRR.Header().Get("Access-Control-Allow-Headers"))
-	for _, required := range []string{"authorization", "content-type", "x-request-id", "x-client-release"} {
+	for _, required := range []string{"authorization", "content-type", "x-request-id", "x-client-release", "x-presence-session"} {
 		if !strings.Contains(allowedHeaders, required) {
 			t.Fatalf("preflight headers=%q missing=%q", allowedHeaders, required)
 		}

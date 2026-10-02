@@ -668,7 +668,7 @@ pvp_authenticated_browser_attest() {
         -X OPTIONS \
         -H "Origin: $cors_origin" \
         -H 'Access-Control-Request-Method: GET' \
-        -H 'Access-Control-Request-Headers: authorization,x-request-id,x-client-release' \
+        -H 'Access-Control-Request-Headers: authorization,x-request-id,x-client-release,x-presence-session' \
         -D "$preflight_headers" -o /dev/null -w "%{http_code}" \
         "$endpoint")"; then
       rm -f "$preflight_headers" "$headers" "$body"
@@ -695,7 +695,7 @@ methods = ",".join(parsed.get("access-control-allow-methods", [])).upper()
 if "GET" not in methods:
     raise SystemExit("authenticated preflight does not allow GET")
 allowed_headers = ",".join(parsed.get("access-control-allow-headers", [])).lower()
-for required in ("authorization", "x-request-id", "x-client-release"):
+for required in ("authorization", "x-request-id", "x-client-release", "x-presence-session"):
     if required not in allowed_headers:
         raise SystemExit(f"authenticated preflight does not allow {required}")
 if [value.lower() for value in parsed.get("x-chess-pvp-edge", [])] != ["go"]:
