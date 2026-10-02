@@ -237,18 +237,39 @@ runs:
         steps.scope.outputs.hans == 'true' &&
         (steps.scope.outputs.producer_scope == 'all' || contains(steps.scope.outputs.producer_scope, 'warroom-hans'))
       id: hans_capture
+      # Secondary choreography/video evidence. The canonical Hans visual canary
+      # above remains fail-closed; routine capture must not block unrelated PRs
+      # on SwiftShader timing or recorder instability.
+      continue-on-error: true
       shell: bash
       run: bash scripts/app_visual_capture.sh hans
 
     - name: Upload Hans routine artifact
       if: always() && inputs.mode == 'canonical' && steps.scope.outputs.hans == 'true' && steps.hans_capture.outcome != 'skipped'
+      continue-on-error: true
       uses: actions/upload-artifact@v7
       with:
         name: hans-routines-${{ github.event.pull_request.number || github.run_id }}
         path: .artifacts/app-visual/hans-routines/
-        if-no-files-found: error
+        if-no-files-found: warn
         retention-days: 7
         compression-level: 0
+
+    - name: Report non-blocking Hans routine failure
+      if: >-
+        always() &&
+        inputs.mode == 'canonical' &&
+        steps.scope.outputs.hans == 'true' &&
+        steps.hans_capture.outcome == 'failure'
+      shell: bash
+      run: |
+        echo "::warning::Hans routine video sidecar failed; canonical Hans visual proof remains the blocking contract."
+        {
+          echo "### Hans routine sidecar · informativo"
+          echo
+          echo "La captura secundaria de rutinas de Hans falló. No bloquea la PR."
+          echo "El canario visual canónico de Hans continúa siendo fail-closed."
+        } >> "$GITHUB_STEP_SUMMARY"
 
     - name: Capture Chesscom desktop + mobile
       if: inputs.mode == 'canonical' && steps.scope.outputs.chesscom == 'true'
