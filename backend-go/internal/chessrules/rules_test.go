@@ -3,6 +3,8 @@ package chessrules
 import (
 	"errors"
 	"testing"
+
+	chess "github.com/corentings/chess/v2"
 )
 
 func strptr(value string) *string { return &value }
@@ -194,5 +196,27 @@ func TestTurnReadsAuthoritativeFENSide(t *testing.T) {
 	}
 	if _, err := Turn("not a fen"); !errors.Is(err, ErrInvalidFEN) {
 		t.Fatalf("err=%v", err)
+	}
+}
+
+func TestIsCaptureIncludesEnPassant(t *testing.T) {
+	option, err := chess.FEN("4k3/8/8/3Pp3/8/8/8/4K3 w - e6 0 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	game := chess.NewGame(option)
+	seen := map[string]bool{}
+	for _, move := range game.Position().ValidMoves() {
+		m := move
+		seen[m.String()] = IsCapture(&m)
+	}
+	if !seen["d5e6"] {
+		t.Fatalf("en passant d5e6 must count as a capture: %v", seen)
+	}
+	if seen["d5d6"] || seen["e1e2"] {
+		t.Fatalf("quiet moves counted as captures: %v", seen)
+	}
+	if IsCapture(nil) {
+		t.Fatal("nil move")
 	}
 }
