@@ -542,11 +542,3 @@ jobs:
             echo '- Identidades CI: `aleatorias por spec, eliminadas y verificadas`'
           } >> "$GITHUB_STEP_SUMMARY"
 
-  continuity:
-    name: Live-game blue-green accreditation
-    needs: [prepare, summary]
-    if: needs.prepare.outputs.admitted == 'true' && needs.summary.result == 'success'
-    uses: ./.github/workflows/staging-deploy-continuity.yml
-    with:
-      deploy_sha: ${{ needs.prepare.outputs.deploy_sha }}
-    secrets: inherit
