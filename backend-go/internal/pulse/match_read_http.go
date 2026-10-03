@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/matchdisconnect"
@@ -173,16 +172,4 @@ func (h *Handler) serveMatchRead(
 		"match":       publicHandoffMatch(row, username, now, virtual),
 		"pollAfterMs": 1250,
 	})
-}
-
-func matchReadID(path string) (string, bool) {
-	const prefix = "/api/pvp/matches/"
-	if !strings.HasPrefix(path, prefix) {
-		return "", false
-	}
-	matchID := strings.TrimPrefix(path, prefix)
-	if matchID == "" || strings.Contains(matchID, "/") {
-		return "", false
-	}
-	return matchID, true
 }

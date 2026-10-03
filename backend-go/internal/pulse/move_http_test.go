@@ -270,21 +270,6 @@ func TestMoveRateLimitIsFortyFivePerMinute(t *testing.T) {
 	}
 }
 
-func TestMatchMovePathIsExact(t *testing.T) {
-	for path, want := range map[string]bool{
-		"/api/pvp/matches/m-1/move":   true,
-		"/api/pvp/matches/m-1/move/":  false,
-		"/api/pvp/matches//move":      false,
-		"/api/pvp/matches/m-1":        false,
-		"/api/pvp/matches/m-1/resign": false,
-	} {
-		_, got := matchMoveID(path)
-		if got != want {
-			t.Fatalf("%s got=%t want=%t", path, got, want)
-		}
-	}
-}
-
 type fakeResidentMoveOracle struct {
 	uci      string
 	err      error

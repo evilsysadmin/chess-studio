@@ -347,21 +347,6 @@ func TestMatchReadRateLimitIsSixtyPerMinute(t *testing.T) {
 	}
 }
 
-func TestMatchReadPathIsExact(t *testing.T) {
-	for path, want := range map[string]bool{
-		"/api/pvp/matches/m-1":        true,
-		"/api/pvp/matches/m-1/":       false,
-		"/api/pvp/matches/m-1/pulse":  false,
-		"/api/pvp/matches/m-1/resign": false,
-		"/api/pvp/matches/":           false,
-	} {
-		_, got := matchReadID(path)
-		if got != want {
-			t.Fatalf("%s got=%t want=%t", path, got, want)
-		}
-	}
-}
-
 func TestNativeMatchReadRecoversPendingResidentReply(t *testing.T) {
 	now := time.Date(2026, 10, 2, 14, 50, 0, 0, time.UTC)
 	row := committedMoveHTTPRow(now)

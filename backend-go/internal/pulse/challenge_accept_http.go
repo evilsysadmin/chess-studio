@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/challengeaccept"
@@ -156,20 +155,6 @@ func challengeAcceptPublicRow(match challengeaccept.Match) cancelMatchRow {
 		CreatedAt:     match.CreatedAt,
 		UpdatedAt:     match.UpdatedAt,
 	}
-}
-
-func challengeAcceptID(path string) (string, bool) {
-	const prefix = "/api/pvp/challenges/"
-	const suffix = "/accept"
-	if !strings.HasPrefix(path, prefix) || !strings.HasSuffix(path, suffix) {
-		return "", false
-	}
-	challengeID := strings.TrimSuffix(strings.TrimPrefix(path, prefix), suffix)
-	challengeID = strings.Trim(challengeID, "/")
-	if challengeID == "" || strings.Contains(challengeID, "/") {
-		return "", false
-	}
-	return challengeID, true
 }
 
 var _ challengeaccept.Store = (*MongoStore)(nil)

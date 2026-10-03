@@ -192,17 +192,3 @@ func TestNativeResignReturnsRetryableFailureWhenSettlementFailsAfterCommit(t *te
 		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
 	}
 }
-
-func TestMatchResignPathParserIsExact(t *testing.T) {
-	for path, want := range map[string]bool{
-		"/api/pvp/matches/m-1/resign":  true,
-		"/api/pvp/matches//resign":     false,
-		"/api/pvp/matches/m-1/resign/": false,
-		"/api/pvp/matches/m-1/move":    false,
-	} {
-		_, got := matchResignID(path)
-		if got != want {
-			t.Fatalf("%s got=%t want=%t", path, got, want)
-		}
-	}
-}

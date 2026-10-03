@@ -11,15 +11,16 @@ import (
 	"fmt"
 	"hash"
 	"net/http"
+	"reflect"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/pvpclock"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/pvproute"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
-
-	"github.com/evilsysadmin/chess-studio/backend-go/internal/pvpclock"
 )
 
 const (
@@ -309,7 +310,7 @@ func NewHandler(cfg HandlerConfig) (*Handler, error) {
 	}
 	return &Handler{
 		store:                     cfg.Store,
-		lobbyReadStore:            cfg.LobbyReadStore,
+		lobbyReadStore:            present(cfg.LobbyReadStore),
 		secret:                    []byte(secret),
 		allowedOrigins:            allowed,
 		allowAnyOrigin:            allowAny,
@@ -319,15 +320,15 @@ func NewHandler(cfg HandlerConfig) (*Handler, error) {
 		enableChallengeResolution: cfg.EnableChallengeResolution,
 		enableMatchHandoffCancel:  cfg.EnableMatchHandoffCancel,
 		enableMatchReady:          cfg.EnableMatchReady,
-		challengeAccept:           cfg.ChallengeAccept,
-		challengeCreate:           cfg.ChallengeCreate,
-		matchResign:               cfg.MatchResign,
-		matchReadStore:            cfg.MatchReadStore,
-		matchMoveStore:            cfg.MatchMoveStore,
-		matchTimeout:              cfg.MatchTimeout,
-		matchDisconnect:           cfg.MatchDisconnect,
-		ratingSettlement:          cfg.RatingSettlement,
-		residentMoveOracle:        cfg.ResidentMoveOracle,
+		challengeAccept:           present(cfg.ChallengeAccept),
+		challengeCreate:           present(cfg.ChallengeCreate),
+		matchResign:               present(cfg.MatchResign),
+		matchReadStore:            present(cfg.MatchReadStore),
+		matchMoveStore:            present(cfg.MatchMoveStore),
+		matchTimeout:              present(cfg.MatchTimeout),
+		matchDisconnect:           present(cfg.MatchDisconnect),
+		ratingSettlement:          present(cfg.RatingSettlement),
+		residentMoveOracle:        present(cfg.ResidentMoveOracle),
 		virtualPlayersEnabled:     cfg.VirtualPlayersEnabled,
 		virtualOwner:              strings.ToLower(strings.TrimSpace(cfg.VirtualOwner)),
 		sparringUsername:          strings.ToLower(strings.TrimSpace(cfg.SparringUsername)),
@@ -338,6 +339,25 @@ func NewHandler(cfg HandlerConfig) (*Handler, error) {
 		lobbyReadWindows:          make(map[string]rateWindow),
 		now:                       now,
 	}, nil
+}
+
+// present turns a typed nil (a nil *T stored in an interface) into a real
+// nil interface. cmd/pvp-edge passes nil service pointers for disabled
+// routes; without this every "== nil" guard on an optional dependency is
+// false and a disabled route would reach a nil pointer instead of a 404.
+func present[T any](value T) T {
+	v := reflect.ValueOf(&value).Elem()
+	if v.Kind() != reflect.Interface || v.IsNil() {
+		return value
+	}
+	switch inner := v.Elem(); inner.Kind() {
+	case reflect.Pointer, reflect.Map, reflect.Slice, reflect.Func, reflect.Chan, reflect.Interface:
+		if inner.IsNil() {
+			var zero T
+			return zero
+		}
+	}
+	return value
 }
 
 func NewMongoStore(ctx context.Context, cfg MongoConfig) (*MongoStore, error) {
@@ -1046,18 +1066,19 @@ func (s *MongoStore) hashLatestChat(ctx context.Context, h hash.Hash, now time.T
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.decorateResponse(w, r)
-	if r.URL.Path == "/api/pvp/lobby" && h.lobbyReadStore != nil {
+	route := pvproute.Match(r.URL.Path)
+	if route.Kind == pvproute.LobbyRead && h.lobbyReadStore != nil {
 		// Set before auth so deployment probes can prove the exact full-lobby
 		// route rather than mistaking the generic pulse marker for success.
 		w.Header().Set("X-Chess-Pvp-Native", "lobby-read")
 	}
-	if r.URL.Path == "/api/pvp/roster" && h.enableRoster {
+	if route.Kind == pvproute.Roster && h.enableRoster {
 		// Set the route marker before authentication so deployment probes can prove
 		// that browser-visible failures came from the native roster handler rather
 		// than the Python fallback or an upstream/tunnel error.
 		w.Header().Set("X-Chess-Pvp-Native", "roster")
 	}
-	if r.URL.Path == "/api/pvp/challenges" && h.challengeCreate != nil {
+	if route.Kind == pvproute.ChallengeCreate && h.challengeCreate != nil {
 		// Challenge creation carries a JSON body, so the browser preflights it.
 		// Mark OPTIONS and auth failures too: public accreditation must prove the
 		// exact route instead of mistaking a generic edge response for success.
@@ -1095,48 +1116,56 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	now := h.now().UTC()
 
-	if r.URL.Path == "/api/pvp/lobby" && h.lobbyReadStore != nil {
+	switch route.Kind {
+	case pvproute.LobbyRead:
+		if h.lobbyReadStore == nil {
+			http.NotFound(w, r)
+			return
+		}
 		h.serveLobbyRead(w, r, claims.Subject, now)
 		return
-	}
 
-	if matchID, ok := matchReadID(r.URL.Path); ok {
+	case pvproute.MatchRead:
+		matchID := route.ID
 		if h.matchReadStore == nil || h.matchTimeout == nil || h.matchDisconnect == nil {
 			http.NotFound(w, r)
 			return
 		}
 		h.serveMatchRead(w, r, claims.Subject, matchID, now)
 		return
-	}
 
-	if matchID, ok := matchMoveID(r.URL.Path); ok {
+	case pvproute.MatchMove:
+		matchID := route.ID
 		if h.matchMoveStore == nil || h.matchReadStore == nil || h.matchTimeout == nil || h.matchDisconnect == nil {
 			http.NotFound(w, r)
 			return
 		}
 		h.serveMatchMove(w, r, claims.Subject, matchID, now)
 		return
-	}
 
-	if r.URL.Path == "/api/pvp/challenges" {
+	case pvproute.ChallengeCreate:
 		if h.challengeCreate == nil {
 			http.NotFound(w, r)
 			return
 		}
 		h.serveChallengeCreate(w, r, claims.Subject, now)
 		return
-	}
 
-	if challengeID, ok := challengeAcceptID(r.URL.Path); ok {
+	case pvproute.ChallengeAccept:
+		challengeID := route.ID
 		if h.challengeAccept == nil {
 			http.NotFound(w, r)
 			return
 		}
 		h.serveChallengeAccept(w, r, claims.Subject, challengeID, now)
 		return
-	}
 
-	if challengeID, action, ok := challengeResolutionPath(r.URL.Path); ok {
+	case pvproute.ChallengeCancel, pvproute.ChallengeDecline:
+		challengeID := route.ID
+		action := "cancel"
+		if route.Kind == pvproute.ChallengeDecline {
+			action = "decline"
+		}
 		if !h.enableChallengeResolution {
 			http.NotFound(w, r)
 			return
@@ -1173,18 +1202,18 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"challenge": publicChallenge(row, claims.Subject)})
 		return
-	}
 
-	if matchID, ok := matchResignID(r.URL.Path); ok {
+	case pvproute.MatchResign:
+		matchID := route.ID
 		if h.matchResign == nil {
 			http.NotFound(w, r)
 			return
 		}
 		h.serveMatchResign(w, r, claims.Subject, matchID, now)
 		return
-	}
 
-	if matchID, ok := matchHandoffCancelID(r.URL.Path); ok {
+	case pvproute.MatchHandoffCancel:
+		matchID := route.ID
 		if !h.enableMatchHandoffCancel {
 			http.NotFound(w, r)
 			return
@@ -1217,9 +1246,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusServiceUnavailable, map[string]any{"detail": "No se pudo actualizar la partida 1v1."})
 			return
 		}
-	}
 
-	if matchID, ok := matchReadyID(r.URL.Path); ok {
+	case pvproute.MatchReady:
+		matchID := route.ID
 		if !h.enableMatchReady {
 			http.NotFound(w, r)
 			return
@@ -1272,9 +1301,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusServiceUnavailable, map[string]any{"detail": "No se pudo actualizar la partida 1v1."})
 			return
 		}
-	}
 
-	if r.URL.Path == "/api/pvp/lobby/chat" {
+	case pvproute.LobbyChat:
 		if !h.enableChat {
 			http.NotFound(w, r)
 			return
@@ -1318,9 +1346,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"createdAt": stamp(row.CreatedAt), "isSelf": true,
 		}})
 		return
-	}
 
-	if r.URL.Path == "/api/pvp/roster" {
+	case pvproute.Roster:
 		if !h.enableRoster {
 			http.NotFound(w, r)
 			return
@@ -1368,6 +1395,14 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusMethodNotAllowed, map[string]any{"detail": "Método no permitido."})
 			return
 		}
+
+	case pvproute.MatchPulse, pvproute.LobbyPulse:
+		// Handled below.
+
+	default:
+		// The edge only sends native routes here; anything else is not ours.
+		http.NotFound(w, r)
+		return
 	}
 
 	if r.Method != http.MethodGet {
@@ -1376,7 +1411,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if matchID, ok := matchPulseID(r.URL.Path); ok {
+	if route.Kind == pvproute.MatchPulse {
+		matchID := route.ID
 		state, err := h.store.MatchState(r.Context(), claims.Subject, matchID, now)
 		if err != nil {
 			writeJSON(w, http.StatusServiceUnavailable, map[string]any{"detail": "No se pudo consultar el pulso de la partida 1v1."})
@@ -1487,20 +1523,6 @@ func (h *Handler) allowRosterJoin(username string, now time.Time) (bool, int) {
 	window.count++
 	h.rosterWindows[username] = window
 	return true, 0
-}
-
-func matchPulseID(path string) (string, bool) {
-	const prefix = "/api/pvp/matches/"
-	const suffix = "/pulse"
-	if !strings.HasPrefix(path, prefix) || !strings.HasSuffix(path, suffix) {
-		return "", false
-	}
-	matchID := strings.TrimSuffix(strings.TrimPrefix(path, prefix), suffix)
-	matchID = strings.Trim(matchID, "/")
-	if matchID == "" || strings.Contains(matchID, "/") {
-		return "", false
-	}
-	return matchID, true
 }
 
 func (h *Handler) authenticate(r *http.Request) (tokenClaims, error) {
@@ -1626,47 +1648,6 @@ func writeJSON(w http.ResponseWriter, status int, payload map[string]any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(payload)
-}
-
-func matchHandoffCancelID(path string) (string, bool) {
-	const prefix = "/api/pvp/matches/"
-	const suffix = "/cancel-starting"
-	if !strings.HasPrefix(path, prefix) || !strings.HasSuffix(path, suffix) {
-		return "", false
-	}
-	matchID := strings.TrimSuffix(strings.TrimPrefix(path, prefix), suffix)
-	matchID = strings.Trim(matchID, "/")
-	if matchID == "" || strings.Contains(matchID, "/") {
-		return "", false
-	}
-	return matchID, true
-}
-
-func matchReadyID(path string) (string, bool) {
-	const prefix = "/api/pvp/matches/"
-	const suffix = "/ready"
-	if !strings.HasPrefix(path, prefix) || !strings.HasSuffix(path, suffix) {
-		return "", false
-	}
-	matchID := strings.TrimSuffix(strings.TrimPrefix(path, prefix), suffix)
-	matchID = strings.Trim(matchID, "/")
-	if matchID == "" || strings.Contains(matchID, "/") {
-		return "", false
-	}
-	return matchID, true
-}
-
-func challengeResolutionPath(path string) (string, string, bool) {
-	const prefix = "/api/pvp/challenges/"
-	if !strings.HasPrefix(path, prefix) {
-		return "", "", false
-	}
-	rest := strings.TrimPrefix(path, prefix)
-	parts := strings.Split(rest, "/")
-	if len(parts) != 2 || parts[0] == "" || (parts[1] != "cancel" && parts[1] != "decline") {
-		return "", "", false
-	}
-	return parts[0], parts[1], true
 }
 
 func nullableStamp(value time.Time) any {

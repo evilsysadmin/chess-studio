@@ -9,6 +9,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/pvproute"
 )
 
 const serviceName = "chess-studio-pvp-go"
@@ -128,56 +130,62 @@ func New(cfg Config) (*Handler, error) {
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	switch {
-	case r.URL.Path == "/healthz":
+	switch r.URL.Path {
+	case "/healthz":
 		h.health(w)
-	case r.URL.Path == "/readyz" || r.URL.Path == "/api/pvp/_edge/ready":
+		return
+	case "/readyz", "/api/pvp/_edge/ready":
 		h.ready(w, r)
-	case r.URL.Path == "/api/pvp/lobby" && h.nativeLobbyRead != nil:
-		w.Header().Set("X-Chess-Pvp-Edge", "go")
-		h.nativeLobbyRead.ServeHTTP(w, r)
-	case r.URL.Path == "/api/pvp/lobby/pulse" || isMatchPulsePath(r.URL.Path):
-		if h.nativePulse == nil {
-			http.NotFound(w, r)
-			return
-		}
-		w.Header().Set("X-Chess-Pvp-Edge", "go")
-		h.nativePulse.ServeHTTP(w, r)
-	case r.URL.Path == "/api/pvp/roster" && h.nativeRoster != nil:
-		w.Header().Set("X-Chess-Pvp-Edge", "go")
-		h.nativeRoster.ServeHTTP(w, r)
-	case r.URL.Path == "/api/pvp/lobby/chat" && h.nativeChat != nil:
-		w.Header().Set("X-Chess-Pvp-Edge", "go")
-		h.nativeChat.ServeHTTP(w, r)
-	case r.URL.Path == "/api/pvp/challenges" && h.nativeChallengeCreate != nil:
-		w.Header().Set("X-Chess-Pvp-Edge", "go")
-		h.nativeChallengeCreate.ServeHTTP(w, r)
-	case isChallengeAcceptPath(r.URL.Path) && h.nativeChallengeAccept != nil:
-		w.Header().Set("X-Chess-Pvp-Edge", "go")
-		h.nativeChallengeAccept.ServeHTTP(w, r)
-	case isChallengeResolutionPath(r.URL.Path) && h.nativeChallengeResolution != nil:
-		w.Header().Set("X-Chess-Pvp-Edge", "go")
-		h.nativeChallengeResolution.ServeHTTP(w, r)
-	case isMatchHandoffCancelPath(r.URL.Path) && h.nativeMatchHandoffCancel != nil:
-		w.Header().Set("X-Chess-Pvp-Edge", "go")
-		h.nativeMatchHandoffCancel.ServeHTTP(w, r)
-	case isMatchReadyPath(r.URL.Path) && h.nativeMatchReady != nil:
-		w.Header().Set("X-Chess-Pvp-Edge", "go")
-		h.nativeMatchReady.ServeHTTP(w, r)
-	case isMatchResignPath(r.URL.Path) && h.nativeMatchResign != nil:
-		w.Header().Set("X-Chess-Pvp-Edge", "go")
-		h.nativeMatchResign.ServeHTTP(w, r)
-	case isMatchMovePath(r.URL.Path) && h.nativeMatchMove != nil:
-		w.Header().Set("X-Chess-Pvp-Edge", "go")
-		h.nativeMatchMove.ServeHTTP(w, r)
-	case isMatchReadPath(r.URL.Path) && h.nativeMatchRead != nil:
-		w.Header().Set("X-Chess-Pvp-Edge", "go")
-		h.nativeMatchRead.ServeHTTP(w, r)
-	case r.URL.Path == "/api/pvp" || strings.HasPrefix(r.URL.Path, "/api/pvp/"):
-		h.proxy.ServeHTTP(w, r)
-	default:
-		http.NotFound(w, r)
+		return
 	}
+	route := pvproute.Match(r.URL.Path)
+	if native := h.nativeFor(route.Kind); native != nil {
+		w.Header().Set("X-Chess-Pvp-Edge", "go")
+		native.ServeHTTP(w, r)
+		return
+	}
+	if route.Kind == pvproute.LobbyPulse || route.Kind == pvproute.MatchPulse {
+		// The pulse has no Python equivalent: disabled means absent.
+		http.NotFound(w, r)
+		return
+	}
+	if r.URL.Path == "/api/pvp" || strings.HasPrefix(r.URL.Path, "/api/pvp/") {
+		h.proxy.ServeHTTP(w, r)
+		return
+	}
+	http.NotFound(w, r)
+}
+
+// nativeFor returns the Go handler for a route, or nil when that route's
+// kill-switch is off and the request must go to the Python upstream.
+func (h *Handler) nativeFor(kind pvproute.Kind) http.Handler {
+	switch kind {
+	case pvproute.LobbyRead:
+		return h.nativeLobbyRead
+	case pvproute.LobbyPulse, pvproute.MatchPulse:
+		return h.nativePulse
+	case pvproute.LobbyChat:
+		return h.nativeChat
+	case pvproute.Roster:
+		return h.nativeRoster
+	case pvproute.ChallengeCreate:
+		return h.nativeChallengeCreate
+	case pvproute.ChallengeAccept:
+		return h.nativeChallengeAccept
+	case pvproute.ChallengeCancel, pvproute.ChallengeDecline:
+		return h.nativeChallengeResolution
+	case pvproute.MatchHandoffCancel:
+		return h.nativeMatchHandoffCancel
+	case pvproute.MatchReady:
+		return h.nativeMatchReady
+	case pvproute.MatchResign:
+		return h.nativeMatchResign
+	case pvproute.MatchMove:
+		return h.nativeMatchMove
+	case pvproute.MatchRead:
+		return h.nativeMatchRead
+	}
+	return nil
 }
 
 func (h *Handler) health(w http.ResponseWriter) {
@@ -271,89 +279,4 @@ func Shutdown(ctx context.Context, server *http.Server) error {
 		return nil
 	}
 	return server.Shutdown(ctx)
-}
-
-func isMatchPulsePath(path string) bool {
-	const prefix = "/api/pvp/matches/"
-	const suffix = "/pulse"
-	if !strings.HasPrefix(path, prefix) || !strings.HasSuffix(path, suffix) {
-		return false
-	}
-	matchID := strings.TrimSuffix(strings.TrimPrefix(path, prefix), suffix)
-	matchID = strings.Trim(matchID, "/")
-	return matchID != "" && !strings.Contains(matchID, "/")
-}
-
-func isChallengeAcceptPath(path string) bool {
-	const prefix = "/api/pvp/challenges/"
-	const suffix = "/accept"
-	if !strings.HasPrefix(path, prefix) || !strings.HasSuffix(path, suffix) {
-		return false
-	}
-	challengeID := strings.TrimSuffix(strings.TrimPrefix(path, prefix), suffix)
-	challengeID = strings.Trim(challengeID, "/")
-	return challengeID != "" && !strings.Contains(challengeID, "/")
-}
-
-func isChallengeResolutionPath(path string) bool {
-	const prefix = "/api/pvp/challenges/"
-	if !strings.HasPrefix(path, prefix) {
-		return false
-	}
-	rest := strings.TrimPrefix(path, prefix)
-	parts := strings.Split(rest, "/")
-	return len(parts) == 2 && parts[0] != "" && (parts[1] == "cancel" || parts[1] == "decline")
-}
-
-func isMatchMovePath(path string) bool {
-	const prefix = "/api/pvp/matches/"
-	const suffix = "/move"
-	if !strings.HasPrefix(path, prefix) || !strings.HasSuffix(path, suffix) {
-		return false
-	}
-	matchID := strings.TrimSuffix(strings.TrimPrefix(path, prefix), suffix)
-	matchID = strings.Trim(matchID, "/")
-	return matchID != "" && !strings.Contains(matchID, "/")
-}
-
-func isMatchReadPath(path string) bool {
-	const prefix = "/api/pvp/matches/"
-	if !strings.HasPrefix(path, prefix) {
-		return false
-	}
-	matchID := strings.TrimPrefix(path, prefix)
-	return matchID != "" && !strings.Contains(matchID, "/")
-}
-
-func isMatchResignPath(path string) bool {
-	const prefix = "/api/pvp/matches/"
-	const suffix = "/resign"
-	if !strings.HasPrefix(path, prefix) || !strings.HasSuffix(path, suffix) {
-		return false
-	}
-	matchID := strings.TrimSuffix(strings.TrimPrefix(path, prefix), suffix)
-	matchID = strings.Trim(matchID, "/")
-	return matchID != "" && !strings.Contains(matchID, "/")
-}
-
-func isMatchHandoffCancelPath(path string) bool {
-	const prefix = "/api/pvp/matches/"
-	const suffix = "/cancel-starting"
-	if !strings.HasPrefix(path, prefix) || !strings.HasSuffix(path, suffix) {
-		return false
-	}
-	matchID := strings.TrimSuffix(strings.TrimPrefix(path, prefix), suffix)
-	matchID = strings.Trim(matchID, "/")
-	return matchID != "" && !strings.Contains(matchID, "/")
-}
-
-func isMatchReadyPath(path string) bool {
-	const prefix = "/api/pvp/matches/"
-	const suffix = "/ready"
-	if !strings.HasPrefix(path, prefix) || !strings.HasSuffix(path, suffix) {
-		return false
-	}
-	matchID := strings.TrimSuffix(strings.TrimPrefix(path, prefix), suffix)
-	matchID = strings.Trim(matchID, "/")
-	return matchID != "" && !strings.Contains(matchID, "/")
 }

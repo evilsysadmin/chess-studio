@@ -372,17 +372,3 @@ func writeMovePrepareError(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusInternalServerError, map[string]any{"detail": "No se pudo validar la jugada 1v1."})
 	}
 }
-
-func matchMoveID(path string) (string, bool) {
-	const prefix = "/api/pvp/matches/"
-	const suffix = "/move"
-	if !strings.HasPrefix(path, prefix) || !strings.HasSuffix(path, suffix) {
-		return "", false
-	}
-	matchID := strings.TrimSuffix(strings.TrimPrefix(path, prefix), suffix)
-	matchID = strings.Trim(matchID, "/")
-	if matchID == "" || strings.Contains(matchID, "/") {
-		return "", false
-	}
-	return matchID, true
-}
