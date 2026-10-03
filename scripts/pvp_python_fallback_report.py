@@ -4,8 +4,9 @@
 Every public /api/pvp route has a native Go handler behind the pvp-edge. A
 request that FastAPI still records under an /api/pvp route therefore went
 through the Python compatibility fallback (a kill-switch was off, or the edge
-proxied it). The only Python PvP route that is expected to see traffic is the
-internal resident move oracle.
+proxied it). That includes the internal resident move oracle: Go chooses
+resident moves natively and only calls it when PVP_NATIVE_RESIDENT_MOVE_ENABLED
+is off.
 
 This is the evidence gate for retiring the Python fallback: the report reads
 `chess_studio_http_server_requests_total` from Grafana (the same read-only API
@@ -32,7 +33,6 @@ SERVICES = {
     "chess-studio-backend": "production",
     "chess-studio-backend-staging": "staging",
 }
-EXPECTED_PYTHON_PVP_ROUTES = ("/api/pvp/_internal/resident-move",)
 
 
 def _window_seconds(raw: str) -> int:
@@ -48,12 +48,7 @@ def _window_seconds(raw: str) -> int:
 
 def fallback_query(window_seconds: int) -> str:
     services = "|".join(sorted(SERVICES))
-    excluded = "|".join(EXPECTED_PYTHON_PVP_ROUTES)
-    selector = (
-        f'service_name=~"{services}",'
-        f'http_route=~"/api/pvp.*",'
-        f'http_route!~"{excluded}"'
-    )
+    selector = f'service_name=~"{services}",http_route=~"/api/pvp.*"'
     return (
         "sum by (service_name, http_route, http_response_status_class) "
         f"(increase(chess_studio_http_server_requests_total{{{selector}}}[{window_seconds}s]))"
@@ -107,7 +102,7 @@ def markdown(rows: list[dict], window: str) -> str:
 def self_test() -> int:
     query = fallback_query(14 * 86400)
     assert 'http_route=~"/api/pvp.*"' in query
-    assert 'http_route!~"/api/pvp/_internal/resident-move"' in query
+    assert "resident-move" not in query  # the oracle is a fallback too
     assert 'service_name=~"chess-studio-backend|chess-studio-backend-staging"' in query
     assert "[1209600s]" in query
     assert _window_seconds("14d") == 1209600
