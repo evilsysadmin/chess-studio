@@ -15,9 +15,12 @@ import (
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/challengeaccept"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/challengecreate"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/edge"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/gamesapi"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/gamestore"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/matchdisconnect"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/matchresign"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/matchtimeout"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/presence"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/pulse"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/pvprating"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/residentmove"
@@ -42,6 +45,9 @@ func main() {
 	matchReadEnabled := envBool("PVP_NATIVE_MATCH_READ_ENABLED", false)
 	matchMoveEnabled := envBool("PVP_NATIVE_MATCH_MOVE_ENABLED", false)
 	nativeResidentMoveEnabled := envBool("PVP_NATIVE_RESIDENT_MOVE_ENABLED", false)
+	// Games vs the CPU: reads and delete. Only reachable when the nginx edge
+	// sends non-PvP API traffic to Go (api "go" mode).
+	gamesReadEnabled := envBool("GO_NATIVE_GAMES_READ_ENABLED", false)
 	virtualPlayersEnabled := envBool("CHESS_PVP_SPARRING_ENABLED", false)
 	// The staging owner whose private sparring rivals exist is deployment
 	// configuration, never a value baked into the binary.
@@ -61,8 +67,9 @@ func main() {
 	var nativeMatchResign http.Handler
 	var nativeMatchRead http.Handler
 	var nativeMatchMove http.Handler
+	var nativeGamesRead http.Handler
 	var mongoStore *pulse.MongoStore
-	if pulseEnabled || lobbyReadEnabled || rosterEnabled || chatEnabled || challengeResolutionEnabled || challengeAcceptEnabled || challengeCreateEnabled || matchHandoffCancelEnabled || matchReadyEnabled || matchResignEnabled || matchReadEnabled || matchMoveEnabled {
+	if pulseEnabled || lobbyReadEnabled || rosterEnabled || chatEnabled || challengeResolutionEnabled || challengeAcceptEnabled || challengeCreateEnabled || matchHandoffCancelEnabled || matchReadyEnabled || matchResignEnabled || matchReadEnabled || matchMoveEnabled || gamesReadEnabled {
 		mongoURL := strings.TrimSpace(os.Getenv("MONGO_URL"))
 		mongoDatabase := strings.TrimSpace(os.Getenv("MONGO_DB_NAME"))
 		jwtSecret := strings.TrimSpace(os.Getenv("JWT_SECRET"))
@@ -169,6 +176,19 @@ func main() {
 		if pulseEnabled {
 			nativePulse = pulseHandler
 		}
+		if gamesReadEnabled {
+			gamesHandler, err := gamesapi.New(gamesapi.Config{
+				Store:          gamestore.New(store.Database(), envDurationMS("GAMES_MONGO_TIMEOUT_MS", 2000*time.Millisecond)),
+				Accounts:       store,
+				Presence:       presence.New(store.Database(), telemetry.ConfigFromEnv(os.LookupEnv).TrustCloudflare, 2*time.Second),
+				JWTSecret:      jwtSecret,
+				AllowedOrigins: splitCSV(os.Getenv("CORS_ORIGINS")),
+			})
+			if err != nil {
+				log.Fatalf("native games API: %v", err)
+			}
+			nativeGamesRead = gamesHandler
+		}
 		if lobbyReadEnabled {
 			nativeLobbyRead = pulseHandler
 		}
@@ -243,6 +263,7 @@ func main() {
 		NativeMatchResign:         nativeMatchResign,
 		NativeMatchRead:           nativeMatchRead,
 		NativeMatchMove:           nativeMatchMove,
+		NativeGamesRead:           nativeGamesRead,
 		VirtualPlayersEnabled:     virtualPlayersEnabled,
 		NativeResidentMove:        matchMoveEnabled && nativeResidentMoveEnabled,
 		ReadyChecks:               readyChecks,
@@ -270,7 +291,7 @@ func main() {
 		}
 	}()
 
-	log.Printf("pvp-go listening on :%s -> %s native_pulse=%t native_lobby_read=%t native_roster=%t native_chat=%t native_challenge_resolution=%t native_challenge_accept=%t native_challenge_create=%t native_match_handoff_cancel=%t native_match_ready=%t native_match_resign=%t native_match_read=%t native_match_move=%t native_resident_move=%t", port, upstream, nativePulse != nil, nativeLobbyRead != nil, nativeRoster != nil, nativeChat != nil, nativeChallengeResolution != nil, nativeChallengeAccept != nil, nativeChallengeCreate != nil, nativeMatchHandoffCancel != nil, nativeMatchReady != nil, nativeMatchResign != nil, nativeMatchRead != nil, nativeMatchMove != nil, nativeResidentMoveEnabled)
+	log.Printf("pvp-go listening on :%s -> %s native_pulse=%t native_lobby_read=%t native_roster=%t native_chat=%t native_challenge_resolution=%t native_challenge_accept=%t native_challenge_create=%t native_match_handoff_cancel=%t native_match_ready=%t native_match_resign=%t native_match_read=%t native_match_move=%t native_resident_move=%t native_games_read=%t", port, upstream, nativePulse != nil, nativeLobbyRead != nil, nativeRoster != nil, nativeChat != nil, nativeChallengeResolution != nil, nativeChallengeAccept != nil, nativeChallengeCreate != nil, nativeMatchHandoffCancel != nil, nativeMatchReady != nil, nativeMatchResign != nil, nativeMatchRead != nil, nativeMatchMove != nil, nativeResidentMoveEnabled, nativeGamesRead != nil)
 	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatalf("pvp edge serve: %v", err)
 	}

@@ -173,6 +173,26 @@ func (s *Store) GetForOwner(ctx context.Context, id, owner string) (Game, bool, 
 	})
 }
 
+// GetDocumentForOwner is GetForOwner without the typed decode: reads must see
+// a damaged document as Python does (a 409 from load_board), not fail to
+// decode it into Game and look like an unavailable database.
+func (s *Store) GetDocumentForOwner(ctx context.Context, id, owner string) (bson.M, bool, error) {
+	c, cancel := s.ctx(ctx)
+	defer cancel()
+	var doc bson.M
+	err := s.col.FindOne(c, bson.D{
+		{Key: "_id", Value: id},
+		{Key: "$or", Value: bson.A{bson.D{{Key: "owner", Value: owner}}, bson.D{{Key: "owner", Value: nil}}}},
+	}).Decode(&doc)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return nil, false, nil
+	}
+	if err != nil {
+		return nil, false, unavailable(err)
+	}
+	return doc, true, nil
+}
+
 // summaryRow decodes only the projected fields; difficulty and humanColor
 // keep Python's row.get() semantics (missing -> null).
 type summaryRow struct {
