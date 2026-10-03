@@ -2,7 +2,6 @@ import { getBoardRenderer } from '../userPreferences.js';
 import { preloadBoard3DRenderer } from './Board3DRegistration.js';
 import { loadWarRoomVariant, prefetchWarRoomVariant } from './WarRoomVariant.js';
 
-const MOBILE_PRELOAD_MAX_WIDTH = 900;
 const SLOW_EFFECTIVE_TYPES = new Set(['slow-2g', '2g']);
 
 export function shouldPreloadWarRoomFromHome({
@@ -19,13 +18,10 @@ export function shouldPreloadWarRoomFromHome({
   if (connection?.saveData) return false;
   if (SLOW_EFFECTIVE_TYPES.has(String(connection?.effectiveType || '').toLowerCase())) return false;
 
-  const coarsePointer = typeof windowRef.matchMedia === 'function'
-    && windowRef.matchMedia('(pointer: coarse)').matches;
-  const touchDevice = Number(navigatorRef?.maxTouchPoints || 0) > 0;
-  const width = Number(windowRef.innerWidth || 0);
-  const narrowViewport = width > 0 && width <= MOBILE_PRELOAD_MAX_WIDTH;
-
-  return coarsePointer || touchDevice || narrowViewport;
+  // The War Room is the default play surface on desktop as well as mobile.
+  // Once authenticated Home is visible, warm the 3D path on every capable
+  // device unless the user explicitly chose 2D or asked us to conserve data.
+  return true;
 }
 
 export async function preloadPreferredWarRoomFromHome(options = {}) {
@@ -47,8 +43,8 @@ export function schedulePreferredWarRoomHomePreload({
   documentRef = globalThis.document,
   navigatorRef = globalThis.navigator,
   boardRenderer = getBoardRenderer(),
-  idleTimeout = 2500,
-  fallbackDelay = 700,
+  idleTimeout = 900,
+  fallbackDelay = 250,
 } = {}) {
   const options = { windowRef, documentRef, navigatorRef, boardRenderer };
   if (!shouldPreloadWarRoomFromHome(options)) return () => {};

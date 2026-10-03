@@ -42,7 +42,7 @@ describe('authenticated Home War Room preload', () => {
     prefetchWarRoomVariant.mockReset().mockResolvedValue(true);
   });
 
-  it('waits for mobile Home idle, then warms shared Board3D and the selected room', async () => {
+  it('waits for Home idle, then warms shared Board3D and the selected room', async () => {
     let idleCallback = null;
     const windowRef = mobileWindow({
       requestIdleCallback: vi.fn((callback) => {
@@ -55,7 +55,7 @@ describe('authenticated Home War Room preload', () => {
 
     const cancel = schedulePreferredWarRoomHomePreload({ windowRef, documentRef, navigatorRef });
 
-    expect(windowRef.requestIdleCallback).toHaveBeenCalledWith(expect.any(Function), { timeout: 2500 });
+    expect(windowRef.requestIdleCallback).toHaveBeenCalledWith(expect.any(Function), { timeout: 900 });
     expect(preloadBoard3DRenderer).not.toHaveBeenCalled();
 
     idleCallback();
@@ -85,7 +85,7 @@ describe('authenticated Home War Room preload', () => {
     })).toBe(false);
   });
 
-  it('keeps desktop Home on the old lazy boundary', () => {
+  it('warms the 3D path on desktop instead of entering the War Room cold', () => {
     expect(shouldPreloadWarRoomFromHome({
       windowRef: mobileWindow({
         innerWidth: 1440,
@@ -94,7 +94,7 @@ describe('authenticated Home War Room preload', () => {
       documentRef: { visibilityState: 'visible' },
       navigatorRef: { maxTouchPoints: 0, connection: { effectiveType: '4g', saveData: false } },
       boardRenderer: '3d',
-    })).toBe(false);
+    })).toBe(true);
   });
 
   it('uses a short timer when requestIdleCallback is unavailable', async () => {
@@ -103,7 +103,7 @@ describe('authenticated Home War Room preload', () => {
       requestIdleCallback: undefined,
       setTimeout: vi.fn((callback, delay) => {
         timerCallback = callback;
-        expect(delay).toBe(700);
+        expect(delay).toBe(250);
         return 23;
       }),
     });
