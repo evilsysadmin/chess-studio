@@ -105,6 +105,12 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
     setBootstrapRevision((revision) => revision + 1);
   }, []);
 
+  const finishExpedition = useCallback(() => {
+    if (!activeRunIdRef.current) return;
+    finishChroniclesTacticsRun(activeRunIdRef.current);
+    activeRunIdRef.current = null;
+  }, []);
+
   const restartExpedition = useCallback(() => {
     if (activeRunIdRef.current) {
       finishChroniclesTacticsRun(activeRunIdRef.current);
@@ -179,6 +185,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
         key={bootstrapRevision}
         authoritativeRun={bootstrapWorld}
         onExit={exitChronicles}
+        onFinishRun={finishExpedition}
         onRestartRun={restartExpedition}
       />
     </Suspense>

@@ -54,7 +54,8 @@ Lección operativa: no resolver falsos positivos de CI debilitando el gate a cie
 | `pr-track-label.yml` | GP-0 (#34): toda PR lleva etiqueta de pista (`ux-mobile`/`ux-desktop`/`ux-claude`/`track-*`) o falla `Contracts · PR track label`. Se re-evalúa en `labeled`/`unlabeled` sin relanzar el CI completo; sparse checkout de un único script. Debe figurar como required check de `main`. |
 | `main-admission.yml` | Clasifica el HEAD de `main`. Si procede de PR, reutiliza la acreditación Quality inmutable y hace preflight barato; si es un commit directo excepcional, ejecuta tests, security, Playwright, imágenes Docker y compose smoke sobre el SHA exacto. Sólo un run verde habilita staging. |
 | `menu-ux-audit.yml` | Auditoría visual manual/efímera de menús y superficies intermedias. Captura desktop+móvil y emite PNG/JSON de densidad, overflow y targets; no es gate requerido ni corre en cada PR. |
-| `staging-deploy.yml` | Despliega una generación coherente del mismo SHA: backend exacto en **OCI staging**, frontend en Cloudflare Pages y AI en Cloudflare Worker; después exige paridad de generación y browser smoke. No consulta Render staging para desplegar el backend. |
+| `staging-deploy.yml` | Despliega una generación coherente del mismo SHA: backend exacto en **OCI staging**, frontend en Cloudflare Pages y AI en Cloudflare Worker; después exige paridad de generación y browser smoke. No consulta Render staging para desplegar el backend y no repite un segundo deploy blue/green dentro del camino crítico. |
+| `staging-deploy-continuity.yml` | Drill post-deploy de continuidad de partida durante un switch blue/green. Se dispara tras un staging verde sólo cuando cambian backend/runtime/deploy; cambios frontend-only lo omiten. Sigue disponible manualmente para drills explícitos. |
 | `staging-ai-worker.yml` | Revalida/acredita la generación de staging ya desplegada y emite la acreditación inmutable que permite promoción. El nombre se conserva por el contrato `workflow_run` existente. |
 | `production-promote.yml` | Promueve sólo un SHA acreditado. Worker Terraform `plan/apply` permanece aquí; el backend se selecciona mediante el interruptor versionado `.github/production-deploy.env` (`render|oci`) y el helper de ruta posee el CNAME del API. Pages continúa después sobre el mismo SHA. |
 | `production-rollback.yml` | Rollback manual a un SHA conocido. Blast radius distinto: no fusionar con promote. |
@@ -132,6 +133,8 @@ Deploy to staging
  │
  ├─ generation parity
  └─ browser smoke
+ │
+ ├─ post-deploy continuity drill (sólo backend/runtime/deploy)
  │
  ▼
 Staging · AI Worker / accreditation

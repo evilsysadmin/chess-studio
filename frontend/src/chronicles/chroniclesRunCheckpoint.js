@@ -196,6 +196,15 @@ function applyRuntimeCheckpoint(state, flags) {
   });
   if (restoredEnemyPosition) next.enemyPositions = enemyPositions;
 
+  if (
+    Array.isArray(next.party)
+    && next.party.length > 0
+    && next.party.every((member) => Number(member.hp || 0) <= 0)
+  ) {
+    next.phase = 'defeated';
+    next.turnPhase = 'party';
+  }
+
   return next;
 }
 
@@ -214,10 +223,20 @@ export function chroniclesWorldFlagsForCheckpoint(state) {
   };
 }
 
-export function chroniclesRunCheckpointPayload(state, worldVersion) {
+export function chroniclesRunCheckpointPayload(state, worldVersion, { terminalStatus = null } = {}) {
   if (!state?.mapId) throw new Error('Chronicles checkpoint requires a current map');
   if (!Number.isInteger(worldVersion) || worldVersion < 0) {
     throw new Error('Chronicles checkpoint requires a non-negative worldVersion');
+  }
+  const requestedTerminalStatus = terminalStatus || (state.phase === 'defeated' ? 'defeated' : null);
+  if (requestedTerminalStatus && !['completed', 'defeated'].includes(requestedTerminalStatus)) {
+    throw new Error('Chronicles checkpoint terminalStatus is invalid');
+  }
+  if (requestedTerminalStatus === 'completed' && state.phase !== 'escaped') {
+    throw new Error('Chronicles completed checkpoint requires escaped phase');
+  }
+  if (requestedTerminalStatus === 'defeated' && state.phase !== 'defeated') {
+    throw new Error('Chronicles defeated checkpoint requires defeated phase');
   }
   return Object.freeze({
     expectedWorldVersion: worldVersion,
@@ -227,6 +246,7 @@ export function chroniclesRunCheckpointPayload(state, worldVersion) {
     quests: normalizedQuests(state.quests),
     consumedContentIds: normalizedLedger(state.consumedContentIds),
     claimedRewards: normalizedLedger(state.claimedRewards),
+    ...(requestedTerminalStatus ? { terminalStatus: requestedTerminalStatus } : {}),
   });
 }
 
@@ -241,7 +261,11 @@ export function chroniclesApplyRunCheckpoint(state, run) {
     consumedContentIds: normalizedLedger(run.consumedContentIds),
     claimedRewards: normalizedLedger(run.claimedRewards),
   };
-  return applyRuntimeCheckpoint(durable, worldFlags);
+  const restored = applyRuntimeCheckpoint(durable, worldFlags);
+  const runStatus = run.runStatus || run.status || 'active';
+  if (runStatus === 'completed') return { ...restored, phase: 'escaped' };
+  if (runStatus === 'defeated') return { ...restored, phase: 'defeated', turnPhase: 'party' };
+  return restored;
 }
 
 export function chroniclesRunCheckpointFingerprint(state) {
@@ -254,5 +278,6 @@ export function chroniclesRunCheckpointFingerprint(state) {
     quests: payload.quests,
     consumedContentIds: payload.consumedContentIds,
     claimedRewards: payload.claimedRewards,
+    terminalStatus: payload.terminalStatus || null,
   });
 }

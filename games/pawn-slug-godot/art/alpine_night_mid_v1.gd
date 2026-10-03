@@ -1,0 +1,2 @@
+extends RefCounted
+const PARTS := [preload("res://art/alpine_night_mid_v1_part0.gd"), preload("res://art/alpine_night_mid_v1_part1.gd"), preload("res://art/alpine_night_mid_v1_part2.gd"), preload("res://art/alpine_night_mid_v1_part3.gd"), preload("res://art/alpine_night_mid_v1_part4.gd"), preload("res://art/alpine_night_mid_v1_part5.gd"), preload("res://art/alpine_night_mid_v1_part6.gd"), preload("res://art/alpine_night_mid_v1_part7.gd"), preload("res://art/alpine_night_mid_v1_part8.gd"), preload("res://art/alpine_night_mid_v1_part9.gd")]

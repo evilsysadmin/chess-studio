@@ -1,5 +1,12 @@
 name: Operations · live-game deploy continuity
 on:
+  workflow_run:
+    workflows:
+      - Deploy to staging
+    types:
+      - completed
+    branches:
+      - main
   workflow_dispatch:
   workflow_call:
     inputs:
@@ -16,15 +23,65 @@ concurrency:
   cancel-in-progress: true
 env:
   STAGING_API_URL: https://api-staging.chess-studio.shadowops.dpdns.org/api
-  TARGET_SHA: ${{ inputs.deploy_sha || github.sha }}
+  TARGET_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || inputs.deploy_sha || github.sha }}
 
 jobs:
+  scope:
+    name: Continuity drill · scope
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    outputs:
+      required: ${{ steps.scope.outputs.required }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TARGET_SHA }}
+          fetch-depth: 2
+      - id: scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$TARGET_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo '::error::TARGET_SHA inválido'; exit 2; }
+          if [[ "$GITHUB_EVENT_NAME" != workflow_run ]]; then
+            echo 'required=true' >> "$GITHUB_OUTPUT"
+            echo 'Continuity drill manual/reusable: ejecución explícita.'
+            exit 0
+          fi
+          current_main="$(git ls-remote origin refs/heads/main | awk 'NR == 1 {print $1}')"
+          if [[ "$current_main" != "$TARGET_SHA" ]]; then
+            echo 'required=false' >> "$GITHUB_OUTPUT"
+            echo "::notice title=Continuity superseded::$TARGET_SHA ya no es main ($current_main)."
+            exit 0
+          fi
+          parent="$(git rev-parse "$TARGET_SHA^1")"
+          changed="$(git diff --name-only "$parent" "$TARGET_SHA")"
+          required=false
+          while IFS= read -r path; do
+            case "$path" in
+              backend-python/*|backend-go/*|infra/oci/runtime/*|scripts/oci_*|scripts/staging_deploy_continuity_probe.py|scripts/verify_backend_staging.py|scripts/staging_release_identity.py|.github/workflows/staging-deploy.yml|.github/workflows/staging-deploy-continuity.yml|.github/workflows/main-backend-image.yml)
+                required=true
+                break
+                ;;
+            esac
+          done <<< "$changed"
+          echo "required=$required" >> "$GITHUB_OUTPUT"
+          if [[ "$required" == true ]]; then
+            echo 'Continuity drill requerido: cambió backend/runtime/deploy.'
+          else
+            echo '::notice title=Continuity skipped::Sin cambios backend/runtime/blue-green; staging ya quedó acreditado por paridad + browser smoke.'
+          fi
+
   contracts:
+    needs: scope
+    if: needs.scope.outputs.required == 'true'
     name: Continuity drill · contracts
     runs-on: ubuntu-24.04
     timeout-minutes: 3
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TARGET_SHA }}
       - run: python3 -S scripts/staging_deploy_continuity_probe.py --self-test
 
   wait:
@@ -37,6 +94,8 @@ jobs:
       admitted: ${{ steps.convergence.outputs.admitted }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TARGET_SHA }}
       - id: target
         shell: bash
         run: |
@@ -49,7 +108,9 @@ jobs:
         run: |
           set -euo pipefail
           echo 'admitted=false' >> "$GITHUB_OUTPUT"
-          for attempt in {1..180}; do
+          attempts=180
+          [[ "$GITHUB_EVENT_NAME" == workflow_run ]] && attempts=12
+          for attempt in $(seq 1 "$attempts"); do
             body="$RUNNER_TEMP/release-$attempt.json"
             status="$(curl --silent --show-error --connect-timeout 3 --max-time 8 \
               --output "$body" --write-out '%{http_code}' \
@@ -65,9 +126,9 @@ jobs:
               echo "Exact staging generation ready: $TARGET_SHA"
               exit 0
             fi
-            sleep 5
+            [[ "$attempt" -eq "$attempts" ]] || sleep 5
           done
-          echo "::error::staging never served exact SHA $TARGET_SHA"
+          echo "::error::staging never served exact SHA $TARGET_SHA after $attempts checks"
           exit 1
 
   drill:

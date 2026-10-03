@@ -80,12 +80,22 @@ pvp_sparring_owner="${CHESS_PVP_SPARRING_OWNER:-evilsysadmin}"
 # which serves what is native and forwards the rest to Python. Versioned here
 # per target so enabling or reverting it is a reviewed one-line change.
 case "$target" in
-  staging) api_edge_mode="${CHESS_STUDIO_API_EDGE_MODE:-direct}" ;;
+  staging) api_edge_mode="${CHESS_STUDIO_API_EDGE_MODE:-go}" ;;
   *) api_edge_mode="${CHESS_STUDIO_API_EDGE_MODE:-direct}" ;;
 esac
 case "$api_edge_mode" in
   direct|go) ;;
   *) echo "invalid CHESS_STUDIO_API_EDGE_MODE: $api_edge_mode" >&2; exit 2 ;;
+esac
+# Native Go routes for games vs the CPU (GET/DELETE /api/games*). They only
+# receive traffic in API "go" mode; staging first, production stays off.
+case "$target" in
+  staging) go_native_games_read="${CHESS_STUDIO_GO_NATIVE_GAMES_READ_ENABLED:-true}" ;;
+  *) go_native_games_read="${CHESS_STUDIO_GO_NATIVE_GAMES_READ_ENABLED:-false}" ;;
+esac
+case "${go_native_games_read,,}" in
+  true|false) go_native_games_read="${go_native_games_read,,}" ;;
+  *) echo "invalid CHESS_STUDIO_GO_NATIVE_GAMES_READ_ENABLED: $go_native_games_read" >&2; exit 2 ;;
 esac
 pvp_sparring_username="${CHESS_PVP_SPARRING_USERNAME:-sparringmeister}"
 
@@ -253,6 +263,7 @@ compose() {
   CHESS_STUDIO_STATE_DIR="$state_dir" \
   CHESS_STUDIO_TRUST_CLOUDFLARE_CLIENT_IP="true" \
   CHESS_PVP_SPARRING_ENABLED="$pvp_sparring_enabled" \
+  CHESS_STUDIO_GO_NATIVE_GAMES_READ_ENABLED="$go_native_games_read" \
   CHESS_PVP_SPARRING_OWNER="$pvp_sparring_owner" \
   CHESS_PVP_SPARRING_USERNAME="$pvp_sparring_username" \
   CHESS_STUDIO_OCI_LOG_SERVICE_NAME="chess-studio-oci-backend-${target}-stdout" \
@@ -438,7 +449,7 @@ pvp_attest() {
     rm -f "$body"
     return 1
   fi
-  if python3 - "$body" "$pvp_sparring_enabled" "$deployment_target" "$sha" <<'PY'
+  if python3 - "$body" "$pvp_sparring_enabled" "$deployment_target" "$sha" "$go_native_games_read" <<'PY'
 import json
 import pathlib
 import sys
@@ -479,6 +490,7 @@ if (
     or bool(payload.get('nativeMatchRead')) != expected_match_read
     or bool(payload.get('nativeMatchMove')) != expected_match_move
     or bool(payload.get('nativeResidentMove')) != expected_resident_move
+    or bool(payload.get('nativeGamesRead')) != (str(sys.argv[5]).strip().lower() == 'true')
 ):
     raise SystemExit(1)
 
@@ -1118,6 +1130,23 @@ api_edge_attest() {
   return 0
 }
 
+games_native_attest() {
+  # The native games routes answer before auth: an anonymous GET must come
+  # back 401 from Go (X-Chess-Games-Native), never from the Python fallback.
+  local endpoint="$1"
+  local headers status
+  headers="$(mktemp)"
+  if ! status="$(curl --silent --show-error --max-time 8 -D "$headers" -o /dev/null -w "%{http_code}" "$endpoint")"; then
+    rm -f "$headers"
+    return 1
+  fi
+  if [[ "$status" != "401" ]] || ! grep -Eiq "^X-Chess-Games-Native:[[:space:]]*go[[:space:]]*$" "$headers"; then
+    rm -f "$headers"
+    return 1
+  fi
+  rm -f "$headers"
+  return 0
+}
 
 public_tunnel_attest() {
   local expected="$1"
@@ -1661,6 +1690,12 @@ if [[ "$api_edge_mode" == "go" ]] && ! wait_pvp_browser_attest api_edge_attest "
   rollback "$sha" || true
   exit 58
 fi
+if [[ "$api_edge_mode" == "go" && "$go_native_games_read" == "true" ]] && ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/games"; then
+  echo "native games routes did not answer through Go after cutover: color=$candidate_color" >&2
+  compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
+  rollback "$sha" || true
+  exit 59
+fi
 write_active_color "$candidate_color"
 phase_done switch "$switch_started_ms"
 
@@ -1724,5 +1759,5 @@ fi
 agent_diag_summary || printf '%s\n' 'OCI_AGENT_DIAG unavailable'
 phase_done total "$total_started_ms"
 printf 'OCI_DEPLOY_TIMINGS target=%s phases=%s tunnel=%s color=%s\n' "$target" "${deploy_phase_summary%,}" "$tunnel_action" "$candidate_color"
-echo "CHESS_STUDIO_DEPLOY_OK target=$target repo_ref=$sha color=$candidate_color pvp=go api_edge=$api_edge_mode cors_origin=$cors_origin tunnel_action=$tunnel_action image=pulled observability=${observability_summary:-unknown}"
+echo "CHESS_STUDIO_DEPLOY_OK target=$target repo_ref=$sha color=$candidate_color pvp=go api_edge=$api_edge_mode games_native=$go_native_games_read cors_origin=$cors_origin tunnel_action=$tunnel_action image=pulled observability=${observability_summary:-unknown}"
 exit 0
