@@ -99,6 +99,52 @@ def markdown(rows: list[dict], window: str) -> str:
     return "\n".join(lines) + "\n"
 
 
+LOG_SERVICES = {"production": "chess-studio-backend", "staging": "chess-studio-backend-staging"}
+
+
+def breakdown_query(service: str, window_seconds: int) -> str:
+    """Who sends the fallback traffic, from Python's structured access logs.
+
+    peer_ip is the hop right before FastAPI (nginx or the Go sidecar on the
+    Docker network); synthetic_source marks smoke and capacity traffic. User
+    names and client IPs are deliberately left out.
+    """
+    return (
+        "sum by (route, method, peer_ip, synthetic_source) (count_over_time("
+        f'{{service_name="{service}"}} | json | __error__="" | event="http_request" '
+        f'| route=~"/api/pvp.*" [{window_seconds}s]))'
+    )
+
+
+def breakdown_rows(payload: dict) -> list[dict]:
+    data = payload.get("data") if isinstance(payload, dict) else None
+    result = data.get("result") if isinstance(data, dict) else None
+    rows = []
+    for item in result or []:
+        metric = item.get("metric") if isinstance(item, dict) else None
+        value = item.get("value") if isinstance(item, dict) else None
+        if not isinstance(metric, dict) or not isinstance(value, list) or len(value) != 2:
+            continue
+        rows.append({
+            "route": str(metric.get("route") or "?"),
+            "method": str(metric.get("method") or "?"),
+            "peer_ip": str(metric.get("peer_ip") or "-"),
+            "synthetic": str(metric.get("synthetic_source") or "-"),
+            "requests": round(float(value[1])),
+        })
+    rows.sort(key=lambda row: (-row["requests"], row["route"]))
+    return rows
+
+
+def breakdown_markdown(environment: str, rows: list[dict]) -> str:
+    lines = [f"#### Sources · {environment}", ""]
+    if not rows:
+        return "\n".join(lines + ["No matching access logs.", ""]) + "\n"
+    lines += ["| Route | Method | Peer (hop) | Synthetic | Requests |", "| --- | --- | --- | --- | ---: |"]
+    lines += [f"| `{r['route']}` | {r['method']} | {r['peer_ip']} | {r['synthetic']} | {r['requests']} |" for r in rows[:40]]
+    return "\n".join(lines) + "\n"
+
+
 def self_test() -> int:
     query = fallback_query(14 * 86400)
     assert 'http_route=~"/api/pvp.*"' in query
@@ -116,6 +162,13 @@ def self_test() -> int:
     assert rows == [{"environment": "production", "route": "/api/pvp/lobby", "status": "2xx", "requests": 3}], rows
     assert "**3** public PvP requests" in markdown(rows, "14d")
     assert "No public" in markdown([], "14d")
+    bq = breakdown_query("chess-studio-backend-staging", 86400)
+    assert 'route=~"/api/pvp.*"' in bq and "username" not in bq and "client_ip" not in bq
+    brows = breakdown_rows({"data": {"result": [
+        {"metric": {"route": "/api/pvp/lobby", "method": "GET", "peer_ip": "172.18.0.5"}, "value": [0, "12"]},
+    ]}})
+    assert brows == [{"route": "/api/pvp/lobby", "method": "GET", "peer_ip": "172.18.0.5", "synthetic": "-", "requests": 12}]
+    assert "172.18.0.5" in breakdown_markdown("staging", brows)
     print("pvp-python-fallback-report self-test OK")
     return 0
 
@@ -128,6 +181,8 @@ def main() -> int:
     parser.add_argument("--max-requests", type=int, default=None,
                         help="fail when more fallback requests than this were seen")
     parser.add_argument("--summary", default=os.getenv("GITHUB_STEP_SUMMARY", ""))
+    parser.add_argument("--sources", action="store_true",
+                        help="also break the traffic down by hop and synthetic source (Loki)")
     args = parser.parse_args()
 
     window_seconds = _window_seconds(args.window)
@@ -150,6 +205,23 @@ def main() -> int:
     if args.summary:
         with open(args.summary, "a", encoding="utf-8") as handle:
             handle.write(report)
+    if args.sources:
+        preferred_logs = os.getenv("GRAFANA_LOGS_DATASOURCE_UID", "")
+        logs_uid = _resolve_datasource_uid(datasources, preferred_logs, "loki") if datasources is not None else preferred_logs
+        if not logs_uid:
+            fail("missing GRAFANA_LOGS_DATASOURCE_UID")
+        # Loki rejects very long ranges; the source breakdown is about now.
+        log_window = min(window_seconds, 2 * 86400)
+        for environment, service in LOG_SERVICES.items():
+            data = api.get_json(
+                f"/api/datasources/proxy/uid/{urllib.parse.quote(logs_uid, safe='')}/loki/api/v1/query",
+                {"query": breakdown_query(service, log_window), "time": str(int(time.time()))},
+            )
+            section = breakdown_markdown(environment, breakdown_rows(data))
+            print(section)
+            if args.summary:
+                with open(args.summary, "a", encoding="utf-8") as handle:
+                    handle.write(section)
     total = sum(row["requests"] for row in rows)
     if args.max_requests is not None and total > args.max_requests:
         fail(f"{total} PvP requests reached Python in {args.window} (budget {args.max_requests})")

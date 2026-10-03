@@ -9,6 +9,10 @@ on:
         description: Ventana a medir (p. ej. 24h, 14d)
         required: false
         default: 14d
+      sources:
+        description: Desglosa el origen (salto y tráfico sintético) desde los logs
+        type: boolean
+        default: false
       max_requests:
         description: Falla si el total supera este presupuesto (vacío = sólo informe)
         required: false
@@ -37,6 +41,8 @@ jobs:
       GRAFANA_URL: ${{ secrets.GRAFANA_URL }}
       GRAFANA_AUTH: ${{ secrets.GRAFANA_AUTH }}
       GRAFANA_METRICS_DATASOURCE_UID: ${{ vars.GRAFANA_METRICS_DATASOURCE_UID || 'grafanacloud-humbletoucan355-prom' }}
+      GRAFANA_LOGS_DATASOURCE_UID: ${{ vars.GRAFANA_LOGS_DATASOURCE_UID || 'grafanacloud-humbletoucan355-logs' }}
+      SOURCES: ${{ inputs.sources && 'true' || 'false' }}
       WINDOW: ${{ inputs.window || '14d' }}
       MAX_REQUESTS: ${{ inputs.max_requests }}
     steps:
@@ -48,6 +54,9 @@ jobs:
         run: |
           set -euo pipefail
           args=(--window "$WINDOW")
+          if [[ "$SOURCES" == "true" ]]; then
+            args+=(--sources)
+          fi
           if [[ -n "$MAX_REQUESTS" ]]; then
             args+=(--max-requests "$MAX_REQUESTS")
           fi
