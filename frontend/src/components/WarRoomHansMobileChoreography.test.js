@@ -25,7 +25,7 @@ function dispose(root) {
 afterEach(() => setWarRoomHansQuickIterationEnabled(false));
 
 describe('Hans hearth choreography on coarse-pointer/mobile War Room', () => {
-  it('promociona una instalación móvil parcial al rig completo cuando llega el lease forzado', () => {
+  it('reutiliza el rig ambiental móvil cuando llega el lease forzado', () => {
     setWarRoomHansQuickIterationEnabled(false);
     const room = buildPremiumWarRoomLayer({ felt: 0x173943, glow: 0xc5963f }, true, true);
 
@@ -33,17 +33,20 @@ describe('Hans hearth choreography on coarse-pointer/mobile War Room', () => {
       expect(installWarRoomHansSceneRoutine(room, { towardBoard: 1, coarsePointer: true })).toBeGreaterThan(0);
       const fireplace = room.getObjectByName('war-room-fireplace');
       expect(fireplace?.userData?.warRoomHansFireplaceRoutine).toBeTruthy();
-      expect(room.getObjectByName('war-room-hans-butler')).toBeFalsy();
-      expect(room.getObjectByName('war-room-hans-fireplace-driver')).toBeFalsy();
+      const ambientHans = room.getObjectByName('war-room-hans-butler');
+      const ambientDriver = room.getObjectByName('war-room-hans-fireplace-driver');
+      expect(ambientHans).toBeTruthy();
+      expect(ambientDriver).toBeTruthy();
+      expect(ambientHans.visible).toBe(false);
+      expect(ambientDriver.userData.warRoomHansSelected).toBe(false);
 
       setWarRoomHansQuickIterationEnabled(true);
       expect(installWarRoomHansSceneRoutine(room, { towardBoard: 1, coarsePointer: true })).toBeGreaterThan(0);
 
       const hans = room.getObjectByName('war-room-hans-butler');
       const driver = room.getObjectByName('war-room-hans-fireplace-driver');
-      expect(fireplace?.userData?.warRoomHansForcedUpgrade).toBe('partial-mobile-to-full-v1');
-      expect(hans).toBeTruthy();
-      expect(driver).toBeTruthy();
+      expect(hans).toBe(ambientHans);
+      expect(driver).toBe(ambientDriver);
       expect(hans.visible).toBe(true);
       expect(driver.userData.warRoomHansVisibleAtStart).toBe(true);
       expect(driver.userData.warRoomHansMobileEntryHeadstartSeconds).toBe(0);
