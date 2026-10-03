@@ -88,6 +88,41 @@ export function chroniclesIsoUsesLegacyDressing(scenePlan) {
   return scenePlan?.sceneStyle?.dressing === 'crypt-legacy';
 }
 
+export function chroniclesIsoTorchPlacements(scenePlan, { coarsePointer = false } = {}) {
+  if (chroniclesIsoUsesLegacyDressing(scenePlan)) return TORCH_CELLS;
+
+  const wallFaces = Array.isArray(scenePlan?.wallFaces) ? scenePlan.wallFaces : [];
+  const maxTorches = coarsePointer ? 5 : 8;
+  const uniqueWallFaces = [];
+  const occupiedWalls = new Set();
+  wallFaces.forEach((face) => {
+    const key = `${face?.x},${face?.y}`;
+    if (occupiedWalls.has(key)) return;
+    occupiedWalls.add(key);
+    uniqueWallFaces.push(face);
+  });
+  if (!uniqueWallFaces.length) return Object.freeze([]);
+
+  const stride = Math.max(1, Math.ceil(uniqueWallFaces.length / maxTorches));
+  const faceOffset = {
+    north: Object.freeze({ ox: 0, oz: -0.94 }),
+    east: Object.freeze({ ox: 0.94, oz: 0 }),
+    south: Object.freeze({ ox: 0, oz: 0.94 }),
+    west: Object.freeze({ ox: -0.94, oz: 0 }),
+  };
+
+  return Object.freeze(
+    uniqueWallFaces
+      .filter((_, index) => index % stride === 0)
+      .slice(0, maxTorches)
+      .map((face) => Object.freeze({
+        x: face.x,
+        y: face.y,
+        ...(faceOffset[face.side] || faceOffset.north),
+      })),
+  );
+}
+
 export function chroniclesIsoScenePalette(scenePlan) {
   const palette = scenePlan?.sceneStyle?.palette;
   if (palette?.floor?.length && palette?.wall?.length) return palette;
@@ -495,7 +530,7 @@ function buildTorches(scene, {
   });
   glowMaterial.userData.chroniclesIsoOwned = true;
 
-  TORCH_CELLS.forEach(({ x, y, ox, oz }, index) => {
+  chroniclesIsoTorchPlacements(scenePlan, { coarsePointer }).forEach(({ x, y, ox, oz }, index) => {
     const cell = chroniclesIsoWorldForCell(x, y, scenePlan);
     const root = new THREE.Group();
     root.name = `chronicles-iso-torch-${index}`;
@@ -770,12 +805,10 @@ export function createChroniclesIsometricRenderer(host, {
     scenePlan: initialScenePlan,
   });
   scene.add(dungeon.root);
-  const torches = chroniclesIsoUsesLegacyDressing(initialScenePlan)
-    ? buildTorches(scene, {
-      coarsePointer: coarse,
-      scenePlan: initialScenePlan,
-    })
-    : [];
+  const torches = buildTorches(scene, {
+    coarsePointer: coarse,
+    scenePlan: initialScenePlan,
+  });
   const party = buildParty(scene, {
     coarsePointer: coarse,
     reducedMotion,
