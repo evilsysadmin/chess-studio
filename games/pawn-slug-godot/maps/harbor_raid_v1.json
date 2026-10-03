@@ -98,7 +98,8 @@
       "visual": {
         "rail": true,
         "lamp": true
-      }
+      },
+      "one_way": true
     },
     {
       "x": 1960,
@@ -106,7 +107,8 @@
       "w": 190,
       "h": 24,
       "kind": "dock",
-      "material": "wood"
+      "material": "wood",
+      "one_way": true
     },
     {
       "x": 2045,
@@ -336,7 +338,7 @@
   ],
   "obstacles": [
     {
-      "x": 720,
+      "x": 900,
       "y": 550,
       "w": 84,
       "h": 60,
@@ -350,7 +352,7 @@
       "kind": "container_stack"
     },
     {
-      "x": 1870,
+      "x": 1638,
       "y": 548,
       "w": 92,
       "h": 62,
@@ -378,13 +380,6 @@
       "kind": "cargo_crates"
     },
     {
-      "x": 4160,
-      "y": 540,
-      "w": 62,
-      "h": 70,
-      "kind": "barrels"
-    },
-    {
       "x": 4690,
       "y": 526,
       "w": 92,
@@ -392,7 +387,7 @@
       "kind": "container_stack"
     },
     {
-      "x": 5260,
+      "x": 5010,
       "y": 550,
       "w": 86,
       "h": 60,
@@ -919,12 +914,12 @@
   "pits": [
     {
       "x": 1940,
-      "w": 230,
+      "w": 200,
       "kind": "water_gap"
     },
     {
       "x": 3970,
-      "w": 260,
+      "w": 200,
       "kind": "harbor_gap"
     }
   ]

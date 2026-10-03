@@ -125,6 +125,16 @@ jobs:
           godot="$GITHUB_WORKSPACE/.godot-ci/$GODOT_VERSION/godot"
           "$godot" --headless --path games/pawn-slug-godot --script res://tests/player_runtime_smoke.gd
           "$godot" --headless --path games/pawn-slug-godot --script res://tests/enemy_initial_v4_atlas_smoke.gd
+      - name: Traversal audit · every stage reachable without impossible moves
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot="$GITHUB_WORKSPACE/.godot-ci/$GODOT_VERSION/godot"
+          for stage in industrial_front_v1 harbor_raid_v1 alpine_fortress_v1 jungle_relay_v1; do
+            PAWN_SLUG_STAGE="$stage" timeout 300 "$godot" --headless --fixed-fps 60 \
+              --path games/pawn-slug-godot --script res://tests/traversal_audit.gd
+          done
       - name: Bundle publisher self-test
         run: python3 -S scripts/pawn_slug_godot_bundle.py self-test
       - name: Enemy roster composition gate

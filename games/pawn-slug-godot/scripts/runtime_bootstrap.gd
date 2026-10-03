@@ -9,6 +9,11 @@ static func selected_stage_id(default_stage_id: String, stage_catalog: Array) ->
         var candidate := String(selected)
         if candidate in stage_catalog:
             return candidate
+    else:
+        # Headless tools (traversal audit) pick a stage without a browser.
+        var requested := OS.get_environment("PAWN_SLUG_STAGE")
+        if requested in stage_catalog:
+            return requested
     return default_stage_id
 
 static func apply_visual_capture_probe(player, stage_start_x: float, world_size: Vector2) -> void:
