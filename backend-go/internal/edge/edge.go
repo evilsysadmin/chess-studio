@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/pvproute"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/telemetry"
 )
 
 const serviceName = "chess-studio-pvp-go"
@@ -38,6 +39,10 @@ type Config struct {
 	// native routes). Each must pass, alongside the Python upstream, for the
 	// edge to report ready.
 	ReadyChecks map[string]func(context.Context) error
+	// Telemetry records the requests Go serves natively (metrics + access
+	// log). Proxied requests are recorded by Python, so they are not wrapped.
+	// Nil disables it.
+	Telemetry *telemetry.Recorder
 }
 
 type Handler struct {
@@ -60,6 +65,7 @@ type Handler struct {
 	virtualPlayersEnabled     bool
 	nativeResidentMove        bool
 	readyChecks               map[string]func(context.Context) error
+	telemetry                 *telemetry.Recorder
 }
 
 func New(cfg Config) (*Handler, error) {
@@ -144,6 +150,7 @@ func New(cfg Config) (*Handler, error) {
 		virtualPlayersEnabled:     cfg.VirtualPlayersEnabled,
 		nativeResidentMove:        cfg.NativeResidentMove,
 		readyChecks:               cfg.ReadyChecks,
+		telemetry:                 cfg.Telemetry,
 	}, nil
 }
 
@@ -159,7 +166,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	route := pvproute.Match(r.URL.Path)
 	if native := h.nativeFor(route.Kind); native != nil {
 		w.Header().Set("X-Chess-Pvp-Edge", "go")
-		native.ServeHTTP(w, r)
+		h.telemetry.Serve(route.Kind.Pattern(), native, w, r)
 		return
 	}
 	if route.Kind == pvproute.LobbyPulse || route.Kind == pvproute.MatchPulse {

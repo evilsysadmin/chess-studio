@@ -150,10 +150,11 @@ func remoteHost(remoteAddr string) string {
 }
 
 // Python's ipaddress is_global: outside the IANA special-purpose registries
-// (Lib/ipaddress.py _private_networks, plus 100.64.0.0/10 for IPv4).
+// (python 3.13 Lib/ipaddress.py _private_networks and its exceptions, plus
+// 100.64.0.0/10 for IPv4; an IPv4-mapped address takes its IPv4 answer).
 var (
 	nonGlobalV4 = prefixes("0.0.0.0/8", "10.0.0.0/8", "100.64.0.0/10", "127.0.0.0/8", "169.254.0.0/16",
-		"172.16.0.0/12", "192.0.0.0/29", "192.0.0.170/31", "192.0.2.0/24", "192.168.0.0/16",
+		"172.16.0.0/12", "192.0.0.0/24", "192.0.0.170/31", "192.0.2.0/24", "192.168.0.0/16",
 		"198.18.0.0/15", "198.51.100.0/24", "203.0.113.0/24", "240.0.0.0/4", "255.255.255.255/32")
 	globalV4Exceptions = prefixes("192.0.0.9/32", "192.0.0.10/32")
 	nonGlobalV6        = prefixes("::1/128", "::/128", "64:ff9b:1::/48", "100::/64", "2001::/23",

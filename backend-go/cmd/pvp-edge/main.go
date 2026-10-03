@@ -22,6 +22,7 @@ import (
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/pvprating"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/residentmove"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/residentoracle"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/telemetry"
 )
 
 func main() {
@@ -217,6 +218,15 @@ func main() {
 		readyChecks = map[string]func(context.Context) error{"mongodb": mongoStore.Ping}
 	}
 
+	requestTelemetry := newRequestTelemetry()
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := requestTelemetry.Shutdown(ctx); err != nil {
+			log.Printf("request telemetry flush: %v", err)
+		}
+	}()
+
 	handler, err := edge.New(edge.Config{
 		UpstreamURL:               upstream,
 		Release:                   os.Getenv("GIT_COMMIT_SHA"),
@@ -236,6 +246,7 @@ func main() {
 		VirtualPlayersEnabled:     virtualPlayersEnabled,
 		NativeResidentMove:        matchMoveEnabled && nativeResidentMoveEnabled,
 		ReadyChecks:               readyChecks,
+		Telemetry:                 requestTelemetry,
 	})
 	if err != nil {
 		log.Fatalf("invalid pvp edge configuration: %v", err)
@@ -263,6 +274,30 @@ func main() {
 	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatalf("pvp edge serve: %v", err)
 	}
+}
+
+// newRequestTelemetry gives the routes Go serves natively the metrics and
+// access log Python gives every request. It is fail-open: a bad exporter
+// configuration only loses that signal. GO_REQUEST_TELEMETRY_ENABLED=false
+// turns it off entirely.
+func newRequestTelemetry() *telemetry.Recorder {
+	if !envBool("GO_REQUEST_TELEMETRY_ENABLED", true) {
+		return nil
+	}
+	cfg := telemetry.ConfigFromEnv(os.LookupEnv)
+	secret := []byte(strings.TrimSpace(os.Getenv("JWT_SECRET")))
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	recorder, err := telemetry.New(ctx, cfg, telemetry.Options{
+		Username: func(r *http.Request) string {
+			return pulse.VerifiedSubject(r.Header.Get("Authorization"), secret, time.Now())
+		},
+	})
+	if err != nil {
+		log.Printf("request telemetry degraded: %v", err)
+	}
+	log.Printf("request telemetry service=%s metrics=%t logs=%t", cfg.ServiceName, cfg.MetricsEnabled, cfg.LogsEnabled)
+	return recorder
 }
 
 type residentMoveProvider interface {

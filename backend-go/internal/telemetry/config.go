@@ -41,10 +41,14 @@ type Config struct {
 
 var cloudflareTunnelEnvironments = map[string]bool{"staging": true, "stage": true}
 
-// ConfigFromEnv reads the same variables the Python backend reads; the Go
-// sidecar shares its env file.
-func ConfigFromEnv(getenv func(string) string) Config {
-	get := func(key string) string { return strings.TrimSpace(getenv(key)) }
+// ConfigFromEnv reads the same variables the Python backend reads (the Go
+// sidecar shares its env file). lookup is os.LookupEnv: like Python's
+// os.environ.get, a variable set to "" is not the same as an unset one.
+func ConfigFromEnv(lookup func(string) (string, bool)) Config {
+	get := func(key string) string {
+		value, _ := lookup(key)
+		return strings.TrimSpace(value)
+	}
 	metrics := resolvedSignalEndpoint(get, "metrics")
 	logs := resolvedSignalEndpoint(get, "logs")
 	base := get("OTEL_SERVICE_NAME")
@@ -62,7 +66,7 @@ func ConfigFromEnv(getenv func(string) string) Config {
 		environment = environment[:40]
 	}
 	trust := cloudflareTunnelEnvironments[environment]
-	if raw, ok := lookup(getenv, "TRUST_CLOUDFLARE_CLIENT_IP"); ok {
+	if raw, ok := lookup("TRUST_CLOUDFLARE_CLIENT_IP"); ok {
 		trust = truthy(raw)
 	}
 	return Config{
@@ -76,14 +80,6 @@ func ConfigFromEnv(getenv func(string) string) Config {
 		Headers:         parseOTLPHeaders(get("OTEL_EXPORTER_OTLP_HEADERS")),
 		TrustCloudflare: trust,
 	}
-}
-
-// lookup distinguishes an unset variable from an empty one only through the
-// getenv contract: os.Getenv cannot, so an empty value counts as unset, which
-// matches Python reading os.environ.get(...) and then stripping it.
-func lookup(getenv func(string) string, key string) (string, bool) {
-	raw := getenv(key)
-	return raw, raw != ""
 }
 
 func truthy(value string) bool {
