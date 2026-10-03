@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import {
   HOME_MATTHIAS_ACTOR_SCALE,
+  HOME_MATTHIAS_CADENCE,
+  homeMatthiasCadenceStep,
   HOME_MATTHIAS_ACTOR_STATIONS,
   HOME_MATTHIAS_ARM_POSES,
   HOME_MATTHIAS_POSTURES,
@@ -173,5 +175,57 @@ describe('Home Matthias in-scene actor', () => {
     expect(rect.top).toBeGreaterThan(0.2);
     expect(rect.height).toBeGreaterThan(0.1);
     expect(homeMatthiasProjectBounds(new THREE.Box3(), camera)).toBeNull();
+  });
+});
+
+describe('Home Matthias human cadence', () => {
+  const run = (clipName, duration, seconds, random = () => 0.5) => {
+    let state = { mode: 'play', time: 0, speed: 1, restLeft: 0 };
+    const samples = [];
+    for (let t = 0; t < seconds; t += 0.1) {
+      state = homeMatthiasCadenceStep(state, { clipName, duration, dt: 0.1, random });
+      samples.push(state);
+    }
+    return samples;
+  };
+
+  it('sleep settles into its deepest frame and never snaps back to the first one', () => {
+    const duration = 104 / 24;
+    const samples = run('Sleep', duration, 180);
+    const settle = duration * HOME_MATTHIAS_CADENCE.Sleep.settle;
+    const shiftFrom = duration * HOME_MATTHIAS_CADENCE.Sleep.shiftFrom;
+    expect(Math.max(...samples.map((s) => s.time))).toBeCloseTo(settle, 5);
+    // After the first settle the head never goes back above the re-settle frame.
+    const firstRest = samples.findIndex((s) => s.mode === 'rest');
+    expect(firstRest).toBeGreaterThan(0);
+    expect(Math.min(...samples.slice(firstRest).map((s) => s.time))).toBeGreaterThanOrEqual(shiftFrom - 1e-9);
+    // Long, breathing rests: at most a few shifts in three minutes.
+    const shifts = samples.filter((s, i) => i > 0 && s.mode === 'play' && samples[i - 1].mode === 'rest').length;
+    expect(shifts).toBeLessThanOrEqual(4);
+  });
+
+  it('gestures rest between plays for an irregular time at a varying speed', () => {
+    const values = [0.1, 0.9, 0.4, 0.7, 0.2, 0.95, 0.3];
+    let i = 0;
+    const random = () => values[i++ % values.length];
+    const samples = run('Idle', 112 / 24, 60, random);
+    const rests = [];
+    let current = 0;
+    samples.forEach((s, index) => {
+      if (s.mode === 'rest') current += 0.1;
+      else if (index > 0 && samples[index - 1].mode === 'rest') { rests.push(current); current = 0; }
+    });
+    expect(rests.length).toBeGreaterThanOrEqual(3);
+    expect(new Set(rests.map((r) => r.toFixed(1))).size).toBeGreaterThan(1);
+    const speeds = new Set(samples.map((s) => s.speed.toFixed(3)));
+    expect(speeds.size).toBeGreaterThan(1);
+  });
+
+  it('sip raise follows the cycle length it is given', () => {
+    expect(homeMatthiasSipWeight(0, 12)).toBe(0);
+    expect(homeMatthiasSipWeight(12 - 2.6, 12)).toBe(1);
+    expect(homeMatthiasSipWeight(12 - 1, 12)).toBe(0);
+    // The historical 9.6 s cycle is unchanged.
+    expect(homeMatthiasSipWeight(7, 9.6)).toBe(1);
   });
 });
