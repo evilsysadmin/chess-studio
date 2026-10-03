@@ -119,6 +119,14 @@ test('staging visual · Pawn Slug Godot muestra boot, carrera y pickup SMG sin m
   await seedStableProfile(request, session.token);
 
   await page.addInitScript(() => {
+    // This smoke proves boot, real keyboard input and the SMG pickup swap, not
+    // level traversal (tests/traversal_audit.gd owns that, with crouch and
+    // jumps). Industrial's opening forces a crouch under the low catwalk, so a
+    // plain run-right never reaches the pickup: start just before it instead.
+    // The probe is a JS-only test global the Godot runtime reads at boot.
+    if (/[?&]stage=industrial_front_v1(&|$)/.test(window.location.search)) {
+      window.__pawnSlugVisualProbeX = 1150;
+    }
     window.__pawnSlugGodotVisualMessages = [];
     window.addEventListener('message', (event) => {
       const data = event.data;
