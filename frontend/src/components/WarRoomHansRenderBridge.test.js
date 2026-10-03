@@ -25,8 +25,8 @@ function dispose(root) {
   materials.forEach((material) => material.dispose?.());
 }
 
-function runHansBridge({ coarsePointer = false, awaitCall = false } = {}) {
-  setWarRoomHansQuickIterationEnabled(true);
+function runHansBridge({ coarsePointer = false, awaitCall = false, quickIteration = true } = {}) {
+  setWarRoomHansQuickIterationEnabled(quickIteration);
 
   const scene = new THREE.Scene();
   scene.userData.warRoomHansAwaitCall = awaitCall;
@@ -74,6 +74,25 @@ describe('War Room Hans live render bridge', () => {
     expect(hans.visible).toBe(true);
     expect(driver?.userData?.warRoomHansVisibleAtStart).toBe(true);
     expect(door?.userData?.warRoomHansDoorOpen).toBe(1);
+    expect(scene.userData.warRoomDeferredFinalizedTasks).toContain('hans-fireplace-scene-install-v2');
+
+    dispose(scene);
+  });
+
+  it('materializa a Hans para rutinas ambientales en renderLite desktop sin evento fuego', () => {
+    const { scene, room } = runHansBridge({ quickIteration: false });
+    const floor = room.getObjectByName('war-room-castle-floor-slab');
+    const fireplace = scene.getObjectByName('war-room-fireplace');
+    const hans = scene.getObjectByName('war-room-hans-butler');
+    const driver = scene.getObjectByName('war-room-hans-fireplace-driver');
+
+    expect(hans).toBeTruthy();
+    expect(hans.visible).toBe(false);
+    expect(fireplace?.userData?.warRoomHansEventSelected).toBe(false);
+    expect(driver?.userData?.warRoomHansSelected).toBe(false);
+    expect(floor?.userData?.warRoomHansMopRoutine).toBeTruthy();
+    expect(floor?.userData?.warRoomHansServiceRoutine).toBeTruthy();
+    expect(floor?.userData?.warRoomHansAmbientChoreRoutine).toBeTruthy();
     expect(scene.userData.warRoomDeferredFinalizedTasks).toContain('hans-fireplace-scene-install-v2');
 
     dispose(scene);

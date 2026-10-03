@@ -525,38 +525,33 @@ export function registerPremiumRoomFinalization(group, { wallZ, towardBoard, coa
     run: (root) => applyPremiumRoomPass(root, { wallZ, towardBoard, coarsePointer }),
   });
 
-  // Partida rápida owns an explicit Hans lease before Board3D builds the scene.
-  // Lite/coarse War Rooms return before the desktop practical-lighting pass, so
-  // that old registration path never existed there. Register the same deferred
-  // scene task from this always-reached finalization point only while the lease
-  // is active; ordinary mobile rooms keep their lightweight no-cameo behavior.
-  if (isWarRoomHansQuickIterationEnabled()) {
-    registerWarRoomDeferredFinalizer(group, {
-      key: 'hans-fireplace-scene-install-v2',
-      coarsePointer,
-      allowCoarse: true,
-      run: (root) => {
-        const sceneRoot = root || group;
-        // Scene quality and input modality are deliberately separate. Balanced
-        // Android builds the full desktop geometry, so the construction-time
-        // `coarsePointer` flag may be false even on a real touch device. Resolve
-        // the live pointer modality here so Hans can use the mobile-visible
-        // entrance choreography without amputating the premium room.
-        let runtimeCoarsePointer = coarsePointer;
-        try {
-          runtimeCoarsePointer = Boolean(globalThis?.matchMedia?.('(pointer: coarse)')?.matches);
-        } catch {
-          // Best-effort only; SSR/tests keep the construction-time fallback.
-        }
-        const installed = installWarRoomHansSceneRoutine(sceneRoot, {
-          towardBoard,
-          coarsePointer: runtimeCoarsePointer,
-        });
-        exposeForcedHansRuntime(sceneRoot);
-        return installed;
-      },
-    });
-  }
+  // This third scene-quality flag historically doubles as renderLite in the
+  // classic shell; it is NOT a reliable statement about input modality. Hans
+  // is part of War Room parity, so always register his deferred scene task.
+  // The task resolves the real pointer modality at runtime for choreography,
+  // but never uses lite rendering as a reason to delete the actor.
+  const forceQuickHans = isWarRoomHansQuickIterationEnabled();
+  registerWarRoomDeferredFinalizer(group, {
+    key: 'hans-fireplace-scene-install-v2',
+    coarsePointer,
+    allowCoarse: true,
+    run: (root) => {
+      const sceneRoot = root || group;
+      let runtimeCoarsePointer = false;
+      try {
+        runtimeCoarsePointer = Boolean(globalThis?.matchMedia?.('(pointer: coarse)')?.matches);
+      } catch {
+        // Best-effort only; SSR/tests use the fine-pointer fallback.
+      }
+
+      const installed = installWarRoomHansSceneRoutine(sceneRoot, {
+        towardBoard,
+        coarsePointer: runtimeCoarsePointer,
+      });
+      if (forceQuickHans) exposeForcedHansRuntime(sceneRoot);
+      return installed;
+    },
+  });
 
   return premiumRegistration;
 }
