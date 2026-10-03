@@ -54,8 +54,9 @@ describe('Home Matthias in-scene actor', () => {
       profile: 'sleep', clip: 'Sleep', stationId: 'sofa-nap', posture: 'lie',
     });
     expect(homeMatthiasActorRoutine({ scene: 'moment-book-doze-sleep' })).toMatchObject({
-      profile: 'sleep', clip: 'Sleep', stationId: 'reading-chair', posture: 'seat',
+      profile: 'sleep', clip: 'Sleep', stationId: 'reading-chair', posture: 'seat', propProfile: 'read',
     });
+    expect(homeMatthiasActorRoutine({ scene: 'time-late-sleep' }).propProfile).toBe('sleep');
     expect(homeMatthiasActorRoutine({ scene: 'time-late-sleep', speaking: true })).toMatchObject({
       profile: 'speak', posture: 'stand',
     });
@@ -130,6 +131,10 @@ describe('Home Matthias in-scene actor', () => {
     expect(HOME_MATTHIAS_ARM_POSES.dossier.L).toBeTruthy();
     expect(HOME_MATTHIAS_ARM_POSES.dossier.R).toBeTruthy();
     expect(HOME_MATTHIAS_PROP_ANCHORS.sip).toMatchObject({ bone: 'prop_cup', hand: 'Hand.R' });
+    // The bocadillo goes in the same hand whose arm is posed for it.
+    expect(HOME_MATTHIAS_PROP_ANCHORS.bite.hand).toBe('Hand.R');
+    expect(HOME_MATTHIAS_ARM_POSES.bite.R).toBeTruthy();
+    expect(HOME_MATTHIAS_ARM_POSES.think.L).toBeTruthy();
     expect(HOME_MATTHIAS_PROP_ANCHORS.sip.hide).toContain('RoutineCupHand');
     expect(HOME_MATTHIAS_PROP_ANCHORS.dossier.hide).toEqual(['RoutineBookHand.L', 'RoutineBookHand.R']);
   });

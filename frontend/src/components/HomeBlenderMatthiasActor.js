@@ -80,10 +80,11 @@ export function homeMatthiasActorStationForProfile(profile = 'idle') {
 
 export function homeMatthiasActorRoutine({ scene = '', activity = '', speaking = false } = {}) {
   const profile = homeMatthiasMotionProfile({ scene, activity, speaking });
-  // "Dormido sobre el manual": he nods off in the reading chair, not the sofa.
-  const stationId = profile === 'sleep' && /book-doze/i.test(String(scene))
-    ? 'reading-chair'
-    : homeMatthiasActorStationForProfile(profile);
+  // "Dormido sobre el manual": he nods off in the reading chair with the
+  // manual still in his hands, not on the sofa.
+  const bookDoze = profile === 'sleep' && /book-doze/i.test(String(scene));
+  const stationId = bookDoze ? 'reading-chair' : homeMatthiasActorStationForProfile(profile);
+  const propProfile = bookDoze ? 'read' : profile;
   const station = HOME_MATTHIAS_ACTOR_STATIONS[stationId];
   return {
     profile,
@@ -91,6 +92,7 @@ export function homeMatthiasActorRoutine({ scene = '', activity = '', speaking =
     phase: homeMatthiasMotionPhase({ scene, activity }),
     stationId,
     posture: station.posture,
+    propProfile,
   };
 }
 
@@ -159,8 +161,15 @@ export const HOME_MATTHIAS_ARM_POSES = Object.freeze({
   sip: Object.freeze({
     R: Object.freeze({ upper: [40, 0, 20], fore: [70, 0, 0], raise: { upper: [52, 0, 30], fore: [100, 0, 0] } }),
   }),
+  // Same hand as the coffee: the authored sandwich sits on the right side of
+  // the chest, so a left-hand anchor dragged it across the body.
   bite: Object.freeze({
-    L: Object.freeze({ upper: [40, 0, 20], fore: [70, 0, 0], raise: { upper: [52, 0, 30], fore: [100, 0, 0] } }),
+    R: Object.freeze({ upper: [40, 0, 20], fore: [70, 0, 0], raise: { upper: [52, 0, 30], fore: [100, 0, 0] } }),
+  }),
+  // At the board: both forearms forward, hands resting near the pieces.
+  think: Object.freeze({
+    R: Object.freeze({ upper: [36, 0, 18], fore: [62, 0, 0] }),
+    L: Object.freeze({ upper: [36, 0, 18], fore: [62, 0, 0] }),
   }),
   dossier: Object.freeze({
     R: Object.freeze({ upper: [40, 0, 20], fore: [70, 0, 0] }),
@@ -183,7 +192,7 @@ export const HOME_MATTHIAS_PROP_ANCHORS = Object.freeze({
   // hide their props for a few frames at every loop seam, which reads as a
   // blinking cup once the routine lasts tens of seconds.
   sip: Object.freeze({ bone: 'prop_cup', content: 'RoutineCup', hand: 'Hand.R', offset: [-0.045, 0.07, 0.03], hide: ['RoutineCupHand'], show: ['prop_cup'] }),
-  bite: Object.freeze({ bone: 'prop_bite', content: 'RoutineSandwichBread', hand: 'Hand.L', offset: [0.045, 0.06, 0.03], hide: ['RoutineSandwichHand'], show: ['prop_bite'] }),
+  bite: Object.freeze({ bone: 'prop_bite', content: 'RoutineSandwichBread', hand: 'Hand.R', offset: [-0.045, 0.06, 0.03], hide: ['RoutineSandwichHand'], show: ['prop_bite'] }),
   dossier: Object.freeze({ hide: ['RoutineBookHand.L', 'RoutineBookHand.R'], show: ['prop_book'] }),
   read: Object.freeze({ hide: ['RoutineBookHand.L', 'RoutineBookHand.R'], show: ['prop_book'] }),
   write: Object.freeze({ hide: ['RoutineBookHand.L', 'RoutineBookHand.R'], show: ['prop_book', 'prop_pen'] }),
@@ -503,7 +512,7 @@ export function createHomeMatthiasActor(gltf, { shadowsEnabled = true } = {}) {
   const applyPropVisibility = () => {
     for (const node of hiddenByPolicy) node.visible = true;
     hiddenByPolicy.clear();
-    for (const name of HOME_MATTHIAS_PROP_ANCHORS[routine?.profile]?.hide || []) {
+    for (const name of HOME_MATTHIAS_PROP_ANCHORS[routine?.propProfile || routine?.profile]?.hide || []) {
       const node = propNode(name);
       if (!node) continue;
       node.visible = false;
@@ -517,7 +526,7 @@ export function createHomeMatthiasActor(gltf, { shadowsEnabled = true } = {}) {
   const parentScale = new THREE.Vector3();
   // Moves the prop bone so the prop's visible centre sits in the real hand.
   const anchorRoutineProp = () => {
-    const spec = HOME_MATTHIAS_PROP_ANCHORS[routine?.profile];
+    const spec = HOME_MATTHIAS_PROP_ANCHORS[routine?.propProfile || routine?.profile];
     for (const name of spec?.show || []) propNode(name)?.scale.set(1, 1, 1);
     if (!spec?.bone) return;
     const bone = propNode(spec.bone);
@@ -561,7 +570,7 @@ export function createHomeMatthiasActor(gltf, { shadowsEnabled = true } = {}) {
         arm.fore.quaternion.setFromEuler(eulerDeg(fold.forePitchDeg, 0, 0));
       }
     } else {
-      const armPose = HOME_MATTHIAS_ARM_POSES[routine.profile];
+      const armPose = HOME_MATTHIAS_ARM_POSES[routine.propProfile || routine.profile];
       const weight = still ? 0 : homeMatthiasSipWeight(gestureElapsed);
       for (const arm of arms) {
         const pose = armPose?.[arm.side];
@@ -659,6 +668,7 @@ export function createHomeMatthiasActor(gltf, { shadowsEnabled = true } = {}) {
     get routine() { return routine; },
     setRoutine(next, { reducedMotion = false } = {}) {
       const changed = !routine
+        || routine.propProfile !== next.propProfile
         || routine.stationId !== next.stationId
         || routine.clip !== next.clip
         || routine.phase !== next.phase
