@@ -36,13 +36,14 @@ class BrowserScope:
     matthias_priority: bool = False
     pvp_duel: bool = False
     pvp_lobby: bool = False
+    hans: bool = False
 
     @classmethod
     def all(cls) -> "BrowserScope":
         # Broad Matthias already includes Home + War Room + Insights. Keep the
         # narrow specific bits false in the fail-closed aggregate to avoid
         # duplicating the same canaries.
-        return cls(True, True, True, True, True, False, False, True, True, True, True, True, True, True, True, True, True)
+        return cls(True, True, True, True, True, False, False, True, True, True, True, True, True, True, True, True, True, True)
 
 
 FRONTEND_TEST_RE = re.compile(r"^frontend/src/.*\.(?:test|spec)\.(?:js|jsx|ts|tsx)$")
@@ -203,6 +204,18 @@ PVP_LOBBY_PATTERNS = (
     "e2e/home-pvp-roster-link.spec.js",
     "e2e/pvp-lobby-visual-artifact.spec.js",
 )
+HANS_PATTERNS = (
+    "frontend/src/components/WarRoomHans*.js",
+    "frontend/src/components/WarRoomHans*.jsx",
+    "frontend/src/components/WarRoomHans*.css",
+    "frontend/src/components/Board3D.jsx",
+    "frontend/src/components/GameBoardView.jsx",
+    "frontend/src/components/WarRoomDeferredFinalizer.js",
+    "frontend/src/components/WarRoomPracticalLighting.js",
+    "frontend/src/components/WarRoomTeutonicDecor.js",
+    "frontend/src/components/PremiumWarRoomScene.js",
+    "e2e/hans-quick-game.spec.js",
+)
 BROWSER_ACTION_PATHS = {
     ".github/actions/setup-browser-e2e/action.yml",
 }
@@ -234,7 +247,7 @@ def _matches(path: str, patterns: tuple[str, ...]) -> bool:
 
 
 def classify(paths: Iterable[str]) -> BrowserScope:
-    full_logic = special_states = visual = focus = matthias = matthias_home = matthias_insights = quick_2d = network_race = chronicles = tournament_mobile = pawn_slug = chesscom = trailblazer = matthias_priority = pvp_duel = pvp_lobby = False
+    full_logic = special_states = visual = focus = matthias = matthias_home = matthias_insights = quick_2d = network_race = chronicles = tournament_mobile = pawn_slug = chesscom = trailblazer = matthias_priority = pvp_duel = pvp_lobby = hans = False
 
     for path in _clean_paths(paths):
         if FRONTEND_TEST_RE.search(path):
@@ -280,6 +293,9 @@ def classify(paths: Iterable[str]) -> BrowserScope:
         if _matches(path, PVP_LOBBY_PATTERNS):
             pvp_lobby = True
 
+        if _matches(path, HANS_PATTERNS):
+            hans = True
+
         if _matches(path, TOURNAMENT_MOBILE_PATTERNS):
             tournament_mobile = True
 
@@ -293,7 +309,7 @@ def classify(paths: Iterable[str]) -> BrowserScope:
 
         if path in BROWSER_ACTION_PATHS:
             full_logic = special_states = visual = focus = matthias = quick_2d = network_race = chronicles = tournament_mobile = True
-            pawn_slug = chesscom = trailblazer = matthias_priority = pvp_duel = pvp_lobby = True
+            pawn_slug = chesscom = trailblazer = matthias_priority = pvp_duel = pvp_lobby = hans = True
             matthias_home = matthias_insights = False
 
         if path == DEPENDENCY_CACHE_ACTION:
@@ -312,7 +328,7 @@ def classify(paths: Iterable[str]) -> BrowserScope:
     return BrowserScope(
         full_logic, special_states, visual, focus, matthias, matthias_home, matthias_insights,
         quick_2d, network_race, chronicles, tournament_mobile,
-        pawn_slug, chesscom, trailblazer, matthias_priority, pvp_duel, pvp_lobby,
+        pawn_slug, chesscom, trailblazer, matthias_priority, pvp_duel, pvp_lobby, hans,
     )
 
 
@@ -445,6 +461,14 @@ def build_matrix(scope: BrowserScope) -> dict[str, list[dict[str, str]]]:
                 "id": "pvp-lobby-flow",
                 "label": "PvP Duel Hall · direct challenge flow",
                 "command": "./node_modules/.bin/playwright test home-pvp-roster-link.spec.js --grep \"retar a un rival es una acción directa\" --workers=1 --retries=0 --max-failures=1 --timeout=45000",
+            }
+        )
+    if scope.hans:
+        cases.append(
+            {
+                "id": "hans-quick-game",
+                "label": "War Room · Hans visible in quick game",
+                "command": "./node_modules/.bin/playwright test hans-quick-game.spec.js --workers=1 --retries=0 --max-failures=1 --timeout=60000",
             }
         )
     if scope.chronicles:
@@ -585,6 +609,7 @@ def render_summary(scope: BrowserScope) -> str:
             f"- Game network races: `{yn(scope.network_race)}`",
             f"- PvP Duel Room authoritative flow: `{yn(scope.pvp_duel)}`",
             f"- PvP Duel Hall direct challenge flow: `{yn(scope.pvp_lobby)}`",
+            f"- Hans quick-game visibility: `{yn(scope.hans)}`",
             f"- Chronicles dungeon: `{yn(scope.chronicles)}`",
             "- Estas lanes forman parte del check requerido Tests · Playwright.",
             "",
@@ -686,6 +711,9 @@ def self_test() -> None:
     assert _ids(classify(["frontend/src/usePvpAppFlow.js"])) == ["pvp-duel-flow"]
     assert _ids(classify(["e2e/war-room-pvp.spec.js"])) == ["pvp-duel-flow"]
     assert _ids(classify(["e2e/home-pvp-roster-link.spec.js"])) == ["pvp-lobby-flow"]
+    assert classify(["frontend/src/components/WarRoomHansMopRoutine.js"]) == BrowserScope(hans=True)
+    assert _ids(classify(["frontend/src/components/WarRoomHansMopRoutine.js"])) == ["hans-quick-game"]
+    assert _ids(classify(["e2e/hans-quick-game.spec.js"])) == ["hans-quick-game"]
     pvp_case = build_matrix(BrowserScope(pvp_duel=True))["include"][0]
     assert "rendirse no resucita un handoff stale" in pvp_case["command"]
     assert "reto entrante abre una partida humana" not in pvp_case["command"]
@@ -722,7 +750,8 @@ def self_test() -> None:
 
     all_scope = classify([".github/actions/setup-browser-e2e/action.yml"])
     assert all_scope == BrowserScope.all()
-    assert len(_ids(all_scope)) == 20
+    assert len(_ids(all_scope)) == 21
+    assert "hans-quick-game" in _ids(all_scope)
     assert "hans-fire-call" not in _ids(all_scope)
 
     harness = classify([CICD_WORKFLOW])
@@ -746,6 +775,7 @@ def self_test() -> None:
         focus=True,
         matthias=True,
         quick_2d=True,
+        hans=True,
     )
 
     empty_output = output_lines(BrowserScope())
@@ -758,6 +788,7 @@ def self_test() -> None:
     assert "Matthias Insights-only: `true`" in render_summary(BrowserScope(matthias_insights=True))
     assert "Tournament mobile UX: `true`" in render_summary(BrowserScope(tournament_mobile=True))
     assert "Game network races: `true`" in render_summary(BrowserScope(network_race=True))
+    assert "Hans quick-game visibility: `true`" in render_summary(BrowserScope(hans=True))
     assert "PvP Duel Room authoritative flow: `true`" in render_summary(BrowserScope(pvp_duel=True))
     assert "Chronicles dungeon: `true`" in render_summary(BrowserScope(chronicles=True))
 
