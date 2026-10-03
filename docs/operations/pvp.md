@@ -349,7 +349,8 @@ PvP is migrating incrementally toward a dedicated Go process. The first slice is
 
 Every public PvP route has a native Go handler, staging requires all of them and the production release attests every native flag. The Python public PvP routes now only survive as the kill-switch rollback. Plan agreed on 2026-10-03:
 
-1. Evidence: `pvp-python-fallback.yml` (daily, read-only) counts `/api/pvp` requests that still reach FastAPI (`chess_studio_http_server_requests_total`), including the internal resident oracle.
+1. Evidence: `pvp-python-fallback.yml` (daily, read-only) counts `/api/pvp` requests that still reach FastAPI (`chess_studio_http_server_requests_total`), including the internal resident oracle. Manual runs can add `timeline` (hourly counts) and `sources` (Loki breakdown by `pvp_hop`: `go:disabled:<route>` / `go:unknown` when the Go sidecar forwarded the request and why, `direct` when it bypassed the sidecar, e.g. nginx `direct` mode after a rollback with an unhealthy sidecar).
+   - First reading (2026-10-03): ~6.9k fallback requests in the previous 14 days, all before 2026-10-02 ~21:00 UTC, i.e. before the full-Go cutover of lobby reads, challenge creation and resident moves, and during that evening's failed deploys/rollbacks. None since. The evidence window therefore starts on 2026-10-03.
 2. Deadline **2026-10-17**: if production saw no fallback traffic for the 14-day window, remove the Python PvP routes (including `/_internal/resident-move` and the Go `residentoracle` client), the `PVP_NATIVE_*_ENABLED` kill-switches, and the Go readiness dependency on the Python `/api/ready` for PvP.
 3. Rollback after the sunset is a release rollback (`production-rollback.yml`), no longer a per-route switch.
 4. Resident moves are already chosen natively in Go (`internal/residentmove`); the Python oracle only answers when `PVP_NATIVE_RESIDENT_MOVE_ENABLED` is off, so it is retired with the rest.
