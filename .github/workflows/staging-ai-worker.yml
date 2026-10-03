@@ -53,10 +53,6 @@ jobs:
           ref: ${{ env.DEPLOY_SHA }}
 
       # Automatic deploy success is immutable proof; manual dispatch keeps live probes strict.
-      # Legacy cloudflare_ai_preflight source-reader markers pending migration:
-      # git ls-remote --exit-code origin refs/heads/main
-      # compare/$DEPLOY_SHA...$current_main
-      # identical|ahead
       - name: Supersede stale staging accreditation outside current main lineage
         id: lineage
         env:
@@ -91,9 +87,6 @@ jobs:
 
       # Manual-only strict probes. Automatic accreditation relies on the successful
       # upstream deploy while it still held the staging lock.
-      # Verify staging backend still serves approved SHA
-      # Verify staging frontend still serves approved SHA
-      # Verify staging AI health and build identity
       - name: Shared Workers AI live contract · manual strict probe
         if: steps.lineage.outputs.accredited == 'true' && github.event_name == 'workflow_dispatch'
         shell: bash
