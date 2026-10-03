@@ -103,12 +103,14 @@ def loft_ellipse(name, rings, material, segments=112, bevel=.0):
     for ring in rings:
         rx, ry, z, yoff = ring[:4]
         xoff = ring[4] if len(ring) > 4 else 0.0
-        # Optional front lift: the front edge (-y) rises and the back sinks,
-        # so a ring can tilt like the saddle of a peaked cap without leaning.
+        # Optional front lift: the front edge (-y) rises like the saddle of a
+        # peaked cap while the back stays level. A plain tilt also sank the
+        # back, and from behind the plate read as drooping.
         lift = ring[5] if len(ring) > 5 else 0.0
         for i in range(segments):
             a = math.tau*i/segments
-            verts.append((xoff + rx*math.cos(a), yoff + ry*math.sin(a), z - lift*math.sin(a)))
+            saddle = ((1.0 - math.sin(a))*.5)**1.6
+            verts.append((xoff + rx*math.cos(a), yoff + ry*math.sin(a), z + lift*saddle))
     faces = []
     for ring in range(ring_count - 1):
         a0 = ring*segments; b0 = (ring+1)*segments
@@ -229,7 +231,15 @@ def build_character():
     # crown that flares evenly, and a wide round top plate whose front edge
     # rises a little over the visor, set slightly back on the head.
     cap_crown=loft_ellipse('Classic cap crown',[(.352,.336,1.615,0.000),(.360,.343,1.660,.002,0,.002),(.373,.355,1.705,.005,0,.006),(.390,.371,1.748,.009,0,.010),(.406,.386,1.786,.013,0,.014),(.418,.397,1.815,.016,0,.017)],navy,120,.008)
-    cap_top=loft_ellipse('Classic cap top',[(.414,.394,1.812,.048,0,.027),(.446,.426,1.826,.052,0,.033),(.468,.448,1.844,.056,0,.039),(.470,.450,1.862,.058,0,.042),(.452,.433,1.878,.060,0,.044),(.408,.391,1.890,.061,0,.044),(.320,.306,1.898,.062,0,.042),(.180,.172,1.902,.062,0,.041)],navy,124,.008)
+    # Top plate: flared underside to a rolled rim, then a shallow, evenly
+    # curved dome that closes on a tiny ring, so the cap face never becomes a
+    # large flat n-gon that shades with dents. The front lift fades towards
+    # the centre so the saddle stays a smooth surface seen from any side.
+    plate_rings=[(.414,.396,1.812,.048,0,.027),(.446,.427,1.826,.052,0,.033),(.468,.448,1.844,.056,0,.039),(.472,.452,1.860,.058,0,.042),(.464,.444,1.873,.059,0,.044)]
+    for r in (.448,.420,.382,.334,.278,.214,.144,.072,.020):
+        k=r/.448
+        plate_rings.append((r,r*.957,1.879+.024*(1-k*k),.060,0,.044*k))
+    cap_top=loft_ellipse('Classic cap top',plate_rings,navy,124,.008)
     visor=crescent_visor('Classic cap visor',(0,-.020,1.665),leather,.286,.450,.176,.235,.030,10,48)
     cap_badge=front_ellipse('Classic cap badge',(0,-.362,1.705),.050,.060,.010,brass,40,.003); cap_badge_inset=front_ellipse('Classic cap badge inset',(0,-.369,1.705),.027,.034,.008,leather,36,.002)
     mouth_l=box('Mouth.L',(-.052,-.357,1.246),(.070,.004,.0060),black,(0,math.radians(-12),0),.002); mouth_r=box('Mouth.R',(.052,-.357,1.246),(.070,.004,.0060),black,(0,math.radians(12),0),.002)
