@@ -217,6 +217,12 @@ export default function PvPLobbyModal({
             <span className="pvp-duel-hall__table" />
             <span className="pvp-duel-hall__candle pvp-duel-hall__candle--left" />
             <span className="pvp-duel-hall__candle pvp-duel-hall__candle--right" />
+            <span className="pvp-duel-hall__armor pvp-duel-hall__armor--left" />
+            <span className="pvp-duel-hall__armor pvp-duel-hall__armor--right" />
+            <span className="pvp-duel-hall__books" />
+            <span className="pvp-duel-hall__scrolls" />
+            <span className="pvp-duel-hall__owl" />
+            <span className="pvp-duel-hall__rug" />
           </div>
         </div>
         <button type="button" className="piece-info-close" onClick={onClose} aria-label={self ? 'Cerrar ventana; seguirás disponible para retos' : 'Cerrar ventana de rivales'} title={self ? 'Cerrar · seguirás disponible' : 'Cerrar'}>×</button>

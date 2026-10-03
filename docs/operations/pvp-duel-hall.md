@@ -140,3 +140,21 @@ La composición debe conservar estos rasgos:
 - en móvil se conserva la identidad de la estancia, pero se sacrifica decoración antes que targets, texto o acción primaria.
 
 La implementación puede evolucionar desde una shell espacial barata hacia Blender/WebGL, pero **la jerarquía espacial anterior no cambia**. El renderer 3D no adquiere lógica de matchmaking: sólo presenta hotspots controlados por el dominio PvP existente.
+
+## Refinamiento premium canónico · 2026-10-03
+
+La referencia visual premium aprobada después de la primera Sala de Duelos mantiene la misma jerarquía funcional, pero eleva materiales, profundidad y detalle. Hasta nueva referencia, este es el canon de acabado.
+
+- la estancia se percibe como un salón gótico noble y ocupado: piedra oscura, madera tallada casi negra, latón cálido, cuero, terciopelo azul noche y pergamino envejecido;
+- la iluminación combina prácticos cálidos de velas/candelabros con una luna azul fría visible por un gran ventanal arqueado; la mezcla cálido/frío debe separar planos y materiales, no oscurecerlos;
+- **Tu puesto** parece un atril/pedestal real, con remate de latón, heráldica y una pieza bajo campana o vitrina; la CTA primaria parece parte del mueble, no un botón web flotante;
+- **Tablón de rivales** se integra como tablero/registro ceremonial sobre la mesa central. Las filas se leen como placas o registros del salón, con avatares/escudos compactos, estados legibles y botones de reto de latón;
+- la mesa central gana presencia física mediante veta de madera, marquetería/mapa, piezas y utilería ajedrecística contenida en periferia, sin interferir con targets;
+- **Murmullos de la sala** usa marco de madera tallada y superficie de pergamino. Vacío debe seguir pareciendo un objeto de la estancia, no un panel sin contenido;
+- los contadores superiores se leen como pequeños estandartes/placas colgantes de terciopelo oscuro con ribete dorado, nunca KPI cards;
+- ornamento permitido: molduras talladas, filetes de latón, heráldica de caballo/león, libros, pergaminos, armaduras, búho y candelabros, siempre fuera del cono funcional;
+- evitar brillo plástico, gradientes genéricos de SaaS y box-shadow uniforme. Cada material debe tener respuesta propia: metal con filo especular, madera con veta, pergamino mate, terciopelo con profundidad oscura;
+- la escena debe poder verse rica incluso con 0 rivales / 0 retos; el vacío no puede convertirla en un dashboard desierto;
+- en móvil se conserva la paleta y la materialidad, pero se simplifican molduras, profundidad y utilería antes de reducir legibilidad o touch targets.
+
+Este refinamiento no cambia el contrato de dominio ni el orden semántico: Tu puesto → Tablón de rivales → Mesa del Heraldo → Murmullos de la sala.
