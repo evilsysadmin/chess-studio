@@ -1768,3 +1768,100 @@
     letter-spacing: .01em;
   }
 }
+
+
+/* Premium environment pass 5: remove the toy-like read from decorative props.
+   Props retreat into silhouette/light; furniture remains the readable foreground. */
+@media (min-width: 821px) {
+  .pvp-duel-hall__armor {
+    top: 32%;
+    width: 4.9%;
+    min-width: 48px;
+    max-width: 70px;
+    opacity: .42;
+    filter:
+      blur(.1px)
+      drop-shadow(0 12px 15px rgba(0,0,0,.72));
+  }
+
+  .pvp-duel-hall__armor--left { left: 26%; }
+  .pvp-duel-hall__armor--right { right: 29%; opacity: .3; }
+
+  .pvp-duel-hall__books {
+    right: 10.5%;
+    bottom: 18.5%;
+    width: 5.6%;
+    min-width: 66px;
+    height: 4.8%;
+    opacity: .58;
+    filter: saturate(.82) brightness(.82);
+  }
+
+  .pvp-duel-hall__scrolls {
+    right: 3.5%;
+    bottom: 15.3%;
+    width: 8.5%;
+    min-width: 86px;
+    height: 3.1%;
+    opacity: .62;
+    transform: rotate(1.2deg);
+  }
+
+  .pvp-duel-hall__owl {
+    right: 7.2%;
+    top: 28.5%;
+    width: 2.8%;
+    min-width: 32px;
+    opacity: .62;
+    filter: sepia(.16) brightness(.82);
+  }
+
+  .pvp-duel-hall__rug {
+    left: 24%;
+    right: 12%;
+    bottom: -2.8%;
+    height: 8.5%;
+    opacity: .48;
+  }
+
+  .pvp-duel-hall__architecture {
+    background:
+      radial-gradient(circle at 7% 48%, rgba(255,178,78,.08), transparent 6.5%),
+      radial-gradient(circle at 92% 47%, rgba(255,173,72,.07), transparent 6.5%),
+      linear-gradient(180deg, rgba(255,255,255,.012), transparent 16%),
+      repeating-linear-gradient(90deg, rgba(255,255,255,.008) 0 1px, transparent 1px 96px);
+  }
+
+  .pvp-duel-hall__arch--left,
+  .pvp-duel-hall__arch--middle,
+  .pvp-duel-hall__arch--right {
+    opacity: .84;
+  }
+
+  .pvp-duel-hall__candle::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: -58px;
+    width: 90px;
+    height: 120px;
+    transform: translateX(-50%);
+    pointer-events: none;
+    background: radial-gradient(ellipse at 50% 22%, rgba(244,165,65,.16), rgba(244,165,65,.05) 30%, transparent 68%);
+    filter: blur(6px);
+  }
+
+  .pvp-duel-hall__window {
+    box-shadow:
+      inset 0 0 0 5px rgba(70,45,28,.9),
+      inset 0 0 0 8px rgba(183,132,64,.12),
+      0 0 55px rgba(76,112,161,.14),
+      -20px 0 70px rgba(71,101,143,.08);
+  }
+
+  .pvp-duel-hall .pvp-lobby__panel--roster,
+  .pvp-duel-hall .pvp-lobby__identity,
+  .pvp-duel-hall .pvp-lobby__chat-disclosure {
+    backdrop-filter: none;
+  }
+}
