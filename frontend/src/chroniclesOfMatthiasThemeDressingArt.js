@@ -78,6 +78,8 @@ function freezePlan(id, values = {}) {
     banners: freezeAnchors(values.banners),
     reliefs: freezeAnchors(values.reliefs),
     boneBundles: freezeAnchors(values.boneBundles),
+    bells: freezeAnchors(values.bells),
+    chains: freezeAnchors(values.chains),
   });
 }
 
@@ -98,6 +100,13 @@ export function chroniclesTacticsThemeDressingPlan(scenePlan = {}) {
       banners: spread(anchors, 3, 1),
       braziers: spread(anchors, 3, 0),
       reliefs: spread(anchors, 3, 2),
+    });
+  }
+
+  if (dressing === 'hollow-bell-v1') {
+    return freezePlan(dressing, {
+      bells: spread(anchors, 4, 1),
+      chains: spread(anchors, 6, 0),
     });
   }
 
@@ -330,6 +339,90 @@ function buildBoneBundles(root, anchors, { coarsePointer }) {
   return mesh;
 }
 
+
+function buildHollowBells(root, anchors, palette, { coarsePointer }) {
+  const bronze = ownedMaterial({
+    color: palette?.metal ?? 0x8c7044,
+    roughness: 0.36,
+    metalness: 0.74,
+  });
+  const dark = ownedMaterial({
+    color: 0x272a2e,
+    roughness: 0.72,
+    metalness: 0.42,
+  });
+
+  anchors.forEach((anchor, index) => {
+    const group = new THREE.Group();
+    group.name = `chronicles-theme-hollow-bell-${index}`;
+    group.position.set(
+      anchor.x + anchor.nx * 0.18,
+      0,
+      anchor.z + anchor.nz * 0.18,
+    );
+    group.rotation.y = anchor.yaw;
+
+    const bracket = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.08, 0.08), dark);
+    bracket.position.y = 2.08;
+    bracket.castShadow = !coarsePointer;
+
+    const yoke = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.56, 8), dark);
+    yoke.position.y = 1.82;
+
+    const bell = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.22, 0.42, 0.54, coarsePointer ? 10 : 18, 1, true),
+      bronze,
+    );
+    bell.position.y = 1.48;
+    bell.castShadow = !coarsePointer;
+
+    const lip = new THREE.Mesh(
+      new THREE.TorusGeometry(0.42, 0.045, 7, coarsePointer ? 12 : 20),
+      bronze,
+    );
+    lip.position.y = 1.21;
+    lip.rotation.x = Math.PI / 2;
+
+    const clapper = new THREE.Mesh(new THREE.SphereGeometry(0.075, 8, 6), dark);
+    clapper.position.y = 1.16;
+
+    group.add(bracket, yoke, bell, lip, clapper);
+    root.add(group);
+  });
+}
+
+function buildHollowChains(root, anchors, palette, { coarsePointer }) {
+  const chain = ownedMaterial({
+    color: palette?.metal ?? 0x7f6845,
+    roughness: 0.48,
+    metalness: 0.68,
+  });
+  const links = coarsePointer ? 3 : 5;
+
+  anchors.forEach((anchor, anchorIndex) => {
+    const group = new THREE.Group();
+    group.name = `chronicles-theme-hollow-chain-${anchorIndex}`;
+    group.position.set(
+      anchor.x + anchor.nx * 0.13,
+      0,
+      anchor.z + anchor.nz * 0.13,
+    );
+    group.rotation.y = anchor.yaw;
+
+    for (let index = 0; index < links; index += 1) {
+      const link = new THREE.Mesh(
+        new THREE.TorusGeometry(0.105, 0.025, 6, coarsePointer ? 9 : 12),
+        chain,
+      );
+      link.position.set(0, 1.95 - index * 0.24, 0.02);
+      link.rotation.y = index % 2 ? Math.PI / 2 : 0;
+      link.castShadow = !coarsePointer;
+      group.add(link);
+    }
+    root.add(group);
+  });
+}
+
 export function installChroniclesTacticsThemeDressing(scene, {
   coarsePointer = false,
   scenePlan = {},
@@ -349,6 +442,8 @@ export function installChroniclesTacticsThemeDressing(scene, {
     + plan.banners.length
     + plan.reliefs.length
     + plan.boneBundles.length
+    + plan.bells.length
+    + plan.chains.length
   );
 
   if (plan.id === 'none') {
@@ -371,6 +466,9 @@ export function installChroniclesTacticsThemeDressing(scene, {
     buildBanners(root, plan.banners, palette, { coarsePointer });
     buildBraziers(root, plan.braziers, palette, { coarsePointer, menagerie: false });
     buildReliefs(root, plan.reliefs, palette, { coarsePointer });
+  } else if (plan.id === 'hollow-bell-v1') {
+    buildHollowBells(root, plan.bells, palette, { coarsePointer });
+    buildHollowChains(root, plan.chains, palette, { coarsePointer });
   }
 
   scene.add(root);
