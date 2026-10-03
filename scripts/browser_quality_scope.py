@@ -210,10 +210,6 @@ HANS_PATTERNS = (
     "frontend/src/components/WarRoomHans*.css",
     "frontend/src/components/Board3D.jsx",
     "frontend/src/components/GameBoardView.jsx",
-    "frontend/src/components/WarRoomDeferredFinalizer.js",
-    "frontend/src/components/WarRoomPracticalLighting.js",
-    "frontend/src/components/WarRoomTeutonicDecor.js",
-    "frontend/src/components/PremiumWarRoomScene.js",
     "e2e/hans-quick-game.spec.js",
 )
 BROWSER_ACTION_PATHS = {
