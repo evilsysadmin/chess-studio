@@ -62,8 +62,9 @@ describe('Home Matthias in-scene actor', () => {
   });
 
   it('stands on the floor, clear of the table, the chairs and Klaus', () => {
-    for (const id of ['table-coffee', 'hearth-files', 'chess-chair', 'reading-chair', 'sofa-nap']) {
-      // No station may put his hit-area under the Mazmorras hotspot.
+    for (const id of ['table-coffee', 'hearth-files', 'sofa-nap']) {
+      // Standing and lying stations stay off the Mazmorras hotspot; only the
+      // seated chair overlaps it, and the CSS stacks him above it there.
       const camera = new THREE.PerspectiveCamera(22.9, 16 / 9, 0.1, 80);
       camera.position.set(0, 4.85, 16);
       camera.lookAt(0, 1.55, -2.3);
@@ -89,10 +90,12 @@ describe('Home Matthias in-scene actor', () => {
   it('sits on the real chair seats and faces the board', () => {
     for (const id of ['chess-chair', 'reading-chair']) {
       const seat = HOME_MATTHIAS_ACTOR_STATIONS[id];
-      expect(Math.hypot(seat.at[0] - LEFT_CHAIR[0], seat.at[1] - LEFT_CHAIR[1])).toBeLessThan(0.05);
+      // Right chair: the end with his board, books and mug. Slightly forward
+      // of the cushion centre, never off the 0.62-deep seat.
+      expect(Math.hypot(seat.at[0] - RIGHT_CHAIR[0], seat.at[1] - RIGHT_CHAIR[1])).toBeLessThan(0.12);
       expect(seat.at[2]).toBeCloseTo(CHAIR_SEAT_TOP, 3);
-      // The left chair faces the table towards +x.
-      expect(Math.sin(THREE.MathUtils.degToRad(seat.yawDeg))).toBeGreaterThan(0.5);
+      // The right chair faces the table towards -x.
+      expect(Math.sin(THREE.MathUtils.degToRad(seat.yawDeg))).toBeLessThan(-0.5);
     }
   });
 
@@ -112,8 +115,11 @@ describe('Home Matthias in-scene actor', () => {
 
   it('adapts the pawn body per posture instead of keeping a rigid plinth', () => {
     expect(homeMatthiasSpineDrop('stand')).toBe(0);
-    expect(homeMatthiasSpineDrop('seat')).toBeGreaterThan(0.3);
-    expect(HOME_MATTHIAS_POSTURES.seat.skirtXZ).toBeLessThan(0.7);
+    expect(homeMatthiasSpineDrop('seat')).toBeGreaterThan(0.2);
+    // Seated: a shorter bell with its own shape, not a squashed blob.
+    const seat = HOME_MATTHIAS_POSTURES.seat;
+    expect(seat.skirtXZ).toBeLessThan(0.8);
+    expect(Math.abs(seat.skirtY - seat.skirtXZ)).toBeLessThan(0.15);
     expect(HOME_MATTHIAS_POSTURES.lie.skirtXZ).toBeLessThan(0.7);
     // Standing keeps the bell just off the floor: no tall gap under the skirt.
     expect(HOME_MATTHIAS_POSTURES.stand.lift).toBeLessThan(0.1);

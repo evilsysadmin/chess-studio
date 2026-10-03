@@ -80,14 +80,15 @@ Con el runtime Blender listo, Matthias **no** es un retrato superpuesto: `HomeBl
 | --- | --- | --- |
 | café, bocata, idle, hablando | `table-coffee` (suelo, delante de la esquina izquierda de la mesa; la derecha es del hotspot de Mazmorras) | de pie |
 | expedientes | `hearth-files` (suelo, extremo izquierdo) | de pie |
-| partida / emboscada | `chess-chair` (silla izquierda, mirando al tablero) | sentado |
-| lectura, notas, «dormido sobre el manual» | `reading-chair` (silla izquierda) | sentado |
+| partida / emboscada | `chess-chair` (silla derecha: tablero pequeño, libros y taza) | sentado |
+| lectura, notas, «dormido sobre el manual» | `reading-chair` (la misma silla derecha) | sentado |
 | dormir | `sofa-nap` (diván, cabeza en el brazo, manta de lana) | tumbado |
 
 - El cuerpo de peón se adapta por postura (faldón corto y estrecho sentado, peón estilizado tumbado); de pie, las caderas se recogen dentro del faldón para que no quede hueco bajo la campana.
 - Los brazos reales sujetan taza/libro y los props se anclan a la mano (`HOME_MATTHIAS_PROP_ANCHORS`); las «manos falsas» de los props se ocultan.
 - El botón `.illustrated-home__matthias` pasa a `is-in-scene`: hit-area transparente sobre los bounds proyectados del actor; el retrato `HomeMatthias3D` sólo se monta como fallback (Home 2D, vestíbulo móvil o GLB de Matthias no disponible).
-- La mitad inferior derecha de la sala (escalera) es el hit-area del hotspot de Mazmorras: ninguna estación puede proyectarse ahí, o su hotspot taparía a Matthias. El test lo fija.
+- La mitad inferior derecha de la sala (escalera) es el hit-area del hotspot de Mazmorras: las estaciones de pie y tumbado no pueden proyectarse ahí (el test lo fija). La silla derecha sí cae dentro; en desktop el hit-area de Matthias se apila por encima (z-index 13) y cede cuando el panel de Mazmorras está abierto.
+- Sentado, el faldón se encoge casi uniforme (campana más corta con su forma); un aplastado vertical fuerte se lee como cuerpo deformado.
 - Cambiar una estación = editar `HOME_MATTHIAS_ACTOR_STATIONS` y revisar el PNG runtime; los tests de `HomeBlenderMatthiasActor.test.js` fijan holguras contra mesa, sillas, Klaus y diván.
 
 ### Loop de pose y aceptación

@@ -103,9 +103,12 @@ def loft_ellipse(name, rings, material, segments=112, bevel=.0):
     for ring in rings:
         rx, ry, z, yoff = ring[:4]
         xoff = ring[4] if len(ring) > 4 else 0.0
+        # Optional front lift: the front edge (-y) rises and the back sinks,
+        # so a ring can tilt like the saddle of a peaked cap without leaning.
+        lift = ring[5] if len(ring) > 5 else 0.0
         for i in range(segments):
             a = math.tau*i/segments
-            verts.append((xoff + rx*math.cos(a), yoff + ry*math.sin(a), z))
+            verts.append((xoff + rx*math.cos(a), yoff + ry*math.sin(a), z - lift*math.sin(a)))
     faces = []
     for ring in range(ring_count - 1):
         a0 = ring*segments; b0 = (ring+1)*segments
@@ -221,17 +224,21 @@ def build_character():
         box('Classic tunic piping.L',(-.298,-.376,.855),(.011,.006,.148),brass,(0,math.radians(-9),0),.004), box('Classic tunic piping.R',(.298,-.376,.855),(.011,.006,.148),brass,(0,math.radians(9),0),.004), cross_brass,cross_inset,
     ]
 
-    cap_crown=loft_ellipse('Classic cap crown',[(.350,.268,1.615,0.000,.016),(.360,.274,1.658,.004,.010),(.374,.281,1.701,.014,.002),(.392,.288,1.744,.030,-.010),(.407,.292,1.783,.050,-.024),(.414,.294,1.818,.068,-.038)],navy,120,.008)
-    cap_top=loft_ellipse('Classic cap top',[(.408,.292,1.811,.080,-.036),(.431,.300,1.830,.098,-.047),(.454,.309,1.850,.120,-.059),(.460,.312,1.869,.140,-.070),(.450,.306,1.884,.153,-.078),(.428,.294,1.895,.160,-.084)],navy,124,.008)
+    # Peaked service cap ("gorra de plato"): round in plan like the skull it sits
+    # on, never pinched front-to-back or leaning sideways. A straight band, a
+    # crown that flares evenly, and a wide round top plate whose front edge
+    # rises a little over the visor, set slightly back on the head.
+    cap_crown=loft_ellipse('Classic cap crown',[(.352,.336,1.615,0.000),(.360,.343,1.660,.002,0,.002),(.373,.355,1.705,.005,0,.006),(.390,.371,1.748,.009,0,.010),(.406,.386,1.786,.013,0,.014),(.418,.397,1.815,.016,0,.017)],navy,120,.008)
+    cap_top=loft_ellipse('Classic cap top',[(.414,.394,1.812,.048,0,.027),(.446,.426,1.826,.052,0,.033),(.468,.448,1.844,.056,0,.039),(.470,.450,1.862,.058,0,.042),(.452,.433,1.878,.060,0,.044),(.408,.391,1.890,.061,0,.044),(.320,.306,1.898,.062,0,.042),(.180,.172,1.902,.062,0,.041)],navy,124,.008)
     visor=crescent_visor('Classic cap visor',(0,-.020,1.665),leather,.286,.450,.176,.235,.030,10,48)
-    cap_badge=front_ellipse('Classic cap badge',(0,-.327,1.705),.050,.060,.010,brass,40,.003); cap_badge_inset=front_ellipse('Classic cap badge inset',(0,-.334,1.705),.027,.034,.008,leather,36,.002)
+    cap_badge=front_ellipse('Classic cap badge',(0,-.362,1.705),.050,.060,.010,brass,40,.003); cap_badge_inset=front_ellipse('Classic cap badge inset',(0,-.369,1.705),.027,.034,.008,leather,36,.002)
     mouth_l=box('Mouth.L',(-.052,-.357,1.246),(.070,.004,.0060),black,(0,math.radians(-12),0),.002); mouth_r=box('Mouth.R',(.052,-.357,1.246),(.070,.004,.0060),black,(0,math.radians(12),0),.002)
     head += [
         sphere('Head',(0,-.012,1.345),(.350,.335,.350),ivory,96),
         front_ellipse('Eye.L',(-.105,-.357,1.382),.027,.036,.009,black,44,.002), front_ellipse('Eye.R',(.105,-.357,1.382),.027,.036,.009,black,44,.002),
         box('Brow.L',(-.110,-.365,1.452),(.083,.008,.017),black,(0,math.radians(27),0),.004), box('Brow.R',(.110,-.365,1.452),(.083,.008,.017),black,(0,math.radians(-27),0),.004),
-        cap_crown,cap_top, elliptic_cyl('Classic cap band',(0,-.004,1.615),.364,.082,.84,cap_red,(math.radians(-2),0,0),116,.010), elliptic_cyl('Classic cap brass line',(0,-.010,1.573),.360,.013,.84,brass,(math.radians(-2),0,0),116,.003), visor, cap_badge,cap_badge_inset,
-        box('Classic cap badge wing.L',(-.078,-.326,1.712),(.052,.006,.014),brass,(0,math.radians(-12),math.radians(12)),.003), box('Classic cap badge wing.R',(.078,-.326,1.712),(.052,.006,.014),brass,(0,math.radians(12),math.radians(-12)),.003),
+        cap_crown,cap_top, elliptic_cyl('Classic cap band',(0,-.004,1.615),.364,.082,.955,cap_red,(math.radians(-2),0,0),116,.010), elliptic_cyl('Classic cap brass line',(0,-.010,1.573),.360,.013,.955,brass,(math.radians(-2),0,0),116,.003), visor, cap_badge,cap_badge_inset,
+        box('Classic cap badge wing.L',(-.078,-.360,1.712),(.052,.006,.014),brass,(0,math.radians(-12),math.radians(12)),.003), box('Classic cap badge wing.R',(.078,-.360,1.712),(.052,.006,.014),brass,(0,math.radians(12),math.radians(-12)),.003),
     ]
 
     # The reference cap rests on the brow: the band crosses the forehead and the visor

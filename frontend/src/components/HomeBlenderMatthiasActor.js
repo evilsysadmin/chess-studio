@@ -35,17 +35,20 @@ export const HOME_MATTHIAS_ACTOR_STATIONS = Object.freeze({
     at: Object.freeze([-4.6, -0.1, 0]),
     yawDeg: 28,
   }),
-  // Both seated routines use the left chair: the right chair sits inside the
-  // on-screen footprint of the Mazmorras hotspot (see 'table-coffee').
+  // Both seated routines use the right chair, the end of the table that has
+  // his small board, his books and his mug. Slightly forward on the seat so
+  // the cap clears the high backrest posts. On screen it overlaps the
+  // Mazmorras hotspot box, so HomeMatthiasInScene.css stacks his hit-area
+  // above it on desktop.
   'chess-chair': Object.freeze({
     posture: 'seat',
-    at: Object.freeze([-4.12, 1.05, 0.855]),
-    yawDeg: 62,
+    at: Object.freeze([4.06, 1.05, 0.855]),
+    yawDeg: -70,
   }),
   'reading-chair': Object.freeze({
     posture: 'seat',
-    at: Object.freeze([-4.12, 1.05, 0.855]),
-    yawDeg: 62,
+    at: Object.freeze([4.06, 1.05, 0.855]),
+    yawDeg: -70,
   }),
   // The daybed on the left: high end against the wall (x -7.39), low arm at
   // x -5.45, seat cushions x -7.25..-5.68 with their top at ~0.965. Matthias
@@ -118,8 +121,10 @@ export const HOME_MATTHIAS_POSTURES = Object.freeze({
     }),
   }),
   seat: Object.freeze({
-    skirtY: 0.44,
-    skirtXZ: 0.6,
+    // Near-uniform shrink of the lower pawn: a shorter bell that keeps its
+    // shape. A strong vertical squash read as a deformed body.
+    skirtY: 0.62,
+    skirtXZ: 0.72,
     // Seated, the draped skirt rests directly on the cushion.
     lift: 0.0,
     legs: Object.freeze({
