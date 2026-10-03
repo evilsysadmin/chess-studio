@@ -7,6 +7,7 @@ import {
   createChroniclesState,
 } from '../chroniclesOfMatthias.js';
 import { chroniclesPartyBark } from '../chroniclesOfMatthiasBarks.js';
+import { playChroniclesActionSound } from '../chronicles/chroniclesActionAudio.js';
 import { chroniclesPartyPortraitUrl } from '../chronicles/chroniclesPartyPortraitAssets.js';
 import { chroniclesClearRuntimeMapDefinitions } from '../chronicles/chroniclesMapCatalog.js';
 import { chroniclesCheckpointState } from '../chronicles/chroniclesRunClient.js';
@@ -160,6 +161,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     const current = stateRef.current;
     if (!current) return;
     const next = chroniclesReduce(current, action);
+    playChroniclesActionSound(current, next, action);
     stateRef.current = next;
     setState(next);
 
