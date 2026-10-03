@@ -75,6 +75,18 @@ else
   pvp_sparring_enabled=false
 fi
 pvp_sparring_owner="${CHESS_PVP_SPARRING_OWNER:-evilsysadmin}"
+# Strangler front for the Python -> Go migration. "direct": nginx sends only
+# /api/pvp to the Go sidecar. "go": nginx sends the whole API to the sidecar,
+# which serves what is native and forwards the rest to Python. Versioned here
+# per target so enabling or reverting it is a reviewed one-line change.
+case "$target" in
+  staging) api_edge_mode="${CHESS_STUDIO_API_EDGE_MODE:-direct}" ;;
+  *) api_edge_mode="${CHESS_STUDIO_API_EDGE_MODE:-direct}" ;;
+esac
+case "$api_edge_mode" in
+  direct|go) ;;
+  *) echo "invalid CHESS_STUDIO_API_EDGE_MODE: $api_edge_mode" >&2; exit 2 ;;
+esac
 pvp_sparring_username="${CHESS_PVP_SPARRING_USERNAME:-sparringmeister}"
 
 state_file="$state_dir/deployed.sha"
@@ -302,10 +314,14 @@ render_edge() {
   local color="$1"
   local pvp_mode="${2:-go}"
   local committed_sha="${3:-${previous_sha:-}}"
+  # Only the candidate cutover passes the configured API mode. Rollbacks keep
+  # "direct": an older Go sidecar may not be able to front the whole API.
+  local api_mode="${4:-direct}"
   python3 -S "$blue_green_edge" \
     --color "$color" \
     --pvp-mode "$pvp_mode" \
     --committed-sha "$committed_sha" \
+    --api-mode "$api_mode" \
     --output "$edge_config_file"
 }
 
@@ -1085,6 +1101,24 @@ wait_pvp_browser_attest() {
 }
 
 
+api_edge_attest() {
+  # In api "go" mode a non-PvP route must be answered through the Go sidecar.
+  local endpoint="$1"
+  local headers status
+  headers="$(mktemp)"
+  if ! status="$(curl --silent --show-error --max-time 8 -D "$headers" -o /dev/null -w "%{http_code}" "$endpoint")"; then
+    rm -f "$headers"
+    return 1
+  fi
+  if [[ "$status" != "200" ]] || ! grep -Eiq "^X-Chess-Edge:[[:space:]]*go[[:space:]]*$" "$headers"; then
+    rm -f "$headers"
+    return 1
+  fi
+  rm -f "$headers"
+  return 0
+}
+
+
 public_tunnel_attest() {
   local expected="$1"
   local release
@@ -1563,7 +1597,7 @@ fi
 phase_done readiness "$readiness_started_ms"
 
 switch_started_ms="$(now_ms)"
-render_edge "$candidate_color" go
+render_edge "$candidate_color" go "${previous_sha:-}" "$api_edge_mode"
 if [[ -n "$previous_color" ]]; then
   if ! reload_edge; then
     echo "edge reload failed for candidate color=$candidate_color" >&2
@@ -1621,6 +1655,12 @@ if ! wait_pvp_browser_attest pvp_challenge_browser_attest "http://127.0.0.1:${po
   rollback "$sha" || true
   exit 49
 fi
+if [[ "$api_edge_mode" == "go" ]] && ! wait_pvp_browser_attest api_edge_attest "http://127.0.0.1:${port}/api/release"; then
+  echo "edge did not front the API through Go after cutover: color=$candidate_color" >&2
+  compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
+  rollback "$sha" || true
+  exit 58
+fi
 write_active_color "$candidate_color"
 phase_done switch "$switch_started_ms"
 
@@ -1662,7 +1702,7 @@ fi
 phase_done tunnel "$tunnel_started_ms"
 
 record_successful_backend "$sha"
-if ! render_edge "$candidate_color" go "$sha" || ! reload_edge; then
+if ! render_edge "$candidate_color" go "$sha" "$api_edge_mode" || ! reload_edge; then
   echo "failed to publish committed OCI generation marker: $sha color=$candidate_color" >&2
   rollback "$sha" || true
   exit 55
@@ -1684,5 +1724,5 @@ fi
 agent_diag_summary || printf '%s\n' 'OCI_AGENT_DIAG unavailable'
 phase_done total "$total_started_ms"
 printf 'OCI_DEPLOY_TIMINGS target=%s phases=%s tunnel=%s color=%s\n' "$target" "${deploy_phase_summary%,}" "$tunnel_action" "$candidate_color"
-echo "CHESS_STUDIO_DEPLOY_OK target=$target repo_ref=$sha color=$candidate_color pvp=go cors_origin=$cors_origin tunnel_action=$tunnel_action image=pulled observability=${observability_summary:-unknown}"
+echo "CHESS_STUDIO_DEPLOY_OK target=$target repo_ref=$sha color=$candidate_color pvp=go api_edge=$api_edge_mode cors_origin=$cors_origin tunnel_action=$tunnel_action image=pulled observability=${observability_summary:-unknown}"
 exit 0

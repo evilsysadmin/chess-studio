@@ -477,6 +477,16 @@ assert "deployment_target == 'staging'" in deploy
 assert "required_native = (" in deploy
 assert "any(payload.get(key) is not True for key in required_native)" in deploy
 assert 'pvp_target_image="$(pvp_image_ref "$sha")"' in deploy
+# Strangler front: only the candidate cutover and its commit marker may put
+# nginx in API "go" mode; every rollback render stays "direct" because an
+# older Go sidecar may not be able to front the whole API.
+assert 'render_edge "$candidate_color" go "${previous_sha:-}" "$api_edge_mode"' in deploy
+assert 'render_edge "$candidate_color" go "$sha" "$api_edge_mode"' in deploy
+for line in deploy.splitlines():
+    if "render_edge \"$previous_color\"" in line:
+        assert "api_edge_mode" not in line, line
+assert 'local api_mode="${4:-direct}"' in deploy
+assert "wait_pvp_browser_attest api_edge_attest" in deploy
 assert 'docker pull --quiet "$pvp_target_image"' in deploy
 assert 'render_edge "$candidate_color" go' in deploy
 assert 'render_edge "$candidate_color" go "$sha"' in deploy

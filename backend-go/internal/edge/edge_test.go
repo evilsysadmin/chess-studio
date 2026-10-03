@@ -94,17 +94,48 @@ func TestNativePulseDisabledReturnsNotFoundInsteadOfProxying(t *testing.T) {
 	}
 }
 
-func TestRejectsNonPvPPaths(t *testing.T) {
-	upstream := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		t.Fatal("upstream must not receive non-PvP requests")
+func TestProxiesNonPvPPathsToPython(t *testing.T) {
+	// The edge fronts the whole API in api "go" mode: anything without a
+	// native handler belongs to Python, and is never marked as PvP fallback.
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/auth/me" || r.URL.RawQuery != "x=1" {
+			t.Fatalf("path=%q query=%q", r.URL.Path, r.URL.RawQuery)
+		}
+		if got := r.Header.Get("X-Chess-Pvp-Fallback"); got != "" {
+			t.Fatalf("non-PvP request carried a PvP fallback reason %q", got)
+		}
+		w.WriteHeader(http.StatusTeapot)
 	}))
 	defer upstream.Close()
 
 	h := mustHandler(t, upstream.URL)
+	req := httptest.NewRequest(http.MethodGet, "http://edge/api/auth/me?x=1", nil)
+	req.Header.Set("X-Chess-Pvp-Fallback", "forged")
 	rr := httptest.NewRecorder()
-	h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "http://edge/api/auth/me", nil))
-	if rr.Code != http.StatusNotFound {
-		t.Fatalf("status=%d want=404", rr.Code)
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusTeapot {
+		t.Fatalf("status=%d want=418", rr.Code)
+	}
+	if rr.Header().Get("X-Chess-Edge") != "go" {
+		t.Fatalf("missing X-Chess-Edge on proxied response: %v", rr.Header())
+	}
+}
+
+func TestUpstreamFailureCodeDependsOnDomain(t *testing.T) {
+	h := mustHandler(t, "http://127.0.0.1:1")
+	for path, want := range map[string]string{
+		"/api/pvp/roster": "pvp_upstream_unavailable",
+		"/api/games":      "upstream_unavailable",
+	} {
+		rr := httptest.NewRecorder()
+		h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "http://edge"+path, nil))
+		var body map[string]any
+		if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+			t.Fatal(err)
+		}
+		if rr.Code != http.StatusBadGateway || body["code"] != want || rr.Header().Get("X-Chess-Edge") != "go" {
+			t.Fatalf("%s: status=%d body=%v headers=%v", path, rr.Code, body, rr.Header())
+		}
 	}
 }
 
