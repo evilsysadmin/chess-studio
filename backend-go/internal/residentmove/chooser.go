@@ -10,6 +10,7 @@ import (
 
 	chess "github.com/corentings/chess/v2"
 
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/chessrules"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/residentpolicy"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/residentsearch"
 )
@@ -235,7 +236,7 @@ func positionComplexity(pos *chess.Position) float64 {
 	captures := 0
 	checks := 0
 	for i := range legal {
-		if legal[i].HasTag(chess.Capture) {
+		if chessrules.IsCapture(&legal[i]) {
 			captures++
 		}
 		if legal[i].HasTag(chess.Check) {

@@ -6,6 +6,10 @@ on:
       - 'backend-go/**'
       # The Go timing contract is asserted against the Python authority.
       - 'backend-python/pvp_api.py'
+      # The engine parity corpus is generated from the Python CPU engine.
+      - 'backend-python/chess_ai.py'
+      - 'backend-python/requirements.txt'
+      - 'scripts/engine_parity_corpus.py'
       - '.github/workflows/pvp-go.yml'
   push:
     branches:
@@ -13,6 +17,9 @@ on:
     paths:
       - 'backend-go/**'
       - 'backend-python/pvp_api.py'
+      - 'backend-python/chess_ai.py'
+      - 'backend-python/requirements.txt'
+      - 'scripts/engine_parity_corpus.py'
       - '.github/workflows/pvp-go.yml'
   workflow_dispatch:
 
@@ -62,7 +69,19 @@ jobs:
           PVP_MONGO_TEST_URL: mongodb://localhost:27017
           # Fail instead of skipping if the service is missing.
           PVP_MONGO_TEST_REQUIRED: '1'
-        run: go test -race ./...
+        # -short skips only the slow engine search corpus; it runs below
+        # without the race detector (single-threaded search, 4x slower there).
+        run: go test -race -short ./...
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+      - name: Engine parity (Go port vs Python chess_ai)
+        working-directory: .
+        run: |
+          python -m pip install --quiet "$(grep -E '^chess==' backend-python/requirements.txt)"
+          # The fixtures must be exactly what backend-python/chess_ai.py produces.
+          python scripts/engine_parity_corpus.py --check
+          cd backend-go && go test -count=1 -run 'MatchesPython' ./internal/residenteval ./internal/residentsearch
       - name: Vet
         run: go vet ./...
       - name: Build Linux ARM64

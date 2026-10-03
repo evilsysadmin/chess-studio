@@ -172,3 +172,11 @@ func pythonCompatibleFEN(position *chess.Position) string {
 	}
 	return strings.Join(parts, " ")
 }
+
+// IsCapture reports whether a move captures, en passant included. The chess
+// library tags an en passant capture with chess.EnPassant and not with
+// chess.Capture, so HasTag(chess.Capture) alone misses it (python-chess
+// is_capture does include it).
+func IsCapture(move *chess.Move) bool {
+	return move != nil && (move.HasTag(chess.Capture) || move.HasTag(chess.EnPassant))
+}
