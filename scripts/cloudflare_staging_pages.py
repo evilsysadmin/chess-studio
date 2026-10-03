@@ -9,6 +9,7 @@ Los secretos sólo llegan por variables de entorno del runner y nunca se imprime
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import sys
@@ -289,6 +290,13 @@ def ensure_web_analytics(zone_id: str) -> str:
     return "created"
 
 
+
+def should_wait_pages_domain_activation(
+    *, release_fast_path: bool, domain_created: bool, pages_dns: str
+) -> bool:
+    """Only bootstrap/control-plane changes deserve the long activation wait."""
+    return (not release_fast_path) or domain_created or pages_dns != "unchanged"
+
 def write_outputs(**values: str) -> None:
     path = os.environ.get("GITHUB_OUTPUT")
     if not path:
@@ -299,8 +307,19 @@ def write_outputs(**values: str) -> None:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--release-fast-path",
+        action="store_true",
+        help=(
+            "Reconcile only release-critical Pages topology. Stable custom-domain "
+            "activation and optional zone/RUM settings stay out of the normal release path."
+        ),
+    )
+    args = parser.parse_args()
+
     zone_id = find_zone_id()
-    ip_geolocation = ensure_ip_geolocation(zone_id)
+    ip_geolocation = "deferred-release-fast-path" if args.release_fast_path else ensure_ip_geolocation(zone_id)
     project_created = ensure_pages_project()
     domain_created = ensure_pages_domain()
     pages_dns = ensure_cname(
@@ -310,8 +329,18 @@ def main() -> None:
         proxied=True,
         comment="Chess Studio staging frontend · Cloudflare Pages",
     )
-    domain_status = wait_pages_domain_active()
-    analytics = ensure_web_analytics(zone_id)
+    if should_wait_pages_domain_activation(
+        release_fast_path=args.release_fast_path,
+        domain_created=domain_created,
+        pages_dns=pages_dns,
+    ):
+        domain_status = wait_pages_domain_active()
+    else:
+        # The public release.json exact-SHA probe after the Pages upload is the
+        # serving-path authority for normal releases. Do not let an administrative
+        # custom-domain state poll stall every deploy for 600 seconds.
+        domain_status = "serving-path-probe-deferred"
+    analytics = "deferred-release-fast-path" if args.release_fast_path else ensure_web_analytics(zone_id)
     write_outputs(
         pages_project=PAGES_PROJECT,
         pages_hostname=PAGES_HOSTNAME,

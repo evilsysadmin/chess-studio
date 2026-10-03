@@ -126,6 +126,41 @@ def test_pages_domain_terminal_error_fails_fast() -> None:
             raise AssertionError("un custom domain en error debe fallar sin esperar el timeout")
 
 
+
+def test_release_fast_path_wait_policy() -> None:
+    check(
+        module.should_wait_pages_domain_activation(
+            release_fast_path=True,
+            domain_created=False,
+            pages_dns="unchanged",
+        ) is False,
+        "un release normal con topología estable no debe pagar el timeout de 600s",
+    )
+    check(
+        module.should_wait_pages_domain_activation(
+            release_fast_path=True,
+            domain_created=True,
+            pages_dns="unchanged",
+        ) is True,
+        "crear el custom domain sí debe esperar activación",
+    )
+    check(
+        module.should_wait_pages_domain_activation(
+            release_fast_path=True,
+            domain_created=False,
+            pages_dns="updated",
+        ) is True,
+        "reconciliar DNS sí debe esperar activación",
+    )
+    check(
+        module.should_wait_pages_domain_activation(
+            release_fast_path=False,
+            domain_created=False,
+            pages_dns="unchanged",
+        ) is True,
+        "el bootstrap completo conserva la espera estricta",
+    )
+
 def test_web_analytics_permission_is_non_blocking() -> None:
     with (
         patch.dict(module.os.environ, {"CLOUDFLARE_ACCOUNT_ID": "acc", "CLOUDFLARE_API_TOKEN": "token"}),
@@ -157,6 +192,7 @@ if __name__ == "__main__":
     test_dns_reconciliation_updates_target_and_proxy_mode()
     test_pages_domain_waits_until_active()
     test_pages_domain_terminal_error_fails_fast()
+    test_release_fast_path_wait_policy()
     test_web_analytics_permission_is_non_blocking()
     test_web_analytics_existing_zone_is_idempotent()
-    print("cloudflare-staging-pages-smoke OK · Pages + DNS + domain active + RUM opcional/idempotente")
+    print("cloudflare-staging-pages-smoke OK · Pages + DNS + release fast-path + domain active + RUM opcional/idempotente")

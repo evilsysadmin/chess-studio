@@ -277,9 +277,9 @@ jobs:
         with:
           version: '4.127.1'
           node-version: '22'
-      - name: Reconcile Pages project, domains and staging DNS
+      - name: Verify release-critical Pages topology
         id: pages_bootstrap
-        run: python3 scripts/cloudflare_staging_pages.py
+        run: python3 scripts/cloudflare_staging_pages.py --release-fast-path
       - name: Build frontend for staging
         if: steps.frontend_artifact.outputs.hit != 'true'
         working-directory: frontend
@@ -355,25 +355,8 @@ jobs:
           node-version: '22'
       - name: Staging Worker isolation contract
         run: python3 -S scripts/deploy_staging_ai_worker.py --self-test
-      - name: Deploy exact staging Worker generation
+      - name: Deploy and verify exact staging Worker generation
         run: python3 scripts/deploy_staging_ai_worker.py
-      - name: Wait for staging Worker Custom Domain and health
-        shell: bash
-        run: |
-          set -euo pipefail
-          health_ok=false
-          for attempt in {1..150}; do
-            body="$RUNNER_TEMP/staging-ai-health-$attempt.json"
-            status="$(curl --silent --show-error --connect-timeout 5 --max-time 10 \
-              --output "$body" --write-out '%{http_code}' \
-              -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
-              -H 'User-Agent: chess-studio-staging-ai-health/3' \
-              "$STAGING_AI_URL/health" || true)"
-            if [[ "$status" == 200 ]] && python3 scripts/cloudflare_health_contract.py "$body"; then health_ok=true; break; fi
-            echo "Workers AI staging aún no está healthy (HTTP ${status:-curl-error}, intento $attempt/150)"
-            sleep 2
-          done
-          [[ "$health_ok" == true ]] || { echo '::error::Workers AI staging no quedó healthy tras 5 minutos'; exit 1; }
       - name: Shared Workers AI live contract
         run: python3 scripts/cloudflare_ai_preflight.py --worker-url "$STAGING_AI_URL"
   smoke:
