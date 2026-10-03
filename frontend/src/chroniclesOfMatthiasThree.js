@@ -129,6 +129,7 @@ function createDungeonScene(scene, { coarsePointer = false, scenePlan = null } =
   sigil.position.set(sigilCell.x, 0.035, sigilCell.z);
   sigil.rotation.x = -Math.PI / 2;
   sigil.receiveShadow = true;
+  sigil.visible = Boolean(scenePlan?.useAuthoredCryptDressing);
   scene.add(sigil);
 
   const enemyModels = {};
@@ -152,6 +153,7 @@ function createDungeonScene(scene, { coarsePointer = false, scenePlan = null } =
   const spectralChapel = buildSpectralChapel({ coarsePointer });
   const spectralChapelCell = worldForCell(5, 3, sceneCenter);
   spectralChapel.position.set(spectralChapelCell.x, 0, spectralChapelCell.z);
+  spectralChapel.visible = Boolean(scenePlan?.useAuthoredCryptDressing);
   scene.add(spectralChapel);
 
   const gateMaterial = new THREE.MeshStandardMaterial({ color: 0x171513, roughness: 0.66, metalness: 0.72, emissive: 0x120700, emissiveIntensity: 0.15 });
@@ -165,6 +167,7 @@ function createDungeonScene(scene, { coarsePointer = false, scenePlan = null } =
   gateRune.position.set(0, 1.55, -0.17);
   gate.add(gatePanel, gateRune);
   gate.position.set(gateCell.x, 0, gateCell.z - 1.45);
+  gate.visible = Boolean(scenePlan?.useAuthoredCryptDressing);
   scene.add(gate);
 
   const torchMaterial = new THREE.MeshStandardMaterial({ color: 0x3b2618, roughness: 0.7, metalness: 0.45 });
