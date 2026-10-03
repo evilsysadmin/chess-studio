@@ -575,6 +575,12 @@
         "intensity": 1
       },
       {
+        "kind": "far_art",
+        "scroll": 0.055,
+        "z": -74,
+        "intensity": 1
+      },
+      {
         "kind": "far_ridge",
         "scroll": 0.1,
         "z": -70,
