@@ -54,7 +54,10 @@ import {
   chroniclesProgressionFeedback,
   chroniclesProgressionFeedbackLabel,
 } from '../chronicles/chroniclesProgressionFeedback.js';
-import { chroniclesTacticsLocationLabel } from '../chronicles/chroniclesTacticsPresentation.js';
+import {
+  chroniclesTacticsLocationLabel,
+  chroniclesTacticsMoveAvailability,
+} from '../chronicles/chroniclesTacticsPresentation.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import ChroniclesTacticsPartyHud from './ChroniclesTacticsPartyHud.jsx';
 import './ChroniclesOfMatthiasTactics.css';
@@ -128,6 +131,11 @@ export default function ChroniclesOfMatthiasTactics({ authoritativeRun = null, o
   const objective = chroniclesObjective(state);
   const locationLabel = chroniclesTacticsLocationLabel(state);
   const contextualAction = useMemo(() => chroniclesTacticsInteractions(state)[0] || null, [state]);
+  const legalMoves = useMemo(() => chroniclesTacticsLegalMoves(state), [state]);
+  const moveAvailability = useMemo(
+    () => chroniclesTacticsMoveAvailability(state, legalMoves),
+    [legalMoves, state],
+  );
   const targetOptions = useMemo(
     () => chroniclesTacticsTargets(state, selectedMemberId),
     [selectedMemberId, state],
@@ -541,10 +549,10 @@ export default function ChroniclesOfMatthiasTactics({ authoritativeRun = null, o
           </div>
 
           <div className="chronicles-tactics__actions" aria-label="Controles de acción">
-            <button type="button" className="is-ready" disabled={!canAct} aria-label="Mover al oeste" {...forecastProps('west')} onClick={() => moveParty(-1, 0)}><i aria-hidden="true">←</i><span>A</span>{forecastBadge('west')}</button>
-            <button type="button" className="is-ready" disabled={!canAct} aria-label="Mover al norte" {...forecastProps('north')} onClick={() => moveParty(0, -1)}><i aria-hidden="true">↑</i><span>W</span>{forecastBadge('north')}</button>
-            <button type="button" className="is-ready" disabled={!canAct} aria-label="Mover al sur" {...forecastProps('south')} onClick={() => moveParty(0, 1)}><i aria-hidden="true">↓</i><span>S</span>{forecastBadge('south')}</button>
-            <button type="button" className="is-ready" disabled={!canAct} aria-label="Mover al este" {...forecastProps('east')} onClick={() => moveParty(1, 0)}><i aria-hidden="true">→</i><span>D</span>{forecastBadge('east')}</button>
+            <button type="button" className={moveAvailability.west ? 'is-ready' : ''} disabled={!moveAvailability.west} aria-label="Mover al oeste" {...forecastProps('west')} onClick={() => moveParty(-1, 0)}><i aria-hidden="true">←</i><span>A</span>{forecastBadge('west')}</button>
+            <button type="button" className={moveAvailability.north ? 'is-ready' : ''} disabled={!moveAvailability.north} aria-label="Mover al norte" {...forecastProps('north')} onClick={() => moveParty(0, -1)}><i aria-hidden="true">↑</i><span>W</span>{forecastBadge('north')}</button>
+            <button type="button" className={moveAvailability.south ? 'is-ready' : ''} disabled={!moveAvailability.south} aria-label="Mover al sur" {...forecastProps('south')} onClick={() => moveParty(0, 1)}><i aria-hidden="true">↓</i><span>S</span>{forecastBadge('south')}</button>
+            <button type="button" className={moveAvailability.east ? 'is-ready' : ''} disabled={!moveAvailability.east} aria-label="Mover al este" {...forecastProps('east')} onClick={() => moveParty(1, 0)}><i aria-hidden="true">→</i><span>D</span>{forecastBadge('east')}</button>
             <button
               type="button"
               className={contextualAction ? 'is-ready' : ''}
