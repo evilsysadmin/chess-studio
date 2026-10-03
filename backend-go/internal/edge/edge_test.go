@@ -8,8 +8,11 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/telemetry"
 )
 
 func TestProxyPreservesPvPRequest(t *testing.T) {
@@ -1043,5 +1046,36 @@ func TestProxyTellsPythonWhyItFellBack(t *testing.T) {
 		if reason := <-got; reason != want {
 			t.Fatalf("%s: reason=%q want=%q", path, reason, want)
 		}
+	}
+}
+
+// Native responses are recorded once, by Go, under Python's route template;
+// proxied ones are recorded by Python and must not be counted twice.
+func TestTelemetryRecordsOnlyNativeRequests(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer upstream.Close()
+	out := &bytes.Buffer{}
+	recorder, err := telemetry.New(context.Background(), telemetry.Config{ServiceName: "test-go"}, telemetry.Options{Stdout: out})
+	if err != nil {
+		t.Fatal(err)
+	}
+	native := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusAccepted) })
+	h, err := New(Config{UpstreamURL: upstream.URL, NativeMatchMove: native, Telemetry: recorder})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/api/pvp/matches/m-42/move", nil))
+	h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/api/games", nil))            // proxied
+	h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/api/pvp/matches/m-42", nil)) // disabled → proxied
+
+	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
+	if len(lines) != 1 {
+		t.Fatalf("recorded %d requests, want only the native one:\n%s", len(lines), out.String())
+	}
+	if !strings.Contains(lines[0], `"route":"/api/pvp/matches/{match_id}/move"`) || !strings.Contains(lines[0], `"status":202`) {
+		t.Fatalf("event=%s", lines[0])
 	}
 }

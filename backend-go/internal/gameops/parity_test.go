@@ -2,6 +2,7 @@ package gameops
 
 import (
 	"encoding/json"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/pyjson"
 	"os"
 	"testing"
 )
@@ -71,7 +72,7 @@ func TestNewGameFingerprintsMatchPython(t *testing.T) {
 			t.Fatal(err)
 		}
 		if got != *c.Fingerprint {
-			canonical, _ := pyJSON(req.Payload)
+			canonical, _ := pyjson.Dumps(req.Payload)
 			t.Errorf("%v: fingerprint drift; go canonical=%s", c.Body, canonical)
 		}
 	}
@@ -147,17 +148,5 @@ func TestLedgerReplayAndRemember(t *testing.T) {
 	}
 	if replay, err := Replay(ledger, nil, "fp", "move"); replay || err != nil {
 		t.Fatal("nil key never replays")
-	}
-}
-
-func TestPyFloatRepr(t *testing.T) {
-	for in, want := range map[float64]string{
-		50: "50.0", 0.1: "0.1", 1e-05: "1e-05", 0.0001: "0.0001", 1e16: "1e+16",
-		1e15: "1000000000000000.0", 123456789.125: "123456789.125", -3.25: "-3.25",
-		1.5e300: "1.5e+300", 5e-324: "5e-324",
-	} {
-		if got := pyFloatRepr(in); got != want {
-			t.Errorf("%v: got %s want %s", in, got, want)
-		}
 	}
 }

@@ -13,10 +13,25 @@ Cloudflare Tunnel → nginx edge (stable :4000) → Go sidecar pvp_<color> → P
 - **API front.** In nginx API mode `go`, nginx sends the whole API to the Go sidecar of the active colour. Go serves its native routes and forwards everything else to the paired Python slot unchanged: path, query, body, auth and the Cloudflare client headers, so Python's security identity (`CF-Connecting-IP` with `TRUST_CLOUDFLARE_CLIENT_IP`) is unaffected. Proxied responses carry `X-Chess-Edge: go`. In API mode `direct` (the default), nginx sends only `/api/pvp` to Go.
 - **Mode selection.** `scripts/oci_existing_a1_deploy.sh` chooses the mode per target (`api_edge_mode`). Only the candidate cutover and its commit marker use it. Every rollback renders `direct`, because an older sidecar may not be able to front the API. After the cutover the deploy proves that `/api/release` answered through Go (exit 58 otherwise, with rollback). `scripts/oci_staging_cors_contract.py` pins all of this.
 - **Routing.** One routing table per domain, shared by the edge and the native handler (`internal/pvproute` for PvP). A native route has a kill-switch until its domain is retired. A disabled or unknown route goes to Python.
+- **Observability.** Every request Go answers natively is recorded by Go (`internal/telemetry`) the way Python records its own:
+  - the `chess_studio_http_server_requests` counter and the `chess_studio_http_server_duration` histogram (seconds, SDK default buckets), with the same attributes;
+  - one `http_request` access event with Python's exact JSON shape, written to stdout and sent as an OTLP log;
+  - `http.route` is the FastAPI template (`pvproute.Kind.Pattern`), and native PvP events carry `pvp_hop: go:native`.
+
+  Proxied requests are recorded only by Python, never twice. Go exports under `<OTEL_SERVICE_NAME>-go` with its own `service.instance.id`, from the same env file. Sharing Python's service name would merge the two runtimes' series and count Go-native PvP traffic as Python fallback in `pvp-python-fallback.yml`. Telemetry is fail-open, with the kill-switch `GO_REQUEST_TELEMETRY_ENABLED` (on by default).
+
+  Not ported yet:
+  - the admin panel's in-process and Mongo history (`observability_history`);
+  - the trusted staging smoke marker (`synthetic_source`);
+  - traces.
+
+  Dashboards that filter by `service_name` must include the `-go` variant.
+- **Presence.** Python's `get_current_user` also touches `last_activity` (coalesced to 30 s). Native Go routes do not; presence comes from the `/api/auth/activity` heartbeat every 120 s, inside the 150 s session TTL. This is an accepted deviation; revisit it when auth/presence moves to Go.
 - **Data.** MongoDB stays the single authority during the migration. Go and Python read and write the same documents, so every native write needs the same CAS, idempotency and document shape as Python, proven with integration tests against a real `mongo:8.0` (see `internal/pulse/mongo_integration_test.go`). Go declares the indexes it relies on.
 
 ## Rules for each domain
 
+0. **Observable before native:** a route is not native until Go records it as above.
 1. **Safety net first:** parity tests against Python, built from fixtures that Python itself generates (as with `scripts/engine_parity_corpus.py`), plus Mongo integration tests for every write.
 2. **Native behind a kill-switch,** route by route, enabled in staging first and accredited by the deploy.
 3. **Evidence before retiring:** Python request counts per route in Grafana (`chess_studio_http_server_requests_total`, see `pvp-python-fallback.yml`) must be zero for an agreed window.

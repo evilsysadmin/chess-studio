@@ -1,6 +1,9 @@
 package pvproute
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestMatch(t *testing.T) {
 	cases := []struct {
@@ -68,5 +71,25 @@ func TestKindNamesAreComplete(t *testing.T) {
 	}
 	if Kind(99).String() != "unknown" {
 		t.Fatal("out-of-range kind")
+	}
+}
+
+// Every native route has an http.route template, and filling the template's
+// ids resolves back to the same route: the label can never drift from the
+// table the edge dispatches with.
+func TestPatternsRoundTrip(t *testing.T) {
+	for kind := LobbyRead; kind <= MatchRead; kind++ {
+		pattern := kind.Pattern()
+		if pattern == "" {
+			t.Errorf("%s has no pattern", kind)
+			continue
+		}
+		path := strings.NewReplacer("{match_id}", "m-1", "{challenge_id}", "c-1").Replace(pattern)
+		if got := Match(path).Kind; got != kind {
+			t.Errorf("%s: %s resolves to %s", kind, path, got)
+		}
+	}
+	if None.Pattern() != "" || Kind(-1).Pattern() != "" || Kind(999).Pattern() != "" {
+		t.Error("unknown kinds have no pattern")
 	}
 }

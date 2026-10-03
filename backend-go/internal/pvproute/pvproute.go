@@ -53,6 +53,36 @@ func (k Kind) String() string {
 	return kindNames[k]
 }
 
+// patterns are the FastAPI path templates Python reports as http.route for
+// the same requests (backend-python/pvp_api.py, prefix /api/pvp), so native
+// and proxied traffic share one route label in metrics and logs. The pulses
+// have no Python route and use the same template style.
+var patterns = [...]string{
+	None:               "",
+	LobbyRead:          "/api/pvp/lobby",
+	LobbyPulse:         "/api/pvp/lobby/pulse",
+	LobbyChat:          "/api/pvp/lobby/chat",
+	Roster:             "/api/pvp/roster",
+	ChallengeCreate:    "/api/pvp/challenges",
+	ChallengeAccept:    "/api/pvp/challenges/{challenge_id}/accept",
+	ChallengeCancel:    "/api/pvp/challenges/{challenge_id}/cancel",
+	ChallengeDecline:   "/api/pvp/challenges/{challenge_id}/decline",
+	MatchPulse:         "/api/pvp/matches/{match_id}/pulse",
+	MatchHandoffCancel: "/api/pvp/matches/{match_id}/cancel-starting",
+	MatchReady:         "/api/pvp/matches/{match_id}/ready",
+	MatchResign:        "/api/pvp/matches/{match_id}/resign",
+	MatchMove:          "/api/pvp/matches/{match_id}/move",
+	MatchRead:          "/api/pvp/matches/{match_id}",
+}
+
+// Pattern is the route template used as http.route.
+func (k Kind) Pattern() string {
+	if k < 0 || int(k) >= len(patterns) {
+		return ""
+	}
+	return patterns[k]
+}
+
 // Route is a matched native route. ID is the match or challenge id, if any.
 type Route struct {
 	Kind Kind

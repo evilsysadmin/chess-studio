@@ -1099,3 +1099,25 @@ func TestVirtualOpponentDetectionMatchesStagingContract(t *testing.T) {
 }
 
 func stringPtr(value string) *string { return &value }
+
+func TestVerifiedSubjectAttributesOnlyValidSessions(t *testing.T) {
+	now := time.Unix(1_760_000_000, 0)
+	secret := "test-secret-test-secret-test-secret"
+	valid := signedToken(t, "alice", 0, now.Add(time.Hour), "session", secret)
+	cases := map[string]string{
+		"Bearer " + valid: "alice",
+		valid:             "",
+		"Bearer " + signedToken(t, "alice", 0, now.Add(-time.Second), "session", secret):        "",
+		"Bearer " + signedToken(t, "alice", 0, now.Add(time.Hour), "password_reset", secret):    "",
+		"Bearer " + signedToken(t, "alice", 0, now.Add(time.Hour), "session", "another-secret"): "",
+		"": "",
+	}
+	for header, want := range cases {
+		if got := VerifiedSubject(header, []byte(secret), now); got != want {
+			t.Errorf("%.30q: got %q want %q", header, got, want)
+		}
+	}
+	if VerifiedSubject("Bearer "+valid, nil, now) != "" {
+		t.Error("no secret, no subject")
+	}
+}
