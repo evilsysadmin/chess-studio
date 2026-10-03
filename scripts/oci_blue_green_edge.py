@@ -19,15 +19,23 @@ def normalize_committed_sha(value: str) -> str:
     return normalized
 
 
-def render(color: str, *, pvp_mode: str = "direct", committed_sha: str = "") -> str:
+def render(color: str, *, pvp_mode: str = "direct", committed_sha: str = "", api_mode: str = "direct") -> str:
     color = str(color or "").strip().lower()
     if color not in VALID_COLORS:
         raise SystemExit(f"invalid backend color: {color!r}")
     if pvp_mode not in {"direct", "go"}:
         raise SystemExit(f"invalid PvP mode: {pvp_mode!r}")
+    if api_mode not in {"direct", "go"}:
+        raise SystemExit(f"invalid API mode: {api_mode!r}")
+    if api_mode == "go" and pvp_mode != "go":
+        # Without a healthy Go sidecar there is nothing to front the API with.
+        raise SystemExit("API mode go requires PvP mode go")
     committed_sha = normalize_committed_sha(committed_sha)
     backend_upstream = f"backend_{color}:4000"
     pvp_upstream = f"pvp_{color}:8080" if pvp_mode == "go" else backend_upstream
+    # Strangler front: in api "go" mode the Go sidecar receives the whole API
+    # and forwards to Python whatever it does not serve natively yet.
+    api_upstream = pvp_upstream if api_mode == "go" else backend_upstream
     proxy_common = """        proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -96,7 +104,7 @@ server {{
 {proxy_common}
         proxy_set_header Connection "";
         keepalive_timeout 5s;
-        proxy_pass http://{backend_upstream};
+        proxy_pass http://{api_upstream};
     }}
 }}
 """
@@ -125,6 +133,16 @@ def self_test() -> None:
     green = render("green", pvp_mode="go", committed_sha=sample)
     fallback = render("blue", pvp_mode="direct", committed_sha=sample)
     uncommitted = render("blue", pvp_mode="direct")
+    fronted = render("green", pvp_mode="go", committed_sha=sample, api_mode="go")
+    assert fronted.count("pvp_green:8080") == 4  # probe, /api/pvp, /api/pvp/, /
+    assert "backend_green:4000" not in fronted
+    assert blue.count("backend_blue:4000") == 1  # default api mode stays direct
+    try:
+        render("blue", pvp_mode="direct", api_mode="go")
+    except SystemExit:
+        pass
+    else:
+        raise AssertionError("api go mode accepted without the Go sidecar")
     assert "backend_blue:4000" in blue
     assert "backend_green:4000" in green
     assert "pvp_blue:8080" in blue
@@ -168,6 +186,7 @@ def main() -> None:
     parser.add_argument("--output")
     parser.add_argument("--pvp-mode", choices=("direct", "go"), default="direct")
     parser.add_argument("--committed-sha", default="")
+    parser.add_argument("--api-mode", choices=("direct", "go"), default="direct")
     args = parser.parse_args()
     if args.self_test:
         self_test()
@@ -176,7 +195,7 @@ def main() -> None:
         parser.error("--color and --output are required")
     atomic_write(
         pathlib.Path(args.output),
-        render(args.color, pvp_mode=args.pvp_mode, committed_sha=args.committed_sha),
+        render(args.color, pvp_mode=args.pvp_mode, committed_sha=args.committed_sha, api_mode=args.api_mode),
     )
 
 

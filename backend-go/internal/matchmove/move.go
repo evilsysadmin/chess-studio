@@ -6,19 +6,20 @@ import (
 	"time"
 
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/chessrules"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/pvpclock"
 )
 
 const (
-	InitialClockMS int64 = 10 * 60 * 1000
-	IncrementMS    int64 = 0
+	InitialClockMS = pvpclock.InitialMS
+	IncrementMS    = pvpclock.IncrementMS
 )
 
 var (
-	ErrNotParticipant = errors.New("player is not a match participant")
-	ErrWrongState     = errors.New("match is not active")
-	ErrWrongTurn      = errors.New("not player's turn")
-	ErrCountdown      = errors.New("match countdown is still active")
-	ErrClockExpired   = errors.New("mover clock already expired")
+	ErrNotParticipant  = errors.New("player is not a match participant")
+	ErrWrongState      = errors.New("match is not active")
+	ErrWrongTurn       = errors.New("not player's turn")
+	ErrCountdown       = errors.New("match countdown is still active")
+	ErrClockExpired    = errors.New("mover clock already expired")
 	ErrInvalidPosition = errors.New("invalid persisted position")
 	ErrInvalidMove     = errors.New("invalid move")
 	ErrIllegalMove     = errors.New("illegal move")

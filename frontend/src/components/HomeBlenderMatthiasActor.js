@@ -80,10 +80,11 @@ export function homeMatthiasActorStationForProfile(profile = 'idle') {
 
 export function homeMatthiasActorRoutine({ scene = '', activity = '', speaking = false } = {}) {
   const profile = homeMatthiasMotionProfile({ scene, activity, speaking });
-  // "Dormido sobre el manual": he nods off in the reading chair, not the sofa.
-  const stationId = profile === 'sleep' && /book-doze/i.test(String(scene))
-    ? 'reading-chair'
-    : homeMatthiasActorStationForProfile(profile);
+  // "Dormido sobre el manual": he nods off in the reading chair with the
+  // manual still in his hands, not on the sofa.
+  const bookDoze = profile === 'sleep' && /book-doze/i.test(String(scene));
+  const stationId = bookDoze ? 'reading-chair' : homeMatthiasActorStationForProfile(profile);
+  const propProfile = bookDoze ? 'read' : profile;
   const station = HOME_MATTHIAS_ACTOR_STATIONS[stationId];
   return {
     profile,
@@ -91,6 +92,7 @@ export function homeMatthiasActorRoutine({ scene = '', activity = '', speaking =
     phase: homeMatthiasMotionPhase({ scene, activity }),
     stationId,
     posture: station.posture,
+    propProfile,
   };
 }
 
@@ -159,8 +161,15 @@ export const HOME_MATTHIAS_ARM_POSES = Object.freeze({
   sip: Object.freeze({
     R: Object.freeze({ upper: [40, 0, 20], fore: [70, 0, 0], raise: { upper: [52, 0, 30], fore: [100, 0, 0] } }),
   }),
+  // Same hand as the coffee: the authored sandwich sits on the right side of
+  // the chest, so a left-hand anchor dragged it across the body.
   bite: Object.freeze({
-    L: Object.freeze({ upper: [40, 0, 20], fore: [70, 0, 0], raise: { upper: [52, 0, 30], fore: [100, 0, 0] } }),
+    R: Object.freeze({ upper: [40, 0, 20], fore: [70, 0, 0], raise: { upper: [52, 0, 30], fore: [100, 0, 0] } }),
+  }),
+  // At the board: both forearms forward, hands resting near the pieces.
+  think: Object.freeze({
+    R: Object.freeze({ upper: [36, 0, 18], fore: [62, 0, 0] }),
+    L: Object.freeze({ upper: [36, 0, 18], fore: [62, 0, 0] }),
   }),
   dossier: Object.freeze({
     R: Object.freeze({ upper: [40, 0, 20], fore: [70, 0, 0] }),
@@ -183,21 +192,29 @@ export const HOME_MATTHIAS_PROP_ANCHORS = Object.freeze({
   // hide their props for a few frames at every loop seam, which reads as a
   // blinking cup once the routine lasts tens of seconds.
   sip: Object.freeze({ bone: 'prop_cup', content: 'RoutineCup', hand: 'Hand.R', offset: [-0.045, 0.07, 0.03], hide: ['RoutineCupHand'], show: ['prop_cup'] }),
-  bite: Object.freeze({ bone: 'prop_bite', content: 'RoutineSandwichBread', hand: 'Hand.L', offset: [0.045, 0.06, 0.03], hide: ['RoutineSandwichHand'], show: ['prop_bite'] }),
+  bite: Object.freeze({ bone: 'prop_bite', content: 'RoutineSandwichBread', hand: 'Hand.R', offset: [-0.045, 0.06, 0.03], hide: ['RoutineSandwichHand'], show: ['prop_bite'] }),
   dossier: Object.freeze({ hide: ['RoutineBookHand.L', 'RoutineBookHand.R'], show: ['prop_book'] }),
   read: Object.freeze({ hide: ['RoutineBookHand.L', 'RoutineBookHand.R'], show: ['prop_book'] }),
   write: Object.freeze({ hide: ['RoutineBookHand.L', 'RoutineBookHand.R'], show: ['prop_book', 'prop_pen'] }),
 });
 
 // 0 holding the cup at the chest, 1 at the mouth; a slow sip every ~9.6 s.
-export function homeMatthiasSipWeight(elapsedSeconds = 0) {
-  const cycle = 9.6;
-  const t = ((Number(elapsedSeconds) || 0) % cycle + cycle) % cycle;
-  if (t < 5.8 || t >= 8.2) return 0;
-  if (t < 6.7) return THREE.MathUtils.smoothstep(t, 5.8, 6.7);
-  if (t < 7.25) return 1;
-  return 1 - THREE.MathUtils.smoothstep(t, 7.25, 8.2);
+// The sip/bite raise sits at the end of each cycle; the actor varies the
+// cycle length so the cup does not come up on a metronome.
+export function homeMatthiasSipWeight(elapsedSeconds = 0, cycle = 9.6) {
+  const length = Math.max(4, Number(cycle) || 9.6);
+  const t = ((Number(elapsedSeconds) || 0) % length + length) % length;
+  const start = length - 3.8;
+  const top = length - 2.9;
+  const lower = length - 2.35;
+  const end = length - 1.4;
+  if (t < start || t >= end) return 0;
+  if (t < top) return THREE.MathUtils.smoothstep(t, start, top);
+  if (t < lower) return 1;
+  return 1 - THREE.MathUtils.smoothstep(t, lower, end);
 }
+
+export const HOME_MATTHIAS_SIP_CYCLE_SECONDS = Object.freeze([8, 19]);
 
 export function homeMatthiasPostureSpec(posture = 'stand') {
   return HOME_MATTHIAS_POSTURES[posture] || HOME_MATTHIAS_POSTURES.stand;
@@ -417,7 +434,57 @@ export function homeMatthiasProjectBounds(box, camera) {
   };
 }
 
-export function createHomeMatthiasActor(gltf, { shadowsEnabled = true } = {}) {
+// Human cadence for the authored clips. Looping a 3-4 s clip forever reads as
+// a machine: every loop snaps back to its first frame (asleep, his head
+// popped up and lay down again every four seconds). Instead each gesture plays
+// once, rests on its last frame for an irregular pause and comes back at a
+// slightly different speed. Sleep settles into its deepest frame and stays
+// there breathing, shifting only now and then.
+export const HOME_MATTHIAS_CADENCE = Object.freeze({
+  default: Object.freeze({ restSeconds: Object.freeze([1.6, 6.5]), speed: Object.freeze([0.84, 1.16]) }),
+  Speak: Object.freeze({ restSeconds: Object.freeze([0.25, 1.4]), speed: Object.freeze([0.9, 1.12]) }),
+  Sleep: Object.freeze({
+    settle: 0.69, // deepest frame of the Sleep action (72/104)
+    shiftFrom: 0.38, // a small re-settle: head and shoulders shift, never lift
+    restSeconds: Object.freeze([26, 70]),
+    speed: Object.freeze([0.55, 0.8]),
+    breathSeconds: 5.2,
+  }),
+});
+
+export function homeMatthiasCadence(clipName = '') {
+  return HOME_MATTHIAS_CADENCE[clipName] || HOME_MATTHIAS_CADENCE.default;
+}
+
+function between([low, high], random) {
+  return low + (high - low) * Math.min(1, Math.max(0, random()));
+}
+
+// Pure step of the cadence: given the clip state, decides whether to keep
+// playing, start a rest or replay. Kept separate so it can be tested without
+// Three.
+export function homeMatthiasCadenceStep(state, { clipName, duration, dt, random = Math.random }) {
+  const cadence = homeMatthiasCadence(clipName);
+  const next = { ...state };
+  if (next.mode === 'rest') {
+    next.restLeft -= dt;
+    if (next.restLeft > 0) return next;
+    next.mode = 'play';
+    next.speed = between(cadence.speed, random);
+    next.time = cadence.settle !== undefined ? duration * cadence.shiftFrom : 0;
+    return next;
+  }
+  next.time += dt * (next.speed || 1);
+  const end = cadence.settle !== undefined ? duration * cadence.settle : duration;
+  if (next.time >= end) {
+    next.time = end;
+    next.mode = 'rest';
+    next.restLeft = between(cadence.restSeconds, random);
+  }
+  return next;
+}
+
+export function createHomeMatthiasActor(gltf, { shadowsEnabled = true, random = Math.random } = {}) {
   const model = gltf.scene;
   const clips = new Map((gltf.animations || []).map((clip) => [clip.name, clip]));
   const actor = new THREE.Group();
@@ -480,6 +547,11 @@ export function createHomeMatthiasActor(gltf, { shadowsEnabled = true } = {}) {
   let action = null;
   let routine = null;
   let still = false;
+  let cadence = { mode: 'play', time: 0, speed: 1, restLeft: 0 };
+  let breathElapsed = 0;
+  let sipCycleStart = 0;
+  let sipCycle = 9.6;
+  const head = findBone(model, 'head');
 
   const applySkirt = (spec) => {
     for (const item of skirtMeshes) {
@@ -503,7 +575,7 @@ export function createHomeMatthiasActor(gltf, { shadowsEnabled = true } = {}) {
   const applyPropVisibility = () => {
     for (const node of hiddenByPolicy) node.visible = true;
     hiddenByPolicy.clear();
-    for (const name of HOME_MATTHIAS_PROP_ANCHORS[routine?.profile]?.hide || []) {
+    for (const name of HOME_MATTHIAS_PROP_ANCHORS[routine?.propProfile || routine?.profile]?.hide || []) {
       const node = propNode(name);
       if (!node) continue;
       node.visible = false;
@@ -517,7 +589,7 @@ export function createHomeMatthiasActor(gltf, { shadowsEnabled = true } = {}) {
   const parentScale = new THREE.Vector3();
   // Moves the prop bone so the prop's visible centre sits in the real hand.
   const anchorRoutineProp = () => {
-    const spec = HOME_MATTHIAS_PROP_ANCHORS[routine?.profile];
+    const spec = HOME_MATTHIAS_PROP_ANCHORS[routine?.propProfile || routine?.profile];
     for (const name of spec?.show || []) propNode(name)?.scale.set(1, 1, 1);
     if (!spec?.bone) return;
     const bone = propNode(spec.bone);
@@ -561,8 +633,12 @@ export function createHomeMatthiasActor(gltf, { shadowsEnabled = true } = {}) {
         arm.fore.quaternion.setFromEuler(eulerDeg(fold.forePitchDeg, 0, 0));
       }
     } else {
-      const armPose = HOME_MATTHIAS_ARM_POSES[routine.profile];
-      const weight = still ? 0 : homeMatthiasSipWeight(gestureElapsed);
+      const armPose = HOME_MATTHIAS_ARM_POSES[routine.propProfile || routine.profile];
+      if (gestureElapsed - sipCycleStart >= sipCycle) {
+        sipCycleStart += sipCycle;
+        sipCycle = between(HOME_MATTHIAS_SIP_CYCLE_SECONDS, random);
+      }
+      const weight = still ? 0 : homeMatthiasSipWeight(gestureElapsed - sipCycleStart, sipCycle);
       for (const arm of arms) {
         const pose = armPose?.[arm.side];
         if (!pose || !arm.upper || !arm.fore) continue;
@@ -648,10 +724,27 @@ export function createHomeMatthiasActor(gltf, { shadowsEnabled = true } = {}) {
       next.play();
       action = next;
     }
+    // The clip time is driven by the cadence, not by the mixer clock.
+    action.paused = true;
     const start = clip.duration > 0 ? (((routine.phase % clip.duration) + clip.duration) % clip.duration) : 0;
-    action.time = still ? clip.duration * 0.34 : start;
+    const shape = homeMatthiasCadence(clip.name);
+    // Asleep he starts already lying down, not rising from the first frame.
+    const initial = shape.settle !== undefined ? Math.max(start, clip.duration * shape.shiftFrom) : start;
+    cadence = { mode: 'play', time: Math.min(initial, clip.duration), speed: between(shape.speed, random), restLeft: 0 };
+    action.time = still ? clip.duration * 0.34 : cadence.time;
+    if (still && shape.settle !== undefined) action.time = clip.duration * shape.settle;
     mixer.update(0);
     applyPostureBones();
+  };
+
+  // Slow breathing while asleep: the blanket rises and the head sinks a hair.
+  const applyBreath = () => {
+    if (routine?.posture !== 'lie') return;
+    const shape = homeMatthiasCadence(routine.clip);
+    const period = shape.breathSeconds || 5;
+    const wave = Math.sin((breathElapsed / period) * Math.PI * 2);
+    if (blanket) blanket.scale.set(1, 1, 1 + 0.035 * wave);
+    if (head) head.rotation.x += THREE.MathUtils.degToRad(0.8 * wave);
   };
 
   return {
@@ -659,6 +752,7 @@ export function createHomeMatthiasActor(gltf, { shadowsEnabled = true } = {}) {
     get routine() { return routine; },
     setRoutine(next, { reducedMotion = false } = {}) {
       const changed = !routine
+        || routine.propProfile !== next.propProfile
         || routine.stationId !== next.stationId
         || routine.clip !== next.clip
         || routine.phase !== next.phase
@@ -668,6 +762,8 @@ export function createHomeMatthiasActor(gltf, { shadowsEnabled = true } = {}) {
       routine = next;
       still = reducedMotion;
       gestureElapsed = 0;
+      sipCycleStart = 0;
+      sipCycle = between(HOME_MATTHIAS_SIP_CYCLE_SECONDS, random);
       applyPropVisibility();
       placeAtStation();
       playClip({ force: true });
@@ -678,9 +774,17 @@ export function createHomeMatthiasActor(gltf, { shadowsEnabled = true } = {}) {
       if (!routine || still) return;
       const dt = Math.max(0, Math.min(Number(deltaSeconds) || 0, 0.1));
       gestureElapsed += dt;
-      mixer.update(dt);
+      breathElapsed += dt;
+      const clip = action?.getClip?.();
+      if (action && clip) {
+        cadence = homeMatthiasCadenceStep(cadence, { clipName: clip.name, duration: clip.duration, dt, random });
+        action.time = cadence.time;
+      }
+      mixer.update(0);
       applyPostureBones();
+      applyBreath();
     },
+    get cadence() { return cadence; },
     bounds() {
       actor.updateMatrixWorld(true);
       const box = new THREE.Box3();

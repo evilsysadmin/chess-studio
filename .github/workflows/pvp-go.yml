@@ -4,12 +4,34 @@ on:
   pull_request:
     paths:
       - 'backend-go/**'
+      # The Go timing contract is asserted against the Python authority.
+      - 'backend-python/pvp_api.py'
+      # The engine parity corpus is generated from the Python CPU engine.
+      - 'backend-python/chess_ai.py'
+      - 'backend-python/requirements.txt'
+      - 'scripts/engine_parity_corpus.py'
+      - 'backend-python/chess_core.py'
+      - 'scripts/games_parity_corpus.py'
+      - 'backend-python/operation_idempotency_core.py'
+      - 'backend-python/api_models.py'
+      - 'scripts/games_ops_corpus.py'
+      - 'backend-python/game_store.py'
       - '.github/workflows/pvp-go.yml'
   push:
     branches:
       - main
     paths:
       - 'backend-go/**'
+      - 'backend-python/pvp_api.py'
+      - 'backend-python/chess_ai.py'
+      - 'backend-python/requirements.txt'
+      - 'scripts/engine_parity_corpus.py'
+      - 'backend-python/chess_core.py'
+      - 'scripts/games_parity_corpus.py'
+      - 'backend-python/operation_idempotency_core.py'
+      - 'backend-python/api_models.py'
+      - 'scripts/games_ops_corpus.py'
+      - 'backend-python/game_store.py'
       - '.github/workflows/pvp-go.yml'
   workflow_dispatch:
 
@@ -25,6 +47,18 @@ jobs:
     name: Go · test + vet + arm64 build
     runs-on: ubuntu-24.04
     timeout-minutes: 8
+    services:
+      # Disposable MongoDB for the store integration tests. Same major as the
+      # production tooling (scripts/oci_production_mongo_backup.sh).
+      mongo:
+        image: mongo:8.0
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.adminCommand({ping: 1}).ok'"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
     defaults:
       run:
         working-directory: backend-go
@@ -34,8 +68,34 @@ jobs:
         with:
           go-version: '1.27.1'
           cache-dependency-path: backend-go/go.mod
-      - name: Unit tests
-        run: go test ./...
+      - name: Format
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [[ -n "$unformatted" ]]; then
+            echo "::error::gofmt needed in:"
+            echo "$unformatted"
+            exit 1
+          fi
+      - name: Unit + MongoDB integration tests
+        env:
+          PVP_MONGO_TEST_URL: mongodb://localhost:27017
+          # Fail instead of skipping if the service is missing.
+          PVP_MONGO_TEST_REQUIRED: '1'
+        # -short skips only the slow engine search corpus; it runs below
+        # without the race detector (single-threaded search, 4x slower there).
+        run: go test -race -short ./...
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+      - name: Engine + games parity (Go ports vs Python)
+        working-directory: .
+        run: |
+          python -m pip install --quiet "$(grep -E '^chess==' backend-python/requirements.txt)" "$(grep -E '^pydantic==' backend-python/requirements.txt)"
+          # The fixtures must be exactly what backend-python/chess_ai.py produces.
+          python scripts/engine_parity_corpus.py --check
+          python scripts/games_parity_corpus.py --check
+          python scripts/games_ops_corpus.py --check
+          cd backend-go && go test -count=1 -run 'MatchesPython' ./internal/residenteval ./internal/residentsearch
       - name: Vet
         run: go vet ./...
       - name: Build Linux ARM64

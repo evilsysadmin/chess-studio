@@ -1,0 +1,363 @@
+{
+ "generator": "scripts/games_ops_corpus.py",
+ "ids": [
+  {
+   "id": "c04c9dea-c0ac-50aa-8e72-77c5f10efe5f",
+   "key": "abcdefgh",
+   "username": "alice"
+  },
+  {
+   "id": "04ea5c1f-a1b6-56a8-b66b-d8c89f5ad133",
+   "key": "op-2026.10.03:retry_1",
+   "username": "alice"
+  },
+  {
+   "id": "04597cdb-c31a-59d6-be86-bfc8835e7f20",
+   "key": "abcdefgh",
+   "username": "Stan"
+  },
+  {
+   "id": "24cafbe7-cdf6-5f07-bf72-858c5854071d",
+   "key": "op-2026.10.03:retry_1",
+   "username": "Stan"
+  },
+  {
+   "id": "07a93d11-cd64-54ef-9928-c4fb373a68f5",
+   "key": "abcdefgh",
+   "username": "\u00f1and\u00fa"
+  },
+  {
+   "id": "5ba20f93-2e52-542e-9051-4b63bcd8c923",
+   "key": "op-2026.10.03:retry_1",
+   "username": "\u00f1and\u00fa"
+  },
+  {
+   "id": "d4d2e754-db53-5396-89d4-d3a7e178042c",
+   "key": "abcdefgh",
+   "username": "uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu"
+  },
+  {
+   "id": "d8463b43-ee58-5971-a08c-1f1ed07442b0",
+   "key": "op-2026.10.03:retry_1",
+   "username": "uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu"
+  }
+ ],
+ "keys": [
+  {
+   "normalized": "abcdefgh",
+   "raw": "abcdefgh"
+  },
+  {
+   "normalized": "op-2026.10.03:retry_1",
+   "raw": "  op-2026.10.03:retry_1  "
+  },
+  {
+   "normalized": null,
+   "raw": "short"
+  },
+  {
+   "normalized": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+   "raw": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  },
+  {
+   "normalized": null,
+   "raw": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  },
+  {
+   "normalized": null,
+   "raw": "bad key!"
+  },
+  {
+   "normalized": null,
+   "raw": ""
+  },
+  {
+   "normalized": null,
+   "raw": "\u00fcn\u00efc\u00f6d\u00e9-key"
+  },
+  {
+   "normalized": "key-with-tab",
+   "raw": "\tkey-with-tab\n"
+  },
+  {
+   "normalized": "key-with-fs",
+   "raw": "\u001ckey-with-fs\u001f"
+  },
+  {
+   "normalized": "nel-key-1",
+   "raw": "\u0085nel-key-1"
+  }
+ ],
+ "moves": [
+  {
+   "body": {
+    "from": "e2",
+    "to": "e4"
+   },
+   "fingerprint": "73f3736d0f28b0f6f79868484e8e5f56ae8fef53fba0fbe5d4f8809cd89e33e0",
+   "valid": true
+  },
+  {
+   "body": {
+    "from": "e7",
+    "promotion": "q",
+    "to": "e8"
+   },
+   "fingerprint": "5f4e241d3a3f2e0e0c8bec487665260ede7eec7a24c26fa774d41402c0af63ae",
+   "valid": true
+  },
+  {
+   "body": {
+    "from": "e7",
+    "promotion": null,
+    "to": "e8"
+   },
+   "fingerprint": "3d3e5bdabcbab07d20a961bd550a488aeac0fb26aecd2e6142d21213ba653a54",
+   "valid": true
+  },
+  {
+   "body": {
+    "from": "a7",
+    "promotion": "N",
+    "to": "a8"
+   },
+   "fingerprint": "4f5a2a0d1645cfd86ecd85cd2baa91ebcd82110da7e09ef11935660ccabd4969",
+   "valid": true
+  },
+  {
+   "body": {
+    "from": "e",
+    "to": "e4"
+   },
+   "fingerprint": null,
+   "valid": false
+  },
+  {
+   "body": {
+    "from": "e2",
+    "to": "e45"
+   },
+   "fingerprint": null,
+   "valid": false
+  },
+  {
+   "body": {
+    "to": "e4"
+   },
+   "fingerprint": null,
+   "valid": false
+  },
+  {
+   "body": {
+    "from": "e7",
+    "promotion": "qq",
+    "to": "e8"
+   },
+   "fingerprint": null,
+   "valid": false
+  },
+  {
+   "body": {
+    "from": "\u00f12",
+    "to": "e4"
+   },
+   "fingerprint": "85bcea7f36e5176337b7b54c1b58576006e94e265c41fca1994615754fc6507f",
+   "valid": true
+  }
+ ],
+ "new_games": [
+  {
+   "body": {},
+   "fingerprint": "1de6c9cd053ddd68aff0033733e85501e3e4c82c36af322b7c55f42756c94417",
+   "valid": true
+  },
+  {
+   "body": {
+    "difficulty": 50
+   },
+   "fingerprint": "ac95c683aaebabba37ac35abfe4978708c3b02813ec4cfd2bd78a67e63169701",
+   "valid": true
+  },
+  {
+   "body": {
+    "color": "b",
+    "difficulty": 50.0
+   },
+   "fingerprint": "593231cdf87d34fa210605817d32d084d9d4365275eb2c671a13ff3c9293398c",
+   "valid": true
+  },
+  {
+   "body": {
+    "difficulty": 0
+   },
+   "fingerprint": "5bcdaa503175fb838c55ed6e481ace82673aef7f67fe147c57b5a9610382a057",
+   "valid": true
+  },
+  {
+   "body": {
+    "color": "random",
+    "difficulty": 100
+   },
+   "fingerprint": "14160a895b00cf935c9ed69c36ac357ce08b0e44725983e8d62835bc79ad7bc6",
+   "valid": true
+  },
+  {
+   "body": {
+    "color": "w",
+    "difficulty": 13.5,
+    "handicap": "queen"
+   },
+   "fingerprint": "7e6c7c5048bed657a6f04b916b8ebdc0f21b184b5ed2ec2f3d0655a2bfbd979f",
+   "valid": true
+  },
+  {
+   "body": {
+    "difficulty": "42"
+   },
+   "fingerprint": "9423b86e3281e35c3dbad855e17affa7387dc760b09efa0ec904527378433600",
+   "valid": true
+  },
+  {
+   "body": {
+    "difficulty": 1e-05
+   },
+   "fingerprint": "2c23b46e6909d3f738af4227b1de8c32e5cd37ff86c84f8d4c3afb11bd9748e7",
+   "valid": true
+  },
+  {
+   "body": {
+    "difficulty": 0.1
+   },
+   "fingerprint": "d5c698227ab773f2d8518e62ae00d1f454c9b9c96d2f0134ee9205267923060b",
+   "valid": true
+  },
+  {
+   "body": {
+    "difficulty": 1e+16
+   },
+   "fingerprint": "a6c61f54d0f55162b3f1c5d7f6840da1d5183f81c335d47016c343da7a31edf8",
+   "valid": true
+  },
+  {
+   "body": {
+    "difficulty": 123456789.125
+   },
+   "fingerprint": "c3e1227e86c6747168945854fa4848031ff372afd095f993014b4bd974ca3df1",
+   "valid": true
+  },
+  {
+   "body": {
+    "difficulty": 87,
+    "startingFen": "8/8/8/4k3/8/8/4P3/4K3 w - - 0 1"
+   },
+   "fingerprint": "e5f2c67159c829a7f3ac9ced56ce0b86178de6f3b2c7618ae6cfbd9920c8a04a",
+   "valid": true
+  },
+  {
+   "body": {
+    "color": "w",
+    "difficulty": 50,
+    "handicap": null,
+    "startingFen": null
+   },
+   "fingerprint": "ac95c683aaebabba37ac35abfe4978708c3b02813ec4cfd2bd78a67e63169701",
+   "valid": true
+  },
+  {
+   "body": {
+    "color": "n\u00e9gras",
+    "difficulty": 50
+   },
+   "fingerprint": "c7523b613295dce6f20beaf3abbd59b4507f7cb881832faaf654d6b494104875",
+   "valid": true
+  },
+  {
+   "body": {
+    "color": "w\u2028x\"\\/\t",
+    "difficulty": 50
+   },
+   "fingerprint": "3d77ea87949612a725c3ca132e74a575bbfad5bdf0606a8e25ad37cbaf65d061",
+   "valid": true
+  },
+  {
+   "body": {
+    "color": "\ud83d\ude00",
+    "difficulty": 50
+   },
+   "fingerprint": "e745783116d84ff48b959e464c970ddd1908a3c70d9dc4b4ca9c93f4aafa990b",
+   "valid": true
+  },
+  {
+   "body": {
+    "difficulty": true
+   },
+   "fingerprint": "54ca3cef1a83da10b207cdafc008a56061926ba04d7843d48d0cf687d130950b",
+   "valid": true
+  },
+  {
+   "body": {
+    "difficulty": -3.25
+   },
+   "fingerprint": "78f4b8ec9453fc2e156ae75ee207f500a54ebb362c7fbe48dfa2862983ad9ca9",
+   "valid": true
+  },
+  {
+   "body": {
+    "difficulty": 50,
+    "extra": "ignored"
+   },
+   "fingerprint": "ac95c683aaebabba37ac35abfe4978708c3b02813ec4cfd2bd78a67e63169701",
+   "valid": true
+  },
+  {
+   "body": {
+    "color": "w\u007f\u001f\u00e9",
+    "difficulty": 50
+   },
+   "fingerprint": "99bd4f11c80a8394d4e0d29ced5a48cccddf08e260434565ceb59ee8bfd58e59",
+   "valid": true
+  },
+  {
+   "body": {
+    "difficulty": null
+   },
+   "fingerprint": null,
+   "valid": false
+  },
+  {
+   "body": {
+    "difficulty": "abc"
+   },
+   "fingerprint": null,
+   "valid": false
+  },
+  {
+   "body": {
+    "handicap": "xxxxxxxxxxxxxxxxx"
+   },
+   "fingerprint": null,
+   "valid": false
+  },
+  {
+   "body": {
+    "startingFen": "888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888"
+   },
+   "fingerprint": null,
+   "valid": false
+  }
+ ],
+ "undos": [
+  {
+   "fingerprint": "9794df3b87f301f4d01abebd767bd9d7aff7f833a7d8a80a7059ca6e3ee2dd5e",
+   "gameId": "g-1"
+  },
+  {
+   "fingerprint": "936ce8b14989b1e26b584682f08ba74a2175062d48c2bf2568f3a9b807392be3",
+   "gameId": "0f8fad5b-d9cb-469f-a165-70867728950e"
+  },
+  {
+   "fingerprint": "338919a5b806f802895708624a6194a08707b749ceb78881e3da0822ae695573",
+   "gameId": "\u00f1and\u00fa"
+  }
+ ]
+}

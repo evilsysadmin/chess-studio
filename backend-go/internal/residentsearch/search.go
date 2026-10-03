@@ -10,6 +10,7 @@ import (
 
 	chess "github.com/corentings/chess/v2"
 
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/chessrules"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/residenteval"
 )
 
@@ -333,7 +334,7 @@ func (s *Searcher) quiescence(
 		tactical := make([]chess.Move, 0, len(moves))
 		for i := range moves {
 			move := moves[i]
-			if move.HasTag(chess.Capture) || move.Promo() != chess.NoPieceType {
+			if chessrules.IsCapture(&move) || move.Promo() != chess.NoPieceType {
 				tactical = append(tactical, move)
 			}
 		}
@@ -514,7 +515,7 @@ func moveOrderScore(pos *chess.Position, move *chess.Move, preferred string) int
 		return 1000000
 	}
 	score := 0
-	if move.HasTag(chess.Capture) {
+	if chessrules.IsCapture(move) {
 		victimValue := 0
 		if move.HasTag(chess.EnPassant) {
 			victimValue = pieceValue(chess.Pawn)

@@ -30,11 +30,12 @@ describe('Chronicles proximity engagement movement', () => {
 
     expect(enemy.ai).toMatchObject({
       movement: 'patrol-route',
-      engagedMovement: 'cardinal-chase',
+      engagedMovement: 'knight-chase',
       engageRange: 3,
     });
     expect(chroniclesChooseEnemyStep({ ...base, x: 1, y: 5 }, enemy)).toMatchObject({ x: 4, y: 3 });
-    expect(chroniclesChooseEnemyStep({ ...base, x: 3, y: 5 }, enemy)).toMatchObject({ x: 3, y: 4 });
+    const pounce = chroniclesChooseEnemyStep({ ...base, x: 3, y: 5 }, enemy);
+    expect([Math.abs(pounce.x - 3), Math.abs(pounce.y - 3)].sort()).toEqual([1, 2]);
   });
 
   it('rejects incomplete or unsupported engagement contracts', () => {

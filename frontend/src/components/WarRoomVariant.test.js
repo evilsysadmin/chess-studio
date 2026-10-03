@@ -48,11 +48,11 @@ describe('War Room staging variant', () => {
     expect(loadWarRoomVariant(options)).toBe('v3');
   });
 
-  it('uses the classic room as the profile-backed preference by default', () => {
+  it('uses War Room v3 as the profile-backed preference by default', () => {
     const options = { env: { VITE_WAR_ROOM_VARIANTS_ENABLE: '1' }, location: { hostname: 'chess-studio.shadowops.dpdns.org' } };
-    expect(DEFAULT_WAR_ROOM_VARIANT_PREFERENCE).toBe('classic');
+    expect(DEFAULT_WAR_ROOM_VARIANT_PREFERENCE).toBe('v3');
     expect(WAR_ROOM_VARIANT_PREFERENCES.map(({ id }) => id)).toEqual(['random', 'classic', 'v2', 'v3', 'v4']);
-    expect(loadWarRoomVariantPreference(options)).toBe('classic');
+    expect(loadWarRoomVariantPreference(options)).toBe('v3');
 
     expect(saveWarRoomVariantPreference('v3', options)).toBe('v3');
     expect(localStorage.getItem(WAR_ROOM_VARIANT_STORAGE_KEY)).toBe('v3');
@@ -69,14 +69,14 @@ describe('War Room staging variant', () => {
     }
     expect(resolveWarRoomVariantPreference('v4')).toBe('v4');
     expect(resolveWarRoomVariantPreference('v2', { random: () => 0.99 })).toBe('v2');
-    expect(normalizeWarRoomVariantPreference('basement')).toBe('classic');
+    expect(normalizeWarRoomVariantPreference('basement')).toBe('v3');
   });
 
-  it('defaults to v1 when variants are enabled and nothing was chosen', () => {
+  it('defaults to v3 when variants are enabled and nothing was chosen', () => {
     const options = { env: { VITE_WAR_ROOM_VARIANTS_ENABLE: '1' }, location: { hostname: 'chess-studio.shadowops.dpdns.org' } };
-    expect(DEFAULT_WAR_ROOM_VARIANT).toBe('classic');
-    expect(loadWarRoomVariant(options)).toBe('classic');
-    expect(warRoomVariantDefinition(DEFAULT_WAR_ROOM_VARIANT).shell).toBe('procedural');
+    expect(DEFAULT_WAR_ROOM_VARIANT).toBe('v3');
+    expect(loadWarRoomVariant(options)).toBe('v3');
+    expect(warRoomVariantDefinition(DEFAULT_WAR_ROOM_VARIANT).shell).toBe('blender');
   });
 
   it('keeps an explicit choice, including v1 and v3, instead of the default', () => {
@@ -90,7 +90,7 @@ describe('War Room staging variant', () => {
   it('falls back to the default when the stored value is corrupt', () => {
     const options = { env: { VITE_WAR_ROOM_VARIANTS_ENABLE: '1' }, location: { hostname: 'chess-studio.shadowops.dpdns.org' } };
     localStorage.setItem(WAR_ROOM_VARIANT_STORAGE_KEY, 'war-room-3000');
-    expect(loadWarRoomVariant(options)).toBe('classic');
+    expect(loadWarRoomVariant(options)).toBe('v3');
   });
 
   it('stays on the classic room when variants are not enabled (local dev, plain e2e, rollback)', () => {

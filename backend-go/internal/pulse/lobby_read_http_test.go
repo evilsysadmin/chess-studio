@@ -36,17 +36,17 @@ func newLobbyReadHandler(
 ) *Handler {
 	t.Helper()
 	if base == nil {
-		base = &fakeStore{exists:true}
+		base = &fakeStore{exists: true}
 	}
 	base.exists = true
 	h, err := NewHandler(HandlerConfig{
-		Store: base,
-		LobbyReadStore: lobby,
-		JWTSecret: "01234567890123456789012345678901",
+		Store:                 base,
+		LobbyReadStore:        lobby,
+		JWTSecret:             "01234567890123456789012345678901",
 		VirtualPlayersEnabled: virtual,
-		VirtualOwner: owner,
-		SparringUsername: sparring,
-		Now: func() time.Time { return now },
+		VirtualOwner:          owner,
+		SparringUsername:      sparring,
+		Now:                   func() time.Time { return now },
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -64,11 +64,11 @@ func lobbyReadRequest(t *testing.T, h *Handler, now time.Time, method, username 
 }
 
 func TestNativeLobbyReadReturnsPythonCompatibleSnapshotAndHidesSyntheticActors(t *testing.T) {
-	now := time.Date(2026,10,2,14,0,0,0,time.UTC)
+	now := time.Date(2026, 10, 2, 14, 0, 0, 0, time.UTC)
 	joined := now.Add(-time.Hour)
-	cooldown := now.Add(12*time.Second)
-	lastPlayed := now.Add(-5*time.Minute)
-	challengeCreated := now.Add(-10*time.Second)
+	cooldown := now.Add(12 * time.Second)
+	lastPlayed := now.Add(-5 * time.Minute)
+	challengeCreated := now.Add(-10 * time.Second)
 	matchUpdated := now.Add(-time.Second)
 	whiteRating := int64(900)
 	blackRating := int64(1000)
@@ -76,236 +76,275 @@ func TestNativeLobbyReadReturnsPythonCompatibleSnapshotAndHidesSyntheticActors(t
 	blackClock := int64(600000)
 	rated := true
 	active := &cancelMatchRow{
-		ID:"m-1",White:"alice",Black:"bob",WhiteRating:&whiteRating,BlackRating:&blackRating,
-		FEN:"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-		Turn:"w",Status:"starting",WhiteClockMS:&whiteClock,BlackClockMS:&blackClock,
-		Rated:&rated,Revision:3,CreatedAt:now.Add(-time.Minute),UpdatedAt:matchUpdated,
+		ID: "m-1", White: "alice", Black: "bob", WhiteRating: &whiteRating, BlackRating: &blackRating,
+		FEN:  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+		Turn: "w", Status: "starting", WhiteClockMS: &whiteClock, BlackClockMS: &blackClock,
+		Rated: &rated, Revision: 3, CreatedAt: now.Add(-time.Minute), UpdatedAt: matchUpdated,
 	}
-	store := &fakeLobbyReadStore{snapshot:lobbySnapshot{
-		Roster:[]rosterRow{
-			{Username:"alice",Rating:900,Tier:"Aficionado",JoinedAt:joined},
-			{Username:"bob",Rating:1000,Tier:"Intermedio",JoinedAt:joined},
-			{Username:"otto_falk",Rating:850,Tier:"Aficionado",JoinedAt:joined},
-			{Username:"sparringmeister",Rating:400,Tier:"Principiante",JoinedAt:joined},
+	store := &fakeLobbyReadStore{snapshot: lobbySnapshot{
+		Roster: []rosterRow{
+			{Username: "alice", Rating: 900, Tier: "Aficionado", JoinedAt: joined},
+			{Username: "bob", Rating: 1000, Tier: "Intermedio", JoinedAt: joined},
+			{Username: "otto_falk", Rating: 850, Tier: "Aficionado", JoinedAt: joined},
+			{Username: "sparringmeister", Rating: 400, Tier: "Principiante", JoinedAt: joined},
 		},
-		HeadToHead:map[string]lobbyHeadToHead{
-			"bob":{Games:4,Wins:2,Draws:1,Losses:1,LastPlayedAt:lastPlayed},
+		HeadToHead: map[string]lobbyHeadToHead{
+			"bob": {Games: 4, Wins: 2, Draws: 1, Losses: 1, LastPlayedAt: lastPlayed},
 		},
-		Cooldowns:map[string]time.Time{"bob":cooldown},
-		Challenges:[]challengeRow{{
-			ID:"c-1",Challenger:"bob",Opponent:"alice",
-			ChallengerRating:1000,OpponentRating:900,Status:"pending",CreatedAt:challengeCreated,
+		Cooldowns: map[string]time.Time{"bob": cooldown},
+		Challenges: []challengeRow{{
+			ID: "c-1", Challenger: "bob", Opponent: "alice",
+			ChallengerRating: 1000, OpponentRating: 900, Status: "pending", CreatedAt: challengeCreated,
 		}},
-		ActiveMatch:active,
-		Messages:[]chatMessageRow{
-			{ID:"msg-1",Username:"bob",Text:"hola",Kind:"message",CreatedAt:now.Add(-2*time.Second)},
-			{ID:"msg-2",Username:"alice",Text:"vamos",Kind:"",CreatedAt:now.Add(-time.Second)},
+		ActiveMatch: active,
+		Messages: []chatMessageRow{
+			{ID: "msg-1", Username: "bob", Text: "hola", Kind: "message", CreatedAt: now.Add(-2 * time.Second)},
+			{ID: "msg-2", Username: "alice", Text: "vamos", Kind: "", CreatedAt: now.Add(-time.Second)},
 		},
 	}}
-	h := newLobbyReadHandler(t,now,&fakeStore{exists:true},store,true,"owner","sparringmeister")
+	h := newLobbyReadHandler(t, now, &fakeStore{exists: true}, store, true, "owner", "sparringmeister")
 
-	rr := lobbyReadRequest(t,h,now,http.MethodGet,"alice")
+	rr := lobbyReadRequest(t, h, now, http.MethodGet, "alice")
 	if rr.Code != http.StatusOK {
-		t.Fatalf("status=%d body=%s",rr.Code,rr.Body.String())
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
 	}
-	if got:=rr.Header().Get("X-Chess-Pvp-Native"); got!="lobby-read" {
-		t.Fatalf("native=%q",got)
+	if got := rr.Header().Get("X-Chess-Pvp-Native"); got != "lobby-read" {
+		t.Fatalf("native=%q", got)
 	}
-	if store.calls!=1 || store.username!="alice" || !store.now.Equal(now) {
-		t.Fatalf("store calls=%d user=%q now=%s",store.calls,store.username,store.now)
+	if store.calls != 1 || store.username != "alice" || !store.now.Equal(now) {
+		t.Fatalf("store calls=%d user=%q now=%s", store.calls, store.username, store.now)
 	}
 
-	var body struct{
-		Roster []map[string]any `json:"roster"`
-		Challenges []map[string]any `json:"challenges"`
-		ActiveMatch map[string]any `json:"activeMatch"`
-		Messages []map[string]any `json:"messages"`
-		PollAfterMS int64 `json:"pollAfterMs"`
+	var body struct {
+		Roster      []map[string]any `json:"roster"`
+		Challenges  []map[string]any `json:"challenges"`
+		ActiveMatch map[string]any   `json:"activeMatch"`
+		Messages    []map[string]any `json:"messages"`
+		PollAfterMS int64            `json:"pollAfterMs"`
 	}
-	if err:=json.Unmarshal(rr.Body.Bytes(),&body); err!=nil { t.Fatal(err) }
-	if body.PollAfterMS!=3000 { t.Fatalf("poll=%d",body.PollAfterMS) }
-	if len(body.Roster)!=2 {
-		t.Fatalf("roster=%#v",body.Roster)
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
 	}
-	if body.Roster[0]["username"]!="alice" || body.Roster[0]["isSelf"]!=true {
-		t.Fatalf("self=%#v",body.Roster[0])
+	if body.PollAfterMS != 3000 {
+		t.Fatalf("poll=%d", body.PollAfterMS)
 	}
-	bob:=body.Roster[1]
-	if bob["username"]!="bob" || bob["challengeCooldownUntil"]!=stamp(cooldown) {
-		t.Fatalf("bob=%#v",bob)
+	if len(body.Roster) != 2 {
+		t.Fatalf("roster=%#v", body.Roster)
 	}
-	h2h,ok:=bob["headToHead"].(map[string]any)
-	if !ok || h2h["games"]!=float64(4) || h2h["wins"]!=float64(2) ||
-		h2h["draws"]!=float64(1) || h2h["losses"]!=float64(1) ||
-		h2h["lastPlayedAt"]!=stamp(lastPlayed) {
-		t.Fatalf("h2h=%#v",bob["headToHead"])
+	if body.Roster[0]["username"] != "alice" || body.Roster[0]["isSelf"] != true {
+		t.Fatalf("self=%#v", body.Roster[0])
 	}
-	if len(body.Challenges)!=1 || body.Challenges[0]["direction"]!="incoming" {
-		t.Fatalf("challenges=%#v",body.Challenges)
+	bob := body.Roster[1]
+	if bob["username"] != "bob" || bob["challengeCooldownUntil"] != stamp(cooldown) {
+		t.Fatalf("bob=%#v", bob)
 	}
-	if body.ActiveMatch["id"]!="m-1" || body.ActiveMatch["status"]!="starting" {
-		t.Fatalf("activeMatch=%#v",body.ActiveMatch)
+	h2h, ok := bob["headToHead"].(map[string]any)
+	if !ok || h2h["games"] != float64(4) || h2h["wins"] != float64(2) ||
+		h2h["draws"] != float64(1) || h2h["losses"] != float64(1) ||
+		h2h["lastPlayedAt"] != stamp(lastPlayed) {
+		t.Fatalf("h2h=%#v", bob["headToHead"])
 	}
-	if len(body.Messages)!=2 || body.Messages[0]["isSelf"]!=false || body.Messages[1]["isSelf"]!=true {
-		t.Fatalf("messages=%#v",body.Messages)
+	if len(body.Challenges) != 1 || body.Challenges[0]["direction"] != "incoming" {
+		t.Fatalf("challenges=%#v", body.Challenges)
 	}
-	if body.Messages[1]["kind"]!="message" {
-		t.Fatalf("default kind=%#v",body.Messages[1])
+	if body.ActiveMatch["id"] != "m-1" || body.ActiveMatch["status"] != "starting" {
+		t.Fatalf("activeMatch=%#v", body.ActiveMatch)
+	}
+	if len(body.Messages) != 2 || body.Messages[0]["isSelf"] != false || body.Messages[1]["isSelf"] != true {
+		t.Fatalf("messages=%#v", body.Messages)
+	}
+	if body.Messages[1]["kind"] != "message" {
+		t.Fatalf("default kind=%#v", body.Messages[1])
 	}
 }
 
 func TestNativeLobbyReadOwnerMaterializesAllVirtualRivalsWithoutSnapshotTTLRows(t *testing.T) {
-	now:=time.Date(2026,10,2,14,0,0,0,time.UTC)
-	base:=&fakeStore{exists:true}
-	store:=&fakeLobbyReadStore{snapshot:lobbySnapshot{Roster:[]rosterRow{
-		{Username:"owner",Rating:400,Tier:"Principiante",JoinedAt:now},
+	now := time.Date(2026, 10, 2, 14, 0, 0, 0, time.UTC)
+	base := &fakeStore{exists: true}
+	store := &fakeLobbyReadStore{snapshot: lobbySnapshot{Roster: []rosterRow{
+		{Username: "owner", Rating: 400, Tier: "Principiante", JoinedAt: now},
 	}}}
-	h:=newLobbyReadHandler(t,now,base,store,true,"owner","sparringmeister")
+	h := newLobbyReadHandler(t, now, base, store, true, "owner", "sparringmeister")
 
-	rr:=lobbyReadRequest(t,h,now,http.MethodGet,"owner")
-	if rr.Code!=http.StatusOK { t.Fatalf("status=%d body=%s",rr.Code,rr.Body.String()) }
-	var body struct{ Roster []map[string]any `json:"roster"` }
-	if err:=json.Unmarshal(rr.Body.Bytes(),&body); err!=nil { t.Fatal(err) }
-	if len(body.Roster)!=5 { t.Fatalf("roster=%#v",body.Roster) }
-
-	byName:=map[string]map[string]any{}
-	for _,row:=range body.Roster {
-		name,_:=row["username"].(string)
-		byName[name]=row
+	rr := lobbyReadRequest(t, h, now, http.MethodGet, "owner")
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
 	}
-	for name,want:=range map[string]int64{
-		"sparringmeister":400,
-		"otto_falk":850,
-		"marta_stein":1200,
-		"viktor_kraus":1450,
-	}{
-		row:=byName[name]
-		if row==nil || int64(row["rating"].(float64))!=want {
-			t.Fatalf("virtual %s=%#v",name,row)
+	var body struct {
+		Roster []map[string]any `json:"roster"`
+	}
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if len(body.Roster) != 5 {
+		t.Fatalf("roster=%#v", body.Roster)
+	}
+
+	byName := map[string]map[string]any{}
+	for _, row := range body.Roster {
+		name, _ := row["username"].(string)
+		byName[name] = row
+	}
+	for name, want := range map[string]int64{
+		"sparringmeister": 400,
+		"otto_falk":       850,
+		"marta_stein":     1200,
+		"viktor_kraus":    1450,
+	} {
+		row := byName[name]
+		if row == nil || int64(row["rating"].(float64)) != want {
+			t.Fatalf("virtual %s=%#v", name, row)
 		}
 	}
-	for name,display:=range map[string]string{
-		"otto_falk":"Otto Falk",
-		"marta_stein":"Marta Stein",
-		"viktor_kraus":"Viktor Kraus",
-	}{
-		row:=byName[name]
-		if row["displayName"]!=display || row["actorKind"]!="resident" || row["actorLabel"]!="RESIDENTE · IA" {
-			t.Fatalf("resident %s=%#v",name,row)
+	for name, display := range map[string]string{
+		"otto_falk":    "Otto Falk",
+		"marta_stein":  "Marta Stein",
+		"viktor_kraus": "Viktor Kraus",
+	} {
+		row := byName[name]
+		if row["displayName"] != display || row["actorKind"] != "resident" || row["actorLabel"] != "RESIDENTE · IA" {
+			t.Fatalf("resident %s=%#v", name, row)
 		}
 	}
 }
 
 func TestNativeLobbyReadKeepsVirtualRivalsVisibleWhenCompatibilitySeedFails(t *testing.T) {
-	now:=time.Date(2026,10,2,14,0,0,0,time.UTC)
-	base:=&fakeStore{exists:true,syntheticErr:errors.New("seed unavailable")}
-	store:=&fakeLobbyReadStore{snapshot:lobbySnapshot{Roster:[]rosterRow{
-		{Username:"owner",Rating:400,Tier:"Principiante",JoinedAt:now},
+	now := time.Date(2026, 10, 2, 14, 0, 0, 0, time.UTC)
+	base := &fakeStore{exists: true, syntheticErr: errors.New("seed unavailable")}
+	store := &fakeLobbyReadStore{snapshot: lobbySnapshot{Roster: []rosterRow{
+		{Username: "owner", Rating: 400, Tier: "Principiante", JoinedAt: now},
 	}}}
-	h:=newLobbyReadHandler(t,now,base,store,true,"owner","sparringmeister")
+	h := newLobbyReadHandler(t, now, base, store, true, "owner", "sparringmeister")
 
-	rr:=lobbyReadRequest(t,h,now,http.MethodGet,"owner")
-	if rr.Code!=http.StatusOK { t.Fatalf("status=%d body=%s",rr.Code,rr.Body.String()) }
-
-	var body struct{ Roster []map[string]any `json:"roster"` }
-	if err:=json.Unmarshal(rr.Body.Bytes(),&body); err!=nil { t.Fatal(err) }
-	if len(body.Roster)!=5 { t.Fatalf("roster=%#v",body.Roster) }
-	seen:=map[string]bool{}
-	for _,row:=range body.Roster {
-		name,_:=row["username"].(string)
-		seen[name]=true
+	rr := lobbyReadRequest(t, h, now, http.MethodGet, "owner")
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
 	}
-	for _,name:=range []string{"sparringmeister","otto_falk","marta_stein","viktor_kraus"} {
-		if !seen[name] { t.Fatalf("missing %s roster=%#v",name,body.Roster) }
+
+	var body struct {
+		Roster []map[string]any `json:"roster"`
+	}
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if len(body.Roster) != 5 {
+		t.Fatalf("roster=%#v", body.Roster)
+	}
+	seen := map[string]bool{}
+	for _, row := range body.Roster {
+		name, _ := row["username"].(string)
+		seen[name] = true
+	}
+	for _, name := range []string{"sparringmeister", "otto_falk", "marta_stein", "viktor_kraus"} {
+		if !seen[name] {
+			t.Fatalf("missing %s roster=%#v", name, body.Roster)
+		}
 	}
 }
 
 func TestNativeLobbyReadDeduplicatesVirtualRowsStillPresentInMongo(t *testing.T) {
-	now:=time.Date(2026,10,2,14,0,0,0,time.UTC)
-	store:=&fakeLobbyReadStore{snapshot:lobbySnapshot{Roster:[]rosterRow{
-		{Username:"owner",Rating:400,Tier:"Principiante",JoinedAt:now},
-		{Username:"otto_falk",Rating:850,Tier:"Aficionado",JoinedAt:now},
-		{Username:"sparringmeister",Rating:400,Tier:"Principiante",JoinedAt:now},
+	now := time.Date(2026, 10, 2, 14, 0, 0, 0, time.UTC)
+	store := &fakeLobbyReadStore{snapshot: lobbySnapshot{Roster: []rosterRow{
+		{Username: "owner", Rating: 400, Tier: "Principiante", JoinedAt: now},
+		{Username: "otto_falk", Rating: 850, Tier: "Aficionado", JoinedAt: now},
+		{Username: "sparringmeister", Rating: 400, Tier: "Principiante", JoinedAt: now},
 	}}}
-	h:=newLobbyReadHandler(t,now,&fakeStore{exists:true},store,true,"owner","sparringmeister")
-	rr:=lobbyReadRequest(t,h,now,http.MethodGet,"owner")
-	if rr.Code!=http.StatusOK { t.Fatalf("status=%d body=%s",rr.Code,rr.Body.String()) }
-	var body struct{ Roster []map[string]any `json:"roster"` }
-	if err:=json.Unmarshal(rr.Body.Bytes(),&body); err!=nil { t.Fatal(err) }
-	if len(body.Roster)!=5 { t.Fatalf("roster=%#v",body.Roster) }
-	seen:=map[string]int{}
-	for _,row:=range body.Roster {
-		if name,ok:=row["username"].(string); ok { seen[name]++ }
+	h := newLobbyReadHandler(t, now, &fakeStore{exists: true}, store, true, "owner", "sparringmeister")
+	rr := lobbyReadRequest(t, h, now, http.MethodGet, "owner")
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
 	}
-	for _,name:=range []string{"sparringmeister","otto_falk","marta_stein","viktor_kraus"} {
-		if seen[name]!=1 { t.Fatalf("%s count=%d roster=%#v",name,seen[name],body.Roster) }
+	var body struct {
+		Roster []map[string]any `json:"roster"`
+	}
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if len(body.Roster) != 5 {
+		t.Fatalf("roster=%#v", body.Roster)
+	}
+	seen := map[string]int{}
+	for _, row := range body.Roster {
+		if name, ok := row["username"].(string); ok {
+			seen[name]++
+		}
+	}
+	for _, name := range []string{"sparringmeister", "otto_falk", "marta_stein", "viktor_kraus"} {
+		if seen[name] != 1 {
+			t.Fatalf("%s count=%d roster=%#v", name, seen[name], body.Roster)
+		}
 	}
 }
 
 func TestNativeLobbyReadMapsStorageFailure(t *testing.T) {
-	now:=time.Date(2026,10,2,14,0,0,0,time.UTC)
-	store:=&fakeLobbyReadStore{err:errors.New("mongo down")}
-	h:=newLobbyReadHandler(t,now,&fakeStore{exists:true},store,false,"","")
-	rr:=lobbyReadRequest(t,h,now,http.MethodGet,"alice")
-	if rr.Code!=http.StatusServiceUnavailable {
-		t.Fatalf("status=%d body=%s",rr.Code,rr.Body.String())
+	now := time.Date(2026, 10, 2, 14, 0, 0, 0, time.UTC)
+	store := &fakeLobbyReadStore{err: errors.New("mongo down")}
+	h := newLobbyReadHandler(t, now, &fakeStore{exists: true}, store, false, "", "")
+	rr := lobbyReadRequest(t, h, now, http.MethodGet, "alice")
+	if rr.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
 	}
 }
 
 func TestNativeLobbyReadRejectsWrongMethod(t *testing.T) {
-	now:=time.Date(2026,10,2,14,0,0,0,time.UTC)
-	h:=newLobbyReadHandler(t,now,&fakeStore{exists:true},&fakeLobbyReadStore{},false,"","")
-	rr:=lobbyReadRequest(t,h,now,http.MethodPost,"alice")
-	if rr.Code!=http.StatusMethodNotAllowed {
-		t.Fatalf("status=%d body=%s",rr.Code,rr.Body.String())
+	now := time.Date(2026, 10, 2, 14, 0, 0, 0, time.UTC)
+	h := newLobbyReadHandler(t, now, &fakeStore{exists: true}, &fakeLobbyReadStore{}, false, "", "")
+	rr := lobbyReadRequest(t, h, now, http.MethodPost, "alice")
+	if rr.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
 	}
-	if got:=rr.Header().Get("Allow"); got!="GET, OPTIONS" {
-		t.Fatalf("allow=%q",got)
+	if got := rr.Header().Get("Allow"); got != "GET, OPTIONS" {
+		t.Fatalf("allow=%q", got)
 	}
 }
 
 func TestLobbyReadRateLimitIsFortyPerMinute(t *testing.T) {
-	now:=time.Date(2026,10,2,14,0,0,0,time.UTC)
-	h:=&Handler{lobbyReadWindows:map[string]rateWindow{}}
-	for i:=0;i<40;i++ {
-		ok,retry:=h.allowLobbyRead("alice",now)
-		if !ok || retry!=0 {
-			t.Fatalf("request %d ok=%t retry=%d",i+1,ok,retry)
+	now := time.Date(2026, 10, 2, 14, 0, 0, 0, time.UTC)
+	h := &Handler{lobbyReadWindows: map[string]rateWindow{}}
+	for i := 0; i < 40; i++ {
+		ok, retry := h.allowLobbyRead("alice", now)
+		if !ok || retry != 0 {
+			t.Fatalf("request %d ok=%t retry=%d", i+1, ok, retry)
 		}
 	}
-	ok,retry:=h.allowLobbyRead("alice",now)
-	if ok || retry<1 {
-		t.Fatalf("41st ok=%t retry=%d",ok,retry)
+	ok, retry := h.allowLobbyRead("alice", now)
+	if ok || retry < 1 {
+		t.Fatalf("41st ok=%t retry=%d", ok, retry)
 	}
-	ok,_=h.allowLobbyRead("alice",now.Add(time.Minute))
-	if !ok { t.Fatal("new minute must reset limit") }
+	ok, _ = h.allowLobbyRead("alice", now.Add(time.Minute))
+	if !ok {
+		t.Fatal("new minute must reset limit")
+	}
 }
 
 func TestPublicLobbyRosterOmitsOptionalFieldsForSelf(t *testing.T) {
-	now:=time.Date(2026,10,2,14,0,0,0,time.UTC)
-	h2h:=&lobbyHeadToHead{Games:3,Wins:1,Draws:1,Losses:1,LastPlayedAt:now}
-	got:=publicLobbyRoster(
-		rosterRow{Username:"alice",Rating:0,JoinedAt:now},
-		"alice",h2h,now.Add(time.Minute),false,
+	now := time.Date(2026, 10, 2, 14, 0, 0, 0, time.UTC)
+	h2h := &lobbyHeadToHead{Games: 3, Wins: 1, Draws: 1, Losses: 1, LastPlayedAt: now}
+	got := publicLobbyRoster(
+		rosterRow{Username: "alice", Rating: 0, JoinedAt: now},
+		"alice", h2h, now.Add(time.Minute), false,
 	)
-	if got["rating"]!=int64(0) || got["tier"]!="Principiante" {
-		t.Fatalf("rating/tier=%#v",got)
+	if got["rating"] != int64(0) || got["tier"] != "Principiante" {
+		t.Fatalf("rating/tier=%#v", got)
 	}
-	if _,ok:=got["headToHead"]; ok { t.Fatalf("self h2h leaked=%#v",got) }
-	if _,ok:=got["challengeCooldownUntil"]; ok { t.Fatalf("self cooldown leaked=%#v",got) }
+	if _, ok := got["headToHead"]; ok {
+		t.Fatalf("self h2h leaked=%#v", got)
+	}
+	if _, ok := got["challengeCooldownUntil"]; ok {
+		t.Fatalf("self cooldown leaked=%#v", got)
+	}
 }
 
-
 func TestNativeLobbyReadMarksRouteBeforeAuthentication(t *testing.T) {
-	now:=time.Date(2026,10,2,14,0,0,0,time.UTC)
-	h:=newLobbyReadHandler(t,now,&fakeStore{exists:true},&fakeLobbyReadStore{},false,"","")
-	req:=httptest.NewRequest(http.MethodGet,"http://edge/api/pvp/lobby",nil)
-	rr:=httptest.NewRecorder()
-	h.ServeHTTP(rr,req)
-	if rr.Code!=http.StatusUnauthorized {
-		t.Fatalf("status=%d body=%s",rr.Code,rr.Body.String())
+	now := time.Date(2026, 10, 2, 14, 0, 0, 0, time.UTC)
+	h := newLobbyReadHandler(t, now, &fakeStore{exists: true}, &fakeLobbyReadStore{}, false, "", "")
+	req := httptest.NewRequest(http.MethodGet, "http://edge/api/pvp/lobby", nil)
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
 	}
-	if got:=rr.Header().Get("X-Chess-Pvp-Native"); got!="lobby-read" {
-		t.Fatalf("native marker=%q",got)
+	if got := rr.Header().Get("X-Chess-Pvp-Native"); got != "lobby-read" {
+		t.Fatalf("native marker=%q", got)
 	}
 }

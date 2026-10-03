@@ -1,0 +1,71 @@
+name: PvP · Python fallback usage
+
+# Evidence gate for retiring the Python PvP fallback: how many public
+# /api/pvp requests still reached FastAPI. Read-only Grafana query.
+on:
+  workflow_dispatch:
+    inputs:
+      window:
+        description: Ventana a medir (p. ej. 24h, 14d)
+        required: false
+        default: 14d
+      timeline:
+        description: Recuento por hora (máx. 7 días)
+        type: boolean
+        default: false
+      sources:
+        description: Desglosa el origen (salto y tráfico sintético) desde los logs
+        type: boolean
+        default: false
+      max_requests:
+        description: Falla si el total supera este presupuesto (vacío = sólo informe)
+        required: false
+        default: ''
+  schedule:
+    - cron: '23 7 * * *'
+  push:
+    branches: [main]
+    paths:
+      - scripts/pvp_python_fallback_report.py
+      - .github/workflows/pvp-python-fallback.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pvp-python-fallback
+  cancel-in-progress: false
+
+jobs:
+  report:
+    name: Public PvP requests reaching Python
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      GRAFANA_URL: ${{ secrets.GRAFANA_URL }}
+      GRAFANA_AUTH: ${{ secrets.GRAFANA_AUTH }}
+      GRAFANA_METRICS_DATASOURCE_UID: ${{ vars.GRAFANA_METRICS_DATASOURCE_UID || 'grafanacloud-humbletoucan355-prom' }}
+      GRAFANA_LOGS_DATASOURCE_UID: ${{ vars.GRAFANA_LOGS_DATASOURCE_UID || 'grafanacloud-humbletoucan355-logs' }}
+      SOURCES: ${{ inputs.sources && 'true' || 'false' }}
+      TIMELINE: ${{ inputs.timeline && 'true' || 'false' }}
+      WINDOW: ${{ inputs.window || '14d' }}
+      MAX_REQUESTS: ${{ inputs.max_requests }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Self-test
+        run: python3 -S scripts/pvp_python_fallback_report.py --self-test
+      - name: Query Grafana
+        shell: bash
+        run: |
+          set -euo pipefail
+          args=(--window "$WINDOW")
+          if [[ "$TIMELINE" == "true" ]]; then
+            args+=(--timeline)
+          fi
+          if [[ "$SOURCES" == "true" ]]; then
+            args+=(--sources)
+          fi
+          if [[ -n "$MAX_REQUESTS" ]]; then
+            args+=(--max-requests "$MAX_REQUESTS")
+          fi
+          python3 -S scripts/pvp_python_fallback_report.py "${args[@]}"

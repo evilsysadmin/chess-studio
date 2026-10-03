@@ -59,20 +59,20 @@ func (s *TimeoutStore) FinishTimeout(
 	err := s.store.db.Collection("pvp_matches").FindOneAndUpdate(
 		queryCtx,
 		bson.M{
-			"_id": matchID,
-			"revision": expectedRevision,
-			"status": "active",
+			"_id":              matchID,
+			"revision":         expectedRevision,
+			"status":           "active",
 			"acceptance_state": bson.M{"$ne": "staged"},
 		},
 		bson.M{
 			"$set": bson.M{
-				"status": "finished",
-				"result": result,
-				"end_reason": "timeout",
-				"white_clock_ms": clampTimeoutClock(whiteClock),
-				"black_clock_ms": clampTimeoutClock(blackClock),
+				"status":          "finished",
+				"result":          result,
+				"end_reason":      "timeout",
+				"white_clock_ms":  clampTimeoutClock(whiteClock),
+				"black_clock_ms":  clampTimeoutClock(blackClock),
 				"turn_started_at": nil,
-				"updated_at": now,
+				"updated_at":      now,
 			},
 			"$inc": bson.M{"revision": 1},
 		},
@@ -97,18 +97,18 @@ func timeoutDomainMatch(row cancelMatchRow) matchtimeout.Match {
 		endReason = *row.EndReason
 	}
 	return matchtimeout.Match{
-		ID: row.ID,
-		White: row.White,
-		Black: row.Black,
-		Turn: row.Turn,
-		Status: row.Status,
-		Result: result,
-		EndReason: endReason,
-		Revision: row.Revision,
-		WhiteClockMS: pointerInt64(row.WhiteClockMS, pvpInitialClockMS),
-		BlackClockMS: pointerInt64(row.BlackClockMS, pvpInitialClockMS),
+		ID:            row.ID,
+		White:         row.White,
+		Black:         row.Black,
+		Turn:          row.Turn,
+		Status:        row.Status,
+		Result:        result,
+		EndReason:     endReason,
+		Revision:      row.Revision,
+		WhiteClockMS:  pointerInt64(row.WhiteClockMS, pvpInitialClockMS),
+		BlackClockMS:  pointerInt64(row.BlackClockMS, pvpInitialClockMS),
 		TurnStartedAt: row.TurnStartedAt,
-		UpdatedAt: row.UpdatedAt,
+		UpdatedAt:     row.UpdatedAt,
 	}
 }
 

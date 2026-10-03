@@ -1,6 +1,6 @@
 import math
 import bpy
-from mathutils import Vector
+from mathutils import Matrix, Vector
 
 
 def mat(name, rgb, rough=.6, metal=0):
@@ -103,12 +103,14 @@ def loft_ellipse(name, rings, material, segments=112, bevel=.0):
     for ring in rings:
         rx, ry, z, yoff = ring[:4]
         xoff = ring[4] if len(ring) > 4 else 0.0
-        # Optional front lift: the front edge (-y) rises and the back sinks,
-        # so a ring can tilt like the saddle of a peaked cap without leaning.
+        # Optional front lift: the front edge (-y) rises like the saddle of a
+        # peaked cap while the back stays level. A plain tilt also sank the
+        # back, and from behind the plate read as drooping.
         lift = ring[5] if len(ring) > 5 else 0.0
         for i in range(segments):
             a = math.tau*i/segments
-            verts.append((xoff + rx*math.cos(a), yoff + ry*math.sin(a), z - lift*math.sin(a)))
+            saddle = ((1.0 - math.sin(a))*.5)**1.6
+            verts.append((xoff + rx*math.cos(a), yoff + ry*math.sin(a), z + lift*saddle))
     faces = []
     for ring in range(ring_count - 1):
         a0 = ring*segments; b0 = (ring+1)*segments
@@ -175,6 +177,66 @@ def cyl_between(name,start,end,radius,material,verts=48,bevel=.018):
     return finish(o,material,bevel=bevel)
 
 
+# Arm joints (right side; the left mirrors x). The pawn's chest bulge is
+# ~0.437 wide at z~0.9 in the arm plane (y~-0.30) and narrows to ~0.34 at the
+# waist. The shoulder leaves the top of the bulge, the upper arm hangs along
+# its side with the elbow slightly back, and the forearm comes forward so the
+# glove rests in front of the belt: an at-ease stance. The old joints started
+# inside the chest and flared the elbow out sideways, which read as reversed
+# elbows. Rig bones use the same points so animations rotate the real joints.
+ARM_SHOULDER = (.405, -.300, .995)
+ARM_ELBOW = (.500, -.270, .800)
+ARM_WRIST = (.440, -.420, .680)
+
+
+def side_point(point, side):
+    return (side * point[0], point[1], point[2])
+
+
+def glove(name, wrist, elbow, side, material, scale=1.0):
+    """A white glove that reads as a hand: palm, three curled fingers, thumb.
+
+    Built in a frame aligned with the forearm (fingers continue the forearm
+    axis, palm faces the body) and joined into one mesh named `name`, so the
+    contract keeps one object per hand.
+    """
+    w = Vector(wrist)
+    d = (w - Vector(elbow)).normalized()
+    inward = Vector((-side, 0.0, 0.0))
+    x = (inward - d * inward.dot(d)).normalized()  # palm normal, toward the body
+    y = d.cross(x).normalized()
+    frame = Matrix((x, y, d)).transposed()
+    rot = frame.to_euler('XYZ')
+
+    def at(local):
+        return w + frame @ (Vector(local) * scale)
+
+    parts = [sphere(f'{name} palm', at((0.0, 0.0, .036)), (.021 * scale, .033 * scale, .040 * scale),
+                    material, 24, rot)]
+    for index, offset in enumerate((-.021, 0.0, .021)):
+        base = at((.002, offset, .066))
+        tip = at((.016, offset * 1.05, .094 - abs(offset) * .25))
+        parts.append(cyl_between(f'{name} finger {index}', base, tip, .0105 * scale, material, 12, .003))
+        parts.append(sphere(f'{name} fingertip {index}', tip, (.0112 * scale,) * 3, material, 12))
+    # Thumb on the front of the hand (toward the camera, -y), angled down.
+    front = Vector((0.0, -1.0, 0.0))
+    front = (front - d * front.dot(d)).normalized()
+    thumb_base = w + frame @ (Vector((0.004, 0.0, .030)) * scale) + front * (.026 * scale)
+    thumb_tip = thumb_base + (front * .022 + d * .026 + x * .010) * scale
+    parts.append(cyl_between(f'{name} thumb', thumb_base, thumb_tip, .0105 * scale, material, 12, .003))
+    parts.append(sphere(f'{name} thumb tip', thumb_tip, (.0112 * scale,) * 3, material, 12))
+
+    bpy.ops.object.select_all(action='DESELECT')
+    for part in parts:
+        part.select_set(True)
+    bpy.context.view_layer.objects.active = parts[0]
+    bpy.ops.object.join()
+    hand = bpy.context.object
+    hand.name = name
+    hand.data.name = name
+    return hand
+
+
 def parent_bone(obj,rig,bone):
     world=obj.matrix_world.copy(); obj.parent=rig; obj.parent_type='BONE'; obj.parent_bone=bone; obj.matrix_world=world
 
@@ -185,8 +247,9 @@ def build_rig():
         item=armature.edit_bones.new(name); item.head=head; item.tail=tail; item.parent=armature.edit_bones[parent] if parent else None
     bone('root',(0,0,0),(0,0,.34)); bone('spine',(0,0,.50),(0,0,1.16),'root'); bone('head',(0,0,1.04),(0,0,1.90),'spine')
     bone('face_mouth',(0,-.30,1.252),(0,-.30,1.330),'head')
-    bone('upper_arm.L',(-.34,-.30,.92),(-.47,-.38,.80),'spine'); bone('forearm.L',(-.47,-.38,.80),(-.46,-.46,.67),'upper_arm.L')
-    bone('upper_arm.R',(.34,-.30,.92),(.47,-.38,.80),'spine'); bone('forearm.R',(.47,-.38,.80),(.46,-.46,.67),'upper_arm.R')
+    for side, suffix in ((-1, 'L'), (1, 'R')):
+        bone(f'upper_arm.{suffix}', side_point(ARM_SHOULDER, side), side_point(ARM_ELBOW, side), 'spine')
+        bone(f'forearm.{suffix}', side_point(ARM_ELBOW, side), side_point(ARM_WRIST, side), f'upper_arm.{suffix}')
     # v21: Matthias reads as a small humanoid *inside* the pawn shell. Legs
     # emerge from beneath the plinth instead of being pasted onto its front.
     bone('upper_leg.L',(-.20,-.02,.10),(-.22,-.03,-.02),'root'); bone('lower_leg.L',(-.22,-.03,-.02),(-.21,-.05,-.15),'upper_leg.L')
@@ -229,7 +292,19 @@ def build_character():
     # crown that flares evenly, and a wide round top plate whose front edge
     # rises a little over the visor, set slightly back on the head.
     cap_crown=loft_ellipse('Classic cap crown',[(.352,.336,1.615,0.000),(.360,.343,1.660,.002,0,.002),(.373,.355,1.705,.005,0,.006),(.390,.371,1.748,.009,0,.010),(.406,.386,1.786,.013,0,.014),(.418,.397,1.815,.016,0,.017)],navy,120,.008)
-    cap_top=loft_ellipse('Classic cap top',[(.414,.394,1.812,.048,0,.027),(.446,.426,1.826,.052,0,.033),(.468,.448,1.844,.056,0,.039),(.470,.450,1.862,.058,0,.042),(.452,.433,1.878,.060,0,.044),(.408,.391,1.890,.061,0,.044),(.320,.306,1.898,.062,0,.042),(.180,.172,1.902,.062,0,.041)],navy,124,.008)
+    # Top plate: flared underside to a rolled rim, then a shallow, evenly
+    # curved dome that closes on a tiny ring, so the cap face never becomes a
+    # large flat n-gon that shades with dents. The front lift fades towards
+    # the centre so the saddle stays a smooth surface seen from any side.
+    plate_rings=[(.414,.396,1.812,.048,0,.027),(.446,.427,1.826,.052,0,.033),(.468,.448,1.844,.056,0,.039),(.472,.452,1.860,.058,0,.042),(.464,.444,1.873,.059,0,.044)]
+    for r in (.448,.420,.382,.334,.278,.214,.144,.072,.020):
+        k=r/.448
+        plate_rings.append((r,r*.957,1.879+.024*(1-k*k),.060,0,.044*k))
+    # No bevel modifier on the plate: it is already a smooth loft, and with the
+    # modifier's 30 degree angle limit the rolled rim sat right on the
+    # threshold, so different CPUs beveled different edges and the exported
+    # mesh was not reproducible.
+    cap_top=loft_ellipse('Classic cap top',plate_rings,navy,124,0)
     visor=crescent_visor('Classic cap visor',(0,-.020,1.665),leather,.286,.450,.176,.235,.030,10,48)
     cap_badge=front_ellipse('Classic cap badge',(0,-.362,1.705),.050,.060,.010,brass,40,.003); cap_badge_inset=front_ellipse('Classic cap badge inset',(0,-.369,1.705),.027,.034,.008,leather,36,.002)
     mouth_l=box('Mouth.L',(-.052,-.357,1.246),(.070,.004,.0060),black,(0,math.radians(-12),0),.002); mouth_r=box('Mouth.R',(.052,-.357,1.246),(.070,.004,.0060),black,(0,math.radians(12),0),.002)
@@ -250,12 +325,18 @@ def build_character():
 
     # Limbs stay thin and tucked against the pawn silhouette. Arms now live on
     # the visible front/side instead of being deliberately buried behind the body.
-    shoulder_l=(-.342,-.305,.920); elbow_l=(-.470,-.385,.800); wrist_l=(-.458,-.462,.670)
-    shoulder_r=(.342,-.305,.920); elbow_r=(.470,-.385,.800); wrist_r=(.458,-.462,.670)
+    shoulder_l=side_point(ARM_SHOULDER,-1); elbow_l=side_point(ARM_ELBOW,-1); wrist_l=side_point(ARM_WRIST,-1)
+    shoulder_r=side_point(ARM_SHOULDER,1); elbow_r=side_point(ARM_ELBOW,1); wrist_r=side_point(ARM_WRIST,1)
     upper_l=cyl_between('Upper arm.L',shoulder_l,elbow_l,.034,navy,40,.008); upper_r=cyl_between('Upper arm.R',shoulder_r,elbow_r,.034,navy,40,.008)
     fore_l=cyl_between('Forearm.L',elbow_l,wrist_l,.029,navy_soft,40,.007); fore_r=cyl_between('Forearm.R',elbow_r,wrist_r,.029,navy_soft,40,.007)
     cuff_l=cyl('Cuff.L',wrist_l,.031,.016,brass,verts=32,bevel=.003); cuff_r=cyl('Cuff.R',wrist_r,.031,.016,brass,verts=32,bevel=.003)
-    hand_l=sphere('Hand.L',(-.458,-.474,.650),(.030,.027,.033),ivory,28); hand_r=sphere('Hand.R',(.458,-.474,.650),(.030,.027,.033),ivory,28)
+    cuff_l.rotation_euler=(Vector(wrist_l)-Vector(elbow_l)).to_track_quat('Z','Y').to_euler(); cuff_r.rotation_euler=(Vector(wrist_r)-Vector(elbow_r)).to_track_quat('Z','Y').to_euler()
+    hand_l=glove('Hand.L',wrist_l,elbow_l,-1,ivory,1.25); hand_r=glove('Hand.R',wrist_r,elbow_r,1,ivory,1.25)
+    # Sleeve shoulders half-buried in the chest bulge so each arm grows out of
+    # the body instead of floating beside it with an open cylinder end; a soft
+    # elbow cap hides the joint seam when the forearm bends.
+    shoulder_cap_l=sphere('Shoulder.L',(shoulder_l[0]+.012,shoulder_l[1],shoulder_l[2]-.012),(.050,.058,.052),navy,24); shoulder_cap_r=sphere('Shoulder.R',(shoulder_r[0]-.012,shoulder_r[1],shoulder_r[2]-.012),(.050,.058,.052),navy,24)
+    elbow_cap_l=sphere('Elbow.L',elbow_l,(.035,.035,.035),navy,24); elbow_cap_r=sphere('Elbow.R',elbow_r,(.035,.035,.035),navy,24)
 
     hip_l=(-.200,-.020,.100); knee_l=(-.220,-.030,-.020); ankle_l=(-.210,-.050,-.150)
     hip_r=(.200,-.020,.100); knee_r=(.220,-.030,-.020); ankle_r=(.210,-.050,-.150)
@@ -266,16 +347,17 @@ def build_character():
     boot_l=elliptic_cyl('Boot.L',(-.210,-.090,-.190),.050,.074,.62,leather,(math.radians(78),math.radians(-4),math.radians(3)),40,.008)
     boot_r=elliptic_cyl('Boot.R',(.210,-.090,-.190),.050,.074,.62,leather,(math.radians(78),math.radians(4),math.radians(-3)),40,.008)
 
-    book=box('RoutineBook',(0,-.485,.915),(.225,.025,.145),leather,(math.radians(5),0,0),.012); book_page=box('RoutineBookPages',(0,-.512,.915),(.166,.008,.096),paper,(math.radians(5),0,0),.004); book_badge=sphere('RoutineBookBadge',(0,-.526,.910),(.030,.008,.036),brass,20); book_hand_l=sphere('RoutineBookHand.L',(-.205,-.520,.835),(.036,.024,.041),ivory,24); book_hand_r=sphere('RoutineBookHand.R',(.205,-.520,.835),(.036,.024,.041),ivory,24); cup=cyl('RoutineCup',(.265,-.420,1.195),.090,.132,ivory_hi,verts=48,bevel=.010); cup_band=cyl('RoutineCupBand',(.265,-.420,1.253),.092,.013,brass,verts=48,bevel=.004); cup_handle=sphere('RoutineCupHandle',(.365,-.420,1.198),(.045,.021,.060),brass,24); cup_hand=sphere('RoutineCupHand',(.220,-.438,1.105),(.038,.028,.043),ivory,24); pen=cyl('RoutinePen',(.145,-.525,.935),.010,.24,leather,(0,math.radians(64),math.radians(-8)),verts=24,bevel=.004); pen_tip=cone('RoutinePenTip',(.255,-.525,.885),.016,.003,.060,brass,(0,math.radians(64),math.radians(-8)),.003)
+    book=box('RoutineBook',(0,-.485,.915),(.225,.025,.145),leather,(math.radians(5),0,0),.012); book_page=box('RoutineBookPages',(0,-.512,.915),(.166,.008,.096),paper,(math.radians(5),0,0),.004); book_badge=sphere('RoutineBookBadge',(0,-.526,.910),(.030,.008,.036),brass,20); book_hand_l=glove('RoutineBookHand.L',(-.205,-.520,.835),(-.420,-.360,.740),-1,ivory,1.15); book_hand_r=glove('RoutineBookHand.R',(.205,-.520,.835),(.420,-.360,.740),1,ivory,1.15); cup=cyl('RoutineCup',(.265,-.420,1.195),.090,.132,ivory_hi,verts=48,bevel=.010); cup_band=cyl('RoutineCupBand',(.265,-.420,1.253),.092,.013,brass,verts=48,bevel=.004); cup_handle=sphere('RoutineCupHandle',(.365,-.420,1.198),(.045,.021,.060),brass,24); cup_hand=glove('RoutineCupHand',(.220,-.438,1.105),(.400,-.330,.900),1,ivory,1.15); pen=cyl('RoutinePen',(.145,-.525,.935),.010,.24,leather,(0,math.radians(64),math.radians(-8)),verts=24,bevel=.004); pen_tip=cone('RoutinePenTip',(.255,-.525,.885),.016,.003,.060,brass,(0,math.radians(64),math.radians(-8)),.003)
     # Keep the campaign bite below the stern mouth. At Home scale, a prop that
     # crosses the mouth reads as a replacement face instead of a short routine.
-    sandwich_bread=box('RoutineSandwichBread',(-.292,-.435,1.085),(.132,.038,.049),bread,(math.radians(4),math.radians(-7),math.radians(-6)),.016); sandwich_filling=box('RoutineSandwichFilling',(-.292,-.477,1.080),(.117,.013,.037),cap_red,(math.radians(4),math.radians(-7),math.radians(-6)),.007); sandwich_hand=sphere('RoutineSandwichHand',(-.230,-.448,1.015),(.036,.027,.040),ivory,24)
+    sandwich_bread=box('RoutineSandwichBread',(-.292,-.435,1.085),(.132,.038,.049),bread,(math.radians(4),math.radians(-7),math.radians(-6)),.016); sandwich_filling=box('RoutineSandwichFilling',(-.292,-.477,1.080),(.117,.013,.037),cap_red,(math.radians(4),math.radians(-7),math.radians(-6)),.007); sandwich_hand=glove('RoutineSandwichHand',(-.230,-.448,1.015),(-.400,-.340,.840),-1,ivory,1.15)
 
     for obj in root: parent_bone(obj,rig,'root')
     for obj in spine: parent_bone(obj,rig,'spine')
     for obj in head: parent_bone(obj,rig,'head')
     for obj in (mouth_l,mouth_r): parent_bone(obj,rig,'face_mouth')
-    parent_bone(upper_l,rig,'upper_arm.L'); parent_bone(upper_r,rig,'upper_arm.R')
+    for obj in (upper_l,shoulder_cap_l,elbow_cap_l): parent_bone(obj,rig,'upper_arm.L')
+    for obj in (upper_r,shoulder_cap_r,elbow_cap_r): parent_bone(obj,rig,'upper_arm.R')
     for obj in (fore_l,cuff_l,hand_l): parent_bone(obj,rig,'forearm.L')
     for obj in (fore_r,cuff_r,hand_r): parent_bone(obj,rig,'forearm.R')
     parent_bone(thigh_l,rig,'upper_leg.L'); parent_bone(thigh_r,rig,'upper_leg.R')

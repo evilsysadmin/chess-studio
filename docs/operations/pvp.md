@@ -195,6 +195,16 @@ experiment, not public matchmaking yet.
   initiation remains human-driven until engagement frequency/cooldown policy is
   reviewed separately.
 
+### CPU engine parity (Go port of `chess_ai`)
+
+Resident moves are chosen by the Go port of the CPU engine (`internal/residenteval`, `internal/residentsearch`, `internal/residentpolicy`), and the same port is the base for moving the games against the CPU out of Python. Parity is enforced on corpora generated from `backend-python/chess_ai.py` by `scripts/engine_parity_corpus.py`:
+
+- evaluation: ~6.5k seeded positions (every phase, mates, stalemates, insufficient material, 50-move rule) must evaluate to the same number in Go;
+- search: ~250 positions at fixed depth 2/3 (level-100 settings without randomness, noise or clock) must reach the same value, and Python's move must be one of Go's equally best moves. Ties may break differently because the two libraries generate moves in a different order;
+- `pvp-go.yml` regenerates the corpora with `--check` (Python 3.13 and the pinned `python-chess`) and runs both Go tests, so a change to either engine cannot drift silently.
+
+The search corpus found one real divergence: the Go chess library tags en passant with `chess.EnPassant`, not `chess.Capture`, so the quiescence search, move ordering and position complexity skipped en passant captures. `chessrules.IsCapture` is the single capture test now.
+
 ## Rating
 
 PvP rating is independent from CPU/Matthias rating.
@@ -318,7 +328,13 @@ PvP is migrating incrementally toward a dedicated Go process. The first slice is
 
 - `backend-go/cmd/pvp-edge` accepts only `/api/pvp*` plus its internal health/readiness endpoints;
 - while a PvP operation still belongs to Python, Go proxies it transparently to the paired Python backend and preserves auth, request path/query/body and response semantics;
-- Go readiness fails closed when the paired Python authority is not ready;
+- Go readiness fails closed when the paired Python authority is not ready, and also when its own MongoDB client stops answering `ping` (the 503 names the failing `dependency`, never the raw error); a startup ping alone does not prove the store is still reachable;
+- the PvP timing contract (initial clock, increment, ready timeout, disconnect grace) lives once in `backend-go/internal/pvpclock`; every Go package reads it from there and a test pins it against the constants in `backend-python/pvp_api.py`, so the two runtimes cannot drift. Match documents missing a clock field fall back to `pvpclock.InitialMS` in every path;
+- the resident/sparring owner comes only from `CHESS_PVP_SPARRING_OWNER`; the Go edge has no built-in username and refuses to start with sparring enabled and no owner. The deploy config (`infra/oci/runtime/docker-compose.yml`) is the single place that supplies the default;
+- `backend-go` must stay `gofmt`-clean; `pvp-go.yml` fails otherwise;
+- native routing has one table, `backend-go/internal/pvproute`: the edge uses it to choose Go or the Python upstream and the native handler dispatches on the same answer, so the two cannot disagree (they used to parse paths separately, and paths whose id was an action word, such as `/matches/move`, were read differently). A path the table does not know is a 404 in the native handler, never the lobby pulse. `pulse.Handler.routeEnabled` is the one place that says whether a route is served (it also gates the pre-auth `X-Chess-Pvp-Native` markers), `ServeHTTP` only authenticates and dispatches, and each route lives in its own file (`roster_http.go`, `lobby_chat_http.go`, `challenge_resolution_http.go`, `match_handoff_http.go`, `lobby_pulse.go`, …; auth in `auth.go`, the store core in `mongo_store.go`). A disabled route's nil service is normalised to an absent dependency in `pulse.NewHandler`, so its guards return 404 instead of reaching a nil pointer;
+- the Go stores have integration tests against a real MongoDB 8.0 (`internal/pulse/mongo_integration_test.go`): revision CAS under concurrent writers, terminal writes that finish once, the idempotent acceptance saga, one pending challenge per pair (via the unique index), once-per-match rating settlement and decoding of Python-written documents (int32 clocks, explicit nulls, missing clocks). `pvp-go.yml` runs them with a `mongo:8.0` service and `PVP_MONGO_TEST_REQUIRED=1`; locally they skip unless `PVP_MONGO_TEST_URL` is set;
+- Go declares the same PvP indexes as Python (`internal/pulse/indexes.go`, mirroring `pvp_store.py` `_ensure_indexes`: same names, keys and options), so the unique `pvp_pending_pair_unique` index and the roster TTL no longer depend on Python having started. Re-declaring an identical index is a no-op; a drift fails with `IndexOptionsConflict`, which the edge logs at startup without stopping while both runtimes coexist. A test pins the name set against `pvp_store.py` and another checks coexistence with the indexes as pymongo creates them;
 - proxy transport failure returns a stable retryable `pvp_upstream_unavailable` envelope instead of inventing domain state;
 - most compatibility routes remain stateless proxies while Mongo/Python remain authoritative until an operation is explicitly migrated with parity tests;
 - the first native read is `GET /api/pvp/lobby/pulse`: Go validates the same HS256 session contract (including account `session_version`), reads Mongo directly and returns only a deterministic lobby revision plus polling cadence;
@@ -328,5 +344,15 @@ PvP is migrating incrementally toward a dedicated Go process. The first slice is
 - moves, clocks, challenges, rating settlement and all PvP mutations still belong to Python in this slice;
 - migration is endpoint-by-endpoint. An operation moves to Go only when its auth, idempotency/CAS, persistence, error and reconnect contracts have dedicated parity coverage;
 - rollback must remain routing-level while the compatibility proxy exists.
+
+### Python fallback sunset
+
+Every public PvP route has a native Go handler, staging requires all of them and the production release attests every native flag. The Python public PvP routes now only survive as the kill-switch rollback. Plan agreed on 2026-10-03:
+
+1. Evidence: `pvp-python-fallback.yml` (daily, read-only) counts `/api/pvp` requests that still reach FastAPI (`chess_studio_http_server_requests_total`), including the internal resident oracle. Manual runs can add `timeline` (hourly counts) and `sources` (Loki breakdown by `pvp_hop`: `go:disabled:<route>` / `go:unknown` when the Go sidecar forwarded the request and why, `direct` when it bypassed the sidecar, e.g. nginx `direct` mode after a rollback with an unhealthy sidecar).
+   - First reading (2026-10-03): ~6.9k fallback requests in the previous 14 days, all before 2026-10-02 ~21:00 UTC, i.e. before the full-Go cutover of lobby reads, challenge creation and resident moves, and during that evening's failed deploys/rollbacks. None since. The evidence window therefore starts on 2026-10-03.
+2. Deadline **2026-10-17**: if production saw no fallback traffic for the 14-day window, remove the Python PvP routes (including `/_internal/resident-move` and the Go `residentoracle` client), the `PVP_NATIVE_*_ENABLED` kill-switches, and the Go readiness dependency on the Python `/api/ready` for PvP.
+3. Rollback after the sunset is a release rollback (`production-rollback.yml`), no longer a per-route switch.
+4. Resident moves are already chosen natively in Go (`internal/residentmove`); the Python oracle only answers when `PVP_NATIVE_RESIDENT_MOVE_ENABLED` is off, so it is retired with the rest.
 
 Target deployment pairs each blue/green Python slot with the same-color Go PvP edge, so switching the stable nginx edge cannot route a duel to the wrong backend generation.

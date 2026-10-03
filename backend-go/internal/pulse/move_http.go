@@ -373,16 +373,22 @@ func writeMovePrepareError(w http.ResponseWriter, err error) {
 	}
 }
 
-func matchMoveID(path string) (string, bool) {
-	const prefix = "/api/pvp/matches/"
-	const suffix = "/move"
-	if !strings.HasPrefix(path, prefix) || !strings.HasSuffix(path, suffix) {
-		return "", false
+func (h *Handler) allowMatchMove(username string, now time.Time) (bool, int) {
+	h.matchMoveMu.Lock()
+	defer h.matchMoveMu.Unlock()
+	window := h.matchMoveWindows[username]
+	if window.start.IsZero() || now.Sub(window.start) >= time.Minute {
+		h.matchMoveWindows[username] = rateWindow{start: now, count: 1}
+		return true, 0
 	}
-	matchID := strings.TrimSuffix(strings.TrimPrefix(path, prefix), suffix)
-	matchID = strings.Trim(matchID, "/")
-	if matchID == "" || strings.Contains(matchID, "/") {
-		return "", false
+	if window.count >= 45 {
+		retry := int(time.Minute.Seconds() - now.Sub(window.start).Seconds())
+		if retry < 1 {
+			retry = 1
+		}
+		return false, retry
 	}
-	return matchID, true
+	window.count++
+	h.matchMoveWindows[username] = window
+	return true, 0
 }

@@ -33,13 +33,13 @@ func TestChallengeCreateDocumentMatchesPythonSchema(t *testing.T) {
 	}
 	doc := challengeCreateDocument(challenge, "pair")
 	for key, want := range map[string]any{
-		"_id": "c-1",
-		"challenger": "alice",
-		"opponent": "bob",
+		"_id":               "c-1",
+		"challenger":        "alice",
+		"opponent":          "bob",
 		"challenger_rating": int64(1200),
-		"opponent_rating": int64(1350),
-		"status": "pending",
-		"pair_key": "pair",
+		"opponent_rating":   int64(1350),
+		"status":            "pending",
+		"pair_key":          "pair",
 	} {
 		if got := doc[key]; got != want {
 			t.Fatalf("%s=%#v want=%#v", key, got, want)
@@ -53,13 +53,13 @@ func TestChallengeCreateDocumentMatchesPythonSchema(t *testing.T) {
 func TestChallengeCreateDomainRowPreservesRatingsAndIdentity(t *testing.T) {
 	now := time.Date(2026, 10, 2, 11, 0, 0, 0, time.UTC)
 	row := challengeAcceptDoc{
-		ID: "winner",
-		Challenger: "bob",
-		Opponent: "alice",
+		ID:               "winner",
+		Challenger:       "bob",
+		Opponent:         "alice",
 		ChallengerRating: 1350,
-		OpponentRating: 1200,
-		Status: "pending",
-		CreatedAt: now,
+		OpponentRating:   1200,
+		Status:           "pending",
+		CreatedAt:        now,
 	}
 	got := challengeCreateDomainRow(row)
 	if got.ID != "winner" || got.Challenger != "bob" || got.Opponent != "alice" {

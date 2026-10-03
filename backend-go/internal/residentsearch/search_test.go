@@ -72,7 +72,7 @@ func TestAnalyzeFENPawnTakesHangingQueen(t *testing.T) {
 		t.Fatal("expected legal candidates")
 	}
 	if got := snapshot.Candidates[0].UCI; got != "d4e5" {
-		t.Fatalf("best=%s score=%v want=d4e5 candidates=%#v", got, snapshot.Candidates[0].Score, snapshot.Candidates[:min(5,len(snapshot.Candidates))])
+		t.Fatalf("best=%s score=%v want=d4e5 candidates=%#v", got, snapshot.Candidates[0].Score, snapshot.Candidates[:min(5, len(snapshot.Candidates))])
 	}
 }
 
@@ -157,12 +157,12 @@ func TestQuiescenceNeverStandPatsWhileInCheck(t *testing.T) {
 
 func TestInsufficientMaterialMatchesLibraryContract(t *testing.T) {
 	tests := map[string]bool{
-		"8/2k5/8/8/8/3K4/8/8 w - - 1 1": true,
-		"8/2k5/8/8/8/3K1N2/8/8 w - - 1 1": true,
-		"8/2k5/8/8/8/3K1B2/8/8 w - - 1 1": true,
+		"8/2k5/8/8/8/3K4/8/8 w - - 1 1":     true,
+		"8/2k5/8/8/8/3K1N2/8/8 w - - 1 1":   true,
+		"8/2k5/8/8/8/3K1B2/8/8 w - - 1 1":   true,
 		"8/2k5/2b5/8/8/3K1B2/8/8 w - - 1 1": true,
 		"8/2k5/8/8/8/3K1B2/4N3/8 w - - 1 1": false,
-		"8/2k5/8/8/4P3/3K4/8/8 w - - 1 1": false,
+		"8/2k5/8/8/4P3/3K4/8/8 w - - 1 1":   false,
 	}
 	for fen, want := range tests {
 		option, err := chess.FEN(fen)
@@ -192,7 +192,9 @@ func TestInitialRootPassScoresEveryLegalMove(t *testing.T) {
 	}
 }
 
-func min(a,b int) int {
-	if a<b { return a }
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
 	return b
 }

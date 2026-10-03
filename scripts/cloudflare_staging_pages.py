@@ -9,6 +9,7 @@ Los secretos sólo llegan por variables de entorno del runner y nunca se imprime
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import sys
@@ -289,6 +290,23 @@ def ensure_web_analytics(zone_id: str) -> str:
     return "created"
 
 
+
+def should_wait_pages_domain_activation(
+    *,
+    release_fast_path: bool,
+    domain_created: bool,
+    pages_dns: str,
+    domain_state: str | None = None,
+) -> bool:
+    """Keep the fast path only for a proven-stable, active custom domain."""
+    return (
+        (not release_fast_path)
+        or domain_created
+        or pages_dns != "unchanged"
+        or domain_state != "active"
+    )
+
+
 def write_outputs(**values: str) -> None:
     path = os.environ.get("GITHUB_OUTPUT")
     if not path:
@@ -299,8 +317,19 @@ def write_outputs(**values: str) -> None:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--release-fast-path",
+        action="store_true",
+        help=(
+            "Reconcile only release-critical Pages topology. Stable custom-domain "
+            "activation and optional zone/RUM settings stay out of the normal release path."
+        ),
+    )
+    args = parser.parse_args()
+
     zone_id = find_zone_id()
-    ip_geolocation = ensure_ip_geolocation(zone_id)
+    ip_geolocation = "deferred-release-fast-path" if args.release_fast_path else ensure_ip_geolocation(zone_id)
     project_created = ensure_pages_project()
     domain_created = ensure_pages_domain()
     pages_dns = ensure_cname(
@@ -310,8 +339,37 @@ def main() -> None:
         proxied=True,
         comment="Chess Studio staging frontend · Cloudflare Pages",
     )
-    domain_status = wait_pages_domain_active()
-    analytics = ensure_web_analytics(zone_id)
+
+    observed_domain_state: str | None = None
+    observed_domain_detail = ""
+    if args.release_fast_path and not domain_created and pages_dns == "unchanged":
+        # One cheap control-plane read closes the fast-path blind spot: a domain
+        # that still exists can nevertheless be pending, blocked or errored.
+        observed_domain_state, observed_domain_detail = pages_domain_status()
+        print(
+            "Custom domain Pages staging fast-path probe: "
+            f"state={observed_domain_state}, {observed_domain_detail or 'sin detalle'}"
+        )
+
+    if should_wait_pages_domain_activation(
+        release_fast_path=args.release_fast_path,
+        domain_created=domain_created,
+        pages_dns=pages_dns,
+        domain_state=observed_domain_state,
+    ):
+        if observed_domain_state in {"deactivated", "blocked", "error"}:
+            raise SystemExit(
+                "Custom domain Pages staging terminó en "
+                f"{observed_domain_state}"
+                f"{': ' + observed_domain_detail if observed_domain_detail else ''}"
+            )
+        domain_status = wait_pages_domain_active()
+    else:
+        # A proven-active custom domain plus unchanged DNS can skip the long
+        # control-plane wait. The public release.json exact-SHA probe after the
+        # Pages upload remains the serving-path authority for the release.
+        domain_status = observed_domain_state or "active"
+    analytics = "deferred-release-fast-path" if args.release_fast_path else ensure_web_analytics(zone_id)
     write_outputs(
         pages_project=PAGES_PROJECT,
         pages_hostname=PAGES_HOSTNAME,
