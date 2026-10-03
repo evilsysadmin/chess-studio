@@ -79,6 +79,13 @@ func main() {
 			log.Fatalf("native PvP pulse storage: %v", err)
 		}
 		mongoStore = store
+		// Python declares the same indexes while both runtimes coexist, so a
+		// failure here is logged, not fatal. It means the specs drifted.
+		indexCtx, cancelIndexes := context.WithTimeout(context.Background(), 10*time.Second)
+		if err := store.EnsureIndexes(indexCtx); err != nil {
+			log.Printf("native PvP storage: %v", err)
+		}
+		cancelIndexes()
 		var acceptService *challengeaccept.Service
 		if challengeAcceptEnabled || challengeCreateEnabled {
 			acceptService, err = challengeaccept.New(challengeaccept.Config{Store: store})
