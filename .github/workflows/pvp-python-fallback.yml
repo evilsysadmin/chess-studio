@@ -9,6 +9,10 @@ on:
         description: Ventana a medir (p. ej. 24h, 14d)
         required: false
         default: 14d
+      timeline:
+        description: Recuento por hora (máx. 7 días)
+        type: boolean
+        default: false
       sources:
         description: Desglosa el origen (salto y tráfico sintético) desde los logs
         type: boolean
@@ -43,6 +47,7 @@ jobs:
       GRAFANA_METRICS_DATASOURCE_UID: ${{ vars.GRAFANA_METRICS_DATASOURCE_UID || 'grafanacloud-humbletoucan355-prom' }}
       GRAFANA_LOGS_DATASOURCE_UID: ${{ vars.GRAFANA_LOGS_DATASOURCE_UID || 'grafanacloud-humbletoucan355-logs' }}
       SOURCES: ${{ inputs.sources && 'true' || 'false' }}
+      TIMELINE: ${{ inputs.timeline && 'true' || 'false' }}
       WINDOW: ${{ inputs.window || '14d' }}
       MAX_REQUESTS: ${{ inputs.max_requests }}
     steps:
@@ -54,6 +59,9 @@ jobs:
         run: |
           set -euo pipefail
           args=(--window "$WINDOW")
+          if [[ "$TIMELINE" == "true" ]]; then
+            args+=(--timeline)
+          fi
           if [[ "$SOURCES" == "true" ]]; then
             args+=(--sources)
           fi

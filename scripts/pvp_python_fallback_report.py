@@ -99,6 +99,41 @@ def markdown(rows: list[dict], window: str) -> str:
     return "\n".join(lines) + "\n"
 
 
+def timeline_query() -> str:
+    services = "|".join(sorted(SERVICES))
+    return (
+        "sum by (service_name) (increase(chess_studio_http_server_requests_total"
+        f'{{service_name=~"{services}",http_route=~"/api/pvp.*"}}[1h]))'
+    )
+
+
+def timeline_rows(payload: dict) -> list[dict]:
+    data = payload.get("data") if isinstance(payload, dict) else None
+    result = data.get("result") if isinstance(data, dict) else None
+    rows = []
+    for series in result or []:
+        metric = series.get("metric") if isinstance(series, dict) else None
+        environment = SERVICES.get(str((metric or {}).get("service_name")), "?")
+        for stamp, raw in series.get("values") or []:
+            count = round(float(raw))
+            if count:
+                rows.append({"environment": environment, "hour_end": int(float(stamp)), "requests": count})
+    rows.sort(key=lambda row: (row["hour_end"], row["environment"]))
+    return rows
+
+
+def timeline_markdown(rows: list[dict]) -> str:
+    lines = ["#### Hourly fallback requests (UTC, hour ending)", ""]
+    if not rows:
+        return "\n".join(lines + ["None.", ""]) + "\n"
+    lines += ["| Hour ending | Environment | Requests |", "| --- | --- | ---: |"]
+    lines += [
+        f"| {time.strftime('%Y-%m-%d %H:%M', time.gmtime(r['hour_end']))} | {r['environment']} | {r['requests']} |"
+        for r in rows
+    ]
+    return "\n".join(lines) + "\n"
+
+
 LOG_SERVICES = {"production": "chess-studio-backend", "staging": "chess-studio-backend-staging"}
 
 
@@ -172,6 +207,10 @@ def self_test() -> int:
     ]}})
     assert brows == [{"route": "/api/pvp/lobby", "method": "GET", "hop": "?", "peer_ip": "172.18.0.5", "synthetic": "-", "requests": 12}]
     assert "172.18.0.5" in breakdown_markdown("staging", brows)
+    trows = timeline_rows({"data": {"result": [{"metric": {"service_name": "chess-studio-backend-staging"},
+                                                 "values": [[3600, "0"], [7200, "41.6"]]}]}})
+    assert trows == [{"environment": "staging", "hour_end": 7200, "requests": 42}]
+    assert "1970-01-01 02:00" in timeline_markdown(trows)
     print("pvp-python-fallback-report self-test OK")
     return 0
 
@@ -184,6 +223,8 @@ def main() -> int:
     parser.add_argument("--max-requests", type=int, default=None,
                         help="fail when more fallback requests than this were seen")
     parser.add_argument("--summary", default=os.getenv("GITHUB_STEP_SUMMARY", ""))
+    parser.add_argument("--timeline", action="store_true",
+                        help="also list fallback requests hour by hour (max 7 days)")
     parser.add_argument("--sources", action="store_true",
                         help="also break the traffic down by hop and synthetic source (Loki)")
     args = parser.parse_args()
@@ -208,6 +249,18 @@ def main() -> int:
     if args.summary:
         with open(args.summary, "a", encoding="utf-8") as handle:
             handle.write(report)
+    if args.timeline:
+        now = int(time.time())
+        span = min(window_seconds, 7 * 86400)
+        data = api.get_json(
+            f"/api/datasources/proxy/uid/{urllib.parse.quote(metrics_uid, safe='')}/api/v1/query_range",
+            {"query": timeline_query(), "start": str(now - span), "end": str(now), "step": "3600"},
+        )
+        section = timeline_markdown(timeline_rows(data))
+        print(section)
+        if args.summary:
+            with open(args.summary, "a", encoding="utf-8") as handle:
+                handle.write(section)
     if args.sources:
         preferred_logs = os.getenv("GRAFANA_LOGS_DATASOURCE_UID", "")
         logs_uid = _resolve_datasource_uid(datasources, preferred_logs, "loki") if datasources is not None else preferred_logs
