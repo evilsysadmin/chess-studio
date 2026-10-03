@@ -7,6 +7,7 @@ describe('Chronicles enemy visual registry', () => {
     expect(chroniclesEnemyVisualSpec('gate-jailer')).toEqual({ visualType: 'gate-jailer', scale: 1.04 });
     expect(chroniclesEnemyVisualSpec('spectral-bishop')).toEqual({ visualType: 'spectral-bishop', scale: 0.9 });
     expect(chroniclesEnemyVisualSpec('scavenger-knight')).toEqual({ visualType: 'scavenger-knight', scale: 0.96 });
+    expect(chroniclesEnemyVisualSpec('fork-stalker')).toEqual({ visualType: 'fork-stalker', scale: 1.02 });
   });
 
   it('returns null for an unregistered visual type instead of silently inventing art', () => {
