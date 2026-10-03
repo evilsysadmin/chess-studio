@@ -6,6 +6,7 @@ import {
   buildBoneHound,
   buildCryptSpider,
   buildEmberWisp,
+  buildForkStalker,
 } from './chroniclesFantasyEnemyArt.js';
 import { installChroniclesEnemyMotionArt } from './chroniclesEnemyMotionArt.js';
 
@@ -18,6 +19,7 @@ const VISUALS = Object.freeze({
   'crypt-spider': Object.freeze({ build: buildCryptSpider, scale: 1.02 }),
   'ember-wisp': Object.freeze({ build: buildEmberWisp, scale: 0.96 }),
   'bone-hound': Object.freeze({ build: buildBoneHound, scale: 1.08 }),
+  'fork-stalker': Object.freeze({ build: buildForkStalker, scale: 1.02 }),
 });
 
 export function chroniclesEnemyVisualSpec(visualType) {

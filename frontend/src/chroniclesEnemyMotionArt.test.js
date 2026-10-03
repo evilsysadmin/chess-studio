@@ -27,8 +27,9 @@ describe('Chronicles enemy motion art', () => {
     const jailer = chroniclesEnemyMotionPose('gate-jailer', 0.73, 0.8);
     const bishop = chroniclesEnemyMotionPose('spectral-bishop', 0.73, 0.8);
     const knight = chroniclesEnemyMotionPose('scavenger-knight', 0.73, 0.8);
+    const stalker = chroniclesEnemyMotionPose('fork-stalker', 0.73, 0.8);
 
-    expect(new Set([pawn.primary, jailer.primary, bishop.primary, knight.primary]).size).toBe(4);
+    expect(new Set([pawn.primary, jailer.primary, bishop.primary, knight.primary, stalker.primary]).size).toBe(5);
     expect(bishop.lift).toBeGreaterThan(0);
   });
 

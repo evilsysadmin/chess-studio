@@ -20,16 +20,18 @@
   },
   "enemies": [
     {
-      "id": "corrupted-pawn",
-      "visualType": "corrupted-pawn",
-      "name": "peón de ceniza",
+      "id": "fork-stalker",
+      "visualType": "fork-stalker",
+      "visualScale": 0.96,
+      "visualMotion": "skitter",
+      "name": "acechador de las horquillas",
       "x": 3,
       "y": 5,
       "hpKey": "enemyHp",
       "maxHp": 8,
       "retaliation": 1,
       "activation": "always",
-      "ai": { "movement": "cardinal-chase", "attackReach": 1 }
+      "ai": { "movement": "cardinal-roam", "engagedMovement": "knight-chase", "engageRange": 3, "attackReach": 1 }
     },
     {
       "id": "gate-jailer",
@@ -107,7 +109,7 @@
         {
           "key": "enemyHp",
           "lte": 0,
-          "message": "El peón de ceniza sigue bloqueando la retirada con una dedicación francamente irritante."
+          "message": "El acechador de las horquillas sigue rondando la retirada con una dedicación francamente irritante."
         },
         {
           "key": "jailerHp",
