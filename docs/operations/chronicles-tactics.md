@@ -56,6 +56,17 @@ XP, niveles, atributos, skills y la build compartida de Chronicles/Tactics perte
 - El checkpoint de run conserva estado **de la expedición actual** (mundo, posición, HP, cargas, enemigos, ledgers). La progresión entre expediciones sigue perteneciendo al perfil.
 - Un cambio de dispositivo o una caché local vacía debe poder rehidratar XP/atributos/skills desde el perfil remoto antes de usar esa progresión como base de juego.
 
+## Dificultad autoritativa de encuentro
+
+La amenaza de una expedición se fija al crear la run y forma parte del mundo autoritativo.
+
+- el cliente envía el nivel medio desplegado sólo como hint de arranque; el backend guarda ese `partyLevel` una vez y lo reutiliza durante toda la run;
+- la profundidad viene del orden de mapas de la ruta autoritativa, no del renderer ni de la navegación local;
+- cada área recibe una banda de amenaza determinista y una escala bounded sobre su dificultad authored; F5, otro dispositivo y Chronicles/Tactics deben reconstruir exactamente los mismos stats;
+- el escalado no persigue al jugador 1:1: progresión y profundidad suben presión de forma sublineal y el delta efectivo queda acotado para evitar runaway;
+- la dificultad authored y EnemyBuild siguen definiendo identidad, skills y forma del enemigo. El escalado puede ajustar HP/daño/nivel de forma contenida, pero no reinterpreta el arquetipo;
+- el frontend puede mostrar la banda autoritativa o calcular un fallback para runs legacy, pero **nunca** vuelve a escalar los stats recibidos del backend.
+
 ## Ciclo de vida autoritativo de la run
 
 La misma escritura CAS del checkpoint final terminaliza la run en backend.
