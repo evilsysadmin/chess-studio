@@ -14,12 +14,12 @@ import (
 )
 
 type fakeChallengeAcceptService struct {
-	result challengeaccept.Result
-	err    error
-	calls  int
+	result      challengeaccept.Result
+	err         error
+	calls       int
 	challengeID string
-	username string
-	synthetic bool
+	username    string
+	synthetic   bool
 }
 
 func (f *fakeChallengeAcceptService) Accept(_ context.Context, challengeID, username string, synthetic bool) (challengeaccept.Result, error) {
@@ -96,8 +96,8 @@ func TestNativeChallengeAcceptUsesCanonicalFullMatchWhenAvailable(t *testing.T) 
 	whiteClock, blackClock := int64(590000), int64(580000)
 	rated := true
 	store := &fakeStore{
-		exists: true,
-		version: 2,
+		exists:       true,
+		version:      2,
 		handoffFound: true,
 		handoffMatch: cancelMatchRow{
 			ID: "match-1", White: "alice", Black: "bob", WhiteRating: &whiteRating, BlackRating: &blackRating,
@@ -116,7 +116,9 @@ func TestNativeChallengeAcceptUsesCanonicalFullMatchWhenAvailable(t *testing.T) 
 	if rr.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
 	}
-	var body struct{ Match map[string]any `json:"match"` }
+	var body struct {
+		Match map[string]any `json:"match"`
+	}
 	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
 		t.Fatal(err)
 	}
@@ -132,8 +134,8 @@ func TestNativeChallengeAcceptUsesCanonicalFullMatchWhenAvailable(t *testing.T) 
 func TestNativeChallengeAcceptMapsDomainConflicts(t *testing.T) {
 	now := time.Date(2026, 10, 2, 10, 30, 0, 0, time.UTC)
 	tests := []struct {
-		name string
-		err error
+		name   string
+		err    error
 		status int
 		detail string
 	}{

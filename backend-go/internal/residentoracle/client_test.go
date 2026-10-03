@@ -49,8 +49,8 @@ func TestClientSignsPythonCompatibleRequestAndReturnsUCI(t *testing.T) {
 
 	client, err := New(Config{
 		UpstreamURL: server.URL,
-		JWTSecret: secret,
-		Now: func() time.Time { return now },
+		JWTSecret:   secret,
+		Now:         func() time.Time { return now },
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -66,9 +66,9 @@ func TestClientSignsPythonCompatibleRequestAndReturnsUCI(t *testing.T) {
 
 func TestClientRejectsNonSuccessAndInvalidUCI(t *testing.T) {
 	tests := []struct {
-		name string
+		name   string
 		status int
-		body string
+		body   string
 	}{
 		{"upstream error", http.StatusUnauthorized, `{"detail":"bad"}`},
 		{"invalid uci", http.StatusOK, `{"uci":"drop table"}`},
@@ -81,7 +81,7 @@ func TestClientRejectsNonSuccessAndInvalidUCI(t *testing.T) {
 				_, _ = w.Write([]byte(tc.body))
 			}))
 			defer server.Close()
-			client, err := New(Config{UpstreamURL:server.URL,JWTSecret:"01234567890123456789012345678901"})
+			client, err := New(Config{UpstreamURL: server.URL, JWTSecret: "01234567890123456789012345678901"})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -95,10 +95,10 @@ func TestClientRejectsNonSuccessAndInvalidUCI(t *testing.T) {
 func TestNewRejectsUnsafeConfiguration(t *testing.T) {
 	tests := []Config{
 		{},
-		{UpstreamURL:"ftp://example.test",JWTSecret:"secret"},
-		{UpstreamURL:"http://example.test/base",JWTSecret:"secret"},
-		{UpstreamURL:"http://example.test?x=1",JWTSecret:"secret"},
-		{UpstreamURL:"http://example.test"},
+		{UpstreamURL: "ftp://example.test", JWTSecret: "secret"},
+		{UpstreamURL: "http://example.test/base", JWTSecret: "secret"},
+		{UpstreamURL: "http://example.test?x=1", JWTSecret: "secret"},
+		{UpstreamURL: "http://example.test"},
 	}
 	for _, cfg := range tests {
 		if _, err := New(cfg); err == nil {

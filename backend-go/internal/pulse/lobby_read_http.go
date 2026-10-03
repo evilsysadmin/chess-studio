@@ -113,12 +113,12 @@ func (h *Handler) serveLobbyRead(
 			kind = "message"
 		}
 		messages = append(messages, map[string]any{
-			"id": row.ID,
-			"username": row.Username,
-			"text": row.Text,
-			"kind": kind,
+			"id":        row.ID,
+			"username":  row.Username,
+			"text":      row.Text,
+			"kind":      kind,
 			"createdAt": stamp(row.CreatedAt),
-			"isSelf": row.Username == username,
+			"isSelf":    row.Username == username,
 		})
 	}
 
@@ -133,10 +133,10 @@ func (h *Handler) serveLobbyRead(
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"roster": roster,
-		"challenges": challenges,
+		"roster":      roster,
+		"challenges":  challenges,
 		"activeMatch": activeMatch,
-		"messages": messages,
+		"messages":    messages,
 		"pollAfterMs": int64(3000),
 	})
 }
@@ -154,10 +154,10 @@ func publicLobbyRoster(
 	}
 	payload := map[string]any{
 		"username": row.Username,
-		"rating": row.Rating,
-		"tier": tier,
+		"rating":   row.Rating,
+		"tier":     tier,
 		"joinedAt": stamp(row.JoinedAt),
-		"isSelf": row.Username == username,
+		"isSelf":   row.Username == username,
 	}
 
 	if row.Username != username && !cooldownUntil.IsZero() {
@@ -165,10 +165,10 @@ func publicLobbyRoster(
 	}
 	if row.Username != username && headToHead != nil {
 		payload["headToHead"] = map[string]any{
-			"games": headToHead.Games,
-			"wins": headToHead.Wins,
-			"draws": headToHead.Draws,
-			"losses": headToHead.Losses,
+			"games":        headToHead.Games,
+			"wins":         headToHead.Wins,
+			"draws":        headToHead.Draws,
+			"losses":       headToHead.Losses,
 			"lastPlayedAt": nullableStamp(headToHead.LastPlayedAt),
 		}
 	}
@@ -195,7 +195,6 @@ func (h *Handler) lobbyRosterVisible(viewer, rosterUsername string) bool {
 	}
 	return true
 }
-
 
 func (h *Handler) allowLobbyRead(username string, now time.Time) (bool, int) {
 	h.lobbyReadMu.Lock()

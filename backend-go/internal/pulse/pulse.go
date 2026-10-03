@@ -18,6 +18,8 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
+
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/pvpclock"
 )
 
 const (
@@ -33,10 +35,10 @@ const (
 	lobbyChatTTL         = 24 * time.Hour
 	presenceOnline       = 4 * time.Second
 	presenceReconnecting = 12 * time.Second
-	disconnectGrace      = 60 * time.Second
+	disconnectGrace      = pvpclock.DisconnectGrace
 	handoffDelay         = 5 * time.Second
 	pvpTimeControlID     = "30+0"
-	pvpInitialClockMS    = int64(30 * 60 * 1000)
+	pvpInitialClockMS    = pvpclock.InitialMS
 	nativeHeaderValue    = "lobby-pulse"
 	mongoApplicationName = "chess-studio-pvp-go"
 )
@@ -67,66 +69,66 @@ type Store interface {
 }
 
 type HandlerConfig struct {
-	Store          Store
-	LobbyReadStore lobbyReadStore
-	JWTSecret      string
-	AllowedOrigins []string
-	PollAfter      time.Duration
-	EnableRoster   bool
-	EnableChat     bool
+	Store                     Store
+	LobbyReadStore            lobbyReadStore
+	JWTSecret                 string
+	AllowedOrigins            []string
+	PollAfter                 time.Duration
+	EnableRoster              bool
+	EnableChat                bool
 	EnableChallengeResolution bool
-	EnableMatchHandoffCancel bool
-	EnableMatchReady bool
-	ChallengeAccept challengeAcceptService
-	ChallengeCreate challengeCreateService
-	MatchResign matchResignService
-	MatchReadStore matchReadStore
-	MatchMoveStore matchMoveStore
-	MatchTimeout matchTimeoutService
-	MatchDisconnect matchDisconnectService
-	RatingSettlement ratingSettlementService
-	ResidentMoveOracle residentMoveOracle
-	VirtualPlayersEnabled bool
-	VirtualOwner string
-	SparringUsername string
-	Now            func() time.Time
+	EnableMatchHandoffCancel  bool
+	EnableMatchReady          bool
+	ChallengeAccept           challengeAcceptService
+	ChallengeCreate           challengeCreateService
+	MatchResign               matchResignService
+	MatchReadStore            matchReadStore
+	MatchMoveStore            matchMoveStore
+	MatchTimeout              matchTimeoutService
+	MatchDisconnect           matchDisconnectService
+	RatingSettlement          ratingSettlementService
+	ResidentMoveOracle        residentMoveOracle
+	VirtualPlayersEnabled     bool
+	VirtualOwner              string
+	SparringUsername          string
+	Now                       func() time.Time
 }
 
 type Handler struct {
-	store          Store
-	lobbyReadStore lobbyReadStore
-	secret         []byte
-	allowedOrigins map[string]struct{}
-	allowAnyOrigin bool
-	pollAfterMS    int64
-	enableRoster   bool
-	enableChat     bool
+	store                     Store
+	lobbyReadStore            lobbyReadStore
+	secret                    []byte
+	allowedOrigins            map[string]struct{}
+	allowAnyOrigin            bool
+	pollAfterMS               int64
+	enableRoster              bool
+	enableChat                bool
 	enableChallengeResolution bool
-	enableMatchHandoffCancel bool
-	enableMatchReady bool
-	challengeAccept challengeAcceptService
-	challengeCreate challengeCreateService
-	matchResign matchResignService
-	matchReadStore matchReadStore
-	matchMoveStore matchMoveStore
-	matchTimeout matchTimeoutService
-	matchDisconnect matchDisconnectService
-	ratingSettlement ratingSettlementService
-	residentMoveOracle residentMoveOracle
-	virtualPlayersEnabled bool
-	virtualOwner string
-	sparringUsername string
-	rosterMu       sync.Mutex
-	rosterWindows  map[string]rateWindow
-	chatMu         sync.Mutex
-	chatWindows    map[string]rateWindow
-	matchReadMu    sync.Mutex
-	matchReadWindows map[string]rateWindow
-	matchMoveMu    sync.Mutex
-	matchMoveWindows map[string]rateWindow
-	lobbyReadMu    sync.Mutex
-	lobbyReadWindows map[string]rateWindow
-	now            func() time.Time
+	enableMatchHandoffCancel  bool
+	enableMatchReady          bool
+	challengeAccept           challengeAcceptService
+	challengeCreate           challengeCreateService
+	matchResign               matchResignService
+	matchReadStore            matchReadStore
+	matchMoveStore            matchMoveStore
+	matchTimeout              matchTimeoutService
+	matchDisconnect           matchDisconnectService
+	ratingSettlement          ratingSettlementService
+	residentMoveOracle        residentMoveOracle
+	virtualPlayersEnabled     bool
+	virtualOwner              string
+	sparringUsername          string
+	rosterMu                  sync.Mutex
+	rosterWindows             map[string]rateWindow
+	chatMu                    sync.Mutex
+	chatWindows               map[string]rateWindow
+	matchReadMu               sync.Mutex
+	matchReadWindows          map[string]rateWindow
+	matchMoveMu               sync.Mutex
+	matchMoveWindows          map[string]rateWindow
+	lobbyReadMu               sync.Mutex
+	lobbyReadWindows          map[string]rateWindow
+	now                       func() time.Time
 }
 
 type rateWindow struct {
@@ -189,45 +191,45 @@ type virtualPlayerConfig struct {
 }
 
 type cancelMatchRow struct {
-	ID            string     `bson:"_id"`
-	White         string     `bson:"white"`
-	Black         string     `bson:"black"`
-	WhiteRating   *int64     `bson:"white_rating"`
-	BlackRating   *int64     `bson:"black_rating"`
-	FEN           string     `bson:"fen"`
-	Turn          string     `bson:"turn"`
-	Status        string     `bson:"status"`
-	Result        *string    `bson:"result"`
-	EndReason     *string    `bson:"end_reason"`
-	StartAt       time.Time  `bson:"start_at"`
-	ReadyDeadline time.Time  `bson:"ready_deadline"`
-	WhiteReady    bool       `bson:"white_ready"`
-	BlackReady    bool       `bson:"black_ready"`
-	WhiteClockMS  *int64     `bson:"white_clock_ms"`
-	BlackClockMS  *int64     `bson:"black_clock_ms"`
-	WhiteSeenAt   time.Time  `bson:"white_seen_at"`
-	BlackSeenAt   time.Time  `bson:"black_seen_at"`
+	ID                          string    `bson:"_id"`
+	White                       string    `bson:"white"`
+	Black                       string    `bson:"black"`
+	WhiteRating                 *int64    `bson:"white_rating"`
+	BlackRating                 *int64    `bson:"black_rating"`
+	FEN                         string    `bson:"fen"`
+	Turn                        string    `bson:"turn"`
+	Status                      string    `bson:"status"`
+	Result                      *string   `bson:"result"`
+	EndReason                   *string   `bson:"end_reason"`
+	StartAt                     time.Time `bson:"start_at"`
+	ReadyDeadline               time.Time `bson:"ready_deadline"`
+	WhiteReady                  bool      `bson:"white_ready"`
+	BlackReady                  bool      `bson:"black_ready"`
+	WhiteClockMS                *int64    `bson:"white_clock_ms"`
+	BlackClockMS                *int64    `bson:"black_clock_ms"`
+	WhiteSeenAt                 time.Time `bson:"white_seen_at"`
+	BlackSeenAt                 time.Time `bson:"black_seen_at"`
 	WhiteDisconnectGraceStarted time.Time `bson:"white_disconnect_grace_started_at"`
 	BlackDisconnectGraceStarted time.Time `bson:"black_disconnect_grace_started_at"`
-	TurnStartedAt time.Time `bson:"turn_started_at"`
-	Rated         *bool      `bson:"rated"`
-	History       []bson.M   `bson:"history"`
-	Revision      int64      `bson:"revision"`
-	CreatedAt     time.Time  `bson:"created_at"`
-	UpdatedAt     time.Time  `bson:"updated_at"`
+	TurnStartedAt               time.Time `bson:"turn_started_at"`
+	Rated                       *bool     `bson:"rated"`
+	History                     []bson.M  `bson:"history"`
+	Revision                    int64     `bson:"revision"`
+	CreatedAt                   time.Time `bson:"created_at"`
+	UpdatedAt                   time.Time `bson:"updated_at"`
 }
 
 type challengeRow struct {
-	ID            string    `bson:"_id"`
-	Challenger    string    `bson:"challenger"`
-	Opponent      string    `bson:"opponent"`
-	ChallengerRating int64   `bson:"challenger_rating"`
-	OpponentRating   int64   `bson:"opponent_rating"`
-	Status        string    `bson:"status"`
-	MatchID       string    `bson:"match_id"`
-	CreatedAt     time.Time `bson:"created_at"`
-	ResolvedAt    time.Time `bson:"resolved_at"`
-	CooldownUntil time.Time `bson:"cooldown_until"`
+	ID               string    `bson:"_id"`
+	Challenger       string    `bson:"challenger"`
+	Opponent         string    `bson:"opponent"`
+	ChallengerRating int64     `bson:"challenger_rating"`
+	OpponentRating   int64     `bson:"opponent_rating"`
+	Status           string    `bson:"status"`
+	MatchID          string    `bson:"match_id"`
+	CreatedAt        time.Time `bson:"created_at"`
+	ResolvedAt       time.Time `bson:"resolved_at"`
+	CooldownUntil    time.Time `bson:"cooldown_until"`
 }
 
 type matchRow struct {
@@ -239,8 +241,8 @@ type matchRow struct {
 	Revision                    int64     `bson:"revision"`
 	WhiteReady                  bool      `bson:"white_ready"`
 	BlackReady                  bool      `bson:"black_ready"`
-	WhiteClockMS                int64     `bson:"white_clock_ms"`
-	BlackClockMS                int64     `bson:"black_clock_ms"`
+	WhiteClockMS                *int64    `bson:"white_clock_ms"`
+	BlackClockMS                *int64    `bson:"black_clock_ms"`
 	StartAt                     time.Time `bson:"start_at"`
 	ReadyDeadline               time.Time `bson:"ready_deadline"`
 	TurnStartedAt               time.Time `bson:"turn_started_at"`
@@ -306,46 +308,46 @@ func NewHandler(cfg HandlerConfig) (*Handler, error) {
 		allowed[origin] = struct{}{}
 	}
 	return &Handler{
-		store:          cfg.Store,
-		lobbyReadStore: cfg.LobbyReadStore,
-		secret:         []byte(secret),
-		allowedOrigins: allowed,
-		allowAnyOrigin: allowAny,
-		pollAfterMS:    pollAfter.Milliseconds(),
-		enableRoster:   cfg.EnableRoster,
-		enableChat:     cfg.EnableChat,
+		store:                     cfg.Store,
+		lobbyReadStore:            cfg.LobbyReadStore,
+		secret:                    []byte(secret),
+		allowedOrigins:            allowed,
+		allowAnyOrigin:            allowAny,
+		pollAfterMS:               pollAfter.Milliseconds(),
+		enableRoster:              cfg.EnableRoster,
+		enableChat:                cfg.EnableChat,
 		enableChallengeResolution: cfg.EnableChallengeResolution,
-		enableMatchHandoffCancel: cfg.EnableMatchHandoffCancel,
-		enableMatchReady: cfg.EnableMatchReady,
-		challengeAccept: cfg.ChallengeAccept,
-		challengeCreate: cfg.ChallengeCreate,
-		matchResign: cfg.MatchResign,
-		matchReadStore: cfg.MatchReadStore,
-		matchMoveStore: cfg.MatchMoveStore,
-		matchTimeout: cfg.MatchTimeout,
-		matchDisconnect: cfg.MatchDisconnect,
-		ratingSettlement: cfg.RatingSettlement,
-		residentMoveOracle: cfg.ResidentMoveOracle,
-		virtualPlayersEnabled: cfg.VirtualPlayersEnabled,
-		virtualOwner: strings.ToLower(strings.TrimSpace(cfg.VirtualOwner)),
-		sparringUsername: strings.ToLower(strings.TrimSpace(cfg.SparringUsername)),
-		rosterWindows:  make(map[string]rateWindow),
-		chatWindows:    make(map[string]rateWindow),
-		matchReadWindows: make(map[string]rateWindow),
-		matchMoveWindows: make(map[string]rateWindow),
-		lobbyReadWindows: make(map[string]rateWindow),
-		now:            now,
+		enableMatchHandoffCancel:  cfg.EnableMatchHandoffCancel,
+		enableMatchReady:          cfg.EnableMatchReady,
+		challengeAccept:           cfg.ChallengeAccept,
+		challengeCreate:           cfg.ChallengeCreate,
+		matchResign:               cfg.MatchResign,
+		matchReadStore:            cfg.MatchReadStore,
+		matchMoveStore:            cfg.MatchMoveStore,
+		matchTimeout:              cfg.MatchTimeout,
+		matchDisconnect:           cfg.MatchDisconnect,
+		ratingSettlement:          cfg.RatingSettlement,
+		residentMoveOracle:        cfg.ResidentMoveOracle,
+		virtualPlayersEnabled:     cfg.VirtualPlayersEnabled,
+		virtualOwner:              strings.ToLower(strings.TrimSpace(cfg.VirtualOwner)),
+		sparringUsername:          strings.ToLower(strings.TrimSpace(cfg.SparringUsername)),
+		rosterWindows:             make(map[string]rateWindow),
+		chatWindows:               make(map[string]rateWindow),
+		matchReadWindows:          make(map[string]rateWindow),
+		matchMoveWindows:          make(map[string]rateWindow),
+		lobbyReadWindows:          make(map[string]rateWindow),
+		now:                       now,
 	}, nil
 }
 
 func NewMongoStore(ctx context.Context, cfg MongoConfig) (*MongoStore, error) {
 	uri := strings.TrimSpace(cfg.URL)
 	if uri == "" {
-		return nil, errors.New("Mongo URL is required")
+		return nil, errors.New("mongo URL is required")
 	}
 	database := strings.TrimSpace(cfg.Database)
 	if database == "" {
-		return nil, errors.New("Mongo database is required")
+		return nil, errors.New("mongo database is required")
 	}
 	timeout := cfg.QueryTimeout
 	if timeout <= 0 {
@@ -369,6 +371,18 @@ func NewMongoStore(ctx context.Context, cfg MongoConfig) (*MongoStore, error) {
 		return nil, fmt.Errorf("ping MongoDB: %w", err)
 	}
 	return &MongoStore{client: client, db: client.Database(database), timeout: timeout}, nil
+}
+
+// Ping proves the store can still reach MongoDB. Go is the authority for the
+// native PvP routes, so readiness must fail when its own database does, not
+// only when the paired Python backend does.
+func (s *MongoStore) Ping(ctx context.Context) error {
+	if s == nil || s.client == nil {
+		return errors.New("mongodb store is not configured")
+	}
+	pingCtx, cancel := context.WithTimeout(ctx, s.timeout)
+	defer cancel()
+	return s.client.Database("admin").RunCommand(pingCtx, bson.D{{Key: "ping", Value: 1}}).Err()
 }
 
 func (s *MongoStore) Close(ctx context.Context) error {
@@ -472,10 +486,10 @@ func (s *MongoStore) AppendLobbyChat(ctx context.Context, username, text string,
 	id := hex.EncodeToString(sum[:])[:24]
 	row := chatMessageRow{ID: id, Username: username, Text: text, Kind: "message", CreatedAt: stampValue}
 	_, err := s.db.Collection("pvp_lobby_chat").InsertOne(queryCtx, bson.M{
-		"_id": id,
-		"username": username,
-		"text": text,
-		"kind": "message",
+		"_id":        id,
+		"username":   username,
+		"text":       text,
+		"kind":       "message",
 		"created_at": stampValue,
 	})
 	if err != nil {
@@ -491,14 +505,14 @@ func (s *MongoStore) CancelChallenge(ctx context.Context, challengeID, username 
 	err := s.db.Collection("pvp_challenges").FindOneAndUpdate(
 		queryCtx,
 		bson.M{
-			"_id": challengeID,
-			"status": "pending",
+			"_id":        challengeID,
+			"status":     "pending",
 			"challenger": username,
 			"created_at": bson.M{"$gte": now.Add(-challengeTTL)},
 		},
 		bson.M{"$set": bson.M{
-			"status": "cancelled",
-			"resolved_at": now,
+			"status":         "cancelled",
+			"resolved_at":    now,
 			"cooldown_until": now.Add(challengeCooldown),
 		}},
 		options.FindOneAndUpdate().SetReturnDocument(options.After),
@@ -530,8 +544,8 @@ func (s *MongoStore) DeclineChallenge(ctx context.Context, challengeID, username
 		queryCtx,
 		bson.M{"_id": challengeID, "status": "pending", "opponent": username},
 		bson.M{"$set": bson.M{
-			"status": "declined",
-			"resolved_at": now,
+			"status":         "declined",
+			"resolved_at":    now,
 			"cooldown_until": now.Add(challengeCooldown),
 		}},
 		options.FindOneAndUpdate().SetReturnDocument(options.After),
@@ -544,7 +558,6 @@ func (s *MongoStore) DeclineChallenge(ctx context.Context, challengeID, username
 	}
 	return row, true, nil
 }
-
 
 func (s *MongoStore) CancelStartingMatch(ctx context.Context, matchID, username string, now time.Time) (cancelMatchRow, cancelMatchResult, error) {
 	queryCtx, cancel := context.WithTimeout(ctx, s.timeout)
@@ -573,18 +586,18 @@ func (s *MongoStore) CancelStartingMatch(ctx context.Context, matchID, username 
 	err = s.db.Collection("pvp_matches").FindOneAndUpdate(
 		queryCtx,
 		bson.M{
-			"_id": matchID,
+			"_id":      matchID,
 			"revision": current.Revision,
-			"status": "starting",
-			"$or": bson.A{bson.M{"white": username}, bson.M{"black": username}},
+			"status":   "starting",
+			"$or":      bson.A{bson.M{"white": username}, bson.M{"black": username}},
 		},
 		bson.M{
 			"$set": bson.M{
-				"status": "cancelled",
-				"result": nil,
-				"end_reason": endReason,
+				"status":          "cancelled",
+				"result":          nil,
+				"end_reason":      endReason,
 				"turn_started_at": nil,
-				"updated_at": now,
+				"updated_at":      now,
 			},
 			"$inc": bson.M{"revision": 1},
 		},
@@ -610,15 +623,14 @@ func (s *MongoStore) CancelStartingMatch(ctx context.Context, matchID, username 
 	return current, cancelMatchRevisionConflict, nil
 }
 
-
 func (s *MongoStore) ReadyMatch(ctx context.Context, matchID, username string, now time.Time, virtual virtualPlayerConfig) (cancelMatchRow, readyMatchResult, error) {
 	queryCtx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
 	matches := s.db.Collection("pvp_matches")
 	participant := bson.M{
-		"_id": matchID,
+		"_id":              matchID,
 		"acceptance_state": bson.M{"$ne": "staged"},
-		"$or": bson.A{bson.M{"white": username}, bson.M{"black": username}},
+		"$or":              bson.A{bson.M{"white": username}, bson.M{"black": username}},
 	}
 
 	for attempt := 0; attempt < 4; attempt++ {
@@ -656,9 +668,9 @@ func (s *MongoStore) ReadyMatch(ctx context.Context, matchID, username string, n
 					queryCtx,
 					bson.M{"_id": matchID, "revision": row.Revision, "status": "starting", virtualField: virtualUsername},
 					bson.M{
-						"$set": bson.M{virtualReady: true, virtualSeen: now, "updated_at": now},
+						"$set":   bson.M{virtualReady: true, virtualSeen: now, "updated_at": now},
 						"$unset": bson.M{virtualGrace: ""},
-						"$inc": bson.M{"revision": 1},
+						"$inc":   bson.M{"revision": 1},
 					},
 					options.FindOneAndUpdate().SetReturnDocument(options.After),
 				).Decode(&row); errors.Is(err, mongo.ErrNoDocuments) {
@@ -904,9 +916,12 @@ func matchLifecycleDue(row matchRow, now time.Time) bool {
 	if row.TurnStartedAt.IsZero() || now.Before(row.TurnStartedAt) {
 		return false
 	}
-	remainingMS := row.WhiteClockMS
+	// Same legacy fallback as every other match path: a document without a
+	// stored clock has the full initial clock, not zero (which made the pulse
+	// report a lifecycle boundary on every poll).
+	remainingMS := pvpclock.ClockMS(row.WhiteClockMS)
 	if row.Turn == "b" {
-		remainingMS = row.BlackClockMS
+		remainingMS = pvpclock.ClockMS(row.BlackClockMS)
 	}
 	if remainingMS <= 0 {
 		return true
@@ -1031,11 +1046,6 @@ func (s *MongoStore) hashLatestChat(ctx context.Context, h hash.Hash, now time.T
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.decorateResponse(w, r)
-	if r.URL.Path == "/api/pvp/lobby" && h.lobbyReadStore != nil {
-		// Mark before auth so public deploy probes can prove the full native
-		// lobby route without needing a real user token.
-		w.Header().Set("X-Chess-Pvp-Native", "lobby-read")
-	}
 	if r.URL.Path == "/api/pvp/lobby" && h.lobbyReadStore != nil {
 		// Set before auth so deployment probes can prove the exact full-lobby
 		// route rather than mistaking the generic pulse marker for success.
@@ -1221,8 +1231,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		virtual := virtualPlayerConfig{
-			Enabled: h.virtualPlayersEnabled,
-			Owner: h.virtualOwner,
+			Enabled:          h.virtualPlayersEnabled,
+			Owner:            h.virtualOwner,
 			SparringUsername: h.sparringUsername,
 		}
 		var row cancelMatchRow
@@ -1280,7 +1290,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusTooManyRequests, map[string]any{"detail": "Demasiados mensajes 1v1."})
 			return
 		}
-		var payload struct { Text string `json:"text"` }
+		var payload struct {
+			Text string `json:"text"`
+		}
 		decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 2048))
 		if err := decoder.Decode(&payload); err != nil {
 			writeJSON(w, http.StatusUnprocessableEntity, map[string]any{"detail": "Mensaje inválido."})
@@ -1338,10 +1350,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 			writeJSON(w, http.StatusOK, map[string]any{"member": map[string]any{
 				"username": member.Username,
-				"rating": member.Rating,
-				"tier": member.Tier,
+				"rating":   member.Rating,
+				"tier":     member.Tier,
 				"joinedAt": stamp(member.JoinedAt),
-				"isSelf": true,
+				"isSelf":   true,
 			}})
 			return
 		case http.MethodDelete:
@@ -1380,7 +1392,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"lifecycleDue":     state.LifecycleDue,
 			"opponentPresence": state.OpponentPresence,
 			"pollAfterMs":      1250,
-			"source":       "go",
+			"source":           "go",
 		})
 		return
 	}
@@ -1407,7 +1419,9 @@ func (h *Handler) allowMatchRead(username string, now time.Time) (bool, int) {
 	}
 	if window.count >= 60 {
 		retry := int(time.Minute.Seconds() - now.Sub(window.start).Seconds())
-		if retry < 1 { retry = 1 }
+		if retry < 1 {
+			retry = 1
+		}
 		return false, retry
 	}
 	window.count++
@@ -1445,7 +1459,9 @@ func (h *Handler) allowLobbyChat(username string, now time.Time) (bool, int) {
 	}
 	if window.count >= lobbyChatLimit {
 		retry := int(lobbyChatWindow.Seconds() - now.Sub(window.start).Seconds())
-		if retry < 1 { retry = 1 }
+		if retry < 1 {
+			retry = 1
+		}
 		return false, retry
 	}
 	window.count++
@@ -1700,7 +1716,7 @@ func isResidentUsername(username string) bool {
 }
 
 func virtualOpponentUsername(row cancelMatchRow, viewer string, cfg virtualPlayerConfig) string {
-	if !cfg.Enabled || strings.ToLower(strings.TrimSpace(viewer)) != strings.ToLower(strings.TrimSpace(cfg.Owner)) {
+	if !cfg.Enabled || !strings.EqualFold(strings.TrimSpace(viewer), strings.TrimSpace(cfg.Owner)) {
 		return ""
 	}
 	opponent := row.White
@@ -1751,20 +1767,30 @@ func publicHandoffMatch(row cancelMatchRow, username string, now time.Time, virt
 
 	whiteClock := pointerInt64(row.WhiteClockMS, pvpInitialClockMS)
 	blackClock := pointerInt64(row.BlackClockMS, pvpInitialClockMS)
-	if whiteClock < 0 { whiteClock = 0 }
-	if blackClock < 0 { blackClock = 0 }
+	if whiteClock < 0 {
+		whiteClock = 0
+	}
+	if blackClock < 0 {
+		blackClock = 0
+	}
 
 	var runningColor any
 	if row.Status == "active" && !row.TurnStartedAt.IsZero() && !now.Before(row.TurnStartedAt) {
 		runningColor = turn
 		elapsed := now.Sub(row.TurnStartedAt).Milliseconds()
-		if elapsed < 0 { elapsed = 0 }
+		if elapsed < 0 {
+			elapsed = 0
+		}
 		if turn == "w" {
 			whiteClock -= elapsed
-			if whiteClock < 0 { whiteClock = 0 }
+			if whiteClock < 0 {
+				whiteClock = 0
+			}
 		} else {
 			blackClock -= elapsed
-			if blackClock < 0 { blackClock = 0 }
+			if blackClock < 0 {
+				blackClock = 0
+			}
 		}
 	}
 
@@ -1774,7 +1800,9 @@ func publicHandoffMatch(row cancelMatchRow, username string, now time.Time, virt
 	}
 
 	history := row.History
-	if history == nil { history = []bson.M{} }
+	if history == nil {
+		history = []bson.M{}
+	}
 
 	youReady := row.BlackReady
 	opponentReady := row.WhiteReady
@@ -1787,41 +1815,41 @@ func publicHandoffMatch(row cancelMatchRow, username string, now time.Time, virt
 	yourTurn := row.Status == "active" && ((turn == "w") == isWhite)
 
 	return map[string]any{
-		"id": row.ID,
-		"white": row.White,
-		"black": row.Black,
-		"whiteDisplayName": whiteDisplay,
-		"blackDisplayName": blackDisplay,
-		"whiteActorKind": whiteKind,
-		"blackActorKind": blackKind,
-		"whiteActorLabel": whiteLabel,
-		"blackActorLabel": blackLabel,
-		"whiteRating": pointerInt64(row.WhiteRating, 400),
-		"blackRating": pointerInt64(row.BlackRating, 400),
-		"fen": row.FEN,
-		"turn": turn,
-		"status": row.Status,
-		"result": pointerString(row.Result),
-		"endReason": pointerString(row.EndReason),
-		"startsAt": nullableStamp(row.StartAt),
-		"readyDeadline": nullableStamp(row.ReadyDeadline),
-		"youReady": youReady,
-		"opponentReady": opponentReady,
-		"opponentPresence": opponentPresence,
-		"opponentSeenAt": opponentSeenAt,
+		"id":                         row.ID,
+		"white":                      row.White,
+		"black":                      row.Black,
+		"whiteDisplayName":           whiteDisplay,
+		"blackDisplayName":           blackDisplay,
+		"whiteActorKind":             whiteKind,
+		"blackActorKind":             blackKind,
+		"whiteActorLabel":            whiteLabel,
+		"blackActorLabel":            blackLabel,
+		"whiteRating":                pointerInt64(row.WhiteRating, 400),
+		"blackRating":                pointerInt64(row.BlackRating, 400),
+		"fen":                        row.FEN,
+		"turn":                       turn,
+		"status":                     row.Status,
+		"result":                     pointerString(row.Result),
+		"endReason":                  pointerString(row.EndReason),
+		"startsAt":                   nullableStamp(row.StartAt),
+		"readyDeadline":              nullableStamp(row.ReadyDeadline),
+		"youReady":                   youReady,
+		"opponentReady":              opponentReady,
+		"opponentPresence":           opponentPresence,
+		"opponentSeenAt":             opponentSeenAt,
 		"opponentDisconnectDeadline": opponentDisconnectDeadline,
-		"ratingChange": ratingChangePayload(row, username),
+		"ratingChange":               ratingChangePayload(row, username),
 		"clock": map[string]any{
-			"id": pvpTimeControlID,
-			"whiteMs": whiteClock,
-			"blackMs": blackClock,
-			"incrementMs": int64(0),
+			"id":           pvpTimeControlID,
+			"whiteMs":      whiteClock,
+			"blackMs":      blackClock,
+			"incrementMs":  int64(0),
 			"runningColor": runningColor,
 		},
-		"history": history,
-		"revision": row.Revision,
-		"youAre": youAre,
-		"yourTurn": yourTurn,
+		"history":   history,
+		"revision":  row.Revision,
+		"youAre":    youAre,
+		"yourTurn":  yourTurn,
 		"createdAt": nullableStamp(row.CreatedAt),
 		"updatedAt": nullableStamp(row.UpdatedAt),
 	}
@@ -1845,16 +1873,16 @@ func publicChallenge(row challengeRow, username string) map[string]any {
 		matchID = row.MatchID
 	}
 	return map[string]any{
-		"id": row.ID,
-		"challenger": row.Challenger,
-		"opponent": row.Opponent,
+		"id":               row.ID,
+		"challenger":       row.Challenger,
+		"opponent":         row.Opponent,
 		"challengerRating": challengerRating,
-		"opponentRating": opponentRating,
-		"status": row.Status,
-		"direction": direction,
-		"createdAt": stamp(row.CreatedAt),
-		"expiresAt": stamp(row.CreatedAt.Add(challengeTTL)),
-		"resolvedAt": nullableStamp(row.ResolvedAt),
-		"matchId": matchID,
+		"opponentRating":   opponentRating,
+		"status":           row.Status,
+		"direction":        direction,
+		"createdAt":        stamp(row.CreatedAt),
+		"expiresAt":        stamp(row.CreatedAt.Add(challengeTTL)),
+		"resolvedAt":       nullableStamp(row.ResolvedAt),
+		"matchId":          matchID,
 	}
 }

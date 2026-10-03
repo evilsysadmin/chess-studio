@@ -18,7 +18,7 @@ const mateGuardThreshold = 99000.0
 
 var (
 	ErrUnknownResident = errors.New("unknown resident")
-	ErrNoLegalMove      = errors.New("no legal move")
+	ErrNoLegalMove     = errors.New("no legal move")
 )
 
 type searcher interface {

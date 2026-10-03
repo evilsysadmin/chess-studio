@@ -7,12 +7,14 @@ import (
 	"io"
 	"strings"
 	"time"
+
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/pvpclock"
 )
 
 const (
-	StartingFEN         = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-	InitialClockMS      = int64(30 * 60 * 1000)
-	ReadyTimeout        = 30 * time.Second
+	StartingFEN    = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+	InitialClockMS = pvpclock.InitialMS
+	ReadyTimeout   = pvpclock.ReadyTimeout
 )
 
 var (
@@ -36,27 +38,27 @@ type Challenge struct {
 }
 
 type Match struct {
-	ID             string
-	White          string
-	Black          string
-	WhiteRating    int64
-	BlackRating    int64
-	FEN            string
-	Turn           string
-	Status         string
-	Result         *string
-	Revision       int64
-	Rated          bool
-	WhiteClockMS   int64
-	BlackClockMS   int64
-	WhiteReady     bool
-	BlackReady     bool
-	StartAt        *time.Time
-	ReadyDeadline  time.Time
-	TurnStartedAt  *time.Time
-	EndReason      *string
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	ID            string
+	White         string
+	Black         string
+	WhiteRating   int64
+	BlackRating   int64
+	FEN           string
+	Turn          string
+	Status        string
+	Result        *string
+	Revision      int64
+	Rated         bool
+	WhiteClockMS  int64
+	BlackClockMS  int64
+	WhiteReady    bool
+	BlackReady    bool
+	StartAt       *time.Time
+	ReadyDeadline time.Time
+	TurnStartedAt *time.Time
+	EndReason     *string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
 
 type Result struct {
@@ -140,7 +142,7 @@ func (s *Service) Accept(ctx context.Context, challengeID, username string, synt
 
 	if !recoverAcceptedMatch {
 		if busy, err := s.store.HasActiveMatch(ctx, challenge.Challenger); err != nil {
-		return Result{}, err
+			return Result{}, err
 		} else if busy {
 			return Result{}, ErrOpponentBusy
 		}

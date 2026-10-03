@@ -53,11 +53,11 @@ func moveHTTPRow(now time.Time) cancelMatchRow {
 	return cancelMatchRow{
 		ID: "m-1", White: "alice", Black: "bob",
 		WhiteRating: &whiteRating, BlackRating: &blackRating,
-		FEN: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+		FEN:  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
 		Turn: "w", Status: "active", Revision: 7,
 		WhiteClockMS: &whiteClock, BlackClockMS: &blackClock,
 		TurnStartedAt: now.Add(-1500 * time.Millisecond),
-		Rated: &rated, CreatedAt: now.Add(-time.Minute), UpdatedAt: now,
+		Rated:         &rated, CreatedAt: now.Add(-time.Minute), UpdatedAt: now,
 	}
 }
 
@@ -121,7 +121,7 @@ func TestNativeMoveHumanCommitsPreparedCAS(t *testing.T) {
 	}
 	readStore := &fakeMatchReadStore{
 		log: &log, readRow: row, observerWasLive: true, readFound: true,
-		canonical: []cancelMatchRow{row, row},
+		canonical:      []cancelMatchRow{row, row},
 		canonicalFound: []bool{true, true},
 	}
 	h := newMoveHandlerForTest(t, now, moveStore, readStore, &log)
@@ -178,7 +178,7 @@ func TestNativeMoveMapsIllegalMove(t *testing.T) {
 	moveStore := &fakeMatchMoveStore{match: moveDomainMatch(row), found: true}
 	readStore := &fakeMatchReadStore{
 		readRow: row, observerWasLive: true, readFound: true,
-		canonical: []cancelMatchRow{row, row},
+		canonical:      []cancelMatchRow{row, row},
 		canonicalFound: []bool{true, true},
 	}
 	h := newMoveHandlerForTest(t, now, moveStore, readStore)
@@ -226,7 +226,7 @@ func TestNativeMoveRetriesCASAndReturnsConflict(t *testing.T) {
 	}
 	readStore := &fakeMatchReadStore{
 		readRow: row, observerWasLive: true, readFound: true,
-		canonical: []cancelMatchRow{row, row, row, row, row, row},
+		canonical:      []cancelMatchRow{row, row, row, row, row, row},
 		canonicalFound: []bool{true, true, true, true, true, true},
 	}
 	h := newMoveHandlerForTest(t, now, moveStore, readStore)
@@ -272,10 +272,10 @@ func TestMoveRateLimitIsFortyFivePerMinute(t *testing.T) {
 
 func TestMatchMovePathIsExact(t *testing.T) {
 	for path, want := range map[string]bool{
-		"/api/pvp/matches/m-1/move": true,
-		"/api/pvp/matches/m-1/move/": false,
-		"/api/pvp/matches//move": false,
-		"/api/pvp/matches/m-1": false,
+		"/api/pvp/matches/m-1/move":   true,
+		"/api/pvp/matches/m-1/move/":  false,
+		"/api/pvp/matches//move":      false,
+		"/api/pvp/matches/m-1":        false,
 		"/api/pvp/matches/m-1/resign": false,
 	} {
 		_, got := matchMoveID(path)
@@ -285,12 +285,11 @@ func TestMatchMovePathIsExact(t *testing.T) {
 	}
 }
 
-
 type fakeResidentMoveOracle struct {
-	uci string
-	err error
-	calls int
-	fen string
+	uci      string
+	err      error
+	calls    int
+	fen      string
 	resident string
 }
 
@@ -302,11 +301,11 @@ func (f *fakeResidentMoveOracle) Move(_ context.Context, fen, resident string) (
 }
 
 type scriptedMatchMoveStore struct {
-	match matchmove.Match
-	found bool
-	rows []cancelMatchRow
+	match       matchmove.Match
+	found       bool
+	rows        []cancelMatchRow
 	commitCalls int
-	updates []matchmove.Update
+	updates     []matchmove.Update
 }
 
 func (s *scriptedMatchMoveStore) GetMatch(context.Context, string) (matchmove.Match, bool, error) {
@@ -346,11 +345,11 @@ func TestNativeMoveResidentRepliesViaOracleAndSecondCAS(t *testing.T) {
 	moveStore := &scriptedMatchMoveStore{
 		match: moveDomainMatch(row),
 		found: true,
-		rows: []cancelMatchRow{human, bot},
+		rows:  []cancelMatchRow{human, bot},
 	}
 	readStore := &fakeMatchReadStore{
 		readRow: row, observerWasLive: true, readFound: true,
-		canonical: []cancelMatchRow{row, row},
+		canonical:      []cancelMatchRow{row, row},
 		canonicalFound: []bool{true, true},
 	}
 	h := newMoveHandlerForTest(t, now, moveStore, readStore)
@@ -378,7 +377,9 @@ func TestNativeMoveResidentRepliesViaOracleAndSecondCAS(t *testing.T) {
 	if len(residentUpdate.History) != 2 || residentUpdate.History[1].By != "marta_stein" {
 		t.Fatalf("resident history=%#v", residentUpdate.History)
 	}
-	var body struct { Match map[string]any `json:"match"` }
+	var body struct {
+		Match map[string]any `json:"match"`
+	}
 	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
 		t.Fatal(err)
 	}
@@ -401,7 +402,7 @@ func TestNativeMoveResidentOracleFailureKeepsCommittedHumanMove(t *testing.T) {
 	}
 	readStore := &fakeMatchReadStore{
 		readRow: row, observerWasLive: true, readFound: true,
-		canonical: []cancelMatchRow{row, row},
+		canonical:      []cancelMatchRow{row, row},
 		canonicalFound: []bool{true, true},
 	}
 	h := newMoveHandlerForTest(t, now, moveStore, readStore)
@@ -417,7 +418,9 @@ func TestNativeMoveResidentOracleFailureKeepsCommittedHumanMove(t *testing.T) {
 	if moveStore.commitCalls != 1 {
 		t.Fatalf("commits=%d want human commit only", moveStore.commitCalls)
 	}
-	var body struct { Match map[string]any `json:"match"` }
+	var body struct {
+		Match map[string]any `json:"match"`
+	}
 	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
 		t.Fatal(err)
 	}

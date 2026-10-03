@@ -42,6 +42,12 @@ func main() {
 	matchMoveEnabled := envBool("PVP_NATIVE_MATCH_MOVE_ENABLED", false)
 	nativeResidentMoveEnabled := envBool("PVP_NATIVE_RESIDENT_MOVE_ENABLED", false)
 	virtualPlayersEnabled := envBool("CHESS_PVP_SPARRING_ENABLED", false)
+	// The staging owner whose private sparring rivals exist is deployment
+	// configuration, never a value baked into the binary.
+	virtualOwner := strings.TrimSpace(os.Getenv("CHESS_PVP_SPARRING_OWNER"))
+	if virtualPlayersEnabled && virtualOwner == "" {
+		log.Fatal("CHESS_PVP_SPARRING_ENABLED requires CHESS_PVP_SPARRING_OWNER")
+	}
 	var nativePulse http.Handler
 	var nativeLobbyRead http.Handler
 	var nativeRoster http.Handler
@@ -127,27 +133,27 @@ func main() {
 			lobbyReadStore = store
 		}
 		pulseHandler, err := pulse.NewHandler(pulse.HandlerConfig{
-			Store:          store,
-			LobbyReadStore: lobbyReadStore,
-			JWTSecret:      jwtSecret,
-			AllowedOrigins: splitCSV(os.Getenv("CORS_ORIGINS")),
-			EnableRoster:   rosterEnabled,
-			EnableChat:     chatEnabled,
+			Store:                     store,
+			LobbyReadStore:            lobbyReadStore,
+			JWTSecret:                 jwtSecret,
+			AllowedOrigins:            splitCSV(os.Getenv("CORS_ORIGINS")),
+			EnableRoster:              rosterEnabled,
+			EnableChat:                chatEnabled,
 			EnableChallengeResolution: challengeResolutionEnabled,
-			ChallengeAccept: acceptService,
-			ChallengeCreate: createService,
-			MatchResign: resignService,
-			MatchReadStore: store,
-			MatchMoveStore: moveStore,
-			MatchTimeout: timeoutService,
-			MatchDisconnect: disconnectService,
-			RatingSettlement: ratingService,
-			ResidentMoveOracle: residentMoves,
-			EnableMatchHandoffCancel: matchHandoffCancelEnabled,
-			EnableMatchReady: matchReadyEnabled,
-			VirtualPlayersEnabled: virtualPlayersEnabled,
-			VirtualOwner: env("CHESS_PVP_SPARRING_OWNER", "evilsysadmin"),
-			SparringUsername: env("CHESS_PVP_SPARRING_USERNAME", "sparringmeister"),
+			ChallengeAccept:           acceptService,
+			ChallengeCreate:           createService,
+			MatchResign:               resignService,
+			MatchReadStore:            store,
+			MatchMoveStore:            moveStore,
+			MatchTimeout:              timeoutService,
+			MatchDisconnect:           disconnectService,
+			RatingSettlement:          ratingService,
+			ResidentMoveOracle:        residentMoves,
+			EnableMatchHandoffCancel:  matchHandoffCancelEnabled,
+			EnableMatchReady:          matchReadyEnabled,
+			VirtualPlayersEnabled:     virtualPlayersEnabled,
+			VirtualOwner:              virtualOwner,
+			SparringUsername:          env("CHESS_PVP_SPARRING_USERNAME", "sparringmeister"),
 		})
 		if err != nil {
 			log.Fatalf("native PvP pulse handler: %v", err)
@@ -199,24 +205,30 @@ func main() {
 		}()
 	}
 
+	var readyChecks map[string]func(context.Context) error
+	if mongoStore != nil {
+		readyChecks = map[string]func(context.Context) error{"mongodb": mongoStore.Ping}
+	}
+
 	handler, err := edge.New(edge.Config{
-		UpstreamURL:  upstream,
-		Release:      os.Getenv("GIT_COMMIT_SHA"),
-		ReadyTimeout: 2 * time.Second,
-		NativePulse:  nativePulse,
-		NativeLobbyRead: nativeLobbyRead,
-		NativeRoster: nativeRoster,
-		NativeChat:   nativeChat,
+		UpstreamURL:               upstream,
+		Release:                   os.Getenv("GIT_COMMIT_SHA"),
+		ReadyTimeout:              2 * time.Second,
+		NativePulse:               nativePulse,
+		NativeLobbyRead:           nativeLobbyRead,
+		NativeRoster:              nativeRoster,
+		NativeChat:                nativeChat,
 		NativeChallengeResolution: nativeChallengeResolution,
-		NativeChallengeAccept: nativeChallengeAccept,
-		NativeChallengeCreate: nativeChallengeCreate,
-		NativeMatchHandoffCancel: nativeMatchHandoffCancel,
-		NativeMatchReady: nativeMatchReady,
-		NativeMatchResign: nativeMatchResign,
-		NativeMatchRead: nativeMatchRead,
-		NativeMatchMove: nativeMatchMove,
-		VirtualPlayersEnabled: virtualPlayersEnabled,
-		NativeResidentMove: matchMoveEnabled && nativeResidentMoveEnabled,
+		NativeChallengeAccept:     nativeChallengeAccept,
+		NativeChallengeCreate:     nativeChallengeCreate,
+		NativeMatchHandoffCancel:  nativeMatchHandoffCancel,
+		NativeMatchReady:          nativeMatchReady,
+		NativeMatchResign:         nativeMatchResign,
+		NativeMatchRead:           nativeMatchRead,
+		NativeMatchMove:           nativeMatchMove,
+		VirtualPlayersEnabled:     virtualPlayersEnabled,
+		NativeResidentMove:        matchMoveEnabled && nativeResidentMoveEnabled,
+		ReadyChecks:               readyChecks,
 	})
 	if err != nil {
 		log.Fatalf("invalid pvp edge configuration: %v", err)

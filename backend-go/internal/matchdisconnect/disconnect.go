@@ -5,11 +5,13 @@ import (
 	"errors"
 	"strings"
 	"time"
+
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/pvpclock"
 )
 
 const (
 	ReconnectingWindow = 12 * time.Second
-	GracePeriod        = 60 * time.Second
+	GracePeriod        = pvpclock.DisconnectGrace
 )
 
 type Color string

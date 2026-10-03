@@ -14,13 +14,13 @@ import (
 const serviceName = "chess-studio-pvp-go"
 
 type Config struct {
-	UpstreamURL   string
-	Release       string
-	ReadyTimeout  time.Duration
-	NativePulse   http.Handler
-	NativeLobbyRead http.Handler
-	NativeRoster  http.Handler
-	NativeChat    http.Handler
+	UpstreamURL               string
+	Release                   string
+	ReadyTimeout              time.Duration
+	NativePulse               http.Handler
+	NativeLobbyRead           http.Handler
+	NativeRoster              http.Handler
+	NativeChat                http.Handler
 	NativeChallengeResolution http.Handler
 	NativeChallengeAccept     http.Handler
 	NativeChallengeCreate     http.Handler
@@ -31,17 +31,21 @@ type Config struct {
 	NativeMatchMove           http.Handler
 	VirtualPlayersEnabled     bool
 	NativeResidentMove        bool
+	// ReadyChecks are dependencies owned by the Go edge itself (MongoDB for the
+	// native routes). Each must pass, alongside the Python upstream, for the
+	// edge to report ready.
+	ReadyChecks map[string]func(context.Context) error
 }
 
 type Handler struct {
-	upstream     *url.URL
-	proxy        *httputil.ReverseProxy
-	client       *http.Client
-	release      string
-	nativePulse  http.Handler
-	nativeLobbyRead http.Handler
-	nativeRoster http.Handler
-	nativeChat   http.Handler
+	upstream                  *url.URL
+	proxy                     *httputil.ReverseProxy
+	client                    *http.Client
+	release                   string
+	nativePulse               http.Handler
+	nativeLobbyRead           http.Handler
+	nativeRoster              http.Handler
+	nativeChat                http.Handler
 	nativeChallengeResolution http.Handler
 	nativeChallengeAccept     http.Handler
 	nativeChallengeCreate     http.Handler
@@ -52,6 +56,7 @@ type Handler struct {
 	nativeMatchMove           http.Handler
 	virtualPlayersEnabled     bool
 	nativeResidentMove        bool
+	readyChecks               map[string]func(context.Context) error
 }
 
 func New(cfg Config) (*Handler, error) {
@@ -100,24 +105,25 @@ func New(cfg Config) (*Handler, error) {
 	}
 
 	return &Handler{
-		upstream:    upstream,
-		proxy:       proxy,
-		client:      &http.Client{Timeout: timeout},
-		release:     strings.TrimSpace(cfg.Release),
-		nativePulse:  cfg.NativePulse,
-		nativeLobbyRead: cfg.NativeLobbyRead,
-		nativeRoster: cfg.NativeRoster,
-		nativeChat:   cfg.NativeChat,
+		upstream:                  upstream,
+		proxy:                     proxy,
+		client:                    &http.Client{Timeout: timeout},
+		release:                   strings.TrimSpace(cfg.Release),
+		nativePulse:               cfg.NativePulse,
+		nativeLobbyRead:           cfg.NativeLobbyRead,
+		nativeRoster:              cfg.NativeRoster,
+		nativeChat:                cfg.NativeChat,
 		nativeChallengeResolution: cfg.NativeChallengeResolution,
-		nativeChallengeAccept: cfg.NativeChallengeAccept,
-		nativeChallengeCreate: cfg.NativeChallengeCreate,
-		nativeMatchHandoffCancel: cfg.NativeMatchHandoffCancel,
-		nativeMatchReady: cfg.NativeMatchReady,
-		nativeMatchResign: cfg.NativeMatchResign,
-		nativeMatchRead: cfg.NativeMatchRead,
-		nativeMatchMove: cfg.NativeMatchMove,
-		virtualPlayersEnabled: cfg.VirtualPlayersEnabled,
-		nativeResidentMove: cfg.NativeResidentMove,
+		nativeChallengeAccept:     cfg.NativeChallengeAccept,
+		nativeChallengeCreate:     cfg.NativeChallengeCreate,
+		nativeMatchHandoffCancel:  cfg.NativeMatchHandoffCancel,
+		nativeMatchReady:          cfg.NativeMatchReady,
+		nativeMatchResign:         cfg.NativeMatchResign,
+		nativeMatchRead:           cfg.NativeMatchRead,
+		nativeMatchMove:           cfg.NativeMatchMove,
+		virtualPlayersEnabled:     cfg.VirtualPlayersEnabled,
+		nativeResidentMove:        cfg.NativeResidentMove,
+		readyChecks:               cfg.ReadyChecks,
 	}, nil
 }
 
@@ -176,22 +182,22 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) health(w http.ResponseWriter) {
 	payload := map[string]any{
-		"status":       "ok",
-		"service":      serviceName,
-		"nativePulse":  h.nativePulse != nil,
-		"nativeLobbyRead": h.nativeLobbyRead != nil,
-		"nativeRoster": h.nativeRoster != nil,
-		"nativeChat":   h.nativeChat != nil,
+		"status":                    "ok",
+		"service":                   serviceName,
+		"nativePulse":               h.nativePulse != nil,
+		"nativeLobbyRead":           h.nativeLobbyRead != nil,
+		"nativeRoster":              h.nativeRoster != nil,
+		"nativeChat":                h.nativeChat != nil,
 		"nativeChallengeResolution": h.nativeChallengeResolution != nil,
-		"nativeChallengeAccept": h.nativeChallengeAccept != nil,
-		"nativeChallengeCreate": h.nativeChallengeCreate != nil,
-		"nativeMatchHandoffCancel": h.nativeMatchHandoffCancel != nil,
-		"nativeMatchReady": h.nativeMatchReady != nil,
-		"nativeMatchResign": h.nativeMatchResign != nil,
-		"nativeMatchRead": h.nativeMatchRead != nil,
-		"nativeMatchMove": h.nativeMatchMove != nil,
-		"virtualPlayersEnabled": h.virtualPlayersEnabled,
-		"nativeResidentMove": h.nativeResidentMove,
+		"nativeChallengeAccept":     h.nativeChallengeAccept != nil,
+		"nativeChallengeCreate":     h.nativeChallengeCreate != nil,
+		"nativeMatchHandoffCancel":  h.nativeMatchHandoffCancel != nil,
+		"nativeMatchReady":          h.nativeMatchReady != nil,
+		"nativeMatchResign":         h.nativeMatchResign != nil,
+		"nativeMatchRead":           h.nativeMatchRead != nil,
+		"nativeMatchMove":           h.nativeMatchMove != nil,
+		"virtualPlayersEnabled":     h.virtualPlayersEnabled,
+		"nativeResidentMove":        h.nativeResidentMove,
 	}
 	if h.release != "" {
 		payload["release"] = h.release
@@ -220,23 +226,32 @@ func (h *Handler) ready(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]any{"status": "not_ready", "service": serviceName})
 		return
 	}
+	for name, check := range h.readyChecks {
+		checkCtx, cancel := context.WithTimeout(r.Context(), h.client.Timeout)
+		err := check(checkCtx)
+		cancel()
+		if err != nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]any{"status": "not_ready", "service": serviceName, "dependency": name})
+			return
+		}
+	}
 	payload := map[string]any{
-		"status":       "ready",
-		"service":      serviceName,
-		"nativePulse":  h.nativePulse != nil,
-		"nativeLobbyRead": h.nativeLobbyRead != nil,
-		"nativeRoster": h.nativeRoster != nil,
-		"nativeChat":   h.nativeChat != nil,
+		"status":                    "ready",
+		"service":                   serviceName,
+		"nativePulse":               h.nativePulse != nil,
+		"nativeLobbyRead":           h.nativeLobbyRead != nil,
+		"nativeRoster":              h.nativeRoster != nil,
+		"nativeChat":                h.nativeChat != nil,
 		"nativeChallengeResolution": h.nativeChallengeResolution != nil,
-		"nativeChallengeAccept": h.nativeChallengeAccept != nil,
-		"nativeChallengeCreate": h.nativeChallengeCreate != nil,
-		"nativeMatchHandoffCancel": h.nativeMatchHandoffCancel != nil,
-		"nativeMatchReady": h.nativeMatchReady != nil,
-		"nativeMatchResign": h.nativeMatchResign != nil,
-		"nativeMatchRead": h.nativeMatchRead != nil,
-		"nativeMatchMove": h.nativeMatchMove != nil,
-		"virtualPlayersEnabled": h.virtualPlayersEnabled,
-		"nativeResidentMove": h.nativeResidentMove,
+		"nativeChallengeAccept":     h.nativeChallengeAccept != nil,
+		"nativeChallengeCreate":     h.nativeChallengeCreate != nil,
+		"nativeMatchHandoffCancel":  h.nativeMatchHandoffCancel != nil,
+		"nativeMatchReady":          h.nativeMatchReady != nil,
+		"nativeMatchResign":         h.nativeMatchResign != nil,
+		"nativeMatchRead":           h.nativeMatchRead != nil,
+		"nativeMatchMove":           h.nativeMatchMove != nil,
+		"virtualPlayersEnabled":     h.virtualPlayersEnabled,
+		"nativeResidentMove":        h.nativeResidentMove,
 	}
 	if h.release != "" {
 		payload["release"] = h.release
@@ -257,7 +272,6 @@ func Shutdown(ctx context.Context, server *http.Server) error {
 	}
 	return server.Shutdown(ctx)
 }
-
 
 func isMatchPulsePath(path string) bool {
 	const prefix = "/api/pvp/matches/"

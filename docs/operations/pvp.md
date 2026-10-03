@@ -318,7 +318,10 @@ PvP is migrating incrementally toward a dedicated Go process. The first slice is
 
 - `backend-go/cmd/pvp-edge` accepts only `/api/pvp*` plus its internal health/readiness endpoints;
 - while a PvP operation still belongs to Python, Go proxies it transparently to the paired Python backend and preserves auth, request path/query/body and response semantics;
-- Go readiness fails closed when the paired Python authority is not ready;
+- Go readiness fails closed when the paired Python authority is not ready, and also when its own MongoDB client stops answering `ping` (the 503 names the failing `dependency`, never the raw error); a startup ping alone does not prove the store is still reachable;
+- the PvP timing contract (initial clock, increment, ready timeout, disconnect grace) lives once in `backend-go/internal/pvpclock`; every Go package reads it from there and a test pins it against the constants in `backend-python/pvp_api.py`, so the two runtimes cannot drift. Match documents missing a clock field fall back to `pvpclock.InitialMS` in every path;
+- the resident/sparring owner comes only from `CHESS_PVP_SPARRING_OWNER`; the Go edge has no built-in username and refuses to start with sparring enabled and no owner. The deploy config (`infra/oci/runtime/docker-compose.yml`) is the single place that supplies the default;
+- `backend-go` must stay `gofmt`-clean; `pvp-go.yml` fails otherwise;
 - proxy transport failure returns a stable retryable `pvp_upstream_unavailable` envelope instead of inventing domain state;
 - most compatibility routes remain stateless proxies while Mongo/Python remain authoritative until an operation is explicitly migrated with parity tests;
 - the first native read is `GET /api/pvp/lobby/pulse`: Go validates the same HS256 session contract (including account `session_version`), reads Mongo directly and returns only a deterministic lobby revision plus polling cadence;
