@@ -5,6 +5,18 @@ const IndustrialFarPart0 := preload("res://art/industrial_front_far_v1_part0.gd"
 const IndustrialFarPart1 := preload("res://art/industrial_front_far_v1_part1.gd")
 const IndustrialFarPart2 := preload("res://art/industrial_front_far_v1_part2.gd")
 const IndustrialFarPart3 := preload("res://art/industrial_front_far_v1_part3.gd")
+# Painted far layers for the other presets (scripts/art/paint_pawn_slug_far_art.py).
+const PAINTED_FAR_ART := {
+    "harbor_dusk": preload("res://art/harbor_dusk_far_v1.gd"),
+    "alpine_night": preload("res://art/alpine_night_far_v1.gd"),
+    "jungle_storm": preload("res://art/jungle_storm_far_v1.gd"),
+}
+const PAINTED_MID_ART := {
+    "harbor_dusk": preload("res://art/harbor_dusk_mid_v1.gd"),
+    "alpine_night": preload("res://art/alpine_night_mid_v1.gd"),
+    "jungle_storm": preload("res://art/jungle_storm_mid_v1.gd"),
+}
+const MID_ART_BOTTOM_Y := 530.0
 
 var _world_size := Vector2(5200.0, 720.0)
 var _floor_y := 610.0
@@ -15,6 +27,8 @@ var _preset := "night_front"
 var _atmosphere_time := 0.0
 var _redraw_accumulator := 0.0
 var _industrial_far_art: ImageTexture
+var _painted_far_art: ImageTexture
+var _painted_mid_art: ImageTexture
 
 func configure(world_size: Vector2, floor_y: float, kind: String, seed: int, intensity: float = 1.0, preset: String = "night_front") -> void:
     _world_size = world_size
@@ -25,6 +39,10 @@ func configure(world_size: Vector2, floor_y: float, kind: String, seed: int, int
     _preset = preset
     if _kind == "industrial_art":
         _ensure_industrial_far_art()
+    elif _kind == "far_art":
+        _ensure_painted_far_art()
+    elif _kind == "ruined_city":
+        _painted_mid_art = _decode_painted(PAINTED_MID_ART)
     set_process(_kind in ["sky", "industrial_landmark", "ruined_city", "mid_defence", "near_weather", "near_foreground"])
     queue_redraw()
 
@@ -47,6 +65,8 @@ func _draw() -> void:
             _draw_sky()
         "industrial_art":
             _draw_industrial_art()
+        "far_art":
+            _draw_painted_far_art()
         "far_ridge":
             _draw_far_ridge()
         "industrial_landmark":
@@ -268,6 +288,49 @@ func _ensure_industrial_far_art() -> void:
         return
     _industrial_far_art = ImageTexture.create_from_image(image)
 
+func _decode_painted(table: Dictionary) -> ImageTexture:
+    if not table.has(_preset):
+        return null
+    var encoded := ""
+    for part in table[_preset].PARTS:
+        encoded += part.DATA
+    var image := Image.new()
+    if image.load_webp_from_buffer(Marshalls.base64_to_raw(encoded)) != OK:
+        push_warning("Pawn Slug %s painted art could not be decoded" % _preset)
+        return null
+    return ImageTexture.create_from_image(image)
+
+func _ensure_painted_far_art() -> void:
+    if _painted_far_art == null:
+        _painted_far_art = _decode_painted(PAINTED_FAR_ART)
+
+func _draw_painted_far_art() -> void:
+    # Same contract as the industrial art: far scenery only, lower edge fades
+    # out, never traversal or collision; overscan hides the raster edges.
+    _ensure_painted_far_art()
+    if _painted_far_art == null:
+        return
+    draw_texture_rect(
+        _painted_far_art,
+        Rect2(Vector2(-240.0, 0.0), Vector2(1960.0, 604.0)),
+        false,
+        Color(1.0, 1.0, 1.0, _intensity),
+    )
+
+func _draw_painted_far_base() -> void:
+    var base := Color("102a33")
+    if _preset == "alpine_night":
+        base = Color("121c28")
+    elif _preset == "jungle_storm":
+        base = Color("10201a")
+    var top := 468.0
+    var ramp := 56.0
+    for step in range(8):
+        var t := float(step + 1) / 8.0
+        var y := top + ramp * float(step) / 8.0
+        draw_rect(Rect2(Vector2(0.0, y), Vector2(_world_size.x, ramp / 8.0 + 1.0)), Color(base, t * t * _intensity), true)
+    draw_rect(Rect2(Vector2(0.0, top + ramp), Vector2(_world_size.x, _floor_y - top - ramp)), Color(base, _intensity), true)
+
 func _draw_industrial_art() -> void:
     if _preset != "night_front":
         return
@@ -287,6 +350,11 @@ func _draw_industrial_art() -> void:
     )
 
 func _draw_far_ridge() -> void:
+    if PAINTED_FAR_ART.has(_preset):
+        # The painted far art already carries ridges, horizon and landmarks;
+        # this layer only grounds its faded lower edge.
+        _draw_painted_far_base()
+        return
     if _preset == "harbor_dusk":
         _draw_harbor_horizon()
         return
@@ -561,6 +629,15 @@ func _draw_industrial_landmark() -> void:
     )
 
 func _draw_ruined_city() -> void:
+    if _painted_mid_art != null:
+        # Painted mid silhouettes tile along the whole stage; their solid
+        # bottom matches the far layer's ground fill.
+        var size := Vector2(_painted_mid_art.get_size())
+        var x := -size.x
+        while x < _world_size.x + size.x:
+            draw_texture_rect(_painted_mid_art, Rect2(Vector2(x, MID_ART_BOTTOM_Y - size.y), size), false, Color(1.0, 1.0, 1.0, minf(1.0, _intensity)))
+            x += size.x
+        return
     if _preset == "harbor_dusk":
         _draw_harbor_skyline()
         return

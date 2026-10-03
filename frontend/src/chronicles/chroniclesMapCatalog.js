@@ -56,12 +56,18 @@ function normalizeEnemy(enemy) {
     throw new Error(`Chronicles enemy ${enemy?.id || '<missing>'} has invalid EnemyBuild: ${(resolvedBuild.errors || []).join('; ')}`);
   }
   const enemyBuild = Object.freeze(resolvedBuild.build);
-  const enemyBuildSource = resolvedBuild.source;
+  const alreadyNormalized = (
+    enemy?.baseStats
+    && (enemy?.enemyBuildSource === 'authored' || enemy?.enemyBuildSource === 'derived-legacy')
+  );
+  const enemyBuildSource = alreadyNormalized ? enemy.enemyBuildSource : resolvedBuild.source;
   const buildModifiers = chroniclesEnemyBuildModifiers(enemyBuild);
-  const baseMaxHp = resolvedBuild.baseStats.maxHp;
-  const baseRetaliation = resolvedBuild.baseStats.retaliation;
-  const baseReach = resolvedBuild.baseStats.retaliationReach;
-  const baseEngageRange = resolvedBuild.baseStats.engageRange;
+  const normalizedBaseStats = alreadyNormalized ? enemy.baseStats : resolvedBuild.baseStats;
+  const baseMaxHp = Math.max(1, Number(normalizedBaseStats.maxHp || 1));
+  const baseRetaliation = Math.max(0, Number(normalizedBaseStats.retaliation || 0));
+  const baseReach = Math.max(1, Number(normalizedBaseStats.retaliationReach || 1));
+  const rawEngageRange = Number(normalizedBaseStats.engageRange);
+  const baseEngageRange = Number.isFinite(rawEngageRange) ? Math.max(1, rawEngageRange) : undefined;
   const effectiveReach = baseReach + Math.max(0, Number(buildModifiers.reachBonus || 0));
   const effectiveEngageRange = Number.isFinite(baseEngageRange)
     ? baseEngageRange + Math.max(0, Number(buildModifiers.engageRangeBonus || 0))

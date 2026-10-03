@@ -203,7 +203,7 @@ func _ready() -> void:
     _build_parallax_backdrop()
     _build_environment_visual()
     _build_stage_setpieces()
-    enemies = _build_enemy_roster()
+    enemies = RuntimeBootstrap.calm_visual_capture_probe(_build_enemy_roster())
     _build_enemy_visuals()
     _build_extraction_visual()
     player.connect("fired", Callable(self, "_on_player_fired"))

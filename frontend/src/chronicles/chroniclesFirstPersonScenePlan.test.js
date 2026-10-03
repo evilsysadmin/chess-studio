@@ -27,4 +27,26 @@ describe('Chronicles first-person runtime scene plan', () => {
     expect(plan.mapId).toBe('crypt-eight-squares');
     expect(plan.grid[2]).toBe('#.....#');
   });
+  it('keeps the canonical crypt dressing only on the canonical map', () => {
+    const crypt = chroniclesFirstPersonScenePlan({ mapId: 'crypt-eight-squares' });
+    const gallery = chroniclesFirstPersonScenePlan({ mapId: 'gallery-of-forks' });
+
+    expect(crypt.useAuthoredCryptDressing).toBe(true);
+    expect(gallery.useAuthoredCryptDressing).toBe(false);
+  });
+
+  it('inherits topology and center from the active map instead of a 7x7 renderer constant', () => {
+    const map = chroniclesMapById('gallery-of-forks');
+    const plan = chroniclesFirstPersonScenePlan({ mapId: map.id });
+
+    expect(plan.width).toBe(map.grid[0].length);
+    expect(plan.height).toBe(map.grid.length);
+    expect(plan.center).toEqual({
+      x: (plan.width - 1) / 2,
+      y: (plan.height - 1) / 2,
+    });
+    expect(plan.floors.length).toBeGreaterThan(0);
+    expect(plan.wallFaces.length).toBeGreaterThan(0);
+  });
+
 });

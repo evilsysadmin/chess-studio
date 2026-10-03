@@ -6,6 +6,7 @@ import {
   createChroniclesIsometricRenderer,
   chroniclesIsoInteractionForHit,
   chroniclesIsoPointerAction,
+  chroniclesIsoTorchPlacements,
   chroniclesIsoUsesLegacyDressing,
   chroniclesIsoWorldForCell,
   chroniclesIsoWorldForContentKind,
@@ -103,6 +104,35 @@ describe('Chronicles canonical isometric viewport', () => {
       sceneStyle: { dressing: 'none' },
     })).toBe(false);
     expect(chroniclesIsoUsesLegacyDressing(null)).toBe(false);
+  });
+
+  it('derives practical torch positions from non-legacy map wall faces', () => {
+    const placements = chroniclesIsoTorchPlacements({
+      sceneStyle: { dressing: 'gallery-forked-v3' },
+      wallFaces: [
+        { x: 1, y: 1, side: 'east' },
+        { x: 3, y: 1, side: 'west' },
+        { x: 4, y: 2, side: 'south' },
+      ],
+    });
+
+    expect(placements).toEqual([
+      { x: 1, y: 1, ox: 0.94, oz: 0 },
+      { x: 3, y: 1, ox: -0.94, oz: 0 },
+      { x: 4, y: 2, ox: 0, oz: 0.94 },
+    ]);
+  });
+
+  it('keeps procedural map lighting sparse on coarse pointers', () => {
+    const wallFaces = Array.from({ length: 18 }, (_, index) => ({
+      x: index,
+      y: 1,
+      side: index % 2 ? 'north' : 'south',
+    }));
+    expect(chroniclesIsoTorchPlacements({
+      sceneStyle: { dressing: 'none' },
+      wallFaces,
+    }, { coarsePointer: true })).toHaveLength(5);
   });
 
   it('keeps the camera straight behind the party with an elevated tactical read', () => {

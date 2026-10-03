@@ -65,6 +65,25 @@ const MENAGERIE_PALETTE = scenePalette({
   bounce: 0xa64a27,
 });
 
+const HOLLOW_BELL_PALETTE = scenePalette({
+  background: 0x090b0e,
+  fog: 0x121820,
+  floor: [0x44474a, 0x53504c, 0x3b4045, 0x5a554d],
+  foundation: 0x181a1d,
+  wall: [0x35393e, 0x42454a, 0x2c3136],
+  wallTrim: 0x191d22,
+  metal: 0x8c7044,
+  rune: 0xb1c8cf,
+  runeEmissive: 0x476d7a,
+  runeGlow: 0x7caebb,
+  hemiSky: 0xc2ced8,
+  hemiGround: 0x0e1216,
+  key: 0xe2c28f,
+  rim: 0x7898b5,
+  fill: 0x91aabb,
+  bounce: 0x865d36,
+});
+
 const NEUTRAL_STYLE = Object.freeze({
   id: 'neutral',
   version: CHRONICLES_ISOMETRIC_SCENE_STYLE_VERSION,
@@ -94,6 +113,13 @@ const SCENE_STYLES = Object.freeze({
     dressing: 'menagerie-ash-v3',
     lighting: Object.freeze({ exposure: 1.15, hemi: 1.28, fill: 1.42, bounce: 1.24 }),
     palette: MENAGERIE_PALETTE,
+  }),
+  'hollow-bell-tower': Object.freeze({
+    id: 'hollow-bell-bronze',
+    version: CHRONICLES_ISOMETRIC_SCENE_STYLE_VERSION,
+    dressing: 'hollow-bell-v1',
+    lighting: Object.freeze({ exposure: 1.18, hemi: 1.24, fill: 1.4, bounce: 1.3 }),
+    palette: HOLLOW_BELL_PALETTE,
   }),
 });
 

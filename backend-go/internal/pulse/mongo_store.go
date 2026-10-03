@@ -57,6 +57,10 @@ func NewMongoStore(ctx context.Context, cfg MongoConfig) (*MongoStore, error) {
 	return &MongoStore{client: client, db: client.Database(database), timeout: timeout}, nil
 }
 
+// Database is the shared database, for native services that keep their own
+// collections (games) on the same connection pool.
+func (s *MongoStore) Database() *mongo.Database { return s.db }
+
 // Ping proves the store can still reach MongoDB. Go is the authority for the
 // native PvP routes, so readiness must fail when its own database does, not
 // only when the paired Python backend does.

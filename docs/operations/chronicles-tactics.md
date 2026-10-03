@@ -56,6 +56,17 @@ XP, niveles, atributos, skills y la build compartida de Chronicles/Tactics perte
 - El checkpoint de run conserva estado **de la expedición actual** (mundo, posición, HP, cargas, enemigos, ledgers). La progresión entre expediciones sigue perteneciendo al perfil.
 - Un cambio de dispositivo o una caché local vacía debe poder rehidratar XP/atributos/skills desde el perfil remoto antes de usar esa progresión como base de juego.
 
+## Ciclo de vida autoritativo de la run
+
+La misma escritura CAS del checkpoint final terminaliza la run en backend.
+
+- `phase=defeated` proyecta inmediatamente `terminalStatus=defeated`;
+- `terminalStatus=completed` se emite sólo después de terminar la finalización propia del adapter: primera persona puede cerrarla al escapar; Tactics espera a que el reward draft quede resuelto;
+- el backend comprueba que `terminalStatus` concuerda con la fase runtime persistida (`escaped` o `defeated`);
+- una run terminal no admite checkpoints posteriores ni puede volver a `active`;
+- el retry exacto del checkpoint terminal es idempotente y no incrementa otra vez `worldVersion`;
+- bootstrap/reentrada puede leer una run terminal para reconstruir epílogo/derrota tras F5; el estado terminal del backend prevalece sobre un runtime flag antiguo o incoherente.
+
 ## Checkpoints durables de run
 
 El estado persistente de una run se hidrata antes del primer frame jugable y se escribe sólo en checkpoints semánticos.

@@ -13,10 +13,25 @@ Cloudflare Tunnel → nginx edge (stable :4000) → Go sidecar pvp_<color> → P
 - **API front.** In nginx API mode `go`, nginx sends the whole API to the Go sidecar of the active colour. Go serves its native routes and forwards everything else to the paired Python slot unchanged: path, query, body, auth and the Cloudflare client headers, so Python's security identity (`CF-Connecting-IP` with `TRUST_CLOUDFLARE_CLIENT_IP`) is unaffected. Proxied responses carry `X-Chess-Edge: go`. In API mode `direct` (the default), nginx sends only `/api/pvp` to Go.
 - **Mode selection.** `scripts/oci_existing_a1_deploy.sh` chooses the mode per target (`api_edge_mode`). Only the candidate cutover and its commit marker use it. Every rollback renders `direct`, because an older sidecar may not be able to front the API. After the cutover the deploy proves that `/api/release` answered through Go (exit 58 otherwise, with rollback). `scripts/oci_staging_cors_contract.py` pins all of this.
 - **Routing.** One routing table per domain, shared by the edge and the native handler (`internal/pvproute` for PvP). A native route has a kill-switch until its domain is retired. A disabled or unknown route goes to Python.
+- **Observability.** Every request Go answers natively is recorded by Go (`internal/telemetry`) the way Python records its own:
+  - the `chess_studio_http_server_requests` counter and the `chess_studio_http_server_duration` histogram (seconds, SDK default buckets), with the same attributes;
+  - one `http_request` access event with Python's exact JSON shape, written to stdout and sent as an OTLP log;
+  - `http.route` is the FastAPI template (`pvproute.Kind.Pattern`), and native PvP events carry `pvp_hop: go:native`.
+
+  Proxied requests are recorded only by Python, never twice. Go exports under `<OTEL_SERVICE_NAME>-go` with its own `service.instance.id`, from the same env file. Sharing Python's service name would merge the two runtimes' series and count Go-native PvP traffic as Python fallback in `pvp-python-fallback.yml`. Telemetry is fail-open, with the kill-switch `GO_REQUEST_TELEMETRY_ENABLED` (on by default).
+
+  Not ported yet:
+  - the admin panel's in-process and Mongo history (`observability_history`);
+  - the trusted staging smoke marker (`synthetic_source`);
+  - traces.
+
+  Dashboards that filter by `service_name` must include the `-go` variant.
+- **Presence.** Python's `get_current_user` also touches `last_activity` (coalesced to 30 s). Native Go routes do not; presence comes from the `/api/auth/activity` heartbeat every 120 s, inside the 150 s session TTL. This is an accepted deviation; revisit it when auth/presence moves to Go.
 - **Data.** MongoDB stays the single authority during the migration. Go and Python read and write the same documents, so every native write needs the same CAS, idempotency and document shape as Python, proven with integration tests against a real `mongo:8.0` (see `internal/pulse/mongo_integration_test.go`). Go declares the indexes it relies on.
 
 ## Rules for each domain
 
+0. **Observable before native:** a route is not native until Go records it as above.
 1. **Safety net first:** parity tests against Python, built from fixtures that Python itself generates (as with `scripts/engine_parity_corpus.py`), plus Mongo integration tests for every write.
 2. **Native behind a kill-switch,** route by route, enabled in staging first and accredited by the deploy.
 3. **Evidence before retiring:** Python request counts per route in Grafana (`chess_studio_http_server_requests_total`, see `pvp-python-fallback.yml`) must be zero for an agreed window.
@@ -27,8 +42,14 @@ Cloudflare Tunnel → nginx edge (stable :4000) → Go sidecar pvp_<color> → P
 | # | Domain | Python | Status |
 | --- | --- | --- | --- |
 | 1 | PvP (lobby, challenges, matches, residents) | `pvp_*` | Native in Go. Python fallback retires after 2026-10-17 if the evidence holds. |
-| 2 | API front (all traffic through Go) | — | Mode in place, default `direct`. Next: enable it in staging. |
-| 3 | Games vs CPU: `/api/games/*`, `/api/analyze*` | `game_api`, `game_store`, `chess_core`, `engine_analysis`, `cpu_difficulty`, `*_service` | Engine ported (`residenteval`, `residentsearch`, `residentpolicy`). Game core ported (`internal/gamecore`: rebuilding from initial FEN or handicap + SAN, snapshot, draw claims, insufficient material, `resolve_move`, FEN validity) with a corpus from `scripts/games_parity_corpus.py`. Operation idempotency ported (`internal/gameops`: Idempotency-Key, sha256 fingerprints over Python's `json.dumps`, uuid5 ids, ledger) with a corpus from `scripts/games_ops_corpus.py`: a retry must be recognised whether it lands on Python or Go (watch out: omitted `difficulty` fingerprints as int `50`, explicit as `50.0`). Game store ported (`internal/gamestore`, mirrors `game_store.py`: idempotent create on a deterministic id, CAS on `moves`, owner-scoped reads and deletes, summaries with Python's naive `isoformat`; documents keep the BSON types and unknown fields so both runtimes share `games`), with integration tests against Mongo in CI and a local Go↔Python cross-read check. Next: the CPU move policy/analysis services and the native routes behind a kill-switch. |
+| 2 | API front (all traffic through Go) | — | **Staging: `go`** (the default in `oci_existing_a1_deploy.sh`; production stays `direct`). The deploy attests `/api/release` through Go (exit 58). With `GO_NATIVE_GAMES_READ_ENABLED` it also attests that anonymous `/api/games` gets Go's 401 (`X-Chess-Games-Native: go`, exit 59); either failure rolls back. Revert: `CHESS_STUDIO_API_EDGE_MODE=direct`. Next: production once staging accredits it. |
+| 3 | Games vs CPU: `/api/games/*`, `/api/analyze*` | `game_api`, `game_store`, `chess_core`, `engine_analysis`, `cpu_difficulty`, `*_service` | Engine ported (`residenteval`, `residentsearch`, `residentpolicy`). Game core ported (`internal/gamecore`: rebuilding from initial FEN or handicap + SAN, snapshot, draw claims, insufficient material, `resolve_move`, FEN validity) with a corpus from `scripts/games_parity_corpus.py`. Operation idempotency ported (`internal/gameops`: Idempotency-Key, sha256 fingerprints over Python's `json.dumps`, uuid5 ids, ledger) with a corpus from `scripts/games_ops_corpus.py`: a retry must be recognised whether it lands on Python or Go (watch out: omitted `difficulty` fingerprints as int `50`, explicit as `50.0`). Game store ported (`internal/gamestore`, mirrors `game_store.py`: idempotent create on a deterministic id, CAS on `moves`, owner-scoped reads and deletes, summaries with Python's naive `isoformat`; documents keep the BSON types and unknown fields so both runtimes share `games`), with integration tests against Mongo in CI and a local Go↔Python cross-read check. First native routes: `GET /api/games`, `GET` and `DELETE /api/games/{game_id}` (`internal/gamesapi`) behind `GO_NATIVE_GAMES_READ_ENABLED` (default off; compose `CHESS_STUDIO_GO_NATIVE_GAMES_READ_ENABLED`). Around the handler they mirror Python's:
+- `get_current_user`, including the activity touch (`internal/presence`);
+- Starlette CORS and the security headers;
+- the 120/minute default limit, per process;
+- the storage 503.
+
+They only receive traffic in api "go" mode (row 2). Next: the CPU move policy/analysis services and the create/move/undo/hint routes. |
 | 4 | System: health, ready, release, status, features, client telemetry | `system_api`, `feature_flags`, `client_telemetry` | Pending. Small, but `status` aggregates every store. |
 | 5 | Auth, users, profile, presence | `auth`, `users_store`, `profile_store`, `auth_*_guard` | Pending. Go already validates sessions. Passwords use Argon2id with legacy bcrypt verification, and both must match. |
 | 6 | Feedback, Matthias daily, narrative, memory and episodes | `feedback_store`, `matthias_*`, `narrative_*` | Pending. `narrative_cloudflare` calls an LLM provider. |

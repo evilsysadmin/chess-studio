@@ -27,10 +27,19 @@ import {
 } from './chronicles/chroniclesIsometricScenePlan.js';
 import { chroniclesIsometricSceneStyle } from './chronicles/chroniclesIsometricSceneStyles.js';
 import {
+  chroniclesIsoTorchPlacements,
+  chroniclesIsoUsesLegacyDressing,
+} from './chronicles/chroniclesTacticsLighting.js';
+import {
   syncChroniclesTacticsPressurePlateArt,
   tickChroniclesTacticsPressurePlateArt,
 } from './chroniclesOfMatthiasPressurePlateArt.js';
 import { createExperimentalThreeRenderer } from './experimentalThreeRenderer.js';
+
+export {
+  chroniclesIsoTorchPlacements,
+  chroniclesIsoUsesLegacyDressing,
+};
 
 const CELL = CHRONICLES_ISOMETRIC_CELL_SIZE;
 export const CHRONICLES_ISO_PARTY_LAYOUT = Object.freeze({
@@ -46,15 +55,6 @@ export const CHRONICLES_ISO_MARKER_STYLE = Object.freeze({
   attackColor: 0xc45143,
   selectionColor: 0xd8b56a,
 });
-
-const TORCH_CELLS = Object.freeze([
-  Object.freeze({ x: 1, y: 5, ox: -0.98, oz: -0.78 }),
-  Object.freeze({ x: 5, y: 5, ox: 0.94, oz: -0.7 }),
-  Object.freeze({ x: 1, y: 3, ox: -0.88, oz: -0.82 }),
-  Object.freeze({ x: 5, y: 3, ox: 0.92, oz: -0.72 }),
-  Object.freeze({ x: 2, y: 1, ox: -0.72, oz: -0.92 }),
-  Object.freeze({ x: 5, y: 1, ox: 0.72, oz: -0.92 }),
-]);
 
 const RUBBLE = Object.freeze([
   Object.freeze({ x: -5.95, z: 2.9, scale: 0.22, yaw: 0.5 }),
@@ -82,10 +82,6 @@ export function chroniclesIsoWorldsForContentKind(geometryPlan, kind) {
     visualType: entry.visualType || entry.kind,
     world: new THREE.Vector3(entry.world.x, entry.world.y, entry.world.z),
   }));
-}
-
-export function chroniclesIsoUsesLegacyDressing(scenePlan) {
-  return scenePlan?.sceneStyle?.dressing === 'crypt-legacy';
 }
 
 export function chroniclesIsoScenePalette(scenePlan) {
@@ -495,7 +491,7 @@ function buildTorches(scene, {
   });
   glowMaterial.userData.chroniclesIsoOwned = true;
 
-  TORCH_CELLS.forEach(({ x, y, ox, oz }, index) => {
+  chroniclesIsoTorchPlacements(scenePlan, { coarsePointer }).forEach(({ x, y, ox, oz }, index) => {
     const cell = chroniclesIsoWorldForCell(x, y, scenePlan);
     const root = new THREE.Group();
     root.name = `chronicles-iso-torch-${index}`;
@@ -770,12 +766,10 @@ export function createChroniclesIsometricRenderer(host, {
     scenePlan: initialScenePlan,
   });
   scene.add(dungeon.root);
-  const torches = chroniclesIsoUsesLegacyDressing(initialScenePlan)
-    ? buildTorches(scene, {
-      coarsePointer: coarse,
-      scenePlan: initialScenePlan,
-    })
-    : [];
+  const torches = buildTorches(scene, {
+    coarsePointer: coarse,
+    scenePlan: initialScenePlan,
+  });
   const party = buildParty(scene, {
     coarsePointer: coarse,
     reducedMotion,

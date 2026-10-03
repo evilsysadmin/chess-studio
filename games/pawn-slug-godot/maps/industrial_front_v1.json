@@ -203,7 +203,8 @@
       "material": "metal",
       "visual": {
         "rail": true
-      }
+      },
+      "one_way": true
     },
     {
       "x": 2180,
@@ -321,7 +322,8 @@
       "material": "concrete",
       "visual": {
         "sandbags": 5
-      }
+      },
+      "one_way": true
     },
     {
       "x": 3710,
@@ -345,7 +347,8 @@
       "visual": {
         "rail": true,
         "lamp": true
-      }
+      },
+      "one_way": true
     },
     {
       "x": 3920,
@@ -425,32 +428,18 @@
   ],
   "obstacles": [
     {
-      "x": 710,
+      "x": 930,
       "y": 558,
       "w": 48,
       "h": 52,
       "kind": "crate"
     },
     {
-      "x": 1200,
+      "x": 1070,
       "y": 542,
       "w": 64,
       "h": 68,
       "kind": "barricade"
-    },
-    {
-      "x": 2010,
-      "y": 550,
-      "w": 74,
-      "h": 60,
-      "kind": "sandbags"
-    },
-    {
-      "x": 2320,
-      "y": 536,
-      "w": 52,
-      "h": 74,
-      "kind": "crate_stack"
     },
     {
       "x": 3220,
@@ -467,7 +456,7 @@
       "kind": "crate_stack"
     },
     {
-      "x": 4460,
+      "x": 4210,
       "y": 548,
       "w": 70,
       "h": 62,
@@ -1049,7 +1038,7 @@
   "pits": [
     {
       "x": 2100,
-      "w": 210,
+      "w": 200,
       "kind": "shell_crater"
     },
     {

@@ -15,7 +15,7 @@ import secrets
 import uuid
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -67,6 +67,10 @@ class CheckpointChroniclesRunRequest(BaseModel):
     quests: dict[str, Any] = Field(default_factory=dict)
     consumed_content_ids: list[str] = Field(default_factory=list, alias="consumedContentIds")
     claimed_rewards: list[str] = Field(default_factory=list, alias="claimedRewards")
+    terminal_status: Literal["completed", "defeated"] | None = Field(
+        default=None,
+        alias="terminalStatus",
+    )
 
     model_config = {"populate_by_name": True, "extra": "forbid"}
 
@@ -816,6 +820,14 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
             )
         )
         world_flags = _normalize_checkpoint_flags(body.world_flags)
+        if body.terminal_status is not None:
+            runtime_phase = world_flags.get("__chrRuntime.phase")
+            expected_phase = "escaped" if body.terminal_status == "completed" else "defeated"
+            if runtime_phase != expected_phase:
+                raise HTTPException(
+                    400,
+                    f"terminalStatus={body.terminal_status} no coincide con la fase runtime.",
+                )
         inventory = _normalize_checkpoint_inventory(body.inventory)
         quests = _normalize_checkpoint_quests(body.quests)
         consumed_content_ids = _normalize_checkpoint_ids(
@@ -839,12 +851,18 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
                 quests=quests,
                 consumed_content_ids=consumed_content_ids,
                 claimed_rewards=claimed_rewards,
+                terminal_status=body.terminal_status,
             )
         except ValueError as exc:
             if str(exc) == "world-version-conflict":
                 raise HTTPException(
                     409,
                     "La run cambió desde este cliente; recarga antes de guardar otro checkpoint.",
+                ) from exc
+            if str(exc) == "run-terminal":
+                raise HTTPException(
+                    409,
+                    "La run de Chronicles ya terminó y no admite más checkpoints.",
                 ) from exc
             raise
         if updated is None:

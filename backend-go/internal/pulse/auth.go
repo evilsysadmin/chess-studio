@@ -38,6 +38,40 @@ func (h *Handler) authenticate(r *http.Request) (tokenClaims, error) {
 	return verifySessionToken(strings.TrimSpace(strings.TrimPrefix(header, "Bearer ")), h.secret, h.now())
 }
 
+// VerifiedSubject is the subject of a valid session bearer token, or "".
+// It mirrors main._request_username: signature and expiry only, no Mongo,
+// for attributing access logs (never for authorisation).
+func VerifiedSubject(authorization string, secret []byte, now time.Time) string {
+	header := strings.TrimSpace(authorization)
+	if !strings.HasPrefix(header, "Bearer ") || len(secret) == 0 {
+		return ""
+	}
+	claims, err := verifySessionToken(strings.TrimSpace(strings.TrimPrefix(header, "Bearer ")), secret, now)
+	if err != nil {
+		return ""
+	}
+	return claims.Subject
+}
+
+// VerifySession checks a session JWT (signature, purpose, expiry) and
+// returns its subject and session version (a missing "sv" is version 0), as
+// auth.verify_session_token does. Account existence is the caller's check.
+func VerifySession(raw string, secret []byte, now time.Time) (string, int64, error) {
+	claims, err := verifySessionToken(raw, secret, now)
+	if err != nil {
+		return "", 0, err
+	}
+	version := int64(0)
+	if claims.SessionVersion != nil {
+		version = *claims.SessionVersion
+	}
+	return claims.Subject, version, nil
+}
+
+// CanonicalBrowserOrigins are the origins every native route accepts on top
+// of CORS_ORIGINS (the Python CORS middleware's defaults).
+func CanonicalBrowserOrigins() []string { return append([]string(nil), canonicalBrowserOrigins[:]...) }
+
 func verifySessionToken(raw string, secret []byte, now time.Time) (tokenClaims, error) {
 	parts := strings.Split(raw, ".")
 	if len(parts) != 3 {
@@ -89,8 +123,12 @@ func (h *Handler) decorateResponse(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Chess-Pvp-Native", nativeHeaderValue)
 	w.Header().Set("Access-Control-Expose-Headers", "X-Request-ID, X-Chess-Pvp-Native, X-Chess-Pvp-Edge")
 	w.Header().Add("Vary", "Origin")
-	if requestID := cleanRequestID(r.Header.Get("X-Request-ID")); requestID != "" {
-		w.Header().Set("X-Request-ID", requestID)
+	// The edge's request telemetry already answered with the id it logs
+	// (Python's rules); keep the two equal.
+	if w.Header().Get("X-Request-ID") == "" {
+		if requestID := cleanRequestID(r.Header.Get("X-Request-ID")); requestID != "" {
+			w.Header().Set("X-Request-ID", requestID)
+		}
 	}
 	origin := strings.TrimSpace(r.Header.Get("Origin"))
 	if h.originAllowed(origin) && origin != "" {

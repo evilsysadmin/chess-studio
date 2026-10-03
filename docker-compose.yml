@@ -43,6 +43,9 @@ services:
         # Como el navegador corre en el host (no dentro de la red de Docker),
         # tiene que ser el puerto publicado, no el nombre del servicio.
         VITE_API_URL: http://localhost:${BACKEND_PORT:-4000}/api
+        # Compose debe ofrecer las mismas War Rooms que staging/prod. Puede
+        # deshabilitarse explícitamente con VITE_WAR_ROOM_VARIANTS_ENABLE=0.
+        VITE_WAR_ROOM_VARIANTS_ENABLE: ${VITE_WAR_ROOM_VARIANTS_ENABLE:-1}
         VITE_GRAFANA_CLOUD_URL: ${VITE_GRAFANA_CLOUD_URL:-}
         VITE_GRAFANA_LOGS_DASHBOARD_URL: ${VITE_GRAFANA_LOGS_DASHBOARD_URL:-}
     ports:

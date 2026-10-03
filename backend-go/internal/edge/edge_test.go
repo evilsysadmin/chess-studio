@@ -8,8 +8,11 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/telemetry"
 )
 
 func TestProxyPreservesPvPRequest(t *testing.T) {
@@ -1043,5 +1046,75 @@ func TestProxyTellsPythonWhyItFellBack(t *testing.T) {
 		if reason := <-got; reason != want {
 			t.Fatalf("%s: reason=%q want=%q", path, reason, want)
 		}
+	}
+}
+
+// Native responses are recorded once, by Go, under Python's route template;
+// proxied ones are recorded by Python and must not be counted twice.
+func TestTelemetryRecordsOnlyNativeRequests(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer upstream.Close()
+	out := &bytes.Buffer{}
+	recorder, err := telemetry.New(context.Background(), telemetry.Config{ServiceName: "test-go"}, telemetry.Options{Stdout: out})
+	if err != nil {
+		t.Fatal(err)
+	}
+	native := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusAccepted) })
+	h, err := New(Config{UpstreamURL: upstream.URL, NativeMatchMove: native, Telemetry: recorder})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/api/pvp/matches/m-42/move", nil))
+	h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/api/games", nil))            // proxied
+	h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/api/pvp/matches/m-42", nil)) // disabled → proxied
+
+	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
+	if len(lines) != 1 {
+		t.Fatalf("recorded %d requests, want only the native one:\n%s", len(lines), out.String())
+	}
+	if !strings.Contains(lines[0], `"route":"/api/pvp/matches/{match_id}/move"`) || !strings.Contains(lines[0], `"status":202`) {
+		t.Fatalf("event=%s", lines[0])
+	}
+}
+
+func TestNativeGamesReadServesOnlyItsRoutes(t *testing.T) {
+	var proxied []string
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		proxied = append(proxied, r.Method+" "+r.URL.Path)
+		w.WriteHeader(http.StatusTeapot)
+	}))
+	defer upstream.Close()
+	var served []string
+	native := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		served = append(served, r.Method+" "+r.URL.Path)
+		w.WriteHeader(http.StatusOK)
+	})
+	h, err := New(Config{UpstreamURL: upstream.URL, NativeGamesRead: native})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, req := range [][2]string{
+		{"GET", "/api/games"}, {"GET", "/api/games/g1"}, {"DELETE", "/api/games/g1"},
+		{"POST", "/api/games"}, {"POST", "/api/games/g1/move"}, {"GET", "/api/games/g1/hint"},
+	} {
+		rr := httptest.NewRecorder()
+		h.ServeHTTP(rr, httptest.NewRequest(req[0], "http://api.chess.test"+req[1], nil))
+	}
+	if strings.Join(served, ",") != "GET /api/games,GET /api/games/g1,DELETE /api/games/g1" {
+		t.Fatalf("served %v", served)
+	}
+	if strings.Join(proxied, ",") != "POST /api/games,POST /api/games/g1/move,GET /api/games/g1/hint" {
+		t.Fatalf("proxied %v", proxied)
+	}
+
+	// Kill-switch off: everything stays in Python.
+	proxied = nil
+	off := mustHandler(t, upstream.URL)
+	off.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "http://api.chess.test/api/games", nil))
+	if len(proxied) != 1 {
+		t.Fatalf("disabled: proxied %v", proxied)
 	}
 }
