@@ -742,7 +742,10 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
             raise HTTPException(400, str(exc)) from exc
 
         fingerprint = operation_fingerprint({"mapId": body.map_id})
-        starting_party_level = party_level if party_level is not None else 1
+        # Old clients did not send a party snapshot. Keep those runs unscaled so
+        # rolling deploys preserve the exact manifest revision they already know.
+        # Current Chronicles clients always send the bounded party level header.
+        starting_party_level = party_level
         run_id = _run_id(username, idempotency_key)
         try:
             if idempotency_key:
