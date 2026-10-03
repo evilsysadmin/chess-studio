@@ -38,7 +38,7 @@ import {
 } from '../chronicles/chroniclesActionForecast.js';
 import { chroniclesProjectSceneModel } from '../chronicles/chroniclesSceneModel.js';
 import {
-  chroniclesDifficultyBand,
+  chroniclesResolvedDifficultyBand,
   chroniclesRunDepth,
 } from '../chronicles/chroniclesDifficultyPolicy.js';
 import {
@@ -169,13 +169,14 @@ export default function ChroniclesOfMatthiasTactics({
       claimedRewards: state.claimedRewards,
     });
   }, [authoritativeRun?.seed, progression, state.claimedRewards, state.mapId, state.phase]);
-  const difficultyBand = useMemo(() => (
-    authoritativeRun?.areas?.find((area) => area.mapId === state.mapId)?.difficulty
-    || chroniclesDifficultyBand({
+  const difficultyBand = useMemo(() => chroniclesResolvedDifficultyBand(
+    authoritativeRun,
+    state.mapId,
+    {
       progression,
       deployedMemberIds: state.party?.map((member) => member.id),
       depth: chroniclesRunDepth(authoritativeRun, state.mapId),
-    })
+    },
   ), [authoritativeRun, progression, state.mapId, state.party]);
   const forecastView = useMemo(() => {
     if (!canAct) return {};
