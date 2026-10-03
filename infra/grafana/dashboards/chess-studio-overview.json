@@ -496,7 +496,7 @@
             "type": "prometheus",
             "uid": "${metrics_datasource_uid}"
           },
-          "expr": "sum(increase(chess_studio_http_server_requests_total{service_name=~\"${backend_service:regex}\",http_response_status_class=\"5xx\"}[15m])) or vector(0)",
+          "expr": "sum(increase(chess_studio_http_server_requests_total{service_name=~\"(${backend_service:regex})(-go)?\",http_response_status_class=\"5xx\"}[15m])) or vector(0)",
           "refId": "A"
         }
       ],
@@ -536,7 +536,7 @@
             "type": "loki",
             "uid": "${logs_datasource_uid}"
           },
-          "expr": "sum(count_over_time({service_name=~\"${backend_service:regex}\"} | json | event=\"http_request\" | status = 404 [1h]))",
+          "expr": "sum(count_over_time({service_name=~\"(${backend_service:regex})(-go)?\"} | json | event=\"http_request\" | status = 404 [1h]))",
           "refId": "A",
           "queryType": "instant"
         }
@@ -577,7 +577,7 @@
             "type": "prometheus",
             "uid": "${metrics_datasource_uid}"
           },
-          "expr": "(1000 * histogram_quantile(0.95, sum by (le) (rate(chess_studio_http_server_duration_seconds_bucket{service_name=~\"${backend_service:regex}\"}[15m])))) or vector(0)",
+          "expr": "(1000 * histogram_quantile(0.95, sum by (le) (rate(chess_studio_http_server_duration_seconds_bucket{service_name=~\"(${backend_service:regex})(-go)?\"}[15m])))) or vector(0)",
           "refId": "A"
         }
       ],
@@ -629,7 +629,7 @@
             "type": "prometheus",
             "uid": "${metrics_datasource_uid}"
           },
-          "expr": "sum(increase(chess_studio_http_server_requests_total{service_name=~\"${backend_service:regex}\"}[15m])) or vector(0)",
+          "expr": "sum(increase(chess_studio_http_server_requests_total{service_name=~\"(${backend_service:regex})(-go)?\"}[15m])) or vector(0)",
           "refId": "A"
         }
       ],
@@ -669,7 +669,7 @@
             "type": "prometheus",
             "uid": "${metrics_datasource_uid}"
           },
-          "expr": "sum by (http_response_status_class) (rate(chess_studio_http_server_requests_total{service_name=~\"${backend_service:regex}\"}[$__rate_interval])) or vector(0)",
+          "expr": "sum by (http_response_status_class) (rate(chess_studio_http_server_requests_total{service_name=~\"(${backend_service:regex})(-go)?\"}[$__rate_interval])) or vector(0)",
           "refId": "A"
         }
       ],
@@ -709,7 +709,7 @@
             "type": "prometheus",
             "uid": "${metrics_datasource_uid}"
           },
-          "expr": "topk(8, 1000 * histogram_quantile(0.95, sum by (le, http_route) (rate(chess_studio_http_server_duration_seconds_bucket{service_name=~\"${backend_service:regex}\"}[$__rate_interval])))) or vector(0)",
+          "expr": "topk(8, 1000 * histogram_quantile(0.95, sum by (le, http_route) (rate(chess_studio_http_server_duration_seconds_bucket{service_name=~\"(${backend_service:regex})(-go)?\"}[$__rate_interval])))) or vector(0)",
           "refId": "A"
         }
       ],
@@ -750,7 +750,7 @@
             "type": "loki",
             "uid": "${logs_datasource_uid}"
           },
-          "expr": "{service_name=~\"${backend_service:regex}\"} | json | event=\"http_request\" | status >= 500 | line_format \"{{.status}} {{.method}} {{.route}} · {{.duration_ms}}ms · req={{.request_id}} · trace={{.trace_id}}\"",
+          "expr": "{service_name=~\"(${backend_service:regex})(-go)?\"} | json | event=\"http_request\" | status >= 500 | line_format \"{{.status}} {{.method}} {{.route}} · {{.duration_ms}}ms · req={{.request_id}} · trace={{.trace_id}}\"",
           "refId": "A",
           "queryType": "range"
         }
@@ -819,7 +819,7 @@
             "type": "prometheus",
             "uid": "${metrics_datasource_uid}"
           },
-          "expr": "100 * (sum(increase(chess_studio_http_server_requests_total{service_name=~\"${backend_service:regex}\",http_response_status_class=\"5xx\"}[15m])) / clamp_min(sum(increase(chess_studio_http_server_requests_total{service_name=~\"${backend_service:regex}\"}[15m])), 1))",
+          "expr": "100 * (sum(increase(chess_studio_http_server_requests_total{service_name=~\"(${backend_service:regex})(-go)?\",http_response_status_class=\"5xx\"}[15m])) / clamp_min(sum(increase(chess_studio_http_server_requests_total{service_name=~\"(${backend_service:regex})(-go)?\"}[15m])), 1))",
           "refId": "A"
         }
       ],
