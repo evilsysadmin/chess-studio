@@ -235,6 +235,17 @@ async function assertMobileTouchTargets(room) {
   }
 }
 
+async function assertOpponentNameReadable(room, { minWidth = 24 } = {}) {
+  const name = room.locator('.pvp-war-room__identity>strong');
+  await expect(name).toHaveText('bob');
+  const metrics = await name.evaluate((element) => ({
+    clientWidth: element.clientWidth,
+    scrollWidth: element.scrollWidth,
+  }));
+  expect(metrics.clientWidth, 'opponent name keeps usable width').toBeGreaterThanOrEqual(minWidth);
+  expect(metrics.scrollWidth, 'short opponent name is not ellipsized').toBeLessThanOrEqual(metrics.clientWidth + 1);
+}
+
 test('PvP Duel Room · runtime desktop visual artifact', async ({ page }) => {
   test.setTimeout(120_000);
   const viewport = { width: 1440, height: 900 };
@@ -256,6 +267,7 @@ test.describe('PvP Duel Room · mobile touch orientation', () => {
     const viewport = { width: 390, height: 844 };
     const { room } = await openDuelRoom(page, viewport);
     await assertMobileTouchTargets(room);
+    await assertOpponentNameReadable(room, { minWidth: 40 });
     await expect(page.getByRole('button', { name: 'Activar apaisado', exact: true })).toBeVisible();
     const png = await captureDuelRoomFromCompositor(
       page,
@@ -269,6 +281,7 @@ test.describe('PvP Duel Room · mobile touch orientation', () => {
     test.setTimeout(120_000);
     const viewport = { width: 844, height: 390 };
     const { room } = await openDuelRoom(page, viewport);
+    await assertOpponentNameReadable(room);
     await expect(page.getByRole('button', { name: 'Activar apaisado', exact: true })).toHaveCount(0);
     const png = await captureDuelRoomFromCompositor(
       page,
