@@ -47,12 +47,12 @@ func (s *MongoStore) ReadMatchAndTouchPresence(
 	err = s.db.Collection("pvp_matches").FindOneAndUpdate(
 		queryCtx,
 		bson.M{
-			"_id": matchID,
-			playerField: username,
+			"_id":              matchID,
+			playerField:        username,
 			"acceptance_state": bson.M{"$ne": "staged"},
 		},
 		bson.M{
-			"$set": bson.M{seenField: now},
+			"$set":   bson.M{seenField: now},
 			"$unset": bson.M{graceField: ""},
 		},
 		options.FindOneAndUpdate().SetReturnDocument(options.After),
@@ -106,10 +106,10 @@ func (s *MongoStore) MarkVirtualReady(
 	err = s.db.Collection("pvp_matches").FindOneAndUpdate(
 		queryCtx,
 		bson.M{
-			"_id": matchID,
-			"revision": row.Revision,
-			"status": "starting",
-			playerField: virtualUsername,
+			"_id":              matchID,
+			"revision":         row.Revision,
+			"status":           "starting",
+			playerField:        virtualUsername,
 			"acceptance_state": bson.M{"$ne": "staged"},
 		},
 		bson.M{
@@ -145,19 +145,19 @@ func (s *MongoStore) FinishReadHandoffTimeout(
 	err := s.db.Collection("pvp_matches").FindOneAndUpdate(
 		queryCtx,
 		bson.M{
-			"_id": matchID,
-			"revision": expectedRevision,
-			"status": "starting",
-			"ready_deadline": bson.M{"$lte": now},
+			"_id":              matchID,
+			"revision":         expectedRevision,
+			"status":           "starting",
+			"ready_deadline":   bson.M{"$lte": now},
 			"acceptance_state": bson.M{"$ne": "staged"},
 		},
 		bson.M{
 			"$set": bson.M{
-				"status": "cancelled",
-				"result": nil,
-				"end_reason": "handoff_timeout",
+				"status":          "cancelled",
+				"result":          nil,
+				"end_reason":      "handoff_timeout",
 				"turn_started_at": nil,
-				"updated_at": now,
+				"updated_at":      now,
 			},
 			"$inc": bson.M{"revision": 1},
 		},

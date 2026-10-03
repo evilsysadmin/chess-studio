@@ -78,7 +78,7 @@ func (c *Client) Move(ctx context.Context, fen, resident string) (string, error)
 		FEN      string `json:"fen"`
 		Resident string `json:"resident"`
 	}{
-		FEN: strings.TrimSpace(fen),
+		FEN:      strings.TrimSpace(fen),
 		Resident: strings.TrimSpace(resident),
 	}
 	body, err := json.Marshal(payload)

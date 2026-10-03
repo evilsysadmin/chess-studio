@@ -12,45 +12,47 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/pvpclock"
 )
 
 type fakeStore struct {
-	exists    bool
-	version   int64
-	revision  string
-	match     matchPulseState
-	member    rosterRow
-	authErr   error
-	revErr    error
-	matchErr  error
-	joinErr   error
-	leaveErr  error
-	chatErr   error
-	challengeErr error
-	cancelChallenge challengeRow
-	declineChallenge challengeRow
-	cancelFound bool
-	declineFound bool
-	cancelMatch cancelMatchRow
-	cancelResult cancelMatchResult
-	cancelMatchErr error
-	readyMatch cancelMatchRow
-	readyResult readyMatchResult
-	readyErr error
-	readyFailures int
-	readyCalls int
-	readyUser string
-	leftUsers []string
-	chatRows  []chatMessageRow
-	handoffMatch cancelMatchRow
-	handoffFound bool
-	handoffErr error
-	systemMessages []string
-	syntheticRoster map[string]int64
-	syntheticErr error
-	challengeSnapshot challengeRow
+	exists                 bool
+	version                int64
+	revision               string
+	match                  matchPulseState
+	member                 rosterRow
+	authErr                error
+	revErr                 error
+	matchErr               error
+	joinErr                error
+	leaveErr               error
+	chatErr                error
+	challengeErr           error
+	cancelChallenge        challengeRow
+	declineChallenge       challengeRow
+	cancelFound            bool
+	declineFound           bool
+	cancelMatch            cancelMatchRow
+	cancelResult           cancelMatchResult
+	cancelMatchErr         error
+	readyMatch             cancelMatchRow
+	readyResult            readyMatchResult
+	readyErr               error
+	readyFailures          int
+	readyCalls             int
+	readyUser              string
+	leftUsers              []string
+	chatRows               []chatMessageRow
+	handoffMatch           cancelMatchRow
+	handoffFound           bool
+	handoffErr             error
+	systemMessages         []string
+	syntheticRoster        map[string]int64
+	syntheticErr           error
+	challengeSnapshot      challengeRow
 	challengeSnapshotFound bool
-	challengeSnapshotErr error
+	challengeSnapshotErr   error
 }
 
 func (f *fakeStore) AuthState(context.Context, string) (bool, int64, error) {
@@ -75,7 +77,9 @@ func (f *fakeStore) LeaveRoster(_ context.Context, username string, _ time.Time)
 }
 
 func (f *fakeStore) AppendLobbyChat(_ context.Context, username, text string, now time.Time) (chatMessageRow, error) {
-	if f.chatErr != nil { return chatMessageRow{}, f.chatErr }
+	if f.chatErr != nil {
+		return chatMessageRow{}, f.chatErr
+	}
 	row := chatMessageRow{ID: "chat-1", Username: username, Text: text, Kind: "message", CreatedAt: now}
 	f.chatRows = append(f.chatRows, row)
 	return row, nil
@@ -343,13 +347,12 @@ func signedToken(t *testing.T, subject string, version int64, expires time.Time,
 	return unsigned + "." + base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
 }
 
-
 func TestMatchPulseReturnsRevisionAndLifecycleHint(t *testing.T) {
 	now := time.Date(2026, 10, 1, 20, 0, 0, 0, time.UTC)
 	store := &fakeStore{
 		exists:  true,
 		version: 2,
-		match: matchPulseState{Found: true, Revision: 7, Status: "active", LifecycleDue: true, OpponentPresence: "reconnecting"},
+		match:   matchPulseState{Found: true, Revision: 7, Status: "active", LifecycleDue: true, OpponentPresence: "reconnecting"},
 	}
 	h, err := NewHandler(HandlerConfig{Store: store, JWTSecret: "01234567890123456789012345678901", Now: func() time.Time { return now }})
 	if err != nil {
@@ -392,13 +395,29 @@ func TestMatchPulseNotFoundIsExplicit(t *testing.T) {
 
 func TestMatchLifecycleDueAtClockBoundary(t *testing.T) {
 	now := time.Date(2026, 10, 1, 20, 0, 10, 0, time.UTC)
-	row := matchRow{Status: "active", Turn: "w", WhiteClockMS: 5000, TurnStartedAt: now.Add(-5 * time.Second)}
+	whiteClock := int64(5000)
+	row := matchRow{Status: "active", Turn: "w", WhiteClockMS: &whiteClock, TurnStartedAt: now.Add(-5 * time.Second)}
 	if !matchLifecycleDue(row, now) {
 		t.Fatal("expected lifecycle due when running clock reaches zero")
 	}
-	row.WhiteClockMS = 6000
+	whiteClock = 6000
 	if matchLifecycleDue(row, now) {
 		t.Fatal("did not expect lifecycle due before clock expiry")
+	}
+}
+
+// Legacy documents without stored clocks must use the full initial clock, the
+// same fallback as the read, move, timeout and disconnect paths. Decoding them
+// as zero made the pulse demand a full reconcile on every poll.
+func TestMatchLifecycleUsesInitialClockWhenFieldMissing(t *testing.T) {
+	now := time.Date(2026, 10, 1, 20, 0, 10, 0, time.UTC)
+	row := matchRow{Status: "active", Turn: "b", TurnStartedAt: now.Add(-5 * time.Second)}
+	if matchLifecycleDue(row, now) {
+		t.Fatal("a missing clock is the initial clock, not an expired one")
+	}
+	row.TurnStartedAt = now.Add(-time.Duration(pvpclock.InitialMS) * time.Millisecond)
+	if !matchLifecycleDue(row, now) {
+		t.Fatal("expected lifecycle due once the initial clock elapses")
 	}
 }
 
@@ -452,16 +471,16 @@ func TestNativeRosterJoinAndLeave(t *testing.T) {
 		version: 5,
 		member: rosterRow{
 			Username: "alice",
-			Rating: 1210,
-			Tier: "Intermedio",
+			Rating:   1210,
+			Tier:     "Intermedio",
 			JoinedAt: now.Add(-time.Minute),
 		},
 	}
 	h, err := NewHandler(HandlerConfig{
-		Store: store,
-		JWTSecret: "01234567890123456789012345678901",
+		Store:        store,
+		JWTSecret:    "01234567890123456789012345678901",
 		EnableRoster: true,
-		Now: func() time.Time { return now },
+		Now:          func() time.Time { return now },
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -502,32 +521,36 @@ func TestNativeRosterJoinAndLeave(t *testing.T) {
 func TestNativeRosterOwnerHeartbeatKeepsSyntheticRivalsAlive(t *testing.T) {
 	now := time.Date(2026, 10, 2, 13, 30, 0, 0, time.UTC)
 	store := &fakeStore{
-		exists: true,
+		exists:  true,
 		version: 1,
-		member: rosterRow{Username: "evilsysadmin", Rating: 400, Tier: "Principiante", JoinedAt: now},
+		member:  rosterRow{Username: "evilsysadmin", Rating: 400, Tier: "Principiante", JoinedAt: now},
 	}
 	h, err := NewHandler(HandlerConfig{
-		Store: store,
-		JWTSecret: "01234567890123456789012345678901",
-		EnableRoster: true,
+		Store:                 store,
+		JWTSecret:             "01234567890123456789012345678901",
+		EnableRoster:          true,
 		VirtualPlayersEnabled: true,
-		VirtualOwner: "evilsysadmin",
-		SparringUsername: "sparringmeister",
-		Now: func() time.Time { return now },
+		VirtualOwner:          "evilsysadmin",
+		SparringUsername:      "sparringmeister",
+		Now:                   func() time.Time { return now },
 	})
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	token := signedToken(t, "evilsysadmin", 1, now.Add(time.Hour), "session", "01234567890123456789012345678901")
 	req := httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/roster", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
-	if rr.Code != http.StatusOK { t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String()) }
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
 
 	want := map[string]int64{
 		"sparringmeister": 400,
-		"otto_falk": 850,
-		"marta_stein": 1200,
-		"viktor_kraus": 1450,
+		"otto_falk":       850,
+		"marta_stein":     1200,
+		"viktor_kraus":    1450,
 	}
 	for username, rating := range want {
 		if got := store.syntheticRoster[username]; got != rating {
@@ -539,26 +562,30 @@ func TestNativeRosterOwnerHeartbeatKeepsSyntheticRivalsAlive(t *testing.T) {
 func TestNativeRosterNonOwnerHeartbeatDoesNotSeedSyntheticRivals(t *testing.T) {
 	now := time.Date(2026, 10, 2, 13, 30, 0, 0, time.UTC)
 	store := &fakeStore{
-		exists: true,
+		exists:  true,
 		version: 1,
-		member: rosterRow{Username: "alice", Rating: 400, Tier: "Principiante", JoinedAt: now},
+		member:  rosterRow{Username: "alice", Rating: 400, Tier: "Principiante", JoinedAt: now},
 	}
 	h, err := NewHandler(HandlerConfig{
-		Store: store,
-		JWTSecret: "01234567890123456789012345678901",
-		EnableRoster: true,
+		Store:                 store,
+		JWTSecret:             "01234567890123456789012345678901",
+		EnableRoster:          true,
 		VirtualPlayersEnabled: true,
-		VirtualOwner: "evilsysadmin",
-		SparringUsername: "sparringmeister",
-		Now: func() time.Time { return now },
+		VirtualOwner:          "evilsysadmin",
+		SparringUsername:      "sparringmeister",
+		Now:                   func() time.Time { return now },
 	})
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	token := signedToken(t, "alice", 1, now.Add(time.Hour), "session", "01234567890123456789012345678901")
 	req := httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/roster", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
-	if rr.Code != http.StatusOK { t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String()) }
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
 	if len(store.syntheticRoster) != 0 {
 		t.Fatalf("non-owner seeded synthetic roster=%#v", store.syntheticRoster)
 	}
@@ -567,15 +594,15 @@ func TestNativeRosterNonOwnerHeartbeatDoesNotSeedSyntheticRivals(t *testing.T) {
 func TestNativeRosterJoinRateLimit(t *testing.T) {
 	now := time.Date(2026, 10, 1, 20, 0, 0, 0, time.UTC)
 	store := &fakeStore{
-		exists: true,
+		exists:  true,
 		version: 1,
-		member: rosterRow{Username: "alice", Rating: 400, Tier: "Principiante", JoinedAt: now},
+		member:  rosterRow{Username: "alice", Rating: 400, Tier: "Principiante", JoinedAt: now},
 	}
 	h, err := NewHandler(HandlerConfig{
-		Store: store,
-		JWTSecret: "01234567890123456789012345678901",
+		Store:        store,
+		JWTSecret:    "01234567890123456789012345678901",
 		EnableRoster: true,
-		Now: func() time.Time { return now },
+		Now:          func() time.Time { return now },
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -605,7 +632,7 @@ func TestNativeRosterJoinRateLimit(t *testing.T) {
 func TestRatingNormalizationMatchesPythonContract(t *testing.T) {
 	for _, tc := range []struct {
 		value any
-		want int64
+		want  int64
 	}{
 		{nil, 400},
 		{int64(0), 400},
@@ -620,23 +647,32 @@ func TestRatingNormalizationMatchesPythonContract(t *testing.T) {
 	}
 }
 
-
 func TestNativeLobbyChatMatchesPythonContract(t *testing.T) {
 	now := time.Date(2026, 10, 2, 8, 0, 0, 123000000, time.UTC)
 	store := &fakeStore{exists: true, version: 6}
 	h, err := NewHandler(HandlerConfig{Store: store, JWTSecret: "01234567890123456789012345678901", EnableChat: true, Now: func() time.Time { return now }})
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	token := signedToken(t, "alice", 6, now.Add(time.Hour), "session", "01234567890123456789012345678901")
 	req := httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/lobby/chat", strings.NewReader("{\"text\":\"  hola   mundo  \"}"))
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
-	if rr.Code != http.StatusOK { t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String()) }
-	if got := rr.Header().Get("X-Chess-Pvp-Native"); got != "lobby-chat" { t.Fatalf("native header=%q", got) }
-	if len(store.chatRows) != 1 || store.chatRows[0].Text != "hola mundo" || store.chatRows[0].Username != "alice" { t.Fatalf("chat rows=%#v", store.chatRows) }
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	if got := rr.Header().Get("X-Chess-Pvp-Native"); got != "lobby-chat" {
+		t.Fatalf("native header=%q", got)
+	}
+	if len(store.chatRows) != 1 || store.chatRows[0].Text != "hola mundo" || store.chatRows[0].Username != "alice" {
+		t.Fatalf("chat rows=%#v", store.chatRows)
+	}
 	var body map[string]any
-	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil { t.Fatal(err) }
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
 	msg, ok := body["message"].(map[string]any)
 	if !ok || msg["id"] != "chat-1" || msg["username"] != "alice" || msg["text"] != "hola mundo" || msg["kind"] != "message" || msg["isSelf"] != true {
 		t.Fatalf("unexpected message=%#v", body["message"])
@@ -647,49 +683,62 @@ func TestNativeLobbyChatValidationAndRateLimit(t *testing.T) {
 	now := time.Date(2026, 10, 2, 8, 0, 0, 0, time.UTC)
 	store := &fakeStore{exists: true, version: 1}
 	h, err := NewHandler(HandlerConfig{Store: store, JWTSecret: "01234567890123456789012345678901", EnableChat: true, Now: func() time.Time { return now }})
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	token := signedToken(t, "alice", 1, now.Add(time.Hour), "session", "01234567890123456789012345678901")
 
 	bad := httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/lobby/chat", strings.NewReader("{\"text\":\"   \"}"))
 	bad.Header.Set("Authorization", "Bearer "+token)
 	badRR := httptest.NewRecorder()
 	h.ServeHTTP(badRR, bad)
-	if badRR.Code != http.StatusUnprocessableEntity { t.Fatalf("blank status=%d body=%s", badRR.Code, badRR.Body.String()) }
+	if badRR.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("blank status=%d body=%s", badRR.Code, badRR.Body.String())
+	}
 
 	for i := 0; i < lobbyChatLimit-1; i++ {
 		req := httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/lobby/chat", strings.NewReader("{\"text\":\"hola\"}"))
 		req.Header.Set("Authorization", "Bearer "+token)
 		rr := httptest.NewRecorder()
 		h.ServeHTTP(rr, req)
-		if rr.Code != http.StatusOK { t.Fatalf("request %d status=%d body=%s", i+1, rr.Code, rr.Body.String()) }
+		if rr.Code != http.StatusOK {
+			t.Fatalf("request %d status=%d body=%s", i+1, rr.Code, rr.Body.String())
+		}
 	}
 	req := httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/lobby/chat", strings.NewReader("{\"text\":\"uno más\"}"))
 	req.Header.Set("Authorization", "Bearer "+token)
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
-	if rr.Code != http.StatusTooManyRequests { t.Fatalf("rate status=%d want=429 body=%s", rr.Code, rr.Body.String()) }
-	if rr.Header().Get("Retry-After") == "" { t.Fatal("missing Retry-After") }
+	if rr.Code != http.StatusTooManyRequests {
+		t.Fatalf("rate status=%d want=429 body=%s", rr.Code, rr.Body.String())
+	}
+	if rr.Header().Get("Retry-After") == "" {
+		t.Fatal("missing Retry-After")
+	}
 }
 
 func TestNativeLobbyChatDisabledReturnsNotFound(t *testing.T) {
 	now := time.Date(2026, 10, 2, 8, 0, 0, 0, time.UTC)
 	h, err := NewHandler(HandlerConfig{Store: &fakeStore{exists: true, version: 1}, JWTSecret: "01234567890123456789012345678901", Now: func() time.Time { return now }})
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	token := signedToken(t, "alice", 1, now.Add(time.Hour), "session", "01234567890123456789012345678901")
 	req := httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/lobby/chat", strings.NewReader("{\"text\":\"hola\"}"))
 	req.Header.Set("Authorization", "Bearer "+token)
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
-	if rr.Code != http.StatusNotFound { t.Fatalf("status=%d want=404 body=%s", rr.Code, rr.Body.String()) }
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("status=%d want=404 body=%s", rr.Code, rr.Body.String())
+	}
 }
-
 
 func TestNativeChallengeCancelAndDeclineParity(t *testing.T) {
 	now := time.Date(2026, 10, 2, 9, 0, 0, 0, time.UTC)
 	base := challengeRow{
 		ID: "c-1", Challenger: "alice", Opponent: "bob",
 		ChallengerRating: 1200, OpponentRating: 1300,
-		CreatedAt: now.Add(-10*time.Second), ResolvedAt: now,
+		CreatedAt: now.Add(-10 * time.Second), ResolvedAt: now,
 	}
 	store := &fakeStore{exists: true, version: 3, cancelFound: true, declineFound: true}
 	store.cancelChallenge = base
@@ -697,21 +746,27 @@ func TestNativeChallengeCancelAndDeclineParity(t *testing.T) {
 	store.declineChallenge = base
 	store.declineChallenge.Status = "declined"
 	h, err := NewHandler(HandlerConfig{
-		Store: store,
-		JWTSecret: "01234567890123456789012345678901",
+		Store:                     store,
+		JWTSecret:                 "01234567890123456789012345678901",
 		EnableChallengeResolution: true,
-		Now: func() time.Time { return now },
+		Now:                       func() time.Time { return now },
 	})
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	aliceToken := signedToken(t, "alice", 3, now.Add(time.Hour), "session", "01234567890123456789012345678901")
 	cancelReq := httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/challenges/c-1/cancel", nil)
 	cancelReq.Header.Set("Authorization", "Bearer "+aliceToken)
 	cancelRR := httptest.NewRecorder()
 	h.ServeHTTP(cancelRR, cancelReq)
-	if cancelRR.Code != http.StatusOK { t.Fatalf("cancel status=%d body=%s", cancelRR.Code, cancelRR.Body.String()) }
+	if cancelRR.Code != http.StatusOK {
+		t.Fatalf("cancel status=%d body=%s", cancelRR.Code, cancelRR.Body.String())
+	}
 	var cancelBody map[string]any
-	if err := json.Unmarshal(cancelRR.Body.Bytes(), &cancelBody); err != nil { t.Fatal(err) }
+	if err := json.Unmarshal(cancelRR.Body.Bytes(), &cancelBody); err != nil {
+		t.Fatal(err)
+	}
 	cancelChallenge, ok := cancelBody["challenge"].(map[string]any)
 	if !ok || cancelChallenge["status"] != "cancelled" || cancelChallenge["direction"] != "outgoing" || cancelChallenge["matchId"] != nil {
 		t.Fatalf("cancel challenge=%#v", cancelBody["challenge"])
@@ -722,9 +777,13 @@ func TestNativeChallengeCancelAndDeclineParity(t *testing.T) {
 	declineReq.Header.Set("Authorization", "Bearer "+bobToken)
 	declineRR := httptest.NewRecorder()
 	h.ServeHTTP(declineRR, declineReq)
-	if declineRR.Code != http.StatusOK { t.Fatalf("decline status=%d body=%s", declineRR.Code, declineRR.Body.String()) }
+	if declineRR.Code != http.StatusOK {
+		t.Fatalf("decline status=%d body=%s", declineRR.Code, declineRR.Body.String())
+	}
 	var declineBody map[string]any
-	if err := json.Unmarshal(declineRR.Body.Bytes(), &declineBody); err != nil { t.Fatal(err) }
+	if err := json.Unmarshal(declineRR.Body.Bytes(), &declineBody); err != nil {
+		t.Fatal(err)
+	}
 	declined, ok := declineBody["challenge"].(map[string]any)
 	if !ok || declined["status"] != "declined" || declined["direction"] != "incoming" {
 		t.Fatalf("decline challenge=%#v", declineBody["challenge"])
@@ -734,12 +793,14 @@ func TestNativeChallengeCancelAndDeclineParity(t *testing.T) {
 func TestNativeChallengeResolutionPreservesNotFoundSemantics(t *testing.T) {
 	now := time.Date(2026, 10, 2, 9, 0, 0, 0, time.UTC)
 	h, err := NewHandler(HandlerConfig{
-		Store: &fakeStore{exists: true, version: 1},
-		JWTSecret: "01234567890123456789012345678901",
+		Store:                     &fakeStore{exists: true, version: 1},
+		JWTSecret:                 "01234567890123456789012345678901",
 		EnableChallengeResolution: true,
-		Now: func() time.Time { return now },
+		Now:                       func() time.Time { return now },
 	})
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	token := signedToken(t, "alice", 1, now.Add(time.Hour), "session", "01234567890123456789012345678901")
 	for _, tc := range []struct{ suffix, detail string }{
 		{"cancel", "Reto saliente pendiente no encontrado."},
@@ -759,8 +820,8 @@ func TestNativeMatchHandoffCancelPreservesPythonSemantics(t *testing.T) {
 	now := time.Date(2026, 10, 2, 10, 0, 0, 0, time.UTC)
 	endReason := "handoff_cancelled"
 	store := &fakeStore{
-		exists: true,
-		version: 2,
+		exists:       true,
+		version:      2,
 		cancelResult: cancelMatchOK,
 		cancelMatch: cancelMatchRow{
 			ID: "m-1", White: "alice", Black: "bob", FEN: "start-fen", Turn: "w",
@@ -770,25 +831,33 @@ func TestNativeMatchHandoffCancelPreservesPythonSemantics(t *testing.T) {
 		},
 	}
 	h, err := NewHandler(HandlerConfig{
-		Store: store,
-		JWTSecret: "01234567890123456789012345678901",
+		Store:                    store,
+		JWTSecret:                "01234567890123456789012345678901",
 		EnableMatchHandoffCancel: true,
-		Now: func() time.Time { return now },
+		Now:                      func() time.Time { return now },
 	})
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	req := httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/matches/m-1/cancel-starting", nil)
 	req.Header.Set("Authorization", "Bearer "+signedToken(t, "alice", 2, now.Add(time.Hour), "session", "01234567890123456789012345678901"))
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
-	if rr.Code != http.StatusOK { t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String()) }
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
 	if got := rr.Header().Get("X-Chess-Pvp-Native"); got != "match-handoff-cancel" {
 		t.Fatalf("native header=%q", got)
 	}
 	var body map[string]any
-	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil { t.Fatal(err) }
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
 	match, ok := body["match"].(map[string]any)
-	if !ok { t.Fatalf("match=%#v", body["match"]) }
+	if !ok {
+		t.Fatalf("match=%#v", body["match"])
+	}
 	if match["status"] != "cancelled" || match["endReason"] != "handoff_cancelled" || match["youAre"] != "w" || match["yourTurn"] != false {
 		t.Fatalf("unexpected match=%#v", match)
 	}
@@ -804,7 +873,7 @@ func TestNativeMatchHandoffCancelPreservesPythonSemantics(t *testing.T) {
 func TestNativeMatchHandoffCancelPreservesConflictAndNotFoundSemantics(t *testing.T) {
 	now := time.Date(2026, 10, 2, 10, 0, 0, 0, time.UTC)
 	cases := []struct {
-		name string
+		name   string
 		result cancelMatchResult
 		status int
 		detail string
@@ -816,12 +885,14 @@ func TestNativeMatchHandoffCancelPreservesConflictAndNotFoundSemantics(t *testin
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			h, err := NewHandler(HandlerConfig{
-				Store: &fakeStore{exists: true, version: 1, cancelResult: tc.result},
-				JWTSecret: "01234567890123456789012345678901",
+				Store:                    &fakeStore{exists: true, version: 1, cancelResult: tc.result},
+				JWTSecret:                "01234567890123456789012345678901",
 				EnableMatchHandoffCancel: true,
-				Now: func() time.Time { return now },
+				Now:                      func() time.Time { return now },
 			})
-			if err != nil { t.Fatal(err) }
+			if err != nil {
+				t.Fatal(err)
+			}
 			req := httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/matches/m-x/cancel-starting", nil)
 			req.Header.Set("Authorization", "Bearer "+signedToken(t, "alice", 1, now.Add(time.Hour), "session", "01234567890123456789012345678901"))
 			rr := httptest.NewRecorder()
@@ -853,9 +924,9 @@ func TestNativeMatchReadyPreservesStartingAndActivationDTOs(t *testing.T) {
 	now := time.Date(2026, 10, 2, 11, 0, 0, 0, time.UTC)
 	secret := "01234567890123456789012345678901"
 	for _, tc := range []struct {
-		name string
-		row cancelMatchRow
-		wantStatus string
+		name        string
+		row         cancelMatchRow
+		wantStatus  string
 		wantCleanup bool
 	}{
 		{
@@ -875,7 +946,7 @@ func TestNativeMatchReadyPreservesStartingAndActivationDTOs(t *testing.T) {
 				StartAt: now.Add(handoffDelay), TurnStartedAt: now.Add(handoffDelay),
 				ReadyDeadline: now.Add(20 * time.Second), CreatedAt: now.Add(-time.Minute), UpdatedAt: now,
 			},
-			wantStatus: "active",
+			wantStatus:  "active",
 			wantCleanup: true,
 		},
 	} {
@@ -886,23 +957,35 @@ func TestNativeMatchReadyPreservesStartingAndActivationDTOs(t *testing.T) {
 				VirtualOwner: "alice", SparringUsername: "sparringmeister",
 				Now: func() time.Time { return now },
 			})
-			if err != nil { t.Fatal(err) }
+			if err != nil {
+				t.Fatal(err)
+			}
 			req := httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/matches/"+tc.row.ID+"/ready", nil)
 			req.Header.Set("Authorization", "Bearer "+signedToken(t, "alice", 2, now.Add(time.Hour), "session", secret))
 			rr := httptest.NewRecorder()
 			h.ServeHTTP(rr, req)
-			if rr.Code != http.StatusOK { t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String()) }
-			if got := rr.Header().Get("X-Chess-Pvp-Native"); got != "match-ready" { t.Fatalf("native header=%q", got) }
+			if rr.Code != http.StatusOK {
+				t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+			}
+			if got := rr.Header().Get("X-Chess-Pvp-Native"); got != "match-ready" {
+				t.Fatalf("native header=%q", got)
+			}
 			var body map[string]any
-			if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil { t.Fatal(err) }
+			if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+				t.Fatal(err)
+			}
 			match := body["match"].(map[string]any)
-			if match["status"] != tc.wantStatus || match["youReady"] != true { t.Fatalf("match=%#v", match) }
+			if match["status"] != tc.wantStatus || match["youReady"] != true {
+				t.Fatalf("match=%#v", match)
+			}
 			if tc.wantStatus == "active" {
 				if match["opponentReady"] != true || match["startsAt"] == nil || match["yourTurn"] != true {
 					t.Fatalf("active match=%#v", match)
 				}
 				clock := match["clock"].(map[string]any)
-				if clock["runningColor"] != nil { t.Fatalf("countdown clock=%#v", clock) }
+				if clock["runningColor"] != nil {
+					t.Fatalf("countdown clock=%#v", clock)
+				}
 			}
 			if tc.wantCleanup {
 				if len(store.leftUsers) != 2 || store.leftUsers[0] != "alice" || store.leftUsers[1] != "bob" {
@@ -929,7 +1012,9 @@ func TestNativeMatchReadyCleanupFailureDoesNotUndoActivation(t *testing.T) {
 		Store: store, JWTSecret: "01234567890123456789012345678901",
 		EnableMatchReady: true, Now: func() time.Time { return now },
 	})
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	req := httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/matches/m-active/ready", nil)
 	req.Header.Set("Authorization", "Bearer "+signedToken(t, "alice", 1, now.Add(time.Hour), "session", "01234567890123456789012345678901"))
 	rr := httptest.NewRecorder()
@@ -937,7 +1022,9 @@ func TestNativeMatchReadyCleanupFailureDoesNotUndoActivation(t *testing.T) {
 	if rr.Code != http.StatusOK || !strings.Contains(rr.Body.String(), `"status":"active"`) {
 		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
 	}
-	if len(store.leftUsers) != 2 { t.Fatalf("cleanup attempts=%#v", store.leftUsers) }
+	if len(store.leftUsers) != 2 {
+		t.Fatalf("cleanup attempts=%#v", store.leftUsers)
+	}
 }
 
 func TestNativeMatchReadyRetriesTransientStorageFailure(t *testing.T) {
@@ -950,35 +1037,43 @@ func TestNativeMatchReadyRetriesTransientStorageFailure(t *testing.T) {
 		Store: store, JWTSecret: "01234567890123456789012345678901",
 		EnableMatchReady: true, Now: func() time.Time { return now },
 	})
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	req := httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/matches/m-1/ready", nil)
 	req.Header.Set("Authorization", "Bearer "+signedToken(t, "alice", 1, now.Add(time.Hour), "session", "01234567890123456789012345678901"))
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
-	if rr.Code != http.StatusOK { t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String()) }
-	if store.readyCalls != 2 { t.Fatalf("ready calls=%d want=2", store.readyCalls) }
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	if store.readyCalls != 2 {
+		t.Fatalf("ready calls=%d want=2", store.readyCalls)
+	}
 }
 
 func TestNativeMatchReadyPreservesTerminalAndConflictSemantics(t *testing.T) {
 	now := time.Date(2026, 10, 2, 11, 0, 0, 0, time.UTC)
 	secret := "01234567890123456789012345678901"
 	cases := []struct {
-		name string
+		name   string
 		result readyMatchResult
-		row cancelMatchRow
+		row    cancelMatchRow
 		status int
 		detail string
 	}{
 		{"missing", readyMatchNotFound, cancelMatchRow{}, http.StatusNotFound, "Partida 1v1 no encontrada."},
 		{"wrong state", readyMatchWrongState, cancelMatchRow{}, http.StatusConflict, "La partida ya no está preparando el arranque."},
 		{"race", readyMatchRevisionConflict, cancelMatchRow{}, http.StatusConflict, "El duelo cambió mientras sincronizábamos a los jugadores."},
-		{"handoff timeout", readyMatchOK, cancelMatchRow{ID:"m-timeout", White:"alice", Black:"bob", FEN:"start-fen", Status:"cancelled", EndReason:stringPtr("handoff_timeout")}, http.StatusOK, "handoff_timeout"},
+		{"handoff timeout", readyMatchOK, cancelMatchRow{ID: "m-timeout", White: "alice", Black: "bob", FEN: "start-fen", Status: "cancelled", EndReason: stringPtr("handoff_timeout")}, http.StatusOK, "handoff_timeout"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			store := &fakeStore{exists:true, version:1, readyResult:tc.result, readyMatch:tc.row}
-			h, err := NewHandler(HandlerConfig{Store:store, JWTSecret:secret, EnableMatchReady:true, Now:func() time.Time{return now}})
-			if err != nil { t.Fatal(err) }
+			store := &fakeStore{exists: true, version: 1, readyResult: tc.result, readyMatch: tc.row}
+			h, err := NewHandler(HandlerConfig{Store: store, JWTSecret: secret, EnableMatchReady: true, Now: func() time.Time { return now }})
+			if err != nil {
+				t.Fatal(err)
+			}
 			req := httptest.NewRequest(http.MethodPost, "http://edge/api/pvp/matches/m-x/ready", nil)
 			req.Header.Set("Authorization", "Bearer "+signedToken(t, "alice", 1, now.Add(time.Hour), "session", secret))
 			rr := httptest.NewRecorder()
@@ -991,9 +1086,9 @@ func TestNativeMatchReadyPreservesTerminalAndConflictSemantics(t *testing.T) {
 }
 
 func TestVirtualOpponentDetectionMatchesStagingContract(t *testing.T) {
-	cfg := virtualPlayerConfig{Enabled:true, Owner:"alice", SparringUsername:"sparringmeister"}
+	cfg := virtualPlayerConfig{Enabled: true, Owner: "alice", SparringUsername: "sparringmeister"}
 	for _, opponent := range []string{"sparringmeister", "otto_falk", "marta_stein", "viktor_kraus"} {
-		row := cancelMatchRow{White:"alice", Black:opponent}
+		row := cancelMatchRow{White: "alice", Black: opponent}
 		if got := virtualOpponentUsername(row, "alice", cfg); got != opponent {
 			t.Fatalf("opponent=%s got=%q", opponent, got)
 		}

@@ -112,8 +112,8 @@ func moveHistoryBSON(rows []matchmove.HistoryEntry) []bson.M {
 
 func moveCommitFilter(matchID string, expectedRevision int64) bson.M {
 	return bson.M{
-		"_id": matchID,
-		"revision": expectedRevision,
+		"_id":              matchID,
+		"revision":         expectedRevision,
 		"acceptance_state": bson.M{"$ne": "staged"},
 	}
 }
@@ -125,16 +125,16 @@ func moveUpdateDocument(update matchmove.Update) bson.M {
 	}
 	return bson.M{
 		"$set": bson.M{
-			"fen": update.FEN,
-			"turn": update.Turn,
-			"status": update.Status,
-			"result": stringPointerValue(update.Result),
-			"end_reason": stringPointerValue(update.EndReason),
-			"history": moveHistoryBSON(update.History),
-			"white_clock_ms": update.WhiteClockMS,
-			"black_clock_ms": update.BlackClockMS,
+			"fen":             update.FEN,
+			"turn":            update.Turn,
+			"status":          update.Status,
+			"result":          stringPointerValue(update.Result),
+			"end_reason":      stringPointerValue(update.EndReason),
+			"history":         moveHistoryBSON(update.History),
+			"white_clock_ms":  update.WhiteClockMS,
+			"black_clock_ms":  update.BlackClockMS,
 			"turn_started_at": turnStarted,
-			"updated_at": update.UpdatedAt,
+			"updated_at":      update.UpdatedAt,
 		},
 		"$inc": bson.M{"revision": 1},
 	}

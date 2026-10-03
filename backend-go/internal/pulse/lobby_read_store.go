@@ -226,7 +226,7 @@ func (s *MongoStore) lobbyCooldowns(
 	cursor, err := s.db.Collection("pvp_challenges").Find(
 		ctx,
 		bson.M{
-			"pair_key": bson.M{"$in": keys},
+			"pair_key":       bson.M{"$in": keys},
 			"cooldown_until": bson.M{"$gt": now},
 		},
 		options.Find().SetProjection(bson.M{"pair_key": 1, "cooldown_until": 1}),
@@ -268,7 +268,7 @@ func (s *MongoStore) lobbyChallenges(ctx context.Context, username string, now t
 	cursor, err := s.db.Collection("pvp_challenges").Find(
 		ctx,
 		bson.M{
-			"$or": bson.A{bson.M{"challenger": username}, bson.M{"opponent": username}},
+			"$or":    bson.A{bson.M{"challenger": username}, bson.M{"opponent": username}},
 			"status": bson.M{"$in": bson.A{"pending", "accepted"}},
 		},
 		options.Find().SetSort(bson.D{{Key: "created_at", Value: -1}}).SetLimit(24),
@@ -297,9 +297,9 @@ func (s *MongoStore) lobbyActiveMatch(ctx context.Context, username string) (*ca
 	err := s.db.Collection("pvp_matches").FindOne(
 		ctx,
 		bson.M{
-			"status": bson.M{"$in": bson.A{"starting", "active"}},
+			"status":           bson.M{"$in": bson.A{"starting", "active"}},
 			"acceptance_state": bson.M{"$ne": "staged"},
-			"$or": bson.A{bson.M{"white": username}, bson.M{"black": username}},
+			"$or":              bson.A{bson.M{"white": username}, bson.M{"black": username}},
 		},
 		options.FindOne().SetSort(bson.D{{Key: "updated_at", Value: -1}}),
 	).Decode(&row)

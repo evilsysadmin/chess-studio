@@ -179,17 +179,20 @@ func TestApplyUCIRejectsInvalidFEN(t *testing.T) {
 	}
 }
 
-
 func TestTurnReadsAuthoritativeFENSide(t *testing.T) {
-	for fen,want:=range map[string]string{
-		"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1":"w",
-		"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1":"b",
-	}{
-		got,err:=Turn(fen)
-		if err!=nil { t.Fatal(err) }
-		if got!=want { t.Fatalf("fen=%q turn=%q want=%q",fen,got,want) }
+	for fen, want := range map[string]string{
+		"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1": "w",
+		"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1": "b",
+	} {
+		got, err := Turn(fen)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got != want {
+			t.Fatalf("fen=%q turn=%q want=%q", fen, got, want)
+		}
 	}
-	if _,err:=Turn("not a fen"); !errors.Is(err,ErrInvalidFEN) {
-		t.Fatalf("err=%v",err)
+	if _, err := Turn("not a fen"); !errors.Is(err, ErrInvalidFEN) {
+		t.Fatalf("err=%v", err)
 	}
 }

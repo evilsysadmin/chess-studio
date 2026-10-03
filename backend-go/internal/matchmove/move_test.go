@@ -184,32 +184,33 @@ func TestPrepareNormalizesPromotionThroughRulesAdapter(t *testing.T) {
 	}
 }
 
-
 func TestPrepareUsesFENTurnButPersistedTurnForClock(t *testing.T) {
-	now:=time.Date(2026,10,2,14,10,0,0,time.UTC)
-	match:=startMatch(now)
+	now := time.Date(2026, 10, 2, 14, 10, 0, 0, time.UTC)
+	match := startMatch(now)
 	// Deliberately reproduce a duplicated-field drift. Python decides move
 	// ownership from chess.Board(fen).turn, but _clock_snapshot still charges
 	// the persisted match["turn"] field.
-	match.Turn="b"
+	match.Turn = "b"
 
-	got,err:=Prepare(match,"alice",Request{From:"e2",To:"e4"},now)
-	if err!=nil { t.Fatal(err) }
-	if got.Turn!="b" || got.UCI!="e2e4" {
-		t.Fatalf("move=%#v",got)
+	got, err := Prepare(match, "alice", Request{From: "e2", To: "e4"}, now)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if got.WhiteClockMS!=600000 || got.BlackClockMS!=598500 {
-		t.Fatalf("clocks=%d/%d want=600000/598500",got.WhiteClockMS,got.BlackClockMS)
+	if got.Turn != "b" || got.UCI != "e2e4" {
+		t.Fatalf("move=%#v", got)
+	}
+	if got.WhiteClockMS != 600000 || got.BlackClockMS != 598500 {
+		t.Fatalf("clocks=%d/%d want=600000/598500", got.WhiteClockMS, got.BlackClockMS)
 	}
 }
 
 func TestPrepareRejectsUserWhenFENSideDisagreesWithPersistedTurn(t *testing.T) {
-	now:=time.Date(2026,10,2,14,10,0,0,time.UTC)
-	match:=startMatch(now)
-	match.FEN="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1"
-	match.Turn="w"
+	now := time.Date(2026, 10, 2, 14, 10, 0, 0, time.UTC)
+	match := startMatch(now)
+	match.FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1"
+	match.Turn = "w"
 
-	if _,err:=Prepare(match,"alice",Request{From:"e2",To:"e4"},now); !errors.Is(err,ErrWrongTurn) {
-		t.Fatalf("err=%v want=%v",err,ErrWrongTurn)
+	if _, err := Prepare(match, "alice", Request{From: "e2", To: "e4"}, now); !errors.Is(err, ErrWrongTurn) {
+		t.Fatalf("err=%v want=%v", err, ErrWrongTurn)
 	}
 }

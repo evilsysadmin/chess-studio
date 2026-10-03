@@ -61,8 +61,8 @@ func (s *DisconnectStore) BeginGrace(
 	err := s.store.db.Collection("pvp_matches").FindOneAndUpdate(
 		queryCtx,
 		bson.M{
-			"_id": matchID,
-			"status": "active",
+			"_id":              matchID,
+			"status":           "active",
 			"acceptance_state": bson.M{"$ne": "staged"},
 		},
 		disconnectGraceUpdate(field, now, restart),
@@ -96,20 +96,20 @@ func (s *DisconnectStore) FinishDisconnect(
 	err := s.store.db.Collection("pvp_matches").FindOneAndUpdate(
 		queryCtx,
 		bson.M{
-			"_id": matchID,
-			"revision": expectedRevision,
-			"status": "active",
+			"_id":              matchID,
+			"revision":         expectedRevision,
+			"status":           "active",
 			"acceptance_state": bson.M{"$ne": "staged"},
 		},
 		bson.M{
 			"$set": bson.M{
-				"status": "finished",
-				"result": result,
-				"end_reason": "disconnect",
-				"white_clock_ms": clampDisconnectClock(whiteClock),
-				"black_clock_ms": clampDisconnectClock(blackClock),
+				"status":          "finished",
+				"result":          result,
+				"end_reason":      "disconnect",
+				"white_clock_ms":  clampDisconnectClock(whiteClock),
+				"black_clock_ms":  clampDisconnectClock(blackClock),
 				"turn_started_at": nil,
-				"updated_at": now,
+				"updated_at":      now,
 			},
 			"$inc": bson.M{"revision": 1},
 		},
@@ -152,22 +152,22 @@ func disconnectDomainMatch(row cancelMatchRow) matchdisconnect.Match {
 		endReason = *row.EndReason
 	}
 	return matchdisconnect.Match{
-		ID: row.ID,
-		White: row.White,
-		Black: row.Black,
-		Turn: row.Turn,
-		Status: row.Status,
-		Result: result,
-		EndReason: endReason,
-		Revision: row.Revision,
-		WhiteClockMS: pointerInt64(row.WhiteClockMS, pvpInitialClockMS),
-		BlackClockMS: pointerInt64(row.BlackClockMS, pvpInitialClockMS),
+		ID:            row.ID,
+		White:         row.White,
+		Black:         row.Black,
+		Turn:          row.Turn,
+		Status:        row.Status,
+		Result:        result,
+		EndReason:     endReason,
+		Revision:      row.Revision,
+		WhiteClockMS:  pointerInt64(row.WhiteClockMS, pvpInitialClockMS),
+		BlackClockMS:  pointerInt64(row.BlackClockMS, pvpInitialClockMS),
 		TurnStartedAt: row.TurnStartedAt,
-		WhiteSeenAt: row.WhiteSeenAt,
-		BlackSeenAt: row.BlackSeenAt,
-		WhiteGraceAt: row.WhiteDisconnectGraceStarted,
-		BlackGraceAt: row.BlackDisconnectGraceStarted,
-		UpdatedAt: row.UpdatedAt,
+		WhiteSeenAt:   row.WhiteSeenAt,
+		BlackSeenAt:   row.BlackSeenAt,
+		WhiteGraceAt:  row.WhiteDisconnectGraceStarted,
+		BlackGraceAt:  row.BlackDisconnectGraceStarted,
+		UpdatedAt:     row.UpdatedAt,
 	}
 }
 

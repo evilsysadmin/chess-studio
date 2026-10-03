@@ -4,12 +4,15 @@ on:
   pull_request:
     paths:
       - 'backend-go/**'
+      # The Go timing contract is asserted against the Python authority.
+      - 'backend-python/pvp_api.py'
       - '.github/workflows/pvp-go.yml'
   push:
     branches:
       - main
     paths:
       - 'backend-go/**'
+      - 'backend-python/pvp_api.py'
       - '.github/workflows/pvp-go.yml'
   workflow_dispatch:
 
@@ -34,6 +37,14 @@ jobs:
         with:
           go-version: '1.27.1'
           cache-dependency-path: backend-go/go.mod
+      - name: Format
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [[ -n "$unformatted" ]]; then
+            echo "::error::gofmt needed in:"
+            echo "$unformatted"
+            exit 1
+          fi
       - name: Unit tests
         run: go test ./...
       - name: Vet
