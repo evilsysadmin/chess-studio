@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/pyjson"
 	"regexp"
 	"strconv"
 	"strings"
@@ -52,7 +53,7 @@ func NormalizeKey(raw *string) (*string, error) {
 
 // Fingerprint mirrors operation_fingerprint.
 func Fingerprint(payload map[string]any) (string, error) {
-	canonical, err := pyJSON(payload)
+	canonical, err := pyjson.Dumps(payload)
 	if err != nil {
 		return "", err
 	}
@@ -155,7 +156,7 @@ func ParseNewGameRequest(body []byte) (NewGameRequest, error) {
 	req := NewGameRequest{Difficulty: 50, Color: "w"}
 	// pydantic does not validate defaults: an absent difficulty stays the int
 	// 50 in model_dump, a present one becomes a float. They hash differently.
-	var difficulty any = PyInt(50)
+	var difficulty any = pyjson.Int(50)
 	if v, ok := raw["difficulty"]; ok {
 		f, err := laxFloat(v)
 		if err != nil {
