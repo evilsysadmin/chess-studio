@@ -12,11 +12,7 @@
     "#P......#",
     "#########"
   ],
-  "partyStart": {
-    "x": 1,
-    "y": 5,
-    "direction": 1
-  },
+  "partyStart": { "x": 1, "y": 5, "direction": 1 },
   "initialFlags": {
     "vaultReliquaryOpened": false
   },
@@ -37,22 +33,10 @@
         "movement": "patrol-route",
         "attackReach": 1,
         "patrolRoute": [
-          {
-            "x": 4,
-            "y": 3
-          },
-          {
-            "x": 5,
-            "y": 3
-          },
-          {
-            "x": 6,
-            "y": 3
-          },
-          {
-            "x": 5,
-            "y": 3
-          }
+          { "x": 4, "y": 3 },
+          { "x": 5, "y": 3 },
+          { "x": 6, "y": 3 },
+          { "x": 5, "y": 3 }
         ],
         "engagedMovement": "cardinal-chase",
         "engageRange": 4
@@ -110,11 +94,7 @@
       "retaliationReach": 2,
       "activation": "always",
       "optional": true,
-      "ai": {
-        "movement": "hold",
-        "attackReach": 2,
-        "requiresLineOfSight": true
-      },
+      "ai": { "movement": "hold", "attackReach": 2, "requiresLineOfSight": true },
       "onDefeat": {
         "message": "{attacker} dispersa la luz del relicario con {attack}. Queda una ceniza que sigue brillando por puro rencor.",
         "effects": [
@@ -138,10 +118,7 @@
       "y": 3,
       "label": "Leer juramento del custodio",
       "when": [
-        {
-          "questId": "behind-the-ash-wall",
-          "questStatus": "active"
-        }
+        { "questId": "behind-the-ash-wall", "questStatus": "active" }
       ],
       "action": {
         "effects": [
@@ -173,30 +150,14 @@
       "y": 3,
       "label": "Abrir relicario de ceniza",
       "when": [
-        {
-          "key": "cinderWardenHp",
-          "lte": 0
-        },
-        {
-          "key": "sootMimicHp",
-          "lte": 0
-        },
-        {
-          "key": "vaultSpiderHp",
-          "lte": 0
-        },
-        {
-          "key": "vaultReliquaryOpened",
-          "equals": false
-        }
+        { "key": "cinderWardenHp", "lte": 0 },
+        { "key": "sootMimicHp", "lte": 0 },
+        { "key": "vaultSpiderHp", "lte": 0 },
+        { "key": "vaultReliquaryOpened", "equals": false }
       ],
       "action": {
         "effects": [
-          {
-            "type": "set",
-            "key": "vaultReliquaryOpened",
-            "value": true
-          },
+          { "type": "set", "key": "vaultReliquaryOpened", "value": true },
           {
             "type": "grant-item",
             "itemId": "obsidian-idol",
@@ -204,10 +165,7 @@
             "description": "Una pieza negra y pesada rescatada de una cámara que oficialmente no existía.",
             "quantity": 1
           },
-          {
-            "type": "heal-party",
-            "amount": 1
-          },
+          { "type": "heal-party", "amount": 1 },
           {
             "type": "complete-quest",
             "questId": "behind-the-ash-wall",
@@ -236,33 +194,14 @@
       "openLabel": "Seguir hacia el Archivo del Rey Ciego",
       "lockedLabel": "Examinar salida sellada",
       "requirements": [
-        {
-          "key": "cinderWardenHp",
-          "lte": 0,
-          "message": "El custodio de escoria aún mantiene el sello."
-        },
-        {
-          "key": "sootMimicHp",
-          "lte": 0,
-          "message": "El mímico de hollín sigue defendiendo el relicario."
-        },
-        {
-          "key": "vaultSpiderHp",
-          "lte": 0,
-          "message": "La araña del relicario sigue viva."
-        },
-        {
-          "key": "vaultReliquaryOpened",
-          "equals": true,
-          "message": "Matthias se niega a salir después de abrir una puerta secreta para dejar el relicario intacto."
-        }
+        { "key": "cinderWardenHp", "lte": 0, "message": "El custodio de escoria aún mantiene el sello." },
+        { "key": "sootMimicHp", "lte": 0, "message": "El mímico de hollín sigue defendiendo el relicario." },
+        { "key": "vaultSpiderHp", "lte": 0, "message": "La araña del relicario sigue viva." },
+        { "key": "vaultReliquaryOpened", "equals": true, "message": "Matthias se niega a salir después de abrir una puerta secreta para dejar el relicario intacto." }
       ],
       "action": {
         "effects": [
-          {
-            "type": "transition-map",
-            "mapId": "blind-king-archive"
-          }
+          { "type": "transition-map", "mapId": "blind-king-archive" }
         ],
         "message": "El pasadizo desemboca en un archivo enterrado. El Ídolo de Obsidiana sigue en la mochila y, por alguna razón, varias paredes parecen reconocerlo.",
         "journal": {
