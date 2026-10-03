@@ -28,7 +28,7 @@ Cloudflare Tunnel → nginx edge (stable :4000) → Go sidecar pvp_<color> → P
 | --- | --- | --- | --- |
 | 1 | PvP (lobby, challenges, matches, residents) | `pvp_*` | Native in Go. Python fallback retires after 2026-10-17 if the evidence holds. |
 | 2 | API front (all traffic through Go) | — | Mode in place, default `direct`. Next: enable it in staging. |
-| 3 | Games vs CPU: `/api/games/*`, `/api/analyze*` | `game_api`, `game_store`, `chess_core`, `engine_analysis`, `cpu_difficulty`, `*_service` | Engine already ported (`residenteval`, `residentsearch`, `residentpolicy`) with Go/Python parity corpora. Next: the game store and the routes. |
+| 3 | Games vs CPU: `/api/games/*`, `/api/analyze*` | `game_api`, `game_store`, `chess_core`, `engine_analysis`, `cpu_difficulty`, `*_service` | Engine ported (`residenteval`, `residentsearch`, `residentpolicy`). Game core ported (`internal/gamecore`: rebuilding from initial FEN or handicap + SAN, snapshot, draw claims, insufficient material, `resolve_move`, FEN validity) with a corpus from `scripts/games_parity_corpus.py`. Next: the game store and the routes. |
 | 4 | System: health, ready, release, status, features, client telemetry | `system_api`, `feature_flags`, `client_telemetry` | Pending. Small, but `status` aggregates every store. |
 | 5 | Auth, users, profile, presence | `auth`, `users_store`, `profile_store`, `auth_*_guard` | Pending. Go already validates sessions. Passwords use Argon2id with legacy bcrypt verification, and both must match. |
 | 6 | Feedback, Matthias daily, narrative, memory and episodes | `feedback_store`, `matthias_*`, `narrative_*` | Pending. `narrative_cloudflare` calls an LLM provider. |
