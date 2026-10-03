@@ -246,7 +246,7 @@ describe('Hans quick-game visual iteration', () => {
     }
   });
 
-  it('mantiene simplificada la War Room táctil cuando no está activo el modo de prueba', () => {
+  it('mantiene el actor ambiental oculto en War Room táctil hasta que le toque su evento', () => {
     setWarRoomHansQuickIterationEnabled(false);
     const room = buildPremiumWarRoomLayer({ felt: 0x173943, glow: 0xc5963f }, true, true);
 
@@ -254,8 +254,12 @@ describe('Hans quick-game visual iteration', () => {
       expect(installWarRoomHansSceneRoutine(room, { towardBoard: 1, coarsePointer: true })).toBeGreaterThan(0);
       expect(room.getObjectByName('war-room-hans-service-door')).toBeTruthy();
       expect(room.getObjectByName('war-room-hearth-log-basket').userData.warRoomHansBasketFinish).toBe('graphite-grey-v1');
-      expect(room.getObjectByName('war-room-hans-butler')).toBeFalsy();
-      expect(room.getObjectByName('war-room-hans-fireplace-driver')).toBeFalsy();
+      const hans = room.getObjectByName('war-room-hans-butler');
+      const driver = room.getObjectByName('war-room-hans-fireplace-driver');
+      expect(hans).toBeTruthy();
+      expect(driver).toBeTruthy();
+      expect(hans.visible).toBe(false);
+      expect(driver.userData.warRoomHansSelected).toBe(false);
     } finally {
       dispose(room);
     }
