@@ -18,14 +18,6 @@ on:
         default: false
         type: boolean
 
-# Legacy source-reader markers while delivery audits migrate to the release-train contract:
-# workflow_run:
-#   workflows:
-#     - Staging · AI Worker
-# github.event.workflow_run.conclusion == 'success'
-# github.event.workflow_run.event == 'workflow_run'
-# run-id: ${{ github.event.workflow_run.id }}
-
 permissions:
   actions: write
   contents: read
@@ -481,7 +473,7 @@ jobs:
         working-directory: release-source/frontend
         env:
           VITE_API_URL: ${{ env.PRODUCTION_API_URL }}
-          # Same as staging: the War Room «…» menu offers v1/v2/v3 and v2 is the default. Removing
+          # Same as staging: the War Room «…» menu offers v1/v2/v3/v4 and v3 is the default. Removing
           # this line is the rollback lever (everyone is back on the classic room).
           VITE_WAR_ROOM_VARIANTS_ENABLE: '1'
           VITE_PUBLIC_BASE: /
