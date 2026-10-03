@@ -16,6 +16,29 @@ static func selected_stage_id(default_stage_id: String, stage_catalog: Array) ->
             return requested
     return default_stage_id
 
+static func calm_visual_capture_probe(enemies: Array[Dictionary]) -> Array[Dictionary]:
+    # CI/staging smokes only: with __pawnSlugVisualProbeX and
+    # __pawnSlugVisualProbeCalmRadius set, the enemies around the probe start are
+    # left out, so a smoke proving input and sprites cannot be killed (and
+    # respawned with the pistol) while the page boots. Production never sets them.
+    if not OS.has_feature("web"):
+        return enemies
+    var probe_x = JavaScriptBridge.eval(
+        "typeof window.__pawnSlugVisualProbeX === 'number' ? window.__pawnSlugVisualProbeX : null",
+        true,
+    )
+    var radius = JavaScriptBridge.eval(
+        "typeof window.__pawnSlugVisualProbeCalmRadius === 'number' ? window.__pawnSlugVisualProbeCalmRadius : null",
+        true,
+    )
+    if typeof(probe_x) not in [TYPE_INT, TYPE_FLOAT] or typeof(radius) not in [TYPE_INT, TYPE_FLOAT]:
+        return enemies
+    var kept: Array[Dictionary] = []
+    for enemy in enemies:
+        if absf(float(enemy.get("x", 0.0)) - float(probe_x)) > float(radius):
+            kept.append(enemy)
+    return kept
+
 static func apply_visual_capture_probe(player, stage_start_x: float, world_size: Vector2) -> void:
     # CI's Playwright harness injects these JS-only globals before Godot boots.
     # Production pages never define them, so probes cannot alter normal gameplay.
