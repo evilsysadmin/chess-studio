@@ -13,6 +13,7 @@ RETIRED_STAGING_PAGES_FAST = ROOT / ".github/workflows/staging-pages-fast.yml"
 MAIN_BACKEND_IMAGE = ROOT / ".github/workflows/main-backend-image.yml"
 STAGING_AI = ROOT / ".github/workflows/staging-ai-worker.yml"
 PROMOTE = ROOT / ".github/workflows/production-promote.yml"
+PRODUCTION_RELEASE_TRAIN = ROOT / "scripts/production_release_train.py"
 STAGING_WRANGLER = ROOT / "infra/cloudflare/wrangler.staging.toml"
 STAGING_WORKER_WRAPPER = ROOT / "infra/cloudflare/worker/staging.js"
 STAGING_WORKER_DEPLOY = ROOT / "scripts/deploy_staging_ai_worker.py"
@@ -59,6 +60,7 @@ def main() -> int:
         MAIN_BACKEND_IMAGE,
         STAGING_AI,
         PROMOTE,
+        PRODUCTION_RELEASE_TRAIN,
         STAGING_WRANGLER,
         STAGING_WORKER_WRAPPER,
         STAGING_WORKER_DEPLOY,
@@ -80,6 +82,7 @@ def main() -> int:
     main_backend_image = MAIN_BACKEND_IMAGE.read_text(encoding="utf-8")
     staging_ai = STAGING_AI.read_text(encoding="utf-8")
     promote = PROMOTE.read_text(encoding="utf-8")
+    production_release_train = PRODUCTION_RELEASE_TRAIN.read_text(encoding="utf-8")
     staging_wrangler = STAGING_WRANGLER.read_text(encoding="utf-8")
     staging_worker_wrapper = STAGING_WORKER_WRAPPER.read_text(encoding="utf-8")
     staging_worker_deploy = STAGING_WORKER_DEPLOY.read_text(encoding="utf-8")
@@ -378,15 +381,17 @@ def main() -> int:
         ("La promoción manual sólo puede salir de main", "production manual main-only guard"),
         ("Resolve latest immutable staging accreditation", "production accreditation selector"),
         ("staging-promotion-accreditation", "production immutable staging proof"),
-        (
-            "actions/workflows/staging-ai-worker.yml/runs?event=workflow_run&status=success&branch=main&per_page=100",
-            "production automatic staging source",
-        ),
         ("Snapshot: `fijo al arrancar; no persigue acreditaciones posteriores`", "production fixed release snapshot"),
         ("Resolve Cloudflare zone for Worker Terraform", "production Worker zone resolver"),
         ("TF_VAR_cloudflare_zone_id=$zone_id", "production Worker Terraform zone input"),
     ):
         require(promote, needle, label, errors)
+    require(
+        production_release_train,
+        "actions/workflows/staging-ai-worker.yml/runs?event=workflow_run&status=success&branch=main&per_page=100",
+        "production automatic staging source",
+        errors,
+    )
     forbid(promote, "Staging · preview", "production-promote escucha preview", errors)
 
     # Staging AI is read-only accreditation downstream of canonical staging deploy.
