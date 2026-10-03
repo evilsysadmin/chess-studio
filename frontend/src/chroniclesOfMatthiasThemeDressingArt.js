@@ -5,7 +5,7 @@ import { chroniclesIsometricCellToWorld } from './chronicles/chroniclesIsometric
 const ROOT_NAME = 'chronicles-tactics-theme-dressing';
 const CELL = CHRONICLES_ISOMETRIC_CELL_SIZE;
 
-export const CHRONICLES_TACTICS_THEME_DRESSING_VERSION = 1;
+export const CHRONICLES_TACTICS_THEME_DRESSING_VERSION = 2;
 
 const SIDE = Object.freeze({
   north: Object.freeze({ nx: 0, nz: -1, tx: 1, tz: 0, yaw: 0 }),
