@@ -2171,3 +2171,145 @@
     border-left-width: 3px;
   }
 }
+
+
+/* Premium fidelity pass 8: fix secondary availability action and tighten mobile
+   furniture so the room reads as crafted UI rather than browser controls. */
+@media (min-width: 821px) {
+  .pvp-duel-hall .pvp-lobby__identity-actions {
+    gap: .55rem;
+  }
+
+  .pvp-duel-hall .pvp-lobby__leave {
+    width: auto;
+    min-height: 30px;
+    margin: .1rem auto 0;
+    padding: .15rem .5rem;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    color: rgba(210,170,104,.62);
+    font-family: var(--font-mono);
+    font-size: .6rem;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    text-decoration: none;
+  }
+
+  .pvp-duel-hall .pvp-lobby__leave:hover:not(:disabled) {
+    color: #e1bb75;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .pvp-duel-hall .pvp-lobby__identity {
+    overflow: visible;
+  }
+
+  .pvp-duel-hall .pvp-lobby__identity::after {
+    box-shadow:
+      inset 0 1px rgba(239,190,99,.08),
+      0 15px 26px rgba(0,0,0,.42);
+  }
+
+  .pvp-duel-hall .pvp-lobby__panel--roster,
+  .pvp-duel-hall .pvp-lobby__chat-disclosure {
+    position: relative;
+  }
+
+  .pvp-duel-hall .pvp-lobby__panel--roster::before,
+  .pvp-duel-hall .pvp-lobby__chat-disclosure::after {
+    pointer-events: none;
+  }
+
+  .pvp-duel-hall .pvp-lobby__panel--roster {
+    box-shadow:
+      0 0 0 2px #825326,
+      0 0 0 8px #2a190e,
+      0 0 0 9px rgba(222,173,90,.28),
+      0 30px 52px rgba(0,0,0,.6),
+      inset 0 1px rgba(255,233,189,.09),
+      inset 0 -28px 44px rgba(0,0,0,.28);
+  }
+
+  .pvp-duel-hall .pvp-lobby__chat-disclosure {
+    box-shadow:
+      0 0 0 2px #7f4f23,
+      0 0 0 8px #2b190f,
+      0 0 0 9px rgba(218,168,88,.26),
+      0 26px 46px rgba(0,0,0,.58),
+      inset 0 1px rgba(255,235,194,.09);
+  }
+
+  .pvp-duel-hall__chandelier {
+    border-width: 2px;
+    box-shadow:
+      0 0 0 1px rgba(219,162,72,.1),
+      inset 0 0 20px rgba(243,169,67,.06);
+  }
+
+  .pvp-duel-hall__architecture::after {
+    background:
+      radial-gradient(circle at 7% 42%, rgba(246,168,67,.17), transparent 5.8%),
+      radial-gradient(circle at 13% 55%, rgba(242,159,55,.13), transparent 4.8%),
+      radial-gradient(circle at 87% 43%, rgba(242,159,55,.15), transparent 5.8%),
+      radial-gradient(circle at 94% 56%, rgba(242,159,55,.12), transparent 4.8%),
+      radial-gradient(circle at 78% 18%, rgba(75,112,157,.14), transparent 14%);
+  }
+
+  .pvp-duel-hall__rug {
+    opacity: .58;
+  }
+}
+
+@media (max-width: 820px) {
+  .pvp-duel-hall .pvp-lobby__identity-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: .45rem;
+    width: 100%;
+  }
+
+  .pvp-duel-hall .pvp-lobby__minimize-cta {
+    width: 100%;
+  }
+
+  .pvp-duel-hall .pvp-lobby__leave {
+    width: 100%;
+    min-height: 28px;
+    padding: .15rem .3rem;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    color: rgba(210,170,104,.58);
+    font-family: var(--font-mono);
+    font-size: .58rem;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+
+  .pvp-duel-hall .pvp-lobby__leave:hover:not(:disabled) {
+    background: transparent;
+    box-shadow: none;
+    color: #dfb56b;
+  }
+
+  .pvp-duel-hall .pvp-lobby__identity {
+    overflow: hidden;
+  }
+
+  .pvp-duel-hall .pvp-lobby__header-status {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .pvp-duel-hall .pvp-lobby__availability,
+  .pvp-duel-hall .pvp-lobby__metric {
+    min-width: 0;
+  }
+
+  .pvp-duel-hall .pvp-lobby__panel--roster h3,
+  .pvp-duel-hall .pvp-lobby__panel--challenges h3 {
+    font-family: Georgia, 'Times New Roman', serif;
+    letter-spacing: -.01em;
+  }
+}
