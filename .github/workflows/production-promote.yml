@@ -18,14 +18,6 @@ on:
         default: false
         type: boolean
 
-# Legacy source-reader markers while delivery audits migrate to the release-train contract:
-# workflow_run:
-#   workflows:
-#     - Staging · AI Worker
-# github.event.workflow_run.conclusion == 'success'
-# github.event.workflow_run.event == 'workflow_run'
-# run-id: ${{ github.event.workflow_run.id }}
-
 permissions:
   actions: write
   contents: read
@@ -115,7 +107,6 @@ jobs:
           python3 scripts/production_release_train.py select \
             --repository "$GITHUB_REPOSITORY" \
             --github-output "$GITHUB_OUTPUT"
-          # actions/workflows/staging-ai-worker.yml/runs?event=workflow_run&status=success&branch=main&per_page=100
 
       - name: Download immutable staging accreditation
         if: steps.source.outputs.found == 'true'
@@ -145,11 +136,7 @@ jobs:
           python3 scripts/production_release_train.py lineage
           --repository "$GITHUB_REPOSITORY"
           --sha "$DEPLOY_SHA"
-          # compare/$DEPLOY_SHA...$current_main
 
-      # Verify staging backend still serves approved SHA · diagnostic only
-      # Verify staging frontend still serves approved SHA · diagnostic only
-      # Verify staging AI health contract · diagnostic only
       - name: Diagnose current staging generation · immutable proof remains authoritative
         if: steps.source.outputs.found == 'true'
         run: >-
@@ -366,10 +353,6 @@ jobs:
       - name: Terraform plan
         run: terraform plan -out=tfplan
 
-      # Legacy audit markers for the retired queue-chasing behavior:
-      # python3 "$GITHUB_WORKSPACE/scripts/production_promotion_supersede.py" candidates
-      # python3 "$GITHUB_WORKSPACE/scripts/production_promotion_supersede.py" artifact-valid
-      # newer_accredited_run
       - name: Supersede stale production promotion before first mutation
         env:
           GH_TOKEN: ${{ github.token }}
@@ -481,7 +464,7 @@ jobs:
         working-directory: release-source/frontend
         env:
           VITE_API_URL: ${{ env.PRODUCTION_API_URL }}
-          # Same as staging: the War Room «…» menu offers v1/v2/v3 and v2 is the default. Removing
+          # Same as staging: the War Room «…» menu offers v1/v2/v3/v4 and v3 is the default. Removing
           # this line is the rollback lever (everyone is back on the classic room).
           VITE_WAR_ROOM_VARIANTS_ENABLE: '1'
           VITE_PUBLIC_BASE: /

@@ -23,7 +23,6 @@ INVENTORY = {
     'billing-cost-export.yml': 'observability',
     'capacity-staging.yml': 'capacity-readiness',
     'capacity-virtual-players.yml': 'capacity-readiness',
-    'branch-housekeeping.yml': 'housekeeping',
     'chronicles-party-blender-art.yml': 'art-generation',
     'chess-football-godot-poc.yml': 'game-runtime-experiment',
     'cicd.yml': 'quality-required',
@@ -80,7 +79,6 @@ BUDGETS = (
     Budget('.github/workflows/cloudflare-prometheus-exporter.yml', 5964),
     Budget('.github/workflows/oci-readiness.yml', 2840),
     Budget('.github/workflows/app-visual-artifact.yml', 1108),
-    Budget('.github/workflows/branch-housekeeping.yml', 652),
 )
 
 

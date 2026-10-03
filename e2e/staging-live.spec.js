@@ -339,7 +339,7 @@ test('staging live · auth real → War Room v2 → recovery 3D → jugada real'
   const uxReport = { schema: 1, viewport: 'desktop-1440x900', checkpoints: [], runtime: uxRuntime };
   test.setTimeout(210_000);
   await page.setViewportSize({ width: 1440, height: 900 });
-  // v2 is the product default, but this smoke runs on software GL where the
+  // v3 is the product default, but this smoke runs on software GL where the
   // Blender shell starves screenshots; pin v1 and exercise v2 explicitly below.
   await page.addInitScript(() => {
     try { window.localStorage.setItem('chess-study-war-room-variant-v1', 'classic'); } catch { /* ignore */ }
