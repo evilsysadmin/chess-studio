@@ -21,6 +21,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import BaseModel, Field
 
 import chronicles_run_store
+from chronicles_difficulty import apply_chronicles_combat_difficulty
 from chronicles_map_code import (
     CHRONICLES_MAP_CODE_MAX_LENGTH,
     CHRONICLES_MAP_CODE_MAX_SEED,
@@ -55,6 +56,7 @@ class ChroniclesManifestError(ValueError):
 
 class CreateChroniclesRunRequest(BaseModel):
     map_id: str | None = Field(default=None, alias="mapId")
+    party_level: int = Field(default=1, alias="partyLevel", ge=1, le=12)
 
     model_config = {"populate_by_name": True, "extra": "forbid"}
 
@@ -589,6 +591,16 @@ def _normalize_planner_snapshot(
     }
 
 
+def _run_depth(map_id: str, route_snapshot: dict[str, Any] | None) -> int:
+    snapshot = _normalize_route_snapshot(route_snapshot)
+    if snapshot is None:
+        return 0
+    try:
+        return list(snapshot["mapIds"]).index(map_id)
+    except ValueError:
+        return 0
+
+
 def chronicles_area_envelope(
     map_id: str,
     seed: int,
@@ -596,6 +608,7 @@ def chronicles_area_envelope(
     root: Path | None = None,
     route_snapshot: dict[str, Any] | None = None,
     planner_snapshot: dict[str, Any] | None = None,
+    party_level: int | None = None,
 ) -> dict[str, Any]:
     authored_manifest, _authored_revision = load_chronicles_manifest(map_id, root=root)
     stable_planner_snapshot = _normalize_planner_snapshot(planner_snapshot)
@@ -614,6 +627,13 @@ def chronicles_area_envelope(
         seed=seed,
         route_snapshot=route_snapshot,
     )
+    difficulty = None
+    if party_level is not None:
+        routed_manifest, difficulty = apply_chronicles_combat_difficulty(
+            routed_manifest,
+            party_level=party_level,
+            depth=_run_depth(map_id, route_snapshot),
+        )
     manifest = _validate_manifest(routed_manifest, expected_map_id=authored_manifest["id"])
     revision = hashlib.sha256(_canonical_bytes(manifest)).hexdigest()
     instance_material = (
@@ -630,6 +650,7 @@ def chronicles_area_envelope(
         "mapCode": generated.map_code,
         "generatorVersion": generated.generator_version,
         "layoutRevision": generated.layout_revision,
+        **({"difficulty": difficulty} if difficulty is not None else {}),
         "manifest": manifest,
     }
 
@@ -657,6 +678,7 @@ def _run_bootstrap_payload(
             run["seed"],
             route_snapshot=route_snapshot,
             planner_snapshot=stable_planner_snapshot,
+            party_level=run.get("partyLevel"),
         )
         for map_id in chronicles_shipped_map_ids()
     ]
@@ -751,6 +773,7 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
                 seed,
                 route_snapshot=route_snapshot,
                 planner_snapshot=planner_snapshot,
+                party_level=body.party_level,
             )
             run = await chronicles_run_store.create_or_replay_run(
                 run_id=run_id,
@@ -762,6 +785,7 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
                 create_fingerprint=fingerprint,
                 route_snapshot=route_snapshot,
                 planner_snapshot=planner_snapshot,
+                party_level=body.party_level,
             )
             stable_route_snapshot = _normalize_route_snapshot(run.get("route"))
             if body.map_id is None and stable_route_snapshot is None:
@@ -792,6 +816,7 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
             run["seed"],
             route_snapshot=route_snapshot,
             planner_snapshot=planner_snapshot,
+            party_level=run.get("partyLevel"),
         )
         if (
             current_area["contentVersion"] != run["contentVersion"]
@@ -817,6 +842,7 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
                 run["seed"],
                 route_snapshot=route_snapshot,
                 planner_snapshot=planner_snapshot,
+                party_level=run.get("partyLevel"),
             )
         )
         world_flags = _normalize_checkpoint_flags(body.world_flags)
