@@ -142,7 +142,7 @@ def main() -> int:
         ("Deploy exact backend commit to OCI staging", "generation OCI backend fallback"),
         ('python3 scripts/oci_run_command.py deploy --repo-ref "$DEPLOY_SHA"', "OCI deploy owns transport readiness"),
         ("Deploy tested frontend to Cloudflare Pages", "generation frontend deploy"),
-        ("Deploy exact staging Worker generation", "generation Worker deploy"),
+        ("Deploy and verify exact staging Worker generation", "generation Worker deploy + runtime identity gate"),
         ("run: python3 scripts/deploy_staging_ai_worker.py", "generation Worker helper"),
         ("Verify staging generation parity before browser smoke", "generation parity gate"),
         ("'worker': str(ai.get('build')", "generation Worker SHA parity"),
