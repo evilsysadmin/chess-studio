@@ -525,34 +525,38 @@ export function registerPremiumRoomFinalization(group, { wallZ, towardBoard, coa
     run: (root) => applyPremiumRoomPass(root, { wallZ, towardBoard, coarsePointer }),
   });
 
-  // Partida rápida owns an explicit Hans lease before Board3D builds the scene.
-  // Lite/coarse War Rooms return before the desktop practical-lighting pass, so
-  // that old registration path never existed there. Register the same deferred
-  // scene task from this always-reached finalization point only while the lease
-  // is active; ordinary mobile rooms keep their lightweight no-cameo behavior.
-  if (isWarRoomHansQuickIterationEnabled()) {
+  // Lite desktop War Rooms can return before the practical-lighting pass.
+  // Hans used to be registered only when the fireplace quick-iteration lease
+  // was active, so every non-fire game could end up with ambient routines that
+  // had no actor to drive. Register the Hans scene task from this always-reached
+  // bridge for all fine-pointer rooms. Keep coarse/mobile rooms lightweight
+  // unless the explicit quick-iteration lease requires the canonical cameo.
+  const forceQuickHans = isWarRoomHansQuickIterationEnabled();
+  if (!coarsePointer || forceQuickHans) {
     registerWarRoomDeferredFinalizer(group, {
       key: 'hans-fireplace-scene-install-v2',
       coarsePointer,
-      allowCoarse: true,
+      allowCoarse: forceQuickHans,
       run: (root) => {
         const sceneRoot = root || group;
         // Scene quality and input modality are deliberately separate. Balanced
         // Android builds the full desktop geometry, so the construction-time
-        // `coarsePointer` flag may be false even on a real touch device. Resolve
-        // the live pointer modality here so Hans can use the mobile-visible
-        // entrance choreography without amputating the premium room.
+        // `coarsePointer` flag may be false even on a real touch device.
         let runtimeCoarsePointer = coarsePointer;
         try {
           runtimeCoarsePointer = Boolean(globalThis?.matchMedia?.('(pointer: coarse)')?.matches);
         } catch {
           // Best-effort only; SSR/tests keep the construction-time fallback.
         }
+        // A construction-time desktop that later resolves as a coarse pointer
+        // keeps the old no-ambient-cameo policy unless the fire lease is active.
+        if (!forceQuickHans && runtimeCoarsePointer) return 0;
+
         const installed = installWarRoomHansSceneRoutine(sceneRoot, {
           towardBoard,
           coarsePointer: runtimeCoarsePointer,
         });
-        exposeForcedHansRuntime(sceneRoot);
+        if (forceQuickHans) exposeForcedHansRuntime(sceneRoot);
         return installed;
       },
     });
