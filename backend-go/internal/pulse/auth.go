@@ -53,6 +53,25 @@ func VerifiedSubject(authorization string, secret []byte, now time.Time) string 
 	return claims.Subject
 }
 
+// VerifySession checks a session JWT (signature, purpose, expiry) and
+// returns its subject and session version (a missing "sv" is version 0), as
+// auth.verify_session_token does. Account existence is the caller's check.
+func VerifySession(raw string, secret []byte, now time.Time) (string, int64, error) {
+	claims, err := verifySessionToken(raw, secret, now)
+	if err != nil {
+		return "", 0, err
+	}
+	version := int64(0)
+	if claims.SessionVersion != nil {
+		version = *claims.SessionVersion
+	}
+	return claims.Subject, version, nil
+}
+
+// CanonicalBrowserOrigins are the origins every native route accepts on top
+// of CORS_ORIGINS (the Python CORS middleware's defaults).
+func CanonicalBrowserOrigins() []string { return append([]string(nil), canonicalBrowserOrigins[:]...) }
+
 func verifySessionToken(raw string, secret []byte, now time.Time) (tokenClaims, error) {
 	parts := strings.Split(raw, ".")
 	if len(parts) != 3 {

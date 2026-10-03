@@ -208,6 +208,24 @@ func TestOwnershipScoping(t *testing.T) {
 	if !found || legacy.Owner != nil {
 		t.Fatal("ownerless legacy game must be returned so the API can answer 409")
 	}
+	if doc, found, _ := s.GetDocumentForOwner(ctx, "legacy", "alice"); !found || doc["owner"] != nil {
+		t.Fatal("raw read must also return the ownerless legacy game")
+	}
+	if _, found, _ := s.GetDocumentForOwner(ctx, "theirs", "alice"); found {
+		t.Fatal("raw read leaked another owner's game")
+	}
+	// A document the typed decode rejects (moves is not a list) is still read
+	// raw, so the API answers Python's 409 instead of a false 503.
+	if _, err := s.col.InsertOne(ctx, bson.D{{Key: "_id", Value: "damaged"}, {Key: "owner", Value: "alice"}, {Key: "moves", Value: "e4"}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := s.GetForOwner(ctx, "damaged", "alice"); err == nil {
+		t.Fatal("expected the typed read to fail on a damaged document")
+	}
+	if doc, found, err := s.GetDocumentForOwner(ctx, "damaged", "alice"); err != nil || !found || doc["moves"] != "e4" {
+		t.Fatalf("raw read of damaged doc: %v %v %v", doc, found, err)
+	}
+	_, _ = s.Delete(ctx, "damaged")
 	if ok, _ := s.DeleteForOwner(ctx, "theirs", "alice"); ok {
 		t.Fatal("deleted another owner's game")
 	}

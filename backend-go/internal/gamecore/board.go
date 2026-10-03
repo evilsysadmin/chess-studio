@@ -429,6 +429,9 @@ func (b *Board) CanClaimFifty() bool {
 	return false
 }
 
+// IsValid mirrors chess.Board.is_valid on the current position.
+func (b *Board) IsValid() bool { return fromChess(b.Position()).isValid() }
+
 func (b *Board) IsCheck() bool { return fromChess(b.Position()).isCheck() }
 
 func (b *Board) hasLegalMoves() bool { return len(b.LegalMoves()) > 0 }
