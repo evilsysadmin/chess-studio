@@ -28,6 +28,18 @@ jobs:
     name: Go · test + vet + arm64 build
     runs-on: ubuntu-24.04
     timeout-minutes: 8
+    services:
+      # Disposable MongoDB for the store integration tests. Same major as the
+      # production tooling (scripts/oci_production_mongo_backup.sh).
+      mongo:
+        image: mongo:8.0
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.adminCommand({ping: 1}).ok'"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
     defaults:
       run:
         working-directory: backend-go
@@ -45,8 +57,12 @@ jobs:
             echo "$unformatted"
             exit 1
           fi
-      - name: Unit tests
-        run: go test ./...
+      - name: Unit + MongoDB integration tests
+        env:
+          PVP_MONGO_TEST_URL: mongodb://localhost:27017
+          # Fail instead of skipping if the service is missing.
+          PVP_MONGO_TEST_REQUIRED: '1'
+        run: go test -race ./...
       - name: Vet
         run: go vet ./...
       - name: Build Linux ARM64
