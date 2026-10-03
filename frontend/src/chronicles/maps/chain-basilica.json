@@ -116,8 +116,10 @@
       "retaliation": 2,
       "activation": "always",
       "ai": {
-        "movement": "cardinal-chase",
-        "attackReach": 1
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 4
       },
       "onDefeat": {
         "message": "{attacker} derriba al sabueso del coro con {attack}. Entre las costillas tintinea otro eslabón del altar.",
@@ -155,7 +157,7 @@
       "ai": {
         "movement": "cardinal-roam",
         "attackReach": 1,
-        "engagedMovement": "cardinal-chase",
+        "engagedMovement": "knight-chase",
         "engageRange": 3
       },
       "onDefeat": {
