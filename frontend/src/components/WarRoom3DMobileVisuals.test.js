@@ -26,7 +26,10 @@ describe('War Room mobile decor profile', () => {
     expect(mobile.crest).toBeGreaterThan(7);
     expect(mobile.moon).toBeGreaterThan(desktop.moon);
     expect(mobile.palette).toBeGreaterThan(desktop.palette);
-    expect(mobile.wallSconce).toBeGreaterThan(3.5);
+    expect(mobile.wallSconce).toBeGreaterThan(desktop.wallSconce);
+    expect(mobile.bankerLamp).toBeGreaterThan(desktop.bankerLamp);
+    expect(mobile.fireplace).toBeGreaterThan(3.5);
+    expect(mobile.fireplace).toBeLessThan(desktop.fireplace);
   });
 
   it('levanta los tonos oscuros del decorado móvil', () => {

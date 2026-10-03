@@ -578,7 +578,8 @@ export const WAR_ROOM_V4_LIGHT_LIFT = Object.freeze({
 
 // War Room v3 is a torchlit armory: the global rig drops so the wall torches
 // and the hearth read as the main light, while the key still keeps the board
-// legible. Touch keeps more fill because its torches carry no real lights.
+// legible. Touch keeps more fill because only a bounded pair of torches carries
+// real light there.
 export const WAR_ROOM_V3_TORCHLIT = Object.freeze({
   // Desktop hands the board to a spot pool (WarRoomV3Shell); touch keeps the key.
   key: Object.freeze({ desktop: 0.32, touch: 0.8 }),

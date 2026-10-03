@@ -68,13 +68,13 @@ export function warRoomBlenderPracticalLightProfile({ coarsePointer = false } = 
   return {
     fire: {
       color: 0xff8a38,
-      intensity: coarsePointer ? 1.42 : 2.30,
+      intensity: coarsePointer ? 2.05 : 2.30,
       distance: 10.8,
       decay: 2,
     },
     rightFire: {
       color: 0xff7f30,
-      intensity: coarsePointer ? 0.88 : 1.68,
+      intensity: coarsePointer ? 1.25 : 1.68,
       distance: 9.2,
       decay: 2,
     },
@@ -86,7 +86,7 @@ export function warRoomBlenderPracticalLightProfile({ coarsePointer = false } = 
     },
     moon: {
       color: 0x7ba6ff,
-      intensity: coarsePointer ? 2.02 : 3.42,
+      intensity: coarsePointer ? 2.65 : 3.42,
       distance: 15.2,
       decay: 2,
     },
