@@ -89,6 +89,19 @@ describe('Chronicles bounded authoritative-run bootstrap', () => {
     });
   });
 
+  it('rehydrates an authoritative terminal run instead of rejecting it as invalid', async () => {
+    const payload = remoteRun();
+    payload.status = 'defeated';
+
+    const resolved = await chroniclesBootstrapWorld({
+      createRun: vi.fn().mockResolvedValue(payload),
+      budgetMs: 250,
+    });
+
+    expect(resolved.runStatus).toBe('defeated');
+    expect(resolved.runId).toBe(payload.runId);
+  });
+
   it('accepts a safe entry map selected by the backend from the run seed', async () => {
     const createRun = vi.fn().mockResolvedValue(
       remoteRun('Menagerie procedural', 733, 'menagerie-of-ash'),

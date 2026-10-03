@@ -29,6 +29,14 @@ ALLOWED_DRESSING_KINDS = {"crate", "barrel", "sandbags"}
 MIN_DRESSING = 10
 ALLOWED_STORY_PROP_KINDS = {"front_wreck", "harbor_lamp", "harbor_bollard", "alpine_tripod", "snowbank", "jungle_tree", "fallen_trunk", "jungle_hut", "jungle_ruin_pillar", "jungle_brazier", "jungle_fern_cluster", "industrial_bunker", "industrial_watch_post", "industrial_drain", "industrial_rubble_field"}
 MIN_STORY_PROPS = 5
+# scripts/player.gd: 48x84 standing body; JUMP_SPEED 610 and GRAVITY 1550
+# give a ~120px apex and ~260px of flat range at MOVE_SPEED 330.
+PLAYER_WIDTH = 48.0
+PLAYER_STAND_HEIGHT = 84.0
+PLAYER_JUMP_HEIGHT = 120.0
+MAX_PIT_WIDTH = 200.0
+PIT_TAKEOFF = 60.0
+MIN_OBSTACLE_PIT_RUNUP = 120.0
 
 TYPE_BLOCK_RE = re.compile(r"const ENEMY_TYPES\s*:=\s*\{(?P<body>.*?)\n\}", re.S)
 TYPE_RE = re.compile(
@@ -83,6 +91,47 @@ def _rect_errors(stage_name: str, label: str, rects: list[dict], width: float, h
             errors.append(f"{stage_name}: {label}[{index}] escapes horizontal world bounds")
         if y < 0 or y + h > height:
             errors.append(f"{stage_name}: {label}[{index}] escapes vertical world bounds")
+    return errors
+
+def _traversal_errors(stage_name: str, floor_y: float, platforms: list, obstacles: list, pits: list) -> list[str]:
+    """Static reachability rules from the player's physics (scripts/player.gd).
+
+    The headless bot (tests/traversal_audit.gd) proves each stage end to end;
+    these rules catch the same impassable layouts without booting Godot.
+    """
+    errors: list[str] = []
+    rects = lambda items: [i for i in items if isinstance(i, dict)]
+    solids = [p for p in rects(platforms) if not p.get("one_way")]
+    obs = rects(obstacles)
+    pit_list = rects(pits)
+    head_at_apex = floor_y - PLAYER_STAND_HEIGHT - PLAYER_JUMP_HEIGHT - 10.0
+    for o in obs:
+        ox, oy, ow = float(o.get("x", 0)), float(o.get("y", 0)), float(o.get("w", 0))
+        label = f"{stage_name}: obstacle {o.get('kind')}@{ox:g}"
+        for p in solids:
+            px, pw = float(p.get("x", 0)), float(p.get("w", 0))
+            bottom = float(p.get("y", 0)) + float(p.get("h", 0))
+            # Half a body of margin: standing on the obstacle's edge still
+            # puts the head under the platform.
+            if px < ox + ow + PLAYER_WIDTH / 2 and px + pw > ox - PLAYER_WIDTH / 2:
+                gap = oy - bottom
+                if 0 <= gap < PLAYER_STAND_HEIGHT:
+                    errors.append(f"{label} is pinched under solid {p.get('kind')}@{px:g} ({gap:g}px < {PLAYER_STAND_HEIGHT:g}): it cannot be climbed over")
+        for pit in pit_list:
+            pit_x, pit_w = float(pit.get("x", 0)), float(pit.get("w", 0))
+            if ox < pit_x + pit_w and ox + ow > pit_x:
+                errors.append(f"{label} sits inside pit@{pit_x:g}")
+            elif 0 <= pit_x - (ox + ow) < MIN_OBSTACLE_PIT_RUNUP:
+                errors.append(f"{label} leaves {pit_x - (ox + ow):g}px of run-up before pit@{pit_x:g} (< {MIN_OBSTACLE_PIT_RUNUP:g})")
+    for pit in pit_list:
+        pit_x, pit_w = float(pit.get("x", 0)), float(pit.get("w", 0))
+        if pit_w > MAX_PIT_WIDTH:
+            errors.append(f"{stage_name}: pit@{pit_x:g} is {pit_w:g}px wide (> {MAX_PIT_WIDTH:g} jumpable)")
+        for p in solids:
+            px, pw = float(p.get("x", 0)), float(p.get("w", 0))
+            bottom = float(p.get("y", 0)) + float(p.get("h", 0))
+            if px < pit_x + pit_w and px + pw > pit_x - PIT_TAKEOFF and bottom > head_at_apex:
+                errors.append(f"{stage_name}: solid {p.get('kind')}@{px:g} caps the jump over pit@{pit_x:g} (make it one_way or raise it)")
     return errors
 
 def validate_stage(stage: dict, stats: dict[str, dict[str, float]], stage_name: str) -> list[str]:
@@ -162,6 +211,7 @@ def validate_stage(stage: dict, stats: dict[str, dict[str, float]], stage_name: 
         kind = str(obstacle.get("kind", ""))
         if kind not in ALLOWED_OBSTACLE_KINDS:
             errors.append(f"{stage_name}: obstacles[{index}] has unsupported kind {kind!r}")
+    errors += _traversal_errors(stage_name, floor_y, platforms, obstacles, pits)
 
     if len(dressing) < MIN_DRESSING:
         errors.append(f"{stage_name}: dressing count {len(dressing)} < {MIN_DRESSING}")
@@ -544,7 +594,7 @@ def self_test() -> None:
         "pits": [{"x": 1500, "w": 120, "kind": "test_pit"}],
         "ladders": [{"x": 938, "top_y": 430, "bottom_y": 610, "w": 30, "exit_dir": 1}],
         "platforms": [
-            {"x": 100 + i * 250, "y": 520 - (i % 5) * 35, "w": 160, "h": 24, "material": "metal" if i % 2 == 0 else "wood"}
+            {"x": 100 + i * 250, "y": 520 - (i % 5) * 35, "w": 160, "h": 24, "material": "metal" if i % 2 == 0 else "wood", "one_way": True}
             for i in range(18)
         ] + [
             {"x": 900, "y": 430, "w": 150, "h": 24, "material": "metal", "route": "climb"},
@@ -552,7 +602,7 @@ def self_test() -> None:
             {"x": 1080, "y": 260, "w": 150, "h": 24, "material": "wood", "route": "climb"},
             {"x": 1200, "y": 345, "w": 150, "h": 24, "material": "metal", "route": "climb"},
         ],
-        "obstacles": [{"x": 300 + i * 600, "y": 550, "w": 60, "h": 60, "kind": "crate"} for i in range(7)],
+        "obstacles": [{"x": x, "y": 550, "w": 60, "h": 60, "kind": "crate"} for x in (300, 900, 2100, 2700, 3300, 3900, 4500)],
         "dressing": [{"kind": "crate", "x": 220 + i * 420, "y": 607, "size": 30} for i in range(10)],
         "story_props": [{"kind": "front_wreck", "x": 260 + i * 760, "y": 608} for i in range(5)],
         "setpieces": [
@@ -598,6 +648,20 @@ def self_test() -> None:
     suicide_ladder = json.loads(json.dumps(stage))
     suicide_ladder["ladders"][0]["x"] = 1540
     assert any("ends on floor inside a pit" in e for e in validate_stage(suicide_ladder, stats, "self-test"))
+    pinched = json.loads(json.dumps(stage))
+    pinched["platforms"].append({"x": 280, "y": 470, "w": 160, "h": 24, "material": "metal"})
+    assert any("pinched under solid" in e for e in validate_stage(pinched, stats, "self-test"))
+    wide_pit = json.loads(json.dumps(stage))
+    wide_pit["pits"][0]["w"] = 260
+    assert any("jumpable" in e for e in validate_stage(wide_pit, stats, "self-test"))
+    capped_pit = json.loads(json.dumps(stage))
+    capped_pit["platforms"].append({"x": 1510, "y": 480, "w": 120, "h": 24, "material": "metal"})
+    assert any("caps the jump" in e for e in validate_stage(capped_pit, stats, "self-test"))
+    tight_runup = json.loads(json.dumps(stage))
+    tight_runup["obstacles"][2]["x"] = 1380
+    assert any("run-up before pit" in e for e in validate_stage(tight_runup, stats, "self-test"))
+    tight_runup["obstacles"][2]["x"] = 1520
+    assert any("inside pit" in e for e in validate_stage(tight_runup, stats, "self-test"))
     print("OK Pawn Slug stage manifest gate self-test")
 
 def main() -> int:

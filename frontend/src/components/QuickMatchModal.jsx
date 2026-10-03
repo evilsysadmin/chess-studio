@@ -10,6 +10,7 @@ import { adaptiveDifficultyPresentation } from '../adaptiveDifficultyPresentatio
 import { fetchMatthiasBriefing } from '../matthiasDaily.js';
 import { matthiasTimeVisual } from '../matthiasVisuals.js';
 import './QuickMatchMobileGoldenPath.css';
+import { preloadBoard3DRenderer } from './Board3DRegistration.js';
 import { loadWarRoomVariant, prefetchWarRoomVariant } from './WarRoomVariant.js';
 import {
   exitWarRoomBrowserFullscreen,
@@ -58,7 +59,10 @@ export default function QuickMatchModal({
 
   useEffect(() => {
     if (selectedRenderer !== '3d') return undefined;
-    void prefetchWarRoomVariant(loadWarRoomVariant());
+    void Promise.allSettled([
+      preloadBoard3DRenderer(),
+      prefetchWarRoomVariant(loadWarRoomVariant()),
+    ]);
     return undefined;
   }, [selectedRenderer]);
 

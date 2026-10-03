@@ -139,7 +139,8 @@
       "w": 160,
       "h": 24,
       "kind": "ledge",
-      "material": "concrete"
+      "material": "concrete",
+      "one_way": true
     },
     {
       "x": 2105,
@@ -335,21 +336,14 @@
   ],
   "obstacles": [
     {
-      "x": 700,
+      "x": 870,
       "y": 546,
       "w": 72,
       "h": 64,
       "kind": "rockfall"
     },
     {
-      "x": 1450,
-      "y": 538,
-      "w": 62,
-      "h": 72,
-      "kind": "bunker_block"
-    },
-    {
-      "x": 2170,
+      "x": 1730,
       "y": 548,
       "w": 88,
       "h": 62,
@@ -370,14 +364,7 @@
       "kind": "bunker_block"
     },
     {
-      "x": 4200,
-      "y": 536,
-      "w": 70,
-      "h": 74,
-      "kind": "sandbags"
-    },
-    {
-      "x": 4760,
+      "x": 5050,
       "y": 528,
       "w": 82,
       "h": 82,
@@ -392,9 +379,9 @@
     },
     {
       "x": 5570,
-      "y": 548,
+      "y": 572,
       "w": 70,
-      "h": 62,
+      "h": 38,
       "kind": "sandbags"
     }
   ],
@@ -585,6 +572,12 @@
         "kind": "sky",
         "scroll": 0.02,
         "z": -80,
+        "intensity": 1
+      },
+      {
+        "kind": "far_art",
+        "scroll": 0.055,
+        "z": -74,
         "intensity": 1
       },
       {
@@ -896,12 +889,12 @@
   "pits": [
     {
       "x": 2020,
-      "w": 220,
+      "w": 200,
       "kind": "crevasse"
     },
     {
       "x": 4310,
-      "w": 240,
+      "w": 200,
       "kind": "ravine"
     }
   ]

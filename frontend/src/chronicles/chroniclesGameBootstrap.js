@@ -82,7 +82,7 @@ function validateRunBootstrap(payload, requestedMapId) {
   if (requestedMapId && currentMapId !== requestedMapId) throw new Error('run-map-mismatch');
   if (!Number.isInteger(payload.seed) || payload.seed < 0) throw new Error('invalid-run-seed');
   if (!Number.isInteger(payload.worldVersion) || payload.worldVersion < 0) throw new Error('invalid-world-version');
-  if (payload.status !== 'active') throw new Error('inactive-run');
+  if (!['active', 'completed', 'defeated'].includes(payload.status)) throw new Error('invalid-run-status');
   // During rolling deploys the previous backend can still return the pre-checkpoint
   // run shape, which did not expose worldFlags. Treat omission as the empty durable
   // state, but keep rejecting explicit malformed values.

@@ -41,15 +41,24 @@ describe('Chronicles fantasy bestiary contract', () => {
     expect(byId['bone-hound']).toMatchObject({ visualType: 'bone-hound', visualScale: 0.92, visualMotion: 'grounded' });
   });
 
-  it('mixes pursuit, authored patrol, roaming and ranged hold in one encounter', () => {
+  it('mixes roaming ambush, pouncing patrol, hunting and ranged hold in one encounter', () => {
     const map = chroniclesMapById('menagerie-of-ash');
     const byId = Object.fromEntries(map.enemies.map((enemy) => [enemy.id, enemy]));
 
-    expect(byId['ash-goblin'].ai.movement).toBe('cardinal-chase');
+    expect(byId['ash-goblin'].ai).toMatchObject({
+      movement: 'cardinal-roam',
+      engagedMovement: 'cardinal-chase',
+      engageRange: 2,
+    });
     expect(byId['crypt-spider'].ai.movement).toBe('patrol-route');
     expect(byId['crypt-spider'].ai.patrolRoute).toHaveLength(8);
+    expect(byId['crypt-spider'].ai).toMatchObject({ engagedMovement: 'knight-chase', engageRange: 3 });
     expect(byId['ember-wisp'].ai).toMatchObject({ movement: 'hold', attackReach: 2, requiresLineOfSight: true });
-    expect(byId['bone-hound'].ai.movement).toBe('cardinal-roam');
+    expect(byId['bone-hound'].ai).toMatchObject({
+      movement: 'cardinal-roam',
+      engagedMovement: 'cardinal-chase',
+      engageRange: 4,
+    });
   });
 
   it('derives independent health state and render roles from map data', () => {

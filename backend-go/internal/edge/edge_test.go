@@ -1079,3 +1079,42 @@ func TestTelemetryRecordsOnlyNativeRequests(t *testing.T) {
 		t.Fatalf("event=%s", lines[0])
 	}
 }
+
+func TestNativeGamesReadServesOnlyItsRoutes(t *testing.T) {
+	var proxied []string
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		proxied = append(proxied, r.Method+" "+r.URL.Path)
+		w.WriteHeader(http.StatusTeapot)
+	}))
+	defer upstream.Close()
+	var served []string
+	native := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		served = append(served, r.Method+" "+r.URL.Path)
+		w.WriteHeader(http.StatusOK)
+	})
+	h, err := New(Config{UpstreamURL: upstream.URL, NativeGamesRead: native})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, req := range [][2]string{
+		{"GET", "/api/games"}, {"GET", "/api/games/g1"}, {"DELETE", "/api/games/g1"},
+		{"POST", "/api/games"}, {"POST", "/api/games/g1/move"}, {"GET", "/api/games/g1/hint"},
+	} {
+		rr := httptest.NewRecorder()
+		h.ServeHTTP(rr, httptest.NewRequest(req[0], "http://api.chess.test"+req[1], nil))
+	}
+	if strings.Join(served, ",") != "GET /api/games,GET /api/games/g1,DELETE /api/games/g1" {
+		t.Fatalf("served %v", served)
+	}
+	if strings.Join(proxied, ",") != "POST /api/games,POST /api/games/g1/move,GET /api/games/g1/hint" {
+		t.Fatalf("proxied %v", proxied)
+	}
+
+	// Kill-switch off: everything stays in Python.
+	proxied = nil
+	off := mustHandler(t, upstream.URL)
+	off.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "http://api.chess.test/api/games", nil))
+	if len(proxied) != 1 {
+		t.Fatalf("disabled: proxied %v", proxied)
+	}
+}

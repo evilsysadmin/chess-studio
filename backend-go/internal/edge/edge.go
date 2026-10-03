@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/gamesapi"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/pvproute"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/telemetry"
 )
@@ -33,8 +34,11 @@ type Config struct {
 	NativeMatchResign         http.Handler
 	NativeMatchRead           http.Handler
 	NativeMatchMove           http.Handler
-	VirtualPlayersEnabled     bool
-	NativeResidentMove        bool
+	// NativeGamesRead serves GET /api/games, GET and DELETE
+	// /api/games/{game_id} (games vs the CPU); nil keeps them in Python.
+	NativeGamesRead       http.Handler
+	VirtualPlayersEnabled bool
+	NativeResidentMove    bool
 	// ReadyChecks are dependencies owned by the Go edge itself (MongoDB for the
 	// native routes). Each must pass, alongside the Python upstream, for the
 	// edge to report ready.
@@ -62,6 +66,7 @@ type Handler struct {
 	nativeMatchResign         http.Handler
 	nativeMatchRead           http.Handler
 	nativeMatchMove           http.Handler
+	nativeGamesRead           http.Handler
 	virtualPlayersEnabled     bool
 	nativeResidentMove        bool
 	readyChecks               map[string]func(context.Context) error
@@ -147,6 +152,7 @@ func New(cfg Config) (*Handler, error) {
 		nativeMatchResign:         cfg.NativeMatchResign,
 		nativeMatchRead:           cfg.NativeMatchRead,
 		nativeMatchMove:           cfg.NativeMatchMove,
+		nativeGamesRead:           cfg.NativeGamesRead,
 		virtualPlayersEnabled:     cfg.VirtualPlayersEnabled,
 		nativeResidentMove:        cfg.NativeResidentMove,
 		readyChecks:               cfg.ReadyChecks,
@@ -162,6 +168,13 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case "/readyz", "/api/pvp/_edge/ready":
 		h.ready(w, r)
 		return
+	}
+	if h.nativeGamesRead != nil {
+		if pattern, _, ok := gamesapi.Route(r); ok {
+			w.Header().Set("X-Chess-Edge", "go")
+			h.telemetry.Serve(pattern, h.nativeGamesRead, w, r)
+			return
+		}
 	}
 	route := pvproute.Match(r.URL.Path)
 	if native := h.nativeFor(route.Kind); native != nil {
@@ -245,6 +258,7 @@ func (h *Handler) health(w http.ResponseWriter) {
 		"nativeMatchMove":           h.nativeMatchMove != nil,
 		"virtualPlayersEnabled":     h.virtualPlayersEnabled,
 		"nativeResidentMove":        h.nativeResidentMove,
+		"nativeGamesRead":           h.nativeGamesRead != nil,
 	}
 	if h.release != "" {
 		payload["release"] = h.release
@@ -299,6 +313,7 @@ func (h *Handler) ready(w http.ResponseWriter, r *http.Request) {
 		"nativeMatchMove":           h.nativeMatchMove != nil,
 		"virtualPlayersEnabled":     h.virtualPlayersEnabled,
 		"nativeResidentMove":        h.nativeResidentMove,
+		"nativeGamesRead":           h.nativeGamesRead != nil,
 	}
 	if h.release != "" {
 		payload["release"] = h.release
