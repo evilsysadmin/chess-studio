@@ -86,6 +86,7 @@ Render staging está retirado del plano de despliegue: el **release canónico y 
 | `home-blender-v2-preview.yml` | Evidencia PNG Home path-aware en PR con envelope de revisión barato; los renders manuales conservan calidad alta. |
 | `home-blender-v2-runtime.yml` | Exporta/publica el GLB Home sólo en `main` o manual, luego ejecuta su gate browser y promoción. No repite el export runtime en PR: la revisión visual PR pertenece al preview PNG. |
 | `war-room-blender-art.yml` | Genera, valida y publica el shell Blender de War Room v2 en su canal R2 propio. |
+| `pvp-duel-hall-blender-art.yml` | Genera y valida la shell 3D authored de la Sala de Duelos del lobby; en esta fase produce preview/GLB revisables sin promocionarlos todavía a runtime. |
 | `war-room-v3-blender-art.yml` | Genera, valida y publica la sala cartográfica de War Room v3 sin reemplazar v1/v2. |
 | `coverage.yml` | Señales periódicas no bloqueantes: coverage frontend/backend mensual y CodeQL semanal; `workflow_dispatch` ejecuta ambos bajo demanda. CodeQL mantiene `security-events: write` limitado a su propio job. |
 | `pawn-slug-matthias-sprite-smoke.yml` | Evidencia PNG de sprites runtime Pawn Slug. En PR separa Matthias/enemigos por ownership; tras staging omite deploys sin superficie sprite; manual conserva smoke completo. Matthias aplica además un gate fail-closed de continuidad de escala/footline para `idle` y overlays `run12`/`run13`. |
