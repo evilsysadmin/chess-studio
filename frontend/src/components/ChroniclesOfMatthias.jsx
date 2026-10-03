@@ -322,6 +322,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
           currentRun.runId,
           snapshot,
           currentRun.worldVersion,
+          { terminalStatus: snapshot.phase === 'escaped' ? 'completed' : null },
         );
         authoritativeRunRef.current = { ...currentRun, ...updated };
       })
