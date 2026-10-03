@@ -10,7 +10,7 @@ Las reglas detalladas viven en los `.md` especializados enlazados aquí. Antes d
 - `Tactics` = **Chronicles of Matthias Tactics**.
 - Pawn Slug en Godot es **2D puro**. Sus sprites no usan Blender. Matthias conserva una única escala corporal canónica entre armas; variantes grandes/pequeñas son regresión.
 - Home 3D y War Room v2 usan la pipeline Blender.
-- La War Room **v1 clásica es la variante por defecto** y el baseline de rollback. v2/v3/v4 siguen seleccionables en el menú «…» cuando las variantes están habilitadas; una elección explícita del jugador se conserva por dispositivo. No volver a promover una variante Blender a default hasta que tenga paridad runtime/narrativa con v1, incluido Hans.
+- La War Room **v3 es la variante por defecto** cuando las variantes están habilitadas; una elección explícita del jugador se conserva por dispositivo y siempre manda sobre el default. v1 clásica sigue siendo el baseline de rollback y v1/v2/v3/v4 continúan seleccionables en el menú «…». Deshabilitar variantes debe seguir devolviendo de forma segura a v1.
 - Para assets grandes de runtime, preferir R2/CDN y mantener Git centrado en código, manifests y contratos.
 - Trabajar incrementalmente, con cambios pequeños, reversibles y verificables. No dar por buena una iteración visual sólo porque el build o CI estén verdes.
 - Cuando haya artefactos PNG de una pipeline visual, revisarlos y compararlos con el último baseline validado antes de integrar.
