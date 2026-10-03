@@ -956,7 +956,9 @@ PY
 pvp_challenge_browser_attest() {
   local endpoint="${1:-http://127.0.0.1:${port}/api/pvp/challenges}"
   local preflight_headers response_headers status response_status request_id
-  local native_expected="${CHESS_STUDIO_PVP_NATIVE_CHALLENGE_CREATE_ENABLED:-false}"
+  # Same default as docker-compose.yml: native creation is on unless the
+  # emergency fallback turns it off, so the marker is required by default.
+  local native_expected="${CHESS_STUDIO_PVP_NATIVE_CHALLENGE_CREATE_ENABLED:-true}"
   preflight_headers="$(mktemp)"
   response_headers="$(mktemp)"
   request_id="staging-challenge-probe-${sha:0:12}"
