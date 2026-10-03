@@ -95,7 +95,11 @@ type Config struct {
 	AllowedOrigins []string
 	// RatePerMinute is slowapi's default_limits ("120/minute"); 0 uses 120.
 	RatePerMinute int
-	Now           func() time.Time
+	// TrustCloudflare mirrors _trust_cloudflare_client_ip: anonymous requests
+	// are limited per CF-Connecting-IP, not per edge peer (every visitor would
+	// share the nginx/sidecar address otherwise).
+	TrustCloudflare bool
+	Now             func() time.Time
 }
 
 type Handler struct {
@@ -106,6 +110,7 @@ type Handler struct {
 	origins  map[string]struct{}
 	limiter  *limiter
 	now      func() time.Time
+	trustCF  bool
 }
 
 func New(cfg Config) (*Handler, error) {
@@ -137,6 +142,7 @@ func New(cfg Config) (*Handler, error) {
 		secret:   []byte(secret),
 		origins:  origins,
 		limiter:  newLimiter(rate, time.Minute),
+		trustCF:  cfg.TrustCloudflare,
 		now:      now,
 	}, nil
 }
@@ -164,7 +170,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	subject, version, tokenErr := h.verify(r)
 	key := "user:" + subject
 	if tokenErr != nil {
-		key = "ip:" + remoteHost(r.RemoteAddr)
+		key = "ip:" + h.clientIP(r)
 	}
 	if !h.limiter.allow(key, h.now()) {
 		writeJSON(w, http.StatusTooManyRequests, map[string]any{"error": "Rate limit exceeded: 120 per 1 minute"})
@@ -397,6 +403,16 @@ func plain(value any) any {
 		return out
 	}
 	return value
+}
+
+// clientIP mirrors rate_limit_key's anonymous branch.
+func (h *Handler) clientIP(r *http.Request) string {
+	if h.trustCF || strings.TrimSpace(r.Header.Get("CF-Ray")) != "" {
+		if ip := strings.TrimSpace(r.Header.Get("CF-Connecting-IP")); ip != "" {
+			return ip
+		}
+	}
+	return remoteHost(r.RemoteAddr)
 }
 
 func remoteHost(addr string) string {

@@ -343,3 +343,27 @@ func TestDefaultRateLimit(t *testing.T) {
 		t.Fatalf("bob: %d", w.Code)
 	}
 }
+
+func TestAnonymousRateLimitIsPerCloudflareClient(t *testing.T) {
+	f := newFixture(t, fakeAccounts{})
+	f.h.trustCF = true
+	hit := func(ip string) int {
+		r := httptest.NewRequest("GET", "/api/games", nil)
+		r.RemoteAddr = "127.0.0.1:4000" // every request arrives from the edge
+		r.Header.Set("CF-Connecting-IP", ip)
+		w := httptest.NewRecorder()
+		f.h.ServeHTTP(w, r)
+		return w.Code
+	}
+	for i := 0; i < 120; i++ {
+		if code := hit("81.40.1.2"); code != 401 {
+			t.Fatalf("request %d: %d", i, code)
+		}
+	}
+	if code := hit("81.40.1.2"); code != 429 {
+		t.Fatalf("121st from one client: %d", code)
+	}
+	if code := hit("81.40.1.3"); code != 401 {
+		t.Fatalf("another client must not share the bucket: %d", code)
+	}
+}

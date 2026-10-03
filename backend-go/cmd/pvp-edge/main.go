@@ -178,11 +178,12 @@ func main() {
 		}
 		if gamesReadEnabled {
 			gamesHandler, err := gamesapi.New(gamesapi.Config{
-				Store:          gamestore.New(store.Database(), envDurationMS("GAMES_MONGO_TIMEOUT_MS", 2000*time.Millisecond)),
-				Accounts:       store,
-				Presence:       presence.New(store.Database(), telemetry.ConfigFromEnv(os.LookupEnv).TrustCloudflare, 2*time.Second),
-				JWTSecret:      jwtSecret,
-				AllowedOrigins: splitCSV(os.Getenv("CORS_ORIGINS")),
+				Store:           gamestore.New(store.Database(), envDurationMS("GAMES_MONGO_TIMEOUT_MS", 2000*time.Millisecond)),
+				Accounts:        store,
+				Presence:        presence.New(store.Database(), telemetry.ConfigFromEnv(os.LookupEnv).TrustCloudflare, 2*time.Second),
+				JWTSecret:       jwtSecret,
+				AllowedOrigins:  splitCSV(os.Getenv("CORS_ORIGINS")),
+				TrustCloudflare: telemetry.ConfigFromEnv(os.LookupEnv).TrustCloudflare,
 			})
 			if err != nil {
 				log.Fatalf("native games API: %v", err)
