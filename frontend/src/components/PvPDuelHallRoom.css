@@ -1007,3 +1007,27 @@
     border-radius: 3px;
   }
 }
+
+
+/* Final visual cleanup: keep the availability exit legible inside the narrow
+   pedestal instead of collapsing into a clipped grey button. */
+@media (min-width: 821px) {
+  .pvp-duel-hall .pvp-lobby__identity-actions {
+    width: 100%;
+    display: grid;
+    gap: .45rem;
+  }
+
+  .pvp-duel-hall .pvp-lobby__leave {
+    width: 100%;
+    min-height: 36px;
+    padding: .35rem .5rem;
+    white-space: normal;
+    text-align: center;
+    color: rgba(232, 213, 181, .62);
+  }
+
+  .pvp-duel-hall .pvp-lobby__leave:disabled {
+    opacity: .4;
+  }
+}
