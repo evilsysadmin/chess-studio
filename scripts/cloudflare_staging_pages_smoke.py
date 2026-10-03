@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import importlib.util
+import sys
 from pathlib import Path
 from unittest.mock import patch
 
@@ -175,6 +176,36 @@ def test_release_fast_path_wait_policy() -> None:
         "el bootstrap completo conserva la espera estricta",
     )
 
+
+def test_release_fast_path_reads_live_domain_state() -> None:
+    common = (
+        patch.object(sys, "argv", ["cloudflare_staging_pages.py", "--release-fast-path"]),
+        patch.dict(module.os.environ, {"CLOUDFLARE_ACCOUNT_ID": "acc", "CLOUDFLARE_API_TOKEN": "token"}),
+        patch.object(module, "find_zone_id", return_value="zone"),
+        patch.object(module, "ensure_pages_project", return_value=False),
+        patch.object(module, "ensure_pages_domain", return_value=False),
+        patch.object(module, "ensure_cname", return_value="unchanged"),
+    )
+
+    with (
+        *common,
+        patch.object(module, "pages_domain_status", return_value=("active", "")) as status_probe,
+        patch.object(module, "wait_pages_domain_active") as wait_active,
+    ):
+        module.main()
+    check(status_probe.call_count == 1, "el fast-path debe leer una vez el estado real del custom domain")
+    check(wait_active.call_count == 0, "active + DNS estable no debe entrar en la espera larga")
+
+    with (
+        *common,
+        patch.object(module, "pages_domain_status", return_value=("pending", "validation_data=pending")) as status_probe,
+        patch.object(module, "wait_pages_domain_active", return_value="active") as wait_active,
+    ):
+        module.main()
+    check(status_probe.call_count == 1, "pending debe detectarse con el probe de control-plane")
+    check(wait_active.call_count == 1, "pending debe abandonar el fast-path y esperar activación")
+
+
 def test_web_analytics_permission_is_non_blocking() -> None:
     with (
         patch.dict(module.os.environ, {"CLOUDFLARE_ACCOUNT_ID": "acc", "CLOUDFLARE_API_TOKEN": "token"}),
@@ -207,6 +238,7 @@ if __name__ == "__main__":
     test_pages_domain_waits_until_active()
     test_pages_domain_terminal_error_fails_fast()
     test_release_fast_path_wait_policy()
+    test_release_fast_path_reads_live_domain_state()
     test_web_analytics_permission_is_non_blocking()
     test_web_analytics_existing_zone_is_idempotent()
     print("cloudflare-staging-pages-smoke OK · Pages + DNS + active-domain fast-path + RUM opcional/idempotente")
