@@ -258,6 +258,7 @@ func (h *Handler) health(w http.ResponseWriter) {
 		"nativeMatchMove":           h.nativeMatchMove != nil,
 		"virtualPlayersEnabled":     h.virtualPlayersEnabled,
 		"nativeResidentMove":        h.nativeResidentMove,
+		"nativeGamesRead":           h.nativeGamesRead != nil,
 	}
 	if h.release != "" {
 		payload["release"] = h.release
@@ -312,6 +313,7 @@ func (h *Handler) ready(w http.ResponseWriter, r *http.Request) {
 		"nativeMatchMove":           h.nativeMatchMove != nil,
 		"virtualPlayersEnabled":     h.virtualPlayersEnabled,
 		"nativeResidentMove":        h.nativeResidentMove,
+		"nativeGamesRead":           h.nativeGamesRead != nil,
 	}
 	if h.release != "" {
 		payload["release"] = h.release

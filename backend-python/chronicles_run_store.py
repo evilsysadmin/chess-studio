@@ -45,6 +45,36 @@ async def _collection():
     return None
 
 
+def _terminal_checkpoint_replay_matches(
+    row: dict[str, Any],
+    *,
+    expected_world_version: int,
+    terminal_status: str | None,
+    map_id: str,
+    content_version: int,
+    manifest_revision: str,
+    world_flags: dict[str, Any],
+    inventory: dict[str, Any],
+    quests: dict[str, Any],
+    consumed_content_ids: list[str],
+    claimed_rewards: list[str],
+) -> bool:
+    if terminal_status is None or row.get("status") != terminal_status:
+        return False
+    if int(row.get("worldVersion", 0)) != int(expected_world_version) + 1:
+        return False
+    return (
+        row.get("currentMapId") == map_id
+        and int(row.get("contentVersion", 0)) == int(content_version)
+        and row.get("manifestRevision") == manifest_revision
+        and (row.get("worldFlags") or {}) == world_flags
+        and (row.get("inventory") or {}) == inventory
+        and (row.get("quests") or {}) == quests
+        and set(row.get("consumedContentIds") or []) == set(consumed_content_ids)
+        and set(row.get("claimedRewards") or []) == set(claimed_rewards)
+    )
+
+
 def _public(row: dict[str, Any] | None) -> dict[str, Any] | None:
     if not row:
         return None
@@ -181,6 +211,7 @@ async def checkpoint_run(
     quests: dict[str, Any],
     consumed_content_ids: list[str],
     claimed_rewards: list[str],
+    terminal_status: str | None = None,
 ) -> dict[str, Any] | None:
     """Atomically persist one monotonic world checkpoint.
 
@@ -195,6 +226,22 @@ async def checkpoint_run(
             row = _memory_runs.get(run_id)
             if row is None or row.get("owner") != owner:
                 return None
+            if row.get("status", "active") != "active":
+                if _terminal_checkpoint_replay_matches(
+                    row,
+                    expected_world_version=expected_world_version,
+                    terminal_status=terminal_status,
+                    map_id=map_id,
+                    content_version=content_version,
+                    manifest_revision=manifest_revision,
+                    world_flags=world_flags,
+                    inventory=inventory,
+                    quests=quests,
+                    consumed_content_ids=consumed_content_ids,
+                    claimed_rewards=claimed_rewards,
+                ):
+                    return _public(row)
+                raise ValueError("run-terminal")
             if int(row.get("worldVersion", 0)) != int(expected_world_version):
                 raise ValueError("world-version-conflict")
 
@@ -212,6 +259,8 @@ async def checkpoint_run(
                 *(row.get("claimedRewards") or []),
                 *claimed_rewards,
             ]))
+            if terminal_status is not None:
+                row["status"] = terminal_status
             row["worldVersion"] = int(expected_world_version) + 1
             row["updatedAt"] = now
             return _public(row)
@@ -226,6 +275,7 @@ async def checkpoint_run(
                 "inventory": deepcopy(inventory),
                 "quests": deepcopy(quests),
                 "updatedAt": now,
+                **({"status": terminal_status} if terminal_status is not None else {}),
             },
             "$inc": {"worldVersion": 1},
         }
@@ -241,6 +291,10 @@ async def checkpoint_run(
                 "_id": run_id,
                 "owner": owner,
                 "worldVersion": int(expected_world_version),
+                "$or": [
+                    {"status": "active"},
+                    {"status": {"$exists": False}},
+                ],
             },
             update,
         )
@@ -248,6 +302,22 @@ async def checkpoint_run(
             existing = await collection.find_one({"_id": run_id, "owner": owner})
             if existing is None:
                 return None
+            if existing.get("status", "active") != "active":
+                if _terminal_checkpoint_replay_matches(
+                    existing,
+                    expected_world_version=expected_world_version,
+                    terminal_status=terminal_status,
+                    map_id=map_id,
+                    content_version=content_version,
+                    manifest_revision=manifest_revision,
+                    world_flags=world_flags,
+                    inventory=inventory,
+                    quests=quests,
+                    consumed_content_ids=consumed_content_ids,
+                    claimed_rewards=claimed_rewards,
+                ):
+                    return _public(existing)
+                raise ValueError("run-terminal")
             raise ValueError("world-version-conflict")
         return _public(await collection.find_one({"_id": run_id, "owner": owner}))
     except PyMongoError as exc:

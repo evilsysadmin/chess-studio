@@ -75,6 +75,53 @@ describe('Chronicles run transport', () => {
     );
   });
 
+  it('marks terminal state in the same authoritative checkpoint request', async () => {
+    await chroniclesCheckpointState(
+      'run-terminal',
+      {
+        mapId: 'crypt-eight-squares',
+        phase: 'defeated',
+        party: [],
+      },
+      4,
+    );
+
+    const [, options] = requestJson.mock.calls[0];
+    expect(JSON.parse(options.body)).toMatchObject({
+      expectedWorldVersion: 4,
+      currentMapId: 'crypt-eight-squares',
+      terminalStatus: 'defeated',
+      worldFlags: {
+        '__chrRuntime.version': 1,
+        '__chrRuntime.phase': 'defeated',
+      },
+    });
+  });
+
+  it('sends explicit successful finalization only when requested by the adapter', async () => {
+    await chroniclesCheckpointState(
+      'run-completed',
+      {
+        mapId: 'gallery-of-forks',
+        phase: 'escaped',
+      },
+      8,
+      { terminalStatus: 'completed' },
+    );
+
+    const [, options] = requestJson.mock.calls[0];
+    expect(JSON.parse(options.body)).toMatchObject({
+      expectedWorldVersion: 8,
+      currentMapId: 'gallery-of-forks',
+      terminalStatus: 'completed',
+      worldFlags: {
+        '__chrRuntime.version': 1,
+        '__chrRuntime.phase': 'escaped',
+      },
+    });
+    expect(options).not.toHaveProperty('terminalStatus');
+  });
+
   it('projects state through the bounded checkpoint contract before sending', async () => {
     await chroniclesCheckpointState(
       'run-2',

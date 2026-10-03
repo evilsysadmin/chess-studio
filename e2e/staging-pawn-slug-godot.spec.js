@@ -122,13 +122,15 @@ test('staging visual · Pawn Slug Godot muestra boot, carrera y pickup SMG sin m
     // This smoke proves boot, real keyboard input and the SMG pickup swap, not
     // level traversal (tests/traversal_audit.gd owns that, with crouch and
     // jumps). Industrial's opening forces a crouch under the low catwalk, so
-    // start just before the SMG pickup (x 1240) instead, and keep the squad
-    // guarding it out of this run: idle during the staging boot, Matthias was
-    // killed and respawned with the pistol, so the SMG captures showed the
-    // wrong weapon. Both probes are JS-only test globals read at boot.
+    // start just before the SMG pickup (x 1240) instead, with no roster
+    // enemies: idle through the staging boot, even the long-range shooters
+    // beyond a 900 px radius killed Matthias, who respawned with the pistol
+    // and turned the SMG captures into pistol captures. This smoke proves
+    // sprites and input, not combat. Both probes are JS-only test globals
+    // read at boot.
     if (/[?&]stage=industrial_front_v1(&|$)/.test(window.location.search)) {
       window.__pawnSlugVisualProbeX = 1150;
-      window.__pawnSlugVisualProbeCalmRadius = 900;
+      window.__pawnSlugVisualProbeCalmRadius = 1000000;
     }
     window.__pawnSlugGodotVisualMessages = [];
     window.addEventListener('message', (event) => {

@@ -222,6 +222,16 @@ export default function GameBoardView({
                   onClick={controls.onAbandon}
                   ariaLabel="Salir de la partida"
                 />
+                {!zenMode && !focusActive && board.selectionNotice && (
+                  <div
+                    className={`move-availability-note move-availability-note-warroom ${board.selectionNotice.kind}`}
+                    role="status"
+                    aria-live="polite"
+                  >
+                    <b>{board.selectionNotice.kind === 'pinned' ? <>Pieza <GlossaryTerm term="Clavada">clavada</GlossaryTerm></> : 'Sin jugadas legales'}</b>
+                    <span>{board.selectionNotice.text}</span>
+                  </div>
+                )}
                 {!zenMode && !focusActive && activeBoardBubble && matthias3DBubbleStyle && (
                   <aside
                     key={activeBoardBubble.id}
@@ -288,7 +298,7 @@ export default function GameBoardView({
               </aside>
             )}
 
-            {!zenMode && !focusActive && board.selectionNotice && (
+            {!isThreeD && !zenMode && !focusActive && board.selectionNotice && (
               <div className={`move-availability-note ${board.selectionNotice.kind}`} role="status" aria-live="polite">
                 <b>{board.selectionNotice.kind === 'pinned' ? <>Pieza <GlossaryTerm term="Clavada">clavada</GlossaryTerm></> : 'Sin jugadas legales'}</b>
                 <span>{board.selectionNotice.text}</span>

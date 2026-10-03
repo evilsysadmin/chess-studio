@@ -32,9 +32,10 @@ export function chroniclesCheckpointRun(runId, checkpoint, { signal } = {}) {
 
 
 export function chroniclesCheckpointState(runId, state, worldVersion, options = {}) {
+  const { terminalStatus = null, ...transportOptions } = options;
   return chroniclesCheckpointRun(
     runId,
-    chroniclesRunCheckpointPayload(state, worldVersion),
-    options,
+    chroniclesRunCheckpointPayload(state, worldVersion, { terminalStatus }),
+    transportOptions,
   );
 }
