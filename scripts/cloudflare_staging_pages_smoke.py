@@ -133,14 +133,26 @@ def test_release_fast_path_wait_policy() -> None:
             release_fast_path=True,
             domain_created=False,
             pages_dns="unchanged",
+            domain_state="active",
         ) is False,
-        "un release normal con topología estable no debe pagar el timeout de 600s",
+        "sólo un dominio existente, estable y active puede saltarse el timeout de 600s",
     )
+    for state in (None, "pending", "blocked", "error", "unknown"):
+        check(
+            module.should_wait_pages_domain_activation(
+                release_fast_path=True,
+                domain_created=False,
+                pages_dns="unchanged",
+                domain_state=state,
+            ) is True,
+            f"un dominio {state!r} debe abandonar el fast-path",
+        )
     check(
         module.should_wait_pages_domain_activation(
             release_fast_path=True,
             domain_created=True,
             pages_dns="unchanged",
+            domain_state="active",
         ) is True,
         "crear el custom domain sí debe esperar activación",
     )
@@ -149,6 +161,7 @@ def test_release_fast_path_wait_policy() -> None:
             release_fast_path=True,
             domain_created=False,
             pages_dns="updated",
+            domain_state="active",
         ) is True,
         "reconciliar DNS sí debe esperar activación",
     )
@@ -157,6 +170,7 @@ def test_release_fast_path_wait_policy() -> None:
             release_fast_path=False,
             domain_created=False,
             pages_dns="unchanged",
+            domain_state="active",
         ) is True,
         "el bootstrap completo conserva la espera estricta",
     )
@@ -195,4 +209,4 @@ if __name__ == "__main__":
     test_release_fast_path_wait_policy()
     test_web_analytics_permission_is_non_blocking()
     test_web_analytics_existing_zone_is_idempotent()
-    print("cloudflare-staging-pages-smoke OK · Pages + DNS + release fast-path + domain active + RUM opcional/idempotente")
+    print("cloudflare-staging-pages-smoke OK · Pages + DNS + active-domain fast-path + RUM opcional/idempotente")
