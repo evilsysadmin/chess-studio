@@ -1647,3 +1647,124 @@
   .pvp-duel-hall__owl,
   .pvp-duel-hall__rug { display: none; }
 }
+
+
+/* Premium environment pass 4: stronger focal staging and heraldic furniture. */
+@media (min-width: 821px) {
+  .pvp-duel-hall__table {
+    overflow: visible;
+  }
+
+  .pvp-duel-hall__table::before {
+    border-left: 1px solid rgba(214,160,78,.18);
+    border-right: 1px solid rgba(214,160,78,.18);
+    background:
+      linear-gradient(90deg, transparent 13%, rgba(206,158,82,.09) 13.2% 13.6%, transparent 13.8% 86.2%, rgba(206,158,82,.09) 86.4% 86.8%, transparent 87%),
+      linear-gradient(90deg, transparent 41%, rgba(20,30,49,.86) 41.2% 58.8%, transparent 59%),
+      repeating-linear-gradient(90deg, rgba(255,255,255,.012) 0 1px, transparent 1px 26px),
+      linear-gradient(180deg, #351f13, #180d08);
+  }
+
+  .pvp-duel-hall__table::after {
+    content: '♞';
+    left: 43.5%;
+    right: auto;
+    bottom: -8%;
+    width: 13%;
+    height: 28%;
+    display: grid;
+    place-items: center;
+    font-size: clamp(2rem, 3.1vw, 3.8rem);
+    color: rgba(182,133,62,.72);
+    border-left: 1px solid rgba(185,135,63,.26);
+    border-right: 1px solid rgba(185,135,63,.26);
+    background:
+      linear-gradient(180deg, #142039, #0b1425 88%);
+    box-shadow:
+      inset 0 0 0 2px rgba(50,31,17,.5),
+      0 10px 16px rgba(0,0,0,.28);
+    text-shadow: 0 4px 8px rgba(0,0,0,.54);
+  }
+
+  .pvp-duel-hall .pvp-lobby__identity-main::after {
+    content: '♛';
+    display: block;
+    margin: .4rem auto -.1rem;
+    width: 2.2rem;
+    color: rgba(203,151,74,.48);
+    font-size: 1.2rem;
+    line-height: 1;
+  }
+
+  .pvp-duel-hall__banner--one,
+  .pvp-duel-hall__banner--two {
+    border-bottom-left-radius: 2px;
+    border-bottom-right-radius: 2px;
+    clip-path: polygon(0 0,100% 0,100% 88%,50% 100%,0 88%);
+  }
+
+  .pvp-duel-hall__banner--one::before,
+  .pvp-duel-hall__banner--two::before {
+    content: '';
+    position: absolute;
+    inset: 5px;
+    border: 1px solid rgba(197,146,71,.18);
+    clip-path: inherit;
+  }
+
+  .pvp-duel-hall__banner--one::after,
+  .pvp-duel-hall__banner--two::after {
+    content: '♞';
+    position: absolute;
+    left: 50%;
+    top: 45%;
+    transform: translate(-50%,-50%);
+    color: rgba(205,153,77,.72);
+    font-size: clamp(1.8rem,2.6vw,3.2rem);
+    text-shadow: 0 3px 8px rgba(0,0,0,.55);
+  }
+
+  .pvp-duel-hall__arch {
+    border-color: rgba(91,59,36,.74);
+    background:
+      linear-gradient(90deg, rgba(255,255,255,.015), transparent 17% 83%, rgba(255,255,255,.012)),
+      linear-gradient(180deg, rgba(42,29,22,.76), rgba(16,12,10,.9));
+  }
+
+  .pvp-duel-hall__arch::after {
+    content: '';
+    position: absolute;
+    inset: 8px;
+    border: 1px solid rgba(177,126,60,.08);
+    border-radius: inherit;
+  }
+
+  .pvp-duel-hall .pvp-lobby__panel--roster h3,
+  .pvp-duel-hall .pvp-lobby__chat-disclosure strong {
+    text-shadow: 0 2px 8px rgba(0,0,0,.5);
+  }
+
+  .pvp-duel-hall .pvp-lobby__panel--roster > header small,
+  .pvp-duel-hall .pvp-lobby__chat-disclosure > summary small {
+    color: #d8a957;
+  }
+
+  .pvp-duel-hall .pvp-lobby__panel--roster > header > span {
+    border-color: rgba(212,158,78,.38);
+    background: linear-gradient(180deg, rgba(96,60,30,.7), rgba(31,20,14,.82));
+    color: #f0c778;
+  }
+
+  .pvp-duel-hall .pvp-lobby__empty-state {
+    border-color: rgba(192,142,71,.14);
+    background:
+      radial-gradient(circle at 50% 0, rgba(197,146,71,.08), transparent 42%),
+      rgba(8,7,6,.3);
+  }
+
+  .pvp-duel-hall .pvp-lobby__refresh {
+    min-width: 150px;
+    font-family: Georgia, 'Times New Roman', serif;
+    letter-spacing: .01em;
+  }
+}
