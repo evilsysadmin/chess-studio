@@ -1,34 +1,42 @@
-import { describe, expect, it, vi } from 'vitest';
-import { clampWarRoomZoom, nextWarRoomPinchZoom, resetWarRoomView, shouldShowWarRoomCenter } from './WarRoomBoardZoom.jsx';
+import { describe, expect, it } from 'vitest';
+import {
+  CANONICAL_VIEW,
+  WAR_ROOM_MAX_ZOOM,
+  clampWarRoomView,
+  clampWarRoomZoom,
+  isCanonicalWarRoomView,
+  nextWarRoomPinchView,
+} from './WarRoomBoardZoom.jsx';
+
+const size = { width: 400, height: 800 };
 
 describe('WarRoomBoardZoom', () => {
-  it('keeps canonical framing as the minimum zoom', () => {
+  it('keeps canonical framing as the minimum and caps the close zoom', () => {
     expect(clampWarRoomZoom(.6)).toBe(1);
-    expect(clampWarRoomZoom(1)).toBe(1);
+    expect(clampWarRoomZoom(9)).toBe(WAR_ROOM_MAX_ZOOM);
   });
 
-  it('caps close zoom to avoid losing the playable board', () => {
-    expect(clampWarRoomZoom(2)).toBe(1.35);
+  it('zooms toward the fingers: the point under the pinch stays under it', () => {
+    const start = { distance: 100, centroid: { x: 300, y: 200 }, view: CANONICAL_VIEW };
+    const view = nextWarRoomPinchView(start, { distance: 200, centroid: { x: 300, y: 200 } }, size);
+    expect(view.zoom).toBe(2);
+    // Scene point (300,200) maps to 300 + x = 2*300 + x  => x = -300.
+    expect(view).toEqual({ zoom: 2, x: -300, y: -200 });
   });
 
-  it('maps fingers moving apart to zoom in and together back toward center', () => {
-    expect(nextWarRoomPinchZoom(1, 100, 125)).toBe(1.25);
-    expect(nextWarRoomPinchZoom(1.25, 125, 100)).toBe(1);
+  it('pans with two fingers while zoomed', () => {
+    const start = { distance: 100, centroid: { x: 200, y: 400 }, view: { zoom: 2, x: -200, y: -400 } };
+    const view = nextWarRoomPinchView(start, { distance: 100, centroid: { x: 260, y: 380 } }, size);
+    expect(view).toEqual({ zoom: 2, x: -140, y: -420 });
   });
 
-  it('shows Centrar for zoom or inspection, but not canonical play', () => {
-    expect(shouldShowWarRoomCenter(1, false)).toBe(false);
-    expect(shouldShowWarRoomCenter(1.2, false)).toBe(true);
-    expect(shouldShowWarRoomCenter(1, true)).toBe(true);
+  it('never exposes empty bands past the scene edges', () => {
+    expect(clampWarRoomView({ zoom: 2, x: 50, y: -2000 }, 400, 800)).toEqual({ zoom: 2, x: 0, y: -800 });
+    expect(clampWarRoomView({ zoom: 1, x: -30, y: 20 }, 400, 800)).toEqual({ zoom: 1, x: 0, y: 0 });
   });
 
-  it('resets zoom and exits inspection through its existing control', () => {
-    const setZoom = vi.fn();
-    const click = vi.fn();
-    const root = { querySelector: vi.fn(() => ({ click })) };
-    resetWarRoomView(root, setZoom, true);
-    expect(setZoom).toHaveBeenCalledWith(1);
-    expect(root.querySelector).toHaveBeenCalledWith('.board3d-inspect');
-    expect(click).toHaveBeenCalledOnce();
+  it('treats a near-1 zoom as the canonical view (no restore button)', () => {
+    expect(isCanonicalWarRoomView({ zoom: 1.005 })).toBe(true);
+    expect(isCanonicalWarRoomView({ zoom: 1.2 })).toBe(false);
   });
 });

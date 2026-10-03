@@ -269,10 +269,13 @@ test('War Room · Android selecciona una pieza en pointerdown y muestra destinos
   await touchMove(cdp, from);
   await touchEnd(cdp);
 
+  // Moves are played on release (a second finger could still turn the touch
+  // into a two-finger zoom), selection stays instant on contact.
   await touchStart(cdp, to);
   await expect(canvas).toHaveAttribute('data-war-room-last-square', 'e4');
-  await expect.poll(() => movePosts(requestLog).length).toBe(1);
+  expect(movePosts(requestLog).length).toBe(0);
   await touchEnd(cdp);
+  await expect.poll(() => movePosts(requestLog).length).toBe(1);
 });
 
 test('War Room · orientación negra conserva back rank, color, raycast y navegación al alternar 3D↔2D', async ({ page }) => {
@@ -323,9 +326,9 @@ test('War Room · orientación negra conserva back rank, color, raycast y navega
 
   await touchStart(cdp, blackTo);
   await expect(canvas).toHaveAttribute('data-war-room-last-square', 'e5');
+  await touchEnd(cdp);
   await expect.poll(() => moveLog.length).toBe(1);
   expect(moveLog[0]).toMatchObject({ from: 'e7', to: 'e5' });
-  await touchEnd(cdp);
 
   await switchWarRoomTo2D(page);
   const squares = page.locator('.board-grid').first().locator('.square');
