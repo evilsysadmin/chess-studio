@@ -10,7 +10,13 @@ deploy = (ROOT / "scripts" / "oci_existing_a1_deploy.sh").read_text(encoding="ut
 compose = (ROOT / "infra" / "oci" / "runtime" / "docker-compose.yml").read_text(encoding="utf-8")
 backend_main_path = ROOT / "backend-python" / "main.py"
 backend_main = backend_main_path.read_text(encoding="utf-8")
-go_pulse = (ROOT / "backend-go" / "internal" / "pulse" / "pulse.go").read_text(encoding="utf-8")
+# The whole native handler package, not one file: declarations move between
+# files (canonicalBrowserOrigins lives in auth.go since the pulse split).
+go_pulse = "\n".join(
+    path.read_text(encoding="utf-8")
+    for path in sorted((ROOT / "backend-go" / "internal" / "pulse").glob("*.go"))
+    if not path.name.endswith("_test.go")
+)
 verifier = (ROOT / "scripts" / "verify_backend_staging.py").read_text(encoding="utf-8")
 staging_deploy = (ROOT / ".github" / "workflows" / "staging-deploy.yml").read_text(encoding="utf-8")
 service_control = (ROOT / ".github" / "workflows" / "oci-staging-service.yml").read_text(encoding="utf-8")
@@ -462,6 +468,10 @@ assert "CHESS_STUDIO_PVP_NATIVE_CHALLENGE_RESOLUTION_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_CHALLENGE_ACCEPT_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_CHALLENGE_CREATE_ENABLED" in deploy
 assert "env.get('CHESS_STUDIO_PVP_NATIVE_CHALLENGE_CREATE_ENABLED', 'true')" in deploy
+# The browser attestation must default like compose, or an unset variable
+# silently skips the native challenge-create marker check.
+assert 'native_expected="${CHESS_STUDIO_PVP_NATIVE_CHALLENGE_CREATE_ENABLED:-true}"' in deploy
+assert "CHESS_STUDIO_PVP_NATIVE_CHALLENGE_CREATE_ENABLED:-false" not in deploy
 assert "CHESS_STUDIO_PVP_ALLOW_PYTHON_FALLBACK_STAGING" in deploy
 assert "deployment_target == 'staging'" in deploy
 assert "required_native = (" in deploy
