@@ -8,6 +8,7 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 PREVIEW = ROOT / ".github/workflows/staging-preview.yml"
 STAGING_DEPLOY = ROOT / ".github/workflows/staging-deploy.yml"
+STAGING_CONTINUITY = ROOT / ".github/workflows/staging-deploy-continuity.yml"
 RETIRED_STAGING_PAGES_FAST = ROOT / ".github/workflows/staging-pages-fast.yml"
 MAIN_BACKEND_IMAGE = ROOT / ".github/workflows/main-backend-image.yml"
 STAGING_AI = ROOT / ".github/workflows/staging-ai-worker.yml"
@@ -54,6 +55,7 @@ def main() -> int:
     paths = (
         PREVIEW,
         STAGING_DEPLOY,
+        STAGING_CONTINUITY,
         MAIN_BACKEND_IMAGE,
         STAGING_AI,
         PROMOTE,
@@ -74,6 +76,7 @@ def main() -> int:
 
     preview = PREVIEW.read_text(encoding="utf-8")
     staging_deploy = STAGING_DEPLOY.read_text(encoding="utf-8")
+    staging_continuity = STAGING_CONTINUITY.read_text(encoding="utf-8")
     main_backend_image = MAIN_BACKEND_IMAGE.read_text(encoding="utf-8")
     staging_ai = STAGING_AI.read_text(encoding="utf-8")
     promote = PROMOTE.read_text(encoding="utf-8")
@@ -153,6 +156,21 @@ def main() -> int:
         errors.append("staging fast-path/fallback must reuse full public backend accreditation before skipping Run Command")
     if staging_deploy.count("--attempts 1") < 2:
         errors.append("staging watcher and pre-fallback checks must use one-shot full public accreditation probes")
+
+    forbid(
+        staging_deploy,
+        "staging-deploy-continuity.yml",
+        "staging critical path must not force the blue-green continuity drill on every release",
+        errors,
+    )
+    for needle, label in (
+        ("workflow_run:\n    workflows:\n      - Deploy to staging", "continuity post-deploy trigger"),
+        ("Continuity drill · scope", "continuity path-aware scope"),
+        ("backend-python/*|backend-go/*|infra/oci/runtime/*|scripts/oci_*", "continuity backend/runtime path scope"),
+        ("Continuity skipped", "continuity cheap skip diagnostic"),
+        ("attempts=12", "post-deploy convergence budget"),
+    ):
+        require(staging_continuity, needle, label, errors)
 
     # Staging has one Pages deployment owner. The retired fast lane duplicated\n    # checkout/build/deploy/verify logic and must not return as a second mutation path.\n    if RETIRED_STAGING_PAGES_FAST.exists():\n        errors.append("staging Pages fast lane resurrected; canonical staging owns Pages deployment")\n\n    # Backend image publication is decoupled from admission/Pages. It may build
     # immutable images in parallel, but only current main may move the mutable
