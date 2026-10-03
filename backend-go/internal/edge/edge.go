@@ -150,6 +150,13 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.URL.Path == "/api/pvp" || strings.HasPrefix(r.URL.Path, "/api/pvp/") {
+		// Tell Python why this reached the fallback (logged as pvp_hop): the
+		// evidence for retiring the Python PvP routes.
+		reason := "unknown"
+		if route.Kind != pvproute.None {
+			reason = "disabled:" + route.Kind.String()
+		}
+		r.Header.Set("X-Chess-Pvp-Fallback", reason)
 		h.proxy.ServeHTTP(w, r)
 		return
 	}

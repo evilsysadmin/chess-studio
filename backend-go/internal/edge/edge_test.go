@@ -990,3 +990,27 @@ func TestReadinessReportsNativeResidentMoveState(t *testing.T) {
 		t.Fatalf("nativeResidentMove=%#v want=true", body["nativeResidentMove"])
 	}
 }
+
+func TestProxyTellsPythonWhyItFellBack(t *testing.T) {
+	got := make(chan string, 1)
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got <- r.Header.Get("X-Chess-Pvp-Fallback")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer upstream.Close()
+
+	h := mustHandler(t, upstream.URL) // no native handlers: every route is disabled
+	for path, want := range map[string]string{
+		"/api/pvp/matches/m-1/move": "disabled:match-move",
+		"/api/pvp/roster":           "disabled:roster",
+		"/api/pvp/something-else":   "unknown",
+	} {
+		req := httptest.NewRequest(http.MethodPost, "http://api.chess.test"+path, nil)
+		// A client cannot pre-set the reason: the edge overwrites it.
+		req.Header.Set("X-Chess-Pvp-Fallback", "forged")
+		h.ServeHTTP(httptest.NewRecorder(), req)
+		if reason := <-got; reason != want {
+			t.Fatalf("%s: reason=%q want=%q", path, reason, want)
+		}
+	}
+}
