@@ -335,7 +335,7 @@ cors_attest() {
     -X OPTIONS \
     -H "Origin: $cors_origin" \
     -H 'Access-Control-Request-Method: GET' \
-    -H 'Access-Control-Request-Headers: authorization,x-client-release' \
+    -H 'Access-Control-Request-Headers: authorization,x-request-id,x-client-release,x-presence-session' \
     -D "$headers" \
     -o /dev/null \
     "http://127.0.0.1:${target_port}/api/auth/me"
@@ -363,8 +363,9 @@ if expected not in origins:
     raise SystemExit(1)
 if 'GET' not in methods:
     raise SystemExit(1)
-if 'authorization' not in headers_allowed:
-    raise SystemExit(1)
+for required_header in ('authorization', 'x-request-id', 'x-client-release', 'x-presence-session'):
+    if required_header not in headers_allowed:
+        raise SystemExit(1)
 PY
   then
     rm -f "$headers"
@@ -823,7 +824,7 @@ pvp_browser_cors_attest() {
       -X OPTIONS \
       -H "Origin: $cors_origin" \
       -H 'Access-Control-Request-Method: POST' \
-      -H 'Access-Control-Request-Headers: authorization,x-request-id,x-client-release' \
+      -H 'Access-Control-Request-Headers: authorization,x-request-id,x-client-release,x-presence-session' \
       -D "$preflight_headers" -o /dev/null -w "%{http_code}" \
       "$endpoint")"; then
     rm -f "$preflight_headers" "$response_headers"
@@ -851,7 +852,7 @@ if expected not in origins:
 for required_method in ('POST', 'DELETE'):
     if required_method not in methods:
         raise SystemExit(1)
-for required_header in ('authorization', 'x-request-id', 'x-client-release'):
+for required_header in ('authorization', 'x-request-id', 'x-client-release', 'x-presence-session'):
     if required_header not in allowed_headers:
         raise SystemExit(1)
 PY
@@ -965,7 +966,7 @@ pvp_challenge_browser_attest() {
       -X OPTIONS \
       -H "Origin: $cors_origin" \
       -H 'Access-Control-Request-Method: POST' \
-      -H 'Access-Control-Request-Headers: authorization,content-type,x-request-id,x-client-release' \
+      -H 'Access-Control-Request-Headers: authorization,content-type,x-request-id,x-client-release,x-presence-session' \
       -D "$preflight_headers" -o /dev/null -w "%{http_code}" \
       "$endpoint")"; then
     rm -f "$preflight_headers" "$response_headers"
@@ -993,7 +994,7 @@ methods = ','.join(parsed.get('access-control-allow-methods', [])).upper()
 allowed_headers = ','.join(parsed.get('access-control-allow-headers', [])).lower()
 if expected not in origins or 'POST' not in methods:
     raise SystemExit(1)
-for required_header in ('authorization', 'content-type', 'x-request-id', 'x-client-release'):
+for required_header in ('authorization', 'content-type', 'x-request-id', 'x-client-release', 'x-presence-session'):
     if required_header not in allowed_headers:
         raise SystemExit(1)
 PY
