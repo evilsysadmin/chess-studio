@@ -56,7 +56,6 @@ class ChroniclesManifestError(ValueError):
 
 class CreateChroniclesRunRequest(BaseModel):
     map_id: str | None = Field(default=None, alias="mapId")
-    party_level: int = Field(default=1, alias="partyLevel", ge=1, le=12)
 
     model_config = {"populate_by_name": True, "extra": "forbid"}
 
@@ -730,6 +729,12 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
         body: CreateChroniclesRunRequest,
         username: str = Depends(auth_dependency),
         raw_idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+        party_level: int | None = Header(
+            default=None,
+            alias="X-Chronicles-Party-Level",
+            ge=1,
+            le=12,
+        ),
     ):
         try:
             idempotency_key = normalize_idempotency_key(raw_idempotency_key)
@@ -737,6 +742,7 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
             raise HTTPException(400, str(exc)) from exc
 
         fingerprint = operation_fingerprint({"mapId": body.map_id})
+        starting_party_level = party_level if party_level is not None else 1
         run_id = _run_id(username, idempotency_key)
         try:
             if idempotency_key:
@@ -773,7 +779,7 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
                 seed,
                 route_snapshot=route_snapshot,
                 planner_snapshot=planner_snapshot,
-                party_level=body.party_level,
+                party_level=starting_party_level,
             )
             run = await chronicles_run_store.create_or_replay_run(
                 run_id=run_id,
@@ -785,7 +791,7 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
                 create_fingerprint=fingerprint,
                 route_snapshot=route_snapshot,
                 planner_snapshot=planner_snapshot,
-                party_level=body.party_level,
+                party_level=starting_party_level,
             )
             stable_route_snapshot = _normalize_route_snapshot(run.get("route"))
             if body.map_id is None and stable_route_snapshot is None:
