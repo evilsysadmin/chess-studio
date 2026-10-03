@@ -58,6 +58,22 @@ async function touchEnd(cdp) {
   });
 }
 
+async function twoFingerPan(cdp, a, b, delta = { x: 34, y: 26 }) {
+  const point = (id, value) => ({ x: value.x, y: value.y, radiusX: 4, radiusY: 4, force: 0.7, id });
+  await cdp.send('Input.dispatchTouchEvent', {
+    type: 'touchStart',
+    touchPoints: [point(1, a), point(2, b)],
+  });
+  await cdp.send('Input.dispatchTouchEvent', {
+    type: 'touchMove',
+    touchPoints: [
+      point(1, { x: a.x + delta.x, y: a.y + delta.y }),
+      point(2, { x: b.x + delta.x, y: b.y + delta.y }),
+    ],
+  });
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+}
+
 function movePosts(requestLog) {
   return requestLog.filter((entry) => entry.method === 'POST' && /\/games\/[^/]+\/move$/.test(entry.path));
 }
@@ -248,6 +264,25 @@ test('War Room · Android selecciona una pieza en pointerdown y muestra destinos
 
   const projection = await readBoard3DProjection(canvas);
 
+  const canvasBox = await canvas.boundingBox();
+  expect(canvasBox).not.toBeNull();
+  const cdp = await page.context().newCDPSession(page);
+  await twoFingerPan(
+    cdp,
+    { x: canvasBox.x + canvasBox.width * .36, y: canvasBox.y + canvasBox.height * .52 },
+    { x: canvasBox.x + canvasBox.width * .64, y: canvasBox.y + canvasBox.height * .52 },
+  );
+  await expect.poll(async () => await canvas.getAttribute('data-board3d-mobile-pan')).not.toBe('0.00,0.00');
+  expect(movePosts(requestLog)).toHaveLength(0);
+  const centerButton = page.getByRole('button', { name: 'Centrar', exact: true });
+  await expect(centerButton).toBeVisible();
+  const centerBox = await centerButton.boundingBox();
+  expect(centerBox).not.toBeNull();
+  expect(centerBox.width).toBeGreaterThanOrEqual(44);
+  expect(centerBox.height).toBeGreaterThanOrEqual(44);
+  await centerButton.click();
+  await expect(canvas).toHaveAttribute('data-board3d-mobile-pan', '0.00,0.00');
+
   const d4Luma = await canvasLuminanceAt(canvas, projection.square('d4'));
   const e4Luma = await canvasLuminanceAt(canvas, projection.square('e4'));
   const d5Luma = await canvasLuminanceAt(canvas, projection.square('d5'));
@@ -257,7 +292,6 @@ test('War Room · Android selecciona una pieza en pointerdown y muestra destinos
 
   const from = projection.square('e2', 0.76);
   const to = projection.square('e4');
-  const cdp = await page.context().newCDPSession(page);
 
   await touchStart(cdp, from);
   await expect(canvas).toHaveAttribute('data-war-room-last-square', 'e2');

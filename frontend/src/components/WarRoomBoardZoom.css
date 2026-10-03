@@ -39,7 +39,16 @@
 
 @media (pointer: coarse) {
   .war-room-board-center-btn {
-    min-height: 34px;
-    padding-inline: .54rem;
+    min-width: 44px;
+    min-height: 44px;
+    padding-inline: .64rem;
+  }
+}
+
+@media (pointer: coarse) and (orientation: portrait) and (max-width: 920px) {
+  .war-room-board-center-btn {
+    /* Keep Centrar above the fixed landscape affordance instead of letting
+       both 44px controls fight for the same bottom-right touch target. */
+    bottom: calc(max(.45rem, env(safe-area-inset-bottom)) + 52px);
   }
 }
