@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
+import { readFileSync } from 'node:fs';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import {
   HOME_MATTHIAS_ACTOR_SCALE,
   HOME_MATTHIAS_CADENCE,
@@ -11,6 +13,7 @@ import {
   HOME_MATTHIAS_BLANKET,
   HOME_MATTHIAS_SLEEP_FACE,
   homeMatthiasZzzFrame,
+  createHomeMatthiasActor,
   homeMatthiasActorRoutine,
   homeMatthiasActorStationForProfile,
   homeMatthiasBlanketProfile,
@@ -180,6 +183,32 @@ describe('Home Matthias in-scene actor', () => {
     expect(late.scale).toBeGreaterThan(start.scale);
     expect(start.opacity).toBeLessThan(0.2);
     expect(homeMatthiasZzzFrame(HOME_MATTHIAS_SLEEP_FACE.zzz.period * 0.99, 0).opacity).toBeLessThan(0.1);
+  });
+
+  it('sleeps with slack arms along the flank, never pointing at the ceiling', async () => {
+    const file = readFileSync(new URL('../../public/models/matthias-home-canonical.glb', import.meta.url));
+    const buffer = file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength);
+    const gltf = await new Promise((resolve, reject) => new GLTFLoader().parse(buffer, '', resolve, reject));
+    const actor = createHomeMatthiasActor(gltf, { shadowsEnabled: false, random: () => 0.5 });
+    actor.setRoutine({ profile: 'sleep', clip: 'Sleep', phase: 0, stationId: 'sofa-nap', posture: 'lie', propProfile: 'sleep' });
+    actor.update(0.05);
+    actor.object.updateMatrixWorld(true);
+    const key = (name) => String(name).toLowerCase().replace(/[^a-z0-9]+/g, '');
+    const find = (name) => {
+      let found = null;
+      gltf.scene.traverse((node) => { if (!found && key(node.name) === key(name)) found = node; });
+      return found;
+    };
+    const toBody = new THREE.Matrix4().copy(gltf.scene.matrixWorld).invert();
+    for (const side of ['L', 'R']) {
+      const hand = new THREE.Box3().setFromObject(find(`Hand.${side}`)).getCenter(new THREE.Vector3()).applyMatrix4(toBody);
+      const shoulder = new THREE.Vector3().setFromMatrixPosition(find(`upper_arm.${side}`).matrixWorld).applyMatrix4(toBody);
+      // In the body frame (as if standing): the glove hangs to the hip.
+      expect(hand.y - shoulder.y).toBeLessThan(-0.3);
+    }
+    // Bald and eyes shut while asleep.
+    expect(find('Classic cap top').visible).toBe(false);
+    expect(find('Eye.L').scale.y).toBeLessThan(0.3);
   });
 
   it('converts the authored Blender frame to the runtime Y-up frame', () => {

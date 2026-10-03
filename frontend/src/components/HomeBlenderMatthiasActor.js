@@ -237,9 +237,11 @@ export const HOME_MATTHIAS_LIE_POSE = Object.freeze({
   // Roll about the body axis: a side nap facing the hall camera, so the
   // stern sleeping face reads from the canonical Home view.
   rollDeg: 58,
-  // Arms gone slack: along the flank, elbows barely bent, gloves resting on
-  // the cushion. Folded forearms left the hands pointing at the ceiling.
-  arms: Object.freeze({ upperPitchDeg: 14, upperSplayDeg: 10, forePitchDeg: 22 }),
+  // Arms gone slack: hanging along the flank towards the hips, elbows a bit
+  // bent, gloves resting on the cushion/blanket. The overrides replace the
+  // bone rotation outright and a zero rotation points the arm at the head,
+  // so the old chest fold left the hands pointing at the ceiling.
+  arms: Object.freeze({ upperPitchDeg: 150, upperSplayDeg: -10, forePitchDeg: 20 }),
 });
 
 function eulerDeg(x = 0, y = 0, z = 0) {
@@ -356,7 +358,7 @@ export const HOME_MATTHIAS_SLEEP_FACE = Object.freeze({
   capPrefix: 'classiccap',
   eyes: Object.freeze(['Eye.L', 'Eye.R']),
   closedEyeScale: 0.14,
-  zzz: Object.freeze({ count: 3, period: 4.2, rise: 0.62, drift: 0.2, size: 0.17 }),
+  zzz: Object.freeze({ count: 3, period: 4.2, rise: 0.7, drift: 0.22, size: 0.28 }),
 });
 
 // One drifting Z: t in [0, 1) along its climb. Fades in, grows, fades out.
