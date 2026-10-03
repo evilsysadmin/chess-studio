@@ -105,12 +105,14 @@ LOG_SERVICES = {"production": "chess-studio-backend", "staging": "chess-studio-b
 def breakdown_query(service: str, window_seconds: int) -> str:
     """Who sends the fallback traffic, from Python's structured access logs.
 
-    peer_ip is the hop right before FastAPI (nginx or the Go sidecar on the
-    Docker network); synthetic_source marks smoke and capacity traffic. User
-    names and client IPs are deliberately left out.
+    pvp_hop says how the request reached Python: "go:<reason>" when the Go
+    sidecar forwarded it (and why), "direct" when it bypassed the sidecar.
+    peer_ip is the hop right before FastAPI on the Docker network;
+    synthetic_source marks smoke and capacity traffic. User names and client
+    IPs are deliberately left out.
     """
     return (
-        "sum by (route, method, peer_ip, synthetic_source) (count_over_time("
+        "sum by (route, method, pvp_hop, peer_ip, synthetic_source) (count_over_time("
         f'{{service_name="{service}"}} | json | __error__="" | event="http_request" '
         f'| route=~"/api/pvp.*" [{window_seconds}s]))'
     )
@@ -128,6 +130,7 @@ def breakdown_rows(payload: dict) -> list[dict]:
         rows.append({
             "route": str(metric.get("route") or "?"),
             "method": str(metric.get("method") or "?"),
+            "hop": str(metric.get("pvp_hop") or "?"),
             "peer_ip": str(metric.get("peer_ip") or "-"),
             "synthetic": str(metric.get("synthetic_source") or "-"),
             "requests": round(float(value[1])),
@@ -140,8 +143,8 @@ def breakdown_markdown(environment: str, rows: list[dict]) -> str:
     lines = [f"#### Sources · {environment}", ""]
     if not rows:
         return "\n".join(lines + ["No matching access logs.", ""]) + "\n"
-    lines += ["| Route | Method | Peer (hop) | Synthetic | Requests |", "| --- | --- | --- | --- | ---: |"]
-    lines += [f"| `{r['route']}` | {r['method']} | {r['peer_ip']} | {r['synthetic']} | {r['requests']} |" for r in rows[:40]]
+    lines += ["| Route | Method | Via | Peer | Synthetic | Requests |", "| --- | --- | --- | --- | --- | ---: |"]
+    lines += [f"| `{r['route']}` | {r['method']} | {r['hop']} | {r['peer_ip']} | {r['synthetic']} | {r['requests']} |" for r in rows[:40]]
     return "\n".join(lines) + "\n"
 
 
@@ -167,7 +170,7 @@ def self_test() -> int:
     brows = breakdown_rows({"data": {"result": [
         {"metric": {"route": "/api/pvp/lobby", "method": "GET", "peer_ip": "172.18.0.5"}, "value": [0, "12"]},
     ]}})
-    assert brows == [{"route": "/api/pvp/lobby", "method": "GET", "peer_ip": "172.18.0.5", "synthetic": "-", "requests": 12}]
+    assert brows == [{"route": "/api/pvp/lobby", "method": "GET", "hop": "?", "peer_ip": "172.18.0.5", "synthetic": "-", "requests": 12}]
     assert "172.18.0.5" in breakdown_markdown("staging", brows)
     print("pvp-python-fallback-report self-test OK")
     return 0

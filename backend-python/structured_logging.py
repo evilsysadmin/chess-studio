@@ -182,6 +182,7 @@ def emit_http_event(
     x_forwarded_for: list[str] | None = None,
     client_country: str | None = None,
     synthetic_source: str | None = None,
+    pvp_hop: str | None = None,
 ) -> None:
     payload: dict[str, Any] = {
         "event": "http_request",
@@ -196,6 +197,9 @@ def emit_http_event(
     clean_synthetic_source = _clean_log_text(synthetic_source, max_length=64)
     if clean_synthetic_source:
         payload["synthetic_source"] = clean_synthetic_source
+    clean_pvp_hop = _clean_log_text(pvp_hop, max_length=64)
+    if clean_pvp_hop:
+        payload["pvp_hop"] = clean_pvp_hop
     try:
         from tracing import current_trace_id, current_trace_sampled
         trace_id = current_trace_id()
