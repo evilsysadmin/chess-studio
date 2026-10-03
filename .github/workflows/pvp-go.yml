@@ -15,6 +15,7 @@ on:
       - 'backend-python/operation_idempotency_core.py'
       - 'backend-python/api_models.py'
       - 'scripts/games_ops_corpus.py'
+      - 'backend-python/game_store.py'
       - '.github/workflows/pvp-go.yml'
   push:
     branches:
@@ -30,6 +31,7 @@ on:
       - 'backend-python/operation_idempotency_core.py'
       - 'backend-python/api_models.py'
       - 'scripts/games_ops_corpus.py'
+      - 'backend-python/game_store.py'
       - '.github/workflows/pvp-go.yml'
   workflow_dispatch:
 
