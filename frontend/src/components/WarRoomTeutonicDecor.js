@@ -525,42 +525,33 @@ export function registerPremiumRoomFinalization(group, { wallZ, towardBoard, coa
     run: (root) => applyPremiumRoomPass(root, { wallZ, towardBoard, coarsePointer }),
   });
 
-  // Lite desktop War Rooms can return before the practical-lighting pass.
-  // Hans used to be registered only when the fireplace quick-iteration lease
-  // was active, so every non-fire game could end up with ambient routines that
-  // had no actor to drive. Register the Hans scene task from this always-reached
-  // bridge for all fine-pointer rooms. Keep coarse/mobile rooms lightweight
-  // unless the explicit quick-iteration lease requires the canonical cameo.
+  // This third scene-quality flag historically doubles as renderLite in the
+  // classic shell; it is NOT a reliable statement about input modality. Hans
+  // is part of War Room parity, so always register his deferred scene task.
+  // The task resolves the real pointer modality at runtime for choreography,
+  // but never uses lite rendering as a reason to delete the actor.
   const forceQuickHans = isWarRoomHansQuickIterationEnabled();
-  if (!coarsePointer || forceQuickHans) {
-    registerWarRoomDeferredFinalizer(group, {
-      key: 'hans-fireplace-scene-install-v2',
-      coarsePointer,
-      allowCoarse: forceQuickHans,
-      run: (root) => {
-        const sceneRoot = root || group;
-        // Scene quality and input modality are deliberately separate. Balanced
-        // Android builds the full desktop geometry, so the construction-time
-        // `coarsePointer` flag may be false even on a real touch device.
-        let runtimeCoarsePointer = coarsePointer;
-        try {
-          runtimeCoarsePointer = Boolean(globalThis?.matchMedia?.('(pointer: coarse)')?.matches);
-        } catch {
-          // Best-effort only; SSR/tests keep the construction-time fallback.
-        }
-        // A construction-time desktop that later resolves as a coarse pointer
-        // keeps the old no-ambient-cameo policy unless the fire lease is active.
-        if (!forceQuickHans && runtimeCoarsePointer) return 0;
+  registerWarRoomDeferredFinalizer(group, {
+    key: 'hans-fireplace-scene-install-v2',
+    coarsePointer,
+    allowCoarse: true,
+    run: (root) => {
+      const sceneRoot = root || group;
+      let runtimeCoarsePointer = false;
+      try {
+        runtimeCoarsePointer = Boolean(globalThis?.matchMedia?.('(pointer: coarse)')?.matches);
+      } catch {
+        // Best-effort only; SSR/tests use the fine-pointer fallback.
+      }
 
-        const installed = installWarRoomHansSceneRoutine(sceneRoot, {
-          towardBoard,
-          coarsePointer: runtimeCoarsePointer,
-        });
-        if (forceQuickHans) exposeForcedHansRuntime(sceneRoot);
-        return installed;
-      },
-    });
-  }
+      const installed = installWarRoomHansSceneRoutine(sceneRoot, {
+        towardBoard,
+        coarsePointer: runtimeCoarsePointer,
+      });
+      if (forceQuickHans) exposeForcedHansRuntime(sceneRoot);
+      return installed;
+    },
+  });
 
   return premiumRegistration;
 }
