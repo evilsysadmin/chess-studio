@@ -69,6 +69,19 @@ Preferir una ruta corta y controlada.
 - Mantener las aserciones en eventos reales (`player-fired`, `grenade-thrown`, etc.), no en helpers falsos de test.
 - El smoke puede simplificarse cuando el escenario evoluciona, siempre que siga probando la frontera Web real.
 
+## Traversal de escenarios
+
+Cualquier cambio de geometría (`maps/*.json`: plataformas, obstáculos, fosos) debe pasar dos gates:
+
+- **Estático** (`scripts/pawn_slug_enemy_roster_gate.py`): ningún obstáculo con un sólido encima a menos de 84 px (cuerpo de pie), ningún obstáculo dentro de un foso ni a menos de 120 px antes de él, fosos ≤ 200 px y ningún sólido tapando el arco del salto sobre un foso (si hace falta pasarela encima, `one_way: true`).
+- **Bot headless** (`tests/traversal_audit.gd`): recorre cada stage con teclas reales, sin enemigos e invulnerable, y falla si se atasca o no llega al boss.
+
+```
+PAWN_SLUG_STAGE=jungle_relay_v1 godot --headless --fixed-fps 60 --path games/pawn-slug-godot --script res://tests/traversal_audit.gd
+```
+
+Sin `--fixed-fps 60` el headless corre en tiempo real (~10× más lento).
+
 ## Readiness
 
 Los assets canónicos pueden introducir varianza de cold boot. Usar el timeout versionado del propio test/workflow y calibrarlo con evidencia de runner; actualmente el bridge contempla una ventana de arranque fría más amplia que un boot local caliente.
