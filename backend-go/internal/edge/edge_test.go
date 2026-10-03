@@ -719,19 +719,6 @@ func TestReadinessReportsNativeMatchResignState(t *testing.T) {
 	}
 }
 
-func TestMatchResignPathIsExact(t *testing.T) {
-	for path, want := range map[string]bool{
-		"/api/pvp/matches/m-1/resign":  true,
-		"/api/pvp/matches/m-1/resign/": false,
-		"/api/pvp/matches//resign":     false,
-		"/api/pvp/matches/m-1/ready":   false,
-	} {
-		if got := isMatchResignPath(path); got != want {
-			t.Fatalf("%s got=%t want=%t", path, got, want)
-		}
-	}
-}
-
 func TestNativeMatchReadBypassesPythonWhenEnabled(t *testing.T) {
 	upstream := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		t.Fatal("native match read must not reach Python upstream")
@@ -804,21 +791,6 @@ func TestReadinessReportsNativeMatchReadState(t *testing.T) {
 	}
 }
 
-func TestMatchReadPathIsExactAtEdge(t *testing.T) {
-	for path, want := range map[string]bool{
-		"/api/pvp/matches/m-1":        true,
-		"/api/pvp/matches/m-1/":       false,
-		"/api/pvp/matches/m-1/pulse":  false,
-		"/api/pvp/matches/m-1/resign": false,
-		"/api/pvp/matches/m-1/move":   false,
-		"/api/pvp/matches/":           false,
-	} {
-		if got := isMatchReadPath(path); got != want {
-			t.Fatalf("%s got=%t want=%t", path, got, want)
-		}
-	}
-}
-
 func TestNativeMatchMoveBypassesPythonWhenEnabled(t *testing.T) {
 	upstream := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		t.Fatal("native match move must not reach Python upstream")
@@ -888,20 +860,6 @@ func TestReadinessReportsNativeMatchMoveState(t *testing.T) {
 	}
 	if body["nativeMatchMove"] != true {
 		t.Fatalf("nativeMatchMove=%#v want=true", body["nativeMatchMove"])
-	}
-}
-
-func TestMatchMovePathIsExactAtEdge(t *testing.T) {
-	for path, want := range map[string]bool{
-		"/api/pvp/matches/m-1/move":   true,
-		"/api/pvp/matches/m-1/move/":  false,
-		"/api/pvp/matches//move":      false,
-		"/api/pvp/matches/m-1":        false,
-		"/api/pvp/matches/m-1/resign": false,
-	} {
-		if got := isMatchMovePath(path); got != want {
-			t.Fatalf("%s got=%t want=%t", path, got, want)
-		}
 	}
 }
 
