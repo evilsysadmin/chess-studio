@@ -178,17 +178,13 @@ def test_release_fast_path_wait_policy() -> None:
 
 
 def test_release_fast_path_reads_live_domain_state() -> None:
-    common = (
+    with (
         patch.object(sys, "argv", ["cloudflare_staging_pages.py", "--release-fast-path"]),
         patch.dict(module.os.environ, {"CLOUDFLARE_ACCOUNT_ID": "acc", "CLOUDFLARE_API_TOKEN": "token"}),
         patch.object(module, "find_zone_id", return_value="zone"),
         patch.object(module, "ensure_pages_project", return_value=False),
         patch.object(module, "ensure_pages_domain", return_value=False),
         patch.object(module, "ensure_cname", return_value="unchanged"),
-    )
-
-    with (
-        *common,
         patch.object(module, "pages_domain_status", return_value=("active", "")) as status_probe,
         patch.object(module, "wait_pages_domain_active") as wait_active,
     ):
@@ -197,7 +193,12 @@ def test_release_fast_path_reads_live_domain_state() -> None:
     check(wait_active.call_count == 0, "active + DNS estable no debe entrar en la espera larga")
 
     with (
-        *common,
+        patch.object(sys, "argv", ["cloudflare_staging_pages.py", "--release-fast-path"]),
+        patch.dict(module.os.environ, {"CLOUDFLARE_ACCOUNT_ID": "acc", "CLOUDFLARE_API_TOKEN": "token"}),
+        patch.object(module, "find_zone_id", return_value="zone"),
+        patch.object(module, "ensure_pages_project", return_value=False),
+        patch.object(module, "ensure_pages_domain", return_value=False),
+        patch.object(module, "ensure_cname", return_value="unchanged"),
         patch.object(module, "pages_domain_status", return_value=("pending", "validation_data=pending")) as status_probe,
         patch.object(module, "wait_pages_domain_active", return_value="active") as wait_active,
     ):
