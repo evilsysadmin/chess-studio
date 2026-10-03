@@ -372,3 +372,23 @@ func writeMovePrepareError(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusInternalServerError, map[string]any{"detail": "No se pudo validar la jugada 1v1."})
 	}
 }
+
+func (h *Handler) allowMatchMove(username string, now time.Time) (bool, int) {
+	h.matchMoveMu.Lock()
+	defer h.matchMoveMu.Unlock()
+	window := h.matchMoveWindows[username]
+	if window.start.IsZero() || now.Sub(window.start) >= time.Minute {
+		h.matchMoveWindows[username] = rateWindow{start: now, count: 1}
+		return true, 0
+	}
+	if window.count >= 45 {
+		retry := int(time.Minute.Seconds() - now.Sub(window.start).Seconds())
+		if retry < 1 {
+			retry = 1
+		}
+		return false, retry
+	}
+	window.count++
+	h.matchMoveWindows[username] = window
+	return true, 0
+}

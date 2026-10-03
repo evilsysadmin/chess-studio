@@ -173,3 +173,23 @@ func (h *Handler) serveMatchRead(
 		"pollAfterMs": 1250,
 	})
 }
+
+func (h *Handler) allowMatchRead(username string, now time.Time) (bool, int) {
+	h.matchReadMu.Lock()
+	defer h.matchReadMu.Unlock()
+	window := h.matchReadWindows[username]
+	if window.start.IsZero() || now.Sub(window.start) >= time.Minute {
+		h.matchReadWindows[username] = rateWindow{start: now, count: 1}
+		return true, 0
+	}
+	if window.count >= 60 {
+		retry := int(time.Minute.Seconds() - now.Sub(window.start).Seconds())
+		if retry < 1 {
+			retry = 1
+		}
+		return false, retry
+	}
+	window.count++
+	h.matchReadWindows[username] = window
+	return true, 0
+}
