@@ -1,6 +1,6 @@
 # GitHub Actions · mapa operativo
 
-Última auditoría: 2026-10-02.
+Última auditoría: 2026-10-04.
 
 Regla: cada workflow debe representar un dominio operativo o blast radius real. Se fusiona duplicación histórica; no se fusionan promoción, rollback o acreditación sólo para bajar el contador.
 
@@ -102,7 +102,6 @@ Para producción pública, un fallo del synthetic es una señal operativa, no ru
 | `synthetic-health.yml` | Canary sintético de producción cada 15 minutos (minutos 07/22/37/52 para evitar el top-of-hour herd). Valida liveness, readiness y gameplay autenticado; vive separado para funcionar aunque no haya releases. |
 | `production-mongo-backup.yml` | Backup semanal de `chess_study` desde la A1 OCI a block storage local. Genera `mongodump --archive --gzip`, valida el archivo con `mongorestore --dryRun` y sólo entonces poda hasta conservar los 2 backups exitosos más recientes. |
 | `pvp-python-fallback.yml` | Evidencia para retirar el respaldo Python del PvP: cuenta en Grafana las peticiones públicas `/api/pvp` que aún llegan a FastAPI (todas tienen handler Go), por entorno y ruta. Diario y manual; con `max_requests` actúa como puerta. Sólo lectura. |
-| `branch-housekeeping.yml` | Poda ramas mergeadas. Candidato a borrar cuando el repo active el ajuste nativo `Automatically delete head branches`; actualmente `delete_branch_on_merge=false`. |
 
 ## Flujo
 
@@ -203,6 +202,7 @@ Métrica de éxito de la simplificación: menos tiempo y menos branching en el c
 - Instalaciones Node directas en CI/coverage/browser/staging preview/producción → acciones de cache exacta.
 - Cache Trivy por `github.run_id` → namespace estable por versión + epoch diario.
 - Matriz Browser E2E duplicada en PR (`e2e-full.yml`) → integrada en el required check de Quality; `e2e-full.yml` queda como sweep multi-browser.
+- `branch-housekeeping.yml` + `scripts/branch_housekeeping.sh` → retirados: `delete_branch_on_merge=true` ya poda las ramas mergeadas de forma nativa, sin cron duplicado.
 - `pawn-slug-pistol-crouch-candidate.yml` → retirado tras promover y verificar `crouchContinuityV1`; era una lane one-shot de reparación/publicación de candidato y ya no protege una superficie runtime distinta.
 
 El objetivo no es tener el mínimo número de YAML, sino **mínimo estado, mínima dependencia externa por ejecución y dominios de fallo claros**.
