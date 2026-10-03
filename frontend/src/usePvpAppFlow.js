@@ -1,7 +1,34 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePvpRosterPresence } from './usePvpRosterPresence.js';
-import { requestWarRoomLandscapeOnEntry } from './components/useWarRoomImmersive.js';
+import {
+  exitWarRoomBrowserFullscreen,
+  requestWarRoomLandscapeOnEntry,
+  unlockWarRoomOrientation,
+} from './components/useWarRoomImmersive.js';
 import { mergeNewerMatch } from './pvpGameModel.js';
+
+/**
+ * The browser only rotates (fullscreen + orientation lock) inside a user
+ * gesture. The War Room rotates on the «Empezar partida» tap; a challenger
+ * enters the Duel Room later, from the countdown, with no gesture left. So the
+ * challenger's rotation is taken on the «Retar» tap and kept while that
+ * challenge is pending. It is released, like a CPU game that failed to start,
+ * when the challenge ends without a duel.
+ *
+ * Returns what to do with an armed rotation for the current lobby snapshot:
+ * - 'duel': a duel is starting; the Duel Room landscape flow owns it now;
+ * - 'seen': the challenge is visible and still pending;
+ * - 'wait': the snapshot does not show the challenge yet (refresh lag);
+ * - 'release': it was declined, cancelled or expired.
+ */
+export function pvpEntryRotationDecision({ pending, lobby, activeMatch, handoffMatch, match }) {
+  if (!pending?.challengeId) return 'release';
+  if (activeMatch?.id || handoffMatch?.id || match?.id) return 'duel';
+  const row = (lobby?.challenges || []).find((item) => item?.id === pending.challengeId);
+  if (row?.status === 'pending') return 'seen';
+  if (row || pending.seen) return 'release';
+  return 'wait';
+}
 
 async function loadPvpApi() {
   return (await import('./pvpApi.js')).pvpApi;
@@ -40,15 +67,65 @@ export function usePvpAppFlow({ view, replaceView }) {
     return enterPreparedMatch(nextMatch);
   }, [enterPreparedMatch]);
 
+  const pendingRotationRef = useRef(null);
+  const releaseEntryRotation = useCallback(() => {
+    pendingRotationRef.current = null;
+    void exitWarRoomBrowserFullscreen();
+    unlockWarRoomOrientation();
+  }, []);
+
   const acceptIncoming = useCallback(async (challenge) => {
-    void requestWarRoomLandscapeOnEntry();
-    const result = await presence.acceptChallenge(challenge);
+    const rotation = requestWarRoomLandscapeOnEntry();
+    let result;
+    try {
+      result = await presence.acceptChallenge(challenge);
+    } catch (err) {
+      if (await rotation) releaseEntryRotation();
+      throw err;
+    }
     if (result?.match) {
       setHandoffMatch(result.match);
       setHandoffError('');
+    } else if (await rotation) {
+      releaseEntryRotation();
     }
     return result;
-  }, [presence.acceptChallenge]);
+  }, [presence.acceptChallenge, releaseEntryRotation]);
+
+  const challengeWithEntryRotation = useCallback(async (opponent) => {
+    if (!opponent) return null;
+    // Rotate now, inside the «Retar» tap: by the time the rival accepts and
+    // the countdown opens the Duel Room, the browser no longer allows it.
+    const rotation = requestWarRoomLandscapeOnEntry();
+    let result;
+    try {
+      result = await presence.challenge(opponent);
+    } catch (err) {
+      if (await rotation) releaseEntryRotation();
+      throw err;
+    }
+    if (await rotation) {
+      const challengeId = result?.challenge?.id;
+      if (challengeId) pendingRotationRef.current = { challengeId, seen: false };
+      else releaseEntryRotation();
+    }
+    return result;
+  }, [presence.challenge, releaseEntryRotation]);
+
+  useEffect(() => {
+    const pending = pendingRotationRef.current;
+    if (!pending) return;
+    const decision = pvpEntryRotationDecision({
+      pending,
+      lobby: presence.lobby,
+      activeMatch: presence.activeMatch,
+      handoffMatch,
+      match,
+    });
+    if (decision === 'duel') pendingRotationRef.current = null;
+    else if (decision === 'seen') pending.seen = true;
+    else if (decision === 'release') releaseEntryRotation();
+  }, [handoffMatch, match, presence.activeMatch, presence.lobby, releaseEntryRotation]);
 
   useEffect(() => {
     const nextMatch = presence.activeMatch;
@@ -194,6 +271,7 @@ export function usePvpAppFlow({ view, replaceView }) {
     handoffError,
     menuStatus,
     enterMatch,
+    challenge: challengeWithEntryRotation,
     acceptIncoming,
     completeHandoff,
     cancelHandoff,

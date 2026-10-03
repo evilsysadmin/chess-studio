@@ -80,6 +80,7 @@ Viewports mínimos: 360×800, 390×844, 430×932.
 - no duplicar empty states;
 - reducir decoración antes que legibilidad;
 - portrait debe ser plenamente usable; landscape puede mostrar una estancia más rica.
+- la Duel Room de partida entra en apaisado en móvil igual que la War Room: el navegador sólo deja girar (fullscreen + `screen.orientation.lock`) dentro de un gesto, así que el giro se pide en el toque de **Retar** o **Aceptar**, no en la cuenta atrás. Si el reto acaba sin duelo (rechazado, cancelado o caducado) se libera, como una partida contra CPU que no llega a empezar. iOS no tiene API de giro: allí, como en la War Room, queda la pastilla «Apaisado».
 
 ## Evolución 3D
 
