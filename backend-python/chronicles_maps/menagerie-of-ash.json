@@ -12,7 +12,11 @@
     "#P....#",
     "#######"
   ],
-  "partyStart": { "x": 1, "y": 5, "direction": 1 },
+  "partyStart": {
+    "x": 1,
+    "y": 5,
+    "direction": 1
+  },
   "initialFlags": {
     "emberClueRead": false,
     "emberCacheOpened": false,
@@ -31,7 +35,12 @@
       "maxHp": 5,
       "retaliation": 1,
       "activation": "always",
-      "ai": { "movement": "cardinal-chase", "attackReach": 1 }
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 2
+      }
     },
     {
       "id": "crypt-spider",
@@ -49,16 +58,40 @@
         "movement": "patrol-route",
         "attackReach": 1,
         "patrolRoute": [
-          { "x": 3, "y": 3 },
-          { "x": 4, "y": 3 },
-          { "x": 5, "y": 3 },
-          { "x": 5, "y": 4 },
-          { "x": 5, "y": 5 },
-          { "x": 4, "y": 5 },
-          { "x": 3, "y": 5 },
-          { "x": 3, "y": 4 }
+          {
+            "x": 3,
+            "y": 3
+          },
+          {
+            "x": 4,
+            "y": 3
+          },
+          {
+            "x": 5,
+            "y": 3
+          },
+          {
+            "x": 5,
+            "y": 4
+          },
+          {
+            "x": 5,
+            "y": 5
+          },
+          {
+            "x": 4,
+            "y": 5
+          },
+          {
+            "x": 3,
+            "y": 5
+          },
+          {
+            "x": 3,
+            "y": 4
+          }
         ],
-        "engagedMovement": "cardinal-chase",
+        "engagedMovement": "knight-chase",
         "engageRange": 3
       }
     },
@@ -77,7 +110,11 @@
       "retaliationReach": 2,
       "activation": "always",
       "optional": true,
-      "ai": { "movement": "hold", "attackReach": 2, "requiresLineOfSight": true },
+      "ai": {
+        "movement": "hold",
+        "attackReach": 2,
+        "requiresLineOfSight": true
+      },
       "onDefeat": {
         "message": "{attacker} apaga al fuego fatuo con {attack}. Entre las chispas queda un fragmento de brasa demasiado sólido para ser una buena noticia.",
         "effects": [
@@ -111,7 +148,12 @@
       "maxHp": 6,
       "retaliation": 2,
       "activation": "always",
-      "ai": { "movement": "cardinal-roam", "attackReach": 1, "engagedMovement": "cardinal-chase", "engageRange": 4 }
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 4
+      }
     }
   ],
   "triggers": [],
@@ -124,11 +166,18 @@
       "y": 5,
       "label": "Examinar marcas de brasa",
       "when": [
-        { "key": "emberClueRead", "equals": false }
+        {
+          "key": "emberClueRead",
+          "equals": false
+        }
       ],
       "action": {
         "effects": [
-          { "type": "set", "key": "emberClueRead", "value": true },
+          {
+            "type": "set",
+            "key": "emberClueRead",
+            "value": true
+          },
           {
             "type": "start-quest",
             "questId": "embers-under-stone",
@@ -155,12 +204,22 @@
       "y": 3,
       "label": "Examinar junta ennegrecida",
       "when": [
-        { "key": "emberCacheOpened", "equals": true },
-        { "key": "ashDoorFound", "equals": false }
+        {
+          "key": "emberCacheOpened",
+          "equals": true
+        },
+        {
+          "key": "ashDoorFound",
+          "equals": false
+        }
       ],
       "action": {
         "effects": [
-          { "type": "set", "key": "ashDoorFound", "value": true },
+          {
+            "type": "set",
+            "key": "ashDoorFound",
+            "value": true
+          },
           {
             "type": "start-quest",
             "questId": "behind-the-ash-wall",
@@ -187,12 +246,22 @@
       "y": 3,
       "label": "Abrir puerta oculta",
       "when": [
-        { "key": "ashDoorFound", "equals": true },
-        { "itemId": "cinder-key", "quantity": 1 }
+        {
+          "key": "ashDoorFound",
+          "equals": true
+        },
+        {
+          "itemId": "cinder-key",
+          "quantity": 1
+        }
       ],
       "action": {
         "effects": [
-          { "type": "consume-item", "itemId": "cinder-key", "quantity": 1 },
+          {
+            "type": "consume-item",
+            "itemId": "cinder-key",
+            "quantity": 1
+          },
           {
             "type": "advance-quest",
             "questId": "behind-the-ash-wall",
@@ -201,7 +270,10 @@
             "objective": "Saquea la Cámara de Ceniza y encuentra una salida.",
             "order": 40
           },
-          { "type": "transition-map", "mapId": "ash-vault" }
+          {
+            "type": "transition-map",
+            "mapId": "ash-vault"
+          }
         ],
         "message": "La Llave de Escoria gira. Parte del muro se retrae y revela una cámara olvidada. Matthias sonríe como alguien que acaba de encontrar trabajo no facturado.",
         "journal": {
@@ -223,15 +295,34 @@
       "y": 1,
       "label": "Abrir alijo de brasa",
       "when": [
-        { "itemId": "ember-shard", "quantity": 1 },
-        { "key": "emberCacheOpened", "equals": false }
+        {
+          "itemId": "ember-shard",
+          "quantity": 1
+        },
+        {
+          "key": "emberCacheOpened",
+          "equals": false
+        }
       ],
       "action": {
         "effects": [
-          { "type": "consume-item", "itemId": "ember-shard", "quantity": 1 },
-          { "type": "set", "key": "emberCacheOpened", "value": true },
-          { "type": "heal-party", "amount": 2 },
-          { "type": "refill-class-abilities" },
+          {
+            "type": "consume-item",
+            "itemId": "ember-shard",
+            "quantity": 1
+          },
+          {
+            "type": "set",
+            "key": "emberCacheOpened",
+            "value": true
+          },
+          {
+            "type": "heal-party",
+            "amount": 2
+          },
+          {
+            "type": "refill-class-abilities"
+          },
           {
             "type": "grant-item",
             "itemId": "cinder-key",
@@ -267,13 +358,28 @@
       "openLabel": "Cruzar hacia el Archivo del Rey Ciego",
       "lockedLabel": "Examinar portón",
       "requirements": [
-        { "key": "ashGoblinHp", "lte": 0, "message": "El trasgo de ceniza sigue en pie." },
-        { "key": "cryptSpiderHp", "lte": 0, "message": "La araña de cripta sigue patrullando." },
-        { "key": "boneHoundHp", "lte": 0, "message": "El sabueso de osario sigue recorriendo la sala." }
+        {
+          "key": "ashGoblinHp",
+          "lte": 0,
+          "message": "El trasgo de ceniza sigue en pie."
+        },
+        {
+          "key": "cryptSpiderHp",
+          "lte": 0,
+          "message": "La araña de cripta sigue patrullando."
+        },
+        {
+          "key": "boneHoundHp",
+          "lte": 0,
+          "message": "El sabueso de osario sigue recorriendo la sala."
+        }
       ],
       "action": {
         "effects": [
-          { "type": "transition-map", "mapId": "blind-king-archive" }
+          {
+            "type": "transition-map",
+            "mapId": "blind-king-archive"
+          }
         ],
         "message": "El portón cede. Detrás no hay salida: hay un archivo enterrado, pasillos estrechos y la sensación de que alguien lleva siglos tomando notas.",
         "journal": {
