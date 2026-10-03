@@ -41,7 +41,7 @@ type Challenge struct {
 }
 
 type Result struct {
-	Challenge Challenge
+	Challenge  Challenge
 	CreatedNow bool
 }
 

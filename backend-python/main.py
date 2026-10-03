@@ -277,6 +277,23 @@ def _auth_ip_guard_identity(request: Request) -> str | None:
     return auth_ip_guard.ip_key(client_ip, JWT_SECRET)
 
 
+def _pvp_hop(request: Request) -> str | None:
+    """How a PvP request reached Python, for the fallback sunset evidence.
+
+    Every public /api/pvp route is native in the Go sidecar; it marks what it
+    still forwards (X-Chess-Pvp-Edge: go, plus why in X-Chess-Pvp-Fallback).
+    Anything else arrived without the sidecar (direct nginx mode, a probe).
+    Diagnostic only: the headers are not trusted for any decision.
+    """
+    path = request.url.path
+    if path != "/api/pvp" and not path.startswith("/api/pvp/"):
+        return None
+    if request.headers.get("x-chess-pvp-edge", "").strip().lower() == "go":
+        reason = request.headers.get("x-chess-pvp-fallback", "").strip() or "unspecified"
+        return f"go:{reason}"
+    return "direct"
+
+
 @app.middleware("http")
 async def log_request_with_user(request: Request, call_next):
     started = time.perf_counter()
@@ -348,6 +365,7 @@ async def log_request_with_user(request: Request, call_next):
             x_forwarded_for=x_forwarded_for,
             client_country=client_country,
             synthetic_source=getattr(request.state, "synthetic_source", None),
+            pvp_hop=_pvp_hop(request),
         )
         # El detalle técnico completo queda en el traceback del servidor; al
         # cliente sólo vuelve una referencia segura para correlacionarlo.
@@ -398,6 +416,7 @@ async def log_request_with_user(request: Request, call_next):
                 x_forwarded_for=x_forwarded_for,
                 client_country=log_country,
                 synthetic_source=getattr(request.state, "synthetic_source", None),
+            pvp_hop=_pvp_hop(request),
             )
 
 

@@ -27,7 +27,10 @@ export default function PvpAppSurface({ view, replaceView }) {
   useEffect(() => {
     publishPvpRuntime({
       ...flow.menuStatus,
-      lobby: flow.enrolled ? flow.lobby : null,
+      // The runtime bridge owns the lobby snapshot even before enrollment. Keeping
+      // one source of truth avoids swapping from the modal's local pre-join roster
+      // to a self-only global snapshot as soon as join succeeds.
+      lobby: flow.lobby,
       enterMatch: flow.enterMatch,
       refresh: flow.refresh,
       enroll: flow.enroll,

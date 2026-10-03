@@ -32,10 +32,9 @@ func (h *Handler) serveLobbyRead(
 
 	viewer := strings.ToLower(strings.TrimSpace(username))
 	if h.virtualPlayersEnabled && viewer == h.virtualOwner {
-		if err := h.ensureSyntheticRoster(r.Context(), now); err != nil {
-			writeJSON(w, http.StatusServiceUnavailable, map[string]any{"detail": "No se pudo preparar el roster 1v1."})
-			return
-		}
+		// Compatibility rows are useful for challenge/handoff, but display
+		// authority for staging actors must not depend on the human 45 s TTL.
+		_ = h.ensureSyntheticRoster(r.Context(), now)
 	}
 
 	snapshot, err := h.lobbyReadStore.LobbySnapshot(r.Context(), username, now)
@@ -44,10 +43,15 @@ func (h *Handler) serveLobbyRead(
 		return
 	}
 
-	roster := make([]map[string]any, 0, len(snapshot.Roster))
+	roster := make([]map[string]any, 0, len(snapshot.Roster)+4)
+	seenRoster := make(map[string]struct{}, len(snapshot.Roster)+4)
 	for _, row := range snapshot.Roster {
 		if !h.lobbyRosterVisible(username, row.Username) {
 			continue
+		}
+		normalized := strings.ToLower(strings.TrimSpace(row.Username))
+		if normalized != "" {
+			seenRoster[normalized] = struct{}{}
 		}
 		var headToHead *lobbyHeadToHead
 		if summary, ok := snapshot.HeadToHead[row.Username]; ok {
@@ -62,6 +66,40 @@ func (h *Handler) serveLobbyRead(
 			h.virtualPlayersEnabled,
 		))
 	}
+	if h.virtualPlayersEnabled && viewer == h.virtualOwner {
+		virtualProfiles := []syntheticRosterProfile{{
+			username: strings.ToLower(strings.TrimSpace(h.sparringUsername)),
+			rating:   400,
+		}}
+		virtualProfiles = append(virtualProfiles, residentRosterProfiles[:]...)
+		for _, profile := range virtualProfiles {
+			if profile.username == "" {
+				continue
+			}
+			if _, exists := seenRoster[profile.username]; exists {
+				continue
+			}
+			row := rosterRow{
+				Username: profile.username,
+				Rating:   profile.rating,
+				Tier:     ratingTier(profile.rating),
+				JoinedAt: now,
+			}
+			var headToHead *lobbyHeadToHead
+			if summary, ok := snapshot.HeadToHead[profile.username]; ok {
+				copy := summary
+				headToHead = &copy
+			}
+			roster = append(roster, publicLobbyRoster(
+				row,
+				username,
+				headToHead,
+				snapshot.Cooldowns[profile.username],
+				true,
+			))
+			seenRoster[profile.username] = struct{}{}
+		}
+	}
 
 	challenges := make([]map[string]any, 0, len(snapshot.Challenges))
 	for _, row := range snapshot.Challenges {
@@ -75,12 +113,12 @@ func (h *Handler) serveLobbyRead(
 			kind = "message"
 		}
 		messages = append(messages, map[string]any{
-			"id": row.ID,
-			"username": row.Username,
-			"text": row.Text,
-			"kind": kind,
+			"id":        row.ID,
+			"username":  row.Username,
+			"text":      row.Text,
+			"kind":      kind,
 			"createdAt": stamp(row.CreatedAt),
-			"isSelf": row.Username == username,
+			"isSelf":    row.Username == username,
 		})
 	}
 
@@ -95,10 +133,10 @@ func (h *Handler) serveLobbyRead(
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"roster": roster,
-		"challenges": challenges,
+		"roster":      roster,
+		"challenges":  challenges,
 		"activeMatch": activeMatch,
-		"messages": messages,
+		"messages":    messages,
 		"pollAfterMs": int64(3000),
 	})
 }
@@ -116,10 +154,10 @@ func publicLobbyRoster(
 	}
 	payload := map[string]any{
 		"username": row.Username,
-		"rating": row.Rating,
-		"tier": tier,
+		"rating":   row.Rating,
+		"tier":     tier,
 		"joinedAt": stamp(row.JoinedAt),
-		"isSelf": row.Username == username,
+		"isSelf":   row.Username == username,
 	}
 
 	if row.Username != username && !cooldownUntil.IsZero() {
@@ -127,10 +165,10 @@ func publicLobbyRoster(
 	}
 	if row.Username != username && headToHead != nil {
 		payload["headToHead"] = map[string]any{
-			"games": headToHead.Games,
-			"wins": headToHead.Wins,
-			"draws": headToHead.Draws,
-			"losses": headToHead.Losses,
+			"games":        headToHead.Games,
+			"wins":         headToHead.Wins,
+			"draws":        headToHead.Draws,
+			"losses":       headToHead.Losses,
 			"lastPlayedAt": nullableStamp(headToHead.LastPlayedAt),
 		}
 	}
@@ -157,7 +195,6 @@ func (h *Handler) lobbyRosterVisible(viewer, rosterUsername string) bool {
 	}
 	return true
 }
-
 
 func (h *Handler) allowLobbyRead(username string, now time.Time) (bool, int) {
 	h.lobbyReadMu.Lock()

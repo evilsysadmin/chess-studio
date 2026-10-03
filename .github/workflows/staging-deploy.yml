@@ -100,31 +100,36 @@ jobs:
           set -euo pipefail
           converged=false
           for attempt in {1..48}; do
-            body="$RUNNER_TEMP/backend-watcher-$attempt.json"
+            body="$RUNNER_TEMP/backend-watcher-$attempt.txt"
             status="$(curl --silent --show-error --connect-timeout 1 --max-time 2 \
               --output "$body" --write-out '%{http_code}' \
-              -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
-              "$STAGING_API_URL/release?sha=$DEPLOY_SHA" || true)"
-            if [[ "$status" == 200 ]] && python3 - "$body" "$DEPLOY_SHA" <<'PY'
-          import json, pathlib, sys
-          payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
-          raise SystemExit(0 if str(payload.get('build') or '').lower() == sys.argv[2].lower() else 1)
-          PY
-            then
-              converged=true
-              break
+              -H 'Accept: text/plain' -H 'Cache-Control: no-cache, no-store' \
+              "$STAGING_API_URL/_deploy/committed?probe=$attempt" || true)"
+            committed="$(tr -d '\r\n' < "$body" 2>/dev/null || true)"
+            if [[ "$status" == 200 && "$committed" == "$DEPLOY_SHA" ]]; then
+              # The host publishes this marker only after all post-cutover
+              # attestations pass. A rollback restores the previous committed
+              # SHA, so a transient blue/green candidate cannot fool this gate.
+              if python3 scripts/verify_backend_staging.py \
+                --api-url "$STAGING_API_URL" \
+                --sha "$DEPLOY_SHA" \
+                --attempts 1 \
+                --interval 0 >/dev/null 2>&1; then
+                converged=true
+                break
+              fi
             fi
             if (( attempt % 8 == 0 )); then
               current_main="$(git ls-remote origin refs/heads/main 2>/dev/null | awk 'NR == 1 {print $1}' || true)"
               [[ ! "$current_main" =~ ^[0-9a-f]{40}$ || "$current_main" == "$DEPLOY_SHA" ]] || break
             fi
-            [[ "$attempt" -eq 76 ]] || sleep 1
+            [[ "$attempt" -eq 48 ]] || sleep 1
           done
           echo "converged=$converged" >> "$GITHUB_OUTPUT"
           if [[ "$converged" == true ]]; then
-            echo "::notice title=OCI zero-cost fast-path::$DEPLOY_SHA aplicado por watcher."
+            echo "::notice title=OCI zero-cost fast-path::$DEPLOY_SHA acreditado completamente por watcher."
           else
-            echo "::warning title=OCI fallback::Watcher no convergió; uso Run Command."
+            echo "::warning title=OCI fallback::Watcher no quedó acreditado; uso Run Command."
           fi
       - name: Re-check main before OCI fallback
         id: fallback_admission
@@ -165,18 +170,14 @@ jobs:
           OCI_REGION: ${{ vars.OCI_REGION || 'eu-frankfurt-1' }}
         run: |
           set -euo pipefail
-          body="$RUNNER_TEMP/backend-pre-fallback.json"
-          status="$(curl --silent --show-error --connect-timeout 1 --max-time 2 \
-            --output "$body" --write-out '%{http_code}' \
-            -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
-            "$STAGING_API_URL/release?sha=$DEPLOY_SHA" || true)"
-          if [[ "$status" == 200 ]] && python3 - "$body" "$DEPLOY_SHA" <<'PY'
-          import json, pathlib, sys
-          payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
-          raise SystemExit(0 if str(payload.get('build') or '').lower() == sys.argv[2].lower() else 1)
-          PY
-          then
-            echo "::notice title=OCI fallback avoided::A1 terminó $DEPLOY_SHA; skip Run Command."
+          # A transient exact /release is not enough: the host may still be
+          # inside post-cutover accreditation and can roll back afterwards.
+          if python3 scripts/verify_backend_staging.py \
+            --api-url "$STAGING_API_URL" \
+            --sha "$DEPLOY_SHA" \
+            --attempts 1 \
+            --interval 0 >/dev/null 2>&1; then
+            echo "::notice title=OCI fallback avoided::A1 terminó y acreditó $DEPLOY_SHA; skip Run Command."
             exit 0
           fi
           python3 scripts/oci_run_command.py deploy --repo-ref "$DEPLOY_SHA"
@@ -276,9 +277,9 @@ jobs:
         with:
           version: '4.127.1'
           node-version: '22'
-      - name: Reconcile Pages project, domains and staging DNS
+      - name: Verify release-critical Pages topology
         id: pages_bootstrap
-        run: python3 scripts/cloudflare_staging_pages.py
+        run: python3 scripts/cloudflare_staging_pages.py --release-fast-path
       - name: Build frontend for staging
         if: steps.frontend_artifact.outputs.hit != 'true'
         working-directory: frontend
@@ -354,25 +355,8 @@ jobs:
           node-version: '22'
       - name: Staging Worker isolation contract
         run: python3 -S scripts/deploy_staging_ai_worker.py --self-test
-      - name: Deploy exact staging Worker generation
+      - name: Deploy and verify exact staging Worker generation
         run: python3 scripts/deploy_staging_ai_worker.py
-      - name: Wait for staging Worker Custom Domain and health
-        shell: bash
-        run: |
-          set -euo pipefail
-          health_ok=false
-          for attempt in {1..150}; do
-            body="$RUNNER_TEMP/staging-ai-health-$attempt.json"
-            status="$(curl --silent --show-error --connect-timeout 5 --max-time 10 \
-              --output "$body" --write-out '%{http_code}' \
-              -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
-              -H 'User-Agent: chess-studio-staging-ai-health/3' \
-              "$STAGING_AI_URL/health" || true)"
-            if [[ "$status" == 200 ]] && python3 scripts/cloudflare_health_contract.py "$body"; then health_ok=true; break; fi
-            echo "Workers AI staging aún no está healthy (HTTP ${status:-curl-error}, intento $attempt/150)"
-            sleep 2
-          done
-          [[ "$health_ok" == true ]] || { echo '::error::Workers AI staging no quedó healthy tras 5 minutos'; exit 1; }
       - name: Shared Workers AI live contract
         run: python3 scripts/cloudflare_ai_preflight.py --worker-url "$STAGING_AI_URL"
   smoke:
@@ -541,11 +525,3 @@ jobs:
             echo '- Identidades CI: `aleatorias por spec, eliminadas y verificadas`'
           } >> "$GITHUB_STEP_SUMMARY"
 
-  continuity:
-    name: Live-game blue-green accreditation
-    needs: [prepare, summary]
-    if: needs.prepare.outputs.admitted == 'true' && needs.summary.result == 'success'
-    uses: ./.github/workflows/staging-deploy-continuity.yml
-    with:
-      deploy_sha: ${{ needs.prepare.outputs.deploy_sha }}
-    secrets: inherit

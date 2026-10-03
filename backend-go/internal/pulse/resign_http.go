@@ -3,7 +3,6 @@ package pulse
 import (
 	"context"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/matchresign"
@@ -126,18 +125,4 @@ func ratingChangePayload(row cancelMatchRow, username string) any {
 		"after":  after,
 		"delta":  after - before,
 	}
-}
-
-func matchResignID(path string) (string, bool) {
-	const prefix = "/api/pvp/matches/"
-	const suffix = "/resign"
-	if !strings.HasPrefix(path, prefix) || !strings.HasSuffix(path, suffix) {
-		return "", false
-	}
-	matchID := strings.TrimSuffix(strings.TrimPrefix(path, prefix), suffix)
-	matchID = strings.Trim(matchID, "/")
-	if matchID == "" || strings.Contains(matchID, "/") {
-		return "", false
-	}
-	return matchID, true
 }

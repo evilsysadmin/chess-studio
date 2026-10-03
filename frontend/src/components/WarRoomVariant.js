@@ -7,8 +7,8 @@ import { PVP_DUEL_ROOM_RUNTIME_MODEL_URL } from './PvpDuelRoomAsset.js';
 
 export const WAR_ROOM_VARIANT_STORAGE_KEY = 'chess-study-war-room-variant-v1';
 export const WAR_ROOM_VARIANT_CHANGED_EVENT = 'chess-war-room-variant-changed';
-export const DEFAULT_WAR_ROOM_VARIANT = 'classic';
-export const DEFAULT_WAR_ROOM_VARIANT_PREFERENCE = 'classic';
+export const DEFAULT_WAR_ROOM_VARIANT = 'v3';
+export const DEFAULT_WAR_ROOM_VARIANT_PREFERENCE = 'v3';
 export const WAR_ROOM_VARIANT_PREFERENCES = Object.freeze([
   Object.freeze({ id: 'random', label: 'Aleatoria' }),
   Object.freeze({ id: 'classic', label: 'War Room v1' }),

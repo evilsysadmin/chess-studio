@@ -64,10 +64,11 @@ async function expectMobileWarRoomContract(page, shell, width) {
 
   for (const [label, locator] of [
     ['feedback', page.locator('.masthead-feedback-trigger')],
-    ['cuenta', page.locator('.masthead-account-trigger')],
+    ['cuenta', page.getByRole('button', { name: 'Mi cuenta', exact: true })],
     ['música', page.locator('.game-side-music .music-deck-expand')],
     ['play', page.locator('.game-side-music .music-deck-collapsed-play')],
     ['zen', page.locator('.game-3d-compact-action').first()],
+    ['salir', page.getByRole('button', { name: 'Salir de la partida', exact: true })],
     ['más acciones', page.locator('.game-3d-utility-menu > summary')],
   ]) {
     await expectMobileTouchTarget(locator, label);
@@ -78,14 +79,16 @@ async function expectDesktopChromeContract(page, shell) {
   const status = page.locator('.game-3d-turn-pill');
   const inspect = page.getByRole('button', { name: 'Inspeccionar', exact: true });
   const zenQuick = page.getByRole('button', { name: 'Zen', exact: true });
-  const abandonQuick = page.getByRole('button', { name: 'Abandonar', exact: true });
+  const exit = page.getByRole('button', { name: 'Salir de la partida', exact: true });
   const more = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
+  const account = page.getByRole('button', { name: 'Mi cuenta', exact: true });
 
   await expect(status).toBeVisible();
   await expect(inspect).toBeVisible();
   await expect(zenQuick).toHaveCount(0);
-  await expect(abandonQuick).toHaveCount(0);
+  await expect(exit).toBeVisible();
   await expect(more).toBeVisible();
+  await expect(account).toBeVisible();
 
   const shellBox = await box(shell);
   const statusBox = await box(status);
@@ -98,7 +101,7 @@ async function expectDesktopChromeContract(page, shell) {
 
   await more.click();
   await expect(page.getByRole('menuitem', { name: 'Modo Zen', exact: true })).toBeVisible();
-  await expect(page.getByRole('menuitem', { name: 'Abandonar partida', exact: true })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: 'Abandonar partida', exact: true })).toHaveCount(0);
   await more.click();
 
   // Inspect is a compact scene chip on the quiet upper wall, not a board-eating CTA.
@@ -106,9 +109,9 @@ async function expectDesktopChromeContract(page, shell) {
   expect(inspectBox.height).toBeLessThan(48);
   expect(inspectBox.x - shellBox.x).toBeGreaterThanOrEqual(0);
   expect(inspectBox.x - shellBox.x).toBeLessThan(26);
-  expect(inspectBox.y - shellBox.y).toBeGreaterThanOrEqual(0);
-  expect(inspectBox.y - shellBox.y).toBeLessThan(26);
-  expect(inspectBox.y + inspectBox.height).toBeLessThan(shellBox.y + shellBox.height * 0.18);
+  expect(inspectBox.y - shellBox.y).toBeGreaterThanOrEqual(44);
+  expect(inspectBox.y - shellBox.y).toBeLessThan(110);
+  expect(inspectBox.y + inspectBox.height).toBeLessThan(shellBox.y + shellBox.height * 0.22);
 
   return { shellBox, statusBox, inspectBox };
 }

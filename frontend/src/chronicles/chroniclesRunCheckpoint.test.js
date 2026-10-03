@@ -69,6 +69,31 @@ describe('Chronicles checkpoint projection', () => {
     expect(payload.claimedRewards).toEqual(['reward:a', 'reward:b']);
   });
 
+  it('terminalizes defeat immediately but leaves successful extraction finalization to the adapter', () => {
+    expect(chroniclesRunCheckpointPayload({
+      ...createChroniclesState(),
+      phase: 'defeated',
+    }, 2).terminalStatus).toBe('defeated');
+
+    const escaped = {
+      ...createChroniclesState(),
+      phase: 'escaped',
+    };
+    expect(chroniclesRunCheckpointPayload(escaped, 3)).not.toHaveProperty('terminalStatus');
+    expect(chroniclesRunCheckpointPayload(
+      escaped,
+      3,
+      { terminalStatus: 'completed' },
+    ).terminalStatus).toBe('completed');
+
+    expect(() => chroniclesRunCheckpointPayload(
+      createChroniclesState(),
+      4,
+      { terminalStatus: 'completed' },
+    )).toThrow(/escaped phase/i);
+    expect(chroniclesRunCheckpointPayload(createChroniclesState(), 4)).not.toHaveProperty('terminalStatus');
+  });
+
   it('rejects missing map identity or invalid CAS versions', () => {
     expect(() => chroniclesRunCheckpointPayload({}, 0)).toThrow(/current map/i);
     expect(() => chroniclesRunCheckpointPayload({ mapId: 'crypt-eight-squares' }, -1)).toThrow(/worldVersion/i);
@@ -188,6 +213,32 @@ describe('Chronicles run checkpoint recovery', () => {
         },
       }),
     );
+  });
+
+  it('treats authoritative terminal status as stronger than a stale runtime phase', () => {
+    const base = createChroniclesState();
+    const completed = chroniclesApplyRunCheckpoint(base, {
+      runStatus: 'completed',
+      worldFlags: {
+        '__chrRuntime.version': 1,
+        '__chrRuntime.phase': 'explore',
+      },
+      consumedContentIds: [],
+      claimedRewards: [],
+    });
+    const defeated = chroniclesApplyRunCheckpoint(base, {
+      status: 'defeated',
+      worldFlags: {
+        '__chrRuntime.version': 1,
+        '__chrRuntime.phase': 'explore',
+      },
+      consumedContentIds: [],
+      claimedRewards: [],
+    });
+
+    expect(completed.phase).toBe('escaped');
+    expect(defeated.phase).toBe('defeated');
+    expect(defeated.turnPhase).toBe('party');
   });
 
   it('keeps old checkpoints compatible when no runtime namespace is present', () => {

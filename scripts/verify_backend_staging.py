@@ -29,6 +29,29 @@ PVP_CHALLENGE_CORS_HEADERS = {
     "x-request-id",
     "x-client-release",
 }
+PVP_FULL_GO_READY_KEYS = (
+    "nativePulse",
+    "nativeLobbyRead",
+    "nativeRoster",
+    "nativeChat",
+    "nativeChallengeResolution",
+    "nativeChallengeAccept",
+    "nativeChallengeCreate",
+    "nativeMatchHandoffCancel",
+    "nativeMatchReady",
+    "nativeMatchResign",
+    "nativeMatchRead",
+    "nativeMatchMove",
+)
+
+
+def pvp_full_go_ready(payload: dict) -> bool:
+    return (
+        payload.get("status") == "ready"
+        and payload.get("service") == "chess-studio-pvp-go"
+        and payload.get("virtualPlayersEnabled") is True
+        and all(payload.get(key) is True for key in PVP_FULL_GO_READY_KEYS)
+    )
 
 
 def validate_sha(value: str) -> str:
@@ -60,6 +83,25 @@ def fetch_json(url: str) -> tuple[int, dict]:
         return exc.code, {}
     except (urllib.error.URLError, TimeoutError):
         return 0, {}
+
+
+def fetch_text(url: str) -> tuple[int, str]:
+    req = urllib.request.Request(
+        url,
+        headers={
+            "Accept": "text/plain",
+            "Cache-Control": "no-cache, no-store",
+            "Pragma": "no-cache",
+            "User-Agent": "chess-studio-staging-commit-marker/1",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=8) as response:
+            return response.status, response.read().decode("utf-8", errors="replace")
+    except urllib.error.HTTPError as exc:
+        return exc.code, ""
+    except (urllib.error.URLError, TimeoutError):
+        return 0, ""
 
 
 def _normalized_response_headers(headers) -> dict[str, str]:
@@ -273,6 +315,19 @@ def self_test() -> None:
     assert not challenge_transport_rejection_ok(
         502, challenge_headers, STAGING_BROWSER_ORIGIN, "challenge-probe-1"
     )
+    full_go = {
+        "status": "ready",
+        "service": "chess-studio-pvp-go",
+        "virtualPlayersEnabled": True,
+        **{key: True for key in PVP_FULL_GO_READY_KEYS},
+    }
+    assert pvp_full_go_ready(full_go)
+    broken = dict(full_go)
+    broken["nativeChallengeCreate"] = False
+    assert not pvp_full_go_ready(broken)
+    broken = dict(full_go)
+    broken["virtualPlayersEnabled"] = False
+    assert not pvp_full_go_ready(broken)
     print("verify-backend-staging self-test OK")
 
 
@@ -310,6 +365,10 @@ def main() -> None:
         release_query = urllib.parse.urlencode({"sha": expected, "probe": probe})
         ready_status, ready = fetch_json(f"{base}/ready?{ready_query}")
         release_status, release = fetch_json(f"{base}/release?{release_query}")
+        committed_status, committed_body = fetch_text(
+            f"{base}/_deploy/committed?{ready_query}"
+        )
+        pvp_edge_status, pvp_edge = fetch_json(f"{base}/pvp/_edge/ready?{ready_query}")
         cors_status, cors_headers = fetch_cors_preflight(f"{base}/auth/me?probe={probe}", origin)
         pvp_cors_status, pvp_cors_headers = fetch_cors_preflight(
             f"{base}/pvp/roster?probe={probe}",
@@ -337,9 +396,12 @@ def main() -> None:
         )
         storage = str(ready.get("storage") or "")
         observed = str(release.get("build") or "").lower()
+        committed = committed_body.strip().lower()
+        pvp_observed = str(pvp_edge.get("release") or "").lower()
         allowed_origin = cors_headers.get("access-control-allow-origin", "")
         ok = ready_status == 200 and ready.get("ok") is True and storage == "mongo"
         exact = release_status == 200 and observed == expected
+        committed_exact = committed_status == 200 and committed == expected
         cors_ok = cors_contract_ok(cors_status, cors_headers, origin)
         pvp_cors_ok = cors_contract_ok(
             pvp_cors_status,
@@ -371,21 +433,30 @@ def main() -> None:
             origin,
             challenge_request_id,
         )
+        pvp_edge_ready_ok = (
+            pvp_edge_status == 200
+            and pvp_observed == expected
+            and pvp_full_go_ready(pvp_edge)
+        )
         if (
             ok
             and exact
+            and committed_exact
             and cors_ok
             and pvp_cors_ok
             and pvp_preflight_native
             and pvp_response_ok
             and challenge_cors_ok
             and challenge_response_ok
+            and pvp_edge_ready_ok
         ):
             print(
                 "OCI staging public accreditation OK: "
-                f"storage=mongo build={observed} cors_origin={allowed_origin} "
+                f"storage=mongo build={observed} committed_build={committed} "
+                f"cors_origin={allowed_origin} "
                 f"pvp_roster_cors=ok pvp_roster_native_response=ok "
-                f"pvp_challenge_transport=ok"
+                f"pvp_challenge_transport=ok pvp_full_go=ok "
+                f"pvp_release={pvp_observed} virtual_players=on"
             )
             return
 
@@ -399,6 +470,8 @@ def main() -> None:
             "OCI staging public accreditation pending: "
             f"ready_http={ready_status or 'error'} storage={storage or '<empty>'} "
             f"release_http={release_status or 'error'} observed_build={observed or '<empty>'} "
+            f"committed_http={committed_status or 'error'} "
+            f"committed_build={committed or '<empty>'} "
             f"cors_http={cors_status or 'error'} cors_origin={allowed_origin or '<empty>'} "
             f"pvp_roster_cors_http={pvp_cors_status or 'error'} "
             f"pvp_roster_cors_origin={pvp_cors_headers.get('access-control-allow-origin', '') or '<empty>'} "
@@ -409,6 +482,11 @@ def main() -> None:
             f"pvp_challenge_cors_origin={challenge_cors_headers.get('access-control-allow-origin', '') or '<empty>'} "
             f"pvp_challenge_response_http={challenge_response_status or 'error'} "
             f"pvp_challenge_edge={challenge_response_headers.get('x-chess-pvp-edge', '') or '<empty>'} "
+            f"pvp_edge_ready_http={pvp_edge_status or 'error'} "
+            f"pvp_release={pvp_observed or '<empty>'} "
+            f"pvp_native_lobby_read={pvp_edge.get('nativeLobbyRead', '<empty>')} "
+            f"pvp_full_go={pvp_full_go_ready(pvp_edge)} "
+            f"pvp_virtual_players={pvp_edge.get('virtualPlayersEnabled', '<empty>')} "
             f"expected_build={expected} attempt={attempt}/{args.attempts}"
         )
 
@@ -422,8 +500,9 @@ def main() -> None:
             time.sleep(args.interval)
 
     raise SystemExit(
-        "public OCI staging did not converge to Mongo-ready exact build with valid browser CORS "
-        "for core API, native PvP roster, and the JSON challenge-create browser transport within bounded verification"
+        "public OCI staging did not converge to the host-committed Mongo-ready exact build "
+        "with valid browser CORS for core API, native PvP roster, and the JSON "
+        "challenge-create browser transport within bounded verification"
     )
 
 

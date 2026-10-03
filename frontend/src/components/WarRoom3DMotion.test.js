@@ -238,6 +238,22 @@ describe('WarRoom3DMotion', () => {
     }
   });
 
+  it('lifts Duel Room exposure on both devices, with extra touch compensation', () => {
+    for (const coarsePointer of [false, true]) {
+      for (const state of [{}, { check: true }, { gameOver: true }]) {
+        const shared = reactiveLightProfile({ ...state, coarsePointer });
+        const duel = reactiveLightProfile({ ...state, coarsePointer, variant: 'duel' });
+        expect(duel.key).toBe(shared.key);
+        expect(duel.rim).toBe(shared.rim);
+        expect(duel.warm).toBe(shared.warm);
+        expect(duel.fogDensity).toBe(shared.fogDensity);
+        expect(duel.exposure).toBeCloseTo(shared.exposure + (coarsePointer ? 0.36 : 0.20));
+      }
+    }
+    expect(reactiveLightProfile({ variant: 'duel', coarsePointer: true }).exposure)
+      .toBeGreaterThan(reactiveLightProfile({ variant: 'duel' }).exposure);
+  });
+
   it('dims the v3 armory so torches lead, keeping the board key and special states', () => {
     for (const coarsePointer of [false, true]) {
       for (const state of [{}, { check: true }, { gameOver: true }]) {

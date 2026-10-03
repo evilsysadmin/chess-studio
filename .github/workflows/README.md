@@ -1,6 +1,6 @@
 # GitHub Actions · mapa operativo
 
-Última auditoría: 2026-09-24.
+Última auditoría: 2026-10-02.
 
 Regla: cada workflow debe representar un dominio operativo o blast radius real. Se fusiona duplicación histórica; no se fusionan promoción, rollback o acreditación sólo para bajar el contador.
 
@@ -19,6 +19,7 @@ Regla: cada workflow debe representar un dominio operativo o blast radius real. 
 - Las PR usan **GitHub native auto-merge**. Ningún workflow del repo espera checks para ejecutar `gh pr merge`, ni existe un handoff que redispare CI después del merge.
 - Un push directo excepcional a `main` no recibe bypass: `Main · admission` lo detecta y ejecuta un gate completo sobre ese HEAD exacto antes de permitir staging.
 - El release canónico de staging no aplica Terraform ni arranca K3s. El fast-path normal consume el runtime instalado; si cae al control-plane, reconcilia el contrato CURRENT Vault + Git antes del deploy para no acreditar runtime legado.
+- El fast-path del backend no acredita un `/release` transitorio: el edge expone `/api/_deploy/committed` con el SHA que el host sólo publica después de superar todas las attestations post-cutover. Un rollback restaura el marcador anterior y GitHub exige ese SHA comprometido antes de declarar convergencia.
 - `oci-staging-mutations` se reserva para operaciones que realmente mutan OCI/host. Diagnósticos y probes read-only no deben bloquear un deploy por compartir un mutex innecesario.
 - La concurrencia distingue **cancelable work** de **remote mutation**. Lanes read-only, visuales o de post-check pueden usar `cancel-in-progress: true` para matar trabajo stale. Un deploy/Terraform/runtime-sync que ya está mutando OCI/host se serializa con `cancel-in-progress: false`: abortarlo a mitad puede dejar estado parcial. La generación obsoleta se descarta mediante exact-SHA/supersession al adquirir el lock, antes de su siguiente mutación; no se deja sobrescribir una generación más nueva.
 
@@ -53,7 +54,8 @@ Lección operativa: no resolver falsos positivos de CI debilitando el gate a cie
 | `pr-track-label.yml` | GP-0 (#34): toda PR lleva etiqueta de pista (`ux-mobile`/`ux-desktop`/`ux-claude`/`track-*`) o falla `Contracts · PR track label`. Se re-evalúa en `labeled`/`unlabeled` sin relanzar el CI completo; sparse checkout de un único script. Debe figurar como required check de `main`. |
 | `main-admission.yml` | Clasifica el HEAD de `main`. Si procede de PR, reutiliza la acreditación Quality inmutable y hace preflight barato; si es un commit directo excepcional, ejecuta tests, security, Playwright, imágenes Docker y compose smoke sobre el SHA exacto. Sólo un run verde habilita staging. |
 | `menu-ux-audit.yml` | Auditoría visual manual/efímera de menús y superficies intermedias. Captura desktop+móvil y emite PNG/JSON de densidad, overflow y targets; no es gate requerido ni corre en cada PR. |
-| `staging-deploy.yml` | Despliega una generación coherente del mismo SHA: backend exacto en **OCI staging**, frontend en Cloudflare Pages y AI en Cloudflare Worker; después exige paridad de generación y browser smoke. No consulta Render staging para desplegar el backend. |
+| `staging-deploy.yml` | Despliega una generación coherente del mismo SHA: backend exacto en **OCI staging**, frontend en Cloudflare Pages y AI en Cloudflare Worker; después exige paridad de generación y browser smoke. No consulta Render staging para desplegar el backend y no repite un segundo deploy blue/green dentro del camino crítico. |
+| `staging-deploy-continuity.yml` | Drill post-deploy de continuidad de partida durante un switch blue/green. Se dispara tras un staging verde sólo cuando cambian backend/runtime/deploy; cambios frontend-only lo omiten. Sigue disponible manualmente para drills explícitos. |
 | `staging-ai-worker.yml` | Revalida/acredita la generación de staging ya desplegada y emite la acreditación inmutable que permite promoción. El nombre se conserva por el contrato `workflow_run` existente. |
 | `production-promote.yml` | Promueve sólo un SHA acreditado. Worker Terraform `plan/apply` permanece aquí; el backend se selecciona mediante el interruptor versionado `.github/production-deploy.env` (`render|oci`) y el helper de ruta posee el CNAME del API. Pages continúa después sobre el mismo SHA. |
 | `production-rollback.yml` | Rollback manual a un SHA conocido. Blast radius distinto: no fusionar con promote. |
@@ -79,6 +81,7 @@ Render staging está retirado del plano de despliegue: el **release canónico y 
 
 | Workflow | Responsabilidad |
 | --- | --- |
+| `app-visual-artifact.yml` | Evidencia visual path-aware. El canario canónico de Hans sigue siendo fail-closed; los vídeos secundarios de rutinas (`mop`/`dust-board`/`espresso`) son informativos, conservan warning/artefactos cuando existen y no bloquean una PR por timing de SwiftShader o del recorder. |
 | `e2e-full.yml` | Sweep completo Chromium/Firefox/WebKit mensual/manual e informativo. Ya no duplica PR: la matriz requerida y path-aware War Room/Matthias vive en `cicd.yml`. |
 | `home-blender-v2-preview.yml` | Evidencia PNG Home path-aware en PR con envelope de revisión barato; los renders manuales conservan calidad alta. |
 | `home-blender-v2-runtime.yml` | Exporta/publica el GLB Home sólo en `main` o manual, luego ejecuta su gate browser y promoción. No repite el export runtime en PR: la revisión visual PR pertenece al preview PNG. |
@@ -98,6 +101,7 @@ Para producción pública, un fallo del synthetic es una señal operativa, no ru
 | `cloudflare-prometheus-exporter.yml` | Valida/despliega el exporter oficial Cloudflare cuando cambia su superficie. |
 | `synthetic-health.yml` | Canary sintético de producción cada 15 minutos (minutos 07/22/37/52 para evitar el top-of-hour herd). Valida liveness, readiness y gameplay autenticado; vive separado para funcionar aunque no haya releases. |
 | `production-mongo-backup.yml` | Backup semanal de `chess_study` desde la A1 OCI a block storage local. Genera `mongodump --archive --gzip`, valida el archivo con `mongorestore --dryRun` y sólo entonces poda hasta conservar los 2 backups exitosos más recientes. |
+| `pvp-python-fallback.yml` | Evidencia para retirar el respaldo Python del PvP: cuenta en Grafana las peticiones públicas `/api/pvp` que aún llegan a FastAPI (todas tienen handler Go), por entorno y ruta. Diario y manual; con `max_requests` actúa como puerta. Sólo lectura. |
 | `branch-housekeeping.yml` | Poda ramas mergeadas. Candidato a borrar cuando el repo active el ajuste nativo `Automatically delete head branches`; actualmente `delete_branch_on_merge=false`. |
 
 ## Flujo
@@ -129,6 +133,8 @@ Deploy to staging
  │
  ├─ generation parity
  └─ browser smoke
+ │
+ ├─ post-deploy continuity drill (sólo backend/runtime/deploy)
  │
  ▼
 Staging · AI Worker / accreditation

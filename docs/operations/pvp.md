@@ -145,6 +145,8 @@ Requirements:
 
 Presence is advisory input to lifecycle policy, not a second match authority.
 
+New 1v1 matches use a relaxed fixed `30+0` control: 30 minutes per side with no increment. Existing matches keep their persisted clock state.
+
 Clock values are server-owned. Clients render snapshots and elapsed time derived from server timestamps but cannot settle timeout independently.
 
 Disconnect and reconnect policy must be deterministic, bounded and covered by tests.
@@ -160,6 +162,7 @@ Contract:
 - disabled outside staging;
 - visible and challengeable only by the configured owner account;
 - appears through the normal roster DTO and challenge API;
+- owner-visible staging actors are materialized by the lobby projection and must not disappear merely because the ephemeral human roster TTL expires; Mongo roster rows remain compatibility/transactional state for challenge and handoff, not display authority for virtual actors;
 - auto-accepts a challenge and marks itself ready through the authoritative
   backend state, so the owner still traverses the real handoff into War Room;
 - is treated as online for disconnect policy while that synthetic duel exists;
@@ -192,6 +195,16 @@ experiment, not public matchmaking yet.
   initiation remains human-driven until engagement frequency/cooldown policy is
   reviewed separately.
 
+### CPU engine parity (Go port of `chess_ai`)
+
+Resident moves are chosen by the Go port of the CPU engine (`internal/residenteval`, `internal/residentsearch`, `internal/residentpolicy`), and the same port is the base for moving the games against the CPU out of Python. Parity is enforced on corpora generated from `backend-python/chess_ai.py` by `scripts/engine_parity_corpus.py`:
+
+- evaluation: ~6.5k seeded positions (every phase, mates, stalemates, insufficient material, 50-move rule) must evaluate to the same number in Go;
+- search: ~250 positions at fixed depth 2/3 (level-100 settings without randomness, noise or clock) must reach the same value, and Python's move must be one of Go's equally best moves. Ties may break differently because the two libraries generate moves in a different order;
+- `pvp-go.yml` regenerates the corpora with `--check` (Python 3.13 and the pinned `python-chess`) and runs both Go tests, so a change to either engine cannot drift silently.
+
+The search corpus found one real divergence: the Go chess library tags en passant with `chess.EnPassant`, not `chess.Capture`, so the quiescence search, move ordering and position complexity skipped en passant captures. `chessrules.IsCapture` is the single capture test now.
+
 ## Rating
 
 PvP rating is independent from CPU/Matthias rating.
@@ -213,12 +226,17 @@ It must remain bounded:
 - no hidden coupling to match correctness;
 - chat failure cannot break challenge/handoff/gameplay success.
 
-## Go read-offload wedge
+## Go authority boundary
 
-The Go PvP edge may absorb high-frequency read coordination incrementally while Python remains the lifecycle authority.
+All public PvP routes are now intended to execute through the Go edge by default. Python remains a compatibility rollback path and, where noted, the machine-only resident move oracle.
+
+Staging is the enforcement environment for that boundary: a normal staging generation must report every native PvP readiness bit as enabled and must expose the owner-scoped resident gate. Any Python public-route fallback in staging requires the explicit emergency override `CHESS_STUDIO_PVP_ALLOW_PYTHON_FALLBACK_STAGING=true`; without that override the deploy fails before the generation is accepted. The public staging verifier also requires the full-Go readiness set through `/api/pvp/_edge/ready`, so an internally healthy sidecar is not sufficient if the external path is serving a fallback generation.
+
+A generation is not committed merely because preflight or an unauthenticated 401 looks healthy. Before publishing the committed SHA, the deploy mints a real staging-owner session token and exercises the exact browser path for both `GET /api/pvp/lobby` and `GET /api/pvp/lobby/pulse`, first through the local stable edge and then through the public Cloudflare path. Both calls must return 200, exactly one canonical `Access-Control-Allow-Origin`, the expected Go/native route markers, the echoed request id, and a minimally valid payload. A failed candidate rolls back Go-first to the previously accredited PvP sidecar and degrades to Python-direct only when that previous sidecar genuinely cannot pass readiness.
 
 Current bounded contract:
 - lobby pulse may read Mongo natively and invalidate the full Python lobby snapshot;
+- the canonical full lobby snapshot may execute natively in Go with the existing 40/minute bound: active roster ordering, owner-only Sparringmeister/resident seeding and visibility, persisted head-to-head summaries, active pair cooldowns, stale-challenge expiry, pending/accepted challenges, active match DTO and the 24-hour/40-message chat window all match the Python contract; its independent kill-switch falls back to Python, and deploys accredit the sidecar readiness bit, a non-mutating public rejected GET carrying the exact `lobby-read` route marker, and authenticated browser-success responses for both lobby and lobby pulse before staging may commit;
 - match pulse may renew only the caller's coarse duel presence timestamp without changing gameplay revision;
 - match pulse may expose revision/status plus the rival's coarse presence band, and detect clock, handoff or disconnect-grace boundaries that require an immediate authoritative full-match reconciliation;
 - the Go pulse itself still emits lifecycle hints only; when native match reads are enabled, the full Go match-read path owns the corresponding timeout/disconnect mutations, while the kill-switch falls back to Python;
@@ -228,12 +246,12 @@ Current bounded contract:
 - lobby chat posting may execute natively in Go with the same 240-character normalization, per-user 12/minute limit and Mongo message schema; its kill-switch falls back to the Python route without a frontend change;
 - challenge cancel/decline may execute natively in Go using Mongo find-and-update CAS semantics and the existing 20-second pair cooldown; cancel preserves Python's idempotent repeated-cancel behavior while decline preserves its current one-shot 404-on-repeat behavior; a dedicated kill-switch falls back to Python;
 - human challenge acceptance may execute natively in Go through the same crash-recoverable staged-match saga: deterministic match identity, roster/active-match preconditions, idempotent accepted retries and a best-effort lobby system message; its independent kill-switch falls back to Python, while challenge creation and synthetic auto-accept remain Python-authoritative;
-- challenge creation may execute natively in Go with authoritative roster ratings, pending-pair idempotency, the existing 20-second pair cooldown, owner-scoped Sparringmeister/resident availability, synthetic roster seeding, native synthetic auto-accept and virtual-ready handoff; its own kill-switch falls back to Python without changing the client contract. After the staging browser regression observed on the native cutover, challenge creation defaults back to the Python compatibility route until explicitly re-enabled; every deploy now accredits the exact JSON browser transport (`OPTIONS` with `Content-Type` plus a real non-mutating rejected `POST`) through the Go edge, and an explicit native re-enable must additionally expose the `challenge-create` route marker on both requests;
+- challenge creation may execute natively in Go with authoritative roster ratings, pending-pair idempotency, the existing 20-second pair cooldown, owner-scoped Sparringmeister/resident availability, synthetic roster seeding, native synthetic auto-accept and virtual-ready handoff; its own kill-switch falls back to Python without changing the client contract. After the staging browser regression observed on the native cutover, native challenge creation is enabled by default again; every deploy accredits the exact JSON browser transport (`OPTIONS` with `Content-Type` plus a real non-mutating rejected `POST`) through the Go edge, and native deployments must expose the `challenge-create` route marker on both requests;
 - cancelling a match that is still in `starting` may execute natively in Go with revision CAS and the same idempotent repeated-cancel semantics; this narrow transition does not activate a duel, settle rating or alter clocks, and has its own routing kill-switch;
 - match readiness/handoff may execute natively in Go: caller presence is renewed, staging virtual rivals are auto-readied under the same owner gate, ready timeout is monotonic, the second ready CAS-activates the duel with the same five-second countdown, and roster cleanup remains best-effort after the committed activation; its independent kill-switch falls back to Python;
 - match resignation may execute natively in Go with participant/state validation, revision CAS, terminal clock snapshot and idempotent two-sided Elo settlement from the frozen match-start ratings; terminal responses expose the same deterministic rating delta, and its independent kill-switch falls back to Python;
 - full match reads may execute natively in Go with the existing 60/minute bound: pre-touch observer liveness is preserved, caller presence is renewed without a revision bump, virtual rivals may be marked ready without implicitly activating the duel, expired handoffs are cancelled by revision CAS, active clock timeout runs before disconnect grace/forfeit, and finished rated matches retry idempotent Elo settlement; its independent kill-switch falls back to the Python GET route;
-- match moves may execute natively in Go behind their own kill-switch: lifecycle reconciliation remains timeout -> disconnect before board mutation, chess legality/SAN/FEN/result uses the pinned Go rules adapter with Python-compatible en-passant/draw semantics, the human move is revision-CAS committed in Mongo, board-terminal outcomes stop the clock and settle Elo idempotently, and resident replies use a second Go-owned CAS; Otto/Marta/Viktor may still ask the paired Python backend for a machine-only HMAC-signed UCI suggestion, but Python never reads or writes authoritative match state for that reply; a failed resident reply leaves the committed human move visible and is retried by the native full-match read path;
+- match moves may execute natively in Go behind their own kill-switch: lifecycle reconciliation remains timeout -> disconnect before board mutation, chess legality/SAN/FEN/result uses the pinned Go rules adapter with Python-compatible en-passant/draw semantics, the human move is revision-CAS committed in Mongo, board-terminal outcomes stop the clock and settle Elo idempotently, and resident replies use a second Go-owned CAS; Otto/Marta/Viktor use the bounded native Go resident chooser by default, while an independent resident-move kill-switch can temporarily fall back to the paired Python HMAC-signed UCI oracle without returning match authority to Python; staging readiness explicitly accredits the native resident chooser; a failed resident reply leaves the committed human move visible and is retried by the native full-match read path;
 - Sparringmeister remains the existing staging synthetic rival and does not gain an invented engine reply as part of this cutover;
 - a missing/disabled native pulse falls back to the existing Python pulse behavior, a missing/disabled native match-read route falls back to the existing Python GET path, and a missing/disabled native match-move route falls back to the existing Python POST move path.
 
@@ -310,7 +328,13 @@ PvP is migrating incrementally toward a dedicated Go process. The first slice is
 
 - `backend-go/cmd/pvp-edge` accepts only `/api/pvp*` plus its internal health/readiness endpoints;
 - while a PvP operation still belongs to Python, Go proxies it transparently to the paired Python backend and preserves auth, request path/query/body and response semantics;
-- Go readiness fails closed when the paired Python authority is not ready;
+- Go readiness fails closed when the paired Python authority is not ready, and also when its own MongoDB client stops answering `ping` (the 503 names the failing `dependency`, never the raw error); a startup ping alone does not prove the store is still reachable;
+- the PvP timing contract (initial clock, increment, ready timeout, disconnect grace) lives once in `backend-go/internal/pvpclock`; every Go package reads it from there and a test pins it against the constants in `backend-python/pvp_api.py`, so the two runtimes cannot drift. Match documents missing a clock field fall back to `pvpclock.InitialMS` in every path;
+- the resident/sparring owner comes only from `CHESS_PVP_SPARRING_OWNER`; the Go edge has no built-in username and refuses to start with sparring enabled and no owner. The deploy config (`infra/oci/runtime/docker-compose.yml`) is the single place that supplies the default;
+- `backend-go` must stay `gofmt`-clean; `pvp-go.yml` fails otherwise;
+- native routing has one table, `backend-go/internal/pvproute`: the edge uses it to choose Go or the Python upstream and the native handler dispatches on the same answer, so the two cannot disagree (they used to parse paths separately, and paths whose id was an action word, such as `/matches/move`, were read differently). A path the table does not know is a 404 in the native handler, never the lobby pulse. `pulse.Handler.routeEnabled` is the one place that says whether a route is served (it also gates the pre-auth `X-Chess-Pvp-Native` markers), `ServeHTTP` only authenticates and dispatches, and each route lives in its own file (`roster_http.go`, `lobby_chat_http.go`, `challenge_resolution_http.go`, `match_handoff_http.go`, `lobby_pulse.go`, …; auth in `auth.go`, the store core in `mongo_store.go`). A disabled route's nil service is normalised to an absent dependency in `pulse.NewHandler`, so its guards return 404 instead of reaching a nil pointer;
+- the Go stores have integration tests against a real MongoDB 8.0 (`internal/pulse/mongo_integration_test.go`): revision CAS under concurrent writers, terminal writes that finish once, the idempotent acceptance saga, one pending challenge per pair (via the unique index), once-per-match rating settlement and decoding of Python-written documents (int32 clocks, explicit nulls, missing clocks). `pvp-go.yml` runs them with a `mongo:8.0` service and `PVP_MONGO_TEST_REQUIRED=1`; locally they skip unless `PVP_MONGO_TEST_URL` is set;
+- Go declares the same PvP indexes as Python (`internal/pulse/indexes.go`, mirroring `pvp_store.py` `_ensure_indexes`: same names, keys and options), so the unique `pvp_pending_pair_unique` index and the roster TTL no longer depend on Python having started. Re-declaring an identical index is a no-op; a drift fails with `IndexOptionsConflict`, which the edge logs at startup without stopping while both runtimes coexist. A test pins the name set against `pvp_store.py` and another checks coexistence with the indexes as pymongo creates them;
 - proxy transport failure returns a stable retryable `pvp_upstream_unavailable` envelope instead of inventing domain state;
 - most compatibility routes remain stateless proxies while Mongo/Python remain authoritative until an operation is explicitly migrated with parity tests;
 - the first native read is `GET /api/pvp/lobby/pulse`: Go validates the same HS256 session contract (including account `session_version`), reads Mongo directly and returns only a deterministic lobby revision plus polling cadence;
@@ -320,5 +344,15 @@ PvP is migrating incrementally toward a dedicated Go process. The first slice is
 - moves, clocks, challenges, rating settlement and all PvP mutations still belong to Python in this slice;
 - migration is endpoint-by-endpoint. An operation moves to Go only when its auth, idempotency/CAS, persistence, error and reconnect contracts have dedicated parity coverage;
 - rollback must remain routing-level while the compatibility proxy exists.
+
+### Python fallback sunset
+
+Every public PvP route has a native Go handler, staging requires all of them and the production release attests every native flag. The Python public PvP routes now only survive as the kill-switch rollback. Plan agreed on 2026-10-03:
+
+1. Evidence: `pvp-python-fallback.yml` (daily, read-only) counts `/api/pvp` requests that still reach FastAPI (`chess_studio_http_server_requests_total`), including the internal resident oracle. Manual runs can add `timeline` (hourly counts) and `sources` (Loki breakdown by `pvp_hop`: `go:disabled:<route>` / `go:unknown` when the Go sidecar forwarded the request and why, `direct` when it bypassed the sidecar, e.g. nginx `direct` mode after a rollback with an unhealthy sidecar).
+   - First reading (2026-10-03): ~6.9k fallback requests in the previous 14 days, all before 2026-10-02 ~21:00 UTC, i.e. before the full-Go cutover of lobby reads, challenge creation and resident moves, and during that evening's failed deploys/rollbacks. None since. The evidence window therefore starts on 2026-10-03.
+2. Deadline **2026-10-17**: if production saw no fallback traffic for the 14-day window, remove the Python PvP routes (including `/_internal/resident-move` and the Go `residentoracle` client), the `PVP_NATIVE_*_ENABLED` kill-switches, and the Go readiness dependency on the Python `/api/ready` for PvP.
+3. Rollback after the sunset is a release rollback (`production-rollback.yml`), no longer a per-route switch.
+4. Resident moves are already chosen natively in Go (`internal/residentmove`); the Python oracle only answers when `PVP_NATIVE_RESIDENT_MOVE_ENABLED` is off, so it is retired with the rest.
 
 Target deployment pairs each blue/green Python slot with the same-color Go PvP edge, so switching the stable nginx edge cannot route a duel to the wrong backend generation.

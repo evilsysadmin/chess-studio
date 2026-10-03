@@ -19,6 +19,8 @@ source_runtime_installer="$repo/scripts/oci_runtime_install.sh"
 target_runtime_installer="/usr/local/sbin/chess-studio-install-runtime"
 mongo_backup_source="$repo/scripts/oci_production_mongo_backup.sh"
 mongo_backup_target="/usr/local/sbin/chess-studio-mongo-backup"
+ssh_authorize_source="$repo/scripts/oci_ssh_authorize_root.py"
+ssh_authorize_target="/usr/local/sbin/chess-studio-ssh-authorize"
 ocarun_sudoers_source="$repo/infra/oci/runtime/ocarun.sudoers"
 ocarun_sudoers_target="/etc/sudoers.d/101-chess-studio-ocarun"
 tunnel_connector="$repo/scripts/oci_staging_tunnel_connector.sh"
@@ -43,6 +45,7 @@ case "$target" in
     state_dir="${CHESS_STUDIO_STATE_DIR:-/var/lib/chess-studio}"
     project="${CHESS_STUDIO_COMPOSE_PROJECT:-chess-studio-staging}"
     port="${CHESS_STUDIO_BACKEND_PORT:-4000}"
+    canonical_cors_origin="https://staging.chess-studio.shadowops.dpdns.org"
     cors_origin="${CHESS_STUDIO_CORS_ORIGINS:-https://staging.chess-studio.shadowops.dpdns.org}"
     public_api_url="${CHESS_STUDIO_PUBLIC_API_URL:-https://api-staging.chess-studio.shadowops.dpdns.org/api}"
     ;;
@@ -51,10 +54,20 @@ case "$target" in
     state_dir="${CHESS_STUDIO_STATE_DIR:-/var/lib/chess-studio-production}"
     project="${CHESS_STUDIO_COMPOSE_PROJECT:-chess-studio-production}"
     port="${CHESS_STUDIO_BACKEND_PORT:-4100}"
+    canonical_cors_origin="https://chess-studio.shadowops.dpdns.org"
     cors_origin="${CHESS_STUDIO_CORS_ORIGINS:-https://chess-studio.shadowops.dpdns.org}"
     public_api_url="${CHESS_STUDIO_PUBLIC_API_URL:-https://api.chess-studio.shadowops.dpdns.org/api}"
     ;;
 esac
+
+# The browser contract is credentialed/authenticated. Never accredit "*" or an
+# alternate origin here: that can make OPTIONS look green while the real fetch
+# is rejected by the browser. Runtime and deploy accreditation must agree on
+# the one canonical frontend origin for the selected environment.
+if [[ "$cors_origin" != "$canonical_cors_origin" ]]; then
+  echo "refusing non-canonical browser CORS origin: target=$target expected=$canonical_cors_origin observed=$cors_origin" >&2
+  exit 64
+fi
 
 if [[ "$target" == "staging" ]]; then
   pvp_sparring_enabled=true
@@ -62,6 +75,28 @@ else
   pvp_sparring_enabled=false
 fi
 pvp_sparring_owner="${CHESS_PVP_SPARRING_OWNER:-evilsysadmin}"
+# Strangler front for the Python -> Go migration. "direct": nginx sends only
+# /api/pvp to the Go sidecar. "go": nginx sends the whole API to the sidecar,
+# which serves what is native and forwards the rest to Python. Versioned here
+# per target so enabling or reverting it is a reviewed one-line change.
+case "$target" in
+  staging) api_edge_mode="${CHESS_STUDIO_API_EDGE_MODE:-go}" ;;
+  *) api_edge_mode="${CHESS_STUDIO_API_EDGE_MODE:-direct}" ;;
+esac
+case "$api_edge_mode" in
+  direct|go) ;;
+  *) echo "invalid CHESS_STUDIO_API_EDGE_MODE: $api_edge_mode" >&2; exit 2 ;;
+esac
+# Native Go routes for games vs the CPU (GET/DELETE /api/games*). They only
+# receive traffic in API "go" mode; staging first, production stays off.
+case "$target" in
+  staging) go_native_games_read="${CHESS_STUDIO_GO_NATIVE_GAMES_READ_ENABLED:-true}" ;;
+  *) go_native_games_read="${CHESS_STUDIO_GO_NATIVE_GAMES_READ_ENABLED:-false}" ;;
+esac
+case "${go_native_games_read,,}" in
+  true|false) go_native_games_read="${go_native_games_read,,}" ;;
+  *) echo "invalid CHESS_STUDIO_GO_NATIVE_GAMES_READ_ENABLED: $go_native_games_read" >&2; exit 2 ;;
+esac
 pvp_sparring_username="${CHESS_PVP_SPARRING_USERNAME:-sparringmeister}"
 
 state_file="$state_dir/deployed.sha"
@@ -83,6 +118,18 @@ now_ms() {
   printf '%s%s\n' "$seconds" "${micros:0:3}"
 }
 
+ensure_operator_docker_access() {
+  id ubuntu >/dev/null 2>&1 || { echo 'missing operator user: ubuntu' >&2; exit 66; }
+  getent group docker >/dev/null 2>&1 || { echo 'missing docker group' >&2; exit 69; }
+  if id -nG ubuntu | grep -qw docker; then
+    echo 'OCI_OPERATOR_DOCKER_ACCESS state=already'
+    return
+  fi
+  usermod -aG docker ubuntu
+  id -nG ubuntu | grep -qw docker || { echo 'failed to grant ubuntu docker group membership' >&2; exit 70; }
+  echo 'OCI_OPERATOR_DOCKER_ACCESS state=added'
+}
+
 phase_done() {
   local name="$1"
   local started_ms="$2"
@@ -100,8 +147,13 @@ require sha256sum
 require systemctl
 require flock
 require visudo
+require id
+require getent
+require grep
+require usermod
 
 docker compose version >/dev/null 2>&1 || { echo 'docker compose v2 is required' >&2; exit 69; }
+ensure_operator_docker_access
 [[ -d "$repo/.git" ]] || { echo "missing repo checkout: $repo" >&2; exit 66; }
 [[ -s "$env_file" ]] || { echo "missing runtime env: $env_file" >&2; exit 42; }
 
@@ -211,6 +263,7 @@ compose() {
   CHESS_STUDIO_STATE_DIR="$state_dir" \
   CHESS_STUDIO_TRUST_CLOUDFLARE_CLIENT_IP="true" \
   CHESS_PVP_SPARRING_ENABLED="$pvp_sparring_enabled" \
+  CHESS_STUDIO_GO_NATIVE_GAMES_READ_ENABLED="$go_native_games_read" \
   CHESS_PVP_SPARRING_OWNER="$pvp_sparring_owner" \
   CHESS_PVP_SPARRING_USERNAME="$pvp_sparring_username" \
   CHESS_STUDIO_OCI_LOG_SERVICE_NAME="chess-studio-oci-backend-${target}-stdout" \
@@ -271,7 +324,16 @@ write_active_color() {
 render_edge() {
   local color="$1"
   local pvp_mode="${2:-go}"
-  python3 -S "$blue_green_edge" --color "$color" --pvp-mode "$pvp_mode" --output "$edge_config_file"
+  local committed_sha="${3:-${previous_sha:-}}"
+  # Only the candidate cutover passes the configured API mode. Rollbacks keep
+  # "direct": an older Go sidecar may not be able to front the whole API.
+  local api_mode="${4:-direct}"
+  python3 -S "$blue_green_edge" \
+    --color "$color" \
+    --pvp-mode "$pvp_mode" \
+    --committed-sha "$committed_sha" \
+    --api-mode "$api_mode" \
+    --output "$edge_config_file"
 }
 
 edge_container_id() {
@@ -380,33 +442,43 @@ PY
 
 pvp_attest() {
   local service="$1"
+  local deployment_target="${2:-$target}"
   local body
   body="$(mktemp)"
   if ! compose "$sha" exec -T "$service" wget -q -O - http://127.0.0.1:8080/readyz >"$body"; then
     rm -f "$body"
     return 1
   fi
-  if python3 - "$body" <<'PY'
+  if python3 - "$body" "$pvp_sparring_enabled" "$deployment_target" "$sha" "$go_native_games_read" <<'PY'
 import json
 import pathlib
 import sys
 payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
 env = __import__('os').environ
+deployment_target = str(sys.argv[3]).strip().lower()
+expected_release = str(sys.argv[4]).strip().lower()
+allow_staging_fallback = str(env.get('CHESS_STUDIO_PVP_ALLOW_PYTHON_FALLBACK_STAGING', 'false')).strip().lower() in {'1', 'true', 'yes', 'on'}
 expected_native = str(env.get('CHESS_STUDIO_PVP_NATIVE_PULSE_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
+expected_lobby_read = str(env.get('CHESS_STUDIO_PVP_NATIVE_LOBBY_READ_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
+expected_virtual_players = str(sys.argv[2]).strip().lower() in {'1', 'true', 'yes', 'on'}
 expected_roster = str(env.get('CHESS_STUDIO_PVP_NATIVE_ROSTER_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
 expected_chat = str(env.get('CHESS_STUDIO_PVP_NATIVE_CHAT_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
 expected_challenge_resolution = str(env.get('CHESS_STUDIO_PVP_NATIVE_CHALLENGE_RESOLUTION_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
 expected_challenge_accept = str(env.get('CHESS_STUDIO_PVP_NATIVE_CHALLENGE_ACCEPT_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
-expected_challenge_create = str(env.get('CHESS_STUDIO_PVP_NATIVE_CHALLENGE_CREATE_ENABLED', 'false')).strip().lower() in {'1', 'true', 'yes', 'on'}
+expected_challenge_create = str(env.get('CHESS_STUDIO_PVP_NATIVE_CHALLENGE_CREATE_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
 expected_match_handoff_cancel = str(env.get('CHESS_STUDIO_PVP_NATIVE_MATCH_HANDOFF_CANCEL_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
 expected_match_ready = str(env.get('CHESS_STUDIO_PVP_NATIVE_MATCH_READY_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
 expected_match_resign = str(env.get('CHESS_STUDIO_PVP_NATIVE_MATCH_RESIGN_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
 expected_match_read = str(env.get('CHESS_STUDIO_PVP_NATIVE_MATCH_READ_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
 expected_match_move = str(env.get('CHESS_STUDIO_PVP_NATIVE_MATCH_MOVE_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
+expected_resident_move = str(env.get('CHESS_STUDIO_PVP_NATIVE_RESIDENT_MOVE_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
 if (
     payload.get('status') != 'ready'
     or payload.get('service') != 'chess-studio-pvp-go'
+    or str(payload.get('release') or '').strip().lower() != expected_release
     or bool(payload.get('nativePulse')) != expected_native
+    or bool(payload.get('nativeLobbyRead')) != expected_lobby_read
+    or bool(payload.get('virtualPlayersEnabled')) != expected_virtual_players
     or bool(payload.get('nativeRoster')) != expected_roster
     or bool(payload.get('nativeChat')) != expected_chat
     or bool(payload.get('nativeChallengeResolution')) != expected_challenge_resolution
@@ -417,8 +489,31 @@ if (
     or bool(payload.get('nativeMatchResign')) != expected_match_resign
     or bool(payload.get('nativeMatchRead')) != expected_match_read
     or bool(payload.get('nativeMatchMove')) != expected_match_move
+    or bool(payload.get('nativeResidentMove')) != expected_resident_move
+    or bool(payload.get('nativeGamesRead')) != (str(sys.argv[5]).strip().lower() == 'true')
 ):
     raise SystemExit(1)
+
+if deployment_target == 'staging' and not allow_staging_fallback:
+    required_native = (
+        'nativePulse',
+        'nativeLobbyRead',
+        'nativeRoster',
+        'nativeChat',
+        'nativeChallengeResolution',
+        'nativeChallengeAccept',
+        'nativeChallengeCreate',
+        'nativeMatchHandoffCancel',
+        'nativeMatchReady',
+        'nativeMatchResign',
+        'nativeMatchRead',
+        'nativeMatchMove',
+        'nativeResidentMove',
+    )
+    if any(payload.get(key) is not True for key in required_native):
+        raise SystemExit(1)
+    if payload.get('virtualPlayersEnabled') is not True:
+        raise SystemExit(1)
 PY
   then
     rm -f "$body"
@@ -428,8 +523,290 @@ PY
   return 1
 }
 
+pvp_virtual_roster_attest() {
+  local backend_service="$1"
+  local pvp_service="$2"
+  local deployment_target="${3:-$target}"
+  local enabled="${pvp_sparring_enabled,,}"
+
+  if [[ "$deployment_target" != "staging" ]] || [[ ! "$enabled" =~ ^(1|true|yes|on)$ ]]; then
+    return 0
+  fi
+
+  compose "$sha" exec -T "$backend_service" python - "$pvp_service" <<'PY'
+import asyncio
+import json
+import os
+import sys
+import urllib.request
+
+from auth import create_token
+from db import close_db
+from users_store import get_auth_state
+
+pvp_service = str(sys.argv[1]).strip()
+owner = str(os.environ.get("CHESS_PVP_SPARRING_OWNER") or "evilsysadmin").strip().lower()
+sparring = str(os.environ.get("CHESS_PVP_SPARRING_USERNAME") or "sparringmeister").strip().lower()
+
+
+async def load_owner_state():
+    try:
+        return await get_auth_state(owner, force=True)
+    finally:
+        await close_db()
+
+
+try:
+    exists, session_version = asyncio.run(load_owner_state())
+except Exception:
+    raise SystemExit("PVP_VIRTUAL_ROSTER_FAIL reason=owner-auth-state-unavailable")
+
+if not exists:
+    raise SystemExit("PVP_VIRTUAL_ROSTER_FAIL reason=owner-account-missing")
+
+token = create_token(owner, session_version)
+request = urllib.request.Request(
+    f"http://{pvp_service}:8080/api/pvp/lobby",
+    headers={
+        "Accept": "application/json",
+        "Authorization": f"Bearer {token}",
+        "Cache-Control": "no-cache",
+    },
+)
+try:
+    with urllib.request.urlopen(request, timeout=8) as response:
+        payload = json.load(response)
+except Exception:
+    raise SystemExit("PVP_VIRTUAL_ROSTER_FAIL reason=lobby-request-failed")
+
+rows = payload.get("roster")
+if not isinstance(rows, list):
+    raise SystemExit("PVP_VIRTUAL_ROSTER_FAIL reason=roster-not-list")
+
+by_name = {
+    str(row.get("username") or "").strip().lower(): row
+    for row in rows
+    if isinstance(row, dict)
+}
+required = (
+    sparring,
+    "otto_falk",
+    "marta_stein",
+    "viktor_kraus",
+)
+for username in required:
+    row = by_name.get(username)
+    if row is None:
+        raise SystemExit(f"PVP_VIRTUAL_ROSTER_FAIL reason=missing-rival rival={username}")
+    if row.get("isSelf") is True:
+        raise SystemExit(f"PVP_VIRTUAL_ROSTER_FAIL reason=virtual-rival-marked-self rival={username}")
+
+for username in ("otto_falk", "marta_stein", "viktor_kraus"):
+    row = by_name[username]
+    if str(row.get("actorKind") or "").strip().lower() != "resident":
+        raise SystemExit(f"PVP_VIRTUAL_ROSTER_FAIL reason=wrong-actor-kind rival={username}")
+
+print(
+    "PVP_VIRTUAL_ROSTER_OK "
+    f"sparring={sparring} residents=otto_falk,marta_stein,viktor_kraus"
+)
+PY
+}
+pvp_browser_token() {
+  local backend_service="$1"
+  compose "$sha" exec -T "$backend_service" python - <<'PY'
+import asyncio
+import os
+
+from auth import create_token
+from db import close_db
+from users_store import get_auth_state
+
+owner = str(os.environ.get("CHESS_PVP_SPARRING_OWNER") or "evilsysadmin").strip().lower()
+
+
+async def load_owner_state():
+    try:
+        return await get_auth_state(owner, force=True)
+    finally:
+        await close_db()
+
+
+try:
+    exists, session_version = asyncio.run(load_owner_state())
+except Exception:
+    raise SystemExit("PVP_BROWSER_AUTH_FAIL reason=owner-auth-state-unavailable")
+if not exists:
+    raise SystemExit("PVP_BROWSER_AUTH_FAIL reason=owner-account-missing")
+print(f"PVP_BROWSER_TOKEN={create_token(owner, session_version)}")
+PY
+}
+
+pvp_authenticated_browser_attest() {
+  local backend_service="$1"
+  local api_base="${2%/}"
+  local deployment_target="${3:-$target}"
+  local token token_output token_line line probe endpoint expected_native request_id
+  local preflight_headers preflight_status headers body status
+
+  if [[ "$deployment_target" != "staging" ]]; then
+    return 0
+  fi
+
+  if ! token_output="$(pvp_browser_token "$backend_service")"; then
+    echo "authenticated PvP browser probe could not mint a staging owner token" >&2
+    return 1
+  fi
+  token_line=""
+  while IFS= read -r line; do
+    if [[ "$line" == PVP_BROWSER_TOKEN=* ]]; then
+      if [[ -n "$token_line" ]]; then
+        echo "authenticated PvP browser probe received multiple token sentinels" >&2
+        return 1
+      fi
+      token_line="${line#PVP_BROWSER_TOKEN=}"
+    fi
+  done <<< "$token_output"
+  token="$token_line"
+  if [[ ! "$token" =~ ^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$ ]]; then
+    echo "authenticated PvP browser probe did not receive one framed JWT" >&2
+    return 1
+  fi
+
+  for probe in lobby pulse; do
+    case "$probe" in
+      lobby)
+        endpoint="$api_base/pvp/lobby"
+        expected_native="lobby-read"
+        ;;
+      pulse)
+        endpoint="$api_base/pvp/lobby/pulse"
+        expected_native="lobby-pulse"
+        ;;
+    esac
+    request_id="staging-authenticated-${probe}-${sha:0:12}"
+    preflight_headers="$(mktemp)"
+    headers="$(mktemp)"
+    body="$(mktemp)"
+
+    # Reproduce the browser's non-simple authenticated GET before sending it.
+    # A direct curl GET can look healthy while Chromium refuses to dispatch the
+    # request because the OPTIONS response does not authorize one of its headers.
+    if ! preflight_status="$(curl --silent --show-error --max-time 10 \
+        -X OPTIONS \
+        -H "Origin: $cors_origin" \
+        -H 'Access-Control-Request-Method: GET' \
+        -H 'Access-Control-Request-Headers: authorization,x-request-id,x-client-release,x-presence-session' \
+        -D "$preflight_headers" -o /dev/null -w "%{http_code}" \
+        "$endpoint")"; then
+      rm -f "$preflight_headers" "$headers" "$body"
+      return 1
+    fi
+
+    if [[ "$preflight_status" != "204" ]] || ! python3 - "$preflight_headers" "$cors_origin" "$expected_native" <<'PY'
+import pathlib
+import sys
+
+headers_path, expected_origin, expected_native = sys.argv[1:]
+raw_headers = pathlib.Path(headers_path).read_text(encoding="utf-8", errors="replace")
+parsed = {}
+for line in raw_headers.replace("\r\n", "\n").split("\n"):
+    if ":" not in line:
+        continue
+    name, value = line.split(":", 1)
+    parsed.setdefault(name.strip().lower(), []).append(value.strip())
+
+origins = [value.lower() for value in parsed.get("access-control-allow-origin", [])]
+if origins != [expected_origin.strip().lower()]:
+    raise SystemExit("authenticated preflight must expose exactly one canonical ACAO")
+methods = ",".join(parsed.get("access-control-allow-methods", [])).upper()
+if "GET" not in methods:
+    raise SystemExit("authenticated preflight does not allow GET")
+allowed_headers = ",".join(parsed.get("access-control-allow-headers", [])).lower()
+for required in ("authorization", "x-request-id", "x-client-release", "x-presence-session"):
+    if required not in allowed_headers:
+        raise SystemExit(f"authenticated preflight does not allow {required}")
+if [value.lower() for value in parsed.get("x-chess-pvp-edge", [])] != ["go"]:
+    raise SystemExit("authenticated preflight did not traverse Go edge")
+if [value.lower() for value in parsed.get("x-chess-pvp-native", [])] != [expected_native.lower()]:
+    raise SystemExit("authenticated preflight hit the wrong native route")
+PY
+    then
+      echo "authenticated PvP browser preflight failed: probe=$probe endpoint=$endpoint http=$preflight_status" >&2
+      rm -f "$preflight_headers" "$headers" "$body"
+      return 1
+    fi
+
+    if ! status="$(curl --silent --show-error --max-time 10 \
+        -X GET \
+        -H "Origin: $cors_origin" \
+        -H 'Accept: application/json' \
+        -H "Authorization: Bearer $token" \
+        -H "X-Request-ID: $request_id" \
+        -H 'X-Client-Release: staging-authenticated-verifier' \
+        -H 'Cache-Control: no-cache, no-store' \
+        -D "$headers" -o "$body" -w "%{http_code}" \
+        "$endpoint")"; then
+      rm -f "$preflight_headers" "$headers" "$body"
+      return 1
+    fi
+
+    if [[ "$status" != "200" ]] || ! python3 - "$headers" "$body" "$cors_origin" "$request_id" "$expected_native" "$probe" <<'PY'
+import json
+import pathlib
+import sys
+
+headers_path, body_path, expected_origin, expected_request_id, expected_native, probe = sys.argv[1:]
+raw_headers = pathlib.Path(headers_path).read_text(encoding="utf-8", errors="replace")
+parsed = {}
+for line in raw_headers.replace("\r\n", "\n").split("\n"):
+    if ":" not in line:
+        continue
+    name, value = line.split(":", 1)
+    parsed.setdefault(name.strip().lower(), []).append(value.strip())
+
+origins = [value.lower() for value in parsed.get("access-control-allow-origin", [])]
+if origins != [expected_origin.strip().lower()]:
+    raise SystemExit("authenticated response must expose exactly one canonical ACAO")
+if [value.lower() for value in parsed.get("x-chess-pvp-edge", [])] != ["go"]:
+    raise SystemExit("authenticated response did not traverse Go edge")
+if [value.lower() for value in parsed.get("x-chess-pvp-native", [])] != [expected_native.lower()]:
+    raise SystemExit("authenticated response hit the wrong native route")
+if parsed.get("x-request-id", []) != [expected_request_id]:
+    raise SystemExit("authenticated response did not echo request id")
+
+payload = json.loads(pathlib.Path(body_path).read_text(encoding="utf-8"))
+if not isinstance(payload, dict):
+    raise SystemExit("authenticated response is not an object")
+if probe == "lobby":
+    if not isinstance(payload.get("roster"), list):
+        raise SystemExit("authenticated lobby response has no roster list")
+elif probe == "pulse":
+    if payload.get("source") != "go":
+        raise SystemExit("authenticated pulse response is not Go-native")
+    if "revision" not in payload:
+        raise SystemExit("authenticated pulse response has no revision")
+    poll_after = payload.get("pollAfterMs")
+    if not isinstance(poll_after, (int, float)) or poll_after <= 0:
+        raise SystemExit("authenticated pulse response has invalid pollAfterMs")
+else:
+    raise SystemExit("unknown authenticated browser probe")
+PY
+    then
+      echo "authenticated PvP browser probe failed: probe=$probe endpoint=$endpoint http=$status" >&2
+      rm -f "$preflight_headers" "$headers" "$body"
+      return 1
+    fi
+    rm -f "$preflight_headers" "$headers" "$body"
+  done
+
+  echo "PVP_AUTHENTICATED_BROWSER_OK base=$api_base origin=$cors_origin"
+  return 0
+}
+
 pvp_edge_attest() {
   local target_port="${1:-$port}"
+  local expected_release="${2:-$sha}"
   local headers body status
   headers="$(mktemp)"
   body="$(mktemp)"
@@ -442,12 +819,17 @@ pvp_edge_attest() {
   fi
   if [[ "$status" != "200" ]] || \
      ! grep -Eiq "^X-Chess-Pvp-Edge:[[:space:]]*go[[:space:]]*$" "$headers" || \
-     ! python3 - "$body" <<'PY'
+     ! python3 - "$body" "$expected_release" <<'PY'
 import json
 import pathlib
 import sys
 payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
-if payload.get('status') != 'ready' or payload.get('service') != 'chess-studio-pvp-go':
+expected_release = str(sys.argv[2]).strip().lower()
+if (
+    payload.get('status') != 'ready'
+    or payload.get('service') != 'chess-studio-pvp-go'
+    or str(payload.get('release') or '').strip().lower() != expected_release
+):
     raise SystemExit(1)
 PY
   then
@@ -545,10 +927,66 @@ PY
   return 0
 }
 
+pvp_lobby_read_attest() {
+  local endpoint="${1:-http://127.0.0.1:${port}/api/pvp/lobby}"
+  local headers status request_id native_expected
+  headers="$(mktemp)"
+  request_id="staging-lobby-read-probe-${sha:0:12}"
+  native_expected="${CHESS_STUDIO_PVP_NATIVE_LOBBY_READ_ENABLED:-true}"
+  native_expected="${native_expected,,}"
+
+  if ! status="$(curl --silent --show-error --max-time 8 \
+      -X GET \
+      -H "Origin: $cors_origin" \
+      -H 'Accept: application/json' \
+      -H 'Authorization: Bearer deliberately-invalid' \
+      -H "X-Request-ID: $request_id" \
+      -H 'X-Client-Release: staging-verifier' \
+      -D "$headers" -o /dev/null -w "%{http_code}" \
+      "$endpoint")"; then
+    rm -f "$headers"
+    return 1
+  fi
+
+  if [[ "$status" != "401" ]] || \
+     ! grep -Eiq "^X-Chess-Pvp-Edge:[[:space:]]*go[[:space:]]*$" "$headers" || \
+     ! grep -Eiq "^X-Request-ID:[[:space:]]*$request_id[[:space:]]*$" "$headers" || \
+     ! python3 - "$headers" "$cors_origin" <<'PY'
+import pathlib
+import sys
+headers = pathlib.Path(sys.argv[1]).read_text(encoding='utf-8', errors='replace')
+expected = sys.argv[2].strip().lower()
+origins = []
+for line in headers.replace('\r\n', '\n').split('\n'):
+    if ':' not in line:
+        continue
+    name, value = line.split(':', 1)
+    if name.strip().lower() == 'access-control-allow-origin':
+        origins.append(value.strip().lower())
+raise SystemExit(0 if expected in origins else 1)
+PY
+  then
+    rm -f "$headers"
+    return 1
+  fi
+
+  if [[ "$native_expected" =~ ^(1|true|yes|on)$ ]] && \
+     ! grep -Eiq "^X-Chess-Pvp-Native:[[:space:]]*lobby-read[[:space:]]*$" "$headers"; then
+    rm -f "$headers"
+    return 1
+  fi
+
+  rm -f "$headers"
+  return 0
+}
+
+
 pvp_challenge_browser_attest() {
   local endpoint="${1:-http://127.0.0.1:${port}/api/pvp/challenges}"
   local preflight_headers response_headers status response_status request_id
-  local native_expected="${CHESS_STUDIO_PVP_NATIVE_CHALLENGE_CREATE_ENABLED:-false}"
+  # Same default as docker-compose.yml: native creation is on unless the
+  # emergency fallback turns it off, so the marker is required by default.
+  local native_expected="${CHESS_STUDIO_PVP_NATIVE_CHALLENGE_CREATE_ENABLED:-true}"
   preflight_headers="$(mktemp)"
   response_headers="$(mktemp)"
   request_id="staging-challenge-probe-${sha:0:12}"
@@ -563,7 +1001,11 @@ pvp_challenge_browser_attest() {
     rm -f "$preflight_headers" "$response_headers"
     return 1
   fi
-  if [[ "$status" != "204" ]] || \
+  # Go-native challenge creation returns 204, while the deliberate Python
+  # compatibility fallback is served by FastAPI/Starlette and returns 200.
+  # Both are valid successful preflights; the CORS/header contract below is
+  # still required before the deploy may commit.
+  if [[ "$status" != "200" && "$status" != "204" ]] || \
      ! grep -Eiq "^X-Chess-Pvp-Edge:[[:space:]]*go[[:space:]]*$" "$preflight_headers" || \
      ! python3 - "$preflight_headers" "$cors_origin" <<'PY'
 import pathlib
@@ -644,15 +1086,66 @@ PY
 
 wait_pvp_edge_attest() {
   local target_port="${1:-$port}"
+  local expected_release="${2:-$sha}"
   local attempts="${CHESS_STUDIO_PVP_EDGE_ATTEST_ATTEMPTS:-20}"
   local attempt
   for attempt in $(seq 1 "$attempts"); do
-    if pvp_edge_attest "$target_port"; then
+    if pvp_edge_attest "$target_port" "$expected_release"; then
       return 0
     fi
     sleep 0.25
   done
   return 1
+}
+
+wait_pvp_browser_attest() {
+  local attest_fn="$1"
+  local endpoint="$2"
+  local attempts="${CHESS_STUDIO_PVP_BROWSER_ATTEST_ATTEMPTS:-12}"
+  local attempt
+  for attempt in $(seq 1 "$attempts"); do
+    if "$attest_fn" "$endpoint"; then
+      return 0
+    fi
+    sleep 0.25
+  done
+  return 1
+}
+
+
+api_edge_attest() {
+  # In api "go" mode a non-PvP route must be answered through the Go sidecar.
+  local endpoint="$1"
+  local headers status
+  headers="$(mktemp)"
+  if ! status="$(curl --silent --show-error --max-time 8 -D "$headers" -o /dev/null -w "%{http_code}" "$endpoint")"; then
+    rm -f "$headers"
+    return 1
+  fi
+  if [[ "$status" != "200" ]] || ! grep -Eiq "^X-Chess-Edge:[[:space:]]*go[[:space:]]*$" "$headers"; then
+    rm -f "$headers"
+    return 1
+  fi
+  rm -f "$headers"
+  return 0
+}
+
+games_native_attest() {
+  # The native games routes answer before auth: an anonymous GET must come
+  # back 401 from Go (X-Chess-Games-Native), never from the Python fallback.
+  local endpoint="$1"
+  local headers status
+  headers="$(mktemp)"
+  if ! status="$(curl --silent --show-error --max-time 8 -D "$headers" -o /dev/null -w "%{http_code}" "$endpoint")"; then
+    rm -f "$headers"
+    return 1
+  fi
+  if [[ "$status" != "401" ]] || ! grep -Eiq "^X-Chess-Games-Native:[[:space:]]*go[[:space:]]*$" "$headers"; then
+    rm -f "$headers"
+    return 1
+  fi
+  rm -f "$headers"
+  return 0
 }
 
 public_tunnel_attest() {
@@ -692,13 +1185,23 @@ rollback() {
   echo "rolling back OCI backend after failed candidate $failed_sha" >&2
 
   if [[ -n "${previous_color:-}" ]]; then
-    # Emergency rollback deliberately bypasses Go. The previous deployed SHA
-    # may predate the PvP sidecar image entirely during the first migration.
-    render_edge "$previous_color" direct
-    # Safe both before and after the attempted switch: if edge is still on the
-    # old config this is a no-op; if reload partially succeeded, this actively
-    # restores the previous upstream.
-    reload_edge || true
+    local rollback_pvp_mode="python-direct"
+    # Preserve the previously accredited full-Go PvP authority whenever its
+    # paired sidecar is still healthy. Python-direct is only a compatibility
+    # escape hatch for a pre-sidecar generation or a genuinely unhealthy
+    # previous sidecar; a failed candidate must not silently downgrade PvP.
+    if [[ -n "$previous_sha" ]]; then
+      render_edge "$previous_color" go "$previous_sha"
+      if reload_edge && wait_pvp_edge_attest "$port" "$previous_sha"; then
+        rollback_pvp_mode="go"
+      else
+        render_edge "$previous_color" direct "$previous_sha"
+        reload_edge || true
+      fi
+    else
+      render_edge "$previous_color" direct
+      reload_edge || true
+    fi
     write_active_color "$previous_color"
     if [[ -n "$previous_sha" ]]; then
       record_successful_backend "$previous_sha"
@@ -710,7 +1213,7 @@ rollback() {
       remove_service "$candidate_service"
       [[ -z "$candidate_pvp_service" ]] || remove_service "$candidate_pvp_service"
     fi
-    echo "CHESS_STUDIO_ROLLBACK_OK repo_ref=${previous_sha:-unknown} color=$previous_color pvp=python-direct"
+    echo "CHESS_STUDIO_ROLLBACK_OK repo_ref=${previous_sha:-unknown} color=$previous_color pvp=$rollback_pvp_mode"
     return 0
   fi
 
@@ -1033,11 +1536,13 @@ python3 -S "$blue_green_edge" --self-test >/dev/null
 [[ -f "$source_launcher" && ! -L "$source_launcher" ]] || { echo "missing deploy launcher in $sha: $source_launcher" >&2; exit 66; }
 [[ -f "$source_runtime_installer" && ! -L "$source_runtime_installer" ]] || { echo "missing runtime installer in $sha: $source_runtime_installer" >&2; exit 66; }
 [[ -f "$mongo_backup_source" && ! -L "$mongo_backup_source" ]] || { echo "missing production Mongo backup helper in $sha" >&2; exit 66; }
+[[ -f "$ssh_authorize_source" && ! -L "$ssh_authorize_source" ]] || { echo "missing SSH authorize helper in $sha" >&2; exit 66; }
 [[ -f "$ocarun_sudoers_source" && ! -L "$ocarun_sudoers_source" ]] || { echo "missing ocarun sudoers contract in $sha" >&2; exit 66; }
 visudo -cf "$ocarun_sudoers_source" >/dev/null
 install -o root -g root -m 0755 "$source_launcher" "$target_launcher"
 install -o root -g root -m 0755 "$source_runtime_installer" "$target_runtime_installer"
 install -o root -g root -m 0755 "$mongo_backup_source" "$mongo_backup_target"
+install -o root -g root -m 0755 "$ssh_authorize_source" "$ssh_authorize_target"
 install -o root -g root -m 0440 "$ocarun_sudoers_source" "$ocarun_sudoers_target"
 visudo -cf "$ocarun_sudoers_target" >/dev/null
 
@@ -1102,7 +1607,7 @@ phase_done recreate "$recreate_started_ms"
 readiness_started_ms="$(now_ms)"
 candidate_ready=0
 for _ in $(seq 1 60); do
-  if attest "$sha" "$candidate_port" && pvp_attest "$candidate_pvp_service"; then
+  if attest "$sha" "$candidate_port" && pvp_attest "$candidate_pvp_service" "$target"; then
     candidate_ready=1
     break
   fi
@@ -1113,10 +1618,15 @@ if [[ "$candidate_ready" != "1" ]]; then
   rollback "$sha" || true
   exit 43
 fi
+if ! pvp_virtual_roster_attest "$candidate_service" "$candidate_pvp_service" "$target"; then
+  echo "candidate failed authenticated staging virtual-roster attestation: $sha color=$candidate_color" >&2
+  rollback "$sha" || true
+  exit 53
+fi
 phase_done readiness "$readiness_started_ms"
 
 switch_started_ms="$(now_ms)"
-render_edge "$candidate_color" go
+render_edge "$candidate_color" go "${previous_sha:-}" "$api_edge_mode"
 if [[ -n "$previous_color" ]]; then
   if ! reload_edge; then
     echo "edge reload failed for candidate color=$candidate_color" >&2
@@ -1150,17 +1660,41 @@ if ! wait_pvp_edge_attest "$port"; then
   rollback "$sha" || true
   exit 45
 fi
-if ! pvp_browser_cors_attest "http://127.0.0.1:${port}/api/pvp/roster"; then
+if ! wait_pvp_browser_attest pvp_browser_cors_attest "http://127.0.0.1:${port}/api/pvp/roster"; then
   echo "edge PvP browser CORS attestation failed after cutover: color=$candidate_color" >&2
   compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
   rollback "$sha" || true
   exit 47
 fi
-if ! pvp_challenge_browser_attest "http://127.0.0.1:${port}/api/pvp/challenges"; then
+if ! wait_pvp_browser_attest pvp_lobby_read_attest "http://127.0.0.1:${port}/api/pvp/lobby"; then
+  echo "edge PvP full lobby read attestation failed after cutover: color=$candidate_color" >&2
+  compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
+  rollback "$sha" || true
+  exit 51
+fi
+if ! pvp_authenticated_browser_attest "$candidate_service" "http://127.0.0.1:${port}/api" "$target"; then
+  echo "edge PvP authenticated browser lobby/pulse attestation failed after cutover: color=$candidate_color" >&2
+  compose "$sha" logs --no-color --tail=60 "$candidate_pvp_service" edge >&2 || true
+  rollback "$sha" || true
+  exit 56
+fi
+if ! wait_pvp_browser_attest pvp_challenge_browser_attest "http://127.0.0.1:${port}/api/pvp/challenges"; then
   echo "edge PvP challenge browser transport attestation failed after cutover: color=$candidate_color" >&2
   compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
   rollback "$sha" || true
   exit 49
+fi
+if [[ "$api_edge_mode" == "go" ]] && ! wait_pvp_browser_attest api_edge_attest "http://127.0.0.1:${port}/api/release"; then
+  echo "edge did not front the API through Go after cutover: color=$candidate_color" >&2
+  compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
+  rollback "$sha" || true
+  exit 58
+fi
+if [[ "$api_edge_mode" == "go" && "$go_native_games_read" == "true" ]] && ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/games"; then
+  echo "native games routes did not answer through Go after cutover: color=$candidate_color" >&2
+  compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
+  rollback "$sha" || true
+  exit 59
 fi
 write_active_color "$candidate_color"
 phase_done switch "$switch_started_ms"
@@ -1184,6 +1718,16 @@ if [[ "$target" == staging ]]; then
     rollback "$sha" || true
     exit 48
   fi
+  if ! pvp_lobby_read_attest "${public_api_url}/pvp/lobby"; then
+    echo "OCI staging public PvP lobby did not prove native Go read semantics for $sha" >&2
+    rollback "$sha" || true
+    exit 52
+  fi
+  if ! pvp_authenticated_browser_attest "$candidate_service" "$public_api_url" "$target"; then
+    echo "OCI staging public PvP authenticated browser lobby/pulse contract failed for $sha" >&2
+    rollback "$sha" || true
+    exit 57
+  fi
   if ! pvp_challenge_browser_attest "${public_api_url}/pvp/challenges"; then
     echo "OCI staging public PvP challenge transport did not prove browser JSON/CORS semantics for $sha" >&2
     rollback "$sha" || true
@@ -1193,6 +1737,11 @@ fi
 phase_done tunnel "$tunnel_started_ms"
 
 record_successful_backend "$sha"
+if ! render_edge "$candidate_color" go "$sha" "$api_edge_mode" || ! reload_edge; then
+  echo "failed to publish committed OCI generation marker: $sha color=$candidate_color" >&2
+  rollback "$sha" || true
+  exit 55
+fi
 
 drain_started_ms="$(now_ms)"
 if [[ -n "$previous_color" ]]; then
@@ -1210,5 +1759,5 @@ fi
 agent_diag_summary || printf '%s\n' 'OCI_AGENT_DIAG unavailable'
 phase_done total "$total_started_ms"
 printf 'OCI_DEPLOY_TIMINGS target=%s phases=%s tunnel=%s color=%s\n' "$target" "${deploy_phase_summary%,}" "$tunnel_action" "$candidate_color"
-echo "CHESS_STUDIO_DEPLOY_OK target=$target repo_ref=$sha color=$candidate_color pvp=go cors_origin=$cors_origin tunnel_action=$tunnel_action image=pulled observability=${observability_summary:-unknown}"
+echo "CHESS_STUDIO_DEPLOY_OK target=$target repo_ref=$sha color=$candidate_color pvp=go api_edge=$api_edge_mode games_native=$go_native_games_read cors_origin=$cors_origin tunnel_action=$tunnel_action image=pulled observability=${observability_summary:-unknown}"
 exit 0

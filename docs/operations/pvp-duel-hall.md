@@ -80,6 +80,7 @@ Viewports mínimos: 360×800, 390×844, 430×932.
 - no duplicar empty states;
 - reducir decoración antes que legibilidad;
 - portrait debe ser plenamente usable; landscape puede mostrar una estancia más rica.
+- la Duel Room de partida entra en apaisado en móvil igual que la War Room: el navegador sólo deja girar (fullscreen + `screen.orientation.lock`) dentro de un gesto, así que el giro se pide en el toque de **Retar** o **Aceptar**, no en la cuenta atrás. Si el reto acaba sin duelo (rechazado, cancelado o caducado) se libera, como una partida contra CPU que no llega a empezar. iOS no tiene API de giro: allí, como en la War Room, queda la pastilla «Apaisado».
 
 ## Evolución 3D
 
@@ -119,3 +120,23 @@ La Duel Room de partida usa como canon una **mazmorra/fortaleza teutona densa pe
 - el runtime consume el logical ID R2 `pvp.duelRoom.runtime`, promovido a un objeto content-addressed e inmutable; `runtime/current.glb` puede existir como alias de publicación/fallback, pero no es la autoridad de consumo de la app.
 
 El objetivo es que parezca una estancia ocupada y funcional del castillo, no un escenario vacío ni una sala genérica con tablero.
+
+
+## Canon visual aprobado · 2026-10-03
+
+La referencia canónica para la Sala de Duelos es la composición aprobada el 2026-10-03: una **estancia física del castillo**, nocturna, cálida y ceremonial, con el UI incrustado en mobiliario/arquitectura. El objetivo explícito es eliminar la lectura de dashboard.
+
+La composición debe conservar estos rasgos:
+
+- título y breadcrumb flotan sobre la estancia, sin una cabecera-caja;
+- **Tu puesto** vive como pedestal/atril físico en primer plano izquierdo, con la acción principal integrada en él;
+- **Tablón de rivales** ocupa la mesa central de estrategia/duelo y es el foco funcional;
+- **Murmullos de la sala** vive como tablón/pergamino lateral derecho, secundario y plegable;
+- disponibilidad, rivales y retos son insignias/placas discretas del entorno, no KPI cards;
+- mesa, arcos, estandartes, ventana lunar, velas, madera oscura, piedra y latón aportan profundidad real y separación espacial;
+- la escena usa luz cálida localizada y una secundaria azul de luna; nunca una capa oscura uniforme que mate legibilidad;
+- los retos entrantes pueden romper temporalmente la composición con prioridad visual, pero desaparecen por completo cuando no existen;
+- `Actualizar sala` permanece como acción secundaria, separada del foco principal;
+- en móvil se conserva la identidad de la estancia, pero se sacrifica decoración antes que targets, texto o acción primaria.
+
+La implementación puede evolucionar desde una shell espacial barata hacia Blender/WebGL, pero **la jerarquía espacial anterior no cambia**. El renderer 3D no adquiere lógica de matchmaking: sólo presenta hotspots controlados por el dominio PvP existente.

@@ -73,18 +73,18 @@ func TestMoveUpdateDocumentMatchesPythonCASPayload(t *testing.T) {
 	result := "0-1"
 	update := matchmove.Update{
 		ExpectedRevision: 7,
-		FEN: "next-fen",
-		Turn: "w",
-		Status: "finished",
-		Result: &result,
-		EndReason: nil,
+		FEN:              "next-fen",
+		Turn:             "w",
+		Status:           "finished",
+		Result:           &result,
+		EndReason:        nil,
 		History: []matchmove.HistoryEntry{{
 			Ply: 4, UCI: "d8h4", SAN: "Qh4#", By: "bob", At: now,
 		}},
-		WhiteClockMS: 599000,
-		BlackClockMS: 598500,
+		WhiteClockMS:  599000,
+		BlackClockMS:  598500,
 		TurnStartedAt: time.Time{},
-		UpdatedAt: now,
+		UpdatedAt:     now,
 	}
 
 	doc := moveUpdateDocument(update)

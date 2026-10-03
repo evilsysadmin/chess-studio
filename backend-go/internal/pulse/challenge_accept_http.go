@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/challengeaccept"
@@ -133,43 +132,29 @@ func challengeAcceptPublicRow(match challengeaccept.Match) cancelMatchRow {
 	history := make([]bson.M, 0)
 
 	return cancelMatchRow{
-		ID:             match.ID,
-		White:          match.White,
-		Black:          match.Black,
-		WhiteRating:    &whiteRating,
-		BlackRating:    &blackRating,
-		FEN:            match.FEN,
-		Turn:           match.Turn,
-		Status:         match.Status,
-		Result:         match.Result,
-		EndReason:      match.EndReason,
-		StartAt:        startAt,
-		ReadyDeadline:  match.ReadyDeadline,
-		WhiteReady:     match.WhiteReady,
-		BlackReady:     match.BlackReady,
-		WhiteClockMS:   &whiteClock,
-		BlackClockMS:   &blackClock,
-		TurnStartedAt:  turnStartedAt,
-		Rated:          &rated,
-		History:        history,
-		Revision:       match.Revision,
-		CreatedAt:      match.CreatedAt,
-		UpdatedAt:      match.UpdatedAt,
+		ID:            match.ID,
+		White:         match.White,
+		Black:         match.Black,
+		WhiteRating:   &whiteRating,
+		BlackRating:   &blackRating,
+		FEN:           match.FEN,
+		Turn:          match.Turn,
+		Status:        match.Status,
+		Result:        match.Result,
+		EndReason:     match.EndReason,
+		StartAt:       startAt,
+		ReadyDeadline: match.ReadyDeadline,
+		WhiteReady:    match.WhiteReady,
+		BlackReady:    match.BlackReady,
+		WhiteClockMS:  &whiteClock,
+		BlackClockMS:  &blackClock,
+		TurnStartedAt: turnStartedAt,
+		Rated:         &rated,
+		History:       history,
+		Revision:      match.Revision,
+		CreatedAt:     match.CreatedAt,
+		UpdatedAt:     match.UpdatedAt,
 	}
-}
-
-func challengeAcceptID(path string) (string, bool) {
-	const prefix = "/api/pvp/challenges/"
-	const suffix = "/accept"
-	if !strings.HasPrefix(path, prefix) || !strings.HasSuffix(path, suffix) {
-		return "", false
-	}
-	challengeID := strings.TrimSuffix(strings.TrimPrefix(path, prefix), suffix)
-	challengeID = strings.Trim(challengeID, "/")
-	if challengeID == "" || strings.Contains(challengeID, "/") {
-		return "", false
-	}
-	return challengeID, true
 }
 
 var _ challengeaccept.Store = (*MongoStore)(nil)

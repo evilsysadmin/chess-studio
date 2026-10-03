@@ -49,7 +49,7 @@ function matchPayload() {
     createdAt: '2026-09-29T05:00:00Z',
     updatedAt: '2026-09-29T05:00:00Z',
     opponentPresence: 'online',
-    clock: { id: '10+0', whiteMs: 600000, blackMs: 600000, incrementMs: 0, runningColor: 'w' },
+    clock: { id: '30+0', whiteMs: 1800000, blackMs: 1800000, incrementMs: 0, runningColor: 'w' },
   };
 }
 
@@ -106,6 +106,16 @@ async function openDuelRoom(page, viewport) {
   await expect(canvas).toHaveAttribute('data-war-room-variant', 'duel', { timeout: 60_000 });
   await expect(canvas).toHaveAttribute('data-war-room-variant-status', 'ready', { timeout: 60_000 });
   await expect(canvas).toHaveAttribute('data-board3d-piece-built', '32', { timeout: 45_000 });
+  await expect(room.getByRole('button', { name: 'Salir de la partida', exact: true })).toBeVisible();
+  const utility = room.getByRole('button', { name: 'Más acciones de partida', exact: true });
+  const account = room.getByRole('button', { name: 'Mi cuenta', exact: true });
+  await expect(utility).toBeVisible();
+  await expect(account).toBeVisible();
+  const [utilityBox, accountBox] = await Promise.all([utility.boundingBox(), account.boundingBox()]);
+  expect(utilityBox).not.toBeNull();
+  expect(accountBox).not.toBeNull();
+  expect(accountBox.x - (utilityBox.x + utilityBox.width)).toBeGreaterThanOrEqual(-2);
+  expect(accountBox.x - (utilityBox.x + utilityBox.width)).toBeLessThanOrEqual(14);
   if (String(process.env.APP_VISUAL_EXPECTED_PVP_DUEL_REVISION || '').trim()) {
     expect(duelRevisionRequests(), 'Duel Room capture must request immutable runtime and render the PR staging revision').toBeGreaterThan(0);
   }
@@ -214,9 +224,10 @@ async function captureDuelRoomFromCompositor(page, room, path) {
 }
 
 async function assertMobileTouchTargets(room) {
-  const topbarButton = room.locator('.pvp-war-room__exit').first();
+  const topbarButton = room.locator('.war-room-exit-overlay').first();
   const utility = room.locator('.pvp-war-room__duel-pill .game-3d-utility-menu>summary');
-  for (const target of [topbarButton, utility]) {
+  const account = room.locator('.pvp-war-room__duel-pill .war-room-account-button');
+  for (const target of [topbarButton, utility, account]) {
     const box = await target.boundingBox();
     expect(box).not.toBeNull();
     expect(box.width).toBeGreaterThanOrEqual(44);

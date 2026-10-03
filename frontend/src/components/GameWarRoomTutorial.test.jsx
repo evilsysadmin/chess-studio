@@ -24,12 +24,12 @@ function props(overrides = {}) {
 }
 
 describe('War Room first-run guide', () => {
-  it('explains the hidden utility menu and resign action explicitly', () => {
+  it('explains secondary utilities and the visible exit action explicitly', () => {
     const tutorial = mechanicTutorialById('war-room-basics');
     expect(tutorial).toBeTruthy();
     expect(tutorial.steps).toHaveLength(5);
     expect(tutorial.steps.some((step) => step.text.includes('⋯'))).toBe(true);
-    expect(tutorial.steps.some((step) => /Abandonar partida/.test(step.text))).toBe(true);
+    expect(tutorial.steps.some((step) => /SALIR/.test(step.text))).toBe(true);
     expect(tutorial.steps.some((step) => /móvil/.test(step.text))).toBe(true);
   });
 
@@ -39,13 +39,15 @@ describe('War Room first-run guide', () => {
     expect(desktop).toContain('Guía');
     expect(desktop).not.toContain('role="dialog"');
     expect(desktop).toContain('aria-label="Más acciones de partida"');
-    expect(desktop).toContain('Abandonar partida');
+    expect(desktop).not.toContain('Abandonar partida');
+    expect(desktop).toContain('aria-label="Mi cuenta"');
 
     const compact = renderToStaticMarkup(<GameWarRoomCommandColumn {...props({ compactViewport: true })} />);
     expect(compact).toContain('aria-label="Abrir guía de la War Room"');
     expect(compact).toContain('Guía');
     expect(compact).not.toContain('role="dialog"');
-    expect(compact).toContain('aria-label="Abandonar partida"');
+    expect(compact).not.toContain('aria-label="Abandonar partida"');
+    expect(compact).toContain('aria-label="Mi cuenta"');
     expect(compact).toContain('aria-label="Más acciones de partida"');
   });
 });

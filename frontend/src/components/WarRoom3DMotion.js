@@ -578,8 +578,7 @@ export const WAR_ROOM_V4_LIGHT_LIFT = Object.freeze({
 
 // War Room v3 is a torchlit armory: the global rig drops so the wall torches
 // and the hearth read as the main light, while the key still keeps the board
-// legible. Touch keeps more fill because only a bounded pair of torches carries
-// real light there.
+// legible. Touch keeps more fill because its torches carry no real lights.
 export const WAR_ROOM_V3_TORCHLIT = Object.freeze({
   // Desktop hands the board to a spot pool (WarRoomV3Shell); touch keeps the key.
   key: Object.freeze({ desktop: 0.32, touch: 0.8 }),
@@ -587,6 +586,14 @@ export const WAR_ROOM_V3_TORCHLIT = Object.freeze({
   warm: 0.7,
   exposure: Object.freeze({ desktop: -0.14, touch: -0.06 }),
   fog: 1.25,
+});
+
+// The Duel Room is intentionally a dark fortress, but the board and occupied
+// near half must stay readable. Touch loses shell shadows and authored detail,
+// so it keeps the larger exposure compensation even after the practicals are
+// rebalanced to preserve ivory detail.
+export const PVP_DUEL_ROOM_LIGHT_LIFT = Object.freeze({
+  exposure: Object.freeze({ desktop: 0.20, touch: 0.36 }),
 });
 
 export function reactiveLightProfile({ check = false, gameOver = false, coarsePointer = false, variant = 'classic' } = {}) {
@@ -602,11 +609,17 @@ export function reactiveLightProfile({ check = false, gameOver = false, coarsePo
       fogDensity: shared.fogDensity * WAR_ROOM_V3_TORCHLIT.fog,
     };
   }
+  if (variant === 'duel') {
+    return {
+      ...shared,
+      exposure: shared.exposure + PVP_DUEL_ROOM_LIGHT_LIFT.exposure[device],
+    };
+  }
   if (variant !== 'v4') return shared;
   return {
     ...shared,
     warm: shared.warm * WAR_ROOM_V4_LIGHT_LIFT.warm,
-    exposure: shared.exposure + WAR_ROOM_V4_LIGHT_LIFT.exposure[coarsePointer ? 'touch' : 'desktop'],
+    exposure: shared.exposure + WAR_ROOM_V4_LIGHT_LIFT.exposure[device],
   };
 }
 

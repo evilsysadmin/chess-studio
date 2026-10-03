@@ -44,7 +44,8 @@ describe('GameWarRoomCommandColumn', () => {
     expect(html).toContain('Apariencia');
     expect((html.match(/>Apariencia<\/button>/g) || []).length).toBe(1);
     expect(html).toContain('Modo Zen');
-    expect(html).toContain('Abandonar partida');
+    expect(html).not.toContain('Abandonar partida');
+    expect(html).toContain('aria-label="Mi cuenta"');
     expect(html).not.toContain('game-3d-warroom-controls');
     expect(html).not.toContain('RIVAL EN SALA');
     expect(html).not.toContain('is-diegetic-briefing');
@@ -112,7 +113,7 @@ describe('GameWarRoomCommandColumn', () => {
       />,
     );
 
-    for (const label of ['Pista táctica', 'Deshacer jugada', 'Apariencia', 'Modo Zen', 'Abandonar partida']) {
+    for (const label of ['Pista táctica', 'Deshacer jugada', 'Apariencia', 'Modo Zen']) {
       const button = new RegExp(`>${label}<\\/button>`, 'g');
       expect((desktopHtml.match(button) || []).length).toBe(1);
       expect((compactHtml.match(button) || []).length).toBe(1);
@@ -122,5 +123,9 @@ describe('GameWarRoomCommandColumn', () => {
     expect(desktopHtml).not.toContain('>Vista 2D</button>');
     expect(compactHtml).toContain('>Focus</button>');
     expect(compactHtml).toContain('>Vista 2D</button>');
+    expect(desktopHtml).not.toContain('Abandonar partida');
+    expect(compactHtml).not.toContain('Abandonar partida');
+    expect(desktopHtml).toContain('aria-label="Mi cuenta"');
+    expect(compactHtml).toContain('aria-label="Mi cuenta"');
   });
 });

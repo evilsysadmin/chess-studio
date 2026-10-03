@@ -33,6 +33,40 @@ async function dismissHomeSpeech(home) {
   await expect(speech).toBeHidden();
 }
 
+// With the Blender hall ready, Matthias lives inside it (seated, standing or
+// asleep on the sofa) and the button is only a hit-area over him. When the
+// hall falls back to 2D, or his rig cannot join it, the portrait keeps its own
+// contract. Settle first so the assertions never race the hall's load.
+async function matthiasRenderMode(home) {
+  const hallRuntime = home.locator('[data-home-castle-compositor="blender-runtime"]');
+  // Read the hall state in one DOM pass: the Blender canvas can be swapped for
+  // the 2D fallback between a count() and a getAttribute().
+  const hallState = () => home.evaluate((node) => {
+    const canvas = node.querySelector('[data-home-castle-compositor="blender-runtime"]');
+    if (!canvas) return { runtime: 'fallback', actor: 'none' };
+    return {
+      runtime: canvas.getAttribute('data-home-blender-runtime') || 'loading',
+      actor: canvas.getAttribute('data-home-matthias-actor') || 'loading',
+    };
+  });
+  await expect.poll(async () => (await hallState()).runtime, { timeout: 30_000 })
+    .toMatch(/^(ready|fallback)$/);
+  if ((await hallState()).runtime !== 'ready') return { mode: 'portrait', hallRuntime };
+  await expect.poll(async () => (await hallState()).actor, { timeout: 30_000 })
+    .toMatch(/^(ready|unavailable|none)$/);
+  const { actor } = await hallState();
+  return { mode: actor === 'ready' ? 'in-scene' : 'portrait', hallRuntime };
+}
+
+async function expectInSceneResident(matthias, hallRuntime, { station, posture, clip }) {
+  await expect(matthias).toHaveAttribute('data-home-matthias-render', 'in-scene', { timeout: 15_000 });
+  await expect(matthias.locator('.illustrated-home__matthias-portrait')).toHaveCount(0);
+  await expect(matthias).toHaveAttribute('data-home-matthias-station', station);
+  await expect(matthias).toHaveAttribute('data-home-matthias-posture', posture);
+  await expect(hallRuntime).toHaveAttribute('data-home-matthias-station', station);
+  await expect(hallRuntime).toHaveAttribute('data-home-matthias-clip', clip);
+}
+
 function matthiasRig(matthias) {
   const avatar = matthias.locator('.illustrated-home__matthias-portrait [data-home-matthias-3d]');
   return {
@@ -64,18 +98,23 @@ test('Home canónica · Matthias permanece visible, vivo y abre Así juegas', as
   const matthias = home.locator('.illustrated-home__matthias');
   const { avatar, image, canvas } = matthiasRig(matthias);
 
+  const render = await matthiasRenderMode(home);
   await expect(matthias).toBeVisible();
   await expect(matthias).toContainText('MATTHIAS');
   await expect(matthias).toHaveAttribute('data-home-matthias-scene', /.+/);
-  await expect(avatar).toHaveAttribute('data-home-matthias-station', 'refreshment-table');
   await expect(matthias).toHaveAttribute('data-home-matthias-activity', /.+/);
   await expect(matthias).toHaveAttribute('data-home-matthias-dwell-ms', /^(34000|38000|42000|44000|48000|64000)$/);
-  await expect(avatar).toHaveAttribute('data-home-matthias-3d', 'ready');
-  await expect(avatar).toHaveAttribute('data-motion', 'rigged-gltf-clips');
-  await expectBlenderRigReady(avatar, canvas);
-  await expect(image).toBeVisible();
-  await expect(image).toHaveCSS('opacity', '0');
-  await expect(avatar.locator('[data-matthias-layered-art="true"]')).toHaveCount(0);
+  if (render.mode === 'in-scene') {
+    await expectInSceneResident(matthias, render.hallRuntime, { station: 'table-coffee', posture: 'stand', clip: 'Sip' });
+  } else {
+    await expect(avatar).toHaveAttribute('data-home-matthias-station', 'refreshment-table');
+    await expect(avatar).toHaveAttribute('data-home-matthias-3d', 'ready');
+    await expect(avatar).toHaveAttribute('data-motion', 'rigged-gltf-clips');
+    await expectBlenderRigReady(avatar, canvas);
+    await expect(image).toBeVisible();
+    await expect(image).toHaveCSS('opacity', '0');
+    await expect(avatar.locator('[data-matthias-layered-art="true"]')).toHaveCount(0);
+  }
 
   // Matthias is a resident of the hall, not a permanent profile card. Keep the
   // semantic copy in the DOM, but surface his current activity only on intent.
@@ -126,10 +165,16 @@ test('Home canónica · el expediente raro de Matthias exige derrotas reales y o
   await expect(matthias).toHaveAttribute('data-home-matthias-moment', 'loss-dossier');
   await expect(matthias).toHaveAttribute('data-home-matthias-scene', 'moment-loss-dossier');
   await expect(matthias).toHaveAttribute('data-home-matthias-zone', 'desk');
-  await expect(avatar).toHaveAttribute('data-home-matthias-station', 'hearth-files');
   await expect(matthias).toHaveAttribute('data-home-matthias-activity', 'Revisando viejas heridas');
-  await expect(avatar).toHaveAttribute('data-home-matthias-support', 'foreground-rug');
   await expect(matthias).toHaveAttribute('data-home-matthias-dwell-ms', '44000');
+  const render = await matthiasRenderMode(home);
+  if (render.mode === 'in-scene') {
+    // Reading the old wounds standing on the floor by the left hearth.
+    await expectInSceneResident(matthias, render.hallRuntime, { station: 'hearth-files', posture: 'stand', clip: 'Dossier' });
+    return;
+  }
+  await expect(avatar).toHaveAttribute('data-home-matthias-station', 'hearth-files');
+  await expect(avatar).toHaveAttribute('data-home-matthias-support', 'foreground-rug');
   await expect(avatar).toHaveAttribute('data-home-matthias-profile', 'dossier');
   await expectBlenderRigReady(avatar, canvas);
   await expect(canvas).toHaveAttribute('data-matthias-dossier-sip', 'procedural-v1');
@@ -161,9 +206,15 @@ test('Home canónica · Matthias puede quedarse dormido sobre el manual en la bi
   await expect(matthias).toHaveAttribute('data-home-matthias-moment', 'book-doze-sleep');
   await expect(matthias).toHaveAttribute('data-home-matthias-scene', 'moment-book-doze-sleep');
   await expect(matthias).toHaveAttribute('data-home-matthias-zone', 'library');
-  await expect(avatar).toHaveAttribute('data-home-matthias-station', 'rest');
   await expect(matthias).toHaveAttribute('data-home-matthias-activity', 'Dormido sobre el manual');
   await expect(matthias).toHaveAttribute('data-home-matthias-dwell-ms', '64000');
+  const render = await matthiasRenderMode(home);
+  if (render.mode === 'in-scene') {
+    // Nodding off over the manual in the reading chair, not on the sofa.
+    await expectInSceneResident(matthias, render.hallRuntime, { station: 'reading-chair', posture: 'seat', clip: 'Sleep' });
+    return;
+  }
+  await expect(avatar).toHaveAttribute('data-home-matthias-station', 'rest');
   await expect(avatar).toHaveAttribute('data-home-matthias-profile', 'sleep');
   await expectBlenderRigReady(avatar, canvas);
 });
@@ -185,9 +236,15 @@ test('Home canónica · Matthias ensaya una emboscada solo en el escritorio', as
   await expect(matthias).toHaveAttribute('data-home-matthias-moment', 'solo-board-inception');
   await expect(matthias).toHaveAttribute('data-home-matthias-scene', 'moment-solo-board-inception');
   await expect(matthias).toHaveAttribute('data-home-matthias-zone', 'desk');
-  await expect(avatar).toHaveAttribute('data-home-matthias-station', 'chess-chair');
   await expect(matthias).toHaveAttribute('data-home-matthias-activity', 'Ensayando una emboscada');
   await expect(matthias).toHaveAttribute('data-home-matthias-dwell-ms', '42000');
+  const render = await matthiasRenderMode(home);
+  if (render.mode === 'in-scene') {
+    // Seated at the chess table, facing the board.
+    await expectInSceneResident(matthias, render.hallRuntime, { station: 'chess-chair', posture: 'seat', clip: 'Think' });
+    return;
+  }
+  await expect(avatar).toHaveAttribute('data-home-matthias-station', 'chess-chair');
   await expect(avatar).toHaveAttribute('data-home-matthias-profile', 'think');
   await expectBlenderRigReady(avatar, canvas);
 });
@@ -197,6 +254,12 @@ test('Home canónica · conserva el render aprobado si el GLB de Matthias no pue
   const home = await openCanonicalHome(page);
   const matthias = home.locator('.illustrated-home__matthias');
   const { avatar, image, canvas } = matthiasRig(matthias);
+
+  // Without his rig the hall cannot host him: the approved portrait art is
+  // the resident, whichever renderer the hall itself settled on.
+  const render = await matthiasRenderMode(home);
+  expect(render.mode).toBe('portrait');
+  await expect(matthias).toHaveAttribute('data-home-matthias-render', 'portrait', { timeout: 15_000 });
 
   await expect(avatar).toHaveAttribute('data-home-matthias-model-state', 'fallback', { timeout: 15_000 });
   await expect(avatar).toHaveAttribute('data-matthias-render-source', 'bundled-scene-art-fallback');
@@ -326,11 +389,19 @@ test('Home canónica · reduced motion congela el rig y elimina transiciones dec
   const { avatar, image, canvas } = matthiasRig(matthias);
 
   await expect(destination).toBeVisible();
-  await expect(avatar).toHaveAttribute('data-home-matthias-3d', 'ready');
-  await expect(avatar).toHaveAttribute('data-motion', 'still-rigged-model');
-  await expectBlenderRigReady(avatar, canvas);
-  expect(await image.evaluate((node) => getComputedStyle(node).animationName)).toBe('none');
-  expect(await canvas.evaluate((node) => Number.parseFloat(getComputedStyle(node).transitionDuration) || 0)).toBeLessThanOrEqual(0.001);
+  const render = await matthiasRenderMode(home);
+  if (render.mode === 'in-scene') {
+    // In the hall, reduced motion holds him in a still authored pose.
+    await expect(matthias).toHaveAttribute('data-home-matthias-render', 'in-scene', { timeout: 15_000 });
+    await expect(render.hallRuntime).toHaveAttribute('data-home-matthias-clip', /.+/);
+    expect(await matthias.evaluate((node) => Number.parseFloat(getComputedStyle(node).transitionDuration) || 0)).toBeLessThanOrEqual(0.001);
+  } else {
+    await expect(avatar).toHaveAttribute('data-home-matthias-3d', 'ready');
+    await expect(avatar).toHaveAttribute('data-motion', 'still-rigged-model');
+    await expectBlenderRigReady(avatar, canvas);
+    expect(await image.evaluate((node) => getComputedStyle(node).animationName)).toBe('none');
+    expect(await canvas.evaluate((node) => Number.parseFloat(getComputedStyle(node).transitionDuration) || 0)).toBeLessThanOrEqual(0.001);
+  }
 
   const transitionSeconds = await destination.evaluate((node) => Number.parseFloat(getComputedStyle(node).transitionDuration) || 0);
   expect(transitionSeconds).toBeLessThanOrEqual(0.001);

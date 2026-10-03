@@ -28,10 +28,14 @@ import {
 } from './WarRoomHansNavigation.js';
 import {
   assignWarRoomHansTask,
+  createWarRoomHansSetupRetryState,
+  deferWarRoomHansSetupRetry,
   getWarRoomHansRuntime,
   releaseWarRoomHansTask,
+  resetWarRoomHansSetupRetry,
   setWarRoomHansTaskPhase,
   setWarRoomHansTaskPresentation,
+  warRoomHansSetupRetryReady,
   warRoomHansTaskAvailable,
 } from './WarRoomHansRuntime.js';
 import {
@@ -41,7 +45,7 @@ import {
   warRoomHansTargetNearObject,
 } from './WarRoomHansServiceRoute.js';
 
-export const WAR_ROOM_HANS_AMBIENT_CHORE_ROUTINE_VERSION = 'hans-ambient-chore-v9-prompt-arrival-reset-before-return-terminal-setup-static-fallback-delivered-continuity';
+export const WAR_ROOM_HANS_AMBIENT_CHORE_ROUTINE_VERSION = 'hans-ambient-chore-v10-bounded-setup-retry';
 
 const FLOOR_NAME = 'war-room-castle-floor-slab';
 const CHORE_EVENTS = new Set(WAR_ROOM_HANS_CHORE_EVENTS);
@@ -220,6 +224,7 @@ export function installWarRoomHansAmbientChoreRoutine(root) {
   let actionElapsed = 0;
   let lastNow = null;
   let chore = null;
+  const setupRetry = createWarRoomHansSetupRetryState();
 
   floor.onBeforeRender = (...args) => {
     previous?.(...args);
@@ -251,6 +256,7 @@ export function installWarRoomHansAmbientChoreRoutine(root) {
       routeIndex = 0;
       actionElapsed = 0;
       chore = null;
+      resetWarRoomHansSetupRetry(setupRetry);
       setDialogue(actor, '');
       if (clearDeliveredArtifacts) {
         for (const name of ['bring-book', 'mail']) {
@@ -265,8 +271,12 @@ export function installWarRoomHansAmbientChoreRoutine(root) {
 
     if (!active) {
       if (!warRoomHansTaskAvailable(runtime, taskId) || now - eligibleSince < delayMs) return;
+      if (!warRoomHansSetupRetryReady(setupRetry, now)) return;
       controller ||= createWarRoomHansWalkController(actor, { forward: 1 });
-      if (!controller) return;
+      if (!controller) {
+        if (!deferWarRoomHansSetupRetry(setupRetry, now)) completedGameId = gameId;
+        return;
+      }
       chore = warRoomHansChoreForEvent(eventName);
       if (!chore || !assignWarRoomHansTask(runtime, {
         id: taskId,
@@ -275,7 +285,8 @@ export function installWarRoomHansAmbientChoreRoutine(root) {
         payload: { eventName },
       })) return;
       const abortSetupForCurrentGame = () => {
-        if (releaseWarRoomHansTask(runtime, taskId)) completedGameId = gameId;
+        releaseWarRoomHansTask(runtime, taskId);
+        if (!deferWarRoomHansSetupRetry(setupRetry, now)) completedGameId = gameId;
       };
       const service = warRoomHansServiceHome(root, actor.hans.parent);
       targetObject = firstNamed(root, chore.targetNames);
@@ -310,6 +321,7 @@ export function installWarRoomHansAmbientChoreRoutine(root) {
       targetBaseRotation = warRoomHansChoreCanMoveTarget(eventName, targetObject?.name)
         ? Number(targetObject.rotation?.y)
         : null;
+      resetWarRoomHansSetupRetry(setupRetry);
       state = 'walking-in';
       active = true;
       actionElapsed = 0;

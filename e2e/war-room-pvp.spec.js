@@ -21,7 +21,7 @@ function matchPayload(overrides = {}) {
     yourTurn: true,
     createdAt: '2026-09-16T05:00:00Z',
     updatedAt: '2026-09-16T05:00:00Z',
-    clock: { id: '10+0', whiteMs: 600000, blackMs: 600000, incrementMs: 0, runningColor: 'w' },
+    clock: { id: '30+0', whiteMs: 1800000, blackMs: 1800000, incrementMs: 0, runningColor: 'w' },
     ...overrides,
   };
 }
@@ -88,7 +88,7 @@ test('War Room 1v1 · un 409 por carrera de turno sincroniza sin flash de error'
       revision: 1,
       fen: 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1',
       history: [{ ply: 1, uci: 'e2e4', san: 'e4', by: 'bob' }],
-      clock: { id: '10+0', whiteMs: 599500, blackMs: 600000, incrementMs: 0, runningColor: 'b' },
+      clock: { id: '30+0', whiteMs: 1799500, blackMs: 1800000, incrementMs: 0, runningColor: 'b' },
     });
     await route.fulfill({
       status: 409,
@@ -124,7 +124,7 @@ test('War Room 1v1 · rendirse no resucita un handoff stale del lobby', async ({
     opponentReady: true,
     startsAt: null,
     opponentPresence: 'online',
-    clock: { id: '10+0', whiteMs: 600000, blackMs: 600000, incrementMs: 0, runningColor: null },
+    clock: { id: '30+0', whiteMs: 1800000, blackMs: 1800000, incrementMs: 0, runningColor: null },
   });
   let liveMatch = matchPayload({
     black: 'sparringmeister',
@@ -135,23 +135,48 @@ test('War Room 1v1 · rendirse no resucita un handoff stale del lobby', async ({
     startsAt: '2026-09-16T04:59:59Z',
     opponentPresence: 'online',
   });
+  let staleActiveAfterResign = null;
+  let duelFinished = false;
+  let postExitLobbyReads = 0;
+  let lobbyPulseRevision = 0;
 
-  // Keep returning the stale pre-game snapshot from the roster on purpose.
-  // This is the exact state that used to resurrect the handoff after resigning.
-  await page.route('**/api/pvp/lobby', (route) => route.fulfill({
+  // Force every visible lobby poll to reconcile the full snapshot so this test
+  // can model a real blue/green ordering race deterministically.
+  await page.route('**/api/pvp/lobby/pulse', (route) => route.fulfill({
     status: 200,
     contentType: 'application/json',
     body: JSON.stringify({
-      roster: [
-        { username: 'e2e', rating: 1050, tier: 'Intermedio', isSelf: true },
-        { username: 'sparringmeister', rating: 400, tier: 'Principiante', isSelf: false },
-      ],
-      challenges: [],
-      activeMatch: staleStarting,
-      messages: [],
-      pollAfterMs: 3000,
+      revision: `pvp-e2e-${++lobbyPulseRevision}`,
+      pollAfterMs: 2000,
+      source: 'go',
     }),
   }));
+
+  // Before the duel finishes the roster advertises the starting match. After
+  // "Volver al lobby", return one transient null snapshot and then a delayed
+  // stale active snapshot for the same match. That exact null -> stale-active
+  // ordering used to clear the terminal guard and reopen Duel Room.
+  await page.route('**/api/pvp/lobby', (route) => {
+    let activeMatch = staleStarting;
+    if (duelFinished) {
+      activeMatch = postExitLobbyReads === 0 ? null : staleActiveAfterResign;
+      postExitLobbyReads += 1;
+    }
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        roster: [
+          { username: 'e2e', rating: 1050, tier: 'Intermedio', isSelf: true },
+          { username: 'sparringmeister', rating: 400, tier: 'Principiante', isSelf: false },
+        ],
+        challenges: [],
+        activeMatch,
+        messages: [],
+        pollAfterMs: 2000,
+      }),
+    });
+  });
   await page.route('**/api/pvp/roster', (route) => route.fulfill({
     status: 200,
     contentType: 'application/json',
@@ -186,7 +211,7 @@ test('War Room 1v1 · rendirse no resucita un handoff stale del lobby', async ({
       revision: 1,
       fen: 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1',
       history: [{ ply: 1, uci: 'e2e4', san: 'e4', by: 'e2e' }],
-      clock: { id: '10+0', whiteMs: 599500, blackMs: 600000, incrementMs: 0, runningColor: 'b' },
+      clock: { id: '30+0', whiteMs: 1799500, blackMs: 1800000, incrementMs: 0, runningColor: 'b' },
     });
     return route.fulfill({
       status: 200,
@@ -195,6 +220,8 @@ test('War Room 1v1 · rendirse no resucita un handoff stale del lobby', async ({
     });
   });
   await page.route('**/api/pvp/matches/pvp-e2e-1/resign', (route) => {
+    staleActiveAfterResign = { ...liveMatch };
+    duelFinished = true;
     liveMatch = {
       ...liveMatch,
       status: 'finished',
@@ -244,7 +271,12 @@ test('War Room 1v1 · rendirse no resucita un handoff stale del lobby', async ({
 
   await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible();
   await expect(page.getByText('Sincronizando el duelo…', { exact: true })).toHaveCount(0);
-  await page.waitForTimeout(1200);
+
+  // First full lobby read is null; the following poll deliberately returns the
+  // stale active snapshot. The finished duel must stay buried instead of
+  // reopening a room whose "Abandonar" action can no longer mutate anything.
+  await expect.poll(() => postExitLobbyReads, { timeout: 8_000 }).toBeGreaterThanOrEqual(2);
+  await expect(page.getByRole('region', { name: 'Sala de duelo 1 contra 1' })).toHaveCount(0);
   await expect(page.getByText('Sincronizando el duelo…', { exact: true })).toHaveCount(0);
 });
 
@@ -297,11 +329,16 @@ test('War Room 1v1 · reto entrante abre una partida humana en el tablero canón
   await expect(warRoom).toBeVisible();
   await expect(warRoom.getByRole('strong').filter({ hasText: /^bob$/ })).toBeVisible();
   await expect(warRoom.getByText('Tu turno', { exact: true })).toBeVisible();
-  await expect(warRoom.getByText('10:00', { exact: true }).first()).toBeVisible();
+  await expect(warRoom.getByText('30:00', { exact: true }).first()).toBeVisible();
   const actions = warRoom.getByRole('button', { name: 'Más acciones de partida', exact: true });
+  const exit = warRoom.getByRole('button', { name: 'Salir de la partida', exact: true });
+  const account = warRoom.getByRole('button', { name: 'Mi cuenta', exact: true });
   await expect(actions).toBeVisible();
+  await expect(exit).toBeVisible();
+  await expect(account).toBeVisible();
   await actions.click();
-  await expect(warRoom.getByRole('menuitem', { name: 'Abandonar partida', exact: true })).toBeVisible();
+  await expect(warRoom.getByRole('menuitem', { name: 'Abandonar partida', exact: true })).toHaveCount(0);
+  await actions.click();
 
   const board = page.locator('[data-board3d-war-room="true"]');
   await expect(board).toBeVisible({ timeout: 45_000 });
@@ -334,7 +371,7 @@ test('War Room 1v1 · reto entrante abre una partida humana en el tablero canón
       { ply: 1, uci: 'e2e4', san: 'e4', by: 'e2e' },
       { ply: 2, uci: 'e7e5', san: 'e5', by: 'bob' },
     ],
-    clock: { id: '10+0', whiteMs: 0, blackMs: 584000, incrementMs: 0, runningColor: null },
+    clock: { id: '30+0', whiteMs: 0, blackMs: 1784000, incrementMs: 0, runningColor: null },
   });
 
   const debrief = warRoom.getByRole('dialog', { name: 'Resumen del duelo' });
@@ -343,5 +380,24 @@ test('War Room 1v1 · reto entrante abre una partida humana en el tablero canón
   await expect(debrief).toContainText('Derrota');
   await expect(debrief).toContainText('Perdiste por tiempo');
   await expect(debrief).toContainText('Contra bob · 1210 rating · Tiempo · 2 jugadas registradas');
+
+  const verdict = debrief.locator('.pvp-war-room__result-verdict');
+  const avatar = verdict.locator('img');
+  const lead = debrief.locator('.pvp-war-room__result-lead');
+  const [debriefBox, roomAfterBox, avatarBox, verdictFontPx, leadFontPx] = await Promise.all([
+    debrief.boundingBox(),
+    warRoom.boundingBox(),
+    avatar.boundingBox(),
+    verdict.locator('p').evaluate((node) => Number.parseFloat(getComputedStyle(node).fontSize)),
+    lead.evaluate((node) => Number.parseFloat(getComputedStyle(node).fontSize)),
+  ]);
+  expect(debriefBox).not.toBeNull();
+  expect(roomAfterBox).not.toBeNull();
+  expect(avatarBox).not.toBeNull();
+  expect(Math.abs((debriefBox.x + debriefBox.width / 2) - (roomAfterBox.x + roomAfterBox.width / 2)) / roomAfterBox.width).toBeLessThan(0.06);
+  expect(Math.abs((debriefBox.y + debriefBox.height / 2) - (roomAfterBox.y + roomAfterBox.height / 2)) / roomAfterBox.height).toBeLessThan(0.12);
+  expect(avatarBox.width).toBeGreaterThanOrEqual(42);
+  expect(verdictFontPx).toBeGreaterThan(leadFontPx * 1.2);
+
   await expect(debrief.getByRole('button', { name: 'Volver al lobby' })).toBeVisible();
 });

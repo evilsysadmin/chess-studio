@@ -14,6 +14,7 @@ import { createExperimentalThreeRenderer } from './experimentalThreeRenderer.js'
 const CELL = 4;
 const CAMERA_Y = 1.62;
 const TORCH_WALL_OFFSET = 1.9;
+const DEFAULT_SCENE_CENTER = Object.freeze({ x: 3, y: 3 });
 const ATTACK_FX = Object.freeze({
   matthias: Object.freeze({ color: 0xd5aa62, angle: -0.18, width: 0.9, ring: 0.78 }),
   rook: Object.freeze({ color: 0xc96a3e, angle: 0.04, width: 1.3, ring: 1.18 }),
@@ -32,8 +33,12 @@ export const CHRONICLES_TORCH_PLACEMENTS = Object.freeze([
   Object.freeze({ x: 5, y: 1, side: 'north' }),
 ]);
 
-function worldForCell(x, y) {
-  return new THREE.Vector3((x - 3) * CELL, CAMERA_Y, (y - 3) * CELL);
+function worldForCell(x, y, center = DEFAULT_SCENE_CENTER) {
+  return new THREE.Vector3(
+    (x - Number(center?.x ?? DEFAULT_SCENE_CENTER.x)) * CELL,
+    CAMERA_Y,
+    (y - Number(center?.y ?? DEFAULT_SCENE_CENTER.y)) * CELL,
+  );
 }
 
 // Enemy art is authored facing local +Z. Point that axis at the party instead
@@ -47,8 +52,8 @@ export function chroniclesEnemyFacingYaw(enemyCell, partyCell) {
   return Math.atan2(dx, dy);
 }
 
-export function chroniclesTorchTransform(x, y, side) {
-  const cell = worldForCell(x, y);
+export function chroniclesTorchTransform(x, y, side, center = DEFAULT_SCENE_CENTER) {
+  const cell = worldForCell(x, y, center);
   const faces = {
     west: { dx: -TORCH_WALL_OFFSET, dz: 0, yaw: 0 },
     east: { dx: TORCH_WALL_OFFSET, dz: 0, yaw: Math.PI },
@@ -81,17 +86,20 @@ function createTorchFlameGeometry(coarsePointer) {
 function createDungeonScene(scene, { coarsePointer = false, scenePlan = null } = {}) {
   const grid = scenePlan?.grid || [];
   const enemyDefinitions = scenePlan?.enemies || [];
+  const sceneCenter = scenePlan?.center || DEFAULT_SCENE_CENTER;
+  const width = Math.max(1, Number(scenePlan?.width) || Math.max(0, ...grid.map((row) => row?.length || 0)));
+  const height = Math.max(1, Number(scenePlan?.height) || grid.length);
   const stone = new THREE.MeshStandardMaterial({ color: 0x3d3a35, roughness: 0.96, metalness: 0.02 });
   const darkStone = new THREE.MeshStandardMaterial({ color: 0x1b1a19, roughness: 1, metalness: 0 });
   const mortar = new THREE.MeshStandardMaterial({ color: 0x272522, roughness: 1, metalness: 0 });
   const floor = new THREE.MeshStandardMaterial({ color: 0x27241f, roughness: 0.92, metalness: 0.03 });
 
-  const floorMesh = new THREE.Mesh(new THREE.BoxGeometry(CELL * 7, 0.28, CELL * 7), floor);
+  const floorMesh = new THREE.Mesh(new THREE.BoxGeometry(CELL * width, 0.28, CELL * height), floor);
   floorMesh.position.y = -0.18;
   floorMesh.receiveShadow = true;
   scene.add(floorMesh);
 
-  const ceiling = new THREE.Mesh(new THREE.BoxGeometry(CELL * 7, 0.24, CELL * 7), darkStone);
+  const ceiling = new THREE.Mesh(new THREE.BoxGeometry(CELL * width, 0.24, CELL * height), darkStone);
   ceiling.position.y = 3.55;
   scene.add(ceiling);
 
@@ -100,7 +108,7 @@ function createDungeonScene(scene, { coarsePointer = false, scenePlan = null } =
     [...row].forEach((tile, x) => {
       if (tile !== '#') return;
       const wall = new THREE.Mesh(wallGeometry, stone);
-      const p = worldForCell(x, y);
+      const p = worldForCell(x, y, sceneCenter);
       wall.position.set(p.x, 1.72, p.z);
       wall.castShadow = true;
       wall.receiveShadow = true;
@@ -117,10 +125,11 @@ function createDungeonScene(scene, { coarsePointer = false, scenePlan = null } =
 
   const sigilMaterial = new THREE.MeshStandardMaterial({ color: 0x715321, roughness: 0.45, metalness: 0.55, emissive: 0x241300, emissiveIntensity: 0.3 });
   const sigil = new THREE.Mesh(new THREE.TorusGeometry(0.9, 0.12, 8, 28), sigilMaterial);
-  const sigilCell = worldForCell(3, 4);
+  const sigilCell = worldForCell(3, 4, sceneCenter);
   sigil.position.set(sigilCell.x, 0.035, sigilCell.z);
   sigil.rotation.x = -Math.PI / 2;
   sigil.receiveShadow = true;
+  sigil.visible = Boolean(scenePlan?.useAuthoredCryptDressing);
   scene.add(sigil);
 
   const enemyModels = {};
@@ -129,7 +138,7 @@ function createDungeonScene(scene, { coarsePointer = false, scenePlan = null } =
     const enemy = visual?.model;
     if (!enemy) return;
     enemyModels[enemyDefinition.id] = enemy;
-    const enemyCell = worldForCell(enemyDefinition.x, enemyDefinition.y);
+    const enemyCell = worldForCell(enemyDefinition.x, enemyDefinition.y, sceneCenter);
     enemy.position.set(enemyCell.x, 0, enemyCell.z);
     const authoredScale = Number(enemyDefinition.visualScale);
     const legacyScale = enemyDefinition.id === 'gate-jailer' ? 1.16 : 1.08;
@@ -142,13 +151,14 @@ function createDungeonScene(scene, { coarsePointer = false, scenePlan = null } =
   });
 
   const spectralChapel = buildSpectralChapel({ coarsePointer });
-  const spectralChapelCell = worldForCell(5, 3);
+  const spectralChapelCell = worldForCell(5, 3, sceneCenter);
   spectralChapel.position.set(spectralChapelCell.x, 0, spectralChapelCell.z);
+  spectralChapel.visible = Boolean(scenePlan?.useAuthoredCryptDressing);
   scene.add(spectralChapel);
 
   const gateMaterial = new THREE.MeshStandardMaterial({ color: 0x171513, roughness: 0.66, metalness: 0.72, emissive: 0x120700, emissiveIntensity: 0.15 });
   const gate = new THREE.Group();
-  const gateCell = worldForCell(3, 1);
+  const gateCell = worldForCell(3, 1, sceneCenter);
   const gatePanel = new THREE.Mesh(new THREE.BoxGeometry(2.6, 3.05, 0.28), gateMaterial);
   gatePanel.position.y = 1.48;
   gatePanel.castShadow = true;
@@ -157,6 +167,7 @@ function createDungeonScene(scene, { coarsePointer = false, scenePlan = null } =
   gateRune.position.set(0, 1.55, -0.17);
   gate.add(gatePanel, gateRune);
   gate.position.set(gateCell.x, 0, gateCell.z - 1.45);
+  gate.visible = Boolean(scenePlan?.useAuthoredCryptDressing);
   scene.add(gate);
 
   const torchMaterial = new THREE.MeshStandardMaterial({ color: 0x3b2618, roughness: 0.7, metalness: 0.45 });
@@ -175,8 +186,18 @@ function createDungeonScene(scene, { coarsePointer = false, scenePlan = null } =
     side: THREE.DoubleSide,
   });
   const torches = [];
-  CHRONICLES_TORCH_PLACEMENTS.forEach(({ x, y, side, intensity = 1, flameScale = 1 }, index) => {
-    const transform = chroniclesTorchTransform(x, y, side);
+  const torchPlacements = scenePlan?.useAuthoredCryptDressing
+    ? CHRONICLES_TORCH_PLACEMENTS
+    : (scenePlan?.wallFaces || [])
+      .filter((_, index) => index % 3 === 0)
+      .slice(0, coarsePointer ? 5 : 8)
+      .map((face, index) => ({
+        ...face,
+        intensity: 0.56 + (index % 3) * 0.1,
+        flameScale: 0.68 + (index % 2) * 0.1,
+      }));
+  torchPlacements.forEach(({ x, y, side, intensity = 1, flameScale = 1 }, index) => {
+    const transform = chroniclesTorchTransform(x, y, side, sceneCenter);
     const root = new THREE.Group();
     root.name = `chronicles-wall-torch-${index}`;
 
@@ -240,7 +261,16 @@ function createDungeonScene(scene, { coarsePointer = false, scenePlan = null } =
     torches.push({ root, flame, flameCore, light, baseIntensity, flameScale, phase: index * 1.7 });
   });
 
-  return { enemies: enemyModels, enemyDefinitions, spectralChapel, sigilMaterial, gateMaterial, gateRune, torches };
+  return {
+    enemies: enemyModels,
+    enemyDefinitions,
+    spectralChapel,
+    sigilMaterial,
+    gateMaterial,
+    gateRune,
+    torches,
+    sceneCenter,
+  };
 }
 
 function disposeObject(root) {
@@ -303,13 +333,21 @@ export function createChroniclesOfMatthiasGame(host, { onReady, initialState = n
 
   const scenePlan = chroniclesFirstPersonScenePlan(initialState);
   const dungeon = createDungeonScene(scene, { coarsePointer: coarse, scenePlan });
-  const dressing = buildChroniclesDungeonDressing({ coarsePointer: coarse });
-  const atmosphere = buildChroniclesDungeonAtmosphere({ coarsePointer: coarse, reducedMotion });
+  const dressing = scenePlan?.useAuthoredCryptDressing
+    ? buildChroniclesDungeonDressing({ coarsePointer: coarse })
+    : new THREE.Group();
+  dressing.name ||= 'chronicles-map-specific-dressing';
+  const atmosphere = buildChroniclesDungeonAtmosphere({ coarsePointer: coarse, reducedMotion, scenePlan });
   scene.add(dressing, atmosphere);
   let destroyed = false;
   let visible = document.visibilityState !== 'hidden';
-  let desiredPosition = worldForCell(1, 5);
-  let desiredYaw = -Math.PI / 2;
+  let desiredPosition = worldForCell(
+    Number(initialState?.x ?? scenePlan?.partyStart?.x ?? 1),
+    Number(initialState?.y ?? scenePlan?.partyStart?.y ?? 5),
+    dungeon.sceneCenter,
+  );
+  const initialDirection = CHRONICLES_DIRECTIONS[initialState?.direction] || CHRONICLES_DIRECTIONS[1];
+  let desiredYaw = Math.atan2(-initialDirection.dx, -initialDirection.dy);
   let latestState = null;
   let frame = 0;
   let attackFxStartedAt = -1;
@@ -340,7 +378,7 @@ export function createChroniclesOfMatthiasGame(host, { onReady, initialState = n
       if (previousHp != null && nextHp < previousHp) enemyHitStartedAt.set(enemyDefinition.id, now);
       if (!reducedMotion && previousHp > 0 && nextHp === 0) enemyDeathStartedAt.set(enemyDefinition.id, now);
     });
-    desiredPosition = worldForCell(state.x, state.y);
+    desiredPosition = worldForCell(state.x, state.y, dungeon.sceneCenter);
     const direction = CHRONICLES_DIRECTIONS[state.direction];
     desiredYaw = Math.atan2(-direction.dx, -direction.dy);
     dungeon.enemyDefinitions.forEach((enemyDefinition) => {
@@ -355,12 +393,12 @@ export function createChroniclesOfMatthiasGame(host, { onReady, initialState = n
         previousCell = { x: enemyDefinition.x, y: enemyDefinition.y };
       }
       if (!reducedMotion && (previousCell.x !== currentCell.x || previousCell.y !== currentCell.y)) {
-        const from = worldForCell(previousCell.x, previousCell.y);
+        const from = worldForCell(previousCell.x, previousCell.y, dungeon.sceneCenter);
         from.y = 0;
         enemyMoveFrom.set(enemyDefinition.id, from);
         enemyMoveStartedAt.set(enemyDefinition.id, now);
       }
-      const target = worldForCell(currentCell.x, currentCell.y);
+      const target = worldForCell(currentCell.x, currentCell.y, dungeon.sceneCenter);
       target.y = 0;
       enemy.userData.chroniclesTargetPosition = target;
       enemy.userData.chroniclesBaseYaw = chroniclesEnemyFacingYaw(currentCell, { x: state.x, y: state.y });

@@ -2,6 +2,11 @@ name: Observability · production synthetic
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/synthetic-health.yml
+      - scripts/pvp_public_transport_probe.py
   schedule:
     - cron: '7,22,37,52 * * * *'
 
@@ -27,6 +32,7 @@ jobs:
       CHESS_SYNTHETIC_USERNAME: ${{ secrets.CHESS_SYNTHETIC_USERNAME }}
       CHESS_SYNTHETIC_PASSWORD: ${{ secrets.CHESS_SYNTHETIC_PASSWORD }}
       CHESS_SYNTHETIC_GAMEPLAY: '1'
+      CHESS_SYNTHETIC_PVP: '1'
       CHESS_SYNTHETIC_EPHEMERAL: '1'
       CHESS_SYNTHETIC_INVITE_CODE: ${{ secrets.CHESS_SYNTHETIC_INVITE_CODE }}
       CHESS_SYNTHETIC_HEALTH_SLO_MS: ${{ vars.CHESS_SYNTHETIC_HEALTH_SLO_MS || '3000' }}
@@ -42,6 +48,14 @@ jobs:
       - name: Load production invite from OCI Vault
         if: env.CHESS_SYNTHETIC_USERNAME == '' && env.CHESS_SYNTHETIC_INVITE_CODE == ''
         run: python3 scripts/oci_production_runtime.py export-synthetic-invite
+
+      - name: Probe public PvP browser transport
+        run: |
+          python3 -S scripts/pvp_public_transport_probe.py --self-test
+          python3 scripts/pvp_public_transport_probe.py \
+            --base-url "$CHESS_SYNTHETIC_BASE_URL" \
+            --origin https://chess-studio.shadowops.dpdns.org \
+            --timeout 12
 
       - name: Probe production
         run: python3 scripts/synthetic_health_check.py --timeout 75

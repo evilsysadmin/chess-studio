@@ -121,6 +121,7 @@ def main() -> int:
     parser.add_argument("--invite-code", default=os.getenv("CHESS_SYNTHETIC_INVITE_CODE", ""))
     parser.add_argument("--timeout", type=float, default=8.0)
     parser.add_argument("--gameplay", action="store_true", default=env_enabled(os.getenv("CHESS_SYNTHETIC_GAMEPLAY")))
+    parser.add_argument("--pvp", action="store_true", default=env_enabled(os.getenv("CHESS_SYNTHETIC_PVP")))
     parser.add_argument("--ephemeral", action="store_true", default=env_enabled(os.getenv("CHESS_SYNTHETIC_EPHEMERAL")))
     parser.add_argument("--health-slo-ms", type=float, default=os.getenv("CHESS_SYNTHETIC_HEALTH_SLO_MS", "0"))
     parser.add_argument("--auth-slo-ms", type=float, default=os.getenv("CHESS_SYNTHETIC_AUTH_SLO_MS", "0"))
@@ -211,6 +212,67 @@ def main() -> int:
                     cleanup_token = token
                 status, payload, latency, req_id = _call(base, "/status", token=token, timeout=args.timeout)
                 passed = _check("authenticated_status", status, payload, latency, req_id, slo_ms=auth_slo_ms) and passed
+
+                if args.pvp:
+                    pvp_joined = False
+                    try:
+                        status, joined, latency, req_id = _call(
+                            base,
+                            "/pvp/roster",
+                            method="POST",
+                            token=token,
+                            timeout=args.timeout,
+                        )
+                        join_ok = _check("pvp_roster_join", status, joined, latency, req_id, expected=200, slo_ms=auth_slo_ms)
+                        passed = join_ok and passed
+                        pvp_joined = status == 200
+                        if join_ok:
+                            member = joined.get("member") if isinstance(joined, dict) else None
+                            passed = _state_check(
+                                "pvp_roster_join_state",
+                                isinstance(member, dict) and str(member.get("username") or "").lower() == username.lower(),
+                                "roster join response missing the authenticated synthetic member",
+                            ) and passed
+
+                        status, lobby, latency, req_id = _call(
+                            base,
+                            "/pvp/lobby",
+                            token=token,
+                            timeout=args.timeout,
+                        )
+                        lobby_ok = _check("pvp_lobby_read", status, lobby, latency, req_id, expected=200, slo_ms=auth_slo_ms)
+                        passed = lobby_ok and passed
+                        if lobby_ok:
+                            roster = lobby.get("roster") if isinstance(lobby, dict) else None
+                            self_visible = isinstance(roster, list) and any(
+                                isinstance(row, dict)
+                                and str(row.get("username") or "").lower() == username.lower()
+                                and bool(row.get("isSelf"))
+                                for row in roster
+                            )
+                            passed = _state_check(
+                                "pvp_lobby_self_visible",
+                                self_visible,
+                                "authenticated synthetic member not visible in authoritative lobby",
+                            ) and passed
+                    finally:
+                        if pvp_joined:
+                            status, left, latency, req_id = _call(
+                                base,
+                                "/pvp/roster",
+                                method="DELETE",
+                                token=token,
+                                timeout=args.timeout,
+                            )
+                            passed = _check(
+                                "pvp_roster_cleanup",
+                                status,
+                                left,
+                                latency,
+                                req_id,
+                                expected=204,
+                                slo_ms=auth_slo_ms,
+                            ) and passed
 
                 if args.gameplay:
                     game_id = None

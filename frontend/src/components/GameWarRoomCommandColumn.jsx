@@ -4,6 +4,7 @@ import { CPU_IDENTITY } from '../cpuIdentity.js';
 import { zenModeSummary } from '../zenMode.js';
 import { requestWarRoomTutorialReplay } from '../warRoomFirstRunTutorial.js';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
+import WarRoomAccountButton from './WarRoomAccountButton.jsx';
 import useWarRoomVariant from './useWarRoomVariant.js';
 import { WAR_ROOM_VARIANTS } from './WarRoomVariant.js';
 import '../styles/29-war-room-chrome.css';
@@ -88,34 +89,11 @@ export function WarRoomUtilityMenu({
   const hasUndo = !zenMode && controls.hintMode === 'free' && typeof controls.onUndo === 'function';
   const hasAppearance = showAppearance && (compactViewport || typeof board?.onCustomize === 'function');
   const [showCoordinates, setShowCoordinates] = useState(() => getBoardCoordinates());
-  const hasNonDangerAction = (compactViewport && showFocus)
-    || hasHint
-    || hasUndo
-    || (compactViewport && showRendererToggle)
-    || hasAppearance
-    || warRoomVariantSelectable
-    || (showZen && typeof controls.onToggleZen === 'function');
 
   return (
     <details className="game-3d-utility-menu">
       <summary role="button" aria-label="Más acciones de partida" title="Más acciones de partida">⋯</summary>
       <div className="game-3d-utility-popover" role="menu" aria-label="Acciones de partida">
-        {typeof controls.onAbandon === 'function' && (
-          <>
-            <button
-              type="button"
-              role="menuitem"
-              className="is-danger"
-              onClick={(event) => {
-                closeUtilityMenu(event);
-                controls.onAbandon();
-              }}
-            >
-              Abandonar partida
-            </button>
-            {hasNonDangerAction && <span className="game-3d-utility-separator" role="separator" />}
-          </>
-        )}
         {compactViewport && showFocus && (
           <button
             type="button"
@@ -262,17 +240,6 @@ function CompactWarRoomPill({
           >
             <span aria-hidden="true">◎</span>
           </button>
-          {typeof controls.onAbandon === 'function' && (
-            <button
-              type="button"
-              className="game-3d-compact-action is-abandon"
-              aria-label="Abandonar partida"
-              title="Abandonar partida"
-              onClick={controls.onAbandon}
-            >
-              <span aria-hidden="true">⚑</span>
-            </button>
-          )}
         </span>
 
         <WarRoomGuideHelp />
@@ -283,6 +250,7 @@ function CompactWarRoomPill({
           zenMode={zenMode}
           compactViewport
         />
+        <WarRoomAccountButton />
       </div>
     </aside>
   );
@@ -300,7 +268,8 @@ export default function GameWarRoomCommandColumn({
 
   // Compact War Room keeps one HUD surface. Secondary actions are folded into
   // its overflow so Android does not pay for a separate command row above the
-  // board. Focus/resign survive as tiny one-tap affordances inside the same HUD.
+  // board. Focus stays compact; SALIR is a dedicated room overlay and account
+  // lives as the gear immediately after the overflow.
   if (compactViewport) {
     return (
       <CompactWarRoomPill
@@ -345,6 +314,7 @@ export default function GameWarRoomCommandColumn({
           controls={controls}
           zenMode={zenMode}
         />
+        <WarRoomAccountButton />
       </div>
     </aside>
   );

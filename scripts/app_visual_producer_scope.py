@@ -178,6 +178,7 @@ PVP_EXACT_PRODUCERS = {
     "frontend/src/components/menuinner.jsx": {"home-base"},
     "frontend/src/components/pvplobbymodal.jsx": {"pvp-lobby"},
     "frontend/src/components/pvplobbymodal.css": {"pvp-lobby"},
+    "frontend/src/components/pvpduelhallroom.css": {"pvp-lobby"},
     "frontend/src/components/pvphandoffmodal.jsx": {"pvp-handoff"},
     "frontend/src/components/pvphandoffmodal.css": {"pvp-handoff"},
     "frontend/src/components/homepvprosterlink.jsx": {"home-base"},
@@ -233,12 +234,13 @@ def _e2e_producer(name: str) -> set[str] | None:
         "war-room-decor-visual-artifact.spec.js": {"warroom-decor"},
         "war-room-armor-oblique-visual-artifact.spec.js": {"warroom-armor"},
         "war-room-hans-visual-artifact.spec.js": {"warroom-hans"},
+        "war-room-hans-routines-visual.spec.js": {"warroom-hans"},
         "browser-runtime-health.spec.js": {"health-runtime"},
         "browser-storage-health.spec.js": {"health-storage"},
     }
     if name in exact:
         return exact[name]
-    if "chesscom" in name or name == "war-room-hans-routines-visual.spec.js":
+    if "chesscom" in name:
         return set()
     return None
 
@@ -319,6 +321,7 @@ def classify_path(path: str) -> set[str] | None:
             return set()
         if lower in {
             "scripts/css_architecture_manifest.json",
+            "scripts/architecture_debt_budget.py",
             "scripts/async_resilience_gate.mjs",
             "scripts/blender_required_scope.py",
             "scripts/browser_quality_scope.py",
@@ -653,6 +656,8 @@ def self_test() -> None:
         "frontend/src/usePvpRosterPresence.js",
     ]) == "home-base,pvp-lobby,pvp-handoff,pvp-duel"
     assert classify(["frontend/src/components/PvPLobbyModal.jsx"]) == "pvp-lobby"
+    assert classify(["frontend/src/components/PvPDuelHallRoom.css"]) == "pvp-lobby"
+    assert classify(["scripts/architecture_debt_budget.py"]) == "none"
     assert classify(["e2e/pvp-lobby-visual-artifact.spec.js"]) == "pvp-lobby"
     assert classify(["frontend/src/components/PvpHandoffModal.jsx"]) == "pvp-handoff"
     assert classify(["e2e/pvp-handoff-visual-artifact.spec.js"]) == "pvp-handoff"
@@ -723,6 +728,7 @@ def self_test() -> None:
     assert classify(["frontend/src/components/WarRoomCatDecor.js"]) == "warroom-decor"
     assert classify(["frontend/src/components/WarRoomArmorDisplay.js"]) == "warroom-armor"
     assert classify(["frontend/src/components/WarRoomHansPerGame.jsx"]) == "warroom-hans"
+    assert classify(["e2e/war-room-hans-routines-visual.spec.js"]) == "warroom-hans"
     assert classify(["frontend/src/components/Board3DCore.jsx"]) == "training-school,warroom-core"
     assert classify(["frontend/src/components/Board3DScene.js"]) == "training-school,warroom-core"
     assert classify(["frontend/src/components/WarRoom3DAnimation.js"]) == "warroom-core"

@@ -24,7 +24,7 @@ function matchPayload({ status = 'active', startsAt = null, ...overrides } = {})
     opponentPresence: 'online',
     opponentSeenAt: new Date().toISOString(),
     opponentDisconnectDeadline: null,
-    clock: { id: '10+0', whiteMs: 600000, blackMs: 600000, incrementMs: 0, runningColor: status === 'active' && startsAt && Date.parse(startsAt) <= Date.now() ? 'w' : null },
+    clock: { id: '30+0', whiteMs: 1800000, blackMs: 1800000, incrementMs: 0, runningColor: status === 'active' && startsAt && Date.parse(startsAt) <= Date.now() ? 'w' : null },
     ...overrides,
   };
 }
@@ -36,6 +36,73 @@ async function setVisibility(page, state) {
     document.dispatchEvent(new Event('visibilitychange'));
   }, state);
 }
+
+test('1v1 · un join confirmado no se deshace si falla la reconciliación inmediata del lobby', async ({ page }) => {
+  await mockApi(page);
+
+  let enrolled = false;
+  let failLobbyAfterJoin = false;
+
+  await page.route('**/api/pvp/roster', async (route) => {
+    if (route.request().method() === 'POST') {
+      enrolled = true;
+      failLobbyAfterJoin = true;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ member: { username: 'e2e', rating: 1050, tier: 'Intermedio', isSelf: true } }),
+      });
+      return;
+    }
+    if (route.request().method() === 'DELETE') {
+      enrolled = false;
+      await route.fulfill({ status: 204, body: '' });
+      return;
+    }
+    await route.fallback();
+  });
+
+  await page.route('**/api/pvp/lobby', async (route) => {
+    if (failLobbyAfterJoin) {
+      await route.abort('failed');
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        roster: [
+          ...(enrolled ? [{ username: 'e2e', rating: 1050, tier: 'Intermedio', isSelf: true }] : []),
+          { username: 'otto_falk', displayName: 'Otto Falk', rating: 850, tier: 'Aficionado', actorKind: 'resident', actorLabel: 'RESIDENTE · IA', isSelf: false },
+          { username: 'marta_stein', displayName: 'Marta Stein', rating: 1200, tier: 'Intermedio', actorKind: 'resident', actorLabel: 'RESIDENTE · IA', isSelf: false },
+          { username: 'viktor_kraus', displayName: 'Viktor Kraus', rating: 1450, tier: 'Avanzado', actorKind: 'resident', actorLabel: 'RESIDENTE · IA', isSelf: false },
+        ],
+        challenges: [],
+        activeMatch: null,
+        pollAfterMs: 3000,
+      }),
+    });
+  });
+
+  await login(page);
+  await page.getByRole('button', { name: 'Abrir Sala de Duelos 1 contra 1' }).click();
+  const lobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room' });
+
+  await expect(lobby.getByText('Otto Falk', { exact: true })).toBeVisible();
+  await expect(lobby.getByText('Marta Stein', { exact: true })).toBeVisible();
+  await expect(lobby.getByText('Viktor Kraus', { exact: true })).toBeVisible();
+
+  await lobby.getByRole('button', { name: 'Recibir retos', exact: true }).click();
+
+  await expect(lobby.getByText('Otto Falk', { exact: true })).toBeVisible();
+  await expect(lobby.getByText('Marta Stein', { exact: true })).toBeVisible();
+  await expect(lobby.getByText('Viktor Kraus', { exact: true })).toBeVisible();
+  await expect(lobby.getByText('RECIBIENDO RETOS', { exact: true })).toBeVisible();
+  await expect(lobby.getByRole('button', { name: 'Recibir retos', exact: true })).toHaveCount(0);
+  await expect(lobby.locator('.pvp-lobby__error')).toHaveCount(0);
+
+  failLobbyAfterJoin = false;
+});
 
 test('1v1 · enrolado sigue disponible fuera del roster y un reto global hace handoff a War Room', async ({ page, context }) => {
   test.setTimeout(90_000);

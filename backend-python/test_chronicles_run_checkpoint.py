@@ -49,6 +49,7 @@ def _checkpoint(
     flags=None,
     inventory=None,
     quests=None,
+    terminal_status=None,
 ):
     return client.put(
         f"/api/chronicles/runs/{run_id}/checkpoint",
@@ -61,6 +62,7 @@ def _checkpoint(
             "quests": quests or {},
             "consumedContentIds": consumed or [],
             "claimedRewards": rewards or [],
+            **({"terminalStatus": terminal_status} if terminal_status else {}),
         },
     )
 
@@ -245,3 +247,90 @@ def test_checkpoint_rejects_malformed_inventory_and_quests(monkeypatch):
         quests={"blind-king-key": {"status": "mystery"}},
     )
     assert bad_quest.status_code == 400
+
+
+def test_terminal_checkpoint_closes_run_and_retry_is_idempotent(monkeypatch):
+    _memory_store(monkeypatch)
+    client = _client()
+    run = _create_run(client)
+
+    final_flags = {
+        "__chrRuntime.version": 1,
+        "__chrRuntime.phase": "defeated",
+        "__chrRuntime.party.matthias.hp": 0,
+        "__chrRuntime.party.rook.hp": 0,
+        "__chrRuntime.party.bishop.hp": 0,
+        "__chrRuntime.party.knight.hp": 0,
+    }
+    first = _checkpoint(
+        client,
+        run["runId"],
+        version=0,
+        flags=final_flags,
+        terminal_status="defeated",
+    )
+
+    assert first.status_code == 200
+    assert first.json()["status"] == "defeated"
+    assert first.json()["worldVersion"] == 1
+
+    retry = _checkpoint(
+        client,
+        run["runId"],
+        version=0,
+        flags=final_flags,
+        terminal_status="defeated",
+    )
+    assert retry.status_code == 200
+    assert retry.json()["status"] == "defeated"
+    assert retry.json()["worldVersion"] == 1
+
+    forbidden = _checkpoint(
+        client,
+        run["runId"],
+        version=1,
+        flags={"afterDeath": True},
+    )
+    assert forbidden.status_code == 409
+    assert "ya terminó" in forbidden.json()["detail"]
+
+
+def test_terminal_checkpoint_rejects_unknown_status(monkeypatch):
+    _memory_store(monkeypatch)
+    client = _client()
+    run = _create_run(client)
+
+    response = _checkpoint(
+        client,
+        run["runId"],
+        version=0,
+        terminal_status="retired-to-mallorca",
+    )
+
+    assert response.status_code == 422
+
+
+def test_completed_checkpoint_requires_escaped_runtime_phase(monkeypatch):
+    _memory_store(monkeypatch)
+    client = _client()
+    run = _create_run(client)
+
+    invalid = _checkpoint(
+        client,
+        run["runId"],
+        version=0,
+        flags={"__chrRuntime.phase": "explore"},
+        terminal_status="completed",
+    )
+    assert invalid.status_code == 400
+
+    completed = _checkpoint(
+        client,
+        run["runId"],
+        version=0,
+        flags={"__chrRuntime.version": 1, "__chrRuntime.phase": "escaped"},
+        terminal_status="completed",
+    )
+    assert completed.status_code == 200
+    assert completed.json()["status"] == "completed"
+    assert completed.json()["worldVersion"] == 1

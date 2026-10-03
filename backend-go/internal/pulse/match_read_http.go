@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/matchdisconnect"
@@ -175,15 +174,22 @@ func (h *Handler) serveMatchRead(
 	})
 }
 
-func matchReadID(path string) (string, bool) {
-	const prefix = "/api/pvp/matches/"
-	if !strings.HasPrefix(path, prefix) {
-		return "", false
+func (h *Handler) allowMatchRead(username string, now time.Time) (bool, int) {
+	h.matchReadMu.Lock()
+	defer h.matchReadMu.Unlock()
+	window := h.matchReadWindows[username]
+	if window.start.IsZero() || now.Sub(window.start) >= time.Minute {
+		h.matchReadWindows[username] = rateWindow{start: now, count: 1}
+		return true, 0
 	}
-	matchID := strings.TrimPrefix(path, prefix)
-	if matchID == "" || strings.Contains(matchID, "/") {
-		return "", false
+	if window.count >= 60 {
+		retry := int(time.Minute.Seconds() - now.Sub(window.start).Seconds())
+		if retry < 1 {
+			retry = 1
+		}
+		return false, retry
 	}
-	return matchID, true
+	window.count++
+	h.matchReadWindows[username] = window
+	return true, 0
 }
-

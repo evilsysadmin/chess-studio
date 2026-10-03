@@ -181,7 +181,7 @@ for (const width of [360, 390, 430]) {
 
     const canvas = page.locator('.board3d-main-canvas');
     const focus = page.getByRole('button', { name: 'Focus', exact: true });
-    const abandon = page.getByRole('button', { name: 'Abandonar partida', exact: true });
+    const abandon = page.getByRole('button', { name: 'Salir de la partida', exact: true });
     const utility = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
     await expect(board).toBeVisible({ timeout: 30_000 });
     await expect(canvas).toBeVisible({ timeout: 30_000 });

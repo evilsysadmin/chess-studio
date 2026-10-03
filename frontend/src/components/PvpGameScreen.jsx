@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import PromotionModal from './PromotionModal.jsx';
 import { WarRoomUtilityMenu } from './GameWarRoomCommandColumn.jsx';
 import WarRoomBoardSurface from './WarRoomBoardSurface.jsx';
+import WarRoomExitOverlay from './WarRoomExitOverlay.jsx';
+import WarRoomAccountButton from './WarRoomAccountButton.jsx';
 import { formatClock } from '../clock.js';
 import { pvpApi } from '../pvpApi.js';
 import { pvpMatchPulseNeedsFullRefresh } from '../pvpMatchPolling.js';
@@ -353,19 +355,11 @@ export default function PvpGameScreen({ initialMatch, onExit, onMatchUpdate }) {
           <div className="board-live-row is-3d-warroom">
             <div className="game-board-stack game-board-stack-3d">
               <div className="game-board-3d-stage pvp-war-room__stage">
-                {match.status === 'active' ? (
-                  <button
-                    type="button"
-                    className="secondary-btn pvp-war-room__exit"
-                    aria-label="Salir de la partida"
-                    disabled={!connectionLive || resigning}
-                    onClick={() => setShowResignConfirm(true)}
-                  >
-                    ← Salir
-                  </button>
-                ) : (
-                  <button type="button" className="secondary-btn pvp-war-room__exit" onClick={() => onExit?.(match)}>← Lobby</button>
-                )}
+                <WarRoomExitOverlay
+                  disabled={match.status === 'active' && (!connectionLive || resigning)}
+                  onClick={match.status === 'active' ? () => setShowResignConfirm(true) : () => onExit?.(match)}
+                  ariaLabel={match.status === 'active' ? 'Salir de la partida' : 'Salir al lobby'}
+                />
                 <WarRoomBoardSurface
                   isThreeD
                   loadingLabel="Abriendo la sala…"
@@ -385,7 +379,7 @@ export default function PvpGameScreen({ initialMatch, onExit, onMatchUpdate }) {
                     orientation,
                     showCoordinates,
                     matthiasKingColor: null,
-                    cameraProfile: 'warroom',
+                    cameraProfile: 'duel',
                     hansFireplaceIteration: false,
                     hansFireCallEnabled: false,
                     immersive: true,
@@ -425,13 +419,14 @@ export default function PvpGameScreen({ initialMatch, onExit, onMatchUpdate }) {
                   <WarRoomUtilityMenu
                     game={match}
                     board={null}
-                    controls={{ onAbandon: match.status === 'active' && connectionLive ? () => setShowResignConfirm(true) : undefined }}
+                    controls={{}}
                     zenMode={false}
                     showFocus={false}
                     showRendererToggle={false}
                     showAppearance={false}
                     showZen={false}
                   />
+                  <WarRoomAccountButton />
                 </aside>
 
                 {resultText && (
@@ -440,9 +435,12 @@ export default function PvpGameScreen({ initialMatch, onExit, onMatchUpdate }) {
                     <strong className="pvp-war-room__result-title">{resultText.title}</strong>
                     <p className="pvp-war-room__result-lead">{resultText.detail}</p>
                     <blockquote className="pvp-war-room__result-verdict">
-                      <span>
+                      <span className="pvp-war-room__result-speaker">
                         <img src={CPU_IDENTITY.avatar} alt="" aria-hidden="true" />
-                        <b>{CPU_IDENTITY.name}</b>
+                        <span>
+                          <b>{CPU_IDENTITY.name}</b>
+                          <small>Comentario postpartida</small>
+                        </span>
                       </span>
                       <p>{matthiasVerdict}</p>
                     </blockquote>

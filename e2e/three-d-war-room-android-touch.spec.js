@@ -83,6 +83,7 @@ async function open3DFromAppearance(page) {
 
 async function openWarRoomAppearance(page) {
   const utilityButton = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
+  const accountButton = page.getByRole('button', { name: 'Mi cuenta', exact: true });
   await expect(utilityButton).toBeVisible({ timeout: 30_000 });
   await utilityButton.click();
   const appearanceItem = page.getByRole('menuitem', { name: 'Apariencia', exact: true });
@@ -199,9 +200,10 @@ test('War Room · Android selecciona una pieza en pointerdown y muestra destinos
 
   const turnPill = page.locator('.game-3d-turn-pill');
   const focusButton = page.getByRole('button', { name: 'Focus', exact: true });
-  const abandonButton = page.getByRole('button', { name: 'Abandonar partida', exact: true });
+  const abandonButton = page.getByRole('button', { name: 'Salir de la partida', exact: true });
   const appearanceButton = page.locator('.board3d-customize');
   const utilityButton = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
+  const accountButton = page.getByRole('button', { name: 'Mi cuenta', exact: true });
   const humanRail = page.locator('.game-board-stack-3d .game-player-rail.is-human');
   const musicRail = page.locator('.game-side-column-3d .game-side-music .music-deck-collapsed');
   const notationDisclosure = page.locator('.game-side-column-3d .game-notation-disclosure');
@@ -210,6 +212,7 @@ test('War Room · Android selecciona una pieza en pointerdown y muestra destinos
   await expect(abandonButton).toBeVisible();
   await expect(appearanceButton).toBeHidden();
   await expect(utilityButton).toBeVisible();
+  await expect(accountButton).toBeVisible();
   await expect(humanRail).toBeHidden();
   await expect(musicRail).toBeHidden();
   await expect(notationDisclosure).toBeHidden();
@@ -218,10 +221,14 @@ test('War Room · Android selecciona una pieza en pointerdown y muestra destinos
   const boardRect = await board3d.boundingBox();
   const focusRect = await focusButton.boundingBox();
   const utilityRect = await utilityButton.boundingBox();
+  const accountRect = await accountButton.boundingBox();
   expect(matthiasRect).not.toBeNull();
   expect(boardRect).not.toBeNull();
   expect(focusRect).not.toBeNull();
   expect(utilityRect).not.toBeNull();
+  expect(accountRect).not.toBeNull();
+  expect(accountRect.width).toBeGreaterThanOrEqual(44);
+  expect(accountRect.height).toBeGreaterThanOrEqual(44);
   expect(matthiasRect.height).toBeLessThanOrEqual(72);
   expect(matthiasRect.width).toBeLessThanOrEqual(360);
   expect(Math.abs((matthiasRect.x + matthiasRect.width) - (boardRect.x + boardRect.width))).toBeLessThanOrEqual(10);

@@ -10,7 +10,7 @@ Las reglas detalladas viven en los `.md` especializados enlazados aquí. Antes d
 - `Tactics` = **Chronicles of Matthias Tactics**.
 - Pawn Slug en Godot es **2D puro**. Sus sprites no usan Blender. Matthias conserva una única escala corporal canónica entre armas; variantes grandes/pequeñas son regresión.
 - Home 3D y War Room v2 usan la pipeline Blender.
-- La War Room **v1 clásica es la variante por defecto** y el baseline de rollback. v2/v3/v4 siguen seleccionables en el menú «…» cuando las variantes están habilitadas; una elección explícita del jugador se conserva por dispositivo. No volver a promover una variante Blender a default hasta que tenga paridad runtime/narrativa con v1, incluido Hans.
+- La War Room **v3 es la variante por defecto** cuando las variantes están habilitadas; una elección explícita del jugador se conserva por dispositivo y siempre manda sobre el default. v1 clásica sigue siendo el baseline de rollback y v1/v2/v3/v4 continúan seleccionables en el menú «…». Deshabilitar variantes debe seguir devolviendo de forma segura a v1.
 - Para assets grandes de runtime, preferir R2/CDN y mantener Git centrado en código, manifests y contratos.
 - Trabajar incrementalmente, con cambios pequeños, reversibles y verificables. No dar por buena una iteración visual sólo porque el build o CI estén verdes.
 - Cuando haya artefactos PNG de una pipeline visual, revisarlos y compararlos con el último baseline validado antes de integrar.
@@ -24,7 +24,9 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 - Corregir CI en la misma PR; no abrir otra para esquivar fallos.
 - Mientras CI corre, avanzar trabajo útil en otra PR relacionada en vez de esperar.
 - Máximo **5 PRs por chat** en rotación simultánea.
-- Cuando todos los required checks estén verdes, pasar la PR a Ready for review y habilitar/verificar native automerge.
+- PR **no visual** y sin inspección humana de PNG/capturas/renders: armar native automerge **al crearla**. La PR sigue empezando en Draft y branch protection + required checks siguen mandando; si GitHub no permite armarlo aún por estar Draft, reintentarlo automáticamente en cuanto pase a Ready.
+- PR visual, o cualquier PR cuya aceptación dependa de revisar PNG/capturas/renders: **no** armar automerge al crearla. Mantenerla Draft hasta revisar y aceptar la evidencia visual; entonces pasar a Ready y habilitar native automerge.
+- Cuando todos los required checks estén verdes, pasar la PR a Ready for review; en PR no visual verificar que el automerge ya quedó armado, y en PR visual habilitarlo sólo después de la revisión visual obligatoria.
 - Tras merge, comprobar los workflows posteriores relevantes (main admission, staging/deploy, smoke checks) antes de cerrar la iteración.
 - Mantener las llamadas a GitHub pequeñas y dirigidas: metadata, checks, SHA, commit/PR. Evitar diffs enormes, lecturas repetidas y blobs pesados cuando el trabajo pueda hacerse sobre artefactos locales/cacheados.
 - Si el conector GitHub/git no aparece inicialmente, **redescubrirlo antes de declarar el repositorio inaccesible**. No sustituir de entrada el flujo normal por fetches web, clones repetidos o llamadas grandes.
@@ -55,6 +57,7 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 | OCI / staging / secretos / runtime | [`skills/oci-release-observability/SKILL.md`](skills/oci-release-observability/SKILL.md), [`docs/operations/oci-backend-migration.md`](docs/operations/oci-backend-migration.md), [`docs/operations/oci-secret-lifecycle.md`](docs/operations/oci-secret-lifecycle.md), READMEs bajo `infra/oci/` |
 | Grafana / observabilidad | [`skills/oci-release-observability/SKILL.md`](skills/oci-release-observability/SKILL.md), [`infra/grafana/README.md`](infra/grafana/README.md), [`ops/grafana/README.md`](ops/grafana/README.md) |
 | Presencia / Admin | [`docs/operations/presence-admin.md`](docs/operations/presence-admin.md), [`backend-python/AGENTS.md`](backend-python/AGENTS.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
+| Migración Python → Go / edge API / kill-switches | [`docs/operations/go-migration.md`](docs/operations/go-migration.md), [`docs/operations/pvp.md`](docs/operations/pvp.md) |
 | PvP / lobby / retos / Sala de Duelos | [`docs/operations/pvp-duel-hall.md`](docs/operations/pvp-duel-hall.md), [`backend-python/AGENTS.md`](backend-python/AGENTS.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
 | PvP / 1v1 / lobby / handoff / rating humano | [`docs/operations/pvp.md`](docs/operations/pvp.md), [`docs/operations/resilience-degraded-mode.md`](docs/operations/resilience-degraded-mode.md), [`backend-python/AGENTS.md`](backend-python/AGENTS.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
 | Web Storage / perfil / migraciones | [`docs/operations/client-storage.md`](docs/operations/client-storage.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
@@ -102,6 +105,7 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 ### Operaciones y runtime
 
 - [`docs/operations/architecture-ownership.md`](docs/operations/architecture-ownership.md)
+- [`docs/operations/go-migration.md`](docs/operations/go-migration.md) — plan y contrato de la migración strangler de Python a Go.
 - [`docs/operations/tutorials.md`](docs/operations/tutorials.md)
 - [`docs/operations/game-state-recovery.md`](docs/operations/game-state-recovery.md)
 - [`docs/operations/training-quality.md`](docs/operations/training-quality.md)

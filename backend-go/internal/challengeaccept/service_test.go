@@ -8,17 +8,17 @@ import (
 )
 
 type fakeStore struct {
-	challenge       Challenge
-	challengeFound  bool
-	match           Match
-	matchFound      bool
-	active          map[string]bool
-	roster          map[string]bool
-	commitMatch     Match
-	commitOK        bool
-	err             error
-	commitCalls     int
-	committedDraft  Match
+	challenge      Challenge
+	challengeFound bool
+	match          Match
+	matchFound     bool
+	active         map[string]bool
+	roster         map[string]bool
+	commitMatch    Match
+	commitOK       bool
+	err            error
+	commitCalls    int
+	committedDraft Match
 }
 
 func (f *fakeStore) GetChallenge(context.Context, string) (Challenge, bool, error) {
@@ -258,5 +258,11 @@ func TestAcceptPropagatesEntropyFailureWithoutWriting(t *testing.T) {
 	}
 	if store.commitCalls != 0 {
 		t.Fatalf("commit called after entropy failure: %d", store.commitCalls)
+	}
+}
+
+func TestInitialClockIsThirtyMinutes(t *testing.T) {
+	if InitialClockMS != int64(30*60*1000) {
+		t.Fatalf("InitialClockMS=%d want=%d", InitialClockMS, int64(30*60*1000))
 	}
 }

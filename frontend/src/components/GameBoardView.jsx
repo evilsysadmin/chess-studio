@@ -5,6 +5,7 @@ import GameSideColumn from './GameSideColumn.jsx';
 import GameStatusStrips from './GameStatusStrips.jsx';
 import GameWarRoomCommandColumn from './GameWarRoomCommandColumn.jsx';
 import WarRoomBoardSurface from './WarRoomBoardSurface.jsx';
+import WarRoomExitOverlay from './WarRoomExitOverlay.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import Matthias3DOpeningBanter from './Matthias3DOpeningBanter.jsx';
 import WarRoomHansFireCall from './WarRoomHansFireCall.jsx';
@@ -217,6 +218,20 @@ export default function GameBoardView({
             {isThreeD ? (
               <div ref={matthias3DStageRef} className="game-board-3d-stage">
                 <WarRoomBoardSurface isThreeD boardProps={boardProps} />
+                <WarRoomExitOverlay
+                  onClick={controls.onAbandon}
+                  ariaLabel="Salir de la partida"
+                />
+                {!zenMode && !focusActive && board.selectionNotice && (
+                  <div
+                    className={`move-availability-note move-availability-note-warroom ${board.selectionNotice.kind}`}
+                    role="status"
+                    aria-live="polite"
+                  >
+                    <b>{board.selectionNotice.kind === 'pinned' ? <>Pieza <GlossaryTerm term="Clavada">clavada</GlossaryTerm></> : 'Sin jugadas legales'}</b>
+                    <span>{board.selectionNotice.text}</span>
+                  </div>
+                )}
                 {!zenMode && !focusActive && activeBoardBubble && matthias3DBubbleStyle && (
                   <aside
                     key={activeBoardBubble.id}
@@ -283,7 +298,7 @@ export default function GameBoardView({
               </aside>
             )}
 
-            {!zenMode && !focusActive && board.selectionNotice && (
+            {!isThreeD && !zenMode && !focusActive && board.selectionNotice && (
               <div className={`move-availability-note ${board.selectionNotice.kind}`} role="status" aria-live="polite">
                 <b>{board.selectionNotice.kind === 'pinned' ? <>Pieza <GlossaryTerm term="Clavada">clavada</GlossaryTerm></> : 'Sin jugadas legales'}</b>
                 <span>{board.selectionNotice.text}</span>

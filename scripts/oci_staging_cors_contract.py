@@ -10,7 +10,13 @@ deploy = (ROOT / "scripts" / "oci_existing_a1_deploy.sh").read_text(encoding="ut
 compose = (ROOT / "infra" / "oci" / "runtime" / "docker-compose.yml").read_text(encoding="utf-8")
 backend_main_path = ROOT / "backend-python" / "main.py"
 backend_main = backend_main_path.read_text(encoding="utf-8")
-go_pulse = (ROOT / "backend-go" / "internal" / "pulse" / "pulse.go").read_text(encoding="utf-8")
+# The whole native handler package, not one file: declarations move between
+# files (canonicalBrowserOrigins lives in auth.go since the pulse split).
+go_pulse = "\n".join(
+    path.read_text(encoding="utf-8")
+    for path in sorted((ROOT / "backend-go" / "internal" / "pulse").glob("*.go"))
+    if not path.name.endswith("_test.go")
+)
 verifier = (ROOT / "scripts" / "verify_backend_staging.py").read_text(encoding="utf-8")
 staging_deploy = (ROOT / ".github" / "workflows" / "staging-deploy.yml").read_text(encoding="utf-8")
 service_control = (ROOT / ".github" / "workflows" / "oci-staging-service.yml").read_text(encoding="utf-8")
@@ -22,6 +28,11 @@ signal_service = (ROOT / "infra" / "oci" / "runtime" / "chess-studio-staging-sig
 signal_timer = (ROOT / "infra" / "oci" / "runtime" / "chess-studio-staging-signal.timer").read_text(encoding="utf-8")
 deploy_watcher = (ROOT / "scripts" / "oci_staging_deploy_watcher.py").read_text(encoding="utf-8")
 deploy_watcher_unit = (ROOT / "infra" / "oci" / "runtime" / "chess-studio-deploy-watcher.service").read_text(encoding="utf-8")
+existing_install = (ROOT / "scripts" / "oci_existing_a1_install.sh").read_text(encoding="utf-8")
+sudoers = (ROOT / "infra" / "oci" / "runtime" / "ocarun.sudoers").read_text(encoding="utf-8")
+ssh_authorize_root = (ROOT / "scripts" / "oci_ssh_authorize_root.py").read_text(encoding="utf-8")
+ssh_authorize_client = (ROOT / "scripts" / "oci_ssh_authorize.py").read_text(encoding="utf-8")
+makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
 
 STAGING_ORIGIN = "https://staging.chess-studio.shadowops.dpdns.org"
 
@@ -47,6 +58,10 @@ def assigned_literal_strings(source: str, variable: str) -> set[str]:
 required_deploy_fragments = (
     'target=staging',
     'cors_origin="${CHESS_STUDIO_CORS_ORIGINS:-https://staging.chess-studio.shadowops.dpdns.org}"',
+    'canonical_cors_origin="https://staging.chess-studio.shadowops.dpdns.org"',
+    'canonical_cors_origin="https://chess-studio.shadowops.dpdns.org"',
+    '[[ "$cors_origin" != "$canonical_cors_origin" ]]',
+    'refusing non-canonical browser CORS origin',
     'CHESS_STUDIO_CORS_ORIGINS="$cors_origin"',
     'pvp_sparring_enabled=true',
     'pvp_sparring_enabled=false',
@@ -69,13 +84,29 @@ required_deploy_fragments = (
     "cors_attest",
     "pvp_browser_cors_attest",
     "/api/pvp/roster",
+    "pvp_lobby_read_attest",
+    "pvp_virtual_roster_attest",
+    "PVP_VIRTUAL_ROSTER_OK",
+    "pvp_browser_token",
+    "pvp_authenticated_browser_attest",
+    'endpoint="$api_base/pvp/lobby/pulse"',
+    "PVP_AUTHENTICATED_BROWSER_OK",
+    "virtualPlayersEnabled",
+    "CHESS_STUDIO_PVP_ALLOW_PYTHON_FALLBACK_STAGING",
+    "deployment_target == 'staging'",
+    "required_native",
+    "/api/pvp/lobby",
     "pvp_challenge_browser_attest",
     "/api/pvp/challenges",
     "Access-Control-Request-Method: POST",
     "authorization,content-type,x-request-id,x-client-release",
     "edge PvP browser CORS attestation failed after cutover",
+    "edge PvP full lobby read attestation failed after cutover",
+    "edge PvP authenticated browser lobby/pulse attestation failed after cutover",
     "edge PvP challenge browser transport attestation failed after cutover",
     "OCI staging public PvP roster did not prove native Go browser response semantics",
+    "OCI staging public PvP lobby did not prove native Go read semantics",
+    "OCI staging public PvP authenticated browser lobby/pulse contract failed",
     "OCI staging public PvP challenge transport did not prove browser JSON/CORS semantics",
     "X-Chess-Pvp-Native",
     "deliberately-invalid",
@@ -84,9 +115,86 @@ required_deploy_fragments = (
 for fragment in required_deploy_fragments:
     assert fragment in deploy, f"missing OCI staging CORS deploy contract: {fragment}"
 
+staging_live = (ROOT / "e2e" / "staging-live.spec.js").read_text(encoding="utf-8")
+for fragment in (
+    "assertLivePvpBrowserPath",
+    "page.on('requestfailed', onRequestFailed)",
+    "headers['access-control-allow-origin']",
+    "x-chess-pvp-edge",
+    "x-chess-pvp-native",
+    "'/lobby/pulse'",
+    "'Recibir retos'",
+):
+    assert fragment in staging_live, f"missing real Chromium PvP CORS staging gate: {fragment}"
+
+# Human SSH remains tunnel-only, but the already-created A1 still needs a
+# controlled way to authorize an operator public key. Keep this recovery path
+# narrower than general root Run Command access.
+for fragment in (
+    'ssh_authorize_source="$repo/scripts/oci_ssh_authorize_root.py"',
+    'ssh_authorize_target="/usr/local/sbin/chess-studio-ssh-authorize"',
+    'install -o root -g root -m 0755 "$ssh_authorize_source" "$ssh_authorize_target"',
+):
+    assert fragment in deploy, f"missing SSH authorization deploy contract: {fragment}"
+for fragment in (
+    'source_ssh_authorize="$repo/scripts/oci_ssh_authorize_root.py"',
+    'target_ssh_authorize=/usr/local/sbin/chess-studio-ssh-authorize',
+    'install -o root -g root -m 0755 "$source_ssh_authorize" "$target_ssh_authorize"',
+):
+    assert fragment in existing_install, f"missing SSH authorization adoption contract: {fragment}"
+
+ssh_sudoers = (
+    "Cmnd_Alias CHESS_STUDIO_SSH_AUTHORIZE = "
+    "/usr/local/sbin/chess-studio-ssh-authorize /tmp/chess-studio-operator-key.*"
+)
+assert ssh_sudoers in sudoers
+assert "/usr/local/sbin/chess-studio-ssh-authorize *" not in sudoers
+assert "CHESS_STUDIO_SSH_AUTHORIZE" in sudoers.split("NOPASSWD:", 1)[1]
+for fragment in (
+    'getattr(os, "O_NOFOLLOW", 0)',
+    "os.fstat(fd)",
+    'pwd.getpwnam("ubuntu")',
+    "os.chmod(authorized, 0o600)",
+    "CHESS_STUDIO_SSH_OPERATOR_KEY_OK",
+    'source.parent != Path("/tmp")',
+    'source.name.startswith(TMP_PREFIX)',
+):
+    assert fragment in ssh_authorize_root, f"missing narrow root SSH key guard: {fragment}"
+for fragment in (
+    "OCI_SSH_PUBLIC_KEY",
+    '"instance-agent"',
+    '"command-execution"',
+    "base64.b64encode((public_key",
+    "sudo --non-interactive /usr/local/sbin/chess-studio-ssh-authorize",
+    "CHESS_STUDIO_SSH_OPERATOR_KEY_OK",
+):
+    assert fragment in ssh_authorize_client, f"missing operator SSH authorization client contract: {fragment}"
+assert "oci-a1-authorize-ssh: oci-session" in makefile
+
+
+# The human ubuntu operator intentionally has Docker socket access. The docker
+# group is root-equivalent, so this is limited to the operator account and must
+# be reconciled by both adoption and every immutable deploy.
+for source, label in (
+    (deploy, "deploy"),
+    (existing_install, "adoption"),
+):
+    for fragment in (
+        "ensure_operator_docker_access()",
+        "getent group docker",
+        "id -nG ubuntu | grep -qw docker",
+        "usermod -aG docker ubuntu",
+        "failed to grant ubuntu docker group membership",
+        "OCI_OPERATOR_DOCKER_ACCESS state=added",
+        "OCI_OPERATOR_DOCKER_ACCESS state=already",
+        "ensure_operator_docker_access",
+    ):
+        assert fragment in source, f"missing operator Docker access contract ({label}): {fragment}"
+
 assert 'CORS_ORIGINS: "${CHESS_STUDIO_CORS_ORIGINS:-https://staging.chess-studio.shadowops.dpdns.org}"' in compose
+assert compose.count('PVP_NATIVE_LOBBY_READ_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_LOBBY_READ_ENABLED:-true}"') == 2
 assert compose.count('PVP_NATIVE_ROSTER_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_ROSTER_ENABLED:-true}"') == 2
-assert compose.count('PVP_NATIVE_CHALLENGE_CREATE_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_CHALLENGE_CREATE_ENABLED:-false}"') == 2
+assert compose.count('PVP_NATIVE_CHALLENGE_CREATE_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_CHALLENGE_CREATE_ENABLED:-true}"') == 2
 assert compose.count('PVP_NATIVE_CHAT_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_CHAT_ENABLED:-true}"') == 2
 assert compose.count('PVP_NATIVE_CHALLENGE_RESOLUTION_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_CHALLENGE_RESOLUTION_ENABLED:-true}"') == 2
 assert compose.count('PVP_NATIVE_MATCH_HANDOFF_CANCEL_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_MATCH_HANDOFF_CANCEL_ENABLED:-true}"') == 2
@@ -128,6 +236,12 @@ required_public_verifier_fragments = (
     'f"{base}/pvp/challenges?probe={probe}"',
     'method="POST"',
     "pvp_roster_cors_http",
+    'f"{base}/pvp/_edge/ready?{ready_query}"',
+    "PVP_FULL_GO_READY_KEYS",
+    "pvp_full_go_ready",
+    '"nativeChallengeCreate"',
+    '"nativeMatchMove"',
+    "pvp_release={pvp_observed}",
     "fetch_roster_rejection",
     "native_roster_rejection_ok",
     "pvp_roster_response_http",
@@ -137,9 +251,17 @@ required_public_verifier_fragments = (
     "pvp_challenge_cors_http",
     "pvp_challenge_transport=ok",
     "x-chess-pvp-native",
+    "fetch_text",
+    'f"{base}/_deploy/committed?{ready_query}"',
+    "committed == expected",
+    "committed_build=",
 )
 for fragment in required_public_verifier_fragments:
     assert fragment in verifier, f"missing public staging CORS verifier contract: {fragment}"
+assert "assert pvp_full_go_ready(full_go)" in verifier
+assert "pvp_observed == expected" in verifier
+assert 'broken["nativeChallengeCreate"] = False' in verifier
+assert 'broken["virtualPlayersEnabled"] = False' in verifier
 
 # Runtime configuration is operational state. Normal releases consume the
 # already-installed runtime on both the host-watcher path and the Run Command
@@ -317,8 +439,9 @@ assert 'candidate_port="$(slot_port "$candidate_color")"' in deploy
 assert 'compose "$sha" up -d --no-build --force-recreate "$candidate_service"' in deploy
 assert 'candidate_pvp_service="$(pvp_service "$candidate_color")"' in deploy
 assert 'compose "$sha" up -d --no-build --force-recreate "$candidate_service" "$candidate_pvp_service"' in deploy
-assert 'if attest "$sha" "$candidate_port" && pvp_attest "$candidate_pvp_service"; then' in deploy
+assert 'if attest "$sha" "$candidate_port" && pvp_attest "$candidate_pvp_service" "$target"; then' in deploy
 assert "payload.get('nativePulse')" in deploy
+assert "payload.get('nativeLobbyRead')" in deploy
 assert "payload.get('nativeRoster')" in deploy
 assert "payload.get('nativeChat')" in deploy
 assert "payload.get('nativeChallengeResolution')" in deploy
@@ -329,7 +452,9 @@ assert "payload.get('nativeMatchReady')" in deploy
 assert "payload.get('nativeMatchResign')" in deploy
 assert "payload.get('nativeMatchRead')" in deploy
 assert "payload.get('nativeMatchMove')" in deploy
+assert "payload.get('nativeResidentMove')" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_PULSE_ENABLED" in deploy
+assert "CHESS_STUDIO_PVP_NATIVE_LOBBY_READ_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_ROSTER_ENABLED" in deploy
 assert "env.get('CHESS_STUDIO_PVP_NATIVE_ROSTER_ENABLED', 'true')" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_CHAT_ENABLED" in deploy
@@ -338,27 +463,143 @@ assert "CHESS_STUDIO_PVP_NATIVE_MATCH_READY_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_MATCH_RESIGN_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_MATCH_READ_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_MATCH_MOVE_ENABLED" in deploy
+assert "CHESS_STUDIO_PVP_NATIVE_RESIDENT_MOVE_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_CHALLENGE_RESOLUTION_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_CHALLENGE_ACCEPT_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_CHALLENGE_CREATE_ENABLED" in deploy
-assert "env.get('CHESS_STUDIO_PVP_NATIVE_CHALLENGE_CREATE_ENABLED', 'false')" in deploy
+assert "env.get('CHESS_STUDIO_PVP_NATIVE_CHALLENGE_CREATE_ENABLED', 'true')" in deploy
+# The browser attestation must default like compose, or an unset variable
+# silently skips the native challenge-create marker check.
+assert 'native_expected="${CHESS_STUDIO_PVP_NATIVE_CHALLENGE_CREATE_ENABLED:-true}"' in deploy
+assert "CHESS_STUDIO_PVP_NATIVE_CHALLENGE_CREATE_ENABLED:-false" not in deploy
+assert "CHESS_STUDIO_PVP_ALLOW_PYTHON_FALLBACK_STAGING" in deploy
+assert "deployment_target == 'staging'" in deploy
+assert "required_native = (" in deploy
+assert "any(payload.get(key) is not True for key in required_native)" in deploy
 assert 'pvp_target_image="$(pvp_image_ref "$sha")"' in deploy
+# Strangler front: only the candidate cutover and its commit marker may put
+# nginx in API "go" mode; every rollback render stays "direct" because an
+# older Go sidecar may not be able to front the whole API.
+assert 'render_edge "$candidate_color" go "${previous_sha:-}" "$api_edge_mode"' in deploy
+assert 'render_edge "$candidate_color" go "$sha" "$api_edge_mode"' in deploy
+for line in deploy.splitlines():
+    if "render_edge \"$previous_color\"" in line:
+        assert "api_edge_mode" not in line, line
+assert 'local api_mode="${4:-direct}"' in deploy
+assert "wait_pvp_browser_attest api_edge_attest" in deploy
 assert 'docker pull --quiet "$pvp_target_image"' in deploy
 assert 'render_edge "$candidate_color" go' in deploy
-assert 'render_edge "$previous_color" direct' in deploy
+assert 'render_edge "$candidate_color" go "$sha"' in deploy
+assert 'render_edge "$previous_color" go "$previous_sha"' in deploy
+assert 'wait_pvp_edge_attest "$port" "$previous_sha"' in deploy
+assert 'render_edge "$previous_color" direct "$previous_sha"' in deploy
+assert 'rollback_pvp_mode="go"' in deploy
+assert 'pvp=$rollback_pvp_mode' in deploy
+assert '--committed-sha "$committed_sha"' in deploy
+assert deploy.rfind('record_successful_backend "$sha"') < deploy.rfind('render_edge "$candidate_color" go "$sha"')
+assert 'failed to publish committed OCI generation marker' in deploy
 assert 'remove_service "$(pvp_service "$previous_color")"' in deploy
 assert 'CHESS_STUDIO_DEPLOY_OK target=$target repo_ref=$sha color=$candidate_color pvp=go' in deploy
 assert 'pvp_edge_attest()' in deploy
+assert 'local expected_release="${2:-$sha}"' in deploy
+assert 'pvp_edge_attest "$target_port" "$expected_release"' in deploy
+assert 'pvp_virtual_roster_attest()' in deploy
+assert 'if ! pvp_virtual_roster_attest "$candidate_service" "$candidate_pvp_service" "$target"; then' in deploy
+assert 'pvp_browser_token()' in deploy
+assert 'pvp_authenticated_browser_attest()' in deploy
+assert 'if ! pvp_authenticated_browser_attest "$candidate_service" "http://127.0.0.1:${port}/api" "$target"; then' in deploy
+assert 'if ! pvp_authenticated_browser_attest "$candidate_service" "$public_api_url" "$target"; then' in deploy
+for virtual_rival in ("sparringmeister", "otto_falk", "marta_stein", "viktor_kraus"):
+    assert virtual_rival in deploy, f"missing virtual roster deploy attestation rival: {virtual_rival}"
+virtual_roster_attest = deploy.split("pvp_virtual_roster_attest() {", 1)[1].split(
+    "\npvp_edge_attest() {", 1
+)[0]
+assert 'for username in required:' in virtual_roster_attest
+assert 'for username in ("otto_falk", "marta_stein", "viktor_kraus"):' in virtual_roster_attest
+assert '!= "resident"' in virtual_roster_attest
+assert 'sparring: "sparring"' not in virtual_roster_attest
+browser_token = deploy.split("pvp_browser_token() {", 1)[1].split(
+    "\npvp_authenticated_browser_attest() {", 1
+)[0]
+assert 'PVP_BROWSER_TOKEN=' in browser_token
+assert 'print(f"PVP_BROWSER_TOKEN={create_token(owner, session_version)}")' in browser_token
+authenticated_browser_attest = deploy.split("pvp_authenticated_browser_attest() {", 1)[1].split(
+    "\npvp_edge_attest() {", 1
+)[0]
+for fragment in (
+    'token_output="$(pvp_browser_token "$backend_service")"',
+    '[[ "$line" == PVP_BROWSER_TOKEN=* ]]',
+    'token_line="${line#PVP_BROWSER_TOKEN=}"',
+    'multiple token sentinels',
+    'did not receive one framed JWT',
+    'endpoint="$api_base/pvp/lobby"',
+    'endpoint="$api_base/pvp/lobby/pulse"',
+    'expected_native="lobby-read"',
+    'expected_native="lobby-pulse"',
+    '-H "Origin: $cors_origin"',
+    "-H 'Access-Control-Request-Method: GET'",
+    "-H 'Access-Control-Request-Headers: authorization,x-request-id,x-client-release,x-presence-session'",
+    '[[ "$preflight_status" != "204" ]]',
+    'authenticated preflight must expose exactly one canonical ACAO',
+    'authenticated preflight does not allow GET',
+    'for required in ("authorization", "x-request-id", "x-client-release", "x-presence-session")',
+    'authenticated preflight did not traverse Go edge',
+    'authenticated preflight hit the wrong native route',
+    '-H "Authorization: Bearer $token"',
+    '[[ "$status" != "200" ]]',
+    'origins != [expected_origin.strip().lower()]',
+    'parsed.get("x-chess-pvp-edge", [])',
+    'parsed.get("x-chess-pvp-native", [])',
+    'parsed.get("x-request-id", [])',
+    'payload.get("roster")',
+    'payload.get("source") != "go"',
+    '"revision" not in payload',
+    'payload.get("pollAfterMs")',
+):
+    assert fragment in authenticated_browser_attest, (
+        f"missing authenticated browser deploy attestation contract: {fragment}"
+    )
+assert "payload.get('release')" in deploy
+assert "expected_release" in deploy
 assert '"http://127.0.0.1:${target_port}/api/pvp/_edge/ready"' in deploy
 assert "X-Chess-Pvp-Edge:" in deploy
 assert 'wait_pvp_edge_attest()' in deploy
 assert 'CHESS_STUDIO_PVP_EDGE_ATTEST_ATTEMPTS:-20' in deploy
+assert 'wait_pvp_browser_attest()' in deploy
+assert 'CHESS_STUDIO_PVP_BROWSER_ATTEST_ATTEMPTS:-12' in deploy
+assert 'if "$attest_fn" "$endpoint"; then' in deploy
 assert 'sleep 0.25' in deploy
 assert 'if ! wait_pvp_edge_attest "$port"; then' in deploy
-assert 'if ! pvp_browser_cors_attest "http://127.0.0.1:${port}/api/pvp/roster"; then' in deploy
-assert 'if ! pvp_challenge_browser_attest "http://127.0.0.1:${port}/api/pvp/challenges"; then' in deploy
+assert 'if ! wait_pvp_browser_attest pvp_browser_cors_attest "http://127.0.0.1:${port}/api/pvp/roster"; then' in deploy
+assert 'if ! wait_pvp_browser_attest pvp_lobby_read_attest "http://127.0.0.1:${port}/api/pvp/lobby"; then' in deploy
+assert 'if ! pvp_authenticated_browser_attest "$candidate_service" "http://127.0.0.1:${port}/api" "$target"; then' in deploy
+assert 'if ! wait_pvp_browser_attest pvp_challenge_browser_attest "http://127.0.0.1:${port}/api/pvp/challenges"; then' in deploy
+roster_attest = deploy.split("pvp_browser_cors_attest() {", 1)[1].split(
+    "\npvp_lobby_read_attest() {", 1
+)[0]
+lobby_attest = deploy.split("pvp_lobby_read_attest() {", 1)[1].split(
+    "\npvp_challenge_browser_attest() {", 1
+)[0]
+challenge_attest = deploy.split("pvp_challenge_browser_attest() {", 1)[1].split(
+    "\nwait_pvp_edge_attest() {", 1
+)[0]
+assert '[[ "$status" != "204" ]]' in roster_attest
+assert '[[ "$status" != "200" && "$status" != "204" ]]' not in roster_attest
+assert '[[ "$status" != "401" ]]' in lobby_attest
+assert 'lobby-read' in lobby_attest
+assert 'deliberately-invalid' in lobby_attest
+assert '[[ "$status" != "200" && "$status" != "204" ]]' in challenge_attest
 assert 'if ! pvp_browser_cors_attest "${public_api_url}/pvp/roster"; then' in deploy
+assert 'if ! pvp_lobby_read_attest "${public_api_url}/pvp/lobby"; then' in deploy
+assert 'if ! pvp_authenticated_browser_attest "$candidate_service" "$public_api_url" "$target"; then' in deploy
 assert 'if ! pvp_challenge_browser_attest "${public_api_url}/pvp/challenges"; then' in deploy
+public_authenticated = deploy.find(
+    'if ! pvp_authenticated_browser_attest "$candidate_service" "$public_api_url" "$target"; then'
+)
+commit_marker = deploy.rfind('record_successful_backend "$sha"')
+assert 0 <= public_authenticated < commit_marker, (
+    "authenticated public lobby/pulse browser attestation must pass before the generation is committed"
+)
 assert 'compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge' in deploy
 assert 'render_edge "$candidate_color"' in deploy
 assert 'reload_edge' in deploy
@@ -385,6 +626,9 @@ assert '127.0.0.1:${CHESS_STUDIO_BACKEND_PORT:-4000}:8080' in compose
 assert 'nginx:1.27.5-alpine' in compose
 edge_renderer = (ROOT / "scripts" / "oci_blue_green_edge.py").read_text(encoding="utf-8")
 assert 'location = /api/pvp/_edge/ready' in edge_renderer
+assert 'location = /api/_deploy/committed' in edge_renderer
+assert 'return 503 "uncommitted' in edge_renderer
+assert 'parser.add_argument("--committed-sha", default="")' in edge_renderer
 assert 'location = /api/pvp' in edge_renderer
 assert 'location ^~ /api/pvp/' in edge_renderer
 assert 'pvp_upstream = f"pvp_{color}:8080" if pvp_mode == "go" else backend_upstream' in edge_renderer
@@ -448,6 +692,8 @@ assert "ai-staging.shadowops.dpdns.org/health" in deploy_watcher
 assert "refs/heads/main" not in deploy_watcher
 assert "ls-remote" not in deploy_watcher
 assert "OCI_DEPLOY_WATCH_SUPERSEDED" in deploy_watcher
+assert '"$STAGING_API_URL/_deploy/committed?probe=$attempt"' in staging_deploy
+assert 'committed="$(tr -d' in staging_deploy
 assert "OCI_DEPLOY_WATCH_IMAGE_PENDING" in deploy_watcher
 assert '["docker", "manifest", "inspect", backend_image_ref(candidate)]' in deploy_watcher
 assert 'git -C "$repo" ls-remote --exit-code origin refs/heads/main' in deploy

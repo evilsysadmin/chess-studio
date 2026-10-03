@@ -10,14 +10,32 @@ import tempfile
 VALID_COLORS = {"blue", "green"}
 
 
-def render(color: str, *, pvp_mode: str = "direct") -> str:
+def normalize_committed_sha(value: str) -> str:
+    normalized = str(value or "").strip().lower()
+    if not normalized:
+        return ""
+    if len(normalized) != 40 or any(ch not in "0123456789abcdef" for ch in normalized):
+        raise SystemExit(f"invalid committed backend SHA: {value!r}")
+    return normalized
+
+
+def render(color: str, *, pvp_mode: str = "direct", committed_sha: str = "", api_mode: str = "direct") -> str:
     color = str(color or "").strip().lower()
     if color not in VALID_COLORS:
         raise SystemExit(f"invalid backend color: {color!r}")
     if pvp_mode not in {"direct", "go"}:
         raise SystemExit(f"invalid PvP mode: {pvp_mode!r}")
+    if api_mode not in {"direct", "go"}:
+        raise SystemExit(f"invalid API mode: {api_mode!r}")
+    if api_mode == "go" and pvp_mode != "go":
+        # Without a healthy Go sidecar there is nothing to front the API with.
+        raise SystemExit("API mode go requires PvP mode go")
+    committed_sha = normalize_committed_sha(committed_sha)
     backend_upstream = f"backend_{color}:4000"
     pvp_upstream = f"pvp_{color}:8080" if pvp_mode == "go" else backend_upstream
+    # Strangler front: in api "go" mode the Go sidecar receives the whole API
+    # and forwards to Python whatever it does not serve natively yet.
+    api_upstream = pvp_upstream if api_mode == "go" else backend_upstream
     proxy_common = """        proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -25,6 +43,23 @@ def render(color: str, *, pvp_mode: str = "direct") -> str:
         proxy_connect_timeout 2s;
         proxy_send_timeout 45s;
         proxy_read_timeout 45s;"""
+    committed_response = (
+        f'        return 200 "{committed_sha}\\n";'
+        if committed_sha
+        else '        return 503 "uncommitted\\n";'
+    )
+    committed_location = f"""
+    # Host-committed generation. This is intentionally independent from the
+    # candidate upstream: it changes only after every post-cutover attestation
+    # has passed and rollback restores the previous committed SHA.
+    location = /api/_deploy/committed {{
+        default_type text/plain;
+        add_header Cache-Control "no-store, no-cache, must-revalidate" always;
+        add_header Pragma "no-cache" always;
+{committed_response}
+    }}
+"""
+
     probe_location = ""
     if pvp_mode == "go":
         probe_location = f"""
@@ -47,6 +82,7 @@ server {{
     access_log off;
     keepalive_timeout 5s;
 
+{committed_location}
 {probe_location}
     # PvP is cut over independently so the rest of the product still talks
     # directly to Python while Go progressively takes ownership of the domain.
@@ -68,7 +104,7 @@ server {{
 {proxy_common}
         proxy_set_header Connection "";
         keepalive_timeout 5s;
-        proxy_pass http://{backend_upstream};
+        proxy_pass http://{api_upstream};
     }}
 }}
 """
@@ -92,9 +128,21 @@ def atomic_write(path: pathlib.Path, content: str) -> None:
 
 
 def self_test() -> None:
-    blue = render("blue", pvp_mode="go")
-    green = render("green", pvp_mode="go")
-    fallback = render("blue", pvp_mode="direct")
+    sample = "0123456789abcdef0123456789abcdef01234567"
+    blue = render("blue", pvp_mode="go", committed_sha=sample)
+    green = render("green", pvp_mode="go", committed_sha=sample)
+    fallback = render("blue", pvp_mode="direct", committed_sha=sample)
+    uncommitted = render("blue", pvp_mode="direct")
+    fronted = render("green", pvp_mode="go", committed_sha=sample, api_mode="go")
+    assert fronted.count("pvp_green:8080") == 4  # probe, /api/pvp, /api/pvp/, /
+    assert "backend_green:4000" not in fronted
+    assert blue.count("backend_blue:4000") == 1  # default api mode stays direct
+    try:
+        render("blue", pvp_mode="direct", api_mode="go")
+    except SystemExit:
+        pass
+    else:
+        raise AssertionError("api go mode accepted without the Go sidecar")
     assert "backend_blue:4000" in blue
     assert "backend_green:4000" in green
     assert "pvp_blue:8080" in blue
@@ -110,6 +158,17 @@ def self_test() -> None:
     assert "proxy_read_timeout 45s" in blue
     assert "keepalive_timeout 5s" in blue
     assert "listen 8080" in blue
+    assert "location = /api/_deploy/committed" in blue
+    assert f'return 200 "{sample}\\n";' in blue
+    assert 'return 503 "uncommitted\\n";' in uncommitted
+    assert normalize_committed_sha(sample.upper()) == sample
+    for invalid_sha in ("main", "g" * 40, sample[:-1]):
+        try:
+            render("blue", committed_sha=invalid_sha)
+        except SystemExit:
+            pass
+        else:
+            raise AssertionError(f"accepted invalid committed SHA: {invalid_sha!r}")
     for invalid in ("", "red", "../blue", "BLUE GREEN"):
         try:
             render(invalid)
@@ -126,13 +185,18 @@ def main() -> None:
     parser.add_argument("--color", choices=sorted(VALID_COLORS))
     parser.add_argument("--output")
     parser.add_argument("--pvp-mode", choices=("direct", "go"), default="direct")
+    parser.add_argument("--committed-sha", default="")
+    parser.add_argument("--api-mode", choices=("direct", "go"), default="direct")
     args = parser.parse_args()
     if args.self_test:
         self_test()
         return
     if not args.color or not args.output:
         parser.error("--color and --output are required")
-    atomic_write(pathlib.Path(args.output), render(args.color, pvp_mode=args.pvp_mode))
+    atomic_write(
+        pathlib.Path(args.output),
+        render(args.color, pvp_mode=args.pvp_mode, committed_sha=args.committed_sha, api_mode=args.api_mode),
+    )
 
 
 if __name__ == "__main__":

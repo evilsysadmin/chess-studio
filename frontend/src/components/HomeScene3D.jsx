@@ -6,11 +6,12 @@ export default function HomeScene3D(props) {
   const [useLegacyFallback, setUseLegacyFallback] = useState(
     () => !homeBlenderRuntimeEligible(),
   );
-  const { onAnchorLayout } = props;
+  const { onAnchorLayout, onMatthiasLayout } = props;
   const activateFallback = useCallback(() => {
     setUseLegacyFallback(true);
     onAnchorLayout?.(null);
-  }, [onAnchorLayout]);
+    onMatthiasLayout?.(null);
+  }, [onAnchorLayout, onMatthiasLayout]);
 
   if (useLegacyFallback) return <HomeCastle3D {...props} />;
 
@@ -20,6 +21,8 @@ export default function HomeScene3D(props) {
       activeRoom={props.activeRoom}
       onUnavailable={activateFallback}
       onAnchorLayout={onAnchorLayout}
+      matthias={props.matthias}
+      onMatthiasLayout={props.onMatthiasLayout}
     />
   );
 }

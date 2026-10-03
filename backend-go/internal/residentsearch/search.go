@@ -1,0 +1,592 @@
+package residentsearch
+
+import (
+	"context"
+	"errors"
+	"math"
+	"sort"
+	"strings"
+	"time"
+
+	chess "github.com/corentings/chess/v2"
+
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/chessrules"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/residenteval"
+)
+
+const (
+	mateScore = 100000.0
+	qDepth    = 3
+)
+
+var ErrTimeout = errors.New("resident search timeout")
+
+type Candidate struct {
+	UCI   string
+	Score float64
+}
+
+type Snapshot struct {
+	Candidates     []Candidate
+	Depth          int
+	CandidateCount int
+}
+
+type Searcher struct {
+	now func() time.Time
+}
+
+func New() *Searcher {
+	return &Searcher{now: time.Now}
+}
+
+func (s *Searcher) AnalyzeFEN(
+	ctx context.Context,
+	fen string,
+	maxDepth int,
+	budget time.Duration,
+) (Snapshot, error) {
+	if maxDepth < 1 {
+		return Snapshot{}, errors.New("max depth must be at least 1")
+	}
+	option, err := chess.FEN(strings.TrimSpace(fen))
+	if err != nil {
+		return Snapshot{}, err
+	}
+	game := chess.NewGame(option)
+	return s.analyzeIterative(ctx, game.Position(), maxDepth, budget)
+}
+
+type ttFlag uint8
+
+const (
+	ttExact ttFlag = iota
+	ttLower
+	ttUpper
+)
+
+type ttKey struct {
+	hash     uint64
+	halfmove int
+	ply      int
+}
+
+type ttEntry struct {
+	depth int
+	score float64
+	flag  ttFlag
+	move  string
+}
+
+func (s *Searcher) analyzeIterative(
+	ctx context.Context,
+	pos *chess.Position,
+	maxDepth int,
+	budget time.Duration,
+) (Snapshot, error) {
+	if s == nil || s.now == nil {
+		s = New()
+	}
+	if budget < 0 {
+		budget = 0
+	}
+	deadline := s.now().Add(budget)
+	var completed *Snapshot
+
+	for depth := 1; depth <= maxDepth; depth++ {
+		if err := s.checkDeadline(ctx, deadline); err != nil {
+			if errors.Is(err, ErrTimeout) {
+				break
+			}
+			return Snapshot{}, err
+		}
+		candidates, err := s.analyzeRootCandidates(ctx, pos, depth, deadline)
+		if err != nil {
+			if errors.Is(err, ErrTimeout) {
+				break
+			}
+			return Snapshot{}, err
+		}
+		rankCandidates(pos.Turn(), candidates)
+		current := Snapshot{
+			Candidates:     candidates,
+			Depth:          depth,
+			CandidateCount: len(candidates),
+		}
+		completed = &current
+		if len(candidates) == 0 {
+			return current, nil
+		}
+	}
+
+	if completed == nil {
+		return Snapshot{}, ErrTimeout
+	}
+	return *completed, nil
+}
+
+func (s *Searcher) analyzeRootCandidates(
+	ctx context.Context,
+	pos *chess.Position,
+	depth int,
+	deadline time.Time,
+) ([]Candidate, error) {
+	moves := orderMoves(pos, pos.ValidMovesUnsafe(), "")
+	if len(moves) == 0 {
+		return []Candidate{}, nil
+	}
+
+	tt := make(map[ttKey]ttEntry, 1024)
+	path := map[uint64]int{pos.ZobristHash(): 1}
+	candidates := make([]Candidate, 0, len(moves))
+
+	for i := range moves {
+		if err := s.checkDeadline(ctx, deadline); err != nil {
+			return nil, err
+		}
+		move := moves[i]
+		child := pos.Update(&move)
+		incrementPath(path, child.ZobristHash())
+		score, _, err := s.minimax(
+			ctx,
+			child,
+			max(0, depth-1),
+			math.Inf(-1),
+			math.Inf(1),
+			1,
+			deadline,
+			tt,
+			path,
+			move.HasTag(chess.Check),
+		)
+		decrementPath(path, child.ZobristHash())
+		if err != nil {
+			return nil, err
+		}
+		candidates = append(candidates, Candidate{
+			UCI:   move.String(),
+			Score: score,
+		})
+	}
+	return candidates, nil
+}
+
+func (s *Searcher) minimax(
+	ctx context.Context,
+	pos *chess.Position,
+	depth int,
+	alpha float64,
+	beta float64,
+	ply int,
+	deadline time.Time,
+	tt map[ttKey]ttEntry,
+	path map[uint64]int,
+	inCheck bool,
+) (float64, string, error) {
+	if err := s.checkDeadline(ctx, deadline); err != nil {
+		return 0, "", err
+	}
+	if score, terminal := terminalScore(pos, ply, path); terminal {
+		return score, "", nil
+	}
+
+	key := ttKey{
+		hash:     pos.ZobristHash(),
+		halfmove: pos.HalfMoveClock(),
+		ply:      ply,
+	}
+	alphaOrig, betaOrig := alpha, beta
+	if cached, ok := tt[key]; ok && cached.depth >= depth {
+		switch cached.flag {
+		case ttExact:
+			return cached.score, cached.move, nil
+		case ttLower:
+			if cached.score > alpha {
+				alpha = cached.score
+			}
+		case ttUpper:
+			if cached.score < beta {
+				beta = cached.score
+			}
+		}
+		if alpha >= beta {
+			return cached.score, cached.move, nil
+		}
+	}
+
+	if depth == 0 {
+		score, err := s.quiescence(ctx, pos, alpha, beta, ply, deadline, qDepth, path, inCheck)
+		return score, "", err
+	}
+
+	preferred := ""
+	if cached, ok := tt[key]; ok {
+		preferred = cached.move
+	}
+	moves := orderMoves(pos, pos.ValidMovesUnsafe(), preferred)
+	if len(moves) == 0 {
+		return residenteval.EvaluatePosition(pos), "", nil
+	}
+
+	maximizing := pos.Turn() == chess.White
+	bestScore := math.Inf(1)
+	if maximizing {
+		bestScore = math.Inf(-1)
+	}
+	bestMove := ""
+
+	for i := range moves {
+		move := moves[i]
+		child := pos.Update(&move)
+		incrementPath(path, child.ZobristHash())
+		score, _, err := s.minimax(
+			ctx,
+			child,
+			depth-1,
+			alpha,
+			beta,
+			ply+1,
+			deadline,
+			tt,
+			path,
+			move.HasTag(chess.Check),
+		)
+		decrementPath(path, child.ZobristHash())
+		if err != nil {
+			return 0, "", err
+		}
+
+		if maximizing {
+			if score > bestScore {
+				bestScore = score
+				bestMove = move.String()
+			}
+			if bestScore > alpha {
+				alpha = bestScore
+			}
+		} else {
+			if score < bestScore {
+				bestScore = score
+				bestMove = move.String()
+			}
+			if bestScore < beta {
+				beta = bestScore
+			}
+		}
+		if alpha >= beta {
+			break
+		}
+	}
+
+	flag := ttExact
+	if bestScore <= alphaOrig {
+		flag = ttUpper
+	} else if bestScore >= betaOrig {
+		flag = ttLower
+	}
+	tt[key] = ttEntry{depth: depth, score: bestScore, flag: flag, move: bestMove}
+	return bestScore, bestMove, nil
+}
+
+func (s *Searcher) quiescence(
+	ctx context.Context,
+	pos *chess.Position,
+	alpha float64,
+	beta float64,
+	ply int,
+	deadline time.Time,
+	depth int,
+	path map[uint64]int,
+	inCheck bool,
+) (float64, error) {
+	if err := s.checkDeadline(ctx, deadline); err != nil {
+		return 0, err
+	}
+	if score, terminal := terminalScore(pos, ply, path); terminal {
+		return score, nil
+	}
+
+	standPat := residenteval.EvaluatePosition(pos)
+	if !inCheck {
+		if pos.Turn() == chess.White {
+			if standPat >= beta {
+				return standPat, nil
+			}
+			if standPat > alpha {
+				alpha = standPat
+			}
+		} else {
+			if standPat <= alpha {
+				return standPat, nil
+			}
+			if standPat < beta {
+				beta = standPat
+			}
+		}
+	}
+
+	if depth == 0 && !inCheck {
+		return standPat, nil
+	}
+
+	moves := pos.ValidMovesUnsafe()
+	if !inCheck {
+		tactical := make([]chess.Move, 0, len(moves))
+		for i := range moves {
+			move := moves[i]
+			if chessrules.IsCapture(&move) || move.Promo() != chess.NoPieceType {
+				tactical = append(tactical, move)
+			}
+		}
+		moves = tactical
+	}
+	ordered := orderMoves(pos, moves, "")
+	if len(ordered) == 0 {
+		return standPat, nil
+	}
+
+	maximizing := pos.Turn() == chess.White
+	if depth == 0 {
+		best := math.Inf(1)
+		if maximizing {
+			best = math.Inf(-1)
+		}
+		for i := range ordered {
+			if err := s.checkDeadline(ctx, deadline); err != nil {
+				return 0, err
+			}
+			move := ordered[i]
+			child := pos.Update(&move)
+			incrementPath(path, child.ZobristHash())
+			score, terminal := terminalScore(child, ply+1, path)
+			if !terminal {
+				score = residenteval.EvaluatePosition(child)
+			}
+			decrementPath(path, child.ZobristHash())
+			if maximizing {
+				if score > best {
+					best = score
+				}
+			} else if score < best {
+				best = score
+			}
+		}
+		return best, nil
+	}
+
+	best := standPat
+	if inCheck {
+		if maximizing {
+			best = math.Inf(-1)
+		} else {
+			best = math.Inf(1)
+		}
+	}
+
+	for i := range ordered {
+		if err := s.checkDeadline(ctx, deadline); err != nil {
+			return 0, err
+		}
+		move := ordered[i]
+		child := pos.Update(&move)
+		incrementPath(path, child.ZobristHash())
+		score, err := s.quiescence(
+			ctx,
+			child,
+			alpha,
+			beta,
+			ply+1,
+			deadline,
+			depth-1,
+			path,
+			move.HasTag(chess.Check),
+		)
+		decrementPath(path, child.ZobristHash())
+		if err != nil {
+			return 0, err
+		}
+
+		if maximizing {
+			if score > best {
+				best = score
+			}
+			if best > alpha {
+				alpha = best
+			}
+		} else {
+			if score < best {
+				best = score
+			}
+			if best < beta {
+				beta = best
+			}
+		}
+		if alpha >= beta {
+			break
+		}
+	}
+	return best, nil
+}
+
+func terminalScore(pos *chess.Position, ply int, path map[uint64]int) (float64, bool) {
+	switch pos.Status() {
+	case chess.Checkmate:
+		if pos.Turn() == chess.White {
+			return -mateScore + float64(ply), true
+		}
+		return mateScore - float64(ply), true
+	case chess.Stalemate:
+		return 0, true
+	}
+
+	count := path[pos.ZobristHash()]
+	if count >= 5 {
+		return 0, true
+	}
+	if ply >= 8 && count >= 3 {
+		return 0, true
+	}
+	if pos.HalfMoveClock() >= 150 {
+		return 0, true
+	}
+	if insufficientMaterial(pos.Board()) {
+		return 0, true
+	}
+	if pos.HalfMoveClock() >= 100 && len(pos.ValidMovesUnsafe()) > 0 {
+		return 0, true
+	}
+	return 0, false
+}
+
+func insufficientMaterial(board *chess.Board) bool {
+	if board == nil {
+		return false
+	}
+	pieces := board.SquareMap()
+	kings := 0
+	bishops := 0
+	knights := 0
+	bishopColor := -1
+	allBishopsSameColor := true
+
+	for square, piece := range pieces {
+		switch piece.Type() {
+		case chess.Queen, chess.Rook, chess.Pawn:
+			return false
+		case chess.King:
+			kings++
+		case chess.Bishop:
+			bishops++
+			color := (int(square.File()) + int(square.Rank())) & 1
+			if bishopColor == -1 {
+				bishopColor = color
+			} else if color != bishopColor {
+				allBishopsSameColor = false
+			}
+		case chess.Knight:
+			knights++
+		}
+	}
+	if kings < 2 {
+		return false
+	}
+	if bishops == 0 && knights == 0 {
+		return true
+	}
+	if bishops == 1 && knights == 0 {
+		return true
+	}
+	if bishops == 0 && knights == 1 {
+		return true
+	}
+	return knights == 0 && bishops > 0 && allBishopsSameColor
+}
+
+func orderMoves(pos *chess.Position, source []chess.Move, preferred string) []chess.Move {
+	moves := append([]chess.Move(nil), source...)
+	sort.SliceStable(moves, func(i, j int) bool {
+		return moveOrderScore(pos, &moves[i], preferred) > moveOrderScore(pos, &moves[j], preferred)
+	})
+	return moves
+}
+
+func moveOrderScore(pos *chess.Position, move *chess.Move, preferred string) int {
+	if preferred != "" && move.String() == preferred {
+		return 1000000
+	}
+	score := 0
+	if chessrules.IsCapture(move) {
+		victimValue := 0
+		if move.HasTag(chess.EnPassant) {
+			victimValue = pieceValue(chess.Pawn)
+		} else {
+			victimValue = pieceValue(pos.Board().Piece(move.S2()).Type())
+		}
+		attackerValue := pieceValue(pos.Board().Piece(move.S1()).Type())
+		if attackerValue == 0 {
+			attackerValue = 1
+		}
+		score += 100000 + (victimValue * 10) - attackerValue
+	}
+	if move.Promo() != chess.NoPieceType {
+		score += 80000 + pieceValue(move.Promo())
+	}
+	if move.HasTag(chess.Check) {
+		score += 50000
+	}
+	return score
+}
+
+func pieceValue(piece chess.PieceType) int {
+	switch piece {
+	case chess.Pawn:
+		return 100
+	case chess.Knight:
+		return 320
+	case chess.Bishop:
+		return 330
+	case chess.Rook:
+		return 500
+	case chess.Queen:
+		return 900
+	default:
+		return 0
+	}
+}
+
+func rankCandidates(turn chess.Color, candidates []Candidate) {
+	sort.SliceStable(candidates, func(i, j int) bool {
+		if turn == chess.White {
+			return candidates[i].Score > candidates[j].Score
+		}
+		return candidates[i].Score < candidates[j].Score
+	})
+}
+
+func incrementPath(path map[uint64]int, hash uint64) {
+	path[hash]++
+}
+
+func decrementPath(path map[uint64]int, hash uint64) {
+	path[hash]--
+	if path[hash] <= 0 {
+		delete(path, hash)
+	}
+}
+
+func (s *Searcher) checkDeadline(ctx context.Context, deadline time.Time) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if !s.now().Before(deadline) {
+		return ErrTimeout
+	}
+	return nil
+}
+
+func max(left, right int) int {
+	if left > right {
+		return left
+	}
+	return right
+}
