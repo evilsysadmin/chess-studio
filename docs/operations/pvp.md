@@ -335,4 +335,13 @@ PvP is migrating incrementally toward a dedicated Go process. The first slice is
 - migration is endpoint-by-endpoint. An operation moves to Go only when its auth, idempotency/CAS, persistence, error and reconnect contracts have dedicated parity coverage;
 - rollback must remain routing-level while the compatibility proxy exists.
 
+### Python fallback sunset
+
+Every public PvP route has a native Go handler, staging requires all of them and the production release attests every native flag. The Python public PvP routes now only survive as the kill-switch rollback. Plan agreed on 2026-10-03:
+
+1. Evidence: `pvp-python-fallback.yml` (daily, read-only) counts `/api/pvp` requests that still reach FastAPI (`chess_studio_http_server_requests_total`), including the internal resident oracle.
+2. Deadline **2026-10-17**: if production saw no fallback traffic for the 14-day window, remove the Python PvP routes (including `/_internal/resident-move` and the Go `residentoracle` client), the `PVP_NATIVE_*_ENABLED` kill-switches, and the Go readiness dependency on the Python `/api/ready` for PvP.
+3. Rollback after the sunset is a release rollback (`production-rollback.yml`), no longer a per-route switch.
+4. Resident moves are already chosen natively in Go (`internal/residentmove`); the Python oracle only answers when `PVP_NATIVE_RESIDENT_MOVE_ENABLED` is off, so it is retired with the rest.
+
 Target deployment pairs each blue/green Python slot with the same-color Go PvP edge, so switching the stable nginx edge cannot route a duel to the wrong backend generation.
