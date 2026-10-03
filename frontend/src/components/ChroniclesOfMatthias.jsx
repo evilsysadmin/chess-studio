@@ -189,6 +189,8 @@ export default function ChroniclesOfMatthias({ onExit }) {
   }, []);
 
   const attackWithSelected = useCallback(() => {
+    const current = stateRef.current;
+    if (!current || current.phase === 'defeated' || current.phase === 'escaped') return;
     const memberId = selectedMemberIdRef.current;
     engineRef.current?.playAttack?.(memberId);
     dispatch({ type: 'attack', memberId });
@@ -381,6 +383,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const tacticalTarget = chroniclesTargetAhead(state, selectedMember?.reach || 1);
   const journalEntries = chroniclesJournalEntries(state);
   const latestJournalEntry = journalEntries[journalEntries.length - 1];
+  const expeditionOver = state.phase === 'defeated' || state.phase === 'escaped';
 
   return (
     <div
@@ -480,11 +483,11 @@ export default function ChroniclesOfMatthias({ onExit }) {
           </details>
 
           <div className="chronicles-touch" aria-label="Controles de la mazmorra">
-            <button type="button" onClick={() => dispatch('turn-left')} aria-label="Girar a la izquierda">↶<small>GIRAR</small></button>
-            <button type="button" onClick={() => dispatch('forward')} aria-label="Avanzar">↑<small>AVANZAR</small></button>
-            <button type="button" className="is-attack" onClick={attackWithSelected} aria-label="Atacar">⚔<small>{selectedMember?.name?.toUpperCase() || 'ATACAR'}</small></button>
-            <button type="button" onClick={() => dispatch('backward')} aria-label="Retroceder">↓<small>ATRÁS</small></button>
-            <button type="button" onClick={() => dispatch('turn-right')} aria-label="Girar a la derecha">↷<small>GIRAR</small></button>
+            <button type="button" disabled={expeditionOver} onClick={() => dispatch('turn-left')} aria-label="Girar a la izquierda">↶<small>GIRAR</small></button>
+            <button type="button" disabled={expeditionOver} onClick={() => dispatch('forward')} aria-label="Avanzar">↑<small>AVANZAR</small></button>
+            <button type="button" className="is-attack" disabled={expeditionOver} onClick={attackWithSelected} aria-label="Atacar">⚔<small>{selectedMember?.name?.toUpperCase() || 'ATACAR'}</small></button>
+            <button type="button" disabled={expeditionOver} onClick={() => dispatch('backward')} aria-label="Retroceder">↓<small>ATRÁS</small></button>
+            <button type="button" disabled={expeditionOver} onClick={() => dispatch('turn-right')} aria-label="Girar a la derecha">↷<small>GIRAR</small></button>
           </div>
 
           <div className="chronicles-keyboard-help">

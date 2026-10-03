@@ -196,6 +196,15 @@ function applyRuntimeCheckpoint(state, flags) {
   });
   if (restoredEnemyPosition) next.enemyPositions = enemyPositions;
 
+  if (
+    Array.isArray(next.party)
+    && next.party.length > 0
+    && next.party.every((member) => Number(member.hp || 0) <= 0)
+  ) {
+    next.phase = 'defeated';
+    next.turnPhase = 'party';
+  }
+
   return next;
 }
 

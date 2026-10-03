@@ -181,6 +181,19 @@ function partyMember(state, memberId) {
   return state.party.find((member) => member.id === memberId) || null;
 }
 
+function partyDefeated(state) {
+  return state.party.length > 0 && state.party.every((member) => member.hp <= 0);
+}
+
+function markPartyDefeated(state) {
+  if (!partyDefeated(state)) return state;
+  return {
+    ...state,
+    phase: 'defeated',
+    message: 'La compañía cae. La cripta, con notable falta de deportividad, permanece en pie.',
+  };
+}
+
 function retaliationTargetId(state, attacker) {
   if (attacker.row === 'front' && attacker.hp > 0) return attacker.id;
   const matchingFront = state.party.find((member) => member.row === 'front' && member.lane === attacker.lane && member.hp > 0);
@@ -287,7 +300,7 @@ function resolveAttack(state, memberId) {
       sigil: '†',
     });
   }
-  return evadeAfterHit(nextState, enemy);
+  return markPartyDefeated(evadeAfterHit(nextState, enemy));
 }
 
 function blockingEnemyMessage(enemy) {
@@ -296,7 +309,7 @@ function blockingEnemyMessage(enemy) {
 }
 
 export function chroniclesReduce(state, action) {
-  if (!state || state.phase === 'escaped') return state;
+  if (!state || state.phase === 'escaped' || state.phase === 'defeated') return state;
   const actionType = typeof action === 'string' ? action : action?.type;
   if (actionType === 'turn-left') return { ...state, direction: (state.direction + 3) % 4, turns: state.turns + 1 };
   if (actionType === 'turn-right') return { ...state, direction: (state.direction + 1) % 4, turns: state.turns + 1 };
@@ -325,6 +338,7 @@ export function chroniclesReduce(state, action) {
 
 export function chroniclesObjective(state) {
   const map = chroniclesMapForState(state);
+  if (state.phase === 'defeated') return 'La expedición ha caído';
   if (state.phase === 'escaped') return map.explorationCompleteLabel || 'Exploración completada';
 
   const requiredEnemy = (map.enemies || []).find((enemy) => !enemy.optional && enemyAlive(state, enemy));
