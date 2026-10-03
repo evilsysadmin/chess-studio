@@ -279,7 +279,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
       controller.abort();
       chroniclesClearRuntimeMapDefinitions();
     };
-  }, [bootstrapRevision, characterSetupDone, progression.characterBuild]);
+  }, [bootstrapRevision, characterSetupDone, progression]);
 
   useEffect(() => {
     let cancelled = false;
