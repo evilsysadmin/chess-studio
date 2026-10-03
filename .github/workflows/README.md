@@ -80,6 +80,7 @@ Render staging está retirado del plano de despliegue: el **release canónico y 
 
 | Workflow | Responsabilidad |
 | --- | --- |
+| `app-visual-artifact.yml` | Evidencia visual path-aware. El canario canónico de Hans sigue siendo fail-closed; los vídeos secundarios de rutinas (`mop`/`dust-board`/`espresso`) son informativos, conservan warning/artefactos cuando existen y no bloquean una PR por timing de SwiftShader o del recorder. |
 | `e2e-full.yml` | Sweep completo Chromium/Firefox/WebKit mensual/manual e informativo. Ya no duplica PR: la matriz requerida y path-aware War Room/Matthias vive en `cicd.yml`. |
 | `home-blender-v2-preview.yml` | Evidencia PNG Home path-aware en PR con envelope de revisión barato; los renders manuales conservan calidad alta. |
 | `home-blender-v2-runtime.yml` | Exporta/publica el GLB Home sólo en `main` o manual, luego ejecuta su gate browser y promoción. No repite el export runtime en PR: la revisión visual PR pertenece al preview PNG. |

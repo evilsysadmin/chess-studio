@@ -5,7 +5,7 @@ import {
 } from './WarRoomHansActor.js';
 import { registerWarRoomHansPostRenderStage } from './WarRoomHansPostRenderPipeline.js';
 
-export const WAR_ROOM_HANS_ACTOR_TELEMETRY_VERSION = 'war-room-hans-actor-telemetry-v2-choreography-phase';
+export const WAR_ROOM_HANS_ACTOR_TELEMETRY_VERSION = 'war-room-hans-actor-telemetry-v3-task-diagnostics';
 
 const POST_RENDER_ORDER = 6;
 
@@ -31,6 +31,11 @@ export function installWarRoomHansActorTelemetry(root) {
       setDatasetIfChanged(canvas, 'warRoomHansRoute', state.route || 'none');
       setDatasetIfChanged(canvas, 'warRoomHansLogicalX', Number(state.logicalX).toFixed(3));
       setDatasetIfChanged(canvas, 'warRoomHansChoreographyPhase', driver.userData?.warRoomHansPhase || 'none');
+      setDatasetIfChanged(canvas, 'warRoomHansActiveTask', actor.hans.userData?.warRoomHansActiveTask || 'none');
+      setDatasetIfChanged(canvas, 'warRoomHansTaskPhase', actor.hans.userData?.warRoomHansTaskPhase || 'none');
+      setDatasetIfChanged(canvas, 'warRoomHansMopState', actor.hans.userData?.warRoomHansMopState || 'none');
+      setDatasetIfChanged(canvas, 'warRoomHansMopStartStatus', actor.hans.userData?.warRoomHansMopStartStatus || 'none');
+      setDatasetIfChanged(canvas, 'warRoomHansMopInstalled', actor.hans.userData?.warRoomHansMopRoutine ? 'true' : 'false');
     },
   });
   if (!registered) return 0;

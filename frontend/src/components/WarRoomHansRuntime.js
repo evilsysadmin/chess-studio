@@ -1,4 +1,6 @@
-export const WAR_ROOM_HANS_RUNTIME_VERSION = 'war-room-hans-runtime-v1-single-task-owner';
+export const WAR_ROOM_HANS_RUNTIME_VERSION = 'war-room-hans-runtime-v2-bounded-setup-retry';
+export const WAR_ROOM_HANS_SETUP_RETRY_DELAY_MS = 1800;
+export const WAR_ROOM_HANS_SETUP_MAX_ATTEMPTS = 3;
 
 const RUNTIMES = new WeakMap();
 
@@ -107,5 +109,33 @@ export function setWarRoomHansTaskPresentation(runtime, {
   if (route !== undefined && hans.userData) {
     hans.userData.warRoomHansRoute = String(route || '');
   }
+  return true;
+}
+
+
+export function createWarRoomHansSetupRetryState() {
+  return { attempts: 0, notBefore: 0 };
+}
+
+export function resetWarRoomHansSetupRetry(state) {
+  if (!state) return false;
+  state.attempts = 0;
+  state.notBefore = 0;
+  return true;
+}
+
+export function warRoomHansSetupRetryReady(state, now) {
+  if (!state) return true;
+  return Number(now) >= Number(state.notBefore || 0);
+}
+
+export function deferWarRoomHansSetupRetry(state, now) {
+  if (!state) return false;
+  state.attempts = Math.max(0, Number(state.attempts) || 0) + 1;
+  if (state.attempts >= WAR_ROOM_HANS_SETUP_MAX_ATTEMPTS) {
+    state.notBefore = Number.POSITIVE_INFINITY;
+    return false;
+  }
+  state.notBefore = Number(now || 0) + WAR_ROOM_HANS_SETUP_RETRY_DELAY_MS * state.attempts;
   return true;
 }
