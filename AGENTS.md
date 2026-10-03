@@ -57,6 +57,7 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 | OCI / staging / secretos / runtime | [`skills/oci-release-observability/SKILL.md`](skills/oci-release-observability/SKILL.md), [`docs/operations/oci-backend-migration.md`](docs/operations/oci-backend-migration.md), [`docs/operations/oci-secret-lifecycle.md`](docs/operations/oci-secret-lifecycle.md), READMEs bajo `infra/oci/` |
 | Grafana / observabilidad | [`skills/oci-release-observability/SKILL.md`](skills/oci-release-observability/SKILL.md), [`infra/grafana/README.md`](infra/grafana/README.md), [`ops/grafana/README.md`](ops/grafana/README.md) |
 | Presencia / Admin | [`docs/operations/presence-admin.md`](docs/operations/presence-admin.md), [`backend-python/AGENTS.md`](backend-python/AGENTS.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
+| Migración Python → Go / edge API / kill-switches | [`docs/operations/go-migration.md`](docs/operations/go-migration.md), [`docs/operations/pvp.md`](docs/operations/pvp.md) |
 | PvP / lobby / retos / Sala de Duelos | [`docs/operations/pvp-duel-hall.md`](docs/operations/pvp-duel-hall.md), [`backend-python/AGENTS.md`](backend-python/AGENTS.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
 | PvP / 1v1 / lobby / handoff / rating humano | [`docs/operations/pvp.md`](docs/operations/pvp.md), [`docs/operations/resilience-degraded-mode.md`](docs/operations/resilience-degraded-mode.md), [`backend-python/AGENTS.md`](backend-python/AGENTS.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
 | Web Storage / perfil / migraciones | [`docs/operations/client-storage.md`](docs/operations/client-storage.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
@@ -104,6 +105,7 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 ### Operaciones y runtime
 
 - [`docs/operations/architecture-ownership.md`](docs/operations/architecture-ownership.md)
+- [`docs/operations/go-migration.md`](docs/operations/go-migration.md) — plan y contrato de la migración strangler de Python a Go.
 - [`docs/operations/tutorials.md`](docs/operations/tutorials.md)
 - [`docs/operations/game-state-recovery.md`](docs/operations/game-state-recovery.md)
 - [`docs/operations/training-quality.md`](docs/operations/training-quality.md)

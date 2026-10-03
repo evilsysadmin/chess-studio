@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -86,6 +87,17 @@ func New(cfg Config) (*Handler, error) {
 	}
 
 	proxy := httputil.NewSingleHostReverseProxy(upstream)
+	// The edge fronts the whole API, not only PvP: keep a warm connection
+	// pool to Python instead of the default two idle connections per host.
+	proxy.Transport = &http.Transport{
+		Proxy:                 nil,
+		DialContext:           (&net.Dialer{Timeout: 2 * time.Second, KeepAlive: 30 * time.Second}).DialContext,
+		MaxIdleConns:          128,
+		MaxIdleConnsPerHost:   64,
+		IdleConnTimeout:       90 * time.Second,
+		ResponseHeaderTimeout: 45 * time.Second, // same as the nginx edge
+		ExpectContinueTimeout: time.Second,
+	}
 	baseDirector := proxy.Director
 	proxy.Director = func(req *http.Request) {
 		originalHost := req.Host
@@ -95,12 +107,18 @@ func New(cfg Config) (*Handler, error) {
 	}
 	proxy.ModifyResponse = func(resp *http.Response) error {
 		resp.Header.Set("X-Chess-Pvp-Edge", "go")
+		resp.Header.Set("X-Chess-Edge", "go")
 		return nil
 	}
-	proxy.ErrorHandler = func(w http.ResponseWriter, _ *http.Request, _ error) {
+	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, _ error) {
 		w.Header().Set("X-Chess-Pvp-Edge", "go")
+		w.Header().Set("X-Chess-Edge", "go")
+		code := "upstream_unavailable"
+		if isPvPPath(r.URL.Path) {
+			code = "pvp_upstream_unavailable"
+		}
 		writeJSON(w, http.StatusBadGateway, map[string]any{
-			"code":      "pvp_upstream_unavailable",
+			"code":      code,
 			"retryable": true,
 			"service":   serviceName,
 		})
@@ -149,7 +167,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	if r.URL.Path == "/api/pvp" || strings.HasPrefix(r.URL.Path, "/api/pvp/") {
+	if isPvPPath(r.URL.Path) {
 		// Tell Python why this reached the fallback (logged as pvp_hop): the
 		// evidence for retiring the Python PvP routes.
 		reason := "unknown"
@@ -157,10 +175,17 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			reason = "disabled:" + route.Kind.String()
 		}
 		r.Header.Set("X-Chess-Pvp-Fallback", reason)
-		h.proxy.ServeHTTP(w, r)
-		return
+	} else {
+		// Not ours yet: Python still owns it. The nginx edge only sends
+		// non-PvP traffic here in api "go" mode (strangler front for the
+		// whole API); in the default mode it never arrives.
+		r.Header.Del("X-Chess-Pvp-Fallback")
 	}
-	http.NotFound(w, r)
+	h.proxy.ServeHTTP(w, r)
+}
+
+func isPvPPath(path string) bool {
+	return path == "/api/pvp" || strings.HasPrefix(path, "/api/pvp/")
 }
 
 // nativeFor returns the Go handler for a route, or nil when that route's
