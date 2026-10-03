@@ -51,10 +51,12 @@ async function openLobby(page) {
   const lobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room' });
   await expect(lobby).toBeVisible();
   await expect(lobby.getByRole('heading', { name: 'Sala de Duelos' })).toBeVisible();
+  await expect(lobby.locator('.pvp-duel-hall__architecture')).toHaveCount(1);
+  await expect(lobby.locator('.pvp-lobby__header-status')).toHaveCount(0);
   return lobby;
 }
 
-async function assertPriorityHierarchy(lobby) {
+async function assertPriorityHierarchy(lobby, { stacked = false } = {}) {
   const challenges = lobby.locator('.pvp-lobby__panel--challenges');
   const roster = lobby.locator('.pvp-lobby__panel--roster');
   await expect(challenges).toBeVisible();
@@ -62,7 +64,11 @@ async function assertPriorityHierarchy(lobby) {
   const [challengeBox, rosterBox] = await Promise.all([challenges.boundingBox(), roster.boundingBox()]);
   expect(challengeBox).not.toBeNull();
   expect(rosterBox).not.toBeNull();
-  expect(challengeBox.y + challengeBox.height).toBeLessThanOrEqual(rosterBox.y + 2);
+  if (stacked) {
+    expect(challengeBox.y + challengeBox.height).toBeLessThanOrEqual(rosterBox.y + 2);
+  } else {
+    expect(challengeBox.y).toBeLessThanOrEqual(rosterBox.y + 4);
+  }
 
   const chat = lobby.locator('.pvp-lobby__chat-disclosure');
   await expect(chat).not.toHaveAttribute('open', '');
@@ -73,6 +79,19 @@ test('PvP lobby · desktop prioritizes challenges over rivals', async ({ page })
   await page.setViewportSize({ width: 1440, height: 900 });
   const lobby = await openLobby(page);
   await assertPriorityHierarchy(lobby);
+
+  const roomBox = await lobby.boundingBox();
+  expect(roomBox, 'desktop Duel Hall must have a measurable room shell').not.toBeNull();
+  expect(roomBox.width / 1440, 'desktop lobby fills the castle room horizontally').toBeGreaterThan(0.9);
+  expect(roomBox.height / 900, 'desktop lobby fills the castle room vertically').toBeGreaterThan(0.9);
+
+  const roster = lobby.locator('.pvp-lobby__panel--roster');
+  const side = lobby.locator('.pvp-lobby__side');
+  const [rosterBox, sideBox] = await Promise.all([roster.boundingBox(), side.boundingBox()]);
+  expect(rosterBox).not.toBeNull();
+  expect(sideBox).not.toBeNull();
+  expect(rosterBox.x + rosterBox.width).toBeLessThanOrEqual(sideBox.x + 4);
+
   await mkdir(ARTIFACT_DIR, { recursive: true });
   await page.screenshot({
     path: ARTIFACT_DIR + '/pvp-lobby-desktop-1440x900.png',
@@ -85,7 +104,7 @@ test.use({ hasTouch: true, isMobile: true });
 test('PvP lobby · Android keeps the command hierarchy touchable', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const lobby = await openLobby(page);
-  await assertPriorityHierarchy(lobby);
+  await assertPriorityHierarchy(lobby, { stacked: true });
 
   const targets = lobby.locator('button:visible, summary:visible');
   const targetCount = await targets.count();
