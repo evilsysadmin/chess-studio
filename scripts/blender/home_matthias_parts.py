@@ -239,7 +239,11 @@ def build_character():
     for r in (.448,.420,.382,.334,.278,.214,.144,.072,.020):
         k=r/.448
         plate_rings.append((r,r*.957,1.879+.024*(1-k*k),.060,0,.044*k))
-    cap_top=loft_ellipse('Classic cap top',plate_rings,navy,124,.008)
+    # No bevel modifier on the plate: it is already a smooth loft, and with the
+    # modifier's 30 degree angle limit the rolled rim sat right on the
+    # threshold, so different CPUs beveled different edges and the exported
+    # mesh was not reproducible.
+    cap_top=loft_ellipse('Classic cap top',plate_rings,navy,124,0)
     visor=crescent_visor('Classic cap visor',(0,-.020,1.665),leather,.286,.450,.176,.235,.030,10,48)
     cap_badge=front_ellipse('Classic cap badge',(0,-.362,1.705),.050,.060,.010,brass,40,.003); cap_badge_inset=front_ellipse('Classic cap badge inset',(0,-.369,1.705),.027,.034,.008,leather,36,.002)
     mouth_l=box('Mouth.L',(-.052,-.357,1.246),(.070,.004,.0060),black,(0,math.radians(-12),0),.002); mouth_r=box('Mouth.R',(.052,-.357,1.246),(.070,.004,.0060),black,(0,math.radians(12),0),.002)
