@@ -8,7 +8,11 @@ import {
 
 function fixture(dressing) {
   return {
-    mapId: dressing === 'menagerie-ash-v3' ? 'menagerie-of-ash' : 'gallery-of-forks',
+    mapId: dressing === 'menagerie-ash-v3'
+      ? 'menagerie-of-ash'
+      : dressing === 'hollow-bell-v1'
+        ? 'hollow-bell-tower'
+        : 'gallery-of-forks',
     center: { x: 3, y: 3 },
     sceneStyle: {
       dressing,
@@ -52,6 +56,25 @@ describe('Chronicles Tactics authored theme dressing', () => {
     expect(plan.reliefs).toHaveLength(3);
     expect(plan.cages).toHaveLength(0);
     expect(plan.boneBundles).toHaveLength(0);
+  });
+
+  it('gives Hollow Bell Tower actual bronze bells and wall chains', () => {
+    const plan = chroniclesTacticsThemeDressingPlan(fixture('hollow-bell-v1'));
+
+    expect(plan.id).toBe('hollow-bell-v1');
+    expect(plan.bells).toHaveLength(4);
+    expect(plan.chains).toHaveLength(6);
+    expect(plan.cages).toHaveLength(0);
+    expect(plan.banners).toHaveLength(0);
+
+    const scene = new THREE.Scene();
+    const root = installChroniclesTacticsThemeDressing(scene, {
+      coarsePointer: true,
+      scenePlan: fixture('hollow-bell-v1'),
+    });
+    expect(root.userData.chroniclesThemePropCount).toBe(10);
+    expect(root.getObjectByName('chronicles-theme-hollow-bell-0')).toBeTruthy();
+    expect(root.getObjectByName('chronicles-theme-hollow-chain-0')).toBeTruthy();
   });
 
   it('installs theme-specific scene art idempotently', () => {
