@@ -14,11 +14,7 @@
     "#P........#",
     "###########"
   ],
-  "partyStart": {
-    "x": 1,
-    "y": 7,
-    "direction": 1
-  },
+  "partyStart": { "x": 1, "y": 7, "direction": 1 },
   "initialFlags": {
     "archivePlaqueRead": false,
     "archiveIndexUnlocked": false,
@@ -42,22 +38,10 @@
         "movement": "patrol-route",
         "attackReach": 1,
         "patrolRoute": [
-          {
-            "x": 5,
-            "y": 3
-          },
-          {
-            "x": 6,
-            "y": 3
-          },
-          {
-            "x": 7,
-            "y": 3
-          },
-          {
-            "x": 6,
-            "y": 3
-          }
+          { "x": 5, "y": 3 },
+          { "x": 6, "y": 3 },
+          { "x": 7, "y": 3 },
+          { "x": 6, "y": 3 }
         ],
         "engagedMovement": "cardinal-chase",
         "engageRange": 4
@@ -96,11 +80,7 @@
       "retaliation": 2,
       "retaliationReach": 2,
       "activation": "always",
-      "ai": {
-        "movement": "hold",
-        "attackReach": 2,
-        "requiresLineOfSight": true
-      }
+      "ai": { "movement": "hold", "attackReach": 2, "requiresLineOfSight": true }
     },
     {
       "id": "ink-hound",
@@ -154,11 +134,7 @@
       "retaliationReach": 2,
       "activation": "always",
       "optional": true,
-      "ai": {
-        "movement": "hold",
-        "attackReach": 2,
-        "requiresLineOfSight": true
-      },
+      "ai": { "movement": "hold", "attackReach": 2, "requiresLineOfSight": true },
       "onDefeat": {
         "message": "{attacker} apaga la lámpara errante con {attack}. La llama deja una gota de vidrio negro todavía tibia.",
         "effects": [
@@ -182,18 +158,11 @@
       "y": 7,
       "label": "Leer protocolo del archivo",
       "when": [
-        {
-          "key": "archivePlaqueRead",
-          "equals": false
-        }
+        { "key": "archivePlaqueRead", "equals": false }
       ],
       "action": {
         "effects": [
-          {
-            "type": "set",
-            "key": "archivePlaqueRead",
-            "value": true
-          },
+          { "type": "set", "key": "archivePlaqueRead", "value": true },
           {
             "type": "start-quest",
             "questId": "blind-kings-index",
@@ -220,27 +189,13 @@
       "y": 3,
       "label": "Desbloquear índice sellado",
       "when": [
-        {
-          "itemId": "ivory-index-key",
-          "quantity": 1
-        },
-        {
-          "key": "archiveIndexUnlocked",
-          "equals": false
-        }
+        { "itemId": "ivory-index-key", "quantity": 1 },
+        { "key": "archiveIndexUnlocked", "equals": false }
       ],
       "action": {
         "effects": [
-          {
-            "type": "consume-item",
-            "itemId": "ivory-index-key",
-            "quantity": 1
-          },
-          {
-            "type": "set",
-            "key": "archiveIndexUnlocked",
-            "value": true
-          },
+          { "type": "consume-item", "itemId": "ivory-index-key", "quantity": 1 },
+          { "type": "set", "key": "archiveIndexUnlocked", "value": true },
           {
             "type": "advance-quest",
             "questId": "blind-kings-index",
@@ -269,38 +224,16 @@
       "y": 4,
       "label": "Recuperar Índice Ciego",
       "when": [
-        {
-          "key": "archiveIndexUnlocked",
-          "equals": true
-        },
-        {
-          "key": "ledgerWardenHp",
-          "lte": 0
-        },
-        {
-          "key": "blindArchivistHp",
-          "lte": 0
-        },
-        {
-          "key": "inkHoundHp",
-          "lte": 0
-        },
-        {
-          "key": "catalogueSpiderHp",
-          "lte": 0
-        },
-        {
-          "key": "archiveIndexRead",
-          "equals": false
-        }
+        { "key": "archiveIndexUnlocked", "equals": true },
+        { "key": "ledgerWardenHp", "lte": 0 },
+        { "key": "blindArchivistHp", "lte": 0 },
+        { "key": "inkHoundHp", "lte": 0 },
+        { "key": "catalogueSpiderHp", "lte": 0 },
+        { "key": "archiveIndexRead", "equals": false }
       ],
       "action": {
         "effects": [
-          {
-            "type": "set",
-            "key": "archiveIndexRead",
-            "value": true
-          },
+          { "type": "set", "key": "archiveIndexRead", "value": true },
           {
             "type": "grant-item",
             "itemId": "blind-king-seal",
@@ -308,13 +241,8 @@
             "description": "Una placa de metal frío que certifica que el archivo te ha leído tanto como tú a él.",
             "quantity": 1
           },
-          {
-            "type": "heal-party",
-            "amount": 1
-          },
-          {
-            "type": "refill-class-abilities"
-          },
+          { "type": "heal-party", "amount": 1 },
+          { "type": "refill-class-abilities" },
           {
             "type": "complete-quest",
             "questId": "blind-kings-index",
@@ -341,22 +269,12 @@
       "y": 1,
       "label": "Encajar Ídolo de Obsidiana",
       "when": [
-        {
-          "itemId": "obsidian-idol",
-          "quantity": 1
-        },
-        {
-          "key": "obsidianCacheOpened",
-          "equals": false
-        }
+        { "itemId": "obsidian-idol", "quantity": 1 },
+        { "key": "obsidianCacheOpened", "equals": false }
       ],
       "action": {
         "effects": [
-          {
-            "type": "set",
-            "key": "obsidianCacheOpened",
-            "value": true
-          },
+          { "type": "set", "key": "obsidianCacheOpened", "value": true },
           {
             "type": "grant-item",
             "itemId": "royal-cipher",
@@ -364,10 +282,7 @@
             "description": "Una tablilla cifrada que sólo aparece para quien encontró la cámara secreta anterior. Botín de rutas sospechosamente bien aprovechadas.",
             "quantity": 1
           },
-          {
-            "type": "heal-party",
-            "amount": 1
-          }
+          { "type": "heal-party", "amount": 1 }
         ],
         "message": "El ídolo encaja en un hueco que parecía decorativo. El muro entrega una Cifra Real y confirma que la arquitectura también sabe guardar rencor.",
         "journal": {
@@ -388,18 +303,11 @@
       "openLabel": "Bajar hacia la Fundición de Hierro Negro",
       "lockedLabel": "Examinar salida oriental",
       "requirements": [
-        {
-          "key": "archiveIndexRead",
-          "equals": true,
-          "message": "El Índice Ciego aún mantiene sellada la salida."
-        }
+        { "key": "archiveIndexRead", "equals": true, "message": "El Índice Ciego aún mantiene sellada la salida." }
       ],
       "action": {
         "effects": [
-          {
-            "type": "transition-map",
-            "mapId": "iron-foundry"
-          }
+          { "type": "transition-map", "mapId": "iron-foundry" }
         ],
         "message": "El sello responde. Tras la puerta oriental no hay aire libre: hay cadenas, hornos y una Fundición de Hierro Negro funcionando sin supervisión razonable.",
         "journal": {
