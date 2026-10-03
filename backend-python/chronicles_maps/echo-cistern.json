@@ -79,8 +79,10 @@
       "retaliation": 2,
       "activation": "always",
       "ai": {
-        "movement": "cardinal-chase",
-        "attackReach": 1
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 4
       }
     },
     {
@@ -98,7 +100,7 @@
       "ai": {
         "movement": "cardinal-roam",
         "attackReach": 1,
-        "engagedMovement": "cardinal-chase",
+        "engagedMovement": "knight-chase",
         "engageRange": 3
       }
     },
