@@ -92,6 +92,8 @@ def band_row(level: float) -> dict:
         "budgetSeconds": band.budget_s,
         "settingsMaxDepth": settings.max_depth,
         "settingsBudgetSeconds": settings.time_budget_s,
+        "settingsRandomness": settings.randomness,
+        "settingsNoise": settings.noise,
         "lossCaps": [band.max_loss_cp * (1.0 + (0.22 * c)) for c in COMPLEXITIES],
         "mistakeChances": [min(0.85, band.mistake_chance * (0.82 + (0.38 * c))) for c in COMPLEXITIES],
     }

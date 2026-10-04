@@ -74,13 +74,14 @@ type HintConfig struct {
 	Store         HintStore
 	Engine        Engine
 	EngineWorkers int
+	Pool          *EnginePool
 }
 
 type HintHandler struct {
-	base    *Handler
-	store   HintStore
-	engine  Engine
-	engines chan struct{}
+	base   *Handler
+	store  HintStore
+	engine Engine
+	pool   *EnginePool
 }
 
 func NewHint(cfg HintConfig) (*HintHandler, error) {
@@ -93,8 +94,11 @@ func NewHint(cfg HintConfig) (*HintHandler, error) {
 	if err != nil {
 		return nil, err
 	}
-	workers := max(1, min(cfg.EngineWorkers, 4))
-	return &HintHandler{base: base, store: cfg.Store, engine: cfg.Engine, engines: make(chan struct{}, workers)}, nil
+	pool := cfg.Pool
+	if pool == nil {
+		pool = NewEnginePool(cfg.EngineWorkers, 0)
+	}
+	return &HintHandler{base: base, store: cfg.Store, engine: cfg.Engine, pool: pool}, nil
 }
 
 func (h *HintHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -164,9 +168,8 @@ func (h *HintHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"detail": "No es tu turno."})
 		return
 	}
-	h.engines <- struct{}{}
-	payload := h.hintPayload(ctx, board)
-	<-h.engines
+	var payload map[string]any
+	h.pool.Run(func() { payload = h.hintPayload(ctx, board) })
 	if payload == nil {
 		writeJSON(w, http.StatusNotFound, map[string]any{"detail": "No hay jugadas disponibles."})
 		return

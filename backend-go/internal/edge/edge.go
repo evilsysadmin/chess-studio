@@ -43,7 +43,9 @@ type Config struct {
 	NativeGamesWrite http.Handler
 	// NativeGamesHint serves GET /api/games/{game_id}/hint; nil keeps it in
 	// Python.
-	NativeGamesHint       http.Handler
+	NativeGamesHint http.Handler
+	// NativeGamesAnalyze serves POST /api/analyze; nil keeps it in Python.
+	NativeGamesAnalyze    http.Handler
 	VirtualPlayersEnabled bool
 	NativeResidentMove    bool
 	// ReadyChecks are dependencies owned by the Go edge itself (MongoDB for the
@@ -76,6 +78,7 @@ type Handler struct {
 	nativeGamesRead           http.Handler
 	nativeGamesWrite          http.Handler
 	nativeGamesHint           http.Handler
+	nativeGamesAnalyze        http.Handler
 	virtualPlayersEnabled     bool
 	nativeResidentMove        bool
 	readyChecks               map[string]func(context.Context) error
@@ -177,6 +180,7 @@ func New(cfg Config) (*Handler, error) {
 		nativeGamesRead:           cfg.NativeGamesRead,
 		nativeGamesWrite:          cfg.NativeGamesWrite,
 		nativeGamesHint:           cfg.NativeGamesHint,
+		nativeGamesAnalyze:        cfg.NativeGamesAnalyze,
 		virtualPlayersEnabled:     cfg.VirtualPlayersEnabled,
 		nativeResidentMove:        cfg.NativeResidentMove,
 		readyChecks:               cfg.ReadyChecks,
@@ -211,6 +215,13 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if pattern, _, ok := gamesapi.HintRoute(r); ok {
 			w.Header().Set("X-Chess-Edge", "go")
 			h.telemetry.Serve(pattern, h.nativeGamesHint, w, r)
+			return
+		}
+	}
+	if h.nativeGamesAnalyze != nil {
+		if pattern, ok := gamesapi.AnalyzeRoute(r); ok {
+			w.Header().Set("X-Chess-Edge", "go")
+			h.telemetry.Serve(pattern, h.nativeGamesAnalyze, w, r)
 			return
 		}
 	}
@@ -307,6 +318,7 @@ func (h *Handler) statusPayload(status string) map[string]any {
 		"nativeGamesRead":           h.nativeGamesRead != nil,
 		"nativeGamesWrite":          h.nativeGamesWrite != nil,
 		"nativeGamesHint":           h.nativeGamesHint != nil,
+		"nativeGamesAnalyze":        h.nativeGamesAnalyze != nil,
 	}
 	if h.release != "" {
 		payload["release"] = h.release

@@ -223,3 +223,23 @@ func clamp(value, low, high float64) float64 {
 	}
 	return value
 }
+
+// Randomness mirrors chess_ai.settings_for_level's pure-random chance: only
+// below level 40, where get_cpu_move may play any legal move.
+func Randomness(raw float64) float64 {
+	level := math.RoundToEven(clamp(raw, 0, 100))
+	if level >= 40 {
+		return 0
+	}
+	return 0.48 * math.Pow((40-level)/40, 1.7)
+}
+
+// Noise mirrors chess_ai.settings_for_level's near-best window (centipawns of
+// static evaluation) below level 45.
+func Noise(raw float64) float64 {
+	level := math.RoundToEven(clamp(raw, 0, 100))
+	if level >= 45 {
+		return 0
+	}
+	return 110 * math.Pow((45-level)/45, 1.4)
+}

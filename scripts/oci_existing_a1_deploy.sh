@@ -116,6 +116,15 @@ case "${go_native_games_hint,,}" in
   true|false) go_native_games_hint="${go_native_games_hint,,}" ;;
   *) echo "invalid CHESS_STUDIO_GO_NATIVE_GAMES_HINT_ENABLED: $go_native_games_hint" >&2; exit 2 ;;
 esac
+# Native Go position analysis (POST /api/analyze), optional engine work.
+case "$target" in
+  staging) go_native_analyze="${CHESS_STUDIO_GO_NATIVE_ANALYZE_ENABLED:-true}" ;;
+  *) go_native_analyze="${CHESS_STUDIO_GO_NATIVE_ANALYZE_ENABLED:-false}" ;;
+esac
+case "${go_native_analyze,,}" in
+  true|false) go_native_analyze="${go_native_analyze,,}" ;;
+  *) echo "invalid CHESS_STUDIO_GO_NATIVE_ANALYZE_ENABLED: $go_native_analyze" >&2; exit 2 ;;
+esac
 pvp_sparring_username="${CHESS_PVP_SPARRING_USERNAME:-sparringmeister}"
 
 state_file="$state_dir/deployed.sha"
@@ -285,6 +294,7 @@ compose() {
   CHESS_STUDIO_GO_NATIVE_GAMES_READ_ENABLED="$go_native_games_read" \
   CHESS_STUDIO_GO_NATIVE_GAMES_WRITE_ENABLED="$go_native_games_write" \
   CHESS_STUDIO_GO_NATIVE_GAMES_HINT_ENABLED="$go_native_games_hint" \
+  CHESS_STUDIO_GO_NATIVE_ANALYZE_ENABLED="$go_native_analyze" \
   CHESS_PVP_SPARRING_OWNER="$pvp_sparring_owner" \
   CHESS_PVP_SPARRING_USERNAME="$pvp_sparring_username" \
   CHESS_STUDIO_OCI_LOG_SERVICE_NAME="chess-studio-oci-backend-${target}-stdout" \
@@ -470,7 +480,7 @@ pvp_attest() {
     rm -f "$body"
     return 1
   fi
-  if python3 - "$body" "$pvp_sparring_enabled" "$deployment_target" "$sha" "$go_native_games_read" "$go_native_games_write" "$go_native_games_hint" <<'PY'
+  if python3 - "$body" "$pvp_sparring_enabled" "$deployment_target" "$sha" "$go_native_games_read" "$go_native_games_write" "$go_native_games_hint" "$go_native_analyze" <<'PY'
 import json
 import pathlib
 import sys
@@ -514,6 +524,7 @@ if (
     or bool(payload.get('nativeGamesRead')) != (str(sys.argv[5]).strip().lower() == 'true')
     or bool(payload.get('nativeGamesWrite')) != (str(sys.argv[6]).strip().lower() == 'true')
     or bool(payload.get('nativeGamesHint')) != (str(sys.argv[7]).strip().lower() == 'true')
+    or bool(payload.get('nativeGamesAnalyze')) != (str(sys.argv[8]).strip().lower() == 'true')
 ):
     raise SystemExit(1)
 
@@ -1732,6 +1743,12 @@ if [[ "$api_edge_mode" == "go" && "$go_native_games_hint" == "true" ]] && ! wait
   rollback "$sha" || true
   exit 61
 fi
+if [[ "$api_edge_mode" == "go" && "$go_native_analyze" == "true" ]] && ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/analyze" POST; then
+  echo "native analysis did not answer through Go after cutover: color=$candidate_color" >&2
+  compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
+  rollback "$sha" || true
+  exit 62
+fi
 write_active_color "$candidate_color"
 phase_done switch "$switch_started_ms"
 
@@ -1795,5 +1812,5 @@ fi
 agent_diag_summary || printf '%s\n' 'OCI_AGENT_DIAG unavailable'
 phase_done total "$total_started_ms"
 printf 'OCI_DEPLOY_TIMINGS target=%s phases=%s tunnel=%s color=%s\n' "$target" "${deploy_phase_summary%,}" "$tunnel_action" "$candidate_color"
-echo "CHESS_STUDIO_DEPLOY_OK target=$target repo_ref=$sha color=$candidate_color pvp=go api_edge=$api_edge_mode games_native=$go_native_games_read games_native_write=$go_native_games_write games_native_hint=$go_native_games_hint cors_origin=$cors_origin tunnel_action=$tunnel_action image=pulled observability=${observability_summary:-unknown}"
+echo "CHESS_STUDIO_DEPLOY_OK target=$target repo_ref=$sha color=$candidate_color pvp=go api_edge=$api_edge_mode games_native=$go_native_games_read games_native_write=$go_native_games_write games_native_hint=$go_native_games_hint analyze_native=$go_native_analyze cors_origin=$cors_origin tunnel_action=$tunnel_action image=pulled observability=${observability_summary:-unknown}"
 exit 0

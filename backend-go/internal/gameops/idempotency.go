@@ -258,3 +258,6 @@ func laxFloat(raw json.RawMessage) (float64, error) {
 		return 0, fmt.Errorf("%w: difficulty", ErrInvalidBody)
 	}
 }
+
+// LaxFloat is pydantic v2's lax float coercion for one JSON value.
+func LaxFloat(raw json.RawMessage) (float64, error) { return laxFloat(raw) }
