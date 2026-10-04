@@ -41,37 +41,12 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Restore exact frontend dependencies
-        uses: ./.github/actions/cache-node-modules
-        with:
-          working-directory: frontend
-          lockfile: frontend/package-lock.json
-          node-version: '22'
-
       - name: Build exact staging frontend
-        working-directory: frontend
-        env:
-          VITE_API_URL: ${{ env.STAGING_API_URL }}
-          VITE_WAR_ROOM_VARIANTS_ENABLE: '1'
-          VITE_PUBLIC_BASE: /
-          VITE_BUILD_SHA: ${{ github.sha }}
-          VITE_GRAFANA_CLOUD_URL: ${{ vars.VITE_GRAFANA_CLOUD_URL }}
-          VITE_GRAFANA_LOGS_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_LOGS_DASHBOARD_URL }}
-          VITE_GRAFANA_HEALTH_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_HEALTH_DASHBOARD_URL }}
-          VITE_GRAFANA_TRACES_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_TRACES_DASHBOARD_URL }}
-        run: npm run build
-
-      - name: Verify prebuilt frontend identity
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - "$GITHUB_SHA" <<'PY'
-          import json, pathlib, sys
-          payload = json.loads(pathlib.Path('frontend/dist/release.json').read_text(encoding='utf-8'))
-          actual = str(payload.get('build') or '').lower()
-          expected = sys.argv[1].lower()
-          raise SystemExit(0 if actual == expected else f"Artifact build={actual or '<vacío>'}, esperaba {expected}")
-          PY
+        uses: ./.github/actions/build-staging-frontend
+        with:
+          sha: ${{ github.sha }}
+          api-url: ${{ env.STAGING_API_URL }}
+          repo-vars: ${{ toJSON(vars) }}
 
       - name: Upload exact staging frontend
         uses: actions/upload-artifact@v7

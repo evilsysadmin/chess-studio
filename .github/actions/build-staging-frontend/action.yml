@@ -1,0 +1,57 @@
+name: Build staging frontend
+description: >-
+  The single definition of the staging frontend build. Main admission prebuilds
+  it (fast path) and Deploy to staging rebuilds it when that artifact is missing
+  (fallback); both call this action so the two builds cannot drift apart.
+
+inputs:
+  sha:
+    description: Exact commit the build identifies as (release.json build).
+    required: true
+  api-url:
+    description: Staging API base URL baked into the bundle.
+    required: true
+  repo-vars:
+    description: toJSON(vars) from the caller; provides the VITE_GRAFANA_* links.
+    required: false
+    default: '{}'
+  node-version:
+    description: Node major used by the runner (setup-node stays in the caller).
+    required: false
+    default: '22'
+
+runs:
+  using: composite
+  steps:
+    - name: Restore exact frontend dependencies
+      uses: ./.github/actions/cache-node-modules
+      with:
+        working-directory: frontend
+        lockfile: frontend/package-lock.json
+        node-version: ${{ inputs.node-version }}
+
+    - name: Build exact staging frontend
+      shell: bash
+      working-directory: frontend
+      env:
+        VITE_API_URL: ${{ inputs.api-url }}
+        VITE_WAR_ROOM_VARIANTS_ENABLE: '1'
+        VITE_PUBLIC_BASE: /
+        VITE_BUILD_SHA: ${{ inputs.sha }}
+        VITE_GRAFANA_CLOUD_URL: ${{ fromJSON(inputs.repo-vars).VITE_GRAFANA_CLOUD_URL }}
+        VITE_GRAFANA_LOGS_DASHBOARD_URL: ${{ fromJSON(inputs.repo-vars).VITE_GRAFANA_LOGS_DASHBOARD_URL }}
+        VITE_GRAFANA_HEALTH_DASHBOARD_URL: ${{ fromJSON(inputs.repo-vars).VITE_GRAFANA_HEALTH_DASHBOARD_URL }}
+        VITE_GRAFANA_TRACES_DASHBOARD_URL: ${{ fromJSON(inputs.repo-vars).VITE_GRAFANA_TRACES_DASHBOARD_URL }}
+      run: npm run build
+
+    - name: Verify built frontend identity
+      shell: bash
+      env:
+        EXPECTED_SHA: ${{ inputs.sha }}
+      run: |
+        python3 - <<'PY'
+        import json, os, sys
+        build = str(json.load(open("frontend/dist/release.json")).get("build") or "").lower()
+        expected = os.environ["EXPECTED_SHA"].lower()
+        sys.exit(0 if build == expected else f"release.json build={build or '<vacío>'}, esperaba {expected}")
+        PY
