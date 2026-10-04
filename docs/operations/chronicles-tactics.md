@@ -99,6 +99,16 @@ El decorado debe conocer el tamaño/plan real del mapa.
 
 Para cambios de framing/arte, generar artifact PNG. Una primera iteración que “mejora algo” pero sigue dominando el campo debe rechazarse y repetirse.
 
+## Presentación móvil de Chronicles
+
+Chronicles es una superficie de juego inmersiva también en móvil; no debe volver a quedar incrustado dentro del chrome global de Chess Studio.
+
+- La antesala/creator y el runtime jugable ocupan el viewport completo mediante overlay propio.
+- El responsive no se decide sólo por ancho: un teléfono apaisado corto (hasta 1024×600) usa composición touch/compacta aunque supere 800 px de ancho.
+- Los cinco controles táctiles de movimiento/ataque permanecen visibles y con objetivo de al menos 44 px.
+- El escenario conserva altura útil para jugar y la composición no introduce overflow horizontal.
+- La regresión mínima cubre portrait 390×844 y landscape 844×390, incluyendo setup fullscreen, canvas visible y mandos táctiles accesibles.
+
 ## Matthias
 
 Matthias usa su identidad canónica de peón. Los retratos pueden adaptar fondo/iluminación al mundo de Chronicles, pero no cambiar su identidad visual básica.
