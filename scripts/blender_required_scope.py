@@ -88,6 +88,7 @@ GATES = (
         exact_paths=frozenset({
             "scripts/blender/build_pvp_duel_hall.py",
             "scripts/blender/configure_eevee_premium.py",
+            "scripts/blender/publish_pvp_duel_hall.py",
             ".github/workflows/pvp-duel-hall-blender-art.yml",
         }),
     ),
@@ -180,6 +181,9 @@ def self_test() -> None:
         "pvp-duel-room-blender-art.yml"
     ]
     assert [gate.workflow for gate in classify(["scripts/blender/build_pvp_duel_hall.py"])] == [
+        "pvp-duel-hall-blender-art.yml"
+    ]
+    assert [gate.workflow for gate in classify(["scripts/blender/publish_pvp_duel_hall.py"])] == [
         "pvp-duel-hall-blender-art.yml"
     ]
     # Matthias art for Pawn Slug is raster/Godot-strict only. Legacy Blender

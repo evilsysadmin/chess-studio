@@ -112,6 +112,13 @@
       "sha256": "c12321f2afe18cf454c2a62e792b5a4a98d052238b32160849fcf635135c21e7",
       "url": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/shotgun/matthias_shotgun_canonical_v4-c12321f2afe18cf4.webp"
     },
+    "pvp.duelHall.runtime": {
+      "bytes": 3930540,
+      "contentType": "model/gltf-binary",
+      "key": "pvp/duel-hall/runtime/pvp-duel-hall-shell-3217783aa7095e0f.glb",
+      "sha256": "3217783aa7095e0f9851b3d618478d753b6061c9914723375f54e442c3800236",
+      "url": "https://assets.chess-studio.shadowops.dpdns.org/pvp/duel-hall/runtime/pvp-duel-hall-shell-3217783aa7095e0f.glb"
+    },
     "pvp.duelRoom.runtime": {
       "bytes": 8248920,
       "contentType": "model/gltf-binary",
