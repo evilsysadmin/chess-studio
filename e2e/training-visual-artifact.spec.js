@@ -63,6 +63,27 @@ async function assertSchoolTouchTargets(shell, label) {
   expect(undersized, `${label}: Class Room touch targets under 44px`).toEqual([]);
 }
 
+async function assertSchoolMobileFold(shell, label) {
+  const geometry = await shell.evaluate((root) => {
+    const board = root.querySelector('.matthias-school-board');
+    const actions = root.querySelector('.matthias-school-board-actions');
+    const boardRect = board?.getBoundingClientRect();
+    const actionRect = actions?.getBoundingClientRect();
+    return {
+      innerHeight: window.innerHeight,
+      boardWidth: boardRect?.width || 0,
+      boardRight: boardRect?.right || 0,
+      actionsTop: actionRect?.top || 0,
+      actionsBottom: actionRect?.bottom || 0,
+      actionCount: actions?.querySelectorAll('button')?.length || 0,
+    };
+  });
+  expect(geometry.boardRight, `${label}: board must stay inside viewport`).toBeLessThanOrEqual(391);
+  expect(geometry.actionsTop, `${label}: lesson actions should start in the first viewport`).toBeLessThan(geometry.innerHeight * 0.82);
+  expect(geometry.actionsBottom, `${label}: lesson actions should remain above the browser-chrome reserve`).toBeLessThanOrEqual(geometry.innerHeight - 16);
+  expect(geometry.actionCount, `${label}: expected actionable lesson controls`).toBeGreaterThanOrEqual(3);
+}
+
 async function assertSpecialModesDensity(shell) {
   const density = await shell.locator('.mechanic-library').evaluate((root) => {
     const list = root.querySelector('.mechanic-library-list')?.getBoundingClientRect();
@@ -185,6 +206,10 @@ scopedTest('school', 'Entrenar · Escuela, Glosario y Modos especiales', async (
   await page.setViewportSize({ width: 390, height: 844 });
   await settle(page);
   await assertSchoolTouchTargets(shell, 'school-mobile');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await settle(page);
+  await assertSchoolTouchTargets(shell, 'school-mobile');
+  await assertSchoolMobileFold(shell, 'school-mobile');
   await captureAt(page, 'school', { width: 390, height: 844, variant: 'mobile' });
   await page.setViewportSize({ width: 1440, height: 900 });
   await settle(page);
