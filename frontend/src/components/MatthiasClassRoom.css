@@ -782,3 +782,187 @@ body:has(.matthias-school-shell[data-school-section="school"]) .masthead {
     justify-self: center;
   }
 }
+
+/* The Resources trigger grows to a 44px touch target on phones; centre its
+   label instead of leaving it pinned to the top of a tall box. */
+.tutorial-shell.matthias-school-shell .matthias-school-resources > summary {
+  display: flex;
+  align-items: center;
+}
+
+/* Landscape phones (~350-430px tall): the portrait stack pushes the board below
+   the fold. Board-first: the board takes the full viewport height, Matthias sits
+   beside it, and the top chrome folds into the free space under the board
+   actions: "Plan de estudios" plus Back/Resources as icon buttons. The course
+   card's text is dropped because Matthias' heading already names the lesson. */
+@media (orientation: landscape) and (max-height: 520px) {
+  .app-shell:has(.matthias-school-shell[data-school-section="school"]) {
+    padding:
+      max(.3rem, env(safe-area-inset-top))
+      max(.5rem, env(safe-area-inset-right))
+      max(.3rem, env(safe-area-inset-bottom))
+      max(.5rem, env(safe-area-inset-left));
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] {
+    --school-landscape-board: min(calc(100dvh - 1.2rem), calc(100vw - 27rem));
+    position: relative;
+    gap: 0;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-toolbar {
+    position: absolute;
+    z-index: 4;
+    left: calc(var(--school-landscape-board) + .6rem);
+    bottom: .25rem;
+    display: flex;
+    gap: .35rem;
+    width: auto;
+    min-height: 0;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-room-label {
+    display: none;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-toolbar .back-link,
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-resources > summary {
+    justify-content: center;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 1px solid var(--ui-border);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--ui-panel) 94%, transparent);
+    font-size: 0;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-toolbar .back-link {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-toolbar .back-link::before {
+    content: '←';
+    font-size: 1.05rem;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-resources > summary::after {
+    content: '···';
+    font-size: 1rem;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-resources-menu {
+    top: auto;
+    right: auto;
+    bottom: calc(100% + .32rem);
+    left: 0;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-focusbar {
+    position: absolute;
+    z-index: 3;
+    left: calc(var(--school-landscape-board) + .6rem);
+    bottom: calc(.25rem + 44px + .35rem);
+    width: 140px;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-focusbar button {
+    width: 100%;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-focusbar > div {
+    display: none;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-stage,
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-curriculum="closed"] .matthias-school-stage {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: .5rem;
+    align-items: start;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-board {
+    display: grid;
+    grid-template-columns: var(--school-landscape-board) auto;
+    align-items: start;
+    gap: .35rem;
+    width: auto;
+    max-width: none;
+    padding: .25rem;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-board > :not(.matthias-school-board-actions) {
+    width: var(--school-landscape-board);
+    min-width: 0;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-board .board3d-main-shell,
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-curriculum="closed"] .matthias-school-board .board3d-main-shell {
+    height: var(--school-landscape-board);
+    min-height: 0;
+  }
+
+  /* The shared 2D board sizes squares as min(11vw, 62px); here the board is
+     sized by height, so squares must share the column instead. */
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-board .board-grid {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    grid-template-rows: repeat(8, minmax(0, 1fr));
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-board .rank-labels {
+    grid-template-rows: repeat(8, minmax(0, 1fr));
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-board .file-labels {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-board-actions {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    width: 140px;
+    margin-top: 0;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-board-actions button {
+    width: 100%;
+    white-space: normal;
+    line-height: 1.15;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-coach,
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-curriculum="closed"] .matthias-school-coach {
+    order: 0;
+    position: static;
+    max-height: calc(var(--school-landscape-board) + .5rem);
+    overflow-y: auto;
+    gap: .42rem;
+    padding: .5rem;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-coach-heading {
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-coach-heading img {
+    width: 44px;
+    height: 56px;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-nav {
+    position: sticky;
+    bottom: -.5rem;
+    z-index: 1;
+    margin: 0 -.5rem -.5rem;
+    padding: .35rem .5rem .5rem;
+    background: color-mix(in srgb, var(--ui-panel) 96%, #080a0d 4%);
+  }
+}
