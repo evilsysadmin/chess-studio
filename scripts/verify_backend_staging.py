@@ -50,6 +50,7 @@ def pvp_full_go_ready(payload: dict) -> bool:
     return (
         payload.get("status") == "ready"
         and payload.get("service") == "chess-studio-pvp-go"
+        and payload.get("runtimeService") == "chess-studio-backend-go"
         and payload.get("virtualPlayersEnabled") is True
         and all(payload.get(key) is True for key in PVP_FULL_GO_READY_KEYS)
     )
@@ -319,6 +320,7 @@ def self_test() -> None:
     full_go = {
         "status": "ready",
         "service": "chess-studio-pvp-go",
+        "runtimeService": "chess-studio-backend-go",
         "virtualPlayersEnabled": True,
         **{key: True for key in PVP_FULL_GO_READY_KEYS},
     }
@@ -328,6 +330,9 @@ def self_test() -> None:
     assert not pvp_full_go_ready(broken)
     broken = dict(full_go)
     broken["virtualPlayersEnabled"] = False
+    assert not pvp_full_go_ready(broken)
+    broken = dict(full_go)
+    broken["runtimeService"] = "chess-studio-pvp-go"
     assert not pvp_full_go_ready(broken)
     print("verify-backend-staging self-test OK")
 

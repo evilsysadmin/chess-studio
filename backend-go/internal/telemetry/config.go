@@ -12,11 +12,9 @@ package telemetry
 import (
 	"net/url"
 	"strings"
-)
 
-// GoServiceSuffix distinguishes the Go runtime from the Python service it
-// fronts in every metric and log series.
-const GoServiceSuffix = "-go"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/runtimeidentity"
+)
 
 var signalSuffix = map[string]string{
 	"traces":  "/v1/traces",
@@ -53,7 +51,7 @@ func ConfigFromEnv(lookup func(string) (string, bool)) Config {
 	logs := resolvedSignalEndpoint(get, "logs")
 	base := get("OTEL_SERVICE_NAME")
 	if base == "" {
-		base = "chess-studio-backend"
+		base = runtimeidentity.DefaultBaseServiceName
 	}
 	if len(base) > 80 {
 		base = base[:80]
@@ -70,7 +68,7 @@ func ConfigFromEnv(lookup func(string) (string, bool)) Config {
 		trust = truthy(raw)
 	}
 	return Config{
-		ServiceName:     base + GoServiceSuffix,
+		ServiceName:     base + runtimeidentity.GoServiceSuffix,
 		Environment:     environment,
 		Release:         get("GIT_COMMIT_SHA"),
 		MetricsEndpoint: metrics,
