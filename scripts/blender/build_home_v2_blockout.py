@@ -1930,12 +1930,24 @@ def add_royal_cat(materials):
         0.004,
         materials["velvet_dark"],
     )
-    curve_tube(
+    # At the canonical play camera this piping is only a few pixels thick. The old
+    # 48-point / bevel-resolution-3 tube exported as one of Home's heaviest meshes,
+    # so keep the same ellipse with half the path samples and a leaner round profile.
+    piping_segments = 24
+    cushion_piping = curve_tube(
         "HOME_PROP_cat_cushion_piping",
-        [(cx + 0.428 * math.cos(i * math.tau / 48), cy + 0.348 * math.sin(i * math.tau / 48), 0.050) for i in range(49)],
+        [
+            (
+                cx + 0.428 * math.cos(i * math.tau / piping_segments),
+                cy + 0.348 * math.sin(i * math.tau / piping_segments),
+                0.050,
+            )
+            for i in range(piping_segments + 1)
+        ],
         0.011,
         gold,
     )
+    cushion_piping.data.bevel_resolution = 1
     for n, ang in enumerate((45, 135, 225, 315)):
         a = math.radians(ang)
         tx, ty = cx + 0.44 * math.cos(a), cy + 0.355 * math.sin(a)
