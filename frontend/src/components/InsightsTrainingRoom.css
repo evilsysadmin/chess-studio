@@ -31,7 +31,7 @@
   overflow: hidden;
   border: 1px solid rgba(194, 148, 73, .18);
   border-radius: 18px;
-  background: #0b0a0a;
+  background: #12100f;
   box-shadow: 0 28px 70px rgba(0, 0, 0, .34);
   pointer-events: none;
 }
@@ -42,8 +42,8 @@
   inset: 0;
   z-index: 4;
   background:
-    linear-gradient(90deg, rgba(7, 6, 6, .62) 0%, rgba(7, 6, 6, .15) 42%, rgba(7, 6, 6, .05) 66%, rgba(7, 6, 6, .22) 100%),
-    linear-gradient(180deg, rgba(6, 6, 8, .08) 0%, rgba(6, 6, 8, .04) 58%, rgba(7, 6, 5, .78) 94%, #0b0a0a 100%);
+    linear-gradient(90deg, rgba(7, 6, 6, .34) 0%, rgba(7, 6, 6, .08) 42%, rgba(7, 6, 6, .02) 66%, rgba(7, 6, 6, .12) 100%),
+    linear-gradient(180deg, rgba(6, 6, 8, .03) 0%, rgba(6, 6, 8, .015) 58%, rgba(7, 6, 5, .46) 94%, #0d0b0a 100%);
 }
 
 .insights-training-room-3d,
@@ -178,8 +178,8 @@
   border: 1px solid rgba(175, 127, 64, .5);
   border-radius: 6px;
   background:
-    linear-gradient(180deg, rgba(255, 226, 168, .035), transparent 34%),
-    linear-gradient(145deg, rgba(37, 26, 20, .92), rgba(15, 13, 13, .94));
+    linear-gradient(180deg, rgba(255, 226, 168, .07), transparent 34%),
+    linear-gradient(145deg, rgba(46, 31, 22, .84), rgba(18, 14, 13, .88));
   box-shadow:
     0 13px 24px rgba(0, 0, 0, .34),
     inset 0 1px rgba(255, 226, 171, .07);
@@ -210,8 +210,8 @@
 .insights-training-room .insights-workspace-nav > button.active {
   border-color: rgba(229, 176, 79, .78);
   background:
-    radial-gradient(circle at 12% 50%, rgba(232, 162, 61, .16), transparent 28%),
-    linear-gradient(145deg, rgba(88, 55, 24, .95), rgba(31, 20, 14, .96));
+    radial-gradient(circle at 12% 50%, rgba(232, 162, 61, .22), transparent 28%),
+    linear-gradient(145deg, rgba(98, 61, 25, .9), rgba(35, 22, 14, .92));
   box-shadow:
     0 14px 27px rgba(0, 0, 0, .36),
     inset 3px 0 rgba(221, 166, 75, .74);
@@ -236,7 +236,7 @@
   border-bottom: 1px solid rgba(90, 60, 32, .4);
   border-radius: 0;
   background:
-    linear-gradient(180deg, rgba(38, 24, 15, .88), rgba(14, 12, 11, .91));
+    linear-gradient(180deg, rgba(47, 29, 17, .82), rgba(17, 13, 11, .86));
   box-shadow: 0 18px 34px rgba(0, 0, 0, .26);
   backdrop-filter: blur(8px);
 }
