@@ -6,7 +6,7 @@ export function getSchoolBoardRenderer() {
   return getBoardRenderer();
 }
 
-export default function SchoolBoard({ teachingLayers = null, squareClassName, hintMove, warRoomVariantOverride, ...props }) {
+export default function SchoolBoard({ teachingLayers = null, squareClassName, hintMove, ...props }) {
   const teachingHintMove = schoolTeachingHintMove(teachingLayers) || hintMove || null;
   const mergedSquareClassName = (square) => [
     squareClassName?.(square),
@@ -19,7 +19,7 @@ export default function SchoolBoard({ teachingLayers = null, squareClassName, hi
       squareClassName={mergedSquareClassName}
       hintMove={teachingHintMove}
       cameraProfile="classroom"
-      warRoomVariantOverride={warRoomVariantOverride || 'classic'}
+      warRoomVariantOverride="classic"
     />
   );
 }
