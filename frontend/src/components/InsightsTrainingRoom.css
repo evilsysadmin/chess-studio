@@ -178,8 +178,8 @@
   border: 1px solid rgba(175, 127, 64, .5);
   border-radius: 6px;
   background:
-    linear-gradient(180deg, rgba(255, 226, 168, .07), transparent 34%),
-    linear-gradient(145deg, rgba(46, 31, 22, .84), rgba(18, 14, 13, .88));
+    linear-gradient(180deg, rgba(255, 226, 168, .075), transparent 34%),
+    linear-gradient(145deg, rgba(46, 31, 22, .76), rgba(18, 14, 13, .82));
   box-shadow:
     0 13px 24px rgba(0, 0, 0, .34),
     inset 0 1px rgba(255, 226, 171, .07);
@@ -200,8 +200,20 @@
   opacity: .88;
 }
 
+.insights-training-room .insights-workspace-nav > button:nth-child(1) {
+  transform: rotate(-.35deg);
+}
+
+.insights-training-room .insights-workspace-nav > button:nth-child(2) {
+  transform: rotate(.18deg);
+}
+
+.insights-training-room .insights-workspace-nav > button:nth-child(3) {
+  transform: rotate(-.16deg);
+}
+
 .insights-training-room .insights-workspace-nav > button:hover {
-  transform: translateY(-1px);
+  transform: translateY(-1px) rotate(0deg);
   border-color: rgba(219, 169, 82, .66);
   background:
     linear-gradient(180deg, rgba(240, 189, 93, .08), transparent 42%),
@@ -211,8 +223,8 @@
 .insights-training-room .insights-workspace-nav > button.active {
   border-color: rgba(229, 176, 79, .78);
   background:
-    radial-gradient(circle at 12% 50%, rgba(232, 162, 61, .22), transparent 28%),
-    linear-gradient(145deg, rgba(98, 61, 25, .9), rgba(35, 22, 14, .92));
+    radial-gradient(circle at 12% 50%, rgba(232, 162, 61, .24), transparent 28%),
+    linear-gradient(145deg, rgba(98, 61, 25, .82), rgba(35, 22, 14, .86));
   box-shadow:
     0 14px 27px rgba(0, 0, 0, .36),
     inset 3px 0 rgba(221, 166, 75, .74);
@@ -226,6 +238,13 @@
 .insights-training-room .insights-workspace-panel {
   margin-top: .35rem;
   padding: .72rem clamp(.1rem, 1vw, .7rem) 0;
+}
+
+.insights-training-room .insights-workspace-panel > .insights-hub {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
 }
 
 .insights-training-room .insights-guided-session {
@@ -423,6 +442,7 @@
     min-height: 72px;
     padding: .62rem .68rem;
     background: rgba(20, 16, 14, .9);
+    transform: none;
   }
 
   .insights-training-room .insights-workspace-panel {
