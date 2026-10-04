@@ -347,7 +347,12 @@ def classify_path(path: str) -> set[str] | None:
     if name == "experimentalthreerenderer.js":
         return set(CHRONICLES_SHARED)
 
-    if lower in {"frontend/src/lablaunchintent.js", "frontend/src/usepuzzlelaunchflow.js", "frontend/src/soundfx.js"}:
+    if lower in {
+        "frontend/src/lablaunchintent.js",
+        "frontend/src/usepuzzlelaunchflow.js",
+        "frontend/src/soundfx.js",
+        "frontend/src/components/warroomhomepreload.js",
+    }:
         return set()
     if lower in QUICK_MATCH_EXACT_PRODUCERS:
         return set(QUICK_MATCH_EXACT_PRODUCERS[lower])
@@ -669,6 +674,7 @@ def self_test() -> None:
     assert classify(["frontend/src/components/PvPLobbyModal.jsx"]) == "pvp-lobby"
     assert classify(["frontend/src/components/PvPDuelHallRoom.css"]) == "pvp-lobby"
     assert classify(["scripts/architecture_debt_budget.py"]) == "none"
+    assert classify(["frontend/src/components/warRoomHomePreload.js"]) == "none"
     assert classify(["e2e/pvp-lobby-visual-artifact.spec.js"]) == "pvp-lobby"
     assert classify(["frontend/src/components/PvpHandoffModal.jsx"]) == "pvp-handoff"
     assert classify(["e2e/pvp-handoff-visual-artifact.spec.js"]) == "pvp-handoff"
