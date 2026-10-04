@@ -27,8 +27,10 @@ describe('Chronicles isometric scene styles', () => {
     expect(menagerie.palette.floor[3]).toBeGreaterThan(menagerie.palette.floor[0]);
     expect(menagerie.lighting.exposure).toBeGreaterThan(gallery.lighting.exposure);
     expect(menagerie.lighting.fill).toBeGreaterThan(1);
-    expect(bellTower.lighting.exposure).toBeGreaterThan(1.1);
-    expect(bellTower.lighting.fill).toBeGreaterThan(1.3);
+    expect(bellTower.lighting.exposure).toBeGreaterThanOrEqual(1.28);
+    expect(bellTower.lighting.hemi).toBeGreaterThanOrEqual(1.4);
+    expect(bellTower.lighting.fill).toBeGreaterThanOrEqual(1.62);
+    expect(bellTower.lighting.bounce).toBeGreaterThanOrEqual(1.46);
   });
 
   it('never lets an authored scenario fall below the shared visibility floor', () => {
