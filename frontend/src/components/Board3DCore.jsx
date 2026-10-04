@@ -245,7 +245,7 @@ function Board3DCanvas({
     scene.add(warm);
 
     const classicShellController = createClassicWarRoomShellController(
-      { scene, boardGroup, theme, whiteSide, renderLite: sceneLite },
+      { scene, boardGroup, theme, whiteSide, renderLite: sceneLite, classroom: classroomCamera },
       shouldShowClassicWarRoomShell({ selectable: warRoomVariantSelectable, variant: warRoomVariant }),
     );
 
