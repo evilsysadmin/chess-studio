@@ -38,6 +38,7 @@ import {
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import ChroniclesBookOneEpilogue from './ChroniclesBookOneEpilogue.jsx';
 import ChroniclesCharacterSetup from './ChroniclesCharacterSetup.jsx';
+import ChroniclesDefeatOverlay from './ChroniclesDefeatOverlay.jsx';
 import ChroniclesEnemyRetaliationFx from './ChroniclesEnemyRetaliationFx.jsx';
 import ChroniclesNarratorOverlay from './ChroniclesNarratorOverlay.jsx';
 import ChroniclesPartyBark from './ChroniclesPartyBark.jsx';
@@ -137,8 +138,12 @@ export default function ChroniclesOfMatthias({ onExit }) {
   }, []);
 
   const exitChronicles = useCallback(() => {
-    // Leaving the renderer is not the end of the expedition. Keep the shared
-    // run alive so Tactics can resume the same authoritative world.
+    const current = stateRef.current;
+    const runId = activeRunIdRef.current;
+    const terminal = current?.phase === 'defeated' || current?.phase === 'escaped';
+    if (terminal && runId) finishChroniclesRun(FIRST_PERSON_RUN_SCOPE, runId);
+    // Active runs remain resumable across first-person/Tactics. Terminal runs
+    // are explicitly retired locally so re-entry starts a fresh expedition.
     activeRunIdRef.current = null;
     onExit?.();
   }, [onExit]);
@@ -356,8 +361,10 @@ export default function ChroniclesOfMatthias({ onExit }) {
   useEffect(() => {
     if (!ready || !stateRef.current) return undefined;
     const onKeyDown = (event) => {
+      const current = stateRef.current;
+      if (!current || current.phase === 'defeated' || current.phase === 'escaped') return;
       if (/^[1-4]$/.test(event.key)) {
-        const member = stateRef.current.party[Number(event.key) - 1];
+        const member = current.party[Number(event.key) - 1];
         if (member) {
           event.preventDefault();
           setSelectedMemberId(member.id);
@@ -440,6 +447,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
                 key={member.id}
                 className={`chronicles-party-member ${member.id === 'matthias' ? 'is-leader' : ''} ${member.id === selectedMemberId ? 'is-selected' : ''} ${member.hp <= 0 ? 'is-down' : ''}`}
                 onClick={() => setSelectedMemberId(member.id)}
+                disabled={expeditionOver}
                 aria-label={`Seleccionar ${member.name}`}
                 aria-pressed={member.id === selectedMemberId}
               >
@@ -484,6 +492,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
             <ChroniclesTacticalMargin target={tacticalTarget} />
             <ChroniclesEnemyRetaliationFx key={retaliationCue?.token || 'none'} cue={retaliationCue} />
             {rendererError && <div className="chronicles-renderer-error" role="alert">{rendererError}</div>}
+            {state.phase === 'defeated' && <ChroniclesDefeatOverlay onRestart={restart} onExit={exitChronicles} />}
             {state.phase === 'escaped' && <ChroniclesBookOneEpilogue state={state} onRestart={restart} />}
           </div>
 
@@ -502,21 +511,25 @@ export default function ChroniclesOfMatthias({ onExit }) {
             </ol>
           </details>
 
-          <div className="chronicles-touch" aria-label="Controles de la mazmorra">
-            <button type="button" disabled={expeditionOver} onClick={() => dispatch('turn-left')} aria-label="Girar a la izquierda">↶<small>GIRAR</small></button>
-            <button type="button" disabled={expeditionOver} onClick={() => dispatch('forward')} aria-label="Avanzar">↑<small>AVANZAR</small></button>
-            <button type="button" className="is-attack" disabled={expeditionOver} onClick={attackWithSelected} aria-label="Atacar">⚔<small>{selectedMember?.name?.toUpperCase() || 'ATACAR'}</small></button>
-            <button type="button" disabled={expeditionOver} onClick={() => dispatch('backward')} aria-label="Retroceder">↓<small>ATRÁS</small></button>
-            <button type="button" disabled={expeditionOver} onClick={() => dispatch('turn-right')} aria-label="Girar a la derecha">↷<small>GIRAR</small></button>
-          </div>
+          {!expeditionOver && (
+            <>
+              <div className="chronicles-touch" aria-label="Controles de la mazmorra">
+                <button type="button" onClick={() => dispatch('turn-left')} aria-label="Girar a la izquierda">↶<small>GIRAR</small></button>
+                <button type="button" onClick={() => dispatch('forward')} aria-label="Avanzar">↑<small>AVANZAR</small></button>
+                <button type="button" className="is-attack" onClick={attackWithSelected} aria-label="Atacar">⚔<small>{selectedMember?.name?.toUpperCase() || 'ATACAR'}</small></button>
+                <button type="button" onClick={() => dispatch('backward')} aria-label="Retroceder">↓<small>ATRÁS</small></button>
+                <button type="button" onClick={() => dispatch('turn-right')} aria-label="Girar a la derecha">↷<small>GIRAR</small></button>
+              </div>
 
-          <div className="chronicles-keyboard-help">
-            <span><kbd>W</kbd>/<kbd>↑</kbd> avanzar</span>
-            <span><kbd>S</kbd>/<kbd>↓</kbd> retroceder</span>
-            <span><kbd>A</kbd><kbd>D</kbd> girar</span>
-            <span><kbd>1</kbd>–<kbd>4</kbd> pieza</span>
-            <span><kbd>ESPACIO</kbd> atacar</span>
-          </div>
+              <div className="chronicles-keyboard-help">
+                <span><kbd>W</kbd>/<kbd>↑</kbd> avanzar</span>
+                <span><kbd>S</kbd>/<kbd>↓</kbd> retroceder</span>
+                <span><kbd>A</kbd><kbd>D</kbd> girar</span>
+                <span><kbd>1</kbd>–<kbd>4</kbd> pieza</span>
+                <span><kbd>ESPACIO</kbd> atacar</span>
+              </div>
+            </>
+          )}
         </main>
       </div>
 

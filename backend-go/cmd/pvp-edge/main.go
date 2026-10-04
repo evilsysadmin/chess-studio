@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/accountstore"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/challengeaccept"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/challengecreate"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/edge"
@@ -19,11 +20,13 @@ import (
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/matchdisconnect"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/matchresign"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/matchtimeout"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/mongoruntime"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/presence"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/pulse"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/pvprating"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/residentmove"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/residentoracle"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/sessionauth"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/telemetry"
 )
 
@@ -52,25 +55,31 @@ func main() {
 	var nativeMatchRead http.Handler
 	var nativeMatchMove http.Handler
 	var nativeGamesRead http.Handler
-	var mongoStore *pulse.MongoStore
+	var mongoRuntime *mongoruntime.Runtime
 	if features.needsMongo() {
 		mongoURL := strings.TrimSpace(os.Getenv("MONGO_URL"))
 		mongoDatabase := strings.TrimSpace(os.Getenv("MONGO_DB_NAME"))
 		jwtSecret := strings.TrimSpace(os.Getenv("JWT_SECRET"))
 		if mongoURL == "" || mongoDatabase == "" || jwtSecret == "" {
-			log.Fatal("native PvP features require MONGO_URL, MONGO_DB_NAME and JWT_SECRET")
+			log.Fatal("native Go features require MONGO_URL, MONGO_DB_NAME and JWT_SECRET")
 		}
+		pvpMongoTimeout := envDurationMS("PVP_MONGO_TIMEOUT_MS", 2000*time.Millisecond)
 		startupCtx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
-		store, err := pulse.NewMongoStore(startupCtx, pulse.MongoConfig{
-			URL:          mongoURL,
-			Database:     mongoDatabase,
-			QueryTimeout: envDurationMS("PVP_MONGO_TIMEOUT_MS", 2000*time.Millisecond),
+		runtime, err := mongoruntime.New(startupCtx, mongoruntime.Config{
+			URL:             mongoURL,
+			Database:        mongoDatabase,
+			QueryTimeout:    pvpMongoTimeout,
+			ApplicationName: mongoruntime.DefaultApplicationName,
 		})
 		cancel()
 		if err != nil {
-			log.Fatalf("native PvP pulse storage: %v", err)
+			log.Fatalf("native Go Mongo runtime: %v", err)
 		}
-		mongoStore = store
+		store, err := pulse.NewMongoStoreFromDatabase(runtime.Database(), pvpMongoTimeout)
+		if err != nil {
+			log.Fatalf("native PvP storage: %v", err)
+		}
+		mongoRuntime = runtime
 		// Python declares the same indexes while both runtimes coexist, so a
 		// failure here is logged, not fatal. It means the specs drifted.
 		indexCtx, cancelIndexes := context.WithTimeout(context.Background(), 10*time.Second)
@@ -161,13 +170,14 @@ func main() {
 			nativePulse = pulseHandler
 		}
 		if features.gamesRead {
+			telemetryCfg := telemetry.ConfigFromEnv(os.LookupEnv)
 			gamesHandler, err := gamesapi.New(gamesapi.Config{
-				Store:           gamestore.New(store.Database(), envDurationMS("GAMES_MONGO_TIMEOUT_MS", 2000*time.Millisecond)),
-				Accounts:        store,
-				Presence:        presence.New(store.Database(), telemetry.ConfigFromEnv(os.LookupEnv).TrustCloudflare, 2*time.Second),
+				Store:           gamestore.New(runtime.Database(), envDurationMS("GAMES_MONGO_TIMEOUT_MS", 2000*time.Millisecond)),
+				Accounts:        accountstore.New(runtime.Database(), pvpMongoTimeout),
+				Presence:        presence.New(runtime.Database(), telemetryCfg.TrustCloudflare, 2*time.Second),
 				JWTSecret:       jwtSecret,
 				AllowedOrigins:  splitCSV(os.Getenv("CORS_ORIGINS")),
-				TrustCloudflare: telemetry.ConfigFromEnv(os.LookupEnv).TrustCloudflare,
+				TrustCloudflare: telemetryCfg.TrustCloudflare,
 			})
 			if err != nil {
 				log.Fatalf("native games API: %v", err)
@@ -208,19 +218,19 @@ func main() {
 			nativeMatchMove = pulseHandler
 		}
 	}
-	if mongoStore != nil {
+	if mongoRuntime != nil {
 		defer func() {
 			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 			defer cancel()
-			if err := mongoStore.Close(ctx); err != nil {
-				log.Printf("native PvP pulse Mongo shutdown: %v", err)
+			if err := mongoRuntime.Close(ctx); err != nil {
+				log.Printf("native Go Mongo shutdown: %v", err)
 			}
 		}()
 	}
 
 	var readyChecks map[string]func(context.Context) error
-	if mongoStore != nil {
-		readyChecks = map[string]func(context.Context) error{"mongodb": mongoStore.Ping}
+	if mongoRuntime != nil {
+		readyChecks = map[string]func(context.Context) error{"mongodb": mongoRuntime.Ping}
 	}
 
 	requestTelemetry := newRequestTelemetry()
@@ -296,7 +306,7 @@ func newRequestTelemetry() *telemetry.Recorder {
 	defer cancel()
 	recorder, err := telemetry.New(ctx, cfg, telemetry.Options{
 		Username: func(r *http.Request) string {
-			return pulse.VerifiedSubject(r.Header.Get("Authorization"), secret, time.Now())
+			return sessionauth.VerifiedSubject(r.Header.Get("Authorization"), secret, time.Now())
 		},
 	})
 	if err != nil {
