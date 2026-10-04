@@ -1,3 +1,10 @@
+export function schoolCoachIncidentConsumesMistake(kind) {
+  // Only a legal chess decision that misses the lesson objective consumes exam
+  // margin. Empty taps, selecting the wrong piece or an illegal destination are
+  // interaction/rules feedback, not a played mistake.
+  return String(kind || '') === 'off-objective';
+}
+
 export function advanceSchoolCoachContext(previous, kind) {
   const normalized = String(kind || 'neutral');
   return Object.freeze({
