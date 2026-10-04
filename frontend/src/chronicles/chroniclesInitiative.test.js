@@ -129,6 +129,32 @@ describe('Chronicles initiative', () => {
     expect(forced.initiative.order.map((actor) => actor.id).sort()).toEqual(['far', 'matthias']);
   });
 
+  it('continues after a fallen current actor instead of restarting the round', () => {
+    const state = {
+      phase: 'combat',
+      party: [
+        { id: 'a', hp: 4, agility: 4 },
+        { id: 'b', hp: 0, agility: 3 },
+      ],
+      enemyHp: 4,
+      initiative: {
+        version: 1,
+        die: '1d8',
+        round: 3,
+        cursor: 1,
+        order: [
+          { id: 'a', kind: 'party', name: 'A', agility: 4, roll: 4, initiative: 8 },
+          { id: 'b', kind: 'party', name: 'B', agility: 3, roll: 4, initiative: 7 },
+          { id: 'enemy', kind: 'enemy', name: 'Enemy', agility: 2, roll: 4, initiative: 6 },
+        ],
+      },
+    };
+    const next = chroniclesAdvanceCombatInitiative(state, [{ id: 'enemy', hpKey: 'enemyHp' }]);
+    expect(next.initiative.order.map((actor) => actor.id)).toEqual(['a', 'enemy']);
+    expect(chroniclesCurrentInitiativeActor(next.initiative)?.id).toBe('enemy');
+    expect(next.initiative.round).toBe(3);
+  });
+
   it('drops defeated actors and returns to exploration when combat has no enemies left', () => {
     const state = {
       phase: 'combat',
