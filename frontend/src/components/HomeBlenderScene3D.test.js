@@ -413,16 +413,20 @@ describe('HomeBlenderScene3D live flame animation', () => {
       expect(plan.intervalMs).toBeLessThanOrEqual(HOME_BLENDER_FIRE_MAX_INTERVAL_MS);
     });
 
-    it('turns the fire off when animation frames arrive late even if render calls look cheap', () => {
-      // WebGL rasterises in the GPU process: the render call returns fast while the
-      // frame pacing collapses. That is the software-GL / weak-GPU case.
+    it('throttles hard instead of killing the shared Home loop when RAF arrives late', () => {
+      // WebGL rasterises in the GPU process: the render call can look cheap while
+      // frame pacing collapses. A transient stall must remain recoverable because
+      // Matthias and all ambient motion share this RAF.
       const starved = homeBlenderFireFramePlan({
         baseIntervalMs: 42,
         renderCostMs: 2,
         frameGapMs: HOME_BLENDER_FIRE_MAX_FRAME_GAP_MS + 5,
         samples: 30,
       });
-      expect(starved.enabled).toBe(false);
+      expect(starved).toEqual({
+        enabled: true,
+        intervalMs: HOME_BLENDER_FIRE_MAX_INTERVAL_MS,
+      });
       for (const frameGapMs of [8, 16.7, 20, HOME_BLENDER_FIRE_MAX_FRAME_GAP_MS]) {
         expect(homeBlenderFireFramePlan({ baseIntervalMs: 42, renderCostMs: 2, frameGapMs, samples: 30 }).enabled)
           .toBe(true);
@@ -437,13 +441,16 @@ describe('HomeBlenderScene3D live flame animation', () => {
       }
     });
 
-    it('turns the fire off on hardware that cannot afford it', () => {
+    it('keeps a minimal recoverable pulse on hardware that cannot afford full cadence', () => {
       const plan = homeBlenderFireFramePlan({
         baseIntervalMs: 42,
         renderCostMs: HOME_BLENDER_FIRE_MAX_RENDER_MS + 1,
         samples: 30,
       });
-      expect(plan.enabled).toBe(false);
+      expect(plan).toEqual({
+        enabled: true,
+        intervalMs: HOME_BLENDER_FIRE_MAX_INTERVAL_MS,
+      });
     });
   });
 

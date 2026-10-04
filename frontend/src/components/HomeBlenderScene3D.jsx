@@ -636,8 +636,12 @@ export function homeBlenderFireFramePlan({
   if (samples < HOME_BLENDER_FIRE_MIN_SAMPLES) {
     return { enabled: true, intervalMs: baseIntervalMs };
   }
+  // Severe jank must degrade cadence, never permanently kill the shared Home
+  // animation loop. Matthias, Klaus, fire, steam and practical-light motion all
+  // advance from this RAF, so a transient GC/compositor stall must be recoverable.
+  // The EWMA inputs naturally let cadence tighten again once the stall clears.
   if (cost > HOME_BLENDER_FIRE_MAX_RENDER_MS || gap > HOME_BLENDER_FIRE_MAX_FRAME_GAP_MS) {
-    return { enabled: false, intervalMs: baseIntervalMs };
+    return { enabled: true, intervalMs: HOME_BLENDER_FIRE_MAX_INTERVAL_MS };
   }
   return { enabled: true, intervalMs: Math.min(HOME_BLENDER_FIRE_MAX_INTERVAL_MS, Math.max(baseIntervalMs, cost * 3)) };
 }
@@ -1573,12 +1577,9 @@ export default function HomeBlenderScene3D({
         fireIntervalMs = plan.intervalMs;
         canvas.dataset.homeFireCostMs = fireRenderCostMs.toFixed(1);
         canvas.dataset.homeFireGapMs = fireFrameGapMs.toFixed(1);
-        if (!plan.enabled) {
-          // Too expensive here: settle on the still frame and stay there.
-          canvas.dataset.homeFireMotion = 'off-slow';
-          if (klausRig) canvas.dataset.homeKlausMotion = 'off-slow';
-          return;
-        }
+        // The frame planner only throttles. It intentionally never terminates
+        // this shared loop, because doing so freezes Matthias and every ambient
+        // animation until the Home is remounted.
       }
       fireFrame = window.requestAnimationFrame(animateFire);
     };
@@ -1598,7 +1599,6 @@ export default function HomeBlenderScene3D({
         if (klausRig) canvas.dataset.homeKlausMotion = 'off-software';
         return;
       }
-      if (canvas.dataset.homeFireMotion === 'off-slow') return;
       if (disposed || !model || document.hidden || fireFrame !== null) return;
       canvas.dataset.homeFireMotion = 'live';
       if (klausRig) canvas.dataset.homeKlausMotion = 'live';
