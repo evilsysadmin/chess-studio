@@ -4,6 +4,7 @@ import { useEscapeToClose } from '../useEscapeToClose.js';
 import { acknowledgeLabLaunch, clearRememberedLabMode, loadLabLaunch, loadRememberedLabMode, rememberLabMode, subscribeLabLaunch } from '../labLaunchIntent.js';
 import { EXPERIMENT_MATURITY, experimentMaturityLabel } from '../experimentMaturity.js';
 import { LAB_START_FEN, assertLegalLabPosition, fenFromLabState, parseLabPosition } from '../labPosition.js';
+import { exitChroniclesBrowserFullscreen, requestChroniclesBrowserFullscreen } from '../chronicles/chroniclesBrowserFullscreen.js';
 import experimentsRoomCanonical from '../assets/experiments-room-canonical.webp';
 import PreferredBoard from './PreferredBoard.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
@@ -89,6 +90,18 @@ export default function LabScreen({ onExit, onStart }){
     setMap({e1:'K',e8:'k'}); setCastling('-'); setEp('-'); setHalfmove('0'); setFullmove('1'); setError('');
   }
 
+  function enterChronicles() {
+    // Browser fullscreen must be requested from the same trusted click that
+    // enters Chronicles. A mount effect is already too late in Chromium/Safari.
+    void requestChroniclesBrowserFullscreen();
+    setLabMode('chronicles');
+  }
+
+  function exitChronicles() {
+    void exitChroniclesBrowserFullscreen();
+    setLabMode('hub');
+  }
+
   function launch(){
     try{const legal=assertLegalLabPosition(fen,turn); const c=new Chess(legal.fen); setError(''); onStart(c.fen(),c.turn(),difficulty,{lab:true});}
     catch(e){setError(`Posición inválida: ${e.message}`);}
@@ -98,7 +111,7 @@ export default function LabScreen({ onExit, onStart }){
   if (labMode==='pawnslug-godot') return <Suspense fallback={<LabModeFallback />}><PawnSlugGodotHost onExit={()=>setLabMode('hub')} /></Suspense>;
   if (labMode==='chess-football-godot') return <Suspense fallback={<LabModeFallback />}><ChessFootballGodotHost onExit={()=>setLabMode('hub')} /></Suspense>;
   if (labMode==='chesscom') return <Suspense fallback={<LabModeFallback />}><Chesscom onExit={()=>setLabMode('hub')} /></Suspense>;
-  if (labMode==='chronicles') return <Suspense fallback={<LabModeFallback />}><ChroniclesOfMatthias onExit={()=>setLabMode('hub')} /></Suspense>;
+  if (labMode==='chronicles') return <Suspense fallback={<LabModeFallback />}><ChroniclesOfMatthias onExit={exitChronicles} /></Suspense>;
   if (labMode==='chronicles-tactics') return <Suspense fallback={<LabModeFallback />}><ChroniclesOfMatthiasTactics onExit={()=>setLabMode('hub')} /></Suspense>;
 
   return <div className="menu tournament-panel lab-screen">
@@ -123,7 +136,7 @@ export default function LabScreen({ onExit, onStart }){
             <p>Donde Matthias convierte una mala idea en campaña y después niega cualquier responsabilidad.</p>
           </div>
           <div className="lab-workshop-portals">
-            <button type="button" className="lab-workshop-portal lab-workshop-portal--arch lab-workshop-portal--chronicles" data-glyph="♟" onClick={()=>setLabMode('chronicles')}>
+            <button type="button" className="lab-workshop-portal lab-workshop-portal--arch lab-workshop-portal--chronicles" data-glyph="♟" onClick={enterChronicles}>
               <small>{experimentMaturityLabel(EXPERIMENT_MATURITY.POC, 'Book I')}</small>
               <strong>Chronicles of Matthias</strong>
               <span>Dungeon crawler 3D en primera persona. Grupo de cuatro, combate por casillas y una cripta que piensa como un tablero.</span>
