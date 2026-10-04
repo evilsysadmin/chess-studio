@@ -99,7 +99,7 @@ async function openChronicles(page, captureLabel) {
   await editor.getByRole('button', { name: '← Volver', exact: true }).click();
 
   await confirmChroniclesCharacterSetup(page);
-  await expect(page.getByRole('heading', { name: 'Chronicles of Matthias', exact: true })).toBeVisible();
+  await expect(page.locator('[data-chronicles="true"]')).toBeVisible();
 }
 
 async function captureChroniclesHealth(page) {
