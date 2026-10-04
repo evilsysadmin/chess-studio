@@ -362,7 +362,7 @@ def static_check() -> list[str]:
 
     # Rollback is deliberately a runtime rollback, never a generic infra rewind.
     # It is manual, serializes with normal promotion, and only accepts a SHA that
-    # GitHub records as a prior successful automatic production promotion. The
+    # has immutable release-train provenance or a historical automatic promotion. The
     # sole infrastructure reconciliation permitted is the already-known Pages
     # custom domain/CNAME, after the rollback SHA is verified on pages.dev.
     for needle, label in (
@@ -375,7 +375,11 @@ def static_check() -> list[str]:
         ("Gate · known-good production SHA", "rollback known-good gate"),
         ("Verify rollback SHA was previously promoted successfully", "rollback provenance check"),
         ("actions/workflows/production-promote.yml/runs", "rollback reads promotion history"),
-        ("event=workflow_run", "rollback only trusts automatic promotions"),
+        ("production-promotion-record", "rollback reads immutable release-train records"),
+        ("payload.get('event') in {'schedule', 'workflow_dispatch', 'push'}", "rollback accepts current release-train provenance"),
+        ("run_event\" == 'workflow_run'", "rollback preserves historical automatic promotion provenance"),
+        ("legacy workflow_run head_sha", "rollback labels legacy provenance explicitly"),
+        ("immutable production promotion record", "rollback labels release-train provenance explicitly"),
         ("compare/$DEPLOY_SHA...$ORCHESTRATOR_SHA", "rollback requires main ancestry"),
         ("Rollback · Cloudflare Worker", "rollback Worker stage"),
         ("--keep-vars", "rollback preserves Worker variables"),
