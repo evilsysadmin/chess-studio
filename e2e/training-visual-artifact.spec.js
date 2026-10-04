@@ -183,7 +183,7 @@ scopedTest('school', 'Entrenar · Escuela, Glosario y Modos especiales', async (
   await settle(page);
   await shell.getByRole('button', { name: 'Cerrar plan de estudios', exact: true }).click();
 
-  await expect(shell.getByRole('button', { name: 'Pantalla completa', exact: true })).toHaveCount(0);
+  await expect(shell.getByRole('button', { name: 'Pantalla completa', exact: true })).toBeHidden();
   await expect(shell).toHaveAttribute('data-school-focus', 'normal');
   const immersive = await shell.evaluate((root) => {
     const board = root.querySelector('.matthias-school-board')?.getBoundingClientRect();
