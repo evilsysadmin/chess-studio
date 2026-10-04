@@ -38,6 +38,7 @@ import {
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import ChroniclesBookOneEpilogue from './ChroniclesBookOneEpilogue.jsx';
 import ChroniclesCharacterSetup from './ChroniclesCharacterSetup.jsx';
+import ChroniclesDefeatOverlay from './ChroniclesDefeatOverlay.jsx';
 import ChroniclesEnemyRetaliationFx from './ChroniclesEnemyRetaliationFx.jsx';
 import ChroniclesNarratorOverlay from './ChroniclesNarratorOverlay.jsx';
 import ChroniclesPartyBark from './ChroniclesPartyBark.jsx';
@@ -491,17 +492,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
             <ChroniclesTacticalMargin target={tacticalTarget} />
             <ChroniclesEnemyRetaliationFx key={retaliationCue?.token || 'none'} cue={retaliationCue} />
             {rendererError && <div className="chronicles-renderer-error" role="alert">{rendererError}</div>}
-            {state.phase === 'defeated' && (
-              <div className="chronicles-finish is-defeat" role="dialog" aria-modal="true" aria-label="Expedición terminada">
-                <span>EXPEDICIÓN TERMINADA</span>
-                <strong>La compañía ha caído.</strong>
-                <p>Todos los miembros están fuera de combate. Esta run ha terminado y ya no admite más acciones.</p>
-                <div className="chronicles-finish-actions">
-                  <button type="button" className="primary-btn" onClick={restart}>Nueva expedición</button>
-                  <button type="button" className="secondary-btn" onClick={exitChronicles}>Salir</button>
-                </div>
-              </div>
-            )}
+            {state.phase === 'defeated' && <ChroniclesDefeatOverlay onRestart={restart} onExit={exitChronicles} />}
             {state.phase === 'escaped' && <ChroniclesBookOneEpilogue state={state} onRestart={restart} />}
           </div>
 
