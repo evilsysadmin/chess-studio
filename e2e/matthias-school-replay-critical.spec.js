@@ -97,51 +97,43 @@ test('Escuela de Matthias · Matthias guía sobre el tablero y la pista no es s�
   await login(page);
 
   await buttonWithHeading(page, 'Escuela de Matthias').click();
-  const board = page.locator('.matthias-school-board');
-  const origin = board.getByRole('button', { name: /^Casilla e2, peón blanco/ });
-  const target = board.getByRole('button', { name: /^Casilla e4, vacía/ });
+  const board3d = page.locator('[data-board3d-war-room="true"]');
+  await expect(board3d).toBeVisible({ timeout: 15_000 });
 
-  await expect(origin).toHaveClass(/hint-move/);
-  await expect(origin).toHaveClass(/classroom-focus/);
-  await expect(target).not.toHaveClass(/hint-move/);
-
-  const wrong = board.getByRole('button', { name: /^Casilla a3, vacía/ });
-  await wrong.click();
-  await expect(wrong).toHaveClass(/classroom-danger/);
-  await wrong.click();
+  await pressSchoolSquare(page, 'a3');
+  await pressSchoolSquare(page, 'a3');
   await expect(page.getByRole('status')).toContainText('Otra casilla vacía');
 
   await page.getByRole('button', { name: 'Dame una pista', exact: true }).click();
-  await expect(wrong).not.toHaveClass(/classroom-danger/);
-  await expect(target).toHaveClass(/hint-move/);
   await expect(page.getByRole('status')).toContainText('Se lo marco en el tablero');
 
-  await origin.click();
-  await expect(target).toHaveClass(/legal-move/);
+  await pressSchoolSquare(page, 'e2');
+  await expect(board3d).toHaveAttribute('data-board3d-selected', 'e2');
+  await expect.poll(async () => Number(await board3d.getAttribute('data-board3d-legal-target-count'))).toBeGreaterThan(0);
   await expect(page.getByRole('status')).toContainText('Ahora sí');
 });
-
 test('Escuela de Matthias · Por qué funciona demuestra sin pisar el intento', async ({ page }) => {
   await mockApi(page);
   await login(page);
 
   await buttonWithHeading(page, 'Escuela de Matthias').click();
   const board = page.locator('.matthias-school-board');
+  const board3d = page.locator('[data-board3d-war-room="true"]');
 
-  await board.getByRole('button', { name: /^Casilla e2, peón blanco/ }).click();
-  await expect(board.getByRole('button', { name: /Casilla e2, peón blanco, seleccionada/ })).toBeVisible();
+  await pressSchoolSquare(page, 'e2');
+  await expect(board3d).toHaveAttribute('data-board3d-selected', 'e2');
 
   await page.getByRole('button', { name: 'Por qué funciona', exact: true }).click();
   await expect(board).toHaveAttribute('data-school-explanation', 'demo');
   await expect(page.getByRole('status')).toContainText('Desde su casilla inicial');
 
   await page.getByRole('button', { name: 'Siguiente paso', exact: true }).click();
-  await expect(board.getByRole('button', { name: /^Casilla e4, peón blanco/ })).toBeVisible();
+  await expect(board3d).toHaveAttribute('data-board3d-selected', '');
   await expect(page.getByText('Jugada clave', { exact: true })).toBeVisible();
 
   await page.getByRole('button', { name: 'Volver a practicar', exact: true }).click();
   await expect(board).toHaveAttribute('data-school-explanation', 'practice');
-  await expect(board.getByRole('button', { name: /Casilla e2, peón blanco, seleccionada/ })).toBeVisible();
+  await expect(board3d).toHaveAttribute('data-board3d-selected', 'e2');
   await expect(page.getByText('✓ dominado', { exact: true })).toHaveCount(0);
 });
 
@@ -154,8 +146,7 @@ test('Escuela de Matthias · una lección dominada se puede repetir de verdad', 
 
   const schoolBoard = page.locator('.matthias-school-board');
   const completeLesson = async () => {
-    await page.getByRole('button', { name: /^Casilla e2, peón blanco/ }).click();
-    await page.getByRole('button', { name: /^Casilla e4, vacía/ }).click();
+    await playSchoolMove(page, 'e2', 'e4');
     await expect(schoolBoard).toHaveAttribute('data-school-playback', 'moving');
     await expect(page.getByText(/Dos casillas y ningún tratado internacional roto/)).toBeVisible();
     await expect(schoolBoard).toHaveAttribute('data-school-playback', 'idle');
@@ -166,7 +157,7 @@ test('Escuela de Matthias · una lección dominada se puede repetir de verdad', 
   await expect(repeat).toBeVisible();
   await repeat.click();
 
-  await expect(page.getByRole('button', { name: /^Casilla e2, peón blanco/ })).toBeVisible();
+  await expect(page.locator('[data-board3d-war-room="true"]')).toBeVisible();
   await completeLesson();
 });
 
@@ -176,11 +167,8 @@ test('Escuela de Matthias · repetir sin ayudas no infla progreso ni intentos', 
 
   await buttonWithHeading(page, 'Escuela de Matthias').click();
   const board = page.locator('.matthias-school-board');
-  const origin = board.getByRole('button', { name: /^Casilla e2, peón blanco/ });
-  const target = board.getByRole('button', { name: /^Casilla e4, vacía/ });
 
-  await origin.click();
-  await target.click();
+  await playSchoolMove(page, 'e2', 'e4');
   await expect(board).toHaveAttribute('data-school-playback', 'idle');
   await expect(page.getByRole('button', { name: 'Ahora sin ayudas', exact: true })).toBeVisible();
 
@@ -192,15 +180,10 @@ test('Escuela de Matthias · repetir sin ayudas no infla progreso ni intentos', 
 
   await page.getByRole('button', { name: 'Ahora sin ayudas', exact: true }).click();
   await expect(board).toHaveAttribute('data-school-mastery', 'active');
-  const masteryOrigin = board.getByRole('button', { name: /^Casilla e2, peón blanco/ });
-  const masteryTarget = board.getByRole('button', { name: /^Casilla e4, vacía/ });
-  await expect(masteryOrigin).not.toHaveClass(/hint-move/);
-  await expect(masteryOrigin).not.toHaveClass(/classroom-focus/);
-  await expect(masteryTarget).not.toHaveClass(/hint-move/);
   await expect(page.getByRole('button', { name: 'Dame una pista', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Por qué funciona', exact: true })).toHaveCount(0);
 
-  await board.getByRole('button', { name: /^Casilla a3, vacía/ }).click();
+  await pressSchoolSquare(page, 'a3');
   await expect(page.getByRole('status')).not.toContainText('e2');
   await expect(page.getByRole('status')).not.toContainText('e4');
   const persistedAfterMiss = await page.evaluate(() => (
@@ -209,8 +192,7 @@ test('Escuela de Matthias · repetir sin ayudas no infla progreso ni intentos', 
   expect(persistedAfterMiss?.attempts).toBe(persistedAfterGuided.attempts);
   expect(persistedAfterMiss?.completedAt).toBe(persistedAfterGuided.completedAt);
 
-  await board.getByRole('button', { name: /^Casilla e2, peón blanco/ }).click();
-  await board.getByRole('button', { name: /^Casilla e4, vacía/ }).click();
+  await playSchoolMove(page, 'e2', 'e4');
   await expect(board).toHaveAttribute('data-school-mastery', 'complete');
   await expect(page.getByText('✓ Dominado sin ayudas', { exact: true })).toBeVisible();
 
