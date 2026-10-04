@@ -32,7 +32,7 @@ Cloudflare Tunnel → nginx edge (stable :4000) → Go sidecar pvp_<color> → P
 ## Rules for each domain
 
 0. **Observable before native:** a route is not native until Go records it as above.
-1. **Safety net first:** parity tests against Python, built from fixtures that Python itself generates (as with `scripts/engine_parity_corpus.py`), plus Mongo integration tests for every write.
+1. **Safety net first:** parity tests against Python, built from fixtures that Python itself generates (as with `scripts/engine_parity_corpus.py`), plus Mongo integration tests for every write. Go tests always consume the committed parity fixtures; CI only boots Python to regenerate them when the Python authority/generator or the fixture itself changes.
 2. **Native behind a kill-switch,** route by route, enabled in staging first and accredited by the deploy.
 3. **Evidence before retiring:** Python request counts per route in Grafana (`chess_studio_http_server_requests_total`, see `pvp-python-fallback.yml`) must be zero for an agreed window.
 4. **Retire:** delete the Python routes and the kill-switches in reviewed PRs. Rollback is then a release rollback.

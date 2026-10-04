@@ -5,6 +5,8 @@ from pathlib import Path
 import chronicles_api
 from chronicles_manifest_procedural import (
     CHRONICLES_CONTENT_PLACEMENT_VERSION,
+    CHRONICLES_EXIT_PLACEMENT_VERSION,
+    CHRONICLES_OPTIONAL_ENEMY_PLACEMENT_VERSION,
     chronicles_map_code_for_manifest,
     proceduralize_chronicles_manifest,
 )
@@ -37,6 +39,23 @@ def _marker_positions(grid):
         for x, cell in enumerate(row)
         if cell not in {"#", "."}
     }
+
+
+def _distances(grid, start):
+    queue = deque([start])
+    distances = {start: 0}
+    while queue:
+        x, y = queue.popleft()
+        for dx, dy in CARDINAL:
+            point = (x + dx, y + dy)
+            px, py = point
+            if not (0 <= py < len(grid) and 0 <= px < len(grid[0])):
+                continue
+            if grid[py][px] == "#" or point in distances:
+                continue
+            distances[point] = distances[(x, y)] + 1
+            queue.append(point)
+    return distances
 
 
 def test_seeded_manifest_is_deterministic_and_changes_with_seed():
@@ -177,7 +196,7 @@ def test_manifest_recipe_is_bounded_and_derived_from_authored_contract():
 
 
 
-def test_content_placement_v1_moves_only_safe_optional_encounters_and_varies_by_seed():
+def test_content_placement_v1_moves_only_safe_optional_encounters_and_keeps_authored_exit():
     base, _revision = chronicles_api.load_chronicles_manifest("black-glass-chapel")
     authored_positions = {
         enemy["id"]: (enemy["x"], enemy["y"])
@@ -190,19 +209,31 @@ def test_content_placement_v1_moves_only_safe_optional_encounters_and_varies_by_
         generated = proceduralize_chronicles_manifest(
             base,
             seed,
-            content_placement_version=CHRONICLES_CONTENT_PLACEMENT_VERSION,
+            content_placement_version=CHRONICLES_OPTIONAL_ENEMY_PLACEMENT_VERSION,
         )
         repeated = proceduralize_chronicles_manifest(
             base,
             seed,
-            content_placement_version=CHRONICLES_CONTENT_PLACEMENT_VERSION,
+            content_placement_version=CHRONICLES_OPTIONAL_ENEMY_PLACEMENT_VERSION,
         )
         assert generated == repeated
 
         manifest = generated.manifest
         generation = manifest["generation"]
-        assert generation["contentPlacementVersion"] == CHRONICLES_CONTENT_PLACEMENT_VERSION
+        assert generation["contentPlacementVersion"] == CHRONICLES_OPTIONAL_ENEMY_PLACEMENT_VERSION
         assert len(generation["contentPlacementRevision"]) == 64
+        assert "exitPosition" not in generation
+        assert [
+            (x, y)
+            for y, row in enumerate(manifest["grid"])
+            for x, cell in enumerate(row)
+            if cell == "X"
+        ] == [
+            (x, y)
+            for y, row in enumerate(base["grid"])
+            for x, cell in enumerate(row)
+            if cell == "X"
+        ]
 
         # Structural encounters keep their authored coordinates.
         for enemy_id in ("glass-deacon", "obsidian-spider", "reflection-hound"):
@@ -256,3 +287,84 @@ def test_content_placement_v0_is_bit_for_bit_legacy_compatible():
     assert "contentPlacementVersion" not in explicit_legacy.manifest["generation"]
     assert "contentPlacementRevision" not in explicit_legacy.manifest["generation"]
     assert "relocatedOptionalEnemies" not in explicit_legacy.manifest["generation"]
+
+
+
+def test_content_placement_v2_places_one_distant_safe_exit_on_every_shipped_map():
+    root = Path(__file__).with_name("chronicles_maps")
+    map_ids = sorted(path.stem for path in root.glob("*.json"))
+
+    assert CHRONICLES_CONTENT_PLACEMENT_VERSION == CHRONICLES_EXIT_PLACEMENT_VERSION == 2
+    for map_id in map_ids:
+        base, _revision = chronicles_api.load_chronicles_manifest(map_id)
+        layout_revisions = set()
+        for seed in (0, 1, 2, 17, 417):
+            generated = proceduralize_chronicles_manifest(
+                base,
+                seed,
+                content_placement_version=CHRONICLES_EXIT_PLACEMENT_VERSION,
+            )
+            repeated = proceduralize_chronicles_manifest(
+                base,
+                seed,
+                content_placement_version=CHRONICLES_EXIT_PLACEMENT_VERSION,
+            )
+            assert generated == repeated
+
+            manifest = generated.manifest
+            generation = manifest["generation"]
+            layout_revisions.add(generated.layout_revision)
+            exits = [
+                (x, y)
+                for y, row in enumerate(manifest["grid"])
+                for x, cell in enumerate(row)
+                if cell == "X"
+            ]
+            assert len(exits) == 1
+            exit_position = exits[0]
+            assert generation["contentPlacementVersion"] == 2
+            assert generation["exitPosition"] == {
+                "x": exit_position[0],
+                "y": exit_position[1],
+            }
+            assert len(generation["contentPlacementRevision"]) == 64
+
+            start = (
+                manifest["partyStart"]["x"],
+                manifest["partyStart"]["y"],
+            )
+            distances = _distances(manifest["grid"], start)
+            assert exit_position in distances
+            assert distances[exit_position] >= 4
+
+            occupied = {
+                (enemy["x"], enemy["y"])
+                for enemy in manifest.get("enemies", [])
+            }
+            occupied.update(
+                (entry["x"], entry["y"])
+                for group in ("triggers", "interactables", "treasures", "traps")
+                for entry in manifest.get(group, [])
+                if "x" in entry and "y" in entry
+            )
+            assert exit_position not in occupied
+            assert generation["topologyQuality"]["accepted"] is True
+            assert generation["topologyQuality"]["unreachableAnchorCount"] == 0
+
+        assert len(layout_revisions) > 1, f"{map_id} collapsed seeded layouts"
+
+
+def test_content_placement_v2_exit_varies_across_seeds():
+    base, _revision = chronicles_api.load_chronicles_manifest("black-glass-chapel")
+    positions = set()
+
+    for seed in range(64):
+        generated = proceduralize_chronicles_manifest(
+            base,
+            seed,
+            content_placement_version=CHRONICLES_EXIT_PLACEMENT_VERSION,
+        )
+        exit_position = generated.manifest["generation"]["exitPosition"]
+        positions.add((exit_position["x"], exit_position["y"]))
+
+    assert len(positions) > 1

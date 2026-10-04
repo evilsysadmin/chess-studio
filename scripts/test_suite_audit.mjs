@@ -224,6 +224,7 @@ if (checkCiWiring) {
     '  backend:\n',
     'name: Tests · Backend',
     'run_go:',
+    'run_go_parity:',
     '  security:\n',
     'name: Security · Trivy + Docker',
     '  e2e_build:\n',
@@ -257,9 +258,8 @@ if (checkCiWiring) {
     'actions/setup-go@v6',
     "PVP_MONGO_TEST_REQUIRED: '1'",
     'go test -race -short ./...',
-    'python scripts/engine_parity_corpus.py --check',
-    'python scripts/games_parity_corpus.py --check',
-    'python scripts/games_ops_corpus.py --check',
+    "if: needs.preflight.outputs.run_go_parity == 'true'",
+    'bash scripts/go_python_parity_check.sh',
     'go vet ./...',
     'GOARCH: arm64',
   ]) {
@@ -272,6 +272,21 @@ if (checkCiWiring) {
     fail('Tests · Backend debe observar fallos/skips de Python + Go incluso con dependencias fallidas');
   }
   if (!backendAggregateBlock.includes('GO_RESULT')) fail('Tests · Backend no acredita el resultado de Go');
+
+  const goParityPath = path.join(root, 'scripts', 'go_python_parity_check.sh');
+  if (!fs.existsSync(goParityPath)) fail('Falta el entrypoint canónico de paridad Go ↔ Python');
+  const goParitySource = read(goParityPath);
+  for (const marker of [
+    "grep -E '^chess==' backend-python/requirements.txt",
+    "grep -E '^pydantic==' backend-python/requirements.txt",
+    'python scripts/chronicles_topology_parity_corpus.py --check',
+    'python scripts/engine_parity_corpus.py --check',
+    'python scripts/games_parity_corpus.py --check',
+    'python scripts/games_ops_corpus.py --check',
+    "go test -count=1 -run 'MatchesPython'",
+  ]) {
+    if (!goParitySource.includes(marker)) fail(`Paridad Go ↔ Python incompleta: falta ${JSON.stringify(marker)}`);
+  }
 
   const buildBlock = jobBlock('e2e_build');
   const lanesBlock = jobBlock('e2e_lanes');

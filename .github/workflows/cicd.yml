@@ -17,6 +17,7 @@ jobs:
       run_frontend: ${{ steps.quality_paths.outputs.run_frontend }}
       run_backend: ${{ steps.quality_paths.outputs.run_backend }}
       run_go: ${{ steps.quality_paths.outputs.run_go }}
+      run_go_parity: ${{ steps.quality_paths.outputs.run_go_parity }}
       run_e2e: ${{ steps.quality_paths.outputs.run_e2e }}
       core_e2e_matrix: ${{ steps.quality_paths.outputs.core_e2e_matrix }}
       run_security: ${{ steps.quality_paths.outputs.run_security }}
@@ -203,16 +204,13 @@ jobs:
           PVP_MONGO_TEST_REQUIRED: '1'
         run: go test -race -short ./...
       - uses: actions/setup-python@v7
+        if: needs.preflight.outputs.run_go_parity == 'true'
         with:
           python-version: '3.13'
       - name: Parity · Go ↔ Python
+        if: needs.preflight.outputs.run_go_parity == 'true'
         working-directory: .
-        run: |
-          python -m pip install --quiet "$(grep -E '^chess==' backend-python/requirements.txt)" "$(grep -E '^pydantic==' backend-python/requirements.txt)"
-          python scripts/engine_parity_corpus.py --check
-          python scripts/games_parity_corpus.py --check
-          python scripts/games_ops_corpus.py --check
-          cd backend-go && go test -count=1 -run 'MatchesPython' ./internal/residenteval ./internal/residentsearch
+        run: bash scripts/go_python_parity_check.sh
       - name: Vet
         run: go vet ./...
       - name: Build Linux ARM64

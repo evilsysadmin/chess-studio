@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { FIRE_SPRITE_DEFAULTS, STEAM_SPRITE_DEFAULTS, createFireSprites, createSteamSprites, disposeFireSprites, fireSpriteSeeds } from './fireSprites.js';
 import { WAR_ROOM_V2_FIRE_ANCHORS, hideBakedHearthFlames, installWarRoomV2FireSprites, installWarRoomV3StoveFireSprites } from './WarRoomFireSprites.js';
 
@@ -70,6 +70,26 @@ describe('War Room fire sprites', () => {
     expect(parent.children.some((child) => child.isPoints)).toBe(false);
   });
 
+  it('restores and disposes temporary v3 flame materials', () => {
+    const parent = new THREE.Group();
+    const flame = new THREE.Object3D();
+    const originalMaterial = new THREE.MeshBasicMaterial();
+    flame.material = originalMaterial;
+    parent.add(flame);
+
+    const dispose = installWarRoomV3StoveFireSprites([flame]);
+    const fadedMaterial = flame.material;
+    const disposeFaded = vi.spyOn(fadedMaterial, 'dispose');
+
+    expect(fadedMaterial).not.toBe(originalMaterial);
+    expect(fadedMaterial.opacity).toBe(0);
+
+    dispose();
+
+    expect(flame.material).toBe(originalMaterial);
+    expect(disposeFaded).toHaveBeenCalledTimes(1);
+  });
+
   it('lets a variant widen the plume into a hearth fire', () => {
     const parent = new THREE.Group();
     const flame = new THREE.Object3D();
@@ -111,9 +131,12 @@ describe('baked hearth flames', () => {
     expect(mixed.material[1].visible).toBe(false);
     expect(chandelier.visible).toBe(true);
     expect(farCandle.visible).toBe(true);
+    const hiddenFireMaterial = mixed.material[1];
+    const disposeHiddenFire = vi.spyOn(hiddenFireMaterial, 'dispose');
     restore();
     expect(single.visible).toBe(true);
     expect(mixed.material).toBe(original);
+    expect(disposeHiddenFire).toHaveBeenCalledTimes(1);
   });
 });
 
