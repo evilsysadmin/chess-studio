@@ -11,6 +11,7 @@ on:
 permissions:
   contents: read
   actions: read
+  pull-requests: read
 # running generation finishes while newer pending.
 concurrency:
   group: chess-studio-staging-deploy
@@ -45,18 +46,29 @@ jobs:
         uses: actions/checkout@v7
         with:
           ref: ${{ env.DEPLOY_SHA }}
-          fetch-depth: 1
+          fetch-depth: 2
       - name: Supersede stale staging commit
         id: admission
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
+          scope="$RUNNER_TEMP/deploy-scope.env"
+          python3 -S scripts/staging_deploy_scope.py --self-test
+          python3 -S scripts/staging_deploy_scope.py --sha "$DEPLOY_SHA" --github-output "$scope"
+          source "$scope"
+          echo "deploy_sha=$DEPLOY_SHA" >> "$GITHUB_OUTPUT"
+          if [[ "$deploy_required" != true ]]; then
+            echo 'admitted=false' >> "$GITHUB_OUTPUT"
+            echo "### Staging no-op · $DEPLOY_SHA · $deploy_reason" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           python3 -S scripts/staging_generation.py --self-test
           python3 -S scripts/staging_generation.py main-head --sha "$DEPLOY_SHA" --github-output "$RUNNER_TEMP/main-head.txt"
-          echo "deploy_sha=$DEPLOY_SHA" >> "$GITHUB_OUTPUT"
           if grep -qx 'superseded=true' "$RUNNER_TEMP/main-head.txt"; then
             echo 'admitted=false' >> "$GITHUB_OUTPUT"
-            echo "### Staging superseded: \`$DEPLOY_SHA\` ya no es main; sin mutación. La admisión del HEAD actual dispara la siguiente generación." >> "$GITHUB_STEP_SUMMARY"
+            echo "### Staging superseded · $DEPLOY_SHA" >> "$GITHUB_STEP_SUMMARY"
           else
             echo 'admitted=true' >> "$GITHUB_OUTPUT"
           fi
@@ -283,8 +295,6 @@ jobs:
         uses: actions/checkout@v7
         with:
           ref: ${{ env.DEPLOY_SHA }}
-      # Parity lives in each smoke leg on purpose: no extra serial job before
-      # Chromium. Both legs wait for the same N/N/N generation.
       - name: Verify staging generation parity before browser smoke
         run: python3 -S scripts/staging_generation.py wait --sha "$DEPLOY_SHA" --surfaces backend,frontend,worker --attempts 60 --interval 5
       - name: Restore cached OCI SDK toolchain
@@ -344,14 +354,4 @@ jobs:
       SMOKE: ${{ needs.smoke.result }}
     steps:
       - name: Summary
-        run: |
-          {
-            echo '### Staging desplegado como una generación coherente'
-            echo
-            echo "- Generation SHA: \`$DEPLOY_SHA\`"
-            echo "- Frontend: $STAGING_URL · $FRONTEND"
-            echo "- API: $STAGING_API_URL · $BACKEND"
-            echo "- Workers AI: $STAGING_AI_URL · $WORKER"
-            echo "- Paridad N/N/N: verificada en cada pata del smoke antes de Chromium"
-            echo "- Smoke de navegador (War Room live + F5): $SMOKE · evidencia en staging-live-playwright-*"
-          } >> "$GITHUB_STEP_SUMMARY"
+        run: echo "### Staging $DEPLOY_SHA · backend=$BACKEND · frontend=$FRONTEND · worker=$WORKER · smoke=$SMOKE" >> "$GITHUB_STEP_SUMMARY"
