@@ -130,7 +130,17 @@ function actorIsAlive(state, enemyById, actor) {
 
 export function chroniclesStartInitiativeCombat(state, enemies, options = {}) {
   if (!state || state.initiative) return state;
-  const engaged = chroniclesEngagedEnemies(state, enemies);
+  const forceEnemyIds = new Set(Array.isArray(options.forceEnemyIds) ? options.forceEnemyIds : []);
+  const candidates = Array.isArray(enemies) ? enemies : [];
+  const engagedById = new Map(
+    chroniclesEngagedEnemies(state, candidates).map((enemy) => [enemy.id, enemy]),
+  );
+  candidates.forEach((enemy) => {
+    if (forceEnemyIds.has(enemy.id) && Number(state?.[enemy.hpKey] || 0) > 0) {
+      engagedById.set(enemy.id, enemy);
+    }
+  });
+  const engaged = [...engagedById.values()];
   if (!engaged.length) return state;
   const initiative = chroniclesRollInitiative(state, engaged, options);
   if (!initiative.order.length) return state;
