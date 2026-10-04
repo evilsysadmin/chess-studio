@@ -92,6 +92,12 @@ jobs:
           assert 'WR_ANCHOR_right_fireplace_practical' not in node_names
           assert 'WR4_OBS_fireplace_flame_body' in node_names
           assert 'WR4_OBS_fireplace_flame_0' in node_names
+          # Hans' stage: tower door leaf (own node, open yaw extra) and his anchors.
+          hans_nodes = {'WR_HANS_door_leaf', 'WR_ANCHOR_hans_hearth', 'WR_ANCHOR_hans_door',
+                        'WR_ANCHOR_hans_basket', 'WR_ANCHOR_hans_tools', 'WR_ANCHOR_hans_corridor_0'}
+          assert hans_nodes <= node_names, sorted(hans_nodes - node_names)
+          leaf = next(row for row in gltf['nodes'] if row.get('name') == 'WR_HANS_door_leaf')
+          assert 'mesh' in leaf and 'war_room_hans_door_open_yaw' in leaf.get('extras', {}), leaf
 
           image = Image.open(preview).convert('RGB')
           assert image.size == (1600, 900), image.size
@@ -121,7 +127,7 @@ jobs:
           assert not any(name.startswith(('WR4_OBS_table_drum', 'WR4_OBS_window_drape_')) for name in source_names)
           assert 'WR4_OBS_fireplace_body' in source_names
           assert 'WR4_OBS_telescope_tube' in source_names
-          assert 'WR4_OBS_entry_door' in source_names
+          assert 'WR_HANS_door_leaf' in source_names and 'WR4_OBS_entry_void' in source_names
           assert not any(name.startswith('WR_ARCH_') for name in source_names)
           assert not any(name.startswith('WR_CANON_') for name in source_names)
           assert not any(name.startswith('WR4_OBS_drafting_') for name in source_names)

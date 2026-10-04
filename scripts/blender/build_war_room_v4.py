@@ -9,7 +9,9 @@ replace v2's rectangular hall.
 """
 from __future__ import annotations
 
+import json
 import math
+import struct
 import sys
 from pathlib import Path
 
@@ -49,6 +51,30 @@ V4_WALL_SEGMENT_COUNT = 19
 # the same circular shell instead of looking like a freestanding prop.
 V4_ENTRY_THETA_DEG = -76.0
 V4_ENTRY_DOOR_Z = 1.90
+
+# Hans' tower door: the teal leaf is its own runtime node, hinged on the jamb
+# nearer the player so it swings into the room away from his path to the
+# hearth (Blender Z yaw == three.js Y yaw). A dark void behind it reads as the
+# stair landing once it opens.
+V4_HANS_DOOR_LEAF = "WR_HANS_door_leaf"
+V4_HANS_DOOR_OPEN_YAW = -1.45
+V4_HANS_DOOR_HALF = 0.88
+# The left armour guards the tower door from the player's side of it: in front
+# of the hearth it would stand on Hans' work spot and hide him from the camera.
+V4_HANS_LEFT_ARMOR_Y = -0.75
+
+# Where Hans works (WarRoomHansStage.js). The hearth anchor sits on the left of
+# the fire mouth: the board dais covers the floor in front of its right half.
+V4_HANS_ANCHOR_PREFIX = "WR_ANCHOR_hans_"
+V4_HANS_ANCHORS = (
+    ("WR_ANCHOR_hans_hearth", (-6.15, 3.95, 0.0)),
+    ("WR_ANCHOR_hans_door", (-7.82, 1.23, 0.0)),
+    ("WR_ANCHOR_hans_basket", (-7.00, 3.55, 0.0)),
+    ("WR_ANCHOR_hans_tools", (-6.00, 3.60, 0.0)),
+    ("WR_ANCHOR_hans_corridor_0", (-7.45, 1.95, 0.0)),
+    ("WR_ANCHOR_hans_corridor_1", (-7.42, 2.75, 0.0)),
+    ("WR_ANCHOR_hans_corridor_2", (-7.15, 3.20, 0.0)),
+)
 
 V4_WEATHER_MATERIALS = frozenset({
     "WR4_MAT_warm_travertine",
@@ -779,7 +805,7 @@ def build_library_wall(static, palette):
 def build_armor_pair(static, palette):
     """Two restrained ceremonial suits framing the room without stealing board focus."""
     for side in (-1, 1):
-        x, y = side * 6.55, 2.85
+        x, y = side * 6.55, (V4_HANS_LEFT_ARMOR_Y if side < 0 else 2.85)
         base.cylinder(f"WR4_OBS_armor_base_{side}", (x, y, 0.22), 0.48, 0.16,
                       palette["walnut_dark"], static, vertices=36)
         base.cube(f"WR4_OBS_armor_torso_{side}", (x, y, 1.32), (0.38, 0.25, 0.44),
@@ -1180,10 +1206,11 @@ def build_tower_entry(static, palette):
     door_z = V4_ENTRY_DOOR_Z
 
     door = base.cube(
-        "WR4_OBS_entry_door", (center.x, center.y, door_z),
+        "WR4_OBS_entry_door_slab", (center.x, center.y, door_z),
         (0.88, 0.11, 1.80), palette["teal"], static, bevel=0.14,
     )
     door.rotation_euler.z = angle
+    validate_v4_entry_door(door)
     inset = base.cube(
         "WR4_OBS_entry_door_inset",
         (center.x - radial.x * 0.12, center.y - radial.y * 0.12, door_z),
@@ -1212,7 +1239,7 @@ def build_tower_entry(static, palette):
     front = Vector((center.x, center.y, door_z)) - radial * 0.17
     glass_start = front - radial * 0.035 + Vector((0, 0, 0.72))
     glass_end = front + radial * 0.035 + Vector((0, 0, 0.72))
-    cylinder_between(
+    porthole = cylinder_between(
         "WR4_OBS_entry_porthole", glass_start, glass_end, 0.34,
         palette["night"], static, vertices=56,
     )
@@ -1222,13 +1249,16 @@ def build_tower_entry(static, palette):
     )
     ring.rotation_euler = radial.to_track_quat("Z", "Y").to_euler()
 
-    handle_center = front - tangent * 0.48 + Vector((0, 0, -0.30))
-    lod_sphere("WR4_OBS_entry_handle_hub", handle_center, 0.105,
-                palette["brass_dark"], static)
-    cylinder_between(
-        "WR4_OBS_entry_handle", handle_center, handle_center + tangent * 0.34,
+    # Pull on the free edge, away from the hinge.
+    handle_center = front + tangent * 0.48 + Vector((0, 0, -0.30))
+    hub = lod_sphere("WR4_OBS_entry_handle_hub", handle_center, 0.105,
+                     palette["brass_dark"], static)
+    handle = cylinder_between(
+        "WR4_OBS_entry_handle", handle_center, handle_center - tangent * 0.34,
         0.045, palette["brass"], static, vertices=28,
     )
+    build_hans_door(static, palette, (door, inset, porthole, ring, hub, handle),
+                    center, tangent, radial)
 
     rug_center = Vector((center.x, center.y, 0.105)) - radial * 1.10
     rug_border = base.cube(
@@ -1241,6 +1271,132 @@ def build_tower_entry(static, palette):
         (0.82, 0.52, 0.020), palette["rug_red"], static, bevel=0.06,
     )
     rug.rotation_euler.z = angle
+
+
+def validate_v4_entry_door(door):
+    """The leaf is authored tangent to the shell and seated on its threshold."""
+    expected_angle = math.radians(-V4_ENTRY_THETA_DEG)
+    angle_error = abs(math.atan2(
+        math.sin(door.rotation_euler.z - expected_angle),
+        math.cos(door.rotation_euler.z - expected_angle),
+    ))
+    if angle_error > math.radians(0.25):
+        raise RuntimeError(
+            f"War Room v4 entry lost wall tangent: error={math.degrees(angle_error):.3f}deg"
+        )
+    if abs(float(door.location.z) - V4_ENTRY_DOOR_Z) > 0.01:
+        raise RuntimeError(f"War Room v4 entry door floated vertically: z={door.location.z:.3f}")
+
+
+def v4_hans_door_hinge(center, tangent, radial):
+    """Hinge on the player-side jamb, on the leaf's room face."""
+    hinge = center - tangent * V4_HANS_DOOR_HALF - radial * 0.11
+    return Vector((hinge.x, hinge.y, 0.0))
+
+
+def build_hans_door(static, palette, parts, center, tangent, radial):
+    """Turn the tower door into a hinged leaf with a dark landing behind it."""
+    angle = math.atan2(tangent.y, tangent.x)
+    void = base.cube(
+        "WR4_OBS_entry_void", (center.x - radial.x * 0.035, center.y - radial.y * 0.035, V4_ENTRY_DOOR_Z),
+        (0.86, 0.012, 1.76), palette["charcoal"], static, bevel=0.0,
+    )
+    void.rotation_euler.z = angle
+    leaf = join_into(list(parts), V4_HANS_DOOR_LEAF)
+    hinge = v4_hans_door_hinge(center, tangent, radial)
+    cursor = bpy.context.scene.cursor
+    previous_cursor = cursor.location.copy()
+    cursor.location = hinge
+    bpy.ops.object.select_all(action="DESELECT")
+    leaf.select_set(True)
+    bpy.context.view_layer.objects.active = leaf
+    bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
+    bpy.ops.object.origin_set(type="ORIGIN_CURSOR")
+    leaf.select_set(False)
+    cursor.location = previous_cursor
+    leaf["war_room_runtime_dynamic"] = "v4-hans-door"
+    leaf["war_room_hans_door_open_yaw"] = V4_HANS_DOOR_OPEN_YAW
+    for name, loc in V4_HANS_ANCHORS:
+        base.anchor(name, loc, static)
+
+
+def validate_v4_hans_stage():
+    """Hans' leaf swings into the room clear of his walk; his anchors clear the decor."""
+    objects = bpy.context.scene.objects
+    leaf = objects[V4_HANS_DOOR_LEAF]
+    if leaf.get("war_room_runtime_dynamic") != "v4-hans-door":
+        raise RuntimeError("War Room v4 Hans door leaf must stay a dynamic runtime node")
+    if any(abs(value) > 1e-6 for value in leaf.rotation_euler):
+        raise RuntimeError("War Room v4 Hans door leaf must export closed with no rotation")
+    theta = math.radians(V4_ENTRY_THETA_DEG)
+    radial = Vector((math.sin(theta), math.cos(theta), 0.0))
+    tangent = Vector((math.cos(theta), -math.sin(theta), 0.0))
+    wall = Vector((V4_WALL_RADIUS * radial.x, V4_WALL_CENTER_Y + V4_WALL_RADIUS * radial.y, 0.0))
+    hinge = v4_hans_door_hinge(wall - radial * 0.205, tangent, radial)
+    if (Vector((leaf.location.x, leaf.location.y, leaf.location.z)) - hinge).length > 1e-3:
+        raise RuntimeError(f"War Room v4 Hans door origin is not on its hinge: {tuple(leaf.location)}")
+    yaw = V4_HANS_DOOR_OPEN_YAW
+    c, s = math.cos(yaw), math.sin(yaw)
+    open_dir = Vector((tangent.x * c - tangent.y * s, tangent.x * s + tangent.y * c, 0.0))
+    if open_dir.dot(-radial) < 0.95:
+        raise RuntimeError(f"War Room v4 Hans door does not open into the room: {tuple(open_dir)}")
+    anchors = dict(V4_HANS_ANCHORS)
+    # Every walk anchor stays off the board dais and clear of the armour bases.
+    dais = V4_PLINTH_HALF + 0.20
+    armors = ((-6.55, V4_HANS_LEFT_ARMOR_Y), (6.55, 2.85))
+    for name, (x, y, _z) in V4_HANS_ANCHORS:
+        if name == "WR_ANCHOR_hans_hearth":
+            continue
+        if abs(x) < dais and abs(y) < dais:
+            raise RuntimeError(f"War Room v4 Hans anchor {name} stands on the board dais")
+        for ax, ay in armors:
+            if math.hypot(x - ax, y - ay) < 0.48 + 0.30:
+                raise RuntimeError(f"War Room v4 Hans anchor {name} walks into the armour at ({ax}, {ay})")
+        wall_distance = V4_WALL_RADIUS - math.hypot(x, y - V4_WALL_CENTER_Y)
+        if wall_distance < 0.45:
+            raise RuntimeError(f"War Room v4 Hans anchor {name} is inside the wall: {wall_distance:.2f}")
+    # The open leaf must clear the armour guarding the door.
+    hinge2 = Vector((hinge.x, hinge.y))
+    tip = hinge2 + Vector((open_dir.x, open_dir.y)) * (2 * V4_HANS_DOOR_HALF)
+    armor = Vector((-6.55, V4_HANS_LEFT_ARMOR_Y))
+    t = max(0.0, min(1.0, (armor - hinge2).dot(tip - hinge2) / (tip - hinge2).length_squared))
+    if (hinge2 + (tip - hinge2) * t - armor).length < 0.48 + 0.15:
+        raise RuntimeError("War Room v4 Hans door swings into the door armour")
+    work_y = anchors["WR_ANCHOR_hans_hearth"][1] - 0.72
+    # The armour (x -6.55) shares Hans' work lane; it must neither stand on his
+    # spot nor right in front of it, between him and the play camera.
+    if V4_HANS_LEFT_ARMOR_Y - 0.48 < work_y + 0.25 and V4_HANS_LEFT_ARMOR_Y + 0.48 > work_y - 1.6:
+        raise RuntimeError("War Room v4 left armour blocks or hides Hans' hearth work spot")
+
+
+def patch_v4_hans_door_extras(path):
+    """Carry the door's open yaw on its glTF node (three.js userData)."""
+    raw = Path(path).read_bytes()
+    chunks = []
+    offset = 12
+    patched = 0
+    while offset + 8 <= len(raw):
+        chunk_length, chunk_type = struct.unpack_from("<II", raw, offset)
+        offset += 8
+        chunk = raw[offset:offset + chunk_length]
+        offset += chunk_length
+        if chunk_type == 0x4E4F534A:
+            data = json.loads(chunk.decode("utf-8").rstrip("\x00 \t\r\n"))
+            for node in data.get("nodes", []):
+                if node.get("name") == V4_HANS_DOOR_LEAF:
+                    node.setdefault("extras", {})["war_room_hans_door_open_yaw"] = V4_HANS_DOOR_OPEN_YAW
+                    patched += 1
+            chunk = json.dumps(data, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+            chunk += b" " * ((4 - len(chunk) % 4) % 4)
+        chunks.append((chunk_type, chunk))
+    if patched != 1:
+        raise RuntimeError(f"War Room v4 Hans door node patched {patched} times")
+    total = 12 + sum(8 + len(chunk) for _chunk_type, chunk in chunks)
+    out = bytearray(struct.pack("<4sII", b"glTF", 2, total))
+    for chunk_type, chunk in chunks:
+        out.extend(struct.pack("<II", len(chunk), chunk_type))
+        out.extend(chunk)
+    Path(path).write_bytes(out)
 
 
 def build_lighting(static):
@@ -1386,7 +1542,9 @@ def validate_v4():
         "WR4_OBS_armor_torso_1",
         "WR4_OBS_telescope_tube",
         "WR4_OBS_chair_seat",
-        "WR4_OBS_entry_door",
+        V4_HANS_DOOR_LEAF,
+        "WR4_OBS_entry_void",
+        *(name for name, _loc in V4_HANS_ANCHORS),
         "WR4_OBS_entry_rug",
         "WR4_OBS_warm_glows",
     }
@@ -1409,23 +1567,11 @@ def validate_v4():
         raise RuntimeError("War Room v4 must contain exactly one fireplace practical")
 
     end_rib = bpy.data.objects.get(f"WR4_OBS_apse_rib_{V4_WALL_SEGMENT_COUNT}")
-    door = bpy.data.objects.get("WR4_OBS_entry_door")
-    if end_rib is None or door is None:
-        raise RuntimeError("War Room v4 shell/entry validation objects missing")
+    if end_rib is None:
+        raise RuntimeError("War Room v4 shell validation objects missing")
     if V4_WALL_END_DEG < 108 or V4_WALL_START_DEG > -108:
         raise RuntimeError("War Room v4 side shell no longer encloses the lateral room")
-    expected_angle = math.radians(-V4_ENTRY_THETA_DEG)
-    angle_error = abs(math.atan2(
-        math.sin(door.rotation_euler.z - expected_angle),
-        math.cos(door.rotation_euler.z - expected_angle),
-    ))
-    if angle_error > math.radians(0.25):
-        raise RuntimeError(
-            f"War Room v4 entry lost wall tangent: error={math.degrees(angle_error):.3f}deg"
-        )
-    if abs(float(door.location.z) - V4_ENTRY_DOOR_Z) > 0.01:
-        raise RuntimeError(f"War Room v4 entry door floated vertically: z={door.location.z:.3f}")
-
+    validate_v4_hans_stage()
 
 
 def validate_runtime_glb_v4(path, expected_factors):
@@ -1456,6 +1602,14 @@ def validate_runtime_glb_v4(path, expected_factors):
         raise RuntimeError(f"War Room v4 runtime nodes missing: {missing}")
     if "WR_ANCHOR_right_fireplace_practical" in node_names:
         raise RuntimeError("War Room v4 runtime contains a secondary-hearth anchor")
+    hans_missing = sorted({V4_HANS_DOOR_LEAF, *(name for name, _loc in V4_HANS_ANCHORS)} - node_names)
+    if hans_missing:
+        raise RuntimeError(f"War Room v4 runtime lost Hans' stage: {hans_missing}")
+    leaf_node = next(row for row in data["nodes"] if row.get("name") == V4_HANS_DOOR_LEAF)
+    if leaf_node.get("extras", {}).get("war_room_hans_door_open_yaw") != V4_HANS_DOOR_OPEN_YAW:
+        raise RuntimeError("War Room v4 runtime Hans door lost its open yaw")
+    if "mesh" not in leaf_node or any(abs(float(v)) > 1e-5 for v in leaf_node.get("rotation", [0, 0, 0, 1])[:3]):
+        raise RuntimeError("War Room v4 runtime Hans door must be a closed, unrotated mesh node")
 
     materials = {row.get("name"): row for row in data.get("materials", [])}
     required_materials = {
@@ -1504,7 +1658,9 @@ def export_shell_v4(path, batching=None):
     selected = 0
     for obj in scene.objects:
         is_static_mesh = obj.type == "MESH" and obj.get("war_room_role") == base.ROLE_STATIC
-        is_runtime_anchor = obj.type == "EMPTY" and obj.name in runtime_anchors
+        is_runtime_anchor = obj.type == "EMPTY" and (
+            obj.name in runtime_anchors or obj.name.startswith(V4_HANS_ANCHOR_PREFIX)
+        )
         if is_static_mesh or is_runtime_anchor:
             obj.select_set(True)
             selected += 1
@@ -1517,6 +1673,7 @@ def export_shell_v4(path, batching=None):
         **base.meshopt_export_kwargs(),
     )
     patched = base.patch_runtime_glb_base_color_factors(path, factors)
+    patch_v4_hans_door_extras(path)
     scene["war_room_runtime_base_color_factor_count"] = patched
     scene["war_room_runtime_mesh_compression"] = base.MESH_COMPRESSION_EXTENSION
     validate_runtime_glb_v4(path, factors)
