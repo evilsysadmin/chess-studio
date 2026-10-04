@@ -48,10 +48,10 @@ jobs:
             exit 1
           fi
 
-      - name: Checkout staging-accredited commit
+      - name: Checkout accreditation control-plane
         uses: actions/checkout@v7
         with:
-          ref: ${{ env.DEPLOY_SHA }}
+          ref: ${{ github.sha }}
 
       - name: Prove upstream generation
         id: upstream
