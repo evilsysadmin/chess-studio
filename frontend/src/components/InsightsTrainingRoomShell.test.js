@@ -29,8 +29,8 @@ describe('Así juegas Training Room 3D shell', () => {
     expect(room.getObjectByName('desk-drawer-front')).toBeTruthy();
     expect(room.getObjectByName('desk-drawer-pull')).toBeTruthy();
     expect(room.getObjectByName('chair-upholstered-back')).toBeTruthy();
-    expect(room.getObjectByName('chair-crest-rail')).toBeTruthy();
     expect(room.getObjectByName('chair-left-wing')).toBeTruthy();
+    expect(room.getObjectByName('training-room-lamp-pool')).toBeTruthy();
   });
 
   it('keeps the room identity in its lighter geometry profile', () => {
