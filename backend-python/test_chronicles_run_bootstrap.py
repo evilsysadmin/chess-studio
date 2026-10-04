@@ -41,6 +41,9 @@ def test_run_creation_returns_bound_area_in_same_response(monkeypatch):
     assert area["mapCode"].endswith(f"|seed={payload['seed']}")
     assert area["generatorVersion"] == 2
     assert area["manifest"]["generation"]["layoutRevision"] == area["layoutRevision"]
+    assert payload["contentPlacementVersion"] == 1
+    assert area["manifest"]["generation"]["contentPlacementVersion"] == 1
+    assert len(area["manifest"]["generation"]["contentPlacementRevision"]) == 64
 
     areas = payload["areas"]
     expected_ids = list(chronicles_api.chronicles_shipped_map_ids())
@@ -370,3 +373,31 @@ def test_area_preview_remains_unscaled_without_run_party_snapshot():
     assert "difficulty" not in preview
     assert warden["maxHp"] == 9
     assert warden["retaliation"] == 2
+
+
+
+def test_legacy_run_without_placement_version_rehydrates_legacy_manifest():
+    seed = 417
+    map_id = "black-glass-chapel"
+    legacy_area = chronicles_api.chronicles_area_envelope(map_id, seed)
+    run = {
+        "runId": "legacy-placement-run",
+        "seed": seed,
+        "currentMapId": map_id,
+        "contentVersion": legacy_area["contentVersion"],
+        "manifestRevision": legacy_area["manifestRevision"],
+        "status": "active",
+        "worldVersion": 0,
+        "consumedContentIds": [],
+        "claimedRewards": [],
+        "worldFlags": {},
+        "inventory": {},
+        "quests": {},
+    }
+
+    payload = chronicles_api._run_bootstrap_payload(run)
+
+    assert payload["area"]["manifestRevision"] == legacy_area["manifestRevision"]
+    assert payload["area"]["manifest"] == legacy_area["manifest"]
+    assert "contentPlacementVersion" not in payload
+    assert "contentPlacementVersion" not in payload["area"]["manifest"]["generation"]
