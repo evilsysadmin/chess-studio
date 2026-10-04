@@ -37,7 +37,10 @@ type Config struct {
 	NativeMatchMove           http.Handler
 	// NativeGamesRead serves GET /api/games, GET and DELETE
 	// /api/games/{game_id} (games vs the CPU); nil keeps them in Python.
-	NativeGamesRead       http.Handler
+	NativeGamesRead http.Handler
+	// NativeGamesWrite serves POST /api/games/{game_id}/move and /undo;
+	// nil keeps them in Python.
+	NativeGamesWrite      http.Handler
 	VirtualPlayersEnabled bool
 	NativeResidentMove    bool
 	// ReadyChecks are dependencies owned by the Go edge itself (MongoDB for the
@@ -68,6 +71,7 @@ type Handler struct {
 	nativeMatchRead           http.Handler
 	nativeMatchMove           http.Handler
 	nativeGamesRead           http.Handler
+	nativeGamesWrite          http.Handler
 	virtualPlayersEnabled     bool
 	nativeResidentMove        bool
 	readyChecks               map[string]func(context.Context) error
@@ -167,6 +171,7 @@ func New(cfg Config) (*Handler, error) {
 		nativeMatchRead:           cfg.NativeMatchRead,
 		nativeMatchMove:           cfg.NativeMatchMove,
 		nativeGamesRead:           cfg.NativeGamesRead,
+		nativeGamesWrite:          cfg.NativeGamesWrite,
 		virtualPlayersEnabled:     cfg.VirtualPlayersEnabled,
 		nativeResidentMove:        cfg.NativeResidentMove,
 		readyChecks:               cfg.ReadyChecks,
@@ -187,6 +192,13 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if pattern, _, ok := gamesapi.Route(r); ok {
 			w.Header().Set("X-Chess-Edge", "go")
 			h.telemetry.Serve(pattern, h.nativeGamesRead, w, r)
+			return
+		}
+	}
+	if h.nativeGamesWrite != nil {
+		if pattern, _, ok := gamesapi.WriteRoute(r); ok {
+			w.Header().Set("X-Chess-Edge", "go")
+			h.telemetry.Serve(pattern, h.nativeGamesWrite, w, r)
 			return
 		}
 	}
@@ -281,6 +293,7 @@ func (h *Handler) statusPayload(status string) map[string]any {
 		"virtualPlayersEnabled":     h.virtualPlayersEnabled,
 		"nativeResidentMove":        h.nativeResidentMove,
 		"nativeGamesRead":           h.nativeGamesRead != nil,
+		"nativeGamesWrite":          h.nativeGamesWrite != nil,
 	}
 	if h.release != "" {
 		payload["release"] = h.release

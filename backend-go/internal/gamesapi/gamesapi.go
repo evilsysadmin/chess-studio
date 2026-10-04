@@ -8,8 +8,9 @@
 // Everything around the handler body is Python's too: get_current_user (JWT,
 // account existence and session version, activity touch), the CORS
 // middleware, the security headers, the 120/minute default rate limit and the
-// 503 that PersistentStorageUnavailable becomes. The other /api/games routes
-// (create, move, undo, hint) stay in Python until their own ports land.
+// 503 that PersistentStorageUnavailable becomes. Move and undo live in
+// writes.go behind their own kill-switch; create and hint stay in Python until
+// their own ports land.
 package gamesapi
 
 import (
