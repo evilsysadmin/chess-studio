@@ -892,7 +892,11 @@ export function installWarRoomHansSceneRoutine(root, {
 
   if (forceQuickIteration) resetPartialMobileHansInstall(root);
 
-  const routineCoarsePointer = forceQuickIteration ? false : coarsePointer;
+  // Hans is a narrative/runtime actor, not optional decoration. Scene quality
+  // or touch input may simplify the room, but ambient events still need the
+  // actor materialized. Choreography can still use the real coarse-pointer
+  // flag for door/entry behavior below.
+  const routineCoarsePointer = false;
   const options = { towardBoard, coarsePointer: routineCoarsePointer, forceEvent: forceQuickIteration };
   if (Number.isFinite(randomValue)) options.randomValue = randomValue;
 
@@ -915,8 +919,8 @@ export function installWarRoomHansSceneRoutine(root, {
   if (!authoredDoorRefs && !stage.door) placeServiceDoorPastArmor(root, fireplace, doorRefs, towardBoard);
 
   if (forceQuickIteration) {
-    armQuickIteration(root, towardBoard, doorRefs, { coarsePointer });
-    return installed;
+    const armed = armQuickIteration(root, towardBoard, doorRefs, { coarsePointer });
+    return Math.max(installed, armed);
   }
   // The production (non-quick) choreography is still authored for the
   // canonical room only.
