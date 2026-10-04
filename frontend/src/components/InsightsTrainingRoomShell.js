@@ -192,9 +192,6 @@ function addChair(root, leather, wood) {
   upholsteredBack.name = 'chair-upholstered-back';
   group.add(upholsteredBack);
 
-  const crestRail = box(group, [2.45, .14, .5], wood, [0, 3.63, -.54], 'chair-crest-rail');
-  crestRail.rotation.z = 0;
-
   const leftWing = box(group, [.42, 2.25, .62], leather, [-1.28, 2.12, -.36], 'chair-left-wing');
   leftWing.rotation.y = -.18;
   const rightWing = box(group, [.42, 2.25, .62], leather, [1.28, 2.12, -.36], 'chair-right-wing');
@@ -293,11 +290,23 @@ function addBankerLamp(root, brass, glass) {
   group.position.set(5.45, .76, -1.42);
   root.add(group);
 
-  const warm = new THREE.PointLight(0xffb665, 1.14, 8.5, 2);
+  const warm = new THREE.PointLight(0xffb665, 1.02, 8.5, 2);
   warm.position.set(5.2, 2.22, -1.1);
   warm.castShadow = false;
   warm.name = 'training-room-desk-lamp-light';
   root.add(warm);
+
+  const poolTarget = new THREE.Object3D();
+  poolTarget.position.set(4.45, .6, -.55);
+  poolTarget.name = 'training-room-lamp-pool-target';
+  root.add(poolTarget);
+
+  const pool = new THREE.SpotLight(0xffbf78, 1.28, 8.5, .5, .68, 1.65);
+  pool.position.set(5.28, 2.34, -1.12);
+  pool.target = poolTarget;
+  pool.castShadow = false;
+  pool.name = 'training-room-lamp-pool';
+  root.add(pool);
 }
 
 function addArmillary(root, brass, lite) {
