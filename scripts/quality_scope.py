@@ -99,6 +99,8 @@ GO_AUTHORITY_PATHS = {
     "scripts/games_ops_corpus.py",
     "scripts/cpu_policy_parity_corpus.py",
     "scripts/engine_history_parity_corpus.py",
+    "scripts/engine_pv_parity_corpus.py",
+    "backend-python/engine_analysis.py",
     "scripts/go_python_parity_check.sh",
 }
 GO_PARITY_FIXTURE_RE = re.compile(
@@ -458,6 +460,7 @@ def self_test() -> None:
     _expect(["scripts/engine_parity_corpus.py"], run_go=True, run_go_parity=True)
     _expect(["scripts/cpu_policy_parity_corpus.py"], run_go=True, run_go_parity=True)
     _expect(["scripts/engine_history_parity_corpus.py"], run_go=True, run_go_parity=True)
+    _expect(["scripts/engine_pv_parity_corpus.py"], run_go=True, run_go_parity=True)
     _expect(["backend-python/cpu_difficulty.py"], run_backend=True, run_go=True, run_go_parity=True)
     _expect(["backend-python/pvp_api.py"], run_backend=True, run_go=True, run_go_parity=True)
     _expect(["backend-python/requirements.txt"], run_backend=True, run_go=True, run_go_parity=True, run_security=True)

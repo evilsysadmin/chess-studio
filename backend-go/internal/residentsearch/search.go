@@ -24,6 +24,12 @@ var ErrTimeout = errors.New("resident search timeout")
 type Candidate struct {
 	UCI   string
 	Score float64
+	// Reply is the best immediate answer the child search returned (depth 2+).
+	Reply string
+	// PV is the proven line starting with UCI: the reply, then only EXACT
+	// transposition entries deep enough (engine_analysis
+	// _principal_variation_from_tt). Never extended by an extra search.
+	PV []string
 }
 
 type Snapshot struct {
@@ -170,7 +176,7 @@ func (s *Searcher) analyzeRootCandidates(
 	depth int,
 	deadline time.Time,
 ) ([]Candidate, error) {
-	moves := orderMoves(pos, pos.ValidMovesUnsafe(), "")
+	moves := orderMoves(pos, pos.ValidMovesUnsafe(), "", kingInCheck(pos))
 	if len(moves) == 0 {
 		return []Candidate{}, nil
 	}
@@ -186,7 +192,7 @@ func (s *Searcher) analyzeRootCandidates(
 		move := moves[i]
 		child := pos.Update(&move)
 		incrementPath(path, child.ZobristHash())
-		score, _, err := s.minimax(
+		score, reply, err := s.minimax(
 			ctx,
 			child,
 			max(0, depth-1),
@@ -205,6 +211,8 @@ func (s *Searcher) analyzeRootCandidates(
 		candidates = append(candidates, Candidate{
 			UCI:   move.String(),
 			Score: score,
+			Reply: reply,
+			PV:    principalVariationFromTT(child, move.String(), reply, depth, tt),
 		})
 	}
 	return candidates, nil
@@ -262,7 +270,7 @@ func (s *Searcher) minimax(
 	if cached, ok := tt[key]; ok {
 		preferred = cached.move
 	}
-	moves := orderMoves(pos, pos.ValidMovesUnsafe(), preferred)
+	moves := orderMoves(pos, pos.ValidMovesUnsafe(), preferred, inCheck)
 	if len(moves) == 0 {
 		return residenteval.EvaluatePosition(pos), "", nil
 	}
@@ -379,7 +387,7 @@ func (s *Searcher) quiescence(
 		}
 		moves = tactical
 	}
-	ordered := orderMoves(pos, moves, "")
+	ordered := orderMoves(pos, moves, "", inCheck)
 	if len(ordered) == 0 {
 		return standPat, nil
 	}
@@ -543,8 +551,8 @@ func insufficientMaterial(board *chess.Board) bool {
 	return knights == 0 && bishops > 0 && allBishopsSameColor
 }
 
-func orderMoves(pos *chess.Position, source []chess.Move, preferred string) []chess.Move {
-	moves := append([]chess.Move(nil), source...)
+func orderMoves(pos *chess.Position, source []chess.Move, preferred string, inCheck bool) []chess.Move {
+	moves := pythonGenerationOrder(pos, source, inCheck)
 	sort.SliceStable(moves, func(i, j int) bool {
 		return moveOrderScore(pos, &moves[i], preferred) > moveOrderScore(pos, &moves[j], preferred)
 	})
@@ -630,4 +638,179 @@ func max(left, right int) int {
 		return left
 	}
 	return right
+}
+
+// principalVariationFromTT mirrors engine_analysis._principal_variation_from_tt
+// from the child position the root move led to.
+func principalVariationFromTT(child *chess.Position, rootUCI, reply string, depth int, tt map[ttKey]ttEntry) []string {
+	line := []string{rootUCI}
+	if depth <= 1 || reply == "" {
+		return line
+	}
+	probe, ok := playUCI(child, reply)
+	if !ok {
+		return line
+	}
+	line = append(line, reply)
+	ply := 2
+	for remaining := depth - 2; remaining > 0; remaining-- {
+		entry, found := tt[ttKey{hash: probe.ZobristHash(), halfmove: probe.HalfMoveClock(), ply: ply}]
+		if !found || entry.flag != ttExact || entry.depth < remaining || entry.move == "" {
+			break
+		}
+		next, ok := playUCI(probe, entry.move)
+		if !ok {
+			break
+		}
+		line = append(line, entry.move)
+		probe = next
+		ply++
+	}
+	return line
+}
+
+func playUCI(pos *chess.Position, uci string) (*chess.Position, bool) {
+	for _, move := range pos.ValidMovesUnsafe() {
+		if move.String() == uci {
+			return pos.Update(&move), true
+		}
+	}
+	return nil, false
+}
+
+// PrincipalVariation mirrors engine_analysis.principal_variation: the best
+// proven line from the deepest complete iterative pass, nil for a terminal
+// position.
+type PrincipalVariation struct {
+	Moves          []string
+	Score          float64
+	Depth          int
+	CandidateCount int
+}
+
+func (s *Searcher) PrincipalVariation(
+	ctx context.Context,
+	positions []*chess.Position,
+	maxDepth int,
+	budget time.Duration,
+) (*PrincipalVariation, error) {
+	snapshot, err := s.AnalyzeGame(ctx, positions, maxDepth, budget)
+	if err != nil {
+		return nil, err
+	}
+	if len(snapshot.Candidates) == 0 {
+		return nil, nil
+	}
+	best := snapshot.Candidates[0]
+	moves := best.PV
+	if len(moves) == 0 {
+		moves = []string{best.UCI}
+	}
+	return &PrincipalVariation{
+		Moves:          append([]string(nil), moves...),
+		Score:          best.Score,
+		Depth:          snapshot.Depth,
+		CandidateCount: snapshot.CandidateCount,
+	}, nil
+}
+
+// pythonGenerationOrder puts legal moves in the order python-chess's
+// generate_legal_moves yields them, so the stable move ordering breaks ties
+// (equal scores, which root move wins, which reply the transposition table
+// keeps) exactly as Python does. Squares count a1=0 .. h8=63 in both.
+//
+// Outside check: piece moves by origin then target (both descending), then
+// castling (rook square descending), pawn captures (origin, target
+// descending; promotions q, r, b, n), single pushes and double pushes (target
+// descending), en passant. In check (_generate_evasions): king moves first by
+// target descending, then the same order for the other pieces.
+func pythonGenerationOrder(pos *chess.Position, source []chess.Move, inCheck bool) []chess.Move {
+	board := pos.Board()
+	type keyed struct {
+		move chess.Move
+		key  int64
+	}
+	rows := make([]keyed, len(source))
+	for i := range source {
+		rows[i] = keyed{move: source[i], key: pythonOrderKey(board, source[i], inCheck)}
+	}
+	sort.SliceStable(rows, func(i, j int) bool { return rows[i].key < rows[j].key })
+	moves := make([]chess.Move, len(rows))
+	for i := range rows {
+		moves[i] = rows[i].move
+	}
+	return moves
+}
+
+func pythonOrderKey(board *chess.Board, move chess.Move, inCheck bool) int64 {
+	from, to := int64(move.S1()), int64(move.S2())
+	piece := board.Piece(move.S1()).Type()
+	promo := int64(0)
+	switch move.Promo() {
+	case chess.Rook:
+		promo = 1
+	case chess.Bishop:
+		promo = 2
+	case chess.Knight:
+		promo = 3
+	}
+	var category int64
+	switch {
+	case inCheck && piece == chess.King:
+		category = 0
+	case move.HasTag(chess.KingSideCastle) || move.HasTag(chess.QueenSideCastle):
+		category = 2
+		// rook square descending: the king side rook sits on the higher square
+		if move.HasTag(chess.KingSideCastle) {
+			return category<<20 | 0
+		}
+		return category<<20 | 1
+	case piece != chess.Pawn:
+		category = 1
+	case move.HasTag(chess.EnPassant):
+		category = 6
+	case chessrules.IsCapture(&move):
+		category = 3
+	case abs64(to-from) == 16:
+		category = 5
+		return category<<20 | (63-to)<<6
+	default:
+		category = 4
+		return category<<20 | (63-to)<<6 | promo
+	}
+	return category<<20 | (63-from)<<12 | (63-to)<<6 | promo
+}
+
+func abs64(v int64) int64 {
+	if v < 0 {
+		return -v
+	}
+	return v
+}
+
+// kingInCheck reports whether the side to move is in check.
+func kingInCheck(pos *chess.Position) bool {
+	board := pos.Board()
+	var king chess.Square
+	found := false
+	for square, piece := range board.SquareMap() {
+		if piece.Type() == chess.King && piece.Color() == pos.Turn() {
+			king, found = square, true
+			break
+		}
+	}
+	if !found {
+		return false
+	}
+	for square, piece := range board.SquareMap() {
+		if piece.Color() == pos.Turn() {
+			continue
+		}
+		for _, target := range board.AttacksFrom(square) {
+			if target == king {
+				return true
+			}
+		}
+	}
+	return false
 }
