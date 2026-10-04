@@ -230,7 +230,10 @@ def _e2e_producer(name: str) -> set[str] | None:
         "chronicles-tactics-visual-artifact.spec.js": {"chronicles-tactics"},
         "chronicles-gameplay-visual-artifact.spec.js": {"chronicles-gameplay"},
         "chronicles-avatar-visual-artifact.spec.js": {"chronicles-avatar"},
-        "training-visual-artifact.spec.js": set(TRAINING_ALL),
+        # This monolithic spec contains five independently scoped training
+        # producers. Treat it as a neutral companion when product-owned files
+        # are present; classify() falls back to TRAINING_ALL for spec-only edits.
+        "training-visual-artifact.spec.js": set(),
         "war-room-pvp-duel-visual-artifact.spec.js": {"pvp-duel"},
         "war-room-pvp.spec.js": {"pvp-duel"},
         "pvp-background-roster.spec.js": {"pvp-duel"},
@@ -586,12 +589,21 @@ def classify(paths: list[str]) -> str:
         return "home-base"
     if _is_postgame_warroom_fast_path(cleaned):
         return "warroom-core"
+    training_visual_spec_touched = any(
+        Path(path.lower().replace("\\", "/")).name == "training-visual-artifact.spec.js"
+        for path in cleaned
+    )
     producers: set[str] = set()
     for path in cleaned:
         owned = classify_path(path)
         if owned is None:
             return "all"
         producers.update(owned)
+    # A test-only edit must still prove every training surface. When the same
+    # spec changes alongside a real product owner, however, inherit that
+    # product scope instead of making Escuela/Puzzles/Torneo pay for Insights.
+    if training_visual_spec_touched and not producers:
+        producers.update(TRAINING_ALL)
     return _csv(producers)
 
 
@@ -643,6 +655,15 @@ def self_test() -> None:
     assert classify(["scripts/app_visual_producer_scope.py"]) == "none"
     assert classify(["scripts/app_visual_changed_files.py"]) == "none"
     assert classify(["scripts/app_visual_capture.sh"]) == "none"
+    assert classify(["e2e/training-visual-artifact.spec.js"]) == "training-school,training-openings,training-puzzles,training-tournament,training-progress"
+    assert classify([
+        "e2e/training-visual-artifact.spec.js",
+        "frontend/src/components/InsightsScreen.jsx",
+    ]) == "training-progress"
+    assert classify([
+        "e2e/training-visual-artifact.spec.js",
+        "frontend/src/components/MatthiasClassRoom.css",
+    ]) == "training-school"
     assert classify([".github/actions/app-visual-pipeline/action.yml"]) == "none"
     assert classify([".github/workflows/app-visual-artifact.yml"]) == "none"
     assert classify(["frontend/src/chroniclesOfMatthiasIsometric.js"]) == "chronicles-tactics"
