@@ -544,26 +544,12 @@ def build_job_matrix(scope: BrowserScope) -> dict[str, list[dict[str, str]]]:
     return {"include": jobs}
 
 
-def build_required_job_matrix(scope: BrowserScope) -> dict[str, list[dict[str, str]]]:
-    """Return the workflow matrix, always including the product golden path.
-
-    Diff scoping still controls optional expensive canaries. The mobile golden
-    path is different: it is the stable branch-protection context and therefore
-    must exist on every PR, including docs/CI-only changes.
-    """
-    matrix = build_job_matrix(scope)
-    jobs = list(matrix["include"])
-    if not any(job["id"] == MOBILE_GOLDEN_PATH_CASE["id"] for job in jobs):
-        jobs.append(dict(MOBILE_GOLDEN_PATH_CASE))
-    return {"include": jobs}
-
-
 def output_lines(scope: BrowserScope) -> list[str]:
-    matrix = build_required_job_matrix(scope)
+    matrix = build_job_matrix(scope)
     rendered = json.dumps(matrix, ensure_ascii=False, separators=(",", ":"))
     return [
         f"matrix={rendered}",
-        "has_cases=true",
+        f"has_cases={'true' if matrix['include'] else 'false'}",
     ]
 
 
@@ -600,14 +586,10 @@ def _job_ids(scope: BrowserScope) -> list[str]:
     return [case["id"] for case in build_job_matrix(scope)["include"]]
 
 
-def _required_job_ids(scope: BrowserScope) -> list[str]:
-    return [case["id"] for case in build_required_job_matrix(scope)["include"]]
-
-
 def self_test() -> None:
     assert classify([]) == BrowserScope()
     assert _job_ids(BrowserScope()) == []
-    assert _required_job_ids(BrowserScope()) == ["mobile-golden-path"]
+    assert output_lines(BrowserScope())[1] == "has_cases=false"
     assert "mobile-golden-path-war-room-invariants.spec.js" in MOBILE_GOLDEN_PATH_CASE["command"]
     assert "mobile-golden-path-priority.spec.js" in MOBILE_GOLDEN_PATH_CASE["command"]
     assert classify(["frontend/src/chroniclesFantasyEnemyArt.js"]) == BrowserScope()
@@ -749,9 +731,14 @@ def self_test() -> None:
     )
 
     empty_output = output_lines(BrowserScope())
-    assert empty_output[1] == "has_cases=true"
+    assert empty_output[1] == "has_cases=false"
     empty_matrix = json.loads(empty_output[0].removeprefix("matrix="))
-    assert [case["id"] for case in empty_matrix["include"]] == ["mobile-golden-path"]
+    assert empty_matrix["include"] == []
+
+    go_only_output = output_lines(classify(["backend-go/cmd/pvp-edge/main.go"]))
+    assert go_only_output[1] == "has_cases=false"
+    go_only_matrix = json.loads(go_only_output[0].removeprefix("matrix="))
+    assert go_only_matrix["include"] == []
     assert "War Room special-state parity: `true`" in render_summary(BrowserScope(special_states=True))
     assert "War Room mount/scale: `true`" in render_summary(BrowserScope(visual=True))
     assert "Matthias Home-only: `true`" in render_summary(BrowserScope(matthias_home=True))

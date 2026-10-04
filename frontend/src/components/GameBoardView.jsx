@@ -15,6 +15,7 @@ import useGameBoardRenderer from './useGameBoardRenderer.js';
 import useWarRoomSpatialAmbience from './useWarRoomSpatialAmbience.js';
 import useWarRoomImmersive from './useWarRoomImmersive.js';
 import useWarRoomLandscape from './useWarRoomLandscape.js';
+import useWarRoomVariant from './useWarRoomVariant.js';
 import WarRoomLandscapeGate from './WarRoomLandscapeGate.jsx';
 import WarRoomImmersiveMusicDock from './WarRoomImmersiveMusicDock.jsx';
 import { useGameFocusBubble, useGameMobileFocus } from './useGameMobileFocus.js';
@@ -114,7 +115,8 @@ export default function GameBoardView({
     clearFocusBubble();
   }
 
-  const hansEvent = warRoomHansEventForGame(game.id);
+  const { selectable: warRoomVariantSelectable, variant: warRoomVariant } = useWarRoomVariant();
+  const hansEvent = warRoomHansEventForGame(game.id, { variant: warRoomVariantSelectable ? warRoomVariant : 'classic' });
   const hansFireplaceEligible = shouldForceHansQuickIteration({
     hintMode: controls.hintMode,
     memoryContext: context.memoryContext,

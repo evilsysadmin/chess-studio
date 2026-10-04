@@ -67,21 +67,34 @@ async function assertSchoolMobileFold(shell, label) {
   const geometry = await shell.evaluate((root) => {
     const board = root.querySelector('.matthias-school-board');
     const actions = root.querySelector('.matthias-school-board-actions');
+    const coach = root.querySelector('.matthias-school-coach');
     const boardRect = board?.getBoundingClientRect();
     const actionRect = actions?.getBoundingClientRect();
+    const coachRect = coach?.getBoundingClientRect();
     return {
       innerWidth: window.innerWidth,
       innerHeight: window.innerHeight,
-      boardWidth: boardRect?.width || 0,
+      boardLeft: boardRect?.left || 0,
+      boardTop: boardRect?.top || 0,
       boardRight: boardRect?.right || 0,
-      actionsTop: actionRect?.top || 0,
+      boardBottom: boardRect?.bottom || 0,
+      boardWidth: boardRect?.width || 0,
+      boardHeight: boardRect?.height || 0,
       actionsBottom: actionRect?.bottom || 0,
+      coachBottom: coachRect?.bottom || 0,
+      coachPosition: coach ? getComputedStyle(coach).position : '',
       actionCount: actions?.querySelectorAll('button')?.length || 0,
     };
   });
-  expect(geometry.boardRight, `${label}: board must stay inside viewport`).toBeLessThanOrEqual(geometry.innerWidth + 1);
-  expect(geometry.actionsTop, `${label}: lesson actions should start in the first viewport`).toBeLessThan(geometry.innerHeight * 0.82);
-  expect(geometry.actionsBottom, `${label}: lesson actions should remain above the browser-chrome reserve`).toBeLessThanOrEqual(geometry.innerHeight - 16);
+  expect(geometry.boardLeft, `${label}: board starts at the viewport edge`).toBeLessThanOrEqual(1);
+  expect(geometry.boardTop, `${label}: board starts at the viewport edge`).toBeLessThanOrEqual(1);
+  expect(geometry.boardRight, `${label}: board fills viewport width`).toBeGreaterThanOrEqual(geometry.innerWidth - 1);
+  expect(geometry.boardBottom, `${label}: board fills viewport height`).toBeGreaterThanOrEqual(geometry.innerHeight - 1);
+  expect(geometry.boardWidth, `${label}: board owns the room width`).toBeGreaterThanOrEqual(geometry.innerWidth * 0.98);
+  expect(geometry.boardHeight, `${label}: board owns the room height`).toBeGreaterThanOrEqual(geometry.innerHeight * 0.98);
+  expect(geometry.actionsBottom, `${label}: actions stay inside the room`).toBeLessThanOrEqual(geometry.innerHeight);
+  expect(geometry.coachBottom, `${label}: Matthias stays inside the room`).toBeLessThanOrEqual(geometry.innerHeight);
+  expect(geometry.coachPosition, `${label}: Matthias is an overlay`).toBe('absolute');
   expect(geometry.actionCount, `${label}: expected actionable lesson controls`).toBeGreaterThanOrEqual(3);
 }
 
@@ -149,6 +162,7 @@ scopedTest('school', 'Entrenar · Escuela, Glosario y Modos especiales', async (
   await expect(shell.locator('[data-board3d-camera="classroom-overhead"]')).toBeVisible();
   const school3d = shell.locator('[data-board3d-war-room="true"]');
   await expect(school3d).toHaveAttribute('data-board3d-variant', 'classic');
+  await expect(shell.locator('.board3d-main-canvas')).toHaveAttribute('data-school-room-scene', 'school-room-war-room-v1');
   await capture(page, 'school');
 
   await shell.getByRole('button', { name: 'Por qué funciona', exact: true }).click();
@@ -170,39 +184,32 @@ scopedTest('school', 'Entrenar · Escuela, Glosario y Modos especiales', async (
   await settle(page);
   await shell.getByRole('button', { name: 'Cerrar plan de estudios', exact: true }).click();
 
-  await shell.getByRole('button', { name: 'Pantalla completa', exact: true }).click();
-  await expect(shell).toHaveAttribute('data-school-focus', 'board');
-  await expect(shell).toHaveAttribute('data-school-focus-rail', 'visible');
+  await expect(shell.getByRole('button', { name: 'Pantalla completa', exact: true })).toBeHidden();
+  await expect(shell).toHaveAttribute('data-school-focus', 'normal');
+  const immersive = await shell.evaluate((root) => {
+    const board = root.querySelector('.matthias-school-board')?.getBoundingClientRect();
+    const coach = root.querySelector('.matthias-school-coach');
+    return {
+      width: board?.width || 0,
+      height: board?.height || 0,
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+      coachPosition: coach ? getComputedStyle(coach).position : '',
+    };
+  });
+  expect(immersive.width).toBeGreaterThanOrEqual(immersive.viewportWidth * 0.98);
+  expect(immersive.height).toBeGreaterThanOrEqual(immersive.viewportHeight * 0.98);
+  expect(immersive.coachPosition).toBe('absolute');
   await capture(page, 'school-board-mode');
-  await shell.getByRole('button', { name: 'Solo tablero', exact: true }).click();
-  await expect(shell).toHaveAttribute('data-school-focus-rail', 'collapsed');
-  const showMatthias = shell.getByRole('button', { name: 'Mostrar Matthias', exact: true });
-  await expect(showMatthias).toBeVisible();
-  expect(await showMatthias.evaluate((button) => {
-    const rect = button.getBoundingClientRect();
-    const topmost = document.elementFromPoint(rect.left + (rect.width / 2), rect.top + (rect.height / 2));
-    return topmost === button || button.contains(topmost);
-  })).toBe(true);
-  await capture(page, 'school-board-solo');
-  await showMatthias.click();
-  await expect(shell).toHaveAttribute('data-school-focus-rail', 'visible');
   await captureAt(page, 'school-board-mode', { width: 390, height: 844, variant: 'mobile' });
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.keyboard.press('Escape');
-  await expect(shell).toHaveAttribute('data-school-focus', 'normal');
   await settle(page);
 
   const resources = shell.getByText('Recursos', { exact: true });
   await resources.click();
-  const v2Scene = shell.getByRole('button', { name: 'War Room v2', exact: true });
-  if (await v2Scene.isVisible().catch(() => false)) {
-    await v2Scene.click();
-    await expect(school3d).toHaveAttribute('data-board3d-variant', 'v2');
-    await expect(school3d).toHaveAttribute('data-board3d-variant-status', 'ready', { timeout: 30_000 });
-    await shell.getByRole('button', { name: 'War Room v1', exact: true }).click();
-    await expect(school3d).toHaveAttribute('data-board3d-variant', 'classic');
-    await expect.poll(() => page.evaluate(() => localStorage.getItem('chess-study-war-room-variant-v1'))).toBe('v2');
-  }
+  await expect(shell.getByRole('group', { name: 'Escena de clase' })).toHaveCount(0);
+  await expect(school3d).toHaveAttribute('data-board3d-variant', 'classic');
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('chess-study-war-room-variant-v1'))).toBe('v2');
   await resources.click();
   await page.setViewportSize({ width: 390, height: 844 });
   await settle(page);

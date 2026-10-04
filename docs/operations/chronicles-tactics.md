@@ -88,6 +88,18 @@ El estado persistente de una run se hidrata antes del primer frame jugable y se 
 - Un `409` por versión/mundo obsoleto detiene el writer y fuerza rebootstrap de **la misma run**. No se resuelve sobrescribiendo a ciegas estado remoto.
 - No persistir el árbol React completo. Inventario y quests son campos explícitos del checkpoint de run; otros dominios se añaden mediante contratos explícitos/versionados cuando les toque, no colándolos como blobs opacos en `worldFlags`.
 
+## Generación procedural y replay
+
+La topología y el contenido variable de una expedición se derivan de la seed y de contratos de generación versionados.
+
+- Los IDs authored representan arquetipos/biomas y contratos semánticos; no obligan a que cada run repita la misma geometría o colocación no estructural.
+- `contentPlacementVersion` queda ligado a la run al crearla. Rehidratar, F5 o cambiar de dispositivo debe reconstruir con esa misma versión, aunque el servidor ya conozca una política posterior.
+- Una versión nueva de placement sólo se aplica a runs nuevas. Nunca se "mejora" silenciosamente una expedición existente recolocando enemigos, salida, loot o mecanismos.
+- Anchors estructurales (quests, puertas, palancas, patrullas, estados referenciados) siguen authored salvo que una versión futura tenga un contrato explícito que preserve sus dependencias.
+- El contenido relocatable sólo puede ocupar celdas transitables libres y debe pasar el mismo quality gate de conectividad/alcanzabilidad que la topología.
+- La salida procedural debe seguir siendo única, alcanzable y suficientemente distante del punto de entrada; no puede pisar contenido estructural.
+- La metadata/revisión de generación forma parte del diagnóstico y debe permanecer determinista para la misma seed + versión.
+
 ## Escenarios y arte
 
 El decorado debe conocer el tamaño/plan real del mapa.
