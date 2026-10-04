@@ -10,7 +10,8 @@ on:
       - 'scripts/virtual_player_capacity_probe.py'
       - '.github/workflows/capacity-virtual-players.yml'
   push:
-    branches: [main]
+    branches:
+      - 'ops/capacity-*'
     paths:
       - 'backend-python/main.py'
       - 'scripts/virtual_player_capacity_probe.py'
