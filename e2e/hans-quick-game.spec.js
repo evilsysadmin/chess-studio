@@ -40,10 +40,17 @@ test('Partida rápida 3D hace visible a Hans también fuera del evento fuego', a
     () => page.evaluate(() => {
       const node = document.querySelector('.board3d-main-canvas');
       if (!node) return 'missing|missing';
-      return `${node.dataset.warRoomHansRoute || 'none'}|${node.dataset.warRoomHansScreen || 'missing'}`;
+      return [
+        node.dataset.warRoomHansRoute || 'none',
+        node.dataset.warRoomHansScreen || 'missing',
+        node.dataset.warRoomHansServiceEvent || 'event-missing',
+        node.dataset.warRoomHansServiceStatus || 'status-missing',
+        node.dataset.warRoomHansActiveTask || 'task-missing',
+        node.dataset.warRoomHansTaskPhase || 'phase-missing',
+      ].join('|');
     }),
     { timeout: 30_000, intervals: [100, 200, 300, 500, 1000] },
-  ).toMatch(/^service-water-plant\|(edge|onscreen)$/);
+  ).toMatch(/^service-water-plant\|(edge|onscreen)\|water-plant\|/);
 
   await expect(marker).toHaveAttribute('data-war-room-hans-runtime', 'visible');
 });
