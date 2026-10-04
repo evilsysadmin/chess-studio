@@ -8,8 +8,8 @@ import {
 
 export const INSIGHTS_TRAINING_ROOM_CAMERA = Object.freeze({
   fov: 34,
-  position: Object.freeze([0, 4.8, 13.4]),
-  target: Object.freeze([0, 2.15, -1.25]),
+  position: Object.freeze([0, 4.45, 12.8]),
+  target: Object.freeze([0, 2.05, -2.15]),
 });
 
 function renderScene(renderer, scene, camera, host) {
@@ -58,11 +58,11 @@ export default function InsightsTrainingRoomScene3D() {
       });
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 1.02;
+      renderer.toneMappingExposure = 1.42;
       renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio || 1, 1.35));
 
       scene = new THREE.Scene();
-      scene.fog = new THREE.FogExp2(0x090a0d, .021);
+      scene.fog = new THREE.FogExp2(0x0b0d12, .007);
 
       const camera = new THREE.PerspectiveCamera(
         INSIGHTS_TRAINING_ROOM_CAMERA.fov,
@@ -73,15 +73,21 @@ export default function InsightsTrainingRoomScene3D() {
       camera.position.set(...INSIGHTS_TRAINING_ROOM_CAMERA.position);
       camera.lookAt(...INSIGHTS_TRAINING_ROOM_CAMERA.target);
 
-      const hemisphere = new THREE.HemisphereLight(0x8498b6, 0x140d08, .72);
+      const hemisphere = new THREE.HemisphereLight(0x9bb6da, 0x24150c, 1.08);
       hemisphere.name = 'training-room-hemisphere';
       scene.add(hemisphere);
 
-      const softKey = new THREE.DirectionalLight(0xffd39a, .54);
+      const softKey = new THREE.DirectionalLight(0xffd39a, .94);
       softKey.position.set(-3.5, 7.4, 5.8);
       softKey.castShadow = false;
       softKey.name = 'training-room-soft-key';
       scene.add(softKey);
+
+      const cameraFill = new THREE.PointLight(0xffcf96, .48, 18, 2);
+      cameraFill.position.set(-1.8, 4.4, 8.2);
+      cameraFill.castShadow = false;
+      cameraFill.name = 'training-room-camera-fill';
+      scene.add(cameraFill);
 
       room = buildInsightsTrainingRoomLayer({ coarsePointer: false });
       scene.add(room);
