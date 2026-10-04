@@ -26,20 +26,21 @@ export const CHRONICLES_ATTRIBUTE_CAP = 5;
 
 const HERO_IDS = Object.freeze(['matthias', 'rook', 'bishop', 'knight']);
 const CLAIM_LIMIT = 256;
-const ATTRIBUTE_KEYS = Object.freeze(['vigor', 'power', 'precision', 'will']);
+const ATTRIBUTE_KEYS = Object.freeze(['vigor', 'power', 'precision', 'will', 'agility']);
 
 export const CHRONICLES_ATTRIBUTE_DEFINITIONS = Object.freeze({
   vigor: Object.freeze({ label: 'Vigor', shortLabel: 'VIG', effect: '+1 vida máxima por punto' }),
   power: Object.freeze({ label: 'Potencia', shortLabel: 'POT', effect: '+1 daño físico cada 2 puntos' }),
   precision: Object.freeze({ label: 'Precisión', shortLabel: 'PRE', effect: '+1 alcance cada 2; +1 daño a distancia/magia cada 3' }),
   will: Object.freeze({ label: 'Voluntad', shortLabel: 'VOL', effect: '+1 potencia de habilidad cada 2; +1 carga al llegar a 3' }),
+  agility: Object.freeze({ label: 'Agilidad', shortLabel: 'AGI', effect: '+1 iniciativa por punto' }),
 });
 
 const ALLOWED_ATTRIBUTES = Object.freeze({
-  matthias: Object.freeze(['vigor', 'power', 'will']),
-  rook: Object.freeze(['vigor', 'power', 'will']),
-  bishop: Object.freeze(['vigor', 'precision', 'will']),
-  knight: Object.freeze(['vigor', 'precision', 'will']),
+  matthias: Object.freeze(['vigor', 'power', 'will', 'agility']),
+  rook: Object.freeze(['vigor', 'power', 'will', 'agility']),
+  bishop: Object.freeze(['vigor', 'precision', 'will', 'agility']),
+  knight: Object.freeze(['vigor', 'precision', 'will', 'agility']),
 });
 
 export const CHRONICLES_SKILL_DEFINITIONS = Object.freeze({
@@ -334,7 +335,7 @@ export function chroniclesLevelForXp(xp) {
 }
 
 function defaultAttributes() {
-  return { vigor: 0, power: 0, precision: 0, will: 0 };
+  return { vigor: 0, power: 0, precision: 0, will: 0, agility: 0 };
 }
 
 function defaultHero() {
@@ -536,7 +537,7 @@ function skillProfileOverridesFor(hero, memberId) {
 
 export function chroniclesTacticsModifiers(progression, memberId) {
   const hero = chroniclesHeroProgress(progression, memberId);
-  const { vigor, power, precision, will } = hero.attributes;
+  const { vigor, power, precision, will, agility } = hero.attributes;
   const physical = memberId === 'matthias' || memberId === 'rook';
   const rangedOrMagic = memberId === 'bishop' || memberId === 'knight';
   const skillModifiers = skillModifiersFor(hero, memberId);
@@ -552,6 +553,7 @@ export function chroniclesTacticsModifiers(progression, memberId) {
     reachBonus,
     abilityPotencyBonus,
     abilityCharges: 1 + (will >= 3 ? 1 : 0) + Number(skillModifiers.abilityCharges || 0),
+    initiativeBonus: agility,
     profileOverrides,
   };
 }
@@ -565,6 +567,7 @@ function effectiveTacticsModifiers(progression, member) {
     reachBonus: progressionModifiers.reachBonus + nonNegativeInteger(creatorModifiers.reachBonus),
     abilityPotencyBonus: progressionModifiers.abilityPotencyBonus + nonNegativeInteger(creatorModifiers.abilityPotencyBonus),
     abilityCharges: progressionModifiers.abilityCharges + nonNegativeInteger(creatorModifiers.abilityChargesBonus),
+    initiativeBonus: progressionModifiers.initiativeBonus,
   };
 }
 

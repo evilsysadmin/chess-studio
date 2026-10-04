@@ -86,6 +86,31 @@ function shortStringOrNull(value, maxLength = 64) {
   return typeof value === 'string' && value.length > 0 && value.length <= maxLength ? value : null;
 }
 
+function normalizedInitiative(value) {
+  if (!value || typeof value !== 'object' || !Array.isArray(value.order)) return null;
+  const order = value.order
+    .slice(0, 64)
+    .map((actor) => {
+      const id = shortStringOrNull(actor?.id, 64);
+      const kind = actor?.kind === 'party' || actor?.kind === 'enemy' ? actor.kind : null;
+      const name = shortStringOrNull(actor?.name, 80) || id;
+      const agility = integerOrNull(Number(actor?.agility), 0, 999);
+      const roll = integerOrNull(Number(actor?.roll), 1, 8);
+      const initiative = integerOrNull(Number(actor?.initiative), 1, 1007);
+      if (!id || !kind || agility === null || roll === null || initiative === null) return null;
+      return { id, kind, name, agility, roll, initiative };
+    })
+    .filter(Boolean);
+  if (!order.length) return null;
+  return {
+    version: integerOrNull(Number(value.version), 1, 99) || 1,
+    die: value.die === '1d8' ? '1d8' : '1d8',
+    round: integerOrNull(Number(value.round), 1, 9999) || 1,
+    cursor: Math.min(order.length - 1, integerOrNull(Number(value.cursor), 0, order.length - 1) || 0),
+    order,
+  };
+}
+
 function runtimeCheckpointFlags(state) {
   const source = state && typeof state === 'object' ? state : {};
   const flags = { [RUNTIME_VERSION_KEY]: RUNTIME_VERSION };
@@ -105,6 +130,8 @@ function runtimeCheckpointFlags(state) {
   if (round !== null) flags[runtimeKey('round')] = round;
   if (phase !== null) flags[runtimeKey('phase')] = phase;
   if (turnPhase !== null) flags[runtimeKey('turnPhase')] = turnPhase;
+  const initiative = normalizedInitiative(source.initiative);
+  if (initiative) flags[runtimeKey('initiative')] = JSON.stringify(initiative);
 
   (source.party || []).forEach((member) => {
     const memberId = shortStringOrNull(member?.id, 40);
@@ -165,6 +192,14 @@ function applyRuntimeCheckpoint(state, flags) {
   if (round !== null) next.round = round;
   if (phase !== null) next.phase = phase;
   if (turnPhase !== null) next.turnPhase = turnPhase;
+  const serializedInitiative = flags[runtimeKey('initiative')];
+  if (typeof serializedInitiative === 'string' && serializedInitiative.length <= 16384) {
+    try {
+      next.initiative = normalizedInitiative(JSON.parse(serializedInitiative));
+    } catch {
+      next.initiative = null;
+    }
+  }
 
   if (Array.isArray(next.party)) {
     next.party = next.party.map((member) => {

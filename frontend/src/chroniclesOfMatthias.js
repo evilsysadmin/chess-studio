@@ -27,10 +27,10 @@ export const CHRONICLES_DIRECTIONS = Object.freeze([
 ]);
 
 export const CHRONICLES_PARTY = Object.freeze([
-  Object.freeze({ id: 'matthias', name: 'Matthias', role: 'Peón cronista', glyph: '♟', maxHp: 7, row: 'front', lane: 'left', attackName: 'Estocada', damage: 1, reach: 1 }),
-  Object.freeze({ id: 'rook', name: 'Hildegard', role: 'Torre guardiana', glyph: '♜', maxHp: 10, row: 'front', lane: 'right', attackName: 'Embestida', damage: 2, reach: 1 }),
-  Object.freeze({ id: 'bishop', name: 'Aziz', role: 'Alfil del farol', glyph: '♝', maxHp: 6, row: 'back', lane: 'left', attackName: 'Rayo diagonal', damage: 1, reach: 2 }),
-  Object.freeze({ id: 'knight', name: 'Faust', role: 'Caballo logístico', glyph: '♞', maxHp: 8, row: 'back', lane: 'right', attackName: 'Salto brutal', damage: 1, reach: 2 }),
+  Object.freeze({ id: 'matthias', name: 'Matthias', role: 'Peón cronista', glyph: '♟', maxHp: 7, agility: 4, row: 'front', lane: 'left', attackName: 'Estocada', damage: 1, reach: 1 }),
+  Object.freeze({ id: 'rook', name: 'Hildegard', role: 'Torre guardiana', glyph: '♜', maxHp: 10, agility: 2, row: 'front', lane: 'right', attackName: 'Embestida', damage: 2, reach: 1 }),
+  Object.freeze({ id: 'bishop', name: 'Aziz', role: 'Alfil del farol', glyph: '♝', maxHp: 6, agility: 3, row: 'back', lane: 'left', attackName: 'Rayo diagonal', damage: 1, reach: 2 }),
+  Object.freeze({ id: 'knight', name: 'Faust', role: 'Caballo logístico', glyph: '♞', maxHp: 8, agility: 5, row: 'back', lane: 'right', attackName: 'Salto brutal', damage: 1, reach: 2 }),
 ]);
 
 export const CHRONICLES_ENEMIES = DEFAULT_MAP.enemies;
@@ -123,7 +123,7 @@ export function chroniclesFrontCell(state) {
   return { x: state.x + direction.dx, y: state.y + direction.dy };
 }
 
-function chroniclesEnemyTargetAhead(state, maxReach = 2) {
+export function chroniclesEnemyTargetAhead(state, maxReach = 2) {
   const direction = CHRONICLES_DIRECTIONS[state.direction];
   for (let distance = 1; distance <= maxReach; distance += 1) {
     const x = state.x + direction.dx * distance;
@@ -272,6 +272,15 @@ function resolveAttack(state, memberId) {
   if (nextHp === 0) {
     const defeated = rewardForDefeat({ ...state, [enemy.hpKey]: 0, turns: state.turns + 1, message: defeatMessage(attacker, enemy) }, enemy);
     return journalForDefeat(defeated, attacker, enemy);
+  }
+
+  if (state.initiative) {
+    return evadeAfterHit({
+      ...state,
+      [enemy.hpKey]: nextHp,
+      turns: state.turns + 1,
+      message: `${attacker.name} impacta con ${attacker.attackName.toLowerCase()}. ${enemy.name[0].toUpperCase()}${enemy.name.slice(1)} queda en ${nextHp}/${enemy.maxHp} HP.`,
+    }, enemy);
   }
 
   const retaliationReach = Number(enemy.retaliationReach ?? enemy.ai?.attackReach ?? 1);

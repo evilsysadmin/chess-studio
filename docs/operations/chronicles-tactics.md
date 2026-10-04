@@ -130,3 +130,19 @@ El mismo asset/contrato debe mantenerse coherente entre tarjeta grande, thumbnai
 - mapas grandes mantienen scenery fuera del battlefield;
 - cambios visuales tienen PNG desktop/móvil cuando procede;
 - Matthias conserva avatar/identidad canónica.
+
+## Initiative combat contract
+
+Chronicles exploration remains free until an encounter begins. Entering an enemy engagement radius, or explicitly attacking a reachable enemy, switches the run into turn-based combat and freezes free exploration behind the initiative scheduler.
+
+- Initiative is rolled once when the encounter starts: `Agility + 1d8`.
+- The `1d8` variance is deliberate. Low-level combat should remain volatile enough that a slower actor can occasionally beat a slightly faster one; Agility becomes more dominant as stats scale.
+- Party classes have a base Agility. Persistent profile progression may add Agility without mutating the v1 character-creator schema.
+- Legacy enemies receive deterministic derived Agility from their movement archetype; authored EnemyBuilds may carry Agility directly.
+- The rolled order remains fixed across rounds. Dead actors are removed from the queue; finishing the last participating enemy returns the run to exploration.
+- Enemy turns resolve one actor at a time through the existing authoritative movement/attack predicates. Initiative combat must never fall back to the old immediate-retaliation path.
+- The initiative queue, cursor and round are durable runtime checkpoint state. F5/re-entry must resume the same order rather than rerolling the encounter.
+- Ranged attacks are combat entry too: attacking a reachable enemy outside its passive engagement radius still creates the encounter before damage is resolved.
+
+Any future haste/slow/surprise mechanic should modify the initiative contract explicitly rather than adding a parallel speed stat. `Agility` is the canonical initiative stat.
+

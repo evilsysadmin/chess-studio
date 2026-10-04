@@ -72,15 +72,20 @@ test('Chronicles of Matthias · abre una cripta Three.js real y usa combate posi
   await page.keyboard.press('2');
   await expect(hildegard).toHaveAttribute('aria-pressed', 'true');
 
-  // Procedural worlds do not promise an authored enemy at one fixed square.
-  // Prove the real input/reducer contract instead: movement always consumes a
-  // turn (even when blocked), then Hildegard's positional attack consumes the
-  // next turn and authors feedback about the selected party member.
-  await page.keyboard.press('w');
-  await expect(mode).toHaveAttribute('data-chronicles-turns', '1');
+  // At the canonical start Hildegard is still one square short of the pawn:
+  // prove the keyboard attack path without starting combat yet.
   await page.keyboard.press('Space');
-  await expect(mode).toHaveAttribute('data-chronicles-turns', '2');
+  await expect(mode).toHaveAttribute('data-chronicles-turns', '1');
+  await expect(mode).toHaveAttribute('data-chronicles-phase', 'explore');
   await expect(hildegard).toHaveAttribute('aria-pressed', 'true');
+
+  // Advancing one square enters the pawn's engagement radius. The exploration
+  // action completes, then Chronicles freezes into the AGI + 1d8 initiative
+  // scheduler instead of performing the legacy immediate-retaliation flow.
+  await page.keyboard.press('w');
+  await expect(mode).toHaveAttribute('data-chronicles-turns', '2');
+  await expect(mode).toHaveAttribute('data-chronicles-phase', 'combat');
+  await expect(mode.getByText(/iniciativa = AGI \+ 1d8/i)).toBeVisible();
 });
 
 test('Chronicles of Matthias · móvil mantiene party y mandos sin overflow', async ({ page }) => {

@@ -6,6 +6,7 @@ export const CHRONICLES_ENEMY_ATTRIBUTE_KEYS = Object.freeze([
   'power',
   'precision',
   'will',
+  'agility',
 ]);
 
 export const CHRONICLES_ENEMY_SKILLS = Object.freeze({
@@ -39,6 +40,14 @@ function nonNegativeInteger(value, fallback = 0) {
   const number = Number(value);
   if (!Number.isFinite(number)) return fallback;
   return Math.max(0, Math.floor(number));
+}
+
+export function chroniclesEnemyFallbackAgility(enemy) {
+  const movement = enemy?.ai?.movement || 'cardinal-chase';
+  if (movement === 'knight-chase') return 4;
+  if (movement === 'cardinal-roam' || movement === 'patrol-route') return 3;
+  if (movement === 'hold') return 1;
+  return 2;
 }
 
 function normalizeAttributes(raw) {
@@ -118,12 +127,13 @@ export function validateChroniclesEnemyBuild(raw) {
 
 export function chroniclesEnemyBuildModifiers(build) {
   const normalized = normalizeChroniclesEnemyBuild(build, build?.archetype);
-  const { vigor, power, precision, will } = normalized.attributes;
+  const { vigor, power, precision, will, agility } = normalized.attributes;
   const modifiers = {
     bonusMaxHp: vigor,
     damageBonus: Math.floor(power / 2),
     reachBonus: Math.floor(precision / 2),
     engageRangeBonus: Math.floor(will / 2),
+    initiativeBonus: agility,
   };
 
   normalized.skills.forEach((skillId) => {
@@ -180,9 +190,11 @@ export function deriveLegacyChroniclesEnemyBuild(enemy) {
     will: Number.isFinite(engageAfterSkills)
       ? Math.min(CHRONICLES_ENEMY_ATTRIBUTE_CAP, Math.max(0, engageAfterSkills - 1) * 2)
       : 0,
+    agility: chroniclesEnemyFallbackAgility(enemy),
   };
 
-  const points = Object.values(attributes).reduce((sum, value) => sum + value, 0);
+  const points = ['vigor', 'power', 'precision', 'will']
+    .reduce((sum, key) => sum + Number(attributes[key] || 0), 0);
   const level = Math.max(1, Math.min(
     CHRONICLES_ENEMY_LEVEL_CAP,
     1 + Math.floor((points + skills.length * 2) / 4),
@@ -218,12 +230,22 @@ export function resolveChroniclesEnemyBuildDefinition(enemy) {
     return { source: 'invalid', build: null, baseStats: null, errors: validation.errors };
   }
 
+  const authoredAttributes = enemy.enemyBuild?.attributes && typeof enemy.enemyBuild.attributes === 'object'
+    ? enemy.enemyBuild.attributes
+    : {};
+  const build = normalizeChroniclesEnemyBuild({
+    ...enemy.enemyBuild,
+    attributes: {
+      ...authoredAttributes,
+      agility: authoredAttributes.agility == null
+        ? chroniclesEnemyFallbackAgility(enemy)
+        : authoredAttributes.agility,
+    },
+  }, enemy?.visualType || enemy?.id || 'enemy');
+
   return {
     source: 'authored',
-    build: normalizeChroniclesEnemyBuild(
-      enemy.enemyBuild,
-      enemy?.visualType || enemy?.id || 'enemy',
-    ),
+    build,
     baseStats: {
       maxHp: Math.max(1, Number(enemy?.maxHp || 1)),
       retaliation: Math.max(0, Number(enemy?.retaliation || 0)),
