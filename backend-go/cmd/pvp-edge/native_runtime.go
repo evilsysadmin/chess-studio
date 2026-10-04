@@ -1,0 +1,314 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"strings"
+	"time"
+
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/accountstore"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/challengeaccept"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/challengecreate"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/edge"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/gamesapi"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/gamestore"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/matchdisconnect"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/matchresign"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/matchtimeout"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/mongoruntime"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/presence"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/pulse"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/pvprating"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/residentmove"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/residentoracle"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/telemetry"
+)
+
+type nativeRuntime struct {
+	pulse               http.Handler
+	lobbyRead           http.Handler
+	roster              http.Handler
+	chat                http.Handler
+	challengeResolution http.Handler
+	challengeAccept     http.Handler
+	challengeCreate     http.Handler
+	matchHandoffCancel  http.Handler
+	matchReady          http.Handler
+	matchResign         http.Handler
+	matchRead           http.Handler
+	matchMove           http.Handler
+	gamesRead           http.Handler
+	mongo               *mongoruntime.Runtime
+	virtualPlayers      bool
+	residentMove        bool
+}
+
+func buildNativeRuntime(features nativeFeatureFlags, upstream string) (runtime nativeRuntime, err error) {
+	runtime.virtualPlayers = envBool("CHESS_PVP_SPARRING_ENABLED", false)
+	virtualOwner := strings.TrimSpace(os.Getenv("CHESS_PVP_SPARRING_OWNER"))
+	if runtime.virtualPlayers && virtualOwner == "" {
+		return runtime, fmt.Errorf("CHESS_PVP_SPARRING_ENABLED requires CHESS_PVP_SPARRING_OWNER")
+	}
+	runtime.residentMove = features.matchMove && features.residentMove
+
+	if !features.needsMongo() {
+		return runtime, nil
+	}
+
+	mongoURL := strings.TrimSpace(os.Getenv("MONGO_URL"))
+	mongoDatabase := strings.TrimSpace(os.Getenv("MONGO_DB_NAME"))
+	jwtSecret := strings.TrimSpace(os.Getenv("JWT_SECRET"))
+	if mongoURL == "" || mongoDatabase == "" || jwtSecret == "" {
+		return runtime, fmt.Errorf("native Go features require MONGO_URL, MONGO_DB_NAME and JWT_SECRET")
+	}
+
+	pvpMongoTimeout := envDurationMS("PVP_MONGO_TIMEOUT_MS", 2000*time.Millisecond)
+	startupCtx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
+	mongoRuntime, err := mongoruntime.New(startupCtx, mongoruntime.Config{
+		URL:             mongoURL,
+		Database:        mongoDatabase,
+		QueryTimeout:    pvpMongoTimeout,
+		ApplicationName: mongoruntime.DefaultApplicationName,
+	})
+	cancel()
+	if err != nil {
+		return runtime, fmt.Errorf("native Go Mongo runtime: %w", err)
+	}
+	runtime.mongo = mongoRuntime
+	defer func() {
+		if err == nil || runtime.mongo == nil {
+			return
+		}
+		closeCtx, closeCancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer closeCancel()
+		_ = runtime.mongo.Close(closeCtx)
+		runtime.mongo = nil
+	}()
+
+	store, err := pulse.NewMongoStoreFromDatabase(mongoRuntime.Database(), pvpMongoTimeout)
+	if err != nil {
+		return runtime, fmt.Errorf("native PvP storage: %w", err)
+	}
+
+	// Python declares the same indexes while both runtimes coexist, so drift is
+	// logged but does not make startup fatal during the strangler window.
+	indexCtx, cancelIndexes := context.WithTimeout(context.Background(), 10*time.Second)
+	if indexErr := store.EnsureIndexes(indexCtx); indexErr != nil {
+		log.Printf("native PvP storage: %v", indexErr)
+	}
+	cancelIndexes()
+
+	var acceptService *challengeaccept.Service
+	if features.challengeAccept || features.challengeCreate {
+		acceptService, err = challengeaccept.New(challengeaccept.Config{Store: store})
+		if err != nil {
+			return runtime, fmt.Errorf("native PvP challenge accept service: %w", err)
+		}
+	}
+
+	var createService *challengecreate.Service
+	if features.challengeCreate {
+		createService, err = challengecreate.New(challengecreate.Config{Store: store})
+		if err != nil {
+			return runtime, fmt.Errorf("native PvP challenge create service: %w", err)
+		}
+	}
+
+	var resignService *matchresign.Service
+	var timeoutService *matchtimeout.Service
+	var disconnectService *matchdisconnect.Service
+	var ratingService *pvprating.Service
+	if features.matchResign {
+		resignService, err = matchresign.New(matchresign.Config{Store: pulse.NewResignStore(store)})
+		if err != nil {
+			return runtime, fmt.Errorf("native PvP resign service: %w", err)
+		}
+	}
+	if features.matchRead || features.matchMove {
+		timeoutService, err = matchtimeout.New(matchtimeout.Config{Store: pulse.NewTimeoutStore(store)})
+		if err != nil {
+			return runtime, fmt.Errorf("native PvP timeout service: %w", err)
+		}
+		disconnectService, err = matchdisconnect.New(matchdisconnect.Config{Store: pulse.NewDisconnectStore(store)})
+		if err != nil {
+			return runtime, fmt.Errorf("native PvP disconnect service: %w", err)
+		}
+	}
+	if features.matchResign || features.matchRead || features.matchMove {
+		ratingService, err = pvprating.New(store)
+		if err != nil {
+			return runtime, fmt.Errorf("native PvP rating settlement service: %w", err)
+		}
+	}
+
+	var moveStore *pulse.MoveStore
+	var residentMoves residentMoveProvider
+	if features.matchMove {
+		moveStore = pulse.NewMoveStore(store)
+		residentMoves, err = newResidentMoveProvider(features.residentMove, upstream, jwtSecret)
+		if err != nil {
+			return runtime, fmt.Errorf("native PvP resident move provider: %w", err)
+		}
+	}
+
+	var lobbyReadStore *pulse.MongoStore
+	if features.lobbyRead {
+		lobbyReadStore = store
+	}
+	pulseHandler, err := pulse.NewHandler(pulse.HandlerConfig{
+		Store:                     store,
+		LobbyReadStore:            lobbyReadStore,
+		JWTSecret:                 jwtSecret,
+		AllowedOrigins:            splitCSV(os.Getenv("CORS_ORIGINS")),
+		EnableRoster:              features.roster,
+		EnableChat:                features.chat,
+		EnableChallengeResolution: features.challengeResolution,
+		ChallengeAccept:           acceptService,
+		ChallengeCreate:           createService,
+		MatchResign:               resignService,
+		MatchReadStore:            store,
+		MatchMoveStore:            moveStore,
+		MatchTimeout:              timeoutService,
+		MatchDisconnect:           disconnectService,
+		RatingSettlement:          ratingService,
+		ResidentMoveOracle:        residentMoves,
+		EnableMatchHandoffCancel:  features.matchHandoffCancel,
+		EnableMatchReady:          features.matchReady,
+		VirtualPlayersEnabled:     runtime.virtualPlayers,
+		VirtualOwner:              virtualOwner,
+		SparringUsername:          env("CHESS_PVP_SPARRING_USERNAME", "sparringmeister"),
+	})
+	if err != nil {
+		return runtime, fmt.Errorf("native PvP pulse handler: %w", err)
+	}
+
+	if features.pulse {
+		runtime.pulse = pulseHandler
+	}
+	if features.lobbyRead {
+		runtime.lobbyRead = pulseHandler
+	}
+	if features.roster {
+		runtime.roster = pulseHandler
+	}
+	if features.chat {
+		runtime.chat = pulseHandler
+	}
+	if features.challengeResolution {
+		runtime.challengeResolution = pulseHandler
+	}
+	if features.challengeAccept {
+		runtime.challengeAccept = pulseHandler
+	}
+	if features.challengeCreate {
+		runtime.challengeCreate = pulseHandler
+	}
+	if features.matchHandoffCancel {
+		runtime.matchHandoffCancel = pulseHandler
+	}
+	if features.matchReady {
+		runtime.matchReady = pulseHandler
+	}
+	if features.matchResign {
+		runtime.matchResign = pulseHandler
+	}
+	if features.matchRead {
+		runtime.matchRead = pulseHandler
+	}
+	if features.matchMove {
+		runtime.matchMove = pulseHandler
+	}
+
+	if features.gamesRead {
+		telemetryCfg := telemetry.ConfigFromEnv(os.LookupEnv)
+		gamesHandler, gamesErr := gamesapi.New(gamesapi.Config{
+			Store:           gamestore.New(mongoRuntime.Database(), envDurationMS("GAMES_MONGO_TIMEOUT_MS", 2000*time.Millisecond)),
+			Accounts:        accountstore.New(mongoRuntime.Database(), pvpMongoTimeout),
+			Presence:        presence.New(mongoRuntime.Database(), telemetryCfg.TrustCloudflare, 2*time.Second),
+			JWTSecret:       jwtSecret,
+			AllowedOrigins:  splitCSV(os.Getenv("CORS_ORIGINS")),
+			TrustCloudflare: telemetryCfg.TrustCloudflare,
+		})
+		if gamesErr != nil {
+			return runtime, fmt.Errorf("native games API: %w", gamesErr)
+		}
+		runtime.gamesRead = gamesHandler
+	}
+
+	return runtime, nil
+}
+
+func (r nativeRuntime) close(ctx context.Context) error {
+	if r.mongo == nil {
+		return nil
+	}
+	return r.mongo.Close(ctx)
+}
+
+func (r nativeRuntime) edgeConfig(upstream, release string, requestTelemetry *telemetry.Recorder) edge.Config {
+	var readyChecks map[string]func(context.Context) error
+	if r.mongo != nil {
+		readyChecks = map[string]func(context.Context) error{"mongodb": r.mongo.Ping}
+	}
+	return edge.Config{
+		UpstreamURL:               upstream,
+		Release:                   release,
+		ReadyTimeout:              2 * time.Second,
+		NativePulse:               r.pulse,
+		NativeLobbyRead:           r.lobbyRead,
+		NativeRoster:              r.roster,
+		NativeChat:                r.chat,
+		NativeChallengeResolution: r.challengeResolution,
+		NativeChallengeAccept:     r.challengeAccept,
+		NativeChallengeCreate:     r.challengeCreate,
+		NativeMatchHandoffCancel:  r.matchHandoffCancel,
+		NativeMatchReady:          r.matchReady,
+		NativeMatchResign:         r.matchResign,
+		NativeMatchRead:           r.matchRead,
+		NativeMatchMove:           r.matchMove,
+		NativeGamesRead:           r.gamesRead,
+		VirtualPlayersEnabled:     r.virtualPlayers,
+		NativeResidentMove:        r.residentMove,
+		ReadyChecks:               readyChecks,
+		Telemetry:                 requestTelemetry,
+	}
+}
+
+func (r nativeRuntime) logStartup(port, upstream string) {
+	log.Printf(
+		"go-api listening on :%s -> %s native_pulse=%t native_lobby_read=%t native_roster=%t native_chat=%t native_challenge_resolution=%t native_challenge_accept=%t native_challenge_create=%t native_match_handoff_cancel=%t native_match_ready=%t native_match_resign=%t native_match_read=%t native_match_move=%t native_resident_move=%t native_games_read=%t",
+		port,
+		upstream,
+		r.pulse != nil,
+		r.lobbyRead != nil,
+		r.roster != nil,
+		r.chat != nil,
+		r.challengeResolution != nil,
+		r.challengeAccept != nil,
+		r.challengeCreate != nil,
+		r.matchHandoffCancel != nil,
+		r.matchReady != nil,
+		r.matchResign != nil,
+		r.matchRead != nil,
+		r.matchMove != nil,
+		r.residentMove,
+		r.gamesRead != nil,
+	)
+}
+
+type residentMoveProvider interface {
+	Move(context.Context, string, string) (string, error)
+}
+
+func newResidentMoveProvider(native bool, upstream, jwtSecret string) (residentMoveProvider, error) {
+	if native {
+		return residentmove.New(), nil
+	}
+	return residentoracle.New(residentoracle.Config{
+		UpstreamURL: upstream,
+		JWTSecret:   jwtSecret,
+	})
+}
