@@ -71,6 +71,7 @@ describe('Chronicles EnemyBuild v1', () => {
       damageBonus: 0,
       reachBonus: 0,
       engageRangeBonus: 0,
+      initiativeBonus: 0,
     });
   });
 
@@ -79,7 +80,7 @@ describe('Chronicles EnemyBuild v1', () => {
       version: 1,
       archetype: 'warden',
       level: 3,
-      attributes: { vigor: 2, power: 2, precision: 2, will: 2 },
+      attributes: { vigor: 2, power: 2, precision: 2, will: 2, agility: 3 },
       skills: ['brutal-strike', 'hunter-instinct'],
     });
     expect(modifiers).toEqual({
@@ -87,6 +88,7 @@ describe('Chronicles EnemyBuild v1', () => {
       damageBonus: 2,
       reachBonus: 1,
       engageRangeBonus: 2,
+      initiativeBonus: 3,
     });
   });
 
