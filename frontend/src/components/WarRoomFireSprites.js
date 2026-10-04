@@ -52,6 +52,33 @@ export function hideBakedHearthFlames(root, anchors, { radius = 1.4, maxY = 3.2 
   return () => undo.forEach((fn) => fn());
 }
 
+// Hans tends the left hearth. While he dims and revives it (WarRoomHansStage),
+// his stand-ins' intensity and height multiply this plume and its practical.
+const WAR_ROOM_V2_HANS_HEARTH_ANCHOR = 'WR_ANCHOR_fireplace_practical';
+
+export function attachHansFireDimmer(root, points) {
+  const uniforms = points?.material?.uniforms;
+  if (!uniforms?.uOpacity || !uniforms?.uHeight) return;
+  const baseOpacity = uniforms.uOpacity.value;
+  const baseHeight = uniforms.uHeight.value;
+  const previous = points.onBeforeRender;
+  let practical = null;
+  let practicalBase = null;
+  points.onBeforeRender = (...args) => {
+    previous?.(...args);
+    const dimmer = root?.userData?.warRoomHansFireDimmer;
+    const intensity = Number.isFinite(dimmer?.light?.intensity) ? Math.max(0, dimmer.light.intensity) : 1;
+    const height = Number(dimmer?.core?.scale?.y) || 1;
+    uniforms.uOpacity.value = baseOpacity * Math.min(1.4, intensity);
+    uniforms.uHeight.value = baseHeight * height;
+    practical ||= root?.getObjectByName?.('war-room-blender-fire-practical') || null;
+    if (practical && Number.isFinite(practical.intensity)) {
+      practicalBase ??= practical.intensity;
+      practical.intensity = practicalBase * intensity;
+    }
+  };
+}
+
 export function installWarRoomV2FireSprites(root, { coarsePointer = false, reducedMotion = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches || false } = {}) {
   if (reducedMotion) return () => {};
   const made = [];
@@ -71,6 +98,7 @@ export function installWarRoomV2FireSprites(root, { coarsePointer = false, reduc
     });
     node.parent.add(points);
     made.push(points);
+    if (anchor === WAR_ROOM_V2_HANS_HEARTH_ANCHOR) attachHansFireDimmer(root, points);
   }
   if (made.length) root.userData.warRoomFireSprites = made.length;
   const restoreFlames = made.length

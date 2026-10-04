@@ -1638,6 +1638,157 @@ def weather_architecture():
     print(f"War Room weathering: chipped={chipped} jittered={jittered}")
 
 
+# Hans' service door (v2): left side wall between the armour (y 4.35) and the
+# back corner, the only free stretch of wall near the left hearth. The leaf is
+# its own runtime node, hinged at the back end, swinging into the room (Blender
+# Z yaw == three.js Y yaw) over a dark landing. WarRoomHansStage.js reads the
+# anchors; the board table covers the floor in front of the hearth, so Hans
+# works from its left end, between the table corner and the armour.
+V2_HANS_DOOR_LEAF = "WR_HANS_door_leaf"
+V2_HANS_DOOR_Y0 = 5.35
+V2_HANS_DOOR_Y1 = 6.45
+V2_HANS_DOOR_HEIGHT = 2.30
+V2_HANS_DOOR_PLANE_X = -8.35
+V2_HANS_DOOR_OPEN_YAW = 1.45
+V2_HANS_ANCHOR_PREFIX = "WR_ANCHOR_hans_"
+V2_HANS_ANCHORS = (
+    ("WR_ANCHOR_hans_hearth", (-5.75, 5.07, 0.0)),
+    ("WR_ANCHOR_hans_door", (-7.95, 5.90, 0.0)),
+    ("WR_ANCHOR_hans_basket", (-6.40, 3.85, 0.0)),
+    ("WR_ANCHOR_hans_tools", (-5.45, 3.95, 0.0)),
+    ("WR_ANCHOR_hans_corridor_0", (-7.10, 5.45, 0.0)),
+    ("WR_ANCHOR_hans_corridor_1", (-6.40, 5.05, 0.0)),
+)
+V2_TABLE_HALF = 5.32
+V2_ARMOR = ((-7.33, 4.35), (7.33, 4.35))
+V2_ARMOR_BASE_RADIUS = 0.62
+
+
+def add_hans_service_v2(static, mats):
+    """Hans' door: stone frame, dark landing and a hinged walnut leaf."""
+    y0, y1, height = V2_HANS_DOOR_Y0, V2_HANS_DOOR_Y1, V2_HANS_DOOR_HEIGHT
+    mid = (y0 + y1) / 2.0
+    plane = V2_HANS_DOOR_PLANE_X
+    for end, y in (("front", y0 - 0.09), ("back", y1 + 0.09)):
+        cube(f"WR_ARCH_hans_door_jamb_{end}", (-8.40, y, height / 2.0 + 0.06), (0.10, 0.09, height / 2.0 + 0.06),
+             mats["stone_dark"], static, bevel=0.03)
+    cube("WR_ARCH_hans_door_lintel", (-8.40, mid, height + 0.20), (0.11, (y1 - y0) / 2.0 + 0.18, 0.10),
+         mats["stone_dark"], static, bevel=0.03)
+    cube("WR_ARCH_hans_door_sill", (-8.40, mid, 0.02), (0.10, (y1 - y0) / 2.0, 0.025),
+         mats["stone"], static, bevel=0.01)
+    # Dark landing behind the leaf: hidden while it is shut.
+    cube("WR_ARCH_hans_door_void", (plane - 0.065, mid, height / 2.0 + 0.02), (0.006, (y1 - y0) / 2.0, height / 2.0),
+         mats["charcoal"], static, bevel=0.0)
+
+    hinge = (plane, y1 - 0.03)
+    width = hinge[1] - (y0 + 0.03)
+    leaf_h = height - 0.04
+    parts = [cube("WR_HANS_leaf_planks", (plane, hinge[1] - width / 2.0, leaf_h / 2.0 + 0.02),
+                  (0.045, width / 2.0, leaf_h / 2.0), mats["trim_wood"], static, bevel=0.015)]
+    for index, z in enumerate((0.45, 1.20, 1.95)):
+        parts.append(cube(f"WR_HANS_leaf_strap_{index}", (plane + 0.05, hinge[1] - width * 0.42, z),
+                          (0.010, width * 0.42, 0.040), mats["brass_dark"], static, bevel=0.006))
+    ring = cylinder("WR_HANS_leaf_ring", (plane + 0.07, hinge[1] - width + 0.15, 1.05), 0.06, 0.02,
+                    mats["brass"], static, vertices=12)
+    ring.rotation_euler.y = math.pi / 2
+    parts.append(ring)
+    bpy.ops.object.select_all(action="DESELECT")
+    for part in parts:
+        for modifier in list(part.modifiers):
+            bpy.context.view_layer.objects.active = part
+            bpy.ops.object.modifier_apply(modifier=modifier.name)
+        part.select_set(True)
+    bpy.context.view_layer.objects.active = parts[0]
+    bpy.ops.object.join()
+    leaf = bpy.context.view_layer.objects.active
+    leaf.name = V2_HANS_DOOR_LEAF
+    bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
+    cursor = bpy.context.scene.cursor
+    previous_cursor = cursor.location.copy()
+    cursor.location = (hinge[0], hinge[1], 0.0)
+    bpy.ops.object.origin_set(type="ORIGIN_CURSOR")
+    cursor.location = previous_cursor
+    bpy.ops.object.select_all(action="DESELECT")
+    leaf["war_room_runtime_dynamic"] = "v2-hans-door"
+    leaf["war_room_hans_door_open_yaw"] = V2_HANS_DOOR_OPEN_YAW
+    for name, loc in V2_HANS_ANCHORS:
+        anchor(name, loc, static)
+
+
+def validate_hans_stage_v2():
+    objects = bpy.context.scene.objects
+    leaf = objects.get(V2_HANS_DOOR_LEAF)
+    missing = [name for name, _loc in V2_HANS_ANCHORS if objects.get(name) is None]
+    if leaf is None or missing:
+        raise RuntimeError(f"War Room v2 Hans stage incomplete: leaf={leaf is not None} missing={missing}")
+    if leaf.get("war_room_runtime_dynamic") != "v2-hans-door":
+        raise RuntimeError("War Room v2 Hans door leaf must stay a dynamic runtime node")
+    if any(abs(value) > 1e-6 for value in leaf.rotation_euler):
+        raise RuntimeError("War Room v2 Hans door leaf must export closed with no rotation")
+    hinge = (V2_HANS_DOOR_PLANE_X, V2_HANS_DOOR_Y1 - 0.03)
+    if abs(leaf.location.x - hinge[0]) > 1e-4 or abs(leaf.location.y - hinge[1]) > 1e-4:
+        raise RuntimeError(f"War Room v2 Hans door origin is not on its hinge: {tuple(leaf.location)}")
+    # Closed along -y; open must point into the room (+x) and clear the armour.
+    yaw = V2_HANS_DOOR_OPEN_YAW
+    open_dir = (math.sin(yaw), -math.cos(yaw))
+    if open_dir[0] < 0.95:
+        raise RuntimeError(f"War Room v2 Hans door does not open into the room: {open_dir}")
+    width = hinge[1] - V2_HANS_DOOR_Y0
+    for t in (0.25, 0.5, 0.75, 1.0):
+        for frac in (0.25, 0.5, 0.75, 1.0):
+            a = yaw * t
+            px = hinge[0] + math.sin(a) * width * frac
+            py = hinge[1] - math.cos(a) * width * frac
+            for ax, ay in V2_ARMOR:
+                if math.hypot(px - ax, py - ay) < V2_ARMOR_BASE_RADIUS + 0.05:
+                    raise RuntimeError("War Room v2 Hans door swings into the armour")
+    for name, (x, y, _z) in V2_HANS_ANCHORS:
+        if name == "WR_ANCHOR_hans_hearth":
+            continue
+        if abs(x) < V2_TABLE_HALF + 0.10 and abs(y) < V2_TABLE_HALF + 0.10:
+            raise RuntimeError(f"War Room v2 Hans anchor {name} stands in the board table")
+        if x < -8.5 + 0.40:
+            raise RuntimeError(f"War Room v2 Hans anchor {name} is inside the wall")
+        for ax, ay in V2_ARMOR:
+            if math.hypot(x - ax, y - ay) < V2_ARMOR_BASE_RADIUS + 0.30:
+                raise RuntimeError(f"War Room v2 Hans anchor {name} walks into the armour")
+    door = dict(V2_HANS_ANCHORS)["WR_ANCHOR_hans_door"]
+    if not V2_HANS_DOOR_Y0 < door[1] < V2_HANS_DOOR_Y1:
+        raise RuntimeError("War Room v2 Hans spawn is not in front of his door")
+
+
+def patch_runtime_glb_node_extras(path, extras_by_node):
+    """Merge glTF node extras (three.js userData) by node name."""
+    raw = Path(path).read_bytes()
+    chunks = []
+    offset = 12
+    patched = 0
+    while offset + 8 <= len(raw):
+        chunk_length, chunk_type = struct.unpack_from("<II", raw, offset)
+        offset += 8
+        chunk = raw[offset:offset + chunk_length]
+        offset += chunk_length
+        if chunk_type == 0x4E4F534A:
+            data = json.loads(chunk.decode("utf-8").rstrip("\x00 \t\r\n"))
+            for node in data.get("nodes", []):
+                extras = extras_by_node.get(node.get("name"))
+                if extras:
+                    node.setdefault("extras", {}).update(extras)
+                    patched += 1
+            chunk = json.dumps(data, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+            chunk += b" " * ((4 - len(chunk) % 4) % 4)
+        chunks.append((chunk_type, chunk))
+    if patched != len(extras_by_node):
+        raise RuntimeError(f"runtime GLB node extras patched {patched}/{len(extras_by_node)}")
+    total = 12 + sum(8 + len(chunk) for _chunk_type, chunk in chunks)
+    out = bytearray(struct.pack("<4sII", b"glTF", 2, total))
+    for chunk_type, chunk in chunks:
+        out.extend(struct.pack("<II", len(chunk), chunk_type))
+        out.extend(chunk)
+    Path(path).write_bytes(out)
+    return patched
+
+
 def build():
     scene = bpy.context.scene
     scene["war_room_contract"] = CONTRACT
@@ -1716,6 +1867,7 @@ def build():
     add_room(static, mats)
     add_gothic_canon_v2(static, mats)
     weather_architecture()
+    add_hans_service_v2(static, mats)
     add_preview_board(dynamic, mats)
 
     key = light("WR_LIGHT_key", "AREA", (-4.6, -2.8, 8.5), 455.0, (1.0, 0.70, 0.40), static, size=5.8)
@@ -2245,12 +2397,12 @@ def export_shell(path):
     selected = 0
     for obj in bpy.context.scene.objects:
         is_static_mesh = obj.type == "MESH" and obj.get("war_room_role") == ROLE_STATIC
-        is_runtime_anchor = obj.type == "EMPTY" and obj.name in {
+        is_runtime_anchor = obj.type == "EMPTY" and (obj.name in {
             "WR_ANCHOR_fireplace_practical",
             "WR_ANCHOR_right_fireplace_practical",
             "WR_ANCHOR_chandelier_practical",
             "WR_ANCHOR_window_moonlight",
-        }
+        } or obj.name.startswith(V2_HANS_ANCHOR_PREFIX))
         if is_static_mesh or is_runtime_anchor:
             obj.select_set(True)
             selected += 1
@@ -2263,10 +2415,25 @@ def export_shell(path):
         **meshopt_export_kwargs(),
     )
     patched_factors = patch_runtime_glb_base_color_factors(path, base_color_factors)
+    patch_runtime_glb_node_extras(path, {V2_HANS_DOOR_LEAF: {"war_room_hans_door_open_yaw": V2_HANS_DOOR_OPEN_YAW}})
     bpy.context.scene["war_room_runtime_base_color_factor_count"] = patched_factors
     bpy.context.scene["war_room_runtime_mesh_compression"] = MESH_COMPRESSION_EXTENSION
     validate_runtime_glb(path, base_color_factors)
+    validate_runtime_glb_hans_v2(path)
     bpy.ops.object.select_all(action="DESELECT")
+
+
+def validate_runtime_glb_hans_v2(path):
+    data = read_glb_json(path)
+    node_names = {row.get("name") for row in data.get("nodes", [])}
+    missing = sorted({V2_HANS_DOOR_LEAF, *(name for name, _loc in V2_HANS_ANCHORS)} - node_names)
+    if missing:
+        raise RuntimeError(f"War Room v2 runtime lost Hans' stage: {missing}")
+    leaf = next(row for row in data["nodes"] if row.get("name") == V2_HANS_DOOR_LEAF)
+    if leaf.get("extras", {}).get("war_room_hans_door_open_yaw") != V2_HANS_DOOR_OPEN_YAW:
+        raise RuntimeError("War Room v2 runtime Hans door lost its open yaw")
+    if "mesh" not in leaf or any(abs(float(v)) > 1e-5 for v in leaf.get("rotation", [0, 0, 0, 1])[:3]):
+        raise RuntimeError("War Room v2 runtime Hans door must be a closed, unrotated mesh node")
 
 
 def render(path):
@@ -2284,6 +2451,7 @@ def main():
     wipe()
     build()
     validate()
+    validate_hans_stage_v2()
     blend = Path(opt.blend)
     glb = Path(opt.glb)
     preview = Path(opt.preview)
