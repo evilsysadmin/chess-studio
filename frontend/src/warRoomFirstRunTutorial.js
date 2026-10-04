@@ -19,8 +19,15 @@ export function resolveWarRoomTutorialPhase({
   legalTargetCount = 0,
   historyLength = 0,
   baselineHistoryLength = 0,
+  turn = '',
 } = {}) {
   if (Number(historyLength) > Number(baselineHistoryLength)) {
+    return WAR_ROOM_TUTORIAL_PHASE.COMPLETE;
+  }
+  // The session only starts on the player's turn, so the board leaving it
+  // means the player already moved and the CPU is thinking: the history entry
+  // arrives with the server reply. Asking to "pick a piece" now would be wrong.
+  if (turn && turn !== 'human') {
     return WAR_ROOM_TUTORIAL_PHASE.COMPLETE;
   }
   if (!String(selectedSquare || '').trim()) {

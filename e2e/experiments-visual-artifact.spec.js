@@ -295,7 +295,7 @@ if (scopeEnabled('chronicles')) {
         const chronicles = page.getByRole('button', { name: /Chronicles of Matthias/ });
         await expect(chronicles).toBeVisible();
         await chronicles.click();
-        await expect(page.getByRole('heading', { name: 'Chronicles of Matthias', exact: true })).toBeVisible();
+        await expect(page.locator('[data-chronicles="true"]')).toBeVisible();
         const chroniclesCanvas = page.locator('[data-chronicles-renderer="three"] canvas');
         const portraitCanvas = page.locator('[data-chronicles-party-renderer="three"] canvas');
         await expect(chroniclesCanvas).toHaveCount(1, { timeout: 20_000 });

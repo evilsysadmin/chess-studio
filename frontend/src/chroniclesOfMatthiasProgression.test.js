@@ -257,7 +257,7 @@ describe('Chronicles Tactics · progression', () => {
       reason: 'daño útil',
     }));
     expect(gallery.awards).toContainEqual(expect.objectContaining({
-      awardId: 'campaign-run:gallery-01:damage:corrupted-pawn:hp-7',
+      awardId: 'campaign-run:gallery-01:damage:fork-stalker:hp-7',
       reason: 'daño útil',
     }));
   });

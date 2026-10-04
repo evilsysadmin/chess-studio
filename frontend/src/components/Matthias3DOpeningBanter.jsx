@@ -141,6 +141,7 @@ export default function Matthias3DOpeningBanter({
     ? resolveWarRoomTutorialPhase({
       selectedSquare: boardSignal.selectedSquare,
       legalTargetCount: boardSignal.legalTargetCount,
+      turn: boardSignal.turn,
       historyLength,
       baselineHistoryLength: tutorialSession.baselineHistoryLength,
     })

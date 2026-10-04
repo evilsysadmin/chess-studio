@@ -46,6 +46,37 @@
   }
 }
 
+/* Narrow portrait phones: the right-anchored Matthias HUD (up to 360px wide)
+   reaches the left edge below ~460px and covered most of the exit pill. Keep
+   the same button as a 44px arrow just under the HUD row, over the room and
+   clear of the board; its accessible name is unchanged. */
+@media (max-width: 520px) and (orientation: portrait) {
+  .war-room-exit-overlay {
+    top: calc(max(.45rem, env(safe-area-inset-top)) + 44px + .45rem);
+    width: 44px;
+    min-width: 44px;
+    padding: 0;
+    font-size: .9rem;
+  }
+
+  .war-room-exit-overlay > span:last-child {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* Wider portrait phones/tablets keep the full pill, but the immersive save
+   status dot sits in the same top-left corner: start the pill after it. */
+@media (min-width: 521px) and (max-width: 820px) and (orientation: portrait) {
+  .war-room-exit-overlay {
+    left: calc(max(.45rem, env(safe-area-inset-left)) + 44px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .war-room-exit-overlay {
     transition: none;
@@ -53,17 +84,3 @@
 }
 
 
-/* SALIR owns the primary top-left affordance. Scene inspection remains nearby,
-   but on a second row so the two controls never overlap or steal clicks. */
-.game-layout-3d:has(.war-room-exit-overlay) .board3d-inspect {
-  top: max(3.75rem, calc(env(safe-area-inset-top) + 3.25rem)) !important;
-  left: max(.72rem, env(safe-area-inset-left)) !important;
-  bottom: auto !important;
-}
-
-@media (max-width: 760px), (pointer: coarse) {
-  .game-layout-3d:has(.war-room-exit-overlay) .board3d-inspect {
-    top: max(3.55rem, calc(env(safe-area-inset-top) + 3.05rem)) !important;
-    left: max(.45rem, env(safe-area-inset-left)) !important;
-  }
-}

@@ -26,6 +26,14 @@ export function chroniclesEnemyMotionPose(visualType, time, movement = 0, { coar
       pulse: 1 + Math.sin(time * 2.6) * 0.065,
     };
   }
+  if (visualType === 'fork-stalker') {
+    return {
+      primary: (idle * 0.025 + stride * 0.11 * motion) * detail,
+      secondary: (breathe * 0.018 + counter * 0.075 * motion) * detail,
+      lift: Math.abs(stride) * 0.035 * motion * detail,
+      pulse: 1 + Math.sin(time * 5.2) * 0.055,
+    };
+  }
   if (visualType === 'gate-jailer') {
     return {
       primary: (idle * 0.01 + stride * 0.028 * motion) * detail,
@@ -89,6 +97,14 @@ function partsFor(root, visualType) {
       quaternary: named(root, 'spectral-bishop-wisp-right'),
     };
   }
+  if (visualType === 'fork-stalker') {
+    return {
+      primary: named(root, 'fork-stalker-head'),
+      secondary: named(root, 'fork-stalker-fork-crown'),
+      tertiary: named(root, 'fork-stalker-blade-left'),
+      quaternary: named(root, 'fork-stalker-blade-right'),
+    };
+  }
   if (visualType === 'gate-jailer') {
     return {
       primary: named(root, 'gate-jailer-crown'),
@@ -126,6 +142,17 @@ function applyPose(parts, visualType, pose) {
     }
     if (parts.tertiary) parts.tertiary.node.rotation.z = parts.tertiary.rz + pose.primary * 1.4;
     if (parts.quaternary) parts.quaternary.node.rotation.z = parts.quaternary.rz - pose.primary * 1.25;
+    return;
+  }
+
+  if (visualType === 'fork-stalker') {
+    if (parts.primary) {
+      parts.primary.node.rotation.z = parts.primary.rz + pose.primary;
+      parts.primary.node.position.y = parts.primary.py + pose.lift;
+    }
+    if (parts.secondary) parts.secondary.node.rotation.y = parts.secondary.ry - pose.primary * 0.65;
+    if (parts.tertiary) parts.tertiary.node.rotation.z = parts.tertiary.rz - pose.secondary;
+    if (parts.quaternary) parts.quaternary.node.rotation.z = parts.quaternary.rz + pose.secondary;
     return;
   }
 

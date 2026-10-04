@@ -21,6 +21,8 @@ CORE_E2E_FIELDS = {lane: f"run_e2e_{lane.replace('-', '_')}" for lane in CORE_E2
 class Scope:
     run_frontend: bool = False
     run_backend: bool = False
+    run_go: bool = False
+    run_go_parity: bool = False
     run_e2e: bool = False
     run_security: bool = False
     run_pawn_slug_godot: bool = False
@@ -80,6 +82,26 @@ GLOBAL_HARNESS_PATHS = {
 FRONTEND_HARNESS_PATHS = {"scripts/frontend_test_groups.mjs", "scripts/run_frontend_test_group.mjs"}
 NODE_HARNESS_PATHS = {".github/actions/cache-node-modules/action.yml"}
 BACKEND_HARNESS_PATHS = {".github/actions/cache-python-venv/action.yml"}
+GO_AUTHORITY_PATHS = {
+    "backend-python/pvp_api.py",
+    "backend-python/chess_ai.py",
+    "backend-python/requirements.txt",
+    "backend-python/chess_core.py",
+    "backend-python/operation_idempotency_core.py",
+    "backend-python/api_models.py",
+    "backend-python/game_store.py",
+    "backend-python/chronicles_map_code.py",
+    "backend-python/chronicles_map_generator.py",
+    "scripts/chronicles_topology_parity_corpus.py",
+    "scripts/engine_parity_corpus.py",
+    "scripts/games_parity_corpus.py",
+    "scripts/games_ops_corpus.py",
+    "scripts/go_python_parity_check.sh",
+}
+GO_PARITY_FIXTURE_RE = re.compile(
+    r"^backend-go/internal/(?:residenteval|residentsearch|gamecore|gameops|chroniclesmap)/"
+    r"testdata/python_[^/]*_corpus\.json$"
+)
 BROWSER_HARNESS_PATHS = {".github/actions/setup-browser-e2e/action.yml", "scripts/run_core_e2e_lane.py"}
 PACKAGE_METADATA_PATH = "frontend/package.json"
 
@@ -252,6 +274,11 @@ def classify(paths: Iterable[str]) -> Scope:
         if SECURITY_RE.search(path):
             scope.run_security = True
 
+        if path.startswith("backend-go/") or path in GO_AUTHORITY_PATHS:
+            scope.run_go = True
+        if path in GO_AUTHORITY_PATHS or GO_PARITY_FIXTURE_RE.search(path):
+            scope.run_go_parity = True
+
         if path.startswith("frontend/"):
             scope.run_frontend = True
             if FRONTEND_TEST_RE.search(path):
@@ -415,7 +442,19 @@ def self_test() -> None:
     _expect(["frontend/src/styles/28-product-resilience.css"], run_frontend=True)
     _expect(["frontend/src/assets/home-canonical/great-hall-dungeon.webp"], run_frontend=True)
     _expect(["backend-python/game_api.py"], run_backend=True)
-    _expect(["backend-python/requirements.txt"], run_backend=True, run_security=True)
+    _expect(["backend-go/internal/pulse/pulse.go"], run_go=True)
+    _expect(["backend-go/internal/chroniclesmap/generator.go"], run_go=True)
+    _expect(
+        ["backend-go/internal/chroniclesmap/testdata/python_topology_corpus.json"],
+        run_go=True,
+        run_go_parity=True,
+    )
+    _expect(["backend-python/chronicles_map_code.py"], run_backend=True, run_go=True, run_go_parity=True)
+    _expect(["backend-python/chronicles_map_generator.py"], run_backend=True, run_go=True, run_go_parity=True)
+    _expect(["scripts/chronicles_topology_parity_corpus.py"], run_go=True, run_go_parity=True)
+    _expect(["scripts/engine_parity_corpus.py"], run_go=True, run_go_parity=True)
+    _expect(["backend-python/pvp_api.py"], run_backend=True, run_go=True, run_go_parity=True)
+    _expect(["backend-python/requirements.txt"], run_backend=True, run_go=True, run_go_parity=True, run_security=True)
     _expect(["e2e/pawn-slug.spec.js"], run_pawn_slug_e2e=True)
     _expect_core(
         [LAB_LAUNCH_INTENT_PATH],

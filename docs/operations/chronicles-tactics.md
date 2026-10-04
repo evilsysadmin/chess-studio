@@ -56,6 +56,17 @@ XP, niveles, atributos, skills y la build compartida de Chronicles/Tactics perte
 - El checkpoint de run conserva estado **de la expedición actual** (mundo, posición, HP, cargas, enemigos, ledgers). La progresión entre expediciones sigue perteneciendo al perfil.
 - Un cambio de dispositivo o una caché local vacía debe poder rehidratar XP/atributos/skills desde el perfil remoto antes de usar esa progresión como base de juego.
 
+## Dificultad autoritativa de encuentro
+
+La amenaza de una expedición se fija al crear la run y forma parte del mundo autoritativo.
+
+- el cliente envía el nivel medio desplegado sólo como hint de arranque; el backend guarda ese `partyLevel` una vez y lo reutiliza durante toda la run;
+- la profundidad viene del orden de mapas de la ruta autoritativa, no del renderer ni de la navegación local;
+- cada área recibe una banda de amenaza determinista y una escala bounded sobre su dificultad authored; F5, otro dispositivo y Chronicles/Tactics deben reconstruir exactamente los mismos stats;
+- el escalado no persigue al jugador 1:1: progresión y profundidad suben presión de forma sublineal y el delta efectivo queda acotado para evitar runaway;
+- la dificultad authored y EnemyBuild siguen definiendo identidad, skills y forma del enemigo. El escalado puede ajustar HP/daño/nivel de forma contenida, pero no reinterpreta el arquetipo;
+- el frontend puede mostrar la banda autoritativa o calcular un fallback para runs legacy, pero **nunca** vuelve a escalar los stats recibidos del backend.
+
 ## Ciclo de vida autoritativo de la run
 
 La misma escritura CAS del checkpoint final terminaliza la run en backend.
@@ -76,6 +87,18 @@ El estado persistente de una run se hidrata antes del primer frame jugable y se 
 - Cada checkpoint aceptado avanza la versión de forma secuencial; no se permiten escrituras concurrentes que puedan reordenar progreso.
 - Un `409` por versión/mundo obsoleto detiene el writer y fuerza rebootstrap de **la misma run**. No se resuelve sobrescribiendo a ciegas estado remoto.
 - No persistir el árbol React completo. Inventario y quests son campos explícitos del checkpoint de run; otros dominios se añaden mediante contratos explícitos/versionados cuando les toque, no colándolos como blobs opacos en `worldFlags`.
+
+## Generación procedural y replay
+
+La topología y el contenido variable de una expedición se derivan de la seed y de contratos de generación versionados.
+
+- Los IDs authored representan arquetipos/biomas y contratos semánticos; no obligan a que cada run repita la misma geometría o colocación no estructural.
+- `contentPlacementVersion` queda ligado a la run al crearla. Rehidratar, F5 o cambiar de dispositivo debe reconstruir con esa misma versión, aunque el servidor ya conozca una política posterior.
+- Una versión nueva de placement sólo se aplica a runs nuevas. Nunca se "mejora" silenciosamente una expedición existente recolocando enemigos, salida, loot o mecanismos.
+- Anchors estructurales (quests, puertas, palancas, patrullas, estados referenciados) siguen authored salvo que una versión futura tenga un contrato explícito que preserve sus dependencias.
+- El contenido relocatable sólo puede ocupar celdas transitables libres y debe pasar el mismo quality gate de conectividad/alcanzabilidad que la topología.
+- La salida procedural debe seguir siendo única, alcanzable y suficientemente distante del punto de entrada; no puede pisar contenido estructural.
+- La metadata/revisión de generación forma parte del diagnóstico y debe permanecer determinista para la misma seed + versión.
 
 ## Escenarios y arte
 

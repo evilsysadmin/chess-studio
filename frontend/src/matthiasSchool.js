@@ -599,8 +599,16 @@ export function matthiasSchoolSummary(progress = loadMatthiasSchoolProgress()) {
   const courses = MATTHIAS_SCHOOL_COURSES.map((course) => matthiasSchoolCourseSummary(course.id, progress));
   const passedCourses = courses.filter((item) => item.passed).length;
   const currentCourseSummary = courses.find((item) => !item.passed) || courses.at(-1) || null;
-  const nextLesson = MATTHIAS_SCHOOL_LESSONS.find((lesson) => isSchoolLessonUnlocked(progress, lesson.id) && progress?.[lesson.id]?.completed !== true)
-    || MATTHIAS_SCHOOL_LESSONS.at(-1);
+  // Keep the guided route forward-compatible with curriculum growth. A learner
+  // who already passed a course must not be dragged backwards when new lessons
+  // are inserted into that older course; those lessons remain available for
+  // review/free study, while the primary "next lesson" stays in the first
+  // course that has not yet been passed.
+  const currentCourseLessons = schoolLessonsForCourse(currentCourseSummary?.course?.id);
+  const nextLesson = currentCourseLessons.find((lesson) => (
+    isSchoolLessonUnlocked(progress, lesson.id)
+    && progress?.[lesson.id]?.completed !== true
+  )) || currentCourseLessons.at(-1) || MATTHIAS_SCHOOL_LESSONS.at(-1);
   return {
     completed,
     total,

@@ -28,22 +28,29 @@ function clamp01(value) {
   return Math.max(0, Math.min(1, Number(value) || 0));
 }
 
+// `door` lets an authored stage (WarRoomHansStage.js) put the door on its own
+// wall, in world coordinates: { wallX, z, thresholdY }. Without it the door
+// keeps the War Room v1 placement on the fireplace's side wall.
 export function ensureWarRoomHansServiceDoor(root, {
   fireplace,
   towardBoard,
   coarsePointer = false,
+  side: requestedSide = null,
+  door = null,
 } = {}) {
   if (!root || !fireplace || !Number.isFinite(towardBoard)) return null;
   const existing = root.getObjectByName?.('war-room-hans-service-door');
   if (existing?.userData?.refs) return existing.userData.refs;
 
-  const side = Math.sign(fireplace.position.x || -1) || -1;
-  const doorZ = fireplace.position.z + towardBoard * 1.16;
-  const innerWallX = side * 7.72;
+  const side = requestedSide === 1 || requestedSide === -1
+    ? requestedSide
+    : (Math.sign(fireplace.position.x || -1) || -1);
+  const doorZ = Number.isFinite(door?.z) ? door.z : fireplace.position.z + towardBoard * 1.16;
+  const innerWallX = Number.isFinite(door?.wallX) ? door.wallX : side * 7.72;
   const doorWidth = coarsePointer ? 1.55 : 1.68;
   const doorHeight = coarsePointer ? 3.0 : 3.18;
   const frameWidth = doorWidth + 0.24;
-  const thresholdY = -0.23;
+  const thresholdY = Number.isFinite(door?.thresholdY) ? door.thresholdY : -0.23;
   const centerY = thresholdY + doorHeight / 2;
 
   const walnut = material(0x29170f, { roughness: 0.58, clearcoat: 0.18, specularIntensity: 0.32 });

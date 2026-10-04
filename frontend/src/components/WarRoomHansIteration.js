@@ -29,6 +29,75 @@ const POKER_OUTBOUND_TURN_SECONDS = 0.28;
 const POKER_RETURN_TO_FIRE_SECONDS = 2.25;
 const LEAVE_SIDE_FRACTION = 0.28;
 const LEAVE_BYPASS_FRACTION = 0.78;
+
+// A Hans "stage" is the room-specific geometry of the fire routine, in the
+// fireplace's local frame: lateral X is positive towards the service door,
+// depth is measured from the hearth towards the board. War Room v1 is the
+// canonical stage; Blender rooms describe their own hearth, door and corridor
+// (WarRoomHansStage.js) so the same choreography fits their decor.
+export const WAR_ROOM_HANS_CLASSIC_STAGE = Object.freeze({
+  id: 'classic',
+  doorX: QUICK_DOOR_X,
+  basketX: HEARTH_BASKET_X,
+  toolsX: HEARTH_TOOLS_X,
+  basketZ: HEARTH_BASKET_Z,
+  toolsZ: HEARTH_TOOLS_Z,
+  workZ: HEARTH_WORK_Z,
+  bypassX: ARMOR_BYPASS_X,
+  entrySeconds: QUICK_ENTRY_SECONDS,
+  corridor: null,
+});
+
+export function warRoomHansStageFor(fireplace) {
+  return fireplace?.userData?.warRoomHansStage || WAR_ROOM_HANS_CLASSIC_STAGE;
+}
+
+export function warRoomHansDoorSide(fireplace) {
+  const declared = Number(fireplace?.userData?.warRoomHansDoorSide);
+  if (declared === 1 || declared === -1) return declared;
+  return Math.sign(fireplace?.position?.x || -1) || -1;
+}
+
+// Walks a polyline of [lateral, depth] points by arc length.
+function corridorPoint(points, t, out) {
+  const target = out || {};
+  if (!points?.length) return target;
+  if (points.length === 1) {
+    target.x = points[0][0];
+    target.z = points[0][1];
+    target.aheadX = target.x;
+    target.aheadZ = target.z;
+    return target;
+  }
+  let total = 0;
+  for (let i = 1; i < points.length; i += 1) {
+    total += Math.hypot(points[i][0] - points[i - 1][0], points[i][1] - points[i - 1][1]);
+  }
+  let remaining = clamp01(t) * total;
+  for (let i = 1; i < points.length; i += 1) {
+    const [ax, az] = points[i - 1];
+    const [bx, bz] = points[i];
+    const length = Math.hypot(bx - ax, bz - az);
+    if (remaining <= length || i === points.length - 1) {
+      const local = length > 1e-6 ? Math.min(1, remaining / length) : 1;
+      target.x = lerp(ax, bx, local);
+      target.z = lerp(az, bz, local);
+      target.aheadX = bx;
+      target.aheadZ = bz;
+      return target;
+    }
+    remaining -= length;
+  }
+  return target;
+}
+
+function stageEntryPath(stage) {
+  return [...stage.corridor, [stage.basketX, stage.workZ]];
+}
+
+function stageLeavePath(stage) {
+  return [[stage.toolsX, stage.workZ], ...[...stage.corridor].reverse()];
+}
 const GRAPHITE_BASKET = 0x6f7479;
 const GRAPHITE_BASKET_DARK = 0x41464b;
 let quickIterationEnabled = false;
@@ -133,7 +202,7 @@ function findVisibleArmor(root, side) {
 
 function placeServiceDoorPastArmor(root, fireplace, doorRefs, towardBoard) {
   if (!root || !fireplace || !doorRefs?.group) return null;
-  const side = doorRefs.side || Math.sign(fireplace.position.x || -1) || -1;
+  const side = doorRefs.side || warRoomHansDoorSide(fireplace);
   const armor = findVisibleArmor(root, side);
   const armorZ = Number(armor?.position?.z);
   const fallbackZ = Number(fireplace.position.z) + towardBoard * 7.55;
@@ -174,13 +243,14 @@ function recolorGraphiteBasket(basket) {
 
 function relocateHearthKit(fireplace, towardBoard) {
   if (!fireplace) return 0;
-  const side = Math.sign(fireplace.position.x || -1) || -1;
+  const side = warRoomHansDoorSide(fireplace);
+  const stage = warRoomHansStageFor(fireplace);
   const basket = fireplace.getObjectByName?.('war-room-hearth-log-basket');
   const tools = fireplace.getObjectByName?.('war-room-hearth-tool-stand');
   let moved = 0;
   if (basket) {
-    basket.position.x = -side * Math.abs(HEARTH_BASKET_X);
-    basket.position.z = towardBoard * HEARTH_BASKET_Z;
+    basket.position.x = -side * Math.abs(stage.basketX);
+    basket.position.z = towardBoard * stage.basketZ;
     basket.rotation.y = -side * towardBoard * 0.05;
     basket.userData.warRoomHansHearthSide = 'opposite-service-door';
     basket.userData.warRoomHansHearthDepth = 'rear-wall-v1';
@@ -188,8 +258,8 @@ function relocateHearthKit(fireplace, towardBoard) {
     moved += 1;
   }
   if (tools) {
-    tools.position.x = -side * Math.abs(HEARTH_TOOLS_X);
-    tools.position.z = towardBoard * HEARTH_TOOLS_Z;
+    tools.position.x = -side * Math.abs(stage.toolsX);
+    tools.position.z = towardBoard * stage.toolsZ;
     tools.userData.warRoomHansHearthSide = 'opposite-service-door';
     tools.userData.warRoomHansHearthDepth = 'rear-wall-v1';
     moved += 1;
@@ -202,8 +272,8 @@ function relocateHearthKit(fireplace, towardBoard) {
   return moved;
 }
 
-function resetQuickFrameExtras(frame) {
-  frame.hansZ = HEARTH_WORK_Z;
+function resetQuickFrameExtras(frame, stage = WAR_ROOM_HANS_CLASSIC_STAGE) {
+  frame.hansZ = stage.workZ;
   frame.crouch = 0;
   frame.facingTarget = null;
   frame.orientationTarget = null;
@@ -211,12 +281,20 @@ function resetQuickFrameExtras(frame) {
   frame.route = null;
   frame.routeProgress = 0;
   frame.doorOpen = 0;
+  frame.pathAheadX = null;
+  frame.pathAheadZ = null;
   return frame;
 }
 
-function remapWorkingFrameInPlace(frame, timelineT) {
+const corridorScratch = {};
+
+function remapWorkingFrameInPlace(frame, timelineT, stage = WAR_ROOM_HANS_CLASSIC_STAGE) {
   if (!frame?.hansVisible) return frame;
-  frame.hansZ = HEARTH_WORK_Z;
+  const HEARTH_BASKET_X = stage.basketX;
+  const HEARTH_TOOLS_X = stage.toolsX;
+  const ARMOR_BYPASS_X = stage.bypassX;
+  const QUICK_DOOR_X = stage.doorX;
+  frame.hansZ = stage.workZ;
   frame.choreography = frame.phase;
   if (frame.phase === 'take-log') {
     const p = clamp01((timelineT - 10) / 2);
@@ -275,6 +353,20 @@ function remapWorkingFrameInPlace(frame, timelineT) {
   } else if (frame.phase === 'satisfied') {
     frame.hansX = HEARTH_TOOLS_X;
     frame.facingTarget = 'fire';
+  } else if (frame.phase === 'leave' && stage.corridor) {
+    const local = Math.max(0, timelineT - 27);
+    const p = smoothstep01(local / 6);
+    const point = corridorPoint(stageLeavePath(stage), p, corridorScratch);
+    frame.hansX = point.x;
+    frame.hansZ = point.z;
+    frame.route = 'stage-leave';
+    frame.routeProgress = p;
+    frame.doorOpen = smoothstep01((p - 0.72) / 0.18);
+    frame.facingTarget = 'path';
+    frame.pathAheadX = point.aheadX;
+    frame.pathAheadZ = point.aheadZ;
+    frame.stride = Math.sin(local * 2.9) * 0.12;
+    frame.hansVisible = frame.hansVisible && p < 0.985;
   } else if (frame.phase === 'leave') {
     const local = Math.max(0, timelineT - 27);
     const p = smoothstep01(local / 6);
@@ -306,54 +398,73 @@ function remapWorkingFrameInPlace(frame, timelineT) {
   return frame;
 }
 
-export function writeHansQuickIterationFrame(target, elapsedSeconds, coarsePointer = false) {
+export function writeHansQuickIterationFrame(
+  target,
+  elapsedSeconds,
+  coarsePointer = false,
+  stage = WAR_ROOM_HANS_CLASSIC_STAGE,
+) {
   const frame = target || {};
   const elapsed = Math.max(0, Number(elapsedSeconds) || 0);
-  if (elapsed < QUICK_ENTRY_SECONDS) {
+  const entrySeconds = stage.entrySeconds;
+  if (elapsed < entrySeconds) {
     writeHansFireplaceFrame(
       frame,
       Math.min(elapsed, 5) + HANS_FIREPLACE_START_DELAY_S,
     );
-    resetQuickFrameExtras(frame);
+    resetQuickFrameExtras(frame, stage);
     const entryStart = coarsePointer ? MOBILE_QUICK_ENTRY_VISIBLE_PROGRESS : 0;
-    const eased = lerp(entryStart, 1, smoothstep01(elapsed / QUICK_ENTRY_SECONDS));
+    const eased = lerp(entryStart, 1, smoothstep01(elapsed / entrySeconds));
     const closeDoor = smoothstep01(Math.max(0, (elapsed - 1.8) / 2.4));
     frame.phase = 'fire-dimming';
     frame.active = true;
     frame.hansVisible = true;
-    frame.hansX = lerp(QUICK_DOOR_X, HEARTH_BASKET_X, eased);
-    frame.hansZ = HEARTH_WORK_Z;
+    if (stage.corridor) {
+      const point = corridorPoint(stageEntryPath(stage), eased, corridorScratch);
+      frame.hansX = point.x;
+      frame.hansZ = point.z;
+      frame.route = 'stage-entry';
+      frame.facingTarget = 'path';
+      frame.pathAheadX = point.aheadX;
+      frame.pathAheadZ = point.aheadZ;
+    } else {
+      frame.hansX = lerp(stage.doorX, stage.basketX, eased);
+      frame.hansZ = stage.workZ;
+      frame.route = 'entry';
+      frame.facingTarget = 'basket';
+    }
     frame.stride = Math.sin(elapsed * 3.0) * 0.16;
-    frame.route = 'entry';
     frame.routeProgress = eased;
     frame.doorOpen = 1 - closeDoor;
-    frame.facingTarget = 'basket';
     frame.choreography = 'enter-to-basket';
     return frame;
   }
 
-  const postEntryOffset = 10 - QUICK_ENTRY_SECONDS;
+  const postEntryOffset = 10 - entrySeconds;
   const timelineT = elapsed + postEntryOffset;
   writeHansFireplaceFrame(
     frame,
     elapsed + HANS_FIREPLACE_START_DELAY_S + postEntryOffset,
   );
-  resetQuickFrameExtras(frame);
+  resetQuickFrameExtras(frame, stage);
   if (frame.complete) {
     frame.doorOpen = 0;
     frame.choreography = 'complete';
     return frame;
   }
-  remapWorkingFrameInPlace(frame, timelineT);
+  remapWorkingFrameInPlace(frame, timelineT, stage);
   if (frame.phase !== 'leave') frame.doorOpen = 0;
   return frame;
 }
 
-export function hansQuickIterationFrame(elapsedSeconds, { coarsePointer = false } = {}) {
-  return writeHansQuickIterationFrame({}, elapsedSeconds, coarsePointer);
+export function hansQuickIterationFrame(elapsedSeconds, { coarsePointer = false, stage } = {}) {
+  return writeHansQuickIterationFrame({}, elapsedSeconds, coarsePointer, stage || WAR_ROOM_HANS_CLASSIC_STAGE);
 }
 
 function routeDepth(frame, doorDepth) {
+  if (frame.route === 'stage-entry' || frame.route === 'stage-leave') {
+    return frame.hansZ;
+  }
   if (frame.route === 'entry') {
     return lerp(doorDepth, HEARTH_WORK_Z, clamp01(frame.routeProgress));
   }
@@ -369,10 +480,30 @@ function routeDepth(frame, doorDepth) {
   return Number.isFinite(frame.hansZ) ? frame.hansZ : HEARTH_WORK_Z;
 }
 
-function applyHansFacingTarget(hans, targetName, side, towardBoard, doorDepth) {
+function applyHansFacingTarget(
+  hans,
+  targetName,
+  side,
+  towardBoard,
+  doorDepth,
+  stage = WAR_ROOM_HANS_CLASSIC_STAGE,
+  frame = null,
+) {
+  const HEARTH_BASKET_X = stage.basketX;
+  const HEARTH_TOOLS_X = stage.toolsX;
+  const HEARTH_BASKET_Z = stage.basketZ;
+  const HEARTH_TOOLS_Z = stage.toolsZ;
+  const HEARTH_WORK_Z = stage.workZ;
+  const QUICK_DOOR_X = stage.doorX;
+  const ARMOR_BYPASS_X = stage.bypassX;
   let targetX;
   let targetZ;
   switch (targetName) {
+    case 'path':
+      if (!Number.isFinite(frame?.pathAheadX) || !Number.isFinite(frame?.pathAheadZ)) return;
+      targetX = side * frame.pathAheadX;
+      targetZ = towardBoard * frame.pathAheadZ;
+      break;
     case 'basket':
     case 'walk-to-basket':
     case 'take-log':
@@ -426,7 +557,7 @@ function applyHansFacingTarget(hans, targetName, side, towardBoard, doorDepth) {
   );
 }
 
-function applyHansTransform(hans, frame, side, towardBoard, doorDepth) {
+function applyHansTransform(hans, frame, side, towardBoard, doorDepth, stage = WAR_ROOM_HANS_CLASSIC_STAGE) {
   hans.position.x = side * frame.hansX;
   setWarRoomHansCrouchIntent(hans, frame.crouch, 'quick-iteration-crouch');
   hans.position.z = towardBoard * routeDepth(frame, doorDepth);
@@ -436,6 +567,8 @@ function applyHansTransform(hans, frame, side, towardBoard, doorDepth) {
     side,
     towardBoard,
     doorDepth,
+    stage,
+    frame,
   );
 }
 
@@ -450,7 +583,7 @@ function applyQuickIterationFrame(refs, frame, towardBoard) {
   const {
     fireplace, hans, body, fireCore, fireLight, fireCoreBaseScale,
     fireLightBaseIntensity, fireLightBaseDistance,
-    basketTopLog, addedLog, standPoker, side, doorRefs, doorDepth,
+    basketTopLog, addedLog, standPoker, side, doorRefs, doorDepth, stage,
   } = refs;
 
   if (basketTopLog) basketTopLog.visible = !frame.removeBasketLog;
@@ -459,7 +592,7 @@ function applyQuickIterationFrame(refs, frame, towardBoard) {
 
   hans.visible = frame.hansVisible;
   if (frame.hansVisible) {
-    applyHansTransform(hans, frame, side, towardBoard, doorDepth);
+    applyHansTransform(hans, frame, side, towardBoard, doorDepth, stage);
     body.leftLeg.rotation.x = frame.stride;
     body.rightLeg.rotation.x = -frame.stride;
     body.leftArm.rotation.x = frame.leftArm - frame.stride * 0.55;
@@ -520,6 +653,7 @@ function armQuickIteration(root, towardBoard, doorRefs, { coarsePointer = false 
   const useCoarseEntry = coarsePointer && !awaitCall;
   const frameScratch = {};
   const doorDepth = Math.abs(Number(doorRefs?.doorZ) - Number(fireplace.position.z));
+  const stage = warRoomHansStageFor(fireplace);
   const refs = {
     fireplace,
     hans,
@@ -532,9 +666,10 @@ function armQuickIteration(root, towardBoard, doorRefs, { coarsePointer = false 
     basketTopLog: fireplace.getObjectByName?.('war-room-hearth-basket-top-log'),
     addedLog: fireplace.getObjectByName?.('war-room-hans-hearth-added-log'),
     standPoker: fireplace.getObjectByName?.('war-room-hearth-poker'),
-    side: Math.sign(fireplace.position.x || -1) || -1,
+    side: warRoomHansDoorSide(fireplace),
     doorRefs,
     doorDepth,
+    stage,
     bounce: null,
   };
 
@@ -557,7 +692,7 @@ function armQuickIteration(root, towardBoard, doorRefs, { coarsePointer = false 
   driver.userData.warRoomHansFacingHotPath = 'scalar-targets-v1';
   driver.userData.warRoomHansVerticalPoseOutput = 'transform-owner-crouch-intent-v1';
 
-  const initialFrame = writeHansQuickIterationFrame(frameScratch, 0, useCoarseEntry);
+  const initialFrame = writeHansQuickIterationFrame(frameScratch, 0, useCoarseEntry, stage);
   if (awaitCall) {
     initialFrame.hansVisible = false;
     initialFrame.doorOpen = 0;
@@ -574,7 +709,7 @@ function armQuickIteration(root, towardBoard, doorRefs, { coarsePointer = false 
     presentationMs += awaitCall ? Math.min(delta, presentationMs < 600 ? 100 : 1000) : delta;
     const doorOpeningMs = awaitCall ? 600 : 0;
     const presentationElapsed = Math.max(0, presentationMs - doorOpeningMs) / 1000 * HANS_PRESENTATION_TIME_SCALE;
-    const frame = writeHansQuickIterationFrame(frameScratch, presentationElapsed, useCoarseEntry);
+    const frame = writeHansQuickIterationFrame(frameScratch, presentationElapsed, useCoarseEntry, stage);
     if (presentationMs < doorOpeningMs) {
       frame.hansVisible = false;
       frame.doorOpen = smoothstep01(presentationMs / doorOpeningMs);
@@ -705,7 +840,7 @@ function remapProductionHans(hans, phase, side, towardBoard, doorDepth, phaseEla
 function armProductionDoor(driver, hans, doorRefs, fireplace, towardBoard) {
   if (!driver?.userData?.warRoomHansSelected || typeof driver.onBeforeRender !== 'function') return;
   const original = driver.onBeforeRender;
-  const side = doorRefs?.side || Math.sign(fireplace?.position.x || -1) || -1;
+  const side = doorRefs?.side || warRoomHansDoorSide(fireplace);
   const doorDepth = Math.abs(Number(doorRefs?.doorZ) - Number(fireplace?.position.z));
   const routeScratch = { doorOpen: 0, hide: false };
   let lastPhase = null;
@@ -750,31 +885,42 @@ export function installWarRoomHansSceneRoutine(root, {
   towardBoard,
   coarsePointer = false,
   randomValue,
+  doorRefs: authoredDoorRefs = null,
 } = {}) {
   if (!root || !Number.isFinite(towardBoard)) return 0;
   const forceQuickIteration = quickIterationEnabled;
 
   if (forceQuickIteration) resetPartialMobileHansInstall(root);
 
-  // Hans is a narrative/runtime actor, not optional decoration. Scene quality
-  // or touch input may simplify the room, but ambient events still need the
-  // actor materialized. Choreography can still use the real coarse-pointer
-  // flag for door/entry behavior below.
-  const routineCoarsePointer = false;
+  const routineCoarsePointer = forceQuickIteration ? false : coarsePointer;
   const options = { towardBoard, coarsePointer: routineCoarsePointer, forceEvent: forceQuickIteration };
   if (Number.isFinite(randomValue)) options.randomValue = randomValue;
 
   const installed = installWarRoomHansFireplaceRoutine(root, options);
   const fireplace = root.getObjectByName?.('war-room-fireplace');
   relocateHearthKit(fireplace, towardBoard);
-  const doorRefs = ensureWarRoomHansServiceDoor(root, { fireplace, towardBoard, coarsePointer });
+  const stage = warRoomHansStageFor(fireplace);
+  // Blender rooms author their own door leaf; only rooms without one get the
+  // procedural service door.
+  const doorRefs = authoredDoorRefs || ensureWarRoomHansServiceDoor(root, {
+    fireplace,
+    towardBoard,
+    coarsePointer,
+    side: warRoomHansDoorSide(fireplace),
+    door: stage.door || null,
+  });
   if (!doorRefs) return installed;
-  placeServiceDoorPastArmor(root, fireplace, doorRefs, towardBoard);
+  // Authored stages place their door on a free stretch of wall; only the
+  // canonical room derives it from the armor it must stand past.
+  if (!authoredDoorRefs && !stage.door) placeServiceDoorPastArmor(root, fireplace, doorRefs, towardBoard);
 
   if (forceQuickIteration) {
-    const armed = armQuickIteration(root, towardBoard, doorRefs, { coarsePointer });
-    return Math.max(installed, armed);
+    armQuickIteration(root, towardBoard, doorRefs, { coarsePointer });
+    return installed;
   }
+  // The production (non-quick) choreography is still authored for the
+  // canonical room only.
+  if (stage.corridor) return installed;
 
   const driver = root.getObjectByName?.('war-room-hans-fireplace-driver');
   const hans = root.getObjectByName?.('war-room-hans-butler');

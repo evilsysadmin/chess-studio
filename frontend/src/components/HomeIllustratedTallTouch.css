@@ -248,12 +248,14 @@
   }
 }
 
-/* Android "desktop site" in landscape is a different failure mode from the
- * tall-touch case above: CSS width looks desktop-ish while the usable height is
- * still phone-sized. Keep the Great Hall on its canonical 16:9 camera and crop
+/* Touch landscape with a phone-sized height (Android "desktop site" and plain
+ * landscape phones from 560px wide) is a different failure mode from the
+ * tall-touch case above: the usable height is phone-sized. Below 760px wide
+ * the masthead used to stay in flow, the hall overflowed and JUGAR loaded
+ * below the fold under the floating Matthias/1v1 cards. Keep the Great Hall on its canonical 16:9 camera and crop
  * the stage symmetrically instead of feeding the low viewport aspect ratio into
  * the 3D scene. This also prevents the empty side moat seen on real devices. */
-@media (pointer: coarse) and (orientation: landscape) and (min-width: 760px) and (max-height: 620px) {
+@media (pointer: coarse) and (orientation: landscape) and (min-width: 560px) and (max-height: 620px) {
   body:has(.app-shell-home) {
     background: #140b06;
   }
@@ -438,11 +440,15 @@
     line-height: 1.32;
   }
 
+  /* The Mazmorras stair (the only dungeon entry below 1000px) sits above the
+     docked 1 vs 1 card instead of under it. The 16:9 stage overflows the
+     viewport by (56.25vw - 100dvh) / 2 at the bottom, so anchor past that
+     overflow plus the card (54px min + padding) and a small gap. */
   .illustrated-home__utilities {
     right: 4% !important;
-    bottom: 11% !important;
+    bottom: calc(max(0px, (56.25vw - 100dvh) / 2) + max(10px, env(safe-area-inset-bottom)) + 76px) !important;
     width: 22% !important;
-    height: 24% !important;
+    height: 22% !important;
   }
 
   .illustrated-home__dungeon-copy {
@@ -451,6 +457,105 @@
     width: 100%;
     padding: 5px 7px;
     background: rgba(12, 8, 5, .48);
+  }
+
+  /* "Más formas de jugar" is hidden below 1000px except in portrait, which left
+     landscape phones without practice/private games. Show it as a compact
+     "Más" chip under JUGAR, clear of the 1v1 card, opening upwards. */
+  .illustrated-home .illustrated-home__play-more-wrap {
+    display: block;
+    position: absolute;
+    z-index: 27;
+    left: 50%;
+    top: 75%;
+    transform: translateX(-50%);
+  }
+
+  .illustrated-home .illustrated-home__play-more {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .3rem;
+    min-width: 72px;
+    min-height: 44px;
+    padding: 0 12px;
+    border: 1px solid rgba(218, 172, 83, .28);
+    border-radius: 999px;
+    background: rgba(17, 10, 6, .74);
+    color: #f0d9a8;
+    font-size: 11px;
+  }
+
+  .illustrated-home .illustrated-home__play-more span {
+    font-size: 0;
+  }
+
+  .illustrated-home .illustrated-home__play-more span::before {
+    content: 'Más';
+    font-size: 11px;
+    letter-spacing: .02em;
+  }
+
+  .illustrated-home .illustrated-home__play-menu {
+    position: absolute;
+    z-index: 120;
+    left: 50%;
+    bottom: calc(100% + 6px);
+    display: grid;
+    gap: 6px;
+    width: min(420px, 62vw);
+    max-height: min(300px, 72dvh);
+    padding: 8px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    transform: translateX(-50%);
+    border: 1px solid rgba(218, 166, 78, .36);
+    border-radius: 14px;
+    background: rgba(21, 12, 7, .97);
+    box-shadow: 0 18px 44px rgba(0, 0, 0, .5);
+    text-align: left;
+  }
+
+  .illustrated-home .illustrated-home__play-menu-item {
+    display: grid;
+    grid-template-columns: 22px minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 6px 10px;
+    border: 1px solid rgba(218, 166, 78, .18);
+    border-radius: 10px;
+    background: rgba(255, 220, 150, .045);
+    color: #f0d9a8;
+    text-align: left;
+  }
+
+  .illustrated-home .illustrated-home__play-menu-item svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .illustrated-home .illustrated-home__play-menu-item strong,
+  .illustrated-home .illustrated-home__play-menu-item small {
+    display: block;
+  }
+
+  .illustrated-home .illustrated-home__play-menu-item strong {
+    font-size: 12px;
+    line-height: 1.15;
+  }
+
+  .illustrated-home .illustrated-home__play-menu-item small {
+    margin-top: 2px;
+    font-size: 10px;
+    line-height: 1.2;
+  }
+
+  /* The music dock sat on top of "Mi cuenta"; dock it just to its right. */
+  html body:has(.app-shell-home) .global-music-dock {
+    top: max(8px, env(safe-area-inset-top)) !important;
+    left: calc(max(8px, env(safe-area-inset-left)) + 140px) !important;
+    right: auto !important;
   }
 
   .illustrated-home__dungeon-copy strong {

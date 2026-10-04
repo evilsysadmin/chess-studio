@@ -229,6 +229,10 @@ for (const viewport of VIEWPORTS) {
       const overlays = page.locator('.save-status-badge, .release-update-notice, .matthias-3d-opening-banter');
       await assertNoOverlap(overlays, hudControls, 'overlay must not cover HUD controls');
       await assertNoOverlap(page.locator('.save-status-badge'), page.locator('.game-3d-turn-pill'), 'save badge must not overlap the HUD pill');
+      // The HUD pill is right-anchored and up to 360px wide: on narrow portraits
+      // it used to cover most of the exit button.
+      await assertNoOverlap(page.locator('.war-room-exit-overlay'), page.locator('.game-3d-turn-pill'), 'exit button must not hide under the HUD pill');
+      await assertNoOverlap(page.locator('.war-room-exit-overlay'), page.locator('.save-status-badge'), 'exit button must not overlap the save status dot');
       await assertNoOverlap(release, matthias, 'release notice must not cover Matthias');
       await assertInsideViewport(matthias, viewport, 'Matthias bubble');
       await assertInsideViewport(release, viewport, 'release notice');
@@ -304,6 +308,51 @@ test('mobile golden path · la ayuda relanza el coaching interactivo de War Room
 });
 
 
+
+test('mobile golden path · zoom de dos dedos amplía, sigue jugable y se restaura', async ({ page }, testInfo) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 390, height: 844 });
+  const releaseState = { current: APP_RELEASE };
+  const { board, canvas } = await startGame(page, {
+    profileSeed: PROFILES[0].profileSeed,
+    releaseState,
+    gameScenario: 'opening',
+  });
+  const zoomRoot = page.locator('.war-room-board-zoom');
+  const restore = page.getByRole('button', { name: 'Restaurar vista', exact: true });
+  await expect(zoomRoot).toHaveAttribute('data-war-room-zoom', '1.00');
+  await expect(restore).toHaveCount(0);
+
+  // Two fingers spread around e2: zoom anchored on the gesture, no move played.
+  const before = await readBoard3DProjection(canvas);
+  const center = before.square('e2');
+  const cdp = await page.context().newCDPSession(page);
+  const finger = (id, x, y) => ({ x, y, radiusX: 4, radiusY: 4, force: 0.7, id });
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [finger(1, center.x - 30, center.y), finger(2, center.x + 30, center.y)] });
+  for (let step = 1; step <= 6; step += 1) {
+    const spread = 30 + step * 12;
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [finger(1, center.x - spread, center.y), finger(2, center.x + spread, center.y)] });
+  }
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await expect.poll(async () => Number(await zoomRoot.getAttribute('data-war-room-zoom'))).toBeGreaterThan(1.8);
+  await expect(restore).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('war-room-pinch-zoomed-390x844.png'), animations: 'disabled', caret: 'hide' });
+
+  // The magnified board still plays with one finger, on the square under it,
+  // and the zoom stayed anchored where the fingers were.
+  const zoomed = await readBoard3DProjection(canvas);
+  expect(Math.abs(zoomed.square('e2').x - center.x)).toBeLessThan(40);
+  // The first finger of the pinch may have selected the piece under it; a
+  // one-finger tap on another piece must select exactly that one.
+  const target = (await board.getAttribute('data-board3d-selected')) === 'e2' ? 'd2' : 'e2';
+  await touch(cdp, zoomed.square(target, 0.6));
+  await expect(board).toHaveAttribute('data-board3d-selected', target, { timeout: 3_000 });
+
+  await restore.click();
+  await expect(zoomRoot).toHaveAttribute('data-war-room-zoom', '1.00');
+  await expect(restore).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Inspeccionar', exact: true })).toHaveCount(0);
+});
 
 test('mobile golden path · release compacta en apaisado 844x390', async ({ page }, testInfo) => {
   test.setTimeout(120_000);

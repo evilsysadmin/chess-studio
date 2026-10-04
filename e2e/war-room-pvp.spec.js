@@ -275,7 +275,9 @@ test('War Room 1v1 · rendirse no resucita un handoff stale del lobby', async ({
   // First full lobby read is null; the following poll deliberately returns the
   // stale active snapshot. The finished duel must stay buried instead of
   // reopening a room whose "Abandonar" action can no longer mutate anything.
-  await expect.poll(() => postExitLobbyReads, { timeout: 8_000 }).toBeGreaterThanOrEqual(2);
+  // The lobby polls every ~2 s, but back on Home the hosted runner renders the
+  // full Blender hall in software and starves timers: give the two reads room.
+  await expect.poll(() => postExitLobbyReads, { timeout: 20_000 }).toBeGreaterThanOrEqual(2);
   await expect(page.getByRole('region', { name: 'Sala de duelo 1 contra 1' })).toHaveCount(0);
   await expect(page.getByText('Sincronizando el duelo…', { exact: true })).toHaveCount(0);
 });

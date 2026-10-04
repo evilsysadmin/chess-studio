@@ -685,3 +685,100 @@ body:has(.matthias-school-shell[data-school-section="school"]) .masthead {
   letter-spacing: .035em;
   white-space: nowrap;
 }
+
+
+/* Mobile Class Room controls are finger targets, not desktop pills squeezed
+   onto a phone. Keep the board size unchanged and let action groups wrap. */
+@media (max-width: 860px), (pointer: coarse) {
+  .tutorial-shell.matthias-school-shell .matthias-school-toolbar .back-link,
+  .tutorial-shell.matthias-school-shell .matthias-school-resources > summary,
+  .tutorial-shell.matthias-school-shell .matthias-school-resources-menu button,
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-focusbar button,
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-board-actions button,
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-nav button,
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-study-mode button,
+  .tutorial-shell.matthias-school-shell .matthias-school-scene-picker button {
+    min-height: 44px;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-board-actions {
+    flex-wrap: wrap;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-nav {
+    align-items: stretch;
+  }
+}
+
+
+/* Mobile Class Room fold: keep lesson controls in the first useful viewport.
+   Desktop keeps the cinematic room height; phones use a tighter teaching crop. */
+@media (max-width: 560px) {
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] {
+    gap: .32rem;
+  }
+
+  .tutorial-shell.matthias-school-shell .matthias-school-toolbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: .35rem;
+  }
+
+  .tutorial-shell.matthias-school-shell .matthias-school-room-label {
+    display: none;
+  }
+
+  .tutorial-shell.matthias-school-shell .matthias-school-toolbar .back-link {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-focusbar {
+    width: 100%;
+    min-width: 0;
+    gap: .4rem;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-focusbar > div {
+    min-width: 0;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-focusbar strong {
+    max-width: none;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-board {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-curriculum="closed"] .matthias-school-board .board3d-main-shell {
+    height: clamp(310px, 88vw, 370px);
+    min-height: 310px;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-board-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    gap: .34rem;
+    margin-top: .3rem;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-board-actions button {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    padding: .42rem .38rem;
+    white-space: normal;
+    line-height: 1.15;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-board-actions .matthias-school-mastery-chip {
+    grid-column: 1 / -1;
+    justify-self: center;
+  }
+}

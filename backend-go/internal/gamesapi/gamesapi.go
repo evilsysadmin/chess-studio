@@ -24,9 +24,10 @@ import (
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/corspolicy"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/gamecore"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/gamestore"
-	"github.com/evilsysadmin/chess-studio/backend-go/internal/pulse"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/sessionauth"
 )
 
 // Route patterns as FastAPI reports them (telemetry http.route).
@@ -130,7 +131,7 @@ func New(cfg Config) (*Handler, error) {
 		rate = 120
 	}
 	origins := map[string]struct{}{}
-	for _, raw := range append(pulse.CanonicalBrowserOrigins(), cfg.AllowedOrigins...) {
+	for _, raw := range append(corspolicy.CanonicalBrowserOrigins(), cfg.AllowedOrigins...) {
 		if origin := normalizeOrigin(raw); origin != "" {
 			origins[origin] = struct{}{}
 		}
@@ -201,7 +202,7 @@ func (h *Handler) verify(r *http.Request) (string, int64, error) {
 	if !strings.HasPrefix(header, "Bearer ") {
 		return "", 0, errMissingToken
 	}
-	return pulse.VerifySession(header[len("Bearer "):], h.secret, h.now())
+	return sessionauth.VerifySession(header[len("Bearer "):], h.secret, h.now())
 }
 
 var errMissingToken = errors.New("missing token")

@@ -122,3 +122,12 @@
     max-height: 220px;
   }
 }
+
+
+@media (max-width: 860px), (pointer: coarse) {
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-topic-explorer > summary,
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-topic-filter select,
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-topic-results button {
+    min-height: 44px;
+  }
+}

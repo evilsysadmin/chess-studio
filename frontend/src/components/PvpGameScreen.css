@@ -34,7 +34,7 @@
   aspect-ratio:auto;
   border-radius:0!important;
 }
-.pvp-war-room .board3d-fixed-camera-note,.pvp-war-room .board3d-renderer-badge,.pvp-war-room .board3d-customize,.pvp-war-room .board3d-inspect { display:none; }
+.pvp-war-room .board3d-fixed-camera-note,.pvp-war-room .board3d-renderer-badge,.pvp-war-room .board3d-customize { display:none; }
 .pvp-war-room__stage { position:relative; height:100dvh; overflow:hidden; }
 .pvp-war-room__duel-pill { position:absolute; z-index:12; top:.75rem; left:50%; transform:translateX(-50%); max-width:calc(100% - 1.5rem); min-height:48px; display:flex; align-items:center; gap:.55rem; padding:.42rem .65rem; border:1px solid rgba(205,201,192,.16); border-radius:999px; color:#e9e2d3; background:rgba(12,14,16,.86); box-shadow:0 12px 30px rgba(0,0,0,.28); backdrop-filter:blur(12px); white-space:nowrap; }
 .pvp-war-room__opponent-mark { display:grid; place-items:center; width:30px; height:30px; flex:0 0 auto; border-radius:50%; color:#d6b779; background:linear-gradient(145deg,#3b3124,#171511); border:1px solid rgba(214,183,121,.2); }

@@ -1,6 +1,6 @@
 # GitHub Actions · mapa operativo
 
-Última auditoría: 2026-10-02.
+Última auditoría: 2026-10-04.
 
 Regla: cada workflow debe representar un dominio operativo o blast radius real. Se fusiona duplicación histórica; no se fusionan promoción, rollback o acreditación sólo para bajar el contador.
 
@@ -50,13 +50,13 @@ Lección operativa: no resolver falsos positivos de CI debilitando el gate a cie
 
 | Workflow | Responsabilidad |
 | --- | --- |
-| `cicd.yml` | Gate principal quality-only para PR. Preflight y luego frontend/backend/security/E2E según superficie. Las lanes Playwright core + War Room/Matthias son bloqueantes bajo un único `Tests · Playwright` y consumen un build compartido. No despliega. |
-| `pr-track-label.yml` | GP-0 (#34): toda PR lleva etiqueta de pista (`ux-mobile`/`ux-desktop`/`ux-claude`/`track-*`) o falla `Contracts · PR track label`. Se re-evalúa en `labeled`/`unlabeled` sin relanzar el CI completo; sparse checkout de un único script. Debe figurar como required check de `main`. |
-| `main-admission.yml` | Clasifica el HEAD de `main`. Si procede de PR, reutiliza la acreditación Quality inmutable y hace preflight barato; si es un commit directo excepcional, ejecuta tests, security, Playwright, imágenes Docker y compose smoke sobre el SHA exacto. Sólo un run verde habilita staging. |
+| `cicd.yml` | Gate principal quality-only para PR. Preflight y luego frontend/Python/Go/security/E2E según superficie. El job Go siempre ejecuta format, race/integration tests, vet y build ARM64; sólo instala Python y regenera corpora cuando cambia la autoridad/generador/fixture de paridad. Python y Go se agregan bajo el required estable `Tests · Backend`; las lanes Playwright core + War Room/Matthias quedan bajo `Tests · Playwright` y consumen un build compartido. No despliega. |
+| `pr-track-label.yml` | GP-0 (#34): toda PR lleva etiqueta de pista (`ux-mobile`/`ux-desktop`/`ux-claude`/`track-*`) o falla `Contracts · PR track label`. Se re-evalúa en `labeled`/`unlabeled` sin relanzar el CI completo; sparse checkout de un único script. La protección clásica de `main` todavía no incluye este contexto entre sus cinco required checks; hasta corregir ese ajuste remoto, el workflow sigue siendo guard visible pero no una barrera de merge por sí solo. |
+| `main-admission.yml` | Clasifica el HEAD de `main`. Si procede de PR, reutiliza la acreditación Quality inmutable; direct/ambiguo exige Quality exact-HEAD. Además clasifica la superficie de deploy fail-open: una PR inequívocamente docs/tests/CI-only omite el prebuild de frontend; cualquier duda conserva el camino normal. |
 | `menu-ux-audit.yml` | Auditoría visual manual/efímera de menús y superficies intermedias. Captura desktop+móvil y emite PNG/JSON de densidad, overflow y targets; no es gate requerido ni corre en cada PR. |
-| `staging-deploy.yml` | Despliega una generación coherente del mismo SHA: backend exacto en **OCI staging**, frontend en Cloudflare Pages y AI en Cloudflare Worker; después exige paridad de generación y browser smoke. No consulta Render staging para desplegar el backend y no repite un segundo deploy blue/green dentro del camino crítico. |
+| `staging-deploy.yml` | Revalida la superficie antes de mutar. PRs inequívocamente docs/tests/CI-only terminan como no-op; direct push, diff ambiguo o cualquier path runtime/delivery despliega backend OCI + Pages + Worker del mismo SHA y exige paridad + browser smoke. Un no-op no puede acreditarse para producción. |
 | `staging-deploy-continuity.yml` | Drill post-deploy de continuidad de partida durante un switch blue/green. Se dispara tras un staging verde sólo cuando cambian backend/runtime/deploy; cambios frontend-only lo omiten. Sigue disponible manualmente para drills explícitos. |
-| `staging-ai-worker.yml` | Revalida/acredita la generación de staging ya desplegada y emite la acreditación inmutable que permite promoción. El nombre se conserva por el contrato `workflow_run` existente. |
+| `staging-ai-worker.yml` | **Staging · accreditation**: antes de acreditar un run automático exige que el upstream tenga verdes prepare + backend + frontend + Worker + ambos smokes + summary; un run superseded/no-op no puede emitir credencial. Los helpers de control-plane se ejecutan desde el SHA del propio workflow, no desde el SHA desplegado, para que una mejora de acreditación pueda validar generaciones anteriores sin depender de código aún ausente allí. Después valida lineage y emite la acreditación inmutable. No despliega ningún Worker. |
 | `production-promote.yml` | Promueve sólo un SHA acreditado. Worker Terraform `plan/apply` permanece aquí; el backend se selecciona mediante el interruptor versionado `.github/production-deploy.env` (`render|oci`) y el helper de ruta posee el CNAME del API. Pages continúa después sobre el mismo SHA. |
 | `production-rollback.yml` | Rollback manual a un SHA conocido. Blast radius distinto: no fusionar con promote. |
 | `staging-preview.yml` | Preview/restauración manual frontend-only sobre staging; no acredita ni entra en producción. Usa deps exactas + Wrangler cacheado. |
@@ -77,6 +77,25 @@ Docker/Compose es el runtime canónico de la A1 Always Free. K3s/Flux queda en *
 
 Render staging está retirado del plano de despliegue: el **release canónico y `runtime-sync` consumen Vault + Git y no consultan Render**, y ya no existe un workflow capaz de reconciliar, reanudar o desplegar el antiguo servicio staging. El cutover inicial a CURRENT Vault ya está acreditado; su workflow/helper one-shot se retiraron para que una migración histórica no permanezca como superficie operativa activa. Render producción permanece independiente y no forma parte de esta retirada.
 
+
+## Runtimes, assets y laboratorios especializados
+
+| Workflow | Responsabilidad |
+| --- | --- |
+| `main-backend-image.yml` | Tras `Main · admission`, construye o reutiliza las imágenes ARM64 exact-SHA de FastAPI y PvP Go en GHCR; sólo el HEAD actual de `main` puede mover la señal mutable consumida por staging. |
+| `chess-football-godot-poc.yml` | Valida y exporta el runtime web Godot de Chess Football; PR valida, `main`/manual pueden publicar su bundle. Sigue siendo una superficie experimental aislada del release principal. |
+| `blender-setup-smoke.yml` | Smoke real de Blender/EGL y helpers compartidos cuando cambia `setup-blender-canonical`; evita romper todas las lanes de arte desde una acción común. |
+| `chronicles-party-blender-art.yml` | Genera y valida party/escena canónica de Chronicles con previews deterministas; read-only en PR. |
+| `home-matthias-blender-art.yml` | Genera y valida el Matthias canónico de Home desde sus fuentes Blender; lane read-only y path-aware. |
+| `home-matthias-materialize.yml` | Materialización explícita de binarios canónicos de Matthias al etiquetar una PR interna; separa build read-only y commit write con guard de SHA. |
+| `pvp-duel-room-blender-art.yml` | Genera/valida/publica el shell Blender de la Sala de Duelos en su superficie path-aware. |
+| `war-room-v4-blender-art.yml` | Genera/valida/publica War Room v4 sin reemplazar las generaciones anteriores. |
+| `pawn-slug-enemy-cast-v2.yml` | Regenera, prueba y publica el cast enemigo v2 de Pawn Slug; conserva evidencia visual e identidad R2 verificable. |
+| `staging-pawn-slug-visual.yml` | Evidencia visual live de Pawn Slug después de un staging verde; sólo admite la generación exacta relevante y es cancelable. |
+| `home-r2-assets.yml` | Valida y publica a R2 los assets 3D específicos de Home; PR sólo valida y `main`/manual publican. |
+| `r2-assets-infra.yml` | Contrato/reconciliación de bucket, dominio, CORS y manifiesto R2 compartido; muta sólo fuera de PR. |
+| `security-llm-lab.yml` | Laboratorio manual y acotado para revisión LLM de backend; nunca forma parte de los required checks ni de la entrega. |
+
 ## Calidad especializada
 
 | Workflow | Responsabilidad |
@@ -86,6 +105,7 @@ Render staging está retirado del plano de despliegue: el **release canónico y 
 | `home-blender-v2-preview.yml` | Evidencia PNG Home path-aware en PR con envelope de revisión barato; los renders manuales conservan calidad alta. |
 | `home-blender-v2-runtime.yml` | Exporta/publica el GLB Home sólo en `main` o manual, luego ejecuta su gate browser y promoción. No repite el export runtime en PR: la revisión visual PR pertenece al preview PNG. |
 | `war-room-blender-art.yml` | Genera, valida y publica el shell Blender de War Room v2 en su canal R2 propio. |
+| `pvp-duel-hall-blender-art.yml` | Genera y valida la shell 3D authored de la Sala de Duelos del lobby; en esta fase produce preview/GLB revisables sin promocionarlos todavía a runtime. |
 | `war-room-v3-blender-art.yml` | Genera, valida y publica la sala cartográfica de War Room v3 sin reemplazar v1/v2. |
 | `coverage.yml` | Señales periódicas no bloqueantes: coverage frontend/backend mensual y CodeQL semanal; `workflow_dispatch` ejecuta ambos bajo demanda. CodeQL mantiene `security-events: write` limitado a su propio job. |
 | `pawn-slug-matthias-sprite-smoke.yml` | Evidencia PNG de sprites runtime Pawn Slug. En PR separa Matthias/enemigos por ownership; tras staging omite deploys sin superficie sprite; manual conserva smoke completo. Matthias aplica además un gate fail-closed de continuidad de escala/footline para `idle` y overlays `run12`/`run13`. |
@@ -102,7 +122,12 @@ Para producción pública, un fallo del synthetic es una señal operativa, no ru
 | `synthetic-health.yml` | Canary sintético de producción cada 15 minutos (minutos 07/22/37/52 para evitar el top-of-hour herd). Valida liveness, readiness y gameplay autenticado; vive separado para funcionar aunque no haya releases. |
 | `production-mongo-backup.yml` | Backup semanal de `chess_study` desde la A1 OCI a block storage local. Genera `mongodump --archive --gzip`, valida el archivo con `mongorestore --dryRun` y sólo entonces poda hasta conservar los 2 backups exitosos más recientes. |
 | `pvp-python-fallback.yml` | Evidencia para retirar el respaldo Python del PvP: cuenta en Grafana las peticiones públicas `/api/pvp` que aún llegan a FastAPI (todas tienen handler Go), por entorno y ruta. Diario y manual; con `max_requests` actúa como puerta. Sólo lectura. |
-| `branch-housekeeping.yml` | Poda ramas mergeadas. Candidato a borrar cuando el repo active el ajuste nativo `Automatically delete head branches`; actualmente `delete_branch_on_merge=false`. |
+| `billing-cost-export.yml` | Exporta costes OCI + Cloudflare cada 6 h y manualmente; publica la observación sin formar parte del release. |
+| `capacity-staging.yml` | Probe de curva de servicio A1 + Mongo. Sólo carga staging por ejecución manual o rama `ops/capacity-*`; las PR ordinarias no ejecutan carga. |
+| `capacity-virtual-players.yml` | Probe 20/50/100 jugadores virtuales. PR valida contratos; la carga real queda restringida a manual o ramas `ops/capacity-*`, nunca a un push normal de `main`. |
+| `observability-live.yml` | Comprueba cada hora y tras publicar dashboards que señales de host/backend llegan a Grafana; sólo lectura. |
+| `production-frontend-watchdog.yml` | Vigila el frontend público cada 5 min y dispone de self-heal acotado, serializado con promoción para no competir con un deploy. |
+| `production-target-smoke.yml` | Smoke read-only del target de producción y gameplay/ruta pública cuando cambia el selector o sus helpers; manual bajo demanda. |
 
 ## Flujo
 
@@ -123,7 +148,9 @@ push main
  ▼
 Main · admission
  ├─ PR-derived ──> reuse Quality receipt + static preflight
- └─ direct HEAD ─> full exact-HEAD fallback gate
+ │                 (receipt not reusable ─> exact-HEAD fallback ↓)
+ └─ direct HEAD ─> exact-HEAD fallback: dispatch Quality · CI gate --all
+                   on main and wait for that exact SHA to go green
  │
  ▼
 Deploy to staging
@@ -137,7 +164,7 @@ Deploy to staging
  ├─ post-deploy continuity drill (sólo backend/runtime/deploy)
  │
  ▼
-Staging · AI Worker / accreditation
+Staging · accreditation (staging-ai-worker.yml)
  │
  ▼
 Production · promote
@@ -203,6 +230,8 @@ Métrica de éxito de la simplificación: menos tiempo y menos branching en el c
 - Instalaciones Node directas en CI/coverage/browser/staging preview/producción → acciones de cache exacta.
 - Cache Trivy por `github.run_id` → namespace estable por versión + epoch diario.
 - Matriz Browser E2E duplicada en PR (`e2e-full.yml`) → integrada en el required check de Quality; `e2e-full.yml` queda como sweep multi-browser.
+- `branch-housekeeping.yml` + `scripts/branch_housekeeping.sh` → retirados: `delete_branch_on_merge=true` ya poda las ramas mergeadas de forma nativa, sin cron duplicado.
+- `pvp-go.yml` → retirado: format/race+Mongo/paridad/vet/ARM64 viven ya dentro de `Quality · CI gate` y acreditan el required `Tests · Backend`; `main` no vuelve a pagar una validación paralela no bloqueante.
 - `pawn-slug-pistol-crouch-candidate.yml` → retirado tras promover y verificar `crouchContinuityV1`; era una lane one-shot de reparación/publicación de candidato y ya no protege una superficie runtime distinta.
 
 El objetivo no es tener el mínimo número de YAML, sino **mínimo estado, mínima dependencia externa por ejecución y dominios de fallo claros**.

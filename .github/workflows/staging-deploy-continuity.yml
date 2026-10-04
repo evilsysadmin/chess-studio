@@ -160,34 +160,9 @@ jobs:
           version: '2.185.2'
           python-version: '3.13'
       - name: Load staging synthetic secrets
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          import os,sys
-          sys.path.insert(0,'scripts')
-          import oci
-          from oci_runtime_bundle import read_private_runtime_value
-          values={
-            'STAGING_INVITE_CODE': read_private_runtime_value(oci,'INVITE_CODE'),
-            'STAGING_SYNTHETIC_SECRET': read_private_runtime_value(oci,'CHESS_AI_SHARED_SECRET'),
-          }
-          if not all(values.values()): raise SystemExit('missing staging continuity secret')
-          with open(os.environ['GITHUB_ENV'],'a') as handle:
-            for key,value in values.items():
-              print(f'::add-mask::{value}')
-              handle.write(f'{key}={value}\n')
-          PY
+        run: python3 scripts/staging_smoke_env.py secrets
       - name: Generate disposable continuity identity
-        shell: bash
-        run: |
-          set -euo pipefail
-          username="ci_smoke_$(python3 -c 'import secrets; print(secrets.token_hex(8))')"
-          password="CS!$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')"
-          echo "::add-mask::$username"
-          echo "::add-mask::$password"
-          echo "STAGING_E2E_USERNAME=$username" >> "$GITHUB_ENV"
-          echo "STAGING_E2E_PASSWORD=$password" >> "$GITHUB_ENV"
+        run: python3 -S scripts/staging_smoke_env.py identity
       - name: Keep a live game across a forced blue-green deploy
         id: continuity
         shell: bash

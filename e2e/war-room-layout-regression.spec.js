@@ -77,14 +77,14 @@ async function expectMobileWarRoomContract(page, shell, width) {
 
 async function expectDesktopChromeContract(page, shell) {
   const status = page.locator('.game-3d-turn-pill');
-  const inspect = page.getByRole('button', { name: 'Inspeccionar', exact: true });
   const zenQuick = page.getByRole('button', { name: 'Zen', exact: true });
   const exit = page.getByRole('button', { name: 'Salir de la partida', exact: true });
   const more = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
   const account = page.getByRole('button', { name: 'Mi cuenta', exact: true });
 
   await expect(status).toBeVisible();
-  await expect(inspect).toBeVisible();
+  // The scene-inspection chip was retired: it added nothing to play.
+  await expect(page.getByRole('button', { name: 'Inspeccionar', exact: true })).toHaveCount(0);
   await expect(zenQuick).toHaveCount(0);
   await expect(exit).toBeVisible();
   await expect(more).toBeVisible();
@@ -92,7 +92,6 @@ async function expectDesktopChromeContract(page, shell) {
 
   const shellBox = await box(shell);
   const statusBox = await box(status);
-  const inspectBox = await box(inspect);
 
   // The compact Matthias/turn pill floats over the room; secondary actions live
   // only in its overflow so the right rail can use that vertical space.
@@ -104,16 +103,7 @@ async function expectDesktopChromeContract(page, shell) {
   await expect(page.getByRole('menuitem', { name: 'Abandonar partida', exact: true })).toHaveCount(0);
   await more.click();
 
-  // Inspect is a compact scene chip on the quiet upper wall, not a board-eating CTA.
-  expect(inspectBox.width).toBeLessThan(Math.min(160, shellBox.width * 0.2));
-  expect(inspectBox.height).toBeLessThan(48);
-  expect(inspectBox.x - shellBox.x).toBeGreaterThanOrEqual(0);
-  expect(inspectBox.x - shellBox.x).toBeLessThan(26);
-  expect(inspectBox.y - shellBox.y).toBeGreaterThanOrEqual(44);
-  expect(inspectBox.y - shellBox.y).toBeLessThan(110);
-  expect(inspectBox.y + inspectBox.height).toBeLessThan(shellBox.y + shellBox.height * 0.22);
-
-  return { shellBox, statusBox, inspectBox };
+  return { shellBox, statusBox };
 }
 
 function expectGeometryStable(before, after, tolerance = 6) {
@@ -136,7 +126,6 @@ test('War Room · chrome crítico no invade el tablero y sobrevive post-paint, 1
   const settled = await expectDesktopChromeContract(page, shell);
   expectGeometryStable(initial.shellBox, settled.shellBox);
   expectGeometryStable(initial.statusBox, settled.statusBox);
-  expectGeometryStable(initial.inspectBox, settled.inspectBox);
 
   await page.setViewportSize({ width: 1366, height: 768 });
   await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));

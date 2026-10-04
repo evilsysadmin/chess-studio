@@ -10,15 +10,12 @@ deploy = (ROOT / "scripts" / "oci_existing_a1_deploy.sh").read_text(encoding="ut
 compose = (ROOT / "infra" / "oci" / "runtime" / "docker-compose.yml").read_text(encoding="utf-8")
 backend_main_path = ROOT / "backend-python" / "main.py"
 backend_main = backend_main_path.read_text(encoding="utf-8")
-# The whole native handler package, not one file: declarations move between
-# files (canonicalBrowserOrigins lives in auth.go since the pulse split).
-go_pulse = "\n".join(
-    path.read_text(encoding="utf-8")
-    for path in sorted((ROOT / "backend-go" / "internal" / "pulse").glob("*.go"))
-    if not path.name.endswith("_test.go")
-)
+go_cors_policy = (
+    ROOT / "backend-go" / "internal" / "corspolicy" / "origins.go"
+).read_text(encoding="utf-8")
 verifier = (ROOT / "scripts" / "verify_backend_staging.py").read_text(encoding="utf-8")
 staging_deploy = (ROOT / ".github" / "workflows" / "staging-deploy.yml").read_text(encoding="utf-8")
+staging_generation = (ROOT / "scripts" / "staging_generation.py").read_text(encoding="utf-8")
 service_control = (ROOT / ".github" / "workflows" / "oci-staging-service.yml").read_text(encoding="utf-8")
 tunnel_control = (ROOT / ".github" / "workflows" / "oci-staging-tunnel.yml").read_text(encoding="utf-8")
 infra_apply = (ROOT / ".github" / "workflows" / "oci-staging-deploy.yml").read_text(encoding="utf-8")
@@ -208,12 +205,12 @@ assert STAGING_ORIGIN in default_origins, (
     "CORS_ORIGINS is stale or missing"
 )
 
-assert STAGING_ORIGIN in go_pulse, (
-    "native Go PvP handlers must retain the canonical staging browser origin "
+assert STAGING_ORIGIN in go_cors_policy, (
+    "native Go handlers must retain the canonical staging browser origin "
     "independently of runtime CORS_ORIGINS"
 )
-assert "https://chess-studio.shadowops.dpdns.org" in go_pulse, (
-    "native Go PvP handlers must retain the canonical production browser origin"
+assert "https://chess-studio.shadowops.dpdns.org" in go_cors_policy, (
+    "native Go handlers must retain the canonical production browser origin"
 )
 
 required_public_verifier_fragments = (
@@ -692,8 +689,9 @@ assert "ai-staging.shadowops.dpdns.org/health" in deploy_watcher
 assert "refs/heads/main" not in deploy_watcher
 assert "ls-remote" not in deploy_watcher
 assert "OCI_DEPLOY_WATCH_SUPERSEDED" in deploy_watcher
-assert '"$STAGING_API_URL/_deploy/committed?probe=$attempt"' in staging_deploy
-assert 'committed="$(tr -d' in staging_deploy
+assert 'scripts/staging_generation.py watch-committed --sha "$DEPLOY_SHA"' in staging_deploy
+assert "f\"{url('STAGING_API_URL')}/_deploy/committed?probe={attempt}\"" in staging_generation
+assert "body.strip().lower() == sha" in staging_generation
 assert "OCI_DEPLOY_WATCH_IMAGE_PENDING" in deploy_watcher
 assert '["docker", "manifest", "inspect", backend_image_ref(candidate)]' in deploy_watcher
 assert 'git -C "$repo" ls-remote --exit-code origin refs/heads/main' in deploy

@@ -210,21 +210,6 @@
     margin-top: 0;
   }
 
-  /* Scene-only inspection remains available, but no longer sits halfway down
-     the table where it competes with the board. Keep it as a small corner chip
-     on the quiet upper wall of the room. */
-  .game-layout-3d .board3d-inspect {
-    top: .68rem;
-    bottom: auto !important;
-    left: .68rem;
-    transform: none;
-    min-height: 30px;
-    padding: .32rem .56rem;
-    border-radius: 999px;
-    font-size: .58rem;
-    line-height: 1;
-    opacity: .88;
-  }
 }
 
 /* Canonical desktop pill details. The former cinematic override has been

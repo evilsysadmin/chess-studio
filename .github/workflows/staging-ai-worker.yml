@@ -1,4 +1,4 @@
-name: Staging · AI Worker
+name: Staging · accreditation
 
 on:
   workflow_run:
@@ -11,6 +11,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: read
   contents: read
 
 concurrency:
@@ -47,17 +48,23 @@ jobs:
             exit 1
           fi
 
-      - name: Checkout staging-accredited commit
+      - name: Checkout accreditation control-plane
         uses: actions/checkout@v7
         with:
-          ref: ${{ env.DEPLOY_SHA }}
+          ref: ${{ github.sha }}
 
-      # Automatic deploy success is immutable proof; manual dispatch keeps live probes strict.
-      # Legacy cloudflare_ai_preflight source-reader markers pending migration:
-      # git ls-remote --exit-code origin refs/heads/main
-      # compare/$DEPLOY_SHA...$current_main
-      # identical|ahead
+      - name: Prove upstream generation
+        id: upstream
+        if: github.event_name == 'workflow_run'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python3 -S scripts/staging_deploy_proof.py --self-test
+          python3 -S scripts/staging_deploy_proof.py --run-id "${{ github.event.workflow_run.id }}" --github-output "$GITHUB_OUTPUT"
+
+      # Automatic accreditation requires a full upstream generation.
       - name: Supersede stale staging accreditation outside current main lineage
+        if: github.event_name == 'workflow_dispatch' || steps.upstream.outputs.deployed == 'true'
         id: lineage
         env:
           GH_TOKEN: ${{ github.token }}
@@ -91,9 +98,6 @@ jobs:
 
       # Manual-only strict probes. Automatic accreditation relies on the successful
       # upstream deploy while it still held the staging lock.
-      # Verify staging backend still serves approved SHA
-      # Verify staging frontend still serves approved SHA
-      # Verify staging AI health and build identity
       - name: Shared Workers AI live contract · manual strict probe
         if: steps.lineage.outputs.accredited == 'true' && github.event_name == 'workflow_dispatch'
         shell: bash

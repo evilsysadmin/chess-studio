@@ -38,12 +38,6 @@ import './Board3D.css';
 import './Board3DViewportTuning.css';
 import './Board3DParity.css';
 import './WarRoomSharedViewport.css';
-const BOARD3D_INSPECT_SHORTCUTS = 'ArrowLeft ArrowRight ArrowUp ArrowDown Home Escape';
-const INSPECT_YAW_LIMIT = 0.14;
-const INSPECT_PITCH_MIN = -0.08;
-const INSPECT_PITCH_MAX = 0.075;
-const INSPECT_YAW_STEP = 0.025;
-const INSPECT_PITCH_STEP = 0.018;
 
 function clearObjectGroup(group) {
   if (!group) return;
@@ -97,18 +91,15 @@ function Board3DCanvas({
   const previousFenRef = useRef(fen);
   const pieceBuildSignatureRef = useRef('');
   const lastAnimatedSeqRef = useRef(0);
-  const inspectModeRef = useRef(false);
   const hoveredPieceRef = useRef(null);
-  const cameraMotionRef = useRef({ x: 0, y: 0, targetX: 0, targetY: 0, yaw: 0, pitch: 0, dragging: false, lastX: 0, lastY: 0 });
   const [skinId, setSkinId] = useState(() => loadSelectedSkin());
   const [boardTheme, setBoardTheme] = useState(() => loadBoardTheme());
   const [rendererLabel, setRendererLabel] = useState('3D');
   const [focusedSquare, setFocusedSquare] = useState(() => orientation === 'black' ? 'e8' : 'e1');
   const [hoveredSquare, setHoveredSquare] = useState(null);
-  const [inspectMode, setInspectMode] = useState(false);
   const { selectable: warRoomVariantSelectable, variant: globalWarRoomVariant, status: warRoomVariantStatus, domData: globalWarRoomVariantDomData, setStatus: setWarRoomVariantStatus } = useWarRoomVariant();
   const presentation = resolveBoard3DPresentation({ cameraProfile, variantOverride: warRoomVariantOverride, globalVariant: globalWarRoomVariant, globalDomData: globalWarRoomVariantDomData, variantStatus: warRoomVariantStatus });
-  const { classroom: classroomCamera, variant: warRoomVariant, domData: warRoomVariantDomData, playAriaLabel, inspectAriaLabel } = presentation;
+  const { classroom: classroomCamera, variant: warRoomVariant, domData: warRoomVariantDomData, playAriaLabel } = presentation;
   const effectiveThemeId = resolveBoard3DThemeId(themeOverride, boardTheme);
   const currentPieces = useMemo(() => parseFen(fen), [fen]);
   const forensicGhost = useMemo(() => board3DForensicGhost(mistakeMove, currentPieces), [mistakeMove, currentPieces]);
@@ -124,8 +115,7 @@ function Board3DCanvas({
     hansDiagnosticsRequested,
     hansFireCallEnabled,
     warRoomVariant,
-    selectedSquare,
-    legalTargets,
+    selectedSquare, legalTargets, fen,
   };
 
   useEffect(() => {
@@ -149,40 +139,6 @@ function Board3DCanvas({
     hoveredPieceRef.current = null;
   }, [orientation]);
 
-  useEffect(() => {
-    inspectModeRef.current = inspectMode;
-    const state = sceneStateRef.current;
-    const canvas = state?.renderer?.domElement;
-    if (inspectMode) {
-      canvas?.setAttribute('aria-label', inspectAriaLabel);
-      canvas?.setAttribute('aria-keyshortcuts', BOARD3D_INSPECT_SHORTCUTS);
-      canvas?.focus?.({ preventScroll: true });
-      return;
-    }
-
-    canvas?.setAttribute('aria-label', playAriaLabel);
-    canvas?.removeAttribute('aria-keyshortcuts');
-    if (canvas) {
-      canvas.dataset.board3dInspectYaw = '0.000';
-      canvas.dataset.board3dInspectPitch = '0.000';
-    }
-    const motion = cameraMotionRef.current;
-    motion.x = 0;
-    motion.y = 0;
-    motion.targetX = 0;
-    motion.targetY = 0;
-    motion.yaw = 0;
-    motion.pitch = 0;
-    motion.dragging = false;
-    state?.clearInspectCameraDirty?.();
-    const basePosition = state?.camera?.userData?.basePosition;
-    const baseTarget = state?.camera?.userData?.baseTarget;
-    if (state && basePosition && baseTarget) {
-      state.camera.position.copy(basePosition);
-      state.camera.lookAt(baseTarget);
-      state.render();
-    }
-  }, [inspectMode]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -227,8 +183,6 @@ function Board3DCanvas({
     const { lite: renderLite } = sceneProfile; const sceneLite = renderLite || (coarsePointer && warRoomMobilePerformance === true);
     const scene = new THREE.Scene(); scene.userData.warRoomHansAwaitCall = latestPropsRef.current.hansFireCallEnabled; scene.userData.warRoomAdaptiveQuality = sceneProfile.adaptiveQuality;
     const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
-    const cameraOffsetProbe = new THREE.Vector3();
-    const cameraEulerProbe = new THREE.Euler(0, 0, 0, 'YXZ');
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
     const highlightMeshes = new Map();
@@ -263,8 +217,6 @@ function Board3DCanvas({
     renderer.domElement.dataset.board3dSceneTier = sceneProfile.tier; renderer.domElement.dataset.warRoomRenderQuality = sceneProfile.qualityTier;
     renderer.domElement.dataset.warRoomDomDiagnostics = 'diff-only-ref-v2';
     renderer.domElement.dataset.board3dInteractionHotPath = 'cached-pick-pulse-capture-v1';
-    renderer.domElement.dataset.board3dInspectYaw = '0.000';
-    renderer.domElement.dataset.board3dInspectPitch = '0.000';
     host.appendChild(renderer.domElement);
 
     const releaseEnvironment = installPremiumEnvironment(renderer, scene, { coarsePointer: sceneLite, renderProfile: sceneProfile });
@@ -292,9 +244,9 @@ function Board3DCanvas({
     scene.add(warm);
 
     const classicShellController = createClassicWarRoomShellController(
-      { scene, boardGroup, theme, whiteSide, renderLite: sceneLite },
+      { scene, boardGroup, theme, whiteSide, renderLite: sceneLite, classroom: classroomCamera },
       shouldShowClassicWarRoomShell({ selectable: warRoomVariantSelectable, variant: warRoomVariant }),
-    );
+    ); renderer.domElement.dataset.schoolRoomScene = classicShellController.current().find((object) => object?.userData?.schoolRoomCanonical)?.userData?.schoolRoomSceneVersion || 'off';
 
     const lightTileMaterial = makePremiumTileMaterial({ color: theme.light, light: true, coarsePointer: sceneLite, seed: 0x531f });
     const darkTileMaterial = makePremiumTileMaterial({ color: theme.dark, light: false, coarsePointer: sceneLite, seed: 0xa72d });
@@ -374,7 +326,6 @@ function Board3DCanvas({
 
     let cachedHansDriver = null;
     let ambientScheduler = null;
-    let inspectCameraDirty = false;
 
     const exposeHansScreenDiagnostics = createWarRoomHansScreenProbe({ scene, camera, canvas: renderer.domElement });
 
@@ -436,17 +387,20 @@ function Board3DCanvas({
         pointerType: event.pointerType,
         handled: false,
       };
-      if (inspectModeRef.current) {
-        const motion = cameraMotionRef.current;
-        motion.dragging = true;
-        motion.lastX = event.clientX;
-        motion.lastY = event.clientY;
-        renderer.domElement.setPointerCapture?.(event.pointerId);
-        return;
-      }
       if (!touchLike) return;
       renderer.domElement.setPointerCapture?.(event.pointerId);
       renderer.domElement.dataset.warRoomTouchStage = 'down';
+      // Selecting stays instant on contact, but a move waits for the finger to
+      // lift: a second finger arriving (two-finger zoom) must never play it.
+      const { selectedSquare: currentSelection, legalTargets: currentTargets } = latestPropsRef.current;
+      if (currentSelection && renderer.domElement.dataset.warRoomPinching !== 'true') {
+        const downSquare = squareFromPointer(event, { preferLegalTargets: true });
+        if (downSquare && downSquare !== currentSelection && buildBoard3DLegalMap(currentTargets).has(downSquare)) {
+          renderer.domElement.dataset.warRoomLastSquare = downSquare;
+          renderer.domElement.dataset.warRoomTouchStage = 'move-pending';
+          return;
+        }
+      }
       const handled = selectBoardSquareOnTouch({
         event,
         canvas: renderer.domElement,
@@ -457,25 +411,6 @@ function Board3DCanvas({
       if (pointerStartRef.current) pointerStartRef.current.handled = handled;
     }
     function onPointerMove(event) {
-      const motion = cameraMotionRef.current;
-      if (inspectModeRef.current) {
-        renderer.domElement.style.cursor = motion.dragging ? 'grabbing' : 'grab';
-        if (motion.dragging) {
-          const dx = event.clientX - motion.lastX;
-          const dy = event.clientY - motion.lastY;
-          motion.lastX = event.clientX;
-          motion.lastY = event.clientY;
-          if (dx || dy) {
-            motion.yaw = THREE.MathUtils.clamp(motion.yaw - dx * 0.0023, -INSPECT_YAW_LIMIT, INSPECT_YAW_LIMIT);
-            motion.pitch = THREE.MathUtils.clamp(motion.pitch - dy * 0.0018, INSPECT_PITCH_MIN, INSPECT_PITCH_MAX);
-            renderer.domElement.dataset.board3dInspectYaw = motion.yaw.toFixed(3);
-            renderer.domElement.dataset.board3dInspectPitch = motion.pitch.toFixed(3);
-            inspectCameraDirty = true;
-            ambientScheduler?.wake();
-          }
-        }
-        return;
-      }
       if (coarsePointer) return;
       const square = squareFromPointer(event);
       const pieceHover = square && pieceMeshes.has(square) ? square : null;
@@ -483,10 +418,6 @@ function Board3DCanvas({
       updatePieceHover(pieceHover, event);
     }
     function onPointerLeave(event) {
-      const motion = cameraMotionRef.current;
-      motion.targetX = 0;
-      motion.targetY = 0;
-      motion.dragging = false;
       renderer.domElement.style.cursor = 'default';
       updatePieceHover(null, event);
     }
@@ -503,7 +434,6 @@ function Board3DCanvas({
 
     function onPointerCancel(event) {
       pointerStartRef.current = null;
-      cameraMotionRef.current.dragging = false;
       renderer.domElement.dataset.warRoomTouchStage = 'cancel';
       releasePointer(event);
     }
@@ -513,12 +443,6 @@ function Board3DCanvas({
       pointerStartRef.current = null;
       if (renderer.domElement.dataset.warRoomPinching === 'true' && !start?.handled) {
         renderer.domElement.dataset.warRoomTouchStage = 'pinch-end';
-        releasePointer(event);
-        return;
-      }
-      if (inspectModeRef.current) {
-        cameraMotionRef.current.dragging = false;
-        renderer.domElement.style.cursor = 'grab';
         releasePointer(event);
         return;
       }
@@ -582,22 +506,9 @@ function Board3DCanvas({
             && !cachedHansDriver.userData.warRoomHansCompleted
             && (hansReadyFrames < 2 || !latestPropsRef.current.hansFireCallEnabled
               || renderer.domElement.dataset.warRoomHansCallReleased === 'true')),
-          inspectMode: inspectModeRef.current && inspectCameraDirty,
           elapsedMs,
         }),
-        onFrame: (_now, plan) => {
-          if (plan.updateCamera) {
-            const motion = cameraMotionRef.current;
-            const basePosition = camera.userData.basePosition;
-            const baseTarget = camera.userData.baseTarget;
-            if (basePosition && baseTarget) {
-              cameraEulerProbe.set(motion.pitch, motion.yaw, 0, 'YXZ');
-              cameraOffsetProbe.copy(basePosition).sub(baseTarget).applyEuler(cameraEulerProbe);
-              camera.position.copy(baseTarget).add(cameraOffsetProbe);
-              camera.lookAt(baseTarget);
-            }
-            inspectCameraDirty = false;
-          }
+        onFrame: () => {
           // Fire and premium interaction pulses update from onBeforeRender, so
           // one quiet heartbeat paints both without another animation loop.
           render();
@@ -631,7 +542,6 @@ function Board3DCanvas({
       warm,
       render,
       ambientScheduler,
-      clearInspectCameraDirty: () => { inspectCameraDirty = false; },
       renderScale: Math.min(window.devicePixelRatio || 1, sceneProfile.pixelRatioCap),
       slowFrameCount: 0,
     };
@@ -670,7 +580,7 @@ function Board3DCanvas({
       if (renderer.domElement.parentNode === host) host.removeChild(renderer.domElement);
       sceneStateRef.current = null;
     };
-  }, [effectiveThemeId, orientation, showCoordinates, cameraProfile, playAriaLabel, inspectAriaLabel]);
+  }, [effectiveThemeId, orientation, showCoordinates, cameraProfile, playAriaLabel]);
 
   useEffect(() => {
     const state = sceneStateRef.current;
@@ -1057,64 +967,7 @@ function Board3DCanvas({
     state.render();
   }, [checkSquare, gameOver, effectiveThemeId, orientation, showCoordinates, warRoomVariant]);
 
-  function applyInspectKeyboardCamera() {
-    const state = sceneStateRef.current;
-    if (!state) return;
-    const motion = cameraMotionRef.current;
-    const basePosition = state.camera?.userData?.basePosition;
-    const baseTarget = state.camera?.userData?.baseTarget;
-    if (basePosition && baseTarget) {
-      const euler = new THREE.Euler(motion.pitch, motion.yaw, 0, 'YXZ');
-      const offset = basePosition.clone().sub(baseTarget).applyEuler(euler);
-      state.camera.position.copy(baseTarget).add(offset);
-      state.camera.lookAt(baseTarget);
-    }
-    state.renderer.domElement.dataset.board3dInspectYaw = motion.yaw.toFixed(3);
-    state.renderer.domElement.dataset.board3dInspectPitch = motion.pitch.toFixed(3);
-    state.clearInspectCameraDirty?.();
-    state.render();
-  }
-
   function handleKeyDown(event) {
-    if (inspectModeRef.current) {
-      const motion = cameraMotionRef.current;
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        setInspectMode(false);
-        return;
-      }
-      if (event.key === 'Home') {
-        event.preventDefault();
-        motion.yaw = 0;
-        motion.pitch = 0;
-        applyInspectKeyboardCamera();
-        return;
-      }
-      if (event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault();
-        return;
-      }
-
-      let handled = true;
-      if (event.key === 'ArrowLeft') {
-        motion.yaw = THREE.MathUtils.clamp(motion.yaw + INSPECT_YAW_STEP, -INSPECT_YAW_LIMIT, INSPECT_YAW_LIMIT);
-      } else if (event.key === 'ArrowRight') {
-        motion.yaw = THREE.MathUtils.clamp(motion.yaw - INSPECT_YAW_STEP, -INSPECT_YAW_LIMIT, INSPECT_YAW_LIMIT);
-      } else if (event.key === 'ArrowUp') {
-        motion.pitch = THREE.MathUtils.clamp(motion.pitch + INSPECT_PITCH_STEP, INSPECT_PITCH_MIN, INSPECT_PITCH_MAX);
-      } else if (event.key === 'ArrowDown') {
-        motion.pitch = THREE.MathUtils.clamp(motion.pitch - INSPECT_PITCH_STEP, INSPECT_PITCH_MIN, INSPECT_PITCH_MAX);
-      } else {
-        handled = false;
-      }
-
-      if (handled) {
-        event.preventDefault();
-        applyInspectKeyboardCamera();
-        return;
-      }
-    }
-
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
       onSquareClick?.(focusedSquare);
@@ -1141,16 +994,14 @@ function Board3DCanvas({
       data-board3d-technique-target-count={techniqueTargetCount}
       data-board3d-terrain-count={terrainSquares.length}
       data-board3d-forensic-ghost={forensicGhost?.square || ''}
-      data-board3d-inspect={inspectMode ? 'true' : 'false'}
       data-board3d-selected={selectedSquare || ''}
       data-board3d-focused={focusedSquare || ''}
       data-board3d-legal-target-count={legalMap.size}
       data-matthias-rival-king={matthiasKingColor || 'off'}
     >
       <div ref={hostRef} className="board3d-main-host" onKeyDown={handleKeyDown} />
-      <div className="board3d-fixed-camera-note" aria-hidden="true">{presentation.roomLabel} · {inspectMode ? 'INSPECCIÓN' : presentation.cameraLabel}</div>
+      <div className="board3d-fixed-camera-note" aria-hidden="true">{presentation.roomLabel} · {presentation.cameraLabel}</div>
       <div className="board3d-renderer-badge" aria-hidden="true">{rendererLabel}</div>
-      <button type="button" className="board3d-inspect secondary-btn" aria-pressed={inspectMode} onClick={() => setInspectMode((value) => !value)}>{inspectMode ? 'Volver a jugar' : 'Inspeccionar'}</button>
       {onCustomize && <button type="button" className="board3d-customize secondary-btn" onClick={onCustomize}>Apariencia</button>}
     </div>
   );

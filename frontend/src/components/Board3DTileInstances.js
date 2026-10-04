@@ -59,7 +59,7 @@ export function squareFromBoard3DIntersection(hit) {
 
 export function resolveBoard3DPointerSquare(
   intersections = [],
-  { selectedSquare = null, legalTargets = [], preferLegalTargets = false } = {},
+  { selectedSquare = null, legalTargets = [], preferLegalTargets = false, movableSquares = null } = {},
 ) {
   if (preferLegalTargets && selectedSquare) {
     const legalSquares = new Set(
@@ -80,9 +80,21 @@ export function resolveBoard3DPointerSquare(
     }
   }
 
+  let first = null;
   for (const hit of intersections) {
-    const square = squareFromBoard3DIntersection(hit);
-    if (square) return square;
+    first = squareFromBoard3DIntersection(hit);
+    if (first) break;
   }
-  return null;
+  // Picking the piece to move: from the player's camera a tall back-rank piece
+  // (king, queen, rooks) covers the square in front of it, so a tap on the
+  // e2 pawn used to select the e1 king. When the visible hit cannot move but
+  // the square under the finger holds a piece that can, take that one. If both
+  // can move, the visible piece still wins.
+  if (first && movableSquares?.size && !movableSquares.has(first)) {
+    for (const hit of intersections) {
+      const under = squareFromBoard3DTileIntersection(hit);
+      if (under) return movableSquares.has(under) ? under : first;
+    }
+  }
+  return first;
 }

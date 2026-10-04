@@ -27,3 +27,14 @@ describe('WarRoomHansEventContract', () => {
     expect(warRoomHansAmbientDelayMs('game-7', { min: 18000, max: 48000, salt: 'espresso' })).toBe(delay);
   });
 });
+
+describe('WarRoomHansEventContract per room', () => {
+  it('only picks events the Blender rooms can stage', async () => {
+    const { warRoomHansEventsForVariant } = await import('./WarRoomHansEventContract.js');
+    ['v2', 'v3', 'v4'].forEach((variant) => {
+      expect(warRoomHansEventForGame('game-hans-ambient-42', { variant })).toBe('fire');
+      expect(warRoomHansEventsForVariant(variant)).toEqual(['fire']);
+    });
+    expect(warRoomHansEventsForVariant('classic')).toBe(WAR_ROOM_HANS_EVENTS);
+  });
+});

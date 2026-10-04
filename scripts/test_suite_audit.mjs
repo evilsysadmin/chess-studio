@@ -158,6 +158,7 @@ if (checkCiWiring) {
     'matthias-visual.yml',
     'oci-arm64-readiness.yml',
     'oci-terraform-readiness.yml',
+    'pvp-go.yml',
   ]) {
     if (fs.existsSync(path.join(workflowsDir, obsolete))) fail(`Workflow obsoleto/duplicado resucitado: ${obsolete}`);
   }
@@ -190,7 +191,7 @@ if (checkCiWiring) {
     ['Coverage frontend', coverageWorkflowSource, './.github/actions/cache-node-modules'],
     ['Coverage backend', coverageWorkflowSource, './.github/actions/cache-python-venv'],
     ['Browser E2E', browserWorkflowSource, './.github/actions/setup-browser-e2e'],
-    ['Staging deploy', stagingDeploySource, './.github/actions/cache-node-modules'],
+    ['Staging deploy', stagingDeploySource, './.github/actions/build-staging-frontend'],
     ['Staging deploy Wrangler', stagingDeploySource, './.github/actions/setup-wrangler'],
     ['Staging preview', stagingPreviewSource, './.github/actions/cache-node-modules'],
     ['Staging preview Wrangler', stagingPreviewSource, './.github/actions/setup-wrangler'],
@@ -216,8 +217,14 @@ if (checkCiWiring) {
     'name: Preflight · contracts',
     '  frontend:\n',
     'name: Tests · Frontend',
+    '  backend_python:\n',
+    'name: Backend · Python',
+    '  backend_go:\n',
+    'name: Backend · Go',
     '  backend:\n',
     'name: Tests · Backend',
+    'run_go:',
+    'run_go_parity:',
     '  security:\n',
     'name: Security · Trivy + Docker',
     '  e2e_build:\n',
@@ -240,9 +247,45 @@ if (checkCiWiring) {
       : tail;
   };
 
-  for (const qualityJob of ['frontend', 'backend', 'security', 'e2e_build']) {
+  for (const qualityJob of ['frontend', 'backend_python', 'backend_go', 'security', 'e2e_build']) {
     const block = jobBlock(qualityJob);
     if (!block.includes('\n    needs: preflight\n')) fail(`${qualityJob} debe depender del preflight y poder correr en paralelo`);
+  }
+
+  const backendGoBlock = jobBlock('backend_go');
+  const backendAggregateBlock = jobBlock('backend');
+  for (const marker of [
+    'actions/setup-go@v6',
+    "PVP_MONGO_TEST_REQUIRED: '1'",
+    'go test -race -short ./...',
+    "if: needs.preflight.outputs.run_go_parity == 'true'",
+    'bash scripts/go_python_parity_check.sh',
+    'go vet ./...',
+    'GOARCH: arm64',
+  ]) {
+    if (!backendGoBlock.includes(marker)) fail(`Backend Go requerido incompleto: falta ${JSON.stringify(marker)}`);
+  }
+  if (!backendAggregateBlock.includes('needs: [preflight, backend_python, backend_go]')) {
+    fail('Tests · Backend debe agregar Python + Go bajo el required check estable');
+  }
+  if (!backendAggregateBlock.includes('if: always()')) {
+    fail('Tests · Backend debe observar fallos/skips de Python + Go incluso con dependencias fallidas');
+  }
+  if (!backendAggregateBlock.includes('GO_RESULT')) fail('Tests · Backend no acredita el resultado de Go');
+
+  const goParityPath = path.join(root, 'scripts', 'go_python_parity_check.sh');
+  if (!fs.existsSync(goParityPath)) fail('Falta el entrypoint canónico de paridad Go ↔ Python');
+  const goParitySource = read(goParityPath);
+  for (const marker of [
+    "grep -E '^chess==' backend-python/requirements.txt",
+    "grep -E '^pydantic==' backend-python/requirements.txt",
+    'python scripts/chronicles_topology_parity_corpus.py --check',
+    'python scripts/engine_parity_corpus.py --check',
+    'python scripts/games_parity_corpus.py --check',
+    'python scripts/games_ops_corpus.py --check',
+    "go test -count=1 -run 'MatchesPython'",
+  ]) {
+    if (!goParitySource.includes(marker)) fail(`Paridad Go ↔ Python incompleta: falta ${JSON.stringify(marker)}`);
   }
 
   const buildBlock = jobBlock('e2e_build');
@@ -267,11 +310,14 @@ if (checkCiWiring) {
 
   for (const required of [
     'name: Deploy to production',
-    'workflow_run:',
-    'Staging · AI Worker',
-    "github.event.workflow_run.conclusion == 'success'",
-    "github.event.workflow_run.event == 'workflow_run'",
-    'DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}',
+    'schedule:',
+    "- cron: '0 6 * * *'",
+    "- cron: '0 7 * * *'",
+    'workflow_dispatch:',
+    'name: Release train · 08:00 Europe/Madrid',
+    'name: Resolve latest immutable staging accreditation',
+    'production_release_train.py select',
+    'production_release_train.py read',
     'name: Gate · staging accredited SHA',
     'name: Production · Cloudflare Worker',
     'name: Production · backend target',

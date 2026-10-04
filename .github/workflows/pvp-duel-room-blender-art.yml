@@ -82,6 +82,10 @@ jobs:
           names = {row['name'] for row in data['objects']}
           required = {
               'PVP_DUEL_dais',
+              'PVP_DUEL_board_table_top',
+              'PVP_DUEL_board_pedestal',
+              'PVP_DUEL_board_contact_shadow',
+              'PVP_DUEL_board_rim_x_-1',
               'PVP_DUEL_banner_red',
               'PVP_DUEL_banner_blue',
               'PVP_DUEL_teutonic_cross',

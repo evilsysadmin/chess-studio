@@ -273,6 +273,7 @@ required_cors_headers = {
     "x-api-key",
     "x-request-id",
     "x-client-release",
+    "x-chronicles-party-level",
 }
 if cors_headers is None:
     failures.append("CORSMiddleware debe declarar allow_headers explícitamente en main.py")

@@ -1523,6 +1523,22 @@ def test_custom_domain_game_preflight_allows_idempotency_header():
     assert "idempotency-key" in allowed
 
 
+def test_custom_domain_chronicles_preflight_allows_party_level_header():
+    """Chronicles difficulty hint is a custom header and must cross CORS."""
+    r = raw_client.options(
+        "/api/chronicles/runs",
+        headers={
+            "Origin": "https://chess-studio.shadowops.dpdns.org",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "authorization,content-type,idempotency-key,x-chronicles-party-level",
+        },
+    )
+    assert r.status_code == 200
+    assert r.headers.get("access-control-allow-origin") == "https://chess-studio.shadowops.dpdns.org"
+    allowed = {header.strip().lower() for header in r.headers.get("access-control-allow-headers", "").split(",")}
+    assert "x-chronicles-party-level" in allowed
+
+
 def test_github_pages_profile_patch_preflight_is_allowed():
     """El recovery de perfil dirty necesita PATCH desde GitHub Pages.
 

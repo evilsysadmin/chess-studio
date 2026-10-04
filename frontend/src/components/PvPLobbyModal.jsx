@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { pvpApi } from '../pvpApi.js';
 import { opponentForMatch } from '../pvpGameModel.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { prefetchWarRoomVariant } from './WarRoomVariant.js';
 import './PvPLobbyModal.css';
 import './PvPDuelHallRoom.css';
+
+const PvpDuelHallScene3D = lazy(() => import('./PvpDuelHallScene3D.jsx'));
 
 const EMPTY_LOBBY = Object.freeze({ roster: [], challenges: [], messages: [], activeMatch: null, pollAfterMs: 3000 });
 
@@ -206,6 +208,9 @@ export default function PvPLobbyModal({
     <div className="modal-backdrop pvp-lobby-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
       <section ref={lobbyRef} className="pvp-lobby pvp-duel-hall" role="dialog" aria-modal="true" aria-label="Duelo 1 contra 1 · War Room">
         <div className="pvp-duel-hall__room" aria-hidden="true">
+          <Suspense fallback={null}>
+            <PvpDuelHallScene3D />
+          </Suspense>
           <div className="pvp-duel-hall__architecture">
             <span className="pvp-duel-hall__arch pvp-duel-hall__arch--left" />
             <span className="pvp-duel-hall__arch pvp-duel-hall__arch--middle" />
@@ -217,6 +222,12 @@ export default function PvPLobbyModal({
             <span className="pvp-duel-hall__table" />
             <span className="pvp-duel-hall__candle pvp-duel-hall__candle--left" />
             <span className="pvp-duel-hall__candle pvp-duel-hall__candle--right" />
+            <span className="pvp-duel-hall__armor pvp-duel-hall__armor--left" />
+            <span className="pvp-duel-hall__armor pvp-duel-hall__armor--right" />
+            <span className="pvp-duel-hall__books" />
+            <span className="pvp-duel-hall__scrolls" />
+            <span className="pvp-duel-hall__owl" />
+            <span className="pvp-duel-hall__rug" />
           </div>
         </div>
         <button type="button" className="piece-info-close" onClick={onClose} aria-label={self ? 'Cerrar ventana; seguirás disponible para retos' : 'Cerrar ventana de rivales'} title={self ? 'Cerrar · seguirás disponible' : 'Cerrar'}>×</button>
