@@ -344,26 +344,31 @@ def build_gothic_architecture_pass(static, p):
     # Three pointed arches align with the lobby's semantic zones. They are kept
     # shallow and behind furniture so they read as architecture, never panels.
     bays = (
-        (-5.65, 3.55, 1.62, "identity"),
-        (0.00, 4.05, 2.55, "roster"),
-        (5.70, 3.65, 1.72, "chat"),
+        (-5.65, 3.48, 1.55, "identity"),
+        (0.00, 3.92, 2.34, "roster"),
+        (5.70, 3.52, 1.46, "chat"),
     )
     for cx, spring_z, half_w, label in bays:
         for side in (-1, 1):
             base.cube(
                 f"PVP_HALL_bay_jamb_{label}_{side}",
-                (cx + side * half_w, 6.02, 2.25),
-                (0.17, 0.16, 1.95), p["limestone"], static, bevel=0.055,
+                (cx + side * half_w, 6.02, 2.12),
+                (0.14, 0.14, 1.76), p["limestone"], static, bevel=0.050,
             )
-            arch = base.cube(
-                f"PVP_HALL_bay_arch_{label}_{side}",
-                (cx + side * half_w * 0.50, 6.00, spring_z + 1.18),
-                (half_w * 0.58, 0.16, 0.14), p["limestone"], static, bevel=0.050,
-            )
-            arch.rotation_euler.y = math.radians(-side * 30)
+            for seg_idx, (x_factor, z_add, angle) in enumerate((
+                (0.78, 0.35, 15),
+                (0.50, 0.72, 30),
+                (0.22, 1.05, 47),
+            )):
+                arch = base.cube(
+                    f"PVP_HALL_bay_arch_{label}_{side}_{seg_idx}",
+                    (cx + side * half_w * x_factor, 6.00, spring_z + z_add),
+                    (half_w * 0.22, 0.14, 0.105), p["limestone"], static, bevel=0.045,
+                )
+                arch.rotation_euler.y = math.radians(-side * angle)
         base.cube(
-            f"PVP_HALL_bay_keystone_{label}", (cx, 5.86, spring_z + 1.82),
-            (0.16, 0.20, 0.24), p["brass"], static, bevel=0.045,
+            f"PVP_HALL_bay_keystone_{label}", (cx, 5.86, spring_z + 1.38),
+            (0.13, 0.18, 0.19), p["brass"], static, bevel=0.040,
         )
 
     # Replace the "office window" reading with lancet-style tracery over the
