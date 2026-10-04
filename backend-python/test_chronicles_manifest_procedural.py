@@ -297,6 +297,7 @@ def test_content_placement_v2_places_one_distant_safe_exit_on_every_shipped_map(
     assert CHRONICLES_CONTENT_PLACEMENT_VERSION == CHRONICLES_EXIT_PLACEMENT_VERSION == 2
     for map_id in map_ids:
         base, _revision = chronicles_api.load_chronicles_manifest(map_id)
+        layout_revisions = set()
         for seed in (0, 1, 2, 17, 417):
             generated = proceduralize_chronicles_manifest(
                 base,
@@ -312,6 +313,7 @@ def test_content_placement_v2_places_one_distant_safe_exit_on_every_shipped_map(
 
             manifest = generated.manifest
             generation = manifest["generation"]
+            layout_revisions.add(generated.layout_revision)
             exits = [
                 (x, y)
                 for y, row in enumerate(manifest["grid"])
@@ -348,6 +350,8 @@ def test_content_placement_v2_places_one_distant_safe_exit_on_every_shipped_map(
             assert exit_position not in occupied
             assert generation["topologyQuality"]["accepted"] is True
             assert generation["topologyQuality"]["unreachableAnchorCount"] == 0
+
+        assert len(layout_revisions) > 1, f"{map_id} collapsed seeded layouts"
 
 
 def test_content_placement_v2_exit_varies_across_seeds():
