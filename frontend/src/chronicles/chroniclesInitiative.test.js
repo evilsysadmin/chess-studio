@@ -68,9 +68,14 @@ describe('Chronicles initiative', () => {
       rpgModifiers: { matthias: { initiativeBonus: 3 } },
     };
     expect(chroniclesPartyInitiativeAgility(state, state.party[0])).toBe(7);
+    expect(chroniclesPartyInitiativeAgility(state, state.party[0], 2)).toBe(9);
 
-    const initiative = chroniclesRollInitiative(state, [], { random: () => 0 });
+    const initiative = chroniclesRollInitiative(state, [], {
+      random: () => 0,
+      partyAgilityBonuses: { matthias: 2 },
+    });
     expect(chroniclesCurrentInitiativeActor(initiative)?.id).toBe('matthias');
+    expect(initiative.order[0].agility).toBe(9);
     const next = chroniclesAdvanceInitiative(initiative);
     expect(next.cursor).toBe(0);
     expect(next.round).toBe(2);
