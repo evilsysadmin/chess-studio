@@ -6,6 +6,7 @@ export const CHRONICLES_ENEMY_ATTRIBUTE_KEYS = Object.freeze([
   'power',
   'precision',
   'will',
+  'agility',
 ]);
 
 export const CHRONICLES_ENEMY_SKILLS = Object.freeze({
@@ -118,12 +119,13 @@ export function validateChroniclesEnemyBuild(raw) {
 
 export function chroniclesEnemyBuildModifiers(build) {
   const normalized = normalizeChroniclesEnemyBuild(build, build?.archetype);
-  const { vigor, power, precision, will } = normalized.attributes;
+  const { vigor, power, precision, will, agility } = normalized.attributes;
   const modifiers = {
     bonusMaxHp: vigor,
     damageBonus: Math.floor(power / 2),
     reachBonus: Math.floor(precision / 2),
     engageRangeBonus: Math.floor(will / 2),
+    initiativeBonus: agility,
   };
 
   normalized.skills.forEach((skillId) => {
@@ -180,6 +182,13 @@ export function deriveLegacyChroniclesEnemyBuild(enemy) {
     will: Number.isFinite(engageAfterSkills)
       ? Math.min(CHRONICLES_ENEMY_ATTRIBUTE_CAP, Math.max(0, engageAfterSkills - 1) * 2)
       : 0,
+    agility: (() => {
+      const movement = enemy?.ai?.movement || 'cardinal-chase';
+      if (movement === 'knight-chase') return 4;
+      if (movement === 'cardinal-roam' || movement === 'patrol-route') return 3;
+      if (movement === 'hold') return 1;
+      return 2;
+    })(),
   };
 
   const points = Object.values(attributes).reduce((sum, value) => sum + value, 0);
