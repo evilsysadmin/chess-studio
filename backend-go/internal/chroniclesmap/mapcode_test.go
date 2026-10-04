@@ -30,6 +30,8 @@ func TestMapCodeRejectsInvalidRecipes(t *testing.T) {
 		"CM1|theme=crypt|size=7x7|verbs=hunt|enemies=9|treasures=0|secrets=0|difficulty=1|seed=0",
 		"CM1|theme=crypt|size=7x7|verbs=hunt|enemies=2|treasures=0|secrets=0|difficulty=6|seed=0",
 		"CM1|theme=crypt|size=7x7|verbs=hunt|enemies=2|treasures=0|secrets=0|difficulty=1|seed=2147483648",
+		"CM1|theme=crypt|size=007x7|verbs=hunt|enemies=2|treasures=0|secrets=0|difficulty=1|seed=0",
+		"CM1|theme=crypt|size=7x7|verbs=hunt|enemies=2|treasures=0|secrets=0|difficulty=1|seed=+1",
 		"CM1|theme=crypt|theme=water|size=7x7|verbs=hunt|enemies=2|treasures=0|secrets=0|difficulty=1|seed=0",
 		"CM1|theme=crypt|size=7x7|verbs=hunt|enemies=2|treasures=0|secrets=0|difficulty=1",
 		valid + "|mystery=1",
