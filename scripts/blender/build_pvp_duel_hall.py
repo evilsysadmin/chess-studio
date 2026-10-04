@@ -338,6 +338,96 @@ def build_castle_dressing(static, p):
                   (3.70, 0.025, 0.010), p["brass"], static, bevel=0.006)
 
 
+def build_gothic_architecture_pass(static, p):
+    """Break the dashboard silhouette with three authored gothic bays and tracery."""
+
+    # Three pointed arches align with the lobby's semantic zones. They are kept
+    # shallow and behind furniture so they read as architecture, never panels.
+    bays = (
+        (-5.65, 3.55, 1.62, "identity"),
+        (0.00, 4.05, 2.55, "roster"),
+        (5.70, 3.65, 1.72, "chat"),
+    )
+    for cx, spring_z, half_w, label in bays:
+        for side in (-1, 1):
+            base.cube(
+                f"PVP_HALL_bay_jamb_{label}_{side}",
+                (cx + side * half_w, 6.02, 2.25),
+                (0.17, 0.16, 1.95), p["limestone"], static, bevel=0.055,
+            )
+            arch = base.cube(
+                f"PVP_HALL_bay_arch_{label}_{side}",
+                (cx + side * half_w * 0.50, 6.00, spring_z + 1.18),
+                (half_w * 0.58, 0.16, 0.14), p["limestone"], static, bevel=0.050,
+            )
+            arch.rotation_euler.y = math.radians(-side * 30)
+        base.cube(
+            f"PVP_HALL_bay_keystone_{label}", (cx, 5.86, spring_z + 1.82),
+            (0.16, 0.20, 0.24), p["brass"], static, bevel=0.045,
+        )
+
+    # Replace the "office window" reading with lancet-style tracery over the
+    # existing moon glass. Bars are vertical and radial instead of a square grid.
+    wx = 4.85
+    for xoff in (-0.58, 0.58):
+        base.cube(
+            f"PVP_HALL_window_lancet_{xoff:+.2f}", (wx + xoff, 5.64, 4.28),
+            (0.030, 0.035, 1.70), p["iron"], static, bevel=0.008,
+        )
+    for side in (-1, 1):
+        spoke = base.cube(
+            f"PVP_HALL_window_tracery_spoke_{side}",
+            (wx + side * 0.40, 5.64, 5.52),
+            (0.48, 0.030, 0.028), p["iron"], static, bevel=0.008,
+        )
+        spoke.rotation_euler.y = math.radians(-side * 31)
+
+    # Three small hanging velvet status plaques establish the premium hall
+    # rhythm without competing with the future live HTML labels.
+    for idx, (x, label) in enumerate(((-2.1, "left"), (0.0, "center"), (2.1, "right"))):
+        base.cube(
+            f"PVP_HALL_status_plaque_{label}", (x, 4.95, 5.42),
+            (0.72, 0.07, 0.34), p["velvet"], static, bevel=0.060,
+        )
+        base.cube(
+            f"PVP_HALL_status_plaque_trim_{label}", (x, 4.86, 5.42),
+            (0.76, 0.018, 0.37), p["brass"], static, bevel=0.025,
+        )
+        # Re-layer the velvet face slightly toward camera so brass reads as frame.
+        base.cube(
+            f"PVP_HALL_status_plaque_face_{label}", (x, 4.82, 5.42),
+            (0.66, 0.012, 0.29), p["velvet"], static, bevel=0.045,
+        )
+        for side in (-1, 1):
+            chain = base.cylinder(
+                f"PVP_HALL_status_chain_{label}_{side}",
+                (x + side * 0.48, 4.96, 6.02),
+                0.012, 0.82, p["iron"], static, vertices=8,
+            )
+
+    # Tabletop clutter is peripheral and low: books, scroll tubes and wax pots
+    # create an occupied strategy desk while preserving the central UI plane.
+    for idx, (x, y, z, sx, sy) in enumerate((
+        (-2.45, 0.98, 1.50, 0.44, 0.30),
+        (-2.28, 1.18, 1.61, 0.38, 0.27),
+        (2.42, 0.95, 1.50, 0.42, 0.28),
+    )):
+        base.cube(
+            f"PVP_HALL_table_book_{idx}", (x, y, z),
+            (sx, sy, 0.055), p["leather" if idx != 1 else "velvet"], static, bevel=0.025,
+        )
+    for idx, (x, y) in enumerate(((-2.40, -0.72), (2.35, -0.60))):
+        tube = base.cylinder(
+            f"PVP_HALL_table_scroll_{idx}", (x, y, 1.52),
+            0.08, 0.82, p["parchment"], static, vertices=18,
+        )
+        tube.rotation_euler.y = math.pi / 2
+        base.sphere(
+            f"PVP_HALL_table_wax_{idx}", (x + (0.52 if idx == 0 else -0.50), y, 1.47),
+            0.07, p["burgundy"], static, scale=(1.0, 1.0, 0.65),
+        )
+
+
 def build_identity_lectern(static, p):
     x, y = -5.65, -0.25
     base.cube("PVP_HALL_identity_plinth", (x, y, 0.38), (1.32, 0.95, 0.38),
@@ -614,6 +704,7 @@ def apply_identity():
     p = palette()
     build_envelope(static, p)
     build_castle_dressing(static, p)
+    build_gothic_architecture_pass(static, p)
     build_identity_lectern(static, p)
     build_strategy_table(static, p)
     build_chat_board(static, p)
