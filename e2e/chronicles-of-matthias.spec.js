@@ -27,7 +27,7 @@ async function openChroniclesSetup(page) {
 async function openChronicles(page) {
   await openChroniclesSetup(page);
   await confirmChroniclesCharacterSetup(page);
-  await expect(page.getByRole('heading', { name: 'Chronicles of Matthias', exact: true })).toBeVisible();
+  await expect(page.locator('[data-chronicles="true"]')).toBeVisible();
 }
 
 test('Chronicles creator · recupera el borrador tras F5 sin confirmar progreso', async ({ page }) => {
@@ -53,7 +53,7 @@ test('Chronicles creator · recupera el borrador tras F5 sin confirmar progreso'
   await matthiasSlot.click();
   await expect(page.getByRole('textbox', { name: 'Nombre de matthias', exact: true })).toHaveValue('Greta de la Cripta');
   await expect(restored.getByText('+1 HP', { exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Chronicles of Matthias', exact: true })).toHaveCount(0);
+  await expect(page.locator('[data-chronicles="true"]')).toHaveCount(0);
 });
 
 test('Chronicles of Matthias · abre una cripta Three.js real y usa combate posicional de grupo', async ({ page }) => {
@@ -61,7 +61,7 @@ test('Chronicles of Matthias · abre una cripta Three.js real y usa combate posi
   const mode = page.locator('[data-chronicles="true"]');
   const stage = mode.locator('[data-chronicles-renderer="three"]');
   await expect(stage.locator('canvas')).toBeVisible({ timeout: 30_000 });
-  await expect(mode.getByText('CRÓNICA RPG · BOOK I', { exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(mode.getByRole('button', { name: 'Abrir menú de Chronicles', exact: true })).toBeVisible({ timeout: 30_000 });
   await expect(mode.locator('.chronicles-renderer-error')).toHaveCount(0);
 
   // Use the real keyboard gameplay path for hosted WebGL. Chromium's synthetic
