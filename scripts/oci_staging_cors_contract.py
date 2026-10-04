@@ -609,6 +609,8 @@ assert 'backend_blue:' in compose and 'backend_green:' in compose and 'edge:' in
 assert 'pvp_blue:' in compose and 'pvp_green:' in compose
 assert 'ghcr.io/evilsysadmin/chess-studio-pvp:oci-${CHESS_STUDIO_BLUE_SHA' in compose
 assert 'ghcr.io/evilsysadmin/chess-studio-pvp:oci-${CHESS_STUDIO_GREEN_SHA' in compose
+assert 'GO_PYTHON_UPSTREAM: "http://backend_blue:4000"' in compose
+assert 'GO_PYTHON_UPSTREAM: "http://backend_green:4000"' in compose
 assert 'PVP_PYTHON_UPSTREAM: "http://backend_blue:4000"' in compose
 assert 'PVP_PYTHON_UPSTREAM: "http://backend_green:4000"' in compose
 assert 'x-pvp-common: &pvp-common' in compose
