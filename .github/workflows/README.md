@@ -51,7 +51,7 @@ Lección operativa: no resolver falsos positivos de CI debilitando el gate a cie
 | Workflow | Responsabilidad |
 | --- | --- |
 | `cicd.yml` | Gate principal quality-only para PR. Preflight y luego frontend/backend/security/E2E según superficie. Las lanes Playwright core + War Room/Matthias son bloqueantes bajo un único `Tests · Playwright` y consumen un build compartido. No despliega. |
-| `pr-track-label.yml` | GP-0 (#34): toda PR lleva etiqueta de pista (`ux-mobile`/`ux-desktop`/`ux-claude`/`track-*`) o falla `Contracts · PR track label`. Se re-evalúa en `labeled`/`unlabeled` sin relanzar el CI completo; sparse checkout de un único script. Debe figurar como required check de `main`. |
+| `pr-track-label.yml` | GP-0 (#34): toda PR lleva etiqueta de pista (`ux-mobile`/`ux-desktop`/`ux-claude`/`track-*`) o falla `Contracts · PR track label`. Se re-evalúa en `labeled`/`unlabeled` sin relanzar el CI completo; sparse checkout de un único script. La protección clásica de `main` todavía no incluye este contexto entre sus cinco required checks; hasta corregir ese ajuste remoto, el workflow sigue siendo guard visible pero no una barrera de merge por sí solo. |
 | `main-admission.yml` | Clasifica el HEAD de `main`. Si procede de PR, reutiliza la acreditación Quality inmutable y hace preflight barato; si es un commit directo excepcional, ejecuta tests, security, Playwright, imágenes Docker y compose smoke sobre el SHA exacto. Sólo un run verde habilita staging. |
 | `menu-ux-audit.yml` | Auditoría visual manual/efímera de menús y superficies intermedias. Captura desktop+móvil y emite PNG/JSON de densidad, overflow y targets; no es gate requerido ni corre en cada PR. |
 | `staging-deploy.yml` | Despliega una generación coherente del mismo SHA: backend exacto en **OCI staging**, frontend en Cloudflare Pages y AI en Cloudflare Worker; después exige paridad de generación y browser smoke. No consulta Render staging para desplegar el backend y no repite un segundo deploy blue/green dentro del camino crítico. |
@@ -76,6 +76,26 @@ Lección operativa: no resolver falsos positivos de CI debilitando el gate a cie
 Docker/Compose es el runtime canónico de la A1 Always Free. K3s/Flux queda en **HOLD experimental**: sus scripts y manifests pueden conservarse como laboratorio reproducible, pero no se exponen desde el front-door operativo, no participan en release/recovery ordinario y no deben condicionar staging ni producción. Sólo se reevalúa Kubernetes si aparecen requisitos reales de HA/multinodo, scheduling, autoscaling o una topología de servicios que Compose ya no resuelva.
 
 Render staging está retirado del plano de despliegue: el **release canónico y `runtime-sync` consumen Vault + Git y no consultan Render**, y ya no existe un workflow capaz de reconciliar, reanudar o desplegar el antiguo servicio staging. El cutover inicial a CURRENT Vault ya está acreditado; su workflow/helper one-shot se retiraron para que una migración histórica no permanezca como superficie operativa activa. Render producción permanece independiente y no forma parte de esta retirada.
+
+
+## Runtimes, assets y laboratorios especializados
+
+| Workflow | Responsabilidad |
+| --- | --- |
+| `main-backend-image.yml` | Tras `Main · admission`, construye o reutiliza las imágenes ARM64 exact-SHA de FastAPI y PvP Go en GHCR; sólo el HEAD actual de `main` puede mover la señal mutable consumida por staging. |
+| `pvp-go.yml` | Valida el edge Go path-aware con format/vet/tests, Mongo efímero, paridad contra autoridades Python y build ARM64. Se conserva separado mientras la migración Go siga teniendo contrato propio. |
+| `chess-football-godot-poc.yml` | Valida y exporta el runtime web Godot de Chess Football; PR valida, `main`/manual pueden publicar su bundle. Sigue siendo una superficie experimental aislada del release principal. |
+| `blender-setup-smoke.yml` | Smoke real de Blender/EGL y helpers compartidos cuando cambia `setup-blender-canonical`; evita romper todas las lanes de arte desde una acción común. |
+| `chronicles-party-blender-art.yml` | Genera y valida party/escena canónica de Chronicles con previews deterministas; read-only en PR. |
+| `home-matthias-blender-art.yml` | Genera y valida el Matthias canónico de Home desde sus fuentes Blender; lane read-only y path-aware. |
+| `home-matthias-materialize.yml` | Materialización explícita de binarios canónicos de Matthias al etiquetar una PR interna; separa build read-only y commit write con guard de SHA. |
+| `pvp-duel-room-blender-art.yml` | Genera/valida/publica el shell Blender de la Sala de Duelos en su superficie path-aware. |
+| `war-room-v4-blender-art.yml` | Genera/valida/publica War Room v4 sin reemplazar las generaciones anteriores. |
+| `pawn-slug-enemy-cast-v2.yml` | Regenera, prueba y publica el cast enemigo v2 de Pawn Slug; conserva evidencia visual e identidad R2 verificable. |
+| `staging-pawn-slug-visual.yml` | Evidencia visual live de Pawn Slug después de un staging verde; sólo admite la generación exacta relevante y es cancelable. |
+| `home-r2-assets.yml` | Valida y publica a R2 los assets 3D específicos de Home; PR sólo valida y `main`/manual publican. |
+| `r2-assets-infra.yml` | Contrato/reconciliación de bucket, dominio, CORS y manifiesto R2 compartido; muta sólo fuera de PR. |
+| `security-llm-lab.yml` | Laboratorio manual y acotado para revisión LLM de backend; nunca forma parte de los required checks ni de la entrega. |
 
 ## Calidad especializada
 
@@ -102,6 +122,12 @@ Para producción pública, un fallo del synthetic es una señal operativa, no ru
 | `synthetic-health.yml` | Canary sintético de producción cada 15 minutos (minutos 07/22/37/52 para evitar el top-of-hour herd). Valida liveness, readiness y gameplay autenticado; vive separado para funcionar aunque no haya releases. |
 | `production-mongo-backup.yml` | Backup semanal de `chess_study` desde la A1 OCI a block storage local. Genera `mongodump --archive --gzip`, valida el archivo con `mongorestore --dryRun` y sólo entonces poda hasta conservar los 2 backups exitosos más recientes. |
 | `pvp-python-fallback.yml` | Evidencia para retirar el respaldo Python del PvP: cuenta en Grafana las peticiones públicas `/api/pvp` que aún llegan a FastAPI (todas tienen handler Go), por entorno y ruta. Diario y manual; con `max_requests` actúa como puerta. Sólo lectura. |
+| `billing-cost-export.yml` | Exporta costes OCI + Cloudflare cada 6 h y manualmente; publica la observación sin formar parte del release. |
+| `capacity-staging.yml` | Probe de curva de servicio A1 + Mongo. Sólo carga staging por ejecución manual o rama `ops/capacity-*`; las PR ordinarias no ejecutan carga. |
+| `capacity-virtual-players.yml` | Probe 20/50/100 jugadores virtuales. PR valida contratos; la carga real queda restringida a manual o ramas `ops/capacity-*`, nunca a un push normal de `main`. |
+| `observability-live.yml` | Comprueba cada hora y tras publicar dashboards que señales de host/backend llegan a Grafana; sólo lectura. |
+| `production-frontend-watchdog.yml` | Vigila el frontend público cada 5 min y dispone de self-heal acotado, serializado con promoción para no competir con un deploy. |
+| `production-target-smoke.yml` | Smoke read-only del target de producción y gameplay/ruta pública cuando cambia el selector o sus helpers; manual bajo demanda. |
 
 ## Flujo
 
