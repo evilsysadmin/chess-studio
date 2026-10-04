@@ -241,8 +241,13 @@ func (h *Handler) nativeFor(kind pvproute.Kind) http.Handler {
 }
 
 func (h *Handler) health(w http.ResponseWriter) {
+	w.Header().Set("X-Chess-Pvp-Edge", "go")
+	writeJSON(w, http.StatusOK, h.statusPayload("ok"))
+}
+
+func (h *Handler) statusPayload(status string) map[string]any {
 	payload := map[string]any{
-		"status":                    "ok",
+		"status":                    status,
 		"service":                   serviceName,
 		"nativePulse":               h.nativePulse != nil,
 		"nativeLobbyRead":           h.nativeLobbyRead != nil,
@@ -263,8 +268,7 @@ func (h *Handler) health(w http.ResponseWriter) {
 	if h.release != "" {
 		payload["release"] = h.release
 	}
-	w.Header().Set("X-Chess-Pvp-Edge", "go")
-	writeJSON(w, http.StatusOK, payload)
+	return payload
 }
 
 func (h *Handler) ready(w http.ResponseWriter, r *http.Request) {
@@ -296,30 +300,8 @@ func (h *Handler) ready(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	payload := map[string]any{
-		"status":                    "ready",
-		"service":                   serviceName,
-		"nativePulse":               h.nativePulse != nil,
-		"nativeLobbyRead":           h.nativeLobbyRead != nil,
-		"nativeRoster":              h.nativeRoster != nil,
-		"nativeChat":                h.nativeChat != nil,
-		"nativeChallengeResolution": h.nativeChallengeResolution != nil,
-		"nativeChallengeAccept":     h.nativeChallengeAccept != nil,
-		"nativeChallengeCreate":     h.nativeChallengeCreate != nil,
-		"nativeMatchHandoffCancel":  h.nativeMatchHandoffCancel != nil,
-		"nativeMatchReady":          h.nativeMatchReady != nil,
-		"nativeMatchResign":         h.nativeMatchResign != nil,
-		"nativeMatchRead":           h.nativeMatchRead != nil,
-		"nativeMatchMove":           h.nativeMatchMove != nil,
-		"virtualPlayersEnabled":     h.virtualPlayersEnabled,
-		"nativeResidentMove":        h.nativeResidentMove,
-		"nativeGamesRead":           h.nativeGamesRead != nil,
-	}
-	if h.release != "" {
-		payload["release"] = h.release
-	}
 	w.Header().Set("X-Chess-Pvp-Edge", "go")
-	writeJSON(w, http.StatusOK, payload)
+	writeJSON(w, http.StatusOK, h.statusPayload("ready"))
 }
 
 func writeJSON(w http.ResponseWriter, status int, payload map[string]any) {
