@@ -12,6 +12,18 @@
   background: #060504;
 }
 
+.chronicles-sr-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .chronicles-head {
   position: sticky;
   top: 0;
@@ -456,6 +468,7 @@
   .chronicles-head p { display: none; }
   .chronicles-head h2 { font-size: 1.55rem; }
   .chronicles-shell { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; }
+  .chronicles-stage-wrap { height: auto; }
   .chronicles-party { order: 2; align-self: stretch; height: auto; max-height: 32dvh; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 7px; border-right: 0; border-top: 1px solid rgba(193, 153, 94, .28); }
   .chronicles-panel-kicker { display: none; }
   .chronicles-party-member { grid-template-columns: 28px 1fr; padding: 6px 4px; }
