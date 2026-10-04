@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -32,22 +31,7 @@ func main() {
 	port := env("PORT", "8080")
 	upstream := env("PVP_PYTHON_UPSTREAM", "http://127.0.0.1:4000")
 
-	pulseEnabled := envBool("PVP_NATIVE_PULSE_ENABLED", false)
-	lobbyReadEnabled := envBool("PVP_NATIVE_LOBBY_READ_ENABLED", false)
-	rosterEnabled := envBool("PVP_NATIVE_ROSTER_ENABLED", false)
-	chatEnabled := envBool("PVP_NATIVE_CHAT_ENABLED", false)
-	challengeResolutionEnabled := envBool("PVP_NATIVE_CHALLENGE_RESOLUTION_ENABLED", false)
-	challengeAcceptEnabled := envBool("PVP_NATIVE_CHALLENGE_ACCEPT_ENABLED", false)
-	challengeCreateEnabled := envBool("PVP_NATIVE_CHALLENGE_CREATE_ENABLED", false)
-	matchHandoffCancelEnabled := envBool("PVP_NATIVE_MATCH_HANDOFF_CANCEL_ENABLED", false)
-	matchReadyEnabled := envBool("PVP_NATIVE_MATCH_READY_ENABLED", false)
-	matchResignEnabled := envBool("PVP_NATIVE_MATCH_RESIGN_ENABLED", false)
-	matchReadEnabled := envBool("PVP_NATIVE_MATCH_READ_ENABLED", false)
-	matchMoveEnabled := envBool("PVP_NATIVE_MATCH_MOVE_ENABLED", false)
-	nativeResidentMoveEnabled := envBool("PVP_NATIVE_RESIDENT_MOVE_ENABLED", false)
-	// Games vs the CPU: reads and delete. Only reachable when the nginx edge
-	// sends non-PvP API traffic to Go (api "go" mode).
-	gamesReadEnabled := envBool("GO_NATIVE_GAMES_READ_ENABLED", false)
+	features := loadNativeFeatureFlags()
 	virtualPlayersEnabled := envBool("CHESS_PVP_SPARRING_ENABLED", false)
 	// The staging owner whose private sparring rivals exist is deployment
 	// configuration, never a value baked into the binary.
@@ -69,7 +53,7 @@ func main() {
 	var nativeMatchMove http.Handler
 	var nativeGamesRead http.Handler
 	var mongoStore *pulse.MongoStore
-	if pulseEnabled || lobbyReadEnabled || rosterEnabled || chatEnabled || challengeResolutionEnabled || challengeAcceptEnabled || challengeCreateEnabled || matchHandoffCancelEnabled || matchReadyEnabled || matchResignEnabled || matchReadEnabled || matchMoveEnabled || gamesReadEnabled {
+	if features.needsMongo() {
 		mongoURL := strings.TrimSpace(os.Getenv("MONGO_URL"))
 		mongoDatabase := strings.TrimSpace(os.Getenv("MONGO_DB_NAME"))
 		jwtSecret := strings.TrimSpace(os.Getenv("JWT_SECRET"))
@@ -95,14 +79,14 @@ func main() {
 		}
 		cancelIndexes()
 		var acceptService *challengeaccept.Service
-		if challengeAcceptEnabled || challengeCreateEnabled {
+		if features.challengeAccept || features.challengeCreate {
 			acceptService, err = challengeaccept.New(challengeaccept.Config{Store: store})
 			if err != nil {
 				log.Fatalf("native PvP challenge accept service: %v", err)
 			}
 		}
 		var createService *challengecreate.Service
-		if challengeCreateEnabled {
+		if features.challengeCreate {
 			createService, err = challengecreate.New(challengecreate.Config{Store: store})
 			if err != nil {
 				log.Fatalf("native PvP challenge create service: %v", err)
@@ -112,13 +96,13 @@ func main() {
 		var timeoutService *matchtimeout.Service
 		var disconnectService *matchdisconnect.Service
 		var ratingService *pvprating.Service
-		if matchResignEnabled {
+		if features.matchResign {
 			resignService, err = matchresign.New(matchresign.Config{Store: pulse.NewResignStore(store)})
 			if err != nil {
 				log.Fatalf("native PvP resign service: %v", err)
 			}
 		}
-		if matchReadEnabled || matchMoveEnabled {
+		if features.matchRead || features.matchMove {
 			timeoutService, err = matchtimeout.New(matchtimeout.Config{Store: pulse.NewTimeoutStore(store)})
 			if err != nil {
 				log.Fatalf("native PvP timeout service: %v", err)
@@ -128,7 +112,7 @@ func main() {
 				log.Fatalf("native PvP disconnect service: %v", err)
 			}
 		}
-		if matchResignEnabled || matchReadEnabled || matchMoveEnabled {
+		if features.matchResign || features.matchRead || features.matchMove {
 			ratingService, err = pvprating.New(store)
 			if err != nil {
 				log.Fatalf("native PvP rating settlement service: %v", err)
@@ -136,15 +120,15 @@ func main() {
 		}
 		var moveStore *pulse.MoveStore
 		var residentMoves residentMoveProvider
-		if matchMoveEnabled {
+		if features.matchMove {
 			moveStore = pulse.NewMoveStore(store)
-			residentMoves, err = newResidentMoveProvider(nativeResidentMoveEnabled, upstream, jwtSecret)
+			residentMoves, err = newResidentMoveProvider(features.residentMove, upstream, jwtSecret)
 			if err != nil {
 				log.Fatalf("native PvP resident move provider: %v", err)
 			}
 		}
 		var lobbyReadStore *pulse.MongoStore
-		if lobbyReadEnabled {
+		if features.lobbyRead {
 			lobbyReadStore = store
 		}
 		pulseHandler, err := pulse.NewHandler(pulse.HandlerConfig{
@@ -152,9 +136,9 @@ func main() {
 			LobbyReadStore:            lobbyReadStore,
 			JWTSecret:                 jwtSecret,
 			AllowedOrigins:            splitCSV(os.Getenv("CORS_ORIGINS")),
-			EnableRoster:              rosterEnabled,
-			EnableChat:                chatEnabled,
-			EnableChallengeResolution: challengeResolutionEnabled,
+			EnableRoster:              features.roster,
+			EnableChat:                features.chat,
+			EnableChallengeResolution: features.challengeResolution,
 			ChallengeAccept:           acceptService,
 			ChallengeCreate:           createService,
 			MatchResign:               resignService,
@@ -164,8 +148,8 @@ func main() {
 			MatchDisconnect:           disconnectService,
 			RatingSettlement:          ratingService,
 			ResidentMoveOracle:        residentMoves,
-			EnableMatchHandoffCancel:  matchHandoffCancelEnabled,
-			EnableMatchReady:          matchReadyEnabled,
+			EnableMatchHandoffCancel:  features.matchHandoffCancel,
+			EnableMatchReady:          features.matchReady,
 			VirtualPlayersEnabled:     virtualPlayersEnabled,
 			VirtualOwner:              virtualOwner,
 			SparringUsername:          env("CHESS_PVP_SPARRING_USERNAME", "sparringmeister"),
@@ -173,10 +157,10 @@ func main() {
 		if err != nil {
 			log.Fatalf("native PvP pulse handler: %v", err)
 		}
-		if pulseEnabled {
+		if features.pulse {
 			nativePulse = pulseHandler
 		}
-		if gamesReadEnabled {
+		if features.gamesRead {
 			gamesHandler, err := gamesapi.New(gamesapi.Config{
 				Store:           gamestore.New(store.Database(), envDurationMS("GAMES_MONGO_TIMEOUT_MS", 2000*time.Millisecond)),
 				Accounts:        store,
@@ -190,37 +174,37 @@ func main() {
 			}
 			nativeGamesRead = gamesHandler
 		}
-		if lobbyReadEnabled {
+		if features.lobbyRead {
 			nativeLobbyRead = pulseHandler
 		}
-		if rosterEnabled {
+		if features.roster {
 			nativeRoster = pulseHandler
 		}
-		if chatEnabled {
+		if features.chat {
 			nativeChat = pulseHandler
 		}
-		if challengeResolutionEnabled {
+		if features.challengeResolution {
 			nativeChallengeResolution = pulseHandler
 		}
-		if challengeAcceptEnabled {
+		if features.challengeAccept {
 			nativeChallengeAccept = pulseHandler
 		}
-		if challengeCreateEnabled {
+		if features.challengeCreate {
 			nativeChallengeCreate = pulseHandler
 		}
-		if matchHandoffCancelEnabled {
+		if features.matchHandoffCancel {
 			nativeMatchHandoffCancel = pulseHandler
 		}
-		if matchReadyEnabled {
+		if features.matchReady {
 			nativeMatchReady = pulseHandler
 		}
-		if matchResignEnabled {
+		if features.matchResign {
 			nativeMatchResign = pulseHandler
 		}
-		if matchReadEnabled {
+		if features.matchRead {
 			nativeMatchRead = pulseHandler
 		}
-		if matchMoveEnabled {
+		if features.matchMove {
 			nativeMatchMove = pulseHandler
 		}
 	}
@@ -266,7 +250,7 @@ func main() {
 		NativeMatchMove:           nativeMatchMove,
 		NativeGamesRead:           nativeGamesRead,
 		VirtualPlayersEnabled:     virtualPlayersEnabled,
-		NativeResidentMove:        matchMoveEnabled && nativeResidentMoveEnabled,
+		NativeResidentMove:        features.matchMove && features.residentMove,
 		ReadyChecks:               readyChecks,
 		Telemetry:                 requestTelemetry,
 	})
@@ -292,7 +276,7 @@ func main() {
 		}
 	}()
 
-	log.Printf("pvp-go listening on :%s -> %s native_pulse=%t native_lobby_read=%t native_roster=%t native_chat=%t native_challenge_resolution=%t native_challenge_accept=%t native_challenge_create=%t native_match_handoff_cancel=%t native_match_ready=%t native_match_resign=%t native_match_read=%t native_match_move=%t native_resident_move=%t native_games_read=%t", port, upstream, nativePulse != nil, nativeLobbyRead != nil, nativeRoster != nil, nativeChat != nil, nativeChallengeResolution != nil, nativeChallengeAccept != nil, nativeChallengeCreate != nil, nativeMatchHandoffCancel != nil, nativeMatchReady != nil, nativeMatchResign != nil, nativeMatchRead != nil, nativeMatchMove != nil, nativeResidentMoveEnabled, nativeGamesRead != nil)
+	log.Printf("pvp-go listening on :%s -> %s native_pulse=%t native_lobby_read=%t native_roster=%t native_chat=%t native_challenge_resolution=%t native_challenge_accept=%t native_challenge_create=%t native_match_handoff_cancel=%t native_match_ready=%t native_match_resign=%t native_match_read=%t native_match_move=%t native_resident_move=%t native_games_read=%t", port, upstream, nativePulse != nil, nativeLobbyRead != nil, nativeRoster != nil, nativeChat != nil, nativeChallengeResolution != nil, nativeChallengeAccept != nil, nativeChallengeCreate != nil, nativeMatchHandoffCancel != nil, nativeMatchReady != nil, nativeMatchResign != nil, nativeMatchRead != nil, nativeMatchMove != nil, features.residentMove, nativeGamesRead != nil)
 	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatalf("pvp edge serve: %v", err)
 	}
@@ -334,49 +318,4 @@ func newResidentMoveProvider(native bool, upstream, jwtSecret string) (residentM
 		UpstreamURL: upstream,
 		JWTSecret:   jwtSecret,
 	})
-}
-
-func env(key, fallback string) string {
-	if value := strings.TrimSpace(os.Getenv(key)); value != "" {
-		return value
-	}
-	return fallback
-}
-
-func envBool(key string, fallback bool) bool {
-	raw := strings.TrimSpace(strings.ToLower(os.Getenv(key)))
-	if raw == "" {
-		return fallback
-	}
-	switch raw {
-	case "1", "true", "yes", "on":
-		return true
-	case "0", "false", "no", "off":
-		return false
-	default:
-		return fallback
-	}
-}
-
-func envDurationMS(key string, fallback time.Duration) time.Duration {
-	raw := strings.TrimSpace(os.Getenv(key))
-	if raw == "" {
-		return fallback
-	}
-	value, err := strconv.Atoi(raw)
-	if err != nil || value <= 0 {
-		return fallback
-	}
-	return time.Duration(value) * time.Millisecond
-}
-
-func splitCSV(value string) []string {
-	parts := strings.Split(value, ",")
-	out := make([]string, 0, len(parts))
-	for _, part := range parts {
-		if cleaned := strings.TrimSpace(part); cleaned != "" {
-			out = append(out, cleaned)
-		}
-	}
-	return out
 }
