@@ -41,9 +41,11 @@ def test_run_creation_returns_bound_area_in_same_response(monkeypatch):
     assert area["mapCode"].endswith(f"|seed={payload['seed']}")
     assert area["generatorVersion"] == 2
     assert area["manifest"]["generation"]["layoutRevision"] == area["layoutRevision"]
-    assert payload["contentPlacementVersion"] == 1
-    assert area["manifest"]["generation"]["contentPlacementVersion"] == 1
+    assert payload["contentPlacementVersion"] == 2
+    assert area["manifest"]["generation"]["contentPlacementVersion"] == 2
     assert len(area["manifest"]["generation"]["contentPlacementRevision"]) == 64
+    exit_position = area["manifest"]["generation"]["exitPosition"]
+    assert area["manifest"]["grid"][exit_position["y"]][exit_position["x"]] == "X"
 
     areas = payload["areas"]
     expected_ids = list(chronicles_api.chronicles_shipped_map_ids())
@@ -401,3 +403,37 @@ def test_legacy_run_without_placement_version_rehydrates_legacy_manifest():
     assert payload["area"]["manifest"] == legacy_area["manifest"]
     assert "contentPlacementVersion" not in payload
     assert "contentPlacementVersion" not in payload["area"]["manifest"]["generation"]
+
+
+
+def test_v1_run_keeps_authored_exit_after_v2_deploy():
+    seed = 417
+    map_id = "black-glass-chapel"
+    v1_area = chronicles_api.chronicles_area_envelope(
+        map_id,
+        seed,
+        content_placement_version=1,
+    )
+    run = {
+        "runId": "v1-placement-run",
+        "seed": seed,
+        "contentPlacementVersion": 1,
+        "currentMapId": map_id,
+        "contentVersion": v1_area["contentVersion"],
+        "manifestRevision": v1_area["manifestRevision"],
+        "status": "active",
+        "worldVersion": 0,
+        "consumedContentIds": [],
+        "claimedRewards": [],
+        "worldFlags": {},
+        "inventory": {},
+        "quests": {},
+    }
+
+    payload = chronicles_api._run_bootstrap_payload(run)
+
+    assert payload["contentPlacementVersion"] == 1
+    assert payload["area"]["manifestRevision"] == v1_area["manifestRevision"]
+    assert payload["area"]["manifest"] == v1_area["manifest"]
+    assert payload["area"]["manifest"]["generation"]["contentPlacementVersion"] == 1
+    assert "exitPosition" not in payload["area"]["manifest"]["generation"]
