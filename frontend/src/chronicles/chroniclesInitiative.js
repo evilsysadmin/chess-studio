@@ -156,7 +156,7 @@ export function chroniclesStartInitiativeCombat(state, enemies, options = {}) {
     ...state,
     phase: 'combat',
     initiative,
-    message: `Combate. Iniciativa: ${initiative.order.map((actor) => `${actor.name} ${actor.initiative}`).join(' · ')}.`,
+    message: `Combate por turnos · iniciativa = AGI + 1d8: ${initiative.order.map((actor) => `${actor.name} ${actor.initiative}`).join(' · ')}.`,
   };
 }
 
