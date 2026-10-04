@@ -274,6 +274,15 @@ function resolveAttack(state, memberId) {
     return journalForDefeat(defeated, attacker, enemy);
   }
 
+  if (state.initiative) {
+    return evadeAfterHit({
+      ...state,
+      [enemy.hpKey]: nextHp,
+      turns: state.turns + 1,
+      message: `${attacker.name} impacta con ${attacker.attackName.toLowerCase()}. ${enemy.name[0].toUpperCase()}${enemy.name.slice(1)} queda en ${nextHp}/${enemy.maxHp} HP.`,
+    }, enemy);
+  }
+
   const retaliationReach = Number(enemy.retaliationReach ?? enemy.ai?.attackReach ?? 1);
   if (distance > retaliationReach) {
     return evadeAfterHit({ ...state, [enemy.hpKey]: nextHp, turns: state.turns + 1, message: rangedHitMessage(attacker, enemy) }, enemy);
