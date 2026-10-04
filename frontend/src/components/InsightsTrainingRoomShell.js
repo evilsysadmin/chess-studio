@@ -132,7 +132,7 @@ function addWindow(root, brass, night, moon, lite) {
     new THREE.MeshBasicMaterial({
       color: 0xaec9ef,
       transparent: true,
-      opacity: .12,
+      opacity: .075,
       depthWrite: false,
     }),
   );
@@ -216,15 +216,26 @@ function addDesk(root, wood, woodDark, leather, brass, parchment, lite) {
   inkwell.rotation.z = .04;
 
   if (!lite) {
-    const quill = new THREE.Mesh(
-      new THREE.CylinderGeometry(.025, .04, 1.55, 8),
-      material(0xe7dbc0, .02, .72),
-    );
-    quill.position.set(3.92, 2.08, .38);
-    quill.rotation.z = -.46;
-    quill.rotation.x = .16;
-    quill.castShadow = true;
+    const quillMat = material(0xd8cfb8, .01, .78);
+    const quill = new THREE.Group();
     quill.name = 'desk-quill';
+
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(.014, .022, .9, 8), quillMat);
+    shaft.position.y = .28;
+    shaft.rotation.z = -.08;
+    shaft.castShadow = true;
+    quill.add(shaft);
+
+    const feather = new THREE.Mesh(new THREE.ConeGeometry(.14, .72, 10), quillMat);
+    feather.scale.x = .52;
+    feather.position.set(-.02, .88, 0);
+    feather.rotation.z = .1;
+    feather.castShadow = true;
+    quill.add(feather);
+
+    quill.position.set(3.9, 1.48, .42);
+    quill.rotation.z = -.46;
+    quill.rotation.x = .12;
     group.add(quill);
 
     const seal = cylinder(group, .16, .16, .05, material(0x6f1e1b, .04, .52), [1.74, 1.3, .3], 'desk-wax-seal', 16);
