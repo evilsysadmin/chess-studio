@@ -174,19 +174,34 @@ export function chroniclesAdvanceCombatInitiative(state, enemies) {
   }
   if (!livingOrder.length) return { ...state, initiative: null };
 
-  const current = chroniclesCurrentInitiativeActor(state.initiative);
-  const currentIndex = livingOrder.findIndex((actor) => (
-    actor.kind === current?.kind && actor.id === current?.id
+  const originalOrder = state.initiative.order;
+  const currentCursor = Math.max(
+    0,
+    Math.min(originalOrder.length - 1, nonNegativeInteger(state.initiative.cursor)),
+  );
+  let nextActor = null;
+  let wrapped = false;
+  for (let offset = 1; offset <= originalOrder.length; offset += 1) {
+    const rawIndex = currentCursor + offset;
+    const index = rawIndex % originalOrder.length;
+    const candidate = originalOrder[index];
+    if (!actorIsAlive(state, enemyById, candidate)) continue;
+    nextActor = candidate;
+    wrapped = rawIndex >= originalOrder.length;
+    break;
+  }
+  if (!nextActor) return { ...state, initiative: null };
+
+  const nextCursor = livingOrder.findIndex((actor) => (
+    actor.kind === nextActor.kind && actor.id === nextActor.id
   ));
-  const nextIndex = currentIndex >= 0 ? currentIndex + 1 : 0;
-  const wraps = nextIndex >= livingOrder.length;
   return {
     ...state,
     initiative: {
       ...state.initiative,
       order: livingOrder,
-      cursor: wraps ? 0 : nextIndex,
-      round: nonNegativeInteger(state.initiative.round, 1) + (wraps ? 1 : 0),
+      cursor: Math.max(0, nextCursor),
+      round: nonNegativeInteger(state.initiative.round, 1) + (wrapped ? 1 : 0),
     },
   };
 }
