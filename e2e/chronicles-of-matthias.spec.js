@@ -61,7 +61,7 @@ test('Chronicles of Matthias · abre una cripta Three.js real y usa combate posi
   const mode = page.locator('[data-chronicles="true"]');
   const stage = mode.locator('[data-chronicles-renderer="three"]');
   await expect(stage.locator('canvas')).toBeVisible({ timeout: 30_000 });
-  await expect(mode.getByRole('button', { name: 'Abrir menú de Chronicles', exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(mode.locator('summary[aria-label="Abrir menú de Chronicles"]')).toBeVisible({ timeout: 30_000 });
   await expect(mode.locator('.chronicles-renderer-error')).toHaveCount(0);
 
   // Use the real keyboard gameplay path for hosted WebGL. Chromium's synthetic
