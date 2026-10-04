@@ -4,6 +4,7 @@ from pathlib import Path
 
 import chronicles_api
 from chronicles_manifest_procedural import (
+    CHRONICLES_CONTENT_PLACEMENT_VERSION,
     chronicles_map_code_for_manifest,
     proceduralize_chronicles_manifest,
 )
@@ -173,3 +174,85 @@ def test_manifest_recipe_is_bounded_and_derived_from_authored_contract():
     assert recipe.enemies == len(base["enemies"])
     assert recipe.treasures == len(base["treasures"])
     assert recipe.seed == 99
+
+
+
+def test_content_placement_v1_moves_only_safe_optional_encounters_and_varies_by_seed():
+    base, _revision = chronicles_api.load_chronicles_manifest("black-glass-chapel")
+    authored_positions = {
+        enemy["id"]: (enemy["x"], enemy["y"])
+        for enemy in base["enemies"]
+    }
+    seen_mirror_positions = set()
+    saw_mirror = False
+
+    for seed in range(96):
+        generated = proceduralize_chronicles_manifest(
+            base,
+            seed,
+            content_placement_version=CHRONICLES_CONTENT_PLACEMENT_VERSION,
+        )
+        repeated = proceduralize_chronicles_manifest(
+            base,
+            seed,
+            content_placement_version=CHRONICLES_CONTENT_PLACEMENT_VERSION,
+        )
+        assert generated == repeated
+
+        manifest = generated.manifest
+        generation = manifest["generation"]
+        assert generation["contentPlacementVersion"] == CHRONICLES_CONTENT_PLACEMENT_VERSION
+        assert len(generation["contentPlacementRevision"]) == 64
+
+        # Structural encounters keep their authored coordinates.
+        for enemy_id in ("glass-deacon", "obsidian-spider", "reflection-hound"):
+            enemy = next(entry for entry in manifest["enemies"] if entry["id"] == enemy_id)
+            assert (enemy["x"], enemy["y"]) == authored_positions[enemy_id]
+
+        mirror = next(
+            (entry for entry in manifest["enemies"] if entry["id"] == "mirror-wisp"),
+            None,
+        )
+        if mirror is None:
+            continue
+
+        saw_mirror = True
+        position = (mirror["x"], mirror["y"])
+        seen_mirror_positions.add(position)
+        assert manifest["grid"][position[1]][position[0]] != "#"
+        assert position != (
+            manifest["partyStart"]["x"],
+            manifest["partyStart"]["y"],
+        )
+        other_enemy_positions = {
+            (enemy["x"], enemy["y"])
+            for enemy in manifest["enemies"]
+            if enemy["id"] != "mirror-wisp"
+        }
+        assert position not in other_enemy_positions
+
+        placement = next(
+            entry
+            for entry in generation["relocatedOptionalEnemies"]
+            if entry["id"] == "mirror-wisp"
+        )
+        assert (placement["x"], placement["y"]) == position
+
+    assert saw_mirror
+    assert len(seen_mirror_positions) > 1
+
+
+def test_content_placement_v0_is_bit_for_bit_legacy_compatible():
+    base, _revision = chronicles_api.load_chronicles_manifest("black-glass-chapel")
+
+    implicit_legacy = proceduralize_chronicles_manifest(base, 417)
+    explicit_legacy = proceduralize_chronicles_manifest(
+        base,
+        417,
+        content_placement_version=0,
+    )
+
+    assert explicit_legacy == implicit_legacy
+    assert "contentPlacementVersion" not in explicit_legacy.manifest["generation"]
+    assert "contentPlacementRevision" not in explicit_legacy.manifest["generation"]
+    assert "relocatedOptionalEnemies" not in explicit_legacy.manifest["generation"]
