@@ -1182,3 +1182,39 @@ func TestNativeGamesReadServesOnlyItsRoutes(t *testing.T) {
 		t.Fatalf("disabled: proxied %v", proxied)
 	}
 }
+
+func TestNativeGamesWriteServesOnlyMoveAndUndo(t *testing.T) {
+	var proxied []string
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		proxied = append(proxied, r.Method+" "+r.URL.Path)
+		w.WriteHeader(http.StatusTeapot)
+	}))
+	defer upstream.Close()
+	var served []string
+	native := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		served = append(served, r.Method+" "+r.URL.Path)
+		w.WriteHeader(http.StatusOK)
+	})
+	h, err := New(Config{UpstreamURL: upstream.URL, NativeGamesWrite: native})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, req := range [][2]string{
+		{"POST", "/api/games/g1/move"}, {"POST", "/api/games/g1/undo"},
+		{"GET", "/api/games/g1"}, {"POST", "/api/games"}, {"GET", "/api/games/g1/hint"},
+	} {
+		rr := httptest.NewRecorder()
+		h.ServeHTTP(rr, httptest.NewRequest(req[0], "http://api.chess.test"+req[1], nil))
+		if strings.HasSuffix(req[1], "/move") || strings.HasSuffix(req[1], "/undo") {
+			if rr.Header().Get("X-Chess-Edge") != "go" || rr.Header().Get("X-Chess-Pvp-Edge") != "" {
+				t.Fatalf("%v markers=%v", req, rr.Header())
+			}
+		}
+	}
+	if strings.Join(served, ",") != "POST /api/games/g1/move,POST /api/games/g1/undo" {
+		t.Fatalf("served %v", served)
+	}
+	if strings.Join(proxied, ",") != "GET /api/games/g1,POST /api/games,GET /api/games/g1/hint" {
+		t.Fatalf("proxied %v", proxied)
+	}
+}
