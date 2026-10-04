@@ -38,6 +38,31 @@ async function assertNoHorizontalOverflow(page, label) {
   expect(overflow.scrollWidth, `${label}: horizontal overflow`).toBeLessThanOrEqual(overflow.clientWidth + 1);
 }
 
+async function assertSchoolTouchTargets(shell, label) {
+  const undersized = await shell.locator([
+    '.matthias-school-toolbar .back-link',
+    '.matthias-school-resources > summary',
+    '.matthias-school-resources-menu button',
+    '.matthias-school-focusbar button',
+    '.matthias-school-board-actions button',
+    '.matthias-school-nav button',
+    '.matthias-school-study-mode button',
+    '.matthias-school-topic-filter select',
+    '.matthias-school-focus-mode-bar button',
+  ].join(',')).evaluateAll((nodes) => nodes
+    .filter((node) => {
+      const rect = node.getBoundingClientRect();
+      const style = getComputedStyle(node);
+      return rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden';
+    })
+    .map((node) => ({
+      text: node.textContent?.trim() || node.getAttribute('aria-label') || node.tagName,
+      height: node.getBoundingClientRect().height,
+    }))
+    .filter((entry) => entry.height < 43.5));
+  expect(undersized, `${label}: Class Room touch targets under 44px`).toEqual([]);
+}
+
 async function assertSpecialModesDensity(shell) {
   const density = await shell.locator('.mechanic-library').evaluate((root) => {
     const list = root.querySelector('.mechanic-library-list')?.getBoundingClientRect();
@@ -157,6 +182,9 @@ scopedTest('school', 'Entrenar · Escuela, Glosario y Modos especiales', async (
     await expect.poll(() => page.evaluate(() => localStorage.getItem('chess-study-war-room-variant-v1'))).toBe('v2');
   }
   await resources.click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await settle(page);
+  await assertSchoolTouchTargets(shell, 'school-mobile');
   await captureAt(page, 'school', { width: 390, height: 844, variant: 'mobile' });
   await page.setViewportSize({ width: 1440, height: 900 });
   await settle(page);

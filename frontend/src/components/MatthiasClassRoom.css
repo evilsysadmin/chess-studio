@@ -685,3 +685,27 @@ body:has(.matthias-school-shell[data-school-section="school"]) .masthead {
   letter-spacing: .035em;
   white-space: nowrap;
 }
+
+
+/* Mobile Class Room controls are finger targets, not desktop pills squeezed
+   onto a phone. Keep the board size unchanged and let action groups wrap. */
+@media (max-width: 860px), (pointer: coarse) {
+  .tutorial-shell.matthias-school-shell .matthias-school-toolbar .back-link,
+  .tutorial-shell.matthias-school-shell .matthias-school-resources > summary,
+  .tutorial-shell.matthias-school-shell .matthias-school-resources-menu button,
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-focusbar button,
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-board-actions button,
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-nav button,
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-study-mode button,
+  .tutorial-shell.matthias-school-shell .matthias-school-scene-picker button {
+    min-height: 44px;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-board-actions {
+    flex-wrap: wrap;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-nav {
+    align-items: stretch;
+  }
+}

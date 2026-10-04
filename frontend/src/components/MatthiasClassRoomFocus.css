@@ -316,3 +316,11 @@ body:has(.matthias-school-shell[data-school-focus="board"]) {
     max-height: 164px;
   }
 }
+
+
+@media (max-width: 860px), (pointer: coarse) {
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-focus="board"] .matthias-school-focus-mode-bar button,
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-focus="board"] .matthias-school-nav button {
+    min-height: 44px;
+  }
+}
