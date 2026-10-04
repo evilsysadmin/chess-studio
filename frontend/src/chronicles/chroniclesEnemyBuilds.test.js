@@ -9,6 +9,7 @@ import {
   chroniclesEnemyBuildModifiers,
   createDefaultChroniclesEnemyBuild,
   deriveLegacyChroniclesEnemyBuild,
+  resolveChroniclesEnemyBuildDefinition,
   validateChroniclesEnemyBuild,
 } from './chroniclesEnemyBuilds.js';
 
@@ -73,6 +74,27 @@ describe('Chronicles EnemyBuild v1', () => {
       engageRangeBonus: 0,
       initiativeBonus: 0,
     });
+  });
+
+  it('backfills authored pre-AGI builds from movement without changing their declared level', () => {
+    const enemy = {
+      id: 'old-authored-knight',
+      maxHp: 4,
+      retaliation: 1,
+      retaliationReach: 1,
+      ai: { movement: 'knight-chase' },
+      enemyBuild: {
+        version: 1,
+        archetype: 'old-authored-knight',
+        level: 7,
+        attributes: { vigor: 1, power: 2, precision: 0, will: 0 },
+        skills: [],
+      },
+    };
+    const resolved = resolveChroniclesEnemyBuildDefinition(enemy);
+    expect(resolved.source).toBe('authored');
+    expect(resolved.build.level).toBe(7);
+    expect(resolved.build.attributes.agility).toBe(4);
   });
 
   it('turns attributes and skills into bounded mechanical modifiers', () => {
