@@ -8,6 +8,7 @@ different without invalidating narrative/mechanical relationships.
 
 from __future__ import annotations
 
+from collections import deque
 from copy import deepcopy
 from dataclasses import dataclass
 import hashlib
@@ -42,7 +43,9 @@ from chronicles_topology_quality import (
 
 _CONTENT_GROUPS = ("triggers", "interactables", "treasures", "traps", "exits")
 _CARDINAL = ((1, 0), (-1, 0), (0, 1), (0, -1))
-CHRONICLES_CONTENT_PLACEMENT_VERSION = 1
+CHRONICLES_OPTIONAL_ENEMY_PLACEMENT_VERSION = 1
+CHRONICLES_EXIT_PLACEMENT_VERSION = 2
+CHRONICLES_CONTENT_PLACEMENT_VERSION = CHRONICLES_EXIT_PLACEMENT_VERSION
 
 
 @dataclass(frozen=True, slots=True)
@@ -123,12 +126,19 @@ def chronicles_map_code_for_manifest(manifest: dict[str, Any], seed: int) -> Chr
     )
 
 
-def _base_marker_positions(manifest: dict[str, Any]) -> dict[tuple[int, int], str]:
+def _base_marker_positions(
+    manifest: dict[str, Any],
+    *,
+    include_exit: bool = True,
+) -> dict[tuple[int, int], str]:
     markers: dict[tuple[int, int], str] = {}
     for y, row in enumerate(manifest["grid"]):
         for x, cell in enumerate(row):
-            if cell not in {"#", "."}:
-                markers[(x, y)] = cell
+            if cell in {"#", "."}:
+                continue
+            if not include_exit and cell == "X":
+                continue
+            markers[(x, y)] = cell
     return markers
 
 
@@ -137,7 +147,7 @@ def _enemy_uses_seeded_placement(
     enemy: dict[str, Any],
     content_placement_version: int,
 ) -> bool:
-    if content_placement_version < CHRONICLES_CONTENT_PLACEMENT_VERSION:
+    if content_placement_version < CHRONICLES_OPTIONAL_ENEMY_PLACEMENT_VERSION:
         return False
     ai = enemy.get("ai") if isinstance(enemy, dict) else None
     return (
@@ -173,7 +183,10 @@ def _anchor_positions(
             if "x" in entry and "y" in entry:
                 anchors.add((int(entry["x"]), int(entry["y"])))
 
-    anchors.update(_base_marker_positions(manifest))
+    anchors.update(_base_marker_positions(
+        manifest,
+        include_exit=content_placement_version < CHRONICLES_EXIT_PLACEMENT_VERSION,
+    ))
     return anchors
 
 
@@ -239,16 +252,99 @@ def _layout_revision(map_code: str, grid: list[str]) -> str:
     return hashlib.sha256(material).hexdigest()
 
 
+def _grid_distances(
+    grid: list[list[str]],
+    start: tuple[int, int],
+) -> dict[tuple[int, int], int]:
+    queue = deque([start])
+    distances = {start: 0}
+    while queue:
+        x, y = queue.popleft()
+        for dx, dy in _CARDINAL:
+            point = (x + dx, y + dy)
+            px, py = point
+            if (
+                py < 0
+                or py >= len(grid)
+                or px < 0
+                or px >= len(grid[0])
+                or grid[py][px] == "#"
+                or point in distances
+            ):
+                continue
+            distances[point] = distances[(x, y)] + 1
+            queue.append(point)
+    return distances
+
+
+def _place_seeded_exit(
+    manifest: dict[str, Any],
+    grid: list[list[str]],
+    map_code: str,
+    *,
+    content_placement_version: int,
+) -> tuple[int, int] | None:
+    if content_placement_version < CHRONICLES_EXIT_PLACEMENT_VERSION:
+        return None
+
+    start = manifest.get("partyStart") or {}
+    start_point = (int(start["x"]), int(start["y"]))
+    distances = _grid_distances(grid, start_point)
+    fixed_anchors = _anchor_positions(
+        manifest,
+        content_placement_version=content_placement_version,
+    )
+    candidates = [
+        point
+        for point, distance in distances.items()
+        if distance >= 4
+        and grid[point[1]][point[0]] == "."
+        and point not in fixed_anchors
+    ]
+    if not candidates:
+        raise ChroniclesMapGenerationError(
+            "generated topology has no safe distant cell for the exit"
+        )
+
+    farthest_distance = max(distances[point] for point in candidates)
+    farthest = [
+        point
+        for point in candidates
+        if distances[point] == farthest_distance
+    ]
+    return min(
+        farthest,
+        key=lambda point: (
+            hashlib.sha256(
+                (
+                    f"chronicles-exit-placement-v{CHRONICLES_EXIT_PLACEMENT_VERSION}:"
+                    f"{map_code}:{point[0]}:{point[1]}"
+                ).encode("utf-8")
+            ).digest(),
+            point[1],
+            point[0],
+        ),
+    )
+
+
 def _content_placement_revision(
     map_code: str,
     placements: tuple[tuple[str, int, int], ...],
+    *,
+    content_placement_version: int,
+    exit_position: tuple[int, int] | None = None,
 ) -> str:
     material = (
-        f"chronicles-content-placement-v{CHRONICLES_CONTENT_PLACEMENT_VERSION}:"
+        f"chronicles-content-placement-v{content_placement_version}:"
         f"{map_code}:"
         + "|".join(f"{enemy_id}:{x}:{y}" for enemy_id, x, y in placements)
-    ).encode("utf-8")
-    return hashlib.sha256(material).hexdigest()
+    )
+    if (
+        content_placement_version >= CHRONICLES_EXIT_PLACEMENT_VERSION
+        and exit_position is not None
+    ):
+        material += f"|exit:{exit_position[0]}:{exit_position[1]}"
+    return hashlib.sha256(material.encode("utf-8")).hexdigest()
 
 
 def _place_seeded_optional_enemies(
@@ -257,7 +353,7 @@ def _place_seeded_optional_enemies(
     *,
     content_placement_version: int,
 ) -> tuple[tuple[tuple[str, int, int], ...], str | None]:
-    if content_placement_version < CHRONICLES_CONTENT_PLACEMENT_VERSION:
+    if content_placement_version < CHRONICLES_OPTIONAL_ENEMY_PLACEMENT_VERSION:
         return (), None
 
     relocatable = sorted(
@@ -274,7 +370,11 @@ def _place_seeded_optional_enemies(
     )
     if not relocatable:
         placements: tuple[tuple[str, int, int], ...] = ()
-        return placements, _content_placement_revision(map_code, placements)
+        return placements, _content_placement_revision(
+            map_code,
+            placements,
+            content_placement_version=content_placement_version,
+        )
 
     fixed_anchors = _anchor_positions(
         manifest,
@@ -310,7 +410,7 @@ def _place_seeded_optional_enemies(
             key=lambda candidate: (
                 hashlib.sha256(
                     (
-                        f"chronicles-content-placement-v{CHRONICLES_CONTENT_PLACEMENT_VERSION}:"
+                        f"chronicles-content-placement-v{CHRONICLES_OPTIONAL_ENEMY_PLACEMENT_VERSION}:"
                         f"{map_code}:{enemy_id}:{candidate[0]}:{candidate[1]}"
                     ).encode("utf-8")
                 ).digest(),
@@ -323,7 +423,11 @@ def _place_seeded_optional_enemies(
         placed.append((enemy_id, point[0], point[1]))
 
     placements = tuple(placed)
-    return placements, _content_placement_revision(map_code, placements)
+    return placements, _content_placement_revision(
+        map_code,
+        placements,
+        content_placement_version=content_placement_version,
+    )
 
 
 def _materialize_recipe(
@@ -337,6 +441,7 @@ def _materialize_recipe(
     str,
     tuple[tuple[str, int, int], ...],
     str | None,
+    tuple[int, int] | None,
 ]:
     map_code = encode_chronicles_map_code(recipe)
     layout = generate_chronicles_layout(recipe)
@@ -358,11 +463,22 @@ def _materialize_recipe(
     ):
         _connect_anchor(grid, open_cells, anchor, map_code)
 
-    for (x, y), marker in _base_marker_positions(composed_manifest).items():
+    for (x, y), marker in _base_marker_positions(
+        composed_manifest,
+        include_exit=content_placement_version < CHRONICLES_EXIT_PLACEMENT_VERSION,
+    ).items():
         grid[y][x] = marker
 
     start = composed_manifest["partyStart"]
     grid[int(start["y"])][int(start["x"])] = "P"
+    exit_position = _place_seeded_exit(
+        composed_manifest,
+        grid,
+        map_code,
+        content_placement_version=content_placement_version,
+    )
+    if exit_position is not None:
+        grid[exit_position[1]][exit_position[0]] = "X"
     final_grid = ["".join(row) for row in grid]
 
     generated = deepcopy(composed_manifest)
@@ -372,12 +488,20 @@ def _materialize_recipe(
         map_code,
         content_placement_version=content_placement_version,
     )
+    if content_placement_version >= CHRONICLES_EXIT_PLACEMENT_VERSION:
+        placement_revision = _content_placement_revision(
+            map_code,
+            placements,
+            content_placement_version=content_placement_version,
+            exit_position=exit_position,
+        )
     return (
         generated,
         map_code,
         _layout_revision(map_code, final_grid),
         placements,
         placement_revision,
+        exit_position,
     )
 
 
@@ -407,6 +531,7 @@ def proceduralize_chronicles_manifest(
         local_layout_revision,
         local_placements,
         local_placement_revision,
+        local_exit_position,
     ) = _materialize_recipe(
         composed_manifest,
         base_recipe,
@@ -429,6 +554,7 @@ def proceduralize_chronicles_manifest(
     planner_reason = planner.reason
     placements = local_placements
     placement_revision = local_placement_revision
+    exit_position = local_exit_position
 
     if planner.accepted:
         (
@@ -437,6 +563,7 @@ def proceduralize_chronicles_manifest(
             planned_layout_revision,
             planned_placements,
             planned_placement_revision,
+            planned_exit_position,
         ) = _materialize_recipe(
             composed_manifest,
             planner.recipe,
@@ -456,6 +583,7 @@ def proceduralize_chronicles_manifest(
             planner_applied = True
             placements = planned_placements
             placement_revision = planned_placement_revision
+            exit_position = planned_exit_position
 
     generated["generation"] = {
         "kind": "seeded-layout",
@@ -485,15 +613,20 @@ def proceduralize_chronicles_manifest(
         "treasureVariationRevision": treasure_variation.plan.revision,
         "treasureBoons": [boon.as_dict() for boon in treasure_variation.plan.boons],
     }
-    if content_placement_version >= CHRONICLES_CONTENT_PLACEMENT_VERSION:
+    if content_placement_version >= CHRONICLES_OPTIONAL_ENEMY_PLACEMENT_VERSION:
         generated["generation"].update({
-            "contentPlacementVersion": CHRONICLES_CONTENT_PLACEMENT_VERSION,
+            "contentPlacementVersion": content_placement_version,
             "contentPlacementRevision": placement_revision,
             "relocatedOptionalEnemies": [
                 {"id": enemy_id, "x": x, "y": y}
                 for enemy_id, x, y in placements
             ],
         })
+    if content_placement_version >= CHRONICLES_EXIT_PLACEMENT_VERSION:
+        generated["generation"]["exitPosition"] = {
+            "x": exit_position[0],
+            "y": exit_position[1],
+        }
 
     return ChroniclesProceduralManifest(
         manifest=generated,
