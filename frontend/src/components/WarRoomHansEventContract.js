@@ -29,10 +29,24 @@ function hashGameId(gameId) {
   return hash >>> 0;
 }
 
-export function warRoomHansEventForGame(gameId) {
+// Each War Room only offers the events its decor supports (War Room v1 has
+// every prop; Blender rooms grow their list as their stage gains routines).
+const BLENDER_ROOM_EVENTS = Object.freeze(['fire']);
+export const WAR_ROOM_HANS_VARIANT_EVENTS = Object.freeze({
+  v2: BLENDER_ROOM_EVENTS,
+  v3: BLENDER_ROOM_EVENTS,
+  v4: BLENDER_ROOM_EVENTS,
+});
+
+export function warRoomHansEventsForVariant(variant) {
+  return WAR_ROOM_HANS_VARIANT_EVENTS[variant] || WAR_ROOM_HANS_EVENTS;
+}
+
+export function warRoomHansEventForGame(gameId, { variant = 'classic' } = {}) {
   const realGameId = normalizedRealGameId(gameId);
   if (!realGameId) return '';
-  return WAR_ROOM_HANS_EVENTS[hashGameId(realGameId) % WAR_ROOM_HANS_EVENTS.length];
+  const events = warRoomHansEventsForVariant(variant);
+  return events[hashGameId(realGameId) % events.length];
 }
 
 export function warRoomHansEventMatches(gameId, eventName) {
