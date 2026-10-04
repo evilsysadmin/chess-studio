@@ -1,9 +1,8 @@
 import PreferredBoard from './PreferredBoard.jsx';
-import { getBoardRenderer } from '../userPreferences.js';
 import { schoolTeachingHintMove, schoolTeachingSquareClass } from './SchoolTeachingLayers.js';
 
 export function getSchoolBoardRenderer() {
-  return getBoardRenderer();
+  return '3d';
 }
 
 export default function SchoolBoard({ teachingLayers = null, squareClassName, hintMove, ...props }) {
@@ -19,6 +18,7 @@ export default function SchoolBoard({ teachingLayers = null, squareClassName, hi
       squareClassName={mergedSquareClassName}
       hintMove={teachingHintMove}
       cameraProfile="classroom"
+      rendererOverride="3d"
       warRoomVariantOverride="classic"
     />
   );
