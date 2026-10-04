@@ -20,8 +20,6 @@ import {
 import SchoolTopicExplorer from './SchoolTopicExplorer.jsx';
 import './SchoolTopicExplorer.css';
 import { abortableDelay, isAbortError } from '../asyncControl.js';
-import { WAR_ROOM_VARIANTS } from './WarRoomVariant.js';
-import { isClassRoomVariantSelectable, loadClassRoomVariant, saveClassRoomVariant } from './ClassRoomVariant.js';
 import ChessGlossary from './ChessGlossary.jsx';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { MECHANIC_TUTORIALS, loadMechanicTutorialProgress, markMechanicTutorialSeen } from '../mechanicTutorials.js';
@@ -83,8 +81,6 @@ export default function Tutorial({ onExit }) {
   const playbackTokenRef = useRef(0);
   const playbackAbortRef = useRef(null);
   const coachIncidentRef = useRef({ kind: null, count: 0 });
-  const classRoomVariantSelectable = isClassRoomVariantSelectable();
-  const [classRoomVariant, setClassRoomVariant] = useState(() => loadClassRoomVariant());
   const [coach, setCoach] = useState(() => ({ tone: 'neutral', text: initialCoachText(MATTHIAS_SCHOOL_LESSONS[firstSchoolIndex(loadMatthiasSchoolProgress())] || MATTHIAS_SCHOOL_LESSONS[0]) }));
   const [mechanicId, setMechanicId] = useState(MECHANIC_TUTORIALS[0]?.id || null);
   const [mechanicStep, setMechanicStep] = useState(0);
@@ -411,24 +407,6 @@ export default function Tutorial({ onExit }) {
           <div className="matthias-school-resources-menu">
             <button type="button" onClick={() => setSection('glossary')}>Glosario</button>
             <button type="button" onClick={() => setSection('mechanics')}>Modos especiales</button>
-            {schoolRenderer === '3d' && classRoomVariantSelectable ? (
-              <div className="matthias-school-scene-picker" role="group" aria-label="Escena de clase">
-                <span>Escena de clase</span>
-                <div>
-                  {WAR_ROOM_VARIANTS.map(({ id, label }) => (
-                    <button
-                      type="button"
-                      key={id}
-                      aria-pressed={classRoomVariant === id}
-                      className={classRoomVariant === id ? 'active' : ''}
-                      onClick={() => setClassRoomVariant(saveClassRoomVariant(id))}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : null}
           </div>
         </details>
       </div>
@@ -595,7 +573,6 @@ export default function Tutorial({ onExit }) {
                   legalTargets={explanation.open ? [] : legalTargets}
                   teachingLayers={explanation.displayTeachingLayers}
                   animate={explanation.displayAnimation}
-                  warRoomVariantOverride={classRoomVariant}
                 />
                 <div className={`matthias-school-board-actions${explanation.open ? ' is-explanation' : ''}`}>
                   {explanation.open ? (
