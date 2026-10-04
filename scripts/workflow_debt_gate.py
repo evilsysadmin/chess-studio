@@ -52,7 +52,6 @@ INVENTORY = {
     'pr-track-label.yml': 'quality-required',
     'pvp-duel-room-blender-art.yml': 'art-generation',
     'pvp-duel-hall-blender-art.yml': 'art-generation',
-    'pvp-go.yml': 'pvp-runtime',
     'pvp-python-fallback.yml': 'pvp-runtime',
     'production-promote.yml': 'delivery-production',
     'production-frontend-watchdog.yml': 'delivery-production-health',
