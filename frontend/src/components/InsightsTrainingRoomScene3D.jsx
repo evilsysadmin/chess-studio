@@ -60,6 +60,8 @@ export default function InsightsTrainingRoomScene3D() {
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
       renderer.toneMappingExposure = 1.42;
       renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio || 1, 1.35));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
       scene = new THREE.Scene();
       scene.fog = new THREE.FogExp2(0x0b0d12, .007);
@@ -79,7 +81,15 @@ export default function InsightsTrainingRoomScene3D() {
 
       const softKey = new THREE.DirectionalLight(0xffd39a, .94);
       softKey.position.set(-3.5, 7.4, 5.8);
-      softKey.castShadow = false;
+      softKey.castShadow = true;
+      softKey.shadow.mapSize.set(512, 512);
+      softKey.shadow.camera.near = 1;
+      softKey.shadow.camera.far = 28;
+      softKey.shadow.camera.left = -10;
+      softKey.shadow.camera.right = 10;
+      softKey.shadow.camera.top = 9;
+      softKey.shadow.camera.bottom = -6;
+      softKey.shadow.bias = -.00035;
       softKey.name = 'training-room-soft-key';
       scene.add(softKey);
 
