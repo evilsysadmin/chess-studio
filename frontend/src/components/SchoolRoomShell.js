@@ -77,7 +77,7 @@ export function buildSchoolRoomLayer(theme, whiteSide, coarsePointer = false) {
 
   const far = whiteSide ? -1 : 1;
   const toward = -far;
-  const wallZ = far * 8.7;
+  const wallZ = far * 7.15;
   const lite = Boolean(coarsePointer);
   const wood = mat(theme?.frame ?? 0x24130c, .05, .7);
   const woodDark = mat(0x160d09, .02, .82);
