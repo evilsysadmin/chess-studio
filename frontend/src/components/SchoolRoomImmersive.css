@@ -1,0 +1,515 @@
+/* School Room immersive overlay pass
+   The lesson is a War Room scene, not a dashboard. Navigation, Matthias and
+   lesson actions float over the room and disappear when they are not needed. */
+body:has(.matthias-school-shell[data-school-section="school"]) {
+  overflow: hidden;
+}
+
+body:has(.matthias-school-shell[data-school-section="school"]) .masthead {
+  display: none !important;
+}
+
+.app-shell:has(.matthias-school-shell[data-school-section="school"]) {
+  width: 100vw;
+  max-width: none;
+  height: 100dvh;
+  padding: 0;
+  overflow: hidden;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"] {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  width: 100vw;
+  max-width: none;
+  height: 100dvh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: #07090d;
+}
+
+/* HUD — the School is a War Room: the board owns the screen and everything
+   else is a small floating layer. The extra [data-school-study-mode] keeps
+   these rules above the legacy column layout regardless of stylesheet order.
+     top-left   ← exit
+     top-right  Plan de estudios · ⋯ Recursos
+     bubble     Matthias: lesson, mission, his line, Anterior/Siguiente
+     bottom     lesson actions pill */
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] {
+  --school-hud-top: max(.55rem, env(safe-area-inset-top));
+  --school-hud-side: max(.6rem, env(safe-area-inset-left), env(safe-area-inset-right));
+  --school-hud-bottom: max(.7rem, env(safe-area-inset-bottom));
+  --school-hud-glass: rgba(8, 10, 14, .72);
+  --school-hud-line: rgba(215, 183, 111, .24);
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-toolbar {
+  position: absolute;
+  top: var(--school-hud-top);
+  left: var(--school-hud-side);
+  right: var(--school-hud-side);
+  z-index: 90;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: auto;
+  min-height: 0;
+  pointer-events: none;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-toolbar > * {
+  pointer-events: auto;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-room-label {
+  display: none;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-toolbar .back-link,
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-resources > summary,
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-focusbar button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  margin: 0;
+  padding: .4rem .7rem;
+  border: 1px solid var(--school-hud-line);
+  border-radius: 999px;
+  background: var(--school-hud-glass);
+  color: var(--parchment);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .22);
+  backdrop-filter: blur(10px);
+  font-size: .72rem;
+}
+
+/* Resources is the overflow menu, like War Room's ⋯. */
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-resources > summary {
+  width: 40px;
+  padding: 0;
+  font-size: 0;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-resources > summary::after {
+  content: '⋯';
+  font-size: 1.05rem;
+}
+
+/* The course card only keeps its button: Matthias' bubble already names the
+   lesson and the plan shows the progress. */
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-focusbar {
+  position: absolute;
+  top: var(--school-hud-top);
+  right: calc(var(--school-hud-side) + 40px + .4rem);
+  left: auto;
+  z-index: 90;
+  width: auto;
+  min-height: 0;
+  padding: 0;
+  transform: none;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-focusbar > div {
+  display: none;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-layout,
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-stage {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-board {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-board > .preferred-board-3d,
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-board .board3d-main-shell {
+  width: 100%;
+  height: 100% !important;
+  min-height: 0 !important;
+}
+
+/* 2D fallback: centre the flat board in the space between the HUD layers. */
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-board:not(:has(.board3d-main-shell)) {
+  display: grid;
+  place-items: center;
+  padding: calc(var(--school-hud-top) + 52px) var(--school-hud-side) calc(var(--school-hud-bottom) + 64px);
+  --school-2d-square: min(calc((100vw - 2 * var(--school-hud-side) - 1.5rem) / 8), calc((100dvh - var(--school-hud-top) - var(--school-hud-bottom) - 140px) / 8));
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-board:not(:has(.board3d-main-shell)) .board-grid {
+  grid-template-columns: repeat(8, var(--school-2d-square));
+  grid-template-rows: repeat(8, var(--school-2d-square));
+  width: auto;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-board:not(:has(.board3d-main-shell)) .rank-labels {
+  grid-template-rows: repeat(8, var(--school-2d-square));
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-board:not(:has(.board3d-main-shell)) .file-labels {
+  grid-template-columns: repeat(8, var(--school-2d-square));
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-board-actions {
+  position: absolute;
+  left: 50%;
+  bottom: var(--school-hud-bottom);
+  z-index: 78;
+  display: flex;
+  width: max-content;
+  max-width: calc(100vw - 2 * var(--school-hud-side));
+  transform: translateX(-50%);
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: .3rem;
+  margin: 0;
+  padding: .28rem;
+  border: 1px solid var(--school-hud-line);
+  border-radius: 999px;
+  background: var(--school-hud-glass);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .24);
+  backdrop-filter: blur(10px);
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-board-actions button {
+  min-height: 38px;
+  padding: .35rem .75rem;
+  border-radius: 999px;
+  font-size: .76rem;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-expand-board {
+  display: none;
+}
+
+/* Matthias' bubble: one heading line, the mission as a plain line, his voice
+   in italics and the lesson nav. No nested cards. */
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-coach {
+  position: absolute;
+  top: calc(var(--school-hud-top) + 50px);
+  left: var(--school-hud-side);
+  bottom: auto;
+  z-index: 76;
+  display: grid;
+  order: 0;
+  width: min(300px, calc(100vw - 2 * var(--school-hud-side)));
+  max-height: calc(100dvh - var(--school-hud-top) - var(--school-hud-bottom) - 120px);
+  gap: .28rem;
+  padding: .45rem .5rem;
+  overflow: auto;
+  border: 1px solid var(--school-hud-line);
+  border-radius: 12px;
+  background: var(--school-hud-glass);
+  box-shadow: 0 14px 38px rgba(0, 0, 0, .28);
+  backdrop-filter: blur(12px);
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-coach-heading {
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  gap: .42rem;
+  align-items: center;
+  padding-right: 2.4rem;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-coach-heading img {
+  width: 28px;
+  height: 34px;
+  border-radius: 6px;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-coach-heading .section-label {
+  font-size: .54rem;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-coach-heading h2 {
+  font-size: .84rem;
+  line-height: 1.12;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-objective {
+  display: block;
+  padding: 0 0 0 .45rem;
+  border-width: 0 0 0 2px;
+  border-radius: 0;
+  background: none;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-objective b {
+  display: none;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-objective p {
+  margin: 0;
+  font-size: .74rem;
+  font-weight: 600;
+  line-height: 1.28;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-sequence-status {
+  position: absolute;
+  top: .45rem;
+  right: .5rem;
+  display: flex;
+  min-height: 0;
+  padding: .06rem .36rem;
+  border-radius: 999px;
+  font-size: .6rem;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-sequence-status > span {
+  display: none;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-feedback {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-feedback::before,
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-feedback > b {
+  display: none;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-feedback p {
+  margin: 0;
+  font-size: .74rem;
+  font-style: italic;
+  line-height: 1.3;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-nav {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .3rem;
+  margin-top: .1rem;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-nav button {
+  min-height: 34px;
+  padding: .3rem .5rem;
+  font-size: .7rem;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-nav .tutorial-progress {
+  display: none;
+}
+
+/* Curriculum is deliberate progressive disclosure. On desktop it is a drawer
+   on the right: the board stays playable and Matthias' bubble stays visible
+   (you can pick a lesson and play it without closing the plan). On phones it
+   is a scrolling sheet over the dimmed room. The board stays fixed behind. */
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-curriculum="open"] {
+  display: block;
+  overflow-y: auto;
+  padding: calc(var(--school-hud-top) + 52px) var(--school-hud-side) var(--school-hud-bottom) max(var(--school-hud-side), calc(100vw - 400px - var(--school-hud-side)));
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-curriculum="open"] .matthias-school-layout {
+  position: static;
+  display: block;
+  height: auto;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-curriculum="open"] .matthias-school-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+}
+
+/* With the plan open, the course card shows the overall progress beside its
+   close button (the title stays in Matthias' bubble). */
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-curriculum="open"] .matthias-school-focusbar {
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-curriculum="open"] .matthias-school-focusbar > div {
+  display: flex;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-curriculum="open"] .matthias-school-focusbar > div > span,
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-curriculum="open"] .matthias-school-focusbar > div > strong {
+  display: none;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-curriculum="open"] .matthias-school-focusbar .matthias-school-focus-progress {
+  display: inline;
+  margin: 0;
+  padding: .3rem .6rem;
+  border: 1px solid var(--school-hud-line);
+  border-radius: 999px;
+  background: var(--school-hud-glass);
+  color: color-mix(in srgb, var(--parchment) 78%, transparent);
+  font-size: .66rem;
+  white-space: nowrap;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-curriculum="open"] .matthias-school-study-mode,
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-curriculum="open"] .matthias-school-topic-explorer,
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-curriculum="open"] .matthias-school-course-strip,
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-curriculum="open"] .matthias-school-lessons {
+  position: relative;
+  z-index: 86;
+  inset: auto;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto .45rem;
+  border: 1px solid var(--school-hud-line);
+  border-radius: 12px;
+  background: rgba(8, 10, 14, .9);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, .34);
+  backdrop-filter: blur(12px);
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-curriculum="open"] .matthias-school-course-strip {
+  display: grid;
+  padding: .36rem;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-curriculum="open"] .matthias-school-lessons {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: .3rem;
+  padding: .42rem;
+  overflow: visible;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-curriculum="open"] .matthias-school-course-intro {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 860px), (pointer: coarse) {
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-toolbar .back-link,
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-resources > summary,
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-focusbar button,
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-board-actions button,
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-nav button {
+    min-height: 44px;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-resources > summary {
+    width: 44px;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-focusbar {
+    right: calc(var(--school-hud-side) + 44px + .4rem);
+  }
+
+  /* Exit is an icon on phones, like War Room's compact exit. */
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-toolbar .back-link {
+    width: 44px;
+    padding: 0;
+    font-size: 0;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-toolbar .back-link::before {
+    content: '←';
+    font-size: 1.05rem;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-resources-menu {
+    position: fixed;
+    top: calc(var(--school-hud-top) + 50px);
+    right: var(--school-hud-side);
+  }
+}
+
+/* Phone portrait: the board spans the width in the middle; Matthias sits
+   just above the actions pill. */
+@media (max-width: 860px) and (orientation: portrait) {
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-coach {
+    top: auto;
+    bottom: calc(var(--school-hud-bottom) + 58px);
+    width: calc(100vw - 2 * var(--school-hud-side));
+    max-height: 30dvh;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-board-actions {
+    flex-wrap: nowrap;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-board-actions button {
+    padding-inline: .6rem;
+    font-size: .72rem;
+    white-space: nowrap;
+  }
+}
+
+/* Phone landscape: board in the middle, Matthias on the left, actions as a
+   column on the right. */
+@media (orientation: landscape) and (max-height: 520px) {
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-coach {
+    width: min(200px, 26vw);
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-board-actions {
+    left: auto;
+    right: var(--school-hud-side);
+    bottom: var(--school-hud-bottom);
+    flex-direction: column;
+    flex-wrap: nowrap;
+    width: min(150px, 22vw);
+    transform: none;
+    border-radius: 14px;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-board-actions button {
+    width: 100%;
+    white-space: normal;
+    line-height: 1.15;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-board:not(:has(.board3d-main-shell)) {
+    padding: var(--school-hud-top) calc(min(150px, 22vw) + 1.2rem) var(--school-hud-bottom) calc(min(200px, 26vw) + 1.2rem);
+    --school-2d-square: calc((100dvh - var(--school-hud-top) - var(--school-hud-bottom) - 1.5rem) / 8);
+  }
+}
+
+/* Phones: the plan is a full sheet; dim the room and park the bubble and
+   actions until it closes. */
+@media (max-width: 860px) {
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-curriculum="open"] {
+    padding-left: var(--school-hud-side);
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-curriculum="open"]::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    background: rgba(3, 5, 8, .62);
+    pointer-events: none;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-curriculum="open"] .matthias-school-coach,
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-curriculum="open"] .matthias-school-board-actions {
+    display: none;
+  }
+}
