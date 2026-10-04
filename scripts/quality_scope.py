@@ -96,6 +96,7 @@ GO_AUTHORITY_PATHS = {
     "scripts/engine_parity_corpus.py",
     "scripts/games_parity_corpus.py",
     "scripts/games_ops_corpus.py",
+    "scripts/go_python_parity_check.sh",
 }
 GO_PARITY_FIXTURE_RE = re.compile(
     r"^backend-go/internal/(?:residenteval|residentsearch|gamecore|gameops|chroniclesmap)/"
