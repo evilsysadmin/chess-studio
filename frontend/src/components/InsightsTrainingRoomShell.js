@@ -187,13 +187,18 @@ export function buildInsightsTrainingRoomLayer({ coarsePointer = false } = {}) {
   root.userData.noHumanFigures = true;
 
   const lite = Boolean(coarsePointer);
-  const wood = material(0x2d190f, .05, .67);
-  const woodDark = material(0x160d09, .03, .82);
-  const leather = material(0x211411, .02, .6);
-  const stone = material(0x3a3632, .01, .94);
-  const brass = material(0xa77a2d, .72, .28);
+  const wood = material(0x3b2517, .05, .64);
+  const woodDark = material(0x24150f, .03, .78);
+  const leather = material(0x342119, .03, .56);
+  const stone = material(0x4a4540, .01, .9);
+  const brass = material(0xb58d45, .72, .26);
   const parchment = material(0xd6c6a3, .01, .78);
-  const bankerGlass = material(0x173d2f, .05, .34, { transparent: true, opacity: .88 });
+  const bankerGlass = material(0x1f563f, .05, .3, {
+    transparent: true,
+    opacity: .9,
+    emissive: 0x0e241b,
+    emissiveIntensity: .34,
+  });
   const night = new THREE.MeshBasicMaterial({ color: 0x0b1a2d });
   const moon = new THREE.MeshStandardMaterial({
     color: 0xfff0c9,
@@ -220,16 +225,39 @@ export function buildInsightsTrainingRoomLayer({ coarsePointer = false } = {}) {
   addBankerLamp(root, brass, bankerGlass);
   addArmillary(root, brass, lite);
 
+  // Warm left-side hearth keeps the room legible and anchors the canonical
+  // amber/cool-moon contrast without introducing a human figure.
+  box(root, [2.35, 2.35, .62], stone, [-7.15, .48, -5.7], 'training-room-fireplace');
+  box(
+    root,
+    [1.22, 1.05, .12],
+    new THREE.MeshStandardMaterial({
+      color: 0x2a1208,
+      emissive: 0xff6a22,
+      emissiveIntensity: lite ? .55 : .82,
+      roughness: .8,
+    }),
+    [-7.15, .2, -5.34],
+    'training-room-hearth',
+  );
+  box(root, [2.72, .16, .82], wood, [-7.15, 1.72, -5.52], 'training-room-mantel');
+
   box(root, [2.25, 1.75, .18], wood, [.2, 4.65, -6.72], 'training-room-frame');
   box(root, [1.55, 1.08, .08], brass, [.2, 4.65, -6.54], 'training-room-frame-inlay');
 
-  const warmKey = new THREE.PointLight(0xffa65b, lite ? .52 : .78, 12, 2);
+  const warmKey = new THREE.PointLight(0xffa65b, lite ? .72 : 1.08, 13, 2);
   warmKey.position.set(-4.25, 3.0, -2.1);
   warmKey.castShadow = false;
   warmKey.name = 'training-room-warm-key';
   root.add(warmKey);
 
-  const coolWindow = new THREE.PointLight(0x7aa8e8, lite ? .42 : .64, 14, 2);
+  const hearthLight = new THREE.PointLight(0xff7b32, lite ? .48 : .78, 8.5, 2);
+  hearthLight.position.set(-6.85, 1.35, -4.7);
+  hearthLight.castShadow = false;
+  hearthLight.name = 'training-room-hearth-light';
+  root.add(hearthLight);
+
+  const coolWindow = new THREE.PointLight(0x7aa8e8, lite ? .58 : .84, 15, 2);
   coolWindow.position.set(5.8, 4.5, -4.8);
   coolWindow.castShadow = false;
   coolWindow.name = 'training-room-moon-key';
