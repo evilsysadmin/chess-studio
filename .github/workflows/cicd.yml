@@ -229,7 +229,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - name: Aggregate required Python + Go backend gates
+      - name: Aggregate backend gates
         env:
           RUN_PYTHON: ${{ needs.preflight.outputs.run_backend }}
           PYTHON_RESULT: ${{ needs.backend_python.result }}
@@ -238,14 +238,14 @@ jobs:
         run: |
           set -euo pipefail
           if [[ "$RUN_PYTHON" == 'true' && "$PYTHON_RESULT" != 'success' ]]; then
-            echo "::error::Backend Python requerido y no terminó verde: $PYTHON_RESULT"
+            echo "::error::Python backend: $PYTHON_RESULT"
             exit 1
           fi
           if [[ "$RUN_GO" == 'true' && "$GO_RESULT" != 'success' ]]; then
-            echo "::error::Backend Go requerido y no terminó verde: $GO_RESULT"
+            echo "::error::Go backend: $GO_RESULT"
             exit 1
           fi
-          echo "Required backend gate OK · python=$RUN_PYTHON/$PYTHON_RESULT · go=$RUN_GO/$GO_RESULT"
+          echo "Backend OK · py=$RUN_PYTHON/$PYTHON_RESULT · go=$RUN_GO/$GO_RESULT"
   security:
     name: Security · Trivy + Docker
     needs: preflight
