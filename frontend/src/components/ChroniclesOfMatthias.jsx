@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   CHRONICLES_DIRECTIONS,
   chroniclesActiveEnemies,
+  chroniclesEnemyTargetAhead,
   chroniclesJournalEntries,
   chroniclesObjective,
   chroniclesReduce,
@@ -201,9 +202,16 @@ export default function ChroniclesOfMatthias({ onExit }) {
     let next;
     if (!current.initiative) {
       const exploratoryNext = actionType === 'attack' ? current : chroniclesReduce(current, action);
+      const attackingMember = actionType === 'attack' && typeof action === 'object'
+        ? current.party.find((member) => member.id === action.memberId)
+        : null;
+      const forcedTarget = attackingMember
+        ? chroniclesEnemyTargetAhead(current, attackingMember.reach)
+        : null;
       const started = chroniclesStartInitiativeCombat(
         exploratoryNext,
         chroniclesActiveEnemies(exploratoryNext),
+        { forceEnemyIds: forcedTarget ? [forcedTarget.enemy.id] : [] },
       );
       next = started !== exploratoryNext
         ? started
@@ -273,7 +281,11 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const attackWithSelected = useCallback(() => {
     const current = stateRef.current;
     if (!current || current.phase === 'defeated' || current.phase === 'escaped') return;
-    const memberId = selectedMemberIdRef.current;
+    const initiativeActor = chroniclesCurrentInitiativeActor(current.initiative);
+    if (initiativeActor?.kind === 'enemy') return;
+    const memberId = initiativeActor?.kind === 'party'
+      ? initiativeActor.id
+      : selectedMemberIdRef.current;
     engineRef.current?.playAttack?.(memberId);
     dispatch({ type: 'attack', memberId });
   }, [dispatch]);
