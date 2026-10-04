@@ -40,45 +40,7 @@ var fieldOrder = []string{
 	"theme", "size", "verbs", "enemies", "treasures", "secrets", "difficulty", "seed",
 }
 
-var sizePattern = regexp.MustCompile(`^[0-9]{1,2}x[0-9]{1,2}package chroniclesmap
-
-import (
-	"fmt"
-	"regexp"
-	"strconv"
-	"strings"
-)
-
-const (
-	MapCodeVersion   = 1
-	MapCodePrefix    = "CM1"
-	MapCodeMaxLength = 256
-	MapCodeMaxSeed   = 2147483647
-)
-
-type Recipe struct {
-	Theme      string
-	Width      int
-	Height     int
-	Verbs      []string
-	Enemies    int
-	Treasures  int
-	Secrets    int
-	Difficulty int
-	Seed       int
-}
-
-var allowedThemes = map[string]bool{
-	"crypt": true, "gallery": true, "ash": true, "archive": true, "iron": true,
-	"basilica": true, "bell": true, "glass": true, "water": true,
-}
-
-var allowedVerbs = map[string]bool{
-	"hunt": true, "patrol": true, "lever": true, "sluice": true, "keys": true,
-	"traps": true, "treasure": true, "secret": true, "guardian": true, "puzzle": true,
-}
-
-)
+var sizePattern = regexp.MustCompile("^[0-9]{1,2}x[0-9]{1,2}$")
 
 func parseDecimal(raw string, field string) (int, error) {
 	if raw == "" {
@@ -96,38 +58,39 @@ func parseDecimal(raw string, field string) (int, error) {
 	return value, nil
 }
 
-func validate(r Recipe) (Recipe, error) {
-	r.Theme = strings.ToLower(strings.TrimSpace(r.Theme))
-	if !allowedThemes[r.Theme] {
-		return Recipe{}, fmt.Errorf("unsupported theme: %s", r.Theme)
+func validate(recipe Recipe) (Recipe, error) {
+	recipe.Theme = strings.ToLower(strings.TrimSpace(recipe.Theme))
+	if !allowedThemes[recipe.Theme] {
+		return Recipe{}, fmt.Errorf("unsupported theme: %s", recipe.Theme)
 	}
-	if r.Width < 7 || r.Width > 19 {
+	if recipe.Width < 7 || recipe.Width > 19 {
 		return Recipe{}, fmt.Errorf("width must be between 7 and 19")
 	}
-	if r.Height < 7 || r.Height > 15 {
+	if recipe.Height < 7 || recipe.Height > 15 {
 		return Recipe{}, fmt.Errorf("height must be between 7 and 15")
 	}
-	if r.Enemies < 2 || r.Enemies > 8 {
+	if recipe.Enemies < 2 || recipe.Enemies > 8 {
 		return Recipe{}, fmt.Errorf("enemies must be between 2 and 8")
 	}
-	if r.Treasures < 0 || r.Treasures > 4 {
+	if recipe.Treasures < 0 || recipe.Treasures > 4 {
 		return Recipe{}, fmt.Errorf("treasures must be between 0 and 4")
 	}
-	if r.Secrets < 0 || r.Secrets > 3 {
+	if recipe.Secrets < 0 || recipe.Secrets > 3 {
 		return Recipe{}, fmt.Errorf("secrets must be between 0 and 3")
 	}
-	if r.Difficulty < 1 || r.Difficulty > 5 {
+	if recipe.Difficulty < 1 || recipe.Difficulty > 5 {
 		return Recipe{}, fmt.Errorf("difficulty must be between 1 and 5")
 	}
-	if r.Seed < 0 || r.Seed > MapCodeMaxSeed {
+	if recipe.Seed < 0 || recipe.Seed > MapCodeMaxSeed {
 		return Recipe{}, fmt.Errorf("seed must be between 0 and %d", MapCodeMaxSeed)
 	}
-	if len(r.Verbs) == 0 || len(r.Verbs) > 4 {
+	if len(recipe.Verbs) == 0 || len(recipe.Verbs) > 4 {
 		return Recipe{}, fmt.Errorf("verbs count invalid")
 	}
+
 	seen := map[string]bool{}
-	verbs := make([]string, 0, len(r.Verbs))
-	for _, verb := range r.Verbs {
+	verbs := make([]string, 0, len(recipe.Verbs))
+	for _, verb := range recipe.Verbs {
 		verb = strings.ToLower(strings.TrimSpace(verb))
 		if verb == "" || !allowedVerbs[verb] {
 			return Recipe{}, fmt.Errorf("unsupported verb: %s", verb)
@@ -138,24 +101,24 @@ func validate(r Recipe) (Recipe, error) {
 		seen[verb] = true
 		verbs = append(verbs, verb)
 	}
-	r.Verbs = verbs
-	return r, nil
+	recipe.Verbs = verbs
+	return recipe, nil
 }
 
-func Encode(r Recipe) (string, error) {
-	r, err := validate(r)
+func Encode(recipe Recipe) (string, error) {
+	recipe, err := validate(recipe)
 	if err != nil {
 		return "", err
 	}
 	fields := map[string]string{
-		"theme":      r.Theme,
-		"size":       fmt.Sprintf("%dx%d", r.Width, r.Height),
-		"verbs":      strings.Join(r.Verbs, ","),
-		"enemies":    strconv.Itoa(r.Enemies),
-		"treasures":  strconv.Itoa(r.Treasures),
-		"secrets":    strconv.Itoa(r.Secrets),
-		"difficulty": strconv.Itoa(r.Difficulty),
-		"seed":       strconv.Itoa(r.Seed),
+		"theme":      recipe.Theme,
+		"size":       fmt.Sprintf("%dx%d", recipe.Width, recipe.Height),
+		"verbs":      strings.Join(recipe.Verbs, ","),
+		"enemies":    strconv.Itoa(recipe.Enemies),
+		"treasures":  strconv.Itoa(recipe.Treasures),
+		"secrets":    strconv.Itoa(recipe.Secrets),
+		"difficulty": strconv.Itoa(recipe.Difficulty),
+		"seed":       strconv.Itoa(recipe.Seed),
 	}
 	parts := []string{MapCodePrefix}
 	for _, key := range fieldOrder {
@@ -169,6 +132,7 @@ func Parse(raw string) (Recipe, error) {
 	if len(code) < 1 || len(code) > MapCodeMaxLength {
 		return Recipe{}, fmt.Errorf("MapCode length must be 1..%d", MapCodeMaxLength)
 	}
+
 	parts := strings.Split(code, "|")
 	if len(parts) == 0 || strings.ToUpper(parts[0]) != MapCodePrefix {
 		return Recipe{}, fmt.Errorf("MapCode must start with %s", MapCodePrefix)
