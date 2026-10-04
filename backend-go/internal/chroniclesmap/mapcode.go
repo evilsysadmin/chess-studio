@@ -2,6 +2,7 @@ package chroniclesmap
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -37,6 +38,62 @@ var allowedVerbs = map[string]bool{
 
 var fieldOrder = []string{
 	"theme", "size", "verbs", "enemies", "treasures", "secrets", "difficulty", "seed",
+}
+
+var sizePattern = regexp.MustCompile(`^[0-9]{1,2}x[0-9]{1,2}package chroniclesmap
+
+import (
+	"fmt"
+	"regexp"
+	"strconv"
+	"strings"
+)
+
+const (
+	MapCodeVersion   = 1
+	MapCodePrefix    = "CM1"
+	MapCodeMaxLength = 256
+	MapCodeMaxSeed   = 2147483647
+)
+
+type Recipe struct {
+	Theme      string
+	Width      int
+	Height     int
+	Verbs      []string
+	Enemies    int
+	Treasures  int
+	Secrets    int
+	Difficulty int
+	Seed       int
+}
+
+var allowedThemes = map[string]bool{
+	"crypt": true, "gallery": true, "ash": true, "archive": true, "iron": true,
+	"basilica": true, "bell": true, "glass": true, "water": true,
+}
+
+var allowedVerbs = map[string]bool{
+	"hunt": true, "patrol": true, "lever": true, "sluice": true, "keys": true,
+	"traps": true, "treasure": true, "secret": true, "guardian": true, "puzzle": true,
+}
+
+)
+
+func parseDecimal(raw string, field string) (int, error) {
+	if raw == "" {
+		return 0, fmt.Errorf("%s must be an integer", field)
+	}
+	for _, char := range raw {
+		if char < '0' || char > '9' {
+			return 0, fmt.Errorf("%s must be an integer", field)
+		}
+	}
+	value, err := strconv.Atoi(raw)
+	if err != nil {
+		return 0, fmt.Errorf("%s must be an integer", field)
+	}
+	return value, nil
 }
 
 func validate(r Recipe) (Recipe, error) {
@@ -143,43 +200,37 @@ func Parse(raw string) (Recipe, error) {
 		}
 	}
 
-	size := strings.Split(strings.ToLower(fields["size"]), "x")
-	if len(size) != 2 {
+	sizeValue := strings.ToLower(fields["size"])
+	if !sizePattern.MatchString(sizeValue) {
 		return Recipe{}, fmt.Errorf("size must use WIDTHxHEIGHT")
 	}
-	width, err := strconv.Atoi(size[0])
+	size := strings.SplitN(sizeValue, "x", 2)
+	width, err := parseDecimal(size[0], "width")
 	if err != nil {
-		return Recipe{}, fmt.Errorf("width must be an integer")
+		return Recipe{}, err
 	}
-	height, err := strconv.Atoi(size[1])
+	height, err := parseDecimal(size[1], "height")
 	if err != nil {
-		return Recipe{}, fmt.Errorf("height must be an integer")
+		return Recipe{}, err
 	}
 
-	parseInt := func(field string) (int, error) {
-		value, err := strconv.Atoi(fields[field])
-		if err != nil {
-			return 0, fmt.Errorf("%s must be an integer", field)
-		}
-		return value, nil
-	}
-	enemies, err := parseInt("enemies")
+	enemies, err := parseDecimal(fields["enemies"], "enemies")
 	if err != nil {
 		return Recipe{}, err
 	}
-	treasures, err := parseInt("treasures")
+	treasures, err := parseDecimal(fields["treasures"], "treasures")
 	if err != nil {
 		return Recipe{}, err
 	}
-	secrets, err := parseInt("secrets")
+	secrets, err := parseDecimal(fields["secrets"], "secrets")
 	if err != nil {
 		return Recipe{}, err
 	}
-	difficulty, err := parseInt("difficulty")
+	difficulty, err := parseDecimal(fields["difficulty"], "difficulty")
 	if err != nil {
 		return Recipe{}, err
 	}
-	seed, err := parseInt("seed")
+	seed, err := parseDecimal(fields["seed"], "seed")
 	if err != nil {
 		return Recipe{}, err
 	}
