@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	chess "github.com/corentings/chess/v2"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
@@ -51,7 +52,7 @@ type lockedCPU struct {
 	calls int
 }
 
-func (c *lockedCPU) MoveForLevel(context.Context, string, float64) (string, error) {
+func (c *lockedCPU) MoveForGame(context.Context, []*chess.Position, float64) (string, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.calls++

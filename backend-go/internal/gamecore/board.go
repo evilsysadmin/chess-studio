@@ -212,6 +212,10 @@ func (b *Board) Position() *chess.Position { return b.positions[len(b.positions)
 // Moves returns the move stack.
 func (b *Board) Moves() []chess.Move { return append([]chess.Move(nil), b.moves...) }
 
+// Positions is the game from its real origin to the current position, oldest
+// first: what python-chess's move stack lets a search see for repetitions.
+func (b *Board) Positions() []*chess.Position { return append([]*chess.Position(nil), b.positions...) }
+
 func (b *Board) LegalMoves() []chess.Move { return b.Position().ValidMoves() }
 
 // Push plays a legal move (one returned by LegalMoves).

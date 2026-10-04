@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	chess "github.com/corentings/chess/v2"
 	"go.mongodb.org/mongo-driver/v2/bson"
 
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/gamestore"
@@ -85,11 +86,13 @@ type fakeCPU struct {
 	replies []string
 	err     error
 	calls   []string
+	plies   []int
 	levels  []float64
 }
 
-func (f *fakeCPU) MoveForLevel(_ context.Context, fen string, level float64) (string, error) {
-	f.calls = append(f.calls, fen)
+func (f *fakeCPU) MoveForGame(_ context.Context, positions []*chess.Position, level float64) (string, error) {
+	f.calls = append(f.calls, positions[len(positions)-1].String())
+	f.plies = append(f.plies, len(positions)-1)
 	f.levels = append(f.levels, level)
 	if f.err != nil {
 		return "", f.err
@@ -201,8 +204,10 @@ func TestMovePlaysHumanThenCPUAndPersistsWithCAS(t *testing.T) {
 	if len(got["history"].([]any)) != 2 || got["difficulty"] != float64(50) {
 		t.Fatalf("snapshot=%v", got)
 	}
-	if len(f.cpu.levels) != 1 || f.cpu.levels[0] != 50 || f.cpu.calls[0] != "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1" {
-		t.Fatalf("cpu calls=%v levels=%v", f.cpu.calls, f.cpu.levels)
+	// Matthias searches the whole game (origin + 1.e4), not a bare FEN.
+	if len(f.cpu.levels) != 1 || f.cpu.levels[0] != 50 || f.cpu.plies[0] != 1 ||
+		!strings.HasPrefix(f.cpu.calls[0], "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq") {
+		t.Fatalf("cpu calls=%v plies=%v levels=%v", f.cpu.calls, f.cpu.plies, f.cpu.levels)
 	}
 	doc := f.store.docs["g1"]
 	if !reflect.DeepEqual(doc["moves"], bson.A{"e4", "e5"}) || doc["pythonOnlyField"] != "keep-me" || doc["difficulty"] != int32(50) {

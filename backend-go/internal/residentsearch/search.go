@@ -54,7 +54,44 @@ func (s *Searcher) AnalyzeFEN(
 		return Snapshot{}, err
 	}
 	game := chess.NewGame(option)
-	return s.analyzeIterative(ctx, game.Position(), maxDepth, budget)
+	return s.analyzeIterative(ctx, game.Position(), nil, maxDepth, budget)
+}
+
+// AnalyzeGame searches the last position of a game whose earlier positions
+// (oldest first, the root last) still count for repetitions, as python-chess
+// does when the search runs on a board carrying the game's move stack.
+func (s *Searcher) AnalyzeGame(
+	ctx context.Context,
+	positions []*chess.Position,
+	maxDepth int,
+	budget time.Duration,
+) (Snapshot, error) {
+	if maxDepth < 1 {
+		return Snapshot{}, errors.New("max depth must be at least 1")
+	}
+	if len(positions) == 0 || positions[len(positions)-1] == nil {
+		return Snapshot{}, errors.New("game has no position")
+	}
+	return s.analyzeIterative(ctx, positions[len(positions)-1], positions[:len(positions)-1], maxDepth, budget)
+}
+
+// searchPath counts how often each position occurs on the line from the
+// game's start to the node being searched; offset is how many game plies
+// precede the search root.
+type searchPath struct {
+	counts map[uint64]int
+	offset int
+}
+
+func newSearchPath(root *chess.Position, history []*chess.Position) *searchPath {
+	path := &searchPath{counts: make(map[uint64]int, len(history)+16), offset: len(history)}
+	for _, pos := range history {
+		if pos != nil {
+			path.counts[pos.ZobristHash()]++
+		}
+	}
+	path.counts[root.ZobristHash()]++
+	return path
 }
 
 type ttFlag uint8
@@ -81,6 +118,7 @@ type ttEntry struct {
 func (s *Searcher) analyzeIterative(
 	ctx context.Context,
 	pos *chess.Position,
+	history []*chess.Position,
 	maxDepth int,
 	budget time.Duration,
 ) (Snapshot, error) {
@@ -100,7 +138,7 @@ func (s *Searcher) analyzeIterative(
 			}
 			return Snapshot{}, err
 		}
-		candidates, err := s.analyzeRootCandidates(ctx, pos, depth, deadline)
+		candidates, err := s.analyzeRootCandidates(ctx, pos, history, depth, deadline)
 		if err != nil {
 			if errors.Is(err, ErrTimeout) {
 				break
@@ -128,6 +166,7 @@ func (s *Searcher) analyzeIterative(
 func (s *Searcher) analyzeRootCandidates(
 	ctx context.Context,
 	pos *chess.Position,
+	history []*chess.Position,
 	depth int,
 	deadline time.Time,
 ) ([]Candidate, error) {
@@ -137,7 +176,7 @@ func (s *Searcher) analyzeRootCandidates(
 	}
 
 	tt := make(map[ttKey]ttEntry, 1024)
-	path := map[uint64]int{pos.ZobristHash(): 1}
+	path := newSearchPath(pos, history)
 	candidates := make([]Candidate, 0, len(moves))
 
 	for i := range moves {
@@ -180,7 +219,7 @@ func (s *Searcher) minimax(
 	ply int,
 	deadline time.Time,
 	tt map[ttKey]ttEntry,
-	path map[uint64]int,
+	path *searchPath,
 	inCheck bool,
 ) (float64, string, error) {
 	if err := s.checkDeadline(ctx, deadline); err != nil {
@@ -296,7 +335,7 @@ func (s *Searcher) quiescence(
 	ply int,
 	deadline time.Time,
 	depth int,
-	path map[uint64]int,
+	path *searchPath,
 	inCheck bool,
 ) (float64, error) {
 	if err := s.checkDeadline(ctx, deadline); err != nil {
@@ -428,7 +467,7 @@ func (s *Searcher) quiescence(
 	return best, nil
 }
 
-func terminalScore(pos *chess.Position, ply int, path map[uint64]int) (float64, bool) {
+func terminalScore(pos *chess.Position, ply int, path *searchPath) (float64, bool) {
 	switch pos.Status() {
 	case chess.Checkmate:
 		if pos.Turn() == chess.White {
@@ -439,11 +478,13 @@ func terminalScore(pos *chess.Position, ply int, path map[uint64]int) (float64, 
 		return 0, true
 	}
 
-	count := path[pos.ZobristHash()]
+	count := path.counts[pos.ZobristHash()]
 	if count >= 5 {
 		return 0, true
 	}
-	if ply >= 8 && count >= 3 {
+	// python-chess: len(board.move_stack) >= 8 and board.is_repetition(3),
+	// where the stack holds the game's own moves before the search's.
+	if path.offset+ply >= 8 && count >= 3 {
 		return 0, true
 	}
 	if pos.HalfMoveClock() >= 150 {
@@ -563,14 +604,14 @@ func rankCandidates(turn chess.Color, candidates []Candidate) {
 	})
 }
 
-func incrementPath(path map[uint64]int, hash uint64) {
-	path[hash]++
+func incrementPath(path *searchPath, hash uint64) {
+	path.counts[hash]++
 }
 
-func decrementPath(path map[uint64]int, hash uint64) {
-	path[hash]--
-	if path[hash] <= 0 {
-		delete(path, hash)
+func decrementPath(path *searchPath, hash uint64) {
+	path.counts[hash]--
+	if path.counts[hash] <= 0 {
+		delete(path.counts, hash)
 	}
 }
 
