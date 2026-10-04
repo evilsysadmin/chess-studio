@@ -186,7 +186,7 @@ jobs:
           {
             echo '### SHA acreditado para producción'
             echo "- SHA: \`${{ steps.accreditation.outputs.deploy_sha }}\`"
-            echo "- Source: \`Staging · AI Worker #${{ steps.source.outputs.staging_ai_run_id }}\`"
+            echo "- Source: \`Staging · accreditation #${{ steps.source.outputs.staging_ai_run_id }}\`"
             echo '- Schedule: `08:00 Europe/Madrid; workflow_dispatch para hotfix`'
             echo '- Snapshot: `fijo al arrancar; no persigue acreditaciones posteriores`'
             echo "- Deploy needed: \`${{ steps.production_state.outputs.should_deploy || 'false' }}\`"
