@@ -6,6 +6,58 @@ function material(color, metalness = 0.04, roughness = 0.78, extra = {}) {
   return new THREE.MeshStandardMaterial({ color, metalness, roughness, ...extra });
 }
 
+function makeWoodTexture() {
+  const size = 32;
+  const data = new Uint8Array(size * size * 4);
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      const i = (y * size + x) * 4;
+      const wave = Math.sin((x * .9) + Math.sin(y * .42) * 1.6);
+      const seam = ((y + Math.floor(x / 7)) % 11 === 0) ? -18 : 0;
+      const grain = Math.round(wave * 9) + seam;
+      data[i] = Math.max(20, 98 + grain);
+      data[i + 1] = Math.max(12, 58 + Math.round(grain * .62));
+      data[i + 2] = Math.max(8, 34 + Math.round(grain * .42));
+      data[i + 3] = 255;
+    }
+  }
+  const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(3.2, 1.15);
+  texture.needsUpdate = true;
+  return texture;
+}
+
+function addWallPanels(root, wood, brass) {
+  const group = new THREE.Group();
+  group.name = 'insights-training-room-wall-panels';
+  for (const x of [-8.15, -3.75, .05, 3.7, 8.05]) {
+    box(group, [.16, 6.25, .34], wood, [x, 2.42, 0], 'wall-pilaster');
+    box(group, [.24, .11, .42], brass, [x, 5.48, .03], 'wall-pilaster-cap');
+  }
+  for (const y of [.72, 5.38]) {
+    box(group, [17.1, .12, .34], wood, [0, y, 0], 'wall-panel-rail');
+  }
+  group.position.set(0, 0, -6.6);
+  root.add(group);
+}
+
+function addWindowArch(group, brass) {
+  const arch = new THREE.Mesh(
+    new THREE.TorusGeometry(2.15, .085, 8, 40, Math.PI),
+    brass,
+  );
+  arch.position.set(0, 5.72, .11);
+  arch.rotation.z = 0;
+  arch.name = 'window-arch';
+  group.add(arch);
+
+  box(group, [.14, 1.08, .28], brass, [-2.15, 5.28, .06], 'window-arch-left');
+  box(group, [.14, 1.08, .28], brass, [2.15, 5.28, .06], 'window-arch-right');
+}
+
 function box(root, size, mat, position, name = '') {
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(...size), mat);
   mesh.position.set(...position);
@@ -63,6 +115,7 @@ function addWindow(root, brass, night, moon, lite) {
   box(group, [.12, 5.8, .28], brass, [2.15, 2.9, .06], 'window-right');
   box(group, [4.42, .12, .28], brass, [0, .02, .06], 'window-bottom');
   box(group, [4.42, .12, .28], brass, [0, 5.78, .06], 'window-top');
+  addWindowArch(group, brass);
   box(group, [.1, 5.45, .22], brass, [0, 2.9, .12], 'window-mullion');
   box(group, [4.15, .1, .22], brass, [0, 2.8, .12], 'window-crossbar');
 
@@ -96,6 +149,14 @@ function addChair(root, leather, wood) {
   group.name = 'insights-training-room-empty-chair';
   box(group, [2.55, .5, 1.55], leather, [0, .72, 0], 'chair-seat');
   box(group, [2.8, 3.25, .42], leather, [0, 2.25, -.56], 'chair-back');
+  for (const y of [1.35, 2.05, 2.75]) {
+    for (const x of [-.82, 0, .82]) {
+      const stud = new THREE.Mesh(new THREE.SphereGeometry(.055, 8, 6), wood);
+      stud.position.set(x, y, -.31);
+      stud.name = 'chair-tuft';
+      group.add(stud);
+    }
+  }
   box(group, [.32, 2.9, .5], wood, [-1.48, 2.08, -.56], 'chair-left-post');
   box(group, [.32, 2.9, .5], wood, [1.48, 2.08, -.56], 'chair-right-post');
   box(group, [.28, 1.1, .28], wood, [-1.15, -.03, .48], 'chair-left-leg');
@@ -150,7 +211,7 @@ function addBankerLamp(root, brass, glass) {
   group.position.set(5.45, .76, -1.42);
   root.add(group);
 
-  const warm = new THREE.PointLight(0xffb665, .88, 7.5, 2);
+  const warm = new THREE.PointLight(0xffb665, 1.14, 8.5, 2);
   warm.position.set(5.2, 2.22, -1.1);
   warm.castShadow = false;
   warm.name = 'training-room-desk-lamp-light';
@@ -187,8 +248,9 @@ export function buildInsightsTrainingRoomLayer({ coarsePointer = false } = {}) {
   root.userData.noHumanFigures = true;
 
   const lite = Boolean(coarsePointer);
-  const wood = material(0x3b2517, .05, .64);
-  const woodDark = material(0x24150f, .03, .78);
+  const woodTexture = makeWoodTexture();
+  const wood = material(0xffffff, .05, .58, { map: woodTexture });
+  const woodDark = material(0x4a2b1e, .03, .72, { map: woodTexture });
   const leather = material(0x342119, .03, .56);
   const stone = material(0x4a4540, .01, .9);
   const brass = material(0xb58d45, .72, .26);
@@ -217,6 +279,12 @@ export function buildInsightsTrainingRoomLayer({ coarsePointer = false } = {}) {
   box(root, [20, .32, 20], stone, [0, -.72, -1.0], 'training-room-floor');
   box(root, [18.8, 7.3, .34], woodDark, [0, 2.65, -7.05], 'training-room-back-wall');
   box(root, [18.5, 1.35, .28], wood, [0, .18, -6.82], 'training-room-wainscot');
+  addWallPanels(root, wood, brass);
+
+  // A restrained rug and desk rail give the floor/desk a more authored,
+  // layered silhouette without adding a second interactive surface.
+  box(root, [10.8, .045, 5.4], material(0x381b20, .01, .93), [0, -.53, 1.45], 'training-room-rug');
+  box(root, [8.4, .02, 4.2], material(0x211c16, .01, .96), [0, -.5, 1.45], 'training-room-rug-inset');
 
   addBookcase(root, -5.55, wood, brass, books, lite);
   addWindow(root, brass, night, moon, lite);
