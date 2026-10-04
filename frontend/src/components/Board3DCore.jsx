@@ -115,8 +115,7 @@ function Board3DCanvas({
     hansDiagnosticsRequested,
     hansFireCallEnabled,
     warRoomVariant,
-    selectedSquare,
-    legalTargets,
+    selectedSquare, legalTargets, fen,
   };
 
   useEffect(() => {
