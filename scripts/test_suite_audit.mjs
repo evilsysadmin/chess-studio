@@ -257,6 +257,7 @@ if (checkCiWiring) {
     'actions/setup-go@v6',
     "PVP_MONGO_TEST_REQUIRED: '1'",
     'go test -race -short ./...',
+    'python scripts/chronicles_topology_parity_corpus.py --check',
     'python scripts/engine_parity_corpus.py --check',
     'python scripts/games_parity_corpus.py --check',
     'python scripts/games_ops_corpus.py --check',
