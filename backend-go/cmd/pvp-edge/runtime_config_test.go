@@ -46,3 +46,27 @@ func TestLoadNativeFeatureFlags(t *testing.T) {
 		t.Fatalf("unexpected default-enabled flags=%+v", flags)
 	}
 }
+
+func TestPythonUpstreamPrefersNeutralAlias(t *testing.T) {
+	t.Setenv("GO_PYTHON_UPSTREAM", "http://python-neutral:4000")
+	t.Setenv("PVP_PYTHON_UPSTREAM", "http://python-legacy:4000")
+	if got := pythonUpstream(); got != "http://python-neutral:4000" {
+		t.Fatalf("pythonUpstream()=%q", got)
+	}
+}
+
+func TestPythonUpstreamFallsBackToLegacyAlias(t *testing.T) {
+	t.Setenv("GO_PYTHON_UPSTREAM", "")
+	t.Setenv("PVP_PYTHON_UPSTREAM", "http://python-legacy:4000")
+	if got := pythonUpstream(); got != "http://python-legacy:4000" {
+		t.Fatalf("pythonUpstream()=%q", got)
+	}
+}
+
+func TestPythonUpstreamDefault(t *testing.T) {
+	t.Setenv("GO_PYTHON_UPSTREAM", "")
+	t.Setenv("PVP_PYTHON_UPSTREAM", "")
+	if got := pythonUpstream(); got != "http://127.0.0.1:4000" {
+		t.Fatalf("pythonUpstream()=%q", got)
+	}
+}
