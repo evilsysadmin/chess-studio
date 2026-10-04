@@ -15,6 +15,30 @@ describe('Chronicles enemy retaliation cues', () => {
     expect(chroniclesRetaliationCue(previous, next)).toBeNull();
   });
 
+  it('never performs legacy immediate retaliation while initiative combat is active', () => {
+    const adjacent = chroniclesReduce(createChroniclesState(), 'forward');
+    const previous = {
+      ...adjacent,
+      phase: 'combat',
+      initiative: {
+        version: 1,
+        die: '1d8',
+        round: 1,
+        cursor: 0,
+        order: [
+          { id: 'rook', kind: 'party', name: 'Hildegard', agility: 2, roll: 8, initiative: 10 },
+          { id: 'corrupted-pawn', kind: 'enemy', name: 'Peón corrompido', agility: 2, roll: 4, initiative: 6 },
+        ],
+      },
+    };
+    const hpBefore = previous.party.find((member) => member.id === 'rook').hp;
+    const next = attack(previous, 'rook');
+
+    expect(next.enemyHp).toBe(previous.enemyHp - 2);
+    expect(next.party.find((member) => member.id === 'rook').hp).toBe(hpBefore);
+    expect(chroniclesRetaliationCue(previous, next)).toBeNull();
+  });
+
   it('identifies the corrupted pawn when it actually damages the front line', () => {
     const start = createChroniclesState();
     const previous = chroniclesReduce(start, 'forward');
