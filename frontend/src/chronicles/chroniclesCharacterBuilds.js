@@ -15,13 +15,12 @@ export const CHRONICLES_CREATOR_ATTRIBUTE_KEYS = Object.freeze([
   'power',
   'precision',
   'will',
-  'agility',
 ]);
 
 export const CHRONICLES_CREATOR_RULES = Object.freeze({
   matthias: Object.freeze({
     classLabel: 'Espadachín',
-    allowedAttributes: Object.freeze(['vigor', 'power', 'will', 'agility']),
+    allowedAttributes: Object.freeze(['vigor', 'power', 'will']),
     startingSkills: Object.freeze([
       Object.freeze({
         id: 'matthias-keen-point',
@@ -39,7 +38,7 @@ export const CHRONICLES_CREATOR_RULES = Object.freeze({
   }),
   rook: Object.freeze({
     classLabel: 'Guardiana',
-    allowedAttributes: Object.freeze(['vigor', 'power', 'will', 'agility']),
+    allowedAttributes: Object.freeze(['vigor', 'power', 'will']),
     startingSkills: Object.freeze([
       Object.freeze({
         id: 'rook-bulwark-drill',
@@ -57,7 +56,7 @@ export const CHRONICLES_CREATOR_RULES = Object.freeze({
   }),
   bishop: Object.freeze({
     classLabel: 'Taumaturgo',
-    allowedAttributes: Object.freeze(['vigor', 'precision', 'will', 'agility']),
+    allowedAttributes: Object.freeze(['vigor', 'precision', 'will']),
     startingSkills: Object.freeze([
       Object.freeze({
         id: 'bishop-lumen-initiate',
@@ -75,7 +74,7 @@ export const CHRONICLES_CREATOR_RULES = Object.freeze({
   }),
   knight: Object.freeze({
     classLabel: 'Hostigador',
-    allowedAttributes: Object.freeze(['vigor', 'precision', 'will', 'agility']),
+    allowedAttributes: Object.freeze(['vigor', 'precision', 'will']),
     startingSkills: Object.freeze([
       Object.freeze({
         id: 'knight-marksman-drill',
@@ -164,7 +163,6 @@ export function chroniclesCreatorRuntimeModifiers(character) {
   const power = nonNegativeInteger(attributes.power);
   const precision = nonNegativeInteger(attributes.precision);
   const will = nonNegativeInteger(attributes.will);
-  const agility = nonNegativeInteger(attributes.agility);
 
   return {
     bonusMaxHp: vigor + nonNegativeInteger(skillModifiers.bonusMaxHp),
@@ -176,7 +174,6 @@ export function chroniclesCreatorRuntimeModifiers(character) {
       + Math.floor(will / 2)
       + nonNegativeInteger(skillModifiers.abilityPotencyBonus),
     abilityChargesBonus: nonNegativeInteger(skillModifiers.abilityCharges),
-    initiativeBonus: agility,
   };
 }
 
@@ -188,7 +185,6 @@ export function chroniclesCreatorMechanicalSummary(character) {
     ['reachBonus', modifiers.reachBonus, (value) => `+${value} alcance`],
     ['abilityPotencyBonus', modifiers.abilityPotencyBonus, (value) => `+${value} potencia de habilidad`],
     ['abilityChargesBonus', modifiers.abilityChargesBonus, (value) => `+${value} ${value === 1 ? 'carga' : 'cargas'} de habilidad`],
-    ['initiativeBonus', modifiers.initiativeBonus, (value) => `+${value} iniciativa`],
   ]
     .filter(([, value]) => Number(value) > 0)
     .map(([key, value, label]) => ({ key, value: Number(value), label: label(Number(value)) }));
@@ -390,7 +386,6 @@ export function resolveChroniclesCharacterParty(partyTemplates, rawBuild) {
       maxHp: Math.max(1, Number(template.maxHp || 1) + creatorModifiers.bonusMaxHp),
       damage: Math.max(1, Number(template.damage || 1) + creatorModifiers.attackDamageBonus),
       reach: Math.max(1, Number(template.reach || 1) + creatorModifiers.reachBonus),
-      agility: Math.max(0, Number(template.agility || 0) + creatorModifiers.initiativeBonus),
       characterBuild: {
         version: normalized.version,
         mode: normalized.mode,
