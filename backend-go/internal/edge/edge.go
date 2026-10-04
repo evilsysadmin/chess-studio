@@ -13,10 +13,11 @@ import (
 
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/gamesapi"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/pvproute"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/runtimeidentity"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/telemetry"
 )
 
-const serviceName = "chess-studio-pvp-go"
+const serviceName = runtimeidentity.LegacyPvPServiceName
 
 type Config struct {
 	UpstreamURL               string
@@ -264,6 +265,7 @@ func (h *Handler) statusPayload(status string) map[string]any {
 	payload := map[string]any{
 		"status":                    status,
 		"service":                   serviceName,
+		"runtimeService":            runtimeidentity.CanonicalServiceName,
 		"nativePulse":               h.nativePulse != nil,
 		"nativeLobbyRead":           h.nativeLobbyRead != nil,
 		"nativeRoster":              h.nativeRoster != nil,
