@@ -5,6 +5,7 @@ const PERFORMANCE_PROFILES = Object.freeze({
     slowFrameMs: 28,
     slowRatio: 0.25,
     p90FrameMs: 40,
+    badWindowsToDegrade: 3,
     nextLod: 'lite',
   }),
   lite: Object.freeze({
@@ -13,6 +14,7 @@ const PERFORMANCE_PROFILES = Object.freeze({
     slowFrameMs: 58,
     slowRatio: 0.30,
     p90FrameMs: 82,
+    badWindowsToDegrade: 3,
     nextLod: '2d',
   }),
 });
@@ -32,6 +34,7 @@ export function createHomeCastle3DPerformanceGovernor(lod) {
   let warmupSamples = 0;
   let samples = [];
   let degraded = false;
+  let consecutiveBadWindows = 0;
 
   return Object.freeze({
     observe(timestamp) {
@@ -56,14 +59,18 @@ export function createHomeCastle3DPerformanceGovernor(lod) {
       const slowFrames = samples.filter((value) => value >= profile.slowFrameMs).length;
       const slowRatio = slowFrames / samples.length;
       const p90FrameMs = percentile90(samples);
-      if (slowRatio >= profile.slowRatio || p90FrameMs >= profile.p90FrameMs) {
+      const badWindow = slowRatio >= profile.slowRatio || p90FrameMs >= profile.p90FrameMs;
+      consecutiveBadWindows = badWindow ? consecutiveBadWindows + 1 : 0;
+
+      // One ugly window is not enough to permanently lower quality. Browsers can
+      // briefly stall for GC, shader compilation, compositor work or OS scheduling.
+      // Require several consecutive bad windows so degradation represents a sustained
+      // condition rather than a transient hitch.
+      samples = samples.slice(Math.floor(samples.length / 2));
+      if (consecutiveBadWindows >= profile.badWindowsToDegrade) {
         degraded = true;
         return profile.nextLod;
       }
-
-      // Keep half the healthy history so degradation requires sustained jank,
-      // while still adapting if a device becomes hot or starts throttling later.
-      samples = samples.slice(Math.floor(samples.length / 2));
       return null;
     },
   });
