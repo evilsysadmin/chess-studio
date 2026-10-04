@@ -19,6 +19,7 @@ REQUIRED_CORS_HEADERS = {
     "x-request-id",
     "x-client-release",
     "x-presence-session",
+    "x-chronicles-party-level",
 }
 PVP_ROSTER_CORS_METHODS = {"POST", "DELETE", "OPTIONS"}
 PVP_ROSTER_CORS_HEADERS = {"authorization", "x-request-id", "x-client-release"}
