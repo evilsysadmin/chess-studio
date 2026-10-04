@@ -201,7 +201,7 @@ Resident moves are chosen by the Go port of the CPU engine (`internal/residentev
 
 - evaluation: ~6.5k seeded positions (every phase, mates, stalemates, insufficient material, 50-move rule) must evaluate to the same number in Go;
 - search: ~250 positions at fixed depth 2/3 (level-100 settings without randomness, noise or clock) must reach the same value, and Python's move must be one of Go's equally best moves. Ties may break differently because the two libraries generate moves in a different order;
-- `pvp-go.yml` regenerates the corpora with `--check` (Python 3.13 and the pinned `python-chess`) and runs both Go tests, so a change to either engine cannot drift silently.
+- the required `Quality · CI gate` Go lane always runs the committed-corpus Go tests, race/integration tests against disposable Mongo, vet and ARM64 build. Python 3.13 + pinned `python-chess` are only started to regenerate corpora with `--check` when the Python authority/generator or a parity fixture changes; a Go-only engine change still fails against the committed Python fixture if it drifts.
 
 The search corpus found one real divergence: the Go chess library tags en passant with `chess.EnPassant`, not `chess.Capture`, so the quiescence search, move ordering and position complexity skipped en passant captures. `chessrules.IsCapture` is the single capture test now.
 

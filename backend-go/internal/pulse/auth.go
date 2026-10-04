@@ -1,120 +1,39 @@
 package pulse
 
 import (
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/corspolicy"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/sessionauth"
 )
 
-var canonicalBrowserOrigins = [...]string{
-	"http://localhost:5173",
-	"http://127.0.0.1:5173",
-	"https://evilsysadmin.github.io",
-	"https://chess-studio.shadowops.dpdns.org",
-	"https://staging.chess-studio.shadowops.dpdns.org",
-}
-
-type tokenHeader struct {
-	Algorithm string `json:"alg"`
-}
-
-type tokenClaims struct {
-	Subject        string `json:"sub"`
-	Purpose        string `json:"purpose"`
-	SessionVersion *int64 `json:"sv"`
-	ExpiresAt      int64  `json:"exp"`
-}
+type tokenClaims = sessionauth.Claims
 
 func (h *Handler) authenticate(r *http.Request) (tokenClaims, error) {
 	header := strings.TrimSpace(r.Header.Get("Authorization"))
 	if !strings.HasPrefix(header, "Bearer ") {
 		return tokenClaims{}, errors.New("missing bearer token")
 	}
-	return verifySessionToken(strings.TrimSpace(strings.TrimPrefix(header, "Bearer ")), h.secret, h.now())
+	return sessionauth.Verify(strings.TrimSpace(strings.TrimPrefix(header, "Bearer ")), h.secret, h.now())
 }
 
-// VerifiedSubject is the subject of a valid session bearer token, or "".
-// It mirrors main._request_username: signature and expiry only, no Mongo,
-// for attributing access logs (never for authorisation).
+// Deprecated: cross-domain consumers should use sessionauth.VerifiedSubject.
+// Kept temporarily for PvP-local compatibility while the migration proceeds.
 func VerifiedSubject(authorization string, secret []byte, now time.Time) string {
-	header := strings.TrimSpace(authorization)
-	if !strings.HasPrefix(header, "Bearer ") || len(secret) == 0 {
-		return ""
-	}
-	claims, err := verifySessionToken(strings.TrimSpace(strings.TrimPrefix(header, "Bearer ")), secret, now)
-	if err != nil {
-		return ""
-	}
-	return claims.Subject
+	return sessionauth.VerifiedSubject(authorization, secret, now)
 }
 
-// VerifySession checks a session JWT (signature, purpose, expiry) and
-// returns its subject and session version (a missing "sv" is version 0), as
-// auth.verify_session_token does. Account existence is the caller's check.
+// Deprecated: cross-domain consumers should use sessionauth.VerifySession.
 func VerifySession(raw string, secret []byte, now time.Time) (string, int64, error) {
-	claims, err := verifySessionToken(raw, secret, now)
-	if err != nil {
-		return "", 0, err
-	}
-	version := int64(0)
-	if claims.SessionVersion != nil {
-		version = *claims.SessionVersion
-	}
-	return claims.Subject, version, nil
+	return sessionauth.VerifySession(raw, secret, now)
 }
 
-// CanonicalBrowserOrigins are the origins every native route accepts on top
-// of CORS_ORIGINS (the Python CORS middleware's defaults).
-func CanonicalBrowserOrigins() []string { return append([]string(nil), canonicalBrowserOrigins[:]...) }
-
-func verifySessionToken(raw string, secret []byte, now time.Time) (tokenClaims, error) {
-	parts := strings.Split(raw, ".")
-	if len(parts) != 3 {
-		return tokenClaims{}, errors.New("invalid JWT")
-	}
-	headerBytes, err := base64.RawURLEncoding.DecodeString(parts[0])
-	if err != nil {
-		return tokenClaims{}, err
-	}
-	var header tokenHeader
-	if err := json.Unmarshal(headerBytes, &header); err != nil || header.Algorithm != "HS256" {
-		return tokenClaims{}, errors.New("invalid JWT algorithm")
-	}
-	signature, err := base64.RawURLEncoding.DecodeString(parts[2])
-	if err != nil {
-		return tokenClaims{}, err
-	}
-	mac := hmac.New(sha256.New, secret)
-	_, _ = mac.Write([]byte(parts[0] + "." + parts[1]))
-	if !hmac.Equal(signature, mac.Sum(nil)) {
-		return tokenClaims{}, errors.New("invalid JWT signature")
-	}
-	payloadBytes, err := base64.RawURLEncoding.DecodeString(parts[1])
-	if err != nil {
-		return tokenClaims{}, err
-	}
-	var claims tokenClaims
-	if err := json.Unmarshal(payloadBytes, &claims); err != nil {
-		return tokenClaims{}, err
-	}
-	if strings.TrimSpace(claims.Subject) == "" {
-		return tokenClaims{}, errors.New("missing subject")
-	}
-	if claims.Purpose != "" && claims.Purpose != "session" {
-		return tokenClaims{}, errors.New("wrong token purpose")
-	}
-	if claims.SessionVersion != nil && *claims.SessionVersion < 0 {
-		return tokenClaims{}, errors.New("invalid session version")
-	}
-	if claims.ExpiresAt > 0 && !now.Before(time.Unix(claims.ExpiresAt, 0)) {
-		return tokenClaims{}, errors.New("expired token")
-	}
-	return claims, nil
+// Deprecated: cross-domain consumers should use corspolicy.CanonicalBrowserOrigins.
+func CanonicalBrowserOrigins() []string {
+	return corspolicy.CanonicalBrowserOrigins()
 }
 
 func (h *Handler) decorateResponse(w http.ResponseWriter, r *http.Request) {

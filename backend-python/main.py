@@ -560,7 +560,7 @@ app.add_middleware(
     # de que el PATCH llegue a FastAPI. Incógnito suele ocultar el problema
     # porque no trae la marca local dirty y sólo necesita el GET inicial.
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "Idempotency-Key", "X-API-Key", "X-Request-ID", "X-Client-Release", "X-Presence-Session"],
+    allow_headers=["Authorization", "Content-Type", "Idempotency-Key", "X-API-Key", "X-Request-ID", "X-Client-Release", "X-Presence-Session", "X-Chronicles-Party-Level"],
     expose_headers=["X-Request-ID"],
     max_age=600,
 )

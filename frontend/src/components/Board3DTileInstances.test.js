@@ -6,6 +6,7 @@ import {
   resolveBoard3DPointerSquare,
   squareFromBoard3DIntersection,
 } from './Board3DTileInstances.js';
+import { board3DMovableSquares } from './Board3DPointerPicking.js';
 
 describe('Board3D tile instances', () => {
   it('packs the 64 board squares into two shared-geometry batches', () => {
@@ -90,6 +91,32 @@ describe('Board3D tile instances', () => {
       legalTargets: [{ to: 'f7' }],
       preferLegalTargets: true,
     })).toBe('g6');
+  });
+
+
+  it('al elegir pieza, la casilla bajo el dedo gana si la pieza visible no puede mover', () => {
+    const tile = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 0.1, 1), new THREE.MeshBasicMaterial(), 1);
+    tile.userData.board3DSquares = ['e2'];
+    const king = new THREE.Group();
+    king.userData.square = 'e1';
+    const kingMesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
+    king.add(kingMesh);
+    // From white's camera the e1 king's crown covers the e2 tile.
+    const intersections = [
+      { object: kingMesh, distance: 2 },
+      { object: tile, instanceId: 0, distance: 3 },
+    ];
+    const opening = board3DMovableSquares('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
+    expect(opening.has('e2')).toBe(true);
+    expect(opening.has('e1')).toBe(false);
+    expect(resolveBoard3DPointerSquare(intersections, { movableSquares: opening })).toBe('e2');
+    // Both can move: the visible piece still wins.
+    expect(resolveBoard3DPointerSquare(intersections, { movableSquares: new Set(['e1', 'e2']) })).toBe('e1');
+    // Under the finger nothing movable: keep the visible hit.
+    expect(resolveBoard3DPointerSquare(intersections, { movableSquares: new Set(['d2']) })).toBe('e1');
+    // No position info: unchanged behaviour.
+    expect(resolveBoard3DPointerSquare(intersections)).toBe('e1');
+    expect(board3DMovableSquares('not a fen')).toBeNull();
   });
 
 });

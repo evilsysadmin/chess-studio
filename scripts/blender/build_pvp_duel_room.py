@@ -131,6 +131,9 @@ def palette():
             "PVP_MAT_fire_gold", (0.98, 0.18, 0.006, 1),
             rough=0.24, emission=(0.58, 0.055, 0.001, 1), emission_strength=0.48,
         ),
+        "contact_shadow": base.material(
+            "PVP_MAT_contact_shadow", (0.006, 0.005, 0.004, 1), rough=1.0,
+        ),
         "night": base.material(
             "PVP_MAT_moon_glass", (0.006, 0.018, 0.055, 1),
             rough=0.16, coat=0.46,
@@ -216,6 +219,100 @@ def build_floor_and_dais(static, p):
             (side * 3.05, -4.05, 0.105), (0.16, 1.55, 0.018),
             mat, static, bevel=0.035,
         )
+
+
+# War table under the live board. The squares end at +/-3.984 with their top at
+# BOARD_Z + 0.0525 (Board3DTileInstances: 0.984 x 0.105 boxes); coordinates
+# float at +/-4.68, 0.16 above the board. The rim stays below the squares and
+# inside that label ring, so it frames the board without hiding a square or a
+# coordinate. The pedestal fits the octagonal dais: the board (corners at
+# r~5.66) is wider than the dais, so a solid block would overhang the stone.
+DUEL_DAIS_TOP_Z = 0.35
+DUEL_TABLE_INNER = 4.02
+DUEL_TABLE_RIM_OUTER = 4.70
+DUEL_TABLE_TOP_HALF = 4.48
+DUEL_TABLE_RIM_TOP_Z = base.BOARD_Z + 0.030
+DUEL_PEDESTAL_RADIUS = 3.15
+
+
+def build_board_table(static, p):
+    """Iron-bound oak war table: the board rests in a framed top on a heavy pedestal."""
+    dais_top = DUEL_DAIS_TOP_Z
+    # Contact disc where the pedestal meets the dais: the runtime has no AO, and
+    # this dark matte footprint is what stops the table reading as floating.
+    base.cylinder("PVP_DUEL_board_contact_shadow", (0, 0, dais_top + 0.004),
+                  DUEL_PEDESTAL_RADIUS + 0.55, 0.008, p["contact_shadow"], static, vertices=8)
+
+    # Pedestal: octagonal oak drum on a stone foot, bound with black iron.
+    foot_h = 0.12
+    base.cylinder("PVP_DUEL_board_pedestal_foot", (0, 0, dais_top + foot_h / 2),
+                  DUEL_PEDESTAL_RADIUS + 0.22, foot_h, p["limestone"], static, vertices=8)
+    drum_bottom = dais_top + foot_h
+    drum_top = base.BOARD_Z - 0.20
+    base.cylinder("PVP_DUEL_board_pedestal", (0, 0, (drum_bottom + drum_top) / 2),
+                  DUEL_PEDESTAL_RADIUS, drum_top - drum_bottom, p["oak"], static, vertices=8)
+    for index, z in enumerate((drum_bottom + 0.07, drum_top - 0.07)):
+        base.cylinder(f"PVP_DUEL_board_pedestal_band_{index}", (0, 0, z),
+                      DUEL_PEDESTAL_RADIUS + 0.025, 0.05, p["iron"], static, vertices=8)
+
+    # Table top: a thick slab under the squares gives the board real depth.
+    top_bottom = drum_top
+    top_top = DUEL_TABLE_RIM_TOP_Z - 0.10
+    base.cube("PVP_DUEL_board_table_top", (0, 0, (top_bottom + top_top) / 2),
+              (DUEL_TABLE_TOP_HALF, DUEL_TABLE_TOP_HALF, (top_top - top_bottom) / 2),
+              p["oak"], static, bevel=0.035)
+    # Iron band around the slab edge (a thin, slightly larger slab = a strap).
+    base.cube("PVP_DUEL_board_table_strap", (0, 0, top_bottom + 0.05),
+              (DUEL_TABLE_TOP_HALF + 0.022, DUEL_TABLE_TOP_HALF + 0.022, 0.028),
+              p["iron"], static, bevel=0.010)
+
+    # Rim: four dark-oak bars around the squares, top just below the tiles.
+    inner, outer = DUEL_TABLE_INNER, DUEL_TABLE_RIM_OUTER
+    rim_half_z = 0.09
+    rim_z = DUEL_TABLE_RIM_TOP_Z - rim_half_z
+    rim_center = (inner + outer) / 2.0
+    rim_half = (outer - inner) / 2.0
+    for side in (-1, 1):
+        for axis, name in ((0, "x"), (1, "y")):
+            loc = [0.0, 0.0, rim_z]
+            half = [outer, outer, rim_half_z]
+            loc[1 - axis] = side * rim_center
+            half[1 - axis] = rim_half
+            base.cube(f"PVP_DUEL_board_rim_{name}_{side}", tuple(loc), tuple(half),
+                      p["oak_mid"], static, bevel=0.035)
+            # Brass fillet against the squares and an iron edge outside.
+            fillet = [0.0, 0.0, DUEL_TABLE_RIM_TOP_Z + 0.004]
+            fillet_half = [inner + 0.03, inner + 0.03, 0.010]
+            fillet[1 - axis] = side * (inner + 0.03)
+            fillet_half[1 - axis] = 0.034
+            base.cube(f"PVP_DUEL_board_fillet_{name}_{side}", tuple(fillet), tuple(fillet_half),
+                      p["brass"], static, bevel=0.006)
+            edge = [0.0, 0.0, rim_z]
+            edge_half = [outer + 0.02, outer + 0.02, rim_half_z + 0.012]
+            edge[1 - axis] = side * (outer + 0.01)
+            edge_half[1 - axis] = 0.026
+            base.cube(f"PVP_DUEL_board_edge_{name}_{side}", tuple(edge), tuple(edge_half),
+                      p["brass"], static, bevel=0.010)
+
+    # Iron corner brackets with brass bosses, low enough to stay out of the
+    # pieces' silhouettes from the play camera.
+    c = (inner + outer) / 2.0
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            base.cube(f"PVP_DUEL_board_corner_{sx}_{sy}", (sx * c, sy * c, DUEL_TABLE_RIM_TOP_Z + 0.012),
+                      (0.30, 0.30, 0.020), p["iron"], static, bevel=0.012)
+            base.sphere(f"PVP_DUEL_board_corner_boss_{sx}_{sy}", (sx * c, sy * c, DUEL_TABLE_RIM_TOP_Z + 0.05),
+                        0.105, p["brass"], static, scale=(1.0, 1.0, 0.62))
+
+    # Duelist heraldry on the near apron, facing the player camera: red left,
+    # blue right, matching the seats and banners. Restrained, not an esports carpet.
+    apron_y = -(DUEL_TABLE_TOP_HALF + 0.03)
+    apron_z = (top_bottom + top_top) / 2
+    for side, mat, label in ((-1, p["red"], "red"), (1, p["blue"], "blue")):
+        base.cube(f"PVP_DUEL_board_crest_{label}_frame", (side * 2.2, apron_y, apron_z),
+                  (0.30, 0.020, 0.105), p["brass"], static, bevel=0.010)
+        base.cube(f"PVP_DUEL_board_crest_{label}", (side * 2.2, apron_y - 0.012, apron_z),
+                  (0.26, 0.014, 0.080), mat, static, bevel=0.008)
 
 
 def build_architecture(static, p):
@@ -1068,6 +1165,7 @@ def apply_identity():
     clear_inherited_room(static)
     p = palette()
     build_floor_and_dais(static, p)
+    build_board_table(static, p)
     build_architecture(static, p)
     build_vault_and_chains(static, p)
     build_duel_banners(static, p)
@@ -1089,6 +1187,12 @@ def validate_scene():
         "WR_ANCHOR_board_origin",
         "PVP_ROOM_floor",
         "PVP_DUEL_dais",
+        "PVP_DUEL_board_table_top",
+        "PVP_DUEL_board_pedestal",
+        "PVP_DUEL_board_contact_shadow",
+        "PVP_DUEL_board_rim_x_-1",
+        "PVP_DUEL_board_crest_red",
+        "PVP_DUEL_board_crest_blue",
         "PVP_DUEL_banner_red",
         "PVP_DUEL_banner_blue",
         "PVP_DUEL_teutonic_cross",
@@ -1271,6 +1375,29 @@ def validate_scene():
             raise RuntimeError(
                 f"PvP Duel Room prop oversized in hero framing: {prefix} width={projected_width:.3f}"
             )
+
+    # The table frames the live board but never covers it: nothing of the table
+    # may rise above the live squares' top inside the board, and the rim stays
+    # inside the coordinate ring.
+    tile_top = base.BOARD_Z + 0.0525
+    for obj in bpy.context.scene.objects:
+        if obj.type != "MESH" or not obj.name.startswith("PVP_DUEL_board_"):
+            continue
+        corners = [obj.matrix_world @ Vector(corner) for corner in obj.bound_box]
+        top = max(co.z for co in corners)
+        min_x, max_x = min(co.x for co in corners), max(co.x for co in corners)
+        min_y, max_y = min(co.y for co in corners), max(co.y for co in corners)
+        over_squares = min_x < 3.98 and max_x > -3.98 and min_y < 3.98 and max_y > -3.98
+        if over_squares and top > tile_top - 0.010:
+            raise RuntimeError(f"PvP Duel Room table rises over the live squares: {obj.name} top={top:.3f}")
+        if top > tile_top + 0.12:
+            raise RuntimeError(f"PvP Duel Room table too tall around the board: {obj.name} top={top:.3f}")
+        reach = max(abs(min_x), abs(max_x), abs(min_y), abs(max_y))
+        if reach > 4.76:
+            raise RuntimeError(f"PvP Duel Room table spills past its frame: {obj.name} reach={reach:.3f}")
+    pedestal = bpy.data.objects["PVP_DUEL_board_pedestal"]
+    if max(abs((pedestal.matrix_world @ Vector(c)).x) for c in pedestal.bound_box) > DUEL_DAIS_RADIUS * 0.93:
+        raise RuntimeError("PvP Duel Room pedestal overhangs the dais")
 
     forbidden = sorted(name for name in names if name.startswith(("WR_ARCH_", "WR_CANON_", "WR3_OBS_")))
     if forbidden:

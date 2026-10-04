@@ -111,7 +111,7 @@ describe('War Room staging variant', () => {
     expect(WAR_ROOM_VARIANTS.map(({ id }) => id)).toEqual(['classic', 'v2', 'v3', 'v4']);
     expect(warRoomVariantDefinition('v4').shell).toBe('blender');
     expect(warRoomVariantRuntimeModelUrl('v4', { buildSha: 'abc123' }))
-      .toBe('https://assets.chess-studio.shadowops.dpdns.org/war-room/v4/runtime/current.glb?build=abc123');
+      .toBe('https://assets.chess-studio.shadowops.dpdns.org/war-room/v4/runtime/war-room-v4-shell-58e5243dcf0b39d7.glb');
     expect(warRoomVariantDefinition('classic').shell).toBe('procedural');
     expect(warRoomVariantDefinition('v2').shell).toBe('blender');
     expect(warRoomVariantDefinition('v3').shell).toBe('blender');
@@ -122,12 +122,14 @@ describe('War Room staging variant', () => {
 
   it('owns cacheable runtime model URLs before the scene mounts', () => {
     expect(warRoomVariantRuntimeModelUrl('v2', { buildSha: 'abc123' }))
-      .toBe('https://assets.chess-studio.shadowops.dpdns.org/war-room/v2/runtime/current.glb?build=abc123');
+      .toBe('https://assets.chess-studio.shadowops.dpdns.org/war-room/v2/runtime/war-room-premium-shell-c8c6d324d0dec87e.glb');
     expect(warRoomVariantRuntimeModelUrl('v3', { buildSha: 'abc123' }))
-      .toBe('https://assets.chess-studio.shadowops.dpdns.org/war-room/v3/runtime/current.glb?build=abc123');
+      .toBe('https://assets.chess-studio.shadowops.dpdns.org/war-room/v3/runtime/war-room-v3-shell-5f7b69a8b8681b37.glb');
     expect(warRoomVariantRuntimeModelUrl('duel', { buildSha: 'abc123' }))
-      .toBe('https://assets.chess-studio.shadowops.dpdns.org/pvp/duel-room/runtime/pvp-duel-room-shell-bc8849ca70350d00.glb');
-    expect(warRoomVariantDefinition('duel')).toMatchObject({ cacheBustBuild: false });
+      .toBe('https://assets.chess-studio.shadowops.dpdns.org/pvp/duel-room/runtime/pvp-duel-room-shell-b644b06d0c522690.glb');
+    for (const id of ['v2', 'v3', 'v4', 'duel']) {
+      expect(warRoomVariantDefinition(id)).toMatchObject({ cacheBustBuild: false });
+    }
     expect(warRoomVariantRuntimeModelUrl('classic', { buildSha: 'abc123' })).toBeNull();
   });
 

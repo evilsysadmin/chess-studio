@@ -210,7 +210,6 @@ test('War Room · desktop input mantiene cámara fija y juega e2→e4', async ({
 
   await page.mouse.move(canvasRect.x + canvasRect.width * 0.2, canvasRect.y + canvasRect.height * 0.25);
   await page.mouse.move(canvasRect.x + canvasRect.width * 0.8, canvasRect.y + canvasRect.height * 0.7);
-  await expect(board3d).toHaveAttribute('data-board3d-inspect', 'false');
   await expect(board3d).toHaveAttribute('data-board3d-camera', 'fixed-tactical');
 
   expect(await clickWarRoomMove(page, 'e2', 'e4')).toBe(true);

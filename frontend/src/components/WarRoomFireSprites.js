@@ -31,13 +31,18 @@ export function hideBakedHearthFlames(root, anchors, { radius = 1.4, maxY = 3.2 
     if (at.y > maxY || !centres.some((c) => Math.abs(c.x - at.x) < radius)) return;
     if (Array.isArray(mesh.material)) {
       const original = mesh.material;
+      const hiddenMaterials = [];
       mesh.material = original.map((material) => {
         if (!BAKED_FLAME_MATERIAL.test(material?.name || '')) return material;
         const hidden = material.clone();
         hidden.visible = false;
+        hiddenMaterials.push(hidden);
         return hidden;
       });
-      undo.push(() => { mesh.material = original; });
+      undo.push(() => {
+        mesh.material = original;
+        hiddenMaterials.forEach((material) => material.dispose?.());
+      });
     } else {
       const was = mesh.visible;
       mesh.visible = false;
@@ -112,7 +117,10 @@ export function installWarRoomV3StoveFireSprites(flames, { coarsePointer = false
       return clone;
     });
     flame.material = Array.isArray(original) ? faded : faded[0];
-    return () => { flame.material = original; };
+    return () => {
+      flame.material = original;
+      faded.forEach((material) => material.dispose?.());
+    };
   });
   return () => {
     restore.forEach((fn) => fn());

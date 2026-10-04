@@ -208,7 +208,11 @@ def test_run_creation_binds_server_seed_and_manifest_revision(monkeypatch):
     assert response.status_code == 201
     run = response.json()
     manifest, _authored_revision = chronicles_api.load_chronicles_manifest("gallery-of-forks")
-    expected_area = chronicles_api.chronicles_area_envelope("gallery-of-forks", run["seed"])
+    expected_area = chronicles_api.chronicles_area_envelope(
+        "gallery-of-forks",
+        run["seed"],
+        content_placement_version=run["contentPlacementVersion"],
+    )
     assert 0 <= run["seed"] <= 2_147_483_647
     assert run["currentMapId"] == "gallery-of-forks"
     assert run["contentVersion"] == manifest["version"]

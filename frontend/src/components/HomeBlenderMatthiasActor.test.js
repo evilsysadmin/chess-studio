@@ -8,6 +8,10 @@ import {
   HOME_MATTHIAS_ARM_POSES,
   HOME_MATTHIAS_POSTURES,
   HOME_MATTHIAS_PROP_ANCHORS,
+  HOME_MATTHIAS_BLANKET,
+  HOME_MATTHIAS_SLEEP_FACE,
+  homeMatthiasZzzFrame,
+  HOME_MATTHIAS_LIE_POSE,
   homeMatthiasActorRoutine,
   homeMatthiasActorStationForProfile,
   homeMatthiasBlanketProfile,
@@ -157,6 +161,53 @@ describe('Home Matthias in-scene actor', () => {
     expect(skirt).toBeGreaterThan(0.25);
     expect(waist).toBeGreaterThan(skirt);
     expect(feet).toBeGreaterThan(0.2);
+  });
+
+  it('drapes the blanket wide over the cushion instead of a tube', () => {
+    const body = homeMatthiasBlanketProfile(0.4) + 0.06;
+    // The dome is wider than it is tall, and the sheet reaches past it.
+    expect(HOME_MATTHIAS_BLANKET.spreadX * body).toBeGreaterThan(HOME_MATTHIAS_BLANKET.rise * body * 1.4);
+    expect(HOME_MATTHIAS_BLANKET.width / 2).toBeGreaterThan(HOME_MATTHIAS_BLANKET.spreadX * body);
+  });
+
+  it('sleeps bald with closed eyes and drifting Z\'s', () => {
+    expect(HOME_MATTHIAS_SLEEP_FACE.closedEyeScale).toBeLessThan(0.25);
+    const frames = [0, 1, 2].map((index) => homeMatthiasZzzFrame(1.3, index));
+    // Staggered along the climb, never all at once.
+    expect(new Set(frames.map((frame) => frame.t.toFixed(2))).size).toBe(3);
+    const start = homeMatthiasZzzFrame(0.01, 0);
+    const late = homeMatthiasZzzFrame(HOME_MATTHIAS_SLEEP_FACE.zzz.period * 0.6, 0);
+    expect(late.rise).toBeGreaterThan(start.rise);
+    expect(late.scale).toBeGreaterThan(start.scale);
+    expect(start.opacity).toBeLessThan(0.2);
+    expect(homeMatthiasZzzFrame(HOME_MATTHIAS_SLEEP_FACE.zzz.period * 0.99, 0).opacity).toBeLessThan(0.1);
+  });
+
+  it('holds props with the elbows down, never chicken-winged towards the cap', () => {
+    // These angles replace the rig bone rotation: ~150 deg on x hangs the arm
+    // (elbow below the shoulder), small values raised it towards the head.
+    // Solved and measured on matthias-home-canonical.glb.
+    for (const [profile, sides] of Object.entries(HOME_MATTHIAS_ARM_POSES)) {
+      for (const pose of Object.values(sides)) {
+        expect(pose.upper[0], profile).toBeGreaterThanOrEqual(140);
+        expect(pose.upper[0], profile).toBeLessThanOrEqual(170);
+        expect(pose.fore[0], profile).toBeLessThan(0);
+        if (pose.raise) expect(pose.raise.upper[0], `${profile} raise`).toBeGreaterThanOrEqual(100);
+      }
+    }
+  });
+
+  it('sleeps with slack arms along the flank, never pointing at the ceiling', () => {
+    // The lie override replaces the arm bone rotation outright: 0 deg points
+    // the canonical rig's arm at the head, ~180 deg hangs it to the hip.
+    // Measured on matthias-home-canonical.glb: 150/-10/20 drops each glove
+    // ~0.45 rig units below its shoulder; the old 38/22/64 fold kept them at
+    // the chest, which lying on the side means pointing at the ceiling.
+    const { upperPitchDeg, upperSplayDeg, forePitchDeg } = HOME_MATTHIAS_LIE_POSE.arms;
+    expect(upperPitchDeg).toBeGreaterThanOrEqual(120);
+    expect(upperPitchDeg).toBeLessThanOrEqual(170);
+    expect(Math.abs(upperSplayDeg)).toBeLessThanOrEqual(20);
+    expect(forePitchDeg).toBeLessThanOrEqual(45);
   });
 
   it('converts the authored Blender frame to the runtime Y-up frame', () => {

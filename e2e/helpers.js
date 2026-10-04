@@ -41,6 +41,7 @@ async function chroniclesE2ERunPayload({
   operationKey = 'anonymous',
   seed = 417,
   currentMapId = 'crypt-eight-squares',
+  status = 'active',
 } = {}) {
   const manifests = await chroniclesE2EManifests();
   const areas = CHRONICLES_E2E_MAP_IDS.map((mapId, index) => {
@@ -57,16 +58,28 @@ async function chroniclesE2ERunPayload({
     };
   });
   const area = areas.find((entry) => entry.mapId === currentMapId);
+  const defeated = status === 'defeated';
   return {
     runId: `e2e-chronicles-${operationKey}`,
     seed,
     currentMapId,
     contentVersion: area.contentVersion,
     manifestRevision: area.manifestRevision,
-    status: 'active',
+    status,
     worldVersion: 0,
     consumedContentIds: [],
     claimedRewards: [],
+    ...(defeated ? {
+      worldFlags: {
+        '__chrRuntime.version': 1,
+        '__chrRuntime.phase': 'defeated',
+        '__chrRuntime.turnPhase': 'party',
+        '__chrRuntime.party.matthias.hp': 0,
+        '__chrRuntime.party.rook.hp': 0,
+        '__chrRuntime.party.bishop.hp': 0,
+        '__chrRuntime.party.knight.hp': 0,
+      },
+    } : {}),
     area,
     areas,
   };
@@ -195,6 +208,7 @@ export async function mockApi(page, {
   requestLog = [],
   chroniclesRunFailureStatus = 0,
   chroniclesCurrentMapId = 'crypt-eight-squares',
+  chroniclesRunStatus = 'active',
 } = {}) {
   // Seed tutorials as seen so overlays cannot intercept unrelated E2E clicks.
   let profileData = {
@@ -257,6 +271,7 @@ export async function mockApi(page, {
         operationKey,
         seed: nextChroniclesSeed++,
         currentMapId: chroniclesCurrentMapId,
+        status: chroniclesRunStatus,
       });
       chroniclesRuns.set(operationKey, payload);
       return json(payload, 201);

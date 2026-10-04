@@ -222,8 +222,17 @@ test('sesión · dos contextos de navegador del mismo usuario son independientes
     expect(presenceB).toBeTruthy();
     expect(presenceA).not.toBe(presenceB);
 
-    await pageA.getByRole('button', { name: 'Abrir menú de cuenta', exact: true }).click();
-    await pageA.getByRole('menuitem', { name: /Cerrar sesión/ }).click();
+    // Two software-rendered 3D Homes share one GPU process on CI, so page A
+    // can go >12s without an animation frame while B compiles shaders. A
+    // regular click() waits for rAF-based stability and never returns
+    // (bringToFront did not help). This journey is about session isolation,
+    // not motion: assert visibility, then dispatch the clicks.
+    const accountA = pageA.getByRole('button', { name: 'Abrir menú de cuenta', exact: true });
+    await expect(accountA).toBeVisible();
+    await accountA.dispatchEvent('click');
+    const logoutA = pageA.getByRole('menuitem', { name: /Cerrar sesión/ });
+    await expect(logoutA).toBeVisible();
+    await logoutA.dispatchEvent('click');
     await expect(pageA.getByRole('heading', { name: 'Iniciar sesión', exact: true })).toBeVisible();
     await expect(pageB.getByRole('region', { name: 'Modos principales' })).toBeVisible();
   } finally {
@@ -435,7 +444,7 @@ test('Escuela de Matthias · el primer movimiento se aprende hands-on y persiste
   await dismissHomeGuide(page);
   await buttonWithHeading(page, 'Escuela de Matthias').click();
 
-  await expect(page.getByText('CLASS ROOM', { exact: true })).toBeVisible();
+  await expect(page.locator('.tutorial-shell.matthias-school-shell')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'El peón avanza', exact: true })).toBeVisible();
   await expect(page.getByText('Lleve el peón blanco de e2 a e4.', { exact: true })).toBeVisible();
   await clickBoardMove(page, 'e2', 'e4');
@@ -444,7 +453,7 @@ test('Escuela de Matthias · el primer movimiento se aprende hands-on y persiste
   await expect(page.getByRole('button', { name: 'Siguiente lección', exact: true })).toBeEnabled();
 
   await page.reload();
-  await expect(page.getByText('CLASS ROOM', { exact: true })).toBeVisible();
+  await expect(page.locator('.tutorial-shell.matthias-school-shell')).toBeVisible();
   await page.getByRole('button', { name: 'Plan de estudios', exact: true }).click();
   await expect(page.getByLabel(/0 de 7 cursos aprobados; 1 de .* lecciones completadas/i)).toBeVisible();
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('chess-study-matthias-school-v1') || '{}')['pawn-double-step']?.completed)).toBe(true);

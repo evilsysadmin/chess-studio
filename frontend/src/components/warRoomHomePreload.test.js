@@ -3,13 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const {
   getBoardRenderer,
   preloadBoard3DRenderer,
-  isWarRoomVariantSelectable,
   loadWarRoomVariant,
   prefetchWarRoomVariant,
 } = vi.hoisted(() => ({
   getBoardRenderer: vi.fn(() => '3d'),
   preloadBoard3DRenderer: vi.fn(() => Promise.resolve({ default: () => null })),
-  isWarRoomVariantSelectable: vi.fn(() => true),
   loadWarRoomVariant: vi.fn(() => 'v3'),
   prefetchWarRoomVariant: vi.fn(() => Promise.resolve(true)),
 }));
@@ -17,13 +15,6 @@ const {
 vi.mock('../userPreferences.js', () => ({ getBoardRenderer }));
 vi.mock('./Board3DRegistration.js', () => ({ preloadBoard3DRenderer }));
 vi.mock('./WarRoomVariant.js', () => ({
-  WAR_ROOM_VARIANTS: [
-    { id: 'classic', shell: 'procedural' },
-    { id: 'v2', shell: 'blender' },
-    { id: 'v3', shell: 'blender' },
-    { id: 'v4', shell: 'blender' },
-  ],
-  isWarRoomVariantSelectable,
   loadWarRoomVariant,
   prefetchWarRoomVariant,
 }));
@@ -31,7 +22,6 @@ vi.mock('./WarRoomVariant.js', () => ({
 import {
   preloadPreferredWarRoomFromHome,
   schedulePreferredWarRoomHomePreload,
-  shouldPreloadAllWarRoomsFromHome,
   shouldPreloadWarRoomFromHome,
 } from './warRoomHomePreload.js';
 
@@ -51,7 +41,6 @@ describe('authenticated Home War Room preload', () => {
   beforeEach(() => {
     getBoardRenderer.mockReset().mockReturnValue('3d');
     preloadBoard3DRenderer.mockReset().mockResolvedValue({ default: () => null });
-    isWarRoomVariantSelectable.mockReset().mockReturnValue(true);
     loadWarRoomVariant.mockReset().mockReturnValue('v3');
     prefetchWarRoomVariant.mockReset().mockResolvedValue(true);
   });
@@ -111,65 +100,8 @@ describe('authenticated Home War Room preload', () => {
       boardRenderer: '3d',
     };
     expect(shouldPreloadWarRoomFromHome(options)).toBe(true);
-    expect(shouldPreloadAllWarRoomsFromHome(options)).toBe(true);
   });
 
-  it('keeps the all-room sweep desktop-only and disabled behind the rollback flag', () => {
-    const desktop = {
-      windowRef: mobileWindow({
-        innerWidth: 1440,
-        matchMedia: vi.fn(() => ({ matches: true })),
-      }),
-      documentRef: { visibilityState: 'visible' },
-      navigatorRef: { maxTouchPoints: 0, connection: { effectiveType: '4g', saveData: false } },
-      boardRenderer: '3d',
-    };
-    expect(shouldPreloadAllWarRoomsFromHome(desktop)).toBe(true);
-
-    expect(shouldPreloadAllWarRoomsFromHome({
-      ...desktop,
-      windowRef: mobileWindow({ innerWidth: 430 }),
-      navigatorRef: { maxTouchPoints: 5, connection: { effectiveType: '4g', saveData: false } },
-    })).toBe(false);
-
-    isWarRoomVariantSelectable.mockReturnValueOnce(false);
-    expect(shouldPreloadAllWarRoomsFromHome(desktop)).toBe(false);
-  });
-
-  it('preloads the remaining Blender rooms one-by-one in later desktop idle slots', async () => {
-    const idleCallbacks = [];
-    const windowRef = mobileWindow({
-      innerWidth: 1440,
-      matchMedia: vi.fn(() => ({ matches: true })),
-      requestIdleCallback: vi.fn((callback) => {
-        idleCallbacks.push(callback);
-        return idleCallbacks.length;
-      }),
-    });
-    const options = {
-      windowRef,
-      documentRef: { visibilityState: 'visible' },
-      navigatorRef: { maxTouchPoints: 0, connection: { effectiveType: '4g', saveData: false } },
-      boardRenderer: '3d',
-    };
-
-    const cancel = schedulePreferredWarRoomHomePreload(options);
-    expect(idleCallbacks).toHaveLength(1);
-
-    idleCallbacks.shift()();
-    await vi.waitFor(() => expect(prefetchWarRoomVariant).toHaveBeenCalledWith('v3'));
-    await vi.waitFor(() => expect(idleCallbacks).toHaveLength(1));
-
-    idleCallbacks.shift()();
-    await vi.waitFor(() => expect(prefetchWarRoomVariant).toHaveBeenCalledWith('v2'));
-    await vi.waitFor(() => expect(idleCallbacks).toHaveLength(1));
-
-    idleCallbacks.shift()();
-    await vi.waitFor(() => expect(prefetchWarRoomVariant).toHaveBeenCalledWith('v4'));
-    expect(prefetchWarRoomVariant.mock.calls.map(([variant]) => variant)).toEqual(['v3', 'v2', 'v4']);
-
-    cancel();
-  });
 
   it('uses a short timer when requestIdleCallback is unavailable', async () => {
     let timerCallback = null;

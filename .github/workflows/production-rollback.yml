@@ -84,8 +84,8 @@ jobs:
             -f per_page=100 \
             > "$runs_file"
 
-          # Legacy audit/history marker: -f event=workflow_run
-          # Legacy promotions before the release train had row.get('event') == 'workflow_run'
+          # Preserve enough run metadata to support both release-train records
+          # and historical workflow_run promotions.
           mapfile -t runs < <(python3 - "$runs_file" <<'PY'
           import json, pathlib, sys
           payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
@@ -376,7 +376,7 @@ jobs:
         working-directory: rollback-source/frontend
         env:
           VITE_API_URL: ${{ env.PRODUCTION_API_URL }}
-          # Same as staging: the War Room «…» menu offers v1/v2/v3 and v2 is the default. Removing
+          # Same as staging: the War Room «…» menu offers v1/v2/v3/v4 and v3 is the default. Removing
           # this line is the rollback lever (everyone is back on the classic room).
           VITE_WAR_ROOM_VARIANTS_ENABLE: '1'
           VITE_PUBLIC_BASE: /

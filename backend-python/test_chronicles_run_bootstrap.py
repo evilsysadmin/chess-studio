@@ -41,6 +41,11 @@ def test_run_creation_returns_bound_area_in_same_response(monkeypatch):
     assert area["mapCode"].endswith(f"|seed={payload['seed']}")
     assert area["generatorVersion"] == 2
     assert area["manifest"]["generation"]["layoutRevision"] == area["layoutRevision"]
+    assert payload["contentPlacementVersion"] == 2
+    assert area["manifest"]["generation"]["contentPlacementVersion"] == 2
+    assert len(area["manifest"]["generation"]["contentPlacementRevision"]) == 64
+    exit_position = area["manifest"]["generation"]["exitPosition"]
+    assert area["manifest"]["grid"][exit_position["y"]][exit_position["x"]] == "X"
 
     areas = payload["areas"]
     expected_ids = list(chronicles_api.chronicles_shipped_map_ids())
@@ -261,3 +266,174 @@ def test_idempotent_run_bootstrap_replays_identical_area(monkeypatch):
     assert first.status_code == 201
     assert repeated.status_code == 201
     assert repeated.json() == first.json()
+
+
+
+def test_run_difficulty_snapshot_scales_encounter_and_persists_party_level(monkeypatch):
+    async def no_collection():
+        return None
+
+    chronicles_run_store._memory_runs.clear()
+    monkeypatch.setattr(chronicles_run_store, "_collection", no_collection)
+    client = _client()
+    headers = {
+        "Authorization": "Bearer test-token",
+        "Idempotency-Key": "chronicles-difficulty-bootstrap-0001",
+        "X-Chronicles-Party-Level": "1",
+    }
+
+    response = client.post(
+        "/api/chronicles/runs",
+        headers=headers,
+        json={"mapId": "blind-king-archive"},
+    )
+
+    assert response.status_code == 201
+    payload = response.json()
+    assert payload["partyLevel"] == 1
+    assert payload["area"]["difficulty"]["partyLevel"] == 1
+    assert payload["area"]["difficulty"]["depth"] == 0
+    assert payload["area"]["difficulty"]["targetLevel"] == 1
+    assert payload["area"]["difficulty"]["appliedDelta"] == -1
+
+    warden = next(
+        enemy
+        for enemy in payload["area"]["manifest"]["enemies"]
+        if enemy["id"] == "ledger-warden"
+    )
+    assert warden["maxHp"] == 8
+    assert warden["retaliation"] == 1
+
+
+def test_run_difficulty_snapshot_is_idempotent_when_profile_levels_change(monkeypatch):
+    async def no_collection():
+        return None
+
+    chronicles_run_store._memory_runs.clear()
+    monkeypatch.setattr(chronicles_run_store, "_collection", no_collection)
+    client = _client()
+    base_headers = {
+        "Authorization": "Bearer test-token",
+        "Idempotency-Key": "chronicles-difficulty-stable-0001",
+    }
+
+    first = client.post(
+        "/api/chronicles/runs",
+        headers={**base_headers, "X-Chronicles-Party-Level": "2"},
+        json={"mapId": "blind-king-archive"},
+    )
+    replay = client.post(
+        "/api/chronicles/runs",
+        headers={**base_headers, "X-Chronicles-Party-Level": "9"},
+        json={"mapId": "blind-king-archive"},
+    )
+
+    assert first.status_code == 201
+    assert replay.status_code == 201
+    assert first.json()["partyLevel"] == 2
+    assert replay.json() == first.json()
+
+
+def test_route_depth_drives_authoritative_difficulty_metadata(monkeypatch):
+    async def no_collection():
+        return None
+
+    chronicles_run_store._memory_runs.clear()
+    monkeypatch.setattr(chronicles_run_store, "_collection", no_collection)
+    monkeypatch.setattr(chronicles_api.secrets, "randbelow", lambda _limit: 2)
+
+    response = _client().post(
+        "/api/chronicles/runs",
+        headers={
+            "Authorization": "Bearer test-token",
+            "X-Chronicles-Party-Level": "6",
+        },
+        json={},
+    )
+
+    assert response.status_code == 201
+    payload = response.json()
+    route = payload["route"]["mapIds"]
+    by_id = {area["mapId"]: area for area in payload["areas"]}
+    for depth, map_id in enumerate(route):
+        difficulty = by_id[map_id]["difficulty"]
+        assert difficulty["partyLevel"] == 6
+        assert difficulty["depth"] == depth
+
+
+def test_area_preview_remains_unscaled_without_run_party_snapshot():
+    preview = chronicles_api.chronicles_area_envelope(
+        "blind-king-archive",
+        417,
+    )
+    warden = next(
+        enemy
+        for enemy in preview["manifest"]["enemies"]
+        if enemy["id"] == "ledger-warden"
+    )
+
+    assert "difficulty" not in preview
+    assert warden["maxHp"] == 9
+    assert warden["retaliation"] == 2
+
+
+
+def test_legacy_run_without_placement_version_rehydrates_legacy_manifest():
+    seed = 417
+    map_id = "black-glass-chapel"
+    legacy_area = chronicles_api.chronicles_area_envelope(map_id, seed)
+    run = {
+        "runId": "legacy-placement-run",
+        "seed": seed,
+        "currentMapId": map_id,
+        "contentVersion": legacy_area["contentVersion"],
+        "manifestRevision": legacy_area["manifestRevision"],
+        "status": "active",
+        "worldVersion": 0,
+        "consumedContentIds": [],
+        "claimedRewards": [],
+        "worldFlags": {},
+        "inventory": {},
+        "quests": {},
+    }
+
+    payload = chronicles_api._run_bootstrap_payload(run)
+
+    assert payload["area"]["manifestRevision"] == legacy_area["manifestRevision"]
+    assert payload["area"]["manifest"] == legacy_area["manifest"]
+    assert "contentPlacementVersion" not in payload
+    assert "contentPlacementVersion" not in payload["area"]["manifest"]["generation"]
+
+
+
+def test_v1_run_keeps_authored_exit_after_v2_deploy():
+    seed = 417
+    map_id = "black-glass-chapel"
+    v1_area = chronicles_api.chronicles_area_envelope(
+        map_id,
+        seed,
+        content_placement_version=1,
+    )
+    run = {
+        "runId": "v1-placement-run",
+        "seed": seed,
+        "contentPlacementVersion": 1,
+        "currentMapId": map_id,
+        "contentVersion": v1_area["contentVersion"],
+        "manifestRevision": v1_area["manifestRevision"],
+        "status": "active",
+        "worldVersion": 0,
+        "consumedContentIds": [],
+        "claimedRewards": [],
+        "worldFlags": {},
+        "inventory": {},
+        "quests": {},
+    }
+
+    payload = chronicles_api._run_bootstrap_payload(run)
+
+    assert payload["contentPlacementVersion"] == 1
+    assert payload["area"]["manifestRevision"] == v1_area["manifestRevision"]
+    assert payload["area"]["manifest"] == v1_area["manifest"]
+    assert payload["area"]["manifest"]["generation"]["contentPlacementVersion"] == 1
+    assert "exitPosition" not in payload["area"]["manifest"]["generation"]

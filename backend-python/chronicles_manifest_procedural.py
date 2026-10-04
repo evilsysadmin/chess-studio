@@ -8,11 +8,13 @@ different without invalidating narrative/mechanical relationships.
 
 from __future__ import annotations
 
+from collections import deque
 from copy import deepcopy
 from dataclasses import dataclass
 import hashlib
 from typing import Any
 
+from chronicles_difficulty import chronicles_authored_difficulty
 from chronicles_content_variation import (
     CHRONICLES_COMPOSITION_VERSION,
     CHRONICLES_MODULE_VARIATION_VERSION,
@@ -20,6 +22,7 @@ from chronicles_content_variation import (
     apply_chronicles_seeded_composition,
     apply_chronicles_seeded_modules,
     apply_chronicles_seeded_treasure_boons,
+    chronicles_optional_enemy_is_variable,
 )
 from chronicles_map_code import ChroniclesMapCode, encode_chronicles_map_code
 from chronicles_map_planner import (
@@ -40,6 +43,9 @@ from chronicles_topology_quality import (
 
 _CONTENT_GROUPS = ("triggers", "interactables", "treasures", "traps", "exits")
 _CARDINAL = ((1, 0), (-1, 0), (0, 1), (0, -1))
+CHRONICLES_OPTIONAL_ENEMY_PLACEMENT_VERSION = 1
+CHRONICLES_EXIT_PLACEMENT_VERSION = 2
+CHRONICLES_CONTENT_PLACEMENT_VERSION = CHRONICLES_EXIT_PLACEMENT_VERSION
 
 
 @dataclass(frozen=True, slots=True)
@@ -96,26 +102,6 @@ def _verbs_for_manifest(manifest: dict[str, Any], theme: str) -> tuple[str, ...]
     return tuple(verbs[:4])
 
 
-def _difficulty_for_manifest(manifest: dict[str, Any]) -> int:
-    procedural_difficulty = manifest.get("proceduralDifficulty")
-    if procedural_difficulty is not None:
-        return int(procedural_difficulty)
-
-    enemies = manifest.get("enemies", [])
-    if not enemies:
-        return 1
-    average_hp = sum(max(1, int(enemy.get("maxHp", 1))) for enemy in enemies) / len(enemies)
-    if average_hp <= 5:
-        return 1
-    if average_hp <= 7:
-        return 2
-    if average_hp <= 9:
-        return 3
-    if average_hp <= 11:
-        return 4
-    return 5
-
-
 def chronicles_map_code_for_manifest(manifest: dict[str, Any], seed: int) -> ChroniclesMapCode:
     grid = manifest.get("grid") or []
     width = len(grid[0]) if grid else 0
@@ -135,26 +121,57 @@ def chronicles_map_code_for_manifest(manifest: dict[str, Any], seed: int) -> Chr
         enemies=max(2, min(8, len(manifest.get("enemies", [])))),
         treasures=min(4, len(manifest.get("treasures", []))),
         secrets=min(3, secret_count),
-        difficulty=_difficulty_for_manifest(manifest),
+        difficulty=chronicles_authored_difficulty(manifest),
         seed=int(seed),
     )
 
 
-def _base_marker_positions(manifest: dict[str, Any]) -> dict[tuple[int, int], str]:
+def _base_marker_positions(
+    manifest: dict[str, Any],
+    *,
+    include_exit: bool = True,
+) -> dict[tuple[int, int], str]:
     markers: dict[tuple[int, int], str] = {}
     for y, row in enumerate(manifest["grid"]):
         for x, cell in enumerate(row):
-            if cell not in {"#", "."}:
-                markers[(x, y)] = cell
+            if cell in {"#", "."}:
+                continue
+            if not include_exit and cell == "X":
+                continue
+            markers[(x, y)] = cell
     return markers
 
 
-def _anchor_positions(manifest: dict[str, Any]) -> set[tuple[int, int]]:
+def _enemy_uses_seeded_placement(
+    manifest: dict[str, Any],
+    enemy: dict[str, Any],
+    content_placement_version: int,
+) -> bool:
+    if content_placement_version < CHRONICLES_OPTIONAL_ENEMY_PLACEMENT_VERSION:
+        return False
+    ai = enemy.get("ai") if isinstance(enemy, dict) else None
+    return (
+        isinstance(ai, dict)
+        and ai.get("movement") == "hold"
+        and not ai.get("patrolRoute")
+        and not enemy.get("positions")
+        and not enemy.get("positionKey")
+        and chronicles_optional_enemy_is_variable(manifest, enemy)
+    )
+
+
+def _anchor_positions(
+    manifest: dict[str, Any],
+    *,
+    content_placement_version: int = 0,
+) -> set[tuple[int, int]]:
     anchors: set[tuple[int, int]] = set()
     start = manifest.get("partyStart") or {}
     anchors.add((int(start["x"]), int(start["y"])))
 
     for enemy in manifest.get("enemies", []):
+        if _enemy_uses_seeded_placement(manifest, enemy, content_placement_version):
+            continue
         anchors.add((int(enemy["x"]), int(enemy["y"])))
         for point in enemy.get("ai", {}).get("patrolRoute", []):
             anchors.add((int(point["x"]), int(point["y"])))
@@ -166,7 +183,10 @@ def _anchor_positions(manifest: dict[str, Any]) -> set[tuple[int, int]]:
             if "x" in entry and "y" in entry:
                 anchors.add((int(entry["x"]), int(entry["y"])))
 
-    anchors.update(_base_marker_positions(manifest))
+    anchors.update(_base_marker_positions(
+        manifest,
+        include_exit=content_placement_version < CHRONICLES_EXIT_PLACEMENT_VERSION,
+    ))
     return anchors
 
 
@@ -232,10 +252,197 @@ def _layout_revision(map_code: str, grid: list[str]) -> str:
     return hashlib.sha256(material).hexdigest()
 
 
+def _grid_distances(
+    grid: list[list[str]],
+    start: tuple[int, int],
+) -> dict[tuple[int, int], int]:
+    queue = deque([start])
+    distances = {start: 0}
+    while queue:
+        x, y = queue.popleft()
+        for dx, dy in _CARDINAL:
+            point = (x + dx, y + dy)
+            px, py = point
+            if (
+                py < 0
+                or py >= len(grid)
+                or px < 0
+                or px >= len(grid[0])
+                or grid[py][px] == "#"
+                or point in distances
+            ):
+                continue
+            distances[point] = distances[(x, y)] + 1
+            queue.append(point)
+    return distances
+
+
+def _place_seeded_exit(
+    manifest: dict[str, Any],
+    grid: list[list[str]],
+    map_code: str,
+    *,
+    content_placement_version: int,
+) -> tuple[int, int] | None:
+    if content_placement_version < CHRONICLES_EXIT_PLACEMENT_VERSION:
+        return None
+
+    start = manifest.get("partyStart") or {}
+    start_point = (int(start["x"]), int(start["y"]))
+    distances = _grid_distances(grid, start_point)
+    fixed_anchors = _anchor_positions(
+        manifest,
+        content_placement_version=content_placement_version,
+    )
+    candidates = [
+        point
+        for point, distance in distances.items()
+        if distance >= 4
+        and grid[point[1]][point[0]] == "."
+        and point not in fixed_anchors
+    ]
+    if not candidates:
+        raise ChroniclesMapGenerationError(
+            "generated topology has no safe distant cell for the exit"
+        )
+
+    farthest_distance = max(distances[point] for point in candidates)
+    farthest = [
+        point
+        for point in candidates
+        if distances[point] == farthest_distance
+    ]
+    return min(
+        farthest,
+        key=lambda point: (
+            hashlib.sha256(
+                (
+                    f"chronicles-exit-placement-v{CHRONICLES_EXIT_PLACEMENT_VERSION}:"
+                    f"{map_code}:{point[0]}:{point[1]}"
+                ).encode("utf-8")
+            ).digest(),
+            point[1],
+            point[0],
+        ),
+    )
+
+
+def _content_placement_revision(
+    map_code: str,
+    placements: tuple[tuple[str, int, int], ...],
+    *,
+    content_placement_version: int,
+    exit_position: tuple[int, int] | None = None,
+) -> str:
+    material = (
+        f"chronicles-content-placement-v{content_placement_version}:"
+        f"{map_code}:"
+        + "|".join(f"{enemy_id}:{x}:{y}" for enemy_id, x, y in placements)
+    )
+    if (
+        content_placement_version >= CHRONICLES_EXIT_PLACEMENT_VERSION
+        and exit_position is not None
+    ):
+        material += f"|exit:{exit_position[0]}:{exit_position[1]}"
+    return hashlib.sha256(material.encode("utf-8")).hexdigest()
+
+
+def _place_seeded_optional_enemies(
+    manifest: dict[str, Any],
+    map_code: str,
+    *,
+    content_placement_version: int,
+) -> tuple[tuple[tuple[str, int, int], ...], str | None]:
+    if content_placement_version < CHRONICLES_OPTIONAL_ENEMY_PLACEMENT_VERSION:
+        return (), None
+
+    relocatable = sorted(
+        (
+            enemy
+            for enemy in manifest.get("enemies", [])
+            if _enemy_uses_seeded_placement(
+                manifest,
+                enemy,
+                content_placement_version,
+            )
+        ),
+        key=lambda enemy: str(enemy.get("id") or ""),
+    )
+    if not relocatable:
+        placements: tuple[tuple[str, int, int], ...] = ()
+        return placements, _content_placement_revision(
+            map_code,
+            placements,
+            content_placement_version=content_placement_version,
+        )
+
+    fixed_anchors = _anchor_positions(
+        manifest,
+        content_placement_version=content_placement_version,
+    )
+    start = manifest.get("partyStart") or {}
+    start_point = (int(start["x"]), int(start["y"]))
+    candidates = {
+        (x, y)
+        for y, row in enumerate(manifest["grid"])
+        for x, cell in enumerate(row)
+        if cell == "."
+        and (x, y) not in fixed_anchors
+        and abs(x - start_point[0]) + abs(y - start_point[1]) >= 3
+    }
+    if len(candidates) < len(relocatable):
+        candidates = {
+            (x, y)
+            for y, row in enumerate(manifest["grid"])
+            for x, cell in enumerate(row)
+            if cell == "." and (x, y) not in fixed_anchors
+        }
+    if len(candidates) < len(relocatable):
+        raise ChroniclesMapGenerationError(
+            "generated topology has no safe cells for optional encounters"
+        )
+
+    placed: list[tuple[str, int, int]] = []
+    for enemy in relocatable:
+        enemy_id = str(enemy.get("id") or "")
+        point = min(
+            candidates,
+            key=lambda candidate: (
+                hashlib.sha256(
+                    (
+                        f"chronicles-content-placement-v{CHRONICLES_OPTIONAL_ENEMY_PLACEMENT_VERSION}:"
+                        f"{map_code}:{enemy_id}:{candidate[0]}:{candidate[1]}"
+                    ).encode("utf-8")
+                ).digest(),
+                candidate[1],
+                candidate[0],
+            ),
+        )
+        candidates.remove(point)
+        enemy["x"], enemy["y"] = point
+        placed.append((enemy_id, point[0], point[1]))
+
+    placements = tuple(placed)
+    return placements, _content_placement_revision(
+        map_code,
+        placements,
+        content_placement_version=content_placement_version,
+    )
+
+
 def _materialize_recipe(
     composed_manifest: dict[str, Any],
     recipe: ChroniclesMapCode,
-) -> tuple[dict[str, Any], str, str]:
+    *,
+    content_placement_version: int = 0,
+) -> tuple[
+    dict[str, Any],
+    str,
+    str,
+    tuple[tuple[str, int, int], ...],
+    str | None,
+    tuple[int, int] | None,
+]:
     map_code = encode_chronicles_map_code(recipe)
     layout = generate_chronicles_layout(recipe)
     grid = [
@@ -248,21 +455,54 @@ def _materialize_recipe(
     open_cells = _open_cells(grid)
 
     for anchor in sorted(
-        _anchor_positions(composed_manifest),
+        _anchor_positions(
+            composed_manifest,
+            content_placement_version=content_placement_version,
+        ),
         key=lambda point: (point[1], point[0]),
     ):
         _connect_anchor(grid, open_cells, anchor, map_code)
 
-    for (x, y), marker in _base_marker_positions(composed_manifest).items():
+    for (x, y), marker in _base_marker_positions(
+        composed_manifest,
+        include_exit=content_placement_version < CHRONICLES_EXIT_PLACEMENT_VERSION,
+    ).items():
         grid[y][x] = marker
 
     start = composed_manifest["partyStart"]
     grid[int(start["y"])][int(start["x"])] = "P"
+    exit_position = _place_seeded_exit(
+        composed_manifest,
+        grid,
+        map_code,
+        content_placement_version=content_placement_version,
+    )
+    if exit_position is not None:
+        grid[exit_position[1]][exit_position[0]] = "X"
     final_grid = ["".join(row) for row in grid]
 
     generated = deepcopy(composed_manifest)
     generated["grid"] = final_grid
-    return generated, map_code, _layout_revision(map_code, final_grid)
+    placements, placement_revision = _place_seeded_optional_enemies(
+        generated,
+        map_code,
+        content_placement_version=content_placement_version,
+    )
+    if content_placement_version >= CHRONICLES_EXIT_PLACEMENT_VERSION:
+        placement_revision = _content_placement_revision(
+            map_code,
+            placements,
+            content_placement_version=content_placement_version,
+            exit_position=exit_position,
+        )
+    return (
+        generated,
+        map_code,
+        _layout_revision(map_code, final_grid),
+        placements,
+        placement_revision,
+        exit_position,
+    )
 
 
 def proceduralize_chronicles_manifest(
@@ -270,6 +510,7 @@ def proceduralize_chronicles_manifest(
     seed: int,
     *,
     planner_proposal: Any = None,
+    content_placement_version: int = 0,
 ) -> ChroniclesProceduralManifest:
     module_variation = apply_chronicles_seeded_modules(manifest, seed)
     composition = apply_chronicles_seeded_composition(
@@ -284,9 +525,17 @@ def proceduralize_chronicles_manifest(
     base_recipe = chronicles_map_code_for_manifest(composed_manifest, seed)
     planner = resolve_chronicles_planner_recipe(base_recipe, planner_proposal)
 
-    local_generated, local_map_code, local_layout_revision = _materialize_recipe(
+    (
+        local_generated,
+        local_map_code,
+        local_layout_revision,
+        local_placements,
+        local_placement_revision,
+        local_exit_position,
+    ) = _materialize_recipe(
         composed_manifest,
         base_recipe,
+        content_placement_version=content_placement_version,
     )
     local_quality = evaluate_chronicles_topology(local_generated)
     if not local_quality.accepted:
@@ -303,11 +552,22 @@ def proceduralize_chronicles_manifest(
     planner_quality_reasons: tuple[str, ...] = ()
     planner_applied = False
     planner_reason = planner.reason
+    placements = local_placements
+    placement_revision = local_placement_revision
+    exit_position = local_exit_position
 
     if planner.accepted:
-        planned_generated, planned_map_code, planned_layout_revision = _materialize_recipe(
+        (
+            planned_generated,
+            planned_map_code,
+            planned_layout_revision,
+            planned_placements,
+            planned_placement_revision,
+            planned_exit_position,
+        ) = _materialize_recipe(
             composed_manifest,
             planner.recipe,
+            content_placement_version=content_placement_version,
         )
         planned_quality = evaluate_chronicles_topology(planned_generated)
         regressions = compare_chronicles_topology(planned_quality, local_quality)
@@ -321,6 +581,9 @@ def proceduralize_chronicles_manifest(
             layout_revision = planned_layout_revision
             quality = planned_quality
             planner_applied = True
+            placements = planned_placements
+            placement_revision = planned_placement_revision
+            exit_position = planned_exit_position
 
     generated["generation"] = {
         "kind": "seeded-layout",
@@ -350,6 +613,20 @@ def proceduralize_chronicles_manifest(
         "treasureVariationRevision": treasure_variation.plan.revision,
         "treasureBoons": [boon.as_dict() for boon in treasure_variation.plan.boons],
     }
+    if content_placement_version >= CHRONICLES_OPTIONAL_ENEMY_PLACEMENT_VERSION:
+        generated["generation"].update({
+            "contentPlacementVersion": content_placement_version,
+            "contentPlacementRevision": placement_revision,
+            "relocatedOptionalEnemies": [
+                {"id": enemy_id, "x": x, "y": y}
+                for enemy_id, x, y in placements
+            ],
+        })
+    if content_placement_version >= CHRONICLES_EXIT_PLACEMENT_VERSION:
+        generated["generation"]["exitPosition"] = {
+            "x": exit_position[0],
+            "y": exit_position[1],
+        }
 
     return ChroniclesProceduralManifest(
         manifest=generated,

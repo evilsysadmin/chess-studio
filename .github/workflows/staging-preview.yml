@@ -202,5 +202,5 @@ jobs:
             echo "- Frontend: $STAGING_URL"
             echo "- API: \`$STAGING_API_URL\` (backend canónico de staging)"
             echo
-            echo '**No acreditado:** este workflow no dispara `Staging · AI Worker` ni `Production · promote`.'
+            echo '**No acreditado:** este workflow no dispara `Staging · accreditation` ni `Production · promote`.'
           } >> "$GITHUB_STEP_SUMMARY"

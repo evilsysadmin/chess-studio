@@ -91,16 +91,7 @@ async function cropArmor(page, scenePng, side) {
   }, { png: scenePng, cropSide: side });
 }
 
-async function setInspectYaw(page, canvas, key, expectedYaw) {
-  await canvas.focus();
-  await page.keyboard.press('Home');
-  for (let i = 0; i < 6; i += 1) await page.keyboard.press(key);
-  await expect(canvas).toHaveAttribute('data-board3d-inspect-yaw', expectedYaw);
-  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-  await page.waitForTimeout(160);
-}
-
-test('War Room armor · oblique inspection artifacts expose sword grip from both sides', async () => {
+test('War Room armor · artifacts expose sword grip on both armors from the player camera', async () => {
   test.setTimeout(150_000);
   await mkdir(ARTIFACT_DIR, { recursive: true });
 
@@ -127,16 +118,12 @@ test('War Room armor · oblique inspection artifacts expose sword grip from both
     await page.addStyleTag({
       content: '*, *::before, *::after { animation: none !important; transition: none !important; caret-color: transparent !important; }',
     });
-    await page.getByRole('button', { name: 'Inspeccionar', exact: true }).click();
-    await expect(board3d).toHaveAttribute('data-board3d-inspect', 'true');
-
-    const captures = [
-      { label: 'yaw-left', key: 'ArrowLeft', yaw: '0.140' },
-      { label: 'yaw-right', key: 'ArrowRight', yaw: '-0.140' },
-    ];
-
-    for (const capture of captures) {
-      await setInspectYaw(page, canvas, capture.key, capture.yaw);
+    // The camera is fixed (scene inspection was retired), so the armor and
+    // sword grip are reviewed exactly as players see them.
+    await expect(board3d).toHaveAttribute('data-board3d-camera', 'fixed-tactical');
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    await page.waitForTimeout(160);
+    for (const capture of [{ label: 'canonical' }]) {
       const png = await captureCanvas(context, page, scene);
       await writeFile(
         `${ARTIFACT_DIR}/war-room-desktop-inspection-1600x1000-${capture.label}-scene.png`,
@@ -155,9 +142,8 @@ test('War Room armor · oblique inspection artifacts expose sword grip from both
       `${ARTIFACT_DIR}/war-room-desktop-inspection-1600x1000-armor-oblique-manifest.json`,
       `${JSON.stringify({
         schema: 1,
-        purpose: 'user-reachable oblique armor and sword-grip review',
-        inspectYawRadians: [-0.14, 0.14],
-        source: 'Board3D Inspeccionar keyboard limits',
+        purpose: 'user-reachable armor and sword-grip review (fixed tactical camera)',
+        source: 'Board3D fixed tactical camera',
         crops: ['armor-left', 'armor-right'],
       }, null, 2)}\n`,
       'utf8',

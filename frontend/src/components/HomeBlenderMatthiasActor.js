@@ -154,35 +154,32 @@ export const HOME_MATTHIAS_POSTURES = Object.freeze({
 });
 
 // Real arms reach the routine props instead of leaving the props floating
-// beside dangling arms. Angles are Euler degrees on the canonical rig bones
-// (+x swings an arm forward, +z swings the right arm inwards; the left arm
-// mirrors z). `raise` is the sip/bite gesture blended in by the cycle below.
+// beside dangling arms. Angles are Euler degrees that REPLACE the canonical
+// rig bone rotation (right arm; the left mirrors y and z). On this rig a zero
+// rotation points the arm at the head and ~150 deg on x hangs it down, so the
+// values were solved on matthias-home-canonical.glb for natural targets:
+// elbow below the shoulder, forearm forward, glove in front of the body.
+// `raise` is the sip/bite gesture, slerped in by the cycle below.
+const ARM_REST_HOLD = Object.freeze({ upper: [160, 10, 0], fore: [-64, -11, 13] });
+const ARM_TO_MOUTH = Object.freeze({ upper: [115, 20, 10], fore: [-71, -15, 16] });
+const ARM_ON_BOARD = Object.freeze({ upper: [145, 10, -5], fore: [-46, -6, 8] });
+// Hands close enough to grip the edges of the (enlarged) dossier.
+const ARM_HOLD_BOOK = Object.freeze({ upper: [145, 20, 5], fore: [-66, -12, 14] });
+const ARM_WRITE = Object.freeze({ upper: [150, 0, -5], fore: [-43, -12, 25] });
 export const HOME_MATTHIAS_ARM_POSES = Object.freeze({
   sip: Object.freeze({
-    R: Object.freeze({ upper: [40, 0, 20], fore: [70, 0, 0], raise: { upper: [52, 0, 30], fore: [100, 0, 0] } }),
+    R: Object.freeze({ ...ARM_REST_HOLD, raise: ARM_TO_MOUTH }),
   }),
   // Same hand as the coffee: the authored sandwich sits on the right side of
   // the chest, so a left-hand anchor dragged it across the body.
   bite: Object.freeze({
-    R: Object.freeze({ upper: [40, 0, 20], fore: [70, 0, 0], raise: { upper: [52, 0, 30], fore: [100, 0, 0] } }),
+    R: Object.freeze({ ...ARM_REST_HOLD, raise: ARM_TO_MOUTH }),
   }),
   // At the board: both forearms forward, hands resting near the pieces.
-  think: Object.freeze({
-    R: Object.freeze({ upper: [36, 0, 18], fore: [62, 0, 0] }),
-    L: Object.freeze({ upper: [36, 0, 18], fore: [62, 0, 0] }),
-  }),
-  dossier: Object.freeze({
-    R: Object.freeze({ upper: [40, 0, 20], fore: [70, 0, 0] }),
-    L: Object.freeze({ upper: [40, 0, 20], fore: [70, 0, 0] }),
-  }),
-  read: Object.freeze({
-    R: Object.freeze({ upper: [40, 0, 20], fore: [70, 0, 0] }),
-    L: Object.freeze({ upper: [40, 0, 20], fore: [70, 0, 0] }),
-  }),
-  write: Object.freeze({
-    R: Object.freeze({ upper: [44, 0, 24], fore: [74, 0, 0] }),
-    L: Object.freeze({ upper: [40, 0, 20], fore: [70, 0, 0] }),
-  }),
+  think: Object.freeze({ R: ARM_ON_BOARD, L: ARM_ON_BOARD }),
+  dossier: Object.freeze({ R: ARM_HOLD_BOOK, L: ARM_HOLD_BOOK }),
+  read: Object.freeze({ R: ARM_HOLD_BOOK, L: ARM_HOLD_BOOK }),
+  write: Object.freeze({ R: ARM_WRITE, L: ARM_HOLD_BOOK }),
 });
 
 // Props that the rig carries with a modelled "fake" hand get anchored to the
@@ -193,8 +190,11 @@ export const HOME_MATTHIAS_PROP_ANCHORS = Object.freeze({
   // blinking cup once the routine lasts tens of seconds.
   sip: Object.freeze({ bone: 'prop_cup', content: 'RoutineCup', hand: 'Hand.R', offset: [-0.045, 0.07, 0.03], hide: ['RoutineCupHand'], show: ['prop_cup'] }),
   bite: Object.freeze({ bone: 'prop_bite', content: 'RoutineSandwichBread', hand: 'Hand.R', offset: [-0.045, 0.06, 0.03], hide: ['RoutineSandwichHand'], show: ['prop_bite'] }),
-  dossier: Object.freeze({ hide: ['RoutineBookHand.L', 'RoutineBookHand.R'], show: ['prop_book'] }),
-  read: Object.freeze({ hide: ['RoutineBookHand.L', 'RoutineBookHand.R'], show: ['prop_book'] }),
+  // The dossier is held in both gloves: centred between them, the gloves on
+  // its front face, and enlarged (~0.63 x 0.41 rig units) so it reads as a
+  // file. At rig size it read as a tiny card floating in front of the belly.
+  dossier: Object.freeze({ bone: 'prop_book', content: 'RoutineBook', hands: ['Hand.L', 'Hand.R'], offset: [0, 0, -0.06], scale: 1.4, hide: ['RoutineBookHand.L', 'RoutineBookHand.R'], show: ['prop_book'] }),
+  read: Object.freeze({ bone: 'prop_book', content: 'RoutineBook', hands: ['Hand.L', 'Hand.R'], offset: [0, 0, -0.06], scale: 1.4, hide: ['RoutineBookHand.L', 'RoutineBookHand.R'], show: ['prop_book'] }),
   write: Object.freeze({ hide: ['RoutineBookHand.L', 'RoutineBookHand.R'], show: ['prop_book', 'prop_pen'] }),
 });
 
@@ -237,8 +237,11 @@ export const HOME_MATTHIAS_LIE_POSE = Object.freeze({
   // Roll about the body axis: a side nap facing the hall camera, so the
   // stern sleeping face reads from the canonical Home view.
   rollDeg: 58,
-  // Arms folded over the blanket instead of sticking out along the body.
-  arms: Object.freeze({ upperPitchDeg: 38, upperSplayDeg: 22, forePitchDeg: 64 }),
+  // Arms gone slack: hanging along the flank towards the hips, elbows a bit
+  // bent, gloves resting on the cushion/blanket. The overrides replace the
+  // bone rotation outright and a zero rotation points the arm at the head,
+  // so the old chest fold left the hands pointing at the ceiling.
+  arms: Object.freeze({ upperPitchDeg: 150, upperSplayDeg: -10, forePitchDeg: 20 }),
 });
 
 function eulerDeg(x = 0, y = 0, z = 0) {
@@ -284,7 +287,14 @@ export const HOME_MATTHIAS_BLANKET = Object.freeze({
   fromY: -0.3,
   toY: 0.74,
   centerY: 0.22,
-  width: 1.36,
+  // Wide enough to drape over the cushion on both sides: a narrow sheet
+  // hugging the body read as a plaid tube.
+  width: 2.0,
+  // Cloth stands off the body sideways more than upwards (a wide, low dome).
+  spreadX: 1.42,
+  rise: 0.86,
+  // Span over which the cloth falls from the dome to the cushion.
+  fall: 0.34,
   // Distance from the body axis down to the cushion, in rig units.
   seatDrop: 0.42,
 });
@@ -316,13 +326,14 @@ export function createHomeMatthiasBlanket({ segments = 30 } = {}) {
     const y = position.getY(index);
     const t = (y + length / 2) / length;
     const radius = (homeMatthiasBlanketProfile(t) + 0.06) * scale;
-    const across = Math.abs(x) / radius;
+    const halfWidth = radius * spec.spreadX;
+    const across = Math.abs(x) / halfWidth;
     let z;
     if (across < 1) {
-      z = radius * Math.sqrt(1 - across * across);
+      z = radius * spec.rise * Math.sqrt(1 - across * across);
     } else {
-      // Fall from the silhouette edge to the cushion over a short span.
-      const fall = THREE.MathUtils.clamp((Math.abs(x) - radius) / (0.16 * scale), 0, 1);
+      // Fall from the silhouette edge to the cushion, loose rather than tucked.
+      const fall = THREE.MathUtils.clamp((Math.abs(x) - halfWidth) / (spec.fall * scale), 0, 1);
       z = -drop * THREE.MathUtils.smoothstep(fall, 0, 1);
     }
     const fold = 0.014 * scale * Math.sin(y * 19 + x * 4) * Math.sin(x * 11);
@@ -339,6 +350,69 @@ export function createHomeMatthiasBlanket({ segments = 30 } = {}) {
   const blanket = new THREE.Mesh(geometry, material);
   blanket.name = 'Matthias sofa blanket';
   return blanket;
+}
+
+// Asleep he is a bald pawn: the cap comes off, the eyes close to thin lids
+// and a few Z's drift up from his head.
+export const HOME_MATTHIAS_SLEEP_FACE = Object.freeze({
+  capPrefix: 'classiccap',
+  eyes: Object.freeze(['Eye.L', 'Eye.R']),
+  closedEyeScale: 0.14,
+  zzz: Object.freeze({ count: 3, period: 4.2, rise: 0.7, drift: 0.22, size: 0.28 }),
+});
+
+// One drifting Z: t in [0, 1) along its climb. Fades in, grows, fades out.
+export function homeMatthiasZzzFrame(elapsed = 0, index = 0) {
+  const spec = HOME_MATTHIAS_SLEEP_FACE.zzz;
+  const raw = ((Number(elapsed) || 0) / spec.period) + index / spec.count;
+  const t = raw - Math.floor(raw);
+  const opacity = Math.min(1, t / 0.18) * Math.min(1, (1 - t) / 0.35);
+  return {
+    t,
+    rise: spec.rise * t,
+    drift: spec.drift * Math.sin(t * Math.PI * 1.6 + index),
+    scale: spec.size * (0.55 + 0.6 * t),
+    opacity: Math.max(0, opacity),
+  };
+}
+
+function zzzTexture() {
+  if (typeof document === 'undefined') return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = 64;
+  canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  ctx.font = 'bold 52px Georgia, serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.lineWidth = 6;
+  ctx.strokeStyle = 'rgba(40, 28, 18, 0.85)';
+  ctx.strokeText('z', 32, 34);
+  ctx.fillStyle = '#f4e6c4';
+  ctx.fillText('z', 32, 34);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+export function createHomeMatthiasZzz() {
+  const group = new THREE.Group();
+  group.name = 'Matthias sleep zzz';
+  const map = zzzTexture();
+  for (let index = 0; index < HOME_MATTHIAS_SLEEP_FACE.zzz.count; index += 1) {
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+      map,
+      transparent: true,
+      depthWrite: false,
+      opacity: 0,
+    }));
+    sprite.name = `Matthias sleep z ${index + 1}`;
+    sprite.renderOrder = 3;
+    group.add(sprite);
+  }
+  group.visible = false;
+  return group;
 }
 
 function createContactShadowTexture() {
@@ -552,6 +626,47 @@ export function createHomeMatthiasActor(gltf, { shadowsEnabled = true, random = 
   let sipCycleStart = 0;
   let sipCycle = 9.6;
   const head = findBone(model, 'head');
+  const capNodes = [];
+  model.traverse((node) => {
+    const key = String(node.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+    if (key.startsWith(HOME_MATTHIAS_SLEEP_FACE.capPrefix)) capNodes.push(node);
+  });
+  const eyeNodes = HOME_MATTHIAS_SLEEP_FACE.eyes
+    .map((name) => findBone(model, name))
+    .filter(Boolean)
+    .map((node) => ({ node, restY: node.scale.y }));
+  const zzz = createHomeMatthiasZzz();
+  actor.add(zzz);
+  const headWorld = new THREE.Vector3();
+  let asleep = false;
+  let zzzElapsed = 0;
+
+  const applySleepFace = () => {
+    asleep = routine?.posture === 'lie';
+    for (const node of capNodes) node.visible = !asleep;
+    for (const eye of eyeNodes) {
+      eye.node.scale.y = eye.restY * (asleep ? HOME_MATTHIAS_SLEEP_FACE.closedEyeScale : 1);
+    }
+    zzz.visible = asleep && Boolean(head);
+  };
+
+  const placeZzz = () => {
+    if (!zzz.visible || !head) return;
+    actor.updateMatrixWorld(true);
+    head.getWorldPosition(headWorld);
+    actor.worldToLocal(headWorld);
+    const unit = HOME_MATTHIAS_ACTOR_SCALE;
+    zzz.children.forEach((sprite, index) => {
+      const frame = homeMatthiasZzzFrame(zzzElapsed, index);
+      sprite.position.set(
+        headWorld.x + frame.drift * unit,
+        headWorld.y + (0.42 + frame.rise) * unit,
+        headWorld.z,
+      );
+      sprite.scale.setScalar(frame.scale * unit);
+      sprite.material.opacity = frame.opacity;
+    });
+  };
 
   const applySkirt = (spec) => {
     for (const item of skirtMeshes) {
@@ -594,10 +709,13 @@ export function createHomeMatthiasActor(gltf, { shadowsEnabled = true, random = 
     if (!spec?.bone) return;
     const bone = propNode(spec.bone);
     const content = propNode(spec.content);
-    const hand = propNode(spec.hand);
-    if (!bone?.parent || !content || !hand) return;
+    const hands = (spec.hands || [spec.hand]).map((name) => propNode(name)).filter(Boolean);
+    if (!bone?.parent || !content || !hands.length) return;
+    if (spec.scale) bone.scale.setScalar(spec.scale);
     model.updateMatrixWorld(true);
-    anchorBox.setFromObject(hand).getCenter(anchorWorld);
+    anchorWorld.set(0, 0, 0);
+    for (const hand of hands) anchorWorld.add(anchorBox.setFromObject(hand).getCenter(contentWorld));
+    anchorWorld.divideScalar(hands.length);
     anchorBox.setFromObject(content).getCenter(contentWorld);
     if (anchorBox.isEmpty()) return;
     // Offsets are in rig units along the body's own axes.
@@ -618,6 +736,7 @@ export function createHomeMatthiasActor(gltf, { shadowsEnabled = true, random = 
   };
 
   const legQuaternion = new THREE.Quaternion();
+  const armRaiseQuaternion = new THREE.Quaternion();
   const kneeQuaternion = new THREE.Quaternion();
   // Runs after every mixer update: the authored clips key every bone, so the
   // posture overrides must be re-applied on top of them each frame.
@@ -642,19 +761,15 @@ export function createHomeMatthiasActor(gltf, { shadowsEnabled = true, random = 
       for (const arm of arms) {
         const pose = armPose?.[arm.side];
         if (!pose || !arm.upper || !arm.fore) continue;
-        const mix = (base, raised = base, axis) => base[axis] + ((raised[axis] - base[axis]) * weight);
-        const upperRaise = pose.raise?.upper || pose.upper;
-        const foreRaise = pose.raise?.fore || pose.fore;
-        arm.upper.quaternion.setFromEuler(eulerDeg(
-          mix(pose.upper, upperRaise, 0),
-          mix(pose.upper, upperRaise, 1),
-          arm.sign * mix(pose.upper, upperRaise, 2),
-        ));
-        arm.fore.quaternion.setFromEuler(eulerDeg(
-          mix(pose.fore, foreRaise, 0),
-          mix(pose.fore, foreRaise, 1),
-          arm.sign * mix(pose.fore, foreRaise, 2),
-        ));
+        const mirrored = (angles) => eulerDeg(angles[0], arm.sign * angles[1], arm.sign * angles[2]);
+        arm.upper.quaternion.setFromEuler(mirrored(pose.upper));
+        arm.fore.quaternion.setFromEuler(mirrored(pose.fore));
+        if (pose.raise && weight > 0) {
+          armRaiseQuaternion.setFromEuler(mirrored(pose.raise.upper));
+          arm.upper.quaternion.slerp(armRaiseQuaternion, weight);
+          armRaiseQuaternion.setFromEuler(mirrored(pose.raise.fore));
+          arm.fore.quaternion.slerp(armRaiseQuaternion, weight);
+        }
       }
     }
     anchorRoutineProp();
@@ -767,6 +882,9 @@ export function createHomeMatthiasActor(gltf, { shadowsEnabled = true, random = 
       applyPropVisibility();
       placeAtStation();
       playClip({ force: true });
+      applySleepFace();
+      zzzElapsed = still ? HOME_MATTHIAS_SLEEP_FACE.zzz.period * 0.45 : 0;
+      placeZzz();
       actor.updateMatrixWorld(true);
       return moved;
     },
@@ -783,6 +901,10 @@ export function createHomeMatthiasActor(gltf, { shadowsEnabled = true, random = 
       mixer.update(0);
       applyPostureBones();
       applyBreath();
+      if (asleep) {
+        zzzElapsed += dt;
+        placeZzz();
+      }
     },
     get cadence() { return cadence; },
     bounds() {

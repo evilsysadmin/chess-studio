@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pathlib
+import subprocess
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -13,10 +14,13 @@ RETIRED_STAGING_PAGES_FAST = ROOT / ".github/workflows/staging-pages-fast.yml"
 MAIN_BACKEND_IMAGE = ROOT / ".github/workflows/main-backend-image.yml"
 STAGING_AI = ROOT / ".github/workflows/staging-ai-worker.yml"
 PROMOTE = ROOT / ".github/workflows/production-promote.yml"
+PRODUCTION_RELEASE_TRAIN = ROOT / "scripts/production_release_train.py"
 STAGING_WRANGLER = ROOT / "infra/cloudflare/wrangler.staging.toml"
 STAGING_WORKER_WRAPPER = ROOT / "infra/cloudflare/worker/staging.js"
 STAGING_WORKER_DEPLOY = ROOT / "scripts/deploy_staging_ai_worker.py"
 STAGING_RELEASE_IDENTITY = ROOT / "scripts/staging_release_identity.py"
+STAGING_DEPLOY_PROOF = ROOT / "scripts/staging_deploy_proof.py"
+STAGING_DEPLOY_SCOPE = ROOT / "scripts/staging_deploy_scope.py"
 OCI_RUN_COMMAND = ROOT / "scripts/oci_run_command.py"
 OCI_RUNTIME_BUNDLE = ROOT / "scripts/oci_runtime_bundle.py"
 
@@ -59,10 +63,13 @@ def main() -> int:
         MAIN_BACKEND_IMAGE,
         STAGING_AI,
         PROMOTE,
+        PRODUCTION_RELEASE_TRAIN,
         STAGING_WRANGLER,
         STAGING_WORKER_WRAPPER,
         STAGING_WORKER_DEPLOY,
         STAGING_RELEASE_IDENTITY,
+        STAGING_DEPLOY_PROOF,
+        STAGING_DEPLOY_SCOPE,
         OCI_RUN_COMMAND,
         OCI_RUNTIME_BUNDLE,
     )
@@ -80,6 +87,7 @@ def main() -> int:
     main_backend_image = MAIN_BACKEND_IMAGE.read_text(encoding="utf-8")
     staging_ai = STAGING_AI.read_text(encoding="utf-8")
     promote = PROMOTE.read_text(encoding="utf-8")
+    production_release_train = PRODUCTION_RELEASE_TRAIN.read_text(encoding="utf-8")
     staging_wrangler = STAGING_WRANGLER.read_text(encoding="utf-8")
     staging_worker_wrapper = STAGING_WORKER_WRAPPER.read_text(encoding="utf-8")
     staging_worker_deploy = STAGING_WORKER_DEPLOY.read_text(encoding="utf-8")
@@ -125,19 +133,26 @@ def main() -> int:
         ("Supersede stale staging commit", "single stale guard before mutation"),
         ("permissions:\n  contents: read", "read-only workflow permissions"),
         ("admitted: ${{ steps.admission.outputs.admitted }}", "admission output"),
-        ("git ls-remote origin refs/heads/main", "main head admission probe"),
+        ("pull-requests: read", "deploy scope PR provenance permission"),
+        ("fetch-depth: 2", "deploy scope first-parent checkout"),
+        ("staging_deploy_scope.py --self-test", "deploy scope self-test"),
+        ("staging_deploy_scope.py --sha \"$DEPLOY_SHA\" --github-output \"$scope\"", "deploy scope classifier"),
+        ("if [[ \"$deploy_required\" != true ]]", "non-runtime staging no-op"),
+        ("Staging no-op", "non-runtime staging diagnostic"),
+        ("staging_generation.py main-head --sha \"$DEPLOY_SHA\"", "main head admission probe"),
         ("admitted=false", "superseded clean exit"),
         ("admitted=true", "admitted generation state"),
-        ("::notice title=Staging superseded", "stale supersede non-error diagnostic"),
+        ("Staging superseded", "stale supersede non-error diagnostic"),
         ("Wait for zero-cost host watcher fast-path", "generation zero-cost backend fast-path"),
-        ("for attempt in {1..48}; do", "generation watcher patience budget"),
-        ("attempt % 8 == 0", "generation watcher periodic stale-generation probe"),
-        ("OCI zero-cost fast-path", "generation watcher success marker"),
+        # Watcher patience (48 x 1 s), the periodic stale-main probe and the
+        # complete public accreditation live in staging_generation.py and are
+        # proven by its self-test (run below), not by matching inline bash.
+        ("staging_generation.py watch-committed --sha \"$DEPLOY_SHA\"", "generation zero-cost watcher helper"),
         ("OCI fallback avoided", "late watcher completion re-check"),
-        ("acreditado completamente por watcher", "watcher requires complete public accreditation"),
         ("A1 terminó y acreditó $DEPLOY_SHA", "late fallback skip requires complete public accreditation"),
         ("Re-check main before OCI fallback", "late stale-generation guard"),
-        ("OCI fallback superseded", "stale fallback short-circuit"),
+        ("steps.fallback_admission.outputs.superseded != 'true'", "stale fallback short-circuit"),
+        ("Re-check main after OCI fallback", "post-fallback stale-generation guard"),
         ("Resolve backend generation state", "backend supersession output"),
         ("Deploy exact backend commit to OCI staging", "generation OCI backend fallback"),
         ('python3 scripts/oci_run_command.py deploy --repo-ref "$DEPLOY_SHA"', "OCI deploy owns transport readiness"),
@@ -145,17 +160,30 @@ def main() -> int:
         ("Deploy and verify exact staging Worker generation", "generation Worker deploy + runtime identity gate"),
         ("run: python3 scripts/deploy_staging_ai_worker.py", "generation Worker helper"),
         ("Verify staging generation parity before browser smoke", "generation parity gate"),
-        ("'worker': str(ai.get('build')", "generation Worker SHA parity"),
+        ("--surfaces backend,frontend,worker --attempts 60 --interval 5", "generation N/N/N parity incl. Worker, bounded 5 min"),
         ("Load ephemeral staging invite code from OCI runtime", "smoke invite source"),
         ("Generate isolated staging smoke credentials", "smoke random credentials"),
         ("Live browser smoke against deployed staging", "generation live smoke"),
     ):
         require(staging_deploy, needle, label, errors)
 
-    if staging_deploy.count("python3 scripts/verify_backend_staging.py") < 3:
+    if staging_deploy.count("python3 scripts/verify_backend_staging.py") < 2:
         errors.append("staging fast-path/fallback must reuse full public backend accreditation before skipping Run Command")
-    if staging_deploy.count("--attempts 1") < 2:
-        errors.append("staging watcher and pre-fallback checks must use one-shot full public accreditation probes")
+    scope_selftest = subprocess.run(
+        [sys.executable, "-S", str(STAGING_DEPLOY_SCOPE), "--self-test"],
+        capture_output=True, text=True, check=False,
+    )
+    if scope_selftest.returncode != 0:
+        errors.append("staging_deploy_scope.py self-test falla: " + (scope_selftest.stdout + scope_selftest.stderr).strip()[-300:])
+    generation_helper = (ROOT / "scripts" / "staging_generation.py").read_text(encoding="utf-8")
+    if "verify_backend_staging.py" not in generation_helper or '"--attempts", "1"' not in generation_helper:
+        errors.append("staging watcher must use one-shot full public accreditation probes")
+    selftest = subprocess.run(
+        [sys.executable, "-S", str(ROOT / "scripts" / "staging_generation.py"), "--self-test"],
+        capture_output=True, text=True, check=False,
+    )
+    if selftest.returncode != 0:
+        errors.append("staging_generation.py self-test falla: " + (selftest.stdout + selftest.stderr).strip()[-300:])
 
     forbid(
         staging_deploy,
@@ -288,12 +316,27 @@ def main() -> int:
         for needle, label in (
             ("OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}", "smoke OCI tenancy credential"),
             ("uses: ./.github/actions/setup-oci-sdk", "smoke OCI SDK toolchain"),
-            ("from oci_runtime_bundle import read_private_runtime_value", "smoke private runtime reader"),
-            ("read_private_runtime_value(oci, 'INVITE_CODE')", "smoke invite allowlisted read"),
-            ("secrets.token_hex(8)", "smoke random username entropy"),
-            ("secrets.token_urlsafe(32)", "smoke random password entropy"),
+            # Allowlisted private-runtime read, masking and identity entropy live
+            # in staging_smoke_env.py and are proven by its self-test below.
+            ("python3 scripts/staging_smoke_env.py secrets", "smoke private runtime reader"),
+            ("python3 -S scripts/staging_smoke_env.py identity", "smoke random identity"),
         ):
             require(blocks["smoke"], needle, label, errors)
+        smoke_env = (ROOT / "scripts" / "staging_smoke_env.py").read_text(encoding="utf-8")
+        for needle, label in (
+            ("read_private_runtime_values(oci,", "smoke invite allowlisted read"),
+            ("INVITE_CODE=STAGING_INVITE_CODE", "smoke invite default key"),
+            ("token(8)", "smoke random username entropy"),
+            ("urlsafe(32)", "smoke random password entropy"),
+            ("::add-mask::", "smoke secrets masked before export"),
+        ):
+            require(smoke_env, needle, label, errors)
+        smoke_selftest = subprocess.run(
+            [sys.executable, "-S", str(ROOT / "scripts" / "staging_smoke_env.py"), "--self-test"],
+            capture_output=True, text=True, check=False,
+        )
+        if smoke_selftest.returncode != 0:
+            errors.append("staging_smoke_env.py self-test falla: " + (smoke_selftest.stdout + smoke_selftest.stderr).strip()[-300:])
         for needle in ("RENDER_API_KEY", "RENDER_SERVICE_ID", "render_staging_bootstrap"):
             forbid(blocks["smoke"], needle, "smoke no depende de Render", errors)
 
@@ -309,16 +352,6 @@ def main() -> int:
         browser_test = blocks["smoke"].find("Live browser smoke against deployed staging")
         if min(parity, browser_restore, browser_test) >= 0 and not parity < browser_restore < browser_test:
             errors.append("staging generation: N/N/N debe cerrarse antes de restaurar Chromium y ejecutar smoke")
-
-        if parity >= 0 and browser_test > parity:
-            parity_block = blocks["smoke"][parity:browser_test]
-            for needle, label in (
-                ("parity_ok=false", "generation parity retry state"),
-                ("for attempt in {1..60}; do", "generation parity bounded polling"),
-                ("Staging generation aún no converge:", "generation parity skew diagnostics"),
-                ("Generation parity no convergió a N/N/N tras 5 minutos", "generation parity bounded timeout"),
-            ):
-                require(parity_block, needle, label, errors)
 
     stale_step = staging_deploy.find("Supersede stale staging commit")
     backend_step = staging_deploy.find("Deploy exact backend commit to OCI staging")
@@ -378,15 +411,17 @@ def main() -> int:
         ("La promoción manual sólo puede salir de main", "production manual main-only guard"),
         ("Resolve latest immutable staging accreditation", "production accreditation selector"),
         ("staging-promotion-accreditation", "production immutable staging proof"),
-        (
-            "actions/workflows/staging-ai-worker.yml/runs?event=workflow_run&status=success&branch=main&per_page=100",
-            "production automatic staging source",
-        ),
         ("Snapshot: `fijo al arrancar; no persigue acreditaciones posteriores`", "production fixed release snapshot"),
         ("Resolve Cloudflare zone for Worker Terraform", "production Worker zone resolver"),
         ("TF_VAR_cloudflare_zone_id=$zone_id", "production Worker Terraform zone input"),
     ):
         require(promote, needle, label, errors)
+    require(
+        production_release_train,
+        "actions/workflows/staging-ai-worker.yml/runs?event=workflow_run&status=success&branch=main&per_page=100",
+        "production automatic staging source",
+        errors,
+    )
     forbid(promote, "Staging · preview", "production-promote escucha preview", errors)
 
     # Staging AI is read-only accreditation downstream of canonical staging deploy.
@@ -394,17 +429,29 @@ def main() -> int:
         ("workflows:\n      - Deploy to staging", "staging AI canonical source"),
         ("UPSTREAM_EVENT", "staging AI upstream provenance guard"),
         ("Accredit coherent staging generation", "staging AI read-only accreditation"),
-        ("Verify staging backend still serves approved SHA", "staging AI backend attestation"),
-        ("Verify staging frontend still serves approved SHA", "staging AI frontend attestation"),
-        ("Verify staging AI health and build identity", "staging AI runtime Worker attestation"),
+        ("Checkout accreditation control-plane", "staging AI control-plane checkout"),
+        ("ref: ${{ github.sha }}", "staging AI helper code pinned to workflow SHA"),
+        ("actions: read", "staging AI may inspect exact upstream jobs"),
+        ("Prove upstream generation", "staging AI automatic deploy proof"),
+        ("staging_deploy_proof.py --run-id", "staging AI exact upstream-run proof helper"),
+        ("steps.upstream.outputs.deployed == 'true'", "staging AI refuses success/no-op upstream runs"),
+        ("Shared Workers AI live contract · manual strict probe", "staging AI manual strict probe"),
+        ("github.event_name == 'workflow_dispatch'", "staging AI live probe remains manual-only"),
         ("scripts/staging_release_identity.py", "staging AI shared identity helper"),
         ("--kind backend", "staging AI backend exact identity path"),
         ("--kind frontend", "staging AI frontend exact identity path"),
         ("--kind ai", "staging AI Worker exact identity path"),
     ):
         require(staging_ai, needle, label, errors)
+    proof_selftest = subprocess.run(
+        [sys.executable, "-S", str(STAGING_DEPLOY_PROOF), "--self-test"],
+        capture_output=True, text=True, check=False,
+    )
+    if proof_selftest.returncode != 0:
+        errors.append("staging_deploy_proof.py self-test falla: " + (proof_selftest.stdout + proof_selftest.stderr).strip()[-300:])
     require(staging_release_identity, 'payload.get("build")', "staging exact SHA helper build check", errors)
     require(staging_release_identity, "validate_health_payload", "staging AI shared health contract", errors)
+    forbid(staging_ai, "ref: ${{ env.DEPLOY_SHA }}", "staging AI no debe ejecutar helpers desde un SHA anterior que aún no los contiene", errors)
     forbid(staging_ai, "deploy_staging_ai_worker.py", "staging AI accreditation vuelve a desplegar Worker", errors)
     forbid(staging_ai, "Refuse stale staging Worker commit", "staging AI contiene stale guard tardío", errors)
     forbid(staging_ai, "Staging · preview", "staging AI escucha preview", errors)
@@ -417,7 +464,7 @@ def main() -> int:
 
     print(
         "staging-preview-contract OK · preview isolated; queued admission; native OCI mutex; "
-        "Render-free canonical release; persistent Worker secret; smoke-integrated N/N/N"
+        "Render-free canonical release; non-runtime no-op; full-generation proof; persistent Worker secret; smoke-integrated N/N/N"
     )
     return 0
 

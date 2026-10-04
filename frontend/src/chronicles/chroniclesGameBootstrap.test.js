@@ -48,6 +48,7 @@ function remoteRun(title = 'Cripta remota', seed = 417, currentMapId = DEFAULT_C
     manifestRevision: area.manifestRevision,
     status: 'active',
     worldVersion: 0,
+    partyLevel: 4,
     consumedContentIds: [],
     claimedRewards: [],
     area,
@@ -87,6 +88,26 @@ describe('Chronicles bounded authoritative-run bootstrap', () => {
       operationId: 'browser-run-1',
       signal: expect.any(AbortSignal),
     });
+  });
+
+  it('passes party level to run creation and preserves the backend snapshot', async () => {
+    const payload = remoteRun();
+    payload.partyLevel = 6;
+    const createRun = vi.fn().mockResolvedValue(payload);
+
+    const resolved = await chroniclesBootstrapWorld({
+      createRun,
+      budgetMs: 250,
+      operationId: 'difficulty-run',
+      partyLevel: 6,
+    });
+
+    expect(createRun).toHaveBeenCalledWith(null, {
+      operationId: 'difficulty-run',
+      partyLevel: 6,
+      signal: expect.any(AbortSignal),
+    });
+    expect(resolved.partyLevel).toBe(6);
   });
 
   it('rehydrates an authoritative terminal run instead of rejecting it as invalid', async () => {

@@ -6,6 +6,7 @@ import {
 import {
   chroniclesDeployedPartyLevel,
   chroniclesDifficultyBand,
+  chroniclesResolvedDifficultyBand,
   chroniclesRunDepth,
 } from './chroniclesDifficultyPolicy.js';
 
@@ -50,6 +51,31 @@ describe('Chronicles difficulty/progression policy', () => {
     expect(absurdDepth.depthPressure).toBe(6);
     expect(absurdDepth.targetLevel).toBeLessThanOrEqual(3);
     expect(absurdDepth.maxLevel).toBeLessThanOrEqual(3);
+  });
+
+  it('prefers the backend difficulty snapshot over local recomputation', () => {
+    const authoritative = Object.freeze({
+      partyLevel: 4,
+      depth: 2,
+      targetLevel: 5,
+      minLevel: 4,
+      maxLevel: 5,
+      depthPressure: 1,
+      progressionPressure: 1,
+      authoredLevel: 3,
+      requestedDelta: 2,
+      appliedDelta: 2,
+    });
+    const run = {
+      areas: [
+        { mapId: 'archive', difficulty: authoritative },
+      ],
+    };
+
+    expect(chroniclesResolvedDifficultyBand(run, 'archive', {
+      progression: leveledParty(1),
+      depth: 0,
+    })).toBe(authoritative);
   });
 
   it('derives run depth from the authoritative route order', () => {

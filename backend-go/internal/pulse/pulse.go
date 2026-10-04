@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/corspolicy"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/pvpclock"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/pvproute"
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -187,9 +188,7 @@ func NewHandler(cfg HandlerConfig) (*Handler, error) {
 	}
 	allowed := make(map[string]struct{})
 	allowAny := false
-	origins := make([]string, 0, len(canonicalBrowserOrigins)+len(cfg.AllowedOrigins))
-	origins = append(origins, canonicalBrowserOrigins[:]...)
-	origins = append(origins, cfg.AllowedOrigins...)
+	origins := append(corspolicy.CanonicalBrowserOrigins(), cfg.AllowedOrigins...)
 	for _, raw := range origins {
 		origin := strings.TrimSpace(raw)
 		if origin == "" {

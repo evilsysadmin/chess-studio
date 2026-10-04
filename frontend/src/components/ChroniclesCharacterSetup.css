@@ -1,7 +1,15 @@
 .chronicles-character-setup {
-  min-height: 100%;
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 100dvh;
   display: grid;
   place-items: center;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: clamp(16px, 3vw, 42px);
   background:
     radial-gradient(circle at 50% 20%, rgba(180, 138, 76, .13), transparent 42%),
@@ -32,6 +40,14 @@
   flex-wrap: wrap;
   gap: 10px;
   margin-top: 28px;
+}
+
+.chronicles-character-setup__actions button {
+  min-height: 44px;
+}
+
+.chronicles-character-setup[data-chronicles-character-setup="editor"] {
+  align-items: start;
 }
 
 .chronicles-character-setup__saved {
@@ -249,7 +265,7 @@
   color: rgba(242, 238, 231, .46);
 }
 
-@media (max-width: 720px) {
+@media (max-width: 720px), (max-width: 1024px) and (max-height: 600px) {
   .chronicles-character-setup {
     align-items: start;
     padding: 10px;

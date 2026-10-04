@@ -622,7 +622,7 @@ function readRendererName(renderer) {
 export const HOME_BLENDER_FIRE_MIN_SAMPLES = 6;
 export const HOME_BLENDER_FIRE_MAX_RENDER_MS = 80;
 export const HOME_BLENDER_FIRE_MAX_FRAME_GAP_MS = 60;
-export const HOME_BLENDER_FIRE_MAX_INTERVAL_MS = 400;
+export const HOME_BLENDER_FIRE_MAX_INTERVAL_MS = 200;
 export const HOME_BLENDER_FIRE_WARMUP_FRAMES = 20;
 
 export function homeBlenderFireFramePlan({
@@ -636,8 +636,12 @@ export function homeBlenderFireFramePlan({
   if (samples < HOME_BLENDER_FIRE_MIN_SAMPLES) {
     return { enabled: true, intervalMs: baseIntervalMs };
   }
+  // Severe jank must degrade cadence, never permanently kill the shared Home
+  // animation loop. Matthias, Klaus, fire, steam and practical-light motion all
+  // advance from this RAF, so a transient GC/compositor stall must be recoverable.
+  // The EWMA inputs naturally let cadence tighten again once the stall clears.
   if (cost > HOME_BLENDER_FIRE_MAX_RENDER_MS || gap > HOME_BLENDER_FIRE_MAX_FRAME_GAP_MS) {
-    return { enabled: false, intervalMs: baseIntervalMs };
+    return { enabled: true, intervalMs: HOME_BLENDER_FIRE_MAX_INTERVAL_MS };
   }
   return { enabled: true, intervalMs: Math.min(HOME_BLENDER_FIRE_MAX_INTERVAL_MS, Math.max(baseIntervalMs, cost * 3)) };
 }
@@ -939,6 +943,14 @@ export function homeBlenderPolicyNeedsFallback(policy) {
   return !policy?.enabled || policy?.lod === '2d';
 }
 
+export function homeBlenderAdaptiveLodFloor(policy) {
+  // Once the browser has proved capable enough to enter the Blender Home, runtime
+  // performance adaptation may shed expensive effects but must not eject the user
+  // to the static painted fallback. This matters especially on phones, which enter
+  // directly at lite quality even on strong GPUs such as recent Adreno devices.
+  return policy?.enabled && policy?.lod !== '2d' ? 'lite' : '2d';
+}
+
 
 // Wall-torch x positions from the authored Blender scene (Blender x maps to three x).
 const HOME_BLENDER_TORCH_X = Object.freeze([-8.0, -4.15, 2.45, 7.95]);
@@ -1183,6 +1195,12 @@ function disposeRuntimeScene(root) {
   });
 }
 
+export function disposeStaleHomeBlenderGltf(gltf, stale) {
+  if (!stale) return false;
+  disposeRuntimeScene(gltf?.scene);
+  return true;
+}
+
 // The chandelier lights the board from above, so it lifts the squares and the tops of the pieces
 // but not the sides the camera sees, and raising it further only flattens the board's contrast.
 // Candle light also bounces off the table onto the pieces from every side, which the runtime has
@@ -1275,7 +1293,11 @@ export default function HomeBlenderScene3D({
   useEffect(() => {
     const canvas = canvasRef.current;
     const initialPolicy = browserPolicy();
-    // Same governor and cap as the legacy Home: sustained jank tightens full -> lite -> 2d.
+    // Any session that qualified for the Blender Home keeps a 3D floor. Desktop may
+    // shed full-only effects and phones already start at lite, but runtime jank alone
+    // must never turn a live castle into the static painted fallback.
+    const adaptiveLodFloor = homeBlenderAdaptiveLodFloor(initialPolicy);
+    // Same governor and cap as the legacy Home: sustained jank tightens quality.
     // The Blender scene decided its LOD once at mount and never degraded before this.
     let lodCap = null;
     let performanceGovernor = createHomeCastle3DPerformanceGovernor(initialPolicy.lod);
@@ -1502,7 +1524,8 @@ export default function HomeBlenderScene3D({
     // Drop the extra GPU effects and shadows in place (no scene reload), then re-read the
     // capped policy for pixel ratio; '2d' hands the Home back to the painted master.
     const applyLodCap = (next) => {
-      lodCap = tighterRuntimeLodCap(lodCap, next);
+      const requested = adaptiveLodFloor === 'lite' && next === '2d' ? 'lite' : next;
+      lodCap = tighterRuntimeLodCap(lodCap, requested);
       if (lodCap === '2d') {
         failToFallback(true);
         return;
@@ -1573,12 +1596,9 @@ export default function HomeBlenderScene3D({
         fireIntervalMs = plan.intervalMs;
         canvas.dataset.homeFireCostMs = fireRenderCostMs.toFixed(1);
         canvas.dataset.homeFireGapMs = fireFrameGapMs.toFixed(1);
-        if (!plan.enabled) {
-          // Too expensive here: settle on the still frame and stay there.
-          canvas.dataset.homeFireMotion = 'off-slow';
-          if (klausRig) canvas.dataset.homeKlausMotion = 'off-slow';
-          return;
-        }
+        // The frame planner only throttles. It intentionally never terminates
+        // this shared loop, because doing so freezes Matthias and every ambient
+        // animation until the Home is remounted.
       }
       fireFrame = window.requestAnimationFrame(animateFire);
     };
@@ -1598,7 +1618,6 @@ export default function HomeBlenderScene3D({
         if (klausRig) canvas.dataset.homeKlausMotion = 'off-software';
         return;
       }
-      if (canvas.dataset.homeFireMotion === 'off-slow') return;
       if (disposed || !model || document.hidden || fireFrame !== null) return;
       canvas.dataset.homeFireMotion = 'live';
       if (klausRig) canvas.dataset.homeKlausMotion = 'live';
@@ -1690,7 +1709,7 @@ export default function HomeBlenderScene3D({
       actorLoader.load(
         `${import.meta.env.BASE_URL}${HOME_MATTHIAS_ACTOR_MODEL_PATH}`,
         (gltf) => {
-          if (disposed || fallbackRequested) return;
+          if (disposeStaleHomeBlenderGltf(gltf, disposed || fallbackRequested)) return;
           matthiasActor = createHomeMatthiasActor(gltf, { shadowsEnabled: renderer.shadowMap.enabled });
           scene.add(matthiasActor.object);
           applyMatthiasRoutine();

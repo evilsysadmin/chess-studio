@@ -24,6 +24,8 @@ STAGING_AI_WORKFLOW = ROOT / ".github/workflows/staging-ai-worker.yml"
 PROMOTION_WORKFLOW = ROOT / ".github/workflows/production-promote.yml"
 ROLLBACK_WORKFLOW = ROOT / ".github/workflows/production-rollback.yml"
 PAGES_HELPER = ROOT / "scripts/cloudflare_production_pages.py"
+MAIN_LINEAGE_HELPER = ROOT / "scripts/main_lineage_guard.py"
+RELEASE_TRAIN_HELPER = ROOT / "scripts/production_release_train.py"
 
 EXPECTED_COMMENT_MODEL = EXPECTED_MODELS["comments"]
 EXPECTED_PORTRAIT_MODEL = EXPECTED_MODELS["player_portrait"]
@@ -67,10 +69,16 @@ def static_check() -> list[str]:
         return ["pipeline: falta .github/workflows/production-rollback.yml"]
     if not PAGES_HELPER.exists():
         return ["pipeline: falta scripts/cloudflare_production_pages.py"]
+    if not MAIN_LINEAGE_HELPER.exists():
+        return ["pipeline: falta scripts/main_lineage_guard.py"]
+    if not RELEASE_TRAIN_HELPER.exists():
+        return ["pipeline: falta scripts/production_release_train.py"]
     staging_ai = STAGING_AI_WORKFLOW.read_text(encoding="utf-8")
     promotion = PROMOTION_WORKFLOW.read_text(encoding="utf-8")
     rollback = ROLLBACK_WORKFLOW.read_text(encoding="utf-8")
     pages_helper = PAGES_HELPER.read_text(encoding="utf-8")
+    lineage_helper = MAIN_LINEAGE_HELPER.read_text(encoding="utf-8")
+    release_train_helper = RELEASE_TRAIN_HELPER.read_text(encoding="utf-8")
 
     for needle in (
         'env.AI.run(',
@@ -157,19 +165,19 @@ def static_check() -> list[str]:
     # must remain in main's lineage, and staging must still serve that exact SHA on
     # backend/frontend/Worker before the promotion artifact is emitted.
     for needle, label in (
-        ("name: Staging · AI Worker", "staging AI workflow name"),
+        ("name: Staging · accreditation", "staging accreditation workflow name"),
         ("contents: read", "staging AI least-privilege contents permission"),
         ("accredited=false", "staging AI clean supersede output"),
         ("accredited=true", "staging AI retained accreditation output"),
         ("steps.lineage.outputs.accredited == 'true'", "staging AI accreditation gating"),
         ("UPSTREAM_EVENT: ${{ github.event.workflow_run.event", "staging AI upstream provenance"),
         ("Supersede stale staging accreditation outside current main lineage", "staging AI lineage guard"),
-        ("git ls-remote --exit-code origin refs/heads/main", "staging AI resolves current main"),
-        ("compare/$DEPLOY_SHA...$current_main", "staging AI proves candidate remains in main lineage"),
-        ("identical|ahead", "staging AI accepts exact or ancestor SHA"),
-        ("Verify staging backend still serves approved SHA", "staging AI exact backend gate"),
-        ("Verify staging frontend still serves approved SHA", "staging AI exact frontend gate"),
-        ("Verify staging AI health and build identity", "staging AI exact Worker gate"),
+        ('python3 scripts/main_lineage_guard.py --sha "$DEPLOY_SHA" --write-env "$lineage_env"', "staging AI shared lineage helper"),
+        ('if [[ "$IN_MAIN_LINEAGE" != true ]]', "staging AI rejects out-of-lineage SHA"),
+        ("Shared Workers AI live contract · manual strict probe", "staging AI live identity probe"),
+        ("--kind backend", "staging AI exact backend gate"),
+        ("--kind frontend", "staging AI exact frontend gate"),
+        ("--kind ai", "staging AI exact Worker gate"),
         ("Write immutable production accreditation", "staging AI immutable accreditation writer"),
         ("staging_deploy_run_id", "staging AI binds deploy run id"),
         ("staging_ai_run_id", "staging AI binds accreditation run id"),
@@ -179,11 +187,17 @@ def static_check() -> list[str]:
         require(staging_ai, needle, label, errors)
     if "actions: write" in staging_ai:
         errors.append("staging AI: actions: write ya no está permitido; supersede debe terminar limpio sin mutar Actions")
+    for needle, label in (
+        ("refs/heads/main", "shared lineage resolves current main"),
+        ("compare/{sha}...{current_main}", "shared lineage compares candidate ancestry"),
+        ('IN_LINEAGE_STATUSES = frozenset({"identical", "ahead"})', "shared lineage accepted statuses"),
+    ):
+        require(lineage_helper, needle, label, errors)
 
     require_order(
         staging_ai,
         "Supersede stale staging accreditation outside current main lineage",
-        "Verify staging backend still serves approved SHA",
+        "Shared Workers AI live contract · manual strict probe",
         "staging AI lineage guard ordering",
         errors,
     )
@@ -202,30 +216,28 @@ def static_check() -> list[str]:
     # promotion accreditation artifact, and only before the first prod mutation.
     for needle, label in (
         ("name: Deploy to production", "promotion workflow name"),
-        ("workflow_run:", "promotion workflow_run trigger"),
-        ("Staging · AI Worker", "promotion staging AI source"),
-        ("github.event.workflow_run.conclusion == 'success'", "promotion requires successful staging AI"),
-        ("github.event.workflow_run.event == 'workflow_run'", "promotion rejects manual AI runs"),
+        ("schedule:", "promotion release train schedule"),
+        ("- cron: '0 6 * * *'", "promotion CEST release slot"),
+        ("- cron: '0 7 * * *'", "promotion CET release slot"),
+        ("workflow_dispatch:", "promotion manual hotfix path"),
+        ("Release train · 08:00 Europe/Madrid", "promotion Madrid release window"),
+        ("Resolve latest immutable staging accreditation", "promotion staging accreditation selector"),
+        ("production_release_train.py select", "promotion release-train selector"),
         ("actions: write", "promotion self-cancel permission"),
         ("actions/download-artifact@v8", "promotion downloads immutable accreditation"),
         ("staging-promotion-accreditation", "promotion accreditation artifact name"),
-        ("run-id: ${{ github.event.workflow_run.id }}", "promotion artifact bound to exact triggering run"),
+        ("run-id: ${{ steps.source.outputs.staging_ai_run_id }}", "promotion artifact bound to selected accreditation run"),
         ("github-token: ${{ secrets.GITHUB_TOKEN }}", "promotion cross-run artifact permission"),
         ("Read accredited source SHA", "promotion reads accredited SHA"),
+        ("production_release_train.py read", "promotion parses immutable accreditation"),
         ("staging_ai_run_id", "promotion validates artifact run provenance"),
         ("staging_ai_run_number", "promotion carries source run ordering"),
         ("deploy_sha: ${{ steps.accreditation.outputs.deploy_sha }}", "promotion exports accredited SHA"),
         ("Gate · staging accredited SHA", "promotion staging gate"),
         ("Require current main before starting promotion · lineage, not HEAD", "promotion lineage gate"),
-        ("compare/$DEPLOY_SHA...$current_main", "promotion proves accredited SHA remains in main lineage"),
-        ("Verify staging backend still serves approved SHA · diagnostic only", "promotion backend staging check is diagnostic"),
-        ("Verify staging frontend still serves approved SHA · diagnostic only", "promotion frontend staging check is diagnostic"),
-        ("Verify staging AI health contract · diagnostic only", "promotion AI staging check is diagnostic"),
+        ("production_release_train.py lineage", "promotion proves accredited SHA remains in main lineage"),
+        ("production_release_train.py diagnose-staging", "promotion staging live checks are diagnostic"),
         ("SOURCE_STAGING_AI_RUN_NUMBER", "promotion carries source accreditation order into mutation gate"),
-        ("actions/workflows/staging-ai-worker.yml/runs?event=workflow_run&status=success&branch=main&per_page=100", "promotion searches only newer automatic green staging runs"),
-        ('production_promotion_supersede.py" candidates', "promotion delegates strictly-newer run selection"),
-        ('production_promotion_supersede.py" artifact-valid', "promotion delegates non-expired accreditation validation"),
-        ("newer_accredited_run", "promotion supersede decision is accreditation-based"),
         ("Production · Cloudflare Worker", "promotion Worker stage"),
         ("Supersede stale production promotion before first mutation", "promotion final accreditation queue guard"),
         ("Production · backend target", "promotion backend target stage"),
@@ -254,6 +266,13 @@ def static_check() -> list[str]:
         ("Verify production frontend build identity", "Pages live identity gate"),
     ):
         require(promotion, needle, label, errors)
+    for needle, label in (
+        ("actions/workflows/staging-ai-worker.yml/runs?event=workflow_run&status=success&branch=main&per_page=100", "release train selects automatic green staging runs"),
+        ('f"compare/{sha}...{current}"', "release train checks main lineage"),
+        ('if payload.get("upstream_event") != "workflow_run"', "release train rejects manual staging accreditation"),
+    ):
+        require(release_train_helper, needle, label, errors)
+
     require_order(
         promotion,
         "Supersede stale production promotion before first mutation",
@@ -343,7 +362,7 @@ def static_check() -> list[str]:
 
     # Rollback is deliberately a runtime rollback, never a generic infra rewind.
     # It is manual, serializes with normal promotion, and only accepts a SHA that
-    # GitHub records as a prior successful automatic production promotion. The
+    # has immutable release-train provenance or a historical automatic promotion. The
     # sole infrastructure reconciliation permitted is the already-known Pages
     # custom domain/CNAME, after the rollback SHA is verified on pages.dev.
     for needle, label in (
@@ -356,7 +375,11 @@ def static_check() -> list[str]:
         ("Gate · known-good production SHA", "rollback known-good gate"),
         ("Verify rollback SHA was previously promoted successfully", "rollback provenance check"),
         ("actions/workflows/production-promote.yml/runs", "rollback reads promotion history"),
-        ("event=workflow_run", "rollback only trusts automatic promotions"),
+        ("production-promotion-record", "rollback reads immutable release-train records"),
+        ("payload.get('event') in {'schedule', 'workflow_dispatch', 'push'}", "rollback accepts current release-train provenance"),
+        ("run_event\" == 'workflow_run'", "rollback preserves historical automatic promotion provenance"),
+        ("legacy workflow_run head_sha", "rollback labels legacy provenance explicitly"),
+        ("immutable production promotion record", "rollback labels release-train provenance explicitly"),
         ("compare/$DEPLOY_SHA...$ORCHESTRATOR_SHA", "rollback requires main ancestry"),
         ("Rollback · Cloudflare Worker", "rollback Worker stage"),
         ("--keep-vars", "rollback preserves Worker variables"),

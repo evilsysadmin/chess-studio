@@ -106,7 +106,7 @@ describe('Chronicles declarative map catalog', () => {
     expect(gallery.width).toBe(7);
     expect(gallery.height).toBe(7);
     expect(gallery.enemies).toEqual([
-      { id: 'corrupted-pawn', visualType: 'corrupted-pawn', visualScale: 1, visualMotion: 'grounded' },
+      { id: 'fork-stalker', visualType: 'fork-stalker', visualScale: 0.96, visualMotion: 'skitter' },
       { id: 'gate-jailer', visualType: 'gate-jailer', visualScale: 1, visualMotion: 'grounded' },
     ]);
     expect(gallery.lever?.position).toEqual({ x: 5, y: 5 });

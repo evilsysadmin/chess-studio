@@ -4,6 +4,7 @@ import {
 } from '../safeStorage.js';
 import { setProfileStorageItem } from '../profileKeys.js';
 import { PVP_DUEL_ROOM_RUNTIME_MODEL_URL } from './PvpDuelRoomAsset.js';
+import { r2AssetUrl } from '../r2Assets.js';
 
 export const WAR_ROOM_VARIANT_STORAGE_KEY = 'chess-study-war-room-variant-v1';
 export const WAR_ROOM_VARIANT_CHANGED_EVENT = 'chess-war-room-variant-changed';
@@ -22,14 +23,16 @@ export const WAR_ROOM_VARIANTS = Object.freeze([
     id: 'v2',
     label: 'War Room v2',
     shell: 'blender',
-    runtimeModelUrl: 'https://assets.chess-studio.shadowops.dpdns.org/war-room/v2/runtime/current.glb',
+    runtimeModelUrl: r2AssetUrl('warRoom.v2.runtime'),
+    cacheBustBuild: false,
     loadInstaller: () => import('./WarRoomV2Shell.js').then(({ installWarRoomV2Shell }) => installWarRoomV2Shell),
   }),
   Object.freeze({
     id: 'v3',
     label: 'War Room v3',
     shell: 'blender',
-    runtimeModelUrl: 'https://assets.chess-studio.shadowops.dpdns.org/war-room/v3/runtime/current.glb',
+    runtimeModelUrl: r2AssetUrl('warRoom.v3.runtime'),
+    cacheBustBuild: false,
     loadInstaller: () => import('./WarRoomV3Shell.js').then(({ installWarRoomV3Shell }) => installWarRoomV3Shell),
   }),
   Object.freeze({
@@ -39,7 +42,8 @@ export const WAR_ROOM_VARIANTS = Object.freeze([
     // Selectable explicitly while it is validated on device; never drawn by
     // the «Aleatoria» preference until it graduates.
     randomPool: false,
-    runtimeModelUrl: 'https://assets.chess-studio.shadowops.dpdns.org/war-room/v4/runtime/current.glb',
+    runtimeModelUrl: r2AssetUrl('warRoom.v4.runtime'),
+    cacheBustBuild: false,
     loadInstaller: () => import('./WarRoomV4Shell.js').then(({ installWarRoomV4Shell }) => installWarRoomV4Shell),
   }),
 ]);

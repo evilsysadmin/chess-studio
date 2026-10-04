@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { chroniclesIsometricScenePlan } from './chronicles/chroniclesIsometricScenePlan.js';
+import { CHRONICLES_MINIMUM_VISIBILITY } from './chronicles/chroniclesLightingPolicy.js';
 import { chroniclesMapById } from './chronicles/chroniclesMapCatalog.js';
 import { buildChroniclesDungeonAtmosphere } from './chroniclesOfMatthiasAtmosphere.js';
 
@@ -50,7 +51,7 @@ describe('Chronicles of Matthias dungeon atmosphere', () => {
     const farFill = desktop.getObjectByName('chronicles-readability-far-fill');
 
     expect(ambient?.isAmbientLight).toBe(true);
-    expect(ambient?.intensity).toBeGreaterThanOrEqual(0.7);
+    expect(ambient?.intensity).toBeGreaterThanOrEqual(CHRONICLES_MINIMUM_VISIBILITY.firstPerson.ambientDesktop);
     expect(entryBounce?.isPointLight).toBe(true);
     expect(cryptBounce?.isPointLight).toBe(true);
     expect(floorBounce?.isPointLight).toBe(true);

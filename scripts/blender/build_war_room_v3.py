@@ -13,7 +13,9 @@ preview is what the player sees. The v3 live board is scaled x1.08 at runtime
 """
 from __future__ import annotations
 
+import json
 import math
+import struct
 import sys
 from pathlib import Path
 
@@ -56,6 +58,34 @@ V3_ARMOR_POSITIONS = (
     (-6.05, 4.35), (6.05, 4.35),
     (-7.15, 0.75), (7.15, 0.75),
     (-7.15, -3.35), (7.15, -3.35),
+)
+
+# Hans' service door: left side wall, between the back corner and the first
+# pilaster (y 5.4), the only stretch of side wall no armour stands in front of.
+# The leaf is its own runtime node with its origin on the hinge; the runtime
+# swings it open by V3_HANS_DOOR_OPEN_YAW (Blender Z == three.js Y) into a dark
+# service alcove behind the wall.
+V3_HANS_DOOR_SIDE = -1
+V3_HANS_DOOR_Y0 = 6.08
+V3_HANS_DOOR_Y1 = 7.22
+V3_HANS_DOOR_HEIGHT = 2.30
+V3_HANS_DOOR_LEAF = "WR_HANS_door_leaf"
+V3_HANS_DOOR_HINGE = (-8.68, 7.16)
+V3_HANS_DOOR_OPEN_YAW = -1.45
+V3_HANS_ALCOVE_DEPTH = 1.55
+
+# Where Hans works (WarRoomHansStage.js): hearth mouth on the floor, his door
+# spawn just inside the threshold, log basket and tool stand clear of the back
+# armour pair, and a corridor round the side and back armour.
+V3_HANS_ANCHOR_PREFIX = "WR_ANCHOR_hans_"
+V3_HANS_ANCHORS = (
+    ("WR_ANCHOR_hans_hearth", (0.0, 6.95, 0.0)),
+    ("WR_ANCHOR_hans_door", (-8.30, 6.65, 0.0)),
+    ("WR_ANCHOR_hans_basket", (1.45, 6.67, 0.0)),
+    ("WR_ANCHOR_hans_tools", (2.00, 6.65, 0.0)),
+    ("WR_ANCHOR_hans_corridor_0", (-5.20, 5.70, 0.0)),
+    ("WR_ANCHOR_hans_corridor_1", (-3.60, 5.60, 0.0)),
+    ("WR_ANCHOR_hans_corridor_2", (-2.00, 5.85, 0.0)),
 )
 
 V3_WEATHER_MATERIALS = frozenset({
@@ -247,6 +277,13 @@ def placed(obj, origin, yaw):
 
 # --- architecture ---------------------------------------------------------------------
 
+def side_wall_runs(side, front, back):
+    """Side-wall spans along y; the door side leaves Hans' doorway open."""
+    if side != V3_HANS_DOOR_SIDE:
+        return ((front, back),)
+    return ((front, V3_HANS_DOOR_Y0), (V3_HANS_DOOR_Y1, back))
+
+
 def build_hall(static, palette):
     """Stone castle hall open to the sky: flagstones, walls, pilasters, battlements."""
     hx, back, front = V3_HALL_HALF_X, V3_HALL_BACK_Y, V3_HALL_FRONT_Y
@@ -275,21 +312,29 @@ def build_hall(static, palette):
     base.cube("WR3_ARM_wall_back", (0, back + t / 2.0, wall_z), (hx + t, t / 2.0, wall_z),
               palette["brick"], static, bevel=0.04)
     for side in (-1, 1):
-        base.cube(f"WR3_ARM_wall_side_{side}", (side * (hx + t / 2.0), (back + front) / 2.0, wall_z),
-                  (t / 2.0, (back - front) / 2.0, wall_z), palette["brick"], static, bevel=0.04)
+        for part, (y0, y1) in enumerate(side_wall_runs(side, front, back)):
+            base.cube(f"WR3_ARM_wall_side_{side}_{part}", (side * (hx + t / 2.0), (y0 + y1) / 2.0, wall_z),
+                      (t / 2.0, (y1 - y0) / 2.0, wall_z), palette["brick"], static, bevel=0.04)
+    door_top = V3_HANS_DOOR_HEIGHT
+    base.cube("WR3_ARM_wall_side_door_lintel", (V3_HANS_DOOR_SIDE * (hx + t / 2.0),
+              (V3_HANS_DOOR_Y0 + V3_HANS_DOOR_Y1) / 2.0, (door_top + V3_WALL_TOP_Z) / 2.0),
+              (t / 2.0, (V3_HANS_DOOR_Y1 - V3_HANS_DOOR_Y0) / 2.0 + 0.02, (V3_WALL_TOP_Z - door_top) / 2.0),
+              palette["brick"], static, bevel=0.03)
 
     # Oak wainscot, a stone string course and pilasters give the walls rhythm.
     wains_h = 1.05
     base.cube("WR3_ARM_wainscot_back", (0, back - 0.06, wains_h / 2.0), (hx, 0.06, wains_h / 2.0),
               palette["oak"], static, bevel=0.03)
     for side in (-1, 1):
-        base.cube(f"WR3_ARM_wainscot_side_{side}", (side * (hx - 0.06), (back + front) / 2.0, wains_h / 2.0),
-                  (0.06, (back - front) / 2.0, wains_h / 2.0), palette["oak"], static, bevel=0.03)
+        for part, (y0, y1) in enumerate(side_wall_runs(side, front, back)):
+            base.cube(f"WR3_ARM_wainscot_side_{side}_{part}", (side * (hx - 0.06), (y0 + y1) / 2.0, wains_h / 2.0),
+                      (0.06, (y1 - y0) / 2.0, wains_h / 2.0), palette["oak"], static, bevel=0.03)
     base.cube("WR3_ARM_wainscot_rail_back", (0, back - 0.13, wains_h), (hx, 0.05, 0.05),
               palette["oak_dark"], static, bevel=0.02)
     for side in (-1, 1):
-        base.cube(f"WR3_ARM_wainscot_rail_side_{side}", (side * (hx - 0.13), (back + front) / 2.0, wains_h),
-                  (0.05, (back - front) / 2.0, 0.05), palette["oak_dark"], static, bevel=0.02)
+        for part, (y0, y1) in enumerate(side_wall_runs(side, front, back)):
+            base.cube(f"WR3_ARM_wainscot_rail_side_{side}_{part}", (side * (hx - 0.13), (y0 + y1) / 2.0, wains_h),
+                      (0.05, (y1 - y0) / 2.0, 0.05), palette["oak_dark"], static, bevel=0.02)
 
     for index, x in enumerate((-6.6, -3.3, 3.3, 6.6)):
         base.cube(f"WR3_ARM_pilaster_back_{index}", (x, back - 0.16, wall_z), (0.28, 0.16, wall_z),
@@ -726,6 +771,69 @@ def build_hearth(static, palette):
     base.anchor("WR_ANCHOR_fireplace_practical", (x, y - 0.90, 1.45), static)
 
 
+def build_hans_service(static, palette):
+    """Hans' service door: stone frame, dark alcove and a hinged oak leaf."""
+    side = V3_HANS_DOOR_SIDE
+    hx, t = V3_HALL_HALF_X, V3_WALL_THICK
+    y0, y1, height = V3_HANS_DOOR_Y0, V3_HANS_DOOR_Y1, V3_HANS_DOOR_HEIGHT
+    mid = (y0 + y1) / 2.0
+    # Stone frame proud of the wainscot, so the doorway reads from the board.
+    for end, y in (("front", y0 - 0.10), ("back", y1 + 0.10)):
+        base.cube(f"WR3_ARM_hans_door_jamb_{end}", (side * (hx - 0.08), y, height / 2.0 + 0.06),
+                  (0.12, 0.11, height / 2.0 + 0.06), palette["stone"], static, bevel=0.03)
+    base.cube("WR3_ARM_hans_door_lintel", (side * (hx - 0.08), mid, height + 0.24),
+              (0.13, (y1 - y0) / 2.0 + 0.22, 0.13), palette["stone"], static, bevel=0.03)
+    base.cube("WR3_ARM_hans_door_sill", (side * (hx + t / 2.0), mid, 0.02),
+              (t / 2.0 + 0.04, (y1 - y0) / 2.0, 0.03), palette["flag_dark"], static, bevel=0.01)
+    # Service alcove behind the wall: dark, shallow, just deep enough for the
+    # open leaf. Never visible beyond the doorway.
+    outer = hx + t
+    depth = V3_HANS_ALCOVE_DEPTH
+    cx = side * (outer + depth / 2.0)
+    base.cube("WR3_ARM_hans_alcove_floor", (cx, mid, -0.02), (depth / 2.0, (y1 - y0) / 2.0 + 0.12, 0.04),
+              palette["flag_dark"], static, bevel=0.01)
+    base.cube("WR3_ARM_hans_alcove_back", (side * (outer + depth + 0.06), mid, height / 2.0 + 0.1),
+              (0.06, (y1 - y0) / 2.0 + 0.12, height / 2.0 + 0.2), palette["charcoal"], static, bevel=0.01)
+    base.cube("WR3_ARM_hans_alcove_ceiling", (cx, mid, height + 0.12), (depth / 2.0 + 0.06, (y1 - y0) / 2.0 + 0.12, 0.08),
+              palette["charcoal"], static, bevel=0.01)
+    for end, y in (("front", y0 - 0.06), ("back", y1 + 0.06)):
+        base.cube(f"WR3_ARM_hans_alcove_side_{end}", (cx, y, height / 2.0 + 0.1), (depth / 2.0 + 0.06, 0.06, height / 2.0 + 0.2),
+                  palette["charcoal"], static, bevel=0.01)
+
+    # The leaf: oak planks, iron straps and a ring pull, closed along -y from
+    # the hinge. One mesh, origin on the hinge, exempt from runtime batching.
+    hinge_x, hinge_y = V3_HANS_DOOR_HINGE
+    width = hinge_y - (y0 + 0.04)
+    leaf_h = height - 0.04
+    parts = [
+        base.cube("WR3_HANS_leaf_planks", (hinge_x, hinge_y - width / 2.0, leaf_h / 2.0 + 0.02),
+                  (0.04, width / 2.0, leaf_h / 2.0), palette["oak"], static, bevel=0.015),
+    ]
+    for index, z in enumerate((0.42, 1.18, 1.94)):
+        parts.append(base.cube(f"WR3_HANS_leaf_strap_{index}", (hinge_x + side * -0.045, hinge_y - width * 0.42, z),
+                               (0.012, width * 0.42, 0.045), palette["iron"], static, bevel=0.006))
+    parts.append(base.cylinder("WR3_HANS_leaf_ring", (hinge_x + side * -0.07, hinge_y - width + 0.16, 1.05),
+                               0.06, 0.02, palette["iron"], static, vertices=12))
+    parts[-1].rotation_euler.y = math.pi / 2
+    leaf = join_into(parts, V3_HANS_DOOR_LEAF)
+    cursor = bpy.context.scene.cursor
+    previous_cursor = cursor.location.copy()
+    cursor.location = (hinge_x, hinge_y, 0.0)
+    bpy.ops.object.select_all(action="DESELECT")
+    leaf.select_set(True)
+    bpy.context.view_layer.objects.active = leaf
+    bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
+    bpy.ops.object.origin_set(type="ORIGIN_CURSOR")
+    leaf.select_set(False)
+    cursor.location = previous_cursor
+    leaf["war_room_runtime_dynamic"] = "v3-hans-door"
+    leaf["war_room_hans_door_open_yaw"] = V3_HANS_DOOR_OPEN_YAW
+
+    for name, loc in V3_HANS_ANCHORS:
+        base.anchor(name, loc, static)
+    fuse_by_material("WR3_ARM_hans_", static, "WR3_ARM_hans_service")
+
+
 def build_windows(static, palette):
     """Two tall lancet windows with moonlit glass on the back wall."""
     back = V3_HALL_BACK_Y
@@ -846,6 +954,7 @@ def apply_v3_identity():
     build_night_backdrop(static, palette)
     build_dais_and_board(static, palette)
     build_hearth(static, palette)
+    build_hans_service(static, palette)
     build_windows(static, palette)
     build_armor_ring(static, palette)
     build_wall_trophies(static, palette)
@@ -874,6 +983,8 @@ def validate_v3():
         "WR3_ARM_board_plinth",
         "WR3_ARM_hearth_body",
         "WR3_ARM_window_glass_0",
+        V3_HANS_DOOR_LEAF,
+        *(name for name, _loc in V3_HANS_ANCHORS),
         *V3_FLAME_NAMES,
     }
     missing = sorted(required - names)
@@ -892,11 +1003,72 @@ def validate_v3():
         raise RuntimeError(f"War Room v3 inherited foreign visual geometry: {forbidden[:12]}")
     if sum(1 for name in names if name == "WR_ANCHOR_fireplace_practical") != 1:
         raise RuntimeError("War Room v3 must contain exactly one fireplace practical")
+    validate_v3_hans_stage()
     # No armour may stand between the play camera and the near ranks.
     near_rank = -V3_BOARD_HALF
     for x, y in V3_ARMOR_POSITIONS:
         if y < near_rank + 1.2 and abs(x) < V3_BOARD_HALF + 2.0:
             raise RuntimeError(f"War Room v3 armour at ({x}, {y}) would occlude the near ranks")
+
+
+def validate_v3_hans_stage():
+    """Hans' door must open into its alcove and his walk must clear the armour."""
+    objects = bpy.context.scene.objects
+    leaf = objects[V3_HANS_DOOR_LEAF]
+    if leaf.get("war_room_runtime_dynamic") != "v3-hans-door":
+        raise RuntimeError("War Room v3 Hans door leaf must stay a dynamic runtime node")
+    hinge = V3_HANS_DOOR_HINGE
+    if abs(leaf.location.x - hinge[0]) > 1e-4 or abs(leaf.location.y - hinge[1]) > 1e-4 or abs(leaf.location.z) > 1e-4:
+        raise RuntimeError(f"War Room v3 Hans door origin is not on its hinge: {tuple(leaf.location)}")
+    if any(abs(value) > 1e-6 for value in leaf.rotation_euler):
+        raise RuntimeError("War Room v3 Hans door leaf must export closed with no rotation")
+    # Swung open, the free edge must land inside the alcove, out of the hall.
+    width = hinge[1] - V3_HANS_DOOR_Y0
+    yaw = V3_HANS_DOOR_OPEN_YAW
+    free_x = hinge[0] + math.sin(yaw) * width
+    free_y = hinge[1] - math.cos(yaw) * width
+    outer = V3_HALL_HALF_X + V3_WALL_THICK
+    if not (-(outer + V3_HANS_ALCOVE_DEPTH) < free_x < -outer) or not (V3_HANS_DOOR_Y0 < free_y < V3_HANS_DOOR_Y1):
+        raise RuntimeError(f"War Room v3 Hans door opens outside its alcove: ({free_x:.2f}, {free_y:.2f})")
+    door = dict(V3_HANS_ANCHORS)["WR_ANCHOR_hans_door"]
+    if not V3_HANS_DOOR_Y0 < door[1] < V3_HANS_DOOR_Y1:
+        raise RuntimeError("War Room v3 Hans spawn is not in front of his door")
+    for name, (x, y, _z) in V3_HANS_ANCHORS:
+        if name == "WR_ANCHOR_hans_hearth":
+            continue
+        for ax, ay in V3_ARMOR_POSITIONS:
+            if math.hypot(x - ax, y - ay) < 0.75:
+                raise RuntimeError(f"War Room v3 Hans anchor {name} walks into the armour at ({ax}, {ay})")
+
+
+def patch_v3_hans_door_extras(path):
+    """Carry the door's open yaw on its glTF node (three.js userData)."""
+    raw = Path(path).read_bytes()
+    chunks = []
+    offset = 12
+    patched = 0
+    while offset + 8 <= len(raw):
+        chunk_length, chunk_type = struct.unpack_from("<II", raw, offset)
+        offset += 8
+        chunk = raw[offset:offset + chunk_length]
+        offset += chunk_length
+        if chunk_type == 0x4E4F534A:
+            data = json.loads(chunk.decode("utf-8").rstrip("\x00 \t\r\n"))
+            for node in data.get("nodes", []):
+                if node.get("name") == V3_HANS_DOOR_LEAF:
+                    node.setdefault("extras", {})["war_room_hans_door_open_yaw"] = V3_HANS_DOOR_OPEN_YAW
+                    patched += 1
+            chunk = json.dumps(data, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+            chunk += b" " * ((4 - len(chunk) % 4) % 4)
+        chunks.append((chunk_type, chunk))
+    if patched != 1:
+        raise RuntimeError(f"War Room v3 Hans door node patched {patched} times")
+    total = 12 + sum(8 + len(chunk) for _chunk_type, chunk in chunks)
+    out = bytearray(struct.pack("<4sII", b"glTF", 2, total))
+    for chunk_type, chunk in chunks:
+        out.extend(struct.pack("<II", len(chunk), chunk_type))
+        out.extend(chunk)
+    Path(path).write_bytes(out)
 
 
 def validate_runtime_glb_v3(path, expected_factors):
@@ -929,6 +1101,14 @@ def validate_runtime_glb_v3(path, expected_factors):
         raise RuntimeError("War Room v3 runtime shell exported preview-only torch stand-ins")
     if "WR_ANCHOR_right_fireplace_practical" in node_names:
         raise RuntimeError("War Room v3 runtime contains a secondary-hearth anchor")
+    hans_missing = sorted({V3_HANS_DOOR_LEAF, *(name for name, _loc in V3_HANS_ANCHORS)} - node_names)
+    if hans_missing:
+        raise RuntimeError(f"War Room v3 runtime lost Hans' stage: {hans_missing}")
+    leaf_node = next(row for row in data["nodes"] if row.get("name") == V3_HANS_DOOR_LEAF)
+    if leaf_node.get("extras", {}).get("war_room_hans_door_open_yaw") != V3_HANS_DOOR_OPEN_YAW:
+        raise RuntimeError("War Room v3 runtime Hans door lost its open yaw")
+    if "mesh" not in leaf_node or any(abs(float(v)) > 1e-5 for v in leaf_node.get("rotation", [0, 0, 0, 1])[:3]):
+        raise RuntimeError("War Room v3 runtime Hans door must be a closed, unrotated mesh node")
 
     materials = {row.get("name"): row for row in data.get("materials", [])}
     required_materials = {
@@ -978,7 +1158,9 @@ def export_shell_v3(path, batching=None):
     for obj in scene.objects:
         is_static_mesh = obj.type == "MESH" and obj.get("war_room_role") == base.ROLE_STATIC
         is_runtime_anchor = obj.type == "EMPTY" and (
-            obj.name in runtime_anchors or obj.name.startswith(V3_TORCH_ANCHOR_PREFIX)
+            obj.name in runtime_anchors
+            or obj.name.startswith(V3_TORCH_ANCHOR_PREFIX)
+            or obj.name.startswith(V3_HANS_ANCHOR_PREFIX)
         )
         if is_static_mesh or is_runtime_anchor:
             obj.select_set(True)
@@ -992,6 +1174,7 @@ def export_shell_v3(path, batching=None):
         **base.meshopt_export_kwargs(),
     )
     patched = base.patch_runtime_glb_base_color_factors(path, factors)
+    patch_v3_hans_door_extras(path)
     scene["war_room_runtime_base_color_factor_count"] = patched
     scene["war_room_runtime_mesh_compression"] = base.MESH_COMPRESSION_EXTENSION
     validate_runtime_glb_v3(path, factors)
