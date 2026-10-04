@@ -450,7 +450,7 @@
   .chronicles-head p { max-width: 700px; }
 }
 
-@media (max-width: 800px) {
+@media (max-width: 800px), (max-width: 1024px) and (max-height: 600px) {
   .chronicles { padding: 0; }
   .chronicles-head { align-items: center; padding-top: 3px; }
   .chronicles-head p { display: none; }
@@ -474,6 +474,34 @@
   .chronicles-touch small { font-size: .56rem; }
   .chronicles-keyboard-help { display: none; }
   .chronicles-tech-note { display: none; }
+}
+
+@media (min-width: 521px) and (max-width: 1024px) and (max-height: 600px) {
+  .chronicles-party {
+    max-height: 24dvh;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    padding: 5px 7px;
+  }
+  .chronicles-party-member {
+    min-height: 44px;
+    padding: 4px;
+  }
+  .chronicles-statusbar span:nth-child(3) { display: none; }
+  .chronicles-statusbar {
+    min-height: 32px;
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
+    padding-block: 3px;
+  }
+  .chronicles-game-menu > summary { min-height: 32px; }
+  .chronicles-touch {
+    gap: 5px;
+    padding: 5px 7px;
+  }
+  .chronicles-touch button {
+    min-height: 46px;
+    font-size: 1rem;
+  }
+  .chronicles-touch small { font-size: .48rem; }
 }
 
 @media (max-width: 520px) {
