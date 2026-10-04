@@ -351,7 +351,7 @@ export default function PvpGameScreen({ initialMatch, onExit, onMatchUpdate }) {
 
   return (
     <section className="game-screen pvp-war-room" aria-label="Sala de duelo 1 contra 1">
-      <WarRoomImmersiveMusicDock ariaLabel="RetroPlayer de la Duel Room" />
+      <WarRoomImmersiveMusicDock />
       <div className="game-layout game-layout-3d pvp-war-room__layout">
         <div className="board-column">
           <div className="board-live-row is-3d-warroom">
