@@ -123,7 +123,7 @@ export function chroniclesFrontCell(state) {
   return { x: state.x + direction.dx, y: state.y + direction.dy };
 }
 
-function chroniclesEnemyTargetAhead(state, maxReach = 2) {
+export function chroniclesEnemyTargetAhead(state, maxReach = 2) {
   const direction = CHRONICLES_DIRECTIONS[state.direction];
   for (let distance = 1; distance <= maxReach; distance += 1) {
     const x = state.x + direction.dx * distance;
