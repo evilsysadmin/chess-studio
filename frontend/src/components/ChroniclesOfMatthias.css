@@ -334,6 +334,34 @@
 .chronicles-finish strong { display: block; margin: .45rem 0; font-family: Georgia, serif; font-size: 1.45rem; }
 .chronicles-finish p { color: #c2b49e; line-height: 1.45; }
 
+.chronicles-finish.is-defeat {
+  z-index: 7;
+  width: min(470px, 88%);
+  border-color: rgba(185, 91, 62, .7);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(101, 44, 27, .18), transparent 56%),
+    rgba(12, 8, 7, .97);
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, .82),
+    inset 0 0 42px rgba(126, 53, 32, .08);
+}
+.chronicles-finish.is-defeat strong { color: #f0d0bc; }
+.chronicles-finish.is-defeat p { margin: .55rem 0 1rem; }
+.chronicles-finish-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+.chronicles-finish-actions .primary-btn,
+.chronicles-finish-actions .secondary-btn {
+  min-width: 150px;
+}
+.chronicles-party-member:disabled {
+  cursor: default;
+  transform: none;
+}
+
 .chronicles-narration {
   display: grid;
   grid-template-columns: 44px 1fr;
