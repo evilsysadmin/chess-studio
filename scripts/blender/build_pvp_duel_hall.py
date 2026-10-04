@@ -371,22 +371,6 @@ def build_gothic_architecture_pass(static, p):
             (0.13, 0.18, 0.19), p["brass"], static, bevel=0.040,
         )
 
-    # Replace the "office window" reading with lancet-style tracery over the
-    # existing moon glass. Bars are vertical and radial instead of a square grid.
-    wx = 4.85
-    for xoff in (-0.58, 0.58):
-        base.cube(
-            f"PVP_HALL_window_lancet_{xoff:+.2f}", (wx + xoff, 5.64, 4.28),
-            (0.030, 0.035, 1.70), p["iron"], static, bevel=0.008,
-        )
-    for side in (-1, 1):
-        spoke = base.cube(
-            f"PVP_HALL_window_tracery_spoke_{side}",
-            (wx + side * 0.40, 5.64, 5.52),
-            (0.48, 0.030, 0.028), p["iron"], static, bevel=0.008,
-        )
-        spoke.rotation_euler.y = math.radians(-side * 31)
-
     # Three small hanging velvet status plaques establish the premium hall
     # rhythm without competing with the future live HTML labels.
     for idx, (x, label) in enumerate(((-2.1, "left"), (0.0, "center"), (2.1, "right"))):
