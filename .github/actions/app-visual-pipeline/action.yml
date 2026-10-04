@@ -55,7 +55,18 @@ runs:
           # A direct base..head diff wrongly includes files that landed on main
           # after this branch forked, which can expand one focused visual PR to
           # every canonical surface.
-          merge_base="$(git merge-base "$base_sha" "$head_sha")"
+          merge_base="$(git merge-base "$base_sha" "$head_sha" 2>/dev/null || true)"
+          if [[ -z "$merge_base" ]]; then
+            for deepen in 64 256 1024; do
+              git fetch --no-tags --deepen="$deepen" origin "$base_ref"
+              merge_base="$(git merge-base "$base_sha" "$head_sha" 2>/dev/null || true)"
+              [[ -n "$merge_base" ]] && break
+            done
+          fi
+          [[ -n "$merge_base" ]] || {
+            echo "::error::Unable to resolve PR merge-base for $base_sha..$head_sha"
+            exit 1
+          }
           files="$(git diff --name-only "$merge_base" "$head_sha")"
         else
           base_sha="HEAD^"
