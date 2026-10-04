@@ -1,4 +1,5 @@
 import { resolveChroniclesEnemyBuildDefinition } from './chroniclesEnemyBuilds.js';
+import { chroniclesRuntimeEnemyPosition } from '../chroniclesOfMatthiasTurns.js';
 
 export const CHRONICLES_INITIATIVE_VERSION = 1;
 export const CHRONICLES_INITIATIVE_DIE_SIDES = 8;
@@ -93,5 +94,81 @@ export function chroniclesAdvanceInitiative(initiative) {
     ...initiative,
     round: nonNegativeInteger(initiative.round, 1) + 1,
     cursor: 0,
+  };
+}
+
+
+function manhattanDistance(left, right) {
+  return Math.abs(left.x - right.x) + Math.abs(left.y - right.y);
+}
+
+function enemyEngagementRange(enemy) {
+  const attackReach = Math.max(1, Number(enemy?.ai?.attackReach ?? enemy?.retaliationReach ?? 1));
+  const configured = Number(enemy?.ai?.engageRange);
+  return Number.isFinite(configured) && configured >= 1
+    ? Math.max(attackReach, configured)
+    : attackReach;
+}
+
+export function chroniclesEngagedEnemies(state, enemies) {
+  if (!state || state.phase === 'escaped' || state.phase === 'defeated') return [];
+  const partyPosition = { x: state.x, y: state.y };
+  return (Array.isArray(enemies) ? enemies : []).filter((enemy) => {
+    if (Number(state?.[enemy?.hpKey] || 0) <= 0) return false;
+    const enemyPosition = chroniclesRuntimeEnemyPosition(state, enemy);
+    return manhattanDistance(partyPosition, enemyPosition) <= enemyEngagementRange(enemy);
+  });
+}
+
+function actorIsAlive(state, enemyById, actor) {
+  if (actor.kind === 'party') {
+    return (state?.party || []).some((member) => member.id === actor.id && Number(member.hp || 0) > 0);
+  }
+  const enemy = enemyById.get(actor.id);
+  return Boolean(enemy && Number(state?.[enemy.hpKey] || 0) > 0);
+}
+
+export function chroniclesStartInitiativeCombat(state, enemies, options = {}) {
+  if (!state || state.initiative) return state;
+  const engaged = chroniclesEngagedEnemies(state, enemies);
+  if (!engaged.length) return state;
+  const initiative = chroniclesRollInitiative(state, engaged, options);
+  if (!initiative.order.length) return state;
+  return {
+    ...state,
+    phase: 'combat',
+    initiative,
+    message: `Combate. Iniciativa: ${initiative.order.map((actor) => `${actor.name} ${actor.initiative}`).join(' · ')}.`,
+  };
+}
+
+export function chroniclesAdvanceCombatInitiative(state, enemies) {
+  if (!state?.initiative?.order?.length) return state;
+  const enemyById = new Map((Array.isArray(enemies) ? enemies : []).map((enemy) => [enemy.id, enemy]));
+  const livingOrder = state.initiative.order.filter((actor) => actorIsAlive(state, enemyById, actor));
+  const enemiesRemain = livingOrder.some((actor) => actor.kind === 'enemy');
+  if (!enemiesRemain) {
+    return {
+      ...state,
+      phase: state.phase === 'defeated' ? 'defeated' : 'explore',
+      initiative: null,
+    };
+  }
+  if (!livingOrder.length) return { ...state, initiative: null };
+
+  const current = chroniclesCurrentInitiativeActor(state.initiative);
+  const currentIndex = livingOrder.findIndex((actor) => (
+    actor.kind === current?.kind && actor.id === current?.id
+  ));
+  const nextIndex = currentIndex >= 0 ? currentIndex + 1 : 0;
+  const wraps = nextIndex >= livingOrder.length;
+  return {
+    ...state,
+    initiative: {
+      ...state.initiative,
+      order: livingOrder,
+      cursor: wraps ? 0 : nextIndex,
+      round: nonNegativeInteger(state.initiative.round, 1) + (wraps ? 1 : 0),
+    },
   };
 }
