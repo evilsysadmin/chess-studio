@@ -5,6 +5,7 @@ import {
   chroniclesEnemyPosition,
 } from './chroniclesOfMatthias.js';
 import { chroniclesFirstPersonScenePlan } from './chronicles/chroniclesFirstPersonScenePlan.js';
+import { CHRONICLES_MINIMUM_VISIBILITY } from './chronicles/chroniclesLightingPolicy.js';
 import { buildChroniclesDungeonDressing } from './chroniclesOfMatthiasDungeonArt.js';
 import { buildChroniclesDungeonAtmosphere } from './chroniclesOfMatthiasAtmosphere.js';
 import { buildChroniclesEnemyVisual } from './chroniclesEnemyVisualRegistry.js';
@@ -288,7 +289,12 @@ function disposeScene(scene) {
 function configureRenderer(renderer, { coarsePointer, alpha = false }) {
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = alpha ? 1.02 : coarsePointer ? 1.14 : 1.08;
+  const exposureFloor = CHRONICLES_MINIMUM_VISIBILITY.firstPerson;
+  renderer.toneMappingExposure = alpha
+    ? 1.02
+    : coarsePointer
+      ? Math.max(1.14, exposureFloor.exposureCoarse)
+      : Math.max(1.08, exposureFloor.exposureDesktop);
   renderer.setClearColor(0x080706, alpha ? 0 : 1);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, coarsePointer ? 1.2 : 1.65));
   renderer.shadowMap.enabled = !coarsePointer;
