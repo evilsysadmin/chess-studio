@@ -64,7 +64,6 @@ function board3DCanvas(root) {
 export default function Board(props) {
   const inheritedRenderer = useContext(BoardRendererContext);
   const { isThreeD } = useGameBoardRenderer();
-  const effectiveThreeD = props.rendererOverride === '3d' ? true : props.rendererOverride === '2d' ? false : isThreeD;
   const rootRef = useRef(null);
   const threeDHoveredSquareRef = useRef('');
   const pieces = useMemo(() => safePieces(props.fen), [props.fen]);
@@ -98,7 +97,7 @@ export default function Board(props) {
   const RegisteredBoard3D = getRegisteredBoard3D();
 
   useEffect(() => {
-    if (typeof document === 'undefined' || inheritedRenderer === '3d' || !effectiveThreeD || !RegisteredBoard3D) return undefined;
+    if (typeof document === 'undefined' || inheritedRenderer === '3d' || !isThreeD || !RegisteredBoard3D) return undefined;
 
     const onDocumentPointerMove = (event) => {
       if (!threeDHoveredSquareRef.current) return;
@@ -119,9 +118,9 @@ export default function Board(props) {
     // while the pointer coordinates are inside the 3D board, close it outside.
     document.addEventListener('pointermove', onDocumentPointerMove, true);
     return () => document.removeEventListener('pointermove', onDocumentPointerMove, true);
-  }, [inheritedRenderer, effectiveThreeD, RegisteredBoard3D, props.onPieceMouseLeave]);
+  }, [inheritedRenderer, isThreeD, RegisteredBoard3D, props.onPieceMouseLeave]);
 
-  if (inheritedRenderer === '3d' || !effectiveThreeD || !RegisteredBoard3D) return <Board2D {...props} />;
+  if (inheritedRenderer === '3d' || !isThreeD || !RegisteredBoard3D) return <Board2D {...props} />;
 
   function handleThreeDSquareClick(square) {
     const canvas = board3DCanvas(rootRef.current);
