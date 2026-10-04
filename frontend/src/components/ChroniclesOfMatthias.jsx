@@ -1,12 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   CHRONICLES_DIRECTIONS,
+  chroniclesActiveEnemies,
   chroniclesJournalEntries,
   chroniclesObjective,
   chroniclesReduce,
   createChroniclesState,
 } from '../chroniclesOfMatthias.js';
 import { chroniclesPartyBark } from '../chroniclesOfMatthiasBarks.js';
+import { chroniclesResolveEnemyActor } from '../chroniclesOfMatthiasTurns.js';
+import {
+  chroniclesAdvanceCombatInitiative,
+  chroniclesCurrentInitiativeActor,
+  chroniclesStartInitiativeCombat,
+} from '../chronicles/chroniclesInitiative.js';
 import { chroniclesDeployedPartyLevel } from '../chronicles/chroniclesDifficultyPolicy.js';
 import { playChroniclesActionSound } from '../chronicles/chroniclesActionAudio.js';
 import { chroniclesPartyPortraitUrl } from '../chronicles/chroniclesPartyPortraitAssets.js';
@@ -179,7 +186,37 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const dispatch = useCallback((action) => {
     const current = stateRef.current;
     if (!current) return;
-    const next = chroniclesReduce(current, action);
+
+    const actionType = typeof action === 'string' ? action : action?.type;
+    const activeActor = chroniclesCurrentInitiativeActor(current.initiative);
+    if (current.initiative && activeActor?.kind === 'enemy') return;
+    if (
+      current.initiative
+      && actionType === 'attack'
+      && activeActor?.kind === 'party'
+      && typeof action === 'object'
+      && action.memberId !== activeActor.id
+    ) return;
+
+    let next;
+    if (!current.initiative) {
+      const exploratoryNext = actionType === 'attack' ? current : chroniclesReduce(current, action);
+      const started = chroniclesStartInitiativeCombat(
+        exploratoryNext,
+        chroniclesActiveEnemies(exploratoryNext),
+      );
+      next = started !== exploratoryNext
+        ? started
+        : actionType === 'attack'
+          ? chroniclesReduce(current, action)
+          : exploratoryNext;
+    } else {
+      next = chroniclesReduce(current, action);
+      if (next !== current && next.phase !== 'defeated' && next.phase !== 'escaped') {
+        next = chroniclesAdvanceCombatInitiative(next, chroniclesActiveEnemies(next));
+      }
+    }
+
     playChroniclesActionSound(current, next, action);
     stateRef.current = next;
     setState(next);
@@ -206,6 +243,32 @@ export default function ChroniclesOfMatthias({ onExit }) {
       }, 320);
     }
   }, []);
+
+  useEffect(() => {
+    const current = stateRef.current;
+    const actor = chroniclesCurrentInitiativeActor(current?.initiative);
+    if (!current?.initiative || actor?.kind !== 'enemy' || current.phase === 'defeated') return undefined;
+
+    const timer = window.setTimeout(() => {
+      const latest = stateRef.current;
+      const latestActor = chroniclesCurrentInitiativeActor(latest?.initiative);
+      if (!latest?.initiative || latestActor?.kind !== 'enemy' || latestActor.id !== actor.id) return;
+      const acted = chroniclesResolveEnemyActor(latest, actor.id);
+      const advanced = acted.phase === 'defeated'
+        ? acted
+        : chroniclesAdvanceCombatInitiative(acted, chroniclesActiveEnemies(acted));
+      stateRef.current = advanced;
+      setState(advanced);
+    }, 280);
+    return () => window.clearTimeout(timer);
+  }, [state?.initiative?.cursor, state?.initiative?.round, state?.phase]);
+
+  useEffect(() => {
+    const actor = chroniclesCurrentInitiativeActor(state?.initiative);
+    if (actor?.kind !== 'party' || actor.id === selectedMemberIdRef.current) return;
+    selectedMemberIdRef.current = actor.id;
+    setSelectedMemberId(actor.id);
+  }, [state?.initiative?.cursor, state?.initiative?.round]);
 
   const attackWithSelected = useCallback(() => {
     const current = stateRef.current;
