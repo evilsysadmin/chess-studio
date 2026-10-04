@@ -1183,7 +1183,7 @@ func TestNativeGamesReadServesOnlyItsRoutes(t *testing.T) {
 	}
 }
 
-func TestNativeGamesWriteServesOnlyMoveAndUndo(t *testing.T) {
+func TestNativeGamesWriteServesOnlyCreateMoveAndUndo(t *testing.T) {
 	var proxied []string
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		proxied = append(proxied, r.Method+" "+r.URL.Path)
@@ -1211,10 +1211,10 @@ func TestNativeGamesWriteServesOnlyMoveAndUndo(t *testing.T) {
 			}
 		}
 	}
-	if strings.Join(served, ",") != "POST /api/games/g1/move,POST /api/games/g1/undo" {
+	if strings.Join(served, ",") != "POST /api/games/g1/move,POST /api/games/g1/undo,POST /api/games" {
 		t.Fatalf("served %v", served)
 	}
-	if strings.Join(proxied, ",") != "GET /api/games/g1,POST /api/games,GET /api/games/g1/hint" {
+	if strings.Join(proxied, ",") != "GET /api/games/g1,GET /api/games/g1/hint" {
 		t.Fatalf("proxied %v", proxied)
 	}
 }

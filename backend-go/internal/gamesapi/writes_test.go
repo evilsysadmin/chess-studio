@@ -13,6 +13,7 @@ import (
 	chess "github.com/corentings/chess/v2"
 	"go.mongodb.org/mongo-driver/v2/bson"
 
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/gameops"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/gamestore"
 )
 
@@ -51,6 +52,59 @@ func (f *fakeWriteStore) GetDocumentForOwner(_ context.Context, id, owner string
 		return nil, false, nil
 	}
 	return doc, true, nil
+}
+
+func (f *fakeWriteStore) toDoc(id string, game gamestore.Game) bson.M {
+	game.ID = id
+	if game.Moves == nil {
+		game.Moves = []string{}
+	}
+	raw, err := bson.Marshal(game)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	var doc bson.M
+	if err := bson.Unmarshal(raw, &doc); err != nil {
+		f.t.Fatal(err)
+	}
+	return doc
+}
+
+func (f *fakeWriteStore) Get(_ context.Context, id string) (gamestore.Game, bool, error) {
+	if f.err != nil {
+		return gamestore.Game{}, false, f.err
+	}
+	doc, ok := f.docs[id]
+	if !ok {
+		return gamestore.Game{}, false, nil
+	}
+	game, err := decodeGame(doc)
+	return game, true, err
+}
+
+func (f *fakeWriteStore) Create(_ context.Context, id string, game gamestore.Game) (gamestore.Game, error) {
+	if f.err != nil {
+		return gamestore.Game{}, f.err
+	}
+	f.docs[id] = f.toDoc(id, game)
+	f.writes++
+	return game, nil
+}
+
+func (f *fakeWriteStore) CreateOnce(ctx context.Context, id string, game gamestore.Game) (gamestore.Game, bool, error) {
+	if f.err != nil {
+		return gamestore.Game{}, false, f.err
+	}
+	if f.conflict != nil {
+		f.conflict(id)
+	}
+	if _, exists := f.docs[id]; exists {
+		existing, _, err := f.Get(ctx, id)
+		return existing, false, err
+	}
+	f.docs[id] = f.toDoc(id, game)
+	f.writes++
+	return game, true, nil
 }
 
 func (f *fakeWriteStore) UpdateIfMoves(_ context.Context, id string, game gamestore.Game, expected []string) (bool, error) {
@@ -155,7 +209,7 @@ func newGameDoc(t *testing.T, moves ...string) bson.M {
 	})
 }
 
-func TestWriteRouteOnlyClaimsMoveAndUndo(t *testing.T) {
+func TestWriteRouteOnlyClaimsCreateMoveAndUndo(t *testing.T) {
 	cases := []struct {
 		method, path, preflight, pattern, id string
 		ok                                   bool
@@ -166,7 +220,9 @@ func TestWriteRouteOnlyClaimsMoveAndUndo(t *testing.T) {
 		{http.MethodOptions, "/api/games/g1/move", "GET", "", "", false},
 		{http.MethodGet, "/api/games/g1/move", "", "", "", false},
 		{http.MethodGet, "/api/games/g1/hint", "", "", "", false},
-		{http.MethodPost, "/api/games", "", "", "", false},
+		{http.MethodPost, "/api/games", "", CreatePattern, "", true},
+		{http.MethodOptions, "/api/games", "POST", CreatePattern, "", true},
+		{http.MethodGet, "/api/games", "", "", "", false},
 		{http.MethodPost, "/api/games/a/b/move", "", "", "", false},
 		{http.MethodPost, "/api/games//move", "", "", "", false},
 	}
@@ -406,4 +462,129 @@ func fingerprintFor(t *testing.T, payload string) string {
 	f.post(t, "/api/games/g1/move", payload, map[string]string{"Idempotency-Key": "probe-key-01"})
 	ledger := plain(f.store.docs["g1"]["operationLedger"]).([]any)
 	return ledger[0].(map[string]any)["fingerprint"].(string)
+}
+
+func TestCreateStartsAGameAndReplaysItsIdempotentRetry(t *testing.T) {
+	f := newWriteFixture(t)
+	w := f.post(t, "/api/games", `{"difficulty": 63.5, "color": "w", "handicap": "knight"}`, map[string]string{"Idempotency-Key": "create-key-01"})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
+	}
+	got := body(t, w)
+	id := got["id"].(string)
+	if id != gameops.DeterministicGameID("alice", "create-key-01") {
+		t.Fatalf("id=%s", id)
+	}
+	// round(63.5) is 64 in Python; black lost the g8 knight.
+	if got["difficulty"] != float64(64) || got["humanColor"] != "w" || got["fen"] != "rnbqkb1r/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1" {
+		t.Fatalf("snapshot=%v", got)
+	}
+	doc := f.store.docs[id]
+	if doc["difficulty"] != int32(64) || doc["handicap"] != "knight" || doc["owner"] != "alice" {
+		t.Fatalf("stored=%v", doc)
+	}
+	marker := plain(doc["createOperation"]).(map[string]any)
+	if marker["key"] != "create-key-01" || marker["fingerprint"] == "" {
+		t.Fatalf("marker=%v", marker)
+	}
+	again := f.post(t, "/api/games", `{"difficulty": 63.5, "color": "w", "handicap": "knight"}`, map[string]string{"Idempotency-Key": "create-key-01"})
+	if again.Code != http.StatusCreated || body(t, again)["id"] != id || f.store.writes != 1 {
+		t.Fatalf("replay status=%d writes=%d", again.Code, f.store.writes)
+	}
+	other := f.post(t, "/api/games", `{"difficulty": 20}`, map[string]string{"Idempotency-Key": "create-key-01"})
+	if other.Code != http.StatusConflict || body(t, other)["detail"] != "La operación de creación ya existe con otros parámetros." {
+		t.Fatalf("reuse status=%d body=%s", other.Code, other.Body.String())
+	}
+}
+
+func TestCreateLetsTheCPUOpenWhenItHasTheMove(t *testing.T) {
+	f := newWriteFixture(t)
+	f.cpu.replies = []string{"e2e4"}
+	w := f.post(t, "/api/games", `{"color": "b"}`, nil)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
+	}
+	got := body(t, w)
+	last := got["lastMove"].(map[string]any)
+	if got["turn"] != "b" || last["by"] != "cpu" || last["to"] != "e4" || f.cpu.levels[0] != 50 || f.cpu.plies[0] != 0 {
+		t.Fatalf("snapshot=%v cpu=%v", got, f.cpu.levels)
+	}
+	if doc := f.store.docs[got["id"].(string)]; !reflect.DeepEqual(doc["moves"], bson.A{"e4"}) || doc["createOperation"] != nil {
+		t.Fatalf("stored=%v", doc)
+	}
+}
+
+func TestCreateFromALaboratoryPosition(t *testing.T) {
+	f := newWriteFixture(t)
+	f.cpu.replies = []string{"e8d8"}
+	// Black (the CPU here) to move: it opens.
+	w := f.post(t, "/api/games", `{"color": "w", "difficulty": 10, "handicap": "queen", "startingFen": "4k3/8/8/8/8/8/4P3/4K3 b - - 0 1"}`, nil)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
+	}
+	got := body(t, w)
+	doc := f.store.docs[got["id"].(string)]
+	if got["initialFen"] != "4k3/8/8/8/8/8/4P3/4K3 b - - 0 1" || doc["handicap"] != nil || got["turn"] != "w" {
+		t.Fatalf("snapshot=%v stored=%v", got, doc)
+	}
+	cases := []struct{ payload, detail string }{
+		{`{"startingFen": "not a fen"}`, "FEN inicial inválido o posición imposible."},
+		{`{"startingFen": "7k/5Q2/6K1/8/8/8/8/8 b - - 0 1"}`, "La posición inicial ya está terminada."},
+		{`{"difficulty": 101}`, "Dificultad inválida. Tiene que ser un número entre 0 y 100."},
+		{`{"difficulty": "nan"}`, "Dificultad inválida. Tiene que ser un número entre 0 y 100."},
+		{`{"color": "green"}`, "Color inválido. Usa 'w', 'b' o 'random'."},
+		{`{"handicap": "king"}`, "Hándicap inválido."},
+	}
+	for _, tc := range cases {
+		w := f.post(t, "/api/games", tc.payload, nil)
+		if w.Code != http.StatusBadRequest || body(t, w)["detail"] != tc.detail {
+			t.Errorf("%s: status=%d body=%s", tc.payload, w.Code, w.Body.String())
+		}
+	}
+}
+
+func TestCreateValidatesTheBodyAfterTheSession(t *testing.T) {
+	f := newWriteFixture(t)
+	if w := f.post(t, "/api/games", ``, map[string]string{"Authorization": ""}); w.Code != http.StatusUnauthorized {
+		t.Fatalf("anonymous=%d", w.Code)
+	}
+	for payload, kind := range map[string]string{``: "missing", `[1]`: "model_attributes_type", `{"difficulty": "hard"}`: "float_parsing", `{`: "json_invalid"} {
+		w := f.post(t, "/api/games", payload, nil)
+		if w.Code != http.StatusUnprocessableEntity || body(t, w)["detail"].([]any)[0].(map[string]any)["type"] != kind {
+			t.Errorf("%q: status=%d body=%s", payload, w.Code, w.Body.String())
+		}
+	}
+	if w := f.post(t, "/api/games", `{}`, map[string]string{"Idempotency-Key": "no"}); w.Code != 400 {
+		t.Fatalf("bad key=%d", w.Code)
+	}
+}
+
+func TestCreateRaceReadsTheWinner(t *testing.T) {
+	f := newWriteFixture(t)
+	id := gameops.DeterministicGameID("alice", "race-create-1")
+	f.store.conflict = func(string) {
+		f.store.conflict = nil
+		winner := gamestore.Game{Owner: ptr("alice"), Moves: []string{}, Difficulty: int32(50), HumanColor: "w",
+			CreateOperation: &gamestore.CreateOperation{Key: "race-create-1", Fingerprint: createFingerprint(t, `{"color":"w"}`)}}
+		f.store.docs[id] = f.store.toDoc(id, winner)
+	}
+	w := f.post(t, "/api/games", `{"color":"w"}`, map[string]string{"Idempotency-Key": "race-create-1"})
+	if w.Code != http.StatusCreated || body(t, w)["id"] != id || f.store.writes != 0 {
+		t.Fatalf("status=%d writes=%d body=%s", w.Code, f.store.writes, w.Body.String())
+	}
+}
+
+func ptr[T any](v T) *T { return &v }
+
+func createFingerprint(t *testing.T, payload string) string {
+	t.Helper()
+	req, err := gameops.ParseNewGameRequest([]byte(payload))
+	if err != nil {
+		t.Fatal(err)
+	}
+	fp, err := gameops.Fingerprint(req.Payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return fp
 }

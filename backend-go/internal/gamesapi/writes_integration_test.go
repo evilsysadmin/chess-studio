@@ -142,3 +142,46 @@ func TestMoveAndUndoKeepPythonDocumentsAgainstMongo(t *testing.T) {
 		t.Fatalf("after undo=%v", doc)
 	}
 }
+
+func TestCreateRetriesShareOneGameAgainstMongo(t *testing.T) {
+	db := integrationDB(t)
+	h, err := NewWrites(WriteConfig{
+		Config: Config{Accounts: fakeAccounts{}, JWTSecret: secret, Now: func() time.Time { return fixedNow }, RatePerMinute: 1000},
+		Store:  gamestore.New(db, 5*time.Second),
+		CPU:    &lockedCPU{},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var wg sync.WaitGroup
+	codes := make([]int, 6)
+	for i := range codes {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			r := httptest.NewRequest(http.MethodPost, "/api/games", strings.NewReader(`{"difficulty": 40, "color": "w"}`))
+			r.Header.Set("Authorization", "Bearer "+token(t, "alice", 0))
+			r.Header.Set("Idempotency-Key", "it-create-key-1")
+			w := httptest.NewRecorder()
+			h.ServeHTTP(w, r)
+			codes[i] = w.Code
+		}(i)
+	}
+	wg.Wait()
+	for _, code := range codes {
+		if code != http.StatusCreated {
+			t.Fatalf("codes=%v", codes)
+		}
+	}
+	count, err := db.Collection(gamestore.Collection).CountDocuments(context.Background(), bson.D{})
+	if err != nil || count != 1 {
+		t.Fatalf("games=%d err=%v", count, err)
+	}
+	var doc bson.M
+	if err := db.Collection(gamestore.Collection).FindOne(context.Background(), bson.D{}).Decode(&doc); err != nil {
+		t.Fatal(err)
+	}
+	if doc["difficulty"] != int32(40) || doc["owner"] != "alice" || doc["handicap"] != nil || doc["initialFen"] != nil {
+		t.Fatalf("doc=%v", doc)
+	}
+}
