@@ -11,6 +11,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: read
   contents: read
 
 concurrency:
@@ -52,8 +53,18 @@ jobs:
         with:
           ref: ${{ env.DEPLOY_SHA }}
 
-      # Automatic deploy success is immutable proof; manual dispatch keeps live probes strict.
+      - name: Prove automatic upstream deployed a complete generation
+        id: upstream
+        if: github.event_name == 'workflow_run'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python3 -S scripts/staging_deploy_proof.py --self-test
+          python3 -S scripts/staging_deploy_proof.py --run-id "${{ github.event.workflow_run.id }}" --github-output "$GITHUB_OUTPUT"
+
+      # Manual runs probe live state; automatic runs require an upstream full-generation proof.
       - name: Supersede stale staging accreditation outside current main lineage
+        if: github.event_name == 'workflow_dispatch' || steps.upstream.outputs.deployed == 'true'
         id: lineage
         env:
           GH_TOKEN: ${{ github.token }}
