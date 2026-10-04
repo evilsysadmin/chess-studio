@@ -212,10 +212,13 @@ def main() -> int:
         ("git ls-remote origin refs/heads/main", "backend signal current-main probe"),
         ("oci-staging-approved", "backend mutable approved signal"),
         ("docker buildx imagetools create", "backend server-side signal promotion"),
-        ("Build and publish immutable PvP Go image", "PvP Go immutable image build"),
+        ("Build and publish immutable Go API image", "Go API immutable image build"),
         ("context: ./backend-go", "PvP Go build context"),
-        ("chess-studio-pvp:oci-${{ env.DEPLOY_SHA }}", "PvP Go exact-SHA image"),
-        ('docker pull "$pvp"', "PvP Go public pullability check"),
+        ("chess-studio-backend-go:oci-${{ env.DEPLOY_SHA }}", "canonical Go API exact-SHA image"),
+        ("chess-studio-pvp:oci-${{ env.DEPLOY_SHA }}", "legacy PvP Go exact-SHA alias"),
+        ('docker pull "$go_api"', "canonical Go API public pullability check"),
+        ('docker pull "$pvp"', "legacy Go image public pullability check"),
+        ("Canonical and legacy Go image aliases diverged", "Go image alias digest parity"),
     ):
         require(main_backend_image, needle, label, errors)
     for needle in ("OCI_TENANCY_OCID", "OCI_USER_OCID", "OCI_PRIVATE_KEY", "RENDER_API_KEY"):

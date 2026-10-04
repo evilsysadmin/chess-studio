@@ -107,7 +107,7 @@ jobs:
           cache-from: type=gha,scope=oci-backend-arm64
           cache-to: type=gha,mode=max,scope=oci-backend-arm64
 
-      - name: Reuse parent PvP Go image when Go edge is unchanged
+      - name: Reuse parent Go API image when Go edge is unchanged
         id: reuse_pvp
         if: steps.scope.outputs.pvp_needs_build == 'false'
         shell: bash
@@ -117,17 +117,19 @@ jobs:
           set -euo pipefail
           owner="${GITHUB_REPOSITORY_OWNER,,}"
           source="ghcr.io/${owner}/chess-studio-pvp:oci-${PARENT_SHA}"
-          target="ghcr.io/${owner}/chess-studio-pvp:oci-${DEPLOY_SHA}"
+          legacy_target="ghcr.io/${owner}/chess-studio-pvp:oci-${DEPLOY_SHA}"
+          canonical_target="ghcr.io/${owner}/chess-studio-backend-go:oci-${DEPLOY_SHA}"
           if docker buildx imagetools inspect "$source" >/dev/null 2>&1; then
-            docker buildx imagetools create --tag "$target" "$source"
+            docker buildx imagetools create --tag "$legacy_target" "$source"
+            docker buildx imagetools create --tag "$canonical_target" "$source"
             echo 'hit=true' >> "$GITHUB_OUTPUT"
-            echo "::notice title=PvP Go image fast-path::Reused ${PARENT_SHA} for ${DEPLOY_SHA}; backend-go unchanged."
+            echo "::notice title=Go API image fast-path::Reused ${PARENT_SHA} for ${DEPLOY_SHA}; backend-go unchanged."
           else
             echo 'hit=false' >> "$GITHUB_OUTPUT"
-            echo "::warning title=PvP Go image fallback::Parent image missing; building ${DEPLOY_SHA}."
+            echo "::warning title=Go API image fallback::Parent image missing; building ${DEPLOY_SHA}."
           fi
 
-      - name: Build and publish immutable PvP Go image
+      - name: Build and publish immutable Go API image
         if: steps.scope.outputs.pvp_needs_build == 'true' || steps.reuse_pvp.outputs.hit != 'true'
         uses: docker/build-push-action@v7
         with:
@@ -135,7 +137,9 @@ jobs:
           file: ./backend-go/Dockerfile
           platforms: linux/arm64
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/chess-studio-pvp:oci-${{ env.DEPLOY_SHA }}
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/chess-studio-backend-go:oci-${{ env.DEPLOY_SHA }}
+            ghcr.io/${{ github.repository_owner }}/chess-studio-pvp:oci-${{ env.DEPLOY_SHA }}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ env.DEPLOY_SHA }}
@@ -148,11 +152,16 @@ jobs:
           set -euo pipefail
           owner="${GITHUB_REPOSITORY_OWNER,,}"
           backend="ghcr.io/${owner}/chess-studio-backend:oci-${DEPLOY_SHA}"
+          go_api="ghcr.io/${owner}/chess-studio-backend-go:oci-${DEPLOY_SHA}"
           pvp="ghcr.io/${owner}/chess-studio-pvp:oci-${DEPLOY_SHA}"
           docker logout ghcr.io >/dev/null 2>&1 || true
-          docker image rm "$backend" "$pvp" >/dev/null 2>&1 || true
+          docker image rm "$backend" "$go_api" "$pvp" >/dev/null 2>&1 || true
           docker pull "$backend"
+          docker pull "$go_api"
           docker pull "$pvp"
+          go_api_id="$(docker image inspect --format='{{.Id}}' "$go_api")"
+          pvp_id="$(docker image inspect --format='{{.Id}}' "$pvp")"
+          [[ "$go_api_id" == "$pvp_id" ]] || { echo "::error::Canonical and legacy Go image aliases diverged"; exit 1; }
 
       - name: Re-authenticate for approved signal
         uses: docker/login-action@v4
