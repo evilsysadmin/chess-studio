@@ -405,7 +405,7 @@ export default function Tutorial({ onExit }) {
         <button className="back-link" onClick={section === 'school' ? onExit : () => setSection('school')}>
           ← {section === 'school' ? 'Volver al menú' : 'Volver a la Escuela'}
         </button>
-        <span className="matthias-school-room-label">CLASS ROOM</span>
+        <span className="matthias-school-room-label">ESCUELA DE MATTHIAS</span>
         <details key={section} className="matthias-school-resources">
           <summary>Recursos</summary>
           <div className="matthias-school-resources-menu">
