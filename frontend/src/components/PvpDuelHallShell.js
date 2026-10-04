@@ -42,10 +42,6 @@ const PVP_DUEL_HALL = createWarRoomBlenderVariantShell({
   installRuntimeEffects: installPvpDuelHallPracticalLights,
 });
 
-export function pvpDuelHallRuntimeModelUrl(options = {}) {
-  return PVP_DUEL_HALL.modelUrl(options);
-}
-
 export function installPvpDuelHallShell(scene, options = {}) {
   return PVP_DUEL_HALL.install(scene, options);
 }
