@@ -53,17 +53,3 @@
 }
 
 
-/* SALIR owns the primary top-left affordance. Scene inspection remains nearby,
-   but on a second row so the two controls never overlap or steal clicks. */
-.game-layout-3d:has(.war-room-exit-overlay) .board3d-inspect {
-  top: max(3.75rem, calc(env(safe-area-inset-top) + 3.25rem)) !important;
-  left: max(.72rem, env(safe-area-inset-left)) !important;
-  bottom: auto !important;
-}
-
-@media (max-width: 760px), (pointer: coarse) {
-  .game-layout-3d:has(.war-room-exit-overlay) .board3d-inspect {
-    top: max(3.55rem, calc(env(safe-area-inset-top) + 3.05rem)) !important;
-    left: max(.45rem, env(safe-area-inset-left)) !important;
-  }
-}

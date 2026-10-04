@@ -11,16 +11,21 @@
 }
 
 .war-room-board-zoom .board3d-main-host {
-  transform: scale(var(--war-room-user-zoom, 1));
-  transform-origin: 50% 50%;
+  transform: translate(var(--war-room-user-x, 0px), var(--war-room-user-y, 0px)) scale(var(--war-room-user-zoom, 1));
+  transform-origin: 0 0;
+}
+
+.war-room-board-zoom.is-zoomed .board3d-main-host {
   will-change: transform;
 }
 
 .war-room-board-center-btn {
   position: absolute;
   z-index: 18;
-  right: max(.45rem, env(safe-area-inset-right));
-  bottom: max(.45rem, env(safe-area-inset-bottom));
+  /* Bottom centre: the corners belong to the music player and «Apaisado». */
+  left: 50%;
+  bottom: max(.55rem, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
   min-height: 32px;
   padding: .26rem .58rem;
   border: 1px solid rgba(205, 177, 112, .24);
