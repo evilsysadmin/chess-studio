@@ -173,6 +173,14 @@ function setDialogue(actor, phase) {
   if (canvas?.dataset) canvas.dataset.warRoomHansServiceDialogue = phase || '';
 }
 
+function setServiceDiagnostic(actor, eventName, status) {
+  const canvas = getWarRoomHansCanvas(actor);
+  if (!canvas?.dataset) return;
+  canvas.dataset.warRoomHansServiceEvent = eventName || 'none';
+  canvas.dataset.warRoomHansServiceStatus = status || 'idle';
+}
+
+
 function finish(actor, props, controller, root, runtime, taskId) {
   resetWarRoomHansWalk(controller, { full: true });
   resetWarRoomHansServiceProps(props);
@@ -234,6 +242,7 @@ export function installWarRoomHansServiceRoutine(root) {
       eventName = warRoomHansEventForGame(gameId);
       eligibleSince = now;
       delayMs = warRoomHansAmbientDelayMs(gameId, { min: 6000, max: 14000, salt: eventName });
+      setServiceDiagnostic(actor, eventName, 'waiting-delay');
       active = false;
       state = 'idle';
       home = null;
@@ -253,14 +262,29 @@ export function installWarRoomHansServiceRoutine(root) {
       setDialogue(actor, '');
     }
 
-    if (!SERVICE_EVENTS.has(eventName) || completedGameId === gameId) return;
+    if (!SERVICE_EVENTS.has(eventName) || completedGameId === gameId) {
+      setServiceDiagnostic(actor, eventName, completedGameId === gameId ? 'completed' : 'ineligible');
+      return;
+    }
     const taskId = `service-${eventName}`;
 
     if (!active) {
-      if (!warRoomHansTaskAvailable(runtime, taskId) || now - eligibleSince < delayMs) return;
-      if (!warRoomHansSetupRetryReady(setupRetry, now)) return;
+      if (!warRoomHansTaskAvailable(runtime, taskId)) {
+        setServiceDiagnostic(actor, eventName, 'blocked-task');
+        return;
+      }
+      if (now - eligibleSince < delayMs) {
+        setServiceDiagnostic(actor, eventName, 'waiting-delay');
+        return;
+      }
+      if (!warRoomHansSetupRetryReady(setupRetry, now)) {
+        setServiceDiagnostic(actor, eventName, 'waiting-retry');
+        return;
+      }
+      setServiceDiagnostic(actor, eventName, 'setup');
       controller ||= createWarRoomHansWalkController(actor, { forward: 1 });
       if (!controller) {
+        setServiceDiagnostic(actor, eventName, 'retry-controller');
         if (!deferWarRoomHansSetupRetry(setupRetry, now)) completedGameId = gameId;
         return;
       }
@@ -277,6 +301,7 @@ export function installWarRoomHansServiceRoutine(root) {
       const service = warRoomHansServiceHome(root, actor.hans.parent);
       const serviceTargetObject = eventName === 'water-plant' ? plant : getCommandDeskTop(root);
       if (!service?.point || !serviceTargetObject) {
+        setServiceDiagnostic(actor, eventName, !service?.point ? 'retry-home' : 'retry-target-object');
         abortSetupForCurrentGame();
         return;
       }
@@ -285,12 +310,14 @@ export function installWarRoomHansServiceRoutine(root) {
         ? warRoomHansTargetNearObject(serviceTargetObject, actor.hans.parent, { offsetX: -0.72, offsetZ: 0.06 })
         : warRoomHansTargetNearObject(serviceTargetObject, actor.hans.parent, { offsetX: -1.78, offsetZ: 0.74 });
       if (!target) {
+        setServiceDiagnostic(actor, eventName, 'retry-target');
         abortSetupForCurrentGame();
         return;
       }
       routeIn = warRoomHansBuildSafeRoute(floor, actor.hans.parent, home, target);
       routeOut = warRoomHansBuildSafeRoute(floor, actor.hans.parent, target, home);
       if (!routeIn.length || !routeOut.length) {
+        setServiceDiagnostic(actor, eventName, 'retry-route');
         abortSetupForCurrentGame();
         return;
       }
@@ -313,6 +340,7 @@ export function installWarRoomHansServiceRoutine(root) {
       actionElapsed = 0;
       routeIndex = 0;
       actor.hans.userData.warRoomHansServiceEvent = eventName;
+      setServiceDiagnostic(actor, eventName, 'walking-in');
     }
 
     if (state === 'walking-in') {
