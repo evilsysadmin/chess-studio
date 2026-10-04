@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pathlib
+import subprocess
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -291,12 +292,27 @@ def main() -> int:
         for needle, label in (
             ("OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}", "smoke OCI tenancy credential"),
             ("uses: ./.github/actions/setup-oci-sdk", "smoke OCI SDK toolchain"),
-            ("from oci_runtime_bundle import read_private_runtime_value", "smoke private runtime reader"),
-            ("read_private_runtime_value(oci, 'INVITE_CODE')", "smoke invite allowlisted read"),
-            ("secrets.token_hex(8)", "smoke random username entropy"),
-            ("secrets.token_urlsafe(32)", "smoke random password entropy"),
+            # Allowlisted private-runtime read, masking and identity entropy live
+            # in staging_smoke_env.py and are proven by its self-test below.
+            ("python3 scripts/staging_smoke_env.py secrets", "smoke private runtime reader"),
+            ("python3 -S scripts/staging_smoke_env.py identity", "smoke random identity"),
         ):
             require(blocks["smoke"], needle, label, errors)
+        smoke_env = (ROOT / "scripts" / "staging_smoke_env.py").read_text(encoding="utf-8")
+        for needle, label in (
+            ("read_private_runtime_values(oci,", "smoke invite allowlisted read"),
+            ("INVITE_CODE=STAGING_INVITE_CODE", "smoke invite default key"),
+            ("token(8)", "smoke random username entropy"),
+            ("urlsafe(32)", "smoke random password entropy"),
+            ("::add-mask::", "smoke secrets masked before export"),
+        ):
+            require(smoke_env, needle, label, errors)
+        smoke_selftest = subprocess.run(
+            [sys.executable, "-S", str(ROOT / "scripts" / "staging_smoke_env.py"), "--self-test"],
+            capture_output=True, text=True, check=False,
+        )
+        if smoke_selftest.returncode != 0:
+            errors.append("staging_smoke_env.py self-test falla: " + (smoke_selftest.stdout + smoke_selftest.stderr).strip()[-300:])
         for needle in ("RENDER_API_KEY", "RENDER_SERVICE_ID", "render_staging_bootstrap"):
             forbid(blocks["smoke"], needle, "smoke no depende de Render", errors)
 

@@ -441,19 +441,7 @@ jobs:
           version: '2.185.2'
           python-version: '3.13'
       - name: Load ephemeral staging invite code from OCI runtime
-        run: |
-          python3 - <<'PY'
-          import os,sys
-          sys.path.insert(0,'scripts')
-          import oci
-          from oci_runtime_bundle import read_private_runtime_value
-          invite=read_private_runtime_value(oci, 'INVITE_CODE')
-          sec=read_private_runtime_value(oci,'CHESS_AI_SHARED_SECRET')
-          if not invite or not sec: raise SystemExit('missing staging smoke secret')
-          h=open(os.environ['GITHUB_ENV'],'a')
-          for k,v in (('STAGING_INVITE_CODE',invite),('STAGING_SYNTHETIC_SECRET',sec)):
-              print(f'::add-mask::{v}');h.write(f'{k}={v}\n')
-          PY
+        run: python3 scripts/staging_smoke_env.py secrets
       - name: Prepare and sweep staging smoke janitor
         if: matrix.key == 'live'
         shell: bash
@@ -462,15 +450,7 @@ jobs:
           python3 -S scripts/staging_smoke_user_cleanup.py --self-test
           python3 -S scripts/staging_smoke_user_cleanup.py --sweep
       - name: Generate isolated staging smoke credentials
-        shell: bash
-        run: |
-          set -euo pipefail
-          username="ci_smoke_$(python3 -c 'import secrets; print(secrets.token_hex(8))')"
-          password="CS!$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')"
-          echo "::add-mask::$username"
-          echo "::add-mask::$password"
-          echo "STAGING_E2E_USERNAME=$username" >> "$GITHUB_ENV"
-          echo "STAGING_E2E_PASSWORD=$password" >> "$GITHUB_ENV"
+        run: python3 -S scripts/staging_smoke_env.py identity
       - name: Restore staging browser runtime
         uses: ./.github/actions/setup-browser-e2e
         with:

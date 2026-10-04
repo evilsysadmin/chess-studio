@@ -54,24 +54,7 @@ jobs:
         uses: ./.github/actions/setup-oci-sdk
 
       - name: Load staging invite from private OCI runtime
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          import os
-          import sys
-
-          sys.path.insert(0, "scripts")
-          import oci
-          from oci_runtime_bundle import read_private_runtime_value
-
-          invite = read_private_runtime_value(oci, "INVITE_CODE")
-          if not invite:
-              raise SystemExit("missing staging INVITE_CODE")
-          print(f"::add-mask::{invite}")
-          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as handle:
-              handle.write(f"CHESS_CAPACITY_INVITE_CODE={invite}\n")
-          PY
+        run: python3 scripts/staging_smoke_env.py secrets --keys INVITE_CODE=CHESS_CAPACITY_INVITE_CODE
 
       - name: Wait for exact staging backend generation
         shell: bash
