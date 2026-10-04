@@ -90,6 +90,11 @@ def _public(row: dict[str, Any] | None) -> dict[str, Any] | None:
         "runId": str(row.get("_id") or row.get("runId")),
         "seed": int(row["seed"]),
         **({"partyLevel": int(row["partyLevel"])} if row.get("partyLevel") is not None else {}),
+        **(
+            {"contentPlacementVersion": int(row["contentPlacementVersion"])}
+            if row.get("contentPlacementVersion") is not None
+            else {}
+        ),
         "currentMapId": row["currentMapId"],
         "contentVersion": int(row["contentVersion"]),
         "manifestRevision": row["manifestRevision"],
@@ -122,6 +127,7 @@ async def create_or_replay_run(
     route_snapshot: dict[str, Any] | None = None,
     planner_snapshot: dict[str, Any] | None = None,
     party_level: int | None = None,
+    content_placement_version: int | None = None,
 ) -> dict[str, Any]:
     now = utcnow()
     document = {
@@ -129,6 +135,11 @@ async def create_or_replay_run(
         "owner": owner,
         "seed": int(seed),
         **({"partyLevel": int(party_level)} if party_level is not None else {}),
+        **(
+            {"contentPlacementVersion": int(content_placement_version)}
+            if content_placement_version is not None
+            else {}
+        ),
         "currentMapId": map_id,
         "contentVersion": int(content_version),
         "manifestRevision": manifest_revision,
