@@ -10,13 +10,9 @@ deploy = (ROOT / "scripts" / "oci_existing_a1_deploy.sh").read_text(encoding="ut
 compose = (ROOT / "infra" / "oci" / "runtime" / "docker-compose.yml").read_text(encoding="utf-8")
 backend_main_path = ROOT / "backend-python" / "main.py"
 backend_main = backend_main_path.read_text(encoding="utf-8")
-# The whole native handler package, not one file: declarations move between
-# files (canonicalBrowserOrigins lives in auth.go since the pulse split).
-go_pulse = "\n".join(
-    path.read_text(encoding="utf-8")
-    for path in sorted((ROOT / "backend-go" / "internal" / "pulse").glob("*.go"))
-    if not path.name.endswith("_test.go")
-)
+go_cors_policy = (
+    ROOT / "backend-go" / "internal" / "corspolicy" / "origins.go"
+).read_text(encoding="utf-8")
 verifier = (ROOT / "scripts" / "verify_backend_staging.py").read_text(encoding="utf-8")
 staging_deploy = (ROOT / ".github" / "workflows" / "staging-deploy.yml").read_text(encoding="utf-8")
 service_control = (ROOT / ".github" / "workflows" / "oci-staging-service.yml").read_text(encoding="utf-8")
@@ -208,12 +204,12 @@ assert STAGING_ORIGIN in default_origins, (
     "CORS_ORIGINS is stale or missing"
 )
 
-assert STAGING_ORIGIN in go_pulse, (
-    "native Go PvP handlers must retain the canonical staging browser origin "
+assert STAGING_ORIGIN in go_cors_policy, (
+    "native Go handlers must retain the canonical staging browser origin "
     "independently of runtime CORS_ORIGINS"
 )
-assert "https://chess-studio.shadowops.dpdns.org" in go_pulse, (
-    "native Go PvP handlers must retain the canonical production browser origin"
+assert "https://chess-studio.shadowops.dpdns.org" in go_cors_policy, (
+    "native Go handlers must retain the canonical production browser origin"
 )
 
 required_public_verifier_fragments = (
