@@ -162,6 +162,7 @@ scopedTest('school', 'Entrenar · Escuela, Glosario y Modos especiales', async (
   await expect(shell.locator('[data-board3d-camera="classroom-overhead"]')).toBeVisible();
   const school3d = shell.locator('[data-board3d-war-room="true"]');
   await expect(school3d).toHaveAttribute('data-board3d-variant', 'classic');
+  await expect(shell.locator('.board3d-main-canvas')).toHaveAttribute('data-school-room-scene', 'school-room-war-room-v1');
   await capture(page, 'school');
 
   await shell.getByRole('button', { name: 'Por qué funciona', exact: true }).click();
