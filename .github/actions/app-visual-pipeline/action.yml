@@ -51,7 +51,12 @@ runs:
             echo "::error::Unable to materialize PR head SHA $head_sha"
             exit 1
           }
-          files="$(git diff --name-only "$base_sha" "$head_sha")"
+          # PR ownership is the head-side delta from the common ancestor.
+          # A direct base..head diff wrongly includes files that landed on main
+          # after this branch forked, which can expand one focused visual PR to
+          # every canonical surface.
+          merge_base="$(git merge-base "$base_sha" "$head_sha")"
+          files="$(git diff --name-only "$merge_base" "$head_sha")"
         else
           base_sha="HEAD^"
           head_sha="HEAD"
