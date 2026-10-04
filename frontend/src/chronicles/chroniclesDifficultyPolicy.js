@@ -60,3 +60,16 @@ export function chroniclesDifficultyBand({
     progressionPressure,
   });
 }
+
+
+export function chroniclesResolvedDifficultyBand(
+  authoritativeRun,
+  mapId,
+  fallback = {},
+) {
+  const authoritative = authoritativeRun?.areas
+    ?.find((area) => area?.mapId === mapId)
+    ?.difficulty;
+  if (authoritative && typeof authoritative === 'object') return authoritative;
+  return chroniclesDifficultyBand(fallback);
+}

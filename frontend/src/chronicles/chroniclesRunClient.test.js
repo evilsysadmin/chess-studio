@@ -32,6 +32,20 @@ describe('Chronicles run transport', () => {
     );
   });
 
+  it('sends the run-start party level as a rollout-safe header', async () => {
+    await chroniclesCreateRun(null, {
+      operationId: 'chronicles-difficulty-run',
+      partyLevel: 6,
+    });
+
+    const [, options] = requestJson.mock.calls[0];
+    expect(JSON.parse(options.body)).toEqual({});
+    expect(options.headers).toMatchObject({
+      'Idempotency-Key': 'chronicles-difficulty-run',
+      'X-Chronicles-Party-Level': '6',
+    });
+  });
+
   it('forwards a caller-owned idempotency key unchanged', async () => {
     const signal = new AbortController().signal;
     await chroniclesCreateRun('gallery-of-forks', {

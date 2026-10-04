@@ -18,6 +18,19 @@ function remoteEnvelope(mapId, seed, mutate = (map) => map) {
     seed,
     instanceId: 'a'.repeat(24),
     manifestRevision: 'b'.repeat(64),
+    difficulty: {
+      version: 1,
+      partyLevel: 6,
+      depth: 2,
+      targetLevel: 4,
+      minLevel: 3,
+      maxLevel: 5,
+      depthPressure: 1,
+      progressionPressure: 2,
+      authoredLevel: 2,
+      requestedDelta: 2,
+      appliedDelta: 2,
+    },
     manifest,
   };
 }
@@ -33,6 +46,8 @@ describe('Chronicles Game Director frontend resolver', () => {
 
     expect(fetchManifest).toHaveBeenCalledWith('crypt-eight-squares', 417, { signal: undefined });
     expect(resolved.source).toBe('remote');
+    expect(resolved.mapId).toBe('crypt-eight-squares');
+    expect(resolved.difficulty).toMatchObject({ partyLevel: 6, depth: 2, targetLevel: 4 });
     expect(resolved.map.title).toBe('Cripta remota validada');
     expect(Object.isFrozen(resolved.map)).toBe(true);
     expect(resolved.instanceId).toHaveLength(24);
@@ -102,6 +117,16 @@ describe('Chronicles Game Director frontend resolver', () => {
       seed: 12,
       fetchManifest: vi.fn().mockResolvedValue(wrongSeed),
     })).rejects.toMatchObject({ reason: 'seed-mismatch' });
+  });
+
+  it('rejects malformed authoritative difficulty metadata', async () => {
+    const payload = remoteEnvelope('crypt-eight-squares', 21);
+    payload.difficulty.targetLevel = 'hard';
+
+    await expect(chroniclesResolveAreaManifest('crypt-eight-squares', {
+      seed: 21,
+      fetchManifest: vi.fn().mockResolvedValue(payload),
+    })).rejects.toMatchObject({ reason: 'invalid-difficulty' });
   });
 
   it('does not ask the backend for an unknown internal map id', async () => {

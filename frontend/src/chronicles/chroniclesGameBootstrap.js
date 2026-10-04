@@ -82,6 +82,9 @@ function validateRunBootstrap(payload, requestedMapId) {
   if (requestedMapId && currentMapId !== requestedMapId) throw new Error('run-map-mismatch');
   if (!Number.isInteger(payload.seed) || payload.seed < 0) throw new Error('invalid-run-seed');
   if (!Number.isInteger(payload.worldVersion) || payload.worldVersion < 0) throw new Error('invalid-world-version');
+  if (payload.partyLevel !== undefined && (!Number.isInteger(payload.partyLevel) || payload.partyLevel < 1 || payload.partyLevel > 12)) {
+    throw new Error('invalid-party-level');
+  }
   if (!['active', 'completed', 'defeated'].includes(payload.status)) throw new Error('invalid-run-status');
   // During rolling deploys the previous backend can still return the pre-checkpoint
   // run shape, which did not expose worldFlags. Treat omission as the empty durable
@@ -133,6 +136,7 @@ function validateRunBootstrap(payload, requestedMapId) {
     runId: payload.runId,
     currentMapId,
     worldVersion: payload.worldVersion,
+    partyLevel: payload.partyLevel ?? null,
     worldFlags: Object.freeze({ ...worldFlags }),
     inventory: Object.freeze({ ...inventory }),
     quests: Object.freeze({ ...quests }),
@@ -147,6 +151,7 @@ export async function chroniclesBootstrapWorld({
   budgetMs = CHRONICLES_BOOTSTRAP_BUDGET_MS,
   signal,
   operationId = null,
+  partyLevel = null,
   createRun = chroniclesCreateRun,
 } = {}) {
   chroniclesClearRuntimeMapDefinitions();
@@ -183,8 +188,13 @@ export async function chroniclesBootstrapWorld({
       error: bootstrapTransportError(null, { aborted: externallyAborted }),
     }));
 
+  const requestOptions = {
+    operationId,
+    signal: requestController.signal,
+    ...(Number.isInteger(partyLevel) ? { partyLevel } : {}),
+  };
   const request = Promise.resolve()
-    .then(() => createRun(mapId, { operationId, signal: requestController.signal }))
+    .then(() => createRun(mapId, requestOptions))
     .then((payload) => ({ ok: true, value: validateAuthoritativeRun(payload, mapId) }))
     .catch((error) => ({
       ok: false,

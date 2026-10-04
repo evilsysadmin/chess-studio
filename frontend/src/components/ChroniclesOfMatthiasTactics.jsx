@@ -2,6 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import {
   chroniclesClearRuntimeMapDefinitions,
 } from '../chronicles/chroniclesMapCatalog.js';
+import { chroniclesDeployedPartyLevel } from '../chronicles/chroniclesDifficultyPolicy.js';
 import {
   CHRONICLES_BOOTSTRAP_ERROR_CODES,
   chroniclesBootstrapTacticsWorld,
@@ -133,7 +134,11 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
     void loadChroniclesTacticsRuntime().catch(() => {});
     void loadChroniclesTacticsRenderer().catch(() => {});
 
-    chroniclesBootstrapTacticsWorld({ signal: controller.signal, operationId })
+    chroniclesBootstrapTacticsWorld({
+      signal: controller.signal,
+      operationId,
+      partyLevel: chroniclesDeployedPartyLevel(progression),
+    })
       .then((world) => {
         if (!active) return;
         setBootstrapWorld(world);
@@ -161,7 +166,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
       controller.abort();
       chroniclesClearRuntimeMapDefinitions();
     };
-  }, [bootstrapRevision, characterSetupDone]);
+  }, [bootstrapRevision, characterSetupDone, progression]);
 
   if (!characterSetupDone) {
     return (

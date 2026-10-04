@@ -7,6 +7,7 @@ import {
   createChroniclesState,
 } from '../chroniclesOfMatthias.js';
 import { chroniclesPartyBark } from '../chroniclesOfMatthiasBarks.js';
+import { chroniclesDeployedPartyLevel } from '../chronicles/chroniclesDifficultyPolicy.js';
 import { playChroniclesActionSound } from '../chronicles/chroniclesActionAudio.js';
 import { chroniclesPartyPortraitUrl } from '../chronicles/chroniclesPartyPortraitAssets.js';
 import { chroniclesClearRuntimeMapDefinitions } from '../chronicles/chroniclesMapCatalog.js';
@@ -235,7 +236,11 @@ export default function ChroniclesOfMatthias({ onExit }) {
     // Gameplay still stays fail-closed until the backend bundle validates.
     void loadChroniclesFirstPersonRenderer().catch(() => {});
 
-    chroniclesBootstrapWorld({ signal: controller.signal, operationId })
+    chroniclesBootstrapWorld({
+      signal: controller.signal,
+      operationId,
+      partyLevel: chroniclesDeployedPartyLevel(progression),
+    })
       .then((world) => {
         if (!active) return;
         const next = chroniclesApplyRunCheckpoint(
@@ -274,7 +279,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
       controller.abort();
       chroniclesClearRuntimeMapDefinitions();
     };
-  }, [bootstrapRevision, characterSetupDone, progression.characterBuild]);
+  }, [bootstrapRevision, characterSetupDone, progression]);
 
   useEffect(() => {
     let cancelled = false;
