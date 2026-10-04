@@ -222,9 +222,14 @@ test('sesión · dos contextos de navegador del mismo usuario son independientes
     expect(presenceB).toBeTruthy();
     expect(presenceA).not.toBe(presenceB);
 
+    // After logging in B, A is a background window: Chromium throttles its
+    // animation frames, so Playwright's "stable" check on A can stall. Bring
+    // each page to the front before acting on it, as a real user would.
+    await pageA.bringToFront();
     await pageA.getByRole('button', { name: 'Abrir menú de cuenta', exact: true }).click();
     await pageA.getByRole('menuitem', { name: /Cerrar sesión/ }).click();
     await expect(pageA.getByRole('heading', { name: 'Iniciar sesión', exact: true })).toBeVisible();
+    await pageB.bringToFront();
     await expect(pageB.getByRole('region', { name: 'Modos principales' })).toBeVisible();
   } finally {
     await contextA.close();

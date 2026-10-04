@@ -46,6 +46,37 @@
   }
 }
 
+/* Narrow portrait phones: the right-anchored Matthias HUD (up to 360px wide)
+   reaches the left edge below ~460px and covered most of the exit pill. Keep
+   the same button as a 44px arrow just under the HUD row, over the room and
+   clear of the board; its accessible name is unchanged. */
+@media (max-width: 520px) and (orientation: portrait) {
+  .war-room-exit-overlay {
+    top: calc(max(.45rem, env(safe-area-inset-top)) + 44px + .45rem);
+    width: 44px;
+    min-width: 44px;
+    padding: 0;
+    font-size: .9rem;
+  }
+
+  .war-room-exit-overlay > span:last-child {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* Wider portrait phones/tablets keep the full pill, but the immersive save
+   status dot sits in the same top-left corner: start the pill after it. */
+@media (min-width: 521px) and (max-width: 820px) and (orientation: portrait) {
+  .war-room-exit-overlay {
+    left: calc(max(.45rem, env(safe-area-inset-left)) + 44px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .war-room-exit-overlay {
     transition: none;

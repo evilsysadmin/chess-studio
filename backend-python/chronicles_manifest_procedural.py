@@ -13,6 +13,7 @@ from dataclasses import dataclass
 import hashlib
 from typing import Any
 
+from chronicles_difficulty import chronicles_authored_difficulty
 from chronicles_content_variation import (
     CHRONICLES_COMPOSITION_VERSION,
     CHRONICLES_MODULE_VARIATION_VERSION,
@@ -96,26 +97,6 @@ def _verbs_for_manifest(manifest: dict[str, Any], theme: str) -> tuple[str, ...]
     return tuple(verbs[:4])
 
 
-def _difficulty_for_manifest(manifest: dict[str, Any]) -> int:
-    procedural_difficulty = manifest.get("proceduralDifficulty")
-    if procedural_difficulty is not None:
-        return int(procedural_difficulty)
-
-    enemies = manifest.get("enemies", [])
-    if not enemies:
-        return 1
-    average_hp = sum(max(1, int(enemy.get("maxHp", 1))) for enemy in enemies) / len(enemies)
-    if average_hp <= 5:
-        return 1
-    if average_hp <= 7:
-        return 2
-    if average_hp <= 9:
-        return 3
-    if average_hp <= 11:
-        return 4
-    return 5
-
-
 def chronicles_map_code_for_manifest(manifest: dict[str, Any], seed: int) -> ChroniclesMapCode:
     grid = manifest.get("grid") or []
     width = len(grid[0]) if grid else 0
@@ -135,7 +116,7 @@ def chronicles_map_code_for_manifest(manifest: dict[str, Any], seed: int) -> Chr
         enemies=max(2, min(8, len(manifest.get("enemies", [])))),
         treasures=min(4, len(manifest.get("treasures", []))),
         secrets=min(3, secret_count),
-        difficulty=_difficulty_for_manifest(manifest),
+        difficulty=chronicles_authored_difficulty(manifest),
         seed=int(seed),
     )
 
