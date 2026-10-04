@@ -330,6 +330,8 @@ export function installWarRoomHansServiceRoutine(root) {
         motionState: 'walk-service',
         route: `service-${eventName}`,
       });
+      const serviceCanvas = getWarRoomHansCanvas(actor);
+      if (serviceCanvas?.dataset) serviceCanvas.dataset.warRoomHansServiceSeenVisible = 'true';
       setWarRoomHansTaskPhase(runtime, 'walking-in');
       setWarRoomHansServiceDoor(root, 1);
       props.can.visible = eventName === 'water-plant';
