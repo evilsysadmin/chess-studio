@@ -505,7 +505,6 @@ export default function ChroniclesOfMatthiasTactics({
               <small>
                 VIG {targetIntel.enemyBuild.attributes.vigor || 0} · POT {targetIntel.enemyBuild.attributes.power || 0}
                 {' · '}PRE {targetIntel.enemyBuild.attributes.precision || 0} · VOL {targetIntel.enemyBuild.attributes.will || 0}
-                {' · '}AGI {targetIntel.enemyBuild.attributes.agility || 0}
               </small>
               {targetIntel.enemyBuild.skills.length ? (
                 <div className="chronicles-tactics__enemy-skills">
