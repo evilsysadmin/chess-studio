@@ -116,7 +116,7 @@ case "${go_native_games_hint,,}" in
   true|false) go_native_games_hint="${go_native_games_hint,,}" ;;
   *) echo "invalid CHESS_STUDIO_GO_NATIVE_GAMES_HINT_ENABLED: $go_native_games_hint" >&2; exit 2 ;;
 esac
-# Native Go position analysis (POST /api/analyze), optional engine work.
+# Native Go analysis (POST /api/analyze and /api/analyze-move), optional engine work.
 case "$target" in
   staging) go_native_analyze="${CHESS_STUDIO_GO_NATIVE_ANALYZE_ENABLED:-true}" ;;
   *) go_native_analyze="${CHESS_STUDIO_GO_NATIVE_ANALYZE_ENABLED:-false}" ;;
@@ -1748,6 +1748,12 @@ if [[ "$api_edge_mode" == "go" && "$go_native_analyze" == "true" ]] && ! wait_pv
   compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
   rollback "$sha" || true
   exit 62
+fi
+if [[ "$api_edge_mode" == "go" && "$go_native_analyze" == "true" ]] && ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/analyze-move" POST; then
+  echo "native move analysis did not answer through Go after cutover: color=$candidate_color" >&2
+  compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
+  rollback "$sha" || true
+  exit 63
 fi
 write_active_color "$candidate_color"
 phase_done switch "$switch_started_ms"

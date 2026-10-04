@@ -37,6 +37,12 @@ type fakeRootAnalyzer struct {
 	err      error
 	depth    int
 	budget   time.Duration
+	classic  string
+	score    float64
+}
+
+func (f *fakeRootAnalyzer) Classic(context.Context, []*chess.Position, int, time.Duration) (string, float64, error) {
+	return f.classic, f.score, nil
 }
 
 func (f *fakeRootAnalyzer) AnalyzeDepth(_ context.Context, _ []*chess.Position, depth int, budget time.Duration) (residentsearch.Snapshot, error) {
@@ -105,7 +111,8 @@ func TestAnalyzeRouteOnlyClaimsPost(t *testing.T) {
 	}{
 		{http.MethodPost, "/api/analyze", true},
 		{http.MethodGet, "/api/analyze", false},
-		{http.MethodPost, "/api/analyze-move", false},
+		{http.MethodPost, "/api/analyze-move", true},
+		{http.MethodPut, "/api/analyze-move", false},
 		{http.MethodPost, "/api/analyze/", false},
 	} {
 		r := httptest.NewRequest(tc.method, tc.path, nil)
@@ -321,4 +328,107 @@ func (p *EnginePool) optionalInFlight() int {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	return p.optional
+}
+
+func TestAnalyzeMoveValidatesLikePydantic(t *testing.T) {
+	f := newAnalyzeFixture(t, nil)
+	for _, tc := range []struct {
+		body, typ, msg string
+		loc            []any
+	}{
+		{`{"fen":"x","from":"e"}`, "string_too_short", "String should have at least 2 characters", []any{"body", "from"}},
+		{`{"fen":"x","from_square":"e2e"}`, "string_too_long", "String should have at most 2 characters", []any{"body", "from_square"}},
+		{`{"fen":"x","to":4}`, "string_type", "Input should be a valid string", []any{"body", "to"}},
+		{`{"fen":"x","promotion":"qq"}`, "string_too_long", "String should have at most 1 character", []any{"body", "promotion"}},
+		{`{"fen":"x","level":[]}`, "float_parsing", "Input should be a valid number", []any{"body", "level"}},
+	} {
+		r := httptest.NewRequest(http.MethodPost, AnalyzeMovePattern, strings.NewReader(tc.body))
+		asUser(t, "alice")(r)
+		w := httptest.NewRecorder()
+		f.h.ServeHTTP(w, r)
+		if w.Code != http.StatusUnprocessableEntity {
+			t.Errorf("%q: %d %s", tc.body, w.Code, w.Body)
+			continue
+		}
+		detail := decode(t, w)["detail"].([]any)[0].(map[string]any)
+		loc, _ := json.Marshal(detail["loc"])
+		want, _ := json.Marshal(tc.loc)
+		if detail["type"] != tc.typ || detail["msg"] != tc.msg || string(loc) != string(want) {
+			t.Errorf("%q: %v", tc.body, detail)
+		}
+	}
+}
+
+func (f analyzeFixture) postMove(t *testing.T, body string) *httptest.ResponseRecorder {
+	t.Helper()
+	r := httptest.NewRequest(http.MethodPost, AnalyzeMovePattern, strings.NewReader(body))
+	asUser(t, "alice")(r)
+	w := httptest.NewRecorder()
+	f.h.ServeHTTP(w, r)
+	return w
+}
+
+func TestAnalyzeMoveComparesALegalPlayedMove(t *testing.T) {
+	f := newAnalyzeFixture(t, nil)
+	f.analyzer.snapshot = residentsearch.Snapshot{Depth: 1, CandidateCount: 3, Candidates: []residentsearch.Candidate{
+		{UCI: "e2e4", Score: 40, PV: []string{"e2e4"}},
+		{UCI: "d2d4", Score: 35},
+		{UCI: "g1f3", Score: 10},
+	}}
+	got := decode(t, f.postMove(t, `{"fen":"`+startFEN+`","from":"g1","to":"f3"}`))
+	if got["suggested"].(map[string]any)["san"] != "e4" || got["played"].(map[string]any)["san"] != "Nf3" {
+		t.Fatalf("moves %v", got)
+	}
+	if got["loss"] != 30.0 || got["bestToSecondGap"] != 5.0 || got["factualEvalAfterPlayed"] != 10.0 || got["secondBest"].(map[string]any)["san"] != "d4" {
+		t.Fatalf("comparison %v", got)
+	}
+	if got["suggestedReply"] != nil || len(got["playedLine"].([]any)) != 1 {
+		t.Fatalf("lines %v", got)
+	}
+	// Level 45: min(6, settings_for_level(45).max_depth) = 3.
+	if f.analyzer.depth != 3 {
+		t.Fatalf("depth %d", f.analyzer.depth)
+	}
+}
+
+func TestAnalyzeMoveFallsBackToTheEngineMove(t *testing.T) {
+	f := newAnalyzeFixture(t, nil)
+	f.analyzer.classic, f.analyzer.score = "e2e4", 25
+	// No played move: the deterministic suggestion alone, without captured.
+	got := decode(t, f.postMove(t, `{"fen":"`+startFEN+`"}`))
+	suggested := got["suggested"].(map[string]any)
+	if suggested["san"] != "e4" || got["evalAfterSuggested"] != 25.0 || got["evalAfterPlayed"] != nil {
+		t.Fatalf("no played move: %v", got)
+	}
+	if _, has := suggested["captured"]; has {
+		t.Fatalf("legacy suggestion leaks captured: %v", suggested)
+	}
+	// An illegal played move is ignored the same way.
+	got = decode(t, f.postMove(t, `{"fen":"`+startFEN+`","from":"e2","to":"e5"}`))
+	if got["evalAfterPlayed"] != nil || got["loss"] != nil {
+		t.Fatalf("illegal played move: %v", got)
+	}
+	// A legal played move whose factual pass times out keeps the static eval.
+	f.analyzer.err = residentsearch.ErrTimeout
+	got = decode(t, f.postMove(t, `{"fen":"`+startFEN+`","from":"g1","to":"f3"}`))
+	if got["evalAfterPlayed"] == nil || got["loss"] != nil {
+		t.Fatalf("timed-out factual pass: %v", got)
+	}
+}
+
+func TestAnalyzeMoveHasItsOwnLimit(t *testing.T) {
+	f := newAnalyzeFixture(t, nil)
+	f.analyzer.classic = "e2e4"
+	for i := 0; i < 60; i++ {
+		f.post(t, `{"fen":"`+startFEN+`"}`, asUser(t, "alice"))
+	}
+	for i := 0; i < 180; i++ {
+		if w := f.postMove(t, `{"fen":"`+startFEN+`"}`); w.Code != http.StatusOK {
+			t.Fatalf("analyze-move %d: %d", i, w.Code)
+		}
+	}
+	w := f.postMove(t, `{"fen":"`+startFEN+`"}`)
+	if w.Code != http.StatusTooManyRequests || decode(t, w)["error"] != "Rate limit exceeded: 180 per 1 minute" {
+		t.Fatalf("181st: %d %s", w.Code, w.Body)
+	}
 }

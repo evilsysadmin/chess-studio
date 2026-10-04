@@ -1,0 +1,4678 @@
+{
+ "generator": "scripts/engine_move_analysis_parity_corpus.py",
+ "positions": [
+  {
+   "depth": 3,
+   "fen": "r1b1kbnr/1ppp2pp/2n5/p3q1Q1/4p3/BP2P3/P1PP1PPP/RN2KBNR w KQkq - 4 9",
+   "payload": {
+    "analysisDepth": 3,
+    "bestToSecondGap": 100.0,
+    "candidateCount": 42,
+    "evalAfterPlayed": 16.0,
+    "evalAfterSecondBest": -59.0,
+    "evalAfterSuggested": 41.0,
+    "factualEvalAfterPlayed": -815.0,
+    "factualEvalAfterSuggested": 41.0,
+    "loss": 856.0,
+    "played": {
+     "captured": false,
+     "from": "a3",
+     "piece": "b",
+     "promotion": null,
+     "san": "Bb2",
+     "to": "b2"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "a3",
+      "piece": "b",
+      "promotion": null,
+      "san": "Bb2",
+      "to": "b2"
+     },
+     {
+      "captured": true,
+      "from": "e5",
+      "piece": "q",
+      "promotion": null,
+      "san": "Qxg5",
+      "to": "g5"
+     },
+     {
+      "captured": false,
+      "from": "b1",
+      "piece": "n",
+      "promotion": null,
+      "san": "Nc3",
+      "to": "c3"
+     }
+    ],
+    "playedReply": {
+     "captured": true,
+     "from": "e5",
+     "piece": "q",
+     "promotion": null,
+     "san": "Qxg5",
+     "to": "g5"
+    },
+    "secondBest": {
+     "captured": false,
+     "from": "g5",
+     "piece": "q",
+     "promotion": null,
+     "san": "Qf4",
+     "to": "f4"
+    },
+    "suggested": {
+     "captured": true,
+     "from": "g5",
+     "piece": "q",
+     "promotion": null,
+     "san": "Qxe5+",
+     "to": "e5"
+    },
+    "suggestedLine": [
+     {
+      "captured": true,
+      "from": "g5",
+      "piece": "q",
+      "promotion": null,
+      "san": "Qxe5+",
+      "to": "e5"
+     },
+     {
+      "captured": true,
+      "from": "c6",
+      "piece": "n",
+      "promotion": null,
+      "san": "Nxe5",
+      "to": "e5"
+     },
+     {
+      "captured": false,
+      "from": "g1",
+      "piece": "n",
+      "promotion": null,
+      "san": "Ne2",
+      "to": "e2"
+     }
+    ],
+    "suggestedReply": {
+     "captured": true,
+     "from": "c6",
+     "piece": "n",
+     "promotion": null,
+     "san": "Nxe5",
+     "to": "e5"
+    }
+   },
+   "played": "a3b2"
+  },
+  {
+   "depth": 2,
+   "fen": "r1b1kbnr/1ppp2pp/8/p3n3/4p3/BP2P3/P1PP1PPP/RN2KBNR w KQkq - 0 10",
+   "payload": {
+    "analysisDepth": 2,
+    "bestToSecondGap": 29.0,
+    "candidateCount": 29,
+    "evalAfterPlayed": 51.0,
+    "evalAfterSecondBest": 31.0,
+    "evalAfterSuggested": 60.0,
+    "factualEvalAfterPlayed": -140.0,
+    "factualEvalAfterSuggested": 60.0,
+    "loss": 200.0,
+    "played": {
+     "captured": false,
+     "from": "b1",
+     "piece": "n",
+     "promotion": null,
+     "san": "Nc3",
+     "to": "c3"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "b1",
+      "piece": "n",
+      "promotion": null,
+      "san": "Nc3",
+      "to": "c3"
+     },
+     {
+      "captured": true,
+      "from": "f8",
+      "piece": "b",
+      "promotion": null,
+      "san": "Bxa3",
+      "to": "a3"
+     }
+    ],
+    "playedReply": {
+     "captured": true,
+     "from": "f8",
+     "piece": "b",
+     "promotion": null,
+     "san": "Bxa3",
+     "to": "a3"
+    },
+    "secondBest": {
+     "captured": false,
+     "from": "d2",
+     "piece": "p",
+     "promotion": null,
+     "san": "d3",
+     "to": "d3"
+    },
+    "suggested": {
+     "captured": false,
+     "from": "d2",
+     "piece": "p",
+     "promotion": null,
+     "san": "d4",
+     "to": "d4"
+    },
+    "suggestedLine": [
+     {
+      "captured": false,
+      "from": "d2",
+      "piece": "p",
+      "promotion": null,
+      "san": "d4",
+      "to": "d4"
+     },
+     {
+      "captured": true,
+      "from": "f8",
+      "piece": "b",
+      "promotion": null,
+      "san": "Bxa3",
+      "to": "a3"
+     }
+    ],
+    "suggestedReply": {
+     "captured": true,
+     "from": "f8",
+     "piece": "b",
+     "promotion": null,
+     "san": "Bxa3",
+     "to": "a3"
+    }
+   },
+   "played": "b1c3"
+  },
+  {
+   "depth": 2,
+   "fen": "rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3",
+   "payload": {
+    "analysisDepth": 2,
+    "bestToSecondGap": 15.0,
+    "candidateCount": 31,
+    "evalAfterPlayed": 10.0,
+    "evalAfterSecondBest": 10.0,
+    "evalAfterSuggested": 25.0,
+    "factualEvalAfterPlayed": -45.0,
+    "factualEvalAfterSuggested": 25.0,
+    "loss": 70.0,
+    "played": {
+     "captured": false,
+     "from": "e1",
+     "piece": "k",
+     "promotion": null,
+     "san": "Ke2",
+     "to": "e2"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "e1",
+      "piece": "k",
+      "promotion": null,
+      "san": "Ke2",
+      "to": "e2"
+     },
+     {
+      "captured": false,
+      "from": "b8",
+      "piece": "n",
+      "promotion": null,
+      "san": "Nc6",
+      "to": "c6"
+     }
+    ],
+    "playedReply": {
+     "captured": false,
+     "from": "b8",
+     "piece": "n",
+     "promotion": null,
+     "san": "Nc6",
+     "to": "c6"
+    },
+    "secondBest": {
+     "captured": false,
+     "from": "g1",
+     "piece": "n",
+     "promotion": null,
+     "san": "Nf3",
+     "to": "f3"
+    },
+    "suggested": {
+     "captured": false,
+     "from": "d1",
+     "piece": "q",
+     "promotion": null,
+     "san": "Qh5+",
+     "to": "h5"
+    },
+    "suggestedLine": [
+     {
+      "captured": false,
+      "from": "d1",
+      "piece": "q",
+      "promotion": null,
+      "san": "Qh5+",
+      "to": "h5"
+     },
+     {
+      "captured": false,
+      "from": "g7",
+      "piece": "p",
+      "promotion": null,
+      "san": "g6",
+      "to": "g6"
+     }
+    ],
+    "suggestedReply": {
+     "captured": false,
+     "from": "g7",
+     "piece": "p",
+     "promotion": null,
+     "san": "g6",
+     "to": "g6"
+    }
+   },
+   "played": "e1e2"
+  },
+  {
+   "depth": 3,
+   "fen": "4k3/8/8/3Pp3/8/8/8/4K3 w - e6 0 1",
+   "payload": {
+    "analysisDepth": 3,
+    "bestToSecondGap": 0.0,
+    "candidateCount": 7,
+    "evalAfterPlayed": 11.0,
+    "evalAfterSecondBest": 43.0,
+    "evalAfterSuggested": 43.0,
+    "factualEvalAfterPlayed": -172.0,
+    "factualEvalAfterSuggested": 43.0,
+    "loss": 215.0,
+    "played": {
+     "captured": false,
+     "from": "d5",
+     "piece": "p",
+     "promotion": null,
+     "san": "d6",
+     "to": "d6"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "d5",
+      "piece": "p",
+      "promotion": null,
+      "san": "d6",
+      "to": "d6"
+     },
+     {
+      "captured": false,
+      "from": "e8",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kd7",
+      "to": "d7"
+     },
+     {
+      "captured": false,
+      "from": "e1",
+      "piece": "k",
+      "promotion": null,
+      "san": "Ke2",
+      "to": "e2"
+     }
+    ],
+    "playedReply": {
+     "captured": false,
+     "from": "e8",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kd7",
+     "to": "d7"
+    },
+    "secondBest": {
+     "captured": false,
+     "from": "e1",
+     "piece": "k",
+     "promotion": null,
+     "san": "Ke2",
+     "to": "e2"
+    },
+    "suggested": {
+     "captured": false,
+     "from": "e1",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kf2",
+     "to": "f2"
+    },
+    "suggestedLine": [
+     {
+      "captured": false,
+      "from": "e1",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kf2",
+      "to": "f2"
+     },
+     {
+      "captured": false,
+      "from": "e8",
+      "piece": "k",
+      "promotion": null,
+      "san": "Ke7",
+      "to": "e7"
+     },
+     {
+      "captured": false,
+      "from": "f2",
+      "piece": "k",
+      "promotion": null,
+      "san": "Ke3",
+      "to": "e3"
+     }
+    ],
+    "suggestedReply": {
+     "captured": false,
+     "from": "e8",
+     "piece": "k",
+     "promotion": null,
+     "san": "Ke7",
+     "to": "e7"
+    }
+   },
+   "played": "d5d6"
+  },
+  {
+   "depth": 2,
+   "fen": "4k3/8/8/8/3pP3/8/8/4K3 b - e3 0 1",
+   "payload": {
+    "analysisDepth": 2,
+    "bestToSecondGap": 120.0,
+    "candidateCount": 7,
+    "evalAfterPlayed": -11.0,
+    "evalAfterSecondBest": -8.0,
+    "evalAfterSuggested": -128.0,
+    "factualEvalAfterPlayed": 9.0,
+    "factualEvalAfterSuggested": -128.0,
+    "loss": 137.0,
+    "played": {
+     "captured": false,
+     "from": "d4",
+     "piece": "p",
+     "promotion": null,
+     "san": "d3",
+     "to": "d3"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "d4",
+      "piece": "p",
+      "promotion": null,
+      "san": "d3",
+      "to": "d3"
+     },
+     {
+      "captured": false,
+      "from": "e1",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kd2",
+      "to": "d2"
+     }
+    ],
+    "playedReply": {
+     "captured": false,
+     "from": "e1",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kd2",
+     "to": "d2"
+    },
+    "secondBest": {
+     "captured": false,
+     "from": "e8",
+     "piece": "k",
+     "promotion": null,
+     "san": "Ke7",
+     "to": "e7"
+    },
+    "suggested": {
+     "captured": true,
+     "from": "d4",
+     "piece": "p",
+     "promotion": null,
+     "san": "dxe3",
+     "to": "e3"
+    },
+    "suggestedLine": [
+     {
+      "captured": true,
+      "from": "d4",
+      "piece": "p",
+      "promotion": null,
+      "san": "dxe3",
+      "to": "e3"
+     },
+     {
+      "captured": false,
+      "from": "e1",
+      "piece": "k",
+      "promotion": null,
+      "san": "Ke2",
+      "to": "e2"
+     }
+    ],
+    "suggestedReply": {
+     "captured": false,
+     "from": "e1",
+     "piece": "k",
+     "promotion": null,
+     "san": "Ke2",
+     "to": "e2"
+    }
+   },
+   "played": "d4d3"
+  },
+  {
+   "depth": 2,
+   "fen": "4k3/8/8/2pP4/8/8/8/4K2R w K c6 0 1",
+   "payload": {
+    "analysisDepth": 2,
+    "bestToSecondGap": 85.0,
+    "candidateCount": 17,
+    "evalAfterPlayed": 536.0,
+    "evalAfterSecondBest": 533.0,
+    "evalAfterSuggested": 618.0,
+    "factualEvalAfterPlayed": 516.0,
+    "factualEvalAfterSuggested": 618.0,
+    "loss": 102.0,
+    "played": {
+     "captured": false,
+     "from": "d5",
+     "piece": "p",
+     "promotion": null,
+     "san": "d6",
+     "to": "d6"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "d5",
+      "piece": "p",
+      "promotion": null,
+      "san": "d6",
+      "to": "d6"
+     },
+     {
+      "captured": false,
+      "from": "e8",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kd7",
+      "to": "d7"
+     }
+    ],
+    "playedReply": {
+     "captured": false,
+     "from": "e8",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kd7",
+     "to": "d7"
+    },
+    "secondBest": {
+     "captured": false,
+     "from": "e1",
+     "piece": "k",
+     "promotion": null,
+     "san": "Ke2",
+     "to": "e2"
+    },
+    "suggested": {
+     "captured": true,
+     "from": "d5",
+     "piece": "p",
+     "promotion": null,
+     "san": "dxc6",
+     "to": "c6"
+    },
+    "suggestedLine": [
+     {
+      "captured": true,
+      "from": "d5",
+      "piece": "p",
+      "promotion": null,
+      "san": "dxc6",
+      "to": "c6"
+     },
+     {
+      "captured": false,
+      "from": "e8",
+      "piece": "k",
+      "promotion": null,
+      "san": "Ke7",
+      "to": "e7"
+     }
+    ],
+    "suggestedReply": {
+     "captured": false,
+     "from": "e8",
+     "piece": "k",
+     "promotion": null,
+     "san": "Ke7",
+     "to": "e7"
+    }
+   },
+   "played": "d5d6"
+  },
+  {
+   "depth": 3,
+   "fen": "8/8/7P/4k3/8/4p3/2K5/8 b - - 1 85",
+   "payload": {
+    "analysisDepth": 3,
+    "bestToSecondGap": 39.0,
+    "candidateCount": 9,
+    "evalAfterPlayed": -70.0,
+    "evalAfterSecondBest": -25.0,
+    "evalAfterSuggested": -64.0,
+    "factualEvalAfterPlayed": -15.0,
+    "factualEvalAfterSuggested": -64.0,
+    "loss": 49.0,
+    "played": {
+     "captured": false,
+     "from": "e5",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kf4",
+     "to": "f4"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "e5",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kf4",
+      "to": "f4"
+     },
+     {
+      "captured": false,
+      "from": "c2",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kd3",
+      "to": "d3"
+     },
+     {
+      "captured": false,
+      "from": "f4",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kf3",
+      "to": "f3"
+     }
+    ],
+    "playedReply": {
+     "captured": false,
+     "from": "c2",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kd3",
+     "to": "d3"
+    },
+    "secondBest": {
+     "captured": false,
+     "from": "e5",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kf5",
+     "to": "f5"
+    },
+    "suggested": {
+     "captured": false,
+     "from": "e5",
+     "piece": "k",
+     "promotion": null,
+     "san": "Ke4",
+     "to": "e4"
+    },
+    "suggestedLine": [
+     {
+      "captured": false,
+      "from": "e5",
+      "piece": "k",
+      "promotion": null,
+      "san": "Ke4",
+      "to": "e4"
+     },
+     {
+      "captured": false,
+      "from": "h6",
+      "piece": "p",
+      "promotion": null,
+      "san": "h7",
+      "to": "h7"
+     },
+     {
+      "captured": false,
+      "from": "e3",
+      "piece": "p",
+      "promotion": null,
+      "san": "e2",
+      "to": "e2"
+     }
+    ],
+    "suggestedReply": {
+     "captured": false,
+     "from": "h6",
+     "piece": "p",
+     "promotion": null,
+     "san": "h7",
+     "to": "h7"
+    }
+   },
+   "played": "e5f4"
+  },
+  {
+   "depth": 2,
+   "fen": "2b5/4kp2/1K3p2/1P6/1P6/6P1/8/6NR w - - 1 27",
+   "payload": {
+    "analysisDepth": 2,
+    "bestToSecondGap": 10.0,
+    "candidateCount": 16,
+    "evalAfterPlayed": 552.0,
+    "evalAfterSecondBest": 582.0,
+    "evalAfterSuggested": 592.0,
+    "factualEvalAfterPlayed": 517.0,
+    "factualEvalAfterSuggested": 592.0,
+    "loss": 75.0,
+    "played": {
+     "captured": false,
+     "from": "b6",
+     "piece": "k",
+     "promotion": null,
+     "san": "Ka7",
+     "to": "a7"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "b6",
+      "piece": "k",
+      "promotion": null,
+      "san": "Ka7",
+      "to": "a7"
+     },
+     {
+      "captured": false,
+      "from": "e7",
+      "piece": "k",
+      "promotion": null,
+      "san": "Ke6",
+      "to": "e6"
+     }
+    ],
+    "playedReply": {
+     "captured": false,
+     "from": "e7",
+     "piece": "k",
+     "promotion": null,
+     "san": "Ke6",
+     "to": "e6"
+    },
+    "secondBest": {
+     "captured": false,
+     "from": "b6",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kc5",
+     "to": "c5"
+    },
+    "suggested": {
+     "captured": false,
+     "from": "g1",
+     "piece": "n",
+     "promotion": null,
+     "san": "Nf3",
+     "to": "f3"
+    },
+    "suggestedLine": [
+     {
+      "captured": false,
+      "from": "g1",
+      "piece": "n",
+      "promotion": null,
+      "san": "Nf3",
+      "to": "f3"
+     },
+     {
+      "captured": false,
+      "from": "e7",
+      "piece": "k",
+      "promotion": null,
+      "san": "Ke6",
+      "to": "e6"
+     }
+    ],
+    "suggestedReply": {
+     "captured": false,
+     "from": "e7",
+     "piece": "k",
+     "promotion": null,
+     "san": "Ke6",
+     "to": "e6"
+    }
+   },
+   "played": "b6a7"
+  },
+  {
+   "depth": 2,
+   "fen": "8/7k/8/p4K2/P7/8/8/8 b - - 12 101",
+   "payload": {
+    "analysisDepth": 2,
+    "bestToSecondGap": 10.0,
+    "candidateCount": 4,
+    "evalAfterPlayed": 55.0,
+    "evalAfterSecondBest": 84.0,
+    "evalAfterSuggested": 74.0,
+    "factualEvalAfterPlayed": 74.0,
+    "factualEvalAfterSuggested": 74.0,
+    "loss": 0.0,
+    "played": {
+     "captured": false,
+     "from": "h7",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kg7",
+     "to": "g7"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "h7",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kg7",
+      "to": "g7"
+     },
+     {
+      "captured": false,
+      "from": "f5",
+      "piece": "k",
+      "promotion": null,
+      "san": "Ke5",
+      "to": "e5"
+     }
+    ],
+    "playedReply": {
+     "captured": false,
+     "from": "f5",
+     "piece": "k",
+     "promotion": null,
+     "san": "Ke5",
+     "to": "e5"
+    },
+    "secondBest": {
+     "captured": false,
+     "from": "h7",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kh6",
+     "to": "h6"
+    },
+    "suggested": {
+     "captured": false,
+     "from": "h7",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kg7",
+     "to": "g7"
+    },
+    "suggestedLine": [
+     {
+      "captured": false,
+      "from": "h7",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kg7",
+      "to": "g7"
+     },
+     {
+      "captured": false,
+      "from": "f5",
+      "piece": "k",
+      "promotion": null,
+      "san": "Ke5",
+      "to": "e5"
+     }
+    ],
+    "suggestedReply": {
+     "captured": false,
+     "from": "f5",
+     "piece": "k",
+     "promotion": null,
+     "san": "Ke5",
+     "to": "e5"
+    }
+   },
+   "played": "h7g7"
+  },
+  {
+   "depth": 3,
+   "fen": "2K5/Q7/6P1/7P/8/8/8/5k2 b - - 10 99",
+   "payload": {
+    "analysisDepth": 3,
+    "bestToSecondGap": 0.0,
+    "candidateCount": 3,
+    "evalAfterPlayed": 1158.0,
+    "evalAfterSecondBest": 1850.0,
+    "evalAfterSuggested": 1850.0,
+    "factualEvalAfterPlayed": 1885.0,
+    "factualEvalAfterSuggested": 1850.0,
+    "loss": 35.0,
+    "played": {
+     "captured": false,
+     "from": "f1",
+     "piece": "k",
+     "promotion": null,
+     "san": "Ke1",
+     "to": "e1"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "f1",
+      "piece": "k",
+      "promotion": null,
+      "san": "Ke1",
+      "to": "e1"
+     },
+     {
+      "captured": false,
+      "from": "g6",
+      "piece": "p",
+      "promotion": null,
+      "san": "g7",
+      "to": "g7"
+     },
+     {
+      "captured": false,
+      "from": "e1",
+      "piece": "k",
+      "promotion": null,
+      "san": "Ke2",
+      "to": "e2"
+     }
+    ],
+    "playedReply": {
+     "captured": false,
+     "from": "g6",
+     "piece": "p",
+     "promotion": null,
+     "san": "g7",
+     "to": "g7"
+    },
+    "secondBest": {
+     "captured": false,
+     "from": "f1",
+     "piece": "k",
+     "promotion": null,
+     "san": "Ke2",
+     "to": "e2"
+    },
+    "suggested": {
+     "captured": false,
+     "from": "f1",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kg2",
+     "to": "g2"
+    },
+    "suggestedLine": [
+     {
+      "captured": false,
+      "from": "f1",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kg2",
+      "to": "g2"
+     },
+     {
+      "captured": false,
+      "from": "g6",
+      "piece": "p",
+      "promotion": null,
+      "san": "g7",
+      "to": "g7"
+     },
+     {
+      "captured": false,
+      "from": "g2",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kg3",
+      "to": "g3"
+     }
+    ],
+    "suggestedReply": {
+     "captured": false,
+     "from": "g6",
+     "piece": "p",
+     "promotion": null,
+     "san": "g7",
+     "to": "g7"
+    }
+   },
+   "played": "f1e1"
+  },
+  {
+   "depth": 2,
+   "fen": "2bk2nr/5pp1/1N2p3/r1p4p/4PB1P/1P6/R1P4P/4K1NR b K - 0 16",
+   "payload": {
+    "analysisDepth": 2,
+    "bestToSecondGap": 490.0,
+    "candidateCount": 23,
+    "evalAfterPlayed": 345.0,
+    "evalAfterSecondBest": 345.0,
+    "evalAfterSuggested": -145.0,
+    "factualEvalAfterPlayed": 845.0,
+    "factualEvalAfterSuggested": -145.0,
+    "loss": 990.0,
+    "played": {
+     "captured": false,
+     "from": "a5",
+     "piece": "r",
+     "promotion": null,
+     "san": "Ra3",
+     "to": "a3"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "a5",
+      "piece": "r",
+      "promotion": null,
+      "san": "Ra3",
+      "to": "a3"
+     },
+     {
+      "captured": true,
+      "from": "a2",
+      "piece": "r",
+      "promotion": null,
+      "san": "Rxa3",
+      "to": "a3"
+     }
+    ],
+    "playedReply": {
+     "captured": true,
+     "from": "a2",
+     "piece": "r",
+     "promotion": null,
+     "san": "Rxa3",
+     "to": "a3"
+    },
+    "secondBest": {
+     "captured": false,
+     "from": "a5",
+     "piece": "r",
+     "promotion": null,
+     "san": "Ra6",
+     "to": "a6"
+    },
+    "suggested": {
+     "captured": true,
+     "from": "a5",
+     "piece": "r",
+     "promotion": null,
+     "san": "Rxa2",
+     "to": "a2"
+    },
+    "suggestedLine": [
+     {
+      "captured": true,
+      "from": "a5",
+      "piece": "r",
+      "promotion": null,
+      "san": "Rxa2",
+      "to": "a2"
+     },
+     {
+      "captured": true,
+      "from": "b6",
+      "piece": "n",
+      "promotion": null,
+      "san": "Nxc8",
+      "to": "c8"
+     }
+    ],
+    "suggestedReply": {
+     "captured": true,
+     "from": "b6",
+     "piece": "n",
+     "promotion": null,
+     "san": "Nxc8",
+     "to": "c8"
+    }
+   },
+   "played": "a5a3"
+  },
+  {
+   "depth": 2,
+   "fen": "8/8/3B4/1K3k2/8/3p4/3n1q2/8 b - - 0 109",
+   "payload": {
+    "analysisDepth": 2,
+    "bestToSecondGap": 15.0,
+    "candidateCount": 27,
+    "evalAfterPlayed": -1058.0,
+    "evalAfterSecondBest": -1052.0,
+    "evalAfterSuggested": -1067.0,
+    "factualEvalAfterPlayed": -1023.0,
+    "factualEvalAfterSuggested": -1067.0,
+    "loss": 44.0,
+    "played": {
+     "captured": false,
+     "from": "f5",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kf6",
+     "to": "f6"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "f5",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kf6",
+      "to": "f6"
+     },
+     {
+      "captured": false,
+      "from": "b5",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kc6",
+      "to": "c6"
+     }
+    ],
+    "playedReply": {
+     "captured": false,
+     "from": "b5",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kc6",
+     "to": "c6"
+    },
+    "secondBest": {
+     "captured": false,
+     "from": "f5",
+     "piece": "k",
+     "promotion": null,
+     "san": "Ke4",
+     "to": "e4"
+    },
+    "suggested": {
+     "captured": false,
+     "from": "d2",
+     "piece": "n",
+     "promotion": null,
+     "san": "Ne4",
+     "to": "e4"
+    },
+    "suggestedLine": [
+     {
+      "captured": false,
+      "from": "d2",
+      "piece": "n",
+      "promotion": null,
+      "san": "Ne4",
+      "to": "e4"
+     },
+     {
+      "captured": false,
+      "from": "b5",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kc6",
+      "to": "c6"
+     }
+    ],
+    "suggestedReply": {
+     "captured": false,
+     "from": "b5",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kc6",
+     "to": "c6"
+    }
+   },
+   "played": "f5f6"
+  },
+  {
+   "depth": 3,
+   "fen": "r3kb2/p2n2p1/p2p4/P7/8/8/8/5K2 b - - 2 29",
+   "payload": {
+    "analysisDepth": 3,
+    "bestToSecondGap": 0.0,
+    "candidateCount": 15,
+    "evalAfterPlayed": -1480.0,
+    "evalAfterSecondBest": -1507.0,
+    "evalAfterSuggested": -1507.0,
+    "factualEvalAfterPlayed": -1479.0,
+    "factualEvalAfterSuggested": -1507.0,
+    "loss": 28.0,
+    "played": {
+     "captured": false,
+     "from": "e8",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kd8",
+     "to": "d8"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "e8",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kd8",
+      "to": "d8"
+     },
+     {
+      "captured": false,
+      "from": "f1",
+      "piece": "k",
+      "promotion": null,
+      "san": "Ke2",
+      "to": "e2"
+     },
+     {
+      "captured": false,
+      "from": "d7",
+      "piece": "n",
+      "promotion": null,
+      "san": "Ne5",
+      "to": "e5"
+     }
+    ],
+    "playedReply": {
+     "captured": false,
+     "from": "f1",
+     "piece": "k",
+     "promotion": null,
+     "san": "Ke2",
+     "to": "e2"
+    },
+    "secondBest": {
+     "captured": false,
+     "from": "d6",
+     "piece": "p",
+     "promotion": null,
+     "san": "d5",
+     "to": "d5"
+    },
+    "suggested": {
+     "captured": false,
+     "from": "d7",
+     "piece": "n",
+     "promotion": null,
+     "san": "Ne5",
+     "to": "e5"
+    },
+    "suggestedLine": [
+     {
+      "captured": false,
+      "from": "d7",
+      "piece": "n",
+      "promotion": null,
+      "san": "Ne5",
+      "to": "e5"
+     },
+     {
+      "captured": false,
+      "from": "f1",
+      "piece": "k",
+      "promotion": null,
+      "san": "Ke2",
+      "to": "e2"
+     },
+     {
+      "captured": false,
+      "from": "d6",
+      "piece": "p",
+      "promotion": null,
+      "san": "d5",
+      "to": "d5"
+     }
+    ],
+    "suggestedReply": {
+     "captured": false,
+     "from": "f1",
+     "piece": "k",
+     "promotion": null,
+     "san": "Ke2",
+     "to": "e2"
+    }
+   },
+   "played": "e8d8"
+  },
+  {
+   "depth": 2,
+   "fen": "8/8/4r3/5nk1/8/8/1K6/8 b - - 75 91",
+   "payload": {
+    "analysisDepth": 2,
+    "bestToSecondGap": 10.0,
+    "candidateCount": 29,
+    "evalAfterPlayed": -850.0,
+    "evalAfterSecondBest": -845.0,
+    "evalAfterSuggested": -855.0,
+    "factualEvalAfterPlayed": -805.0,
+    "factualEvalAfterSuggested": -855.0,
+    "loss": 50.0,
+    "played": {
+     "captured": false,
+     "from": "e6",
+     "piece": "r",
+     "promotion": null,
+     "san": "Re1",
+     "to": "e1"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "e6",
+      "piece": "r",
+      "promotion": null,
+      "san": "Re1",
+      "to": "e1"
+     },
+     {
+      "captured": false,
+      "from": "b2",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kc3",
+      "to": "c3"
+     }
+    ],
+    "playedReply": {
+     "captured": false,
+     "from": "b2",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kc3",
+     "to": "c3"
+    },
+    "secondBest": {
+     "captured": false,
+     "from": "e6",
+     "piece": "r",
+     "promotion": null,
+     "san": "Rc6",
+     "to": "c6"
+    },
+    "suggested": {
+     "captured": false,
+     "from": "g5",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kf4",
+     "to": "f4"
+    },
+    "suggestedLine": [
+     {
+      "captured": false,
+      "from": "g5",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kf4",
+      "to": "f4"
+     },
+     {
+      "captured": false,
+      "from": "b2",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kc3",
+      "to": "c3"
+     }
+    ],
+    "suggestedReply": {
+     "captured": false,
+     "from": "b2",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kc3",
+     "to": "c3"
+    }
+   },
+   "played": "e6e1"
+  },
+  {
+   "depth": 2,
+   "fen": "8/8/7k/7R/n1pn4/8/5K2/2q5 b - - 4 79",
+   "payload": {
+    "analysisDepth": 2,
+    "bestToSecondGap": 494.0,
+    "candidateCount": 3,
+    "evalAfterPlayed": -1649.0,
+    "evalAfterSecondBest": -1155.0,
+    "evalAfterSuggested": -1649.0,
+    "factualEvalAfterPlayed": -1649.0,
+    "factualEvalAfterSuggested": -1649.0,
+    "loss": 0.0,
+    "played": {
+     "captured": true,
+     "from": "h6",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kxh5",
+     "to": "h5"
+    },
+    "playedLine": [
+     {
+      "captured": true,
+      "from": "h6",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kxh5",
+      "to": "h5"
+     },
+     {
+      "captured": false,
+      "from": "f2",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kg3",
+      "to": "g3"
+     }
+    ],
+    "playedReply": {
+     "captured": false,
+     "from": "f2",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kg3",
+     "to": "g3"
+    },
+    "secondBest": {
+     "captured": false,
+     "from": "h6",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kg6",
+     "to": "g6"
+    },
+    "suggested": {
+     "captured": true,
+     "from": "h6",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kxh5",
+     "to": "h5"
+    },
+    "suggestedLine": [
+     {
+      "captured": true,
+      "from": "h6",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kxh5",
+      "to": "h5"
+     },
+     {
+      "captured": false,
+      "from": "f2",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kg3",
+      "to": "g3"
+     }
+    ],
+    "suggestedReply": {
+     "captured": false,
+     "from": "f2",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kg3",
+     "to": "g3"
+    }
+   },
+   "played": "h6h5"
+  },
+  {
+   "depth": 3,
+   "fen": "r7/2p2pp1/p7/2PP1kp1/1p5R/P6K/1PN1N3/R4n2 w - - 2 29",
+   "payload": {
+    "analysisDepth": 3,
+    "bestToSecondGap": 181.0,
+    "candidateCount": 32,
+    "evalAfterPlayed": 701.0,
+    "evalAfterSecondBest": 691.0,
+    "evalAfterSuggested": 872.0,
+    "factualEvalAfterPlayed": 589.0,
+    "factualEvalAfterSuggested": 872.0,
+    "loss": 283.0,
+    "played": {
+     "captured": true,
+     "from": "c2",
+     "piece": "n",
+     "promotion": null,
+     "san": "Nxb4",
+     "to": "b4"
+    },
+    "playedLine": [
+     {
+      "captured": true,
+      "from": "c2",
+      "piece": "n",
+      "promotion": null,
+      "san": "Nxb4",
+      "to": "b4"
+     },
+     {
+      "captured": true,
+      "from": "g5",
+      "piece": "p",
+      "promotion": null,
+      "san": "gxh4",
+      "to": "h4"
+     },
+     {
+      "captured": true,
+      "from": "a1",
+      "piece": "r",
+      "promotion": null,
+      "san": "Rxf1+",
+      "to": "f1"
+     }
+    ],
+    "playedReply": {
+     "captured": true,
+     "from": "g5",
+     "piece": "p",
+     "promotion": null,
+     "san": "gxh4",
+     "to": "h4"
+    },
+    "secondBest": {
+     "captured": true,
+     "from": "h4",
+     "piece": "r",
+     "promotion": null,
+     "san": "Rxb4",
+     "to": "b4"
+    },
+    "suggested": {
+     "captured": true,
+     "from": "a1",
+     "piece": "r",
+     "promotion": null,
+     "san": "Rxf1+",
+     "to": "f1"
+    },
+    "suggestedLine": [
+     {
+      "captured": true,
+      "from": "a1",
+      "piece": "r",
+      "promotion": null,
+      "san": "Rxf1+",
+      "to": "f1"
+     },
+     {
+      "captured": false,
+      "from": "f5",
+      "piece": "k",
+      "promotion": null,
+      "san": "Ke5",
+      "to": "e5"
+     },
+     {
+      "captured": true,
+      "from": "h4",
+      "piece": "r",
+      "promotion": null,
+      "san": "Rxb4",
+      "to": "b4"
+     }
+    ],
+    "suggestedReply": {
+     "captured": false,
+     "from": "f5",
+     "piece": "k",
+     "promotion": null,
+     "san": "Ke5",
+     "to": "e5"
+    }
+   },
+   "played": "c2b4"
+  },
+  {
+   "depth": 2,
+   "fen": "8/p1r3b1/P1k5/4r3/P2p2P1/8/8/6K1 b - - 0 43",
+   "payload": {
+    "analysisDepth": 2,
+    "bestToSecondGap": 38.0,
+    "candidateCount": 29,
+    "evalAfterPlayed": -1357.0,
+    "evalAfterSecondBest": -1375.0,
+    "evalAfterSuggested": -1413.0,
+    "factualEvalAfterPlayed": -1327.0,
+    "factualEvalAfterSuggested": -1413.0,
+    "loss": 86.0,
+    "played": {
+     "captured": false,
+     "from": "g7",
+     "piece": "b",
+     "promotion": null,
+     "san": "Bf6",
+     "to": "f6"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "g7",
+      "piece": "b",
+      "promotion": null,
+      "san": "Bf6",
+      "to": "f6"
+     },
+     {
+      "captured": false,
+      "from": "g1",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kf2",
+      "to": "f2"
+     }
+    ],
+    "playedReply": {
+     "captured": false,
+     "from": "g1",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kf2",
+     "to": "f2"
+    },
+    "secondBest": {
+     "captured": false,
+     "from": "e5",
+     "piece": "r",
+     "promotion": null,
+     "san": "Rg5",
+     "to": "g5"
+    },
+    "suggested": {
+     "captured": false,
+     "from": "e5",
+     "piece": "r",
+     "promotion": null,
+     "san": "Ra5",
+     "to": "a5"
+    },
+    "suggestedLine": [
+     {
+      "captured": false,
+      "from": "e5",
+      "piece": "r",
+      "promotion": null,
+      "san": "Ra5",
+      "to": "a5"
+     },
+     {
+      "captured": false,
+      "from": "g1",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kf2",
+      "to": "f2"
+     }
+    ],
+    "suggestedReply": {
+     "captured": false,
+     "from": "g1",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kf2",
+     "to": "f2"
+    }
+   },
+   "played": "g7f6"
+  },
+  {
+   "depth": 2,
+   "fen": "1B6/1n1k4/4p3/1p4P1/6p1/3r1P2/P3QRK1/8 w - - 17 89",
+   "payload": {
+    "analysisDepth": 2,
+    "bestToSecondGap": 475.0,
+    "candidateCount": 29,
+    "evalAfterPlayed": 940.0,
+    "evalAfterSecondBest": 995.0,
+    "evalAfterSuggested": 1470.0,
+    "factualEvalAfterPlayed": 921.0,
+    "factualEvalAfterSuggested": 1470.0,
+    "loss": 549.0,
+    "played": {
+     "captured": false,
+     "from": "b8",
+     "piece": "b",
+     "promotion": null,
+     "san": "Bc7",
+     "to": "c7"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "b8",
+      "piece": "b",
+      "promotion": null,
+      "san": "Bc7",
+      "to": "c7"
+     },
+     {
+      "captured": true,
+      "from": "g4",
+      "piece": "p",
+      "promotion": null,
+      "san": "gxf3+",
+      "to": "f3"
+     }
+    ],
+    "playedReply": {
+     "captured": true,
+     "from": "g4",
+     "piece": "p",
+     "promotion": null,
+     "san": "gxf3+",
+     "to": "f3"
+    },
+    "secondBest": {
+     "captured": false,
+     "from": "f3",
+     "piece": "p",
+     "promotion": null,
+     "san": "f4",
+     "to": "f4"
+    },
+    "suggested": {
+     "captured": true,
+     "from": "e2",
+     "piece": "q",
+     "promotion": null,
+     "san": "Qxd3+",
+     "to": "d3"
+    },
+    "suggestedLine": [
+     {
+      "captured": true,
+      "from": "e2",
+      "piece": "q",
+      "promotion": null,
+      "san": "Qxd3+",
+      "to": "d3"
+     },
+     {
+      "captured": false,
+      "from": "d7",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kc8",
+      "to": "c8"
+     }
+    ],
+    "suggestedReply": {
+     "captured": false,
+     "from": "d7",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kc8",
+     "to": "c8"
+    }
+   },
+   "played": "b8c7"
+  },
+  {
+   "depth": 3,
+   "fen": "1n2k1b1/8/6n1/8/2p5/6K1/1r6/8 w - - 2 59",
+   "payload": {
+    "analysisDepth": 3,
+    "bestToSecondGap": 19.0,
+    "candidateCount": 3,
+    "evalAfterPlayed": -1505.0,
+    "evalAfterSecondBest": -1550.0,
+    "evalAfterSuggested": -1531.0,
+    "factualEvalAfterPlayed": -1531.0,
+    "factualEvalAfterSuggested": -1531.0,
+    "loss": 0.0,
+    "played": {
+     "captured": false,
+     "from": "g3",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kf3",
+     "to": "f3"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "g3",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kf3",
+      "to": "f3"
+     },
+     {
+      "captured": false,
+      "from": "b8",
+      "piece": "n",
+      "promotion": null,
+      "san": "Nc6",
+      "to": "c6"
+     },
+     {
+      "captured": false,
+      "from": "f3",
+      "piece": "k",
+      "promotion": null,
+      "san": "Ke4",
+      "to": "e4"
+     }
+    ],
+    "playedReply": {
+     "captured": false,
+     "from": "b8",
+     "piece": "n",
+     "promotion": null,
+     "san": "Nc6",
+     "to": "c6"
+    },
+    "secondBest": {
+     "captured": false,
+     "from": "g3",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kg4",
+     "to": "g4"
+    },
+    "suggested": {
+     "captured": false,
+     "from": "g3",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kf3",
+     "to": "f3"
+    },
+    "suggestedLine": [
+     {
+      "captured": false,
+      "from": "g3",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kf3",
+      "to": "f3"
+     },
+     {
+      "captured": false,
+      "from": "b8",
+      "piece": "n",
+      "promotion": null,
+      "san": "Nc6",
+      "to": "c6"
+     },
+     {
+      "captured": false,
+      "from": "f3",
+      "piece": "k",
+      "promotion": null,
+      "san": "Ke4",
+      "to": "e4"
+     }
+    ],
+    "suggestedReply": {
+     "captured": false,
+     "from": "b8",
+     "piece": "n",
+     "promotion": null,
+     "san": "Nc6",
+     "to": "c6"
+    }
+   },
+   "played": "g3f3"
+  },
+  {
+   "depth": 2,
+   "fen": "3k3r/4p3/BPn4n/4Np2/P2r3p/1p5P/N2R4/RKb5 w - - 0 51",
+   "payload": {
+    "analysisDepth": 2,
+    "bestToSecondGap": 419.0,
+    "candidateCount": 30,
+    "evalAfterPlayed": -61.0,
+    "evalAfterSecondBest": 264.0,
+    "evalAfterSuggested": 683.0,
+    "factualEvalAfterPlayed": -291.0,
+    "factualEvalAfterSuggested": 683.0,
+    "loss": 974.0,
+    "played": {
+     "captured": false,
+     "from": "d2",
+     "piece": "r",
+     "promotion": null,
+     "san": "Rb2",
+     "to": "b2"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "d2",
+      "piece": "r",
+      "promotion": null,
+      "san": "Rb2",
+      "to": "b2"
+     },
+     {
+      "captured": true,
+      "from": "b3",
+      "piece": "p",
+      "promotion": null,
+      "san": "bxa2+",
+      "to": "a2"
+     }
+    ],
+    "playedReply": {
+     "captured": true,
+     "from": "b3",
+     "piece": "p",
+     "promotion": null,
+     "san": "bxa2+",
+     "to": "a2"
+    },
+    "secondBest": {
+     "captured": true,
+     "from": "d2",
+     "piece": "r",
+     "promotion": null,
+     "san": "Rxd4+",
+     "to": "d4"
+    },
+    "suggested": {
+     "captured": true,
+     "from": "e5",
+     "piece": "n",
+     "promotion": null,
+     "san": "Nxc6+",
+     "to": "c6"
+    },
+    "suggestedLine": [
+     {
+      "captured": true,
+      "from": "e5",
+      "piece": "n",
+      "promotion": null,
+      "san": "Nxc6+",
+      "to": "c6"
+     },
+     {
+      "captured": false,
+      "from": "d8",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kd7",
+      "to": "d7"
+     }
+    ],
+    "suggestedReply": {
+     "captured": false,
+     "from": "d8",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kd7",
+     "to": "d7"
+    }
+   },
+   "played": "d2b2"
+  },
+  {
+   "depth": 2,
+   "fen": "2k4r/6p1/5pn1/2P1p2p/4PB1P/7N/R1P4P/4K1R1 w - - 2 24",
+   "payload": {
+    "analysisDepth": 2,
+    "bestToSecondGap": 4.0,
+    "candidateCount": 32,
+    "evalAfterPlayed": 966.0,
+    "evalAfterSecondBest": 1106.0,
+    "evalAfterSuggested": 1110.0,
+    "factualEvalAfterPlayed": 781.0,
+    "factualEvalAfterSuggested": 1110.0,
+    "loss": 329.0,
+    "played": {
+     "captured": false,
+     "from": "e1",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kd2",
+     "to": "d2"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "e1",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kd2",
+      "to": "d2"
+     },
+     {
+      "captured": true,
+      "from": "g6",
+      "piece": "n",
+      "promotion": null,
+      "san": "Nxf4",
+      "to": "f4"
+     }
+    ],
+    "playedReply": {
+     "captured": true,
+     "from": "g6",
+     "piece": "n",
+     "promotion": null,
+     "san": "Nxf4",
+     "to": "f4"
+    },
+    "secondBest": {
+     "captured": true,
+     "from": "g1",
+     "piece": "r",
+     "promotion": null,
+     "san": "Rxg6",
+     "to": "g6"
+    },
+    "suggested": {
+     "captured": false,
+     "from": "a2",
+     "piece": "r",
+     "promotion": null,
+     "san": "Ra8+",
+     "to": "a8"
+    },
+    "suggestedLine": [
+     {
+      "captured": false,
+      "from": "a2",
+      "piece": "r",
+      "promotion": null,
+      "san": "Ra8+",
+      "to": "a8"
+     },
+     {
+      "captured": false,
+      "from": "c8",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kd7",
+      "to": "d7"
+     }
+    ],
+    "suggestedReply": {
+     "captured": false,
+     "from": "c8",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kd7",
+     "to": "d7"
+    }
+   },
+   "played": "e1d2"
+  },
+  {
+   "depth": 3,
+   "fen": "8/8/5K2/8/8/p7/3k4/8 w - - 16 99",
+   "payload": {
+    "analysisDepth": 3,
+    "bestToSecondGap": 0.0,
+    "candidateCount": 8,
+    "evalAfterPlayed": -88.0,
+    "evalAfterSecondBest": -846.0,
+    "evalAfterSuggested": -846.0,
+    "factualEvalAfterPlayed": -846.0,
+    "factualEvalAfterSuggested": -846.0,
+    "loss": 0.0,
+    "played": {
+     "captured": false,
+     "from": "f6",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kf5",
+     "to": "f5"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "f6",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kf5",
+      "to": "f5"
+     },
+     {
+      "captured": false,
+      "from": "a3",
+      "piece": "p",
+      "promotion": null,
+      "san": "a2",
+      "to": "a2"
+     },
+     {
+      "captured": false,
+      "from": "f5",
+      "piece": "k",
+      "promotion": null,
+      "san": "Ke5",
+      "to": "e5"
+     }
+    ],
+    "playedReply": {
+     "captured": false,
+     "from": "a3",
+     "piece": "p",
+     "promotion": null,
+     "san": "a2",
+     "to": "a2"
+    },
+    "secondBest": {
+     "captured": false,
+     "from": "f6",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kf5",
+     "to": "f5"
+    },
+    "suggested": {
+     "captured": false,
+     "from": "f6",
+     "piece": "k",
+     "promotion": null,
+     "san": "Ke6",
+     "to": "e6"
+    },
+    "suggestedLine": [
+     {
+      "captured": false,
+      "from": "f6",
+      "piece": "k",
+      "promotion": null,
+      "san": "Ke6",
+      "to": "e6"
+     },
+     {
+      "captured": false,
+      "from": "a3",
+      "piece": "p",
+      "promotion": null,
+      "san": "a2",
+      "to": "a2"
+     },
+     {
+      "captured": false,
+      "from": "e6",
+      "piece": "k",
+      "promotion": null,
+      "san": "Ke5",
+      "to": "e5"
+     }
+    ],
+    "suggestedReply": {
+     "captured": false,
+     "from": "a3",
+     "piece": "p",
+     "promotion": null,
+     "san": "a2",
+     "to": "a2"
+    }
+   },
+   "played": "f6f5"
+  },
+  {
+   "depth": 2,
+   "fen": "rnbq1bn1/pp2kp1r/3p3p/2p1p3/7P/NP2P3/PBPPNP2/R2QKB1R w KQ - 1 9",
+   "payload": {
+    "analysisDepth": 2,
+    "bestToSecondGap": 45.0,
+    "candidateCount": 31,
+    "evalAfterPlayed": 10.0,
+    "evalAfterSecondBest": 0.0,
+    "evalAfterSuggested": 45.0,
+    "factualEvalAfterPlayed": -45.0,
+    "factualEvalAfterSuggested": 45.0,
+    "loss": 90.0,
+    "played": {
+     "captured": false,
+     "from": "h4",
+     "piece": "p",
+     "promotion": null,
+     "san": "h5",
+     "to": "h5"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "h4",
+      "piece": "p",
+      "promotion": null,
+      "san": "h5",
+      "to": "h5"
+     },
+     {
+      "captured": false,
+      "from": "g8",
+      "piece": "n",
+      "promotion": null,
+      "san": "Nf6",
+      "to": "f6"
+     }
+    ],
+    "playedReply": {
+     "captured": false,
+     "from": "g8",
+     "piece": "n",
+     "promotion": null,
+     "san": "Nf6",
+     "to": "f6"
+    },
+    "secondBest": {
+     "captured": false,
+     "from": "a3",
+     "piece": "n",
+     "promotion": null,
+     "san": "Nc4",
+     "to": "c4"
+    },
+    "suggested": {
+     "captured": false,
+     "from": "d2",
+     "piece": "p",
+     "promotion": null,
+     "san": "d4",
+     "to": "d4"
+    },
+    "suggestedLine": [
+     {
+      "captured": false,
+      "from": "d2",
+      "piece": "p",
+      "promotion": null,
+      "san": "d4",
+      "to": "d4"
+     },
+     {
+      "captured": true,
+      "from": "c5",
+      "piece": "p",
+      "promotion": null,
+      "san": "cxd4",
+      "to": "d4"
+     }
+    ],
+    "suggestedReply": {
+     "captured": true,
+     "from": "c5",
+     "piece": "p",
+     "promotion": null,
+     "san": "cxd4",
+     "to": "d4"
+    }
+   },
+   "played": "h4h5"
+  },
+  {
+   "depth": 2,
+   "fen": "8/2nkr1p1/p3p3/P2p3n/8/2R5/4r3/6K1 b - - 2 40",
+   "payload": {
+    "analysisDepth": 2,
+    "bestToSecondGap": 5.0,
+    "candidateCount": 27,
+    "evalAfterPlayed": -1552.0,
+    "evalAfterSecondBest": -1557.0,
+    "evalAfterSuggested": -1562.0,
+    "factualEvalAfterPlayed": -772.0,
+    "factualEvalAfterSuggested": -1562.0,
+    "loss": 790.0,
+    "played": {
+     "captured": false,
+     "from": "h5",
+     "piece": "n",
+     "promotion": null,
+     "san": "Ng3",
+     "to": "g3"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "h5",
+      "piece": "n",
+      "promotion": null,
+      "san": "Ng3",
+      "to": "g3"
+     },
+     {
+      "captured": true,
+      "from": "c3",
+      "piece": "r",
+      "promotion": null,
+      "san": "Rxc7+",
+      "to": "c7"
+     }
+    ],
+    "playedReply": {
+     "captured": true,
+     "from": "c3",
+     "piece": "r",
+     "promotion": null,
+     "san": "Rxc7+",
+     "to": "c7"
+    },
+    "secondBest": {
+     "captured": false,
+     "from": "h5",
+     "piece": "n",
+     "promotion": null,
+     "san": "Nf6",
+     "to": "f6"
+    },
+    "suggested": {
+     "captured": false,
+     "from": "h5",
+     "piece": "n",
+     "promotion": null,
+     "san": "Nf4",
+     "to": "f4"
+    },
+    "suggestedLine": [
+     {
+      "captured": false,
+      "from": "h5",
+      "piece": "n",
+      "promotion": null,
+      "san": "Nf4",
+      "to": "f4"
+     },
+     {
+      "captured": false,
+      "from": "g1",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kf1",
+      "to": "f1"
+     }
+    ],
+    "suggestedReply": {
+     "captured": false,
+     "from": "g1",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kf1",
+     "to": "f1"
+    }
+   },
+   "played": "h5g3"
+  },
+  {
+   "depth": 3,
+   "fen": "8/8/n1k5/6P1/1P4P1/8/2P4K/4R3 w - - 9 39",
+   "payload": {
+    "analysisDepth": 3,
+    "bestToSecondGap": 52.0,
+    "candidateCount": 23,
+    "evalAfterPlayed": 625.0,
+    "evalAfterSecondBest": 615.0,
+    "evalAfterSuggested": 667.0,
+    "factualEvalAfterPlayed": 483.0,
+    "factualEvalAfterSuggested": 667.0,
+    "loss": 184.0,
+    "played": {
+     "captured": false,
+     "from": "e1",
+     "piece": "r",
+     "promotion": null,
+     "san": "Re2",
+     "to": "e2"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "e1",
+      "piece": "r",
+      "promotion": null,
+      "san": "Re2",
+      "to": "e2"
+     },
+     {
+      "captured": true,
+      "from": "a6",
+      "piece": "n",
+      "promotion": null,
+      "san": "Nxb4",
+      "to": "b4"
+     },
+     {
+      "captured": false,
+      "from": "h2",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kg3",
+      "to": "g3"
+     }
+    ],
+    "playedReply": {
+     "captured": true,
+     "from": "a6",
+     "piece": "n",
+     "promotion": null,
+     "san": "Nxb4",
+     "to": "b4"
+    },
+    "secondBest": {
+     "captured": false,
+     "from": "e1",
+     "piece": "r",
+     "promotion": null,
+     "san": "Rb1",
+     "to": "b1"
+    },
+    "suggested": {
+     "captured": false,
+     "from": "e1",
+     "piece": "r",
+     "promotion": null,
+     "san": "Re6+",
+     "to": "e6"
+    },
+    "suggestedLine": [
+     {
+      "captured": false,
+      "from": "e1",
+      "piece": "r",
+      "promotion": null,
+      "san": "Re6+",
+      "to": "e6"
+     },
+     {
+      "captured": false,
+      "from": "c6",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kb5",
+      "to": "b5"
+     },
+     {
+      "captured": false,
+      "from": "c2",
+      "piece": "p",
+      "promotion": null,
+      "san": "c4+",
+      "to": "c4"
+     }
+    ],
+    "suggestedReply": {
+     "captured": false,
+     "from": "c6",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kb5",
+     "to": "b5"
+    }
+   },
+   "played": "e1e2"
+  },
+  {
+   "depth": 2,
+   "fen": "7R/1qn5/7p/8/2Pk2b1/K5P1/8/5b2 b - - 5 78",
+   "payload": {
+    "analysisDepth": 2,
+    "bestToSecondGap": 10.0,
+    "candidateCount": 45,
+    "evalAfterPlayed": -1387.0,
+    "evalAfterSecondBest": -1484.0,
+    "evalAfterSuggested": -1494.0,
+    "factualEvalAfterPlayed": -1374.0,
+    "factualEvalAfterSuggested": -1494.0,
+    "loss": 120.0,
+    "played": {
+     "captured": false,
+     "from": "g4",
+     "piece": "b",
+     "promotion": null,
+     "san": "Bf3",
+     "to": "f3"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "g4",
+      "piece": "b",
+      "promotion": null,
+      "san": "Bf3",
+      "to": "f3"
+     },
+     {
+      "captured": false,
+      "from": "c4",
+      "piece": "p",
+      "promotion": null,
+      "san": "c5",
+      "to": "c5"
+     }
+    ],
+    "playedReply": {
+     "captured": false,
+     "from": "c4",
+     "piece": "p",
+     "promotion": null,
+     "san": "c5",
+     "to": "c5"
+    },
+    "secondBest": {
+     "captured": false,
+     "from": "b7",
+     "piece": "q",
+     "promotion": null,
+     "san": "Qf3+",
+     "to": "f3"
+    },
+    "suggested": {
+     "captured": false,
+     "from": "b7",
+     "piece": "q",
+     "promotion": null,
+     "san": "Qa6+",
+     "to": "a6"
+    },
+    "suggestedLine": [
+     {
+      "captured": false,
+      "from": "b7",
+      "piece": "q",
+      "promotion": null,
+      "san": "Qa6+",
+      "to": "a6"
+     },
+     {
+      "captured": false,
+      "from": "a3",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kb3",
+      "to": "b3"
+     }
+    ],
+    "suggestedReply": {
+     "captured": false,
+     "from": "a3",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kb3",
+     "to": "b3"
+    }
+   },
+   "played": "g4f3"
+  },
+  {
+   "depth": 2,
+   "fen": "4k1n1/8/p3K2b/P7/8/8/8/8 w - - 14 63",
+   "payload": {
+    "analysisDepth": 2,
+    "bestToSecondGap": 0.0,
+    "candidateCount": 4,
+    "evalAfterPlayed": -526.0,
+    "evalAfterSecondBest": -571.0,
+    "evalAfterSuggested": -571.0,
+    "factualEvalAfterPlayed": -571.0,
+    "factualEvalAfterSuggested": -571.0,
+    "loss": 0.0,
+    "played": {
+     "captured": false,
+     "from": "e6",
+     "piece": "k",
+     "promotion": null,
+     "san": "Ke5",
+     "to": "e5"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "e6",
+      "piece": "k",
+      "promotion": null,
+      "san": "Ke5",
+      "to": "e5"
+     },
+     {
+      "captured": false,
+      "from": "g8",
+      "piece": "n",
+      "promotion": null,
+      "san": "Ne7",
+      "to": "e7"
+     }
+    ],
+    "playedReply": {
+     "captured": false,
+     "from": "g8",
+     "piece": "n",
+     "promotion": null,
+     "san": "Ne7",
+     "to": "e7"
+    },
+    "secondBest": {
+     "captured": false,
+     "from": "e6",
+     "piece": "k",
+     "promotion": null,
+     "san": "Ke5",
+     "to": "e5"
+    },
+    "suggested": {
+     "captured": false,
+     "from": "e6",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kf5",
+     "to": "f5"
+    },
+    "suggestedLine": [
+     {
+      "captured": false,
+      "from": "e6",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kf5",
+      "to": "f5"
+     },
+     {
+      "captured": false,
+      "from": "g8",
+      "piece": "n",
+      "promotion": null,
+      "san": "Ne7+",
+      "to": "e7"
+     }
+    ],
+    "suggestedReply": {
+     "captured": false,
+     "from": "g8",
+     "piece": "n",
+     "promotion": null,
+     "san": "Ne7+",
+     "to": "e7"
+    }
+   },
+   "played": "e6e5"
+  },
+  {
+   "depth": 3,
+   "fen": "8/8/5b2/2k5/8/p1p5/8/7K w - - 0 96",
+   "payload": {
+    "analysisDepth": 3,
+    "bestToSecondGap": 25.0,
+    "candidateCount": 3,
+    "evalAfterPlayed": -681.0,
+    "evalAfterSecondBest": -1418.0,
+    "evalAfterSuggested": -1393.0,
+    "factualEvalAfterPlayed": -1418.0,
+    "factualEvalAfterSuggested": -1393.0,
+    "loss": 25.0,
+    "played": {
+     "captured": false,
+     "from": "h1",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kg1",
+     "to": "g1"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "h1",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kg1",
+      "to": "g1"
+     },
+     {
+      "captured": false,
+      "from": "a3",
+      "piece": "p",
+      "promotion": null,
+      "san": "a2",
+      "to": "a2"
+     },
+     {
+      "captured": false,
+      "from": "g1",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kf1",
+      "to": "f1"
+     }
+    ],
+    "playedReply": {
+     "captured": false,
+     "from": "a3",
+     "piece": "p",
+     "promotion": null,
+     "san": "a2",
+     "to": "a2"
+    },
+    "secondBest": {
+     "captured": false,
+     "from": "h1",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kg1",
+     "to": "g1"
+    },
+    "suggested": {
+     "captured": false,
+     "from": "h1",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kg2",
+     "to": "g2"
+    },
+    "suggestedLine": [
+     {
+      "captured": false,
+      "from": "h1",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kg2",
+      "to": "g2"
+     },
+     {
+      "captured": false,
+      "from": "a3",
+      "piece": "p",
+      "promotion": null,
+      "san": "a2",
+      "to": "a2"
+     },
+     {
+      "captured": false,
+      "from": "g2",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kf3",
+      "to": "f3"
+     }
+    ],
+    "suggestedReply": {
+     "captured": false,
+     "from": "a3",
+     "piece": "p",
+     "promotion": null,
+     "san": "a2",
+     "to": "a2"
+    }
+   },
+   "played": "h1g1"
+  },
+  {
+   "depth": 2,
+   "fen": "3qk1nB/1bpp1p2/r3p3/2p5/1P1PN2p/n4PPP/4P2R/b3KBN1 b - - 0 19",
+   "payload": {
+    "analysisDepth": 2,
+    "bestToSecondGap": 20.0,
+    "candidateCount": 40,
+    "evalAfterPlayed": -906.0,
+    "evalAfterSecondBest": -1055.0,
+    "evalAfterSuggested": -1075.0,
+    "factualEvalAfterPlayed": -929.0,
+    "factualEvalAfterSuggested": -1075.0,
+    "loss": 146.0,
+    "played": {
+     "captured": false,
+     "from": "g8",
+     "piece": "n",
+     "promotion": null,
+     "san": "Ne7",
+     "to": "e7"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "g8",
+      "piece": "n",
+      "promotion": null,
+      "san": "Ne7",
+      "to": "e7"
+     },
+     {
+      "captured": true,
+      "from": "b4",
+      "piece": "p",
+      "promotion": null,
+      "san": "bxc5",
+      "to": "c5"
+     }
+    ],
+    "playedReply": {
+     "captured": true,
+     "from": "b4",
+     "piece": "p",
+     "promotion": null,
+     "san": "bxc5",
+     "to": "c5"
+    },
+    "secondBest": {
+     "captured": false,
+     "from": "a3",
+     "piece": "n",
+     "promotion": null,
+     "san": "Nc2+",
+     "to": "c2"
+    },
+    "suggested": {
+     "captured": true,
+     "from": "c5",
+     "piece": "p",
+     "promotion": null,
+     "san": "cxb4",
+     "to": "b4"
+    },
+    "suggestedLine": [
+     {
+      "captured": true,
+      "from": "c5",
+      "piece": "p",
+      "promotion": null,
+      "san": "cxb4",
+      "to": "b4"
+     },
+     {
+      "captured": false,
+      "from": "e2",
+      "piece": "p",
+      "promotion": null,
+      "san": "e3",
+      "to": "e3"
+     }
+    ],
+    "suggestedReply": {
+     "captured": false,
+     "from": "e2",
+     "piece": "p",
+     "promotion": null,
+     "san": "e3",
+     "to": "e3"
+    }
+   },
+   "played": "g8e7"
+  },
+  {
+   "depth": 2,
+   "fen": "8/8/1k6/7P/8/8/8/B2K4 b - - 3 73",
+   "payload": {
+    "analysisDepth": 2,
+    "bestToSecondGap": 10.0,
+    "candidateCount": 8,
+    "evalAfterPlayed": 415.0,
+    "evalAfterSecondBest": 424.0,
+    "evalAfterSuggested": 414.0,
+    "factualEvalAfterPlayed": 459.0,
+    "factualEvalAfterSuggested": 414.0,
+    "loss": 45.0,
+    "played": {
+     "captured": false,
+     "from": "b6",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kb5",
+     "to": "b5"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "b6",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kb5",
+      "to": "b5"
+     },
+     {
+      "captured": false,
+      "from": "a1",
+      "piece": "b",
+      "promotion": null,
+      "san": "Be5",
+      "to": "e5"
+     }
+    ],
+    "playedReply": {
+     "captured": false,
+     "from": "a1",
+     "piece": "b",
+     "promotion": null,
+     "san": "Be5",
+     "to": "e5"
+    },
+    "secondBest": {
+     "captured": false,
+     "from": "b6",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kc6",
+     "to": "c6"
+    },
+    "suggested": {
+     "captured": false,
+     "from": "b6",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kc5",
+     "to": "c5"
+    },
+    "suggestedLine": [
+     {
+      "captured": false,
+      "from": "b6",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kc5",
+      "to": "c5"
+     },
+     {
+      "captured": false,
+      "from": "a1",
+      "piece": "b",
+      "promotion": null,
+      "san": "Be5",
+      "to": "e5"
+     }
+    ],
+    "suggestedReply": {
+     "captured": false,
+     "from": "a1",
+     "piece": "b",
+     "promotion": null,
+     "san": "Be5",
+     "to": "e5"
+    }
+   },
+   "played": "b6b5"
+  },
+  {
+   "depth": 3,
+   "fen": "8/1K6/P7/8/8/2k5/8/8 w - - 6 102",
+   "payload": {
+    "analysisDepth": 3,
+    "bestToSecondGap": 679.0,
+    "candidateCount": 8,
+    "evalAfterPlayed": 48.0,
+    "evalAfterSecondBest": 137.0,
+    "evalAfterSuggested": 816.0,
+    "factualEvalAfterPlayed": 62.0,
+    "factualEvalAfterSuggested": 816.0,
+    "loss": 754.0,
+    "played": {
+     "captured": false,
+     "from": "b7",
+     "piece": "k",
+     "promotion": null,
+     "san": "Ka8",
+     "to": "a8"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "b7",
+      "piece": "k",
+      "promotion": null,
+      "san": "Ka8",
+      "to": "a8"
+     },
+     {
+      "captured": false,
+      "from": "c3",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kd4",
+      "to": "d4"
+     },
+     {
+      "captured": false,
+      "from": "a6",
+      "piece": "p",
+      "promotion": null,
+      "san": "a7",
+      "to": "a7"
+     }
+    ],
+    "playedReply": {
+     "captured": false,
+     "from": "c3",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kd4",
+     "to": "d4"
+    },
+    "secondBest": {
+     "captured": false,
+     "from": "b7",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kc6",
+     "to": "c6"
+    },
+    "suggested": {
+     "captured": false,
+     "from": "a6",
+     "piece": "p",
+     "promotion": null,
+     "san": "a7",
+     "to": "a7"
+    },
+    "suggestedLine": [
+     {
+      "captured": false,
+      "from": "a6",
+      "piece": "p",
+      "promotion": null,
+      "san": "a7",
+      "to": "a7"
+     },
+     {
+      "captured": false,
+      "from": "c3",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kd4",
+      "to": "d4"
+     },
+     {
+      "captured": false,
+      "from": "a7",
+      "piece": "p",
+      "promotion": "q",
+      "san": "a8=Q",
+      "to": "a8"
+     }
+    ],
+    "suggestedReply": {
+     "captured": false,
+     "from": "c3",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kd4",
+     "to": "d4"
+    }
+   },
+   "played": "b7a8"
+  },
+  {
+   "depth": 2,
+   "fen": "6n1/3r4/8/8/7k/4K3/8/8 w - - 30 69",
+   "payload": {
+    "analysisDepth": 2,
+    "bestToSecondGap": 19.0,
+    "candidateCount": 5,
+    "evalAfterPlayed": -760.0,
+    "evalAfterSecondBest": -770.0,
+    "evalAfterSuggested": -751.0,
+    "factualEvalAfterPlayed": -815.0,
+    "factualEvalAfterSuggested": -751.0,
+    "loss": 64.0,
+    "played": {
+     "captured": false,
+     "from": "e3",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kf2",
+     "to": "f2"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "e3",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kf2",
+      "to": "f2"
+     },
+     {
+      "captured": false,
+      "from": "g8",
+      "piece": "n",
+      "promotion": null,
+      "san": "Nf6",
+      "to": "f6"
+     }
+    ],
+    "playedReply": {
+     "captured": false,
+     "from": "g8",
+     "piece": "n",
+     "promotion": null,
+     "san": "Nf6",
+     "to": "f6"
+    },
+    "secondBest": {
+     "captured": false,
+     "from": "e3",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kf4",
+     "to": "f4"
+    },
+    "suggested": {
+     "captured": false,
+     "from": "e3",
+     "piece": "k",
+     "promotion": null,
+     "san": "Ke4",
+     "to": "e4"
+    },
+    "suggestedLine": [
+     {
+      "captured": false,
+      "from": "e3",
+      "piece": "k",
+      "promotion": null,
+      "san": "Ke4",
+      "to": "e4"
+     },
+     {
+      "captured": false,
+      "from": "g8",
+      "piece": "n",
+      "promotion": null,
+      "san": "Nf6+",
+      "to": "f6"
+     }
+    ],
+    "suggestedReply": {
+     "captured": false,
+     "from": "g8",
+     "piece": "n",
+     "promotion": null,
+     "san": "Nf6+",
+     "to": "f6"
+    }
+   },
+   "played": "e3f2"
+  },
+  {
+   "depth": 2,
+   "fen": "5R2/8/8/8/4k3/8/8/7K b - - 13 89",
+   "payload": {
+    "analysisDepth": 2,
+    "bestToSecondGap": 0.0,
+    "candidateCount": 5,
+    "evalAfterPlayed": 396.0,
+    "evalAfterSecondBest": 426.0,
+    "evalAfterSuggested": 426.0,
+    "factualEvalAfterPlayed": 426.0,
+    "factualEvalAfterSuggested": 426.0,
+    "loss": 0.0,
+    "played": {
+     "captured": false,
+     "from": "e4",
+     "piece": "k",
+     "promotion": null,
+     "san": "Ke5",
+     "to": "e5"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "e4",
+      "piece": "k",
+      "promotion": null,
+      "san": "Ke5",
+      "to": "e5"
+     },
+     {
+      "captured": false,
+      "from": "h1",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kg2",
+      "to": "g2"
+     }
+    ],
+    "playedReply": {
+     "captured": false,
+     "from": "h1",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kg2",
+     "to": "g2"
+    },
+    "secondBest": {
+     "captured": false,
+     "from": "e4",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kd5",
+     "to": "d5"
+    },
+    "suggested": {
+     "captured": false,
+     "from": "e4",
+     "piece": "k",
+     "promotion": null,
+     "san": "Ke5",
+     "to": "e5"
+    },
+    "suggestedLine": [
+     {
+      "captured": false,
+      "from": "e4",
+      "piece": "k",
+      "promotion": null,
+      "san": "Ke5",
+      "to": "e5"
+     },
+     {
+      "captured": false,
+      "from": "h1",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kg2",
+      "to": "g2"
+     }
+    ],
+    "suggestedReply": {
+     "captured": false,
+     "from": "h1",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kg2",
+     "to": "g2"
+    }
+   },
+   "played": "e4e5"
+  },
+  {
+   "depth": 3,
+   "fen": "8/8/k6P/3B4/5K2/8/8/8 b - - 10 95",
+   "payload": {
+    "analysisDepth": 3,
+    "bestToSecondGap": 0.0,
+    "candidateCount": 4,
+    "evalAfterPlayed": 522.0,
+    "evalAfterSecondBest": 881.0,
+    "evalAfterSuggested": 881.0,
+    "factualEvalAfterPlayed": 881.0,
+    "factualEvalAfterSuggested": 881.0,
+    "loss": 0.0,
+    "played": {
+     "captured": false,
+     "from": "a6",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kb6",
+     "to": "b6"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "a6",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kb6",
+      "to": "b6"
+     },
+     {
+      "captured": false,
+      "from": "h6",
+      "piece": "p",
+      "promotion": null,
+      "san": "h7",
+      "to": "h7"
+     },
+     {
+      "captured": false,
+      "from": "b6",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kc5",
+      "to": "c5"
+     }
+    ],
+    "playedReply": {
+     "captured": false,
+     "from": "h6",
+     "piece": "p",
+     "promotion": null,
+     "san": "h7",
+     "to": "h7"
+    },
+    "secondBest": {
+     "captured": false,
+     "from": "a6",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kb5",
+     "to": "b5"
+    },
+    "suggested": {
+     "captured": false,
+     "from": "a6",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kb6",
+     "to": "b6"
+    },
+    "suggestedLine": [
+     {
+      "captured": false,
+      "from": "a6",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kb6",
+      "to": "b6"
+     },
+     {
+      "captured": false,
+      "from": "h6",
+      "piece": "p",
+      "promotion": null,
+      "san": "h7",
+      "to": "h7"
+     },
+     {
+      "captured": false,
+      "from": "b6",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kc5",
+      "to": "c5"
+     }
+    ],
+    "suggestedReply": {
+     "captured": false,
+     "from": "h6",
+     "piece": "p",
+     "promotion": null,
+     "san": "h7",
+     "to": "h7"
+    }
+   },
+   "played": "a6b6"
+  },
+  {
+   "depth": 2,
+   "fen": "1b6/4pk2/p7/P4P2/6n1/8/1K6/8 w - - 5 48",
+   "payload": {
+    "analysisDepth": 2,
+    "bestToSecondGap": 35.0,
+    "candidateCount": 9,
+    "evalAfterPlayed": -610.0,
+    "evalAfterSecondBest": -657.0,
+    "evalAfterSuggested": -622.0,
+    "factualEvalAfterPlayed": -657.0,
+    "factualEvalAfterSuggested": -622.0,
+    "loss": 35.0,
+    "played": {
+     "captured": false,
+     "from": "b2",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kb3",
+     "to": "b3"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "b2",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kb3",
+      "to": "b3"
+     },
+     {
+      "captured": false,
+      "from": "e7",
+      "piece": "p",
+      "promotion": null,
+      "san": "e5",
+      "to": "e5"
+     }
+    ],
+    "playedReply": {
+     "captured": false,
+     "from": "e7",
+     "piece": "p",
+     "promotion": null,
+     "san": "e5",
+     "to": "e5"
+    },
+    "secondBest": {
+     "captured": false,
+     "from": "b2",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kb3",
+     "to": "b3"
+    },
+    "suggested": {
+     "captured": false,
+     "from": "b2",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kc3",
+     "to": "c3"
+    },
+    "suggestedLine": [
+     {
+      "captured": false,
+      "from": "b2",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kc3",
+      "to": "c3"
+     },
+     {
+      "captured": false,
+      "from": "e7",
+      "piece": "p",
+      "promotion": null,
+      "san": "e5",
+      "to": "e5"
+     }
+    ],
+    "suggestedReply": {
+     "captured": false,
+     "from": "e7",
+     "piece": "p",
+     "promotion": null,
+     "san": "e5",
+     "to": "e5"
+    }
+   },
+   "played": "b2b3"
+  },
+  {
+   "depth": 2,
+   "fen": "K7/5k2/4N3/8/8/4p3/8/8 b - - 0 78",
+   "payload": {
+    "analysisDepth": 2,
+    "bestToSecondGap": 297.0,
+    "candidateCount": 7,
+    "evalAfterPlayed": 134.0,
+    "evalAfterSecondBest": 84.0,
+    "evalAfterSuggested": -213.0,
+    "factualEvalAfterPlayed": 84.0,
+    "factualEvalAfterSuggested": -213.0,
+    "loss": 297.0,
+    "played": {
+     "captured": false,
+     "from": "e3",
+     "piece": "p",
+     "promotion": null,
+     "san": "e2",
+     "to": "e2"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "e3",
+      "piece": "p",
+      "promotion": null,
+      "san": "e2",
+      "to": "e2"
+     },
+     {
+      "captured": false,
+      "from": "e6",
+      "piece": "n",
+      "promotion": null,
+      "san": "Ng5+",
+      "to": "g5"
+     }
+    ],
+    "playedReply": {
+     "captured": false,
+     "from": "e6",
+     "piece": "n",
+     "promotion": null,
+     "san": "Ng5+",
+     "to": "g5"
+    },
+    "secondBest": {
+     "captured": false,
+     "from": "e3",
+     "piece": "p",
+     "promotion": null,
+     "san": "e2",
+     "to": "e2"
+    },
+    "suggested": {
+     "captured": true,
+     "from": "f7",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kxe6",
+     "to": "e6"
+    },
+    "suggestedLine": [
+     {
+      "captured": true,
+      "from": "f7",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kxe6",
+      "to": "e6"
+     },
+     {
+      "captured": false,
+      "from": "a8",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kb8",
+      "to": "b8"
+     }
+    ],
+    "suggestedReply": {
+     "captured": false,
+     "from": "a8",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kb8",
+     "to": "b8"
+    }
+   },
+   "played": "e3e2"
+  },
+  {
+   "depth": 3,
+   "fen": "7b/8/P1k1N3/6rB/2N4p/7P/1NK4R/8 b - - 4 91",
+   "payload": {
+    "analysisDepth": 3,
+    "bestToSecondGap": 288.0,
+    "candidateCount": 23,
+    "evalAfterPlayed": 1103.0,
+    "evalAfterSecondBest": 1134.0,
+    "evalAfterSuggested": 846.0,
+    "factualEvalAfterPlayed": 1509.0,
+    "factualEvalAfterSuggested": 846.0,
+    "loss": 663.0,
+    "played": {
+     "captured": false,
+     "from": "h8",
+     "piece": "b",
+     "promotion": null,
+     "san": "Bg7",
+     "to": "g7"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "h8",
+      "piece": "b",
+      "promotion": null,
+      "san": "Bg7",
+      "to": "g7"
+     },
+     {
+      "captured": true,
+      "from": "e6",
+      "piece": "n",
+      "promotion": null,
+      "san": "Nxg5",
+      "to": "g5"
+     },
+     {
+      "captured": false,
+      "from": "c6",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kd5",
+      "to": "d5"
+     }
+    ],
+    "playedReply": {
+     "captured": true,
+     "from": "e6",
+     "piece": "n",
+     "promotion": null,
+     "san": "Nxg5",
+     "to": "g5"
+    },
+    "secondBest": {
+     "captured": false,
+     "from": "g5",
+     "piece": "r",
+     "promotion": null,
+     "san": "Rf5",
+     "to": "f5"
+    },
+    "suggested": {
+     "captured": true,
+     "from": "g5",
+     "piece": "r",
+     "promotion": null,
+     "san": "Rxh5",
+     "to": "h5"
+    },
+    "suggestedLine": [
+     {
+      "captured": true,
+      "from": "g5",
+      "piece": "r",
+      "promotion": null,
+      "san": "Rxh5",
+      "to": "h5"
+     },
+     {
+      "captured": false,
+      "from": "a6",
+      "piece": "p",
+      "promotion": null,
+      "san": "a7",
+      "to": "a7"
+     },
+     {
+      "captured": false,
+      "from": "c6",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kb7",
+      "to": "b7"
+     }
+    ],
+    "suggestedReply": {
+     "captured": false,
+     "from": "a6",
+     "piece": "p",
+     "promotion": null,
+     "san": "a7",
+     "to": "a7"
+    }
+   },
+   "played": "h8g7"
+  },
+  {
+   "depth": 2,
+   "fen": "N6k/5R2/8/p3p3/P7/8/1P2K3/8 w - - 1 40",
+   "payload": {
+    "analysisDepth": 2,
+    "bestToSecondGap": 31.0,
+    "candidateCount": 26,
+    "evalAfterPlayed": 803.0,
+    "evalAfterSecondBest": 913.0,
+    "evalAfterSuggested": 944.0,
+    "factualEvalAfterPlayed": 283.0,
+    "factualEvalAfterSuggested": 944.0,
+    "loss": 661.0,
+    "played": {
+     "captured": false,
+     "from": "f7",
+     "piece": "r",
+     "promotion": null,
+     "san": "Rh7+",
+     "to": "h7"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "f7",
+      "piece": "r",
+      "promotion": null,
+      "san": "Rh7+",
+      "to": "h7"
+     },
+     {
+      "captured": true,
+      "from": "h8",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kxh7",
+      "to": "h7"
+     }
+    ],
+    "playedReply": {
+     "captured": true,
+     "from": "h8",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kxh7",
+     "to": "h7"
+    },
+    "secondBest": {
+     "captured": false,
+     "from": "f7",
+     "piece": "r",
+     "promotion": null,
+     "san": "Rf5",
+     "to": "f5"
+    },
+    "suggested": {
+     "captured": false,
+     "from": "f7",
+     "piece": "r",
+     "promotion": null,
+     "san": "Re7",
+     "to": "e7"
+    },
+    "suggestedLine": [
+     {
+      "captured": false,
+      "from": "f7",
+      "piece": "r",
+      "promotion": null,
+      "san": "Re7",
+      "to": "e7"
+     },
+     {
+      "captured": false,
+      "from": "h8",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kg8",
+      "to": "g8"
+     }
+    ],
+    "suggestedReply": {
+     "captured": false,
+     "from": "h8",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kg8",
+     "to": "g8"
+    }
+   },
+   "played": "f7h7"
+  },
+  {
+   "depth": 2,
+   "fen": "rn3br1/3qp2p/1pp2pkn/pB1p4/P1P1P2P/6P1/1P1PNP2/RNBK3R b - - 0 13",
+   "payload": {
+    "analysisDepth": 2,
+    "bestToSecondGap": 75.0,
+    "candidateCount": 31,
+    "evalAfterPlayed": -345.0,
+    "evalAfterSecondBest": -590.0,
+    "evalAfterSuggested": -665.0,
+    "factualEvalAfterPlayed": 235.0,
+    "factualEvalAfterSuggested": -665.0,
+    "loss": 900.0,
+    "played": {
+     "captured": false,
+     "from": "d7",
+     "piece": "q",
+     "promotion": null,
+     "san": "Qh3",
+     "to": "h3"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "d7",
+      "piece": "q",
+      "promotion": null,
+      "san": "Qh3",
+      "to": "h3"
+     },
+     {
+      "captured": true,
+      "from": "h1",
+      "piece": "r",
+      "promotion": null,
+      "san": "Rxh3",
+      "to": "h3"
+     }
+    ],
+    "playedReply": {
+     "captured": true,
+     "from": "h1",
+     "piece": "r",
+     "promotion": null,
+     "san": "Rxh3",
+     "to": "h3"
+    },
+    "secondBest": {
+     "captured": false,
+     "from": "g6",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kg7",
+     "to": "g7"
+    },
+    "suggested": {
+     "captured": true,
+     "from": "c6",
+     "piece": "p",
+     "promotion": null,
+     "san": "cxb5",
+     "to": "b5"
+    },
+    "suggestedLine": [
+     {
+      "captured": true,
+      "from": "c6",
+      "piece": "p",
+      "promotion": null,
+      "san": "cxb5",
+      "to": "b5"
+     },
+     {
+      "captured": true,
+      "from": "c4",
+      "piece": "p",
+      "promotion": null,
+      "san": "cxd5",
+      "to": "d5"
+     }
+    ],
+    "suggestedReply": {
+     "captured": true,
+     "from": "c4",
+     "piece": "p",
+     "promotion": null,
+     "san": "cxd5",
+     "to": "d5"
+    }
+   },
+   "played": "d7h3"
+  },
+  {
+   "depth": 3,
+   "fen": "r1b1kbnr/pp1ppppp/n7/2p5/P7/1q6/1BPPPPPP/RN1QKBNR w KQkq - 0 5",
+   "payload": {
+    "analysisDepth": 3,
+    "bestToSecondGap": 730.0,
+    "candidateCount": 28,
+    "evalAfterPlayed": -120.0,
+    "evalAfterSecondBest": 50.0,
+    "evalAfterSuggested": 780.0,
+    "factualEvalAfterPlayed": -425.0,
+    "factualEvalAfterSuggested": 780.0,
+    "loss": 1205.0,
+    "played": {
+     "captured": false,
+     "from": "f2",
+     "piece": "p",
+     "promotion": null,
+     "san": "f4",
+     "to": "f4"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "f2",
+      "piece": "p",
+      "promotion": null,
+      "san": "f4",
+      "to": "f4"
+     },
+     {
+      "captured": true,
+      "from": "b3",
+      "piece": "q",
+      "promotion": null,
+      "san": "Qxb2",
+      "to": "b2"
+     },
+     {
+      "captured": false,
+      "from": "b1",
+      "piece": "n",
+      "promotion": null,
+      "san": "Nc3",
+      "to": "c3"
+     }
+    ],
+    "playedReply": {
+     "captured": true,
+     "from": "b3",
+     "piece": "q",
+     "promotion": null,
+     "san": "Qxb2",
+     "to": "b2"
+    },
+    "secondBest": {
+     "captured": true,
+     "from": "b2",
+     "piece": "b",
+     "promotion": null,
+     "san": "Bxg7",
+     "to": "g7"
+    },
+    "suggested": {
+     "captured": true,
+     "from": "c2",
+     "piece": "p",
+     "promotion": null,
+     "san": "cxb3",
+     "to": "b3"
+    },
+    "suggestedLine": [
+     {
+      "captured": true,
+      "from": "c2",
+      "piece": "p",
+      "promotion": null,
+      "san": "cxb3",
+      "to": "b3"
+     },
+     {
+      "captured": false,
+      "from": "g8",
+      "piece": "n",
+      "promotion": null,
+      "san": "Nf6",
+      "to": "f6"
+     },
+     {
+      "captured": false,
+      "from": "g1",
+      "piece": "n",
+      "promotion": null,
+      "san": "Nf3",
+      "to": "f3"
+     }
+    ],
+    "suggestedReply": {
+     "captured": false,
+     "from": "g8",
+     "piece": "n",
+     "promotion": null,
+     "san": "Nf6",
+     "to": "f6"
+    }
+   },
+   "played": "f2f4"
+  },
+  {
+   "depth": 2,
+   "fen": "b7/2k5/1pNpn1p1/4P2N/P6P/4K3/8/8 b - - 0 83",
+   "payload": {
+    "analysisDepth": 2,
+    "bestToSecondGap": 68.0,
+    "candidateCount": 18,
+    "evalAfterPlayed": 46.0,
+    "evalAfterSecondBest": -271.0,
+    "evalAfterSuggested": -339.0,
+    "factualEvalAfterPlayed": 124.0,
+    "factualEvalAfterSuggested": -339.0,
+    "loss": 463.0,
+    "played": {
+     "captured": false,
+     "from": "e6",
+     "piece": "n",
+     "promotion": null,
+     "san": "Nd4",
+     "to": "d4"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "e6",
+      "piece": "n",
+      "promotion": null,
+      "san": "Nd4",
+      "to": "d4"
+     },
+     {
+      "captured": true,
+      "from": "c6",
+      "piece": "n",
+      "promotion": null,
+      "san": "Nxd4",
+      "to": "d4"
+     }
+    ],
+    "playedReply": {
+     "captured": true,
+     "from": "c6",
+     "piece": "n",
+     "promotion": null,
+     "san": "Nxd4",
+     "to": "d4"
+    },
+    "secondBest": {
+     "captured": true,
+     "from": "c7",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kxc6",
+     "to": "c6"
+    },
+    "suggested": {
+     "captured": true,
+     "from": "a8",
+     "piece": "b",
+     "promotion": null,
+     "san": "Bxc6",
+     "to": "c6"
+    },
+    "suggestedLine": [
+     {
+      "captured": true,
+      "from": "a8",
+      "piece": "b",
+      "promotion": null,
+      "san": "Bxc6",
+      "to": "c6"
+     },
+     {
+      "captured": false,
+      "from": "h5",
+      "piece": "n",
+      "promotion": null,
+      "san": "Nf4",
+      "to": "f4"
+     }
+    ],
+    "suggestedReply": {
+     "captured": false,
+     "from": "h5",
+     "piece": "n",
+     "promotion": null,
+     "san": "Nf4",
+     "to": "f4"
+    }
+   },
+   "played": "e6d4"
+  },
+  {
+   "depth": 2,
+   "fen": "3q1bnr/4pQ2/2nk2p1/rpp4p/p1P5/1P2P1P1/PB1PNP1P/1NRK1BRb b - - 6 17",
+   "payload": {
+    "analysisDepth": 2,
+    "bestToSecondGap": 41.0,
+    "candidateCount": 35,
+    "evalAfterPlayed": 310.0,
+    "evalAfterSecondBest": 466.0,
+    "evalAfterSuggested": 425.0,
+    "factualEvalAfterPlayed": 785.0,
+    "factualEvalAfterSuggested": 425.0,
+    "loss": 360.0,
+    "played": {
+     "captured": false,
+     "from": "c6",
+     "piece": "n",
+     "promotion": null,
+     "san": "Na7",
+     "to": "a7"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "c6",
+      "piece": "n",
+      "promotion": null,
+      "san": "Na7",
+      "to": "a7"
+     },
+     {
+      "captured": true,
+      "from": "b2",
+      "piece": "b",
+      "promotion": null,
+      "san": "Bxh8",
+      "to": "h8"
+     }
+    ],
+    "playedReply": {
+     "captured": true,
+     "from": "b2",
+     "piece": "b",
+     "promotion": null,
+     "san": "Bxh8",
+     "to": "h8"
+    },
+    "secondBest": {
+     "captured": false,
+     "from": "c6",
+     "piece": "n",
+     "promotion": null,
+     "san": "Ne5",
+     "to": "e5"
+    },
+    "suggested": {
+     "captured": false,
+     "from": "g8",
+     "piece": "n",
+     "promotion": null,
+     "san": "Nf6",
+     "to": "f6"
+    },
+    "suggestedLine": [
+     {
+      "captured": false,
+      "from": "g8",
+      "piece": "n",
+      "promotion": null,
+      "san": "Nf6",
+      "to": "f6"
+     },
+     {
+      "captured": true,
+      "from": "g1",
+      "piece": "r",
+      "promotion": null,
+      "san": "Rxh1",
+      "to": "h1"
+     }
+    ],
+    "suggestedReply": {
+     "captured": true,
+     "from": "g1",
+     "piece": "r",
+     "promotion": null,
+     "san": "Rxh1",
+     "to": "h1"
+    }
+   },
+   "played": "c6a7"
+  },
+  {
+   "depth": 3,
+   "fen": "8/qr6/1p3k2/7p/4n2P/1PP1b2b/6R1/2NK4 w - - 0 39",
+   "payload": {
+    "analysisDepth": 3,
+    "bestToSecondGap": 30.0,
+    "candidateCount": 22,
+    "evalAfterPlayed": -1534.0,
+    "evalAfterSecondBest": -1629.0,
+    "evalAfterSuggested": -1599.0,
+    "factualEvalAfterPlayed": -2065.0,
+    "factualEvalAfterSuggested": -1599.0,
+    "loss": 466.0,
+    "played": {
+     "captured": false,
+     "from": "g2",
+     "piece": "r",
+     "promotion": null,
+     "san": "Ra2",
+     "to": "a2"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "g2",
+      "piece": "r",
+      "promotion": null,
+      "san": "Ra2",
+      "to": "a2"
+     },
+     {
+      "captured": true,
+      "from": "e4",
+      "piece": "n",
+      "promotion": null,
+      "san": "Nxc3+",
+      "to": "c3"
+     },
+     {
+      "captured": false,
+      "from": "d1",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kc2",
+      "to": "c2"
+     }
+    ],
+    "playedReply": {
+     "captured": true,
+     "from": "e4",
+     "piece": "n",
+     "promotion": null,
+     "san": "Nxc3+",
+     "to": "c3"
+    },
+    "secondBest": {
+     "captured": false,
+     "from": "g2",
+     "piece": "r",
+     "promotion": null,
+     "san": "Rh2",
+     "to": "h2"
+    },
+    "suggested": {
+     "captured": false,
+     "from": "g2",
+     "piece": "r",
+     "promotion": null,
+     "san": "Rc2",
+     "to": "c2"
+    },
+    "suggestedLine": [
+     {
+      "captured": false,
+      "from": "g2",
+      "piece": "r",
+      "promotion": null,
+      "san": "Rc2",
+      "to": "c2"
+     },
+     {
+      "captured": false,
+      "from": "h3",
+      "piece": "b",
+      "promotion": null,
+      "san": "Be6",
+      "to": "e6"
+     },
+     {
+      "captured": false,
+      "from": "c1",
+      "piece": "n",
+      "promotion": null,
+      "san": "Nd3",
+      "to": "d3"
+     }
+    ],
+    "suggestedReply": {
+     "captured": false,
+     "from": "h3",
+     "piece": "b",
+     "promotion": null,
+     "san": "Be6",
+     "to": "e6"
+    }
+   },
+   "played": "g2a2"
+  },
+  {
+   "depth": 2,
+   "fen": "8/8/K6n/3k4/8/6p1/8/8 b - - 20 103",
+   "payload": {
+    "analysisDepth": 2,
+    "bestToSecondGap": 717.0,
+    "candidateCount": 13,
+    "evalAfterPlayed": -468.0,
+    "evalAfterSecondBest": -527.0,
+    "evalAfterSuggested": -1244.0,
+    "factualEvalAfterPlayed": -468.0,
+    "factualEvalAfterSuggested": -1244.0,
+    "loss": 776.0,
+    "played": {
+     "captured": false,
+     "from": "d5",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kc6",
+     "to": "c6"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "d5",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kc6",
+      "to": "c6"
+     },
+     {
+      "captured": false,
+      "from": "a6",
+      "piece": "k",
+      "promotion": null,
+      "san": "Ka7",
+      "to": "a7"
+     }
+    ],
+    "playedReply": {
+     "captured": false,
+     "from": "a6",
+     "piece": "k",
+     "promotion": null,
+     "san": "Ka7",
+     "to": "a7"
+    },
+    "secondBest": {
+     "captured": false,
+     "from": "h6",
+     "piece": "n",
+     "promotion": null,
+     "san": "Nf5",
+     "to": "f5"
+    },
+    "suggested": {
+     "captured": false,
+     "from": "g3",
+     "piece": "p",
+     "promotion": null,
+     "san": "g2",
+     "to": "g2"
+    },
+    "suggestedLine": [
+     {
+      "captured": false,
+      "from": "g3",
+      "piece": "p",
+      "promotion": null,
+      "san": "g2",
+      "to": "g2"
+     },
+     {
+      "captured": false,
+      "from": "a6",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kb6",
+      "to": "b6"
+     }
+    ],
+    "suggestedReply": {
+     "captured": false,
+     "from": "a6",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kb6",
+     "to": "b6"
+    }
+   },
+   "played": "d5c6"
+  },
+  {
+   "depth": 2,
+   "fen": "4k3/3nb3/3p2P1/qN3P2/2pP3P/2P5/R7/3K4 b - - 2 36",
+   "payload": {
+    "analysisDepth": 2,
+    "bestToSecondGap": 175.0,
+    "candidateCount": 26,
+    "evalAfterPlayed": -340.0,
+    "evalAfterSecondBest": -622.0,
+    "evalAfterSuggested": -797.0,
+    "factualEvalAfterPlayed": 560.0,
+    "factualEvalAfterSuggested": -797.0,
+    "loss": 1357.0,
+    "played": {
+     "captured": false,
+     "from": "e7",
+     "piece": "b",
+     "promotion": null,
+     "san": "Bg5",
+     "to": "g5"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "e7",
+      "piece": "b",
+      "promotion": null,
+      "san": "Bg5",
+      "to": "g5"
+     },
+     {
+      "captured": true,
+      "from": "a2",
+      "piece": "r",
+      "promotion": null,
+      "san": "Rxa5",
+      "to": "a5"
+     }
+    ],
+    "playedReply": {
+     "captured": true,
+     "from": "a2",
+     "piece": "r",
+     "promotion": null,
+     "san": "Rxa5",
+     "to": "a5"
+    },
+    "secondBest": {
+     "captured": true,
+     "from": "a5",
+     "piece": "q",
+     "promotion": null,
+     "san": "Qxb5",
+     "to": "b5"
+    },
+    "suggested": {
+     "captured": true,
+     "from": "a5",
+     "piece": "q",
+     "promotion": null,
+     "san": "Qxa2",
+     "to": "a2"
+    },
+    "suggestedLine": [
+     {
+      "captured": true,
+      "from": "a5",
+      "piece": "q",
+      "promotion": null,
+      "san": "Qxa2",
+      "to": "a2"
+     },
+     {
+      "captured": false,
+      "from": "g6",
+      "piece": "p",
+      "promotion": null,
+      "san": "g7",
+      "to": "g7"
+     }
+    ],
+    "suggestedReply": {
+     "captured": false,
+     "from": "g6",
+     "piece": "p",
+     "promotion": null,
+     "san": "g7",
+     "to": "g7"
+    }
+   },
+   "played": "e7g5"
+  },
+  {
+   "depth": 3,
+   "fen": "4k3/2pR4/8/1p6/2pp1P2/P6P/P3P3/R2K1BN1 b - - 1 23",
+   "payload": {
+    "analysisDepth": 3,
+    "bestToSecondGap": 579.0,
+    "candidateCount": 7,
+    "evalAfterPlayed": 1615.0,
+    "evalAfterSecondBest": 1733.0,
+    "evalAfterSuggested": 1154.0,
+    "factualEvalAfterPlayed": 1811.0,
+    "factualEvalAfterSuggested": 1154.0,
+    "loss": 657.0,
+    "played": {
+     "captured": false,
+     "from": "b5",
+     "piece": "p",
+     "promotion": null,
+     "san": "b4",
+     "to": "b4"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "b5",
+      "piece": "p",
+      "promotion": null,
+      "san": "b4",
+      "to": "b4"
+     },
+     {
+      "captured": true,
+      "from": "d7",
+      "piece": "r",
+      "promotion": null,
+      "san": "Rxd4",
+      "to": "d4"
+     },
+     {
+      "captured": true,
+      "from": "b4",
+      "piece": "p",
+      "promotion": null,
+      "san": "bxa3",
+      "to": "a3"
+     }
+    ],
+    "playedReply": {
+     "captured": true,
+     "from": "d7",
+     "piece": "r",
+     "promotion": null,
+     "san": "Rxd4",
+     "to": "d4"
+    },
+    "secondBest": {
+     "captured": false,
+     "from": "c7",
+     "piece": "p",
+     "promotion": null,
+     "san": "c5",
+     "to": "c5"
+    },
+    "suggested": {
+     "captured": true,
+     "from": "e8",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kxd7",
+     "to": "d7"
+    },
+    "suggestedLine": [
+     {
+      "captured": true,
+      "from": "e8",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kxd7",
+      "to": "d7"
+     },
+     {
+      "captured": false,
+      "from": "g1",
+      "piece": "n",
+      "promotion": null,
+      "san": "Nf3",
+      "to": "f3"
+     },
+     {
+      "captured": false,
+      "from": "c7",
+      "piece": "p",
+      "promotion": null,
+      "san": "c5",
+      "to": "c5"
+     }
+    ],
+    "suggestedReply": {
+     "captured": false,
+     "from": "g1",
+     "piece": "n",
+     "promotion": null,
+     "san": "Nf3",
+     "to": "f3"
+    }
+   },
+   "played": "b5b4"
+  },
+  {
+   "depth": 2,
+   "fen": "q4kn1/2p5/4p1n1/3p4/2r2P2/7K/1B1PN3/3Q4 b - - 0 31",
+   "payload": {
+    "analysisDepth": 2,
+    "bestToSecondGap": 2.0,
+    "candidateCount": 38,
+    "evalAfterPlayed": -650.0,
+    "evalAfterSecondBest": -728.0,
+    "evalAfterSuggested": -730.0,
+    "factualEvalAfterPlayed": -600.0,
+    "factualEvalAfterSuggested": -730.0,
+    "loss": 130.0,
+    "played": {
+     "captured": false,
+     "from": "c4",
+     "piece": "r",
+     "promotion": null,
+     "san": "Rc5",
+     "to": "c5"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "c4",
+      "piece": "r",
+      "promotion": null,
+      "san": "Rc5",
+      "to": "c5"
+     },
+     {
+      "captured": false,
+      "from": "d2",
+      "piece": "p",
+      "promotion": null,
+      "san": "d4",
+      "to": "d4"
+     }
+    ],
+    "playedReply": {
+     "captured": false,
+     "from": "d2",
+     "piece": "p",
+     "promotion": null,
+     "san": "d4",
+     "to": "d4"
+    },
+    "secondBest": {
+     "captured": false,
+     "from": "a8",
+     "piece": "q",
+     "promotion": null,
+     "san": "Qa2",
+     "to": "a2"
+    },
+    "suggested": {
+     "captured": true,
+     "from": "g6",
+     "piece": "n",
+     "promotion": null,
+     "san": "Nxf4+",
+     "to": "f4"
+    },
+    "suggestedLine": [
+     {
+      "captured": true,
+      "from": "g6",
+      "piece": "n",
+      "promotion": null,
+      "san": "Nxf4+",
+      "to": "f4"
+     },
+     {
+      "captured": false,
+      "from": "h3",
+      "piece": "k",
+      "promotion": null,
+      "san": "Kh2",
+      "to": "h2"
+     }
+    ],
+    "suggestedReply": {
+     "captured": false,
+     "from": "h3",
+     "piece": "k",
+     "promotion": null,
+     "san": "Kh2",
+     "to": "h2"
+    }
+   },
+   "played": "c4c5"
+  },
+  {
+   "depth": 2,
+   "fen": "b1kr3Q/P7/1p1p2p1/n6p/P3PK1P/8/8/5N2 b - - 2 77",
+   "payload": {
+    "analysisDepth": 2,
+    "bestToSecondGap": 63.0,
+    "candidateCount": 18,
+    "evalAfterPlayed": 221.0,
+    "evalAfterSecondBest": -531.0,
+    "evalAfterSuggested": -594.0,
+    "factualEvalAfterPlayed": 235.0,
+    "factualEvalAfterSuggested": -594.0,
+    "loss": 829.0,
+    "played": {
+     "captured": false,
+     "from": "a8",
+     "piece": "b",
+     "promotion": null,
+     "san": "Bc6",
+     "to": "c6"
+    },
+    "playedLine": [
+     {
+      "captured": false,
+      "from": "a8",
+      "piece": "b",
+      "promotion": null,
+      "san": "Bc6",
+      "to": "c6"
+     },
+     {
+      "captured": false,
+      "from": "h8",
+      "piece": "q",
+      "promotion": null,
+      "san": "Qd4",
+      "to": "d4"
+     }
+    ],
+    "playedReply": {
+     "captured": false,
+     "from": "h8",
+     "piece": "q",
+     "promotion": null,
+     "san": "Qd4",
+     "to": "d4"
+    },
+    "secondBest": {
+     "captured": false,
+     "from": "g6",
+     "piece": "p",
+     "promotion": null,
+     "san": "g5+",
+     "to": "g5"
+    },
+    "suggested": {
+     "captured": true,
+     "from": "d8",
+     "piece": "r",
+     "promotion": null,
+     "san": "Rxh8",
+     "to": "h8"
+    },
+    "suggestedLine": [
+     {
+      "captured": true,
+      "from": "d8",
+      "piece": "r",
+      "promotion": null,
+      "san": "Rxh8",
+      "to": "h8"
+     },
+     {
+      "captured": false,
+      "from": "f1",
+      "piece": "n",
+      "promotion": null,
+      "san": "Ne3",
+      "to": "e3"
+     }
+    ],
+    "suggestedReply": {
+     "captured": false,
+     "from": "f1",
+     "piece": "n",
+     "promotion": null,
+     "san": "Ne3",
+     "to": "e3"
+    }
+   },
+   "played": "a8c6"
+  }
+ ],
+ "python_chess": "1.11.2"
+}

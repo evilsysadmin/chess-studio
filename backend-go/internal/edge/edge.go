@@ -44,7 +44,8 @@ type Config struct {
 	// NativeGamesHint serves GET /api/games/{game_id}/hint; nil keeps it in
 	// Python.
 	NativeGamesHint http.Handler
-	// NativeGamesAnalyze serves POST /api/analyze; nil keeps it in Python.
+	// NativeGamesAnalyze serves POST /api/analyze and /api/analyze-move; nil
+	// keeps them in Python.
 	NativeGamesAnalyze    http.Handler
 	VirtualPlayersEnabled bool
 	NativeResidentMove    bool
