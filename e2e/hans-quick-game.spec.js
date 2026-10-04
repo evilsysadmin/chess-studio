@@ -34,23 +34,20 @@ test('Partida rápida 3D hace visible a Hans también fuera del evento fuego', a
   await expect(page.getByRole('region', { name: 'Tutorial de War Room con Matthias' })).toHaveCount(0);
 
   // water-plant starts after a deterministic 6–14 s delay for a recurrent
-  // player. Hans must then physically enter the camera, not merely own an
-  // in-memory task.
+  // player. The routine can finish before Playwright's first poll on fast CI,
+  // so assert the sticky fact recorded at the exact frame Hans becomes visible.
   await expect.poll(
     () => page.evaluate(() => {
       const node = document.querySelector('.board3d-main-canvas');
-      if (!node) return 'missing|missing';
+      if (!node) return 'missing';
       return [
-        node.dataset.warRoomHansRoute || 'none',
-        node.dataset.warRoomHansScreen || 'missing',
+        node.dataset.warRoomHansServiceSeenVisible || 'false',
         node.dataset.warRoomHansServiceEvent || 'event-missing',
         node.dataset.warRoomHansServiceStatus || 'status-missing',
-        node.dataset.warRoomHansActiveTask || 'task-missing',
-        node.dataset.warRoomHansTaskPhase || 'phase-missing',
       ].join('|');
     }),
     { timeout: 30_000, intervals: [100, 200, 300, 500, 1000] },
-  ).toMatch(/^service-water-plant\|(edge|onscreen)\|water-plant\|/);
+  ).toMatch(/^true\|water-plant\|/);
 
   await expect(marker).toHaveAttribute('data-war-room-hans-runtime', 'visible');
 });
