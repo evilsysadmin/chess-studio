@@ -26,6 +26,7 @@ import {
   HOME_BLENDER_FIRE_MAX_FRAME_GAP_MS,
   HOME_BLENDER_FIRE_MAX_INTERVAL_MS,
   homeBlenderPolicyNeedsFallback,
+  homeBlenderAdaptiveLodFloor,
   homeBlenderRuntimePolicy,
   homeBlenderDustSeeds,
   homeBlenderDustPosition,
@@ -111,6 +112,13 @@ describe('HomeBlenderScene3D mobile runtime policy', () => {
 
 
 describe('HomeBlenderScene3D live fallback policy', () => {
+  it('never performance-ejects an eligible 3D session to static 2D', () => {
+    expect(homeBlenderAdaptiveLodFloor({ enabled: true, lod: 'full' })).toBe('lite');
+    expect(homeBlenderAdaptiveLodFloor({ enabled: true, lod: 'lite' })).toBe('lite');
+    expect(homeBlenderAdaptiveLodFloor({ enabled: false, lod: 'lite' })).toBe('2d');
+    expect(homeBlenderAdaptiveLodFloor({ enabled: true, lod: '2d' })).toBe('2d');
+  });
+
   it('falls back when a resize/runtime policy disables 3D', () => {
     expect(homeBlenderPolicyNeedsFallback({ enabled: false, lod: 'lite' })).toBe(true);
     expect(homeBlenderPolicyNeedsFallback({ enabled: false, lod: '2d' })).toBe(true);
@@ -411,6 +419,17 @@ describe('HomeBlenderScene3D live flame animation', () => {
       });
       expect(plan.enabled).toBe(true);
       expect(plan.intervalMs).toBeLessThanOrEqual(HOME_BLENDER_FIRE_MAX_INTERVAL_MS);
+    });
+
+    it('keeps the emergency cadence visibly alive instead of becoming a slideshow', () => {
+      expect(HOME_BLENDER_FIRE_MAX_INTERVAL_MS).toBeLessThanOrEqual(200);
+      const plan = homeBlenderFireFramePlan({
+        baseIntervalMs: 66,
+        renderCostMs: 500,
+        frameGapMs: 100,
+        samples: 30,
+      });
+      expect(plan).toEqual({ enabled: true, intervalMs: HOME_BLENDER_FIRE_MAX_INTERVAL_MS });
     });
 
     it('throttles hard instead of killing the shared Home loop when RAF arrives late', () => {
