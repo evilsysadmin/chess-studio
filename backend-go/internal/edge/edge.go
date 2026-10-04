@@ -40,7 +40,10 @@ type Config struct {
 	NativeGamesRead http.Handler
 	// NativeGamesWrite serves POST /api/games/{game_id}/move and /undo;
 	// nil keeps them in Python.
-	NativeGamesWrite      http.Handler
+	NativeGamesWrite http.Handler
+	// NativeGamesHint serves GET /api/games/{game_id}/hint; nil keeps it in
+	// Python.
+	NativeGamesHint       http.Handler
 	VirtualPlayersEnabled bool
 	NativeResidentMove    bool
 	// ReadyChecks are dependencies owned by the Go edge itself (MongoDB for the
@@ -72,6 +75,7 @@ type Handler struct {
 	nativeMatchMove           http.Handler
 	nativeGamesRead           http.Handler
 	nativeGamesWrite          http.Handler
+	nativeGamesHint           http.Handler
 	virtualPlayersEnabled     bool
 	nativeResidentMove        bool
 	readyChecks               map[string]func(context.Context) error
@@ -172,6 +176,7 @@ func New(cfg Config) (*Handler, error) {
 		nativeMatchMove:           cfg.NativeMatchMove,
 		nativeGamesRead:           cfg.NativeGamesRead,
 		nativeGamesWrite:          cfg.NativeGamesWrite,
+		nativeGamesHint:           cfg.NativeGamesHint,
 		virtualPlayersEnabled:     cfg.VirtualPlayersEnabled,
 		nativeResidentMove:        cfg.NativeResidentMove,
 		readyChecks:               cfg.ReadyChecks,
@@ -199,6 +204,13 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if pattern, _, ok := gamesapi.WriteRoute(r); ok {
 			w.Header().Set("X-Chess-Edge", "go")
 			h.telemetry.Serve(pattern, h.nativeGamesWrite, w, r)
+			return
+		}
+	}
+	if h.nativeGamesHint != nil {
+		if pattern, _, ok := gamesapi.HintRoute(r); ok {
+			w.Header().Set("X-Chess-Edge", "go")
+			h.telemetry.Serve(pattern, h.nativeGamesHint, w, r)
 			return
 		}
 	}
@@ -294,6 +306,7 @@ func (h *Handler) statusPayload(status string) map[string]any {
 		"nativeResidentMove":        h.nativeResidentMove,
 		"nativeGamesRead":           h.nativeGamesRead != nil,
 		"nativeGamesWrite":          h.nativeGamesWrite != nil,
+		"nativeGamesHint":           h.nativeGamesHint != nil,
 	}
 	if h.release != "" {
 		payload["release"] = h.release

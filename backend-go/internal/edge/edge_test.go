@@ -1218,3 +1218,27 @@ func TestNativeGamesWriteServesOnlyCreateMoveAndUndo(t *testing.T) {
 		t.Fatalf("proxied %v", proxied)
 	}
 }
+
+func TestNativeGamesHintServesOnlyTheHint(t *testing.T) {
+	var proxied []string
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		proxied = append(proxied, r.Method+" "+r.URL.Path)
+		w.WriteHeader(http.StatusTeapot)
+	}))
+	defer upstream.Close()
+	var served []string
+	native := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		served = append(served, r.Method+" "+r.URL.Path)
+		w.WriteHeader(http.StatusOK)
+	})
+	h, err := New(Config{UpstreamURL: upstream.URL, NativeGamesHint: native})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, req := range [][2]string{{"GET", "/api/games/g1/hint"}, {"POST", "/api/games/g1/move"}, {"GET", "/api/games/g1"}} {
+		h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(req[0], "http://api.chess.test"+req[1], nil))
+	}
+	if strings.Join(served, ",") != "GET /api/games/g1/hint" || strings.Join(proxied, ",") != "POST /api/games/g1/move,GET /api/games/g1" {
+		t.Fatalf("served %v proxied %v", served, proxied)
+	}
+}

@@ -26,6 +26,7 @@ type nativeFeatureFlags struct {
 	residentMove        bool
 	gamesRead           bool
 	gamesWrite          bool
+	gamesHint           bool
 }
 
 func loadNativeFeatureFlags() nativeFeatureFlags {
@@ -45,6 +46,7 @@ func loadNativeFeatureFlags() nativeFeatureFlags {
 		residentMove:        envBool("PVP_NATIVE_RESIDENT_MOVE_ENABLED", false),
 		gamesRead:           envBool("GO_NATIVE_GAMES_READ_ENABLED", false),
 		gamesWrite:          envBool("GO_NATIVE_GAMES_WRITE_ENABLED", false),
+		gamesHint:           envBool("GO_NATIVE_GAMES_HINT_ENABLED", false),
 	}
 }
 
@@ -62,7 +64,8 @@ func (f nativeFeatureFlags) needsMongo() bool {
 		f.matchRead ||
 		f.matchMove ||
 		f.gamesRead ||
-		f.gamesWrite
+		f.gamesWrite ||
+		f.gamesHint
 }
 
 func env(key, fallback string) string {
