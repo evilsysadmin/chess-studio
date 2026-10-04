@@ -205,6 +205,30 @@ function turnSummary(state, events) {
   return state.message;
 }
 
+export function chroniclesResolveEnemyActor(state, enemyId) {
+  if (!state || state.phase === 'escaped' || state.phase === 'defeated') return state;
+  const activeEnemies = chroniclesActiveEnemies(state);
+  const enemyIndex = activeEnemies.findIndex((enemy) => enemy.id === enemyId);
+  if (enemyIndex < 0) return state;
+  const enemy = activeEnemies[enemyIndex];
+  const events = [];
+  let next = { ...state, turnPhase: 'enemy', enemyTurnEvents: events };
+  const position = chroniclesRuntimeEnemyPosition(next, enemy);
+  if (chroniclesEnemyCanAttackParty(next, enemy, position)) {
+    next = damageParty(next, enemy, enemyIndex, events);
+  } else {
+    next = moveEnemy(next, enemy, chroniclesChooseEnemyStep(next, enemy), events);
+  }
+  const defeated = partyDefeated(next);
+  return {
+    ...next,
+    phase: defeated ? 'defeated' : next.phase,
+    turnPhase: defeated ? 'party' : next.turnPhase,
+    enemyTurnEvents: [...events],
+    message: turnSummary(next, events),
+  };
+}
+
 export function chroniclesResolveEnemyTurn(state) {
   if (!state || state.phase === 'escaped' || state.phase === 'defeated') return state;
   const activeEnemies = chroniclesActiveEnemies(state);
