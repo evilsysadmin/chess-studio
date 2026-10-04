@@ -23,7 +23,6 @@ const ATTRIBUTE_LABELS = Object.freeze({
   power: 'Potencia',
   precision: 'Precisión',
   will: 'Voluntad',
-  agility: 'Agilidad',
 });
 
 function customFrom(build) {
