@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -180,6 +181,51 @@ func TestHealthAndReadiness(t *testing.T) {
 		if got := body["release"]; got != "deadbeef" {
 			t.Fatalf("%s release=%#v want=deadbeef", tc.path, got)
 		}
+	}
+}
+
+func TestHealthAndReadinessCapabilitiesStayAligned(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/ready" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer upstream.Close()
+
+	native := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
+	h, err := New(Config{
+		UpstreamURL:           upstream.URL,
+		Release:               "deadbeef",
+		NativePulse:           native,
+		NativeGamesRead:       native,
+		VirtualPlayersEnabled: true,
+		NativeResidentMove:    true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	read := func(path string) map[string]any {
+		t.Helper()
+		rr := httptest.NewRecorder()
+		h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "http://edge"+path, nil))
+		if rr.Code != http.StatusOK {
+			t.Fatalf("%s status=%d body=%s", path, rr.Code, rr.Body.String())
+		}
+		var body map[string]any
+		if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+			t.Fatalf("%s decode body: %v", path, err)
+		}
+		return body
+	}
+
+	health := read("/healthz")
+	ready := read("/readyz")
+	health["status"] = "ready"
+	if !reflect.DeepEqual(health, ready) {
+		t.Fatalf("health/readiness capability drift: health=%v ready=%v", health, ready)
 	}
 }
 
