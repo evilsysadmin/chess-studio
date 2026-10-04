@@ -502,10 +502,10 @@ function Board3DCanvas({
           reducedMotion: getEffectiveReducedMotion(),
           coarsePointer,
           softwareRenderer,
-          narrativeActive: Boolean(hansDiagnosticsRequested || (cachedHansDriver?.userData.warRoomHansQuickIteration
+          narrativeActive: Boolean(cachedHansDriver?.userData.warRoomHansQuickIteration
             && !cachedHansDriver.userData.warRoomHansCompleted
             && (hansReadyFrames < 2 || !latestPropsRef.current.hansFireCallEnabled
-              || renderer.domElement.dataset.warRoomHansCallReleased === 'true'))),
+              || renderer.domElement.dataset.warRoomHansCallReleased === 'true')),
           elapsedMs,
         }),
         onFrame: () => {
