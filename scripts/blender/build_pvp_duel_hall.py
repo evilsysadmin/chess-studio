@@ -219,6 +219,125 @@ def build_envelope(static, p):
                       0.018, 1.50, p["iron"], static, vertices=8)
 
 
+def build_castle_dressing(static, p):
+    """Add occupied-castle depth around the four functional lobby stations."""
+
+    # Irregular rear-wall ashlar relief. Keep the moon bay and the centre of
+    # the rival board readable; the stones should frame furniture, not fight it.
+    stone_idx = 0
+    for row in range(6):
+        z = 0.72 + row * 0.88
+        offset = 0.48 if row % 2 else 0.0
+        for col in range(-8, 9):
+            x = col * 1.02 + offset
+            if 2.55 < x < 7.15 and 1.85 < z < 6.65:
+                continue
+            if abs(x) < 3.25 and z < 4.55:
+                continue
+            if abs(x) > 8.2:
+                continue
+            width = 0.43 + 0.035 * ((row + col) % 3)
+            height = 0.32 + 0.020 * ((row * 2 + col) % 3)
+            block = base.cube(
+                f"PVP_HALL_masonry_{stone_idx}", (x, 6.17, z),
+                (width, 0.045, height), p["wall"], static, bevel=0.030,
+            )
+            block.rotation_euler.z = math.radians(((row * 7 + col * 3) % 5 - 2) * 0.35)
+            stone_idx += 1
+
+    # Floor flagstones outside the central runner make the room feel authored
+    # instead of like furniture standing on one featureless slab.
+    tile_idx = 0
+    for row in range(-4, 5):
+        y = row * 1.22 + 0.32
+        for side in (-1, 1):
+            for lane in (5.45, 6.65, 7.82):
+                x = side * lane
+                tile = base.cube(
+                    f"PVP_HALL_floor_tile_{tile_idx}", (x, y, 0.018),
+                    (0.53, 0.52, 0.022), p["floor"], static, bevel=0.018,
+                )
+                tile.rotation_euler.z = math.radians(((tile_idx * 3) % 5 - 2) * 0.4)
+                tile_idx += 1
+
+    # Rear-left library bay: a small but dense castle-life cue behind Tu puesto.
+    lib_x = -6.55
+    base.cube("PVP_HALL_library_back", (lib_x, 5.92, 2.30), (1.05, 0.18, 2.05),
+              p["oak"], static, bevel=0.08)
+    for shelf_idx, z in enumerate((0.68, 1.45, 2.22, 2.99, 3.76)):
+        base.cube(
+            f"PVP_HALL_library_shelf_{shelf_idx}", (lib_x, 5.67, z),
+            (0.94, 0.25, 0.055), p["oak_mid"], static, bevel=0.025,
+        )
+    book_idx = 0
+    for shelf_z, count in ((0.82, 6), (1.59, 7), (2.36, 6), (3.13, 5)):
+        for idx in range(count):
+            bx = lib_x - 0.72 + idx * (1.44 / max(1, count - 1))
+            h = 0.19 + 0.025 * ((idx + book_idx) % 3)
+            mat = p["burgundy"] if idx % 3 == 0 else (p["velvet"] if idx % 3 == 1 else p["leather"])
+            base.cube(
+                f"PVP_HALL_library_book_{book_idx}", (bx, 5.40, shelf_z + h),
+                (0.075, 0.11, h), mat, static, bevel=0.012,
+            )
+            book_idx += 1
+    for side in (-1, 1):
+        base.cylinder(
+            f"PVP_HALL_library_post_{side}", (lib_x + side * 0.96, 5.58, 2.25),
+            0.075, 3.95, p["oak_mid"], static, vertices=14,
+        )
+        base.sphere(
+            f"PVP_HALL_library_finial_{side}", (lib_x + side * 0.96, 5.58, 4.26),
+            0.10, p["brass"], static,
+        )
+
+    # Narrow wall sconces: warm pools along the rear wall, with silhouettes
+    # clear enough to read at the lobby camera distance.
+    for idx, x in enumerate((-4.15, -1.85, 1.85, 3.05, 7.15)):
+        base.cube(
+            f"PVP_HALL_sconce_mount_{idx}", (x, 5.82, 4.38),
+            (0.08, 0.06, 0.28), p["iron"], static, bevel=0.018,
+        )
+        arm = base.cylinder(
+            f"PVP_HALL_sconce_arm_{idx}", (x, 5.48, 4.30),
+            0.022, 0.58, p["iron"], static, vertices=10,
+        )
+        arm.rotation_euler.x = math.pi / 2
+        base.cylinder(
+            f"PVP_HALL_sconce_candle_{idx}", (x, 5.22, 4.48),
+            0.042, 0.34, p["ivory"], static, vertices=10,
+        )
+        base.sphere(
+            f"PVP_HALL_sconce_flame_{idx}", (x, 5.22, 4.70),
+            0.062, p["fire"], static, scale=(0.65, 0.65, 1.45),
+        )
+
+    # Carved front apron and heraldic boss give the strategy table the visual
+    # weight of ceremonial furniture instead of a modern desk.
+    base.cube("PVP_HALL_strategy_front_apron", (0, -1.93, 0.82), (3.15, 0.13, 0.38),
+              p["oak_mid"], static, bevel=0.09)
+    base.cube("PVP_HALL_strategy_front_inlay", (0, -2.075, 0.84), (1.72, 0.025, 0.18),
+              p["burgundy"], static, bevel=0.05)
+    base.sphere("PVP_HALL_strategy_front_boss", (0, -2.12, 0.84), 0.16,
+                p["brass"], static, scale=(1.0, 0.34, 1.0))
+    for side in (-1, 1):
+        brace = base.cube(
+            f"PVP_HALL_strategy_front_brace_{side}", (side * 2.62, -1.93, 0.72),
+            (0.10, 0.10, 0.48), p["oak"], static, bevel=0.035,
+        )
+        brace.rotation_euler.y = math.radians(side * 18)
+
+    # A burgundy under-table carpet with a brass border brings the approved
+    # mock's warm ceremonial centre back into a very dark room.
+    base.cube("PVP_HALL_central_rug", (0, -0.05, 0.086), (3.85, 2.78, 0.018),
+              p["burgundy"], static, bevel=0.08)
+    for x in (-3.73, 3.73):
+        base.cube(f"PVP_HALL_central_rug_edge_x_{x:+.2f}", (x, -0.05, 0.108),
+                  (0.025, 2.62, 0.010), p["brass"], static, bevel=0.006)
+    for y in (-2.65, 2.55):
+        base.cube(f"PVP_HALL_central_rug_edge_y_{y:+.2f}", (0, y, 0.108),
+                  (3.70, 0.025, 0.010), p["brass"], static, bevel=0.006)
+
+
 def build_identity_lectern(static, p):
     x, y = -5.65, -0.25
     base.cube("PVP_HALL_identity_plinth", (x, y, 0.38), (1.32, 0.95, 0.38),
@@ -396,21 +515,43 @@ def build_chat_board(static, p):
 
 
 def build_population(static, p):
-    # Two restrained suits of armour at the rear wall. They are ambient, not hotspots.
+    # Two articulated sentinel silhouettes occupy the rear side bays. They are
+    # deliberately secondary to the functional furniture but must actually read.
     for side, label in ((-1, "left"), (1, "right")):
-        x, y = side * 3.55, 5.45
-        base.cylinder(f"PVP_HALL_armor_plinth_{label}", (x, y, 0.24), 0.46, 0.30,
+        x, y = side * 6.75, 4.55
+        base.cylinder(f"PVP_HALL_armor_plinth_{label}", (x, y, 0.22), 0.46, 0.28,
                       p["limestone"], static, vertices=8)
-        base.cylinder(f"PVP_HALL_armor_legs_{label}", (x, y, 1.08), 0.16, 1.35,
-                      p["iron"], static, vertices=16)
-        base.sphere(f"PVP_HALL_armor_torso_{label}", (x, y, 2.02), 0.35,
-                    p["iron"], static, scale=(0.88, 0.55, 1.10))
-        base.sphere(f"PVP_HALL_armor_helm_{label}", (x, y, 2.58), 0.19,
-                    p["iron"], static, scale=(0.92, 0.95, 1.05))
-        base.cylinder(f"PVP_HALL_armor_halberd_{label}", (x + side * 0.38, y, 1.75),
-                      0.022, 3.18, p["oak_mid"], static, vertices=10)
+        for leg_idx, leg_x in enumerate((-0.13, 0.13)):
+            base.cylinder(
+                f"PVP_HALL_armor_leg_{label}_{leg_idx}", (x + leg_x, y, 0.94),
+                0.075, 1.18, p["iron"], static, vertices=14,
+            )
+        base.sphere(f"PVP_HALL_armor_torso_{label}", (x, y, 1.78), 0.31,
+                    p["iron"], static, scale=(0.92, 0.58, 1.12))
+        base.cube(f"PVP_HALL_armor_tabard_{label}", (x, y - 0.20, 1.42),
+                  (0.16, 0.018, 0.30), p["velvet"], static, bevel=0.035)
+        for arm_side in (-1, 1):
+            ax = x + arm_side * 0.34
+            base.sphere(
+                f"PVP_HALL_armor_pauldron_{label}_{arm_side}", (ax, y, 1.96),
+                0.13, p["iron"], static, scale=(1.15, 0.90, 0.72),
+            )
+            arm = base.cylinder(
+                f"PVP_HALL_armor_arm_{label}_{arm_side}", (ax, y, 1.62),
+                0.055, 0.56, p["iron"], static, vertices=12,
+            )
+            arm.rotation_euler.x = math.radians(6 * arm_side)
+        base.cylinder(f"PVP_HALL_armor_gorget_{label}", (x, y, 2.10), 0.14, 0.10,
+                      p["brass"], static, vertices=16)
+        base.sphere(f"PVP_HALL_armor_helm_{label}", (x, y, 2.34), 0.17,
+                    p["iron"], static, scale=(0.92, 0.96, 1.08))
+        base.cube(f"PVP_HALL_armor_visor_{label}", (x, y - 0.16, 2.34),
+                  (0.095, 0.014, 0.018), p["brass"], static, bevel=0.004)
+        hx = x + side * 0.44
+        base.cylinder(f"PVP_HALL_armor_halberd_{label}", (hx, y, 1.62),
+                      0.022, 3.05, p["oak_mid"], static, vertices=10)
         base.cube(f"PVP_HALL_armor_halberd_blade_{label}",
-                  (x + side * 0.47, y, 3.20), (0.12, 0.025, 0.18),
+                  (hx + side * 0.10, y, 3.10), (0.12, 0.025, 0.18),
                   p["brass"], static, bevel=0.025)
 
     # Candle practicals frame the three physical lobby zones.
@@ -424,18 +565,18 @@ def build_population(static, p):
 def build_lighting(static):
     scene = bpy.context.scene
     scene["pvp_duel_hall_contract"] = CONTRACT
-    scene.view_settings.exposure = 0.22
+    scene.view_settings.exposure = 0.30
 
     moon = base.light("PVP_HALL_LIGHT_moon", "AREA", (5.3, 5.2, 6.5), 520.0,
                       (0.18, 0.34, 0.74), static, size=4.2)
     base.look_at(moon, (1.2, 0.3, 1.6))
 
-    warm = base.light("PVP_HALL_LIGHT_chandelier", "POINT", (0.0, 0.8, 5.9), 315.0,
+    warm = base.light("PVP_HALL_LIGHT_chandelier", "POINT", (0.0, 0.8, 5.9), 285.0,
                       (1.0, 0.34, 0.08), static, radius=1.6)
     warm["war_room_runtime_dynamic"] = "pvp-hall-chandelier"
 
     for idx, (x, y) in enumerate(((-5.7, -0.3), (0.0, 0.3), (5.7, -0.1))):
-        lamp = base.light(f"PVP_HALL_LIGHT_zone_{idx}", "AREA", (x, y - 0.8, 4.5), 175.0,
+        lamp = base.light(f"PVP_HALL_LIGHT_zone_{idx}", "AREA", (x, y - 0.8, 4.5), 155.0,
                           (0.95, 0.48, 0.18), static, size=2.2)
         base.look_at(lamp, (x, y, 1.7))
 
@@ -472,6 +613,7 @@ def apply_identity():
     clear_inherited_room(static)
     p = palette()
     build_envelope(static, p)
+    build_castle_dressing(static, p)
     build_identity_lectern(static, p)
     build_strategy_table(static, p)
     build_chat_board(static, p)
