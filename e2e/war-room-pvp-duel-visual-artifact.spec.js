@@ -107,6 +107,9 @@ async function openDuelRoom(page, viewport) {
   await expect(canvas).toHaveAttribute('data-war-room-variant-status', 'ready', { timeout: 60_000 });
   await expect(canvas).toHaveAttribute('data-board3d-piece-built', '32', { timeout: 45_000 });
   await expect(room.getByRole('button', { name: 'Salir de la partida', exact: true })).toBeVisible();
+  const retroPlayer = room.locator('[aria-label="RetroPlayer de la Duel Room"]');
+  await expect(retroPlayer).toBeVisible();
+  await expect(retroPlayer.locator('.music-deck')).toBeVisible();
   const utility = room.getByRole('button', { name: 'Más acciones de partida', exact: true });
   const account = room.getByRole('button', { name: 'Mi cuenta', exact: true });
   await expect(utility).toBeVisible();

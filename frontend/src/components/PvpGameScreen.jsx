@@ -4,6 +4,7 @@ import { WarRoomUtilityMenu } from './GameWarRoomCommandColumn.jsx';
 import WarRoomBoardSurface from './WarRoomBoardSurface.jsx';
 import WarRoomExitOverlay from './WarRoomExitOverlay.jsx';
 import WarRoomAccountButton from './WarRoomAccountButton.jsx';
+import WarRoomImmersiveMusicDock from './WarRoomImmersiveMusicDock.jsx';
 import { formatClock } from '../clock.js';
 import { pvpApi } from '../pvpApi.js';
 import { pvpMatchPulseNeedsFullRefresh } from '../pvpMatchPolling.js';
@@ -350,6 +351,7 @@ export default function PvpGameScreen({ initialMatch, onExit, onMatchUpdate }) {
 
   return (
     <section className="game-screen pvp-war-room" aria-label="Sala de duelo 1 contra 1">
+      <WarRoomImmersiveMusicDock ariaLabel="RetroPlayer de la Duel Room" />
       <div className="game-layout game-layout-3d pvp-war-room__layout">
         <div className="board-column">
           <div className="board-live-row is-3d-warroom">
