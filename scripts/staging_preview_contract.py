@@ -429,6 +429,8 @@ def main() -> int:
         ("workflows:\n      - Deploy to staging", "staging AI canonical source"),
         ("UPSTREAM_EVENT", "staging AI upstream provenance guard"),
         ("Accredit coherent staging generation", "staging AI read-only accreditation"),
+        ("Checkout accreditation orchestrator", "staging AI tooling checkout"),
+        ("ref: ${{ github.sha }}", "staging AI tooling uses orchestrator SHA"),
         ("actions: read", "staging AI may inspect exact upstream jobs"),
         ("Prove upstream generation", "staging AI automatic deploy proof"),
         ("staging_deploy_proof.py --run-id", "staging AI exact upstream-run proof helper"),
