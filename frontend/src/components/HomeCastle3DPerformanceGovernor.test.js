@@ -21,9 +21,10 @@ describe('HomeCastle3DPerformanceGovernor', () => {
     expect(feed(governor, repeated(16.7, 240))).toBeNull();
   });
 
-  it('degrades sustained 30fps full rendering to lite', () => {
+  it('degrades only sustained multi-window 30fps full rendering to lite', () => {
     const governor = createHomeCastle3DPerformanceGovernor('full');
-    expect(feed(governor, repeated(33.4, 140))).toBe('lite');
+    expect(feed(governor, repeated(33.4, 140))).toBeNull();
+    expect(feed(governor, repeated(33.4, 260))).toBe('lite');
   });
 
   it('ignores one isolated full-renderer hitch', () => {
@@ -51,9 +52,10 @@ describe('HomeCastle3DPerformanceGovernor', () => {
     expect(feed(governor, repeated(33.4, 180))).toBeNull();
   });
 
-  it('falls back from persistently slow lite rendering to canonical 2D', () => {
+  it('falls back only after persistently slow lite rendering across several windows', () => {
     const governor = createHomeCastle3DPerformanceGovernor('lite');
-    expect(feed(governor, repeated(70, 100))).toBe('2d');
+    expect(feed(governor, repeated(70, 100))).toBeNull();
+    expect(feed(governor, repeated(70, 220))).toBe('2d');
   });
 
   it('does nothing for the 2D tier or an unknown tier', () => {
