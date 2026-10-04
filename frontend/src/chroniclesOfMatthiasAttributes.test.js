@@ -82,6 +82,13 @@ describe('Chronicles Tactics · class attributes', () => {
     expect(chroniclesHeroProgress(result.progression, 'rook').attributes.power).toBe(CHRONICLES_ATTRIBUTE_CAP);
   });
 
+  it('turns Agilidad into a real initiative bonus', () => {
+    const progression = progressionWith('matthias', { agility: 3 });
+    const state = tacticsState(progression);
+    expect(state.rpgModifiers.matthias.initiativeBonus).toBe(3);
+    expect(chroniclesHeroProgress(progression, 'matthias').attributes.agility).toBe(3);
+  });
+
   it('turns Vigor into real maximum HP at encounter start', () => {
     const progression = progressionWith('matthias', { vigor: 3 });
     const state = tacticsState(progression);
