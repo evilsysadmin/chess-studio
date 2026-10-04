@@ -429,12 +429,12 @@ def build_gothic_architecture_pass(static, p):
 
 
 def build_identity_lectern(static, p):
-    x, y = -5.65, -0.25
-    base.cube("PVP_HALL_identity_plinth", (x, y, 0.38), (1.32, 0.95, 0.38),
+    x, y = -5.65, -0.20
+    base.cube("PVP_HALL_identity_plinth", (x, y, 0.42), (1.55, 1.10, 0.42),
               p["oak"], static, bevel=0.12)
-    base.cube("PVP_HALL_identity_body", (x, y + 0.05, 1.15), (1.02, 0.72, 0.68),
+    base.cube("PVP_HALL_identity_body", (x, y + 0.05, 1.24), (1.18, 0.82, 0.76),
               p["oak_mid"], static, bevel=0.10)
-    top = base.cube("PVP_HALL_identity_top", (x, y - 0.05, 1.92), (1.28, 0.92, 0.11),
+    top = base.cube("PVP_HALL_identity_top", (x, y - 0.05, 2.08), (1.48, 1.02, 0.12),
                     p["oak"], static, bevel=0.08)
     top.rotation_euler.x = math.radians(-4)
     base.cube("PVP_HALL_identity_brass_lip", (x, y - 0.92, 1.84), (1.18, 0.035, 0.055),
@@ -443,7 +443,7 @@ def build_identity_lectern(static, p):
     # instead of reading as a generic cabinet.
     for side in (-1, 1):
         base.cylinder(
-            f"PVP_HALL_identity_post_{side}", (x + side * 0.92, y - 0.62, 1.18),
+            f"PVP_HALL_identity_post_{side}", (x + side * 1.06, y - 0.70, 1.30),
             0.085, 1.22, p["oak"], static, vertices=16,
         )
         base.sphere(
@@ -456,24 +456,24 @@ def build_identity_lectern(static, p):
               p["brass"], static, bevel=0.01)
 
     # Big pawn under a display dome: recognizable even before HTML overlays load.
-    base.cylinder("PVP_HALL_identity_pawn_base", (x, y, 2.12), 0.34, 0.16,
+    base.cylinder("PVP_HALL_identity_pawn_base", (x, y, 2.34), 0.39, 0.18,
                   p["ivory"], static, vertices=24)
-    base.sphere("PVP_HALL_identity_pawn_body", (x, y, 2.48), 0.28,
+    base.sphere("PVP_HALL_identity_pawn_body", (x, y, 2.74), 0.32,
                 p["ivory"], static, scale=(0.78, 0.78, 1.18))
-    base.sphere("PVP_HALL_identity_pawn_head", (x, y, 2.86), 0.20,
+    base.sphere("PVP_HALL_identity_pawn_head", (x, y, 3.18), 0.23,
                 p["ivory"], static)
     # Open brass display cage reads as a premium vitrine in Eevee/GLB without
     # relying on fragile alpha/transmission settings. The pawn stays visible.
-    base.torus("PVP_HALL_identity_dome_ring", (x, y, 1.84), 0.58, 0.035,
+    base.torus("PVP_HALL_identity_dome_ring", (x, y, 2.05), 0.66, 0.040,
                p["brass"], static)
-    base.torus("PVP_HALL_identity_dome_crown", (x, y, 3.18), 0.30, 0.026,
+    base.torus("PVP_HALL_identity_dome_crown", (x, y, 3.55), 0.34, 0.028,
                p["brass"], static)
     for rib_idx, angle in enumerate((0, 60, 120)):
         rad = math.radians(angle)
         rib = base.cube(
             f"PVP_HALL_identity_dome_rib_{rib_idx}",
-            (x + math.cos(rad) * 0.42, y + math.sin(rad) * 0.42, 2.51),
-            (0.018, 0.018, 0.66), p["brass"], static, bevel=0.008,
+            (x + math.cos(rad) * 0.48, y + math.sin(rad) * 0.48, 2.80),
+            (0.020, 0.020, 0.72), p["brass"], static, bevel=0.008,
         )
         rib.rotation_euler.z = rad
 
