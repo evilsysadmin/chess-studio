@@ -502,10 +502,16 @@ function Board3DCanvas({
           reducedMotion: getEffectiveReducedMotion(),
           coarsePointer,
           softwareRenderer,
-          narrativeActive: Boolean(cachedHansDriver?.userData.warRoomHansQuickIteration
-            && !cachedHansDriver.userData.warRoomHansCompleted
-            && (hansReadyFrames < 2 || !latestPropsRef.current.hansFireCallEnabled
-              || renderer.domElement.dataset.warRoomHansCallReleased === 'true')),
+          // Software renderers normally sleep completely, but the explicit
+          // Hans ambient-audit path must keep the same slow heartbeat as a real
+          // GPU or it can never observe delayed ambient service routines.
+          narrativeActive: Boolean(
+            hansDiagnosticsRequested
+            || (cachedHansDriver?.userData.warRoomHansQuickIteration
+              && !cachedHansDriver.userData.warRoomHansCompleted
+              && (hansReadyFrames < 2 || !latestPropsRef.current.hansFireCallEnabled
+                || renderer.domElement.dataset.warRoomHansCallReleased === 'true')),
+          ),
           elapsedMs,
         }),
         onFrame: () => {
