@@ -192,6 +192,10 @@ function addDesk(root, wood, woodDark, leather, brass, parchment, lite) {
 
   box(group, [14.2, .34, 3.2], wood, [0, 1.0, 0], 'desk-top');
   box(group, [13.4, 1.15, .22], woodDark, [0, .42, .95], 'desk-front');
+  for (const x of [-4.65, -1.55, 1.55, 4.65]) {
+    box(group, [2.6, .66, .06], wood, [x, .46, 1.09], 'desk-drawer-front');
+    cylinder(group, .055, .07, .09, brass, [x, .48, 1.16], 'desk-drawer-pull', 12).rotation.x = Math.PI / 2;
+  }
   for (const x of [-6.25, 6.25]) {
     box(group, [.32, 1.6, .32], woodDark, [x, .18, -.95], 'desk-leg');
     box(group, [.32, 1.6, .32], woodDark, [x, .18, .95], 'desk-leg');
@@ -251,7 +255,7 @@ function addBankerLamp(root, brass, glass) {
   group.name = 'insights-training-room-bankers-lamp';
   cylinder(group, .44, .55, .16, brass, [0, .06, 0], 'lamp-base');
   cylinder(group, .075, .1, 1.45, brass, [0, .84, 0], 'lamp-stem');
-  const shade = new THREE.Mesh(new THREE.BoxGeometry(1.55, .36, .7), glass);
+  const shade = new THREE.Mesh(new THREE.BoxGeometry(1.7, .4, .78), glass);
   shade.position.set(0, 1.62, 0);
   shade.rotation.z = -.06;
   shade.name = 'lamp-green-shade';
@@ -299,15 +303,15 @@ export function buildInsightsTrainingRoomLayer({ coarsePointer = false } = {}) {
   const woodTexture = makeWoodTexture();
   const wood = material(0xffffff, .05, .58, { map: woodTexture });
   const woodDark = material(0x4a2b1e, .03, .72, { map: woodTexture });
-  const leather = material(0x342119, .03, .56);
+  const leather = material(0x4a2d24, .03, .53);
   const stone = material(0x4a4540, .01, .9);
   const brass = material(0xb58d45, .72, .26);
   const parchment = material(0xd6c6a3, .01, .78);
-  const bankerGlass = material(0x1f563f, .05, .3, {
+  const bankerGlass = material(0x34785d, .04, .28, {
     transparent: true,
-    opacity: .9,
-    emissive: 0x0e241b,
-    emissiveIntensity: .34,
+    opacity: .92,
+    emissive: 0x174a37,
+    emissiveIntensity: .58,
   });
   const night = new THREE.MeshBasicMaterial({ color: 0x0b1a2d });
   const moon = new THREE.MeshStandardMaterial({
@@ -327,6 +331,9 @@ export function buildInsightsTrainingRoomLayer({ coarsePointer = false } = {}) {
   box(root, [20, .32, 20], stone, [0, -.72, -1.0], 'training-room-floor');
   box(root, [18.8, 7.3, .34], woodDark, [0, 2.65, -7.05], 'training-room-back-wall');
   box(root, [18.5, 1.35, .28], wood, [0, .18, -6.82], 'training-room-wainscot');
+  box(root, [19.2, .24, 1.0], wood, [0, 6.12, -6.45], 'training-room-crown-moulding');
+  box(root, [19.6, .22, 10.5], woodDark, [0, 6.38, -2.1], 'training-room-ceiling');
+  box(root, [19.0, .08, .5], brass, [0, 5.94, -6.38], 'training-room-cornice-inlay');
   addWallPanels(root, wood, brass);
 
   // A restrained rug and desk rail give the floor/desk a more authored,
