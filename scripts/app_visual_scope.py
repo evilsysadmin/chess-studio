@@ -94,6 +94,9 @@ PVP_VISUAL_SURFACES = {
     "frontend/src/components/pvplobbymodal.jsx",
     "frontend/src/components/pvplobbymodal.css",
     "frontend/src/components/pvpduelhallroom.css",
+    "frontend/src/components/pvpduelhallasset.js",
+    "frontend/src/components/pvpduelhallshell.js",
+    "frontend/src/components/pvpduelhallscene3d.jsx",
     "frontend/src/components/pvphandoffmodal.jsx",
     "frontend/src/components/pvphandoffmodal.css",
     "frontend/src/components/homepvprosterlink.jsx",
@@ -178,6 +181,9 @@ DEDICATED_WAR_ROOM_BLENDER_PATHS = {
     "scripts/blender/build_pvp_duel_room.py",
     "scripts/blender/publish_pvp_duel_room.py",
     ".github/workflows/pvp-duel-room-blender-art.yml",
+    "scripts/blender/build_pvp_duel_hall.py",
+    "scripts/blender/publish_pvp_duel_hall.py",
+    ".github/workflows/pvp-duel-hall-blender-art.yml",
 }
 
 def _surface_groups(path: str) -> set[str] | None:
@@ -653,6 +659,9 @@ def self_test() -> None:
     assert not pvp_lobby.hans and not pvp_lobby.chesscom
     pvp_lobby_room = classify([
         "frontend/src/components/PvPDuelHallRoom.css",
+        "frontend/src/components/PvpDuelHallAsset.js",
+        "frontend/src/components/PvpDuelHallShell.js",
+        "frontend/src/components/PvpDuelHallScene3D.jsx",
         "e2e/pvp-lobby-visual-artifact.spec.js",
     ])
     assert pvp_lobby_room.capture_groups == "home"
@@ -741,6 +750,13 @@ def self_test() -> None:
     assert pawn_visual.experiments_scope == "pawnslug"
     assert not pawn_visual.hans and not pawn_visual.chesscom
 
+    blender_duel_hall = classify([
+        "scripts/blender/build_pvp_duel_hall.py",
+        "scripts/blender/publish_pvp_duel_hall.py",
+        ".github/workflows/pvp-duel-hall-blender-art.yml",
+    ])
+    assert blender_duel_hall.capture_groups == "none"
+    assert not blender_duel_hall.hans and not blender_duel_hall.chesscom
     blender_warroom = classify(["scripts/blender/build_war_room_premium.py"])
     blender_publish = classify(["scripts/blender/publish_war_room_v2_staging.py"])
     blender_workflow = classify([".github/workflows/war-room-blender-art.yml"])

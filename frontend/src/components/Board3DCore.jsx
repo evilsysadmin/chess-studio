@@ -244,9 +244,9 @@ function Board3DCanvas({
     scene.add(warm);
 
     const classicShellController = createClassicWarRoomShellController(
-      { scene, boardGroup, theme, whiteSide, renderLite: sceneLite },
+      { scene, boardGroup, theme, whiteSide, renderLite: sceneLite, classroom: classroomCamera },
       shouldShowClassicWarRoomShell({ selectable: warRoomVariantSelectable, variant: warRoomVariant }),
-    );
+    ); renderer.domElement.dataset.schoolRoomScene = classicShellController.current().find((object) => object?.userData?.schoolRoomCanonical)?.userData?.schoolRoomSceneVersion || 'off';
 
     const lightTileMaterial = makePremiumTileMaterial({ color: theme.light, light: true, coarsePointer: sceneLite, seed: 0x531f });
     const darkTileMaterial = makePremiumTileMaterial({ color: theme.dark, light: false, coarsePointer: sceneLite, seed: 0xa72d });

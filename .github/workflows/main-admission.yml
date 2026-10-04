@@ -24,6 +24,8 @@ jobs:
   # any miss/corruption.
   frontend_staging_artifact:
     name: Main · prebuild staging frontend
+    needs: source
+    if: needs.source.outputs.deploy_required == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     continue-on-error: true
@@ -64,6 +66,8 @@ jobs:
     outputs:
       source: ${{ steps.source.outputs.source }}
       pr_number: ${{ steps.source.outputs.pr_number }}
+      deploy_required: ${{ steps.deploy_scope.outputs.deploy_required }}
+      deploy_reason: ${{ steps.deploy_scope.outputs.deploy_reason }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -77,6 +81,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: python3 -S scripts/main_ci_source.py
+
+      - name: Classify staging deploy surface
+        id: deploy_scope
+        run: |
+          python3 -S scripts/staging_deploy_scope.py --self-test
+          python3 -S scripts/staging_deploy_scope.py --sha "${{ github.sha }}" --source "${{ steps.source.outputs.source }}" --github-output "$GITHUB_OUTPUT"
 
   admit_pr:
     name: Main · accredited PR gate

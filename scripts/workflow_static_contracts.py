@@ -56,13 +56,30 @@ def validate_staging_frontend_build_single_source(root: Path = ROOT) -> None:
     action = root / ".github" / "actions" / "build-staging-frontend" / "action.yml"
     if not action.is_file():
         raise SystemExit("falta .github/actions/build-staging-frontend")
-    for name in ("main-admission.yml", "staging-deploy.yml"):
-        text = (root / ".github" / "workflows" / name).read_text(encoding="utf-8")
+    workflows = {
+        name: (root / ".github" / "workflows" / name).read_text(encoding="utf-8")
+        for name in ("main-admission.yml", "staging-deploy.yml")
+    }
+    for name, text in workflows.items():
         if "uses: ./.github/actions/build-staging-frontend" not in text:
             raise SystemExit(f"{name} debe construir staging con build-staging-frontend")
         if "VITE_BUILD_SHA" in text:
             raise SystemExit(f"{name} vuelve a definir el build de staging inline (VITE_*): usa la action")
-    print("staging frontend build single source: OK")
+    admission = workflows["main-admission.yml"]
+    for token in (
+        "deploy_required: ${{ steps.deploy_scope.outputs.deploy_required }}",
+        "needs: source",
+        "if: needs.source.outputs.deploy_required == 'true'",
+        'staging_deploy_scope.py --sha "${{ github.sha }}" --source "${{ steps.source.outputs.source }}"',
+    ):
+        if token not in admission:
+            raise SystemExit(f"main-admission perdió el deploy-scope no-runtime: {token}")
+    subprocess.run(
+        [sys.executable, "-S", "scripts/staging_deploy_scope.py", "--self-test"],
+        cwd=root,
+        check=True,
+    )
+    print("staging frontend build/deploy-scope contract: OK")
 
 
 def validate_cloudflare_auth_rate_limit(root: Path = ROOT) -> None:

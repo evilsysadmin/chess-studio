@@ -89,6 +89,12 @@ jobs:
           assert 'WR_ANCHOR_right_fireplace_practical' not in node_names
           assert 'WR3_ARM_hearth_flame_body' in node_names
           assert 'WR3_ARM_hearth_flame_0' in node_names
+          # Hans' stage: door leaf (own node, open yaw extra) and his anchors.
+          hans_nodes = {'WR_HANS_door_leaf', 'WR_ANCHOR_hans_hearth', 'WR_ANCHOR_hans_door',
+                        'WR_ANCHOR_hans_basket', 'WR_ANCHOR_hans_tools', 'WR_ANCHOR_hans_corridor_0'}
+          assert hans_nodes <= node_names, sorted(hans_nodes - node_names)
+          leaf = next(row for row in gltf['nodes'] if row.get('name') == 'WR_HANS_door_leaf')
+          assert 'mesh' in leaf and 'war_room_hans_door_open_yaw' in leaf.get('extras', {}), leaf
           assert glb.stat().st_size < 4_500_000, glb.stat().st_size
 
           image = Image.open(preview).convert('RGB')

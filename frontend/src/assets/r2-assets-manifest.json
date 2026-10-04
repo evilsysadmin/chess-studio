@@ -112,12 +112,40 @@
       "sha256": "c12321f2afe18cf454c2a62e792b5a4a98d052238b32160849fcf635135c21e7",
       "url": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/shotgun/matthias_shotgun_canonical_v4-c12321f2afe18cf4.webp"
     },
+    "pvp.duelHall.runtime": {
+      "bytes": 3930540,
+      "contentType": "model/gltf-binary",
+      "key": "pvp/duel-hall/runtime/pvp-duel-hall-shell-3217783aa7095e0f.glb",
+      "sha256": "3217783aa7095e0f9851b3d618478d753b6061c9914723375f54e442c3800236",
+      "url": "https://assets.chess-studio.shadowops.dpdns.org/pvp/duel-hall/runtime/pvp-duel-hall-shell-3217783aa7095e0f.glb"
+    },
     "pvp.duelRoom.runtime": {
       "bytes": 8248920,
       "contentType": "model/gltf-binary",
       "key": "pvp/duel-room/runtime/pvp-duel-room-shell-b644b06d0c522690.glb",
       "sha256": "b644b06d0c522690ff0d4f9c6cb3c16e9642afe30dee8258f68948da6d0b9431",
       "url": "https://assets.chess-studio.shadowops.dpdns.org/pvp/duel-room/runtime/pvp-duel-room-shell-b644b06d0c522690.glb"
+    },
+    "warRoom.v2.runtime": {
+      "bytes": 3466724,
+      "contentType": "model/gltf-binary",
+      "key": "war-room/v2/runtime/war-room-premium-shell-c8c6d324d0dec87e.glb",
+      "sha256": "c8c6d324d0dec87e72b5dba6864a75fa94517eda173ec8a94f482cbd16f0428a",
+      "url": "https://assets.chess-studio.shadowops.dpdns.org/war-room/v2/runtime/war-room-premium-shell-c8c6d324d0dec87e.glb"
+    },
+    "warRoom.v3.runtime": {
+      "bytes": 3746592,
+      "contentType": "model/gltf-binary",
+      "key": "war-room/v3/runtime/war-room-v3-shell-5f7b69a8b8681b37.glb",
+      "sha256": "5f7b69a8b8681b37c98da4cda33ce6d7cf7247ad5bd68bd64f98a11a65baf1a8",
+      "url": "https://assets.chess-studio.shadowops.dpdns.org/war-room/v3/runtime/war-room-v3-shell-5f7b69a8b8681b37.glb"
+    },
+    "warRoom.v4.runtime": {
+      "bytes": 3698264,
+      "contentType": "model/gltf-binary",
+      "key": "war-room/v4/runtime/war-room-v4-shell-58e5243dcf0b39d7.glb",
+      "sha256": "58e5243dcf0b39d7df3b0f8ba35e4f0745ac7a587917e254eada750af6b22584",
+      "url": "https://assets.chess-studio.shadowops.dpdns.org/war-room/v4/runtime/war-room-v4-shell-58e5243dcf0b39d7.glb"
     }
   },
   "baseUrl": "https://assets.chess-studio.shadowops.dpdns.org",
