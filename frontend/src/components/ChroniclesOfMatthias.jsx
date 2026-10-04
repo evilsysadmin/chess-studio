@@ -122,6 +122,19 @@ export default function ChroniclesOfMatthias({ onExit }) {
     selectedMemberIdRef.current = selectedMemberId;
   }, [selectedMemberId]);
 
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const previousHtmlOverflow = html.style.overflow;
+    const previousBodyOverflow = body.style.overflow;
+    html.style.overflow = 'hidden';
+    body.style.overflow = 'hidden';
+    return () => {
+      html.style.overflow = previousHtmlOverflow;
+      body.style.overflow = previousBodyOverflow;
+    };
+  }, []);
+
   const exitChronicles = useCallback(() => {
     // Leaving the renderer is not the end of the expedition. Keep the shared
     // run alive so Tactics can resume the same authoritative world.
@@ -395,15 +408,6 @@ export default function ChroniclesOfMatthias({ onExit }) {
       data-chronicles-phase={state.phase}
       data-chronicles-turn-engine={CHRONICLES_TURN_ENGINE_VERSION}
     >
-      <header className="chronicles-head">
-        <div>
-          <span className="section-label">CRÓNICA RPG · BOOK I</span>
-          <h2>Chronicles of Matthias</h2>
-          <p>Dungeon crawler en primera persona. El grupo avanza por casillas; las piezas siguen siendo piezas y la arquitectura tiene memoria de tablero.</p>
-        </div>
-        <button type="button" className="secondary-btn" onClick={exitChronicles}>← Experimentos</button>
-      </header>
-
       <div className="chronicles-shell">
         <aside className="chronicles-party" aria-label="Grupo de Matthias">
           <span className="chronicles-panel-kicker">GRUPO · 1–4 SELECCIONAR</span>
@@ -454,6 +458,14 @@ export default function ChroniclesOfMatthias({ onExit }) {
             <span>RUMBO <b>{direction.label}</b></span>
             <span>ACTIVO <b>{selectedMember?.name}</b></span>
             <span>OBJETIVO <b>{objective}</b></span>
+            <details className="chronicles-game-menu">
+              <summary aria-label="Abrir menú de Chronicles">☰ <b>MENÚ</b></summary>
+              <div className="chronicles-game-menu__panel">
+                <strong>Chronicles of Matthias</strong>
+                <small>La expedición queda guardada.</small>
+                <button type="button" onClick={exitChronicles}>Salir a Experimentos</button>
+              </div>
+            </details>
           </div>
 
           <div className="chronicles-stage">
