@@ -25,8 +25,8 @@
   top: 0;
   left: 50%;
   width: min(100%, 1420px);
-  height: min(760px, calc(100dvh - 6.6rem));
-  min-height: 610px;
+  height: min(790px, calc(100dvh - 6.1rem));
+  min-height: 640px;
   transform: translateX(-50%);
   overflow: hidden;
   border: 1px solid rgba(194, 148, 73, .18);
@@ -83,8 +83,8 @@
 
 /* The title floats in the room instead of sitting in a dashboard hero card. */
 .insights-training-room .insights-workspace-header {
-  width: min(610px, 48%);
-  min-height: 350px;
+  width: min(570px, 43%);
+  min-height: 340px;
   margin: clamp(.8rem, 2.3vw, 1.7rem) 0 0 clamp(.1rem, 1.5vw, 1rem);
   padding: .55rem .8rem 1rem;
   overflow: visible;
@@ -161,8 +161,8 @@
   position: relative;
   top: auto;
   z-index: 5;
-  width: calc(100% - clamp(1rem, 3vw, 3.4rem));
-  margin: -2.3rem auto 0;
+  width: min(880px, calc(100% - clamp(1rem, 8vw, 8rem)));
+  margin: -1.8rem 3.2% 0 auto;
   gap: .7rem;
   padding: 0;
   border: 0;
@@ -173,8 +173,8 @@
 }
 
 .insights-training-room .insights-workspace-nav > button {
-  min-height: 84px;
-  padding: .82rem 1rem;
+  min-height: 76px;
+  padding: .72rem .92rem;
   border: 1px solid rgba(175, 127, 64, .5);
   border-radius: 6px;
   background:
@@ -223,22 +223,23 @@
 
 /* First work block reads as the desk surface, not a SaaS card stack. */
 .insights-training-room .insights-workspace-panel {
-  margin-top: .18rem;
-  padding: .85rem clamp(.1rem, 1vw, .7rem) 0;
+  margin-top: .35rem;
+  padding: .72rem clamp(.1rem, 1vw, .7rem) 0;
 }
 
 .insights-training-room .insights-guided-session {
   position: relative;
-  margin: 0;
-  padding: 1.05rem clamp(.8rem, 2.2vw, 1.8rem) 1.15rem;
-  border: 0;
-  border-top: 1px solid rgba(196, 145, 72, .34);
-  border-bottom: 1px solid rgba(90, 60, 32, .4);
-  border-radius: 0;
+  width: min(860px, 72%);
+  margin: 0 0 0 2.4%;
+  padding: 1.05rem clamp(.9rem, 2.2vw, 1.9rem) 1.15rem;
+  border: 1px solid rgba(174, 126, 63, .34);
+  border-radius: 7px;
   background:
-    linear-gradient(180deg, rgba(47, 29, 17, .82), rgba(17, 13, 11, .86));
-  box-shadow: 0 18px 34px rgba(0, 0, 0, .26);
-  backdrop-filter: blur(8px);
+    linear-gradient(180deg, rgba(55, 34, 20, .78), rgba(18, 13, 11, .82));
+  box-shadow:
+    0 18px 34px rgba(0, 0, 0, .24),
+    inset 0 1px rgba(255, 223, 159, .045);
+  backdrop-filter: blur(7px);
 }
 
 .insights-training-room .insights-guided-session::before {
@@ -278,18 +279,26 @@
 }
 
 .insights-training-room .insights-optional-plans {
-  margin-top: .6rem;
+  width: min(860px, 72%);
+  margin: .58rem 0 0 2.4%;
   border-color: rgba(123, 94, 58, .44);
-  background: rgba(10, 9, 9, .72);
+  background: rgba(10, 9, 9, .68);
 }
 
 /* Matthias' verdict becomes the parchment lying beyond the desk edge. */
+.insights-training-room.insights-workspace-view-now .insights-hub {
+  width: min(980px, 82%);
+  margin-left: auto;
+  margin-right: 2.4%;
+}
+
 .insights-training-room.insights-workspace-view-now .ai-player-portrait {
   margin-top: .9rem;
-  border-color: rgba(164, 120, 61, .58);
-  border-radius: 4px;
+  border-color: rgba(132, 91, 43, .66);
+  border-radius: 3px;
   background:
-    linear-gradient(180deg, rgba(232, 220, 187, .98), rgba(193, 174, 136, .96));
+    linear-gradient(180deg, rgba(235, 223, 190, .985), rgba(194, 174, 135, .975));
+  transform: rotate(-.18deg);
   color: #272018;
   box-shadow: 0 18px 36px rgba(0, 0, 0, .28);
 }
@@ -391,9 +400,21 @@
     padding: .35rem 0 0;
   }
 
+  .insights-training-room .insights-guided-session,
+  .insights-training-room .insights-optional-plans,
+  .insights-training-room.insights-workspace-view-now .insights-hub {
+    width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+  }
+
   .insights-training-room .insights-guided-session {
     padding: .9rem .76rem 1rem;
     backdrop-filter: none;
+  }
+
+  .insights-training-room.insights-workspace-view-now .ai-player-portrait {
+    transform: none;
   }
 }
 
