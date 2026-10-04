@@ -29,6 +29,14 @@ describe('War Room first-run tutorial contract', () => {
     })).toBe(WAR_ROOM_TUTORIAL_PHASE.COMPLETE);
   });
 
+  it('does not ask to pick a piece again while the CPU answers the first move', () => {
+    // The move is out, selection cleared, history not confirmed yet.
+    expect(resolveWarRoomTutorialPhase({ selectedSquare: '', turn: 'cpu', historyLength: 0, baselineHistoryLength: 0 }))
+      .toBe(WAR_ROOM_TUTORIAL_PHASE.COMPLETE);
+    expect(resolveWarRoomTutorialPhase({ selectedSquare: '', turn: 'human' }))
+      .toBe(WAR_ROOM_TUTORIAL_PHASE.SELECT);
+  });
+
   it('keeps the tutorial voice in Matthias instead of generic system copy', () => {
     expect(warRoomTutorialCopy(WAR_ROOM_TUTORIAL_PHASE.SELECT)).toContain('barbaridad');
     expect(warRoomTutorialCopy(WAR_ROOM_TUTORIAL_PHASE.MOVE)).toContain('casillas iluminadas');
