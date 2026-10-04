@@ -39,6 +39,7 @@ import { chroniclesRetaliationCue } from '../chroniclesOfMatthiasRetaliation.js'
 import { chroniclesTargetAhead } from '../chroniclesOfMatthiasTargeting.js';
 import { CHRONICLES_TURN_ENGINE_VERSION } from '../chroniclesOfMatthiasTurns.js';
 import {
+  chroniclesHeroProgress,
   loadChroniclesProgression,
   saveChroniclesProgression,
   setChroniclesCharacterBuild,
@@ -208,10 +209,19 @@ export default function ChroniclesOfMatthias({ onExit }) {
       const forcedTarget = attackingMember
         ? chroniclesEnemyTargetAhead(current, attackingMember.reach)
         : null;
+      const partyAgilityBonuses = Object.fromEntries(
+        (current.party || []).map((member) => [
+          member.id,
+          Number(chroniclesHeroProgress(progression, member.id).attributes?.agility || 0),
+        ]),
+      );
       const started = chroniclesStartInitiativeCombat(
         exploratoryNext,
         chroniclesActiveEnemies(exploratoryNext),
-        { forceEnemyIds: forcedTarget ? [forcedTarget.enemy.id] : [] },
+        {
+          forceEnemyIds: forcedTarget ? [forcedTarget.enemy.id] : [],
+          partyAgilityBonuses,
+        },
       );
       next = started !== exploratoryNext
         ? started
@@ -250,7 +260,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
         setRetaliationCue((active) => active?.token === token ? null : active);
       }, 320);
     }
-  }, []);
+  }, [progression]);
 
   useEffect(() => {
     const current = stateRef.current;
@@ -286,7 +296,11 @@ export default function ChroniclesOfMatthias({ onExit }) {
     const memberId = initiativeActor?.kind === 'party'
       ? initiativeActor.id
       : selectedMemberIdRef.current;
-    engineRef.current?.playAttack?.(memberId);
+    const member = current.party.find((candidate) => candidate.id === memberId);
+    const startsCombat = !current.initiative
+      && member
+      && chroniclesEnemyTargetAhead(current, member.reach);
+    if (!startsCombat) engineRef.current?.playAttack?.(memberId);
     dispatch({ type: 'attack', memberId });
   }, [dispatch]);
 
