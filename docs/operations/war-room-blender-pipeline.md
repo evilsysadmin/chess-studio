@@ -9,6 +9,7 @@ War Room v2 and v3 use deterministic Blender generators for their static room sh
 - `build_war_room_premium.py` owns the v2 room.
 - `build_war_room_v3.py` owns the v3 Armory Hall. It reuses only the proven board anchor and camera object; visible v2 architecture and the retired observatory (`WR3_OBS_*`) are forbidden by validation. It retains an independent art contract, publisher, R2 prefix and Blender gate.
 - v3 has one great stone hearth centred on the back wall; a second hearth or its practical-light anchor is a regression.
+- Hans lives in every War Room (never the Duel Room). Each Blender room authors his stage: the empties `WR_ANCHOR_hans_hearth` (floor, hearth mouth), `WR_ANCHOR_hans_door` (spawn just inside the threshold), `WR_ANCHOR_hans_basket`, `WR_ANCHOR_hans_tools` and `WR_ANCHOR_hans_corridor_0..N` (walk from the door round the decor), plus a real doorway in the wall and the leaf `WR_HANS_door_leaf` as its own unbatched node (`war_room_runtime_dynamic`), origin on the hinge, closed and unrotated, with glTF extra `war_room_hans_door_open_yaw` (Blender Z yaw == three.js Y yaw) swinging it out of the hall. `WarRoomHansStage.js` reads them; a room missing any of them gets no Hans. v3: door on the left wall between the back corner and the first pilaster, opening into a dark service alcove.
 - Runtime aliases are independent: `war-room/v2/...` and `war-room/v3/...`. Never publish one variant over the other variant's alias.
 
 ## Ownership boundary
