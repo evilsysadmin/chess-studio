@@ -221,7 +221,7 @@ test('Escuela de Matthias · suspender un examen reinicia un intento real y perm
 
   const schoolBoard = page.locator('.matthias-school-board');
   await expect(schoolBoard).toHaveAttribute('data-school-attempt', '0');
-  await expect(schoolBoard).toHaveAttribute('data-school-renderer', '2d');
+  await expect(schoolBoard).toHaveAttribute('data-school-renderer', '3d');
 
   const wrongSquare = page.getByRole('button', { name: /^Casilla a1, vacía/ });
   const status = page.getByRole('status');
