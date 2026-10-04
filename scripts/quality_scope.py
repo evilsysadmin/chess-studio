@@ -89,6 +89,9 @@ GO_AUTHORITY_PATHS = {
     "backend-python/operation_idempotency_core.py",
     "backend-python/api_models.py",
     "backend-python/game_store.py",
+    "backend-python/chronicles_map_code.py",
+    "backend-python/chronicles_map_generator.py",
+    "scripts/chronicles_topology_parity_corpus.py",
     "scripts/engine_parity_corpus.py",
     "scripts/games_parity_corpus.py",
     "scripts/games_ops_corpus.py",
@@ -432,6 +435,9 @@ def self_test() -> None:
     _expect(["frontend/src/assets/home-canonical/great-hall-dungeon.webp"], run_frontend=True)
     _expect(["backend-python/game_api.py"], run_backend=True)
     _expect(["backend-go/internal/pulse/pulse.go"], run_go=True)
+    _expect(["backend-python/chronicles_map_code.py"], run_backend=True, run_go=True)
+    _expect(["backend-python/chronicles_map_generator.py"], run_backend=True, run_go=True)
+    _expect(["scripts/chronicles_topology_parity_corpus.py"], run_go=True)
     _expect(["scripts/engine_parity_corpus.py"], run_go=True)
     _expect(["backend-python/pvp_api.py"], run_backend=True, run_go=True)
     _expect(["backend-python/requirements.txt"], run_backend=True, run_go=True, run_security=True)
