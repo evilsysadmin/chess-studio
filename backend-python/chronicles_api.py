@@ -31,7 +31,10 @@ from chronicles_map_generator import (
     ChroniclesMapGenerationError,
     generate_chronicles_layout,
 )
-from chronicles_manifest_procedural import proceduralize_chronicles_manifest
+from chronicles_manifest_procedural import (
+    CHRONICLES_CONTENT_PLACEMENT_VERSION,
+    proceduralize_chronicles_manifest,
+)
 from chronicles_map_planner import normalize_chronicles_planner_proposal
 from operation_idempotency_core import (
     InvalidIdempotencyKey,
@@ -608,6 +611,7 @@ def chronicles_area_envelope(
     route_snapshot: dict[str, Any] | None = None,
     planner_snapshot: dict[str, Any] | None = None,
     party_level: int | None = None,
+    content_placement_version: int = 0,
 ) -> dict[str, Any]:
     authored_manifest, _authored_revision = load_chronicles_manifest(map_id, root=root)
     stable_planner_snapshot = _normalize_planner_snapshot(planner_snapshot)
@@ -620,6 +624,7 @@ def chronicles_area_envelope(
         authored_manifest,
         seed,
         planner_proposal=planner_proposal,
+        content_placement_version=content_placement_version,
     )
     routed_manifest = _apply_route_plan(
         generated.manifest,
@@ -671,6 +676,7 @@ def _run_bootstrap_payload(
         if planner_snapshot is not None
         else run.get("plannerSnapshot")
     )
+    content_placement_version = int(run.get("contentPlacementVersion", 0) or 0)
     areas = [
         chronicles_area_envelope(
             map_id,
@@ -678,6 +684,7 @@ def _run_bootstrap_payload(
             route_snapshot=route_snapshot,
             planner_snapshot=stable_planner_snapshot,
             party_level=run.get("partyLevel"),
+            content_placement_version=content_placement_version,
         )
         for map_id in chronicles_shipped_map_ids()
     ]
@@ -783,6 +790,7 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
                 route_snapshot=route_snapshot,
                 planner_snapshot=planner_snapshot,
                 party_level=starting_party_level,
+                content_placement_version=CHRONICLES_CONTENT_PLACEMENT_VERSION,
             )
             run = await chronicles_run_store.create_or_replay_run(
                 run_id=run_id,
@@ -795,6 +803,7 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
                 route_snapshot=route_snapshot,
                 planner_snapshot=planner_snapshot,
                 party_level=starting_party_level,
+                content_placement_version=CHRONICLES_CONTENT_PLACEMENT_VERSION,
             )
             stable_route_snapshot = _normalize_route_snapshot(run.get("route"))
             if body.map_id is None and stable_route_snapshot is None:
@@ -820,12 +829,14 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
 
         route_snapshot = _normalize_route_snapshot(run.get("route"))
         planner_snapshot = _normalize_planner_snapshot(run.get("plannerSnapshot"))
+        content_placement_version = int(run.get("contentPlacementVersion", 0) or 0)
         current_area = chronicles_area_envelope(
             run["currentMapId"],
             run["seed"],
             route_snapshot=route_snapshot,
             planner_snapshot=planner_snapshot,
             party_level=run.get("partyLevel"),
+            content_placement_version=content_placement_version,
         )
         if (
             current_area["contentVersion"] != run["contentVersion"]
@@ -852,6 +863,7 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
                 route_snapshot=route_snapshot,
                 planner_snapshot=planner_snapshot,
                 party_level=run.get("partyLevel"),
+                content_placement_version=content_placement_version,
             )
         )
         world_flags = _normalize_checkpoint_flags(body.world_flags)
