@@ -28,7 +28,7 @@ Cloudflare Tunnel → nginx edge (stable :4000) → Go sidecar pvp_<color> → P
 
   Dashboards that filter by `service_name` must include the `-go` variant.
 - **Presence.** Python's `get_current_user` also touches `last_activity` (coalesced to 30 s). Native Go routes do not; presence comes from the `/api/auth/activity` heartbeat every 120 s, inside the 150 s session TTL. This is an accepted deviation; revisit it when auth/presence moves to Go.
-- **Data.** MongoDB stays the single authority during the migration. Go and Python read and write the same documents, so every native write needs the same CAS, idempotency and document shape as Python, proven with integration tests against a real `mongo:8.0` (see `internal/pulse/mongo_integration_test.go`). Go declares the indexes it relies on.
+- **Data.** MongoDB stays the single authority during the migration. The process-wide Go connection/pool/readiness/shutdown owner is `internal/mongoruntime`; shared user session-version reads live in `internal/accountstore`; domain stores receive a database handle and must not expose themselves as cross-domain database service locators. Go and Python read and write the same documents, so every native write needs the same CAS, idempotency and document shape as Python, proven with integration tests against a real `mongo:8.0` (see `internal/pulse/mongo_integration_test.go`). Go declares the indexes it relies on.
 
 ## Rules for each domain
 
