@@ -206,6 +206,7 @@ describe('War Room ambient render cadence', () => {
 it('keeps software WebGL ticking only for the explicit Hans ambient audit', () => {
   const plan = warRoomAmbientFramePlan({
     softwareRenderer: true,
+    reducedMotion: true,
     narrativeActive: false,
     ambientAudit: true,
     elapsedMs: 100,
