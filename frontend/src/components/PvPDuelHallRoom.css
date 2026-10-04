@@ -761,7 +761,8 @@
       0 0 0 7px rgba(50, 31, 18, .95),
       0 24px 38px rgba(0,0,0,.52),
       inset 0 1px rgba(241, 205, 142, .09);
-    transform: translateY(-1.25rem);
+    position: relative;
+    top: -1.25rem;
   }
 
   .pvp-duel-hall .pvp-lobby__panel--roster::before {
