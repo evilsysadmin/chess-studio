@@ -192,13 +192,6 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - name: Restore exact frontend dependencies
-        if: steps.frontend_artifact.outputs.hit != 'true'
-        uses: ./.github/actions/cache-node-modules
-        with:
-          working-directory: frontend
-          lockfile: frontend/package-lock.json
-          node-version: '22'
       - name: Restore cached Wrangler toolchain
         uses: ./.github/actions/setup-wrangler
         with:
@@ -209,17 +202,11 @@ jobs:
         run: python3 scripts/cloudflare_staging_pages.py --release-fast-path
       - name: Build frontend for staging
         if: steps.frontend_artifact.outputs.hit != 'true'
-        working-directory: frontend
-        env:
-          VITE_API_URL: ${{ env.STAGING_API_URL }}
-          VITE_WAR_ROOM_VARIANTS_ENABLE: '1'
-          VITE_PUBLIC_BASE: /
-          VITE_BUILD_SHA: ${{ env.DEPLOY_SHA }}
-          VITE_GRAFANA_CLOUD_URL: ${{ vars.VITE_GRAFANA_CLOUD_URL }}
-          VITE_GRAFANA_LOGS_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_LOGS_DASHBOARD_URL }}
-          VITE_GRAFANA_HEALTH_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_HEALTH_DASHBOARD_URL }}
-          VITE_GRAFANA_TRACES_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_TRACES_DASHBOARD_URL }}
-        run: npm run build
+        uses: ./.github/actions/build-staging-frontend
+        with:
+          sha: ${{ env.DEPLOY_SHA }}
+          api-url: ${{ env.STAGING_API_URL }}
+          repo-vars: ${{ toJSON(vars) }}
       - name: Deploy tested frontend to Cloudflare Pages
         working-directory: frontend
         shell: bash
