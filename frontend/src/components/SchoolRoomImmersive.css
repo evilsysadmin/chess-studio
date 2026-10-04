@@ -319,22 +319,14 @@ body:has(.matthias-school-shell[data-school-section="school"]) .masthead {
   display: none;
 }
 
-/* Curriculum is deliberate progressive disclosure: a scrolling sheet over the
-   dimmed room, never a layout rail. The board stays fixed behind it; the
-   bubble and actions step aside until the plan closes. */
+/* Curriculum is deliberate progressive disclosure. On desktop it is a drawer
+   on the right: the board stays playable and Matthias' bubble stays visible
+   (you can pick a lesson and play it without closing the plan). On phones it
+   is a scrolling sheet over the dimmed room. The board stays fixed behind. */
 .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-curriculum="open"] {
   display: block;
   overflow-y: auto;
-  padding: calc(var(--school-hud-top) + 52px) var(--school-hud-side) var(--school-hud-bottom);
-}
-
-.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-curriculum="open"]::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: 80;
-  background: rgba(3, 5, 8, .62);
-  pointer-events: none;
+  padding: calc(var(--school-hud-top) + 52px) var(--school-hud-side) var(--school-hud-bottom) max(var(--school-hud-side), calc(100vw - 400px - var(--school-hud-side)));
 }
 
 .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-curriculum="open"] .matthias-school-layout {
@@ -376,11 +368,6 @@ body:has(.matthias-school-shell[data-school-section="school"]) .masthead {
   color: color-mix(in srgb, var(--parchment) 78%, transparent);
   font-size: .66rem;
   white-space: nowrap;
-}
-
-.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-curriculum="open"] .matthias-school-coach,
-.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-curriculum="open"] .matthias-school-board-actions {
-  display: none;
 }
 
 .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-curriculum="open"] .matthias-school-study-mode,
@@ -502,5 +489,27 @@ body:has(.matthias-school-shell[data-school-section="school"]) .masthead {
   .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-board:not(:has(.board3d-main-shell)) {
     padding: var(--school-hud-top) calc(min(150px, 22vw) + 1.2rem) var(--school-hud-bottom) calc(min(200px, 26vw) + 1.2rem);
     --school-2d-square: calc((100dvh - var(--school-hud-top) - var(--school-hud-bottom) - 1.5rem) / 8);
+  }
+}
+
+/* Phones: the plan is a full sheet; dim the room and park the bubble and
+   actions until it closes. */
+@media (max-width: 860px) {
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-curriculum="open"] {
+    padding-left: var(--school-hud-side);
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-curriculum="open"]::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    background: rgba(3, 5, 8, .62);
+    pointer-events: none;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-curriculum="open"] .matthias-school-coach,
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-curriculum="open"] .matthias-school-board-actions {
+    display: none;
   }
 }
