@@ -178,11 +178,20 @@ def build_envelope(static, p):
         arch.rotation_euler.y = math.radians(-side * 31)
     base.cube("PVP_HALL_window_sill", (wx, 5.96, 2.18), (1.96, 0.20, 0.16),
               p["limestone"], static, bevel=0.06)
-    base.cube("PVP_HALL_window_mullion", (wx, 5.68, 4.20), (0.045, 0.04, 1.82),
-              p["iron"], static, bevel=0.012)
-    for z in (3.36, 4.20, 5.04):
-        base.cube(f"PVP_HALL_window_transom_{z:.2f}", (wx, 5.68, z),
-                  (1.60, 0.04, 0.035), p["iron"], static, bevel=0.012)
+    # Narrow stone mullions and pointed heads: read as lancets, not a modern grid.
+    for pane_idx, xoff in enumerate((-1.08, -0.36, 0.36, 1.08)):
+        base.cube(
+            f"PVP_HALL_window_mullion_{pane_idx}", (wx + xoff, 5.68, 4.16),
+            (0.050, 0.045, 1.78), p["limestone"], static, bevel=0.014,
+        )
+    for pane_idx, center in enumerate((-0.72, 0.0, 0.72)):
+        for side in (-1, 1):
+            cap = base.cube(
+                f"PVP_HALL_window_lancet_cap_{pane_idx}_{side}",
+                (wx + center + side * 0.19, 5.66, 5.76),
+                (0.26, 0.040, 0.050), p["limestone"], static, bevel=0.014,
+            )
+            cap.rotation_euler.y = math.radians(-side * 42)
 
     # Put the moon in front of the opaque blue glass material so the authored
     # silhouette survives both Eevee preview and the sanitized runtime GLB.
