@@ -50,7 +50,7 @@ Lección operativa: no resolver falsos positivos de CI debilitando el gate a cie
 
 | Workflow | Responsabilidad |
 | --- | --- |
-| `cicd.yml` | Gate principal quality-only para PR. Preflight y luego frontend/backend/security/E2E según superficie. Las lanes Playwright core + War Room/Matthias son bloqueantes bajo un único `Tests · Playwright` y consumen un build compartido. No despliega. |
+| `cicd.yml` | Gate principal quality-only para PR. Preflight y luego frontend/Python/Go/security/E2E según superficie. Python y Go se agregan bajo el required estable `Tests · Backend`; las lanes Playwright core + War Room/Matthias quedan bajo `Tests · Playwright` y consumen un build compartido. No despliega. |
 | `pr-track-label.yml` | GP-0 (#34): toda PR lleva etiqueta de pista (`ux-mobile`/`ux-desktop`/`ux-claude`/`track-*`) o falla `Contracts · PR track label`. Se re-evalúa en `labeled`/`unlabeled` sin relanzar el CI completo; sparse checkout de un único script. La protección clásica de `main` todavía no incluye este contexto entre sus cinco required checks; hasta corregir ese ajuste remoto, el workflow sigue siendo guard visible pero no una barrera de merge por sí solo. |
 | `main-admission.yml` | Clasifica el HEAD de `main`. Si procede de PR, reutiliza la acreditación Quality inmutable y hace preflight barato; si es un commit directo excepcional, ejecuta tests, security, Playwright, imágenes Docker y compose smoke sobre el SHA exacto. Sólo un run verde habilita staging. |
 | `menu-ux-audit.yml` | Auditoría visual manual/efímera de menús y superficies intermedias. Captura desktop+móvil y emite PNG/JSON de densidad, overflow y targets; no es gate requerido ni corre en cada PR. |
@@ -83,7 +83,6 @@ Render staging está retirado del plano de despliegue: el **release canónico y 
 | Workflow | Responsabilidad |
 | --- | --- |
 | `main-backend-image.yml` | Tras `Main · admission`, construye o reutiliza las imágenes ARM64 exact-SHA de FastAPI y PvP Go en GHCR; sólo el HEAD actual de `main` puede mover la señal mutable consumida por staging. |
-| `pvp-go.yml` | Valida el edge Go path-aware con format/vet/tests, Mongo efímero, paridad contra autoridades Python y build ARM64. Se conserva separado mientras la migración Go siga teniendo contrato propio. |
 | `chess-football-godot-poc.yml` | Valida y exporta el runtime web Godot de Chess Football; PR valida, `main`/manual pueden publicar su bundle. Sigue siendo una superficie experimental aislada del release principal. |
 | `blender-setup-smoke.yml` | Smoke real de Blender/EGL y helpers compartidos cuando cambia `setup-blender-canonical`; evita romper todas las lanes de arte desde una acción común. |
 | `chronicles-party-blender-art.yml` | Genera y valida party/escena canónica de Chronicles con previews deterministas; read-only en PR. |
@@ -232,6 +231,7 @@ Métrica de éxito de la simplificación: menos tiempo y menos branching en el c
 - Cache Trivy por `github.run_id` → namespace estable por versión + epoch diario.
 - Matriz Browser E2E duplicada en PR (`e2e-full.yml`) → integrada en el required check de Quality; `e2e-full.yml` queda como sweep multi-browser.
 - `branch-housekeeping.yml` + `scripts/branch_housekeeping.sh` → retirados: `delete_branch_on_merge=true` ya poda las ramas mergeadas de forma nativa, sin cron duplicado.
+- `pvp-go.yml` → retirado: format/race+Mongo/paridad/vet/ARM64 viven ya dentro de `Quality · CI gate` y acreditan el required `Tests · Backend`; `main` no vuelve a pagar una validación paralela no bloqueante.
 - `pawn-slug-pistol-crouch-candidate.yml` → retirado tras promover y verificar `crouchContinuityV1`; era una lane one-shot de reparación/publicación de candidato y ya no protege una superficie runtime distinta.
 
 El objetivo no es tener el mínimo número de YAML, sino **mínimo estado, mínima dependencia externa por ejecución y dominios de fallo claros**.

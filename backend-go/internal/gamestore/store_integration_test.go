@@ -20,7 +20,7 @@ import (
 )
 
 // The store tests run against a disposable MongoDB (PVP_MONGO_TEST_URL, set
-// by CI's pvp-go workflow with PVP_MONGO_TEST_REQUIRED=1).
+// by Quality's required Go lane with PVP_MONGO_TEST_REQUIRED=1).
 func testStore(t *testing.T) *Store {
 	t.Helper()
 	uri := strings.TrimSpace(os.Getenv("PVP_MONGO_TEST_URL"))

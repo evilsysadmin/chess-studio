@@ -99,7 +99,7 @@ async function openChronicles(page, captureLabel) {
   await editor.getByRole('button', { name: '← Volver', exact: true }).click();
 
   await confirmChroniclesCharacterSetup(page);
-  await expect(page.getByRole('heading', { name: 'Chronicles of Matthias', exact: true })).toBeVisible();
+  await expect(page.locator('[data-chronicles="true"]')).toBeVisible();
 }
 
 async function captureChroniclesHealth(page) {
@@ -119,6 +119,8 @@ async function captureChroniclesHealth(page) {
       horizontalOverflow: root.scrollWidth > root.clientWidth + 1,
       gameCanvasCount: document.querySelectorAll('[data-chronicles-renderer="three"] canvas').length,
       authoredPortraitCount: document.querySelectorAll('[data-chronicles-party-renderer="authored"]').length,
+      gameRoot: rect('[data-chronicles="true"]'),
+      gameMenu: rect('summary[aria-label="Abrir menú de Chronicles"]'),
       stage: rect('.chronicles-stage'),
       gameCanvas: rect('[data-chronicles-renderer="three"] canvas'),
       authoredPortrait: rect('[data-chronicles-party-renderer="authored"]'),
@@ -163,30 +165,40 @@ for (const capture of CAPTURES) {
     const page = await context.newPage();
     try {
       await openChronicles(page, capture.label);
+      const gameRoot = page.locator('[data-chronicles="true"]');
       const chroniclesCanvas = page.locator('[data-chronicles-renderer="three"] canvas');
       const authoredPortrait = page.locator('[data-chronicles-party-renderer="authored"]');
       const stage = page.locator('.chronicles-stage');
+      const gameMenu = page.locator('summary[aria-label="Abrir menú de Chronicles"]');
+      await expect(gameRoot).toBeVisible();
       await expect(chroniclesCanvas).toHaveCount(1, { timeout: 20_000 });
       await expect(chroniclesCanvas).toBeVisible();
       await expect(authoredPortrait).toHaveCount(1, { timeout: 20_000 });
       await expect(authoredPortrait).toBeVisible();
       await expect(stage).toBeVisible();
+      await expect(gameMenu).toBeVisible();
       await page.waitForTimeout(450);
 
       const health = await captureChroniclesHealth(page);
       expect(health.horizontalOverflow, `${capture.label}: Chronicles overflow`).toBe(false);
       expect(health.gameCanvasCount, `${capture.label}: Chronicles dungeon canvas`).toBe(1);
       expect(health.authoredPortraitCount, `${capture.label}: Chronicles authored portrait`).toBe(1);
+      expect(health.gameRoot?.left ?? 99, `${capture.label}: fullscreen root left edge`).toBeLessThanOrEqual(1);
+      expect(health.gameRoot?.top ?? 99, `${capture.label}: fullscreen root top edge`).toBeLessThanOrEqual(1);
+      expect(health.gameRoot?.width || 0, `${capture.label}: fullscreen root width`).toBeGreaterThanOrEqual(capture.width - 2);
+      expect(health.gameRoot?.height || 0, `${capture.label}: fullscreen root height`).toBeGreaterThanOrEqual(capture.height - 2);
+      expect(health.gameMenu?.width || 0, `${capture.label}: in-game menu visible`).toBeGreaterThan(0);
+      expect(health.gameMenu?.height || 0, `${capture.label}: in-game menu height`).toBeGreaterThanOrEqual(30);
       expect(health.stage?.width || 0, `${capture.label}: Chronicles stage visible`).toBeGreaterThan(0);
       expect(health.gameCanvas?.width || 0, `${capture.label}: Chronicles dungeon canvas visible`).toBeGreaterThan(0);
       expect(health.gameCanvas?.height || 0, `${capture.label}: Chronicles dungeon canvas height`).toBeGreaterThan(0);
       expect(health.authoredPortrait?.width || 0, `${capture.label}: Chronicles portrait visible`).toBeGreaterThan(0);
       expect(health.authoredPortrait?.height || 0, `${capture.label}: Chronicles portrait height`).toBeGreaterThan(0);
 
-      await captureElement(page, stage, `${ARTIFACT_DIR}/chronicles-playing-${capture.label}.png`);
+      await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-playing-${capture.label}.png`);
       await writeFile(
         `${ARTIFACT_DIR}/chronicles-visual-health-${capture.label}.json`,
-        `${JSON.stringify({ schema: 3, scope: 'chronicles', capture: { label: capture.label, ...health } }, null, 2)}\n`,
+        `${JSON.stringify({ schema: 4, scope: 'chronicles', capture: { label: capture.label, ...health } }, null, 2)}\n`,
         'utf8',
       );
     } finally {
