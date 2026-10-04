@@ -46,7 +46,8 @@ function initialCoachText(lesson) {
     const margin = Number(lesson.maxMistakes || 0);
     return `Examen de promoción. ${lesson.objective} ${margin > 0 ? `Tiene margen para ${margin} error${margin === 1 ? '' : 'es'}.` : 'Sin margen de error.'} Y no, no hay pista.`;
   }
-  return `Objetivo: ${lesson.objective} Hágalo en el tablero. Si sale mal, sobrevivo; usted probablemente también.`;
+  // The mission line already states the objective; Matthias only adds his voice.
+  return 'Hágalo en el tablero. Si sale mal, sobrevivo; usted probablemente también.';
 }
 
 function firstSchoolIndex(progress) {

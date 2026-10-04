@@ -27,4 +27,12 @@ describe('Class Room full-board camera framing', () => {
     expect(profile.halfSpan).toBeGreaterThanOrEqual(5);
     expect(rawDistance(profile, 0.75, { mobile: true })).toBeLessThan(profile.maxDistance);
   });
+
+  it('fits the whole board width in a full-screen phone portrait room', () => {
+    for (const [width, height] of [[360, 800], [390, 844], [430, 932]]) {
+      const aspect = width / height;
+      const profile = classRoomCameraFramingProfile({ aspect, coarsePointer: true, viewportWidth: width });
+      expect(rawDistance(profile, aspect, { mobile: true })).toBeLessThan(profile.maxDistance);
+    }
+  });
 });

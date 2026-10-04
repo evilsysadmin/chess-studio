@@ -188,7 +188,9 @@ export function classRoomCameraFramingProfile({ aspect = 1, coarsePointer = fals
       halfSpan: 5.02,
       padding: 1.02,
       minDistance: 13.0,
-      maxDistance: 25.5,
+      // Full-screen School Room in portrait (aspect ~0.43-0.46) needs ~36-40
+      // to fit the board's width; capping lower crops files a and h.
+      maxDistance: 42,
       targetY: 0.34,
       targetZ: 0.16,
       cameraY: 10.2,
