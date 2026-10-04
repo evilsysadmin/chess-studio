@@ -534,7 +534,7 @@ function addFireplace(group, x, y, z, towardBoard, segments, coarsePointer = fal
   }));
   fireplace.add(fireCore);
 
-  const baseIntensity = coarsePointer ? 2.8 : 4.55;
+  const baseIntensity = warRoomDecorProfile(coarsePointer).fireplace;
   const fireLight = new THREE.PointLight(0xff8738, baseIntensity, 8.8, 2);
   fireLight.name = 'war-room-fire-light';
   fireLight.position.set(0, 0.69, towardBoard * 0.9);

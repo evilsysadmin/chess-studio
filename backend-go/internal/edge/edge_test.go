@@ -33,6 +33,9 @@ func TestProxyPreservesPvPRequest(t *testing.T) {
 		if got := r.Header.Get("X-Chess-Pvp-Edge"); got != "go" {
 			t.Fatalf("edge marker=%q", got)
 		}
+		if got := r.Header.Get("X-Chess-Edge"); got != "go" {
+			t.Fatalf("generic edge marker=%q", got)
+		}
 		body, _ := io.ReadAll(r.Body)
 		if string(body) != "{\"from\":\"e2\",\"to\":\"e4\"}" {
 			t.Fatalf("body=%q", body)
@@ -53,6 +56,9 @@ func TestProxyPreservesPvPRequest(t *testing.T) {
 	}
 	if got := rr.Header().Get("X-Chess-Pvp-Edge"); got != "go" {
 		t.Fatalf("response edge marker=%q", got)
+	}
+	if got := rr.Header().Get("X-Chess-Edge"); got != "go" {
+		t.Fatalf("response generic edge marker=%q", got)
 	}
 }
 
@@ -108,6 +114,12 @@ func TestProxiesNonPvPPathsToPython(t *testing.T) {
 		if got := r.Header.Get("X-Chess-Pvp-Fallback"); got != "" {
 			t.Fatalf("non-PvP request carried a PvP fallback reason %q", got)
 		}
+		if got := r.Header.Get("X-Chess-Pvp-Edge"); got != "" {
+			t.Fatalf("non-PvP request carried a PvP edge marker %q", got)
+		}
+		if got := r.Header.Get("X-Chess-Edge"); got != "go" {
+			t.Fatalf("non-PvP request generic edge marker=%q", got)
+		}
 		w.WriteHeader(http.StatusTeapot)
 	}))
 	defer upstream.Close()
@@ -122,6 +134,9 @@ func TestProxiesNonPvPPathsToPython(t *testing.T) {
 	}
 	if rr.Header().Get("X-Chess-Edge") != "go" {
 		t.Fatalf("missing X-Chess-Edge on proxied response: %v", rr.Header())
+	}
+	if got := rr.Header().Get("X-Chess-Pvp-Edge"); got != "" {
+		t.Fatalf("non-PvP response carried a PvP edge marker %q", got)
 	}
 }
 
@@ -173,6 +188,9 @@ func TestHealthAndReadiness(t *testing.T) {
 		}
 		if got := rr.Header().Get("X-Chess-Pvp-Edge"); got != "go" {
 			t.Fatalf("%s edge marker=%q", tc.path, got)
+		}
+		if got := rr.Header().Get("X-Chess-Edge"); got != "go" {
+			t.Fatalf("%s generic edge marker=%q", tc.path, got)
 		}
 		var body map[string]any
 		if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
