@@ -122,6 +122,17 @@ describe('Chronicles run checkpoint recovery', () => {
       turns: 17,
       round: 6,
       turnPhase: 'party',
+      phase: 'combat',
+      initiative: {
+        version: 1,
+        die: '1d8',
+        round: 2,
+        cursor: 1,
+        order: [
+          { id: 'matthias', kind: 'party', name: 'Matthias', agility: 4, roll: 7, initiative: 11 },
+          { id: enemy.id, kind: 'enemy', name: enemy.name, agility: 3, roll: 5, initiative: 8 },
+        ],
+      },
       party: woundedParty,
       [enemy.hpKey]: enemyHp,
       enemyPositions: { [enemy.id]: enemyCell },
@@ -160,6 +171,8 @@ describe('Chronicles run checkpoint recovery', () => {
     expect(recovered.direction).toBe(2);
     expect(recovered.turns).toBe(17);
     expect(recovered.round).toBe(6);
+    expect(recovered.phase).toBe('combat');
+    expect(recovered.initiative).toEqual(snapshot.initiative);
     expect(recovered.party[0].hp).toBe(snapshot.party[0].hp);
     expect(recovered[enemy.hpKey]).toBe(enemyHp);
     expect(recovered.enemyPositions[enemy.id]).toEqual(enemyCell);
