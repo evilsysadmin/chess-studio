@@ -109,7 +109,7 @@ export function warRoomAmbientFramePlan({
   const active = threeSurfaceShouldRender({
     documentHidden,
     intersecting,
-    paused: reducedMotion,
+    paused: reducedMotion && !ambientAudit,
   }) && (!softwareRenderer || narrativeActive || ambientAudit);
   const budget = warRoomRenderBudget({ coarsePointer, softwareRenderer });
   // The heartbeat exists mainly to keep fire/light alive. Desktop keeps 10 FPS;
