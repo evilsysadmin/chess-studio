@@ -12,6 +12,7 @@ python scripts/games_parity_corpus.py --check
 python scripts/games_ops_corpus.py --check
 python scripts/cpu_policy_parity_corpus.py --check
 python scripts/engine_history_parity_corpus.py --check
+python scripts/engine_pv_parity_corpus.py --check
 
 (
   cd backend-go
