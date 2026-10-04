@@ -8,6 +8,29 @@ export const CHRONICLES_DIRECTOR_SCHEMA_VERSION = 1;
 const REVISION_RE = /^[a-f0-9]{64}$/;
 const INSTANCE_RE = /^[a-f0-9]{24}$/;
 
+function normalizeDifficulty(payload) {
+  if (payload === undefined) return null;
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new Error('invalid-difficulty');
+  const keys = [
+    'version',
+    'partyLevel',
+    'depth',
+    'targetLevel',
+    'minLevel',
+    'maxLevel',
+    'depthPressure',
+    'progressionPressure',
+    'authoredLevel',
+    'requestedDelta',
+    'appliedDelta',
+  ];
+  if (keys.some((key) => !Number.isInteger(payload[key]))) throw new Error('invalid-difficulty');
+  if (payload.version !== 1 || payload.partyLevel < 1 || payload.targetLevel < 1) {
+    throw new Error('invalid-difficulty');
+  }
+  return Object.freeze(Object.fromEntries(keys.map((key) => [key, payload[key]])));
+}
+
 export function chroniclesValidateAreaEnvelope(payload, mapId, seed) {
   if (!payload || typeof payload !== 'object') throw new Error('missing-envelope');
   if (payload.schemaVersion !== CHRONICLES_DIRECTOR_SCHEMA_VERSION) throw new Error('unsupported-schema');
@@ -19,9 +42,12 @@ export function chroniclesValidateAreaEnvelope(payload, mapId, seed) {
 
   const map = chroniclesValidateMapDefinition(payload.manifest, chroniclesMapIds());
   if (map.id !== mapId) throw new Error('manifest-map-mismatch');
+  const difficulty = normalizeDifficulty(payload.difficulty);
   return Object.freeze({
     source: 'remote',
+    mapId,
     map,
+    difficulty,
     schemaVersion: payload.schemaVersion,
     contentVersion: payload.contentVersion,
     seed,
@@ -33,7 +59,9 @@ export function chroniclesValidateAreaEnvelope(payload, mapId, seed) {
 function localFallback(mapId, seed, reason = 'remote-unavailable') {
   return Object.freeze({
     source: 'local',
+    mapId,
     map: chroniclesMapById(mapId),
+    difficulty: null,
     schemaVersion: null,
     contentVersion: null,
     seed,

@@ -6,7 +6,8 @@ Lee según el área:
 
 - Home: `skills/home-blender/SKILL.md` y `skills/local-gpu-rendering/SKILL.md`;
 - War Room v2: `docs/operations/war-room-blender-pipeline.md`, `docs/operations/war-room-visual-freeze.md` y `skills/local-gpu-rendering/SKILL.md`;
-- PvP Duel Room: pipeline Blender independiente, coherente con el castillo; revisar siempre preview PNG antes de integración runtime;
+- PvP Duel Room: pipeline Blender independiente para la partida humana; revisar siempre preview PNG antes de integración runtime;
+- PvP Duel Hall: pipeline Blender independiente para el lobby «Sala de Duelos»; conserva los hotspots Tu puesto / rivales / heraldo / chat y nunca adquiere lógica de matchmaking;
 - R2/promoción: `docs/visual-assets-r2-flow.md`.
 
 ## Contrato

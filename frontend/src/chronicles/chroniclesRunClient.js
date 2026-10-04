@@ -4,12 +4,13 @@ import { chroniclesRunCheckpointPayload } from './chroniclesRunCheckpoint.js';
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
-export function chroniclesCreateRun(mapId, { operationId = null, signal } = {}) {
+export function chroniclesCreateRun(mapId, { operationId = null, partyLevel = null, signal } = {}) {
   return requestJson(`${BASE_URL}/chronicles/runs`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       ...(operationId ? { 'Idempotency-Key': operationId } : {}),
+      ...(Number.isInteger(partyLevel) ? { 'X-Chronicles-Party-Level': String(partyLevel) } : {}),
       ...authHeader(),
     },
     body: JSON.stringify(mapId ? { mapId } : {}),

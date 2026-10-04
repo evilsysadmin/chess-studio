@@ -21,6 +21,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import BaseModel, Field
 
 import chronicles_run_store
+from chronicles_difficulty import apply_chronicles_combat_difficulty
 from chronicles_map_code import (
     CHRONICLES_MAP_CODE_MAX_LENGTH,
     CHRONICLES_MAP_CODE_MAX_SEED,
@@ -589,6 +590,16 @@ def _normalize_planner_snapshot(
     }
 
 
+def _run_depth(map_id: str, route_snapshot: dict[str, Any] | None) -> int:
+    snapshot = _normalize_route_snapshot(route_snapshot)
+    if snapshot is None:
+        return 0
+    try:
+        return list(snapshot["mapIds"]).index(map_id)
+    except ValueError:
+        return 0
+
+
 def chronicles_area_envelope(
     map_id: str,
     seed: int,
@@ -596,6 +607,7 @@ def chronicles_area_envelope(
     root: Path | None = None,
     route_snapshot: dict[str, Any] | None = None,
     planner_snapshot: dict[str, Any] | None = None,
+    party_level: int | None = None,
 ) -> dict[str, Any]:
     authored_manifest, _authored_revision = load_chronicles_manifest(map_id, root=root)
     stable_planner_snapshot = _normalize_planner_snapshot(planner_snapshot)
@@ -614,6 +626,13 @@ def chronicles_area_envelope(
         seed=seed,
         route_snapshot=route_snapshot,
     )
+    difficulty = None
+    if party_level is not None:
+        routed_manifest, difficulty = apply_chronicles_combat_difficulty(
+            routed_manifest,
+            party_level=party_level,
+            depth=_run_depth(map_id, route_snapshot),
+        )
     manifest = _validate_manifest(routed_manifest, expected_map_id=authored_manifest["id"])
     revision = hashlib.sha256(_canonical_bytes(manifest)).hexdigest()
     instance_material = (
@@ -630,6 +649,7 @@ def chronicles_area_envelope(
         "mapCode": generated.map_code,
         "generatorVersion": generated.generator_version,
         "layoutRevision": generated.layout_revision,
+        **({"difficulty": difficulty} if difficulty is not None else {}),
         "manifest": manifest,
     }
 
@@ -657,6 +677,7 @@ def _run_bootstrap_payload(
             run["seed"],
             route_snapshot=route_snapshot,
             planner_snapshot=stable_planner_snapshot,
+            party_level=run.get("partyLevel"),
         )
         for map_id in chronicles_shipped_map_ids()
     ]
@@ -708,6 +729,12 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
         body: CreateChroniclesRunRequest,
         username: str = Depends(auth_dependency),
         raw_idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+        party_level: int | None = Header(
+            default=None,
+            alias="X-Chronicles-Party-Level",
+            ge=1,
+            le=12,
+        ),
     ):
         try:
             idempotency_key = normalize_idempotency_key(raw_idempotency_key)
@@ -715,6 +742,10 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
             raise HTTPException(400, str(exc)) from exc
 
         fingerprint = operation_fingerprint({"mapId": body.map_id})
+        # Old clients did not send a party snapshot. Keep those runs unscaled so
+        # rolling deploys preserve the exact manifest revision they already know.
+        # Current Chronicles clients always send the bounded party level header.
+        starting_party_level = party_level
         run_id = _run_id(username, idempotency_key)
         try:
             if idempotency_key:
@@ -751,6 +782,7 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
                 seed,
                 route_snapshot=route_snapshot,
                 planner_snapshot=planner_snapshot,
+                party_level=starting_party_level,
             )
             run = await chronicles_run_store.create_or_replay_run(
                 run_id=run_id,
@@ -762,6 +794,7 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
                 create_fingerprint=fingerprint,
                 route_snapshot=route_snapshot,
                 planner_snapshot=planner_snapshot,
+                party_level=starting_party_level,
             )
             stable_route_snapshot = _normalize_route_snapshot(run.get("route"))
             if body.map_id is None and stable_route_snapshot is None:
@@ -792,6 +825,7 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
             run["seed"],
             route_snapshot=route_snapshot,
             planner_snapshot=planner_snapshot,
+            party_level=run.get("partyLevel"),
         )
         if (
             current_area["contentVersion"] != run["contentVersion"]
@@ -817,6 +851,7 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
                 run["seed"],
                 route_snapshot=route_snapshot,
                 planner_snapshot=planner_snapshot,
+                party_level=run.get("partyLevel"),
             )
         )
         world_flags = _normalize_checkpoint_flags(body.world_flags)
