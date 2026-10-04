@@ -19,6 +19,16 @@ export default function PvpDuelHallScene3D() {
     if (!canvas) return undefined;
 
     const host = canvas.parentElement;
+    const viewportWidth = Math.max(0, Number(globalThis.innerWidth) || host?.clientWidth || 0);
+    const viewportHeight = Math.max(0, Number(globalThis.innerHeight) || host?.clientHeight || 0);
+    // The authored camera is composed for a wide room. On phone viewports it crops
+    // the architecture into a dark abstraction, while the existing 2D room fallback
+    // remains legible and cheaper. Keep 3D for desktop/tablet-sized canvases.
+    if (viewportWidth < 720 || viewportHeight < 520) {
+      setStatus('fallback-mobile');
+      return undefined;
+    }
+
     const coarsePointer = Boolean(globalThis.matchMedia?.('(pointer: coarse)')?.matches);
     let renderer;
     try {
