@@ -16,11 +16,11 @@ export function chroniclesRollD8(random = Math.random) {
   return 1 + Math.floor(normalized * CHRONICLES_INITIATIVE_DIE_SIDES);
 }
 
-export function chroniclesPartyInitiativeAgility(state, member) {
+export function chroniclesPartyInitiativeAgility(state, member, explicitBonus = 0) {
   if (!member) return 0;
   const base = nonNegativeInteger(member.agility);
   const progressionBonus = nonNegativeInteger(state?.rpgModifiers?.[member.id]?.initiativeBonus);
-  return base + progressionBonus;
+  return base + progressionBonus + nonNegativeInteger(explicitBonus);
 }
 
 export function chroniclesEnemyInitiativeAgility(enemy) {
@@ -42,14 +42,22 @@ function actorEntry({ id, kind, name, agility, random }) {
   };
 }
 
-export function chroniclesRollInitiative(state, enemies, { random = Math.random } = {}) {
+export function chroniclesRollInitiative(
+  state,
+  enemies,
+  { random = Math.random, partyAgilityBonuses = {} } = {},
+) {
   const partyActors = (state?.party || [])
     .filter((member) => Number(member?.hp || 0) > 0)
     .map((member) => actorEntry({
       id: member.id,
       kind: 'party',
       name: member.name || member.id,
-      agility: chroniclesPartyInitiativeAgility(state, member),
+      agility: chroniclesPartyInitiativeAgility(
+        state,
+        member,
+        partyAgilityBonuses?.[member.id],
+      ),
       random,
     }));
 
