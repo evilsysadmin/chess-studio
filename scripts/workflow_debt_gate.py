@@ -95,6 +95,14 @@ def inventory_drift(root: Path, inventory: dict[str, str] = INVENTORY) -> tuple[
     return sorted(actual - expected), sorted(expected - actual)
 
 
+def documentation_drift(root: Path, inventory: dict[str, str] = INVENTORY) -> list[str]:
+    readme = root / '.github' / 'workflows' / 'README.md'
+    if not readme.is_file():
+        raise FileNotFoundError('missing workflow operating map: .github/workflows/README.md')
+    text = readme.read_text(encoding='utf-8')
+    return sorted(name for name in inventory if f'`{name}`' not in text)
+
+
 def budget_rows(root: Path, budgets: tuple[Budget, ...] = BUDGETS) -> list[tuple[Budget, int]]:
     rows: list[tuple[Budget, int]] = []
     for budget in budgets:
@@ -144,11 +152,16 @@ def self_test() -> None:
         (workflow_dir / 'b.yml').write_bytes(b'123456')
 
         inventory = {'a.yml': 'quality', 'b.yml': 'delivery'}
+        (workflow_dir / 'README.md').write_text(
+            '| `a.yml` | quality |\n| `b.yml` | delivery |\n',
+            encoding='utf-8',
+        )
         budgets = (
             Budget('.github/workflows/a.yml', 3),
             Budget('.github/workflows/b.yml', 5),
         )
         assert inventory_drift(root, inventory) == ([], [])
+        assert documentation_drift(root, inventory) == []
         rows = budget_rows(root, budgets)
         assert rows[0][1] == 3 and rows[1][1] == 6
         assert budget_errors(rows) == [
@@ -160,6 +173,8 @@ def self_test() -> None:
 
         (workflow_dir / 'rogue.yml').write_text('name: rogue\n', encoding='utf-8')
         assert inventory_drift(root, inventory) == (['rogue.yml'], [])
+        (workflow_dir / 'README.md').write_text('| `a.yml` | quality |\n', encoding='utf-8')
+        assert documentation_drift(root, inventory) == ['b.yml']
         (workflow_dir / 'rogue.yml').unlink()
         (workflow_dir / 'b.yml').unlink()
         assert inventory_drift(root, inventory) == ([], ['b.yml'])
@@ -186,6 +201,7 @@ def main(argv: list[str] | None = None) -> int:
     root = Path(args.root).resolve()
     try:
         unknown, missing = inventory_drift(root)
+        undocumented = documentation_drift(root)
         rows = budget_rows(root)
     except FileNotFoundError as exc:
         print(f'::error::{exc}', file=sys.stderr)
@@ -208,6 +224,11 @@ def main(argv: list[str] | None = None) -> int:
         errors.append(
             'Stale workflow inventory entries: ' + ', '.join(missing) +
             '. Remove inventory entries when workflows are retired.'
+        )
+    if undocumented:
+        errors.append(
+            'Undocumented workflows: ' + ', '.join(undocumented) +
+            '. Every owned workflow must appear in .github/workflows/README.md.'
         )
     errors.extend(budget_errors(rows))
 
