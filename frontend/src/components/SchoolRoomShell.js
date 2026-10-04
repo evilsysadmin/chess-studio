@@ -77,7 +77,7 @@ export function buildSchoolRoomLayer(theme, whiteSide, coarsePointer = false) {
 
   const far = whiteSide ? -1 : 1;
   const toward = -far;
-  const wallZ = far * 7.15;
+  const wallZ = far * 7.28;
   const lite = Boolean(coarsePointer);
   const wood = mat(theme?.frame ?? 0x24130c, .05, .7);
   const woodDark = mat(0x160d09, .02, .82);
@@ -96,9 +96,9 @@ export function buildSchoolRoomLayer(theme, whiteSide, coarsePointer = false) {
   bookcase(root, -6.1, wallZ, toward, wood, brass, books, lite);
   bookcase(root, 6.1, wallZ, toward, wood, brass, books, lite);
 
-  box(root, [4.15, .2, 1.3], wood, [0, .92, far * 5.5], 'teacher-desk');
-  box(root, [3.7, .82, .16], wood, [0, .48, far * 6.0], 'teacher-desk-front');
-  box(root, [.72, .05, .44], brass, [-1.05, 1.05, far * 5.35], 'teacher-book');
+  box(root, [4.15, .2, .78], wood, [0, .92, far * 6.15], 'teacher-desk');
+  box(root, [3.7, .82, .16], wood, [0, .48, far * 6.48], 'teacher-desk-front');
+  box(root, [.72, .05, .44], brass, [-1.05, 1.05, far * 6.0], 'teacher-book');
 
   for (const x of [-4.6, 4.6]) {
     box(root, [1.5, 2.35, .1], cloth, [x, 3.65, wallZ + toward * .66], 'school-banner');
@@ -107,7 +107,7 @@ export function buildSchoolRoomLayer(theme, whiteSide, coarsePointer = false) {
 
   const rows = lite ? [2.4, 4.55] : [1.85, 3.65, 5.2];
   let count = 0;
-  for (const row of rows) for (const x of [-5.55, 5.55]) desk(root, x, far * row, far, wood, brass, count++);
+  for (const row of rows) for (const x of [-7.05, 7.05]) desk(root, x, far * row, far, wood, brass, count++);
 
   if (!lite) {
     box(root, [2.0, 2.65, .7], stone, [7.05, 1.28, far * 5.45], 'school-fireplace');
