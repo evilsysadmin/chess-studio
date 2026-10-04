@@ -440,11 +440,15 @@
     line-height: 1.32;
   }
 
+  /* The Mazmorras stair (the only dungeon entry below 1000px) sits above the
+     docked 1 vs 1 card instead of under it. The 16:9 stage overflows the
+     viewport by (56.25vw - 100dvh) / 2 at the bottom, so anchor past that
+     overflow plus the card (54px min + padding) and a small gap. */
   .illustrated-home__utilities {
     right: 4% !important;
-    bottom: 11% !important;
+    bottom: calc(max(0px, (56.25vw - 100dvh) / 2) + max(10px, env(safe-area-inset-bottom)) + 76px) !important;
     width: 22% !important;
-    height: 24% !important;
+    height: 22% !important;
   }
 
   .illustrated-home__dungeon-copy {
