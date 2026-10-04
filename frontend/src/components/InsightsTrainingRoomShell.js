@@ -169,17 +169,31 @@ function addChair(root, leather, wood) {
   const group = new THREE.Group();
   group.name = 'insights-training-room-empty-chair';
   box(group, [2.55, .5, 1.55], leather, [0, .72, 0], 'chair-seat');
-  box(group, [2.8, 3.08, .42], leather, [0, 2.18, -.56], 'chair-back');
-
-  const crest = new THREE.Mesh(
-    new THREE.TorusGeometry(1.28, .11, 8, 28, Math.PI),
-    wood,
+  const backShape = new THREE.Shape();
+  backShape.moveTo(-1.38, -1.48);
+  backShape.lineTo(-1.38, .72);
+  backShape.quadraticCurveTo(-1.34, 1.52, 0, 1.78);
+  backShape.quadraticCurveTo(1.34, 1.52, 1.38, .72);
+  backShape.lineTo(1.38, -1.48);
+  backShape.closePath();
+  const upholsteredBack = new THREE.Mesh(
+    new THREE.ExtrudeGeometry(backShape, {
+      depth: .34,
+      bevelEnabled: true,
+      bevelSegments: 2,
+      bevelSize: .06,
+      bevelThickness: .045,
+    }),
+    leather,
   );
-  crest.position.set(0, 3.68, -.55);
-  crest.rotation.z = 0;
-  crest.castShadow = true;
-  crest.name = 'chair-crest';
-  group.add(crest);
+  upholsteredBack.position.set(0, 2.08, -.76);
+  upholsteredBack.castShadow = true;
+  upholsteredBack.receiveShadow = true;
+  upholsteredBack.name = 'chair-upholstered-back';
+  group.add(upholsteredBack);
+
+  const crestRail = box(group, [2.45, .14, .5], wood, [0, 3.63, -.54], 'chair-crest-rail');
+  crestRail.rotation.z = 0;
 
   const leftWing = box(group, [.42, 2.25, .62], leather, [-1.28, 2.12, -.36], 'chair-left-wing');
   leftWing.rotation.y = -.18;
