@@ -21,6 +21,7 @@ NONVISUAL_FRONTEND_PATHS = {
     "frontend/src/components/roguelikescreen.jsx",
     "frontend/src/components/spectatorscreen.jsx",
     "frontend/src/components/usecombatcontroller.js",
+    "frontend/src/components/warroomhomepreload.js",
     "frontend/src/usecombatsessionpersistence.js",
     "frontend/src/usecombatbattlesnapshotfactory.js",
     "frontend/src/spectatorsessionrunner.js",
@@ -693,6 +694,9 @@ def self_test() -> None:
     lab_launch = classify(["frontend/src/labLaunchIntent.js"])
     assert lab_launch.capture_groups == "none"
     assert not lab_launch.hans and not lab_launch.chesscom
+    warroom_preload = classify(["frontend/src/components/warRoomHomePreload.js"])
+    assert warroom_preload.capture_groups == "none"
+    assert not warroom_preload.hans and not warroom_preload.chesscom
     puzzle_launch = classify(["frontend/src/usePuzzleLaunchFlow.js"])
     assert puzzle_launch.capture_groups == "none"
     assert not puzzle_launch.hans and not puzzle_launch.chesscom
