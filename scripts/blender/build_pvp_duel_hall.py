@@ -507,31 +507,31 @@ def build_strategy_table(static, p):
             )
 
     # Upright physical rival board at the rear edge.
-    base.cube("PVP_HALL_roster_frame", (0, 2.02, 2.65), (3.12, 0.16, 1.48),
+    base.cube("PVP_HALL_roster_frame", (0, 1.92, 2.48), (2.90, 0.16, 1.18),
               p["oak"], static, bevel=0.11)
-    base.cube("PVP_HALL_roster_surface", (0, 1.83, 2.65), (2.80, 0.035, 1.18),
+    base.cube("PVP_HALL_roster_surface", (0, 1.73, 2.48), (2.58, 0.035, 0.92),
               p["leather"], static, bevel=0.07)
-    base.cube("PVP_HALL_roster_header", (0, 1.78, 3.57), (2.35, 0.025, 0.10),
+    base.cube("PVP_HALL_roster_header", (0, 1.68, 3.18), (2.15, 0.025, 0.09),
               p["brass"], static, bevel=0.022)
     for side in (-1, 1):
         base.cylinder(
-            f"PVP_HALL_roster_post_{side}", (side * 2.86, 1.83, 2.72),
-            0.085, 2.10, p["oak_mid"], static, vertices=14,
+            f"PVP_HALL_roster_post_{side}", (side * 2.66, 1.73, 2.50),
+            0.080, 1.72, p["oak_mid"], static, vertices=14,
         )
         base.sphere(
-            f"PVP_HALL_roster_finial_{side}", (side * 2.86, 1.83, 3.80),
+            f"PVP_HALL_roster_finial_{side}", (side * 2.66, 1.73, 3.38),
             0.12, p["brass"], static,
         )
-    base.cube("PVP_HALL_roster_crown", (0, 1.82, 3.94), (1.25, 0.08, 0.16),
+    base.cube("PVP_HALL_roster_crown", (0, 1.72, 3.50), (1.12, 0.08, 0.14),
               p["oak_mid"], static, bevel=0.08)
-    base.sphere("PVP_HALL_roster_crown_boss", (0, 1.70, 3.95), 0.15,
+    base.sphere("PVP_HALL_roster_crown_boss", (0, 1.60, 3.50), 0.13,
                 p["brass"], static, scale=(1.0, 0.32, 1.0))
-    for row, z in enumerate((3.18, 2.72, 2.26)):
-        base.cube(f"PVP_HALL_roster_row_{row}", (0, 1.74, z), (2.48, 0.018, 0.16),
+    for row, z in enumerate((2.93, 2.50, 2.07)):
+        base.cube(f"PVP_HALL_roster_row_{row}", (0, 1.64, z), (2.30, 0.018, 0.14),
                   p["parchment"], static, bevel=0.035)
-        base.sphere(f"PVP_HALL_roster_medallion_{row}", (-2.12, 1.70, z), 0.10,
+        base.sphere(f"PVP_HALL_roster_medallion_{row}", (-1.98, 1.60, z), 0.09,
                     p["brass"], static, scale=(1.0, 0.35, 1.0))
-        base.cube(f"PVP_HALL_roster_action_{row}", (2.06, 1.70, z), (0.28, 0.020, 0.10),
+        base.cube(f"PVP_HALL_roster_action_{row}", (1.94, 1.60, z), (0.24, 0.020, 0.09),
                   p["brass"], static, bevel=0.03)
 
     # Map / marquetry on table.
