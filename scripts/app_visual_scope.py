@@ -21,6 +21,7 @@ NONVISUAL_FRONTEND_PATHS = {
     "frontend/src/components/roguelikescreen.jsx",
     "frontend/src/components/spectatorscreen.jsx",
     "frontend/src/components/usecombatcontroller.js",
+    "frontend/src/components/warroomhomepreload.js",
     "frontend/src/usecombatsessionpersistence.js",
     "frontend/src/usecombatbattlesnapshotfactory.js",
     "frontend/src/spectatorsessionrunner.js",
