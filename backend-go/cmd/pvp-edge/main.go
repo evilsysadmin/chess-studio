@@ -24,6 +24,7 @@ import (
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/pvprating"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/residentmove"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/residentoracle"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/sessionauth"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/telemetry"
 )
 
@@ -296,7 +297,7 @@ func newRequestTelemetry() *telemetry.Recorder {
 	defer cancel()
 	recorder, err := telemetry.New(ctx, cfg, telemetry.Options{
 		Username: func(r *http.Request) string {
-			return pulse.VerifiedSubject(r.Header.Get("Authorization"), secret, time.Now())
+			return sessionauth.VerifiedSubject(r.Header.Get("Authorization"), secret, time.Now())
 		},
 	})
 	if err != nil {
