@@ -50,7 +50,7 @@ Cloudflare Tunnel → nginx edge (stable :4000) → Go sidecar pvp_<color> → P
 - the 120/minute default limit, per process;
 - the storage 503.
 
-They only receive traffic in api "go" mode (row 2). Next: the CPU move policy/analysis services and the create/move/undo/hint routes. |
+They only receive traffic in api "go" mode (row 2). CPU move policy: `residentmove.MoveForLevel` runs the same human-Elo policy as `cpu_difficulty.get_factual_difficulty_cpu_move` for any stored difficulty, with the bands (every level 0-100 and banker's-rounded half levels), position complexity and candidate weights pinned by a corpus from `scripts/cpu_policy_parity_corpus.py`. Next: the create/move/undo/hint routes. |
 | 4 | System: health, ready, release, status, features, client telemetry | `system_api`, `feature_flags`, `client_telemetry` | Pending. Small, but `status` aggregates every store. |
 | 5 | Auth, users, profile, presence | `auth`, `users_store`, `profile_store`, `auth_*_guard` | Pending. Go already validates sessions. Passwords use Argon2id with legacy bcrypt verification, and both must match. |
 | 6 | Feedback, Matthias daily, narrative, memory and episodes | `feedback_store`, `matthias_*`, `narrative_*` | Pending. `narrative_cloudflare` calls an LLM provider. |

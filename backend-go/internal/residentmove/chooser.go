@@ -56,6 +56,17 @@ func (c *Chooser) Move(ctx context.Context, fen, resident string) (string, error
 	return c.chooseLevel(ctx, strings.TrimSpace(fen), float64(level))
 }
 
+// MoveForLevel is Matthias' move in a game against the CPU: the same factual
+// human-Elo policy as get_factual_difficulty_cpu_move for the fixed 0-100
+// difficulty the game was created with. It returns one legal UCI move and
+// performs no game-state I/O.
+func (c *Chooser) MoveForLevel(ctx context.Context, fen string, level float64) (string, error) {
+	if math.IsNaN(level) || math.IsInf(level, 0) {
+		return "", errors.New("invalid difficulty")
+	}
+	return c.chooseLevel(ctx, strings.TrimSpace(fen), level)
+}
+
 func residentLevel(username string) (int, bool) {
 	switch strings.ToLower(strings.TrimSpace(username)) {
 	case "otto_falk":
