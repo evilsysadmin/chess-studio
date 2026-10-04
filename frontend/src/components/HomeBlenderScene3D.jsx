@@ -1279,7 +1279,11 @@ export default function HomeBlenderScene3D({
   useEffect(() => {
     const canvas = canvasRef.current;
     const initialPolicy = browserPolicy();
-    // Same governor and cap as the legacy Home: sustained jank tightens full -> lite -> 2d.
+    // A desktop session that qualified for full 3D may shed expensive effects, but
+    // performance adaptation must never eject it all the way to the static 2D Home.
+    // 2D remains available for unsupported/constrained hardware and recovery failures.
+    const adaptiveLodFloor = initialPolicy.lod === 'full' ? 'lite' : '2d';
+    // Same governor and cap as the legacy Home: sustained jank tightens quality.
     // The Blender scene decided its LOD once at mount and never degraded before this.
     let lodCap = null;
     let performanceGovernor = createHomeCastle3DPerformanceGovernor(initialPolicy.lod);
@@ -1506,7 +1510,8 @@ export default function HomeBlenderScene3D({
     // Drop the extra GPU effects and shadows in place (no scene reload), then re-read the
     // capped policy for pixel ratio; '2d' hands the Home back to the painted master.
     const applyLodCap = (next) => {
-      lodCap = tighterRuntimeLodCap(lodCap, next);
+      const requested = adaptiveLodFloor === 'lite' && next === '2d' ? 'lite' : next;
+      lodCap = tighterRuntimeLodCap(lodCap, requested);
       if (lodCap === '2d') {
         failToFallback(true);
         return;
