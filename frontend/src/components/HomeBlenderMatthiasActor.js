@@ -163,7 +163,8 @@ export const HOME_MATTHIAS_POSTURES = Object.freeze({
 const ARM_REST_HOLD = Object.freeze({ upper: [160, 10, 0], fore: [-64, -11, 13] });
 const ARM_TO_MOUTH = Object.freeze({ upper: [115, 20, 10], fore: [-71, -15, 16] });
 const ARM_ON_BOARD = Object.freeze({ upper: [145, 10, -5], fore: [-46, -6, 8] });
-const ARM_HOLD_BOOK = Object.freeze({ upper: [155, 10, 0], fore: [-76, -15, 15] });
+// Hands close enough to grip the edges of the (enlarged) dossier.
+const ARM_HOLD_BOOK = Object.freeze({ upper: [145, 20, 5], fore: [-66, -12, 14] });
 const ARM_WRITE = Object.freeze({ upper: [150, 0, -5], fore: [-43, -12, 25] });
 export const HOME_MATTHIAS_ARM_POSES = Object.freeze({
   sip: Object.freeze({
@@ -189,8 +190,11 @@ export const HOME_MATTHIAS_PROP_ANCHORS = Object.freeze({
   // blinking cup once the routine lasts tens of seconds.
   sip: Object.freeze({ bone: 'prop_cup', content: 'RoutineCup', hand: 'Hand.R', offset: [-0.045, 0.07, 0.03], hide: ['RoutineCupHand'], show: ['prop_cup'] }),
   bite: Object.freeze({ bone: 'prop_bite', content: 'RoutineSandwichBread', hand: 'Hand.R', offset: [-0.045, 0.06, 0.03], hide: ['RoutineSandwichHand'], show: ['prop_bite'] }),
-  dossier: Object.freeze({ hide: ['RoutineBookHand.L', 'RoutineBookHand.R'], show: ['prop_book'] }),
-  read: Object.freeze({ hide: ['RoutineBookHand.L', 'RoutineBookHand.R'], show: ['prop_book'] }),
+  // The dossier is held in both gloves: centred between them, the gloves on
+  // its front face, and enlarged (~0.63 x 0.41 rig units) so it reads as a
+  // file. At rig size it read as a tiny card floating in front of the belly.
+  dossier: Object.freeze({ bone: 'prop_book', content: 'RoutineBook', hands: ['Hand.L', 'Hand.R'], offset: [0, 0, -0.06], scale: 1.4, hide: ['RoutineBookHand.L', 'RoutineBookHand.R'], show: ['prop_book'] }),
+  read: Object.freeze({ bone: 'prop_book', content: 'RoutineBook', hands: ['Hand.L', 'Hand.R'], offset: [0, 0, -0.06], scale: 1.4, hide: ['RoutineBookHand.L', 'RoutineBookHand.R'], show: ['prop_book'] }),
   write: Object.freeze({ hide: ['RoutineBookHand.L', 'RoutineBookHand.R'], show: ['prop_book', 'prop_pen'] }),
 });
 
@@ -705,10 +709,13 @@ export function createHomeMatthiasActor(gltf, { shadowsEnabled = true, random = 
     if (!spec?.bone) return;
     const bone = propNode(spec.bone);
     const content = propNode(spec.content);
-    const hand = propNode(spec.hand);
-    if (!bone?.parent || !content || !hand) return;
+    const hands = (spec.hands || [spec.hand]).map((name) => propNode(name)).filter(Boolean);
+    if (!bone?.parent || !content || !hands.length) return;
+    if (spec.scale) bone.scale.setScalar(spec.scale);
     model.updateMatrixWorld(true);
-    anchorBox.setFromObject(hand).getCenter(anchorWorld);
+    anchorWorld.set(0, 0, 0);
+    for (const hand of hands) anchorWorld.add(anchorBox.setFromObject(hand).getCenter(contentWorld));
+    anchorWorld.divideScalar(hands.length);
     anchorBox.setFromObject(content).getCenter(contentWorld);
     if (anchorBox.isEmpty()) return;
     // Offsets are in rig units along the body's own axes.
