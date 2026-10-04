@@ -295,6 +295,14 @@ scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page })
   await page.getByRole('button', { name: 'Abrir menú de cuenta', exact: true }).click();
   await page.getByRole('menuitem', { name: /Mi progreso/ }).click();
   await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
+  const trainingRoom = page.locator('[data-insights-room="training-room-v1"]');
+  await expect(trainingRoom).toBeVisible();
+  await expect(trainingRoom.locator('[data-insights-training-room-3d]')).toHaveAttribute(
+    'data-insights-training-room-3d',
+    'ready',
+    { timeout: 20_000 },
+  );
+  await captureAt(page, 'insights', { width: 1440, height: 900, variant: 'desktop' });
   await captureAt(page, 'insights', { width: 390, height: 844, variant: 'mobile' });
   await page.setViewportSize({ width: 1440, height: 900 });
   await settle(page);

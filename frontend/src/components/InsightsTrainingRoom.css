@@ -1,0 +1,497 @@
+/* Así juegas · Training Room v1
+ * Canon: nocturnal private analysis study, empty chair, dark wood/brass,
+ * warm desk light + cool moonlight. Product truth remains in the existing
+ * coaching components; this layer changes only spatial presentation.
+ */
+
+.insights-training-room {
+  position: relative;
+  isolation: isolate;
+  width: min(100%, 1420px);
+  min-height: calc(100dvh - 7rem);
+  margin: 0 auto;
+  padding: .3rem clamp(.45rem, 1.8vw, 1.4rem) 2.4rem;
+  overflow: clip;
+}
+
+.insights-training-room > :not(.insights-training-room-stage) {
+  position: relative;
+  z-index: 2;
+}
+
+.insights-training-room-stage {
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  left: 50%;
+  width: min(100%, 1420px);
+  height: min(790px, calc(100dvh - 6.1rem));
+  min-height: 640px;
+  transform: translateX(-50%);
+  overflow: hidden;
+  border: 1px solid rgba(194, 148, 73, .18);
+  border-radius: 18px;
+  background: #12100f;
+  box-shadow: 0 28px 70px rgba(0, 0, 0, .34);
+  pointer-events: none;
+}
+
+.insights-training-room-stage::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  background:
+    linear-gradient(90deg, rgba(7, 6, 6, .34) 0%, rgba(7, 6, 6, .08) 42%, rgba(7, 6, 6, .02) 66%, rgba(7, 6, 6, .12) 100%),
+    linear-gradient(180deg, rgba(6, 6, 8, .03) 0%, rgba(6, 6, 8, .015) 58%, rgba(7, 6, 5, .46) 94%, #0d0b0a 100%);
+}
+
+.insights-training-room-3d,
+.insights-training-room-fallback {
+  position: absolute;
+  inset: 0;
+}
+
+.insights-training-room-3d {
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 220ms ease;
+}
+
+.insights-training-room-3d canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.insights-training-room-3d.is-ready {
+  opacity: 1;
+}
+
+.insights-training-room-fallback {
+  z-index: 1;
+  background:
+    radial-gradient(circle at 83% 22%, rgba(150, 187, 229, .16), transparent 16%),
+    radial-gradient(circle at 14% 44%, rgba(232, 153, 68, .18), transparent 22%),
+    linear-gradient(90deg, rgba(24, 14, 10, .98) 0 28%, rgba(13, 13, 16, .94) 54%, rgba(10, 20, 34, .92) 100%);
+  transition: opacity 220ms ease;
+}
+
+.insights-training-room-3d.is-ready + .insights-training-room-fallback {
+  opacity: .08;
+}
+
+/* The title floats in the room instead of sitting in a dashboard hero card. */
+.insights-training-room .insights-workspace-header {
+  width: min(570px, 43%);
+  min-height: 340px;
+  margin: clamp(.8rem, 2.3vw, 1.7rem) 0 0 clamp(.1rem, 1.5vw, 1rem);
+  padding: .55rem .8rem 1rem;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  text-shadow: 0 3px 18px rgba(0, 0, 0, .76);
+}
+
+.insights-training-room .insights-workspace-back {
+  margin-bottom: 1rem;
+  color: #ead6ae;
+}
+
+.insights-training-room .insights-workspace-title-row {
+  align-items: flex-start;
+}
+
+.insights-training-room .insights-workspace-title-row h2 {
+  margin-top: .08rem;
+  color: #f0e1bf;
+  font-size: clamp(2.35rem, 4.7vw, 4.15rem);
+  line-height: .96;
+  letter-spacing: -.04em;
+}
+
+.insights-training-room .insights-workspace-title-row .section-label {
+  color: #d7ad57;
+  letter-spacing: .2em;
+}
+
+.insights-training-room .insights-workspace-title-row .mechanic-tutorial-help {
+  margin-top: .2rem;
+}
+
+.insights-training-room .insights-workspace-lead {
+  max-width: 520px;
+  margin: .8rem 0 1rem;
+  color: #d5c9b1;
+  font-size: clamp(.95rem, 1.5vw, 1.08rem);
+  line-height: 1.48;
+  opacity: .94;
+}
+
+.insights-training-room .insights-workspace-primary-tabs {
+  gap: .35rem;
+  padding: .3rem;
+  border-color: rgba(198, 150, 72, .36);
+  border-radius: 8px;
+  background: rgba(19, 14, 11, .76);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, .28);
+  backdrop-filter: blur(8px);
+}
+
+.insights-training-room .insights-workspace-primary-tabs > button {
+  min-height: 44px;
+  padding: .48rem 1rem;
+  border-radius: 5px;
+  font-family: var(--font-display, Georgia, serif);
+  letter-spacing: .01em;
+}
+
+.insights-training-room .insights-workspace-primary-tabs > button.active {
+  background:
+    linear-gradient(180deg, rgba(226, 177, 83, .24), rgba(95, 61, 20, .2)),
+    rgba(74, 47, 20, .58);
+  color: #f3d995;
+  box-shadow: inset 0 0 0 1px rgba(229, 177, 79, .58);
+}
+
+/* Three command plaques sit on the desk line from the room composition. */
+.insights-training-room .insights-workspace-nav {
+  position: relative;
+  top: auto;
+  z-index: 5;
+  width: min(880px, calc(100% - clamp(1rem, 8vw, 8rem)));
+  margin: -1.8rem 3.2% 0 auto;
+  gap: .7rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.insights-training-room .insights-workspace-nav > button {
+  min-height: 76px;
+  padding: .72rem .92rem;
+  border: 1px solid rgba(175, 127, 64, .5);
+  border-radius: 6px;
+  background:
+    radial-gradient(circle at 10px 10px, rgba(229, 181, 91, .52) 0 1.2px, transparent 1.8px),
+    radial-gradient(circle at calc(100% - 10px) 10px, rgba(229, 181, 91, .52) 0 1.2px, transparent 1.8px),
+    linear-gradient(180deg, rgba(255, 226, 168, .075), transparent 34%),
+    linear-gradient(145deg, rgba(46, 31, 22, .76), rgba(18, 14, 13, .82));
+  box-shadow:
+    0 13px 24px rgba(0, 0, 0, .34),
+    inset 0 1px rgba(255, 226, 171, .07);
+  text-align: left;
+  backdrop-filter: blur(4px);
+}
+
+.insights-training-room .insights-workspace-nav > button strong {
+  color: #e9dcc0;
+  font-family: var(--font-display, Georgia, serif);
+  font-size: clamp(1.02rem, 1.7vw, 1.18rem);
+}
+
+.insights-training-room .insights-workspace-nav > button small {
+  margin-top: .16rem;
+  color: #bfb19a;
+  font-size: .74rem;
+  opacity: .88;
+}
+
+.insights-training-room .insights-workspace-nav > button:nth-child(1) {
+  transform: rotate(-.35deg);
+}
+
+.insights-training-room .insights-workspace-nav > button:nth-child(2) {
+  transform: rotate(.18deg);
+}
+
+.insights-training-room .insights-workspace-nav > button:nth-child(3) {
+  transform: rotate(-.16deg);
+}
+
+.insights-training-room .insights-workspace-nav > button:hover {
+  transform: translateY(-1px) rotate(0deg);
+  border-color: rgba(219, 169, 82, .66);
+  background:
+    linear-gradient(180deg, rgba(240, 189, 93, .08), transparent 42%),
+    linear-gradient(145deg, rgba(45, 30, 20, .96), rgba(18, 14, 12, .96));
+}
+
+.insights-training-room .insights-workspace-nav > button.active {
+  border-color: rgba(229, 176, 79, .78);
+  background:
+    radial-gradient(circle at 10px 10px, rgba(242, 200, 112, .72) 0 1.2px, transparent 1.8px),
+    radial-gradient(circle at calc(100% - 10px) 10px, rgba(242, 200, 112, .72) 0 1.2px, transparent 1.8px),
+    radial-gradient(circle at 12% 50%, rgba(232, 162, 61, .24), transparent 28%),
+    linear-gradient(145deg, rgba(98, 61, 25, .82), rgba(35, 22, 14, .86));
+  box-shadow:
+    0 14px 27px rgba(0, 0, 0, .36),
+    inset 3px 0 rgba(221, 166, 75, .74);
+}
+
+.insights-training-room .insights-workspace-nav > button.active strong::before {
+  color: #e4b865;
+}
+
+/* First work block reads as the desk surface, not a SaaS card stack. */
+.insights-training-room .insights-workspace-panel {
+  margin-top: .35rem;
+  padding: .72rem clamp(.1rem, 1vw, .7rem) 0;
+}
+
+.insights-training-room .insights-workspace-panel > .insights-hub {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+.insights-training-room .insights-guided-session {
+  position: relative;
+  width: min(860px, 72%);
+  margin: 0 0 0 2.4%;
+  padding: 1.05rem clamp(.9rem, 2.2vw, 1.9rem) 1.15rem;
+  border: 1px solid rgba(174, 126, 63, .34);
+  border-radius: 7px;
+  background:
+    linear-gradient(180deg, rgba(55, 34, 20, .78), rgba(18, 13, 11, .82));
+  box-shadow:
+    0 18px 34px rgba(0, 0, 0, .24),
+    inset 0 1px rgba(255, 223, 159, .045);
+  backdrop-filter: blur(7px);
+  transform: perspective(900px) rotateX(.35deg);
+  transform-origin: 50% 100%;
+}
+
+.insights-training-room .insights-guided-session::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(226, 175, 90, .055), transparent 18% 82%, rgba(226, 175, 90, .04)),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, .012) 0 1px, transparent 1px 8px);
+}
+
+.insights-training-room .insights-guided-session > * {
+  position: relative;
+  z-index: 1;
+}
+
+.insights-training-room .insights-guided-session > h2 {
+  margin-bottom: .38rem;
+  color: #eee0c4;
+  font-family: var(--font-display, Georgia, serif);
+}
+
+.insights-training-room .insights-guided-session .coaching-action {
+  align-items: center;
+}
+
+.insights-training-room .insights-guided-session .coaching-action > button {
+  min-height: 44px;
+  border-radius: 6px;
+}
+
+.insights-training-room .insights-guided-session .primary-btn {
+  border-color: rgba(229, 177, 79, .72);
+  background: linear-gradient(180deg, #b98535, #76501f);
+  color: #fff0c6;
+}
+
+.insights-training-room .insights-optional-plans {
+  width: min(860px, 72%);
+  margin: .58rem 0 0 2.4%;
+  border-color: rgba(123, 94, 58, .44);
+  background: rgba(10, 9, 9, .68);
+}
+
+/* Empty / low-data states still belong to the study: no stray blue dashboard card. */
+.insights-training-room .insights-hub > .menu-section:only-child {
+  border: 1px solid rgba(132, 91, 43, .62);
+  border-radius: 4px;
+  background:
+    linear-gradient(180deg, rgba(231, 218, 184, .97), rgba(186, 164, 124, .96));
+  color: #2a2118;
+  box-shadow:
+    0 18px 36px rgba(0, 0, 0, .28),
+    inset 0 0 0 1px rgba(255, 248, 225, .28);
+}
+
+.insights-training-room .insights-hub > .menu-section:only-child :where(h2, p, b, strong, span) {
+  color: inherit;
+}
+
+.insights-training-room .insights-hub > .menu-section:only-child::before {
+  content: 'EXPEDIENTE EN ESPERA';
+  display: block;
+  margin-bottom: .42rem;
+  color: #785d35;
+  font-size: .68rem;
+  font-weight: 800;
+  letter-spacing: .18em;
+}
+
+/* Matthias' verdict becomes the parchment lying beyond the desk edge. */
+.insights-training-room.insights-workspace-view-now .insights-hub {
+  width: min(980px, 82%);
+  margin-left: auto;
+  margin-right: 2.4%;
+}
+
+.insights-training-room.insights-workspace-view-now .ai-player-portrait {
+  margin-top: .9rem;
+  border-color: rgba(132, 91, 43, .66);
+  border-radius: 3px;
+  background:
+    linear-gradient(180deg, rgba(235, 223, 190, .985), rgba(194, 174, 135, .975));
+  transform: rotate(-.18deg);
+  color: #272018;
+  box-shadow: 0 18px 36px rgba(0, 0, 0, .28);
+}
+
+.insights-training-room.insights-workspace-view-now .ai-player-portrait::after {
+  box-shadow: inset 4px 0 0 rgba(112, 76, 34, .62);
+}
+
+.insights-training-room.insights-workspace-view-now .ai-player-portrait :where(h2, h3, strong, p, span, small) {
+  color: inherit;
+}
+
+.insights-training-room.insights-workspace-view-now .ai-player-portrait .section-label,
+.insights-training-room.insights-workspace-view-now .ai-player-portrait .eyebrow {
+  color: #6b512d;
+}
+
+/* Career keeps the same study, but lets dense evidence own the foreground. */
+.insights-training-room.insights-workspace-section-career .insights-training-room-stage {
+  opacity: .42;
+}
+
+.insights-training-room.insights-workspace-section-career .insights-workspace-header {
+  min-height: 240px;
+}
+
+@media (max-width: 980px) {
+  .insights-training-room .insights-workspace-header {
+    width: min(680px, 64%);
+  }
+
+  .insights-training-room .insights-workspace-nav {
+    margin-top: -1.2rem;
+  }
+}
+
+@media (max-width: 760px) {
+  .insights-training-room {
+    min-height: 0;
+    padding: .25rem .45rem 1.6rem;
+    overflow: visible;
+  }
+
+  .insights-training-room-stage {
+    height: 440px;
+    min-height: 0;
+    border-radius: 14px;
+  }
+
+  .insights-training-room-stage::after {
+    background:
+      linear-gradient(180deg, rgba(7, 7, 8, .14), rgba(8, 7, 7, .5) 74%, #111214 100%),
+      linear-gradient(90deg, rgba(12, 9, 7, .56), rgba(9, 17, 28, .28));
+  }
+
+  .insights-training-room-3d {
+    display: none;
+  }
+
+  .insights-training-room-fallback {
+    opacity: 1 !important;
+    background:
+      radial-gradient(circle at 82% 17%, rgba(152, 190, 236, .18), transparent 17%),
+      radial-gradient(circle at 12% 46%, rgba(235, 157, 72, .2), transparent 24%),
+      linear-gradient(120deg, #23150e 0 36%, #14161b 63%, #0c1a2b 100%);
+  }
+
+  .insights-training-room .insights-workspace-header {
+    width: auto;
+    min-height: 300px;
+    margin: .2rem 0 0;
+    padding: .65rem .65rem .9rem;
+  }
+
+  .insights-training-room .insights-workspace-title-row h2 {
+    font-size: clamp(2.1rem, 12vw, 3rem);
+  }
+
+  .insights-training-room .insights-workspace-lead {
+    max-width: 95%;
+    font-size: .9rem;
+  }
+
+  .insights-training-room .insights-workspace-nav {
+    width: 100%;
+    margin-top: -.5rem;
+    grid-auto-columns: minmax(148px, 54vw);
+    gap: .42rem;
+    padding: .18rem;
+  }
+
+  .insights-training-room .insights-workspace-nav > button {
+    min-height: 72px;
+    padding: .62rem .68rem;
+    background: rgba(20, 16, 14, .9);
+    transform: none;
+  }
+
+  .insights-training-room .insights-workspace-panel {
+    padding: .35rem 0 0;
+  }
+
+  .insights-training-room .insights-guided-session,
+  .insights-training-room .insights-optional-plans,
+  .insights-training-room.insights-workspace-view-now .insights-hub {
+    width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .insights-training-room .insights-guided-session {
+    padding: .9rem .76rem 1rem;
+    backdrop-filter: none;
+    transform: none;
+  }
+
+  .insights-training-room.insights-workspace-view-now .ai-player-portrait {
+    transform: none;
+  }
+}
+
+@media (max-width: 430px) {
+  .insights-training-room .insights-workspace-primary-tabs {
+    display: grid;
+    width: min(100%, 320px);
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .insights-training-room .insights-workspace-primary-tabs > button {
+    padding-inline: .65rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .insights-training-room-3d,
+  .insights-training-room-fallback,
+  .insights-training-room .insights-workspace-nav > button {
+    transition: none;
+  }
+
+  .insights-training-room .insights-workspace-nav > button:hover {
+    transform: none;
+  }
+}

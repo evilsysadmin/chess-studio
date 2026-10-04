@@ -59,6 +59,23 @@ Cada consejo debe distinguir:
 - interpretación/coaching;
 - acción entrenable disponible.
 
+## Training Room · canon visual de “Así juegas”
+
+El nombre interno de la estancia es **Training Room**. La etiqueta visible principal sigue siendo “Así juegas”; no se convierte en un modo nuevo ni en otra fuente de verdad.
+
+Canon visual aprobado:
+- estudio nocturno privado, no dashboard;
+- madera oscura, latón envejecido, cuero y pergamino como materiales dominantes;
+- luz cálida de escritorio a la izquierda/primer plano y luz fría de luna desde una gran ventana lateral;
+- escritorio protagonista con expediente, libros, tintero/objetos de estudio y placas físicas para Ahora / Errores / Expediente;
+- sillón vacío como centro de composición: **no hay personas humanas en la escena**;
+- Matthias puede existir como identidad del producto en texto/avatar canónico, pero no se sustituye por un humano renderizado;
+- el contenido factual y las acciones siguen perteneciendo a los componentes de coaching existentes; la sala sólo cambia presentación y jerarquía;
+- “Mi progreso” puede usar la misma estancia como contexto atenuado, pero los datos densos conservan legibilidad y progressive disclosure;
+- móvil puede simplificar o retirar el 3D y conservar una versión diegética 2D si mejora rendimiento/lectura.
+
+El mock nocturno aprobado en la conversación del 2026-10-04 es la referencia de composición. No generar variaciones conceptuales nuevas para sustituirla durante esta línea de trabajo; las siguientes iteraciones se comparan contra ese canon y contra PNG runtime reales.
+
 ## “Entrenar este error”
 
 El CTA aparece sólo cuando existe una posición personal real que coincide con el filtro del consejo.

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { Suspense, lazy, useMemo, useState } from 'react';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 import InsightsDashboardContent from './InsightsDashboardContent.jsx';
@@ -14,8 +14,11 @@ import { loadCleanGameRecords } from '../cleanGames.js';
 import { loadRivalry } from '../rivalry.js';
 import { buildPlayerModel } from '../playerModel.js';
 import './InsightsWorkspace.css';
+import './InsightsTrainingRoom.css';
 import './InsightsMobilePolish.css';
 import '../styles/04-career-dossier.css';
+
+const InsightsTrainingRoomScene3D = lazy(() => import('./InsightsTrainingRoomScene3D.jsx'));
 
 const DIAGNOSIS_VIEWS = [
   { id: 'now', label: 'Ahora', detail: 'Matthias te marca el foco' },
@@ -59,7 +62,16 @@ export default function InsightsScreen(props) {
   }), [props.insights, personalPuzzles, cleanGameRecords, rivalry]);
 
   return (
-    <div className={`insights-coach-workspace insights-workspace-section-${section} insights-workspace-view-${diagnosisView}`}>
+    <div
+      className={`insights-coach-workspace insights-training-room insights-workspace-section-${section} insights-workspace-view-${diagnosisView}`}
+      data-insights-room="training-room-v1"
+    >
+      <div className="insights-training-room-stage" aria-hidden="true">
+        <Suspense fallback={null}>
+          <InsightsTrainingRoomScene3D />
+        </Suspense>
+        <div className="insights-training-room-fallback" />
+      </div>
       <header className="insights-workspace-header">
         <button className="back-link insights-workspace-back" type="button" onClick={props.onExit}>← Volver al menú</button>
 
