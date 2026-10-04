@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { chroniclesIsometricScenePlan } from './chronicles/chroniclesIsometricScenePlan.js';
+import { CHRONICLES_MINIMUM_VISIBILITY } from './chronicles/chroniclesLightingPolicy.js';
 import { buildChroniclesDungeonCeiling } from './chroniclesOfMatthiasCeiling.js';
 import { buildChroniclesSurfacePatina } from './chroniclesOfMatthiasSurfacePatina.js';
 
@@ -98,7 +99,11 @@ function addReadabilityLighting(root, { coarsePointer }) {
   // Chronicles should be gloomy, not crushed. The ambient level is deliberately
   // high enough to preserve stone/material detail after ACES while practical
   // torches still carry the mood and direction of the scene.
-  const ambient = new THREE.AmbientLight(0x73808c, coarsePointer ? 0.88 : 0.8);
+  const ambientFloor = CHRONICLES_MINIMUM_VISIBILITY.firstPerson;
+  const ambient = new THREE.AmbientLight(
+    0x73808c,
+    coarsePointer ? ambientFloor.ambientCoarse : ambientFloor.ambientDesktop,
+  );
   ambient.name = 'chronicles-readability-ambient';
 
   // Keep the carried torch as a foreground cue rather than an orange wash over

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { CHRONICLES_MINIMUM_VISIBILITY } from './chroniclesLightingPolicy.js';
 import {
   CHRONICLES_ISOMETRIC_SCENE_STYLE_VERSION,
   chroniclesIsometricSceneStyle,
@@ -26,8 +27,29 @@ describe('Chronicles isometric scene styles', () => {
     expect(menagerie.palette.floor[3]).toBeGreaterThan(menagerie.palette.floor[0]);
     expect(menagerie.lighting.exposure).toBeGreaterThan(gallery.lighting.exposure);
     expect(menagerie.lighting.fill).toBeGreaterThan(1);
-    expect(bellTower.lighting.exposure).toBeGreaterThan(1.1);
-    expect(bellTower.lighting.fill).toBeGreaterThan(1.3);
+    expect(bellTower.lighting.exposure).toBeGreaterThanOrEqual(1.28);
+    expect(bellTower.lighting.hemi).toBeGreaterThanOrEqual(1.4);
+    expect(bellTower.lighting.fill).toBeGreaterThanOrEqual(1.62);
+    expect(bellTower.lighting.bounce).toBeGreaterThanOrEqual(1.46);
+  });
+
+  it('never lets an authored scenario fall below the shared visibility floor', () => {
+    const floor = CHRONICLES_MINIMUM_VISIBILITY.isometric;
+    const mapIds = [
+      'crypt-eight-squares',
+      'gallery-of-forks',
+      'menagerie-of-ash',
+      'hollow-bell-tower',
+      'missing-room',
+    ];
+
+    mapIds.forEach((mapId) => {
+      const lighting = chroniclesIsometricSceneStyle(mapId).lighting;
+      expect(lighting.exposure).toBeGreaterThanOrEqual(floor.exposure);
+      expect(lighting.hemi).toBeGreaterThanOrEqual(floor.hemi);
+      expect(lighting.fill).toBeGreaterThanOrEqual(floor.fill);
+      expect(lighting.bounce).toBeGreaterThanOrEqual(floor.bounce);
+    });
   });
 
   it('freezes palette collections and keeps the neutral fallback renderable', () => {
