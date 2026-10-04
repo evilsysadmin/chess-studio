@@ -557,18 +557,18 @@ def build_strategy_table(static, p):
 
 
 def build_chat_board(static, p):
-    x, y = 5.70, -0.10
-    base.cube("PVP_HALL_chat_frame", (x, y, 2.34), (1.68, 0.18, 1.78),
+    x, y = 5.70, 0.05
+    base.cube("PVP_HALL_chat_frame", (x, y, 2.30), (1.42, 0.17, 1.50),
               p["oak"], static, bevel=0.12)
-    base.cube("PVP_HALL_chat_parchment", (x, y - 0.20, 2.34), (1.42, 0.030, 1.46),
+    base.cube("PVP_HALL_chat_parchment", (x, y - 0.20, 2.30), (1.16, 0.030, 1.18),
               p["parchment"], static, bevel=0.08)
     base.cube("PVP_HALL_chat_title_rail", (x, y - 0.25, 3.42), (1.05, 0.020, 0.07),
               p["brass"], static, bevel=0.020)
     # Carved gable + brass bosses stop the notice board reading as a flat monitor.
     for side in (-1, 1):
         gable = base.cube(
-            f"PVP_HALL_chat_gable_{side}", (x + side * 0.72, y - 0.10, 4.02),
-            (0.82, 0.10, 0.10), p["oak_mid"], static, bevel=0.05,
+            f"PVP_HALL_chat_gable_{side}", (x + side * 0.60, y - 0.10, 3.66),
+            (0.68, 0.10, 0.10), p["oak_mid"], static, bevel=0.05,
         )
         gable.rotation_euler.y = math.radians(-side * 24)
         for z in (1.02, 3.62):
@@ -576,9 +576,9 @@ def build_chat_board(static, p):
                 f"PVP_HALL_chat_boss_{side}_{z:.2f}", (x + side * 1.48, y - 0.25, z),
                 0.075, p["brass"], static, scale=(1.0, 0.38, 1.0),
             )
-    for row, z in enumerate((2.93, 2.48, 2.03, 1.58)):
+    for row, z in enumerate((2.78, 2.42, 2.06, 1.70)):
         base.cube(f"PVP_HALL_chat_line_{row}", (x, y - 0.25, z),
-                  (1.08 - row * 0.08, 0.012, 0.028), p["oak_mid"], static, bevel=0.010)
+                  (0.90 - row * 0.07, 0.012, 0.026), p["oak_mid"], static, bevel=0.010)
 
     # Owl silhouette perched on the notice board.
     base.sphere("PVP_HALL_owl_body", (x + 0.95, y - 0.08, 4.12), 0.25,
