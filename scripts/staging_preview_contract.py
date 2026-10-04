@@ -20,6 +20,7 @@ STAGING_WORKER_WRAPPER = ROOT / "infra/cloudflare/worker/staging.js"
 STAGING_WORKER_DEPLOY = ROOT / "scripts/deploy_staging_ai_worker.py"
 STAGING_RELEASE_IDENTITY = ROOT / "scripts/staging_release_identity.py"
 STAGING_DEPLOY_PROOF = ROOT / "scripts/staging_deploy_proof.py"
+STAGING_DEPLOY_SCOPE = ROOT / "scripts/staging_deploy_scope.py"
 OCI_RUN_COMMAND = ROOT / "scripts/oci_run_command.py"
 OCI_RUNTIME_BUNDLE = ROOT / "scripts/oci_runtime_bundle.py"
 
@@ -68,6 +69,7 @@ def main() -> int:
         STAGING_WORKER_DEPLOY,
         STAGING_RELEASE_IDENTITY,
         STAGING_DEPLOY_PROOF,
+        STAGING_DEPLOY_SCOPE,
         OCI_RUN_COMMAND,
         OCI_RUNTIME_BUNDLE,
     )
@@ -131,6 +133,12 @@ def main() -> int:
         ("Supersede stale staging commit", "single stale guard before mutation"),
         ("permissions:\n  contents: read", "read-only workflow permissions"),
         ("admitted: ${{ steps.admission.outputs.admitted }}", "admission output"),
+        ("pull-requests: read", "deploy scope PR provenance permission"),
+        ("fetch-depth: 2", "deploy scope first-parent checkout"),
+        ("staging_deploy_scope.py --self-test", "deploy scope self-test"),
+        ("staging_deploy_scope.py --sha \"$DEPLOY_SHA\" --github-output \"$scope\"", "deploy scope classifier"),
+        ("if [[ \"$deploy_required\" != true ]]", "non-runtime staging no-op"),
+        ("Staging no-op", "non-runtime staging diagnostic"),
         ("staging_generation.py main-head --sha \"$DEPLOY_SHA\"", "main head admission probe"),
         ("admitted=false", "superseded clean exit"),
         ("admitted=true", "admitted generation state"),
@@ -161,6 +169,12 @@ def main() -> int:
 
     if staging_deploy.count("python3 scripts/verify_backend_staging.py") < 2:
         errors.append("staging fast-path/fallback must reuse full public backend accreditation before skipping Run Command")
+    scope_selftest = subprocess.run(
+        [sys.executable, "-S", str(STAGING_DEPLOY_SCOPE), "--self-test"],
+        capture_output=True, text=True, check=False,
+    )
+    if scope_selftest.returncode != 0:
+        errors.append("staging_deploy_scope.py self-test falla: " + (scope_selftest.stdout + scope_selftest.stderr).strip()[-300:])
     generation_helper = (ROOT / "scripts" / "staging_generation.py").read_text(encoding="utf-8")
     if "verify_backend_staging.py" not in generation_helper or '"--attempts", "1"' not in generation_helper:
         errors.append("staging watcher must use one-shot full public accreditation probes")
@@ -447,7 +461,7 @@ def main() -> int:
 
     print(
         "staging-preview-contract OK · preview isolated; queued admission; native OCI mutex; "
-        "Render-free canonical release; full-generation proof; persistent Worker secret; smoke-integrated N/N/N"
+        "Render-free canonical release; non-runtime no-op; full-generation proof; persistent Worker secret; smoke-integrated N/N/N"
     )
     return 0
 
