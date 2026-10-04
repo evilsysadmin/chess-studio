@@ -408,6 +408,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
       data-chronicles-phase={state.phase}
       data-chronicles-turn-engine={CHRONICLES_TURN_ENGINE_VERSION}
     >
+      <h2 className="chronicles-sr-title">Chronicles of Matthias</h2>
       <div className="chronicles-shell">
         <aside className="chronicles-party" aria-label="Grupo de Matthias">
           <span className="chronicles-panel-kicker">GRUPO · 1–4 SELECCIONAR</span>
