@@ -144,6 +144,30 @@ describe('Escuela de Matthias', () => {
     expect(isSchoolLessonUnlocked(progress, schoolLessonsForCourse('basic-medium')[0].id)).toBe(true);
   });
 
+  it('no arrastra hacia atrás a quien ya aprobó un curso si aparece material nuevo o incompleto', () => {
+    const basic = schoolLessonsForCourse('basic');
+    const basicExam = schoolExamForCourse('basic');
+    const legacyProgress = Object.fromEntries(
+      basic
+        .filter((lesson) => lesson.id !== 'castle-short')
+        .map((lesson) => [lesson.id, {
+          completed: true,
+          attempts: 1,
+          completedAt: '2026-08-29T10:00:00.000Z',
+        }]),
+    );
+    legacyProgress[basicExam.id] = {
+      completed: true,
+      attempts: 1,
+      completedAt: '2026-08-29T10:00:00.000Z',
+    };
+
+    const summary = matthiasSchoolSummary(legacyProgress);
+    expect(summary.currentCourseId).toBe('basic-medium');
+    expect(summary.nextLessonId).toBe(schoolLessonsForCourse('basic-medium')[0].id);
+    expect(summary.nextLessonId).not.toBe('castle-short');
+  });
+
   it('persiste progreso, promociones y calcula el siguiente curso sin inventar completados', () => {
     expect(loadMatthiasSchoolProgress()).toEqual({});
     const first = MATTHIAS_SCHOOL_LESSONS[0];
