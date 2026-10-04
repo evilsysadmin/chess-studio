@@ -114,16 +114,29 @@ func New(cfg Config) (*Handler, error) {
 		originalHost := req.Host
 		baseDirector(req)
 		req.Header.Set("X-Forwarded-Host", originalHost)
-		req.Header.Set("X-Chess-Pvp-Edge", "go")
+		req.Header.Set("X-Chess-Edge", "go")
+		if isPvPPath(req.URL.Path) {
+			req.Header.Set("X-Chess-Pvp-Edge", "go")
+		} else {
+			req.Header.Del("X-Chess-Pvp-Edge")
+		}
 	}
 	proxy.ModifyResponse = func(resp *http.Response) error {
-		resp.Header.Set("X-Chess-Pvp-Edge", "go")
 		resp.Header.Set("X-Chess-Edge", "go")
+		if resp.Request != nil && isPvPPath(resp.Request.URL.Path) {
+			resp.Header.Set("X-Chess-Pvp-Edge", "go")
+		} else {
+			resp.Header.Del("X-Chess-Pvp-Edge")
+		}
 		return nil
 	}
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, _ error) {
-		w.Header().Set("X-Chess-Pvp-Edge", "go")
 		w.Header().Set("X-Chess-Edge", "go")
+		if isPvPPath(r.URL.Path) {
+			w.Header().Set("X-Chess-Pvp-Edge", "go")
+		} else {
+			w.Header().Del("X-Chess-Pvp-Edge")
+		}
 		code := "upstream_unavailable"
 		if isPvPPath(r.URL.Path) {
 			code = "pvp_upstream_unavailable"
@@ -178,6 +191,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	route := pvproute.Match(r.URL.Path)
 	if native := h.nativeFor(route.Kind); native != nil {
+		w.Header().Set("X-Chess-Edge", "go")
 		w.Header().Set("X-Chess-Pvp-Edge", "go")
 		h.telemetry.Serve(route.Kind.Pattern(), native, w, r)
 		return
@@ -241,6 +255,7 @@ func (h *Handler) nativeFor(kind pvproute.Kind) http.Handler {
 }
 
 func (h *Handler) health(w http.ResponseWriter) {
+	w.Header().Set("X-Chess-Edge", "go")
 	w.Header().Set("X-Chess-Pvp-Edge", "go")
 	writeJSON(w, http.StatusOK, h.statusPayload("ok"))
 }
@@ -300,6 +315,7 @@ func (h *Handler) ready(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	w.Header().Set("X-Chess-Edge", "go")
 	w.Header().Set("X-Chess-Pvp-Edge", "go")
 	writeJSON(w, http.StatusOK, h.statusPayload("ready"))
 }
