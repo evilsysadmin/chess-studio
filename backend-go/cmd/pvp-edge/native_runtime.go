@@ -19,6 +19,7 @@ import (
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/matchresign"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/matchtimeout"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/mongoruntime"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/obshistory"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/presence"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/pulse"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/pvprating"
@@ -45,9 +46,13 @@ type nativeRuntime struct {
 	gamesWrite          http.Handler
 	gamesHint           http.Handler
 	gamesAnalyze        http.Handler
-	mongo               *mongoruntime.Runtime
-	virtualPlayers      bool
-	residentMove        bool
+	// system is built in edgeConfig, once request telemetry exists.
+	system *gamesapi.SystemConfig
+	// history is Admin's observability history (nil when disabled).
+	history        *obshistory.Recorder
+	mongo          *mongoruntime.Runtime
+	virtualPlayers bool
+	residentMove   bool
 }
 
 func buildNativeRuntime(features nativeFeatureFlags, upstream string) (runtime nativeRuntime, err error) {
@@ -91,6 +96,17 @@ func buildNativeRuntime(features nativeFeatureFlags, upstream string) (runtime n
 		_ = runtime.mongo.Close(closeCtx)
 		runtime.mongo = nil
 	}()
+
+	// Admin's observability history: native requests land in the same
+	// 5-minute buckets as Python's (GO_OBSERVABILITY_HISTORY_ENABLED).
+	if envBool("GO_OBSERVABILITY_HISTORY_ENABLED", true) {
+		historyStore, historyErr := obshistory.NewMongoStore(mongoRuntime.Database())
+		if historyErr != nil {
+			log.Printf("observability history disabled: %v", historyErr)
+		} else {
+			runtime.history = obshistory.New(historyStore)
+		}
+	}
 
 	store, err := pulse.NewMongoStoreFromDatabase(mongoRuntime.Database(), pvpMongoTimeout)
 	if err != nil {
@@ -282,6 +298,24 @@ func buildNativeRuntime(features nativeFeatureFlags, upstream string) (runtime n
 		}
 		runtime.gamesHint = hintHandler
 	}
+	if features.system {
+		telemetryCfg := telemetry.ConfigFromEnv(os.LookupEnv)
+		runtime.system = &gamesapi.SystemConfig{
+			Config: gamesapi.Config{
+				Accounts:        accountstore.New(mongoRuntime.Database(), pvpMongoTimeout),
+				Presence:        presence.New(mongoRuntime.Database(), telemetryCfg.TrustCloudflare, 2*time.Second),
+				JWTSecret:       jwtSecret,
+				AllowedOrigins:  splitCSV(os.Getenv("CORS_ORIGINS")),
+				TrustCloudflare: telemetryCfg.TrustCloudflare,
+			},
+			Counter:          accountstore.New(mongoRuntime.Database(), pvpMongoTimeout),
+			AdminUsernames:   splitCSV(os.Getenv("ADMIN_USERNAMES")),
+			DisabledFeatures: os.Getenv("CHESS_DISABLED_FEATURES"),
+		}
+		if runtime.history != nil {
+			runtime.system.History = runtime.history
+		}
+	}
 	if features.gamesAnalyze {
 		telemetryCfg := telemetry.ConfigFromEnv(os.LookupEnv)
 		analyzeHandler, analyzeErr := gamesapi.NewAnalyze(gamesapi.AnalyzeConfig{
@@ -314,6 +348,18 @@ func (r nativeRuntime) close(ctx context.Context) error {
 }
 
 func (r nativeRuntime) edgeConfig(upstream, release string, requestTelemetry *telemetry.Recorder) edge.Config {
+	var system http.Handler
+	if r.system != nil {
+		cfg := *r.system
+		if requestTelemetry != nil {
+			cfg.Metrics = requestTelemetry
+		}
+		if handler, err := gamesapi.NewSystem(cfg); err != nil {
+			log.Printf("native system routes disabled: %v", err)
+		} else {
+			system = handler
+		}
+	}
 	var readyChecks map[string]func(context.Context) error
 	if r.mongo != nil {
 		readyChecks = map[string]func(context.Context) error{"mongodb": r.mongo.Ping}
@@ -338,6 +384,7 @@ func (r nativeRuntime) edgeConfig(upstream, release string, requestTelemetry *te
 		NativeGamesWrite:          r.gamesWrite,
 		NativeGamesHint:           r.gamesHint,
 		NativeGamesAnalyze:        r.gamesAnalyze,
+		NativeSystem:              system,
 		VirtualPlayersEnabled:     r.virtualPlayers,
 		NativeResidentMove:        r.residentMove,
 		ReadyChecks:               readyChecks,
@@ -347,7 +394,7 @@ func (r nativeRuntime) edgeConfig(upstream, release string, requestTelemetry *te
 
 func (r nativeRuntime) logStartup(port, upstream string) {
 	log.Printf(
-		"go-api listening on :%s -> %s native_pulse=%t native_lobby_read=%t native_roster=%t native_chat=%t native_challenge_resolution=%t native_challenge_accept=%t native_challenge_create=%t native_match_handoff_cancel=%t native_match_ready=%t native_match_resign=%t native_match_read=%t native_match_move=%t native_resident_move=%t native_games_read=%t native_games_write=%t native_games_hint=%t native_games_analyze=%t",
+		"go-api listening on :%s -> %s native_pulse=%t native_lobby_read=%t native_roster=%t native_chat=%t native_challenge_resolution=%t native_challenge_accept=%t native_challenge_create=%t native_match_handoff_cancel=%t native_match_ready=%t native_match_resign=%t native_match_read=%t native_match_move=%t native_resident_move=%t native_games_read=%t native_games_write=%t native_games_hint=%t native_games_analyze=%t native_system=%t",
 		port,
 		upstream,
 		r.pulse != nil,
@@ -367,6 +414,7 @@ func (r nativeRuntime) logStartup(port, upstream string) {
 		r.gamesWrite != nil,
 		r.gamesHint != nil,
 		r.gamesAnalyze != nil,
+		r.system != nil,
 	)
 }
 

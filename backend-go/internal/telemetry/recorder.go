@@ -31,6 +31,8 @@ const (
 	meterName          = "chess-studio.backend"
 	requestCounterName = "chess_studio_http_server_requests"
 	durationName       = "chess_studio_http_server_duration"
+	frontendEventsName = "chess_studio_frontend_events"
+	frontendVitalName  = "chess_studio_frontend_web_vital"
 	loggerName         = "chess-studio.access"
 	exportInterval     = 30 * time.Second
 )
@@ -57,6 +59,8 @@ type Recorder struct {
 
 	requests metric.Int64Counter
 	duration metric.Float64Histogram
+	frontend metric.Int64Counter
+	vital    metric.Float64Histogram
 	logger   otellog.Logger
 
 	shutdowns []func(context.Context) error
@@ -120,10 +124,13 @@ func New(ctx context.Context, cfg Config, opts Options) (*Recorder, error) {
 		meter := provider.Meter(meterName)
 		counter, err1 := meter.Int64Counter(requestCounterName, metric.WithDescription("Chess Studio HTTP requests"))
 		histogram, err2 := meter.Float64Histogram(durationName, metric.WithUnit("s"), metric.WithDescription("Chess Studio HTTP request duration"))
-		if err := errors.Join(err1, err2); err != nil {
+		frontend, err3 := meter.Int64Counter(frontendEventsName, metric.WithDescription("Coarse frontend telemetry events"))
+		vital, err4 := meter.Float64Histogram(frontendVitalName, metric.WithDescription("Web Vital value reported by the frontend"))
+		if err := errors.Join(err1, err2, err3, err4); err != nil {
 			errs = append(errs, err)
 		} else {
 			r.requests, r.duration = counter, histogram
+			r.frontend, r.vital = frontend, vital
 			r.shutdowns = append(r.shutdowns, provider.Shutdown)
 		}
 	}
@@ -320,3 +327,43 @@ func (s *statusRecorder) Write(p []byte) (int, error) {
 
 // Unwrap lets http.ResponseController reach the underlying writer.
 func (s *statusRecorder) Unwrap() http.ResponseWriter { return s.ResponseWriter }
+
+// RecordFrontend mirrors tracing.record_frontend_otel: one coarse frontend
+// event, and its value when it is a Web Vital. No identity, no free text.
+func (r *Recorder) RecordFrontend(eventType, metricName string, value *float64, frontendContext, release string) {
+	if r == nil || r.frontend == nil {
+		return
+	}
+	if eventType == "" {
+		eventType = "unknown"
+	}
+	if frontendContext == "" {
+		frontendContext = "unknown"
+	}
+	attrs := []attribute.KeyValue{
+		attribute.String("event.type", truncateRunes(eventType, 40)),
+		attribute.String("frontend.context", truncateRunes(frontendContext, 40)),
+	}
+	if release = truncateRunes(strings.TrimSpace(release), 40); release != "" {
+		attrs = append(attrs, attribute.String("service.client_release", release))
+	}
+	if metricName != "" {
+		attrs = append(attrs, attribute.String("web_vital.name", truncateRunes(metricName, 20)))
+	}
+	set := metric.WithAttributes(attrs...)
+	r.frontend.Add(context.Background(), 1, set)
+	if metricName != "" && value != nil && r.vital != nil {
+		r.vital.Record(context.Background(), *value, set)
+	}
+}
+
+// LogLine writes one already-serialised operational log line to the same
+// stream as the access log (stdout, Python's uvicorn.error handler).
+func (r *Recorder) LogLine(line string) {
+	if r == nil {
+		return
+	}
+	r.outMu.Lock()
+	_, _ = io.WriteString(r.out, line+"\n")
+	r.outMu.Unlock()
+}
