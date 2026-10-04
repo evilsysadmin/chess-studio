@@ -335,7 +335,7 @@ export function chroniclesLevelForXp(xp) {
 }
 
 function defaultAttributes() {
-  return { vigor: 0, power: 0, precision: 0, will: 0 };
+  return { vigor: 0, power: 0, precision: 0, will: 0, agility: 0 };
 }
 
 function defaultHero() {
