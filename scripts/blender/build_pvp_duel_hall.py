@@ -201,26 +201,31 @@ def build_envelope(static, p):
 
     # Distant castle silhouette in front of the night glass. This is intentionally
     # low-contrast: it gives the window depth without becoming a second UI plane.
-    skyline = (
-        (-1.28, 2.72, 0.36, 0.72),
-        (-0.88, 3.02, 0.24, 1.02),
-        (-0.46, 2.62, 0.42, 0.62),
-        (0.00, 2.96, 0.30, 0.96),
-        (0.40, 2.70, 0.34, 0.70),
-        (0.82, 3.12, 0.22, 1.12),
-        (1.20, 2.66, 0.32, 0.66),
+    # Distant castle: layered walls + octagonal towers + small crenellations,
+    # avoiding the previous row of rectangular blocks.
+    base.cube("PVP_HALL_skyline_wall_left", (wx - 0.78, 5.62, 2.86),
+              (0.72, 0.026, 0.48), p["iron"], static, bevel=0.012)
+    base.cube("PVP_HALL_skyline_wall_right", (wx + 0.67, 5.62, 2.82),
+              (0.68, 0.026, 0.44), p["iron"], static, bevel=0.012)
+    towers = (
+        (-1.22, 3.02, 0.20, 0.90),
+        (-0.38, 3.18, 0.25, 1.05),
+        (0.45, 2.98, 0.21, 0.84),
+        (1.18, 3.10, 0.18, 0.96),
     )
-    for idx, (xoff, z, half_w, half_h) in enumerate(skyline):
-        base.cube(
-            f"PVP_HALL_skyline_{idx}", (wx + xoff, 5.62, z),
-            (half_w, 0.028, half_h), p["iron"], static, bevel=0.015,
+    for idx, (xoff, z, radius, height) in enumerate(towers):
+        base.cylinder(
+            f"PVP_HALL_skyline_tower_{idx}", (wx + xoff, 5.61, z),
+            radius, height * 2.0, p["iron"], static, vertices=8,
         )
-        if idx in (1, 3, 5):
-            roof = base.cube(
-                f"PVP_HALL_skyline_roof_{idx}", (wx + xoff, 5.60, z + half_h + 0.18),
-                (half_w * 0.62, 0.030, 0.16), p["iron"], static, bevel=0.010,
+        # Small crown silhouette reads as battlements rather than a toy roof.
+        for merlon in (-1, 0, 1):
+            base.cube(
+                f"PVP_HALL_skyline_merlon_{idx}_{merlon}", (
+                    wx + xoff + merlon * radius * 0.62, 5.60, z + height + 0.10
+                ),
+                (radius * 0.18, 0.028, 0.10), p["iron"], static, bevel=0.006,
             )
-            roof.rotation_euler.y = math.radians(45)
 
     # Left heraldic banner + right matching pennant.
     for side, label in ((-1, "left"), (1, "right")):
@@ -527,13 +532,15 @@ def build_strategy_table(static, p):
                 0.20, p["brass"], static, scale=(1.0, 1.0, 0.50),
             )
 
-    # Upright physical rival board at the rear edge.
-    base.cube("PVP_HALL_roster_frame", (0, 1.92, 2.48), (2.90, 0.16, 1.18),
-              p["oak"], static, bevel=0.11)
-    base.cube("PVP_HALL_roster_surface", (0, 1.73, 2.48), (2.58, 0.035, 0.92),
-              p["leather"], static, bevel=0.07)
-    base.cube("PVP_HALL_roster_header", (0, 1.68, 3.18), (2.15, 0.025, 0.09),
-              p["brass"], static, bevel=0.022)
+    # Rival register at the rear edge. Use a carved rail with three independent
+    # parchment slats instead of one large rectangular panel, so it reads as
+    # ceremonial furniture rather than a monitor.
+    base.cube("PVP_HALL_roster_frame", (0, 1.92, 3.22), (2.88, 0.16, 0.15),
+              p["oak"], static, bevel=0.09)
+    base.cube("PVP_HALL_roster_surface", (0, 1.77, 3.18), (2.52, 0.030, 0.10),
+              p["velvet"], static, bevel=0.045)
+    base.cube("PVP_HALL_roster_header", (0, 1.68, 3.23), (2.10, 0.025, 0.065),
+              p["brass"], static, bevel=0.020)
     for side in (-1, 1):
         base.cylinder(
             f"PVP_HALL_roster_post_{side}", (side * 2.66, 1.73, 2.50),
@@ -547,12 +554,16 @@ def build_strategy_table(static, p):
               p["oak_mid"], static, bevel=0.08)
     base.sphere("PVP_HALL_roster_crown_boss", (0, 1.60, 3.50), 0.13,
                 p["brass"], static, scale=(1.0, 0.32, 1.0))
-    for row, z in enumerate((2.93, 2.50, 2.07)):
-        base.cube(f"PVP_HALL_roster_row_{row}", (0, 1.64, z), (2.30, 0.018, 0.14),
+    for row, z in enumerate((2.86, 2.46, 2.06)):
+        base.cube(
+            f"PVP_HALL_roster_row_back_{row}", (0, 1.74, z),
+            (2.42, 0.055, 0.17), p["oak_mid"], static, bevel=0.050,
+        )
+        base.cube(f"PVP_HALL_roster_row_{row}", (0, 1.66, z), (2.24, 0.018, 0.12),
                   p["parchment"], static, bevel=0.035)
-        base.sphere(f"PVP_HALL_roster_medallion_{row}", (-1.98, 1.60, z), 0.09,
+        base.sphere(f"PVP_HALL_roster_medallion_{row}", (-1.91, 1.61, z), 0.085,
                     p["brass"], static, scale=(1.0, 0.35, 1.0))
-        base.cube(f"PVP_HALL_roster_action_{row}", (1.94, 1.60, z), (0.24, 0.020, 0.09),
+        base.cube(f"PVP_HALL_roster_action_{row}", (1.88, 1.61, z), (0.22, 0.020, 0.08),
                   p["brass"], static, bevel=0.03)
 
     # Map / marquetry on table.
