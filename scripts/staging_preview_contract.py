@@ -429,6 +429,8 @@ def main() -> int:
         ("workflows:\n      - Deploy to staging", "staging AI canonical source"),
         ("UPSTREAM_EVENT", "staging AI upstream provenance guard"),
         ("Accredit coherent staging generation", "staging AI read-only accreditation"),
+        ("Checkout accreditation control-plane", "staging AI control-plane checkout"),
+        ("ref: ${{ github.sha }}", "staging AI helper code pinned to workflow SHA"),
         ("actions: read", "staging AI may inspect exact upstream jobs"),
         ("Prove upstream generation", "staging AI automatic deploy proof"),
         ("staging_deploy_proof.py --run-id", "staging AI exact upstream-run proof helper"),
@@ -449,6 +451,7 @@ def main() -> int:
         errors.append("staging_deploy_proof.py self-test falla: " + (proof_selftest.stdout + proof_selftest.stderr).strip()[-300:])
     require(staging_release_identity, 'payload.get("build")', "staging exact SHA helper build check", errors)
     require(staging_release_identity, "validate_health_payload", "staging AI shared health contract", errors)
+    forbid(staging_ai, "ref: ${{ env.DEPLOY_SHA }}", "staging AI no debe ejecutar helpers desde un SHA anterior que aún no los contiene", errors)
     forbid(staging_ai, "deploy_staging_ai_worker.py", "staging AI accreditation vuelve a desplegar Worker", errors)
     forbid(staging_ai, "Refuse stale staging Worker commit", "staging AI contiene stale guard tardío", errors)
     forbid(staging_ai, "Staging · preview", "staging AI escucha preview", errors)
