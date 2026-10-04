@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  chroniclesAdvanceCombatInitiative,
   chroniclesAdvanceInitiative,
   chroniclesCurrentInitiativeActor,
   chroniclesEnemyInitiativeAgility,
   chroniclesPartyInitiativeAgility,
   chroniclesRollInitiative,
+  chroniclesStartInitiativeCombat,
 } from './chroniclesInitiative.js';
 
 function sequence(values) {
@@ -72,6 +74,75 @@ describe('Chronicles initiative', () => {
     const next = chroniclesAdvanceInitiative(initiative);
     expect(next.cursor).toBe(0);
     expect(next.round).toBe(2);
+  });
+
+  it('enters combat only for engaged or explicitly attacked enemies and keeps the rolled order', () => {
+    const state = {
+      phase: 'explore',
+      x: 2,
+      y: 2,
+      party: [{ id: 'matthias', name: 'Matthias', hp: 7, agility: 4 }],
+      rpgModifiers: {},
+      nearHp: 3,
+      farHp: 3,
+    };
+    const enemies = [
+      {
+        id: 'near',
+        name: 'Near',
+        hpKey: 'nearHp',
+        x: 2,
+        y: 3,
+        maxHp: 3,
+        retaliation: 1,
+        ai: { movement: 'hold', engageRange: 1 },
+      },
+      {
+        id: 'far',
+        name: 'Far',
+        hpKey: 'farHp',
+        x: 2,
+        y: 6,
+        maxHp: 3,
+        retaliation: 1,
+        ai: { movement: 'hold', engageRange: 1 },
+      },
+    ];
+
+    const engaged = chroniclesStartInitiativeCombat(state, enemies, {
+      random: sequence([0, 0]),
+    });
+    expect(engaged.phase).toBe('combat');
+    expect(engaged.initiative.order.map((actor) => actor.id).sort()).toEqual(['matthias', 'near']);
+
+    const forced = chroniclesStartInitiativeCombat(
+      { ...state, y: 1 },
+      enemies,
+      { forceEnemyIds: ['far'], random: sequence([0, 0]) },
+    );
+    expect(forced.phase).toBe('combat');
+    expect(forced.initiative.order.map((actor) => actor.id).sort()).toEqual(['far', 'matthias']);
+  });
+
+  it('drops defeated actors and returns to exploration when combat has no enemies left', () => {
+    const state = {
+      phase: 'combat',
+      party: [{ id: 'matthias', hp: 7, agility: 4 }],
+      enemyHp: 0,
+      initiative: {
+        version: 1,
+        die: '1d8',
+        round: 1,
+        cursor: 0,
+        order: [
+          { id: 'matthias', kind: 'party', name: 'Matthias', agility: 4, roll: 4, initiative: 8 },
+          { id: 'enemy', kind: 'enemy', name: 'Enemy', agility: 2, roll: 3, initiative: 5 },
+        ],
+      },
+    };
+    const next = chroniclesAdvanceCombatInitiative(state, [{ id: 'enemy', hpKey: 'enemyHp' }]);
+    expect(next.phase).toBe('explore');
+    expect(next.initiative).toBeNull();
   });
 
   it('derives legacy enemy AGI from movement when no authored AGI exists', () => {
