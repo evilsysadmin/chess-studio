@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { buttonWithHeading, login, mockApi } from './helpers.js';
+import { clickWarRoomMove, navigateWarRoomKeyboard } from './war-room-board-input.js';
 
 const BASIC_LESSONS_BEFORE_EXAM = [
   'pawn-double-step',
@@ -12,7 +13,30 @@ const BASIC_LESSONS_BEFORE_EXAM = [
   'castle-short',
 ];
 
+async function schoolUses3D(page) {
+  return page.locator('[data-board3d-war-room="true"]').isVisible().catch(() => false);
+}
 
+async function pressSchoolSquare(page, square) {
+  if (await schoolUses3D(page)) {
+    const board = page.locator('[data-board3d-war-room="true"]');
+    const canvas = page.locator('.matthias-school-board .board3d-main-canvas');
+    await navigateWarRoomKeyboard(canvas, board, square);
+    await canvas.focus();
+    await page.keyboard.press('Enter');
+    return;
+  }
+  await page.getByRole('button', { name: new RegExp(`^Casilla ${square},`) }).click();
+}
+
+async function playSchoolMove(page, from, to) {
+  if (await schoolUses3D(page)) {
+    expect(await clickWarRoomMove(page, from, to)).toBe(true);
+    return;
+  }
+  await pressSchoolSquare(page, from);
+  await pressSchoolSquare(page, to);
+}
 
 test('Escuela de Matthias · la lección manda y el plan de estudios queda bajo demanda', async ({ page }) => {
   await mockApi(page);
@@ -34,42 +58,40 @@ test('Escuela de Matthias · la lección manda y el plan de estudios queda bajo 
 });
 
 
-test('Escuela de Matthias · modo tablero ocupa el viewport y Escape sólo lo contrae', async ({ page }) => {
+test('Escuela de Matthias · la School Room nace inmersiva y los mensajes son overlays', async ({ page }) => {
   await mockApi(page);
   await login(page);
 
   await buttonWithHeading(page, 'Escuela de Matthias').click();
   const shell = page.locator('.matthias-school-shell');
-  await page.getByRole('button', { name: 'Pantalla completa', exact: true }).click();
+  const board = page.locator('.matthias-school-board');
 
-  await expect(shell).toHaveAttribute('data-school-focus', 'board');
-  await expect(shell).toHaveAttribute('data-school-focus-rail', 'visible');
-  await expect(page.getByRole('button', { name: 'Salir de pantalla completa', exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'El peón avanza', exact: true })).toBeVisible();
+  await expect(shell).toHaveAttribute('data-school-focus', 'normal');
+  await expect(page.getByRole('button', { name: 'Pantalla completa', exact: true })).toHaveCount(0);
+  await expect(page.locator('[data-board3d-war-room="true"]')).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator('[data-board3d-camera="classroom-overhead"]')).toBeVisible();
+  await expect(page.locator('.matthias-school-coach')).toHaveCSS('position', 'absolute');
 
-  await page.getByRole('button', { name: 'Solo tablero', exact: true }).click();
-  await expect(shell).toHaveAttribute('data-school-focus-rail', 'collapsed');
-  await expect(shell.locator('.matthias-school-coach')).toBeHidden();
-  await page.getByRole('button', { name: 'Mostrar Matthias', exact: true }).click();
-  await expect(shell).toHaveAttribute('data-school-focus-rail', 'visible');
-
-  const desktopBoardRatio = await page.locator('.matthias-school-board').evaluate((node) => (
-    node.getBoundingClientRect().width / window.innerWidth
-  ));
-  expect(desktopBoardRatio).toBeGreaterThan(0.55);
+  const desktop = await board.evaluate((node) => {
+    const rect = node.getBoundingClientRect();
+    return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: innerWidth, height: innerHeight };
+  });
+  expect(desktop.left).toBeLessThanOrEqual(1);
+  expect(desktop.top).toBeLessThanOrEqual(1);
+  expect(desktop.right).toBeGreaterThanOrEqual(desktop.width - 1);
+  expect(desktop.bottom).toBeGreaterThanOrEqual(desktop.height - 1);
 
   for (const width of [360, 390, 430]) {
     await page.setViewportSize({ width, height: 844 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
-    await expect(page.locator('.matthias-school-board')).toBeVisible();
+    const mobile = await board.evaluate((node) => {
+      const rect = node.getBoundingClientRect();
+      return { width: rect.width, height: rect.height, vw: innerWidth, vh: innerHeight };
+    });
+    expect(mobile.width).toBeGreaterThanOrEqual(mobile.vw * 0.98);
+    expect(mobile.height).toBeGreaterThanOrEqual(mobile.vh * 0.98);
   }
-
-  await page.keyboard.press('Escape');
-  await expect(shell).toHaveAttribute('data-school-focus', 'normal');
-  await expect(page.getByRole('heading', { name: 'El peón avanza', exact: true })).toBeVisible();
-  await expect(page.locator('.illustrated-home')).toHaveCount(0);
 });
-
 test('Escuela de Matthias · Matthias guía sobre el tablero y la pista no es sólo texto', async ({ page }) => {
   await mockApi(page);
   await login(page);
