@@ -78,7 +78,6 @@ describe('Chronicles character builds', () => {
       power: 2,
       precision: 0,
       will: 0,
-      agility: 0,
     });
     expect(greta.characterBuild.startingSkillModifiers).toEqual({ attackDamageBonus: 1 });
     expect(nadir.name).toBe('Nadir');
@@ -127,7 +126,6 @@ describe('Chronicles character builds', () => {
       power: 1,
       precision: 0,
       will: 0,
-      agility: 0,
     });
     expect(matthias.startingSkillId).toBeNull();
   });
