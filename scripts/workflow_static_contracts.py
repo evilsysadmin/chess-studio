@@ -30,7 +30,9 @@ def validate_main_admission_fallback(root: Path = ROOT) -> None:
         "if: steps.pr_admission.outcome == 'success'",
         "if: steps.pr_admission.outcome == 'failure'",
         "name: Full exact-HEAD quality fallback",
-        "run: make tests security-images compose-smoke",
+        # Full Quality · CI gate (--all) on the exact main SHA, in parallel.
+        "python3 -S scripts/main_admission_quality_dispatch.py",
+        "actions: write",
     )
     missing = [token for token in required if token not in admit_pr]
     if missing:
@@ -39,6 +41,11 @@ def validate_main_admission_fallback(root: Path = ROOT) -> None:
         )
     if admit_pr.index("id: pr_admission") > admit_pr.index("name: Full exact-HEAD quality fallback"):
         raise SystemExit("main-admission ejecuta fallback antes de intentar reutilizar Quality")
+    subprocess.run(
+        [sys.executable, "-S", "scripts/main_admission_quality_dispatch.py", "--self-test"],
+        cwd=root,
+        check=True,
+    )
     print("main-admission exact-HEAD fallback contract: OK")
 
 

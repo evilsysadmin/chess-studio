@@ -148,7 +148,9 @@ push main
  ▼
 Main · admission
  ├─ PR-derived ──> reuse Quality receipt + static preflight
- └─ direct HEAD ─> full exact-HEAD fallback gate
+ │                 (receipt not reusable ─> exact-HEAD fallback ↓)
+ └─ direct HEAD ─> exact-HEAD fallback: dispatch Quality · CI gate --all
+                   on main and wait for that exact SHA to go green
  │
  ▼
 Deploy to staging
