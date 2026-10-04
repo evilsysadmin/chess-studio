@@ -178,6 +178,8 @@
   border: 1px solid rgba(175, 127, 64, .5);
   border-radius: 6px;
   background:
+    radial-gradient(circle at 10px 10px, rgba(229, 181, 91, .52) 0 1.2px, transparent 1.8px),
+    radial-gradient(circle at calc(100% - 10px) 10px, rgba(229, 181, 91, .52) 0 1.2px, transparent 1.8px),
     linear-gradient(180deg, rgba(255, 226, 168, .075), transparent 34%),
     linear-gradient(145deg, rgba(46, 31, 22, .76), rgba(18, 14, 13, .82));
   box-shadow:
@@ -223,6 +225,8 @@
 .insights-training-room .insights-workspace-nav > button.active {
   border-color: rgba(229, 176, 79, .78);
   background:
+    radial-gradient(circle at 10px 10px, rgba(242, 200, 112, .72) 0 1.2px, transparent 1.8px),
+    radial-gradient(circle at calc(100% - 10px) 10px, rgba(242, 200, 112, .72) 0 1.2px, transparent 1.8px),
     radial-gradient(circle at 12% 50%, rgba(232, 162, 61, .24), transparent 28%),
     linear-gradient(145deg, rgba(98, 61, 25, .82), rgba(35, 22, 14, .86));
   box-shadow:
