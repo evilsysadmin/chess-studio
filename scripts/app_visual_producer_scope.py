@@ -95,7 +95,6 @@ WARROOM_CLASSIC_VARIANT_FILES = {
 }
 WARROOM_V2_VARIANT_FILES = {
     "frontend/src/components/warroomv2shell.js",
-    "frontend/src/components/warroomfiresprites.js",
     "scripts/blender/publish_war_room_v2_staging.py",
     ".github/workflows/war-room-blender-art.yml",
 }
@@ -108,6 +107,12 @@ WARROOM_V3_VARIANT_FILES = {
 }
 WARROOM_V4_VARIANT_FILES = {
     "frontend/src/components/warroomv4shell.js",
+}
+# Shared fire-sprite ownership: v2 installs its own hearth sprites, while
+# WarRoomV3Fire consumes the same helper for v3 and v4. This is decor-only:
+# it cannot alter board composition, armor inspection or Hans choreography.
+WARROOM_FIRE_SPRITE_FILES = {
+    "frontend/src/components/warroomfiresprites.js",
 }
 WARROOM_BLENDER_SHARED_VARIANT_FILES = {
     "frontend/src/components/warroomblendershellruntime.js",
@@ -375,6 +380,8 @@ def classify_path(path: str) -> set[str] | None:
     if "experimentsscreen" in lower or "/experiments" in lower:
         return {"experiments-hub"}
 
+    if lower in WARROOM_FIRE_SPRITE_FILES:
+        return {"warroom-decor"}
     if lower in WARROOM_VARIANT_CORE_FILES or lower in WARROOM_CORE_ONLY_FILES or lower in WARROOM_MOBILE_ONLY_FILES or lower in WARROOM_MATTHIAS_ONLY_FILES:
         return {"warroom-core"}
     if lower in BOARD3D_MATTHIAS_SHARED_FILES:
@@ -435,6 +442,8 @@ def _warroom_variant_ownership(path: str) -> set[str]:
     lower = path.lower().replace("\\", "/")
     if lower in WARROOM_CLASSIC_VARIANT_FILES:
         return {"classic"}
+    if lower in WARROOM_FIRE_SPRITE_FILES:
+        return {"v2", "v3", "v4"}
     if lower in WARROOM_V2_VARIANT_FILES:
         return {"v2"}
     if lower == "frontend/src/components/warroomv3fire.js":
@@ -585,6 +594,8 @@ def self_test() -> None:
     assert classify_warroom_variants(["frontend/src/components/WarRoomClassicShell.js"]) == "classic"
     assert classify_warroom_variants(["frontend/src/components/PremiumWarRoomScene.js"]) == "classic"
     assert classify_warroom_variants(["frontend/src/components/WarRoomV2Shell.js"]) == "v2"
+    assert classify_warroom_variants(["frontend/src/components/WarRoomFireSprites.js"]) == "v2,v3,v4"
+    assert classify(["frontend/src/components/WarRoomFireSprites.js"]) == "warroom-decor"
     assert classify_warroom_variants(["frontend/src/components/WarRoomV3Shell.js"]) == "v3"
     assert classify_warroom_variants(["frontend/src/components/WarRoomBlenderShellRuntime.js"]) == "v2,v3,v4"
     assert classify_warroom_variants(["scripts/blender/build_war_room_premium.py"]) == "v2,v3,v4"
