@@ -29,12 +29,13 @@ async function openVisualMoreModes(page) {
   await trigger.evaluate((button) => button.click());
 }
 
-async function openChronicles(page, captureLabel) {
+async function openChronicles(page, captureLabel, { runStatus = 'active' } = {}) {
   await mockApi(page, {
     profileSeed: {
       'matthias.onboarded': '2',
       'chess-study-home-guide-dismissed-v1': '1',
     },
+    chroniclesRunStatus: runStatus,
   });
   await login(page);
   const speech = page.getByRole('region', { name: 'Mensaje de Matthias', exact: true });
@@ -199,6 +200,53 @@ for (const capture of CAPTURES) {
       await writeFile(
         `${ARTIFACT_DIR}/chronicles-visual-health-${capture.label}.json`,
         `${JSON.stringify({ schema: 4, scope: 'chronicles', capture: { label: capture.label, ...health } }, null, 2)}\n`,
+        'utf8',
+      );
+    } finally {
+      await context.close();
+    }
+  });
+}
+
+
+for (const capture of CAPTURES) {
+  test(`Chronicles · terminal defeat visual · ${capture.label}`, async ({ browser }) => {
+    test.setTimeout(150_000);
+    await mkdir(ARTIFACT_DIR, { recursive: true });
+
+    const context = await browser.newContext({
+      viewport: { width: capture.width, height: capture.height },
+      hasTouch: capture.hasTouch,
+      isMobile: capture.hasTouch,
+    });
+    const page = await context.newPage();
+    try {
+      await openChronicles(page, `defeat-${capture.label}`, { runStatus: 'defeated' });
+      const gameRoot = page.locator('[data-chronicles="true"]');
+      const defeat = page.getByRole('dialog', { name: 'Expedición terminada', exact: true });
+
+      await expect(gameRoot).toHaveAttribute('data-chronicles-phase', 'defeated');
+      await expect(defeat).toBeVisible();
+      await expect(defeat.getByText('La compañía ha caído.', { exact: true })).toBeVisible();
+      await expect(defeat.getByRole('button', { name: 'Nueva expedición', exact: true })).toBeVisible();
+      await expect(defeat.getByRole('button', { name: 'Salir', exact: true })).toBeVisible();
+      await expect(page.locator('.chronicles-touch')).toHaveCount(0);
+      await expect(page.locator('.chronicles-keyboard-help')).toHaveCount(0);
+      await expect(page.locator('.chronicles-party-member:not(:disabled)')).toHaveCount(0);
+
+      const health = await captureChroniclesHealth(page);
+      expect(health.horizontalOverflow, `${capture.label}: terminal Chronicles overflow`).toBe(false);
+      expect(health.gameRoot?.width || 0, `${capture.label}: terminal fullscreen width`).toBeGreaterThanOrEqual(capture.width - 2);
+      expect(health.gameRoot?.height || 0, `${capture.label}: terminal fullscreen height`).toBeGreaterThanOrEqual(capture.height - 2);
+
+      await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-defeated-${capture.label}.png`);
+      await writeFile(
+        `${ARTIFACT_DIR}/chronicles-defeated-health-${capture.label}.json`,
+        `${JSON.stringify({
+          schema: 1,
+          scope: 'chronicles-defeated',
+          capture: { label: capture.label, ...health },
+        }, null, 2)}\n`,
         'utf8',
       );
     } finally {
