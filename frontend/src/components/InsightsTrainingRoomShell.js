@@ -169,7 +169,23 @@ function addChair(root, leather, wood) {
   const group = new THREE.Group();
   group.name = 'insights-training-room-empty-chair';
   box(group, [2.55, .5, 1.55], leather, [0, .72, 0], 'chair-seat');
-  box(group, [2.8, 3.25, .42], leather, [0, 2.25, -.56], 'chair-back');
+  box(group, [2.8, 3.08, .42], leather, [0, 2.18, -.56], 'chair-back');
+
+  const crest = new THREE.Mesh(
+    new THREE.TorusGeometry(1.28, .11, 8, 28, Math.PI),
+    wood,
+  );
+  crest.position.set(0, 3.68, -.55);
+  crest.rotation.z = 0;
+  crest.castShadow = true;
+  crest.name = 'chair-crest';
+  group.add(crest);
+
+  const leftWing = box(group, [.42, 2.25, .62], leather, [-1.28, 2.12, -.36], 'chair-left-wing');
+  leftWing.rotation.y = -.18;
+  const rightWing = box(group, [.42, 2.25, .62], leather, [1.28, 2.12, -.36], 'chair-right-wing');
+  rightWing.rotation.y = .18;
+
   for (const y of [1.35, 2.05, 2.75]) {
     for (const x of [-.82, 0, .82]) {
       const stud = new THREE.Mesh(new THREE.SphereGeometry(.055, 8, 6), wood);
