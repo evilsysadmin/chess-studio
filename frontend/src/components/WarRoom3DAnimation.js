@@ -103,13 +103,14 @@ export function warRoomAmbientFramePlan({
   softwareRenderer = false,
   inspectMode = false,
   narrativeActive = false,
+  ambientAudit = globalThis.__CHESS_E2E_HANS_AMBIENT_AUDIT__ === true,
   elapsedMs = 0,
 } = {}) {
   const active = threeSurfaceShouldRender({
     documentHidden,
     intersecting,
     paused: reducedMotion,
-  }) && (!softwareRenderer || narrativeActive);
+  }) && (!softwareRenderer || narrativeActive || ambientAudit);
   const budget = warRoomRenderBudget({ coarsePointer, softwareRenderer });
   // The heartbeat exists mainly to keep fire/light alive. Desktop keeps 10 FPS;
   // coarse-pointer/mobile idles at ~6.7 FPS because those slow practical lights
