@@ -12,7 +12,6 @@ package gamesapi
 import (
 	"context"
 	"errors"
-	"math"
 	"net/http"
 	"net/url"
 	"strings"
@@ -22,7 +21,6 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/gamecore"
-	"github.com/evilsysadmin/chess-studio/backend-go/internal/residenteval"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/residentpolicy"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/residentsearch"
 )
@@ -64,9 +62,11 @@ type HintStore interface {
 	GetDocumentForOwner(ctx context.Context, id, owner string) (bson.M, bool, error)
 }
 
-// Engine proves the line (residentsearch.Searcher.PrincipalVariation).
+// Engine proves the line (residentsearch.Searcher.PrincipalVariation) and,
+// when not even depth 1 fits, plays get_cpu_move's search (Classic).
 type Engine interface {
 	PrincipalVariation(ctx context.Context, positions []*chess.Position, maxDepth int, budget time.Duration) (*residentsearch.PrincipalVariation, error)
+	Classic(ctx context.Context, positions []*chess.Position, maxDepth int, budget time.Duration) (string, float64, error)
 }
 
 type HintConfig struct {
@@ -210,8 +210,17 @@ func (h *HintHandler) hintPayload(ctx context.Context, board *gamecore.Board) ma
 		}
 	}
 	// Python falls back to get_cpu_move(board, 95) when not even a depth-1
-	// pass fits the budget; at that level it is the static one-ply best move.
-	return board.MoveDict(staticBest(board, legal))
+	// pass fits the budget: at that level (no randomness, no noise) that is
+	// chess_ai._search with a fresh budget.
+	uci, _, err := h.engine.Classic(ctx, board.Positions(), depth, time.Duration(budget*float64(time.Second)))
+	if err != nil || uci == "" {
+		return nil
+	}
+	move, ok := findMove(board, uci)
+	if !ok {
+		return nil
+	}
+	return board.MoveDict(move)
 }
 
 // serializeLine mirrors hint_analysis_service._serialize_line: the line as
@@ -237,25 +246,6 @@ func findMove(board *gamecore.Board, uci string) (chess.Move, bool) {
 		}
 	}
 	return chess.Move{}, false
-}
-
-// staticBest mirrors chess_ai._static_best_move: the legal move whose
-// resulting position evaluates best for the side to move.
-func staticBest(board *gamecore.Board, legal []chess.Move) chess.Move {
-	pos := board.Position()
-	maximizing := pos.Turn() == chess.White
-	best := legal[0]
-	bestScore := math.Inf(-1)
-	if !maximizing {
-		bestScore = math.Inf(1)
-	}
-	for i := range legal {
-		score := residenteval.EvaluatePosition(pos.Update(&legal[i]))
-		if (maximizing && score > bestScore) || (!maximizing && score < bestScore) {
-			best, bestScore = legal[i], score
-		}
-	}
-	return best
 }
 
 func copyMap(in map[string]any) map[string]any {

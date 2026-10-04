@@ -15,12 +15,17 @@ import (
 )
 
 type fakeEngine struct {
-	pv     *residentsearch.PrincipalVariation
-	err    error
-	depth  int
-	budget time.Duration
-	plies  int
-	calls  int
+	pv      *residentsearch.PrincipalVariation
+	err     error
+	classic string
+	depth   int
+	budget  time.Duration
+	plies   int
+	calls   int
+}
+
+func (f *fakeEngine) Classic(context.Context, []*chess.Position, int, time.Duration) (string, float64, error) {
+	return f.classic, 0, nil
 }
 
 func (f *fakeEngine) PrincipalVariation(_ context.Context, positions []*chess.Position, maxDepth int, budget time.Duration) (*residentsearch.PrincipalVariation, error) {
@@ -112,9 +117,9 @@ func TestHintCutsTheLineAtAnIllegalMoveAndFallsBackWhenTheSearchTimesOut(t *test
 	if len(got["line"].([]any)) != 1 || got["reply"] != nil {
 		t.Fatalf("hint=%v", got)
 	}
-	f.engine.pv, f.engine.err = nil, residentsearch.ErrTimeout
+	f.engine.pv, f.engine.err, f.engine.classic = nil, residentsearch.ErrTimeout, "d2d4"
 	got = body(t, f.get(t, "/api/games/g1/hint", true))
-	if got["from"] == nil || got["line"] != nil || got["analysisDepth"] != nil {
+	if got["from"] != "d2" || got["to"] != "d4" || got["line"] != nil || got["analysisDepth"] != nil {
 		t.Fatalf("fallback=%v", got)
 	}
 }
