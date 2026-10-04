@@ -165,7 +165,7 @@ def static_check() -> list[str]:
     # must remain in main's lineage, and staging must still serve that exact SHA on
     # backend/frontend/Worker before the promotion artifact is emitted.
     for needle, label in (
-        ("name: Staging · AI Worker", "staging AI workflow name"),
+        ("name: Staging · accreditation", "staging accreditation workflow name"),
         ("contents: read", "staging AI least-privilege contents permission"),
         ("accredited=false", "staging AI clean supersede output"),
         ("accredited=true", "staging AI retained accreditation output"),
