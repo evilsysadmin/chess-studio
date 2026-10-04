@@ -88,6 +88,10 @@ def palette():
             "PVP_HALL_MAT_midnight_velvet", (0.008, 0.025, 0.072, 1),
             rough=0.80, sheen=0.16, texture="fabric", scale=48, bump=0.040,
         ),
+        "burgundy": base.material(
+            "PVP_HALL_MAT_burgundy_velvet", (0.145, 0.012, 0.018, 1),
+            rough=0.78, sheen=0.14, texture="fabric", scale=46, bump=0.038,
+        ),
         "parchment": base.material(
             "PVP_HALL_MAT_parchment", (0.55, 0.39, 0.19, 1),
             rough=0.78, texture="fabric", scale=34, bump=0.025,
@@ -100,6 +104,11 @@ def palette():
             "PVP_HALL_MAT_moon_glass", (0.010, 0.035, 0.100, 1),
             rough=0.18, coat=0.42,
             emission=(0.025, 0.10, 0.28, 1), emission_strength=0.72,
+        ),
+        "moon_disk": base.material(
+            "PVP_HALL_MAT_moon_disk", (0.82, 0.86, 0.78, 1),
+            rough=0.58,
+            emission=(0.46, 0.53, 0.72, 1), emission_strength=0.42,
         ),
         "glass": base.material(
             "PVP_HALL_MAT_display_glass", (0.20, 0.24, 0.28, 1),
@@ -152,20 +161,33 @@ def build_envelope(static, p):
             )
             corbel.rotation_euler.y = math.radians(side * 24)
 
-    # Large moon window at the rear-right, as in the approved premium composition.
+    # Large moon window at the rear-right, now framed as a pointed gothic bay
+    # rather than a modern rectangle.
     wx = 4.85
-    base.cube("PVP_HALL_window_reveal", (wx, 6.06, 4.25), (2.05, 0.20, 2.36),
-              p["limestone"], static, bevel=0.22)
     base.cube("PVP_HALL_window_glass", (wx, 5.80, 4.25), (1.72, 0.035, 2.02),
-              p["moon"], static, bevel=0.18)
-    base.cube("PVP_HALL_window_mullion", (wx, 5.68, 4.25), (0.045, 0.04, 1.90),
+              p["moon"], static, bevel=0.12)
+    for side in (-1, 1):
+        base.cube(
+            f"PVP_HALL_window_jamb_{side}", (wx + side * 1.88, 5.96, 4.20),
+            (0.18, 0.18, 2.10), p["limestone"], static, bevel=0.08,
+        )
+        arch = base.cube(
+            f"PVP_HALL_window_arch_{side}", (wx + side * 0.90, 5.96, 6.18),
+            (1.08, 0.18, 0.16), p["limestone"], static, bevel=0.07,
+        )
+        arch.rotation_euler.y = math.radians(-side * 31)
+    base.cube("PVP_HALL_window_sill", (wx, 5.96, 2.18), (1.96, 0.20, 0.16),
+              p["limestone"], static, bevel=0.06)
+    base.cube("PVP_HALL_window_mullion", (wx, 5.68, 4.20), (0.045, 0.04, 1.82),
               p["iron"], static, bevel=0.012)
-    for z in (3.35, 4.25, 5.15):
+    for z in (3.36, 4.20, 5.04):
         base.cube(f"PVP_HALL_window_transom_{z:.2f}", (wx, 5.68, z),
-                  (1.62, 0.04, 0.035), p["iron"], static, bevel=0.012)
-    # Moon disk behind the window.
-    moon = base.sphere("PVP_HALL_moon", (5.52, 6.16, 4.95), 0.82, p["ivory"], static,
-                       scale=(1.0, 0.18, 1.0))
+                  (1.60, 0.04, 0.035), p["iron"], static, bevel=0.012)
+
+    # Put the moon in front of the opaque blue glass material so the authored
+    # silhouette survives both Eevee preview and the sanitized runtime GLB.
+    moon = base.sphere("PVP_HALL_moon", (5.45, 5.72, 4.98), 0.76, p["moon_disk"], static,
+                       scale=(1.0, 0.10, 1.0))
     moon["pvp_hall_background"] = True
 
     # Left heraldic banner + right matching pennant.
@@ -208,6 +230,21 @@ def build_identity_lectern(static, p):
     top.rotation_euler.x = math.radians(-4)
     base.cube("PVP_HALL_identity_brass_lip", (x, y - 0.92, 1.84), (1.18, 0.035, 0.055),
               p["brass"], static, bevel=0.014)
+    # Carved front posts and heraldic cloth give the station a lectern silhouette
+    # instead of reading as a generic cabinet.
+    for side in (-1, 1):
+        base.cylinder(
+            f"PVP_HALL_identity_post_{side}", (x + side * 0.92, y - 0.62, 1.18),
+            0.085, 1.22, p["oak"], static, vertices=16,
+        )
+        base.sphere(
+            f"PVP_HALL_identity_post_finial_{side}", (x + side * 0.92, y - 0.62, 1.80),
+            0.105, p["brass"], static,
+        )
+    base.cube("PVP_HALL_identity_heraldry", (x, y - 0.735, 1.20), (0.46, 0.024, 0.42),
+              p["velvet"], static, bevel=0.06)
+    base.cube("PVP_HALL_identity_heraldry_cross", (x, y - 0.765, 1.20), (0.30, 0.018, 0.045),
+              p["brass"], static, bevel=0.01)
 
     # Big pawn under a display dome: recognizable even before HTML overlays load.
     base.cylinder("PVP_HALL_identity_pawn_base", (x, y, 2.12), 0.34, 0.16,
@@ -267,6 +304,19 @@ def build_strategy_table(static, p):
               p["leather"], static, bevel=0.07)
     base.cube("PVP_HALL_roster_header", (0, 1.78, 3.57), (2.35, 0.025, 0.10),
               p["brass"], static, bevel=0.022)
+    for side in (-1, 1):
+        base.cylinder(
+            f"PVP_HALL_roster_post_{side}", (side * 2.86, 1.83, 2.72),
+            0.085, 2.10, p["oak_mid"], static, vertices=14,
+        )
+        base.sphere(
+            f"PVP_HALL_roster_finial_{side}", (side * 2.86, 1.83, 3.80),
+            0.12, p["brass"], static,
+        )
+    base.cube("PVP_HALL_roster_crown", (0, 1.82, 3.94), (1.25, 0.08, 0.16),
+              p["oak_mid"], static, bevel=0.08)
+    base.sphere("PVP_HALL_roster_crown_boss", (0, 1.70, 3.95), 0.15,
+                p["brass"], static, scale=(1.0, 0.32, 1.0))
     for row, z in enumerate((3.18, 2.72, 2.26)):
         base.cube(f"PVP_HALL_roster_row_{row}", (0, 1.74, z), (2.48, 0.018, 0.16),
                   p["parchment"], static, bevel=0.035)
@@ -283,6 +333,8 @@ def build_strategy_table(static, p):
                       p["ivory" if idx % 2 else "brass"], static, vertices=18)
 
     # Herald dispatch tray at the near edge, separate semantic anchor.
+    base.cube("PVP_HALL_herald_runner", (0, -1.38, 1.39), (1.70, 0.62, 0.018),
+              p["burgundy"], static, bevel=0.05)
     base.cube("PVP_HALL_herald_tray", (0, -1.62, 1.48), (1.35, 0.48, 0.08),
               p["oak_mid"], static, bevel=0.08)
     scroll = base.cylinder("PVP_HALL_herald_scroll", (-0.20, -1.62, 1.62), 0.10, 1.45,
@@ -303,6 +355,18 @@ def build_chat_board(static, p):
               p["parchment"], static, bevel=0.08)
     base.cube("PVP_HALL_chat_title_rail", (x, y - 0.25, 3.42), (1.05, 0.020, 0.07),
               p["brass"], static, bevel=0.020)
+    # Carved gable + brass bosses stop the notice board reading as a flat monitor.
+    for side in (-1, 1):
+        gable = base.cube(
+            f"PVP_HALL_chat_gable_{side}", (x + side * 0.72, y - 0.10, 4.02),
+            (0.82, 0.10, 0.10), p["oak_mid"], static, bevel=0.05,
+        )
+        gable.rotation_euler.y = math.radians(-side * 24)
+        for z in (1.02, 3.62):
+            base.sphere(
+                f"PVP_HALL_chat_boss_{side}_{z:.2f}", (x + side * 1.48, y - 0.25, z),
+                0.075, p["brass"], static, scale=(1.0, 0.38, 1.0),
+            )
     for row, z in enumerate((2.93, 2.48, 2.03, 1.58)):
         base.cube(f"PVP_HALL_chat_line_{row}", (x, y - 0.25, z),
                   (1.08 - row * 0.08, 0.012, 0.028), p["oak_mid"], static, bevel=0.010)
@@ -375,9 +439,21 @@ def build_lighting(static):
                           (0.95, 0.48, 0.18), static, size=2.2)
         base.look_at(lamp, (x, y, 1.7))
 
-    fill = base.light("PVP_HALL_LIGHT_front_fill", "AREA", (0.0, -5.5, 4.2), 135.0,
+    fill = base.light("PVP_HALL_LIGHT_front_fill", "AREA", (0.0, -5.5, 4.2), 165.0,
                       (0.34, 0.38, 0.48), static, size=5.0)
     base.look_at(fill, (0.0, 0.4, 1.7))
+
+    # Local warm pools make the left/right functional stations legible without
+    # flattening the moonlit rear wall.
+    for label, (x, y) in (
+        ("identity", (-5.65, -0.35)),
+        ("chat", (5.70, -0.20)),
+    ):
+        lamp = base.light(
+            f"PVP_HALL_LIGHT_{label}", "POINT", (x, y - 0.6, 3.25), 115.0,
+            (1.0, 0.34, 0.07), static, radius=1.25,
+        )
+        lamp["war_room_runtime_dynamic"] = f"pvp-hall-{label}"
 
 
 def bake_weather():
