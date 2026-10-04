@@ -41,11 +41,17 @@ HOTSPOTS = (
 
 
 def clear_inherited_room(static):
-    """Keep only shared camera plumbing + hidden board anchor needed by base manifest."""
-    for obj in list(static.objects):
+    """Keep only shared camera plumbing + hidden board anchor needed by base manifest.
+
+    The War Room builder also creates preview board/piece geometry in a separate
+    collection. Lobby authoring must remove that too or the Hall renders as a
+    chess arena instead of a matchmaking room.
+    """
+    for obj in list(bpy.context.scene.objects):
         if obj.name in {"WR_CAMERA_hero", "WR_ANCHOR_board_origin"}:
             continue
-        bpy.data.objects.remove(obj, do_unlink=True)
+        if obj.name.startswith("WR_PREVIEW_") or obj in static.objects:
+            bpy.data.objects.remove(obj, do_unlink=True)
 
 
 def palette():
@@ -210,10 +216,20 @@ def build_identity_lectern(static, p):
                 p["ivory"], static, scale=(0.78, 0.78, 1.18))
     base.sphere("PVP_HALL_identity_pawn_head", (x, y, 2.86), 0.20,
                 p["ivory"], static)
-    base.cylinder("PVP_HALL_identity_dome", (x, y, 2.54), 0.56, 1.42,
-                  p["glass"], static, vertices=32)
+    # Open brass display cage reads as a premium vitrine in Eevee/GLB without
+    # relying on fragile alpha/transmission settings. The pawn stays visible.
     base.torus("PVP_HALL_identity_dome_ring", (x, y, 1.84), 0.58, 0.035,
                p["brass"], static)
+    base.torus("PVP_HALL_identity_dome_crown", (x, y, 3.18), 0.30, 0.026,
+               p["brass"], static)
+    for rib_idx, angle in enumerate((0, 60, 120)):
+        rad = math.radians(angle)
+        rib = base.cube(
+            f"PVP_HALL_identity_dome_rib_{rib_idx}",
+            (x + math.cos(rad) * 0.42, y + math.sin(rad) * 0.42, 2.51),
+            (0.018, 0.018, 0.66), p["brass"], static, bevel=0.008,
+        )
+        rib.rotation_euler.z = rad
 
     # Heraldic shield-like boss.
     base.cube("PVP_HALL_identity_crest", (x, y - 0.74, 1.18), (0.28, 0.045, 0.34),
@@ -412,15 +428,18 @@ def validate_scene():
 
     forbidden = sorted(
         name for name in names
-        if name.startswith(("WR_ARCH_", "WR_CANON_", "WR3_OBS_", "PVP_DUEL_"))
+        if name.startswith(("WR_ARCH_", "WR_CANON_", "WR3_OBS_", "WR_PREVIEW_", "PVP_DUEL_"))
     )
     if forbidden:
         raise RuntimeError(f"PvP Duel Hall inherited visible gameplay-room geometry: {forbidden[:12]}")
 
     camera = bpy.context.scene.camera
-    camera.data.lens = 47.0
-    camera.location = (0.0, -16.4, 7.65)
-    base.look_at(camera, (0.0, 0.85, 2.08))
+    # The lobby camera must present all three physical stations at once. It is
+    # intentionally wider than the gameplay camera because nothing here is a
+    # selectable chessboard.
+    camera.data.lens = 38.0
+    camera.location = (0.0, -18.2, 7.25)
+    base.look_at(camera, (0.0, 0.80, 2.18))
 
     # Hotspots must be spatially distinct. A single central overlay would regress
     # the physical-room contract back into a dashboard.
