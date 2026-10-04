@@ -319,4 +319,3 @@ func newResidentMoveProvider(native bool, upstream, jwtSecret string) (residentM
 		JWTSecret:   jwtSecret,
 	})
 }
-
