@@ -349,6 +349,35 @@ body:has(.matthias-school-shell[data-school-section="school"]) .masthead {
   z-index: 0;
 }
 
+/* With the plan open, the course card shows the overall progress beside its
+   close button (the title stays in Matthias' bubble). */
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-curriculum="open"] .matthias-school-focusbar {
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-curriculum="open"] .matthias-school-focusbar > div {
+  display: flex;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-curriculum="open"] .matthias-school-focusbar > div > span,
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-curriculum="open"] .matthias-school-focusbar > div > strong {
+  display: none;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-curriculum="open"] .matthias-school-focusbar .matthias-school-focus-progress {
+  display: inline;
+  margin: 0;
+  padding: .3rem .6rem;
+  border: 1px solid var(--school-hud-line);
+  border-radius: 999px;
+  background: var(--school-hud-glass);
+  color: color-mix(in srgb, var(--parchment) 78%, transparent);
+  font-size: .66rem;
+  white-space: nowrap;
+}
+
 .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-curriculum="open"] .matthias-school-coach,
 .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-curriculum="open"] .matthias-school-board-actions {
   display: none;
