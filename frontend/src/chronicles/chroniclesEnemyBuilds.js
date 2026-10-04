@@ -191,7 +191,8 @@ export function deriveLegacyChroniclesEnemyBuild(enemy) {
     })(),
   };
 
-  const points = Object.values(attributes).reduce((sum, value) => sum + value, 0);
+  const points = ['vigor', 'power', 'precision', 'will']
+    .reduce((sum, key) => sum + Number(attributes[key] || 0), 0);
   const level = Math.max(1, Math.min(
     CHRONICLES_ENEMY_LEVEL_CAP,
     1 + Math.floor((points + skills.length * 2) / 4),
