@@ -19,6 +19,7 @@ STAGING_WRANGLER = ROOT / "infra/cloudflare/wrangler.staging.toml"
 STAGING_WORKER_WRAPPER = ROOT / "infra/cloudflare/worker/staging.js"
 STAGING_WORKER_DEPLOY = ROOT / "scripts/deploy_staging_ai_worker.py"
 STAGING_RELEASE_IDENTITY = ROOT / "scripts/staging_release_identity.py"
+STAGING_DEPLOY_PROOF = ROOT / "scripts/staging_deploy_proof.py"
 OCI_RUN_COMMAND = ROOT / "scripts/oci_run_command.py"
 OCI_RUNTIME_BUNDLE = ROOT / "scripts/oci_runtime_bundle.py"
 
@@ -66,6 +67,7 @@ def main() -> int:
         STAGING_WORKER_WRAPPER,
         STAGING_WORKER_DEPLOY,
         STAGING_RELEASE_IDENTITY,
+        STAGING_DEPLOY_PROOF,
         OCI_RUN_COMMAND,
         OCI_RUNTIME_BUNDLE,
     )
@@ -413,6 +415,10 @@ def main() -> int:
         ("workflows:\n      - Deploy to staging", "staging AI canonical source"),
         ("UPSTREAM_EVENT", "staging AI upstream provenance guard"),
         ("Accredit coherent staging generation", "staging AI read-only accreditation"),
+        ("actions: read", "staging AI may inspect exact upstream jobs"),
+        ("Prove upstream generation", "staging AI automatic deploy proof"),
+        ("staging_deploy_proof.py --run-id", "staging AI exact upstream-run proof helper"),
+        ("steps.upstream.outputs.deployed == 'true'", "staging AI refuses success/no-op upstream runs"),
         ("Shared Workers AI live contract · manual strict probe", "staging AI manual strict probe"),
         ("github.event_name == 'workflow_dispatch'", "staging AI live probe remains manual-only"),
         ("scripts/staging_release_identity.py", "staging AI shared identity helper"),
@@ -421,6 +427,12 @@ def main() -> int:
         ("--kind ai", "staging AI Worker exact identity path"),
     ):
         require(staging_ai, needle, label, errors)
+    proof_selftest = subprocess.run(
+        [sys.executable, "-S", str(STAGING_DEPLOY_PROOF), "--self-test"],
+        capture_output=True, text=True, check=False,
+    )
+    if proof_selftest.returncode != 0:
+        errors.append("staging_deploy_proof.py self-test falla: " + (proof_selftest.stdout + proof_selftest.stderr).strip()[-300:])
     require(staging_release_identity, 'payload.get("build")', "staging exact SHA helper build check", errors)
     require(staging_release_identity, "validate_health_payload", "staging AI shared health contract", errors)
     forbid(staging_ai, "deploy_staging_ai_worker.py", "staging AI accreditation vuelve a desplegar Worker", errors)
@@ -435,7 +447,7 @@ def main() -> int:
 
     print(
         "staging-preview-contract OK · preview isolated; queued admission; native OCI mutex; "
-        "Render-free canonical release; persistent Worker secret; smoke-integrated N/N/N"
+        "Render-free canonical release; full-generation proof; persistent Worker secret; smoke-integrated N/N/N"
     )
     return 0
 
