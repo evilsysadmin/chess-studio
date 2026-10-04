@@ -101,14 +101,14 @@ def palette():
             rough=0.42, coat=0.24, texture="leather", scale=44, bump=0.030,
         ),
         "moon": base.material(
-            "PVP_HALL_MAT_moon_glass", (0.010, 0.035, 0.100, 1),
-            rough=0.18, coat=0.42,
-            emission=(0.025, 0.10, 0.28, 1), emission_strength=0.72,
+            "PVP_HALL_MAT_moon_glass", (0.008, 0.020, 0.050, 1),
+            rough=0.24, coat=0.34,
+            emission=(0.012, 0.045, 0.105, 1), emission_strength=0.38,
         ),
         "moon_disk": base.material(
-            "PVP_HALL_MAT_moon_disk", (0.82, 0.86, 0.78, 1),
-            rough=0.58,
-            emission=(0.46, 0.53, 0.72, 1), emission_strength=0.42,
+            "PVP_HALL_MAT_moon_disk", (0.78, 0.76, 0.66, 1),
+            rough=0.62,
+            emission=(0.56, 0.58, 0.54, 1), emission_strength=0.58,
         ),
         "glass": base.material(
             "PVP_HALL_MAT_display_glass", (0.20, 0.24, 0.28, 1),
@@ -198,6 +198,29 @@ def build_envelope(static, p):
     moon = base.sphere("PVP_HALL_moon", (5.45, 5.72, 4.98), 0.76, p["moon_disk"], static,
                        scale=(1.0, 0.10, 1.0))
     moon["pvp_hall_background"] = True
+
+    # Distant castle silhouette in front of the night glass. This is intentionally
+    # low-contrast: it gives the window depth without becoming a second UI plane.
+    skyline = (
+        (-1.28, 2.72, 0.36, 0.72),
+        (-0.88, 3.02, 0.24, 1.02),
+        (-0.46, 2.62, 0.42, 0.62),
+        (0.00, 2.96, 0.30, 0.96),
+        (0.40, 2.70, 0.34, 0.70),
+        (0.82, 3.12, 0.22, 1.12),
+        (1.20, 2.66, 0.32, 0.66),
+    )
+    for idx, (xoff, z, half_w, half_h) in enumerate(skyline):
+        base.cube(
+            f"PVP_HALL_skyline_{idx}", (wx + xoff, 5.62, z),
+            (half_w, 0.028, half_h), p["iron"], static, bevel=0.015,
+        )
+        if idx in (1, 3, 5):
+            roof = base.cube(
+                f"PVP_HALL_skyline_roof_{idx}", (wx + xoff, 5.60, z + half_h + 0.18),
+                (half_w * 0.62, 0.030, 0.16), p["iron"], static, bevel=0.010,
+            )
+            roof.rotation_euler.y = math.radians(45)
 
     # Left heraldic banner + right matching pennant.
     for side, label in ((-1, "left"), (1, "right")):
@@ -603,6 +626,23 @@ def build_chat_board(static, p):
 
 
 def build_population(static, p):
+    # Small armillary instrument beside the library adds asymmetry and lived-in
+    # noble-room detail while staying outside the interaction cone.
+    arm_x, arm_y = -4.45, 4.72
+    base.cylinder("PVP_HALL_armillary_stand", (arm_x, arm_y, 0.72), 0.09, 1.12,
+                  p["oak_mid"], static, vertices=14)
+    base.sphere("PVP_HALL_armillary_foot", (arm_x, arm_y, 0.16), 0.22,
+                p["brass"], static, scale=(1.0, 1.0, 0.40))
+    for idx, rot in enumerate((0, 58, -58)):
+        ring = base.torus(
+            f"PVP_HALL_armillary_ring_{idx}", (arm_x, arm_y, 1.70),
+            0.52, 0.025, p["brass"], static,
+        )
+        ring.rotation_euler.x = math.radians(rot)
+        ring.rotation_euler.z = math.radians(22 * idx)
+    base.sphere("PVP_HALL_armillary_core", (arm_x, arm_y, 1.70), 0.10,
+                p["ivory"], static)
+
     # Two articulated sentinel silhouettes occupy the rear side bays. They are
     # deliberately secondary to the functional furniture but must actually read.
     for side, label in ((-1, "left"), (1, "right")):
