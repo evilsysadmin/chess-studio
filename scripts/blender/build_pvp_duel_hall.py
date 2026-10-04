@@ -50,7 +50,7 @@ def clear_inherited_room(static):
     for obj in list(bpy.context.scene.objects):
         if obj.name in {"WR_CAMERA_hero", "WR_ANCHOR_board_origin"}:
             continue
-        if obj.name.startswith("WR_PREVIEW_") or obj in static.objects:
+        if obj.name.startswith("WR_PREVIEW_") or obj.name in static.objects:
             bpy.data.objects.remove(obj, do_unlink=True)
 
 
