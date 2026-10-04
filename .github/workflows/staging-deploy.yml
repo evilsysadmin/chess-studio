@@ -51,25 +51,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          current_main="$(git ls-remote origin refs/heads/main | awk 'NR == 1 {print $1}')"
-          [[ "$current_main" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::No pude resolver un main HEAD válido: ${current_main:-<vacío>}"; exit 1; }
+          python3 -S scripts/staging_generation.py --self-test
+          python3 -S scripts/staging_generation.py main-head --sha "$DEPLOY_SHA" --github-output "$RUNNER_TEMP/main-head.txt"
           echo "deploy_sha=$DEPLOY_SHA" >> "$GITHUB_OUTPUT"
-          if [[ "$DEPLOY_SHA" != "$current_main" ]]; then
+          if grep -qx 'superseded=true' "$RUNNER_TEMP/main-head.txt"; then
             echo 'admitted=false' >> "$GITHUB_OUTPUT"
-            echo "::notice title=Staging superseded::$DEPLOY_SHA != main $current_main; sin mutación."
-            {
-              echo '### Staging superseded por un main más nuevo'
-              echo
-              echo "- CI-approved SHA: \`$DEPLOY_SHA\`"
-              echo "- Current main: \`$current_main\`"
-              echo '- Acción: `terminar limpio antes de OCI/Pages/Worker`'
-              echo '- Siguiente generación: `la dispara la admisión normal del HEAD actual cuando quede verde`'
-              echo '- API de Actions / cancelación manual: `no necesaria`'
-            } >> "$GITHUB_STEP_SUMMARY"
-            exit 0
+            echo "### Staging superseded: \`$DEPLOY_SHA\` ya no es main; sin mutación. La admisión del HEAD actual dispara la siguiente generación." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'admitted=true' >> "$GITHUB_OUTPUT"
           fi
-          echo 'admitted=true' >> "$GITHUB_OUTPUT"
-          echo "Staging admission OK: $DEPLOY_SHA"
   backend:
     name: Backend · exact OCI generation
     needs: prepare
@@ -92,59 +82,18 @@ jobs:
         with:
           ref: ${{ env.DEPLOY_SHA }}
       - name: Validate zero-cost host watcher contract
-        run: python3 -S scripts/oci_staging_deploy_watcher.py --self-test
+        run: |
+          python3 -S scripts/oci_staging_deploy_watcher.py --self-test
+          python3 -S scripts/staging_generation.py --self-test
       - name: Wait for zero-cost host watcher fast-path
         id: watcher
-        shell: bash
-        run: |
-          set -euo pipefail
-          converged=false
-          for attempt in {1..48}; do
-            body="$RUNNER_TEMP/backend-watcher-$attempt.txt"
-            status="$(curl --silent --show-error --connect-timeout 1 --max-time 2 \
-              --output "$body" --write-out '%{http_code}' \
-              -H 'Accept: text/plain' -H 'Cache-Control: no-cache, no-store' \
-              "$STAGING_API_URL/_deploy/committed?probe=$attempt" || true)"
-            committed="$(tr -d '\r\n' < "$body" 2>/dev/null || true)"
-            if [[ "$status" == 200 && "$committed" == "$DEPLOY_SHA" ]]; then
-              # The host publishes this marker only after all post-cutover
-              # attestations pass. A rollback restores the previous committed
-              # SHA, so a transient blue/green candidate cannot fool this gate.
-              if python3 scripts/verify_backend_staging.py \
-                --api-url "$STAGING_API_URL" \
-                --sha "$DEPLOY_SHA" \
-                --attempts 1 \
-                --interval 0 >/dev/null 2>&1; then
-                converged=true
-                break
-              fi
-            fi
-            if (( attempt % 8 == 0 )); then
-              current_main="$(git ls-remote origin refs/heads/main 2>/dev/null | awk 'NR == 1 {print $1}' || true)"
-              [[ ! "$current_main" =~ ^[0-9a-f]{40}$ || "$current_main" == "$DEPLOY_SHA" ]] || break
-            fi
-            [[ "$attempt" -eq 48 ]] || sleep 1
-          done
-          echo "converged=$converged" >> "$GITHUB_OUTPUT"
-          if [[ "$converged" == true ]]; then
-            echo "::notice title=OCI zero-cost fast-path::$DEPLOY_SHA acreditado completamente por watcher."
-          else
-            echo "::warning title=OCI fallback::Watcher no quedó acreditado; uso Run Command."
-          fi
+        # The host publishes /_deploy/committed only after its post-cutover
+        # attestations pass; a rollback restores the previous SHA.
+        run: python3 -S scripts/staging_generation.py watch-committed --sha "$DEPLOY_SHA" --github-output "$GITHUB_OUTPUT"
       - name: Re-check main before OCI fallback
         id: fallback_admission
         if: steps.watcher.outputs.converged != 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          current_main="$(git ls-remote origin refs/heads/main | awk 'NR == 1 {print $1}')"
-          [[ "$current_main" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::No pude resolver main antes del fallback OCI"; exit 1; }
-          if [[ "$DEPLOY_SHA" != "$current_main" ]]; then
-            echo 'superseded=true' >> "$GITHUB_OUTPUT"
-            echo "::notice title=OCI fallback superseded::$DEPLOY_SHA != main $current_main; skip Run Command."
-          else
-            echo 'superseded=false' >> "$GITHUB_OUTPUT"
-          fi
+        run: python3 -S scripts/staging_generation.py main-head --sha "$DEPLOY_SHA" --github-output "$GITHUB_OUTPUT"
       - name: Restore cached OCI SDK toolchain
         if: steps.watcher.outputs.converged != 'true' && steps.fallback_admission.outputs.superseded != 'true'
         uses: ./.github/actions/setup-oci-sdk
@@ -159,7 +108,6 @@ jobs:
           python3 -S scripts/oci_vault_sync.py --self-test
           python3 -S scripts/verify_backend_staging.py --self-test
       - name: Deploy exact backend commit to OCI staging
-        id: deploy
         if: steps.watcher.outputs.converged != 'true' && steps.fallback_admission.outputs.superseded != 'true'
         shell: bash
         env:
@@ -172,34 +120,21 @@ jobs:
           set -euo pipefail
           # A transient exact /release is not enough: the host may still be
           # inside post-cutover accreditation and can roll back afterwards.
-          if python3 scripts/verify_backend_staging.py \
-            --api-url "$STAGING_API_URL" \
-            --sha "$DEPLOY_SHA" \
-            --attempts 1 \
-            --interval 0 >/dev/null 2>&1; then
+          if python3 scripts/verify_backend_staging.py --api-url "$STAGING_API_URL" --sha "$DEPLOY_SHA" --attempts 1 --interval 0 >/dev/null 2>&1; then
             echo "::notice title=OCI fallback avoided::A1 terminó y acreditó $DEPLOY_SHA; skip Run Command."
             exit 0
           fi
           python3 scripts/oci_run_command.py deploy --repo-ref "$DEPLOY_SHA"
-          current_main="$(git ls-remote origin refs/heads/main | awk 'NR == 1 {print $1}')"
-          [[ "$current_main" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::No pude resolver main después del fallback OCI"; exit 1; }
-          if [[ "$DEPLOY_SHA" != "$current_main" ]]; then
-            echo 'superseded=true' >> "$GITHUB_OUTPUT"
-            echo "::notice title=OCI deploy superseded::$DEPLOY_SHA != main $current_main."
-          else
-            echo 'superseded=false' >> "$GITHUB_OUTPUT"
-          fi
+      - name: Re-check main after OCI fallback
+        id: post_deploy
+        if: steps.watcher.outputs.converged != 'true' && steps.fallback_admission.outputs.superseded != 'true'
+        run: python3 -S scripts/staging_generation.py main-head --sha "$DEPLOY_SHA" --github-output "$GITHUB_OUTPUT"
       - name: Resolve backend generation state
         id: backend_state
         if: always()
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [[ "${{ steps.fallback_admission.outputs.superseded }}" == "true" || "${{ steps.deploy.outputs.superseded }}" == "true" ]]; then
-            echo 'superseded=true' >> "$GITHUB_OUTPUT"
-          else
-            echo 'superseded=false' >> "$GITHUB_OUTPUT"
-          fi
+        env:
+          SUPERSEDED: ${{ steps.fallback_admission.outputs.superseded == 'true' || steps.post_deploy.outputs.superseded == 'true' }}
+        run: echo "superseded=$SUPERSEDED" >> "$GITHUB_OUTPUT"
       - name: Verify backend public path reaches exact OCI generation
         if: steps.backend_state.outputs.superseded != 'true'
         run: >-
@@ -241,22 +176,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          hit=false
-          if [[ -f frontend/dist/release.json ]] && python3 - "$DEPLOY_SHA" <<'PY'
-          import json, pathlib, sys
-          payload = json.loads(pathlib.Path('frontend/dist/release.json').read_text(encoding='utf-8'))
-          actual = str(payload.get('build') or '').lower()
-          expected = sys.argv[1].lower()
-          raise SystemExit(0 if actual == expected else 1)
-          PY
-          then
-            hit=true
+          if python3 -S scripts/staging_generation.py dist-identity --sha "$DEPLOY_SHA"; then
+            echo 'hit=true' >> "$GITHUB_OUTPUT"
             echo "::notice title=Frontend fast-path::Reuso dist de $DEPLOY_SHA."
           else
             rm -rf frontend/dist
+            echo 'hit=false' >> "$GITHUB_OUTPUT"
             echo "::notice title=Frontend fallback::Artifact ausente/inválido; recompilo."
           fi
-          echo "hit=$hit" >> "$GITHUB_OUTPUT"
       - name: CF auth guard
         run: python3 -S scripts/cloudflare_staging_pages_smoke.py && python3 scripts/cloudflare_auth_rate_limit.py
       - name: Setup Node.js
@@ -265,13 +192,6 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - name: Restore exact frontend dependencies
-        if: steps.frontend_artifact.outputs.hit != 'true'
-        uses: ./.github/actions/cache-node-modules
-        with:
-          working-directory: frontend
-          lockfile: frontend/package-lock.json
-          node-version: '22'
       - name: Restore cached Wrangler toolchain
         uses: ./.github/actions/setup-wrangler
         with:
@@ -282,17 +202,11 @@ jobs:
         run: python3 scripts/cloudflare_staging_pages.py --release-fast-path
       - name: Build frontend for staging
         if: steps.frontend_artifact.outputs.hit != 'true'
-        working-directory: frontend
-        env:
-          VITE_API_URL: ${{ env.STAGING_API_URL }}
-          VITE_WAR_ROOM_VARIANTS_ENABLE: '1'
-          VITE_PUBLIC_BASE: /
-          VITE_BUILD_SHA: ${{ env.DEPLOY_SHA }}
-          VITE_GRAFANA_CLOUD_URL: ${{ vars.VITE_GRAFANA_CLOUD_URL }}
-          VITE_GRAFANA_LOGS_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_LOGS_DASHBOARD_URL }}
-          VITE_GRAFANA_HEALTH_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_HEALTH_DASHBOARD_URL }}
-          VITE_GRAFANA_TRACES_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_TRACES_DASHBOARD_URL }}
-        run: npm run build
+        uses: ./.github/actions/build-staging-frontend
+        with:
+          sha: ${{ env.DEPLOY_SHA }}
+          api-url: ${{ env.STAGING_API_URL }}
+          repo-vars: ${{ toJSON(vars) }}
       - name: Deploy tested frontend to Cloudflare Pages
         working-directory: frontend
         shell: bash
@@ -304,28 +218,7 @@ jobs:
             --commit-hash "$DEPLOY_SHA" \
             --commit-dirty=false
       - name: Verify frontend staging build identity
-        shell: bash
-        run: |
-          set -euo pipefail
-          release_ok=false
-          for attempt in {1..150}; do
-            body="$RUNNER_TEMP/staging-release-$attempt.json"
-            status="$(curl --silent --show-error --connect-timeout 5 --max-time 10 \
-              --output "$body" --write-out '%{http_code}' \
-              -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
-              "$STAGING_URL/release.json?sha=$DEPLOY_SHA" || true)"
-            if [[ "$status" == 200 ]] && python3 - "$body" "$DEPLOY_SHA" <<'PY'
-          import json, pathlib, sys
-          payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
-          raise SystemExit(0 if str(payload.get('build') or '').lower() == sys.argv[2].lower() else 1)
-          PY
-            then release_ok=true; break; fi
-            echo "Frontend staging aún no sirve $DEPLOY_SHA (HTTP ${status:-curl-error}, intento $attempt/150)"
-            sleep 2
-          done
-          [[ "$release_ok" == true ]] || { echo '::error::Pages no sirvió el SHA esperado tras 5 minutos'; exit 1; }
-          root_status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "$STAGING_URL/")"
-          [[ "$root_status" == 200 ]] || { echo "::error::Frontend staging raíz devuelve HTTP $root_status"; exit 1; }
+        run: python3 -S scripts/staging_generation.py wait --sha "$DEPLOY_SHA" --surfaces frontend --attempts 150 --interval 2 --root
   worker:
     name: Worker · exact AI generation
     needs: prepare
@@ -390,70 +283,17 @@ jobs:
         uses: actions/checkout@v7
         with:
           ref: ${{ env.DEPLOY_SHA }}
+      # Parity lives in each smoke leg on purpose: no extra serial job before
+      # Chromium. Both legs wait for the same N/N/N generation.
       - name: Verify staging generation parity before browser smoke
-        shell: bash
-        run: |
-          set -euo pipefail
-          parity_ok=false
-          for attempt in {1..60}; do
-            backend="$RUNNER_TEMP/generation-backend-$attempt.json"
-            frontend="$RUNNER_TEMP/generation-frontend-$attempt.json"
-            ai="$RUNNER_TEMP/generation-ai-$attempt.json"
-            backend_status="$(curl --silent --show-error --connect-timeout 5 --max-time 15 --output "$backend" --write-out '%{http_code}' -H 'Accept: application/json' -H 'Cache-Control: no-cache' "$STAGING_API_URL/release?sha=$DEPLOY_SHA" || true)"
-            frontend_status="$(curl --silent --show-error --connect-timeout 5 --max-time 15 --output "$frontend" --write-out '%{http_code}' -H 'Accept: application/json' -H 'Cache-Control: no-cache' "$STAGING_URL/release.json?sha=$DEPLOY_SHA" || true)"
-            ai_status="$(curl --silent --show-error --connect-timeout 5 --max-time 15 --output "$ai" --write-out '%{http_code}' -H 'Accept: application/json' -H 'Cache-Control: no-cache' "$STAGING_AI_URL/health" || true)"
-            if [[ "$backend_status" == 200 && "$frontend_status" == 200 && "$ai_status" == 200 ]] && \
-              python3 scripts/cloudflare_health_contract.py "$ai" >/dev/null 2>&1 && \
-              python3 - "$backend" "$frontend" "$ai" "$DEPLOY_SHA" <<'PY'
-          import json, pathlib, sys
-          expected = sys.argv[4].lower()
-          backend = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
-          frontend = json.loads(pathlib.Path(sys.argv[2]).read_text(encoding='utf-8'))
-          ai = json.loads(pathlib.Path(sys.argv[3]).read_text(encoding='utf-8'))
-          actual = {
-              'backend': str(backend.get('build') or '').lower(),
-              'frontend': str(frontend.get('build') or '').lower(),
-              'worker': str(ai.get('build') or '').lower(),
-          }
-          raise SystemExit(0 if all(value == expected for value in actual.values()) else 1)
-          PY
-            then
-              parity_ok=true
-              echo "Staging generation coherent: backend=$DEPLOY_SHA frontend=$DEPLOY_SHA Worker=$DEPLOY_SHA"
-              break
-            fi
-            readarray -t observed < <(python3 - "$backend" "$frontend" "$ai" <<'PY'
-          import json, pathlib, sys
-          def build(path):
-              try: payload = json.loads(pathlib.Path(path).read_text(encoding='utf-8'))
-              except (OSError, json.JSONDecodeError): return 'unreadable'
-              return str(payload.get('build') or 'missing').lower()
-          for path in sys.argv[1:]: print(build(path))
-          PY
-          )
-            echo "Staging generation aún no converge: backend=${observed[0]:-unknown} (HTTP ${backend_status:-curl-error}), frontend=${observed[1]:-unknown} (HTTP ${frontend_status:-curl-error}), worker=${observed[2]:-unknown} (HTTP ${ai_status:-curl-error}), expected=$DEPLOY_SHA (intento $attempt/60)"
-            sleep 5
-          done
-          [[ "$parity_ok" == true ]] || { echo '::error::Generation parity no convergió a N/N/N tras 5 minutos'; exit 1; }
+        run: python3 -S scripts/staging_generation.py wait --sha "$DEPLOY_SHA" --surfaces backend,frontend,worker --attempts 60 --interval 5
       - name: Restore cached OCI SDK toolchain
         uses: ./.github/actions/setup-oci-sdk
         with:
           version: '2.185.2'
           python-version: '3.13'
       - name: Load ephemeral staging invite code from OCI runtime
-        run: |
-          python3 - <<'PY'
-          import os,sys
-          sys.path.insert(0,'scripts')
-          import oci
-          from oci_runtime_bundle import read_private_runtime_value
-          invite=read_private_runtime_value(oci, 'INVITE_CODE')
-          sec=read_private_runtime_value(oci,'CHESS_AI_SHARED_SECRET')
-          if not invite or not sec: raise SystemExit('missing staging smoke secret')
-          h=open(os.environ['GITHUB_ENV'],'a')
-          for k,v in (('STAGING_INVITE_CODE',invite),('STAGING_SYNTHETIC_SECRET',sec)):
-              print(f'::add-mask::{v}');h.write(f'{k}={v}\n')
-          PY
+        run: python3 scripts/staging_smoke_env.py secrets
       - name: Prepare and sweep staging smoke janitor
         if: matrix.key == 'live'
         shell: bash
@@ -462,15 +302,7 @@ jobs:
           python3 -S scripts/staging_smoke_user_cleanup.py --self-test
           python3 -S scripts/staging_smoke_user_cleanup.py --sweep
       - name: Generate isolated staging smoke credentials
-        shell: bash
-        run: |
-          set -euo pipefail
-          username="ci_smoke_$(python3 -c 'import secrets; print(secrets.token_hex(8))')"
-          password="CS!$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')"
-          echo "::add-mask::$username"
-          echo "::add-mask::$password"
-          echo "STAGING_E2E_USERNAME=$username" >> "$GITHUB_ENV"
-          echo "STAGING_E2E_PASSWORD=$password" >> "$GITHUB_ENV"
+        run: python3 -S scripts/staging_smoke_env.py identity
       - name: Restore staging browser runtime
         uses: ./.github/actions/setup-browser-e2e
         with:
@@ -506,22 +338,20 @@ jobs:
     timeout-minutes: 2
     env:
       DEPLOY_SHA: ${{ needs.prepare.outputs.deploy_sha }}
+      BACKEND: ${{ needs.backend.result }}
+      FRONTEND: ${{ needs.frontend.result }}
+      WORKER: ${{ needs.worker.result }}
+      SMOKE: ${{ needs.smoke.result }}
     steps:
       - name: Summary
-        shell: bash
         run: |
           {
             echo '### Staging desplegado como una generación coherente'
             echo
-            echo '- Frontend: `https://staging.chess-studio.shadowops.dpdns.org`'
-            echo '- API: `https://api-staging.chess-studio.shadowops.dpdns.org/api`'
-            echo '- Workers AI: `https://ai-staging.shadowops.dpdns.org`'
-            echo '- Backend staging: `OCI A1 + Cloudflare Tunnel`'
             echo "- Generation SHA: \`$DEPLOY_SHA\`"
-            echo '- OCI runtime config: `CURRENT Vault + Git; runtime-sync manual para rotaciones`'
-            echo '- Generation parity gate: `N/N/N · verificado dentro de cada smoke antes de Chromium`'
-            echo '- Live browser smoke: `War Room live + F5 authority · paralelos · OK`'
-            echo '- Visual evidence: `vídeos Chromium retenidos 7 días en staging-live-playwright-*`'
-            echo '- Identidades CI: `aleatorias por spec, eliminadas y verificadas`'
+            echo "- Frontend: $STAGING_URL · $FRONTEND"
+            echo "- API: $STAGING_API_URL · $BACKEND"
+            echo "- Workers AI: $STAGING_AI_URL · $WORKER"
+            echo "- Paridad N/N/N: verificada en cada pata del smoke antes de Chromium"
+            echo "- Smoke de navegador (War Room live + F5): $SMOKE · evidencia en staging-live-playwright-*"
           } >> "$GITHUB_STEP_SUMMARY"
-

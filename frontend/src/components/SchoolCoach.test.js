@@ -2,12 +2,20 @@ import { describe, expect, it } from 'vitest';
 import {
   advanceSchoolCoachContext,
   schoolCoachHintMessage,
+  schoolCoachIncidentConsumesMistake,
   schoolCoachMissMessage,
   schoolCoachSelectionMessage,
   schoolCoachStepMessage,
 } from './SchoolCoach.js';
 
 describe('Class Room contextual Matthias', () => {
+  it('charges exam margin only for a legal off-objective chess decision', () => {
+    expect(schoolCoachIncidentConsumesMistake('off-objective')).toBe(true);
+    expect(schoolCoachIncidentConsumesMistake('empty-square')).toBe(false);
+    expect(schoolCoachIncidentConsumesMistake('wrong-piece')).toBe(false);
+    expect(schoolCoachIncidentConsumesMistake('illegal-target')).toBe(false);
+  });
+
   it('counts repeated incident kinds without mixing different errors', () => {
     const first = advanceSchoolCoachContext(null, 'empty-square');
     const repeated = advanceSchoolCoachContext(first, 'empty-square');

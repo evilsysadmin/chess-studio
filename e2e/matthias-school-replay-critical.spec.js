@@ -226,6 +226,14 @@ test('Escuela de Matthias · suspender un examen reinicia un intento real y perm
   await expect(status).not.toContainText('g7');
   await wrongSquare.click();
   await wrongSquare.click();
+  await expect(page.getByText('Errores 0/2', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Reintentar examen', exact: true })).toHaveCount(0);
+
+  // A real legal decision that misses the objective does consume exam margin.
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await page.getByRole('button', { name: /^Casilla f7, dama blanca/ }).click();
+    await page.getByRole('button', { name: /^Casilla e7, vacía/ }).click();
+  }
 
   const retry = page.getByRole('button', { name: 'Reintentar examen', exact: true });
   await expect(retry).toBeVisible();

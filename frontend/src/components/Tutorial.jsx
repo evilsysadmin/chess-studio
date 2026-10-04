@@ -12,6 +12,7 @@ import { SchoolExplanationActions, SchoolExplanationStatus } from './SchoolExpla
 import {
   advanceSchoolCoachContext,
   schoolCoachHintMessage,
+  schoolCoachIncidentConsumesMistake,
   schoolCoachMissMessage,
   schoolCoachSelectionMessage,
   schoolCoachStepMessage,
@@ -187,7 +188,8 @@ export default function Tutorial({ onExit }) {
 
   function recordMiss(kind, { danger = [], square = null, selectedSquare = selected } = {}) {
     if (masteryReplay !== 'active') setSchoolProgress(incrementMatthiasSchoolAttempt(lesson.id));
-    const nextMistakes = mistakes + 1;
+    const consumesMistake = schoolCoachIncidentConsumesMistake(kind);
+    const nextMistakes = mistakes + (consumesMistake ? 1 : 0);
     const nextContext = advanceSchoolCoachContext(coachIncidentRef.current, kind);
     const text = schoolCoachMissMessage({
       lesson,
@@ -203,7 +205,7 @@ export default function Tutorial({ onExit }) {
     setSelected(null);
     setHintActive(false);
     setDangerSquares(danger);
-    if (lesson.exam && nextMistakes > Number(lesson.maxMistakes || 0)) {
+    if (lesson.exam && consumesMistake && nextMistakes > Number(lesson.maxMistakes || 0)) {
       setCoach({ tone: 'retry', text: `Suspendido. ${text} Ha agotado el margen del examen. Repita cuando quiera; prefiero eso a promocionarle por lástima.` });
       return;
     }

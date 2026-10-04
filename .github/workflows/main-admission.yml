@@ -41,37 +41,12 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Restore exact frontend dependencies
-        uses: ./.github/actions/cache-node-modules
-        with:
-          working-directory: frontend
-          lockfile: frontend/package-lock.json
-          node-version: '22'
-
       - name: Build exact staging frontend
-        working-directory: frontend
-        env:
-          VITE_API_URL: ${{ env.STAGING_API_URL }}
-          VITE_WAR_ROOM_VARIANTS_ENABLE: '1'
-          VITE_PUBLIC_BASE: /
-          VITE_BUILD_SHA: ${{ github.sha }}
-          VITE_GRAFANA_CLOUD_URL: ${{ vars.VITE_GRAFANA_CLOUD_URL }}
-          VITE_GRAFANA_LOGS_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_LOGS_DASHBOARD_URL }}
-          VITE_GRAFANA_HEALTH_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_HEALTH_DASHBOARD_URL }}
-          VITE_GRAFANA_TRACES_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_TRACES_DASHBOARD_URL }}
-        run: npm run build
-
-      - name: Verify prebuilt frontend identity
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - "$GITHUB_SHA" <<'PY'
-          import json, pathlib, sys
-          payload = json.loads(pathlib.Path('frontend/dist/release.json').read_text(encoding='utf-8'))
-          actual = str(payload.get('build') or '').lower()
-          expected = sys.argv[1].lower()
-          raise SystemExit(0 if actual == expected else f"Artifact build={actual or '<vacío>'}, esperaba {expected}")
-          PY
+        uses: ./.github/actions/build-staging-frontend
+        with:
+          sha: ${{ github.sha }}
+          api-url: ${{ env.STAGING_API_URL }}
+          repo-vars: ${{ toJSON(vars) }}
 
       - name: Upload exact staging frontend
         uses: actions/upload-artifact@v7
@@ -108,7 +83,14 @@ jobs:
     needs: source
     if: needs.source.outputs.source == 'pr'
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    # The exact-HEAD fallback waits for a full parallel Quality run (~30-45 min).
+    timeout-minutes: 100
+    # actions: write only to dispatch Quality · CI gate on main for the fallback.
+    permissions:
+      actions: write
+      checks: read
+      contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@v7
         with:
@@ -138,7 +120,7 @@ jobs:
       # for the same source tree. Only a disjoint concurrent main advance needs
       # those cheap integration contracts rerun on the composed final tree.
       - uses: actions/setup-node@v7
-        if: steps.pr_admission.outcome == 'failure' || steps.pr_admission.outputs.concurrency_reused == 'true'
+        if: steps.pr_admission.outcome == 'success' && steps.pr_admission.outputs.concurrency_reused == 'true'
         with:
           node-version: 22
           cache: npm
@@ -161,98 +143,54 @@ jobs:
       # Slow but safe path: if the PR receipt cannot be reused (for example two
       # concurrent PRs touched the same file), test the exact final main SHA
       # instead of weakening the concurrency proof or blocking staging forever.
-      - uses: actions/setup-python@v7
-        if: steps.pr_admission.outcome == 'failure'
-        with:
-          python-version: '3.13'
-          cache: pip
-          cache-dependency-path: |
-            backend-python/requirements.txt
-            backend-python/requirements-dev.txt
-
-      - name: Resolve Trivy cache epoch
-        if: steps.pr_admission.outcome == 'failure'
-        id: pr_fallback_trivy_epoch
-        shell: bash
-        run: echo "day=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
-
-      - name: Cache Trivy binary and vulnerability DB
-        if: steps.pr_admission.outcome == 'failure'
-        uses: actions/cache@v6
-        with:
-          path: |
-            .tools/trivy
-            .trivy-cache
-          key: pr-main-fallback-trivy-${{ runner.os }}-${{ runner.arch }}-v0.74.0-${{ steps.pr_fallback_trivy_epoch.outputs.day }}
-          restore-keys: |
-            pr-main-fallback-trivy-${{ runner.os }}-${{ runner.arch }}-v0.74.0-
-            trivy-${{ runner.os }}-${{ runner.arch }}-v0.74.0-
-
+      # The full Quality · CI gate runs in its fail-closed --all mode (frontend,
+      # backend, security, Docker images, compose stack, every browser lane), in
+      # parallel, on this exact SHA. Serial `make tests` replayed every spec,
+      # visual-artifact producers included, and never fitted in the timeout.
       - name: Explain exact-HEAD PR fallback
         if: steps.pr_admission.outcome == 'failure'
         run: |
           echo '::warning title=PR admission fallback::El recibo Quality del PR no puede reutilizarse de forma segura para este árbol final.'
-          echo 'Se ejecutará el gate completo sobre el HEAD exacto de main antes de permitir staging.'
+          echo 'Se ejecutará Quality · CI gate completo (--all) sobre el HEAD exacto de main antes de permitir staging.'
 
       - name: Full exact-HEAD quality fallback
         if: steps.pr_admission.outcome == 'failure'
         env:
-          TRIVY_DB_TTL_MINUTES: '1440'
-        run: make tests security-images compose-smoke
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python3 -S scripts/main_admission_quality_dispatch.py --self-test
+          python3 -S scripts/main_admission_quality_dispatch.py
 
   admit_direct:
     name: Main · direct HEAD full fallback gate
     needs: source
     if: needs.source.outputs.source == 'direct'
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 100
+    # actions: write only to dispatch Quality · CI gate on main.
+    permissions:
+      actions: write
+      checks: read
+      contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
 
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: |
-            frontend/package-lock.json
-            e2e/package-lock.json
-
-      - uses: actions/setup-python@v7
-        with:
-          python-version: '3.13'
-          cache: pip
-          cache-dependency-path: |
-            backend-python/requirements.txt
-            backend-python/requirements-dev.txt
-
-      - name: Resolve Trivy cache epoch
-        id: trivy_epoch
-        shell: bash
-        run: echo "day=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
-
-      - name: Cache Trivy binary and vulnerability DB
-        uses: actions/cache@v6
-        with:
-          path: |
-            .tools/trivy
-            .trivy-cache
-          key: direct-main-trivy-${{ runner.os }}-${{ runner.arch }}-v0.74.0-${{ steps.trivy_epoch.outputs.day }}
-          restore-keys: |
-            direct-main-trivy-${{ runner.os }}-${{ runner.arch }}-v0.74.0-
-            trivy-${{ runner.os }}-${{ runner.arch }}-v0.74.0-
-
       - name: Explain exceptional full gate
         run: |
           echo '::warning title=Direct main fallback::Este SHA no procede de un PR mergeado.'
-          echo 'Se ejecutará el gate completo sobre el HEAD exacto antes de permitir staging.'
+          echo 'Se ejecutará Quality · CI gate completo (--all) sobre el HEAD exacto antes de permitir staging.'
 
       # Este camino es deliberadamente más caro que el fast-path de PR. Un push
       # directo no obtiene un bypass: debe demostrar por sí mismo frontend,
-      # backend, security, Playwright, imágenes Docker y stack real.
+      # backend, security, Playwright, imágenes Docker y stack real, con el
+      # Quality · CI gate completo (--all) sobre este SHA exacto.
       - name: Full exact-HEAD quality fallback
         env:
-          TRIVY_DB_TTL_MINUTES: '1440'
-        run: make tests security-images compose-smoke
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python3 -S scripts/main_admission_quality_dispatch.py --self-test
+          python3 -S scripts/main_admission_quality_dispatch.py

@@ -30,7 +30,9 @@ def validate_main_admission_fallback(root: Path = ROOT) -> None:
         "if: steps.pr_admission.outcome == 'success'",
         "if: steps.pr_admission.outcome == 'failure'",
         "name: Full exact-HEAD quality fallback",
-        "run: make tests security-images compose-smoke",
+        # Full Quality · CI gate (--all) on the exact main SHA, in parallel.
+        "python3 -S scripts/main_admission_quality_dispatch.py",
+        "actions: write",
     )
     missing = [token for token in required if token not in admit_pr]
     if missing:
@@ -39,8 +41,28 @@ def validate_main_admission_fallback(root: Path = ROOT) -> None:
         )
     if admit_pr.index("id: pr_admission") > admit_pr.index("name: Full exact-HEAD quality fallback"):
         raise SystemExit("main-admission ejecuta fallback antes de intentar reutilizar Quality")
+    subprocess.run(
+        [sys.executable, "-S", "scripts/main_admission_quality_dispatch.py", "--self-test"],
+        cwd=root,
+        check=True,
+    )
     print("main-admission exact-HEAD fallback contract: OK")
 
+
+
+def validate_staging_frontend_build_single_source(root: Path = ROOT) -> None:
+    """Admission prebuild (fast path) and staging deploy (fallback) build the
+    staging frontend through one composite action, so the two cannot drift."""
+    action = root / ".github" / "actions" / "build-staging-frontend" / "action.yml"
+    if not action.is_file():
+        raise SystemExit("falta .github/actions/build-staging-frontend")
+    for name in ("main-admission.yml", "staging-deploy.yml"):
+        text = (root / ".github" / "workflows" / name).read_text(encoding="utf-8")
+        if "uses: ./.github/actions/build-staging-frontend" not in text:
+            raise SystemExit(f"{name} debe construir staging con build-staging-frontend")
+        if "VITE_BUILD_SHA" in text:
+            raise SystemExit(f"{name} vuelve a definir el build de staging inline (VITE_*): usa la action")
+    print("staging frontend build single source: OK")
 
 
 def validate_cloudflare_auth_rate_limit(root: Path = ROOT) -> None:
@@ -97,6 +119,7 @@ def validate_workflow_static_contracts(root: Path = ROOT) -> None:
     staging_release_identity_self_test()
     workflow_debt_self_test()
     validate_main_admission_fallback(root)
+    validate_staging_frontend_build_single_source(root)
     validate_cloudflare_auth_rate_limit(root)
     validate_resend_bootstrap_topology(root)
 

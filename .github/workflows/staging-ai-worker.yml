@@ -1,4 +1,4 @@
-name: Staging · AI Worker
+name: Staging · accreditation
 
 on:
   workflow_run:
