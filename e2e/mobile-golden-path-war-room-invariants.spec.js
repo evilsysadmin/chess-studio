@@ -229,6 +229,10 @@ for (const viewport of VIEWPORTS) {
       const overlays = page.locator('.save-status-badge, .release-update-notice, .matthias-3d-opening-banter');
       await assertNoOverlap(overlays, hudControls, 'overlay must not cover HUD controls');
       await assertNoOverlap(page.locator('.save-status-badge'), page.locator('.game-3d-turn-pill'), 'save badge must not overlap the HUD pill');
+      // The HUD pill is right-anchored and up to 360px wide: on narrow portraits
+      // it used to cover most of the exit button.
+      await assertNoOverlap(page.locator('.war-room-exit-overlay'), page.locator('.game-3d-turn-pill'), 'exit button must not hide under the HUD pill');
+      await assertNoOverlap(page.locator('.war-room-exit-overlay'), page.locator('.save-status-badge'), 'exit button must not overlap the save status dot');
       await assertNoOverlap(release, matthias, 'release notice must not cover Matthias');
       await assertInsideViewport(matthias, viewport, 'Matthias bubble');
       await assertInsideViewport(release, viewport, 'release notice');
