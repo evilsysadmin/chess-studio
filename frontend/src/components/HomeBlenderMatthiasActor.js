@@ -154,35 +154,31 @@ export const HOME_MATTHIAS_POSTURES = Object.freeze({
 });
 
 // Real arms reach the routine props instead of leaving the props floating
-// beside dangling arms. Angles are Euler degrees on the canonical rig bones
-// (+x swings an arm forward, +z swings the right arm inwards; the left arm
-// mirrors z). `raise` is the sip/bite gesture blended in by the cycle below.
+// beside dangling arms. Angles are Euler degrees that REPLACE the canonical
+// rig bone rotation (right arm; the left mirrors y and z). On this rig a zero
+// rotation points the arm at the head and ~150 deg on x hangs it down, so the
+// values were solved on matthias-home-canonical.glb for natural targets:
+// elbow below the shoulder, forearm forward, glove in front of the body.
+// `raise` is the sip/bite gesture, slerped in by the cycle below.
+const ARM_REST_HOLD = Object.freeze({ upper: [160, 10, 0], fore: [-64, -11, 13] });
+const ARM_TO_MOUTH = Object.freeze({ upper: [115, 20, 10], fore: [-71, -15, 16] });
+const ARM_ON_BOARD = Object.freeze({ upper: [145, 10, -5], fore: [-46, -6, 8] });
+const ARM_HOLD_BOOK = Object.freeze({ upper: [155, 10, 0], fore: [-76, -15, 15] });
+const ARM_WRITE = Object.freeze({ upper: [150, 0, -5], fore: [-43, -12, 25] });
 export const HOME_MATTHIAS_ARM_POSES = Object.freeze({
   sip: Object.freeze({
-    R: Object.freeze({ upper: [40, 0, 20], fore: [70, 0, 0], raise: { upper: [52, 0, 30], fore: [100, 0, 0] } }),
+    R: Object.freeze({ ...ARM_REST_HOLD, raise: ARM_TO_MOUTH }),
   }),
   // Same hand as the coffee: the authored sandwich sits on the right side of
   // the chest, so a left-hand anchor dragged it across the body.
   bite: Object.freeze({
-    R: Object.freeze({ upper: [40, 0, 20], fore: [70, 0, 0], raise: { upper: [52, 0, 30], fore: [100, 0, 0] } }),
+    R: Object.freeze({ ...ARM_REST_HOLD, raise: ARM_TO_MOUTH }),
   }),
   // At the board: both forearms forward, hands resting near the pieces.
-  think: Object.freeze({
-    R: Object.freeze({ upper: [36, 0, 18], fore: [62, 0, 0] }),
-    L: Object.freeze({ upper: [36, 0, 18], fore: [62, 0, 0] }),
-  }),
-  dossier: Object.freeze({
-    R: Object.freeze({ upper: [40, 0, 20], fore: [70, 0, 0] }),
-    L: Object.freeze({ upper: [40, 0, 20], fore: [70, 0, 0] }),
-  }),
-  read: Object.freeze({
-    R: Object.freeze({ upper: [40, 0, 20], fore: [70, 0, 0] }),
-    L: Object.freeze({ upper: [40, 0, 20], fore: [70, 0, 0] }),
-  }),
-  write: Object.freeze({
-    R: Object.freeze({ upper: [44, 0, 24], fore: [74, 0, 0] }),
-    L: Object.freeze({ upper: [40, 0, 20], fore: [70, 0, 0] }),
-  }),
+  think: Object.freeze({ R: ARM_ON_BOARD, L: ARM_ON_BOARD }),
+  dossier: Object.freeze({ R: ARM_HOLD_BOOK, L: ARM_HOLD_BOOK }),
+  read: Object.freeze({ R: ARM_HOLD_BOOK, L: ARM_HOLD_BOOK }),
+  write: Object.freeze({ R: ARM_WRITE, L: ARM_HOLD_BOOK }),
 });
 
 // Props that the rig carries with a modelled "fake" hand get anchored to the
@@ -733,6 +729,7 @@ export function createHomeMatthiasActor(gltf, { shadowsEnabled = true, random = 
   };
 
   const legQuaternion = new THREE.Quaternion();
+  const armRaiseQuaternion = new THREE.Quaternion();
   const kneeQuaternion = new THREE.Quaternion();
   // Runs after every mixer update: the authored clips key every bone, so the
   // posture overrides must be re-applied on top of them each frame.
@@ -757,19 +754,15 @@ export function createHomeMatthiasActor(gltf, { shadowsEnabled = true, random = 
       for (const arm of arms) {
         const pose = armPose?.[arm.side];
         if (!pose || !arm.upper || !arm.fore) continue;
-        const mix = (base, raised = base, axis) => base[axis] + ((raised[axis] - base[axis]) * weight);
-        const upperRaise = pose.raise?.upper || pose.upper;
-        const foreRaise = pose.raise?.fore || pose.fore;
-        arm.upper.quaternion.setFromEuler(eulerDeg(
-          mix(pose.upper, upperRaise, 0),
-          mix(pose.upper, upperRaise, 1),
-          arm.sign * mix(pose.upper, upperRaise, 2),
-        ));
-        arm.fore.quaternion.setFromEuler(eulerDeg(
-          mix(pose.fore, foreRaise, 0),
-          mix(pose.fore, foreRaise, 1),
-          arm.sign * mix(pose.fore, foreRaise, 2),
-        ));
+        const mirrored = (angles) => eulerDeg(angles[0], arm.sign * angles[1], arm.sign * angles[2]);
+        arm.upper.quaternion.setFromEuler(mirrored(pose.upper));
+        arm.fore.quaternion.setFromEuler(mirrored(pose.fore));
+        if (pose.raise && weight > 0) {
+          armRaiseQuaternion.setFromEuler(mirrored(pose.raise.upper));
+          arm.upper.quaternion.slerp(armRaiseQuaternion, weight);
+          armRaiseQuaternion.setFromEuler(mirrored(pose.raise.fore));
+          arm.fore.quaternion.slerp(armRaiseQuaternion, weight);
+        }
       }
     }
     anchorRoutineProp();

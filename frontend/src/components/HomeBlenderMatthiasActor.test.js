@@ -183,6 +183,20 @@ describe('Home Matthias in-scene actor', () => {
     expect(homeMatthiasZzzFrame(HOME_MATTHIAS_SLEEP_FACE.zzz.period * 0.99, 0).opacity).toBeLessThan(0.1);
   });
 
+  it('holds props with the elbows down, never chicken-winged towards the cap', () => {
+    // These angles replace the rig bone rotation: ~150 deg on x hangs the arm
+    // (elbow below the shoulder), small values raised it towards the head.
+    // Solved and measured on matthias-home-canonical.glb.
+    for (const [profile, sides] of Object.entries(HOME_MATTHIAS_ARM_POSES)) {
+      for (const pose of Object.values(sides)) {
+        expect(pose.upper[0], profile).toBeGreaterThanOrEqual(140);
+        expect(pose.upper[0], profile).toBeLessThanOrEqual(170);
+        expect(pose.fore[0], profile).toBeLessThan(0);
+        if (pose.raise) expect(pose.raise.upper[0], `${profile} raise`).toBeGreaterThanOrEqual(100);
+      }
+    }
+  });
+
   it('sleeps with slack arms along the flank, never pointing at the ceiling', () => {
     // The lie override replaces the arm bone rotation outright: 0 deg points
     // the canonical rig's arm at the head, ~180 deg hangs it to the hip.
