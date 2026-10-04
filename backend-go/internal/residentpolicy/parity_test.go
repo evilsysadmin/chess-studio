@@ -23,6 +23,8 @@ type policyCorpus struct {
 		BudgetSeconds         float64   `json:"budgetSeconds"`
 		SettingsMaxDepth      int       `json:"settingsMaxDepth"`
 		SettingsBudgetSeconds float64   `json:"settingsBudgetSeconds"`
+		SettingsRandomness    float64   `json:"settingsRandomness"`
+		SettingsNoise         float64   `json:"settingsNoise"`
 		LossCaps              []float64 `json:"lossCaps"`
 		MistakeChances        []float64 `json:"mistakeChances"`
 	} `json:"bands"`
@@ -73,6 +75,12 @@ func TestDifficultyBandsMatchPythonCorpus(t *testing.T) {
 		depth, budget := SearchSettings(row.Level)
 		if depth != row.SettingsMaxDepth || !near(budget, row.SettingsBudgetSeconds) {
 			t.Errorf("level %v: settings (%d, %v), python (%d, %v)", row.Level, depth, budget, row.SettingsMaxDepth, row.SettingsBudgetSeconds)
+		}
+		if got := Randomness(row.Level); !near(got, row.SettingsRandomness) {
+			t.Errorf("level %v: randomness %v, python %v", row.Level, got, row.SettingsRandomness)
+		}
+		if got := Noise(row.Level); !near(got, row.SettingsNoise) {
+			t.Errorf("level %v: noise %v, python %v", row.Level, got, row.SettingsNoise)
 		}
 		for i, complexity := range corpus.Complexities {
 			if got := EffectiveLossCap(band, complexity); !near(got, row.LossCaps[i]) {

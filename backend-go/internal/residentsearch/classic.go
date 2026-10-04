@@ -170,3 +170,70 @@ func evaluateBoard(pos *chess.Position, path *searchPath, ply int) float64 {
 	}
 	return residenteval.EvaluatePosition(pos)
 }
+
+// AnalyzeDepth mirrors engine_analysis.analyze_root_candidates +
+// rank_root_candidates: ONE pass at exactly depth (not iterative) inside the
+// budget, ErrTimeout if it does not complete.
+func (s *Searcher) AnalyzeDepth(
+	ctx context.Context,
+	positions []*chess.Position,
+	depth int,
+	budget time.Duration,
+) (Snapshot, error) {
+	if s == nil || s.now == nil {
+		s = New()
+	}
+	if depth < 1 {
+		return Snapshot{}, errors.New("depth must be at least 1")
+	}
+	if len(positions) == 0 || positions[len(positions)-1] == nil {
+		return Snapshot{}, errors.New("game has no position")
+	}
+	pos := positions[len(positions)-1]
+	deadline := s.now().Add(budget)
+	candidates, err := s.analyzeRootCandidates(ctx, pos, positions[:len(positions)-1], depth, deadline)
+	if err != nil {
+		return Snapshot{}, err
+	}
+	rankCandidates(pos.Turn(), candidates)
+	return Snapshot{Candidates: candidates, Depth: depth, CandidateCount: len(candidates)}, nil
+}
+
+// ScoredMove is one legal move with the static evaluation after it.
+type ScoredMove struct {
+	UCI   string
+	Score float64
+}
+
+// StaticScores mirrors get_cpu_move's noise pass: legal moves in the
+// engine's move order (_order_moves), each scored by evaluate_board one ply
+// ahead, until the budget runs out.
+func (s *Searcher) StaticScores(positions []*chess.Position, budget time.Duration) []ScoredMove {
+	if s == nil || s.now == nil {
+		s = New()
+	}
+	if len(positions) == 0 || positions[len(positions)-1] == nil {
+		return nil
+	}
+	pos := positions[len(positions)-1]
+	path := newSearchPath(pos, positions[:len(positions)-1])
+	inCheck := kingInCheck(pos)
+	moves := orderMoves(pos, pos.ValidMovesUnsafe(), "", inCheck)
+	deadline := s.now().Add(budget)
+	scored := make([]ScoredMove, 0, len(moves))
+	for i := range moves {
+		if !s.now().Before(deadline) {
+			break
+		}
+		child := pos.Update(&moves[i])
+		incrementPath(path, child.ZobristHash())
+		scored = append(scored, ScoredMove{UCI: moves[i].String(), Score: evaluateBoard(child, path, 1)})
+		decrementPath(path, child.ZobristHash())
+	}
+	return scored
+}
+
+// LegalInPythonOrder is the legal moves as python-chess generates them.
+func LegalInPythonOrder(pos *chess.Position) []chess.Move {
+	return pythonGenerationOrder(pos, pos.ValidMovesUnsafe(), kingInCheck(pos))
+}

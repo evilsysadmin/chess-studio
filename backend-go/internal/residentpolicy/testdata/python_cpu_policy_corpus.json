@@ -24,6 +24,8 @@
    ],
    "settingsBudgetSeconds": 0.12,
    "settingsMaxDepth": 2,
+   "settingsNoise": 110.0,
+   "settingsRandomness": 0.48,
    "targetElo": 350
   },
   {
@@ -50,6 +52,8 @@
    ],
    "settingsBudgetSeconds": 0.12119282561603291,
    "settingsMaxDepth": 2,
+   "settingsNoise": 106.5930558616938,
+   "settingsRandomness": 0.45977894991806,
    "targetElo": 375
   },
   {
@@ -76,6 +80,8 @@
    ],
    "settingsBudgetSeconds": 0.12374348803961326,
    "settingsMaxDepth": 2,
+   "settingsNoise": 103.21694569978034,
+   "settingsRandomness": 0.439917629384646,
    "targetElo": 400
   },
   {
@@ -102,6 +108,8 @@
    ],
    "settingsBudgetSeconds": 0.12730847940277829,
    "settingsMaxDepth": 2,
+   "settingsNoise": 99.8720978368878,
+   "settingsRandomness": 0.4204188530087478,
    "targetElo": 425
   },
   {
@@ -128,6 +136,8 @@
    ],
    "settingsBudgetSeconds": 0.13174832474618897,
    "settingsMaxDepth": 2,
+   "settingsNoise": 96.55895684002225,
+   "settingsRandomness": 0.4012855334000803,
    "targetElo": 450
   },
   {
@@ -154,6 +164,8 @@
    ],
    "settingsBudgetSeconds": 0.136977645621661,
    "settingsMaxDepth": 2,
+   "settingsNoise": 93.27798454612035,
+   "settingsRandomness": 0.3825206873733384,
    "targetElo": 475
   },
   {
@@ -180,6 +192,8 @@
    ],
    "settingsBudgetSeconds": 0.1429364668769032,
    "settingsMaxDepth": 2,
+   "settingsNoise": 90.02966117949276,
+   "settingsRandomness": 0.3641274427320609,
    "targetElo": 500
   },
   {
@@ -206,6 +220,8 @@
    ],
    "settingsBudgetSeconds": 0.14957935659596464,
    "settingsMaxDepth": 2,
+   "settingsNoise": 86.81448657194854,
+   "settingsRandomness": 0.3461090457047308,
    "targetElo": 525
   },
   {
@@ -232,6 +248,8 @@
    ],
    "settingsBudgetSeconds": 0.15687019509114702,
    "settingsMaxDepth": 2,
+   "settingsNoise": 83.63298149797487,
+   "settingsRandomness": 0.328468869117293,
    "targetElo": 550
   },
   {
@@ -258,6 +276,8 @@
    ],
    "settingsBudgetSeconds": 0.16477927910240409,
    "settingsMaxDepth": 2,
+   "settingsNoise": 80.48568913920944,
+   "settingsRandomness": 0.3112104214000801,
    "targetElo": 575
   },
   {
@@ -284,6 +304,8 @@
    ],
    "settingsBudgetSeconds": 0.1732815630979265,
    "settingsMaxDepth": 2,
+   "settingsNoise": 77.37317669464873,
+   "settingsRandomness": 0.2943373565437248,
    "targetElo": 600
   },
   {
@@ -310,6 +332,8 @@
    ],
    "settingsBudgetSeconds": 0.18235551745697093,
    "settingsMaxDepth": 2,
+   "settingsNoise": 74.29603715565341,
+   "settingsRandomness": 0.2778534851386744,
    "targetElo": 625
   },
   {
@@ -336,6 +360,8 @@
    ],
    "settingsBudgetSeconds": 0.19198234869421515,
    "settingsMaxDepth": 2,
+   "settingsNoise": 71.25489126793607,
+   "settingsRandomness": 0.2617627866572709,
    "targetElo": 650
   },
   {
@@ -362,6 +388,8 @@
    ],
    "settingsBudgetSeconds": 0.2021454453288359,
    "settingsMaxDepth": 2,
+   "settingsNoise": 68.25038970646388,
+   "settingsRandomness": 0.24606942316712133,
    "targetElo": 675
   },
   {
@@ -388,6 +416,8 @@
    ],
    "settingsBudgetSeconds": 0.2128299712448449,
    "settingsMaxDepth": 2,
+   "settingsNoise": 65.28321549372247,
+   "settingsRandomness": 0.23077775470112538,
    "targetElo": 700
   },
   {
@@ -414,6 +444,8 @@
    ],
    "settingsBudgetSeconds": 0.2240225592624727,
    "settingsMaxDepth": 2,
+   "settingsNoise": 62.35408669726088,
+   "settingsRandomness": 0.21589235655493588,
    "targetElo": 725
   },
   {
@@ -440,6 +472,8 @@
    ],
    "settingsBudgetSeconds": 0.2357110750194592,
    "settingsMaxDepth": 2,
+   "settingsNoise": 59.463759449104735,
+   "settingsRandomness": 0.20141803883935566,
    "targetElo": 750
   },
   {
@@ -466,6 +500,8 @@
    ],
    "settingsBudgetSeconds": 0.24788443153903345,
    "settingsMaxDepth": 2,
+   "settingsNoise": 56.61303133780567,
+   "settingsRandomness": 0.18735986868661514,
    "targetElo": 775
   },
   {
@@ -492,6 +528,8 @@
    ],
    "settingsBudgetSeconds": 0.2605324411961061,
    "settingsMaxDepth": 2,
+   "settingsNoise": 53.802745233990905,
+   "settingsRandomness": 0.17372319560023755,
    "targetElo": 800
   },
   {
@@ -518,6 +556,8 @@
    ],
    "settingsBudgetSeconds": 0.27364569583722387,
    "settingsMaxDepth": 2,
+   "settingsNoise": 51.0337936228283,
+   "settingsRandomness": 0.16051368055462523,
    "targetElo": 825
   },
   {
@@ -544,6 +584,8 @@
    ],
    "settingsBudgetSeconds": 0.2872154684708618,
    "settingsMaxDepth": 3,
+   "settingsNoise": 48.30712353254154,
+   "settingsRandomness": 0.14773732960138994,
    "targetElo": 850
   },
   {
@@ -570,6 +612,8 @@
    ],
    "settingsBudgetSeconds": 0.30123363174242734,
    "settingsMaxDepth": 3,
+   "settingsNoise": 45.62374216795504,
+   "settingsRandomness": 0.1354005329372116,
    "targetElo": 864
   },
   {
@@ -596,6 +640,8 @@
    ],
    "settingsBudgetSeconds": 0.3156925896514504,
    "settingsMaxDepth": 3,
+   "settingsNoise": 42.984723383318155,
+   "settingsRandomness": 0.12351011065041091,
    "targetElo": 878
   },
   {
@@ -622,6 +668,8 @@
    ],
    "settingsBudgetSeconds": 0.33058521984585176,
    "settingsMaxDepth": 3,
+   "settingsNoise": 40.391215161134404,
+   "settingsRandomness": 0.11207336671628693,
    "targetElo": 892
   },
   {
@@ -648,6 +696,8 @@
    ],
    "settingsBudgetSeconds": 0.34590482445896065,
    "settingsMaxDepth": 3,
+   "settingsNoise": 37.84444830587953,
+   "settingsRandomness": 0.10109815329286943,
    "targetElo": 906
   },
   {
@@ -674,6 +724,8 @@
    ],
    "settingsBudgetSeconds": 0.36164508791598005,
    "settingsMaxDepth": 3,
+   "settingsNoise": 35.34574661681388,
+   "settingsRandomness": 0.09059294803687937,
    "targetElo": 920
   },
   {
@@ -700,6 +752,8 @@
    ],
    "settingsBudgetSeconds": 0.3778000404786063,
    "settingsMaxDepth": 3,
+   "settingsNoise": 32.896538877549226,
+   "settingsRandomness": 0.08056694810367405,
    "targetElo": 934
   },
   {
@@ -726,6 +780,8 @@
    ],
    "settingsBudgetSeconds": 0.39436402655369557,
    "settingsMaxDepth": 3,
+   "settingsNoise": 30.49837309882645,
+   "settingsRandomness": 0.07103018585614351,
    "targetElo": 948
   },
   {
@@ -752,6 +808,8 @@
    ],
    "settingsBudgetSeconds": 0.4113316769876718,
    "settingsMaxDepth": 3,
+   "settingsNoise": 28.152933585723986,
+   "settingsRandomness": 0.06199367331599052,
    "targetElo": 962
   },
   {
@@ -778,6 +836,8 @@
    ],
    "settingsBudgetSeconds": 0.42869788471913484,
    "settingsMaxDepth": 3,
+   "settingsNoise": 25.86206158721951,
+   "settingsRandomness": 0.05346958543291465,
    "targetElo": 976
   },
   {
@@ -804,6 +864,8 @@
    ],
    "settingsBudgetSeconds": 0.4464577832794337,
    "settingsMaxDepth": 3,
+   "settingsNoise": 23.62778054916599,
+   "settingsRandomness": 0.045471496995311944,
    "targetElo": 990
   },
   {
@@ -830,6 +892,8 @@
    ],
    "settingsBudgetSeconds": 0.464606727723118,
    "settingsMaxDepth": 3,
+   "settingsNoise": 21.452327369771094,
+   "settingsRandomness": 0.038014695679716465,
    "targetElo": 1004
   },
   {
@@ -856,6 +920,8 @@
    ],
    "settingsBudgetSeconds": 0.48314027764322254,
    "settingsMaxDepth": 3,
+   "settingsNoise": 19.33819161149839,
+   "settingsRandomness": 0.031116606656501043,
    "targetElo": 1018
   },
   {
@@ -882,6 +948,8 @@
    ],
    "settingsBudgetSeconds": 0.5020541819847051,
    "settingsMaxDepth": 3,
+   "settingsNoise": 17.28816545754212,
+   "settingsRandomness": 0.02479738701452203,
    "targetElo": 1032
   },
   {
@@ -908,6 +976,8 @@
    ],
    "settingsBudgetSeconds": 0.5213443654163654,
    "settingsMaxDepth": 3,
+   "settingsNoise": 15.305408490304343,
+   "settingsRandomness": 0.019080791141427886,
    "targetElo": 1046
   },
   {
@@ -934,6 +1004,8 @@
    ],
    "settingsBudgetSeconds": 0.5410069160597019,
    "settingsMaxDepth": 3,
+   "settingsNoise": 13.393533425695916,
+   "settingsRandomness": 0.013995494873052112,
    "targetElo": 1060
   },
   {
@@ -960,6 +1032,8 @@
    ],
    "settingsBudgetSeconds": 0.5610380744043003,
    "settingsMaxDepth": 3,
+   "settingsNoise": 11.556722339376579,
+   "settingsRandomness": 0.009577259111850624,
    "targetElo": 1074
   },
   {
@@ -986,6 +1060,8 @@
    ],
    "settingsBudgetSeconds": 0.5814342232649283,
    "settingsMaxDepth": 3,
+   "settingsNoise": 9.799888797965203,
+   "settingsRandomness": 0.005872802353992528,
    "targetElo": 1088
   },
   {
@@ -1012,6 +1088,8 @@
    ],
    "settingsBudgetSeconds": 0.6021918786566673,
    "settingsMaxDepth": 3,
+   "settingsNoise": 8.12891199614162,
+   "settingsRandomness": 0.002947747262677898,
    "targetElo": 1102
   },
   {
@@ -1038,6 +1116,8 @@
    ],
    "settingsBudgetSeconds": 0.623307681481989,
    "settingsMaxDepth": 3,
+   "settingsNoise": 6.550989697142352,
+   "settingsRandomness": 0.0009072756435996658,
    "targetElo": 1116
   },
   {
@@ -1064,6 +1144,8 @@
    ],
    "settingsBudgetSeconds": 0.6447783899383748,
    "settingsMaxDepth": 3,
+   "settingsNoise": 5.075200124359516,
+   "settingsRandomness": 0.0,
    "targetElo": 1130
   },
   {
@@ -1090,6 +1172,8 @@
    ],
    "settingsBudgetSeconds": 0.6666008725674156,
    "settingsMaxDepth": 3,
+   "settingsNoise": 3.7134634502588826,
+   "settingsRandomness": 0.0,
    "targetElo": 1144
   },
   {
@@ -1116,6 +1200,8 @@
    ],
    "settingsBudgetSeconds": 0.6887721018767371,
    "settingsMaxDepth": 3,
+   "settingsNoise": 2.4823609027494,
+   "settingsRandomness": 0.0,
    "targetElo": 1158
   },
   {
@@ -1142,6 +1228,8 @@
    ],
    "settingsBudgetSeconds": 0.7112891484749136,
    "settingsMaxDepth": 3,
+   "settingsNoise": 1.4071395176720627,
+   "settingsRandomness": 0.0,
    "targetElo": 1172
   },
   {
@@ -1168,6 +1256,8 @@
    ],
    "settingsBudgetSeconds": 0.7341491756670492,
    "settingsMaxDepth": 3,
+   "settingsNoise": 0.5332061695817492,
+   "settingsRandomness": 0.0,
    "targetElo": 1186
   },
   {
@@ -1194,6 +1284,8 @@
    ],
    "settingsBudgetSeconds": 0.757349434465107,
    "settingsMaxDepth": 3,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1200
   },
   {
@@ -1220,6 +1312,8 @@
    ],
    "settingsBudgetSeconds": 0.7808872589725863,
    "settingsMaxDepth": 3,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1212
   },
   {
@@ -1246,6 +1340,8 @@
    ],
    "settingsBudgetSeconds": 0.8047600621078639,
    "settingsMaxDepth": 3,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1223
   },
   {
@@ -1272,6 +1368,8 @@
    ],
    "settingsBudgetSeconds": 0.8289653316346298,
    "settingsMaxDepth": 3,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1235
   },
   {
@@ -1298,6 +1396,8 @@
    ],
    "settingsBudgetSeconds": 0.8535006264713709,
    "settingsMaxDepth": 3,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1247
   },
   {
@@ -1324,6 +1424,8 @@
    ],
    "settingsBudgetSeconds": 0.878363573254961,
    "settingsMaxDepth": 3,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1258
   },
   {
@@ -1350,6 +1452,8 @@
    ],
    "settingsBudgetSeconds": 0.9035518631360885,
    "settingsMaxDepth": 3,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1270
   },
   {
@@ -1376,6 +1480,8 @@
    ],
    "settingsBudgetSeconds": 0.9290632487866126,
    "settingsMaxDepth": 3,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1282
   },
   {
@@ -1402,6 +1508,8 @@
    ],
    "settingsBudgetSeconds": 0.9548955416009998,
    "settingsMaxDepth": 3,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1293
   },
   {
@@ -1428,6 +1536,8 @@
    ],
    "settingsBudgetSeconds": 0.9810466090758055,
    "settingsMaxDepth": 3,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1305
   },
   {
@@ -1454,6 +1564,8 @@
    ],
    "settingsBudgetSeconds": 1.0075143723527666,
    "settingsMaxDepth": 3,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1317
   },
   {
@@ -1480,6 +1592,8 @@
    ],
    "settingsBudgetSeconds": 1.03429680391248,
    "settingsMaxDepth": 3,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1328
   },
   {
@@ -1506,6 +1620,8 @@
    ],
    "settingsBudgetSeconds": 1.0613919254068995,
    "settingsMaxDepth": 3,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1340
   },
   {
@@ -1532,6 +1648,8 @@
    ],
    "settingsBudgetSeconds": 1.0887978056199903,
    "settingsMaxDepth": 3,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1352
   },
   {
@@ -1558,6 +1676,8 @@
    ],
    "settingsBudgetSeconds": 1.1165125585468734,
    "settingsMaxDepth": 3,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1363
   },
   {
@@ -1584,6 +1704,8 @@
    ],
    "settingsBudgetSeconds": 1.1445343415826699,
    "settingsMaxDepth": 3,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1375
   },
   {
@@ -1610,6 +1732,8 @@
    ],
    "settingsBudgetSeconds": 1.172861353813047,
    "settingsMaxDepth": 3,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1382
   },
   {
@@ -1636,6 +1760,8 @@
    ],
    "settingsBudgetSeconds": 1.201491834399175,
    "settingsMaxDepth": 3,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1390
   },
   {
@@ -1662,6 +1788,8 @@
    ],
    "settingsBudgetSeconds": 1.2304240610504258,
    "settingsMaxDepth": 3,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1398
   },
   {
@@ -1688,6 +1816,8 @@
    ],
    "settingsBudgetSeconds": 1.2596563485787335,
    "settingsMaxDepth": 3,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1405
   },
   {
@@ -1714,6 +1844,8 @@
    ],
    "settingsBudgetSeconds": 1.2891870475290235,
    "settingsMaxDepth": 3,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1412
   },
   {
@@ -1740,6 +1872,8 @@
    ],
    "settingsBudgetSeconds": 1.3190145428806037,
    "settingsMaxDepth": 3,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1420
   },
   {
@@ -1766,6 +1900,8 @@
    ],
    "settingsBudgetSeconds": 1.3491372528148076,
    "settingsMaxDepth": 3,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1428
   },
   {
@@ -1792,6 +1928,8 @@
    ],
    "settingsBudgetSeconds": 1.3795536275445714,
    "settingsMaxDepth": 3,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1435
   },
   {
@@ -1818,6 +1956,8 @@
    ],
    "settingsBudgetSeconds": 1.4102621482019613,
    "settingsMaxDepth": 3,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1442
   },
   {
@@ -1844,6 +1984,8 @@
    ],
    "settingsBudgetSeconds": 1.4412613257799771,
    "settingsMaxDepth": 4,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1450
   },
   {
@@ -1870,6 +2012,8 @@
    ],
    "settingsBudgetSeconds": 1.4725497001252457,
    "settingsMaxDepth": 4,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1458
   },
   {
@@ -1896,6 +2040,8 @@
    ],
    "settingsBudgetSeconds": 1.5041258389784717,
    "settingsMaxDepth": 4,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1465
   },
   {
@@ -1922,6 +2068,8 @@
    ],
    "settingsBudgetSeconds": 1.5359883370597425,
    "settingsMaxDepth": 4,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1472
   },
   {
@@ -1948,6 +2096,8 @@
    ],
    "settingsBudgetSeconds": 1.568135815196006,
    "settingsMaxDepth": 4,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1480
   },
   {
@@ -1974,6 +2124,8 @@
    ],
    "settingsBudgetSeconds": 1.6005669194882293,
    "settingsMaxDepth": 4,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1488
   },
   {
@@ -2000,6 +2152,8 @@
    ],
    "settingsBudgetSeconds": 1.6332803205159232,
    "settingsMaxDepth": 4,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1495
   },
   {
@@ -2026,6 +2180,8 @@
    ],
    "settingsBudgetSeconds": 1.6662747125768935,
    "settingsMaxDepth": 4,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1502
   },
   {
@@ -2052,6 +2208,8 @@
    ],
    "settingsBudgetSeconds": 1.6995488129602059,
    "settingsMaxDepth": 4,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1510
   },
   {
@@ -2078,6 +2236,8 @@
    ],
    "settingsBudgetSeconds": 1.7331013612505184,
    "settingsMaxDepth": 4,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1518
   },
   {
@@ -2104,6 +2264,8 @@
    ],
    "settingsBudgetSeconds": 1.7669311186620362,
    "settingsMaxDepth": 4,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1525
   },
   {
@@ -2130,6 +2292,8 @@
    ],
    "settingsBudgetSeconds": 1.8010368674004757,
    "settingsMaxDepth": 4,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1532
   },
   {
@@ -2156,6 +2320,8 @@
    ],
    "settingsBudgetSeconds": 1.8354174100515301,
    "settingsMaxDepth": 4,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1540
   },
   {
@@ -2182,6 +2348,8 @@
    ],
    "settingsBudgetSeconds": 1.8700715689944167,
    "settingsMaxDepth": 4,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1548
   },
   {
@@ -2208,6 +2376,8 @@
    ],
    "settingsBudgetSeconds": 1.9049981858391938,
    "settingsMaxDepth": 4,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1555
   },
   {
@@ -2234,6 +2404,8 @@
    ],
    "settingsBudgetSeconds": 1.9401961208866076,
    "settingsMaxDepth": 4,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1562
   },
   {
@@ -2260,6 +2432,8 @@
    ],
    "settingsBudgetSeconds": 1.9756642526093122,
    "settingsMaxDepth": 4,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1570
   },
   {
@@ -2286,6 +2460,8 @@
    ],
    "settingsBudgetSeconds": 2.0114014771533757,
    "settingsMaxDepth": 4,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1578
   },
   {
@@ -2312,6 +2488,8 @@
    ],
    "settingsBudgetSeconds": 2.047406707859059,
    "settingsMaxDepth": 4,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1585
   },
   {
@@ -2338,6 +2516,8 @@
    ],
    "settingsBudgetSeconds": 2.0836788747999044,
    "settingsMaxDepth": 4,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1592
   },
   {
@@ -2364,6 +2544,8 @@
    ],
    "settingsBudgetSeconds": 2.120216924339241,
    "settingsMaxDepth": 5,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1600
   },
   {
@@ -2390,6 +2572,8 @@
    ],
    "settingsBudgetSeconds": 2.157019818703257,
    "settingsMaxDepth": 5,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1620
   },
   {
@@ -2416,6 +2600,8 @@
    ],
    "settingsBudgetSeconds": 2.194086535569851,
    "settingsMaxDepth": 5,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1640
   },
   {
@@ -2442,6 +2628,8 @@
    ],
    "settingsBudgetSeconds": 2.2314160676725066,
    "settingsMaxDepth": 5,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1660
   },
   {
@@ -2468,6 +2656,8 @@
    ],
    "settingsBudgetSeconds": 2.2690074224184857,
    "settingsMaxDepth": 5,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1680
   },
   {
@@ -2494,6 +2684,8 @@
    ],
    "settingsBudgetSeconds": 2.306859621520684,
    "settingsMaxDepth": 5,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1700
   },
   {
@@ -2520,6 +2712,8 @@
    ],
    "settingsBudgetSeconds": 2.344971700642507,
    "settingsMaxDepth": 5,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1720
   },
   {
@@ -2546,6 +2740,8 @@
    ],
    "settingsBudgetSeconds": 2.3833427090551855,
    "settingsMaxDepth": 5,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1740
   },
   {
@@ -2572,6 +2768,8 @@
    ],
    "settingsBudgetSeconds": 2.421971709306968,
    "settingsMaxDepth": 6,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1760
   },
   {
@@ -2598,6 +2796,8 @@
    ],
    "settingsBudgetSeconds": 2.460857776903658,
    "settingsMaxDepth": 6,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1780
   },
   {
@@ -2624,6 +2824,8 @@
    ],
    "settingsBudgetSeconds": 2.5,
    "settingsMaxDepth": 6,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1800
   },
   {
@@ -2650,6 +2852,8 @@
    ],
    "settingsBudgetSeconds": 0.12,
    "settingsMaxDepth": 2,
+   "settingsNoise": 110.0,
+   "settingsRandomness": 0.48,
    "targetElo": 350
   },
   {
@@ -2676,6 +2880,8 @@
    ],
    "settingsBudgetSeconds": 0.12374348803961326,
    "settingsMaxDepth": 2,
+   "settingsNoise": 103.21694569978034,
+   "settingsRandomness": 0.439917629384646,
    "targetElo": 400
   },
   {
@@ -2702,6 +2908,8 @@
    ],
    "settingsBudgetSeconds": 0.19198234869421515,
    "settingsMaxDepth": 2,
+   "settingsNoise": 71.25489126793607,
+   "settingsRandomness": 0.2617627866572709,
    "targetElo": 650
   },
   {
@@ -2728,6 +2936,8 @@
    ],
    "settingsBudgetSeconds": 0.7341491756670492,
    "settingsMaxDepth": 3,
+   "settingsNoise": 0.5332061695817492,
+   "settingsRandomness": 0.0,
    "targetElo": 1186
   },
   {
@@ -2754,6 +2964,8 @@
    ],
    "settingsBudgetSeconds": 0.7808872589725863,
    "settingsMaxDepth": 3,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1212
   },
   {
@@ -2780,6 +2992,8 @@
    ],
    "settingsBudgetSeconds": 1.4412613257799771,
    "settingsMaxDepth": 4,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1450
   },
   {
@@ -2806,6 +3020,8 @@
    ],
    "settingsBudgetSeconds": 2.5,
    "settingsMaxDepth": 6,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1800
   },
   {
@@ -2832,6 +3048,8 @@
    ],
    "settingsBudgetSeconds": 0.12,
    "settingsMaxDepth": 2,
+   "settingsNoise": 110.0,
+   "settingsRandomness": 0.48,
    "targetElo": 350
   },
   {
@@ -2858,6 +3076,8 @@
    ],
    "settingsBudgetSeconds": 2.5,
    "settingsMaxDepth": 6,
+   "settingsNoise": 0.0,
+   "settingsRandomness": 0.0,
    "targetElo": 1800
   }
  ],

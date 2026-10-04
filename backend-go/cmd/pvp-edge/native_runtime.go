@@ -44,6 +44,7 @@ type nativeRuntime struct {
 	gamesRead           http.Handler
 	gamesWrite          http.Handler
 	gamesHint           http.Handler
+	gamesAnalyze        http.Handler
 	mongo               *mongoruntime.Runtime
 	virtualPlayers      bool
 	residentMove        bool
@@ -240,6 +241,9 @@ func buildNativeRuntime(features nativeFeatureFlags, upstream string) (runtime n
 		}
 		runtime.gamesRead = gamesHandler
 	}
+	// One engine pool per process, like engine_runtime: gameplay (CPU reply,
+	// hints) waits its turn, optional analysis is shed when busy.
+	enginePool := gamesapi.EnginePoolFromEnv(os.Getenv("CHESS_ENGINE_WORKERS"), os.Getenv("CHESS_ENGINE_OPTIONAL_INFLIGHT_LIMIT"))
 	if features.gamesWrite {
 		telemetryCfg := telemetry.ConfigFromEnv(os.LookupEnv)
 		writesHandler, writesErr := gamesapi.NewWrites(gamesapi.WriteConfig{
@@ -250,9 +254,9 @@ func buildNativeRuntime(features nativeFeatureFlags, upstream string) (runtime n
 				AllowedOrigins:  splitCSV(os.Getenv("CORS_ORIGINS")),
 				TrustCloudflare: telemetryCfg.TrustCloudflare,
 			},
-			Store:         gamestore.New(mongoRuntime.Database(), envDurationMS("GAMES_MONGO_TIMEOUT_MS", 2000*time.Millisecond)),
-			CPU:           residentmove.New(),
-			EngineWorkers: gamesapi.EngineWorkersFromEnv(os.Getenv("CHESS_ENGINE_WORKERS")),
+			Store: gamestore.New(mongoRuntime.Database(), envDurationMS("GAMES_MONGO_TIMEOUT_MS", 2000*time.Millisecond)),
+			CPU:   residentmove.New(),
+			Pool:  enginePool,
 		})
 		if writesErr != nil {
 			return runtime, fmt.Errorf("native games write API: %w", writesErr)
@@ -269,14 +273,34 @@ func buildNativeRuntime(features nativeFeatureFlags, upstream string) (runtime n
 				AllowedOrigins:  splitCSV(os.Getenv("CORS_ORIGINS")),
 				TrustCloudflare: telemetryCfg.TrustCloudflare,
 			},
-			Store:         gamestore.New(mongoRuntime.Database(), envDurationMS("GAMES_MONGO_TIMEOUT_MS", 2000*time.Millisecond)),
-			Engine:        residentsearch.New(),
-			EngineWorkers: gamesapi.EngineWorkersFromEnv(os.Getenv("CHESS_ENGINE_WORKERS")),
+			Store:  gamestore.New(mongoRuntime.Database(), envDurationMS("GAMES_MONGO_TIMEOUT_MS", 2000*time.Millisecond)),
+			Engine: residentsearch.New(),
+			Pool:   enginePool,
 		})
 		if hintErr != nil {
 			return runtime, fmt.Errorf("native games hint API: %w", hintErr)
 		}
 		runtime.gamesHint = hintHandler
+	}
+	if features.gamesAnalyze {
+		telemetryCfg := telemetry.ConfigFromEnv(os.LookupEnv)
+		analyzeHandler, analyzeErr := gamesapi.NewAnalyze(gamesapi.AnalyzeConfig{
+			Config: gamesapi.Config{
+				Accounts:        accountstore.New(mongoRuntime.Database(), pvpMongoTimeout),
+				Presence:        presence.New(mongoRuntime.Database(), telemetryCfg.TrustCloudflare, 2*time.Second),
+				JWTSecret:       jwtSecret,
+				AllowedOrigins:  splitCSV(os.Getenv("CORS_ORIGINS")),
+				TrustCloudflare: telemetryCfg.TrustCloudflare,
+			},
+			Mover:    residentmove.NewEngineMover(),
+			Analyzer: residentsearch.New(),
+			Pool:     enginePool,
+			APIKeys:  splitCSV(os.Getenv("M2M_API_KEYS")),
+		})
+		if analyzeErr != nil {
+			return runtime, fmt.Errorf("native analysis API: %w", analyzeErr)
+		}
+		runtime.gamesAnalyze = analyzeHandler
 	}
 
 	return runtime, nil
@@ -313,6 +337,7 @@ func (r nativeRuntime) edgeConfig(upstream, release string, requestTelemetry *te
 		NativeGamesRead:           r.gamesRead,
 		NativeGamesWrite:          r.gamesWrite,
 		NativeGamesHint:           r.gamesHint,
+		NativeGamesAnalyze:        r.gamesAnalyze,
 		VirtualPlayersEnabled:     r.virtualPlayers,
 		NativeResidentMove:        r.residentMove,
 		ReadyChecks:               readyChecks,
@@ -322,7 +347,7 @@ func (r nativeRuntime) edgeConfig(upstream, release string, requestTelemetry *te
 
 func (r nativeRuntime) logStartup(port, upstream string) {
 	log.Printf(
-		"go-api listening on :%s -> %s native_pulse=%t native_lobby_read=%t native_roster=%t native_chat=%t native_challenge_resolution=%t native_challenge_accept=%t native_challenge_create=%t native_match_handoff_cancel=%t native_match_ready=%t native_match_resign=%t native_match_read=%t native_match_move=%t native_resident_move=%t native_games_read=%t native_games_write=%t native_games_hint=%t",
+		"go-api listening on :%s -> %s native_pulse=%t native_lobby_read=%t native_roster=%t native_chat=%t native_challenge_resolution=%t native_challenge_accept=%t native_challenge_create=%t native_match_handoff_cancel=%t native_match_ready=%t native_match_resign=%t native_match_read=%t native_match_move=%t native_resident_move=%t native_games_read=%t native_games_write=%t native_games_hint=%t native_games_analyze=%t",
 		port,
 		upstream,
 		r.pulse != nil,
@@ -341,6 +366,7 @@ func (r nativeRuntime) logStartup(port, upstream string) {
 		r.gamesRead != nil,
 		r.gamesWrite != nil,
 		r.gamesHint != nil,
+		r.gamesAnalyze != nil,
 	)
 }
 

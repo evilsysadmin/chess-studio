@@ -111,14 +111,18 @@ type WriteConfig struct {
 	CPU   CPU
 	// EngineWorkers mirrors CHESS_ENGINE_WORKERS (1-4, default 1): how many
 	// CPU replies this process computes at once; the rest wait their turn.
+	// Ignored when Pool is set.
 	EngineWorkers int
+	// Pool is the process-wide engine pool shared with the other engine
+	// routes (nil: a private pool of EngineWorkers).
+	Pool *EnginePool
 }
 
 type WriteHandler struct {
-	base    *Handler
-	store   WriteStore
-	cpu     CPU
-	engines chan struct{}
+	base  *Handler
+	store WriteStore
+	cpu   CPU
+	pool  *EnginePool
 }
 
 func NewWrites(cfg WriteConfig) (*WriteHandler, error) {
@@ -131,14 +135,11 @@ func NewWrites(cfg WriteConfig) (*WriteHandler, error) {
 	if err != nil {
 		return nil, err
 	}
-	workers := cfg.EngineWorkers
-	if workers < 1 {
-		workers = 1
+	pool := cfg.Pool
+	if pool == nil {
+		pool = NewEnginePool(cfg.EngineWorkers, 0)
 	}
-	if workers > 4 {
-		workers = 4
-	}
-	return &WriteHandler{base: base, store: cfg.Store, cpu: cfg.CPU, engines: make(chan struct{}, workers)}, nil
+	return &WriteHandler{base: base, store: cfg.Store, cpu: cfg.CPU, pool: pool}, nil
 }
 
 // EngineWorkersFromEnv mirrors engine_runtime.configured_engine_workers.
@@ -472,9 +473,9 @@ func (h *WriteHandler) commit(
 func (h *WriteHandler) cpuReply(ctx context.Context, board *gamecore.Board, difficulty any) (chess.Move, bool) {
 	level, _ := numeric(difficulty)
 	// run_engine_work: a bounded engine pool; extra replies queue.
-	h.engines <- struct{}{}
-	uci, err := h.cpu.MoveForGame(ctx, board.Positions(), level)
-	<-h.engines
+	var uci string
+	var err error
+	h.pool.Run(func() { uci, err = h.cpu.MoveForGame(ctx, board.Positions(), level) })
 	legal := board.LegalMoves()
 	if err == nil {
 		for _, move := range legal {
