@@ -42,6 +42,14 @@ function nonNegativeInteger(value, fallback = 0) {
   return Math.max(0, Math.floor(number));
 }
 
+export function chroniclesEnemyFallbackAgility(enemy) {
+  const movement = enemy?.ai?.movement || 'cardinal-chase';
+  if (movement === 'knight-chase') return 4;
+  if (movement === 'cardinal-roam' || movement === 'patrol-route') return 3;
+  if (movement === 'hold') return 1;
+  return 2;
+}
+
 function normalizeAttributes(raw) {
   const source = raw && typeof raw === 'object' ? raw : {};
   return Object.fromEntries(CHRONICLES_ENEMY_ATTRIBUTE_KEYS.map((key) => [
@@ -182,13 +190,7 @@ export function deriveLegacyChroniclesEnemyBuild(enemy) {
     will: Number.isFinite(engageAfterSkills)
       ? Math.min(CHRONICLES_ENEMY_ATTRIBUTE_CAP, Math.max(0, engageAfterSkills - 1) * 2)
       : 0,
-    agility: (() => {
-      const movement = enemy?.ai?.movement || 'cardinal-chase';
-      if (movement === 'knight-chase') return 4;
-      if (movement === 'cardinal-roam' || movement === 'patrol-route') return 3;
-      if (movement === 'hold') return 1;
-      return 2;
-    })(),
+    agility: chroniclesEnemyFallbackAgility(enemy),
   };
 
   const points = ['vigor', 'power', 'precision', 'will']
@@ -228,12 +230,22 @@ export function resolveChroniclesEnemyBuildDefinition(enemy) {
     return { source: 'invalid', build: null, baseStats: null, errors: validation.errors };
   }
 
+  const authoredAttributes = enemy.enemyBuild?.attributes && typeof enemy.enemyBuild.attributes === 'object'
+    ? enemy.enemyBuild.attributes
+    : {};
+  const build = normalizeChroniclesEnemyBuild({
+    ...enemy.enemyBuild,
+    attributes: {
+      ...authoredAttributes,
+      agility: authoredAttributes.agility == null
+        ? chroniclesEnemyFallbackAgility(enemy)
+        : authoredAttributes.agility,
+    },
+  }, enemy?.visualType || enemy?.id || 'enemy');
+
   return {
     source: 'authored',
-    build: normalizeChroniclesEnemyBuild(
-      enemy.enemyBuild,
-      enemy?.visualType || enemy?.id || 'enemy',
-    ),
+    build,
     baseStats: {
       maxHp: Math.max(1, Number(enemy?.maxHp || 1)),
       retaliation: Math.max(0, Number(enemy?.retaliation || 0)),
