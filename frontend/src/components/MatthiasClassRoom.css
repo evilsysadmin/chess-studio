@@ -944,25 +944,73 @@ body:has(.matthias-school-shell[data-school-section="school"]) .masthead {
     position: static;
     max-height: calc(var(--school-landscape-board) + .5rem);
     overflow-y: auto;
-    gap: .42rem;
-    padding: .5rem;
+    gap: .3rem;
+    padding: .4rem;
   }
 
+  /* Compact coach: same content, tighter rhythm, so the whole explanation
+     fits beside the board without scrolling. */
   .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-coach-heading {
-    grid-template-columns: 44px minmax(0, 1fr) auto;
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+    gap: .45rem;
+    align-items: center;
   }
 
   .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-coach-heading img {
-    width: 44px;
-    height: 56px;
+    width: 32px;
+    height: 40px;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-coach-heading .section-label {
+    font-size: .56rem;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-coach-heading h2 {
+    font-size: .9rem;
+    line-height: 1.15;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-objective {
+    padding: .3rem .45rem;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-objective b,
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-feedback b {
+    font-size: .56rem;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-objective p {
+    font-size: .72rem;
+    line-height: 1.3;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-sequence-status {
+    min-height: 0;
+    padding: .14rem .45rem;
+    font-size: .62rem;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-feedback {
+    padding: .35rem .45rem;
+    border-radius: 9px;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-feedback::before {
+    display: none;
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-feedback p {
+    margin-top: .12rem;
+    font-size: .74rem;
+    line-height: 1.32;
   }
 
   .tutorial-shell.matthias-school-shell[data-school-section="school"] .matthias-school-nav {
     position: sticky;
-    bottom: -.5rem;
+    bottom: -.4rem;
     z-index: 1;
-    margin: 0 -.5rem -.5rem;
-    padding: .35rem .5rem .5rem;
+    margin: 0 -.4rem -.4rem;
+    padding: .3rem .4rem .4rem;
     background: color-mix(in srgb, var(--ui-panel) 96%, #080a0d 4%);
   }
 }
