@@ -217,3 +217,43 @@ test('Home Android desktop-site · el copy visible es el touch target real', asy
     await context.close();
   }
 });
+
+// Landscape phones narrower than 760px used to fall outside the landscape
+// composition: the masthead stayed in flow, the hall overflowed the screen and
+// JUGAR loaded below the fold, under the floating Matthias/1v1 cards. They use
+// the same no-scroll composition as wider phones; JUGAR must be on screen and
+// actually reachable by touch (nothing floating over its centre).
+test('Home Android 3D · apaisado estrecho carga con JUGAR visible y tocable', async ({ browser }) => {
+  for (const viewport of [
+    { width: 568, height: 320 },
+    { width: 667, height: 308 },
+    { width: 740, height: 340 },
+  ]) {
+    const context = await browser.newContext({ viewport, hasTouch: true, isMobile: true });
+    const page = await context.newPage();
+    try {
+      const home = await openHome(page);
+      const play = home.locator('.illustrated-home__destination--play');
+      await expect(play).toBeVisible();
+      const reach = await page.evaluate(() => {
+        const target = document.querySelector('.illustrated-home__destination--play');
+        const box = target.getBoundingClientRect();
+        const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+        return {
+          top: box.top,
+          bottom: box.bottom,
+          reachable: Boolean(hit && target.contains(hit)),
+          scrolls: document.scrollingElement.scrollHeight > window.innerHeight + 4,
+        };
+      });
+      const label = `${viewport.width}x${viewport.height}`;
+      expect(reach.top, `${label}: JUGAR top on screen`).toBeGreaterThanOrEqual(0);
+      expect(reach.bottom, `${label}: JUGAR bottom on screen`).toBeLessThanOrEqual(viewport.height);
+      expect(reach.reachable, `${label}: no overlay covers JUGAR`).toBe(true);
+      expect(reach.scrolls, `${label}: the hall fits without vertical scroll`).toBe(false);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+    } finally {
+      await context.close();
+    }
+  }
+});
