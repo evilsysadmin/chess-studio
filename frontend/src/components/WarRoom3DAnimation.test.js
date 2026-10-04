@@ -203,6 +203,17 @@ describe('War Room ambient render cadence', () => {
   });
 });
 
+it('keeps software WebGL ticking only for the explicit Hans ambient audit', () => {
+  const plan = warRoomAmbientFramePlan({
+    softwareRenderer: true,
+    narrativeActive: false,
+    ambientAudit: true,
+    elapsedMs: 100,
+  });
+  expect(plan.active).toBe(true);
+  expect(plan.shouldRender).toBe(true);
+});
+
 it('renders the finite Hans narrative on software, then returns to idle without repainting', () => {
   expect(warRoomAmbientFramePlan({ softwareRenderer: true, narrativeActive: true, elapsedMs: 100 }).shouldRender).toBe(true);
   expect(warRoomAmbientFramePlan({ softwareRenderer: true, narrativeActive: false, elapsedMs: 100 }).active).toBe(false);
