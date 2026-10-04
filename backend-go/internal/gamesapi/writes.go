@@ -2,6 +2,7 @@ package gamesapi
 
 // Native write routes of games against the CPU, mirroring game_api.py:
 //
+//	POST /api/games                 create_game
 //	POST /api/games/{game_id}/move  play_move
 //	POST /api/games/{game_id}/undo  undo
 //
@@ -13,10 +14,14 @@ package gamesapi
 
 import (
 	"context"
+	cryptorand "crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"io"
 	"log"
+	"math"
+	"math/rand/v2"
 	"net/http"
 	"net/url"
 	"sort"
@@ -33,8 +38,9 @@ import (
 
 // Route patterns of the write routes (telemetry http.route).
 const (
-	MovePattern = "/api/games/{game_id}/move"
-	UndoPattern = "/api/games/{game_id}/undo"
+	CreatePattern = "/api/games"
+	MovePattern   = "/api/games/{game_id}/move"
+	UndoPattern   = "/api/games/{game_id}/undo"
 )
 
 // MaxRequestBodyBytes mirrors main.MAX_REQUEST_BODY_BYTES.
@@ -42,6 +48,12 @@ const MaxRequestBodyBytes = 1 << 20
 
 // WriteRoute reports whether a request is a native write route.
 func WriteRoute(r *http.Request) (pattern, gameID string, ok bool) {
+	if r.URL.Path == CreatePattern {
+		if r.Method == http.MethodPost || r.Method == http.MethodOptions && preflightMethod(r) == http.MethodPost {
+			return CreatePattern, "", true
+		}
+		return "", "", false
+	}
 	rest, found := strings.CutPrefix(r.URL.Path, "/api/games/")
 	if !found {
 		return "", "", false
@@ -80,6 +92,9 @@ func WriteRoute(r *http.Request) (pattern, gameID string, ok bool) {
 
 // WriteStore is the part of gamestore the write routes need.
 type WriteStore interface {
+	Get(ctx context.Context, id string) (gamestore.Game, bool, error)
+	Create(ctx context.Context, id string, game gamestore.Game) (gamestore.Game, error)
+	CreateOnce(ctx context.Context, id string, game gamestore.Game) (gamestore.Game, bool, error)
 	GetDocumentForOwner(ctx context.Context, id, owner string) (bson.M, bool, error)
 	UpdateIfMoves(ctx context.Context, id string, game gamestore.Game, expectedMoves []string) (bool, error)
 }
@@ -209,6 +224,15 @@ func (h *WriteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Python keeps working after the client hangs up; so does Go, or a
 	// disconnect between the CPU reply and the CAS would waste the reply.
 	ctx := context.WithoutCancel(r.Context())
+	if pattern == CreatePattern {
+		req, err := parseNewGame(body)
+		if err != nil {
+			writeJSON(w, http.StatusUnprocessableEntity, map[string]any{"detail": newGameValidationDetail(body)})
+			return
+		}
+		h.create(ctx, w, r, username, req)
+		return
+	}
 	if pattern == MovePattern {
 		move, err := gameops.ParseMoveRequest(body)
 		if err != nil {
@@ -555,6 +579,231 @@ func moveValidationDetail(body []byte) []map[string]any {
 			detail = append(detail, map[string]any{"type": "string_type", "loc": []any{"body", "promotion"}, "msg": "Input should be a valid string"})
 		} else if len([]rune(s)) > 1 {
 			detail = append(detail, map[string]any{"type": "string_too_long", "loc": []any{"body", "promotion"}, "msg": "String should have at most 1 character"})
+		}
+	}
+	if len(detail) == 0 {
+		detail = append(detail, map[string]any{"type": "value_error", "loc": []any{"body"}, "msg": "Invalid request body"})
+	}
+	return detail
+}
+
+// parseNewGame mirrors the NewGameRequest body: required (an empty body is a
+// 422 in FastAPI even though every field has a default).
+func parseNewGame(body []byte) (gameops.NewGameRequest, error) {
+	if len(strings.TrimSpace(string(body))) == 0 {
+		return gameops.NewGameRequest{}, gameops.ErrInvalidBody
+	}
+	return gameops.ParseNewGameRequest(body)
+}
+
+// create mirrors create_game.
+func (h *WriteHandler) create(ctx context.Context, w http.ResponseWriter, r *http.Request, username string, req gameops.NewGameRequest) {
+	if math.IsNaN(req.Difficulty) || req.Difficulty < 0 || req.Difficulty > 100 {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"detail": "Dificultad inválida. Tiene que ser un número entre 0 y 100."})
+		return
+	}
+	if req.Color != "w" && req.Color != "b" && req.Color != "random" {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"detail": "Color inválido. Usa 'w', 'b' o 'random'."})
+		return
+	}
+	if req.Handicap != nil {
+		if _, known := gamecore.HandicapSquares[*req.Handicap]; !known {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"detail": "Hándicap inválido."})
+			return
+		}
+	}
+	var raw *string
+	if values, present := r.Header[http.CanonicalHeaderKey("Idempotency-Key")]; present && len(values) > 0 {
+		raw = &values[0]
+	}
+	key, err := gameops.NormalizeKey(raw)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"detail": gameops.InvalidKeyDetail})
+		return
+	}
+	fingerprint, err := gameops.Fingerprint(req.Payload)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"detail": "Error interno."})
+		return
+	}
+	var gameID string
+	if key != nil {
+		gameID = gameops.DeterministicGameID(username, *key)
+		existing, found, err := h.store.Get(ctx, gameID)
+		if err != nil {
+			storageUnavailable(w)
+			return
+		}
+		if found {
+			h.createdAlready(w, gameID, existing, *key, fingerprint)
+			return
+		}
+	} else {
+		gameID = uuid4()
+	}
+
+	human := req.Color
+	if human == "random" {
+		human = []string{"w", "b"}[rand.IntN(2)]
+	}
+	cpuColor := "b"
+	if human == "b" {
+		cpuColor = "w"
+	}
+	difficulty := int32(math.RoundToEven(req.Difficulty))
+
+	var board *gamecore.Board
+	var initialFEN *string
+	if req.StartingFEN != nil && *req.StartingFEN != "" {
+		board, err = gamecore.BoardFromValidFEN(*req.StartingFEN)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"detail": "FEN inicial inválido o posición imposible."})
+			return
+		}
+		fen := board.FEN()
+		initialFEN = &fen
+		if board.IsGameOver() {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"detail": "La posición inicial ya está terminada."})
+			return
+		}
+	} else {
+		board = gamecore.NewStandardBoard(req.Handicap, cpuColor)
+	}
+
+	// A laboratory position (or a human playing black) leaves the CPU to move:
+	// it opens once before the board is returned.
+	var last *gamestore.LastMove
+	if board.Turn() == cpuColor {
+		if opening, ok := h.cpuReply(ctx, board, difficulty); ok {
+			last = lastMoveFrom(board.MoveDict(opening), "cpu")
+			board.Push(opening)
+		}
+	}
+
+	owner := username
+	handicap := req.Handicap
+	if initialFEN != nil {
+		handicap = nil
+	}
+	game := gamestore.Game{
+		Owner:      &owner,
+		Moves:      board.SANs(),
+		Difficulty: difficulty,
+		HumanColor: human,
+		Handicap:   handicap,
+		InitialFEN: initialFEN,
+		LastMove:   last,
+	}
+	if key != nil {
+		game.CreateOperation = &gamestore.CreateOperation{Key: *key, Fingerprint: fingerprint}
+		persisted, created, err := h.store.CreateOnce(ctx, gameID, game)
+		if err != nil {
+			storageUnavailable(w)
+			return
+		}
+		if !created {
+			h.createdAlready(w, gameID, persisted, *key, fingerprint)
+			return
+		}
+	} else if _, err := h.store.Create(ctx, gameID, game); err != nil {
+		storageUnavailable(w)
+		return
+	}
+	entry := gamecore.Entry{
+		HumanColor: human,
+		Difficulty: difficulty,
+		Handicap:   handicap,
+		InitialFEN: initialFEN,
+		Moves:      game.Moves,
+	}
+	if last != nil {
+		entry.LastMove = lastMoveMap(*last)
+	}
+	writeJSON(w, http.StatusCreated, board.Snapshot(gameID, entry))
+}
+
+// createdAlready answers a retried create: the stored game when the marker
+// matches this operation, 409 otherwise.
+func (h *WriteHandler) createdAlready(w http.ResponseWriter, gameID string, existing gamestore.Game, key, fingerprint string) {
+	marker := existing.CreateOperation
+	if marker == nil || marker.Key != key || marker.Fingerprint != fingerprint {
+		writeJSON(w, http.StatusConflict, map[string]any{"detail": "La operación de creación ya existe con otros parámetros."})
+		return
+	}
+	raw, err := gameRaw(existing)
+	if err != nil {
+		writeDamaged(w)
+		return
+	}
+	l := loaded{raw: raw, game: existing}
+	board, ok := l.board(w)
+	if !ok {
+		return
+	}
+	writeJSON(w, http.StatusCreated, board.Snapshot(gameID, l.entry))
+}
+
+func gameRaw(game gamestore.Game) (map[string]any, error) {
+	encoded, err := bson.Marshal(game)
+	if err != nil {
+		return nil, err
+	}
+	var doc bson.M
+	if err := bson.Unmarshal(encoded, &doc); err != nil {
+		return nil, err
+	}
+	return plain(doc).(map[string]any), nil
+}
+
+// uuid4 mirrors str(uuid.uuid4()).
+func uuid4() string {
+	var b [16]byte
+	_, _ = cryptorand.Read(b[:])
+	b[6] = (b[6] & 0x0f) | 0x40
+	b[8] = (b[8] & 0x3f) | 0x80
+	x := hex.EncodeToString(b[:])
+	return x[0:8] + "-" + x[8:12] + "-" + x[12:16] + "-" + x[16:20] + "-" + x[20:32]
+}
+
+// newGameValidationDetail approximates FastAPI's 422 for NewGameRequest.
+func newGameValidationDetail(body []byte) []map[string]any {
+	if len(strings.TrimSpace(string(body))) == 0 {
+		return []map[string]any{{"type": "missing", "loc": []any{"body"}, "msg": "Field required"}}
+	}
+	var raw any
+	if err := json.Unmarshal(body, &raw); err != nil {
+		return []map[string]any{{"type": "json_invalid", "loc": []any{"body", 0}, "msg": "JSON decode error"}}
+	}
+	fields, ok := raw.(map[string]any)
+	if !ok {
+		return []map[string]any{{"type": "model_attributes_type", "loc": []any{"body"}, "msg": "Input should be a valid dictionary or object to extract fields from"}}
+	}
+	var detail []map[string]any
+	if value, present := fields["difficulty"]; present {
+		switch v := value.(type) {
+		case float64, bool:
+		case string:
+			if _, err := strconv.ParseFloat(strings.TrimSpace(v), 64); err != nil {
+				detail = append(detail, map[string]any{"type": "float_parsing", "loc": []any{"body", "difficulty"}, "msg": "Input should be a valid number, unable to parse string as a number"})
+			}
+		default:
+			detail = append(detail, map[string]any{"type": "float_type", "loc": []any{"body", "difficulty"}, "msg": "Input should be a valid number"})
+		}
+	}
+	if value, present := fields["color"]; present {
+		if _, isString := value.(string); !isString {
+			detail = append(detail, map[string]any{"type": "string_type", "loc": []any{"body", "color"}, "msg": "Input should be a valid string"})
+		}
+	}
+	for field, limit := range map[string]int{"handicap": 16, "startingFen": 128} {
+		value, present := fields[field]
+		if !present || value == nil {
+			continue
+		}
+		if s, isString := value.(string); !isString {
+			detail = append(detail, map[string]any{"type": "string_type", "loc": []any{"body", field}, "msg": "Input should be a valid string"})
+		} else if len([]rune(s)) > limit {
+			detail = append(detail, map[string]any{"type": "string_too_long", "loc": []any{"body", field}, "msg": "String should have at most " + strconv.Itoa(limit) + " characters"})
 		}
 	}
 	if len(detail) == 0 {
