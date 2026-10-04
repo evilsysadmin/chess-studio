@@ -124,7 +124,7 @@ const SCENE_STYLES = Object.freeze({
     id: 'hollow-bell-bronze',
     version: CHRONICLES_ISOMETRIC_SCENE_STYLE_VERSION,
     dressing: 'hollow-bell-v1',
-    lighting: sceneLighting({ exposure: 1.18, hemi: 1.24, fill: 1.4, bounce: 1.3 }),
+    lighting: sceneLighting({ exposure: 1.28, hemi: 1.4, fill: 1.62, bounce: 1.46 }),
     palette: HOLLOW_BELL_PALETTE,
   }),
 });
