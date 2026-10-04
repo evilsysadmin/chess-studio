@@ -61,7 +61,7 @@ function addWindowArch(group, brass) {
 function box(root, size, mat, position, name = '') {
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(...size), mat);
   mesh.position.set(...position);
-  mesh.castShadow = false;
+  mesh.castShadow = /^(desk|chair|bookcase|study-book|lamp|armillary|training-room-mantel|training-room-fireplace)/.test(name);
   mesh.receiveShadow = true;
   mesh.name = name;
   root.add(mesh);
@@ -74,7 +74,7 @@ function cylinder(root, radiusTop, radiusBottom, height, mat, position, name = '
     mat,
   );
   mesh.position.set(...position);
-  mesh.castShadow = false;
+  mesh.castShadow = /^(desk|lamp|armillary)/.test(name);
   mesh.receiveShadow = true;
   mesh.name = name;
   root.add(mesh);
@@ -120,12 +120,25 @@ function addWindow(root, brass, night, moon, lite) {
   box(group, [4.15, .1, .22], brass, [0, 2.8, .12], 'window-crossbar');
 
   const moonMesh = new THREE.Mesh(
-    new THREE.SphereGeometry(lite ? .58 : .72, lite ? 18 : 28, lite ? 10 : 16),
+    new THREE.SphereGeometry(lite ? .42 : .52, lite ? 18 : 28, lite ? 10 : 16),
     moon,
   );
-  moonMesh.position.set(.85, 4.35, .32);
+  moonMesh.position.set(.95, 4.45, .34);
   moonMesh.name = 'training-room-moon';
   group.add(moonMesh);
+
+  const moonGlow = new THREE.Mesh(
+    new THREE.SphereGeometry(lite ? .56 : .68, lite ? 14 : 22, lite ? 8 : 12),
+    new THREE.MeshBasicMaterial({
+      color: 0xaec9ef,
+      transparent: true,
+      opacity: .12,
+      depthWrite: false,
+    }),
+  );
+  moonGlow.position.copy(moonMesh.position);
+  moonGlow.name = 'training-room-moon-glow';
+  group.add(moonGlow);
 
   if (!lite) {
     const skyline = [
@@ -135,8 +148,16 @@ function addWindow(root, brass, night, moon, lite) {
       [.5, .42, .55, 1.3],
       [1.25, .5, .5, 1.65],
     ];
+    const skylineMat = material(0x07111f, .01, .96);
     for (const [x, w, d, h] of skyline) {
-      box(group, [w, h, d], material(0x07111f, .01, .96), [x, .1 + h / 2, .24], 'window-skyline');
+      box(group, [w, h, d], skylineMat, [x, .1 + h / 2, .24], 'window-skyline');
+    }
+    for (const [x, y, r] of [[-1.5, 1.85, .31], [-.25, 2.08, .34], [1.25, 1.96, .28]]) {
+      const roof = new THREE.Mesh(new THREE.ConeGeometry(r, .72, 4), skylineMat);
+      roof.position.set(x, y, .24);
+      roof.rotation.y = Math.PI / 4;
+      roof.name = 'window-castle-spire';
+      group.add(roof);
     }
   }
 
@@ -193,6 +214,22 @@ function addDesk(root, wood, woodDark, leather, brass, parchment, lite) {
 
   const inkwell = cylinder(group, .22, .28, .42, material(0x111315, .45, .36), [3.7, 1.43, .45], 'desk-inkwell');
   inkwell.rotation.z = .04;
+
+  if (!lite) {
+    const quill = new THREE.Mesh(
+      new THREE.CylinderGeometry(.025, .04, 1.55, 8),
+      material(0xe7dbc0, .02, .72),
+    );
+    quill.position.set(3.92, 2.08, .38);
+    quill.rotation.z = -.46;
+    quill.rotation.x = .16;
+    quill.castShadow = true;
+    quill.name = 'desk-quill';
+    group.add(quill);
+
+    const seal = cylinder(group, .16, .16, .05, material(0x6f1e1b, .04, .52), [1.74, 1.3, .3], 'desk-wax-seal', 16);
+    seal.rotation.x = Math.PI / 2;
+  }
 
   group.position.set(0, -.55, -1.05);
   root.add(group);
