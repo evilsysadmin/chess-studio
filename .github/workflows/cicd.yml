@@ -16,6 +16,7 @@ jobs:
     outputs:
       run_frontend: ${{ steps.quality_paths.outputs.run_frontend }}
       run_backend: ${{ steps.quality_paths.outputs.run_backend }}
+      run_go: ${{ steps.quality_paths.outputs.run_go }}
       run_e2e: ${{ steps.quality_paths.outputs.run_e2e }}
       core_e2e_matrix: ${{ steps.quality_paths.outputs.core_e2e_matrix }}
       run_security: ${{ steps.quality_paths.outputs.run_security }}
@@ -132,8 +133,8 @@ jobs:
       - name: Frontend tests
         if: needs.preflight.outputs.run_frontend == 'true'
         run: make test-frontend
-  backend:
-    name: Tests · Backend
+  backend_python:
+    name: Backend · Python
     needs: preflight
     if: needs.preflight.outputs.run_backend == 'true'
     runs-on: ubuntu-24.04
@@ -162,6 +163,89 @@ jobs:
         if: needs.preflight.outputs.run_security == 'true'
         continue-on-error: true
         run: make security-be
+
+  backend_go:
+    name: Backend · Go
+    needs: preflight
+    if: needs.preflight.outputs.run_go == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    services:
+      mongo:
+        image: mongo:8.0
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.adminCommand({ping: 1}).ok'"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    defaults:
+      run:
+        working-directory: backend-go
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.27.1'
+          cache-dependency-path: backend-go/go.mod
+      - name: Format
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [[ -n "$unformatted" ]]; then
+            echo "::error::gofmt needed in:"
+            echo "$unformatted"
+            exit 1
+          fi
+      - name: Unit + MongoDB integration tests
+        env:
+          PVP_MONGO_TEST_URL: mongodb://localhost:27017
+          PVP_MONGO_TEST_REQUIRED: '1'
+        run: go test -race -short ./...
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+      - name: Engine + games parity · Go vs Python authority
+        working-directory: .
+        run: |
+          python -m pip install --quiet "$(grep -E '^chess==' backend-python/requirements.txt)" "$(grep -E '^pydantic==' backend-python/requirements.txt)"
+          python scripts/engine_parity_corpus.py --check
+          python scripts/games_parity_corpus.py --check
+          python scripts/games_ops_corpus.py --check
+          cd backend-go && go test -count=1 -run 'MatchesPython' ./internal/residenteval ./internal/residentsearch
+      - name: Vet
+        run: go vet ./...
+      - name: Build Linux ARM64
+        env:
+          CGO_ENABLED: '0'
+          GOOS: linux
+          GOARCH: arm64
+        run: go build -trimpath -o /tmp/pvp-edge ./cmd/pvp-edge
+
+  backend:
+    name: Tests · Backend
+    needs: [preflight, backend_python, backend_go]
+    if: always() && (needs.preflight.outputs.run_backend == 'true' || needs.preflight.outputs.run_go == 'true')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Aggregate required Python + Go backend gates
+        env:
+          RUN_PYTHON: ${{ needs.preflight.outputs.run_backend }}
+          PYTHON_RESULT: ${{ needs.backend_python.result }}
+          RUN_GO: ${{ needs.preflight.outputs.run_go }}
+          GO_RESULT: ${{ needs.backend_go.result }}
+        run: |
+          set -euo pipefail
+          if [[ "$RUN_PYTHON" == 'true' && "$PYTHON_RESULT" != 'success' ]]; then
+            echo "::error::Backend Python requerido y no terminó verde: $PYTHON_RESULT"
+            exit 1
+          fi
+          if [[ "$RUN_GO" == 'true' && "$GO_RESULT" != 'success' ]]; then
+            echo "::error::Backend Go requerido y no terminó verde: $GO_RESULT"
+            exit 1
+          fi
+          echo "Required backend gate OK · python=$RUN_PYTHON/$PYTHON_RESULT · go=$RUN_GO/$GO_RESULT"
   security:
     name: Security · Trivy + Docker
     needs: preflight
