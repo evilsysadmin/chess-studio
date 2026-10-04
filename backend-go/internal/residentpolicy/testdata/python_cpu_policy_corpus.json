@@ -1,0 +1,6328 @@
+{
+ "bands": [
+  {
+   "budgetSeconds": 0.12,
+   "candidateLimit": 8,
+   "elo": 350,
+   "level": 0,
+   "lossCaps": [
+    450.0,
+    474.75,
+    499.50000000000006,
+    529.1999999999999,
+    549.0
+   ],
+   "maxDepth": 2,
+   "maxLossCP": 450.0,
+   "mistakeChance": 0.74,
+   "mistakeChances": [
+    0.6068,
+    0.6770999999999999,
+    0.7474,
+    0.83176,
+    0.85
+   ],
+   "settingsBudgetSeconds": 0.12,
+   "settingsMaxDepth": 2,
+   "targetElo": 350
+  },
+  {
+   "budgetSeconds": 0.12,
+   "candidateLimit": 8,
+   "elo": 375,
+   "level": 1,
+   "lossCaps": [
+    442.14285714285717,
+    466.4607142857143,
+    490.7785714285715,
+    519.96,
+    539.4142857142857
+   ],
+   "maxDepth": 2,
+   "maxLossCP": 442.14285714285717,
+   "mistakeChance": 0.7314285714285714,
+   "mistakeChances": [
+    0.5997714285714285,
+    0.6692571428571428,
+    0.7387428571428571,
+    0.8221257142857143,
+    0.85
+   ],
+   "settingsBudgetSeconds": 0.12119282561603291,
+   "settingsMaxDepth": 2,
+   "targetElo": 375
+  },
+  {
+   "budgetSeconds": 0.12,
+   "candidateLimit": 8,
+   "elo": 400,
+   "level": 2,
+   "lossCaps": [
+    434.2857142857143,
+    458.1714285714285,
+    482.0571428571429,
+    510.71999999999997,
+    529.8285714285714
+   ],
+   "maxDepth": 2,
+   "maxLossCP": 434.2857142857143,
+   "mistakeChance": 0.7228571428571429,
+   "mistakeChances": [
+    0.5927428571428571,
+    0.6614142857142856,
+    0.7300857142857143,
+    0.8124914285714286,
+    0.85
+   ],
+   "settingsBudgetSeconds": 0.12374348803961326,
+   "settingsMaxDepth": 2,
+   "targetElo": 400
+  },
+  {
+   "budgetSeconds": 0.12,
+   "candidateLimit": 8,
+   "elo": 425,
+   "level": 3,
+   "lossCaps": [
+    426.42857142857144,
+    449.88214285714287,
+    473.33571428571435,
+    501.48,
+    520.2428571428571
+   ],
+   "maxDepth": 2,
+   "maxLossCP": 426.42857142857144,
+   "mistakeChance": 0.7142857142857143,
+   "mistakeChances": [
+    0.5857142857142857,
+    0.6535714285714286,
+    0.7214285714285714,
+    0.8028571428571429,
+    0.85
+   ],
+   "settingsBudgetSeconds": 0.12730847940277829,
+   "settingsMaxDepth": 2,
+   "targetElo": 425
+  },
+  {
+   "budgetSeconds": 0.12,
+   "candidateLimit": 8,
+   "elo": 450,
+   "level": 4,
+   "lossCaps": [
+    418.57142857142856,
+    441.5928571428571,
+    464.61428571428576,
+    492.23999999999995,
+    510.65714285714284
+   ],
+   "maxDepth": 2,
+   "maxLossCP": 418.57142857142856,
+   "mistakeChance": 0.7057142857142857,
+   "mistakeChances": [
+    0.5786857142857142,
+    0.6457285714285714,
+    0.7127714285714286,
+    0.7932228571428572,
+    0.8468571428571429
+   ],
+   "settingsBudgetSeconds": 0.13174832474618897,
+   "settingsMaxDepth": 2,
+   "targetElo": 450
+  },
+  {
+   "budgetSeconds": 0.12,
+   "candidateLimit": 8,
+   "elo": 475,
+   "level": 5,
+   "lossCaps": [
+    410.7142857142857,
+    433.3035714285714,
+    455.89285714285717,
+    483.0,
+    501.07142857142856
+   ],
+   "maxDepth": 2,
+   "maxLossCP": 410.7142857142857,
+   "mistakeChance": 0.6971428571428572,
+   "mistakeChances": [
+    0.5716571428571429,
+    0.6378857142857143,
+    0.7041142857142858,
+    0.7835885714285715,
+    0.8365714285714286
+   ],
+   "settingsBudgetSeconds": 0.136977645621661,
+   "settingsMaxDepth": 2,
+   "targetElo": 475
+  },
+  {
+   "budgetSeconds": 0.12,
+   "candidateLimit": 8,
+   "elo": 500,
+   "level": 6,
+   "lossCaps": [
+    402.8571428571429,
+    425.01428571428573,
+    447.17142857142863,
+    473.76,
+    491.4857142857143
+   ],
+   "maxDepth": 2,
+   "maxLossCP": 402.8571428571429,
+   "mistakeChance": 0.6885714285714286,
+   "mistakeChances": [
+    0.5646285714285715,
+    0.6300428571428571,
+    0.6954571428571429,
+    0.7739542857142858,
+    0.8262857142857143
+   ],
+   "settingsBudgetSeconds": 0.1429364668769032,
+   "settingsMaxDepth": 2,
+   "targetElo": 500
+  },
+  {
+   "budgetSeconds": 0.12,
+   "candidateLimit": 8,
+   "elo": 525,
+   "level": 7,
+   "lossCaps": [
+    395.0,
+    416.72499999999997,
+    438.45000000000005,
+    464.52,
+    481.9
+   ],
+   "maxDepth": 2,
+   "maxLossCP": 395.0,
+   "mistakeChance": 0.6799999999999999,
+   "mistakeChances": [
+    0.5575999999999999,
+    0.6221999999999999,
+    0.6868,
+    0.76432,
+    0.816
+   ],
+   "settingsBudgetSeconds": 0.14957935659596464,
+   "settingsMaxDepth": 2,
+   "targetElo": 525
+  },
+  {
+   "budgetSeconds": 0.12,
+   "candidateLimit": 8,
+   "elo": 550,
+   "level": 8,
+   "lossCaps": [
+    387.14285714285717,
+    408.4357142857143,
+    429.7285714285715,
+    455.28000000000003,
+    472.31428571428575
+   ],
+   "maxDepth": 2,
+   "maxLossCP": 387.14285714285717,
+   "mistakeChance": 0.6714285714285715,
+   "mistakeChances": [
+    0.5505714285714286,
+    0.6143571428571428,
+    0.6781428571428572,
+    0.7546857142857144,
+    0.8057142857142857
+   ],
+   "settingsBudgetSeconds": 0.15687019509114702,
+   "settingsMaxDepth": 2,
+   "targetElo": 550
+  },
+  {
+   "budgetSeconds": 0.12,
+   "candidateLimit": 8,
+   "elo": 575,
+   "level": 9,
+   "lossCaps": [
+    379.2857142857143,
+    400.14642857142854,
+    421.00714285714287,
+    446.03999999999996,
+    462.7285714285714
+   ],
+   "maxDepth": 2,
+   "maxLossCP": 379.2857142857143,
+   "mistakeChance": 0.6628571428571428,
+   "mistakeChances": [
+    0.5435428571428571,
+    0.6065142857142857,
+    0.6694857142857142,
+    0.7450514285714286,
+    0.7954285714285714
+   ],
+   "settingsBudgetSeconds": 0.16477927910240409,
+   "settingsMaxDepth": 2,
+   "targetElo": 575
+  },
+  {
+   "budgetSeconds": 0.12,
+   "candidateLimit": 8,
+   "elo": 600,
+   "level": 10,
+   "lossCaps": [
+    371.42857142857144,
+    391.85714285714283,
+    412.28571428571433,
+    436.8,
+    453.14285714285717
+   ],
+   "maxDepth": 2,
+   "maxLossCP": 371.42857142857144,
+   "mistakeChance": 0.6542857142857142,
+   "mistakeChances": [
+    0.5365142857142856,
+    0.5986714285714285,
+    0.6608285714285714,
+    0.7354171428571429,
+    0.785142857142857
+   ],
+   "settingsBudgetSeconds": 0.1732815630979265,
+   "settingsMaxDepth": 2,
+   "targetElo": 600
+  },
+  {
+   "budgetSeconds": 0.12,
+   "candidateLimit": 8,
+   "elo": 625,
+   "level": 11,
+   "lossCaps": [
+    363.57142857142856,
+    383.5678571428571,
+    403.56428571428575,
+    427.55999999999995,
+    443.5571428571428
+   ],
+   "maxDepth": 2,
+   "maxLossCP": 363.57142857142856,
+   "mistakeChance": 0.6457142857142857,
+   "mistakeChances": [
+    0.5294857142857142,
+    0.5908285714285714,
+    0.6521714285714285,
+    0.7257828571428572,
+    0.7748571428571428
+   ],
+   "settingsBudgetSeconds": 0.18235551745697093,
+   "settingsMaxDepth": 2,
+   "targetElo": 625
+  },
+  {
+   "budgetSeconds": 0.12,
+   "candidateLimit": 7,
+   "elo": 650,
+   "level": 12,
+   "lossCaps": [
+    355.7142857142857,
+    375.2785714285714,
+    394.8428571428572,
+    418.32,
+    433.9714285714286
+   ],
+   "maxDepth": 2,
+   "maxLossCP": 355.7142857142857,
+   "mistakeChance": 0.6371428571428571,
+   "mistakeChances": [
+    0.5224571428571428,
+    0.5829857142857142,
+    0.6435142857142857,
+    0.7161485714285715,
+    0.7645714285714286
+   ],
+   "settingsBudgetSeconds": 0.19198234869421515,
+   "settingsMaxDepth": 2,
+   "targetElo": 650
+  },
+  {
+   "budgetSeconds": 0.12,
+   "candidateLimit": 7,
+   "elo": 675,
+   "level": 13,
+   "lossCaps": [
+    347.85714285714283,
+    366.98928571428564,
+    386.12142857142857,
+    409.0799999999999,
+    424.38571428571424
+   ],
+   "maxDepth": 2,
+   "maxLossCP": 347.85714285714283,
+   "mistakeChance": 0.6285714285714286,
+   "mistakeChances": [
+    0.5154285714285713,
+    0.5751428571428571,
+    0.6348571428571429,
+    0.7065142857142858,
+    0.7542857142857142
+   ],
+   "settingsBudgetSeconds": 0.2021454453288359,
+   "settingsMaxDepth": 2,
+   "targetElo": 675
+  },
+  {
+   "budgetSeconds": 0.12,
+   "candidateLimit": 7,
+   "elo": 700,
+   "level": 14,
+   "lossCaps": [
+    340.0,
+    358.7,
+    377.40000000000003,
+    399.84,
+    414.8
+   ],
+   "maxDepth": 2,
+   "maxLossCP": 340.0,
+   "mistakeChance": 0.62,
+   "mistakeChances": [
+    0.5084,
+    0.5672999999999999,
+    0.6262,
+    0.69688,
+    0.744
+   ],
+   "settingsBudgetSeconds": 0.2128299712448449,
+   "settingsMaxDepth": 2,
+   "targetElo": 700
+  },
+  {
+   "budgetSeconds": 0.12,
+   "candidateLimit": 7,
+   "elo": 725,
+   "level": 15,
+   "lossCaps": [
+    328.75,
+    346.83124999999995,
+    364.9125,
+    386.60999999999996,
+    401.075
+   ],
+   "maxDepth": 2,
+   "maxLossCP": 328.75,
+   "mistakeChance": 0.60375,
+   "mistakeChances": [
+    0.495075,
+    0.5524312499999999,
+    0.6097875,
+    0.6786150000000001,
+    0.7245
+   ],
+   "settingsBudgetSeconds": 0.2240225592624727,
+   "settingsMaxDepth": 2,
+   "targetElo": 725
+  },
+  {
+   "budgetSeconds": 0.12,
+   "candidateLimit": 7,
+   "elo": 750,
+   "level": 16,
+   "lossCaps": [
+    317.5,
+    334.9625,
+    352.425,
+    373.38,
+    387.34999999999997
+   ],
+   "maxDepth": 2,
+   "maxLossCP": 317.5,
+   "mistakeChance": 0.5875,
+   "mistakeChances": [
+    0.48175,
+    0.5375624999999999,
+    0.593375,
+    0.6603500000000001,
+    0.705
+   ],
+   "settingsBudgetSeconds": 0.2357110750194592,
+   "settingsMaxDepth": 2,
+   "targetElo": 750
+  },
+  {
+   "budgetSeconds": 0.12,
+   "candidateLimit": 7,
+   "elo": 775,
+   "level": 17,
+   "lossCaps": [
+    306.25,
+    323.09375,
+    339.93750000000006,
+    360.15,
+    373.625
+   ],
+   "maxDepth": 2,
+   "maxLossCP": 306.25,
+   "mistakeChance": 0.57125,
+   "mistakeChances": [
+    0.468425,
+    0.52269375,
+    0.5769625,
+    0.6420850000000001,
+    0.6855
+   ],
+   "settingsBudgetSeconds": 0.24788443153903345,
+   "settingsMaxDepth": 2,
+   "targetElo": 775
+  },
+  {
+   "budgetSeconds": 0.12,
+   "candidateLimit": 7,
+   "elo": 800,
+   "level": 18,
+   "lossCaps": [
+    295.0,
+    311.22499999999997,
+    327.45000000000005,
+    346.91999999999996,
+    359.9
+   ],
+   "maxDepth": 2,
+   "maxLossCP": 295.0,
+   "mistakeChance": 0.5549999999999999,
+   "mistakeChances": [
+    0.45509999999999995,
+    0.5078249999999999,
+    0.56055,
+    0.62382,
+    0.6659999999999999
+   ],
+   "settingsBudgetSeconds": 0.2605324411961061,
+   "settingsMaxDepth": 2,
+   "targetElo": 800
+  },
+  {
+   "budgetSeconds": 0.12314056312675074,
+   "candidateLimit": 7,
+   "elo": 825,
+   "level": 19,
+   "lossCaps": [
+    283.75,
+    299.35625,
+    314.96250000000003,
+    333.69,
+    346.175
+   ],
+   "maxDepth": 2,
+   "maxLossCP": 283.75,
+   "mistakeChance": 0.53875,
+   "mistakeChances": [
+    0.4417749999999999,
+    0.49295624999999993,
+    0.5441374999999999,
+    0.605555,
+    0.6465
+   ],
+   "settingsBudgetSeconds": 0.27364569583722387,
+   "settingsMaxDepth": 2,
+   "targetElo": 825
+  },
+  {
+   "budgetSeconds": 0.12924696081188783,
+   "candidateLimit": 7,
+   "elo": 850,
+   "level": 20,
+   "lossCaps": [
+    272.5,
+    287.4875,
+    302.475,
+    320.46,
+    332.45
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 272.5,
+   "mistakeChance": 0.5225,
+   "mistakeChances": [
+    0.42844999999999994,
+    0.47808749999999994,
+    0.527725,
+    0.58729,
+    0.6269999999999999
+   ],
+   "settingsBudgetSeconds": 0.2872154684708618,
+   "settingsMaxDepth": 3,
+   "targetElo": 850
+  },
+  {
+   "budgetSeconds": 0.1355551342840923,
+   "candidateLimit": 7,
+   "elo": 864,
+   "level": 21,
+   "lossCaps": [
+    266.2,
+    280.84099999999995,
+    295.482,
+    313.0512,
+    324.76399999999995
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 266.2,
+   "mistakeChance": 0.5134,
+   "mistakeChances": [
+    0.420988,
+    0.46976099999999993,
+    0.5185339999999999,
+    0.5770616000000001,
+    0.61608
+   ],
+   "settingsBudgetSeconds": 0.30123363174242734,
+   "settingsMaxDepth": 3,
+   "targetElo": 864
+  },
+  {
+   "budgetSeconds": 0.1420616653431527,
+   "candidateLimit": 7,
+   "elo": 878,
+   "level": 22,
+   "lossCaps": [
+    259.9,
+    274.19449999999995,
+    288.489,
+    305.64239999999995,
+    317.078
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 259.9,
+   "mistakeChance": 0.5043,
+   "mistakeChances": [
+    0.41352599999999995,
+    0.4614344999999999,
+    0.509343,
+    0.5668332,
+    0.6051599999999999
+   ],
+   "settingsBudgetSeconds": 0.3156925896514504,
+   "settingsMaxDepth": 3,
+   "targetElo": 878
+  },
+  {
+   "budgetSeconds": 0.1487633489306333,
+   "candidateLimit": 7,
+   "elo": 892,
+   "level": 23,
+   "lossCaps": [
+    253.60000000000002,
+    267.548,
+    281.49600000000004,
+    298.2336,
+    309.392
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 253.60000000000002,
+   "mistakeChance": 0.4952,
+   "mistakeChances": [
+    0.406064,
+    0.45310799999999996,
+    0.5001519999999999,
+    0.5566048,
+    0.59424
+   ],
+   "settingsBudgetSeconds": 0.33058521984585176,
+   "settingsMaxDepth": 3,
+   "targetElo": 892
+  },
+  {
+   "budgetSeconds": 0.15565717100653229,
+   "candidateLimit": 7,
+   "elo": 906,
+   "level": 24,
+   "lossCaps": [
+    247.75,
+    261.37624999999997,
+    275.0025,
+    291.354,
+    302.255
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 247.75,
+   "mistakeChance": 0.48669999999999997,
+   "mistakeChances": [
+    0.39909399999999995,
+    0.4453304999999999,
+    0.491567,
+    0.5470508000000001,
+    0.5840399999999999
+   ],
+   "settingsBudgetSeconds": 0.34590482445896065,
+   "settingsMaxDepth": 3,
+   "targetElo": 906
+  },
+  {
+   "budgetSeconds": 0.16274028956219103,
+   "candidateLimit": 7,
+   "elo": 920,
+   "level": 25,
+   "lossCaps": [
+    242.5,
+    255.83749999999998,
+    269.175,
+    285.18,
+    295.84999999999997
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 242.5,
+   "mistakeChance": 0.479,
+   "mistakeChances": [
+    0.39277999999999996,
+    0.4382849999999999,
+    0.48379,
+    0.538396,
+    0.5748
+   ],
+   "settingsBudgetSeconds": 0.36164508791598005,
+   "settingsMaxDepth": 3,
+   "targetElo": 920
+  },
+  {
+   "budgetSeconds": 0.17001001821537284,
+   "candidateLimit": 7,
+   "elo": 934,
+   "level": 26,
+   "lossCaps": [
+    237.25,
+    250.29874999999998,
+    263.3475,
+    279.006,
+    289.445
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 237.25,
+   "mistakeChance": 0.4713,
+   "mistakeChances": [
+    0.386466,
+    0.43123949999999994,
+    0.476013,
+    0.5297412,
+    0.56556
+   ],
+   "settingsBudgetSeconds": 0.3778000404786063,
+   "settingsMaxDepth": 3,
+   "targetElo": 934
+  },
+  {
+   "budgetSeconds": 0.177463811949163,
+   "candidateLimit": 7,
+   "elo": 948,
+   "level": 27,
+   "lossCaps": [
+    232.0,
+    244.76,
+    257.52000000000004,
+    272.832,
+    283.04
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 232.0,
+   "mistakeChance": 0.4636,
+   "mistakeChances": [
+    0.380152,
+    0.42419399999999996,
+    0.46823600000000004,
+    0.5210864000000001,
+    0.55632
+   ],
+   "settingsBudgetSeconds": 0.39436402655369557,
+   "settingsMaxDepth": 3,
+   "targetElo": 948
+  },
+  {
+   "budgetSeconds": 0.18509925464445232,
+   "candidateLimit": 7,
+   "elo": 962,
+   "level": 28,
+   "lossCaps": [
+    226.75,
+    239.22125,
+    251.69250000000002,
+    266.65799999999996,
+    276.635
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 226.75,
+   "mistakeChance": 0.45589999999999997,
+   "mistakeChances": [
+    0.37383799999999995,
+    0.4171484999999999,
+    0.46045899999999995,
+    0.5124316,
+    0.5470799999999999
+   ],
+   "settingsBudgetSeconds": 0.4113316769876718,
+   "settingsMaxDepth": 3,
+   "targetElo": 962
+  },
+  {
+   "budgetSeconds": 0.19291404812361068,
+   "candidateLimit": 7,
+   "elo": 976,
+   "level": 29,
+   "lossCaps": [
+    221.5,
+    233.68249999999998,
+    245.865,
+    260.484,
+    270.23
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 221.5,
+   "mistakeChance": 0.4482,
+   "mistakeChances": [
+    0.36752399999999996,
+    0.41010299999999994,
+    0.452682,
+    0.5037768,
+    0.53784
+   ],
+   "settingsBudgetSeconds": 0.42869788471913484,
+   "settingsMaxDepth": 3,
+   "targetElo": 976
+  },
+  {
+   "budgetSeconds": 0.20090600247574517,
+   "candidateLimit": 7,
+   "elo": 990,
+   "level": 30,
+   "lossCaps": [
+    216.25,
+    228.14374999999998,
+    240.03750000000002,
+    254.30999999999997,
+    263.825
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 216.25,
+   "mistakeChance": 0.4405,
+   "mistakeChances": [
+    0.36121,
+    0.40305749999999996,
+    0.444905,
+    0.49512200000000006,
+    0.5286
+   ],
+   "settingsBudgetSeconds": 0.4464577832794337,
+   "settingsMaxDepth": 3,
+   "targetElo": 990
+  },
+  {
+   "budgetSeconds": 0.2090730274754031,
+   "candidateLimit": 7,
+   "elo": 1004,
+   "level": 31,
+   "lossCaps": [
+    211.0,
+    222.605,
+    234.21,
+    248.136,
+    257.42
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 211.0,
+   "mistakeChance": 0.4328,
+   "mistakeChances": [
+    0.354896,
+    0.396012,
+    0.437128,
+    0.48646720000000004,
+    0.51936
+   ],
+   "settingsBudgetSeconds": 0.464606727723118,
+   "settingsMaxDepth": 3,
+   "targetElo": 1004
+  },
+  {
+   "budgetSeconds": 0.21741312493945014,
+   "candidateLimit": 7,
+   "elo": 1018,
+   "level": 32,
+   "lossCaps": [
+    205.75,
+    217.06625,
+    228.38250000000002,
+    241.962,
+    251.015
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 205.75,
+   "mistakeChance": 0.42510000000000003,
+   "mistakeChances": [
+    0.348582,
+    0.3889665,
+    0.42935100000000004,
+    0.4778124000000001,
+    0.51012
+   ],
+   "settingsBudgetSeconds": 0.48314027764322254,
+   "settingsMaxDepth": 3,
+   "targetElo": 1018
+  },
+  {
+   "budgetSeconds": 0.22592438189311728,
+   "candidateLimit": 7,
+   "elo": 1032,
+   "level": 33,
+   "lossCaps": [
+    200.5,
+    211.52749999999997,
+    222.555,
+    235.78799999999998,
+    244.60999999999999
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 200.5,
+   "mistakeChance": 0.4174,
+   "mistakeChances": [
+    0.34226799999999996,
+    0.38192099999999995,
+    0.421574,
+    0.46915760000000006,
+    0.50088
+   ],
+   "settingsBudgetSeconds": 0.5020541819847051,
+   "settingsMaxDepth": 3,
+   "targetElo": 1032
+  },
+  {
+   "budgetSeconds": 0.23460496443736445,
+   "candidateLimit": 7,
+   "elo": 1046,
+   "level": 34,
+   "lossCaps": [
+    195.25,
+    205.98874999999998,
+    216.72750000000002,
+    229.61399999999998,
+    238.20499999999998
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 195.25,
+   "mistakeChance": 0.4097,
+   "mistakeChances": [
+    0.335954,
+    0.3748755,
+    0.413797,
+    0.46050280000000005,
+    0.49163999999999997
+   ],
+   "settingsBudgetSeconds": 0.5213443654163654,
+   "settingsMaxDepth": 3,
+   "targetElo": 1046
+  },
+  {
+   "budgetSeconds": 0.24345311222686583,
+   "candidateLimit": 7,
+   "elo": 1060,
+   "level": 35,
+   "lossCaps": [
+    190.0,
+    200.45,
+    210.9,
+    223.44,
+    231.79999999999998
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 190.0,
+   "mistakeChance": 0.402,
+   "mistakeChances": [
+    0.32964,
+    0.36783,
+    0.40602000000000005,
+    0.4518480000000001,
+    0.4824
+   ],
+   "settingsBudgetSeconds": 0.5410069160597019,
+   "settingsMaxDepth": 3,
+   "targetElo": 1060
+  },
+  {
+   "budgetSeconds": 0.25246713348193517,
+   "candidateLimit": 7,
+   "elo": 1074,
+   "level": 36,
+   "lossCaps": [
+    184.75,
+    194.91125,
+    205.07250000000002,
+    217.266,
+    225.39499999999998
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 184.75,
+   "mistakeChance": 0.3943,
+   "mistakeChances": [
+    0.32332599999999995,
+    0.36078449999999995,
+    0.398243,
+    0.4431932,
+    0.47315999999999997
+   ],
+   "settingsBudgetSeconds": 0.5610380744043003,
+   "settingsMaxDepth": 3,
+   "targetElo": 1074
+  },
+  {
+   "budgetSeconds": 0.26164540046921775,
+   "candidateLimit": 7,
+   "elo": 1088,
+   "level": 37,
+   "lossCaps": [
+    179.5,
+    189.3725,
+    199.245,
+    211.09199999999998,
+    218.99
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 179.5,
+   "mistakeChance": 0.3866,
+   "mistakeChances": [
+    0.31701199999999996,
+    0.35373899999999997,
+    0.390466,
+    0.43453840000000005,
+    0.46392
+   ],
+   "settingsBudgetSeconds": 0.5814342232649283,
+   "settingsMaxDepth": 3,
+   "targetElo": 1088
+  },
+  {
+   "budgetSeconds": 0.2709863453955003,
+   "candidateLimit": 6,
+   "elo": 1102,
+   "level": 38,
+   "lossCaps": [
+    174.5,
+    184.0975,
+    193.69500000000002,
+    205.212,
+    212.89
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 174.5,
+   "mistakeChance": 0.379,
+   "mistakeChances": [
+    0.31078,
+    0.34678499999999995,
+    0.38279,
+    0.42599600000000004,
+    0.4548
+   ],
+   "settingsBudgetSeconds": 0.6021918786566673,
+   "settingsMaxDepth": 3,
+   "targetElo": 1102
+  },
+  {
+   "budgetSeconds": 0.28048845666689504,
+   "candidateLimit": 6,
+   "elo": 1116,
+   "level": 39,
+   "lossCaps": [
+    171.0,
+    180.405,
+    189.81000000000003,
+    201.09599999999998,
+    208.62
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 171.0,
+   "mistakeChance": 0.372,
+   "mistakeChances": [
+    0.30504,
+    0.34037999999999996,
+    0.37572,
+    0.41812800000000006,
+    0.44639999999999996
+   ],
+   "settingsBudgetSeconds": 0.623307681481989,
+   "settingsMaxDepth": 3,
+   "targetElo": 1116
+  },
+  {
+   "budgetSeconds": 0.2901502754722687,
+   "candidateLimit": 6,
+   "elo": 1130,
+   "level": 40,
+   "lossCaps": [
+    167.5,
+    176.71249999999998,
+    185.925,
+    196.98,
+    204.35
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 167.5,
+   "mistakeChance": 0.365,
+   "mistakeChances": [
+    0.29929999999999995,
+    0.33397499999999997,
+    0.36865,
+    0.41026,
+    0.438
+   ],
+   "settingsBudgetSeconds": 0.6447783899383748,
+   "settingsMaxDepth": 3,
+   "targetElo": 1130
+  },
+  {
+   "budgetSeconds": 0.29997039265533704,
+   "candidateLimit": 6,
+   "elo": 1144,
+   "level": 41,
+   "lossCaps": [
+    164.0,
+    173.01999999999998,
+    182.04000000000002,
+    192.86399999999998,
+    200.07999999999998
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 164.0,
+   "mistakeChance": 0.358,
+   "mistakeChances": [
+    0.29356,
+    0.32757,
+    0.36158,
+    0.402392,
+    0.4296
+   ],
+   "settingsBudgetSeconds": 0.6666008725674156,
+   "settingsMaxDepth": 3,
+   "targetElo": 1144
+  },
+  {
+   "budgetSeconds": 0.3099474458445317,
+   "candidateLimit": 6,
+   "elo": 1158,
+   "level": 42,
+   "lossCaps": [
+    160.5,
+    169.3275,
+    178.15500000000003,
+    188.748,
+    195.81
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 160.5,
+   "mistakeChance": 0.35100000000000003,
+   "mistakeChances": [
+    0.28782,
+    0.321165,
+    0.35451000000000005,
+    0.3945240000000001,
+    0.4212
+   ],
+   "settingsBudgetSeconds": 0.6887721018767371,
+   "settingsMaxDepth": 3,
+   "targetElo": 1158
+  },
+  {
+   "budgetSeconds": 0.3200801168137111,
+   "candidateLimit": 6,
+   "elo": 1172,
+   "level": 43,
+   "lossCaps": [
+    157.0,
+    165.635,
+    174.27,
+    184.63199999999998,
+    191.54
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 157.0,
+   "mistakeChance": 0.34400000000000003,
+   "mistakeChances": [
+    0.28208,
+    0.31476,
+    0.34744,
+    0.38665600000000006,
+    0.4128
+   ],
+   "settingsBudgetSeconds": 0.7112891484749136,
+   "settingsMaxDepth": 3,
+   "targetElo": 1172
+  },
+  {
+   "budgetSeconds": 0.3303671290501721,
+   "candidateLimit": 6,
+   "elo": 1186,
+   "level": 44,
+   "lossCaps": [
+    153.5,
+    161.9425,
+    170.38500000000002,
+    180.516,
+    187.26999999999998
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 153.5,
+   "mistakeChance": 0.337,
+   "mistakeChances": [
+    0.27634,
+    0.308355,
+    0.34037,
+    0.37878800000000007,
+    0.40440000000000004
+   ],
+   "settingsBudgetSeconds": 0.7341491756670492,
+   "settingsMaxDepth": 3,
+   "targetElo": 1186
+  },
+  {
+   "budgetSeconds": 0.3408072455092982,
+   "candidateLimit": 6,
+   "elo": 1200,
+   "level": 45,
+   "lossCaps": [
+    150.0,
+    158.25,
+    166.50000000000003,
+    176.39999999999998,
+    183.0
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 150.0,
+   "mistakeChance": 0.33,
+   "mistakeChances": [
+    0.2706,
+    0.30195,
+    0.33330000000000004,
+    0.37092,
+    0.396
+   ],
+   "settingsBudgetSeconds": 0.757349434465107,
+   "settingsMaxDepth": 3,
+   "targetElo": 1200
+  },
+  {
+   "budgetSeconds": 0.35139926653766385,
+   "candidateLimit": 6,
+   "elo": 1212,
+   "level": 46,
+   "lossCaps": [
+    147.0,
+    155.08499999999998,
+    163.17000000000002,
+    172.87199999999999,
+    179.34
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 147.0,
+   "mistakeChance": 0.324,
+   "mistakeChances": [
+    0.26567999999999997,
+    0.29646,
+    0.32724000000000003,
+    0.36417600000000006,
+    0.3888
+   ],
+   "settingsBudgetSeconds": 0.7808872589725863,
+   "settingsMaxDepth": 3,
+   "targetElo": 1212
+  },
+  {
+   "budgetSeconds": 0.3621420279485388,
+   "candidateLimit": 6,
+   "elo": 1223,
+   "level": 47,
+   "lossCaps": [
+    144.25,
+    152.18375,
+    160.1175,
+    169.63799999999998,
+    175.98499999999999
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 144.25,
+   "mistakeChance": 0.3185,
+   "mistakeChances": [
+    0.26117,
+    0.2914275,
+    0.321685,
+    0.35799400000000003,
+    0.3822
+   ],
+   "settingsBudgetSeconds": 0.8047600621078639,
+   "settingsMaxDepth": 3,
+   "targetElo": 1223
+  },
+  {
+   "budgetSeconds": 0.3730343992355834,
+   "candidateLimit": 6,
+   "elo": 1235,
+   "level": 48,
+   "lossCaps": [
+    141.25,
+    149.01874999999998,
+    156.78750000000002,
+    166.10999999999999,
+    172.325
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 141.25,
+   "mistakeChance": 0.3125,
+   "mistakeChances": [
+    0.25625,
+    0.28593749999999996,
+    0.315625,
+    0.35125000000000006,
+    0.375
+   ],
+   "settingsBudgetSeconds": 0.8289653316346298,
+   "settingsMaxDepth": 3,
+   "targetElo": 1235
+  },
+  {
+   "budgetSeconds": 0.38407528191211693,
+   "candidateLimit": 6,
+   "elo": 1247,
+   "level": 49,
+   "lossCaps": [
+    138.25,
+    145.85375,
+    153.4575,
+    162.582,
+    168.665
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 138.25,
+   "mistakeChance": 0.3065,
+   "mistakeChances": [
+    0.25133,
+    0.28044749999999996,
+    0.309565,
+    0.34450600000000003,
+    0.36779999999999996
+   ],
+   "settingsBudgetSeconds": 0.8535006264713709,
+   "settingsMaxDepth": 3,
+   "targetElo": 1247
+  },
+  {
+   "budgetSeconds": 0.3952636079647324,
+   "candidateLimit": 6,
+   "elo": 1258,
+   "level": 50,
+   "lossCaps": [
+    135.5,
+    142.9525,
+    150.405,
+    159.34799999999998,
+    165.31
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 135.5,
+   "mistakeChance": 0.30100000000000005,
+   "mistakeChances": [
+    0.24682,
+    0.275415,
+    0.30401000000000006,
+    0.33832400000000007,
+    0.3612
+   ],
+   "settingsBudgetSeconds": 0.878363573254961,
+   "settingsMaxDepth": 3,
+   "targetElo": 1258
+  },
+  {
+   "budgetSeconds": 0.4065983384112398,
+   "candidateLimit": 6,
+   "elo": 1270,
+   "level": 51,
+   "lossCaps": [
+    132.5,
+    139.7875,
+    147.07500000000002,
+    155.82,
+    161.65
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 132.5,
+   "mistakeChance": 0.29500000000000004,
+   "mistakeChances": [
+    0.24190000000000003,
+    0.269925,
+    0.29795000000000005,
+    0.3315800000000001,
+    0.35400000000000004
+   ],
+   "settingsBudgetSeconds": 0.9035518631360885,
+   "settingsMaxDepth": 3,
+   "targetElo": 1270
+  },
+  {
+   "budgetSeconds": 0.4180784619539757,
+   "candidateLimit": 6,
+   "elo": 1282,
+   "level": 52,
+   "lossCaps": [
+    129.5,
+    136.6225,
+    143.745,
+    152.292,
+    157.99
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 129.5,
+   "mistakeChance": 0.28900000000000003,
+   "mistakeChances": [
+    0.23698000000000002,
+    0.26443500000000003,
+    0.29189000000000004,
+    0.32483600000000007,
+    0.34680000000000005
+   ],
+   "settingsBudgetSeconds": 0.9290632487866126,
+   "settingsMaxDepth": 3,
+   "targetElo": 1282
+  },
+  {
+   "budgetSeconds": 0.4297029937204499,
+   "candidateLimit": 6,
+   "elo": 1293,
+   "level": 53,
+   "lossCaps": [
+    126.75,
+    133.72125,
+    140.69250000000002,
+    149.058,
+    154.635
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 126.75,
+   "mistakeChance": 0.28350000000000003,
+   "mistakeChances": [
+    0.23247,
+    0.2594025,
+    0.286335,
+    0.31865400000000005,
+    0.3402
+   ],
+   "settingsBudgetSeconds": 0.9548955416009998,
+   "settingsMaxDepth": 3,
+   "targetElo": 1293
+  },
+  {
+   "budgetSeconds": 0.4414709740841125,
+   "candidateLimit": 6,
+   "elo": 1305,
+   "level": 54,
+   "lossCaps": [
+    124.125,
+    130.951875,
+    137.77875,
+    145.971,
+    151.4325
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 124.125,
+   "mistakeChance": 0.27775000000000005,
+   "mistakeChances": [
+    0.22775500000000004,
+    0.25414125000000004,
+    0.28052750000000004,
+    0.3121910000000001,
+    0.33330000000000004
+   ],
+   "settingsBudgetSeconds": 0.9810466090758055,
+   "settingsMaxDepth": 3,
+   "targetElo": 1305
+  },
+  {
+   "budgetSeconds": 0.453381467558745,
+   "candidateLimit": 6,
+   "elo": 1317,
+   "level": 55,
+   "lossCaps": [
+    122.025,
+    128.736375,
+    135.44775,
+    143.5014,
+    148.8705
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 122.025,
+   "mistakeChance": 0.27235000000000004,
+   "mistakeChances": [
+    0.22332700000000003,
+    0.24920025,
+    0.2750735,
+    0.30612140000000004,
+    0.32682000000000005
+   ],
+   "settingsBudgetSeconds": 1.0075143723527666,
+   "settingsMaxDepth": 3,
+   "targetElo": 1317
+  },
+  {
+   "budgetSeconds": 0.465433561760616,
+   "candidateLimit": 6,
+   "elo": 1328,
+   "level": 56,
+   "lossCaps": [
+    120.1,
+    126.70549999999999,
+    133.311,
+    141.2376,
+    146.522
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 120.1,
+   "mistakeChance": 0.2674,
+   "mistakeChances": [
+    0.21926800000000002,
+    0.244671,
+    0.27007400000000004,
+    0.30055760000000004,
+    0.32088
+   ],
+   "settingsBudgetSeconds": 1.03429680391248,
+   "settingsMaxDepth": 3,
+   "targetElo": 1328
+  },
+  {
+   "budgetSeconds": 0.4776263664331048,
+   "candidateLimit": 6,
+   "elo": 1340,
+   "level": 57,
+   "lossCaps": [
+    118.0,
+    124.49,
+    130.98000000000002,
+    138.768,
+    143.96
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 118.0,
+   "mistakeChance": 0.262,
+   "mistakeChances": [
+    0.21484,
+    0.23973,
+    0.26462,
+    0.294488,
+    0.3144
+   ],
+   "settingsBudgetSeconds": 1.0613919254068995,
+   "settingsMaxDepth": 3,
+   "targetElo": 1340
+  },
+  {
+   "budgetSeconds": 0.48995901252899565,
+   "candidateLimit": 6,
+   "elo": 1352,
+   "level": 58,
+   "lossCaps": [
+    115.9,
+    122.2745,
+    128.64900000000003,
+    136.2984,
+    141.398
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 115.9,
+   "mistakeChance": 0.2566,
+   "mistakeChances": [
+    0.210412,
+    0.23478899999999997,
+    0.259166,
+    0.2884184,
+    0.30791999999999997
+   ],
+   "settingsBudgetSeconds": 1.0887978056199903,
+   "settingsMaxDepth": 3,
+   "targetElo": 1352
+  },
+  {
+   "budgetSeconds": 0.502430651346093,
+   "candidateLimit": 6,
+   "elo": 1363,
+   "level": 59,
+   "lossCaps": [
+    113.975,
+    120.24362499999998,
+    126.51225000000001,
+    134.03459999999998,
+    139.0495
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 113.975,
+   "mistakeChance": 0.25165000000000004,
+   "mistakeChances": [
+    0.206353,
+    0.23025975,
+    0.2541665,
+    0.28285460000000007,
+    0.30198
+   ],
+   "settingsBudgetSeconds": 1.1165125585468734,
+   "settingsMaxDepth": 3,
+   "targetElo": 1363
+  },
+  {
+   "budgetSeconds": 0.5150404537122014,
+   "candidateLimit": 6,
+   "elo": 1375,
+   "level": 60,
+   "lossCaps": [
+    111.875,
+    118.02812499999999,
+    124.18125,
+    131.565,
+    136.48749999999998
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 111.875,
+   "mistakeChance": 0.24625000000000002,
+   "mistakeChances": [
+    0.20192500000000002,
+    0.22531875,
+    0.24871250000000003,
+    0.27678500000000006,
+    0.29550000000000004
+   ],
+   "settingsBudgetSeconds": 1.1445343415826699,
+   "settingsMaxDepth": 3,
+   "targetElo": 1375
+  },
+  {
+   "budgetSeconds": 0.5277876092158712,
+   "candidateLimit": 6,
+   "elo": 1382,
+   "level": 61,
+   "lossCaps": [
+    110.65,
+    116.73575,
+    122.82150000000001,
+    130.1244,
+    134.993
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 110.65,
+   "mistakeChance": 0.2431,
+   "mistakeChances": [
+    0.199342,
+    0.22243649999999998,
+    0.245531,
+    0.27324440000000005,
+    0.29172
+   ],
+   "settingsBudgetSeconds": 1.172861353813047,
+   "settingsMaxDepth": 3,
+   "targetElo": 1382
+  },
+  {
+   "budgetSeconds": 0.5406713254796287,
+   "candidateLimit": 6,
+   "elo": 1390,
+   "level": 62,
+   "lossCaps": [
+    109.25,
+    115.25874999999999,
+    121.26750000000001,
+    128.47799999999998,
+    133.285
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 109.25,
+   "mistakeChance": 0.23950000000000002,
+   "mistakeChances": [
+    0.19639,
+    0.2191425,
+    0.24189500000000003,
+    0.26919800000000005,
+    0.2874
+   ],
+   "settingsBudgetSeconds": 1.201491834399175,
+   "settingsMaxDepth": 3,
+   "targetElo": 1390
+  },
+  {
+   "budgetSeconds": 0.5536908274726916,
+   "candidateLimit": 6,
+   "elo": 1398,
+   "level": 63,
+   "lossCaps": [
+    107.85,
+    113.78174999999999,
+    119.71350000000001,
+    126.83159999999998,
+    131.577
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 107.85,
+   "mistakeChance": 0.2359,
+   "mistakeChances": [
+    0.193438,
+    0.21584849999999997,
+    0.238259,
+    0.26515160000000004,
+    0.28308
+   ],
+   "settingsBudgetSeconds": 1.2304240610504258,
+   "settingsMaxDepth": 3,
+   "targetElo": 1398
+  },
+  {
+   "budgetSeconds": 0.5668453568604301,
+   "candidateLimit": 6,
+   "elo": 1405,
+   "level": 64,
+   "lossCaps": [
+    106.625,
+    112.489375,
+    118.35375,
+    125.39099999999999,
+    130.0825
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 106.625,
+   "mistakeChance": 0.23275,
+   "mistakeChances": [
+    0.190855,
+    0.21296625,
+    0.23507750000000002,
+    0.26161100000000004,
+    0.2793
+   ],
+   "settingsBudgetSeconds": 1.2596563485787335,
+   "settingsMaxDepth": 3,
+   "targetElo": 1405
+  },
+  {
+   "budgetSeconds": 0.5801341713880606,
+   "candidateLimit": 6,
+   "elo": 1412,
+   "level": 65,
+   "lossCaps": [
+    105.4,
+    111.197,
+    116.99400000000001,
+    123.9504,
+    128.588
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 105.4,
+   "mistakeChance": 0.2296,
+   "mistakeChances": [
+    0.188272,
+    0.210084,
+    0.231896,
+    0.25807040000000003,
+    0.27552
+   ],
+   "settingsBudgetSeconds": 1.2891870475290235,
+   "settingsMaxDepth": 3,
+   "targetElo": 1412
+  },
+  {
+   "budgetSeconds": 0.5935565442962717,
+   "candidateLimit": 6,
+   "elo": 1420,
+   "level": 66,
+   "lossCaps": [
+    104.0,
+    109.72,
+    115.44000000000001,
+    122.30399999999999,
+    126.88
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 104.0,
+   "mistakeChance": 0.226,
+   "mistakeChances": [
+    0.18531999999999998,
+    0.20679,
+    0.22826000000000002,
+    0.254024,
+    0.2712
+   ],
+   "settingsBudgetSeconds": 1.3190145428806037,
+   "settingsMaxDepth": 3,
+   "targetElo": 1420
+  },
+  {
+   "budgetSeconds": 0.6071117637666634,
+   "candidateLimit": 6,
+   "elo": 1428,
+   "level": 67,
+   "lossCaps": [
+    102.6,
+    108.24299999999998,
+    113.88600000000001,
+    120.65759999999999,
+    125.172
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 102.6,
+   "mistakeChance": 0.22240000000000001,
+   "mistakeChances": [
+    0.182368,
+    0.203496,
+    0.22462400000000002,
+    0.24997760000000005,
+    0.26688
+   ],
+   "settingsBudgetSeconds": 1.3491372528148076,
+   "settingsMaxDepth": 3,
+   "targetElo": 1428
+  },
+  {
+   "budgetSeconds": 0.6207991323950571,
+   "candidateLimit": 6,
+   "elo": 1435,
+   "level": 68,
+   "lossCaps": [
+    101.375,
+    106.95062499999999,
+    112.52625,
+    119.217,
+    123.6775
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 101.375,
+   "mistakeChance": 0.21925,
+   "mistakeChances": [
+    0.179785,
+    0.20061374999999998,
+    0.22144250000000001,
+    0.24643700000000002,
+    0.2631
+   ],
+   "settingsBudgetSeconds": 1.3795536275445714,
+   "settingsMaxDepth": 3,
+   "targetElo": 1435
+  },
+  {
+   "budgetSeconds": 0.6346179666908826,
+   "candidateLimit": 6,
+   "elo": 1442,
+   "level": 69,
+   "lossCaps": [
+    100.15,
+    105.65825,
+    111.16650000000001,
+    117.7764,
+    122.183
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 100.15,
+   "mistakeChance": 0.21610000000000001,
+   "mistakeChances": [
+    0.177202,
+    0.1977315,
+    0.218261,
+    0.24289640000000004,
+    0.25932
+   ],
+   "settingsBudgetSeconds": 1.4102621482019613,
+   "settingsMaxDepth": 3,
+   "targetElo": 1442
+  },
+  {
+   "budgetSeconds": 0.6485675966009897,
+   "candidateLimit": 6,
+   "elo": 1450,
+   "level": 70,
+   "lossCaps": [
+    98.75,
+    104.18124999999999,
+    109.61250000000001,
+    116.13,
+    120.475
+   ],
+   "maxDepth": 4,
+   "maxLossCP": 98.75,
+   "mistakeChance": 0.21250000000000002,
+   "mistakeChances": [
+    0.17425000000000002,
+    0.1944375,
+    0.21462500000000004,
+    0.23885000000000003,
+    0.255
+   ],
+   "settingsBudgetSeconds": 1.4412613257799771,
+   "settingsMaxDepth": 4,
+   "targetElo": 1450
+  },
+  {
+   "budgetSeconds": 0.6626473650563606,
+   "candidateLimit": 5,
+   "elo": 1458,
+   "level": 71,
+   "lossCaps": [
+    97.35,
+    102.70424999999999,
+    108.05850000000001,
+    114.48359999999998,
+    118.767
+   ],
+   "maxDepth": 4,
+   "maxLossCP": 97.35,
+   "mistakeChance": 0.2089,
+   "mistakeChances": [
+    0.17129799999999998,
+    0.1911435,
+    0.210989,
+    0.23480360000000003,
+    0.25068
+   ],
+   "settingsBudgetSeconds": 1.4725497001252457,
+   "settingsMaxDepth": 4,
+   "targetElo": 1458
+  },
+  {
+   "budgetSeconds": 0.6768566275403123,
+   "candidateLimit": 5,
+   "elo": 1465,
+   "level": 72,
+   "lossCaps": [
+    96.125,
+    101.411875,
+    106.69875,
+    113.04299999999999,
+    117.2725
+   ],
+   "maxDepth": 4,
+   "maxLossCP": 96.125,
+   "mistakeChance": 0.20575000000000002,
+   "mistakeChances": [
+    0.168715,
+    0.18826125,
+    0.2078075,
+    0.23126300000000005,
+    0.2469
+   ],
+   "settingsBudgetSeconds": 1.5041258389784717,
+   "settingsMaxDepth": 4,
+   "targetElo": 1465
+  },
+  {
+   "budgetSeconds": 0.6911947516768842,
+   "candidateLimit": 5,
+   "elo": 1472,
+   "level": 73,
+   "lossCaps": [
+    94.9,
+    100.1195,
+    105.33900000000001,
+    111.6024,
+    115.778
+   ],
+   "maxDepth": 4,
+   "maxLossCP": 94.9,
+   "mistakeChance": 0.2026,
+   "mistakeChances": [
+    0.166132,
+    0.185379,
+    0.204626,
+    0.22772240000000002,
+    0.24312
+   ],
+   "settingsBudgetSeconds": 1.5359883370597425,
+   "settingsMaxDepth": 4,
+   "targetElo": 1472
+  },
+  {
+   "budgetSeconds": 0.7056611168382028,
+   "candidateLimit": 5,
+   "elo": 1480,
+   "level": 74,
+   "lossCaps": [
+    93.5,
+    98.6425,
+    103.78500000000001,
+    109.95599999999999,
+    114.07
+   ],
+   "maxDepth": 4,
+   "maxLossCP": 93.5,
+   "mistakeChance": 0.199,
+   "mistakeChances": [
+    0.16318,
+    0.182085,
+    0.20099,
+    0.22367600000000004,
+    0.2388
+   ],
+   "settingsBudgetSeconds": 1.568135815196006,
+   "settingsMaxDepth": 4,
+   "targetElo": 1480
+  },
+  {
+   "budgetSeconds": 0.7202551137697032,
+   "candidateLimit": 5,
+   "elo": 1488,
+   "level": 75,
+   "lossCaps": [
+    92.1,
+    97.1655,
+    102.23100000000001,
+    108.30959999999999,
+    112.362
+   ],
+   "maxDepth": 4,
+   "maxLossCP": 92.1,
+   "mistakeChance": 0.19540000000000002,
+   "mistakeChances": [
+    0.160228,
+    0.178791,
+    0.19735400000000003,
+    0.21962960000000004,
+    0.23448000000000002
+   ],
+   "settingsBudgetSeconds": 1.6005669194882293,
+   "settingsMaxDepth": 4,
+   "targetElo": 1488
+  },
+  {
+   "budgetSeconds": 0.7349761442321655,
+   "candidateLimit": 5,
+   "elo": 1495,
+   "level": 76,
+   "lossCaps": [
+    90.875,
+    95.87312499999999,
+    100.87125,
+    106.869,
+    110.86749999999999
+   ],
+   "maxDepth": 4,
+   "maxLossCP": 90.875,
+   "mistakeChance": 0.19225,
+   "mistakeChances": [
+    0.157645,
+    0.17590875,
+    0.1941725,
+    0.21608900000000003,
+    0.2307
+   ],
+   "settingsBudgetSeconds": 1.6332803205159232,
+   "settingsMaxDepth": 4,
+   "targetElo": 1495
+  },
+  {
+   "budgetSeconds": 0.7498236206596021,
+   "candidateLimit": 5,
+   "elo": 1502,
+   "level": 77,
+   "lossCaps": [
+    89.66666666666667,
+    94.59833333333333,
+    99.53000000000002,
+    105.448,
+    109.39333333333333
+   ],
+   "maxDepth": 4,
+   "maxLossCP": 89.66666666666667,
+   "mistakeChance": 0.18906666666666666,
+   "mistakeChances": [
+    0.15503466666666665,
+    0.17299599999999998,
+    0.19095733333333334,
+    0.21251093333333335,
+    0.22687999999999997
+   ],
+   "settingsBudgetSeconds": 1.6662747125768935,
+   "settingsMaxDepth": 4,
+   "targetElo": 1502
+  },
+  {
+   "budgetSeconds": 0.7647969658320927,
+   "candidateLimit": 5,
+   "elo": 1510,
+   "level": 78,
+   "lossCaps": [
+    88.33333333333333,
+    93.19166666666666,
+    98.05,
+    103.88,
+    107.76666666666665
+   ],
+   "maxDepth": 4,
+   "maxLossCP": 88.33333333333333,
+   "mistakeChance": 0.18533333333333332,
+   "mistakeChances": [
+    0.15197333333333332,
+    0.16957999999999998,
+    0.18718666666666667,
+    0.20831466666666668,
+    0.2224
+   ],
+   "settingsBudgetSeconds": 1.6995488129602059,
+   "settingsMaxDepth": 4,
+   "targetElo": 1510
+  },
+  {
+   "budgetSeconds": 0.7798956125627333,
+   "candidateLimit": 5,
+   "elo": 1518,
+   "level": 79,
+   "lossCaps": [
+    87.0,
+    91.785,
+    96.57000000000001,
+    102.312,
+    106.14
+   ],
+   "maxDepth": 4,
+   "maxLossCP": 87.0,
+   "mistakeChance": 0.1816,
+   "mistakeChances": [
+    0.148912,
+    0.166164,
+    0.18341600000000002,
+    0.20411840000000003,
+    0.21792
+   ],
+   "settingsBudgetSeconds": 1.7331013612505184,
+   "settingsMaxDepth": 4,
+   "targetElo": 1518
+  },
+  {
+   "budgetSeconds": 0.7951190033979163,
+   "candidateLimit": 5,
+   "elo": 1525,
+   "level": 80,
+   "lossCaps": [
+    85.83333333333333,
+    90.55416666666666,
+    95.275,
+    100.93999999999998,
+    104.71666666666665
+   ],
+   "maxDepth": 4,
+   "maxLossCP": 85.83333333333333,
+   "mistakeChance": 0.17833333333333334,
+   "mistakeChances": [
+    0.14623333333333333,
+    0.163175,
+    0.18011666666666667,
+    0.2004466666666667,
+    0.214
+   ],
+   "settingsBudgetSeconds": 1.7669311186620362,
+   "settingsMaxDepth": 4,
+   "targetElo": 1525
+  },
+  {
+   "budgetSeconds": 0.8104665903302141,
+   "candidateLimit": 5,
+   "elo": 1532,
+   "level": 81,
+   "lossCaps": [
+    84.66666666666667,
+    89.32333333333334,
+    93.98000000000002,
+    99.568,
+    103.29333333333334
+   ],
+   "maxDepth": 4,
+   "maxLossCP": 84.66666666666667,
+   "mistakeChance": 0.17506666666666668,
+   "mistakeChances": [
+    0.14355466666666666,
+    0.160186,
+    0.17681733333333335,
+    0.19677493333333337,
+    0.21008000000000002
+   ],
+   "settingsBudgetSeconds": 1.8010368674004757,
+   "settingsMaxDepth": 4,
+   "targetElo": 1532
+  },
+  {
+   "budgetSeconds": 0.8259378345231886,
+   "candidateLimit": 5,
+   "elo": 1540,
+   "level": 82,
+   "lossCaps": [
+    83.33333333333333,
+    87.91666666666666,
+    92.5,
+    97.99999999999999,
+    101.66666666666666
+   ],
+   "maxDepth": 4,
+   "maxLossCP": 83.33333333333333,
+   "mistakeChance": 0.17133333333333334,
+   "mistakeChances": [
+    0.14049333333333333,
+    0.15677,
+    0.17304666666666668,
+    0.1925786666666667,
+    0.2056
+   ],
+   "settingsBudgetSeconds": 1.8354174100515301,
+   "settingsMaxDepth": 4,
+   "targetElo": 1540
+  },
+  {
+   "budgetSeconds": 0.8415322060474876,
+   "candidateLimit": 5,
+   "elo": 1548,
+   "level": 83,
+   "lossCaps": [
+    82.0,
+    86.50999999999999,
+    91.02000000000001,
+    96.43199999999999,
+    100.03999999999999
+   ],
+   "maxDepth": 4,
+   "maxLossCP": 82.0,
+   "mistakeChance": 0.1676,
+   "mistakeChances": [
+    0.137432,
+    0.153354,
+    0.169276,
+    0.1883824,
+    0.20112
+   ],
+   "settingsBudgetSeconds": 1.8700715689944167,
+   "settingsMaxDepth": 4,
+   "targetElo": 1548
+  },
+  {
+   "budgetSeconds": 0.85,
+   "candidateLimit": 5,
+   "elo": 1555,
+   "level": 84,
+   "lossCaps": [
+    80.83333333333333,
+    85.27916666666665,
+    89.72500000000001,
+    95.05999999999999,
+    98.61666666666666
+   ],
+   "maxDepth": 4,
+   "maxLossCP": 80.83333333333333,
+   "mistakeChance": 0.16433333333333333,
+   "mistakeChances": [
+    0.13475333333333334,
+    0.150365,
+    0.16597666666666666,
+    0.1847106666666667,
+    0.1972
+   ],
+   "settingsBudgetSeconds": 1.9049981858391938,
+   "settingsMaxDepth": 4,
+   "targetElo": 1555
+  },
+  {
+   "budgetSeconds": 0.85,
+   "candidateLimit": 5,
+   "elo": 1562,
+   "level": 85,
+   "lossCaps": [
+    79.66666666666667,
+    84.04833333333333,
+    88.43,
+    93.688,
+    97.19333333333334
+   ],
+   "maxDepth": 4,
+   "maxLossCP": 79.66666666666667,
+   "mistakeChance": 0.16106666666666666,
+   "mistakeChances": [
+    0.13207466666666665,
+    0.14737599999999998,
+    0.16267733333333334,
+    0.18103893333333335,
+    0.19327999999999998
+   ],
+   "settingsBudgetSeconds": 1.9401961208866076,
+   "settingsMaxDepth": 4,
+   "targetElo": 1562
+  },
+  {
+   "budgetSeconds": 0.85,
+   "candidateLimit": 5,
+   "elo": 1570,
+   "level": 86,
+   "lossCaps": [
+    78.33333333333333,
+    82.64166666666665,
+    86.95,
+    92.11999999999999,
+    95.56666666666666
+   ],
+   "maxDepth": 4,
+   "maxLossCP": 78.33333333333333,
+   "mistakeChance": 0.15733333333333333,
+   "mistakeChances": [
+    0.1290133333333333,
+    0.14395999999999998,
+    0.15890666666666667,
+    0.17684266666666668,
+    0.1888
+   ],
+   "settingsBudgetSeconds": 1.9756642526093122,
+   "settingsMaxDepth": 4,
+   "targetElo": 1570
+  },
+  {
+   "budgetSeconds": 0.85,
+   "candidateLimit": 5,
+   "elo": 1578,
+   "level": 87,
+   "lossCaps": [
+    77.0,
+    81.235,
+    85.47000000000001,
+    90.55199999999999,
+    93.94
+   ],
+   "maxDepth": 4,
+   "maxLossCP": 77.0,
+   "mistakeChance": 0.15360000000000001,
+   "mistakeChances": [
+    0.125952,
+    0.140544,
+    0.15513600000000002,
+    0.17264640000000003,
+    0.18432
+   ],
+   "settingsBudgetSeconds": 2.0114014771533757,
+   "settingsMaxDepth": 4,
+   "targetElo": 1578
+  },
+  {
+   "budgetSeconds": 0.85,
+   "candidateLimit": 5,
+   "elo": 1585,
+   "level": 88,
+   "lossCaps": [
+    75.83333333333333,
+    80.00416666666666,
+    84.175,
+    89.17999999999999,
+    92.51666666666667
+   ],
+   "maxDepth": 4,
+   "maxLossCP": 75.83333333333333,
+   "mistakeChance": 0.15033333333333332,
+   "mistakeChances": [
+    0.12327333333333332,
+    0.13755499999999998,
+    0.15183666666666665,
+    0.16897466666666666,
+    0.18039999999999998
+   ],
+   "settingsBudgetSeconds": 2.047406707859059,
+   "settingsMaxDepth": 4,
+   "targetElo": 1585
+  },
+  {
+   "budgetSeconds": 0.85,
+   "candidateLimit": 5,
+   "elo": 1592,
+   "level": 89,
+   "lossCaps": [
+    74.66666666666667,
+    78.77333333333334,
+    82.88000000000001,
+    87.808,
+    91.09333333333333
+   ],
+   "maxDepth": 4,
+   "maxLossCP": 74.66666666666667,
+   "mistakeChance": 0.14706666666666668,
+   "mistakeChances": [
+    0.12059466666666667,
+    0.134566,
+    0.14853733333333335,
+    0.16530293333333337,
+    0.17648
+   ],
+   "settingsBudgetSeconds": 2.0836788747999044,
+   "settingsMaxDepth": 4,
+   "targetElo": 1592
+  },
+  {
+   "budgetSeconds": 0.85,
+   "candidateLimit": 5,
+   "elo": 1600,
+   "level": 90,
+   "lossCaps": [
+    73.33333333333334,
+    77.36666666666667,
+    81.40000000000002,
+    86.24000000000001,
+    89.46666666666668
+   ],
+   "maxDepth": 4,
+   "maxLossCP": 73.33333333333334,
+   "mistakeChance": 0.14333333333333334,
+   "mistakeChances": [
+    0.11753333333333334,
+    0.13115,
+    0.14476666666666668,
+    0.1611066666666667,
+    0.17200000000000001
+   ],
+   "settingsBudgetSeconds": 2.120216924339241,
+   "settingsMaxDepth": 5,
+   "targetElo": 1600
+  },
+  {
+   "budgetSeconds": 0.85,
+   "candidateLimit": 5,
+   "elo": 1620,
+   "level": 91,
+   "lossCaps": [
+    70.0,
+    73.85,
+    77.7,
+    82.32,
+    85.39999999999999
+   ],
+   "maxDepth": 4,
+   "maxLossCP": 70.0,
+   "mistakeChance": 0.134,
+   "mistakeChances": [
+    0.10988,
+    0.12261,
+    0.13534000000000002,
+    0.15061600000000003,
+    0.1608
+   ],
+   "settingsBudgetSeconds": 2.157019818703257,
+   "settingsMaxDepth": 5,
+   "targetElo": 1620
+  },
+  {
+   "budgetSeconds": 0.85,
+   "candidateLimit": 5,
+   "elo": 1640,
+   "level": 92,
+   "lossCaps": [
+    66.66666666666667,
+    70.33333333333333,
+    74.00000000000001,
+    78.4,
+    81.33333333333334
+   ],
+   "maxDepth": 4,
+   "maxLossCP": 66.66666666666667,
+   "mistakeChance": 0.12466666666666666,
+   "mistakeChances": [
+    0.10222666666666666,
+    0.11406999999999999,
+    0.12591333333333332,
+    0.14012533333333335,
+    0.14959999999999998
+   ],
+   "settingsBudgetSeconds": 2.194086535569851,
+   "settingsMaxDepth": 5,
+   "targetElo": 1640
+  },
+  {
+   "budgetSeconds": 0.85,
+   "candidateLimit": 5,
+   "elo": 1660,
+   "level": 93,
+   "lossCaps": [
+    63.666666666666664,
+    67.16833333333332,
+    70.67,
+    74.872,
+    77.67333333333333
+   ],
+   "maxDepth": 4,
+   "maxLossCP": 63.666666666666664,
+   "mistakeChance": 0.11666666666666667,
+   "mistakeChances": [
+    0.09566666666666666,
+    0.10675,
+    0.11783333333333333,
+    0.13113333333333335,
+    0.13999999999999999
+   ],
+   "settingsBudgetSeconds": 2.2314160676725066,
+   "settingsMaxDepth": 5,
+   "targetElo": 1660
+  },
+  {
+   "budgetSeconds": 0.85,
+   "candidateLimit": 5,
+   "elo": 1680,
+   "level": 94,
+   "lossCaps": [
+    61.0,
+    64.35499999999999,
+    67.71000000000001,
+    71.73599999999999,
+    74.42
+   ],
+   "maxDepth": 4,
+   "maxLossCP": 61.0,
+   "mistakeChance": 0.11,
+   "mistakeChances": [
+    0.09019999999999999,
+    0.10064999999999999,
+    0.1111,
+    0.12364000000000001,
+    0.132
+   ],
+   "settingsBudgetSeconds": 2.2690074224184857,
+   "settingsMaxDepth": 5,
+   "targetElo": 1680
+  },
+  {
+   "budgetSeconds": 0.85,
+   "candidateLimit": 4,
+   "elo": 1700,
+   "level": 95,
+   "lossCaps": [
+    58.333333333333336,
+    61.541666666666664,
+    64.75000000000001,
+    68.6,
+    71.16666666666667
+   ],
+   "maxDepth": 4,
+   "maxLossCP": 58.333333333333336,
+   "mistakeChance": 0.10333333333333333,
+   "mistakeChances": [
+    0.08473333333333333,
+    0.09455,
+    0.10436666666666666,
+    0.11614666666666668,
+    0.124
+   ],
+   "settingsBudgetSeconds": 2.306859621520684,
+   "settingsMaxDepth": 5,
+   "targetElo": 1700
+  },
+  {
+   "budgetSeconds": 0.85,
+   "candidateLimit": 4,
+   "elo": 1720,
+   "level": 96,
+   "lossCaps": [
+    55.666666666666664,
+    58.728333333333325,
+    61.790000000000006,
+    65.464,
+    67.91333333333333
+   ],
+   "maxDepth": 4,
+   "maxLossCP": 55.666666666666664,
+   "mistakeChance": 0.09666666666666666,
+   "mistakeChances": [
+    0.07926666666666667,
+    0.08844999999999999,
+    0.09763333333333334,
+    0.10865333333333334,
+    0.11599999999999999
+   ],
+   "settingsBudgetSeconds": 2.344971700642507,
+   "settingsMaxDepth": 5,
+   "targetElo": 1720
+  },
+  {
+   "budgetSeconds": 0.85,
+   "candidateLimit": 4,
+   "elo": 1740,
+   "level": 97,
+   "lossCaps": [
+    53.0,
+    55.915,
+    58.830000000000005,
+    62.327999999999996,
+    64.66
+   ],
+   "maxDepth": 4,
+   "maxLossCP": 53.0,
+   "mistakeChance": 0.09,
+   "mistakeChances": [
+    0.07379999999999999,
+    0.08234999999999999,
+    0.0909,
+    0.10116,
+    0.108
+   ],
+   "settingsBudgetSeconds": 2.3833427090551855,
+   "settingsMaxDepth": 5,
+   "targetElo": 1740
+  },
+  {
+   "budgetSeconds": 0.85,
+   "candidateLimit": 4,
+   "elo": 1760,
+   "level": 98,
+   "lossCaps": [
+    50.333333333333336,
+    53.10166666666667,
+    55.870000000000005,
+    59.192,
+    61.406666666666666
+   ],
+   "maxDepth": 4,
+   "maxLossCP": 50.333333333333336,
+   "mistakeChance": 0.08333333333333334,
+   "mistakeChances": [
+    0.06833333333333334,
+    0.07625,
+    0.08416666666666668,
+    0.09366666666666669,
+    0.1
+   ],
+   "settingsBudgetSeconds": 2.421971709306968,
+   "settingsMaxDepth": 6,
+   "targetElo": 1760
+  },
+  {
+   "budgetSeconds": 0.85,
+   "candidateLimit": 4,
+   "elo": 1780,
+   "level": 99,
+   "lossCaps": [
+    47.666666666666664,
+    50.28833333333333,
+    52.910000000000004,
+    56.056,
+    58.15333333333333
+   ],
+   "maxDepth": 4,
+   "maxLossCP": 47.666666666666664,
+   "mistakeChance": 0.07666666666666666,
+   "mistakeChances": [
+    0.06286666666666665,
+    0.07014999999999999,
+    0.07743333333333333,
+    0.08617333333333334,
+    0.09199999999999998
+   ],
+   "settingsBudgetSeconds": 2.460857776903658,
+   "settingsMaxDepth": 6,
+   "targetElo": 1780
+  },
+  {
+   "budgetSeconds": 0.85,
+   "candidateLimit": 4,
+   "elo": 1800,
+   "level": 100,
+   "lossCaps": [
+    45.0,
+    47.474999999999994,
+    49.95,
+    52.919999999999995,
+    54.9
+   ],
+   "maxDepth": 4,
+   "maxLossCP": 45.0,
+   "mistakeChance": 0.07,
+   "mistakeChances": [
+    0.0574,
+    0.06405,
+    0.07070000000000001,
+    0.07868000000000001,
+    0.084
+   ],
+   "settingsBudgetSeconds": 2.5,
+   "settingsMaxDepth": 6,
+   "targetElo": 1800
+  },
+  {
+   "budgetSeconds": 0.12,
+   "candidateLimit": 8,
+   "elo": 362,
+   "level": 0.5,
+   "lossCaps": [
+    450.0,
+    474.75,
+    499.50000000000006,
+    529.1999999999999,
+    549.0
+   ],
+   "maxDepth": 2,
+   "maxLossCP": 450.0,
+   "mistakeChance": 0.74,
+   "mistakeChances": [
+    0.6068,
+    0.6770999999999999,
+    0.7474,
+    0.83176,
+    0.85
+   ],
+   "settingsBudgetSeconds": 0.12,
+   "settingsMaxDepth": 2,
+   "targetElo": 350
+  },
+  {
+   "budgetSeconds": 0.12,
+   "candidateLimit": 8,
+   "elo": 388,
+   "level": 1.5,
+   "lossCaps": [
+    434.2857142857143,
+    458.1714285714285,
+    482.0571428571429,
+    510.71999999999997,
+    529.8285714285714
+   ],
+   "maxDepth": 2,
+   "maxLossCP": 434.2857142857143,
+   "mistakeChance": 0.7228571428571429,
+   "mistakeChances": [
+    0.5927428571428571,
+    0.6614142857142856,
+    0.7300857142857143,
+    0.8124914285714286,
+    0.85
+   ],
+   "settingsBudgetSeconds": 0.12374348803961326,
+   "settingsMaxDepth": 2,
+   "targetElo": 400
+  },
+  {
+   "budgetSeconds": 0.12,
+   "candidateLimit": 7,
+   "elo": 662,
+   "level": 12.5,
+   "lossCaps": [
+    355.7142857142857,
+    375.2785714285714,
+    394.8428571428572,
+    418.32,
+    433.9714285714286
+   ],
+   "maxDepth": 2,
+   "maxLossCP": 355.7142857142857,
+   "mistakeChance": 0.6371428571428571,
+   "mistakeChances": [
+    0.5224571428571428,
+    0.5829857142857142,
+    0.6435142857142857,
+    0.7161485714285715,
+    0.7645714285714286
+   ],
+   "settingsBudgetSeconds": 0.19198234869421515,
+   "settingsMaxDepth": 2,
+   "targetElo": 650
+  },
+  {
+   "budgetSeconds": 0.3303671290501721,
+   "candidateLimit": 6,
+   "elo": 1193,
+   "level": 44.5,
+   "lossCaps": [
+    153.5,
+    161.9425,
+    170.38500000000002,
+    180.516,
+    187.26999999999998
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 153.5,
+   "mistakeChance": 0.337,
+   "mistakeChances": [
+    0.27634,
+    0.308355,
+    0.34037,
+    0.37878800000000007,
+    0.40440000000000004
+   ],
+   "settingsBudgetSeconds": 0.7341491756670492,
+   "settingsMaxDepth": 3,
+   "targetElo": 1186
+  },
+  {
+   "budgetSeconds": 0.35139926653766385,
+   "candidateLimit": 6,
+   "elo": 1206,
+   "level": 45.5,
+   "lossCaps": [
+    147.0,
+    155.08499999999998,
+    163.17000000000002,
+    172.87199999999999,
+    179.34
+   ],
+   "maxDepth": 3,
+   "maxLossCP": 147.0,
+   "mistakeChance": 0.324,
+   "mistakeChances": [
+    0.26567999999999997,
+    0.29646,
+    0.32724000000000003,
+    0.36417600000000006,
+    0.3888
+   ],
+   "settingsBudgetSeconds": 0.7808872589725863,
+   "settingsMaxDepth": 3,
+   "targetElo": 1212
+  },
+  {
+   "budgetSeconds": 0.6485675966009897,
+   "candidateLimit": 6,
+   "elo": 1446,
+   "level": 69.5,
+   "lossCaps": [
+    98.75,
+    104.18124999999999,
+    109.61250000000001,
+    116.13,
+    120.475
+   ],
+   "maxDepth": 4,
+   "maxLossCP": 98.75,
+   "mistakeChance": 0.21250000000000002,
+   "mistakeChances": [
+    0.17425000000000002,
+    0.1944375,
+    0.21462500000000004,
+    0.23885000000000003,
+    0.255
+   ],
+   "settingsBudgetSeconds": 1.4412613257799771,
+   "settingsMaxDepth": 4,
+   "targetElo": 1450
+  },
+  {
+   "budgetSeconds": 0.85,
+   "candidateLimit": 4,
+   "elo": 1790,
+   "level": 99.5,
+   "lossCaps": [
+    45.0,
+    47.474999999999994,
+    49.95,
+    52.919999999999995,
+    54.9
+   ],
+   "maxDepth": 4,
+   "maxLossCP": 45.0,
+   "mistakeChance": 0.07,
+   "mistakeChances": [
+    0.0574,
+    0.06405,
+    0.07070000000000001,
+    0.07868000000000001,
+    0.084
+   ],
+   "settingsBudgetSeconds": 2.5,
+   "settingsMaxDepth": 6,
+   "targetElo": 1800
+  },
+  {
+   "budgetSeconds": 0.12,
+   "candidateLimit": 8,
+   "elo": 350,
+   "level": -5,
+   "lossCaps": [
+    450.0,
+    474.75,
+    499.50000000000006,
+    529.1999999999999,
+    549.0
+   ],
+   "maxDepth": 2,
+   "maxLossCP": 450.0,
+   "mistakeChance": 0.74,
+   "mistakeChances": [
+    0.6068,
+    0.6770999999999999,
+    0.7474,
+    0.83176,
+    0.85
+   ],
+   "settingsBudgetSeconds": 0.12,
+   "settingsMaxDepth": 2,
+   "targetElo": 350
+  },
+  {
+   "budgetSeconds": 0.85,
+   "candidateLimit": 4,
+   "elo": 1800,
+   "level": 140,
+   "lossCaps": [
+    45.0,
+    47.474999999999994,
+    49.95,
+    52.919999999999995,
+    54.9
+   ],
+   "maxDepth": 4,
+   "maxLossCP": 45.0,
+   "mistakeChance": 0.07,
+   "mistakeChances": [
+    0.0574,
+    0.06405,
+    0.07070000000000001,
+    0.07868000000000001,
+    0.084
+   ],
+   "settingsBudgetSeconds": 2.5,
+   "settingsMaxDepth": 6,
+   "targetElo": 1800
+  }
+ ],
+ "complexities": [
+  0.0,
+  0.25,
+  0.5,
+  0.8,
+  1.0
+ ],
+ "generator": "scripts/cpu_policy_parity_corpus.py",
+ "positions": [
+  {
+   "complexity": 0.0375,
+   "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+  },
+  {
+   "complexity": 0.6759136212624586,
+   "fen": "r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4"
+  },
+  {
+   "complexity": 0.0,
+   "fen": "4k3/8/8/8/8/8/4P3/4K3 w - - 0 1"
+  },
+  {
+   "complexity": 0.12321428571428572,
+   "fen": "6k1/5ppp/8/8/8/8/5PPP/3R2K1 w - - 0 1"
+  },
+  {
+   "complexity": 0.6404761904761905,
+   "fen": "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"
+  },
+  {
+   "complexity": 0.32653061224489804,
+   "fen": "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1"
+  },
+  {
+   "complexity": 0.5402701465201465,
+   "fen": "rnbqkbnr/ppp2ppp/8/3pp3/4P3/5Q2/PPPP1PPP/RNB1KBNR w KQkq - 0 3"
+  },
+  {
+   "complexity": 0.25,
+   "fen": "7k/8/8/8/8/8/6q1/7K w - - 0 1"
+  },
+  {
+   "complexity": 0.5412253694581282,
+   "fen": "r1b1kbnr/pp1np1pp/3p1P2/qNp5/P1P5/8/1PQP1PPP/R1B1KBNR b KQkq - 4 8"
+  },
+  {
+   "complexity": 0.4680672268907563,
+   "fen": "rn1qkBnr/pb1p2p1/8/4pp1p/2p1P3/1P1P4/P2N1PPP/R2QKBNR b KQkq - 0 8"
+  },
+  {
+   "complexity": 0.6017857142857144,
+   "fen": "2bqkB1r/rppp1p1p/p3p3/5n2/1P1n4/1P1P1P1P/P2NP1P1/R2QKBNR b KQk - 0 11"
+  },
+  {
+   "complexity": 0.5402701465201465,
+   "fen": "1nbq2kr/1p1p3p/r1p1pp1b/p7/Q1PP2P1/2N4n/PP2PPB1/RNBK2R1 w - - 2 14"
+  },
+  {
+   "complexity": 0.5261341698841699,
+   "fen": "1nb1k3/rppq1prp/8/p1bPpnPQ/3P3P/1P4P1/P1P3B1/RNB2KNR w - - 5 13"
+  },
+  {
+   "complexity": 0.2850677339901478,
+   "fen": "rnb1k1n1/pp1qb1p1/2p1p3/3p1p1r/Q4P1p/PPPP3N/3NP1PP/R1B1KB1R w Qq - 3 14"
+  },
+  {
+   "complexity": 0.5755472350230415,
+   "fen": "rnbk1bnr/1p1p1pp1/p6p/P1p4q/4pP2/1P1R3P/2PPPKP1/1NBQ1BNR b - - 0 11"
+  },
+  {
+   "complexity": 0.27916666666666673,
+   "fen": "r1b1kbn1/p1p1pp1r/np4pp/4p3/1P4PP/N1P5/PB1NKP1R/R2Q1B2 b - - 0 13"
+  },
+  {
+   "complexity": 0.4032943349753695,
+   "fen": "r2k1b1r/p1Nbp2p/n2pBnp1/8/3PPp2/Pp3N2/2PB1PPP/2RQK2R b K - 6 17"
+  },
+  {
+   "complexity": 0.38358990147783256,
+   "fen": "rn2kbr1/p4p1p/1ppp1qpn/2Q1p3/P3N3/1P1PP3/2P2P1P/R1B1KBR1 b q - 0 13"
+  },
+  {
+   "complexity": 0.49345238095238103,
+   "fen": "qnb1k2r/1p1p3p/5Q1b/1rPn2p1/pPP5/N3N2P/P3PPP1/R1BK1B1R b k - 0 18"
+  },
+  {
+   "complexity": 0.25,
+   "fen": "rnb2b1r/pp1kp3/5p2/6pp/1P4n1/P1p1P2P/2PP1P2/1NBQ1RKq w - - 1 19"
+  },
+  {
+   "complexity": 0.3773809523809524,
+   "fen": "rn2q1n1/2pk3r/2bb1p1p/pp2pP2/PP2p3/R2PP1Pp/2P1BK2/2BQ2NR b - - 0 17"
+  },
+  {
+   "complexity": 0.01875,
+   "fen": "rnbqk1nr/ppppbppp/4p3/8/8/P6N/1PPPPPPP/RNBQKB1R w KQkq - 1 3"
+  },
+  {
+   "complexity": 0.0375,
+   "fen": "r1bqkbnr/ppppp1pp/4np2/8/4P3/3P4/PPPNBPPP/R1BQ1KNR b kq - 3 5"
+  },
+  {
+   "complexity": 0.45000000000000007,
+   "fen": "rn2kr2/5Q1p/5P1n/p1pPp3/p4B2/3P4/RP3PP1/1N2KBN1 b q - 0 22"
+  },
+  {
+   "complexity": 0.46964285714285714,
+   "fen": "rnbqk1nr/ppppp2p/5pp1/6b1/6P1/2N1PQ2/PPPP1P1P/R1B1KBNR w KQkq - 0 5"
+  },
+  {
+   "complexity": 0.49530075187969924,
+   "fen": "r1bb4/p1n2kpr/3p2n1/1ppPp2p/6P1/1P1K1P2/PQP1PBB1/R5NR w - - 3 19"
+  },
+  {
+   "complexity": 0.4643581081081081,
+   "fen": "r1bqkbnr/ppp1p2p/B2p1p2/8/P2P1Pp1/1P2P3/1BP3PP/RN1QK1NR w KQkq - 0 8"
+  },
+  {
+   "complexity": 0.630639097744361,
+   "fen": "r3kbqr/1R5p/p1n2pb1/4p3/2N2Pn1/P1PP3B/2P1P2P/2BQ1K1R w - - 0 20"
+  },
+  {
+   "complexity": 0.6267857142857143,
+   "fen": "r5nr/p1q2k2/n1b5/1pbpp1pp/1P1PB2P/4BPP1/P1N1P3/R2QK1NR b KQ - 0 21"
+  },
+  {
+   "complexity": 0.7453983516483518,
+   "fen": "rnbqkb2/p1pppp2/2r5/1N3N1p/1PnP4/P2Q1Pp1/3BP1PP/R3KBR1 w Qq - 0 16"
+  },
+  {
+   "complexity": 0.4024621212121212,
+   "fen": "rnbq1bnr/p1ppkpp1/1p2p3/7p/6P1/1P2P3/P1PP1PBP/RNBQK1NR w KQ - 1 5"
+  },
+  {
+   "complexity": 0.5018165024630542,
+   "fen": "r1bk1br1/1p6/2nP4/2p1ppPp/p7/PPP3P1/2KNP1P1/R2N1BB1 b - - 2 27"
+  },
+  {
+   "complexity": 0.219515306122449,
+   "fen": "1n1q1b1r/rb1pk1pp/p1p1p2B/1pPP1p2/1P6/7N/P1K1PPPP/R2N1BR1 b - - 4 16"
+  },
+  {
+   "complexity": 0.5125000000000001,
+   "fen": "2b1k2r/p2p1p1p/np1PpQ2/3Bb1P1/2p3n1/2P1P1P1/NP6/R1B1KR2 b Qk - 2 28"
+  },
+  {
+   "complexity": 0.41547619047619044,
+   "fen": "rn1q1bnr/p3pk1p/2p2p2/1p1p2P1/1P1P2bp/P1P4N/1R1NPPBR/2BQK3 w - - 7 18"
+  },
+  {
+   "complexity": 0.3697802197802198,
+   "fen": "rn1bk2r/2pb1p2/p4n2/1P1p3p/PP1pP1pP/1B3N2/1B3PP1/RN1QK2R b KQkq - 2 18"
+  },
+  {
+   "complexity": 0.582890365448505,
+   "fen": "r2qkbr1/ppp2p2/2np3p/4p1pn/PPb2NPQ/4P3/3P1P1P/RNB1K1R1 b Qq - 0 13"
+  },
+  {
+   "complexity": 0.45357142857142857,
+   "fen": "r2qkbnr/p1ppppp1/5B1p/1p2n3/3P4/5bP1/PPP1PP1P/RN1QKBNR w kq - 2 7"
+  },
+  {
+   "complexity": 0.35,
+   "fen": "r3kbnr/p2qp3/8/3P1PpB/pP5P/2N5/5P2/R1QbK1NR b Kkq - 0 24"
+  },
+  {
+   "complexity": 0.49623015873015874,
+   "fen": "6nr/rqpkp1b1/1p1p1p1p/pPn3N1/4PPbQ/P5P1/2PP2BP/RNBR2K1 b - - 0 20"
+  },
+  {
+   "complexity": 0.4370941558441559,
+   "fen": "rnb1k1nr/1ppp1pp1/8/p1b4p/2Qp2P1/P1N2P2/1PPKP1B1/R1B3NR b - - 5 11"
+  },
+  {
+   "complexity": 0.39642857142857146,
+   "fen": "rn1qkbnr/ppp1pppp/8/3p4/4P3/1PP4b/P2P1PPP/RNBQKBNR w KQkq - 1 4"
+  },
+  {
+   "complexity": 0.645280612244898,
+   "fen": "rn1N1b2/p1p1p2k/b2p1np1/3P1p1p/P6P/1pP1rPP1/1P3KB1/R3Q1NR b - - 0 24"
+  },
+  {
+   "complexity": 0.33806216931216937,
+   "fen": "4rk1r/3pbn1p/p1b2P2/2p3pP/4BP1P/P3P3/R1P1Q3/2BK2NR b - - 0 30"
+  },
+  {
+   "complexity": 0.4370941558441559,
+   "fen": "rqb1kbnr/1p1pppp1/n6p/p1p5/1PN1P3/7N/P1PP1PPP/R1BQKBR1 w Qkq - 0 8"
+  },
+  {
+   "complexity": 0.7,
+   "fen": "rnbqkb2/ppppp2r/B7/1P2np1p/4P3/2NP1P2/PBP3pP/1R1QK2R b Kq - 0 11"
+  },
+  {
+   "complexity": 0.482015306122449,
+   "fen": "rnb1k2r/1p3pbp/p1n1p3/2pp4/1PP2Pp1/PQN1P1KP/3PB3/RNB4R b k - 1 19"
+  },
+  {
+   "complexity": 0.5839285714285715,
+   "fen": "2b1kb1r/3npp1p/r1p4n/2qp4/pP1P1pPP/KP2P3/R1N5/4BBNR b - - 1 28"
+  },
+  {
+   "complexity": 0.7024916943521595,
+   "fen": "2b2bnr/3p1k2/rp2qp2/pP4p1/2p1PPp1/2PP4/P1n1K1PP/RN1Q1B1R b - - 1 23"
+  },
+  {
+   "complexity": 0.591468253968254,
+   "fen": "rn2kb2/1p2pp2/1qppr2p/p7/1nPPb3/BP1QP1PB/P3NP1P/2KR1N1R b q - 5 18"
+  },
+  {
+   "complexity": 0.2553571428571429,
+   "fen": "r1bqkb1r/p1ppp2p/7n/1p1P1p2/1P1n2p1/B3PP2/P1P1Q1PP/RN2KBNR w KQkq - 2 8"
+  },
+  {
+   "complexity": 0.35,
+   "fen": "rnbqkb1r/pppppppp/8/8/P7/2N1PnP1/1PP2P1P/R1BQKBNR w KQkq - 1 5"
+  },
+  {
+   "complexity": 0.6456766917293233,
+   "fen": "r1bb4/pp1R4/n5kr/2pK2p1/1PB1N1p1/4P3/P1P3P1/R7 w - - 0 31"
+  },
+  {
+   "complexity": 0.71875,
+   "fen": "rQ6/p2k1p2/1qp1p3/1p1p2p1/PbPP2bP/B3PP1R/n3K3/R4BN1 b - - 2 23"
+  },
+  {
+   "complexity": 0.4357142857142857,
+   "fen": "rn1qkbnr/1bpppp2/p5p1/7p/Q1P3P1/1p5B/PP1PPP1P/RNB1K1NR w KQkq - 0 8"
+  },
+  {
+   "complexity": 0.16828416149068326,
+   "fen": "rnbqkbnr/1pp1pppp/3p4/p7/8/N1P5/PP1PPPPP/R1BQKBNR w KQkq - 0 3"
+  },
+  {
+   "complexity": 0.4983418367346939,
+   "fen": "r1b1k3/1p1pq2r/n6b/pKpPpp1p/P5pP/RP2NP1R/2PB2P1/3Q1BNn b - - 3 19"
+  },
+  {
+   "complexity": 0.437202380952381,
+   "fen": "r1b2k1r/p2pn1p1/1p1Qp3/1P2Pp1p/5P1P/3n1NP1/PBP5/2RK1BR1 b - - 5 24"
+  },
+  {
+   "complexity": 0.60625,
+   "fen": "1nb2b1r/1p1pn1p1/r1pk3p/P2Nppq1/6P1/P4P2/2PP1KBP/RNBQ3R b - - 0 16"
+  },
+  {
+   "complexity": 0.24375,
+   "fen": "rnbqkbnr/pp1p1ppp/4p3/8/2pP1BP1/2P5/PP2PP1P/RN1QKBNR b KQkq - 0 4"
+  },
+  {
+   "complexity": 0.4050751879699248,
+   "fen": "rnb1kbnr/p1p3pp/4p3/3p1p2/P6R/2P2N2/3PPKP1/RNBQ1B2 w kq - 0 11"
+  },
+  {
+   "complexity": 0.7267857142857143,
+   "fen": "r2qk2r/p1pp3p/b1n3p1/1P1npp2/1bK1P2P/2N2P2/1PPP2PR/R1BQ1BN1 b kq - 1 11"
+  },
+  {
+   "complexity": 0.25,
+   "fen": "1r2kbr1/1p1Bpppn/5qNB/p2P3n/P6P/R2P4/3Qb1K1/1N4R1 b - - 2 28"
+  },
+  {
+   "complexity": 0.4008403361344538,
+   "fen": "rn2kbnr/p3p2p/2qpb1p1/1pp2p2/3PPP1P/2P5/1PN3PN/R1BK1B1R b kq - 5 18"
+  },
+  {
+   "complexity": 0.4523580586080586,
+   "fen": "1rbqkbn1/2pp1p1r/6p1/1p2p3/1PP4p/1Q6/1B1PPPPP/RN2KBNR w K - 0 17"
+  },
+  {
+   "complexity": 0.6982142857142857,
+   "fen": "rq3k1r/pp5p/3p2p1/2n1p1bP/3Q1P2/PBPP1b1N/1P5R/RNB1K3 b Q - 0 17"
+  },
+  {
+   "complexity": 0.13905075187969926,
+   "fen": "rnbqkbnr/pp1pp2p/2p2ppQ/8/4P3/1P6/P1PP1PPP/RNB1KBNR b KQkq - 1 4"
+  },
+  {
+   "complexity": 0.7509398496240602,
+   "fen": "1r1Bq1n1/2p4r/pp2p2p/5kp1/1bnPp2P/3BP1P1/P2N3R/R2QK1N1 w Q - 0 22"
+  },
+  {
+   "complexity": 0.2553571428571429,
+   "fen": "3rk1nr/p1pp4/b3p3/1p2N2p/1P1bPP1P/B1PB2P1/P2P4/RN2K1R1 w Qk - 1 20"
+  },
+  {
+   "complexity": 0.2895408163265306,
+   "fen": "rnb1k1nr/pp1ppp1p/2q4b/2p3p1/2P1P3/3P1PP1/PP1N3P/R1BQKBNR b KQkq - 0 6"
+  },
+  {
+   "complexity": 0.4798021235521236,
+   "fen": "1nbq1b1r/rpppk3/p3p2n/P4pp1/3P4/1R2PQ1P/1PPN1PP1/2B1KBNR w K - 5 12"
+  },
+  {
+   "complexity": 0.8309523809523811,
+   "fen": "rnb1kbr1/2p2p2/5q1p/p1Ppp1NP/1p4P1/8/PP1Bp3/1R2KB1R b K - 1 20"
+  },
+  {
+   "complexity": 0.7901360544217688,
+   "fen": "2b1kbn1/prppq1r1/6p1/1pB2N1p/PP1P1P2/7P/R2PQ1K1/1N3BR1 w - - 1 26"
+  },
+  {
+   "complexity": 0.703968253968254,
+   "fen": "rnb2b1r/2pp1k2/6pp/1p2p3/p2N1PP1/q1P1n3/PP1P3P/R1B1KB1R b KQ - 1 13"
+  },
+  {
+   "complexity": 0.30477216748768476,
+   "fen": "r1bqk1nr/pppnbpp1/4p3/3p2Bp/3P3P/6P1/PPP1PP2/RNQ1KBNR b KQkq - 3 6"
+  },
+  {
+   "complexity": 0.075,
+   "fen": "rnbqkb1r/pppp1ppp/4pn2/8/7P/2P5/PP1PPPP1/RNBQKBNR w KQkq - 0 3"
+  },
+  {
+   "complexity": 0.6821210801393729,
+   "fen": "1rq3b1/p1Q1p1br/2n2k1n/1Pp4P/P6P/R1NpPPK1/2PP3N/2B2B1R b - - 0 28"
+  },
+  {
+   "complexity": 0.6757518796992481,
+   "fen": "r1b1k2r/p3b2p/1qp1BpP1/1p6/1P6/3P2P1/2Pn3P/R1BQK1NR b KQk - 2 22"
+  },
+  {
+   "complexity": 0.7267857142857143,
+   "fen": "rnb1k2r/p2p1pp1/1pp3n1/2b1P2p/6Qq/3PP3/PPPK2PP/RNB2BNR b kq - 1 10"
+  },
+  {
+   "complexity": 0.6361344537815127,
+   "fen": "rn4nr/pp1kp1b1/2q1p3/2pP2Pp/4P3/P1p2N2/1R3PBP/1NB1K2R w - - 1 22"
+  },
+  {
+   "complexity": 0.35833333333333334,
+   "fen": "2b1qbnr/rppk2p1/4p2p/p2p2P1/4P3/3B4/PPPPQ2P/RNB1K1NR w KQ - 3 15"
+  },
+  {
+   "complexity": 0.42321428571428577,
+   "fen": "rn1k1brQ/pb2pp2/6p1/2n2P2/7p/N6P/P2PPNP1/4KB1R b - - 0 27"
+  },
+  {
+   "complexity": 0.28186813186813187,
+   "fen": "r1bqkbnr/p1pp3p/4pp2/n1P3p1/Pp1P2P1/1PN1B3/4PP1P/R2QKBNR b KQkq - 0 8"
+  },
+  {
+   "complexity": 0.14343944099378883,
+   "fen": "rnbqkb1r/3pnp1p/p7/2p1P1p1/1pP3P1/P3P1KB/1P1P3P/RNBQ2NR w kq - 3 11"
+  },
+  {
+   "complexity": 0.810248447204969,
+   "fen": "1r4n1/p1p1k2r/3p1pPb/3Pp2p/8/NPq4P/RP1P2PR/2B1K1N1 b - - 0 23"
+  },
+  {
+   "complexity": 0.2379120879120879,
+   "fen": "1r1qkb2/1b1p1p1r/np2p3/p1p3pp/P1P2P1R/NP1P1P2/R1Q1P3/2BK1B2 w - - 0 17"
+  },
+  {
+   "complexity": 0.8500000000000001,
+   "fen": "r1b2b1r/pp1ppkpp/n4n2/2p2p2/2P1Pq2/P2P3N/RP4PP/1NBQKBR1 b - - 1 12"
+  },
+  {
+   "complexity": 0.4032943349753695,
+   "fen": "rn2k2r/bp2n1p1/2p4p/p7/PPpPppbq/N1P2N2/5PP1/2R1QK1R w kq - 2 26"
+  },
+  {
+   "complexity": 0.11067176870748299,
+   "fen": "r1bqkbnr/1pppp1pp/8/p3np2/6P1/2N4P/PPPPPP2/1RBQKBNR w Kkq - 0 5"
+  },
+  {
+   "complexity": 0.39642857142857146,
+   "fen": "r1bqkr2/p1pp3p/n7/4ppp1/2P3PP/PQ1BPP2/1PK4R/RNB1b1N1 b q - 1 16"
+  },
+  {
+   "complexity": 0.6005639097744361,
+   "fen": "1n1qkbnr/1p2p1pp/1r2b3/2pP1pP1/1p6/P1p1BP1B/1NQ1P2P/R3K1NR w KQk - 3 17"
+  },
+  {
+   "complexity": 0.30119047619047623,
+   "fen": "rnbq2nr/ppp1k1b1/4p2p/1P1p1pp1/2PP4/N1B2N2/P3PPPP/R2QKB1R b KQ - 1 9"
+  },
+  {
+   "complexity": 0.19395604395604396,
+   "fen": "rnbqkb1r/p2pppp1/7p/1p1n4/P1p2P2/2P4P/1PQPP1P1/RNB1KBNR w KQkq - 1 7"
+  },
+  {
+   "complexity": 0.4983418367346939,
+   "fen": "3k2nr/p2p4/n4p1p/1pq5/P1p3P1/R1p2P1P/3B4/3K1BNR b - - 0 29"
+  },
+  {
+   "complexity": 0.25,
+   "fen": "3q1b2/1pp1kppr/B1P3b1/3p4/1r1P1B1p/P4nP1/1K2N2P/R6R w - - 0 28"
+  },
+  {
+   "complexity": 0.5473214285714286,
+   "fen": "1r2B1nr/kpp1N1bp/p2q1p2/P3n3/1P2P1p1/B2p1PPP/3P2K1/RQ4NR w - - 1 28"
+  },
+  {
+   "complexity": 0.7227272727272728,
+   "fen": "2b3nr/2Npk1b1/5ppp/1Q6/3n2P1/1p4K1/P3P2P/R4BNR w - - 2 25"
+  },
+  {
+   "complexity": 0.5855263157894737,
+   "fen": "r1b2r2/1p1n1kbp/p1pq4/P3P1p1/1PpP1NP1/3N4/R1P4P/4BKR1 b - - 3 28"
+  },
+  {
+   "complexity": 0.5855263157894737,
+   "fen": "r1b1k3/1p1n3r/4p1p1/2pP4/Pp3P2/1Pb1PP2/1B3K2/R2Q1BNR b - - 1 24"
+  },
+  {
+   "complexity": 0.26839285714285716,
+   "fen": "b3kb2/2p1p1r1/1p3p1n/p6p/P1qp1PpP/3PP1PR/1P1NK3/R1BQ2N1 w - - 2 23"
+  },
+  {
+   "complexity": 0.5597222222222222,
+   "fen": "2bkr3/2p1npb1/r3p2p/pp1n2p1/4q1BP/2pPP2N/PPQ1K1P1/RNB4R w - - 0 25"
+  },
+  {
+   "complexity": 0.6496862934362935,
+   "fen": "1nbqk2r/1pp3b1/3ppn1p/P3P1p1/PN4P1/R2K1p2/2rP1PBP/2BQ2NR b - - 3 16"
+  },
+  {
+   "complexity": 0.36924603174603177,
+   "fen": "r5nr/p2bbkpp/n2q1p2/1pppp3/5B1P/PQPP2N1/1P2PPP1/R3KBNR b KQ - 0 13"
+  },
+  {
+   "complexity": 0.2850677339901478,
+   "fen": "r1bqkbnr/2ppp1p1/ppn5/5p1p/Q1P5/PPN5/3PPPPP/R1B1KBNR w KQkq - 0 6"
+  },
+  {
+   "complexity": 0.7487012987012988,
+   "fen": "r5k1/p2q1r1p/3bpp2/3p2p1/Pp1pPPnP/1PN5/2PKQ1P1/2R2NBR b - - 1 25"
+  },
+  {
+   "complexity": 0.83125,
+   "fen": "rnbk1r2/q2p1pp1/1p2Q3/p6p/NbP1P1n1/N4B2/PP1B1P1P/R3K2R w KQ - 8 21"
+  },
+  {
+   "complexity": 0.46240763546798036,
+   "fen": "4Nbr1/4kpp1/1rp1p1Bp/pPn2P2/7P/P2p4/1P1PP3/R1B1Q1KR w - - 0 30"
+  },
+  {
+   "complexity": 0.39642857142857146,
+   "fen": "r1bqkb1r/3pp1p1/1pp1p2p/Q6n/8/PPP5/3PPPPP/RNB1KB1R w KQq - 0 13"
+  },
+  {
+   "complexity": 0.075,
+   "fen": "r1bqkbnr/pppp1ppp/4p3/7P/1n4P1/8/PPPPPP2/RNBQKBNR w KQkq - 1 4"
+  },
+  {
+   "complexity": 0.3174827188940092,
+   "fen": "rnbqkb1r/ppp1p2p/3p4/5pp1/P1PPn2P/R7/1P2PPP1/1NBQKBNR b Kkq - 1 6"
+  },
+  {
+   "complexity": 0.1769642857142857,
+   "fen": "r1bqkbnr/ppp1pppp/n2p4/8/6P1/2P5/PP1PPP1P/RNBQKBNR b KQkq - 0 3"
+  },
+  {
+   "complexity": 0.8500000000000001,
+   "fen": "rn2kb1r/ppp1ppp1/8/4Q2P/b3p3/N4q2/PPPK2P1/R1B2BNR b kq - 3 12"
+  },
+  {
+   "complexity": 0.30994897959183676,
+   "fen": "rnbqk1nr/p1pp1p1p/6pb/1p2p3/QPP5/7N/P2PPPPP/RNB1KB1R w KQkq - 0 5"
+  },
+  {
+   "complexity": 0.6960183397683398,
+   "fen": "2b5/r2p2qp/1bp2kr1/1Q1P1p2/pPP3PP/P7/2KNPNPR/R4B2 w - - 7 29"
+  },
+  {
+   "complexity": 0.5799744897959184,
+   "fen": "r1bqk3/p1ppb1p1/r5n1/1p3P1p/NP4n1/3P3N/P1PK1PPP/R1Q4R b q - 1 17"
+  },
+  {
+   "complexity": 0.5297619047619048,
+   "fen": "1n1k4/rpn2r2/p6p/PP1B1bq1/2pPpp2/2N4P/1RP3P1/2b2R1K w - - 1 30"
+  },
+  {
+   "complexity": 0.5352941176470588,
+   "fen": "r1bqkb1r/p1pppp1p/1p4p1/8/1nP1nP2/6PN/PP1PPR1P/RNBQKB2 b Qkq - 3 7"
+  },
+  {
+   "complexity": 0.15,
+   "fen": "rnbqkb1r/pp1p1ppp/2p1p2n/8/3P1PP1/8/PPP1P2P/RNBQKBNR w KQkq - 0 4"
+  },
+  {
+   "complexity": 0.6275703463203464,
+   "fen": "2k2bnr/5B1p/r3pqp1/1pp1N1N1/pPPp2QP/6P1/PB1P1P1R/R3K3 b - c3 0 23"
+  },
+  {
+   "complexity": 0.6907894736842106,
+   "fen": "rnb2br1/ppqkn1p1/2p1pp1Q/1B1P3p/8/4P1P1/PP1P1P1P/RNB1K1NR w KQ - 4 11"
+  },
+  {
+   "complexity": 0.47172619047619047,
+   "fen": "rn1q1rk1/pp3p1p/1b1Q4/4p1P1/1P4n1/1P4KP/P1N1P1PB/R4BNR b - - 0 19"
+  },
+  {
+   "complexity": 0.35076530612244905,
+   "fen": "3k2nr/1rpb3p/np2p3/3p2qP/Pp1PP1pN/N3b1R1/RBP2p2/5KQ1 w - - 4 26"
+  },
+  {
+   "complexity": 0.3168981481481482,
+   "fen": "rnb1kbnr/1p1ppp2/1qp3pp/pP6/P4P2/B6N/2PPP1PP/RN1QKB1R b KQkq - 1 6"
+  },
+  {
+   "complexity": 0.591468253968254,
+   "fen": "1rbq1knr/2p2p1p/pb2p3/1p1p2p1/PPNnP1P1/3P4/1RPN1P1P/2BQKBR1 b - - 0 13"
+  },
+  {
+   "complexity": 0.01875,
+   "fen": "rnbqkbnr/pppppp2/7p/6p1/4P3/8/PPPPNPPP/RNBQKBR1 b Qkq - 1 3"
+  },
+  {
+   "complexity": 0.4798021235521236,
+   "fen": "rn1q1b2/1pp1pp1r/pk3np1/7p/3Pp1b1/PP3Q1P/1BP1NPP1/RN2KB1R b Q - 1 13"
+  },
+  {
+   "complexity": 0.3347402597402598,
+   "fen": "rn1k1bn1/pb1p4/Bpp2p1r/2P3pp/QP2P1P1/P4N2/5PRP/RN2K3 b Q - 0 17"
+  },
+  {
+   "complexity": 0.5412253694581282,
+   "fen": "r2kq2r/2p4p/2n2p1n/p3p1pP/3p2b1/N1b1QPK1/PP1PP3/R1B2BNR w - - 0 21"
+  }
+ ],
+ "weights": [
+  {
+   "alternatives": [
+    20.0,
+    0.0,
+    -40.0,
+    -150.0,
+    -600.0
+   ],
+   "best": 35.0,
+   "complexity": 0.0,
+   "level": 0,
+   "losses": [
+    15.0,
+    35.0,
+    75.0,
+    185.0,
+    635.0
+   ],
+   "maximizing": true,
+   "weights": [
+    0.9492497594001752,
+    0.8855664539390455,
+    0.7707303812317476,
+    0.5260488966726874,
+    0.11026583894086653
+   ]
+  },
+  {
+   "alternatives": [
+    20.0,
+    0.0,
+    -40.0,
+    -150.0,
+    -600.0
+   ],
+   "best": 35.0,
+   "complexity": 0.6,
+   "level": 0,
+   "losses": [
+    15.0,
+    35.0,
+    75.0,
+    185.0,
+    635.0
+   ],
+   "maximizing": true,
+   "weights": [
+    0.9545617196082439,
+    0.8971726644296125,
+    0.7925379555394504,
+    0.5635288740025052,
+    0.13964860274274987
+   ]
+  },
+  {
+   "alternatives": [
+    20.0,
+    0.0,
+    -40.0,
+    -150.0,
+    -600.0
+   ],
+   "best": 35.0,
+   "complexity": 0.0,
+   "level": 0,
+   "losses": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    20.0,
+    0.0,
+    -40.0,
+    -150.0,
+    -600.0
+   ],
+   "best": 35.0,
+   "complexity": 0.6,
+   "level": 0,
+   "losses": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    -135.0,
+    -200.0,
+    -260.0,
+    -900.0
+   ],
+   "best": -120.0,
+   "complexity": 0.0,
+   "level": 0,
+   "losses": [
+    15.0,
+    80.0,
+    140.0,
+    780.0
+   ],
+   "maximizing": true,
+   "weights": [
+    0.9492497594001752,
+    0.7574651283969664,
+    0.6150134686871545,
+    0.06664779385646828
+   ]
+  },
+  {
+   "alternatives": [
+    -135.0,
+    -200.0,
+    -260.0,
+    -900.0
+   ],
+   "best": -120.0,
+   "complexity": 0.6,
+   "level": 0,
+   "losses": [
+    15.0,
+    80.0,
+    140.0,
+    780.0
+   ],
+   "maximizing": true,
+   "weights": [
+    0.9545617196082439,
+    0.7803475567105743,
+    0.6478942581726621,
+    0.0890858504933382
+   ]
+  },
+  {
+   "alternatives": [
+    -135.0,
+    -200.0,
+    -260.0,
+    -900.0
+   ],
+   "best": -120.0,
+   "complexity": 0.0,
+   "level": 0,
+   "losses": [
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    -135.0,
+    -200.0,
+    -260.0,
+    -900.0
+   ],
+   "best": -120.0,
+   "complexity": 0.6,
+   "level": 0,
+   "losses": [
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    880.0,
+    700.0,
+    300.0
+   ],
+   "best": 900.0,
+   "complexity": 0.0,
+   "level": 0,
+   "losses": [
+    20.0,
+    200.0,
+    600.0
+   ],
+   "maximizing": true,
+   "weights": [
+    0.9329119603871474,
+    0.4993517885992762,
+    0.12451447144412296
+   ]
+  },
+  {
+   "alternatives": [
+    880.0,
+    700.0,
+    300.0
+   ],
+   "best": 900.0,
+   "complexity": 0.6,
+   "level": 0,
+   "losses": [
+    20.0,
+    200.0,
+    600.0
+   ],
+   "maximizing": true,
+   "weights": [
+    0.9398791571044939,
+    0.5379230910167287,
+    0.1556540990150798
+   ]
+  },
+  {
+   "alternatives": [
+    880.0,
+    700.0,
+    300.0
+   ],
+   "best": 900.0,
+   "complexity": 0.0,
+   "level": 0,
+   "losses": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    880.0,
+    700.0,
+    300.0
+   ],
+   "best": 900.0,
+   "complexity": 0.6,
+   "level": 0,
+   "losses": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    0.0,
+    -5.0,
+    -45.0,
+    -90.0,
+    -175.0,
+    -340.0,
+    -450.0
+   ],
+   "best": 0.0,
+   "complexity": 0.0,
+   "level": 0,
+   "losses": [
+    0.0,
+    5.0,
+    45.0,
+    90.0,
+    175.0,
+    340.0,
+    450.0
+   ],
+   "maximizing": true,
+   "weights": [
+    1.0,
+    0.9827887246204291,
+    0.8553453273074225,
+    0.7316156289466418,
+    0.5446352965900356,
+    0.3071080756015755,
+    0.2096113871510978
+   ]
+  },
+  {
+   "alternatives": [
+    0.0,
+    -5.0,
+    -45.0,
+    -90.0,
+    -175.0,
+    -340.0,
+    -450.0
+   ],
+   "best": 0.0,
+   "complexity": 0.6,
+   "level": 0,
+   "losses": [
+    0.0,
+    5.0,
+    45.0,
+    90.0,
+    175.0,
+    340.0,
+    450.0
+   ],
+   "maximizing": true,
+   "weights": [
+    1.0,
+    0.9846185299471513,
+    0.8697852572299324,
+    0.7565263936945397,
+    0.5812730178734146,
+    0.3485172820082289,
+    0.2478109094053787
+   ]
+  },
+  {
+   "alternatives": [
+    0.0,
+    -5.0,
+    -45.0,
+    -90.0,
+    -175.0,
+    -340.0,
+    -450.0
+   ],
+   "best": 0.0,
+   "complexity": 0.0,
+   "level": 0,
+   "losses": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    0.0,
+    -5.0,
+    -45.0,
+    -90.0,
+    -175.0,
+    -340.0,
+    -450.0
+   ],
+   "best": 0.0,
+   "complexity": 0.6,
+   "level": 0,
+   "losses": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    20.0,
+    0.0,
+    -40.0,
+    -150.0,
+    -600.0
+   ],
+   "best": 35.0,
+   "complexity": 0.0,
+   "level": 20,
+   "losses": [
+    15.0,
+    35.0,
+    75.0,
+    185.0,
+    635.0
+   ],
+   "maximizing": true,
+   "weights": [
+    0.8974907566487318,
+    0.776968294422165,
+    0.5823041994359377,
+    0.2634529957192761,
+    0.010270762202165294
+   ]
+  },
+  {
+   "alternatives": [
+    20.0,
+    0.0,
+    -40.0,
+    -150.0,
+    -600.0
+   ],
+   "best": 35.0,
+   "complexity": 0.6,
+   "level": 20,
+   "losses": [
+    15.0,
+    35.0,
+    75.0,
+    185.0,
+    635.0
+   ],
+   "maximizing": true,
+   "weights": [
+    0.9079511563902779,
+    0.7982626341931681,
+    0.6170387385304057,
+    0.3039279647716115,
+    0.01677433240180722
+   ]
+  },
+  {
+   "alternatives": [
+    20.0,
+    0.0,
+    -40.0,
+    -150.0,
+    -600.0
+   ],
+   "best": 35.0,
+   "complexity": 0.0,
+   "level": 20,
+   "losses": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    20.0,
+    0.0,
+    -40.0,
+    -150.0,
+    -600.0
+   ],
+   "best": 35.0,
+   "complexity": 0.6,
+   "level": 20,
+   "losses": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    -135.0,
+    -200.0,
+    -260.0,
+    -900.0
+   ],
+   "best": -120.0,
+   "complexity": 0.0,
+   "level": 20,
+   "losses": [
+    15.0,
+    80.0,
+    140.0,
+    780.0
+   ],
+   "maximizing": true,
+   "weights": [
+    0.8974907566487318,
+    0.5616855486914252,
+    0.3644292170615726,
+    0.003610432170758625
+   ]
+  },
+  {
+   "alternatives": [
+    -135.0,
+    -200.0,
+    -260.0,
+    -900.0
+   ],
+   "best": -120.0,
+   "complexity": 0.6,
+   "level": 20,
+   "losses": [
+    15.0,
+    80.0,
+    140.0,
+    780.0
+   ],
+   "maximizing": true,
+   "weights": [
+    0.9079511563902779,
+    0.5974936019920014,
+    0.40605344886488487,
+    0.006595523575688207
+   ]
+  },
+  {
+   "alternatives": [
+    -135.0,
+    -200.0,
+    -260.0,
+    -900.0
+   ],
+   "best": -120.0,
+   "complexity": 0.0,
+   "level": 20,
+   "losses": [
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    -135.0,
+    -200.0,
+    -260.0,
+    -900.0
+   ],
+   "best": -120.0,
+   "complexity": 0.6,
+   "level": 20,
+   "losses": [
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    880.0,
+    700.0,
+    300.0
+   ],
+   "best": 900.0,
+   "complexity": 0.0,
+   "level": 20,
+   "losses": [
+    20.0,
+    200.0,
+    600.0
+   ],
+   "maximizing": true,
+   "weights": [
+    0.8657117509749038,
+    0.23644662846946823,
+    0.013219023576507342
+   ]
+  },
+  {
+   "alternatives": [
+    880.0,
+    700.0,
+    300.0
+   ],
+   "best": 900.0,
+   "complexity": 0.6,
+   "level": 20,
+   "losses": [
+    20.0,
+    200.0,
+    600.0
+   ],
+   "maximizing": true,
+   "weights": [
+    0.8791911641665878,
+    0.2759517470737283,
+    0.021013550783022212
+   ]
+  },
+  {
+   "alternatives": [
+    880.0,
+    700.0,
+    300.0
+   ],
+   "best": 900.0,
+   "complexity": 0.0,
+   "level": 20,
+   "losses": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    880.0,
+    700.0,
+    300.0
+   ],
+   "best": 900.0,
+   "complexity": 0.6,
+   "level": 20,
+   "losses": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    0.0,
+    -5.0,
+    -45.0,
+    -90.0,
+    -175.0,
+    -340.0,
+    -450.0
+   ],
+   "best": 0.0,
+   "complexity": 0.0,
+   "level": 20,
+   "losses": [
+    0.0,
+    5.0,
+    45.0,
+    90.0,
+    175.0,
+    340.0,
+    450.0
+   ],
+   "maximizing": true,
+   "weights": [
+    1.0,
+    0.9645912724577889,
+    0.7229195228733927,
+    0.5226126365514937,
+    0.283149947217935,
+    0.08616805968997684,
+    0.038985179022634334
+   ]
+  },
+  {
+   "alternatives": [
+    0.0,
+    -5.0,
+    -45.0,
+    -90.0,
+    -175.0,
+    -340.0,
+    -450.0
+   ],
+   "best": 0.0,
+   "complexity": 0.6,
+   "level": 20,
+   "losses": [
+    0.0,
+    5.0,
+    45.0,
+    90.0,
+    175.0,
+    340.0,
+    450.0
+   ],
+   "maximizing": true,
+   "weights": [
+    1.0,
+    0.9683242958376411,
+    0.7484925091049878,
+    0.5602410361862802,
+    0.3241372957141038,
+    0.11205115861957776,
+    0.055191803144578645
+   ]
+  },
+  {
+   "alternatives": [
+    0.0,
+    -5.0,
+    -45.0,
+    -90.0,
+    -175.0,
+    -340.0,
+    -450.0
+   ],
+   "best": 0.0,
+   "complexity": 0.0,
+   "level": 20,
+   "losses": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    0.0,
+    -5.0,
+    -45.0,
+    -90.0,
+    -175.0,
+    -340.0,
+    -450.0
+   ],
+   "best": 0.0,
+   "complexity": 0.6,
+   "level": 20,
+   "losses": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    20.0,
+    0.0,
+    -40.0,
+    -150.0,
+    -600.0
+   ],
+   "best": 35.0,
+   "complexity": 0.0,
+   "level": 45,
+   "losses": [
+    15.0,
+    35.0,
+    75.0,
+    185.0,
+    635.0
+   ],
+   "maximizing": true,
+   "weights": [
+    0.7868879463216044,
+    0.5716498358543944,
+    0.30169246525096516,
+    0.05203062117250783,
+    3.9232482870767154e-05
+   ]
+  },
+  {
+   "alternatives": [
+    20.0,
+    0.0,
+    -40.0,
+    -150.0,
+    -600.0
+   ],
+   "best": 35.0,
+   "complexity": 0.6,
+   "level": 45,
+   "losses": [
+    15.0,
+    35.0,
+    75.0,
+    185.0,
+    635.0
+   ],
+   "maximizing": true,
+   "weights": [
+    0.8073560105452107,
+    0.606948524428948,
+    0.3430247165505566,
+    0.07141717846961898,
+    0.00011634699558676243
+   ]
+  },
+  {
+   "alternatives": [
+    20.0,
+    0.0,
+    -40.0,
+    -150.0,
+    -600.0
+   ],
+   "best": 35.0,
+   "complexity": 0.0,
+   "level": 45,
+   "losses": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    20.0,
+    0.0,
+    -40.0,
+    -150.0,
+    -600.0
+   ],
+   "best": 35.0,
+   "complexity": 0.6,
+   "level": 45,
+   "losses": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    -135.0,
+    -200.0,
+    -260.0,
+    -900.0
+   ],
+   "best": -120.0,
+   "complexity": 0.0,
+   "level": 45,
+   "losses": [
+    15.0,
+    80.0,
+    140.0,
+    780.0
+   ],
+   "maximizing": true,
+   "weights": [
+    0.7868879463216044,
+    0.2785279363475224,
+    0.10678747863752967,
+    3.867857130391669e-06
+   ]
+  },
+  {
+   "alternatives": [
+    -135.0,
+    -200.0,
+    -260.0,
+    -900.0
+   ],
+   "best": -120.0,
+   "complexity": 0.6,
+   "level": 45,
+   "losses": [
+    15.0,
+    80.0,
+    140.0,
+    780.0
+   ],
+   "maximizing": true,
+   "weights": [
+    0.8073560105452107,
+    0.3194089700713773,
+    0.13570862171255726,
+    1.4702267052946576e-05
+   ]
+  },
+  {
+   "alternatives": [
+    -135.0,
+    -200.0,
+    -260.0,
+    -900.0
+   ],
+   "best": -120.0,
+   "complexity": 0.0,
+   "level": 45,
+   "losses": [
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    -135.0,
+    -200.0,
+    -260.0,
+    -900.0
+   ],
+   "best": -120.0,
+   "complexity": 0.6,
+   "level": 45,
+   "losses": [
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    880.0,
+    700.0,
+    300.0
+   ],
+   "best": 900.0,
+   "complexity": 0.0,
+   "level": 45,
+   "losses": [
+    20.0,
+    200.0,
+    600.0
+   ],
+   "maximizing": true,
+   "weights": [
+    0.7264691733132214,
+    0.04094226864027206,
+    6.863027050839575e-05
+   ]
+  },
+  {
+   "alternatives": [
+    880.0,
+    700.0,
+    300.0
+   ],
+   "best": 900.0,
+   "complexity": 0.6,
+   "level": 45,
+   "losses": [
+    20.0,
+    200.0,
+    600.0
+   ],
+   "maximizing": true,
+   "weights": [
+    0.7517730920453212,
+    0.0576590882936269,
+    0.00019169170185598264
+   ]
+  },
+  {
+   "alternatives": [
+    880.0,
+    700.0,
+    300.0
+   ],
+   "best": 900.0,
+   "complexity": 0.0,
+   "level": 45,
+   "losses": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    880.0,
+    700.0,
+    300.0
+   ],
+   "best": 900.0,
+   "complexity": 0.6,
+   "level": 45,
+   "losses": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    0.0,
+    -5.0,
+    -45.0,
+    -90.0,
+    -175.0,
+    -340.0,
+    -450.0
+   ],
+   "best": 0.0,
+   "complexity": 0.0,
+   "level": 45,
+   "losses": [
+    0.0,
+    5.0,
+    45.0,
+    90.0,
+    175.0,
+    340.0,
+    450.0
+   ],
+   "maximizing": true,
+   "weights": [
+    1.0,
+    0.9232180728008131,
+    0.4872352249191698,
+    0.23739816440203398,
+    0.061045044634448486,
+    0.004372121637795055,
+    0.0007540268016538113
+   ]
+  },
+  {
+   "alternatives": [
+    0.0,
+    -5.0,
+    -45.0,
+    -90.0,
+    -175.0,
+    -340.0,
+    -450.0
+   ],
+   "best": 0.0,
+   "complexity": 0.6,
+   "level": 45,
+   "losses": [
+    0.0,
+    5.0,
+    45.0,
+    90.0,
+    175.0,
+    340.0,
+    450.0
+   ],
+   "maximizing": true,
+   "weights": [
+    1.0,
+    0.9311543881832822,
+    0.5262538044258294,
+    0.27694306667265906,
+    0.08236814770072294,
+    0.00782483540153075,
+    0.0016291177848233916
+   ]
+  },
+  {
+   "alternatives": [
+    0.0,
+    -5.0,
+    -45.0,
+    -90.0,
+    -175.0,
+    -340.0,
+    -450.0
+   ],
+   "best": 0.0,
+   "complexity": 0.0,
+   "level": 45,
+   "losses": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    0.0,
+    -5.0,
+    -45.0,
+    -90.0,
+    -175.0,
+    -340.0,
+    -450.0
+   ],
+   "best": 0.0,
+   "complexity": 0.6,
+   "level": 45,
+   "losses": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    20.0,
+    0.0,
+    -40.0,
+    -150.0,
+    -600.0
+   ],
+   "best": 35.0,
+   "complexity": 0.0,
+   "level": 60,
+   "losses": [
+    15.0,
+    35.0,
+    75.0,
+    185.0,
+    635.0
+   ],
+   "maximizing": true,
+   "weights": [
+    0.6969597035838894,
+    0.43067655231558283,
+    0.16445169161797654,
+    0.011647371240307064,
+    1e-06
+   ]
+  },
+  {
+   "alternatives": [
+    20.0,
+    0.0,
+    -40.0,
+    -150.0,
+    -600.0
+   ],
+   "best": 35.0,
+   "complexity": 0.6,
+   "level": 60,
+   "losses": [
+    15.0,
+    35.0,
+    75.0,
+    185.0,
+    635.0
+   ],
+   "maximizing": true,
+   "weights": [
+    0.7244473820655675,
+    0.47135629391072104,
+    0.19954196138004673,
+    0.018767990892138167,
+    1.1847404172108022e-06
+   ]
+  },
+  {
+   "alternatives": [
+    20.0,
+    0.0,
+    -40.0,
+    -150.0,
+    -600.0
+   ],
+   "best": 35.0,
+   "complexity": 0.0,
+   "level": 60,
+   "losses": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    20.0,
+    0.0,
+    -40.0,
+    -150.0,
+    -600.0
+   ],
+   "best": 35.0,
+   "complexity": 0.6,
+   "level": 60,
+   "losses": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    -135.0,
+    -200.0,
+    -260.0,
+    -900.0
+   ],
+   "best": -120.0,
+   "complexity": 0.0,
+   "level": 60,
+   "losses": [
+    15.0,
+    80.0,
+    140.0,
+    780.0
+   ],
+   "maximizing": true,
+   "weights": [
+    0.6969597035838894,
+    0.14580561022960156,
+    0.03440368091060406,
+    1e-06
+   ]
+  },
+  {
+   "alternatives": [
+    -135.0,
+    -200.0,
+    -260.0,
+    -900.0
+   ],
+   "best": -120.0,
+   "complexity": 0.6,
+   "level": 60,
+   "losses": [
+    15.0,
+    80.0,
+    140.0,
+    780.0
+   ],
+   "maximizing": true,
+   "weights": [
+    0.7244473820655675,
+    0.17921314138541553,
+    0.04936251082192311,
+    1e-06
+   ]
+  },
+  {
+   "alternatives": [
+    -135.0,
+    -200.0,
+    -260.0,
+    -900.0
+   ],
+   "best": -120.0,
+   "complexity": 0.0,
+   "level": 60,
+   "losses": [
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    -135.0,
+    -200.0,
+    -260.0,
+    -900.0
+   ],
+   "best": -120.0,
+   "complexity": 0.6,
+   "level": 60,
+   "losses": [
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    880.0,
+    700.0,
+    300.0
+   ],
+   "best": 900.0,
+   "complexity": 0.0,
+   "level": 60,
+   "losses": [
+    20.0,
+    200.0,
+    600.0
+   ],
+   "maximizing": true,
+   "weights": [
+    0.6179360874107473,
+    0.008117748407175928,
+    1e-06
+   ]
+  },
+  {
+   "alternatives": [
+    880.0,
+    700.0,
+    300.0
+   ],
+   "best": 900.0,
+   "complexity": 0.6,
+   "level": 60,
+   "losses": [
+    20.0,
+    200.0,
+    600.0
+   ],
+   "maximizing": true,
+   "weights": [
+    0.650642552626493,
+    0.013596421868439906,
+    2.5134710886775627e-06
+   ]
+  },
+  {
+   "alternatives": [
+    880.0,
+    700.0,
+    300.0
+   ],
+   "best": 900.0,
+   "complexity": 0.0,
+   "level": 60,
+   "losses": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    880.0,
+    700.0,
+    300.0
+   ],
+   "best": 900.0,
+   "complexity": 0.6,
+   "level": 60,
+   "losses": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    0.0,
+    -5.0,
+    -45.0,
+    -90.0,
+    -175.0,
+    -340.0,
+    -450.0
+   ],
+   "best": 0.0,
+   "complexity": 0.0,
+   "level": 60,
+   "losses": [
+    0.0,
+    5.0,
+    45.0,
+    90.0,
+    175.0,
+    340.0,
+    450.0
+   ],
+   "maximizing": true,
+   "weights": [
+    1.0,
+    0.8866166641101505,
+    0.3385501473104599,
+    0.11461620224393411,
+    0.014816858681544384,
+    0.00027928042591304525,
+    1.978017233362851e-05
+   ]
+  },
+  {
+   "alternatives": [
+    0.0,
+    -5.0,
+    -45.0,
+    -90.0,
+    -175.0,
+    -340.0,
+    -450.0
+   ],
+   "best": 0.0,
+   "complexity": 0.6,
+   "level": 60,
+   "losses": [
+    0.0,
+    5.0,
+    45.0,
+    90.0,
+    175.0,
+    340.0,
+    450.0
+   ],
+   "maximizing": true,
+   "weights": [
+    1.0,
+    0.898122581064977,
+    0.38020737964169427,
+    0.14455765153400346,
+    0.023267330159149544,
+    0.0006711535216202972,
+    6.312558568573708e-05
+   ]
+  },
+  {
+   "alternatives": [
+    0.0,
+    -5.0,
+    -45.0,
+    -90.0,
+    -175.0,
+    -340.0,
+    -450.0
+   ],
+   "best": 0.0,
+   "complexity": 0.0,
+   "level": 60,
+   "losses": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    0.0,
+    -5.0,
+    -45.0,
+    -90.0,
+    -175.0,
+    -340.0,
+    -450.0
+   ],
+   "best": 0.0,
+   "complexity": 0.6,
+   "level": 60,
+   "losses": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    20.0,
+    0.0,
+    -40.0,
+    -150.0,
+    -600.0
+   ],
+   "best": 35.0,
+   "complexity": 0.0,
+   "level": 70,
+   "losses": [
+    15.0,
+    35.0,
+    75.0,
+    185.0,
+    635.0
+   ],
+   "maximizing": true,
+   "weights": [
+    0.6492944610764799,
+    0.36505975848376604,
+    0.11540071252215356,
+    0.004861619247593553,
+    1e-06
+   ]
+  },
+  {
+   "alternatives": [
+    20.0,
+    0.0,
+    -40.0,
+    -150.0,
+    -600.0
+   ],
+   "best": 35.0,
+   "complexity": 0.6,
+   "level": 70,
+   "losses": [
+    15.0,
+    35.0,
+    75.0,
+    185.0,
+    635.0
+   ],
+   "maximizing": true,
+   "weights": [
+    0.6800443401156111,
+    0.4066806767875865,
+    0.1454407656164686,
+    0.008602522986245415,
+    1e-06
+   ]
+  },
+  {
+   "alternatives": [
+    20.0,
+    0.0,
+    -40.0,
+    -150.0,
+    -600.0
+   ],
+   "best": 35.0,
+   "complexity": 0.0,
+   "level": 70,
+   "losses": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    20.0,
+    0.0,
+    -40.0,
+    -150.0,
+    -600.0
+   ],
+   "best": 35.0,
+   "complexity": 0.6,
+   "level": 70,
+   "losses": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    -135.0,
+    -200.0,
+    -260.0,
+    -900.0
+   ],
+   "best": -120.0,
+   "complexity": 0.0,
+   "level": 70,
+   "losses": [
+    15.0,
+    80.0,
+    140.0,
+    780.0
+   ],
+   "maximizing": true,
+   "weights": [
+    0.6492944610764799,
+    0.09992842819801148,
+    0.017760527012891096,
+    1e-06
+   ]
+  },
+  {
+   "alternatives": [
+    -135.0,
+    -200.0,
+    -260.0,
+    -900.0
+   ],
+   "best": -120.0,
+   "complexity": 0.6,
+   "level": 70,
+   "losses": [
+    15.0,
+    80.0,
+    140.0,
+    780.0
+   ],
+   "maximizing": true,
+   "weights": [
+    0.6800443401156111,
+    0.12789843455728017,
+    0.02735357850341973,
+    1e-06
+   ]
+  },
+  {
+   "alternatives": [
+    -135.0,
+    -200.0,
+    -260.0,
+    -900.0
+   ],
+   "best": -120.0,
+   "complexity": 0.0,
+   "level": 70,
+   "losses": [
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    -135.0,
+    -200.0,
+    -260.0,
+    -900.0
+   ],
+   "best": -120.0,
+   "complexity": 0.6,
+   "level": 70,
+   "losses": [
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    880.0,
+    700.0,
+    300.0
+   ],
+   "best": 900.0,
+   "complexity": 0.0,
+   "level": 70,
+   "losses": [
+    20.0,
+    200.0,
+    600.0
+   ],
+   "maximizing": true,
+   "weights": [
+    0.5622406787184435,
+    0.0031566224493252996,
+    1e-06
+   ]
+  },
+  {
+   "alternatives": [
+    880.0,
+    700.0,
+    300.0
+   ],
+   "best": 900.0,
+   "complexity": 0.6,
+   "level": 70,
+   "losses": [
+    20.0,
+    200.0,
+    600.0
+   ],
+   "maximizing": true,
+   "weights": [
+    0.5980208242280918,
+    0.005850097067510637,
+    1e-06
+   ]
+  },
+  {
+   "alternatives": [
+    880.0,
+    700.0,
+    300.0
+   ],
+   "best": 900.0,
+   "complexity": 0.0,
+   "level": 70,
+   "losses": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    880.0,
+    700.0,
+    300.0
+   ],
+   "best": 900.0,
+   "complexity": 0.6,
+   "level": 70,
+   "losses": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    0.0,
+    -5.0,
+    -45.0,
+    -90.0,
+    -175.0,
+    -340.0,
+    -450.0
+   ],
+   "best": 0.0,
+   "complexity": 0.0,
+   "level": 70,
+   "losses": [
+    0.0,
+    5.0,
+    45.0,
+    90.0,
+    175.0,
+    340.0,
+    450.0
+   ],
+   "maximizing": true,
+   "weights": [
+    1.0,
+    0.8659255737162643,
+    0.273731699744318,
+    0.07492904344491347,
+    0.006483653701870428,
+    5.6063278280740385e-05,
+    2.361842546860513e-06
+   ]
+  },
+  {
+   "alternatives": [
+    0.0,
+    -5.0,
+    -45.0,
+    -90.0,
+    -175.0,
+    -340.0,
+    -450.0
+   ],
+   "best": 0.0,
+   "complexity": 0.6,
+   "level": 70,
+   "losses": [
+    0.0,
+    5.0,
+    45.0,
+    90.0,
+    175.0,
+    340.0,
+    450.0
+   ],
+   "maximizing": true,
+   "weights": [
+    1.0,
+    0.8793850473432735,
+    0.3144935126191964,
+    0.09890616947956064,
+    0.011124171818333112,
+    0.00016002108938877792,
+    9.464919233037366e-06
+   ]
+  },
+  {
+   "alternatives": [
+    0.0,
+    -5.0,
+    -45.0,
+    -90.0,
+    -175.0,
+    -340.0,
+    -450.0
+   ],
+   "best": 0.0,
+   "complexity": 0.0,
+   "level": 70,
+   "losses": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    0.0,
+    -5.0,
+    -45.0,
+    -90.0,
+    -175.0,
+    -340.0,
+    -450.0
+   ],
+   "best": 0.0,
+   "complexity": 0.6,
+   "level": 70,
+   "losses": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    20.0,
+    0.0,
+    -40.0,
+    -150.0,
+    -600.0
+   ],
+   "best": 35.0,
+   "complexity": 0.0,
+   "level": 90,
+   "losses": [
+    15.0,
+    35.0,
+    75.0,
+    185.0,
+    635.0
+   ],
+   "maximizing": true,
+   "weights": [
+    0.5195843735519751,
+    0.21703553997951772,
+    0.03786870085034064,
+    0.00031123732108715514,
+    1e-06
+   ]
+  },
+  {
+   "alternatives": [
+    20.0,
+    0.0,
+    -40.0,
+    -150.0,
+    -600.0
+   ],
+   "best": 35.0,
+   "complexity": 0.6,
+   "level": 90,
+   "losses": [
+    15.0,
+    35.0,
+    75.0,
+    185.0,
+    635.0
+   ],
+   "maximizing": true,
+   "weights": [
+    0.5573416527165201,
+    0.2556329524126694,
+    0.053778353989931,
+    0.000739318965117584,
+    1e-06
+   ]
+  },
+  {
+   "alternatives": [
+    20.0,
+    0.0,
+    -40.0,
+    -150.0,
+    -600.0
+   ],
+   "best": 35.0,
+   "complexity": 0.0,
+   "level": 90,
+   "losses": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    20.0,
+    0.0,
+    -40.0,
+    -150.0,
+    -600.0
+   ],
+   "best": 35.0,
+   "complexity": 0.6,
+   "level": 90,
+   "losses": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    -135.0,
+    -200.0,
+    -260.0,
+    -900.0
+   ],
+   "best": -120.0,
+   "complexity": 0.0,
+   "level": 90,
+   "losses": [
+    15.0,
+    80.0,
+    140.0,
+    780.0
+   ],
+   "maximizing": true,
+   "weights": [
+    0.5195843735519751,
+    0.03044381680476882,
+    0.0022188269124437795,
+    1e-06
+   ]
+  },
+  {
+   "alternatives": [
+    -135.0,
+    -200.0,
+    -260.0,
+    -900.0
+   ],
+   "best": -120.0,
+   "complexity": 0.6,
+   "level": 90,
+   "losses": [
+    15.0,
+    80.0,
+    140.0,
+    780.0
+   ],
+   "maximizing": true,
+   "weights": [
+    0.5573416527165201,
+    0.04425693556099207,
+    0.004270388074366956,
+    1e-06
+   ]
+  },
+  {
+   "alternatives": [
+    -135.0,
+    -200.0,
+    -260.0,
+    -900.0
+   ],
+   "best": -120.0,
+   "complexity": 0.0,
+   "level": 90,
+   "losses": [
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    -135.0,
+    -200.0,
+    -260.0,
+    -900.0
+   ],
+   "best": -120.0,
+   "complexity": 0.6,
+   "level": 90,
+   "losses": [
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    880.0,
+    700.0,
+    300.0
+   ],
+   "best": 900.0,
+   "complexity": 0.0,
+   "level": 90,
+   "losses": [
+    20.0,
+    200.0,
+    600.0
+   ],
+   "maximizing": true,
+   "weights": [
+    0.4177099062772472,
+    0.00016171404850306442,
+    1e-06
+   ]
+  },
+  {
+   "alternatives": [
+    880.0,
+    700.0,
+    300.0
+   ],
+   "best": 900.0,
+   "complexity": 0.6,
+   "level": 90,
+   "losses": [
+    20.0,
+    200.0,
+    600.0
+   ],
+   "maximizing": true,
+   "weights": [
+    0.45866471878909015,
+    0.0004120532539033016,
+    1e-06
+   ]
+  },
+  {
+   "alternatives": [
+    880.0,
+    700.0,
+    300.0
+   ],
+   "best": 900.0,
+   "complexity": 0.0,
+   "level": 90,
+   "losses": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    880.0,
+    700.0,
+    300.0
+   ],
+   "best": 900.0,
+   "complexity": 0.6,
+   "level": 90,
+   "losses": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    0.0,
+    -5.0,
+    -45.0,
+    -90.0,
+    -175.0,
+    -340.0,
+    -450.0
+   ],
+   "best": 0.0,
+   "complexity": 0.0,
+   "level": 90,
+   "losses": [
+    0.0,
+    5.0,
+    45.0,
+    90.0,
+    175.0,
+    340.0,
+    450.0
+   ],
+   "maximizing": true,
+   "weights": [
+    1.0,
+    0.8039308484620213,
+    0.14027111323630176,
+    0.019675985208551388,
+    0.00048156429706332183,
+    1e-06,
+    1e-06
+   ]
+  },
+  {
+   "alternatives": [
+    0.0,
+    -5.0,
+    -45.0,
+    -90.0,
+    -175.0,
+    -340.0,
+    -450.0
+   ],
+   "best": 0.0,
+   "complexity": 0.6,
+   "level": 90,
+   "losses": [
+    0.0,
+    5.0,
+    45.0,
+    90.0,
+    175.0,
+    340.0,
+    450.0
+   ],
+   "maximizing": true,
+   "weights": [
+    1.0,
+    0.8229507278946907,
+    0.17312688033093593,
+    0.02997291669312221,
+    0.0010916519113982797,
+    1.7596273014727584e-06,
+    1e-06
+   ]
+  },
+  {
+   "alternatives": [
+    0.0,
+    -5.0,
+    -45.0,
+    -90.0,
+    -175.0,
+    -340.0,
+    -450.0
+   ],
+   "best": 0.0,
+   "complexity": 0.0,
+   "level": 90,
+   "losses": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    0.0,
+    -5.0,
+    -45.0,
+    -90.0,
+    -175.0,
+    -340.0,
+    -450.0
+   ],
+   "best": 0.0,
+   "complexity": 0.6,
+   "level": 90,
+   "losses": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    20.0,
+    0.0,
+    -40.0,
+    -150.0,
+    -600.0
+   ],
+   "best": 35.0,
+   "complexity": 0.0,
+   "level": 100,
+   "losses": [
+    15.0,
+    35.0,
+    75.0,
+    185.0,
+    635.0
+   ],
+   "maximizing": true,
+   "weights": [
+    0.34251885509304564,
+    0.0820849986238988,
+    0.004714356473549276,
+    1.8243519784525777e-06,
+    1e-06
+   ]
+  },
+  {
+   "alternatives": [
+    20.0,
+    0.0,
+    -40.0,
+    -150.0,
+    -600.0
+   ],
+   "best": 35.0,
+   "complexity": 0.6,
+   "level": 100,
+   "losses": [
+    15.0,
+    35.0,
+    75.0,
+    185.0,
+    635.0
+   ],
+   "maximizing": true,
+   "weights": [
+    0.34251885509304564,
+    0.0820849986238988,
+    0.004714356473549276,
+    1.8243519784525777e-06,
+    1e-06
+   ]
+  },
+  {
+   "alternatives": [
+    20.0,
+    0.0,
+    -40.0,
+    -150.0,
+    -600.0
+   ],
+   "best": 35.0,
+   "complexity": 0.0,
+   "level": 100,
+   "losses": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    20.0,
+    0.0,
+    -40.0,
+    -150.0,
+    -600.0
+   ],
+   "best": 35.0,
+   "complexity": 0.6,
+   "level": 100,
+   "losses": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    -135.0,
+    -200.0,
+    -260.0,
+    -900.0
+   ],
+   "best": -120.0,
+   "complexity": 0.0,
+   "level": 100,
+   "losses": [
+    15.0,
+    80.0,
+    140.0,
+    780.0
+   ],
+   "maximizing": true,
+   "weights": [
+    0.34251885509304564,
+    0.0032985057559390915,
+    4.5399929762484854e-05,
+    1e-06
+   ]
+  },
+  {
+   "alternatives": [
+    -135.0,
+    -200.0,
+    -260.0,
+    -900.0
+   ],
+   "best": -120.0,
+   "complexity": 0.6,
+   "level": 100,
+   "losses": [
+    15.0,
+    80.0,
+    140.0,
+    780.0
+   ],
+   "maximizing": true,
+   "weights": [
+    0.34251885509304564,
+    0.0032985057559390915,
+    4.5399929762484854e-05,
+    1e-06
+   ]
+  },
+  {
+   "alternatives": [
+    -135.0,
+    -200.0,
+    -260.0,
+    -900.0
+   ],
+   "best": -120.0,
+   "complexity": 0.0,
+   "level": 100,
+   "losses": [
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    -135.0,
+    -200.0,
+    -260.0,
+    -900.0
+   ],
+   "best": -120.0,
+   "complexity": 0.6,
+   "level": 100,
+   "losses": [
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    880.0,
+    700.0,
+    300.0
+   ],
+   "best": 900.0,
+   "complexity": 0.0,
+   "level": 100,
+   "losses": [
+    20.0,
+    200.0,
+    600.0
+   ],
+   "maximizing": true,
+   "weights": [
+    0.2396510364417758,
+    1e-06,
+    1e-06
+   ]
+  },
+  {
+   "alternatives": [
+    880.0,
+    700.0,
+    300.0
+   ],
+   "best": 900.0,
+   "complexity": 0.6,
+   "level": 100,
+   "losses": [
+    20.0,
+    200.0,
+    600.0
+   ],
+   "maximizing": true,
+   "weights": [
+    0.2396510364417758,
+    1e-06,
+    1e-06
+   ]
+  },
+  {
+   "alternatives": [
+    880.0,
+    700.0,
+    300.0
+   ],
+   "best": 900.0,
+   "complexity": 0.0,
+   "level": 100,
+   "losses": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    880.0,
+    700.0,
+    300.0
+   ],
+   "best": 900.0,
+   "complexity": 0.6,
+   "level": 100,
+   "losses": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    0.0,
+    -5.0,
+    -45.0,
+    -90.0,
+    -175.0,
+    -340.0,
+    -450.0
+   ],
+   "best": 0.0,
+   "complexity": 0.0,
+   "level": 100,
+   "losses": [
+    0.0,
+    5.0,
+    45.0,
+    90.0,
+    175.0,
+    340.0,
+    450.0
+   ],
+   "maximizing": true,
+   "weights": [
+    1.0,
+    0.6996725373751304,
+    0.04018402645107363,
+    0.0016147559818205847,
+    3.726653172078671e-06,
+    1e-06,
+    1e-06
+   ]
+  },
+  {
+   "alternatives": [
+    0.0,
+    -5.0,
+    -45.0,
+    -90.0,
+    -175.0,
+    -340.0,
+    -450.0
+   ],
+   "best": 0.0,
+   "complexity": 0.6,
+   "level": 100,
+   "losses": [
+    0.0,
+    5.0,
+    45.0,
+    90.0,
+    175.0,
+    340.0,
+    450.0
+   ],
+   "maximizing": true,
+   "weights": [
+    1.0,
+    0.6996725373751304,
+    0.04018402645107363,
+    0.0016147559818205847,
+    3.726653172078671e-06,
+    1e-06,
+    1e-06
+   ]
+  },
+  {
+   "alternatives": [
+    0.0,
+    -5.0,
+    -45.0,
+    -90.0,
+    -175.0,
+    -340.0,
+    -450.0
+   ],
+   "best": 0.0,
+   "complexity": 0.0,
+   "level": 100,
+   "losses": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "alternatives": [
+    0.0,
+    -5.0,
+    -45.0,
+    -90.0,
+    -175.0,
+    -340.0,
+    -450.0
+   ],
+   "best": 0.0,
+   "complexity": 0.6,
+   "level": 100,
+   "losses": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "maximizing": false,
+   "weights": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  }
+ ]
+}

@@ -10,8 +10,10 @@ python scripts/chronicles_topology_parity_corpus.py --check
 python scripts/engine_parity_corpus.py --check
 python scripts/games_parity_corpus.py --check
 python scripts/games_ops_corpus.py --check
+python scripts/cpu_policy_parity_corpus.py --check
 
 (
   cd backend-go
   go test -count=1 -run 'MatchesPython' ./internal/residenteval ./internal/residentsearch
+  go test -count=1 -run 'MatchPython|MatchesPython' ./internal/residentpolicy ./internal/residentmove
 )

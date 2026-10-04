@@ -288,3 +288,28 @@ func TestSideToMoveInCheckUsesBoardAttacks(t *testing.T) {
 		t.Fatal("starting position must not be in check")
 	}
 }
+
+func TestMoveForLevelUsesTheGameDifficultyBand(t *testing.T) {
+	search := &scriptedSearcher{snapshots: []residentsearch.Snapshot{{
+		Candidates: []residentsearch.Candidate{{UCI: "e2e4", Score: 30}, {UCI: "d2d4", Score: 25}},
+		Depth:      2,
+	}}}
+	chooser := NewWith(search, randomSequence(0.999))
+	move, err := chooser.MoveForLevel(context.Background(), chess.StartingPosition().String(), 87)
+	if err != nil || move != "e2e4" {
+		t.Fatalf("move=%q err=%v", move, err)
+	}
+	band := residentpolicy.Band(87)
+	if len(search.calls) != 1 || search.calls[0].maxDepth != band.MaxDepth || search.calls[0].budget != seconds(band.BudgetSeconds) {
+		t.Fatalf("calls=%+v band=%+v", search.calls, band)
+	}
+}
+
+func TestMoveForLevelRejectsNonFiniteDifficulty(t *testing.T) {
+	chooser := NewWith(&scriptedSearcher{}, randomSequence(0))
+	for _, level := range []float64{math.NaN(), math.Inf(1)} {
+		if _, err := chooser.MoveForLevel(context.Background(), chess.StartingPosition().String(), level); err == nil {
+			t.Fatalf("level %v accepted", level)
+		}
+	}
+}
