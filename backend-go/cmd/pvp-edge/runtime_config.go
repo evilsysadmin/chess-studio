@@ -69,6 +69,16 @@ func env(key, fallback string) string {
 	return fallback
 }
 
+// pythonUpstream resolves the general Go front's Python compatibility backend.
+// GO_PYTHON_UPSTREAM is canonical; PVP_PYTHON_UPSTREAM remains a temporary
+// rollback/compatibility alias while deployment wiring migrates.
+func pythonUpstream() string {
+	if value := strings.TrimSpace(os.Getenv("GO_PYTHON_UPSTREAM")); value != "" {
+		return value
+	}
+	return env("PVP_PYTHON_UPSTREAM", "http://127.0.0.1:4000")
+}
+
 func envBool(key string, fallback bool) bool {
 	raw := strings.TrimSpace(strings.ToLower(os.Getenv(key)))
 	if raw == "" {
