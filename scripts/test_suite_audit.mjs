@@ -190,7 +190,7 @@ if (checkCiWiring) {
     ['Coverage frontend', coverageWorkflowSource, './.github/actions/cache-node-modules'],
     ['Coverage backend', coverageWorkflowSource, './.github/actions/cache-python-venv'],
     ['Browser E2E', browserWorkflowSource, './.github/actions/setup-browser-e2e'],
-    ['Staging deploy', stagingDeploySource, './.github/actions/cache-node-modules'],
+    ['Staging deploy', stagingDeploySource, './.github/actions/build-staging-frontend'],
     ['Staging deploy Wrangler', stagingDeploySource, './.github/actions/setup-wrangler'],
     ['Staging preview', stagingPreviewSource, './.github/actions/cache-node-modules'],
     ['Staging preview Wrangler', stagingPreviewSource, './.github/actions/setup-wrangler'],

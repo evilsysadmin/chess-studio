@@ -50,6 +50,21 @@ def validate_main_admission_fallback(root: Path = ROOT) -> None:
 
 
 
+def validate_staging_frontend_build_single_source(root: Path = ROOT) -> None:
+    """Admission prebuild (fast path) and staging deploy (fallback) build the
+    staging frontend through one composite action, so the two cannot drift."""
+    action = root / ".github" / "actions" / "build-staging-frontend" / "action.yml"
+    if not action.is_file():
+        raise SystemExit("falta .github/actions/build-staging-frontend")
+    for name in ("main-admission.yml", "staging-deploy.yml"):
+        text = (root / ".github" / "workflows" / name).read_text(encoding="utf-8")
+        if "uses: ./.github/actions/build-staging-frontend" not in text:
+            raise SystemExit(f"{name} debe construir staging con build-staging-frontend")
+        if "VITE_BUILD_SHA" in text:
+            raise SystemExit(f"{name} vuelve a definir el build de staging inline (VITE_*): usa la action")
+    print("staging frontend build single source: OK")
+
+
 def validate_cloudflare_auth_rate_limit(root: Path = ROOT) -> None:
     """Keep the Free-tier auth burst guard tested and wired into staging delivery."""
     subprocess.run(
@@ -104,6 +119,7 @@ def validate_workflow_static_contracts(root: Path = ROOT) -> None:
     staging_release_identity_self_test()
     workflow_debt_self_test()
     validate_main_admission_fallback(root)
+    validate_staging_frontend_build_single_source(root)
     validate_cloudflare_auth_rate_limit(root)
     validate_resend_bootstrap_topology(root)
 
