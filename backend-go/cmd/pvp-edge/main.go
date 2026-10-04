@@ -32,7 +32,7 @@ import (
 
 func main() {
 	port := env("PORT", "8080")
-	upstream := env("PVP_PYTHON_UPSTREAM", "http://127.0.0.1:4000")
+	upstream := pythonUpstream()
 
 	features := loadNativeFeatureFlags()
 	virtualPlayersEnabled := envBool("CHESS_PVP_SPARRING_ENABLED", false)
