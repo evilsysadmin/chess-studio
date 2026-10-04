@@ -70,6 +70,7 @@ async function assertSchoolMobileFold(shell, label) {
     const boardRect = board?.getBoundingClientRect();
     const actionRect = actions?.getBoundingClientRect();
     return {
+      innerWidth: window.innerWidth,
       innerHeight: window.innerHeight,
       boardWidth: boardRect?.width || 0,
       boardRight: boardRect?.right || 0,
@@ -78,7 +79,7 @@ async function assertSchoolMobileFold(shell, label) {
       actionCount: actions?.querySelectorAll('button')?.length || 0,
     };
   });
-  expect(geometry.boardRight, `${label}: board must stay inside viewport`).toBeLessThanOrEqual(391);
+  expect(geometry.boardRight, `${label}: board must stay inside viewport`).toBeLessThanOrEqual(geometry.innerWidth + 1);
   expect(geometry.actionsTop, `${label}: lesson actions should start in the first viewport`).toBeLessThan(geometry.innerHeight * 0.82);
   expect(geometry.actionsBottom, `${label}: lesson actions should remain above the browser-chrome reserve`).toBeLessThanOrEqual(geometry.innerHeight - 16);
   expect(geometry.actionCount, `${label}: expected actionable lesson controls`).toBeGreaterThanOrEqual(3);
@@ -203,9 +204,6 @@ scopedTest('school', 'Entrenar · Escuela, Glosario y Modos especiales', async (
     await expect.poll(() => page.evaluate(() => localStorage.getItem('chess-study-war-room-variant-v1'))).toBe('v2');
   }
   await resources.click();
-  await page.setViewportSize({ width: 390, height: 844 });
-  await settle(page);
-  await assertSchoolTouchTargets(shell, 'school-mobile');
   await page.setViewportSize({ width: 390, height: 844 });
   await settle(page);
   await assertSchoolTouchTargets(shell, 'school-mobile');
