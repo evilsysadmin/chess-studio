@@ -757,7 +757,7 @@ def self_test() -> None:
     ])
     assert blender_duel_hall.capture_groups == "none"
     assert not blender_duel_hall.hans and not blender_duel_hall.chesscom
-        blender_warroom = classify(["scripts/blender/build_war_room_premium.py"])
+    blender_warroom = classify(["scripts/blender/build_war_room_premium.py"])
     blender_publish = classify(["scripts/blender/publish_war_room_v2_staging.py"])
     blender_workflow = classify([".github/workflows/war-room-blender-art.yml"])
     assert blender_publish.capture_groups == "none" and not blender_publish.hans
