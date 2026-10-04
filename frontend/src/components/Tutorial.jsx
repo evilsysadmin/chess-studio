@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import './TutorialRoute.css';
 import './MatthiasClassRoom.css';
+import './SchoolRoomImmersive.css';
 import './MatthiasClassRoomFocus.css';
 import './MatthiasClassRoomExplanation.css';
 import { Chess } from 'chess.js';
