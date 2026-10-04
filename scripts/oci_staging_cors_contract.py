@@ -564,7 +564,15 @@ assert 'wait_pvp_edge_attest()' in deploy
 assert 'CHESS_STUDIO_PVP_EDGE_ATTEST_ATTEMPTS:-20' in deploy
 assert 'wait_pvp_browser_attest()' in deploy
 assert 'CHESS_STUDIO_PVP_BROWSER_ATTEST_ATTEMPTS:-12' in deploy
-assert 'if "$attest_fn" "$endpoint"; then' in deploy
+assert 'if "$attest_fn" "$endpoint" "${@:3}"; then' in deploy
+# Native games writes: staging first, attested through Go after the cutover.
+assert 'staging) go_native_games_write="${CHESS_STUDIO_GO_NATIVE_GAMES_WRITE_ENABLED:-true}" ;;' in deploy
+assert '*) go_native_games_write="${CHESS_STUDIO_GO_NATIVE_GAMES_WRITE_ENABLED:-false}" ;;' in deploy
+assert 'CHESS_STUDIO_GO_NATIVE_GAMES_WRITE_ENABLED="$go_native_games_write"' in deploy
+assert "payload.get('nativeGamesWrite')" in deploy
+assert 'games_native_attest "http://127.0.0.1:${port}/api/games/deploy-attest/move" POST; then' in deploy
+assert 'exit 60' in deploy
+assert 'GO_NATIVE_GAMES_WRITE_ENABLED: "${CHESS_STUDIO_GO_NATIVE_GAMES_WRITE_ENABLED:-false}"' in compose
 assert 'sleep 0.25' in deploy
 assert 'if ! wait_pvp_edge_attest "$port"; then' in deploy
 assert 'if ! wait_pvp_browser_attest pvp_browser_cors_attest "http://127.0.0.1:${port}/api/pvp/roster"; then' in deploy
