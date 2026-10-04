@@ -153,7 +153,7 @@ function attachFinalizerDriver(driver, owner, phase = 'before') {
 // whole chain from its deferred finalizer; Blender rooms (WarRoomHansStage)
 // run it after their shell loads, excluding the steps their decor cannot host
 // (e.g. no sofas for the cat, no plant to water).
-export const WAR_ROOM_HANS_POST_INSTALL_STEPS = Object.freeze([
+const WAR_ROOM_HANS_POST_INSTALL_STEPS = Object.freeze([
   'hans:canonical-butler',
   'hans:board-peek-clock-hold',
   'hans:animator',
@@ -175,6 +175,8 @@ export const WAR_ROOM_HANS_POST_INSTALL_STEPS = Object.freeze([
 ]);
 
 export function runWarRoomHansPostInstall(root, { durations = {}, exclude = [] } = {}) {
+  const unknown = exclude.filter((key) => !WAR_ROOM_HANS_POST_INSTALL_STEPS.includes(key));
+  if (unknown.length) throw new Error(`Unknown Hans post-install steps: ${unknown.join(', ')}`);
   const skipped = new Set(exclude);
   const step = (key, install) => {
     if (skipped.has(key)) return undefined;
