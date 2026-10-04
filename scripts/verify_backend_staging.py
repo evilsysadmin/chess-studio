@@ -273,7 +273,7 @@ def self_test() -> None:
         "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
         "access-control-allow-headers": (
             "Authorization, Content-Type, Idempotency-Key, X-API-Key, X-Request-ID, "
-            "X-Client-Release, X-Presence-Session"
+            "X-Client-Release, X-Presence-Session, X-Chronicles-Party-Level"
         ),
     }
     assert cors_contract_ok(200, headers, STAGING_BROWSER_ORIGIN)
