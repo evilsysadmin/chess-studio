@@ -94,3 +94,31 @@ test('Chronicles of Matthias · móvil mantiene party y mandos sin overflow', as
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
 });
+
+
+test('Chronicles of Matthias · móvil apaisado entra en fullscreen y conserva escenario jugable', async ({ page }) => {
+  await page.setViewportSize({ width: 844, height: 390 });
+
+  const setup = await openChroniclesSetup(page);
+  const setupBox = await setup.boundingBox();
+  expect(setupBox?.x ?? 99).toBeLessThanOrEqual(1);
+  expect(setupBox?.y ?? 99).toBeLessThanOrEqual(1);
+  expect(setupBox?.width || 0).toBeGreaterThanOrEqual(842);
+  expect(setupBox?.height || 0).toBeGreaterThanOrEqual(388);
+  await expect(setup.getByRole('button', { name: 'Entrar con grupo canónico', exact: true })).toBeVisible();
+
+  await confirmChroniclesCharacterSetup(page);
+  const mode = page.locator('[data-chronicles="true"]');
+  await expect(mode).toBeVisible();
+  await expect(mode.locator('[data-chronicles-renderer="three"] canvas')).toBeVisible({ timeout: 30_000 });
+  await expect(mode.getByLabel('Controles de la mazmorra')).toBeVisible();
+
+  for (const name of ['Girar a la izquierda', 'Avanzar', 'Atacar', 'Retroceder', 'Girar a la derecha']) {
+    await expect(mode.getByRole('button', { name, exact: true })).toBeVisible();
+  }
+
+  const stageBox = await mode.locator('.chronicles-stage').boundingBox();
+  expect(stageBox?.height || 0).toBeGreaterThan(90);
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
+});
