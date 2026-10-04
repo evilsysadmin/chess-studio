@@ -65,6 +65,12 @@ export function installWarRoomV3FireAnimation(
       ? rendererNow
       : (globalThis.performance?.now?.() ?? Date.now());
     const lightFrame = warRoomV3FireFrame({ elapsedMs, coarsePointer, reducedMotion });
+    // When Hans tends this hearth he dims and revives it through stand-ins
+    // (WarRoomHansStage); their scale and intensity multiply the flicker.
+    const dimmer = root.userData?.warRoomHansFireDimmer;
+    const dimWidth = Number(dimmer?.core?.scale?.x) || 1;
+    const dimHeight = Number(dimmer?.core?.scale?.y) || 1;
+    const dimLight = Number.isFinite(dimmer?.light?.intensity) ? dimmer.light.intensity : 1;
     flames.forEach((flame, index) => {
       const base = bases[index];
       const frame = warRoomV3FireFrame({
@@ -73,17 +79,17 @@ export function installWarRoomV3FireAnimation(
         reducedMotion,
       });
       flame.scale.set(
-        base.scale.x * frame.width,
-        base.scale.y * frame.height,
-        base.scale.z * frame.depth,
+        base.scale.x * frame.width * dimWidth,
+        base.scale.y * frame.height * dimHeight,
+        base.scale.z * frame.depth * dimWidth,
       );
       flame.position.y = base.position.y + frame.lift;
     });
     materials.forEach((material) => {
-      material.emissiveIntensity = materialBases.get(material) * lightFrame.intensity;
+      material.emissiveIntensity = materialBases.get(material) * lightFrame.intensity * dimLight;
     });
     if (practical && Number.isFinite(practicalBase)) {
-      practical.intensity = practicalBase * lightFrame.intensity;
+      practical.intensity = practicalBase * lightFrame.intensity * dimLight;
       practical.color.setHSL(
         0.065 + (lightFrame.intensity - 1) * 0.018,
         0.94,

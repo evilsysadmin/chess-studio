@@ -118,46 +118,7 @@ function attachFinalizerDriver(driver, owner, phase = 'before') {
       taskDurationsMs[key] = elapsedMs(taskStartedAt);
       if (key === HANS_FIREPLACE_FINALIZER_KEY) {
         const hansPostInstallStartedAt = timingNowMs();
-        measureInstall(taskDurationsMs, 'hans:canonical-butler', () => installWarRoomHansCanonicalButler(root));
-        measureInstall(taskDurationsMs, 'hans:board-peek-clock-hold', () => installWarRoomHansBoardPeekClockHold(root));
-        // Hans owns one body-animation boundary. Internal animation modules are
-        // implementation details of this facade rather than scene-level peers.
-        measureInstall(taskDurationsMs, 'hans:animator', () => installWarRoomHansAnimator(root));
-        measureInstall(taskDurationsMs, 'hans:actor-telemetry', () => installWarRoomHansActorTelemetry(root));
-        measureInstall(taskDurationsMs, 'hans:elder-clock', () => installWarRoomHansElderClock(root));
-        measureInstall(taskDurationsMs, 'hans:fire-narrative', () => installWarRoomHansFireNarrative(root));
-        measureInstall(taskDurationsMs, 'hans:matthias-reaction', () => installWarRoomMatthiasHansReaction(root));
-        // Idle glances sit after explicit Matthias↔Hans reactions in the shared
-        // post-render pipeline, so narrative attention always wins over ambience.
-        measureInstall(taskDurationsMs, 'hans:matthias-idle-glances', () => installWarRoomMatthiasIdleGlances(root));
-        measureInstall(taskDurationsMs, 'hans:service-infrastructure', () => installWarRoomHansServiceInfrastructure(root));
-
-        // Permanent Hans dressing remains independent of which single event wins.
-        measureInstall(taskDurationsMs, 'hans:plant', () => ensureWarRoomHansPlant(root));
-        // Task producers may request work, but no longer own body installation.
-        measureInstall(taskDurationsMs, 'hans:mop-routine', () => installWarRoomHansMopRoutine(root));
-        measureInstall(taskDurationsMs, 'hans:service-routine', () => installWarRoomHansServiceRoutine(root));
-        measureInstall(taskDurationsMs, 'hans:ambient-chore-routine', () => installWarRoomHansAmbientChoreRoutine(root));
-        // These three task producers still compose on floor.onBeforeRender. Keep
-        // one final same-frame visual pass after all of them so acting poses face
-        // their real target and shoe bottoms are reconciled with the surface at
-        // the position chosen by that task, never the previous frame's position.
-        measureInstall(taskDurationsMs, 'hans:task-visual-guard', () => installWarRoomHansTaskVisualGuard(root));
-        // Armor polish is a narrow visual specialization layered after generic
-        // task grounding/facing so the cloth follows the working hand without
-        // owning navigation or vertical placement.
-        measureInstall(taskDurationsMs, 'hans:armor-polish-guard', () => installWarRoomHansArmorPolishGuard(root));
-        // Keep the legacy driver grounding too: it remains the generic fallback
-        // for Fire/Iteration and non-task movement owned by HansAnimator.
-        measureInstall(taskDurationsMs, 'hans:grounding', () => installWarRoomHansGrounding(root));
-        // Absolute last Hans visible-mesh authority. Any legacy choreography may
-        // write its historical root Y first; rendered shoe contact wins before paint.
-        measureInstall(taskDurationsMs, 'hans:visible-ground-lock', () => installWarRoomHansVisibleGroundLock(root));
-        // Service installation re-enters ensureWarRoomHansPlant(), whose sofa-relative
-        // fallback can drag the plant toward the board. Canonical composition owns
-        // this final coordinate: pin it to the weather-window corner only after all
-        // installers have finished touching the shared plant object.
-        measureInstall(taskDurationsMs, 'hans:canonical-plant-lock', () => lockWarRoomCanonicalPlantPlacement(root));
+        runWarRoomHansPostInstall(root, { durations: taskDurationsMs });
         taskDurationsMs['hans-post-install'] = elapsedMs(hansPostInstallStartedAt);
       }
       completedKeys.push(key);
@@ -186,6 +147,80 @@ function attachFinalizerDriver(driver, owner, phase = 'before') {
   };
 
   return state;
+}
+
+// Everything Hans needs once his fireplace routine exists. War Room v1 runs the
+// whole chain from its deferred finalizer; Blender rooms (WarRoomHansStage)
+// run it after their shell loads, excluding the steps their decor cannot host
+// (e.g. no sofas for the cat, no plant to water).
+export const WAR_ROOM_HANS_POST_INSTALL_STEPS = Object.freeze([
+  'hans:canonical-butler',
+  'hans:board-peek-clock-hold',
+  'hans:animator',
+  'hans:actor-telemetry',
+  'hans:elder-clock',
+  'hans:fire-narrative',
+  'hans:matthias-reaction',
+  'hans:matthias-idle-glances',
+  'hans:service-infrastructure',
+  'hans:plant',
+  'hans:mop-routine',
+  'hans:service-routine',
+  'hans:ambient-chore-routine',
+  'hans:task-visual-guard',
+  'hans:armor-polish-guard',
+  'hans:grounding',
+  'hans:visible-ground-lock',
+  'hans:canonical-plant-lock',
+]);
+
+export function runWarRoomHansPostInstall(root, { durations = {}, exclude = [] } = {}) {
+  const skipped = new Set(exclude);
+  const step = (key, install) => {
+    if (skipped.has(key)) return undefined;
+    return measureInstall(durations, key, install);
+  };
+  step('hans:canonical-butler', () => installWarRoomHansCanonicalButler(root));
+  step('hans:board-peek-clock-hold', () => installWarRoomHansBoardPeekClockHold(root));
+  // Hans owns one body-animation boundary. Internal animation modules are
+  // implementation details of this facade rather than scene-level peers.
+  step('hans:animator', () => installWarRoomHansAnimator(root));
+  step('hans:actor-telemetry', () => installWarRoomHansActorTelemetry(root));
+  step('hans:elder-clock', () => installWarRoomHansElderClock(root));
+  step('hans:fire-narrative', () => installWarRoomHansFireNarrative(root));
+  step('hans:matthias-reaction', () => installWarRoomMatthiasHansReaction(root));
+  // Idle glances sit after explicit Matthias↔Hans reactions in the shared
+  // post-render pipeline, so narrative attention always wins over ambience.
+  step('hans:matthias-idle-glances', () => installWarRoomMatthiasIdleGlances(root));
+  step('hans:service-infrastructure', () => installWarRoomHansServiceInfrastructure(root));
+
+  // Permanent Hans dressing remains independent of which single event wins.
+  step('hans:plant', () => ensureWarRoomHansPlant(root));
+  // Task producers may request work, but no longer own body installation.
+  step('hans:mop-routine', () => installWarRoomHansMopRoutine(root));
+  step('hans:service-routine', () => installWarRoomHansServiceRoutine(root));
+  step('hans:ambient-chore-routine', () => installWarRoomHansAmbientChoreRoutine(root));
+  // These three task producers still compose on floor.onBeforeRender. Keep
+  // one final same-frame visual pass after all of them so acting poses face
+  // their real target and shoe bottoms are reconciled with the surface at
+  // the position chosen by that task, never the previous frame's position.
+  step('hans:task-visual-guard', () => installWarRoomHansTaskVisualGuard(root));
+  // Armor polish is a narrow visual specialization layered after generic
+  // task grounding/facing so the cloth follows the working hand without
+  // owning navigation or vertical placement.
+  step('hans:armor-polish-guard', () => installWarRoomHansArmorPolishGuard(root));
+  // Keep the legacy driver grounding too: it remains the generic fallback
+  // for Fire/Iteration and non-task movement owned by HansAnimator.
+  step('hans:grounding', () => installWarRoomHansGrounding(root));
+  // Absolute last Hans visible-mesh authority. Any legacy choreography may
+  // write its historical root Y first; rendered shoe contact wins before paint.
+  step('hans:visible-ground-lock', () => installWarRoomHansVisibleGroundLock(root));
+  // Service installation re-enters ensureWarRoomHansPlant(), whose sofa-relative
+  // fallback can drag the plant toward the board. Canonical composition owns
+  // this final coordinate: pin it to the weather-window corner only after all
+  // installers have finished touching the shared plant object.
+  step('hans:canonical-plant-lock', () => lockWarRoomCanonicalPlantPlacement(root));
+  return durations;
 }
 
 export function registerWarRoomDeferredFinalizer(group, {

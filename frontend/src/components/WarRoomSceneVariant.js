@@ -4,6 +4,7 @@ import {
   loadWarRoomVariant,
   loadWarRoomVariantInstaller,
 } from './WarRoomVariant.js';
+import { installWarRoomHansVariantStage, warRoomHansRoom } from './WarRoomHansStage.js';
 
 export function shouldShowClassicWarRoomShell(options = {}) {
   return isClassicWarRoomVariant(options);
@@ -27,6 +28,7 @@ export function startWarRoomVariantScene({
 }) {
   let cancelled = false;
   let releaseShell = null;
+  let releaseHans = null;
   const classicShellObjects = classicShellController?.current?.() || [];
   const ensureClassicShell = classicShellController?.ensure;
   const setStatus = (status, renderedVariant) => {
@@ -65,6 +67,26 @@ export function startWarRoomVariantScene({
     .then((release) => {
       if (cancelled) return release?.();
       releaseShell = release;
+      if (warRoomHansRoom(variant)) {
+        // Hans lives in every War Room (never the Duel Room). Blender rooms get
+        // him once their shell exports his anchors and door leaf; a failure
+        // here must never cost the room.
+        try {
+          const hans = installWarRoomHansVariantStage(scene, {
+            variant,
+            coarsePointer: shellCoarsePointer,
+            shellRoot: scene.children.find((child) => child?.userData?.warRoomVariant === variant) || null,
+          });
+          releaseHans = hans.release;
+          if (canvas) canvas.dataset.warRoomHansStage = hans.status;
+          // The board marks Hans' scene ready after two real paints with his
+          // driver in place (v1 installs him inside a render); give it the
+          // extra paint so the fire-call narrative can start.
+          onPaint?.();
+        } catch (error) {
+          if (canvas) canvas.dataset.warRoomHansStageError = String(error?.message || error).slice(0, 200);
+        }
+      }
       setClassicShellVisible(classicShellObjects, false);
       scene.userData ||= {};
       scene.userData.warRoomRenderedVariant = variant;
@@ -86,6 +108,12 @@ export function startWarRoomVariantScene({
 
   return () => {
     cancelled = true;
+    releaseHans?.();
+    releaseHans = null;
+    if (canvas) {
+      delete canvas.dataset.warRoomHansStage;
+      delete canvas.dataset.warRoomHansStageError;
+    }
     releaseShell?.();
     releaseShell = null;
     scene.userData ||= {};
