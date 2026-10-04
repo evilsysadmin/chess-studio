@@ -20,8 +20,8 @@ describe('Chronicles tactical target margin', () => {
     const state = createChroniclesState('gallery-of-forks');
 
     expect(chroniclesTargetAhead(state, 2)).toMatchObject({
-      id: 'corrupted-pawn',
-      name: 'peón de ceniza',
+      id: 'fork-stalker',
+      name: 'acechador de las horquillas',
       hp: 8,
       maxHp: 8,
       distance: 2,

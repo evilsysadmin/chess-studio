@@ -290,8 +290,18 @@ for (const room of AUTHORED_ROOM_VISUAL_CAPTURES) {
       expect(health.partyMemberCount, `${room.mapId}: canonical four-member party`).toBe(4);
       expectCanvasFillsViewport(health, room.mapId);
       expectDesktopCanonicalComposition(health, room.mapId);
+      const rendererHost = mode.locator('[data-chronicles-tactics-renderer="three"]');
+      if (room.mapId === 'gallery-of-forks') {
+        const [expectedEnemyIds, renderedEnemyIds] = JSON.parse(
+          (await rendererHost.getAttribute('data-chronicles-enemy-render-proof')) || '[[],[]]',
+        );
+        expect(expectedEnemyIds.sort(), 'Gallery gameplay exposes both authored threats').toEqual(
+          ['fork-stalker', 'gate-jailer'].sort(),
+        );
+        expect(renderedEnemyIds.sort(), 'Every active Gallery enemy owns a visible placed Three.js model').toEqual(expectedEnemyIds.sort());
+        health.enemyRender = { expectedEnemyIds, renderedEnemyIds, parity: true };
+      }
       if (room.mapId === 'menagerie-of-ash') {
-        const rendererHost = mode.locator('[data-chronicles-tactics-renderer="three"]');
         const [expectedEnemyIds, renderedEnemyIds] = JSON.parse(
           (await rendererHost.getAttribute('data-chronicles-enemy-render-proof')) || '[[],[]]',
         );
@@ -307,6 +317,18 @@ for (const room of AUTHORED_ROOM_VISUAL_CAPTURES) {
         viewport,
         `${ARTIFACT_DIR}/chronicles-tactics-${room.slug}-desktop-1440x900.png`,
       );
+
+      if (room.mapId === 'gallery-of-forks') {
+        const moveEast = mode.getByRole('button', { name: 'Mover al este', exact: true });
+        await expect(moveEast).toBeEnabled();
+        await moveEast.evaluate((button) => button.click());
+        await page.waitForTimeout(320);
+        await captureElement(
+          page,
+          viewport,
+          `${ARTIFACT_DIR}/chronicles-tactics-gallery-of-forks-fork-stalker-desktop-1440x900.png`,
+        );
+      }
 
       await writeFile(
         `${ARTIFACT_DIR}/chronicles-tactics-${room.slug}-visual-health-desktop-1440x900.json`,

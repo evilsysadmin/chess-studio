@@ -171,3 +171,40 @@ export function buildBoneHound({ coarsePointer = false } = {}) {
 
   return finish(root, 'bone-hound', 'skeletal-ribbed-hound', [eye], 2.35);
 }
+
+export function buildForkStalker({ coarsePointer = false } = {}) {
+  const segments = coarsePointer ? 14 : 28;
+  const root = new THREE.Group();
+  root.name = 'chronicles-fork-stalker';
+
+  const hide = material(0x343039, { roughness: 0.86 });
+  const iron = material(0x6d7075, { metalness: 0.72, roughness: 0.3 });
+  const ash = material(0x17181b, { roughness: 0.94 });
+  const eye = material(0xd790ff, { emissive: 0x7b2cad, emissiveIntensity: 2.9, roughness: 0.18 });
+
+  add(root, new THREE.CylinderGeometry(0.45, 0.55, 0.12, segments), ash, [0, 0.06, 0], [], null, 'fork-stalker-plinth');
+  add(root, new THREE.SphereGeometry(0.37, segments, Math.max(8, segments / 2)), hide, [0, 0.68, 0], [0.1, 0, 0], [0.82, 1.2, 0.72], 'fork-stalker-torso');
+  const head = add(root, new THREE.SphereGeometry(0.29, segments, Math.max(8, segments / 2)), ash, [0, 1.22, 0.1], [], [0.9, 0.78, 0.95], 'fork-stalker-head');
+  add(head, new THREE.SphereGeometry(0.05, 8, 6), eye, [-0.11, 0.02, 0.25], [], null, 'fork-stalker-eye-left');
+  add(head, new THREE.SphereGeometry(0.05, 8, 6), eye, [0.11, 0.02, 0.25], [], null, 'fork-stalker-eye-right');
+
+  [-1, 1].forEach((side) => {
+    add(root, new THREE.CylinderGeometry(0.045, 0.065, 0.78, 7), hide,
+      [side * 0.42, 0.7, 0.03], [0.06, 0, side * 0.34], null, `fork-stalker-arm-${side < 0 ? 'left' : 'right'}`);
+    add(root, new THREE.BoxGeometry(0.08, 0.72, 0.13), iron,
+      [side * 0.57, 0.78, 0.16], [0, 0, side * 0.16], null, `fork-stalker-blade-${side < 0 ? 'left' : 'right'}`);
+    add(root, new THREE.CylinderGeometry(0.035, 0.055, 0.58, 7), hide,
+      [side * 0.2, 0.3, -0.02], [0.05, 0, side * 0.1], null, `fork-stalker-leg-${side < 0 ? 'left' : 'right'}`);
+  });
+
+  const crown = add(root, new THREE.BoxGeometry(0.52, 0.09, 0.12), iron, [0, 1.48, 0.02], [], null, 'fork-stalker-fork-crown');
+  [-0.2, 0.2].forEach((x, index) => {
+    add(crown, new THREE.CylinderGeometry(0.045, 0.06, 0.66, 7), iron,
+      [x, 0.3, 0], [0, 0, x < 0 ? 0.08 : -0.08], null, `fork-stalker-tine-${index}`);
+    add(crown, new THREE.ConeGeometry(0.07, 0.24, 7), eye,
+      [x, 0.72, 0], [], null, `fork-stalker-tine-glow-${index}`);
+  });
+  add(root, new THREE.BoxGeometry(0.54, 0.11, 0.34), iron, [0, 0.9, -0.02], [0.08, 0, 0], null, 'fork-stalker-shoulder-yoke');
+
+  return finish(root, 'fork-stalker', 'fork-crowned-dual-blade-stalker', [eye], 2.65);
+}
