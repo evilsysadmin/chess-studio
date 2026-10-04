@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import {
   WAR_ROOM_V3_HEARTH_FIRE_SHAPE,
+  WAR_ROOM_V3_TOUCH_HEARTH_WASH,
+  WAR_ROOM_V3_TOUCH_TORCH_LIGHT,
   installWarRoomV3Torches,
   tuneWarRoomV3Lighting,
   WAR_ROOM_V3_RUNTIME_MODEL_URL,
@@ -33,12 +35,17 @@ describe('War Room v3 armory hearth fire', () => {
 describe('War Room v3 side-wall torches', () => {
   const build = () => {
     const root = new THREE.Group();
-    for (const [name, x] of [['WR3_ANCHOR_torch_0', -8.28], ['WR3_ANCHOR_torch_1', 8.28]]) {
+    const spots = [
+      [-8.28, 2.2], [8.28, 2.2],
+      [-8.28, -1.0], [8.28, -1.0],
+      [-8.28, -4.2], [8.28, -4.2],
+    ];
+    spots.forEach(([x, z], index) => {
       const anchor = new THREE.Object3D();
-      anchor.name = name;
-      anchor.position.x = x;
+      anchor.name = `WR3_ANCHOR_torch_${index}`;
+      anchor.position.set(x, 3.25, z);
       root.add(anchor);
-    }
+    });
     return root;
   };
   const lights = (root) => {
@@ -50,10 +57,10 @@ describe('War Room v3 side-wall torches', () => {
   it('mounts the v1 sconce-brazier on every authored anchor and removes it on cleanup', () => {
     const root = build();
     const release = installWarRoomV3Torches(root);
-    expect(root.userData.warRoomV3Torches).toBe(2);
+    expect(root.userData.warRoomV3Torches).toBe(6);
     const torch = root.getObjectByName('WR3_ANCHOR_torch_0').children[0];
     expect(torch.userData.warRoomTorchForm).toBe('gothic-wall-sconce-brazier');
-    expect(lights(root)).toBe(2);
+    expect(lights(root)).toBe(6);
     // The torches lead the hall: well above the v1 gallery sconce (9.2).
     const torchLight = torch.getObjectByName('war-room-side-torch-light');
     expect(torchLight.intensity).toBeGreaterThan(2 * 9.2);
@@ -62,12 +69,22 @@ describe('War Room v3 side-wall torches', () => {
     expect(root.userData.warRoomV3Torches).toBeUndefined();
   });
 
-  it('keeps flames but no real lights on touch devices', () => {
+  it('keeps every flame but only one real torch light per side wall on touch devices', () => {
     const root = build();
     const release = installWarRoomV3Torches(root, { coarsePointer: true });
     expect(root.getObjectByName('war-room-side-torch-flame-outer')).toBeTruthy();
-    expect(lights(root)).toBe(0);
+    expect(lights(root)).toBe(WAR_ROOM_V3_TOUCH_TORCH_LIGHT.maxLights);
+    expect(root.userData.warRoomV3TouchTorchLights).toBe(2);
+    const litAnchors = root.children
+      .filter((anchor) => anchor.getObjectByName('war-room-side-torch-light'))
+      .map((anchor) => anchor.name);
+    expect(litAnchors).toEqual(['WR3_ANCHOR_torch_2', 'WR3_ANCHOR_torch_3']);
+    const touchLight = root.getObjectByName('WR3_ANCHOR_torch_2')
+      .getObjectByName('war-room-side-torch-light');
+    expect(touchLight.intensity).toBeCloseTo(WAR_ROOM_V3_TOUCH_TORCH_LIGHT.intensity);
+    expect(touchLight.distance).toBeCloseTo(WAR_ROOM_V3_TOUCH_TORCH_LIGHT.distance);
     release();
+    expect(root.userData.warRoomV3TouchTorchLights).toBeUndefined();
   });
 });
 
@@ -107,7 +124,47 @@ describe('War Room v3 torchlit grade', () => {
     expect(root.getObjectByName('war-room-v3-board-pool')).toBeUndefined();
   });
 
-  it('keeps more fill on touch, where the torches carry no real light', () => {
+  it('lets the visible hearth and moonlight carry the touch portrait without global exposure', () => {
+    const root = new THREE.Group();
+    const fire = practical('war-room-blender-fire-practical', 2.05);
+    const moon = practical('war-room-blender-moon-practical', 2.65);
+    const lantern = practical('war-room-blender-chandelier-practical', 0.92);
+    root.add(fire, moon, lantern);
+
+    const release = tuneWarRoomV3Lighting(root, { coarsePointer: true });
+    expect(fire.intensity).toBeCloseTo(2.05 * 2.05);
+    expect(moon.intensity).toBeCloseTo(2.65 * 0.82);
+    expect(lantern.intensity).toBe(0);
+
+    release();
+    expect(fire.intensity).toBe(2.05);
+    expect(moon.intensity).toBe(2.65);
+    expect(lantern.intensity).toBe(0.92);
+  });
+
+  it('projects one shadowless touch hearth wash from the authored fireplace toward the board', () => {
+    const root = new THREE.Group();
+    const hearthAnchor = new THREE.Object3D();
+    hearthAnchor.name = 'WR_ANCHOR_fireplace_practical';
+    root.add(hearthAnchor);
+
+    const release = tuneWarRoomV3Lighting(root, { coarsePointer: true });
+    const wash = hearthAnchor.getObjectByName('war-room-v3-touch-hearth-wash');
+    const target = root.getObjectByName('war-room-v3-touch-hearth-target');
+
+    expect(wash?.isSpotLight).toBe(true);
+    expect(wash.intensity).toBe(WAR_ROOM_V3_TOUCH_HEARTH_WASH.intensity);
+    expect(wash.distance).toBe(WAR_ROOM_V3_TOUCH_HEARTH_WASH.distance);
+    expect(wash.castShadow).toBe(false);
+    expect(wash.target).toBe(target);
+    expect(target.position.toArray()).toEqual(WAR_ROOM_V3_TOUCH_HEARTH_WASH.target);
+
+    release();
+    expect(hearthAnchor.getObjectByName('war-room-v3-touch-hearth-wash')).toBeUndefined();
+    expect(root.getObjectByName('war-room-v3-touch-hearth-target')).toBeUndefined();
+  });
+
+  it('keeps more shared fill on touch, where only two torches carry real light', () => {
     const scene = new THREE.Scene();
     const hemi = new THREE.HemisphereLight(0xffffff, 0x000000, 1);
     scene.add(hemi);
