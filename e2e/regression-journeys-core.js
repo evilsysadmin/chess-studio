@@ -222,14 +222,18 @@ test('sesión · dos contextos de navegador del mismo usuario son independientes
     expect(presenceB).toBeTruthy();
     expect(presenceA).not.toBe(presenceB);
 
-    // After logging in B, A is a background window: Chromium throttles its
-    // animation frames, so Playwright's "stable" check on A can stall. Bring
-    // each page to the front before acting on it, as a real user would.
-    await pageA.bringToFront();
-    await pageA.getByRole('button', { name: 'Abrir menú de cuenta', exact: true }).click();
-    await pageA.getByRole('menuitem', { name: /Cerrar sesión/ }).click();
+    // Two software-rendered 3D Homes share one GPU process on CI, so page A
+    // can go >12s without an animation frame while B compiles shaders. A
+    // regular click() waits for rAF-based stability and never returns
+    // (bringToFront did not help). This journey is about session isolation,
+    // not motion: assert visibility, then dispatch the clicks.
+    const accountA = pageA.getByRole('button', { name: 'Abrir menú de cuenta', exact: true });
+    await expect(accountA).toBeVisible();
+    await accountA.dispatchEvent('click');
+    const logoutA = pageA.getByRole('menuitem', { name: /Cerrar sesión/ });
+    await expect(logoutA).toBeVisible();
+    await logoutA.dispatchEvent('click');
     await expect(pageA.getByRole('heading', { name: 'Iniciar sesión', exact: true })).toBeVisible();
-    await pageB.bringToFront();
     await expect(pageB.getByRole('region', { name: 'Modos principales' })).toBeVisible();
   } finally {
     await contextA.close();
