@@ -1243,7 +1243,7 @@ func TestNativeGamesHintServesOnlyTheHint(t *testing.T) {
 	}
 }
 
-func TestNativeGamesAnalyzeServesOnlyThePositionAnalysis(t *testing.T) {
+func TestNativeGamesAnalyzeServesOnlyTheAnalysisRoutes(t *testing.T) {
 	var proxied []string
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		proxied = append(proxied, r.Method+" "+r.URL.Path)
@@ -1260,15 +1260,15 @@ func TestNativeGamesAnalyzeServesOnlyThePositionAnalysis(t *testing.T) {
 		t.Fatal(err)
 	}
 	var edges []string
-	for _, req := range [][2]string{{"POST", "/api/analyze"}, {"POST", "/api/analyze-move"}, {"GET", "/api/analyze"}} {
+	for _, req := range [][2]string{{"POST", "/api/analyze"}, {"POST", "/api/analyze-move"}, {"GET", "/api/analyze"}, {"POST", "/api/analyze-moves"}} {
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, httptest.NewRequest(req[0], "http://api.chess.test"+req[1], nil))
 		edges = append(edges, w.Header().Get("X-Chess-Edge"))
 	}
-	if strings.Join(served, ",") != "POST /api/analyze" || strings.Join(proxied, ",") != "POST /api/analyze-move,GET /api/analyze" {
+	if strings.Join(served, ",") != "POST /api/analyze,POST /api/analyze-move" || strings.Join(proxied, ",") != "GET /api/analyze,POST /api/analyze-moves" {
 		t.Fatalf("served %v proxied %v", served, proxied)
 	}
-	if edges[0] != "go" {
+	if edges[0] != "go" || edges[1] != "go" {
 		t.Fatalf("native analysis not marked: %v", edges)
 	}
 }

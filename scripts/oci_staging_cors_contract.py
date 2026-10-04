@@ -586,6 +586,8 @@ assert 'CHESS_STUDIO_GO_NATIVE_ANALYZE_ENABLED="$go_native_analyze"' in deploy
 assert "payload.get('nativeGamesAnalyze')" in deploy
 assert 'games_native_attest "http://127.0.0.1:${port}/api/analyze" POST; then' in deploy
 assert 'exit 62' in deploy
+assert 'games_native_attest "http://127.0.0.1:${port}/api/analyze-move" POST; then' in deploy
+assert 'exit 63' in deploy
 assert 'GO_NATIVE_ANALYZE_ENABLED: "${CHESS_STUDIO_GO_NATIVE_ANALYZE_ENABLED:-false}"' in compose
 assert 'GO_NATIVE_GAMES_WRITE_ENABLED: "${CHESS_STUDIO_GO_NATIVE_GAMES_WRITE_ENABLED:-false}"' in compose
 assert 'sleep 0.25' in deploy

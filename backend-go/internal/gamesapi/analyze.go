@@ -3,10 +3,11 @@ package gamesapi
 // Native analysis routes, mirroring game_api.py:
 //
 //	POST /api/analyze       analyze
+//	POST /api/analyze-move  analyze_move_endpoint
 //
 // They authenticate a session OR a machine API key (main.get_user_or_m2m,
-// X-API-Key in M2M_API_KEYS), rate-limit 60/min per user (API keys: 1000/min
-// per key instead), and run as OPTIONAL engine work: when the pool is busy
+// X-API-Key in M2M_API_KEYS), rate-limit per user (60/min analyze, 180/min
+// analyze-move; API keys: 1000/min per key and route instead), and run as OPTIONAL engine work: when the pool is busy
 // they answer 503 with Retry-After instead of queueing behind gameplay.
 
 import (
@@ -32,16 +33,19 @@ import (
 // AnalyzePattern is the FastAPI route of the position analysis.
 const AnalyzePattern = "/api/analyze"
 
+// AnalyzeMovePattern is the FastAPI route of the played-move analysis.
+const AnalyzeMovePattern = "/api/analyze-move"
+
 // mateScore mirrors chess_ai.MATE_SCORE.
 const mateScore = 100000.0
 
 // AnalyzeRoute reports whether a request is a native analysis route.
 func AnalyzeRoute(r *http.Request) (pattern string, ok bool) {
-	if r.URL.Path != AnalyzePattern {
+	if r.URL.Path != AnalyzePattern && r.URL.Path != AnalyzeMovePattern {
 		return "", false
 	}
 	if r.Method == http.MethodPost || r.Method == http.MethodOptions && preflightMethod(r) == http.MethodPost {
-		return AnalyzePattern, true
+		return r.URL.Path, true
 	}
 	return "", false
 }
@@ -51,9 +55,11 @@ type Mover interface {
 	Move(ctx context.Context, positions []*chess.Position, level float64) (string, error)
 }
 
-// RootAnalyzer runs one factual root pass (residentsearch.AnalyzeDepth).
+// RootAnalyzer runs one factual root pass (residentsearch.AnalyzeDepth) or
+// the engine's own search (residentsearch.Classic, chess_ai._search).
 type RootAnalyzer interface {
 	AnalyzeDepth(ctx context.Context, positions []*chess.Position, depth int, budget time.Duration) (residentsearch.Snapshot, error)
+	Classic(ctx context.Context, positions []*chess.Position, maxDepth int, budget time.Duration) (string, float64, error)
 }
 
 type AnalyzeConfig struct {
@@ -71,7 +77,7 @@ type AnalyzeHandler struct {
 	analyzer   RootAnalyzer
 	pool       *EnginePool
 	keys       []string
-	userLimit  *limiter
+	userLimits map[string]*limiter
 	keyLimiter *limiter
 }
 
@@ -97,7 +103,11 @@ func NewAnalyze(cfg AnalyzeConfig) (*AnalyzeHandler, error) {
 	}
 	return &AnalyzeHandler{
 		base: base, mover: cfg.Mover, analyzer: cfg.Analyzer, pool: pool, keys: keys,
-		userLimit: newLimiter(60, time.Minute), keyLimiter: newLimiter(1000, time.Minute),
+		userLimits: map[string]*limiter{
+			AnalyzePattern:     newLimiter(60, time.Minute),
+			AnalyzeMovePattern: newLimiter(180, time.Minute),
+		},
+		keyLimiter: newLimiter(1000, time.Minute),
 	}, nil
 }
 
@@ -164,30 +174,40 @@ func (h *AnalyzeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		actor = username
 	}
 
-	if pattern == AnalyzePattern {
-		req, detail := parseAnalyze(body)
+	ctx := context.WithoutCancel(r.Context())
+	if pattern == AnalyzeMovePattern {
+		req, detail := parseAnalyzeMove(body)
 		if detail != nil {
 			writeJSON(w, http.StatusUnprocessableEntity, map[string]any{"detail": detail})
 			return
 		}
-		if !h.allow(w, key, actor, 60) {
-			return
+		if h.allow(w, pattern, key, actor) {
+			h.analyzeMove(ctx, w, req)
 		}
-		h.analyze(context.WithoutCancel(r.Context()), w, req)
+		return
+	}
+	req, detail := parseAnalyze(body)
+	if detail != nil {
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]any{"detail": detail})
+		return
+	}
+	if h.allow(w, pattern, key, actor) {
+		h.analyze(ctx, w, req)
 	}
 }
 
 // allow applies the route limit: per user, or per API key when one is valid.
-func (h *AnalyzeHandler) allow(w http.ResponseWriter, key, actor string, perMinute int) bool {
+func (h *AnalyzeHandler) allow(w http.ResponseWriter, pattern, key, actor string) bool {
 	if key != "" {
-		if !h.keyLimiter.allow("key:"+key, h.base.now()) {
+		if !h.keyLimiter.allow(pattern+" key:"+key, h.base.now()) {
 			writeJSON(w, http.StatusTooManyRequests, map[string]any{"error": "Rate limit exceeded: 1000 per 1 minute"})
 			return false
 		}
 		return true
 	}
-	if !h.userLimit.allow("user:"+actor, h.base.now()) {
-		writeJSON(w, http.StatusTooManyRequests, map[string]any{"error": "Rate limit exceeded: " + strconv.Itoa(perMinute) + " per 1 minute"})
+	userLimit := h.userLimits[pattern]
+	if !userLimit.allow("user:"+actor, h.base.now()) {
+		writeJSON(w, http.StatusTooManyRequests, map[string]any{"error": "Rate limit exceeded: " + strconv.Itoa(userLimit.limit) + " per 1 minute"})
 		return false
 	}
 	return true

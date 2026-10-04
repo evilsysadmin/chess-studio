@@ -237,3 +237,9 @@ func (s *Searcher) StaticScores(positions []*chess.Position, budget time.Duratio
 func LegalInPythonOrder(pos *chess.Position) []chess.Move {
 	return pythonGenerationOrder(pos, pos.ValidMovesUnsafe(), kingInCheck(pos))
 }
+
+// EvaluateStatic mirrors chess_ai.evaluate_board on a board without history:
+// infinite for checkmate, 0 for a materialised draw, else the static score.
+func EvaluateStatic(pos *chess.Position) float64 {
+	return evaluateBoard(pos, newSearchPath(pos, nil), 0)
+}
