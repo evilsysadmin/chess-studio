@@ -119,40 +119,11 @@ jobs:
 
       - name: Load ephemeral staging invite code from OCI runtime
         if: steps.admission.outputs.run == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          import os
-          import sys
-          sys.path.insert(0, 'scripts')
-          import oci
-          from oci_runtime_bundle import read_private_runtime_value
-
-          invite = read_private_runtime_value(oci, 'INVITE_CODE')
-          synthetic_secret = read_private_runtime_value(oci, 'CHESS_AI_SHARED_SECRET')
-          if not invite:
-              raise SystemExit('INVITE_CODE de staging falta en el bundle privado de OCI')
-          if not synthetic_secret:
-              raise SystemExit('CHESS_AI_SHARED_SECRET de staging falta en el bundle privado de OCI')
-          print(f'::add-mask::{invite}')
-          print(f'::add-mask::{synthetic_secret}')
-          with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as handle:
-              handle.write(f'STAGING_INVITE_CODE={invite}\n')
-              handle.write(f'STAGING_SYNTHETIC_SECRET={synthetic_secret}\n')
-          PY
+        run: python3 scripts/staging_smoke_env.py secrets
 
       - name: Generate isolated Pawn Slug smoke credentials
         if: steps.admission.outputs.run == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          username="ci_smoke_$(python3 -c 'import secrets; print(secrets.token_hex(8))')"
-          password="CS!$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')"
-          echo "::add-mask::$username"
-          echo "::add-mask::$password"
-          echo "STAGING_E2E_USERNAME=$username" >> "$GITHUB_ENV"
-          echo "STAGING_E2E_PASSWORD=$password" >> "$GITHUB_ENV"
+        run: python3 -S scripts/staging_smoke_env.py identity
 
       - name: Restore staging browser runtime
         if: steps.admission.outputs.run == 'true'
