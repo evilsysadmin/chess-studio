@@ -33,8 +33,12 @@ const (
 	durationName       = "chess_studio_http_server_duration"
 	frontendEventsName = "chess_studio_frontend_events"
 	frontendVitalName  = "chess_studio_frontend_web_vital"
-	loggerName         = "chess-studio.access"
-	exportInterval     = 30 * time.Second
+	billingGaugeName   = "chess_studio_billing_cost_current_cycle"
+	// billingTTL mirrors _BILLING_EMIT_TTL_SECONDS: a cost stops being
+	// reported five minutes after it was received.
+	billingTTL     = 5 * time.Minute
+	loggerName     = "chess-studio.access"
+	exportInterval = 30 * time.Second
 )
 
 // UsernameFunc returns the verified session subject of a request, or "" —
@@ -61,7 +65,11 @@ type Recorder struct {
 	duration metric.Float64Histogram
 	frontend metric.Int64Counter
 	vital    metric.Float64Histogram
-	logger   otellog.Logger
+
+	meterProvider *sdkmetric.MeterProvider
+	billingMu     sync.Mutex
+	billing       map[string]billingCost
+	logger        otellog.Logger
 
 	shutdowns []func(context.Context) error
 }
@@ -126,11 +134,17 @@ func New(ctx context.Context, cfg Config, opts Options) (*Recorder, error) {
 		histogram, err2 := meter.Float64Histogram(durationName, metric.WithUnit("s"), metric.WithDescription("Chess Studio HTTP request duration"))
 		frontend, err3 := meter.Int64Counter(frontendEventsName, metric.WithDescription("Coarse frontend telemetry events"))
 		vital, err4 := meter.Float64Histogram(frontendVitalName, metric.WithDescription("Web Vital value reported by the frontend"))
-		if err := errors.Join(err1, err2, err3, err4); err != nil {
+		_, err5 := meter.Float64ObservableGauge(billingGaugeName,
+			metric.WithUnit("1"),
+			metric.WithDescription("Current OCI or Cloudflare billing cost in provider billing currency."),
+			metric.WithFloat64Callback(r.observeBilling),
+		)
+		if err := errors.Join(err1, err2, err3, err4, err5); err != nil {
 			errs = append(errs, err)
 		} else {
 			r.requests, r.duration = counter, histogram
 			r.frontend, r.vital = frontend, vital
+			r.meterProvider = provider
 			r.shutdowns = append(r.shutdowns, provider.Shutdown)
 		}
 	}
@@ -366,4 +380,61 @@ func (r *Recorder) LogLine(line string) {
 	r.outMu.Lock()
 	_, _ = io.WriteString(r.out, line+"\n")
 	r.outMu.Unlock()
+}
+
+type billingCost struct {
+	amount     float64
+	currency   string
+	receivedAt time.Time
+}
+
+// BillingCost is one provider's current-cycle cost.
+type BillingCost struct {
+	Provider string
+	Amount   float64
+	Currency string
+}
+
+// RecordBillingCosts mirrors tracing.record_billing_costs_otel: it keeps the
+// latest cost per provider for the observable gauge and forces one export.
+// It reports whether metrics export is configured and the flush succeeded.
+func (r *Recorder) RecordBillingCosts(ctx context.Context, costs []BillingCost) bool {
+	if r == nil {
+		return false
+	}
+	now := time.Now()
+	r.billingMu.Lock()
+	if r.billing == nil {
+		r.billing = map[string]billingCost{}
+	}
+	for _, cost := range costs {
+		r.billing[cost.Provider] = billingCost{amount: cost.Amount, currency: cost.Currency, receivedAt: now}
+	}
+	r.billingMu.Unlock()
+	if r.meterProvider == nil {
+		return false
+	}
+	flushCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	return r.meterProvider.ForceFlush(flushCtx) == nil
+}
+
+// observeBilling mirrors _billing_cost_observations: fresh costs only,
+// stale ones forgotten.
+func (r *Recorder) observeBilling(_ context.Context, observer metric.Float64Observer) error {
+	now := time.Now()
+	r.billingMu.Lock()
+	defer r.billingMu.Unlock()
+	for provider, cost := range r.billing {
+		if now.Sub(cost.receivedAt) > billingTTL {
+			delete(r.billing, provider)
+			continue
+		}
+		observer.Observe(cost.amount, metric.WithAttributes(
+			attribute.String("provider", provider),
+			attribute.String("currency", cost.currency),
+			attribute.String("scope", "current_cycle"),
+		))
+	}
+	return nil
 }

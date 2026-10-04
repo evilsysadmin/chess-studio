@@ -1289,10 +1289,10 @@ func TestNativeSystemServesOnlyItsRoutes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, req := range [][2]string{{"GET", "/api/status"}, {"GET", "/api/features"}, {"POST", "/api/client-telemetry"}, {"GET", "/api/health"}, {"POST", "/api/status"}} {
+	for _, req := range [][2]string{{"GET", "/api/status"}, {"GET", "/api/features"}, {"POST", "/api/client-telemetry"}, {"POST", "/api/internal/billing-costs"}, {"GET", "/api/health"}, {"POST", "/api/status"}} {
 		h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(req[0], "http://api.chess.test"+req[1], nil))
 	}
-	if strings.Join(served, ",") != "GET /api/status,GET /api/features,POST /api/client-telemetry" || strings.Join(proxied, ",") != "GET /api/health,POST /api/status" {
+	if strings.Join(served, ",") != "GET /api/status,GET /api/features,POST /api/client-telemetry,POST /api/internal/billing-costs" || strings.Join(proxied, ",") != "GET /api/health,POST /api/status" {
 		t.Fatalf("served %v proxied %v", served, proxied)
 	}
 }

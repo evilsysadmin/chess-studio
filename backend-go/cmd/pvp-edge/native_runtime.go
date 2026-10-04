@@ -311,6 +311,7 @@ func buildNativeRuntime(features nativeFeatureFlags, upstream string) (runtime n
 			Counter:          accountstore.New(mongoRuntime.Database(), pvpMongoTimeout),
 			AdminUsernames:   splitCSV(os.Getenv("ADMIN_USERNAMES")),
 			DisabledFeatures: os.Getenv("CHESS_DISABLED_FEATURES"),
+			BillingSecret:    os.Getenv("CHESS_AI_SHARED_SECRET"),
 		}
 		if runtime.history != nil {
 			runtime.system.History = runtime.history
@@ -353,6 +354,7 @@ func (r nativeRuntime) edgeConfig(upstream, release string, requestTelemetry *te
 		cfg := *r.system
 		if requestTelemetry != nil {
 			cfg.Metrics = requestTelemetry
+			cfg.BillingMetrics = requestTelemetry
 		}
 		if handler, err := gamesapi.NewSystem(cfg); err != nil {
 			log.Printf("native system routes disabled: %v", err)

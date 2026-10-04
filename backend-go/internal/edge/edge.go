@@ -46,9 +46,10 @@ type Config struct {
 	NativeGamesHint http.Handler
 	// NativeGamesAnalyze serves POST /api/analyze and /api/analyze-move; nil
 	// keeps them in Python.
-	NativeGamesAnalyze    http.Handler
-	// NativeSystem serves GET /api/status, GET /api/features and
-	// POST /api/client-telemetry; nil keeps them in Python.
+	NativeGamesAnalyze http.Handler
+	// NativeSystem serves GET /api/status, GET /api/features,
+	// POST /api/client-telemetry and POST /api/internal/billing-costs; nil
+	// keeps them in Python.
 	NativeSystem          http.Handler
 	VirtualPlayersEnabled bool
 	NativeResidentMove    bool

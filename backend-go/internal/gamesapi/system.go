@@ -5,6 +5,7 @@ package gamesapi
 //	GET  /api/status            public_status
 //	GET  /api/features          public_features
 //	POST /api/client-telemetry  client_telemetry
+//	POST /api/internal/billing-costs  ingest_billing_costs (billing.go)
 //
 // They share get_current_user, CORS and security headers with the games
 // routes. status and features carry slowapi's default 120/minute, checked
@@ -43,7 +44,7 @@ func SystemRoute(r *http.Request) (pattern string, ok bool) {
 	switch r.URL.Path {
 	case StatusPattern, FeaturesPattern:
 		want = http.MethodGet
-	case ClientTelemetryPattern:
+	case ClientTelemetryPattern, BillingPattern:
 		want = http.MethodPost
 	default:
 		return "", false
@@ -82,6 +83,9 @@ type SystemConfig struct {
 	AdminUsernames []string
 	// DisabledFeatures mirrors CHESS_DISABLED_FEATURES.
 	DisabledFeatures string
+	// BillingSecret mirrors CHESS_AI_SHARED_SECRET.
+	BillingSecret  string
+	BillingMetrics BillingMetrics
 }
 
 type SystemHandler struct {
@@ -94,6 +98,8 @@ type SystemHandler struct {
 	features       map[string]bool
 	defaultLimits  map[string]*limiter
 	telemetryLimit *limiter
+	billingSecret  string
+	billingMetrics BillingMetrics
 }
 
 // publicFeatureDefaults mirrors feature_flags.PUBLIC_FEATURE_DEFAULTS.
@@ -136,6 +142,8 @@ func NewSystem(cfg SystemConfig) (*SystemHandler, error) {
 			FeaturesPattern: newLimiter(120, time.Minute),
 		},
 		telemetryLimit: newLimiter(120, time.Minute),
+		billingSecret:  strings.TrimSpace(cfg.BillingSecret),
+		billingMetrics: cfg.BillingMetrics,
 	}
 	seen := map[string]bool{}
 	for _, raw := range cfg.AdminUsernames {
@@ -173,6 +181,10 @@ func (h *SystemHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Vary", "Origin")
 	}
 	w.Header().Set("X-Chess-System-Native", "go")
+	if pattern == BillingPattern {
+		h.billing(w, r)
+		return
+	}
 
 	subject, version, tokenErr := b.verify(r)
 	if limit := h.defaultLimits[pattern]; limit != nil {
