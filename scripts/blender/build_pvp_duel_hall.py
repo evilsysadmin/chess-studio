@@ -93,8 +93,8 @@ def palette():
             rough=0.78, sheen=0.14, texture="fabric", scale=46, bump=0.038,
         ),
         "parchment": base.material(
-            "PVP_HALL_MAT_parchment", (0.55, 0.39, 0.19, 1),
-            rough=0.78, texture="fabric", scale=34, bump=0.025,
+            "PVP_HALL_MAT_parchment", (0.32, 0.19, 0.075, 1),
+            rough=0.82, texture="fabric", scale=34, bump=0.030,
         ),
         "leather": base.material(
             "PVP_HALL_MAT_leather", (0.115, 0.028, 0.014, 1),
