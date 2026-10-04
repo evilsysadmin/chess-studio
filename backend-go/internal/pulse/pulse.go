@@ -34,7 +34,6 @@ const (
 	pvpTimeControlID     = "30+0"
 	pvpInitialClockMS    = pvpclock.InitialMS
 	nativeHeaderValue    = "lobby-pulse"
-	mongoApplicationName = "chess-studio-pvp-go"
 )
 
 type Store interface {
