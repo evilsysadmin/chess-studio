@@ -27,10 +27,10 @@ export const CHRONICLES_DIRECTIONS = Object.freeze([
 ]);
 
 export const CHRONICLES_PARTY = Object.freeze([
-  Object.freeze({ id: 'matthias', name: 'Matthias', role: 'Peón cronista', glyph: '♟', maxHp: 7, row: 'front', lane: 'left', attackName: 'Estocada', damage: 1, reach: 1 }),
-  Object.freeze({ id: 'rook', name: 'Hildegard', role: 'Torre guardiana', glyph: '♜', maxHp: 10, row: 'front', lane: 'right', attackName: 'Embestida', damage: 2, reach: 1 }),
-  Object.freeze({ id: 'bishop', name: 'Aziz', role: 'Alfil del farol', glyph: '♝', maxHp: 6, row: 'back', lane: 'left', attackName: 'Rayo diagonal', damage: 1, reach: 2 }),
-  Object.freeze({ id: 'knight', name: 'Faust', role: 'Caballo logístico', glyph: '♞', maxHp: 8, row: 'back', lane: 'right', attackName: 'Salto brutal', damage: 1, reach: 2 }),
+  Object.freeze({ id: 'matthias', name: 'Matthias', role: 'Peón cronista', glyph: '♟', maxHp: 7, agility: 4, row: 'front', lane: 'left', attackName: 'Estocada', damage: 1, reach: 1 }),
+  Object.freeze({ id: 'rook', name: 'Hildegard', role: 'Torre guardiana', glyph: '♜', maxHp: 10, agility: 2, row: 'front', lane: 'right', attackName: 'Embestida', damage: 2, reach: 1 }),
+  Object.freeze({ id: 'bishop', name: 'Aziz', role: 'Alfil del farol', glyph: '♝', maxHp: 6, agility: 3, row: 'back', lane: 'left', attackName: 'Rayo diagonal', damage: 1, reach: 2 }),
+  Object.freeze({ id: 'knight', name: 'Faust', role: 'Caballo logístico', glyph: '♞', maxHp: 8, agility: 5, row: 'back', lane: 'right', attackName: 'Salto brutal', damage: 1, reach: 2 }),
 ]);
 
 export const CHRONICLES_ENEMIES = DEFAULT_MAP.enemies;
