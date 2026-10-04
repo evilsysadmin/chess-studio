@@ -1195,6 +1195,12 @@ function disposeRuntimeScene(root) {
   });
 }
 
+export function disposeStaleHomeBlenderGltf(gltf, stale) {
+  if (!stale) return false;
+  disposeRuntimeScene(gltf?.scene);
+  return true;
+}
+
 // The chandelier lights the board from above, so it lifts the squares and the tops of the pieces
 // but not the sides the camera sees, and raising it further only flattens the board's contrast.
 // Candle light also bounces off the table onto the pieces from every side, which the runtime has
@@ -1703,7 +1709,7 @@ export default function HomeBlenderScene3D({
       actorLoader.load(
         `${import.meta.env.BASE_URL}${HOME_MATTHIAS_ACTOR_MODEL_PATH}`,
         (gltf) => {
-          if (disposed || fallbackRequested) return;
+          if (disposeStaleHomeBlenderGltf(gltf, disposed || fallbackRequested)) return;
           matthiasActor = createHomeMatthiasActor(gltf, { shadowsEnabled: renderer.shadowMap.enabled });
           scene.add(matthiasActor.object);
           applyMatthiasRoutine();

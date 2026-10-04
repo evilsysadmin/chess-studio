@@ -1,11 +1,12 @@
 import * as THREE from 'three';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   HOME_BLENDER_RUNTIME_MIN_WIDTH,
   homeBlenderCameraFovForAspect,
   homeBlenderFireKind,
   homeBlenderSteamMotion,
   applyHomeBlenderPieceLift,
+  disposeStaleHomeBlenderGltf,
   homeBlenderProjectAnchors,
   HOME_BLENDER_BEACON_ANCHORS,
   homeBlenderFireMotion,
@@ -51,6 +52,27 @@ import {
   applyHomeBlenderKlausMotion,
 } from './HomeBlenderScene3D.jsx';
 import { tighterRuntimeLodCap } from './HomeCastle3DRenderPolicy.js';
+
+describe('HomeBlenderScene3D GLTF lifecycle', () => {
+  it('disposes a Matthias GLTF that finishes after the Home scene is stale', () => {
+    const texture = new THREE.Texture();
+    const material = new THREE.MeshBasicMaterial({ map: texture });
+    const geometry = new THREE.BoxGeometry();
+    const scene = new THREE.Group();
+    scene.add(new THREE.Mesh(geometry, material));
+    const disposeTexture = vi.spyOn(texture, 'dispose');
+    const disposeMaterial = vi.spyOn(material, 'dispose');
+    const disposeGeometry = vi.spyOn(geometry, 'dispose');
+
+    expect(disposeStaleHomeBlenderGltf({ scene }, false)).toBe(false);
+    expect(disposeGeometry).not.toHaveBeenCalled();
+
+    expect(disposeStaleHomeBlenderGltf({ scene }, true)).toBe(true);
+    expect(disposeGeometry).toHaveBeenCalledTimes(1);
+    expect(disposeMaterial).toHaveBeenCalledTimes(1);
+    expect(disposeTexture).toHaveBeenCalledTimes(1);
+  });
+});
 
 describe('HomeBlenderScene3D mobile runtime policy', () => {
   it('keeps portrait phone framing tight enough to avoid empty ceiling runway', () => {
