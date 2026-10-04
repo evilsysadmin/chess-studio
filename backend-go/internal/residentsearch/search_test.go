@@ -132,7 +132,7 @@ func TestQuiescenceNeverStandPatsWhileInCheck(t *testing.T) {
 	}
 
 	searcher := New()
-	path := map[uint64]int{pos.ZobristHash(): 1}
+	path := newSearchPath(pos, nil)
 	score, err := searcher.quiescence(
 		context.Background(),
 		pos,

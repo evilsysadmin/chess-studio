@@ -15,6 +15,7 @@ import (
 
 type searchCall struct {
 	fen      string
+	plies    int
 	maxDepth int
 	budget   time.Duration
 }
@@ -25,13 +26,13 @@ type scriptedSearcher struct {
 	calls     []searchCall
 }
 
-func (s *scriptedSearcher) AnalyzeFEN(
+func (s *scriptedSearcher) AnalyzeGame(
 	_ context.Context,
-	fen string,
+	positions []*chess.Position,
 	maxDepth int,
 	budget time.Duration,
 ) (residentsearch.Snapshot, error) {
-	s.calls = append(s.calls, searchCall{fen: fen, maxDepth: maxDepth, budget: budget})
+	s.calls = append(s.calls, searchCall{fen: positions[len(positions)-1].String(), plies: len(positions) - 1, maxDepth: maxDepth, budget: budget})
 	index := len(s.calls) - 1
 	var snapshot residentsearch.Snapshot
 	var err error
@@ -311,5 +312,34 @@ func TestMoveForLevelRejectsNonFiniteDifficulty(t *testing.T) {
 		if _, err := chooser.MoveForLevel(context.Background(), chess.StartingPosition().String(), level); err == nil {
 			t.Fatalf("level %v accepted", level)
 		}
+	}
+}
+
+func TestMoveForGameSearchesWithTheGameHistory(t *testing.T) {
+	search := &scriptedSearcher{snapshots: []residentsearch.Snapshot{{
+		Candidates: []residentsearch.Candidate{{UCI: "g8f6", Score: 0}, {UCI: "e7e5", Score: -10}},
+		Depth:      2,
+	}}}
+	game := chess.NewGame()
+	positions := []*chess.Position{game.Position()}
+	for _, uci := range []string{"g1f3", "g8f6", "f3g1", "f6g8", "g1f3"} {
+		move, err := chess.UCINotation{}.Decode(game.Position(), uci)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := game.Move(move, nil); err != nil {
+			t.Fatal(err)
+		}
+		positions = append(positions, game.Position())
+	}
+	chooser := NewWith(search, randomSequence(0.999))
+	if move, err := chooser.MoveForGame(context.Background(), positions, 60); err != nil || move != "g8f6" {
+		t.Fatalf("move=%q err=%v", move, err)
+	}
+	if len(search.calls) != 1 || search.calls[0].plies != 5 {
+		t.Fatalf("calls=%+v", search.calls)
+	}
+	if _, err := chooser.MoveForGame(context.Background(), nil, 60); err == nil {
+		t.Fatal("empty game accepted")
 	}
 }

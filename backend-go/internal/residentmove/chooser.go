@@ -23,7 +23,9 @@ var (
 )
 
 type searcher interface {
-	AnalyzeFEN(context.Context, string, int, time.Duration) (residentsearch.Snapshot, error)
+	// AnalyzeGame searches the last position; earlier ones count for
+	// repetitions (residentsearch.Searcher.AnalyzeGame).
+	AnalyzeGame(context.Context, []*chess.Position, int, time.Duration) (residentsearch.Snapshot, error)
 }
 
 type Chooser struct {
@@ -59,12 +61,35 @@ func (c *Chooser) Move(ctx context.Context, fen, resident string) (string, error
 // MoveForLevel is Matthias' move in a game against the CPU: the same factual
 // human-Elo policy as get_factual_difficulty_cpu_move for the fixed 0-100
 // difficulty the game was created with. It returns one legal UCI move and
-// performs no game-state I/O.
+// performs no game-state I/O. A bare FEN carries no history; prefer
+// MoveForGame when the game's earlier positions are known.
 func (c *Chooser) MoveForLevel(ctx context.Context, fen string, level float64) (string, error) {
+	pos, err := positionFromFEN(strings.TrimSpace(fen))
+	if err != nil {
+		return "", err
+	}
+	return c.MoveForGame(ctx, []*chess.Position{pos}, level)
+}
+
+// MoveForGame is MoveForLevel for a game whose positions (oldest first, the
+// position to move from last) are known: as in python-chess, a line that
+// repeats an earlier position of the game counts as a draw.
+func (c *Chooser) MoveForGame(ctx context.Context, positions []*chess.Position, level float64) (string, error) {
 	if math.IsNaN(level) || math.IsInf(level, 0) {
 		return "", errors.New("invalid difficulty")
 	}
-	return c.chooseLevel(ctx, strings.TrimSpace(fen), level)
+	if len(positions) == 0 || positions[len(positions)-1] == nil {
+		return "", errors.New("game has no position")
+	}
+	return c.choose(ctx, positions, level)
+}
+
+func positionFromFEN(fen string) (*chess.Position, error) {
+	option, err := chess.FEN(fen)
+	if err != nil {
+		return nil, err
+	}
+	return chess.NewGame(option).Position(), nil
 }
 
 func residentLevel(username string) (int, bool) {
@@ -81,12 +106,15 @@ func residentLevel(username string) (int, bool) {
 }
 
 func (c *Chooser) chooseLevel(ctx context.Context, fen string, level float64) (string, error) {
-	option, err := chess.FEN(fen)
+	pos, err := positionFromFEN(fen)
 	if err != nil {
 		return "", err
 	}
-	game := chess.NewGame(option)
-	pos := game.Position()
+	return c.choose(ctx, []*chess.Position{pos}, level)
+}
+
+func (c *Chooser) choose(ctx context.Context, positions []*chess.Position, level float64) (string, error) {
+	pos := positions[len(positions)-1]
 	legal := append([]chess.Move(nil), pos.ValidMovesUnsafe()...)
 	if len(legal) == 0 {
 		return "", ErrNoLegalMove
@@ -100,9 +128,9 @@ func (c *Chooser) chooseLevel(ctx context.Context, fen string, level float64) (s
 
 	band := residentpolicy.Band(level)
 	complexity := positionComplexity(pos)
-	snapshot, err := c.search.AnalyzeFEN(
+	snapshot, err := c.search.AnalyzeGame(
 		ctx,
-		fen,
+		positions,
 		band.MaxDepth,
 		seconds(band.BudgetSeconds),
 	)
@@ -113,7 +141,7 @@ func (c *Chooser) chooseLevel(ctx context.Context, fen string, level float64) (s
 		if !errors.Is(err, residentsearch.ErrTimeout) {
 			return "", err
 		}
-		return c.deterministicFallback(ctx, fen, level, legal)
+		return c.deterministicFallback(ctx, positions, level, legal)
 	}
 	if len(snapshot.Candidates) == 0 {
 		return "", ErrNoLegalMove
@@ -152,7 +180,7 @@ func (c *Chooser) chooseLevel(ctx context.Context, fen string, level float64) (s
 
 func (c *Chooser) deterministicFallback(
 	ctx context.Context,
-	fen string,
+	positions []*chess.Position,
 	level float64,
 	legal []chess.Move,
 ) (string, error) {
@@ -161,7 +189,7 @@ func (c *Chooser) deterministicFallback(
 		fallbackLevel = 35
 	}
 	maxDepth, budgetSeconds := residentpolicy.SearchSettings(fallbackLevel)
-	snapshot, err := c.search.AnalyzeFEN(ctx, fen, maxDepth, seconds(budgetSeconds))
+	snapshot, err := c.search.AnalyzeGame(ctx, positions, maxDepth, seconds(budgetSeconds))
 	if err == nil && len(snapshot.Candidates) > 0 {
 		return snapshot.Candidates[0].UCI, nil
 	}

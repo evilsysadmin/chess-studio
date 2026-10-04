@@ -84,9 +84,10 @@ type WriteStore interface {
 	UpdateIfMoves(ctx context.Context, id string, game gamestore.Game, expectedMoves []string) (bool, error)
 }
 
-// CPU chooses Matthias' reply (residentmove.Chooser.MoveForLevel).
+// CPU chooses Matthias' reply (residentmove.Chooser.MoveForGame): the game's
+// positions from its origin, the one to move from last.
 type CPU interface {
-	MoveForLevel(ctx context.Context, fen string, level float64) (string, error)
+	MoveForGame(ctx context.Context, positions []*chess.Position, level float64) (string, error)
 }
 
 type WriteConfig struct {
@@ -448,7 +449,7 @@ func (h *WriteHandler) cpuReply(ctx context.Context, board *gamecore.Board, diff
 	level, _ := numeric(difficulty)
 	// run_engine_work: a bounded engine pool; extra replies queue.
 	h.engines <- struct{}{}
-	uci, err := h.cpu.MoveForLevel(ctx, board.FEN(), level)
+	uci, err := h.cpu.MoveForGame(ctx, board.Positions(), level)
 	<-h.engines
 	legal := board.LegalMoves()
 	if err == nil {
