@@ -117,6 +117,10 @@ jobs:
           throw_in="$(sed -n 's/^VISUAL_CAPTURE_THROW_IN=//p' "$log" | tail -1)"
           corner="$(sed -n 's/^VISUAL_CAPTURE_CORNER=//p' "$log" | tail -1)"
           menu="$(sed -n 's/^VISUAL_CAPTURE_MENU=//p' "$log" | tail -1)"
+          atlas_fc="$(sed -n 's/^VISUAL_CAPTURE_ATLAS_FC_MATTHIAS=//p' "$log" | tail -1)"
+          atlas_rival="$(sed -n 's/^VISUAL_CAPTURE_ATLAS_REAL_ENROQUE=//p' "$log" | tail -1)"
+          atlas_fc_keeper="$(sed -n 's/^VISUAL_CAPTURE_ATLAS_FC_MATTHIAS_KEEPER=//p' "$log" | tail -1)"
+          atlas_rival_keeper="$(sed -n 's/^VISUAL_CAPTURE_ATLAS_REAL_ENROQUE_KEEPER=//p' "$log" | tail -1)"
           test -n "$kickoff" && test -s "$kickoff"
           test -n "$kickoff_touch" && test -s "$kickoff_touch"
           test -n "$broadcast" && test -s "$broadcast"
@@ -133,6 +137,10 @@ jobs:
           test -n "$throw_in" && test -s "$throw_in"
           test -n "$corner" && test -s "$corner"
           test -n "$menu" && test -s "$menu"
+          test -n "$atlas_fc" && test -s "$atlas_fc"
+          test -n "$atlas_rival" && test -s "$atlas_rival"
+          test -n "$atlas_fc_keeper" && test -s "$atlas_fc_keeper"
+          test -n "$atlas_rival_keeper" && test -s "$atlas_rival_keeper"
           mkdir -p "$RUNNER_TEMP/chess-football-review"
           cp "$kickoff" "$RUNNER_TEMP/chess-football-review/kickoff.png"
           cp "$kickoff_touch" "$RUNNER_TEMP/chess-football-review/kickoff-touch.png"
@@ -150,6 +158,10 @@ jobs:
           cp "$throw_in" "$RUNNER_TEMP/chess-football-review/throw-in.png"
           cp "$corner" "$RUNNER_TEMP/chess-football-review/corner.png"
           cp "$menu" "$RUNNER_TEMP/chess-football-review/menu.png"
+          cp "$atlas_fc" "$RUNNER_TEMP/chess-football-review/atlas-fc-matthias.png"
+          cp "$atlas_rival" "$RUNNER_TEMP/chess-football-review/atlas-real-enroque.png"
+          cp "$atlas_fc_keeper" "$RUNNER_TEMP/chess-football-review/atlas-fc-matthias-keeper.png"
+          cp "$atlas_rival_keeper" "$RUNNER_TEMP/chess-football-review/atlas-real-enroque-keeper.png"
       - name: Upload visual review
         uses: actions/upload-artifact@v7
         with:
