@@ -271,8 +271,10 @@ def verify_outputs(target: Path) -> None:
         raise SystemExit("\n".join(errors))
     print(
         "chess-football sprite forge: OK "
-        f"({len(expected)} files, shared contract schema "
-        f"{SPRITE_FORGE_CONTRACT['schema']})"
+        f"({len(expected)} files, "
+        f"{SPRITE_FORGE_CONTRACT['surface']}/"
+        f"{SPRITE_FORGE_CONTRACT['variant']}, "
+        f"shared contract schema {SPRITE_FORGE_CONTRACT['schema']})"
     )
 
 
