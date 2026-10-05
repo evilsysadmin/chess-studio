@@ -9,12 +9,13 @@ const TEAM_COLORS := [Color(0.12, 0.42, 0.92), Color(0.86, 0.18, 0.2)]
 const CAMERA_MODE_BROADCAST := "broadcast"
 const CAMERA_MODE_TACTICAL := "tactical"
 
-const TACKLE_ATTEMPT_RANGE := 60.0
-const TACKLE_CLEAN_STEAL_RANGE := 30.0
-const TACKLE_BASE_SUCCESS_RANGE := 30.0
-const TACKLE_APPROACH_BONUS := 18.0
-const TACKLE_MIN_APPROACH := 0.28
-const TACKLE_EMERGENCY_RANGE := 20.0
+const TACKLE_ATTEMPT_RANGE := 74.0
+const TACKLE_HITBOX_FORWARD := 48.0
+const TACKLE_HITBOX_FORWARD_BONUS := 16.0
+const TACKLE_HITBOX_BACK := 12.0
+const TACKLE_HITBOX_HALF_WIDTH := 27.0
+const TACKLE_CLEAN_FORWARD := 40.0
+const TACKLE_CLEAN_HALF_WIDTH := 18.0
 const TACKLE_STEAL_DELAY := 0.20
 const TACKLE_STEAL_POKE_POWER := 220.0
 const TACKLE_LOOSE_POKE_POWER := 310.0
@@ -65,6 +66,10 @@ const SHOT_NORMAL_MIN_LIFT := 150.0
 const SHOT_NORMAL_MAX_LIFT := 280.0
 const SHOT_BLAST_MIN_LIFT := 320.0
 const SHOT_BLAST_MAX_LIFT := 460.0
+const SHOT_GOAL_POST_MARGIN := 26.0
+const SHOT_SAFE_CROSSBAR_HEIGHT := 50.0
+const SHOT_KEEPER_AVOID_RATIO := 0.72
+const SHOT_TRAVEL_SPEED_FACTOR := 0.90
 const AI_SHOT_MIN_POWER := 720.0
 const AI_SHOT_MAX_POWER := 1100.0
 
@@ -94,6 +99,7 @@ var set_piece_spot: Vector2 = Vector2.ZERO
 var set_piece_player: Footballer = null
 var shot_charging: bool = false
 var shot_charge_seconds: float = 0.0
+var shot_aim_y_input: float = 0.0
 var pending_tackle_player: Footballer = null
 var pending_tackle_seconds: float = 0.0
 
@@ -349,19 +355,23 @@ func _handle_human(delta: float) -> void:
 		_pass_from(controlled, direction)
 
 	if Input.is_action_just_pressed("shoot_ball") and ball.carrier == controlled:
-		_begin_shot_charge()
+		_begin_shot_charge(direction.y)
 	if shot_charging:
 		shot_charge_seconds = minf(SHOT_CHARGE_SECONDS, shot_charge_seconds + delta)
+		if absf(direction.y) > 0.18:
+			shot_aim_y_input = clampf(direction.y, -1.0, 1.0)
 		if Input.is_action_just_released("shoot_ball"):
 			_release_charged_shot()
 
-func _begin_shot_charge() -> void:
+func _begin_shot_charge(initial_aim_y: float = 0.0) -> void:
 	shot_charging = true
 	shot_charge_seconds = 0.0
+	shot_aim_y_input = clampf(initial_aim_y, -1.0, 1.0)
 
 func _cancel_shot_charge() -> void:
 	shot_charging = false
 	shot_charge_seconds = 0.0
+	shot_aim_y_input = 0.0
 
 func _shot_charge_ratio() -> float:
 	if not shot_charging:
@@ -390,23 +400,79 @@ func _shot_profile_name(ratio: float) -> String:
 		return "TIRO"
 	return "PEPINAZO"
 
+func _assisted_shot_target(player: Footballer, aim_y: float) -> Vector2:
+	var goal := ChessFootballMath.goal_center(player.team_id)
+	var safe_half_span := maxf(
+		12.0,
+		ChessFootballMath.GOAL_HALF_HEIGHT
+			- ChessFootballMath.GOAL_FRAME_POST_RADIUS
+			- SHOT_GOAL_POST_MARGIN
+	)
+	var wanted_y := clampf(aim_y, -1.0, 1.0)
+	if absf(wanted_y) <= 0.18:
+		var keeper: Footballer = teams[1 - player.team_id][0]
+		var keeper_side := signf(keeper.global_position.y - goal.y)
+		if absf(keeper.global_position.y - goal.y) < 8.0:
+			keeper_side = signf(player.global_position.y - goal.y)
+			if keeper_side == 0.0:
+				keeper_side = 1.0
+		wanted_y = -keeper_side * SHOT_KEEPER_AVOID_RATIO
+	return Vector2(goal.x, goal.y + wanted_y * safe_half_span)
+
+func _safe_shot_lift(
+	player: Footballer,
+	target: Vector2,
+	power: float,
+	requested_lift: float,
+) -> float:
+	var offset := target - player.global_position
+	var direction := offset.normalized() if offset.length_squared() > 0.001 else Vector2.RIGHT
+	var horizontal_speed := maxf(1.0, power * absf(direction.x) * SHOT_TRAVEL_SPEED_FACTOR)
+	var travel_seconds := clampf(absf(offset.x) / horizontal_speed, 0.08, 1.60)
+	var max_safe_lift := (
+		SHOT_SAFE_CROSSBAR_HEIGHT
+		+ 0.5 * FootballBall.BALL_GRAVITY * travel_seconds * travel_seconds
+	) / travel_seconds
+	return minf(requested_lift, max_safe_lift)
+
+func _predicted_shot_height_at_goal(
+	player: Footballer,
+	target: Vector2,
+	power: float,
+	lift: float,
+) -> float:
+	var offset := target - player.global_position
+	var direction := offset.normalized() if offset.length_squared() > 0.001 else Vector2.RIGHT
+	var horizontal_speed := maxf(1.0, power * absf(direction.x) * SHOT_TRAVEL_SPEED_FACTOR)
+	var travel_seconds := clampf(absf(offset.x) / horizontal_speed, 0.08, 1.60)
+	return maxf(
+		0.0,
+		lift * travel_seconds
+			- 0.5 * FootballBall.BALL_GRAVITY * travel_seconds * travel_seconds
+	)
+
 func _release_charged_shot() -> void:
 	if not shot_charging:
 		return
 	var ratio := _shot_charge_ratio()
+	var aim_y := shot_aim_y_input
 	shot_charging = false
 	shot_charge_seconds = 0.0
+	shot_aim_y_input = 0.0
 	if ball.carrier != controlled:
 		return
-	var target := ChessFootballMath.goal_center(0)
+	var target := _assisted_shot_target(controlled, aim_y)
+	var power := _shot_power_from_ratio(ratio)
+	var lift := _safe_shot_lift(
+		controlled,
+		target,
+		power,
+		_shot_lift_from_ratio(ratio)
+	)
 	controlled.play_action("shoot", lerpf(0.58, 0.82, ratio))
 	if audio_fx != null:
 		audio_fx.play_shot(ratio)
-	ball.release(
-		target - controlled.global_position,
-		_shot_power_from_ratio(ratio),
-		_shot_lift_from_ratio(ratio)
-	)
+	ball.release(target - controlled.global_position, power, lift)
 
 func _update_ai(delta: float) -> void:
 	for team_id in range(2):
@@ -653,6 +719,39 @@ func _best_teammate_ahead(player: Footballer) -> Footballer:
 	var direction := Vector2.RIGHT if player.team_id == 0 else Vector2.LEFT
 	return _best_pass_target(player, direction)
 
+func _tackle_forward(tackler: Footballer) -> Vector2:
+	if tackler.velocity.length_squared() > 64.0:
+		return tackler.velocity.normalized()
+	var facing_x := -1.0 if tackler.visual != null and tackler.visual.flip_h else 1.0
+	return Vector2(facing_x, 0.0)
+
+func _tackle_hitbox(tackler: Footballer, target_position: Vector2) -> Dictionary:
+	var forward := _tackle_forward(tackler)
+	var lateral_axis := Vector2(-forward.y, forward.x)
+	var offset := target_position - tackler.global_position
+	var forward_distance := offset.dot(forward)
+	var lateral_distance := absf(offset.dot(lateral_axis))
+	var speed_ratio := clampf(tackler.velocity.length() / maxf(tackler.base_speed, 1.0), 0.0, 1.35)
+	var forward_reach := TACKLE_HITBOX_FORWARD + TACKLE_HITBOX_FORWARD_BONUS * speed_ratio
+	var inside := (
+		forward_distance >= -TACKLE_HITBOX_BACK
+		and forward_distance <= forward_reach
+		and lateral_distance <= TACKLE_HITBOX_HALF_WIDTH
+	)
+	var clean := (
+		inside
+		and forward_distance >= -4.0
+		and forward_distance <= TACKLE_CLEAN_FORWARD + TACKLE_HITBOX_FORWARD_BONUS * speed_ratio * 0.5
+		and lateral_distance <= TACKLE_CLEAN_HALF_WIDTH
+	)
+	return {
+		"inside": inside,
+		"clean": clean,
+		"forward_distance": forward_distance,
+		"lateral_distance": lateral_distance,
+		"forward_reach": forward_reach,
+	}
+
 func _try_tackle(tackler: Footballer) -> bool:
 	if ball.carrier == null or ball.carrier == tackler:
 		return false
@@ -661,28 +760,21 @@ func _try_tackle(tackler: Footballer) -> bool:
 		return false
 
 	var offset: Vector2 = victim.global_position - tackler.global_position
-	var distance := offset.length()
-	if distance > TACKLE_ATTEMPT_RANGE:
-		return false
-
-	var approach := 0.0
-	if tackler.velocity.length_squared() > 16.0 and offset.length_squared() > 0.001:
-		approach = maxf(0.0, tackler.velocity.normalized().dot(offset.normalized()))
-	var success_range := TACKLE_BASE_SUCCESS_RANGE + TACKLE_APPROACH_BONUS * approach
-	if approach < TACKLE_MIN_APPROACH and distance > TACKLE_EMERGENCY_RANGE:
+	if offset.length() > TACKLE_ATTEMPT_RANGE:
 		return false
 
 	if not tackler.start_tackle():
 		return false
-	if distance > success_range:
+	var hitbox := _tackle_hitbox(tackler, victim.global_position)
+	if not bool(hitbox.get("inside", false)):
 		return false
 
-	var push_direction := offset.normalized() if offset.length_squared() > 0.001 else Vector2.RIGHT
+	var push_direction := offset.normalized() if offset.length_squared() > 0.001 else _tackle_forward(tackler)
 	victim.receive_tackle_contact(push_direction)
 	if audio_fx != null:
 		audio_fx.play_tackle()
 
-	if distance <= TACKLE_CLEAN_STEAL_RANGE:
+	if bool(hitbox.get("clean", false)):
 		# Deflect the ball out of the collision instead of straight underneath
 		# the tackler. The short diagonal loose-ball beat makes a clean steal
 		# readable before possession is consolidated.
@@ -1287,6 +1379,28 @@ func debug_shot_lift_for_ratio(ratio: float) -> float:
 
 func debug_shot_profile_for_ratio(ratio: float) -> String:
 	return _shot_profile_name(ratio)
+
+func debug_assisted_shot_target(player: Footballer, aim_y: float) -> Vector2:
+	return _assisted_shot_target(player, aim_y)
+
+func debug_safe_shot_lift(
+	player: Footballer,
+	target: Vector2,
+	power: float,
+	requested_lift: float,
+) -> float:
+	return _safe_shot_lift(player, target, power, requested_lift)
+
+func debug_predicted_shot_height_at_goal(
+	player: Footballer,
+	target: Vector2,
+	power: float,
+	lift: float,
+) -> float:
+	return _predicted_shot_height_at_goal(player, target, power, lift)
+
+func debug_tackle_hitbox(player: Footballer, target_position: Vector2) -> Dictionary:
+	return _tackle_hitbox(player, target_position)
 
 func debug_step_pending_tackle(delta: float) -> void:
 	_update_pending_tackle_claim(delta)
