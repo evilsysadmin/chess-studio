@@ -107,8 +107,13 @@ export function createChroniclesCaveWallDressing({
     );
     const topMaterial = material.clone();
     topMaterial.userData.chroniclesIsoOwned = true;
+    topMaterial.color?.multiplyScalar(0.38);
+    if (topMaterial.emissive) topMaterial.emissive.setRGB(0, 0, 0);
+    topMaterial.emissiveIntensity = 0;
+    topMaterial.roughness = 0.96;
+    topMaterial.metalness = 0;
     const top = new THREE.Mesh(topGeometry, topMaterial);
-    top.name = `chronicles-iso-wall-cave-top-${x}-${y}`;
+    top.name = `chronicles-iso-cave-top-${x}-${y}`;
     top.rotation.x = -Math.PI / 2;
     top.rotation.z = (noise(x, y, 113) - 0.5) * 0.04;
     top.position.set(world.x, 2.57, world.z);
