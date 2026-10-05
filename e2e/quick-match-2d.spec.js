@@ -68,7 +68,7 @@ test('Partida rápida · configuración mantiene targets táctiles a 360/390/430
   const clock = dialog.getByRole('combobox', { name: 'Ritmo de reloj' });
   const series = dialog.getByRole('combobox', { name: 'Formato de serie' });
   const renderer = dialog.getByRole('group', { name: 'Tipo de tablero' });
-  const specialRules = settings.locator('details.friendly-subdisclosure');
+  const specialRules = settings.locator('details.friendly-subdisclosure').filter({ hasText: 'Reglas especiales' });
   const specialSummary = specialRules.locator(':scope > summary');
 
   for (const width of [360, 390, 430]) {
