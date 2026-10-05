@@ -900,9 +900,9 @@ func _arrange_set_piece_formation(kind: String) -> void:
 	for opponent in teams[opponent_id]:
 		if opponent.role == "keeper":
 			continue
-		var offset := opponent.global_position - set_piece_spot
+		var offset: Vector2 = opponent.global_position - set_piece_spot
 		if offset.length() < 130.0:
-			var away := offset.normalized() if offset.length_squared() > 0.001 else Vector2(0.0, inward_y)
+			var away: Vector2 = offset.normalized() if offset.length_squared() > 0.001 else Vector2(0.0, inward_y)
 			_place_restart_player(opponent, set_piece_spot + away * 130.0)
 
 func _prepare_set_piece(kind: String, team_id: int, spot: Vector2) -> void:
