@@ -5,6 +5,7 @@ import {
   gameTurn,
   login,
   mockApi,
+  waitForTrainingRoomSettled,
 } from './helpers.js';
 
 const PERSONAL_MATE_FEN = '6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1';
@@ -143,6 +144,7 @@ test('Home · el avatar residente de Matthias abre Así juegas · y cierra el lo
 
   const corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
   await corner.getByRole('button', { name: 'Abrir Así juegas con Matthias', exact: true }).click();
+  await waitForTrainingRoomSettled(page);
   await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
   await page.getByRole('tab', { name: /Errores/ }).click();
   await expect(page.getByText('Horquillas de caballo sufridas', { exact: true })).toBeVisible();
