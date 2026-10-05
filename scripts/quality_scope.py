@@ -111,6 +111,8 @@ GO_AUTHORITY_PATHS = {
     "scripts/matthias_memory_writes_parity_corpus.py",
     "scripts/narrative_parity_corpus.py",
     "scripts/admin_insights_parity_corpus.py",
+    "backend-python/ip_geolocation.py",
+    "scripts/admin_users_parity_corpus.py",
     "backend-python/admin_insights.py",
     "scripts/pawn_slug_parity_corpus.py",
     "scripts/chronicles_area_parity_corpus.py",

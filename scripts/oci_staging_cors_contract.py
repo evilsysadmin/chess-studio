@@ -690,6 +690,13 @@ assert "payload.get('nativeAdminFeedback')" in deploy
 assert 'games_native_attest "http://127.0.0.1:${port}/api/admin/feedback/summary" GET X-Chess-Admin-Native 401; then' in deploy
 assert 'exit 81' in deploy
 assert compose.count('GO_NATIVE_ADMIN_FEEDBACK_ENABLED: "${CHESS_STUDIO_GO_NATIVE_ADMIN_FEEDBACK_ENABLED:-false}"') == 2
+# Native Admin user tools: staging first, attested by Go's 401 for an anonymous user list.
+assert 'staging) go_native_admin_users="${CHESS_STUDIO_GO_NATIVE_ADMIN_USERS_ENABLED:-true}" ;;' in deploy
+assert 'CHESS_STUDIO_GO_NATIVE_ADMIN_USERS_ENABLED="$go_native_admin_users"' in deploy
+assert "payload.get('nativeAdminUsers')" in deploy
+assert 'games_native_attest "http://127.0.0.1:${port}/api/admin/users" GET X-Chess-Admin-Native 401; then' in deploy
+assert 'exit 82' in deploy
+assert compose.count('GO_NATIVE_ADMIN_USERS_ENABLED: "${CHESS_STUDIO_GO_NATIVE_ADMIN_USERS_ENABLED:-false}"') == 2
 assert 'GO_NATIVE_GAMES_WRITE_ENABLED: "${CHESS_STUDIO_GO_NATIVE_GAMES_WRITE_ENABLED:-false}"' in compose
 assert 'sleep 0.25' in deploy
 assert 'if ! wait_pvp_edge_attest "$port"; then' in deploy

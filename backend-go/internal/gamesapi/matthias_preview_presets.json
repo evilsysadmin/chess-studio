@@ -1,0 +1,178 @@
+{
+ "newcomer": {
+  "total_games": 3,
+  "record": {
+   "wins": 1,
+   "draws": 0,
+   "losses": 2
+  },
+  "question_kind": "improve",
+  "matthias_memory": {
+   "schema_version": 4,
+   "relationship": {
+    "tier": "acquainted",
+    "label": "Ya nos conocemos",
+    "games_seen": 3
+   },
+   "respect": {
+    "tier": "recruit",
+    "label": "Recluta bajo observación",
+    "score": 6
+   },
+   "mood": "observant",
+   "active_goals": [],
+   "prior_advice": [],
+   "progress_since_last": {}
+  }
+ },
+ "veteran": {
+  "total_games": 84,
+  "record": {
+   "wins": 46,
+   "draws": 9,
+   "losses": 29
+  },
+  "puzzles_solved": 38,
+  "question_kind": "strengths",
+  "cpu_rivalry": {
+   "games": 30,
+   "wins": 14,
+   "draws": 3,
+   "losses": 13,
+   "best_human_streak": 4,
+   "best_cpu_streak": 3
+  },
+  "matthias_memory": {
+   "schema_version": 4,
+   "relationship": {
+    "tier": "veteran",
+    "label": "Viejo conocido",
+    "games_seen": 84
+   },
+   "respect": {
+    "tier": "formidable",
+    "label": "Rival respetado",
+    "score": 76
+   },
+   "mood": "impressed",
+   "active_goals": [],
+   "prior_advice": [],
+   "progress_since_last": {
+    "total_games": 5,
+    "record": {
+     "wins": 4,
+     "losses": 1
+    }
+   },
+   "recent_milestones": [
+    {
+     "kind": "goal_completed",
+     "polarity": "fame",
+     "label": "Objetivo superado: Seguridad de la dama"
+    }
+   ]
+  }
+ },
+ "repeat_offender": {
+  "total_games": 31,
+  "record": {
+   "wins": 12,
+   "draws": 3,
+   "losses": 16
+  },
+  "question_kind": "tactics",
+  "noteworthy_incidents": [
+   {
+    "key": "cpu:KNIGHT_FORK",
+    "count": 6
+   }
+  ],
+  "matthias_memory": {
+   "schema_version": 4,
+   "relationship": {
+    "tier": "regular",
+    "label": "Habitual del despacho",
+    "games_seen": 31
+   },
+   "respect": {
+    "tier": "proven",
+    "label": "Ya no eres recluta",
+    "score": 31
+   },
+   "mood": "skeptical",
+   "active_goals": [
+    {
+     "id": "incident:cpu:KNIGHT_FORK",
+     "topic": "forks",
+     "label": "Horquillas y dobles ataques"
+    }
+   ],
+   "active_challenge": {
+    "id": "clean-run:cpu:KNIGHT_FORK",
+    "label": "3 partidas sin repetir: Horquillas y dobles ataques",
+    "setbacks": 2
+   },
+   "prior_advice": [
+    {
+     "question_kind": "tactics",
+     "text": "Antes de mover, revisa dobles ataques de caballo."
+    }
+   ],
+   "advice_followup": {
+    "status": "struggling",
+    "games_since": 5,
+    "topic": "forks"
+   },
+   "progress_since_last": {
+    "total_games": 5,
+    "record": {
+     "wins": 1,
+     "losses": 4
+    }
+   }
+  }
+ },
+ "improving": {
+  "total_games": 24,
+  "record": {
+   "wins": 13,
+   "draws": 2,
+   "losses": 9
+  },
+  "puzzles_solved": 19,
+  "question_kind": "improve",
+  "matthias_memory": {
+   "schema_version": 4,
+   "relationship": {
+    "tier": "regular",
+    "label": "Habitual del despacho",
+    "games_seen": 24
+   },
+   "respect": {
+    "tier": "respected",
+    "label": "Respeto ganado",
+    "score": 47
+   },
+   "mood": "satisfied",
+   "prior_advice": [
+    {
+     "question_kind": "improve",
+     "text": "Revisa jaques, capturas y amenazas antes de decidir."
+    }
+   ],
+   "advice_followup": {
+    "status": "improving",
+    "games_since": 4,
+    "topic": "decision_process"
+   },
+   "progress_since_last": {
+    "total_games": 4,
+    "puzzles_solved": 5,
+    "record": {
+     "wins": 3,
+     "losses": 1
+    }
+   }
+  }
+ }
+}
