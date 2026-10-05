@@ -13,6 +13,7 @@ import {
   chroniclesTacticsUse,
   chroniclesTacticsWait,
 } from './chroniclesOfMatthiasTactics.js';
+import { chroniclesDeployPartyForCombat } from './chroniclesPartyFootprint.js';
 
 function tacticsState(overrides = {}) {
   return {
@@ -37,6 +38,69 @@ describe('Chronicles of Matthias Tactics · player turns', () => {
     expect(moves.map(({ key, x, y }) => [key, x, y])).toEqual([
       ['north', 1, 4],
       ['east', 2, 5],
+    ]);
+  });
+
+  it('moves only the active hero on the combat grid while the exploration anchor stays put', () => {
+    const base = tacticsState();
+    const deployed = chroniclesDeployPartyForCombat({
+      ...base,
+      phase: 'combat',
+      partyPositions: {
+        rook: { x: 1, y: 5 },
+        matthias: { x: 1, y: 4 },
+        bishop: { x: 3, y: 4 },
+        knight: { x: 3, y: 3 },
+      },
+      initiative: {
+        version: 1,
+        die: '1d8',
+        round: 1,
+        cursor: 0,
+        order: [
+          { id: 'rook', kind: 'party', name: 'Hildegard', agility: 2, roll: 8, initiative: 10 },
+          { id: 'corrupted-pawn', kind: 'enemy', name: 'Peón', agility: 0, roll: 7, initiative: 7 },
+        ],
+      },
+    });
+    const before = structuredClone(deployed.partyPositions);
+    const legal = chroniclesTacticsLegalMoves(deployed, 'rook')[0];
+
+    expect(legal).toBeTruthy();
+    const moved = chroniclesTacticsMove(deployed, legal, 'rook');
+
+    expect({ x: moved.x, y: moved.y }).toEqual({ x: base.x, y: base.y });
+    expect(moved.partyPositions.rook).toEqual({ x: legal.x, y: legal.y });
+    ['matthias', 'bishop', 'knight'].forEach((memberId) => {
+      expect(moved.partyPositions[memberId]).toEqual(before[memberId]);
+    });
+  });
+
+  it('measures attacks from the acting hero cell rather than the exploration anchor', () => {
+    const state = tacticsState({
+      x: 1,
+      y: 3,
+      phase: 'combat',
+      partyPositions: {
+        rook: { x: 1, y: 5 },
+        matthias: { x: 1, y: 4 },
+        bishop: { x: 3, y: 4 },
+        knight: { x: 5, y: 5 },
+      },
+      initiative: {
+        version: 1,
+        die: '1d8',
+        round: 1,
+        cursor: 0,
+        order: [
+          { id: 'rook', kind: 'party', name: 'Hildegard', agility: 2, roll: 8, initiative: 10 },
+          { id: 'corrupted-pawn', kind: 'enemy', name: 'Peón', agility: 0, roll: 7, initiative: 7 },
+        ],
+      },
+    });
+
+    expect(chroniclesTacticsTargets(state, 'rook')).toEqual([
+      expect.objectContaining({ enemyId: 'corrupted-pawn', distance: 2 }),
     ]);
   });
 

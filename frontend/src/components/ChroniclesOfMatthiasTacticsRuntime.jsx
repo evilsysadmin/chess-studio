@@ -34,8 +34,10 @@ import {
   chroniclesTacticsCombatActive,
   chroniclesTacticsCurrentActor,
   chroniclesTacticsPartyCanAct,
+  chroniclesTacticsPrepareExplorationSpawn,
   chroniclesTacticsResolvePlayerAction,
 } from '../chroniclesTacticsTurnMode.js';
+import { chroniclesPartyMemberPosition } from '../chroniclesPartyFootprint.js';
 import { chroniclesAdvanceCombatInitiative } from '../chronicles/chroniclesInitiative.js';
 import { chroniclesResolveEnemyActor } from '../chroniclesOfMatthiasTurns.js';
 import {
@@ -90,7 +92,7 @@ function chroniclesBattlefieldInteraction(state, memberId) {
   if (!chroniclesTacticsPartyCanAct(state, memberId)) return null;
   return {
     mode: 'hybrid',
-    legalMoves: chroniclesTacticsLegalMoves(state),
+    legalMoves: chroniclesTacticsLegalMoves(state, memberId),
     legalTargets: chroniclesTacticsTargets(state, memberId),
   };
 }
@@ -100,11 +102,16 @@ function createActionState(progression, authoritativeRun = null) {
     ...createChroniclesState(null, progression.characterBuild),
     round: 1,
     turnPhase: 'party',
+    partyPositions: {},
     enemyPositions: {},
     enemyTurnEvents: [],
   }, progression);
+  const restored = chroniclesApplyRunCheckpoint(progressed, authoritativeRun);
+  const prepared = Number(restored.turns || 0) === 0
+    ? chroniclesTacticsPrepareExplorationSpawn(restored)
+    : restored;
   return {
-    ...chroniclesApplyRunCheckpoint(progressed, authoritativeRun),
+    ...prepared,
     enemyTurnEvents: [],
   };
 }
@@ -147,8 +154,14 @@ export default function ChroniclesOfMatthiasTactics({
   );
   const objective = chroniclesObjective(state);
   const locationLabel = chroniclesTacticsLocationLabel(state);
-  const contextualAction = useMemo(() => chroniclesTacticsInteractions(state)[0] || null, [state]);
-  const legalMoves = useMemo(() => chroniclesTacticsLegalMoves(state), [state]);
+  const contextualAction = useMemo(
+    () => chroniclesTacticsInteractions(state, effectiveSelectedMemberId)[0] || null,
+    [effectiveSelectedMemberId, state],
+  );
+  const legalMoves = useMemo(
+    () => chroniclesTacticsLegalMoves(state, effectiveSelectedMemberId),
+    [effectiveSelectedMemberId, state],
+  );
   const moveAvailability = useMemo(
     () => chroniclesTacticsMoveAvailability(state, legalMoves),
     [legalMoves, state],
@@ -250,15 +263,20 @@ export default function ChroniclesOfMatthiasTactics({
     if (now - lastMoveAtRef.current < 120) return;
     const current = stateRef.current;
     if (!chroniclesTacticsPartyCanAct(current)) return;
-    const legal = chroniclesTacticsLegalMoves(current).find((move) => (
-      move.x === current.x + dx && move.y === current.y + dy
+    const actor = chroniclesTacticsCurrentActor(current);
+    const memberId = actor?.kind === 'party' ? actor.id : null;
+    const origin = memberId
+      ? chroniclesPartyMemberPosition(current, memberId)
+      : { x: current.x, y: current.y };
+    const legal = chroniclesTacticsLegalMoves(current, memberId).find((move) => (
+      move.x === origin.x + dx && move.y === origin.y + dy
     ));
     if (!legal) return;
-    const next = chroniclesTacticsMove(current, legal);
+    const next = chroniclesTacticsMove(current, legal, memberId);
     const resolved = chroniclesTacticsResolvePlayerAction(current, next, {
       partyAgilityBonuses: partyAgilityBonusesFor(current),
     });
-    if (commitState(resolved)) lastMoveAtRef.current = now;
+    if (commitState(resolved, { actorMemberId: memberId, actionKind: 'move' })) lastMoveAtRef.current = now;
   }, [commitState, partyAgilityBonusesFor]);
 
   const attackEnemy = useCallback((enemyId = null) => {
@@ -305,7 +323,7 @@ export default function ChroniclesOfMatthiasTactics({
     if (!chroniclesTacticsPartyCanAct(current)) return;
     const actor = chroniclesTacticsCurrentActor(current);
     const memberId = actor?.kind === 'party' ? actor.id : selectedMemberRef.current;
-    const next = chroniclesTacticsUse(current);
+    const next = chroniclesTacticsUse(current, null, memberId);
     const resolved = chroniclesTacticsResolvePlayerAction(current, next, {
       partyAgilityBonuses: partyAgilityBonusesFor(current),
     });
@@ -450,7 +468,11 @@ export default function ChroniclesOfMatthiasTactics({
           onReady: (backend) => { if (!cancelled) setRendererName(backend); },
           onCellClick: (cell) => {
             const current = stateRef.current;
-            moveParty(cell.x - current.x, cell.y - current.y);
+            const actor = chroniclesTacticsCurrentActor(current);
+            const origin = actor?.kind === 'party'
+              ? chroniclesPartyMemberPosition(current, actor.id)
+              : { x: current.x, y: current.y };
+            moveParty(cell.x - origin.x, cell.y - origin.y);
           },
           onEnemyClick: (enemyId) => attackEnemy(enemyId),
           onMemberClick: (memberId) => openMemberSheet(memberId),

@@ -26,8 +26,12 @@ export function chroniclesTacticsMoveAvailability(state, legalMoves = []) {
     Object.entries(TACTICS_MOVE_DIRECTIONS).map(([key, direction]) => [
       key,
       canAct && moves.some((move) => (
-        move.x === state.x + direction.dx
-        && move.y === state.y + direction.dy
+        move.key === key
+        || (
+          !move.key
+          && move.x === Number(state.x) + direction.dx
+          && move.y === Number(state.y) + direction.dy
+        )
       )),
     ]),
   ));

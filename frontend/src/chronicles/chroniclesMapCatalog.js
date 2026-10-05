@@ -374,6 +374,7 @@ export function chroniclesMapTransitionState(state, mapId) {
     phase: 'explore',
     turnPhase: 'party',
     initiative: null,
+    partyPositions: {},
     enemyPositions: {},
     enemyTurnEvents: [],
   };

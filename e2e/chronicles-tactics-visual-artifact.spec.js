@@ -255,6 +255,29 @@ for (const capture of CAPTURES) {
       const movementMessage = ((await narrator.textContent()) || '').trim();
       await captureElement(page, viewport, `${ARTIFACT_DIR}/chronicles-tactics-moved-${capture.label}.png`);
 
+      // Visual contract for the new Tactics flow: exploration stays compact for
+      // more than one step, then real contact deploys the four heroes onto the
+      // combat grid. Keep this evidence in the visual artifact, not only in the
+      // gameplay canary, so human review can judge the formation transition.
+      await expect(mode).toHaveAttribute('data-engagement', 'exploration');
+      await page.waitForTimeout(140);
+      await expect(moveNorth).toBeEnabled();
+      await moveNorth.evaluate((button) => button.click());
+      await expect(mode).toHaveAttribute('data-engagement', 'exploration');
+
+      await page.waitForTimeout(140);
+      const moveEast = mode.getByRole('button', { name: 'Mover al este', exact: true });
+      await expect(moveEast).toBeEnabled();
+      await moveEast.evaluate((button) => button.click());
+      await expect(mode).toHaveAttribute('data-engagement', 'combat');
+      await expect(mode).not.toHaveAttribute('data-initiative-actor', '');
+      await page.waitForTimeout(180);
+      await captureElement(
+        page,
+        viewport,
+        `${ARTIFACT_DIR}/chronicles-tactics-combat-grid-${capture.label}.png`,
+      );
+
       await writeFile(
         `${ARTIFACT_DIR}/chronicles-tactics-visual-health-${capture.label}.json`,
         `${JSON.stringify({
@@ -266,7 +289,12 @@ for (const capture of CAPTURES) {
             count: 4,
             characterSheet: true,
           },
-          gameplay: { movedNorth: true, message: movementMessage },
+          gameplay: {
+            movedNorth: true,
+            message: movementMessage,
+            safeExplorationBeforeCombat: true,
+            combatGridCaptured: true,
+          },
         }, null, 2)}\n`,
         'utf8',
       );

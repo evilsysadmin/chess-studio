@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CHRONICLES_ENEMIES, createChroniclesState } from './chroniclesOfMatthias.js';
 import {
   chroniclesChooseEnemyStep,
+  chroniclesEnemyAttackTarget,
   chroniclesEnemyCanAttackParty,
   chroniclesResolveEnemyTurn,
   chroniclesRuntimeEnemyPosition,
@@ -28,6 +29,30 @@ describe('Chronicles alternating creature turns', () => {
     expect(state.enemyTurnEvents[0]).toMatchObject({ type: 'attack', enemyId: 'corrupted-pawn', damage: 1 });
     expect(state.party.find((member) => member.id === 'matthias')?.hp).toBe(7);
     expect(state.party.find((member) => member.id === 'rook')?.hp).toBe(9);
+  });
+
+  it('targets the reachable combatant cell instead of the exploration anchor', () => {
+    const pawn = enemy('corrupted-pawn');
+    const state = {
+      ...createChroniclesState(),
+      x: 1,
+      y: 3,
+      phase: 'combat',
+      partyPositions: {
+        matthias: { x: 1, y: 4 },
+        rook: { x: 2, y: 5 },
+        bishop: { x: 3, y: 4 },
+        knight: { x: 5, y: 5 },
+      },
+    };
+
+    expect(chroniclesEnemyAttackTarget(state, pawn)?.id).toBe('rook');
+    const next = chroniclesResolveEnemyTurn(state);
+    expect(next.enemyTurnEvents[0]).toMatchObject({
+      type: 'attack',
+      enemyId: 'corrupted-pawn',
+      targetId: 'rook',
+    });
   });
 
   it('lets the spectral bishop attack down a clear two-cell lane without moving first', () => {

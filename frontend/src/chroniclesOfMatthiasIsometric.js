@@ -34,6 +34,14 @@ import {
   tickChroniclesCarriedTorch,
 } from './chronicles/chroniclesCarriedTorch.js';
 import {
+  CHRONICLES_ISO_EXPLORATION_PARTY_LAYOUT,
+  CHRONICLES_ISO_MARKER_STYLE,
+  CHRONICLES_ISO_PARTY_LAYOUT,
+} from './chronicles/chroniclesTacticsPartyPresentation.js';
+// Compatibility re-export: external renderer tests still consume these names.
+// Ownership lives in the focused Tactics party-presentation module.
+export { CHRONICLES_ISO_MARKER_STYLE, CHRONICLES_ISO_PARTY_LAYOUT } from './chronicles/chroniclesTacticsPartyPresentation.js';
+import {
   chroniclesIsoTorchPlacements,
   chroniclesIsoUsesLegacyDressing,
 } from './chronicles/chroniclesTacticsLighting.js';
@@ -49,19 +57,7 @@ export {
 };
 
 const CELL = CHRONICLES_ISOMETRIC_CELL_SIZE;
-export const CHRONICLES_ISO_PARTY_LAYOUT = Object.freeze({
-  rook: Object.freeze({ x: -1.62, z: 0.08, scale: 1.03 }),
-  matthias: Object.freeze({ x: -0.54, z: 0.32, scale: 1.07 }),
-  bishop: Object.freeze({ x: 0.54, z: 0.32, scale: 1.01 }),
-  knight: Object.freeze({ x: 1.62, z: 0.08, scale: 1.03 }),
-});
 export const CHRONICLES_ISO_PARTY_FACING = Math.PI;
-export const CHRONICLES_ISO_MARKER_STYLE = Object.freeze({
-  shape: 'square',
-  moveColor: 0x65bfe3,
-  attackColor: 0xc45143,
-  selectionColor: 0xd8b56a,
-});
 
 const RUBBLE = Object.freeze([
   Object.freeze({ x: -5.95, z: 2.9, scale: 0.22, yaw: 0.5 }),
@@ -510,7 +506,7 @@ function buildParty(scene, {
   const carriedTorches = new Map();
   ['rook', 'matthias', 'bishop', 'knight'].forEach((id, index) => {
     const model = buildChroniclesCharacter(id, { coarsePointer });
-    const config = CHRONICLES_ISO_PARTY_LAYOUT[id];
+    const config = CHRONICLES_ISO_EXPLORATION_PARTY_LAYOUT[id] || CHRONICLES_ISO_PARTY_LAYOUT[id];
     model.position.set(config.x, 0, config.z);
     model.scale.setScalar(config.scale);
     model.rotation.y = CHRONICLES_ISO_PARTY_FACING;
@@ -882,7 +878,11 @@ export function createChroniclesIsometricRenderer(host, {
         return;
       }
 
-      const localTarget = chroniclesIsoWorldForCell(member.cell.x, member.cell.y, initialScenePlan).sub(partyCell);
+      const compact = sceneModel.partyFormation === 'explore-compact';
+      const compactConfig = CHRONICLES_ISO_EXPLORATION_PARTY_LAYOUT[member.id];
+      const localTarget = compact && compactConfig
+        ? new THREE.Vector3(compactConfig.x, 0, compactConfig.z)
+        : chroniclesIsoWorldForCell(member.cell.x, member.cell.y, initialScenePlan).sub(partyCell);
       model.userData.chroniclesIsoTarget = localTarget;
       model.userData.chroniclesIsoCell = member.cell;
       if (!model.userData.chroniclesIsoPlaced) {
