@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -225,5 +227,27 @@ func TestWithoutExportersOnlyStdout(t *testing.T) {
 	rec.Serve("/api/pvp/lobby", http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}), httptest.NewRecorder(), httptest.NewRequest("GET", "/api/pvp/lobby", nil))
 	if !strings.Contains(out.String(), `"event":"http_request"`) {
 		t.Fatalf("stdout=%q", out.String())
+	}
+}
+
+type historySpy struct{ calls []string }
+
+func (h *historySpy) RecordHTTP(method, route string, status int, latencyMS float64, release string) {
+	h.calls = append(h.calls, fmt.Sprintf("%s %s %d %s %t", method, route, status, release, latencyMS >= 0))
+}
+
+func TestNativeRequestReachesTheObservabilityHistory(t *testing.T) {
+	spy := &historySpy{}
+	rec, err := New(context.Background(), Config{ServiceName: "go"}, Options{History: spy, Stdout: io.Discard})
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodPost, "/api/games/g1/move", nil)
+	req.Header.Set("X-Client-Release", "v16.6dm46j")
+	rec.Serve("/api/games/{game_id}/move", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusConflict)
+	}), httptest.NewRecorder(), req)
+	if len(spy.calls) != 1 || spy.calls[0] != "POST /api/games/{game_id}/move 409 v16.6dm46j true" {
+		t.Fatalf("history %v", spy.calls)
 	}
 }

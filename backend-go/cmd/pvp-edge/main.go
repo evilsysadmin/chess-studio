@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/edge"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/obshistory"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/sessionauth"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/telemetry"
 )
@@ -35,7 +36,28 @@ func main() {
 		}()
 	}
 
-	requestTelemetry := newRequestTelemetry()
+	// Admin's observability history: native requests land in the same
+	// 5-minute buckets as Python's (GO_OBSERVABILITY_HISTORY_ENABLED).
+	var history *obshistory.Recorder
+	if native.mongo != nil && envBool("GO_OBSERVABILITY_HISTORY_ENABLED", true) {
+		if store, storeErr := obshistory.NewMongoStore(native.mongo.Database()); storeErr != nil {
+			log.Printf("observability history disabled: %v", storeErr)
+		} else {
+			history = obshistory.New(store)
+			historyCtx, stopHistory := context.WithCancel(context.Background())
+			historyDone := make(chan struct{})
+			go func() {
+				defer close(historyDone)
+				history.Run(historyCtx)
+			}()
+			defer func() {
+				stopHistory()
+				<-historyDone
+			}()
+		}
+	}
+
+	requestTelemetry := newRequestTelemetry(history)
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
@@ -77,7 +99,7 @@ func main() {
 // access log Python gives every request. It is fail-open: a bad exporter
 // configuration only loses that signal. GO_REQUEST_TELEMETRY_ENABLED=false
 // turns it off entirely.
-func newRequestTelemetry() *telemetry.Recorder {
+func newRequestTelemetry(history *obshistory.Recorder) *telemetry.Recorder {
 	if !envBool("GO_REQUEST_TELEMETRY_ENABLED", true) {
 		return nil
 	}
@@ -85,7 +107,12 @@ func newRequestTelemetry() *telemetry.Recorder {
 	secret := []byte(strings.TrimSpace(os.Getenv("JWT_SECRET")))
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+	var sink telemetry.HTTPHistory
+	if history != nil {
+		sink = history
+	}
 	recorder, err := telemetry.New(ctx, cfg, telemetry.Options{
+		History: sink,
 		Username: func(r *http.Request) string {
 			return sessionauth.VerifiedSubject(r.Header.Get("Authorization"), secret, time.Now())
 		},

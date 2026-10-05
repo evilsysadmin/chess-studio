@@ -39,11 +39,18 @@ const (
 // what main._request_username derives from the JWT without touching Mongo.
 type UsernameFunc func(*http.Request) string
 
+// HTTPHistory receives each native request for the Admin observability
+// history (obshistory.Recorder, Python's record_http_event).
+type HTTPHistory interface {
+	RecordHTTP(method, route string, status int, latencyMS float64, release string)
+}
+
 // Recorder observes requests served natively by Go. A nil *Recorder is valid
 // and records nothing.
 type Recorder struct {
 	cfg      Config
 	username UsernameFunc
+	history  HTTPHistory
 	out      io.Writer
 	outMu    sync.Mutex
 	now      func() time.Time
@@ -58,6 +65,7 @@ type Recorder struct {
 // Options are the parts of a Recorder that tests replace.
 type Options struct {
 	Username     UsernameFunc
+	History      HTTPHistory
 	Stdout       io.Writer
 	MetricReader sdkmetric.Reader
 	LogProcessor sdklog.Processor
@@ -68,7 +76,7 @@ type Options struct {
 // New builds the recorder. Export is fail-open, as in Python: a broken
 // exporter configuration disables that signal and never the routes.
 func New(ctx context.Context, cfg Config, opts Options) (*Recorder, error) {
-	r := &Recorder{cfg: cfg, username: opts.Username, out: opts.Stdout, now: opts.now}
+	r := &Recorder{cfg: cfg, username: opts.Username, history: opts.History, out: opts.Stdout, now: opts.now}
 	if r.out == nil {
 		r.out = os.Stdout
 	}
@@ -202,6 +210,10 @@ func (r *Recorder) record(req *http.Request, route, id string, status int, elaps
 		ctx := context.Background()
 		r.requests.Add(ctx, 1, set)
 		r.duration.Record(ctx, math.Max(0, ms)/1000, set)
+	}
+
+	if r.history != nil {
+		r.history.RecordHTTP(method, truncateRunes(route, 120), status, math.Max(0, ms), release)
 	}
 
 	message := r.httpEvent(req, route, id, method, status, ms, release, exception)

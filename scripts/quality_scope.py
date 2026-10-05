@@ -101,13 +101,15 @@ GO_AUTHORITY_PATHS = {
     "scripts/engine_history_parity_corpus.py",
     "scripts/engine_pv_parity_corpus.py",
     "scripts/engine_move_analysis_parity_corpus.py",
+    "scripts/observability_history_parity_corpus.py",
     "backend-python/engine_analysis.py",
+    "backend-python/observability_history.py",
     "backend-python/move_analysis_service.py",
     "backend-python/root_candidate_service.py",
     "scripts/go_python_parity_check.sh",
 }
 GO_PARITY_FIXTURE_RE = re.compile(
-    r"^backend-go/internal/(?:residenteval|residentsearch|residentpolicy|gamecore|gameops|gamesapi|chroniclesmap)/"
+    r"^backend-go/internal/(?:residenteval|residentsearch|residentpolicy|gamecore|gameops|gamesapi|obshistory|chroniclesmap)/"
     r"testdata/python_[^/]*_corpus\.json$"
 )
 BROWSER_HARNESS_PATHS = {".github/actions/setup-browser-e2e/action.yml", "scripts/run_core_e2e_lane.py"}
@@ -466,6 +468,8 @@ def self_test() -> None:
     _expect(["scripts/engine_pv_parity_corpus.py"], run_go=True, run_go_parity=True)
     _expect(["scripts/engine_move_analysis_parity_corpus.py"], run_go=True, run_go_parity=True)
     _expect(["backend-go/internal/gamesapi/testdata/python_move_analysis_corpus.json"], run_go=True, run_go_parity=True)
+    _expect(["scripts/observability_history_parity_corpus.py"], run_go=True, run_go_parity=True)
+    _expect(["backend-go/internal/obshistory/testdata/python_history_corpus.json"], run_go=True, run_go_parity=True)
     _expect(["backend-python/cpu_difficulty.py"], run_backend=True, run_go=True, run_go_parity=True)
     _expect(["backend-python/pvp_api.py"], run_backend=True, run_go=True, run_go_parity=True)
     _expect(["backend-python/requirements.txt"], run_backend=True, run_go=True, run_go_parity=True, run_security=True)
