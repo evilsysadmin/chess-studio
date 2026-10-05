@@ -32,6 +32,7 @@ describe('Chronicles semantic material atlas', () => {
     expect(chroniclesMaterialEnvironmentForMapId('flooded-sewer')).toBe('cave-water');
     [...CHRONICLES_MATERIAL_ENVIRONMENTS['cave-water'].wall, ...CHRONICLES_MATERIAL_ENVIRONMENTS['cave-water'].floor]
       .forEach((id) => expect(id.startsWith('N')).toBe(true));
+    expect(CHRONICLES_MATERIAL_ENVIRONMENTS['cave-water'].floor).toEqual(['N01', 'N05', 'N06']);
   });
 
   it('derives deterministic profile variation from the actual procedural layout', () => {
