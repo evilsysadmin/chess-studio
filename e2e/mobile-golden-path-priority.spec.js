@@ -22,27 +22,24 @@ for (const viewport of [
     await expect(dialog).toBeVisible();
 
     const start = dialog.getByRole('button', { name: 'Empezar partida', exact: true });
-    const manual = dialog.getByRole('button', { name: 'Ajustar nivel', exact: true });
-    const settings = dialog.locator('details.quick-match-settings > summary');
+    const settingsDetails = dialog.locator('details.quick-match-settings');
+    const settings = settingsDetails.locator(':scope > summary');
 
     await expect(start).toBeVisible();
-    await expect(manual).toBeVisible();
     await expect(settings).toBeVisible();
+    await expect(settingsDetails).not.toHaveAttribute('open', '');
+    await expect(dialog.getByRole('button', { name: 'Ajustar nivel', exact: true })).toHaveCount(0);
 
-    const [startBox, manualBox, settingsBox] = await Promise.all([
+    const [startBox, settingsBox] = await Promise.all([
       start.boundingBox(),
-      manual.boundingBox(),
       settings.boundingBox(),
     ]);
     expect(startBox).not.toBeNull();
-    expect(manualBox).not.toBeNull();
     expect(settingsBox).not.toBeNull();
 
-    expect(startBox.y).toBeLessThan(manualBox.y);
     expect(startBox.y).toBeLessThan(settingsBox.y);
     expect(startBox.y + startBox.height).toBeLessThanOrEqual(viewport.height + 1);
     expect(startBox.height).toBeGreaterThanOrEqual(44);
-    expect(manualBox.height).toBeGreaterThanOrEqual(44);
     expect(settingsBox.height).toBeGreaterThanOrEqual(44);
     expect(startBox.x).toBeGreaterThanOrEqual(0);
     expect(startBox.x + startBox.width).toBeLessThanOrEqual(viewport.width + 1);
