@@ -45,10 +45,16 @@ func _initialize() -> void:
 	assert(String(keeper.visual.animation) == "tackle")
 
 	var rival: Footballer = match_node.teams[1][4]
-	rival.global_position = Vector2(ChessFootballMath.PITCH_RECT.position.x + 300.0, ChessFootballMath.PITCH_RECT.get_center().y)
+	rival.global_position = Vector2(ChessFootballMath.PITCH_RECT.get_center().x + 240.0, ChessFootballMath.PITCH_RECT.get_center().y)
 	match_node.ball.attach_to(rival)
 	var dribble_target: Vector2 = match_node.debug_ai_dribble_target(rival)
 	assert(dribble_target.x < rival.global_position.x)
+	var rival_x_before := rival.global_position.x
+	match_node.debug_step_ai(1.0 / 60.0)
+	assert(rival.global_position.x < rival_x_before)
+
+	rival.global_position = Vector2(ChessFootballMath.PITCH_RECT.position.x + 300.0, ChessFootballMath.PITCH_RECT.get_center().y)
+	match_node.ball.attach_to(rival)
 	match_node.debug_force_ai_attack(rival)
 	assert(match_node.ball.carrier == null)
 	assert(match_node.ball.velocity.x < 0.0)
