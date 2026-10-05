@@ -727,6 +727,7 @@ func _score_goal(team_id: int) -> void:
 		ball.release(Vector2.ZERO, 0.0)
 	ball.velocity = Vector2.ZERO
 	ball.vertical_velocity = 0.0
+	ball.flight_height = 0.0
 	goal_restart_active = true
 	goal_restart_seconds_remaining = GOAL_CELEBRATION_SECONDS
 	pending_restart_team_id = 1 - team_id
