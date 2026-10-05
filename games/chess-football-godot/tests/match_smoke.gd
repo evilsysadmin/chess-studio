@@ -227,6 +227,22 @@ func _initialize() -> void:
 	assert(match_node.ball.carrier == tackler)
 	print("SMOKE_STAGE=tackle")
 
+	# Pressing tackle slightly early still leaves a short active contact window.
+	# The rival starts outside the capsule, enters it during the animation, and
+	# must be stealable without a second button press.
+	tackler._process(2.0)
+	tackler.global_position = Vector2(640.0, 560.0)
+	tackler.velocity = Vector2.RIGHT * tackler.base_speed
+	victim.global_position = Vector2(722.0, 560.0)
+	match_node.ball.attach_to(victim)
+	assert(not match_node.debug_try_tackle(tackler))
+	assert(tackler.debug_tackle_active())
+	assert(match_node.ball.carrier == victim)
+	victim.global_position = Vector2(700.0, 572.0)
+	match_node.debug_update_active_tackle_contacts()
+	assert(match_node.ball.carrier == null)
+	assert(victim.contact_stun_active())
+
 	var keeper: Footballer = match_node.teams[0][0]
 	assert(keeper.role == "keeper")
 	keeper.global_position = Vector2(200.0, ChessFootballMath.PITCH_RECT.get_center().y)
