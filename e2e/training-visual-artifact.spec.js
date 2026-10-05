@@ -46,8 +46,9 @@ async function assertSchoolTouchTargets(shell, label) {
     '.matthias-school-focusbar button',
     '.matthias-school-board-actions button',
     '.matthias-school-nav button',
-    '.matthias-school-study-mode button',
-    '.matthias-school-topic-filter select',
+    '.matthias-school-curriculum-panel button',
+    '.matthias-school-curriculum-panel select',
+    '.matthias-school-topic-explorer > summary',
     '.matthias-school-focus-mode-bar button',
   ].join(',')).evaluateAll((nodes) => nodes
     .filter((node) => {
@@ -96,6 +97,34 @@ async function assertSchoolMobileFold(shell, label) {
   expect(geometry.coachBottom, `${label}: Matthias stays inside the room`).toBeLessThanOrEqual(geometry.innerHeight);
   expect(geometry.coachPosition, `${label}: Matthias is an overlay`).toBe('absolute');
   expect(geometry.actionCount, `${label}: expected actionable lesson controls`).toBeGreaterThanOrEqual(3);
+}
+
+async function assertSchoolCurriculumLayout(shell, label) {
+  const panel = shell.locator('.matthias-school-curriculum-panel');
+  const geometry = await panel.evaluate((root) => {
+    const rect = root.getBoundingClientRect();
+    const courses = root.querySelector('.matthias-school-curriculum-courses');
+    const lessons = root.querySelector('.matthias-school-curriculum-lessons');
+    return {
+      left: rect.left,
+      top: rect.top,
+      right: rect.right,
+      bottom: rect.bottom,
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+      panelOverflow: root.scrollWidth - root.clientWidth,
+      coursesOverflow: courses ? courses.scrollWidth - courses.clientWidth : 0,
+      lessonsOverflow: lessons ? lessons.scrollWidth - lessons.clientWidth : 0,
+    };
+  });
+
+  expect(geometry.left, `${label}: curriculum stays inside left edge`).toBeGreaterThanOrEqual(-1);
+  expect(geometry.top, `${label}: curriculum stays inside top edge`).toBeGreaterThanOrEqual(-1);
+  expect(geometry.right, `${label}: curriculum stays inside right edge`).toBeLessThanOrEqual(geometry.viewportWidth + 1);
+  expect(geometry.bottom, `${label}: curriculum stays inside bottom edge`).toBeLessThanOrEqual(geometry.viewportHeight + 1);
+  expect(geometry.panelOverflow, `${label}: curriculum has no horizontal overflow`).toBeLessThanOrEqual(1);
+  expect(geometry.coursesOverflow, `${label}: course list has no horizontal overflow`).toBeLessThanOrEqual(1);
+  expect(geometry.lessonsOverflow, `${label}: lesson list has no horizontal overflow`).toBeLessThanOrEqual(1);
 }
 
 async function assertSpecialModesDensity(shell) {
@@ -202,12 +231,18 @@ scopedTest('school', 'Entrenar · Escuela, Glosario y Modos especiales', async (
   await settle(page);
 
   await shell.getByRole('button', { name: 'Plan de estudios', exact: true }).click();
+  const curriculum = shell.getByRole('dialog', { name: 'Plan de estudios' });
+  await expect(curriculum).toBeVisible();
   await expect(shell.getByRole('group', { name: 'Modo de estudio' })).toBeVisible();
+  await expect(shell.locator('.matthias-school-coach')).toBeHidden();
+  await assertSchoolCurriculumLayout(shell, 'school-curriculum-desktop');
   await capture(page, 'school-curriculum');
   await captureAt(page, 'school-curriculum', { width: 390, height: 844, variant: 'mobile' });
+  await assertSchoolCurriculumLayout(shell, 'school-curriculum-mobile');
+  await assertSchoolTouchTargets(shell, 'school-curriculum-mobile');
   await page.setViewportSize({ width: 1440, height: 900 });
   await settle(page);
-  await shell.getByRole('button', { name: 'Cerrar plan de estudios', exact: true }).click();
+  await curriculum.getByRole('button', { name: 'Cerrar plan de estudios', exact: true }).click();
 
   await expect(shell.getByRole('button', { name: 'Pantalla completa', exact: true })).toBeHidden();
   await expect(shell).toHaveAttribute('data-school-focus', 'normal');
