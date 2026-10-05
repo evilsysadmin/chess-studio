@@ -5,8 +5,13 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"unicode/utf8"
+
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/pyval"
 )
 
+// MapCode mirrors chronicles_map_code.py, error messages included (the
+// preview route answers them as 400 details).
 const (
 	MapCodeVersion   = 1
 	MapCodePrefix    = "CM1"
@@ -26,6 +31,21 @@ type Recipe struct {
 	Seed       int
 }
 
+// Equal is the frozen dataclass's ==.
+func (r Recipe) Equal(o Recipe) bool {
+	if r.Theme != o.Theme || r.Width != o.Width || r.Height != o.Height || r.Enemies != o.Enemies ||
+		r.Treasures != o.Treasures || r.Secrets != o.Secrets || r.Difficulty != o.Difficulty ||
+		r.Seed != o.Seed || len(r.Verbs) != len(o.Verbs) {
+		return false
+	}
+	for i := range r.Verbs {
+		if r.Verbs[i] != o.Verbs[i] {
+			return false
+		}
+	}
+	return true
+}
+
 var allowedThemes = map[string]bool{
 	"crypt": true, "gallery": true, "ash": true, "archive": true, "iron": true,
 	"basilica": true, "bell": true, "glass": true, "water": true,
@@ -40,73 +60,102 @@ var fieldOrder = []string{
 	"theme", "size", "verbs", "enemies", "treasures", "secrets", "difficulty", "seed",
 }
 
-var sizePattern = regexp.MustCompile("^[0-9]{1,2}x[0-9]{1,2}$")
+var sizePattern = regexp.MustCompile("^([0-9]{1,2})x([0-9]{1,2})$")
 
-func parseDecimal(raw string, field string) (int, error) {
-	if raw == "" {
-		return 0, fmt.Errorf("%s must be an integer", field)
+// Error is ChroniclesMapCodeError.
+type Error struct{ msg string }
+
+func (e *Error) Error() string { return e.msg }
+
+func codeErr(format string, args ...any) error { return &Error{msg: fmt.Sprintf(format, args...)} }
+
+func normalizeTheme(raw string) (string, error) {
+	theme := strings.ToLower(pyval.Strip(raw))
+	if !allowedThemes[theme] {
+		if theme == "" {
+			theme = "<empty>"
+		}
+		return "", codeErr("unsupported theme: %s", theme)
 	}
-	for _, char := range raw {
-		if char < '0' || char > '9' {
-			return 0, fmt.Errorf("%s must be an integer", field)
+	return theme, nil
+}
+
+func normalizeVerbs(raw string) ([]string, error) {
+	var values []string
+	for _, part := range strings.Split(raw, ",") {
+		if v := pyval.Strip(part); v != "" {
+			values = append(values, strings.ToLower(v))
 		}
 	}
-	value, err := strconv.Atoi(raw)
-	if err != nil {
-		return 0, fmt.Errorf("%s must be an integer", field)
+	if len(values) == 0 {
+		return nil, codeErr("verbs must contain at least one entry")
+	}
+	if len(values) > 4 {
+		return nil, codeErr("verbs supports at most 4 entries")
+	}
+	seen := map[string]bool{}
+	for _, v := range values {
+		if seen[v] {
+			return nil, codeErr("verbs must be unique")
+		}
+		seen[v] = true
+	}
+	for _, v := range values {
+		if !allowedVerbs[v] {
+			return nil, codeErr("unsupported verb: %s", v)
+		}
+	}
+	return values, nil
+}
+
+// boundedInt is _bounded_int over an ASCII digit string.
+func boundedInt(raw, field string, minimum, maximum int) (int, error) {
+	if raw == "" || strings.Trim(raw, "0123456789") != "" {
+		return 0, codeErr("%s must be an integer", field)
+	}
+	digits := strings.TrimLeft(raw, "0")
+	value := maximum + 1
+	if len(digits) <= 12 {
+		value, _ = strconv.Atoi("0" + digits)
+	}
+	if value < minimum || value > maximum {
+		return 0, codeErr("%s must be between %d and %d", field, minimum, maximum)
 	}
 	return value, nil
 }
 
-func validate(recipe Recipe) (Recipe, error) {
-	recipe.Theme = strings.ToLower(strings.TrimSpace(recipe.Theme))
-	if !allowedThemes[recipe.Theme] {
-		return Recipe{}, fmt.Errorf("unsupported theme: %s", recipe.Theme)
+// Validate is validate_chronicles_map_code.
+func Validate(recipe Recipe) (Recipe, error) {
+	theme, err := normalizeTheme(recipe.Theme)
+	if err != nil {
+		return Recipe{}, err
 	}
-	if recipe.Width < 7 || recipe.Width > 19 {
-		return Recipe{}, fmt.Errorf("width must be between 7 and 19")
+	verbs, err := normalizeVerbs(strings.Join(recipe.Verbs, ","))
+	if err != nil {
+		return Recipe{}, err
 	}
-	if recipe.Height < 7 || recipe.Height > 15 {
-		return Recipe{}, fmt.Errorf("height must be between 7 and 15")
+	switch {
+	case recipe.Width < 7 || recipe.Width > 19:
+		return Recipe{}, codeErr("width must be between 7 and 19")
+	case recipe.Height < 7 || recipe.Height > 15:
+		return Recipe{}, codeErr("height must be between 7 and 15")
+	case recipe.Enemies < 2 || recipe.Enemies > 8:
+		return Recipe{}, codeErr("enemies must be between 2 and 8")
+	case recipe.Treasures < 0 || recipe.Treasures > 4:
+		return Recipe{}, codeErr("treasures must be between 0 and 4")
+	case recipe.Secrets < 0 || recipe.Secrets > 3:
+		return Recipe{}, codeErr("secrets must be between 0 and 3")
+	case recipe.Difficulty < 1 || recipe.Difficulty > 5:
+		return Recipe{}, codeErr("difficulty must be between 1 and 5")
+	case recipe.Seed < 0 || recipe.Seed > MapCodeMaxSeed:
+		return Recipe{}, codeErr("seed must be between 0 and %d", MapCodeMaxSeed)
 	}
-	if recipe.Enemies < 2 || recipe.Enemies > 8 {
-		return Recipe{}, fmt.Errorf("enemies must be between 2 and 8")
-	}
-	if recipe.Treasures < 0 || recipe.Treasures > 4 {
-		return Recipe{}, fmt.Errorf("treasures must be between 0 and 4")
-	}
-	if recipe.Secrets < 0 || recipe.Secrets > 3 {
-		return Recipe{}, fmt.Errorf("secrets must be between 0 and 3")
-	}
-	if recipe.Difficulty < 1 || recipe.Difficulty > 5 {
-		return Recipe{}, fmt.Errorf("difficulty must be between 1 and 5")
-	}
-	if recipe.Seed < 0 || recipe.Seed > MapCodeMaxSeed {
-		return Recipe{}, fmt.Errorf("seed must be between 0 and %d", MapCodeMaxSeed)
-	}
-	if len(recipe.Verbs) == 0 || len(recipe.Verbs) > 4 {
-		return Recipe{}, fmt.Errorf("verbs count invalid")
-	}
-
-	seen := map[string]bool{}
-	verbs := make([]string, 0, len(recipe.Verbs))
-	for _, verb := range recipe.Verbs {
-		verb = strings.ToLower(strings.TrimSpace(verb))
-		if verb == "" || !allowedVerbs[verb] {
-			return Recipe{}, fmt.Errorf("unsupported verb: %s", verb)
-		}
-		if seen[verb] {
-			return Recipe{}, fmt.Errorf("verbs must be unique")
-		}
-		seen[verb] = true
-		verbs = append(verbs, verb)
-	}
-	recipe.Verbs = verbs
+	recipe.Theme, recipe.Verbs = theme, verbs
 	return recipe, nil
 }
 
 func Encode(recipe Recipe) (string, error) {
-	recipe, err := validate(recipe)
+	recipe, err := Validate(recipe)
 	if err != nil {
 		return "", err
 	}
@@ -127,89 +176,81 @@ func Encode(recipe Recipe) (string, error) {
 	return strings.Join(parts, "|"), nil
 }
 
+// Parse is parse_chronicles_map_code.
 func Parse(raw string) (Recipe, error) {
-	code := strings.TrimSpace(raw)
-	if len(code) < 1 || len(code) > MapCodeMaxLength {
-		return Recipe{}, fmt.Errorf("MapCode length must be 1..%d", MapCodeMaxLength)
+	code := pyval.Strip(raw)
+	if code == "" || utf8.RuneCountInString(code) > MapCodeMaxLength {
+		return Recipe{}, codeErr("MapCode length must be 1..%d", MapCodeMaxLength)
 	}
-
 	parts := strings.Split(code, "|")
-	if len(parts) == 0 || strings.ToUpper(parts[0]) != MapCodePrefix {
-		return Recipe{}, fmt.Errorf("MapCode must start with %s", MapCodePrefix)
+	if strings.ToUpper(parts[0]) != MapCodePrefix {
+		return Recipe{}, codeErr("MapCode must start with %s", MapCodePrefix)
 	}
-
-	fields := map[string]string{}
-	required := map[string]bool{}
+	known := map[string]bool{}
 	for _, key := range fieldOrder {
-		required[key] = true
+		known[key] = true
 	}
+	fields := map[string]string{}
 	for _, token := range parts[1:] {
-		keyValue := strings.SplitN(token, "=", 2)
-		if len(keyValue) != 2 {
-			return Recipe{}, fmt.Errorf("MapCode fields must use key=value")
+		key, value, found := strings.Cut(token, "=")
+		if !found {
+			return Recipe{}, codeErr("MapCode fields must use key=value")
 		}
-		key := strings.ToLower(strings.TrimSpace(keyValue[0]))
-		value := strings.TrimSpace(keyValue[1])
-		if !required[key] {
-			return Recipe{}, fmt.Errorf("unknown MapCode field: %s", key)
+		key = strings.ToLower(pyval.Strip(key))
+		if !known[key] {
+			if key == "" {
+				key = "<empty>"
+			}
+			return Recipe{}, codeErr("unknown MapCode field: %s", key)
 		}
 		if _, exists := fields[key]; exists {
-			return Recipe{}, fmt.Errorf("duplicate MapCode field: %s", key)
+			return Recipe{}, codeErr("duplicate MapCode field: %s", key)
 		}
-		fields[key] = value
+		fields[key] = pyval.Strip(value)
 	}
 	for _, key := range fieldOrder {
 		if _, exists := fields[key]; !exists {
-			return Recipe{}, fmt.Errorf("missing MapCode field: %s", key)
+			return Recipe{}, codeErr("missing MapCode field: %s", key)
 		}
 	}
-
-	sizeValue := strings.ToLower(fields["size"])
-	if !sizePattern.MatchString(sizeValue) {
-		return Recipe{}, fmt.Errorf("size must use WIDTHxHEIGHT")
+	size := sizePattern.FindStringSubmatch(strings.ToLower(fields["size"]))
+	if size == nil {
+		return Recipe{}, codeErr("size must use WIDTHxHEIGHT")
 	}
-	size := strings.SplitN(sizeValue, "x", 2)
-	width, err := parseDecimal(size[0], "width")
-	if err != nil {
+	var recipe Recipe
+	var err error
+	if recipe.Theme, err = normalizeTheme(fields["theme"]); err != nil {
 		return Recipe{}, err
 	}
-	height, err := parseDecimal(size[1], "height")
-	if err != nil {
-		return Recipe{}, err
-	}
-
-	enemies, err := parseDecimal(fields["enemies"], "enemies")
-	if err != nil {
-		return Recipe{}, err
-	}
-	treasures, err := parseDecimal(fields["treasures"], "treasures")
-	if err != nil {
-		return Recipe{}, err
-	}
-	secrets, err := parseDecimal(fields["secrets"], "secrets")
-	if err != nil {
-		return Recipe{}, err
-	}
-	difficulty, err := parseDecimal(fields["difficulty"], "difficulty")
-	if err != nil {
-		return Recipe{}, err
-	}
-	seed, err := parseDecimal(fields["seed"], "seed")
-	if err != nil {
-		return Recipe{}, err
-	}
-
-	rawVerbs := strings.Split(fields["verbs"], ",")
-	verbs := make([]string, 0, len(rawVerbs))
-	for _, verb := range rawVerbs {
-		if strings.TrimSpace(verb) != "" {
-			verbs = append(verbs, strings.TrimSpace(verb))
+	for _, f := range []struct {
+		raw, field string
+		lo, hi     int
+		dst        *int
+	}{
+		{size[1], "width", 7, 19, &recipe.Width},
+		{size[2], "height", 7, 15, &recipe.Height},
+	} {
+		if *f.dst, err = boundedInt(f.raw, f.field, f.lo, f.hi); err != nil {
+			return Recipe{}, err
 		}
 	}
-
-	return validate(Recipe{
-		Theme: fields["theme"], Width: width, Height: height, Verbs: verbs,
-		Enemies: enemies, Treasures: treasures, Secrets: secrets,
-		Difficulty: difficulty, Seed: seed,
-	})
+	if recipe.Verbs, err = normalizeVerbs(fields["verbs"]); err != nil {
+		return Recipe{}, err
+	}
+	for _, f := range []struct {
+		field  string
+		lo, hi int
+		dst    *int
+	}{
+		{"enemies", 2, 8, &recipe.Enemies},
+		{"treasures", 0, 4, &recipe.Treasures},
+		{"secrets", 0, 3, &recipe.Secrets},
+		{"difficulty", 1, 5, &recipe.Difficulty},
+		{"seed", 0, MapCodeMaxSeed, &recipe.Seed},
+	} {
+		if *f.dst, err = boundedInt(fields[f.field], f.field, f.lo, f.hi); err != nil {
+			return Recipe{}, err
+		}
+	}
+	return Validate(recipe)
 }

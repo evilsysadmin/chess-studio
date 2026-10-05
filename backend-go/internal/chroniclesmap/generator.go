@@ -116,7 +116,7 @@ func targetWalkable(recipe Recipe) (int, error) {
 	interior := (recipe.Width - 2) * (recipe.Height - 2)
 	required := requiredWalkable(recipe)
 	if required > interior {
-		return 0, fmt.Errorf(
+		return 0, genErr(
 			"recipe needs %d walkable slots but only %d fit",
 			required,
 			interior,
@@ -242,7 +242,7 @@ func openExtra(
 			}
 		}
 		if len(candidates) == 0 {
-			return 0, fmt.Errorf("generator could not reach required walkable capacity")
+			return 0, genErr("generator could not reach required walkable capacity")
 		}
 
 		loopCandidates := make([]candidate, 0)
@@ -301,8 +301,27 @@ func revision(mapCode string, grid []string) string {
 	return hex.EncodeToString(sum[:])
 }
 
+// GenerationError is ChroniclesMapGenerationError.
+type GenerationError struct{ msg string }
+
+func (e *GenerationError) Error() string { return e.msg }
+
+func genErr(format string, args ...any) error {
+	return &GenerationError{msg: fmt.Sprintf(format, args...)}
+}
+
+// Generate is generate_chronicles_layout over a MapCode string.
 func Generate(rawMapCode string) (Layout, error) {
 	recipe, err := Parse(rawMapCode)
+	if err != nil {
+		return Layout{}, err
+	}
+	return GenerateRecipe(recipe)
+}
+
+// GenerateRecipe is generate_chronicles_layout over a recipe.
+func GenerateRecipe(recipe Recipe) (Layout, error) {
+	recipe, err := Validate(recipe)
 	if err != nil {
 		return Layout{}, err
 	}
@@ -325,7 +344,7 @@ func Generate(rawMapCode string) (Layout, error) {
 	start := Point{X: 1, Y: 1}
 	distanceByPoint := distances(grid, start)
 	if len(distanceByPoint) != walkableCount {
-		return Layout{}, fmt.Errorf("generated topology is not fully connected")
+		return Layout{}, genErr("generated topology is not fully connected")
 	}
 
 	exit := start
@@ -339,7 +358,7 @@ func Generate(rawMapCode string) (Layout, error) {
 		}
 	}
 	if exit == start || exitDistance < 4 {
-		return Layout{}, fmt.Errorf("generated exit is too close to party start")
+		return Layout{}, genErr("generated exit is too close to party start")
 	}
 
 	grid[start.Y][start.X] = 'P'

@@ -1,0 +1,20 @@
+{
+  "version": 4,
+  "mapIds": [
+    "crypt-eight-squares",
+    "gallery-of-forks",
+    "menagerie-of-ash",
+    "blind-king-archive",
+    "hollow-bell-tower"
+  ],
+  "minRouteLength": 3,
+  "maxRouteLength": 4,
+  "finalMapId": "echo-cistern",
+  "primaryExitIds": {
+    "crypt-eight-squares": "black-gate",
+    "gallery-of-forks": "gallery-gate",
+    "menagerie-of-ash": "menagerie-gate",
+    "blind-king-archive": "archive-east-gate",
+    "hollow-bell-tower": "tower-upper-gate"
+  }
+}
