@@ -114,9 +114,14 @@ func _initialize() -> void:
 	if tackler.visual != null and String(tackler.visual.animation) == "tackle":
 		tackler.visual.pause()
 		tackler.visual.frame = 4
-	match_node.ball.tick_ball(0.12)
+	# Runtime smoke owns the real deflection timing contract. For the visual
+	# review, pin the already-loose ball just outside the silhouettes so render
+	# timing cannot make the screenshot flaky on main.
+	var visual_ball_direction: Vector2 = match_node.ball.velocity.normalized()
+	if visual_ball_direction.length_squared() < 0.001:
+		visual_ball_direction = Vector2.RIGHT
+	match_node.ball.global_position = tackler.global_position + visual_ball_direction * 30.0
 	assert(match_node.ball.carrier == null)
-	assert(match_node.ball.global_position.distance_to(tackler.global_position) > 22.0)
 	match_node.debug_sync_presentation()
 	await _save_capture(match_node, "contact", "VISUAL_CAPTURE_CONTACT")
 
