@@ -16,6 +16,10 @@ describe('Chronicles Tactics premium materials', () => {
     wall.name = 'chronicles-iso-wall-2-3';
     expect(chroniclesTacticsMaterialRole(wall)).toBe('wall');
 
+    const wallCap = new THREE.Mesh();
+    wallCap.name = 'chronicles-iso-wall-cap-2-3';
+    expect(chroniclesTacticsMaterialRole(wallCap)).toBe('wall');
+
     const column = new THREE.Group();
     column.name = 'chronicles-iso-column-1';
     const shaft = new THREE.Mesh();
