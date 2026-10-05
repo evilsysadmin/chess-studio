@@ -30,9 +30,10 @@ function createRockFaceGeometry(width, height, seed, {
       const direction = column === 0 ? -1 : 1;
       jaggedX += direction * (noise(row, seed, 31) - 0.35) * width * 0.085;
     }
-    if (row === 0 || row === heightSegments) {
-      const direction = row === 0 ? 1 : -1;
-      jaggedY += direction * (noise(column, seed, 43) - 0.35) * height * 0.055;
+    if (row === 0) {
+      jaggedY += (noise(column, seed, 43) - 0.5) * height * 0.12;
+    } else if (row === heightSegments) {
+      jaggedY += (noise(column, seed, 47) - 0.5) * height * 0.018;
     }
     if (edge < 0.98) {
       jaggedX += (noise(index, seed, 53) - 0.5) * width * 0.018;
@@ -69,7 +70,8 @@ export function createChroniclesCaveWallDressing({
 
     exposedFaces.forEach((face, faceIndex) => {
       const width = cellSize * (1.12 + noise(x, y, 61 + faceIndex) * 0.07);
-      const height = 2.62 + noise(x, y, 71 + faceIndex) * 0.14;
+      const cellHeight = 2.46 + noise(x, y, 71) * 0.3;
+      const height = cellHeight + (noise(x, y, 73 + faceIndex) - 0.5) * 0.045;
       const geometry = createRockFaceGeometry(
         width,
         height,
@@ -85,7 +87,7 @@ export function createChroniclesCaveWallDressing({
       const outward = cellSize * 0.51;
       faceMesh.position.set(
         world.x + face.ox * outward,
-        1.26 + (noise(x, y, 83 + faceIndex) - 0.5) * 0.05,
+        -0.055 + height / 2,
         world.z + face.oz * outward,
       );
       faceMesh.rotation.y = face.yaw + (noise(x, y, 89 + faceIndex) - 0.5) * 0.04;
@@ -94,6 +96,8 @@ export function createChroniclesCaveWallDressing({
       faceMesh.receiveShadow = true;
       root.add(faceMesh);
     });
+
+
 
     return true;
   }
