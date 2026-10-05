@@ -49,6 +49,10 @@ const RESTART_THROW_POWER := 500.0
 const RESTART_GOAL_KICK_POWER := 620.0
 const RESTART_CORNER_POWER := 650.0
 const RESTART_CORNER_LIFT := 230.0
+const GOAL_FRAME_REBOUND_OFFSET := 20.0
+const GOAL_POST_RESTITUTION := 0.76
+const GOAL_CROSSBAR_RESTITUTION := 0.68
+const GOAL_CROSSBAR_DROP_SPEED := 125.0
 
 const SHOT_CHARGE_SECONDS := 0.90
 const SHOT_MIN_POWER := 430.0
@@ -134,7 +138,10 @@ func _physics_process(delta: float) -> void:
 		return
 	_handle_human(delta)
 	_update_ai(delta)
+	var previous_ball_position: Vector2 = ball.global_position
+	var previous_ball_height: float = ball.flight_height
 	ball.tick_ball(delta)
+	_resolve_goal_frame_collision(previous_ball_position, previous_ball_height)
 	_update_keeper_saves()
 	_update_pending_tackle_claim(delta)
 	_try_claim_loose_ball()
@@ -748,6 +755,66 @@ func _select_player(player: Footballer) -> void:
 	controlled = player
 	controlled.set_active(true)
 
+func _resolve_goal_frame_collision(
+	previous_position: Vector2,
+	previous_height: float,
+) -> String:
+	if ball.carrier != null:
+		return ""
+	var hit := ChessFootballMath.goal_frame_collision(
+		previous_position,
+		ball.global_position,
+		previous_height,
+		ball.flight_height,
+	)
+	if hit.is_empty():
+		return ""
+
+	var kind := String(hit["kind"])
+	var goal_x := float(hit["goal_x"])
+	var incoming := ball.velocity
+	var travel_sign := signf(incoming.x)
+	if absf(travel_sign) < 0.01:
+		travel_sign = signf(ball.global_position.x - previous_position.x)
+	if absf(travel_sign) < 0.01:
+		travel_sign = 1.0
+
+	var impact_speed := incoming.length()
+	ball.global_position.x = goal_x - travel_sign * GOAL_FRAME_REBOUND_OFFSET
+	if kind == "post":
+		var center_y := ChessFootballMath.PITCH_RECT.get_center().y
+		var post_y := center_y + (
+			ChessFootballMath.GOAL_HALF_HEIGHT
+			if float(hit["contact_y"]) >= center_y
+			else -ChessFootballMath.GOAL_HALF_HEIGHT
+		)
+		var glancing_sign := signf(float(hit["contact_y"]) - post_y)
+		if absf(glancing_sign) < 0.01:
+			glancing_sign = signf(incoming.y)
+		ball.velocity = Vector2(
+			-incoming.x * GOAL_POST_RESTITUTION,
+			incoming.y * 0.72 + glancing_sign * 70.0,
+		)
+	elif kind == "crossbar":
+		ball.velocity = Vector2(
+			-incoming.x * GOAL_CROSSBAR_RESTITUTION,
+			incoming.y * 0.82,
+		)
+		ball.flight_height = minf(
+			ball.flight_height,
+			ChessFootballMath.GOAL_FRAME_CROSSBAR_HEIGHT
+			- ChessFootballMath.GOAL_FRAME_CROSSBAR_RADIUS
+			- 1.0,
+		)
+		ball.vertical_velocity = -maxf(
+			absf(ball.vertical_velocity) * 0.55,
+			GOAL_CROSSBAR_DROP_SPEED,
+		)
+
+	if audio_fx != null:
+		audio_fx.play_goal_frame(impact_speed)
+	return kind
+
 func _check_goal() -> void:
 	if not ChessFootballMath.in_goal_mouth(ball.global_position):
 		return
@@ -1196,6 +1263,12 @@ func debug_score_goal(team_id: int) -> void:
 
 func debug_check_goal() -> void:
 	_check_goal()
+
+func debug_resolve_goal_frame_collision(
+	previous_position: Vector2,
+	previous_height: float,
+) -> String:
+	return _resolve_goal_frame_collision(previous_position, previous_height)
 
 func debug_shot_power_for_ratio(ratio: float) -> float:
 	return _shot_power_from_ratio(ratio)
