@@ -121,7 +121,7 @@ const CAVE_WATER_STYLE = Object.freeze({
   id: 'cave-water',
   version: CHRONICLES_ISOMETRIC_SCENE_STYLE_VERSION,
   dressing: 'none',
-  lighting: sceneLighting({ exposure: 1.18, hemi: 1.32, fill: 1.5, bounce: 1.16 }),
+  lighting: sceneLighting({ exposure: 1.05, hemi: 1.1, fill: 1.16, bounce: 1.04 }),
   palette: CAVE_WATER_PALETTE,
 });
 
