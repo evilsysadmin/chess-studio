@@ -379,10 +379,13 @@ func sync_presentation(delta: float, mode: String) -> void:
 				active_disc.visible = player == match_node.controlled
 
 	if ball_node != null:
-		ball_node.position = world_to_stage(match_node.ball.global_position, 0.18)
+		var ball_height: float = 0.18 + float(match_node.ball.flight_height) * WORLD_SCALE
+		ball_node.position = world_to_stage(match_node.ball.global_position, ball_height)
 		ball_node.rotate_z(match_node.ball.velocity.length() * delta * 0.004)
 	if ball_shadow != null:
 		ball_shadow.position = world_to_stage(match_node.ball.global_position, 0.010)
+		var shadow_scale: float = lerpf(1.0, 0.62, clampf(float(match_node.ball.flight_height) / 90.0, 0.0, 1.0))
+		ball_shadow.scale = Vector3(shadow_scale, 1.0, shadow_scale)
 
 	_sync_camera(delta, mode)
 
@@ -396,20 +399,20 @@ func _sync_player_secondary_motion(player: Footballer, sprite: AnimatedSprite3D,
 	# The atlas is intentionally stylised, but the old 1:1 presentation made the
 	# players read like square little tanks. Keep them a touch taller/slimmer and
 	# let motion temporarily widen/compress the silhouette.
-	var stretch_x := 0.92
-	var stretch_y := 1.04
+	var stretch_x := 0.875
+	var stretch_y := 1.085
 	var tilt_degrees := 0.0
 	var facing_sign := -1.0 if sprite.flip_h else 1.0
 
 	if animation_name == "run":
 		bob = absf(sin(phase)) * PLAYER_RUN_BOB * moving_weight
-		stretch_x = 0.92 + absf(cos(phase)) * 0.025
-		stretch_y = 1.04 - absf(cos(phase)) * 0.018
+		stretch_x = 0.875 + absf(cos(phase)) * 0.025
+		stretch_y = 1.085 - absf(cos(phase)) * 0.018
 		tilt_degrees = -facing_sign * 2.8 * moving_weight
 	elif animation_name == "sprint":
 		bob = absf(sin(phase)) * PLAYER_SPRINT_BOB * moving_weight
-		stretch_x = 0.91 + absf(cos(phase)) * 0.040
-		stretch_y = 1.05 - absf(cos(phase)) * 0.028
+		stretch_x = 0.865 + absf(cos(phase)) * 0.040
+		stretch_y = 1.095 - absf(cos(phase)) * 0.028
 		tilt_degrees = -facing_sign * 5.2 * moving_weight
 	elif animation_name == "pass":
 		bob = absf(sin(phase)) * 0.018
@@ -427,6 +430,13 @@ func _sync_player_secondary_motion(player: Footballer, sprite: AnimatedSprite3D,
 	elif animation_name == "celebrate":
 		bob = absf(sin(phase)) * 0.080
 		stretch_y = 1.075
+
+	if player.contact_stun_active():
+		var contact_weight := player.contact_stun_ratio()
+		bob = minf(bob, -0.020 * contact_weight)
+		stretch_x *= 1.0 + 0.055 * contact_weight
+		stretch_y *= 1.0 - 0.050 * contact_weight
+		tilt_degrees += player.contact_sway_sign * 12.0 * contact_weight
 
 	sprite.position.y = PLAYER_BASE_Y + bob
 	sprite.rotation.z = deg_to_rad(tilt_degrees)

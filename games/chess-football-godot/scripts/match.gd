@@ -9,9 +9,14 @@ const CAMERA_MODE_BROADCAST := "broadcast"
 const CAMERA_MODE_TACTICAL := "tactical"
 
 const TACKLE_ATTEMPT_RANGE := 60.0
-const TACKLE_CLEAN_STEAL_RANGE := 34.0
-const TACKLE_BASE_SUCCESS_RANGE := 38.0
-const TACKLE_APPROACH_BONUS := 13.0
+const TACKLE_CLEAN_STEAL_RANGE := 30.0
+const TACKLE_BASE_SUCCESS_RANGE := 30.0
+const TACKLE_APPROACH_BONUS := 18.0
+const TACKLE_MIN_APPROACH := 0.18
+const TACKLE_EMERGENCY_RANGE := 23.0
+const TACKLE_STEAL_DELAY := 0.13
+const TACKLE_STEAL_POKE_POWER := 180.0
+const TACKLE_LOOSE_POKE_POWER := 270.0
 
 const KEEPER_LINE_OFFSET := 96.0
 const KEEPER_PRESS_MAX_OFFSET := 170.0
@@ -29,11 +34,18 @@ const AI_FORWARD_PASS_GAIN := 170.0
 const AI_DRIBBLE_LOOKAHEAD := 280.0
 const AI_SUPPORT_FORWARD := 190.0
 
+const KICKOFF_FREEZE_SECONDS := 1.10
+const KICKOFF_AI_PASS_POWER := 430.0
+
 const SHOT_CHARGE_SECONDS := 0.90
 const SHOT_MIN_POWER := 650.0
 const SHOT_MAX_POWER := 1220.0
+const SHOT_MIN_LIFT := 170.0
+const SHOT_MAX_LIFT := 390.0
 const AI_SHOT_MIN_POWER := 760.0
 const AI_SHOT_MAX_POWER := 1040.0
+const AI_SHOT_MIN_LIFT := 220.0
+const AI_SHOT_MAX_LIFT := 350.0
 
 var teams: Array[Array] = [[], []]
 var ball: FootballBall
@@ -46,8 +58,13 @@ var camera_hint_seconds: float = 4.5
 var presentation_3d: ChessFootball3DPresenter
 var ai_next_decision: Dictionary = {}
 var pause_menu_open: bool = false
+var kickoff_team_id: int = 0
+var kickoff_active: bool = false
+var kickoff_seconds_remaining: float = 0.0
 var shot_charging: bool = false
 var shot_charge_seconds: float = 0.0
+var pending_tackle_player: Footballer = null
+var pending_tackle_seconds: float = 0.0
 
 var score_label: Label
 var help_label: Label
@@ -60,8 +77,7 @@ var pause_exit_button: Button
 
 func _ready() -> void:
 	_spawn_match()
-	_select_player(teams[0][2])
-	ball.attach_to(controlled)
+	_prepare_kickoff(randi_range(0, 1), true)
 	_create_3d_presentation()
 	_create_hud()
 	_refresh_hud()
@@ -72,10 +88,17 @@ func _physics_process(delta: float) -> void:
 		return
 	match_seconds += delta
 	camera_hint_seconds = maxf(0.0, camera_hint_seconds - delta)
+	if kickoff_active:
+		_update_kickoff(delta)
+		ball.tick_ball(delta)
+		_update_3d_presentation(delta)
+		_refresh_hud()
+		return
 	_handle_human(delta)
 	_update_ai(delta)
 	ball.tick_ball(delta)
 	_update_keeper_saves()
+	_update_pending_tackle_claim(delta)
 	_try_claim_loose_ball()
 	_check_goal()
 	_update_3d_presentation(delta)
@@ -235,7 +258,7 @@ func _menu_change_view() -> void:
 func _restart_match() -> void:
 	score = [0, 0]
 	last_goal_text = ""
-	_reset_kickoff(0)
+	_prepare_kickoff(randi_range(0, 1), true)
 	_toggle_pause_menu()
 
 func _exit_to_host() -> void:
@@ -260,7 +283,7 @@ func _handle_human(delta: float) -> void:
 	if Input.is_action_just_pressed("toggle_view"):
 		_toggle_camera_mode()
 	var direction := Input.get_vector("move_left", "move_right", "move_up", "move_down")
-	controlled.move_human(direction, Input.is_action_pressed("sprint"))
+	controlled.move_human(delta, direction, Input.is_action_pressed("sprint"))
 
 	if ball.carrier != controlled:
 		_cancel_shot_charge()
@@ -298,6 +321,10 @@ func _shot_power_from_ratio(ratio: float) -> float:
 	var shaped := pow(clampf(ratio, 0.0, 1.0), 1.15)
 	return lerpf(SHOT_MIN_POWER, SHOT_MAX_POWER, shaped)
 
+func _shot_lift_from_ratio(ratio: float) -> float:
+	var shaped := pow(clampf(ratio, 0.0, 1.0), 0.88)
+	return lerpf(SHOT_MIN_LIFT, SHOT_MAX_LIFT, shaped)
+
 func _release_charged_shot() -> void:
 	if not shot_charging:
 		return
@@ -308,7 +335,11 @@ func _release_charged_shot() -> void:
 		return
 	var target := ChessFootballMath.goal_center(0)
 	controlled.play_action("shoot", lerpf(0.58, 0.82, ratio))
-	ball.release(target - controlled.global_position, _shot_power_from_ratio(ratio))
+	ball.release(
+		target - controlled.global_position,
+		_shot_power_from_ratio(ratio),
+		_shot_lift_from_ratio(ratio)
+	)
 
 func _update_ai(delta: float) -> void:
 	for team_id in range(2):
@@ -470,7 +501,8 @@ func _ai_attack(player: Footballer) -> void:
 		player.play_action("shoot", 0.78)
 		var distance_ratio := clampf(goal_distance / AI_SHOOT_DISTANCE, 0.0, 1.0)
 		var shot_power := lerpf(AI_SHOT_MIN_POWER, AI_SHOT_MAX_POWER, distance_ratio)
-		ball.release(shot_target - player.global_position, shot_power)
+		var shot_lift := lerpf(AI_SHOT_MIN_LIFT, AI_SHOT_MAX_LIFT, distance_ratio)
+		ball.release(shot_target - player.global_position, shot_power, shot_lift)
 		return
 
 	var threat := _nearest_opponent_to(player)
@@ -556,24 +588,51 @@ func _try_tackle(tackler: Footballer) -> bool:
 	if tackler.velocity.length_squared() > 16.0 and offset.length_squared() > 0.001:
 		approach = maxf(0.0, tackler.velocity.normalized().dot(offset.normalized()))
 	var success_range := TACKLE_BASE_SUCCESS_RANGE + TACKLE_APPROACH_BONUS * approach
+	if approach < TACKLE_MIN_APPROACH and distance > TACKLE_EMERGENCY_RANGE:
+		return false
 
 	if not tackler.start_tackle():
 		return false
 	if distance > success_range:
 		return false
 
+	var push_direction := offset.normalized() if offset.length_squared() > 0.001 else Vector2.RIGHT
+	victim.receive_tackle_contact(push_direction)
+
 	if distance <= TACKLE_CLEAN_STEAL_RANGE:
-		ball.attach_to(tackler)
-		if tackler.team_id == 0:
-			_select_player(tackler)
+		var steal_direction := -push_direction
+		ball.release(steal_direction, TACKLE_STEAL_POKE_POWER)
+		pending_tackle_player = tackler
+		pending_tackle_seconds = TACKLE_STEAL_DELAY
 		return true
 
-	var poke_direction := offset.normalized() if offset.length_squared() > 0.001 else Vector2.RIGHT
-	ball.release(poke_direction, 220.0)
+	var lateral := Vector2(-push_direction.y, push_direction.x)
+	if tackler.velocity.length_squared() > 16.0:
+		lateral = (tackler.velocity.normalized() * 0.70 + lateral * 0.30).normalized()
+	ball.release(lateral, TACKLE_LOOSE_POKE_POWER)
 	return true
 
+func _update_pending_tackle_claim(delta: float) -> void:
+	if pending_tackle_player == null:
+		return
+	if ball.carrier != null:
+		pending_tackle_player = null
+		pending_tackle_seconds = 0.0
+		return
+	pending_tackle_seconds = maxf(0.0, pending_tackle_seconds - delta)
+	if pending_tackle_seconds > 0.0:
+		return
+	var winner := pending_tackle_player
+	pending_tackle_player = null
+	if is_instance_valid(winner) and winner.global_position.distance_to(ball.global_position) <= 62.0:
+		ball.attach_to(winner)
+		if winner.team_id == 0:
+			_select_player(winner)
+
 func _try_claim_loose_ball() -> void:
-	if ball.carrier != null or ball.velocity.length() > 560.0:
+	if pending_tackle_player != null:
+		return
+	if ball.carrier != null or ball.velocity.length() > 560.0 or ball.flight_height > 24.0:
 		return
 	var best: Footballer = null
 	var best_distance := 31.0
@@ -622,24 +681,53 @@ func _check_goal() -> void:
 func _score_goal(team_id: int) -> void:
 	score[team_id] += 1
 	last_goal_text = "GOAL · FC Matthias" if team_id == 0 else "GOAL · Real Enroque"
-	_reset_kickoff(1 - team_id)
 	for player in teams[team_id]:
 		player.play_action("celebrate", 1.15)
+	_prepare_kickoff(1 - team_id, false)
 
-func _reset_kickoff(team_id: int) -> void:
+func _prepare_kickoff(team_id: int, is_initial: bool) -> void:
 	_cancel_shot_charge()
+	pending_tackle_player = null
+	pending_tackle_seconds = 0.0
+	kickoff_team_id = clampi(team_id, 0, 1)
+	kickoff_active = true
+	kickoff_seconds_remaining = KICKOFF_FREEZE_SECONDS
+
 	for id in range(2):
 		for player in teams[id]:
 			player.global_position = player.home_position
 			player.velocity = Vector2.ZERO
-	ball.global_position = ChessFootballMath.PITCH_RECT.get_center()
-	ball.velocity = Vector2.ZERO
-	var starter: Footballer = teams[team_id][2]
+
+	var center := ChessFootballMath.PITCH_RECT.get_center()
+	var starter: Footballer = teams[kickoff_team_id][2]
+	starter.global_position = center - starter.ball_anchor()
+	starter.velocity = Vector2.ZERO
 	ball.attach_to(starter)
-	if team_id == 0:
+	ball.velocity = Vector2.ZERO
+
+	if kickoff_team_id == 0:
 		_select_player(starter)
 	else:
 		_select_player(_nearest_player_to_ball(0))
+
+	if is_initial:
+		last_goal_text = "SACA · FC Matthias" if kickoff_team_id == 0 else "SACA · Real Enroque"
+
+func _update_kickoff(delta: float) -> void:
+	kickoff_seconds_remaining = maxf(0.0, kickoff_seconds_remaining - delta)
+	for id in range(2):
+		for player in teams[id]:
+			player.velocity = Vector2.ZERO
+	if kickoff_seconds_remaining > 0.0:
+		return
+
+	kickoff_active = false
+	last_goal_text = ""
+	if kickoff_team_id == 1:
+		var starter: Footballer = teams[1][2]
+		var receiver: Footballer = teams[1][3]
+		starter.play_action("pass", 0.60)
+		ball.release(receiver.global_position - starter.global_position, KICKOFF_AI_PASS_POWER)
 
 func _toggle_camera_mode() -> void:
 	camera_mode = CAMERA_MODE_TACTICAL if camera_mode == CAMERA_MODE_BROADCAST else CAMERA_MODE_BROADCAST
@@ -689,6 +777,9 @@ func debug_3d_ready() -> bool:
 func debug_3d_animated_players() -> int:
 	return presentation_3d.debug_animated_players() if presentation_3d != null else 0
 
+func debug_sync_presentation() -> void:
+	_update_3d_presentation(0.0)
+
 func debug_try_tackle(player: Footballer) -> bool:
 	return _try_tackle(player)
 
@@ -707,8 +798,30 @@ func debug_force_ai_attack(player: Footballer) -> void:
 func debug_step_ai(delta: float) -> void:
 	_update_ai(delta)
 
+func debug_kickoff_team() -> int:
+	return kickoff_team_id
+
+func debug_kickoff_active() -> bool:
+	return kickoff_active
+
+func debug_force_kickoff_ready() -> void:
+	if kickoff_active:
+		for team in teams:
+			for player in team:
+				player._process(KICKOFF_FREEZE_SECONDS)
+		_update_kickoff(KICKOFF_FREEZE_SECONDS)
+
+func debug_score_goal(team_id: int) -> void:
+	_score_goal(team_id)
+
 func debug_shot_power_for_ratio(ratio: float) -> float:
 	return _shot_power_from_ratio(ratio)
+
+func debug_shot_lift_for_ratio(ratio: float) -> float:
+	return _shot_lift_from_ratio(ratio)
+
+func debug_step_pending_tackle(delta: float) -> void:
+	_update_pending_tackle_claim(delta)
 
 func debug_force_shot_charge(ratio: float) -> void:
 	shot_charging = true

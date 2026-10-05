@@ -147,6 +147,32 @@ def _frame_svg(team: dict[str, str], animation: str, frame: int, offset_x: int, 
     return "\n".join(out)
 
 
+def _refine_svg(svg: str) -> str:
+    """Second-pass polish shared by generated runtime atlases.
+
+    Keep this deliberately boring and deterministic: these replacements trim
+    the old chunky/tank-like silhouette without introducing a second asset
+    authoring path.
+    """
+    replacements = (
+        ('rx="21" ry="3.0"', 'rx="18.5" ry="2.6"'),
+        ('stroke-width="7.2"', 'stroke-width="5.9"'),
+        ('stroke-width="4.8"', 'stroke-width="3.9"'),
+        ('stroke-width="6.4"', 'stroke-width="5.2"'),
+        ('stroke-width="4.0"', 'stroke-width="3.25"'),
+        ('stroke-width="7.0"', 'stroke-width="5.7"'),
+        ('stroke-width="4.4"', 'stroke-width="3.55"'),
+        ('stroke-width="6.0"', 'stroke-width="4.9"'),
+        ('stroke-width="3.7"', 'stroke-width="3.0"'),
+        ('r="4.6"', 'r="4.15"'),
+        ('r="3.5"', 'r="3.15"'),
+        ('rx="13.5" ry="15.5"', 'rx="11.9" ry="14.1"'),
+    )
+    for old, new in replacements:
+        svg = svg.replace(old, new)
+    return svg
+
+
 def _atlas_svg(team: dict[str, str], keeper: bool = False) -> str:
     rows = len(ANIMATIONS)
     parts = [
@@ -157,7 +183,7 @@ def _atlas_svg(team: dict[str, str], keeper: bool = False) -> str:
         for frame in range(COLUMNS):
             parts.append(_frame_svg(team, animation, frame, frame * CELL_W, row * CELL_H, keeper=keeper))
     parts.append("</g></svg>")
-    return "\n".join(parts) + "\n"
+    return _refine_svg("\n".join(parts) + "\n")
 
 
 def build_outputs() -> dict[str, str]:
@@ -174,8 +200,8 @@ def build_outputs() -> dict[str, str]:
         outputs[filename] = svg
         atlas_meta[slug] = {"name": team["name"], "file": filename}
     manifest = {
-        "version": 3,
-        "quality_contract": "chess-football-vector-v3",
+        "version": 4,
+        "quality_contract": "chess-football-vector-v4",
         "cell": {"width": CELL_W, "height": CELL_H},
         "columns": COLUMNS,
         "rows": len(ANIMATIONS),

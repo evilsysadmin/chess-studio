@@ -74,25 +74,42 @@ jobs:
             exit 1
           fi
       - name: Runtime smoke
+        shell: bash
         run: |
+          set -euo pipefail
           godot="$GITHUB_WORKSPACE/.godot-ci/$GODOT_VERSION/godot"
-          "$godot" --headless --path games/chess-football-godot --script res://tests/match_smoke.gd
+          log="$RUNNER_TEMP/chess-football-smoke.log"
+          set +e
+          timeout 20s "$godot" --headless --quit-after 360 --path games/chess-football-godot --script res://tests/match_smoke.gd 2>&1 | tee "$log"
+          status=${PIPESTATUS[0]}
+          set -e
+          if [[ "$status" -ne 0 ]] || grep -Eq 'SCRIPT ERROR:|Assertion failed|ERROR: Failed to load script|Parse Error:' "$log"; then
+            echo '::error::Chess Football runtime smoke failed.'
+            exit 1
+          fi
+          grep -q 'chess-football godot smoke: OK' "$log"
       - name: Capture visual review
         shell: bash
         run: |
           set -euo pipefail
           godot="$GITHUB_WORKSPACE/.godot-ci/$GODOT_VERSION/godot"
           log="$RUNNER_TEMP/chess-football-visual.log"
-          xvfb-run -a "$godot" --path games/chess-football-godot --script res://tests/visual_capture.gd | tee "$log"
+          timeout 60s xvfb-run -a "$godot" --path games/chess-football-godot --script res://tests/visual_capture.gd | tee "$log"
           broadcast="$(sed -n 's/^VISUAL_CAPTURE_BROADCAST=//p' "$log" | tail -1)"
+          airborne="$(sed -n 's/^VISUAL_CAPTURE_AIRBORNE=//p' "$log" | tail -1)"
           tactical="$(sed -n 's/^VISUAL_CAPTURE_TACTICAL=//p' "$log" | tail -1)"
+          contact="$(sed -n 's/^VISUAL_CAPTURE_CONTACT=//p' "$log" | tail -1)"
           menu="$(sed -n 's/^VISUAL_CAPTURE_MENU=//p' "$log" | tail -1)"
           test -n "$broadcast" && test -s "$broadcast"
+          test -n "$airborne" && test -s "$airborne"
           test -n "$tactical" && test -s "$tactical"
+          test -n "$contact" && test -s "$contact"
           test -n "$menu" && test -s "$menu"
           mkdir -p "$RUNNER_TEMP/chess-football-review"
           cp "$broadcast" "$RUNNER_TEMP/chess-football-review/broadcast.png"
+          cp "$airborne" "$RUNNER_TEMP/chess-football-review/airborne.png"
           cp "$tactical" "$RUNNER_TEMP/chess-football-review/tactical.png"
+          cp "$contact" "$RUNNER_TEMP/chess-football-review/contact.png"
           cp "$menu" "$RUNNER_TEMP/chess-football-review/menu.png"
       - name: Upload visual review
         uses: actions/upload-artifact@v7
