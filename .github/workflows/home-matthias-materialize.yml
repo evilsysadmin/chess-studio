@@ -87,7 +87,7 @@ jobs:
           fetch-depth: 2
           persist-credentials: true
 
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: home-matthias-materialize-${{ github.event.pull_request.number }}
           path: /tmp/home-matthias-materialize
