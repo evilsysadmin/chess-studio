@@ -158,7 +158,8 @@ scopedTest('school', 'Entrenar · Escuela, Glosario y Modos especiales', async (
   const shell = page.locator('.tutorial-shell.matthias-school-shell');
   await expect(shell).toBeVisible();
   await expect(shell.locator('.matthias-school-stage')).toBeVisible();
-  await expect(page.locator('.global-music-dock')).toBeHidden();
+  await expect(page.locator('.global-music-dock')).toBeVisible();
+  await expect(page.locator('.global-music-dock .music-deck')).toBeVisible();
   await expect(shell.locator('[data-board3d-camera="classroom-overhead"]')).toBeVisible();
   const school3d = shell.locator('[data-board3d-war-room="true"]');
   await expect(school3d).toHaveAttribute('data-board3d-variant', 'classic');
