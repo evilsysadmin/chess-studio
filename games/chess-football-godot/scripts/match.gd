@@ -551,7 +551,10 @@ func _keeper_try_save(keeper: Footballer) -> bool:
 	if keeper.global_position.distance_to(ball.global_position) > KEEPER_SAVE_RANGE:
 		return false
 
-	keeper.play_action("tackle", 0.58)
+	var dive_direction := signf(ball.global_position.y - keeper.global_position.y)
+	if absf(dive_direction) < 0.01:
+		dive_direction = 1.0
+	keeper.begin_keeper_save(dive_direction, 0.58)
 	if audio_fx != null:
 		audio_fx.play_keeper_save()
 	keeper.begin_keeper_hold(KEEPER_HOLD_SECONDS)
