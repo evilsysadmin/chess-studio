@@ -46,6 +46,12 @@ describe('Chronicles of Matthias Tactics · player turns', () => {
     const deployed = chroniclesDeployPartyForCombat({
       ...base,
       phase: 'combat',
+      partyPositions: {
+        rook: { x: 1, y: 5 },
+        matthias: { x: 1, y: 4 },
+        bishop: { x: 3, y: 4 },
+        knight: { x: 3, y: 3 },
+      },
       initiative: {
         version: 1,
         die: '1d8',
