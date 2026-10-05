@@ -61,8 +61,8 @@ TEAMS = {
     "real_enroque": {"name": "Real Enroque", "torso": "#ad2936", "torso_dark": "#5a121e", "torso_light": "#d1505b", "head": "#885f45", "hair": "#251b19"},
 }
 KEEPERS = {
-    "fc_matthias_keeper": {"name": "FC Matthias · Portero", "torso": "#16856d", "torso_dark": "#0a493d", "torso_light": "#41b89a", "head": "#e7dec4", "hair": "#6d4b31"},
-    "real_enroque_keeper": {"name": "Real Enroque · Portero", "torso": "#ce861f", "torso_dark": "#70420c", "torso_light": "#efb64f", "head": "#885f45", "hair": "#251b19"},
+    "fc_matthias_keeper": {"name": "FC Matthias · Portero", "torso": "#16856d", "torso_dark": "#0a493d", "torso_light": "#41b89a", "head": "#e7dec4", "hair": "#6d4b31", "glove": "#f2f0df"},
+    "real_enroque_keeper": {"name": "Real Enroque · Portero", "torso": "#ce861f", "torso_dark": "#70420c", "torso_light": "#efb64f", "head": "#885f45", "hair": "#251b19", "glove": "#f4d86a"},
 }
 GOLD = "#d4aa4c"
 IVORY = "#ece6cf"
@@ -214,12 +214,12 @@ def _frame_svg(
         out.append(
             f'<line x1="{offset_x + knee_x:.2f}" y1="{offset_y + knee_y:.2f}" '
             f'x2="{offset_x + foot_x:.2f}" y2="{offset_y + foot - 5.0:.2f}" '
-            f'stroke="{IVORY}" stroke-width="4.15" stroke-linecap="round"/>'
+            f'stroke="{team["torso_light"]}" stroke-width="4.15" stroke-linecap="round"/>'
         )
         out.append(
             f'<line x1="{offset_x + knee_x:.2f}" y1="{offset_y + knee_y + 5.0:.2f}" '
             f'x2="{offset_x + foot_x:.2f}" y2="{offset_y + foot - 8.0:.2f}" '
-            f'stroke="{team["torso"]}" stroke-width="1.65" stroke-linecap="round" opacity=".92"/>'
+            f'stroke="{IVORY}" stroke-width="1.65" stroke-linecap="round" opacity=".92"/>'
         )
         out.append(
             f'<rect x="{offset_x + foot_x - 6.8:.2f}" y="{offset_y + foot - 6.3:.2f}" '
@@ -271,7 +271,8 @@ def _frame_svg(
         )
         out.append(
             f'<circle cx="{offset_x + ex:.2f}" cy="{offset_y + ey:.2f}" '
-            f'r="{4.4 if keeper else 3.3}" fill="{team["head"]}" '
+            f'r="{4.4 if keeper else 3.3}" '
+            f'fill="{team.get("glove", team["head"]) if keeper else team["head"]}" '
             f'stroke="{OUTLINE}" stroke-width="1.0"/>'
         )
 
