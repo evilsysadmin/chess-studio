@@ -31,6 +31,7 @@ type nativeFeatureFlags struct {
 	system              bool
 	profile             bool
 	authSession         bool
+	login               bool
 }
 
 func loadNativeFeatureFlags() nativeFeatureFlags {
@@ -55,6 +56,7 @@ func loadNativeFeatureFlags() nativeFeatureFlags {
 		system:              envBool("GO_NATIVE_SYSTEM_ENABLED", false),
 		profile:             envBool("GO_NATIVE_PROFILE_ENABLED", false),
 		authSession:         envBool("GO_NATIVE_AUTH_SESSION_ENABLED", false),
+		login:               envBool("GO_NATIVE_LOGIN_ENABLED", false),
 	}
 }
 
@@ -77,7 +79,8 @@ func (f nativeFeatureFlags) needsMongo() bool {
 		f.gamesAnalyze ||
 		f.system ||
 		f.profile ||
-		f.authSession
+		f.authSession ||
+		f.login
 }
 
 func env(key, fallback string) string {

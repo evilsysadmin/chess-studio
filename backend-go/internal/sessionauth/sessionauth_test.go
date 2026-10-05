@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 )
@@ -49,6 +50,29 @@ func TestVerifyRejectsExpiredWrongPurposeAndSignature(t *testing.T) {
 	for _, raw := range tests {
 		if _, err := Verify(raw, []byte(secret), now); err == nil {
 			t.Fatal("expected invalid token")
+		}
+	}
+}
+
+// Tokens PyJWT 2.15 produced for auth.create_token at the same instant.
+func TestSignIsByteIdenticalToPyJWT(t *testing.T) {
+	secret := []byte(strings.Repeat("s", 32))
+	now := time.Date(2026, 10, 5, 12, 0, 0, 0, time.UTC)
+	for username, want := range map[string]string{
+		"alice": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhbGljZSIsInB1cnBvc2UiOiJzZXNzaW9uIiwic3YiOjMsImV4cCI6MTc5Mzc5MzYwMH0.j_hwcd9CVLR9mTzl3Azlwm9xs3fxQbzBEj11hyK1fak",
+		"ñandú": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJcdTAwZjFhbmRcdTAwZmEiLCJwdXJwb3NlIjoic2Vzc2lvbiIsInN2IjowLCJleHAiOjE3OTM3OTM2MDB9.fPxhhIkhFz3jNwSNMXu4g18djM26BzifuyPMdfzBFRo",
+	} {
+		sv := int64(0)
+		if username == "alice" {
+			sv = 3
+		}
+		got, err := Sign(username, sv, secret, now)
+		if err != nil || got != want {
+			t.Errorf("%s: %s (%v)", username, got, err)
+		}
+		subject, version, err := VerifySession(got, secret, now)
+		if err != nil || subject != username || version != sv {
+			t.Errorf("round trip %s: %s %d %v", username, subject, version, err)
 		}
 	}
 }

@@ -152,6 +152,15 @@ case "${go_native_auth_session,,}" in
   true|false) go_native_auth_session="${go_native_auth_session,,}" ;;
   *) echo "invalid CHESS_STUDIO_GO_NATIVE_AUTH_SESSION_ENABLED: $go_native_auth_session" >&2; exit 2 ;;
 esac
+# Native Go login (POST /api/auth/login).
+case "$target" in
+  staging) go_native_login="${CHESS_STUDIO_GO_NATIVE_LOGIN_ENABLED:-true}" ;;
+  *) go_native_login="${CHESS_STUDIO_GO_NATIVE_LOGIN_ENABLED:-false}" ;;
+esac
+case "${go_native_login,,}" in
+  true|false) go_native_login="${go_native_login,,}" ;;
+  *) echo "invalid CHESS_STUDIO_GO_NATIVE_LOGIN_ENABLED: $go_native_login" >&2; exit 2 ;;
+esac
 pvp_sparring_username="${CHESS_PVP_SPARRING_USERNAME:-sparringmeister}"
 
 state_file="$state_dir/deployed.sha"
@@ -325,6 +334,7 @@ compose() {
   CHESS_STUDIO_GO_NATIVE_SYSTEM_ENABLED="$go_native_system" \
   CHESS_STUDIO_GO_NATIVE_PROFILE_ENABLED="$go_native_profile" \
   CHESS_STUDIO_GO_NATIVE_AUTH_SESSION_ENABLED="$go_native_auth_session" \
+  CHESS_STUDIO_GO_NATIVE_LOGIN_ENABLED="$go_native_login" \
   CHESS_PVP_SPARRING_OWNER="$pvp_sparring_owner" \
   CHESS_PVP_SPARRING_USERNAME="$pvp_sparring_username" \
   CHESS_STUDIO_OCI_LOG_SERVICE_NAME="chess-studio-oci-backend-${target}-stdout" \
@@ -510,7 +520,7 @@ pvp_attest() {
     rm -f "$body"
     return 1
   fi
-  if python3 - "$body" "$pvp_sparring_enabled" "$deployment_target" "$sha" "$go_native_games_read" "$go_native_games_write" "$go_native_games_hint" "$go_native_analyze" "$go_native_system" "$go_native_profile" "$go_native_auth_session" <<'PY'
+  if python3 - "$body" "$pvp_sparring_enabled" "$deployment_target" "$sha" "$go_native_games_read" "$go_native_games_write" "$go_native_games_hint" "$go_native_analyze" "$go_native_system" "$go_native_profile" "$go_native_auth_session" "$go_native_login" <<'PY'
 import json
 import pathlib
 import sys
@@ -558,6 +568,7 @@ if (
     or bool(payload.get('nativeSystem')) != (str(sys.argv[9]).strip().lower() == 'true')
     or bool(payload.get('nativeProfile')) != (str(sys.argv[10]).strip().lower() == 'true')
     or bool(payload.get('nativeAuthSession')) != (str(sys.argv[11]).strip().lower() == 'true')
+    or bool(payload.get('nativeLogin')) != (str(sys.argv[12]).strip().lower() == 'true')
 ):
     raise SystemExit(1)
 
@@ -1204,13 +1215,14 @@ games_native_attest() {
   local endpoint="$1"
   local method="${2:-GET}"
   local marker="${3:-X-Chess-Games-Native}"
+  local expected_status="${4:-401}"
   local headers status
   headers="$(mktemp)"
   if ! status="$(curl --silent --show-error --max-time 8 -X "$method" -D "$headers" -o /dev/null -w "%{http_code}" "$endpoint")"; then
     rm -f "$headers"
     return 1
   fi
-  if [[ "$status" != "401" ]] || ! grep -Eiq "^${marker}:[[:space:]]*go[[:space:]]*$" "$headers"; then
+  if [[ "$status" != "$expected_status" ]] || ! grep -Eiq "^${marker}:[[:space:]]*go[[:space:]]*$" "$headers"; then
     rm -f "$headers"
     return 1
   fi
@@ -1808,6 +1820,13 @@ if [[ "$api_edge_mode" == "go" && "$go_native_auth_session" == "true" ]] && ! wa
   rollback "$sha" || true
   exit 68
 fi
+# An empty login body is Go's 422: it reads no credentials and feeds no guard.
+if [[ "$api_edge_mode" == "go" && "$go_native_login" == "true" ]] && ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/auth/login" POST X-Chess-Auth-Native 422; then
+  echo "native login did not answer through Go after cutover: color=$candidate_color" >&2
+  compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
+  rollback "$sha" || true
+  exit 71
+fi
 write_active_color "$candidate_color"
 phase_done switch "$switch_started_ms"
 
@@ -1871,5 +1890,5 @@ fi
 agent_diag_summary || printf '%s\n' 'OCI_AGENT_DIAG unavailable'
 phase_done total "$total_started_ms"
 printf 'OCI_DEPLOY_TIMINGS target=%s phases=%s tunnel=%s color=%s\n' "$target" "${deploy_phase_summary%,}" "$tunnel_action" "$candidate_color"
-echo "CHESS_STUDIO_DEPLOY_OK target=$target repo_ref=$sha color=$candidate_color pvp=go api_edge=$api_edge_mode games_native=$go_native_games_read games_native_write=$go_native_games_write games_native_hint=$go_native_games_hint analyze_native=$go_native_analyze system_native=$go_native_system profile_native=$go_native_profile auth_session_native=$go_native_auth_session cors_origin=$cors_origin tunnel_action=$tunnel_action image=pulled observability=${observability_summary:-unknown}"
+echo "CHESS_STUDIO_DEPLOY_OK target=$target repo_ref=$sha color=$candidate_color pvp=go api_edge=$api_edge_mode games_native=$go_native_games_read games_native_write=$go_native_games_write games_native_hint=$go_native_games_hint analyze_native=$go_native_analyze system_native=$go_native_system profile_native=$go_native_profile auth_session_native=$go_native_auth_session login_native=$go_native_login cors_origin=$cors_origin tunnel_action=$tunnel_action image=pulled observability=${observability_summary:-unknown}"
 exit 0

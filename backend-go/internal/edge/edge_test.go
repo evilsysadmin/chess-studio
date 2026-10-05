@@ -1344,3 +1344,27 @@ func TestNativeSessionServesOnlyItsRoutes(t *testing.T) {
 		t.Fatalf("served %v proxied %v", served, proxied)
 	}
 }
+
+func TestNativeLoginServesOnlyTheLogin(t *testing.T) {
+	var proxied []string
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		proxied = append(proxied, r.Method+" "+r.URL.Path)
+		w.WriteHeader(http.StatusTeapot)
+	}))
+	defer upstream.Close()
+	var served []string
+	native := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		served = append(served, r.Method+" "+r.URL.Path)
+		w.WriteHeader(http.StatusOK)
+	})
+	h, err := New(Config{UpstreamURL: upstream.URL, NativeLogin: native})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, req := range [][2]string{{"POST", "/api/auth/login"}, {"POST", "/api/auth/register"}, {"GET", "/api/auth/login"}} {
+		h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(req[0], "http://api.chess.test"+req[1], nil))
+	}
+	if strings.Join(served, ",") != "POST /api/auth/login" || strings.Join(proxied, ",") != "POST /api/auth/register,GET /api/auth/login" {
+		t.Fatalf("served %v proxied %v", served, proxied)
+	}
+}

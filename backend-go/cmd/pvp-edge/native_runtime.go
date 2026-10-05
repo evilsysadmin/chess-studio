@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/accountstore"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/authguard"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/challengeaccept"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/challengecreate"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/edge"
@@ -49,6 +50,8 @@ type nativeRuntime struct {
 	gamesAnalyze        http.Handler
 	profile             http.Handler
 	authSession         http.Handler
+	// login is built in edgeConfig, once request telemetry exists.
+	login *gamesapi.LoginConfig
 	// system is built in edgeConfig, once request telemetry exists.
 	system *gamesapi.SystemConfig
 	// history is Admin's observability history (nil when disabled).
@@ -360,6 +363,26 @@ func buildNativeRuntime(features nativeFeatureFlags, upstream string) (runtime n
 		}
 		runtime.authSession = sessionHandler
 	}
+	if features.login {
+		telemetryCfg := telemetry.ConfigFromEnv(os.LookupEnv)
+		toucher := presence.New(mongoRuntime.Database(), telemetryCfg.TrustCloudflare, 2*time.Second)
+		guardTimeout := envDurationMS("AUTH_GUARD_MONGO_TIMEOUT_MS", 2000*time.Millisecond)
+		runtime.login = &gamesapi.LoginConfig{
+			Config: gamesapi.Config{
+				Accounts:        accountstore.New(mongoRuntime.Database(), pvpMongoTimeout),
+				Presence:        toucher,
+				JWTSecret:       jwtSecret,
+				AllowedOrigins:  splitCSV(os.Getenv("CORS_ORIGINS")),
+				TrustCloudflare: telemetryCfg.TrustCloudflare,
+			},
+			LoginAccounts:   accountstore.New(mongoRuntime.Database(), pvpMongoTimeout),
+			IdentityGuard:   authguard.New(authguard.LoginIdentity, authguard.NewMongo(mongoRuntime.Database(), authguard.LoginIdentity, guardTimeout)),
+			IPGuard:         authguard.New(authguard.ClientIP, authguard.NewMongo(mongoRuntime.Database(), authguard.ClientIP, guardTimeout)),
+			Touch:           presence.NewSessions(presence.NewMongoSessions(mongoRuntime.Database()), toucher, 2*time.Second),
+			Environment:     os.Getenv("ENVIRONMENT"),
+			SyntheticSecret: os.Getenv("CHESS_AI_SHARED_SECRET"),
+		}
+	}
 	if features.gamesAnalyze {
 		telemetryCfg := telemetry.ConfigFromEnv(os.LookupEnv)
 		analyzeHandler, analyzeErr := gamesapi.NewAnalyze(gamesapi.AnalyzeConfig{
@@ -405,6 +428,18 @@ func (r nativeRuntime) edgeConfig(upstream, release string, requestTelemetry *te
 			system = handler
 		}
 	}
+	var login http.Handler
+	if r.login != nil {
+		cfg := *r.login
+		if requestTelemetry != nil {
+			cfg.FailureLog = requestTelemetry
+		}
+		if handler, err := gamesapi.NewLogin(cfg); err != nil {
+			log.Printf("native login disabled: %v", err)
+		} else {
+			login = handler
+		}
+	}
 	var readyChecks map[string]func(context.Context) error
 	if r.mongo != nil {
 		readyChecks = map[string]func(context.Context) error{"mongodb": r.mongo.Ping}
@@ -432,6 +467,7 @@ func (r nativeRuntime) edgeConfig(upstream, release string, requestTelemetry *te
 		NativeSystem:              system,
 		NativeProfile:             r.profile,
 		NativeSession:             r.authSession,
+		NativeLogin:               login,
 		VirtualPlayersEnabled:     r.virtualPlayers,
 		NativeResidentMove:        r.residentMove,
 		ReadyChecks:               readyChecks,
@@ -441,7 +477,7 @@ func (r nativeRuntime) edgeConfig(upstream, release string, requestTelemetry *te
 
 func (r nativeRuntime) logStartup(port, upstream string) {
 	log.Printf(
-		"go-api listening on :%s -> %s native_pulse=%t native_lobby_read=%t native_roster=%t native_chat=%t native_challenge_resolution=%t native_challenge_accept=%t native_challenge_create=%t native_match_handoff_cancel=%t native_match_ready=%t native_match_resign=%t native_match_read=%t native_match_move=%t native_resident_move=%t native_games_read=%t native_games_write=%t native_games_hint=%t native_games_analyze=%t native_system=%t native_profile=%t native_auth_session=%t",
+		"go-api listening on :%s -> %s native_pulse=%t native_lobby_read=%t native_roster=%t native_chat=%t native_challenge_resolution=%t native_challenge_accept=%t native_challenge_create=%t native_match_handoff_cancel=%t native_match_ready=%t native_match_resign=%t native_match_read=%t native_match_move=%t native_resident_move=%t native_games_read=%t native_games_write=%t native_games_hint=%t native_games_analyze=%t native_system=%t native_profile=%t native_auth_session=%t native_login=%t",
 		port,
 		upstream,
 		r.pulse != nil,
@@ -464,6 +500,7 @@ func (r nativeRuntime) logStartup(port, upstream string) {
 		r.system != nil,
 		r.profile != nil,
 		r.authSession != nil,
+		r.login != nil,
 	)
 }
 
