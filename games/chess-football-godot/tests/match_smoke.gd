@@ -57,10 +57,14 @@ func _initialize() -> void:
 	tackler.velocity = Vector2.RIGHT * tackler.base_speed
 	match_node.ball.attach_to(victim)
 	assert(match_node.debug_try_tackle(tackler))
-	assert(match_node.ball.carrier == tackler)
+	assert(match_node.ball.carrier == null)
 	assert(not victim.has_ball)
+	assert(victim.contact_stun_active())
 	assert(not tackler.debug_tackle_ready())
 	assert(String(tackler.visual.animation) == "tackle")
+	match_node.ball.tick_ball(0.14)
+	match_node.debug_step_pending_tackle(0.14)
+	assert(match_node.ball.carrier == tackler)
 
 	var keeper: Footballer = match_node.teams[0][0]
 	assert(keeper.role == "keeper")
@@ -104,10 +108,16 @@ func _initialize() -> void:
 	var tap_power: float = match_node.debug_shot_power_for_ratio(0.0)
 	var medium_power: float = match_node.debug_shot_power_for_ratio(0.5)
 	var full_power: float = match_node.debug_shot_power_for_ratio(1.0)
+	var tap_lift: float = match_node.debug_shot_lift_for_ratio(0.0)
+	var medium_lift: float = match_node.debug_shot_lift_for_ratio(0.5)
+	var full_lift: float = match_node.debug_shot_lift_for_ratio(1.0)
 	assert(tap_power >= 640.0)
 	assert(medium_power > tap_power + 180.0)
 	assert(full_power > medium_power + 220.0)
 	assert(full_power <= match_node.ball.max_speed)
+	assert(tap_lift >= 160.0)
+	assert(medium_lift > tap_lift + 80.0)
+	assert(full_lift > medium_lift + 80.0)
 
 	match_node.ball.attach_to(match_node.controlled)
 	match_node.debug_force_shot_charge(0.5)
@@ -115,6 +125,9 @@ func _initialize() -> void:
 	match_node.debug_release_charged_shot()
 	var released_medium_speed: float = match_node.ball.velocity.length()
 	assert(released_medium_speed > tap_power)
+	assert(match_node.ball.vertical_velocity > 0.0)
+	match_node.ball.tick_ball(0.10)
+	assert(match_node.ball.flight_height > 0.0)
 	assert(String(match_node.controlled.visual.animation) == "shoot")
 
 	match_node.ball.attach_to(match_node.controlled)
