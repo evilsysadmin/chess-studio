@@ -855,7 +855,7 @@ export async function openSpectator(page) {
 // on real GPUs this resolves within a couple of frames.
 export async function waitForTrainingRoomSettled(page) {
   const room = page.locator('[data-insights-training-room-3d]');
-  await expect(room).toHaveAttribute('data-insights-training-room-3d', /^(ready|fallback.*)$/, { timeout: 30_000 });
+  await expect(room).toHaveAttribute('data-insights-training-room-3d', /^(ready|static|fallback.*)$/, { timeout: 30_000 });
   await page.evaluate(() => new Promise((resolve) => {
     requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
   }));

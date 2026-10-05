@@ -28,6 +28,7 @@ Antes de atribuir una regresión al producto, comprobar qué renderer está usan
 - SwiftShader/software rasterizer invalida conclusiones sobre rendimiento GPU real si el objetivo es hardware acelerado.
 - La ruta software sigue siendo útil para compatibilidad, pero se reporta separadamente.
 - En local con GPU disponible, usar Chromium/renderer realmente acelerado de extremo a extremo.
+- Superficies 3D estáticas cuyo primer frame es caro en CPU pueden servir en software una imagen pre-renderizada de la misma escena. Ejemplo: la sala de «Así juegas» (`InsightsTrainingRoomStage.js`) tarda ~10 s en SwiftShader y en software muestra `assets/insights/training-room-still.webp` (estado `static`). El still se regenera con `node scripts/render_insights_training_room_still.mjs` y `InsightsTrainingRoomStill.test.js` falla si la escena cambia sin regenerarlo.
 
 ## Escena quieta vs interacción
 

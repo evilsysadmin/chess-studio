@@ -1,0 +1,10 @@
+{
+  "sources": [
+    "frontend/src/components/InsightsTrainingRoomShell.js",
+    "frontend/src/components/InsightsTrainingRoomStage.js"
+  ],
+  "sourceSha256": "04ec95956428e5870e34e44a12083be22c387ce3833924c7a7b874af4819f284",
+  "width": 2240,
+  "height": 1064,
+  "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)"
+}

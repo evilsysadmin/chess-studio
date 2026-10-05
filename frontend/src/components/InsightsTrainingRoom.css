@@ -68,8 +68,19 @@
   height: 100%;
 }
 
-.insights-training-room-3d.is-ready {
+.insights-training-room-3d.is-ready,
+.insights-training-room-3d.is-static {
   opacity: 1;
+}
+
+/* Software WebGL: the pre-rendered still of the same room, cropped at the
+   centre exactly as the fixed-vertical-FOV camera would crop a narrower stage. */
+.insights-training-room-still {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 50%;
 }
 
 .insights-training-room-fallback {
@@ -81,7 +92,8 @@
   transition: opacity 220ms ease;
 }
 
-.insights-training-room-3d.is-ready + .insights-training-room-fallback {
+.insights-training-room-3d.is-ready + .insights-training-room-fallback,
+.insights-training-room-3d.is-static + .insights-training-room-fallback {
   opacity: .08;
 }
 
