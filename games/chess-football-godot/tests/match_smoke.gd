@@ -32,6 +32,18 @@ func _initialize() -> void:
 	assert(not tackler.debug_tackle_ready())
 	assert(String(tackler.visual.animation) == "tackle")
 
+	var keeper: Footballer = match_node.teams[0][0]
+	assert(keeper.role == "keeper")
+	keeper.global_position = Vector2(200.0, ChessFootballMath.PITCH_RECT.get_center().y)
+	match_node.ball.release(Vector2.RIGHT, 760.0)
+	match_node.ball.global_position = keeper.global_position + Vector2(48.0, 0.0)
+	assert(not match_node.debug_try_keeper_save(keeper))
+	match_node.ball.velocity = Vector2.LEFT * 760.0
+	assert(match_node.debug_try_keeper_save(keeper))
+	assert(match_node.ball.carrier == keeper)
+	assert(keeper.debug_keeper_hold_active())
+	assert(String(keeper.visual.animation) == "tackle")
+
 	assert(match_node.debug_camera_mode() == "broadcast")
 	match_node.debug_toggle_camera_mode()
 	assert(match_node.debug_camera_mode() == "tactical")

@@ -15,6 +15,7 @@ var visual: AnimatedSprite2D
 var action_lock_seconds: float = 0.0
 var tackle_cooldown_seconds: float = 0.0
 var tackle_recovery_seconds: float = 0.0
+var keeper_hold_seconds: float = 0.0
 var last_sprinting: bool = false
 
 func configure(p_team_id: int, p_index: int, p_role: String, p_position: Vector2, p_color: Color) -> void:
@@ -44,6 +45,7 @@ func _configure_visual() -> void:
 func _process(delta: float) -> void:
 	tackle_cooldown_seconds = maxf(0.0, tackle_cooldown_seconds - delta)
 	tackle_recovery_seconds = maxf(0.0, tackle_recovery_seconds - delta)
+	keeper_hold_seconds = maxf(0.0, keeper_hold_seconds - delta)
 	if action_lock_seconds <= 0.0:
 		return
 	action_lock_seconds = maxf(0.0, action_lock_seconds - delta)
@@ -98,6 +100,12 @@ func start_tackle() -> bool:
 	play_action("tackle", 0.50)
 	return true
 
+func begin_keeper_hold(duration: float = 0.72) -> void:
+	keeper_hold_seconds = maxf(duration, 0.0)
+
+func keeper_hold_active() -> bool:
+	return keeper_hold_seconds > 0.0
+
 func ball_anchor() -> Vector2:
 	var facing := -1.0 if visual != null and visual.flip_h else 1.0
 	return Vector2(18.0 * facing * scale.x, -5.0)
@@ -124,6 +132,9 @@ func debug_animation_names() -> PackedStringArray:
 
 func debug_tackle_ready() -> bool:
 	return can_tackle()
+
+func debug_keeper_hold_active() -> bool:
+	return keeper_hold_active()
 
 func _draw() -> void:
 	if active:

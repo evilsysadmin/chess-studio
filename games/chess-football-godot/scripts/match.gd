@@ -13,6 +13,15 @@ const TACKLE_CLEAN_STEAL_RANGE := 34.0
 const TACKLE_BASE_SUCCESS_RANGE := 38.0
 const TACKLE_APPROACH_BONUS := 13.0
 
+const KEEPER_LINE_OFFSET := 96.0
+const KEEPER_PRESS_MAX_OFFSET := 170.0
+const KEEPER_PRESS_TRIGGER_DISTANCE := 360.0
+const KEEPER_TRACK_Y_RATIO := 0.78
+const KEEPER_SAVE_RANGE := 74.0
+const KEEPER_SAVE_MIN_SPEED := 280.0
+const KEEPER_SAVE_Y_MARGIN := 62.0
+const KEEPER_HOLD_SECONDS := 0.72
+
 var teams: Array[Array] = [[], []]
 var ball: FootballBall
 var controlled: Footballer
@@ -42,6 +51,7 @@ func _physics_process(delta: float) -> void:
 	_handle_human()
 	_update_ai(delta)
 	ball.tick_ball(delta)
+	_update_keeper_saves()
 	_try_claim_loose_ball()
 	_check_goal()
 	_update_3d_presentation(delta)
@@ -112,6 +122,9 @@ func _update_ai(delta: float) -> void:
 		for player in teams[team_id]:
 			if player == controlled:
 				continue
+			if player.role == "keeper":
+				_update_keeper_ai(player, delta)
+				continue
 			var target: Vector2 = player.home_position
 			var intensity := 0.64
 			if ball.carrier == null:
@@ -132,6 +145,72 @@ func _update_ai(delta: float) -> void:
 					_try_tackle(player)
 			if ball.carrier == player and team_id == 1:
 				_ai_attack(player)
+
+func _update_keeper_ai(player: Footballer, delta: float) -> void:
+	var own_goal := ChessFootballMath.goal_center(1 - player.team_id)
+	var away_from_goal := Vector2.RIGHT if player.team_id == 0 else Vector2.LEFT
+
+	if ball.carrier == player:
+		player.move_ai(delta, player.global_position, 0.5)
+		if player.keeper_hold_active():
+			return
+		var outlet := _best_teammate_ahead(player)
+		player.play_action("pass", 0.72)
+		if outlet != null:
+			ball.release(outlet.global_position - player.global_position, 520.0)
+		else:
+			ball.release(away_from_goal, 500.0)
+		return
+
+	var reference_position := ball.global_position
+	if ball.carrier != null:
+		reference_position = ball.carrier.global_position
+
+	var y_limit := ChessFootballMath.GOAL_HALF_HEIGHT * KEEPER_TRACK_Y_RATIO
+	var wanted_y := clampf(reference_position.y, own_goal.y - y_limit, own_goal.y + y_limit)
+	var line_offset := KEEPER_LINE_OFFSET
+	var danger_distance := absf(reference_position.x - own_goal.x)
+	if ball.carrier != null and ball.carrier.team_id != player.team_id and danger_distance < KEEPER_PRESS_TRIGGER_DISTANCE:
+		var pressure := 1.0 - danger_distance / KEEPER_PRESS_TRIGGER_DISTANCE
+		line_offset = lerpf(KEEPER_LINE_OFFSET, KEEPER_PRESS_MAX_OFFSET, clampf(pressure, 0.0, 1.0))
+
+	var target := Vector2(own_goal.x + away_from_goal.x * line_offset, wanted_y)
+	player.move_ai(delta, target, 0.78)
+
+func _update_keeper_saves() -> void:
+	if ball.carrier != null:
+		return
+	for team_id in range(2):
+		var keeper: Footballer = teams[team_id][0]
+		if _keeper_try_save(keeper):
+			return
+
+func _keeper_try_save(keeper: Footballer) -> bool:
+	if keeper.role != "keeper" or ball.carrier != null:
+		return false
+	if ball.velocity.length() < KEEPER_SAVE_MIN_SPEED:
+		return false
+
+	var pitch := ChessFootballMath.PITCH_RECT
+	if ball.global_position.x < pitch.position.x or ball.global_position.x > pitch.end.x:
+		return false
+
+	var moving_toward_goal := ball.velocity.x < -60.0 if keeper.team_id == 0 else ball.velocity.x > 60.0
+	if not moving_toward_goal:
+		return false
+
+	var own_goal := ChessFootballMath.goal_center(1 - keeper.team_id)
+	if absf(ball.global_position.y - own_goal.y) > ChessFootballMath.GOAL_HALF_HEIGHT + KEEPER_SAVE_Y_MARGIN:
+		return false
+	if keeper.global_position.distance_to(ball.global_position) > KEEPER_SAVE_RANGE:
+		return false
+
+	keeper.play_action("tackle", 0.58)
+	keeper.begin_keeper_hold(KEEPER_HOLD_SECONDS)
+	ball.attach_to(keeper)
+	if keeper.team_id == 0:
+		_select_player(keeper)
+	return true
 
 func _ai_attack(player: Footballer) -> void:
 	var goal := ChessFootballMath.goal_center(1)
@@ -323,3 +402,6 @@ func debug_3d_animated_players() -> int:
 
 func debug_try_tackle(player: Footballer) -> bool:
 	return _try_tackle(player)
+
+func debug_try_keeper_save(player: Footballer) -> bool:
+	return _keeper_try_save(player)
