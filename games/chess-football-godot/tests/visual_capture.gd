@@ -33,6 +33,24 @@ func _initialize() -> void:
 	match_node.debug_sync_presentation()
 	await _save_capture(match_node, "airborne", "VISUAL_CAPTURE_AIRBORNE")
 
+	# Explicitly review both extremes: a near-ground driven shot and a fully
+	# charged blast. The old single airborne frame could hide profile collapse.
+	match_node.ball.attach_to(match_node.controlled)
+	match_node.debug_force_shot_charge(0.12)
+	match_node.debug_release_charged_shot()
+	match_node.ball.tick_ball(0.08)
+	assert(match_node.ball.flight_height < 8.0)
+	match_node.debug_sync_presentation()
+	await _save_capture(match_node, "drive", "VISUAL_CAPTURE_DRIVE")
+
+	match_node.ball.attach_to(match_node.controlled)
+	match_node.debug_force_shot_charge(1.0)
+	match_node.debug_release_charged_shot()
+	match_node.ball.tick_ball(0.10)
+	assert(match_node.ball.flight_height > 30.0)
+	match_node.debug_sync_presentation()
+	await _save_capture(match_node, "blast", "VISUAL_CAPTURE_BLAST")
+
 	match_node.debug_toggle_camera_mode()
 	for _frame in range(10):
 		await process_frame
@@ -53,6 +71,8 @@ func _initialize() -> void:
 	for _frame in range(2):
 		await process_frame
 	assert(victim.contact_stun_active())
+	assert(tackler.global_position.distance_to(victim.global_position) > 36.0)
+	match_node.debug_sync_presentation()
 	await _save_capture(match_node, "contact", "VISUAL_CAPTURE_CONTACT")
 
 	# Build a readable goal tableau instead of reusing the tackle setup.
