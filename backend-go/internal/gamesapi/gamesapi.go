@@ -288,7 +288,7 @@ func (h *Handler) delete(w http.ResponseWriter, r *http.Request, gameID, usernam
 // (the CORS-safelisted headers are always allowed).
 var (
 	corsMethods = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-	corsHeaders = []string{"Accept", "Accept-Language", "Authorization", "Content-Language", "Content-Type", "Idempotency-Key", "X-API-Key", "X-Client-Release", "X-Presence-Session", "X-Request-ID"}
+	corsHeaders = []string{"Accept", "Accept-Language", "Authorization", "Content-Language", "Content-Type", "Idempotency-Key", "X-API-Key", "X-Chronicles-Party-Level", "X-Client-Release", "X-Presence-Session", "X-Request-ID"}
 )
 
 // preflight mirrors Starlette's CORSMiddleware.preflight_response: a 400 with
