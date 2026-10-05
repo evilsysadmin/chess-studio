@@ -41,6 +41,22 @@ describe('pila global de volver/cerrar', () => {
     expect(close).toHaveBeenCalledTimes(1);
   });
 
+  it('permite reservar el clic derecho para una pantalla contextual sin navegar atrás', () => {
+    const stack = createBackNavigationStack();
+    const close = vi.fn();
+    const preventDefault = vi.fn();
+    const stopPropagation = vi.fn();
+    stack.push({ id: 'screen', callbackRef: { current: close }, contextMenu: false });
+
+    expect(stack.dispatch({ type: 'contextmenu', preventDefault, stopPropagation })).toBe(false);
+    expect(preventDefault).not.toHaveBeenCalled();
+    expect(stopPropagation).not.toHaveBeenCalled();
+    expect(close).not.toHaveBeenCalled();
+
+    expect(stack.dispatch({ type: 'keydown', key: 'Escape', stopPropagation })).toBe(true);
+    expect(close).toHaveBeenCalledTimes(1);
+  });
+
   it('una pulsación larga táctil consume contextmenu sin ejecutar back', () => {
     const stack = createBackNavigationStack();
     const close = vi.fn();
