@@ -19,10 +19,11 @@ func _initialize() -> void:
 	await _save_capture(match_node, "broadcast", "VISUAL_CAPTURE_BROADCAST")
 
 	match_node.debug_release_charged_shot()
-	for _frame in range(8):
-		await process_frame
-		await physics_frame
+	# Advance the real ball simulation deterministically instead of letting the
+	# surrounding AI/claim loop race the review capture.
+	match_node.ball.tick_ball(0.10)
 	assert(match_node.ball.flight_height > 0.0)
+	match_node.debug_sync_presentation()
 	await _save_capture(match_node, "airborne", "VISUAL_CAPTURE_AIRBORNE")
 
 	match_node.debug_toggle_camera_mode()
