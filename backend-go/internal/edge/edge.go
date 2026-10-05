@@ -50,7 +50,10 @@ type Config struct {
 	// NativeSystem serves GET /api/status, GET /api/features,
 	// POST /api/client-telemetry and POST /api/internal/billing-costs; nil
 	// keeps them in Python.
-	NativeSystem          http.Handler
+	NativeSystem http.Handler
+	// NativeProfile serves GET, PUT and PATCH /api/profile; nil keeps them
+	// in Python.
+	NativeProfile         http.Handler
 	VirtualPlayersEnabled bool
 	NativeResidentMove    bool
 	// ReadyChecks are dependencies owned by the Go edge itself (MongoDB for the
@@ -85,6 +88,7 @@ type Handler struct {
 	nativeGamesHint           http.Handler
 	nativeGamesAnalyze        http.Handler
 	nativeSystem              http.Handler
+	nativeProfile             http.Handler
 	virtualPlayersEnabled     bool
 	nativeResidentMove        bool
 	readyChecks               map[string]func(context.Context) error
@@ -188,6 +192,7 @@ func New(cfg Config) (*Handler, error) {
 		nativeGamesHint:           cfg.NativeGamesHint,
 		nativeGamesAnalyze:        cfg.NativeGamesAnalyze,
 		nativeSystem:              cfg.NativeSystem,
+		nativeProfile:             cfg.NativeProfile,
 		virtualPlayersEnabled:     cfg.VirtualPlayersEnabled,
 		nativeResidentMove:        cfg.NativeResidentMove,
 		readyChecks:               cfg.ReadyChecks,
@@ -236,6 +241,13 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if pattern, ok := gamesapi.SystemRoute(r); ok {
 			w.Header().Set("X-Chess-Edge", "go")
 			h.telemetry.Serve(pattern, h.nativeSystem, w, r)
+			return
+		}
+	}
+	if h.nativeProfile != nil {
+		if pattern, ok := gamesapi.ProfileRoute(r); ok {
+			w.Header().Set("X-Chess-Edge", "go")
+			h.telemetry.Serve(pattern, h.nativeProfile, w, r)
 			return
 		}
 	}
@@ -334,6 +346,7 @@ func (h *Handler) statusPayload(status string) map[string]any {
 		"nativeGamesHint":           h.nativeGamesHint != nil,
 		"nativeGamesAnalyze":        h.nativeGamesAnalyze != nil,
 		"nativeSystem":              h.nativeSystem != nil,
+		"nativeProfile":             h.nativeProfile != nil,
 	}
 	if h.release != "" {
 		payload["release"] = h.release
