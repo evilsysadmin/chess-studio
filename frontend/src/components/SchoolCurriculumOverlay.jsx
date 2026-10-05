@@ -110,6 +110,7 @@ export default function SchoolCurriculumOverlay({
             type="button"
             className="secondary-btn"
             data-school-curriculum-close
+            aria-label="Cerrar plan de estudios"
             onClick={onClose}
           >
             Cerrar
