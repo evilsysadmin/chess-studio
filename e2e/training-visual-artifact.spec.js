@@ -165,6 +165,10 @@ async function prepare(page) {
     },
   });
   await login(page);
+  const homeGuide = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
+  const dismissGuide = homeGuide.getByRole('button', { name: 'Ahora no', exact: true });
+  if (await dismissGuide.isVisible().catch(() => false)) await dismissGuide.click();
+  await expect(page.getByRole('region', { name: 'Modos principales' })).toBeVisible();
   await page.evaluate(() => {
     localStorage.setItem('chess-study-war-room-variant-v1', 'v2');
     localStorage.removeItem('chess-study-class-room-variant-v1');
