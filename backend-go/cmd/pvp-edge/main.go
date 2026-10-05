@@ -18,6 +18,9 @@ import (
 )
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "mint-token" {
+		os.Exit(runMintToken(os.Args[2:]))
+	}
 	port := env("PORT", "8080")
 	upstream := pythonUpstream()
 	features := loadNativeFeatureFlags()
