@@ -51,6 +51,39 @@ func _initialize() -> void:
 	match_node.debug_sync_presentation()
 	await _save_capture(match_node, "blast", "VISUAL_CAPTURE_BLAST")
 
+	# Goal-frame review: pin the ball immediately after real collision response,
+	# then snap the broadcast camera to the goal so the rebound is legible.
+	var frame_goal_x: float = ChessFootballMath.PITCH_RECT.end.x
+	var frame_center_y: float = ChessFootballMath.PITCH_RECT.get_center().y
+	var frame_post_y: float = frame_center_y - ChessFootballMath.GOAL_HALF_HEIGHT
+
+	match_node.ball.attach_to(match_node.controlled)
+	match_node.ball.release(Vector2.RIGHT, 980.0)
+	var post_previous := Vector2(frame_goal_x - 18.0, frame_post_y)
+	match_node.ball.global_position = Vector2(frame_goal_x + 12.0, frame_post_y)
+	match_node.ball.flight_height = 18.0
+	assert(match_node.debug_resolve_goal_frame_collision(post_previous, 18.0) == "post")
+	assert(match_node.ball.velocity.x < 0.0)
+	match_node.debug_focus_presentation()
+	await _save_capture(match_node, "post", "VISUAL_CAPTURE_POST")
+
+	match_node.ball.attach_to(match_node.controlled)
+	match_node.ball.release(Vector2.RIGHT, 1080.0, 190.0)
+	var crossbar_previous := Vector2(frame_goal_x - 18.0, frame_center_y)
+	match_node.ball.global_position = Vector2(frame_goal_x + 12.0, frame_center_y)
+	match_node.ball.flight_height = ChessFootballMath.GOAL_FRAME_CROSSBAR_HEIGHT
+	match_node.ball.vertical_velocity = 55.0
+	assert(
+		match_node.debug_resolve_goal_frame_collision(
+			crossbar_previous,
+			ChessFootballMath.GOAL_FRAME_CROSSBAR_HEIGHT,
+		) == "crossbar"
+	)
+	assert(match_node.ball.velocity.x < 0.0)
+	assert(match_node.ball.vertical_velocity < 0.0)
+	match_node.debug_focus_presentation()
+	await _save_capture(match_node, "crossbar", "VISUAL_CAPTURE_CROSSBAR")
+
 	match_node.debug_toggle_camera_mode()
 	for _frame in range(10):
 		await process_frame

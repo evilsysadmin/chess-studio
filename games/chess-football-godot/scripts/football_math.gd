@@ -9,6 +9,9 @@ const GOAL_HALF_HEIGHT := 105.0
 # centre and 0.075 bar thickness), about 62 units is the highest ball centre
 # trajectory that still fits entirely below the bar.
 const GOAL_MAX_FLIGHT_HEIGHT := 62.0
+const GOAL_FRAME_POST_RADIUS := 16.0
+const GOAL_FRAME_CROSSBAR_HEIGHT := 76.0
+const GOAL_FRAME_CROSSBAR_RADIUS := 10.0
 
 static func clamp_to_pitch(position: Vector2) -> Vector2:
 	return Vector2(
@@ -25,3 +28,52 @@ static func in_goal_mouth(position: Vector2) -> bool:
 
 static func ball_fits_under_crossbar(flight_height: float) -> bool:
 	return flight_height <= GOAL_MAX_FLIGHT_HEIGHT
+
+static func goal_frame_collision(
+	previous_position: Vector2,
+	current_position: Vector2,
+	previous_height: float,
+	current_height: float,
+) -> Dictionary:
+	var delta_x: float = current_position.x - previous_position.x
+	if absf(delta_x) < 0.001:
+		return {}
+
+	var center_y: float = PITCH_RECT.get_center().y
+	var goal_lines: Array[float] = [PITCH_RECT.position.x, PITCH_RECT.end.x]
+	for goal_x in goal_lines:
+		var from_side: float = previous_position.x - goal_x
+		var to_side: float = current_position.x - goal_x
+		if from_side * to_side > 0.0:
+			continue
+		var ratio: float = clampf((goal_x - previous_position.x) / delta_x, 0.0, 1.0)
+		var contact_y: float = lerpf(previous_position.y, current_position.y, ratio)
+		var contact_height: float = lerpf(previous_height, current_height, ratio)
+		var post_delta: float = absf(absf(contact_y - center_y) - GOAL_HALF_HEIGHT)
+		if (
+			post_delta <= GOAL_FRAME_POST_RADIUS
+			and contact_height <= GOAL_FRAME_CROSSBAR_HEIGHT + GOAL_FRAME_CROSSBAR_RADIUS
+		):
+			return {
+				"kind": "post",
+				"goal_x": goal_x,
+				"contact_y": contact_y,
+				"contact_height": contact_height,
+			}
+
+		var inside_posts: bool = (
+			absf(contact_y - center_y)
+			<= GOAL_HALF_HEIGHT - GOAL_FRAME_POST_RADIUS * 0.35
+		)
+		if (
+			inside_posts
+			and absf(contact_height - GOAL_FRAME_CROSSBAR_HEIGHT)
+			<= GOAL_FRAME_CROSSBAR_RADIUS
+		):
+			return {
+				"kind": "crossbar",
+				"goal_x": goal_x,
+				"contact_y": contact_y,
+				"contact_height": contact_height,
+			}
+	return {}

@@ -35,6 +35,10 @@ func play_keeper_save() -> void:
 func play_goal() -> void:
 	_play("goal", -1.0, 1.0)
 
+func play_goal_frame(impact_speed: float) -> void:
+	var strength := clampf((impact_speed - 350.0) / 900.0, 0.0, 1.0)
+	_play("post", lerpf(-5.0, -0.4, strength), lerpf(1.08, 0.92, strength))
+
 func debug_stream_names() -> Array[String]:
 	var names: Array[String] = []
 	for key in _streams.keys():
@@ -60,6 +64,7 @@ func _build_streams() -> void:
 	_streams["tackle"] = _make_impact(0.105, 94.0, 48.0, 0.72, 0.52, 307)
 	_streams["save"] = _make_impact(0.082, 260.0, 105.0, 0.52, 0.66, 401)
 	_streams["whistle"] = _make_whistle(0.34)
+	_streams["post"] = _make_metal_ring(0.46)
 	_streams["goal"] = _make_goal_swell(1.10, 503)
 
 func _make_ball_strike(
@@ -141,6 +146,33 @@ func _make_whistle(duration: float) -> AudioStreamWAV:
 		var envelope := attack * release
 		var raw := (sin(phase_a) * 0.58 + sin(phase_b) * 0.25) * envelope
 		data.encode_s16(index * 2, int(round(clampf(raw, -1.0, 1.0) * 32767.0)))
+
+	return _wav_from_data(data)
+
+func _make_metal_ring(duration: float) -> AudioStreamWAV:
+	var sample_count := maxi(1, int(duration * float(MIX_RATE)))
+	var data := PackedByteArray()
+	data.resize(sample_count * 2)
+	var phase_a := 0.0
+	var phase_b := 0.0
+	var phase_c := 0.0
+
+	for index in range(sample_count):
+		var seconds := float(index) / float(MIX_RATE)
+		phase_a += TAU * 740.0 / float(MIX_RATE)
+		phase_b += TAU * 1190.0 / float(MIX_RATE)
+		phase_c += TAU * 2070.0 / float(MIX_RATE)
+		var ring_env := exp(-seconds * 7.8)
+		var bright_env := exp(-seconds * 15.0)
+		var transient := exp(-seconds * 120.0)
+		var raw := (
+			sin(phase_a) * 0.50 * ring_env
+			+ sin(phase_b) * 0.27 * ring_env
+			+ sin(phase_c) * 0.16 * bright_env
+			+ sin(phase_c * 1.71) * 0.10 * transient
+		)
+		var sample := raw / (1.0 + absf(raw) * 0.22)
+		data.encode_s16(index * 2, int(round(clampf(sample, -1.0, 1.0) * 32767.0)))
 
 	return _wav_from_data(data)
 

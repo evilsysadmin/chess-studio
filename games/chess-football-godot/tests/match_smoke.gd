@@ -14,7 +14,7 @@ func _initialize() -> void:
 	assert(match_node.debug_3d_ready())
 	assert(match_node.debug_audio_ready())
 	var audio_names: Array[String] = match_node.debug_audio_stream_names()
-	for expected_audio in ["goal", "pass", "save", "shot", "tackle", "whistle"]:
+	for expected_audio in ["goal", "pass", "post", "save", "shot", "tackle", "whistle"]:
 		assert(audio_names.has(expected_audio))
 	assert(match_node.debug_3d_animated_players() == 10)
 	assert(match_node.controlled != null)
@@ -159,6 +159,45 @@ func _initialize() -> void:
 	assert(match_node.ball.carrier == null)
 	assert(match_node.ball.velocity.length() > 0.0)
 	print("SMOKE_STAGE=restarts")
+
+	# Goal frame: clean shots pass through, posts and crossbar rebound.
+	var right_goal_x: float = ChessFootballMath.PITCH_RECT.end.x
+	var goal_center_y: float = ChessFootballMath.PITCH_RECT.get_center().y
+	var lower_post_y: float = goal_center_y + ChessFootballMath.GOAL_HALF_HEIGHT
+
+	match_node.ball.attach_to(match_node.teams[0][4])
+	match_node.ball.release(Vector2.RIGHT, 900.0)
+	var clean_previous := Vector2(right_goal_x - 18.0, goal_center_y)
+	match_node.ball.global_position = Vector2(right_goal_x + 12.0, goal_center_y)
+	match_node.ball.flight_height = 20.0
+	assert(match_node.debug_resolve_goal_frame_collision(clean_previous, 20.0) == "")
+	assert(match_node.ball.velocity.x > 0.0)
+
+	match_node.ball.attach_to(match_node.teams[0][4])
+	match_node.ball.release(Vector2.RIGHT, 930.0)
+	var post_previous := Vector2(right_goal_x - 18.0, lower_post_y)
+	match_node.ball.global_position = Vector2(right_goal_x + 12.0, lower_post_y)
+	match_node.ball.flight_height = 18.0
+	assert(match_node.debug_resolve_goal_frame_collision(post_previous, 18.0) == "post")
+	assert(match_node.ball.velocity.x < 0.0)
+	assert(match_node.ball.global_position.x < right_goal_x)
+
+	match_node.ball.attach_to(match_node.teams[0][4])
+	match_node.ball.release(Vector2.RIGHT, 1040.0, 180.0)
+	var crossbar_previous := Vector2(right_goal_x - 18.0, goal_center_y)
+	match_node.ball.global_position = Vector2(right_goal_x + 12.0, goal_center_y)
+	match_node.ball.flight_height = ChessFootballMath.GOAL_FRAME_CROSSBAR_HEIGHT
+	match_node.ball.vertical_velocity = 45.0
+	assert(
+		match_node.debug_resolve_goal_frame_collision(
+			crossbar_previous,
+			ChessFootballMath.GOAL_FRAME_CROSSBAR_HEIGHT,
+		) == "crossbar"
+	)
+	assert(match_node.ball.velocity.x < 0.0)
+	assert(match_node.ball.vertical_velocity < 0.0)
+	assert(match_node.ball.global_position.x < right_goal_x)
+	print("SMOKE_STAGE=goal-frame")
 
 	var tackler: Footballer = match_node.controlled
 	var victim: Footballer = match_node.teams[1][2]
