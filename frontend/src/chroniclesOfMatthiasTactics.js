@@ -9,6 +9,11 @@ import {
 } from './chroniclesOfMatthiasTurns.js';
 import { chroniclesEnemySkillDetails } from './chronicles/chroniclesEnemyBuilds.js';
 import { chroniclesCurrentInitiativeActor } from './chronicles/chroniclesInitiative.js';
+import {
+  chroniclesPartyCellOccupied,
+  chroniclesPartyGridFootprint,
+  chroniclesPartyMemberPosition,
+} from './chroniclesPartyFootprint.js';
 import { chroniclesMapForState } from './chronicles/chroniclesMapCatalog.js';
 import {
   chroniclesApplyContentAction,
@@ -160,9 +165,23 @@ function memberFor(state, memberId) {
   return state.party.find((member) => member.id === memberId) || null;
 }
 
-function attackDistance(state, position, profile) {
-  const dx = Math.abs(position.x - state.x);
-  const dy = Math.abs(position.y - state.y);
+function actionMemberId(state, memberId = null) {
+  if (memberId) return memberId;
+  const actor = chroniclesCurrentInitiativeActor(state?.initiative);
+  return actor?.kind === 'party' ? actor.id : null;
+}
+
+function actionOrigin(state, memberId = null) {
+  const resolvedMemberId = actionMemberId(state, memberId);
+  if ((state?.initiative?.order?.length || state?.phase === 'combat') && resolvedMemberId) {
+    return chroniclesPartyMemberPosition(state, resolvedMemberId);
+  }
+  return { x: Number(state?.x), y: Number(state?.y) };
+}
+
+function attackDistance(origin, position, profile) {
+  const dx = Math.abs(position.x - origin.x);
+  const dy = Math.abs(position.y - origin.y);
   if (profile.attackPattern === 'adjacent') return dx + dy === 1 ? 1 : null;
   if (profile.attackPattern === 'orthogonal') {
     if (dx !== 0 && dy !== 0) return null;
@@ -246,13 +265,14 @@ export function chroniclesTacticsRefillAbilityCharges(state) {
   return { ...state, classAbilityCharges };
 }
 
-function triggerTrapAtCurrentCell(state) {
+function triggerTrapAtPosition(state, position = actionOrigin(state)) {
   const map = chroniclesMapForState(state);
+  const interactionState = { ...state, x: position.x, y: position.y };
   const trapInteraction = chroniclesContentInteractions(
-    state,
+    interactionState,
     map,
     (x, y) => chroniclesTileAt(x, y, state),
-  ).find((candidate) => candidate.kind === 'trap' && candidate.x === state.x && candidate.y === state.y);
+  ).find((candidate) => candidate.kind === 'trap' && candidate.x === position.x && candidate.y === position.y);
   if (!trapInteraction) return state;
   const definition = chroniclesContentDefinition(map, trapInteraction.id);
   if (!definition) return state;
@@ -262,18 +282,21 @@ function triggerTrapAtCurrentCell(state) {
   });
 }
 
-export function chroniclesTacticsInteractions(state) {
-  if (!actionAllowed(state)) return [];
+export function chroniclesTacticsInteractions(state, memberId = null) {
+  const resolvedMemberId = actionMemberId(state, memberId);
+  if (!actionAllowed(state, resolvedMemberId)) return [];
   const map = chroniclesMapForState(state);
+  const origin = actionOrigin(state, resolvedMemberId);
+  const interactionState = { ...state, x: origin.x, y: origin.y };
   return chroniclesContentInteractions(
-    state,
+    interactionState,
     map,
     (x, y) => chroniclesTileAt(x, y, state),
   );
 }
 
-export function chroniclesTacticsUse(state, interactionId = null) {
-  const interaction = chroniclesTacticsInteractions(state).find((candidate) => (
+export function chroniclesTacticsUse(state, interactionId = null, memberId = null) {
+  const interaction = chroniclesTacticsInteractions(state, memberId).find((candidate) => (
     !interactionId || candidate.id === interactionId
   ));
   if (!interaction) return state;
@@ -301,13 +324,17 @@ export function chroniclesTacticsUse(state, interactionId = null) {
   });
 }
 
-export function chroniclesTacticsLegalMoves(state) {
-  if (!actionAllowed(state)) return [];
+export function chroniclesTacticsLegalMoves(state, memberId = null) {
+  const resolvedMemberId = actionMemberId(state, memberId);
+  if (!actionAllowed(state, resolvedMemberId)) return [];
+  const origin = actionOrigin(state, resolvedMemberId);
+  const combatPositioning = Boolean(state?.initiative?.order?.length || state?.phase === 'combat');
   return CHRONICLES_DIRECTIONS.flatMap((direction) => {
-    const position = { x: state.x + direction.dx, y: state.y + direction.dy };
+    const position = { x: origin.x + direction.dx, y: origin.y + direction.dy };
     const tile = chroniclesTileAt(position.x, position.y, state);
     if (tile === '#' || tile === 'X') return [];
     if (occupiedByEnemy(state, position)) return [];
+    if (combatPositioning && chroniclesPartyCellOccupied(state, position, resolvedMemberId)) return [];
     return [{
       key: direction.key,
       label: MOVE_LABELS[direction.key] || direction.label,
@@ -325,12 +352,13 @@ export function chroniclesTacticsTargets(state, memberId) {
   if (!member || member.hp <= 0) return [];
   const profile = chroniclesTacticsProfile(memberId);
   const reach = effectiveReach(state, memberId, profile);
+  const origin = actionOrigin(state, memberId);
 
   return activeEnemiesWithPositions(state)
     .flatMap(({ enemy, position }) => {
-      const distance = attackDistance(state, position, profile);
+      const distance = attackDistance(origin, position, profile);
       if (distance === null || distance < 1 || distance > reach) return [];
-      if (!lineIsClear(state, { x: state.x, y: state.y }, position, enemy.id)) return [];
+      if (!lineIsClear(state, origin, position, enemy.id)) return [];
       return [{
         enemyId: enemy.id,
         name: enemy.name,
@@ -433,9 +461,26 @@ export function chroniclesTacticsAbility(state, memberId) {
   return consumeAbilityCharge(next, memberId);
 }
 
-export function chroniclesTacticsMove(state, destination) {
-  const legal = chroniclesTacticsLegalMoves(state).find((move) => move.x === destination?.x && move.y === destination?.y);
+export function chroniclesTacticsMove(state, destination, memberId = null) {
+  const resolvedMemberId = actionMemberId(state, memberId);
+  const legal = chroniclesTacticsLegalMoves(state, resolvedMemberId)
+    .find((move) => move.x === destination?.x && move.y === destination?.y);
   if (!legal) return state;
+
+  if (state?.initiative?.order?.length || state?.phase === 'combat') {
+    const footprint = chroniclesPartyGridFootprint(state);
+    const member = memberFor(state, resolvedMemberId);
+    const moved = {
+      ...state,
+      partyPositions: {
+        ...footprint,
+        [resolvedMemberId]: { x: legal.x, y: legal.y },
+      },
+      turns: Number(state.turns || 0) + 1,
+      message: `${member?.name || 'El aventurero'} avanza hacia ${legal.label.toLowerCase()}. Una casilla, una acción.`,
+    };
+    return triggerTrapAtPosition(moved, { x: legal.x, y: legal.y });
+  }
 
   const moved = {
     ...state,
@@ -444,7 +489,7 @@ export function chroniclesTacticsMove(state, destination) {
     turns: Number(state.turns || 0) + 1,
     message: `La compañía avanza hacia ${legal.label.toLowerCase()}. Piedra, formación y malas intenciones.`,
   };
-  return triggerTrapAtCurrentCell(moved);
+  return triggerTrapAtPosition(moved, { x: legal.x, y: legal.y });
 }
 
 export function chroniclesTacticsAttack(state, memberId, enemyId) {
