@@ -149,8 +149,9 @@ El mismo asset/contrato debe mantenerse coherente entre tarjeta grande, thumbnai
 
 ## Initiative combat contract
 
-Chronicles exploration remains free until an encounter begins. Entering an enemy engagement radius, or explicitly attacking a reachable enemy, switches the run into turn-based combat and freezes free exploration behind the initiative scheduler.
+Chronicles exploration remains free and real-time until an encounter begins. Holding a movement direction walks the compact party continuously through the grid; ordinary exploration locomotion does not consume tactical turns or emit remote checkpoints per cell. Entering an enemy engagement radius, or explicitly attacking a reachable enemy, stops free locomotion, deploys combatants onto the tactical grid and switches the run into turn-based combat behind the initiative scheduler.
 
+- Exploration input is hold-to-walk on keyboard/D-pad. Releasing input, hitting an obstacle or entering combat stops the continuous walk. Reduced-motion may suppress gait animation but must preserve the same real-time control semantics.
 - Initiative is rolled once when the encounter starts: `Agility + 1d8`.
 - The `1d8` variance is deliberate. Low-level combat should remain volatile enough that a slower actor can occasionally beat a slightly faster one; Agility becomes more dominant as stats scale.
 - Party classes have a base Agility. Persistent profile progression may add Agility without mutating the v1 character-creator schema.
