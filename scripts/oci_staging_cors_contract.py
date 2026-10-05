@@ -646,6 +646,14 @@ assert "payload.get('nativeFeedback')" in deploy
 assert 'games_native_attest "http://127.0.0.1:${port}/api/feedback/mine" GET X-Chess-Feedback-Native 401; then' in deploy
 assert 'exit 74' in deploy
 assert compose.count('GO_NATIVE_FEEDBACK_ENABLED: "${CHESS_STUDIO_GO_NATIVE_FEEDBACK_ENABLED:-false}"') == 2
+# Native Matthias read side: staging first, attested by Go's 401 for an anonymous briefing.
+assert 'staging) go_native_matthias_read="${CHESS_STUDIO_GO_NATIVE_MATTHIAS_READ_ENABLED:-true}" ;;' in deploy
+assert '*) go_native_matthias_read="${CHESS_STUDIO_GO_NATIVE_MATTHIAS_READ_ENABLED:-false}" ;;' in deploy
+assert 'CHESS_STUDIO_GO_NATIVE_MATTHIAS_READ_ENABLED="$go_native_matthias_read"' in deploy
+assert "payload.get('nativeMatthias')" in deploy
+assert 'games_native_attest "http://127.0.0.1:${port}/api/matthias/briefing" GET X-Chess-Matthias-Native 401; then' in deploy
+assert 'exit 76' in deploy
+assert compose.count('GO_NATIVE_MATTHIAS_READ_ENABLED: "${CHESS_STUDIO_GO_NATIVE_MATTHIAS_READ_ENABLED:-false}"') == 2
 assert 'GO_NATIVE_GAMES_WRITE_ENABLED: "${CHESS_STUDIO_GO_NATIVE_GAMES_WRITE_ENABLED:-false}"' in compose
 assert 'sleep 0.25' in deploy
 assert 'if ! wait_pvp_edge_attest "$port"; then' in deploy

@@ -18,6 +18,7 @@ python scripts/observability_history_parity_corpus.py --check
 python scripts/profile_parity_corpus.py --check
 python scripts/password_parity_corpus.py --check
 python scripts/auth_guard_parity_corpus.py --check
+python scripts/matthias_memory_parity_corpus.py --check
 
 (
   cd backend-go
@@ -27,4 +28,5 @@ python scripts/auth_guard_parity_corpus.py --check
   go test -count=1 -run 'MatchPython' ./internal/obshistory
   go test -count=1 -run 'MatchPython' ./internal/profilestore
   go test -count=1 -run 'MatchesPython|MatchPython' ./internal/authcrypto ./internal/authguard
+  go test -count=1 -run 'MatchesPython' ./internal/matthiasmem ./internal/pyval
 )

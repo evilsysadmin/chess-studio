@@ -20,6 +20,7 @@ import (
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/matchdisconnect"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/matchresign"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/matchtimeout"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/matthiasmem"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/mongoruntime"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/obshistory"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/presence"
@@ -58,6 +59,7 @@ type nativeRuntime struct {
 	account  http.Handler
 	recovery http.Handler
 	feedback http.Handler
+	matthias http.Handler
 	// system is built in edgeConfig, once request telemetry exists.
 	system *gamesapi.SystemConfig
 	// history is Admin's observability history (nil when disabled).
@@ -460,6 +462,24 @@ func buildNativeRuntime(features nativeFeatureFlags, upstream string) (runtime n
 		}
 		runtime.feedback = feedbackHandler
 	}
+	if features.matthiasRead {
+		telemetryCfg := telemetry.ConfigFromEnv(os.LookupEnv)
+		matthiasHandler, matthiasErr := gamesapi.NewMatthias(gamesapi.MatthiasConfig{
+			Config: gamesapi.Config{
+				Accounts:        accountstore.New(mongoRuntime.Database(), pvpMongoTimeout),
+				Presence:        presence.New(mongoRuntime.Database(), telemetryCfg.TrustCloudflare, 2*time.Second),
+				JWTSecret:       jwtSecret,
+				AllowedOrigins:  splitCSV(os.Getenv("CORS_ORIGINS")),
+				TrustCloudflare: telemetryCfg.TrustCloudflare,
+			},
+			Matthias:       matthiasmem.New(mongoRuntime.Database(), pvpMongoTimeout),
+			AdminUsernames: splitCSV(os.Getenv("ADMIN_USERNAMES")),
+		})
+		if matthiasErr != nil {
+			return runtime, fmt.Errorf("native matthias API: %w", matthiasErr)
+		}
+		runtime.matthias = matthiasHandler
+	}
 	if features.gamesAnalyze {
 		telemetryCfg := telemetry.ConfigFromEnv(os.LookupEnv)
 		analyzeHandler, analyzeErr := gamesapi.NewAnalyze(gamesapi.AnalyzeConfig{
@@ -548,6 +568,7 @@ func (r nativeRuntime) edgeConfig(upstream, release string, requestTelemetry *te
 		NativeAccount:             r.account,
 		NativeRecovery:            r.recovery,
 		NativeFeedback:            r.feedback,
+		NativeMatthias:            r.matthias,
 		VirtualPlayersEnabled:     r.virtualPlayers,
 		NativeResidentMove:        r.residentMove,
 		ReadyChecks:               readyChecks,
@@ -557,7 +578,7 @@ func (r nativeRuntime) edgeConfig(upstream, release string, requestTelemetry *te
 
 func (r nativeRuntime) logStartup(port, upstream string) {
 	log.Printf(
-		"go-api listening on :%s -> %s native_pulse=%t native_lobby_read=%t native_roster=%t native_chat=%t native_challenge_resolution=%t native_challenge_accept=%t native_challenge_create=%t native_match_handoff_cancel=%t native_match_ready=%t native_match_resign=%t native_match_read=%t native_match_move=%t native_resident_move=%t native_games_read=%t native_games_write=%t native_games_hint=%t native_games_analyze=%t native_system=%t native_profile=%t native_auth_session=%t native_login=%t native_account=%t native_recovery=%t native_feedback=%t",
+		"go-api listening on :%s -> %s native_pulse=%t native_lobby_read=%t native_roster=%t native_chat=%t native_challenge_resolution=%t native_challenge_accept=%t native_challenge_create=%t native_match_handoff_cancel=%t native_match_ready=%t native_match_resign=%t native_match_read=%t native_match_move=%t native_resident_move=%t native_games_read=%t native_games_write=%t native_games_hint=%t native_games_analyze=%t native_system=%t native_profile=%t native_auth_session=%t native_login=%t native_account=%t native_recovery=%t native_feedback=%t native_matthias_read=%t",
 		port,
 		upstream,
 		r.pulse != nil,
@@ -584,6 +605,7 @@ func (r nativeRuntime) logStartup(port, upstream string) {
 		r.account != nil,
 		r.recovery != nil,
 		r.feedback != nil,
+		r.matthias != nil,
 	)
 }
 

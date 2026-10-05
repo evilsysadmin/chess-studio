@@ -188,6 +188,15 @@ case "${go_native_feedback,,}" in
   true|false) go_native_feedback="${go_native_feedback,,}" ;;
   *) echo "invalid CHESS_STUDIO_GO_NATIVE_FEEDBACK_ENABLED: $go_native_feedback" >&2; exit 2 ;;
 esac
+# Native Go Matthias read side (daily status, briefing, memory reset).
+case "$target" in
+  staging) go_native_matthias_read="${CHESS_STUDIO_GO_NATIVE_MATTHIAS_READ_ENABLED:-true}" ;;
+  *) go_native_matthias_read="${CHESS_STUDIO_GO_NATIVE_MATTHIAS_READ_ENABLED:-false}" ;;
+esac
+case "${go_native_matthias_read,,}" in
+  true|false) go_native_matthias_read="${go_native_matthias_read,,}" ;;
+  *) echo "invalid CHESS_STUDIO_GO_NATIVE_MATTHIAS_READ_ENABLED: $go_native_matthias_read" >&2; exit 2 ;;
+esac
 pvp_sparring_username="${CHESS_PVP_SPARRING_USERNAME:-sparringmeister}"
 
 state_file="$state_dir/deployed.sha"
@@ -365,6 +374,7 @@ compose() {
   CHESS_STUDIO_GO_NATIVE_ACCOUNT_ENABLED="$go_native_account" \
   CHESS_STUDIO_GO_NATIVE_RECOVERY_ENABLED="$go_native_recovery" \
   CHESS_STUDIO_GO_NATIVE_FEEDBACK_ENABLED="$go_native_feedback" \
+  CHESS_STUDIO_GO_NATIVE_MATTHIAS_READ_ENABLED="$go_native_matthias_read" \
   CHESS_PVP_SPARRING_OWNER="$pvp_sparring_owner" \
   CHESS_PVP_SPARRING_USERNAME="$pvp_sparring_username" \
   CHESS_STUDIO_OCI_LOG_SERVICE_NAME="chess-studio-oci-backend-${target}-stdout" \
@@ -550,7 +560,7 @@ pvp_attest() {
     rm -f "$body"
     return 1
   fi
-  if python3 - "$body" "$pvp_sparring_enabled" "$deployment_target" "$sha" "$go_native_games_read" "$go_native_games_write" "$go_native_games_hint" "$go_native_analyze" "$go_native_system" "$go_native_profile" "$go_native_auth_session" "$go_native_login" "$go_native_account" "$go_native_recovery" "$go_native_feedback" <<'PY'
+  if python3 - "$body" "$pvp_sparring_enabled" "$deployment_target" "$sha" "$go_native_games_read" "$go_native_games_write" "$go_native_games_hint" "$go_native_analyze" "$go_native_system" "$go_native_profile" "$go_native_auth_session" "$go_native_login" "$go_native_account" "$go_native_recovery" "$go_native_feedback" "$go_native_matthias_read" <<'PY'
 import json
 import pathlib
 import sys
@@ -602,6 +612,7 @@ if (
     or bool(payload.get('nativeAccount')) != (str(sys.argv[13]).strip().lower() == 'true')
     or bool(payload.get('nativeRecovery')) != (str(sys.argv[14]).strip().lower() == 'true')
     or bool(payload.get('nativeFeedback')) != (str(sys.argv[15]).strip().lower() == 'true')
+    or bool(payload.get('nativeMatthias')) != (str(sys.argv[16]).strip().lower() == 'true')
 ):
     raise SystemExit(1)
 
@@ -1880,6 +1891,13 @@ if [[ "$api_edge_mode" == "go" && "$go_native_feedback" == "true" ]] && ! wait_p
   rollback "$sha" || true
   exit 74
 fi
+# Anonymous GET /api/matthias/briefing is Go's 401: no memory is read.
+if [[ "$api_edge_mode" == "go" && "$go_native_matthias_read" == "true" ]] && ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/matthias/briefing" GET X-Chess-Matthias-Native 401; then
+  echo "native matthias did not answer through Go after cutover: color=$candidate_color" >&2
+  compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
+  rollback "$sha" || true
+  exit 76
+fi
 write_active_color "$candidate_color"
 phase_done switch "$switch_started_ms"
 
@@ -1943,5 +1961,5 @@ fi
 agent_diag_summary || printf '%s\n' 'OCI_AGENT_DIAG unavailable'
 phase_done total "$total_started_ms"
 printf 'OCI_DEPLOY_TIMINGS target=%s phases=%s tunnel=%s color=%s\n' "$target" "${deploy_phase_summary%,}" "$tunnel_action" "$candidate_color"
-echo "CHESS_STUDIO_DEPLOY_OK target=$target repo_ref=$sha color=$candidate_color pvp=go api_edge=$api_edge_mode games_native=$go_native_games_read games_native_write=$go_native_games_write games_native_hint=$go_native_games_hint analyze_native=$go_native_analyze system_native=$go_native_system profile_native=$go_native_profile auth_session_native=$go_native_auth_session login_native=$go_native_login account_native=$go_native_account recovery_native=$go_native_recovery feedback_native=$go_native_feedback cors_origin=$cors_origin tunnel_action=$tunnel_action image=pulled observability=${observability_summary:-unknown}"
+echo "CHESS_STUDIO_DEPLOY_OK target=$target repo_ref=$sha color=$candidate_color pvp=go api_edge=$api_edge_mode games_native=$go_native_games_read games_native_write=$go_native_games_write games_native_hint=$go_native_games_hint analyze_native=$go_native_analyze system_native=$go_native_system profile_native=$go_native_profile auth_session_native=$go_native_auth_session login_native=$go_native_login account_native=$go_native_account recovery_native=$go_native_recovery feedback_native=$go_native_feedback matthias_read_native=$go_native_matthias_read cors_origin=$cors_origin tunnel_action=$tunnel_action image=pulled observability=${observability_summary:-unknown}"
 exit 0
