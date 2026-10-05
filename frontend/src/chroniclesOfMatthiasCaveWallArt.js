@@ -95,6 +95,42 @@ export function createChroniclesCaveWallDressing({
       root.add(faceMesh);
     });
 
+    if (!coarsePointer) {
+      exposedFaces.forEach((face, faceIndex) => {
+        if (noise(x, y, 157 + faceIndex) < 0.72) return;
+
+        const chipWidth = cellSize * (0.34 + noise(x, y, 163 + faceIndex) * 0.22);
+        const chipDepth = cellSize * (0.055 + noise(x, y, 167 + faceIndex) * 0.035);
+        const chipGeometry = createRockFaceGeometry(
+          chipWidth,
+          chipDepth,
+          x * 89 + y * 109 + faceIndex * 29 + 401,
+          {
+            widthSegments: 3,
+            heightSegments: 2,
+            depth: 0.035,
+          },
+        );
+        const chip = new THREE.Mesh(chipGeometry, material);
+        chip.name = `chronicles-iso-cave-edge-chip-${x}-${y}-${faceIndex}`;
+        chip.rotation.x = -Math.PI / 2;
+        chip.rotation.z = face.yaw + (noise(x, y, 173 + faceIndex) - 0.5) * 0.08;
+
+        const tangentX = face.oz;
+        const tangentZ = -face.ox;
+        const along = (noise(x, y, 179 + faceIndex) - 0.5) * cellSize * 0.28;
+        const outward = cellSize * 0.49;
+        chip.position.set(
+          world.x + face.ox * outward + tangentX * along,
+          2.59 + (noise(x, y, 181 + faceIndex) - 0.5) * 0.025,
+          world.z + face.oz * outward + tangentZ * along,
+        );
+        chip.castShadow = true;
+        chip.receiveShadow = true;
+        root.add(chip);
+      });
+    }
+
     return true;
   }
 
