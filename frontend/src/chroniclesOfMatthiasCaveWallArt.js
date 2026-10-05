@@ -96,8 +96,8 @@ export function createChroniclesCaveWallDressing({
     });
 
     const topGeometry = createRockFaceGeometry(
-      cellSize * 1.08,
-      cellSize * 1.08,
+      cellSize * 1.03,
+      cellSize * 1.03,
       x * 67 + y * 43 + 211,
       {
         widthSegments: coarsePointer ? 3 : 5,
@@ -108,7 +108,7 @@ export function createChroniclesCaveWallDressing({
     const topMaterial = material.clone();
     topMaterial.userData.chroniclesIsoOwned = true;
     const top = new THREE.Mesh(topGeometry, topMaterial);
-    top.name = `chronicles-iso-floor-cave-top-${x}-${y}`;
+    top.name = `chronicles-iso-wall-cave-top-${x}-${y}`;
     top.rotation.x = -Math.PI / 2;
     top.rotation.z = (noise(x, y, 113) - 0.5) * 0.04;
     top.position.set(world.x, 2.57, world.z);
