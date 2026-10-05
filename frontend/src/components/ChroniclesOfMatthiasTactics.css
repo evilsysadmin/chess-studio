@@ -993,3 +993,9 @@
     padding: 10px;
   }
 }
+
+
+/* Chronicles owns ESC/contextual input while its runtime is active. */
+body:has([data-chronicles-tactics="true"]) .navigation-back-hint {
+  display: none;
+}
