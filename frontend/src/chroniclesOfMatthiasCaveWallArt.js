@@ -95,6 +95,31 @@ export function createChroniclesCaveWallDressing({
       root.add(faceMesh);
     });
 
+    if (exposedFaces.length > 0) {
+      const crownGeometry = createRockFaceGeometry(
+        cellSize * (1.1 + noise(x, y, 127) * 0.06),
+        cellSize * (1.1 + noise(x, y, 131) * 0.06),
+        x * 79 + y * 101 + 313,
+        {
+          widthSegments: coarsePointer ? 3 : 5,
+          heightSegments: coarsePointer ? 3 : 5,
+          depth: coarsePointer ? 0.045 : 0.075,
+        },
+      );
+      const crown = new THREE.Mesh(crownGeometry, material);
+      crown.name = `chronicles-iso-cave-crown-${x}-${y}`;
+      crown.rotation.x = -Math.PI / 2;
+      crown.rotation.z = (noise(x, y, 137) - 0.5) * 0.08;
+      crown.position.set(
+        world.x + (noise(x, y, 139) - 0.5) * cellSize * 0.035,
+        2.58 + (noise(x, y, 149) - 0.5) * 0.045,
+        world.z + (noise(x, y, 151) - 0.5) * cellSize * 0.035,
+      );
+      crown.castShadow = !coarsePointer;
+      crown.receiveShadow = true;
+      root.add(crown);
+    }
+
     return true;
   }
 
