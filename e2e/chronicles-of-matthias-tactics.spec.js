@@ -141,6 +141,7 @@ test('Chronicles Tactics · arranca como RPG táctico isométrico con combate po
     const passTurn = mode.getByRole('button', { name: 'Pasar turno', exact: true });
     await expect(passTurn).toBeEnabled();
     await passTurn.evaluate((button) => button.click());
+    await expect(mode).not.toHaveAttribute('data-initiative-actor', actorId || '', { timeout: 10_000 });
   }
   await expect(mode).toHaveAttribute('data-initiative-actor', 'rook');
 
