@@ -1,30 +1,22 @@
 extends Node2D
 
+const Presenter3D = preload("res://scripts/football_3d_presenter.gd")
 const TEAM_SIZE := 5
 const ROLES := ["keeper", "defender", "midfielder", "wing", "forward"]
 const TEAM_COLORS := [Color(0.12, 0.42, 0.92), Color(0.86, 0.18, 0.2)]
 
 const CAMERA_MODE_BROADCAST := "broadcast"
 const CAMERA_MODE_TACTICAL := "tactical"
-const BROADCAST_ZOOM := Vector2(1.18, 0.84)
-const TACTICAL_ZOOM := Vector2(0.68, 0.68)
-const BROADCAST_SKEW := deg_to_rad(-7.0)
-const TACTICAL_SKEW := 0.0
-const BROADCAST_CAMERA_SPEED := 3.7
-const TACTICAL_CAMERA_SPEED := 5.0
-const BROADCAST_VIRTUAL_DEPTH_MIN := 0.84
-const BROADCAST_VIRTUAL_DEPTH_MAX := 1.16
 
 var teams: Array[Array] = [[], []]
 var ball: FootballBall
 var controlled: Footballer
 var score := [0, 0]
 var match_seconds: float = 0.0
-var camera: Camera2D
-var pitch_art: FootballPitch
 var camera_mode: String = CAMERA_MODE_BROADCAST
 var last_goal_text: String = ""
 var camera_hint_seconds: float = 4.5
+var presentation_3d: ChessFootball3DPresenter
 
 var score_label: Label
 var help_label: Label
@@ -32,13 +24,11 @@ var view_label: Label
 var goal_label: Label
 
 func _ready() -> void:
-	_spawn_pitch()
 	_spawn_match()
 	_select_player(teams[0][2])
 	ball.attach_to(controlled)
-	_create_camera()
+	_create_3d_presentation()
 	_create_hud()
-	_update_depth_presentation()
 	_refresh_hud()
 
 func _physics_process(delta: float) -> void:
@@ -49,16 +39,13 @@ func _physics_process(delta: float) -> void:
 	ball.tick_ball(delta)
 	_try_claim_loose_ball()
 	_check_goal()
-	_update_depth_presentation()
-	_update_camera(delta)
+	_update_3d_presentation(delta)
 	_refresh_hud()
 
-func _create_camera() -> void:
-	camera = Camera2D.new()
-	camera.zoom = BROADCAST_ZOOM
-	camera.skew = BROADCAST_SKEW
-	add_child(camera)
-	camera.global_position = _broadcast_camera_target()
+func _create_3d_presentation() -> void:
+	presentation_3d = Presenter3D.new()
+	add_child(presentation_3d)
+	presentation_3d.setup(self)
 
 func _create_hud() -> void:
 	var hud := CanvasLayer.new()
@@ -94,7 +81,7 @@ func _create_hud() -> void:
 func _refresh_hud() -> void:
 	score_label.text = "FC Matthias %d - %d Real Enroque" % [score[0], score[1]]
 	help_label.text = "WASD · Shift sprint · Space pase · Enter tiro · Tab cambia · V vista"
-	var view_name := "BROADCAST 2.5D" if camera_mode == CAMERA_MODE_BROADCAST else "TÁCTICA AÉREA"
+	var view_name := "BROADCAST 3D" if camera_mode == CAMERA_MODE_BROADCAST else "TÁCTICA AÉREA"
 	view_label.text = "VISTA · %s" % view_name if camera_hint_seconds > 0.0 else ""
 	goal_label.text = last_goal_text
 
@@ -165,9 +152,9 @@ func _best_pass_target(player: Footballer, input_direction: Vector2) -> Football
 	for teammate in teams[player.team_id]:
 		if teammate == player:
 			continue
-		var delta: Vector2 = teammate.global_position - player.global_position
-		var distance: float = maxf(delta.length(), 1.0)
-		var alignment := wanted.dot(delta / distance)
+		var offset: Vector2 = teammate.global_position - player.global_position
+		var distance: float = maxf(offset.length(), 1.0)
+		var alignment := wanted.dot(offset / distance)
 		var score_value := alignment * 800.0 - distance * 0.35
 		if score_value > best_score:
 			best_score = score_value
@@ -247,61 +234,10 @@ func _reset_kickoff(team_id: int) -> void:
 func _toggle_camera_mode() -> void:
 	camera_mode = CAMERA_MODE_TACTICAL if camera_mode == CAMERA_MODE_BROADCAST else CAMERA_MODE_BROADCAST
 	camera_hint_seconds = 4.5
-	_update_depth_presentation()
 
-func _update_camera(delta: float) -> void:
-	var wanted_zoom := BROADCAST_ZOOM
-	var wanted_skew := BROADCAST_SKEW
-	var target := _broadcast_camera_target()
-	var speed := BROADCAST_CAMERA_SPEED
-	if camera_mode == CAMERA_MODE_TACTICAL:
-		wanted_zoom = TACTICAL_ZOOM
-		wanted_skew = TACTICAL_SKEW
-		target = ChessFootballMath.PITCH_RECT.get_center()
-		speed = TACTICAL_CAMERA_SPEED
-	var presentation_lerp := clampf(delta * 4.2, 0.0, 1.0)
-	camera.zoom = camera.zoom.lerp(wanted_zoom, presentation_lerp)
-	camera.skew = lerpf(camera.skew, wanted_skew, presentation_lerp)
-	camera.global_position = camera.global_position.lerp(target, clampf(delta * speed, 0.0, 1.0))
-
-func _broadcast_camera_target() -> Vector2:
-	var target_x := ball.global_position.x
-	target_x += clampf(ball.velocity.x * 0.28, -190.0, 190.0)
-	if ball.carrier != null:
-		target_x += 120.0 if ball.carrier.team_id == 0 else -120.0
-	target_x = _clamp_camera_x(target_x, BROADCAST_ZOOM.x)
-	return Vector2(target_x, ChessFootballMath.PITCH_RECT.get_center().y)
-
-func _clamp_camera_x(target_x: float, zoom_x: float) -> float:
-	var pitch := ChessFootballMath.PITCH_RECT
-	var viewport_width := get_viewport_rect().size.x
-	var half_world_width := viewport_width * 0.5 / maxf(zoom_x, 0.01)
-	if half_world_width * 2.0 >= pitch.size.x:
-		return pitch.get_center().x
-	return clampf(target_x, pitch.position.x + half_world_width, pitch.end.x - half_world_width)
-
-func _update_depth_presentation() -> void:
-	var pitch := ChessFootballMath.PITCH_RECT
-	for team in teams:
-		for player in team:
-			player.z_index = int(player.global_position.y)
-			if camera_mode == CAMERA_MODE_TACTICAL:
-				player.scale = Vector2.ONE
-				continue
-			var depth := clampf((player.global_position.y - pitch.position.y) / pitch.size.y, 0.0, 1.0)
-			var size := lerpf(BROADCAST_VIRTUAL_DEPTH_MIN, BROADCAST_VIRTUAL_DEPTH_MAX, depth)
-			player.scale = Vector2(size, size * BROADCAST_ZOOM.x / BROADCAST_ZOOM.y)
-	ball.z_index = int(ball.global_position.y) + 1
-	if camera_mode == CAMERA_MODE_TACTICAL:
-		ball.scale = Vector2.ONE
-	else:
-		var ball_depth := clampf((ball.global_position.y - pitch.position.y) / pitch.size.y, 0.0, 1.0)
-		var ball_size := lerpf(BROADCAST_VIRTUAL_DEPTH_MIN, BROADCAST_VIRTUAL_DEPTH_MAX, ball_depth)
-		ball.scale = Vector2(ball_size, ball_size * BROADCAST_ZOOM.x / BROADCAST_ZOOM.y)
-
-func _spawn_pitch() -> void:
-	pitch_art = FootballPitch.new()
-	add_child(pitch_art)
+func _update_3d_presentation(delta: float) -> void:
+	if presentation_3d != null:
+		presentation_3d.sync_presentation(delta, camera_mode)
 
 func _spawn_match() -> void:
 	var left_x := [150.0, 420.0, 660.0, 760.0, 960.0]
@@ -315,10 +251,12 @@ func _spawn_match() -> void:
 			var player := Footballer.new()
 			add_child(player)
 			player.configure(team_id, index, ROLES[index], position, TEAM_COLORS[team_id])
+			player.visible = false
 			teams[team_id].append(player)
 	ball = FootballBall.new()
 	ball.global_position = ChessFootballMath.PITCH_RECT.get_center()
 	add_child(ball)
+	ball.visible = false
 
 func debug_team_counts() -> Array[int]:
 	return [teams[0].size(), teams[1].size()]
@@ -327,7 +265,7 @@ func debug_ball_exists() -> bool:
 	return is_instance_valid(ball)
 
 func debug_pitch_exists() -> bool:
-	return is_instance_valid(pitch_art)
+	return presentation_3d != null
 
 func debug_camera_mode() -> String:
 	return camera_mode
@@ -335,3 +273,8 @@ func debug_camera_mode() -> String:
 func debug_toggle_camera_mode() -> void:
 	_toggle_camera_mode()
 
+func debug_3d_ready() -> bool:
+	return presentation_3d != null and presentation_3d.debug_camera_is_3d()
+
+func debug_3d_animated_players() -> int:
+	return presentation_3d.debug_animated_players() if presentation_3d != null else 0
