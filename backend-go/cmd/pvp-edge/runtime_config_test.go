@@ -70,3 +70,17 @@ func TestPythonUpstreamDefault(t *testing.T) {
 		t.Fatalf("pythonUpstream()=%q", got)
 	}
 }
+
+func TestPythonFlagReadsLikeMainPy(t *testing.T) {
+	t.Setenv("CHESS_FLAG_PROBE", " YES ")
+	if !pythonFlag("CHESS_FLAG_PROBE", "false") {
+		t.Fatal("YES is true")
+	}
+	t.Setenv("CHESS_FLAG_PROBE", "maybe")
+	if pythonFlag("CHESS_FLAG_PROBE", "true") {
+		t.Fatal("garbage is false, whatever the default")
+	}
+	if !pythonFlag("CHESS_FLAG_UNSET_PROBE", "true") || pythonFlag("CHESS_FLAG_UNSET_PROBE", "false") {
+		t.Fatal("unset takes the default")
+	}
+}
