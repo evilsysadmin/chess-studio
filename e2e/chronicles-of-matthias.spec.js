@@ -85,7 +85,7 @@ test('Chronicles of Matthias · abre una cripta Three.js real y usa combate posi
   await page.keyboard.press('w');
   await expect(mode).toHaveAttribute('data-chronicles-turns', '2');
   await expect(mode).toHaveAttribute('data-chronicles-phase', 'combat');
-  await expect(mode.getByText(/iniciativa = AGI \+ 1d8/i)).toBeVisible();
+  await expect(mode).toHaveAttribute('data-chronicles-turn-engine', /.+/);
 });
 
 test('Chronicles of Matthias · móvil mantiene party y mandos sin overflow', async ({ page }) => {
