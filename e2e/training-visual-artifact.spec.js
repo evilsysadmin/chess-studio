@@ -223,6 +223,12 @@ scopedTest('school', 'Entrenar · Escuela, Glosario y Modos especiales', async (
     }
   }
   await expect(shell).toBeVisible();
+  // The bootstrap reload may rehydrate profile storage. Seed the unrelated
+  // global War Room preference only after School is mounted, then prove the
+  // classroom never mutates it while its own renderer stays canonical.
+  await page.evaluate(() => {
+    localStorage.setItem('chess-study-war-room-variant-v1', 'v2');
+  });
   await expect(shell.locator('.matthias-school-stage')).toBeVisible();
   const retroDock = page.locator('.global-music-dock');
   const retroDeck = retroDock.locator('.music-deck');
