@@ -1,5 +1,9 @@
 import { resolveChroniclesEnemyBuildDefinition } from './chroniclesEnemyBuilds.js';
 import { chroniclesRuntimeEnemyPosition } from '../chroniclesOfMatthiasTurns.js';
+import {
+  chroniclesCollapsePartyAfterCombat,
+  chroniclesDeployPartyForCombat,
+} from '../chroniclesPartyFootprint.js';
 
 export const CHRONICLES_INITIATIVE_VERSION = 1;
 export const CHRONICLES_INITIATIVE_DIE_SIDES = 8;
@@ -150,10 +154,11 @@ export function chroniclesStartInitiativeCombat(state, enemies, options = {}) {
   });
   const engaged = [...engagedById.values()];
   if (!engaged.length) return state;
-  const initiative = chroniclesRollInitiative(state, engaged, options);
+  const deployedState = chroniclesDeployPartyForCombat(state);
+  const initiative = chroniclesRollInitiative(deployedState, engaged, options);
   if (!initiative.order.length) return state;
   return {
-    ...state,
+    ...deployedState,
     phase: 'combat',
     initiative,
     message: `Combate por turnos · iniciativa = AGI + 1d8: ${initiative.order.map((actor) => `${actor.name} ${actor.initiative}`).join(' · ')}.`,
@@ -166,8 +171,9 @@ export function chroniclesAdvanceCombatInitiative(state, enemies) {
   const livingOrder = state.initiative.order.filter((actor) => actorIsAlive(state, enemyById, actor));
   const enemiesRemain = livingOrder.some((actor) => actor.kind === 'enemy');
   if (!enemiesRemain) {
+    const collapsed = chroniclesCollapsePartyAfterCombat(state);
     return {
-      ...state,
+      ...collapsed,
       phase: state.phase === 'defeated' ? 'defeated' : 'explore',
       turnPhase: 'party',
       initiative: null,
