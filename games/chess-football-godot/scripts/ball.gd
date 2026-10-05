@@ -3,7 +3,9 @@ extends CharacterBody2D
 
 var carrier: Footballer = null
 var friction: float = 0.965
-var max_speed: float = 920.0
+var fast_ball_friction: float = 0.982
+var max_speed: float = 1260.0
+const FAST_BALL_THRESHOLD := 650.0
 var spin_direction: float = 1.0
 var reclaim_block_player: Footballer = null
 var reclaim_block_seconds: float = 0.0
@@ -44,7 +46,8 @@ func tick_ball(delta: float) -> void:
 		return
 	move_and_slide()
 	rotation += velocity.length() * delta * 0.012 * spin_direction
-	velocity *= pow(friction, delta * 60.0)
+	var active_friction := fast_ball_friction if velocity.length() >= FAST_BALL_THRESHOLD else friction
+	velocity *= pow(active_friction, delta * 60.0)
 	if velocity.length() < 4.0:
 		velocity = Vector2.ZERO
 
