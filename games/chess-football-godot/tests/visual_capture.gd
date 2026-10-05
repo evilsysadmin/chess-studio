@@ -81,7 +81,7 @@ func _initialize() -> void:
 	if tackler.visual != null and String(tackler.visual.animation) == "tackle":
 		tackler.visual.pause()
 		tackler.visual.frame = 4
-	match_node.ball.tick_ball(0.08)
+	match_node.ball.tick_ball(0.12)
 	assert(match_node.ball.carrier == null)
 	assert(match_node.ball.global_position.distance_to(tackler.global_position) > 22.0)
 	match_node.debug_sync_presentation()
