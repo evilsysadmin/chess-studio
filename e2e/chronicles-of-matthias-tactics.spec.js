@@ -126,10 +126,11 @@ test('Chronicles Tactics · arranca como RPG táctico isométrico con combate po
   await expect(mode).toHaveAttribute('data-party-x', releasedCell.x);
   await expect(mode).toHaveAttribute('data-party-y', releasedCell.y);
 
-  // Reset to the last semantic checkpoint before validating the deterministic
-  // exploration -> contact path. Ordinary walking intentionally is not checkpointed
-  // cell-by-cell, so reload returns to the canonical spawn.
-  await page.reload();
+  // Re-enter Tactics from Home so the combat proof starts from the last
+  // semantic checkpoint. The Tactics view itself is intentionally ephemeral,
+  // so a raw browser reload returns to Home rather than restoring the mode.
+  await page.goto('/');
+  await openTactics(page);
   await expect(mode).toBeVisible();
   await expect(mode.locator('[data-chronicles-tactics-renderer="three"] canvas')).toHaveCount(1, { timeout: 30_000 });
   await expect(mode).toHaveAttribute('data-engagement', 'exploration');
