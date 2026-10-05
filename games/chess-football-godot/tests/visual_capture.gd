@@ -108,6 +108,34 @@ func _initialize() -> void:
 	match_node.debug_refresh_hud()
 	match_node.debug_sync_presentation()
 	await _save_capture(match_node, "restart", "VISUAL_CAPTURE_RESTART")
+	match_node.debug_force_kickoff_ready()
+
+	# Review real out-of-play restarts instead of letting the ball disappear
+	# beyond the pitch forever.
+	match_node.ball.attach_to(match_node.teams[0][3])
+	match_node.ball.release(Vector2.UP, 420.0)
+	match_node.ball.global_position = Vector2(
+		ChessFootballMath.PITCH_RECT.get_center().x + 210.0,
+		ChessFootballMath.PITCH_RECT.position.y - 24.0
+	)
+	match_node.debug_check_ball_out()
+	assert(match_node.debug_set_piece_kind() == "SAQUE DE BANDA")
+	match_node.debug_refresh_hud()
+	match_node.debug_sync_presentation()
+	await _save_capture(match_node, "throw-in", "VISUAL_CAPTURE_THROW_IN")
+	match_node.debug_force_set_piece_ready()
+
+	match_node.ball.attach_to(match_node.teams[1][1])
+	match_node.ball.release(Vector2.RIGHT, 520.0)
+	match_node.ball.global_position = Vector2(
+		ChessFootballMath.PITCH_RECT.end.x + 24.0,
+		ChessFootballMath.PITCH_RECT.position.y + 44.0
+	)
+	match_node.debug_check_ball_out()
+	assert(match_node.debug_set_piece_kind() == "CÓRNER")
+	match_node.debug_refresh_hud()
+	match_node.debug_sync_presentation()
+	await _save_capture(match_node, "corner", "VISUAL_CAPTURE_CORNER")
 
 	match_node.debug_toggle_pause_menu()
 	for _frame in range(4):
