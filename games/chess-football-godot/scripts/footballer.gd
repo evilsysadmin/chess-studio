@@ -13,6 +13,8 @@ var team_color: Color = Color(0.2, 0.45, 0.95)
 
 var visual: AnimatedSprite2D
 var action_lock_seconds: float = 0.0
+var tackle_cooldown_seconds: float = 0.0
+var tackle_recovery_seconds: float = 0.0
 var last_sprinting: bool = false
 
 func configure(p_team_id: int, p_index: int, p_role: String, p_position: Vector2, p_color: Color) -> void:
@@ -40,6 +42,8 @@ func _configure_visual() -> void:
 	visual.play("idle")
 
 func _process(delta: float) -> void:
+	tackle_cooldown_seconds = maxf(0.0, tackle_cooldown_seconds - delta)
+	tackle_recovery_seconds = maxf(0.0, tackle_recovery_seconds - delta)
 	if action_lock_seconds <= 0.0:
 		return
 	action_lock_seconds = maxf(0.0, action_lock_seconds - delta)
@@ -53,6 +57,8 @@ func set_active(value: bool) -> void:
 func move_human(direction: Vector2, sprinting: bool) -> void:
 	last_sprinting = sprinting
 	var speed := base_speed * (1.34 if sprinting else 1.0)
+	if tackle_recovery_seconds > 0.0:
+		speed *= 0.42
 	velocity = direction.normalized() * speed if direction.length_squared() > 0.001 else Vector2.ZERO
 	move_and_slide()
 	global_position = ChessFootballMath.clamp_to_pitch(global_position)
@@ -67,7 +73,8 @@ func move_ai(_delta: float, target: Vector2, intensity: float = 1.0) -> void:
 		velocity = Vector2.ZERO
 		_sync_locomotion(false)
 		return
-	velocity = offset.normalized() * base_speed * clampf(intensity, 0.35, 1.0)
+	var recovery_scale := 0.42 if tackle_recovery_seconds > 0.0 else 1.0
+	velocity = offset.normalized() * base_speed * clampf(intensity, 0.35, 1.0) * recovery_scale
 	move_and_slide()
 	global_position = ChessFootballMath.clamp_to_pitch(global_position)
 	_sync_facing()
@@ -78,6 +85,18 @@ func play_action(animation_name: String, duration: float = 0.78) -> void:
 		return
 	action_lock_seconds = maxf(duration, 0.05)
 	visual.play(animation_name)
+
+func can_tackle() -> bool:
+	return not has_ball and tackle_cooldown_seconds <= 0.0 and action_lock_seconds <= 0.0
+
+func start_tackle() -> bool:
+	if not can_tackle():
+		return false
+	tackle_cooldown_seconds = 1.10
+	tackle_recovery_seconds = 0.38
+	velocity *= 0.35
+	play_action("tackle", 0.50)
+	return true
 
 func ball_anchor() -> Vector2:
 	var facing := -1.0 if visual != null and visual.flip_h else 1.0
@@ -102,6 +121,9 @@ func debug_visual_ready() -> bool:
 
 func debug_animation_names() -> PackedStringArray:
 	return ChessFootballSpriteBank.animation_names()
+
+func debug_tackle_ready() -> bool:
+	return can_tackle()
 
 func _draw() -> void:
 	if active:

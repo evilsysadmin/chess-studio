@@ -18,6 +18,20 @@ func _initialize() -> void:
 	assert(match_node.controlled.debug_animation_names().size() == 7)
 	assert(match_node.controlled.debug_animation_names().has("shoot"))
 	assert(match_node.ball.carrier == match_node.controlled)
+	assert(InputMap.has_action("tackle"))
+
+	var tackler: Footballer = match_node.controlled
+	var victim: Footballer = match_node.teams[1][2]
+	tackler.global_position = Vector2(640.0, 500.0)
+	victim.global_position = Vector2(668.0, 500.0)
+	tackler.velocity = Vector2.RIGHT * tackler.base_speed
+	match_node.ball.attach_to(victim)
+	assert(match_node.debug_try_tackle(tackler))
+	assert(match_node.ball.carrier == tackler)
+	assert(not victim.has_ball)
+	assert(not tackler.debug_tackle_ready())
+	assert(String(tackler.visual.animation) == "tackle")
+
 	assert(match_node.debug_camera_mode() == "broadcast")
 	match_node.debug_toggle_camera_mode()
 	assert(match_node.debug_camera_mode() == "tactical")
