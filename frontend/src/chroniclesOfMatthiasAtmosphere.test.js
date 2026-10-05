@@ -77,7 +77,11 @@ describe('Chronicles of Matthias dungeon atmosphere', () => {
     const camera = new THREE.PerspectiveCamera(67, 1, 0.08, 70);
     camera.position.set(-8, 1.62, 8);
     camera.rotation.y = -Math.PI / 2;
-    const atmosphere = buildChroniclesDungeonAtmosphere();
+    const scenePlan = {
+      ...chroniclesIsometricScenePlan(chroniclesMapById('crypt-eight-squares')),
+      useAuthoredCryptDressing: true,
+    };
+    const atmosphere = buildChroniclesDungeonAtmosphere({ scenePlan });
     scene.add(camera, atmosphere);
 
     const key = atmosphere.getObjectByName('chronicles-party-torch-key');
@@ -104,6 +108,28 @@ describe('Chronicles of Matthias dungeon atmosphere', () => {
     atmosphere.userData.updateChroniclesAtmosphere(2.1);
     expect(key.position.distanceTo(before)).toBeGreaterThan(3.5);
     expect(key.position.distanceTo(camera.position)).toBeLessThan(1.2);
+  });
+
+  it('makes the carried torch the primary local light on alternate maps', () => {
+    const galleryPlan = {
+      ...chroniclesIsometricScenePlan(chroniclesMapById('gallery-of-forks')),
+      useAuthoredCryptDressing: false,
+    };
+    const authoredPlan = {
+      ...chroniclesIsometricScenePlan(chroniclesMapById('crypt-eight-squares')),
+      useAuthoredCryptDressing: true,
+    };
+    const gallery = buildChroniclesDungeonAtmosphere({ scenePlan: galleryPlan });
+    const authored = buildChroniclesDungeonAtmosphere({ scenePlan: authoredPlan });
+    const galleryKey = gallery.getObjectByName('chronicles-party-torch-key');
+    const galleryBounce = gallery.getObjectByName('chronicles-party-torch-bounce');
+    const authoredKey = authored.getObjectByName('chronicles-party-torch-key');
+    const authoredBounce = authored.getObjectByName('chronicles-party-torch-bounce');
+
+    expect(galleryKey.intensity).toBeGreaterThan(authoredKey.intensity * 2.5);
+    expect(galleryBounce.intensity).toBeGreaterThan(authoredBounce.intensity * 2.3);
+    expect(galleryKey.distance).toBeLessThan(authoredKey.distance);
+    expect(galleryBounce.distance).toBeLessThan(authoredBounce.distance);
   });
 
   it('keeps the carried torch attached when reduced motion disables flicker', () => {
