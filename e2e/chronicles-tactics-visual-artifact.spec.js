@@ -153,6 +153,7 @@ for (const capture of CAPTURES) {
         height: capture.hasTouch ? 900 : capture.height,
       },
       hasTouch: capture.hasTouch,
+      reducedMotion: 'no-preference',
     });
     const page = await context.newPage();
     try {
