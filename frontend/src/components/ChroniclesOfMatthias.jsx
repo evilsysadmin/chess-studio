@@ -503,6 +503,10 @@ export default function ChroniclesOfMatthias({ onExit }) {
   return (
     <div
       className="chronicles"
+      onContextMenu={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+      }}
       data-chronicles="true"
       data-chronicles-map-id={state.mapId}
       data-chronicles-turns={state.turns}
@@ -567,7 +571,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
               <div className="chronicles-game-menu__panel">
                 <strong>Chronicles of Matthias</strong>
                 <small>La expedición queda guardada.</small>
-                <button type="button" onClick={exitChronicles}>Salir a Experimentos</button>
+                <button type="button" onClick={exitChronicles}>Salir</button>
               </div>
             </details>
           </div>
