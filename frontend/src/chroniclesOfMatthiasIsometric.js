@@ -292,7 +292,7 @@ function buildIsoDungeon({
     { castShadow: false, receiveShadow: true },
   );
 
-  const tileGeometry = new THREE.BoxGeometry(CELL * 0.982, 0.17, CELL * 0.982);
+  const tileGeometry = new THREE.BoxGeometry(CELL * 0.994, 0.17, CELL * 0.994);
   const wallGeometry = new THREE.BoxGeometry(CELL, 2.65, CELL);
   const wallCapGeometry = new THREE.BoxGeometry(CELL * 0.96, 0.12, CELL * 0.96);
 
