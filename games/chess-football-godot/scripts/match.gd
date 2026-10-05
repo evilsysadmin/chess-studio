@@ -1192,6 +1192,9 @@ func debug_audio_stream_names() -> Array[String]:
 func debug_3d_animated_players() -> int:
 	return presentation_3d.debug_animated_players() if presentation_3d != null else 0
 
+func debug_3d_ball_height() -> float:
+	return presentation_3d.debug_ball_render_height() if presentation_3d != null else -1.0
+
 func debug_sync_presentation() -> void:
 	_update_3d_presentation(0.0)
 
