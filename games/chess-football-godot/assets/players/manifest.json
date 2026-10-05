@@ -54,12 +54,22 @@
     "fc_matthias": {
       "file": "fc_matthias_atlas.svg",
       "name": "FC Matthias",
-      "sha256": "0fb1c135f055b935cb454d43edc39f0620e31eeff96e1eac0625c90e248ea174"
+      "sha256": "3fbf55ba35ba25d22d356d16b0343860a4e3eb362afb6b72e9b3ddf9c02fcfe8"
+    },
+    "fc_matthias_keeper": {
+      "file": "fc_matthias_keeper_atlas.svg",
+      "name": "FC Matthias \u00b7 Portero",
+      "sha256": "2f15185a5a803f0fe99405b28e65f4a25e727ecf6c7a6bdd228818ff0ef62ec3"
     },
     "real_enroque": {
       "file": "real_enroque_atlas.svg",
       "name": "Real Enroque",
-      "sha256": "013467286d7375648187da54254a252b1b424344d1759385c078efd0359f8be4"
+      "sha256": "b52bc69e91c88a6012d4354e77a6b3a38ffcc384427baf9d1fb08ee6a0664b8c"
+    },
+    "real_enroque_keeper": {
+      "file": "real_enroque_keeper_atlas.svg",
+      "name": "Real Enroque \u00b7 Portero",
+      "sha256": "5cad6155f25877b44eb7ade8afbf97d3ba1794675e360ea1d3df3fb38443e78b"
     }
   },
   "cell": {
@@ -69,7 +79,7 @@
   "columns": 8,
   "display_scale": 0.72,
   "footline": 126,
-  "quality_contract": "chess-football-vector-v1",
+  "quality_contract": "chess-football-vector-v2",
   "rows": 7,
-  "version": 1
+  "version": 2
 }

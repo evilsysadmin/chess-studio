@@ -23,8 +23,12 @@ ANIMATIONS = (
     ("celebrate", 10.0, True),
 )
 TEAMS = {
-    "fc_matthias": {"name": "FC Matthias", "torso": "#1d54b0", "torso_dark": "#0e2d69", "head": "#e5dcc0"},
-    "real_enroque": {"name": "Real Enroque", "torso": "#a02630", "torso_dark": "#55111d", "head": "#443e3e"},
+    "fc_matthias": {"name": "FC Matthias", "torso": "#245fc2", "torso_dark": "#102f70", "torso_light": "#4f82df", "head": "#e7dec4"},
+    "real_enroque": {"name": "Real Enroque", "torso": "#ad2936", "torso_dark": "#5a121e", "torso_light": "#d1505b", "head": "#4a4343"},
+}
+KEEPERS = {
+    "fc_matthias_keeper": {"name": "FC Matthias · Portero", "torso": "#16856d", "torso_dark": "#0a493d", "torso_light": "#41b89a", "head": "#e7dec4"},
+    "real_enroque_keeper": {"name": "Real Enroque · Portero", "torso": "#ce861f", "torso_dark": "#70420c", "torso_light": "#efb64f", "head": "#4a4343"},
 }
 GOLD = "#d4aa4c"
 IVORY = "#ece6cf"
@@ -74,7 +78,7 @@ def _pose(animation: str, frame: int) -> dict[str, float]:
     return pose
 
 
-def _frame_svg(team: dict[str, str], animation: str, frame: int, offset_x: int, offset_y: int) -> str:
+def _frame_svg(team: dict[str, str], animation: str, frame: int, offset_x: int, offset_y: int, keeper: bool = False) -> str:
     p = _pose(animation, frame)
     bob = p["bob"]
     lean = p["lean"]
@@ -89,20 +93,30 @@ def _frame_svg(team: dict[str, str], animation: str, frame: int, offset_x: int, 
         return f"{offset_x + x:.2f},{offset_y + y:.2f}"
 
     out: list[str] = []
-    out.append(f'<ellipse cx="{offset_x + cx:.2f}" cy="{offset_y + foot:.2f}" rx="25" ry="3" fill="#000" opacity=".22"/>')
+    out.append(f'<ellipse cx="{offset_x + cx:.2f}" cy="{offset_y + foot:.2f}" rx="25" ry="3.4" fill="#000" opacity=".24"/>')
     for hip_x, foot_x in ((cx - 10.0, cx - 12.0 + p["leg_l"]), (cx + 10.0, cx + 12.0 + p["leg_r"])):
-        out.append(f'<line x1="{offset_x + hip_x:.2f}" y1="{offset_y + hip_y:.2f}" x2="{offset_x + foot_x:.2f}" y2="{offset_y + foot - 5.0:.2f}" stroke="{OUTLINE}" stroke-width="7" stroke-linecap="round"/>')
-        out.append(f'<line x1="{offset_x + hip_x:.2f}" y1="{offset_y + hip_y:.2f}" x2="{offset_x + foot_x:.2f}" y2="{offset_y + foot - 5.0:.2f}" stroke="{IVORY}" stroke-width="5" stroke-linecap="round"/>')
-        out.append(f'<rect x="{offset_x + foot_x - 7.0:.2f}" y="{offset_y + foot - 7.0:.2f}" width="15" height="8" rx="3" fill="{BOOT}" stroke="{GOLD}" stroke-width="1"/>')
+        knee_x = (hip_x + foot_x) * 0.5
+        knee_y = (hip_y + foot - 5.0) * 0.5
+        out.append(f'<line x1="{offset_x + hip_x:.2f}" y1="{offset_y + hip_y:.2f}" x2="{offset_x + foot_x:.2f}" y2="{offset_y + foot - 5.0:.2f}" stroke="{OUTLINE}" stroke-width="8" stroke-linecap="round"/>')
+        out.append(f'<line x1="{offset_x + hip_x:.2f}" y1="{offset_y + hip_y:.2f}" x2="{offset_x + foot_x:.2f}" y2="{offset_y + foot - 5.0:.2f}" stroke="{IVORY}" stroke-width="5.4" stroke-linecap="round"/>')
+        out.append(f'<line x1="{offset_x + knee_x:.2f}" y1="{offset_y + knee_y + 5.0:.2f}" x2="{offset_x + foot_x:.2f}" y2="{offset_y + foot - 7.0:.2f}" stroke="{team["torso"]}" stroke-width="4.6" stroke-linecap="round"/>')
+        out.append(f'<line x1="{offset_x + knee_x:.2f}" y1="{offset_y + knee_y + 5.0:.2f}" x2="{offset_x + foot_x:.2f}" y2="{offset_y + foot - 7.0:.2f}" stroke="{GOLD}" stroke-width="1.0" stroke-linecap="round" opacity=".9"/>')
+        out.append(f'<rect x="{offset_x + foot_x - 7.5:.2f}" y="{offset_y + foot - 7.5:.2f}" width="16" height="8.5" rx="3" fill="{BOOT}" stroke="{GOLD}" stroke-width="1"/>')
+        out.append(f'<line x1="{offset_x + foot_x - 5.0:.2f}" y1="{offset_y + foot + 0.2:.2f}" x2="{offset_x + foot_x + 6.0:.2f}" y2="{offset_y + foot + 0.2:.2f}" stroke="#050608" stroke-width="1.2"/>')
 
+    hand_fill = "#f5f0df" if keeper else team["head"]
     for side, amount in ((-1.0, p["arm_l"]), (1.0, p["arm_r"])):
         sx = cx + side * 19.0
         sy = shoulder_y
         ex = cx + side * (27.0 + abs(amount) * 0.35) + amount * 0.55
         ey = 82.0 - bob + yoff - amount * 0.65
-        out.append(f'<line x1="{offset_x + sx:.2f}" y1="{offset_y + sy:.2f}" x2="{offset_x + ex:.2f}" y2="{offset_y + ey:.2f}" stroke="{OUTLINE}" stroke-width="8" stroke-linecap="round"/>')
-        out.append(f'<line x1="{offset_x + sx:.2f}" y1="{offset_y + sy:.2f}" x2="{offset_x + ex:.2f}" y2="{offset_y + ey:.2f}" stroke="{IVORY}" stroke-width="5" stroke-linecap="round"/>')
-        out.append(f'<circle cx="{offset_x + ex:.2f}" cy="{offset_y + ey:.2f}" r="4" fill="{team["head"]}" stroke="{OUTLINE}" stroke-width="1"/>')
+        elbow_x = sx + (ex - sx) * 0.48
+        elbow_y = sy + (ey - sy) * 0.48
+        out.append(f'<line x1="{offset_x + sx:.2f}" y1="{offset_y + sy:.2f}" x2="{offset_x + elbow_x:.2f}" y2="{offset_y + elbow_y:.2f}" stroke="{OUTLINE}" stroke-width="9" stroke-linecap="round"/>')
+        out.append(f'<line x1="{offset_x + sx:.2f}" y1="{offset_y + sy:.2f}" x2="{offset_x + elbow_x:.2f}" y2="{offset_y + elbow_y:.2f}" stroke="{team["torso_light"]}" stroke-width="6" stroke-linecap="round"/>')
+        out.append(f'<line x1="{offset_x + elbow_x:.2f}" y1="{offset_y + elbow_y:.2f}" x2="{offset_x + ex:.2f}" y2="{offset_y + ey:.2f}" stroke="{OUTLINE}" stroke-width="8" stroke-linecap="round"/>')
+        out.append(f'<line x1="{offset_x + elbow_x:.2f}" y1="{offset_y + elbow_y:.2f}" x2="{offset_x + ex:.2f}" y2="{offset_y + ey:.2f}" stroke="{IVORY}" stroke-width="5" stroke-linecap="round"/>')
+        out.append(f'<circle cx="{offset_x + ex:.2f}" cy="{offset_y + ey:.2f}" r="{5.2 if keeper else 4.1}" fill="{hand_fill}" stroke="{OUTLINE}" stroke-width="1.2"/>')
 
     body = (
         (cx - 24.0, 67.0 - bob + yoff),
@@ -113,26 +127,31 @@ def _frame_svg(team: dict[str, str], animation: str, frame: int, offset_x: int, 
         (cx + 24.0, 67.0 - bob + yoff),
     )
     out.append(f'<polygon points="{" ".join(point(x, y) for x, y in body)}" fill="{team["torso"]}" stroke="{OUTLINE}" stroke-width="2" stroke-linejoin="round"/>')
+    out.append(f'<polygon points="{point(cx + 5.0, 69.0 - bob + yoff)} {point(cx + 24.0, 69.0 - bob + yoff)} {point(cx + 29.0, 95.0 - bob + yoff)} {point(cx + 18.0, 106.0 - bob + yoff)}" fill="{team["torso_dark"]}" opacity=".44"/>')
+    out.append(f'<line x1="{offset_x + cx - 18.0:.2f}" y1="{offset_y + 71.0 - bob + yoff:.2f}" x2="{offset_x + cx - 8.0:.2f}" y2="{offset_y + 103.0 - bob + yoff:.2f}" stroke="{team["torso_light"]}" stroke-width="2.2" opacity=".78"/>')
     lower = (
         (cx - 27.0, 92.0 - bob + yoff),
         (cx + 27.0, 92.0 - bob + yoff),
         (cx + 21.0, 109.0 - bob + yoff),
         (cx - 21.0, 109.0 - bob + yoff),
     )
-    out.append(f'<polygon points="{" ".join(point(x, y) for x, y in lower)}" fill="{team["torso_dark"]}" opacity=".94"/>')
-    out.append(f'<line x1="{offset_x + cx - 20.0:.2f}" y1="{offset_y + 75.0 - bob + yoff:.2f}" x2="{offset_x + cx + 18.0:.2f}" y2="{offset_y + 102.0 - bob + yoff:.2f}" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>')
+    out.append(f'<polygon points="{" ".join(point(x, y) for x, y in lower)}" fill="{team["torso_dark"]}" opacity=".98"/>')
+    out.append(f'<line x1="{offset_x + cx - 19.0:.2f}" y1="{offset_y + 96.0 - bob + yoff:.2f}" x2="{offset_x + cx + 19.0:.2f}" y2="{offset_y + 96.0 - bob + yoff:.2f}" stroke="{GOLD}" stroke-width="1.6" opacity=".9"/>')
+    out.append(f'<line x1="{offset_x + cx - 20.0:.2f}" y1="{offset_y + 75.0 - bob + yoff:.2f}" x2="{offset_x + cx + 18.0:.2f}" y2="{offset_y + 102.0 - bob + yoff:.2f}" stroke="#fff" stroke-opacity=".90" stroke-width="5"/>')
+    out.append(f'<line x1="{offset_x + cx - 15.0:.2f}" y1="{offset_y + 69.5 - bob + yoff:.2f}" x2="{offset_x + cx + 15.0:.2f}" y2="{offset_y + 69.5 - bob + yoff:.2f}" stroke="{GOLD}" stroke-width="2" stroke-linecap="round"/>')
     badge_y = 83.0 - bob + yoff
     out.append(f'<polygon points="{point(cx, badge_y - 5.0)} {point(cx + 5.0, badge_y)} {point(cx, badge_y + 5.0)} {point(cx - 5.0, badge_y)}" fill="{GOLD}" stroke="{OUTLINE}" stroke-width=".8"/>')
     out.append(f'<ellipse cx="{offset_x + cx:.2f}" cy="{offset_y + 60.5 - bob + yoff:.2f}" rx="18" ry="7.5" fill="{GOLD}" stroke="{OUTLINE}" stroke-width="2"/>')
     out.append(f'<ellipse cx="{offset_x + cx:.2f}" cy="{offset_y + 59.5 - bob + yoff:.2f}" rx="14" ry="4.5" fill="{team["torso_dark"]}"/>')
     out.append(f'<circle cx="{offset_x + cx:.2f}" cy="{offset_y + head_cy:.2f}" r="17" fill="{team["head"]}" stroke="{OUTLINE}" stroke-width="2"/>')
-    out.append(f'<circle cx="{offset_x + cx - 6.0:.2f}" cy="{offset_y + head_cy - 8.0:.2f}" r="4" fill="#fff" opacity=".34"/>')
-    out.append(f'<line x1="{offset_x + cx + 5.0:.2f}" y1="{offset_y + head_cy + 2.0:.2f}" x2="{offset_x + cx + 11.0:.2f}" y2="{offset_y + head_cy + 2.0:.2f}" stroke="{OUTLINE}" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>')
+    out.append(f'<circle cx="{offset_x + cx - 6.0:.2f}" cy="{offset_y + head_cy - 8.0:.2f}" r="4" fill="#fff" opacity=".32"/>')
+    out.append(f'<ellipse cx="{offset_x + cx + 6.0:.2f}" cy="{offset_y + head_cy - 1.0:.2f}" rx="2.0" ry="2.6" fill="{OUTLINE}" opacity=".92"/>')
+    out.append(f'<line x1="{offset_x + cx + 4.5:.2f}" y1="{offset_y + head_cy + 6.0:.2f}" x2="{offset_x + cx + 10.5:.2f}" y2="{offset_y + head_cy + 5.0:.2f}" stroke="{OUTLINE}" stroke-opacity=".72" stroke-width="1.6" stroke-linecap="round"/>')
     out.append(f'<line x1="{offset_x + cx - 23.0:.2f}" y1="{offset_y + 104.0 - bob + yoff:.2f}" x2="{offset_x + cx + 23.0:.2f}" y2="{offset_y + 104.0 - bob + yoff:.2f}" stroke="{GOLD}" stroke-width="2"/>')
     return "\n".join(out)
 
 
-def _atlas_svg(team: dict[str, str]) -> str:
+def _atlas_svg(team: dict[str, str], keeper: bool = False) -> str:
     rows = len(ANIMATIONS)
     parts = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{CELL_W * COLUMNS}" height="{CELL_H * rows}" viewBox="0 0 {CELL_W * COLUMNS} {CELL_H * rows}">',
@@ -140,7 +159,7 @@ def _atlas_svg(team: dict[str, str]) -> str:
     ]
     for row, (animation, _, _) in enumerate(ANIMATIONS):
         for frame in range(COLUMNS):
-            parts.append(_frame_svg(team, animation, frame, frame * CELL_W, row * CELL_H))
+            parts.append(_frame_svg(team, animation, frame, frame * CELL_W, row * CELL_H, keeper=keeper))
     parts.append("</g></svg>")
     return "\n".join(parts) + "\n"
 
@@ -153,9 +172,14 @@ def build_outputs() -> dict[str, str]:
         svg = _atlas_svg(team)
         outputs[filename] = svg
         atlas_meta[slug] = {"name": team["name"], "file": filename, "sha256": hashlib.sha256(svg.encode("utf-8")).hexdigest()}
+    for slug, team in KEEPERS.items():
+        filename = f"{slug}_atlas.svg"
+        svg = _atlas_svg(team, keeper=True)
+        outputs[filename] = svg
+        atlas_meta[slug] = {"name": team["name"], "file": filename, "sha256": hashlib.sha256(svg.encode("utf-8")).hexdigest()}
     manifest = {
-        "version": 1,
-        "quality_contract": "chess-football-vector-v1",
+        "version": 2,
+        "quality_contract": "chess-football-vector-v2",
         "cell": {"width": CELL_W, "height": CELL_H},
         "columns": COLUMNS,
         "rows": len(ANIMATIONS),

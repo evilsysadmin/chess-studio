@@ -33,7 +33,7 @@ func _configure_visual() -> void:
 	if visual == null:
 		visual = AnimatedSprite2D.new()
 		add_child(visual)
-	visual.sprite_frames = ChessFootballSpriteBank.build_frames(team_id)
+	visual.sprite_frames = ChessFootballSpriteBank.build_frames(team_id, role)
 	visual.centered = true
 	var cell := ChessFootballSpriteBank.cell_size()
 	var visual_scale := ChessFootballSpriteBank.display_scale()
