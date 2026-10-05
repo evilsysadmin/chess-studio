@@ -18,8 +18,8 @@ export function chroniclesExplorationMotion(
   partyFormation,
   deltaSeconds = 1 / 60,
 ) {
-  const moving = partyFormation === 'explore-compact'
-    && partyPosition.distanceToSquared(desiredParty) > 0.0025;
+  const distanceSquared = partyPosition.distanceToSquared(desiredParty);
+  const moving = partyFormation === 'explore-compact' && distanceSquared > 0.03;
   return Object.freeze({
     moving,
     yaw: moving ? facingAngle(partyPosition, desiredParty) : CHRONICLES_ISO_PARTY_FACING,
@@ -68,7 +68,8 @@ export function tickChroniclesExplorationParty(party, {
     deltaSeconds,
   );
   if (host?.dataset) host.dataset.chroniclesPartyMotion = motion.moving ? 'walking' : 'idle';
-  party.root.position.lerp(desiredParty, motion.rootLerp);
+  if (!motion.moving && partyFormation === 'explore-compact') party.root.position.copy(desiredParty);
+  else party.root.position.lerp(desiredParty, motion.rootLerp);
   party.models.forEach((model, id) => {
     if (!model.visible) return;
     const target = model.userData.chroniclesIsoTarget;
