@@ -68,9 +68,10 @@ func _initialize() -> void:
 	match_node.ball.attach_to(victim)
 	assert(match_node.debug_try_tackle(tackler))
 	assert(match_node.ball.carrier == null)
-	for _frame in range(2):
-		await process_frame
 	assert(victim.contact_stun_active())
+	# Freeze the exact impact beat. Advancing gameplay frames lets the tackler's
+	# residual slide close the gap again and makes this visual contract flaky.
+	tackler.velocity = Vector2.ZERO
 	assert(tackler.global_position.distance_to(victim.global_position) > 42.0)
 	match_node.debug_sync_presentation()
 	await _save_capture(match_node, "contact", "VISUAL_CAPTURE_CONTACT")
@@ -84,9 +85,12 @@ func _initialize() -> void:
 	match_node.ball.global_position = ChessFootballMath.goal_center(0) + Vector2(28.0, 0.0)
 	match_node.debug_score_goal(0)
 	assert(match_node.debug_goal_restart_active())
-	# Review the celebration at a readable mid-pose rather than frame zero.
-	for _frame in range(16):
-		await process_frame
+	# Pin a readable mid-pose directly. Visual review must not depend on wall
+	# clock/frame duration or sprite import/render cost.
+	for player in match_node.teams[0]:
+		if player.visual != null and String(player.visual.animation) == "celebrate":
+			player.visual.pause()
+			player.visual.frame = 4
 	assert(match_node.debug_goal_restart_active())
 	match_node.debug_refresh_hud()
 	match_node.debug_sync_presentation()
