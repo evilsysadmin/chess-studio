@@ -203,7 +203,41 @@ func _initialize() -> void:
 	for _frame in range(4):
 		await process_frame
 	await _save_capture(match_node, "menu", "VISUAL_CAPTURE_MENU")
+
+	# Full source atlases are review evidence too: every animation and every
+	# authored frame must remain inspectable instead of trusting one runtime pose.
+	await _save_texture_preview(
+		"res://assets/players/fc_matthias_atlas.svg",
+		"atlas-fc-matthias",
+		"VISUAL_CAPTURE_ATLAS_FC_MATTHIAS",
+	)
+	await _save_texture_preview(
+		"res://assets/players/real_enroque_atlas.svg",
+		"atlas-real-enroque",
+		"VISUAL_CAPTURE_ATLAS_REAL_ENROQUE",
+	)
+	await _save_texture_preview(
+		"res://assets/players/fc_matthias_keeper_atlas.svg",
+		"atlas-fc-matthias-keeper",
+		"VISUAL_CAPTURE_ATLAS_FC_MATTHIAS_KEEPER",
+	)
+	await _save_texture_preview(
+		"res://assets/players/real_enroque_keeper_atlas.svg",
+		"atlas-real-enroque-keeper",
+		"VISUAL_CAPTURE_ATLAS_REAL_ENROQUE_KEEPER",
+	)
 	quit(0)
+
+func _save_texture_preview(source_path: String, filename: String, marker: String) -> void:
+	var texture := load(source_path) as Texture2D
+	assert(texture != null, "No se pudo cargar atlas de Chess Football")
+	var image := texture.get_image()
+	assert(image != null and not image.is_empty(), "Atlas de Chess Football vacío")
+	var path := "user://chess-football-%s.png" % filename
+	var error := image.save_png(path)
+	assert(error == OK, "No se pudo escribir preview de atlas")
+	print("%s=%s" % [marker, ProjectSettings.globalize_path(path)])
+	await process_frame
 
 func _save_capture(match_node: Node, filename: String, marker: String) -> void:
 	await process_frame
