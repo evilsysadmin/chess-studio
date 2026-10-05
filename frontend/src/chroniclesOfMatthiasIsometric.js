@@ -325,7 +325,7 @@ function buildIsoDungeon({
     cap.position.set(world.x, 2.59, world.z);
     cap.castShadow = !coarsePointer;
     cap.receiveShadow = true;
-    root.add(cap);
+    cap.name = `chronicles-iso-wall-cap-${x}-${y}`; root.add(cap);
 
     const trim = new THREE.Mesh(new THREE.BoxGeometry(CELL * 0.98, 0.075, CELL * 1.01), wallTrim);
     trim.position.set(world.x, 0.5 + ((x * 5 + y * 3) % 3) * 0.68, world.z);
