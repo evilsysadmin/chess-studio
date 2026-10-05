@@ -4,12 +4,14 @@ on:
   pull_request:
     paths:
       - games/chess-football-godot/**
+      - scripts/art/chess_football_sprite_forge.py
       - scripts/pawn_slug_godot_bundle.py
       - .github/workflows/chess-football-godot-poc.yml
   push:
     branches: [main]
     paths:
       - games/chess-football-godot/**
+      - scripts/art/chess_football_sprite_forge.py
       - scripts/pawn_slug_godot_bundle.py
       - .github/workflows/chess-football-godot-poc.yml
   workflow_dispatch:
@@ -55,6 +57,8 @@ jobs:
             chmod +x "$godot"
           fi
           "$godot" --version
+      - name: Verify deterministic player art
+        run: python3 -S scripts/art/chess_football_sprite_forge.py verify --assets-dir games/chess-football-godot/assets/players
       - name: Parse project
         shell: bash
         run: |
@@ -142,6 +146,8 @@ jobs:
             chmod +x "$godot"
           fi
           "$godot" --version
+      - name: Verify deterministic player art
+        run: python3 -S scripts/art/chess_football_sprite_forge.py verify --assets-dir games/chess-football-godot/assets/players
       - name: Install pinned Godot Web export templates
         shell: bash
         run: |
