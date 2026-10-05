@@ -41,6 +41,14 @@ const KICKOFF_RECEIVER_INDEX := 3
 const KICKOFF_TEAM_HALF_GAP := 120.0
 const KICKOFF_RIVAL_HALF_GAP := 250.0
 const GOAL_CELEBRATION_SECONDS := 1.35
+const RESTART_FREEZE_SECONDS := 0.95
+const RESTART_OUT_MARGIN := 10.0
+const RESTART_TOUCHLINE_INSET := 28.0
+const RESTART_GOAL_LINE_INSET := 34.0
+const RESTART_THROW_POWER := 500.0
+const RESTART_GOAL_KICK_POWER := 620.0
+const RESTART_CORNER_POWER := 650.0
+const RESTART_CORNER_LIFT := 230.0
 
 const SHOT_CHARGE_SECONDS := 0.90
 const SHOT_MIN_POWER := 430.0
@@ -74,6 +82,12 @@ var kickoff_seconds_remaining: float = 0.0
 var goal_restart_active: bool = false
 var goal_restart_seconds_remaining: float = 0.0
 var pending_restart_team_id: int = 0
+var set_piece_active: bool = false
+var set_piece_seconds_remaining: float = 0.0
+var set_piece_team_id: int = 0
+var set_piece_kind: String = ""
+var set_piece_spot: Vector2 = Vector2.ZERO
+var set_piece_player: Footballer = null
 var shot_charging: bool = false
 var shot_charge_seconds: float = 0.0
 var pending_tackle_player: Footballer = null
@@ -113,6 +127,11 @@ func _physics_process(delta: float) -> void:
 		_update_3d_presentation(delta)
 		_refresh_hud()
 		return
+	if set_piece_active:
+		_update_set_piece(delta)
+		_update_3d_presentation(delta)
+		_refresh_hud()
+		return
 	_handle_human(delta)
 	_update_ai(delta)
 	ball.tick_ball(delta)
@@ -120,6 +139,7 @@ func _physics_process(delta: float) -> void:
 	_update_pending_tackle_claim(delta)
 	_try_claim_loose_ball()
 	_check_goal()
+	_check_ball_out()
 	_update_3d_presentation(delta)
 	_refresh_hud()
 
@@ -739,7 +759,7 @@ func _check_goal() -> void:
 		_score_goal(1)
 
 func _score_goal(team_id: int) -> void:
-	if goal_restart_active or kickoff_active:
+	if goal_restart_active or kickoff_active or set_piece_active:
 		return
 	score[team_id] += 1
 	last_goal_text = "GOAL · FC Matthias" if team_id == 0 else "GOAL · Real Enroque"
@@ -769,6 +789,215 @@ func _update_goal_restart(delta: float) -> void:
 	goal_restart_active = false
 	_prepare_kickoff(pending_restart_team_id, false)
 
+func _team_name(team_id: int) -> String:
+	return "FC Matthias" if team_id == 0 else "Real Enroque"
+
+func _nearest_outfield_player_to_point(team_id: int, point: Vector2) -> Footballer:
+	var best: Footballer = teams[team_id][1]
+	var best_distance := INF
+	for player in teams[team_id]:
+		if player.role == "keeper":
+			continue
+		var distance: float = player.global_position.distance_squared_to(point)
+		if distance < best_distance:
+			best_distance = distance
+			best = player
+	return best
+
+func _restart_receiver(team_id: int, restarter: Footballer, kind: String) -> Footballer:
+	var best: Footballer = null
+	var best_score := INF
+	var target_goal := ChessFootballMath.goal_center(team_id)
+	for teammate in teams[team_id]:
+		if teammate == restarter:
+			continue
+		var score_value: float = teammate.global_position.distance_squared_to(set_piece_spot)
+		if kind == "CÓRNER":
+			score_value = teammate.global_position.distance_squared_to(target_goal)
+		elif kind == "SAQUE DE PUERTA":
+			score_value = teammate.global_position.distance_squared_to(ChessFootballMath.PITCH_RECT.get_center())
+		if score_value < best_score:
+			best_score = score_value
+			best = teammate
+	return best
+
+func _place_restart_player(player: Footballer, position: Vector2) -> void:
+	player.global_position = ChessFootballMath.clamp_to_pitch(position)
+	player.velocity = Vector2.ZERO
+
+func _arrange_set_piece_formation(kind: String) -> void:
+	var pitch := ChessFootballMath.PITCH_RECT
+	var center := pitch.get_center()
+	var direction := 1.0 if set_piece_team_id == 0 else -1.0
+	var opponent_id := 1 - set_piece_team_id
+
+	if kind == "CÓRNER":
+		var target_goal := ChessFootballMath.goal_center(set_piece_team_id)
+		for player in teams[set_piece_team_id]:
+			if player == set_piece_player:
+				continue
+			if player.role == "keeper":
+				_place_restart_player(player, player.home_position)
+				continue
+			var offset_y: float = float([-150.0, -70.0, 70.0, 145.0][clampi(player.squad_index - 1, 0, 3)])
+			var depth: float = float([330.0, 190.0, 120.0, 90.0][clampi(player.squad_index - 1, 0, 3)])
+			_place_restart_player(
+				player,
+				Vector2(target_goal.x - direction * depth, target_goal.y + offset_y)
+			)
+		for defender in teams[opponent_id]:
+			if defender.role == "keeper":
+				_place_restart_player(
+					defender,
+					Vector2(target_goal.x - direction * 72.0, target_goal.y)
+				)
+				continue
+			var mark_y: float = float([-125.0, -45.0, 50.0, 130.0][clampi(defender.squad_index - 1, 0, 3)])
+			var mark_depth: float = float([115.0, 135.0, 150.0, 205.0][clampi(defender.squad_index - 1, 0, 3)])
+			_place_restart_player(
+				defender,
+				Vector2(target_goal.x - direction * mark_depth, target_goal.y + mark_y)
+			)
+		return
+
+	if kind == "SAQUE DE PUERTA":
+		var own_goal := ChessFootballMath.goal_center(opponent_id)
+		for player in teams[set_piece_team_id]:
+			if player == set_piece_player:
+				continue
+			var lane_y: float = float([-190.0, -70.0, 90.0, 190.0][clampi(player.squad_index - 1, 0, 3)])
+			var advance: float = float([250.0, 390.0, 520.0, 650.0][clampi(player.squad_index - 1, 0, 3)])
+			_place_restart_player(
+				player,
+				Vector2(own_goal.x + direction * advance, center.y + lane_y)
+			)
+		for opponent in teams[opponent_id]:
+			if opponent.role == "keeper":
+				_place_restart_player(opponent, opponent.home_position)
+				continue
+			var opponent_y: float = float([-180.0, -60.0, 70.0, 175.0][clampi(opponent.squad_index - 1, 0, 3)])
+			_place_restart_player(
+				opponent,
+				Vector2(center.x + direction * 90.0, center.y + opponent_y)
+			)
+		return
+
+	# Throw-ins keep the broad match shape but create nearby passing options and
+	# a small defending buffer so the restart reads instead of becoming a scrum.
+	var inward_y := 1.0 if set_piece_spot.y < center.y else -1.0
+	var receiver_slots: Array[Vector2] = [
+		Vector2(-120.0 * direction, 115.0 * inward_y),
+		Vector2(115.0 * direction, 145.0 * inward_y),
+		Vector2(250.0 * direction, 80.0 * inward_y),
+	]
+	var receiver_index := 0
+	for player in teams[set_piece_team_id]:
+		if player == set_piece_player or player.role == "keeper":
+			continue
+		var slot: Vector2 = receiver_slots[mini(receiver_index, receiver_slots.size() - 1)]
+		_place_restart_player(player, set_piece_spot + slot)
+		receiver_index += 1
+	for opponent in teams[opponent_id]:
+		if opponent.role == "keeper":
+			continue
+		var offset: Vector2 = opponent.global_position - set_piece_spot
+		if offset.length() < 130.0:
+			var away: Vector2 = offset.normalized() if offset.length_squared() > 0.001 else Vector2(0.0, inward_y)
+			_place_restart_player(opponent, set_piece_spot + away * 130.0)
+
+func _prepare_set_piece(kind: String, team_id: int, spot: Vector2) -> void:
+	_cancel_shot_charge()
+	pending_tackle_player = null
+	pending_tackle_seconds = 0.0
+	set_piece_active = true
+	set_piece_seconds_remaining = RESTART_FREEZE_SECONDS
+	set_piece_team_id = clampi(team_id, 0, 1)
+	set_piece_kind = kind
+	set_piece_spot = ChessFootballMath.clamp_to_pitch(spot)
+
+	for id in range(2):
+		for player in teams[id]:
+			player.velocity = Vector2.ZERO
+
+	if kind == "SAQUE DE PUERTA":
+		set_piece_player = teams[set_piece_team_id][0]
+	else:
+		set_piece_player = _nearest_outfield_player_to_point(set_piece_team_id, set_piece_spot)
+	_arrange_set_piece_formation(kind)
+	set_piece_player.global_position = set_piece_spot - set_piece_player.ball_anchor()
+	set_piece_player.velocity = Vector2.ZERO
+	ball.attach_to(set_piece_player)
+	last_goal_text = "%s · %s" % [kind, _team_name(set_piece_team_id)]
+
+	if set_piece_team_id == 0:
+		_select_player(set_piece_player)
+	else:
+		_select_player(_nearest_player_to_ball(0))
+
+func _update_set_piece(delta: float) -> void:
+	set_piece_seconds_remaining = maxf(0.0, set_piece_seconds_remaining - delta)
+	for id in range(2):
+		for player in teams[id]:
+			player.velocity = Vector2.ZERO
+	if set_piece_seconds_remaining > 0.0:
+		return
+
+	set_piece_active = false
+	last_goal_text = ""
+	if audio_fx != null:
+		audio_fx.play_whistle()
+	var restarter := set_piece_player
+	var receiver := _restart_receiver(set_piece_team_id, restarter, set_piece_kind)
+	var direction := ChessFootballMath.PITCH_RECT.get_center() - restarter.global_position
+	var power := RESTART_THROW_POWER
+	var lift := 0.0
+	if receiver != null:
+		direction = receiver.global_position - restarter.global_position
+	if set_piece_kind == "CÓRNER":
+		power = RESTART_CORNER_POWER
+		lift = RESTART_CORNER_LIFT
+	elif set_piece_kind == "SAQUE DE PUERTA":
+		power = RESTART_GOAL_KICK_POWER
+		lift = 70.0
+	restarter.play_action("pass", 0.66)
+	if audio_fx != null:
+		audio_fx.play_pass()
+	ball.release(direction, power, lift)
+	if set_piece_team_id == 0 and receiver != null:
+		_select_player(receiver)
+	set_piece_player = null
+
+func _check_ball_out() -> void:
+	if goal_restart_active or kickoff_active or set_piece_active or ball.carrier != null:
+		return
+	var pitch := ChessFootballMath.PITCH_RECT
+	var point := ball.global_position
+	var last_touch := ball.last_touch_team_id
+
+	if point.y < pitch.position.y - RESTART_OUT_MARGIN or point.y > pitch.end.y + RESTART_OUT_MARGIN:
+		var restart_team := 1 - last_touch if last_touch in [0, 1] else 0
+		var restart_y := pitch.position.y + RESTART_TOUCHLINE_INSET if point.y < pitch.position.y else pitch.end.y - RESTART_TOUCHLINE_INSET
+		var restart_x := clampf(point.x, pitch.position.x + 90.0, pitch.end.x - 90.0)
+		_prepare_set_piece("SAQUE DE BANDA", restart_team, Vector2(restart_x, restart_y))
+		return
+
+	var beyond_right := point.x > pitch.end.x + RESTART_OUT_MARGIN
+	var beyond_left := point.x < pitch.position.x - RESTART_OUT_MARGIN
+	if not beyond_right and not beyond_left:
+		return
+	if ChessFootballMath.in_goal_mouth(point) and ChessFootballMath.ball_fits_under_crossbar(ball.flight_height):
+		return
+
+	var attacking_team := 0 if beyond_right else 1
+	var defending_team := 1 - attacking_team
+	if last_touch == defending_team:
+		var corner_y := pitch.position.y + RESTART_GOAL_LINE_INSET if point.y < pitch.get_center().y else pitch.end.y - RESTART_GOAL_LINE_INSET
+		var corner_x := pitch.end.x - RESTART_GOAL_LINE_INSET if beyond_right else pitch.position.x + RESTART_GOAL_LINE_INSET
+		_prepare_set_piece("CÓRNER", attacking_team, Vector2(corner_x, corner_y))
+	else:
+		var goal_kick_x := pitch.end.x - 120.0 if beyond_right else pitch.position.x + 120.0
+		_prepare_set_piece("SAQUE DE PUERTA", defending_team, Vector2(goal_kick_x, pitch.get_center().y))
+
 func _kickoff_position(team_id: int, player: Footballer) -> Vector2:
 	var center := ChessFootballMath.PITCH_RECT.get_center()
 	var side := -1.0 if team_id == 0 else 1.0
@@ -792,6 +1021,8 @@ func _prepare_kickoff(team_id: int, is_initial: bool) -> void:
 	pending_tackle_seconds = 0.0
 	goal_restart_active = false
 	goal_restart_seconds_remaining = 0.0
+	set_piece_active = false
+	set_piece_player = null
 	kickoff_team_id = clampi(team_id, 0, 1)
 	kickoff_active = true
 	kickoff_seconds_remaining = KICKOFF_FREEZE_SECONDS
@@ -923,6 +1154,25 @@ func debug_kickoff_active() -> bool:
 
 func debug_goal_restart_active() -> bool:
 	return goal_restart_active
+
+func debug_set_piece_active() -> bool:
+	return set_piece_active
+
+func debug_set_piece_kind() -> String:
+	return set_piece_kind
+
+func debug_set_piece_team() -> int:
+	return set_piece_team_id
+
+func debug_check_ball_out() -> void:
+	_check_ball_out()
+
+func debug_force_set_piece_ready() -> void:
+	if set_piece_active:
+		for team in teams:
+			for player in team:
+				player._process(RESTART_FREEZE_SECONDS)
+		_update_set_piece(RESTART_FREEZE_SECONDS)
 
 func debug_force_goal_restart_ready() -> void:
 	if goal_restart_active:

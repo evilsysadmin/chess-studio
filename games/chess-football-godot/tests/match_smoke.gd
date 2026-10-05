@@ -96,6 +96,70 @@ func _initialize() -> void:
 	assert(match_node.ball.velocity.length() > 0.0)
 	assert(match_node.controlled == match_node.teams[0][3])
 
+	# Touchline: the other team gets an automatic throw-in restart.
+	match_node.ball.attach_to(match_node.teams[0][3])
+	match_node.ball.release(Vector2.UP, 420.0)
+	match_node.ball.global_position = Vector2(
+		ChessFootballMath.PITCH_RECT.get_center().x,
+		ChessFootballMath.PITCH_RECT.position.y - 24.0
+	)
+	match_node.debug_check_ball_out()
+	assert(match_node.debug_set_piece_active())
+	assert(match_node.debug_set_piece_kind() == "SAQUE DE BANDA")
+	assert(match_node.debug_set_piece_team() == 1)
+	assert(match_node.ball.carrier != null and match_node.ball.carrier.team_id == 1)
+	var throw_options := 0
+	for teammate in match_node.teams[1]:
+		if teammate != match_node.ball.carrier and teammate.role != "keeper":
+			if teammate.global_position.distance_to(match_node.ball.global_position) < 320.0:
+				throw_options += 1
+	assert(throw_options >= 2)
+	match_node.debug_force_set_piece_ready()
+	assert(not match_node.debug_set_piece_active())
+	assert(match_node.ball.carrier == null)
+	assert(match_node.ball.velocity.length() > 0.0)
+
+	# Defender last touch over its own goal line becomes a corner.
+	match_node.ball.attach_to(match_node.teams[1][1])
+	match_node.ball.release(Vector2.RIGHT, 520.0)
+	match_node.ball.global_position = Vector2(
+		ChessFootballMath.PITCH_RECT.end.x + 24.0,
+		ChessFootballMath.PITCH_RECT.position.y + 44.0
+	)
+	match_node.debug_check_ball_out()
+	assert(match_node.debug_set_piece_active())
+	assert(match_node.debug_set_piece_kind() == "CÓRNER")
+	assert(match_node.debug_set_piece_team() == 0)
+	var attackers_in_box_zone := 0
+	var corner_target := ChessFootballMath.goal_center(0)
+	for attacker in match_node.teams[0]:
+		if attacker != match_node.ball.carrier and attacker.role != "keeper":
+			if attacker.global_position.distance_to(corner_target) < 240.0:
+				attackers_in_box_zone += 1
+	assert(attackers_in_box_zone >= 2)
+	match_node.debug_force_set_piece_ready()
+	assert(not match_node.debug_set_piece_active())
+	assert(match_node.ball.carrier == null)
+	assert(match_node.ball.vertical_velocity > 0.0)
+
+	# Attacker last touch over the same line becomes a goal kick.
+	match_node.ball.attach_to(match_node.teams[0][4])
+	match_node.ball.release(Vector2.RIGHT, 520.0)
+	match_node.ball.global_position = Vector2(
+		ChessFootballMath.PITCH_RECT.end.x + 24.0,
+		ChessFootballMath.PITCH_RECT.position.y + 44.0
+	)
+	match_node.debug_check_ball_out()
+	assert(match_node.debug_set_piece_active())
+	assert(match_node.debug_set_piece_kind() == "SAQUE DE PUERTA")
+	assert(match_node.debug_set_piece_team() == 1)
+	assert(match_node.ball.carrier == match_node.teams[1][0])
+	match_node.debug_force_set_piece_ready()
+	assert(not match_node.debug_set_piece_active())
+	assert(match_node.ball.carrier == null)
+	assert(match_node.ball.velocity.length() > 0.0)
+	print("SMOKE_STAGE=restarts")
+
 	var tackler: Footballer = match_node.controlled
 	var victim: Footballer = match_node.teams[1][2]
 	tackler.global_position = Vector2(640.0, 500.0)
