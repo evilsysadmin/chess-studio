@@ -80,6 +80,9 @@ TRAINING_VISUAL_SURFACES = {
     "frontend/src/components/puzzlemobilepolish.css",
     "frontend/src/components/tournamentscreen.jsx",
     "frontend/src/components/tournamentmobilepolish.css",
+    "frontend/src/components/dailychallengesscreen.jsx",
+    "frontend/src/components/dailychallengesroom.css",
+    "frontend/src/components/dailychallengecalendar.css",
 }
 
 
@@ -833,6 +836,9 @@ def self_test() -> None:
     assert classify(["e2e/matthias-home-visual-critical.spec.js"]).capture_groups == "home"
     assert classify(["frontend/src/components/MatthiasAvatar.jsx"]).capture_groups == "home,warroom"
     assert classify(["frontend/src/components/MatthiasSchool.jsx"]).capture_groups == "training"
+    assert classify(["frontend/src/components/DailyChallengesScreen.jsx"]).capture_groups == "training"
+    assert classify(["frontend/src/components/DailyChallengesRoom.css"]).capture_groups == "training"
+    assert classify(["frontend/src/components/DailyChallengeCalendar.css"]).capture_groups == "training"
     assert classify(["frontend/src/components/OpeningsScreen.jsx"]).capture_groups == "training"
     assert classify(["frontend/src/components/OpeningsScreen.css"]).capture_groups == "training"
     assert classify(["frontend/src/components/InsightsScreen.jsx"]).capture_groups == "training"
