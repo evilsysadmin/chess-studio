@@ -350,6 +350,8 @@ function installChroniclesPremiumMaterials(scene, {
   scenePlan = null,
   rootName = TACTICS_ROOT_NAME,
   roleForNode = chroniclesTacticsMaterialRole,
+  floorRepeatScale = 1,
+  wallRepeatScale = 1,
 } = {}) {
   if (!scene?.add || !scene?.traverse) return null;
   const existing = scene.getObjectByName?.(rootName);
@@ -368,8 +370,8 @@ function installChroniclesPremiumMaterials(scene, {
     wall: CHRONICLES_TACTICS_MATERIAL_STYLE.wallNormalStrength,
   };
   const roleRepeat = {
-    floor: CHRONICLES_TACTICS_MATERIAL_STYLE.floorRepeat,
-    wall: CHRONICLES_TACTICS_MATERIAL_STYLE.wallRepeat,
+    floor: CHRONICLES_TACTICS_MATERIAL_STYLE.floorRepeat * Math.max(0.25, Number(floorRepeatScale) || 1),
+    wall: CHRONICLES_TACTICS_MATERIAL_STYLE.wallRepeat * Math.max(0.25, Number(wallRepeatScale) || 1),
   };
 
   const root = new THREE.Group();
