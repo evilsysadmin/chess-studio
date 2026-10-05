@@ -763,9 +763,9 @@ func _try_tackle(tackler: Footballer) -> bool:
 	if offset.length() > TACKLE_ATTEMPT_RANGE:
 		return false
 
+	var hitbox := _tackle_hitbox(tackler, victim.global_position)
 	if not tackler.start_tackle():
 		return false
-	var hitbox := _tackle_hitbox(tackler, victim.global_position)
 	if not bool(hitbox.get("inside", false)):
 		return false
 
