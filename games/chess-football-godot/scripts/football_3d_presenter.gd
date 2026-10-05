@@ -395,49 +395,60 @@ func _sync_player_secondary_motion(player: Footballer, sprite: AnimatedSprite3D,
 	var phase := TAU * float(sprite.frame) / float(frame_count)
 	var speed_ratio := clampf(player.velocity.length() / maxf(player.base_speed, 1.0), 0.0, 1.4)
 	var moving_weight := clampf(speed_ratio, 0.0, 1.0)
-	var bob := sin(phase) * 0.010
-	# The atlas is intentionally stylised, but the old 1:1 presentation made the
-	# players read like square little tanks. Keep them a touch taller/slimmer and
-	# let motion temporarily widen/compress the silhouette.
-	var stretch_x := 0.875
-	var stretch_y := 1.085
-	var tilt_degrees := 0.0
+	var bob := sin(phase) * 0.012
+	var lateral_sway := sin(phase) * 0.010
+	# v5 reads taller and lighter. Secondary motion now carries weight through
+	# the hips instead of making the whole billboard wobble as a rigid card.
+	var stretch_x := 0.84
+	var stretch_y := 1.12
+	var tilt_degrees := sin(phase) * 0.8
 	var facing_sign := -1.0 if sprite.flip_h else 1.0
 
 	if animation_name == "run":
-		bob = absf(sin(phase)) * PLAYER_RUN_BOB * moving_weight
-		stretch_x = 0.875 + absf(cos(phase)) * 0.025
-		stretch_y = 1.085 - absf(cos(phase)) * 0.018
-		tilt_degrees = -facing_sign * 2.8 * moving_weight
+		bob = absf(sin(phase)) * (PLAYER_RUN_BOB + 0.012) * moving_weight
+		lateral_sway = sin(phase) * 0.026 * moving_weight
+		stretch_x = 0.84 + absf(cos(phase)) * 0.030
+		stretch_y = 1.12 - absf(cos(phase)) * 0.022
+		tilt_degrees = -facing_sign * (4.0 + sin(phase) * 1.4) * moving_weight
 	elif animation_name == "sprint":
-		bob = absf(sin(phase)) * PLAYER_SPRINT_BOB * moving_weight
-		stretch_x = 0.865 + absf(cos(phase)) * 0.040
-		stretch_y = 1.095 - absf(cos(phase)) * 0.028
-		tilt_degrees = -facing_sign * 5.2 * moving_weight
+		bob = absf(sin(phase)) * (PLAYER_SPRINT_BOB + 0.018) * moving_weight
+		lateral_sway = sin(phase) * 0.034 * moving_weight
+		stretch_x = 0.83 + absf(cos(phase)) * 0.045
+		stretch_y = 1.13 - absf(cos(phase)) * 0.032
+		tilt_degrees = -facing_sign * (6.8 + sin(phase) * 1.7) * moving_weight
 	elif animation_name == "pass":
-		bob = absf(sin(phase)) * 0.018
-		tilt_degrees = -facing_sign * 3.5
+		bob = absf(sin(phase)) * 0.024
+		lateral_sway = -facing_sign * 0.022 * sin(phase)
+		stretch_x = 0.86
+		stretch_y = 1.10
+		tilt_degrees = -facing_sign * 5.0
 	elif animation_name == "shoot":
-		bob = absf(sin(phase)) * 0.026
-		stretch_x = 0.97
-		stretch_y = 1.015
-		tilt_degrees = -facing_sign * 7.5
+		bob = absf(sin(phase)) * 0.034
+		lateral_sway = -facing_sign * 0.030 * sin(phase)
+		stretch_x = 0.88
+		stretch_y = 1.09
+		tilt_degrees = -facing_sign * 10.5
 	elif animation_name == "tackle":
-		bob = -0.035
-		stretch_x = 1.00
-		stretch_y = 0.975
-		tilt_degrees = -facing_sign * 11.0
+		bob = -0.045
+		lateral_sway = facing_sign * 0.055
+		stretch_x = 1.02
+		stretch_y = 0.94
+		tilt_degrees = -facing_sign * 15.0
 	elif animation_name == "celebrate":
-		bob = absf(sin(phase)) * 0.080
-		stretch_y = 1.075
+		bob = absf(sin(phase)) * 0.092
+		lateral_sway = sin(phase * 0.5) * 0.020
+		stretch_x = 0.86
+		stretch_y = 1.13
 
 	if player.contact_stun_active():
 		var contact_weight := player.contact_stun_ratio()
-		bob = minf(bob, -0.020 * contact_weight)
-		stretch_x *= 1.0 + 0.055 * contact_weight
-		stretch_y *= 1.0 - 0.050 * contact_weight
-		tilt_degrees += player.contact_sway_sign * 12.0 * contact_weight
+		bob = minf(bob, -0.030 * contact_weight)
+		lateral_sway += player.contact_sway_sign * 0.065 * contact_weight
+		stretch_x *= 1.0 + 0.070 * contact_weight
+		stretch_y *= 1.0 - 0.065 * contact_weight
+		tilt_degrees += player.contact_sway_sign * 16.0 * contact_weight
 
+	sprite.position.x = lateral_sway
 	sprite.position.y = PLAYER_BASE_Y + bob
 	sprite.rotation.z = deg_to_rad(tilt_degrees)
 	sprite.scale = Vector3(stretch_x, stretch_y, 1.0)
