@@ -44,10 +44,10 @@
   inset: 0;
   z-index: 4;
   background:
-    radial-gradient(circle at 73% 28%, rgba(135, 169, 214, .055), transparent 28%),
-    radial-gradient(circle at 28% 61%, rgba(225, 146, 71, .045), transparent 34%),
-    linear-gradient(90deg, rgba(7, 6, 6, .27) 0%, rgba(7, 6, 6, .055) 42%, rgba(7, 6, 6, .015) 66%, rgba(7, 6, 6, .09) 100%),
-    linear-gradient(180deg, rgba(6, 6, 8, .02) 0%, rgba(6, 6, 8, .01) 58%, rgba(7, 6, 5, .38) 94%, #0d0b0a 100%);
+    radial-gradient(circle at 73% 28%, rgba(135, 169, 214, .045), transparent 28%),
+    radial-gradient(circle at 28% 61%, rgba(225, 146, 71, .035), transparent 34%),
+    linear-gradient(90deg, rgba(7, 6, 6, .34) 0%, rgba(7, 6, 6, .09) 42%, rgba(7, 6, 6, .025) 66%, rgba(7, 6, 6, .13) 100%),
+    linear-gradient(180deg, rgba(6, 6, 8, .03) 0%, rgba(6, 6, 8, .015) 58%, rgba(7, 6, 5, .46) 94%, #0d0b0a 100%);
 }
 
 .insights-training-room-3d,
