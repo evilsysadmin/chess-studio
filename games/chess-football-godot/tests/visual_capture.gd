@@ -71,7 +71,7 @@ func _initialize() -> void:
 	for _frame in range(2):
 		await process_frame
 	assert(victim.contact_stun_active())
-	assert(tackler.global_position.distance_to(victim.global_position) > 36.0)
+	assert(tackler.global_position.distance_to(victim.global_position) > 42.0)
 	match_node.debug_sync_presentation()
 	await _save_capture(match_node, "contact", "VISUAL_CAPTURE_CONTACT")
 
