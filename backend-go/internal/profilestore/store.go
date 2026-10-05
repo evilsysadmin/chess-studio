@@ -10,8 +10,10 @@ package profilestore
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math"
 	"sort"
+	"strings"
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -357,4 +359,77 @@ func (m *MongoCollection) ReplaceIf(ctx context.Context, filter bson.D, doc bson
 		return false, err
 	}
 	return result.MatchedCount > 0, nil
+}
+
+// Batch is the batched read behind get_profile_data_for_users: the stored
+// documents (only _id and the projected data keys) of the named users.
+type Batch interface {
+	Find(ctx context.Context, usernames, keys []string) ([]bson.D, error)
+}
+
+// DataForUsers mirrors get_profile_data_for_users: username → {"data": {...}}
+// restricted to keys, for the users that have a profile document.
+func (s *Store) DataForUsers(ctx context.Context, usernames []string, keys []string) (map[string]bson.D, error) {
+	seen := map[string]bool{}
+	var names []string
+	for _, name := range usernames {
+		if strings.TrimSpace(name) != "" && !seen[name] {
+			seen[name] = true
+			names = append(names, name)
+		}
+	}
+	result := map[string]bson.D{}
+	if len(names) == 0 {
+		return result, nil
+	}
+	batch, ok := s.col.(Batch)
+	if !ok {
+		return nil, ErrUnavailable
+	}
+	docs, err := batch.Find(ctx, names, keys)
+	if err != nil {
+		return nil, ErrUnavailable
+	}
+	wanted := map[string]bool{}
+	for _, key := range keys {
+		wanted[key] = true
+	}
+	for _, doc := range docs {
+		id, _ := pydoc.Get(doc, "_id")
+		data := bson.D{}
+		if raw, ok := pydoc.Get(doc, "data"); ok {
+			if d, isDoc := raw.(bson.D); isDoc {
+				for _, e := range d {
+					if wanted[e.Key] {
+						data = append(data, e)
+					}
+				}
+			}
+		}
+		result[fmt.Sprint(id)] = bson.D{{Key: "data", Value: data}}
+	}
+	return result, nil
+}
+
+func (m *MongoCollection) Find(ctx context.Context, usernames, keys []string) ([]bson.D, error) {
+	ctx, cancel := context.WithTimeout(ctx, m.timeout)
+	defer cancel()
+	projection := bson.D{{Key: "_id", Value: 1}}
+	for _, key := range keys {
+		projection = append(projection, bson.E{Key: "data." + key, Value: 1})
+	}
+	cursor, err := m.col.Find(ctx, bson.D{{Key: "_id", Value: bson.D{{Key: "$in", Value: usernames}}}}, options.Find().SetProjection(projection))
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+	var docs []bson.D
+	for cursor.Next(ctx) {
+		var doc bson.D
+		if err := cursor.Decode(&doc); err != nil {
+			return nil, err
+		}
+		docs = append(docs, pydoc.Normalize(doc).(bson.D))
+	}
+	return docs, cursor.Err()
 }
