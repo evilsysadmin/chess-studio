@@ -324,7 +324,7 @@ scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page })
     };
   });
   expect(wideGeometry.roomWidth, 'Así juegas wide: la sala debe usar el monitor').toBeGreaterThanOrEqual(wideGeometry.viewportWidth * 0.88);
-  expect(wideGeometry.sessionWidth, 'Así juegas wide: la sesión no debe volver a ancho de dashboard').toBeGreaterThanOrEqual(1100);
+  expect(wideGeometry.sessionWidth, 'Así juegas wide: la sesión no debe volver a ancho de dashboard').toBeGreaterThanOrEqual(1350);
   expect(wideGeometry.navWidth, 'Así juegas wide: las placas deben respirar horizontalmente').toBeGreaterThanOrEqual(1000);
   await captureAt(page, 'insights', { width: 390, height: 844, variant: 'mobile' });
   await page.setViewportSize({ width: 1440, height: 900 });
