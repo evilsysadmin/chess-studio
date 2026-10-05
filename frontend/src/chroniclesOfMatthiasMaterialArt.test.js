@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import {
   CHRONICLES_TACTICS_MATERIAL_STYLE,
+  chroniclesFirstPersonMaterialRole,
   chroniclesTacticsMaterialRole,
+  installChroniclesFirstPersonPremiumMaterials,
   installChroniclesTacticsPremiumMaterials,
 } from './chroniclesOfMatthiasMaterialArt.js';
 
@@ -29,6 +31,46 @@ describe('Chronicles Tactics premium materials', () => {
     const party = new THREE.Mesh();
     party.name = 'chronicles-party-matthias';
     expect(chroniclesTacticsMaterialRole(party)).toBeNull();
+  });
+
+  it('shares the semantic atlas with first-person floor and wall surfaces', () => {
+    const scene = new THREE.Scene();
+    const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x27241f });
+    const wallMaterial = new THREE.MeshStandardMaterial({ color: 0x3d3a35 });
+    const floor = new THREE.Mesh(new THREE.BoxGeometry(8, 0.2, 8), floorMaterial);
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(4, 3.6, 4), wallMaterial);
+    floor.name = 'chronicles-first-person-floor';
+    wall.name = 'chronicles-first-person-wall-1-2';
+    scene.add(floor, wall);
+
+    expect(chroniclesFirstPersonMaterialRole(floor)).toBe('floor');
+    expect(chroniclesFirstPersonMaterialRole(wall)).toBe('wall');
+    expect(chroniclesFirstPersonMaterialRole({ name: 'chronicles-wall-torch-0' })).toBeNull();
+
+    const root = installChroniclesFirstPersonPremiumMaterials(scene, {
+      coarsePointer: true,
+      floorRepeatScale: 7,
+      scenePlan: {
+        mapId: 'gallery-of-forks',
+        width: 7,
+        height: 7,
+        walls: [{ x: 1, y: 2 }],
+        floors: [{ x: 2, y: 2 }],
+      },
+    });
+
+    expect(root?.name).toBe('chronicles-first-person-premium-materials');
+    expect(root?.userData.chroniclesMaterialEnvironment).toBe('castle-interior');
+    expect(root?.userData.chroniclesMaterialCount).toBe(2);
+    expect(floorMaterial.map?.name).toMatch(/chronicles-material-C0[1-6]-color-/);
+    expect(wallMaterial.map?.name).toMatch(/chronicles-material-C0[1-6]-color-/);
+    expect(floorMaterial.map.repeat.x).toBeGreaterThan(CHRONICLES_TACTICS_MATERIAL_STYLE.floorRepeat);
+
+    root.userData.chroniclesArtCancel();
+    floor.geometry.dispose();
+    wall.geometry.dispose();
+    floorMaterial.dispose();
+    wallMaterial.dispose();
   });
 
   it('installs deterministic semantic PBR maps and restores the source material on teardown', () => {
