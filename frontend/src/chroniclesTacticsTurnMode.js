@@ -69,11 +69,17 @@ export function chroniclesTacticsResolvePlayerAction(
   // engagement completes before initiative starts; an already-engaged legacy
   // state or an explicit ranged attack rolls before committing the action.
   const entryState = (forceCombat || alreadyEngaged) ? previous : next;
+  const activeEnemies = chroniclesActiveEnemies(entryState);
+  const roomEnemyIds = activeEnemies.map((enemy) => enemy.id);
   return chroniclesStartInitiativeCombat(
     entryState,
-    chroniclesActiveEnemies(entryState),
+    activeEnemies,
     {
-      forceEnemyIds,
+      // Tactics is a room-scale battle board. Once contact freezes exploration,
+      // every living enemy on that board must belong to the same scheduler;
+      // otherwise a distant patrol could wander into range without ever owning
+      // an initiative turn.
+      forceEnemyIds: [...new Set([...roomEnemyIds, ...forceEnemyIds])],
       partyAgilityBonuses,
       random,
     },
