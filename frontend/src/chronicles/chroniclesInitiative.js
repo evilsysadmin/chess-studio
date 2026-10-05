@@ -169,6 +169,7 @@ export function chroniclesAdvanceCombatInitiative(state, enemies) {
     return {
       ...state,
       phase: state.phase === 'defeated' ? 'defeated' : 'explore',
+      turnPhase: 'party',
       initiative: null,
     };
   }

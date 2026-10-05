@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  chroniclesActiveEnemies,
   chroniclesObjective,
   createChroniclesState,
 } from '../chroniclesOfMatthias.js';
@@ -10,6 +11,7 @@ import {
   beginChroniclesTacticsRun,
   ensureChroniclesTacticsRun,
   finishChroniclesTacticsRun,
+  chroniclesHeroProgress,
   loadChroniclesProgression,
   saveChroniclesProgression,
   spendChroniclesAttributePoint,
@@ -26,11 +28,16 @@ import {
   chroniclesTacticsRefillAbilityCharges,
   chroniclesTacticsTargets,
   chroniclesTacticsUse,
+  chroniclesTacticsWait,
 } from '../chroniclesOfMatthiasTactics.js';
 import {
   chroniclesTacticsCombatActive,
+  chroniclesTacticsCurrentActor,
+  chroniclesTacticsPartyCanAct,
   chroniclesTacticsResolvePlayerAction,
 } from '../chroniclesTacticsTurnMode.js';
+import { chroniclesAdvanceCombatInitiative } from '../chronicles/chroniclesInitiative.js';
+import { chroniclesResolveEnemyActor } from '../chroniclesOfMatthiasTurns.js';
 import {
   chroniclesForecastBadge,
   chroniclesForecastDescription,
@@ -80,7 +87,7 @@ const MOVEMENT = Object.freeze({
 });
 
 function chroniclesBattlefieldInteraction(state, memberId) {
-  if (!state || state.turnPhase === 'enemy' || state.phase === 'defeated' || state.phase === 'escaped') return null;
+  if (!chroniclesTacticsPartyCanAct(state, memberId)) return null;
   return {
     mode: 'hybrid',
     legalMoves: chroniclesTacticsLegalMoves(state),
@@ -129,10 +136,14 @@ export default function ChroniclesOfMatthiasTactics({
   const [rendererError, setRendererError] = useState('');
   const [progressionFeedback, setProgressionFeedback] = useState('');
 
-  const selectedProfile = chroniclesTacticsProfile(selectedMemberId);
+  const activeActor = useMemo(() => chroniclesTacticsCurrentActor(state), [state]);
+  const effectiveSelectedMemberId = activeActor?.kind === 'party'
+    ? activeActor.id
+    : selectedMemberId;
+  const selectedProfile = chroniclesTacticsProfile(effectiveSelectedMemberId);
   const selectedAbility = useMemo(
-    () => chroniclesTacticsAbilityStatus(state, selectedMemberId),
-    [selectedMemberId, state],
+    () => chroniclesTacticsAbilityStatus(state, effectiveSelectedMemberId),
+    [effectiveSelectedMemberId, state],
   );
   const objective = chroniclesObjective(state);
   const locationLabel = chroniclesTacticsLocationLabel(state);
@@ -143,23 +154,25 @@ export default function ChroniclesOfMatthiasTactics({
     [legalMoves, state],
   );
   const targetOptions = useMemo(
-    () => chroniclesTacticsTargets(state, selectedMemberId),
-    [selectedMemberId, state],
+    () => chroniclesTacticsTargets(state, effectiveSelectedMemberId),
+    [effectiveSelectedMemberId, state],
   );
   const canAttack = targetOptions.length > 0;
   const targetIntel = targetOptions[0] || null;
   const inCombat = useMemo(() => chroniclesTacticsCombatActive(state), [state]);
-  const canAct = state.turnPhase !== 'enemy' && state.phase !== 'defeated' && state.phase !== 'escaped';
+  const canAct = chroniclesTacticsPartyCanAct(state, effectiveSelectedMemberId);
+  const initiativeRound = Number(state.initiative?.round || state.round || 1);
+  const canPassTurn = Boolean(state.initiative?.order?.length && canAct && !contextualAction);
   const battlefieldInteraction = useMemo(
-    () => chroniclesBattlefieldInteraction(state, selectedMemberId),
-    [selectedMemberId, state],
+    () => chroniclesBattlefieldInteraction(state, effectiveSelectedMemberId),
+    [effectiveSelectedMemberId, state],
   );
   const sceneModel = useMemo(
     () => chroniclesProjectSceneModel(state, {
-      selectedMemberId,
+      selectedMemberId: effectiveSelectedMemberId,
       interaction: battlefieldInteraction,
     }),
-    [battlefieldInteraction, selectedMemberId, state],
+    [battlefieldInteraction, effectiveSelectedMemberId, state],
   );
   const rewardDraft = useMemo(() => {
     if (state.phase !== 'escaped') return [];
@@ -198,6 +211,13 @@ export default function ChroniclesOfMatthiasTactics({
     ? <b className="chronicles-tactics__forecast" aria-hidden="true">{forecastView[key].badge}</b>
     : null);
 
+  const partyAgilityBonusesFor = useCallback((current) => Object.fromEntries(
+    (current?.party || []).map((member) => [
+      member.id,
+      Number(chroniclesHeroProgress(progressionRef.current, member.id).attributes?.agility || 0),
+    ]),
+  ), []);
+
   const commitState = useCallback((next, { actorMemberId = null, actionKind = 'action' } = {}) => {
     const previous = stateRef.current;
     if (!next || next === previous) return false;
@@ -229,51 +249,76 @@ export default function ChroniclesOfMatthiasTactics({
     const now = performance.now();
     if (now - lastMoveAtRef.current < 120) return;
     const current = stateRef.current;
-    if (current.phase === 'defeated' || current.phase === 'escaped' || current.turnPhase === 'enemy') return;
+    if (!chroniclesTacticsPartyCanAct(current)) return;
     const legal = chroniclesTacticsLegalMoves(current).find((move) => (
       move.x === current.x + dx && move.y === current.y + dy
     ));
     if (!legal) return;
     const next = chroniclesTacticsMove(current, legal);
-    const resolved = chroniclesTacticsResolvePlayerAction(current, next);
+    const resolved = chroniclesTacticsResolvePlayerAction(current, next, {
+      partyAgilityBonuses: partyAgilityBonusesFor(current),
+    });
     if (commitState(resolved)) lastMoveAtRef.current = now;
-  }, [commitState]);
+  }, [commitState, partyAgilityBonusesFor]);
 
   const attackEnemy = useCallback((enemyId = null) => {
     const now = performance.now();
     if (now - lastAttackAtRef.current < 260) return;
     const current = stateRef.current;
-    if (current.phase === 'defeated' || current.phase === 'escaped' || current.turnPhase === 'enemy') return;
-    const memberId = selectedMemberRef.current;
+    if (!chroniclesTacticsPartyCanAct(current)) return;
+    const actor = chroniclesTacticsCurrentActor(current);
+    const memberId = actor?.kind === 'party' ? actor.id : selectedMemberRef.current;
     const targets = chroniclesTacticsTargets(current, memberId);
     const target = enemyId
       ? targets.find((candidate) => candidate.enemyId === enemyId)
       : targets[0];
     if (!target) return;
     const next = chroniclesTacticsAttack(current, memberId, target.enemyId);
-    const resolved = chroniclesTacticsResolvePlayerAction(current, next, { forceCombat: true });
+    const resolved = chroniclesTacticsResolvePlayerAction(current, next, {
+      forceCombat: !current.initiative,
+      forceEnemyIds: [target.enemyId],
+      partyAgilityBonuses: partyAgilityBonusesFor(current),
+    });
     if (commitState(resolved, { actorMemberId: memberId, actionKind: 'attack' })) lastAttackAtRef.current = now;
-  }, [commitState]);
+  }, [commitState, partyAgilityBonusesFor]);
 
   const useClassAbility = useCallback(() => {
     const current = stateRef.current;
-    if (current.phase === 'defeated' || current.phase === 'escaped' || current.turnPhase === 'enemy') return;
-    const memberId = selectedMemberRef.current;
+    if (!chroniclesTacticsPartyCanAct(current)) return;
+    const actor = chroniclesTacticsCurrentActor(current);
+    const memberId = actor?.kind === 'party' ? actor.id : selectedMemberRef.current;
     const profile = chroniclesTacticsProfile(memberId);
+    const targetsBefore = profile.abilityKind === 'heal'
+      ? []
+      : chroniclesTacticsTargets(current, memberId).map((target) => target.enemyId);
     const next = chroniclesTacticsAbility(current, memberId);
     const resolved = chroniclesTacticsResolvePlayerAction(current, next, {
-      forceCombat: profile.abilityKind !== 'heal',
+      forceCombat: !current.initiative && profile.abilityKind !== 'heal' && next !== current,
+      forceEnemyIds: targetsBefore,
+      partyAgilityBonuses: partyAgilityBonusesFor(current),
     });
     commitState(resolved, { actorMemberId: memberId, actionKind: 'ability' });
-  }, [commitState]);
+  }, [commitState, partyAgilityBonusesFor]);
 
   const useContextualAction = useCallback(() => {
     const current = stateRef.current;
-    if (current.phase === 'defeated' || current.phase === 'escaped' || current.turnPhase === 'enemy') return;
-    const memberId = selectedMemberRef.current;
+    if (!chroniclesTacticsPartyCanAct(current)) return;
+    const actor = chroniclesTacticsCurrentActor(current);
+    const memberId = actor?.kind === 'party' ? actor.id : selectedMemberRef.current;
     const next = chroniclesTacticsUse(current);
-    const resolved = chroniclesTacticsResolvePlayerAction(current, next);
+    const resolved = chroniclesTacticsResolvePlayerAction(current, next, {
+      partyAgilityBonuses: partyAgilityBonusesFor(current),
+    });
     commitState(resolved, { actorMemberId: memberId, actionKind: 'use' });
+  }, [commitState, partyAgilityBonusesFor]);
+
+  const passTurn = useCallback(() => {
+    const current = stateRef.current;
+    const actor = chroniclesTacticsCurrentActor(current);
+    if (!current?.initiative?.order?.length || actor?.kind !== 'party') return;
+    const next = chroniclesTacticsWait(current, actor.id);
+    const resolved = chroniclesTacticsResolvePlayerAction(current, next);
+    commitState(resolved, { actorMemberId: actor.id, actionKind: 'wait' });
   }, [commitState]);
 
   const applyLiveProgression = useCallback((nextProgression) => {
@@ -323,6 +368,9 @@ export default function ChroniclesOfMatthiasTactics({
   }, [applyLiveProgression]);
 
   const selectMember = useCallback((memberId) => {
+    const actor = chroniclesTacticsCurrentActor(stateRef.current);
+    if (actor?.kind === 'enemy') return;
+    if (actor?.kind === 'party' && actor.id !== memberId) return;
     selectedMemberRef.current = memberId;
     setSelectedMemberId(memberId);
   }, []);
@@ -356,6 +404,33 @@ export default function ChroniclesOfMatthiasTactics({
   useEffect(() => {
     selectedMemberRef.current = selectedMemberId;
   }, [selectedMemberId]);
+
+  useEffect(() => {
+    const actor = chroniclesTacticsCurrentActor(state);
+    if (actor?.kind !== 'party' || actor.id === selectedMemberRef.current) return;
+    selectedMemberRef.current = actor.id;
+    setSelectedMemberId(actor.id);
+  }, [state]);
+
+  useEffect(() => {
+    const actor = chroniclesTacticsCurrentActor(state);
+    if (!state.initiative?.order?.length || actor?.kind !== 'enemy' || state.phase === 'defeated') return undefined;
+
+    const timer = window.setTimeout(() => {
+      const latest = stateRef.current;
+      const latestActor = chroniclesTacticsCurrentActor(latest);
+      if (!latest?.initiative?.order?.length || latestActor?.kind !== 'enemy' || latestActor.id !== actor.id) return;
+
+      const acted = chroniclesResolveEnemyActor(latest, actor.id);
+      const advanced = acted.phase === 'defeated'
+        ? acted
+        : chroniclesAdvanceCombatInitiative(acted, chroniclesActiveEnemies(acted));
+      stateRef.current = advanced;
+      setState(advanced);
+    }, 280);
+
+    return () => window.clearTimeout(timer);
+  }, [state]);
 
   useEffect(() => {
     let cancelled = false;
@@ -442,7 +517,10 @@ export default function ChroniclesOfMatthiasTactics({
       if (event.key === ' ') {
         if (event.repeat) return;
         event.preventDefault();
-        useContextualAction();
+        const current = stateRef.current;
+        const contextual = chroniclesTacticsInteractions(current)[0] || null;
+        if (contextual) useContextualAction();
+        else passTurn();
         return;
       }
       if (event.key === 'Shift') {
@@ -464,7 +542,7 @@ export default function ChroniclesOfMatthiasTactics({
     };
     window.addEventListener('keydown', onKeyDown, { passive: false });
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [attackEnemy, moveParty, selectMember, useClassAbility, useContextualAction]);
+  }, [attackEnemy, moveParty, passTurn, selectMember, useClassAbility, useContextualAction]);
 
   return (
     <div
@@ -480,7 +558,8 @@ export default function ChroniclesOfMatthiasTactics({
       data-phase={state.phase}
       data-reward-draft-ready={rewardDraft.length > 0 ? 'true' : 'false'}
       data-reward-draft-count={rewardDraft.length}
-      data-turn-phase={state.turnPhase || 'party'}
+      data-turn-phase={activeActor?.kind || (state.turnPhase || 'party')}
+      data-initiative-actor={activeActor?.id || ''}
     >
       <header className="chronicles-tactics__head">
         <div>
@@ -509,7 +588,7 @@ export default function ChroniclesOfMatthiasTactics({
         <aside className="chronicles-tactics__mission" aria-label="Misión">
           <span className="chronicles-tactics__kicker">{locationLabel}</span>
           <strong>{objective}</strong>
-          <small>WASD/flechas mueve · 1–4 cambia de héroe · espacio usa · Shift ataca · E habilidad. En combate: una acción tuya, una respuesta enemiga.</small>
+          <small>WASD/flechas mueve · 1–4 cambia de héroe · espacio usa/pasa turno · Shift ataca · E habilidad. En combate manda AGI + 1d8: una acción por actor.</small>
           {targetIntel ? (
             <div className="chronicles-tactics__enemy-intel" aria-label="Intel enemigo">
               <span>OBJETIVO · NIVEL {targetIntel.enemyBuild.level}</span>
@@ -539,7 +618,9 @@ export default function ChroniclesOfMatthiasTactics({
             <div ref={hostRef} className="chronicles-tactics__three" data-chronicles-tactics-renderer="three" />
             <div className="chronicles-tactics__cinema" aria-hidden="true" />
             <div className="chronicles-tactics__narrator" aria-live="polite">
-              <span>{inCombat ? `RONDA ${state.round || 1} · TU TURNO` : 'CRÓNICA'}</span>
+              <span>{activeActor
+                ? `RONDA ${initiativeRound} · ${activeActor.kind === 'party' ? 'TURNO' : 'ENEMIGO'} · ${String(activeActor.name || activeActor.id).toUpperCase()}`
+                : 'CRÓNICA'}</span>
               <p>{state.message}</p>
               {progressionFeedback ? (
                 <strong data-chronicles-progression-feedback="true">{progressionFeedback}</strong>
@@ -569,18 +650,18 @@ export default function ChroniclesOfMatthiasTactics({
           </div>
 
           <div className="chronicles-tactics__actions" aria-label="Controles de acción">
-            <button type="button" className={moveAvailability.west ? 'is-ready' : ''} disabled={!moveAvailability.west} aria-label="Mover al oeste" {...forecastProps('west')} onClick={() => moveParty(-1, 0)}><i aria-hidden="true">←</i><span>A</span>{forecastBadge('west')}</button>
-            <button type="button" className={moveAvailability.north ? 'is-ready' : ''} disabled={!moveAvailability.north} aria-label="Mover al norte" {...forecastProps('north')} onClick={() => moveParty(0, -1)}><i aria-hidden="true">↑</i><span>W</span>{forecastBadge('north')}</button>
-            <button type="button" className={moveAvailability.south ? 'is-ready' : ''} disabled={!moveAvailability.south} aria-label="Mover al sur" {...forecastProps('south')} onClick={() => moveParty(0, 1)}><i aria-hidden="true">↓</i><span>S</span>{forecastBadge('south')}</button>
-            <button type="button" className={moveAvailability.east ? 'is-ready' : ''} disabled={!moveAvailability.east} aria-label="Mover al este" {...forecastProps('east')} onClick={() => moveParty(1, 0)}><i aria-hidden="true">→</i><span>D</span>{forecastBadge('east')}</button>
+            <button type="button" className={moveAvailability.west ? 'is-ready' : ''} disabled={!canAct || !moveAvailability.west} aria-label="Mover al oeste" {...forecastProps('west')} onClick={() => moveParty(-1, 0)}><i aria-hidden="true">←</i><span>A</span>{forecastBadge('west')}</button>
+            <button type="button" className={moveAvailability.north ? 'is-ready' : ''} disabled={!canAct || !moveAvailability.north} aria-label="Mover al norte" {...forecastProps('north')} onClick={() => moveParty(0, -1)}><i aria-hidden="true">↑</i><span>W</span>{forecastBadge('north')}</button>
+            <button type="button" className={moveAvailability.south ? 'is-ready' : ''} disabled={!canAct || !moveAvailability.south} aria-label="Mover al sur" {...forecastProps('south')} onClick={() => moveParty(0, 1)}><i aria-hidden="true">↓</i><span>S</span>{forecastBadge('south')}</button>
+            <button type="button" className={moveAvailability.east ? 'is-ready' : ''} disabled={!canAct || !moveAvailability.east} aria-label="Mover al este" {...forecastProps('east')} onClick={() => moveParty(1, 0)}><i aria-hidden="true">→</i><span>D</span>{forecastBadge('east')}</button>
             <button
               type="button"
-              className={contextualAction ? 'is-ready' : ''}
-              disabled={!canAct || !contextualAction}
-              aria-label="Usar"
-              title={contextualAction?.label || 'No hay nada que usar aquí'}
-              onClick={useContextualAction}
-            ><i aria-hidden="true">◎</i><span>ESPACIO · USAR</span></button>
+              className={(contextualAction || canPassTurn) ? 'is-ready' : ''}
+              disabled={!canAct || (!contextualAction && !canPassTurn)}
+              aria-label={contextualAction ? 'Usar' : 'Pasar turno'}
+              title={contextualAction?.label || (canPassTurn ? 'Pasar turno' : 'No hay nada que usar aquí')}
+              onClick={contextualAction ? useContextualAction : passTurn}
+            ><i aria-hidden="true">◎</i><span>{contextualAction ? 'ESPACIO · USAR' : canPassTurn ? 'ESPACIO · PASAR TURNO' : 'ESPACIO · USAR'}</span></button>
             <button type="button" className={canAttack ? 'is-ready' : ''} disabled={!canAct || !canAttack} aria-label="Atacar" onClick={() => attackEnemy()}><i aria-hidden="true">⚔</i><span>SHIFT · ATAQUE</span></button>
             <button
               type="button"
@@ -599,7 +680,7 @@ export default function ChroniclesOfMatthiasTactics({
         <ChroniclesTacticsPartyHud
           state={state}
           progression={progression}
-          selectedMemberId={selectedMemberId}
+          selectedMemberId={effectiveSelectedMemberId}
           sheetRequest={sheetRequest}
           onSelectMember={selectMember}
           onAllocateAttribute={allocateAttribute}
@@ -608,8 +689,8 @@ export default function ChroniclesOfMatthiasTactics({
       </div>
 
       <footer className="chronicles-tactics__footer">
-        <span>Motor {rendererName} · {inCombat ? `Combate por turnos · ronda ${state.round || 1}` : 'Exploración libre'}</span>
-        <span>{contextualAction ? `Espacio · ${contextualAction.label}` : 'Espacio · Usar'} · Shift · {selectedProfile.attackName} · E · {selectedProfile.abilityName}</span>
+        <span>Motor {rendererName} · {activeActor ? `Combate por turnos · ronda ${initiativeRound} · ${activeActor.name || activeActor.id}` : 'Exploración libre'}</span>
+        <span>{contextualAction ? `Espacio · ${contextualAction.label}` : canPassTurn ? 'Espacio · Pasar turno' : 'Espacio · Usar'} · Shift · {selectedProfile.attackName} · E · {selectedProfile.abilityName}</span>
         <button type="button" onClick={restart}>Reiniciar incursión</button>
       </footer>
     </div>

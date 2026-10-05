@@ -122,58 +122,69 @@ test('Chronicles Tactics · arranca como RPG táctico isométrico con combate po
   });
   await expect(narrator).toContainText(/La compañía avanza hacia sur/i);
 
-  // Exercise a real combat action immediately. Turn-based combat means the
-  // enemy answers only after this action, never because the CI runner is slow.
-  await mode.locator('[data-member-id="rook"] .chronicles-party-hud__select').evaluate((button) => button.click());
-  const rookCard = mode.locator('[data-member-id="rook"]');
-  await expect(rookCard).toHaveClass(/is-selected/);
-  await expect(rookCard.locator('.chronicles-party-hud__vital--mp small')).toHaveText('1/1');
-  // This assertion owns the ability state transition, not browser keyboard delivery.
-  // SwiftShader can starve Playwright keyboard dispatch while the 3D scene is busy,
-  // even though the same React action remains available. Invoke the real button
-  // handler directly, as the doctrine test below already does for the same CI reason.
-  const classSkill = mode.getByRole('button', { name: 'Habilidad de clase', exact: true });
-  await expect(classSkill).toBeEnabled();
-  await classSkill.evaluate((button) => button.click());
-  await expect(rookCard.locator('.chronicles-party-hud__vital--mp small')).toHaveText('0/1');
-  await expect(classSkill).toBeDisabled();
+  // The canonical pawn is two cells east of spawn. Moving one cell east enters
+  // its engagement range and must freeze free exploration into initiative combat.
+  await page.waitForTimeout(140);
+  const moveEast = mode.getByRole('button', { name: 'Mover al este', exact: true });
+  await expect(moveEast).toBeEnabled();
+  await moveEast.evaluate((button) => button.click());
+  await expect(mode).toHaveAttribute('data-engagement', 'combat');
+  await expect(mode).not.toHaveAttribute('data-initiative-actor', '');
 
-  const canvas = mode.locator('[data-chronicles-tactics-renderer="three"] canvas');
-  await expect(canvas).toBeVisible({ timeout: 30_000 });
-  // Keep the renderer readiness assertion above as a real Playwright wait, then
-  // read the stable UI contract in one browser hop. Under SwiftShader every
-  // instrumented assertion against this continuously rendered scene can cost
-  // several seconds of trace/snapshot work; serializing ten of them turns a
-  // healthy UI into a 90 s timeout without increasing coverage.
-  const contract = await mode.evaluate((root) => {
-    const buttonNames = [...root.querySelectorAll('button')]
-      .map((button) => button.getAttribute('aria-label') || button.textContent || '')
-      .map((label) => label.trim());
+  // Initiative is intentionally random (AGI + 1d8). The browser canary owns
+  // integration, not a full scripted battle: wait for the first real party turn,
+  // prove the HUD follows that actor synchronously, then pass exactly one turn.
+  await page.waitForFunction(() => {
+    const root = document.querySelector('[data-chronicles-tactics="true"]');
+    return root?.dataset.turnPhase === 'party' && Boolean(root?.dataset.initiativeActor);
+  }, null, { timeout: 10_000 });
+
+  const beforePass = await page.evaluate(() => {
+    const root = document.querySelector('[data-chronicles-tactics="true"]');
+    if (!root) throw new Error('Tactics root ausente');
+    const actorId = root.dataset.initiativeActor || '';
+    const selected = root.querySelector('.chronicles-party-hud__member.is-selected')?.getAttribute('data-member-id') || '';
+    const pass = [...root.querySelectorAll('button')]
+      .find((node) => node.getAttribute('aria-label') === 'Pasar turno');
     return {
+      actorId,
+      selected,
+      passEnabled: Boolean(pass && !pass.disabled),
       camera: root.dataset.camera,
       combat: root.dataset.combat,
-      text: root.textContent || '',
+      engagement: root.dataset.engagement,
       partyMembers: root.querySelectorAll('.chronicles-party-hud__member[data-member-id]').length,
-      sheetTriggers: buttonNames.filter((label) => label.startsWith('Abrir ficha de ')).length,
-      hasUse: buttonNames.includes('Usar'),
-      hasClassSkill: buttonNames.includes('Habilidad de clase'),
-      hasWait: buttonNames.includes('Esperar'),
+      hasCanvas: Boolean(root.querySelector('[data-chronicles-tactics-renderer="three"] canvas')),
+      text: root.textContent || '',
     };
   });
 
-  expect(contract.camera).toBe('isometric-behind-party');
-  expect(contract.combat).toBe('turn-based');
-  expect(contract.text).toMatch(/exploración libre/i);
-  expect(contract.text).toMatch(/combate por turnos/i);
-  expect(contract.text).toMatch(/Espadachín/i);
-  expect(contract.text).toMatch(/Taumaturgo/i);
-  expect(contract.text).toMatch(/Hostigador/i);
-  expect(contract.text).toMatch(/espacio usa · Shift ataca · E habilidad/i);
-  expect(contract.partyMembers).toBe(4);
-  expect(contract.sheetTriggers).toBe(4);
-  expect(contract.hasUse).toBe(true);
-  expect(contract.hasClassSkill).toBe(true);
-  expect(contract.hasWait).toBe(false);
+  expect(beforePass.actorId).toBeTruthy();
+  expect(beforePass.selected).toBe(beforePass.actorId);
+  expect(beforePass.passEnabled).toBe(true);
+  expect(beforePass.camera).toBe('isometric-behind-party');
+  expect(beforePass.combat).toBe('turn-based');
+  expect(beforePass.engagement).toBe('combat');
+  expect(beforePass.partyMembers).toBe(4);
+  expect(beforePass.hasCanvas).toBe(true);
+  expect(beforePass.text).toMatch(/exploración libre/i);
+  expect(beforePass.text).toMatch(/combate por turnos/i);
+  expect(beforePass.text).toMatch(/Espadachín/i);
+  expect(beforePass.text).toMatch(/Taumaturgo/i);
+  expect(beforePass.text).toMatch(/Hostigador/i);
+
+  await page.evaluate(() => {
+    const root = document.querySelector('[data-chronicles-tactics="true"]');
+    const pass = [...(root?.querySelectorAll('button') || [])]
+      .find((node) => node.getAttribute('aria-label') === 'Pasar turno');
+    if (!pass || pass.disabled) throw new Error('Pasar turno no está disponible');
+    pass.click();
+  });
+
+  await page.waitForFunction((previousActorId) => {
+    const actorId = document.querySelector('[data-chronicles-tactics="true"]')?.dataset.initiativeActor || '';
+    return Boolean(actorId && actorId !== previousActorId);
+  }, beforePass.actorId, { timeout: 10_000 });
 });
 
 test('Chronicles · Tactics → primera persona conserva una única expedición autoritativa', async ({ page }) => {
