@@ -282,7 +282,7 @@ function hasAncestorPrefix(node, prefix) {
 export function chroniclesTacticsMaterialRole(node) {
   const name = String(node?.name || '');
   if (name.startsWith('chronicles-iso-floor-') || name === 'chronicles-iso-foundation') return 'floor';
-  if (name.startsWith('chronicles-iso-wall-')) return 'wall';
+  if (name.startsWith('chronicles-iso-wall-') || name.startsWith('chronicles-iso-wall-cap-')) return 'wall';
   if (hasAncestorPrefix(node, 'chronicles-iso-column-')) return 'wall';
   if (hasAncestorPrefix(node, 'chronicles-iso-far-shrine')) return 'wall';
   return null;
