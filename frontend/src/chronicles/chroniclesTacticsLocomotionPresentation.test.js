@@ -20,9 +20,20 @@ describe('Chronicles Tactics exploration locomotion presentation', () => {
     const settled = chroniclesExplorationMotion(point(1, 0), point(1, 0), 'explore-compact');
     const combat = chroniclesExplorationMotion(point(0, 0), point(1, 0), 'combat-grid');
 
-    expect(moving).toMatchObject({ moving: true, rootLerp: 0.12, memberLerp: 0.16 });
-    expect(settled).toMatchObject({ moving: false, rootLerp: 0.14, memberLerp: 0.2 });
+    expect(moving.moving).toBe(true);
+    expect(settled.moving).toBe(false);
     expect(combat.moving).toBe(false);
+    expect(moving.rootLerp).toBeGreaterThan(0);
+    expect(moving.rootLerp).toBeLessThan(1);
+    expect(moving.memberLerp).toBeGreaterThan(moving.rootLerp);
+  });
+
+  it('keeps equivalent locomotion over the same wall-clock time at 30 and 60 FPS', () => {
+    const at60 = chroniclesExplorationMotion(point(0, 0), point(1, 0), 'explore-compact', 1 / 60);
+    const at30 = chroniclesExplorationMotion(point(0, 0), point(1, 0), 'explore-compact', 1 / 30);
+
+    const twoFramesAt60 = 1 - (1 - at60.rootLerp) ** 2;
+    expect(twoFramesAt60).toBeCloseTo(at30.rootLerp, 6);
   });
 
   it('adds a visible gait while walking and relaxes back to idle', () => {
