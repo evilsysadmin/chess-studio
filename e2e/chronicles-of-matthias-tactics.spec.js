@@ -13,9 +13,12 @@ async function openTactics(page, {
   progression = null,
   apiOptions = {},
   expectReady = true,
+  authenticated = false,
 } = {}) {
-  await mockApi(page, apiOptions);
-  await login(page);
+  if (!authenticated) {
+    await mockApi(page, apiOptions);
+    await login(page);
+  }
   await dismissGuide(page);
   if (progression) {
     await page.evaluate((value) => {
@@ -129,8 +132,8 @@ test('Chronicles Tactics · arranca como RPG táctico isométrico con combate po
   // Re-enter Tactics from Home so the combat proof starts from the last
   // semantic checkpoint. The Tactics view itself is intentionally ephemeral,
   // so a raw browser reload returns to Home rather than restoring the mode.
-  await page.goto('/');
-  await openTactics(page);
+  await page.goto('./');
+  await openTactics(page, { authenticated: true });
   await expect(mode).toBeVisible();
   await expect(mode.locator('[data-chronicles-tactics-renderer="three"] canvas')).toHaveCount(1, { timeout: 30_000 });
   await expect(mode).toHaveAttribute('data-engagement', 'exploration');
