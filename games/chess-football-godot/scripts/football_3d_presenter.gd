@@ -3,10 +3,11 @@ extends Node3D
 
 const WORLD_SCALE := 0.014
 const CAMERA_LERP_SPEED := 4.8
-const BROADCAST_HEIGHT := 11.8
-const BROADCAST_DEPTH := 16.2
+const BROADCAST_HEIGHT := 9.8
+const BROADCAST_DEPTH := 17.8
 const TACTICAL_HEIGHT := 27.0
-const PLAYER_PIXEL_SIZE := 0.0108
+const PLAYER_PIXEL_SIZE := 0.0124
+const TACTICAL_PLAYER_PIXEL_SIZE := 0.0162
 
 var match_node: Node
 var camera: Camera3D
@@ -86,9 +87,9 @@ func _build_pitch() -> void:
 
 	var far_stand := MeshInstance3D.new()
 	var far_mesh := BoxMesh.new()
-	far_mesh.size = Vector3(field_width + 4.6, 2.8, 2.4)
+	far_mesh.size = Vector3(field_width + 4.2, 1.45, 1.55)
 	far_stand.mesh = far_mesh
-	far_stand.position = Vector3(0.0, 1.35, -field_depth * 0.5 - 2.15)
+	far_stand.position = Vector3(0.0, 0.70, -field_depth * 0.5 - 2.45)
 	far_stand.material_override = _material(Color(0.030, 0.040, 0.052), 0.96)
 	add_child(far_stand)
 
@@ -107,24 +108,23 @@ func _build_pitch() -> void:
 	_add_floodlights()
 
 func _add_benches() -> void:
-	for x_value in [-3.2, 3.2]:
+	for x_value in [-4.2, 4.2]:
 		var x: float = float(x_value)
-		_add_box(Vector3(x, 0.35, field_depth * 0.5 + 0.82), Vector3(2.5, 0.7, 0.75), Color(0.055, 0.070, 0.082))
-		_add_box(Vector3(x, 0.82, field_depth * 0.5 + 0.88), Vector3(2.5, 0.12, 0.82), Color(0.22, 0.24, 0.26))
+		_add_box(Vector3(x, 0.20, field_depth * 0.5 + 0.68), Vector3(1.7, 0.38, 0.52), Color(0.055, 0.070, 0.082))
+		_add_box(Vector3(x, 0.46, field_depth * 0.5 + 0.72), Vector3(1.7, 0.08, 0.56), Color(0.24, 0.26, 0.28))
 
 func _add_floodlights() -> void:
-	for x_value in [-field_width * 0.42, field_width * 0.42]:
+	var z := -field_depth * 0.5 - 3.0
+	for x_value in [-field_width * 0.43, field_width * 0.43]:
 		var x: float = float(x_value)
-		for z_value in [-field_depth * 0.5 - 2.4, field_depth * 0.5 + 2.4]:
-			var z: float = float(z_value)
-			_add_box(Vector3(x, 2.8, z), Vector3(0.12, 5.6, 0.12), Color(0.20, 0.22, 0.24))
-			var lamp := OmniLight3D.new()
-			lamp.position = Vector3(x, 5.45, z)
-			lamp.light_color = Color(0.82, 0.88, 1.0)
-			lamp.light_energy = 1.0
-			lamp.omni_range = 12.0
-			lamp.shadow_enabled = false
-			add_child(lamp)
+		_add_box(Vector3(x, 2.45, z), Vector3(0.10, 4.9, 0.10), Color(0.20, 0.22, 0.24))
+		var lamp := OmniLight3D.new()
+		lamp.position = Vector3(x, 4.75, z)
+		lamp.light_color = Color(0.82, 0.88, 1.0)
+		lamp.light_energy = 0.78
+		lamp.omni_range = 11.0
+		lamp.shadow_enabled = false
+		add_child(lamp)
 
 func _add_penalty_box(right_side: bool, color: Color) -> void:
 	var width := 265.0 * WORLD_SCALE
@@ -193,13 +193,12 @@ func _build_player_proxies() -> void:
 
 			var active_disc := MeshInstance3D.new()
 			active_disc.name = "ActiveDisc"
-			var disc_mesh := CylinderMesh.new()
-			disc_mesh.top_radius = 0.56
-			disc_mesh.bottom_radius = 0.56
-			disc_mesh.height = 0.024
+			var disc_mesh := TorusMesh.new()
+			disc_mesh.inner_radius = 0.40
+			disc_mesh.outer_radius = 0.48
 			active_disc.mesh = disc_mesh
-			active_disc.position.y = 0.025
-			active_disc.material_override = _material(Color(1.0, 0.72, 0.16), 0.35)
+			active_disc.position.y = 0.035
+			active_disc.material_override = _material(Color(1.0, 0.72, 0.16), 0.32)
 			active_disc.visible = false
 			root.add_child(active_disc)
 
@@ -220,7 +219,7 @@ func _build_ball() -> void:
 func _build_camera() -> void:
 	camera = Camera3D.new()
 	camera.current = true
-	camera.fov = 39.0
+	camera.fov = 37.5
 	camera.near = 0.08
 	camera.far = 90.0
 	add_child(camera)
@@ -261,6 +260,7 @@ func sync_presentation(delta: float, mode: String) -> void:
 				if sprite.animation != wanted_animation:
 					sprite.play(wanted_animation)
 				sprite.flip_h = player.visual.flip_h
+			sprite.pixel_size = TACTICAL_PLAYER_PIXEL_SIZE if mode == "tactical" else PLAYER_PIXEL_SIZE
 			var active_disc := proxy.get_node_or_null("ActiveDisc") as MeshInstance3D
 			if active_disc != null:
 				active_disc.visible = player == match_node.controlled
@@ -287,7 +287,7 @@ func _sync_camera(delta: float, mode: String) -> void:
 		wanted_position = Vector3(focus.x + lead, BROADCAST_HEIGHT, BROADCAST_DEPTH)
 		wanted_position.x = clampf(wanted_position.x, -field_width * 0.32, field_width * 0.32)
 		wanted_look = Vector3(wanted_position.x, 0.0, -0.85)
-		wanted_fov = 39.0
+		wanted_fov = 37.5
 
 	var t := clampf(delta * CAMERA_LERP_SPEED, 0.0, 1.0)
 	camera.position = camera.position.lerp(wanted_position, t)
