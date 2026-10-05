@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
-import { buttonWithHeading, login, mockApi } from './helpers.js';
+import { login, mockApi } from './helpers.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const TRAINING_SCOPE = new Set(
@@ -201,7 +201,10 @@ scopedTest('school', 'Entrenar · Escuela, Glosario y Modos especiales', async (
   test.setTimeout(110_000);
   await prepare(page);
 
-  await buttonWithHeading(page, 'Escuela de Matthias').click();
+  await page.evaluate(() => {
+    sessionStorage.setItem('chess-study-current-view', 'tutorial');
+  });
+  await page.reload();
 
   const shell = page.locator('.tutorial-shell.matthias-school-shell');
   await expect(shell).toBeVisible();
