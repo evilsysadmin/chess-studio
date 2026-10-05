@@ -1,0 +1,42 @@
+{
+  "id": "pawn-slug-v1",
+  "version": 1,
+  "world": {
+    "width": 5200,
+    "groundY": 420,
+    "bossX": 4580,
+    "extractionX": 5050
+  },
+  "enemyProfiles": {
+    "pawn": { "hp": 34, "speed": 54, "score": 100, "xp": 28, "width": 38, "height": 62 },
+    "knight": { "hp": 62, "speed": 92, "score": 220, "xp": 52, "width": 48, "height": 68 },
+    "rook": { "hp": 112, "speed": 0, "score": 350, "xp": 78, "width": 58, "height": 76 },
+    "bishop": { "hp": 310, "speed": 42, "score": 950, "xp": 190, "width": 78, "height": 112, "midBoss": true },
+    "boss": { "hp": 780, "speed": 0, "score": 3500, "xp": 650, "width": 190, "height": 150 }
+  },
+  "spawns": [
+    { "id": "pawn-0", "x": 620, "type": "pawn" },
+    { "id": "pawn-1", "x": 790, "type": "pawn" },
+    { "id": "pawn-2", "x": 1200, "type": "pawn" },
+    { "id": "knight-3", "x": 1290, "type": "knight" },
+    { "id": "pawn-4", "x": 1520, "type": "pawn" },
+    { "id": "rook-5", "x": 1560, "type": "rook" },
+    { "id": "pawn-6", "x": 1940, "type": "pawn" },
+    { "id": "knight-7", "x": 2140, "type": "knight" },
+    { "id": "pawn-8", "x": 2310, "type": "pawn" },
+    { "id": "pawn-9", "x": 2250, "type": "pawn" },
+    { "id": "bishop-10", "x": 2380, "type": "bishop" },
+    { "id": "rook-11", "x": 2590, "type": "rook" },
+    { "id": "pawn-12", "x": 2940, "type": "pawn" },
+    { "id": "knight-13", "x": 3110, "type": "knight" },
+    { "id": "pawn-14", "x": 3290, "type": "pawn" },
+    { "id": "pawn-15", "x": 3210, "type": "pawn" },
+    { "id": "rook-16", "x": 3430, "type": "rook" },
+    { "id": "knight-17", "x": 3560, "type": "knight" },
+    { "id": "bishop-18", "x": 3740, "type": "bishop" },
+    { "id": "pawn-19", "x": 3950, "type": "pawn" },
+    { "id": "knight-20", "x": 4070, "type": "knight" },
+    { "id": "rook-21", "x": 4190, "type": "rook" },
+    { "id": "pawn-22", "x": 4380, "type": "pawn" }
+  ]
+}
