@@ -159,7 +159,7 @@ for (const capture of CAPTURES) {
     // Hosted SwiftShader makes large WebGL readbacks expensive. Keep this
     // producer to one canonical readback per viewport; Tactics owns a separate
     // focused producer so neither surface can starve the other of its budget.
-    test.setTimeout(150_000);
+    test.setTimeout(180_000);
     await mkdir(ARTIFACT_DIR, { recursive: true });
 
     const context = await browser.newContext({
@@ -224,7 +224,7 @@ for (const capture of CAPTURES) {
 
 
 test('Chronicles · Gallery of Forks first-person material proof · desktop-1440x900', async ({ browser }) => {
-  test.setTimeout(150_000);
+  test.setTimeout(180_000);
   await mkdir(ARTIFACT_DIR, { recursive: true });
 
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
@@ -256,7 +256,7 @@ test('Chronicles · Gallery of Forks first-person material proof · desktop-1440
 
 for (const capture of CAPTURES) {
   test(`Chronicles · terminal defeat visual · ${capture.label}`, async ({ browser }) => {
-    test.setTimeout(150_000);
+    test.setTimeout(180_000);
     await mkdir(ARTIFACT_DIR, { recursive: true });
 
     const context = await browser.newContext({
