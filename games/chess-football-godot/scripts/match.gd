@@ -13,11 +13,11 @@ const TACKLE_ATTEMPT_RANGE := 60.0
 const TACKLE_CLEAN_STEAL_RANGE := 30.0
 const TACKLE_BASE_SUCCESS_RANGE := 30.0
 const TACKLE_APPROACH_BONUS := 18.0
-const TACKLE_MIN_APPROACH := 0.18
-const TACKLE_EMERGENCY_RANGE := 23.0
-const TACKLE_STEAL_DELAY := 0.13
-const TACKLE_STEAL_POKE_POWER := 180.0
-const TACKLE_LOOSE_POKE_POWER := 270.0
+const TACKLE_MIN_APPROACH := 0.28
+const TACKLE_EMERGENCY_RANGE := 20.0
+const TACKLE_STEAL_DELAY := 0.20
+const TACKLE_STEAL_POKE_POWER := 220.0
+const TACKLE_LOOSE_POKE_POWER := 310.0
 
 const KEEPER_LINE_OFFSET := 96.0
 const KEEPER_PRESS_MAX_OFFSET := 170.0
@@ -43,14 +43,18 @@ const KICKOFF_RIVAL_HALF_GAP := 250.0
 const GOAL_CELEBRATION_SECONDS := 1.35
 
 const SHOT_CHARGE_SECONDS := 0.90
-const SHOT_MIN_POWER := 650.0
-const SHOT_MAX_POWER := 1220.0
-const SHOT_MIN_LIFT := 170.0
-const SHOT_MAX_LIFT := 390.0
-const AI_SHOT_MIN_POWER := 760.0
-const AI_SHOT_MAX_POWER := 1040.0
-const AI_SHOT_MIN_LIFT := 220.0
-const AI_SHOT_MAX_LIFT := 350.0
+const SHOT_MIN_POWER := 430.0
+const SHOT_MAX_POWER := 1260.0
+const SHOT_DRIVE_MAX_RATIO := 0.24
+const SHOT_BLAST_MIN_RATIO := 0.72
+const SHOT_DRIVE_MIN_LIFT := 24.0
+const SHOT_DRIVE_MAX_LIFT := 70.0
+const SHOT_NORMAL_MIN_LIFT := 150.0
+const SHOT_NORMAL_MAX_LIFT := 280.0
+const SHOT_BLAST_MIN_LIFT := 320.0
+const SHOT_BLAST_MAX_LIFT := 460.0
+const AI_SHOT_MIN_POWER := 720.0
+const AI_SHOT_MAX_POWER := 1100.0
 
 var teams: Array[Array] = [[], []]
 var ball: FootballBall
@@ -294,6 +298,7 @@ func _refresh_hud() -> void:
 		shot_meter.value = _shot_charge_ratio()
 	if shot_meter_label != null:
 		shot_meter_label.visible = shot_charging
+		shot_meter_label.text = _shot_profile_name(_shot_charge_ratio()) if shot_charging else "POTENCIA DE TIRO"
 	var view_name := "BROADCAST 3D" if camera_mode == CAMERA_MODE_BROADCAST else "TÁCTICA AÉREA"
 	view_label.text = "VISTA · %s" % view_name if camera_hint_seconds > 0.0 else ""
 	goal_label.text = last_goal_text
@@ -337,12 +342,26 @@ func _shot_charge_ratio() -> float:
 	return clampf(shot_charge_seconds / SHOT_CHARGE_SECONDS, 0.0, 1.0)
 
 func _shot_power_from_ratio(ratio: float) -> float:
-	var shaped := pow(clampf(ratio, 0.0, 1.0), 1.15)
+	var shaped := pow(clampf(ratio, 0.0, 1.0), 1.25)
 	return lerpf(SHOT_MIN_POWER, SHOT_MAX_POWER, shaped)
 
 func _shot_lift_from_ratio(ratio: float) -> float:
-	var shaped := pow(clampf(ratio, 0.0, 1.0), 0.88)
-	return lerpf(SHOT_MIN_LIFT, SHOT_MAX_LIFT, shaped)
+	var r := clampf(ratio, 0.0, 1.0)
+	if r < SHOT_DRIVE_MAX_RATIO:
+		return lerpf(SHOT_DRIVE_MIN_LIFT, SHOT_DRIVE_MAX_LIFT, r / SHOT_DRIVE_MAX_RATIO)
+	if r < SHOT_BLAST_MIN_RATIO:
+		var normal_ratio := (r - SHOT_DRIVE_MAX_RATIO) / (SHOT_BLAST_MIN_RATIO - SHOT_DRIVE_MAX_RATIO)
+		return lerpf(SHOT_NORMAL_MIN_LIFT, SHOT_NORMAL_MAX_LIFT, normal_ratio)
+	var blast_ratio := (r - SHOT_BLAST_MIN_RATIO) / (1.0 - SHOT_BLAST_MIN_RATIO)
+	return lerpf(SHOT_BLAST_MIN_LIFT, SHOT_BLAST_MAX_LIFT, blast_ratio)
+
+func _shot_profile_name(ratio: float) -> String:
+	var r := clampf(ratio, 0.0, 1.0)
+	if r < SHOT_DRIVE_MAX_RATIO:
+		return "TIRO RASO"
+	if r < SHOT_BLAST_MIN_RATIO:
+		return "TIRO"
+	return "PEPINAZO"
 
 func _release_charged_shot() -> void:
 	if not shot_charging:
@@ -526,9 +545,10 @@ func _ai_attack(player: Footballer) -> void:
 		player.play_action("shoot", 0.78)
 		var distance_ratio := clampf(goal_distance / AI_SHOOT_DISTANCE, 0.0, 1.0)
 		var shot_power := lerpf(AI_SHOT_MIN_POWER, AI_SHOT_MAX_POWER, distance_ratio)
-		var shot_lift := lerpf(AI_SHOT_MIN_LIFT, AI_SHOT_MAX_LIFT, distance_ratio)
+		var profile_ratio := lerpf(0.18, 0.82, distance_ratio)
+		var shot_lift := _shot_lift_from_ratio(profile_ratio)
 		if audio_fx != null:
-			audio_fx.play_shot(distance_ratio)
+			audio_fx.play_shot(profile_ratio)
 		ball.release(shot_target - player.global_position, shot_power, shot_lift)
 		return
 
@@ -633,7 +653,12 @@ func _try_tackle(tackler: Footballer) -> bool:
 		audio_fx.play_tackle()
 
 	if distance <= TACKLE_CLEAN_STEAL_RANGE:
-		var steal_direction := -push_direction
+		# Deflect the ball out of the collision instead of straight underneath
+		# the tackler. The short diagonal loose-ball beat makes a clean steal
+		# readable before possession is consolidated.
+		var lateral_sign := 1.0 if tackler.team_id == 0 else -1.0
+		var lateral := Vector2(-push_direction.y, push_direction.x) * lateral_sign
+		var steal_direction := (-push_direction * 0.72 + lateral * 0.69).normalized()
 		ball.release(steal_direction, TACKLE_STEAL_POKE_POWER)
 		pending_tackle_player = tackler
 		pending_tackle_seconds = TACKLE_STEAL_DELAY
@@ -657,7 +682,7 @@ func _update_pending_tackle_claim(delta: float) -> void:
 		return
 	var winner := pending_tackle_player
 	pending_tackle_player = null
-	if is_instance_valid(winner) and winner.global_position.distance_to(ball.global_position) <= 62.0:
+	if is_instance_valid(winner) and winner.global_position.distance_to(ball.global_position) <= 72.0:
 		ball.attach_to(winner)
 		if winner.team_id == 0:
 			_select_player(winner)
@@ -705,6 +730,8 @@ func _select_player(player: Footballer) -> void:
 
 func _check_goal() -> void:
 	if not ChessFootballMath.in_goal_mouth(ball.global_position):
+		return
+	if not ChessFootballMath.ball_fits_under_crossbar(ball.flight_height):
 		return
 	if ball.global_position.x > ChessFootballMath.PITCH_RECT.end.x + 8.0:
 		_score_goal(0)
@@ -917,11 +944,17 @@ func debug_force_kickoff_ready() -> void:
 func debug_score_goal(team_id: int) -> void:
 	_score_goal(team_id)
 
+func debug_check_goal() -> void:
+	_check_goal()
+
 func debug_shot_power_for_ratio(ratio: float) -> float:
 	return _shot_power_from_ratio(ratio)
 
 func debug_shot_lift_for_ratio(ratio: float) -> float:
 	return _shot_lift_from_ratio(ratio)
+
+func debug_shot_profile_for_ratio(ratio: float) -> String:
+	return _shot_profile_name(ratio)
 
 func debug_step_pending_tackle(delta: float) -> void:
 	_update_pending_tackle_claim(delta)

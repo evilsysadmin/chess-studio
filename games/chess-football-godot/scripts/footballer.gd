@@ -121,9 +121,13 @@ func receive_tackle_contact(push_direction: Vector2, duration: float = 0.30) -> 
 	contact_stun_total = maxf(duration, 0.05)
 	contact_stun_seconds = contact_stun_total
 	tackle_recovery_seconds = maxf(tackle_recovery_seconds, duration + 0.08)
-	if absf(push_direction.x) > 0.01:
-		contact_sway_sign = signf(push_direction.x)
-	velocity = push_direction.normalized() * base_speed * 0.26 if push_direction.length_squared() > 0.001 else Vector2.ZERO
+	var push := push_direction.normalized() if push_direction.length_squared() > 0.001 else Vector2.RIGHT
+	if absf(push.x) > 0.01:
+		contact_sway_sign = signf(push.x)
+	# Separate the bodies immediately so a clean tackle reads as contact,
+	# deflection and recovery instead of two sprites merging into one.
+	global_position = ChessFootballMath.clamp_to_pitch(global_position + push * 24.0)
+	velocity = push * base_speed * 0.42
 
 func contact_stun_active() -> bool:
 	return contact_stun_seconds > 0.0

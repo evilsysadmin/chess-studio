@@ -54,9 +54,18 @@ func _initialize() -> void:
 	assert(InputMap.has_action("tackle"))
 	print("SMOKE_STAGE=kickoff")
 
-	match_node.ball.flight_height = 48.0
+	# The same shot crossing the goal plane is only a goal while the whole
+	# ball fits below the crossbar.
+	match_node.ball.release(Vector2.RIGHT, 0.0)
+	match_node.ball.global_position = ChessFootballMath.goal_center(0) + Vector2(28.0, 0.0)
+	match_node.ball.flight_height = ChessFootballMath.GOAL_MAX_FLIGHT_HEIGHT + 8.0
 	match_node.ball.vertical_velocity = 120.0
-	match_node.debug_score_goal(0)
+	match_node.debug_check_goal()
+	assert(match_node.score == [0, 0])
+	assert(not match_node.debug_goal_restart_active())
+
+	match_node.ball.flight_height = ChessFootballMath.GOAL_MAX_FLIGHT_HEIGHT - 4.0
+	match_node.debug_check_goal()
 	assert(match_node.score == [1, 0])
 	assert(match_node.ball.flight_height == 0.0)
 	assert(match_node.ball.vertical_velocity == 0.0)
@@ -93,14 +102,16 @@ func _initialize() -> void:
 	victim.global_position = Vector2(668.0, 500.0)
 	tackler.velocity = Vector2.RIGHT * tackler.base_speed
 	match_node.ball.attach_to(victim)
+	var pre_tackle_distance: float = tackler.global_position.distance_to(victim.global_position)
 	assert(match_node.debug_try_tackle(tackler))
+	assert(tackler.global_position.distance_to(victim.global_position) > pre_tackle_distance + 21.0)
 	assert(match_node.ball.carrier == null)
 	assert(not victim.has_ball)
 	assert(victim.contact_stun_active())
 	assert(not tackler.debug_tackle_ready())
 	assert(String(tackler.visual.animation) == "tackle")
-	match_node.ball.tick_ball(0.14)
-	match_node.debug_step_pending_tackle(0.14)
+	match_node.ball.tick_ball(0.21)
+	match_node.debug_step_pending_tackle(0.21)
 	assert(match_node.ball.carrier == tackler)
 	print("SMOKE_STAGE=tackle")
 
@@ -151,13 +162,16 @@ func _initialize() -> void:
 	var tap_lift: float = match_node.debug_shot_lift_for_ratio(0.0)
 	var medium_lift: float = match_node.debug_shot_lift_for_ratio(0.5)
 	var full_lift: float = match_node.debug_shot_lift_for_ratio(1.0)
-	assert(tap_power >= 640.0)
-	assert(medium_power > tap_power + 180.0)
-	assert(full_power > medium_power + 220.0)
+	assert(tap_power >= 420.0 and tap_power < 500.0)
+	assert(medium_power > tap_power + 300.0)
+	assert(full_power > medium_power + 400.0)
 	assert(full_power <= match_node.ball.max_speed)
-	assert(tap_lift >= 160.0)
-	assert(medium_lift > tap_lift + 80.0)
-	assert(full_lift > medium_lift + 80.0)
+	assert(tap_lift < 80.0)
+	assert(medium_lift > tap_lift + 120.0)
+	assert(full_lift > medium_lift + 200.0)
+	assert(match_node.debug_shot_profile_for_ratio(0.1) == "TIRO RASO")
+	assert(match_node.debug_shot_profile_for_ratio(0.5) == "TIRO")
+	assert(match_node.debug_shot_profile_for_ratio(1.0) == "PEPINAZO")
 
 	match_node.ball.attach_to(match_node.controlled)
 	match_node.debug_force_shot_charge(0.5)

@@ -33,6 +33,24 @@ func _initialize() -> void:
 	match_node.debug_sync_presentation()
 	await _save_capture(match_node, "airborne", "VISUAL_CAPTURE_AIRBORNE")
 
+	# Explicitly review both extremes: a near-ground driven shot and a fully
+	# charged blast. The old single airborne frame could hide profile collapse.
+	match_node.ball.attach_to(match_node.controlled)
+	match_node.debug_force_shot_charge(0.12)
+	match_node.debug_release_charged_shot()
+	match_node.ball.tick_ball(0.08)
+	assert(match_node.ball.flight_height < 8.0)
+	match_node.debug_sync_presentation()
+	await _save_capture(match_node, "drive", "VISUAL_CAPTURE_DRIVE")
+
+	match_node.ball.attach_to(match_node.controlled)
+	match_node.debug_force_shot_charge(1.0)
+	match_node.debug_release_charged_shot()
+	match_node.ball.tick_ball(0.10)
+	assert(match_node.ball.flight_height > 30.0)
+	match_node.debug_sync_presentation()
+	await _save_capture(match_node, "blast", "VISUAL_CAPTURE_BLAST")
+
 	match_node.debug_toggle_camera_mode()
 	for _frame in range(10):
 		await process_frame
@@ -50,9 +68,19 @@ func _initialize() -> void:
 	match_node.ball.attach_to(victim)
 	assert(match_node.debug_try_tackle(tackler))
 	assert(match_node.ball.carrier == null)
-	for _frame in range(2):
-		await process_frame
 	assert(victim.contact_stun_active())
+	# Freeze the players at the impact pose, but advance only the loose ball so
+	# the deflection is visible outside both silhouettes.
+	tackler.velocity = Vector2.ZERO
+	victim.velocity = Vector2.ZERO
+	assert(tackler.global_position.distance_to(victim.global_position) > 50.0)
+	if tackler.visual != null and String(tackler.visual.animation) == "tackle":
+		tackler.visual.pause()
+		tackler.visual.frame = 4
+	match_node.ball.tick_ball(0.08)
+	assert(match_node.ball.carrier == null)
+	assert(match_node.ball.global_position.distance_to(tackler.global_position) > 22.0)
+	match_node.debug_sync_presentation()
 	await _save_capture(match_node, "contact", "VISUAL_CAPTURE_CONTACT")
 
 	# Build a readable goal tableau instead of reusing the tackle setup.
@@ -65,8 +93,7 @@ func _initialize() -> void:
 	match_node.debug_score_goal(0)
 	assert(match_node.debug_goal_restart_active())
 	# Pin a readable mid-pose directly. Visual review must not depend on wall
-	# clock/frame duration: heavier sprite banks can otherwise consume the whole
-	# celebration before the screenshot is taken.
+	# clock/frame duration or sprite import/render cost.
 	for player in match_node.teams[0]:
 		if player.visual != null and String(player.visual.animation) == "celebrate":
 			player.visual.pause()
