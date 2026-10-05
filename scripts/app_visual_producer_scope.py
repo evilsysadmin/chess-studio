@@ -157,6 +157,8 @@ QUICK_MATCH_EXACT_PRODUCERS = {
     # contract. It cannot alter Home Matthias/focus, room decor, armor or Hans.
     "frontend/src/components/quickmatchmodal.jsx": {"home-base", "warroom-core"},
     "frontend/src/components/quickmatchmobilegoldenpath.css": {"home-base"},
+    "frontend/src/components/quickmatchreadyroom.css": {"home-base"},
+    "frontend/src/components/quickmatchreadyroomscene3d.jsx": {"home-base"},
     "frontend/src/components/usewarroomimmersive.js": {"warroom-core"},
 }
 
@@ -508,6 +510,8 @@ def classify_home_profile_scope(paths: list[str]) -> str:
     quick_match_home_files = {
         "frontend/src/components/quickmatchmodal.jsx",
         "frontend/src/components/quickmatchmobilegoldenpath.css",
+        "frontend/src/components/quickmatchreadyroom.css",
+        "frontend/src/components/quickmatchreadyroomscene3d.jsx",
     }
     if relevant and all(path in quick_match_home_files for path in relevant):
         return HOME_PROFILE_SCOPE_QUICK_MATCH
@@ -522,6 +526,8 @@ def classify_warroom_profile_scope(paths: list[str]) -> str:
         return WARROOM_PROFILE_SCOPE_ALL
     mobile_entry_only = {
         "frontend/src/components/quickmatchmodal.jsx",
+        "frontend/src/components/quickmatchreadyroom.css",
+        "frontend/src/components/quickmatchreadyroomscene3d.jsx",
     }
     relevant = [path for path in cleaned if ".test." not in Path(path).name and ".spec." not in Path(path).name]
     if relevant and all(path in mobile_entry_only for path in relevant):
@@ -633,10 +639,20 @@ def self_test() -> None:
     ]) == "classic,v3"
     assert classify_warroom_variants(["frontend/src/components/PuzzleScreen.jsx"]) == "classic,v2,v3"
     assert classify_home_profile_scope(["frontend/src/components/QuickMatchModal.jsx"]) == "quickmatch"
+    assert classify_home_profile_scope([
+        "frontend/src/components/QuickMatchModal.jsx",
+        "frontend/src/components/QuickMatchReadyRoom.css",
+        "frontend/src/components/QuickMatchReadyRoomScene3D.jsx",
+    ]) == "quickmatch"
     assert classify_home_profile_scope(["frontend/src/components/HomeCastle3D.jsx"]) == "all"
     assert classify_warroom_profile_scope([
         "frontend/src/components/QuickMatchModal.jsx",
         "frontend/src/components/QuickMatchModal.test.jsx",
+    ]) == "mobile-entry"
+    assert classify_warroom_profile_scope([
+        "frontend/src/components/QuickMatchModal.jsx",
+        "frontend/src/components/QuickMatchReadyRoom.css",
+        "frontend/src/components/QuickMatchReadyRoomScene3D.jsx",
     ]) == "mobile-entry"
     assert classify_warroom_profile_scope([
         "frontend/src/components/useWarRoomImmersive.js",
@@ -673,6 +689,8 @@ def self_test() -> None:
     assert classify(["frontend/src/components/LabScreen.jsx"]) == "experiments-hub"
     assert classify(["frontend/src/components/QuickMatchModal.jsx"]) == "home-base,warroom-core"
     assert classify(["frontend/src/components/QuickMatchMobileGoldenPath.css"]) == "home-base"
+    assert classify(["frontend/src/components/QuickMatchReadyRoom.css"]) == "home-base"
+    assert classify(["frontend/src/components/QuickMatchReadyRoomScene3D.jsx"]) == "home-base"
     assert classify([
         "frontend/src/App.jsx",
         "frontend/src/components/GameScreen.jsx",

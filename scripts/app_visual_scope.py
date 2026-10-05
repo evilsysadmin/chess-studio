@@ -37,6 +37,8 @@ QUICK_MATCH_VISUAL_SURFACES = {
     # forces Home + experiments + training + War Room + health captures.
     "frontend/src/components/quickmatchmodal.jsx": {"home", "warroom"},
     "frontend/src/components/quickmatchmobilegoldenpath.css": {"home"},
+    "frontend/src/components/quickmatchreadyroom.css": {"home"},
+    "frontend/src/components/quickmatchreadyroomscene3d.jsx": {"home"},
     "frontend/src/components/usewarroomimmersive.js": {"warroom"},
 }
 
