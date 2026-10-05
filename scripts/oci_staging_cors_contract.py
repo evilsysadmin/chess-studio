@@ -605,6 +605,14 @@ assert "payload.get('nativeProfile')" in deploy
 assert 'games_native_attest "http://127.0.0.1:${port}/api/profile" GET X-Chess-Profile-Native; then' in deploy
 assert 'exit 67' in deploy
 assert 'GO_NATIVE_PROFILE_ENABLED: "${CHESS_STUDIO_GO_NATIVE_PROFILE_ENABLED:-false}"' in compose
+# Native session routes: staging first, attested through Go after the cutover.
+assert 'staging) go_native_auth_session="${CHESS_STUDIO_GO_NATIVE_AUTH_SESSION_ENABLED:-true}" ;;' in deploy
+assert '*) go_native_auth_session="${CHESS_STUDIO_GO_NATIVE_AUTH_SESSION_ENABLED:-false}" ;;' in deploy
+assert 'CHESS_STUDIO_GO_NATIVE_AUTH_SESSION_ENABLED="$go_native_auth_session"' in deploy
+assert "payload.get('nativeAuthSession')" in deploy
+assert 'games_native_attest "http://127.0.0.1:${port}/api/auth/me" GET X-Chess-Session-Native; then' in deploy
+assert 'exit 68' in deploy
+assert 'GO_NATIVE_AUTH_SESSION_ENABLED: "${CHESS_STUDIO_GO_NATIVE_AUTH_SESSION_ENABLED:-false}"' in compose
 assert 'GO_NATIVE_GAMES_WRITE_ENABLED: "${CHESS_STUDIO_GO_NATIVE_GAMES_WRITE_ENABLED:-false}"' in compose
 assert 'sleep 0.25' in deploy
 assert 'if ! wait_pvp_edge_attest "$port"; then' in deploy
