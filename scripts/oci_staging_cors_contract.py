@@ -683,6 +683,13 @@ assert "payload.get('nativeChroniclesRuns')" in deploy
 assert 'games_native_attest "http://127.0.0.1:${port}/api/chronicles/runs/attest" GET X-Chess-Chronicles-Native 401; then' in deploy
 assert 'exit 80' in deploy
 assert compose.count('GO_NATIVE_CHRONICLES_RUNS_ENABLED: "${CHESS_STUDIO_GO_NATIVE_CHRONICLES_RUNS_ENABLED:-false}"') == 2
+# Native Admin feedback: staging first, attested by Go's 401 for an anonymous summary.
+assert 'staging) go_native_admin_feedback="${CHESS_STUDIO_GO_NATIVE_ADMIN_FEEDBACK_ENABLED:-true}" ;;' in deploy
+assert 'CHESS_STUDIO_GO_NATIVE_ADMIN_FEEDBACK_ENABLED="$go_native_admin_feedback"' in deploy
+assert "payload.get('nativeAdminFeedback')" in deploy
+assert 'games_native_attest "http://127.0.0.1:${port}/api/admin/feedback/summary" GET X-Chess-Admin-Native 401; then' in deploy
+assert 'exit 81' in deploy
+assert compose.count('GO_NATIVE_ADMIN_FEEDBACK_ENABLED: "${CHESS_STUDIO_GO_NATIVE_ADMIN_FEEDBACK_ENABLED:-false}"') == 2
 assert 'GO_NATIVE_GAMES_WRITE_ENABLED: "${CHESS_STUDIO_GO_NATIVE_GAMES_WRITE_ENABLED:-false}"' in compose
 assert 'sleep 0.25' in deploy
 assert 'if ! wait_pvp_edge_attest "$port"; then' in deploy
