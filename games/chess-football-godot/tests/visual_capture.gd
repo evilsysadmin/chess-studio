@@ -64,9 +64,13 @@ func _initialize() -> void:
 	match_node.ball.global_position = ChessFootballMath.goal_center(0) + Vector2(28.0, 0.0)
 	match_node.debug_score_goal(0)
 	assert(match_node.debug_goal_restart_active())
-	# Review the celebration at a readable mid-pose rather than frame zero.
-	for _frame in range(16):
-		await process_frame
+	# Pin a readable mid-pose directly. Visual review must not depend on wall
+	# clock/frame duration: heavier sprite banks can otherwise consume the whole
+	# celebration before the screenshot is taken.
+	for player in match_node.teams[0]:
+		if player.visual != null and String(player.visual.animation) == "celebrate":
+			player.visual.pause()
+			player.visual.frame = 4
 	assert(match_node.debug_goal_restart_active())
 	match_node.debug_refresh_hud()
 	match_node.debug_sync_presentation()
