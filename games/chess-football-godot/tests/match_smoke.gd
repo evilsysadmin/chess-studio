@@ -41,9 +41,10 @@ func _initialize() -> void:
 				assert(player.global_position.x > center_x)
 	match_node.debug_force_kickoff_ready()
 	assert(not match_node.debug_kickoff_active())
-	if initial_kickoff_team == 1:
-		assert(match_node.ball.carrier == null)
-		assert(match_node.ball.velocity.length() > 0.0)
+	assert(match_node.ball.carrier == null)
+	assert(match_node.ball.velocity.length() > 0.0)
+	if initial_kickoff_team == 0:
+		assert(match_node.controlled == match_node.teams[0][3])
 	assert(InputMap.has_action("tackle"))
 	print("SMOKE_STAGE=kickoff")
 
@@ -58,6 +59,8 @@ func _initialize() -> void:
 	assert(match_node.ball.carrier != null and match_node.ball.carrier.team_id == 1)
 	match_node.debug_force_kickoff_ready()
 	assert(not match_node.debug_kickoff_active())
+	assert(match_node.ball.carrier == null)
+	assert(match_node.ball.velocity.length() > 0.0)
 
 	match_node.debug_score_goal(1)
 	assert(match_node.score == [1, 1])
@@ -70,7 +73,9 @@ func _initialize() -> void:
 	assert(match_node.ball.carrier != null and match_node.ball.carrier.team_id == 0)
 	match_node.debug_force_kickoff_ready()
 	assert(not match_node.debug_kickoff_active())
-	assert(match_node.ball.carrier == match_node.controlled)
+	assert(match_node.ball.carrier == null)
+	assert(match_node.ball.velocity.length() > 0.0)
+	assert(match_node.controlled == match_node.teams[0][3])
 
 	var tackler: Footballer = match_node.controlled
 	var victim: Footballer = match_node.teams[1][2]
