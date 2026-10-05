@@ -172,14 +172,19 @@ func (s *Store) ObserveEpisodes(ctx context.Context, username string, facts bson
 	return result, s.upsert(ctx, username, update)
 }
 
-// Context mirrors memory_store.context plus episode_store.context, merged
-// the way the routes hand them to the model ({..., "episodic": ...}).
-func (s *Store) Context(ctx context.Context, username string, facts bson.D, now time.Time) (bson.D, error) {
+// MemoryContext mirrors memory_store.context alone (Admin's portrait).
+func (s *Store) MemoryContext(ctx context.Context, username string, facts bson.D, now time.Time) (bson.D, error) {
 	row, err := s.Memory(ctx, username)
 	if err != nil {
 		return nil, err
 	}
-	memory, err := Context(row, facts, now)
+	return Context(row, facts, now)
+}
+
+// Context mirrors memory_store.context plus episode_store.context, merged
+// the way the routes hand them to the model ({..., "episodic": ...}).
+func (s *Store) Context(ctx context.Context, username string, facts bson.D, now time.Time) (bson.D, error) {
+	memory, err := s.MemoryContext(ctx, username, facts, now)
 	if err != nil {
 		return nil, err
 	}

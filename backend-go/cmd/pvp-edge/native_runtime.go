@@ -18,6 +18,7 @@ import (
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/feedbackstore"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/gamesapi"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/gamestore"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/ipgeo"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/matchdisconnect"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/matchresign"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/matchtimeout"
@@ -68,6 +69,8 @@ type nativeRuntime struct {
 	chronicles     http.Handler
 	chroniclesRuns http.Handler
 	adminFeedback  http.Handler
+	// adminUsers is built in edgeConfig, sharing the narrative gateway.
+	adminUsers *gamesapi.AdminUsersConfig
 	// system is built in edgeConfig, once request telemetry exists.
 	system *gamesapi.SystemConfig
 	// history is Admin's observability history (nil when disabled).
@@ -551,6 +554,29 @@ func buildNativeRuntime(features nativeFeatureFlags, upstream string) (runtime n
 		}
 		runtime.adminFeedback = adminFeedbackHandler
 	}
+	if features.adminUsers {
+		telemetryCfg := telemetry.ConfigFromEnv(os.LookupEnv)
+		purgeStore := userdata.NewMongo(mongoRuntime.Database(), envDurationMS("USER_PURGE_MONGO_TIMEOUT_MS", 5000*time.Millisecond))
+		runtime.adminUsers = &gamesapi.AdminUsersConfig{
+			Config: gamesapi.Config{
+				Accounts:        accountstore.New(mongoRuntime.Database(), pvpMongoTimeout),
+				Presence:        presence.New(mongoRuntime.Database(), telemetryCfg.TrustCloudflare, 2*time.Second),
+				JWTSecret:       jwtSecret,
+				AllowedOrigins:  splitCSV(os.Getenv("CORS_ORIGINS")),
+				TrustCloudflare: telemetryCfg.TrustCloudflare,
+			},
+			Users:    accountstore.New(mongoRuntime.Database(), envDurationMS("ADMIN_USERS_MONGO_TIMEOUT_MS", 5000*time.Millisecond)),
+			Profiles: profilestore.New(profilestore.NewMongo(mongoRuntime.Database(), envDurationMS("ADMIN_USERS_MONGO_TIMEOUT_MS", 5000*time.Millisecond))),
+			Matthias: matthiasmem.New(mongoRuntime.Database(), pvpMongoTimeout),
+			Purge: func(ctx context.Context, username string) (userdata.Purged, error) {
+				return userdata.Purge(ctx, purgeStore, username)
+			},
+			Countries:      ipgeo.New(nil),
+			NetworkStatus:  ipgeo.Status,
+			AdminUsernames: splitCSV(os.Getenv("ADMIN_USERNAMES")),
+			Memory:         matthiasmem.New(mongoRuntime.Database(), pvpMongoTimeout),
+		}
+	}
 	if features.narrative {
 		telemetryCfg := telemetry.ConfigFromEnv(os.LookupEnv)
 		runtime.narrative = &gamesapi.NarrativeConfig{
@@ -622,19 +648,35 @@ func (r nativeRuntime) edgeConfig(upstream, release string, requestTelemetry *te
 			login = handler
 		}
 	}
+	logLine := func(string) {}
+	if requestTelemetry != nil {
+		logLine = requestTelemetry.LogLine
+	}
+	// One gateway (breaker, metrics window) for the narrative routes and
+	// Admin's portrait/preview, as in Python's process.
+	var gateway *narrative.Gateway
+	if r.narrative != nil || r.adminUsers != nil {
+		gateway = narrative.New(narrative.Config{History: r.history, Log: logLine})
+	}
 	var narrativeHandler http.Handler
 	if r.narrative != nil {
 		cfg := *r.narrative
-		logLine := func(string) {}
-		if requestTelemetry != nil {
-			logLine = requestTelemetry.LogLine
-		}
-		cfg.Gateway = narrative.New(narrative.Config{History: r.history, Log: logLine})
+		cfg.Gateway = gateway
 		cfg.Log = logLine
 		if handler, err := gamesapi.NewNarrative(cfg); err != nil {
 			log.Printf("native narrative disabled: %v", err)
 		} else {
 			narrativeHandler = handler
+		}
+	}
+	var adminUsersHandler http.Handler
+	if r.adminUsers != nil {
+		cfg := *r.adminUsers
+		cfg.Gateway = gateway
+		if handler, err := gamesapi.NewAdminUsers(cfg); err != nil {
+			log.Printf("native admin users disabled: %v", err)
+		} else {
+			adminUsersHandler = handler
 		}
 	}
 	var readyChecks map[string]func(context.Context) error
@@ -674,6 +716,7 @@ func (r nativeRuntime) edgeConfig(upstream, release string, requestTelemetry *te
 		NativeChronicles:          r.chronicles,
 		NativeChroniclesRuns:      r.chroniclesRuns,
 		NativeAdminFeedback:       r.adminFeedback,
+		NativeAdminUsers:          adminUsersHandler,
 		VirtualPlayersEnabled:     r.virtualPlayers,
 		NativeResidentMove:        r.residentMove,
 		ReadyChecks:               readyChecks,
@@ -683,7 +726,7 @@ func (r nativeRuntime) edgeConfig(upstream, release string, requestTelemetry *te
 
 func (r nativeRuntime) logStartup(port, upstream string) {
 	log.Printf(
-		"go-api listening on :%s -> %s native_pulse=%t native_lobby_read=%t native_roster=%t native_chat=%t native_challenge_resolution=%t native_challenge_accept=%t native_challenge_create=%t native_match_handoff_cancel=%t native_match_ready=%t native_match_resign=%t native_match_read=%t native_match_move=%t native_resident_move=%t native_games_read=%t native_games_write=%t native_games_hint=%t native_games_analyze=%t native_system=%t native_profile=%t native_auth_session=%t native_login=%t native_account=%t native_recovery=%t native_feedback=%t native_matthias_read=%t native_narrative=%t native_pawn_slug=%t native_chronicles=%t native_chronicles_runs=%t native_admin_feedback=%t",
+		"go-api listening on :%s -> %s native_pulse=%t native_lobby_read=%t native_roster=%t native_chat=%t native_challenge_resolution=%t native_challenge_accept=%t native_challenge_create=%t native_match_handoff_cancel=%t native_match_ready=%t native_match_resign=%t native_match_read=%t native_match_move=%t native_resident_move=%t native_games_read=%t native_games_write=%t native_games_hint=%t native_games_analyze=%t native_system=%t native_profile=%t native_auth_session=%t native_login=%t native_account=%t native_recovery=%t native_feedback=%t native_matthias_read=%t native_narrative=%t native_pawn_slug=%t native_chronicles=%t native_chronicles_runs=%t native_admin_feedback=%t native_admin_users=%t",
 		port,
 		upstream,
 		r.pulse != nil,
@@ -716,6 +759,7 @@ func (r nativeRuntime) logStartup(port, upstream string) {
 		r.chronicles != nil,
 		r.chroniclesRuns != nil,
 		r.adminFeedback != nil,
+		r.adminUsers != nil,
 	)
 }
 

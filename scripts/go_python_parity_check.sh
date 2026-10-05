@@ -26,6 +26,7 @@ python scripts/pawn_slug_parity_corpus.py --check
 python scripts/chronicles_area_parity_corpus.py --check
 python scripts/chronicles_runs_parity_corpus.py --check
 python scripts/admin_feedback_parity_corpus.py --check
+python scripts/admin_users_parity_corpus.py --check
 
 (
   cd backend-go
