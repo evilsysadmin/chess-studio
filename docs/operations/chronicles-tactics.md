@@ -111,6 +111,22 @@ El decorado debe conocer el tamaño/plan real del mapa.
 
 Para cambios de framing/arte, generar artifact PNG. Una primera iteración que “mejora algo” pero sigue dominando el campo debe rechazarse y repetirse.
 
+
+### Contrato de materiales reutilizables
+
+El atlas visual aprobado de Chronicles define cinco familias reutilizables y sus IDs estables: mazmorra `D01..D06`, castillo/interior `C01..C06`, exterior `E01..E06`, cueva natural `N01..N06` y variantes contextuales `V01..V06`.
+
+- La generación visual debe elegir primero una **familia semántica por arquetipo/bioma** y sólo después variar determinísticamente dentro de esa familia. Nunca mezclar materiales de biomas arbitrariamente sólo para introducir variedad.
+- Dungeon/cripta usa piedra oscura, desgastada, ladrillo de mazmorra, musgo, piedra rota y sillería/columnas oscuras.
+- Castillo/interior usa caliza, sillería envejecida, mármol, arenisca, ladrillo rojo y columnas clásicas.
+- Exterior usa piedra de muralla, piedra rústica, liquen, mezcla piedra/ladrillo, roca natural y bloque tallado.
+- Cueva/montaña/mina usa roca de cueva, caliza natural, roca volcánica, minerales y humedad; estalactitas son dressing/prop, no una textura plana de cualquier muro.
+- Madera, metal, yeso, tierra compacta, ladrillo ruinoso y grotesco/orgánico son variantes **contextuales**: sólo se aplican cuando la geometría/escena representa realmente ese material. No convertir por ejemplo un muro de piedra en chapa metálica porque el mapa tenga temática de forja.
+- Los mapas procedurales deben mantener la selección reproducible para la misma topología/run. Cambiar de seed/topología puede escoger otras variantes compatibles dentro de la misma familia, pero F5/replay no debe barajar el acabado.
+- La familia se deriva del arquetipo del mapa (por ejemplo cripta→dungeon, galería/basílica/archivo→interior, torre→exterior, cisterna/cueva→cueva húmeda). Los mapas futuros de cueva, mina o montaña deben caer explícitamente en la familia natural.
+- El runtime puede sintetizar PBR proceduralmente mientras respete estos IDs, familias y lectura visual; el mock es contrato de lenguaje material, no obligación de empaquetar una textura raster concreta.
+- Props y dressing conservan su ownership: el atlas estructural no debe rociar perfiles sólo-de-prop sobre suelos/muros ni alterar walkability, colisiones o lectura táctica.
+
 ## Matthias
 
 Matthias usa su identidad canónica de peón. Los retratos pueden adaptar fondo/iluminación al mundo de Chronicles, pero no cambiar su identidad visual básica.
