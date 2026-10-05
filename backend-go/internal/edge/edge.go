@@ -64,7 +64,10 @@ type Config struct {
 	NativeAccount http.Handler
 	// NativeRecovery serves forgot-password and reset-password; nil keeps
 	// them in Python.
-	NativeRecovery        http.Handler
+	NativeRecovery http.Handler
+	// NativeFeedback serves the user feedback routes (submit, mine,
+	// delete own); nil keeps them in Python.
+	NativeFeedback        http.Handler
 	VirtualPlayersEnabled bool
 	NativeResidentMove    bool
 	// ReadyChecks are dependencies owned by the Go edge itself (MongoDB for the
@@ -104,6 +107,7 @@ type Handler struct {
 	nativeLogin               http.Handler
 	nativeAccount             http.Handler
 	nativeRecovery            http.Handler
+	nativeFeedback            http.Handler
 	virtualPlayersEnabled     bool
 	nativeResidentMove        bool
 	readyChecks               map[string]func(context.Context) error
@@ -212,6 +216,7 @@ func New(cfg Config) (*Handler, error) {
 		nativeLogin:               cfg.NativeLogin,
 		nativeAccount:             cfg.NativeAccount,
 		nativeRecovery:            cfg.NativeRecovery,
+		nativeFeedback:            cfg.NativeFeedback,
 		virtualPlayersEnabled:     cfg.VirtualPlayersEnabled,
 		nativeResidentMove:        cfg.NativeResidentMove,
 		readyChecks:               cfg.ReadyChecks,
@@ -295,6 +300,13 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if pattern, ok := gamesapi.RecoveryRoute(r); ok {
 			w.Header().Set("X-Chess-Edge", "go")
 			h.telemetry.Serve(pattern, h.nativeRecovery, w, r)
+			return
+		}
+	}
+	if h.nativeFeedback != nil {
+		if pattern, _, ok := gamesapi.FeedbackRoute(r); ok {
+			w.Header().Set("X-Chess-Edge", "go")
+			h.telemetry.Serve(pattern, h.nativeFeedback, w, r)
 			return
 		}
 	}
@@ -398,6 +410,7 @@ func (h *Handler) statusPayload(status string) map[string]any {
 		"nativeLogin":               h.nativeLogin != nil,
 		"nativeAccount":             h.nativeAccount != nil,
 		"nativeRecovery":            h.nativeRecovery != nil,
+		"nativeFeedback":            h.nativeFeedback != nil,
 	}
 	if h.release != "" {
 		payload["release"] = h.release
