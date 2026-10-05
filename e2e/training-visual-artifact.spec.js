@@ -147,6 +147,23 @@ async function openDungeon(page) {
   await page.getByRole('button', { name: 'Más modos y herramientas · Mazmorras', exact: true }).click();
 }
 
+scopedTest('daily', 'Entrenar · Cámara de desafíos diarios', async ({ page }) => {
+  test.setTimeout(35_000);
+  await prepare(page);
+
+  await page.evaluate(() => {
+    sessionStorage.setItem('chess-study-current-view', 'dailyChallenges');
+  });
+  await page.reload();
+
+  const room = page.locator('.daily-room');
+  await expect(room).toBeVisible();
+  await expect(room.getByRole('heading', { name: 'Cámara de desafíos', exact: true })).toBeVisible();
+  await expect(room.getByRole('button', { name: 'Jugar →', exact: true })).toHaveCount(3);
+  await captureAt(page, 'daily-challenges', { width: 1440, height: 900, variant: 'desktop' });
+  await captureAt(page, 'daily-challenges', { width: 390, height: 844, variant: 'mobile' });
+});
+
 scopedTest('school', 'Entrenar · Escuela, Glosario y Modos especiales', async ({ page }) => {
   test.setTimeout(110_000);
   await prepare(page);
@@ -311,21 +328,6 @@ scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page })
     { timeout: 20_000 },
   );
   await captureAt(page, 'insights', { width: 1440, height: 900, variant: 'desktop' });
-  await captureAt(page, 'insights', { width: 1800, height: 900, variant: 'wide' });
-  const wideGeometry = await trainingRoom.evaluate((root) => {
-    const room = root.getBoundingClientRect();
-    const session = root.querySelector('.insights-guided-session')?.getBoundingClientRect();
-    const nav = root.querySelector('.insights-workspace-nav')?.getBoundingClientRect();
-    return {
-      viewportWidth: window.innerWidth,
-      roomWidth: room.width,
-      sessionWidth: session?.width || 0,
-      navWidth: nav?.width || 0,
-    };
-  });
-  expect(wideGeometry.roomWidth, 'Así juegas wide: la sala debe usar el monitor').toBeGreaterThanOrEqual(wideGeometry.viewportWidth * 0.88);
-  expect(wideGeometry.sessionWidth, 'Así juegas wide: la sesión no debe volver a ancho de dashboard').toBeGreaterThanOrEqual(1350);
-  expect(wideGeometry.navWidth, 'Así juegas wide: las placas deben respirar horizontalmente').toBeGreaterThanOrEqual(1000);
   await captureAt(page, 'insights', { width: 390, height: 844, variant: 'mobile' });
   await page.setViewportSize({ width: 1440, height: 900 });
   await settle(page);

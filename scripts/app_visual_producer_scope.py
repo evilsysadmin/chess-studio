@@ -27,6 +27,7 @@ PRODUCER_ORDER = (
     "training-puzzles",
     "training-tournament",
     "training-progress",
+    "training-daily",
     "pvp-duel",
     "warroom-core",
     "warroom-decor",
@@ -151,6 +152,7 @@ TRAINING_ALL = {
     "training-puzzles",
     "training-tournament",
     "training-progress",
+    "training-daily",
 }
 QUICK_MATCH_EXACT_PRODUCERS = {
     # Quick Match owns the launch/config surface and the core War Room entry
@@ -168,6 +170,9 @@ TRAINING_EXACT_PRODUCERS = {
     "frontend/src/components/puzzlemobilepolish.css": {"training-puzzles"},
     "frontend/src/components/tournamentscreen.jsx": {"training-tournament"},
     "frontend/src/components/tournamentmobilepolish.css": {"training-tournament"},
+    "frontend/src/components/dailychallengesscreen.jsx": {"training-daily"},
+    "frontend/src/components/dailychallengesroom.css": {"training-daily"},
+    "frontend/src/components/dailychallengecalendar.css": {"training-daily"},
 }
 
 
@@ -232,7 +237,7 @@ def _e2e_producer(name: str) -> set[str] | None:
         "chronicles-tactics-visual-artifact.spec.js": {"chronicles-tactics"},
         "chronicles-gameplay-visual-artifact.spec.js": {"chronicles-gameplay"},
         "chronicles-avatar-visual-artifact.spec.js": {"chronicles-avatar"},
-        # This monolithic spec contains five independently scoped training
+        # This monolithic spec contains independently scoped training
         # producers. Treat it as a neutral companion when product-owned files
         # are present; classify() falls back to TRAINING_ALL for spec-only edits.
         "training-visual-artifact.spec.js": set(),
@@ -671,7 +676,7 @@ def self_test() -> None:
     assert classify(["scripts/app_visual_producer_scope.py"]) == "none"
     assert classify(["scripts/app_visual_changed_files.py"]) == "none"
     assert classify(["scripts/app_visual_capture.sh"]) == "none"
-    assert classify(["e2e/training-visual-artifact.spec.js"]) == "training-school,training-openings,training-puzzles,training-tournament,training-progress"
+    assert classify(["e2e/training-visual-artifact.spec.js"]) == "training-school,training-openings,training-puzzles,training-tournament,training-progress,training-daily"
     assert classify([
         "e2e/training-visual-artifact.spec.js",
         "frontend/src/components/InsightsScreen.jsx",
@@ -742,12 +747,15 @@ def self_test() -> None:
         "frontend/src/components/TournamentScreen.jsx",
         "frontend/src/components/TournamentMobilePolish.css",
     ]) == "training-tournament"
+    assert classify(["frontend/src/components/DailyChallengesScreen.jsx"]) == "training-daily"
+    assert classify(["frontend/src/components/DailyChallengesRoom.css"]) == "training-daily"
+    assert classify(["frontend/src/components/DailyChallengeCalendar.css"]) == "training-daily"
     assert classify(["frontend/src/components/OpeningsScreen.jsx"]) == "training-openings"
     assert classify(["frontend/src/components/CareerScreen.jsx"]) == "training-progress"
     assert classify(["frontend/src/components/MatthiasSchool.jsx"]) == "training-school"
     assert classify(["frontend/src/components/MatthiasClassRoom.css"]) == "training-school"
     assert classify(["e2e/training-visual-artifact.spec.js"]) == (
-        "training-school,training-openings,training-puzzles,training-tournament,training-progress"
+        "training-school,training-openings,training-puzzles,training-tournament,training-progress,training-daily"
     )
     assert classify(["frontend/src/labLaunchIntent.js"]) == "none"
     assert classify(["frontend/src/usePuzzleLaunchFlow.js"]) == "none"

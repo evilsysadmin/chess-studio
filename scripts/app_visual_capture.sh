@@ -83,6 +83,7 @@ case "$mode" in
       has_producer training-puzzles && training_scopes+=(puzzles)
       has_producer training-tournament && training_scopes+=(tournament)
       has_producer training-progress && training_scopes+=(progress)
+      has_producer training-daily && training_scopes+=(daily)
       if (( ${#training_scopes[@]} > 0 )); then
         specs+=(training-visual-artifact.spec.js)
         export APP_VISUAL_TRAINING_SCOPE="$(IFS=,; echo "${training_scopes[*]}")"
