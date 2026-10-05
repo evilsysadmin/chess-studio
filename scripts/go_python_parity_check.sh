@@ -21,6 +21,7 @@ python scripts/auth_guard_parity_corpus.py --check
 python scripts/matthias_memory_parity_corpus.py --check
 python scripts/matthias_memory_writes_parity_corpus.py --check
 python scripts/narrative_parity_corpus.py --check
+python scripts/admin_insights_parity_corpus.py --check
 python scripts/pawn_slug_parity_corpus.py --check
 python scripts/chronicles_area_parity_corpus.py --check
 python scripts/chronicles_runs_parity_corpus.py --check
@@ -34,5 +35,6 @@ python scripts/chronicles_runs_parity_corpus.py --check
   go test -count=1 -run 'MatchPython' ./internal/profilestore
   go test -count=1 -run 'MatchesPython|MatchPython' ./internal/authcrypto ./internal/authguard
   go test -count=1 -run 'MatchesPython|MatchPython' ./internal/matthiasmem ./internal/pyval ./internal/narrative ./internal/pawnslug
+  go test -count=1 -run 'MatchesPython|MatchPython' ./internal/admininsights
   go test -count=1 -run 'MatchesPython|MatchPython' ./internal/chronicles ./internal/chroniclesmap
 )
