@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
-import { login, mockApi } from './helpers.js';
+import { buttonWithHeading, login, mockApi } from './helpers.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const TRAINING_SCOPE = new Set(
@@ -151,9 +151,7 @@ scopedTest('school', 'Entrenar · Escuela, Glosario y Modos especiales', async (
   test.setTimeout(110_000);
   await prepare(page);
 
-  const train = page.locator('.illustrated-home__destination--train');
-  await expect(train).toBeVisible();
-  await train.click();
+  await buttonWithHeading(page, 'Escuela de Matthias').click();
 
   const shell = page.locator('.tutorial-shell.matthias-school-shell');
   await expect(shell).toBeVisible();
