@@ -265,8 +265,8 @@ export default function ChroniclesOfMatthiasTactics({
     const current = stateRef.current;
     const freeExploration = current?.phase === 'explore' && !current?.initiative?.order?.length;
     const minimumGap = freeExploration ? 105 : 120;
-    if (now - lastMoveAtRef.current < minimumGap) return;
-    if (!chroniclesTacticsPartyCanAct(current)) return;
+    if (now - lastMoveAtRef.current < minimumGap) return undefined;
+    if (!chroniclesTacticsPartyCanAct(current)) return false;
     const actor = chroniclesTacticsCurrentActor(current);
     const memberId = actor?.kind === 'party' ? actor.id : null;
     const origin = memberId
@@ -275,12 +275,14 @@ export default function ChroniclesOfMatthiasTactics({
     const legal = chroniclesTacticsLegalMoves(current, memberId).find((move) => (
       move.x === origin.x + dx && move.y === origin.y + dy
     ));
-    if (!legal) return;
+    if (!legal) return false;
     const next = chroniclesTacticsMove(current, legal, memberId);
     const resolved = chroniclesTacticsResolvePlayerAction(current, next, {
       partyAgilityBonuses: partyAgilityBonusesFor(current),
     });
-    if (commitState(resolved, { actorMemberId: memberId, actionKind: 'move' })) lastMoveAtRef.current = now;
+    const committed = commitState(resolved, { actorMemberId: memberId, actionKind: 'move' });
+    if (committed) lastMoveAtRef.current = now;
+    return committed;
   }, [commitState, partyAgilityBonusesFor]);
 
   const stopExplorationWalk = useCallback(() => {
@@ -301,7 +303,10 @@ export default function ChroniclesOfMatthiasTactics({
 
     const walk = explorationWalkRef.current;
     walk.vector = { dx, dy };
-    moveParty(dx, dy);
+    if (moveParty(dx, dy) === false) {
+      stopExplorationWalk();
+      return;
+    }
     if (walk.timer) return;
     walk.timer = window.setInterval(() => {
       const latest = stateRef.current;
@@ -310,7 +315,7 @@ export default function ChroniclesOfMatthiasTactics({
         stopExplorationWalk();
         return;
       }
-      moveParty(vector.dx, vector.dy);
+      if (moveParty(vector.dx, vector.dy) === false) stopExplorationWalk();
     }, 120);
   }, [moveParty, stopExplorationWalk]);
 
