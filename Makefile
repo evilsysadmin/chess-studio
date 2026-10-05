@@ -349,7 +349,7 @@ e2e-combat-dom: ensure-e2e-deps frontend-build
 	cd e2e && ./node_modules/.bin/playwright install chromium
 	cd e2e && ./node_modules/.bin/playwright test combat-dom.spec.js
 
-## Smoke de integración REAL: nginx frontend + FastAPI + Mongo + auth/perfil.
+## Smoke de integración REAL: nginx frontend + API Go + Mongo + auth/perfil.
 ## Usa imágenes construidas por docker compose y sólo stdlib Python para el probe.
 compose-smoke:
 	docker compose up -d --build
