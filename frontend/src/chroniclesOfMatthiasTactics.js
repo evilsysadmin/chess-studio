@@ -482,11 +482,15 @@ export function chroniclesTacticsMove(state, destination, memberId = null) {
     return triggerTrapAtPosition(moved, { x: legal.x, y: legal.y });
   }
 
+  const direction = Math.max(0, CHRONICLES_DIRECTIONS.findIndex((candidate) => candidate.key === legal.key));
   const moved = {
     ...state,
     x: legal.x,
     y: legal.y,
-    turns: Number(state.turns || 0) + 1,
+    direction,
+    // Exploration is real-time locomotion, not a tactical action. The turn
+    // counter belongs to initiative combat and must not advance while walking.
+    turns: Number(state.turns || 0),
     message: `La compañía avanza hacia ${legal.label.toLowerCase()}. Piedra, formación y malas intenciones.`,
   };
   return triggerTrapAtPosition(moved, { x: legal.x, y: legal.y });

@@ -4,6 +4,7 @@ import {
   chroniclesApplyRunCheckpoint,
   chroniclesRunCheckpointFingerprint,
   chroniclesRunCheckpointPayload,
+  chroniclesRunHasRuntimeCheckpoint,
   chroniclesWorldFlagsForCheckpoint,
 } from './chroniclesRunCheckpoint.js';
 import { createChroniclesState } from '../chroniclesOfMatthias.js';
@@ -20,6 +21,14 @@ function anotherWalkableCell(map, occupied = []) {
 }
 
 describe('Chronicles checkpoint projection', () => {
+  it('distinguishes a fresh run from one that already owns runtime checkpoint state', () => {
+    expect(chroniclesRunHasRuntimeCheckpoint(null)).toBe(false);
+    expect(chroniclesRunHasRuntimeCheckpoint({ worldFlags: {} })).toBe(false);
+    expect(chroniclesRunHasRuntimeCheckpoint({
+      worldFlags: { '__chrRuntime.version': 1 },
+    })).toBe(true);
+  });
+
   it('projects authored world state plus bounded runtime state, never renderer/UI noise', () => {
     const map = chroniclesMapById('gallery-of-forks');
     const enemy = map.enemies[0];

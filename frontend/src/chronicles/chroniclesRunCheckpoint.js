@@ -259,6 +259,14 @@ function applyRuntimeCheckpoint(state, flags) {
   return next;
 }
 
+export function chroniclesRunHasRuntimeCheckpoint(run) {
+  return Boolean(
+    run?.worldFlags
+    && typeof run.worldFlags === 'object'
+    && run.worldFlags[RUNTIME_VERSION_KEY] === RUNTIME_VERSION
+  );
+}
+
 export function chroniclesWorldFlagsForCheckpoint(state) {
   const source = state && typeof state === 'object' ? state : {};
   const authored = Object.fromEntries(

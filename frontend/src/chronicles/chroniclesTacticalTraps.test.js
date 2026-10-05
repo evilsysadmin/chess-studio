@@ -69,7 +69,7 @@ describe('Chronicles tactical traps', () => {
     const trapped = chroniclesTacticsMove(state, { x: 1, y: 4 });
 
     expect({ x: trapped.x, y: trapped.y }).toEqual({ x: 1, y: 4 });
-    expect(trapped.turns).toBe(state.turns + 1);
+    expect(trapped.turns).toBe(state.turns);
     expect(trapped.testTrapSpent).toBe(true);
     expect(trapped.party.map((member) => member.hp)).toEqual(
       hpBefore.map((hp) => (hp > 0 ? Math.max(0, hp - 2) : hp)),

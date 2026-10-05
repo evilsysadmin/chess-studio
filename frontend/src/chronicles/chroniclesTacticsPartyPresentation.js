@@ -1,3 +1,5 @@
+export const CHRONICLES_ISO_PARTY_FACING = Math.PI;
+
 export const CHRONICLES_ISO_PARTY_LAYOUT = Object.freeze({
   rook: Object.freeze({ x: -1.62, z: 0.08, scale: 1.03 }),
   matthias: Object.freeze({ x: -0.54, z: 0.32, scale: 1.07 }),

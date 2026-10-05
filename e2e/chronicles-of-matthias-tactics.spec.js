@@ -13,9 +13,12 @@ async function openTactics(page, {
   progression = null,
   apiOptions = {},
   expectReady = true,
+  authenticated = false,
 } = {}) {
-  await mockApi(page, apiOptions);
-  await login(page);
+  if (!authenticated) {
+    await mockApi(page, apiOptions);
+    await login(page);
+  }
   await dismissGuide(page);
   if (progression) {
     await page.evaluate((value) => {
@@ -95,23 +98,42 @@ test('Chronicles primera persona · fallo de bootstrap queda fail-closed y no mo
   await expect(page.locator('[data-chronicles="true"]')).toHaveCount(0);
 });
 
-test('Chronicles Tactics · arranca como RPG táctico isométrico con combate por turnos, clases y habilidades', async ({ page }) => {
+test('Chronicles Tactics · arranca como RPG táctico isométrico · locomoción continua', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
   await openTactics(page);
   const mode = page.locator('[data-chronicles-tactics="true"]');
-
-  // Prove a real world-state transition before exercising combat UI. North is
-  // deliberately safe on the canonical crypt spawn, so this canary verifies
-  // movement without coupling the assertion to enemy AI timing.
   const narrator = mode.locator('.chronicles-tactics__narrator p');
+  const rendererHost = mode.locator('[data-chronicles-tactics-renderer="three"]');
   const moveNorth = mode.getByRole('button', { name: 'Mover al norte', exact: true });
+
   await expect(narrator).toBeVisible();
   await expect(moveNorth).toBeEnabled();
-  await moveNorth.evaluate((button) => button.click());
+  await page.keyboard.down('ArrowUp');
+  await expect(rendererHost).toHaveAttribute('data-chronicles-party-motion', 'walking');
+  await page.keyboard.up('ArrowUp');
   await expect(narrator).toContainText(/La compañía avanza hacia norte/i);
 
-  // Fresh Tactics runs deliberately keep roaming enemies away from the spawn
-  // so exploration exists before contact. Walk through that safe opening instead
-  // of assuming the old "one step east = combat" geometry.
+  const releasedCell = await mode.evaluate((node) => ({
+    x: node.getAttribute('data-party-x'),
+    y: node.getAttribute('data-party-y'),
+  }));
+  await page.waitForTimeout(260);
+  await expect(mode).toHaveAttribute('data-party-x', releasedCell.x);
+  await expect(mode).toHaveAttribute('data-party-y', releasedCell.y);
+});
+
+test('Chronicles Tactics · arranca como RPG táctico isométrico · exploración a combate', async ({ page }) => {
+  await openTactics(page);
+  const mode = page.locator('[data-chronicles-tactics="true"]');
+  await expect(mode.locator('[data-chronicles-tactics-renderer="three"] canvas')).toHaveCount(1, { timeout: 30_000 });
+  await expect(mode).toHaveAttribute('data-engagement', 'exploration');
+  await expect(mode).toHaveAttribute('data-party-x', '1');
+  await expect(mode).toHaveAttribute('data-party-y', '5');
+
+  const moveNorth = mode.getByRole('button', { name: 'Mover al norte', exact: true });
+  await page.waitForTimeout(140);
+  await expect(moveNorth).toBeEnabled();
+  await moveNorth.evaluate((button) => button.click());
   await expect(mode).toHaveAttribute('data-engagement', 'exploration');
 
   await page.waitForTimeout(140);
@@ -119,9 +141,6 @@ test('Chronicles Tactics · arranca como RPG táctico isométrico con combate po
   await moveNorth.evaluate((button) => button.click());
   await expect(mode).toHaveAttribute('data-engagement', 'exploration');
 
-  // The deterministically relocated opening pawn is now approached through the
-  // upper corridor. Contact on the third exploration step must freeze the party
-  // into individual combat cells and roll initiative.
   await page.waitForTimeout(140);
   const moveEast = mode.getByRole('button', { name: 'Mover al este', exact: true });
   await expect(moveEast).toBeEnabled();
@@ -183,8 +202,8 @@ test('Chronicles Tactics · arranca como RPG táctico isométrico con combate po
     const actorId = document.querySelector('[data-chronicles-tactics="true"]')?.dataset.initiativeActor || '';
     return Boolean(actorId && actorId !== previousActorId);
   }, beforePass.actorId, { timeout: 10_000 });
-});
 
+});
 test('Chronicles · Tactics → primera persona conserva una única expedición autoritativa', async ({ page }) => {
   const requestLog = [];
   await openTactics(page, { apiOptions: { requestLog } });

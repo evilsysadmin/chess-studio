@@ -57,8 +57,9 @@ import {
 import { chroniclesCheckpointState } from '../chronicles/chroniclesRunClient.js';
 import {
   chroniclesApplyRunCheckpoint,
-  chroniclesRunCheckpointFingerprint,
+  chroniclesRunHasRuntimeCheckpoint,
 } from '../chronicles/chroniclesRunCheckpoint.js';
+import { chroniclesTacticsCheckpointFingerprint } from '../chronicles/chroniclesTacticsCheckpointPolicy.js';
 import {
   chroniclesProgressionFeedback,
   chroniclesProgressionFeedbackLabel,
@@ -107,9 +108,9 @@ function createActionState(progression, authoritativeRun = null) {
     enemyTurnEvents: [],
   }, progression);
   const restored = chroniclesApplyRunCheckpoint(progressed, authoritativeRun);
-  const prepared = Number(restored.turns || 0) === 0
-    ? chroniclesTacticsPrepareExplorationSpawn(restored)
-    : restored;
+  const prepared = chroniclesRunHasRuntimeCheckpoint(authoritativeRun)
+    ? restored
+    : chroniclesTacticsPrepareExplorationSpawn(restored);
   return {
     ...prepared,
     enemyTurnEvents: [],
@@ -131,10 +132,11 @@ export default function ChroniclesOfMatthiasTactics({
   const [state, setState] = useState(() => createActionState(progression, authoritativeRun));
   const stateRef = useRef(state);
   const authoritativeRunRef = useRef(authoritativeRun);
-  const checkpointFingerprintRef = useRef(chroniclesRunCheckpointFingerprint(state));
+  const checkpointFingerprintRef = useRef(chroniclesTacticsCheckpointFingerprint(state));
   const checkpointQueueRef = useRef(Promise.resolve());
   const selectedMemberRef = useRef('matthias');
   const lastMoveAtRef = useRef(0);
+  const explorationWalkRef = useRef({ vector: null, timer: 0 });
   const lastAttackAtRef = useRef(0);
   const [runId, setRunId] = useState(() => authoritativeRun?.runId || ensureChroniclesTacticsRun());
   const [selectedMemberId, setSelectedMemberId] = useState('matthias');
@@ -260,9 +262,11 @@ export default function ChroniclesOfMatthiasTactics({
 
   const moveParty = useCallback((dx, dy) => {
     const now = performance.now();
-    if (now - lastMoveAtRef.current < 120) return;
     const current = stateRef.current;
-    if (!chroniclesTacticsPartyCanAct(current)) return;
+    const freeExploration = current?.phase === 'explore' && !current?.initiative?.order?.length;
+    const minimumGap = freeExploration ? 105 : 120;
+    if (now - lastMoveAtRef.current < minimumGap) return undefined;
+    if (!chroniclesTacticsPartyCanAct(current)) return false;
     const actor = chroniclesTacticsCurrentActor(current);
     const memberId = actor?.kind === 'party' ? actor.id : null;
     const origin = memberId
@@ -271,13 +275,49 @@ export default function ChroniclesOfMatthiasTactics({
     const legal = chroniclesTacticsLegalMoves(current, memberId).find((move) => (
       move.x === origin.x + dx && move.y === origin.y + dy
     ));
-    if (!legal) return;
+    if (!legal) return false;
     const next = chroniclesTacticsMove(current, legal, memberId);
     const resolved = chroniclesTacticsResolvePlayerAction(current, next, {
       partyAgilityBonuses: partyAgilityBonusesFor(current),
     });
-    if (commitState(resolved, { actorMemberId: memberId, actionKind: 'move' })) lastMoveAtRef.current = now;
+    const committed = commitState(resolved, { actorMemberId: memberId, actionKind: 'move' });
+    if (committed) lastMoveAtRef.current = now;
+    return committed;
   }, [commitState, partyAgilityBonusesFor]);
+
+  const stopExplorationWalk = useCallback(() => {
+    const walk = explorationWalkRef.current;
+    walk.vector = null;
+    if (walk.timer) {
+      window.clearInterval(walk.timer);
+      walk.timer = 0;
+    }
+  }, []);
+
+  const startExplorationWalk = useCallback((dx, dy) => {
+    const current = stateRef.current;
+    if (current?.phase !== 'explore' || current?.initiative?.order?.length) {
+      moveParty(dx, dy);
+      return;
+    }
+
+    const walk = explorationWalkRef.current;
+    walk.vector = { dx, dy };
+    if (moveParty(dx, dy) === false) {
+      stopExplorationWalk();
+      return;
+    }
+    if (walk.timer) return;
+    walk.timer = window.setInterval(() => {
+      const latest = stateRef.current;
+      const vector = explorationWalkRef.current.vector;
+      if (!vector || latest?.phase !== 'explore' || latest?.initiative?.order?.length) {
+        stopExplorationWalk();
+        return;
+      }
+      if (moveParty(vector.dx, vector.dy) === false) stopExplorationWalk();
+    }, 120);
+  }, [moveParty, stopExplorationWalk]);
 
   const attackEnemy = useCallback((enemyId = null) => {
     const now = performance.now();
@@ -500,7 +540,7 @@ export default function ChroniclesOfMatthiasTactics({
   }, [sceneModel]);
 
   useEffect(() => {
-    const fingerprint = chroniclesRunCheckpointFingerprint(state);
+    const fingerprint = chroniclesTacticsCheckpointFingerprint(state);
     if (!fingerprint || fingerprint === checkpointFingerprintRef.current) return;
     checkpointFingerprintRef.current = fingerprint;
     const snapshot = state;
@@ -527,6 +567,8 @@ export default function ChroniclesOfMatthiasTactics({
   }, [onFinishRun, rewardDraft.length, state]);
 
   useEffect(() => {
+    let heldMovementKey = null;
+
     const onKeyDown = (event) => {
       if (/^[1-4]$/.test(event.key)) {
         const member = stateRef.current.party[Number(event.key) - 1];
@@ -557,14 +599,52 @@ export default function ChroniclesOfMatthiasTactics({
         useClassAbility();
         return;
       }
+
       const vector = MOVEMENT[event.key];
       if (!vector) return;
       event.preventDefault();
-      moveParty(vector.dx, vector.dy);
+
+      const current = stateRef.current;
+      const freeExploration = current?.phase === 'explore' && !current?.initiative?.order?.length;
+      if (!freeExploration) {
+        if (!event.repeat) moveParty(vector.dx, vector.dy);
+        return;
+      }
+      if (event.repeat && heldMovementKey === event.key) return;
+      heldMovementKey = event.key;
+      startExplorationWalk(vector.dx, vector.dy);
     };
+
+    const onKeyUp = (event) => {
+      if (event.key !== heldMovementKey) return;
+      heldMovementKey = null;
+      stopExplorationWalk();
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') stopExplorationWalk();
+    };
+
     window.addEventListener('keydown', onKeyDown, { passive: false });
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [attackEnemy, moveParty, passTurn, selectMember, useClassAbility, useContextualAction]);
+    window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', stopExplorationWalk);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      stopExplorationWalk();
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', stopExplorationWalk);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [
+    attackEnemy,
+    moveParty,
+    passTurn,
+    selectMember,
+    startExplorationWalk,
+    stopExplorationWalk,
+    useClassAbility,
+    useContextualAction,
+  ]);
 
   return (
     <div
@@ -573,6 +653,9 @@ export default function ChroniclesOfMatthiasTactics({
       data-camera="isometric-behind-party"
       data-combat="turn-based"
       data-engagement={inCombat ? 'combat' : 'exploration'}
+      data-exploration-control="hold-to-walk"
+      data-party-x={state.x}
+      data-party-y={state.y}
       data-difficulty-target={difficultyBand.targetLevel}
       data-difficulty-min={difficultyBand.minLevel}
       data-difficulty-max={difficultyBand.maxLevel}
@@ -610,7 +693,7 @@ export default function ChroniclesOfMatthiasTactics({
         <aside className="chronicles-tactics__mission" aria-label="Misión">
           <span className="chronicles-tactics__kicker">{locationLabel}</span>
           <strong>{objective}</strong>
-          <small>WASD/flechas mueve · 1–4 cambia de héroe · espacio usa/pasa turno · Shift ataca · E habilidad. En combate manda AGI + 1d8: una acción por actor.</small>
+          <small>Mantén WASD/flechas para caminar · 1–4 cambia de héroe · espacio usa/pasa turno · Shift ataca · E habilidad. En combate manda AGI + 1d8: una acción por actor.</small>
           {targetIntel ? (
             <div className="chronicles-tactics__enemy-intel" aria-label="Intel enemigo">
               <span>OBJETIVO · NIVEL {targetIntel.enemyBuild.level}</span>
@@ -672,10 +755,102 @@ export default function ChroniclesOfMatthiasTactics({
           </div>
 
           <div className="chronicles-tactics__actions" aria-label="Controles de acción">
-            <button type="button" className={moveAvailability.west ? 'is-ready' : ''} disabled={!canAct || !moveAvailability.west} aria-label="Mover al oeste" {...forecastProps('west')} onClick={() => moveParty(-1, 0)}><i aria-hidden="true">←</i><span>A</span>{forecastBadge('west')}</button>
-            <button type="button" className={moveAvailability.north ? 'is-ready' : ''} disabled={!canAct || !moveAvailability.north} aria-label="Mover al norte" {...forecastProps('north')} onClick={() => moveParty(0, -1)}><i aria-hidden="true">↑</i><span>W</span>{forecastBadge('north')}</button>
-            <button type="button" className={moveAvailability.south ? 'is-ready' : ''} disabled={!canAct || !moveAvailability.south} aria-label="Mover al sur" {...forecastProps('south')} onClick={() => moveParty(0, 1)}><i aria-hidden="true">↓</i><span>S</span>{forecastBadge('south')}</button>
-            <button type="button" className={moveAvailability.east ? 'is-ready' : ''} disabled={!canAct || !moveAvailability.east} aria-label="Mover al este" {...forecastProps('east')} onClick={() => moveParty(1, 0)}><i aria-hidden="true">→</i><span>D</span>{forecastBadge('east')}</button>
+            <button
+              type="button"
+              className={moveAvailability.west ? 'is-ready' : ''}
+              disabled={!canAct || !moveAvailability.west}
+              aria-label="Mover al oeste"
+              {...forecastProps('west')}
+              onPointerDown={(event) => {
+                const current = stateRef.current;
+                if (current?.phase !== 'explore' || current?.initiative?.order?.length) return;
+                event.preventDefault();
+                event.currentTarget.setPointerCapture?.(event.pointerId);
+                startExplorationWalk(-1, 0);
+              }}
+              onPointerUp={stopExplorationWalk}
+              onPointerCancel={stopExplorationWalk}
+              onLostPointerCapture={stopExplorationWalk}
+              onClick={(event) => {
+                const current = stateRef.current;
+                const pointerHandled = current?.phase === 'explore'
+                  && !current?.initiative?.order?.length
+                  && event.detail > 0;
+                if (!pointerHandled) moveParty(-1, 0);
+              }}
+            ><i aria-hidden="true">←</i><span>A</span>{forecastBadge('west')}</button>
+            <button
+              type="button"
+              className={moveAvailability.north ? 'is-ready' : ''}
+              disabled={!canAct || !moveAvailability.north}
+              aria-label="Mover al norte"
+              {...forecastProps('north')}
+              onPointerDown={(event) => {
+                const current = stateRef.current;
+                if (current?.phase !== 'explore' || current?.initiative?.order?.length) return;
+                event.preventDefault();
+                event.currentTarget.setPointerCapture?.(event.pointerId);
+                startExplorationWalk(0, -1);
+              }}
+              onPointerUp={stopExplorationWalk}
+              onPointerCancel={stopExplorationWalk}
+              onLostPointerCapture={stopExplorationWalk}
+              onClick={(event) => {
+                const current = stateRef.current;
+                const pointerHandled = current?.phase === 'explore'
+                  && !current?.initiative?.order?.length
+                  && event.detail > 0;
+                if (!pointerHandled) moveParty(0, -1);
+              }}
+            ><i aria-hidden="true">↑</i><span>W</span>{forecastBadge('north')}</button>
+            <button
+              type="button"
+              className={moveAvailability.south ? 'is-ready' : ''}
+              disabled={!canAct || !moveAvailability.south}
+              aria-label="Mover al sur"
+              {...forecastProps('south')}
+              onPointerDown={(event) => {
+                const current = stateRef.current;
+                if (current?.phase !== 'explore' || current?.initiative?.order?.length) return;
+                event.preventDefault();
+                event.currentTarget.setPointerCapture?.(event.pointerId);
+                startExplorationWalk(0, 1);
+              }}
+              onPointerUp={stopExplorationWalk}
+              onPointerCancel={stopExplorationWalk}
+              onLostPointerCapture={stopExplorationWalk}
+              onClick={(event) => {
+                const current = stateRef.current;
+                const pointerHandled = current?.phase === 'explore'
+                  && !current?.initiative?.order?.length
+                  && event.detail > 0;
+                if (!pointerHandled) moveParty(0, 1);
+              }}
+            ><i aria-hidden="true">↓</i><span>S</span>{forecastBadge('south')}</button>
+            <button
+              type="button"
+              className={moveAvailability.east ? 'is-ready' : ''}
+              disabled={!canAct || !moveAvailability.east}
+              aria-label="Mover al este"
+              {...forecastProps('east')}
+              onPointerDown={(event) => {
+                const current = stateRef.current;
+                if (current?.phase !== 'explore' || current?.initiative?.order?.length) return;
+                event.preventDefault();
+                event.currentTarget.setPointerCapture?.(event.pointerId);
+                startExplorationWalk(1, 0);
+              }}
+              onPointerUp={stopExplorationWalk}
+              onPointerCancel={stopExplorationWalk}
+              onLostPointerCapture={stopExplorationWalk}
+              onClick={(event) => {
+                const current = stateRef.current;
+                const pointerHandled = current?.phase === 'explore'
+                  && !current?.initiative?.order?.length
+                  && event.detail > 0;
+                if (!pointerHandled) moveParty(1, 0);
+              }}
+            ><i aria-hidden="true">→</i><span>D</span>{forecastBadge('east')}</button>
             <button
               type="button"
               className={(contextualAction || canPassTurn) ? 'is-ready' : ''}
@@ -711,7 +886,7 @@ export default function ChroniclesOfMatthiasTactics({
       </div>
 
       <footer className="chronicles-tactics__footer">
-        <span>Motor {rendererName} · {activeActor ? `Combate por turnos · ronda ${initiativeRound} · ${activeActor.name || activeActor.id}` : 'Exploración libre'}</span>
+        <span>Motor {rendererName} · {activeActor ? `Combate por turnos · ronda ${initiativeRound} · ${activeActor.name || activeActor.id}` : 'Exploración libre · movimiento continuo'}</span>
         <span>{contextualAction ? `Espacio · ${contextualAction.label}` : canPassTurn ? 'Espacio · Pasar turno' : 'Espacio · Usar'} · Shift · {selectedProfile.attackName} · E · {selectedProfile.abilityName}</span>
         <button type="button" onClick={restart}>Reiniciar incursión</button>
       </footer>

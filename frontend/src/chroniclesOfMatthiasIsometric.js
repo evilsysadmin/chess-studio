@@ -29,18 +29,21 @@ import {
 } from './chronicles/chroniclesIsometricScenePlan.js';
 import { chroniclesIsometricSceneStyle } from './chronicles/chroniclesIsometricSceneStyles.js';
 import { buildChroniclesSquareFrameGeometry } from './chronicles/chroniclesIsometricGeometry.js';
-import {
-  buildChroniclesCarriedTorch,
-  tickChroniclesCarriedTorch,
-} from './chronicles/chroniclesCarriedTorch.js';
+import { buildChroniclesCarriedTorch } from './chronicles/chroniclesCarriedTorch.js';
 import {
   CHRONICLES_ISO_EXPLORATION_PARTY_LAYOUT,
   CHRONICLES_ISO_MARKER_STYLE,
+  CHRONICLES_ISO_PARTY_FACING,
   CHRONICLES_ISO_PARTY_LAYOUT,
 } from './chronicles/chroniclesTacticsPartyPresentation.js';
+import { chroniclesFrameTiming, tickChroniclesExplorationParty } from './chronicles/chroniclesTacticsLocomotionPresentation.js';
 // Compatibility re-export: external renderer tests still consume these names.
 // Ownership lives in the focused Tactics party-presentation module.
-export { CHRONICLES_ISO_MARKER_STYLE, CHRONICLES_ISO_PARTY_LAYOUT } from './chronicles/chroniclesTacticsPartyPresentation.js';
+export {
+  CHRONICLES_ISO_MARKER_STYLE,
+  CHRONICLES_ISO_PARTY_FACING,
+  CHRONICLES_ISO_PARTY_LAYOUT,
+} from './chronicles/chroniclesTacticsPartyPresentation.js';
 import {
   chroniclesIsoTorchPlacements,
   chroniclesIsoUsesLegacyDressing,
@@ -57,7 +60,6 @@ export {
 };
 
 const CELL = CHRONICLES_ISOMETRIC_CELL_SIZE;
-export const CHRONICLES_ISO_PARTY_FACING = Math.PI;
 
 const RUBBLE = Object.freeze([
   Object.freeze({ x: -5.95, z: 2.9, scale: 0.22, yaw: 0.5 }),
@@ -968,10 +970,10 @@ export function createChroniclesIsometricRenderer(host, {
     if (destroyed) return;
     frame = requestAnimationFrame(render);
     if (!visible) return;
-    const time = clock.getElapsedTime();
+    const { time, deltaSeconds } = chroniclesFrameTiming(clock);
 
     if (!reducedMotion) {
-      party.root.position.lerp(desiredParty, 0.14);
+      tickChroniclesExplorationParty(party, { desiredParty, partyFormation: latestSceneModel?.partyFormation, time, deltaSeconds, host });
       enemies.forEach((model, id) => {
         if (!model.visible || !model.userData.chroniclesIsoTarget) return;
         model.position.lerp(model.userData.chroniclesIsoTarget, id === 'scavenger-knight' ? 0.18 : 0.13);
@@ -983,17 +985,6 @@ export function createChroniclesIsometricRenderer(host, {
         model.rotation.y = nextYaw + Math.sin(time * 0.48 + id.length) * 0.018;
       });
 
-      party.models.forEach((model, id) => {
-        if (!model.visible) return;
-        const target = model.userData.chroniclesIsoTarget;
-        if (target) model.position.lerp(target, 0.2);
-        model.userData.chroniclesArtTick?.(time);
-        model.rotation.y = CHRONICLES_ISO_PARTY_FACING + Math.sin(time * 0.55 + id.length) * 0.025;
-        const hpRatio = model.userData.chroniclesIsoHpRatio ?? 1;
-        model.position.y = Math.sin(time * 0.8 + id.length) * 0.006 - (1 - hpRatio) * 0.025;
-
-        tickChroniclesCarriedTorch(party.carriedTorches.get(id), time);
-      });
       if (party.selection.visible && party.selection.userData.chroniclesIsoTarget) {
         party.selection.position.lerp(party.selection.userData.chroniclesIsoTarget, 0.24);
       }
