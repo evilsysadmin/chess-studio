@@ -95,7 +95,7 @@ function addMistPatch(root, texture, { name, x, z, width, depth, color, opacity,
   return { material, baseOpacity: opacity };
 }
 
-function addReadabilityLighting(root, { coarsePointer }) {
+function addReadabilityLighting(root, { coarsePointer, scenePlan }) {
   // Chronicles should be gloomy, not crushed. The ambient level is deliberately
   // high enough to preserve stone/material detail after ACES while practical
   // torches still carry the mood and direction of the scene.
@@ -166,22 +166,23 @@ function addReadabilityLighting(root, { coarsePointer }) {
   farFill.position.set(7.25, 2.15, 8.0);
   farFill.castShadow = false;
 
-  // The party is explicitly carrying torches. These two shadowless practicals
-  // travel with the first-person camera. They now stay local to the foreground,
-  // leaving the authored cold fills enough room to model the middle distance.
+  // Authored crypt rooms have wall practicals and warm dressing. Procedural/
+  // alternate maps do not, so the carried torch must become the real local key
+  // instead of a barely-visible accent.
+  const carriedTorchScale = scenePlan?.useAuthoredCryptDressing ? 1 : 2.65;
   const partyTorchKey = new THREE.PointLight(
     0xffad67,
-    coarsePointer ? 6.45 : 6.8,
-    coarsePointer ? 14.8 : 15.8,
-    1.58,
+    (coarsePointer ? 6.45 : 6.8) * carriedTorchScale,
+    scenePlan?.useAuthoredCryptDressing ? (coarsePointer ? 14.8 : 15.8) : 10.5,
+    1.72,
   );
   partyTorchKey.name = 'chronicles-party-torch-key';
   partyTorchKey.castShadow = false;
 
   const partyTorchBounce = new THREE.PointLight(
     0xd47b3f,
-    coarsePointer ? 4.1 : 3.8,
-    coarsePointer ? 7.2 : 7.8,
+    (coarsePointer ? 4.1 : 3.8) * (scenePlan?.useAuthoredCryptDressing ? 1 : 2.45),
+    scenePlan?.useAuthoredCryptDressing ? (coarsePointer ? 7.2 : 7.8) : 6.6,
     2.0,
   );
   partyTorchBounce.name = 'chronicles-party-torch-bounce';
@@ -215,7 +216,7 @@ export function buildChroniclesDungeonAtmosphere({
   root.name = 'chronicles-dungeon-atmosphere';
   root.add(buildChroniclesDungeonCeiling({ coarsePointer, scenePlan }));
   root.add(buildChroniclesSurfacePatina({ coarsePointer, scenePlan }));
-  const readabilityLighting = addReadabilityLighting(root, { coarsePointer });
+  const readabilityLighting = addReadabilityLighting(root, { coarsePointer, scenePlan });
 
   const dustCount = coarsePointer ? DUST_COARSE : DUST_DESKTOP;
   const dustData = createDust(dustCount, scenePlan);
