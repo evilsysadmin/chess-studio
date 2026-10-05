@@ -8,6 +8,11 @@ const TEAM_COLORS := [Color(0.12, 0.42, 0.92), Color(0.86, 0.18, 0.2)]
 const CAMERA_MODE_BROADCAST := "broadcast"
 const CAMERA_MODE_TACTICAL := "tactical"
 
+const TACKLE_ATTEMPT_RANGE := 60.0
+const TACKLE_CLEAN_STEAL_RANGE := 34.0
+const TACKLE_BASE_SUCCESS_RANGE := 38.0
+const TACKLE_APPROACH_BONUS := 13.0
+
 var teams: Array[Array] = [[], []]
 var ball: FootballBall
 var controlled: Footballer
@@ -80,7 +85,7 @@ func _create_hud() -> void:
 
 func _refresh_hud() -> void:
 	score_label.text = "FC Matthias %d - %d Real Enroque" % [score[0], score[1]]
-	help_label.text = "WASD · Shift sprint · Space pase · Enter tiro · Tab cambia · V vista"
+	help_label.text = "WASD · Shift sprint · Space pase · Enter tiro · E entrada · Tab cambia · V vista"
 	var view_name := "BROADCAST 3D" if camera_mode == CAMERA_MODE_BROADCAST else "TÁCTICA AÉREA"
 	view_label.text = "VISTA · %s" % view_name if camera_hint_seconds > 0.0 else ""
 	goal_label.text = last_goal_text
@@ -92,6 +97,8 @@ func _handle_human() -> void:
 	controlled.move_human(direction, Input.is_action_pressed("sprint"))
 	if Input.is_action_just_pressed("change_player"):
 		_select_player(_best_switch_candidate())
+	if Input.is_action_just_pressed("tackle") and not controlled.has_ball:
+		_try_tackle(controlled)
 	if Input.is_action_just_pressed("pass_ball") and ball.carrier == controlled:
 		_pass_from(controlled, direction)
 	if Input.is_action_just_pressed("shoot_ball") and ball.carrier == controlled:
@@ -120,6 +127,9 @@ func _update_ai(delta: float) -> void:
 					target = ball.carrier.global_position
 					intensity = 0.92
 			player.move_ai(delta, target, intensity)
+			if not team_has_ball and ball.carrier != null and ball.carrier.team_id != team_id:
+				if player == _nearest_player_to_ball(team_id):
+					_try_tackle(player)
 			if ball.carrier == player and team_id == 1:
 				_ai_attack(player)
 
@@ -164,6 +174,38 @@ func _best_pass_target(player: Footballer, input_direction: Vector2) -> Football
 func _best_teammate_ahead(player: Footballer) -> Footballer:
 	var direction := Vector2.RIGHT if player.team_id == 0 else Vector2.LEFT
 	return _best_pass_target(player, direction)
+
+func _try_tackle(tackler: Footballer) -> bool:
+	if ball.carrier == null or ball.carrier == tackler:
+		return false
+	var victim: Footballer = ball.carrier
+	if victim.team_id == tackler.team_id or not tackler.can_tackle():
+		return false
+
+	var offset: Vector2 = victim.global_position - tackler.global_position
+	var distance := offset.length()
+	if distance > TACKLE_ATTEMPT_RANGE:
+		return false
+
+	var approach := 0.0
+	if tackler.velocity.length_squared() > 16.0 and offset.length_squared() > 0.001:
+		approach = maxf(0.0, tackler.velocity.normalized().dot(offset.normalized()))
+	var success_range := TACKLE_BASE_SUCCESS_RANGE + TACKLE_APPROACH_BONUS * approach
+
+	if not tackler.start_tackle():
+		return false
+	if distance > success_range:
+		return false
+
+	if distance <= TACKLE_CLEAN_STEAL_RANGE:
+		ball.attach_to(tackler)
+		if tackler.team_id == 0:
+			_select_player(tackler)
+		return true
+
+	var poke_direction := offset.normalized() if offset.length_squared() > 0.001 else Vector2.RIGHT
+	ball.release(poke_direction, 220.0)
+	return true
 
 func _try_claim_loose_ball() -> void:
 	if ball.carrier != null or ball.velocity.length() > 560.0:
@@ -278,3 +320,6 @@ func debug_3d_ready() -> bool:
 
 func debug_3d_animated_players() -> int:
 	return presentation_3d.debug_animated_players() if presentation_3d != null else 0
+
+func debug_try_tackle(player: Footballer) -> bool:
+	return _try_tackle(player)
