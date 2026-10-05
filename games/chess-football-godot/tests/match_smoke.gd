@@ -39,6 +39,12 @@ func _initialize() -> void:
 				assert(player.global_position.x < center_x)
 			else:
 				assert(player.global_position.x > center_x)
+			if team_id != initial_kickoff_team:
+				assert(
+					player.global_position.distance_to(
+						ChessFootballMath.PITCH_RECT.get_center()
+					) > 180.0
+				)
 	match_node.debug_force_kickoff_ready()
 	assert(not match_node.debug_kickoff_active())
 	assert(match_node.ball.carrier == null)
