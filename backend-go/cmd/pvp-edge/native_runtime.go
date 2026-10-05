@@ -48,6 +48,7 @@ type nativeRuntime struct {
 	gamesHint           http.Handler
 	gamesAnalyze        http.Handler
 	profile             http.Handler
+	authSession         http.Handler
 	// system is built in edgeConfig, once request telemetry exists.
 	system *gamesapi.SystemConfig
 	// history is Admin's observability history (nil when disabled).
@@ -336,6 +337,29 @@ func buildNativeRuntime(features nativeFeatureFlags, upstream string) (runtime n
 		}
 		runtime.profile = profileHandler
 	}
+	if features.authSession {
+		telemetryCfg := telemetry.ConfigFromEnv(os.LookupEnv)
+		// One toucher for the request touch and the heartbeat: a forced
+		// write coalesces the next touches, as Python's single map does.
+		toucher := presence.New(mongoRuntime.Database(), telemetryCfg.TrustCloudflare, 2*time.Second)
+		sessionHandler, sessionErr := gamesapi.NewSession(gamesapi.SessionConfig{
+			Config: gamesapi.Config{
+				Accounts:        accountstore.New(mongoRuntime.Database(), pvpMongoTimeout),
+				Presence:        toucher,
+				JWTSecret:       jwtSecret,
+				AllowedOrigins:  splitCSV(os.Getenv("CORS_ORIGINS")),
+				TrustCloudflare: telemetryCfg.TrustCloudflare,
+			},
+			Emails:               accountstore.New(mongoRuntime.Database(), pvpMongoTimeout),
+			Sessions:             presence.NewSessions(presence.NewMongoSessions(mongoRuntime.Database()), toucher, 2*time.Second),
+			AdminUsernames:       splitCSV(os.Getenv("ADMIN_USERNAMES")),
+			EmailRecoveryEnabled: envBool("ENABLE_EMAIL_RECOVERY", false),
+		})
+		if sessionErr != nil {
+			return runtime, fmt.Errorf("native session API: %w", sessionErr)
+		}
+		runtime.authSession = sessionHandler
+	}
 	if features.gamesAnalyze {
 		telemetryCfg := telemetry.ConfigFromEnv(os.LookupEnv)
 		analyzeHandler, analyzeErr := gamesapi.NewAnalyze(gamesapi.AnalyzeConfig{
@@ -407,6 +431,7 @@ func (r nativeRuntime) edgeConfig(upstream, release string, requestTelemetry *te
 		NativeGamesAnalyze:        r.gamesAnalyze,
 		NativeSystem:              system,
 		NativeProfile:             r.profile,
+		NativeSession:             r.authSession,
 		VirtualPlayersEnabled:     r.virtualPlayers,
 		NativeResidentMove:        r.residentMove,
 		ReadyChecks:               readyChecks,
@@ -416,7 +441,7 @@ func (r nativeRuntime) edgeConfig(upstream, release string, requestTelemetry *te
 
 func (r nativeRuntime) logStartup(port, upstream string) {
 	log.Printf(
-		"go-api listening on :%s -> %s native_pulse=%t native_lobby_read=%t native_roster=%t native_chat=%t native_challenge_resolution=%t native_challenge_accept=%t native_challenge_create=%t native_match_handoff_cancel=%t native_match_ready=%t native_match_resign=%t native_match_read=%t native_match_move=%t native_resident_move=%t native_games_read=%t native_games_write=%t native_games_hint=%t native_games_analyze=%t native_system=%t native_profile=%t",
+		"go-api listening on :%s -> %s native_pulse=%t native_lobby_read=%t native_roster=%t native_chat=%t native_challenge_resolution=%t native_challenge_accept=%t native_challenge_create=%t native_match_handoff_cancel=%t native_match_ready=%t native_match_resign=%t native_match_read=%t native_match_move=%t native_resident_move=%t native_games_read=%t native_games_write=%t native_games_hint=%t native_games_analyze=%t native_system=%t native_profile=%t native_auth_session=%t",
 		port,
 		upstream,
 		r.pulse != nil,
@@ -438,6 +463,7 @@ func (r nativeRuntime) logStartup(port, upstream string) {
 		r.gamesAnalyze != nil,
 		r.system != nil,
 		r.profile != nil,
+		r.authSession != nil,
 	)
 }
 

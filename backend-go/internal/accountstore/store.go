@@ -91,3 +91,27 @@ func (s *Store) CountOnline(ctx context.Context, since string, exclude []string)
 	count, err := s.users.CountDocuments(queryCtx, query)
 	return int(count), err
 }
+
+// Email mirrors (users_store.get_user(username) or {}).get("email"): the
+// stored value as it is (nil when absent).
+func (s *Store) Email(ctx context.Context, username string) (any, error) {
+	if s == nil || s.users == nil {
+		return nil, errors.New("account store is not configured")
+	}
+	queryCtx, cancel := context.WithTimeout(ctx, s.timeout)
+	defer cancel()
+	var row bson.D
+	err := s.users.FindOne(queryCtx, bson.M{"_id": username}, options.FindOne().SetProjection(bson.M{"email": 1})).Decode(&row)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	for _, e := range row {
+		if e.Key == "email" {
+			return e.Value, nil
+		}
+	}
+	return nil, nil
+}
