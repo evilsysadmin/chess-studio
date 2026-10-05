@@ -123,6 +123,10 @@ export function chroniclesProjectSceneModel(
     });
   }));
 
+  const focusPosition = combatFormation
+    ? footprint[selectedMemberId] || { x: Number(state.x), y: Number(state.y) }
+    : { x: Number(state.x), y: Number(state.y) };
+
   const enemies = Object.freeze(chroniclesEnemyRenderRoster(state).map((entry) => {
     const definition = entry.definition;
     const visible = chroniclesEnemyIsActive(state, definition)
@@ -141,7 +145,7 @@ export function chroniclesProjectSceneModel(
     version: CHRONICLES_SCENE_MODEL_VERSION,
     mapId: state.mapId,
     scenePlan,
-    focusCell: Object.freeze({ x: Number(state.x), y: Number(state.y) }),
+    focusCell: Object.freeze({ x: Number(focusPosition.x), y: Number(focusPosition.y) }),
     partyFormation: combatFormation ? 'combat-grid' : 'explore-compact',
     selectedMemberId: selectedMemberId || 'matthias',
     party,
