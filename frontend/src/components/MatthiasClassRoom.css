@@ -6,6 +6,20 @@
 
 /* Class Room is a board-first surface, but global authenticated chrome such
    as RetroPlayer remains available above the immersive teaching scene. */
+body:has(.matthias-school-shell[data-school-section="school"]) .global-music-dock {
+  z-index: 1300;
+  top: max(.5rem, env(safe-area-inset-top));
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+}
+
+@media (max-width: 520px) {
+  body:has(.matthias-school-shell[data-school-section="school"]) .global-music-dock {
+    left: calc(max(.5rem, env(safe-area-inset-left)) + 56px);
+    transform: none;
+  }
+}
 
 body:has(.matthias-school-shell[data-school-section="school"]) .masthead {
   display: none;
