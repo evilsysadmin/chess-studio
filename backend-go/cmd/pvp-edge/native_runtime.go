@@ -22,6 +22,7 @@ import (
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/matchtimeout"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/matthiasmem"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/mongoruntime"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/narrative"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/obshistory"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/presence"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/profilestore"
@@ -60,6 +61,8 @@ type nativeRuntime struct {
 	recovery http.Handler
 	feedback http.Handler
 	matthias http.Handler
+	// narrative is built in edgeConfig, once the log recorder exists.
+	narrative *gamesapi.NarrativeConfig
 	// system is built in edgeConfig, once request telemetry exists.
 	system *gamesapi.SystemConfig
 	// history is Admin's observability history (nil when disabled).
@@ -480,6 +483,20 @@ func buildNativeRuntime(features nativeFeatureFlags, upstream string) (runtime n
 		}
 		runtime.matthias = matthiasHandler
 	}
+	if features.narrative {
+		telemetryCfg := telemetry.ConfigFromEnv(os.LookupEnv)
+		runtime.narrative = &gamesapi.NarrativeConfig{
+			Config: gamesapi.Config{
+				Accounts:        accountstore.New(mongoRuntime.Database(), pvpMongoTimeout),
+				Presence:        presence.New(mongoRuntime.Database(), telemetryCfg.TrustCloudflare, 2*time.Second),
+				JWTSecret:       jwtSecret,
+				AllowedOrigins:  splitCSV(os.Getenv("CORS_ORIGINS")),
+				TrustCloudflare: telemetryCfg.TrustCloudflare,
+			},
+			Memory:         matthiasmem.New(mongoRuntime.Database(), pvpMongoTimeout),
+			AdminUsernames: splitCSV(os.Getenv("ADMIN_USERNAMES")),
+		}
+	}
 	if features.gamesAnalyze {
 		telemetryCfg := telemetry.ConfigFromEnv(os.LookupEnv)
 		analyzeHandler, analyzeErr := gamesapi.NewAnalyze(gamesapi.AnalyzeConfig{
@@ -537,6 +554,21 @@ func (r nativeRuntime) edgeConfig(upstream, release string, requestTelemetry *te
 			login = handler
 		}
 	}
+	var narrativeHandler http.Handler
+	if r.narrative != nil {
+		cfg := *r.narrative
+		logLine := func(string) {}
+		if requestTelemetry != nil {
+			logLine = requestTelemetry.LogLine
+		}
+		cfg.Gateway = narrative.New(narrative.Config{History: r.history, Log: logLine})
+		cfg.Log = logLine
+		if handler, err := gamesapi.NewNarrative(cfg); err != nil {
+			log.Printf("native narrative disabled: %v", err)
+		} else {
+			narrativeHandler = handler
+		}
+	}
 	var readyChecks map[string]func(context.Context) error
 	if r.mongo != nil {
 		readyChecks = map[string]func(context.Context) error{"mongodb": r.mongo.Ping}
@@ -569,6 +601,7 @@ func (r nativeRuntime) edgeConfig(upstream, release string, requestTelemetry *te
 		NativeRecovery:            r.recovery,
 		NativeFeedback:            r.feedback,
 		NativeMatthias:            r.matthias,
+		NativeNarrative:           narrativeHandler,
 		VirtualPlayersEnabled:     r.virtualPlayers,
 		NativeResidentMove:        r.residentMove,
 		ReadyChecks:               readyChecks,
@@ -578,7 +611,7 @@ func (r nativeRuntime) edgeConfig(upstream, release string, requestTelemetry *te
 
 func (r nativeRuntime) logStartup(port, upstream string) {
 	log.Printf(
-		"go-api listening on :%s -> %s native_pulse=%t native_lobby_read=%t native_roster=%t native_chat=%t native_challenge_resolution=%t native_challenge_accept=%t native_challenge_create=%t native_match_handoff_cancel=%t native_match_ready=%t native_match_resign=%t native_match_read=%t native_match_move=%t native_resident_move=%t native_games_read=%t native_games_write=%t native_games_hint=%t native_games_analyze=%t native_system=%t native_profile=%t native_auth_session=%t native_login=%t native_account=%t native_recovery=%t native_feedback=%t native_matthias_read=%t",
+		"go-api listening on :%s -> %s native_pulse=%t native_lobby_read=%t native_roster=%t native_chat=%t native_challenge_resolution=%t native_challenge_accept=%t native_challenge_create=%t native_match_handoff_cancel=%t native_match_ready=%t native_match_resign=%t native_match_read=%t native_match_move=%t native_resident_move=%t native_games_read=%t native_games_write=%t native_games_hint=%t native_games_analyze=%t native_system=%t native_profile=%t native_auth_session=%t native_login=%t native_account=%t native_recovery=%t native_feedback=%t native_matthias_read=%t native_narrative=%t",
 		port,
 		upstream,
 		r.pulse != nil,
@@ -606,6 +639,7 @@ func (r nativeRuntime) logStartup(port, upstream string) {
 		r.recovery != nil,
 		r.feedback != nil,
 		r.matthias != nil,
+		r.narrative != nil,
 	)
 }
 

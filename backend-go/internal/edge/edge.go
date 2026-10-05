@@ -70,7 +70,10 @@ type Config struct {
 	NativeFeedback http.Handler
 	// NativeMatthias serves Matthias' daily status, briefing and memory
 	// reset; nil keeps them in Python (the audience itself stays there).
-	NativeMatthias        http.Handler
+	NativeMatthias http.Handler
+	// NativeNarrative serves /api/narrative, the Matthias audience and the
+	// admin AI reads that share its telemetry; nil keeps them in Python.
+	NativeNarrative       http.Handler
 	VirtualPlayersEnabled bool
 	NativeResidentMove    bool
 	// ReadyChecks are dependencies owned by the Go edge itself (MongoDB for the
@@ -112,6 +115,7 @@ type Handler struct {
 	nativeRecovery            http.Handler
 	nativeFeedback            http.Handler
 	nativeMatthias            http.Handler
+	nativeNarrative           http.Handler
 	virtualPlayersEnabled     bool
 	nativeResidentMove        bool
 	readyChecks               map[string]func(context.Context) error
@@ -222,6 +226,7 @@ func New(cfg Config) (*Handler, error) {
 		nativeRecovery:            cfg.NativeRecovery,
 		nativeFeedback:            cfg.NativeFeedback,
 		nativeMatthias:            cfg.NativeMatthias,
+		nativeNarrative:           cfg.NativeNarrative,
 		virtualPlayersEnabled:     cfg.VirtualPlayersEnabled,
 		nativeResidentMove:        cfg.NativeResidentMove,
 		readyChecks:               cfg.ReadyChecks,
@@ -319,6 +324,13 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if pattern, ok := gamesapi.MatthiasRoute(r); ok {
 			w.Header().Set("X-Chess-Edge", "go")
 			h.telemetry.Serve(pattern, h.nativeMatthias, w, r)
+			return
+		}
+	}
+	if h.nativeNarrative != nil {
+		if pattern, ok := gamesapi.NarrativeRoute(r); ok {
+			w.Header().Set("X-Chess-Edge", "go")
+			h.telemetry.Serve(pattern, h.nativeNarrative, w, r)
 			return
 		}
 	}
@@ -424,6 +436,7 @@ func (h *Handler) statusPayload(status string) map[string]any {
 		"nativeRecovery":            h.nativeRecovery != nil,
 		"nativeFeedback":            h.nativeFeedback != nil,
 		"nativeMatthias":            h.nativeMatthias != nil,
+		"nativeNarrative":           h.nativeNarrative != nil,
 	}
 	if h.release != "" {
 		payload["release"] = h.release

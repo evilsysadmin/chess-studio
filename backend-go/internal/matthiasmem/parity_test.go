@@ -106,3 +106,51 @@ func TestSummaryMatchesPythonCorpus(t *testing.T) {
 		}
 	}
 }
+
+func TestAdminStatusMatchesPythonCorpus(t *testing.T) {
+	data, err := os.ReadFile("testdata/python_matthias_memory_corpus.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var corpus struct {
+		Cases []corpusCase `json:"cases"`
+		Admin []struct {
+			Start  int             `json:"start"`
+			Status json.RawMessage `json:"status"`
+			Error  string          `json:"error"`
+		} `json:"admin"`
+	}
+	if err := json.Unmarshal(data, &corpus); err != nil {
+		t.Fatal(err)
+	}
+	var readable, all []bson.D
+	for _, c := range corpus.Cases {
+		decoded, _ := pydoc.Decode(c.Doc)
+		doc, _ := decoded.(bson.D)
+		all = append(all, doc)
+		if c.SummaryError == "" {
+			readable = append(readable, doc)
+		}
+	}
+	var groups [][]bson.D
+	for i := 0; i < len(readable); i += 8 {
+		groups = append(groups, readable[i:min(i+8, len(readable))])
+	}
+	for _, i := range []int{0, 120, 228} {
+		groups = append(groups, all[i:min(i+12, len(all))])
+	}
+	if len(groups) != len(corpus.Admin) {
+		t.Fatalf("groups %d, Python %d", len(groups), len(corpus.Admin))
+	}
+	for i, want := range corpus.Admin {
+		got, err := AdminStatus(groups[i], "memory")
+		switch {
+		case want.Error != "" && err == nil:
+			t.Errorf("group %d: Python raised %s", i, want.Error)
+		case want.Error == "" && err != nil:
+			t.Errorf("group %d: Go failed: %v", i, err)
+		case err == nil && encode(t, got) != canonical(t, want.Status):
+			t.Errorf("group %d:\n got %s\nwant %s", i, encode(t, got), canonical(t, want.Status))
+		}
+	}
+}
