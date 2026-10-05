@@ -231,6 +231,8 @@ func _initialize() -> void:
 	assert(keeper.debug_keeper_save_active())
 	assert(keeper.debug_keeper_save_direction() > 0.0)
 	assert(String(keeper.visual.animation) == "tackle")
+	match_node.debug_sync_presentation()
+	assert(match_node.debug_3d_ball_height() > 0.80)
 
 	var rival_keeper: Footballer = match_node.teams[1][0]
 	rival_keeper.global_position = Vector2(ChessFootballMath.PITCH_RECT.end.x - 120.0, ChessFootballMath.PITCH_RECT.get_center().y)
