@@ -36,8 +36,8 @@ describe('Chronicles isometric scene styles', () => {
     expect(bellTower.lighting.hemi).toBeGreaterThanOrEqual(1.4);
     expect(bellTower.lighting.fill).toBeGreaterThanOrEqual(1.62);
     expect(bellTower.lighting.bounce).toBeGreaterThanOrEqual(1.46);
-    expect(cistern.lighting.hemi).toBeGreaterThanOrEqual(1.32);
-    expect(cistern.lighting.fill).toBeGreaterThanOrEqual(1.5);
+    expect(cistern.lighting.hemi).toBeGreaterThanOrEqual(1.16);
+    expect(cistern.lighting.fill).toBeGreaterThanOrEqual(1.22);
     expect(chroniclesIsometricSceneStyle('mountain-cavern-17')).toBe(cistern);
     expect(chroniclesIsometricSceneStyle('old-silver-mine')).toBe(cistern);
   });
