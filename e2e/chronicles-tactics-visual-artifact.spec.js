@@ -270,10 +270,11 @@ for (const capture of CAPTURES) {
       const movementMessage = ((await narrator.textContent()) || '').trim();
       await captureElement(page, viewport, `${ARTIFACT_DIR}/chronicles-tactics-moved-${capture.label}.png`);
 
-      // Reset to the last semantic checkpoint so the combat proof starts from a
-      // deterministic canonical spawn regardless of how far hold-to-walk advanced
-      // while the animated screenshot was being captured.
-      await page.reload();
+      // Re-enter Tactics from Home so the combat proof starts from the last
+      // semantic checkpoint. The Tactics view itself is intentionally ephemeral,
+      // so a raw browser reload returns to Home rather than restoring the mode.
+      await page.goto('/');
+      await openTactics(page);
       await expect(mode).toBeVisible();
       await expect(mode.locator('[data-chronicles-tactics-renderer="three"] canvas')).toHaveCount(1, { timeout: 30_000 });
       await expect(mode).toHaveAttribute('data-engagement', 'exploration');
