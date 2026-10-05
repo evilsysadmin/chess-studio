@@ -5,6 +5,8 @@ config_version=5
 [application]
 config/name="Chess Football POC"
 run/main_scene="res://main.tscn"
+boot_splash/show_image=false
+boot_splash/bg_color=Color(0.01, 0.018, 0.028, 1)
 
 [display]
 window/size/viewport_width=1280
