@@ -122,9 +122,19 @@ test('Chronicles Tactics · arranca como RPG táctico isométrico con combate po
   });
   await expect(narrator).toContainText(/La compañía avanza hacia sur/i);
 
-  // Exercise a real combat action immediately. Turn-based combat means the
-  // enemy answers only after this action, never because the CI runner is slow.
-  await mode.locator('[data-member-id="rook"] .chronicles-party-hud__select').evaluate((button) => button.click());
+  // Initiative is intentionally random (AGI + 1d8), so the browser canary must
+  // obey the scheduler instead of force-selecting Rook out of turn. Enemy actors
+  // resolve automatically; party actors before Rook explicitly pass their turn.
+  for (let step = 0; step < 8; step += 1) {
+    await expect(mode).toHaveAttribute('data-turn-phase', 'party', { timeout: 10_000 });
+    const actorId = await mode.getAttribute('data-initiative-actor');
+    if (actorId === 'rook') break;
+    const passTurn = mode.getByRole('button', { name: 'Pasar turno', exact: true });
+    await expect(passTurn).toBeEnabled();
+    await passTurn.evaluate((button) => button.click());
+  }
+  await expect(mode).toHaveAttribute('data-initiative-actor', 'rook');
+
   const rookCard = mode.locator('[data-member-id="rook"]');
   await expect(rookCard).toHaveClass(/is-selected/);
   await expect(rookCard.locator('.chronicles-party-hud__vital--mp small')).toHaveText('1/1');
@@ -136,7 +146,6 @@ test('Chronicles Tactics · arranca como RPG táctico isométrico con combate po
   await expect(classSkill).toBeEnabled();
   await classSkill.evaluate((button) => button.click());
   await expect(rookCard.locator('.chronicles-party-hud__vital--mp small')).toHaveText('0/1');
-  await expect(classSkill).toBeDisabled();
 
   const canvas = mode.locator('[data-chronicles-tactics-renderer="three"] canvas');
   await expect(canvas).toBeVisible({ timeout: 30_000 });
@@ -155,7 +164,9 @@ test('Chronicles Tactics · arranca como RPG táctico isométrico con combate po
       text: root.textContent || '',
       partyMembers: root.querySelectorAll('.chronicles-party-hud__member[data-member-id]').length,
       sheetTriggers: buttonNames.filter((label) => label.startsWith('Abrir ficha de ')).length,
-      hasUse: buttonNames.includes('Usar'),
+      engagement: root.dataset.engagement,
+      initiativeActor: root.dataset.initiativeActor,
+      hasPassTurn: buttonNames.includes('Pasar turno'),
       hasClassSkill: buttonNames.includes('Habilidad de clase'),
       hasWait: buttonNames.includes('Esperar'),
     };
@@ -168,10 +179,12 @@ test('Chronicles Tactics · arranca como RPG táctico isométrico con combate po
   expect(contract.text).toMatch(/Espadachín/i);
   expect(contract.text).toMatch(/Taumaturgo/i);
   expect(contract.text).toMatch(/Hostigador/i);
-  expect(contract.text).toMatch(/espacio usa · Shift ataca · E habilidad/i);
+  expect(contract.text).toMatch(/espacio usa\/pasa turno · Shift ataca · E habilidad/i);
   expect(contract.partyMembers).toBe(4);
   expect(contract.sheetTriggers).toBe(4);
-  expect(contract.hasUse).toBe(true);
+  expect(contract.engagement).toBe('combat');
+  expect(contract.initiativeActor).toBeTruthy();
+  expect(contract.hasPassTurn).toBe(true);
   expect(contract.hasClassSkill).toBe(true);
   expect(contract.hasWait).toBe(false);
 });
