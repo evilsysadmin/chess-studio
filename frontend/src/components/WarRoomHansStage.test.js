@@ -132,8 +132,10 @@ describe('WarRoomHansStage', () => {
       expect(doorPivot.userData.warRoomHansDoorOpen).toBeGreaterThan(0);
       expect(doorPivot.userData.warRoomHansDoorOpen).toBeLessThan(1);
 
-      now = 1000;
-      driver.onBeforeRender();
+      for (let frame = 0; frame < 9; frame += 1) {
+        now += 100;
+        driver.onBeforeRender();
+      }
       expect(hans.visible).toBe(true);
       expect(doorPivot.userData.warRoomHansDoorOpen).toBe(1);
       expect(hans.userData.warRoomHansRoute).toBe('stage-entry');
