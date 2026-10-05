@@ -195,7 +195,7 @@ func _restart_match() -> void:
 
 func _exit_to_host() -> void:
 	if OS.has_feature("web"):
-		JavaScriptBridge.eval("window.parent.postMessage({type:'chess-football-exit'}, '*');")
+		JavaScriptBridge.eval("window.parent.postMessage({source:'chess-football-godot', type:'exit'}, '*');")
 		return
 	get_tree().quit()
 
