@@ -16,6 +16,10 @@ func _initialize() -> void:
 	match_node.debug_sync_presentation()
 	await _save_capture(match_node, "kickoff", "VISUAL_CAPTURE_KICKOFF")
 	match_node.debug_force_kickoff_ready()
+	assert(match_node.ball.carrier == null)
+	assert(match_node.ball.velocity.length() > 0.0)
+	match_node.debug_sync_presentation()
+	await _save_capture(match_node, "kickoff-touch", "VISUAL_CAPTURE_KICKOFF_TOUCH")
 	match_node.ball.attach_to(match_node.controlled)
 	match_node.debug_force_shot_charge(0.68)
 	await process_frame
