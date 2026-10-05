@@ -1,6 +1,6 @@
 {
   "id": "iron-foundry",
-  "version": 2,
+  "version": 3,
   "progressionKey": "foundry-01",
   "title": "Fundición de Hierro Negro",
   "grid": [
@@ -14,7 +14,11 @@
     "#.........#",
     "###########"
   ],
-  "partyStart": { "x": 1, "y": 1, "direction": 1 },
+  "partyStart": {
+    "x": 1,
+    "y": 1,
+    "direction": 1
+  },
   "initialFlags": {
     "foundryBriefingRead": false,
     "foundrySafeguard": false,
@@ -40,10 +44,22 @@
         "movement": "patrol-route",
         "attackReach": 1,
         "patrolRoute": [
-          { "x": 5, "y": 3 },
-          { "x": 6, "y": 3 },
-          { "x": 7, "y": 3 },
-          { "x": 6, "y": 3 }
+          {
+            "x": 5,
+            "y": 3
+          },
+          {
+            "x": 6,
+            "y": 3
+          },
+          {
+            "x": 7,
+            "y": 3
+          },
+          {
+            "x": 6,
+            "y": 3
+          }
         ],
         "engagedMovement": "cardinal-chase",
         "engageRange": 4
@@ -134,7 +150,12 @@
       "retaliation": 1,
       "retaliationReach": 3,
       "activation": "always",
-      "ai": { "movement": "hold", "attackReach": 3, "requiresLineOfSight": true }
+      "ai": {
+        "movement": "hold",
+        "attackReach": 3,
+        "requiresLineOfSight": true,
+        "disengageRange": 1
+      }
     },
     {
       "id": "scrap-goblin",
@@ -178,11 +199,18 @@
       "y": 1,
       "label": "Leer órdenes carbonizadas",
       "when": [
-        { "key": "foundryBriefingRead", "equals": false }
+        {
+          "key": "foundryBriefingRead",
+          "equals": false
+        }
       ],
       "action": {
         "effects": [
-          { "type": "set", "key": "foundryBriefingRead", "value": true },
+          {
+            "type": "set",
+            "key": "foundryBriefingRead",
+            "value": true
+          },
           {
             "type": "start-quest",
             "questId": "break-black-foundry",
@@ -208,15 +236,34 @@
       "y": 1,
       "label": "Insertar Cifra Real",
       "when": [
-        { "itemId": "royal-cipher", "quantity": 1 },
-        { "key": "foundrySafeguard", "equals": false }
+        {
+          "itemId": "royal-cipher",
+          "quantity": 1
+        },
+        {
+          "key": "foundrySafeguard",
+          "equals": false
+        }
       ],
       "action": {
         "effects": [
-          { "type": "consume-item", "itemId": "royal-cipher", "quantity": 1 },
-          { "type": "set", "key": "foundrySafeguard", "value": true },
-          { "type": "heal-party", "amount": 1 },
-          { "type": "refill-class-abilities" },
+          {
+            "type": "consume-item",
+            "itemId": "royal-cipher",
+            "quantity": 1
+          },
+          {
+            "type": "set",
+            "key": "foundrySafeguard",
+            "value": true
+          },
+          {
+            "type": "heal-party",
+            "amount": 1
+          },
+          {
+            "type": "refill-class-abilities"
+          },
           {
             "type": "advance-quest",
             "questId": "break-black-foundry",
@@ -245,15 +292,34 @@
       "y": 3,
       "label": "Abrir cofre del capataz",
       "when": [
-        { "key": "ironSentinelHp", "lte": 0 },
-        { "key": "chainHoundHp", "lte": 0 },
-        { "key": "slagCrawlerHp", "lte": 0 },
-        { "key": "emberArtificerHp", "lte": 0 },
-        { "key": "foremanCofferOpened", "equals": false }
+        {
+          "key": "ironSentinelHp",
+          "lte": 0
+        },
+        {
+          "key": "chainHoundHp",
+          "lte": 0
+        },
+        {
+          "key": "slagCrawlerHp",
+          "lte": 0
+        },
+        {
+          "key": "emberArtificerHp",
+          "lte": 0
+        },
+        {
+          "key": "foremanCofferOpened",
+          "equals": false
+        }
       ],
       "action": {
         "effects": [
-          { "type": "set", "key": "foremanCofferOpened", "value": true },
+          {
+            "type": "set",
+            "key": "foremanCofferOpened",
+            "value": true
+          },
           {
             "type": "grant-item",
             "itemId": "forgemaster-seal",
@@ -287,15 +353,34 @@
       "y": 5,
       "label": "Abrir armario de mantenimiento",
       "when": [
-        { "itemId": "maintenance-key", "quantity": 1 },
-        { "key": "maintenanceLockerOpened", "equals": false }
+        {
+          "itemId": "maintenance-key",
+          "quantity": 1
+        },
+        {
+          "key": "maintenanceLockerOpened",
+          "equals": false
+        }
       ],
       "action": {
         "effects": [
-          { "type": "consume-item", "itemId": "maintenance-key", "quantity": 1 },
-          { "type": "set", "key": "maintenanceLockerOpened", "value": true },
-          { "type": "heal-party", "amount": 2 },
-          { "type": "refill-class-abilities" }
+          {
+            "type": "consume-item",
+            "itemId": "maintenance-key",
+            "quantity": 1
+          },
+          {
+            "type": "set",
+            "key": "maintenanceLockerOpened",
+            "value": true
+          },
+          {
+            "type": "heal-party",
+            "amount": 2
+          },
+          {
+            "type": "refill-class-abilities"
+          }
         ],
         "message": "El armario guarda vendas, agua y reactivos. El trasgo llevaba la llave de un botiquín. Por supuesto que sí.",
         "journal": {
@@ -316,13 +401,26 @@
       "y": 6,
       "label": "Respiradero de escoria",
       "when": [
-        { "key": "foundrySafeguard", "equals": false },
-        { "key": "slagVentWestSpent", "equals": false }
+        {
+          "key": "foundrySafeguard",
+          "equals": false
+        },
+        {
+          "key": "slagVentWestSpent",
+          "equals": false
+        }
       ],
       "action": {
         "effects": [
-          { "type": "set", "key": "slagVentWestSpent", "value": true },
-          { "type": "damage-party", "amount": 1 }
+          {
+            "type": "set",
+            "key": "slagVentWestSpent",
+            "value": true
+          },
+          {
+            "type": "damage-party",
+            "amount": 1
+          }
         ],
         "message": "El suelo exhala escoria ardiente. Un punto de daño para todos los que aún tenían la mala costumbre de estar vivos."
       }
@@ -335,13 +433,26 @@
       "y": 5,
       "label": "Placa de cadenas",
       "when": [
-        { "key": "foundrySafeguard", "equals": false },
-        { "key": "chainPlateEastSpent", "equals": false }
+        {
+          "key": "foundrySafeguard",
+          "equals": false
+        },
+        {
+          "key": "chainPlateEastSpent",
+          "equals": false
+        }
       ],
       "action": {
         "effects": [
-          { "type": "set", "key": "chainPlateEastSpent", "value": true },
-          { "type": "damage-party", "amount": 2 }
+          {
+            "type": "set",
+            "key": "chainPlateEastSpent",
+            "value": true
+          },
+          {
+            "type": "damage-party",
+            "amount": 2
+          }
         ],
         "message": "La placa baja medio palmo y las cadenas barren el corredor. Dos puntos de daño por cabeza; la fundición factura aparte el aprendizaje."
       }
@@ -355,11 +466,19 @@
       "openLabel": "Abrir portón hacia la Basílica de las Cadenas",
       "lockedLabel": "Examinar portón de hierro negro",
       "requirements": [
-        { "itemId": "forgemaster-seal", "quantity": 1, "message": "El portón exige el Sello del Maestro de Forja." }
+        {
+          "itemId": "forgemaster-seal",
+          "quantity": 1,
+          "message": "El portón exige el Sello del Maestro de Forja."
+        }
       ],
       "action": {
         "effects": [
-          { "type": "consume-item", "itemId": "forgemaster-seal", "quantity": 1 },
+          {
+            "type": "consume-item",
+            "itemId": "forgemaster-seal",
+            "quantity": 1
+          },
           {
             "type": "complete-quest",
             "questId": "break-black-foundry",
@@ -368,7 +487,10 @@
             "objective": "Fundición superada.",
             "order": 60
           },
-          { "type": "transition-map", "mapId": "chain-basilica" }
+          {
+            "type": "transition-map",
+            "mapId": "chain-basilica"
+          }
         ],
         "message": "El sello encaja y el portón sube entre cadenas. Al otro lado espera una basílica que ha confundido liturgia con ferretería pesada.",
         "journal": {
