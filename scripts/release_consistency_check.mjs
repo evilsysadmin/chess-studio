@@ -26,6 +26,10 @@ if (!fs.existsSync(backendReleasePath)) fail('backend-python/release_info.py no 
 const backendReleaseText = fs.readFileSync(backendReleasePath, 'utf8');
 const backendRelease = backendReleaseText.match(/APP_RELEASE\s*=\s*['"]([^'"]+)['"]/i)?.[1] || null;
 if (backendRelease !== jsRelease) fail(`backend APP_RELEASE=${backendRelease || 'sin release'} pero frontend APP_RELEASE=${jsRelease}`);
+const goReleasePath = path.join(root, 'backend-go', 'internal', 'release', 'release.go');
+if (!fs.existsSync(goReleasePath)) fail('backend-go/internal/release/release.go no existe');
+const goRelease = fs.readFileSync(goReleasePath, 'utf8').match(/AppRelease\s*=\s*"([^"]+)"/)?.[1] || null;
+if (goRelease !== jsRelease) fail(`Go AppRelease=${goRelease || 'sin release'} pero frontend APP_RELEASE=${jsRelease}`);
 if (!/def\s+deployment_identity\s*\(/.test(backendReleaseText)) fail('backend-python/release_info.py debe exportar deployment_identity() para las deployment annotations');
 
 if (fs.existsSync(manifestPath)) {

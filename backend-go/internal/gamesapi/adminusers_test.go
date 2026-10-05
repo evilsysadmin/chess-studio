@@ -130,6 +130,7 @@ func (p *portraitCalls) EventMetrics(string, int64) bson.D { return bson.D{} }
 func (p *portraitCalls) Enter() int64                      { return 1 }
 func (p *portraitCalls) Exit()                             {}
 func (p *portraitCalls) ShouldShed(int64) bool             { return false }
+func (p *portraitCalls) RecordShed()                       {}
 
 func decodeDocs(t *testing.T, raw []json.RawMessage) []bson.D {
 	t.Helper()

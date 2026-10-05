@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"go.mongodb.org/mongo-driver/v2/bson"
 	"log"
 	"net/http"
 	"os"
@@ -31,6 +32,7 @@ import (
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/profilestore"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/pulse"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/pvprating"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/release"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/resetmail"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/residentmove"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/residentoracle"
@@ -72,6 +74,9 @@ type nativeRuntime struct {
 	adminFeedback  http.Handler
 	// adminUsers is built in edgeConfig, sharing the narrative gateway.
 	adminUsers *gamesapi.AdminUsersConfig
+	// adminObservability is built in edgeConfig: it reads the narrative
+	// gateway, the request window and the telemetry diagnostics.
+	adminObservability *gamesapi.AdminObservabilityConfig
 	// system is built in edgeConfig, once request telemetry exists.
 	system *gamesapi.SystemConfig
 	// history is Admin's observability history (nil when disabled).
@@ -83,6 +88,9 @@ type nativeRuntime struct {
 	virtualPlayers bool
 	residentMove   bool
 }
+
+// processStarted is PROCESS_STARTED_AT: the deployment annotation's time.
+var processStarted = time.Now()
 
 func buildNativeRuntime(features nativeFeatureFlags, upstream string) (runtime nativeRuntime, err error) {
 	runtime.window = httpwindow.New()
@@ -582,6 +590,34 @@ func buildNativeRuntime(features nativeFeatureFlags, upstream string) (runtime n
 			Memory:         matthiasmem.New(mongoRuntime.Database(), pvpMongoTimeout),
 		}
 	}
+	if features.adminObservability {
+		telemetryCfg := telemetry.ConfigFromEnv(os.LookupEnv)
+		database := mongoRuntime.Database()
+		reader := obshistory.NewMongoReader(database)
+		history := runtime.history
+		runtime.adminObservability = &gamesapi.AdminObservabilityConfig{
+			Config: gamesapi.Config{
+				Accounts:        accountstore.New(database, pvpMongoTimeout),
+				Presence:        presence.New(database, telemetryCfg.TrustCloudflare, 2*time.Second),
+				JWTSecret:       jwtSecret,
+				AllowedOrigins:  splitCSV(os.Getenv("CORS_ORIGINS")),
+				TrustCloudflare: telemetryCfg.TrustCloudflare,
+			},
+			History: func(ctx context.Context, from, to *string, now time.Time) (bson.D, error) {
+				return obshistory.History(ctx, reader, history, from, to, now)
+			},
+			Database: func(ctx context.Context) bson.D { return gamesapi.DatabaseMetrics(ctx, mongoRuntime.Ping) },
+			Deployments: obshistory.NewDeployments(database, obshistory.Deployment{
+				ID:         release.DeploymentIdentity(os.Getenv),
+				Release:    release.AppRelease,
+				Provider:   obshistory.Provider(os.Getenv),
+				DeployedAt: processStarted,
+			}),
+			HTTP:           runtime.window.Metrics,
+			Env:            os.Getenv,
+			AdminUsernames: splitCSV(os.Getenv("ADMIN_USERNAMES")),
+		}
+	}
 	if features.narrative {
 		telemetryCfg := telemetry.ConfigFromEnv(os.LookupEnv)
 		runtime.narrative = &gamesapi.NarrativeConfig{
@@ -660,7 +696,7 @@ func (r nativeRuntime) edgeConfig(upstream, release string, requestTelemetry *te
 	// One gateway (breaker, metrics window) for the narrative routes and
 	// Admin's portrait/preview, as in Python's process.
 	var gateway *narrative.Gateway
-	if r.narrative != nil || r.adminUsers != nil {
+	if r.narrative != nil || r.adminUsers != nil || r.adminObservability != nil {
 		gateway = narrative.New(narrative.Config{History: r.history, Log: logLine})
 	}
 	var narrativeHandler http.Handler
@@ -682,6 +718,18 @@ func (r nativeRuntime) edgeConfig(upstream, release string, requestTelemetry *te
 			log.Printf("native admin users disabled: %v", err)
 		} else {
 			adminUsersHandler = handler
+		}
+	}
+	var adminObservabilityHandler http.Handler
+	if r.adminObservability != nil {
+		cfg := *r.adminObservability
+		cfg.Gateway = gateway
+		telemetryCfg := telemetry.ConfigFromEnv(os.LookupEnv)
+		cfg.Tracing = func() bson.D { return telemetry.Diagnostics(requestTelemetry, telemetryCfg) }
+		if handler, err := gamesapi.NewAdminObservability(cfg); err != nil {
+			log.Printf("native admin observability disabled: %v", err)
+		} else {
+			adminObservabilityHandler = handler
 		}
 	}
 	var readyChecks map[string]func(context.Context) error
@@ -722,6 +770,7 @@ func (r nativeRuntime) edgeConfig(upstream, release string, requestTelemetry *te
 		NativeChroniclesRuns:      r.chroniclesRuns,
 		NativeAdminFeedback:       r.adminFeedback,
 		NativeAdminUsers:          adminUsersHandler,
+		NativeAdminObservability:  adminObservabilityHandler,
 		VirtualPlayersEnabled:     r.virtualPlayers,
 		NativeResidentMove:        r.residentMove,
 		ReadyChecks:               readyChecks,
@@ -732,7 +781,7 @@ func (r nativeRuntime) edgeConfig(upstream, release string, requestTelemetry *te
 
 func (r nativeRuntime) logStartup(port, upstream string) {
 	log.Printf(
-		"go-api listening on :%s -> %s native_pulse=%t native_lobby_read=%t native_roster=%t native_chat=%t native_challenge_resolution=%t native_challenge_accept=%t native_challenge_create=%t native_match_handoff_cancel=%t native_match_ready=%t native_match_resign=%t native_match_read=%t native_match_move=%t native_resident_move=%t native_games_read=%t native_games_write=%t native_games_hint=%t native_games_analyze=%t native_system=%t native_profile=%t native_auth_session=%t native_login=%t native_account=%t native_recovery=%t native_feedback=%t native_matthias_read=%t native_narrative=%t native_pawn_slug=%t native_chronicles=%t native_chronicles_runs=%t native_admin_feedback=%t native_admin_users=%t",
+		"go-api listening on :%s -> %s native_pulse=%t native_lobby_read=%t native_roster=%t native_chat=%t native_challenge_resolution=%t native_challenge_accept=%t native_challenge_create=%t native_match_handoff_cancel=%t native_match_ready=%t native_match_resign=%t native_match_read=%t native_match_move=%t native_resident_move=%t native_games_read=%t native_games_write=%t native_games_hint=%t native_games_analyze=%t native_system=%t native_profile=%t native_auth_session=%t native_login=%t native_account=%t native_recovery=%t native_feedback=%t native_matthias_read=%t native_narrative=%t native_pawn_slug=%t native_chronicles=%t native_chronicles_runs=%t native_admin_feedback=%t native_admin_users=%t native_admin_observability=%t",
 		port,
 		upstream,
 		r.pulse != nil,
@@ -766,6 +815,7 @@ func (r nativeRuntime) logStartup(port, upstream string) {
 		r.chroniclesRuns != nil,
 		r.adminFeedback != nil,
 		r.adminUsers != nil,
+		r.adminObservability != nil,
 	)
 }
 

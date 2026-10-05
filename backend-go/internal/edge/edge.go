@@ -88,9 +88,12 @@ type Config struct {
 	// in Python.
 	NativeAdminFeedback http.Handler
 	// NativeAdminUsers serves Admin's user tools; nil keeps them in Python.
-	NativeAdminUsers      http.Handler
-	VirtualPlayersEnabled bool
-	NativeResidentMove    bool
+	NativeAdminUsers http.Handler
+	// NativeAdminObservability serves Admin's observability panel; nil
+	// keeps it in Python.
+	NativeAdminObservability http.Handler
+	VirtualPlayersEnabled    bool
+	NativeResidentMove       bool
 	// ReadyChecks are dependencies owned by the Go edge itself (MongoDB for the
 	// native routes). Each must pass, alongside the Python upstream, for the
 	// edge to report ready.
@@ -141,6 +144,7 @@ type Handler struct {
 	nativeChroniclesRuns      http.Handler
 	nativeAdminFeedback       http.Handler
 	nativeAdminUsers          http.Handler
+	nativeAdminObservability  http.Handler
 	virtualPlayersEnabled     bool
 	nativeResidentMove        bool
 	readyChecks               map[string]func(context.Context) error
@@ -258,6 +262,7 @@ func New(cfg Config) (*Handler, error) {
 		nativeChroniclesRuns:      cfg.NativeChroniclesRuns,
 		nativeAdminFeedback:       cfg.NativeAdminFeedback,
 		nativeAdminUsers:          cfg.NativeAdminUsers,
+		nativeAdminObservability:  cfg.NativeAdminObservability,
 		virtualPlayersEnabled:     cfg.VirtualPlayersEnabled,
 		nativeResidentMove:        cfg.NativeResidentMove,
 		readyChecks:               cfg.ReadyChecks,
@@ -398,6 +403,13 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if pattern, _, ok := gamesapi.AdminUsersRoute(r); ok {
 			w.Header().Set("X-Chess-Edge", "go")
 			h.serveNative(pattern, h.nativeAdminUsers, w, r)
+			return
+		}
+	}
+	if h.nativeAdminObservability != nil {
+		if pattern, ok := gamesapi.AdminObservabilityRoute(r); ok {
+			w.Header().Set("X-Chess-Edge", "go")
+			h.serveNative(pattern, h.nativeAdminObservability, w, r)
 			return
 		}
 	}
@@ -575,6 +587,7 @@ func (h *Handler) statusPayload(status string) map[string]any {
 		"nativeChroniclesRuns":      h.nativeChroniclesRuns != nil,
 		"nativeAdminFeedback":       h.nativeAdminFeedback != nil,
 		"nativeAdminUsers":          h.nativeAdminUsers != nil,
+		"nativeAdminObservability":  h.nativeAdminObservability != nil,
 	}
 	if h.release != "" {
 		payload["release"] = h.release

@@ -74,6 +74,7 @@ type fakeGateway struct {
 	kinds    []string
 	inflight int64
 	shed     bool
+	sheds    int
 }
 
 func (g *fakeGateway) Generate(_ context.Context, eventType string, facts bson.D, _, _ *string, kind string, _ *string) narrative.Result {
@@ -89,6 +90,7 @@ func (g *fakeGateway) EventMetrics(string, int64) bson.D {
 func (g *fakeGateway) Enter() int64          { g.inflight++; return g.inflight }
 func (g *fakeGateway) Exit()                 { g.inflight-- }
 func (g *fakeGateway) ShouldShed(int64) bool { return g.shed }
+func (g *fakeGateway) RecordShed()           { g.sheds++ }
 
 func newNarrativeFixture(t *testing.T, admins ...string) (*NarrativeHandler, *fakeMemory, *fakeGateway, *[]string) {
 	t.Helper()
@@ -222,7 +224,7 @@ func TestNarrativeShedsUnderPressure(t *testing.T) {
 	h, _, gw, _ := newNarrativeFixture(t)
 	gw.shed = true
 	w := feedbackDo(t, h, http.MethodPost, NarrativePattern, `{}`, "alice")
-	if w.Code != 503 || w.Header().Get("Retry-After") != "5" || !strings.Contains(w.Body.String(), `"degraded":true`) || gw.inflight != 0 {
+	if w.Code != 503 || w.Header().Get("Retry-After") != "5" || !strings.Contains(w.Body.String(), `"degraded":true`) || gw.inflight != 0 || gw.sheds != 1 {
 		t.Fatalf("%d %s inflight=%d", w.Code, w.Body, gw.inflight)
 	}
 }

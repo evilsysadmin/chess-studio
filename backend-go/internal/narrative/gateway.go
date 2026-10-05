@@ -54,6 +54,118 @@ type Gateway struct {
 	bulkheads map[string]chan struct{}
 
 	inflight atomic.Int64
+
+	// sheds and rejections are resilience.py's _SHED_EVENTS and
+	// _BULKHEAD_REJECTIONS (the last 500 of each).
+	pressureMu sync.Mutex
+	sheds      []time.Time
+	rejections []time.Time
+}
+
+const pressureEvents = 500
+
+func appendBounded(rows []time.Time, at time.Time) []time.Time {
+	rows = append(rows, at)
+	if len(rows) > pressureEvents {
+		rows = rows[len(rows)-pressureEvents:]
+	}
+	return rows
+}
+
+// RecordShed is record_shed: an optional request answered 503.
+func (g *Gateway) RecordShed() {
+	g.pressureMu.Lock()
+	defer g.pressureMu.Unlock()
+	g.sheds = appendBounded(g.sheds, g.now())
+}
+
+func (g *Gateway) recordRejection() {
+	g.pressureMu.Lock()
+	defer g.pressureMu.Unlock()
+	g.rejections = appendBounded(g.rejections, g.now())
+}
+
+func recentCount(rows []time.Time, cutoff time.Time) int64 {
+	var n int64
+	for _, at := range rows {
+		if !at.Before(cutoff) {
+			n++
+		}
+	}
+	return n
+}
+
+// Pressure is pressure_state over Go's own signal: the narrative requests in
+// flight (see Enter). Python also escalates on its process' HTTP p95 and 5xx
+// rate; Go's shedding does not, so neither does what it reports.
+func (g *Gateway) Pressure() bson.D {
+	inflight := g.inflight.Load()
+	critical := g.envInt(g.envStr("CHESS_CRITICAL_INFLIGHT"), 32, 2, 1024)
+	degraded := g.envInt(g.envStr("CHESS_DEGRADED_INFLIGHT"), 12, 1, 512)
+	level, reasons := "normal", bson.A{}
+	switch {
+	case inflight >= critical:
+		level, reasons = "critical", bson.A{"inflight_critical"}
+	case inflight >= degraded:
+		level, reasons = "degraded", bson.A{"inflight_high"}
+	}
+	cutoff := g.now().Add(-300 * time.Second)
+	g.pressureMu.Lock()
+	sheds, rejections := recentCount(g.sheds, cutoff), recentCount(g.rejections, cutoff)
+	g.pressureMu.Unlock()
+	return bson.D{
+		{Key: "level", Value: level},
+		{Key: "reasons", Value: reasons},
+		{Key: "inflight", Value: inflight},
+		{Key: "optional_inflight_limit", Value: g.envInt(g.envStr("CHESS_OPTIONAL_INFLIGHT_LIMIT"), 16, 2, 512)},
+		{Key: "degraded_inflight_threshold", Value: degraded},
+		{Key: "critical_inflight_threshold", Value: critical},
+		{Key: "shed_last_5m", Value: sheds},
+		{Key: "bulkhead_rejections_last_5m", Value: rejections},
+	}
+}
+
+// DependencyHealth is get_ai_dependency_health.
+func (g *Gateway) DependencyHealth() bson.D {
+	enabled := g.Enabled()
+	configured := g.envStr("CF_AI_WORKER_URL") != "" && g.envStr("CHESS_AI_SHARED_SECRET") != ""
+	circuit := g.CircuitSnapshot()
+	open, _ := circuitField(circuit, "open").(bool)
+	status := "ok"
+	switch {
+	case !enabled:
+		status = "disabled"
+	case !configured:
+		status = "unconfigured"
+	case open:
+		status = "degraded"
+	}
+	channels := bson.D{}
+	rows, _ := circuitField(circuit, "channels").(bson.D)
+	for _, row := range rows {
+		d := row.Value.(bson.D)
+		channels = append(channels, bson.E{Key: row.Key, Value: bson.D{
+			{Key: "open", Value: circuitField(d, "open")},
+			{Key: "secondsRemaining", Value: circuitField(d, "seconds_remaining")},
+			{Key: "failures", Value: circuitField(d, "consecutive_failures")},
+		}})
+	}
+	return bson.D{
+		{Key: "status", Value: status},
+		{Key: "enabled", Value: enabled},
+		{Key: "configured", Value: configured},
+		{Key: "circuitOpen", Value: open},
+		{Key: "channels", Value: channels},
+	}
+}
+
+func circuitField(doc bson.D, key string) any {
+	for _, e := range doc {
+		if e.Key == key {
+			return e.Value
+		}
+	}
+	return nil
 }
 
 type circuitState struct {
@@ -304,6 +416,7 @@ func (g *Gateway) Request(ctx context.Context, eventType string, facts bson.D, t
 	case bulk <- struct{}{}:
 	case <-time.After(50 * time.Millisecond):
 		// Saturation of one AI class must not eat the others' capacity.
+		g.recordRejection()
 		return Outcome{Reason: "bulkhead_full"}
 	}
 	defer func() { <-bulk }()

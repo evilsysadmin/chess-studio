@@ -72,6 +72,8 @@ type Recorder struct {
 	logger        otellog.Logger
 
 	shutdowns []func(context.Context) error
+	// signalErrors names a signal whose exporter could not be built.
+	signalErrors map[string]string
 }
 
 // Options are the parts of a Recorder that tests replace.
@@ -88,7 +90,7 @@ type Options struct {
 // New builds the recorder. Export is fail-open, as in Python: a broken
 // exporter configuration disables that signal and never the routes.
 func New(ctx context.Context, cfg Config, opts Options) (*Recorder, error) {
-	r := &Recorder{cfg: cfg, username: opts.Username, history: opts.History, out: opts.Stdout, now: opts.now}
+	r := &Recorder{cfg: cfg, username: opts.Username, history: opts.History, out: opts.Stdout, now: opts.now, signalErrors: map[string]string{}}
 	if r.out == nil {
 		r.out = os.Stdout
 	}
@@ -123,6 +125,7 @@ func New(ctx context.Context, cfg Config, opts Options) (*Recorder, error) {
 		)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("metrics exporter: %w", err))
+			r.signalErrors["metrics"] = "ExporterConfigurationError"
 		} else {
 			reader = sdkmetric.NewPeriodicReader(exporter, sdkmetric.WithInterval(exportInterval))
 		}
@@ -141,6 +144,7 @@ func New(ctx context.Context, cfg Config, opts Options) (*Recorder, error) {
 		)
 		if err := errors.Join(err1, err2, err3, err4, err5); err != nil {
 			errs = append(errs, err)
+			r.signalErrors["metrics"] = "InstrumentError"
 		} else {
 			r.requests, r.duration = counter, histogram
 			r.frontend, r.vital = frontend, vital
@@ -157,6 +161,7 @@ func New(ctx context.Context, cfg Config, opts Options) (*Recorder, error) {
 		)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("logs exporter: %w", err))
+			r.signalErrors["logs"] = "ExporterConfigurationError"
 		} else {
 			processor = sdklog.NewBatchProcessor(exporter)
 		}
