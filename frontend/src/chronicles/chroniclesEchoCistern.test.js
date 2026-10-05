@@ -20,7 +20,7 @@ describe('Chronicles Echo Cistern', () => {
     expect(chroniclesMapIds()).toContain('echo-cistern');
     const cistern = chroniclesMapById('echo-cistern');
 
-    expect(cistern.version).toBe(1);
+    expect(cistern.version).toBe(2);
     expect(cistern.grid).toHaveLength(10);
     expect(cistern.grid[0]).toHaveLength(13);
     expect(cistern.enemies.map((enemy) => enemy.id)).toEqual([
