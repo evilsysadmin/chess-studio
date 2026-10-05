@@ -122,6 +122,15 @@ test('Chronicles Tactics · arranca como RPG táctico isométrico con combate po
   });
   await expect(narrator).toContainText(/La compañía avanza hacia sur/i);
 
+  // The canonical pawn is two cells east of spawn. Moving one cell east enters
+  // its engagement range and must freeze free exploration into initiative combat.
+  await page.waitForTimeout(140);
+  const moveEast = mode.getByRole('button', { name: 'Mover al este', exact: true });
+  await expect(moveEast).toBeEnabled();
+  await moveEast.evaluate((button) => button.click());
+  await expect(mode).toHaveAttribute('data-engagement', 'combat');
+  await expect(mode).not.toHaveAttribute('data-initiative-actor', '');
+
   // Initiative is intentionally random (AGI + 1d8), so the browser canary must
   // obey the scheduler instead of force-selecting Rook out of turn. Enemy actors
   // resolve automatically; party actors before Rook explicitly pass their turn.
