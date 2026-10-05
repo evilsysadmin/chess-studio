@@ -91,7 +91,7 @@ function baseShadeForProfile(profile, role) {
   else if (profile.category === 'variant') base = 112;
 
   if (profile.category === 'dungeon') base += role === 'wall' ? -20 : -6;
-  if (profile.category === 'cave') base += role === 'wall' ? 4 : -58;
+  if (profile.category === 'cave') base += role === 'wall' ? 0 : -46;
   return base;
 }
 
@@ -307,8 +307,8 @@ function applyTextureSet(material, set, normalStrength, profile, role) {
   material.normalMap = set.normal;
   material.normalScale = new THREE.Vector2(normalStrength, normalStrength);
   if (material.color) {
-    if (profile.category === 'cave' && role === 'floor') material.color.setRGB(0.34, 0.38, 0.4);
-    else if (profile.category === 'cave' && role === 'wall') material.color.setRGB(0.76, 0.8, 0.82);
+    if (profile.category === 'cave' && role === 'floor') material.color.setRGB(0.42, 0.45, 0.47);
+    else if (profile.category === 'cave' && role === 'wall') material.color.setRGB(0.7, 0.74, 0.76);
     else material.color.setRGB(1, 1, 1);
   }
   if (profile.category === 'cave' && role === 'wall' && material.emissive) {
