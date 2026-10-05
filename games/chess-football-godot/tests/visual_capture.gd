@@ -84,6 +84,26 @@ func _initialize() -> void:
 	match_node.debug_focus_presentation()
 	await _save_capture(match_node, "crossbar", "VISUAL_CAPTURE_CROSSBAR")
 
+	# Keeper review: drive a save to one side, advance the save state to its
+	# strongest silhouette and keep the caught ball anchored to the keeper.
+	var review_keeper: Footballer = match_node.teams[1][0]
+	review_keeper.global_position = Vector2(
+		ChessFootballMath.PITCH_RECT.end.x - 110.0,
+		ChessFootballMath.PITCH_RECT.get_center().y,
+	)
+	match_node.ball.release(Vector2.RIGHT, 760.0)
+	match_node.ball.global_position = review_keeper.global_position + Vector2(-48.0, 34.0)
+	match_node.ball.velocity = Vector2.RIGHT * 760.0
+	assert(match_node.debug_try_keeper_save(review_keeper))
+	assert(review_keeper.debug_keeper_save_active())
+	assert(review_keeper.debug_keeper_save_direction() > 0.0)
+	review_keeper._process(0.29)
+	if review_keeper.visual != null and String(review_keeper.visual.animation) == "tackle":
+		review_keeper.visual.pause()
+		review_keeper.visual.frame = 4
+	match_node.debug_focus_presentation()
+	await _save_capture(match_node, "keeper-save", "VISUAL_CAPTURE_KEEPER_SAVE")
+
 	match_node.debug_toggle_camera_mode()
 	for _frame in range(10):
 		await process_frame

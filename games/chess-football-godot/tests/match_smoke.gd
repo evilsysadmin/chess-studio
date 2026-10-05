@@ -222,13 +222,17 @@ func _initialize() -> void:
 	assert(keeper.role == "keeper")
 	keeper.global_position = Vector2(200.0, ChessFootballMath.PITCH_RECT.get_center().y)
 	match_node.ball.release(Vector2.RIGHT, 760.0)
-	match_node.ball.global_position = keeper.global_position + Vector2(48.0, 0.0)
+	match_node.ball.global_position = keeper.global_position + Vector2(48.0, 34.0)
 	assert(not match_node.debug_try_keeper_save(keeper))
 	match_node.ball.velocity = Vector2.LEFT * 760.0
 	assert(match_node.debug_try_keeper_save(keeper))
 	assert(match_node.ball.carrier == keeper)
 	assert(keeper.debug_keeper_hold_active())
+	assert(keeper.debug_keeper_save_active())
+	assert(keeper.debug_keeper_save_direction() > 0.0)
 	assert(String(keeper.visual.animation) == "tackle")
+	match_node.debug_sync_presentation()
+	assert(match_node.debug_3d_ball_height() > 0.80)
 
 	var rival_keeper: Footballer = match_node.teams[1][0]
 	rival_keeper.global_position = Vector2(ChessFootballMath.PITCH_RECT.end.x - 120.0, ChessFootballMath.PITCH_RECT.get_center().y)

@@ -551,7 +551,10 @@ func _keeper_try_save(keeper: Footballer) -> bool:
 	if keeper.global_position.distance_to(ball.global_position) > KEEPER_SAVE_RANGE:
 		return false
 
-	keeper.play_action("tackle", 0.58)
+	var dive_direction := signf(ball.global_position.y - keeper.global_position.y)
+	if absf(dive_direction) < 0.01:
+		dive_direction = 1.0
+	keeper.begin_keeper_save(dive_direction, 0.58)
 	if audio_fx != null:
 		audio_fx.play_keeper_save()
 	keeper.begin_keeper_hold(KEEPER_HOLD_SECONDS)
@@ -1188,6 +1191,9 @@ func debug_audio_stream_names() -> Array[String]:
 
 func debug_3d_animated_players() -> int:
 	return presentation_3d.debug_animated_players() if presentation_3d != null else 0
+
+func debug_3d_ball_height() -> float:
+	return presentation_3d.debug_ball_render_height() if presentation_3d != null else -1.0
 
 func debug_sync_presentation() -> void:
 	_update_3d_presentation(0.0)
