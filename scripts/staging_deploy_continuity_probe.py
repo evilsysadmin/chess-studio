@@ -21,6 +21,11 @@ import urllib.request
 SOURCE = "staging-capacity"
 
 
+# 60 s / 0.6 s = 100 sentinel reads per minute at most, under the API's
+# 120/minute default limit per account.
+MIN_INTERVAL_S = 0.6
+
+
 def required(name: str) -> str:
     value = os.environ.get(name, "").strip()
     if not value:
@@ -216,7 +221,10 @@ def main() -> None:
     parser.add_argument("--done-file", default="/tmp/chess-continuity-done")
     parser.add_argument("--result-file", default="/tmp/chess-continuity-result.json")
     parser.add_argument("--traffic-games", type=int, default=8)
-    parser.add_argument("--interval", type=float, default=0.35)
+    # The sentinel GET shares the API's 120/minute per-user limit with every
+    # other read of the probe identity: 0.6 s keeps it under 100/minute even
+    # at zero latency (0.35 s tripped the limit whenever latency dropped).
+    parser.add_argument("--interval", type=float, default=0.6)
     parser.add_argument("--arm-timeout", type=float, default=120)
     parser.add_argument("--max-seconds", type=float, default=600)
     args = parser.parse_args()
@@ -225,6 +233,8 @@ def main() -> None:
         return
     if not 2 <= args.traffic_games <= 12:
         raise SystemExit("traffic-games must be 2..12")
+    if args.interval < MIN_INTERVAL_S:
+        raise SystemExit(f"interval must be at least {MIN_INTERVAL_S}s to stay within the API's 120/minute read limit")
     result = run(args)
     pathlib.Path(args.result_file).write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     print("DEPLOY_CONTINUITY_OK " + json.dumps(result, sort_keys=True))
