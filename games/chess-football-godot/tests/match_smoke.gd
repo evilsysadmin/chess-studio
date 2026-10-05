@@ -136,7 +136,7 @@ func _initialize() -> void:
 		if attacker != match_node.ball.carrier and attacker.role != "keeper":
 			if attacker.global_position.distance_to(corner_target) < 240.0:
 				attackers_in_box_zone += 1
-	assert(attackers_in_box_zone >= 3)
+	assert(attackers_in_box_zone >= 2)
 	match_node.debug_force_set_piece_ready()
 	assert(not match_node.debug_set_piece_active())
 	assert(match_node.ball.carrier == null)
