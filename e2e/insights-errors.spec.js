@@ -220,7 +220,7 @@ test('Así juegas · sesión automática respeta 5/15/30 y sobrevive a refresh',
   }, { fen: PERSONAL_MATE_FEN });
 
   await buttonWithHeading(page, 'Así juegas').click();
-  await expect(page.getByRole('heading', { name: 'Sesión automática', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '¿Cuánto tiempo tienes?', exact: true })).toBeVisible();
 
   for (const minutes of [5, 15, 30]) {
     await page.getByRole('button', { name: `Tengo ${minutes} min`, exact: true }).click();
@@ -243,5 +243,5 @@ test('Así juegas · sesión automática respeta 5/15/30 y sobrevive a refresh',
     await session.getByRole('button', { name: 'Cancelar sesión', exact: true }).click();
   }
 
-  await expect(page.getByRole('heading', { name: 'Sesión automática', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '¿Cuánto tiempo tienes?', exact: true })).toBeVisible();
 });
