@@ -23,6 +23,7 @@ python scripts/matthias_memory_writes_parity_corpus.py --check
 python scripts/narrative_parity_corpus.py --check
 python scripts/pawn_slug_parity_corpus.py --check
 python scripts/chronicles_area_parity_corpus.py --check
+python scripts/chronicles_runs_parity_corpus.py --check
 
 (
   cd backend-go

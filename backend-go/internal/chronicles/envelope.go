@@ -96,3 +96,34 @@ func Preview(code string) (bson.D, error) {
 		{Key: "walkableCount", Value: int64(layout.WalkableCount)},
 	}, nil
 }
+
+// TransitionTargets is _transition_targets: every map a content action or an
+// enemy's defeat can transition to.
+func TransitionTargets(manifest bson.D) map[string]bool {
+	var effects bson.A
+	collect := func(owner bson.D, key string) {
+		action, _ := get(owner, key).(bson.D)
+		list, _ := get(action, "effects").(bson.A)
+		effects = append(effects, list...)
+	}
+	for _, group := range contentGroups {
+		for _, entry := range docs(get(manifest, group)) {
+			collect(entry, "action")
+		}
+	}
+	for _, enemy := range docs(get(manifest, "enemies")) {
+		collect(enemy, "onDefeat")
+	}
+	targets := map[string]bool{}
+	for _, raw := range effects {
+		if effect, ok := raw.(bson.D); ok && get(effect, "type") == "transition-map" {
+			if id, isString := get(effect, "mapId").(string); isString {
+				targets[id] = true
+			}
+		}
+	}
+	return targets
+}
+
+// RouteDepth is _run_depth.
+func RouteDepth(route *RouteSnapshot, mapID string) int64 { return route.depth(mapID) }
