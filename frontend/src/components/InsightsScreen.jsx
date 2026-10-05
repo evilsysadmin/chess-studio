@@ -21,8 +21,8 @@ import '../styles/04-career-dossier.css';
 const InsightsTrainingRoomScene3D = lazy(() => import('./InsightsTrainingRoomScene3D.jsx'));
 
 const DIAGNOSIS_VIEWS = [
-  { id: 'now', label: 'Ahora', detail: 'Matthias te marca el foco' },
-  { id: 'errors', label: 'Errores', detail: 'Patrones y errores recurrentes' },
+  { id: 'now', label: 'Ahora', detail: 'Qué entrenar hoy' },
+  { id: 'errors', label: 'Errores', detail: 'Qué errores repites' },
   { id: 'dossier', label: 'Expediente', detail: 'Datos y tendencias' },
 ];
 
@@ -85,7 +85,7 @@ export default function InsightsScreen(props) {
         <p className="insights-workspace-lead">
           {isCareer
             ? 'Tu evolución e historial, separados del entrenamiento de hoy.'
-            : 'Matthias revisa tus datos, te señala el problema que más merece atención y te manda a trabajar. El expediente completo puede esperar.'}
+            : 'Matthias revisa tus datos y te deja una tarea concreta. Empieza por Ahora; abre Errores o Expediente sólo cuando necesites el detalle.'}
         </p>
 
         <div className="insights-workspace-primary-tabs" role="tablist" aria-label="Vistas de progreso del jugador">
