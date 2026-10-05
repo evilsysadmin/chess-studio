@@ -108,7 +108,8 @@ export default function ChroniclesOfMatthiasTactics({
   onFinishRun = null,
   onRestartRun = null,
 }) {
-  useEscapeToClose(onExit);
+  const [menuOpen, setMenuOpen] = useState(false);
+  useEscapeToClose(() => setMenuOpen((open) => !open), { contextMenu: false });
   const hostRef = useRef(null);
   const engineRef = useRef(null);
   const [progression, setProgression] = useState(() => loadChroniclesProgression());
@@ -487,7 +488,21 @@ export default function ChroniclesOfMatthiasTactics({
           <h2>Chronicles of Matthias Tactics</h2>
           <p>RPG táctico isométrico: exploración libre, cuatro clases y combate por turnos cuando el tablero decide ponerse desagradable.</p>
         </div>
-        <button type="button" className="secondary-btn" onClick={onExit}>← Experimentos</button>
+        <details
+          className="chronicles-tactics__game-menu"
+          open={menuOpen}
+          onToggle={(event) => setMenuOpen(event.currentTarget.open)}
+        >
+          <summary aria-label={menuOpen ? 'Cerrar menú de Chronicles' : 'Abrir menú de Chronicles'}>
+            ☰ <b>MENÚ</b>
+          </summary>
+          <div className="chronicles-tactics__game-menu-panel">
+            <strong>Chronicles of Matthias Tactics</strong>
+            <small>La expedición queda guardada.</small>
+            <button type="button" onClick={() => setMenuOpen(false)}>Continuar</button>
+            <button type="button" onClick={onExit}>Salir</button>
+          </div>
+        </details>
       </header>
 
       <div className="chronicles-tactics__frame">
