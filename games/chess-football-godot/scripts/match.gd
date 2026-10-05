@@ -19,6 +19,7 @@ var controlled: Footballer
 var score := [0, 0]
 var match_seconds: float = 0.0
 var camera: Camera2D
+var pitch_art: FootballPitch
 var camera_mode: String = CAMERA_MODE_BROADCAST
 var last_goal_text: String = ""
 var camera_hint_seconds: float = 4.5
@@ -29,6 +30,7 @@ var view_label: Label
 var goal_label: Label
 
 func _ready() -> void:
+	_spawn_pitch()
 	_spawn_match()
 	_select_player(teams[0][2])
 	ball.attach_to(controlled)
@@ -36,7 +38,6 @@ func _ready() -> void:
 	_create_hud()
 	_update_depth_presentation()
 	_refresh_hud()
-	queue_redraw()
 
 func _physics_process(delta: float) -> void:
 	match_seconds += delta
@@ -49,7 +50,6 @@ func _physics_process(delta: float) -> void:
 	_update_depth_presentation()
 	_update_camera(delta)
 	_refresh_hud()
-	queue_redraw()
 
 func _create_camera() -> void:
 	camera = Camera2D.new()
@@ -106,6 +106,7 @@ func _handle_human() -> void:
 		_pass_from(controlled, direction)
 	if Input.is_action_just_pressed("shoot_ball") and ball.carrier == controlled:
 		var target := ChessFootballMath.goal_center(0)
+		controlled.play_action("shoot", 0.78)
 		ball.release(target - controlled.global_position, 820.0)
 
 func _update_ai(delta: float) -> void:
@@ -135,13 +136,16 @@ func _update_ai(delta: float) -> void:
 func _ai_attack(player: Footballer) -> void:
 	var goal := ChessFootballMath.goal_center(1)
 	if player.global_position.distance_to(goal) < 380.0:
+		player.play_action("shoot", 0.78)
 		ball.release(goal - player.global_position, 760.0)
 		return
 	var target := _best_teammate_ahead(player)
 	if target != null and player.global_position.distance_to(target.global_position) > 150.0:
+		player.play_action("pass", 0.72)
 		ball.release(target.global_position - player.global_position, 520.0)
 
 func _pass_from(player: Footballer, input_direction: Vector2) -> void:
+	player.play_action("pass", 0.72)
 	var target := _best_pass_target(player, input_direction)
 	if target == null:
 		var fallback := input_direction if input_direction.length_squared() > 0.001 else Vector2.RIGHT
@@ -220,6 +224,8 @@ func _score_goal(team_id: int) -> void:
 	score[team_id] += 1
 	last_goal_text = "GOAL · FC Matthias" if team_id == 0 else "GOAL · Real Enroque"
 	_reset_kickoff(1 - team_id)
+	for player in teams[team_id]:
+		player.play_action("celebrate", 1.15)
 
 func _reset_kickoff(team_id: int) -> void:
 	for id in range(2):
@@ -286,6 +292,10 @@ func _update_depth_presentation() -> void:
 		var ball_size := lerpf(BROADCAST_VIRTUAL_DEPTH_MIN, BROADCAST_VIRTUAL_DEPTH_MAX, ball_depth)
 		ball.scale = Vector2(ball_size, ball_size * BROADCAST_ZOOM.x / BROADCAST_ZOOM.y)
 
+func _spawn_pitch() -> void:
+	pitch_art = FootballPitch.new()
+	add_child(pitch_art)
+
 func _spawn_match() -> void:
 	var left_x := [150.0, 420.0, 660.0, 760.0, 960.0]
 	var lane_y := [500.0, 300.0, 500.0, 700.0, 500.0]
@@ -309,20 +319,12 @@ func debug_team_counts() -> Array[int]:
 func debug_ball_exists() -> bool:
 	return is_instance_valid(ball)
 
+func debug_pitch_exists() -> bool:
+	return is_instance_valid(pitch_art)
+
 func debug_camera_mode() -> String:
 	return camera_mode
 
 func debug_toggle_camera_mode() -> void:
 	_toggle_camera_mode()
 
-func _draw() -> void:
-	var pitch := ChessFootballMath.PITCH_RECT
-	draw_rect(pitch, Color(0.09, 0.36, 0.15), true)
-	draw_rect(pitch, Color(0.92, 0.94, 0.88, 0.9), false, 4.0)
-	draw_line(Vector2(pitch.get_center().x, pitch.position.y), Vector2(pitch.get_center().x, pitch.end.y), Color(1, 1, 1, 0.8), 3.0)
-	draw_circle(pitch.get_center(), 105.0, Color(1, 1, 1, 0.8), false, 3.0)
-	draw_circle(pitch.get_center(), 5.0, Color.WHITE)
-	var goal_top := pitch.get_center().y - ChessFootballMath.GOAL_HALF_HEIGHT
-	var goal_height := ChessFootballMath.GOAL_HALF_HEIGHT * 2.0
-	draw_rect(Rect2(pitch.position.x - 24.0, goal_top, 24.0, goal_height), Color(1, 1, 1, 0.7), false, 3.0)
-	draw_rect(Rect2(pitch.end.x, goal_top, 24.0, goal_height), Color(1, 1, 1, 0.7), false, 3.0)
