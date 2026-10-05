@@ -27,6 +27,10 @@ import {
 } from './chronicles/chroniclesIsometricScenePlan.js';
 import { chroniclesIsometricSceneStyle } from './chronicles/chroniclesIsometricSceneStyles.js';
 import {
+  buildChroniclesCarriedTorch,
+  tickChroniclesCarriedTorch,
+} from './chronicles/chroniclesCarriedTorch.js';
+import {
   chroniclesIsoTorchPlacements,
   chroniclesIsoUsesLegacyDressing,
 } from './chronicles/chroniclesTacticsLighting.js';
@@ -517,47 +521,6 @@ function buildTorches(scene, {
   return torches;
 }
 
-function buildCarriedPartyTorch(model, { coarsePointer, phase = 0 }) {
-  const root = new THREE.Group();
-  root.name = `chronicles-party-carried-torch-${model.userData.chroniclesIsoMemberId || 'member'}`;
-  root.position.set(0.38, 0.02, -0.08);
-
-  const iron = ownedMaterial({ color: 0x33251b, roughness: 0.7, metalness: 0.5 });
-  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.035, 0.5, 7), iron);
-  stem.position.set(0, 0.64, 0);
-  stem.rotation.z = -0.12;
-  stem.castShadow = false;
-
-  const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.05, 0.11, 8), iron);
-  cup.position.set(0.03, 0.9, 0);
-
-  const flameMaterial = ownedMaterial({
-    color: 0xffd18a,
-    emissive: 0xff651d,
-    emissiveIntensity: 3.8,
-    roughness: 0.28,
-    metalness: 0,
-  });
-  const flame = new THREE.Mesh(new THREE.SphereGeometry(0.075, 9, 7), flameMaterial);
-  flame.position.set(0.03, 1.02, 0);
-  flame.scale.set(0.82, 1.55, 0.82);
-  flame.castShadow = false;
-
-  const baseIntensity = coarsePointer ? 1.55 : 1.8;
-  const light = new THREE.PointLight(
-    0xff9b52,
-    baseIntensity,
-    coarsePointer ? 4.5 : 5.2,
-    1.9,
-  );
-  light.position.set(0.03, 0.92, 0);
-  light.castShadow = false;
-
-  root.add(stem, cup, flame, light);
-  model.add(root);
-  return { root, flame, light, baseIntensity, phase };
-}
-
 function buildParty(scene, {
   coarsePointer,
   reducedMotion,
@@ -579,7 +542,7 @@ function buildParty(scene, {
     root.add(model);
     if (id === 'matthias') installChroniclesCanonicalMatthias(model, { coarsePointer, reducedMotion });
     models.set(id, model);
-    carriedTorches.set(id, buildCarriedPartyTorch(model, {
+    carriedTorches.set(id, buildChroniclesCarriedTorch(model, {
       coarsePointer,
       phase: index * 1.61,
     }));
@@ -1053,19 +1016,7 @@ export function createChroniclesIsometricRenderer(host, {
         const hpRatio = model.userData.chroniclesIsoHpRatio ?? 1;
         model.position.y = Math.sin(time * 0.8 + id.length) * 0.006 - (1 - hpRatio) * 0.025;
 
-        const carriedTorch = party.carriedTorches.get(id);
-        if (carriedTorch?.root.visible) {
-          const pulse = 0.965
-            + Math.sin(time * 8.1 + carriedTorch.phase) * 0.045
-            + Math.sin(time * 17.3 + carriedTorch.phase * 0.7) * 0.018;
-          carriedTorch.light.intensity = carriedTorch.baseIntensity * pulse;
-          carriedTorch.flame.scale.set(
-            0.8 + pulse * 0.025,
-            1.46 + pulse * 0.12,
-            0.8 + pulse * 0.025,
-          );
-          carriedTorch.flame.rotation.z = Math.sin(time * 5.2 + carriedTorch.phase) * 0.06;
-        }
+        tickChroniclesCarriedTorch(party.carriedTorches.get(id), time);
       });
       if (party.selection.visible && party.selection.userData.chroniclesIsoTarget) {
         party.selection.position.lerp(party.selection.userData.chroniclesIsoTarget, 0.24);
