@@ -264,7 +264,7 @@ esac
 # started, the Go sidecar serves every route itself, including /api/ready and
 # /api/release, and every native flag is forced on. It needs API "go" mode.
 case "$target" in
-  staging) python_retired="${CHESS_STUDIO_PYTHON_RETIRED:-false}" ;;
+  staging) python_retired="${CHESS_STUDIO_PYTHON_RETIRED:-true}" ;;
   *) python_retired="${CHESS_STUDIO_PYTHON_RETIRED:-false}" ;;
 esac
 case "${python_retired,,}" in
