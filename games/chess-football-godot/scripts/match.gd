@@ -29,6 +29,12 @@ const AI_FORWARD_PASS_GAIN := 170.0
 const AI_DRIBBLE_LOOKAHEAD := 280.0
 const AI_SUPPORT_FORWARD := 190.0
 
+const SHOT_CHARGE_SECONDS := 0.90
+const SHOT_MIN_POWER := 650.0
+const SHOT_MAX_POWER := 1220.0
+const AI_SHOT_MIN_POWER := 760.0
+const AI_SHOT_MAX_POWER := 1040.0
+
 var teams: Array[Array] = [[], []]
 var ball: FootballBall
 var controlled: Footballer
@@ -40,11 +46,15 @@ var camera_hint_seconds: float = 4.5
 var presentation_3d: ChessFootball3DPresenter
 var ai_next_decision: Dictionary = {}
 var pause_menu_open: bool = false
+var shot_charging: bool = false
+var shot_charge_seconds: float = 0.0
 
 var score_label: Label
 var help_label: Label
 var view_label: Label
 var goal_label: Label
+var shot_meter: ProgressBar
+var shot_meter_label: Label
 var pause_overlay: ColorRect
 var pause_exit_button: Button
 
@@ -62,7 +72,7 @@ func _physics_process(delta: float) -> void:
 		return
 	match_seconds += delta
 	camera_hint_seconds = maxf(0.0, camera_hint_seconds - delta)
-	_handle_human()
+	_handle_human(delta)
 	_update_ai(delta)
 	ball.tick_ball(delta)
 	_update_keeper_saves()
@@ -111,6 +121,41 @@ func _create_hud() -> void:
 	goal_label.add_theme_font_size_override("font_size", 27)
 	goal_label.add_theme_color_override("font_color", Color(1.0, 0.84, 0.28))
 	hud.add_child(goal_label)
+
+	shot_meter_label = Label.new()
+	shot_meter_label.position = Vector2(470, 635)
+	shot_meter_label.size = Vector2(340, 24)
+	shot_meter_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	shot_meter_label.text = "POTENCIA DE TIRO"
+	shot_meter_label.add_theme_font_size_override("font_size", 13)
+	shot_meter_label.add_theme_color_override("font_color", Color(1.0, 0.84, 0.28, 0.92))
+	shot_meter_label.visible = false
+	hud.add_child(shot_meter_label)
+
+	shot_meter = ProgressBar.new()
+	shot_meter.position = Vector2(470, 662)
+	shot_meter.size = Vector2(340, 16)
+	shot_meter.min_value = 0.0
+	shot_meter.max_value = 1.0
+	shot_meter.show_percentage = false
+	var meter_bg := StyleBoxFlat.new()
+	meter_bg.bg_color = Color(0.01, 0.02, 0.03, 0.82)
+	meter_bg.border_color = Color(0.78, 0.64, 0.28, 0.72)
+	meter_bg.set_border_width_all(1)
+	meter_bg.corner_radius_top_left = 4
+	meter_bg.corner_radius_top_right = 4
+	meter_bg.corner_radius_bottom_left = 4
+	meter_bg.corner_radius_bottom_right = 4
+	var meter_fill := StyleBoxFlat.new()
+	meter_fill.bg_color = Color(0.96, 0.66, 0.16, 0.96)
+	meter_fill.corner_radius_top_left = 3
+	meter_fill.corner_radius_top_right = 3
+	meter_fill.corner_radius_bottom_left = 3
+	meter_fill.corner_radius_bottom_right = 3
+	shot_meter.add_theme_stylebox_override("background", meter_bg)
+	shot_meter.add_theme_stylebox_override("fill", meter_fill)
+	shot_meter.visible = false
+	hud.add_child(shot_meter)
 	_create_pause_menu(hud)
 
 func _create_pause_menu(hud: CanvasLayer) -> void:
@@ -201,26 +246,69 @@ func _exit_to_host() -> void:
 
 func _refresh_hud() -> void:
 	score_label.text = "FC Matthias %d - %d Real Enroque" % [score[0], score[1]]
-	help_label.text = "WASD · Shift sprint · Space pase · Enter tiro · E entrada · Tab cambia · V vista · ESC menú"
+	help_label.text = "WASD · Shift sprint · Space pase · Mantén Enter para cargar tiro · E entrada · Tab cambia · V vista · ESC menú"
+	if shot_meter != null:
+		shot_meter.visible = shot_charging
+		shot_meter.value = _shot_charge_ratio()
+	if shot_meter_label != null:
+		shot_meter_label.visible = shot_charging
 	var view_name := "BROADCAST 3D" if camera_mode == CAMERA_MODE_BROADCAST else "TÁCTICA AÉREA"
 	view_label.text = "VISTA · %s" % view_name if camera_hint_seconds > 0.0 else ""
 	goal_label.text = last_goal_text
 
-func _handle_human() -> void:
+func _handle_human(delta: float) -> void:
 	if Input.is_action_just_pressed("toggle_view"):
 		_toggle_camera_mode()
 	var direction := Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	controlled.move_human(direction, Input.is_action_pressed("sprint"))
+
+	if ball.carrier != controlled:
+		_cancel_shot_charge()
+
 	if Input.is_action_just_pressed("change_player"):
+		_cancel_shot_charge()
 		_select_player(_best_switch_candidate())
 	if Input.is_action_just_pressed("tackle") and not controlled.has_ball:
 		_try_tackle(controlled)
 	if Input.is_action_just_pressed("pass_ball") and ball.carrier == controlled:
+		_cancel_shot_charge()
 		_pass_from(controlled, direction)
+
 	if Input.is_action_just_pressed("shoot_ball") and ball.carrier == controlled:
-		var target := ChessFootballMath.goal_center(0)
-		controlled.play_action("shoot", 0.78)
-		ball.release(target - controlled.global_position, 820.0)
+		_begin_shot_charge()
+	if shot_charging:
+		shot_charge_seconds = minf(SHOT_CHARGE_SECONDS, shot_charge_seconds + delta)
+		if Input.is_action_just_released("shoot_ball"):
+			_release_charged_shot()
+
+func _begin_shot_charge() -> void:
+	shot_charging = true
+	shot_charge_seconds = 0.0
+
+func _cancel_shot_charge() -> void:
+	shot_charging = false
+	shot_charge_seconds = 0.0
+
+func _shot_charge_ratio() -> float:
+	if not shot_charging:
+		return 0.0
+	return clampf(shot_charge_seconds / SHOT_CHARGE_SECONDS, 0.0, 1.0)
+
+func _shot_power_from_ratio(ratio: float) -> float:
+	var shaped := pow(clampf(ratio, 0.0, 1.0), 1.15)
+	return lerpf(SHOT_MIN_POWER, SHOT_MAX_POWER, shaped)
+
+func _release_charged_shot() -> void:
+	if not shot_charging:
+		return
+	var ratio := _shot_charge_ratio()
+	shot_charging = false
+	shot_charge_seconds = 0.0
+	if ball.carrier != controlled:
+		return
+	var target := ChessFootballMath.goal_center(0)
+	controlled.play_action("shoot", lerpf(0.58, 0.82, ratio))
+	ball.release(target - controlled.global_position, _shot_power_from_ratio(ratio))
 
 func _update_ai(delta: float) -> void:
 	for team_id in range(2):
@@ -380,7 +468,9 @@ func _ai_attack(player: Footballer) -> void:
 		var aim_y := goal.y + (-70.0 if defending_keeper.global_position.y > goal.y else 70.0)
 		var shot_target := Vector2(goal.x, aim_y)
 		player.play_action("shoot", 0.78)
-		ball.release(shot_target - player.global_position, 780.0)
+		var distance_ratio := clampf(goal_distance / AI_SHOOT_DISTANCE, 0.0, 1.0)
+		var shot_power := lerpf(AI_SHOT_MIN_POWER, AI_SHOT_MAX_POWER, distance_ratio)
+		ball.release(shot_target - player.global_position, shot_power)
 		return
 
 	var threat := _nearest_opponent_to(player)
@@ -537,6 +627,7 @@ func _score_goal(team_id: int) -> void:
 		player.play_action("celebrate", 1.15)
 
 func _reset_kickoff(team_id: int) -> void:
+	_cancel_shot_charge()
 	for id in range(2):
 		for player in teams[id]:
 			player.global_position = player.home_position
@@ -615,6 +706,19 @@ func debug_force_ai_attack(player: Footballer) -> void:
 
 func debug_step_ai(delta: float) -> void:
 	_update_ai(delta)
+
+func debug_shot_power_for_ratio(ratio: float) -> float:
+	return _shot_power_from_ratio(ratio)
+
+func debug_force_shot_charge(ratio: float) -> void:
+	shot_charging = true
+	shot_charge_seconds = SHOT_CHARGE_SECONDS * clampf(ratio, 0.0, 1.0)
+
+func debug_release_charged_shot() -> void:
+	_release_charged_shot()
+
+func debug_shot_charge_ratio() -> float:
+	return _shot_charge_ratio()
 
 func debug_pause_menu_open() -> bool:
 	return pause_menu_open
