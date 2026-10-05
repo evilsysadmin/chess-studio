@@ -145,6 +145,7 @@ export default function WarRoomHansFireCall({
         const hansScreen = canvas.dataset.warRoomHansScreen || 'missing';
         const route = canvas.dataset.warRoomHansRoute || '';
         const logicalX = Number(canvas.dataset.warRoomHansLogicalX);
+        const doorOpen = Number(canvas.dataset.warRoomHansDoorOpen);
         const choreographyPhase = canvas.dataset.warRoomHansChoreographyPhase || '';
 
         if (currentPhase === 'matthias') {
@@ -262,6 +263,7 @@ export default function WarRoomHansFireCall({
         if (shouldStartHansLeavingGrumble({
           phase: currentPhase,
           route,
+          doorOpen,
           alreadyPlayed: grumblePlayed,
         })) {
           grumblePlayed = true;
