@@ -222,18 +222,38 @@ function bestAssignment(memberIds, cells) {
   return best || [];
 }
 
-export function chroniclesPartyGridFootprint(state) {
+function alivePartyIds(state) {
+  const presentIds = new Set((state?.party || [])
+    .filter((member) => Number(member?.hp || 0) > 0)
+    .map((member) => member?.id)
+    .filter(Boolean));
+  return CHRONICLES_PARTY_GRID_ORDER.filter((id) => presentIds.has(id));
+}
+
+function finiteCell(cell) {
+  return Boolean(cell && Number.isInteger(Number(cell.x)) && Number.isInteger(Number(cell.y)));
+}
+
+function persistedCombatFootprint(state, aliveIds = alivePartyIds(state)) {
+  if (!state?.partyPositions || typeof state.partyPositions !== 'object') return null;
+  const entries = aliveIds.flatMap((memberId) => {
+    const cell = state.partyPositions?.[memberId];
+    return finiteCell(cell) ? [[memberId, Object.freeze({ x: Number(cell.x), y: Number(cell.y) })]] : [];
+  });
+  if (entries.length !== aliveIds.length) return null;
+  const keys = entries.map(([, cell]) => cellKey(cell));
+  if (new Set(keys).size !== keys.length) return null;
+  return Object.freeze(Object.fromEntries(entries));
+}
+
+function computedPartyGridFootprint(state) {
   const origin = {
     x: Number(state?.x),
     y: Number(state?.y),
   };
   if (!Number.isInteger(origin.x) || !Number.isInteger(origin.y)) return Object.freeze({});
 
-  const presentIds = new Set((state?.party || [])
-    .filter((member) => Number(member?.hp || 0) > 0)
-    .map((member) => member?.id)
-    .filter(Boolean));
-  const aliveIds = CHRONICLES_PARTY_GRID_ORDER.filter((id) => presentIds.has(id));
+  const aliveIds = alivePartyIds(state);
   if (!aliveIds.length) return Object.freeze({});
 
   const basis = formationBasis(Number(state?.direction));
@@ -255,4 +275,68 @@ export function chroniclesPartyGridFootprint(state) {
   return Object.freeze(Object.fromEntries(aliveIds.flatMap((memberId) => (
     assigned[memberId] ? [[memberId, assigned[memberId]]] : []
   ))));
+}
+
+export function chroniclesPartyGridFootprint(state) {
+  const aliveIds = alivePartyIds(state);
+  if (!aliveIds.length) return Object.freeze({});
+  if (state?.initiative?.order?.length || state?.phase === 'combat') {
+    const persisted = persistedCombatFootprint(state, aliveIds);
+    if (persisted) return persisted;
+  }
+  return computedPartyGridFootprint(state);
+}
+
+export function chroniclesPartyMemberPosition(state, memberId) {
+  if (!memberId) return Object.freeze({ x: Number(state?.x), y: Number(state?.y) });
+  const persisted = persistedCombatFootprint(state);
+  if (persisted?.[memberId]) return persisted[memberId];
+  if (state?.initiative?.order?.length || state?.phase === 'combat') {
+    const deployed = computedPartyGridFootprint(state);
+    if (deployed?.[memberId]) return deployed[memberId];
+  }
+  return Object.freeze({ x: Number(state?.x), y: Number(state?.y) });
+}
+
+export function chroniclesLivingPartyPositions(state) {
+  return Object.freeze(alivePartyIds(state).map((memberId) => Object.freeze({
+    memberId,
+    position: chroniclesPartyMemberPosition(state, memberId),
+  })));
+}
+
+export function chroniclesPartyCellOccupied(state, position, ignoredMemberId = null) {
+  return chroniclesLivingPartyPositions(state).some(({ memberId, position: memberPosition }) => (
+    memberId !== ignoredMemberId && sameCell(memberPosition, position)
+  ));
+}
+
+export function chroniclesDeployPartyForCombat(state) {
+  if (!state) return state;
+  const persisted = persistedCombatFootprint(state);
+  if (persisted) return state;
+  const deployed = computedPartyGridFootprint(state);
+  if (!Object.keys(deployed).length) return state;
+  return {
+    ...state,
+    partyPositions: Object.fromEntries(
+      Object.entries(deployed).map(([memberId, cell]) => [memberId, { x: cell.x, y: cell.y }]),
+    ),
+  };
+}
+
+export function chroniclesCollapsePartyAfterCombat(state) {
+  if (!state) return state;
+  const positions = chroniclesLivingPartyPositions(state);
+  const aliveIds = new Set((state.party || []).filter((member) => Number(member.hp || 0) > 0).map((member) => member.id));
+  const preferredId = aliveIds.has('matthias') ? 'matthias' : positions[0]?.memberId;
+  const anchor = positions.find(({ memberId }) => memberId === preferredId)?.position
+    || positions[0]?.position
+    || { x: Number(state.x), y: Number(state.y) };
+  return {
+    ...state,
+    x: Number(anchor.x),
+    y: Number(anchor.y),
+    partyPositions: {},
+  };
 }
