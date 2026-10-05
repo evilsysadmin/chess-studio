@@ -54,8 +54,12 @@ func _initialize() -> void:
 	assert(InputMap.has_action("tackle"))
 	print("SMOKE_STAGE=kickoff")
 
+	match_node.ball.flight_height = 48.0
+	match_node.ball.vertical_velocity = 120.0
 	match_node.debug_score_goal(0)
 	assert(match_node.score == [1, 0])
+	assert(match_node.ball.flight_height == 0.0)
+	assert(match_node.ball.vertical_velocity == 0.0)
 	assert(match_node.debug_goal_restart_active())
 	assert(not match_node.debug_kickoff_active())
 	match_node.debug_force_goal_restart_ready()
