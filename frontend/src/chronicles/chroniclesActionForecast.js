@@ -63,7 +63,7 @@ export function chroniclesForecastMove(state, move) {
     trapDamage,
     attacks: Object.freeze(attacks),
     advances: Object.freeze(advances),
-    partyWouldFall,
+    partyWouldFall: Boolean(partyWouldFall),
   });
 }
 
