@@ -260,6 +260,42 @@ case "${go_native_admin_observability,,}" in
   true|false) go_native_admin_observability="${go_native_admin_observability,,}" ;;
   *) echo "invalid CHESS_STUDIO_GO_NATIVE_ADMIN_OBSERVABILITY_ENABLED: $go_native_admin_observability" >&2; exit 2 ;;
 esac
+# Python retirement (GO_PYTHON_RETIRED in the Go sidecar): no backend_* slot is
+# started, the Go sidecar serves every route itself, including /api/ready and
+# /api/release, and every native flag is forced on. It needs API "go" mode.
+case "$target" in
+  staging) python_retired="${CHESS_STUDIO_PYTHON_RETIRED:-false}" ;;
+  *) python_retired="${CHESS_STUDIO_PYTHON_RETIRED:-false}" ;;
+esac
+case "${python_retired,,}" in
+  true|false) python_retired="${python_retired,,}" ;;
+  *) echo "invalid CHESS_STUDIO_PYTHON_RETIRED: $python_retired" >&2; exit 2 ;;
+esac
+if [[ "$python_retired" == "true" ]]; then
+  if [[ "$api_edge_mode" != "go" ]]; then
+    echo "CHESS_STUDIO_PYTHON_RETIRED=true requires CHESS_STUDIO_API_EDGE_MODE=go" >&2
+    exit 2
+  fi
+  go_native_games_read=true
+  go_native_games_write=true
+  go_native_games_hint=true
+  go_native_analyze=true
+  go_native_system=true
+  go_native_profile=true
+  go_native_auth_session=true
+  go_native_login=true
+  go_native_account=true
+  go_native_recovery=true
+  go_native_feedback=true
+  go_native_matthias_read=true
+  go_native_narrative=true
+  go_native_pawn_slug=true
+  go_native_chronicles=true
+  go_native_chronicles_runs=true
+  go_native_admin_feedback=true
+  go_native_admin_users=true
+  go_native_admin_observability=true
+fi
 pvp_sparring_username="${CHESS_PVP_SPARRING_USERNAME:-sparringmeister}"
 
 state_file="$state_dir/deployed.sha"
@@ -445,6 +481,7 @@ compose() {
   CHESS_STUDIO_GO_NATIVE_ADMIN_FEEDBACK_ENABLED="$go_native_admin_feedback" \
   CHESS_STUDIO_GO_NATIVE_ADMIN_USERS_ENABLED="$go_native_admin_users" \
   CHESS_STUDIO_GO_NATIVE_ADMIN_OBSERVABILITY_ENABLED="$go_native_admin_observability" \
+  CHESS_STUDIO_PYTHON_RETIRED="$python_retired" \
   CHESS_PVP_SPARRING_OWNER="$pvp_sparring_owner" \
   CHESS_PVP_SPARRING_USERNAME="$pvp_sparring_username" \
   CHESS_STUDIO_OCI_LOG_SERVICE_NAME="chess-studio-oci-backend-${target}-stdout" \
@@ -621,6 +658,58 @@ PY
   cors_attest "$target_port"
 }
 
+# attest's Python-free twin: /api/ready and /api/release come from the Go
+# sidecar itself (identity routes), read from inside its container because the
+# sidecars publish no host port. CORS is accredited through the edge after the
+# cutover (cors_attest "$port").
+go_attest() {
+  local expected="$1"
+  local service="$2"
+  local ready release rc
+  ready="$(mktemp)"
+  release="$(mktemp)"
+  if ! compose "$sha" exec -T "$service" wget -q -O - http://127.0.0.1:8080/api/ready >"$ready" || \
+     ! compose "$sha" exec -T "$service" wget -q -O - http://127.0.0.1:8080/api/release >"$release"; then
+    rm -f "$ready" "$release"
+    return 1
+  fi
+  if python3 - "$ready" "$release" "$expected" <<'PY'
+import json
+import pathlib
+import sys
+ready = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+release = json.loads(pathlib.Path(sys.argv[2]).read_text(encoding='utf-8'))
+expected = sys.argv[3].lower()
+if ready.get('ok') is not True or ready.get('storage') != 'mongo':
+    raise SystemExit(1)
+if str(release.get('build') or '').lower() != expected:
+    raise SystemExit(1)
+PY
+  then
+    rc=0
+  else
+    rc=$?
+  fi
+  rm -f "$ready" "$release"
+  return "$rc"
+}
+
+candidate_attest() {
+  if [[ "$python_retired" == "true" ]]; then
+    go_attest "$sha" "$candidate_pvp_service"
+  else
+    attest "$sha" "$candidate_port"
+  fi
+}
+
+# The staging owner's session token, minted by the Go sidecar
+# (`api-edge mint-token`) once Python is retired.
+go_owner_token() {
+  local pvp_service="$1"
+  local fail_prefix="$2"
+  compose "$sha" exec -T -e "MINT_TOKEN_FAIL_PREFIX=$fail_prefix" "$pvp_service" /app/api-edge mint-token
+}
+
 pvp_attest() {
   local service="$1"
   local deployment_target="${2:-$target}"
@@ -630,7 +719,7 @@ pvp_attest() {
     rm -f "$body"
     return 1
   fi
-  if python3 - "$body" "$pvp_sparring_enabled" "$deployment_target" "$sha" "$go_native_games_read" "$go_native_games_write" "$go_native_games_hint" "$go_native_analyze" "$go_native_system" "$go_native_profile" "$go_native_auth_session" "$go_native_login" "$go_native_account" "$go_native_recovery" "$go_native_feedback" "$go_native_matthias_read" "$go_native_narrative" "$go_native_pawn_slug" "$go_native_chronicles" "$go_native_chronicles_runs" "$go_native_admin_feedback" "$go_native_admin_users" "$go_native_admin_observability" <<'PY'
+  if python3 - "$body" "$pvp_sparring_enabled" "$deployment_target" "$sha" "$go_native_games_read" "$go_native_games_write" "$go_native_games_hint" "$go_native_analyze" "$go_native_system" "$go_native_profile" "$go_native_auth_session" "$go_native_login" "$go_native_account" "$go_native_recovery" "$go_native_feedback" "$go_native_matthias_read" "$go_native_narrative" "$go_native_pawn_slug" "$go_native_chronicles" "$go_native_chronicles_runs" "$go_native_admin_feedback" "$go_native_admin_users" "$go_native_admin_observability" "$python_retired" <<'PY'
 import json
 import pathlib
 import sys
@@ -690,6 +779,7 @@ if (
     or bool(payload.get('nativeAdminFeedback')) != (str(sys.argv[21]).strip().lower() == 'true')
     or bool(payload.get('nativeAdminUsers')) != (str(sys.argv[22]).strip().lower() == 'true')
     or bool(payload.get('nativeAdminObservability')) != (str(sys.argv[23]).strip().lower() == 'true')
+    or bool(payload.get('pythonRetired')) != (str(sys.argv[24]).strip().lower() == 'true')
 ):
     raise SystemExit(1)
 
@@ -730,6 +820,11 @@ pvp_virtual_roster_attest() {
 
   if [[ "$deployment_target" != "staging" ]] || [[ ! "$enabled" =~ ^(1|true|yes|on)$ ]]; then
     return 0
+  fi
+
+  if [[ "$python_retired" == "true" ]]; then
+    go_virtual_roster_attest "$pvp_service"
+    return
   fi
 
   compose "$sha" exec -T "$backend_service" python - "$pvp_service" <<'PY'
@@ -811,8 +906,72 @@ print(
 )
 PY
 }
+# pvp_virtual_roster_attest without Python: Go mints the owner token, the
+# lobby is read inside the sidecar (the token travels in the exec environment,
+# never on a command line) and the roster is judged here.
+go_virtual_roster_attest() {
+  local pvp_service="$1"
+  local token_line token body rc
+  if ! token_line="$(go_owner_token "$pvp_service" PVP_VIRTUAL_ROSTER)"; then
+    return 1
+  fi
+  token="${token_line#PVP_BROWSER_TOKEN=}"
+  if [[ -z "$token" || "$token" == "$token_line" ]]; then
+    echo "PVP_VIRTUAL_ROSTER_FAIL reason=owner-token-missing" >&2
+    return 1
+  fi
+  body="$(mktemp)"
+  if ! compose "$sha" exec -T -e "PVP_ATTEST_TOKEN=$token" "$pvp_service" \
+      sh -c 'wget -q -T 8 -O - --header "Accept: application/json" --header "Cache-Control: no-cache" --header "Authorization: Bearer $PVP_ATTEST_TOKEN" http://127.0.0.1:8080/api/pvp/lobby' >"$body"; then
+    rm -f "$body"
+    echo "PVP_VIRTUAL_ROSTER_FAIL reason=lobby-request-failed" >&2
+    return 1
+  fi
+  if python3 - "$body" "$pvp_sparring_username" <<'PY'
+import json
+import pathlib
+import sys
+
+try:
+    payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+except Exception:
+    raise SystemExit("PVP_VIRTUAL_ROSTER_FAIL reason=lobby-request-failed")
+sparring = str(sys.argv[2] or "sparringmeister").strip().lower()
+rows = payload.get("roster") if isinstance(payload, dict) else None
+if not isinstance(rows, list):
+    raise SystemExit("PVP_VIRTUAL_ROSTER_FAIL reason=roster-not-list")
+by_name = {
+    str(row.get("username") or "").strip().lower(): row
+    for row in rows
+    if isinstance(row, dict)
+}
+residents = ("otto_falk", "marta_stein", "viktor_kraus")
+for username in (sparring, *residents):
+    row = by_name.get(username)
+    if row is None:
+        raise SystemExit(f"PVP_VIRTUAL_ROSTER_FAIL reason=missing-rival rival={username}")
+    if row.get("isSelf") is True:
+        raise SystemExit(f"PVP_VIRTUAL_ROSTER_FAIL reason=virtual-rival-marked-self rival={username}")
+for username in residents:
+    if str(by_name[username].get("actorKind") or "").strip().lower() != "resident":
+        raise SystemExit(f"PVP_VIRTUAL_ROSTER_FAIL reason=wrong-actor-kind rival={username}")
+print(f"PVP_VIRTUAL_ROSTER_OK sparring={sparring} residents=otto_falk,marta_stein,viktor_kraus")
+PY
+  then
+    rc=0
+  else
+    rc=1
+  fi
+  rm -f "$body"
+  return "$rc"
+}
+
 pvp_browser_token() {
   local backend_service="$1"
+  if [[ "$python_retired" == "true" ]]; then
+    go_owner_token "$candidate_pvp_service" PVP_BROWSER_AUTH
+    return
+  fi
   compose "$sha" exec -T "$backend_service" python - <<'PY'
 import asyncio
 import os
@@ -1389,18 +1548,28 @@ rollback() {
 
   if [[ -n "${previous_color:-}" ]]; then
     local rollback_pvp_mode="python-direct"
+    # Once Python is retired the previous slot has no backend_* container, so
+    # nginx must not name one: the previous sidecar fronts the whole API.
+    local rollback_api_mode=direct
+    [[ "${python_retired:-false}" != "true" ]] || rollback_api_mode=go
     # Preserve the previously accredited full-Go PvP authority whenever its
     # paired sidecar is still healthy. Python-direct is only a compatibility
     # escape hatch for a pre-sidecar generation or a genuinely unhealthy
     # previous sidecar; a failed candidate must not silently downgrade PvP.
     if [[ -n "$previous_sha" ]]; then
-      render_edge "$previous_color" go "$previous_sha"
+      render_edge "$previous_color" go "$previous_sha" "$rollback_api_mode"
       if reload_edge && wait_pvp_edge_attest "$port" "$previous_sha"; then
         rollback_pvp_mode="go"
+      elif [[ "$rollback_api_mode" == "go" ]]; then
+        rollback_pvp_mode="go-unverified"
       else
         render_edge "$previous_color" direct "$previous_sha"
         reload_edge || true
       fi
+    elif [[ "$rollback_api_mode" == "go" ]]; then
+      render_edge "$previous_color" go "" go
+      reload_edge || true
+      rollback_pvp_mode="go-unverified"
     else
       render_edge "$previous_color" direct
       reload_edge || true
@@ -1420,7 +1589,7 @@ rollback() {
     return 0
   fi
 
-  if [[ "${switch_complete:-0}" == "1" && -n "$previous_sha" ]] && image_available_for_rollback "$previous_sha"; then
+  if [[ "${python_retired:-false}" != "true" && "${switch_complete:-0}" == "1" && -n "$previous_sha" ]] && image_available_for_rollback "$previous_sha"; then
     compose "$failed_sha" rm -f -s edge >/dev/null 2>&1 || true
     compose "$previous_sha" up -d --no-build --force-recreate backend_legacy
     for _ in $(seq 1 45); do
@@ -1767,7 +1936,7 @@ phase_done preflight "$preflight_started_ms"
 target_image="$(image_ref "$sha")"
 pvp_target_image="$(pvp_image_ref "$sha")"
 image_pull_started_ms="$(now_ms)"
-if ! docker pull --quiet "$target_image" >/dev/null; then
+if [[ "$python_retired" != "true" ]] && ! docker pull --quiet "$target_image" >/dev/null; then
   echo "failed to pull immutable OCI backend image: $target_image" >&2
   [[ -z "$previous_sha" ]] || git checkout --detach "$previous_sha" >/dev/null 2>&1 || true
   exit 1
@@ -1790,6 +1959,12 @@ candidate_service="$(slot_service "$candidate_color")"
 candidate_pvp_service="$(pvp_service "$candidate_color")"
 candidate_port="$(slot_port "$candidate_color")"
 active_backend_service="$candidate_service"
+candidate_services=("$candidate_service" "$candidate_pvp_service")
+if [[ "$python_retired" == "true" ]]; then
+  # Only the Go sidecar runs; its container is also the backend log source.
+  active_backend_service="$candidate_pvp_service"
+  candidate_services=("$candidate_pvp_service")
+fi
 switch_complete=0
 
 if ! compose "$sha" pull edge >/dev/null; then
@@ -1798,7 +1973,7 @@ if ! compose "$sha" pull edge >/dev/null; then
 fi
 
 compose_log="$(mktemp /tmp/chess-studio-compose-up.XXXXXX)"
-if ! compose "$sha" up -d --no-build --force-recreate "$candidate_service" "$candidate_pvp_service" >"$compose_log" 2>&1; then
+if ! compose "$sha" up -d --no-build --force-recreate "${candidate_services[@]}" >"$compose_log" 2>&1; then
   cat "$compose_log" >&2
   rm -f "$compose_log"
   rollback "$sha" || true
@@ -1810,14 +1985,14 @@ phase_done recreate "$recreate_started_ms"
 readiness_started_ms="$(now_ms)"
 candidate_ready=0
 for _ in $(seq 1 60); do
-  if attest "$sha" "$candidate_port" && pvp_attest "$candidate_pvp_service" "$target"; then
+  if candidate_attest && pvp_attest "$candidate_pvp_service" "$target"; then
     candidate_ready=1
     break
   fi
   sleep 2
 done
 if [[ "$candidate_ready" != "1" ]]; then
-  echo "candidate failed Python/PvP-Go readiness/build/CORS attestation: $sha color=$candidate_color" >&2
+  echo "candidate failed Python/PvP-Go readiness/build/CORS attestation: $sha color=$candidate_color python_retired=$python_retired" >&2
   rollback "$sha" || true
   exit 43
 fi
@@ -2024,6 +2199,14 @@ if [[ "$api_edge_mode" == "go" && "$go_native_admin_observability" == "true" ]] 
   rollback "$sha" || true
   exit 83
 fi
+# Without Python the candidate exposes no host port, so the browser CORS
+# contract of the API (not only /api/pvp) is accredited through the edge.
+if [[ "$python_retired" == "true" ]] && ! wait_pvp_browser_attest cors_attest "$port"; then
+  echo "Go API browser CORS attestation failed after cutover: color=$candidate_color" >&2
+  compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
+  rollback "$sha" || true
+  exit 84
+fi
 write_active_color "$candidate_color"
 phase_done switch "$switch_started_ms"
 
@@ -2087,5 +2270,5 @@ fi
 agent_diag_summary || printf '%s\n' 'OCI_AGENT_DIAG unavailable'
 phase_done total "$total_started_ms"
 printf 'OCI_DEPLOY_TIMINGS target=%s phases=%s tunnel=%s color=%s\n' "$target" "${deploy_phase_summary%,}" "$tunnel_action" "$candidate_color"
-echo "CHESS_STUDIO_DEPLOY_OK target=$target repo_ref=$sha color=$candidate_color pvp=go api_edge=$api_edge_mode games_native=$go_native_games_read games_native_write=$go_native_games_write games_native_hint=$go_native_games_hint analyze_native=$go_native_analyze system_native=$go_native_system profile_native=$go_native_profile auth_session_native=$go_native_auth_session login_native=$go_native_login account_native=$go_native_account recovery_native=$go_native_recovery feedback_native=$go_native_feedback matthias_read_native=$go_native_matthias_read narrative_native=$go_native_narrative pawn_slug_native=$go_native_pawn_slug chronicles_native=$go_native_chronicles chronicles_runs_native=$go_native_chronicles_runs admin_feedback_native=$go_native_admin_feedback admin_users_native=$go_native_admin_users admin_observability_native=$go_native_admin_observability cors_origin=$cors_origin tunnel_action=$tunnel_action image=pulled observability=${observability_summary:-unknown}"
+echo "CHESS_STUDIO_DEPLOY_OK target=$target repo_ref=$sha color=$candidate_color pvp=go api_edge=$api_edge_mode python_retired=$python_retired games_native=$go_native_games_read games_native_write=$go_native_games_write games_native_hint=$go_native_games_hint analyze_native=$go_native_analyze system_native=$go_native_system profile_native=$go_native_profile auth_session_native=$go_native_auth_session login_native=$go_native_login account_native=$go_native_account recovery_native=$go_native_recovery feedback_native=$go_native_feedback matthias_read_native=$go_native_matthias_read narrative_native=$go_native_narrative pawn_slug_native=$go_native_pawn_slug chronicles_native=$go_native_chronicles chronicles_runs_native=$go_native_chronicles_runs admin_feedback_native=$go_native_admin_feedback admin_users_native=$go_native_admin_users admin_observability_native=$go_native_admin_observability cors_origin=$cors_origin tunnel_action=$tunnel_action image=pulled observability=${observability_summary:-unknown}"
 exit 0
