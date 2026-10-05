@@ -154,7 +154,17 @@ test('Chronicles Tactics · arranca como RPG táctico isométrico con combate po
   // handler directly, as the doctrine test below already does for the same CI reason.
   const classSkill = mode.getByRole('button', { name: 'Habilidad de clase', exact: true });
   await expect(classSkill).toBeEnabled();
-  await classSkill.evaluate((button) => button.click());
+  // Avoid an extra instrumented locator.evaluate hop while SwiftShader is
+  // continuously rendering the Three.js scene. The enabled-state assertion
+  // above proves availability; this single browser hop invokes the real DOM
+  // click handler without waiting on another Playwright locator round-trip.
+  await page.evaluate(() => {
+    const root = document.querySelector('[data-chronicles-tactics="true"]');
+    const button = [...(root?.querySelectorAll('button') || [])]
+      .find((node) => node.getAttribute('aria-label') === 'Habilidad de clase');
+    if (!button || button.disabled) throw new Error('Habilidad de clase no está disponible');
+    button.click();
+  });
   await expect(rookCard.locator('.chronicles-party-hud__vital--mp small')).toHaveText('0/1');
 
   const canvas = mode.locator('[data-chronicles-tactics-renderer="three"] canvas');
