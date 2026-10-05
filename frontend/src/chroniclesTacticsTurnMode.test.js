@@ -44,6 +44,17 @@ describe('Chronicles Tactics turn-based combat mode', () => {
     expect(resolved.message).toMatch(/iniciativa = AGI \+ 1d8/i);
   });
 
+  it('rolls before movement when a restored legacy state is already engaged', () => {
+    const engaged = tacticsState({ x: 2, y: 5 });
+    const attemptedEscape = { ...engaged, x: 1, y: 5, turns: 1, message: 'Huida gratis.' };
+
+    const resolved = chroniclesTacticsResolvePlayerAction(engaged, attemptedEscape, { random: () => 0 });
+
+    expect(resolved.phase).toBe('combat');
+    expect({ x: resolved.x, y: resolved.y }).toEqual({ x: 2, y: 5 });
+    expect(resolved.turns).toBe(engaged.turns);
+  });
+
   it('starts ranged combat before committing damage outside passive engagement range', () => {
     const initial = tacticsState({ x: 1, y: 5 });
     const aggressiveAction = { ...initial, enemyHp: 1, turns: 1, message: 'Disparo preventivo.' };
