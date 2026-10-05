@@ -135,10 +135,14 @@ export default function ChroniclesOfMatthiasTactics({
   const [rendererError, setRendererError] = useState('');
   const [progressionFeedback, setProgressionFeedback] = useState('');
 
-  const selectedProfile = chroniclesTacticsProfile(selectedMemberId);
+  const activeActor = useMemo(() => chroniclesTacticsCurrentActor(state), [state]);
+  const effectiveSelectedMemberId = activeActor?.kind === 'party'
+    ? activeActor.id
+    : selectedMemberId;
+  const selectedProfile = chroniclesTacticsProfile(effectiveSelectedMemberId);
   const selectedAbility = useMemo(
-    () => chroniclesTacticsAbilityStatus(state, selectedMemberId),
-    [selectedMemberId, state],
+    () => chroniclesTacticsAbilityStatus(state, effectiveSelectedMemberId),
+    [effectiveSelectedMemberId, state],
   );
   const objective = chroniclesObjective(state);
   const locationLabel = chroniclesTacticsLocationLabel(state);
@@ -149,26 +153,25 @@ export default function ChroniclesOfMatthiasTactics({
     [legalMoves, state],
   );
   const targetOptions = useMemo(
-    () => chroniclesTacticsTargets(state, selectedMemberId),
-    [selectedMemberId, state],
+    () => chroniclesTacticsTargets(state, effectiveSelectedMemberId),
+    [effectiveSelectedMemberId, state],
   );
   const canAttack = targetOptions.length > 0;
   const targetIntel = targetOptions[0] || null;
-  const activeActor = useMemo(() => chroniclesTacticsCurrentActor(state), [state]);
   const inCombat = useMemo(() => chroniclesTacticsCombatActive(state), [state]);
-  const canAct = chroniclesTacticsPartyCanAct(state, selectedMemberId);
+  const canAct = chroniclesTacticsPartyCanAct(state, effectiveSelectedMemberId);
   const initiativeRound = Number(state.initiative?.round || state.round || 1);
   const canPassTurn = Boolean(state.initiative?.order?.length && canAct && !contextualAction);
   const battlefieldInteraction = useMemo(
-    () => chroniclesBattlefieldInteraction(state, selectedMemberId),
-    [selectedMemberId, state],
+    () => chroniclesBattlefieldInteraction(state, effectiveSelectedMemberId),
+    [effectiveSelectedMemberId, state],
   );
   const sceneModel = useMemo(
     () => chroniclesProjectSceneModel(state, {
-      selectedMemberId,
+      selectedMemberId: effectiveSelectedMemberId,
       interaction: battlefieldInteraction,
     }),
-    [battlefieldInteraction, selectedMemberId, state],
+    [battlefieldInteraction, effectiveSelectedMemberId, state],
   );
   const rewardDraft = useMemo(() => {
     if (state.phase !== 'escaped') return [];
@@ -662,7 +665,7 @@ export default function ChroniclesOfMatthiasTactics({
         <ChroniclesTacticsPartyHud
           state={state}
           progression={progression}
-          selectedMemberId={selectedMemberId}
+          selectedMemberId={effectiveSelectedMemberId}
           sheetRequest={sheetRequest}
           onSelectMember={selectMember}
           onAllocateAttribute={allocateAttribute}
