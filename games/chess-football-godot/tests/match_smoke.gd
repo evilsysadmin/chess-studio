@@ -318,6 +318,30 @@ func _initialize() -> void:
 	assert(assisted_lift <= assisted_requested_lift)
 	assert(predicted_goal_height <= 50.01)
 	assert(predicted_goal_height < ChessFootballMath.GOAL_MAX_FLIGHT_HEIGHT)
+
+	# End-to-end contract: use the real charged-shot release and real ball
+	# friction/gravity until it crosses the goal plane. A fully charged assisted
+	# shot must still be on frame; keeper/posts may stop it in match play, but
+	# the shooting system itself must not send it wide or over.
+	match_node.ball.attach_to(shooter)
+	match_node.debug_force_shot_charge(1.0, -1.0)
+	match_node.debug_release_charged_shot()
+	assert(match_node.ball.velocity.x > 0.0)
+	var crossed_goal_plane := false
+	for _shot_step in range(240):
+		match_node.ball.tick_ball(1.0 / 120.0)
+		if match_node.ball.global_position.x >= ChessFootballMath.PITCH_RECT.end.x:
+			crossed_goal_plane = true
+			break
+	assert(crossed_goal_plane)
+	assert(
+		absf(
+			match_node.ball.global_position.y
+			- ChessFootballMath.PITCH_RECT.get_center().y
+		) <= safe_span + 2.0
+	)
+	assert(match_node.ball.flight_height <= ChessFootballMath.GOAL_MAX_FLIGHT_HEIGHT)
+
 	var tap_lift: float = match_node.debug_shot_lift_for_ratio(0.0)
 	var medium_lift: float = match_node.debug_shot_lift_for_ratio(0.5)
 	var full_lift: float = match_node.debug_shot_lift_for_ratio(1.0)
