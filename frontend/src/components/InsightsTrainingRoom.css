@@ -32,7 +32,9 @@
   border: 1px solid rgba(194, 148, 73, .18);
   border-radius: 18px;
   background: #12100f;
-  box-shadow: 0 28px 70px rgba(0, 0, 0, .34);
+  box-shadow:
+    0 30px 76px rgba(0, 0, 0, .38),
+    inset 0 1px rgba(255, 226, 171, .06);
   pointer-events: none;
 }
 
@@ -42,8 +44,10 @@
   inset: 0;
   z-index: 4;
   background:
-    linear-gradient(90deg, rgba(7, 6, 6, .34) 0%, rgba(7, 6, 6, .08) 42%, rgba(7, 6, 6, .02) 66%, rgba(7, 6, 6, .12) 100%),
-    linear-gradient(180deg, rgba(6, 6, 8, .03) 0%, rgba(6, 6, 8, .015) 58%, rgba(7, 6, 5, .46) 94%, #0d0b0a 100%);
+    radial-gradient(circle at 73% 28%, rgba(135, 169, 214, .055), transparent 28%),
+    radial-gradient(circle at 28% 61%, rgba(225, 146, 71, .045), transparent 34%),
+    linear-gradient(90deg, rgba(7, 6, 6, .27) 0%, rgba(7, 6, 6, .055) 42%, rgba(7, 6, 6, .015) 66%, rgba(7, 6, 6, .09) 100%),
+    linear-gradient(180deg, rgba(6, 6, 8, .02) 0%, rgba(6, 6, 8, .01) 58%, rgba(7, 6, 5, .38) 94%, #0d0b0a 100%);
 }
 
 .insights-training-room-3d,
@@ -183,8 +187,9 @@
     linear-gradient(180deg, rgba(255, 226, 168, .075), transparent 34%),
     linear-gradient(145deg, rgba(46, 31, 22, .76), rgba(18, 14, 13, .82));
   box-shadow:
-    0 13px 24px rgba(0, 0, 0, .34),
-    inset 0 1px rgba(255, 226, 171, .07);
+    0 14px 28px rgba(0, 0, 0, .36),
+    inset 0 1px rgba(255, 226, 171, .11),
+    inset 0 -1px rgba(0, 0, 0, .28);
   text-align: left;
   backdrop-filter: blur(4px);
 }
