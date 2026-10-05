@@ -440,6 +440,19 @@ func _sync_player_secondary_motion(player: Footballer, sprite: AnimatedSprite3D,
 		stretch_x = 0.86
 		stretch_y = 1.13
 
+	if player.keeper_save_active():
+		var save_progress := 1.0 - player.keeper_save_ratio()
+		var save_weight := sin(PI * clampf(save_progress, 0.0, 1.0))
+		lateral_sway = player.keeper_save_direction * 0.18 * save_weight
+		bob = maxf(bob, 0.055 * save_weight)
+		stretch_x = lerpf(stretch_x, 1.08, save_weight)
+		stretch_y = lerpf(stretch_y, 0.90, save_weight)
+		tilt_degrees = lerpf(
+			tilt_degrees,
+			player.keeper_save_direction * 32.0,
+			save_weight,
+		)
+
 	if player.contact_stun_active():
 		var contact_weight := player.contact_stun_ratio()
 		bob = minf(bob, -0.030 * contact_weight)
