@@ -1,0 +1,153 @@
+{
+  "schema": 2,
+  "quality_contract": "chess-football-vector-v4",
+  "surface": "chess-football",
+  "actor": "footballer",
+  "variant": "vector-v4",
+  "composition": "integrated",
+  "cell": {
+    "width": 112,
+    "height": 144
+  },
+  "parts": {
+    "main": {
+      "columns": 8,
+      "rows": 7
+    }
+  },
+  "animations": [
+    {
+      "name": "idle",
+      "part": "main",
+      "row": 0,
+      "fps": 7,
+      "loop": true,
+      "authored_frames": 8,
+      "slots": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "source_dir": "idle"
+    },
+    {
+      "name": "run",
+      "part": "main",
+      "row": 1,
+      "fps": 12,
+      "loop": true,
+      "authored_frames": 8,
+      "slots": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "source_dir": "run"
+    },
+    {
+      "name": "sprint",
+      "part": "main",
+      "row": 2,
+      "fps": 12,
+      "loop": true,
+      "authored_frames": 8,
+      "slots": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "source_dir": "sprint"
+    },
+    {
+      "name": "pass",
+      "part": "main",
+      "row": 3,
+      "fps": 10,
+      "loop": false,
+      "authored_frames": 8,
+      "slots": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "source_dir": "pass"
+    },
+    {
+      "name": "shoot",
+      "part": "main",
+      "row": 4,
+      "fps": 10,
+      "loop": false,
+      "authored_frames": 8,
+      "slots": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "source_dir": "shoot"
+    },
+    {
+      "name": "tackle",
+      "part": "main",
+      "row": 5,
+      "fps": 10,
+      "loop": false,
+      "authored_frames": 8,
+      "slots": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "source_dir": "tackle"
+    },
+    {
+      "name": "celebrate",
+      "part": "main",
+      "row": 6,
+      "fps": 10,
+      "loop": true,
+      "authored_frames": 8,
+      "slots": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "source_dir": "celebrate"
+    }
+  ]
+}
