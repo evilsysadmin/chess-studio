@@ -169,6 +169,7 @@ for (const capture of CAPTURES) {
       await expect(viewport).toBeVisible();
       await expect(mode).toHaveAttribute('data-camera', 'isometric-behind-party');
       await expect(mode).toHaveAttribute('data-combat', 'turn-based');
+      await expect(page.getByText('ESC o clic derecho · volver / cerrar', { exact: true })).toHaveCount(0);
       await page.waitForTimeout(500);
 
       const health = await captureTacticsHealth(page);
