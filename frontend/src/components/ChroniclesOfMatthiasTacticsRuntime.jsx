@@ -154,8 +154,11 @@ export default function ChroniclesOfMatthiasTactics({
   );
   const canAttack = targetOptions.length > 0;
   const targetIntel = targetOptions[0] || null;
+  const activeActor = useMemo(() => chroniclesTacticsCurrentActor(state), [state]);
   const inCombat = useMemo(() => chroniclesTacticsCombatActive(state), [state]);
-  const canAct = state.turnPhase !== 'enemy' && state.phase !== 'defeated' && state.phase !== 'escaped';
+  const canAct = chroniclesTacticsPartyCanAct(state, selectedMemberId);
+  const initiativeRound = Number(state.initiative?.round || state.round || 1);
+  const canPassTurn = Boolean(state.initiative?.order?.length && canAct && !contextualAction);
   const battlefieldInteraction = useMemo(
     () => chroniclesBattlefieldInteraction(state, selectedMemberId),
     [selectedMemberId, state],
@@ -204,6 +207,13 @@ export default function ChroniclesOfMatthiasTactics({
     ? <b className="chronicles-tactics__forecast" aria-hidden="true">{forecastView[key].badge}</b>
     : null);
 
+  const partyAgilityBonusesFor = useCallback((current) => Object.fromEntries(
+    (current?.party || []).map((member) => [
+      member.id,
+      Number(chroniclesHeroProgress(progressionRef.current, member.id).attributes?.agility || 0),
+    ]),
+  ), []);
+
   const commitState = useCallback((next, { actorMemberId = null, actionKind = 'action' } = {}) => {
     const previous = stateRef.current;
     if (!next || next === previous) return false;
@@ -235,51 +245,76 @@ export default function ChroniclesOfMatthiasTactics({
     const now = performance.now();
     if (now - lastMoveAtRef.current < 120) return;
     const current = stateRef.current;
-    if (current.phase === 'defeated' || current.phase === 'escaped' || current.turnPhase === 'enemy') return;
+    if (!chroniclesTacticsPartyCanAct(current)) return;
     const legal = chroniclesTacticsLegalMoves(current).find((move) => (
       move.x === current.x + dx && move.y === current.y + dy
     ));
     if (!legal) return;
     const next = chroniclesTacticsMove(current, legal);
-    const resolved = chroniclesTacticsResolvePlayerAction(current, next);
+    const resolved = chroniclesTacticsResolvePlayerAction(current, next, {
+      partyAgilityBonuses: partyAgilityBonusesFor(current),
+    });
     if (commitState(resolved)) lastMoveAtRef.current = now;
-  }, [commitState]);
+  }, [commitState, partyAgilityBonusesFor]);
 
   const attackEnemy = useCallback((enemyId = null) => {
     const now = performance.now();
     if (now - lastAttackAtRef.current < 260) return;
     const current = stateRef.current;
-    if (current.phase === 'defeated' || current.phase === 'escaped' || current.turnPhase === 'enemy') return;
-    const memberId = selectedMemberRef.current;
+    if (!chroniclesTacticsPartyCanAct(current)) return;
+    const actor = chroniclesTacticsCurrentActor(current);
+    const memberId = actor?.kind === 'party' ? actor.id : selectedMemberRef.current;
     const targets = chroniclesTacticsTargets(current, memberId);
     const target = enemyId
       ? targets.find((candidate) => candidate.enemyId === enemyId)
       : targets[0];
     if (!target) return;
     const next = chroniclesTacticsAttack(current, memberId, target.enemyId);
-    const resolved = chroniclesTacticsResolvePlayerAction(current, next, { forceCombat: true });
+    const resolved = chroniclesTacticsResolvePlayerAction(current, next, {
+      forceCombat: !current.initiative,
+      forceEnemyIds: [target.enemyId],
+      partyAgilityBonuses: partyAgilityBonusesFor(current),
+    });
     if (commitState(resolved, { actorMemberId: memberId, actionKind: 'attack' })) lastAttackAtRef.current = now;
-  }, [commitState]);
+  }, [commitState, partyAgilityBonusesFor]);
 
   const useClassAbility = useCallback(() => {
     const current = stateRef.current;
-    if (current.phase === 'defeated' || current.phase === 'escaped' || current.turnPhase === 'enemy') return;
-    const memberId = selectedMemberRef.current;
+    if (!chroniclesTacticsPartyCanAct(current)) return;
+    const actor = chroniclesTacticsCurrentActor(current);
+    const memberId = actor?.kind === 'party' ? actor.id : selectedMemberRef.current;
     const profile = chroniclesTacticsProfile(memberId);
+    const targetsBefore = profile.abilityKind === 'heal'
+      ? []
+      : chroniclesTacticsTargets(current, memberId).map((target) => target.enemyId);
     const next = chroniclesTacticsAbility(current, memberId);
     const resolved = chroniclesTacticsResolvePlayerAction(current, next, {
-      forceCombat: profile.abilityKind !== 'heal',
+      forceCombat: !current.initiative && profile.abilityKind !== 'heal' && next !== current,
+      forceEnemyIds: targetsBefore,
+      partyAgilityBonuses: partyAgilityBonusesFor(current),
     });
     commitState(resolved, { actorMemberId: memberId, actionKind: 'ability' });
-  }, [commitState]);
+  }, [commitState, partyAgilityBonusesFor]);
 
   const useContextualAction = useCallback(() => {
     const current = stateRef.current;
-    if (current.phase === 'defeated' || current.phase === 'escaped' || current.turnPhase === 'enemy') return;
-    const memberId = selectedMemberRef.current;
+    if (!chroniclesTacticsPartyCanAct(current)) return;
+    const actor = chroniclesTacticsCurrentActor(current);
+    const memberId = actor?.kind === 'party' ? actor.id : selectedMemberRef.current;
     const next = chroniclesTacticsUse(current);
-    const resolved = chroniclesTacticsResolvePlayerAction(current, next);
+    const resolved = chroniclesTacticsResolvePlayerAction(current, next, {
+      partyAgilityBonuses: partyAgilityBonusesFor(current),
+    });
     commitState(resolved, { actorMemberId: memberId, actionKind: 'use' });
+  }, [commitState, partyAgilityBonusesFor]);
+
+  const passTurn = useCallback(() => {
+    const current = stateRef.current;
+    const actor = chroniclesTacticsCurrentActor(current);
+    if (!current?.initiative?.order?.length || actor?.kind !== 'party') return;
+    const next = chroniclesTacticsWait(current, actor.id);
+    const resolved = chroniclesTacticsResolvePlayerAction(current, next);
+    commitState(resolved, { actorMemberId: actor.id, actionKind: 'wait' });
   }, [commitState]);
 
   const applyLiveProgression = useCallback((nextProgression) => {
@@ -329,6 +364,9 @@ export default function ChroniclesOfMatthiasTactics({
   }, [applyLiveProgression]);
 
   const selectMember = useCallback((memberId) => {
+    const actor = chroniclesTacticsCurrentActor(stateRef.current);
+    if (actor?.kind === 'enemy') return;
+    if (actor?.kind === 'party' && actor.id !== memberId) return;
     selectedMemberRef.current = memberId;
     setSelectedMemberId(memberId);
   }, []);
