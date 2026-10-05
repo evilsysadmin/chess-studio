@@ -700,11 +700,9 @@ func _prepare_kickoff(team_id: int, is_initial: bool) -> void:
 
 	var center := ChessFootballMath.PITCH_RECT.get_center()
 	var starter: Footballer = teams[kickoff_team_id][2]
-	var facing := 1.0 if kickoff_team_id == 0 else -1.0
-	starter.global_position = center - Vector2(18.0 * facing, -2.0)
+	starter.global_position = center - starter.ball_anchor()
 	starter.velocity = Vector2.ZERO
 	ball.attach_to(starter)
-	ball.global_position = center
 	ball.velocity = Vector2.ZERO
 
 	if kickoff_team_id == 0:
