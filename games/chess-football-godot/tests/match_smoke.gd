@@ -11,6 +11,8 @@ func _initialize() -> void:
 	assert(counts == [5, 5])
 	assert(match_node.debug_ball_exists())
 	assert(match_node.debug_pitch_exists())
+	assert(match_node.debug_3d_ready())
+	assert(match_node.debug_3d_animated_players() == 10)
 	assert(match_node.controlled != null)
 	assert(match_node.controlled.debug_visual_ready())
 	assert(match_node.controlled.debug_animation_names().size() == 7)
