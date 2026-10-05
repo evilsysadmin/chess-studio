@@ -41,6 +41,17 @@ describe('Chronicles of Matthias Tactics · player turns', () => {
     ]);
   });
 
+  it('keeps free exploration outside the tactical turn economy', () => {
+    const before = tacticsState({ turns: 7, x: 1, y: 5, direction: 2 });
+    const north = chroniclesTacticsLegalMoves(before).find((move) => move.key === 'north');
+    const moved = chroniclesTacticsMove(before, north);
+
+    expect(moved).not.toBe(before);
+    expect(moved.turns).toBe(7);
+    expect(moved.direction).toBe(0);
+    expect({ x: moved.x, y: moved.y }).toEqual({ x: 1, y: 4 });
+  });
+
   it('moves only the active hero on the combat grid while the exploration anchor stays put', () => {
     const base = tacticsState();
     const deployed = chroniclesDeployPartyForCombat({
