@@ -235,8 +235,8 @@
 .friendly-modal.quick-match-ready-room[aria-label='Configurar partida rápida'] .quick-match-ready-room__settings-body {
   position: absolute;
   right: -.2rem;
-  bottom: 3.2rem;
-  z-index: 10;
+  bottom: calc(100% + .45rem);
+  z-index: 20;
   width: min(500px, calc(100vw - 5rem));
   max-height: min(570px, 63dvh);
   margin: 0;
