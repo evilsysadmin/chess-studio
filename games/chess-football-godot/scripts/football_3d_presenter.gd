@@ -380,6 +380,10 @@ func sync_presentation(delta: float, mode: String) -> void:
 
 	if ball_node != null:
 		var ball_height: float = 0.18 + float(match_node.ball.flight_height) * WORLD_SCALE
+		if match_node.ball.carrier != null and match_node.ball.carrier.role == "keeper":
+			ball_height = 0.78
+			if match_node.ball.carrier.keeper_save_active():
+				ball_height = 0.88
 		ball_node.position = world_to_stage(match_node.ball.global_position, ball_height)
 		ball_node.rotate_z(match_node.ball.velocity.length() * delta * 0.004)
 	if ball_shadow != null:
@@ -443,13 +447,13 @@ func _sync_player_secondary_motion(player: Footballer, sprite: AnimatedSprite3D,
 	if player.keeper_save_active():
 		var save_progress := 1.0 - player.keeper_save_ratio()
 		var save_weight := sin(PI * clampf(save_progress, 0.0, 1.0))
-		lateral_sway = player.keeper_save_direction * 0.18 * save_weight
-		bob = maxf(bob, 0.055 * save_weight)
-		stretch_x = lerpf(stretch_x, 1.08, save_weight)
-		stretch_y = lerpf(stretch_y, 0.90, save_weight)
+		lateral_sway = player.keeper_save_direction * 0.23 * save_weight
+		bob = maxf(bob, 0.075 * save_weight)
+		stretch_x = lerpf(stretch_x, 1.12, save_weight)
+		stretch_y = lerpf(stretch_y, 0.87, save_weight)
 		tilt_degrees = lerpf(
 			tilt_degrees,
-			player.keeper_save_direction * 32.0,
+			player.keeper_save_direction * 38.0,
 			save_weight,
 		)
 
@@ -499,3 +503,6 @@ func debug_camera_is_3d() -> bool:
 
 func debug_animated_players() -> int:
 	return player_sprites.size()
+
+func debug_ball_render_height() -> float:
+	return ball_node.position.y if ball_node != null else -1.0
