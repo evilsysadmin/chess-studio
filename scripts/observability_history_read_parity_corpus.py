@@ -55,14 +55,15 @@ class _Collection:
         self.docs = docs
 
     def find(self, query):
+        # MongoDB answers an _id range from the _id index: ascending _id.
         lower, upper = query["_id"]["$gte"], query["_id"]["$lte"]
-        docs = self.docs
+        docs = sorted(self.docs, key=lambda doc: doc["_id"])
 
         async def gen():
             for doc in docs:
-                if doc.get(RAISE):
-                    raise _CursorError("cursor")
                 if lower <= doc["_id"] <= upper:
+                    if doc.get(RAISE):
+                        raise _CursorError("cursor")
                     yield doc
         return gen()
 
@@ -279,7 +280,8 @@ def build() -> dict:
         legacy = collection(rng, 3600, rng.randint(0, 4), 80)
         current = collection(rng, 300, rng.randint(0, 14), 900)
         if i % 17 == 5 and current:
-            current.insert(rng.randrange(len(current) + 1), {"_id": -1, RAISE: True})
+            ids = sorted(doc["_id"] for doc in current)
+            current.append({"_id": ids[len(ids) // 2] + 0.25, RAISE: True})
         database = i % 23 != 7
         cases = []
         for from_value, to_value in ranges(rng, i == 0):

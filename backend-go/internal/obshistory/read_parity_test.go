@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sort"
 	"testing"
 	"time"
 
@@ -88,12 +89,15 @@ func numeric(v any) float64 {
 }
 
 func (m memReader) Buckets(_ context.Context, collection string, lower, upper int64, each func(bson.D) error) error {
-	for _, doc := range m[collection] {
-		if raises, _ := pydoc.Get(doc, cursorRaises); raises == true {
-			return errors.New("cursor")
-		}
-		id, _ := pydoc.Get(doc, "_id")
-		if f := numeric(id); f >= float64(lower) && f <= float64(upper) {
+	docs := append([]bson.D(nil), m[collection]...)
+	id := func(doc bson.D) float64 { v, _ := pydoc.Get(doc, "_id"); return numeric(v) }
+	// MongoDB answers an _id range from the _id index: ascending _id.
+	sort.SliceStable(docs, func(i, j int) bool { return id(docs[i]) < id(docs[j]) })
+	for _, doc := range docs {
+		if f := id(doc); f >= float64(lower) && f <= float64(upper) {
+			if raises, _ := pydoc.Get(doc, cursorRaises); raises == true {
+				return errors.New("cursor")
+			}
 			if err := each(doc); err != nil {
 				return err
 			}
