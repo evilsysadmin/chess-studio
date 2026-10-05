@@ -17,6 +17,9 @@ func _initialize() -> void:
 	assert(match_node.controlled.debug_visual_ready())
 	assert(match_node.controlled.debug_animation_names().size() == 7)
 	assert(match_node.controlled.debug_animation_names().has("shoot"))
+	assert(ChessFootballSpriteBank.atlas_key(0, "keeper") == "fc_matthias_keeper")
+	assert(ChessFootballSpriteBank.atlas_key(1, "keeper") == "real_enroque_keeper")
+	assert(ChessFootballSpriteBank.atlas_key(0, "forward") == "fc_matthias")
 	assert(match_node.ball.carrier == match_node.controlled)
 	assert(InputMap.has_action("tackle"))
 
