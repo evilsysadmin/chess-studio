@@ -32,6 +32,7 @@ func _initialize() -> void:
 		assert(match_node.ball.carrier == null)
 		assert(match_node.ball.velocity.length() > 0.0)
 	assert(InputMap.has_action("tackle"))
+	print("SMOKE_STAGE=kickoff")
 
 	match_node.debug_score_goal(0)
 	assert(match_node.score == [1, 0])
@@ -65,6 +66,7 @@ func _initialize() -> void:
 	match_node.ball.tick_ball(0.14)
 	match_node.debug_step_pending_tackle(0.14)
 	assert(match_node.ball.carrier == tackler)
+	print("SMOKE_STAGE=tackle")
 
 	var keeper: Footballer = match_node.teams[0][0]
 	assert(keeper.role == "keeper")
@@ -86,6 +88,7 @@ func _initialize() -> void:
 	assert(match_node.ball.carrier == null)
 	assert(match_node.ball.velocity.length() > 0.0)
 	assert(match_node.ball.reclaim_blocked_for(rival_keeper))
+	print("SMOKE_STAGE=keeper")
 	match_node.ball.tick_ball(1.0 / 60.0)
 	match_node.debug_try_claim_loose_ball()
 	assert(match_node.ball.carrier != rival_keeper)
@@ -104,6 +107,7 @@ func _initialize() -> void:
 	match_node.debug_force_ai_attack(rival)
 	assert(match_node.ball.carrier == null)
 	assert(match_node.ball.velocity.x < 0.0)
+	print("SMOKE_STAGE=ai")
 
 	var tap_power: float = match_node.debug_shot_power_for_ratio(0.0)
 	var medium_power: float = match_node.debug_shot_power_for_ratio(0.5)
@@ -137,6 +141,7 @@ func _initialize() -> void:
 	assert(released_full_speed > released_medium_speed + 220.0)
 	match_node.ball.tick_ball(1.0 / 60.0)
 	assert(match_node.ball.velocity.length() > released_full_speed * 0.97)
+	print("SMOKE_STAGE=shots")
 
 	assert(not match_node.debug_pause_menu_open())
 	assert(match_node.debug_pause_first_option() == "SALIR")
