@@ -26,7 +26,7 @@ const arg = (name, fallback) => {
 };
 const out = resolve(root, arg('--out', 'frontend/src/assets/insights/training-room-still.webp'));
 // The still is accredited against these sources (training-room-still.json);
-// InsightsTrainingRoomStill.test.js fails when they change without a re-render.
+// scripts/insights_training_room_still_check.mjs fails when they change without a re-render.
 const STILL_SOURCES = [
   'frontend/src/components/InsightsTrainingRoomShell.js',
   'frontend/src/components/InsightsTrainingRoomStage.js',
