@@ -6,12 +6,12 @@ const TEAM_COLORS := [Color(0.12, 0.42, 0.92), Color(0.86, 0.18, 0.2)]
 
 const CAMERA_MODE_BROADCAST := "broadcast"
 const CAMERA_MODE_TACTICAL := "tactical"
-const BROADCAST_ZOOM := Vector2(0.92, 0.62)
+const BROADCAST_ZOOM := Vector2(1.18, 0.84)
 const TACTICAL_ZOOM := Vector2(0.68, 0.68)
 const BROADCAST_CAMERA_SPEED := 3.7
 const TACTICAL_CAMERA_SPEED := 5.0
-const BROADCAST_VIRTUAL_DEPTH_MIN := 0.92
-const BROADCAST_VIRTUAL_DEPTH_MAX := 1.08
+const BROADCAST_VIRTUAL_DEPTH_MIN := 0.84
+const BROADCAST_VIRTUAL_DEPTH_MAX := 1.16
 
 var teams: Array[Array] = [[], []]
 var ball: FootballBall
@@ -253,9 +253,9 @@ func _update_camera(delta: float) -> void:
 
 func _broadcast_camera_target() -> Vector2:
 	var target_x := ball.global_position.x
-	target_x += clampf(ball.velocity.x * 0.22, -160.0, 160.0)
+	target_x += clampf(ball.velocity.x * 0.28, -190.0, 190.0)
 	if ball.carrier != null:
-		target_x += 88.0 if ball.carrier.team_id == 0 else -88.0
+		target_x += 120.0 if ball.carrier.team_id == 0 else -120.0
 	target_x = _clamp_camera_x(target_x, BROADCAST_ZOOM.x)
 	return Vector2(target_x, ChessFootballMath.PITCH_RECT.get_center().y)
 
