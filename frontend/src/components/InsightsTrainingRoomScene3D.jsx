@@ -60,7 +60,7 @@ export default function InsightsTrainingRoomScene3D() {
       });
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 1.5;
+      renderer.toneMappingExposure = 1.24;
       renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio || 1, 1.4));
       renderer.shadowMap.enabled = true;
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -71,6 +71,7 @@ export default function InsightsTrainingRoomScene3D() {
       const pmrem = new THREE.PMREMGenerator(renderer);
       environmentTarget = pmrem.fromScene(new RoomEnvironment(), .04);
       scene.environment = environmentTarget.texture;
+      scene.environmentIntensity = .36;
       pmrem.dispose();
 
       const camera = new THREE.PerspectiveCamera(
@@ -82,11 +83,11 @@ export default function InsightsTrainingRoomScene3D() {
       camera.position.set(...INSIGHTS_TRAINING_ROOM_CAMERA.position);
       camera.lookAt(...INSIGHTS_TRAINING_ROOM_CAMERA.target);
 
-      const hemisphere = new THREE.HemisphereLight(0xa8bfdd, 0x21140d, .88);
+      const hemisphere = new THREE.HemisphereLight(0x92acd0, 0x1c100a, .7);
       hemisphere.name = 'training-room-hemisphere';
       scene.add(hemisphere);
 
-      const softKey = new THREE.DirectionalLight(0xffd3a1, 1.04);
+      const softKey = new THREE.DirectionalLight(0xffc88f, .84);
       softKey.position.set(-3.5, 7.4, 5.8);
       softKey.castShadow = true;
       softKey.shadow.mapSize.set(1024, 1024);
@@ -100,7 +101,7 @@ export default function InsightsTrainingRoomScene3D() {
       softKey.name = 'training-room-soft-key';
       scene.add(softKey);
 
-      const cameraFill = new THREE.PointLight(0xffd6a5, .42, 18, 2);
+      const cameraFill = new THREE.PointLight(0xffc98c, .28, 18, 2);
       cameraFill.position.set(-1.8, 4.4, 8.2);
       cameraFill.castShadow = false;
       cameraFill.name = 'training-room-camera-fill';
