@@ -1,6 +1,6 @@
 {
   "id": "chain-basilica",
-  "version": 4,
+  "version": 5,
   "progressionKey": "chain-basilica-01",
   "title": "Basílica de las Cadenas",
   "grid": [
@@ -24,7 +24,8 @@
     "chainAltarOpened": false,
     "glassOculusAwake": false,
     "oculusCacheOpened": false,
-    "blackGlassDoorFound": false
+    "blackGlassDoorFound": false,
+    "basilicaChainPlateSpent": false
   },
   "enemies": [
     {
@@ -503,7 +504,36 @@
       }
     }
   ],
-  "traps": [],
+  "traps": [
+    {
+      "id": "basilica-chain-plate",
+      "kind": "trap",
+      "visualType": "chain-plate",
+      "x": 8,
+      "y": 3,
+      "label": "Placa de cadenas del coro",
+      "when": [
+        {
+          "key": "basilicaChainPlateSpent",
+          "equals": false
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "basilicaChainPlateSpent",
+            "value": true
+          },
+          {
+            "type": "damage-party",
+            "amount": 2
+          }
+        ],
+        "message": "La losa se hunde y una pareja de cadenas barre el pasillo. Dos puntos de daño por cabeza; la liturgia continúa sin pedir disculpas."
+      }
+    }
+  ],
   "exits": [
     {
       "id": "basilica-upper-gate",
