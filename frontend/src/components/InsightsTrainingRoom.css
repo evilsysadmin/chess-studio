@@ -253,7 +253,7 @@
 
 .insights-training-room .insights-guided-session {
   position: relative;
-  width: min(1180px, 78%);
+  width: min(1450px, 92%);
   margin: 0 0 0 2.4%;
   padding: 1.05rem clamp(.9rem, 2.2vw, 1.9rem) 1.15rem;
   border: 1px solid rgba(174, 126, 63, .34);
@@ -305,7 +305,7 @@
 }
 
 .insights-training-room .insights-optional-plans {
-  width: min(1180px, 78%);
+  width: min(1450px, 92%);
   margin: .58rem 0 0 2.4%;
   border-color: rgba(123, 94, 58, .44);
   background: rgba(10, 9, 9, .68);
@@ -339,9 +339,9 @@
 
 /* Matthias' verdict becomes the parchment lying beyond the desk edge. */
 .insights-training-room.insights-workspace-view-now .insights-hub {
-  width: min(1280px, 88%);
+  width: min(1480px, 92%);
   margin-left: auto;
-  margin-right: 1.8%;
+  margin-right: 1%;
 }
 
 .insights-training-room.insights-workspace-view-now .ai-player-portrait {
@@ -383,7 +383,7 @@
 @media (min-width: 1200px) {
   .insights-training-room .insights-guided-session:not(.active) {
     display: grid;
-    grid-template-columns: minmax(0, 1.45fr) minmax(390px, .8fr);
+    grid-template-columns: minmax(0, 1.3fr) minmax(430px, .9fr);
     column-gap: clamp(1.4rem, 2.6vw, 2.7rem);
     row-gap: .22rem;
     align-items: center;
