@@ -59,15 +59,16 @@ export function chroniclesTacticsResolvePlayerAction(
     return chroniclesAdvanceCombatInitiative(next, chroniclesActiveEnemies(next));
   }
 
+  const alreadyEngaged = chroniclesTacticsCombatActive(previous);
   const shouldStartCombat = forceCombat
-    || chroniclesTacticsCombatActive(previous)
+    || alreadyEngaged
     || chroniclesTacticsCombatActive(next);
   if (!shouldStartCombat) return next;
 
-  // Entering combat is a boundary, not a free attack. Movement into an
-  // engagement cell has already happened, while a ranged/forced attack rolls
-  // initiative before damage is committed.
-  const entryState = forceCombat ? previous : next;
+  // Entering combat is a boundary, not a free attack. A move that newly enters
+  // engagement completes before initiative starts; an already-engaged legacy
+  // state or an explicit ranged attack rolls before committing the action.
+  const entryState = (forceCombat || alreadyEngaged) ? previous : next;
   return chroniclesStartInitiativeCombat(
     entryState,
     chroniclesActiveEnemies(entryState),
