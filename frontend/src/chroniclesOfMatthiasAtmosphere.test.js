@@ -88,10 +88,15 @@ describe('Chronicles of Matthias dungeon atmosphere', () => {
     expect(bounce?.isPointLight).toBe(true);
     expect(key?.castShadow).toBe(false);
     expect(bounce?.castShadow).toBe(false);
-    expect(key?.intensity).toBeGreaterThan(4.7);
-    expect(key?.distance).toBeGreaterThanOrEqual(12);
+    expect(key?.intensity).toBeGreaterThan(6);
+    expect(key?.distance).toBeGreaterThanOrEqual(14);
     expect(key?.position.distanceTo(camera.position)).toBeLessThan(1.2);
-    expect(bounce?.position.y).toBeLessThan(camera.position.y);
+    expect(bounce?.intensity).toBeGreaterThan(3.4);
+    expect(bounce?.position.y).toBeLessThan(0.5);
+    const forward = new THREE.Vector3();
+    camera.getWorldDirection(forward);
+    const bounceOffset = bounce.position.clone().sub(camera.position);
+    expect(bounceOffset.dot(forward)).toBeGreaterThan(1);
 
     const before = key.position.clone();
     camera.position.set(-4, 1.62, 8);
