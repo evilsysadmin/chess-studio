@@ -1192,6 +1192,9 @@ func debug_3d_animated_players() -> int:
 func debug_sync_presentation() -> void:
 	_update_3d_presentation(0.0)
 
+func debug_focus_presentation() -> void:
+	_update_3d_presentation(1.0)
+
 func debug_refresh_hud() -> void:
 	_refresh_hud()
 
