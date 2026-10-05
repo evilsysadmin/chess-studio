@@ -8,6 +8,8 @@ const CAMERA_MODE_BROADCAST := "broadcast"
 const CAMERA_MODE_TACTICAL := "tactical"
 const BROADCAST_ZOOM := Vector2(1.18, 0.84)
 const TACTICAL_ZOOM := Vector2(0.68, 0.68)
+const BROADCAST_SKEW := deg_to_rad(-7.0)
+const TACTICAL_SKEW := 0.0
 const BROADCAST_CAMERA_SPEED := 3.7
 const TACTICAL_CAMERA_SPEED := 5.0
 const BROADCAST_VIRTUAL_DEPTH_MIN := 0.84
@@ -54,6 +56,7 @@ func _physics_process(delta: float) -> void:
 func _create_camera() -> void:
 	camera = Camera2D.new()
 	camera.zoom = BROADCAST_ZOOM
+	camera.skew = BROADCAST_SKEW
 	add_child(camera)
 	camera.global_position = _broadcast_camera_target()
 
@@ -242,13 +245,17 @@ func _toggle_camera_mode() -> void:
 
 func _update_camera(delta: float) -> void:
 	var wanted_zoom := BROADCAST_ZOOM
+	var wanted_skew := BROADCAST_SKEW
 	var target := _broadcast_camera_target()
 	var speed := BROADCAST_CAMERA_SPEED
 	if camera_mode == CAMERA_MODE_TACTICAL:
 		wanted_zoom = TACTICAL_ZOOM
+		wanted_skew = TACTICAL_SKEW
 		target = ChessFootballMath.PITCH_RECT.get_center()
 		speed = TACTICAL_CAMERA_SPEED
-	camera.zoom = camera.zoom.lerp(wanted_zoom, clampf(delta * 4.2, 0.0, 1.0))
+	var presentation_lerp := clampf(delta * 4.2, 0.0, 1.0)
+	camera.zoom = camera.zoom.lerp(wanted_zoom, presentation_lerp)
+	camera.skew = lerpf(camera.skew, wanted_skew, presentation_lerp)
 	camera.global_position = camera.global_position.lerp(target, clampf(delta * speed, 0.0, 1.0))
 
 func _broadcast_camera_target() -> Vector2:
