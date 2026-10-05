@@ -59,9 +59,12 @@ func TestAdminObservabilityMatchesPythonCorpus(t *testing.T) {
 		Fixtures struct {
 			History, HTTP, Pressure, Tracing json.RawMessage
 			Deployments                      json.RawMessage
+			TraceProbe                       json.RawMessage `json:"traceProbe"`
+			SignalProbe                      json.RawMessage `json:"signalProbe"`
 		} `json:"fixtures"`
 		Steps []struct {
 			Label, Query, History string
+			Method, Path          string
 			User                  *string
 			Database, AI          json.RawMessage
 			HistoryDoc            json.RawMessage `json:"historyDoc"`
@@ -109,13 +112,19 @@ func TestAdminObservabilityMatchesPythonCorpus(t *testing.T) {
 			Gateway:        gw,
 			Deployments:    deployments,
 			Tracing:        func() bson.D { return decodeDoc(t, corpus.Fixtures.Tracing) },
+			TraceProbe:     func(context.Context) bson.D { return decodeDoc(t, corpus.Fixtures.TraceProbe) },
+			SignalProbe:    func(context.Context) bson.D { return decodeDoc(t, corpus.Fixtures.SignalProbe) },
 			Env:            func(k string) string { return step.Env[k] },
 			AdminUsernames: []string{"root"},
 		})
 		if err != nil {
 			t.Fatal(err)
 		}
-		r := httptest.NewRequest(http.MethodGet, "/api/admin/observability"+step.Query, nil)
+		method, path := http.MethodGet, "/api/admin/observability"
+		if step.Method != "" {
+			method, path = step.Method, step.Path
+		}
+		r := httptest.NewRequest(method, path+step.Query, nil)
 		if step.User != nil {
 			r.Header.Set("Authorization", "Bearer "+longToken(*step.User))
 		}
@@ -164,6 +173,8 @@ func TestAdminObservabilityShedsUnderPressure(t *testing.T) {
 		Gateway:     gw,
 		Deployments: &obsDeployments{},
 		Tracing:     func() bson.D { return bson.D{} },
+		TraceProbe:  func(context.Context) bson.D { return bson.D{{Key: "ok", Value: true}} },
+		SignalProbe: func(context.Context) bson.D { return bson.D{} },
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -172,6 +183,15 @@ func TestAdminObservabilityShedsUnderPressure(t *testing.T) {
 	h.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/admin/observability", nil))
 	if w.Code != 503 || w.Header().Get("Retry-After") != "5" || gw.sheds != 1 || gw.inflight != 0 || !strings.Contains(w.Body.String(), `"degraded":true`) {
 		t.Fatalf("%d %s sheds=%d inflight=%d", w.Code, w.Body, gw.sheds, gw.inflight)
+	}
+	// The probes are not optional paths: never shed.
+	probe := httptest.NewRequest(http.MethodPost, "/api/admin/observability/trace-probe", nil)
+	probe.Header.Set("Authorization", "Bearer "+longToken("root"))
+	h.admins = newAdminSet([]string{"root"})
+	w = httptest.NewRecorder()
+	h.ServeHTTP(w, probe)
+	if w.Code != 200 || strings.TrimSpace(w.Body.String()) != `{"ok":true}` || gw.sheds != 1 {
+		t.Fatalf("probe %d %s", w.Code, w.Body)
 	}
 }
 

@@ -726,6 +726,8 @@ func (r nativeRuntime) edgeConfig(upstream, release string, requestTelemetry *te
 		cfg.Gateway = gateway
 		telemetryCfg := telemetry.ConfigFromEnv(os.LookupEnv)
 		cfg.Tracing = func() bson.D { return telemetry.Diagnostics(requestTelemetry, telemetryCfg) }
+		cfg.TraceProbe = func(ctx context.Context) bson.D { return requestTelemetry.TraceProbe(ctx, telemetryCfg) }
+		cfg.SignalProbe = func(ctx context.Context) bson.D { return requestTelemetry.SignalProbe(ctx, telemetryCfg) }
 		if handler, err := gamesapi.NewAdminObservability(cfg); err != nil {
 			log.Printf("native admin observability disabled: %v", err)
 		} else {

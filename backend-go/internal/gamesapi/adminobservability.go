@@ -1,9 +1,12 @@
 package gamesapi
 
 // Admin's observability panel, mirroring admin_api.py (require_admin, the
-// default 120/minute, shed under pressure like every optional path):
+// default 120/minute each; the panel, an optional path, is shed under
+// pressure):
 //
-//	GET /api/admin/observability?from_time=&to_time=
+//	GET  /api/admin/observability?from_time=&to_time=
+//	POST /api/admin/observability/trace-probe
+//	POST /api/admin/observability/probe
 //
 // The persistent sections (history, frontend vitals, deployments) read the
 // same MongoDB documents Python reads. The process-local ones describe the
@@ -27,18 +30,29 @@ import (
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/release"
 )
 
-const AdminObservabilityPattern = "GET /api/admin/observability"
+const (
+	AdminObservabilityPattern = "GET /api/admin/observability"
+	AdminTraceProbePattern    = "POST /api/admin/observability/trace-probe"
+	AdminSignalProbePattern   = "POST /api/admin/observability/probe"
+)
 
-// AdminObservabilityRoute reports whether a request is the native panel.
+var adminObservabilityPaths = map[string]string{
+	"/api/admin/observability":             AdminObservabilityPattern,
+	"/api/admin/observability/trace-probe": AdminTraceProbePattern,
+	"/api/admin/observability/probe":       AdminSignalProbePattern,
+}
+
+// AdminObservabilityRoute reports whether a request is a native panel route.
 func AdminObservabilityRoute(r *http.Request) (string, bool) {
 	method := r.Method
 	if method == http.MethodOptions {
 		method = preflightMethod(r)
 	}
-	if r.URL.Path == "/api/admin/observability" && method == http.MethodGet {
-		return AdminObservabilityPattern, true
+	pattern, ok := adminObservabilityPaths[r.URL.Path]
+	if !ok || !strings.HasPrefix(pattern, method+" ") {
+		return "", false
 	}
-	return "", false
+	return pattern, true
 }
 
 // ObservabilityGateway is the narrative gateway's pressure side.
@@ -67,8 +81,11 @@ type AdminObservabilityConfig struct {
 	Database    func(ctx context.Context) bson.D
 	Gateway     ObservabilityGateway
 	Deployments DeploymentAnnotations
-	// Tracing is telemetry.Diagnostics for this process.
+	// Tracing is telemetry.Diagnostics for this process; TraceProbe and
+	// SignalProbe are its emit_trace_probe and emit_observability_probe.
 	Tracing        func() bson.D
+	TraceProbe     func(ctx context.Context) bson.D
+	SignalProbe    func(ctx context.Context) bson.D
 	Env            func(string) string
 	AdminUsernames []string
 }
@@ -77,11 +94,11 @@ type AdminObservabilityHandler struct {
 	cfg    AdminObservabilityConfig
 	base   *Handler
 	admins adminSet
-	limit  *limiter
+	limits map[string]*limiter
 }
 
 func NewAdminObservability(cfg AdminObservabilityConfig) (*AdminObservabilityHandler, error) {
-	if cfg.History == nil || cfg.HTTP == nil || cfg.Database == nil || cfg.Gateway == nil || cfg.Deployments == nil || cfg.Tracing == nil {
+	if cfg.History == nil || cfg.HTTP == nil || cfg.Database == nil || cfg.Gateway == nil || cfg.Deployments == nil || cfg.Tracing == nil || cfg.TraceProbe == nil || cfg.SignalProbe == nil {
 		return nil, errors.New("admin observability API: missing dependency")
 	}
 	if cfg.Env == nil {
@@ -92,7 +109,11 @@ func NewAdminObservability(cfg AdminObservabilityConfig) (*AdminObservabilityHan
 	if err != nil {
 		return nil, err
 	}
-	return &AdminObservabilityHandler{cfg: cfg, base: base, admins: newAdminSet(cfg.AdminUsernames), limit: newLimiter(120, time.Minute)}, nil
+	limits := map[string]*limiter{}
+	for _, pattern := range adminObservabilityPaths {
+		limits[pattern] = newLimiter(120, time.Minute)
+	}
+	return &AdminObservabilityHandler{cfg: cfg, base: base, admins: newAdminSet(cfg.AdminUsernames), limits: limits}, nil
 }
 
 // lastQuery is a FastAPI Optional[str] query parameter: the last value.
@@ -188,7 +209,8 @@ func (h *AdminObservabilityHandler) panel(ctx context.Context, from, to *string)
 }
 
 func (h *AdminObservabilityHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if _, ok := AdminObservabilityRoute(r); !ok {
+	pattern, ok := AdminObservabilityRoute(r)
+	if !ok {
 		http.NotFound(w, r)
 		return
 	}
@@ -207,18 +229,21 @@ func (h *AdminObservabilityHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 	}
 	w.Header().Set("X-Chess-Admin-Native", "go")
 
-	// An optional path: shed before anything else to protect the games.
-	inflight := h.cfg.Gateway.Enter()
-	defer h.cfg.Gateway.Exit()
-	if h.cfg.Gateway.ShouldShed(inflight) {
-		h.cfg.Gateway.RecordShed()
-		w.Header().Set("Retry-After", "5")
-		writeJSON(w, http.StatusServiceUnavailable, map[string]any{
-			"detail":    "Servicio ocupado; la función secundaria se ha aplazado para proteger las partidas.",
-			"requestId": w.Header().Get("X-Request-ID"),
-			"degraded":  true,
-		})
-		return
+	// The panel is an optional path: shed before anything else to protect
+	// the games (the probes are not, as in Python's _OPTIONAL_PATHS).
+	if pattern == AdminObservabilityPattern {
+		inflight := h.cfg.Gateway.Enter()
+		defer h.cfg.Gateway.Exit()
+		if h.cfg.Gateway.ShouldShed(inflight) {
+			h.cfg.Gateway.RecordShed()
+			w.Header().Set("Retry-After", "5")
+			writeJSON(w, http.StatusServiceUnavailable, map[string]any{
+				"detail":    "Servicio ocupado; la función secundaria se ha aplazado para proteger las partidas.",
+				"requestId": w.Header().Get("X-Request-ID"),
+				"degraded":  true,
+			})
+			return
+		}
 	}
 	if r.ContentLength > MaxRequestBodyBytes {
 		writeJSON(w, http.StatusRequestEntityTooLarge, map[string]any{"detail": "Petición demasiado grande."})
@@ -229,7 +254,7 @@ func (h *AdminObservabilityHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 	if tokenErr != nil {
 		key = "ip:" + b.clientIP(r)
 	}
-	if !h.limit.allow(key, b.now()) {
+	if !h.limits[pattern].allow(key, b.now()) {
 		writeJSON(w, http.StatusTooManyRequests, map[string]any{"error": "Rate limit exceeded: 120 per 1 minute"})
 		return
 	}
@@ -245,7 +270,16 @@ func (h *AdminObservabilityHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 		writeJSON(w, http.StatusForbidden, map[string]any{"detail": "No tienes permisos de administrador."})
 		return
 	}
-	payload, err := h.panel(context.WithoutCancel(r.Context()), lastQuery(r, "from_time"), lastQuery(r, "to_time"))
+	ctx := context.WithoutCancel(r.Context())
+	switch pattern {
+	case AdminTraceProbePattern:
+		writeDoc(w, http.StatusOK, h.cfg.TraceProbe(ctx))
+		return
+	case AdminSignalProbePattern:
+		writeDoc(w, http.StatusOK, h.cfg.SignalProbe(ctx))
+		return
+	}
+	payload, err := h.panel(ctx, lastQuery(r, "from_time"), lastQuery(r, "to_time"))
 	if err != nil {
 		var he *httpError
 		if errors.As(err, &he) {

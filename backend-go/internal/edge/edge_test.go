@@ -1674,7 +1674,7 @@ func TestHTTPWindowSeesNativeAndProxiedRequests(t *testing.T) {
 	}
 }
 
-func TestNativeAdminObservabilityServesOnlyThePanel(t *testing.T) {
+func TestNativeAdminObservabilityServesOnlyItsRoutes(t *testing.T) {
 	var proxied []string
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		proxied = append(proxied, r.Method+" "+r.URL.Path)
@@ -1696,8 +1696,8 @@ func TestNativeAdminObservabilityServesOnlyThePanel(t *testing.T) {
 	} {
 		h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(req[0], "http://api.chess.test"+req[1], nil))
 	}
-	if strings.Join(served, ",") != "GET /api/admin/observability" ||
-		strings.Join(proxied, ",") != "POST /api/admin/observability,POST /api/admin/observability/probe,POST /api/admin/observability/trace-probe,GET /api/admin/ai-metrics" {
+	if strings.Join(served, ",") != "GET /api/admin/observability,POST /api/admin/observability/probe,POST /api/admin/observability/trace-probe" ||
+		strings.Join(proxied, ",") != "POST /api/admin/observability,GET /api/admin/ai-metrics" {
 		t.Fatalf("served %v proxied %v", served, proxied)
 	}
 	rec := httptest.NewRecorder()
