@@ -55,7 +55,10 @@ import {
   chroniclesRewardDraft,
 } from '../chronicles/chroniclesRewardDraft.js';
 import { chroniclesCheckpointState } from '../chronicles/chroniclesRunClient.js';
-import { chroniclesApplyRunCheckpoint } from '../chronicles/chroniclesRunCheckpoint.js';
+import {
+  chroniclesApplyRunCheckpoint,
+  chroniclesRunHasRuntimeCheckpoint,
+} from '../chronicles/chroniclesRunCheckpoint.js';
 import { chroniclesTacticsCheckpointFingerprint } from '../chronicles/chroniclesTacticsCheckpointPolicy.js';
 import {
   chroniclesProgressionFeedback,
@@ -105,9 +108,9 @@ function createActionState(progression, authoritativeRun = null) {
     enemyTurnEvents: [],
   }, progression);
   const restored = chroniclesApplyRunCheckpoint(progressed, authoritativeRun);
-  const prepared = Number(restored.turns || 0) === 0
-    ? chroniclesTacticsPrepareExplorationSpawn(restored)
-    : restored;
+  const prepared = chroniclesRunHasRuntimeCheckpoint(authoritativeRun)
+    ? restored
+    : chroniclesTacticsPrepareExplorationSpawn(restored);
   return {
     ...prepared,
     enemyTurnEvents: [],
