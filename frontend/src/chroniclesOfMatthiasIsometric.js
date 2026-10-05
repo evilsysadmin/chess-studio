@@ -305,8 +305,8 @@ function buildIsoDungeon({
     tileMesh.receiveShadow = true;
     tileMesh.name = `chronicles-iso-floor-${x}-${y}`;
     tileMesh.userData.chroniclesIsoCell = { x, y };
-    root.add(tileMesh);
-    floorTargets.push(tileMesh);
+    root.add(tileMesh); floorTargets.push(tileMesh);
+    caveWallDressing?.decorateFloor?.({ root, material, x, y, world });
   });
 
   geometryPlan.walls.forEach(({ x, y, world }) => {
