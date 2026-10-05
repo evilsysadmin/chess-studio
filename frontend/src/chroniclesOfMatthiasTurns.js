@@ -5,7 +5,7 @@ import {
   chroniclesTileAt,
 } from './chroniclesOfMatthias.js';
 
-export const CHRONICLES_TURN_ENGINE_VERSION = 'map-ai-v5';
+export const CHRONICLES_TURN_ENGINE_VERSION = 'map-ai-v6';
 
 const KNIGHT_STEPS = Object.freeze([
   Object.freeze({ dx: -2, dy: -1 }), Object.freeze({ dx: -2, dy: 1 }),
@@ -113,6 +113,32 @@ function chooseRoamingCardinalStep(state, enemy, from) {
   return null;
 }
 
+function chooseRetreatCardinalStep(state, enemy, from) {
+  const partyPosition = { x: state.x, y: state.y };
+  const currentDistance = distance(from, partyPosition);
+  return CHRONICLES_DIRECTIONS
+    .map((step, index) => ({
+      x: from.x + step.dx,
+      y: from.y + step.dy,
+      index,
+    }))
+    .filter((position) => canOccupy(state, enemy, position))
+    .filter((position) => distance(position, partyPosition) > currentDistance)
+    .sort((left, right) => (
+      distance(right, partyPosition) - distance(left, partyPosition)
+      || left.index - right.index
+    ))[0] || null;
+}
+
+export function chroniclesChooseEnemyDisengageStep(state, enemy) {
+  const disengageRange = Number(enemy?.ai?.disengageRange);
+  if (!Number.isFinite(disengageRange) || disengageRange < 1) return null;
+  const from = chroniclesRuntimeEnemyPosition(state, enemy);
+  const partyPosition = { x: state.x, y: state.y };
+  if (distance(from, partyPosition) > disengageRange) return null;
+  return chooseRetreatCardinalStep(state, enemy, from);
+}
+
 function enemyMovementForDistance(state, enemy, from) {
   const movement = enemy.ai?.movement || 'cardinal-chase';
   const engagedMovement = enemy.ai?.engagedMovement;
@@ -214,7 +240,10 @@ export function chroniclesResolveEnemyActor(state, enemyId) {
   const events = [];
   let next = { ...state, turnPhase: 'enemy', enemyTurnEvents: events };
   const position = chroniclesRuntimeEnemyPosition(next, enemy);
-  if (chroniclesEnemyCanAttackParty(next, enemy, position)) {
+  const disengageStep = chroniclesChooseEnemyDisengageStep(next, enemy);
+  if (disengageStep) {
+    next = moveEnemy(next, enemy, disengageStep, events);
+  } else if (chroniclesEnemyCanAttackParty(next, enemy, position)) {
     next = damageParty(next, enemy, enemyIndex, events);
   } else {
     next = moveEnemy(next, enemy, chroniclesChooseEnemyStep(next, enemy), events);
@@ -251,6 +280,11 @@ export function chroniclesResolveEnemyTurn(state) {
   activeEnemies.forEach((enemy, enemyIndex) => {
     if (partyDefeated(next)) return;
     const position = chroniclesRuntimeEnemyPosition(next, enemy);
+    const disengageStep = chroniclesChooseEnemyDisengageStep(next, enemy);
+    if (disengageStep) {
+      next = moveEnemy(next, enemy, disengageStep, events);
+      return;
+    }
     if (chroniclesEnemyCanAttackParty(next, enemy, position)) {
       next = damageParty(next, enemy, enemyIndex, events);
       return;
