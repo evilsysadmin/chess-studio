@@ -91,7 +91,7 @@ function baseShadeForProfile(profile, role) {
   else if (profile.category === 'variant') base = 112;
 
   if (profile.category === 'dungeon') base += role === 'wall' ? -20 : -6;
-  if (profile.category === 'cave') base += role === 'wall' ? 18 : -52;
+  if (profile.category === 'cave') base += role === 'wall' ? 4 : -58;
   return base;
 }
 
@@ -307,14 +307,14 @@ function applyTextureSet(material, set, normalStrength, profile, role) {
   material.normalMap = set.normal;
   material.normalScale = new THREE.Vector2(normalStrength, normalStrength);
   if (material.color) {
-    if (profile.category === 'cave' && role === 'floor') material.color.setRGB(0.48, 0.52, 0.54);
-    else if (profile.category === 'cave' && role === 'wall') material.color.setRGB(0.98, 1, 1);
+    if (profile.category === 'cave' && role === 'floor') material.color.setRGB(0.34, 0.38, 0.4);
+    else if (profile.category === 'cave' && role === 'wall') material.color.setRGB(0.76, 0.8, 0.82);
     else material.color.setRGB(1, 1, 1);
   }
   if (profile.category === 'cave' && role === 'wall' && material.emissive) {
     material.emissiveMap = set.color;
-    material.emissive.setRGB(0.28, 0.34, 0.36);
-    material.emissiveIntensity = 0.36;
+    material.emissive.setRGB(0.08, 0.11, 0.12);
+    material.emissiveIntensity = 0.12;
   }
   material.roughness = Math.min(
     CHRONICLES_TACTICS_MATERIAL_STYLE.maxRoughness,
