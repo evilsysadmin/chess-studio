@@ -311,6 +311,21 @@ scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page })
     { timeout: 20_000 },
   );
   await captureAt(page, 'insights', { width: 1440, height: 900, variant: 'desktop' });
+  await captureAt(page, 'insights', { width: 1800, height: 900, variant: 'wide' });
+  const wideGeometry = await trainingRoom.evaluate((root) => {
+    const room = root.getBoundingClientRect();
+    const session = root.querySelector('.insights-guided-session')?.getBoundingClientRect();
+    const nav = root.querySelector('.insights-workspace-nav')?.getBoundingClientRect();
+    return {
+      viewportWidth: window.innerWidth,
+      roomWidth: room.width,
+      sessionWidth: session?.width || 0,
+      navWidth: nav?.width || 0,
+    };
+  });
+  expect(wideGeometry.roomWidth, 'Así juegas wide: la sala debe usar el monitor').toBeGreaterThanOrEqual(wideGeometry.viewportWidth * 0.88);
+  expect(wideGeometry.sessionWidth, 'Así juegas wide: la sesión no debe volver a ancho de dashboard').toBeGreaterThanOrEqual(1350);
+  expect(wideGeometry.navWidth, 'Así juegas wide: las placas deben respirar horizontalmente').toBeGreaterThanOrEqual(1000);
   await captureAt(page, 'insights', { width: 390, height: 844, variant: 'mobile' });
   await page.setViewportSize({ width: 1440, height: 900 });
   await settle(page);
