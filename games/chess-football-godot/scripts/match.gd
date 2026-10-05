@@ -608,6 +608,9 @@ func debug_ai_dribble_target(player: Footballer) -> Vector2:
 func debug_force_ai_attack(player: Footballer) -> void:
 	_ai_attack(player)
 
+func debug_step_ai(delta: float) -> void:
+	_update_ai(delta)
+
 func debug_pause_menu_open() -> bool:
 	return pause_menu_open
 
