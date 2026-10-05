@@ -70,3 +70,24 @@ func bsonInteger(value any) (int64, bool) {
 		return 0, false
 	}
 }
+
+// CountOnline mirrors users_store.count_online_users against Mongo: accounts
+// whose last activity (Python ISO-8601 strings, compared as stored) is at or
+// after since and that did not mark themselves offline, minus the excluded
+// usernames.
+func (s *Store) CountOnline(ctx context.Context, since string, exclude []string) (int, error) {
+	if s == nil || s.users == nil {
+		return 0, errors.New("account store is not configured")
+	}
+	query := bson.D{
+		{Key: "last_activity", Value: bson.D{{Key: "$gte", Value: since}}},
+		{Key: "presence_online", Value: bson.D{{Key: "$ne", Value: false}}},
+	}
+	if len(exclude) > 0 {
+		query = append(query, bson.E{Key: "_id", Value: bson.D{{Key: "$nin", Value: exclude}}})
+	}
+	queryCtx, cancel := context.WithTimeout(ctx, s.timeout)
+	defer cancel()
+	count, err := s.users.CountDocuments(queryCtx, query)
+	return int(count), err
+}

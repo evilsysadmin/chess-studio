@@ -46,7 +46,11 @@ type Config struct {
 	NativeGamesHint http.Handler
 	// NativeGamesAnalyze serves POST /api/analyze and /api/analyze-move; nil
 	// keeps them in Python.
-	NativeGamesAnalyze    http.Handler
+	NativeGamesAnalyze http.Handler
+	// NativeSystem serves GET /api/status, GET /api/features,
+	// POST /api/client-telemetry and POST /api/internal/billing-costs; nil
+	// keeps them in Python.
+	NativeSystem          http.Handler
 	VirtualPlayersEnabled bool
 	NativeResidentMove    bool
 	// ReadyChecks are dependencies owned by the Go edge itself (MongoDB for the
@@ -80,6 +84,7 @@ type Handler struct {
 	nativeGamesWrite          http.Handler
 	nativeGamesHint           http.Handler
 	nativeGamesAnalyze        http.Handler
+	nativeSystem              http.Handler
 	virtualPlayersEnabled     bool
 	nativeResidentMove        bool
 	readyChecks               map[string]func(context.Context) error
@@ -182,6 +187,7 @@ func New(cfg Config) (*Handler, error) {
 		nativeGamesWrite:          cfg.NativeGamesWrite,
 		nativeGamesHint:           cfg.NativeGamesHint,
 		nativeGamesAnalyze:        cfg.NativeGamesAnalyze,
+		nativeSystem:              cfg.NativeSystem,
 		virtualPlayersEnabled:     cfg.VirtualPlayersEnabled,
 		nativeResidentMove:        cfg.NativeResidentMove,
 		readyChecks:               cfg.ReadyChecks,
@@ -223,6 +229,13 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if pattern, ok := gamesapi.AnalyzeRoute(r); ok {
 			w.Header().Set("X-Chess-Edge", "go")
 			h.telemetry.Serve(pattern, h.nativeGamesAnalyze, w, r)
+			return
+		}
+	}
+	if h.nativeSystem != nil {
+		if pattern, ok := gamesapi.SystemRoute(r); ok {
+			w.Header().Set("X-Chess-Edge", "go")
+			h.telemetry.Serve(pattern, h.nativeSystem, w, r)
 			return
 		}
 	}
@@ -320,6 +333,7 @@ func (h *Handler) statusPayload(status string) map[string]any {
 		"nativeGamesWrite":          h.nativeGamesWrite != nil,
 		"nativeGamesHint":           h.nativeGamesHint != nil,
 		"nativeGamesAnalyze":        h.nativeGamesAnalyze != nil,
+		"nativeSystem":              h.nativeSystem != nil,
 	}
 	if h.release != "" {
 		payload["release"] = h.release

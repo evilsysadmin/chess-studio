@@ -251,3 +251,62 @@ func TestNativeRequestReachesTheObservabilityHistory(t *testing.T) {
 		t.Fatalf("history %v", spy.calls)
 	}
 }
+
+func TestBillingGaugeReportsFreshCostsAndFrontendEventsCount(t *testing.T) {
+	f := newFixture(t)
+	if !f.rec.RecordBillingCosts(context.Background(), []BillingCost{{Provider: "oci", Amount: 12.5, Currency: "EUR"}}) {
+		t.Fatal("export configured: flush should succeed")
+	}
+	value := 812.0
+	f.rec.RecordFrontend("web_vital", "LCP", &value, "home", "v1")
+	var rm metricdata.ResourceMetrics
+	if err := f.reader.Collect(context.Background(), &rm); err != nil {
+		t.Fatal(err)
+	}
+	found := map[string]bool{}
+	for _, scope := range rm.ScopeMetrics {
+		for _, m := range scope.Metrics {
+			found[m.Name] = true
+			if gauge, ok := m.Data.(metricdata.Gauge[float64]); ok && m.Name == "chess_studio_billing_cost_current_cycle" {
+				if len(gauge.DataPoints) != 1 || gauge.DataPoints[0].Value != 12.5 {
+					t.Fatalf("gauge %+v", gauge.DataPoints)
+				}
+				provider, _ := gauge.DataPoints[0].Attributes.Value("provider")
+				scopeAttr, _ := gauge.DataPoints[0].Attributes.Value("scope")
+				if provider.AsString() != "oci" || scopeAttr.AsString() != "current_cycle" {
+					t.Fatalf("gauge attributes %v", gauge.DataPoints[0].Attributes)
+				}
+			}
+		}
+	}
+	for _, name := range []string{"chess_studio_billing_cost_current_cycle", "chess_studio_frontend_events", "chess_studio_frontend_web_vital"} {
+		if !found[name] {
+			t.Errorf("%s not exported: %v", name, found)
+		}
+	}
+	// Stale costs stop being reported.
+	f.rec.billingMu.Lock()
+	cost := f.rec.billing["oci"]
+	cost.receivedAt = cost.receivedAt.Add(-6 * time.Minute)
+	f.rec.billing["oci"] = cost
+	f.rec.billingMu.Unlock()
+	rm = metricdata.ResourceMetrics{}
+	_ = f.reader.Collect(context.Background(), &rm)
+	for _, scope := range rm.ScopeMetrics {
+		for _, m := range scope.Metrics {
+			if gauge, ok := m.Data.(metricdata.Gauge[float64]); ok && len(gauge.DataPoints) > 0 {
+				t.Fatalf("stale cost still reported: %+v", gauge.DataPoints)
+			}
+		}
+	}
+}
+
+func TestBillingWithoutMetricsExportIsNotRecorded(t *testing.T) {
+	rec, err := New(context.Background(), Config{ServiceName: "go"}, Options{Stdout: io.Discard})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rec.RecordBillingCosts(context.Background(), []BillingCost{{Provider: "oci", Amount: 1, Currency: "EUR"}}) {
+		t.Fatal("no exporter: must report not configured")
+	}
+}

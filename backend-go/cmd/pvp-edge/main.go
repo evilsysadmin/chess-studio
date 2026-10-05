@@ -36,25 +36,18 @@ func main() {
 		}()
 	}
 
-	// Admin's observability history: native requests land in the same
-	// 5-minute buckets as Python's (GO_OBSERVABILITY_HISTORY_ENABLED).
-	var history *obshistory.Recorder
-	if native.mongo != nil && envBool("GO_OBSERVABILITY_HISTORY_ENABLED", true) {
-		if store, storeErr := obshistory.NewMongoStore(native.mongo.Database()); storeErr != nil {
-			log.Printf("observability history disabled: %v", storeErr)
-		} else {
-			history = obshistory.New(store)
-			historyCtx, stopHistory := context.WithCancel(context.Background())
-			historyDone := make(chan struct{})
-			go func() {
-				defer close(historyDone)
-				history.Run(historyCtx)
-			}()
-			defer func() {
-				stopHistory()
-				<-historyDone
-			}()
-		}
+	history := native.history
+	if history != nil {
+		historyCtx, stopHistory := context.WithCancel(context.Background())
+		historyDone := make(chan struct{})
+		go func() {
+			defer close(historyDone)
+			history.Run(historyCtx)
+		}()
+		defer func() {
+			stopHistory()
+			<-historyDone
+		}()
 	}
 
 	requestTelemetry := newRequestTelemetry(history)
