@@ -29,20 +29,14 @@ import {
 } from './chronicles/chroniclesIsometricScenePlan.js';
 import { chroniclesIsometricSceneStyle } from './chronicles/chroniclesIsometricSceneStyles.js';
 import { buildChroniclesSquareFrameGeometry } from './chronicles/chroniclesIsometricGeometry.js';
-import {
-  buildChroniclesCarriedTorch,
-  tickChroniclesCarriedTorch,
-} from './chronicles/chroniclesCarriedTorch.js';
+import { buildChroniclesCarriedTorch } from './chronicles/chroniclesCarriedTorch.js';
 import {
   CHRONICLES_ISO_EXPLORATION_PARTY_LAYOUT,
   CHRONICLES_ISO_MARKER_STYLE,
   CHRONICLES_ISO_PARTY_FACING,
   CHRONICLES_ISO_PARTY_LAYOUT,
 } from './chronicles/chroniclesTacticsPartyPresentation.js';
-import {
-  applyChroniclesExplorationGait,
-  chroniclesExplorationMotion,
-} from './chronicles/chroniclesTacticsLocomotionPresentation.js';
+import { tickChroniclesExplorationParty } from './chronicles/chroniclesTacticsLocomotionPresentation.js';
 // Compatibility re-export: external renderer tests still consume these names.
 // Ownership lives in the focused Tactics party-presentation module.
 export {
@@ -979,12 +973,11 @@ export function createChroniclesIsometricRenderer(host, {
     const time = clock.getElapsedTime();
 
     if (!reducedMotion) {
-      const explorationMotion = chroniclesExplorationMotion(
-        party.root.position,
+      tickChroniclesExplorationParty(party, {
         desiredParty,
-        latestSceneModel?.partyFormation,
-      );
-      party.root.position.lerp(desiredParty, explorationMotion.rootLerp);
+        partyFormation: latestSceneModel?.partyFormation,
+        time,
+      });
       enemies.forEach((model, id) => {
         if (!model.visible || !model.userData.chroniclesIsoTarget) return;
         model.position.lerp(model.userData.chroniclesIsoTarget, id === 'scavenger-knight' ? 0.18 : 0.13);
@@ -996,20 +989,6 @@ export function createChroniclesIsometricRenderer(host, {
         model.rotation.y = nextYaw + Math.sin(time * 0.48 + id.length) * 0.018;
       });
 
-      party.models.forEach((model, id) => {
-        if (!model.visible) return;
-        const target = model.userData.chroniclesIsoTarget;
-        if (target) model.position.lerp(target, explorationMotion.memberLerp);
-        model.userData.chroniclesArtTick?.(time);
-        applyChroniclesExplorationGait(model, {
-          moving: explorationMotion.moving,
-          yaw: explorationMotion.yaw,
-          time,
-          phaseSeed: id.length,
-          hpRatio: model.userData.chroniclesIsoHpRatio ?? 1,
-        });
-        tickChroniclesCarriedTorch(party.carriedTorches.get(id), time);
-      });
       if (party.selection.visible && party.selection.userData.chroniclesIsoTarget) {
         party.selection.position.lerp(party.selection.userData.chroniclesIsoTarget, 0.24);
       }
