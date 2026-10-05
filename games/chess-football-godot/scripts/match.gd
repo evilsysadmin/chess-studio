@@ -6,7 +6,7 @@ const TEAM_COLORS := [Color(0.12, 0.42, 0.92), Color(0.86, 0.18, 0.2)]
 
 const CAMERA_MODE_BROADCAST := "broadcast"
 const CAMERA_MODE_TACTICAL := "tactical"
-const BROADCAST_ZOOM := Vector2(0.82, 0.58)
+const BROADCAST_ZOOM := Vector2(0.92, 0.62)
 const TACTICAL_ZOOM := Vector2(0.68, 0.68)
 const BROADCAST_CAMERA_SPEED := 3.7
 const TACTICAL_CAMERA_SPEED := 5.0
