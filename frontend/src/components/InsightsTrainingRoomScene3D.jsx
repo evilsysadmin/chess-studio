@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { createThreeRenderer } from '../threeRenderer.js';
 import {
   buildInsightsTrainingRoomLayer,
@@ -7,9 +8,9 @@ import {
 } from './InsightsTrainingRoomShell.js';
 
 export const INSIGHTS_TRAINING_ROOM_CAMERA = Object.freeze({
-  fov: 34,
-  position: Object.freeze([0, 4.45, 12.8]),
-  target: Object.freeze([0, 2.05, -2.15]),
+  fov: 31.5,
+  position: Object.freeze([0.18, 4.28, 12.15]),
+  target: Object.freeze([0.25, 2.02, -2.28]),
 });
 
 function renderScene(renderer, scene, camera, host) {
@@ -48,6 +49,7 @@ export default function InsightsTrainingRoomScene3D() {
     let room;
     let observer;
     let onResize;
+    let environmentTarget;
 
     try {
       renderer = createThreeRenderer({
@@ -58,13 +60,19 @@ export default function InsightsTrainingRoomScene3D() {
       });
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 1.42;
-      renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio || 1, 1.35));
+      renderer.toneMappingExposure = 1.24;
+      renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio || 1, 1.4));
       renderer.shadowMap.enabled = true;
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
       scene = new THREE.Scene();
-      scene.fog = new THREE.FogExp2(0x0b0d12, .007);
+      scene.fog = new THREE.FogExp2(0x0b0d12, .0062);
+
+      const pmrem = new THREE.PMREMGenerator(renderer);
+      environmentTarget = pmrem.fromScene(new RoomEnvironment(), .04);
+      scene.environment = environmentTarget.texture;
+      scene.environmentIntensity = .36;
+      pmrem.dispose();
 
       const camera = new THREE.PerspectiveCamera(
         INSIGHTS_TRAINING_ROOM_CAMERA.fov,
@@ -75,14 +83,14 @@ export default function InsightsTrainingRoomScene3D() {
       camera.position.set(...INSIGHTS_TRAINING_ROOM_CAMERA.position);
       camera.lookAt(...INSIGHTS_TRAINING_ROOM_CAMERA.target);
 
-      const hemisphere = new THREE.HemisphereLight(0x9bb6da, 0x24150c, 1.08);
+      const hemisphere = new THREE.HemisphereLight(0x92acd0, 0x1c100a, .7);
       hemisphere.name = 'training-room-hemisphere';
       scene.add(hemisphere);
 
-      const softKey = new THREE.DirectionalLight(0xffd39a, .94);
+      const softKey = new THREE.DirectionalLight(0xffc88f, .84);
       softKey.position.set(-3.5, 7.4, 5.8);
       softKey.castShadow = true;
-      softKey.shadow.mapSize.set(512, 512);
+      softKey.shadow.mapSize.set(1024, 1024);
       softKey.shadow.camera.near = 1;
       softKey.shadow.camera.far = 28;
       softKey.shadow.camera.left = -10;
@@ -93,7 +101,7 @@ export default function InsightsTrainingRoomScene3D() {
       softKey.name = 'training-room-soft-key';
       scene.add(softKey);
 
-      const cameraFill = new THREE.PointLight(0xffcf96, .48, 18, 2);
+      const cameraFill = new THREE.PointLight(0xffc98c, .28, 18, 2);
       cameraFill.position.set(-1.8, 4.4, 8.2);
       cameraFill.castShadow = false;
       cameraFill.name = 'training-room-camera-fill';
@@ -125,6 +133,7 @@ export default function InsightsTrainingRoomScene3D() {
         scene?.remove?.(room);
         disposeInsightsTrainingRoomLayer(room);
       }
+      environmentTarget?.dispose?.();
       renderer?.dispose?.();
     };
   }, []);
