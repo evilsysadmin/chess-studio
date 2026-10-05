@@ -253,26 +253,44 @@ for (const capture of CAPTURES) {
       await expect(moveNorth).toBeEnabled();
       await page.keyboard.down('ArrowUp');
       await expect(rendererHost).toHaveAttribute('data-chronicles-party-motion', 'walking');
-      await page.waitForTimeout(55);
-      await page.keyboard.up('ArrowUp');
-      await expect(narrator).toContainText(/La compañía avanza hacia norte/i);
       await captureElement(
         page,
         viewport,
         `${ARTIFACT_DIR}/chronicles-tactics-walking-${capture.label}.png`,
       );
-      await expect(rendererHost).toHaveAttribute('data-chronicles-party-motion', 'idle', { timeout: 2_000 });
+      await page.keyboard.up('ArrowUp');
+      await expect(narrator).toContainText(/La compañía avanza hacia norte/i);
+      const releasedCell = await mode.evaluate((node) => ({
+        x: node.getAttribute('data-party-x'),
+        y: node.getAttribute('data-party-y'),
+      }));
+      await page.waitForTimeout(260);
+      await expect(mode).toHaveAttribute('data-party-x', releasedCell.x);
+      await expect(mode).toHaveAttribute('data-party-y', releasedCell.y);
       const movementMessage = ((await narrator.textContent()) || '').trim();
       await captureElement(page, viewport, `${ARTIFACT_DIR}/chronicles-tactics-moved-${capture.label}.png`);
 
-      // Visual contract for the new Tactics flow: exploration stays compact for
-      // more than one step, then real contact deploys the four heroes onto the
-      // combat grid. Keep this evidence in the visual artifact, not only in the
-      // gameplay canary, so human review can judge the formation transition.
+      // Reset to the last semantic checkpoint so the combat proof starts from a
+      // deterministic canonical spawn regardless of how far hold-to-walk advanced
+      // while the animated screenshot was being captured.
+      await page.reload();
+      await expect(mode).toBeVisible();
+      await expect(mode.locator('[data-chronicles-tactics-renderer="three"] canvas')).toHaveCount(1, { timeout: 30_000 });
       await expect(mode).toHaveAttribute('data-engagement', 'exploration');
+      await expect(mode).toHaveAttribute('data-party-x', '1');
+      await expect(mode).toHaveAttribute('data-party-y', '5');
+
+      // Visual contract for the full flow: compact real-time exploration, then
+      // contact deploys the four heroes onto the combat grid.
+      const resetNorth = mode.getByRole('button', { name: 'Mover al norte', exact: true });
       await page.waitForTimeout(140);
-      await expect(moveNorth).toBeEnabled();
-      await moveNorth.evaluate((button) => button.click());
+      await expect(resetNorth).toBeEnabled();
+      await resetNorth.evaluate((button) => button.click());
+      await expect(mode).toHaveAttribute('data-engagement', 'exploration');
+
+      await page.waitForTimeout(140);
+      await expect(resetNorth).toBeEnabled();
+      await resetNorth.evaluate((button) => button.click());
       await expect(mode).toHaveAttribute('data-engagement', 'exploration');
 
       await page.waitForTimeout(140);
