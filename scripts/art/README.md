@@ -7,6 +7,7 @@ La autoridad canónica para sprites runtime de Pawn Slug es [`docs/pawnslug-spri
 - Pawn Slug sprites runtime son 2D puros.
 - Una salida generada es un **candidato**, no un asset aceptado.
 - El objetivo de migración es un único compiler/validator Sprite Forge data-driven; no crear otra familia `pack_*_vNN.py` para nuevas iteraciones.
+- El core de `sprite_forge.py` es transversal a Chess Studio. Los contratos legacy `schema: 1` conservan identidad Pawn Slug (`weapon`); los nuevos bancos usan `schema: 2` con `surface` + `variant`, de modo que Chess Football y futuros juegos reutilicen lint, packing, hashes, manifest y QA sin copiar la pipeline.
 - Los packers/validators versionados existentes son historia/migración hasta que sus bancos se absorban en Sprite Forge.
 - CI debe reconstruir y verificar; el authoring/regeneración ocurre antes de PR.
 

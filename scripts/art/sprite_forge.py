@@ -790,10 +790,17 @@ def _require_number(
 def _validate_bank_contract(data: object) -> dict:
     if not isinstance(data, dict):
         raise BankContractError("contract must be an object")
-    if data.get("schema") != 1:
-        raise BankContractError("contract schema must be 1")
+    schema = data.get("schema")
+    if schema not in {1, 2}:
+        raise BankContractError("contract schema must be 1 or 2")
 
-    for key in ("quality_contract", "actor", "weapon"):
+    identity_keys = ("quality_contract", "actor", "weapon") if schema == 1 else (
+        "quality_contract",
+        "surface",
+        "actor",
+        "variant",
+    )
+    for key in identity_keys:
         if not isinstance(data.get(key), str) or not data[key].strip():
             raise BankContractError(f"{key} must be a non-empty string")
 
@@ -1027,11 +1034,16 @@ def _validate_bank_contract(data: object) -> dict:
             }
         )
 
+    identity = (
+        {"weapon": data["weapon"]}
+        if schema == 1
+        else {"surface": data["surface"], "variant": data["variant"]}
+    )
     return {
-        "schema": 1,
+        "schema": schema,
         "quality_contract": data["quality_contract"],
         "actor": data["actor"],
-        "weapon": data["weapon"],
+        **identity,
         "composition": composition,
         "socket_quality": asdict(socket_quality),
         "cell": {"width": width, "height": height},
@@ -1150,12 +1162,23 @@ def build_bank(
             "rows": part["rows"],
         }
 
+    if contract["schema"] == 1:
+        identity = {
+            "kind": "pawn-slug-sprite-forge-bank",
+            "weapon": contract["weapon"],
+        }
+    else:
+        identity = {
+            "kind": "chess-studio-sprite-forge-bank",
+            "surface": contract["surface"],
+            "variant": contract["variant"],
+        }
+
     manifest = {
-        "schema": 1,
-        "kind": "pawn-slug-sprite-forge-bank",
+        "schema": contract["schema"],
+        **identity,
         "quality_contract": contract["quality_contract"],
         "actor": contract["actor"],
-        "weapon": contract["weapon"],
         "composition": contract["composition"],
         "socket_quality": contract["socket_quality"],
         "cell": contract["cell"],
@@ -2633,7 +2656,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         raw.insert(0, "lint")
 
     parser = argparse.ArgumentParser(
-        description="Pawn Slug Sprite Forge fail-closed compiler"
+        description="Chess Studio Sprite Forge fail-closed compiler"
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -2847,10 +2870,18 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "build":
         manifest = build_bank(args.contract, args.frames_root, args.output_dir)
+        identity = (
+            {"weapon": manifest["weapon"]}
+            if manifest["schema"] == 1
+            else {
+                "surface": manifest["surface"],
+                "variant": manifest["variant"],
+            }
+        )
         print(json.dumps(
             {
                 "actor": manifest["actor"],
-                "weapon": manifest["weapon"],
+                **identity,
                 "parts": {
                     name: value["sha256"]
                     for name, value in manifest["parts"].items()
