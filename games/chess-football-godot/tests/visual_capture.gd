@@ -60,8 +60,12 @@ func _initialize() -> void:
 	# Freeze a readable tackle-contact beat: victim recoils, ball is loose, then
 	# the normal delayed claim resolves in gameplay.
 	match_node.debug_toggle_camera_mode()
-	var tackler: Footballer = match_node.controlled
+	var tackler: Footballer = match_node.teams[0][1]
 	var victim: Footballer = match_node.teams[1][2]
+	# Earlier visual states may leave the controlled player action-locked by a
+	# shot. Use a dedicated defender and clear any incidental animation lock so
+	# this capture proves tackle contact, not prior-state timing.
+	tackler._process(2.0)
 	tackler.global_position = Vector2(640.0, 500.0)
 	victim.global_position = Vector2(668.0, 500.0)
 	tackler.velocity = Vector2.RIGHT * tackler.base_speed
