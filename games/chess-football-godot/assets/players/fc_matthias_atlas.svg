@@ -1,0 +1,1291 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="896" height="1008" viewBox="0 0 896 1008">
+<g shape-rendering="geometricPrecision">
+<ellipse cx="56.00" cy="126.00" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="46.00" y1="102.00" x2="44.00" y2="121.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="46.00" y1="102.00" x2="44.00" y2="121.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="37.00" y="119.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="66.00" y1="102.00" x2="68.00" y2="121.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="66.00" y1="102.00" x2="68.00" y2="121.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="61.00" y="119.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="37.00" y1="67.00" x2="29.00" y2="82.00" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="37.00" y1="67.00" x2="29.00" y2="82.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="29.00" cy="82.00" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="75.00" y1="67.00" x2="83.00" y2="82.00" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="75.00" y1="67.00" x2="83.00" y2="82.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="83.00" cy="82.00" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="32.00,67.00 26.00,96.00 35.00,109.00 77.00,109.00 86.00,96.00 80.00,67.00" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="29.00,92.00 83.00,92.00 77.00,109.00 35.00,109.00" fill="#0e2d69" opacity=".94"/>
+<line x1="36.00" y1="75.00" x2="74.00" y2="102.00" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="56.00,78.00 61.00,83.00 56.00,88.00 51.00,83.00" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="56.00" cy="60.50" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="56.00" cy="59.50" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="56.00" cy="38.00" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="50.00" cy="30.00" r="4" fill="#fff" opacity=".34"/>
+<line x1="61.00" y1="40.00" x2="67.00" y2="40.00" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="33.00" y1="104.00" x2="79.00" y2="104.00" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="168.00" cy="126.00" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="158.00" y1="101.01" x2="156.00" y2="121.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="158.00" y1="101.01" x2="156.00" y2="121.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="149.00" y="119.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="178.00" y1="101.01" x2="180.00" y2="121.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="178.00" y1="101.01" x2="180.00" y2="121.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="173.00" y="119.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="149.00" y1="66.01" x2="141.02" y2="80.94" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="149.00" y1="66.01" x2="141.02" y2="80.94" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="141.02" cy="80.94" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="187.00" y1="66.01" x2="194.98" y2="81.08" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="187.00" y1="66.01" x2="194.98" y2="81.08" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="194.98" cy="81.08" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="144.00,66.01 138.00,95.01 147.00,108.01 189.00,108.01 198.00,95.01 192.00,66.01" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="141.00,91.01 195.00,91.01 189.00,108.01 147.00,108.01" fill="#0e2d69" opacity=".94"/>
+<line x1="148.00" y1="74.01" x2="186.00" y2="101.01" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="168.00,77.01 173.00,82.01 168.00,87.01 163.00,82.01" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="168.00" cy="59.51" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="168.00" cy="58.51" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="168.00" cy="37.01" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="162.00" cy="29.01" r="4" fill="#fff" opacity=".34"/>
+<line x1="173.00" y1="39.01" x2="179.00" y2="39.01" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="145.00" y1="103.01" x2="191.00" y2="103.01" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="280.00" cy="126.00" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="270.00" y1="100.60" x2="268.00" y2="121.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="270.00" y1="100.60" x2="268.00" y2="121.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="261.00" y="119.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="290.00" y1="100.60" x2="292.00" y2="121.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="290.00" y1="100.60" x2="292.00" y2="121.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="285.00" y="119.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="261.00" y1="65.60" x2="253.03" y2="80.50" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="261.00" y1="65.60" x2="253.03" y2="80.50" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="253.03" cy="80.50" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="299.00" y1="65.60" x2="306.97" y2="80.70" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="299.00" y1="65.60" x2="306.97" y2="80.70" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="306.97" cy="80.70" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="256.00,65.60 250.00,94.60 259.00,107.60 301.00,107.60 310.00,94.60 304.00,65.60" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="253.00,90.60 307.00,90.60 301.00,107.60 259.00,107.60" fill="#0e2d69" opacity=".94"/>
+<line x1="260.00" y1="73.60" x2="298.00" y2="100.60" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="280.00,76.60 285.00,81.60 280.00,86.60 275.00,81.60" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="280.00" cy="59.10" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="280.00" cy="58.10" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="280.00" cy="36.60" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="274.00" cy="28.60" r="4" fill="#fff" opacity=".34"/>
+<line x1="285.00" y1="38.60" x2="291.00" y2="38.60" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="257.00" y1="102.60" x2="303.00" y2="102.60" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="392.00" cy="126.00" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="382.00" y1="101.01" x2="380.00" y2="121.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="382.00" y1="101.01" x2="380.00" y2="121.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="373.00" y="119.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="402.00" y1="101.01" x2="404.00" y2="121.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="402.00" y1="101.01" x2="404.00" y2="121.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="397.00" y="119.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="373.00" y1="66.01" x2="365.02" y2="80.94" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="373.00" y1="66.01" x2="365.02" y2="80.94" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="365.02" cy="80.94" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="411.00" y1="66.01" x2="418.98" y2="81.08" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="411.00" y1="66.01" x2="418.98" y2="81.08" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="418.98" cy="81.08" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="368.00,66.01 362.00,95.01 371.00,108.01 413.00,108.01 422.00,95.01 416.00,66.01" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="365.00,91.01 419.00,91.01 413.00,108.01 371.00,108.01" fill="#0e2d69" opacity=".94"/>
+<line x1="372.00" y1="74.01" x2="410.00" y2="101.01" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="392.00,77.01 397.00,82.01 392.00,87.01 387.00,82.01" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="392.00" cy="59.51" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="392.00" cy="58.51" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="392.00" cy="37.01" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="386.00" cy="29.01" r="4" fill="#fff" opacity=".34"/>
+<line x1="397.00" y1="39.01" x2="403.00" y2="39.01" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="369.00" y1="103.01" x2="415.00" y2="103.01" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="504.00" cy="126.00" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="494.00" y1="102.00" x2="492.00" y2="121.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="494.00" y1="102.00" x2="492.00" y2="121.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="485.00" y="119.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="514.00" y1="102.00" x2="516.00" y2="121.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="514.00" y1="102.00" x2="516.00" y2="121.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="509.00" y="119.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="485.00" y1="67.00" x2="477.00" y2="82.00" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="485.00" y1="67.00" x2="477.00" y2="82.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="477.00" cy="82.00" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="523.00" y1="67.00" x2="531.00" y2="82.00" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="523.00" y1="67.00" x2="531.00" y2="82.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="531.00" cy="82.00" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="480.00,67.00 474.00,96.00 483.00,109.00 525.00,109.00 534.00,96.00 528.00,67.00" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="477.00,92.00 531.00,92.00 525.00,109.00 483.00,109.00" fill="#0e2d69" opacity=".94"/>
+<line x1="484.00" y1="75.00" x2="522.00" y2="102.00" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="504.00,78.00 509.00,83.00 504.00,88.00 499.00,83.00" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="504.00" cy="60.50" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="504.00" cy="59.50" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="504.00" cy="38.00" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="498.00" cy="30.00" r="4" fill="#fff" opacity=".34"/>
+<line x1="509.00" y1="40.00" x2="515.00" y2="40.00" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="481.00" y1="104.00" x2="527.00" y2="104.00" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="616.00" cy="126.00" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="606.00" y1="102.99" x2="604.00" y2="121.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="606.00" y1="102.99" x2="604.00" y2="121.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="597.00" y="119.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="626.00" y1="102.99" x2="628.00" y2="121.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="626.00" y1="102.99" x2="628.00" y2="121.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="621.00" y="119.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="597.00" y1="67.99" x2="588.90" y2="83.06" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="597.00" y1="67.99" x2="588.90" y2="83.06" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="588.90" cy="83.06" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="635.00" y1="67.99" x2="643.10" y2="82.92" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="635.00" y1="67.99" x2="643.10" y2="82.92" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="643.10" cy="82.92" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="592.00,67.99 586.00,96.99 595.00,109.99 637.00,109.99 646.00,96.99 640.00,67.99" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="589.00,92.99 643.00,92.99 637.00,109.99 595.00,109.99" fill="#0e2d69" opacity=".94"/>
+<line x1="596.00" y1="75.99" x2="634.00" y2="102.99" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="616.00,78.99 621.00,83.99 616.00,88.99 611.00,83.99" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="616.00" cy="61.49" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="616.00" cy="60.49" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="616.00" cy="38.99" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="610.00" cy="30.99" r="4" fill="#fff" opacity=".34"/>
+<line x1="621.00" y1="40.99" x2="627.00" y2="40.99" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="593.00" y1="104.99" x2="639.00" y2="104.99" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="728.00" cy="126.00" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="718.00" y1="103.40" x2="716.00" y2="121.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="718.00" y1="103.40" x2="716.00" y2="121.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="709.00" y="119.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="738.00" y1="103.40" x2="740.00" y2="121.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="738.00" y1="103.40" x2="740.00" y2="121.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="733.00" y="119.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="709.00" y1="68.40" x2="700.87" y2="83.50" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="709.00" y1="68.40" x2="700.87" y2="83.50" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="700.87" cy="83.50" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="747.00" y1="68.40" x2="755.13" y2="83.30" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="747.00" y1="68.40" x2="755.13" y2="83.30" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="755.13" cy="83.30" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="704.00,68.40 698.00,97.40 707.00,110.40 749.00,110.40 758.00,97.40 752.00,68.40" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="701.00,93.40 755.00,93.40 749.00,110.40 707.00,110.40" fill="#0e2d69" opacity=".94"/>
+<line x1="708.00" y1="76.40" x2="746.00" y2="103.40" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="728.00,79.40 733.00,84.40 728.00,89.40 723.00,84.40" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="728.00" cy="61.90" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="728.00" cy="60.90" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="728.00" cy="39.40" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="722.00" cy="31.40" r="4" fill="#fff" opacity=".34"/>
+<line x1="733.00" y1="41.40" x2="739.00" y2="41.40" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="705.00" y1="105.40" x2="751.00" y2="105.40" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="840.00" cy="126.00" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="830.00" y1="102.99" x2="828.00" y2="121.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="830.00" y1="102.99" x2="828.00" y2="121.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="821.00" y="119.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="850.00" y1="102.99" x2="852.00" y2="121.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="850.00" y1="102.99" x2="852.00" y2="121.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="845.00" y="119.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="821.00" y1="67.99" x2="812.90" y2="83.06" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="821.00" y1="67.99" x2="812.90" y2="83.06" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="812.90" cy="83.06" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="859.00" y1="67.99" x2="867.10" y2="82.92" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="859.00" y1="67.99" x2="867.10" y2="82.92" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="867.10" cy="82.92" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="816.00,67.99 810.00,96.99 819.00,109.99 861.00,109.99 870.00,96.99 864.00,67.99" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="813.00,92.99 867.00,92.99 861.00,109.99 819.00,109.99" fill="#0e2d69" opacity=".94"/>
+<line x1="820.00" y1="75.99" x2="858.00" y2="102.99" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="840.00,78.99 845.00,83.99 840.00,88.99 835.00,83.99" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="840.00" cy="61.49" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="840.00" cy="60.49" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="840.00" cy="38.99" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="834.00" cy="30.99" r="4" fill="#fff" opacity=".34"/>
+<line x1="845.00" y1="40.99" x2="851.00" y2="40.99" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="817.00" y1="104.99" x2="863.00" y2="104.99" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="58.00" cy="270.00" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="48.00" y1="246.00" x2="46.00" y2="265.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="48.00" y1="246.00" x2="46.00" y2="265.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="39.00" y="263.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="68.00" y1="246.00" x2="70.00" y2="265.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="68.00" y1="246.00" x2="70.00" y2="265.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="63.00" y="263.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="39.00" y1="211.00" x2="31.00" y2="226.00" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="39.00" y1="211.00" x2="31.00" y2="226.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="31.00" cy="226.00" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="77.00" y1="211.00" x2="85.00" y2="226.00" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="77.00" y1="211.00" x2="85.00" y2="226.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="85.00" cy="226.00" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="34.00,211.00 28.00,240.00 37.00,253.00 79.00,253.00 88.00,240.00 82.00,211.00" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="31.00,236.00 85.00,236.00 79.00,253.00 37.00,253.00" fill="#0e2d69" opacity=".94"/>
+<line x1="38.00" y1="219.00" x2="76.00" y2="246.00" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="58.00,222.00 63.00,227.00 58.00,232.00 53.00,227.00" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="58.00" cy="204.50" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="58.00" cy="203.50" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="58.00" cy="182.00" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="52.00" cy="174.00" r="4" fill="#fff" opacity=".34"/>
+<line x1="63.00" y1="184.00" x2="69.00" y2="184.00" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="35.00" y1="248.00" x2="81.00" y2="248.00" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="170.00" cy="270.00" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="160.00" y1="244.44" x2="151.64" y2="265.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="160.00" y1="244.44" x2="151.64" y2="265.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="144.64" y="263.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="180.00" y1="244.44" x2="188.36" y2="265.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="180.00" y1="244.44" x2="188.36" y2="265.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="181.36" y="263.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="151.00" y1="209.44" x2="144.13" y2="220.77" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="151.00" y1="209.44" x2="144.13" y2="220.77" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="144.13" cy="220.77" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="189.00" y1="209.44" x2="195.87" y2="228.12" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="189.00" y1="209.44" x2="195.87" y2="228.12" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="195.87" cy="228.12" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="146.00,209.44 140.00,238.44 149.00,251.44 191.00,251.44 200.00,238.44 194.00,209.44" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="143.00,234.44 197.00,234.44 191.00,251.44 149.00,251.44" fill="#0e2d69" opacity=".94"/>
+<line x1="150.00" y1="217.44" x2="188.00" y2="244.44" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="170.00,220.44 175.00,225.44 170.00,230.44 165.00,225.44" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="170.00" cy="202.94" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="170.00" cy="201.94" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="170.00" cy="180.44" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="164.00" cy="172.44" r="4" fill="#fff" opacity=".34"/>
+<line x1="175.00" y1="182.44" x2="181.00" y2="182.44" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="147.00" y1="246.44" x2="193.00" y2="246.44" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="282.00" cy="270.00" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="272.00" y1="243.80" x2="261.00" y2="265.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="272.00" y1="243.80" x2="261.00" y2="265.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="254.00" y="263.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="292.00" y1="243.80" x2="303.00" y2="265.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="292.00" y1="243.80" x2="303.00" y2="265.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="296.00" y="263.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="263.00" y1="208.80" x2="256.60" y2="218.60" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="263.00" y1="208.80" x2="256.60" y2="218.60" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="256.60" cy="218.60" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="301.00" y1="208.80" x2="307.40" y2="229.00" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="301.00" y1="208.80" x2="307.40" y2="229.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="307.40" cy="229.00" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="258.00,208.80 252.00,237.80 261.00,250.80 303.00,250.80 312.00,237.80 306.00,208.80" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="255.00,233.80 309.00,233.80 303.00,250.80 261.00,250.80" fill="#0e2d69" opacity=".94"/>
+<line x1="262.00" y1="216.80" x2="300.00" y2="243.80" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="282.00,219.80 287.00,224.80 282.00,229.80 277.00,224.80" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="282.00" cy="202.30" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="282.00" cy="201.30" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="282.00" cy="179.80" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="276.00" cy="171.80" r="4" fill="#fff" opacity=".34"/>
+<line x1="287.00" y1="181.80" x2="293.00" y2="181.80" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="259.00" y1="245.80" x2="305.00" y2="245.80" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="394.00" cy="270.00" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="384.00" y1="244.44" x2="375.64" y2="265.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="384.00" y1="244.44" x2="375.64" y2="265.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="368.64" y="263.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="404.00" y1="244.44" x2="412.36" y2="265.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="404.00" y1="244.44" x2="412.36" y2="265.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="405.36" y="263.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="375.00" y1="209.44" x2="368.13" y2="220.77" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="375.00" y1="209.44" x2="368.13" y2="220.77" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="368.13" cy="220.77" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="413.00" y1="209.44" x2="419.87" y2="228.12" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="413.00" y1="209.44" x2="419.87" y2="228.12" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="419.87" cy="228.12" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="370.00,209.44 364.00,238.44 373.00,251.44 415.00,251.44 424.00,238.44 418.00,209.44" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="367.00,234.44 421.00,234.44 415.00,251.44 373.00,251.44" fill="#0e2d69" opacity=".94"/>
+<line x1="374.00" y1="217.44" x2="412.00" y2="244.44" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="394.00,220.44 399.00,225.44 394.00,230.44 389.00,225.44" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="394.00" cy="202.94" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="394.00" cy="201.94" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="394.00" cy="180.44" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="388.00" cy="172.44" r="4" fill="#fff" opacity=".34"/>
+<line x1="399.00" y1="182.44" x2="405.00" y2="182.44" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="371.00" y1="246.44" x2="417.00" y2="246.44" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="506.00" cy="270.00" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="496.00" y1="246.00" x2="494.00" y2="265.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="496.00" y1="246.00" x2="494.00" y2="265.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="487.00" y="263.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="516.00" y1="246.00" x2="518.00" y2="265.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="516.00" y1="246.00" x2="518.00" y2="265.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="511.00" y="263.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="487.00" y1="211.00" x2="479.00" y2="226.00" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="487.00" y1="211.00" x2="479.00" y2="226.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="479.00" cy="226.00" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="525.00" y1="211.00" x2="533.00" y2="226.00" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="525.00" y1="211.00" x2="533.00" y2="226.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="533.00" cy="226.00" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="482.00,211.00 476.00,240.00 485.00,253.00 527.00,253.00 536.00,240.00 530.00,211.00" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="479.00,236.00 533.00,236.00 527.00,253.00 485.00,253.00" fill="#0e2d69" opacity=".94"/>
+<line x1="486.00" y1="219.00" x2="524.00" y2="246.00" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="506.00,222.00 511.00,227.00 506.00,232.00 501.00,227.00" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="506.00" cy="204.50" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="506.00" cy="203.50" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="506.00" cy="182.00" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="500.00" cy="174.00" r="4" fill="#fff" opacity=".34"/>
+<line x1="511.00" y1="184.00" x2="517.00" y2="184.00" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="483.00" y1="248.00" x2="529.00" y2="248.00" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="618.00" cy="270.00" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="608.00" y1="244.44" x2="612.36" y2="265.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="608.00" y1="244.44" x2="612.36" y2="265.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="605.36" y="263.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="628.00" y1="244.44" x2="623.64" y2="265.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="628.00" y1="244.44" x2="623.64" y2="265.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="616.64" y="263.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="599.00" y1="209.44" x2="585.91" y2="228.12" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="599.00" y1="209.44" x2="585.91" y2="228.12" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="585.91" cy="228.12" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="637.00" y1="209.44" x2="650.09" y2="220.77" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="637.00" y1="209.44" x2="650.09" y2="220.77" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="650.09" cy="220.77" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="594.00,209.44 588.00,238.44 597.00,251.44 639.00,251.44 648.00,238.44 642.00,209.44" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="591.00,234.44 645.00,234.44 639.00,251.44 597.00,251.44" fill="#0e2d69" opacity=".94"/>
+<line x1="598.00" y1="217.44" x2="636.00" y2="244.44" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="618.00,220.44 623.00,225.44 618.00,230.44 613.00,225.44" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="618.00" cy="202.94" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="618.00" cy="201.94" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="618.00" cy="180.44" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="612.00" cy="172.44" r="4" fill="#fff" opacity=".34"/>
+<line x1="623.00" y1="182.44" x2="629.00" y2="182.44" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="595.00" y1="246.44" x2="641.00" y2="246.44" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="730.00" cy="270.00" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="720.00" y1="243.80" x2="727.00" y2="265.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="720.00" y1="243.80" x2="727.00" y2="265.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="720.00" y="263.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="740.00" y1="243.80" x2="733.00" y2="265.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="740.00" y1="243.80" x2="733.00" y2="265.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="726.00" y="263.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="711.00" y1="208.80" x2="695.80" y2="229.00" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="711.00" y1="208.80" x2="695.80" y2="229.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="695.80" cy="229.00" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="749.00" y1="208.80" x2="764.20" y2="218.60" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="749.00" y1="208.80" x2="764.20" y2="218.60" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="764.20" cy="218.60" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="706.00,208.80 700.00,237.80 709.00,250.80 751.00,250.80 760.00,237.80 754.00,208.80" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="703.00,233.80 757.00,233.80 751.00,250.80 709.00,250.80" fill="#0e2d69" opacity=".94"/>
+<line x1="710.00" y1="216.80" x2="748.00" y2="243.80" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="730.00,219.80 735.00,224.80 730.00,229.80 725.00,224.80" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="730.00" cy="202.30" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="730.00" cy="201.30" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="730.00" cy="179.80" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="724.00" cy="171.80" r="4" fill="#fff" opacity=".34"/>
+<line x1="735.00" y1="181.80" x2="741.00" y2="181.80" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="707.00" y1="245.80" x2="753.00" y2="245.80" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="842.00" cy="270.00" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="832.00" y1="244.44" x2="836.36" y2="265.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="832.00" y1="244.44" x2="836.36" y2="265.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="829.36" y="263.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="852.00" y1="244.44" x2="847.64" y2="265.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="852.00" y1="244.44" x2="847.64" y2="265.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="840.64" y="263.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="823.00" y1="209.44" x2="809.91" y2="228.12" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="823.00" y1="209.44" x2="809.91" y2="228.12" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="809.91" cy="228.12" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="861.00" y1="209.44" x2="874.09" y2="220.77" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="861.00" y1="209.44" x2="874.09" y2="220.77" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="874.09" cy="220.77" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="818.00,209.44 812.00,238.44 821.00,251.44 863.00,251.44 872.00,238.44 866.00,209.44" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="815.00,234.44 869.00,234.44 863.00,251.44 821.00,251.44" fill="#0e2d69" opacity=".94"/>
+<line x1="822.00" y1="217.44" x2="860.00" y2="244.44" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="842.00,220.44 847.00,225.44 842.00,230.44 837.00,225.44" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="842.00" cy="202.94" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="842.00" cy="201.94" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="842.00" cy="180.44" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="836.00" cy="172.44" r="4" fill="#fff" opacity=".34"/>
+<line x1="847.00" y1="182.44" x2="853.00" y2="182.44" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="819.00" y1="246.44" x2="865.00" y2="246.44" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="61.00" cy="414.00" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="51.00" y1="390.00" x2="49.00" y2="409.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="51.00" y1="390.00" x2="49.00" y2="409.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="42.00" y="407.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="71.00" y1="390.00" x2="73.00" y2="409.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="71.00" y1="390.00" x2="73.00" y2="409.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="66.00" y="407.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="42.00" y1="355.00" x2="34.00" y2="370.00" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="42.00" y1="355.00" x2="34.00" y2="370.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="34.00" cy="370.00" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="80.00" y1="355.00" x2="88.00" y2="370.00" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="80.00" y1="355.00" x2="88.00" y2="370.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="88.00" cy="370.00" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="37.00,355.00 31.00,384.00 40.00,397.00 82.00,397.00 91.00,384.00 85.00,355.00" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="34.00,380.00 88.00,380.00 82.00,397.00 40.00,397.00" fill="#0e2d69" opacity=".94"/>
+<line x1="41.00" y1="363.00" x2="79.00" y2="390.00" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="61.00,366.00 66.00,371.00 61.00,376.00 56.00,371.00" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="61.00" cy="348.50" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="61.00" cy="347.50" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="61.00" cy="326.00" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="55.00" cy="318.00" r="4" fill="#fff" opacity=".34"/>
+<line x1="66.00" y1="328.00" x2="72.00" y2="328.00" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="38.00" y1="392.00" x2="84.00" y2="392.00" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="173.00" cy="414.00" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="163.00" y1="387.88" x2="152.51" y2="409.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="163.00" y1="387.88" x2="152.51" y2="409.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="145.51" y="407.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="183.00" y1="387.88" x2="193.49" y2="409.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="183.00" y1="387.88" x2="193.49" y2="409.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="186.49" y="407.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="154.00" y1="352.88" x2="147.56" y2="362.82" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="154.00" y1="352.88" x2="147.56" y2="362.82" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="147.56" cy="362.82" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="192.00" y1="352.88" x2="198.44" y2="372.93" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="192.00" y1="352.88" x2="198.44" y2="372.93" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="198.44" cy="372.93" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="149.00,352.88 143.00,381.88 152.00,394.88 194.00,394.88 203.00,381.88 197.00,352.88" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="146.00,377.88 200.00,377.88 194.00,394.88 152.00,394.88" fill="#0e2d69" opacity=".94"/>
+<line x1="153.00" y1="360.88" x2="191.00" y2="387.88" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="173.00,363.88 178.00,368.88 173.00,373.88 168.00,368.88" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="173.00" cy="346.38" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="173.00" cy="345.38" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="173.00" cy="323.88" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="167.00" cy="315.88" r="4" fill="#fff" opacity=".34"/>
+<line x1="178.00" y1="325.88" x2="184.00" y2="325.88" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="150.00" y1="389.88" x2="196.00" y2="389.88" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="285.00" cy="414.00" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="275.00" y1="387.00" x2="261.00" y2="409.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="275.00" y1="387.00" x2="261.00" y2="409.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="254.00" y="407.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="295.00" y1="387.00" x2="309.00" y2="409.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="295.00" y1="387.00" x2="309.00" y2="409.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="302.00" y="407.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="266.00" y1="352.00" x2="260.20" y2="359.85" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="266.00" y1="352.00" x2="260.20" y2="359.85" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="260.20" cy="359.85" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="304.00" y1="352.00" x2="309.80" y2="374.15" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="304.00" y1="352.00" x2="309.80" y2="374.15" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="309.80" cy="374.15" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="261.00,352.00 255.00,381.00 264.00,394.00 306.00,394.00 315.00,381.00 309.00,352.00" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="258.00,377.00 312.00,377.00 306.00,394.00 264.00,394.00" fill="#0e2d69" opacity=".94"/>
+<line x1="265.00" y1="360.00" x2="303.00" y2="387.00" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="285.00,363.00 290.00,368.00 285.00,373.00 280.00,368.00" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="285.00" cy="345.50" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="285.00" cy="344.50" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="285.00" cy="323.00" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="279.00" cy="315.00" r="4" fill="#fff" opacity=".34"/>
+<line x1="290.00" y1="325.00" x2="296.00" y2="325.00" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="262.00" y1="389.00" x2="308.00" y2="389.00" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="397.00" cy="414.00" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="387.00" y1="387.88" x2="376.51" y2="409.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="387.00" y1="387.88" x2="376.51" y2="409.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="369.51" y="407.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="407.00" y1="387.88" x2="417.49" y2="409.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="407.00" y1="387.88" x2="417.49" y2="409.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="410.49" y="407.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="378.00" y1="352.88" x2="371.56" y2="362.82" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="378.00" y1="352.88" x2="371.56" y2="362.82" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="371.56" cy="362.82" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="416.00" y1="352.88" x2="422.44" y2="372.93" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="416.00" y1="352.88" x2="422.44" y2="372.93" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="422.44" cy="372.93" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="373.00,352.88 367.00,381.88 376.00,394.88 418.00,394.88 427.00,381.88 421.00,352.88" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="370.00,377.88 424.00,377.88 418.00,394.88 376.00,394.88" fill="#0e2d69" opacity=".94"/>
+<line x1="377.00" y1="360.88" x2="415.00" y2="387.88" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="397.00,363.88 402.00,368.88 397.00,373.88 392.00,368.88" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="397.00" cy="346.38" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="397.00" cy="345.38" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="397.00" cy="323.88" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="391.00" cy="315.88" r="4" fill="#fff" opacity=".34"/>
+<line x1="402.00" y1="325.88" x2="408.00" y2="325.88" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="374.00" y1="389.88" x2="420.00" y2="389.88" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="509.00" cy="414.00" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="499.00" y1="390.00" x2="497.00" y2="409.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="499.00" y1="390.00" x2="497.00" y2="409.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="490.00" y="407.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="519.00" y1="390.00" x2="521.00" y2="409.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="519.00" y1="390.00" x2="521.00" y2="409.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="514.00" y="407.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="490.00" y1="355.00" x2="482.00" y2="370.00" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="490.00" y1="355.00" x2="482.00" y2="370.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="482.00" cy="370.00" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="528.00" y1="355.00" x2="536.00" y2="370.00" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="528.00" y1="355.00" x2="536.00" y2="370.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="536.00" cy="370.00" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="485.00,355.00 479.00,384.00 488.00,397.00 530.00,397.00 539.00,384.00 533.00,355.00" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="482.00,380.00 536.00,380.00 530.00,397.00 488.00,397.00" fill="#0e2d69" opacity=".94"/>
+<line x1="489.00" y1="363.00" x2="527.00" y2="390.00" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="509.00,366.00 514.00,371.00 509.00,376.00 504.00,371.00" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="509.00" cy="348.50" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="509.00" cy="347.50" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="509.00" cy="326.00" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="503.00" cy="318.00" r="4" fill="#fff" opacity=".34"/>
+<line x1="514.00" y1="328.00" x2="520.00" y2="328.00" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="486.00" y1="392.00" x2="532.00" y2="392.00" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="621.00" cy="414.00" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="611.00" y1="387.88" x2="617.49" y2="409.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="611.00" y1="387.88" x2="617.49" y2="409.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="610.49" y="407.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="631.00" y1="387.88" x2="624.51" y2="409.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="631.00" y1="387.88" x2="624.51" y2="409.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="617.51" y="407.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="602.00" y1="352.88" x2="587.00" y2="372.93" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="602.00" y1="352.88" x2="587.00" y2="372.93" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="587.00" cy="372.93" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="640.00" y1="352.88" x2="655.00" y2="362.82" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="640.00" y1="352.88" x2="655.00" y2="362.82" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="655.00" cy="362.82" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="597.00,352.88 591.00,381.88 600.00,394.88 642.00,394.88 651.00,381.88 645.00,352.88" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="594.00,377.88 648.00,377.88 642.00,394.88 600.00,394.88" fill="#0e2d69" opacity=".94"/>
+<line x1="601.00" y1="360.88" x2="639.00" y2="387.88" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="621.00,363.88 626.00,368.88 621.00,373.88 616.00,368.88" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="621.00" cy="346.38" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="621.00" cy="345.38" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="621.00" cy="323.88" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="615.00" cy="315.88" r="4" fill="#fff" opacity=".34"/>
+<line x1="626.00" y1="325.88" x2="632.00" y2="325.88" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="598.00" y1="389.88" x2="644.00" y2="389.88" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="733.00" cy="414.00" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="723.00" y1="387.00" x2="733.00" y2="409.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="723.00" y1="387.00" x2="733.00" y2="409.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="726.00" y="407.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="743.00" y1="387.00" x2="733.00" y2="409.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="743.00" y1="387.00" x2="733.00" y2="409.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="726.00" y="407.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="714.00" y1="352.00" x2="696.10" y2="374.15" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="714.00" y1="352.00" x2="696.10" y2="374.15" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="696.10" cy="374.15" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="752.00" y1="352.00" x2="769.90" y2="359.85" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="752.00" y1="352.00" x2="769.90" y2="359.85" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="769.90" cy="359.85" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="709.00,352.00 703.00,381.00 712.00,394.00 754.00,394.00 763.00,381.00 757.00,352.00" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="706.00,377.00 760.00,377.00 754.00,394.00 712.00,394.00" fill="#0e2d69" opacity=".94"/>
+<line x1="713.00" y1="360.00" x2="751.00" y2="387.00" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="733.00,363.00 738.00,368.00 733.00,373.00 728.00,368.00" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="733.00" cy="345.50" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="733.00" cy="344.50" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="733.00" cy="323.00" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="727.00" cy="315.00" r="4" fill="#fff" opacity=".34"/>
+<line x1="738.00" y1="325.00" x2="744.00" y2="325.00" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="710.00" y1="389.00" x2="756.00" y2="389.00" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="845.00" cy="414.00" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="835.00" y1="387.88" x2="841.49" y2="409.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="835.00" y1="387.88" x2="841.49" y2="409.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="834.49" y="407.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="855.00" y1="387.88" x2="848.51" y2="409.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="855.00" y1="387.88" x2="848.51" y2="409.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="841.51" y="407.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="826.00" y1="352.88" x2="811.00" y2="372.93" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="826.00" y1="352.88" x2="811.00" y2="372.93" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="811.00" cy="372.93" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="864.00" y1="352.88" x2="879.00" y2="362.82" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="864.00" y1="352.88" x2="879.00" y2="362.82" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="879.00" cy="362.82" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="821.00,352.88 815.00,381.88 824.00,394.88 866.00,394.88 875.00,381.88 869.00,352.88" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="818.00,377.88 872.00,377.88 866.00,394.88 824.00,394.88" fill="#0e2d69" opacity=".94"/>
+<line x1="825.00" y1="360.88" x2="863.00" y2="387.88" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="845.00,363.88 850.00,368.88 845.00,373.88 840.00,368.88" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="845.00" cy="346.38" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="845.00" cy="345.38" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="845.00" cy="323.88" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="839.00" cy="315.88" r="4" fill="#fff" opacity=".34"/>
+<line x1="850.00" y1="325.88" x2="856.00" y2="325.88" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="822.00" y1="389.88" x2="868.00" y2="389.88" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="56.00" cy="558.00" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="46.00" y1="534.00" x2="40.00" y2="553.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="46.00" y1="534.00" x2="40.00" y2="553.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="33.00" y="551.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="66.00" y1="534.00" x2="65.00" y2="553.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="66.00" y1="534.00" x2="65.00" y2="553.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="58.00" y="551.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="37.00" y1="499.00" x2="29.00" y2="514.00" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="37.00" y1="499.00" x2="29.00" y2="514.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="29.00" cy="514.00" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="75.00" y1="499.00" x2="83.00" y2="514.00" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="75.00" y1="499.00" x2="83.00" y2="514.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="83.00" cy="514.00" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="32.00,499.00 26.00,528.00 35.00,541.00 77.00,541.00 86.00,528.00 80.00,499.00" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="29.00,524.00 83.00,524.00 77.00,541.00 35.00,541.00" fill="#0e2d69" opacity=".94"/>
+<line x1="36.00" y1="507.00" x2="74.00" y2="534.00" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="56.00,510.00 61.00,515.00 56.00,520.00 51.00,515.00" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="56.00" cy="492.50" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="56.00" cy="491.50" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="56.00" cy="470.00" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="50.00" cy="462.00" r="4" fill="#fff" opacity=".34"/>
+<line x1="61.00" y1="472.00" x2="67.00" y2="472.00" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="33.00" y1="536.00" x2="79.00" y2="536.00" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="168.43" cy="558.00" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="158.43" y1="533.35" x2="152.43" y2="553.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="158.43" y1="533.35" x2="152.43" y2="553.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="145.43" y="551.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="178.43" y1="533.35" x2="186.11" y2="553.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="178.43" y1="533.35" x2="186.11" y2="553.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="179.11" y="551.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="149.43" y1="498.35" x2="139.09" y2="515.04" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="149.43" y1="498.35" x2="139.09" y2="515.04" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="139.09" cy="515.04" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="187.43" y1="498.35" x2="198.55" y2="511.09" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="187.43" y1="498.35" x2="198.55" y2="511.09" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="198.55" cy="511.09" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="144.43,498.35 138.43,527.35 147.43,540.35 189.43,540.35 198.43,527.35 192.43,498.35" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="141.43,523.35 195.43,523.35 189.43,540.35 147.43,540.35" fill="#0e2d69" opacity=".94"/>
+<line x1="148.43" y1="506.35" x2="186.43" y2="533.35" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="168.43,509.35 173.43,514.35 168.43,519.35 163.43,514.35" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="168.43" cy="491.85" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="168.43" cy="490.85" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="168.43" cy="469.35" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="162.43" cy="461.35" r="4" fill="#fff" opacity=".34"/>
+<line x1="173.43" y1="471.35" x2="179.43" y2="471.35" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="145.43" y1="535.35" x2="191.43" y2="535.35" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="280.86" cy="558.00" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="270.86" y1="532.83" x2="264.86" y2="553.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="270.86" y1="532.83" x2="264.86" y2="553.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="257.86" y="551.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="290.86" y1="532.83" x2="305.49" y2="553.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="290.86" y1="532.83" x2="305.49" y2="553.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="298.49" y="551.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="261.86" y1="497.83" x2="249.64" y2="515.88" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="261.86" y1="497.83" x2="249.64" y2="515.88" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="249.64" cy="515.88" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="299.86" y1="497.83" x2="313.49" y2="508.76" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="299.86" y1="497.83" x2="313.49" y2="508.76" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="313.49" cy="508.76" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="256.86,497.83 250.86,526.83 259.86,539.83 301.86,539.83 310.86,526.83 304.86,497.83" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="253.86,522.83 307.86,522.83 301.86,539.83 259.86,539.83" fill="#0e2d69" opacity=".94"/>
+<line x1="260.86" y1="505.83" x2="298.86" y2="532.83" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="280.86,508.83 285.86,513.83 280.86,518.83 275.86,513.83" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="280.86" cy="491.33" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="280.86" cy="490.33" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="280.86" cy="468.83" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="274.86" cy="460.83" r="4" fill="#fff" opacity=".34"/>
+<line x1="285.86" y1="470.83" x2="291.86" y2="470.83" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="257.86" y1="534.83" x2="303.86" y2="534.83" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="393.29" cy="558.00" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="383.29" y1="532.54" x2="377.29" y2="553.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="383.29" y1="532.54" x2="377.29" y2="553.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="370.29" y="551.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="403.29" y1="532.54" x2="421.78" y2="553.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="403.29" y1="532.54" x2="421.78" y2="553.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="414.78" y="551.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="374.29" y1="497.54" x2="361.02" y2="516.34" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="374.29" y1="497.54" x2="361.02" y2="516.34" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="361.02" cy="516.34" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="412.29" y1="497.54" x2="427.31" y2="507.47" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="412.29" y1="497.54" x2="427.31" y2="507.47" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="427.31" cy="507.47" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="369.29,497.54 363.29,526.54 372.29,539.54 414.29,539.54 423.29,526.54 417.29,497.54" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="366.29,522.54 420.29,522.54 414.29,539.54 372.29,539.54" fill="#0e2d69" opacity=".94"/>
+<line x1="373.29" y1="505.54" x2="411.29" y2="532.54" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="393.29,508.54 398.29,513.54 393.29,518.54 388.29,513.54" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="393.29" cy="491.04" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="393.29" cy="490.04" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="393.29" cy="468.54" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="387.29" cy="460.54" r="4" fill="#fff" opacity=".34"/>
+<line x1="398.29" y1="470.54" x2="404.29" y2="470.54" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="370.29" y1="534.54" x2="416.29" y2="534.54" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="505.71" cy="558.00" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="495.71" y1="532.54" x2="489.71" y2="553.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="495.71" y1="532.54" x2="489.71" y2="553.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="482.71" y="551.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="515.71" y1="532.54" x2="534.21" y2="553.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="515.71" y1="532.54" x2="534.21" y2="553.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="527.21" y="551.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="486.71" y1="497.54" x2="473.45" y2="516.34" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="486.71" y1="497.54" x2="473.45" y2="516.34" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="473.45" cy="516.34" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="524.71" y1="497.54" x2="539.73" y2="507.47" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="524.71" y1="497.54" x2="539.73" y2="507.47" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="539.73" cy="507.47" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="481.71,497.54 475.71,526.54 484.71,539.54 526.71,539.54 535.71,526.54 529.71,497.54" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="478.71,522.54 532.71,522.54 526.71,539.54 484.71,539.54" fill="#0e2d69" opacity=".94"/>
+<line x1="485.71" y1="505.54" x2="523.71" y2="532.54" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="505.71,508.54 510.71,513.54 505.71,518.54 500.71,513.54" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="505.71" cy="491.04" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="505.71" cy="490.04" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="505.71" cy="468.54" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="499.71" cy="460.54" r="4" fill="#fff" opacity=".34"/>
+<line x1="510.71" y1="470.54" x2="516.71" y2="470.54" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="482.71" y1="534.54" x2="528.71" y2="534.54" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="618.14" cy="558.00" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="608.14" y1="532.83" x2="602.14" y2="553.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="608.14" y1="532.83" x2="602.14" y2="553.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="595.14" y="551.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="628.14" y1="532.83" x2="642.78" y2="553.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="628.14" y1="532.83" x2="642.78" y2="553.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="635.78" y="551.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="599.14" y1="497.83" x2="586.92" y2="515.88" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="599.14" y1="497.83" x2="586.92" y2="515.88" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="586.92" cy="515.88" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="637.14" y1="497.83" x2="650.77" y2="508.76" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="637.14" y1="497.83" x2="650.77" y2="508.76" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="650.77" cy="508.76" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="594.14,497.83 588.14,526.83 597.14,539.83 639.14,539.83 648.14,526.83 642.14,497.83" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="591.14,522.83 645.14,522.83 639.14,539.83 597.14,539.83" fill="#0e2d69" opacity=".94"/>
+<line x1="598.14" y1="505.83" x2="636.14" y2="532.83" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="618.14,508.83 623.14,513.83 618.14,518.83 613.14,513.83" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="618.14" cy="491.33" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="618.14" cy="490.33" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="618.14" cy="468.83" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="612.14" cy="460.83" r="4" fill="#fff" opacity=".34"/>
+<line x1="623.14" y1="470.83" x2="629.14" y2="470.83" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="595.14" y1="534.83" x2="641.14" y2="534.83" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="730.57" cy="558.00" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="720.57" y1="533.35" x2="714.57" y2="553.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="720.57" y1="533.35" x2="714.57" y2="553.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="707.57" y="551.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="740.57" y1="533.35" x2="748.25" y2="553.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="740.57" y1="533.35" x2="748.25" y2="553.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="741.25" y="551.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="711.57" y1="498.35" x2="701.23" y2="515.04" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="711.57" y1="498.35" x2="701.23" y2="515.04" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="701.23" cy="515.04" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="749.57" y1="498.35" x2="760.70" y2="511.09" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="749.57" y1="498.35" x2="760.70" y2="511.09" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="760.70" cy="511.09" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="706.57,498.35 700.57,527.35 709.57,540.35 751.57,540.35 760.57,527.35 754.57,498.35" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="703.57,523.35 757.57,523.35 751.57,540.35 709.57,540.35" fill="#0e2d69" opacity=".94"/>
+<line x1="710.57" y1="506.35" x2="748.57" y2="533.35" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="730.57,509.35 735.57,514.35 730.57,519.35 725.57,514.35" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="730.57" cy="491.85" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="730.57" cy="490.85" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="730.57" cy="469.35" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="724.57" cy="461.35" r="4" fill="#fff" opacity=".34"/>
+<line x1="735.57" y1="471.35" x2="741.57" y2="471.35" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="707.57" y1="535.35" x2="753.57" y2="535.35" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="843.00" cy="558.00" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="833.00" y1="534.00" x2="827.00" y2="553.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="833.00" y1="534.00" x2="827.00" y2="553.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="820.00" y="551.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="853.00" y1="534.00" x2="852.00" y2="553.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="853.00" y1="534.00" x2="852.00" y2="553.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="845.00" y="551.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="824.00" y1="499.00" x2="816.00" y2="514.00" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="824.00" y1="499.00" x2="816.00" y2="514.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="816.00" cy="514.00" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="862.00" y1="499.00" x2="870.00" y2="514.00" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="862.00" y1="499.00" x2="870.00" y2="514.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="870.00" cy="514.00" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="819.00,499.00 813.00,528.00 822.00,541.00 864.00,541.00 873.00,528.00 867.00,499.00" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="816.00,524.00 870.00,524.00 864.00,541.00 822.00,541.00" fill="#0e2d69" opacity=".94"/>
+<line x1="823.00" y1="507.00" x2="861.00" y2="534.00" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="843.00,510.00 848.00,515.00 843.00,520.00 838.00,515.00" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="843.00" cy="492.50" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="843.00" cy="491.50" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="843.00" cy="470.00" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="837.00" cy="462.00" r="4" fill="#fff" opacity=".34"/>
+<line x1="848.00" y1="472.00" x2="854.00" y2="472.00" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="820.00" y1="536.00" x2="866.00" y2="536.00" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="56.00" cy="702.00" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="46.00" y1="678.00" x2="44.00" y2="697.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="46.00" y1="678.00" x2="44.00" y2="697.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="37.00" y="695.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="66.00" y1="678.00" x2="64.00" y2="697.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="66.00" y1="678.00" x2="64.00" y2="697.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="57.00" y="695.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="37.00" y1="643.00" x2="29.00" y2="658.00" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="37.00" y1="643.00" x2="29.00" y2="658.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="29.00" cy="658.00" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="75.00" y1="643.00" x2="83.00" y2="658.00" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="75.00" y1="643.00" x2="83.00" y2="658.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="83.00" cy="658.00" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="32.00,643.00 26.00,672.00 35.00,685.00 77.00,685.00 86.00,672.00 80.00,643.00" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="29.00,668.00 83.00,668.00 77.00,685.00 35.00,685.00" fill="#0e2d69" opacity=".94"/>
+<line x1="36.00" y1="651.00" x2="74.00" y2="678.00" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="56.00,654.00 61.00,659.00 56.00,664.00 51.00,659.00" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="56.00" cy="636.50" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="56.00" cy="635.50" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="56.00" cy="614.00" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="50.00" cy="606.00" r="4" fill="#fff" opacity=".34"/>
+<line x1="61.00" y1="616.00" x2="67.00" y2="616.00" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="33.00" y1="680.00" x2="79.00" y2="680.00" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="171.04" cy="702.00" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="161.04" y1="676.70" x2="156.00" y2="697.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="161.04" y1="676.70" x2="156.00" y2="697.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="149.00" y="695.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="181.04" y1="676.70" x2="188.58" y2="697.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="181.04" y1="676.70" x2="188.58" y2="697.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="181.58" y="695.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="152.04" y1="641.70" x2="140.13" y2="659.52" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="152.04" y1="641.70" x2="140.13" y2="659.52" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="140.13" cy="659.52" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="190.04" y1="641.70" x2="203.11" y2="653.03" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="190.04" y1="641.70" x2="203.11" y2="653.03" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="203.11" cy="653.03" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="147.04,641.70 141.04,670.70 150.04,683.70 192.04,683.70 201.04,670.70 195.04,641.70" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="144.04,666.70 198.04,666.70 192.04,683.70 150.04,683.70" fill="#0e2d69" opacity=".94"/>
+<line x1="151.04" y1="649.70" x2="189.04" y2="676.70" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="171.04,652.70 176.04,657.70 171.04,662.70 166.04,657.70" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="171.04" cy="635.20" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="171.04" cy="634.20" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="171.04" cy="612.70" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="165.04" cy="604.70" r="4" fill="#fff" opacity=".34"/>
+<line x1="176.04" y1="614.70" x2="182.04" y2="614.70" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="148.04" y1="678.70" x2="194.04" y2="678.70" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="285.47" cy="702.00" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="275.47" y1="675.65" x2="268.00" y2="697.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="275.47" y1="675.65" x2="268.00" y2="697.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="261.00" y="695.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="295.47" y1="675.65" x2="310.67" y2="697.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="295.47" y1="675.65" x2="310.67" y2="697.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="303.67" y="695.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="266.47" y1="640.65" x2="251.44" y2="660.74" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="266.47" y1="640.65" x2="251.44" y2="660.74" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="251.44" cy="660.74" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="304.47" y1="640.65" x2="321.62" y2="649.05" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="304.47" y1="640.65" x2="321.62" y2="649.05" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="321.62" cy="649.05" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="261.47,640.65 255.47,669.65 264.47,682.65 306.47,682.65 315.47,669.65 309.47,640.65" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="258.47,665.65 312.47,665.65 306.47,682.65 264.47,682.65" fill="#0e2d69" opacity=".94"/>
+<line x1="265.47" y1="648.65" x2="303.47" y2="675.65" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="285.47,651.65 290.47,656.65 285.47,661.65 280.47,656.65" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="285.47" cy="634.15" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="285.47" cy="633.15" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="285.47" cy="611.65" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="279.47" cy="603.65" r="4" fill="#fff" opacity=".34"/>
+<line x1="290.47" y1="613.65" x2="296.47" y2="613.65" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="262.47" y1="677.65" x2="308.47" y2="677.65" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="398.82" cy="702.00" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="388.82" y1="675.08" x2="380.00" y2="697.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="388.82" y1="675.08" x2="380.00" y2="697.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="373.00" y="695.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="408.82" y1="675.08" x2="428.27" y2="697.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="408.82" y1="675.08" x2="428.27" y2="697.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="421.27" y="695.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="379.82" y1="640.08" x2="363.05" y2="661.41" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="379.82" y1="640.08" x2="363.05" y2="661.41" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="363.05" cy="661.41" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="417.82" y1="640.08" x2="437.23" y2="646.84" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="417.82" y1="640.08" x2="437.23" y2="646.84" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="437.23" cy="646.84" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="374.82,640.08 368.82,669.08 377.82,682.08 419.82,682.08 428.82,669.08 422.82,640.08" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="371.82,665.08 425.82,665.08 419.82,682.08 377.82,682.08" fill="#0e2d69" opacity=".94"/>
+<line x1="378.82" y1="648.08" x2="416.82" y2="675.08" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="398.82,651.08 403.82,656.08 398.82,661.08 393.82,656.08" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="398.82" cy="633.58" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="398.82" cy="632.58" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="398.82" cy="611.08" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="392.82" cy="603.08" r="4" fill="#fff" opacity=".34"/>
+<line x1="403.82" y1="613.08" x2="409.82" y2="613.08" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="375.82" y1="677.08" x2="421.82" y2="677.08" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="510.82" cy="702.00" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="500.82" y1="675.08" x2="492.00" y2="697.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="500.82" y1="675.08" x2="492.00" y2="697.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="485.00" y="695.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="520.82" y1="675.08" x2="540.27" y2="697.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="520.82" y1="675.08" x2="540.27" y2="697.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="533.27" y="695.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="491.82" y1="640.08" x2="475.05" y2="661.41" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="491.82" y1="640.08" x2="475.05" y2="661.41" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="475.05" cy="661.41" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="529.82" y1="640.08" x2="549.23" y2="646.84" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="529.82" y1="640.08" x2="549.23" y2="646.84" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="549.23" cy="646.84" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="486.82,640.08 480.82,669.08 489.82,682.08 531.82,682.08 540.82,669.08 534.82,640.08" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="483.82,665.08 537.82,665.08 531.82,682.08 489.82,682.08" fill="#0e2d69" opacity=".94"/>
+<line x1="490.82" y1="648.08" x2="528.82" y2="675.08" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="510.82,651.08 515.82,656.08 510.82,661.08 505.82,656.08" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="510.82" cy="633.58" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="510.82" cy="632.58" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="510.82" cy="611.08" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="504.82" cy="603.08" r="4" fill="#fff" opacity=".34"/>
+<line x1="515.82" y1="613.08" x2="521.82" y2="613.08" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="487.82" y1="677.08" x2="533.82" y2="677.08" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="621.47" cy="702.00" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="611.47" y1="675.65" x2="604.00" y2="697.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="611.47" y1="675.65" x2="604.00" y2="697.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="597.00" y="695.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="631.47" y1="675.65" x2="646.67" y2="697.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="631.47" y1="675.65" x2="646.67" y2="697.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="639.67" y="695.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="602.47" y1="640.65" x2="587.44" y2="660.74" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="602.47" y1="640.65" x2="587.44" y2="660.74" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="587.44" cy="660.74" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="640.47" y1="640.65" x2="657.62" y2="649.05" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="640.47" y1="640.65" x2="657.62" y2="649.05" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="657.62" cy="649.05" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="597.47,640.65 591.47,669.65 600.47,682.65 642.47,682.65 651.47,669.65 645.47,640.65" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="594.47,665.65 648.47,665.65 642.47,682.65 600.47,682.65" fill="#0e2d69" opacity=".94"/>
+<line x1="601.47" y1="648.65" x2="639.47" y2="675.65" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="621.47,651.65 626.47,656.65 621.47,661.65 616.47,656.65" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="621.47" cy="634.15" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="621.47" cy="633.15" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="621.47" cy="611.65" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="615.47" cy="603.65" r="4" fill="#fff" opacity=".34"/>
+<line x1="626.47" y1="613.65" x2="632.47" y2="613.65" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="598.47" y1="677.65" x2="644.47" y2="677.65" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="731.04" cy="702.00" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="721.04" y1="676.70" x2="716.00" y2="697.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="721.04" y1="676.70" x2="716.00" y2="697.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="709.00" y="695.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="741.04" y1="676.70" x2="748.58" y2="697.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="741.04" y1="676.70" x2="748.58" y2="697.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="741.58" y="695.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="712.04" y1="641.70" x2="700.13" y2="659.52" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="712.04" y1="641.70" x2="700.13" y2="659.52" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="700.13" cy="659.52" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="750.04" y1="641.70" x2="763.11" y2="653.03" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="750.04" y1="641.70" x2="763.11" y2="653.03" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="763.11" cy="653.03" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="707.04,641.70 701.04,670.70 710.04,683.70 752.04,683.70 761.04,670.70 755.04,641.70" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="704.04,666.70 758.04,666.70 752.04,683.70 710.04,683.70" fill="#0e2d69" opacity=".94"/>
+<line x1="711.04" y1="649.70" x2="749.04" y2="676.70" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="731.04,652.70 736.04,657.70 731.04,662.70 726.04,657.70" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="731.04" cy="635.20" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="731.04" cy="634.20" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="731.04" cy="612.70" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="725.04" cy="604.70" r="4" fill="#fff" opacity=".34"/>
+<line x1="736.04" y1="614.70" x2="742.04" y2="614.70" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="708.04" y1="678.70" x2="754.04" y2="678.70" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="840.00" cy="702.00" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="830.00" y1="678.00" x2="828.00" y2="697.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="830.00" y1="678.00" x2="828.00" y2="697.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="821.00" y="695.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="850.00" y1="678.00" x2="848.00" y2="697.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="850.00" y1="678.00" x2="848.00" y2="697.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="841.00" y="695.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="821.00" y1="643.00" x2="813.00" y2="658.00" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="821.00" y1="643.00" x2="813.00" y2="658.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="813.00" cy="658.00" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="859.00" y1="643.00" x2="867.00" y2="658.00" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="859.00" y1="643.00" x2="867.00" y2="658.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="867.00" cy="658.00" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="816.00,643.00 810.00,672.00 819.00,685.00 861.00,685.00 870.00,672.00 864.00,643.00" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="813.00,668.00 867.00,668.00 861.00,685.00 819.00,685.00" fill="#0e2d69" opacity=".94"/>
+<line x1="820.00" y1="651.00" x2="858.00" y2="678.00" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="840.00,654.00 845.00,659.00 840.00,664.00 835.00,659.00" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="840.00" cy="636.50" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="840.00" cy="635.50" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="840.00" cy="614.00" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="834.00" cy="606.00" r="4" fill="#fff" opacity=".34"/>
+<line x1="845.00" y1="616.00" x2="851.00" y2="616.00" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="817.00" y1="680.00" x2="863.00" y2="680.00" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="56.00" cy="846.00" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="46.00" y1="822.00" x2="44.00" y2="841.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="46.00" y1="822.00" x2="44.00" y2="841.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="37.00" y="839.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="66.00" y1="822.00" x2="68.00" y2="841.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="66.00" y1="822.00" x2="68.00" y2="841.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="61.00" y="839.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="37.00" y1="787.00" x2="29.00" y2="802.00" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="37.00" y1="787.00" x2="29.00" y2="802.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="29.00" cy="802.00" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="75.00" y1="787.00" x2="83.00" y2="802.00" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="75.00" y1="787.00" x2="83.00" y2="802.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="83.00" cy="802.00" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="32.00,787.00 26.00,816.00 35.00,829.00 77.00,829.00 86.00,816.00 80.00,787.00" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="29.00,812.00 83.00,812.00 77.00,829.00 35.00,829.00" fill="#0e2d69" opacity=".94"/>
+<line x1="36.00" y1="795.00" x2="74.00" y2="822.00" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="56.00,798.00 61.00,803.00 56.00,808.00 51.00,803.00" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="56.00" cy="780.50" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="56.00" cy="779.50" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="56.00" cy="758.00" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="50.00" cy="750.00" r="4" fill="#fff" opacity=".34"/>
+<line x1="61.00" y1="760.00" x2="67.00" y2="760.00" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="33.00" y1="824.00" x2="79.00" y2="824.00" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="172.34" cy="848.17" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="162.34" y1="824.17" x2="156.00" y2="843.17" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="162.34" y1="824.17" x2="156.00" y2="843.17" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="149.00" y="841.17" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="182.34" y1="824.17" x2="193.02" y2="843.17" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="182.34" y1="824.17" x2="193.02" y2="843.17" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="186.02" y="841.17" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="153.34" y1="789.17" x2="140.65" y2="807.55" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="153.34" y1="789.17" x2="140.65" y2="807.55" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="140.65" cy="807.55" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="191.34" y1="789.17" x2="202.46" y2="801.91" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="191.34" y1="789.17" x2="202.46" y2="801.91" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="202.46" cy="801.91" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="148.34,789.17 142.34,818.17 151.34,831.17 193.34,831.17 202.34,818.17 196.34,789.17" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="145.34,814.17 199.34,814.17 193.34,831.17 151.34,831.17" fill="#0e2d69" opacity=".94"/>
+<line x1="152.34" y1="797.17" x2="190.34" y2="824.17" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="172.34,800.17 177.34,805.17 172.34,810.17 167.34,805.17" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="172.34" cy="782.67" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="172.34" cy="781.67" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="172.34" cy="760.17" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="166.34" cy="752.17" r="4" fill="#fff" opacity=".34"/>
+<line x1="177.34" y1="762.17" x2="183.34" y2="762.17" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="149.34" y1="826.17" x2="195.34" y2="826.17" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="287.82" cy="849.91" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="277.82" y1="825.91" x2="268.00" y2="844.91" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="277.82" y1="825.91" x2="268.00" y2="844.91" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="261.00" y="842.91" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="297.82" y1="825.91" x2="315.45" y2="844.91" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="297.82" y1="825.91" x2="315.45" y2="844.91" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="308.45" y="842.91" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="268.82" y1="790.91" x2="252.37" y2="812.01" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="268.82" y1="790.91" x2="252.37" y2="812.01" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="252.37" cy="812.01" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="306.82" y1="790.91" x2="320.45" y2="801.84" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="306.82" y1="790.91" x2="320.45" y2="801.84" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="320.45" cy="801.84" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="263.82,790.91 257.82,819.91 266.82,832.91 308.82,832.91 317.82,819.91 311.82,790.91" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="260.82,815.91 314.82,815.91 308.82,832.91 266.82,832.91" fill="#0e2d69" opacity=".94"/>
+<line x1="267.82" y1="798.91" x2="305.82" y2="825.91" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="287.82,801.91 292.82,806.91 287.82,811.91 282.82,806.91" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="287.82" cy="784.41" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="287.82" cy="783.41" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="287.82" cy="761.91" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="281.82" cy="753.91" r="4" fill="#fff" opacity=".34"/>
+<line x1="292.82" y1="763.91" x2="298.82" y2="763.91" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="264.82" y1="827.91" x2="310.82" y2="827.91" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="401.75" cy="850.87" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="391.75" y1="826.87" x2="380.00" y2="845.87" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="391.75" y1="826.87" x2="380.00" y2="845.87" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="373.00" y="843.87" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="411.75" y1="826.87" x2="433.25" y2="845.87" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="411.75" y1="826.87" x2="433.25" y2="845.87" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="426.25" y="843.87" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="382.75" y1="791.87" x2="364.22" y2="814.48" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="382.75" y1="791.87" x2="364.22" y2="814.48" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="364.22" cy="814.48" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="420.75" y1="791.87" x2="435.77" y2="801.81" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="420.75" y1="791.87" x2="435.77" y2="801.81" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="435.77" cy="801.81" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="377.75,791.87 371.75,820.87 380.75,833.87 422.75,833.87 431.75,820.87 425.75,791.87" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="374.75,816.87 428.75,816.87 422.75,833.87 380.75,833.87" fill="#0e2d69" opacity=".94"/>
+<line x1="381.75" y1="799.87" x2="419.75" y2="826.87" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="401.75,802.87 406.75,807.87 401.75,812.87 396.75,807.87" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="401.75" cy="785.37" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="401.75" cy="784.37" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="401.75" cy="762.87" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="395.75" cy="754.87" r="4" fill="#fff" opacity=".34"/>
+<line x1="406.75" y1="764.87" x2="412.75" y2="764.87" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="378.75" y1="828.87" x2="424.75" y2="828.87" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="513.75" cy="850.87" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="503.75" y1="826.87" x2="492.00" y2="845.87" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="503.75" y1="826.87" x2="492.00" y2="845.87" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="485.00" y="843.87" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="523.75" y1="826.87" x2="545.25" y2="845.87" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="523.75" y1="826.87" x2="545.25" y2="845.87" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="538.25" y="843.87" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="494.75" y1="791.87" x2="476.22" y2="814.48" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="494.75" y1="791.87" x2="476.22" y2="814.48" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="476.22" cy="814.48" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="532.75" y1="791.87" x2="547.77" y2="801.81" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="532.75" y1="791.87" x2="547.77" y2="801.81" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="547.77" cy="801.81" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="489.75,791.87 483.75,820.87 492.75,833.87 534.75,833.87 543.75,820.87 537.75,791.87" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="486.75,816.87 540.75,816.87 534.75,833.87 492.75,833.87" fill="#0e2d69" opacity=".94"/>
+<line x1="493.75" y1="799.87" x2="531.75" y2="826.87" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="513.75,802.87 518.75,807.87 513.75,812.87 508.75,807.87" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="513.75" cy="785.37" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="513.75" cy="784.37" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="513.75" cy="762.87" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="507.75" cy="754.87" r="4" fill="#fff" opacity=".34"/>
+<line x1="518.75" y1="764.87" x2="524.75" y2="764.87" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="490.75" y1="828.87" x2="536.75" y2="828.87" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="623.82" cy="849.91" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="613.82" y1="825.91" x2="604.00" y2="844.91" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="613.82" y1="825.91" x2="604.00" y2="844.91" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="597.00" y="842.91" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="633.82" y1="825.91" x2="651.45" y2="844.91" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="633.82" y1="825.91" x2="651.45" y2="844.91" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="644.45" y="842.91" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="604.82" y1="790.91" x2="588.37" y2="812.01" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="604.82" y1="790.91" x2="588.37" y2="812.01" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="588.37" cy="812.01" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="642.82" y1="790.91" x2="656.45" y2="801.84" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="642.82" y1="790.91" x2="656.45" y2="801.84" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="656.45" cy="801.84" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="599.82,790.91 593.82,819.91 602.82,832.91 644.82,832.91 653.82,819.91 647.82,790.91" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="596.82,815.91 650.82,815.91 644.82,832.91 602.82,832.91" fill="#0e2d69" opacity=".94"/>
+<line x1="603.82" y1="798.91" x2="641.82" y2="825.91" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="623.82,801.91 628.82,806.91 623.82,811.91 618.82,806.91" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="623.82" cy="784.41" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="623.82" cy="783.41" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="623.82" cy="761.91" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="617.82" cy="753.91" r="4" fill="#fff" opacity=".34"/>
+<line x1="628.82" y1="763.91" x2="634.82" y2="763.91" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="600.82" y1="827.91" x2="646.82" y2="827.91" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="732.34" cy="848.17" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="722.34" y1="824.17" x2="716.00" y2="843.17" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="722.34" y1="824.17" x2="716.00" y2="843.17" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="709.00" y="841.17" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="742.34" y1="824.17" x2="753.02" y2="843.17" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="742.34" y1="824.17" x2="753.02" y2="843.17" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="746.02" y="841.17" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="713.34" y1="789.17" x2="700.65" y2="807.55" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="713.34" y1="789.17" x2="700.65" y2="807.55" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="700.65" cy="807.55" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="751.34" y1="789.17" x2="762.46" y2="801.91" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="751.34" y1="789.17" x2="762.46" y2="801.91" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="762.46" cy="801.91" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="708.34,789.17 702.34,818.17 711.34,831.17 753.34,831.17 762.34,818.17 756.34,789.17" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="705.34,814.17 759.34,814.17 753.34,831.17 711.34,831.17" fill="#0e2d69" opacity=".94"/>
+<line x1="712.34" y1="797.17" x2="750.34" y2="824.17" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="732.34,800.17 737.34,805.17 732.34,810.17 727.34,805.17" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="732.34" cy="782.67" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="732.34" cy="781.67" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="732.34" cy="760.17" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="726.34" cy="752.17" r="4" fill="#fff" opacity=".34"/>
+<line x1="737.34" y1="762.17" x2="743.34" y2="762.17" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="709.34" y1="826.17" x2="755.34" y2="826.17" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="840.00" cy="846.00" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="830.00" y1="822.00" x2="828.00" y2="841.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="830.00" y1="822.00" x2="828.00" y2="841.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="821.00" y="839.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="850.00" y1="822.00" x2="852.00" y2="841.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="850.00" y1="822.00" x2="852.00" y2="841.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="845.00" y="839.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="821.00" y1="787.00" x2="813.00" y2="802.00" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="821.00" y1="787.00" x2="813.00" y2="802.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="813.00" cy="802.00" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="859.00" y1="787.00" x2="867.00" y2="802.00" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="859.00" y1="787.00" x2="867.00" y2="802.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="867.00" cy="802.00" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="816.00,787.00 810.00,816.00 819.00,829.00 861.00,829.00 870.00,816.00 864.00,787.00" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="813.00,812.00 867.00,812.00 861.00,829.00 819.00,829.00" fill="#0e2d69" opacity=".94"/>
+<line x1="820.00" y1="795.00" x2="858.00" y2="822.00" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="840.00,798.00 845.00,803.00 840.00,808.00 835.00,803.00" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="840.00" cy="780.50" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="840.00" cy="779.50" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="840.00" cy="758.00" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="834.00" cy="750.00" r="4" fill="#fff" opacity=".34"/>
+<line x1="845.00" y1="760.00" x2="851.00" y2="760.00" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="817.00" y1="824.00" x2="863.00" y2="824.00" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="56.00" cy="990.00" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="46.00" y1="966.00" x2="44.00" y2="985.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="46.00" y1="966.00" x2="44.00" y2="985.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="37.00" y="983.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="66.00" y1="966.00" x2="68.00" y2="985.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="66.00" y1="966.00" x2="68.00" y2="985.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="61.00" y="983.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="37.00" y1="931.00" x2="22.70" y2="950.55" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="37.00" y1="931.00" x2="22.70" y2="950.55" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="22.70" cy="950.55" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="75.00" y1="931.00" x2="89.30" y2="941.45" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="75.00" y1="931.00" x2="89.30" y2="941.45" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="89.30" cy="941.45" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="32.00,931.00 26.00,960.00 35.00,973.00 77.00,973.00 86.00,960.00 80.00,931.00" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="29.00,956.00 83.00,956.00 77.00,973.00 35.00,973.00" fill="#0e2d69" opacity=".94"/>
+<line x1="36.00" y1="939.00" x2="74.00" y2="966.00" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="56.00,942.00 61.00,947.00 56.00,952.00 51.00,947.00" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="56.00" cy="924.50" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="56.00" cy="923.50" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="56.00" cy="902.00" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="50.00" cy="894.00" r="4" fill="#fff" opacity=".34"/>
+<line x1="61.00" y1="904.00" x2="67.00" y2="904.00" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="33.00" y1="968.00" x2="79.00" y2="968.00" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="168.00" cy="986.96" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="158.00" y1="962.10" x2="152.00" y2="981.96" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="158.00" y1="962.10" x2="152.00" y2="981.96" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="145.00" y="979.96" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="178.00" y1="962.10" x2="184.00" y2="981.96" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="178.00" y1="962.10" x2="184.00" y2="981.96" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="177.00" y="979.96" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="149.00" y1="927.10" x2="127.67" y2="951.72" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="149.00" y1="927.10" x2="127.67" y2="951.72" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="127.67" cy="951.72" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="187.00" y1="927.10" x2="208.33" y2="932.47" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="187.00" y1="927.10" x2="208.33" y2="932.47" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="208.33" cy="932.47" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="144.00,927.10 138.00,956.10 147.00,969.10 189.00,969.10 198.00,956.10 192.00,927.10" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="141.00,952.10 195.00,952.10 189.00,969.10 147.00,969.10" fill="#0e2d69" opacity=".94"/>
+<line x1="148.00" y1="935.10" x2="186.00" y2="962.10" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="168.00,938.10 173.00,943.10 168.00,948.10 163.00,943.10" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="168.00" cy="920.60" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="168.00" cy="919.60" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="168.00" cy="898.10" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="162.00" cy="890.10" r="4" fill="#fff" opacity=".34"/>
+<line x1="173.00" y1="900.10" x2="179.00" y2="900.10" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="145.00" y1="964.10" x2="191.00" y2="964.10" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="280.00" cy="984.53" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="270.00" y1="958.96" x2="268.00" y2="979.53" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="270.00" y1="958.96" x2="268.00" y2="979.53" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="261.00" y="977.53" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="290.00" y1="958.96" x2="292.00" y2="979.53" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="290.00" y1="958.96" x2="292.00" y2="979.53" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="285.00" y="977.53" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="261.00" y1="923.96" x2="234.03" y2="952.66" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="261.00" y1="923.96" x2="234.03" y2="952.66" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="234.03" cy="952.66" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="299.00" y1="923.96" x2="325.97" y2="925.27" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="299.00" y1="923.96" x2="325.97" y2="925.27" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="325.97" cy="925.27" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="256.00,923.96 250.00,952.96 259.00,965.96 301.00,965.96 310.00,952.96 304.00,923.96" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="253.00,948.96 307.00,948.96 301.00,965.96 259.00,965.96" fill="#0e2d69" opacity=".94"/>
+<line x1="260.00" y1="931.96" x2="298.00" y2="958.96" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="280.00,934.96 285.00,939.96 280.00,944.96 275.00,939.96" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="280.00" cy="917.46" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="280.00" cy="916.46" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="280.00" cy="894.96" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="274.00" cy="886.96" r="4" fill="#fff" opacity=".34"/>
+<line x1="285.00" y1="896.96" x2="291.00" y2="896.96" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="257.00" y1="960.96" x2="303.00" y2="960.96" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="392.00" cy="983.18" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="382.00" y1="957.23" x2="384.00" y2="978.18" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="382.00" y1="957.23" x2="384.00" y2="978.18" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="377.00" y="976.18" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="402.00" y1="957.23" x2="400.00" y2="978.18" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="402.00" y1="957.23" x2="400.00" y2="978.18" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="393.00" y="976.18" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="373.00" y1="922.23" x2="342.91" y2="953.18" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="373.00" y1="922.23" x2="342.91" y2="953.18" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="342.91" cy="953.18" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="411.00" y1="922.23" x2="441.09" y2="921.27" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="411.00" y1="922.23" x2="441.09" y2="921.27" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="441.09" cy="921.27" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="368.00,922.23 362.00,951.23 371.00,964.23 413.00,964.23 422.00,951.23 416.00,922.23" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="365.00,947.23 419.00,947.23 413.00,964.23 371.00,964.23" fill="#0e2d69" opacity=".94"/>
+<line x1="372.00" y1="930.23" x2="410.00" y2="957.23" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="392.00,933.23 397.00,938.23 392.00,943.23 387.00,938.23" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="392.00" cy="915.73" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="392.00" cy="914.73" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="392.00" cy="893.23" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="386.00" cy="885.23" r="4" fill="#fff" opacity=".34"/>
+<line x1="397.00" y1="895.23" x2="403.00" y2="895.23" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="369.00" y1="959.23" x2="415.00" y2="959.23" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="504.00" cy="983.18" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="494.00" y1="957.23" x2="492.00" y2="978.18" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="494.00" y1="957.23" x2="492.00" y2="978.18" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="485.00" y="976.18" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="514.00" y1="957.23" x2="516.00" y2="978.18" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="514.00" y1="957.23" x2="516.00" y2="978.18" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="509.00" y="976.18" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="485.00" y1="922.23" x2="454.91" y2="953.18" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="485.00" y1="922.23" x2="454.91" y2="953.18" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="454.91" cy="953.18" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="523.00" y1="922.23" x2="553.09" y2="921.27" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="523.00" y1="922.23" x2="553.09" y2="921.27" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="553.09" cy="921.27" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="480.00,922.23 474.00,951.23 483.00,964.23 525.00,964.23 534.00,951.23 528.00,922.23" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="477.00,947.23 531.00,947.23 525.00,964.23 483.00,964.23" fill="#0e2d69" opacity=".94"/>
+<line x1="484.00" y1="930.23" x2="522.00" y2="957.23" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="504.00,933.23 509.00,938.23 504.00,943.23 499.00,938.23" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="504.00" cy="915.73" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="504.00" cy="914.73" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="504.00" cy="893.23" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="498.00" cy="885.23" r="4" fill="#fff" opacity=".34"/>
+<line x1="509.00" y1="895.23" x2="515.00" y2="895.23" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="481.00" y1="959.23" x2="527.00" y2="959.23" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="616.00" cy="984.53" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="606.00" y1="958.96" x2="600.00" y2="979.53" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="606.00" y1="958.96" x2="600.00" y2="979.53" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="593.00" y="977.53" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="626.00" y1="958.96" x2="632.00" y2="979.53" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="626.00" y1="958.96" x2="632.00" y2="979.53" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="625.00" y="977.53" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="597.00" y1="923.96" x2="570.03" y2="952.66" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="597.00" y1="923.96" x2="570.03" y2="952.66" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="570.03" cy="952.66" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="635.00" y1="923.96" x2="661.97" y2="925.27" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="635.00" y1="923.96" x2="661.97" y2="925.27" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="661.97" cy="925.27" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="592.00,923.96 586.00,952.96 595.00,965.96 637.00,965.96 646.00,952.96 640.00,923.96" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="589.00,948.96 643.00,948.96 637.00,965.96 595.00,965.96" fill="#0e2d69" opacity=".94"/>
+<line x1="596.00" y1="931.96" x2="634.00" y2="958.96" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="616.00,934.96 621.00,939.96 616.00,944.96 611.00,939.96" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="616.00" cy="917.46" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="616.00" cy="916.46" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="616.00" cy="894.96" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="610.00" cy="886.96" r="4" fill="#fff" opacity=".34"/>
+<line x1="621.00" y1="896.96" x2="627.00" y2="896.96" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="593.00" y1="960.96" x2="639.00" y2="960.96" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="728.00" cy="986.96" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="718.00" y1="962.10" x2="716.00" y2="981.96" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="718.00" y1="962.10" x2="716.00" y2="981.96" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="709.00" y="979.96" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="738.00" y1="962.10" x2="740.00" y2="981.96" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="738.00" y1="962.10" x2="740.00" y2="981.96" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="733.00" y="979.96" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="709.00" y1="927.10" x2="687.67" y2="951.72" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="709.00" y1="927.10" x2="687.67" y2="951.72" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="687.67" cy="951.72" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="747.00" y1="927.10" x2="768.33" y2="932.47" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="747.00" y1="927.10" x2="768.33" y2="932.47" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="768.33" cy="932.47" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="704.00,927.10 698.00,956.10 707.00,969.10 749.00,969.10 758.00,956.10 752.00,927.10" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="701.00,952.10 755.00,952.10 749.00,969.10 707.00,969.10" fill="#0e2d69" opacity=".94"/>
+<line x1="708.00" y1="935.10" x2="746.00" y2="962.10" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="728.00,938.10 733.00,943.10 728.00,948.10 723.00,943.10" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="728.00" cy="920.60" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="728.00" cy="919.60" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="728.00" cy="898.10" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="722.00" cy="890.10" r="4" fill="#fff" opacity=".34"/>
+<line x1="733.00" y1="900.10" x2="739.00" y2="900.10" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="705.00" y1="964.10" x2="751.00" y2="964.10" stroke="#d4aa4c" stroke-width="2"/>
+<ellipse cx="840.00" cy="990.00" rx="25" ry="3" fill="#000" opacity=".22"/>
+<line x1="830.00" y1="966.00" x2="832.00" y2="985.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="830.00" y1="966.00" x2="832.00" y2="985.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="825.00" y="983.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="850.00" y1="966.00" x2="848.00" y2="985.00" stroke="#12151c" stroke-width="7" stroke-linecap="round"/>
+<line x1="850.00" y1="966.00" x2="848.00" y2="985.00" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<rect x="841.00" y="983.00" width="15" height="8" rx="3" fill="#181b21" stroke="#d4aa4c" stroke-width="1"/>
+<line x1="821.00" y1="931.00" x2="806.70" y2="950.55" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="821.00" y1="931.00" x2="806.70" y2="950.55" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="806.70" cy="950.55" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<line x1="859.00" y1="931.00" x2="873.30" y2="941.45" stroke="#12151c" stroke-width="8" stroke-linecap="round"/>
+<line x1="859.00" y1="931.00" x2="873.30" y2="941.45" stroke="#ece6cf" stroke-width="5" stroke-linecap="round"/>
+<circle cx="873.30" cy="941.45" r="4" fill="#e5dcc0" stroke="#12151c" stroke-width="1"/>
+<polygon points="816.00,931.00 810.00,960.00 819.00,973.00 861.00,973.00 870.00,960.00 864.00,931.00" fill="#1d54b0" stroke="#12151c" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="813.00,956.00 867.00,956.00 861.00,973.00 819.00,973.00" fill="#0e2d69" opacity=".94"/>
+<line x1="820.00" y1="939.00" x2="858.00" y2="966.00" stroke="#fff" stroke-opacity=".86" stroke-width="5"/>
+<polygon points="840.00,942.00 845.00,947.00 840.00,952.00 835.00,947.00" fill="#d4aa4c" stroke="#12151c" stroke-width=".8"/>
+<ellipse cx="840.00" cy="924.50" rx="18" ry="7.5" fill="#d4aa4c" stroke="#12151c" stroke-width="2"/>
+<ellipse cx="840.00" cy="923.50" rx="14" ry="4.5" fill="#0e2d69"/>
+<circle cx="840.00" cy="902.00" r="17" fill="#e5dcc0" stroke="#12151c" stroke-width="2"/>
+<circle cx="834.00" cy="894.00" r="4" fill="#fff" opacity=".34"/>
+<line x1="845.00" y1="904.00" x2="851.00" y2="904.00" stroke="#12151c" stroke-opacity=".75" stroke-width="2" stroke-linecap="round"/>
+<line x1="817.00" y1="968.00" x2="863.00" y2="968.00" stroke="#d4aa4c" stroke-width="2"/>
+</g></svg>
