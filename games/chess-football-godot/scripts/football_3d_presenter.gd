@@ -63,6 +63,7 @@ func _material(color: Color, roughness: float = 0.84) -> StandardMaterial3D:
 	return material
 
 func _build_pitch() -> void:
+	_add_stadium_apron()
 	var stripe_width := field_width / 16.0
 	for i in range(16):
 		var stripe := MeshInstance3D.new()
@@ -88,26 +89,67 @@ func _build_pitch() -> void:
 
 	var far_stand := MeshInstance3D.new()
 	var far_mesh := BoxMesh.new()
-	far_mesh.size = Vector3(field_width + 4.2, 1.45, 1.55)
+	far_mesh.size = Vector3(field_width + 6.2, 2.15, 2.35)
 	far_stand.mesh = far_mesh
-	far_stand.position = Vector3(0.0, 0.70, -field_depth * 0.5 - 2.45)
-	far_stand.material_override = _material(Color(0.030, 0.040, 0.052), 0.96)
+	far_stand.position = Vector3(0.0, 1.02, -field_depth * 0.5 - 3.05)
+	far_stand.material_override = _material(Color(0.024, 0.033, 0.046), 0.96)
 	add_child(far_stand)
 
-	for row in range(3):
+	for row in range(5):
 		var step := MeshInstance3D.new()
 		var step_mesh := BoxMesh.new()
-		step_mesh.size = Vector3(field_width + 3.8 - row * 0.35, 0.42, 0.62)
+		step_mesh.size = Vector3(field_width + 5.5 - row * 0.42, 0.40, 0.64)
 		step.mesh = step_mesh
-		step.position = Vector3(0.0, 0.23 + row * 0.42, -field_depth * 0.5 - 0.95 - row * 0.48)
-		step.material_override = _material(Color(0.055 + row * 0.012, 0.060, 0.068), 0.94)
+		step.position = Vector3(0.0, 0.23 + row * 0.39, -field_depth * 0.5 - 1.0 - row * 0.49)
+		step.material_override = _material(Color(0.050 + row * 0.010, 0.057, 0.067), 0.94)
 		add_child(step)
 
 	_add_ad_panels()
 	_add_crowd()
-	_add_box(Vector3(0.0, 0.22, field_depth * 0.5 + 0.28), Vector3(field_width + 0.8, 0.44, 0.12), Color(0.075, 0.070, 0.060))
+	_add_end_stands()
+	_add_far_roof()
+	_add_box(Vector3(0.0, 0.22, field_depth * 0.5 + 0.28), Vector3(field_width + 1.4, 0.44, 0.12), Color(0.075, 0.070, 0.060))
 	_add_benches()
 	_add_floodlights()
+
+func _add_stadium_apron() -> void:
+	var apron := MeshInstance3D.new()
+	var mesh := PlaneMesh.new()
+	mesh.size = Vector2(field_width + 8.0, field_depth + 8.0)
+	apron.mesh = mesh
+	apron.position = Vector3(0.0, -0.035, 0.0)
+	apron.material_override = _material(Color(0.025, 0.052, 0.046), 0.98)
+	apron.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(apron)
+
+	_add_box(Vector3(0.0, -0.12, -field_depth * 0.5 - 4.0), Vector3(field_width + 8.0, 0.22, 0.16), Color(0.030, 0.038, 0.048))
+	_add_box(Vector3(0.0, -0.12, field_depth * 0.5 + 4.0), Vector3(field_width + 8.0, 0.22, 0.16), Color(0.030, 0.038, 0.048))
+
+func _add_end_stands() -> void:
+	var stand_x := field_width * 0.5 + 2.05
+	for side_value in [-1.0, 1.0]:
+		var side: float = float(side_value)
+		_add_box(
+			Vector3(side * stand_x, 0.82, 0.0),
+			Vector3(2.15, 1.70, field_depth + 1.8),
+			Color(0.025, 0.034, 0.047)
+		)
+		for row in range(4):
+			var x := side * (field_width * 0.5 + 0.72 + float(row) * 0.42)
+			var height := 0.22 + float(row) * 0.34
+			_add_box(
+				Vector3(x, height, 0.0),
+				Vector3(0.56, 0.34, field_depth + 1.25 - float(row) * 0.24),
+				Color(0.050 + float(row) * 0.010, 0.058, 0.069)
+			)
+
+func _add_far_roof() -> void:
+	var roof_z := -field_depth * 0.5 - 3.70
+	_add_box(Vector3(0.0, 3.25, roof_z), Vector3(field_width + 6.4, 0.18, 2.4), Color(0.045, 0.050, 0.060))
+	for x_value in [-field_width * 0.48, -field_width * 0.16, field_width * 0.16, field_width * 0.48]:
+		var x: float = float(x_value)
+		_add_box(Vector3(x, 1.75, roof_z + 0.55), Vector3(0.11, 3.0, 0.11), Color(0.20, 0.22, 0.24))
+		_add_box(Vector3(x, 3.03, roof_z + 0.10), Vector3(0.10, 0.10, 1.05), Color(0.20, 0.22, 0.24))
 
 func _add_benches() -> void:
 	for x_value in [-4.2, 4.2]:
@@ -116,17 +158,19 @@ func _add_benches() -> void:
 		_add_box(Vector3(x, 0.46, field_depth * 0.5 + 0.72), Vector3(1.7, 0.08, 0.56), Color(0.24, 0.26, 0.28))
 
 func _add_floodlights() -> void:
-	var z := -field_depth * 0.5 - 3.0
-	for x_value in [-field_width * 0.43, field_width * 0.43]:
-		var x: float = float(x_value)
-		_add_box(Vector3(x, 2.45, z), Vector3(0.10, 4.9, 0.10), Color(0.20, 0.22, 0.24))
-		var lamp := OmniLight3D.new()
-		lamp.position = Vector3(x, 4.75, z)
-		lamp.light_color = Color(0.82, 0.88, 1.0)
-		lamp.light_energy = 0.78
-		lamp.omni_range = 11.0
-		lamp.shadow_enabled = false
-		add_child(lamp)
+	for z_value in [-field_depth * 0.5 - 3.15, field_depth * 0.5 + 3.15]:
+		var z: float = float(z_value)
+		for x_value in [-field_width * 0.43, field_width * 0.43]:
+			var x: float = float(x_value)
+			_add_box(Vector3(x, 2.55, z), Vector3(0.10, 5.10, 0.10), Color(0.20, 0.22, 0.24))
+			_add_box(Vector3(x, 5.02, z), Vector3(1.25, 0.12, 0.26), Color(0.24, 0.26, 0.29))
+			var lamp := OmniLight3D.new()
+			lamp.position = Vector3(x, 4.90, z)
+			lamp.light_color = Color(0.84, 0.90, 1.0)
+			lamp.light_energy = 0.72
+			lamp.omni_range = 12.0
+			lamp.shadow_enabled = false
+			add_child(lamp)
 
 func _add_ad_panels() -> void:
 	var panel_count := 12
@@ -142,14 +186,14 @@ func _add_ad_panels() -> void:
 		_add_box(Vector3(x, 0.24, z), Vector3(panel_width - 0.05, 0.42, 0.08), color)
 
 func _add_crowd() -> void:
-	var rows := 3
-	var seats := 26
+	var rows := 5
+	var seats := 34
 	for row in range(rows):
 		for seat in range(seats):
 			var ratio := (float(seat) + 0.5) / float(seats)
 			var x := lerpf(-field_width * 0.47, field_width * 0.47, ratio)
-			var y := 0.42 + float(row) * 0.40
-			var z := -field_depth * 0.5 - 1.02 - float(row) * 0.47
+			var y := 0.42 + float(row) * 0.38
+			var z := -field_depth * 0.5 - 1.02 - float(row) * 0.48
 			var palette := (seat + row * 2) % 7
 			var color := Color(0.23, 0.25, 0.28)
 			if palette in [0, 4]:
