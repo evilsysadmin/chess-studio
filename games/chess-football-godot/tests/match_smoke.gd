@@ -13,6 +13,7 @@ func _initialize() -> void:
 	assert(match_node.controlled != null)
 	assert(match_node.ball.carrier == match_node.controlled)
 	assert(match_node.debug_camera_mode() == "broadcast")
+	assert(match_node.debug_3d_ready())
 	match_node.debug_toggle_camera_mode()
 	assert(match_node.debug_camera_mode() == "tactical")
 	match_node.debug_toggle_camera_mode()
