@@ -28,7 +28,9 @@ export default function ChessFootballGodotHost({ onExit }) {
   useEffect(() => {
     const handleRuntimeMessage = (event) => {
       if (event.source !== frameRef.current?.contentWindow) return;
-      if (event.data?.type === 'chess-football-exit') onExit?.();
+      const message = event.data;
+      if (!message || message.source !== 'chess-football-godot') return;
+      if (message.type === 'exit') onExit?.();
     };
     window.addEventListener('message', handleRuntimeMessage);
     return () => window.removeEventListener('message', handleRuntimeMessage);
