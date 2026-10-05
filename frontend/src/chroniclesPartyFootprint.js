@@ -22,6 +22,10 @@ function cellKey({ x, y }) {
   return `${x}:${y}`;
 }
 
+function sameCell(left, right) {
+  return Number(left?.x) === Number(right?.x) && Number(left?.y) === Number(right?.y);
+}
+
 function manhattan(a, b) {
   return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 }
