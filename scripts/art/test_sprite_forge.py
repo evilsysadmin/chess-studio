@@ -19,6 +19,7 @@ from sprite_forge import (
     TemporalContract,
     geometry_metrics,
     lint_frame,
+    load_bank_contract,
     normalize_frame,
     normalize_fixed_scale_frame,
     place_frame_fixed_scale,
@@ -609,6 +610,24 @@ class SpriteForgeCompilerTests(unittest.TestCase):
             contract.write_text(json.dumps(data), encoding="utf-8")
             with self.assertRaisesRegex(BankContractError, "part row reused"):
                 build_bank(contract, frames, root / "out")
+
+
+class ChessFootballSpriteForgeContractTests(unittest.TestCase):
+    def test_shared_contract_is_a_valid_generic_sprite_forge_bank(self) -> None:
+        contract = load_bank_contract(
+            Path(__file__).parent
+            / "contracts"
+            / "chess_football_players_v1.json"
+        )
+        self.assertEqual(contract["schema"], 2)
+        self.assertEqual(contract["surface"], "chess-football")
+        self.assertEqual(contract["actor"], "footballer")
+        self.assertEqual(contract["variant"], "vector-v4")
+        self.assertEqual(contract["cell"], {"width": 112, "height": 144})
+        self.assertEqual(
+            [animation["name"] for animation in contract["animations"]],
+            ["idle", "run", "sprint", "pass", "shoot", "tackle", "celebrate"],
+        )
 
 
 class SpriteForgeSocketContractTests(unittest.TestCase):
