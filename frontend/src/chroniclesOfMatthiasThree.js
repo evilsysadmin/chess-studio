@@ -436,7 +436,6 @@ export function createChroniclesOfMatthiasGame(host, { onReady, initialState = n
     if (reducedMotion) {
       camera.position.copy(desiredPosition);
       camera.rotation.y = desiredYaw;
-      atmosphere.userData.updateChroniclesAtmosphere?.(now);
       renderer.render(scene, camera);
     }
   }
@@ -468,6 +467,7 @@ export function createChroniclesOfMatthiasGame(host, { onReady, initialState = n
     if (!reducedMotion) {
       camera.position.lerp(desiredPosition, 0.16);
       camera.rotation.y += wrapAngle(desiredYaw - camera.rotation.y) * 0.18;
+      atmosphere.userData.updateChroniclesAtmosphere?.(time);
       dungeon.torches.forEach((torch) => {
         const pulse = 0.9 + Math.sin(time * 8.5 + torch.phase) * 0.08 + Math.sin(time * 17 + torch.phase) * 0.04;
         torch.light.intensity = torch.baseIntensity * pulse;
@@ -547,9 +547,6 @@ export function createChroniclesOfMatthiasGame(host, { onReady, initialState = n
         combatFx.group.visible = false;
       }
     }
-    // Carried-light positioning is scene state, not motion polish. Keep it
-    // attached to the player even when prefers-reduced-motion disables flicker.
-    atmosphere.userData.updateChroniclesAtmosphere?.(time);
     renderer.render(scene, camera);
   }
 
