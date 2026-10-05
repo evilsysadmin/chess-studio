@@ -402,6 +402,33 @@ export default function ChroniclesOfMatthiasTactics({
   }, [selectedMemberId]);
 
   useEffect(() => {
+    const actor = chroniclesTacticsCurrentActor(state);
+    if (actor?.kind !== 'party' || actor.id === selectedMemberRef.current) return;
+    selectedMemberRef.current = actor.id;
+    setSelectedMemberId(actor.id);
+  }, [state]);
+
+  useEffect(() => {
+    const actor = chroniclesTacticsCurrentActor(state);
+    if (!state.initiative?.order?.length || actor?.kind !== 'enemy' || state.phase === 'defeated') return undefined;
+
+    const timer = window.setTimeout(() => {
+      const latest = stateRef.current;
+      const latestActor = chroniclesTacticsCurrentActor(latest);
+      if (!latest?.initiative?.order?.length || latestActor?.kind !== 'enemy' || latestActor.id !== actor.id) return;
+
+      const acted = chroniclesResolveEnemyActor(latest, actor.id);
+      const advanced = acted.phase === 'defeated'
+        ? acted
+        : chroniclesAdvanceCombatInitiative(acted, chroniclesActiveEnemies(acted));
+      stateRef.current = advanced;
+      setState(advanced);
+    }, 280);
+
+    return () => window.clearTimeout(timer);
+  }, [state]);
+
+  useEffect(() => {
     let cancelled = false;
     let engine = null;
     const host = hostRef.current;
@@ -486,7 +513,10 @@ export default function ChroniclesOfMatthiasTactics({
       if (event.key === ' ') {
         if (event.repeat) return;
         event.preventDefault();
-        useContextualAction();
+        const current = stateRef.current;
+        const contextual = chroniclesTacticsInteractions(current)[0] || null;
+        if (contextual) useContextualAction();
+        else passTurn();
         return;
       }
       if (event.key === 'Shift') {
@@ -508,7 +538,7 @@ export default function ChroniclesOfMatthiasTactics({
     };
     window.addEventListener('keydown', onKeyDown, { passive: false });
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [attackEnemy, moveParty, selectMember, useClassAbility, useContextualAction]);
+  }, [attackEnemy, moveParty, passTurn, selectMember, useClassAbility, useContextualAction]);
 
   return (
     <div
@@ -524,7 +554,8 @@ export default function ChroniclesOfMatthiasTactics({
       data-phase={state.phase}
       data-reward-draft-ready={rewardDraft.length > 0 ? 'true' : 'false'}
       data-reward-draft-count={rewardDraft.length}
-      data-turn-phase={state.turnPhase || 'party'}
+      data-turn-phase={activeActor?.kind || (state.turnPhase || 'party')}
+      data-initiative-actor={activeActor?.id || ''}
     >
       <header className="chronicles-tactics__head">
         <div>
@@ -539,7 +570,7 @@ export default function ChroniclesOfMatthiasTactics({
         <aside className="chronicles-tactics__mission" aria-label="Misión">
           <span className="chronicles-tactics__kicker">{locationLabel}</span>
           <strong>{objective}</strong>
-          <small>WASD/flechas mueve · 1–4 cambia de héroe · espacio usa · Shift ataca · E habilidad. En combate: una acción tuya, una respuesta enemiga.</small>
+          <small>WASD/flechas mueve · 1–4 cambia de héroe · espacio usa/pasa turno · Shift ataca · E habilidad. En combate manda AGI + 1d8: una acción por actor.</small>
           {targetIntel ? (
             <div className="chronicles-tactics__enemy-intel" aria-label="Intel enemigo">
               <span>OBJETIVO · NIVEL {targetIntel.enemyBuild.level}</span>
@@ -569,7 +600,9 @@ export default function ChroniclesOfMatthiasTactics({
             <div ref={hostRef} className="chronicles-tactics__three" data-chronicles-tactics-renderer="three" />
             <div className="chronicles-tactics__cinema" aria-hidden="true" />
             <div className="chronicles-tactics__narrator" aria-live="polite">
-              <span>{inCombat ? `RONDA ${state.round || 1} · TU TURNO` : 'CRÓNICA'}</span>
+              <span>{activeActor
+                ? `RONDA ${initiativeRound} · ${activeActor.kind === 'party' ? 'TURNO' : 'ENEMIGO'} · ${String(activeActor.name || activeActor.id).toUpperCase()}`
+                : 'CRÓNICA'}</span>
               <p>{state.message}</p>
               {progressionFeedback ? (
                 <strong data-chronicles-progression-feedback="true">{progressionFeedback}</strong>
@@ -599,18 +632,18 @@ export default function ChroniclesOfMatthiasTactics({
           </div>
 
           <div className="chronicles-tactics__actions" aria-label="Controles de acción">
-            <button type="button" className={moveAvailability.west ? 'is-ready' : ''} disabled={!moveAvailability.west} aria-label="Mover al oeste" {...forecastProps('west')} onClick={() => moveParty(-1, 0)}><i aria-hidden="true">←</i><span>A</span>{forecastBadge('west')}</button>
-            <button type="button" className={moveAvailability.north ? 'is-ready' : ''} disabled={!moveAvailability.north} aria-label="Mover al norte" {...forecastProps('north')} onClick={() => moveParty(0, -1)}><i aria-hidden="true">↑</i><span>W</span>{forecastBadge('north')}</button>
-            <button type="button" className={moveAvailability.south ? 'is-ready' : ''} disabled={!moveAvailability.south} aria-label="Mover al sur" {...forecastProps('south')} onClick={() => moveParty(0, 1)}><i aria-hidden="true">↓</i><span>S</span>{forecastBadge('south')}</button>
-            <button type="button" className={moveAvailability.east ? 'is-ready' : ''} disabled={!moveAvailability.east} aria-label="Mover al este" {...forecastProps('east')} onClick={() => moveParty(1, 0)}><i aria-hidden="true">→</i><span>D</span>{forecastBadge('east')}</button>
+            <button type="button" className={moveAvailability.west ? 'is-ready' : ''} disabled={!canAct || !moveAvailability.west} aria-label="Mover al oeste" {...forecastProps('west')} onClick={() => moveParty(-1, 0)}><i aria-hidden="true">←</i><span>A</span>{forecastBadge('west')}</button>
+            <button type="button" className={moveAvailability.north ? 'is-ready' : ''} disabled={!canAct || !moveAvailability.north} aria-label="Mover al norte" {...forecastProps('north')} onClick={() => moveParty(0, -1)}><i aria-hidden="true">↑</i><span>W</span>{forecastBadge('north')}</button>
+            <button type="button" className={moveAvailability.south ? 'is-ready' : ''} disabled={!canAct || !moveAvailability.south} aria-label="Mover al sur" {...forecastProps('south')} onClick={() => moveParty(0, 1)}><i aria-hidden="true">↓</i><span>S</span>{forecastBadge('south')}</button>
+            <button type="button" className={moveAvailability.east ? 'is-ready' : ''} disabled={!canAct || !moveAvailability.east} aria-label="Mover al este" {...forecastProps('east')} onClick={() => moveParty(1, 0)}><i aria-hidden="true">→</i><span>D</span>{forecastBadge('east')}</button>
             <button
               type="button"
-              className={contextualAction ? 'is-ready' : ''}
-              disabled={!canAct || !contextualAction}
-              aria-label="Usar"
-              title={contextualAction?.label || 'No hay nada que usar aquí'}
-              onClick={useContextualAction}
-            ><i aria-hidden="true">◎</i><span>ESPACIO · USAR</span></button>
+              className={(contextualAction || canPassTurn) ? 'is-ready' : ''}
+              disabled={!canAct || (!contextualAction && !canPassTurn)}
+              aria-label={contextualAction ? 'Usar' : 'Pasar turno'}
+              title={contextualAction?.label || (canPassTurn ? 'Pasar turno' : 'No hay nada que usar aquí')}
+              onClick={contextualAction ? useContextualAction : passTurn}
+            ><i aria-hidden="true">◎</i><span>{contextualAction ? 'ESPACIO · USAR' : canPassTurn ? 'ESPACIO · PASAR TURNO' : 'ESPACIO · USAR'}</span></button>
             <button type="button" className={canAttack ? 'is-ready' : ''} disabled={!canAct || !canAttack} aria-label="Atacar" onClick={() => attackEnemy()}><i aria-hidden="true">⚔</i><span>SHIFT · ATAQUE</span></button>
             <button
               type="button"
@@ -638,8 +671,8 @@ export default function ChroniclesOfMatthiasTactics({
       </div>
 
       <footer className="chronicles-tactics__footer">
-        <span>Motor {rendererName} · {inCombat ? `Combate por turnos · ronda ${state.round || 1}` : 'Exploración libre'}</span>
-        <span>{contextualAction ? `Espacio · ${contextualAction.label}` : 'Espacio · Usar'} · Shift · {selectedProfile.attackName} · E · {selectedProfile.abilityName}</span>
+        <span>Motor {rendererName} · {activeActor ? `Combate por turnos · ronda ${initiativeRound} · ${activeActor.name || activeActor.id}` : 'Exploración libre'}</span>
+        <span>{contextualAction ? `Espacio · ${contextualAction.label}` : canPassTurn ? 'Espacio · Pasar turno' : 'Espacio · Usar'} · Shift · {selectedProfile.attackName} · E · {selectedProfile.abilityName}</span>
         <button type="button" onClick={restart}>Reiniciar incursión</button>
       </footer>
     </div>
