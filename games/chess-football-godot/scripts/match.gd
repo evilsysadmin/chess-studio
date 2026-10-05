@@ -22,6 +22,13 @@ const KEEPER_SAVE_MIN_SPEED := 280.0
 const KEEPER_SAVE_Y_MARGIN := 62.0
 const KEEPER_HOLD_SECONDS := 0.72
 
+const AI_DECISION_INTERVAL := 0.42
+const AI_SHOOT_DISTANCE := 430.0
+const AI_PRESSURE_RADIUS := 165.0
+const AI_FORWARD_PASS_GAIN := 170.0
+const AI_DRIBBLE_LOOKAHEAD := 280.0
+const AI_SUPPORT_FORWARD := 190.0
+
 var teams: Array[Array] = [[], []]
 var ball: FootballBall
 var controlled: Footballer
@@ -31,11 +38,15 @@ var camera_mode: String = CAMERA_MODE_BROADCAST
 var last_goal_text: String = ""
 var camera_hint_seconds: float = 4.5
 var presentation_3d: ChessFootball3DPresenter
+var ai_next_decision: Dictionary = {}
+var pause_menu_open: bool = false
 
 var score_label: Label
 var help_label: Label
 var view_label: Label
 var goal_label: Label
+var pause_overlay: ColorRect
+var pause_exit_button: Button
 
 func _ready() -> void:
 	_spawn_match()
@@ -46,6 +57,9 @@ func _ready() -> void:
 	_refresh_hud()
 
 func _physics_process(delta: float) -> void:
+	if pause_menu_open:
+		_update_3d_presentation(0.0)
+		return
 	match_seconds += delta
 	camera_hint_seconds = maxf(0.0, camera_hint_seconds - delta)
 	_handle_human()
@@ -56,6 +70,11 @@ func _physics_process(delta: float) -> void:
 	_check_goal()
 	_update_3d_presentation(delta)
 	_refresh_hud()
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
+		_toggle_pause_menu()
+		get_viewport().set_input_as_handled()
 
 func _create_3d_presentation() -> void:
 	presentation_3d = Presenter3D.new()
@@ -92,10 +111,97 @@ func _create_hud() -> void:
 	goal_label.add_theme_font_size_override("font_size", 27)
 	goal_label.add_theme_color_override("font_color", Color(1.0, 0.84, 0.28))
 	hud.add_child(goal_label)
+	_create_pause_menu(hud)
+
+func _create_pause_menu(hud: CanvasLayer) -> void:
+	pause_overlay = ColorRect.new()
+	pause_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	pause_overlay.color = Color(0.008, 0.012, 0.020, 0.88)
+	pause_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	pause_overlay.visible = false
+	hud.add_child(pause_overlay)
+
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	pause_overlay.add_child(center)
+
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(390.0, 360.0)
+	center.add_child(panel)
+
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 14)
+	panel.add_child(box)
+
+	var title := Label.new()
+	title.text = "CHESS FOOTBALL"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 30)
+	box.add_child(title)
+
+	var subtitle := Label.new()
+	subtitle.text = "PARTIDO EN PAUSA"
+	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	subtitle.add_theme_font_size_override("font_size", 14)
+	subtitle.add_theme_color_override("font_color", Color(1.0, 0.82, 0.28))
+	box.add_child(subtitle)
+
+	pause_exit_button = _menu_button("SALIR")
+	pause_exit_button.pressed.connect(_exit_to_host)
+	box.add_child(pause_exit_button)
+
+	var continue_button := _menu_button("CONTINUAR")
+	continue_button.pressed.connect(_toggle_pause_menu)
+	box.add_child(continue_button)
+
+	var view_button := _menu_button("CAMBIAR VISTA")
+	view_button.pressed.connect(_menu_change_view)
+	box.add_child(view_button)
+
+	var restart_button := _menu_button("REINICIAR PARTIDO")
+	restart_button.pressed.connect(_restart_match)
+	box.add_child(restart_button)
+
+	var hint := Label.new()
+	hint.text = "ESC · cerrar menú"
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.add_theme_color_override("font_color", Color(1, 1, 1, 0.62))
+	box.add_child(hint)
+
+func _menu_button(text_value: String) -> Button:
+	var button := Button.new()
+	button.text = text_value
+	button.custom_minimum_size = Vector2(0.0, 52.0)
+	button.add_theme_font_size_override("font_size", 18)
+	return button
+
+func _toggle_pause_menu() -> void:
+	pause_menu_open = not pause_menu_open
+	pause_overlay.visible = pause_menu_open
+	if pause_menu_open:
+		pause_exit_button.grab_focus()
+	else:
+		pause_exit_button.release_focus()
+
+func _menu_change_view() -> void:
+	_toggle_camera_mode()
+	_toggle_pause_menu()
+
+func _restart_match() -> void:
+	score = [0, 0]
+	last_goal_text = ""
+	_reset_kickoff(0)
+	_toggle_pause_menu()
+
+func _exit_to_host() -> void:
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("window.parent.postMessage({source:'chess-football-godot', type:'exit'}, '*');")
+		return
+	get_tree().quit()
 
 func _refresh_hud() -> void:
 	score_label.text = "FC Matthias %d - %d Real Enroque" % [score[0], score[1]]
-	help_label.text = "WASD · Shift sprint · Space pase · Enter tiro · E entrada · Tab cambia · V vista"
+	help_label.text = "WASD · Shift sprint · Space pase · Enter tiro · E entrada · Tab cambia · V vista · ESC menú"
 	var view_name := "BROADCAST 3D" if camera_mode == CAMERA_MODE_BROADCAST else "TÁCTICA AÉREA"
 	view_label.text = "VISTA · %s" % view_name if camera_hint_seconds > 0.0 else ""
 	goal_label.text = last_goal_text
@@ -119,32 +225,84 @@ func _handle_human() -> void:
 func _update_ai(delta: float) -> void:
 	for team_id in range(2):
 		var team_has_ball := ball.carrier != null and ball.carrier.team_id == team_id
+		var presser: Footballer = _nearest_player_to_ball(team_id)
 		for player in teams[team_id]:
 			if player == controlled:
 				continue
 			if player.role == "keeper":
 				_update_keeper_ai(player, delta)
 				continue
+
 			var target: Vector2 = player.home_position
 			var intensity := 0.64
 			if ball.carrier == null:
-				if player == _nearest_player_to_ball(team_id):
+				if player == presser:
 					target = ball.global_position
-					intensity = 0.95
+					intensity = 0.98
 			elif team_has_ball:
-				var forward := 1.0 if team_id == 0 else -1.0
-				target += Vector2(150.0 * forward, (player.squad_index - 2) * 18.0)
-				intensity = 0.7
+				if ball.carrier == player:
+					target = _ai_dribble_target(player)
+					intensity = 0.94
+				else:
+					target = _ai_support_target(player)
+					intensity = 0.78
 			else:
-				if player == _nearest_player_to_ball(team_id):
+				if player == presser:
 					target = ball.carrier.global_position
-					intensity = 0.92
+					intensity = 0.98
+				else:
+					target = player.home_position.lerp(ball.carrier.global_position, 0.18)
+					intensity = 0.70
+
 			player.move_ai(delta, target, intensity)
-			if not team_has_ball and ball.carrier != null and ball.carrier.team_id != team_id:
-				if player == _nearest_player_to_ball(team_id):
-					_try_tackle(player)
-			if ball.carrier == player and team_id == 1:
+
+			if not team_has_ball and ball.carrier != null and ball.carrier.team_id != team_id and player == presser:
+				_try_tackle(player)
+
+			if ball.carrier == player and team_id == 1 and _ai_decision_ready(player):
 				_ai_attack(player)
+
+func _ai_decision_ready(player: Footballer) -> bool:
+	var key: int = int(player.get_instance_id())
+	var next_time := float(ai_next_decision.get(key, 0.0))
+	if match_seconds < next_time:
+		return false
+	ai_next_decision[key] = match_seconds + AI_DECISION_INTERVAL
+	return true
+
+func _ai_dribble_target(player: Footballer) -> Vector2:
+	var goal := ChessFootballMath.goal_center(player.team_id)
+	var direction := (goal - player.global_position).normalized()
+	var target := player.global_position + direction * AI_DRIBBLE_LOOKAHEAD
+	var threat := _nearest_opponent_to(player)
+	if threat != null:
+		var distance := player.global_position.distance_to(threat.global_position)
+		if distance < AI_PRESSURE_RADIUS:
+			var escape := (player.global_position - threat.global_position).normalized()
+			target += escape * (AI_PRESSURE_RADIUS - distance) * 0.9
+	return ChessFootballMath.clamp_to_pitch(target)
+
+func _ai_support_target(player: Footballer) -> Vector2:
+	if ball.carrier == null:
+		return player.home_position
+	var forward := 1.0 if player.team_id == 0 else -1.0
+	var lane_offset := float(player.squad_index - 2) * 72.0
+	var target := Vector2(
+		ball.carrier.global_position.x + forward * (AI_SUPPORT_FORWARD + absf(lane_offset) * 0.22),
+		player.home_position.y + lane_offset * 0.35
+	)
+	return ChessFootballMath.clamp_to_pitch(target)
+
+func _nearest_opponent_to(player: Footballer) -> Footballer:
+	var opponents: Array = teams[1 - player.team_id]
+	var best: Footballer = null
+	var best_distance := INF
+	for opponent in opponents:
+		var distance := player.global_position.distance_squared_to(opponent.global_position)
+		if distance < best_distance:
+			best_distance = distance
+			best = opponent
+	return best
 
 func _update_keeper_ai(player: Footballer, delta: float) -> void:
 	var own_goal := ChessFootballMath.goal_center(1 - player.team_id)
@@ -213,15 +371,53 @@ func _keeper_try_save(keeper: Footballer) -> bool:
 	return true
 
 func _ai_attack(player: Footballer) -> void:
-	var goal := ChessFootballMath.goal_center(1)
-	if player.global_position.distance_to(goal) < 380.0:
-		player.play_action("shoot", 0.78)
-		ball.release(goal - player.global_position, 760.0)
+	if ball.carrier != player:
 		return
-	var target := _best_teammate_ahead(player)
-	if target != null and player.global_position.distance_to(target.global_position) > 150.0:
+	var goal := ChessFootballMath.goal_center(player.team_id)
+	var goal_distance := player.global_position.distance_to(goal)
+	if goal_distance < AI_SHOOT_DISTANCE:
+		var defending_keeper: Footballer = teams[1 - player.team_id][0]
+		var aim_y := goal.y + (-70.0 if defending_keeper.global_position.y > goal.y else 70.0)
+		var shot_target := Vector2(goal.x, aim_y)
+		player.play_action("shoot", 0.78)
+		ball.release(shot_target - player.global_position, 780.0)
+		return
+
+	var threat := _nearest_opponent_to(player)
+	var pressure_distance := INF
+	if threat != null:
+		pressure_distance = player.global_position.distance_to(threat.global_position)
+
+	var target := _best_ai_pass_target(player)
+	if target == null:
+		return
+	var forward := 1.0 if player.team_id == 0 else -1.0
+	var forward_gain := (target.global_position.x - player.global_position.x) * forward
+	if pressure_distance < AI_PRESSURE_RADIUS or forward_gain > AI_FORWARD_PASS_GAIN:
 		player.play_action("pass", 0.72)
-		ball.release(target.global_position - player.global_position, 520.0)
+		ball.release(target.global_position - player.global_position, 540.0)
+
+func _best_ai_pass_target(player: Footballer) -> Footballer:
+	var forward: float = 1.0 if player.team_id == 0 else -1.0
+	var best: Footballer = null
+	var best_score: float = -INF
+	for teammate in teams[player.team_id]:
+		if teammate == player or teammate.role == "keeper":
+			continue
+		var offset: Vector2 = teammate.global_position - player.global_position
+		var distance: float = offset.length()
+		if distance < 90.0 or distance > 560.0:
+			continue
+		var progress: float = offset.x * forward
+		var nearest_opponent: Footballer = _nearest_opponent_to(teammate)
+		var separation: float = 240.0
+		if nearest_opponent != null:
+			separation = teammate.global_position.distance_to(nearest_opponent.global_position)
+		var score_value: float = progress * 1.8 + separation * 0.55 - absf(offset.y) * 0.18 - distance * 0.12
+		if score_value > best_score:
+			best_score = score_value
+			best = teammate
+	return best
 
 func _pass_from(player: Footballer, input_direction: Vector2) -> void:
 	player.play_action("pass", 0.72)
@@ -405,3 +601,21 @@ func debug_try_tackle(player: Footballer) -> bool:
 
 func debug_try_keeper_save(player: Footballer) -> bool:
 	return _keeper_try_save(player)
+
+func debug_ai_dribble_target(player: Footballer) -> Vector2:
+	return _ai_dribble_target(player)
+
+func debug_force_ai_attack(player: Footballer) -> void:
+	_ai_attack(player)
+
+func debug_step_ai(delta: float) -> void:
+	_update_ai(delta)
+
+func debug_pause_menu_open() -> bool:
+	return pause_menu_open
+
+func debug_toggle_pause_menu() -> void:
+	_toggle_pause_menu()
+
+func debug_pause_first_option() -> String:
+	return pause_exit_button.text if pause_exit_button != null else ""

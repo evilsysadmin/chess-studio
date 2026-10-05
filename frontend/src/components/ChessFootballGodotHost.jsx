@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { resolveChessFootballGodotUrl } from '../chessFootballGodotRuntime.js';
 import './ChessFootballGodotHost.css';
 
 export default function ChessFootballGodotHost({ onExit }) {
+  const frameRef = useRef(null);
   const [attempt, setAttempt] = useState(0);
   const [runtimeReady, setRuntimeReady] = useState(false);
   const [runtime, setRuntime] = useState({
@@ -23,6 +24,17 @@ export default function ChessFootballGodotHost({ onExit }) {
       body.style.overflow = previousBodyOverflow;
     };
   }, []);
+
+  useEffect(() => {
+    const handleRuntimeMessage = (event) => {
+      if (event.source !== frameRef.current?.contentWindow) return;
+      const message = event.data;
+      if (!message || message.source !== 'chess-football-godot') return;
+      if (message.type === 'exit') onExit?.();
+    };
+    window.addEventListener('message', handleRuntimeMessage);
+    return () => window.removeEventListener('message', handleRuntimeMessage);
+  }, [onExit]);
 
   useEffect(() => {
     let cancelled = false;
@@ -60,6 +72,7 @@ export default function ChessFootballGodotHost({ onExit }) {
 
       {runtime.url ? (
         <iframe
+          ref={frameRef}
           key={runtime.url}
           className="chess-football-godot-host__frame"
           src={runtime.url}
