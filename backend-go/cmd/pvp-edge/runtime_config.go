@@ -40,6 +40,7 @@ type nativeFeatureFlags struct {
 	pawnSlug            bool
 	chronicles          bool
 	chroniclesRuns      bool
+	adminFeedback       bool
 }
 
 func loadNativeFeatureFlags() nativeFeatureFlags {
@@ -73,6 +74,7 @@ func loadNativeFeatureFlags() nativeFeatureFlags {
 		pawnSlug:            envBool("GO_NATIVE_PAWN_SLUG_ENABLED", false),
 		chronicles:          envBool("GO_NATIVE_CHRONICLES_ENABLED", false),
 		chroniclesRuns:      envBool("GO_NATIVE_CHRONICLES_RUNS_ENABLED", false),
+		adminFeedback:       envBool("GO_NATIVE_ADMIN_FEEDBACK_ENABLED", false),
 	}
 }
 
@@ -104,7 +106,8 @@ func (f nativeFeatureFlags) needsMongo() bool {
 		f.narrative ||
 		f.pawnSlug ||
 		f.chronicles ||
-		f.chroniclesRuns
+		f.chroniclesRuns ||
+		f.adminFeedback
 }
 
 func env(key, fallback string) string {
