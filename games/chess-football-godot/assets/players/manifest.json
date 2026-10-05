@@ -1,85 +1,81 @@
 {
-  "animations": [
-    {
-      "fps": 7.0,
-      "frames": 8,
-      "loop": true,
-      "name": "idle",
-      "row": 0
-    },
-    {
-      "fps": 12.0,
-      "frames": 8,
-      "loop": true,
-      "name": "run",
-      "row": 1
-    },
-    {
-      "fps": 12.0,
-      "frames": 8,
-      "loop": true,
-      "name": "sprint",
-      "row": 2
-    },
-    {
-      "fps": 10.0,
-      "frames": 8,
-      "loop": false,
-      "name": "pass",
-      "row": 3
-    },
-    {
-      "fps": 10.0,
-      "frames": 8,
-      "loop": false,
-      "name": "shoot",
-      "row": 4
-    },
-    {
-      "fps": 10.0,
-      "frames": 8,
-      "loop": false,
-      "name": "tackle",
-      "row": 5
-    },
-    {
-      "fps": 10.0,
-      "frames": 8,
-      "loop": true,
-      "name": "celebrate",
-      "row": 6
-    }
-  ],
-  "atlases": {
-    "fc_matthias": {
-      "file": "fc_matthias_atlas.svg",
-      "name": "FC Matthias",
-      "sha256": "3fbf55ba35ba25d22d356d16b0343860a4e3eb362afb6b72e9b3ddf9c02fcfe8"
-    },
-    "fc_matthias_keeper": {
-      "file": "fc_matthias_keeper_atlas.svg",
-      "name": "FC Matthias \u00b7 Portero",
-      "sha256": "2f15185a5a803f0fe99405b28e65f4a25e727ecf6c7a6bdd228818ff0ef62ec3"
-    },
-    "real_enroque": {
-      "file": "real_enroque_atlas.svg",
-      "name": "Real Enroque",
-      "sha256": "b52bc69e91c88a6012d4354e77a6b3a38ffcc384427baf9d1fb08ee6a0664b8c"
-    },
-    "real_enroque_keeper": {
-      "file": "real_enroque_keeper_atlas.svg",
-      "name": "Real Enroque \u00b7 Portero",
-      "sha256": "5cad6155f25877b44eb7ade8afbf97d3ba1794675e360ea1d3df3fb38443e78b"
-    }
-  },
+  "version": 3,
+  "quality_contract": "chess-football-vector-v3",
   "cell": {
-    "height": 144,
-    "width": 112
+    "width": 112,
+    "height": 144
   },
   "columns": 8,
-  "display_scale": 0.72,
-  "footline": 126,
-  "quality_contract": "chess-football-vector-v2",
   "rows": 7,
-  "version": 2
+  "footline": 130,
+  "display_scale": 0.72,
+  "atlases": {
+    "fc_matthias": {
+      "name": "FC Matthias",
+      "file": "fc_matthias_atlas.svg"
+    },
+    "real_enroque": {
+      "name": "Real Enroque",
+      "file": "real_enroque_atlas.svg"
+    },
+    "fc_matthias_keeper": {
+      "name": "FC Matthias · Portero",
+      "file": "fc_matthias_keeper_atlas.svg"
+    },
+    "real_enroque_keeper": {
+      "name": "Real Enroque · Portero",
+      "file": "real_enroque_keeper_atlas.svg"
+    }
+  },
+  "animations": [
+    {
+      "name": "idle",
+      "row": 0,
+      "frames": 8,
+      "fps": 7,
+      "loop": true
+    },
+    {
+      "name": "run",
+      "row": 1,
+      "frames": 8,
+      "fps": 12,
+      "loop": true
+    },
+    {
+      "name": "sprint",
+      "row": 2,
+      "frames": 8,
+      "fps": 12,
+      "loop": true
+    },
+    {
+      "name": "pass",
+      "row": 3,
+      "frames": 8,
+      "fps": 10,
+      "loop": false
+    },
+    {
+      "name": "shoot",
+      "row": 4,
+      "frames": 8,
+      "fps": 10,
+      "loop": false
+    },
+    {
+      "name": "tackle",
+      "row": 5,
+      "frames": 8,
+      "fps": 10,
+      "loop": false
+    },
+    {
+      "name": "celebrate",
+      "row": 6,
+      "frames": 8,
+      "fps": 10,
+      "loop": true
+    }
+  ]
 }
