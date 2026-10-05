@@ -9,7 +9,10 @@ func _initialize() -> void:
 	for _frame in range(8):
 		await process_frame
 		await physics_frame
+	match_node.debug_force_shot_charge(0.68)
+	await process_frame
 	await _save_capture(match_node, "broadcast", "VISUAL_CAPTURE_BROADCAST")
+	match_node.debug_release_charged_shot()
 
 	match_node.debug_toggle_camera_mode()
 	for _frame in range(36):
