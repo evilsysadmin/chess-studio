@@ -95,31 +95,6 @@ export function createChroniclesCaveWallDressing({
       root.add(faceMesh);
     });
 
-    const topGeometry = createRockFaceGeometry(
-      cellSize * 1.03,
-      cellSize * 1.03,
-      x * 67 + y * 43 + 211,
-      {
-        widthSegments: coarsePointer ? 3 : 5,
-        heightSegments: coarsePointer ? 3 : 5,
-        depth: coarsePointer ? 0.04 : 0.065,
-      },
-    );
-    const topMaterial = material.clone();
-    topMaterial.userData.chroniclesIsoOwned = true;
-    topMaterial.color?.multiplyScalar(0.38);
-    if (topMaterial.emissive) topMaterial.emissive.setRGB(0, 0, 0);
-    topMaterial.emissiveIntensity = 0;
-    topMaterial.roughness = 0.96;
-    topMaterial.metalness = 0;
-    const top = new THREE.Mesh(topGeometry, topMaterial);
-    top.name = `chronicles-iso-cave-top-${x}-${y}`;
-    top.rotation.x = -Math.PI / 2;
-    top.rotation.z = (noise(x, y, 113) - 0.5) * 0.04;
-    top.position.set(world.x, 2.57, world.z);
-    top.castShadow = !coarsePointer;
-    top.receiveShadow = true;
-    root.add(top);
     return true;
   }
 
