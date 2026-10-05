@@ -385,6 +385,31 @@ for (const room of AUTHORED_ROOM_VISUAL_CAPTURES) {
         }, null, 2)}\n`,
         'utf8',
       );
+
+      if (room.mapId === 'echo-cistern') {
+        await page.setViewportSize({ width: 390, height: 844 });
+        await page.waitForTimeout(420);
+        const mobileHealth = await captureTacticsHealth(page);
+        expect(mobileHealth.horizontalOverflow, 'echo-cistern mobile overflow').toBe(false);
+        expect(mobileHealth.canvasCount, 'echo-cistern mobile canvas').toBe(1);
+        expect(mobileHealth.partyMemberCount, 'echo-cistern mobile canonical party').toBe(4);
+        expectCanvasFillsViewport(mobileHealth, 'echo-cistern-mobile');
+        await captureElement(
+          page,
+          viewport,
+          `${ARTIFACT_DIR}/chronicles-tactics-echo-cistern-mobile-390x844.png`,
+        );
+        await writeFile(
+          `${ARTIFACT_DIR}/chronicles-tactics-echo-cistern-visual-health-mobile-390x844.json`,
+          `${JSON.stringify({
+            schema: 1,
+            scope: 'chronicles-tactics-authored-room',
+            mapId: room.mapId,
+            capture: { label: 'mobile-390x844', ...mobileHealth },
+          }, null, 2)}\n`,
+          'utf8',
+        );
+      }
     } finally {
       await context.close();
     }
