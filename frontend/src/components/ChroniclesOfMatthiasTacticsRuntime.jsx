@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  chroniclesActiveEnemies,
   chroniclesObjective,
   createChroniclesState,
 } from '../chroniclesOfMatthias.js';
@@ -10,6 +11,7 @@ import {
   beginChroniclesTacticsRun,
   ensureChroniclesTacticsRun,
   finishChroniclesTacticsRun,
+  chroniclesHeroProgress,
   loadChroniclesProgression,
   saveChroniclesProgression,
   spendChroniclesAttributePoint,
@@ -26,11 +28,16 @@ import {
   chroniclesTacticsRefillAbilityCharges,
   chroniclesTacticsTargets,
   chroniclesTacticsUse,
+  chroniclesTacticsWait,
 } from '../chroniclesOfMatthiasTactics.js';
 import {
   chroniclesTacticsCombatActive,
+  chroniclesTacticsCurrentActor,
+  chroniclesTacticsPartyCanAct,
   chroniclesTacticsResolvePlayerAction,
 } from '../chroniclesTacticsTurnMode.js';
+import { chroniclesAdvanceCombatInitiative } from '../chronicles/chroniclesInitiative.js';
+import { chroniclesResolveEnemyActor } from '../chroniclesOfMatthiasTurns.js';
 import {
   chroniclesForecastBadge,
   chroniclesForecastDescription,
@@ -80,7 +87,7 @@ const MOVEMENT = Object.freeze({
 });
 
 function chroniclesBattlefieldInteraction(state, memberId) {
-  if (!state || state.turnPhase === 'enemy' || state.phase === 'defeated' || state.phase === 'escaped') return null;
+  if (!chroniclesTacticsPartyCanAct(state, memberId)) return null;
   return {
     mode: 'hybrid',
     legalMoves: chroniclesTacticsLegalMoves(state),
