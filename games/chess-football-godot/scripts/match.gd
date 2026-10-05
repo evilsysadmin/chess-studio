@@ -803,6 +803,9 @@ func debug_kickoff_active() -> bool:
 
 func debug_force_kickoff_ready() -> void:
 	if kickoff_active:
+		for team in teams:
+			for player in team:
+				player._process(KICKOFF_FREEZE_SECONDS)
 		_update_kickoff(KICKOFF_FREEZE_SECONDS)
 
 func debug_score_goal(team_id: int) -> void:
