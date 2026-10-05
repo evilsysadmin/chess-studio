@@ -56,12 +56,18 @@ export function hansInitialReplyPointReached({
   route = '',
   logicalX,
 } = {}) {
-  const x = Number(logicalX);
   const routeName = String(route || '');
-  return hansScreen === 'onscreen'
-    && Number.isFinite(x)
-    && x <= HANS_INITIAL_REPLY_ENTRY_MAX_LOGICAL_X
-    && !routeName.startsWith('leave-');
+  if (hansScreen !== 'onscreen') return false;
+
+  // Authored Blender rooms expose a semantic entry route whose geometry is
+  // room-specific. V1's absolute X threshold must never gate their dialogue:
+  // once Hans is genuinely onscreen on stage-entry, the door prelude has
+  // already completed and he can answer Matthias.
+  if (routeName === 'stage-entry') return true;
+  if (routeName === 'stage-leave' || routeName.startsWith('leave-')) return false;
+
+  const x = Number(logicalX);
+  return Number.isFinite(x) && x <= HANS_INITIAL_REPLY_ENTRY_MAX_LOGICAL_X;
 }
 
 export function hansBoardPeekPointReached({ phase, route, choreographyPhase = '' } = {}) {
@@ -80,9 +86,16 @@ export function shouldStartHansBoardPeek({ phase, route, choreographyPhase, sugg
     && Boolean(suggestion?.line);
 }
 
-export function shouldStartHansLeavingGrumble({ phase, route, alreadyPlayed = false } = {}) {
+export function shouldStartHansLeavingGrumble({
+  phase,
+  route,
+  doorOpen = 0,
+  alreadyPlayed = false,
+} = {}) {
+  const routeName = String(route || '');
+  const authoredDoorOpening = routeName === 'stage-leave' && Number(doorOpen) > 0;
   return phase === 'await-exit'
-    && route === 'leave-door'
+    && (routeName === 'leave-door' || authoredDoorOpening)
     && !alreadyPlayed;
 }
 
