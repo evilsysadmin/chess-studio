@@ -19,16 +19,19 @@ async function openTactics(page, {
   chroniclesRunFailureStatus = 0,
   chroniclesCurrentMapId = 'crypt-eight-squares',
   expectReady = true,
+  authenticated = false,
 } = {}) {
-  await mockApi(page, {
-    chroniclesRunFailureStatus,
-    chroniclesCurrentMapId,
-    profileSeed: {
-      'matthias.onboarded': '2',
-      'chess-study-home-guide-dismissed-v1': '1',
-    },
-  });
-  await login(page);
+  if (!authenticated) {
+    await mockApi(page, {
+      chroniclesRunFailureStatus,
+      chroniclesCurrentMapId,
+      profileSeed: {
+        'matthias.onboarded': '2',
+        'chess-study-home-guide-dismissed-v1': '1',
+      },
+    });
+    await login(page);
+  }
   await dismissGuide(page);
   const speech = page.getByRole('region', { name: 'Mensaje de Matthias', exact: true });
   if (await speech.isVisible().catch(() => false)) {
@@ -273,8 +276,8 @@ for (const capture of CAPTURES) {
       // Re-enter Tactics from Home so the combat proof starts from the last
       // semantic checkpoint. The Tactics view itself is intentionally ephemeral,
       // so a raw browser reload returns to Home rather than restoring the mode.
-      await page.goto('/');
-      await openTactics(page);
+      await page.goto('./');
+      await openTactics(page, { authenticated: true });
       await expect(mode).toBeVisible();
       await expect(mode.locator('[data-chronicles-tactics-renderer="three"] canvas')).toHaveCount(1, { timeout: 30_000 });
       await expect(mode).toHaveAttribute('data-engagement', 'exploration');
