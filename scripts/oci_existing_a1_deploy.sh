@@ -206,6 +206,15 @@ case "${go_native_narrative,,}" in
   true|false) go_native_narrative="${go_native_narrative,,}" ;;
   *) echo "invalid CHESS_STUDIO_GO_NATIVE_NARRATIVE_ENABLED: $go_native_narrative" >&2; exit 2 ;;
 esac
+# Native Go Pawn Slug stage content.
+case "$target" in
+  staging) go_native_pawn_slug="${CHESS_STUDIO_GO_NATIVE_PAWN_SLUG_ENABLED:-true}" ;;
+  *) go_native_pawn_slug="${CHESS_STUDIO_GO_NATIVE_PAWN_SLUG_ENABLED:-false}" ;;
+esac
+case "${go_native_pawn_slug,,}" in
+  true|false) go_native_pawn_slug="${go_native_pawn_slug,,}" ;;
+  *) echo "invalid CHESS_STUDIO_GO_NATIVE_PAWN_SLUG_ENABLED: $go_native_pawn_slug" >&2; exit 2 ;;
+esac
 pvp_sparring_username="${CHESS_PVP_SPARRING_USERNAME:-sparringmeister}"
 
 state_file="$state_dir/deployed.sha"
@@ -385,6 +394,7 @@ compose() {
   CHESS_STUDIO_GO_NATIVE_FEEDBACK_ENABLED="$go_native_feedback" \
   CHESS_STUDIO_GO_NATIVE_MATTHIAS_READ_ENABLED="$go_native_matthias_read" \
   CHESS_STUDIO_GO_NATIVE_NARRATIVE_ENABLED="$go_native_narrative" \
+  CHESS_STUDIO_GO_NATIVE_PAWN_SLUG_ENABLED="$go_native_pawn_slug" \
   CHESS_PVP_SPARRING_OWNER="$pvp_sparring_owner" \
   CHESS_PVP_SPARRING_USERNAME="$pvp_sparring_username" \
   CHESS_STUDIO_OCI_LOG_SERVICE_NAME="chess-studio-oci-backend-${target}-stdout" \
@@ -570,7 +580,7 @@ pvp_attest() {
     rm -f "$body"
     return 1
   fi
-  if python3 - "$body" "$pvp_sparring_enabled" "$deployment_target" "$sha" "$go_native_games_read" "$go_native_games_write" "$go_native_games_hint" "$go_native_analyze" "$go_native_system" "$go_native_profile" "$go_native_auth_session" "$go_native_login" "$go_native_account" "$go_native_recovery" "$go_native_feedback" "$go_native_matthias_read" "$go_native_narrative" <<'PY'
+  if python3 - "$body" "$pvp_sparring_enabled" "$deployment_target" "$sha" "$go_native_games_read" "$go_native_games_write" "$go_native_games_hint" "$go_native_analyze" "$go_native_system" "$go_native_profile" "$go_native_auth_session" "$go_native_login" "$go_native_account" "$go_native_recovery" "$go_native_feedback" "$go_native_matthias_read" "$go_native_narrative" "$go_native_pawn_slug" <<'PY'
 import json
 import pathlib
 import sys
@@ -624,6 +634,7 @@ if (
     or bool(payload.get('nativeFeedback')) != (str(sys.argv[15]).strip().lower() == 'true')
     or bool(payload.get('nativeMatthias')) != (str(sys.argv[16]).strip().lower() == 'true')
     or bool(payload.get('nativeNarrative')) != (str(sys.argv[17]).strip().lower() == 'true')
+    or bool(payload.get('nativePawnSlug')) != (str(sys.argv[18]).strip().lower() == 'true')
 ):
     raise SystemExit(1)
 
@@ -1916,6 +1927,13 @@ if [[ "$api_edge_mode" == "go" && "$go_native_narrative" == "true" ]] && ! wait_
   rollback "$sha" || true
   exit 77
 fi
+# Anonymous GET of a Pawn Slug stage is Go's 401.
+if [[ "$api_edge_mode" == "go" && "$go_native_pawn_slug" == "true" ]] && ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/pawn-slug/stages/pawn-slug-v1" GET X-Chess-PawnSlug-Native 401; then
+  echo "native pawn slug did not answer through Go after cutover: color=$candidate_color" >&2
+  compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
+  rollback "$sha" || true
+  exit 78
+fi
 write_active_color "$candidate_color"
 phase_done switch "$switch_started_ms"
 
@@ -1979,5 +1997,5 @@ fi
 agent_diag_summary || printf '%s\n' 'OCI_AGENT_DIAG unavailable'
 phase_done total "$total_started_ms"
 printf 'OCI_DEPLOY_TIMINGS target=%s phases=%s tunnel=%s color=%s\n' "$target" "${deploy_phase_summary%,}" "$tunnel_action" "$candidate_color"
-echo "CHESS_STUDIO_DEPLOY_OK target=$target repo_ref=$sha color=$candidate_color pvp=go api_edge=$api_edge_mode games_native=$go_native_games_read games_native_write=$go_native_games_write games_native_hint=$go_native_games_hint analyze_native=$go_native_analyze system_native=$go_native_system profile_native=$go_native_profile auth_session_native=$go_native_auth_session login_native=$go_native_login account_native=$go_native_account recovery_native=$go_native_recovery feedback_native=$go_native_feedback matthias_read_native=$go_native_matthias_read narrative_native=$go_native_narrative cors_origin=$cors_origin tunnel_action=$tunnel_action image=pulled observability=${observability_summary:-unknown}"
+echo "CHESS_STUDIO_DEPLOY_OK target=$target repo_ref=$sha color=$candidate_color pvp=go api_edge=$api_edge_mode games_native=$go_native_games_read games_native_write=$go_native_games_write games_native_hint=$go_native_games_hint analyze_native=$go_native_analyze system_native=$go_native_system profile_native=$go_native_profile auth_session_native=$go_native_auth_session login_native=$go_native_login account_native=$go_native_account recovery_native=$go_native_recovery feedback_native=$go_native_feedback matthias_read_native=$go_native_matthias_read narrative_native=$go_native_narrative pawn_slug_native=$go_native_pawn_slug cors_origin=$cors_origin tunnel_action=$tunnel_action image=pulled observability=${observability_summary:-unknown}"
 exit 0

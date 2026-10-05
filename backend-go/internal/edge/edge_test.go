@@ -1488,3 +1488,27 @@ func TestNativeNarrativeServesOnlyItsRoutes(t *testing.T) {
 		t.Fatalf("served %v proxied %v", served, proxied)
 	}
 }
+
+func TestNativePawnSlugServesOnlyItsRoute(t *testing.T) {
+	var proxied []string
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		proxied = append(proxied, r.Method+" "+r.URL.Path)
+		w.WriteHeader(http.StatusTeapot)
+	}))
+	defer upstream.Close()
+	var served []string
+	native := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		served = append(served, r.Method+" "+r.URL.Path)
+		w.WriteHeader(http.StatusOK)
+	})
+	h, err := New(Config{UpstreamURL: upstream.URL, NativePawnSlug: native})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, req := range [][2]string{{"GET", "/api/pawn-slug/stages/pawn-slug-v1"}, {"POST", "/api/pawn-slug/stages/pawn-slug-v1"}, {"GET", "/api/pawn-slug/other"}} {
+		h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(req[0], "http://api.chess.test"+req[1], nil))
+	}
+	if strings.Join(served, ",") != "GET /api/pawn-slug/stages/pawn-slug-v1" || strings.Join(proxied, ",") != "POST /api/pawn-slug/stages/pawn-slug-v1,GET /api/pawn-slug/other" {
+		t.Fatalf("served %v proxied %v", served, proxied)
+	}
+}

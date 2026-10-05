@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-python -m pip install --quiet   "$(grep -E '^chess==' backend-python/requirements.txt)"   "$(grep -E '^pydantic==' backend-python/requirements.txt)"   "$(grep -E '^pymongo==' backend-python/requirements.txt)"   "$(grep -E '^bcrypt==' backend-python/requirements.txt)"   "$(grep -E '^argon2-cffi==' backend-python/requirements.txt)"   "$(grep -E '^pyjwt==' backend-python/requirements.txt)"   "$(grep -E '^httpx' backend-python/requirements.txt | head -1)"
+python -m pip install --quiet   "$(grep -E '^chess==' backend-python/requirements.txt)"   "$(grep -E '^pydantic==' backend-python/requirements.txt)"   "$(grep -E '^pymongo==' backend-python/requirements.txt)"   "$(grep -E '^bcrypt==' backend-python/requirements.txt)"   "$(grep -E '^argon2-cffi==' backend-python/requirements.txt)"   "$(grep -E '^pyjwt==' backend-python/requirements.txt)"   "$(grep -E '^httpx' backend-python/requirements.txt | head -1)"   "$(grep -E '^fastapi==' backend-python/requirements.txt)"
 
 python scripts/chronicles_topology_parity_corpus.py --check
 python scripts/engine_parity_corpus.py --check
@@ -21,6 +21,7 @@ python scripts/auth_guard_parity_corpus.py --check
 python scripts/matthias_memory_parity_corpus.py --check
 python scripts/matthias_memory_writes_parity_corpus.py --check
 python scripts/narrative_parity_corpus.py --check
+python scripts/pawn_slug_parity_corpus.py --check
 
 (
   cd backend-go
@@ -30,5 +31,5 @@ python scripts/narrative_parity_corpus.py --check
   go test -count=1 -run 'MatchPython' ./internal/obshistory
   go test -count=1 -run 'MatchPython' ./internal/profilestore
   go test -count=1 -run 'MatchesPython|MatchPython' ./internal/authcrypto ./internal/authguard
-  go test -count=1 -run 'MatchesPython|MatchPython' ./internal/matthiasmem ./internal/pyval ./internal/narrative
+  go test -count=1 -run 'MatchesPython|MatchPython' ./internal/matthiasmem ./internal/pyval ./internal/narrative ./internal/pawnslug
 )

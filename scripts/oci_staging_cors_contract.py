@@ -662,6 +662,13 @@ assert "payload.get('nativeNarrative')" in deploy
 assert 'games_native_attest "http://127.0.0.1:${port}/api/admin/ai-metrics" GET X-Chess-Narrative-Native 401; then' in deploy
 assert 'exit 77' in deploy
 assert compose.count('GO_NATIVE_NARRATIVE_ENABLED: "${CHESS_STUDIO_GO_NATIVE_NARRATIVE_ENABLED:-false}"') == 2
+# Native Pawn Slug: staging first, attested by Go's 401 for an anonymous stage.
+assert 'staging) go_native_pawn_slug="${CHESS_STUDIO_GO_NATIVE_PAWN_SLUG_ENABLED:-true}" ;;' in deploy
+assert 'CHESS_STUDIO_GO_NATIVE_PAWN_SLUG_ENABLED="$go_native_pawn_slug"' in deploy
+assert "payload.get('nativePawnSlug')" in deploy
+assert 'games_native_attest "http://127.0.0.1:${port}/api/pawn-slug/stages/pawn-slug-v1" GET X-Chess-PawnSlug-Native 401; then' in deploy
+assert 'exit 78' in deploy
+assert compose.count('GO_NATIVE_PAWN_SLUG_ENABLED: "${CHESS_STUDIO_GO_NATIVE_PAWN_SLUG_ENABLED:-false}"') == 2
 assert 'GO_NATIVE_GAMES_WRITE_ENABLED: "${CHESS_STUDIO_GO_NATIVE_GAMES_WRITE_ENABLED:-false}"' in compose
 assert 'sleep 0.25' in deploy
 assert 'if ! wait_pvp_edge_attest "$port"; then' in deploy
