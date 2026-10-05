@@ -108,6 +108,8 @@ GO_AUTHORITY_PATHS = {
     "backend-python/auth.py",
     "backend-python/auth_login_guard.py",
     "backend-python/auth_ip_guard.py",
+    "backend-python/user_data_lifecycle.py",
+    "backend-python/users_store.py",
     "backend-python/profile_store.py",
     "backend-python/engine_analysis.py",
     "backend-python/observability_history.py",
@@ -478,6 +480,7 @@ def self_test() -> None:
     _expect(["scripts/observability_history_parity_corpus.py"], run_go=True, run_go_parity=True)
     _expect(["scripts/profile_parity_corpus.py"], run_go=True, run_go_parity=True)
     _expect(["scripts/password_parity_corpus.py"], run_go=True, run_go_parity=True)
+    _expect(["backend-python/user_data_lifecycle.py"], run_backend=True, run_go=True, run_go_parity=True)
     _expect(["backend-go/internal/authguard/testdata/python_guard_corpus.json"], run_go=True, run_go_parity=True)
     _expect(["backend-go/internal/profilestore/testdata/python_profile_corpus.json"], run_go=True, run_go_parity=True)
     _expect(["backend-go/internal/obshistory/testdata/python_history_corpus.json"], run_go=True, run_go_parity=True)

@@ -4,8 +4,10 @@
 package authcrypto
 
 import (
+	"crypto/rand"
 	"crypto/subtle"
 	"encoding/base64"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -86,4 +88,29 @@ func verifyArgon2(password, encoded string) bool {
 		return false
 	}
 	return subtle.ConstantTimeCompare(got, want) == 1
+}
+
+// Argon2id parameters of auth._ARGON2 (OWASP's 19 MiB, t=2, p=1 baseline).
+const (
+	argonTime    = 2
+	argonMemory  = 19_456
+	argonThreads = 1
+	argonKeyLen  = 32
+	argonSaltLen = 16
+)
+
+// HashPassword mirrors auth.hash_password: Argon2id in argon2-cffi's
+// encoded form, so Python verifies what Go stores and vice versa.
+func HashPassword(password string) (string, error) {
+	salt := make([]byte, argonSaltLen)
+	if _, err := rand.Read(salt); err != nil {
+		return "", err
+	}
+	return hashWithSalt(password, salt), nil
+}
+
+func hashWithSalt(password string, salt []byte) string {
+	key := argon2.IDKey([]byte(password), salt, argonTime, argonMemory, argonThreads, argonKeyLen)
+	return fmt.Sprintf("$argon2id$v=19$m=%d,t=%d,p=%d$%s$%s", argonMemory, argonTime, argonThreads,
+		base64.RawStdEncoding.EncodeToString(salt), base64.RawStdEncoding.EncodeToString(key))
 }

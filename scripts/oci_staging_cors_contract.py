@@ -622,6 +622,14 @@ assert 'games_native_attest "http://127.0.0.1:${port}/api/auth/login" POST X-Che
 assert 'local expected_status="${4:-401}"' in deploy
 assert 'exit 71' in deploy
 assert 'GO_NATIVE_LOGIN_ENABLED: "${CHESS_STUDIO_GO_NATIVE_LOGIN_ENABLED:-false}"' in compose
+# Native account routes: staging first, attested through Go after the cutover.
+assert 'staging) go_native_account="${CHESS_STUDIO_GO_NATIVE_ACCOUNT_ENABLED:-true}" ;;' in deploy
+assert '*) go_native_account="${CHESS_STUDIO_GO_NATIVE_ACCOUNT_ENABLED:-false}" ;;' in deploy
+assert 'CHESS_STUDIO_GO_NATIVE_ACCOUNT_ENABLED="$go_native_account"' in deploy
+assert "payload.get('nativeAccount')" in deploy
+assert 'games_native_attest "http://127.0.0.1:${port}/api/auth/password" PUT X-Chess-Auth-Native; then' in deploy
+assert 'exit 72' in deploy
+assert 'GO_NATIVE_ACCOUNT_ENABLED: "${CHESS_STUDIO_GO_NATIVE_ACCOUNT_ENABLED:-false}"' in compose
 assert 'GO_NATIVE_GAMES_WRITE_ENABLED: "${CHESS_STUDIO_GO_NATIVE_GAMES_WRITE_ENABLED:-false}"' in compose
 assert 'sleep 0.25' in deploy
 assert 'if ! wait_pvp_edge_attest "$port"; then' in deploy

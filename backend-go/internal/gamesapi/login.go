@@ -79,15 +79,14 @@ type LoginConfig struct {
 }
 
 type LoginHandler struct {
-	base            *Handler
-	accounts        LoginAccounts
-	identityGuard   Guard
-	ipGuard         Guard
-	touch           LoginTouch
-	failureLog      LoginFailureLog
-	syntheticSecret string
-	tunnelEnv       bool
-	limit           *limiter
+	base          *Handler
+	accounts      LoginAccounts
+	identityGuard Guard
+	ipGuard       Guard
+	touch         LoginTouch
+	failureLog    LoginFailureLog
+	synthetic     syntheticTrust
+	limit         *limiter
 }
 
 func NewLogin(cfg LoginConfig) (*LoginHandler, error) {
@@ -100,13 +99,11 @@ func NewLogin(cfg LoginConfig) (*LoginHandler, error) {
 	if err != nil {
 		return nil, err
 	}
-	env := strings.ToLower(strings.TrimSpace(cfg.Environment))
 	return &LoginHandler{
 		base: base, accounts: cfg.LoginAccounts, identityGuard: cfg.IdentityGuard, ipGuard: cfg.IPGuard,
 		touch: cfg.Touch, failureLog: cfg.FailureLog,
-		syntheticSecret: strings.TrimSpace(cfg.SyntheticSecret),
-		tunnelEnv:       env == "staging" || env == "stage",
-		limit:           newLimiter(10, time.Minute),
+		synthetic: newSyntheticTrust(cfg.Environment, cfg.SyntheticSecret),
+		limit:     newLimiter(10, time.Minute),
 	}, nil
 }
 
@@ -115,10 +112,20 @@ var syntheticSources = map[string]bool{"staging-smoke-cleanup": true, "staging-b
 
 var syntheticUser = regexp.MustCompile(`^ci_smoke_[0-9a-f]{16}$`)
 
-// trustedSynthetic mirrors _trusted_staging_smoke_request: a staging-only
+// syntheticTrust mirrors _trusted_staging_smoke_request: a staging-only
 // HMAC marker bound to one ephemeral smoke identity.
-func (h *LoginHandler) trustedSynthetic(r *http.Request) (source, identity string, ok bool) {
-	if !h.tunnelEnv || h.syntheticSecret == "" {
+type syntheticTrust struct {
+	tunnelEnv bool
+	secret    string
+}
+
+func newSyntheticTrust(environment, secret string) syntheticTrust {
+	env := strings.ToLower(strings.TrimSpace(environment))
+	return syntheticTrust{tunnelEnv: env == "staging" || env == "stage", secret: strings.TrimSpace(secret)}
+}
+
+func (t syntheticTrust) trusted(r *http.Request) (source, identity string, ok bool) {
+	if !t.tunnelEnv || t.secret == "" {
 		return "", "", false
 	}
 	source = strings.TrimSpace(r.Header.Get("X-Chess-Synthetic-Source"))
@@ -127,7 +134,7 @@ func (h *LoginHandler) trustedSynthetic(r *http.Request) (source, identity strin
 	if !syntheticSources[source] || !syntheticUser.MatchString(identity) {
 		return "", "", false
 	}
-	mac := hmac.New(sha256.New, []byte(h.syntheticSecret))
+	mac := hmac.New(sha256.New, []byte(t.secret))
 	mac.Write([]byte("chess-studio:synthetic:" + source + "\x00" + identity))
 	expected := hex.EncodeToString(mac.Sum(nil))
 	if signature == "" || !hmac.Equal([]byte(signature), []byte(expected)) {
@@ -137,8 +144,8 @@ func (h *LoginHandler) trustedSynthetic(r *http.Request) (source, identity strin
 }
 
 // guardIP mirrors _auth_ip_guard_identity's choice of address.
-func (h *LoginHandler) guardIP(r *http.Request) string {
-	if h.base.trustCF {
+func guardIP(r *http.Request, trustCF bool) string {
+	if trustCF {
 		raw := strings.TrimSpace(r.Header.Get("CF-Connecting-IP"))
 		if raw == "" {
 			raw = remoteHost(r.RemoteAddr)
@@ -183,13 +190,13 @@ func (h *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := context.WithoutCancel(r.Context())
-	source, syntheticIdentity, trusted := h.trustedSynthetic(r)
+	source, syntheticIdentity, trusted := h.synthetic.trusted(r)
 
 	// Middleware: the per-IP guard, skipped for signed staging probes. Its
 	// storage being down never blocks a login.
 	ipID := ""
 	if !trusted {
-		if ip := h.guardIP(r); ip != "" {
+		if ip := guardIP(r, b.trustCF); ip != "" {
 			ipID, _ = authguard.IPKey(ip, string(b.secret))
 		}
 	}

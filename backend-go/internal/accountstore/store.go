@@ -7,6 +7,7 @@ import (
 	"errors"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -19,6 +20,9 @@ const defaultQueryTimeout = 2 * time.Second
 type Store struct {
 	users   *mongo.Collection
 	timeout time.Duration
+
+	mu              sync.Mutex
+	emailIndexReady bool
 }
 
 func New(db *mongo.Database, timeout time.Duration) *Store {
@@ -133,12 +137,26 @@ type LoginAccount struct {
 // ForLogin mirrors login's lookup: by email when the identity contains "@"
 // (get_user_by_email), by username otherwise (get_user).
 func (s *Store) ForLogin(ctx context.Context, identity string) (LoginAccount, bool, error) {
+	if strings.Contains(identity, "@") {
+		return s.lookup(ctx, bson.M{"email": identity})
+	}
+	return s.lookup(ctx, bson.M{"_id": identity})
+}
+
+// ByUsername mirrors get_user for the account routes (no email fallback).
+func (s *Store) ByUsername(ctx context.Context, username string) (LoginAccount, bool, error) {
+	return s.lookup(ctx, bson.M{"_id": username})
+}
+
+// EmailOwner mirrors get_user_by_email(email)["username"].
+func (s *Store) EmailOwner(ctx context.Context, email string) (string, bool, error) {
+	account, found, err := s.lookup(ctx, bson.M{"email": email})
+	return account.Username, found, err
+}
+
+func (s *Store) lookup(ctx context.Context, filter bson.M) (LoginAccount, bool, error) {
 	if s == nil || s.users == nil {
 		return LoginAccount{}, false, errors.New("account store is not configured")
-	}
-	filter := bson.M{"_id": identity}
-	if strings.Contains(identity, "@") {
-		filter = bson.M{"email": identity}
 	}
 	queryCtx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
@@ -157,6 +175,112 @@ func (s *Store) ForLogin(ctx context.Context, identity string) (LoginAccount, bo
 	account.PasswordHash, account.HasPasswordHash = row["password_hash"]
 	account.SessionVersion = sessionVersion(row["session_version"])
 	return account, true, nil
+}
+
+var (
+	// ErrUserExists is users_store.UserAlreadyExists.
+	ErrUserExists = errors.New("user already exists")
+	// ErrEmailExists is users_store.UserEmailAlreadyExists.
+	ErrEmailExists = errors.New("email already belongs to another account")
+)
+
+// ensureEmailIndex mirrors _ensure_email_index: unique among accounts that
+// have a string email (legacy accounts without one stay valid).
+func (s *Store) ensureEmailIndex(ctx context.Context) error {
+	s.mu.Lock()
+	ready := s.emailIndexReady
+	s.mu.Unlock()
+	if ready {
+		return nil
+	}
+	_, err := s.users.Indexes().CreateOne(ctx, mongo.IndexModel{
+		Keys: bson.D{{Key: "email", Value: 1}},
+		Options: options.Index().SetUnique(true).SetName("uniq_recovery_email").
+			SetPartialFilterExpression(bson.D{{Key: "email", Value: bson.D{{Key: "$type", Value: "string"}}}}),
+	})
+	if err != nil {
+		return err
+	}
+	s.mu.Lock()
+	s.emailIndexReady = true
+	s.mu.Unlock()
+	return nil
+}
+
+// Create mirrors users_store.create_user.
+func (s *Store) Create(ctx context.Context, username, passwordHash, email, createdAt string) error {
+	queryCtx, cancel := context.WithTimeout(ctx, s.timeout)
+	defer cancel()
+	if email != "" {
+		if err := s.ensureEmailIndex(queryCtx); err != nil {
+			return err
+		}
+	}
+	doc := bson.D{
+		{Key: "_id", Value: username},
+		{Key: "password_hash", Value: passwordHash},
+		{Key: "session_version", Value: int32(0)},
+		{Key: "created_at", Value: createdAt},
+		{Key: "last_activity", Value: createdAt},
+	}
+	if email != "" {
+		doc = append(doc, bson.E{Key: "email", Value: email})
+	}
+	_, err := s.users.InsertOne(queryCtx, doc)
+	if mongo.IsDuplicateKeyError(err) {
+		// Username or email: tell them apart for a useful 409.
+		if email != "" {
+			if _, found, lookupErr := s.EmailOwner(ctx, email); lookupErr == nil && found {
+				return ErrEmailExists
+			}
+		}
+		return ErrUserExists
+	}
+	return err
+}
+
+// Delete mirrors users_store.delete_user.
+func (s *Store) Delete(ctx context.Context, username string) (bool, error) {
+	queryCtx, cancel := context.WithTimeout(ctx, s.timeout)
+	defer cancel()
+	result, err := s.users.DeleteOne(queryCtx, bson.M{"_id": username})
+	if err != nil {
+		return false, err
+	}
+	return result.DeletedCount > 0, nil
+}
+
+// UpdatePassword mirrors users_store.update_password: the new hash and one
+// more session version, which revokes every earlier token.
+func (s *Store) UpdatePassword(ctx context.Context, username, passwordHash string) (int64, bool, error) {
+	queryCtx, cancel := context.WithTimeout(ctx, s.timeout)
+	defer cancel()
+	var row bson.M
+	err := s.users.FindOneAndUpdate(queryCtx, bson.M{"_id": username},
+		bson.D{{Key: "$set", Value: bson.D{{Key: "password_hash", Value: passwordHash}}}, {Key: "$inc", Value: bson.D{{Key: "session_version", Value: int32(1)}}}},
+		options.FindOneAndUpdate().SetProjection(bson.M{"session_version": 1}).SetReturnDocument(options.After),
+	).Decode(&row)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return 0, false, nil
+	}
+	if err != nil {
+		return 0, false, err
+	}
+	return sessionVersion(row["session_version"]), true, nil
+}
+
+// UpdateEmail mirrors users_store.update_email for a non-empty email.
+func (s *Store) UpdateEmail(ctx context.Context, username, email string) error {
+	queryCtx, cancel := context.WithTimeout(ctx, s.timeout)
+	defer cancel()
+	if err := s.ensureEmailIndex(queryCtx); err != nil {
+		return err
+	}
+	_, err := s.users.UpdateOne(queryCtx, bson.M{"_id": username}, bson.M{"$set": bson.M{"email": email}})
+	if mongo.IsDuplicateKeyError(err) {
+		return ErrEmailExists
+	}
+	return err
 }
 
 // sessionVersion mirrors users_store.session_version: int(value), at least
