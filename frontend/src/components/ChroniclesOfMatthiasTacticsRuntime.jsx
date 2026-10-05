@@ -55,10 +55,8 @@ import {
   chroniclesRewardDraft,
 } from '../chronicles/chroniclesRewardDraft.js';
 import { chroniclesCheckpointState } from '../chronicles/chroniclesRunClient.js';
-import {
-  chroniclesApplyRunCheckpoint,
-  chroniclesRunCheckpointFingerprint,
-} from '../chronicles/chroniclesRunCheckpoint.js';
+import { chroniclesApplyRunCheckpoint } from '../chronicles/chroniclesRunCheckpoint.js';
+import { chroniclesTacticsCheckpointFingerprint } from '../chronicles/chroniclesTacticsCheckpointPolicy.js';
 import {
   chroniclesProgressionFeedback,
   chroniclesProgressionFeedbackLabel,
@@ -131,7 +129,7 @@ export default function ChroniclesOfMatthiasTactics({
   const [state, setState] = useState(() => createActionState(progression, authoritativeRun));
   const stateRef = useRef(state);
   const authoritativeRunRef = useRef(authoritativeRun);
-  const checkpointFingerprintRef = useRef(chroniclesRunCheckpointFingerprint(state));
+  const checkpointFingerprintRef = useRef(chroniclesTacticsCheckpointFingerprint(state));
   const checkpointQueueRef = useRef(Promise.resolve());
   const selectedMemberRef = useRef('matthias');
   const lastMoveAtRef = useRef(0);
@@ -260,8 +258,10 @@ export default function ChroniclesOfMatthiasTactics({
 
   const moveParty = useCallback((dx, dy) => {
     const now = performance.now();
-    if (now - lastMoveAtRef.current < 120) return;
     const current = stateRef.current;
+    const freeExploration = current?.phase === 'explore' && !current?.initiative?.order?.length;
+    const minimumGap = freeExploration ? 105 : 120;
+    if (now - lastMoveAtRef.current < minimumGap) return;
     if (!chroniclesTacticsPartyCanAct(current)) return;
     const actor = chroniclesTacticsCurrentActor(current);
     const memberId = actor?.kind === 'party' ? actor.id : null;
@@ -500,7 +500,7 @@ export default function ChroniclesOfMatthiasTactics({
   }, [sceneModel]);
 
   useEffect(() => {
-    const fingerprint = chroniclesRunCheckpointFingerprint(state);
+    const fingerprint = chroniclesTacticsCheckpointFingerprint(state);
     if (!fingerprint || fingerprint === checkpointFingerprintRef.current) return;
     checkpointFingerprintRef.current = fingerprint;
     const snapshot = state;
@@ -527,6 +527,38 @@ export default function ChroniclesOfMatthiasTactics({
   }, [onFinishRun, rewardDraft.length, state]);
 
   useEffect(() => {
+    let heldMovementKey = null;
+    let heldMovementVector = null;
+    let explorationTimer = 0;
+
+    const stopExplorationWalk = () => {
+      heldMovementKey = null;
+      heldMovementVector = null;
+      if (explorationTimer) {
+        window.clearInterval(explorationTimer);
+        explorationTimer = 0;
+      }
+    };
+
+    const startExplorationWalk = (key, vector) => {
+      heldMovementKey = key;
+      heldMovementVector = vector;
+      moveParty(vector.dx, vector.dy);
+      if (explorationTimer) return;
+      explorationTimer = window.setInterval(() => {
+        const current = stateRef.current;
+        if (
+          !heldMovementVector
+          || current?.phase !== 'explore'
+          || current?.initiative?.order?.length
+        ) {
+          stopExplorationWalk();
+          return;
+        }
+        moveParty(heldMovementVector.dx, heldMovementVector.dy);
+      }, 120);
+    };
+
     const onKeyDown = (event) => {
       if (/^[1-4]$/.test(event.key)) {
         const member = stateRef.current.party[Number(event.key) - 1];
@@ -557,13 +589,39 @@ export default function ChroniclesOfMatthiasTactics({
         useClassAbility();
         return;
       }
+
       const vector = MOVEMENT[event.key];
       if (!vector) return;
       event.preventDefault();
-      moveParty(vector.dx, vector.dy);
+
+      const current = stateRef.current;
+      const freeExploration = current?.phase === 'explore' && !current?.initiative?.order?.length;
+      if (!freeExploration) {
+        if (!event.repeat) moveParty(vector.dx, vector.dy);
+        return;
+      }
+      if (event.repeat && heldMovementKey === event.key) return;
+      startExplorationWalk(event.key, vector);
     };
+
+    const onKeyUp = (event) => {
+      if (event.key === heldMovementKey) stopExplorationWalk();
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') stopExplorationWalk();
+    };
+
     window.addEventListener('keydown', onKeyDown, { passive: false });
-    return () => window.removeEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', stopExplorationWalk);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      stopExplorationWalk();
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', stopExplorationWalk);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
   }, [attackEnemy, moveParty, passTurn, selectMember, useClassAbility, useContextualAction]);
 
   return (
@@ -573,6 +631,7 @@ export default function ChroniclesOfMatthiasTactics({
       data-camera="isometric-behind-party"
       data-combat="turn-based"
       data-engagement={inCombat ? 'combat' : 'exploration'}
+      data-exploration-control="hold-to-walk"
       data-difficulty-target={difficultyBand.targetLevel}
       data-difficulty-min={difficultyBand.minLevel}
       data-difficulty-max={difficultyBand.maxLevel}
@@ -610,7 +669,7 @@ export default function ChroniclesOfMatthiasTactics({
         <aside className="chronicles-tactics__mission" aria-label="Misión">
           <span className="chronicles-tactics__kicker">{locationLabel}</span>
           <strong>{objective}</strong>
-          <small>WASD/flechas mueve · 1–4 cambia de héroe · espacio usa/pasa turno · Shift ataca · E habilidad. En combate manda AGI + 1d8: una acción por actor.</small>
+          <small>Mantén WASD/flechas para caminar · 1–4 cambia de héroe · espacio usa/pasa turno · Shift ataca · E habilidad. En combate manda AGI + 1d8: una acción por actor.</small>
           {targetIntel ? (
             <div className="chronicles-tactics__enemy-intel" aria-label="Intel enemigo">
               <span>OBJETIVO · NIVEL {targetIntel.enemyBuild.level}</span>
@@ -711,7 +770,7 @@ export default function ChroniclesOfMatthiasTactics({
       </div>
 
       <footer className="chronicles-tactics__footer">
-        <span>Motor {rendererName} · {activeActor ? `Combate por turnos · ronda ${initiativeRound} · ${activeActor.name || activeActor.id}` : 'Exploración libre'}</span>
+        <span>Motor {rendererName} · {activeActor ? `Combate por turnos · ronda ${initiativeRound} · ${activeActor.name || activeActor.id}` : 'Exploración libre · movimiento continuo'}</span>
         <span>{contextualAction ? `Espacio · ${contextualAction.label}` : canPassTurn ? 'Espacio · Pasar turno' : 'Espacio · Usar'} · Shift · {selectedProfile.attackName} · E · {selectedProfile.abilityName}</span>
         <button type="button" onClick={restart}>Reiniciar incursión</button>
       </footer>
