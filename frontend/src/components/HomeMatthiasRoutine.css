@@ -67,8 +67,7 @@
   /* Exact furniture stations make the hourly routine legible. Chair routines
      keep the whole, smaller pawn perched on the seat: cropping the plinth made
      Matthias read as a floating torso in front of the backrest. */
-  .illustrated-home__matthias:has(.home-matthias-3d[data-home-matthias-station='chess-chair']) {
-    --home-matthias-zone-left: 17.2%;
+  .illustrated-home__matthias:has(.home-matthias-3d[data-home-matthias-station='chess-chair']) {    --home-matthias-zone-left: 17.2%;
     --home-matthias-zone-top: 43.5%;
     --home-matthias-zone-width: clamp(108px, 8.4cqw, 144px);
     --home-matthias-occlusion: 0%;
@@ -285,5 +284,21 @@
   .illustrated-home__matthias:hover .illustrated-home__matthias-portrait,
   .illustrated-home__matthias:focus-visible .illustrated-home__matthias-portrait {
     transform: none;
+  }
+}
+
+/* The collapsed global music dock owns the lower-left corner of the desktop
+   Home (HomeDesktopChrome.css: left max(6px, .45vw), 196px wide, at the
+   canonical 47.795vw - 74px line). Low stations (default, desk, rest) sit in
+   the same band, so Matthias and his speech bubble never start left of the
+   dock's right edge plus a 14px gap. Stations already right of it are
+   untouched. */
+@media (min-width: 1000px) and (pointer: fine) {
+  .illustrated-home__resident .illustrated-home__matthias {
+    left: max(var(--home-matthias-zone-left), calc(max(6px, .45vw) + 210px));
+  }
+
+  .illustrated-home__resident .illustrated-home__speech {
+    left: max(13.3%, calc(max(6px, .45vw) + 210px));
   }
 }
