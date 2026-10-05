@@ -36,10 +36,7 @@ import {
   CHRONICLES_ISO_PARTY_FACING,
   CHRONICLES_ISO_PARTY_LAYOUT,
 } from './chronicles/chroniclesTacticsPartyPresentation.js';
-import {
-  chroniclesFrameTiming,
-  tickChroniclesExplorationParty,
-} from './chronicles/chroniclesTacticsLocomotionPresentation.js';
+import { chroniclesFrameTiming, tickChroniclesExplorationParty } from './chronicles/chroniclesTacticsLocomotionPresentation.js';
 // Compatibility re-export: external renderer tests still consume these names.
 // Ownership lives in the focused Tactics party-presentation module.
 export {
