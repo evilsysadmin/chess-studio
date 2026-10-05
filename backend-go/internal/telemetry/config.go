@@ -1,8 +1,9 @@
 // Package telemetry gives the requests Go serves natively the same
 // observability Python gives every request: the chess_studio_http_server_*
-// OTLP metrics and one structured "http_request" log event (stdout and OTLP
-// logs). Requests Go only proxies are still recorded by Python, so the edge
-// wraps native handlers only and nothing is counted twice.
+// OTLP metrics, one structured "http_request" log event (stdout and OTLP
+// logs) and a server span continuing the caller's W3C trace. Requests Go only
+// proxies are still recorded by Python, so the edge wraps native handlers
+// only and nothing is counted twice.
 //
 // Go exports under its own service name (<OTEL_SERVICE_NAME>-go): sharing the
 // Python one would mix the two runtimes' series and make Go-native PvP
@@ -36,8 +37,7 @@ type Config struct {
 	// and CF-IPCountry count only behind the closed Cloudflare boundary.
 	TrustCloudflare bool
 
-	// The rest of tracing_settings, for Admin's diagnostics. Go does not
-	// export traces (yet): TracesEnabled only reports what is configured.
+	// The rest of tracing_settings: traces and Admin's diagnostics.
 	TracesEndpoint    string
 	TracesEnabled     bool
 	HeadersConfigured bool

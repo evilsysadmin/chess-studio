@@ -44,6 +44,9 @@ PRESSURE = {"level": "normal", "reasons": [], "inflight": 1, "optional_inflight_
             "critical_inflight_threshold": 32, "shed_last_5m": 0, "bulkhead_rejections_last_5m": 2}
 DEPLOYMENTS = [{"release": "v16.6dm46zfrv", "provider": "unknown", "deploymentId": "git:abc", "at": "2026-10-05T11:00:00.123000"}]
 TRACING = {"configured": False, "enabled": False, "signals": {"traces": {"configured": False}}}
+TRACE_PROBE = {"ok": True, "traceId": "4bf92f3577b34da6a3ce929d0e0e4736", "sampled": True, "flushed": True, "exported": True,
+               "exportResult": "SUCCESS", "exportError": None, "httpStatus": 200, "serviceName": "chess-studio-backend"}
+SIGNAL_PROBE = {"ok": False, "traceId": None, "signals": {"metrics": {"configured": True, "flushed": True}}, "diagnostics": TRACING}
 
 
 class _NoLimiter:
@@ -94,6 +97,8 @@ def build() -> dict:
     admin_api.list_deployment_annotations = deployments
     admin_api.tracing_diagnostics = lambda: TRACING
     admin_api.get_http_metrics = lambda: HTTP
+    admin_api.emit_trace_probe = lambda: TRACE_PROBE
+    admin_api.emit_observability_probe = lambda: SIGNAL_PROBE
 
     app = FastAPI()
     app.include_router(admin_api.build_admin_router(auth_dependency=_auth, admin_dependency=_admin, limiter=_NoLimiter()))
@@ -116,6 +121,10 @@ def build() -> dict:
         {"label": "shadow delta exp", "query": "", "database": ok_db, "ai": AI_OK, "history": "ok", "env": {"SHADOW_EVAL_LEVEL_DELTA": "2e1"}},
         {"label": "not admin", "query": "", "database": ok_db, "ai": AI_OK, "history": "ok", "user": "alice"},
         {"label": "anonymous", "query": "", "database": ok_db, "ai": AI_OK, "history": "ok", "user": None},
+        {"label": "trace probe", "method": "POST", "path": "/api/admin/observability/trace-probe", "query": "", "database": ok_db, "ai": AI_OK, "history": "ok"},
+        {"label": "signal probe", "method": "POST", "path": "/api/admin/observability/probe", "query": "?x=1", "database": ok_db, "ai": AI_OK, "history": "ok"},
+        {"label": "probe not admin", "method": "POST", "path": "/api/admin/observability/probe", "query": "", "database": ok_db, "ai": AI_OK, "history": "ok", "user": "bob"},
+        {"label": "probe anonymous", "method": "POST", "path": "/api/admin/observability/trace-probe", "query": "", "database": ok_db, "ai": AI_OK, "history": "ok", "user": None},
     ]
     steps = []
     for case in cases:
@@ -126,7 +135,7 @@ def build() -> dict:
         os.environ.update(case.get("env", {}))
         user = case.get("user", ADMIN)
         headers = {"Authorization": f"Bearer {user}"} if user else {}
-        response = client.get("/api/admin/observability" + case["query"], headers=headers)
+        response = client.request(case.get("method", "GET"), case.get("path", "/api/admin/observability") + case["query"], headers=headers)
         for k, v in saved.items():
             if v is None:
                 os.environ.pop(k, None)
@@ -135,7 +144,8 @@ def build() -> dict:
         steps.append({**case, "user": user, "status": response.status_code,
                       "response": None if response.status_code == 500 else response.content.decode("utf-8"),
                       "historyCalls": state["calls"], "ensured": state["ensured"]})
-    return {"fixtures": {"history": HISTORY, "http": HTTP, "pressure": PRESSURE, "deployments": DEPLOYMENTS, "tracing": TRACING},
+    return {"fixtures": {"history": HISTORY, "http": HTTP, "pressure": PRESSURE, "deployments": DEPLOYMENTS, "tracing": TRACING,
+                         "traceProbe": TRACE_PROBE, "signalProbe": SIGNAL_PROBE},
             "steps": steps}
 
 
