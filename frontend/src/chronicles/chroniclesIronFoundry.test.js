@@ -24,7 +24,7 @@ describe('Chronicles Black Iron Foundry', () => {
     expect(chroniclesMapIds()).toContain('iron-foundry');
     const foundry = chroniclesMapById('iron-foundry');
 
-    expect(foundry.version).toBe(2);
+    expect(foundry.version).toBe(3);
     expect(foundry.grid).toHaveLength(9);
     expect(foundry.grid[0]).toHaveLength(11);
     expect(foundry.enemies.map((enemy) => enemy.id)).toEqual([
