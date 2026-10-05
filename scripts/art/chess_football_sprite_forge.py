@@ -189,18 +189,20 @@ def _refine_svg(svg: str) -> str:
     authoring path.
     """
     replacements = (
-        ('rx="21" ry="3.0"', 'rx="18.5" ry="2.6"'),
-        ('stroke-width="7.2"', 'stroke-width="5.9"'),
-        ('stroke-width="4.8"', 'stroke-width="3.9"'),
-        ('stroke-width="6.4"', 'stroke-width="5.2"'),
-        ('stroke-width="4.0"', 'stroke-width="3.25"'),
-        ('stroke-width="7.0"', 'stroke-width="5.7"'),
-        ('stroke-width="4.4"', 'stroke-width="3.55"'),
-        ('stroke-width="6.0"', 'stroke-width="4.9"'),
-        ('stroke-width="3.7"', 'stroke-width="3.0"'),
-        ('r="4.6"', 'r="4.15"'),
-        ('r="3.5"', 'r="3.15"'),
-        ('rx="13.5" ry="15.5"', 'rx="11.9" ry="14.1"'),
+        ('rx="21" ry="3.0"', 'rx="17.0" ry="2.3"'),
+        ('stroke-width="7.2"', 'stroke-width="5.2"'),
+        ('stroke-width="4.8"', 'stroke-width="3.25"'),
+        ('stroke-width="6.4"', 'stroke-width="4.7"'),
+        ('stroke-width="4.0"', 'stroke-width="2.75"'),
+        ('stroke-width="7.0"', 'stroke-width="5.1"'),
+        ('stroke-width="4.4"', 'stroke-width="3.0"'),
+        ('stroke-width="6.0"', 'stroke-width="4.3"'),
+        ('stroke-width="3.7"', 'stroke-width="2.6"'),
+        ('stroke-width="3.8"', 'stroke-width="3.2"'),
+        ('stroke-width="1.8"', 'stroke-width="1.55"'),
+        ('r="4.6"', 'r="3.7"'),
+        ('r="3.5"', 'r="2.8"'),
+        ('rx="13.5" ry="15.5"', 'rx="10.8" ry="12.9"'),
     )
     for old, new in replacements:
         svg = svg.replace(old, new)
@@ -234,7 +236,7 @@ def build_outputs() -> dict[str, str]:
         outputs[filename] = svg
         atlas_meta[slug] = {"name": team["name"], "file": filename}
     manifest = {
-        "version": 4,
+        "version": 5,
         "quality_contract": SPRITE_FORGE_CONTRACT["quality_contract"],
         "cell": {"width": CELL_W, "height": CELL_H},
         "columns": COLUMNS,
