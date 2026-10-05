@@ -61,6 +61,9 @@ type Heartbeat struct {
 	Activity   string
 	Foreground *bool
 	Release    string
+	// Detached is a touch made without the request's network or browser
+	// session (Python's _touch_activity_best_effort(..., request=None)).
+	Detached bool
 }
 
 // Beat writes one forced activity heartbeat.
@@ -78,7 +81,7 @@ func (s *Sessions) Beat(r *http.Request, username string, beat Heartbeat) error 
 		fields = append(fields, bson.E{Key: "client_release", Value: beat.Release})
 	}
 	var ip, country string
-	if s.toucher != nil {
+	if s.toucher != nil && !beat.Detached {
 		ip, country = s.toucher.clientNetwork(r)
 	}
 	if ip != "" {
@@ -87,7 +90,10 @@ func (s *Sessions) Beat(r *http.Request, username string, beat Heartbeat) error 
 	if country != "" {
 		fields = append(fields, bson.E{Key: "last_client_country", Value: strings.ToUpper(truncate(country, 2))})
 	}
-	session := sessionID(r)
+	session := ""
+	if !beat.Detached {
+		session = sessionID(r)
+	}
 	if session != "" {
 		prefix := "presence_sessions." + session
 		fields = append(fields, bson.E{Key: prefix + ".last_activity", Value: value})

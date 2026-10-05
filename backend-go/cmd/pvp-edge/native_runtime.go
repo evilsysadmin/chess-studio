@@ -25,6 +25,7 @@ import (
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/profilestore"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/pulse"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/pvprating"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/resetmail"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/residentmove"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/residentoracle"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/residentsearch"
@@ -52,8 +53,9 @@ type nativeRuntime struct {
 	profile             http.Handler
 	authSession         http.Handler
 	// login is built in edgeConfig, once request telemetry exists.
-	login   *gamesapi.LoginConfig
-	account http.Handler
+	login    *gamesapi.LoginConfig
+	account  http.Handler
+	recovery http.Handler
 	// system is built in edgeConfig, once request telemetry exists.
 	system *gamesapi.SystemConfig
 	// history is Admin's observability history (nil when disabled).
@@ -414,6 +416,31 @@ func buildNativeRuntime(features nativeFeatureFlags, upstream string) (runtime n
 		}
 		runtime.account = accountHandler
 	}
+	if features.recovery {
+		telemetryCfg := telemetry.ConfigFromEnv(os.LookupEnv)
+		toucher := presence.New(mongoRuntime.Database(), telemetryCfg.TrustCloudflare, 2*time.Second)
+		recoveryHandler, recoveryErr := gamesapi.NewRecovery(gamesapi.RecoveryConfig{
+			Config: gamesapi.Config{
+				Accounts:        accountstore.New(mongoRuntime.Database(), pvpMongoTimeout),
+				Presence:        toucher,
+				JWTSecret:       jwtSecret,
+				AllowedOrigins:  splitCSV(os.Getenv("CORS_ORIGINS")),
+				TrustCloudflare: telemetryCfg.TrustCloudflare,
+			},
+			LoginAccounts:        accountstore.New(mongoRuntime.Database(), pvpMongoTimeout),
+			Store:                accountstore.New(mongoRuntime.Database(), pvpMongoTimeout),
+			Mailer:               resetmail.New(os.Getenv("RESEND_API_KEY"), os.Getenv("PASSWORD_RESET_FROM"), os.Getenv("ENVIRONMENT")),
+			Touch:                presence.NewSessions(presence.NewMongoSessions(mongoRuntime.Database()), toucher, 2*time.Second),
+			EmailRecoveryEnabled: pythonFlag("ENABLE_EMAIL_RECOVERY", "false"),
+			ResetURL:             os.Getenv("PASSWORD_RESET_URL"),
+			Environment:          os.Getenv("ENVIRONMENT"),
+			SyntheticSecret:      os.Getenv("CHESS_AI_SHARED_SECRET"),
+		})
+		if recoveryErr != nil {
+			return runtime, fmt.Errorf("native recovery API: %w", recoveryErr)
+		}
+		runtime.recovery = recoveryHandler
+	}
 	if features.gamesAnalyze {
 		telemetryCfg := telemetry.ConfigFromEnv(os.LookupEnv)
 		analyzeHandler, analyzeErr := gamesapi.NewAnalyze(gamesapi.AnalyzeConfig{
@@ -500,6 +527,7 @@ func (r nativeRuntime) edgeConfig(upstream, release string, requestTelemetry *te
 		NativeSession:             r.authSession,
 		NativeLogin:               login,
 		NativeAccount:             r.account,
+		NativeRecovery:            r.recovery,
 		VirtualPlayersEnabled:     r.virtualPlayers,
 		NativeResidentMove:        r.residentMove,
 		ReadyChecks:               readyChecks,
@@ -509,7 +537,7 @@ func (r nativeRuntime) edgeConfig(upstream, release string, requestTelemetry *te
 
 func (r nativeRuntime) logStartup(port, upstream string) {
 	log.Printf(
-		"go-api listening on :%s -> %s native_pulse=%t native_lobby_read=%t native_roster=%t native_chat=%t native_challenge_resolution=%t native_challenge_accept=%t native_challenge_create=%t native_match_handoff_cancel=%t native_match_ready=%t native_match_resign=%t native_match_read=%t native_match_move=%t native_resident_move=%t native_games_read=%t native_games_write=%t native_games_hint=%t native_games_analyze=%t native_system=%t native_profile=%t native_auth_session=%t native_login=%t native_account=%t",
+		"go-api listening on :%s -> %s native_pulse=%t native_lobby_read=%t native_roster=%t native_chat=%t native_challenge_resolution=%t native_challenge_accept=%t native_challenge_create=%t native_match_handoff_cancel=%t native_match_ready=%t native_match_resign=%t native_match_read=%t native_match_move=%t native_resident_move=%t native_games_read=%t native_games_write=%t native_games_hint=%t native_games_analyze=%t native_system=%t native_profile=%t native_auth_session=%t native_login=%t native_account=%t native_recovery=%t",
 		port,
 		upstream,
 		r.pulse != nil,
@@ -534,6 +562,7 @@ func (r nativeRuntime) logStartup(port, upstream string) {
 		r.authSession != nil,
 		r.login != nil,
 		r.account != nil,
+		r.recovery != nil,
 	)
 }
 

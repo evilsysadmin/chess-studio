@@ -76,3 +76,38 @@ func TestSignIsByteIdenticalToPyJWT(t *testing.T) {
 		}
 	}
 }
+
+// auth.create_password_reset_token for the same instant and hash.
+func TestPasswordResetTokenIsPyJWTs(t *testing.T) {
+	secret := []byte(strings.Repeat("s", 32))
+	now := time.Date(2026, 10, 5, 12, 0, 0, 0, time.UTC)
+	hash := "$argon2id$v=19$m=19456,t=2,p=1$abc$def"
+	want := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhbGljZSIsInB1cnBvc2UiOiJwYXNzd29yZF9yZXNldCIsInB3ZCI6IjAyMWY1YmQxY2JkM2VjYTA2N2QwOGY4MiIsImV4cCI6MTc5MTIwMzQwMH0.Mt8AusyAKdh-tuazt_Px7dQhoaNcybHCyTu57uMwFxc"
+	got, err := SignPasswordReset("alice", hash, secret, now)
+	if err != nil || got != want {
+		t.Fatalf("token %s %v", got, err)
+	}
+	if sub := UnverifiedSubject(got); sub != "alice" {
+		t.Fatalf("unverified %q", sub)
+	}
+	if sub, ok := VerifyPasswordReset(got, hash, secret, now.Add(29*time.Minute)); !ok || sub != "alice" {
+		t.Fatal("valid link rejected")
+	}
+	for name, check := range map[string]func() bool{
+		"expired":        func() bool { _, ok := VerifyPasswordReset(got, hash, secret, now.Add(30*time.Minute)); return ok },
+		"password moved": func() bool { _, ok := VerifyPasswordReset(got, hash+"x", secret, now); return ok },
+		"other secret":   func() bool { _, ok := VerifyPasswordReset(got, hash, []byte("x"), now); return ok },
+		"session token": func() bool {
+			session, _ := Sign("alice", 0, secret, now)
+			_, ok := VerifyPasswordReset(session, hash, secret, now)
+			return ok
+		},
+	} {
+		if check() {
+			t.Errorf("%s accepted", name)
+		}
+	}
+	if UnverifiedSubject("garbage") != "" {
+		t.Fatal("garbage subject")
+	}
+}

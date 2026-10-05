@@ -61,7 +61,10 @@ type Config struct {
 	NativeLogin http.Handler
 	// NativeAccount serves register, password and email changes and
 	// delete-account; nil keeps them in Python.
-	NativeAccount         http.Handler
+	NativeAccount http.Handler
+	// NativeRecovery serves forgot-password and reset-password; nil keeps
+	// them in Python.
+	NativeRecovery        http.Handler
 	VirtualPlayersEnabled bool
 	NativeResidentMove    bool
 	// ReadyChecks are dependencies owned by the Go edge itself (MongoDB for the
@@ -100,6 +103,7 @@ type Handler struct {
 	nativeSession             http.Handler
 	nativeLogin               http.Handler
 	nativeAccount             http.Handler
+	nativeRecovery            http.Handler
 	virtualPlayersEnabled     bool
 	nativeResidentMove        bool
 	readyChecks               map[string]func(context.Context) error
@@ -207,6 +211,7 @@ func New(cfg Config) (*Handler, error) {
 		nativeSession:             cfg.NativeSession,
 		nativeLogin:               cfg.NativeLogin,
 		nativeAccount:             cfg.NativeAccount,
+		nativeRecovery:            cfg.NativeRecovery,
 		virtualPlayersEnabled:     cfg.VirtualPlayersEnabled,
 		nativeResidentMove:        cfg.NativeResidentMove,
 		readyChecks:               cfg.ReadyChecks,
@@ -283,6 +288,13 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if pattern, ok := gamesapi.AccountRoute(r); ok {
 			w.Header().Set("X-Chess-Edge", "go")
 			h.telemetry.Serve(pattern, h.nativeAccount, w, r)
+			return
+		}
+	}
+	if h.nativeRecovery != nil {
+		if pattern, ok := gamesapi.RecoveryRoute(r); ok {
+			w.Header().Set("X-Chess-Edge", "go")
+			h.telemetry.Serve(pattern, h.nativeRecovery, w, r)
 			return
 		}
 	}
@@ -385,6 +397,7 @@ func (h *Handler) statusPayload(status string) map[string]any {
 		"nativeAuthSession":         h.nativeSession != nil,
 		"nativeLogin":               h.nativeLogin != nil,
 		"nativeAccount":             h.nativeAccount != nil,
+		"nativeRecovery":            h.nativeRecovery != nil,
 	}
 	if h.release != "" {
 		payload["release"] = h.release
