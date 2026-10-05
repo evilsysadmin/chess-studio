@@ -38,6 +38,25 @@ async function assertNoHorizontalOverflow(page, label) {
   expect(overflow.scrollWidth, `${label}: horizontal overflow`).toBeLessThanOrEqual(overflow.clientWidth + 1);
 }
 
+async function assertInsightsActionableFold(room, label) {
+  await expect(room.getByRole('button', { name: 'Tengo 15 min', exact: true })).toBeVisible();
+  const geometry = await room.evaluate((root) => {
+    const nav = root.querySelector('.insights-workspace-nav')?.getBoundingClientRect();
+    const session = root.querySelector('.insights-guided-session:not(.active)')?.getBoundingClientRect();
+    const recommended = root.querySelector('.insights-duration-option-recommended')?.getBoundingClientRect();
+    return {
+      viewportHeight: window.innerHeight,
+      navBottom: nav?.bottom || 0,
+      sessionTop: session?.top || 0,
+      recommendedBottom: recommended?.bottom || 0,
+    };
+  });
+
+  expect(geometry.sessionTop, `${label}: training action starts too low`).toBeLessThan(geometry.viewportHeight * .7);
+  expect(geometry.recommendedBottom, `${label}: balanced session CTA falls below the first viewport`).toBeLessThanOrEqual(geometry.viewportHeight - 8);
+  expect(geometry.navBottom, `${label}: navigation should sit before the task`).toBeLessThanOrEqual(geometry.sessionTop + 8);
+}
+
 async function assertSchoolTouchTargets(shell, label) {
   const undersized = await shell.locator([
     '.matthias-school-toolbar .back-link',
@@ -327,9 +346,11 @@ scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page })
     'ready',
     { timeout: 20_000 },
   );
+  await assertInsightsActionableFold(trainingRoom, 'insights-desktop');
   await captureAt(page, 'insights', { width: 1440, height: 900, variant: 'desktop' });
   await captureAt(page, 'insights', { width: 1800, height: 900, variant: 'wide' });
   await captureAt(page, 'insights', { width: 390, height: 844, variant: 'mobile' });
+  await assertInsightsActionableFold(trainingRoom, 'insights-mobile');
   await page.setViewportSize({ width: 1440, height: 900 });
   await settle(page);
   await page.getByRole('tab', { name: 'Mi progreso', exact: true }).click();
