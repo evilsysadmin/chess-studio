@@ -14,6 +14,7 @@ var camera: Camera3D
 var player_nodes: Dictionary = {}
 var player_sprites: Dictionary = {}
 var ball_node: MeshInstance3D
+var ball_shadow: MeshInstance3D
 var field_width: float
 var field_depth: float
 
@@ -102,8 +103,9 @@ func _build_pitch() -> void:
 		step.material_override = _material(Color(0.055 + row * 0.012, 0.060, 0.068), 0.94)
 		add_child(step)
 
-	_add_box(Vector3(0.0, 0.35, -field_depth * 0.5 - 0.34), Vector3(field_width + 0.8, 0.7, 0.16), Color(0.12, 0.10, 0.07))
-	_add_box(Vector3(0.0, 0.25, field_depth * 0.5 + 0.28), Vector3(field_width + 0.8, 0.5, 0.12), Color(0.11, 0.095, 0.065))
+	_add_ad_panels()
+	_add_crowd()
+	_add_box(Vector3(0.0, 0.22, field_depth * 0.5 + 0.28), Vector3(field_width + 0.8, 0.44, 0.12), Color(0.075, 0.070, 0.060))
 	_add_benches()
 	_add_floodlights()
 
@@ -125,6 +127,38 @@ func _add_floodlights() -> void:
 		lamp.omni_range = 11.0
 		lamp.shadow_enabled = false
 		add_child(lamp)
+
+func _add_ad_panels() -> void:
+	var panel_count := 12
+	var panel_width := field_width / float(panel_count)
+	var z := -field_depth * 0.5 - 0.30
+	for i in range(panel_count):
+		var x := -field_width * 0.5 + panel_width * (float(i) + 0.5)
+		var color := Color(0.08, 0.22, 0.48)
+		if i % 3 == 1:
+			color = Color(0.42, 0.055, 0.085)
+		elif i % 3 == 2:
+			color = Color(0.55, 0.40, 0.10)
+		_add_box(Vector3(x, 0.24, z), Vector3(panel_width - 0.05, 0.42, 0.08), color)
+
+func _add_crowd() -> void:
+	var rows := 3
+	var seats := 26
+	for row in range(rows):
+		for seat in range(seats):
+			var ratio := (float(seat) + 0.5) / float(seats)
+			var x := lerpf(-field_width * 0.47, field_width * 0.47, ratio)
+			var y := 0.42 + float(row) * 0.40
+			var z := -field_depth * 0.5 - 1.02 - float(row) * 0.47
+			var palette := (seat + row * 2) % 7
+			var color := Color(0.23, 0.25, 0.28)
+			if palette in [0, 4]:
+				color = Color(0.12, 0.34, 0.72)
+			elif palette in [1, 5]:
+				color = Color(0.55, 0.075, 0.11)
+			elif palette == 2:
+				color = Color(0.72, 0.56, 0.16)
+			_add_box(Vector3(x, y, z), Vector3(0.17, 0.22, 0.12), color)
 
 func _add_penalty_box(right_side: bool, color: Color) -> void:
 	var width := 265.0 * WORLD_SCALE
@@ -156,22 +190,30 @@ func _build_goals() -> void:
 	var goal_half := ChessFootballMath.GOAL_HALF_HEIGHT * WORLD_SCALE
 	var post_height := 1.25
 	var post := 0.075
+	var net_thin := 0.022
 	var depth := 0.82
 	var white := Color(0.95, 0.96, 0.94)
+	var net_color := Color(0.58, 0.63, 0.66)
 	for side_value in [-1.0, 1.0]:
 		var side: float = float(side_value)
 		var x: float = side * field_width * 0.5
+		var back_x: float = x + side * depth
 		for z_value in [-goal_half, goal_half]:
 			var z: float = float(z_value)
 			_add_box(Vector3(x, post_height * 0.5, z), Vector3(post, post_height, post), white)
+			_add_box(Vector3(back_x, post_height * 0.5, z), Vector3(post * 0.65, post_height, post * 0.65), net_color)
+			_add_box(Vector3((x + back_x) * 0.5, post_height, z), Vector3(depth, post * 0.65, post * 0.65), net_color)
+			_add_box(Vector3((x + back_x) * 0.5, 0.045, z), Vector3(depth, post * 0.55, post * 0.55), net_color)
 		_add_box(Vector3(x, post_height, 0.0), Vector3(post, post, goal_half * 2.0 + post), white)
-		var back_x: float = x + side * depth
-		for z in [-goal_half, goal_half]:
-			_add_box(Vector3(back_x, post_height * 0.5, z), Vector3(post * 0.7, post_height, post * 0.7), Color(0.66, 0.70, 0.72))
-			_add_box(Vector3((x + back_x) * 0.5, post_height, z), Vector3(depth, post * 0.7, post * 0.7), Color(0.66, 0.70, 0.72))
+		_add_box(Vector3(back_x, post_height, 0.0), Vector3(post * 0.65, post * 0.65, goal_half * 2.0), net_color)
+		_add_box(Vector3(back_x, 0.045, 0.0), Vector3(post * 0.55, post * 0.55, goal_half * 2.0), net_color)
+		for line in range(1, 6):
+			var net_z := lerpf(-goal_half, goal_half, float(line) / 6.0)
+			_add_box(Vector3(back_x, post_height * 0.5, net_z), Vector3(net_thin, post_height, net_thin), net_color)
+			_add_box(Vector3((x + back_x) * 0.5, post_height, net_z), Vector3(depth, net_thin, net_thin), net_color)
 		for line in range(1, 5):
-			var net_z := lerpf(-goal_half, goal_half, float(line) / 5.0)
-			_add_box(Vector3((x + back_x) * 0.5, 0.62, net_z), Vector3(depth, 0.025, 0.018), Color(0.78, 0.82, 0.84, 0.72))
+			var net_y := post_height * float(line) / 5.0
+			_add_box(Vector3(back_x, net_y, 0.0), Vector3(net_thin, net_thin, goal_half * 2.0), net_color)
 
 func _build_player_proxies() -> void:
 	for team in match_node.teams:
@@ -190,6 +232,17 @@ func _build_player_proxies() -> void:
 			sprite.flip_h = player.team_id == 1
 			sprite.play("idle")
 			root.add_child(sprite)
+
+			var shadow := MeshInstance3D.new()
+			shadow.name = "ContactShadow"
+			var shadow_mesh := CylinderMesh.new()
+			shadow_mesh.top_radius = 0.30
+			shadow_mesh.bottom_radius = 0.30
+			shadow_mesh.height = 0.010
+			shadow.mesh = shadow_mesh
+			shadow.position.y = 0.012
+			shadow.material_override = _material(Color(0.012, 0.020, 0.015), 1.0)
+			root.add_child(shadow)
 
 			var active_disc := MeshInstance3D.new()
 			active_disc.name = "ActiveDisc"
@@ -215,6 +268,16 @@ func _build_ball() -> void:
 	ball_node.material_override = _material(Color(0.965, 0.965, 0.92), 0.40)
 	ball_node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	add_child(ball_node)
+
+	ball_shadow = MeshInstance3D.new()
+	var shadow_mesh := CylinderMesh.new()
+	shadow_mesh.top_radius = 0.105
+	shadow_mesh.bottom_radius = 0.105
+	shadow_mesh.height = 0.008
+	ball_shadow.mesh = shadow_mesh
+	ball_shadow.material_override = _material(Color(0.012, 0.020, 0.015), 1.0)
+	ball_shadow.position.y = 0.010
+	add_child(ball_shadow)
 
 func _build_camera() -> void:
 	camera = Camera3D.new()
@@ -268,6 +331,8 @@ func sync_presentation(delta: float, mode: String) -> void:
 	if ball_node != null:
 		ball_node.position = world_to_stage(match_node.ball.global_position, 0.18)
 		ball_node.rotate_z(match_node.ball.velocity.length() * delta * 0.004)
+	if ball_shadow != null:
+		ball_shadow.position = world_to_stage(match_node.ball.global_position, 0.010)
 
 	_sync_camera(delta, mode)
 
