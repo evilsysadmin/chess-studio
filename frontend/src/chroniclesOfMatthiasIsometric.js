@@ -36,7 +36,10 @@ import {
   CHRONICLES_ISO_PARTY_FACING,
   CHRONICLES_ISO_PARTY_LAYOUT,
 } from './chronicles/chroniclesTacticsPartyPresentation.js';
-import { tickChroniclesExplorationParty } from './chronicles/chroniclesTacticsLocomotionPresentation.js';
+import {
+  chroniclesFrameTiming,
+  tickChroniclesExplorationParty,
+} from './chronicles/chroniclesTacticsLocomotionPresentation.js';
 // Compatibility re-export: external renderer tests still consume these names.
 // Ownership lives in the focused Tactics party-presentation module.
 export {
@@ -771,7 +774,6 @@ export function createChroniclesIsometricRenderer(host, {
   let visible = document.visibilityState !== 'hidden';
   let frame = 0;
   const clock = new THREE.Clock();
-  let previousFrameTime = 0;
   const desiredParty = initialFocus.clone();
   const desiredFocus = initialFocus.clone();
   const raycaster = new THREE.Raycaster();
@@ -971,20 +973,10 @@ export function createChroniclesIsometricRenderer(host, {
     if (destroyed) return;
     frame = requestAnimationFrame(render);
     if (!visible) return;
-    const time = clock.getElapsedTime();
-    const deltaSeconds = previousFrameTime > 0
-      ? Math.max(1 / 240, Math.min(0.1, time - previousFrameTime))
-      : 1 / 60;
-    previousFrameTime = time;
+    const { time, deltaSeconds } = chroniclesFrameTiming(clock);
 
     if (!reducedMotion) {
-      tickChroniclesExplorationParty(party, {
-        desiredParty,
-        partyFormation: latestSceneModel?.partyFormation,
-        time,
-        deltaSeconds,
-        host,
-      });
+      tickChroniclesExplorationParty(party, { desiredParty, partyFormation: latestSceneModel?.partyFormation, time, deltaSeconds, host });
       enemies.forEach((model, id) => {
         if (!model.visible || !model.userData.chroniclesIsoTarget) return;
         model.position.lerp(model.userData.chroniclesIsoTarget, id === 'scavenger-knight' ? 0.18 : 0.13);
