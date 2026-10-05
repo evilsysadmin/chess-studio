@@ -36,10 +36,7 @@ import {
   CHRONICLES_ISO_MARKER_STYLE,
   CHRONICLES_ISO_PARTY_LAYOUT,
 } from './chronicles/chroniclesTacticsPartyPresentation.js';
-export {
-  CHRONICLES_ISO_MARKER_STYLE,
-  CHRONICLES_ISO_PARTY_LAYOUT,
-} from './chronicles/chroniclesTacticsPartyPresentation.js';
+export { CHRONICLES_ISO_MARKER_STYLE, CHRONICLES_ISO_PARTY_LAYOUT } from './chronicles/chroniclesTacticsPartyPresentation.js';
 import {
   chroniclesIsoTorchPlacements,
   chroniclesIsoUsesLegacyDressing,
