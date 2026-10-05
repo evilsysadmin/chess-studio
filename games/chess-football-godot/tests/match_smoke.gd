@@ -44,6 +44,18 @@ func _initialize() -> void:
 	assert(keeper.debug_keeper_hold_active())
 	assert(String(keeper.visual.animation) == "tackle")
 
+	var rival_keeper: Footballer = match_node.teams[1][0]
+	rival_keeper.global_position = Vector2(ChessFootballMath.PITCH_RECT.end.x - 120.0, ChessFootballMath.PITCH_RECT.get_center().y)
+	match_node.ball.attach_to(rival_keeper)
+	rival_keeper.begin_keeper_hold(0.0)
+	match_node.debug_step_ai(1.0 / 60.0)
+	assert(match_node.ball.carrier == null)
+	assert(match_node.ball.velocity.length() > 0.0)
+	assert(match_node.ball.reclaim_blocked_for(rival_keeper))
+	match_node.ball.tick_ball(1.0 / 60.0)
+	match_node.debug_try_claim_loose_ball()
+	assert(match_node.ball.carrier != rival_keeper)
+
 	var rival: Footballer = match_node.teams[1][4]
 	rival.global_position = Vector2(ChessFootballMath.PITCH_RECT.get_center().x + 240.0, ChessFootballMath.PITCH_RECT.get_center().y)
 	match_node.ball.attach_to(rival)
