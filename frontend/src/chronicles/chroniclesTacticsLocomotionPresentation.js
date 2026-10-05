@@ -2,14 +2,24 @@ import { facingAngle, shortestAngleDelta } from '../chroniclesOfMatthiasIsometri
 import { tickChroniclesCarriedTorch } from './chroniclesCarriedTorch.js';
 import { CHRONICLES_ISO_PARTY_FACING } from './chroniclesTacticsPartyPresentation.js';
 
-export function chroniclesExplorationMotion(partyPosition, desiredParty, partyFormation) {
+function frameRateIndependentAlpha(ratePerSecond, deltaSeconds) {
+  const dt = Math.max(1 / 240, Math.min(0.1, Number(deltaSeconds) || 1 / 60));
+  return 1 - Math.exp(-Math.max(0, ratePerSecond) * dt);
+}
+
+export function chroniclesExplorationMotion(
+  partyPosition,
+  desiredParty,
+  partyFormation,
+  deltaSeconds = 1 / 60,
+) {
   const moving = partyFormation === 'explore-compact'
     && partyPosition.distanceToSquared(desiredParty) > 0.0025;
   return Object.freeze({
     moving,
     yaw: moving ? facingAngle(partyPosition, desiredParty) : CHRONICLES_ISO_PARTY_FACING,
-    rootLerp: moving ? 0.12 : 0.14,
-    memberLerp: moving ? 0.16 : 0.2,
+    rootLerp: frameRateIndependentAlpha(moving ? 14 : 17, deltaSeconds),
+    memberLerp: frameRateIndependentAlpha(moving ? 18 : 22, deltaSeconds),
   });
 }
 
@@ -44,8 +54,14 @@ export function tickChroniclesExplorationParty(party, {
   partyFormation,
   time,
   host = null,
+  deltaSeconds = 1 / 60,
 } = {}) {
-  const motion = chroniclesExplorationMotion(party.root.position, desiredParty, partyFormation);
+  const motion = chroniclesExplorationMotion(
+    party.root.position,
+    desiredParty,
+    partyFormation,
+    deltaSeconds,
+  );
   if (host?.dataset) host.dataset.chroniclesPartyMotion = motion.moving ? 'walking' : 'idle';
   party.root.position.lerp(desiredParty, motion.rootLerp);
   party.models.forEach((model, id) => {
