@@ -203,6 +203,37 @@ PVP_LOBBY_PATTERNS = (
     "e2e/home-pvp-roster-link.spec.js",
     "e2e/pvp-lobby-visual-artifact.spec.js",
 )
+
+# E2E specs explicitly owned by this specialized-browser classifier must not
+# also wake every core Playwright journey in quality_scope.py. Keep this set
+# derived from the same pattern groups so a specialized spec has one routing
+# authority instead of paying two independent expensive matrices.
+_SPECIALIZED_PATTERN_GROUPS = (
+    VISUAL_PATTERNS,
+    FOCUS_PATTERNS,
+    FULL_LOGIC_PATTERNS,
+    SPECIAL_STATE_PATTERNS,
+    QUICK_2D_PATTERNS,
+    MATTHIAS_PATTERNS,
+    MATTHIAS_HOME_PATTERNS,
+    MATTHIAS_INSIGHTS_PATTERNS,
+    CHRONICLES_PATTERNS,
+    TOURNAMENT_MOBILE_PATTERNS,
+    PAWN_SLUG_PATTERNS,
+    CHESSCOM_PATTERNS,
+    TRAILBLAZER_PATTERNS,
+    MATTHIAS_PRIORITY_PATTERNS,
+    NETWORK_RACE_PATTERNS,
+    PVP_DUEL_PATTERNS,
+    PVP_LOBBY_PATTERNS,
+)
+SPECIALIZED_E2E_SPEC_PATHS = frozenset(
+    pattern
+    for patterns in _SPECIALIZED_PATTERN_GROUPS
+    for pattern in patterns
+    if pattern.startswith("e2e/") and pattern.endswith(".spec.js") and "*" not in pattern
+)
+
 BROWSER_ACTION_PATHS = {
     ".github/actions/setup-browser-e2e/action.yml",
 }
@@ -589,6 +620,9 @@ def _job_ids(scope: BrowserScope) -> list[str]:
 def self_test() -> None:
     assert classify([]) == BrowserScope()
     assert _job_ids(BrowserScope()) == []
+    assert "e2e/chronicles-of-matthias-tactics.spec.js" in SPECIALIZED_E2E_SPEC_PATHS
+    assert "e2e/mobile-tournament-ux.spec.js" in SPECIALIZED_E2E_SPEC_PATHS
+    assert "e2e/war-room-pvp.spec.js" in SPECIALIZED_E2E_SPEC_PATHS
     assert output_lines(BrowserScope())[1] == "has_cases=false"
     assert "mobile-golden-path-war-room-invariants.spec.js" in MOBILE_GOLDEN_PATH_CASE["command"]
     assert "mobile-golden-path-priority.spec.js" in MOBILE_GOLDEN_PATH_CASE["command"]
