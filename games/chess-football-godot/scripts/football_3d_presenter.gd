@@ -126,12 +126,14 @@ func _build_goals() -> void:
 	var post := 0.075
 	var depth := 0.82
 	var white := Color(0.92, 0.94, 0.93)
-	for side in [-1.0, 1.0]:
-		var x := side * field_width * 0.5
-		for z in [-goal_half, goal_half]:
+	for side_value in [-1.0, 1.0]:
+		var side: float = float(side_value)
+		var x: float = side * field_width * 0.5
+		for z_value in [-goal_half, goal_half]:
+			var z: float = float(z_value)
 			_add_box(Vector3(x, post_height * 0.5, z), Vector3(post, post_height, post), white)
 		_add_box(Vector3(x, post_height, 0.0), Vector3(post, post, goal_half * 2.0 + post), white)
-		var back_x := x + side * depth
+		var back_x: float = x + side * depth
 		_add_box(Vector3(back_x, post_height * 0.5, -goal_half), Vector3(post * 0.7, post_height, post * 0.7), Color(0.66, 0.70, 0.72))
 		_add_box(Vector3(back_x, post_height * 0.5, goal_half), Vector3(post * 0.7, post_height, post * 0.7), Color(0.66, 0.70, 0.72))
 		_add_box(Vector3((x + back_x) * 0.5, post_height, -goal_half), Vector3(depth, post * 0.7, post * 0.7), Color(0.66, 0.70, 0.72))
