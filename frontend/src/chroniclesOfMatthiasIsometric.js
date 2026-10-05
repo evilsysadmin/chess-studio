@@ -26,6 +26,11 @@ import {
   chroniclesIsometricScenePlan,
 } from './chronicles/chroniclesIsometricScenePlan.js';
 import { chroniclesIsometricSceneStyle } from './chronicles/chroniclesIsometricSceneStyles.js';
+import { buildChroniclesSquareFrameGeometry } from './chronicles/chroniclesIsometricGeometry.js';
+import {
+  buildChroniclesCarriedTorch,
+  tickChroniclesCarriedTorch,
+} from './chronicles/chroniclesCarriedTorch.js';
 import {
   chroniclesIsoTorchPlacements,
   chroniclesIsoUsesLegacyDressing,
@@ -168,26 +173,6 @@ function addMesh(root, geometry, material, position, name, { castShadow = true, 
   mesh.receiveShadow = receiveShadow;
   root.add(mesh);
   return mesh;
-}
-
-function buildSquareFrameGeometry(size, thickness) {
-  const half = size / 2;
-  const inner = Math.max(0.01, half - thickness);
-  const shape = new THREE.Shape();
-  shape.moveTo(-half, -half);
-  shape.lineTo(half, -half);
-  shape.lineTo(half, half);
-  shape.lineTo(-half, half);
-  shape.closePath();
-
-  const hole = new THREE.Path();
-  hole.moveTo(-inner, -inner);
-  hole.lineTo(-inner, inner);
-  hole.lineTo(inner, inner);
-  hole.lineTo(inner, -inner);
-  hole.closePath();
-  shape.holes.push(hole);
-  return new THREE.ShapeGeometry(shape);
 }
 
 function buildDungeonColumn(root, material, trimMaterial, x, z, index, { coarsePointer }) {
@@ -527,7 +512,8 @@ function buildParty(scene, {
   scene.add(root);
 
   const models = new Map();
-  ['rook', 'matthias', 'bishop', 'knight'].forEach((id) => {
+  const carriedTorches = new Map();
+  ['rook', 'matthias', 'bishop', 'knight'].forEach((id, index) => {
     const model = buildChroniclesCharacter(id, { coarsePointer });
     const config = CHRONICLES_ISO_PARTY_LAYOUT[id];
     model.position.set(config.x, 0, config.z);
@@ -537,6 +523,10 @@ function buildParty(scene, {
     root.add(model);
     if (id === 'matthias') installChroniclesCanonicalMatthias(model, { coarsePointer, reducedMotion });
     models.set(id, model);
+    carriedTorches.set(id, buildChroniclesCarriedTorch(model, {
+      coarsePointer,
+      phase: index * 1.61,
+    }));
   });
   root.userData.chroniclesArtCancel = installChroniclesTacticsPartyBlenderArt(models, {
     coarsePointer,
@@ -553,13 +543,13 @@ function buildParty(scene, {
     side: THREE.DoubleSide,
   });
   selectionMaterial.userData.chroniclesIsoOwned = true;
-  const selection = new THREE.Mesh(buildSquareFrameGeometry(CELL * 0.72, coarsePointer ? 0.075 : 0.055), selectionMaterial);
+  const selection = new THREE.Mesh(buildChroniclesSquareFrameGeometry(CELL * 0.72, coarsePointer ? 0.075 : 0.055), selectionMaterial);
   selection.rotation.x = -Math.PI / 2;
   selection.position.y = 0.035;
   selection.renderOrder = 9;
   root.add(selection);
 
-  return { root, models, selection };
+  return { root, models, selection, carriedTorches };
 }
 
 function reconcileEnemyModels(scene, models, roster, { coarsePointer }) {
@@ -625,8 +615,8 @@ function buildInteractionMarkers(scene, { coarsePointer, enemyCapacity = 1 }) {
   });
   moveMaterial.userData.chroniclesIsoOwned = true;
   attackMaterial.userData.chroniclesIsoOwned = true;
-  const moveGeometry = buildSquareFrameGeometry(CELL * 0.72, coarsePointer ? 0.09 : 0.06);
-  const attackGeometry = buildSquareFrameGeometry(CELL * 0.78, coarsePointer ? 0.1 : 0.072);
+  const moveGeometry = buildChroniclesSquareFrameGeometry(CELL * 0.72, coarsePointer ? 0.09 : 0.06);
+  const attackGeometry = buildChroniclesSquareFrameGeometry(CELL * 0.78, coarsePointer ? 0.1 : 0.072);
 
   const makePool = (count, geometry, material, prefix) => Array.from({ length: count }, (_, index) => {
     const marker = new THREE.Mesh(geometry, material);
@@ -888,6 +878,8 @@ export function createChroniclesIsometricRenderer(host, {
       const model = party.models.get(member.id);
       if (!model) return;
       model.visible = Boolean(member.visible && member.cell);
+      const carriedTorch = party.carriedTorches.get(member.id);
+      if (carriedTorch) carriedTorch.root.visible = model.visible;
       model.userData.chroniclesIsoHpRatio = member.hpRatio;
       if (!member.cell) {
         model.userData.chroniclesIsoTarget = null;
@@ -1004,6 +996,8 @@ export function createChroniclesIsometricRenderer(host, {
         model.rotation.y = CHRONICLES_ISO_PARTY_FACING + Math.sin(time * 0.55 + id.length) * 0.025;
         const hpRatio = model.userData.chroniclesIsoHpRatio ?? 1;
         model.position.y = Math.sin(time * 0.8 + id.length) * 0.006 - (1 - hpRatio) * 0.025;
+
+        tickChroniclesCarriedTorch(party.carriedTorches.get(id), time);
       });
       if (party.selection.visible && party.selection.userData.chroniclesIsoTarget) {
         party.selection.position.lerp(party.selection.userData.chroniclesIsoTarget, 0.24);
