@@ -43,8 +43,10 @@ export function tickChroniclesExplorationParty(party, {
   desiredParty,
   partyFormation,
   time,
+  host = null,
 } = {}) {
   const motion = chroniclesExplorationMotion(party.root.position, desiredParty, partyFormation);
+  if (host?.dataset) host.dataset.chroniclesPartyMotion = motion.moving ? 'walking' : 'idle';
   party.root.position.lerp(desiredParty, motion.rootLerp);
   party.models.forEach((model, id) => {
     if (!model.visible) return;
