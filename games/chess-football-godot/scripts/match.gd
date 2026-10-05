@@ -37,6 +37,10 @@ const AI_SUPPORT_FORWARD := 190.0
 
 const KICKOFF_FREEZE_SECONDS := 1.10
 const KICKOFF_AI_PASS_POWER := 430.0
+const KICKOFF_RECEIVER_INDEX := 3
+const KICKOFF_TEAM_HALF_GAP := 120.0
+const KICKOFF_RIVAL_HALF_GAP := 250.0
+const GOAL_CELEBRATION_SECONDS := 1.35
 
 const SHOT_CHARGE_SECONDS := 0.90
 const SHOT_MIN_POWER := 650.0
@@ -63,6 +67,9 @@ var pause_menu_open: bool = false
 var kickoff_team_id: int = 0
 var kickoff_active: bool = false
 var kickoff_seconds_remaining: float = 0.0
+var goal_restart_active: bool = false
+var goal_restart_seconds_remaining: float = 0.0
+var pending_restart_team_id: int = 0
 var shot_charging: bool = false
 var shot_charge_seconds: float = 0.0
 var pending_tackle_player: Footballer = null
@@ -91,6 +98,11 @@ func _physics_process(delta: float) -> void:
 		return
 	match_seconds += delta
 	camera_hint_seconds = maxf(0.0, camera_hint_seconds - delta)
+	if goal_restart_active:
+		_update_goal_restart(delta)
+		_update_3d_presentation(delta)
+		_refresh_hud()
+		return
 	if kickoff_active:
 		_update_kickoff(delta)
 		ball.tick_ball(delta)
@@ -700,25 +712,66 @@ func _check_goal() -> void:
 		_score_goal(1)
 
 func _score_goal(team_id: int) -> void:
+	if goal_restart_active or kickoff_active:
+		return
 	score[team_id] += 1
 	last_goal_text = "GOAL · FC Matthias" if team_id == 0 else "GOAL · Real Enroque"
 	if audio_fx != null:
 		audio_fx.play_goal()
 	for player in teams[team_id]:
-		player.play_action("celebrate", 1.15)
-	_prepare_kickoff(1 - team_id, false)
+		player.velocity = Vector2.ZERO
+		player.play_action("celebrate", GOAL_CELEBRATION_SECONDS)
+	for player in teams[1 - team_id]:
+		player.velocity = Vector2.ZERO
+	if ball.carrier != null:
+		ball.release(Vector2.ZERO, 0.0)
+	ball.velocity = Vector2.ZERO
+	ball.vertical_velocity = 0.0
+	ball.flight_height = 0.0
+	goal_restart_active = true
+	goal_restart_seconds_remaining = GOAL_CELEBRATION_SECONDS
+	pending_restart_team_id = 1 - team_id
+
+func _update_goal_restart(delta: float) -> void:
+	goal_restart_seconds_remaining = maxf(0.0, goal_restart_seconds_remaining - delta)
+	for id in range(2):
+		for player in teams[id]:
+			player.velocity = Vector2.ZERO
+	if goal_restart_seconds_remaining > 0.0:
+		return
+	goal_restart_active = false
+	_prepare_kickoff(pending_restart_team_id, false)
+
+func _kickoff_position(team_id: int, player: Footballer) -> Vector2:
+	var center := ChessFootballMath.PITCH_RECT.get_center()
+	var side := -1.0 if team_id == 0 else 1.0
+	var gap := KICKOFF_TEAM_HALF_GAP if team_id == kickoff_team_id else KICKOFF_RIVAL_HALF_GAP
+	match player.squad_index:
+		0:
+			return player.home_position
+		1:
+			return Vector2(center.x + side * 390.0, center.y - 170.0)
+		2:
+			return Vector2(center.x + side * (gap + 80.0), center.y)
+		3:
+			return Vector2(center.x + side * (gap + 230.0), center.y + 180.0)
+		4:
+			return Vector2(center.x + side * gap, center.y - 150.0)
+	return player.home_position
 
 func _prepare_kickoff(team_id: int, is_initial: bool) -> void:
 	_cancel_shot_charge()
 	pending_tackle_player = null
 	pending_tackle_seconds = 0.0
+	goal_restart_active = false
+	goal_restart_seconds_remaining = 0.0
 	kickoff_team_id = clampi(team_id, 0, 1)
 	kickoff_active = true
 	kickoff_seconds_remaining = KICKOFF_FREEZE_SECONDS
 
 	for id in range(2):
 		for player in teams[id]:
-			player.global_position = player.home_position
+			player.global_position = _kickoff_position(id, player)
 			player.velocity = Vector2.ZERO
 
 	var center := ChessFootballMath.PITCH_RECT.get_center()
@@ -733,8 +786,8 @@ func _prepare_kickoff(team_id: int, is_initial: bool) -> void:
 	else:
 		_select_player(_nearest_player_to_ball(0))
 
-	if is_initial:
-		last_goal_text = "SACA · FC Matthias" if kickoff_team_id == 0 else "SACA · Real Enroque"
+	var team_name := "FC Matthias" if kickoff_team_id == 0 else "Real Enroque"
+	last_goal_text = ("SACA · " if is_initial else "REANUDA · ") + team_name
 
 func _update_kickoff(delta: float) -> void:
 	kickoff_seconds_remaining = maxf(0.0, kickoff_seconds_remaining - delta)
@@ -748,13 +801,14 @@ func _update_kickoff(delta: float) -> void:
 	last_goal_text = ""
 	if audio_fx != null:
 		audio_fx.play_whistle()
-	if kickoff_team_id == 1:
-		var starter: Footballer = teams[1][2]
-		var receiver: Footballer = teams[1][3]
-		starter.play_action("pass", 0.60)
-		if audio_fx != null:
-			audio_fx.play_pass()
-		ball.release(receiver.global_position - starter.global_position, KICKOFF_AI_PASS_POWER)
+	var starter: Footballer = teams[kickoff_team_id][2]
+	var receiver: Footballer = teams[kickoff_team_id][KICKOFF_RECEIVER_INDEX]
+	starter.play_action("pass", 0.60)
+	if audio_fx != null:
+		audio_fx.play_pass()
+	ball.release(receiver.global_position - starter.global_position, KICKOFF_AI_PASS_POWER)
+	if kickoff_team_id == 0:
+		_select_player(receiver)
 
 func _toggle_camera_mode() -> void:
 	camera_mode = CAMERA_MODE_TACTICAL if camera_mode == CAMERA_MODE_BROADCAST else CAMERA_MODE_BROADCAST
@@ -813,6 +867,9 @@ func debug_3d_animated_players() -> int:
 func debug_sync_presentation() -> void:
 	_update_3d_presentation(0.0)
 
+func debug_refresh_hud() -> void:
+	_refresh_hud()
+
 func debug_try_tackle(player: Footballer) -> bool:
 	return _try_tackle(player)
 
@@ -836,6 +893,19 @@ func debug_kickoff_team() -> int:
 
 func debug_kickoff_active() -> bool:
 	return kickoff_active
+
+func debug_goal_restart_active() -> bool:
+	return goal_restart_active
+
+func debug_force_goal_restart_ready() -> void:
+	if goal_restart_active:
+		for team in teams:
+			for player in team:
+				player._process(GOAL_CELEBRATION_SECONDS)
+		_update_goal_restart(GOAL_CELEBRATION_SECONDS)
+
+func debug_prepare_kickoff(team_id: int) -> void:
+	_prepare_kickoff(team_id, true)
 
 func debug_force_kickoff_ready() -> void:
 	if kickoff_active:
