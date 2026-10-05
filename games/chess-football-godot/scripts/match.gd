@@ -29,6 +29,9 @@ const AI_FORWARD_PASS_GAIN := 170.0
 const AI_DRIBBLE_LOOKAHEAD := 280.0
 const AI_SUPPORT_FORWARD := 190.0
 
+const KICKOFF_FREEZE_SECONDS := 1.10
+const KICKOFF_AI_PASS_POWER := 430.0
+
 const SHOT_CHARGE_SECONDS := 0.90
 const SHOT_MIN_POWER := 650.0
 const SHOT_MAX_POWER := 1220.0
@@ -46,6 +49,9 @@ var camera_hint_seconds: float = 4.5
 var presentation_3d: ChessFootball3DPresenter
 var ai_next_decision: Dictionary = {}
 var pause_menu_open: bool = false
+var kickoff_team_id: int = 0
+var kickoff_active: bool = false
+var kickoff_seconds_remaining: float = 0.0
 var shot_charging: bool = false
 var shot_charge_seconds: float = 0.0
 
@@ -60,8 +66,7 @@ var pause_exit_button: Button
 
 func _ready() -> void:
 	_spawn_match()
-	_select_player(teams[0][2])
-	ball.attach_to(controlled)
+	_prepare_kickoff(randi_range(0, 1), true)
 	_create_3d_presentation()
 	_create_hud()
 	_refresh_hud()
@@ -72,6 +77,12 @@ func _physics_process(delta: float) -> void:
 		return
 	match_seconds += delta
 	camera_hint_seconds = maxf(0.0, camera_hint_seconds - delta)
+	if kickoff_active:
+		_update_kickoff(delta)
+		ball.tick_ball(delta)
+		_update_3d_presentation(delta)
+		_refresh_hud()
+		return
 	_handle_human(delta)
 	_update_ai(delta)
 	ball.tick_ball(delta)
@@ -235,7 +246,7 @@ func _menu_change_view() -> void:
 func _restart_match() -> void:
 	score = [0, 0]
 	last_goal_text = ""
-	_reset_kickoff(0)
+	_prepare_kickoff(randi_range(0, 1), true)
 	_toggle_pause_menu()
 
 func _exit_to_host() -> void:
@@ -622,24 +633,53 @@ func _check_goal() -> void:
 func _score_goal(team_id: int) -> void:
 	score[team_id] += 1
 	last_goal_text = "GOAL · FC Matthias" if team_id == 0 else "GOAL · Real Enroque"
-	_reset_kickoff(1 - team_id)
 	for player in teams[team_id]:
 		player.play_action("celebrate", 1.15)
+	_prepare_kickoff(1 - team_id, false)
 
-func _reset_kickoff(team_id: int) -> void:
+func _prepare_kickoff(team_id: int, is_initial: bool) -> void:
 	_cancel_shot_charge()
+	kickoff_team_id = clampi(team_id, 0, 1)
+	kickoff_active = true
+	kickoff_seconds_remaining = KICKOFF_FREEZE_SECONDS
+
 	for id in range(2):
 		for player in teams[id]:
 			player.global_position = player.home_position
 			player.velocity = Vector2.ZERO
-	ball.global_position = ChessFootballMath.PITCH_RECT.get_center()
-	ball.velocity = Vector2.ZERO
-	var starter: Footballer = teams[team_id][2]
+
+	var center := ChessFootballMath.PITCH_RECT.get_center()
+	var starter: Footballer = teams[kickoff_team_id][2]
+	var facing := 1.0 if kickoff_team_id == 0 else -1.0
+	starter.global_position = center - Vector2(18.0 * facing, -2.0)
+	starter.velocity = Vector2.ZERO
 	ball.attach_to(starter)
-	if team_id == 0:
+	ball.global_position = center
+	ball.velocity = Vector2.ZERO
+
+	if kickoff_team_id == 0:
 		_select_player(starter)
 	else:
 		_select_player(_nearest_player_to_ball(0))
+
+	if is_initial:
+		last_goal_text = "SACA · FC Matthias" if kickoff_team_id == 0 else "SACA · Real Enroque"
+
+func _update_kickoff(delta: float) -> void:
+	kickoff_seconds_remaining = maxf(0.0, kickoff_seconds_remaining - delta)
+	for id in range(2):
+		for player in teams[id]:
+			player.velocity = Vector2.ZERO
+	if kickoff_seconds_remaining > 0.0:
+		return
+
+	kickoff_active = false
+	last_goal_text = ""
+	if kickoff_team_id == 1:
+		var starter: Footballer = teams[1][2]
+		var receiver: Footballer = teams[1][3]
+		starter.play_action("pass", 0.60)
+		ball.release(receiver.global_position - starter.global_position, KICKOFF_AI_PASS_POWER)
 
 func _toggle_camera_mode() -> void:
 	camera_mode = CAMERA_MODE_TACTICAL if camera_mode == CAMERA_MODE_BROADCAST else CAMERA_MODE_BROADCAST
@@ -706,6 +746,19 @@ func debug_force_ai_attack(player: Footballer) -> void:
 
 func debug_step_ai(delta: float) -> void:
 	_update_ai(delta)
+
+func debug_kickoff_team() -> int:
+	return kickoff_team_id
+
+func debug_kickoff_active() -> bool:
+	return kickoff_active
+
+func debug_force_kickoff_ready() -> void:
+	if kickoff_active:
+		_update_kickoff(KICKOFF_FREEZE_SECONDS)
+
+func debug_score_goal(team_id: int) -> void:
+	_score_goal(team_id)
 
 func debug_shot_power_for_ratio(ratio: float) -> float:
 	return _shot_power_from_ratio(ratio)
