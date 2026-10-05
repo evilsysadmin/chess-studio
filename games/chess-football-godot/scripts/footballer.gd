@@ -15,6 +15,9 @@ var visual: AnimatedSprite2D
 var action_lock_seconds: float = 0.0
 var tackle_cooldown_seconds: float = 0.0
 var tackle_recovery_seconds: float = 0.0
+var contact_stun_seconds: float = 0.0
+var contact_stun_total: float = 0.0
+var contact_sway_sign: float = 1.0
 var keeper_hold_seconds: float = 0.0
 var last_sprinting: bool = false
 
@@ -45,6 +48,7 @@ func _configure_visual() -> void:
 func _process(delta: float) -> void:
 	tackle_cooldown_seconds = maxf(0.0, tackle_cooldown_seconds - delta)
 	tackle_recovery_seconds = maxf(0.0, tackle_recovery_seconds - delta)
+	contact_stun_seconds = maxf(0.0, contact_stun_seconds - delta)
 	keeper_hold_seconds = maxf(0.0, keeper_hold_seconds - delta)
 	if action_lock_seconds <= 0.0:
 		return
@@ -61,6 +65,8 @@ func move_human(direction: Vector2, sprinting: bool) -> void:
 	var speed := base_speed * (1.34 if sprinting else 1.0)
 	if tackle_recovery_seconds > 0.0:
 		speed *= 0.42
+	if contact_stun_seconds > 0.0:
+		speed *= 0.32
 	velocity = direction.normalized() * speed if direction.length_squared() > 0.001 else Vector2.ZERO
 	move_and_slide()
 	global_position = ChessFootballMath.clamp_to_pitch(global_position)
@@ -76,6 +82,8 @@ func move_ai(_delta: float, target: Vector2, intensity: float = 1.0) -> void:
 		_sync_locomotion(false)
 		return
 	var recovery_scale := 0.42 if tackle_recovery_seconds > 0.0 else 1.0
+	if contact_stun_seconds > 0.0:
+		recovery_scale *= 0.32
 	velocity = offset.normalized() * base_speed * clampf(intensity, 0.35, 1.0) * recovery_scale
 	move_and_slide()
 	global_position = ChessFootballMath.clamp_to_pitch(global_position)
@@ -100,6 +108,22 @@ func start_tackle() -> bool:
 	velocity *= 0.35
 	play_action("tackle", 0.50)
 	return true
+
+func receive_tackle_contact(push_direction: Vector2, duration: float = 0.30) -> void:
+	contact_stun_total = maxf(duration, 0.05)
+	contact_stun_seconds = contact_stun_total
+	tackle_recovery_seconds = maxf(tackle_recovery_seconds, duration + 0.08)
+	if absf(push_direction.x) > 0.01:
+		contact_sway_sign = signf(push_direction.x)
+	velocity = push_direction.normalized() * base_speed * 0.26 if push_direction.length_squared() > 0.001 else Vector2.ZERO
+
+func contact_stun_active() -> bool:
+	return contact_stun_seconds > 0.0
+
+func contact_stun_ratio() -> float:
+	if contact_stun_total <= 0.0:
+		return 0.0
+	return clampf(contact_stun_seconds / contact_stun_total, 0.0, 1.0)
 
 func begin_keeper_hold(duration: float = 0.72) -> void:
 	keeper_hold_seconds = maxf(duration, 0.0)
