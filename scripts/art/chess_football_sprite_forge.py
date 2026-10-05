@@ -8,19 +8,53 @@ import json
 import math
 from pathlib import Path
 
-CELL_W = 112
-CELL_H = 144
-COLUMNS = 8
+CONTRACT_PATH = Path(__file__).parent / "contracts" / "chess_football_players_v1.json"
+
+
+def _load_sprite_forge_contract() -> dict:
+    data = json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))
+    if data.get("schema") != 2 or data.get("surface") != "chess-football":
+        raise RuntimeError("Chess Football requires Sprite Forge schema 2")
+    cell = data.get("cell")
+    parts = data.get("parts")
+    animations = data.get("animations")
+    if not isinstance(cell, dict) or not isinstance(parts, dict) or "main" not in parts:
+        raise RuntimeError("Chess Football Sprite Forge contract missing cell/main part")
+    if not isinstance(animations, list) or not animations:
+        raise RuntimeError("Chess Football Sprite Forge contract missing animations")
+
+    main = parts["main"]
+    columns = int(main.get("columns", 0))
+    rows = int(main.get("rows", 0))
+    ordered = sorted(animations, key=lambda animation: int(animation.get("row", -1)))
+    if columns <= 0 or rows != len(ordered):
+        raise RuntimeError("Chess Football Sprite Forge grid mismatch")
+    for expected_row, animation in enumerate(ordered):
+        if animation.get("part") != "main" or int(animation.get("row", -1)) != expected_row:
+            raise RuntimeError("Chess Football Sprite Forge rows must be contiguous in main")
+        if int(animation.get("authored_frames", 0)) != columns:
+            raise RuntimeError("Chess Football authored frame count must match atlas columns")
+        if animation.get("slots") != list(range(columns)):
+            raise RuntimeError("Chess Football stores one authored frame per slot")
+    return data
+
+
+SPRITE_FORGE_CONTRACT = _load_sprite_forge_contract()
+CELL_W = int(SPRITE_FORGE_CONTRACT["cell"]["width"])
+CELL_H = int(SPRITE_FORGE_CONTRACT["cell"]["height"])
+COLUMNS = int(SPRITE_FORGE_CONTRACT["parts"]["main"]["columns"])
 FOOTLINE = 130
 DISPLAY_SCALE = 0.72
-ANIMATIONS = (
-    ("idle", 7, True),
-    ("run", 12, True),
-    ("sprint", 12, True),
-    ("pass", 10, False),
-    ("shoot", 10, False),
-    ("tackle", 10, False),
-    ("celebrate", 10, True),
+ANIMATIONS = tuple(
+    (
+        str(animation["name"]),
+        int(animation["fps"]),
+        bool(animation["loop"]),
+    )
+    for animation in sorted(
+        SPRITE_FORGE_CONTRACT["animations"],
+        key=lambda animation: int(animation["row"]),
+    )
 )
 TEAMS = {
     "fc_matthias": {"name": "FC Matthias", "torso": "#245fc2", "torso_dark": "#102f70", "torso_light": "#4f82df", "head": "#e7dec4", "hair": "#6d4b31"},
@@ -201,7 +235,7 @@ def build_outputs() -> dict[str, str]:
         atlas_meta[slug] = {"name": team["name"], "file": filename}
     manifest = {
         "version": 4,
-        "quality_contract": "chess-football-vector-v4",
+        "quality_contract": SPRITE_FORGE_CONTRACT["quality_contract"],
         "cell": {"width": CELL_W, "height": CELL_H},
         "columns": COLUMNS,
         "rows": len(ANIMATIONS),
@@ -235,7 +269,13 @@ def verify_outputs(target: Path) -> None:
             errors.append(f"drift {path}")
     if errors:
         raise SystemExit("\n".join(errors))
-    print(f"chess-football sprite forge: OK ({len(expected)} files)")
+    print(
+        "chess-football sprite forge: OK "
+        f"({len(expected)} files, "
+        f"{SPRITE_FORGE_CONTRACT['surface']}/"
+        f"{SPRITE_FORGE_CONTRACT['variant']}, "
+        f"shared contract schema {SPRITE_FORGE_CONTRACT['schema']})"
+    )
 
 
 def main() -> None:
