@@ -6,7 +6,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
-func TestFromISOFormatMatchesCPython(t *testing.T) {
+func TestFromISOFormatMatchesPython(t *testing.T) {
 	for _, c := range isoCases {
 		got := "error"
 		if v, aware, ok := FromISOFormat(c.in); ok {

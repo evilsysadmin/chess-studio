@@ -106,6 +106,8 @@ GO_AUTHORITY_PATHS = {
     "scripts/password_parity_corpus.py",
     "scripts/auth_guard_parity_corpus.py",
     "scripts/matthias_memory_parity_corpus.py",
+    "scripts/matthias_memory_writes_parity_corpus.py",
+    "backend-python/matthias_daily_store.py",
     "backend-python/matthias_memory_store.py",
     "backend-python/matthias_episodes.py",
     "backend-python/matthias_episode_store.py",
