@@ -4,8 +4,10 @@ import {
   chroniclesTacticsCombatActive,
   chroniclesTacticsCurrentActor,
   chroniclesTacticsPartyCanAct,
+  chroniclesTacticsPrepareExplorationSpawn,
   chroniclesTacticsResolvePlayerAction,
 } from './chroniclesTacticsTurnMode.js';
+import { chroniclesRuntimeEnemyPosition } from './chroniclesOfMatthiasTurns.js';
 
 function tacticsState(overrides = {}) {
   return {
@@ -30,6 +32,26 @@ describe('Chronicles Tactics turn-based combat mode', () => {
     expect(resolved.enemyTurnEvents).toEqual([]);
   });
 
+  it('moves a fresh roaming encounter away from the deployment zone before exploration begins', () => {
+    const initial = {
+      ...createChroniclesState('gallery-of-forks'),
+      round: 1,
+      turnPhase: 'party',
+      enemyPositions: {},
+      enemyTurnEvents: [],
+    };
+    expect(chroniclesTacticsCombatActive(initial)).toBe(true);
+
+    const prepared = chroniclesTacticsPrepareExplorationSpawn(initial);
+    const stalker = chroniclesActiveEnemies(prepared).find((enemy) => enemy.id === 'fork-stalker');
+    const position = chroniclesRuntimeEnemyPosition(prepared, stalker);
+    const distance = Math.abs(position.x - prepared.x) + Math.abs(position.y - prepared.y);
+
+    expect(position).not.toEqual({ x: 3, y: 5 });
+    expect(distance).toBeGreaterThanOrEqual(5);
+    expect(chroniclesTacticsCombatActive(prepared)).toBe(false);
+  });
+
   it('freezes exploration and rolls initiative when movement enters combat range', () => {
     const initial = tacticsState();
     const engagedStep = { ...initial, x: 2, y: 5, turns: 1, message: 'Contacto.' };
@@ -40,6 +62,8 @@ describe('Chronicles Tactics turn-based combat mode', () => {
     expect(resolved.phase).toBe('combat');
     expect(resolved.initiative?.die).toBe('1d8');
     expect(resolved.initiative?.order.length).toBeGreaterThan(1);
+    expect(Object.keys(resolved.partyPositions || {})).toHaveLength(4);
+    expect(new Set(Object.values(resolved.partyPositions || {}).map((cell) => `${cell.x}:${cell.y}`)).size).toBe(4);
     expect(resolved.enemyTurnEvents).toEqual([]);
     expect(resolved.message).toMatch(/iniciativa = AGI \+ 1d8/i);
   });
