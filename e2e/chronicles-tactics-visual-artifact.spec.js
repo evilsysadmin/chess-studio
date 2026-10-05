@@ -273,43 +273,6 @@ for (const capture of CAPTURES) {
       const movementMessage = ((await narrator.textContent()) || '').trim();
       await captureElement(page, viewport, `${ARTIFACT_DIR}/chronicles-tactics-moved-${capture.label}.png`);
 
-      // Re-enter Tactics from Home so the combat proof starts from the last
-      // semantic checkpoint. The Tactics view itself is intentionally ephemeral,
-      // so a raw browser reload returns to Home rather than restoring the mode.
-      await page.goto('./');
-      await openTactics(page, { authenticated: true });
-      await expect(mode).toBeVisible();
-      await expect(mode.locator('[data-chronicles-tactics-renderer="three"] canvas')).toHaveCount(1, { timeout: 30_000 });
-      await expect(mode).toHaveAttribute('data-engagement', 'exploration');
-      await expect(mode).toHaveAttribute('data-party-x', '1');
-      await expect(mode).toHaveAttribute('data-party-y', '5');
-
-      // Visual contract for the full flow: compact real-time exploration, then
-      // contact deploys the four heroes onto the combat grid.
-      const resetNorth = mode.getByRole('button', { name: 'Mover al norte', exact: true });
-      await page.waitForTimeout(140);
-      await expect(resetNorth).toBeEnabled();
-      await resetNorth.evaluate((button) => button.click());
-      await expect(mode).toHaveAttribute('data-engagement', 'exploration');
-
-      await page.waitForTimeout(140);
-      await expect(resetNorth).toBeEnabled();
-      await resetNorth.evaluate((button) => button.click());
-      await expect(mode).toHaveAttribute('data-engagement', 'exploration');
-
-      await page.waitForTimeout(140);
-      const moveEast = mode.getByRole('button', { name: 'Mover al este', exact: true });
-      await expect(moveEast).toBeEnabled();
-      await moveEast.evaluate((button) => button.click());
-      await expect(mode).toHaveAttribute('data-engagement', 'combat');
-      await expect(mode).not.toHaveAttribute('data-initiative-actor', '');
-      await page.waitForTimeout(180);
-      await captureElement(
-        page,
-        viewport,
-        `${ARTIFACT_DIR}/chronicles-tactics-combat-grid-${capture.label}.png`,
-      );
-
       await writeFile(
         `${ARTIFACT_DIR}/chronicles-tactics-visual-health-${capture.label}.json`,
         `${JSON.stringify({
@@ -324,12 +287,66 @@ for (const capture of CAPTURES) {
           gameplay: {
             movedNorth: true,
             message: movementMessage,
-            safeExplorationBeforeCombat: true,
             continuousWalkCaptured: true,
-            combatGridCaptured: true,
           },
         }, null, 2)}\n`,
         'utf8',
+      );
+    } finally {
+      await context.close();
+    }
+  });
+
+  test(`Chronicles Tactics · combat grid visual proof · ${capture.label}`, async ({ browser }) => {
+    test.setTimeout(90_000);
+    await mkdir(ARTIFACT_DIR, { recursive: true });
+
+    const context = await browser.newContext({
+      viewport: {
+        width: capture.hasTouch ? 1180 : capture.width,
+        height: capture.hasTouch ? 900 : capture.height,
+      },
+      hasTouch: capture.hasTouch,
+      reducedMotion: 'no-preference',
+    });
+    const page = await context.newPage();
+    try {
+      await openTactics(page);
+      if (capture.hasTouch) {
+        await page.setViewportSize({ width: capture.width, height: capture.height });
+        await page.waitForTimeout(180);
+      }
+
+      const mode = page.locator('[data-chronicles-tactics="true"]');
+      const viewport = mode.locator('.chronicles-tactics__viewport');
+      await expect(mode.locator('[data-chronicles-tactics-renderer="three"] canvas')).toHaveCount(1, { timeout: 30_000 });
+      await expect(mode).toHaveAttribute('data-engagement', 'exploration');
+      await expect(mode).toHaveAttribute('data-party-x', '1');
+      await expect(mode).toHaveAttribute('data-party-y', '5');
+
+      const moveNorth = mode.getByRole('button', { name: 'Mover al norte', exact: true });
+      await page.waitForTimeout(140);
+      await expect(moveNorth).toBeEnabled();
+      await moveNorth.evaluate((button) => button.click());
+      await expect(mode).toHaveAttribute('data-engagement', 'exploration');
+
+      await page.waitForTimeout(140);
+      await expect(moveNorth).toBeEnabled();
+      await moveNorth.evaluate((button) => button.click());
+      await expect(mode).toHaveAttribute('data-engagement', 'exploration');
+
+      await page.waitForTimeout(140);
+      const moveEast = mode.getByRole('button', { name: 'Mover al este', exact: true });
+      await expect(moveEast).toBeEnabled();
+      await moveEast.evaluate((button) => button.click());
+      await expect(mode).toHaveAttribute('data-engagement', 'combat');
+      await expect(mode).not.toHaveAttribute('data-initiative-actor', '');
+      await page.waitForTimeout(180);
+
+      await captureElement(
+        page,
+        viewport,
+        `${ARTIFACT_DIR}/chronicles-tactics-combat-grid-${capture.label}.png`,
       );
     } finally {
       await context.close();
