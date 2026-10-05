@@ -47,8 +47,11 @@ describe('InsightsGuidedSession time budgets', () => {
     expect(html).toContain('Tengo 5 min');
     expect(html).toContain('Tengo 15 min');
     expect(html).toContain('Tengo 30 min');
-    expect(html).toContain('En 5 minutos concentra todo en un único foco');
-    expect(html).toContain('cada recorrido respeta ese presupuesto');
+    expect(html).toContain('¿Cuánto tiempo tienes?');
+    expect(html).toContain('Un foco');
+    expect(html).toContain('Foco + práctica');
+    expect(html).toContain('Sesión completa');
+    expect(html).toContain('Sólo usa evidencia real de tu expediente y respeta el tiempo elegido.');
   });
 
   it('resume sólo los bloques que el usuario marcó como hechos y no vende mejora', () => {
