@@ -11,6 +11,10 @@ var has_ball: bool = false
 var ai_target: Vector2
 var team_color: Color = Color(0.2, 0.45, 0.95)
 
+var visual: AnimatedSprite2D
+var action_lock_seconds: float = 0.0
+var last_sprinting: bool = false
+
 func configure(p_team_id: int, p_index: int, p_role: String, p_position: Vector2, p_color: Color) -> void:
 	team_id = p_team_id
 	squad_index = p_index
@@ -19,35 +23,92 @@ func configure(p_team_id: int, p_index: int, p_role: String, p_position: Vector2
 	home_position = p_position
 	ai_target = p_position
 	team_color = p_color
+	_configure_visual()
 	queue_redraw()
+
+func _configure_visual() -> void:
+	if visual == null:
+		visual = AnimatedSprite2D.new()
+		add_child(visual)
+	visual.sprite_frames = ChessFootballSpriteBank.build_frames(team_id)
+	visual.centered = true
+	var cell := ChessFootballSpriteBank.cell_size()
+	var visual_scale := ChessFootballSpriteBank.display_scale()
+	visual.scale = Vector2.ONE * visual_scale
+	visual.position = Vector2(0.0, -(ChessFootballSpriteBank.footline() - cell.y * 0.5) * visual_scale)
+	visual.flip_h = team_id == 1
+	visual.play("idle")
+
+func _process(delta: float) -> void:
+	if action_lock_seconds <= 0.0:
+		return
+	action_lock_seconds = maxf(0.0, action_lock_seconds - delta)
+	if action_lock_seconds <= 0.0:
+		_sync_locomotion(last_sprinting)
 
 func set_active(value: bool) -> void:
 	active = value
 	queue_redraw()
 
 func move_human(direction: Vector2, sprinting: bool) -> void:
+	last_sprinting = sprinting
 	var speed := base_speed * (1.34 if sprinting else 1.0)
 	velocity = direction.normalized() * speed if direction.length_squared() > 0.001 else Vector2.ZERO
 	move_and_slide()
 	global_position = ChessFootballMath.clamp_to_pitch(global_position)
+	_sync_facing()
+	_sync_locomotion(sprinting)
 
-func move_ai(delta: float, target: Vector2, intensity: float = 1.0) -> void:
+func move_ai(_delta: float, target: Vector2, intensity: float = 1.0) -> void:
 	ai_target = target
 	var offset := target - global_position
+	last_sprinting = intensity >= 0.88
 	if offset.length() < 8.0:
 		velocity = Vector2.ZERO
+		_sync_locomotion(false)
 		return
 	velocity = offset.normalized() * base_speed * clampf(intensity, 0.35, 1.0)
 	move_and_slide()
 	global_position = ChessFootballMath.clamp_to_pitch(global_position)
+	_sync_facing()
+	_sync_locomotion(last_sprinting)
+
+func play_action(animation_name: String, duration: float = 0.78) -> void:
+	if visual == null or not visual.sprite_frames.has_animation(animation_name):
+		return
+	action_lock_seconds = maxf(duration, 0.05)
+	visual.play(animation_name)
+
+func ball_anchor() -> Vector2:
+	var facing := -1.0 if visual != null and visual.flip_h else 1.0
+	return Vector2(18.0 * facing * scale.x, -5.0)
+
+func _sync_facing() -> void:
+	if visual == null or absf(velocity.x) < 4.0:
+		return
+	visual.flip_h = velocity.x < 0.0
+
+func _sync_locomotion(sprinting: bool) -> void:
+	if visual == null or action_lock_seconds > 0.0:
+		return
+	var wanted := "idle"
+	if velocity.length() >= 12.0:
+		wanted = "sprint" if sprinting else "run"
+	if String(visual.animation) != wanted or not visual.is_playing():
+		visual.play(wanted)
+
+func debug_visual_ready() -> bool:
+	return visual != null and visual.sprite_frames != null
+
+func debug_animation_names() -> PackedStringArray:
+	return ChessFootballSpriteBank.animation_names()
 
 func _draw() -> void:
-	var radius := 18.0
-	draw_circle(Vector2.ZERO, radius, team_color)
-	draw_circle(Vector2.ZERO, radius, Color(1, 1, 1, 0.82), false, 2.0)
 	if active:
-		draw_arc(Vector2.ZERO, radius + 7.0, 0.0, TAU, 32, Color(1.0, 0.82, 0.24), 3.0)
-	if has_ball:
-		draw_circle(Vector2(0, 28), 4.0, Color.WHITE)
-	var fallback_font := ThemeDB.fallback_font
-	draw_string(fallback_font, Vector2(-5, 5), str(squad_index + 1), HORIZONTAL_ALIGNMENT_CENTER, 10.0, 12, Color.WHITE)
+		draw_arc(Vector2(0, 2), 24.0, 0.0, TAU, 32, Color(1.0, 0.82, 0.24, 0.92), 3.0)
+		var marker := PackedVector2Array([
+			Vector2(-5, -66),
+			Vector2(5, -66),
+			Vector2(0, -58),
+		])
+		draw_colored_polygon(marker, Color(1.0, 0.82, 0.24, 0.96))
