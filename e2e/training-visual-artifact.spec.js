@@ -335,6 +335,27 @@ scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page })
         bullet: { games: 8, wins: 2, draws: 1, losses: 5 },
       },
     }));
+    // The visual contract for "Ahora" needs one real, playable personal position
+    // so the actionable 5/15/30 picker is rendered instead of the honest
+    // low-data empty state.
+    localStorage.setItem('chess-study-personal-puzzles', JSON.stringify([
+      {
+        id: 'visual-guided-session',
+        kind: 'personal',
+        source: 'autopsy',
+        title: 'Posición real pendiente',
+        description: 'Material de fixture para acreditar la sesión guiada.',
+        fen: '6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1',
+        solution: ['Ra8#'],
+        incidentKeys: ['human:MISSED_MATE'],
+        sourceGameId: 'visual-guided-source',
+        loss: 420,
+        createdAt: '2026-10-01T10:00:00Z',
+        attempts: 0,
+        solves: 0,
+        cleanSolves: 0,
+      },
+    ]));
   });
   await page.getByRole('button', { name: 'Abrir menú de cuenta', exact: true }).click();
   await page.getByRole('menuitem', { name: /Mi progreso/ }).click();
