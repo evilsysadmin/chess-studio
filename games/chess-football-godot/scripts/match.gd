@@ -489,6 +489,8 @@ func _try_claim_loose_ball() -> void:
 	var best_distance := 31.0
 	for team in teams:
 		for player in team:
+			if ball.reclaim_blocked_for(player):
+				continue
 			var distance: float = player.global_position.distance_to(ball.global_position)
 			if distance < best_distance:
 				best_distance = distance
@@ -601,6 +603,9 @@ func debug_try_tackle(player: Footballer) -> bool:
 
 func debug_try_keeper_save(player: Footballer) -> bool:
 	return _keeper_try_save(player)
+
+func debug_try_claim_loose_ball() -> void:
+	_try_claim_loose_ball()
 
 func debug_ai_dribble_target(player: Footballer) -> Vector2:
 	return _ai_dribble_target(player)
