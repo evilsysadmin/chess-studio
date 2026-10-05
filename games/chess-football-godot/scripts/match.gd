@@ -398,22 +398,22 @@ func _ai_attack(player: Footballer) -> void:
 		ball.release(target.global_position - player.global_position, 540.0)
 
 func _best_ai_pass_target(player: Footballer) -> Footballer:
-	var forward := 1.0 if player.team_id == 0 else -1.0
+	var forward: float = 1.0 if player.team_id == 0 else -1.0
 	var best: Footballer = null
-	var best_score := -INF
+	var best_score: float = -INF
 	for teammate in teams[player.team_id]:
 		if teammate == player or teammate.role == "keeper":
 			continue
-		var offset := teammate.global_position - player.global_position
-		var distance := offset.length()
+		var offset: Vector2 = teammate.global_position - player.global_position
+		var distance: float = offset.length()
 		if distance < 90.0 or distance > 560.0:
 			continue
-		var progress := offset.x * forward
-		var nearest_opponent := _nearest_opponent_to(teammate)
-		var separation := 240.0
+		var progress: float = offset.x * forward
+		var nearest_opponent: Footballer = _nearest_opponent_to(teammate)
+		var separation: float = 240.0
 		if nearest_opponent != null:
 			separation = teammate.global_position.distance_to(nearest_opponent.global_position)
-		var score_value := progress * 1.8 + separation * 0.55 - absf(offset.y) * 0.18 - distance * 0.12
+		var score_value: float = progress * 1.8 + separation * 0.55 - absf(offset.y) * 0.18 - distance * 0.12
 		if score_value > best_score:
 			best_score = score_value
 			best = teammate
