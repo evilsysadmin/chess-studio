@@ -250,7 +250,7 @@ func world_to_stage(world: Vector2, height: float = 0.0) -> Vector3:
 func sync_presentation(delta: float, mode: String) -> void:
 	for team in match_node.teams:
 		for player in team:
-			var key := player.get_instance_id()
+			var key: int = int(player.get_instance_id())
 			var proxy: Node3D = player_nodes.get(key)
 			var sprite: AnimatedSprite3D = player_sprites.get(key)
 			if proxy == null or sprite == null:
