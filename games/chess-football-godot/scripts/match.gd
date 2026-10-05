@@ -613,3 +613,6 @@ func debug_pause_menu_open() -> bool:
 
 func debug_toggle_pause_menu() -> void:
 	_toggle_pause_menu()
+
+func debug_pause_first_option() -> String:
+	return pause_exit_button.text if pause_exit_button != null else ""
