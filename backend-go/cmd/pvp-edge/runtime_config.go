@@ -35,6 +35,7 @@ type nativeFeatureFlags struct {
 	account             bool
 	recovery            bool
 	feedback            bool
+	matthiasRead        bool
 }
 
 func loadNativeFeatureFlags() nativeFeatureFlags {
@@ -63,6 +64,7 @@ func loadNativeFeatureFlags() nativeFeatureFlags {
 		account:             envBool("GO_NATIVE_ACCOUNT_ENABLED", false),
 		recovery:            envBool("GO_NATIVE_RECOVERY_ENABLED", false),
 		feedback:            envBool("GO_NATIVE_FEEDBACK_ENABLED", false),
+		matthiasRead:        envBool("GO_NATIVE_MATTHIAS_READ_ENABLED", false),
 	}
 }
 
@@ -89,7 +91,8 @@ func (f nativeFeatureFlags) needsMongo() bool {
 		f.login ||
 		f.account ||
 		f.recovery ||
-		f.feedback
+		f.feedback ||
+		f.matthiasRead
 }
 
 func env(key, fallback string) string {

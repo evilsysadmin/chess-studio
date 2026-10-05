@@ -105,6 +105,10 @@ GO_AUTHORITY_PATHS = {
     "scripts/profile_parity_corpus.py",
     "scripts/password_parity_corpus.py",
     "scripts/auth_guard_parity_corpus.py",
+    "scripts/matthias_memory_parity_corpus.py",
+    "backend-python/matthias_memory_store.py",
+    "backend-python/matthias_episodes.py",
+    "backend-python/matthias_episode_store.py",
     "backend-python/auth.py",
     "backend-python/auth_login_guard.py",
     "backend-python/auth_ip_guard.py",
@@ -118,7 +122,7 @@ GO_AUTHORITY_PATHS = {
     "scripts/go_python_parity_check.sh",
 }
 GO_PARITY_FIXTURE_RE = re.compile(
-    r"^backend-go/internal/(?:residenteval|residentsearch|residentpolicy|gamecore|gameops|gamesapi|obshistory|profilestore|authcrypto|authguard|chroniclesmap)/"
+    r"^backend-go/internal/(?:residenteval|residentsearch|residentpolicy|gamecore|gameops|gamesapi|obshistory|profilestore|authcrypto|authguard|chroniclesmap|matthiasmem)/"
     r"testdata/python_[^/]*_corpus\.json$"
 )
 BROWSER_HARNESS_PATHS = {".github/actions/setup-browser-e2e/action.yml", "scripts/run_core_e2e_lane.py"}
