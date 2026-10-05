@@ -5,6 +5,8 @@ var team_id: int = 0
 var squad_index: int = 0
 var role: String = "midfielder"
 var base_speed: float = 250.0
+const MOVE_ACCELERATION := 1650.0
+const MOVE_DECELERATION := 2150.0
 var home_position: Vector2
 var active: bool = false
 var has_ball: bool = false
@@ -60,31 +62,37 @@ func set_active(value: bool) -> void:
 	active = value
 	queue_redraw()
 
-func move_human(direction: Vector2, sprinting: bool) -> void:
+func move_human(delta: float, direction: Vector2, sprinting: bool) -> void:
 	last_sprinting = sprinting
 	var speed := base_speed * (1.34 if sprinting else 1.0)
 	if tackle_recovery_seconds > 0.0:
 		speed *= 0.42
 	if contact_stun_seconds > 0.0:
 		speed *= 0.32
-	velocity = direction.normalized() * speed if direction.length_squared() > 0.001 else Vector2.ZERO
+	var desired := direction.normalized() * speed if direction.length_squared() > 0.001 else Vector2.ZERO
+	var acceleration := MOVE_ACCELERATION if desired.length_squared() > 0.001 else MOVE_DECELERATION
+	velocity = velocity.move_toward(desired, acceleration * delta)
+	if velocity.length() < 1.0:
+		velocity = Vector2.ZERO
 	move_and_slide()
 	global_position = ChessFootballMath.clamp_to_pitch(global_position)
 	_sync_facing()
 	_sync_locomotion(sprinting)
 
-func move_ai(_delta: float, target: Vector2, intensity: float = 1.0) -> void:
+func move_ai(delta: float, target: Vector2, intensity: float = 1.0) -> void:
 	ai_target = target
 	var offset := target - global_position
 	last_sprinting = intensity >= 0.88
-	if offset.length() < 8.0:
-		velocity = Vector2.ZERO
-		_sync_locomotion(false)
-		return
 	var recovery_scale := 0.42 if tackle_recovery_seconds > 0.0 else 1.0
 	if contact_stun_seconds > 0.0:
 		recovery_scale *= 0.32
-	velocity = offset.normalized() * base_speed * clampf(intensity, 0.35, 1.0) * recovery_scale
+	var desired := Vector2.ZERO
+	if offset.length() >= 8.0:
+		desired = offset.normalized() * base_speed * clampf(intensity, 0.35, 1.0) * recovery_scale
+	var acceleration := MOVE_ACCELERATION if desired.length_squared() > 0.001 else MOVE_DECELERATION
+	velocity = velocity.move_toward(desired, acceleration * delta)
+	if velocity.length() < 1.0:
+		velocity = Vector2.ZERO
 	move_and_slide()
 	global_position = ChessFootballMath.clamp_to_pitch(global_position)
 	_sync_facing()
