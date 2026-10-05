@@ -68,7 +68,7 @@ test('Así juegas · una recaída real posterior devuelve el patrón a la sesió
   }, { fen: PERSONAL_MATE_FEN });
 
   await buttonWithHeading(page, 'Así juegas').click();
-  await expect(page.getByRole('heading', { name: 'Sesión automática', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '¿Cuánto tiempo tienes?', exact: true })).toBeVisible();
 
   await page.getByRole('button', { name: 'Tengo 5 min', exact: true }).click();
   const session = page.locator('.insights-guided-session.active');
