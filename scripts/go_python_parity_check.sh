@@ -15,6 +15,7 @@ python scripts/engine_history_parity_corpus.py --check
 python scripts/engine_pv_parity_corpus.py --check
 python scripts/engine_move_analysis_parity_corpus.py --check
 python scripts/observability_history_parity_corpus.py --check
+python scripts/observability_history_read_parity_corpus.py --check
 python scripts/profile_parity_corpus.py --check
 python scripts/password_parity_corpus.py --check
 python scripts/auth_guard_parity_corpus.py --check
@@ -33,7 +34,7 @@ python scripts/admin_users_parity_corpus.py --check
   go test -count=1 -run 'MatchesPython' ./internal/residenteval ./internal/residentsearch
   go test -count=1 -run 'MatchPython|MatchesPython' ./internal/residentpolicy ./internal/residentmove
   go test -count=1 -run 'MatchesPython' ./internal/gamesapi
-  go test -count=1 -run 'MatchPython' ./internal/obshistory
+  go test -count=1 -run 'MatchPython|MatchesPython|MatchesCPython' ./internal/obshistory
   go test -count=1 -run 'MatchPython' ./internal/profilestore
   go test -count=1 -run 'MatchesPython|MatchPython' ./internal/authcrypto ./internal/authguard
   go test -count=1 -run 'MatchesPython|MatchPython' ./internal/matthiasmem ./internal/pyval ./internal/narrative ./internal/pawnslug
