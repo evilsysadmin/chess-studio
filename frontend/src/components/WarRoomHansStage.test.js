@@ -1,11 +1,12 @@
 import * as THREE from 'three';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   WAR_ROOM_HANS_ANCHORS,
   installWarRoomHansVariantStage,
   readWarRoomHansStageAnchors,
   warRoomHansRoom,
 } from './WarRoomHansStage.js';
+import { setWarRoomHansQuickIterationEnabled } from './WarRoomHansIteration.js';
 
 // v3 armory hall as validated in the runtime prototype, shell-local three.js
 // coordinates (Blender x, z, -y): hearth on the back wall, service door on the
@@ -100,6 +101,48 @@ describe('WarRoomHansStage', () => {
     const hans = installWarRoomHansVariantStage(scene, { variant: 'duel', shellRoot: root });
     expect(hans.status).toBe('no-room');
     expect(scene.getObjectByName('war-room-fireplace')).toBeUndefined();
+  });
+
+  it('opens the authored V3 door before Hans becomes visible after Matthias calls him', () => {
+    let now = 0;
+    vi.spyOn(performance, 'now').mockImplementation(() => now);
+    setWarRoomHansQuickIterationEnabled(true);
+
+    const scene = new THREE.Scene();
+    scene.userData.warRoomHansAwaitCall = true;
+    const root = shell();
+    scene.add(root);
+    const leaf = root.getObjectByName(WAR_ROOM_HANS_ANCHORS.doorLeaf);
+    const installed = installWarRoomHansVariantStage(scene, { variant: 'v3', shellRoot: root });
+    const hans = scene.getObjectByName('war-room-hans-butler');
+    const driver = scene.getObjectByName('war-room-hans-fireplace-driver');
+    const doorPivot = leaf.parent;
+
+    try {
+      expect(installed.status).toBe('v3-armory-hall:quick');
+      expect(hans.visible).toBe(false);
+      expect(doorPivot.userData.warRoomHansDoorOpen).toBe(0);
+
+      scene.userData.warRoomHansCallReleased = true;
+      driver.onBeforeRender();
+
+      now = 500;
+      driver.onBeforeRender();
+      expect(hans.visible).toBe(false);
+      expect(doorPivot.userData.warRoomHansDoorOpen).toBeGreaterThan(0);
+      expect(doorPivot.userData.warRoomHansDoorOpen).toBeLessThan(1);
+
+      now = 1000;
+      driver.onBeforeRender();
+      expect(hans.visible).toBe(true);
+      expect(doorPivot.userData.warRoomHansDoorOpen).toBe(1);
+      expect(hans.userData.warRoomHansRoute).toBe('stage-entry');
+      expect(Math.abs(hans.position.x)).toBeGreaterThan(8);
+    } finally {
+      installed.release();
+      setWarRoomHansQuickIterationEnabled(false);
+      vi.restoreAllMocks();
+    }
   });
 
   it('installs Hans at the hearth, swings the authored leaf and releases cleanly', () => {
