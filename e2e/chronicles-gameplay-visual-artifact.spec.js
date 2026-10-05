@@ -29,13 +29,14 @@ async function openVisualMoreModes(page) {
   await trigger.evaluate((button) => button.click());
 }
 
-async function openChronicles(page, captureLabel, { runStatus = 'active' } = {}) {
+async function openChronicles(page, captureLabel, { runStatus = 'active', currentMapId = 'crypt-eight-squares' } = {}) {
   await mockApi(page, {
     profileSeed: {
       'matthias.onboarded': '2',
       'chess-study-home-guide-dismissed-v1': '1',
     },
     chroniclesRunStatus: runStatus,
+    chroniclesCurrentMapId: currentMapId,
   });
   await login(page);
   const speech = page.getByRole('region', { name: 'Mensaje de Matthias', exact: true });
@@ -217,6 +218,36 @@ for (const capture of CAPTURES) {
     }
   });
 }
+
+
+test('Chronicles · Gallery of Forks carried torch · desktop-1440x900', async ({ browser }) => {
+  test.setTimeout(150_000);
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+
+  const context = await browser.newContext({
+    viewport: { width: 1440, height: 900 },
+    hasTouch: false,
+    isMobile: false,
+  });
+  const page = await context.newPage();
+  try {
+    await openChronicles(page, 'gallery-of-forks-desktop-1440x900', { currentMapId: 'gallery-of-forks' });
+    const gameRoot = page.locator('[data-chronicles="true"]');
+    const chroniclesCanvas = page.locator('[data-chronicles-renderer="three"] canvas');
+    await expect(gameRoot).toBeVisible();
+    await expect(chroniclesCanvas).toHaveCount(1, { timeout: 20_000 });
+    await expect(chroniclesCanvas).toBeVisible();
+    await expect(gameRoot).toContainText('La Galería de las Horquillas');
+    await page.waitForTimeout(650);
+    await captureElement(
+      page,
+      gameRoot,
+      `${ARTIFACT_DIR}/chronicles-gallery-of-forks-playing-desktop-1440x900.png`,
+    );
+  } finally {
+    await context.close();
+  }
+});
 
 
 for (const capture of CAPTURES) {
