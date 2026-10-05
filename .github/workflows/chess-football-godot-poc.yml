@@ -5,6 +5,9 @@ on:
     paths:
       - games/chess-football-godot/**
       - scripts/art/chess_football_sprite_forge.py
+      - scripts/art/sprite_forge.py
+      - scripts/art/sprite_forge_contract_v2.schema.json
+      - scripts/art/contracts/chess_football_players_v1.json
       - scripts/pawn_slug_godot_bundle.py
       - .github/workflows/chess-football-godot-poc.yml
   push:
@@ -12,6 +15,9 @@ on:
     paths:
       - games/chess-football-godot/**
       - scripts/art/chess_football_sprite_forge.py
+      - scripts/art/sprite_forge.py
+      - scripts/art/sprite_forge_contract_v2.schema.json
+      - scripts/art/contracts/chess_football_players_v1.json
       - scripts/pawn_slug_godot_bundle.py
       - .github/workflows/chess-football-godot-poc.yml
   workflow_dispatch:
