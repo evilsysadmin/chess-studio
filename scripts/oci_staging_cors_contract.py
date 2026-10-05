@@ -613,6 +613,15 @@ assert "payload.get('nativeAuthSession')" in deploy
 assert 'games_native_attest "http://127.0.0.1:${port}/api/auth/me" GET X-Chess-Session-Native; then' in deploy
 assert 'exit 68' in deploy
 assert 'GO_NATIVE_AUTH_SESSION_ENABLED: "${CHESS_STUDIO_GO_NATIVE_AUTH_SESSION_ENABLED:-false}"' in compose
+# Native login: staging first, attested by Go's 422 for an empty body.
+assert 'staging) go_native_login="${CHESS_STUDIO_GO_NATIVE_LOGIN_ENABLED:-true}" ;;' in deploy
+assert '*) go_native_login="${CHESS_STUDIO_GO_NATIVE_LOGIN_ENABLED:-false}" ;;' in deploy
+assert 'CHESS_STUDIO_GO_NATIVE_LOGIN_ENABLED="$go_native_login"' in deploy
+assert "payload.get('nativeLogin')" in deploy
+assert 'games_native_attest "http://127.0.0.1:${port}/api/auth/login" POST X-Chess-Auth-Native 422; then' in deploy
+assert 'local expected_status="${4:-401}"' in deploy
+assert 'exit 71' in deploy
+assert 'GO_NATIVE_LOGIN_ENABLED: "${CHESS_STUDIO_GO_NATIVE_LOGIN_ENABLED:-false}"' in compose
 assert 'GO_NATIVE_GAMES_WRITE_ENABLED: "${CHESS_STUDIO_GO_NATIVE_GAMES_WRITE_ENABLED:-false}"' in compose
 assert 'sleep 0.25' in deploy
 assert 'if ! wait_pvp_edge_attest "$port"; then' in deploy

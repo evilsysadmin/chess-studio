@@ -9,8 +9,11 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"strconv"
 	"strings"
 	"time"
+
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/pyjson"
 )
 
 type tokenHeader struct {
@@ -96,4 +99,27 @@ func VerifiedSubject(authorization string, secret []byte, now time.Time) string 
 		return ""
 	}
 	return claims.Subject
+}
+
+// TokenLifetime mirrors auth.TOKEN_EXPIRY_DAYS.
+const TokenLifetime = 30 * 24 * time.Hour
+
+// Sign mirrors auth.create_token as PyJWT encodes it: header
+// {"alg":"HS256","typ":"JWT"}, payload {"sub","purpose":"session","sv","exp"}
+// in that order, compact, ASCII-escaped, exp in whole seconds.
+func Sign(username string, sessionVersion int64, secret []byte, now time.Time) (string, error) {
+	if sessionVersion < 0 {
+		sessionVersion = 0
+	}
+	subject, err := pyjson.Dumps(username)
+	if err != nil {
+		return "", err
+	}
+	header := base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"HS256","typ":"JWT"}`))
+	payload := base64.RawURLEncoding.EncodeToString([]byte(
+		`{"sub":` + subject + `,"purpose":"session","sv":` + strconv.FormatInt(sessionVersion, 10) +
+			`,"exp":` + strconv.FormatInt(now.Add(TokenLifetime).Unix(), 10) + `}`))
+	mac := hmac.New(sha256.New, secret)
+	_, _ = mac.Write([]byte(header + "." + payload))
+	return header + "." + payload + "." + base64.RawURLEncoding.EncodeToString(mac.Sum(nil)), nil
 }

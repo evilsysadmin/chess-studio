@@ -56,7 +56,9 @@ type Config struct {
 	NativeProfile http.Handler
 	// NativeSession serves GET /api/auth/me, POST /api/auth/activity and
 	// POST /api/auth/logout; nil keeps them in Python.
-	NativeSession         http.Handler
+	NativeSession http.Handler
+	// NativeLogin serves POST /api/auth/login; nil keeps it in Python.
+	NativeLogin           http.Handler
 	VirtualPlayersEnabled bool
 	NativeResidentMove    bool
 	// ReadyChecks are dependencies owned by the Go edge itself (MongoDB for the
@@ -93,6 +95,7 @@ type Handler struct {
 	nativeSystem              http.Handler
 	nativeProfile             http.Handler
 	nativeSession             http.Handler
+	nativeLogin               http.Handler
 	virtualPlayersEnabled     bool
 	nativeResidentMove        bool
 	readyChecks               map[string]func(context.Context) error
@@ -198,6 +201,7 @@ func New(cfg Config) (*Handler, error) {
 		nativeSystem:              cfg.NativeSystem,
 		nativeProfile:             cfg.NativeProfile,
 		nativeSession:             cfg.NativeSession,
+		nativeLogin:               cfg.NativeLogin,
 		virtualPlayersEnabled:     cfg.VirtualPlayersEnabled,
 		nativeResidentMove:        cfg.NativeResidentMove,
 		readyChecks:               cfg.ReadyChecks,
@@ -260,6 +264,13 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if pattern, ok := gamesapi.SessionRoute(r); ok {
 			w.Header().Set("X-Chess-Edge", "go")
 			h.telemetry.Serve(pattern, h.nativeSession, w, r)
+			return
+		}
+	}
+	if h.nativeLogin != nil {
+		if pattern, ok := gamesapi.LoginRoute(r); ok {
+			w.Header().Set("X-Chess-Edge", "go")
+			h.telemetry.Serve(pattern, h.nativeLogin, w, r)
 			return
 		}
 	}
@@ -360,6 +371,7 @@ func (h *Handler) statusPayload(status string) map[string]any {
 		"nativeSystem":              h.nativeSystem != nil,
 		"nativeProfile":             h.nativeProfile != nil,
 		"nativeAuthSession":         h.nativeSession != nil,
+		"nativeLogin":               h.nativeLogin != nil,
 	}
 	if h.release != "" {
 		payload["release"] = h.release

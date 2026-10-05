@@ -5,6 +5,8 @@ package accountstore
 import (
 	"context"
 	"errors"
+	"strconv"
+	"strings"
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -114,4 +116,73 @@ func (s *Store) Email(ctx context.Context, username string) (any, error) {
 		}
 	}
 	return nil, nil
+}
+
+// LoginAccount is what login needs from a users document.
+type LoginAccount struct {
+	// Username is the document id (users_store.get_user/get_user_by_email
+	// overwrite any stored "username" field with it).
+	Username string
+	// PasswordHash is the stored value; HasPasswordHash false when absent.
+	PasswordHash    any
+	HasPasswordHash bool
+	// SessionVersion mirrors users_store.session_version.
+	SessionVersion int64
+}
+
+// ForLogin mirrors login's lookup: by email when the identity contains "@"
+// (get_user_by_email), by username otherwise (get_user).
+func (s *Store) ForLogin(ctx context.Context, identity string) (LoginAccount, bool, error) {
+	if s == nil || s.users == nil {
+		return LoginAccount{}, false, errors.New("account store is not configured")
+	}
+	filter := bson.M{"_id": identity}
+	if strings.Contains(identity, "@") {
+		filter = bson.M{"email": identity}
+	}
+	queryCtx, cancel := context.WithTimeout(ctx, s.timeout)
+	defer cancel()
+	var row bson.M
+	err := s.users.FindOne(queryCtx, filter, options.FindOne().SetProjection(bson.M{"_id": 1, "password_hash": 1, "session_version": 1})).Decode(&row)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return LoginAccount{}, false, nil
+	}
+	if err != nil {
+		return LoginAccount{}, false, err
+	}
+	account := LoginAccount{}
+	if id, ok := row["_id"].(string); ok {
+		account.Username = id
+	}
+	account.PasswordHash, account.HasPasswordHash = row["password_hash"]
+	account.SessionVersion = sessionVersion(row["session_version"])
+	return account, true, nil
+}
+
+// sessionVersion mirrors users_store.session_version: int(value), at least
+// 0, and 0 for anything int() rejects.
+func sessionVersion(value any) int64 {
+	var version int64
+	switch v := value.(type) {
+	case bool:
+		if v {
+			version = 1
+		}
+	case int32:
+		version = int64(v)
+	case int64:
+		version = v
+	case float64:
+		if v != v || v > 9.2e18 || v < -9.2e18 {
+			return 0
+		}
+		version = int64(v)
+	case string:
+		n, err := strconv.ParseInt(strings.TrimSpace(v), 10, 64)
+		if err != nil {
+			return 0
+		}
+		version = n
+	}
+	return max(0, version)
 }
