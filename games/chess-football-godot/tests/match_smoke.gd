@@ -20,8 +20,35 @@ func _initialize() -> void:
 	assert(ChessFootballSpriteBank.atlas_key(0, "keeper") == "fc_matthias_keeper")
 	assert(ChessFootballSpriteBank.atlas_key(1, "keeper") == "real_enroque_keeper")
 	assert(ChessFootballSpriteBank.atlas_key(0, "forward") == "fc_matthias")
-	assert(match_node.ball.carrier == match_node.controlled)
+	var initial_kickoff_team: int = match_node.debug_kickoff_team()
+	assert(initial_kickoff_team == 0 or initial_kickoff_team == 1)
+	assert(match_node.debug_kickoff_active())
+	assert(match_node.ball.carrier != null)
+	assert(match_node.ball.carrier.team_id == initial_kickoff_team)
+	assert(match_node.ball.global_position.distance_to(ChessFootballMath.PITCH_RECT.get_center()) < 1.0)
+	match_node.debug_force_kickoff_ready()
+	assert(not match_node.debug_kickoff_active())
+	if initial_kickoff_team == 1:
+		assert(match_node.ball.carrier == null)
+		assert(match_node.ball.velocity.length() > 0.0)
 	assert(InputMap.has_action("tackle"))
+
+	match_node.debug_score_goal(0)
+	assert(match_node.score == [1, 0])
+	assert(match_node.debug_kickoff_active())
+	assert(match_node.debug_kickoff_team() == 1)
+	assert(match_node.ball.carrier != null and match_node.ball.carrier.team_id == 1)
+	match_node.debug_force_kickoff_ready()
+	assert(not match_node.debug_kickoff_active())
+
+	match_node.debug_score_goal(1)
+	assert(match_node.score == [1, 1])
+	assert(match_node.debug_kickoff_active())
+	assert(match_node.debug_kickoff_team() == 0)
+	assert(match_node.ball.carrier != null and match_node.ball.carrier.team_id == 0)
+	match_node.debug_force_kickoff_ready()
+	assert(not match_node.debug_kickoff_active())
+	assert(match_node.ball.carrier == match_node.controlled)
 
 	var tackler: Footballer = match_node.controlled
 	var victim: Footballer = match_node.teams[1][2]
