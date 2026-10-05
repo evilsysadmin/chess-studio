@@ -1,38 +1,93 @@
 extends Node2D
 
+const Presenter3D = preload("res://scripts/football_3d_presenter.gd")
 const TEAM_SIZE := 5
 const ROLES := ["keeper", "defender", "midfielder", "wing", "forward"]
 const TEAM_COLORS := [Color(0.12, 0.42, 0.92), Color(0.86, 0.18, 0.2)]
+
+const CAMERA_MODE_BROADCAST := "broadcast"
+const CAMERA_MODE_TACTICAL := "tactical"
 
 var teams: Array[Array] = [[], []]
 var ball: FootballBall
 var controlled: Footballer
 var score := [0, 0]
 var match_seconds: float = 0.0
-var camera: Camera2D
+var camera_mode: String = CAMERA_MODE_BROADCAST
 var last_goal_text: String = ""
+var camera_hint_seconds: float = 4.5
+var presentation_3d: ChessFootball3DPresenter
+
+var score_label: Label
+var help_label: Label
+var view_label: Label
+var goal_label: Label
 
 func _ready() -> void:
 	_spawn_match()
 	_select_player(teams[0][2])
 	ball.attach_to(controlled)
-	camera = Camera2D.new()
-	camera.zoom = Vector2(0.72, 0.72)
-	add_child(camera)
-	camera.global_position = ball.global_position
-	queue_redraw()
+	_create_3d_presentation()
+	_create_hud()
+	_refresh_hud()
 
 func _physics_process(delta: float) -> void:
 	match_seconds += delta
+	camera_hint_seconds = maxf(0.0, camera_hint_seconds - delta)
 	_handle_human()
 	_update_ai(delta)
 	ball.tick_ball(delta)
 	_try_claim_loose_ball()
 	_check_goal()
-	_update_camera(delta)
-	queue_redraw()
+	_update_3d_presentation(delta)
+	_refresh_hud()
+
+func _create_3d_presentation() -> void:
+	presentation_3d = Presenter3D.new()
+	add_child(presentation_3d)
+	presentation_3d.setup(self)
+
+func _create_hud() -> void:
+	var hud := CanvasLayer.new()
+	hud.layer = 20
+	add_child(hud)
+
+	score_label = Label.new()
+	score_label.position = Vector2(24, 18)
+	score_label.add_theme_font_size_override("font_size", 24)
+	score_label.add_theme_color_override("font_color", Color.WHITE)
+	hud.add_child(score_label)
+
+	help_label = Label.new()
+	help_label.position = Vector2(24, 52)
+	help_label.add_theme_font_size_override("font_size", 15)
+	help_label.add_theme_color_override("font_color", Color(1, 1, 1, 0.78))
+	hud.add_child(help_label)
+
+	view_label = Label.new()
+	view_label.position = Vector2(24, 82)
+	view_label.add_theme_font_size_override("font_size", 14)
+	view_label.add_theme_color_override("font_color", Color(1.0, 0.84, 0.28))
+	hud.add_child(view_label)
+
+	goal_label = Label.new()
+	goal_label.position = Vector2(0, 126)
+	goal_label.size = Vector2(1280, 42)
+	goal_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	goal_label.add_theme_font_size_override("font_size", 27)
+	goal_label.add_theme_color_override("font_color", Color(1.0, 0.84, 0.28))
+	hud.add_child(goal_label)
+
+func _refresh_hud() -> void:
+	score_label.text = "FC Matthias %d - %d Real Enroque" % [score[0], score[1]]
+	help_label.text = "WASD · Shift sprint · Space pase · Enter tiro · Tab cambia · V vista"
+	var view_name := "BROADCAST 3D" if camera_mode == CAMERA_MODE_BROADCAST else "TÁCTICA AÉREA"
+	view_label.text = "VISTA · %s" % view_name if camera_hint_seconds > 0.0 else ""
+	goal_label.text = last_goal_text
 
 func _handle_human() -> void:
+	if Input.is_action_just_pressed("toggle_view"):
+		_toggle_camera_mode()
 	var direction := Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	controlled.move_human(direction, Input.is_action_pressed("sprint"))
 	if Input.is_action_just_pressed("change_player"):
@@ -93,9 +148,9 @@ func _best_pass_target(player: Footballer, input_direction: Vector2) -> Football
 	for teammate in teams[player.team_id]:
 		if teammate == player:
 			continue
-		var delta: Vector2 = teammate.global_position - player.global_position
-		var distance: float = maxf(delta.length(), 1.0)
-		var alignment := wanted.dot(delta / distance)
+		var offset: Vector2 = teammate.global_position - player.global_position
+		var distance: float = maxf(offset.length(), 1.0)
+		var alignment := wanted.dot(offset / distance)
 		var score_value := alignment * 800.0 - distance * 0.35
 		if score_value > best_score:
 			best_score = score_value
@@ -170,9 +225,13 @@ func _reset_kickoff(team_id: int) -> void:
 	else:
 		_select_player(_nearest_player_to_ball(0))
 
-func _update_camera(delta: float) -> void:
-	var target := ball.global_position
-	camera.global_position = camera.global_position.lerp(target, clampf(delta * 3.5, 0.0, 1.0))
+func _toggle_camera_mode() -> void:
+	camera_mode = CAMERA_MODE_TACTICAL if camera_mode == CAMERA_MODE_BROADCAST else CAMERA_MODE_BROADCAST
+	camera_hint_seconds = 4.5
+
+func _update_3d_presentation(delta: float) -> void:
+	if presentation_3d != null:
+		presentation_3d.sync_presentation(delta, camera_mode)
 
 func _spawn_match() -> void:
 	var left_x := [150.0, 420.0, 660.0, 760.0, 960.0]
@@ -186,10 +245,12 @@ func _spawn_match() -> void:
 			var player := Footballer.new()
 			add_child(player)
 			player.configure(team_id, index, ROLES[index], position, TEAM_COLORS[team_id])
+			player.visible = false
 			teams[team_id].append(player)
 	ball = FootballBall.new()
 	ball.global_position = ChessFootballMath.PITCH_RECT.get_center()
 	add_child(ball)
+	ball.visible = false
 
 func debug_team_counts() -> Array[int]:
 	return [teams[0].size(), teams[1].size()]
@@ -197,19 +258,11 @@ func debug_team_counts() -> Array[int]:
 func debug_ball_exists() -> bool:
 	return is_instance_valid(ball)
 
-func _draw() -> void:
-	var pitch := ChessFootballMath.PITCH_RECT
-	draw_rect(pitch, Color(0.09, 0.36, 0.15), true)
-	draw_rect(pitch, Color(0.92, 0.94, 0.88, 0.9), false, 4.0)
-	draw_line(Vector2(pitch.get_center().x, pitch.position.y), Vector2(pitch.get_center().x, pitch.end.y), Color(1, 1, 1, 0.8), 3.0)
-	draw_circle(pitch.get_center(), 105.0, Color(1, 1, 1, 0.8), false, 3.0)
-	draw_circle(pitch.get_center(), 5.0, Color.WHITE)
-	var goal_top := pitch.get_center().y - ChessFootballMath.GOAL_HALF_HEIGHT
-	var goal_height := ChessFootballMath.GOAL_HALF_HEIGHT * 2.0
-	draw_rect(Rect2(pitch.position.x - 24.0, goal_top, 24.0, goal_height), Color(1, 1, 1, 0.7), false, 3.0)
-	draw_rect(Rect2(pitch.end.x, goal_top, 24.0, goal_height), Color(1, 1, 1, 0.7), false, 3.0)
-	var font := ThemeDB.fallback_font
-	draw_string(font, camera.global_position + Vector2(-570, -300), "FC Matthias %d - %d Real Enroque" % [score[0], score[1]], HORIZONTAL_ALIGNMENT_LEFT, -1, 24, Color.WHITE)
-	draw_string(font, camera.global_position + Vector2(-570, -268), "WASD · Shift sprint · Space pass · Enter shoot · Tab change", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(1,1,1,0.8))
-	if not last_goal_text.is_empty():
-		draw_string(font, camera.global_position + Vector2(-85, -210), last_goal_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 26, Color(1.0, 0.84, 0.28))
+func debug_camera_mode() -> String:
+	return camera_mode
+
+func debug_toggle_camera_mode() -> void:
+	_toggle_camera_mode()
+
+func debug_3d_ready() -> bool:
+	return presentation_3d != null and presentation_3d.debug_camera_is_3d()
