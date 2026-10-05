@@ -107,13 +107,16 @@ func _build_pitch() -> void:
 	_add_floodlights()
 
 func _add_benches() -> void:
-	for x in [-3.2, 3.2]:
+	for x_value in [-3.2, 3.2]:
+		var x: float = float(x_value)
 		_add_box(Vector3(x, 0.35, field_depth * 0.5 + 0.82), Vector3(2.5, 0.7, 0.75), Color(0.055, 0.070, 0.082))
 		_add_box(Vector3(x, 0.82, field_depth * 0.5 + 0.88), Vector3(2.5, 0.12, 0.82), Color(0.22, 0.24, 0.26))
 
 func _add_floodlights() -> void:
-	for x in [-field_width * 0.42, field_width * 0.42]:
-		for z in [-field_depth * 0.5 - 2.4, field_depth * 0.5 + 2.4]:
+	for x_value in [-field_width * 0.42, field_width * 0.42]:
+		var x: float = float(x_value)
+		for z_value in [-field_depth * 0.5 - 2.4, field_depth * 0.5 + 2.4]:
+			var z: float = float(z_value)
 			_add_box(Vector3(x, 2.8, z), Vector3(0.12, 5.6, 0.12), Color(0.20, 0.22, 0.24))
 			var lamp := OmniLight3D.new()
 			lamp.position = Vector3(x, 5.45, z)
@@ -155,12 +158,14 @@ func _build_goals() -> void:
 	var post := 0.075
 	var depth := 0.82
 	var white := Color(0.95, 0.96, 0.94)
-	for side in [-1.0, 1.0]:
-		var x := side * field_width * 0.5
-		for z in [-goal_half, goal_half]:
+	for side_value in [-1.0, 1.0]:
+		var side: float = float(side_value)
+		var x: float = side * field_width * 0.5
+		for z_value in [-goal_half, goal_half]:
+			var z: float = float(z_value)
 			_add_box(Vector3(x, post_height * 0.5, z), Vector3(post, post_height, post), white)
 		_add_box(Vector3(x, post_height, 0.0), Vector3(post, post, goal_half * 2.0 + post), white)
-		var back_x := x + side * depth
+		var back_x: float = x + side * depth
 		for z in [-goal_half, goal_half]:
 			_add_box(Vector3(back_x, post_height * 0.5, z), Vector3(post * 0.7, post_height, post * 0.7), Color(0.66, 0.70, 0.72))
 			_add_box(Vector3((x + back_x) * 0.5, post_height, z), Vector3(depth, post * 0.7, post * 0.7), Color(0.66, 0.70, 0.72))
