@@ -138,3 +138,46 @@ func hasCursorMarker(docs []bson.D) bool {
 	}
 	return false
 }
+
+// Deployment annotations: the first runtime to see a build writes it, a
+// restart of the same build adds nothing, and the list is newest first.
+func TestDeploymentsUpsertOncePerBuild(t *testing.T) {
+	uri := strings.TrimSpace(os.Getenv("PVP_MONGO_TEST_URL"))
+	if uri == "" {
+		if os.Getenv("PVP_MONGO_TEST_REQUIRED") == "1" {
+			t.Fatal("PVP_MONGO_TEST_REQUIRED=1 but PVP_MONGO_TEST_URL is empty")
+		}
+		t.Skip("PVP_MONGO_TEST_URL not set; skipping MongoDB integration test")
+	}
+	client, err := mongo.Connect(options.Client().ApplyURI(uri).SetServerSelectionTimeout(5 * time.Second))
+	if err != nil {
+		t.Fatal(err)
+	}
+	suffix := make([]byte, 4)
+	_, _ = rand.Read(suffix)
+	db := client.Database("obshistory_deploy_" + hex.EncodeToString(suffix))
+	t.Cleanup(func() {
+		_ = db.Drop(context.Background())
+		_ = client.Disconnect(context.Background())
+	})
+	ctx := context.Background()
+	old := time.Date(2026, 10, 1, 9, 0, 0, 0, time.UTC)
+	// Python already annotated an older build.
+	if _, err := db.Collection(DeploymentsCollection).InsertOne(ctx, bson.D{
+		{Key: "deployment_id", Value: "git:old"}, {Key: "release", Value: "v15"}, {Key: "provider", Value: "unknown"}, {Key: "deployed_at", Value: old},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	first := NewDeployments(db, Deployment{ID: "git:new", Release: "v16", Provider: "oracle", DeployedAt: time.Date(2026, 10, 5, 11, 0, 0, 123_000_000, time.UTC)})
+	first.EnsureCurrent(ctx)
+	restart := NewDeployments(db, Deployment{ID: "git:new", Release: "v16", Provider: "oracle", DeployedAt: time.Date(2026, 10, 5, 12, 0, 0, 0, time.UTC)})
+	restart.EnsureCurrent(ctx)
+	got, err := pydoc.Encode(restart.List(ctx))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `[{"release":"v16","provider":"oracle","deploymentId":"git:new","at":"2026-10-05T11:00:00.123000"},{"release":"v15","provider":"unknown","deploymentId":"git:old","at":"2026-10-01T09:00:00"}]`
+	if string(got) != want {
+		t.Fatalf("got  %s\nwant %s", got, want)
+	}
+}
