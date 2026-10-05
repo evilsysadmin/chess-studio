@@ -52,6 +52,25 @@ type corpusSample struct {
 	Value      *float64 `json:"value"`
 	ErrorName  string   `json:"errorName"`
 	Context    string   `json:"context"`
+
+	Provider     string  `json:"provider"`
+	AIEventType  string  `json:"event_type"`
+	RequestKind  string  `json:"request_kind"`
+	Channel      *string `json:"channel"`
+	AILatency    float64 `json:"latency_ms"`
+	Reason       string  `json:"reason"`
+	InputTokens  *int64  `json:"input_tokens"`
+	OutputTokens *int64  `json:"output_tokens"`
+	Model        *string `json:"model"`
+	WorkerError  *string `json:"worker_error"`
+}
+
+func deref[T any](v *T) T {
+	var zero T
+	if v == nil {
+		return zero
+	}
+	return *v
 }
 
 // TestHistoryDeltasMatchPython replays scripts/observability_history_parity_corpus.py
@@ -83,6 +102,12 @@ func TestHistoryDeltasMatchPython(t *testing.T) {
 			r.RecordPresence(s.Online)
 		case "frontend":
 			r.RecordFrontend(FrontendEvent{EventType: s.EventType, MetricName: s.MetricName, Value: s.Value, ErrorName: s.ErrorName, Context: s.Context, Release: s.Release})
+		case "ai":
+			r.RecordAI(AIEvent{
+				Provider: s.Provider, EventType: s.AIEventType, RequestKind: s.RequestKind, Channel: deref(s.Channel),
+				LatencyMS: s.AILatency, Reason: s.Reason, InputTokens: deref(s.InputTokens), OutputTokens: deref(s.OutputTokens),
+				Model: deref(s.Model), WorkerError: deref(s.WorkerError),
+			})
 		}
 	}
 	if err := r.Flush(context.Background()); err != nil {

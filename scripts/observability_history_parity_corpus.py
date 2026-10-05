@@ -78,6 +78,26 @@ def build() -> dict:
                 release=sample["release"] or None, timestamp=at,
             )
         samples.append(sample)
+    # AI narrative events (narrative_cloudflare._record), seeded apart so the
+    # samples above stay as they were.
+    ai_rng = random.Random(SEED + 1)
+    for i in range(140):
+        at = START + ai_rng.randint(0, 3 * history.BUCKET_SECONDS - 1)
+        event = {
+            "at": at,
+            "provider": ai_rng.choice(["cloudflare", "cloudflare", "local", "", "c" * 40]),
+            "event_type": ai_rng.choice(["matthias_daily", "player_portrait", "blunder", "", "e" * 60]),
+            "request_kind": ai_rng.choice(["default", "portrait_manual", "", "k" * 40]),
+            "channel": ai_rng.choice(["comments", "analysis", "player_portrait", "", None]),
+            "latency_ms": ai_rng.choice([0.0, 12.5, 25.0, 480.25, 2600.0, 21000.0, round(ai_rng.uniform(0, 9000), 2)]),
+            "reason": ai_rng.choice(["ok", "timeout", "http_500", "ungrounded_dama", "", "r" * 70]),
+            "input_tokens": ai_rng.choice([0, 120, 845, None]),
+            "output_tokens": ai_rng.choice([0, 64, 300, None]),
+            "model": ai_rng.choice([None, "", "@cf/qwen/qwen3-30b-a3b-fp8", "m" * 100]),
+            "worker_error": ai_rng.choice([None, "", "AiError:InferenceUpstreamError:3040", "w" * 90]),
+        }
+        history.record_ai_event(event)
+        samples.append({"kind": "ai", **event})
     buckets = {}
     for key, bucket in sorted(history._PENDING.items()):
         incs, maxima = history._mongo_update(bucket)

@@ -263,6 +263,71 @@ func (r *Recorder) RecordFrontend(event FrontendEvent) {
 	}
 }
 
+// AIEvent is one narrative provider outcome (narrative_cloudflare._record).
+type AIEvent struct {
+	Provider     string
+	EventType    string
+	RequestKind  string
+	Channel      string
+	LatencyMS    float64
+	Reason       string
+	InputTokens  int64
+	OutputTokens int64
+	Model        string
+	WorkerError  string
+}
+
+func orDefault(value, fallback string) string {
+	if value == "" {
+		return fallback
+	}
+	return value
+}
+
+// RecordAI mirrors record_ai_event: counters only, never text or facts.
+func (r *Recorder) RecordAI(event AIEvent) {
+	if r == nil {
+		return
+	}
+	latency := math.Max(0, event.LatencyMS)
+	if math.IsNaN(latency) {
+		latency = 0
+	}
+	outcome := "local"
+	if truncate(orDefault(event.Provider, "local"), 32) == "cloudflare" {
+		outcome = "cloudflare"
+	}
+	hist := histKey(latency, latencyBounds)
+	reason := safeKey(truncate(orDefault(event.Reason, "unknown"), 64))
+	model := truncate(event.Model, 96)
+	workerError := truncate(event.WorkerError, 80)
+	channel := "ai.channels." + safeKey(truncate(orDefault(event.Channel, "comments"), 32))
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	d := r.bucket(r.now())
+	d.inc("ai.samples", 1)
+	d.inc("ai."+outcome, 1)
+	d.inc("ai.latency_hist."+hist, 1)
+	d.max("ai.latency_max_ms", latency)
+	d.inc("ai.input_tokens", max(0, event.InputTokens))
+	d.inc("ai.output_tokens", max(0, event.OutputTokens))
+	d.inc("ai.reasons."+reason, 1)
+	d.inc("ai.event_types."+safeKey(truncate(orDefault(event.EventType, "generic"), 48)), 1)
+	d.inc("ai.request_kinds."+safeKey(truncate(orDefault(event.RequestKind, "default"), 32)), 1)
+	if model != "" {
+		d.inc("ai.models."+safeKey(model), 1)
+	}
+	if workerError != "" {
+		d.inc("ai.worker_errors."+safeKey(workerError), 1)
+	}
+	d.inc(channel+".samples", 1)
+	d.inc(channel+"."+outcome, 1)
+	d.inc(channel+".latency_hist."+hist, 1)
+	d.max(channel+".latency_max_ms", latency)
+	d.inc(channel+".reasons."+reason, 1)
+}
+
 // Flush mirrors flush_pending: every pending bucket, oldest first, is sent
 // once; what fails to send stays pending for the next flush.
 func (r *Recorder) Flush(ctx context.Context) error {
