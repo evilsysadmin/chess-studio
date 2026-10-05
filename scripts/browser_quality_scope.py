@@ -173,6 +173,9 @@ TRAILBLAZER_PATTERNS = (
 )
 MATTHIAS_PRIORITY_PATTERNS = (
     "frontend/src/components/MatthiasPremiumHome3D.js",
+    # Resident placement vs the collapsed Home music dock (overlap guard).
+    "frontend/src/components/HomeMatthiasRoutine.css",
+    "frontend/src/components/HomeDesktopChrome.css",
     "e2e/matthias-home-priority.spec.js",
 )
 LAB_SCREEN_PATH = "frontend/src/components/LabScreen.jsx"
@@ -678,6 +681,8 @@ def self_test() -> None:
     ]
     assert _job_ids(matthias_shared) == ["matthias-home-insights", "matthias-war-room"]
     assert classify(["frontend/src/components/MatthiasPremiumHome3D.js"]) == BrowserScope(matthias_home=True, matthias_priority=True)
+    assert "matthias-priority" in _ids(classify(["frontend/src/components/HomeMatthiasRoutine.css"]))
+    assert "matthias-priority" in _ids(classify(["frontend/src/components/HomeDesktopChrome.css"]))
     assert _ids(classify(["frontend/src/components/MatthiasPremiumHome3D.js"])) == ["matthias-home-motion", "matthias-priority"]
     assert _ids(classify(["e2e/matthias-home-visual-critical.spec.js"])) == ["matthias-home-motion"]
     assert classify(["frontend/src/components/InsightsMatthiasMotion.jsx"]) == BrowserScope(matthias_insights=True)
