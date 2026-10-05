@@ -109,21 +109,19 @@ test('Chronicles Tactics · arranca como RPG táctico isométrico con combate po
   await moveNorth.evaluate((button) => button.click());
   await expect(narrator).toContainText(/La compañía avanza hacia norte/i);
 
-  // Return to the canonical engagement cell before exercising the existing
-  // class-skill contract. The move throttle is gameplay logic, so respect it
-  // instead of bypassing it in the browser canary.
-  await page.waitForTimeout(140);
-  const moveSouth = mode.getByRole('button', { name: 'Mover al sur', exact: true });
-  await expect(moveSouth).toBeEnabled();
-  await page.evaluate(() => {
-    const button = [...document.querySelectorAll('button')].find((node) => node.getAttribute('aria-label') === 'Mover al sur');
-    if (!button || button.disabled) throw new Error('Mover al sur no está disponible');
-    button.click();
-  });
-  await expect(narrator).toContainText(/La compañía avanza hacia sur/i);
+  // Fresh Tactics runs deliberately keep roaming enemies away from the spawn
+  // so exploration exists before contact. Walk through that safe opening instead
+  // of assuming the old "one step east = combat" geometry.
+  await expect(mode).toHaveAttribute('data-engagement', 'exploration');
 
-  // The canonical pawn is two cells east of spawn. Moving one cell east enters
-  // its engagement range and must freeze free exploration into initiative combat.
+  await page.waitForTimeout(140);
+  await expect(moveNorth).toBeEnabled();
+  await moveNorth.evaluate((button) => button.click());
+  await expect(mode).toHaveAttribute('data-engagement', 'exploration');
+
+  // The deterministically relocated opening pawn is now approached through the
+  // upper corridor. Contact on the third exploration step must freeze the party
+  // into individual combat cells and roll initiative.
   await page.waitForTimeout(140);
   const moveEast = mode.getByRole('button', { name: 'Mover al este', exact: true });
   await expect(moveEast).toBeEnabled();
