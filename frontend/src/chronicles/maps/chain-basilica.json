@@ -513,22 +513,12 @@
       "y": 3,
       "label": "Placa de cadenas del coro",
       "when": [
-        {
-          "key": "basilicaChainPlateSpent",
-          "equals": false
-        }
+        { "key": "basilicaChainPlateSpent", "equals": false }
       ],
       "action": {
         "effects": [
-          {
-            "type": "set",
-            "key": "basilicaChainPlateSpent",
-            "value": true
-          },
-          {
-            "type": "damage-party",
-            "amount": 2
-          }
+          { "type": "set", "key": "basilicaChainPlateSpent", "value": true },
+          { "type": "damage-party", "amount": 2 }
         ],
         "message": "La losa se hunde y una pareja de cadenas barre el pasillo. Dos puntos de daño por cabeza; la liturgia continúa sin pedir disculpas."
       }
