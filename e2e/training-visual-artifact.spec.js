@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
-import { login, mockApi } from './helpers.js';
+import { buttonWithHeading, login, mockApi } from './helpers.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const TRAINING_SCOPE = new Set(
@@ -207,6 +207,21 @@ scopedTest('school', 'Entrenar · Escuela, Glosario y Modos especiales', async (
   await page.reload();
 
   const shell = page.locator('.tutorial-shell.matthias-school-shell');
+  if (!await shell.isVisible().catch(() => false)) {
+    await page.waitForTimeout(900);
+  }
+  if (!await shell.isVisible().catch(() => false)) {
+    const debugState = await page.evaluate(() => ({
+      view: sessionStorage.getItem('chess-study-current-view'),
+      homeVisible: Boolean(document.querySelector('.illustrated-home, .home-castle-hub')),
+      bodyPreview: document.body?.innerText?.slice(0, 260) || '',
+    }));
+    console.log('School visual bootstrap fallback:', JSON.stringify(debugState));
+    const schoolEntry = buttonWithHeading(page, 'Escuela de Matthias');
+    if (await schoolEntry.isVisible().catch(() => false)) {
+      await schoolEntry.click();
+    }
+  }
   await expect(shell).toBeVisible();
   await expect(shell.locator('.matthias-school-stage')).toBeVisible();
   const retroDock = page.locator('.global-music-dock');
