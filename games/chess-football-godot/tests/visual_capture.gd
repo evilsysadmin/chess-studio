@@ -10,8 +10,11 @@ func _initialize() -> void:
 		await process_frame
 		await physics_frame
 
-	# Make the visual contract deterministic even though real matches randomise
-	# kickoff ownership.
+	# Pin a real pre-kickoff tableau: both teams in their own halves and the
+	# selected team standing over the centre spot.
+	match_node.debug_prepare_kickoff(0)
+	match_node.debug_sync_presentation()
+	await _save_capture(match_node, "kickoff", "VISUAL_CAPTURE_KICKOFF")
 	match_node.debug_force_kickoff_ready()
 	match_node.ball.attach_to(match_node.controlled)
 	match_node.debug_force_shot_charge(0.68)
@@ -47,6 +50,16 @@ func _initialize() -> void:
 		await process_frame
 	assert(victim.contact_stun_active())
 	await _save_capture(match_node, "contact", "VISUAL_CAPTURE_CONTACT")
+
+	match_node.debug_score_goal(0)
+	assert(match_node.debug_goal_restart_active())
+	match_node.debug_sync_presentation()
+	await _save_capture(match_node, "goal", "VISUAL_CAPTURE_GOAL")
+	match_node.debug_force_goal_restart_ready()
+	assert(match_node.debug_kickoff_active())
+	assert(match_node.debug_kickoff_team() == 1)
+	match_node.debug_sync_presentation()
+	await _save_capture(match_node, "restart", "VISUAL_CAPTURE_RESTART")
 
 	match_node.debug_toggle_pause_menu()
 	for _frame in range(4):
