@@ -321,6 +321,11 @@ test('App · captura visual canónica desktop + Android normal/desktop-site', as
         await buttonWithVisibleText(quickMatchPage, 'Partida rápida').click();
         const quickMatch = quickMatchPage.getByRole('dialog', { name:'Configurar partida rápida' });
         await expect(quickMatch).toBeVisible();
+        if (!capture.hasTouch) {
+          await expect(
+            quickMatch.locator('[data-quick-match-ready-room-3d="ready"]'),
+          ).toBeVisible({ timeout:15_000 });
+        }
         await quickMatchPage.waitForTimeout(120);
         await captureViewportPng(
           quickMatchContext,
