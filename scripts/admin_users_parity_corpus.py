@@ -5,8 +5,10 @@ Seeds accounts, profile snapshots and Matthias memories into the Python
 stores' in-memory mode (which answers like the Mongo path), fixes the clock
 and the IP→country cache, and replays admin_api.py's user routes: the user
 list (presence, foreground, network status, profile summary), matchmaking
-telemetry, ELO correction with its audit, insights, Matthias memory tools
-and account deletion, with the admin gate, target resolution (exact,
+telemetry, ELO correction with its audit, insights, Matthias memory tools,
+the Workers AI portrait and personality preview (generate_narrative and the
+memory hooks stubbed: what is pinned is what the route hands them) and
+account deletion, with the admin gate, target resolution (exact,
 lowercase, casefold) and pydantic errors. backend-go/internal/gamesapi
 replays the same seeds and steps and must answer the same bytes.
 
@@ -156,6 +158,29 @@ def build() -> dict:
     admin_api.cached_country_code = lambda ip: CACHED_COUNTRIES.get(ip)
     admin_api.schedule_country_resolution = lambda ip: scheduled.append(ip) or True
 
+    calls: list[dict] = []
+
+    async def generate_narrative(event_type, facts, *, tone, locale, request_kind):
+        calls.append({"op": "generate", "event": event_type, "facts": facts, "tone": tone, "locale": locale, "kind": request_kind})
+        return {"text": "Achtung.", "provider": "cloudflare", "latencyMs": 12.3, "model": "m"}
+
+    async def observe_facts(target, facts):
+        calls.append({"op": "observe", "target": target, "facts": facts})
+        if facts.get("boom") == "observe":
+            raise RuntimeError("observe")
+        return {}
+
+    async def memory_context(target, facts):
+        calls.append({"op": "context", "target": target, "facts": facts})
+        if facts.get("boom") == "context":
+            raise RuntimeError("context")
+        return {"target": target, "keys": list(facts)}
+
+    admin_api.generate_narrative = generate_narrative
+    real_observe, real_context = matthias_memory_store.observe_facts, matthias_memory_store.context
+    matthias_memory_store.observe_facts = observe_facts
+    matthias_memory_store.context = memory_context
+
     app = FastAPI()
     app.include_router(admin_api.build_admin_router(auth_dependency=_auth, admin_dependency=_admin, limiter=_NoLimiter()))
     # Unhandled exceptions are main.py's generic 500 in production; only the status is pinned.
@@ -168,12 +193,14 @@ def build() -> dict:
         if body is not None:
             content = (body if isinstance(body, str) else json.dumps(body, ensure_ascii=False)).encode("utf-8")
             headers["Content-Type"] = "application/json"
-        before = len(scheduled)
+        before, calls_before = len(scheduled), len(calls)
         response = client.request(method, path, content=content, headers=headers)
         raw = response.content
         entry = {"label": label, "method": method, "path": path, "user": user,
                  "body": None if body is None else (body if isinstance(body, str) else json.dumps(body, ensure_ascii=False)),
                  "status": response.status_code, "scheduled": scheduled[before:]}
+        if len(calls) > calls_before:
+            entry["calls"] = json.loads(json.dumps(calls[calls_before:]))
         if len(raw) <= 20000:
             entry["response"] = raw.decode("utf-8")
         else:
@@ -201,6 +228,23 @@ def build() -> dict:
         step("POST", "/api/admin/matthias/memory", body, label=f"memory {body['username']}")
     step("POST", "/api/admin/matthias/reset-memory", {"username": "ALICE"}, label="reset memory")
     step("POST", "/api/admin/matthias/memory", {"username": "alice"}, label="memory after reset")
+    portrait = "/api/admin/player-portrait"
+    for body in [{"username": "alice", "facts": {"games": 12, "mood": "café", "rating": 1432.5}},
+                 {"username": " BOB ", "facts": {"boom": "observe", "x": 1}},
+                 {"username": "carol", "facts": {"boom": "context"}},
+                 {"username": "mixedcase", "facts": {"matthias_memory": "old", "a": [1, None]}},
+                 {"username": "frank"}, {"username": "nobody", "facts": {}}, {"facts": {}},
+                 {"username": "alice", "facts": [1]}, {"username": "alice", "facts": None},
+                 {"username": "x" * 65, "facts": "no"}, {"username": "alice", "facts": {}, "extra": True}, [], "null"]:
+        step("POST", portrait, body, label=f"portrait {json.dumps(body)[:50]}")
+    step("POST", portrait, {"username": "alice"}, user="alice", label="portrait not admin")
+    preview = "/api/admin/matthias/personality-preview"
+    for body in [{}, {"preset": "veteran"}, {"preset": " Newcomer "}, {"preset": "REPEAT_OFFENDER"}, {"preset": "improving"},
+                 {"preset": ""}, {"preset": "nope"}, {"preset": "x" * 32}, {"preset": "x" * 33}, {"preset": None},
+                 {"preset": 5}, {"preset": "veteran", "extra": 1}, []]:
+        step("POST", preview, body, label=f"preview {json.dumps(body)[:40]}")
+    step("POST", preview, {}, user="bob", label="preview not admin")
+    matthias_memory_store.observe_facts, matthias_memory_store.context = real_observe, real_context
     step("POST", "/api/admin/delete-user", {"username": ADMIN}, label="delete self")
     step("POST", "/api/admin/delete-user", {"username": "Dave"}, label="delete")
     step("POST", "/api/admin/delete-user", {"username": "dave"}, label="delete again")

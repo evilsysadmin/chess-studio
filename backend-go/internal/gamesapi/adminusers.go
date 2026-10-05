@@ -106,6 +106,9 @@ type AdminUsersConfig struct {
 	Countries      CountryResolver
 	NetworkStatus  func(raw any) string
 	AdminUsernames []string
+	// Gateway and Memory serve the portrait and personality preview.
+	Gateway NarrativeGateway
+	Memory  AdminPortraitMemory
 }
 
 type AdminUsersHandler struct {
@@ -116,7 +119,7 @@ type AdminUsersHandler struct {
 }
 
 func NewAdminUsers(cfg AdminUsersConfig) (*AdminUsersHandler, error) {
-	if cfg.Users == nil || cfg.Profiles == nil || cfg.Matthias == nil || cfg.Purge == nil || cfg.Countries == nil || cfg.NetworkStatus == nil {
+	if cfg.Users == nil || cfg.Profiles == nil || cfg.Matthias == nil || cfg.Purge == nil || cfg.Countries == nil || cfg.NetworkStatus == nil || cfg.Gateway == nil || cfg.Memory == nil {
 		return nil, errors.New("admin users API: missing dependency")
 	}
 	baseCfg := cfg.Config
@@ -474,7 +477,23 @@ func (h *AdminUsersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := context.WithoutCancel(r.Context())
 	var target string
 	var rating int64
-	if r.Method == http.MethodPost {
+	var facts bson.D
+	var preset string
+	switch pattern {
+	case AdminPlayerPortraitPattern:
+		var problems bson.A
+		if target, facts, problems = portraitBody(body); problems != nil {
+			writeDoc(w, http.StatusUnprocessableEntity, bson.D{{Key: "detail", Value: problems}})
+			return
+		}
+	case AdminMatthiasPreviewPattern:
+		var problems bson.A
+		if preset, problems = previewBody(body); problems != nil {
+			writeDoc(w, http.StatusUnprocessableEntity, bson.D{{Key: "detail", Value: problems}})
+			return
+		}
+	}
+	if r.Method == http.MethodPost && pattern != AdminPlayerPortraitPattern && pattern != AdminMatthiasPreviewPattern {
 		var problems bson.A
 		target, rating, problems = usernameBody(body, pattern == AdminUserRatingPattern)
 		if problems != nil {
@@ -518,6 +537,10 @@ func (h *AdminUsersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	case AdminDeleteUserPattern:
 		payload, err = h.deleteUser(ctx, username, target)
+	case AdminPlayerPortraitPattern:
+		payload, err = h.portrait(ctx, target, facts)
+	case AdminMatthiasPreviewPattern:
+		payload, err = h.preview(ctx, preset)
 	}
 	var httpErr *httpError
 	switch {

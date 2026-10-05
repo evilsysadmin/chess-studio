@@ -69,7 +69,8 @@ type nativeRuntime struct {
 	chronicles     http.Handler
 	chroniclesRuns http.Handler
 	adminFeedback  http.Handler
-	adminUsers     http.Handler
+	// adminUsers is built in edgeConfig, sharing the narrative gateway.
+	adminUsers *gamesapi.AdminUsersConfig
 	// system is built in edgeConfig, once request telemetry exists.
 	system *gamesapi.SystemConfig
 	// history is Admin's observability history (nil when disabled).
@@ -556,7 +557,7 @@ func buildNativeRuntime(features nativeFeatureFlags, upstream string) (runtime n
 	if features.adminUsers {
 		telemetryCfg := telemetry.ConfigFromEnv(os.LookupEnv)
 		purgeStore := userdata.NewMongo(mongoRuntime.Database(), envDurationMS("USER_PURGE_MONGO_TIMEOUT_MS", 5000*time.Millisecond))
-		adminUsersHandler, adminUsersErr := gamesapi.NewAdminUsers(gamesapi.AdminUsersConfig{
+		runtime.adminUsers = &gamesapi.AdminUsersConfig{
 			Config: gamesapi.Config{
 				Accounts:        accountstore.New(mongoRuntime.Database(), pvpMongoTimeout),
 				Presence:        presence.New(mongoRuntime.Database(), telemetryCfg.TrustCloudflare, 2*time.Second),
@@ -573,11 +574,8 @@ func buildNativeRuntime(features nativeFeatureFlags, upstream string) (runtime n
 			Countries:      ipgeo.New(nil),
 			NetworkStatus:  ipgeo.Status,
 			AdminUsernames: splitCSV(os.Getenv("ADMIN_USERNAMES")),
-		})
-		if adminUsersErr != nil {
-			return runtime, fmt.Errorf("native admin users API: %w", adminUsersErr)
+			Memory:         matthiasmem.New(mongoRuntime.Database(), pvpMongoTimeout),
 		}
-		runtime.adminUsers = adminUsersHandler
 	}
 	if features.narrative {
 		telemetryCfg := telemetry.ConfigFromEnv(os.LookupEnv)
@@ -650,19 +648,35 @@ func (r nativeRuntime) edgeConfig(upstream, release string, requestTelemetry *te
 			login = handler
 		}
 	}
+	logLine := func(string) {}
+	if requestTelemetry != nil {
+		logLine = requestTelemetry.LogLine
+	}
+	// One gateway (breaker, metrics window) for the narrative routes and
+	// Admin's portrait/preview, as in Python's process.
+	var gateway *narrative.Gateway
+	if r.narrative != nil || r.adminUsers != nil {
+		gateway = narrative.New(narrative.Config{History: r.history, Log: logLine})
+	}
 	var narrativeHandler http.Handler
 	if r.narrative != nil {
 		cfg := *r.narrative
-		logLine := func(string) {}
-		if requestTelemetry != nil {
-			logLine = requestTelemetry.LogLine
-		}
-		cfg.Gateway = narrative.New(narrative.Config{History: r.history, Log: logLine})
+		cfg.Gateway = gateway
 		cfg.Log = logLine
 		if handler, err := gamesapi.NewNarrative(cfg); err != nil {
 			log.Printf("native narrative disabled: %v", err)
 		} else {
 			narrativeHandler = handler
+		}
+	}
+	var adminUsersHandler http.Handler
+	if r.adminUsers != nil {
+		cfg := *r.adminUsers
+		cfg.Gateway = gateway
+		if handler, err := gamesapi.NewAdminUsers(cfg); err != nil {
+			log.Printf("native admin users disabled: %v", err)
+		} else {
+			adminUsersHandler = handler
 		}
 	}
 	var readyChecks map[string]func(context.Context) error
@@ -702,7 +716,7 @@ func (r nativeRuntime) edgeConfig(upstream, release string, requestTelemetry *te
 		NativeChronicles:          r.chronicles,
 		NativeChroniclesRuns:      r.chroniclesRuns,
 		NativeAdminFeedback:       r.adminFeedback,
-		NativeAdminUsers:          r.adminUsers,
+		NativeAdminUsers:          adminUsersHandler,
 		VirtualPlayersEnabled:     r.virtualPlayers,
 		NativeResidentMove:        r.residentMove,
 		ReadyChecks:               readyChecks,

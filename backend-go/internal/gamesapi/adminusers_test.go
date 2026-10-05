@@ -16,6 +16,7 @@ import (
 
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/accountstore"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/ipgeo"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/narrative"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/profilestore"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/pydoc"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/pyval"
@@ -96,6 +97,40 @@ func (f *fakeCountries) Schedule(raw any) bool {
 	return true
 }
 
+// portraitCalls records what the portrait and preview routes hand the
+// Matthias memory hooks and the narrative gateway, in call order, the way the
+// corpus script's stubs do.
+type portraitCalls struct{ calls []bson.D }
+
+func (p *portraitCalls) ObserveFacts(_ context.Context, name string, facts bson.D, _ time.Time) error {
+	p.calls = append(p.calls, bson.D{{Key: "op", Value: "observe"}, {Key: "target", Value: name}, {Key: "facts", Value: facts}})
+	if boom, _ := pydoc.Get(facts, "boom"); boom == "observe" {
+		return fmt.Errorf("observe")
+	}
+	return nil
+}
+func (p *portraitCalls) MemoryContext(_ context.Context, name string, facts bson.D, _ time.Time) (bson.D, error) {
+	p.calls = append(p.calls, bson.D{{Key: "op", Value: "context"}, {Key: "target", Value: name}, {Key: "facts", Value: facts}})
+	if boom, _ := pydoc.Get(facts, "boom"); boom == "context" {
+		return nil, fmt.Errorf("context")
+	}
+	keys := bson.A{}
+	for _, e := range facts {
+		keys = append(keys, e.Key)
+	}
+	return bson.D{{Key: "target", Value: name}, {Key: "keys", Value: keys}}, nil
+}
+func (p *portraitCalls) Generate(_ context.Context, event string, facts bson.D, tone, locale *string, kind string, _ *string) narrative.Result {
+	p.calls = append(p.calls, bson.D{{Key: "op", Value: "generate"}, {Key: "event", Value: event}, {Key: "facts", Value: facts},
+		{Key: "tone", Value: *tone}, {Key: "locale", Value: *locale}, {Key: "kind", Value: kind}})
+	return narrative.Result{Text: "Achtung.", Provider: "cloudflare", LatencyMS: 12.34, Model: "m"}
+}
+func (p *portraitCalls) Metrics() bson.D                   { return bson.D{} }
+func (p *portraitCalls) EventMetrics(string, int64) bson.D { return bson.D{} }
+func (p *portraitCalls) Enter() int64                      { return 1 }
+func (p *portraitCalls) Exit()                             {}
+func (p *portraitCalls) ShouldShed(int64) bool             { return false }
+
 func decodeDocs(t *testing.T, raw []json.RawMessage) []bson.D {
 	t.Helper()
 	var out []bson.D
@@ -134,12 +169,13 @@ func replayAdminUsersCorpus(t *testing.T, seed func(users, profiles, memories []
 		Stored    map[string]map[string]*string `json:"stored"`
 		Steps     []struct {
 			Label, Method, Path, User string
-			Body                      *string  `json:"body"`
-			Status                    int      `json:"status"`
-			Scheduled                 []string `json:"scheduled"`
-			Response                  *string  `json:"response"`
-			SHA256                    string   `json:"sha256"`
-			Length                    int      `json:"length"`
+			Body                      *string         `json:"body"`
+			Status                    int             `json:"status"`
+			Scheduled                 []string        `json:"scheduled"`
+			Response                  *string         `json:"response"`
+			SHA256                    string          `json:"sha256"`
+			Length                    int             `json:"length"`
+			Calls                     json.RawMessage `json:"calls"`
 		} `json:"steps"`
 	}
 	if err := json.Unmarshal(data, &corpus); err != nil {
@@ -151,6 +187,7 @@ func replayAdminUsersCorpus(t *testing.T, seed func(users, profiles, memories []
 	}
 	stores := seed(decodeDocs(t, corpus.Users), decodeDocs(t, corpus.Profiles), decodeDocs(t, corpus.Memories))
 	countries := &fakeCountries{cached: corpus.Countries}
+	recorder := &portraitCalls{}
 	h, err := NewAdminUsers(AdminUsersConfig{
 		Config:         Config{Accounts: fakeAccounts{}, Presence: &fakePresence{}, JWTSecret: secret, Now: func() time.Time { return now }},
 		Users:          stores.users,
@@ -160,6 +197,8 @@ func replayAdminUsersCorpus(t *testing.T, seed func(users, profiles, memories []
 		Countries:      countries,
 		NetworkStatus:  ipgeo.Status,
 		AdminUsernames: []string{"root"},
+		Gateway:        recorder,
+		Memory:         recorder,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -179,10 +218,27 @@ func replayAdminUsersCorpus(t *testing.T, seed func(users, profiles, memories []
 			r.Header.Set("Content-Type", jsonCT)
 		}
 		countries.scheduled = nil
+		recorder.calls = nil
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, r)
 		got := strings.TrimSuffix(w.Body.String(), "\n")
 		ok := w.Code == step.Status && fmt.Sprint(countries.scheduled) == fmt.Sprint(append([]string{}, step.Scheduled...))
+		calls := ""
+		if len(recorder.calls) > 0 {
+			list := bson.A{}
+			for _, c := range recorder.calls {
+				list = append(list, c)
+			}
+			encoded, err := pydoc.Encode(list)
+			if err != nil {
+				t.Fatal(err)
+			}
+			calls = string(encoded)
+		}
+		if calls != string(step.Calls) {
+			ok = false
+			t.Errorf("step %d %s calls:\ngot  %s\nwant %s", i, step.Label, calls, step.Calls)
+		}
 		switch {
 		case step.Status == 500: // main.py's generic handler, not the router's
 		case step.Response != nil:
