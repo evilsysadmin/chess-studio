@@ -31,6 +31,9 @@ continuity_probe = Path("scripts/staging_deploy_continuity_probe.py").read_text(
 continuity_workflow = Path(".github/workflows/staging-deploy-continuity.yml").read_text(encoding="utf-8")
 assert 'parser.add_argument("--max-seconds", type=float, default=600)' in continuity_probe
 assert '--max-seconds 600' in continuity_workflow
+# The sentinel reads must stay inside the API's 120/minute per-account limit.
+assert 'MIN_INTERVAL_S = 0.6' in continuity_probe
+assert '--interval 0.6 ' in continuity_workflow
 
 for path in (
     "scripts/staging_deploy_continuity_probe.py",

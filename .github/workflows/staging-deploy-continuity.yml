@@ -181,7 +181,7 @@ jobs:
 
           python3 scripts/staging_deploy_continuity_probe.py \
             --arm-file "$arm" --trigger-file "$trigger" --done-file "$done_file" \
-            --result-file "$result" --traffic-games 8 --interval 0.35 --max-seconds 600 >"$log" 2>&1 &
+            --result-file "$result" --traffic-games 8 --interval 0.6 --max-seconds 600 >"$log" 2>&1 &
           probe_pid=$!
 
           armed=false
