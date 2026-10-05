@@ -1,6 +1,7 @@
 extends Node2D
 
 const Presenter3D = preload("res://scripts/football_3d_presenter.gd")
+const FootballAudio = preload("res://scripts/football_audio.gd")
 const TEAM_SIZE := 5
 const ROLES := ["keeper", "defender", "midfielder", "wing", "forward"]
 const TEAM_COLORS := [Color(0.12, 0.42, 0.92), Color(0.86, 0.18, 0.2)]
@@ -56,6 +57,7 @@ var camera_mode: String = CAMERA_MODE_BROADCAST
 var last_goal_text: String = ""
 var camera_hint_seconds: float = 4.5
 var presentation_3d: ChessFootball3DPresenter
+var audio_fx: ChessFootballAudio
 var ai_next_decision: Dictionary = {}
 var pause_menu_open: bool = false
 var kickoff_team_id: int = 0
@@ -77,6 +79,7 @@ var pause_exit_button: Button
 
 func _ready() -> void:
 	_spawn_match()
+	_create_audio()
 	_prepare_kickoff(randi_range(0, 1), true)
 	_create_3d_presentation()
 	_create_hud()
@@ -108,6 +111,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
 		_toggle_pause_menu()
 		get_viewport().set_input_as_handled()
+
+func _create_audio() -> void:
+	audio_fx = FootballAudio.new()
+	add_child(audio_fx)
 
 func _create_3d_presentation() -> void:
 	presentation_3d = Presenter3D.new()
@@ -335,6 +342,8 @@ func _release_charged_shot() -> void:
 		return
 	var target := ChessFootballMath.goal_center(0)
 	controlled.play_action("shoot", lerpf(0.58, 0.82, ratio))
+	if audio_fx != null:
+		audio_fx.play_shot(ratio)
 	ball.release(
 		target - controlled.global_position,
 		_shot_power_from_ratio(ratio),
@@ -433,6 +442,8 @@ func _update_keeper_ai(player: Footballer, delta: float) -> void:
 			return
 		var outlet := _best_teammate_ahead(player)
 		player.play_action("pass", 0.72)
+		if audio_fx != null:
+			audio_fx.play_pass()
 		if outlet != null:
 			ball.release(outlet.global_position - player.global_position, 520.0)
 		else:
@@ -483,6 +494,8 @@ func _keeper_try_save(keeper: Footballer) -> bool:
 		return false
 
 	keeper.play_action("tackle", 0.58)
+	if audio_fx != null:
+		audio_fx.play_keeper_save()
 	keeper.begin_keeper_hold(KEEPER_HOLD_SECONDS)
 	ball.attach_to(keeper)
 	if keeper.team_id == 0:
@@ -502,6 +515,8 @@ func _ai_attack(player: Footballer) -> void:
 		var distance_ratio := clampf(goal_distance / AI_SHOOT_DISTANCE, 0.0, 1.0)
 		var shot_power := lerpf(AI_SHOT_MIN_POWER, AI_SHOT_MAX_POWER, distance_ratio)
 		var shot_lift := lerpf(AI_SHOT_MIN_LIFT, AI_SHOT_MAX_LIFT, distance_ratio)
+		if audio_fx != null:
+			audio_fx.play_shot(distance_ratio)
 		ball.release(shot_target - player.global_position, shot_power, shot_lift)
 		return
 
@@ -517,6 +532,8 @@ func _ai_attack(player: Footballer) -> void:
 	var forward_gain := (target.global_position.x - player.global_position.x) * forward
 	if pressure_distance < AI_PRESSURE_RADIUS or forward_gain > AI_FORWARD_PASS_GAIN:
 		player.play_action("pass", 0.72)
+		if audio_fx != null:
+			audio_fx.play_pass()
 		ball.release(target.global_position - player.global_position, 540.0)
 
 func _best_ai_pass_target(player: Footballer) -> Footballer:
@@ -543,6 +560,8 @@ func _best_ai_pass_target(player: Footballer) -> Footballer:
 
 func _pass_from(player: Footballer, input_direction: Vector2) -> void:
 	player.play_action("pass", 0.72)
+	if audio_fx != null:
+		audio_fx.play_pass()
 	var target := _best_pass_target(player, input_direction)
 	if target == null:
 		var fallback := input_direction if input_direction.length_squared() > 0.001 else Vector2.RIGHT
@@ -598,6 +617,8 @@ func _try_tackle(tackler: Footballer) -> bool:
 
 	var push_direction := offset.normalized() if offset.length_squared() > 0.001 else Vector2.RIGHT
 	victim.receive_tackle_contact(push_direction)
+	if audio_fx != null:
+		audio_fx.play_tackle()
 
 	if distance <= TACKLE_CLEAN_STEAL_RANGE:
 		var steal_direction := -push_direction
@@ -681,6 +702,8 @@ func _check_goal() -> void:
 func _score_goal(team_id: int) -> void:
 	score[team_id] += 1
 	last_goal_text = "GOAL · FC Matthias" if team_id == 0 else "GOAL · Real Enroque"
+	if audio_fx != null:
+		audio_fx.play_goal()
 	for player in teams[team_id]:
 		player.play_action("celebrate", 1.15)
 	_prepare_kickoff(1 - team_id, false)
@@ -723,10 +746,14 @@ func _update_kickoff(delta: float) -> void:
 
 	kickoff_active = false
 	last_goal_text = ""
+	if audio_fx != null:
+		audio_fx.play_whistle()
 	if kickoff_team_id == 1:
 		var starter: Footballer = teams[1][2]
 		var receiver: Footballer = teams[1][3]
 		starter.play_action("pass", 0.60)
+		if audio_fx != null:
+			audio_fx.play_pass()
 		ball.release(receiver.global_position - starter.global_position, KICKOFF_AI_PASS_POWER)
 
 func _toggle_camera_mode() -> void:
@@ -773,6 +800,12 @@ func debug_toggle_camera_mode() -> void:
 
 func debug_3d_ready() -> bool:
 	return presentation_3d != null and presentation_3d.debug_camera_is_3d()
+
+func debug_audio_ready() -> bool:
+	return audio_fx != null
+
+func debug_audio_stream_names() -> Array[String]:
+	return audio_fx.debug_stream_names() if audio_fx != null else []
 
 func debug_3d_animated_players() -> int:
 	return presentation_3d.debug_animated_players() if presentation_3d != null else 0
