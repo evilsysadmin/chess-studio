@@ -69,10 +69,17 @@ func _initialize() -> void:
 	assert(match_node.debug_try_tackle(tackler))
 	assert(match_node.ball.carrier == null)
 	assert(victim.contact_stun_active())
-	# Freeze the exact impact beat. Advancing gameplay frames lets the tackler's
-	# residual slide close the gap again and makes this visual contract flaky.
+	# Freeze the players at the impact pose, but advance only the loose ball so
+	# the deflection is visible outside both silhouettes.
 	tackler.velocity = Vector2.ZERO
-	assert(tackler.global_position.distance_to(victim.global_position) > 42.0)
+	victim.velocity = Vector2.ZERO
+	assert(tackler.global_position.distance_to(victim.global_position) > 50.0)
+	if tackler.visual != null and String(tackler.visual.animation) == "tackle":
+		tackler.visual.pause()
+		tackler.visual.frame = 4
+	match_node.ball.tick_ball(0.08)
+	assert(match_node.ball.carrier == null)
+	assert(match_node.ball.global_position.distance_to(tackler.global_position) > 22.0)
 	match_node.debug_sync_presentation()
 	await _save_capture(match_node, "contact", "VISUAL_CAPTURE_CONTACT")
 
