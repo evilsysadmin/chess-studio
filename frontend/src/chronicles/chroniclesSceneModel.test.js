@@ -32,6 +32,8 @@ describe('Chronicles scene model projection', () => {
     expect(first.version).toBe(CHRONICLES_SCENE_MODEL_VERSION);
     expect(first.mapId).toBe(state.mapId);
     expect(first.focusCell).toEqual({ x: state.x, y: state.y });
+    expect(first.partyFormation).toBe('explore-compact');
+    expect(new Set(first.party.map((member) => `${member.cell.x}:${member.cell.y}`)).size).toBe(1);
     expect(first.selectedMemberId).toBe('bishop');
     expect(first.party).toHaveLength(4);
     expect(first.enemies.find((enemy) => enemy.id === 'corrupted-pawn')).toMatchObject({
@@ -43,6 +45,31 @@ describe('Chronicles scene model projection', () => {
       legalMoves: [{ x: state.x + 1, y: state.y }],
       legalTargets: [{ enemyId: 'corrupted-pawn', x: 2, y: 4 }],
     });
+  });
+
+  it('switches to distinct persisted party cells while combat is active', () => {
+    const state = {
+      ...createChroniclesState(),
+      phase: 'combat',
+      partyPositions: {
+        matthias: { x: 1, y: 4 },
+        rook: { x: 2, y: 5 },
+        bishop: { x: 3, y: 4 },
+        knight: { x: 5, y: 5 },
+      },
+      initiative: {
+        version: 1,
+        die: '1d8',
+        round: 1,
+        cursor: 0,
+        order: [{ id: 'matthias', kind: 'party', name: 'Matthias', agility: 4, roll: 4, initiative: 8 }],
+      },
+    };
+
+    const model = chroniclesProjectSceneModel(state);
+    expect(model.partyFormation).toBe('combat-grid');
+    expect(Object.fromEntries(model.party.map((member) => [member.id, member.cell]))).toEqual(state.partyPositions);
+    expect(new Set(model.party.map((member) => `${member.cell.x}:${member.cell.y}`)).size).toBe(4);
   });
 
   it('projects every shipped map through the same renderer contract', () => {
