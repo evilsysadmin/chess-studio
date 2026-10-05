@@ -12,6 +12,10 @@ func _initialize() -> void:
 	assert(match_node.debug_ball_exists())
 	assert(match_node.debug_pitch_exists())
 	assert(match_node.debug_3d_ready())
+	assert(match_node.debug_audio_ready())
+	var audio_names: Array[String] = match_node.debug_audio_stream_names()
+	for expected_audio in ["goal", "pass", "save", "shot", "tackle", "whistle"]:
+		assert(audio_names.has(expected_audio))
 	assert(match_node.debug_3d_animated_players() == 10)
 	assert(match_node.controlled != null)
 	assert(match_node.controlled.debug_visual_ready())
