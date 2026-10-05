@@ -96,6 +96,9 @@ test('Chronicles primera persona · fallo de bootstrap queda fail-closed y no mo
 });
 
 test('Chronicles Tactics · arranca como RPG táctico isométrico con combate por turnos, clases y habilidades', async ({ page }) => {
+  // This canary owns visible locomotion, so do not inherit a CI/OS reduced-motion
+  // preference. Accessibility semantics are covered separately; here we prove gait.
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
   await openTactics(page);
   const mode = page.locator('[data-chronicles-tactics="true"]');
 
