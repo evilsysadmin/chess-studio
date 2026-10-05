@@ -821,6 +821,90 @@ func _restart_receiver(team_id: int, restarter: Footballer, kind: String) -> Foo
 			best = teammate
 	return best
 
+func _place_restart_player(player: Footballer, position: Vector2) -> void:
+	player.global_position = ChessFootballMath.clamp_to_pitch(position)
+	player.velocity = Vector2.ZERO
+
+func _arrange_set_piece_formation(kind: String) -> void:
+	var pitch := ChessFootballMath.PITCH_RECT
+	var center := pitch.get_center()
+	var direction := 1.0 if set_piece_team_id == 0 else -1.0
+	var opponent_id := 1 - set_piece_team_id
+
+	if kind == "CÓRNER":
+		var target_goal := ChessFootballMath.goal_center(set_piece_team_id)
+		for player in teams[set_piece_team_id]:
+			if player == set_piece_player:
+				continue
+			if player.role == "keeper":
+				_place_restart_player(player, player.home_position)
+				continue
+			var offset_y := [-150.0, -70.0, 70.0, 145.0][clampi(player.squad_index - 1, 0, 3)]
+			var depth := [330.0, 190.0, 120.0, 90.0][clampi(player.squad_index - 1, 0, 3)]
+			_place_restart_player(
+				player,
+				Vector2(target_goal.x - direction * depth, target_goal.y + offset_y)
+			)
+		for defender in teams[opponent_id]:
+			if defender.role == "keeper":
+				_place_restart_player(
+					defender,
+					Vector2(target_goal.x - direction * 72.0, target_goal.y)
+				)
+				continue
+			var mark_y := [-125.0, -45.0, 50.0, 130.0][clampi(defender.squad_index - 1, 0, 3)]
+			var mark_depth := [115.0, 135.0, 150.0, 205.0][clampi(defender.squad_index - 1, 0, 3)]
+			_place_restart_player(
+				defender,
+				Vector2(target_goal.x - direction * mark_depth, target_goal.y + mark_y)
+			)
+		return
+
+	if kind == "SAQUE DE PUERTA":
+		var own_goal := ChessFootballMath.goal_center(opponent_id)
+		for player in teams[set_piece_team_id]:
+			if player == set_piece_player:
+				continue
+			var lane_y := [-190.0, -70.0, 90.0, 190.0][clampi(player.squad_index - 1, 0, 3)]
+			var advance := [250.0, 390.0, 520.0, 650.0][clampi(player.squad_index - 1, 0, 3)]
+			_place_restart_player(
+				player,
+				Vector2(own_goal.x + direction * advance, center.y + lane_y)
+			)
+		for opponent in teams[opponent_id]:
+			if opponent.role == "keeper":
+				_place_restart_player(opponent, opponent.home_position)
+				continue
+			var opponent_y := [-180.0, -60.0, 70.0, 175.0][clampi(opponent.squad_index - 1, 0, 3)]
+			_place_restart_player(
+				opponent,
+				Vector2(center.x + direction * 90.0, center.y + opponent_y)
+			)
+		return
+
+	# Throw-ins keep the broad match shape but create nearby passing options and
+	# a small defending buffer so the restart reads instead of becoming a scrum.
+	var inward_y := 1.0 if set_piece_spot.y < center.y else -1.0
+	var receiver_slots := [
+		Vector2(-120.0 * direction, 115.0 * inward_y),
+		Vector2(115.0 * direction, 145.0 * inward_y),
+		Vector2(250.0 * direction, 80.0 * inward_y),
+	]
+	var receiver_index := 0
+	for player in teams[set_piece_team_id]:
+		if player == set_piece_player or player.role == "keeper":
+			continue
+		var slot: Vector2 = receiver_slots[mini(receiver_index, receiver_slots.size() - 1)]
+		_place_restart_player(player, set_piece_spot + slot)
+		receiver_index += 1
+	for opponent in teams[opponent_id]:
+		if opponent.role == "keeper":
+			continue
+		var offset := opponent.global_position - set_piece_spot
+		if offset.length() < 130.0:
+			var away := offset.normalized() if offset.length_squared() > 0.001 else Vector2(0.0, inward_y)
+			_place_restart_player(opponent, set_piece_spot + away * 130.0)
+
 func _prepare_set_piece(kind: String, team_id: int, spot: Vector2) -> void:
 	_cancel_shot_charge()
 	pending_tackle_player = null
@@ -839,6 +923,7 @@ func _prepare_set_piece(kind: String, team_id: int, spot: Vector2) -> void:
 		set_piece_player = teams[set_piece_team_id][0]
 	else:
 		set_piece_player = _nearest_outfield_player_to_point(set_piece_team_id, set_piece_spot)
+	_arrange_set_piece_formation(kind)
 	set_piece_player.global_position = set_piece_spot - set_piece_player.ball_anchor()
 	set_piece_player.velocity = Vector2.ZERO
 	ball.attach_to(set_piece_player)
