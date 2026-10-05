@@ -86,6 +86,7 @@ func play_action(animation_name: String, duration: float = 0.78) -> void:
 	if visual == null or not visual.sprite_frames.has_animation(animation_name):
 		return
 	action_lock_seconds = maxf(duration, 0.05)
+	visual.speed_scale = 1.0
 	visual.play(animation_name)
 
 func can_tackle() -> bool:
@@ -121,6 +122,7 @@ func _sync_locomotion(sprinting: bool) -> void:
 	var wanted := "idle"
 	if velocity.length() >= 12.0:
 		wanted = "sprint" if sprinting else "run"
+	visual.speed_scale = 1.16 if wanted == "sprint" else (1.05 if wanted == "run" else 1.0)
 	if String(visual.animation) != wanted or not visual.is_playing():
 		visual.play(wanted)
 
