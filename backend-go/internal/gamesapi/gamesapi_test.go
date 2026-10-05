@@ -307,9 +307,12 @@ func TestCORSMirrorsStarlette(t *testing.T) {
 	origin := "https://staging.chess-studio.shadowops.dpdns.org"
 	w := f.do(t, "OPTIONS", "/api/games/g1", "", map[string]string{
 		"Origin": origin, "Access-Control-Request-Method": "DELETE",
-		"Access-Control-Request-Headers": "authorization, x-presence-session",
+		"Access-Control-Request-Headers": "authorization, x-presence-session, x-chronicles-party-level",
 	})
-	if w.Code != 200 || w.Header().Get("Access-Control-Allow-Origin") != origin || !strings.Contains(w.Header().Get("Access-Control-Allow-Methods"), "DELETE") {
+	// Starlette's CORSMiddleware.preflight_headers for main.py's allow_headers.
+	const starletteHeaders = "Accept, Accept-Language, Authorization, Content-Language, Content-Type, Idempotency-Key, X-API-Key, X-Chronicles-Party-Level, X-Client-Release, X-Presence-Session, X-Request-ID"
+	if w.Code != 200 || w.Header().Get("Access-Control-Allow-Origin") != origin || !strings.Contains(w.Header().Get("Access-Control-Allow-Methods"), "DELETE") ||
+		w.Header().Get("Access-Control-Allow-Headers") != starletteHeaders {
 		t.Fatalf("preflight: %d %v", w.Code, w.Header())
 	}
 	w = f.do(t, "OPTIONS", "/api/games", "", map[string]string{"Origin": "https://evil.example", "Access-Control-Request-Method": "GET"})
