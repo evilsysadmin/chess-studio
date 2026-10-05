@@ -1,0 +1,75 @@
+{
+  "animations": [
+    {
+      "fps": 7.0,
+      "frames": 8,
+      "loop": true,
+      "name": "idle",
+      "row": 0
+    },
+    {
+      "fps": 12.0,
+      "frames": 8,
+      "loop": true,
+      "name": "run",
+      "row": 1
+    },
+    {
+      "fps": 12.0,
+      "frames": 8,
+      "loop": true,
+      "name": "sprint",
+      "row": 2
+    },
+    {
+      "fps": 10.0,
+      "frames": 8,
+      "loop": false,
+      "name": "pass",
+      "row": 3
+    },
+    {
+      "fps": 10.0,
+      "frames": 8,
+      "loop": false,
+      "name": "shoot",
+      "row": 4
+    },
+    {
+      "fps": 10.0,
+      "frames": 8,
+      "loop": false,
+      "name": "tackle",
+      "row": 5
+    },
+    {
+      "fps": 10.0,
+      "frames": 8,
+      "loop": true,
+      "name": "celebrate",
+      "row": 6
+    }
+  ],
+  "atlases": {
+    "fc_matthias": {
+      "file": "fc_matthias_atlas.svg",
+      "name": "FC Matthias",
+      "sha256": "0fb1c135f055b935cb454d43edc39f0620e31eeff96e1eac0625c90e248ea174"
+    },
+    "real_enroque": {
+      "file": "real_enroque_atlas.svg",
+      "name": "Real Enroque",
+      "sha256": "013467286d7375648187da54254a252b1b424344d1759385c078efd0359f8be4"
+    }
+  },
+  "cell": {
+    "height": 144,
+    "width": 112
+  },
+  "columns": 8,
+  "display_scale": 0.58,
+  "footline": 126,
+  "quality_contract": "chess-football-vector-v1",
+  "rows": 7,
+  "version": 1
+}
