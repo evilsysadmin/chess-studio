@@ -96,6 +96,7 @@ func _handle_human() -> void:
 		_pass_from(controlled, direction)
 	if Input.is_action_just_pressed("shoot_ball") and ball.carrier == controlled:
 		var target := ChessFootballMath.goal_center(0)
+		controlled.play_action("shoot", 0.78)
 		ball.release(target - controlled.global_position, 820.0)
 
 func _update_ai(delta: float) -> void:
@@ -125,13 +126,16 @@ func _update_ai(delta: float) -> void:
 func _ai_attack(player: Footballer) -> void:
 	var goal := ChessFootballMath.goal_center(1)
 	if player.global_position.distance_to(goal) < 380.0:
+		player.play_action("shoot", 0.78)
 		ball.release(goal - player.global_position, 760.0)
 		return
 	var target := _best_teammate_ahead(player)
 	if target != null and player.global_position.distance_to(target.global_position) > 150.0:
+		player.play_action("pass", 0.72)
 		ball.release(target.global_position - player.global_position, 520.0)
 
 func _pass_from(player: Footballer, input_direction: Vector2) -> void:
+	player.play_action("pass", 0.72)
 	var target := _best_pass_target(player, input_direction)
 	if target == null:
 		var fallback := input_direction if input_direction.length_squared() > 0.001 else Vector2.RIGHT
@@ -210,6 +214,8 @@ func _score_goal(team_id: int) -> void:
 	score[team_id] += 1
 	last_goal_text = "GOAL · FC Matthias" if team_id == 0 else "GOAL · Real Enroque"
 	_reset_kickoff(1 - team_id)
+	for player in teams[team_id]:
+		player.play_action("celebrate", 1.15)
 
 func _reset_kickoff(team_id: int) -> void:
 	for id in range(2):
@@ -258,6 +264,9 @@ func debug_team_counts() -> Array[int]:
 func debug_ball_exists() -> bool:
 	return is_instance_valid(ball)
 
+func debug_pitch_exists() -> bool:
+	return presentation_3d != null
+
 func debug_camera_mode() -> String:
 	return camera_mode
 
@@ -266,3 +275,6 @@ func debug_toggle_camera_mode() -> void:
 
 func debug_3d_ready() -> bool:
 	return presentation_3d != null and presentation_3d.debug_camera_is_3d()
+
+func debug_3d_animated_players() -> int:
+	return presentation_3d.debug_animated_players() if presentation_3d != null else 0
