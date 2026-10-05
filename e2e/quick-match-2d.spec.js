@@ -9,7 +9,7 @@ async function openQuickMatch(page) {
   await buttonWithVisibleText(page, 'Partida rápida').click();
   const dialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
   await expect(dialog).toBeVisible();
-  const settingsSummary = dialog.getByText(/^Ajustes ·/).first();
+  const settingsSummary = dialog.locator('details.quick-match-settings > summary');
   await expect(settingsSummary).toBeVisible();
   await settingsSummary.click();
   const renderer = dialog.getByRole('group', { name: 'Tipo de tablero' });
