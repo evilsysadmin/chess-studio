@@ -251,6 +251,15 @@ case "${go_native_admin_users,,}" in
   true|false) go_native_admin_users="${go_native_admin_users,,}" ;;
   *) echo "invalid CHESS_STUDIO_GO_NATIVE_ADMIN_USERS_ENABLED: $go_native_admin_users" >&2; exit 2 ;;
 esac
+# Native Go Admin observability panel.
+case "$target" in
+  staging) go_native_admin_observability="${CHESS_STUDIO_GO_NATIVE_ADMIN_OBSERVABILITY_ENABLED:-true}" ;;
+  *) go_native_admin_observability="${CHESS_STUDIO_GO_NATIVE_ADMIN_OBSERVABILITY_ENABLED:-false}" ;;
+esac
+case "${go_native_admin_observability,,}" in
+  true|false) go_native_admin_observability="${go_native_admin_observability,,}" ;;
+  *) echo "invalid CHESS_STUDIO_GO_NATIVE_ADMIN_OBSERVABILITY_ENABLED: $go_native_admin_observability" >&2; exit 2 ;;
+esac
 pvp_sparring_username="${CHESS_PVP_SPARRING_USERNAME:-sparringmeister}"
 
 state_file="$state_dir/deployed.sha"
@@ -435,6 +444,7 @@ compose() {
   CHESS_STUDIO_GO_NATIVE_CHRONICLES_RUNS_ENABLED="$go_native_chronicles_runs" \
   CHESS_STUDIO_GO_NATIVE_ADMIN_FEEDBACK_ENABLED="$go_native_admin_feedback" \
   CHESS_STUDIO_GO_NATIVE_ADMIN_USERS_ENABLED="$go_native_admin_users" \
+  CHESS_STUDIO_GO_NATIVE_ADMIN_OBSERVABILITY_ENABLED="$go_native_admin_observability" \
   CHESS_PVP_SPARRING_OWNER="$pvp_sparring_owner" \
   CHESS_PVP_SPARRING_USERNAME="$pvp_sparring_username" \
   CHESS_STUDIO_OCI_LOG_SERVICE_NAME="chess-studio-oci-backend-${target}-stdout" \
@@ -620,7 +630,7 @@ pvp_attest() {
     rm -f "$body"
     return 1
   fi
-  if python3 - "$body" "$pvp_sparring_enabled" "$deployment_target" "$sha" "$go_native_games_read" "$go_native_games_write" "$go_native_games_hint" "$go_native_analyze" "$go_native_system" "$go_native_profile" "$go_native_auth_session" "$go_native_login" "$go_native_account" "$go_native_recovery" "$go_native_feedback" "$go_native_matthias_read" "$go_native_narrative" "$go_native_pawn_slug" "$go_native_chronicles" "$go_native_chronicles_runs" "$go_native_admin_feedback" "$go_native_admin_users" <<'PY'
+  if python3 - "$body" "$pvp_sparring_enabled" "$deployment_target" "$sha" "$go_native_games_read" "$go_native_games_write" "$go_native_games_hint" "$go_native_analyze" "$go_native_system" "$go_native_profile" "$go_native_auth_session" "$go_native_login" "$go_native_account" "$go_native_recovery" "$go_native_feedback" "$go_native_matthias_read" "$go_native_narrative" "$go_native_pawn_slug" "$go_native_chronicles" "$go_native_chronicles_runs" "$go_native_admin_feedback" "$go_native_admin_users" "$go_native_admin_observability" <<'PY'
 import json
 import pathlib
 import sys
@@ -679,6 +689,7 @@ if (
     or bool(payload.get('nativeChroniclesRuns')) != (str(sys.argv[20]).strip().lower() == 'true')
     or bool(payload.get('nativeAdminFeedback')) != (str(sys.argv[21]).strip().lower() == 'true')
     or bool(payload.get('nativeAdminUsers')) != (str(sys.argv[22]).strip().lower() == 'true')
+    or bool(payload.get('nativeAdminObservability')) != (str(sys.argv[23]).strip().lower() == 'true')
 ):
     raise SystemExit(1)
 
@@ -2006,6 +2017,13 @@ if [[ "$api_edge_mode" == "go" && "$go_native_admin_users" == "true" ]] && ! wai
   rollback "$sha" || true
   exit 82
 fi
+# Anonymous GET of Admin's observability panel is Go's 401.
+if [[ "$api_edge_mode" == "go" && "$go_native_admin_observability" == "true" ]] && ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/admin/observability" GET X-Chess-Admin-Native 401; then
+  echo "native admin observability did not answer through Go after cutover: color=$candidate_color" >&2
+  compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
+  rollback "$sha" || true
+  exit 83
+fi
 write_active_color "$candidate_color"
 phase_done switch "$switch_started_ms"
 
@@ -2069,5 +2087,5 @@ fi
 agent_diag_summary || printf '%s\n' 'OCI_AGENT_DIAG unavailable'
 phase_done total "$total_started_ms"
 printf 'OCI_DEPLOY_TIMINGS target=%s phases=%s tunnel=%s color=%s\n' "$target" "${deploy_phase_summary%,}" "$tunnel_action" "$candidate_color"
-echo "CHESS_STUDIO_DEPLOY_OK target=$target repo_ref=$sha color=$candidate_color pvp=go api_edge=$api_edge_mode games_native=$go_native_games_read games_native_write=$go_native_games_write games_native_hint=$go_native_games_hint analyze_native=$go_native_analyze system_native=$go_native_system profile_native=$go_native_profile auth_session_native=$go_native_auth_session login_native=$go_native_login account_native=$go_native_account recovery_native=$go_native_recovery feedback_native=$go_native_feedback matthias_read_native=$go_native_matthias_read narrative_native=$go_native_narrative pawn_slug_native=$go_native_pawn_slug chronicles_native=$go_native_chronicles chronicles_runs_native=$go_native_chronicles_runs admin_feedback_native=$go_native_admin_feedback admin_users_native=$go_native_admin_users cors_origin=$cors_origin tunnel_action=$tunnel_action image=pulled observability=${observability_summary:-unknown}"
+echo "CHESS_STUDIO_DEPLOY_OK target=$target repo_ref=$sha color=$candidate_color pvp=go api_edge=$api_edge_mode games_native=$go_native_games_read games_native_write=$go_native_games_write games_native_hint=$go_native_games_hint analyze_native=$go_native_analyze system_native=$go_native_system profile_native=$go_native_profile auth_session_native=$go_native_auth_session login_native=$go_native_login account_native=$go_native_account recovery_native=$go_native_recovery feedback_native=$go_native_feedback matthias_read_native=$go_native_matthias_read narrative_native=$go_native_narrative pawn_slug_native=$go_native_pawn_slug chronicles_native=$go_native_chronicles chronicles_runs_native=$go_native_chronicles_runs admin_feedback_native=$go_native_admin_feedback admin_users_native=$go_native_admin_users admin_observability_native=$go_native_admin_observability cors_origin=$cors_origin tunnel_action=$tunnel_action image=pulled observability=${observability_summary:-unknown}"
 exit 0

@@ -14,13 +14,18 @@ import (
 	"unicode"
 
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	otellog "go.opentelemetry.io/otel/log"
 	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/propagation"
 	sdklog "go.opentelemetry.io/otel/sdk/log"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	oteltrace "go.opentelemetry.io/otel/trace"
 
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/pyjson"
 )
@@ -38,6 +43,7 @@ const (
 	// reported five minutes after it was received.
 	billingTTL     = 5 * time.Minute
 	loggerName     = "chess-studio.access"
+	tracerName     = "chess-studio.backend"
 	exportInterval = 30 * time.Second
 )
 
@@ -72,6 +78,15 @@ type Recorder struct {
 	logger        otellog.Logger
 
 	shutdowns []func(context.Context) error
+	// signalErrors names a signal whose exporter could not be built.
+	signalErrors map[string]string
+
+	traceProvider  *sdktrace.TracerProvider
+	tracer         oteltrace.Tracer
+	loggerProvider *sdklog.LoggerProvider
+	traceTracker   *exportTracker
+	logTracker     *exportTracker
+	startupTraceID string
 }
 
 // Options are the parts of a Recorder that tests replace.
@@ -80,6 +95,9 @@ type Options struct {
 	History      HTTPHistory
 	Stdout       io.Writer
 	MetricReader sdkmetric.Reader
+	SpanExporter sdktrace.SpanExporter
+	// LogExporter replaces the OTLP log exporter (still tracked for Admin).
+	LogExporter  sdklog.Exporter
 	LogProcessor sdklog.Processor
 	InstanceID   string
 	now          func() time.Time
@@ -88,7 +106,8 @@ type Options struct {
 // New builds the recorder. Export is fail-open, as in Python: a broken
 // exporter configuration disables that signal and never the routes.
 func New(ctx context.Context, cfg Config, opts Options) (*Recorder, error) {
-	r := &Recorder{cfg: cfg, username: opts.Username, history: opts.History, out: opts.Stdout, now: opts.now}
+	r := &Recorder{cfg: cfg, username: opts.Username, history: opts.History, out: opts.Stdout, now: opts.now, signalErrors: map[string]string{},
+		traceTracker: &exportTracker{}, logTracker: &exportTracker{}}
 	if r.out == nil {
 		r.out = os.Stdout
 	}
@@ -115,6 +134,38 @@ func New(ctx context.Context, cfg Config, opts Options) (*Recorder, error) {
 	res := resource.NewSchemaless(attrs...)
 
 	var errs []error
+	spanExporter := opts.SpanExporter
+	if spanExporter == nil && cfg.TracesEnabled {
+		exporter, err := otlptracehttp.New(ctx,
+			otlptracehttp.WithEndpointURL(cfg.TracesEndpoint),
+			otlptracehttp.WithHeaders(cfg.Headers),
+			otlptracehttp.WithHTTPClient(trackedClient(r.traceTracker)),
+		)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("traces exporter: %w", err))
+			r.signalErrors["traces"] = "ExporterConfigurationError"
+		} else {
+			spanExporter = exporter
+		}
+	}
+	if spanExporter != nil {
+		provider := sdktrace.NewTracerProvider(
+			sdktrace.WithResource(res),
+			sdktrace.WithBatcher(trackingSpanExporter{next: spanExporter, tracker: r.traceTracker}),
+			sdktrace.WithSampler(sampler(cfg.Sampler, cfg.SamplerArg)),
+		)
+		r.traceProvider = provider
+		r.tracer = provider.Tracer(tracerName)
+		r.shutdowns = append(r.shutdowns, provider.Shutdown)
+		// One span per process: Tempo's proof of life after every deploy.
+		_, startup := provider.Tracer("chess-studio.startup").Start(ctx, "chess-studio.startup",
+			oteltrace.WithAttributes(attribute.Bool("chess_studio.startup", true)))
+		if sc := startup.SpanContext(); sc.IsValid() {
+			r.startupTraceID = sc.TraceID().String()
+		}
+		startup.End()
+	}
+
 	reader := opts.MetricReader
 	if reader == nil && cfg.MetricsEnabled {
 		exporter, err := otlpmetrichttp.New(ctx,
@@ -123,6 +174,7 @@ func New(ctx context.Context, cfg Config, opts Options) (*Recorder, error) {
 		)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("metrics exporter: %w", err))
+			r.signalErrors["metrics"] = "ExporterConfigurationError"
 		} else {
 			reader = sdkmetric.NewPeriodicReader(exporter, sdkmetric.WithInterval(exportInterval))
 		}
@@ -141,6 +193,7 @@ func New(ctx context.Context, cfg Config, opts Options) (*Recorder, error) {
 		)
 		if err := errors.Join(err1, err2, err3, err4, err5); err != nil {
 			errs = append(errs, err)
+			r.signalErrors["metrics"] = "InstrumentError"
 		} else {
 			r.requests, r.duration = counter, histogram
 			r.frontend, r.vital = frontend, vital
@@ -150,19 +203,25 @@ func New(ctx context.Context, cfg Config, opts Options) (*Recorder, error) {
 	}
 
 	processor := opts.LogProcessor
+	if processor == nil && opts.LogExporter != nil {
+		processor = sdklog.NewBatchProcessor(trackingLogExporter{next: opts.LogExporter, tracker: r.logTracker})
+	}
 	if processor == nil && cfg.LogsEnabled {
 		exporter, err := otlploghttp.New(ctx,
 			otlploghttp.WithEndpointURL(cfg.LogsEndpoint),
 			otlploghttp.WithHeaders(cfg.Headers),
+			otlploghttp.WithHTTPClient(trackedClient(r.logTracker)),
 		)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("logs exporter: %w", err))
+			r.signalErrors["logs"] = "ExporterConfigurationError"
 		} else {
-			processor = sdklog.NewBatchProcessor(exporter)
+			processor = sdklog.NewBatchProcessor(trackingLogExporter{next: exporter, tracker: r.logTracker})
 		}
 	}
 	if processor != nil {
 		provider := sdklog.NewLoggerProvider(sdklog.WithResource(res), sdklog.WithProcessor(processor))
+		r.loggerProvider = provider
 		r.logger = provider.Logger(loggerName)
 		r.shutdowns = append(r.shutdowns, provider.Shutdown)
 	}
@@ -194,6 +253,17 @@ func (r *Recorder) Serve(route string, next http.Handler, w http.ResponseWriter,
 	// a cleaned incoming id overwrite this with the same value.
 	w.Header().Set("X-Request-ID", id)
 	recorder := &statusRecorder{ResponseWriter: w}
+	var span oteltrace.Span
+	if r.tracer != nil {
+		// A server span per native request, continuing the caller's W3C
+		// trace like Python's FastAPI instrumentation.
+		ctx := propagation.TraceContext{}.Extract(req.Context(), propagation.HeaderCarrier(req.Header))
+		method := truncateRunes(strings.ToUpper(req.Method), 8)
+		ctx, span = r.tracer.Start(ctx, method+" "+truncateRunes(route, 120),
+			oteltrace.WithSpanKind(oteltrace.SpanKindServer),
+			oteltrace.WithAttributes(attribute.String("http.request.method", method), attribute.String("http.route", truncateRunes(route, 120))))
+		req = req.WithContext(ctx)
+	}
 	defer func() {
 		panicked := recover()
 		status := recorder.status
@@ -201,6 +271,13 @@ func (r *Recorder) Serve(route string, next http.Handler, w http.ResponseWriter,
 			status = http.StatusInternalServerError
 		} else if status == 0 {
 			status = http.StatusOK
+		}
+		if span != nil {
+			span.SetAttributes(attribute.Int("http.response.status_code", status))
+			if status >= 500 {
+				span.SetStatus(codes.Error, "")
+			}
+			span.End()
 		}
 		r.record(req, route, id, status, time.Since(started), panicked != nil)
 		if panicked != nil {

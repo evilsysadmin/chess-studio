@@ -1,8 +1,9 @@
 // Package telemetry gives the requests Go serves natively the same
 // observability Python gives every request: the chess_studio_http_server_*
-// OTLP metrics and one structured "http_request" log event (stdout and OTLP
-// logs). Requests Go only proxies are still recorded by Python, so the edge
-// wraps native handlers only and nothing is counted twice.
+// OTLP metrics, one structured "http_request" log event (stdout and OTLP
+// logs) and a server span continuing the caller's W3C trace. Requests Go only
+// proxies are still recorded by Python, so the edge wraps native handlers
+// only and nothing is counted twice.
 //
 // Go exports under its own service name (<OTEL_SERVICE_NAME>-go): sharing the
 // Python one would mix the two runtimes' series and make Go-native PvP
@@ -35,6 +36,14 @@ type Config struct {
 	// TrustCloudflare mirrors _trust_cloudflare_client_ip: CF-Connecting-IP
 	// and CF-IPCountry count only behind the closed Cloudflare boundary.
 	TrustCloudflare bool
+
+	// The rest of tracing_settings: traces and Admin's diagnostics.
+	TracesEndpoint    string
+	TracesEnabled     bool
+	HeadersConfigured bool
+	Sampler           string
+	SamplerArg        string
+	Protocol          string
 }
 
 var cloudflareTunnelEnvironments = map[string]bool{"staging": true, "stage": true}
@@ -47,6 +56,15 @@ func ConfigFromEnv(lookup func(string) (string, bool)) Config {
 		value, _ := lookup(key)
 		return strings.TrimSpace(value)
 	}
+	// setting is str(env.get(key) or default).strip().
+	setting := func(key, fallback string) string {
+		value, _ := lookup(key)
+		if value == "" {
+			value = fallback
+		}
+		return strings.TrimSpace(value)
+	}
+	traces := resolvedSignalEndpoint(get, "traces")
 	metrics := resolvedSignalEndpoint(get, "metrics")
 	logs := resolvedSignalEndpoint(get, "logs")
 	base := get("OTEL_SERVICE_NAME")
@@ -77,6 +95,13 @@ func ConfigFromEnv(lookup func(string) (string, bool)) Config {
 		LogsEnabled:     enabled(get("OTEL_LOGS_ENABLED"), logs),
 		Headers:         parseOTLPHeaders(get("OTEL_EXPORTER_OTLP_HEADERS")),
 		TrustCloudflare: trust,
+
+		TracesEndpoint:    traces,
+		TracesEnabled:     enabled(get("OTEL_TRACES_ENABLED"), traces),
+		HeadersConfigured: get("OTEL_EXPORTER_OTLP_HEADERS") != "",
+		Sampler:           truncateRunes(setting("OTEL_TRACES_SAMPLER", "parentbased_traceidratio"), 80),
+		SamplerArg:        truncateRunes(setting("OTEL_TRACES_SAMPLER_ARG", "0.20"), 32),
+		Protocol:          truncateRunes(strings.ToLower(setting("OTEL_EXPORTER_OTLP_PROTOCOL", "http/protobuf")), 40),
 	}
 }
 

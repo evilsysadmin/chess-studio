@@ -83,6 +83,8 @@ type NarrativeGateway interface {
 	Enter() int64
 	Exit()
 	ShouldShed(inflight int64) bool
+	// RecordShed counts a shed request for the resilience panel.
+	RecordShed()
 }
 
 type NarrativeConfig struct {
@@ -198,6 +200,7 @@ func (h *NarrativeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		inflight := h.gateway.Enter()
 		defer h.gateway.Exit()
 		if h.gateway.ShouldShed(inflight) {
+			h.gateway.RecordShed()
 			w.Header().Set("Retry-After", "5")
 			writeJSON(w, http.StatusServiceUnavailable, map[string]any{
 				"detail":    "Servicio ocupado; la función secundaria se ha aplazado para proteger las partidas.",

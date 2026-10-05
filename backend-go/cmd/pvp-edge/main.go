@@ -113,6 +113,6 @@ func newRequestTelemetry(history *obshistory.Recorder) *telemetry.Recorder {
 	if err != nil {
 		log.Printf("request telemetry degraded: %v", err)
 	}
-	log.Printf("request telemetry service=%s metrics=%t logs=%t", cfg.ServiceName, cfg.MetricsEnabled, cfg.LogsEnabled)
+	log.Printf("request telemetry service=%s traces=%t metrics=%t logs=%t", cfg.ServiceName, cfg.TracesEnabled, cfg.MetricsEnabled, cfg.LogsEnabled)
 	return recorder
 }
