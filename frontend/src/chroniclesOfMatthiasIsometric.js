@@ -257,15 +257,9 @@ function buildIsoDungeon({
   const root = new THREE.Group();
   root.name = 'chronicles-isometric-dungeon';
   const floorTargets = [];
-  const naturalCaveWalls = scenePlan?.sceneStyle?.id === 'cave-water';
-  const wallCells = naturalCaveWalls
-    ? new Set(geometryPlan.walls.map(({ x, y }) => `${x},${y}`))
-    : null;
   const caveWallDressing = createChroniclesCaveWallDressing({
-    sceneStyleId: scenePlan?.sceneStyle?.id,
-    coarsePointer,
-    wallCells,
-    cellSize: CELL,
+    sceneStyleId: scenePlan?.sceneStyle?.id, coarsePointer,
+    wallCells: new Set(geometryPlan.walls.map(({ x, y }) => `${x},${y}`)), cellSize: CELL,
   });
 
   const floorRoughness = [0.9, 0.86, 0.93, 0.89];
@@ -329,27 +323,18 @@ function buildIsoDungeon({
     block.name = `chronicles-iso-wall-${x}-${y}`;
     root.add(block);
 
-    if (caveWallDressing) {
-      caveWallDressing.decorate({
-        root,
-        block,
-        material: wall,
-        x,
-        y,
-        world,
-      });
-    } else {
-      const cap = new THREE.Mesh(wallCapGeometry, wallTrim);
-      cap.position.set(world.x, 2.59, world.z);
-      cap.castShadow = !coarsePointer;
-      cap.receiveShadow = true;
-      root.add(cap);
+    if (caveWallDressing?.decorate({ root, block, material: wall, x, y, world })) return;
 
-      const trim = new THREE.Mesh(new THREE.BoxGeometry(CELL * 0.98, 0.075, CELL * 1.01), wallTrim);
-      trim.position.set(world.x, 0.5 + ((x * 5 + y * 3) % 3) * 0.68, world.z);
-      trim.receiveShadow = true;
-      root.add(trim);
-    }
+    const cap = new THREE.Mesh(wallCapGeometry, wallTrim);
+    cap.position.set(world.x, 2.59, world.z);
+    cap.castShadow = !coarsePointer;
+    cap.receiveShadow = true;
+    root.add(cap);
+
+    const trim = new THREE.Mesh(new THREE.BoxGeometry(CELL * 0.98, 0.075, CELL * 1.01), wallTrim);
+    trim.position.set(world.x, 0.5 + ((x * 5 + y * 3) % 3) * 0.68, world.z);
+    trim.receiveShadow = true;
+    root.add(trim);
   });
 
   const sigilWorld = chroniclesIsoWorldForContentKind(geometryPlan, 'trigger');
