@@ -112,22 +112,39 @@ test('Chronicles Tactics · arranca como RPG táctico isométrico con combate po
   await expect(moveNorth).toBeEnabled();
 
   // Exploration is real-time: holding a direction starts continuous locomotion
-  // and a visible walking gait. Releasing the key lets the renderer settle.
+  // and a visible walking gait. Releasing the key must stop further logical steps
+  // even if Three.js is still finishing the visual interpolation under SwiftShader.
   await page.keyboard.down('ArrowUp');
   await expect(rendererHost).toHaveAttribute('data-chronicles-party-motion', 'walking');
-  await page.waitForTimeout(60);
   await page.keyboard.up('ArrowUp');
   await expect(narrator).toContainText(/La compañía avanza hacia norte/i);
-  await expect(rendererHost).toHaveAttribute('data-chronicles-party-motion', 'idle', { timeout: 2_000 });
+  const releasedCell = await mode.evaluate((node) => ({
+    x: node.getAttribute('data-party-x'),
+    y: node.getAttribute('data-party-y'),
+  }));
+  await page.waitForTimeout(260);
+  await expect(mode).toHaveAttribute('data-party-x', releasedCell.x);
+  await expect(mode).toHaveAttribute('data-party-y', releasedCell.y);
 
-  // Fresh Tactics runs deliberately keep roaming enemies away from the spawn
-  // so exploration exists before contact. Walk through that safe opening instead
-  // of assuming the old "one step east = combat" geometry.
+  // Reset to the last semantic checkpoint before validating the deterministic
+  // exploration -> contact path. Ordinary walking intentionally is not checkpointed
+  // cell-by-cell, so reload returns to the canonical spawn.
+  await page.reload();
+  await expect(mode).toBeVisible();
+  await expect(mode.locator('[data-chronicles-tactics-renderer="three"] canvas')).toHaveCount(1, { timeout: 30_000 });
+  await expect(mode).toHaveAttribute('data-engagement', 'exploration');
+  await expect(mode).toHaveAttribute('data-party-x', '1');
+  await expect(mode).toHaveAttribute('data-party-y', '5');
+
+  await page.waitForTimeout(140);
+  const resetNorth = mode.getByRole('button', { name: 'Mover al norte', exact: true });
+  await expect(resetNorth).toBeEnabled();
+  await resetNorth.evaluate((button) => button.click());
   await expect(mode).toHaveAttribute('data-engagement', 'exploration');
 
   await page.waitForTimeout(140);
-  await expect(moveNorth).toBeEnabled();
-  await moveNorth.evaluate((button) => button.click());
+  await expect(resetNorth).toBeEnabled();
+  await resetNorth.evaluate((button) => button.click());
   await expect(mode).toHaveAttribute('data-engagement', 'exploration');
 
   // The deterministically relocated opening pawn is now approached through the
