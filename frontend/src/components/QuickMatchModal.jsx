@@ -159,7 +159,7 @@ export default function QuickMatchModal({
               disabled={loading}
               onClick={() => { void startQuickMatch(); }}
             >
-              {loading ? 'Preparando la War Room…' : 'Jugar ahora'}
+              {loading ? 'Preparando la War Room…' : 'Empezar partida'}
             </button>
 
             <details className="friendly-disclosure quick-match-settings quick-match-ready-room__settings">
