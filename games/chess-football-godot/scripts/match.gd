@@ -9,7 +9,7 @@ const TEAM_COLORS := [Color(0.12, 0.42, 0.92), Color(0.86, 0.18, 0.2)]
 const CAMERA_MODE_BROADCAST := "broadcast"
 const CAMERA_MODE_TACTICAL := "tactical"
 
-const TACKLE_ATTEMPT_RANGE := 74.0
+const TACKLE_ATTEMPT_RANGE := 94.0
 const TACKLE_HITBOX_FORWARD := 48.0
 const TACKLE_HITBOX_FORWARD_BONUS := 16.0
 const TACKLE_HITBOX_BACK := 12.0
@@ -144,6 +144,7 @@ func _physics_process(delta: float) -> void:
 		return
 	_handle_human(delta)
 	_update_ai(delta)
+	_update_active_tackle_contacts()
 	var previous_ball_position: Vector2 = ball.global_position
 	var previous_ball_height: float = ball.flight_height
 	ball.tick_ball(delta)
@@ -731,7 +732,10 @@ func _tackle_hitbox(tackler: Footballer, target_position: Vector2) -> Dictionary
 	var offset := target_position - tackler.global_position
 	var forward_distance := offset.dot(forward)
 	var lateral_distance := absf(offset.dot(lateral_axis))
-	var speed_ratio := clampf(tackler.velocity.length() / maxf(tackler.base_speed, 1.0), 0.0, 1.35)
+	var speed_ratio := maxf(
+		clampf(tackler.velocity.length() / maxf(tackler.base_speed, 1.0), 0.0, 1.35),
+		tackler.tackle_momentum_ratio(),
+	)
 	var forward_reach := TACKLE_HITBOX_FORWARD + TACKLE_HITBOX_FORWARD_BONUS * speed_ratio
 	var inside := (
 		forward_distance >= -TACKLE_HITBOX_BACK
@@ -768,13 +772,31 @@ func _try_tackle(tackler: Footballer) -> bool:
 		return false
 	if not bool(hitbox.get("inside", false)):
 		return false
+	return _resolve_tackle_contact(tackler, victim, hitbox)
+
+func _resolve_tackle_contact(
+	tackler: Footballer,
+	victim: Footballer,
+	hitbox: Dictionary = {},
+) -> bool:
+	if not tackler.tackle_active() or ball.carrier != victim:
+		return false
+	if victim.team_id == tackler.team_id:
+		return false
+
+	var offset: Vector2 = victim.global_position - tackler.global_position
+	if offset.length() > TACKLE_ATTEMPT_RANGE:
+		return false
+	var resolved_hitbox := hitbox if not hitbox.is_empty() else _tackle_hitbox(tackler, victim.global_position)
+	if not bool(resolved_hitbox.get("inside", false)):
+		return false
 
 	var push_direction := offset.normalized() if offset.length_squared() > 0.001 else _tackle_forward(tackler)
 	victim.receive_tackle_contact(push_direction)
 	if audio_fx != null:
 		audio_fx.play_tackle()
 
-	if bool(hitbox.get("clean", false)):
+	if bool(resolved_hitbox.get("clean", false)):
 		# Deflect the ball out of the collision instead of straight underneath
 		# the tackler. The short diagonal loose-ball beat makes a clean steal
 		# readable before possession is consolidated.
@@ -791,6 +813,19 @@ func _try_tackle(tackler: Footballer) -> bool:
 		lateral = (tackler.velocity.normalized() * 0.70 + lateral * 0.30).normalized()
 	ball.release(lateral, TACKLE_LOOSE_POKE_POWER)
 	return true
+
+func _update_active_tackle_contacts() -> void:
+	if ball.carrier == null:
+		return
+	var victim: Footballer = ball.carrier
+	for team in teams:
+		for tackler in team:
+			if tackler == victim or not tackler.tackle_active():
+				continue
+			if tackler.team_id == victim.team_id:
+				continue
+			if _resolve_tackle_contact(tackler, victim):
+				return
 
 func _update_pending_tackle_claim(delta: float) -> void:
 	if pending_tackle_player == null:
@@ -1401,6 +1436,9 @@ func debug_predicted_shot_height_at_goal(
 
 func debug_tackle_hitbox(player: Footballer, target_position: Vector2) -> Dictionary:
 	return _tackle_hitbox(player, target_position)
+
+func debug_update_active_tackle_contacts() -> void:
+	_update_active_tackle_contacts()
 
 func debug_step_pending_tackle(delta: float) -> void:
 	_update_pending_tackle_claim(delta)
