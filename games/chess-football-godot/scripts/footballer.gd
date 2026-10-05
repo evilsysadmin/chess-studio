@@ -7,6 +7,7 @@ var role: String = "midfielder"
 var base_speed: float = 250.0
 const MOVE_ACCELERATION := 1650.0
 const MOVE_DECELERATION := 2150.0
+const TACKLE_ACTIVE_SECONDS := 0.18
 var home_position: Vector2
 var active: bool = false
 var has_ball: bool = false
@@ -17,6 +18,8 @@ var visual: AnimatedSprite2D
 var action_lock_seconds: float = 0.0
 var tackle_cooldown_seconds: float = 0.0
 var tackle_recovery_seconds: float = 0.0
+var tackle_active_seconds: float = 0.0
+var tackle_launch_speed_ratio: float = 0.0
 var contact_stun_seconds: float = 0.0
 var contact_stun_total: float = 0.0
 var contact_sway_sign: float = 1.0
@@ -53,6 +56,9 @@ func _configure_visual() -> void:
 func _process(delta: float) -> void:
 	tackle_cooldown_seconds = maxf(0.0, tackle_cooldown_seconds - delta)
 	tackle_recovery_seconds = maxf(0.0, tackle_recovery_seconds - delta)
+	tackle_active_seconds = maxf(0.0, tackle_active_seconds - delta)
+	if tackle_active_seconds <= 0.0:
+		tackle_launch_speed_ratio = 0.0
 	contact_stun_seconds = maxf(0.0, contact_stun_seconds - delta)
 	keeper_hold_seconds = maxf(0.0, keeper_hold_seconds - delta)
 	keeper_save_seconds = maxf(0.0, keeper_save_seconds - delta)
@@ -117,9 +123,21 @@ func start_tackle() -> bool:
 		return false
 	tackle_cooldown_seconds = 1.10
 	tackle_recovery_seconds = 0.38
+	tackle_active_seconds = TACKLE_ACTIVE_SECONDS
+	tackle_launch_speed_ratio = clampf(
+		velocity.length() / maxf(base_speed, 1.0),
+		0.0,
+		1.35,
+	)
 	velocity *= 0.35
 	play_action("tackle", 0.50)
 	return true
+
+func tackle_active() -> bool:
+	return tackle_active_seconds > 0.0
+
+func tackle_momentum_ratio() -> float:
+	return tackle_launch_speed_ratio if tackle_active() else 0.0
 
 func receive_tackle_contact(push_direction: Vector2, duration: float = 0.30) -> void:
 	contact_stun_total = maxf(duration, 0.05)
@@ -188,6 +206,9 @@ func debug_animation_names() -> PackedStringArray:
 
 func debug_tackle_ready() -> bool:
 	return can_tackle()
+
+func debug_tackle_active() -> bool:
+	return tackle_active()
 
 func debug_keeper_hold_active() -> bool:
 	return keeper_hold_active()
