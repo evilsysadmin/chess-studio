@@ -172,7 +172,7 @@ def build_outputs() -> dict[str, str]:
         filename = f"{slug}_atlas.svg"
         svg = _atlas_svg(team, keeper=True)
         outputs[filename] = svg
-        atlas_meta[slug] = {"name": team["name"], "file": filename, "sha256": hashlib.sha256(svg.encode("utf-8")).hexdigest()}
+        atlas_meta[slug] = {"name": team["name"], "file": filename}
     manifest = {
         "version": 3,
         "quality_contract": "chess-football-vector-v3",
