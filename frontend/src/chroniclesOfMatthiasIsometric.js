@@ -971,7 +971,13 @@ export function createChroniclesIsometricRenderer(host, {
     const time = clock.getElapsedTime();
 
     if (!reducedMotion) {
-      party.root.position.lerp(desiredParty, 0.14);
+      const explorationWalking = latestSceneModel?.partyFormation === 'explore-compact'
+        && party.root.position.distanceToSquared(desiredParty) > 0.0025;
+      const explorationYaw = explorationWalking
+        ? facingAngle(party.root.position, desiredParty)
+        : CHRONICLES_ISO_PARTY_FACING;
+
+      party.root.position.lerp(desiredParty, explorationWalking ? 0.12 : 0.14);
       enemies.forEach((model, id) => {
         if (!model.visible || !model.userData.chroniclesIsoTarget) return;
         model.position.lerp(model.userData.chroniclesIsoTarget, id === 'scavenger-knight' ? 0.18 : 0.13);
@@ -986,11 +992,24 @@ export function createChroniclesIsometricRenderer(host, {
       party.models.forEach((model, id) => {
         if (!model.visible) return;
         const target = model.userData.chroniclesIsoTarget;
-        if (target) model.position.lerp(target, 0.2);
+        if (target) model.position.lerp(target, explorationWalking ? 0.16 : 0.2);
         model.userData.chroniclesArtTick?.(time);
-        model.rotation.y = CHRONICLES_ISO_PARTY_FACING + Math.sin(time * 0.55 + id.length) * 0.025;
+
         const hpRatio = model.userData.chroniclesIsoHpRatio ?? 1;
-        model.position.y = Math.sin(time * 0.8 + id.length) * 0.006 - (1 - hpRatio) * 0.025;
+        if (explorationWalking) {
+          const phase = time * 8.4 + id.length * 1.7;
+          const currentYaw = model.userData.chroniclesIsoWalkYaw ?? model.rotation.y;
+          const nextYaw = currentYaw + shortestAngleDelta(currentYaw, explorationYaw) * 0.24;
+          model.userData.chroniclesIsoWalkYaw = nextYaw;
+          model.rotation.y = nextYaw;
+          model.rotation.z = Math.sin(phase) * 0.028;
+          model.position.y = Math.abs(Math.sin(phase)) * 0.028 - (1 - hpRatio) * 0.025;
+        } else {
+          model.userData.chroniclesIsoWalkYaw = model.rotation.y;
+          model.rotation.y = CHRONICLES_ISO_PARTY_FACING + Math.sin(time * 0.55 + id.length) * 0.025;
+          model.rotation.z *= 0.82;
+          model.position.y = Math.sin(time * 0.8 + id.length) * 0.006 - (1 - hpRatio) * 0.025;
+        }
 
         tickChroniclesCarriedTorch(party.carriedTorches.get(id), time);
       });
