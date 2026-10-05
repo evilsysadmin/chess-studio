@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
-import { login, mockApi } from './helpers.js';
+import { buttonWithHeading, login, mockApi } from './helpers.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const TRAINING_SCOPE = new Set(
@@ -151,14 +151,22 @@ scopedTest('school', 'Entrenar · Escuela, Glosario y Modos especiales', async (
   test.setTimeout(110_000);
   await prepare(page);
 
-  const train = page.locator('.illustrated-home__destination--train');
-  await expect(train).toBeVisible();
-  await train.click();
+  await buttonWithHeading(page, 'Escuela de Matthias').click();
 
   const shell = page.locator('.tutorial-shell.matthias-school-shell');
   await expect(shell).toBeVisible();
   await expect(shell.locator('.matthias-school-stage')).toBeVisible();
-  await expect(page.locator('.global-music-dock')).toBeHidden();
+  const retroDock = page.locator('.global-music-dock');
+  const retroDeck = retroDock.locator('.music-deck');
+  await expect(retroDock).toBeVisible();
+  await expect(retroDeck).toBeVisible();
+  const retroBox = await retroDeck.boundingBox();
+  expect(retroBox).not.toBeNull();
+  expect(retroBox.x).toBeGreaterThanOrEqual(0);
+  expect(retroBox.y).toBeGreaterThanOrEqual(0);
+  expect(retroBox.x + retroBox.width).toBeLessThanOrEqual(1440);
+  expect(retroBox.y + retroBox.height).toBeLessThanOrEqual(900);
+  expect(await retroDeck.evaluate((node) => Number.parseInt(getComputedStyle(node.closest('.global-music-dock')).zIndex, 10))).toBeGreaterThan(1200);
   await expect(shell.locator('[data-board3d-camera="classroom-overhead"]')).toBeVisible();
   const school3d = shell.locator('[data-board3d-war-room="true"]');
   await expect(school3d).toHaveAttribute('data-board3d-variant', 'classic');
