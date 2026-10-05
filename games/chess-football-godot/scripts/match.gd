@@ -37,8 +37,8 @@ const AI_SUPPORT_FORWARD := 190.0
 
 const KICKOFF_FREEZE_SECONDS := 1.10
 const KICKOFF_AI_PASS_POWER := 430.0
-const KICKOFF_TEAM_HALF_GAP := 54.0
-const KICKOFF_RIVAL_HALF_GAP := 150.0
+const KICKOFF_TEAM_HALF_GAP := 120.0
+const KICKOFF_RIVAL_HALF_GAP := 250.0
 const GOAL_CELEBRATION_SECONDS := 1.35
 
 const SHOT_CHARGE_SECONDS := 0.90
@@ -740,13 +740,20 @@ func _update_goal_restart(delta: float) -> void:
 
 func _kickoff_position(team_id: int, player: Footballer) -> Vector2:
 	var center := ChessFootballMath.PITCH_RECT.get_center()
-	var position := player.home_position
+	var side := -1.0 if team_id == 0 else 1.0
 	var gap := KICKOFF_TEAM_HALF_GAP if team_id == kickoff_team_id else KICKOFF_RIVAL_HALF_GAP
-	if team_id == 0:
-		position.x = minf(position.x, center.x - gap)
-	else:
-		position.x = maxf(position.x, center.x + gap)
-	return position
+	match player.squad_index:
+		0:
+			return player.home_position
+		1:
+			return Vector2(center.x + side * 390.0, center.y - 170.0)
+		2:
+			return Vector2(center.x + side * (gap + 80.0), center.y)
+		3:
+			return Vector2(center.x + side * (gap + 230.0), center.y + 180.0)
+		4:
+			return Vector2(center.x + side * gap, center.y - 150.0)
+	return player.home_position
 
 func _prepare_kickoff(team_id: int, is_initial: bool) -> void:
 	_cancel_shot_charge()
@@ -854,6 +861,9 @@ func debug_3d_animated_players() -> int:
 
 func debug_sync_presentation() -> void:
 	_update_3d_presentation(0.0)
+
+func debug_refresh_hud() -> void:
+	_refresh_hud()
 
 func debug_try_tackle(player: Footballer) -> bool:
 	return _try_tackle(player)
