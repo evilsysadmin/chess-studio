@@ -108,6 +108,12 @@ func _initialize() -> void:
 	assert(match_node.debug_set_piece_kind() == "SAQUE DE BANDA")
 	assert(match_node.debug_set_piece_team() == 1)
 	assert(match_node.ball.carrier != null and match_node.ball.carrier.team_id == 1)
+	var throw_options := 0
+	for teammate in match_node.teams[1]:
+		if teammate != match_node.ball.carrier and teammate.role != "keeper":
+			if teammate.global_position.distance_to(match_node.ball.global_position) < 320.0:
+				throw_options += 1
+	assert(throw_options >= 2)
 	match_node.debug_force_set_piece_ready()
 	assert(not match_node.debug_set_piece_active())
 	assert(match_node.ball.carrier == null)
@@ -124,6 +130,13 @@ func _initialize() -> void:
 	assert(match_node.debug_set_piece_active())
 	assert(match_node.debug_set_piece_kind() == "CÓRNER")
 	assert(match_node.debug_set_piece_team() == 0)
+	var attackers_in_box_zone := 0
+	var corner_target := ChessFootballMath.goal_center(0)
+	for attacker in match_node.teams[0]:
+		if attacker != match_node.ball.carrier and attacker.role != "keeper":
+			if attacker.global_position.distance_to(corner_target) < 240.0:
+				attackers_in_box_zone += 1
+	assert(attackers_in_box_zone >= 3)
 	match_node.debug_force_set_piece_ready()
 	assert(not match_node.debug_set_piece_active())
 	assert(match_node.ball.carrier == null)
