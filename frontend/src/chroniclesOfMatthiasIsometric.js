@@ -771,6 +771,7 @@ export function createChroniclesIsometricRenderer(host, {
   let visible = document.visibilityState !== 'hidden';
   let frame = 0;
   const clock = new THREE.Clock();
+  let previousFrameTime = 0;
   const desiredParty = initialFocus.clone();
   const desiredFocus = initialFocus.clone();
   const raycaster = new THREE.Raycaster();
@@ -971,10 +972,18 @@ export function createChroniclesIsometricRenderer(host, {
     frame = requestAnimationFrame(render);
     if (!visible) return;
     const time = clock.getElapsedTime();
+    const deltaSeconds = previousFrameTime > 0
+      ? Math.max(1 / 240, Math.min(0.1, time - previousFrameTime))
+      : 1 / 60;
+    previousFrameTime = time;
 
     if (!reducedMotion) {
       tickChroniclesExplorationParty(party, {
-        desiredParty, partyFormation: latestSceneModel?.partyFormation, time, host,
+        desiredParty,
+        partyFormation: latestSceneModel?.partyFormation,
+        time,
+        deltaSeconds,
+        host,
       });
       enemies.forEach((model, id) => {
         if (!model.visible || !model.userData.chroniclesIsoTarget) return;
