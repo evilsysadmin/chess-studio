@@ -10,6 +10,8 @@ from dataclasses import dataclass, fields
 from pathlib import PurePosixPath
 from typing import Iterable
 
+from browser_quality_scope import SPECIALIZED_E2E_SPEC_PATHS
+
 CORE_E2E_LANES = (
     "regression-state", "regression-school", "learning-golden", "learning-observation",
     "app-boot", "admin", "tournament", "combat", "home", "smoke",
@@ -209,7 +211,18 @@ ADMIN_BROWSER_RE = re.compile(
 AUDIO_APP_BOOT_RE = re.compile(
     r"^frontend/src/(?:ambient[^/]*|audio[^/]*|orchestral[^/]*|sound[^/]*|useAuthenticatedAudio)\.js$"
 )
-TOURNAMENT_BROWSER_RE = re.compile(r"^frontend/src/tournament\.js$")
+TOURNAMENT_BROWSER_RE = re.compile(
+    r"^frontend/src/tournament\.js$|"
+    r"^frontend/src/components/TournamentScreen\.jsx$"
+)
+PVP_CORE_RE = re.compile(
+    r"^frontend/src/components/(?:PvpAppSurface|PvpGameScreen|PvpHandoffModal|PvPLobbyModal)\.(?:js|jsx)$|"
+    r"^frontend/src/(?:pvpApi|pvpGameModel|usePvpAppFlow|usePvpRosterPresence)\.js$"
+)
+MATTHIAS_CORE_RE = re.compile(
+    r"^frontend/src/components/(?:Matthias|matthias|InsightsMatthias)[^/]*\.(?:js|jsx)$|"
+    r"^frontend/src/matthias[^/]*\.js$"
+)
 QUICK_2D_CORE_RE = re.compile(r"^frontend/src/components/(?:QuickMatchModal|Board2D)\.jsx$")
 NETWORK_RACE_CORE_RE = re.compile(r"^frontend/src/(?:useGameReconnect|gameReconnect|gameMutationCoordinator)\.js$")
 CHRONICLES_CORE_RE = re.compile(
@@ -369,6 +382,11 @@ def classify(paths: Iterable[str]) -> Scope:
                 _enable_core_e2e(scope, ("app-boot",))
             elif MATTHIAS_SCHOOL_RE.search(path):
                 _enable_core_e2e(scope, ("regression-school",))
+            elif PVP_CORE_RE.search(path) or MATTHIAS_CORE_RE.search(path):
+                # These surfaces already own focused required browser canaries
+                # through browser_quality_scope.py. Keep only a cheap app boot
+                # from the core matrix instead of paying unrelated journeys.
+                _enable_core_e2e(scope, ("app-boot",))
             elif COMBAT_DOMAIN_RE.search(path) or COMBAT_COMPONENT_RE.search(path):
                 _enable_core_e2e(scope, ("combat",))
             elif HOME_BROWSER_RE.search(path):
@@ -394,6 +412,11 @@ def classify(paths: Iterable[str]) -> Scope:
                     setattr(scope, field_name, True)
             elif path in TARGETED_E2E:
                 setattr(scope, TARGETED_E2E[path], True)
+            elif path in SPECIALIZED_E2E_SPEC_PATHS:
+                # A focused required-browser lane already owns this spec.
+                # Do not also fan it out into every core journey. Unknown E2E
+                # files still fall through to the fail-closed full core below.
+                continue
             elif path in CORE_E2E_SPEC_LANES:
                 _enable_core_e2e(scope, CORE_E2E_SPEC_LANES[path])
             else:
@@ -440,7 +463,11 @@ def self_test() -> None:
         _expect_core([audio_path], lanes=("app-boot",), run_frontend=True)
     _expect_core(["frontend/src/sound.js", "frontend/src/App.jsx"], run_frontend=True)
     _expect_core(["frontend/src/tournament.js"], lanes=("tournament",), run_frontend=True)
+    _expect_core(["frontend/src/components/TournamentScreen.jsx"], lanes=("tournament",), run_frontend=True)
     _expect_core(["frontend/src/tournament.js", "frontend/src/App.jsx"], run_frontend=True)
+    _expect_core(["frontend/src/components/PvpAppSurface.jsx"], lanes=("app-boot",), run_frontend=True)
+    _expect_core(["frontend/src/components/PvPLobbyModal.jsx"], lanes=("app-boot",), run_frontend=True)
+    _expect_core(["frontend/src/components/InsightsMatthiasMotion.jsx"], lanes=("app-boot",), run_frontend=True)
     _expect_core(["frontend/src/components/QuickMatchModal.jsx"], lanes=("app-boot",), run_frontend=True)
     _expect_core(["frontend/src/components/Board2D.jsx"], lanes=("app-boot",), run_frontend=True)
     _expect_core(["frontend/src/components/QuickMatchModal.jsx", "frontend/src/App.jsx"], run_frontend=True)
@@ -564,6 +591,18 @@ def self_test() -> None:
     _expect_core(["e2e/learning-golden-path.spec.js"], lanes=("learning-golden",))
     _expect_core(["e2e/learning-second-observation.spec.js"], lanes=("learning-observation",))
     _expect_core(["e2e/smoke.spec.js"], lanes=("smoke",))
+    _expect(["e2e/chronicles-of-matthias-tactics.spec.js"])
+    _expect(["e2e/mobile-tournament-ux.spec.js"])
+    _expect(["e2e/war-room-pvp.spec.js"])
+    _expect(["e2e/quick-match-2d.spec.js"])
+    _expect_core(
+        [
+            "e2e/chronicles-of-matthias-tactics.spec.js",
+            "frontend/src/chroniclesTacticsTurnMode.js",
+        ],
+        lanes=("app-boot",),
+        run_frontend=True,
+    )
     _expect_core(["e2e/new-critical-journey.spec.js"])
     _expect(["infra/cloudflare/main.tf"], run_security=True)
     _expect(["infra/oci/staging/main.tf"], run_security=True)
@@ -625,7 +664,7 @@ def self_test() -> None:
     else:
         raise AssertionError("quality_scope debe rechazar rutas fuera del repo")
 
-    print("quality-scope self-test OK · Chronicles/reconnect/Quick2D usan core mínimo; superficies transversales siguen fail-closed")
+    print("quality-scope self-test OK · specialized E2E no duplica core; superficies transversales siguen fail-closed")
 
 
 def main() -> int:
