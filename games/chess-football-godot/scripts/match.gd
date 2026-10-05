@@ -723,6 +723,8 @@ func _score_goal(team_id: int) -> void:
 		player.play_action("celebrate", GOAL_CELEBRATION_SECONDS)
 	for player in teams[1 - team_id]:
 		player.velocity = Vector2.ZERO
+	if ball.carrier != null:
+		ball.release(Vector2.ZERO, 0.0)
 	ball.velocity = Vector2.ZERO
 	ball.vertical_velocity = 0.0
 	goal_restart_active = true
