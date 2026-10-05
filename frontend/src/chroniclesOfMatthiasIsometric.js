@@ -974,9 +974,7 @@ export function createChroniclesIsometricRenderer(host, {
 
     if (!reducedMotion) {
       tickChroniclesExplorationParty(party, {
-        desiredParty,
-        partyFormation: latestSceneModel?.partyFormation,
-        time,
+        desiredParty, partyFormation: latestSceneModel?.partyFormation, time, host,
       });
       enemies.forEach((model, id) => {
         if (!model.visible || !model.userData.chroniclesIsoTarget) return;
