@@ -204,12 +204,12 @@ func _initialize() -> void:
 	tackler.global_position = Vector2(640.0, 500.0)
 	tackler.velocity = Vector2.RIGHT * tackler.base_speed
 
-	var forward_hitbox := match_node.debug_tackle_hitbox(tackler, Vector2(688.0, 522.0))
+	var forward_hitbox: Dictionary = match_node.debug_tackle_hitbox(tackler, Vector2(688.0, 522.0))
 	assert(bool(forward_hitbox["inside"]))
 	assert(float(forward_hitbox["lateral_distance"]) <= 27.0)
-	var behind_hitbox := match_node.debug_tackle_hitbox(tackler, Vector2(616.0, 500.0))
+	var behind_hitbox: Dictionary = match_node.debug_tackle_hitbox(tackler, Vector2(616.0, 500.0))
 	assert(not bool(behind_hitbox["inside"]))
-	var wide_hitbox := match_node.debug_tackle_hitbox(tackler, Vector2(676.0, 536.0))
+	var wide_hitbox: Dictionary = match_node.debug_tackle_hitbox(tackler, Vector2(676.0, 536.0))
 	assert(not bool(wide_hitbox["inside"]))
 
 	victim.global_position = Vector2(676.0, 514.0)
