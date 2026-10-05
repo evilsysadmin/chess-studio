@@ -137,6 +137,13 @@ function runtimeCheckpointFlags(state) {
     const memberId = shortStringOrNull(member?.id, 40);
     const hp = integerOrNull(member?.hp);
     if (memberId && hp !== null) flags[runtimeKey('party', memberId, 'hp')] = hp;
+    const position = memberId ? source.partyPositions?.[memberId] : null;
+    const partyX = integerOrNull(position?.x);
+    const partyY = integerOrNull(position?.y);
+    if (memberId && partyX !== null && partyY !== null) {
+      flags[runtimeKey('party', memberId, 'x')] = partyX;
+      flags[runtimeKey('party', memberId, 'y')] = partyY;
+    }
   });
 
   Object.entries(source.classAbilityCharges || {}).forEach(([memberId, rawCharges]) => {
@@ -207,6 +214,15 @@ function applyRuntimeCheckpoint(state, flags) {
       if (hp === null) return member;
       return { ...member, hp: Math.min(Math.max(0, hp), Math.max(0, Number(member.maxHp) || 0)) };
     });
+
+    const restoredPartyPositions = {};
+    next.party.forEach((member) => {
+      const partyX = integerOrNull(flags[runtimeKey('party', member.id, 'x')]);
+      const partyY = integerOrNull(flags[runtimeKey('party', member.id, 'y')]);
+      if (partyX === null || partyY === null || !validWalkablePosition(map, partyX, partyY)) return;
+      restoredPartyPositions[member.id] = { x: partyX, y: partyY };
+    });
+    if (Object.keys(restoredPartyPositions).length) next.partyPositions = restoredPartyPositions;
   }
 
   if (next.classAbilityCharges && typeof next.classAbilityCharges === 'object') {
