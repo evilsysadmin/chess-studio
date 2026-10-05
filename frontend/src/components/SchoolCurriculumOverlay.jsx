@@ -104,7 +104,9 @@ export default function SchoolCurriculumOverlay({
           <div>
             <span>ESCUELA DE MATTHIAS</span>
             <h2 id="matthias-school-curriculum-title">Plan de estudios</h2>
-            <p>{summary.completed}/{summary.total} lecciones · {summary.passedCourses}/{summary.totalCourses} cursos aprobados</p>
+            <p aria-label={`${summary.passedCourses} de ${summary.totalCourses} cursos aprobados; ${summary.completed} de ${summary.total} lecciones completadas`}>
+              {summary.completed}/{summary.total} lecciones · {summary.passedCourses}/{summary.totalCourses} cursos aprobados
+            </p>
           </div>
           <button
             type="button"
