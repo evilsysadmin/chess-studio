@@ -109,6 +109,24 @@ GO_AUTHORITY_PATHS = {
     "scripts/matthias_memory_writes_parity_corpus.py",
     "scripts/narrative_parity_corpus.py",
     "scripts/pawn_slug_parity_corpus.py",
+    "scripts/chronicles_area_parity_corpus.py",
+    "backend-python/chronicles_api.py",
+    "backend-python/chronicles_content_variation.py",
+    "backend-python/chronicles_difficulty.py",
+    "backend-python/chronicles_manifest_procedural.py",
+    "backend-python/chronicles_map_planner.py",
+    "backend-python/chronicles_topology_quality.py",
+    "backend-python/chronicles_entry_catalog.json",
+    "backend-python/chronicles_maps/ash-vault.json",
+    "backend-python/chronicles_maps/black-glass-chapel.json",
+    "backend-python/chronicles_maps/blind-king-archive.json",
+    "backend-python/chronicles_maps/chain-basilica.json",
+    "backend-python/chronicles_maps/crypt-eight-squares.json",
+    "backend-python/chronicles_maps/echo-cistern.json",
+    "backend-python/chronicles_maps/gallery-of-forks.json",
+    "backend-python/chronicles_maps/hollow-bell-tower.json",
+    "backend-python/chronicles_maps/iron-foundry.json",
+    "backend-python/chronicles_maps/menagerie-of-ash.json",
     "backend-python/pawn_slug_api.py",
     "backend-python/pawn_slug_manifests/pawn-slug-v1.json",
     "backend-python/narrative_cloudflare.py",
@@ -131,7 +149,7 @@ GO_AUTHORITY_PATHS = {
     "scripts/go_python_parity_check.sh",
 }
 GO_PARITY_FIXTURE_RE = re.compile(
-    r"^backend-go/internal/(?:residenteval|residentsearch|residentpolicy|gamecore|gameops|gamesapi|obshistory|profilestore|authcrypto|authguard|chroniclesmap|matthiasmem|narrative|pawnslug)/"
+    r"^backend-go/internal/(?:residenteval|residentsearch|residentpolicy|gamecore|gameops|gamesapi|obshistory|profilestore|authcrypto|authguard|chronicles|chroniclesmap|matthiasmem|narrative|pawnslug)/"
     r"testdata/python_[^/]*_corpus\.json$"
 )
 BROWSER_HARNESS_PATHS = {".github/actions/setup-browser-e2e/action.yml", "scripts/run_core_e2e_lane.py"}
