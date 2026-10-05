@@ -79,7 +79,7 @@ jobs:
           set -euo pipefail
           godot="$GITHUB_WORKSPACE/.godot-ci/$GODOT_VERSION/godot"
           log="$RUNNER_TEMP/chess-football-visual.log"
-          "$godot" --headless --path games/chess-football-godot --script res://tests/visual_capture.gd | tee "$log"
+          xvfb-run -a "$godot" --path games/chess-football-godot --script res://tests/visual_capture.gd | tee "$log"
           broadcast="$(sed -n 's/^VISUAL_CAPTURE_BROADCAST=//p' "$log" | tail -1)"
           tactical="$(sed -n 's/^VISUAL_CAPTURE_TACTICAL=//p' "$log" | tail -1)"
           test -n "$broadcast" && test -s "$broadcast"
