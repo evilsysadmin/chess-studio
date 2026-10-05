@@ -8,6 +8,7 @@ import {
   chroniclesRuntimeEnemyPosition,
 } from './chroniclesOfMatthiasTurns.js';
 import { chroniclesEnemySkillDetails } from './chronicles/chroniclesEnemyBuilds.js';
+import { chroniclesCurrentInitiativeActor } from './chronicles/chroniclesInitiative.js';
 import { chroniclesMapForState } from './chronicles/chroniclesMapCatalog.js';
 import {
   chroniclesApplyContentAction,
@@ -194,8 +195,12 @@ function rewardEnemyDefeat(state, enemy, attacker) {
   });
 }
 
-function actionAllowed(state) {
-  return Boolean(state && state.turnPhase !== 'enemy' && state.phase !== 'defeated' && state.phase !== 'escaped');
+function actionAllowed(state, memberId = null) {
+  if (!state || state.phase === 'defeated' || state.phase === 'escaped') return false;
+  const actor = chroniclesCurrentInitiativeActor(state.initiative);
+  if (!actor) return state.turnPhase !== 'enemy';
+  if (actor.kind !== 'party') return false;
+  return memberId ? actor.id === memberId : true;
 }
 
 function rpgModifiers(state, memberId) {
@@ -315,7 +320,7 @@ export function chroniclesTacticsLegalMoves(state) {
 }
 
 export function chroniclesTacticsTargets(state, memberId) {
-  if (!actionAllowed(state)) return [];
+  if (!actionAllowed(state, memberId)) return [];
   const member = memberFor(state, memberId);
   if (!member || member.hp <= 0) return [];
   const profile = chroniclesTacticsProfile(memberId);
@@ -355,7 +360,7 @@ export function chroniclesTacticsAbilityStatus(state, memberId) {
   const profile = chroniclesTacticsEffectiveProfile(state, memberId);
   const member = memberFor(state, memberId);
   const charges = abilityCharges(state, memberId);
-  if (!actionAllowed(state) || !member || member.hp <= 0) {
+  if (!actionAllowed(state, memberId) || !member || member.hp <= 0) {
     return { ready: false, charges, abilityName: profile.abilityName, reason: 'No disponible' };
   }
   if (charges <= 0) {
@@ -479,12 +484,12 @@ export function chroniclesTacticsFinishTurn(state) {
 }
 
 export function chroniclesTacticsWait(state, memberId) {
-  if (!actionAllowed(state)) return state;
+  if (!actionAllowed(state, memberId)) return state;
   const member = memberFor(state, memberId);
   const next = {
     ...state,
     turns: Number(state.turns || 0) + 1,
     message: `${member?.name || 'La compañía'} mantiene posición. El enemigo aprovecha la cortesía.`,
   };
-  return chroniclesTacticsFinishTurn(next);
+  return state.initiative?.order?.length ? next : chroniclesTacticsFinishTurn(next);
 }
