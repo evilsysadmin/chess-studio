@@ -105,16 +105,23 @@ export function chroniclesProjectSceneModel(
   if (!state || typeof state !== 'object') throw new Error('Chronicles scene projection requires state');
 
   const scenePlan = chroniclesIsometricScenePlan(state);
-  const footprint = chroniclesPartyGridFootprint(state);
+  const combatFormation = Boolean(state?.initiative?.order?.length || state?.phase === 'combat');
+  const footprint = combatFormation ? chroniclesPartyGridFootprint(state) : {};
   const content = chroniclesContentVisualStates(state);
-  const party = Object.freeze((state.party || []).map((member) => Object.freeze({
-    id: member.id,
-    visible: Number(member.hp || 0) > 0 && Boolean(footprint[member.id]),
-    hpRatio: Math.max(0, Math.min(1, Number(member.maxHp || 0) > 0
-      ? Number(member.hp || 0) / Number(member.maxHp)
-      : 0)),
-    cell: point(footprint[member.id]),
-  })));
+  const party = Object.freeze((state.party || []).map((member) => {
+    const alive = Number(member.hp || 0) > 0;
+    const cell = combatFormation
+      ? point(footprint[member.id])
+      : point({ x: Number(state.x), y: Number(state.y) });
+    return Object.freeze({
+      id: member.id,
+      visible: alive && Boolean(cell),
+      hpRatio: Math.max(0, Math.min(1, Number(member.maxHp || 0) > 0
+        ? Number(member.hp || 0) / Number(member.maxHp)
+        : 0)),
+      cell,
+    });
+  }));
 
   const enemies = Object.freeze(chroniclesEnemyRenderRoster(state).map((entry) => {
     const definition = entry.definition;
@@ -135,6 +142,7 @@ export function chroniclesProjectSceneModel(
     mapId: state.mapId,
     scenePlan,
     focusCell: Object.freeze({ x: Number(state.x), y: Number(state.y) }),
+    partyFormation: combatFormation ? 'combat-grid' : 'explore-compact',
     selectedMemberId: selectedMemberId || 'matthias',
     party,
     enemies,
