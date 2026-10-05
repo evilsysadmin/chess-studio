@@ -103,11 +103,19 @@ test('Chronicles Tactics · arranca como RPG táctico isométrico con combate po
   // deliberately safe on the canonical crypt spawn, so this canary verifies
   // movement without coupling the assertion to enemy AI timing.
   const narrator = mode.locator('.chronicles-tactics__narrator p');
+  const rendererHost = mode.locator('[data-chronicles-tactics-renderer="three"]');
   const moveNorth = mode.getByRole('button', { name: 'Mover al norte', exact: true });
   await expect(narrator).toBeVisible();
   await expect(moveNorth).toBeEnabled();
-  await moveNorth.evaluate((button) => button.click());
+
+  // Exploration is real-time: holding a direction starts continuous locomotion
+  // and a visible walking gait. Releasing the key lets the renderer settle.
+  await page.keyboard.down('ArrowUp');
+  await expect(rendererHost).toHaveAttribute('data-chronicles-party-motion', 'walking');
+  await page.waitForTimeout(60);
+  await page.keyboard.up('ArrowUp');
   await expect(narrator).toContainText(/La compañía avanza hacia norte/i);
+  await expect(rendererHost).toHaveAttribute('data-chronicles-party-motion', 'idle', { timeout: 2_000 });
 
   // Fresh Tactics runs deliberately keep roaming enemies away from the spawn
   // so exploration exists before contact. Walk through that safe opening instead
