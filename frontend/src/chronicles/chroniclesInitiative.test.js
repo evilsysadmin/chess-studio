@@ -173,6 +173,7 @@ describe('Chronicles initiative', () => {
     };
     const next = chroniclesAdvanceCombatInitiative(state, [{ id: 'enemy', hpKey: 'enemyHp' }]);
     expect(next.phase).toBe('explore');
+    expect(next.turnPhase).toBe('party');
     expect(next.initiative).toBeNull();
   });
 
