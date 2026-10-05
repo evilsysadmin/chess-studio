@@ -16,6 +16,7 @@ import (
 	"io"
 	"math"
 	"math/big"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -369,4 +370,55 @@ func writeString(b *strings.Builder, s string) {
 		i += size
 	}
 	b.WriteByte('"')
+}
+
+// EncodeSorted is json.dumps(value, ensure_ascii=False, sort_keys=True,
+// allow_nan=False): compact separators (",", ":") or, with spaced, the
+// default (", ", ": ").
+func EncodeSorted(value any, spaced bool) ([]byte, error) {
+	var b strings.Builder
+	itemSep, keySep := ",", ":"
+	if spaced {
+		itemSep, keySep = ", ", ": "
+	}
+	if err := encodeSorted(&b, value, itemSep, keySep); err != nil {
+		return nil, err
+	}
+	return []byte(b.String()), nil
+}
+
+func encodeSorted(b *strings.Builder, value any, itemSep, keySep string) error {
+	switch v := value.(type) {
+	case bson.D:
+		sorted := append(bson.D(nil), v...)
+		sort.SliceStable(sorted, func(i, j int) bool { return sorted[i].Key < sorted[j].Key })
+		b.WriteByte('{')
+		for i, e := range sorted {
+			if i > 0 {
+				b.WriteString(itemSep)
+			}
+			writeString(b, e.Key)
+			b.WriteString(keySep)
+			if err := encodeSorted(b, e.Value, itemSep, keySep); err != nil {
+				return err
+			}
+		}
+		b.WriteByte('}')
+	case bson.A:
+		b.WriteByte('[')
+		for i, item := range v {
+			if i > 0 {
+				b.WriteString(itemSep)
+			}
+			if err := encodeSorted(b, item, itemSep, keySep); err != nil {
+				return err
+			}
+		}
+		b.WriteByte(']')
+	case []any:
+		return encodeSorted(b, bson.A(v), itemSep, keySep)
+	default:
+		return encode(b, value)
+	}
+	return nil
 }
