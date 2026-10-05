@@ -731,6 +731,8 @@ func _select_player(player: Footballer) -> void:
 func _check_goal() -> void:
 	if not ChessFootballMath.in_goal_mouth(ball.global_position):
 		return
+	if not ChessFootballMath.ball_fits_under_crossbar(ball.flight_height):
+		return
 	if ball.global_position.x > ChessFootballMath.PITCH_RECT.end.x + 8.0:
 		_score_goal(0)
 	elif ball.global_position.x < ChessFootballMath.PITCH_RECT.position.x - 8.0:
@@ -941,6 +943,9 @@ func debug_force_kickoff_ready() -> void:
 
 func debug_score_goal(team_id: int) -> void:
 	_score_goal(team_id)
+
+func debug_check_goal() -> void:
+	_check_goal()
 
 func debug_shot_power_for_ratio(ratio: float) -> float:
 	return _shot_power_from_ratio(ratio)
