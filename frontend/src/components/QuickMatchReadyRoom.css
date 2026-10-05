@@ -210,7 +210,6 @@
 }
 
 .friendly-modal.quick-match-ready-room[aria-label='Configurar partida rápida'] .quick-match-ready-room__settings {
-  position: relative;
   margin: .35rem 0 0;
   border: 0;
   background: transparent;
@@ -223,6 +222,10 @@
   color: rgba(230, 209, 171, .68);
   font-size: .72rem;
   text-align: center;
+}
+
+.friendly-modal.quick-match-ready-room[aria-label='Configurar partida rápida'] .quick-match-ready-room__settings[open] {
+  z-index: 20;
 }
 
 .friendly-modal.quick-match-ready-room[aria-label='Configurar partida rápida'] .quick-match-ready-room__settings[open] > summary {
