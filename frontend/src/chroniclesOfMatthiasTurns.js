@@ -4,8 +4,12 @@ import {
   chroniclesEnemyPosition,
   chroniclesTileAt,
 } from './chroniclesOfMatthias.js';
+import {
+  chroniclesLivingPartyPositions,
+  chroniclesPartyCellOccupied,
+} from './chroniclesPartyFootprint.js';
 
-export const CHRONICLES_TURN_ENGINE_VERSION = 'map-ai-v5';
+export const CHRONICLES_TURN_ENGINE_VERSION = 'map-ai-v6';
 
 const KNIGHT_STEPS = Object.freeze([
   Object.freeze({ dx: -2, dy: -1 }), Object.freeze({ dx: -2, dy: 1 }),
@@ -41,7 +45,7 @@ function occupiedByEnemy(state, position, ignoredEnemyId) {
 
 function canOccupy(state, enemy, position) {
   if (!walkable(state, position)) return false;
-  if (sameCell(position, state)) return false;
+  if (chroniclesPartyCellOccupied(state, position)) return false;
   return !occupiedByEnemy(state, position, enemy.id);
 }
 
@@ -59,9 +63,17 @@ function lineIsClear(state, from, to) {
   return true;
 }
 
-export function chroniclesEnemyCanAttackParty(state, enemy, position = chroniclesRuntimeEnemyPosition(state, enemy)) {
+function livingPartyTargetsWithPositions(state) {
+  const positions = new Map(
+    chroniclesLivingPartyPositions(state).map(({ memberId, position }) => [memberId, position]),
+  );
+  return (state?.party || [])
+    .filter((member) => Number(member.hp || 0) > 0 && positions.has(member.id))
+    .map((member) => ({ member, position: positions.get(member.id) }));
+}
+
+function enemyCanAttackCell(state, enemy, position, partyPosition) {
   const reach = Math.max(1, Number(enemy.ai?.attackReach ?? enemy.retaliationReach ?? 1));
-  const partyPosition = { x: state.x, y: state.y };
   const separation = distance(position, partyPosition);
   if (separation < 1 || separation > reach) return false;
   if (reach === 1) return separation === 1;
@@ -69,24 +81,45 @@ export function chroniclesEnemyCanAttackParty(state, enemy, position = chronicle
   return enemy.ai?.requiresLineOfSight === false ? true : lineIsClear(state, position, partyPosition);
 }
 
-function candidateScore(position, partyPosition, index) {
-  return distance(position, partyPosition) * 100 + index;
+export function chroniclesEnemyAttackTarget(state, enemy, position = chroniclesRuntimeEnemyPosition(state, enemy)) {
+  return livingPartyTargetsWithPositions(state)
+    .filter((target) => enemyCanAttackCell(state, enemy, position, target.position))
+    .sort((left, right) => (
+      distance(position, left.position) - distance(position, right.position)
+      || (left.member.row === 'front' ? 0 : 1) - (right.member.row === 'front' ? 0 : 1)
+      || left.member.id.localeCompare(right.member.id)
+    ))[0]?.member || null;
+}
+
+export function chroniclesEnemyCanAttackParty(state, enemy, position = chroniclesRuntimeEnemyPosition(state, enemy)) {
+  return Boolean(chroniclesEnemyAttackTarget(state, enemy, position));
+}
+
+function partyTargetPositions(state) {
+  return livingPartyTargetsWithPositions(state).map(({ position }) => position);
+}
+
+function candidateScore(position, targets, index) {
+  const nearest = targets.length
+    ? Math.min(...targets.map((target) => distance(position, target)))
+    : 999;
+  return nearest * 100 + index;
 }
 
 function chooseCardinalStep(state, enemy, from) {
-  const partyPosition = { x: state.x, y: state.y };
+  const targets = partyTargetPositions(state);
   return CHRONICLES_DIRECTIONS
     .map((step, index) => ({ x: from.x + step.dx, y: from.y + step.dy, index }))
     .filter((position) => canOccupy(state, enemy, position))
-    .sort((left, right) => candidateScore(left, partyPosition, left.index) - candidateScore(right, partyPosition, right.index))[0] || null;
+    .sort((left, right) => candidateScore(left, targets, left.index) - candidateScore(right, targets, right.index))[0] || null;
 }
 
 function chooseKnightStep(state, enemy, from) {
-  const partyPosition = { x: state.x, y: state.y };
+  const targets = partyTargetPositions(state);
   return KNIGHT_STEPS
     .map((step, index) => ({ x: from.x + step.dx, y: from.y + step.dy, index }))
     .filter((position) => canOccupy(state, enemy, position))
-    .sort((left, right) => candidateScore(left, partyPosition, left.index) - candidateScore(right, partyPosition, right.index))[0] || null;
+    .sort((left, right) => candidateScore(left, targets, left.index) - candidateScore(right, targets, right.index))[0] || null;
 }
 
 function choosePatrolRouteStep(state, enemy, from) {
@@ -118,8 +151,11 @@ function enemyMovementForDistance(state, enemy, from) {
   const engagedMovement = enemy.ai?.engagedMovement;
   const engageRange = Number(enemy.ai?.engageRange);
   if (!engagedMovement || !Number.isFinite(engageRange) || engageRange < 1) return movement;
-  const partyPosition = { x: state.x, y: state.y };
-  return distance(from, partyPosition) <= engageRange ? engagedMovement : movement;
+  const targets = partyTargetPositions(state);
+  const nearestDistance = targets.length
+    ? Math.min(...targets.map((target) => distance(from, target)))
+    : Infinity;
+  return nearestDistance <= engageRange ? engagedMovement : movement;
 }
 
 export function chroniclesChooseEnemyStep(state, enemy) {
@@ -132,17 +168,8 @@ export function chroniclesChooseEnemyStep(state, enemy) {
   return chooseCardinalStep(state, enemy, from);
 }
 
-function livingPartyTargets(state) {
-  const living = state.party.filter((member) => member.hp > 0);
-  const front = living.filter((member) => member.row === 'front');
-  return front.length ? front : living;
-}
-
-function choosePartyTarget(state, enemyIndex) {
-  const candidates = livingPartyTargets(state);
-  if (!candidates.length) return null;
-  const round = Number(state.round || 0);
-  return candidates[(round + enemyIndex) % candidates.length];
+function choosePartyTarget(state, enemy, position) {
+  return chroniclesEnemyAttackTarget(state, enemy, position);
 }
 
 function appendDownJournal(state, member) {
@@ -160,8 +187,9 @@ function appendDownJournal(state, member) {
   };
 }
 
-function damageParty(state, enemy, enemyIndex, events) {
-  const target = choosePartyTarget(state, enemyIndex);
+function damageParty(state, enemy, enemyIndex, events, target = null) {
+  const enemyPosition = chroniclesRuntimeEnemyPosition(state, enemy);
+  target = target || choosePartyTarget(state, enemy, enemyPosition);
   if (!target) return state;
   const damage = Math.max(1, Number(enemy.retaliation || 1));
   const previousHp = target.hp;
@@ -214,8 +242,9 @@ export function chroniclesResolveEnemyActor(state, enemyId) {
   const events = [];
   let next = { ...state, turnPhase: 'enemy', enemyTurnEvents: events };
   const position = chroniclesRuntimeEnemyPosition(next, enemy);
-  if (chroniclesEnemyCanAttackParty(next, enemy, position)) {
-    next = damageParty(next, enemy, enemyIndex, events);
+  const target = chroniclesEnemyAttackTarget(next, enemy, position);
+  if (target) {
+    next = damageParty(next, enemy, enemyIndex, events, target);
   } else {
     next = moveEnemy(next, enemy, chroniclesChooseEnemyStep(next, enemy), events);
   }
@@ -251,8 +280,9 @@ export function chroniclesResolveEnemyTurn(state) {
   activeEnemies.forEach((enemy, enemyIndex) => {
     if (partyDefeated(next)) return;
     const position = chroniclesRuntimeEnemyPosition(next, enemy);
-    if (chroniclesEnemyCanAttackParty(next, enemy, position)) {
-      next = damageParty(next, enemy, enemyIndex, events);
+    const target = chroniclesEnemyAttackTarget(next, enemy, position);
+    if (target) {
+      next = damageParty(next, enemy, enemyIndex, events, target);
       return;
     }
     next = moveEnemy(next, enemy, chroniclesChooseEnemyStep(next, enemy), events);
@@ -286,7 +316,7 @@ export function chroniclesEnemyThreatCells(
       const cell = { x: position.x + dx, y: position.y + dy };
       const tile = chroniclesTileAt(cell.x, cell.y, state);
       if (tile === '#' || tile === 'X') continue;
-      if (chroniclesEnemyCanAttackParty({ ...state, x: cell.x, y: cell.y }, enemy, position)) cells.push(cell);
+      if (enemyCanAttackCell(state, enemy, position, cell)) cells.push(cell);
     }
   }
   return cells;
