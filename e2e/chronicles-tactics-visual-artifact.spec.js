@@ -247,11 +247,20 @@ for (const capture of CAPTURES) {
       // action into a safe canonical cell, assert the resulting runtime message,
       // then capture the post-movement WebGL state for human inspection.
       const narrator = mode.locator('.chronicles-tactics__narrator p');
+      const rendererHost = mode.locator('[data-chronicles-tactics-renderer="three"]');
       const moveNorth = mode.getByRole('button', { name: 'Mover al norte', exact: true });
       await expect(moveNorth).toBeEnabled();
-      await moveNorth.evaluate((button) => button.click());
+      await page.keyboard.down('ArrowUp');
+      await expect(rendererHost).toHaveAttribute('data-chronicles-party-motion', 'walking');
+      await page.waitForTimeout(55);
+      await page.keyboard.up('ArrowUp');
       await expect(narrator).toContainText(/La compañía avanza hacia norte/i);
-      await page.waitForTimeout(180);
+      await captureElement(
+        page,
+        viewport,
+        `${ARTIFACT_DIR}/chronicles-tactics-walking-${capture.label}.png`,
+      );
+      await expect(rendererHost).toHaveAttribute('data-chronicles-party-motion', 'idle', { timeout: 2_000 });
       const movementMessage = ((await narrator.textContent()) || '').trim();
       await captureElement(page, viewport, `${ARTIFACT_DIR}/chronicles-tactics-moved-${capture.label}.png`);
 
@@ -293,6 +302,7 @@ for (const capture of CAPTURES) {
             movedNorth: true,
             message: movementMessage,
             safeExplorationBeforeCombat: true,
+            continuousWalkCaptured: true,
             combatGridCaptured: true,
           },
         }, null, 2)}\n`,
