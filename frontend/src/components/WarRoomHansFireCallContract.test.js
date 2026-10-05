@@ -10,11 +10,13 @@ import {
   MATTHIAS_FIRE_EPILOGUE_LINE,
   hansBoardPeekHoldsMovement,
   hansBoardPeekPointReached,
+  hansInitialReplyPointReached,
   projectHansFireReplyAnchor,
   projectHansInitialReplyAnchor,
   resolveHansFireOpeningLatch,
   shouldStartHansBoardPeek,
   shouldStartHansFireEpilogue,
+  shouldStartHansLeavingGrumble,
 } from './WarRoomHansFireCallContract.js';
 import {
   HANS_BOARD_PEEK_MAX_APPROACH_DISTANCE,
@@ -30,6 +32,61 @@ describe('War Room Hans fire call contract', () => {
     expect(fireCallPhase(MATTHIAS_FIRE_CALL_MS - 1, true)).toBe('matthias');
     expect(fireCallPhase(MATTHIAS_FIRE_CALL_MS + 1, false)).toBe('await-hans');
     expect(fireCallPhase(MATTHIAS_FIRE_CALL_MS + 1, true)).toBe('hans');
+  });
+
+  it('desacopla la respuesta inicial de la geometría absoluta de V1', () => {
+    expect(hansInitialReplyPointReached({
+      hansScreen: 'onscreen',
+      route: 'entry',
+      logicalX: 2.4,
+    })).toBe(false);
+    expect(hansInitialReplyPointReached({
+      hansScreen: 'onscreen',
+      route: 'entry',
+      logicalX: 1.8,
+    })).toBe(true);
+
+    // V3 starts around logical X 8.3. Once the authored stage reports Hans
+    // genuinely onscreen on its entry route, the reply must not wait until he
+    // has crossed almost the whole room to satisfy V1's 1.82 threshold.
+    expect(hansInitialReplyPointReached({
+      hansScreen: 'onscreen',
+      route: 'stage-entry',
+      logicalX: 8.3,
+    })).toBe(true);
+    expect(hansInitialReplyPointReached({
+      hansScreen: 'edge',
+      route: 'stage-entry',
+      logicalX: 8.3,
+    })).toBe(false);
+    expect(hansInitialReplyPointReached({
+      hansScreen: 'onscreen',
+      route: 'stage-leave',
+      logicalX: 1.2,
+    })).toBe(false);
+  });
+
+  it('liga el refunfuño de salas authored a la apertura real de su puerta', () => {
+    expect(shouldStartHansLeavingGrumble({
+      phase: 'await-exit',
+      route: 'leave-door',
+    })).toBe(true);
+    expect(shouldStartHansLeavingGrumble({
+      phase: 'await-exit',
+      route: 'stage-leave',
+      doorOpen: 0,
+    })).toBe(false);
+    expect(shouldStartHansLeavingGrumble({
+      phase: 'await-exit',
+      route: 'stage-leave',
+      doorOpen: 0.01,
+    })).toBe(true);
+    expect(shouldStartHansLeavingGrumble({
+      phase: 'await-exit',
+      route: 'stage-leave',
+      doorOpen: 1,
+      alreadyPlayed: true,
+    })).toBe(false);
   });
 
   it('suelta la sugerencia al terminar el fuego antes de que Hans llegue al bypass de la armadura', () => {
