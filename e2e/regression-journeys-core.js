@@ -473,6 +473,7 @@ test('Escuela de Matthias · estudio libre abre material experto sin falsear la 
   await expect(page.getByRole('button', { name: 'Estudio libre', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await expect(finales).toBeEnabled();
   await finales.click();
+  await page.getByRole('button', { name: /El rey va delante/ }).click();
   await expect(page.getByRole('heading', { name: 'El rey va delante', exact: true })).toBeVisible();
 
   await clickBoardMove(page, 'e5', 'f6');
@@ -480,8 +481,9 @@ test('Escuela de Matthias · estudio libre abre material experto sin falsear la 
 
   await page.getByRole('button', { name: 'Plan de estudios', exact: true }).click();
   await page.getByRole('button', { name: 'Ruta guiada', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'El peón avanza', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: /Finales/ })).toBeDisabled();
+  await page.getByRole('button', { name: 'Cerrar plan de estudios', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'El peón avanza', exact: true })).toBeVisible();
 });
 
 test('Escuela de Matthias · el examen básico bloquea la promoción hasta aprobar', async ({ page }) => {
@@ -502,12 +504,15 @@ test('Escuela de Matthias · el examen básico bloquea la promoción hasta aprob
 
   await expect(page.getByRole('heading', { name: 'Examen básico · mate en una', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Plan de estudios', exact: true }).click();
-  const basicMedium = page.getByRole('button', { name: /Básico-medio.*Bloqueado/i });
+  let basicMedium = page.getByRole('button', { name: /Básico-medio.*Bloqueado/i });
   await expect(basicMedium).toBeDisabled();
+  await page.getByRole('button', { name: 'Cerrar plan de estudios', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Dame una pista', exact: true })).toHaveCount(0);
 
   await clickBoardMove(page, 'f7', 'g7');
   await expect(page.getByText('✓ aprobado', { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Básico-medio.*0\/4/i })).toBeEnabled();
+  await page.getByRole('button', { name: 'Plan de estudios', exact: true }).click();
+  basicMedium = page.getByRole('button', { name: /Básico-medio.*0\/4/i });
+  await expect(basicMedium).toBeEnabled();
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('chess-study-matthias-school-v1') || '{}')['mate-one']?.completed)).toBe(true);
 });
