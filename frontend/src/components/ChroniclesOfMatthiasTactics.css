@@ -64,6 +64,65 @@
   border-color: rgba(231, 190, 109, .62);
 }
 
+.chronicles-tactics__game-menu {
+  position: relative;
+  z-index: 30;
+}
+.chronicles-tactics__game-menu > summary {
+  list-style: none;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  border: 1px solid rgba(199, 154, 75, .3);
+  border-radius: 2px;
+  cursor: pointer;
+  color: #cdb98f;
+  background: linear-gradient(180deg, rgba(67, 49, 31, .88), rgba(29, 21, 15, .95));
+  font-size: .7rem;
+  user-select: none;
+}
+.chronicles-tactics__game-menu > summary::-webkit-details-marker { display: none; }
+.chronicles-tactics__game-menu > summary:hover,
+.chronicles-tactics__game-menu > summary:focus-visible {
+  color: #f4dfb7;
+  border-color: rgba(231, 190, 109, .62);
+  outline: none;
+}
+.chronicles-tactics__game-menu-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: min(270px, calc(100vw - 24px));
+  padding: 12px;
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(221, 174, 100, .42);
+  background: rgba(12, 9, 7, .97);
+  box-shadow: 0 18px 54px rgba(0, 0, 0, .58);
+  backdrop-filter: blur(10px);
+}
+.chronicles-tactics__game-menu-panel strong {
+  color: #ead3aa;
+  font-size: .95rem;
+}
+.chronicles-tactics__game-menu-panel small {
+  color: #9f907b;
+}
+.chronicles-tactics__game-menu-panel button {
+  min-height: 42px;
+  border: 1px solid rgba(197, 135, 77, .48);
+  background: linear-gradient(180deg, rgba(91, 43, 27, .9), rgba(40, 16, 11, .96));
+  color: #f0dcc0;
+  cursor: pointer;
+}
+.chronicles-tactics__game-menu-panel button:hover,
+.chronicles-tactics__game-menu-panel button:focus-visible {
+  border-color: rgba(232, 185, 105, .82);
+  outline: none;
+}
+
 .chronicles-tactics__frame {
   position: relative;
   min-height: 760px;
@@ -933,4 +992,10 @@
     width: min(344px, calc(100% - 20px));
     padding: 10px;
   }
+}
+
+
+/* Chronicles owns ESC/contextual input while its runtime is active. */
+body:has([data-chronicles-tactics="true"]) .navigation-back-hint {
+  display: none;
 }

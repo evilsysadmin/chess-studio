@@ -128,6 +128,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const [rendererError, setRendererError] = useState('');
   const [retaliationCue, setRetaliationCue] = useState(null);
   const [partyBark, setPartyBark] = useState(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     selectedMemberIdRef.current = selectedMemberId;
@@ -157,7 +158,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     onExit?.();
   }, [onExit]);
 
-  useEscapeToClose(exitChronicles);
+  useEscapeToClose(() => setMenuOpen((open) => !open), { contextMenu: false });
 
   const confirmCharacterBuild = useCallback((build) => {
     const selected = setChroniclesCharacterBuild(progression, build);
@@ -503,10 +504,6 @@ export default function ChroniclesOfMatthias({ onExit }) {
   return (
     <div
       className="chronicles"
-      onContextMenu={(event) => {
-        event.preventDefault();
-        event.stopPropagation();
-      }}
       data-chronicles="true"
       data-chronicles-map-id={state.mapId}
       data-chronicles-turns={state.turns}
@@ -566,11 +563,18 @@ export default function ChroniclesOfMatthias({ onExit }) {
             <span>RUMBO <b>{direction.label}</b></span>
             <span>ACTIVO <b>{selectedMember?.name}</b></span>
             <span>OBJETIVO <b>{objective}</b></span>
-            <details className="chronicles-game-menu">
-              <summary aria-label="Abrir menú de Chronicles">☰ <b>MENÚ</b></summary>
+            <details
+              className="chronicles-game-menu"
+              open={menuOpen}
+              onToggle={(event) => setMenuOpen(event.currentTarget.open)}
+            >
+              <summary aria-label={menuOpen ? 'Cerrar menú de Chronicles' : 'Abrir menú de Chronicles'}>
+                ☰ <b>MENÚ</b>
+              </summary>
               <div className="chronicles-game-menu__panel">
                 <strong>Chronicles of Matthias</strong>
                 <small>La expedición queda guardada.</small>
+                <button type="button" onClick={() => setMenuOpen(false)}>Continuar</button>
                 <button type="button" onClick={exitChronicles}>Salir</button>
               </div>
             </details>

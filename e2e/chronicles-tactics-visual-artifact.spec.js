@@ -169,6 +169,7 @@ for (const capture of CAPTURES) {
       await expect(viewport).toBeVisible();
       await expect(mode).toHaveAttribute('data-camera', 'isometric-behind-party');
       await expect(mode).toHaveAttribute('data-combat', 'turn-based');
+      await expect(page.getByText('ESC o clic derecho · volver / cerrar', { exact: true })).toBeHidden();
       await page.waitForTimeout(500);
 
       const health = await captureTacticsHealth(page);
@@ -213,6 +214,21 @@ for (const capture of CAPTURES) {
       await sheet.getByRole('button', { name: 'Cerrar ficha', exact: true }).click();
 
       await captureElement(page, viewport, `${ARTIFACT_DIR}/chronicles-tactics-${capture.label}.png`);
+
+      await page.keyboard.press('Escape');
+      const openedMenu = mode.locator('.chronicles-tactics__game-menu[open]');
+      await expect(openedMenu).toBeVisible();
+      await expect(openedMenu.getByRole('button', { name: 'Continuar', exact: true })).toBeVisible();
+      await expect(openedMenu.getByRole('button', { name: 'Salir', exact: true })).toBeVisible();
+      await page.screenshot({
+        path: `${ARTIFACT_DIR}/chronicles-tactics-menu-open-${capture.label}.png`,
+        animations: 'disabled',
+        fullPage: capture.hasTouch,
+        timeout: 30_000,
+      });
+      await page.keyboard.press('Escape');
+      await expect(mode.locator('.chronicles-tactics__game-menu[open]')).toHaveCount(0);
+
       if (capture.hasTouch) {
         // On narrow layouts the mission, action pad and party HUD flow below the
         // battlefield. Keep the battlefield crop for renderer inspection, and

@@ -197,6 +197,16 @@ for (const capture of CAPTURES) {
       expect(health.authoredPortrait?.height || 0, `${capture.label}: Chronicles portrait height`).toBeGreaterThan(0);
 
       await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-playing-${capture.label}.png`);
+
+      await page.keyboard.press('Escape');
+      const openedMenu = page.locator('.chronicles-game-menu[open]');
+      await expect(openedMenu).toBeVisible();
+      await expect(openedMenu.getByRole('button', { name: 'Continuar', exact: true })).toBeVisible();
+      await expect(openedMenu.getByRole('button', { name: 'Salir', exact: true })).toBeVisible();
+      await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-menu-open-${capture.label}.png`);
+      await page.keyboard.press('Escape');
+      await expect(page.locator('.chronicles-game-menu[open]')).toHaveCount(0);
+
       await writeFile(
         `${ARTIFACT_DIR}/chronicles-visual-health-${capture.label}.json`,
         `${JSON.stringify({ schema: 4, scope: 'chronicles', capture: { label: capture.label, ...health } }, null, 2)}\n`,
