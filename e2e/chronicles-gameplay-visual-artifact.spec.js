@@ -29,13 +29,17 @@ async function openVisualMoreModes(page) {
   await trigger.evaluate((button) => button.click());
 }
 
-async function openChronicles(page, captureLabel, { runStatus = 'active' } = {}) {
+async function openChronicles(page, captureLabel, {
+  runStatus = 'active',
+  chroniclesCurrentMapId = 'crypt-eight-squares',
+} = {}) {
   await mockApi(page, {
     profileSeed: {
       'matthias.onboarded': '2',
       'chess-study-home-guide-dismissed-v1': '1',
     },
     chroniclesRunStatus: runStatus,
+    chroniclesCurrentMapId,
   });
   await login(page);
   const speech = page.getByRole('region', { name: 'Mensaje de Matthias', exact: true });
@@ -217,6 +221,37 @@ for (const capture of CAPTURES) {
     }
   });
 }
+
+
+test('Chronicles · Gallery of Forks first-person material proof · desktop-1440x900', async ({ browser }) => {
+  test.setTimeout(150_000);
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await context.newPage();
+  try {
+    await openChronicles(page, 'gallery-of-forks-desktop-1440x900', {
+      chroniclesCurrentMapId: 'gallery-of-forks',
+    });
+    const gameRoot = page.locator('[data-chronicles="true"]');
+    const canvas = page.locator('[data-chronicles-renderer="three"] canvas');
+    await expect(gameRoot).toHaveAttribute('data-chronicles-map-id', 'gallery-of-forks');
+    await expect(canvas).toHaveCount(1, { timeout: 20_000 });
+    await expect(canvas).toBeVisible();
+    await page.waitForTimeout(450);
+
+    const health = await captureChroniclesHealth(page);
+    expect(health.horizontalOverflow, 'gallery-of-forks: Chronicles overflow').toBe(false);
+    expect(health.gameCanvasCount, 'gallery-of-forks: dungeon canvas').toBe(1);
+    await captureElement(
+      page,
+      gameRoot,
+      `${ARTIFACT_DIR}/chronicles-gallery-of-forks-desktop-1440x900.png`,
+    );
+  } finally {
+    await context.close();
+  }
+});
 
 
 for (const capture of CAPTURES) {
