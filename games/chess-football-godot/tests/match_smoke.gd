@@ -30,6 +30,15 @@ func _initialize() -> void:
 	assert(match_node.ball.carrier != null)
 	assert(match_node.ball.carrier.team_id == initial_kickoff_team)
 	assert(match_node.ball.global_position.distance_to(ChessFootballMath.PITCH_RECT.get_center()) < 1.0)
+	var center_x: float = ChessFootballMath.PITCH_RECT.get_center().x
+	for team_id in range(2):
+		for player in match_node.teams[team_id]:
+			if player == match_node.ball.carrier:
+				continue
+			if team_id == 0:
+				assert(player.global_position.x < center_x)
+			else:
+				assert(player.global_position.x > center_x)
 	match_node.debug_force_kickoff_ready()
 	assert(not match_node.debug_kickoff_active())
 	if initial_kickoff_team == 1:
@@ -40,6 +49,10 @@ func _initialize() -> void:
 
 	match_node.debug_score_goal(0)
 	assert(match_node.score == [1, 0])
+	assert(match_node.debug_goal_restart_active())
+	assert(not match_node.debug_kickoff_active())
+	match_node.debug_force_goal_restart_ready()
+	assert(not match_node.debug_goal_restart_active())
 	assert(match_node.debug_kickoff_active())
 	assert(match_node.debug_kickoff_team() == 1)
 	assert(match_node.ball.carrier != null and match_node.ball.carrier.team_id == 1)
@@ -48,6 +61,10 @@ func _initialize() -> void:
 
 	match_node.debug_score_goal(1)
 	assert(match_node.score == [1, 1])
+	assert(match_node.debug_goal_restart_active())
+	assert(not match_node.debug_kickoff_active())
+	match_node.debug_force_goal_restart_ready()
+	assert(not match_node.debug_goal_restart_active())
 	assert(match_node.debug_kickoff_active())
 	assert(match_node.debug_kickoff_team() == 0)
 	assert(match_node.ball.carrier != null and match_node.ball.carrier.team_id == 0)
