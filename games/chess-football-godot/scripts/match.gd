@@ -798,7 +798,7 @@ func _nearest_outfield_player_to_point(team_id: int, point: Vector2) -> Football
 	for player in teams[team_id]:
 		if player.role == "keeper":
 			continue
-		var distance := player.global_position.distance_squared_to(point)
+		var distance: float = player.global_position.distance_squared_to(point)
 		if distance < best_distance:
 			best_distance = distance
 			best = player
@@ -811,7 +811,7 @@ func _restart_receiver(team_id: int, restarter: Footballer, kind: String) -> Foo
 	for teammate in teams[team_id]:
 		if teammate == restarter:
 			continue
-		var score_value := teammate.global_position.distance_squared_to(set_piece_spot)
+		var score_value: float = teammate.global_position.distance_squared_to(set_piece_spot)
 		if kind == "CÓRNER":
 			score_value = teammate.global_position.distance_squared_to(target_goal)
 		elif kind == "SAQUE DE PUERTA":
