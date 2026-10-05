@@ -110,8 +110,8 @@ def _frame_svg(team: dict[str, str], animation: str, frame: int, offset_x: int, 
         sy = shoulder_y
         ex = cx + side * (27.0 + abs(amount) * 0.35) + amount * 0.55
         ey = 82.0 - bob + yoff - amount * 0.65
-        elbow_x = lerp(sx, ex, 0.48)
-        elbow_y = lerp(sy, ey, 0.48)
+        elbow_x = sx + (ex - sx) * 0.48
+        elbow_y = sy + (ey - sy) * 0.48
         out.append(f'<line x1="{offset_x + sx:.2f}" y1="{offset_y + sy:.2f}" x2="{offset_x + elbow_x:.2f}" y2="{offset_y + elbow_y:.2f}" stroke="{OUTLINE}" stroke-width="9" stroke-linecap="round"/>')
         out.append(f'<line x1="{offset_x + sx:.2f}" y1="{offset_y + sy:.2f}" x2="{offset_x + elbow_x:.2f}" y2="{offset_y + elbow_y:.2f}" stroke="{team["torso_light"]}" stroke-width="6" stroke-linecap="round"/>')
         out.append(f'<line x1="{offset_x + elbow_x:.2f}" y1="{offset_y + elbow_y:.2f}" x2="{offset_x + ex:.2f}" y2="{offset_y + ey:.2f}" stroke="{OUTLINE}" stroke-width="8" stroke-linecap="round"/>')
