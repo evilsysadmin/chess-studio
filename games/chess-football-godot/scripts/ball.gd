@@ -2,6 +2,7 @@ class_name FootballBall
 extends CharacterBody2D
 
 var carrier: Footballer = null
+var last_touch_team_id: int = -1
 var friction: float = 0.965
 var fast_ball_friction: float = 0.982
 var max_speed: float = 1260.0
@@ -24,6 +25,7 @@ func attach_to(player: Footballer) -> void:
 		carrier.has_ball = false
 		carrier.queue_redraw()
 	carrier = player
+	last_touch_team_id = player.team_id
 	velocity = Vector2.ZERO
 	flight_height = 0.0
 	vertical_velocity = 0.0
@@ -35,6 +37,7 @@ func attach_to(player: Footballer) -> void:
 func release(direction: Vector2, power: float, lift_velocity: float = 0.0) -> void:
 	var previous_carrier: Footballer = carrier
 	if previous_carrier != null:
+		last_touch_team_id = previous_carrier.team_id
 		previous_carrier.has_ball = false
 		previous_carrier.queue_redraw()
 	reclaim_block_player = previous_carrier
