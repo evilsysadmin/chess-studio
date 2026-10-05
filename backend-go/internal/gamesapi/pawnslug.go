@@ -6,6 +6,7 @@ package gamesapi
 
 import (
 	"errors"
+	"fmt"
 	"math/big"
 	"net/http"
 	"strings"
@@ -85,6 +86,27 @@ func queryInt(raw string) *big.Int {
 	return n
 }
 
+// seedQuery is `seed: int = Query(default=0, ge=0, le=maxSeed)`: the
+// value, or the pydantic error FastAPI answers as a 422.
+func seedQuery(r *http.Request, maxSeed int64) (int64, bson.D) {
+	values, present := r.URL.Query()["seed"]
+	if !present || len(values) == 0 {
+		return 0, nil
+	}
+	raw := values[len(values)-1]
+	n := queryInt(raw)
+	loc := bson.A{"query", "seed"}
+	switch {
+	case n == nil:
+		return 0, bson.D{{Key: "type", Value: "int_parsing"}, {Key: "loc", Value: loc}, {Key: "msg", Value: "Input should be a valid integer, unable to parse string as an integer"}, {Key: "input", Value: raw}}
+	case n.Sign() < 0:
+		return 0, bson.D{{Key: "type", Value: "greater_than_equal"}, {Key: "loc", Value: loc}, {Key: "msg", Value: "Input should be greater than or equal to 0"}, {Key: "input", Value: raw}, {Key: "ctx", Value: bson.D{{Key: "ge", Value: int64(0)}}}}
+	case n.Cmp(big.NewInt(maxSeed)) > 0:
+		return 0, bson.D{{Key: "type", Value: "less_than_equal"}, {Key: "loc", Value: loc}, {Key: "msg", Value: fmt.Sprintf("Input should be less than or equal to %d", maxSeed)}, {Key: "input", Value: raw}, {Key: "ctx", Value: bson.D{{Key: "le", Value: maxSeed}}}}
+	}
+	return n.Int64(), nil
+}
+
 func (h *PawnSlugHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if _, ok := PawnSlugRoute(r); !ok {
 		http.NotFound(w, r)
@@ -125,24 +147,10 @@ func (h *PawnSlugHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if b.presence != nil {
 		b.presence.Touch(r, username)
 	}
-	seed := int64(0)
-	if values, present := r.URL.Query()["seed"]; present && len(values) > 0 {
-		raw := values[len(values)-1]
-		n := queryInt(raw)
-		var problem bson.D
-		switch {
-		case n == nil:
-			problem = bson.D{{Key: "type", Value: "int_parsing"}, {Key: "loc", Value: bson.A{"query", "seed"}}, {Key: "msg", Value: "Input should be a valid integer, unable to parse string as an integer"}, {Key: "input", Value: raw}}
-		case n.Sign() < 0:
-			problem = bson.D{{Key: "type", Value: "greater_than_equal"}, {Key: "loc", Value: bson.A{"query", "seed"}}, {Key: "msg", Value: "Input should be greater than or equal to 0"}, {Key: "input", Value: raw}, {Key: "ctx", Value: bson.D{{Key: "ge", Value: int64(0)}}}}
-		case n.Cmp(big.NewInt(pawnslug.MaxSeed)) > 0:
-			problem = bson.D{{Key: "type", Value: "less_than_equal"}, {Key: "loc", Value: bson.A{"query", "seed"}}, {Key: "msg", Value: "Input should be less than or equal to 2147483647"}, {Key: "input", Value: raw}, {Key: "ctx", Value: bson.D{{Key: "le", Value: int64(pawnslug.MaxSeed)}}}}
-		}
-		if problem != nil {
-			writeDoc(w, http.StatusUnprocessableEntity, bson.D{{Key: "detail", Value: bson.A{problem}}})
-			return
-		}
-		seed = n.Int64()
+	seed, problem := seedQuery(r, pawnslug.MaxSeed)
+	if problem != nil {
+		writeDoc(w, http.StatusUnprocessableEntity, bson.D{{Key: "detail", Value: bson.A{problem}}})
+		return
 	}
 	envelope, err := pawnslug.Envelope(strings.TrimPrefix(r.URL.Path, PawnSlugStagePrefix), seed)
 	switch {

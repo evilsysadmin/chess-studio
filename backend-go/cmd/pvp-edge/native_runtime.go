@@ -62,8 +62,9 @@ type nativeRuntime struct {
 	feedback http.Handler
 	matthias http.Handler
 	// narrative is built in edgeConfig, once the log recorder exists.
-	narrative *gamesapi.NarrativeConfig
-	pawnSlug  http.Handler
+	narrative  *gamesapi.NarrativeConfig
+	pawnSlug   http.Handler
+	chronicles http.Handler
 	// system is built in edgeConfig, once request telemetry exists.
 	system *gamesapi.SystemConfig
 	// history is Admin's observability history (nil when disabled).
@@ -498,6 +499,20 @@ func buildNativeRuntime(features nativeFeatureFlags, upstream string) (runtime n
 		}
 		runtime.pawnSlug = pawnSlugHandler
 	}
+	if features.chronicles {
+		telemetryCfg := telemetry.ConfigFromEnv(os.LookupEnv)
+		chroniclesHandler, chroniclesErr := gamesapi.NewChronicles(gamesapi.Config{
+			Accounts:        accountstore.New(mongoRuntime.Database(), pvpMongoTimeout),
+			Presence:        presence.New(mongoRuntime.Database(), telemetryCfg.TrustCloudflare, 2*time.Second),
+			JWTSecret:       jwtSecret,
+			AllowedOrigins:  splitCSV(os.Getenv("CORS_ORIGINS")),
+			TrustCloudflare: telemetryCfg.TrustCloudflare,
+		})
+		if chroniclesErr != nil {
+			return runtime, fmt.Errorf("native chronicles API: %w", chroniclesErr)
+		}
+		runtime.chronicles = chroniclesHandler
+	}
 	if features.narrative {
 		telemetryCfg := telemetry.ConfigFromEnv(os.LookupEnv)
 		runtime.narrative = &gamesapi.NarrativeConfig{
@@ -618,6 +633,7 @@ func (r nativeRuntime) edgeConfig(upstream, release string, requestTelemetry *te
 		NativeMatthias:            r.matthias,
 		NativeNarrative:           narrativeHandler,
 		NativePawnSlug:            r.pawnSlug,
+		NativeChronicles:          r.chronicles,
 		VirtualPlayersEnabled:     r.virtualPlayers,
 		NativeResidentMove:        r.residentMove,
 		ReadyChecks:               readyChecks,
@@ -627,7 +643,7 @@ func (r nativeRuntime) edgeConfig(upstream, release string, requestTelemetry *te
 
 func (r nativeRuntime) logStartup(port, upstream string) {
 	log.Printf(
-		"go-api listening on :%s -> %s native_pulse=%t native_lobby_read=%t native_roster=%t native_chat=%t native_challenge_resolution=%t native_challenge_accept=%t native_challenge_create=%t native_match_handoff_cancel=%t native_match_ready=%t native_match_resign=%t native_match_read=%t native_match_move=%t native_resident_move=%t native_games_read=%t native_games_write=%t native_games_hint=%t native_games_analyze=%t native_system=%t native_profile=%t native_auth_session=%t native_login=%t native_account=%t native_recovery=%t native_feedback=%t native_matthias_read=%t native_narrative=%t native_pawn_slug=%t",
+		"go-api listening on :%s -> %s native_pulse=%t native_lobby_read=%t native_roster=%t native_chat=%t native_challenge_resolution=%t native_challenge_accept=%t native_challenge_create=%t native_match_handoff_cancel=%t native_match_ready=%t native_match_resign=%t native_match_read=%t native_match_move=%t native_resident_move=%t native_games_read=%t native_games_write=%t native_games_hint=%t native_games_analyze=%t native_system=%t native_profile=%t native_auth_session=%t native_login=%t native_account=%t native_recovery=%t native_feedback=%t native_matthias_read=%t native_narrative=%t native_pawn_slug=%t native_chronicles=%t",
 		port,
 		upstream,
 		r.pulse != nil,
@@ -657,6 +673,7 @@ func (r nativeRuntime) logStartup(port, upstream string) {
 		r.matthias != nil,
 		r.narrative != nil,
 		r.pawnSlug != nil,
+		r.chronicles != nil,
 	)
 }
 

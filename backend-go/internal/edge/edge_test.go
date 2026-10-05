@@ -1512,3 +1512,31 @@ func TestNativePawnSlugServesOnlyItsRoute(t *testing.T) {
 		t.Fatalf("served %v proxied %v", served, proxied)
 	}
 }
+
+func TestNativeChroniclesServesOnlyItsRoutes(t *testing.T) {
+	var proxied []string
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		proxied = append(proxied, r.Method+" "+r.URL.Path)
+		w.WriteHeader(http.StatusTeapot)
+	}))
+	defer upstream.Close()
+	var served []string
+	native := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		served = append(served, r.Method+" "+r.URL.Path)
+		w.WriteHeader(http.StatusOK)
+	})
+	h, err := New(Config{UpstreamURL: upstream.URL, NativeChronicles: native})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, req := range [][2]string{
+		{"GET", "/api/chronicles/maps/ash-vault"}, {"POST", "/api/chronicles/map-code/preview"},
+		{"POST", "/api/chronicles/runs"}, {"GET", "/api/chronicles/runs/r1"}, {"PUT", "/api/chronicles/runs/r1/checkpoint"},
+	} {
+		h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(req[0], "http://api.chess.test"+req[1], nil))
+	}
+	if strings.Join(served, ",") != "GET /api/chronicles/maps/ash-vault,POST /api/chronicles/map-code/preview" ||
+		strings.Join(proxied, ",") != "POST /api/chronicles/runs,GET /api/chronicles/runs/r1,PUT /api/chronicles/runs/r1/checkpoint" {
+		t.Fatalf("served %v proxied %v", served, proxied)
+	}
+}
