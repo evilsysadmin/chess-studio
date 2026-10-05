@@ -15,8 +15,8 @@ const TACKLE_BASE_SUCCESS_RANGE := 30.0
 const TACKLE_APPROACH_BONUS := 18.0
 const TACKLE_MIN_APPROACH := 0.28
 const TACKLE_EMERGENCY_RANGE := 20.0
-const TACKLE_STEAL_DELAY := 0.22
-const TACKLE_STEAL_POKE_POWER := 260.0
+const TACKLE_STEAL_DELAY := 0.20
+const TACKLE_STEAL_POKE_POWER := 220.0
 const TACKLE_LOOSE_POKE_POWER := 310.0
 
 const KEEPER_LINE_OFFSET := 96.0
@@ -653,7 +653,12 @@ func _try_tackle(tackler: Footballer) -> bool:
 		audio_fx.play_tackle()
 
 	if distance <= TACKLE_CLEAN_STEAL_RANGE:
-		var steal_direction := -push_direction
+		# Deflect the ball out of the collision instead of straight underneath
+		# the tackler. The short diagonal loose-ball beat makes a clean steal
+		# readable before possession is consolidated.
+		var lateral_sign := 1.0 if tackler.team_id == 0 else -1.0
+		var lateral := Vector2(-push_direction.y, push_direction.x) * lateral_sign
+		var steal_direction := (-push_direction * 0.72 + lateral * 0.69).normalized()
 		ball.release(steal_direction, TACKLE_STEAL_POKE_POWER)
 		pending_tackle_player = tackler
 		pending_tackle_seconds = TACKLE_STEAL_DELAY
@@ -677,7 +682,7 @@ func _update_pending_tackle_claim(delta: float) -> void:
 		return
 	var winner := pending_tackle_player
 	pending_tackle_player = null
-	if is_instance_valid(winner) and winner.global_position.distance_to(ball.global_position) <= 62.0:
+	if is_instance_valid(winner) and winner.global_position.distance_to(ball.global_position) <= 72.0:
 		ball.attach_to(winner)
 		if winner.team_id == 0:
 			_select_player(winner)
