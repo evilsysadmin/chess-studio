@@ -654,6 +654,8 @@ export default function ChroniclesOfMatthiasTactics({
       data-combat="turn-based"
       data-engagement={inCombat ? 'combat' : 'exploration'}
       data-exploration-control="hold-to-walk"
+      data-party-x={state.x}
+      data-party-y={state.y}
       data-difficulty-target={difficultyBand.targetLevel}
       data-difficulty-min={difficultyBand.minLevel}
       data-difficulty-max={difficultyBand.maxLevel}
