@@ -393,37 +393,40 @@ func _sync_player_secondary_motion(player: Footballer, sprite: AnimatedSprite3D,
 	var speed_ratio := clampf(player.velocity.length() / maxf(player.base_speed, 1.0), 0.0, 1.4)
 	var moving_weight := clampf(speed_ratio, 0.0, 1.0)
 	var bob := sin(phase) * 0.010
-	var stretch_x := 1.0
-	var stretch_y := 1.0
+	# The atlas is intentionally stylised, but the old 1:1 presentation made the
+	# players read like square little tanks. Keep them a touch taller/slimmer and
+	# let motion temporarily widen/compress the silhouette.
+	var stretch_x := 0.92
+	var stretch_y := 1.04
 	var tilt_degrees := 0.0
 	var facing_sign := -1.0 if sprite.flip_h else 1.0
 
 	if animation_name == "run":
 		bob = absf(sin(phase)) * PLAYER_RUN_BOB * moving_weight
-		stretch_x = 1.0 + absf(cos(phase)) * 0.025
-		stretch_y = 1.0 - absf(cos(phase)) * 0.018
+		stretch_x = 0.92 + absf(cos(phase)) * 0.025
+		stretch_y = 1.04 - absf(cos(phase)) * 0.018
 		tilt_degrees = -facing_sign * 2.8 * moving_weight
 	elif animation_name == "sprint":
 		bob = absf(sin(phase)) * PLAYER_SPRINT_BOB * moving_weight
-		stretch_x = 1.0 + absf(cos(phase)) * 0.040
-		stretch_y = 1.0 - absf(cos(phase)) * 0.028
+		stretch_x = 0.91 + absf(cos(phase)) * 0.040
+		stretch_y = 1.05 - absf(cos(phase)) * 0.028
 		tilt_degrees = -facing_sign * 5.2 * moving_weight
 	elif animation_name == "pass":
 		bob = absf(sin(phase)) * 0.018
 		tilt_degrees = -facing_sign * 3.5
 	elif animation_name == "shoot":
 		bob = absf(sin(phase)) * 0.026
-		stretch_x = 1.035
-		stretch_y = 0.985
+		stretch_x = 0.97
+		stretch_y = 1.015
 		tilt_degrees = -facing_sign * 7.5
 	elif animation_name == "tackle":
 		bob = -0.035
-		stretch_x = 1.070
-		stretch_y = 0.940
+		stretch_x = 1.00
+		stretch_y = 0.975
 		tilt_degrees = -facing_sign * 11.0
 	elif animation_name == "celebrate":
 		bob = absf(sin(phase)) * 0.080
-		stretch_y = 1.025
+		stretch_y = 1.075
 
 	sprite.position.y = PLAYER_BASE_Y + bob
 	sprite.rotation.z = deg_to_rad(tilt_degrees)
