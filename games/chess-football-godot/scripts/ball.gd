@@ -5,8 +5,13 @@ var carrier: Footballer = null
 var friction: float = 0.965
 var max_speed: float = 920.0
 var spin_direction: float = 1.0
+var reclaim_block_player: Footballer = null
+var reclaim_block_seconds: float = 0.0
+const RECLAIM_BLOCK_SECONDS := 0.22
 
 func attach_to(player: Footballer) -> void:
+	reclaim_block_player = null
+	reclaim_block_seconds = 0.0
 	if carrier != null:
 		carrier.has_ball = false
 		carrier.queue_redraw()
@@ -18,15 +23,21 @@ func attach_to(player: Footballer) -> void:
 	global_position = player.global_position + player.ball_anchor()
 
 func release(direction: Vector2, power: float) -> void:
-	if carrier != null:
-		carrier.has_ball = false
-		carrier.queue_redraw()
+	var previous_carrier: Footballer = carrier
+	if previous_carrier != null:
+		previous_carrier.has_ball = false
+		previous_carrier.queue_redraw()
+	reclaim_block_player = previous_carrier
+	reclaim_block_seconds = RECLAIM_BLOCK_SECONDS if previous_carrier != null else 0.0
 	carrier = null
 	var dir := direction.normalized() if direction.length_squared() > 0.001 else Vector2.RIGHT
 	spin_direction = -1.0 if dir.x < 0.0 else 1.0
 	velocity = dir * minf(power, max_speed)
 
 func tick_ball(delta: float) -> void:
+	reclaim_block_seconds = maxf(0.0, reclaim_block_seconds - delta)
+	if reclaim_block_seconds <= 0.0:
+		reclaim_block_player = null
 	if carrier != null:
 		global_position = carrier.global_position + carrier.ball_anchor()
 		rotation = 0.0
@@ -36,6 +47,9 @@ func tick_ball(delta: float) -> void:
 	velocity *= pow(friction, delta * 60.0)
 	if velocity.length() < 4.0:
 		velocity = Vector2.ZERO
+
+func reclaim_blocked_for(player: Footballer) -> bool:
+	return reclaim_block_seconds > 0.0 and reclaim_block_player == player
 
 func _draw() -> void:
 	draw_circle(Vector2.ZERO, 9.0, Color(0.96, 0.96, 0.92))
