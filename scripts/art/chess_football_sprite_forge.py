@@ -12,7 +12,7 @@ CELL_W = 112
 CELL_H = 144
 COLUMNS = 8
 FOOTLINE = 126
-DISPLAY_SCALE = 0.58
+DISPLAY_SCALE = 0.72
 ANIMATIONS = (
     ("idle", 7.0, True),
     ("run", 12.0, True),
