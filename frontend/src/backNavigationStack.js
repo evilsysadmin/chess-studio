@@ -22,6 +22,9 @@ export function createBackNavigationStack() {
     },
     dispatch(event, { editableTarget = false, touchLikeContextMenu = false } = {}) {
       if (event?.type === 'keydown' && event.key !== 'Escape') return false;
+      const entry = entries.length ? entries[entries.length - 1] : null;
+      if (!entry) return false;
+      if (event?.type === 'contextmenu' && entry.contextMenu === false) return false;
       if (event?.type === 'contextmenu' && editableTarget) return false;
       if (event?.type === 'contextmenu' && touchLikeContextMenu) {
         // Android/iOS pueden traducir una pulsación larga a `contextmenu`.
@@ -31,9 +34,6 @@ export function createBackNavigationStack() {
         event.stopPropagation?.();
         return false;
       }
-
-      const entry = entries.length ? entries[entries.length - 1] : null;
-      if (!entry) return false;
 
       if (event?.type === 'contextmenu') event.preventDefault?.();
       event?.stopPropagation?.();
