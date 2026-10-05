@@ -91,6 +91,7 @@ function baseShadeForProfile(profile, role) {
   else if (profile.category === 'variant') base = 112;
 
   if (profile.category === 'dungeon') base += role === 'wall' ? -20 : -6;
+  if (profile.category === 'castle') base += role === 'floor' ? -22 : 0;
   if (profile.category === 'cave') base += role === 'wall' ? 0 : -46;
   return base;
 }
