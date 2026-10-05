@@ -311,6 +311,7 @@ scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page })
     { timeout: 20_000 },
   );
   await captureAt(page, 'insights', { width: 1440, height: 900, variant: 'desktop' });
+  await captureAt(page, 'insights', { width: 1800, height: 900, variant: 'wide' });
   await captureAt(page, 'insights', { width: 390, height: 844, variant: 'mobile' });
   await page.setViewportSize({ width: 1440, height: 900 });
   await settle(page);
