@@ -283,7 +283,7 @@ func _handle_human(delta: float) -> void:
 	if Input.is_action_just_pressed("toggle_view"):
 		_toggle_camera_mode()
 	var direction := Input.get_vector("move_left", "move_right", "move_up", "move_down")
-	controlled.move_human(direction, Input.is_action_pressed("sprint"))
+	controlled.move_human(delta, direction, Input.is_action_pressed("sprint"))
 
 	if ball.carrier != controlled:
 		_cancel_shot_charge()
