@@ -1,4 +1,5 @@
 import { facingAngle, shortestAngleDelta } from '../chroniclesOfMatthiasIsometricMath.js';
+import { tickChroniclesCarriedTorch } from './chroniclesCarriedTorch.js';
 import { CHRONICLES_ISO_PARTY_FACING } from './chroniclesTacticsPartyPresentation.js';
 
 export function chroniclesExplorationMotion(partyPosition, desiredParty, partyFormation) {
@@ -35,4 +36,29 @@ export function applyChroniclesExplorationGait(model, {
   model.rotation.y = CHRONICLES_ISO_PARTY_FACING + Math.sin(time * 0.55 + phaseSeed) * 0.025;
   model.rotation.z *= 0.82;
   model.position.y = Math.sin(time * 0.8 + phaseSeed) * 0.006 - (1 - hpRatio) * 0.025;
+}
+
+
+export function tickChroniclesExplorationParty(party, {
+  desiredParty,
+  partyFormation,
+  time,
+} = {}) {
+  const motion = chroniclesExplorationMotion(party.root.position, desiredParty, partyFormation);
+  party.root.position.lerp(desiredParty, motion.rootLerp);
+  party.models.forEach((model, id) => {
+    if (!model.visible) return;
+    const target = model.userData.chroniclesIsoTarget;
+    if (target) model.position.lerp(target, motion.memberLerp);
+    model.userData.chroniclesArtTick?.(time);
+    applyChroniclesExplorationGait(model, {
+      moving: motion.moving,
+      yaw: motion.yaw,
+      time,
+      phaseSeed: id.length,
+      hpRatio: model.userData.chroniclesIsoHpRatio ?? 1,
+    });
+    tickChroniclesCarriedTorch(party.carriedTorches.get(id), time);
+  });
+  return motion;
 }
