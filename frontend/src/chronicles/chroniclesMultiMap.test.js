@@ -73,6 +73,15 @@ describe('Chronicles multi-map campaign', () => {
       blackGateKey: true,
       party: woundedParty,
       turns: 23,
+      phase: 'combat',
+      turnPhase: 'enemy',
+      initiative: {
+        version: 1,
+        die: '1d8',
+        round: 4,
+        cursor: 0,
+        order: [{ id: 'matthias', kind: 'party', name: 'Matthias', agility: 4, roll: 4, initiative: 8 }],
+      },
       enemyPositions: { stale: { x: 4, y: 4 } },
       journal: [...initial.journal, { id: 'proof', title: 'Proof', body: 'Persist me', sigil: 'P' }],
     };
@@ -94,6 +103,8 @@ describe('Chronicles multi-map campaign', () => {
     expect(next.scavengerHp).toBe(0);
     expect(next.enemyPositions).toEqual({});
     expect(next.phase).toBe('explore');
+    expect(next.turnPhase).toBe('party');
+    expect(next.initiative).toBeNull();
   });
 
   it('crosses Gallery into Menagerie as the third campaign encounter', () => {
