@@ -325,3 +325,21 @@ func (s *Store) Commit(ctx context.Context, username, reservation, questionKind,
 	}
 	return bson.D{{Key: "day", Value: day}, {Key: "used", Value: true}, {Key: "pending", Value: false}, {Key: "questionKind", Value: questionKind}, {Key: "text", Value: answer}}, nil
 }
+
+// AdminRows mirrors admin_status' read (at most 5000 documents).
+func (s *Store) AdminRows(ctx context.Context) ([]bson.D, error) {
+	ctx, cancel := context.WithTimeout(ctx, 4*s.timeout)
+	defer cancel()
+	cursor, err := s.memory.Find(ctx, bson.D{}, options.Find().SetProjection(AdminProjection).SetLimit(5000))
+	if err != nil {
+		return nil, err
+	}
+	var rows []bson.D
+	if err := cursor.All(ctx, &rows); err != nil {
+		return nil, err
+	}
+	for i := range rows {
+		rows[i], _ = pydoc.Normalize(rows[i]).(bson.D)
+	}
+	return rows, nil
+}

@@ -1464,3 +1464,27 @@ func TestNativeMatthiasServesOnlyItsRoutes(t *testing.T) {
 		t.Fatalf("served %v proxied %v", served, proxied)
 	}
 }
+
+func TestNativeNarrativeServesOnlyItsRoutes(t *testing.T) {
+	var proxied []string
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		proxied = append(proxied, r.Method+" "+r.URL.Path)
+		w.WriteHeader(http.StatusTeapot)
+	}))
+	defer upstream.Close()
+	var served []string
+	native := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		served = append(served, r.Method+" "+r.URL.Path)
+		w.WriteHeader(http.StatusOK)
+	})
+	h, err := New(Config{UpstreamURL: upstream.URL, NativeNarrative: native})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, req := range [][2]string{{"POST", "/api/narrative"}, {"POST", "/api/matthias/daily"}, {"GET", "/api/matthias/daily"}, {"GET", "/api/admin/ai-metrics"}, {"GET", "/api/admin/matthias-status"}, {"GET", "/api/admin/observability"}} {
+		h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(req[0], "http://api.chess.test"+req[1], nil))
+	}
+	if strings.Join(served, ",") != "POST /api/narrative,POST /api/matthias/daily,GET /api/admin/ai-metrics,GET /api/admin/matthias-status" || strings.Join(proxied, ",") != "GET /api/matthias/daily,GET /api/admin/observability" {
+		t.Fatalf("served %v proxied %v", served, proxied)
+	}
+}

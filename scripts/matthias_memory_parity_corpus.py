@@ -227,6 +227,8 @@ def document(rng: random.Random) -> dict:
         "main_advice": lambda: maybe(rng, {"text": text(rng, ["Calcule dos candidatas antes de mover.", "Proteja la dama, bitte."]), "question_kind": text(rng, ["improve", "tactics"]), "topic": text(rng, ["queen_safety", "general_improvement"]), "at": iso(rng.uniform(0, 9), rng)}),
         "facts_snapshot": lambda: maybe(rng, snapshot(rng)),
         "latest_observed_snapshot": lambda: maybe(rng, snapshot(rng)),
+        "question_counts": lambda: maybe(rng, {k: rng.choice([0, 1, 3, 2.5, -1, True, "4"]) for k in rng.sample(["improve", "tactics", "strengths", "action", "openings", "x" * 60], rng.randint(0, 4))}),
+        "topic_counts": lambda: maybe(rng, {k: rng.choice([0, 1, 2, 5, 1.5]) for k in rng.sample(["queen_safety", "forks", "mate_awareness", "general_improvement", "openings"], rng.randint(0, 3))}),
         "episodes": lambda: maybe(rng, [episode(rng, i) for i in range(rng.choice([0, 1, 3, 5, 9, 26]) if rng.random() < 0.9 else 3)] + rng.sample([None, "x"], rng.randint(0, 1))),
     }
     for key, make in fields.items():
@@ -286,12 +288,25 @@ def build() -> dict:
     for i in range(220):
         doc = document(rng)
         cases.append({"name": f"random_{i:03d}", "doc": doc, **run(doc)})
-    return {"now": NOW.isoformat(), "cases": cases}
+    # Admin's aggregate (admin_status) over groups of the same documents.
+    admin = []
+    readable = [c["doc"] for c in cases if "summary" in c]
+    groups = [readable[i:i + 8] for i in range(0, len(readable), 8)] + [[c["doc"] for c in cases[i:i + 12]] for i in (0, 120, 228)]
+    for start, group in enumerate(groups):
+        memory_store._memory.clear()
+        for i, doc in enumerate(group):
+            memory_store._memory[f"u{i}"] = {"_id": f"u{i}", **json.loads(json.dumps(doc))}
+        try:
+            admin.append({"start": start, "status": asyncio.run(memory_store.admin_status())})
+        except Exception as exc:
+            admin.append({"start": start, "error": type(exc).__name__})
+    return {"now": NOW.isoformat(), "cases": cases, "admin": admin}
 
 
 def render(corpus: dict) -> str:
     lines = [json.dumps(case, ensure_ascii=False, separators=(",", ":")) for case in corpus["cases"]]
-    return '{"now":' + json.dumps(corpus["now"]) + ',"cases":[\n' + ",\n".join(lines) + "\n]}\n"
+    admin = ",\n".join(json.dumps(row, ensure_ascii=False, separators=(",", ":")) for row in corpus["admin"])
+    return '{"now":' + json.dumps(corpus["now"]) + ',"cases":[\n' + ",\n".join(lines) + '\n],"admin":[\n' + admin + "\n]}\n"
 
 
 def main() -> int:
