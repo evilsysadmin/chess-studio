@@ -330,7 +330,7 @@ function buildIsoDungeon({
     const trim = new THREE.Mesh(new THREE.BoxGeometry(CELL * 0.98, 0.075, CELL * 1.01), wallTrim);
     trim.position.set(world.x, 0.5 + ((x * 5 + y * 3) % 3) * 0.68, world.z);
     trim.receiveShadow = true;
-    root.add(trim);
+    trim.name = `chronicles-iso-wall-trim-${x}-${y}`; root.add(trim);
   });
 
   const sigilWorld = chroniclesIsoWorldForContentKind(geometryPlan, 'trigger');
