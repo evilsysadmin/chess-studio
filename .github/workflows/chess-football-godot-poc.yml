@@ -73,6 +73,27 @@ jobs:
         run: |
           godot="$GITHUB_WORKSPACE/.godot-ci/$GODOT_VERSION/godot"
           "$godot" --headless --path games/chess-football-godot --script res://tests/match_smoke.gd
+      - name: Capture visual review
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot="$GITHUB_WORKSPACE/.godot-ci/$GODOT_VERSION/godot"
+          log="$RUNNER_TEMP/chess-football-visual.log"
+          "$godot" --headless --path games/chess-football-godot --script res://tests/visual_capture.gd | tee "$log"
+          broadcast="$(sed -n 's/^VISUAL_CAPTURE_BROADCAST=//p' "$log" | tail -1)"
+          tactical="$(sed -n 's/^VISUAL_CAPTURE_TACTICAL=//p' "$log" | tail -1)"
+          test -n "$broadcast" && test -s "$broadcast"
+          test -n "$tactical" && test -s "$tactical"
+          mkdir -p "$RUNNER_TEMP/chess-football-review"
+          cp "$broadcast" "$RUNNER_TEMP/chess-football-review/broadcast.png"
+          cp "$tactical" "$RUNNER_TEMP/chess-football-review/tactical.png"
+      - name: Upload visual review
+        uses: actions/upload-artifact@v7
+        with:
+          name: chess-football-visual-review
+          path: ${{ runner.temp }}/chess-football-review/
+          if-no-files-found: error
+          retention-days: 7
       - name: Web export contract
         shell: bash
         run: |
