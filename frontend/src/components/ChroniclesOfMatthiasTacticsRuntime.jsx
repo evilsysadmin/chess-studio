@@ -133,6 +133,7 @@ export default function ChroniclesOfMatthiasTactics({
   const checkpointQueueRef = useRef(Promise.resolve());
   const selectedMemberRef = useRef('matthias');
   const lastMoveAtRef = useRef(0);
+  const explorationWalkRef = useRef({ vector: null, timer: 0 });
   const lastAttackAtRef = useRef(0);
   const [runId, setRunId] = useState(() => authoritativeRun?.runId || ensureChroniclesTacticsRun());
   const [selectedMemberId, setSelectedMemberId] = useState('matthias');
@@ -278,6 +279,37 @@ export default function ChroniclesOfMatthiasTactics({
     });
     if (commitState(resolved, { actorMemberId: memberId, actionKind: 'move' })) lastMoveAtRef.current = now;
   }, [commitState, partyAgilityBonusesFor]);
+
+  const stopExplorationWalk = useCallback(() => {
+    const walk = explorationWalkRef.current;
+    walk.vector = null;
+    if (walk.timer) {
+      window.clearInterval(walk.timer);
+      walk.timer = 0;
+    }
+  }, []);
+
+  const startExplorationWalk = useCallback((dx, dy) => {
+    const current = stateRef.current;
+    if (current?.phase !== 'explore' || current?.initiative?.order?.length) {
+      moveParty(dx, dy);
+      return;
+    }
+
+    const walk = explorationWalkRef.current;
+    walk.vector = { dx, dy };
+    moveParty(dx, dy);
+    if (walk.timer) return;
+    walk.timer = window.setInterval(() => {
+      const latest = stateRef.current;
+      const vector = explorationWalkRef.current.vector;
+      if (!vector || latest?.phase !== 'explore' || latest?.initiative?.order?.length) {
+        stopExplorationWalk();
+        return;
+      }
+      moveParty(vector.dx, vector.dy);
+    }, 120);
+  }, [moveParty, stopExplorationWalk]);
 
   const attackEnemy = useCallback((enemyId = null) => {
     const now = performance.now();
@@ -528,36 +560,6 @@ export default function ChroniclesOfMatthiasTactics({
 
   useEffect(() => {
     let heldMovementKey = null;
-    let heldMovementVector = null;
-    let explorationTimer = 0;
-
-    const stopExplorationWalk = () => {
-      heldMovementKey = null;
-      heldMovementVector = null;
-      if (explorationTimer) {
-        window.clearInterval(explorationTimer);
-        explorationTimer = 0;
-      }
-    };
-
-    const startExplorationWalk = (key, vector) => {
-      heldMovementKey = key;
-      heldMovementVector = vector;
-      moveParty(vector.dx, vector.dy);
-      if (explorationTimer) return;
-      explorationTimer = window.setInterval(() => {
-        const current = stateRef.current;
-        if (
-          !heldMovementVector
-          || current?.phase !== 'explore'
-          || current?.initiative?.order?.length
-        ) {
-          stopExplorationWalk();
-          return;
-        }
-        moveParty(heldMovementVector.dx, heldMovementVector.dy);
-      }, 120);
-    };
 
     const onKeyDown = (event) => {
       if (/^[1-4]$/.test(event.key)) {
@@ -601,11 +603,14 @@ export default function ChroniclesOfMatthiasTactics({
         return;
       }
       if (event.repeat && heldMovementKey === event.key) return;
-      startExplorationWalk(event.key, vector);
+      heldMovementKey = event.key;
+      startExplorationWalk(vector.dx, vector.dy);
     };
 
     const onKeyUp = (event) => {
-      if (event.key === heldMovementKey) stopExplorationWalk();
+      if (event.key !== heldMovementKey) return;
+      heldMovementKey = null;
+      stopExplorationWalk();
     };
     const onVisibilityChange = () => {
       if (document.visibilityState === 'hidden') stopExplorationWalk();
@@ -622,7 +627,16 @@ export default function ChroniclesOfMatthiasTactics({
       window.removeEventListener('blur', stopExplorationWalk);
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
-  }, [attackEnemy, moveParty, passTurn, selectMember, useClassAbility, useContextualAction]);
+  }, [
+    attackEnemy,
+    moveParty,
+    passTurn,
+    selectMember,
+    startExplorationWalk,
+    stopExplorationWalk,
+    useClassAbility,
+    useContextualAction,
+  ]);
 
   return (
     <div
@@ -731,10 +745,102 @@ export default function ChroniclesOfMatthiasTactics({
           </div>
 
           <div className="chronicles-tactics__actions" aria-label="Controles de acción">
-            <button type="button" className={moveAvailability.west ? 'is-ready' : ''} disabled={!canAct || !moveAvailability.west} aria-label="Mover al oeste" {...forecastProps('west')} onClick={() => moveParty(-1, 0)}><i aria-hidden="true">←</i><span>A</span>{forecastBadge('west')}</button>
-            <button type="button" className={moveAvailability.north ? 'is-ready' : ''} disabled={!canAct || !moveAvailability.north} aria-label="Mover al norte" {...forecastProps('north')} onClick={() => moveParty(0, -1)}><i aria-hidden="true">↑</i><span>W</span>{forecastBadge('north')}</button>
-            <button type="button" className={moveAvailability.south ? 'is-ready' : ''} disabled={!canAct || !moveAvailability.south} aria-label="Mover al sur" {...forecastProps('south')} onClick={() => moveParty(0, 1)}><i aria-hidden="true">↓</i><span>S</span>{forecastBadge('south')}</button>
-            <button type="button" className={moveAvailability.east ? 'is-ready' : ''} disabled={!canAct || !moveAvailability.east} aria-label="Mover al este" {...forecastProps('east')} onClick={() => moveParty(1, 0)}><i aria-hidden="true">→</i><span>D</span>{forecastBadge('east')}</button>
+            <button
+              type="button"
+              className={moveAvailability.west ? 'is-ready' : ''}
+              disabled={!canAct || !moveAvailability.west}
+              aria-label="Mover al oeste"
+              {...forecastProps('west')}
+              onPointerDown={(event) => {
+                const current = stateRef.current;
+                if (current?.phase !== 'explore' || current?.initiative?.order?.length) return;
+                event.preventDefault();
+                event.currentTarget.setPointerCapture?.(event.pointerId);
+                startExplorationWalk(-1, 0);
+              }}
+              onPointerUp={stopExplorationWalk}
+              onPointerCancel={stopExplorationWalk}
+              onLostPointerCapture={stopExplorationWalk}
+              onClick={(event) => {
+                const current = stateRef.current;
+                const pointerHandled = current?.phase === 'explore'
+                  && !current?.initiative?.order?.length
+                  && event.detail > 0;
+                if (!pointerHandled) moveParty(-1, 0);
+              }}
+            ><i aria-hidden="true">←</i><span>A</span>{forecastBadge('west')}</button>
+            <button
+              type="button"
+              className={moveAvailability.north ? 'is-ready' : ''}
+              disabled={!canAct || !moveAvailability.north}
+              aria-label="Mover al norte"
+              {...forecastProps('north')}
+              onPointerDown={(event) => {
+                const current = stateRef.current;
+                if (current?.phase !== 'explore' || current?.initiative?.order?.length) return;
+                event.preventDefault();
+                event.currentTarget.setPointerCapture?.(event.pointerId);
+                startExplorationWalk(0, -1);
+              }}
+              onPointerUp={stopExplorationWalk}
+              onPointerCancel={stopExplorationWalk}
+              onLostPointerCapture={stopExplorationWalk}
+              onClick={(event) => {
+                const current = stateRef.current;
+                const pointerHandled = current?.phase === 'explore'
+                  && !current?.initiative?.order?.length
+                  && event.detail > 0;
+                if (!pointerHandled) moveParty(0, -1);
+              }}
+            ><i aria-hidden="true">↑</i><span>W</span>{forecastBadge('north')}</button>
+            <button
+              type="button"
+              className={moveAvailability.south ? 'is-ready' : ''}
+              disabled={!canAct || !moveAvailability.south}
+              aria-label="Mover al sur"
+              {...forecastProps('south')}
+              onPointerDown={(event) => {
+                const current = stateRef.current;
+                if (current?.phase !== 'explore' || current?.initiative?.order?.length) return;
+                event.preventDefault();
+                event.currentTarget.setPointerCapture?.(event.pointerId);
+                startExplorationWalk(0, 1);
+              }}
+              onPointerUp={stopExplorationWalk}
+              onPointerCancel={stopExplorationWalk}
+              onLostPointerCapture={stopExplorationWalk}
+              onClick={(event) => {
+                const current = stateRef.current;
+                const pointerHandled = current?.phase === 'explore'
+                  && !current?.initiative?.order?.length
+                  && event.detail > 0;
+                if (!pointerHandled) moveParty(0, 1);
+              }}
+            ><i aria-hidden="true">↓</i><span>S</span>{forecastBadge('south')}</button>
+            <button
+              type="button"
+              className={moveAvailability.east ? 'is-ready' : ''}
+              disabled={!canAct || !moveAvailability.east}
+              aria-label="Mover al este"
+              {...forecastProps('east')}
+              onPointerDown={(event) => {
+                const current = stateRef.current;
+                if (current?.phase !== 'explore' || current?.initiative?.order?.length) return;
+                event.preventDefault();
+                event.currentTarget.setPointerCapture?.(event.pointerId);
+                startExplorationWalk(1, 0);
+              }}
+              onPointerUp={stopExplorationWalk}
+              onPointerCancel={stopExplorationWalk}
+              onLostPointerCapture={stopExplorationWalk}
+              onClick={(event) => {
+                const current = stateRef.current;
+                const pointerHandled = current?.phase === 'explore'
+                  && !current?.initiative?.order?.length
+                  && event.detail > 0;
+                if (!pointerHandled) moveParty(1, 0);
+              }}
+            ><i aria-hidden="true">→</i><span>D</span>{forecastBadge('east')}</button>
             <button
               type="button"
               className={(contextualAction || canPassTurn) ? 'is-ready' : ''}
