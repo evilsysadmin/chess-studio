@@ -136,7 +136,7 @@ export default function QuickMatchModal({
             <aside className="matthias-quick-briefing quick-match-ready-room__briefing" aria-label="Briefing de Matthias">
               <img src={matthiasVisual.avatar} alt="" aria-hidden="true" />
               <div>
-                <span>MATTHIAS // {matthiasVisual.label}</span>
+                <span>MATTHIAS // BRIEFING · {matthiasVisual.label}</span>
                 <p>{matthiasBriefing}</p>
               </div>
             </aside>
