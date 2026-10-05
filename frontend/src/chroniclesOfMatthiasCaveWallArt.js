@@ -54,7 +54,7 @@ export function createChroniclesCaveWallDressing({
   if (sceneStyleId !== 'cave-water' || !wallCells?.has) return null;
 
   function decorate({ root, block, material, x, y, world }) {
-    if (!root || !block || !material || !world) return;
+    if (!root || !block || !material || !world) return false;
 
     // Slight overlap hides the regular cell seams while keeping logical geometry,
     // collision, targeting and pathing fully owned by the scene model.
@@ -113,6 +113,7 @@ export function createChroniclesCaveWallDressing({
     top.castShadow = !coarsePointer;
     top.receiveShadow = true;
     root.add(top);
+    return true;
   }
 
   return Object.freeze({ decorate });
