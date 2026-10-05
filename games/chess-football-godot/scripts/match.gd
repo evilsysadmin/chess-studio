@@ -1405,9 +1405,10 @@ func debug_tackle_hitbox(player: Footballer, target_position: Vector2) -> Dictio
 func debug_step_pending_tackle(delta: float) -> void:
 	_update_pending_tackle_claim(delta)
 
-func debug_force_shot_charge(ratio: float) -> void:
+func debug_force_shot_charge(ratio: float, aim_y: float = 0.0) -> void:
 	shot_charging = true
 	shot_charge_seconds = SHOT_CHARGE_SECONDS * clampf(ratio, 0.0, 1.0)
+	shot_aim_y_input = clampf(aim_y, -1.0, 1.0)
 
 func debug_release_charged_shot() -> void:
 	_release_charged_shot()
