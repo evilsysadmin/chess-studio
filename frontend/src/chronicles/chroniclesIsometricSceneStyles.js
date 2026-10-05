@@ -1,6 +1,6 @@
 import { chroniclesReadableIsometricLighting } from './chroniclesLightingPolicy.js';
 
-export const CHRONICLES_ISOMETRIC_SCENE_STYLE_VERSION = 4;
+export const CHRONICLES_ISOMETRIC_SCENE_STYLE_VERSION = 5;
 
 function scenePalette(values) {
   return Object.freeze({
@@ -90,12 +90,39 @@ const HOLLOW_BELL_PALETTE = scenePalette({
   bounce: 0x865d36,
 });
 
+const CAVE_WATER_PALETTE = scenePalette({
+  background: 0x070b0d,
+  fog: 0x0f1a1d,
+  floor: [0x374348, 0x465256, 0x303b40, 0x526064],
+  foundation: 0x151a1c,
+  wall: [0x424f53, 0x4d5b5f, 0x354247],
+  wallTrim: 0x1a2225,
+  metal: 0x66777c,
+  rune: 0xa7d6d8,
+  runeEmissive: 0x3d8f98,
+  runeGlow: 0x70c4cb,
+  hemiSky: 0xb7d5d9,
+  hemiGround: 0x0b1416,
+  key: 0xd7e1cf,
+  rim: 0x6ea7b8,
+  fill: 0xa1c6c9,
+  bounce: 0x446a70,
+});
+
 const NEUTRAL_STYLE = Object.freeze({
   id: 'neutral',
   version: CHRONICLES_ISOMETRIC_SCENE_STYLE_VERSION,
   dressing: 'none',
   lighting: sceneLighting({ exposure: 1, hemi: 1, fill: 1, bounce: 1 }),
   palette: CRYPT_PALETTE,
+});
+
+const CAVE_WATER_STYLE = Object.freeze({
+  id: 'cave-water',
+  version: CHRONICLES_ISOMETRIC_SCENE_STYLE_VERSION,
+  dressing: 'none',
+  lighting: sceneLighting({ exposure: 1.06, hemi: 1.16, fill: 1.22, bounce: 1.08 }),
+  palette: CAVE_WATER_PALETTE,
 });
 
 const SCENE_STYLES = Object.freeze({
@@ -127,8 +154,14 @@ const SCENE_STYLES = Object.freeze({
     lighting: sceneLighting({ exposure: 1.28, hemi: 1.4, fill: 1.62, bounce: 1.46 }),
     palette: HOLLOW_BELL_PALETTE,
   }),
+  'echo-cistern': CAVE_WATER_STYLE,
 });
 
 export function chroniclesIsometricSceneStyle(mapId) {
-  return SCENE_STYLES[mapId] || NEUTRAL_STYLE;
+  const id = String(mapId || '').trim().toLowerCase();
+  if (SCENE_STYLES[id]) return SCENE_STYLES[id];
+  if (/(cistern|cave|cavern|grotto|mine|mountain|tunnel|sewer|water|flood|canal)/.test(id)) {
+    return CAVE_WATER_STYLE;
+  }
+  return NEUTRAL_STYLE;
 }

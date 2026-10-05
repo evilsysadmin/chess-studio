@@ -67,13 +67,19 @@ describe('Chronicles Tactics canonical scene art orchestrator', () => {
   it('forwards supplied map topology into the premium architecture layer', () => {
     const { models } = sceneModels();
     const scenePlan = {
+      mapId: 'echo-cistern',
+      width: 13,
+      height: 10,
       center: { x: 8, y: 9 },
+      walls: [{ x: 1, y: 1 }],
+      floors: [{ x: 2, y: 2 }],
       wallFaces: [],
     };
     const art = installChroniclesTacticsSceneArt(models, { coarsePointer: true, scenePlan });
 
     expect(art?.architecture?.userData.chroniclesSceneCenter).toEqual({ x: 8, y: 9 });
     expect(art?.architecture?.userData.chroniclesArchitectureWallCount).toBe(0);
+    expect(art?.materials?.userData.chroniclesMaterialEnvironment).toBe('cave-water');
   });
 
   it('renders every authored floor trap with stable ids and distinct silhouettes', () => {

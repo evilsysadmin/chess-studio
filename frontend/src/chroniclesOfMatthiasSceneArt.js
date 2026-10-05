@@ -37,7 +37,7 @@ export function installChroniclesTacticsSceneArt(models, {
   const foreground = useCanonicalFrame
     ? installChroniclesTacticsForegroundFraming(scene, { coarsePointer, scenePlan })
     : null;
-  const materials = installChroniclesTacticsPremiumMaterials(scene, { coarsePointer });
+  const materials = installChroniclesTacticsPremiumMaterials(scene, { coarsePointer, scenePlan });
   const wetStone = installChroniclesTacticsWetStone(scene, { coarsePointer });
   const floorDetail = installChroniclesTacticsFloorDetail(scene, { coarsePointer, scenePlan });
   const weathering = installChroniclesTacticsStoneWeathering(scene, { coarsePointer });

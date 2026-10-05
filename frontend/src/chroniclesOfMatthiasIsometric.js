@@ -14,6 +14,8 @@ import { buildChroniclesCharacter } from './chroniclesOfMatthiasArt.js';
 import { buildChroniclesEnemyVisual } from './chroniclesEnemyVisualRegistry.js';
 import { chroniclesEnemyEffectiveVisualScale } from './chroniclesEnemyRenderRoster.js';
 import { installChroniclesCanonicalMatthias } from './chroniclesOfMatthiasBlenderArt.js';
+import { createChroniclesCaveWallDressing } from './chroniclesOfMatthiasCaveWallArt.js';
+import { deterministicNoise, facingAngle, shortestAngleDelta } from './chroniclesOfMatthiasIsometricMath.js';
 import { installChroniclesTacticsPartyBlenderArt } from './chroniclesOfMatthiasPartyBlenderArt.js';
 import {
   CHRONICLES_ISOMETRIC_CELL_SIZE,
@@ -146,19 +148,6 @@ export function chroniclesIsoWorldObjectState(state) {
   return chroniclesSceneWorldObjectState(state);
 }
 
-function deterministicNoise(x, y, salt = 0) {
-  const value = Math.sin((x + 17.31 + salt) * 12.9898 + (y - 9.17 - salt) * 78.233) * 43758.5453;
-  return value - Math.floor(value);
-}
-
-function facingAngle(from, to) {
-  return Math.atan2(to.x - from.x, to.z - from.z);
-}
-
-function shortestAngleDelta(from, to) {
-  return Math.atan2(Math.sin(to - from), Math.cos(to - from));
-}
-
 function ownedMaterial(params) {
   const material = new THREE.MeshStandardMaterial(params);
   material.userData.chroniclesIsoOwned = true;
@@ -268,6 +257,10 @@ function buildIsoDungeon({
   const root = new THREE.Group();
   root.name = 'chronicles-isometric-dungeon';
   const floorTargets = [];
+  const caveWallDressing = createChroniclesCaveWallDressing({
+    sceneStyleId: scenePlan?.sceneStyle?.id, coarsePointer,
+    wallCells: new Set(geometryPlan.walls.map(({ x, y }) => `${x},${y}`)), cellSize: CELL,
+  });
 
   const floorRoughness = [0.9, 0.86, 0.93, 0.89];
   const floorMetalness = [0.025, 0.025, 0.02, 0.025];
@@ -329,6 +322,8 @@ function buildIsoDungeon({
     block.receiveShadow = true;
     block.name = `chronicles-iso-wall-${x}-${y}`;
     root.add(block);
+
+    if (caveWallDressing?.decorate({ root, block, material: wall, x, y, world })) return;
 
     const cap = new THREE.Mesh(wallCapGeometry, wallTrim);
     cap.position.set(world.x, 2.59, world.z);
