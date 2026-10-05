@@ -15,7 +15,6 @@ import {
   saveChroniclesProgression,
   setChroniclesCharacterBuild,
 } from '../chroniclesOfMatthiasProgression.js';
-import { useEscapeToClose } from '../useEscapeToClose.js';
 import ChroniclesCharacterSetup from './ChroniclesCharacterSetup.jsx';
 import './ChroniclesOfMatthiasTactics.css';
 import './ChroniclesOfMatthiasTacticsPremium.css';
@@ -85,7 +84,6 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
     onExit?.();
   }, [onExit]);
 
-  useEscapeToClose(exitChronicles, { disabled: ready });
 
   const confirmCharacterBuild = useCallback((build) => {
     const selected = setChroniclesCharacterBuild(progression, build);
