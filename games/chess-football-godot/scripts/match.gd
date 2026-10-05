@@ -777,6 +777,9 @@ func debug_3d_ready() -> bool:
 func debug_3d_animated_players() -> int:
 	return presentation_3d.debug_animated_players() if presentation_3d != null else 0
 
+func debug_sync_presentation() -> void:
+	_update_3d_presentation(0.0)
+
 func debug_try_tackle(player: Footballer) -> bool:
 	return _try_tackle(player)
 
