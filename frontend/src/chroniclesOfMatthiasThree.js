@@ -8,6 +8,7 @@ import { chroniclesFirstPersonScenePlan } from './chronicles/chroniclesFirstPers
 import { CHRONICLES_MINIMUM_VISIBILITY } from './chronicles/chroniclesLightingPolicy.js';
 import { buildChroniclesDungeonDressing } from './chroniclesOfMatthiasDungeonArt.js';
 import { buildChroniclesDungeonAtmosphere } from './chroniclesOfMatthiasAtmosphere.js';
+import { installChroniclesFirstPersonPremiumMaterials } from './chroniclesOfMatthiasMaterialArt.js';
 import { buildChroniclesEnemyVisual } from './chroniclesEnemyVisualRegistry.js';
 import { buildSpectralChapel } from './chroniclesOfMatthiasSpectralBishop.js';
 import { createExperimentalThreeRenderer } from './experimentalThreeRenderer.js';
@@ -90,7 +91,9 @@ function createDungeonScene(scene, { coarsePointer = false, scenePlan = null } =
   const sceneCenter = scenePlan?.center || DEFAULT_SCENE_CENTER;
   const width = Math.max(1, Number(scenePlan?.width) || Math.max(0, ...grid.map((row) => row?.length || 0)));
   const height = Math.max(1, Number(scenePlan?.height) || grid.length);
-  const stone = new THREE.MeshStandardMaterial({ color: 0x3d3a35, roughness: 0.96, metalness: 0.02 });
+  const stoneMaterials = Array.from({ length: 3 }, () => (
+    new THREE.MeshStandardMaterial({ color: 0x3d3a35, roughness: 0.96, metalness: 0.02 })
+  ));
   const darkStone = new THREE.MeshStandardMaterial({ color: 0x1b1a19, roughness: 1, metalness: 0 });
   const mortar = new THREE.MeshStandardMaterial({ color: 0x272522, roughness: 1, metalness: 0 });
   const floor = new THREE.MeshStandardMaterial({ color: 0x27241f, roughness: 0.92, metalness: 0.03 });
@@ -98,27 +101,32 @@ function createDungeonScene(scene, { coarsePointer = false, scenePlan = null } =
   const floorMesh = new THREE.Mesh(new THREE.BoxGeometry(CELL * width, 0.28, CELL * height), floor);
   floorMesh.position.y = -0.18;
   floorMesh.receiveShadow = true;
+  floorMesh.name = 'chronicles-first-person-floor';
   scene.add(floorMesh);
 
   const ceiling = new THREE.Mesh(new THREE.BoxGeometry(CELL * width, 0.24, CELL * height), darkStone);
   ceiling.position.y = 3.55;
+  ceiling.name = 'chronicles-first-person-ceiling';
   scene.add(ceiling);
 
   const wallGeometry = new THREE.BoxGeometry(CELL, 3.6, CELL);
   grid.forEach((row, y) => {
     [...row].forEach((tile, x) => {
       if (tile !== '#') return;
-      const wall = new THREE.Mesh(wallGeometry, stone);
+      const wallMaterial = stoneMaterials[Math.abs(x * 31 + y * 17) % stoneMaterials.length];
+      const wall = new THREE.Mesh(wallGeometry, wallMaterial);
       const p = worldForCell(x, y, sceneCenter);
       wall.position.set(p.x, 1.72, p.z);
       wall.castShadow = true;
       wall.receiveShadow = true;
+      wall.name = `chronicles-first-person-wall-${x}-${y}`;
       scene.add(wall);
 
       if ((x + y) % 2 === 0) {
         const band = new THREE.Mesh(new THREE.BoxGeometry(CELL * 0.94, 0.07, CELL * 1.01), mortar);
         band.position.set(p.x, 1.05 + ((x * 3 + y) % 3) * 0.72, p.z);
         band.receiveShadow = true;
+        band.name = `chronicles-first-person-wall-band-${x}-${y}`;
         scene.add(band);
       }
     });
@@ -262,6 +270,12 @@ function createDungeonScene(scene, { coarsePointer = false, scenePlan = null } =
     torches.push({ root, flame, flameCore, light, baseIntensity, flameScale, phase: index * 1.7 });
   });
 
+  const materialArt = installChroniclesFirstPersonPremiumMaterials(scene, {
+    coarsePointer,
+    scenePlan,
+    floorRepeatScale: Math.max(width, height),
+  });
+
   return {
     enemies: enemyModels,
     enemyDefinitions,
@@ -271,6 +285,7 @@ function createDungeonScene(scene, { coarsePointer = false, scenePlan = null } =
     gateRune,
     torches,
     sceneCenter,
+    materialArt,
   };
 }
 
@@ -570,6 +585,7 @@ export function createChroniclesOfMatthiasGame(host, { onReady, initialState = n
       observer?.disconnect();
       if (!observer) window.removeEventListener('resize', onWindowResize);
       document.removeEventListener('visibilitychange', onVisibility);
+      dungeon.materialArt?.userData.chroniclesArtCancel?.();
       disposeScene(scene);
       renderer.dispose();
       renderer.forceContextLoss?.();
