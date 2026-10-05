@@ -30,9 +30,10 @@ function createRockFaceGeometry(width, height, seed, {
       const direction = column === 0 ? -1 : 1;
       jaggedX += direction * (noise(row, seed, 31) - 0.35) * width * 0.085;
     }
-    if (row === 0 || row === heightSegments) {
-      const direction = row === 0 ? 1 : -1;
-      jaggedY += direction * (noise(column, seed, 43) - 0.35) * height * 0.055;
+    if (row === 0) {
+      jaggedY += (noise(column, seed, 43) - 0.5) * height * 0.12;
+    } else if (row === heightSegments) {
+      jaggedY += (noise(column, seed, 47) - 0.5) * height * 0.018;
     }
     if (edge < 0.98) {
       jaggedX += (noise(index, seed, 53) - 0.5) * width * 0.018;
@@ -69,7 +70,8 @@ export function createChroniclesCaveWallDressing({
 
     exposedFaces.forEach((face, faceIndex) => {
       const width = cellSize * (1.12 + noise(x, y, 61 + faceIndex) * 0.07);
-      const height = 2.62 + noise(x, y, 71 + faceIndex) * 0.14;
+      const cellHeight = 2.46 + noise(x, y, 71) * 0.3;
+      const height = cellHeight + (noise(x, y, 73 + faceIndex) - 0.5) * 0.045;
       const geometry = createRockFaceGeometry(
         width,
         height,
@@ -85,7 +87,7 @@ export function createChroniclesCaveWallDressing({
       const outward = cellSize * 0.51;
       faceMesh.position.set(
         world.x + face.ox * outward,
-        1.26 + (noise(x, y, 83 + faceIndex) - 0.5) * 0.05,
+        -0.055 + height / 2,
         world.z + face.oz * outward,
       );
       faceMesh.rotation.y = face.yaw + (noise(x, y, 89 + faceIndex) - 0.5) * 0.04;
@@ -95,41 +97,7 @@ export function createChroniclesCaveWallDressing({
       root.add(faceMesh);
     });
 
-    if (!coarsePointer) {
-      exposedFaces.forEach((face, faceIndex) => {
-        if (noise(x, y, 157 + faceIndex) < 0.72) return;
 
-        const chipWidth = cellSize * (0.34 + noise(x, y, 163 + faceIndex) * 0.22);
-        const chipDepth = cellSize * (0.055 + noise(x, y, 167 + faceIndex) * 0.035);
-        const chipGeometry = createRockFaceGeometry(
-          chipWidth,
-          chipDepth,
-          x * 89 + y * 109 + faceIndex * 29 + 401,
-          {
-            widthSegments: 3,
-            heightSegments: 2,
-            depth: 0.035,
-          },
-        );
-        const chip = new THREE.Mesh(chipGeometry, material);
-        chip.name = `chronicles-iso-cave-edge-chip-${x}-${y}-${faceIndex}`;
-        chip.rotation.x = -Math.PI / 2;
-        chip.rotation.z = face.yaw + (noise(x, y, 173 + faceIndex) - 0.5) * 0.08;
-
-        const tangentX = face.oz;
-        const tangentZ = -face.ox;
-        const along = (noise(x, y, 179 + faceIndex) - 0.5) * cellSize * 0.28;
-        const outward = cellSize * 0.49;
-        chip.position.set(
-          world.x + face.ox * outward + tangentX * along,
-          2.59 + (noise(x, y, 181 + faceIndex) - 0.5) * 0.025,
-          world.z + face.oz * outward + tangentZ * along,
-        );
-        chip.castShadow = true;
-        chip.receiveShadow = true;
-        root.add(chip);
-      });
-    }
 
     return true;
   }
