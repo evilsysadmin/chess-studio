@@ -2,6 +2,11 @@ import { facingAngle, shortestAngleDelta } from '../chroniclesOfMatthiasIsometri
 import { tickChroniclesCarriedTorch } from './chroniclesCarriedTorch.js';
 import { CHRONICLES_ISO_PARTY_FACING } from './chroniclesTacticsPartyPresentation.js';
 
+export function chroniclesFrameTiming(clock) {
+  const deltaSeconds = Math.max(1 / 240, Math.min(0.1, Number(clock?.getDelta?.()) || 1 / 60));
+  return Object.freeze({ deltaSeconds, time: Number(clock?.elapsedTime) || 0 });
+}
+
 function frameRateIndependentAlpha(ratePerSecond, deltaSeconds) {
   const dt = Math.max(1 / 240, Math.min(0.1, Number(deltaSeconds) || 1 / 60));
   return 1 - Math.exp(-Math.max(0, ratePerSecond) * dt);
