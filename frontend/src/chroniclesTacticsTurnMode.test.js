@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createChroniclesState } from './chroniclesOfMatthias.js';
+import { chroniclesActiveEnemies, createChroniclesState } from './chroniclesOfMatthias.js';
 import {
   chroniclesTacticsCombatActive,
   chroniclesTacticsCurrentActor,
@@ -26,7 +26,7 @@ describe('Chronicles Tactics turn-based combat mode', () => {
     expect(chroniclesTacticsCombatActive(initial)).toBe(false);
     const resolved = chroniclesTacticsResolvePlayerAction(initial, explorationStep);
     expect(resolved).toBe(explorationStep);
-    expect(resolved.initiative).toBeNull();
+    expect(resolved.initiative ?? null).toBeNull();
     expect(resolved.enemyTurnEvents).toEqual([]);
   });
 
@@ -69,6 +69,54 @@ describe('Chronicles Tactics turn-based combat mode', () => {
     expect(resolved.enemyHp).toBe(initial.enemyHp);
     expect(resolved.turns).toBe(initial.turns);
     expect(resolved.initiative?.order.map((actor) => actor.id)).toContain('corrupted-pawn');
+  });
+
+  it('puts every living enemy in the Tactics room on the initiative scheduler', () => {
+    const initial = {
+      ...createChroniclesState('menagerie-of-ash'),
+      round: 1,
+      turnPhase: 'party',
+      enemyPositions: {},
+      enemyTurnEvents: [],
+    };
+    const activeEnemyIds = chroniclesActiveEnemies(initial).map((enemy) => enemy.id).sort();
+
+    expect(activeEnemyIds.length).toBeGreaterThan(1);
+    expect(chroniclesTacticsCombatActive(initial)).toBe(true);
+
+    const attemptedFreeMove = { ...initial, x: 2, y: 5, turns: 1, message: 'Movimiento libre indebido.' };
+    const resolved = chroniclesTacticsResolvePlayerAction(initial, attemptedFreeMove, { random: () => 0 });
+    const scheduledEnemyIds = (resolved.initiative?.order || [])
+      .filter((actor) => actor.kind === 'enemy')
+      .map((actor) => actor.id)
+      .sort();
+
+    expect(scheduledEnemyIds).toEqual(activeEnemyIds);
+    expect({ x: resolved.x, y: resolved.y }).toEqual({ x: initial.x, y: initial.y });
+  });
+
+  it('advances exactly one initiative slot after a party action without resolving the enemy side', () => {
+    const initial = tacticsState({
+      phase: 'combat',
+      initiative: {
+        version: 1,
+        die: '1d8',
+        round: 1,
+        cursor: 0,
+        order: [
+          { id: 'rook', kind: 'party', name: 'Hildegard', agility: 2, roll: 8, initiative: 10 },
+          { id: 'corrupted-pawn', kind: 'enemy', name: 'Peón', agility: 0, roll: 7, initiative: 7 },
+          { id: 'matthias', kind: 'party', name: 'Matthias', agility: 4, roll: 1, initiative: 5 },
+        ],
+      },
+    });
+    const acted = { ...initial, turns: initial.turns + 1, message: 'Hildegard actúa.' };
+
+    const resolved = chroniclesTacticsResolvePlayerAction(initial, acted);
+
+    expect(chroniclesTacticsCurrentActor(resolved)?.id).toBe('corrupted-pawn');
+    expect(resolved.enemyTurnEvents).toEqual([]);
+    expect(resolved.enemyHp).toBe(initial.enemyHp);
   });
 
   it('allows exactly the current party actor to act and blocks enemy initiative turns', () => {
