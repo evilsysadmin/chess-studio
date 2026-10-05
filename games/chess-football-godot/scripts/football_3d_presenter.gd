@@ -8,6 +8,9 @@ const BROADCAST_DEPTH := 17.8
 const TACTICAL_HEIGHT := 27.0
 const PLAYER_PIXEL_SIZE := 0.0124
 const TACTICAL_PLAYER_PIXEL_SIZE := 0.0162
+const PLAYER_BASE_Y := 0.76
+const PLAYER_RUN_BOB := 0.050
+const PLAYER_SPRINT_BOB := 0.072
 
 var match_node: Node
 var camera: Camera3D
@@ -270,7 +273,7 @@ func _build_player_proxies() -> void:
 			sprite.sprite_frames = ChessFootballSpriteBank.build_frames(player.team_id, player.role)
 			sprite.centered = true
 			sprite.pixel_size = PLAYER_PIXEL_SIZE
-			sprite.position.y = 0.76
+			sprite.position.y = PLAYER_BASE_Y
 			sprite.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 			sprite.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 			sprite.flip_h = player.team_id == 1
@@ -367,7 +370,10 @@ func sync_presentation(delta: float, mode: String) -> void:
 				if sprite.animation != wanted_animation:
 					sprite.play(wanted_animation)
 				sprite.flip_h = player.visual.flip_h
+				sprite.speed_scale = player.visual.speed_scale
+				sprite.frame = player.visual.frame
 			sprite.pixel_size = TACTICAL_PLAYER_PIXEL_SIZE if mode == "tactical" else PLAYER_PIXEL_SIZE
+			_sync_player_secondary_motion(player, sprite, proxy)
 			var active_disc := proxy.get_node_or_null("ActiveDisc") as MeshInstance3D
 			if active_disc != null:
 				active_disc.visible = player == match_node.controlled
@@ -379,6 +385,54 @@ func sync_presentation(delta: float, mode: String) -> void:
 		ball_shadow.position = world_to_stage(match_node.ball.global_position, 0.010)
 
 	_sync_camera(delta, mode)
+
+func _sync_player_secondary_motion(player: Footballer, sprite: AnimatedSprite3D, proxy: Node3D) -> void:
+	var animation_name := String(sprite.animation)
+	var frame_count := maxi(1, sprite.sprite_frames.get_frame_count(sprite.animation))
+	var phase := TAU * float(sprite.frame) / float(frame_count)
+	var speed_ratio := clampf(player.velocity.length() / maxf(player.base_speed, 1.0), 0.0, 1.4)
+	var moving_weight := clampf(speed_ratio, 0.0, 1.0)
+	var bob := sin(phase) * 0.010
+	var stretch_x := 1.0
+	var stretch_y := 1.0
+	var tilt_degrees := 0.0
+	var facing_sign := -1.0 if sprite.flip_h else 1.0
+
+	if animation_name == "run":
+		bob = absf(sin(phase)) * PLAYER_RUN_BOB * moving_weight
+		stretch_x = 1.0 + absf(cos(phase)) * 0.025
+		stretch_y = 1.0 - absf(cos(phase)) * 0.018
+		tilt_degrees = -facing_sign * 2.8 * moving_weight
+	elif animation_name == "sprint":
+		bob = absf(sin(phase)) * PLAYER_SPRINT_BOB * moving_weight
+		stretch_x = 1.0 + absf(cos(phase)) * 0.040
+		stretch_y = 1.0 - absf(cos(phase)) * 0.028
+		tilt_degrees = -facing_sign * 5.2 * moving_weight
+	elif animation_name == "pass":
+		bob = absf(sin(phase)) * 0.018
+		tilt_degrees = -facing_sign * 3.5
+	elif animation_name == "shoot":
+		bob = absf(sin(phase)) * 0.026
+		stretch_x = 1.035
+		stretch_y = 0.985
+		tilt_degrees = -facing_sign * 7.5
+	elif animation_name == "tackle":
+		bob = -0.035
+		stretch_x = 1.070
+		stretch_y = 0.940
+		tilt_degrees = -facing_sign * 11.0
+	elif animation_name == "celebrate":
+		bob = absf(sin(phase)) * 0.080
+		stretch_y = 1.025
+
+	sprite.position.y = PLAYER_BASE_Y + bob
+	sprite.rotation.z = deg_to_rad(tilt_degrees)
+	sprite.scale = Vector3(stretch_x, stretch_y, 1.0)
+
+	var shadow := proxy.get_node_or_null("ContactShadow") as MeshInstance3D
+	if shadow != null:
+		var shadow_scale := clampf(1.0 - maxf(bob, 0.0) * 2.2, 0.76, 1.0)
+		shadow.scale = Vector3(shadow_scale, 1.0, shadow_scale)
 
 func _sync_camera(delta: float, mode: String) -> void:
 	if camera == null:
