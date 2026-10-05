@@ -54,9 +54,18 @@ func _initialize() -> void:
 	assert(InputMap.has_action("tackle"))
 	print("SMOKE_STAGE=kickoff")
 
-	match_node.ball.flight_height = 48.0
+	# The same shot crossing the goal plane is only a goal while the whole
+	# ball fits below the crossbar.
+	match_node.ball.release(Vector2.RIGHT, 0.0)
+	match_node.ball.global_position = ChessFootballMath.goal_center(0) + Vector2(28.0, 0.0)
+	match_node.ball.flight_height = ChessFootballMath.GOAL_MAX_FLIGHT_HEIGHT + 8.0
 	match_node.ball.vertical_velocity = 120.0
-	match_node.debug_score_goal(0)
+	match_node.debug_check_goal()
+	assert(match_node.score == [0, 0])
+	assert(not match_node.debug_goal_restart_active())
+
+	match_node.ball.flight_height = ChessFootballMath.GOAL_MAX_FLIGHT_HEIGHT - 4.0
+	match_node.debug_check_goal()
 	assert(match_node.score == [1, 0])
 	assert(match_node.ball.flight_height == 0.0)
 	assert(match_node.ball.vertical_velocity == 0.0)
