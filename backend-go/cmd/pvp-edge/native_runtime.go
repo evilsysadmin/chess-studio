@@ -18,6 +18,7 @@ import (
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/feedbackstore"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/gamesapi"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/gamestore"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/httpwindow"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/ipgeo"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/matchdisconnect"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/matchresign"
@@ -74,13 +75,17 @@ type nativeRuntime struct {
 	// system is built in edgeConfig, once request telemetry exists.
 	system *gamesapi.SystemConfig
 	// history is Admin's observability history (nil when disabled).
-	history        *obshistory.Recorder
-	mongo          *mongoruntime.Runtime
+	history *obshistory.Recorder
+	mongo   *mongoruntime.Runtime
+	// window is Admin's in-memory request window over everything the edge
+	// answers (observability.py's).
+	window         *httpwindow.Window
 	virtualPlayers bool
 	residentMove   bool
 }
 
 func buildNativeRuntime(features nativeFeatureFlags, upstream string) (runtime nativeRuntime, err error) {
+	runtime.window = httpwindow.New()
 	runtime.virtualPlayers = envBool("CHESS_PVP_SPARRING_ENABLED", false)
 	virtualOwner := strings.TrimSpace(os.Getenv("CHESS_PVP_SPARRING_OWNER"))
 	if runtime.virtualPlayers && virtualOwner == "" {
@@ -721,6 +726,7 @@ func (r nativeRuntime) edgeConfig(upstream, release string, requestTelemetry *te
 		NativeResidentMove:        r.residentMove,
 		ReadyChecks:               readyChecks,
 		Telemetry:                 requestTelemetry,
+		HTTPWindow:                r.window,
 	}
 }
 

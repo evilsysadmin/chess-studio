@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/httpwindow"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/pydoc"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -1622,5 +1624,52 @@ func TestNativeAdminUsersServesOnlyItsRoutes(t *testing.T) {
 	if strings.Join(served, ",") != "GET /api/admin/users,GET /api/admin/users/bob/insights,POST /api/admin/delete-user" ||
 		strings.Join(proxied, ",") != "GET /api/admin/observability,POST /api/admin/users,GET /api/admin/matthias-status" {
 		t.Fatalf("served %v proxied %v", served, proxied)
+	}
+}
+
+func TestHTTPWindowSeesNativeAndProxiedRequests(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/ready" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		w.WriteHeader(http.StatusTeapot)
+	}))
+	defer upstream.Close()
+	native := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			panic("boom")
+		}
+		_, _ = w.Write([]byte("{}"))
+	})
+	window := httpwindow.New()
+	h, err := New(Config{UpstreamURL: upstream.URL, NativeNarrative: native, HTTPWindow: window})
+	if err != nil {
+		t.Fatal(err)
+	}
+	get := httptest.NewRequest("GET", "http://api.chess.test/api/admin/ai-metrics", nil)
+	get.Header.Set("X-Client-Release", "v42")
+	h.ServeHTTP(httptest.NewRecorder(), get)
+	h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "http://api.chess.test/api/games", nil))
+	func() {
+		defer func() { _ = recover() }()
+		h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("POST", "http://api.chess.test/api/narrative", strings.NewReader("{}")))
+	}()
+	h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "http://api.chess.test/readyz", nil))
+	h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "http://api.chess.test/healthz", nil))
+
+	got, err := pydoc.Encode(window.Metrics())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		`"samples":3,`, `"status_2xx":1,"status_4xx":1,"status_5xx":1,`,
+		`"route":"GET /api/admin/ai-metrics","requests":1`, `"route":"GET proxy:python","requests":1`,
+		`"route":"POST /api/narrative","requests":1`, `"releases":[{"release":"v42","requests":1`,
+		`"first_ready_observed":true`,
+	} {
+		if !strings.Contains(string(got), want) {
+			t.Fatalf("window lacks %s:\n%s", want, got)
+		}
 	}
 }

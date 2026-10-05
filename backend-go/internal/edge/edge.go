@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/gamesapi"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/httpwindow"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/pvproute"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/runtimeidentity"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/telemetry"
@@ -97,6 +99,11 @@ type Config struct {
 	// log). Proxied requests are recorded by Python, so they are not wrapped.
 	// Nil disables it.
 	Telemetry *telemetry.Recorder
+	// HTTPWindow is Admin's in-memory request window (observability.py's):
+	// every API request the edge answers, native under its route pattern and
+	// proxied as httpwindow.ProxiedRoute, plus the first observed readiness.
+	// Nil disables it.
+	HTTPWindow *httpwindow.Window
 }
 
 type Handler struct {
@@ -138,6 +145,7 @@ type Handler struct {
 	nativeResidentMove        bool
 	readyChecks               map[string]func(context.Context) error
 	telemetry                 *telemetry.Recorder
+	window                    *httpwindow.Window
 }
 
 func New(cfg Config) (*Handler, error) {
@@ -254,6 +262,7 @@ func New(cfg Config) (*Handler, error) {
 		nativeResidentMove:        cfg.NativeResidentMove,
 		readyChecks:               cfg.ReadyChecks,
 		telemetry:                 cfg.Telemetry,
+		window:                    cfg.HTTPWindow,
 	}, nil
 }
 
@@ -269,126 +278,126 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if h.nativeGamesRead != nil {
 		if pattern, _, ok := gamesapi.Route(r); ok {
 			w.Header().Set("X-Chess-Edge", "go")
-			h.telemetry.Serve(pattern, h.nativeGamesRead, w, r)
+			h.serveNative(pattern, h.nativeGamesRead, w, r)
 			return
 		}
 	}
 	if h.nativeGamesWrite != nil {
 		if pattern, _, ok := gamesapi.WriteRoute(r); ok {
 			w.Header().Set("X-Chess-Edge", "go")
-			h.telemetry.Serve(pattern, h.nativeGamesWrite, w, r)
+			h.serveNative(pattern, h.nativeGamesWrite, w, r)
 			return
 		}
 	}
 	if h.nativeGamesHint != nil {
 		if pattern, _, ok := gamesapi.HintRoute(r); ok {
 			w.Header().Set("X-Chess-Edge", "go")
-			h.telemetry.Serve(pattern, h.nativeGamesHint, w, r)
+			h.serveNative(pattern, h.nativeGamesHint, w, r)
 			return
 		}
 	}
 	if h.nativeGamesAnalyze != nil {
 		if pattern, ok := gamesapi.AnalyzeRoute(r); ok {
 			w.Header().Set("X-Chess-Edge", "go")
-			h.telemetry.Serve(pattern, h.nativeGamesAnalyze, w, r)
+			h.serveNative(pattern, h.nativeGamesAnalyze, w, r)
 			return
 		}
 	}
 	if h.nativeSystem != nil {
 		if pattern, ok := gamesapi.SystemRoute(r); ok {
 			w.Header().Set("X-Chess-Edge", "go")
-			h.telemetry.Serve(pattern, h.nativeSystem, w, r)
+			h.serveNative(pattern, h.nativeSystem, w, r)
 			return
 		}
 	}
 	if h.nativeProfile != nil {
 		if pattern, ok := gamesapi.ProfileRoute(r); ok {
 			w.Header().Set("X-Chess-Edge", "go")
-			h.telemetry.Serve(pattern, h.nativeProfile, w, r)
+			h.serveNative(pattern, h.nativeProfile, w, r)
 			return
 		}
 	}
 	if h.nativeSession != nil {
 		if pattern, ok := gamesapi.SessionRoute(r); ok {
 			w.Header().Set("X-Chess-Edge", "go")
-			h.telemetry.Serve(pattern, h.nativeSession, w, r)
+			h.serveNative(pattern, h.nativeSession, w, r)
 			return
 		}
 	}
 	if h.nativeLogin != nil {
 		if pattern, ok := gamesapi.LoginRoute(r); ok {
 			w.Header().Set("X-Chess-Edge", "go")
-			h.telemetry.Serve(pattern, h.nativeLogin, w, r)
+			h.serveNative(pattern, h.nativeLogin, w, r)
 			return
 		}
 	}
 	if h.nativeAccount != nil {
 		if pattern, ok := gamesapi.AccountRoute(r); ok {
 			w.Header().Set("X-Chess-Edge", "go")
-			h.telemetry.Serve(pattern, h.nativeAccount, w, r)
+			h.serveNative(pattern, h.nativeAccount, w, r)
 			return
 		}
 	}
 	if h.nativeRecovery != nil {
 		if pattern, ok := gamesapi.RecoveryRoute(r); ok {
 			w.Header().Set("X-Chess-Edge", "go")
-			h.telemetry.Serve(pattern, h.nativeRecovery, w, r)
+			h.serveNative(pattern, h.nativeRecovery, w, r)
 			return
 		}
 	}
 	if h.nativeFeedback != nil {
 		if pattern, _, ok := gamesapi.FeedbackRoute(r); ok {
 			w.Header().Set("X-Chess-Edge", "go")
-			h.telemetry.Serve(pattern, h.nativeFeedback, w, r)
+			h.serveNative(pattern, h.nativeFeedback, w, r)
 			return
 		}
 	}
 	if h.nativeMatthias != nil {
 		if pattern, ok := gamesapi.MatthiasRoute(r); ok {
 			w.Header().Set("X-Chess-Edge", "go")
-			h.telemetry.Serve(pattern, h.nativeMatthias, w, r)
+			h.serveNative(pattern, h.nativeMatthias, w, r)
 			return
 		}
 	}
 	if h.nativeNarrative != nil {
 		if pattern, ok := gamesapi.NarrativeRoute(r); ok {
 			w.Header().Set("X-Chess-Edge", "go")
-			h.telemetry.Serve(pattern, h.nativeNarrative, w, r)
+			h.serveNative(pattern, h.nativeNarrative, w, r)
 			return
 		}
 	}
 	if h.nativePawnSlug != nil {
 		if pattern, ok := gamesapi.PawnSlugRoute(r); ok {
 			w.Header().Set("X-Chess-Edge", "go")
-			h.telemetry.Serve(pattern, h.nativePawnSlug, w, r)
+			h.serveNative(pattern, h.nativePawnSlug, w, r)
 			return
 		}
 	}
 	if h.nativeChronicles != nil {
 		if pattern, ok := gamesapi.ChroniclesRoute(r); ok {
 			w.Header().Set("X-Chess-Edge", "go")
-			h.telemetry.Serve(pattern, h.nativeChronicles, w, r)
+			h.serveNative(pattern, h.nativeChronicles, w, r)
 			return
 		}
 	}
 	if h.nativeChroniclesRuns != nil {
 		if pattern, _, ok := gamesapi.ChroniclesRunsRoute(r); ok {
 			w.Header().Set("X-Chess-Edge", "go")
-			h.telemetry.Serve(pattern, h.nativeChroniclesRuns, w, r)
+			h.serveNative(pattern, h.nativeChroniclesRuns, w, r)
 			return
 		}
 	}
 	if h.nativeAdminFeedback != nil {
 		if pattern, ok := gamesapi.AdminFeedbackRoute(r); ok {
 			w.Header().Set("X-Chess-Edge", "go")
-			h.telemetry.Serve(pattern, h.nativeAdminFeedback, w, r)
+			h.serveNative(pattern, h.nativeAdminFeedback, w, r)
 			return
 		}
 	}
 	if h.nativeAdminUsers != nil {
 		if pattern, _, ok := gamesapi.AdminUsersRoute(r); ok {
 			w.Header().Set("X-Chess-Edge", "go")
-			h.telemetry.Serve(pattern, h.nativeAdminUsers, w, r)
+			h.serveNative(pattern, h.nativeAdminUsers, w, r)
 			return
 		}
 	}
@@ -396,7 +405,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if native := h.nativeFor(route.Kind); native != nil {
 		w.Header().Set("X-Chess-Edge", "go")
 		w.Header().Set("X-Chess-Pvp-Edge", "go")
-		h.telemetry.Serve(route.Kind.Pattern(), native, w, r)
+		h.serveNative(route.Kind.Pattern(), native, w, r)
 		return
 	}
 	if route.Kind == pvproute.LobbyPulse || route.Kind == pvproute.MatchPulse {
@@ -418,7 +427,73 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// whole API); in the default mode it never arrives.
 		r.Header.Del("X-Chess-Pvp-Fallback")
 	}
-	h.proxy.ServeHTTP(w, r)
+	h.serveProxied(w, r)
+}
+
+// serveNative runs a native handler under request telemetry and the
+// request window.
+func (h *Handler) serveNative(pattern string, next http.Handler, w http.ResponseWriter, r *http.Request) {
+	if h.window == nil {
+		h.telemetry.Serve(pattern, next, w, r)
+		return
+	}
+	h.observe(pattern, w, r, func(w http.ResponseWriter) { h.telemetry.Serve(pattern, next, w, r) })
+}
+
+// serveProxied hands the request to Python; only the window sees it here
+// (Python records its own telemetry).
+func (h *Handler) serveProxied(w http.ResponseWriter, r *http.Request) {
+	if h.window == nil {
+		h.proxy.ServeHTTP(w, r)
+		return
+	}
+	h.observe(httpwindow.ProxiedRoute, w, r, func(w http.ResponseWriter) { h.proxy.ServeHTTP(w, r) })
+}
+
+func (h *Handler) observe(route string, w http.ResponseWriter, r *http.Request, serve func(http.ResponseWriter)) {
+	started := time.Now()
+	recorder := &statusWriter{ResponseWriter: w}
+	defer func() {
+		panicked := recover()
+		status := recorder.status
+		if panicked != nil {
+			status = http.StatusInternalServerError
+		} else if status == 0 {
+			status = http.StatusOK
+		}
+		h.window.Record(r.Method, route, status, float64(time.Since(started))/float64(time.Millisecond), r.Header.Get("X-Client-Release"))
+		if panicked != nil {
+			panic(panicked)
+		}
+	}()
+	serve(recorder)
+}
+
+type statusWriter struct {
+	http.ResponseWriter
+	status int
+}
+
+func (s *statusWriter) WriteHeader(code int) {
+	if s.status == 0 {
+		s.status = code
+	}
+	s.ResponseWriter.WriteHeader(code)
+}
+
+func (s *statusWriter) Write(p []byte) (int, error) {
+	if s.status == 0 {
+		s.status = http.StatusOK
+	}
+	return s.ResponseWriter.Write(p)
+}
+
+func (s *statusWriter) Unwrap() http.ResponseWriter { return s.ResponseWriter }
+
+func (s *statusWriter) Flush() {
+	if f, ok := s.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
 }
 
 func isPvPPath(path string) bool {
@@ -535,6 +610,9 @@ func (h *Handler) ready(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusServiceUnavailable, map[string]any{"status": "not_ready", "service": serviceName, "dependency": name})
 			return
 		}
+	}
+	if ms, first := h.window.RecordReady(); first {
+		log.Printf("go_api_first_ready_observed cold_start_ms=%.2f", ms)
 	}
 	w.Header().Set("X-Chess-Edge", "go")
 	w.Header().Set("X-Chess-Pvp-Edge", "go")
