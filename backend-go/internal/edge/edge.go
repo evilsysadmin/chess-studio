@@ -75,7 +75,10 @@ type Config struct {
 	// admin AI reads that share its telemetry; nil keeps them in Python.
 	NativeNarrative http.Handler
 	// NativePawnSlug serves Pawn Slug stage content; nil keeps it in Python.
-	NativePawnSlug        http.Handler
+	NativePawnSlug http.Handler
+	// NativeChronicles serves Chronicles area content and MapCode previews;
+	// nil keeps them in Python.
+	NativeChronicles      http.Handler
 	VirtualPlayersEnabled bool
 	NativeResidentMove    bool
 	// ReadyChecks are dependencies owned by the Go edge itself (MongoDB for the
@@ -119,6 +122,7 @@ type Handler struct {
 	nativeMatthias            http.Handler
 	nativeNarrative           http.Handler
 	nativePawnSlug            http.Handler
+	nativeChronicles          http.Handler
 	virtualPlayersEnabled     bool
 	nativeResidentMove        bool
 	readyChecks               map[string]func(context.Context) error
@@ -231,6 +235,7 @@ func New(cfg Config) (*Handler, error) {
 		nativeMatthias:            cfg.NativeMatthias,
 		nativeNarrative:           cfg.NativeNarrative,
 		nativePawnSlug:            cfg.NativePawnSlug,
+		nativeChronicles:          cfg.NativeChronicles,
 		virtualPlayersEnabled:     cfg.VirtualPlayersEnabled,
 		nativeResidentMove:        cfg.NativeResidentMove,
 		readyChecks:               cfg.ReadyChecks,
@@ -345,6 +350,13 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	if h.nativeChronicles != nil {
+		if pattern, ok := gamesapi.ChroniclesRoute(r); ok {
+			w.Header().Set("X-Chess-Edge", "go")
+			h.telemetry.Serve(pattern, h.nativeChronicles, w, r)
+			return
+		}
+	}
 	route := pvproute.Match(r.URL.Path)
 	if native := h.nativeFor(route.Kind); native != nil {
 		w.Header().Set("X-Chess-Edge", "go")
@@ -449,6 +461,7 @@ func (h *Handler) statusPayload(status string) map[string]any {
 		"nativeMatthias":            h.nativeMatthias != nil,
 		"nativeNarrative":           h.nativeNarrative != nil,
 		"nativePawnSlug":            h.nativePawnSlug != nil,
+		"nativeChronicles":          h.nativeChronicles != nil,
 	}
 	if h.release != "" {
 		payload["release"] = h.release
