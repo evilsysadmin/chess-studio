@@ -1,6 +1,9 @@
 package pyval
 
 import (
+	"errors"
+	"fmt"
+	"strings"
 	"time"
 )
 
@@ -10,17 +13,85 @@ import (
 // microseconds and an optional ±HH[:MM[:SS[.f]]] or Z offset. aware reports
 // whether an offset was given; a naive value comes back in UTC.
 func FromISOFormat(s string) (t time.Time, aware bool, ok bool) {
-	r := []rune(s)
+	t, aware, err := ParseISOFormat(s)
+	return t, aware, err == nil
+}
+
+// ParseISOFormat is FromISOFormat with the ValueError fromisoformat raises:
+// "Invalid isoformat string: '…'" for the shape, then the offset bound, then
+// the date and time constructor's range checks, in CPython's order.
+func ParseISOFormat(s string) (time.Time, bool, error) {
+	p, ok := parseISO([]rune(s))
+	if !ok {
+		return time.Time{}, false, errors.New("Invalid isoformat string: " + Repr(s))
+	}
+	const day = int64(86400_000_000)
+	if p.offset != nil && (*p.offset >= day || *p.offset <= -day) {
+		return time.Time{}, false, errors.New("offset must be a timedelta strictly between -timedelta(hours=24) and timedelta(hours=24), not " + TimedeltaRepr(*p.offset) + ".")
+	}
+	switch {
+	case p.year < 1 || p.year > 9999:
+		return time.Time{}, false, fmt.Errorf("year %d is out of range", p.year)
+	case p.month < 1 || p.month > 12:
+		return time.Time{}, false, errors.New("month must be in 1..12")
+	case p.day < 1 || p.day > daysIn(p.year, p.month):
+		return time.Time{}, false, errors.New("day is out of range for month")
+	case p.hour > 23:
+		return time.Time{}, false, errors.New("hour must be in 0..23")
+	case p.minute > 59:
+		return time.Time{}, false, errors.New("minute must be in 0..59")
+	case p.second > 59:
+		return time.Time{}, false, errors.New("second must be in 0..59")
+	}
+	value := time.Date(p.year, time.Month(p.month), p.day, p.hour, p.minute, p.second, p.micro*1000, time.UTC)
+	if p.offset != nil {
+		value = value.Add(-time.Duration(*p.offset) * time.Microsecond)
+	}
+	return value, p.offset != nil, nil
+}
+
+// TimedeltaRepr is repr(timedelta(microseconds=us)).
+func TimedeltaRepr(us int64) string {
+	const day = int64(86400_000_000)
+	days := us / day
+	if us%day < 0 {
+		days--
+	}
+	rest := us - days*day
+	var parts []string
+	if days != 0 {
+		parts = append(parts, fmt.Sprintf("days=%d", days))
+	}
+	if sec := rest / 1_000_000; sec != 0 {
+		parts = append(parts, fmt.Sprintf("seconds=%d", sec))
+	}
+	if micro := rest % 1_000_000; micro != 0 {
+		parts = append(parts, fmt.Sprintf("microseconds=%d", micro))
+	}
+	if len(parts) == 0 {
+		return "datetime.timedelta(0)"
+	}
+	return "datetime.timedelta(" + strings.Join(parts, ", ") + ")"
+}
+
+type isoParts struct {
+	year, month, day, hour, minute, second, micro int
+	// offset is the UTC offset in microseconds (nil when naive).
+	offset *int64
+}
+
+// parseISO is the shape fromisoformat accepts, before any range check.
+func parseISO(r []rune) (isoParts, bool) {
+	var p isoParts
 	if len(r) < 7 {
-		return time.Time{}, false, false
+		return p, false
 	}
 	sep, ok := isoSeparator(r)
 	if !ok {
-		return time.Time{}, false, false
+		return p, false
 	}
-	year, month, day, ok := isoDate(r[:sep])
-	if !ok {
-		return time.Time{}, false, false
+	if p.year, p.month, p.day, ok = isoDate(r[:sep]); !ok {
+		return p, false
 	}
 	var tstr []rune
 	if sep+1 <= len(r) {
@@ -28,25 +99,14 @@ func FromISOFormat(s string) (t time.Time, aware bool, ok bool) {
 	}
 	if sep < len(r) && len(tstr) == 0 {
 		// A separator with nothing after it.
-		return time.Time{}, false, false
+		return p, false
 	}
-	hour, minute, second, micro := 0, 0, 0, 0
-	var offset *int
 	if len(tstr) > 0 {
-		hour, minute, second, micro, offset, ok = isoTime(tstr)
-		if !ok {
-			return time.Time{}, false, false
+		if p.hour, p.minute, p.second, p.micro, p.offset, ok = isoTime(tstr); !ok {
+			return p, false
 		}
 	}
-	if hour > 23 || minute > 59 || second > 59 {
-		return time.Time{}, false, false
-	}
-	loc := time.UTC
-	if offset != nil {
-		loc = time.FixedZone("", *offset)
-	}
-	value := time.Date(year, time.Month(month), day, hour, minute, second, micro*1000, loc)
-	return value.UTC(), offset != nil, true
+	return p, true
 }
 
 func digit(r rune) bool { return r >= '0' && r <= '9' }
@@ -102,13 +162,14 @@ func atoi(r []rune) (int, bool) {
 	return n, true
 }
 
-// isoDate is _parse_isoformat_date plus the date constructor's checks.
+// isoDate is _parse_isoformat_date: the calendar date's ranges are left to
+// ParseISOFormat; an ISO week date is resolved (and rejected) here.
 func isoDate(r []rune) (year, month, day int, ok bool) {
 	if n := len(r); n != 7 && n != 8 && n != 10 {
 		return 0, 0, 0, false
 	}
 	year, ok = atoi(r[0:4])
-	if !ok || year < 1 {
+	if !ok {
 		return 0, 0, 0, false
 	}
 	hasSep := r[4] == '-'
@@ -123,6 +184,9 @@ func isoDate(r []rune) (year, month, day int, ok bool) {
 		return 0
 	}
 	if at(pos) == 'W' {
+		if year < 1 {
+			return 0, 0, 0, false
+		}
 		pos++
 		if pos+2 > len(r) {
 			return 0, 0, 0, false
@@ -169,10 +233,7 @@ func isoDate(r []rune) (year, month, day int, ok bool) {
 		return 0, 0, 0, false
 	}
 	day, ok = atoi(r[pos : pos+2])
-	if !ok || month < 1 || month > 12 || day < 1 || day > daysIn(year, month) {
-		return 0, 0, 0, false
-	}
-	return year, month, day, true
+	return year, month, day, ok
 }
 
 func daysIn(year, month int) int {
@@ -255,7 +316,7 @@ func hhmmssff(r []rune) (comps [4]int, ok bool) {
 }
 
 // isoTime is _parse_isoformat_time.
-func isoTime(r []rune) (hour, minute, second, micro int, offset *int, ok bool) {
+func isoTime(r []rune) (hour, minute, second, micro int, offset *int64, ok bool) {
 	if len(r) < 2 {
 		return 0, 0, 0, 0, nil, false
 	}
@@ -281,7 +342,7 @@ func isoTime(r []rune) (hour, minute, second, micro int, offset *int, ok bool) {
 	}
 	if tzPos > 0 {
 		if tzPos == len(r) && r[len(r)-1] == 'Z' {
-			zero := 0
+			zero := int64(0)
 			offset = &zero
 		} else {
 			tz := r[tzPos:]
@@ -292,16 +353,11 @@ func isoTime(r []rune) (hour, minute, second, micro int, offset *int, ok bool) {
 			if !tok {
 				return 0, 0, 0, 0, nil, false
 			}
-			seconds := tc[0]*3600 + tc[1]*60 + tc[2]
-			if seconds >= 86400 {
-				return 0, 0, 0, 0, nil, false
-			}
+			us := (int64(tc[0])*3600+int64(tc[1])*60+int64(tc[2]))*1_000_000 + int64(tc[3])
 			if r[tzPos-1] == '-' {
-				seconds = -seconds
+				us = -us
 			}
-			// Sub-second offsets are legal in Python; Go zones are whole
-			// seconds, which no stored timestamp uses.
-			offset = &seconds
+			offset = &us
 		}
 	}
 	return comps[0], comps[1], comps[2], comps[3], offset, true

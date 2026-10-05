@@ -104,6 +104,7 @@ GO_AUTHORITY_PATHS = {
     "scripts/engine_pv_parity_corpus.py",
     "scripts/engine_move_analysis_parity_corpus.py",
     "scripts/observability_history_parity_corpus.py",
+    "scripts/observability_history_read_parity_corpus.py",
     "scripts/profile_parity_corpus.py",
     "scripts/password_parity_corpus.py",
     "scripts/auth_guard_parity_corpus.py",

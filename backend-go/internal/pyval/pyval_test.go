@@ -50,3 +50,21 @@ func TestStrIntAndBoundedText(t *testing.T) {
 		t.Errorf("runes: %q", got)
 	}
 }
+
+func TestParseISOFormatErrorsMatchPython(t *testing.T) {
+	for _, c := range isoErrorCases {
+		v, aware, err := ParseISOFormat(c.in)
+		got := ""
+		switch {
+		case err != nil:
+			got = "err " + err.Error()
+		case aware && (v.Year() < 1 || v.Year() > 9999):
+			got = "overflow"
+		default:
+			got = v.Format("2006-01-02T15:04:05.000000") + "+00:00" + map[bool]string{true: " aware", false: " naive"}[aware]
+		}
+		if got != c.want {
+			t.Errorf("%q: got %q want %q", c.in, got, c.want)
+		}
+	}
+}

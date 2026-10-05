@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/pydoc"
 	"os"
 	"strings"
 	"testing"
@@ -80,4 +82,59 @@ func TestMongoStoreMergesIntoPythonBuckets(t *testing.T) {
 	if doc.ID != bucket || doc.Presence.Samples != 4 || doc.Presence.OnlineSum != 15 || doc.Presence.OnlineMax != 7 || doc.HTTP.Samples != 1 {
 		t.Fatalf("merged bucket %+v", doc)
 	}
+}
+
+// The read corpus against real collections: what pymongo and the Go driver
+// hand back (int32/int64/double, field order, natural order) must merge and
+// summarize the same.
+func TestHistoryMatchesPythonCorpusInMongo(t *testing.T) {
+	uri := strings.TrimSpace(os.Getenv("PVP_MONGO_TEST_URL"))
+	if uri == "" {
+		if os.Getenv("PVP_MONGO_TEST_REQUIRED") == "1" {
+			t.Fatal("PVP_MONGO_TEST_REQUIRED=1 but PVP_MONGO_TEST_URL is empty")
+		}
+		t.Skip("PVP_MONGO_TEST_URL not set; skipping MongoDB integration test")
+	}
+	client, err := mongo.Connect(options.Client().ApplyURI(uri).SetServerSelectionTimeout(5 * time.Second))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = client.Disconnect(context.Background()) })
+	ctx := context.Background()
+	now, scenarios := loadHistoryCorpus(t)
+	replayed := 0
+	for i, s := range scenarios {
+		legacy, current := decodeBuckets(t, s.Legacy), decodeBuckets(t, s.Current)
+		if !s.Database || hasCursorMarker(current) {
+			continue
+		}
+		suffix := make([]byte, 4)
+		_, _ = rand.Read(suffix)
+		db := client.Database("obshistory_read_" + hex.EncodeToString(suffix))
+		for name, docs := range map[string][]bson.D{LegacyCollectionName: legacy, CollectionName: current} {
+			for _, doc := range docs {
+				if _, err := db.Collection(name).InsertOne(ctx, doc); err != nil {
+					t.Fatalf("scenario %d: %v", i, err)
+				}
+			}
+		}
+		for j, c := range s.Cases {
+			got, err := History(ctx, NewMongoReader(db), nil, c.From, c.To, now)
+			checkHistoryCase(t, fmt.Sprintf("mongo scenario %d case %d", i, j), c, got, err)
+		}
+		_ = db.Drop(ctx)
+		replayed++
+	}
+	if replayed < 50 {
+		t.Fatalf("only %d scenarios replayed", replayed)
+	}
+}
+
+func hasCursorMarker(docs []bson.D) bool {
+	for _, doc := range docs {
+		if raises, _ := pydoc.Get(doc, cursorRaises); raises == true {
+			return true
+		}
+	}
+	return false
 }
