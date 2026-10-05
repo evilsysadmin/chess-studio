@@ -595,8 +595,16 @@ assert '*) go_native_system="${CHESS_STUDIO_GO_NATIVE_SYSTEM_ENABLED:-false}" ;;
 assert 'CHESS_STUDIO_GO_NATIVE_SYSTEM_ENABLED="$go_native_system"' in deploy
 assert "payload.get('nativeSystem')" in deploy
 assert 'games_native_attest "http://127.0.0.1:${port}/api/status" GET X-Chess-System-Native; then' in deploy
-assert 'exit 64' in deploy
+assert 'X-Chess-System-Native; then' in deploy.split('exit 65', 1)[0]
 assert 'GO_NATIVE_SYSTEM_ENABLED: "${CHESS_STUDIO_GO_NATIVE_SYSTEM_ENABLED:-false}"' in compose
+# Native profile: staging first, attested through Go after the cutover.
+assert 'staging) go_native_profile="${CHESS_STUDIO_GO_NATIVE_PROFILE_ENABLED:-true}" ;;' in deploy
+assert '*) go_native_profile="${CHESS_STUDIO_GO_NATIVE_PROFILE_ENABLED:-false}" ;;' in deploy
+assert 'CHESS_STUDIO_GO_NATIVE_PROFILE_ENABLED="$go_native_profile"' in deploy
+assert "payload.get('nativeProfile')" in deploy
+assert 'games_native_attest "http://127.0.0.1:${port}/api/profile" GET X-Chess-Profile-Native; then' in deploy
+assert 'exit 67' in deploy
+assert 'GO_NATIVE_PROFILE_ENABLED: "${CHESS_STUDIO_GO_NATIVE_PROFILE_ENABLED:-false}"' in compose
 assert 'GO_NATIVE_GAMES_WRITE_ENABLED: "${CHESS_STUDIO_GO_NATIVE_GAMES_WRITE_ENABLED:-false}"' in compose
 assert 'sleep 0.25' in deploy
 assert 'if ! wait_pvp_edge_attest "$port"; then' in deploy
