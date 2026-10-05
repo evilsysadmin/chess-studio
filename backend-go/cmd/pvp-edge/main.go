@@ -21,8 +21,18 @@ func main() {
 	port := env("PORT", "8080")
 	upstream := pythonUpstream()
 	features := loadNativeFeatureFlags()
+	pythonRetired := envBool("GO_PYTHON_RETIRED", false)
+	if pythonRetired {
+		// No Python to fall back to: every route is native and the edge
+		// answers Python's own identity routes itself.
+		features, upstream = allNative(), ""
+		log.Printf("python retired: every route native, no upstream")
+	}
 
 	native, err := buildNativeRuntime(features, upstream)
+	if err == nil && pythonRetired {
+		err = native.retirePython()
+	}
 	if err != nil {
 		log.Fatal(err)
 	}

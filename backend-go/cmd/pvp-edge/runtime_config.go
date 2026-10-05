@@ -82,6 +82,46 @@ func loadNativeFeatureFlags() nativeFeatureFlags {
 	}
 }
 
+// allNative turns every native route on: the edge once Python is retired
+// (GO_PYTHON_RETIRED), where nothing may fall back to a proxy.
+// TestAllNativeTurnsEveryFlagOn keeps a flag added later from being missed.
+func allNative() nativeFeatureFlags {
+	return nativeFeatureFlags{
+		pulse:               true,
+		lobbyRead:           true,
+		roster:              true,
+		chat:                true,
+		challengeResolution: true,
+		challengeAccept:     true,
+		challengeCreate:     true,
+		matchHandoffCancel:  true,
+		matchReady:          true,
+		matchResign:         true,
+		matchRead:           true,
+		matchMove:           true,
+		residentMove:        true,
+		gamesRead:           true,
+		gamesWrite:          true,
+		gamesHint:           true,
+		gamesAnalyze:        true,
+		system:              true,
+		profile:             true,
+		authSession:         true,
+		login:               true,
+		account:             true,
+		recovery:            true,
+		feedback:            true,
+		matthiasRead:        true,
+		narrative:           true,
+		pawnSlug:            true,
+		chronicles:          true,
+		chroniclesRuns:      true,
+		adminFeedback:       true,
+		adminUsers:          true,
+		adminObservability:  true,
+	}
+}
+
 func (f nativeFeatureFlags) needsMongo() bool {
 	return f.pulse ||
 		f.lobbyRead ||
