@@ -839,8 +839,8 @@ func _arrange_set_piece_formation(kind: String) -> void:
 			if player.role == "keeper":
 				_place_restart_player(player, player.home_position)
 				continue
-			var offset_y := [-150.0, -70.0, 70.0, 145.0][clampi(player.squad_index - 1, 0, 3)]
-			var depth := [330.0, 190.0, 120.0, 90.0][clampi(player.squad_index - 1, 0, 3)]
+			var offset_y: float = float([-150.0, -70.0, 70.0, 145.0][clampi(player.squad_index - 1, 0, 3)])
+			var depth: float = float([330.0, 190.0, 120.0, 90.0][clampi(player.squad_index - 1, 0, 3)])
 			_place_restart_player(
 				player,
 				Vector2(target_goal.x - direction * depth, target_goal.y + offset_y)
@@ -852,8 +852,8 @@ func _arrange_set_piece_formation(kind: String) -> void:
 					Vector2(target_goal.x - direction * 72.0, target_goal.y)
 				)
 				continue
-			var mark_y := [-125.0, -45.0, 50.0, 130.0][clampi(defender.squad_index - 1, 0, 3)]
-			var mark_depth := [115.0, 135.0, 150.0, 205.0][clampi(defender.squad_index - 1, 0, 3)]
+			var mark_y: float = float([-125.0, -45.0, 50.0, 130.0][clampi(defender.squad_index - 1, 0, 3)])
+			var mark_depth: float = float([115.0, 135.0, 150.0, 205.0][clampi(defender.squad_index - 1, 0, 3)])
 			_place_restart_player(
 				defender,
 				Vector2(target_goal.x - direction * mark_depth, target_goal.y + mark_y)
@@ -865,8 +865,8 @@ func _arrange_set_piece_formation(kind: String) -> void:
 		for player in teams[set_piece_team_id]:
 			if player == set_piece_player:
 				continue
-			var lane_y := [-190.0, -70.0, 90.0, 190.0][clampi(player.squad_index - 1, 0, 3)]
-			var advance := [250.0, 390.0, 520.0, 650.0][clampi(player.squad_index - 1, 0, 3)]
+			var lane_y: float = float([-190.0, -70.0, 90.0, 190.0][clampi(player.squad_index - 1, 0, 3)])
+			var advance: float = float([250.0, 390.0, 520.0, 650.0][clampi(player.squad_index - 1, 0, 3)])
 			_place_restart_player(
 				player,
 				Vector2(own_goal.x + direction * advance, center.y + lane_y)
@@ -875,7 +875,7 @@ func _arrange_set_piece_formation(kind: String) -> void:
 			if opponent.role == "keeper":
 				_place_restart_player(opponent, opponent.home_position)
 				continue
-			var opponent_y := [-180.0, -60.0, 70.0, 175.0][clampi(opponent.squad_index - 1, 0, 3)]
+			var opponent_y: float = float([-180.0, -60.0, 70.0, 175.0][clampi(opponent.squad_index - 1, 0, 3)])
 			_place_restart_player(
 				opponent,
 				Vector2(center.x + direction * 90.0, center.y + opponent_y)
@@ -885,7 +885,7 @@ func _arrange_set_piece_formation(kind: String) -> void:
 	# Throw-ins keep the broad match shape but create nearby passing options and
 	# a small defending buffer so the restart reads instead of becoming a scrum.
 	var inward_y := 1.0 if set_piece_spot.y < center.y else -1.0
-	var receiver_slots := [
+	var receiver_slots: Array[Vector2] = [
 		Vector2(-120.0 * direction, 115.0 * inward_y),
 		Vector2(115.0 * direction, 145.0 * inward_y),
 		Vector2(250.0 * direction, 80.0 * inward_y),
