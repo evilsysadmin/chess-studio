@@ -183,6 +183,46 @@ describe('Chronicles run checkpoint recovery', () => {
     expect(recovered.message).not.toBe('runtime-only narration');
   });
 
+  it('round-trips individual party combat cells across F5/re-entry', () => {
+    const base = createChroniclesState();
+    const snapshot = {
+      ...base,
+      phase: 'combat',
+      partyPositions: {
+        matthias: { x: 1, y: 5 },
+        rook: { x: 2, y: 5 },
+        bishop: { x: 1, y: 4 },
+        knight: { x: 3, y: 4 },
+      },
+      initiative: {
+        version: 1,
+        die: '1d8',
+        round: 3,
+        cursor: 0,
+        order: [
+          { id: 'matthias', kind: 'party', name: 'Matthias', agility: 4, roll: 5, initiative: 9 },
+          { id: 'corrupted-pawn', kind: 'enemy', name: 'Peón', agility: 1, roll: 5, initiative: 6 },
+        ],
+      },
+    };
+    const payload = chroniclesRunCheckpointPayload(snapshot, 2);
+    const recovered = chroniclesApplyRunCheckpoint(
+      { ...base, partyPositions: {} },
+      {
+        worldFlags: payload.worldFlags,
+        consumedContentIds: [],
+        claimedRewards: [],
+      },
+    );
+
+    expect(recovered.phase).toBe('combat');
+    expect(recovered.partyPositions).toEqual(snapshot.partyPositions);
+    expect(recovered.initiative).toEqual(snapshot.initiative);
+    expect(chroniclesRunCheckpointFingerprint(snapshot)).not.toBe(
+      chroniclesRunCheckpointFingerprint({ ...snapshot, partyPositions: {} }),
+    );
+  });
+
   it('round-trips inventory and quest state across F5/re-entry', () => {
     const base = createChroniclesState('gallery-of-forks');
     const snapshot = {
