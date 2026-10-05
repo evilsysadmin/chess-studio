@@ -4,6 +4,7 @@ import { isSoftwareWebGLRenderer } from './WarRoom3DAnimation.js';
 import {
   buildInsightsTrainingRoomStage,
   configureInsightsTrainingRoomRenderer,
+  INSIGHTS_TRAINING_ROOM_STILL_SIZE,
   insightsTrainingRoomRendererName,
 } from './InsightsTrainingRoomStage.js';
 import trainingRoomStill from '../assets/insights/training-room-still.webp';
@@ -91,7 +92,16 @@ export default function InsightsTrainingRoomScene3D() {
       aria-hidden="true"
     >
       {status === 'static'
-        ? <img className="insights-training-room-still" src={trainingRoomStill} alt="" decoding="async" />
+        ? (
+          <img
+            className="insights-training-room-still"
+            src={trainingRoomStill}
+            width={INSIGHTS_TRAINING_ROOM_STILL_SIZE.width}
+            height={INSIGHTS_TRAINING_ROOM_STILL_SIZE.height}
+            alt=""
+            decoding="async"
+          />
+        )
         : <canvas ref={canvasRef} />}
     </div>
   );
