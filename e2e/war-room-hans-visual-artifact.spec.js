@@ -4,7 +4,7 @@ import { buttonWithVisibleText, login, mockApi } from './helpers.js';
 import { warRoomHansEventForGame } from '../frontend/src/components/WarRoomHansEventContract.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
-const LABEL = 'war-room-hans-desktop-1440x900';
+const LABEL = 'war-room-hans-v3-desktop-1440x900';
 const MAX_GROUND_GAP = 0.005;
 // El montaje 3D en CI va por SwiftShader: una única tarea larga nativa
 // (rasterizado + enlazado de shaders) cuyo coste crece con los píxeles del
@@ -98,7 +98,7 @@ test('War Room · canario visual de Hans físicamente en escena', async () => {
     });
     await login(page);
     await page.evaluate(() => {
-      localStorage.setItem('chess-study-war-room-variant-v1', 'classic');
+      localStorage.setItem('chess-study-war-room-variant-v1', 'v3');
     });
     await seedGamesBeforeFire(page);
 
@@ -123,7 +123,7 @@ test('War Room · canario visual de Hans físicamente en escena', async () => {
     await Promise.all([
       expect(warRoom).toBeVisible({ timeout: MOUNT_BUDGET_MS }),
       expect(canvas).toBeVisible({ timeout: MOUNT_BUDGET_MS }),
-      expect(canvas).toHaveAttribute('data-war-room-variant', 'classic', { timeout: MOUNT_BUDGET_MS }),
+      expect(canvas).toHaveAttribute('data-war-room-variant', 'v3', { timeout: MOUNT_BUDGET_MS }),
       expect(canvas).toHaveAttribute('data-war-room-hans-scene-ready', 'true', { timeout: hansBudget(15_000) }),
       expect(canvas).toHaveAttribute('data-war-room-hans-call-released', 'true', { timeout: hansBudget(15_000) }),
       expect(canvas).toHaveAttribute('data-war-room-hans-reply-seen', 'true', { timeout: hansBudget(30_000) }),
