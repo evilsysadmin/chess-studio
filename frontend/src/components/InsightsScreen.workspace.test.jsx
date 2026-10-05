@@ -118,7 +118,7 @@ describe('InsightsScreen Matthias-led coaching workspace', () => {
     expect(html).toContain('Matthias revisa tus datos');
     expect(html).toContain('Ahora');
     expect(html).toContain('Errores');
-    expect(html).toContain('Patrones y errores recurrentes');
+    expect(html).toContain('Qué errores repites');
     expect(html).toContain('Expediente');
     expect(html).toContain('insights-workspace-view-now');
     expect(html).toContain('id="insights-view-now"');
