@@ -4,11 +4,8 @@
    keep their own layout and renderer styling. */
 
 
-/* Class Room is a board-first surface. Music keeps playing, but the global
-   dock stays out of the teaching viewport; media keys remain available. */
-body:has(.matthias-school-shell[data-school-section="school"]) .global-music-dock {
-  display: none !important;
-}
+/* Class Room is a board-first surface, but global authenticated chrome such
+   as RetroPlayer remains available above the immersive teaching scene. */
 
 body:has(.matthias-school-shell[data-school-section="school"]) .masthead {
   display: none;
