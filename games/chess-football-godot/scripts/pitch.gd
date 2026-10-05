@@ -8,7 +8,7 @@ const GRASS_C := Color(0.11, 0.39, 0.17)
 const GOLD := Color(0.78, 0.61, 0.25)
 
 func _ready() -> void:
-	z_index = -5000
+	z_index = -4000
 	queue_redraw()
 
 func _draw() -> void:
