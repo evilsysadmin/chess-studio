@@ -299,14 +299,15 @@ test('App · captura visual canónica desktop + Android normal/desktop-site', as
     }
 
     const quickMatchCaptures = HOME_PROFILE_SCOPE === 'mobile-tools' ? [] : [
-      { width:360, height:800 },
-      { width:390, height:844, captureSettings:true },
-      { width:430, height:932 },
+      { width:1440, height:900, hasTouch:false, captureSettings:true },
+      { width:360, height:800, hasTouch:true },
+      { width:390, height:844, hasTouch:true, captureSettings:true },
+      { width:430, height:932, hasTouch:true },
     ];
     for (const capture of quickMatchCaptures) {
       const quickMatchContext = await visualBrowser.newContext({
         viewport:{ width:capture.width, height:capture.height },
-        hasTouch:true,
+        hasTouch:capture.hasTouch === true,
       });
       const quickMatchPage = await quickMatchContext.newPage();
       try {
@@ -324,7 +325,7 @@ test('App · captura visual canónica desktop + Android normal/desktop-site', as
         await captureViewportPng(
           quickMatchContext,
           quickMatchPage,
-          `${ARTIFACT_DIR}/quick-match-android-${capture.width}x${capture.height}.png`,
+          `${ARTIFACT_DIR}/quick-match-${capture.hasTouch ? 'android' : 'desktop'}-${capture.width}x${capture.height}.png`,
         );
 
         if (capture.captureSettings) {
@@ -335,7 +336,7 @@ test('App · captura visual canónica desktop + Android normal/desktop-site', as
           await captureViewportPng(
             quickMatchContext,
             quickMatchPage,
-            `${ARTIFACT_DIR}/quick-match-settings-android-${capture.width}x${capture.height}.png`,
+            `${ARTIFACT_DIR}/quick-match-settings-${capture.hasTouch ? 'android' : 'desktop'}-${capture.width}x${capture.height}.png`,
           );
         }
       } finally {
