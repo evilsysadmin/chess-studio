@@ -74,9 +74,20 @@ jobs:
             exit 1
           fi
       - name: Runtime smoke
+        shell: bash
         run: |
+          set -euo pipefail
           godot="$GITHUB_WORKSPACE/.godot-ci/$GODOT_VERSION/godot"
-          timeout 45s "$godot" --headless --path games/chess-football-godot --script res://tests/match_smoke.gd
+          log="$RUNNER_TEMP/chess-football-smoke.log"
+          set +e
+          timeout 20s "$godot" --headless --quit-after 360 --path games/chess-football-godot --script res://tests/match_smoke.gd 2>&1 | tee "$log"
+          status=${PIPESTATUS[0]}
+          set -e
+          if [[ "$status" -ne 0 ]] || grep -Eq 'SCRIPT ERROR:|Assertion failed|ERROR: Failed to load script|Parse Error:' "$log"; then
+            echo '::error::Chess Football runtime smoke failed.'
+            exit 1
+          fi
+          grep -q 'chess-football godot smoke: OK' "$log"
       - name: Capture visual review
         shell: bash
         run: |
