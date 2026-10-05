@@ -131,7 +131,9 @@ function cylinder(root, radiusTop, radiusBottom, height, mat, position, name = '
 function addBookcase(root, x, wood, brass, books, lite) {
   const group = new THREE.Group();
   group.name = 'insights-training-room-bookcase';
-  box(group, [3.0, 5.5, .46], wood, [0, 2.3, 0], 'bookcase-back');
+  roundedBox(group, [3.0, 5.5, .46], wood, [0, 2.3, 0], 'bookcase-back', .08, 4);
+  roundedBox(group, [.18, 5.3, .72], brass, [-1.52, 2.3, .07], 'bookcase-left-trim', .045, 3);
+  roundedBox(group, [.18, 5.3, .72], brass, [1.52, 2.3, .07], 'bookcase-right-trim', .045, 3);
   const shelves = lite ? 4 : 6;
   for (let row = 0; row < shelves; row += 1) {
     const y = .36 + row * .86;
@@ -214,50 +216,62 @@ function addWindow(root, brass, night, moon, lite) {
   root.add(group);
 }
 
-function addChair(root, leather, wood) {
+function addChair(root, leather, wood, brass) {
   const group = new THREE.Group();
   group.name = 'insights-training-room-empty-chair';
-  roundedBox(group, [2.55, .5, 1.55], leather, [0, .72, 0], 'chair-seat', .14, 4);
+
+  roundedBox(group, [2.35, .42, 1.42], leather, [0, .7, .02], 'chair-seat', .16, 5);
+  roundedBox(group, [2.05, .22, 1.2], material(0x5b392e, .03, .43), [0, .94, -.02], 'chair-seat-cushion', .14, 5);
+
   const backShape = new THREE.Shape();
-  backShape.moveTo(-1.38, -1.48);
-  backShape.lineTo(-1.38, .72);
-  backShape.quadraticCurveTo(-1.34, 1.52, 0, 1.78);
-  backShape.quadraticCurveTo(1.34, 1.52, 1.38, .72);
-  backShape.lineTo(1.38, -1.48);
+  backShape.moveTo(-1.18, -1.35);
+  backShape.lineTo(-1.18, .6);
+  backShape.quadraticCurveTo(-1.1, 1.42, 0, 1.64);
+  backShape.quadraticCurveTo(1.1, 1.42, 1.18, .6);
+  backShape.lineTo(1.18, -1.35);
   backShape.closePath();
   const upholsteredBack = new THREE.Mesh(
     new THREE.ExtrudeGeometry(backShape, {
-      depth: .34,
+      depth: .28,
       bevelEnabled: true,
-      bevelSegments: 2,
-      bevelSize: .06,
-      bevelThickness: .045,
+      bevelSegments: 4,
+      bevelSize: .075,
+      bevelThickness: .055,
+      curveSegments: 8,
     }),
     leather,
   );
-  upholsteredBack.position.set(0, 2.08, -.76);
+  upholsteredBack.position.set(0, 2.0, -.68);
   upholsteredBack.castShadow = true;
   upholsteredBack.receiveShadow = true;
   upholsteredBack.name = 'chair-upholstered-back';
   group.add(upholsteredBack);
 
-  const leftWing = roundedBox(group, [.42, 2.25, .62], leather, [-1.28, 2.12, -.36], 'chair-left-wing', .1, 3);
-  leftWing.rotation.y = -.18;
-  const rightWing = roundedBox(group, [.42, 2.25, .62], leather, [1.28, 2.12, -.36], 'chair-right-wing', .1, 3);
-  rightWing.rotation.y = .18;
+  const leftWing = roundedBox(group, [.34, 2.0, .54], leather, [-1.13, 2.0, -.34], 'chair-left-wing', .12, 4);
+  leftWing.rotation.y = -.2;
+  const rightWing = roundedBox(group, [.34, 2.0, .54], leather, [1.13, 2.0, -.34], 'chair-right-wing', .12, 4);
+  rightWing.rotation.y = .2;
 
-  for (const y of [1.35, 2.05, 2.75]) {
-    for (const x of [-.82, 0, .82]) {
-      const stud = new THREE.Mesh(new THREE.SphereGeometry(.055, 8, 6), wood);
-      stud.position.set(x, y, -.31);
+  for (const x of [-1.15, 1.15]) {
+    const arm = roundedBox(group, [.34, .3, 1.22], wood, [x, 1.16, .18], 'chair-arm', .09, 4);
+    arm.rotation.z = x < 0 ? -.025 : .025;
+    roundedBox(group, [.42, .16, 1.08], leather, [x, 1.34, .16], 'chair-arm-pad', .1, 4);
+  }
+
+  for (const y of [1.35, 1.96, 2.57]) {
+    for (const x of [-.7, 0, .7]) {
+      const stud = new THREE.Mesh(new THREE.SphereGeometry(.05, 12, 8), brass);
+      stud.position.set(x, y, -.36);
       stud.name = 'chair-tuft';
       group.add(stud);
     }
   }
-  box(group, [.32, 2.9, .5], wood, [-1.48, 2.08, -.56], 'chair-left-post');
-  box(group, [.32, 2.9, .5], wood, [1.48, 2.08, -.56], 'chair-right-post');
-  box(group, [.28, 1.1, .28], wood, [-1.15, -.03, .48], 'chair-left-leg');
-  box(group, [.28, 1.1, .28], wood, [1.15, -.03, .48], 'chair-right-leg');
+
+  for (const x of [-1.28, 1.28]) {
+    cylinder(group, .13, .17, 2.72, wood, [x, 2.0, -.55], 'chair-back-post', 16);
+    cylinder(group, .11, .15, .92, wood, [x * .82, .05, .43], 'chair-front-leg', 14);
+  }
+
   group.position.set(.55, -.08, -3.95);
   root.add(group);
 }
@@ -436,7 +450,7 @@ export function buildInsightsTrainingRoomLayer({ coarsePointer = false } = {}) {
 
   addBookcase(root, -5.55, wood, brass, books, lite);
   addWindow(root, brass, night, moon, lite);
-  addChair(root, leather, wood);
+  addChair(root, leather, wood, brass);
   addDesk(root, wood, woodDark, leather, brass, parchment, lite);
   addBankerLamp(root, brass, bankerGlass);
   addArmillary(root, brass, lite);
