@@ -12,6 +12,7 @@ describe('Así juegas Training Room 3D shell', () => {
     expect(room.userData.canonical).toBe(true);
     expect(room.userData.sceneVersion).toBe(INSIGHTS_TRAINING_ROOM_SCENE_VERSION);
     expect(room.userData.noHumanFigures).toBe(true);
+    expect(room.userData.copySafeZone).toBe('left-third');
     expect(room.getObjectByName('insights-training-room-bookcase')).toBeTruthy();
     expect(room.getObjectByName('insights-training-room-window')).toBeTruthy();
     expect(room.getObjectByName('insights-training-room-empty-chair')).toBeTruthy();
@@ -38,6 +39,8 @@ describe('Así juegas Training Room 3D shell', () => {
     expect(room.getObjectByName('chair-seat-cushion')).toBeTruthy();
     expect(room.getObjectByName('chair-arm')).toBeTruthy();
     expect(room.getObjectByName('bookcase-left-trim')).toBeTruthy();
+    expect(room.getObjectByName('insights-training-room-bookcase')?.position.x).toBeGreaterThanOrEqual(-1);
+    expect(room.getObjectByName('insights-training-room-empty-chair')?.position.x).toBeGreaterThanOrEqual(1.5);
   });
 
   it('keeps the room identity in its lighter geometry profile', () => {

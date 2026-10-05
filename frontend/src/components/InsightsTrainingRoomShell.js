@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
-export const INSIGHTS_TRAINING_ROOM_SCENE_VERSION = 'insights-training-room-v2-premium-study';
+export const INSIGHTS_TRAINING_ROOM_SCENE_VERSION = 'insights-training-room-v3-copy-safe-study';
 
 function material(color, metalness = 0.04, roughness = 0.78, extra = {}) {
   return new THREE.MeshStandardMaterial({ color, metalness, roughness, envMapIntensity: .62, ...extra });
@@ -272,7 +272,7 @@ function addChair(root, leather, wood, brass) {
     cylinder(group, .11, .15, .92, wood, [x * .82, .05, .43], 'chair-front-leg', 14);
   }
 
-  group.position.set(.55, -.08, -3.95);
+  group.position.set(1.85, -.08, -3.95);
   root.add(group);
 }
 
@@ -403,6 +403,7 @@ export function buildInsightsTrainingRoomLayer({ coarsePointer = false } = {}) {
   root.userData.sceneVersion = INSIGHTS_TRAINING_ROOM_SCENE_VERSION;
   root.userData.canonical = true;
   root.userData.noHumanFigures = true;
+  root.userData.copySafeZone = 'left-third';
 
   const lite = Boolean(coarsePointer);
   const woodMaps = makeSurfaceMaps('wood');
@@ -448,7 +449,9 @@ export function buildInsightsTrainingRoomLayer({ coarsePointer = false } = {}) {
   roundedBox(root, [10.8, .045, 5.4], material(0x381b20, .01, .91), [0, -.53, 1.45], 'training-room-rug', .12, 4);
   roundedBox(root, [8.4, .02, 4.2], material(0x211c16, .01, .95), [0, -.5, 1.45], 'training-room-rug-inset', .1, 3);
 
-  addBookcase(root, -5.55, wood, brass, books, lite);
+  // Keep the upper-left third intentionally calm for the Así juegas copy.
+  // The authored props start near centre and build toward the moonlit window.
+  addBookcase(root, -.65, wood, brass, books, lite);
   addWindow(root, brass, night, moon, lite);
   addChair(root, leather, wood, brass);
   addDesk(root, wood, woodDark, leather, brass, parchment, lite);
