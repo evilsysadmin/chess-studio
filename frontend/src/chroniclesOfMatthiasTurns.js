@@ -82,11 +82,22 @@ function enemyCanAttackCell(state, enemy, position, partyPosition) {
 }
 
 export function chroniclesEnemyAttackTarget(state, enemy, position = chroniclesRuntimeEnemyPosition(state, enemy)) {
+  const livingOrder = (state?.party || []).filter((member) => Number(member.hp || 0) > 0);
+  const enemyIndex = Math.max(0, chroniclesActiveEnemies(state).findIndex((candidate) => candidate.id === enemy?.id));
+  const rotation = livingOrder.length
+    ? (Math.max(0, Number(state?.round || 0)) + enemyIndex) % livingOrder.length
+    : 0;
+  const turnRank = (member) => {
+    const index = Math.max(0, livingOrder.findIndex((candidate) => candidate.id === member.id));
+    return livingOrder.length ? (index - rotation + livingOrder.length) % livingOrder.length : index;
+  };
+
   return livingPartyTargetsWithPositions(state)
     .filter((target) => enemyCanAttackCell(state, enemy, position, target.position))
     .sort((left, right) => (
       distance(position, left.position) - distance(position, right.position)
       || (left.member.row === 'front' ? 0 : 1) - (right.member.row === 'front' ? 0 : 1)
+      || turnRank(left.member) - turnRank(right.member)
       || left.member.id.localeCompare(right.member.id)
     ))[0]?.member || null;
 }
