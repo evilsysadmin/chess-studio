@@ -98,9 +98,11 @@ export default function InsightsGuidedSession({
     const available = plans[5].available || plans[15].available || plans[30].available;
     return (
       <section className="menu-section insights-guided-session" aria-labelledby="guided-session-title">
-        <span className="section-label">Sin buscar por menús</span>
-        <h2 id="guided-session-title">Sesión automática</h2>
-        <p className="hint-text">Chess Studio compone el recorrido con errores personales y Némesis demostradas. En 5 minutos concentra todo en un único foco; con 15/30 añade una partida corta de práctica y termina de nuevo aquí. El paso actual sobrevive mientras vas y vuelves entre pantallas.</p>
+        <div className="insights-guided-session-intro">
+          <span className="section-label">Entrenamiento de hoy</span>
+          <h2 id="guided-session-title">¿Cuánto tiempo tienes?</h2>
+          <p className="hint-text">Chess Studio monta el recorrido con errores personales y Némesis demostradas. Tú eliges la duración; la sesión decide el orden y te devuelve aquí entre pasos.</p>
+        </div>
 
         {completion ? (
           <div className="insights-recurring-error-card" data-guided-training-completion="true">
@@ -124,11 +126,39 @@ export default function InsightsGuidedSession({
         ) : null}
 
         {available ? (
-          <div className="coaching-action">
-            <button type="button" className="secondary-btn" disabled={!plans[5].available} onClick={() => begin(5)}>Tengo 5 min</button>
-            <button type="button" className="primary-btn" disabled={!plans[15].available} onClick={() => begin(15)}>Tengo 15 min</button>
-            <button type="button" className="secondary-btn" disabled={!plans[30].available} onClick={() => begin(30)}>Tengo 30 min</button>
-            <span>Elige tiempo; cada recorrido respeta ese presupuesto y usa sólo evidencia de tu expediente.</span>
+          <div className="coaching-action insights-duration-picker" role="group" aria-label="Duración de la sesión automática">
+            <button
+              type="button"
+              className="secondary-btn insights-duration-option"
+              aria-label="Tengo 5 min"
+              disabled={!plans[5].available}
+              onClick={() => begin(5)}
+            >
+              <strong>5 min</strong>
+              <span>Un foco</span>
+            </button>
+            <button
+              type="button"
+              className="primary-btn insights-duration-option insights-duration-option-recommended"
+              aria-label="Tengo 15 min"
+              disabled={!plans[15].available}
+              onClick={() => begin(15)}
+            >
+              <small>Equilibrado</small>
+              <strong>15 min</strong>
+              <span>Foco + práctica</span>
+            </button>
+            <button
+              type="button"
+              className="secondary-btn insights-duration-option"
+              aria-label="Tengo 30 min"
+              disabled={!plans[30].available}
+              onClick={() => begin(30)}
+            >
+              <strong>30 min</strong>
+              <span>Sesión completa</span>
+            </button>
+            <span className="insights-duration-note">Sólo usa evidencia real de tu expediente y respeta el tiempo elegido.</span>
           </div>
         ) : (
           <p className="hint-text">{plans[5].reason}</p>
