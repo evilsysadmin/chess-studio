@@ -64,9 +64,12 @@ func _initialize() -> void:
 	match_node.ball.global_position = ChessFootballMath.goal_center(0) + Vector2(28.0, 0.0)
 	match_node.debug_score_goal(0)
 	assert(match_node.debug_goal_restart_active())
+	# Review the celebration at a readable mid-pose rather than frame zero.
+	for _frame in range(16):
+		await process_frame
+	assert(match_node.debug_goal_restart_active())
 	match_node.debug_refresh_hud()
 	match_node.debug_sync_presentation()
-	await process_frame
 	await _save_capture(match_node, "goal", "VISUAL_CAPTURE_GOAL")
 	match_node.debug_force_goal_restart_ready()
 	assert(match_node.debug_kickoff_active())
