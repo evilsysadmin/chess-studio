@@ -202,8 +202,17 @@ func _initialize() -> void:
 	var tackler: Footballer = match_node.controlled
 	var victim: Footballer = match_node.teams[1][2]
 	tackler.global_position = Vector2(640.0, 500.0)
-	victim.global_position = Vector2(668.0, 500.0)
 	tackler.velocity = Vector2.RIGHT * tackler.base_speed
+
+	var forward_hitbox := match_node.debug_tackle_hitbox(tackler, Vector2(688.0, 522.0))
+	assert(bool(forward_hitbox["inside"]))
+	assert(float(forward_hitbox["lateral_distance"]) <= 27.0)
+	var behind_hitbox := match_node.debug_tackle_hitbox(tackler, Vector2(616.0, 500.0))
+	assert(not bool(behind_hitbox["inside"]))
+	var wide_hitbox := match_node.debug_tackle_hitbox(tackler, Vector2(676.0, 536.0))
+	assert(not bool(wide_hitbox["inside"]))
+
+	victim.global_position = Vector2(676.0, 514.0)
 	match_node.ball.attach_to(victim)
 	var pre_tackle_distance: float = tackler.global_position.distance_to(victim.global_position)
 	assert(match_node.debug_try_tackle(tackler))
@@ -266,6 +275,49 @@ func _initialize() -> void:
 	var tap_power: float = match_node.debug_shot_power_for_ratio(0.0)
 	var medium_power: float = match_node.debug_shot_power_for_ratio(0.5)
 	var full_power: float = match_node.debug_shot_power_for_ratio(1.0)
+
+	var shooter: Footballer = match_node.controlled
+	shooter.global_position = Vector2(
+		ChessFootballMath.PITCH_RECT.end.x - 520.0,
+		ChessFootballMath.PITCH_RECT.get_center().y + 72.0
+	)
+	var defending_keeper: Footballer = match_node.teams[1][0]
+	defending_keeper.global_position = Vector2(
+		ChessFootballMath.PITCH_RECT.end.x - 92.0,
+		ChessFootballMath.PITCH_RECT.get_center().y + 38.0
+	)
+	var auto_target: Vector2 = match_node.debug_assisted_shot_target(shooter, 0.0)
+	var upper_target: Vector2 = match_node.debug_assisted_shot_target(shooter, -1.0)
+	var lower_target: Vector2 = match_node.debug_assisted_shot_target(shooter, 1.0)
+	var safe_span: float = (
+		ChessFootballMath.GOAL_HALF_HEIGHT
+		- ChessFootballMath.GOAL_FRAME_POST_RADIUS
+		- 26.0
+	)
+	assert(absf(auto_target.y - ChessFootballMath.PITCH_RECT.get_center().y) <= safe_span + 0.01)
+	assert(absf(upper_target.y - ChessFootballMath.PITCH_RECT.get_center().y) <= safe_span + 0.01)
+	assert(absf(lower_target.y - ChessFootballMath.PITCH_RECT.get_center().y) <= safe_span + 0.01)
+	assert(upper_target.y < ChessFootballMath.PITCH_RECT.get_center().y)
+	assert(lower_target.y > ChessFootballMath.PITCH_RECT.get_center().y)
+	assert(auto_target.y < ChessFootballMath.PITCH_RECT.get_center().y)
+
+	var assisted_power: float = match_node.debug_shot_power_for_ratio(1.0)
+	var assisted_requested_lift: float = match_node.debug_shot_lift_for_ratio(1.0)
+	var assisted_lift: float = match_node.debug_safe_shot_lift(
+		shooter,
+		auto_target,
+		assisted_power,
+		assisted_requested_lift
+	)
+	var predicted_goal_height: float = match_node.debug_predicted_shot_height_at_goal(
+		shooter,
+		auto_target,
+		assisted_power,
+		assisted_lift
+	)
+	assert(assisted_lift <= assisted_requested_lift)
+	assert(predicted_goal_height <= 50.01)
+	assert(predicted_goal_height < ChessFootballMath.GOAL_MAX_FLIGHT_HEIGHT)
 	var tap_lift: float = match_node.debug_shot_lift_for_ratio(0.0)
 	var medium_lift: float = match_node.debug_shot_lift_for_ratio(0.5)
 	var full_lift: float = match_node.debug_shot_lift_for_ratio(1.0)
