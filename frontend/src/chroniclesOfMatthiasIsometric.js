@@ -36,6 +36,8 @@ import {
   CHRONICLES_ISO_MARKER_STYLE,
   CHRONICLES_ISO_PARTY_LAYOUT,
 } from './chronicles/chroniclesTacticsPartyPresentation.js';
+// Compatibility re-export: external renderer tests still consume these names.
+// Ownership lives in the focused Tactics party-presentation module.
 export { CHRONICLES_ISO_MARKER_STYLE, CHRONICLES_ISO_PARTY_LAYOUT } from './chronicles/chroniclesTacticsPartyPresentation.js';
 import {
   chroniclesIsoTorchPlacements,
