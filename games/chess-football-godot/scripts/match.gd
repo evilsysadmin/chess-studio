@@ -37,6 +37,7 @@ const AI_SUPPORT_FORWARD := 190.0
 
 const KICKOFF_FREEZE_SECONDS := 1.10
 const KICKOFF_AI_PASS_POWER := 430.0
+const KICKOFF_RECEIVER_INDEX := 3
 const KICKOFF_TEAM_HALF_GAP := 120.0
 const KICKOFF_RIVAL_HALF_GAP := 250.0
 const GOAL_CELEBRATION_SECONDS := 1.35
@@ -797,13 +798,14 @@ func _update_kickoff(delta: float) -> void:
 	last_goal_text = ""
 	if audio_fx != null:
 		audio_fx.play_whistle()
-	if kickoff_team_id == 1:
-		var starter: Footballer = teams[1][2]
-		var receiver: Footballer = teams[1][3]
-		starter.play_action("pass", 0.60)
-		if audio_fx != null:
-			audio_fx.play_pass()
-		ball.release(receiver.global_position - starter.global_position, KICKOFF_AI_PASS_POWER)
+	var starter: Footballer = teams[kickoff_team_id][2]
+	var receiver: Footballer = teams[kickoff_team_id][KICKOFF_RECEIVER_INDEX]
+	starter.play_action("pass", 0.60)
+	if audio_fx != null:
+		audio_fx.play_pass()
+	ball.release(receiver.global_position - starter.global_position, KICKOFF_AI_PASS_POWER)
+	if kickoff_team_id == 0:
+		_select_player(receiver)
 
 func _toggle_camera_mode() -> void:
 	camera_mode = CAMERA_MODE_TACTICAL if camera_mode == CAMERA_MODE_BROADCAST else CAMERA_MODE_BROADCAST
