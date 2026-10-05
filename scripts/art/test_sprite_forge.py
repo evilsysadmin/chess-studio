@@ -555,6 +555,27 @@ class SpriteForgeCompilerTests(unittest.TestCase):
                     (right / part).read_bytes(),
                 )
 
+    def test_schema2_build_emits_generic_surface_identity(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            contract, frames = self._fixture(root)
+            data = json.loads(contract.read_text(encoding="utf-8"))
+            data["schema"] = 2
+            data["surface"] = "chess-football"
+            data["variant"] = "fc-matthias-outfield"
+            data.pop("weapon")
+            contract.write_text(
+                json.dumps(data, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+
+            manifest = build_bank(contract, frames, root / "out")
+            self.assertEqual(manifest["schema"], 2)
+            self.assertEqual(manifest["kind"], "chess-studio-sprite-forge-bank")
+            self.assertEqual(manifest["surface"], "chess-football")
+            self.assertEqual(manifest["variant"], "fc-matthias-outfield")
+            self.assertNotIn("weapon", manifest)
+
     def test_manifest_distinguishes_authored_frames_from_stored_slots(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
