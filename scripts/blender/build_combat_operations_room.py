@@ -230,113 +230,164 @@ def build_architecture(static, p):
 
 
 def build_campaign_map(static, p):
-    # Large framed parchment map: the room's semantic focal point after the board.
-    base.cube("COMBAT_MAP_frame", (0, 6.49, 3.78), (2.72, 0.13, 1.55),
+    """Rear-wall campaign map: territories, fronts, routes and objectives."""
+    base.cube("COMBAT_MAP_frame", (0, 6.49, 3.78), (2.82, 0.13, 1.62),
               p["oak"], static, bevel=0.10)
-    base.cube("COMBAT_MAP_parchment", (0, 6.30, 3.78), (2.47, 0.035, 1.30),
+    base.cube("COMBAT_MAP_parchment", (0, 6.30, 3.78), (2.56, 0.035, 1.37),
               p["parchment"], static, bevel=0.05)
 
-    # Simplified campaign topology: route lines + brass pins, readable without text.
-    points = [
-        (-1.75, 3.30), (-0.95, 4.20), (-0.25, 3.65),
-        (0.45, 4.55), (1.15, 3.75), (1.75, 4.45),
-    ]
-    for idx, (x, z) in enumerate(points):
-        base.sphere(
-            f"COMBAT_MAP_pin_{idx}", (x, 6.20, z), 0.095,
-            p["brass" if idx < len(points) - 1 else "burgundy"], static,
-            scale=(1.0, 0.45, 1.0),
+    # Irregular flattened regions read as geography instead of a line chart.
+    regions = (
+        (-1.70, 4.32, 0.72, 0.40, p["olive"]),
+        (-0.75, 3.62, 0.58, 0.34, p["dais"]),
+        (0.10, 4.55, 0.62, 0.38, p["olive"]),
+        (0.95, 3.62, 0.68, 0.36, p["dais"]),
+        (1.75, 4.30, 0.48, 0.30, p["burgundy"]),
+        (-1.78, 3.05, 0.44, 0.25, p["dais"]),
+    )
+    for idx, (x, z, sx, sz, mat) in enumerate(regions):
+        blob = base.sphere(
+            f"COMBAT_MAP_region_{idx}", (x, 6.225, z), 0.52,
+            mat, static, scale=(sx / 0.52, 0.13, sz / 0.52),
         )
-    for idx in range(len(points) - 1):
-        x0, z0 = points[idx]
-        x1, z1 = points[idx + 1]
+        blob.rotation_euler.y = math.radians((idx * 17) % 30 - 15)
+
+    # Main supply road with two tactical branches.
+    route_sets = (
+        ((-2.05, 3.15), (-1.25, 3.65), (-0.55, 3.35), (0.15, 3.95), (0.95, 3.72), (1.75, 4.28)),
+        ((-0.55, 3.35), (-0.20, 4.32), (0.55, 4.72)),
+        ((0.95, 3.72), (1.25, 3.12), (1.92, 3.00)),
+    )
+    route_idx = 0
+    for route in route_sets:
+        for start, end in zip(route, route[1:]):
+            cylinder_between(
+                f"COMBAT_MAP_route_{route_idx}",
+                (start[0], 6.17, start[1]),
+                (end[0], 6.17, end[1]),
+                0.022, p["ink"], static, vertices=10,
+            )
+            route_idx += 1
+
+    # Objective pins and tiny fortress glyphs; no fake labels or names.
+    objectives = (
+        (-2.05, 3.15, p["brass"]),
+        (-0.20, 4.32, p["brass"]),
+        (1.75, 4.28, p["burgundy"]),
+        (1.92, 3.00, p["brass"]),
+    )
+    for idx, (x, z, mat) in enumerate(objectives):
+        base.sphere(
+            f"COMBAT_MAP_pin_{idx}", (x, 6.145, z), 0.085,
+            mat, static, scale=(1.0, 0.38, 1.0),
+        )
+        base.cube(
+            f"COMBAT_MAP_fort_{idx}", (x, 6.115, z + 0.16),
+            (0.11, 0.022, 0.105), p["ink"], static, bevel=0.012,
+        )
+        for side in (-1, 1):
+            base.cube(
+                f"COMBAT_MAP_fort_tower_{idx}_{side}", (x + side * 0.10, 6.11, z + 0.25),
+                (0.045, 0.024, 0.09), p["ink"], static, bevel=0.008,
+            )
+
+    # Front line and compass marker complete the cartographic language.
+    for idx, (a, b) in enumerate((
+        ((0.45, 2.85), (0.72, 3.10)),
+        ((0.72, 3.10), (0.55, 3.35)),
+        ((0.55, 3.35), (0.82, 3.55)),
+    )):
         cylinder_between(
-            f"COMBAT_MAP_route_{idx}",
-            (x0, 6.205, z0),
-            (x1, 6.205, z1),
-            0.025, p["ink"], static, vertices=10,
+            f"COMBAT_MAP_front_{idx}",
+            (a[0], 6.16, a[1]), (b[0], 6.16, b[1]),
+            0.038, p["burgundy"], static, vertices=10,
         )
 
-    # Intel clips and brass rulers sell active planning without UI text.
+    compass_x, compass_z = (-1.92, 4.82)
+    cylinder_between("COMBAT_MAP_compass_ns", (compass_x, 6.15, compass_z - 0.18),
+                     (compass_x, 6.15, compass_z + 0.18), 0.018, p["brass"], static, vertices=10)
+    cylinder_between("COMBAT_MAP_compass_ew", (compass_x - 0.18, 6.15, compass_z),
+                     (compass_x + 0.18, 6.15, compass_z), 0.018, p["brass"], static, vertices=10)
+
     for side in (-1, 1):
         base.cube(
-            f"COMBAT_MAP_clip_{side}", (side * 2.18, 6.18, 4.92),
+            f"COMBAT_MAP_clip_{side}", (side * 2.25, 6.18, 4.98),
             (0.18, 0.025, 0.06), p["brass"], static, bevel=0.015,
         )
-    base.cube("COMBAT_MAP_ruler", (0.55, 6.16, 2.82), (0.85, 0.022, 0.035),
-              p["brass"], static, bevel=0.012)
     base.anchor("COMBAT_ANCHOR_campaign_map", (0, 5.95, 3.75), static)
 
-
 def build_barracks(static, p):
-    """Left wall: persistent army, ranks and reserves."""
-    x = -7.72
-    base.cube("COMBAT_BARRACKS_back", (x, 0.15, 3.15), (0.22, 2.25, 2.30),
+    """Rear-left wall: a visible persistent-army rack with veteran cues."""
+    x, y = -5.72, 6.24
+    base.cube("COMBAT_BARRACKS_back", (x, y, 3.20), (1.72, 0.20, 2.32),
               p["oak"], static, bevel=0.06)
-    for shelf_idx, z in enumerate((1.45, 2.55, 3.65, 4.75)):
+    for shelf_idx, z in enumerate((1.48, 2.58, 3.68, 4.78)):
         base.cube(
-            f"COMBAT_BARRACKS_shelf_{shelf_idx}", (x + 0.30, 0.15, z),
-            (0.48, 2.12, 0.07), p["oak_mid"], static, bevel=0.025,
+            f"COMBAT_BARRACKS_shelf_{shelf_idx}", (x, y - 0.30, z),
+            (1.58, 0.48, 0.07), p["oak_mid"], static, bevel=0.025,
         )
 
-    # Eight restrained unit plinths, not a second chessboard.
     slot = 0
     for z in (1.82, 2.92, 4.02, 5.12):
-        for y in (-1.25, 1.25):
+        for px in (x - 0.68, x + 0.68):
             base.cylinder(
-                f"COMBAT_BARRACKS_unit_plinth_{slot}", (x + 0.58, y, z),
+                f"COMBAT_BARRACKS_unit_plinth_{slot}", (px, y - 0.62, z),
                 0.18, 0.10, p["brass"], static, vertices=12,
             )
             base.sphere(
-                f"COMBAT_BARRACKS_helmet_{slot}", (x + 0.58, y, z + 0.23),
+                f"COMBAT_BARRACKS_helmet_{slot}", (px, y - 0.62, z + 0.23),
                 0.16, p["iron"], static, scale=(0.92, 0.80, 1.02),
             )
             slot += 1
 
-    # Three rank chevrons set into the top fascia.
+    # Veteran chevrons across the fascia are deliberately readable from the hero camera.
     for idx in range(3):
-        z = 5.64 - idx * 0.20
-        left = (-7.28, -0.36, z)
-        peak = (-7.04, 0.00, z - 0.10)
-        right = (-7.28, 0.36, z)
-        cylinder_between(f"COMBAT_BARRACKS_chevron_{idx}_a", left, peak, 0.035, p["brass"], static, vertices=10)
-        cylinder_between(f"COMBAT_BARRACKS_chevron_{idx}_b", peak, right, 0.035, p["brass"], static, vertices=10)
+        z = 5.66 - idx * 0.21
+        left = (x - 0.42, y - 0.66, z)
+        peak = (x, y - 0.66, z - 0.12)
+        right = (x + 0.42, y - 0.66, z)
+        cylinder_between(f"COMBAT_BARRACKS_chevron_{idx}_a", left, peak, 0.038, p["brass"], static, vertices=10)
+        cylinder_between(f"COMBAT_BARRACKS_chevron_{idx}_b", peak, right, 0.038, p["brass"], static, vertices=10)
 
-    base.anchor("COMBAT_ANCHOR_barracks", (-6.95, 0.10, 2.90), static)
-
+    base.cube("COMBAT_BARRACKS_header", (x, y - 0.64, 5.82), (1.05, 0.035, 0.16),
+              p["olive"], static, bevel=0.018)
+    base.anchor("COMBAT_ANCHOR_barracks", (x, y - 0.90, 3.05), static)
 
 def build_memorial(static, p):
-    """Right wall: permanent loss is visible, restrained and dignified."""
-    x = 7.74
-    base.cube("COMBAT_MEMORIAL_slab", (x, 0.70, 3.45), (0.20, 2.10, 2.35),
+    """Rear-right wall: dignified permanent-loss memorial, clearly legible."""
+    x, y = 5.72, 6.25
+    base.cube("COMBAT_MEMORIAL_slab", (x, y, 3.45), (1.72, 0.20, 2.35),
               p["wall"], static, bevel=0.06)
-    base.cube("COMBAT_MEMORIAL_frame", (x - 0.24, 0.70, 3.45), (0.08, 1.78, 2.05),
+    base.cube("COMBAT_MEMORIAL_frame", (x, y - 0.27, 3.45), (1.50, 0.08, 2.05),
               p["brass"], static, bevel=0.025)
-    base.cube("COMBAT_MEMORIAL_panel", (x - 0.34, 0.70, 3.45), (0.04, 1.63, 1.90),
+    base.cube("COMBAT_MEMORIAL_panel", (x, y - 0.37, 3.45), (1.37, 0.04, 1.90),
               p["iron"], static, bevel=0.018)
 
-    # Brass service plaques: enough to read as memorial, no fake names.
     for row in range(4):
         for col in range(2):
-            y = -0.35 + col * 1.95
+            px = x - 0.65 + col * 1.30
             z = 2.35 + row * 0.72
             base.cube(
-                f"COMBAT_MEMORIAL_plaque_{row}_{col}", (x - 0.42, y, z),
-                (0.025, 0.70, 0.20), p["brass"], static, bevel=0.025,
+                f"COMBAT_MEMORIAL_plaque_{row}_{col}", (px, y - 0.43, z),
+                (0.48, 0.025, 0.20), p["brass"], static, bevel=0.025,
             )
 
-    # Candles below the plaques.
-    for idx, y in enumerate((-1.10, -0.35, 0.40, 1.15, 1.90)):
+    for idx, px in enumerate((x - 1.05, x - 0.52, x, x + 0.52, x + 1.05)):
         base.cylinder(
-            f"COMBAT_MEMORIAL_candle_{idx}", (x - 0.55, y, 1.05),
+            f"COMBAT_MEMORIAL_candle_{idx}", (px, y - 0.72, 1.05),
             0.07, 0.30, p["wax"], static, vertices=14,
         )
         base.sphere(
-            f"COMBAT_MEMORIAL_flame_{idx}", (x - 0.55, y, 1.27),
+            f"COMBAT_MEMORIAL_flame_{idx}", (px, y - 0.72, 1.27),
             0.055, p["flame"], static, scale=(0.65, 0.65, 1.35),
         )
-    base.anchor("COMBAT_ANCHOR_memorial", (7.00, 0.75, 2.80), static)
 
+    # A simple downward sword silhouette gives the memorial a military focal point.
+    base.cube("COMBAT_MEMORIAL_sword_blade", (x, y - 0.46, 5.22),
+              (0.045, 0.025, 0.42), p["limestone"], static, bevel=0.012)
+    base.cube("COMBAT_MEMORIAL_sword_guard", (x, y - 0.46, 4.96),
+              (0.24, 0.025, 0.035), p["brass"], static, bevel=0.010)
+    base.anchor("COMBAT_ANCHOR_memorial", (x, y - 0.92, 3.00), static)
 
 def build_quartermaster(static, p):
     """Rear-right station for credits/market and equipment."""
@@ -369,27 +420,27 @@ def build_quartermaster(static, p):
 
 
 def build_standards(static, p):
-    # Paired campaign standards frame the map without hiding it.
+    # Campaign standards flank the map and are large enough to read at play framing.
     for side, mat, label in ((-1, p["olive"], "olive"), (1, p["burgundy"], "burgundy")):
-        x = side * 3.55
-        base.cylinder(f"COMBAT_STANDARD_pole_{label}", (x, 6.10, 3.75), 0.045, 3.75,
+        x = side * 3.45
+        base.cylinder(f"COMBAT_STANDARD_pole_{label}", (x, 6.05, 3.72), 0.050, 4.15,
                       p["brass"], static, vertices=16)
-        base.cube(f"COMBAT_STANDARD_banner_{label}", (x + side * 0.46, 6.05, 4.65),
-                  (0.42, 0.035, 0.92), mat, static, bevel=0.035)
-        # A single brass chevron on each banner.
+        base.sphere(f"COMBAT_STANDARD_finial_{label}", (x, 6.05, 5.86),
+                    0.13, p["brass"], static)
+        base.cube(f"COMBAT_STANDARD_banner_{label}", (x + side * 0.58, 5.98, 4.60),
+                  (0.55, 0.040, 1.08), mat, static, bevel=0.035)
         cylinder_between(
             f"COMBAT_STANDARD_mark_{label}_a",
-            (x + side * 0.72, 6.00, 4.78),
-            (x + side * 0.46, 6.00, 4.55),
-            0.035, p["brass"], static, vertices=10,
+            (x + side * 0.90, 5.91, 4.78),
+            (x + side * 0.58, 5.91, 4.48),
+            0.042, p["brass"], static, vertices=10,
         )
         cylinder_between(
             f"COMBAT_STANDARD_mark_{label}_b",
-            (x + side * 0.46, 6.00, 4.55),
-            (x + side * 0.20, 6.00, 4.78),
-            0.035, p["brass"], static, vertices=10,
+            (x + side * 0.58, 5.91, 4.48),
+            (x + side * 0.26, 5.91, 4.78),
+            0.042, p["brass"], static, vertices=10,
         )
-
 
 def build_sconces(static, p):
     for side, label in ((-1, "left"), (1, "right")):
@@ -418,33 +469,40 @@ def build_lighting(static):
     scene = bpy.context.scene
     scene["war_room_variant"] = "combat-operations-room"
     scene["combat_operations_room_contract"] = CONTRACT
-    scene.view_settings.exposure = 0.12
+    scene.view_settings.exposure = 0.24
 
-    top = base.light("COMBAT_LIGHT_board_top", "AREA", (0.0, -0.20, 8.80), 290.0,
-                     (0.74, 0.69, 0.57), static, size=4.8)
+    top = base.light("COMBAT_LIGHT_board_top", "AREA", (0.0, -0.20, 8.90), 280.0,
+                     (0.74, 0.69, 0.57), static, size=4.9)
     base.look_at(top, (0.0, 0.0, 0.75))
 
-    map_key = base.light("COMBAT_LIGHT_map_key", "AREA", (0.0, 5.40, 6.20), 220.0,
-                         (0.74, 0.47, 0.22), static, size=3.4)
-    base.look_at(map_key, (0.0, 6.10, 3.65))
+    front = base.light("COMBAT_LIGHT_front_fill", "AREA", (0.0, -5.80, 5.40), 145.0,
+                       (0.38, 0.43, 0.50), static, size=4.2)
+    base.look_at(front, (0.0, 0.2, 1.10))
 
-    moon = base.light("COMBAT_LIGHT_moon", "AREA", (0.0, 5.80, 7.25), 340.0,
+    map_key = base.light("COMBAT_LIGHT_map_key", "AREA", (0.0, 5.20, 6.30), 255.0,
+                         (0.78, 0.49, 0.22), static, size=3.6)
+    base.look_at(map_key, (0.0, 6.05, 3.78))
+
+    moon = base.light("COMBAT_LIGHT_moon", "AREA", (0.0, 5.75, 7.30), 280.0,
                       (0.14, 0.27, 0.58), static, size=3.2)
-    base.look_at(moon, (0.0, 1.0, 1.10))
+    base.look_at(moon, (0.0, 1.2, 1.20))
 
-    left = base.light("COMBAT_LIGHT_barracks", "AREA", (-6.25, 0.20, 4.55), 120.0,
-                      (0.76, 0.32, 0.09), static, size=2.4)
-    base.look_at(left, (-7.25, 0.20, 2.90))
+    left = base.light("COMBAT_LIGHT_barracks", "AREA", (-4.90, 4.75, 4.65), 215.0,
+                      (0.78, 0.34, 0.10), static, size=2.6)
+    base.look_at(left, (-5.72, 5.65, 3.05))
 
-    right = base.light("COMBAT_LIGHT_memorial", "AREA", (6.20, 0.60, 4.40), 95.0,
-                       (0.66, 0.30, 0.10), static, size=2.1)
-    base.look_at(right, (7.20, 0.70, 2.85))
+    right = base.light("COMBAT_LIGHT_memorial", "AREA", (4.90, 4.85, 4.55), 185.0,
+                       (0.70, 0.32, 0.11), static, size=2.5)
+    base.look_at(right, (5.72, 5.60, 3.05))
+
+    quartermaster = base.light("COMBAT_LIGHT_quartermaster", "AREA", (5.40, 3.80, 3.40), 130.0,
+                               (0.72, 0.40, 0.14), static, size=2.1)
+    base.look_at(quartermaster, (5.70, 5.15, 1.35))
 
     base.anchor("COMBAT_ANCHOR_board_fill", (0.0, -0.25, 5.80), static)
     base.anchor("COMBAT_ANCHOR_map_fill", (0.0, 5.80, 5.20), static)
-    base.anchor("COMBAT_ANCHOR_barracks_fill", (-6.55, 0.15, 3.65), static)
-    base.anchor("COMBAT_ANCHOR_memorial_fill", (6.55, 0.75, 3.55), static)
-
+    base.anchor("COMBAT_ANCHOR_barracks_fill", (-5.72, 5.40, 3.65), static)
+    base.anchor("COMBAT_ANCHOR_memorial_fill", (5.72, 5.40, 3.55), static)
 
 def bake_weather():
     base.WEATHER_MATERIALS = COMBAT_WEATHER_MATERIALS
@@ -527,16 +585,16 @@ def validate_scene():
         if over_squares and top > tile_top - 0.010:
             raise RuntimeError(f"Combat Operations Room table occludes live board: {obj.name} top={top:.3f}")
 
-    # Side stations stay outside the playable interaction band.
+    # Rear stations flank the map and stay safely behind the live-board envelope.
     for name in ("COMBAT_BARRACKS_back", "COMBAT_MEMORIAL_slab"):
         obj = bpy.data.objects[name]
-        if abs(obj.location.x) < 6.8:
-            raise RuntimeError(f"Combat Operations Room side station invades board: {name}")
+        if obj.location.y < 5.8 or abs(obj.location.x) < 3.6:
+            raise RuntimeError(f"Combat Operations Room rear station invades board/map hierarchy: {name}")
 
     camera = bpy.context.scene.camera
-    camera.data.lens = 46.0
-    camera.location = (0.0, -16.0, 9.55)
-    base.look_at(camera, (0.0, 0.78, 1.55))
+    camera.data.lens = 38.0
+    camera.location = (0.0, -18.1, 10.55)
+    base.look_at(camera, (0.0, 1.15, 1.72))
 
 
 def export_shell(path: Path):
