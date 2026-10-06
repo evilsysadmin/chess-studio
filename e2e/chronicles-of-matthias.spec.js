@@ -70,7 +70,10 @@ test('Chronicles of Matthias · abre una cripta Three.js real y usa combate posi
   expect(rootBox?.y ?? 99).toBeLessThanOrEqual(1);
   expect(rootBox?.width || 0).toBeGreaterThanOrEqual((viewport?.width || 0) - 2);
   expect(rootBox?.height || 0).toBeGreaterThanOrEqual((viewport?.height || 0) - 2);
-  expect(await page.evaluate(() => document.fullscreenElement)).toBeNull();
+  await expect.poll(
+    () => page.evaluate(() => Boolean(document.fullscreenElement)),
+    { timeout: 10_000, message: 'desktop Chronicles enters native fullscreen' },
+  ).toBe(true);
 
   // Use the real keyboard gameplay path for hosted WebGL. Chromium's synthetic
   // pointer action can stall while the software renderer owns the main thread,
