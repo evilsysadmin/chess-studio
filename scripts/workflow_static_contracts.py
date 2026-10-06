@@ -30,6 +30,9 @@ def validate_main_admission_fallback(root: Path = ROOT) -> None:
         "if: steps.pr_admission.outcome == 'success'",
         "if: steps.pr_admission.outcome == 'failure'",
         "name: Full exact-HEAD quality fallback",
+        "name: Cancel superseded composed-main validation",
+        '"/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/cancel"',
+        "steps.current_main.outputs.current == 'true'",
         # Full Quality · CI gate (--all) on the exact main SHA, in parallel.
         "python3 -S scripts/main_admission_quality_dispatch.py",
         "actions: write",

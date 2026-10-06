@@ -138,12 +138,39 @@ jobs:
             frontend/package-lock.json
             e2e/package-lock.json
 
-      - name: Static preflight on concurrent composed main SHA
+      - name: Cancel superseded composed-main validation
+        id: current_main
         if: steps.pr_admission.outcome == 'success' && steps.pr_admission.outputs.concurrency_reused == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          current_main="$(git ls-remote origin refs/heads/main | awk 'NR == 1 {print $1}')"
+          [[ "$current_main" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::No pude resolver main HEAD"; exit 1; }
+          if [[ "$current_main" == "$GITHUB_SHA" ]]; then
+            echo 'current=true' >> "$GITHUB_OUTPUT"
+            echo "Concurrent composition still current: $GITHUB_SHA"
+            exit 0
+          fi
+
+          echo 'current=false' >> "$GITHUB_OUTPUT"
+          echo "::notice title=Main admission superseded::$GITHUB_SHA ya no es main ($current_main); cancelo antes de static-preflight."
+          gh api --method POST \
+            -H 'Accept: application/vnd.github+json' \
+            "/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/cancel"
+          # The controller normally stops this job immediately. Keep the stale run
+          # alive briefly so it cannot race to a false green if cancellation lags.
+          sleep 15
+          echo "::error::La cancelación de la generación superseded no llegó a tiempo."
+          exit 1
+
+      - name: Static preflight on concurrent composed main SHA
+        if: steps.pr_admission.outcome == 'success' && steps.pr_admission.outputs.concurrency_reused == 'true' && steps.current_main.outputs.current == 'true'
         run: make static-preflight
 
       - name: Staging preview isolation contract · concurrent composition
-        if: steps.pr_admission.outcome == 'success' && steps.pr_admission.outputs.concurrency_reused == 'true'
+        if: steps.pr_admission.outcome == 'success' && steps.pr_admission.outputs.concurrency_reused == 'true' && steps.current_main.outputs.current == 'true'
         run: python3 scripts/staging_preview_contract.py
 
       - name: Exact PR receipt reused without duplicate static gate
