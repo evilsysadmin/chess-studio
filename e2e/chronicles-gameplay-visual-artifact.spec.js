@@ -239,8 +239,17 @@ for (const capture of CAPTURES) {
       await expect(automapMarker).toBeVisible();
       expect(await automapCells.count(), `${capture.label}: automap reveals geometry`).toBeGreaterThanOrEqual(3);
       const markerBox = await automapMarker.boundingBox();
+      const automapCanvas = automap.locator('.chronicles-automap__canvas');
+      const canvasBox = await automapCanvas.boundingBox();
       expect(markerBox?.width || 0, `${capture.label}: automap marker width`).toBeGreaterThan(0);
       expect(markerBox?.height || 0, `${capture.label}: automap marker height`).toBeGreaterThan(0);
+      expect(canvasBox?.height || 0, `${capture.label}: automap canvas height`).toBeGreaterThan(80);
+      const markerCenterX = (markerBox?.x || 0) + (markerBox?.width || 0) / 2;
+      const markerCenterY = (markerBox?.y || 0) + (markerBox?.height || 0) / 2;
+      expect(markerCenterX, `${capture.label}: automap marker inside canvas horizontally`).toBeGreaterThan((canvasBox?.x || 0) + 8);
+      expect(markerCenterX, `${capture.label}: automap marker inside canvas horizontally`).toBeLessThan((canvasBox?.x || 0) + (canvasBox?.width || 0) - 8);
+      expect(markerCenterY, `${capture.label}: automap marker inside canvas vertically`).toBeGreaterThan((canvasBox?.y || 0) + 8);
+      expect(markerCenterY, `${capture.label}: automap marker inside canvas vertically`).toBeLessThan((canvasBox?.y || 0) + (canvasBox?.height || 0) - 8);
       await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-automap-${capture.label}.png`);
       await page.keyboard.press('m');
       await expect(automap).toHaveCount(0);
