@@ -388,6 +388,16 @@ export function chroniclesObjective(state) {
   const pendingTrigger = (map.triggers || []).find((entry) => chroniclesRequirementsMet(state, entry.when));
   if (pendingTrigger) return pendingTrigger.explorationObjective || pendingTrigger.label || 'Activa el siguiente evento';
 
+  const pendingInteraction = [
+    ...(map.interactables || []),
+    ...(map.treasures || []),
+  ].find((entry) => chroniclesRequirementsMet(state, entry.when));
+  if (pendingInteraction) {
+    return pendingInteraction.explorationObjective
+      || pendingInteraction.label
+      || (pendingInteraction.kind === 'pickup' ? 'Recoge el objeto' : 'Interactúa con el entorno');
+  }
+
   const exit = (map.exits || [])[0];
   if (exit) return exit.explorationObjective || exit.openLabel || 'Busca una salida';
   return map.explorationIdleObjective || 'Explora la zona';
