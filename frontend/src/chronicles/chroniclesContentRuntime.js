@@ -1,10 +1,10 @@
 import { chroniclesMapTransitionState } from './chroniclesMapCatalog.js';
 
 const CARDINAL_DIRECTIONS = Object.freeze([
-  Object.freeze({ key: 'north', dx: 0, dy: -1 }),
-  Object.freeze({ key: 'east', dx: 1, dy: 0 }),
-  Object.freeze({ key: 'south', dx: 0, dy: 1 }),
-  Object.freeze({ key: 'west', dx: -1, dy: 0 }),
+  Object.freeze({ key: 'north', dx: 0, dy: -1, direction: 0 }),
+  Object.freeze({ key: 'east', dx: 1, dy: 0, direction: 1 }),
+  Object.freeze({ key: 'south', dx: 0, dy: 1, direction: 2 }),
+  Object.freeze({ key: 'west', dx: -1, dy: 0, direction: 3 }),
 ]);
 
 const CONTENT_GROUPS = Object.freeze(['triggers', 'interactables', 'treasures', 'traps', 'exits']);
@@ -73,6 +73,31 @@ export function chroniclesContentEntries(map) {
 export function chroniclesContentVisible(state, entry) {
   if (!state) return true;
   return chroniclesRequirementsMet(state, entry?.when);
+}
+
+export function chroniclesContentWallMount(map, entry) {
+  const x = Number(entry?.x ?? entry?.position?.x);
+  const y = Number(entry?.y ?? entry?.position?.y);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+
+  const explicit = CARDINAL_DIRECTIONS.find((direction) => direction.key === entry?.wallSide);
+  if (explicit && map?.grid?.[y + explicit.dy]?.[x + explicit.dx] === '#') return explicit;
+
+  return CARDINAL_DIRECTIONS.find(
+    (direction) => map?.grid?.[y + direction.dy]?.[x + direction.dx] === '#',
+  ) || null;
+}
+
+export function chroniclesFirstPersonContentInteractions(state, map, tileAt) {
+  return chroniclesContentInteractions(state, map, tileAt)
+    .map((interaction) => {
+      if (['exit', 'trigger', 'trap'].includes(interaction.kind)) return interaction;
+      const definition = chroniclesContentDefinition(map, interaction.id);
+      const mount = chroniclesContentWallMount(map, definition);
+      if (mount && Number(state?.direction) !== mount.direction) return null;
+      return mount ? { ...interaction, wallSide: mount.key, facingDirection: mount.direction } : interaction;
+    })
+    .filter(Boolean);
 }
 
 function onCurrentCell(state, entry, tileAt) {
