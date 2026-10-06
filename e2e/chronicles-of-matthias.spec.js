@@ -64,6 +64,14 @@ test('Chronicles of Matthias · abre una cripta Three.js real y usa combate posi
   await expect(mode.locator('summary[aria-label="Abrir menú de Chronicles"]')).toBeVisible({ timeout: 30_000 });
   await expect(mode.locator('.chronicles-renderer-error')).toHaveCount(0);
 
+  const viewport = page.viewportSize();
+  const rootBox = await mode.boundingBox();
+  expect(rootBox?.x ?? 99).toBeLessThanOrEqual(1);
+  expect(rootBox?.y ?? 99).toBeLessThanOrEqual(1);
+  expect(rootBox?.width || 0).toBeGreaterThanOrEqual((viewport?.width || 0) - 2);
+  expect(rootBox?.height || 0).toBeGreaterThanOrEqual((viewport?.height || 0) - 2);
+  expect(await page.evaluate(() => document.fullscreenElement)).toBeNull();
+
   // Use the real keyboard gameplay path for hosted WebGL. Chromium's synthetic
   // pointer action can stall while the software renderer owns the main thread,
   // even though the visible button is enabled and stable.
@@ -196,6 +204,45 @@ test('Chronicles of Matthias · móvil apaisado ocupa el viewport y conserva esc
   const turnsAfterHold = Number(await mode.getAttribute('data-chronicles-turns'));
   expect(turnsAfterHold - turnsBeforeHold).toBeGreaterThanOrEqual(2);
 
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
+});
+
+
+test('Chronicles of Matthias · automap sigue el rumbo real y ESC no abandona el viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openChronicles(page);
+
+  const mode = page.locator('[data-chronicles="true"]');
+  const mapButton = mode.getByRole('button', { name: 'Abrir automapa', exact: true });
+  await expect(mapButton).toBeVisible();
+
+  const turnsBeforeMap = Number(await mode.getAttribute('data-chronicles-turns'));
+  await mapButton.click();
+
+  const automap = page.getByRole('dialog', { name: 'Automapa de Chronicles', exact: true });
+  await expect(automap).toBeVisible();
+  const marker = automap.locator('.chronicles-automap__party-marker');
+  await expect(marker).toHaveCount(1);
+  const initialFacing = Number(await marker.getAttribute('data-chronicles-map-facing'));
+
+  await page.keyboard.press('w');
+  await expect(mode).toHaveAttribute('data-chronicles-turns', String(turnsBeforeMap));
+
+  await page.keyboard.press('Escape');
+  await expect(automap).toHaveCount(0);
+  await expect(page.locator('.chronicles-game-menu[open]')).toHaveCount(0);
+  expect(await page.evaluate(() => document.fullscreenElement)).toBeNull();
+
+  await page.keyboard.press('d');
+  await page.keyboard.press('m');
+  await expect(automap).toBeVisible();
+  const turnedFacing = Number(await marker.getAttribute('data-chronicles-map-facing'));
+  expect(turnedFacing).toBe((initialFacing + 1) % 4);
+
+  const rootBox = await mode.boundingBox();
+  expect(rootBox?.width || 0).toBeGreaterThanOrEqual(388);
+  expect(rootBox?.height || 0).toBeGreaterThanOrEqual(842);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
 });
