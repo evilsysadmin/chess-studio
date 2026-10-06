@@ -28,7 +28,7 @@
 .combat-battle-screen .combat-warroom-status {
   position: absolute;
   z-index: 46;
-  top: max(.7rem, env(safe-area-inset-top));
+  top: max(3.05rem, calc(env(safe-area-inset-top) + 2.35rem));
   right: max(.7rem, env(safe-area-inset-right));
   max-width: min(32rem, calc(100vw - 1.4rem));
   margin: 0;
@@ -132,6 +132,9 @@
 
 .combat-battle-screen .combat-warroom-log-drawer {
   width: 100%;
+  height: auto !important;
+  min-height: 44px;
+  max-height: none !important;
   margin: 0;
   border: 1px solid rgba(220, 187, 123, .22);
   border-radius: 14px;
@@ -408,6 +411,12 @@
     min-height: 36px;
     height: 36px;
     font-size: .68rem;
+  }
+}
+
+@media (pointer: coarse) and (orientation: portrait) and (max-width: 920px) {
+  .combat-battle-screen .combat-warroom-ops {
+    display: none !important;
   }
 }
 
