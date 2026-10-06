@@ -22,14 +22,14 @@ vi.mock('../playerModel.js', () => ({
   buildPlayerModel: modelMocks.buildPlayerModel,
 }));
 
-vi.mock('./InsightsDashboardContent.jsx', () => ({
-  default: ({ initialSection, playerModel, personalPuzzles, cleanGameRecords }) => (
+vi.mock('./InsightsDossierContent.jsx', () => ({
+  default: ({ playerModel, personalPuzzles, cleanGameRecords }) => (
     <div
-      data-insights-dashboard={initialSection}
+      data-insights-dossier="true"
       data-player-model={playerModel?.version || 'none'}
-      data-dashboard-puzzle-snapshot={personalPuzzles?.length || 0}
-      data-dashboard-clean-snapshot={Object.keys(cleanGameRecords || {}).length}
-    >dashboard</div>
+      data-dossier-puzzle-snapshot={personalPuzzles?.length || 0}
+      data-dossier-clean-snapshot={Object.keys(cleanGameRecords || {}).length}
+    >dossier</div>
   ),
 }));
 vi.mock('./InsightsRecurringErrors.jsx', () => ({
@@ -106,8 +106,8 @@ describe('InsightsScreen Matthias-led coaching workspace', () => {
     expect(html.match(/data-player-model="7"/g)?.length).toBe(1);
     expect(html).toContain('data-puzzle-snapshot="1"');
     expect(html).toContain('data-clean-snapshot="1"');
-    expect(html).not.toContain('data-dashboard-puzzle-snapshot="1"');
-    expect(html).not.toContain('data-dashboard-clean-snapshot="1"');
+    expect(html).not.toContain('data-dossier-puzzle-snapshot="1"');
+    expect(html).not.toContain('data-dossier-clean-snapshot="1"');
   });
 
   it('abre Así juegas con una sola tarea y deja archivo/progreso como acciones secundarias', () => {
@@ -125,7 +125,7 @@ describe('InsightsScreen Matthias-led coaching workspace', () => {
     expect(html).toContain('data-guided-session="true"');
     expect(html).not.toContain('data-matthias-campaign="true"');
     expect(html).not.toContain('data-weekly-goals="true"');
-    expect(html).not.toContain('data-insights-dashboard="diagnosis"');
+    expect(html).not.toContain('data-insights-dossier="true"');
     expect(html).not.toContain('data-recurring-errors="true"');
     expect(html).not.toContain('data-clean-games="true"');
     expect(html).not.toContain('data-career-activity-calendar="monthly-v1"');
@@ -139,7 +139,7 @@ describe('InsightsScreen Matthias-led coaching workspace', () => {
     expect(html).toContain('insights-workspace-view-errors');
     expect(html).toContain('id="insights-view-errors"');
     expect(html).toContain('aria-label="Errores recurrentes"');
-    expect(html).not.toContain('data-insights-dashboard="diagnosis"');
+    expect(html).not.toContain('data-insights-dossier="true"');
     expect(html).not.toContain('data-weekly-goals="true"');
     expect(html).not.toContain('data-guided-session="true"');
     expect(html).not.toContain('data-matthias-campaign="true"');
@@ -152,7 +152,7 @@ describe('InsightsScreen Matthias-led coaching workspace', () => {
 
     expect(html).toContain('insights-workspace-view-dossier');
     expect(html).toContain('aria-label="Expediente"');
-    expect(html).not.toContain('data-insights-dashboard="diagnosis"');
+    expect(html).not.toContain('data-insights-dossier="true"');
     expect(html).not.toContain('data-weekly-goals="true"');
     expect(html).not.toContain('data-guided-session="true"');
     expect(html).not.toContain('data-matthias-campaign="true"');
@@ -170,7 +170,7 @@ describe('InsightsScreen Matthias-led coaching workspace', () => {
 
     expect(html).toContain('insights-workspace-section-career');
     expect(html).toContain('aria-label="Mi progreso"');
-    expect(html).not.toContain('data-insights-dashboard="career"');
+    expect(html).not.toContain('data-insights-dossier="true"');
     expect(html).not.toContain('data-career-activity-calendar="monthly-v1"');
     expect(html).not.toContain('aria-label="Áreas de Así juegas"');
     expect(html).not.toContain('data-recurring-errors="true"');
