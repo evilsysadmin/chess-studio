@@ -326,7 +326,7 @@
   }
 
   .combat-battle-screen .combat-warroom-status {
-    top: max(.45rem, env(safe-area-inset-top));
+    top: max(3.05rem, calc(env(safe-area-inset-top) + 2.35rem));
     right: max(.45rem, env(safe-area-inset-right));
     max-width: 52vw;
     min-height: 38px;
