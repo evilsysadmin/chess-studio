@@ -75,7 +75,9 @@ INVENTORY = {
 BUDGETS = (
     Budget('.github/workflows/production-promote.yml', 34643),
     Budget('.github/workflows/cicd.yml', 19454),
-    Budget('.github/workflows/staging-deploy.yml', 14381),
+    Budget('.github/workflows/staging-deploy.yml', 15392),
+    Budget('.github/workflows/oci-resend-bootstrap.yml', 4601),
+    Budget('.github/workflows/staging-deploy-continuity.yml', 7259),
     Budget('.github/workflows/staging-pawn-slug-visual.yml', 3919),
     Budget('.github/workflows/staging-ai-worker.yml', 7227),
     Budget('.github/workflows/cloudflare-prometheus-exporter.yml', 5964),
