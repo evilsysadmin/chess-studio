@@ -160,22 +160,37 @@ func _initialize() -> void:
 	match_node.debug_sync_presentation()
 	await _save_capture(match_node, "slide-tackle", "VISUAL_CAPTURE_SLIDE_TACKLE")
 
-	# A bad challenge in the box must visibly become a penalty restart.
+	# A reckless Shift+E challenge inside the box produces both the booking
+	# notice and a penalty. Use a lateral, forward contact so it is yellow, not
+	# the straight-red "from behind" case.
 	match_node.debug_force_set_piece_ready()
 	var penalty_tackler: Footballer = match_node.teams[1][1]
 	var penalty_victim: Footballer = match_node.teams[0][4]
 	var penalty_goal := ChessFootballMath.goal_center(0)
 	var penalty_foul_spot := Vector2(penalty_goal.x - 120.0, penalty_goal.y)
 	penalty_tackler._process(2.0)
-	penalty_tackler.global_position = penalty_foul_spot + Vector2(20.0, 0.0)
+	penalty_tackler.global_position = penalty_foul_spot + Vector2(-24.0, -28.0)
 	penalty_tackler.velocity = Vector2.RIGHT * penalty_tackler.base_speed
 	penalty_victim.global_position = penalty_foul_spot
 	match_node.ball.attach_to(penalty_victim)
-	assert(match_node.debug_try_tackle(penalty_tackler))
+	assert(match_node.debug_try_tackle(penalty_tackler, true))
+	assert(penalty_tackler.debug_yellow_cards() == 1)
+	assert(not penalty_tackler.debug_sent_off())
 	assert(match_node.debug_set_piece_kind() == "PENALTI")
 	match_node.debug_refresh_hud()
 	match_node.debug_focus_presentation()
 	await _save_capture(match_node, "penalty", "VISUAL_CAPTURE_PENALTY")
+
+	# Once the whistle freeze ends, the human penalty remains live instead of
+	# auto-firing. The amber goal marker must track the chosen W/S aim.
+	match_node.debug_force_set_piece_ready()
+	assert(match_node.debug_set_piece_active())
+	assert(match_node.debug_human_penalty_ready())
+	match_node.debug_set_penalty_aim(-0.72)
+	match_node.debug_refresh_hud()
+	match_node.debug_sync_presentation()
+	assert(match_node.debug_penalty_aim_visible())
+	await _save_capture(match_node, "penalty-aim", "VISUAL_CAPTURE_PENALTY_AIM")
 
 	# Build a readable goal tableau instead of reusing the tackle setup.
 	match_node.debug_prepare_kickoff(0)
