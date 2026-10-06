@@ -303,6 +303,12 @@ func _initialize() -> void:
 			match_node.debug_penalty_spot(0)
 		) < 0.01
 	)
+	for penalty_teammate in match_node.teams[0]:
+		if penalty_teammate != match_node.ball.carrier and penalty_teammate.role != "keeper":
+			assert(not match_node.debug_penalty_area_contains(0, penalty_teammate.global_position))
+	for penalty_opponent in match_node.teams[1]:
+		if penalty_opponent.role != "keeper":
+			assert(not match_node.debug_penalty_area_contains(0, penalty_opponent.global_position))
 	match_node.debug_force_set_piece_ready()
 	assert(not match_node.debug_set_piece_active())
 	assert(match_node.ball.carrier == null)
