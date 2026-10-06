@@ -56,10 +56,12 @@ export default function ChessFootballGodotHost({ onExit }) {
 
   return (
     <div className="chess-football-godot-host" data-runtime-ready={runtimeReady ? 'true' : 'false'}>
-      <div className="chess-football-godot-host__status" aria-live="polite">
-        <span className={runtimeReady ? 'is-ready' : ''} aria-hidden="true" />
-        {runtimeStatus}
-      </div>
+      {!runtimeReady ? (
+        <div className="chess-football-godot-host__status" aria-live="polite">
+          <span aria-hidden="true" />
+          {runtimeStatus}
+        </div>
+      ) : null}
 
       {runtime.url ? (
         <iframe
