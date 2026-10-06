@@ -308,13 +308,27 @@ async function open3DFromAppearance(page) {
 }
 
 async function freezeVisualFrame(page) {
-  await page.addStyleTag({
-    content: '*, *::before, *::after { animation: none !important; transition: none !important; caret-color: transparent !important; }',
-  });
   await page.evaluate(() => {
+    const style = document.createElement('style');
+    style.dataset.warRoomVisualFreeze = 'true';
+    style.textContent = '*, *::before, *::after { animation: none !important; transition: none !important; caret-color: transparent !important; }';
+    document.head.append(style);
+    if (!window.__chessStudioVisualOriginalRaf) {
+      window.__chessStudioVisualOriginalRaf = window.requestAnimationFrame.bind(window);
+    }
     window.requestAnimationFrame = () => 0;
   });
   await page.waitForTimeout(80);
+}
+
+async function thawVisualFrame(page) {
+  await page.evaluate(() => {
+    document.querySelectorAll('style[data-war-room-visual-freeze="true"]').forEach((style) => style.remove());
+    if (window.__chessStudioVisualOriginalRaf) {
+      window.requestAnimationFrame = window.__chessStudioVisualOriginalRaf;
+      delete window.__chessStudioVisualOriginalRaf;
+    }
+  });
 }
 
 async function captureViewportPng(page, path) {
@@ -738,10 +752,14 @@ async function assertAndCaptureProfile(page, profile, board3d) {
   }
 
   await freezeVisualFrame(page);
-  await captureViewportPng(
-    page,
-    `${ARTIFACT_DIR}/${profile.label}.png`,
-  );
+  try {
+    await captureViewportPng(
+      page,
+      `${ARTIFACT_DIR}/${profile.label}.png`,
+    );
+  } finally {
+    await thawVisualFrame(page);
+  }
 }
 
 function registerIndependentCaptureProfile(profile) {
