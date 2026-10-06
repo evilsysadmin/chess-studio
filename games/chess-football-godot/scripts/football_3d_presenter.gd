@@ -3,6 +3,8 @@ extends Node3D
 
 const WORLD_SCALE := 0.014
 const CAMERA_LERP_SPEED := 4.8
+const SET_PIECE_CAMERA_PAN_SECONDS := 0.38
+const SET_PIECE_CAMERA_PAN_DISTANCE := 1.15
 const BROADCAST_HEIGHT := 9.8
 const BROADCAST_DEPTH := 17.8
 const TACTICAL_HEIGHT := 27.0
@@ -525,7 +527,24 @@ func _sync_camera(delta: float, mode: String) -> void:
 		wanted_fov = 43.0
 	else:
 		var lead := clampf(match_node.ball.velocity.x * WORLD_SCALE * 0.26, -2.2, 2.2)
-		wanted_position = Vector3(focus.x + lead, BROADCAST_HEIGHT, BROADCAST_DEPTH)
+		var set_piece_pan := 0.0
+		if (
+			match_node.set_piece_active
+			and match_node.set_piece_kind != "PENALTI"
+			and match_node.set_piece_seconds_remaining > 0.0
+		):
+			var restart_progress := 1.0 - clampf(
+				float(match_node.set_piece_seconds_remaining) / SET_PIECE_CAMERA_PAN_SECONDS,
+				0.0,
+				1.0,
+			)
+			var attacking_sign := 1.0 if int(match_node.set_piece_team_id) == 0 else -1.0
+			set_piece_pan = (
+				attacking_sign
+				* smoothstep(0.0, 1.0, restart_progress)
+				* SET_PIECE_CAMERA_PAN_DISTANCE
+			)
+		wanted_position = Vector3(focus.x + lead + set_piece_pan, BROADCAST_HEIGHT, BROADCAST_DEPTH)
 		wanted_position.x = clampf(wanted_position.x, -field_width * 0.32, field_width * 0.32)
 		wanted_look = Vector3(wanted_position.x, 0.0, -0.85)
 		wanted_fov = 37.5
