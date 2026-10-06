@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CHRONICLES_MAP } from './chroniclesOfMatthias.js';
 import {
   CHRONICLES_TORCH_PLACEMENTS,
+  chroniclesContentIdFromObject,
   chroniclesEnemyFacingYaw,
   chroniclesExitGateTransform,
   chroniclesTorchTransform,
@@ -63,6 +64,15 @@ describe('Chronicles of Matthias dungeon photography', () => {
 
   it('rejects unknown wall sides instead of silently placing a floating torch', () => {
     expect(() => chroniclesTorchTransform(1, 1, 'ceiling')).toThrow(/torch wall side/);
+  });
+
+  it('resolves clickable authored content ids through nested meshes', () => {
+    const root = { userData: { chroniclesContentId: 'gallery-lever' }, parent: null };
+    const pivot = { userData: {}, parent: root };
+    const knob = { userData: {}, parent: pivot };
+
+    expect(chroniclesContentIdFromObject(knob)).toBe('gallery-lever');
+    expect(chroniclesContentIdFromObject({ userData: {}, parent: null })).toBeNull();
   });
 
   it('faces a blocking fantasy enemy toward the party instead of presenting its side profile', () => {
