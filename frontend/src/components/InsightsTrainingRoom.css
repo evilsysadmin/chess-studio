@@ -216,6 +216,35 @@ body:has(.insights-training-room) .global-music-dock {
     repeating-linear-gradient(0deg, rgba(255, 255, 255, .012) 0 1px, transparent 1px 8px);
 }
 
+/* The idle task is laid on the physical desk. The parchment recommendation
+ * already provides contrast, so another enclosing application card is noise. */
+.insights-training-room .insights-guided-session[data-guided-session-home='desk-task'] {
+  padding: .5rem clamp(.35rem, 1vw, .7rem) .1rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  transform: none;
+}
+
+.insights-training-room .insights-guided-session[data-guided-session-home='desk-task']::before {
+  content: none;
+}
+
+.insights-training-room .insights-guided-session[data-guided-session-home='desk-task'] .insights-guided-session-intro {
+  text-shadow: 0 2px 12px rgba(0, 0, 0, .68);
+}
+
+.insights-training-room .insights-guided-session[data-guided-session-home='desk-task'] .insights-duration-disclosure,
+.insights-training-room .insights-optional-plans {
+  border: 0;
+  border-top: 1px solid rgba(180, 132, 67, .28);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
 .insights-training-room .insights-guided-session > * {
   position: relative;
   z-index: 1;
