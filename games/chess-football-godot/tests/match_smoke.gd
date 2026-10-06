@@ -310,9 +310,30 @@ func _initialize() -> void:
 		if penalty_opponent.role != "keeper":
 			assert(not match_node.debug_penalty_area_contains(0, penalty_opponent.global_position))
 	match_node.debug_force_set_piece_ready()
+	assert(match_node.debug_set_piece_active())
+	assert(match_node.debug_human_penalty_ready())
+	match_node.debug_set_penalty_aim(-0.72)
+	match_node.debug_sync_presentation()
+	assert(match_node.debug_penalty_aim_visible())
+	var human_penalty_target: Vector2 = match_node.debug_penalty_target(-0.72)
+	assert(human_penalty_target.y < ChessFootballMath.PITCH_RECT.get_center().y)
+	match_node.debug_force_human_penalty_shot(0.68, -0.72)
 	assert(not match_node.debug_set_piece_active())
 	assert(match_node.ball.carrier == null)
 	assert(match_node.ball.velocity.x > 0.0)
+	assert(match_node.ball.velocity.y < 0.0)
+
+	# Rival penalty: the human controls the goalkeeper on the goal line during
+	# the freeze, then the existing save logic takes over once the shot flies.
+	match_node.debug_prepare_penalty(1)
+	var penalty_keeper: Footballer = match_node.teams[0][0]
+	var penalty_keeper_y_before := penalty_keeper.global_position.y
+	match_node.debug_move_penalty_keeper(-1.0, 0.20)
+	assert(penalty_keeper.global_position.y < penalty_keeper_y_before)
+	match_node.debug_force_set_piece_ready()
+	assert(not match_node.debug_set_piece_active())
+	assert(match_node.ball.carrier == null)
+	assert(match_node.ball.velocity.x < 0.0)
 
 	var keeper: Footballer = match_node.teams[0][0]
 	assert(keeper.role == "keeper")
@@ -475,5 +496,30 @@ func _initialize() -> void:
 	assert(match_node.debug_camera_mode() == "tactical")
 	match_node.debug_toggle_camera_mode()
 	assert(match_node.debug_camera_mode() == "broadcast")
+
+	# Discipline contract: aggressive foul => yellow; second yellow dismisses;
+	# aggressive contact clearly from behind => straight red. Dismissed players
+	# remain in the roster but disappear from runtime play and presentation.
+	var booked_player: Footballer = match_node.teams[1][3]
+	var first_card := match_node.debug_apply_foul_card(booked_player, true, 22.0)
+	assert(first_card.begins_with("AMARILLA"))
+	assert(booked_player.debug_yellow_cards() == 1)
+	assert(not booked_player.debug_sent_off())
+	var second_card := match_node.debug_apply_foul_card(booked_player, true, 18.0)
+	assert(second_card.begins_with("SEGUNDA AMARILLA"))
+	assert(booked_player.debug_yellow_cards() == 2)
+	assert(booked_player.debug_sent_off())
+	assert(not booked_player.debug_tackle_ready())
+	match_node.debug_sync_presentation()
+	assert(match_node.debug_3d_visible_players() == 9)
+
+	var red_player: Footballer = match_node.teams[1][2]
+	var straight_red := match_node.debug_apply_foul_card(red_player, true, -18.0)
+	assert(straight_red.begins_with("ROJA"))
+	assert(red_player.debug_sent_off())
+	match_node.debug_sync_presentation()
+	assert(match_node.debug_3d_visible_players() == 8)
+	print("SMOKE_STAGE=discipline")
+
 	print("chess-football godot smoke: OK")
 	quit(0)
