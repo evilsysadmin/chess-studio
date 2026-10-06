@@ -513,3 +513,71 @@ body:has(.matthias-school-shell[data-school-section="school"]) .masthead {
     display: none;
   }
 }
+
+
+/* Core continuity · Resources stay inside the School Room.
+   The board/room remains mounted behind a dimmed reading surface instead of
+   navigating to a dashboard-like replacement screen. */
+.tutorial-shell.matthias-school-shell[data-school-resource]:not([data-school-resource='closed']) .matthias-school-resource-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding:
+    max(4.4rem, calc(env(safe-area-inset-top) + 3.5rem))
+    max(1rem, env(safe-area-inset-right))
+    max(1rem, env(safe-area-inset-bottom))
+    max(1rem, env(safe-area-inset-left));
+  overflow: auto;
+  overscroll-behavior: contain;
+  background:
+    radial-gradient(circle at 72% 18%, rgba(82, 111, 145, .12), transparent 28rem),
+    rgba(5, 6, 8, .64);
+  backdrop-filter: blur(4px) brightness(.68);
+}
+
+.tutorial-shell.matthias-school-shell[data-school-resource]:not([data-school-resource='closed']) .matthias-school-resource-surface {
+  width: min(1120px, 100%);
+  max-height: calc(100dvh - 5.4rem);
+  overflow: auto;
+  border: 1px solid rgba(215, 183, 111, .25);
+  border-left: 3px solid rgba(215, 183, 111, .52);
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, rgba(28, 22, 17, .96), rgba(10, 10, 11, .97));
+  box-shadow: 0 28px 70px rgba(0, 0, 0, .52);
+}
+
+.tutorial-shell.matthias-school-shell[data-school-resource='glossary'] .matthias-school-resource-surface {
+  width: min(1040px, 100%);
+}
+
+.tutorial-shell.matthias-school-shell[data-school-resource='mechanics'] .matthias-school-resource-surface {
+  width: min(1160px, 100%);
+}
+
+.tutorial-shell.matthias-school-shell[data-school-resource]:not([data-school-resource='closed']) .matthias-school-resource-surface > * {
+  margin: 0;
+}
+
+@media (max-width: 720px) {
+  .tutorial-shell.matthias-school-shell[data-school-resource]:not([data-school-resource='closed']) .matthias-school-resource-overlay {
+    place-items: stretch;
+    padding:
+      max(3.7rem, calc(env(safe-area-inset-top) + 3.1rem))
+      max(.55rem, env(safe-area-inset-right))
+      max(.55rem, env(safe-area-inset-bottom))
+      max(.55rem, env(safe-area-inset-left));
+    backdrop-filter: blur(3px) brightness(.6);
+  }
+
+  .tutorial-shell.matthias-school-shell[data-school-resource]:not([data-school-resource='closed']) .matthias-school-resource-surface {
+    width: 100%;
+    max-height: none;
+    min-height: calc(100dvh - 4.4rem);
+    border-right: 0;
+    border-bottom: 0;
+    border-radius: 8px 8px 0 0;
+  }
+}
