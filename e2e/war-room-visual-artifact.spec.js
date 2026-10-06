@@ -272,12 +272,34 @@ if (WAR_ROOM_PROFILE_SHARD !== 'all' && !CANARY_PROFILE_LABEL) {
   throw new Error('War Room visual shard requested with no active capture profiles');
 }
 
+const REMAINDER_PROFILE_PRIORITY = Object.freeze([
+  // Hosted SwiftShader spends most of the wall clock on desktop rooms. Launch
+  // the longest profiles first so two workers overlap expensive scenes instead
+  // of burning the first minute on cheap mobile captures and creating a long
+  // desktop tail at the end of the run.
+  'war-room-desktop-1440x900',
+  'war-room-v2-desktop-1440x900',
+  'war-room-v3-desktop-1440x900',
+  'war-room-v4-desktop-1440x900',
+]);
+
+function remainderPriority(profile) {
+  const index = REMAINDER_PROFILE_PRIORITY.indexOf(profile.label);
+  return index === -1 ? REMAINDER_PROFILE_PRIORITY.length : index;
+}
+
 const ACTIVE_CAPTURE_PROFILES = Object.freeze(
-  SCOPED_CAPTURE_PROFILES.filter((profile) => {
-    if (WAR_ROOM_PROFILE_SHARD === 'canary') return profile.label === CANARY_PROFILE_LABEL;
-    if (WAR_ROOM_PROFILE_SHARD === 'remainder') return profile.label !== CANARY_PROFILE_LABEL;
-    return true;
-  }),
+  SCOPED_CAPTURE_PROFILES
+    .filter((profile) => {
+      if (WAR_ROOM_PROFILE_SHARD === 'canary') return profile.label === CANARY_PROFILE_LABEL;
+      if (WAR_ROOM_PROFILE_SHARD === 'remainder') return profile.label !== CANARY_PROFILE_LABEL;
+      return true;
+    })
+    .sort((left, right) => (
+      WAR_ROOM_PROFILE_SHARD === 'remainder'
+        ? remainderPriority(left) - remainderPriority(right)
+        : 0
+    )),
 );
 
 async function open3DFromAppearance(page) {
