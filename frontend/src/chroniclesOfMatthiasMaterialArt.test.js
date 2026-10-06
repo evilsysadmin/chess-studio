@@ -73,6 +73,42 @@ describe('Chronicles Tactics premium materials', () => {
     wallMaterial.dispose();
   });
 
+  it('applies five authored wall profiles exactly when the map declares them', () => {
+    const scene = new THREE.Scene();
+    const ids = ['D01', 'D02', 'D03', 'D04', 'D05'];
+    const materials = ids.map((profileId, index) => {
+      const material = new THREE.MeshStandardMaterial({ color: 0x3d3a35 });
+      material.userData.chroniclesMaterialProfileId = profileId;
+      const wall = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), material);
+      wall.name = `chronicles-first-person-wall-${index}-0`;
+      scene.add(wall);
+      return material;
+    });
+    const root = installChroniclesFirstPersonPremiumMaterials(scene, {
+      coarsePointer: true,
+      scenePlan: {
+        mapId: 'crypt-eight-squares',
+        width: 7,
+        height: 7,
+        walls: ids.map((_, x) => ({ x, y: 0 })),
+        floors: [{ x: 1, y: 1 }],
+        materials: {
+          wallLegend: { 1: 'D01', 2: 'D02', 3: 'D03', 4: 'D04', 5: 'D05' },
+          wallGrid: ['12345..', '.......', '.......', '.......', '.......', '.......', '.......'],
+        },
+      },
+    });
+
+    expect(root?.userData.chroniclesMaterialProfiles.wall).toEqual(ids);
+    materials.forEach((material, index) => {
+      expect(material.map?.name).toContain(`chronicles-material-${ids[index]}-color-`);
+    });
+
+    root.userData.chroniclesArtCancel();
+    scene.traverse((node) => node.geometry?.dispose?.());
+    materials.forEach((material) => material.dispose());
+  });
+
   it('installs deterministic semantic PBR maps and restores the source material on teardown', () => {
     const scene = new THREE.Scene();
     const sourceMaterial = new THREE.MeshStandardMaterial({ color: 0x554f47, roughness: 0.91 });
