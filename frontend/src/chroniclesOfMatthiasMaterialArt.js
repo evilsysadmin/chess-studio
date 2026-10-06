@@ -4,7 +4,8 @@ import {
   chroniclesMaterialProfile,
 } from './chronicles/chroniclesMaterialAtlas.js';
 
-const ROOT_NAME = 'chronicles-tactics-premium-materials';
+const TACTICS_ROOT_NAME = 'chronicles-tactics-premium-materials';
+const FIRST_PERSON_ROOT_NAME = 'chronicles-first-person-premium-materials';
 
 export const CHRONICLES_TACTICS_MATERIAL_STYLE = Object.freeze({
   desktopTextureSize: 192,
@@ -289,6 +290,13 @@ export function chroniclesTacticsMaterialRole(node) {
   return null;
 }
 
+export function chroniclesFirstPersonMaterialRole(node) {
+  const name = String(node?.name || '');
+  if (name === 'chronicles-first-person-floor') return 'floor';
+  if (name === 'chronicles-first-person-ceiling' || name.startsWith('chronicles-first-person-wall-')) return 'wall';
+  return null;
+}
+
 function applyTextureSet(material, set, normalStrength, profile, role) {
   if (!material?.isMeshStandardMaterial) return null;
   const prior = {
@@ -337,12 +345,16 @@ function applyTextureSet(material, set, normalStrength, profile, role) {
   };
 }
 
-export function installChroniclesTacticsPremiumMaterials(scene, {
+function installChroniclesPremiumMaterials(scene, {
   coarsePointer = false,
   scenePlan = null,
+  rootName = TACTICS_ROOT_NAME,
+  roleForNode = chroniclesTacticsMaterialRole,
+  floorRepeatScale = 1,
+  wallRepeatScale = 1,
 } = {}) {
   if (!scene?.add || !scene?.traverse) return null;
-  const existing = scene.getObjectByName?.(ROOT_NAME);
+  const existing = scene.getObjectByName?.(rootName);
   if (existing) return existing;
 
   const size = coarsePointer
@@ -358,12 +370,12 @@ export function installChroniclesTacticsPremiumMaterials(scene, {
     wall: CHRONICLES_TACTICS_MATERIAL_STYLE.wallNormalStrength,
   };
   const roleRepeat = {
-    floor: CHRONICLES_TACTICS_MATERIAL_STYLE.floorRepeat,
-    wall: CHRONICLES_TACTICS_MATERIAL_STYLE.wallRepeat,
+    floor: CHRONICLES_TACTICS_MATERIAL_STYLE.floorRepeat * Math.max(0.25, Number(floorRepeatScale) || 1),
+    wall: CHRONICLES_TACTICS_MATERIAL_STYLE.wallRepeat * Math.max(0.25, Number(wallRepeatScale) || 1),
   };
 
   const root = new THREE.Group();
-  root.name = ROOT_NAME;
+  root.name = rootName;
   const restores = [];
   const visited = new Set();
   const roleCounters = { floor: 0, wall: 0 };
@@ -387,7 +399,7 @@ export function installChroniclesTacticsPremiumMaterials(scene, {
 
   scene.traverse((node) => {
     if (!node?.isMesh) return;
-    const role = chroniclesTacticsMaterialRole(node);
+    const role = roleForNode(node);
     if (!role) return;
     const materials = Array.isArray(node.material) ? node.material : [node.material];
     materials.filter(Boolean).forEach((material) => {
@@ -425,4 +437,20 @@ export function installChroniclesTacticsPremiumMaterials(scene, {
   root.userData.chroniclesMaterialCount = visited.size;
   scene.add(root);
   return root;
+}
+
+export function installChroniclesTacticsPremiumMaterials(scene, options = {}) {
+  return installChroniclesPremiumMaterials(scene, {
+    ...options,
+    rootName: TACTICS_ROOT_NAME,
+    roleForNode: chroniclesTacticsMaterialRole,
+  });
+}
+
+export function installChroniclesFirstPersonPremiumMaterials(scene, options = {}) {
+  return installChroniclesPremiumMaterials(scene, {
+    ...options,
+    rootName: FIRST_PERSON_ROOT_NAME,
+    roleForNode: chroniclesFirstPersonMaterialRole,
+  });
 }
