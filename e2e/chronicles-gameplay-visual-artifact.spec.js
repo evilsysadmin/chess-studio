@@ -250,7 +250,11 @@ for (const capture of CAPTURES) {
       expect(markerCenterX, `${capture.label}: automap marker inside canvas horizontally`).toBeLessThan((canvasBox?.x || 0) + (canvasBox?.width || 0) - 8);
       expect(markerCenterY, `${capture.label}: automap marker inside canvas vertically`).toBeGreaterThan((canvasBox?.y || 0) + 8);
       expect(markerCenterY, `${capture.label}: automap marker inside canvas vertically`).toBeLessThan((canvasBox?.y || 0) + (canvasBox?.height || 0) - 8);
-      await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-automap-${capture.label}.png`);
+      await captureElement(
+        page,
+        automap.locator('.chronicles-automap__panel'),
+        `${ARTIFACT_DIR}/chronicles-automap-${capture.label}.png`,
+      );
       await page.keyboard.press('m');
       await expect(automap).toHaveCount(0);
 
