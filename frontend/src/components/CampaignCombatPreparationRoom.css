@@ -319,9 +319,12 @@
     flex-wrap: wrap;
   }
 
-  .combat-operations-status > span,
-  .combat-operations-status > button {
+  .combat-operations-status > span {
     min-height: 36px;
+  }
+
+  .combat-operations-status > button {
+    min-height: 44px;
   }
 
   .combat-operations-briefing {
@@ -365,6 +368,12 @@
 
   .combat-operations-topbar {
     inset: .45rem .5rem auto;
+  }
+
+  .combat-operations-exit,
+  .combat-operations-help {
+    min-height: 44px;
+    height: 44px;
   }
 
   .combat-operations-exit {
@@ -441,7 +450,7 @@
   }
 
   .combat-operations-drawer {
-    top: 6.7rem;
+    top: 11rem;
     right: .5rem;
     bottom: auto;
     width: auto;
@@ -498,7 +507,7 @@
   }
 
   .combat-operations-drawer {
-    top: 6.45rem;
+    top: 10.6rem;
   }
 }
 
