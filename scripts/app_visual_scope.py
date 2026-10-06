@@ -777,7 +777,7 @@ def self_test() -> None:
     trailblazer = classify(["frontend/src/pawnTrailblazerThree.js"])
     assert trailblazer.experiments_scope == "landing"
     hub = classify(["frontend/src/components/ExperimentsScreen.jsx"])
-    assert hub.experiments_scope == "landing,chronicles,pawnslug"
+    assert hub.experiments_scope == "landing,chronicles,pawnslug,football"
     assert not hub.chronicles_avatar
 
     pawn_visual = classify(["e2e/pawn-slug-godot-visual-artifact.spec.js"])
