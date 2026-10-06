@@ -236,17 +236,45 @@ function buildRoom({ lite = false } = {}) {
   const root = new THREE.Group();
   root.name = 'quick-match-ready-room';
 
-  const stone = mat(0x3d3936, .03, .90);
-  const stoneEdge = mat(0x665d54, .05, .78);
-  const wood = premiumMat(0x452516, .10, .38, { clearcoat: .42, clearcoatRoughness: .34 });
-  const woodDark = premiumMat(0x24130d, .08, .50, { clearcoat: .30, clearcoatRoughness: .42 });
-  const brass = premiumMat(0xb98542, .82, .22, { clearcoat: .24, clearcoatRoughness: .28 });
-  const leather = premiumMat(0x441517, .08, .50, { clearcoat: .12, clearcoatRoughness: .62 });
-  const clockBody = premiumMat(0x171513, .30, .30, { clearcoat: .38, clearcoatRoughness: .34 });
-  const lightSquare = premiumMat(0xd5cec2, .05, .40, { clearcoat: .18, clearcoatRoughness: .38 });
-  const darkSquare = premiumMat(0x35373a, .10, .32, { clearcoat: .22, clearcoatRoughness: .32 });
-  const clockFace = premiumMat(0xe5d6b7, .02, .48, { clearcoat: .10 });
-  const clockHand = premiumMat(0x251a12, .28, .30, { clearcoat: .18 });
+  const stone = mat(0x2c2927, .03, .92, { envMapIntensity: .08 });
+  const stoneEdge = mat(0x4a433e, .05, .82, { envMapIntensity: .12 });
+  const wood = premiumMat(0x3d2013, .10, .40, {
+    clearcoat: .40,
+    clearcoatRoughness: .36,
+    envMapIntensity: .30,
+  });
+  const woodDark = premiumMat(0x1f100b, .08, .52, {
+    clearcoat: .28,
+    clearcoatRoughness: .44,
+    envMapIntensity: .22,
+  });
+  const brass = premiumMat(0xb98542, .82, .22, {
+    clearcoat: .24,
+    clearcoatRoughness: .28,
+    envMapIntensity: .52,
+  });
+  const leather = premiumMat(0x371013, .08, .52, {
+    clearcoat: .10,
+    clearcoatRoughness: .66,
+    envMapIntensity: .14,
+  });
+  const clockBody = premiumMat(0x12110f, .30, .32, {
+    clearcoat: .36,
+    clearcoatRoughness: .36,
+    envMapIntensity: .20,
+  });
+  const lightSquare = premiumMat(0xcfc8bd, .05, .42, {
+    clearcoat: .16,
+    clearcoatRoughness: .42,
+    envMapIntensity: .16,
+  });
+  const darkSquare = premiumMat(0x2e3033, .10, .35, {
+    clearcoat: .20,
+    clearcoatRoughness: .36,
+    envMapIntensity: .14,
+  });
+  const clockFace = premiumMat(0xdfcfad, .02, .50, { clearcoat: .08, envMapIntensity: .10 });
+  const clockHand = premiumMat(0x201711, .28, .32, { clearcoat: .16, envMapIntensity: .22 });
   const night = new THREE.MeshBasicMaterial({ color: 0x0b2d50 });
   const moon = new THREE.MeshBasicMaterial({ color: 0xe7f1ff });
   const sconceGlow = new THREE.MeshStandardMaterial({
@@ -264,6 +292,8 @@ function buildRoom({ lite = false } = {}) {
 
   for (const x of [-7.8, -3.2, 3.2, 7.8]) {
     box(root, [.30, 6.7, .46], stoneEdge, [x, 3.15, -6.13], 'pilaster');
+    box(root, [.62, .13, .58], brass, [x, .16, -6.08], 'pilaster-base-trim');
+    box(root, [.62, .13, .58], brass, [x, 6.18, -6.08], 'pilaster-cap-trim');
   }
 
   for (const x of [-5.95, 5.95]) {
@@ -283,6 +313,7 @@ function buildRoom({ lite = false } = {}) {
   box(root, [10.55, .40, 6.32], woodDark, [0, .62, -1.16], 'table-apron');
   box(root, [9.95, .035, 5.80], brass, [0, 1.335, -1.10], 'table-leather-trim');
   box(root, [9.68, .045, 5.53], leather, [0, 1.365, -1.10], 'table-leather-inlay');
+  box(root, [10.95, .055, .08], brass, [0, 1.18, 2.46], 'table-front-inlay');
   for (const x of [-4.95, 4.95]) {
     for (const z of [-3.18, .82]) box(root, [.52, 1.72, .52], woodDark, [x, .02, z], 'table-leg');
   }
@@ -349,7 +380,7 @@ export default function QuickMatchReadyRoomScene3D() {
       });
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 1.62;
+      renderer.toneMappingExposure = 1.54;
       renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio || 1, coarsePointer ? 1 : 1.35));
       renderer.shadowMap.enabled = !coarsePointer;
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
