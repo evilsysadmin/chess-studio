@@ -34,21 +34,11 @@ async function openExperiments(page) {
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
 }
 
-test('Chess Football opens fullscreen and returns only through the runtime exit', async ({ page }) => {
+test('Chess Football fills the viewport and returns only through the runtime exit', async ({ page }) => {
   await openExperiments(page);
-
-  await page.evaluate(() => {
-    const root = document.documentElement;
-    Object.defineProperty(document, 'fullscreenElement', {
-      configurable: true,
-      get: () => window.__footballFullscreen ? root : null,
-    });
-    root.requestFullscreen = async () => { window.__footballFullscreen = true; };
-    document.exitFullscreen = async () => { window.__footballFullscreen = false; };
-  });
+  await page.setViewportSize({ width: 1280, height: 720 });
 
   await page.locator('.lab-workshop-portal--football').click();
-  await expect.poll(() => page.evaluate(() => Boolean(window.__footballFullscreen))).toBe(true);
 
   const host = page.locator('.chess-football-godot-host');
   await expect(host).toBeVisible();
@@ -59,10 +49,17 @@ test('Chess Football opens fullscreen and returns only through the runtime exit'
   await expect(page.locator('.chess-football-godot-host__status')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Volver a Experimentos' })).toHaveCount(0);
 
+  const box = await host.boundingBox();
+  expect(box).not.toBeNull();
+  expect(box.left).toBeLessThanOrEqual(1);
+  expect(box.top).toBeLessThanOrEqual(1);
+  expect(box.width).toBeGreaterThanOrEqual(1278);
+  expect(box.height).toBeGreaterThanOrEqual(718);
+  expect(await page.evaluate(() => document.fullscreenElement === null)).toBe(true);
+
   await frame.contentFrame().locator('body').evaluate(() => {
     window.parent.postMessage({ source: 'chess-football-godot', type: 'exit' }, '*');
   });
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
   await expect(host).toHaveCount(0);
-  await expect.poll(() => page.evaluate(() => Boolean(window.__footballFullscreen))).toBe(false);
 });
