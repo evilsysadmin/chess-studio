@@ -8,11 +8,11 @@ import {
 import MatthiasCoffeeSteam from './MatthiasCoffeeSteam.jsx';
 import MatthiasLayeredArt from './MatthiasLayeredArt.jsx';
 
-// The avatar the player actually sees at the top of "Consulta del día" is the
-// stable target in Así juegas. The larger "Así te ve la CPU" portrait is
-// conditional, so wiring motion there left the visible consultation avatar
-// static for users without enough portrait data.
-const PORTRAIT_SELECTOR = '.insights-workspace-view-now .matthias-daily-heading';
+// The daily consultation now lives behind the explicit Expediente view.
+// Attach motion to that real 48px avatar instead of the task-first "Ahora"
+// surface, preserving progressive disclosure while keeping Matthias alive
+// where the consultation is actually rendered.
+const PORTRAIT_SELECTOR = '.insights-workspace-view-dossier .matthias-daily-heading';
 const PORTRAIT_SIZE = 48;
 
 function currentReducedMotion() {
