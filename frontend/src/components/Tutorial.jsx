@@ -417,12 +417,14 @@ export default function Tutorial({ onExit }) {
       {section === 'glossary' ? (
         <div className="matthias-school-resource-overlay is-glossary" role="region" aria-label="Glosario de la Escuela">
           <div className="matthias-school-resource-surface">
+            <button type="button" className="back-link matthias-school-resource-close" onClick={() => setSection('school')}>← Volver a la Escuela</button>
             <ChessGlossary />
           </div>
         </div>
       ) : section === 'mechanics' ? (
         <div className="matthias-school-resource-overlay is-mechanics" role="region" aria-label="Modos especiales de la Escuela">
           <div className="matthias-school-resource-surface">
+            <button type="button" className="back-link matthias-school-resource-close" onClick={() => setSection('school')}>← Volver a la Escuela</button>
             <div className="mechanic-library">
           <aside className="mechanic-library-list">
             {MECHANIC_TUTORIALS.map((item) => (
