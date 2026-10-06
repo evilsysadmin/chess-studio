@@ -1,0 +1,64 @@
+name: Staging · post-deploy followups
+
+on:
+  workflow_run:
+    workflows:
+      - Deploy to staging
+    types:
+      - completed
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chess-studio-staging-followups-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: false
+
+jobs:
+  scope:
+    name: Post-deploy followups · scope
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    env:
+      DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
+    outputs:
+      deploy_sha: ${{ steps.scope.outputs.deploy_sha }}
+      resend_required: ${{ steps.scope.outputs.resend_required }}
+      continuity_required: ${{ steps.scope.outputs.continuity_required }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+          fetch-depth: 2
+          sparse-checkout: |
+            scripts
+
+      - name: Classify optional post-deploy work once
+        id: scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -S scripts/staging_postdeploy_scope.py --self-test
+          python3 -S scripts/staging_postdeploy_scope.py --sha "$DEPLOY_SHA" --github-output "$GITHUB_OUTPUT"
+
+  resend:
+    name: Resend recovery · requested marker only
+    needs: scope
+    if: needs.scope.outputs.resend_required == 'true'
+    uses: ./.github/workflows/oci-resend-bootstrap.yml
+    with:
+      bootstrap_sha: ${{ needs.scope.outputs.deploy_sha }}
+    secrets: inherit
+
+  continuity:
+    name: Live-game continuity · backend/runtime only
+    needs: scope
+    if: needs.scope.outputs.continuity_required == 'true'
+    uses: ./.github/workflows/staging-deploy-continuity.yml
+    with:
+      deploy_sha: ${{ needs.scope.outputs.deploy_sha }}
+      postdeploy: true
+    secrets: inherit
