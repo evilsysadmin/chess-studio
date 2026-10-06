@@ -71,10 +71,7 @@ async function prepareHandoff(page, { holdReady = false } = {}) {
   await page.route('**/api/pvp/challenges/challenge-handoff-visual/accept', (route) => route.fulfill({
     status: 200,
     contentType: 'application/json',
-    // The visual test owns the phase it photographs. Desktop deliberately
-    // exercises the sealed/starting state; mobile receives the authoritative
-    // active snapshot directly so rendering does not depend on handshake timing.
-    body: JSON.stringify({ match: holdReady ? startingMatch() : activeMatch() }),
+    body: JSON.stringify({ match: startingMatch() }),
   }));
   await page.route('**/api/pvp/matches/pvp-handoff-visual-1/ready', async (route) => {
     if (holdReady && !released) await readyGate;
