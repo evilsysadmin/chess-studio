@@ -59,6 +59,23 @@ describe('Chronicles semantic material atlas', () => {
     same.floorProfileIds.forEach((id) => expect(CHRONICLES_MATERIAL_ENVIRONMENTS.dungeon.floor).toContain(id));
   });
 
+  it('honors an authored wall palette from the map instead of re-rolling it', () => {
+    const plan = chroniclesMaterialPlanForScene({
+      mapId: 'crypt-eight-squares',
+      width: 7,
+      height: 7,
+      walls: [{ x: 0, y: 0 }],
+      floors: [{ x: 1, y: 1 }],
+      materials: {
+        wallLegend: { 1: 'D01', 2: 'D02', 3: 'D03', 4: 'D04', 5: 'D05' },
+        wallGrid: ['1234512', '1.....3', '2.345.4', '3...2.5', '4.1.3.1', '5.....2', '2345123'],
+      },
+    });
+
+    expect(plan.wallProfileIds).toEqual(['D01', 'D02', 'D03', 'D04', 'D05']);
+    expect(plan.floorProfileIds).toHaveLength(2);
+  });
+
   it('does not spray prop-only wood, metal, stalactite or organic profiles onto structural walls/floors', () => {
     const structuralIds = Object.values(CHRONICLES_MATERIAL_ENVIRONMENTS)
       .flatMap((environment) => [...environment.wall, ...environment.floor]);
