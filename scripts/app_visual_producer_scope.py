@@ -361,10 +361,13 @@ def classify_path(path: str) -> set[str] | None:
         "frontend/src/lablaunchintent.js",
         "frontend/src/uselearningjourneyflow.js",
         "frontend/src/useglobalshellui.js",
+        "frontend/src/usetournamentflow.js",
         "frontend/src/soundfx.js",
         "frontend/src/components/warroomhomepreload.js",
     }:
         return set()
+    if lower == "frontend/src/components/globaloverlaylayer.jsx":
+        return {"home-base"}
     if lower in QUICK_MATCH_EXACT_PRODUCERS:
         return set(QUICK_MATCH_EXACT_PRODUCERS[lower])
     if lower == "frontend/src/components/homemobilegoldenpath.css":
@@ -761,6 +764,8 @@ def self_test() -> None:
     assert classify(["frontend/src/labLaunchIntent.js"]) == "none"
     assert classify(["frontend/src/useLearningJourneyFlow.js"]) == "none"
     assert classify(["frontend/src/useGlobalShellUi.js"]) == "none"
+    assert classify(["frontend/src/useTournamentFlow.js"]) == "none"
+    assert classify(["frontend/src/components/GlobalOverlayLayer.jsx"]) == "home-base"
     assert classify(["frontend/src/soundFx.js"]) == "none"
     assert classify(["scripts/quality_scope.py"]) == "none"
     assert classify(["scripts/browser_quality_scope.py"]) == "none"
