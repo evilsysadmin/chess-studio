@@ -1101,3 +1101,160 @@
 body:has([data-chronicles="true"]) .navigation-back-hint {
   display: none;
 }
+
+
+/* Combat stays inside the rendered dungeon: this compact rail makes the
+   initiative scheduler legible without turning Chronicles into a dashboard. */
+.chronicles-initiative-rail {
+  position: absolute;
+  z-index: 6;
+  top: 14px;
+  left: 50%;
+  width: min(620px, calc(100% - 28px));
+  transform: translateX(-50%);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: stretch;
+  pointer-events: none;
+  filter: drop-shadow(0 10px 24px rgba(0, 0, 0, .46));
+}
+
+.chronicles-initiative-rail__heading {
+  min-width: 112px;
+  padding: 7px 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border: 1px solid rgba(214, 171, 103, .32);
+  border-radius: 10px;
+  background: rgba(10, 8, 6, .8);
+  backdrop-filter: blur(8px);
+}
+
+.chronicles-initiative-rail__heading span {
+  color: #9e8057;
+  font-size: .52rem;
+  letter-spacing: .16em;
+}
+
+.chronicles-initiative-rail__heading strong {
+  margin-top: 2px;
+  color: #f0d7ab;
+  font-size: .68rem;
+  letter-spacing: .09em;
+}
+
+.chronicles-initiative-rail.is-enemy-turn .chronicles-initiative-rail__heading {
+  border-color: rgba(194, 89, 62, .48);
+  background: rgba(30, 11, 8, .82);
+}
+
+.chronicles-initiative-rail.is-enemy-turn .chronicles-initiative-rail__heading strong {
+  color: #f1bba7;
+}
+
+.chronicles-initiative-rail ol {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 5px;
+  list-style: none;
+}
+
+.chronicles-initiative-rail li {
+  min-width: 0;
+  min-height: 46px;
+  padding: 5px 7px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 5px;
+  align-items: center;
+  border: 1px solid rgba(197, 160, 105, .2);
+  border-radius: 9px;
+  background: rgba(10, 8, 6, .68);
+  backdrop-filter: blur(7px);
+  color: #ad9b80;
+}
+
+.chronicles-initiative-rail li.is-active {
+  border-color: rgba(232, 185, 105, .68);
+  background: rgba(72, 45, 22, .82);
+  color: #ead6b5;
+}
+
+.chronicles-initiative-rail li.is-active.is-enemy {
+  border-color: rgba(204, 95, 66, .72);
+  background: rgba(65, 22, 14, .84);
+  color: #f0c1ad;
+}
+
+.chronicles-initiative-rail li span {
+  font-size: .46rem;
+  letter-spacing: .08em;
+  color: #8f795d;
+}
+
+.chronicles-initiative-rail li b {
+  min-width: 0;
+  overflow: hidden;
+  font-size: .62rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chronicles-initiative-rail li small {
+  font-size: .58rem;
+  color: #b99a6b;
+}
+
+@media (max-width: 800px), (max-width: 1024px) and (max-height: 600px) {
+  .chronicles-initiative-rail {
+    z-index: 31;
+    top: calc(max(6px, env(safe-area-inset-top)) + 112px);
+    width: min(500px, calc(100% - 16px));
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .chronicles-initiative-rail__heading {
+    min-width: 86px;
+    padding: 5px 7px;
+  }
+
+  .chronicles-initiative-rail__heading span { font-size: .46rem; }
+  .chronicles-initiative-rail__heading strong { font-size: .57rem; }
+
+  .chronicles-initiative-rail ol {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .chronicles-initiative-rail li {
+    min-height: 42px;
+    padding: 4px 5px;
+  }
+
+  .chronicles-initiative-rail li:nth-child(n + 5) { display: none; }
+  .chronicles-initiative-rail li b { font-size: .55rem; }
+}
+
+@media (max-width: 520px) {
+  .chronicles-initiative-rail {
+    top: calc(max(6px, env(safe-area-inset-top)) + 110px);
+  }
+
+  .chronicles-initiative-rail ol {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .chronicles-initiative-rail li:nth-child(n + 4) { display: none; }
+}
+
+@media (min-width: 521px) and (max-width: 1024px) and (max-height: 600px) {
+  .chronicles-initiative-rail {
+    top: calc(max(4px, env(safe-area-inset-top)) + 52px);
+    width: min(480px, calc(100% - 200px));
+  }
+}
