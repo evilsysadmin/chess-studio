@@ -269,10 +269,10 @@ def _frame_svg(
     cx = CELL_W * 0.5 + lean
     foot = float(FOOTLINE) + yoff
     hip_y = 93.0 - bob + yoff + crouch * 0.34
-    shoulder_y = 59.0 - bob + yoff + crouch * 0.58
+    shoulder_y = 58.4 - bob + yoff + crouch * 0.58
     torso_turn = 2.6 + p["twist"] * 0.28
     head_cx = cx + 2.8 + p["head"]
-    head_cy = 34.0 - bob + yoff + crouch * 0.40
+    head_cy = 34.8 - bob + yoff + crouch * 0.40
 
     out: list[str] = []
 
@@ -397,7 +397,7 @@ def _frame_svg(
     # Shirt uses curves instead of the old octagonal chest. Asymmetry is
     # intentional: the player now reads as three-quarter footballer rather than
     # a perfectly frontal paper doll.
-    top_y = 56.5 - bob + yoff + crouch * 0.58
+    top_y = 55.8 - bob + yoff + crouch * 0.58
     waist_y = 84.2 - bob + yoff + crouch * 0.30
     base_y = 96.0 - bob + yoff + crouch * 0.18
     left_sh = cx - 13.6 - torso_turn * 0.15
@@ -501,13 +501,20 @@ def _frame_svg(
 
     # Slightly three-quarter head: one visible ear + nose bridge is much less
     # mascot-like than the perfectly symmetrical v6 face.
-    neck_y = 48.8 - bob + yoff + crouch * 0.45
+    neck_y = 49.2 - bob + yoff + crouch * 0.45
     out.append(
         f'<path d="M {offset_x + cx - 3.4:.2f} {offset_y + neck_y:.2f} '
         f'L {offset_x + cx + 4.5:.2f} {offset_y + neck_y - 0.2:.2f} '
         f'L {offset_x + cx + 4.8:.2f} {offset_y + neck_y + 8.0:.2f} '
         f'L {offset_x + cx - 3.0:.2f} {offset_y + neck_y + 8.2:.2f} Z" '
         f'fill="{team["head"]}" stroke="{OUTLINE}" stroke-width="1.0"/>'
+    )
+    out.append(
+        f'<path d="M {offset_x + cx - 5.2:.2f} {offset_y + neck_y + 5.2:.2f} '
+        f'L {offset_x + cx + 5.7:.2f} {offset_y + neck_y + 5.0:.2f} '
+        f'L {offset_x + cx + 6.4:.2f} {offset_y + neck_y + 9.2:.2f} '
+        f'L {offset_x + cx - 5.8:.2f} {offset_y + neck_y + 9.4:.2f} Z" '
+        f'fill="{team["torso_dark"]}" stroke="{OUTLINE}" stroke-width=".85"/>'
     )
     head = (
         f"M {offset_x + head_cx - 8.5:.2f} {offset_y + head_cy - 10.4:.2f} "
