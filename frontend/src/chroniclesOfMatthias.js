@@ -10,7 +10,10 @@ import {
 import {
   chroniclesApplyContentAction,
   chroniclesApplyContentEffects,
+  chroniclesContentDefinition,
+  chroniclesContentInteractions,
   chroniclesRequirementFailure,
+  chroniclesRequirementMet,
   chroniclesRequirementsMet,
 } from './chronicles/chroniclesContentRuntime.js';
 import { resolveChroniclesCharacterParty } from './chronicles/chroniclesCharacterBuilds.js';
@@ -177,6 +180,35 @@ function enterTile(state, x, y) {
   return next;
 }
 
+
+export function chroniclesContextualContentAction(state) {
+  if (!state || state.phase === 'escaped' || state.phase === 'defeated') return null;
+  const map = chroniclesMapForState(state);
+  const interaction = chroniclesContentInteractions(
+    state,
+    map,
+    (x, y) => chroniclesTileAt(x, y, state),
+  ).find((entry) => !['exit', 'trigger', 'trap'].includes(entry.kind));
+  if (!interaction) return null;
+  const definition = chroniclesContentDefinition(map, interaction.id);
+  if (!definition?.action) return null;
+  return {
+    id: interaction.id,
+    kind: interaction.kind,
+    label: interaction.label || definition.label || 'Interactuar',
+  };
+}
+
+function resolveContextualContentAction(state) {
+  const contextual = chroniclesContextualContentAction(state);
+  if (!contextual) return withMessage(state, 'No hay nada útil que manipular aquí. Matthias lo considera una decepción menor.');
+  const map = chroniclesMapForState(state);
+  const definition = chroniclesContentDefinition(map, contextual.id);
+  if (!definition?.action) return state;
+  const next = chroniclesApplyContentAction(state, definition.action, { appendJournal });
+  return next === state ? state : { ...next, turns: state.turns + 1 };
+}
+
 function partyMember(state, memberId) {
   return state.party.find((member) => member.id === memberId) || null;
 }
@@ -323,6 +355,7 @@ export function chroniclesReduce(state, action) {
   if (actionType === 'turn-left') return { ...state, direction: (state.direction + 3) % 4, turns: state.turns + 1 };
   if (actionType === 'turn-right') return { ...state, direction: (state.direction + 1) % 4, turns: state.turns + 1 };
   if (actionType === 'attack') return resolveAttack(state, typeof action === 'object' ? action.memberId : 'matthias');
+  if (actionType === 'interact') return resolveContextualContentAction(state);
 
   const direction = CHRONICLES_DIRECTIONS[state.direction];
   const sign = actionType === 'backward' ? -1 : actionType === 'forward' ? 1 : 0;
@@ -357,6 +390,42 @@ export function chroniclesObjective(state) {
   if (pendingTrigger) return pendingTrigger.explorationObjective || pendingTrigger.label || 'Activa el siguiente evento';
 
   const exit = (map.exits || [])[0];
+  const exitFailure = exit ? chroniclesRequirementFailure(state, exit.requirements) : null;
+  if (exitFailure) {
+    const content = [
+      ...(map.interactables || []),
+      ...(map.treasures || []),
+    ];
+    const satisfies = (entry, requirement, sourceState = state) => {
+      if (!entry?.action?.effects?.length || chroniclesRequirementMet(sourceState, requirement)) return false;
+      const simulated = chroniclesApplyContentEffects(sourceState, entry.action.effects);
+      return chroniclesRequirementMet(simulated, requirement);
+    };
+    const available = (entry) => chroniclesRequirementsMet(state, entry.when);
+
+    let pendingInteraction = content.find((entry) => available(entry) && satisfies(entry, exitFailure));
+
+    if (!pendingInteraction) {
+      const blockedTargets = content.filter((entry) => satisfies(entry, exitFailure));
+      for (const target of blockedTargets) {
+        const unmetTargetRequirement = (target.when || []).find(
+          (requirement) => !chroniclesRequirementMet(state, requirement),
+        );
+        if (!unmetTargetRequirement) continue;
+        pendingInteraction = content.find(
+          (entry) => available(entry) && satisfies(entry, unmetTargetRequirement),
+        );
+        if (pendingInteraction) break;
+      }
+    }
+
+    if (pendingInteraction) {
+      return pendingInteraction.explorationObjective
+        || pendingInteraction.label
+        || (pendingInteraction.kind === 'pickup' ? 'Recoge el objeto' : 'Interactúa con el entorno');
+    }
+  }
+
   if (exit) return exit.explorationObjective || exit.openLabel || 'Busca una salida';
   return map.explorationIdleObjective || 'Explora la zona';
 }

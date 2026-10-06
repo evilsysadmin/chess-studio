@@ -266,7 +266,8 @@ for (const capture of CAPTURES) {
       const openedMenu = page.locator('.chronicles-game-menu[open]');
       await expect(openedMenu).toBeVisible();
       await expect(openedMenu.getByRole('button', { name: 'Continuar', exact: true })).toBeVisible();
-      await expect(openedMenu.getByRole('button', { name: 'Salir', exact: true })).toBeVisible();
+      await expect(openedMenu.getByRole('button', { name: 'Nueva expedición', exact: true })).toBeVisible();
+      await expect(openedMenu.getByRole('button', { name: 'Salir y guardar', exact: true })).toBeVisible();
       await page.keyboard.press('Escape');
       await expect(page.locator('.chronicles-game-menu[open]')).toHaveCount(0);
 
@@ -293,12 +294,12 @@ test('Chronicles · Gallery of Forks first-person material proof · desktop-1440
       chroniclesCurrentMapId: 'gallery-of-forks',
       chroniclesWorldFlags: {
         galleryLeverPulled: true,
-        galleryRelicCollected: true,
+        galleryRelicCollected: false,
         enemyHp: 0,
         jailerHp: 0,
         '__chrRuntime.version': 1,
-        '__chrRuntime.x': 3,
-        '__chrRuntime.y': 2,
+        '__chrRuntime.x': 5,
+        '__chrRuntime.y': 4,
         '__chrRuntime.direction': 0,
         '__chrRuntime.phase': 'explore',
         '__chrRuntime.turnPhase': 'party',
@@ -308,7 +309,9 @@ test('Chronicles · Gallery of Forks first-person material proof · desktop-1440
     const canvas = page.locator('[data-chronicles-renderer="three"] canvas');
     await expect(gameRoot).toHaveAttribute('data-chronicles-map-id', 'gallery-of-forks');
     await expect(gameRoot).toHaveAttribute('data-chronicles-phase', 'explore');
-    await expect(page.locator('.chronicles-statusbar')).toContainText('Abrir salida de la galería');
+    await expect(page.locator('.chronicles-statusbar')).toContainText('Recoger reliquia de ceniza');
+    const contextualAction = page.getByRole('button', { name: 'Recoger reliquia de ceniza', exact: true });
+    await expect(contextualAction).toBeVisible();
     await expect(canvas).toHaveCount(1, { timeout: 20_000 });
     await expect(canvas).toBeVisible();
     await page.waitForTimeout(450);
@@ -321,6 +324,9 @@ test('Chronicles · Gallery of Forks first-person material proof · desktop-1440
       gameRoot,
       `${ARTIFACT_DIR}/chronicles-gallery-of-forks-desktop-1440x900.png`,
     );
+    await contextualAction.click();
+    await expect(page.locator('.chronicles-statusbar')).toContainText('Abrir salida de la galería');
+    await expect(page.getByRole('button', { name: 'Recoger reliquia de ceniza', exact: true })).toHaveCount(0);
   } finally {
     await context.close();
   }
