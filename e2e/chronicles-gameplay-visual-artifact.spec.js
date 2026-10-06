@@ -247,7 +247,6 @@ for (const capture of CAPTURES) {
       await expect(openedMenu).toBeVisible();
       await expect(openedMenu.getByRole('button', { name: 'Continuar', exact: true })).toBeVisible();
       await expect(openedMenu.getByRole('button', { name: 'Salir', exact: true })).toBeVisible();
-      await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-menu-open-${capture.label}.png`);
       await page.keyboard.press('Escape');
       await expect(page.locator('.chronicles-game-menu[open]')).toHaveCount(0);
 
