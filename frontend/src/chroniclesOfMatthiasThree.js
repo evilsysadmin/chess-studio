@@ -127,6 +127,18 @@ function createDungeonScene(scene, { coarsePointer = false, scenePlan = null } =
   const stoneMaterials = Array.from({ length: 3 }, () => (
     new THREE.MeshStandardMaterial({ color: 0x3d3a35, roughness: 0.96, metalness: 0.02 })
   ));
+  const authoredStoneMaterials = new Map();
+  const wallMaterialFor = (x, y) => {
+    const token = scenePlan?.materials?.wallGrid?.[y]?.[x];
+    const profileId = token ? scenePlan?.materials?.wallLegend?.[token] : null;
+    if (!profileId) return stoneMaterials[Math.abs(x * 31 + y * 17) % stoneMaterials.length];
+    if (!authoredStoneMaterials.has(profileId)) {
+      const material = new THREE.MeshStandardMaterial({ color: 0x3d3a35, roughness: 0.96, metalness: 0.02 });
+      material.userData.chroniclesMaterialProfileId = profileId;
+      authoredStoneMaterials.set(profileId, material);
+    }
+    return authoredStoneMaterials.get(profileId);
+  };
   const darkStone = new THREE.MeshStandardMaterial({ color: 0x1b1a19, roughness: 1, metalness: 0 });
   const mortar = new THREE.MeshStandardMaterial({ color: 0x272522, roughness: 1, metalness: 0 });
   const floor = new THREE.MeshStandardMaterial({ color: 0x27241f, roughness: 0.92, metalness: 0.03 });
@@ -146,7 +158,7 @@ function createDungeonScene(scene, { coarsePointer = false, scenePlan = null } =
   grid.forEach((row, y) => {
     [...row].forEach((tile, x) => {
       if (tile !== '#') return;
-      const wallMaterial = stoneMaterials[Math.abs(x * 31 + y * 17) % stoneMaterials.length];
+      const wallMaterial = wallMaterialFor(x, y);
       const wall = new THREE.Mesh(wallGeometry, wallMaterial);
       const p = worldForCell(x, y, sceneCenter);
       wall.position.set(p.x, 1.72, p.z);
