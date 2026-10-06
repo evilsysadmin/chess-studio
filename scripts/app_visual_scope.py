@@ -29,6 +29,7 @@ NONVISUAL_FRONTEND_PATHS = {
     "frontend/src/lablaunchintent.js",
     "frontend/src/uselearningjourneyflow.js",
     "frontend/src/useglobalshellui.js",
+    "frontend/src/usetournamentflow.js",
     "frontend/src/userreleasenotes.js",
     "frontend/src/soundfx.js",
 }
@@ -217,6 +218,8 @@ def _surface_groups(path: str) -> set[str] | None:
         return set()
     if lower in NONVISUAL_FRONTEND_PATHS:
         return set()
+    if lower == "frontend/src/components/globaloverlaylayer.jsx":
+        return {"home"}
     if lower in QUICK_MATCH_VISUAL_SURFACES:
         return set(QUICK_MATCH_VISUAL_SURFACES[lower])
     if lower == "frontend/src/components/homemobilegoldenpath.css":
@@ -731,6 +734,8 @@ def self_test() -> None:
     assert not puzzle_launch.hans and not puzzle_launch.chesscom
     global_shell = classify(["frontend/src/useGlobalShellUi.js"])
     assert global_shell.capture_groups == "none"
+    assert classify(["frontend/src/useTournamentFlow.js"]).capture_groups == "none"
+    assert classify(["frontend/src/components/GlobalOverlayLayer.jsx"]).capture_groups == "home"
     assert not global_shell.hans and not global_shell.chesscom
     release_notes_router = classify(["frontend/src/userReleaseNotes.js"])
     assert release_notes_router.capture_groups == "none"

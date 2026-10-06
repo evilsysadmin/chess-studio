@@ -31,6 +31,8 @@ PVP_DUEL_VISUAL_OWNER = "frontend/src/components/PvpDuelRoomShell.js"
 APP_SHELL = "frontend/src/App.jsx"
 LEARNING_JOURNEY_OWNER = "frontend/src/useLearningJourneyFlow.js"
 GLOBAL_SHELL_OWNER = "frontend/src/useGlobalShellUi.js"
+TOURNAMENT_FLOW_OWNER = "frontend/src/useTournamentFlow.js"
+GLOBAL_OVERLAY_OWNER = "frontend/src/components/GlobalOverlayLayer.jsx"
 
 # Exact App.jsx lines touched by the non-visual learning-journey ownership
 # extraction. This is intentionally exact and fail-closed: formatting changes,
@@ -52,6 +54,81 @@ NONVISUAL_LEARNING_APP_LINES = {
     "onInsights={() => openInsights('diagnosis')}",
     "onProgress={() => { setInsightsLandingSection('career'); navigateTo('insights'); }}",
     "onProgress={() => openInsights('career')}",
+}
+
+NONVISUAL_APP_DECOMPOSITION_LINES = {
+    "import RatingDetailModal from './components/RatingDetailModal.jsx';",
+    "import CombatArmySummaryModal from './components/CombatArmySummaryModal.jsx';",
+    "import { loadTournament, saveTournament, resetTournament, applyResult, applyCaptureReward, difficultyForLevel, levelForPoints } from './tournament.js';",
+    "const GlobalOverlayLayer = React.lazy(() => import('./components/GlobalOverlayLayer.jsx'));",
+    "import UserSettingsPanel from './components/UserSettingsPanel.jsx';",
+    "import AccountModal from './components/AccountModal.jsx';",
+    "const UserReleaseNotesModal = React.lazy(() => import('./components/UserReleaseNotesModal.jsx'));",
+    "import FeedbackModal from './components/FeedbackModal.jsx';",
+    "import { openReleaseNoteTarget } from './userReleaseNotes.js';",
+    "import { useTournamentFlow } from './useTournamentFlow.js';",
+    "const [tournament, setTournament] = useState(() => loadTournament());",
+    "const [tournamentGame, setTournamentGame] = useState(null);",
+    "const [lastResult, setLastResult] = useState(null);",
+    "const {", "state: tournament,", "game: tournamentGame,", "setGame: setTournamentGame,",
+    "result: lastResult,", "level: tournamentLevel,", "play: handlePlayTournament,",
+    "finish: handleTournamentGameEnd,", "spend: handleSpendPoints,", "capture: handleCapturePoints,",
+    "exit: handleExitTournamentGame,", "reset: handleResetTournament,", "} = useTournamentFlow({",
+    "launch: gameLaunch,", "navigate: navigateTo,", "back: goBack,", "loading: setLoading,",
+    "error: setError,", "rating: setRating,", "history: setHistoryList,", "saved: setHasSavedGame,", "});",
+    "// --- Modo torneo ---", "", "async function handlePlayTournament(color) {",
+    "const launch = gameLaunch.begin();", "if (!launch) return;", "setLoading(true);", "setError(null);", "try {",
+    "const level = levelForPoints(tournament.progressPoints || 0);",
+    "const cpuDifficulty = difficultyForLevel(level);",
+    "const operationId = gameLaunch.operationId(launch, [cpuDifficulty, color, null, null, null]);",
+    "const created = await api.createGame(cpuDifficulty, color, null, null, { signal: launch.controller.signal, operationId });",
+    "if (!gameLaunch.isCurrent(launch)) { void api.deleteGame(created.id).catch(() => {}); return; }",
+    "gameLaunch.confirmCreated(launch);",
+    "recordGameActivity({ gameId: created.id, state: 'started', mode: 'tournament', difficulty: created.difficulty });",
+    "setTournamentGame(created);", "navigateTo('tournamentGame');", "} catch (e) {",
+    "if (gameLaunch.isCurrent(launch) && !isAbortError(e)) setError(userFacingError(e, 'No se pudo iniciar la partida.'));",
+    "} finally {", "if (gameLaunch.owns(launch)) setLoading(false);", "gameLaunch.end(launch);", "}",
+    "function handleTournamentGameEnd(outcome, finishedGame, endMeta = {}) {",
+    "if (!isCompletedGameOutcome(outcome)) return;", "if (finishedGame) {",
+    "const moveSans = (finishedGame.history || []).map((m) => m.san).filter(Boolean);",
+    "recordRivalryResult(outcome, {", "difficulty: finishedGame.difficulty,", "humanColor: finishedGame.humanColor,",
+    "opening: identifyOpening(moveSans),", "moves: finishedGame.history?.length || 0,", "timeControlId: null,",
+    "setTournament((prev) => {", "const { state, gained, leveledUp, newLevel } = applyResult(prev, outcome);",
+    "saveTournament(state);", "setLastResult({ outcome, gained, leveledUp, newLevel });", "return state;",
+    "// Actualizamos también el rating tipo ELO: cuenta como una partida",
+    "// más contra una CPU de dificultad conocida.", "const score = ratingScoreForOutcome(outcome);",
+    "setRating((prev) => {", "const details = ratingChangeDetails(prev, finishedGame.difficulty, score);",
+    "saveRating(details.next);", "recordRatingHistory(details.next.rating);", "setLastResult((current) => ({",
+    "...(current || { outcome }),", "eloDelta: details.delta,", "eloBefore: prev.rating,", "eloAfter: details.next.rating,",
+    "cpuRating: details.cpuRating,", "expectedScore: details.expectedScore,", "}));", "return details.next;",
+    "const record = {", "id: `${finishedGame.id}-${Date.now()}`,", "sourceGameId: finishedGame.id,",
+    "date: new Date().toISOString(),", "outcome,", "moves: finishedGame.history,", "finalFen: finishedGame.fen,",
+    "mode: 'tournament',", "opening: identifyOpening((finishedGame.history || []).map((m) => m.san).filter(Boolean)),",
+    "timeControl: null,", "gameChat: Array.isArray(endMeta.gameChat) ? endMeta.gameChat : loadActiveGameChat(finishedGame.id),",
+    "series: null,", "};", "setHistoryList(saveGameRecord(record));",
+    "recordGameActivity({ gameId: finishedGame.id, state: 'finished', mode: 'tournament', outcome, difficulty: finishedGame.difficulty });",
+    "recordCareerGame(record, {});", "function handleSpendPoints(cost) {",
+    "const next = { ...prev, points: Math.max(0, prev.points - cost) };", "saveTournament(next);", "return next;",
+    "function handleCapturePoints(gained) {", "// Moneda de pistas exclusivamente. No altera progreso de torneo ni ELO.",
+    "const next = applyCaptureReward(prev, gained);", "function handleExitTournamentGame() {", "if (tournamentGame?.id) {",
+    "const exitDisposition = chessGameExitDisposition(tournamentGame, { explicitAction: true });",
+    "if (exitDisposition === 'forfeit') handleTournamentGameEnd('loss', tournamentGame, { endReason: 'resignation' });",
+    "else recordGameActivity({ gameId: tournamentGame.id, state: 'cancelled', mode: 'tournament', difficulty: tournamentGame.difficulty });",
+    "clearActiveGameSession();", "setHasSavedGame(!!getStorageItem(STORAGE_LOCAL, STORAGE_KEY));",
+    "setTournamentGame(null);", "goBack();", "function handleResetTournament() {", "setTournament(resetTournament());",
+    "setLastResult(null);", "{showRatingDetail && (", "<RatingDetailModal rating={rating} onClose={closeRatingDetail} />",
+    ")}", "{showCombatSummary && (", "<CombatArmySummaryModal", "roster={loadCombatRoster()}",
+    "onClose={closeCombatSummary}", "onOpenCombat={() => { closeCombatSummary(); navigateTo('roguelike'); }}", "/>",
+    "{(showRatingDetail || showCombatSummary || showSettings || showGlobalAccount || showGlobalReleaseNotes || showGlobalFeedback) && (",
+    "<React.Suspense fallback={<div className=\"modal-backdrop\" />}>", "<GlobalOverlayLayer", "shellUi={shellUi}",
+    "rating={rating} tournament={tournament} combatOverview={combatOverview}",
+    "isAdminUser={isAdminUser} navigateTo={navigateTo} openInsights={openInsights}",
+    "onLogout={handleGlobalLogout} loggingOut={loggingOut} view={view}", "</React.Suspense>",
+    "{showSettings && <UserSettingsPanel isAdminUser={isAdminUser} onClose={closeSettings} onBoard3D={() => { closeSettings(); navigateTo('board3d'); }} />}",
+    "{showGlobalAccount && <AccountModal rating={rating} tournament={tournament} combatOverview={combatOverview} onClose={closeGlobalAccount} onLogout={() => void handleGlobalLogout()} loggingOut={loggingOut} />}",
+    "{showGlobalReleaseNotes && <React.Suspense fallback={null}><UserReleaseNotesModal onClose={closeReleaseNotes} onAction={(to) => { closeReleaseNotes(); openReleaseNoteTarget(to, { navigateTo, openInsights }); }} /></React.Suspense>}",
+    "{showGlobalFeedback && <FeedbackModal context={view === 'menu' ? 'Home' : `Global · ${view}`} onClose={closeGlobalFeedback} />}",
+    "tournamentLevel={levelForPoints(tournament.progressPoints || 0)}", "tournamentLevel={tournamentLevel}",
 }
 
 NONVISUAL_GLOBAL_SHELL_APP_LINES = {
@@ -218,6 +295,13 @@ def _is_nonvisual_global_shell_app_diff(diff_text: str | None) -> bool:
     return bool(changed_lines) and all(line in NONVISUAL_GLOBAL_SHELL_APP_LINES for line in changed_lines)
 
 
+def _is_nonvisual_app_decomposition_diff(diff_text: str | None) -> bool:
+    if not diff_text:
+        return False
+    changed_lines = _changed_source_lines(diff_text)
+    return bool(changed_lines) and all(line in NONVISUAL_APP_DECOMPOSITION_LINES for line in changed_lines)
+
+
 def _is_app_visual_e2e(path: str) -> bool:
     """Keep only E2E files that the app-visual workflow itself owns."""
     lower = path.lower().replace("\\", "/")
@@ -247,6 +331,11 @@ def normalize(
         GLOBAL_SHELL_OWNER.lower() in lower_paths
         and _is_nonvisual_global_shell_app_diff(_git_diff_text(base_sha, head_sha, APP_SHELL))
     )
+    safe_app_decomposition = (
+        TOURNAMENT_FLOW_OWNER.lower() in lower_paths
+        and GLOBAL_OVERLAY_OWNER.lower() in lower_paths
+        and _is_nonvisual_app_decomposition_diff(_git_diff_text(base_sha, head_sha, APP_SHELL))
+    )
 
     def add(path: str) -> None:
         if path not in seen:
@@ -258,7 +347,7 @@ def normalize(
         if not path:
             continue
         lower = path.lower()
-        if lower == APP_SHELL.lower() and (safe_learning_app or safe_global_shell_app):
+        if lower == APP_SHELL.lower() and (safe_learning_app or safe_global_shell_app or safe_app_decomposition):
             # App.jsx is normally a global visual owner. Suppress it only for
             # the exact, audited navigation extraction above; any extra changed
             # App line fails closed and restores the canonical visual sweep.
@@ -335,6 +424,12 @@ def self_test() -> None:
     assert _is_nonvisual_global_shell_app_diff(safe_shell_diff)
     assert not _is_nonvisual_global_shell_app_diff(unsafe_shell_diff)
     assert not _is_nonvisual_global_shell_app_diff(None)
+
+    safe_decomposition_diff = "--- a/frontend/src/App.jsx\n+++ b/frontend/src/App.jsx\n@@ -1 +1 @@\n-import RatingDetailModal from './components/RatingDetailModal.jsx';\n+const GlobalOverlayLayer = React.lazy(() => import('./components/GlobalOverlayLayer.jsx'));\n"
+    unsafe_decomposition_diff = safe_decomposition_diff + "@@ -20 +20 @@\n-<main className=\"old\">\n+<main className=\"new\">\n"
+    assert _is_nonvisual_app_decomposition_diff(safe_decomposition_diff)
+    assert not _is_nonvisual_app_decomposition_diff(unsafe_decomposition_diff)
+    assert not _is_nonvisual_app_decomposition_diff(None)
 
     manifest_before = json.dumps({
         "assets": {
