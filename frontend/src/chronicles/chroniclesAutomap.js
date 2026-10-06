@@ -62,6 +62,48 @@ export function chroniclesAutomapRevealedCells(map, visitedCells) {
   return revealed;
 }
 
+
+export function chroniclesAutomapLocalVisibleCells(map, state, radius = 3) {
+  const visible = new Set();
+  const width = Number(map?.grid?.[0]?.length || 0);
+  const height = Number(map?.grid?.length || 0);
+  const startX = Number(state?.x);
+  const startY = Number(state?.y);
+  const safeRadius = Math.max(0, Math.min(8, Math.trunc(Number(radius) || 0)));
+  if (
+    !width
+    || !height
+    || !Number.isInteger(startX)
+    || !Number.isInteger(startY)
+    || startX < 0
+    || startY < 0
+    || startX >= width
+    || startY >= height
+  ) return visible;
+
+  const queue = [{ x: startX, y: startY, distance: 0 }];
+  const traversed = new Set([chroniclesAutomapCellKey(startX, startY)]);
+
+  while (queue.length) {
+    const current = queue.shift();
+    visible.add(chroniclesAutomapCellKey(current.x, current.y));
+    if (current.distance >= safeRadius) continue;
+
+    CARDINAL_NEIGHBORS.slice(1).forEach(({ dx, dy }) => {
+      const x = current.x + dx;
+      const y = current.y + dy;
+      if (x < 0 || y < 0 || x >= width || y >= height) return;
+      const key = chroniclesAutomapCellKey(x, y);
+      visible.add(key);
+      if (map.grid[y]?.[x] === '#' || traversed.has(key)) return;
+      traversed.add(key);
+      queue.push({ x, y, distance: current.distance + 1 });
+    });
+  }
+
+  return visible;
+}
+
 export function chroniclesAutomapFacingDegrees(direction) {
   const numeric = Number.isFinite(Number(direction)) ? Number(direction) : 0;
   const normalized = ((Math.trunc(numeric) % 4) + 4) % 4;
