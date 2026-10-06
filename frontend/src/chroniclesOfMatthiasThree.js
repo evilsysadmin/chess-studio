@@ -355,7 +355,7 @@ function createDungeonScene(scene, { coarsePointer = false, scenePlan = null } =
       const glow = new THREE.PointLight(0xe49b39, coarsePointer ? 0.72 : 1.05, 4.2, 2);
       glow.position.set(0, 0.72, 0.32);
       root.add(recess, frame, core, glow);
-      contentProps.push({ id: entry.id, kind: entry.kind, root, core, glow, phase: index * 1.17 });
+      contentProps.push({ id: entry.id, kind: entry.kind, root, core, glow, coreBaseY: 0.72, phase: index * 1.17 });
     } else if (entry.kind === 'pickup') {
       const pedestal = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.46, 0.46, 12), contentMaterial);
       pedestal.position.y = 0.23;
@@ -368,7 +368,7 @@ function createDungeonScene(scene, { coarsePointer = false, scenePlan = null } =
       const glow = new THREE.PointLight(0xe49b39, coarsePointer ? 0.72 : 1.05, 4.2, 2);
       glow.position.y = 0.74;
       root.add(pedestal, cradle, core, glow);
-      contentProps.push({ id: entry.id, kind: entry.kind, root, core, glow, phase: index * 1.17 });
+      contentProps.push({ id: entry.id, kind: entry.kind, root, core, glow, coreBaseY: 0.74, phase: index * 1.17 });
     } else if (entry.kind === 'lore') {
       const plaque = new THREE.Mesh(new THREE.BoxGeometry(0.86, 0.72, 0.12), contentMaterial);
       plaque.position.set(0, 0.82, 0.04);
@@ -740,7 +740,7 @@ export function createChroniclesOfMatthiasGame(host, { onReady, initialState = n
       dungeon.contentProps.forEach((prop) => {
         if (!prop.root.visible || prop.kind !== 'pickup' || !prop.core) return;
         prop.core.rotation.y = time * 0.75 + prop.phase;
-        prop.core.position.y = 0.58 + Math.sin(time * 2.2 + prop.phase) * 0.06;
+        prop.core.position.y = (prop.coreBaseY ?? 0.58) + Math.sin(time * 2.2 + prop.phase) * 0.06;
         if (prop.glow) prop.glow.intensity = (coarse ? 0.72 : 1.05) * (0.9 + Math.sin(time * 2.4 + prop.phase) * 0.1);
       });
 
