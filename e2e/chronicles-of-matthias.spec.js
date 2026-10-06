@@ -101,7 +101,7 @@ test('Chronicles of Matthias · móvil mantiene party y mandos sin overflow', as
 });
 
 
-test('Chronicles of Matthias · móvil apaisado entra en fullscreen y conserva escenario jugable', async ({ page }) => {
+test('Chronicles of Matthias · móvil apaisado ocupa el viewport y conserva escenario jugable', async ({ page }) => {
   await page.setViewportSize({ width: 844, height: 390 });
 
   const setup = await openChroniclesSetup(page);
@@ -123,7 +123,27 @@ test('Chronicles of Matthias · móvil apaisado entra en fullscreen y conserva e
   }
 
   const stageBox = await mode.locator('.chronicles-stage').boundingBox();
-  expect(stageBox?.height || 0).toBeGreaterThan(90);
+  expect(stageBox?.height || 0).toBeGreaterThanOrEqual(388);
+  expect(await page.evaluate(() => document.fullscreenElement)).toBeNull();
+
+  const forwardBox = await mode.getByRole('button', { name: 'Avanzar', exact: true }).boundingBox();
+  const attackBox = await mode.getByRole('button', { name: 'Atacar', exact: true }).boundingBox();
+  const partyBox = await mode.getByRole('button', { name: 'Seleccionar Matthias', exact: true }).boundingBox();
+  expect(forwardBox?.width || 0).toBeGreaterThanOrEqual(52);
+  expect(forwardBox?.height || 0).toBeGreaterThanOrEqual(52);
+  expect(attackBox?.width || 0).toBeGreaterThanOrEqual(72);
+  expect(attackBox?.height || 0).toBeGreaterThanOrEqual(72);
+  expect(partyBox?.width || 0).toBeGreaterThanOrEqual(44);
+  expect(partyBox?.height || 0).toBeGreaterThanOrEqual(44);
+
+  const turnLeft = mode.getByRole('button', { name: 'Girar a la izquierda', exact: true });
+  const turnsBeforeHold = Number(await mode.getAttribute('data-chronicles-turns'));
+  await turnLeft.dispatchEvent('pointerdown', { pointerId: 17, pointerType: 'touch', button: 0 });
+  await page.waitForTimeout(470);
+  await turnLeft.dispatchEvent('pointerup', { pointerId: 17, pointerType: 'touch', button: 0 });
+  const turnsAfterHold = Number(await mode.getAttribute('data-chronicles-turns'));
+  expect(turnsAfterHold - turnsBeforeHold).toBeGreaterThanOrEqual(2);
+
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
 });
