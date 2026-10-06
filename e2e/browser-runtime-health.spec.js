@@ -251,45 +251,24 @@ test('Browser WebGL · Home 3D recupera el contexto perdido', async ({ page }) =
   await expect(canvas).toHaveClass(/is-ready/, { timeout:15_000 });
   await settle(page);
 
-  // Recovery recreates the Home renderer on the same canvas. Instrument the
-  // exact restored context that HomeBlenderScene3D owns now. A prototype probe
-  // installed before context loss is not a stable cleanup witness after Chromium
-  // restores the context and Three rebuilds its extension cache.
+  // Recovery recreates the Home renderer on the same canvas. The runtime now
+  // caches WEBGL_lose_context together with that renderer generation, so the
+  // global API-boundary probe can prove teardown released the restored context
+  // without trying to rediscover Chromium's extension wrapper during unmount.
   const cleanupProbe = await canvas.evaluate((node) => {
     const gl = node.getContext('webgl2') || node.getContext('webgl');
-    if (!gl || gl.isContextLost?.() !== false) return { restored:false, loseCalls:0 };
-    const proto = Object.getPrototypeOf(gl);
-    const currentGetExtension = proto?.getExtension;
-    if (!proto || typeof currentGetExtension !== 'function') return { restored:false, loseCalls:0 };
-
-    window.__homeWebglCleanupLoseContextCalls = 0;
-    proto.getExtension = function getExtensionWithRestoredCleanupProbe(name) {
-      const extension = currentGetExtension.call(this, name);
-      if (this !== gl || name !== 'WEBGL_lose_context' || !extension) return extension;
-      return {
-        loseContext: () => {
-          window.__homeWebglCleanupLoseContextCalls += 1;
-          return extension.loseContext();
-        },
-        restoreContext: () => extension.restoreContext(),
-      };
-    };
     return {
-      restored:true,
-      loseCalls:Number(window.__homeWebglCleanupLoseContextCalls || 0),
+      restored:Boolean(gl && gl.isContextLost?.() === false),
+      loseCalls:Number(window.__homeWebglLoseContextCalls || 0),
     };
   });
   expect(cleanupProbe.restored, 'Home debe exponer un contexto WebGL restaurado antes de probar el cleanup').toBe(true);
 
-  // The old global soak mounted Home ⇄ War Room ⇄ Pawn Slug twice merely to
-  // catch HomeBlenderScene3D keeping its WebGL context alive after unmount. We
-  // now observe WEBGL_lose_context on the exact restored context that teardown
-  // owns, rather than inferring it from a pre-recovery prototype wrapper.
   const matthias = home.getByRole('button', { name:'Abrir Así juegas con Matthias', exact:true });
   await matthias.click();
   await expect(page.getByRole('heading', { name:'Así juegas', exact:true })).toBeVisible();
   await expect.poll(
-    () => page.evaluate((baseline) => Number(window.__homeWebglCleanupLoseContextCalls || 0) > baseline, cleanupProbe.loseCalls),
+    () => page.evaluate((baseline) => Number(window.__homeWebglLoseContextCalls || 0) > baseline, cleanupProbe.loseCalls),
     { timeout:5_000, intervals:[50, 100, 200, 500] },
   ).toBe(true);
 
