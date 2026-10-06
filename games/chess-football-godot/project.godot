@@ -11,6 +11,7 @@ boot_splash/bg_color=Color(0.01, 0.018, 0.028, 1)
 [display]
 window/size/viewport_width=1280
 window/size/viewport_height=720
+window/size/mode=3
 window/stretch/mode="canvas_items"
 
 [rendering]
