@@ -1,6 +1,7 @@
 import { lazy, useEffect, useMemo, useRef, useState } from 'react';
 import './HomeRoute.css';
-const QuickMatchModal = lazy(() => import('./QuickMatchModal.jsx'));
+import { loadQuickMatchReadyRoom, preloadQuickMatchReadyRoom } from './goldenPathPrefetch.js';
+const QuickMatchModal = lazy(loadQuickMatchReadyRoom);
 const PracticeMatchModal = lazy(() => import('./PracticeMatchModal.jsx'));
 const PvPLobbyModal = lazy(() => import('./PvPLobbyModal.jsx'));
 import HomeIllustrated from './HomeIllustrated.jsx';
@@ -74,24 +75,6 @@ export default function Menu({
   const [matthiasMemory, setMatthiasMemory] = useState(null);
   const matthiasRollRef = useRef(Math.random());
 
-  useEffect(() => {
-    let active = true;
-    let cancelPreload = () => {};
-
-    void import('./warRoomHomePreload.js')
-      .then(({ schedulePreferredWarRoomHomePreload }) => {
-        if (!active) return;
-        cancelPreload = schedulePreferredWarRoomHomePreload();
-      })
-      .catch(() => {
-        // Speculative warming must never affect Home or the real War Room path.
-      });
-
-    return () => {
-      active = false;
-      cancelPreload();
-    };
-  }, []);
 
   const matthiasIntroPending = !matthiasOnboarded();
   const matthiasIntroBlocked = suppressHomeNudge
@@ -235,6 +218,7 @@ export default function Menu({
         loading={loading}
         error={showQuickMatch || showPracticeMatch || showPvpLobby ? null : error}
         onPlay={() => setShowQuickMatch(true)}
+        onPlayIntent={() => { void preloadQuickMatchReadyRoom(); }}
         onContinue={onContinue}
         onPractice={() => setShowPracticeMatch(true)}
         pendingModes={pendingModes}
