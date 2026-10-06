@@ -15,7 +15,7 @@ A second A1 for pragmatic host redundancy is a later iteration. k3s/Argo CD is a
 
 ## Runtime
 
-`Main · admission` publishes the CI-approved backend for `linux/arm64` as an immutable GHCR tag:
+After `Main · admission` succeeds, `Main · backend image` publishes the CI-approved backend for `linux/arm64` as an immutable GHCR tag. Unequivocally non-runtime merges are classified first on a cheap x86 runner and do not reserve ARM capacity or touch GHCR:
 
 `ghcr.io/evilsysadmin/chess-studio-backend:oci-<SHA>`
 
