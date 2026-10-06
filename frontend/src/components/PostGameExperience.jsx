@@ -4,6 +4,7 @@ import { registerCompletedGameForFeedback } from '../postGameFeedback.js';
 import { seriesLiveMoment, seriesNextActionLabel } from '../series.js';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
 import { quickMatchRecalibration } from '../quickMatchDifficulty.js';
+import { prefetchTrainingRoomRoute } from '../trainingRoomRoute.js';
 import { difficultyLabel } from '../difficulty.js';
 import PostGameFeedbackPrompt from './PostGameFeedbackPrompt.jsx';
 import './WarRoomDebrief.css';
@@ -67,6 +68,15 @@ export default function PostGameExperience({
   const [showPostGameFeedback, setShowPostGameFeedback] = useState(false);
   const feedbackRegisteredGameRef = useRef(null);
   const finished = Boolean(game.isGameOver || flagFallen || forcedOutcome);
+  const sequenceInProgress = Boolean((seriesState && !seriesState.winner) || runState?.active);
+  const trainableErrorReady = finished
+    && !sequenceInProgress
+    && Boolean(trainingOpportunity?.puzzleId && onTrainCurrentError);
+
+  useEffect(() => {
+    if (!trainableErrorReady) return;
+    void prefetchTrainingRoomRoute();
+  }, [trainableErrorReady, trainingOpportunity?.puzzleId]);
 
   useEffect(() => {
     setShowReport(false);
@@ -93,7 +103,6 @@ export default function PostGameExperience({
     adaptive: Boolean(resultSummary?.adaptiveDifficulty),
   });
   const liveSeriesMoment = seriesState ? seriesLiveMoment(seriesState) : null;
-  const sequenceInProgress = Boolean((seriesState && !seriesState.winner) || runState?.active);
   const adaptiveRecalibration = !seriesState && resultSummary?.adaptiveDifficulty && resultSummary?.ratingApplied
     ? quickMatchRecalibration(game.difficulty, resultSummary.eloAfter, null, resultSummary.ratingGames)
     : null;

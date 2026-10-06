@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import Menu from './components/Menu.jsx';
-const GameScreen = React.lazy(() => import('./components/GameScreen.jsx'));
+import { GameScreenRoute as GameScreen, TrainingRoomRoute as PuzzleScreen } from './goldenPathScreens.js';
 const Tutorial = React.lazy(() => import('./components/Tutorial.jsx'));
 const OpeningsScreen = React.lazy(() => import('./components/OpeningsScreen.jsx'));
 const TournamentScreen = React.lazy(() => import('./components/TournamentScreen.jsx'));
@@ -11,7 +11,6 @@ const SpectatorScreen = React.lazy(() => import('./components/SpectatorScreen.js
 const Board3DExperiment = React.lazy(() => import('./components/Board3DExperiment.jsx'));
 const PvpAppSurface = React.lazy(() => import('./components/PvpAppSurface.jsx'));
 import { loadCombatHistory } from './combatHistory.js';
-const PuzzleScreen = React.lazy(() => import('./components/PuzzleScreen.jsx'));
 const DailyChallengesScreen = React.lazy(() => import('./components/DailyChallengesScreen.jsx'));
 const CombatScreen = React.lazy(() => import('./components/CombatScreen.jsx'));
 const RoguelikeScreen = React.lazy(() => import('./components/RoguelikeScreen.jsx'));
