@@ -49,4 +49,16 @@ describe('Chronicles first-person runtime scene plan', () => {
     expect(plan.wallFaces.length).toBeGreaterThan(0);
   });
 
+  it('projects the Gallery exit into first-person authored content instead of leaving an invisible blocker', () => {
+    const plan = chroniclesFirstPersonScenePlan({ mapId: 'gallery-of-forks' });
+    expect(plan.content).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'gallery-gate',
+        kind: 'exit',
+        position: { x: 3, y: 1 },
+        visible: true,
+      }),
+    ]));
+  });
+
 });

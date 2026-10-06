@@ -32,6 +32,7 @@ async function openVisualMoreModes(page) {
 async function openChronicles(page, captureLabel, {
   runStatus = 'active',
   chroniclesCurrentMapId = 'crypt-eight-squares',
+  chroniclesWorldFlags = null,
 } = {}) {
   await mockApi(page, {
     profileSeed: {
@@ -40,6 +41,7 @@ async function openChronicles(page, captureLabel, {
     },
     chroniclesRunStatus: runStatus,
     chroniclesCurrentMapId,
+    chroniclesWorldFlags,
   });
   await login(page);
   const speech = page.getByRole('region', { name: 'Mensaje de Matthias', exact: true });
@@ -176,6 +178,10 @@ for (const capture of CAPTURES) {
       const stage = page.locator('.chronicles-stage');
       const gameMenu = page.locator('summary[aria-label="Abrir menú de Chronicles"]');
       await expect(gameRoot).toBeVisible();
+      expect(
+        await page.evaluate(() => document.fullscreenElement),
+        `${capture.label}: Chronicles must not enter browser-native fullscreen`,
+      ).toBeNull();
       await expect(chroniclesCanvas).toHaveCount(1, { timeout: 20_000 });
       await expect(chroniclesCanvas).toBeVisible();
       await expect(authoredPortrait).toHaveCount(1, { timeout: 20_000 });
@@ -203,6 +209,10 @@ for (const capture of CAPTURES) {
       await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-playing-${capture.label}.png`);
 
       await page.keyboard.press('Escape');
+      expect(
+        await page.evaluate(() => document.fullscreenElement),
+        `${capture.label}: Escape belongs to the Chronicles menu`,
+      ).toBeNull();
       const openedMenu = page.locator('.chronicles-game-menu[open]');
       await expect(openedMenu).toBeVisible();
       await expect(openedMenu.getByRole('button', { name: 'Continuar', exact: true })).toBeVisible();
@@ -232,10 +242,24 @@ test('Chronicles · Gallery of Forks first-person material proof · desktop-1440
   try {
     await openChronicles(page, 'gallery-of-forks-desktop-1440x900', {
       chroniclesCurrentMapId: 'gallery-of-forks',
+      chroniclesWorldFlags: {
+        galleryLeverPulled: true,
+        galleryRelicCollected: true,
+        enemyHp: 0,
+        jailerHp: 0,
+        '__chrRuntime.version': 1,
+        '__chrRuntime.x': 3,
+        '__chrRuntime.y': 2,
+        '__chrRuntime.direction': 0,
+        '__chrRuntime.phase': 'explore',
+        '__chrRuntime.turnPhase': 'party',
+      },
     });
     const gameRoot = page.locator('[data-chronicles="true"]');
     const canvas = page.locator('[data-chronicles-renderer="three"] canvas');
     await expect(gameRoot).toHaveAttribute('data-chronicles-map-id', 'gallery-of-forks');
+    await expect(gameRoot).toHaveAttribute('data-chronicles-phase', 'explore');
+    await expect(page.locator('.chronicles-statusbar')).toContainText('Abrir salida de la galería');
     await expect(canvas).toHaveCount(1, { timeout: 20_000 });
     await expect(canvas).toBeVisible();
     await page.waitForTimeout(450);

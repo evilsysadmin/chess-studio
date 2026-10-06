@@ -509,6 +509,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
       data-chronicles-turns={state.turns}
       data-chronicles-phase={state.phase}
       data-chronicles-turn-engine={CHRONICLES_TURN_ENGINE_VERSION}
+      data-chronicles-initiative-die={state.initiative?.die || undefined}
       role="region"
       aria-label="Chronicles of Matthias"
     >

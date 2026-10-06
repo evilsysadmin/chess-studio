@@ -4,7 +4,6 @@ import { useEscapeToClose } from '../useEscapeToClose.js';
 import { acknowledgeLabLaunch, clearRememberedLabMode, loadLabLaunch, loadRememberedLabMode, rememberLabMode, subscribeLabLaunch } from '../labLaunchIntent.js';
 import { EXPERIMENT_MATURITY, experimentMaturityLabel } from '../experimentMaturity.js';
 import { LAB_START_FEN, assertLegalLabPosition, fenFromLabState, parseLabPosition } from '../labPosition.js';
-import { exitChroniclesBrowserFullscreen, requestChroniclesBrowserFullscreen } from '../chronicles/chroniclesBrowserFullscreen.js';
 import experimentsRoomCanonical from '../assets/experiments-room-canonical.webp';
 import PreferredBoard from './PreferredBoard.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
@@ -91,14 +90,10 @@ export default function LabScreen({ onExit, onStart }){
   }
 
   function enterChronicles() {
-    // Browser fullscreen must be requested from the same trusted click that
-    // enters Chronicles. A mount effect is already too late in Chromium/Safari.
-    void requestChroniclesBrowserFullscreen();
     setLabMode('chronicles');
   }
 
   function exitChronicles() {
-    void exitChroniclesBrowserFullscreen();
     setLabMode('hub');
   }
 
