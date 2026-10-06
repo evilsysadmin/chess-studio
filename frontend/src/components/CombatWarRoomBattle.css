@@ -282,6 +282,22 @@
 }
 
 @media (max-width: 920px) {
+  .combat-battle-screen .war-room-immersive-music-dock .music-deck-collapsed {
+    min-height: 44px !important;
+    height: 44px !important;
+    grid-template-columns: minmax(0, 1fr) 44px !important;
+  }
+
+  .combat-battle-screen .war-room-immersive-music-dock .music-deck-expand {
+    min-height: 44px !important;
+  }
+
+  .combat-battle-screen .war-room-immersive-music-dock .music-deck-collapsed-play {
+    width: 44px !important;
+    min-width: 44px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+  }
   .game-screen.combat-battle-screen .game-layout-immersive .board-live-row.combat-warroom-row {
     padding: 0 !important;
     border-width: 0 !important;
@@ -334,10 +350,10 @@
   }
 
   .combat-battle-screen .combat-warroom-controls {
-    left: max(.45rem, env(safe-area-inset-left));
+    left: 50%;
     bottom: max(.45rem, env(safe-area-inset-bottom));
-    transform: none;
-    max-width: calc(50vw - .65rem);
+    transform: translateX(-50%);
+    max-width: none;
     flex-direction: row !important;
   }
 
