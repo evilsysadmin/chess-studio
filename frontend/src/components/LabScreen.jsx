@@ -118,7 +118,7 @@ export default function LabScreen({ onExit, onStart }){
 
       if (!document.fullscreenElement && typeof root.requestFullscreen === 'function') {
         try {
-          const fullscreen = root.requestFullscreen({ navigationUI: 'hide' });
+          const fullscreen = root.requestFullscreen();
           if (fullscreen?.then) fullscreen.then(lockLandscape).catch(() => {});
           else lockLandscape();
         } catch {
