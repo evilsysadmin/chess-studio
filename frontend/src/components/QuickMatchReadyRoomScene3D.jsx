@@ -230,7 +230,7 @@ export default function QuickMatchReadyRoomScene3D() {
       });
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 1.55;
+      renderer.toneMappingExposure = 1.85;
       renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio || 1, coarsePointer ? 1 : 1.35));
       renderer.shadowMap.enabled = !coarsePointer;
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -242,25 +242,25 @@ export default function QuickMatchReadyRoomScene3D() {
       camera.position.set(...QUICK_MATCH_READY_ROOM_CAMERA.position);
       camera.lookAt(...QUICK_MATCH_READY_ROOM_CAMERA.target);
 
-      const hemi = new THREE.HemisphereLight(0x7f9abe, 0x24140b, coarsePointer ? .86 : 1.08);
+      const hemi = new THREE.HemisphereLight(0x8ca8ca, 0x2d1a10, coarsePointer ? 1.0 : 1.34);
       scene.add(hemi);
 
-      const warmLeft = new THREE.PointLight(0xffa654, coarsePointer ? 1.55 : 2.15, 18, 2);
+      const warmLeft = new THREE.PointLight(0xffa654, coarsePointer ? 1.85 : 2.85, 19, 2);
       warmLeft.position.set(-5.8, 4.5, -1.3);
       warmLeft.castShadow = false;
       scene.add(warmLeft);
 
-      const warmRight = new THREE.PointLight(0xffc06b, coarsePointer ? 1.05 : 1.55, 17, 2);
+      const warmRight = new THREE.PointLight(0xffc06b, coarsePointer ? 1.3 : 2.05, 18, 2);
       warmRight.position.set(5.9, 3.8, -1.6);
       warmRight.castShadow = false;
       scene.add(warmRight);
 
-      const moonFill = new THREE.DirectionalLight(0x8aafe0, .95);
+      const moonFill = new THREE.DirectionalLight(0x91b7ea, 1.18);
       moonFill.position.set(1.5, 6.5, -4.8);
       moonFill.target.position.set(0, 1.1, -1.4);
       scene.add(moonFill, moonFill.target);
 
-      const cameraFill = new THREE.PointLight(0xffd7aa, coarsePointer ? .42 : .72, 24, 2);
+      const cameraFill = new THREE.PointLight(0xffd7aa, coarsePointer ? .58 : 1.02, 25, 2);
       cameraFill.position.set(0, 4.8, 8.5);
       cameraFill.castShadow = false;
       scene.add(cameraFill);
