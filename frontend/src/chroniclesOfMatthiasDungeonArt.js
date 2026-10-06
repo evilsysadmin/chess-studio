@@ -453,7 +453,7 @@ export function buildChroniclesDungeonDressing({ coarsePointer = false } = {}) {
   const nicheVoid = material(0x0b0d0e, { roughness: 1 });
   const urnStone = material(0x8d8373, { roughness: 0.78, surface: { pattern: 'worn', seed: 97, repeat: [1.1, 1.1] }, bumpScale: 0.03 });
 
-  const readabilityFill = new THREE.HemisphereLight(0x91a2b2, CEILING_GROUND_BOUNCE, coarsePointer ? 0.78 : 0.52);
+  const readabilityFill = new THREE.HemisphereLight(0x8293a1, CEILING_GROUND_BOUNCE, coarsePointer ? 0.48 : 0.3);
   readabilityFill.name = 'chronicles-readability-fill';
   root.add(readabilityFill);
 
@@ -593,7 +593,7 @@ export function buildChroniclesDungeonDressing({ coarsePointer = false } = {}) {
     );
   }
 
-  const sigilLight = new THREE.PointLight(0xb84c18, coarsePointer ? 0.8 : 1.05, 8, 2);
+  const sigilLight = new THREE.PointLight(0xb84c18, coarsePointer ? 0.62 : 0.78, 8, 2);
   sigilLight.position.set(sigilX, 0.68, sigilZ);
   sigilLight.name = 'chronicles-sigil-light';
   root.add(sigilLight);
@@ -609,20 +609,20 @@ export function buildChroniclesDungeonDressing({ coarsePointer = false } = {}) {
   add(gateRelief, new THREE.BoxGeometry(2.25, 0.16, 0.15), wallAccent, [0, 2.48, -0.04], [0, 0, 0], 'chronicles-gate-lintel');
   root.add(gateRelief);
 
-  const gateLight = new THREE.PointLight(0xd46b28, coarsePointer ? 0.92 : 1.24, 9, 2);
+  const gateLight = new THREE.PointLight(0xd46b28, coarsePointer ? 0.68 : 0.86, 9, 2);
   gateLight.position.set(gateX, 1.55, gateZ - 0.88);
   gateLight.name = 'chronicles-gate-light';
   root.add(gateLight);
 
   const [coldX, coldZ] = cellWorld(3, 5);
-  const coldFill = new THREE.PointLight(0x557a92, coarsePointer ? 0.62 : 0.82, 12, 2);
+  const coldFill = new THREE.PointLight(0x557a92, coarsePointer ? 0.42 : 0.54, 12, 2);
   coldFill.position.set(coldX, 1.2, coldZ);
   coldFill.name = 'chronicles-crypt-cold-fill';
   root.add(coldFill);
 
   const gateKey = addHeroSpot(root, {
     color: 0xff8a3c,
-    intensity: coarsePointer ? 2.2 : 3.1,
+    intensity: coarsePointer ? 1.62 : 2.18,
     distance: 18,
     angle: Math.PI * 0.24,
     position: [gateX, 2.75, gateZ - 0.35],
@@ -632,7 +632,7 @@ export function buildChroniclesDungeonDressing({ coarsePointer = false } = {}) {
   });
   const cryptRim = addHeroSpot(root, {
     color: 0x6d96b6,
-    intensity: coarsePointer ? 1.25 : 1.7,
+    intensity: coarsePointer ? 0.9 : 1.18,
     distance: 14,
     angle: Math.PI * 0.31,
     position: [coldX, 2.95, coldZ + 0.8],
