@@ -169,11 +169,26 @@ function mapContentEntries(map) {
 function assertContentLocation(map, group, entry) {
   const hasX = Number.isFinite(entry.x);
   const hasY = Number.isFinite(entry.y);
+  const wallSides = {
+    north: [0, -1],
+    east: [1, 0],
+    south: [0, 1],
+    west: [-1, 0],
+  };
   if (hasX !== hasY) {
     throw new Error(`Chronicles map ${map.id} ${group} ${entry.id} requires both x and y`);
   }
   if (hasX && hasY) {
     assertWalkablePoint(map, entry, `${group} ${entry.id}`);
+    if (entry.wallSide !== undefined) {
+      const offset = wallSides[entry.wallSide];
+      if (!offset) {
+        throw new Error(`Chronicles map ${map.id} ${group} ${entry.id} uses invalid wallSide ${entry.wallSide}`);
+      }
+      if (map.grid[entry.y + offset[1]]?.[entry.x + offset[0]] !== '#') {
+        throw new Error(`Chronicles map ${map.id} ${group} ${entry.id} wallSide ${entry.wallSide} must point to a wall`);
+      }
+    }
     return;
   }
   if (typeof entry.tile !== 'string' || entry.tile.length !== 1) {
