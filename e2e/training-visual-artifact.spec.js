@@ -376,7 +376,7 @@ scopedTest('puzzles', 'Entrenar · Puzzles', async ({ page }) => {
     const geometry = await puzzles.evaluate((root) => {
       const room = root.getBoundingClientRect();
       const board = root.querySelector('.puzzle-board-column')?.getBoundingClientRect();
-      const board3d = root.querySelector('.puzzle-board-column > .board3d-main-shell')?.getBoundingClientRect();
+      const board3d = root.querySelector('.puzzle-board-column .board3d-main-shell')?.getBoundingClientRect();
       const coach = root.querySelector('.puzzle-coach-panel');
       const actions = root.querySelector('.puzzle-board-column > .game-controls');
       return {
