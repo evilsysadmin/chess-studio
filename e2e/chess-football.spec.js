@@ -34,10 +34,21 @@ async function openExperiments(page) {
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
 }
 
-test('Chess Football opens through the experiments hub and returns cleanly', async ({ page }) => {
+test('Chess Football opens fullscreen and returns only through the runtime exit', async ({ page }) => {
   await openExperiments(page);
 
+  await page.evaluate(() => {
+    const root = document.documentElement;
+    Object.defineProperty(document, 'fullscreenElement', {
+      configurable: true,
+      get: () => window.__footballFullscreen ? root : null,
+    });
+    root.requestFullscreen = async () => { window.__footballFullscreen = true; };
+    document.exitFullscreen = async () => { window.__footballFullscreen = false; };
+  });
+
   await page.locator('.lab-workshop-portal--football').click();
+  await expect.poll(() => page.evaluate(() => Boolean(window.__footballFullscreen))).toBe(true);
 
   const host = page.locator('.chess-football-godot-host');
   await expect(host).toBeVisible();
@@ -45,8 +56,12 @@ test('Chess Football opens through the experiments hub and returns cleanly', asy
   await expect(frame).toBeVisible();
   await expect(frame).toHaveAttribute('src', INDEX_URL);
   await expect(host).toHaveAttribute('data-runtime-ready', 'true');
+  await expect(page.getByRole('button', { name: 'Volver a Experimentos' })).toHaveCount(0);
 
-  await page.getByRole('button', { name: 'Volver a Experimentos' }).click();
+  await frame.contentFrame().locator('body').evaluate(() => {
+    window.parent.postMessage({ source: 'chess-football-godot', type: 'exit' }, '*');
+  });
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
   await expect(host).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => Boolean(window.__footballFullscreen))).toBe(false);
 });
