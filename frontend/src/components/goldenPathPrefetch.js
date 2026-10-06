@@ -50,12 +50,11 @@ export async function preloadWarRoomForPlayIntent(options = {}) {
       }),
     ])
       .then(([rendererResult]) => rendererResult.status === 'fulfilled')
-      .catch(() => false)
-      .then((ok) => {
-        if (!ok) warRoomIntentPromise = null;
-        return ok;
-      });
+      .catch(() => false);
   }
 
-  return warRoomIntentPromise;
+  const current = warRoomIntentPromise;
+  const ok = await current;
+  if (warRoomIntentPromise === current) warRoomIntentPromise = null;
+  return ok;
 }
