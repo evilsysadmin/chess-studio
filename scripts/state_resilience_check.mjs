@@ -11,7 +11,7 @@ const checks = [
   [/combatFlowTransition/.test(read('frontend/src/components/useCombatController.js')), 'Combat battle must use combat flow state machine'],
   [!/setPhase\(['\"](?:setup|battle|over)['\"]\)/.test(read('frontend/src/components/useCombatController.js')), 'Combat controller must not bypass its state machine with literal setPhase'],
   [/campaignPhaseTransition/.test(read('frontend/src/combatCampaign.js')), 'campaign domain must use campaign state machine'],
-  [/attachSeriesGame/.test(read('frontend/src/App.jsx')) && /assertSeriesFlowInvariant/.test(read('frontend/src/series.js')), 'BO3/BO5 series must enforce explicit flow ownership'],
+  [/attachSeriesGame/.test(read('frontend/src/useGameStartFlow.js')) && /assertSeriesFlowInvariant/.test(read('frontend/src/series.js')), 'BO3/BO5 series must enforce explicit flow ownership'],
   [/puzzleTransition/.test(read('frontend/src/components/PuzzleScreen.jsx')), 'PuzzleScreen must use puzzle state machine'],
   [/create_game_once/.test(read('backend-python/game_api.py')) && /DuplicateKeyError/.test(read('backend-python/game_store.py')), 'game creation must be atomic/idempotent under concurrent retries'],
   [/import uuid/.test(read('backend-python/game_api.py')) && /uuid\.uuid4\(/.test(read('backend-python/game_api.py')), 'non-idempotent game creation must keep its uuid dependency wired'],
