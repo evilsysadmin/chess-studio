@@ -124,7 +124,13 @@ export default function WarRoomHansFireCall({
       const visible = document.visibilityState !== 'hidden' && portalHost.getBoundingClientRect().width > 0;
 
       if (visible && canvas) {
+        const sceneReady = canvas.dataset.warRoomHansSceneReady === 'true';
         if (currentPhase === 'loading') {
+          if (!sceneReady) {
+            readyPaints = 0;
+            frameId = window.requestAnimationFrame(tick);
+            return;
+          }
           readyPaints += 1;
           if (readyPaints >= 2) {
             currentPhase = 'matthias';
@@ -133,11 +139,11 @@ export default function WarRoomHansFireCall({
           }
         }
 
-        // Matthias' opening shout only needs the mounted board and his projected
-        // king anchor. Hans' choreography still waits for the complete Three.js
-        // scene, so a slow deferred finalizer cannot make the first bubble vanish
-        // behind a readiness timeout or release Hans before his actor exists.
-        if (canvas.dataset.warRoomHansSceneReady !== 'true') {
+        // The fire call is scene-dependent: the hearth must already be in its
+        // cold narrative state and Hans' actor/stage must exist before Matthias
+        // can complain about it. Slow GLB/deferred installs therefore delay the
+        // opening beat instead of letting dialogue outrun the room.
+        if (!sceneReady) {
           frameId = window.requestAnimationFrame(tick);
           return;
         }
