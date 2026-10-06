@@ -103,6 +103,9 @@
   z-index: 44;
   top: max(.7rem, env(safe-area-inset-top));
   left: max(.7rem, env(safe-area-inset-left));
+  width: auto !important;
+  max-width: min(22rem, calc(100vw - 1.4rem));
+  justify-content: flex-start;
   margin: 0;
   padding: .38rem .58rem;
   border: 1px solid rgba(220, 187, 123, .2);
@@ -195,25 +198,75 @@
 
 .combat-battle-screen .combat-warroom-controls {
   position: absolute;
-  z-index: 45;
+  z-index: 48;
   left: 50%;
   bottom: max(.7rem, env(safe-area-inset-bottom));
   transform: translateX(-50%);
+  width: auto !important;
+  max-width: none;
   margin: 0;
   display: flex;
-  align-items: stretch;
+  flex-direction: row !important;
+  align-items: center;
   gap: .42rem;
-  max-width: min(34rem, calc(100vw - 23rem));
 }
 
-.combat-battle-screen .combat-warroom-controls button {
+.combat-battle-screen .combat-warroom-controls button,
+.combat-battle-screen .combat-warroom-action-menu > summary {
   min-height: 44px;
   height: 44px;
   margin: 0;
-  padding: 0 .82rem;
   white-space: nowrap;
-  background: rgba(7, 11, 16, .82);
+  background: rgba(7, 11, 16, .86);
   backdrop-filter: blur(12px);
+}
+
+.combat-battle-screen .combat-warroom-retry {
+  padding: 0 .72rem;
+}
+
+.combat-battle-screen .combat-warroom-action-menu {
+  position: relative;
+}
+
+.combat-battle-screen .combat-warroom-action-menu > summary {
+  width: 44px;
+  min-width: 44px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(220, 187, 123, .26);
+  border-radius: 999px;
+  color: rgba(239, 226, 196, .9);
+  cursor: pointer;
+  list-style: none;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.combat-battle-screen .combat-warroom-action-menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.combat-battle-screen .combat-warroom-action-popover {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + .45rem);
+  transform: translateX(-50%);
+  width: min(20rem, calc(100vw - 1rem));
+  display: grid;
+  gap: .4rem;
+  padding: .5rem;
+  border: 1px solid rgba(220, 187, 123, .24);
+  border-radius: 12px;
+  background: rgba(7, 11, 16, .94);
+  box-shadow: 0 18px 46px rgba(0, 0, 0, .4);
+  backdrop-filter: blur(15px);
+}
+
+.combat-battle-screen .combat-warroom-action-popover button {
+  width: 100%;
+  padding: 0 .72rem;
 }
 
 .combat-battle-screen .combat-warroom-debrief {
@@ -229,6 +282,14 @@
 }
 
 @media (max-width: 920px) {
+  .combat-battle-screen .game-layout-immersive .combat-warroom-row {
+    padding: 0 !important;
+  }
+
+  .combat-battle-screen .game-layout-immersive .combat-warroom-stage .board3d-main-shell {
+    border-radius: 0 !important;
+  }
+
   .combat-battle-screen .combat-warroom-layout,
   .combat-battle-screen .combat-warroom-layout .board-column {
     min-height: 100dvh;
@@ -276,15 +337,19 @@
     bottom: max(.45rem, env(safe-area-inset-bottom));
     transform: none;
     max-width: calc(50vw - .65rem);
-    flex-direction: column;
+    flex-direction: row !important;
   }
 
   .combat-battle-screen .combat-warroom-controls button {
-    width: 100%;
     min-width: 0;
     padding-inline: .55rem;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  .combat-battle-screen .combat-warroom-action-popover {
+    left: 0;
+    transform: none;
   }
 
   .combat-battle-screen .combat-warroom-log-body {
@@ -335,4 +400,16 @@
   .combat-battle-screen .roguelike-boss-hud {
     backdrop-filter: none;
   }
+}
+
+/* Combat owns a few sparse tactical overlays that remain visible while the
+ * shared immersive War Room hides ordinary game-screen chrome. */
+.combat-battle-screen .game-layout-immersive .board-column > .combat-warroom-status {
+  display: block !important;
+}
+
+.combat-battle-screen .game-layout-immersive .board-column > .roguelike-boss-hud,
+.combat-battle-screen .game-layout-immersive .board-column > .combat-biome-label,
+.combat-battle-screen .game-layout-immersive .board-column > .combat-warroom-controls {
+  display: flex !important;
 }
