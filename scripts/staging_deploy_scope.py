@@ -30,6 +30,7 @@ NON_RUNTIME_EXACT = frozenset({
     ".github/workflows/billing-cost-export.yml",
     ".github/workflows/observability-live.yml",
     ".github/workflows/security-llm-lab.yml",
+    ".github/workflows/app-visual-artifact.yml",
     "scripts/quality_scope.py",
     "scripts/browser_quality_scope.py",
     "scripts/blender_required_scope.py",
@@ -43,11 +44,16 @@ NON_RUNTIME_EXACT = frozenset({
     "scripts/quality_provenance.py",
     "scripts/pr_merge_diff.py",
     "scripts/run_core_e2e_lane.py",
+    "scripts/war_room_visual_freeze_check.mjs",
 })
 NON_RUNTIME_ACTION_PREFIXES = (
     ".github/actions/cache-node-modules/",
     ".github/actions/cache-python-venv/",
     ".github/actions/setup-browser-e2e/",
+    ".github/actions/app-visual-pipeline/",
+)
+NON_RUNTIME_SCRIPT_PREFIXES = (
+    "scripts/app_visual_",
 )
 FRONTEND_TEST_RE = re.compile(r"^frontend/src/.*\.(?:test|spec)\.(?:js|jsx|ts|tsx)$")
 
@@ -65,6 +71,8 @@ def non_runtime_path(path: str) -> bool:
     if path in NON_RUNTIME_EXACT or path.startswith(NON_RUNTIME_PREFIXES):
         return True
     if path.startswith(NON_RUNTIME_ACTION_PREFIXES):
+        return True
+    if path.startswith(NON_RUNTIME_SCRIPT_PREFIXES):
         return True
     if FRONTEND_TEST_RE.match(path):
         return True
@@ -133,9 +141,19 @@ def self_test() -> None:
     assert deploy_required_for_paths(["docs/operations/pvp.md", "README.md"]) == (False, "non-runtime-only")
     assert deploy_required_for_paths(["e2e/smoke.spec.js", "backend-go/internal/pulse/pulse_test.go"]) == (False, "non-runtime-only")
     assert deploy_required_for_paths(["scripts/quality_scope.py", ".github/workflows/cicd.yml"]) == (False, "non-runtime-only")
+    assert deploy_required_for_paths([
+        "e2e/war-room-visual-artifact.spec.js",
+        "scripts/app_visual_capture.sh",
+        "scripts/app_visual_producer_scope.py",
+        ".github/actions/app-visual-pipeline/action.yml",
+        ".github/workflows/app-visual-artifact.yml",
+        "scripts/war_room_visual_freeze_check.mjs",
+    ]) == (False, "non-runtime-only")
     assert deploy_required_for_paths(["frontend/src/components/GameScreen.jsx"])[0]
     assert deploy_required_for_paths(["backend-go/internal/pulse/pulse.go"])[0]
     assert deploy_required_for_paths([".github/workflows/staging-deploy.yml"])[0]
+    assert deploy_required_for_paths([".github/actions/build-staging-frontend/action.yml"])[0]
+    assert deploy_required_for_paths(["scripts/staging_deploy_scope.py"])[0]
     assert deploy_required_for_paths([])[0]
     print("staging-deploy-scope self-test: OK")
 
