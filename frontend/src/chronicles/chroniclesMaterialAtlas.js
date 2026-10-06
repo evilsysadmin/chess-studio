@@ -164,11 +164,14 @@ export function chroniclesMaterialPlanForScene(scenePlan = null) {
   const environmentId = chroniclesMaterialEnvironmentForMapId(scenePlan?.mapId);
   const environment = chroniclesMaterialEnvironment(environmentId);
   const seed = chroniclesMaterialSceneSeed(scenePlan);
+  const authoredWalls = Object.values(scenePlan?.materials?.wallLegend || {})
+    .filter((profileId, index, values) => values.indexOf(profileId) === index)
+    .filter((profileId) => CHRONICLES_MATERIAL_ATLAS[profileId]?.roles?.includes('wall'));
   return Object.freeze({
     version: CHRONICLES_MATERIAL_ATLAS_VERSION,
     environmentId,
     seed,
-    wallProfileIds: pickProfiles(environment.wall, 3, seed, 17),
+    wallProfileIds: Object.freeze(authoredWalls.length ? authoredWalls : [...pickProfiles(environment.wall, 3, seed, 17)]),
     floorProfileIds: pickProfiles(environment.floor, 2, seed, 31),
   });
 }

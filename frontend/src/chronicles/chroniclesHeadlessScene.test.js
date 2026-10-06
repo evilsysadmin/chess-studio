@@ -80,6 +80,7 @@ describe('Chronicles headless scene harness', () => {
     const authored = chroniclesHeadlessSceneSignature(createChroniclesState('crypt-eight-squares'));
     const remote = clone(chroniclesMapById('crypt-eight-squares'));
     remote.grid[2] = '#..##.#';
+    remote.materials.wallGrid[2] = '2..45.4';
     remote.generation = {
       kind: 'seeded-layout',
       mapCode: 'CM1|theme=crypt|size=7x7|verbs=guardian|enemies=2|treasures=1|secrets=0|difficulty=2|seed=418',

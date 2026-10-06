@@ -125,6 +125,9 @@ El atlas visual aprobado de Chronicles define cinco familias reutilizables y sus
 - Los mapas procedurales deben mantener la selección reproducible para la misma topología/run. Cambiar de seed/topología puede escoger otras variantes compatibles dentro de la misma familia, pero F5/replay no debe barajar el acabado.
 - La familia se deriva del arquetipo del mapa (por ejemplo cripta→dungeon, galería/basílica/archivo→interior, torre→exterior, cisterna/cueva→cueva húmeda). Los mapas futuros de cueva, mina o montaña deben caer explícitamente en la familia natural.
 - El runtime puede sintetizar PBR proceduralmente mientras respete estos IDs, familias y lectura visual; el mock es contrato de lenguaje material, no obligación de empaquetar una textura raster concreta.
+- El **mapa es la fuente de verdad del acabado estructural authored** cuando declara `materials`: `wallLegend` traduce tokens de una sola celda a IDs del atlas y `wallGrid` debe tener exactamente las mismas dimensiones que `grid`. Cada `#` debe declarar un token válido de muro y cada celda transitable debe usar `.`; el renderer no vuelve a sortear otro perfil para esos muros.
+- Los mapas que todavía no declaran `materials` conservan el fallback semántico determinista por bioma para compatibilidad, pero las nuevas iteraciones visuales deben preferir authoring en el JSON del nivel.
+- `materials.lightingProfile` también pertenece al mapa cuando la atmósfera del nivel necesita una exposición distinta. El perfil ajusta exposición/fills sin inventar fuentes de luz incoherentes ni eliminar las prácticas visibles del escenario.
 - Props y dressing conservan su ownership: el atlas estructural no debe rociar perfiles sólo-de-prop sobre suelos/muros ni alterar walkability, colisiones o lectura táctica.
 
 ## Matthias

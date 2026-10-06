@@ -6,6 +6,7 @@ import {
   chroniclesMapInitialEnemyState,
   chroniclesMapRenderPlan,
   chroniclesMapTileAt,
+  chroniclesMapWallMaterialIdAt,
   chroniclesValidateMapDefinition,
 } from './chroniclesMapCatalog.js';
 
@@ -26,6 +27,11 @@ describe('Chronicles declarative map catalog', () => {
     ]);
     expect(chroniclesMapTileAt(map, 3, 1)).toBe('X');
     expect(chroniclesMapTileAt(map, -1, 0)).toBe('#');
+    expect(map.materials?.lightingProfile).toBe('crypt-dark');
+    expect(Object.values(map.materials?.wallLegend || {})).toEqual(['D01', 'D02', 'D03', 'D04', 'D05']);
+    expect(chroniclesMapWallMaterialIdAt(map, 0, 0)).toBe('D01');
+    expect(chroniclesMapWallMaterialIdAt(map, 4, 2)).toBe('D05');
+    expect(chroniclesMapWallMaterialIdAt(map, 3, 1)).toBeNull();
   });
 
   it('owns enemy AI, interactions, rewards, treasure, trap and exit rules', () => {
@@ -197,6 +203,22 @@ describe('Chronicles declarative map catalog', () => {
         action: { effects: [] },
       }],
     })).toThrow(/duplicate content id/i);
+
+    expect(() => chroniclesValidateMapDefinition({
+      ...base,
+      materials: {
+        wallLegend: { 1: 'D01' },
+        wallGrid: ['11111', '1...1', '1.1.1', '11111'],
+      },
+    })).toThrow(/non-wall 2,2 cannot declare wall material/i);
+
+    expect(() => chroniclesValidateMapDefinition({
+      ...base,
+      materials: {
+        wallLegend: { 1: 'V01' },
+        wallGrid: ['11111', '1...1', '1...1', '11111'],
+      },
+    })).toThrow(/invalid wall material V01/i);
   });
 
   it('rejects transitions to maps that are not part of the catalog contract', () => {

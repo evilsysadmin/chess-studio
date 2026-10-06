@@ -127,6 +127,18 @@ function createDungeonScene(scene, { coarsePointer = false, scenePlan = null } =
   const stoneMaterials = Array.from({ length: 3 }, () => (
     new THREE.MeshStandardMaterial({ color: 0x3d3a35, roughness: 0.96, metalness: 0.02 })
   ));
+  const authoredStoneMaterials = new Map();
+  const wallMaterialFor = (x, y) => {
+    const token = scenePlan?.materials?.wallGrid?.[y]?.[x];
+    const profileId = token ? scenePlan?.materials?.wallLegend?.[token] : null;
+    if (!profileId) return stoneMaterials[Math.abs(x * 31 + y * 17) % stoneMaterials.length];
+    if (!authoredStoneMaterials.has(profileId)) {
+      const material = new THREE.MeshStandardMaterial({ color: 0x3d3a35, roughness: 0.96, metalness: 0.02 });
+      material.userData.chroniclesMaterialProfileId = profileId;
+      authoredStoneMaterials.set(profileId, material);
+    }
+    return authoredStoneMaterials.get(profileId);
+  };
   const darkStone = new THREE.MeshStandardMaterial({ color: 0x1b1a19, roughness: 1, metalness: 0 });
   const mortar = new THREE.MeshStandardMaterial({ color: 0x272522, roughness: 1, metalness: 0 });
   const floor = new THREE.MeshStandardMaterial({ color: 0x27241f, roughness: 0.92, metalness: 0.03 });
@@ -146,7 +158,7 @@ function createDungeonScene(scene, { coarsePointer = false, scenePlan = null } =
   grid.forEach((row, y) => {
     [...row].forEach((tile, x) => {
       if (tile !== '#') return;
-      const wallMaterial = stoneMaterials[Math.abs(x * 31 + y * 17) % stoneMaterials.length];
+      const wallMaterial = wallMaterialFor(x, y);
       const wall = new THREE.Mesh(wallGeometry, wallMaterial);
       const p = worldForCell(x, y, sceneCenter);
       wall.position.set(p.x, 1.72, p.z);
@@ -358,15 +370,16 @@ function disposeScene(scene) {
   disposeObject(scene);
 }
 
-function configureRenderer(renderer, { coarsePointer, alpha = false }) {
+function configureRenderer(renderer, { coarsePointer, alpha = false, lightingProfile = 'default' }) {
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   const exposureFloor = CHRONICLES_MINIMUM_VISIBILITY.firstPerson;
+  const profileExposure = lightingProfile === 'crypt-dark' ? 0.88 : 1;
   renderer.toneMappingExposure = alpha
     ? 1.02
-    : coarsePointer
+    : (coarsePointer
       ? Math.max(1.14, exposureFloor.exposureCoarse)
-      : Math.max(1.08, exposureFloor.exposureDesktop);
+      : Math.max(1.08, exposureFloor.exposureDesktop)) * profileExposure;
   renderer.setClearColor(0x080706, alpha ? 0 : 1);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, coarsePointer ? 1.2 : 1.65));
   renderer.shadowMap.enabled = !coarsePointer;
@@ -397,8 +410,12 @@ export function createChroniclesOfMatthiasGame(host, { onReady, initialState = n
 
   const coarse = Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
   const reducedMotion = Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches);
+  const scenePlan = chroniclesFirstPersonScenePlan(initialState);
   const renderer = createExperimentalThreeRenderer({ antialias: !coarse, alpha: false, powerPreference: 'high-performance' });
-  configureRenderer(renderer, { coarsePointer: coarse });
+  configureRenderer(renderer, {
+    coarsePointer: coarse,
+    lightingProfile: scenePlan?.materials?.lightingProfile,
+  });
   host.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
@@ -409,7 +426,6 @@ export function createChroniclesOfMatthiasGame(host, { onReady, initialState = n
   scene.add(camera);
   const combatFx = createCombatFx(camera);
 
-  const scenePlan = chroniclesFirstPersonScenePlan(initialState);
   const dungeon = createDungeonScene(scene, { coarsePointer: coarse, scenePlan });
   const dressing = scenePlan?.useAuthoredCryptDressing
     ? buildChroniclesDungeonDressing({ coarsePointer: coarse })

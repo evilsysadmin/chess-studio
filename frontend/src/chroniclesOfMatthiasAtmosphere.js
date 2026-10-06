@@ -95,7 +95,9 @@ function addMistPatch(root, texture, { name, x, z, width, depth, color, opacity,
   return { material, baseOpacity: opacity };
 }
 
-function addReadabilityLighting(root, { coarsePointer }) {
+function addReadabilityLighting(root, { coarsePointer, scenePlan }) {
+  const lightingProfile = scenePlan?.materials?.lightingProfile || 'default';
+  const profileScale = lightingProfile === 'crypt-dark' ? 0.72 : 1;
   // Chronicles should be gloomy, not crushed. The ambient level is deliberately
   // high enough to preserve stone/material detail after ACES while practical
   // torches still carry the mood and direction of the scene.
@@ -111,7 +113,7 @@ function addReadabilityLighting(root, { coarsePointer }) {
   // deliberately left for the cooler crypt lighting below.
   const entryBounce = new THREE.PointLight(
     0xd99554,
-    coarsePointer ? 3.25 : 2.72,
+    (coarsePointer ? 3.25 : 2.72) * profileScale,
     12.8,
     1.95,
   );
@@ -121,7 +123,7 @@ function addReadabilityLighting(root, { coarsePointer }) {
 
   const cryptBounce = new THREE.PointLight(
     0x7d96b0,
-    coarsePointer ? 2.72 : 2.38,
+    (coarsePointer ? 2.72 : 2.38) * profileScale,
     16.5,
     1.9,
   );
@@ -133,7 +135,7 @@ function addReadabilityLighting(root, { coarsePointer }) {
   // exposure. Damp slabs and bump relief catch it while the ceiling stays dark.
   const floorBounce = new THREE.PointLight(
     0xcd8147,
-    coarsePointer ? 2.62 : 2.18,
+    (coarsePointer ? 2.62 : 2.18) * profileScale,
     coarsePointer ? 9.0 : 9.8,
     2.05,
   );
@@ -145,7 +147,7 @@ function addReadabilityLighting(root, { coarsePointer }) {
   // separates damp stone from the party torch and gives the corridor real depth.
   const corridorFill = new THREE.PointLight(
     0x91aabd,
-    coarsePointer ? 2.34 : 2.16,
+    (coarsePointer ? 2.34 : 2.16) * profileScale,
     18.5,
     1.55,
   );
@@ -158,7 +160,7 @@ function addReadabilityLighting(root, { coarsePointer }) {
   // silhouette separation without adding another visible lamp to the fiction.
   const farFill = new THREE.PointLight(
     0x6f8fa8,
-    coarsePointer ? 1.62 : 1.46,
+    (coarsePointer ? 1.62 : 1.46) * profileScale,
     12.8,
     1.82,
   );
@@ -171,7 +173,7 @@ function addReadabilityLighting(root, { coarsePointer }) {
   // leaving the authored cold fills enough room to model the middle distance.
   const partyTorchKey = new THREE.PointLight(
     0xffad67,
-    coarsePointer ? 6.45 : 6.8,
+    (coarsePointer ? 6.45 : 6.8) * (lightingProfile === 'crypt-dark' ? 0.78 : 1),
     coarsePointer ? 14.8 : 15.8,
     1.58,
   );
@@ -180,7 +182,7 @@ function addReadabilityLighting(root, { coarsePointer }) {
 
   const partyTorchBounce = new THREE.PointLight(
     0xd47b3f,
-    coarsePointer ? 4.1 : 3.8,
+    (coarsePointer ? 4.1 : 3.8) * (lightingProfile === 'crypt-dark' ? 0.76 : 1),
     coarsePointer ? 7.2 : 7.8,
     2.0,
   );
@@ -215,7 +217,7 @@ export function buildChroniclesDungeonAtmosphere({
   root.name = 'chronicles-dungeon-atmosphere';
   root.add(buildChroniclesDungeonCeiling({ coarsePointer, scenePlan }));
   root.add(buildChroniclesSurfacePatina({ coarsePointer, scenePlan }));
-  const readabilityLighting = addReadabilityLighting(root, { coarsePointer });
+  const readabilityLighting = addReadabilityLighting(root, { coarsePointer, scenePlan });
 
   const dustCount = coarsePointer ? DUST_COARSE : DUST_DESKTOP;
   const dustData = createDust(dustCount, scenePlan);
@@ -304,6 +306,7 @@ export function buildChroniclesDungeonAtmosphere({
     });
   }
 
+  root.userData.chroniclesLightingProfile = scenePlan?.materials?.lightingProfile || 'default';
   root.userData.chroniclesAtmosphereStats = {
     dustCount,
     mistCount: mistMaterials.length,

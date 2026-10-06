@@ -8,6 +8,7 @@ import chainBasilica from './maps/chain-basilica.json';
 import hollowBellTower from './maps/hollow-bell-tower.json';
 import blackGlassChapel from './maps/black-glass-chapel.json';
 import echoCistern from './maps/echo-cistern.json';
+import { CHRONICLES_MATERIAL_ATLAS } from './chroniclesMaterialAtlas.js';
 import {
   chroniclesEnemyBuildModifiers,
   resolveChroniclesEnemyBuildDefinition,
@@ -44,6 +45,41 @@ function normalizeContentEntry(entry) {
     when: freezeRequirements(entry?.when),
     requirements: freezeRequirements(entry?.requirements),
     action: freezeAction(entry?.action),
+  });
+}
+
+function normalizeMapMaterials(materials, grid, mapId) {
+  if (!materials) return null;
+  const width = grid[0]?.length || 0;
+  const wallLegend = Object.fromEntries(Object.entries(materials.wallLegend || {}).map(([token, profileId]) => {
+    if (token.length !== 1 || token === '.') {
+      throw new Error(`Chronicles map ${mapId} material legend keys must be single non-dot characters`);
+    }
+    const profile = CHRONICLES_MATERIAL_ATLAS[profileId];
+    if (!profile || !profile.roles.includes('wall')) {
+      throw new Error(`Chronicles map ${mapId} references invalid wall material ${profileId || '<missing>'}`);
+    }
+    return [token, profileId];
+  }));
+  const wallGrid = materials.wallGrid;
+  if (!Array.isArray(wallGrid) || wallGrid.length !== grid.length || wallGrid.some((row) => typeof row !== 'string' || row.length !== width)) {
+    throw new Error(`Chronicles map ${mapId} materials.wallGrid must match the map grid dimensions`);
+  }
+  wallGrid.forEach((row, y) => {
+    [...row].forEach((token, x) => {
+      const isWall = grid[y][x] === '#';
+      if (isWall && !wallLegend[token]) {
+        throw new Error(`Chronicles map ${mapId} wall ${x},${y} requires a material token from wallLegend`);
+      }
+      if (!isWall && token !== '.') {
+        throw new Error(`Chronicles map ${mapId} non-wall ${x},${y} cannot declare wall material ${token}`);
+      }
+    });
+  });
+  return Object.freeze({
+    lightingProfile: String(materials.lightingProfile || 'default'),
+    wallLegend: Object.freeze({ ...wallLegend }),
+    wallGrid: Object.freeze([...wallGrid]),
   });
 }
 
@@ -248,9 +284,11 @@ function normalizeMap(source) {
     throw new Error(`Chronicles map ${source.id} must use a rectangular string grid`);
   }
 
+  const grid = Object.freeze([...source.grid]);
   const map = {
     ...source,
-    grid: Object.freeze([...source.grid]),
+    grid,
+    materials: normalizeMapMaterials(source.materials, grid, source.id),
     partyStart: Object.freeze({
       x: Number(source.partyStart?.x || 0),
       y: Number(source.partyStart?.y || 0),
@@ -330,6 +368,12 @@ export function chroniclesMapForState(state) {
 export function chroniclesMapTileAt(mapOrState, x, y) {
   const map = mapOrState?.grid ? mapOrState : chroniclesMapForState(mapOrState);
   return map.grid[y]?.[x] || '#';
+}
+
+export function chroniclesMapWallMaterialIdAt(mapOrState, x, y) {
+  const map = mapOrState?.grid ? mapOrState : chroniclesMapForState(mapOrState);
+  const token = map.materials?.wallGrid?.[y]?.[x];
+  return token ? map.materials?.wallLegend?.[token] || null : null;
 }
 
 export function chroniclesMapEnemyById(mapOrState, enemyId) {
@@ -416,6 +460,7 @@ export function chroniclesMapRenderPlan(mapOrState = null) {
     mapId: map.id,
     title: map.title,
     grid: map.grid,
+    materials: map.materials,
     width: map.grid[0]?.length || 0,
     height: map.grid.length,
     enemies: Object.freeze(map.enemies.map((enemy) => Object.freeze({
