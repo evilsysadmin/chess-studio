@@ -10,7 +10,9 @@ CSS selectors and ambiguous symbols remain outside this no-dependency gate.
 from __future__ import annotations
 
 import ast
+import os
 import re
+from collections import Counter
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -35,6 +37,8 @@ DYNAMIC_IMPORT_RE = re.compile(r"\bimport\s*\(\s*['\"]([^'\"]+)['\"]\s*\)")
 REQUIRE_RE = re.compile(r"\brequire\s*\(\s*['\"]([^'\"]+)['\"]\s*\)")
 UVICORN_ENTRY_RE = re.compile(r"\buvicorn\s+([A-Za-z_][A-Za-z0-9_]*):[A-Za-z_][A-Za-z0-9_]*")
 FRONTEND_EXCLUDES = {"test-setup.js"}
+PRUNED_DIRS = {".git", ".venv", "node_modules", "__pycache__"}
+JS_IDENTIFIER_TOKEN_RE = re.compile(r"[A-Za-z_$][A-Za-z0-9_$]*")
 FRONTEND_DEAD_EXPORT_BASELINE = {
     "frontend/src/ambientIdentityContrasts.js::IDENTITY_CONTRAST_IDS",
     "frontend/src/ambientRadioMatthiasRecompositions.js::RADIO_MATTHIAS_MELODIC_REWRITE_IDS",
@@ -56,6 +60,24 @@ FRONTEND_DEAD_EXPORT_BASELINE = {
     "frontend/src/puzzleTacticalQuality.js::bestShallowTacticalScore",
     "frontend/src/puzzleTacticalQuality.js::tacticalScoreForFirstMove",
 }
+
+
+def iter_repo_files(*, suffixes: set[str] | None = None, include_makefile: bool = False):
+    """Yield repository files without descending into ignored dependency/VCS trees."""
+    for directory, dirnames, filenames in os.walk(ROOT):
+        dirnames[:] = [name for name in dirnames if name not in PRUNED_DIRS]
+        base = Path(directory)
+        for filename in filenames:
+            path = base / filename
+            if include_makefile and filename == "Makefile":
+                yield path.resolve()
+                continue
+            if suffixes is None or path.suffix.lower() in suffixes:
+                yield path.resolve()
+
+
+def _identifier_counts(text: str) -> Counter[str]:
+    return Counter(JS_IDENTIFIER_TOKEN_RE.findall(text))
 
 
 def strip_resource_query(spec: str) -> str:
@@ -124,13 +146,6 @@ def frontend_unreachable() -> tuple[set[Path], list[Path]]:
 
 
 
-def _js_identifier_occurrences(text: str, name: str) -> int:
-    pattern = re.compile(
-        rf"(?<![A-Za-z0-9_$]){re.escape(name)}(?![A-Za-z0-9_$])"
-    )
-    return len(pattern.findall(text))
-
-
 def _named_imports(clause: str) -> set[str]:
     names: set[str] = set()
     for raw in clause.split(","):
@@ -155,27 +170,20 @@ def frontend_dead_exports(reachable_js: set[Path]) -> list[tuple[Path, str]]:
     the whole module out rather than guessing property usage.
     """
     candidates: dict[Path, set[str]] = {}
-    module_text: dict[Path, str] = {}
+    module_identifier_counts: dict[Path, Counter[str]] = {}
     for path in reachable_js:
         text = path.read_text(encoding="utf-8")
         names = set(EXPORT_DECL_RE.findall(text))
         if names:
             candidates[path] = names
-            module_text[path] = text
+            module_identifier_counts[path] = _identifier_counts(text)
     if not candidates:
         return []
 
     named_consumers: dict[Path, set[str]] = {path: set() for path in candidates}
     opaque_targets: set[Path] = set()
     consumer_exts = {".js", ".jsx", ".mjs", ".cjs"}
-    consumers = [
-        p.resolve()
-        for p in ROOT.rglob("*")
-        if p.is_file()
-        and p.suffix in consumer_exts
-        and ".git" not in p.parts
-        and "node_modules" not in p.parts
-    ]
+    consumers = list(iter_repo_files(suffixes=consumer_exts))
 
     def resolve_consumer_target(source: Path, spec: str) -> Path | None:
         try:
@@ -205,21 +213,18 @@ def frontend_dead_exports(reachable_js: set[Path]) -> list[tuple[Path, str]]:
         ".py", ".md", ".txt", ".json", ".yml", ".yaml", ".toml", ".ini",
         ".cfg", ".sh", ".gd", ".tscn", ".tres", ".html", ".css",
     }
-    auxiliary_text: dict[Path, str] = {}
+    # Auxiliary repository files may reference exported JS contracts by name
+    # without importing them. Index identifiers once instead of rescanning every
+    # file for every candidate export (the old O(exports × repository-text) path).
+    auxiliary_identifiers: set[str] = set()
     self_path = Path(__file__).resolve()
-    for source in ROOT.rglob("*"):
-        if source.resolve() == self_path:
-            continue
-        if (
-            not source.is_file()
-            or source.suffix.lower() not in text_consumer_suffixes
-            or ".git" in source.parts
-            or "node_modules" in source.parts
-            or ".venv" in source.parts
-        ):
+    for source in iter_repo_files(suffixes=text_consumer_suffixes):
+        if source == self_path:
             continue
         try:
-            auxiliary_text[source.resolve()] = source.read_text(encoding="utf-8")
+            auxiliary_identifiers.update(
+                JS_IDENTIFIER_TOKEN_RE.findall(source.read_text(encoding="utf-8"))
+            )
         except (UnicodeDecodeError, OSError):
             continue
 
@@ -227,18 +232,18 @@ def frontend_dead_exports(reachable_js: set[Path]) -> list[tuple[Path, str]]:
     for path, names in candidates.items():
         if path in opaque_targets:
             continue
-        text = module_text[path]
+        identifier_counts = module_identifier_counts[path]
         for name in sorted(names):
             if name in named_consumers[path]:
                 continue
             # Static gates/build tools sometimes consume a source contract by
-            # identifier text rather than a JS import. Treat any auxiliary
-            # repository reference as a consumer rather than deleting through it.
-            if any(_js_identifier_occurrences(other, name) > 0 for other in auxiliary_text.values()):
+            # identifier text rather than a JS import. Comments/strings remain
+            # deliberately conservative consumers, exactly as before.
+            if name in auxiliary_identifiers:
                 continue
             # One occurrence is the declaration itself. Any second textual use
             # (including conservative comments/strings) suppresses the finding.
-            if _js_identifier_occurrences(text, name) == 1:
+            if identifier_counts[name] == 1:
                 dead.append((path, name))
     return sorted(dead, key=lambda item: (item[0].as_posix(), item[1]))
 
@@ -375,26 +380,16 @@ def script_python_helper_unreferenced() -> list[Path]:
     if not candidates:
         return []
 
-    all_python = sorted(
-        p.resolve()
-        for p in ROOT.rglob("*.py")
-        if p.is_file() and ".venv" not in p.parts and "node_modules" not in p.parts
-    )
+    all_python = sorted(iter_repo_files(suffixes={".py"}))
     imports_by_source = {path: _script_python_imports(path) for path in all_python}
 
     text_suffixes = {
         ".md", ".txt", ".json", ".yml", ".yaml", ".toml", ".ini", ".cfg",
         ".sh", ".mjs", ".js", ".jsx", ".gd", ".tf", ".hcl", ".py",
     }
-    wiring_files = [
-        p.resolve()
-        for p in ROOT.rglob("*")
-        if p.is_file()
-        and ".git" not in p.parts
-        and "node_modules" not in p.parts
-        and ".venv" not in p.parts
-        and (p.name == "Makefile" or p.suffix.lower() in text_suffixes)
-    ]
+    wiring_files = list(
+        iter_repo_files(suffixes=text_suffixes, include_makefile=True)
+    )
     wiring_text: dict[Path, str] = {}
     for path in wiring_files:
         try:
