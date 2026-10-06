@@ -20,7 +20,6 @@ import RatingDetailModal from './components/RatingDetailModal.jsx';
 import CombatArmySummaryModal from './components/CombatArmySummaryModal.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { api, STORAGE_KEY } from './api.js';
-import { loadTournament, saveTournament, resetTournament, applyResult, applyCaptureReward, difficultyForLevel, levelForPoints } from './tournament.js';
 import { saveGameRecord, updateGameRecordChat, statisticalHistoryRecords } from './gameHistory.js';
 import { recordGameActivity, recordCompletedAdaptiveMatchmakingTelemetry } from './gameActivity.js';
 import { chessGameExitDisposition, isCompletedGameOutcome, shouldApplyCompetitiveProgress } from './gameOutcome.js';
@@ -81,6 +80,7 @@ import { clearRememberedLabMode } from './labLaunchIntent.js';
 import { useGameLaunchController } from './useGameLaunchController.js';
 import { useLearningJourneyFlow } from './useLearningJourneyFlow.js';
 import { useGlobalShellUi } from './useGlobalShellUi.js';
+import { useTournamentFlow } from './useTournamentFlow.js';
 import { runLogoutLifecycle } from './logoutLifecycle.js';
 
 // 'menu' | 'game' | 'tutorial' | 'openings' | 'tournament' | 'tournamentGame' | 'puzzle' | 'combat' | 'history' | 'replay'
@@ -117,9 +117,6 @@ function AppInner({ isAdminUser }) {
   const [hasSavedGame, setHasSavedGame] = useState(() => !!getStorageItem(STORAGE_LOCAL, STORAGE_KEY) || !!loadActiveGameSession());
   const [learningMode, setLearningMode] = useState(() => getStorageItem(STORAGE_LOCAL, LEARNING_STORAGE_KEY) === '1');
 
-  const [tournament, setTournament] = useState(() => loadTournament());
-  const [tournamentGame, setTournamentGame] = useState(null);
-  const [lastResult, setLastResult] = useState(null);
   const [casualResult, setCasualResult] = useState(null);
   const [exitNotice, setExitNotice] = useState(null);
   const {
@@ -192,6 +189,28 @@ function AppInner({ isAdminUser }) {
   const [logoutError, setLogoutError] = useState(null);
   const [featureFlags, setFeatureFlags] = useState(() => ({ ...DEFAULT_FEATURE_FLAGS }));
   const gameLaunch = useGameLaunchController(view, { onCancelled: () => setLoading(false) });
+  const {
+    tournament,
+    tournamentGame,
+    setTournamentGame,
+    lastResult,
+    tournamentLevel,
+    handlePlayTournament,
+    handleTournamentGameEnd,
+    handleSpendPoints,
+    handleCapturePoints,
+    handleExitTournamentGame,
+    handleResetTournament,
+  } = useTournamentFlow({
+    gameLaunch,
+    navigateTo,
+    goBack,
+    setLoading,
+    setError,
+    setRating,
+    setHistoryList,
+    setHasSavedGame,
+  });
   useProfileSyncLifecycle(view);
 
   useEffect(() => {
@@ -607,90 +626,6 @@ function AppInner({ isAdminUser }) {
     if (run?.active && !gameLaunch.busy()) void launchRun(run);
   }
 
-  // --- Modo torneo ---
-
-  async function handlePlayTournament(color) {
-    const launch = gameLaunch.begin();
-    if (!launch) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const level = levelForPoints(tournament.progressPoints || 0);
-      const cpuDifficulty = difficultyForLevel(level);
-      const operationId = gameLaunch.operationId(launch, [cpuDifficulty, color, null, null, null]);
-      const created = await api.createGame(cpuDifficulty, color, null, null, { signal: launch.controller.signal, operationId });
-      if (!gameLaunch.isCurrent(launch)) { void api.deleteGame(created.id).catch(() => {}); return; }
-      gameLaunch.confirmCreated(launch);
-      recordGameActivity({ gameId: created.id, state: 'started', mode: 'tournament', difficulty: created.difficulty });
-      setTournamentGame(created);
-      navigateTo('tournamentGame');
-    } catch (e) {
-      if (gameLaunch.isCurrent(launch) && !isAbortError(e)) setError(userFacingError(e, 'No se pudo iniciar la partida.'));
-    } finally {
-      if (gameLaunch.owns(launch)) setLoading(false);
-      gameLaunch.end(launch);
-    }
-  }
-
-  function handleTournamentGameEnd(outcome, finishedGame, endMeta = {}) {
-    if (!isCompletedGameOutcome(outcome)) return;
-    if (finishedGame) {
-      const moveSans = (finishedGame.history || []).map((m) => m.san).filter(Boolean);
-      recordRivalryResult(outcome, {
-        difficulty: finishedGame.difficulty,
-        humanColor: finishedGame.humanColor,
-        opening: identifyOpening(moveSans),
-        moves: finishedGame.history?.length || 0,
-        timeControlId: null,
-      });
-    }
-    setTournament((prev) => {
-      const { state, gained, leveledUp, newLevel } = applyResult(prev, outcome);
-      saveTournament(state);
-      setLastResult({ outcome, gained, leveledUp, newLevel });
-      return state;
-    });
-
-    if (finishedGame) {
-      // Actualizamos también el rating tipo ELO: cuenta como una partida
-      // más contra una CPU de dificultad conocida.
-      const score = ratingScoreForOutcome(outcome);
-      setRating((prev) => {
-        const details = ratingChangeDetails(prev, finishedGame.difficulty, score);
-        saveRating(details.next);
-        recordRatingHistory(details.next.rating);
-        setLastResult((current) => ({
-          ...(current || { outcome }),
-          eloDelta: details.delta,
-          eloBefore: prev.rating,
-          eloAfter: details.next.rating,
-          cpuRating: details.cpuRating,
-          expectedScore: details.expectedScore,
-        }));
-        return details.next;
-      });
-
-      const record = {
-        id: `${finishedGame.id}-${Date.now()}`,
-      sourceGameId: finishedGame.id,
-        date: new Date().toISOString(),
-        difficulty: finishedGame.difficulty,
-        humanColor: finishedGame.humanColor,
-        outcome,
-        moves: finishedGame.history,
-        finalFen: finishedGame.fen,
-        mode: 'tournament',
-        opening: identifyOpening((finishedGame.history || []).map((m) => m.san).filter(Boolean)),
-        timeControl: null,
-        gameChat: Array.isArray(endMeta.gameChat) ? endMeta.gameChat : loadActiveGameChat(finishedGame.id),
-        series: null,
-        };
-      setHistoryList(saveGameRecord(record));
-      recordGameActivity({ gameId: finishedGame.id, state: 'finished', mode: 'tournament', outcome, difficulty: finishedGame.difficulty });
-      recordCareerGame(record, {});
-    }
-  }
-
   function handleGameChatUpdate(gameId, transcript) {
     const updated = updateGameRecordChat(gameId, transcript);
     // Evita renders extra mientras la partida sigue viva: solo hay que
@@ -698,40 +633,6 @@ function AppInner({ isAdminUser }) {
     if (updated.some((record) => record?.sourceGameId === gameId || record?.id === gameId)) {
       setHistoryList(updated);
     }
-  }
-
-  function handleSpendPoints(cost) {
-    setTournament((prev) => {
-      const next = { ...prev, points: Math.max(0, prev.points - cost) };
-      saveTournament(next);
-      return next;
-    });
-  }
-
-  function handleCapturePoints(gained) {
-    setTournament((prev) => {
-      // Moneda de pistas exclusivamente. No altera progreso de torneo ni ELO.
-      const next = applyCaptureReward(prev, gained);
-      saveTournament(next);
-      return next;
-    });
-  }
-
-  function handleExitTournamentGame() {
-    if (tournamentGame?.id) {
-      const exitDisposition = chessGameExitDisposition(tournamentGame, { explicitAction: true });
-      if (exitDisposition === 'forfeit') handleTournamentGameEnd('loss', tournamentGame, { endReason: 'resignation' });
-      else recordGameActivity({ gameId: tournamentGame.id, state: 'cancelled', mode: 'tournament', difficulty: tournamentGame.difficulty });
-    }
-    clearActiveGameSession();
-    setHasSavedGame(!!getStorageItem(STORAGE_LOCAL, STORAGE_KEY));
-    setTournamentGame(null);
-    goBack();
-  }
-
-  function handleResetTournament() {
-    setTournament(resetTournament());
-    setLastResult(null);
   }
 
   useEffect(() => {
@@ -1061,7 +962,7 @@ function AppInner({ isAdminUser }) {
             abandonRatingPreview={(() => { const preview = ratingChangeDetails(rating, tournamentGame.difficulty, 0); return { delta: preview.delta, before: rating.rating, after: preview.next.rating }; })()}
             onChatUpdate={handleGameChatUpdate}
             hintMode="paid"
-            tournamentLevel={levelForPoints(tournament.progressPoints || 0)}
+            tournamentLevel={tournamentLevel}
             points={tournament.points}
             onSpendPoints={handleSpendPoints}
             onCapturePoints={handleCapturePoints}
