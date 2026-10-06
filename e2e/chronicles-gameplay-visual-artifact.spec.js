@@ -135,6 +135,7 @@ async function captureChroniclesHealth(page) {
       partyTarget: rect('.chronicles-party-member'),
       forwardControl: rect('[data-chronicles-touch-action="forward"]'),
       attackControl: rect('.chronicles-touch .is-attack'),
+      narration: rect('.chronicles-dm-overlay'),
     };
   });
 }
@@ -217,6 +218,8 @@ for (const capture of CAPTURES) {
         expect(health.forwardControl?.height || 0, `${capture.label}: forward touch target height`).toBeGreaterThanOrEqual(52);
         expect(health.attackControl?.width || 0, `${capture.label}: attack touch target width`).toBeGreaterThanOrEqual(72);
         expect(health.attackControl?.height || 0, `${capture.label}: attack touch target height`).toBeGreaterThanOrEqual(72);
+        expect(health.narration?.top ?? 0, `${capture.label}: narration clears compact party`).toBeGreaterThanOrEqual(health.partyTarget?.bottom ?? 0);
+        expect(health.narration?.bottom ?? capture.height, `${capture.label}: narration clears thumb controls`).toBeLessThanOrEqual(health.forwardControl?.top ?? capture.height);
       } else {
         expect(health.authoredPortrait?.width || 0, `${capture.label}: Chronicles portrait visible`).toBeGreaterThan(0);
         expect(health.authoredPortrait?.height || 0, `${capture.label}: Chronicles portrait height`).toBeGreaterThan(0);
