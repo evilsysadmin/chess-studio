@@ -359,7 +359,7 @@ def classify_path(path: str) -> set[str] | None:
 
     if lower in {
         "frontend/src/lablaunchintent.js",
-        "frontend/src/usepuzzlelaunchflow.js",
+        "frontend/src/uselearningjourneyflow.js",
         "frontend/src/soundfx.js",
         "frontend/src/components/warroomhomepreload.js",
     }:
@@ -758,7 +758,7 @@ def self_test() -> None:
         "training-school,training-openings,training-puzzles,training-tournament,training-progress,training-daily"
     )
     assert classify(["frontend/src/labLaunchIntent.js"]) == "none"
-    assert classify(["frontend/src/usePuzzleLaunchFlow.js"]) == "none"
+    assert classify(["frontend/src/useLearningJourneyFlow.js"]) == "none"
     assert classify(["frontend/src/soundFx.js"]) == "none"
     assert classify(["scripts/quality_scope.py"]) == "none"
     assert classify(["scripts/browser_quality_scope.py"]) == "none"

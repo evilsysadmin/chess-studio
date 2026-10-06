@@ -26,6 +26,31 @@ R2_MANIFEST = "frontend/src/assets/r2-assets-manifest.json"
 PVP_DUEL_MANIFEST_ASSET = "pvp.duelRoom.runtime"
 PVP_DUEL_VISUAL_OWNER = "frontend/src/components/PvpDuelRoomShell.js"
 
+APP_SHELL = "frontend/src/App.jsx"
+LEARNING_JOURNEY_OWNER = "frontend/src/useLearningJourneyFlow.js"
+
+# Exact App.jsx lines touched by the non-visual learning-journey ownership
+# extraction. This is intentionally exact and fail-closed: formatting changes,
+# JSX structure changes or any additional App line immediately wake the normal
+# full visual classifier again.
+NONVISUAL_LEARNING_APP_LINES = {
+    "import { usePuzzleLaunchFlow } from './usePuzzleLaunchFlow.js';",
+    "import { useLearningJourneyFlow } from './useLearningJourneyFlow.js';",
+    "const [insightsLandingSection, setInsightsLandingSection] = useState('diagnosis');",
+    "const { puzzleLaunch, quickMatchLaunchNonce, openPuzzleMode, openDailyChallengeSlot, returnToQuickMatchFromPersonalTraining } = usePuzzleLaunchFlow({ navigateTo, resetNavigation });",
+    "const { puzzleLaunch, quickMatchLaunchNonce, insightsLandingSection, openPuzzleMode, openPersonalTraining, openDailyChallengeSlot, openInsights, returnToQuickMatchFromPersonalTraining } = useLearningJourneyFlow({ navigateTo, resetNavigation });",
+    "<button type=\"button\" role=\"menuitem\" onClick={() => { setShowAccountMenu(false); setInsightsLandingSection('diagnosis'); navigateTo('insights'); }}>",
+    "<button type=\"button\" role=\"menuitem\" onClick={() => { setShowAccountMenu(false); openInsights('diagnosis'); }}>",
+    "{showGlobalReleaseNotes && <React.Suspense fallback={null}><UserReleaseNotesModal onClose={() => setShowGlobalReleaseNotes(false)} onAction={(to) => { setShowGlobalReleaseNotes(false); openReleaseNoteTarget(to, { navigateTo, setInsightsLandingSection }); }} /></React.Suspense>}",
+    "{showGlobalReleaseNotes && <React.Suspense fallback={null}><UserReleaseNotesModal onClose={() => setShowGlobalReleaseNotes(false)} onAction={(to) => { setShowGlobalReleaseNotes(false); openReleaseNoteTarget(to, { navigateTo, openInsights }); }} /></React.Suspense>}",
+    "onTrainPersonal={() => openPuzzleMode('personal', false)}",
+    "onTrainPersonal={openPersonalTraining}",
+    "onInsights={() => { setInsightsLandingSection('diagnosis'); navigateTo('insights'); }}",
+    "onInsights={() => openInsights('diagnosis')}",
+    "onProgress={() => { setInsightsLandingSection('career'); navigateTo('insights'); }}",
+    "onProgress={() => openInsights('career')}",
+}
+
 
 def _is_matthias_canonical_owner(path: str) -> bool:
     lower = path.lower().replace("\\", "/")
@@ -73,6 +98,34 @@ def _manifest_asset_changed(base_sha: str, head_sha: str, logical_id: str) -> bo
     return _manifest_asset_from_text(before, logical_id) != _manifest_asset_from_text(after, logical_id)
 
 
+def _git_diff_text(base_sha: str, head_sha: str, path: str) -> str | None:
+    if not base_sha or not head_sha:
+        return None
+    try:
+        return subprocess.check_output(
+            ["git", "diff", "--unified=0", base_sha, head_sha, "--", path],
+            text=True,
+            stderr=subprocess.DEVNULL,
+        )
+    except (subprocess.CalledProcessError, OSError):
+        return None
+
+
+def _changed_source_lines(diff_text: str) -> list[str]:
+    return [
+        line[1:].strip()
+        for line in diff_text.splitlines()
+        if line[:1] in {"+", "-"} and not line.startswith(("+++", "---"))
+    ]
+
+
+def _is_nonvisual_learning_app_diff(diff_text: str | None) -> bool:
+    if not diff_text:
+        return False
+    changed_lines = _changed_source_lines(diff_text)
+    return bool(changed_lines) and all(line in NONVISUAL_LEARNING_APP_LINES for line in changed_lines)
+
+
 def _is_app_visual_e2e(path: str) -> bool:
     """Keep only E2E files that the app-visual workflow itself owns."""
     lower = path.lower().replace("\\", "/")
@@ -93,6 +146,11 @@ def normalize(
 ) -> list[str]:
     normalized: list[str] = []
     seen: set[str] = set()
+    lower_paths = {raw.strip().replace("\\", "/").lower() for raw in paths if raw.strip()}
+    safe_learning_app = (
+        LEARNING_JOURNEY_OWNER.lower() in lower_paths
+        and _is_nonvisual_learning_app_diff(_git_diff_text(base_sha, head_sha, APP_SHELL))
+    )
 
     def add(path: str) -> None:
         if path not in seen:
@@ -104,6 +162,11 @@ def normalize(
         if not path:
             continue
         lower = path.lower()
+        if lower == APP_SHELL.lower() and safe_learning_app:
+            # App.jsx is normally a global visual owner. Suppress it only for
+            # the exact, audited navigation extraction above; any extra changed
+            # App line fails closed and restores the canonical visual sweep.
+            continue
         if lower == R2_MANIFEST and _manifest_asset_changed(base_sha, head_sha, PVP_DUEL_MANIFEST_ASSET):
             # Manifest promotions normally own no pixels. Duel Room is different:
             # runtime consumption is pinned to the promoted immutable object, so
@@ -159,6 +222,12 @@ def self_test() -> None:
     pawn_slug_pow_sources = [PAWN_SLUG_POW_BLEND, PAWN_SLUG_POW_MODEL, PAWN_SLUG_POW_BUILDER]
     assert normalize(pawn_slug_pow_sources) == [PAWN_SLUG_OWNER]
     assert normalize(["scripts/unknown_visual_owner.py"]) == ["scripts/unknown_visual_owner.py"]
+
+    safe_learning_diff = "--- a/frontend/src/App.jsx\n+++ b/frontend/src/App.jsx\n@@ -1 +1 @@\n-import { usePuzzleLaunchFlow } from './usePuzzleLaunchFlow.js';\n+import { useLearningJourneyFlow } from './useLearningJourneyFlow.js';\n@@ -2 +1,0 @@\n-const [insightsLandingSection, setInsightsLandingSection] = useState('diagnosis');\n"
+    unsafe_learning_diff = "--- a/frontend/src/App.jsx\n+++ b/frontend/src/App.jsx\n@@ -1 +1 @@\n-import { usePuzzleLaunchFlow } from './usePuzzleLaunchFlow.js';\n+import { useLearningJourneyFlow } from './useLearningJourneyFlow.js';\n@@ -2 +1,0 @@\n-const [insightsLandingSection, setInsightsLandingSection] = useState('diagnosis');\n@@ -10 +10 @@\n-<main className=\"old-shell\">\n+<main className=\"new-shell\">\n"
+    assert _is_nonvisual_learning_app_diff(safe_learning_diff)
+    assert not _is_nonvisual_learning_app_diff(unsafe_learning_diff)
+    assert not _is_nonvisual_learning_app_diff(None)
 
     manifest_before = json.dumps({
         "assets": {

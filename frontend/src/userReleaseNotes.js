@@ -35,11 +35,8 @@ export function loadUserReleaseArchive() {
 
 // Where a «Verlo» shortcut in Novedades leads. `close` (and anything unknown) only closes the
 // panel, which the caller already did. Lives here, not in App.jsx, whose size is budgeted.
-export function openReleaseNoteTarget(to, { navigateTo, setInsightsLandingSection }) {
+export function openReleaseNoteTarget(to, { navigateTo, openInsights }) {
   if (to === 'daily') navigateTo('dailyChallenges');
   else if (to === 'history') navigateTo('history');
-  else if (to === 'progress') {
-    setInsightsLandingSection('career');
-    navigateTo('insights');
-  }
+  else if (to === 'progress') openInsights('career');
 }
