@@ -57,22 +57,61 @@ ANIMATIONS = tuple(
     )
 )
 TEAMS = {
-    "fc_matthias": {"name": "FC Matthias", "torso": "#245fc2", "torso_dark": "#102f70", "torso_light": "#4f82df", "head": "#e7dec4", "hair": "#6d4b31"},
-    "real_enroque": {"name": "Real Enroque", "torso": "#ad2936", "torso_dark": "#5a121e", "torso_light": "#d1505b", "head": "#885f45", "hair": "#251b19"},
+    "fc_matthias": {
+        "name": "FC Matthias",
+        "torso": "#245fc2",
+        "torso_dark": "#102f70",
+        "torso_light": "#5b8de4",
+        "shorts": "#112a5f",
+        "sock": "#e9edf7",
+        "head": "#e7dec4",
+        "hair": "#6d4b31",
+    },
+    "real_enroque": {
+        "name": "Real Enroque",
+        "torso": "#ad2936",
+        "torso_dark": "#5a121e",
+        "torso_light": "#d85b66",
+        "shorts": "#53141d",
+        "sock": "#f0e7d3",
+        "head": "#885f45",
+        "hair": "#251b19",
+    },
 }
 KEEPERS = {
-    "fc_matthias_keeper": {"name": "FC Matthias · Portero", "torso": "#16856d", "torso_dark": "#0a493d", "torso_light": "#41b89a", "head": "#e7dec4", "hair": "#6d4b31", "glove": "#f2f0df"},
-    "real_enroque_keeper": {"name": "Real Enroque · Portero", "torso": "#ce861f", "torso_dark": "#70420c", "torso_light": "#efb64f", "head": "#885f45", "hair": "#251b19", "glove": "#f4d86a"},
+    "fc_matthias_keeper": {
+        "name": "FC Matthias · Portero",
+        "torso": "#16856d",
+        "torso_dark": "#0a493d",
+        "torso_light": "#45b99d",
+        "shorts": "#0b5144",
+        "sock": "#eaf0e7",
+        "head": "#e7dec4",
+        "hair": "#6d4b31",
+        "glove": "#f2f0df",
+    },
+    "real_enroque_keeper": {
+        "name": "Real Enroque · Portero",
+        "torso": "#ce861f",
+        "torso_dark": "#70420c",
+        "torso_light": "#efb64f",
+        "shorts": "#65400e",
+        "sock": "#efe8d1",
+        "head": "#885f45",
+        "hair": "#251b19",
+        "glove": "#f4d86a",
+    },
 }
 GOLD = "#d4aa4c"
 IVORY = "#ece6cf"
-BOOT = "#181b21"
-OUTLINE = "#12151c"
+BOOT = "#15181d"
+OUTLINE = "#11151b"
 
 
 def _pose(animation: str, frame: int) -> dict[str, float]:
     phase = 2.0 * math.pi * frame / COLUMNS
     stride = math.sin(phase)
+    lift = abs(stride)
     pose = {
         "bob": 0.0,
         "lean": 0.0,
@@ -80,80 +119,137 @@ def _pose(animation: str, frame: int) -> dict[str, float]:
         "arm_r": 0.0,
         "leg_l": 0.0,
         "leg_r": 0.0,
+        "lift_l": 0.0,
+        "lift_r": 0.0,
         "yoff": 0.0,
         "crouch": 0.0,
         "twist": 0.0,
+        "head": 0.0,
     }
     if animation == "idle":
-        pose["bob"] = stride * 0.7
-        pose["arm_l"] = stride * 1.5
-        pose["arm_r"] = -pose["arm_l"]
-        pose["twist"] = stride * 0.8
+        pose.update(
+            bob=stride * 0.75,
+            arm_l=stride * 1.3,
+            arm_r=-stride * 1.3,
+            leg_l=-stride * 1.0,
+            leg_r=stride * 1.0,
+            twist=stride * 0.75,
+            head=stride * 0.45,
+        )
     elif animation == "run":
         pose.update(
-            bob=abs(stride) * 1.8,
-            lean=3.5,
-            arm_l=stride * 17.0,
-            arm_r=-stride * 17.0,
-            leg_l=-stride * 22.0,
-            leg_r=stride * 22.0,
-            twist=stride * 2.2,
+            bob=lift * 1.65,
+            lean=4.7,
+            arm_l=stride * 16.0,
+            arm_r=-stride * 16.0,
+            leg_l=-stride * 15.0,
+            leg_r=stride * 15.0,
+            lift_l=max(0.0, stride) * 7.5,
+            lift_r=max(0.0, -stride) * 7.5,
+            twist=stride * 2.5,
+            head=-1.2,
         )
     elif animation == "sprint":
         pose.update(
-            bob=abs(stride) * 2.5,
-            lean=6.5,
-            arm_l=stride * 22.0,
-            arm_r=-stride * 22.0,
-            leg_l=-stride * 28.0,
-            leg_r=stride * 28.0,
-            twist=stride * 3.0,
+            bob=lift * 2.25,
+            lean=7.6,
+            arm_l=stride * 21.0,
+            arm_r=-stride * 21.0,
+            leg_l=-stride * 20.0,
+            leg_r=stride * 20.0,
+            lift_l=max(0.0, stride) * 10.0,
+            lift_r=max(0.0, -stride) * 10.0,
+            twist=stride * 3.2,
+            head=-2.0,
         )
     else:
-        t = frame / 7.0
+        t = frame / max(COLUMNS - 1, 1)
         k = math.sin(math.pi * t)
+        wind = math.sin(math.pi * min(t * 1.22, 1.0))
+        follow = math.sin(math.pi * max((t - 0.34) / 0.66, 0.0))
         if animation == "pass":
             pose.update(
-                bob=1.5 * k,
-                lean=4.5 * k,
-                leg_r=30.0 * k - 3.0,
-                leg_l=-8.0 * k,
-                arm_l=-13.0 * k,
-                arm_r=15.0 * k,
-                twist=2.6 * k,
+                bob=1.3 * k,
+                lean=3.5 * k,
+                leg_l=-5.0 * k,
+                leg_r=-10.0 * wind + 24.0 * follow,
+                lift_r=5.5 * k,
+                arm_l=-9.0 * k,
+                arm_r=13.0 * k,
+                twist=3.0 * k,
+                head=-1.0 * k,
             )
         elif animation == "shoot":
             pose.update(
-                bob=2.4 * k,
-                lean=8.0 * k,
-                leg_r=36.0 * k - 4.0,
-                leg_l=-11.0 * k,
-                arm_l=-19.0 * k,
-                arm_r=20.0 * k,
-                twist=3.8 * k,
+                bob=2.0 * k,
+                lean=7.2 * k,
+                leg_l=-9.0 * k,
+                leg_r=-17.0 * wind + 39.0 * follow,
+                lift_r=8.5 * k,
+                arm_l=-15.0 * k,
+                arm_r=19.0 * k,
+                twist=4.5 * k,
+                head=-1.7 * k,
             )
         elif animation == "tackle":
             pose.update(
-                yoff=3.5 * k,
-                crouch=10.0 * k,
-                lean=10.0 * k,
-                leg_r=34.0 * k,
-                leg_l=-22.0 * k,
-                arm_l=-21.0 * k,
-                arm_r=16.0 * k,
-                twist=4.2 * k,
+                yoff=4.0 * k,
+                crouch=12.0 * k,
+                lean=12.0 * k,
+                leg_l=-17.0 * k,
+                leg_r=35.0 * k,
+                lift_l=2.0 * k,
+                arm_l=-20.0 * k,
+                arm_r=14.0 * k,
+                twist=5.0 * k,
+                head=-2.4 * k,
             )
         elif animation == "celebrate":
             pose.update(
-                yoff=-9.5 * k,
-                bob=1.4 * k,
-                arm_l=-30.0 * k - 7.0,
-                arm_r=30.0 * k + 7.0,
-                twist=stride * 1.7,
+                yoff=-10.0 * k,
+                bob=1.0 * k,
+                arm_l=-31.0 * k - 8.0,
+                arm_r=31.0 * k + 8.0,
+                leg_l=-6.0 * math.sin(2.0 * phase),
+                leg_r=6.0 * math.sin(2.0 * phase),
+                lift_l=3.0 * k,
+                lift_r=3.0 * k,
+                twist=math.sin(phase) * 1.6,
+                head=-1.0 * k,
             )
-            pose["leg_l"] = -7.0 * math.sin(2.0 * phase)
-            pose["leg_r"] = -pose["leg_l"]
     return pose
+
+
+def _path(points: list[tuple[float, float]], offset_x: int, offset_y: int, close: bool = True) -> str:
+    if not points:
+        return ""
+    head = f"M {offset_x + points[0][0]:.2f} {offset_y + points[0][1]:.2f}"
+    tail = " ".join(
+        f"L {offset_x + x:.2f} {offset_y + y:.2f}"
+        for x, y in points[1:]
+    )
+    return f"{head} {tail}{' Z' if close else ''}"
+
+
+def _limb_path(
+    start: tuple[float, float],
+    end: tuple[float, float],
+    start_half_width: float,
+    end_half_width: float,
+) -> list[tuple[float, float]]:
+    ax, ay = start
+    bx, by = end
+    dx = bx - ax
+    dy = by - ay
+    length = max(math.hypot(dx, dy), 0.001)
+    nx = -dy / length
+    ny = dx / length
+    return [
+        (ax + nx * start_half_width, ay + ny * start_half_width),
+        (bx + nx * end_half_width, by + ny * end_half_width),
+        (bx - nx * end_half_width, by - ny * end_half_width),
+        (ax - nx * start_half_width, ay - ny * start_half_width),
+    ]
 
 
 def _frame_svg(
@@ -169,232 +265,327 @@ def _frame_svg(
     lean = p["lean"]
     yoff = p["yoff"]
     crouch = p["crouch"]
+
     cx = CELL_W * 0.5 + lean
     foot = float(FOOTLINE) + yoff
-    head_cy = 33.5 - bob + yoff + crouch * 0.40
     hip_y = 93.0 - bob + yoff + crouch * 0.34
-    shoulder_y = 59.0 - bob + yoff + crouch * 0.58
-
-    def point(x: float, y: float) -> str:
-        return f"{offset_x + x:.2f},{offset_y + y:.2f}"
+    shoulder_y = 58.4 - bob + yoff + crouch * 0.58
+    torso_turn = 2.6 + p["twist"] * 0.28
+    head_cx = cx + 2.8 + p["head"]
+    head_cy = 34.8 - bob + yoff + crouch * 0.40
 
     out: list[str] = []
-    shadow_width = 18.5 if animation in ("sprint", "shoot", "tackle") else 17.5
+
+    shadow_width = 19.0 if animation in ("sprint", "shoot", "tackle") else 17.2
+    shadow_x = cx + (4.0 if animation in ("run", "sprint", "shoot") else 1.0)
     out.append(
-        f'<ellipse cx="{offset_x + cx:.2f}" cy="{offset_y + foot + 1.0:.2f}" '
-        f'rx="{shadow_width:.1f}" ry="2.4" fill="#000" opacity=".21"/>'
+        f'<ellipse cx="{offset_x + shadow_x:.2f}" cy="{offset_y + foot + 1.0:.2f}" '
+        f'rx="{shadow_width:.1f}" ry="2.4" fill="#000" opacity=".20"/>'
     )
 
-    # Legs: deliberately chunkier than v5, with visible knees/socks/boots.
-    for side, stride in ((-1.0, p["leg_l"]), (1.0, p["leg_r"])):
-        hip_x = cx + side * 7.6 + p["twist"] * 0.20
-        foot_x = cx + side * 9.2 + stride
-        knee_x = hip_x + stride * 0.52 - side * 1.2
-        knee_y = hip_y + 14.5 - min(abs(stride) * 0.17, 5.5)
-
-        out.append(
-            f'<line x1="{offset_x + hip_x:.2f}" y1="{offset_y + hip_y:.2f}" '
-            f'x2="{offset_x + knee_x:.2f}" y2="{offset_y + knee_y:.2f}" '
-            f'stroke="{OUTLINE}" stroke-width="7.0" stroke-linecap="round"/>'
+    # Back leg first, then front leg: deliberate overlap creates depth and keeps
+    # run/sprint from reading like a frontal jumping-jack pose.
+    legs = (
+        (-1.0, p["leg_l"], p["lift_l"], True),
+        (1.0, p["leg_r"], p["lift_r"], False),
+    )
+    for side, stride, lift_amount, far in legs:
+        hip_x = cx + side * 6.6 + p["twist"] * (0.14 if far else 0.24)
+        foot_x = cx + side * 7.4 + stride
+        foot_y = foot - lift_amount
+        knee_x = hip_x + stride * 0.44 + (-0.8 if far else 1.8)
+        knee_y = (
+            hip_y
+            + 16.5
+            - min(abs(stride) * 0.15, 5.0)
+            - lift_amount * 0.42
+        )
+        opacity = ".84" if far else "1"
+        thigh = _limb_path(
+            (hip_x, hip_y + 1.0),
+            (knee_x, knee_y),
+            4.5 if far else 5.1,
+            3.8 if far else 4.2,
+        )
+        shin = _limb_path(
+            (knee_x, knee_y + 1.0),
+            (foot_x, foot_y - 5.6),
+            3.4 if far else 3.8,
+            2.7 if far else 3.0,
         )
         out.append(
-            f'<line x1="{offset_x + hip_x:.2f}" y1="{offset_y + hip_y:.2f}" '
-            f'x2="{offset_x + knee_x:.2f}" y2="{offset_y + knee_y:.2f}" '
-            f'stroke="{team["torso_dark"]}" stroke-width="4.8" stroke-linecap="round"/>'
+            f'<path d="{_path(thigh, offset_x, offset_y)}" '
+            f'fill="{team["head"]}" '
+            f'stroke="{OUTLINE}" stroke-width="1.35" opacity="{opacity}"/>'
         )
         out.append(
             f'<circle cx="{offset_x + knee_x:.2f}" cy="{offset_y + knee_y:.2f}" '
-            f'r="3.2" fill="{team["head"]}" stroke="{OUTLINE}" stroke-width="1.0"/>'
+            f'r="2.8" fill="{team["head"]}" stroke="{OUTLINE}" '
+            f'stroke-width=".85" opacity="{opacity}"/>'
         )
         out.append(
-            f'<line x1="{offset_x + knee_x:.2f}" y1="{offset_y + knee_y:.2f}" '
-            f'x2="{offset_x + foot_x:.2f}" y2="{offset_y + foot - 5.0:.2f}" '
-            f'stroke="{OUTLINE}" stroke-width="6.2" stroke-linecap="round"/>'
+            f'<path d="{_path(shin, offset_x, offset_y)}" '
+            f'fill="{team["sock"]}" stroke="{OUTLINE}" '
+            f'stroke-width="1.25" opacity="{opacity}"/>'
         )
         out.append(
-            f'<line x1="{offset_x + knee_x:.2f}" y1="{offset_y + knee_y:.2f}" '
-            f'x2="{offset_x + foot_x:.2f}" y2="{offset_y + foot - 5.0:.2f}" '
-            f'stroke="{team["torso_light"]}" stroke-width="4.15" stroke-linecap="round"/>'
-        )
-        out.append(
-            f'<line x1="{offset_x + knee_x:.2f}" y1="{offset_y + knee_y + 5.0:.2f}" '
-            f'x2="{offset_x + foot_x:.2f}" y2="{offset_y + foot - 8.0:.2f}" '
-            f'stroke="{IVORY}" stroke-width="1.65" stroke-linecap="round" opacity=".92"/>'
-        )
-        out.append(
-            f'<rect x="{offset_x + foot_x - 6.8:.2f}" y="{offset_y + foot - 6.3:.2f}" '
-            f'width="14.4" height="6.4" rx="2.5" fill="{BOOT}" '
-            f'stroke="{GOLD}" stroke-width=".85"/>'
-        )
-        out.append(
-            f'<line x1="{offset_x + foot_x - 2.5:.2f}" y1="{offset_y + foot - 2.4:.2f}" '
-            f'x2="{offset_x + foot_x + 5.5:.2f}" y2="{offset_y + foot - 2.4:.2f}" '
-            f'stroke="#f1f1e8" stroke-width=".7" opacity=".58"/>'
+            f'<line x1="{offset_x + knee_x - 2.2:.2f}" y1="{offset_y + knee_y + 5.3:.2f}" '
+            f'x2="{offset_x + knee_x + 2.4:.2f}" y2="{offset_y + knee_y + 5.1:.2f}" '
+            f'stroke="{team["torso_light"]}" stroke-width="1.25" opacity="{opacity}"/>'
         )
 
-    # Arms: more mass and explicit elbows/hands.
-    for side, amount in ((-1.0, p["arm_l"]), (1.0, p["arm_r"])):
-        sx = cx + side * 15.8 - p["twist"] * 0.32
-        sy = shoulder_y
-        ex = cx + side * 23.5 + amount * 0.76
-        ey = 80.0 - bob + yoff + crouch * 0.50 - amount * 0.52
-        elbow_x = sx + (ex - sx) * 0.52
-        elbow_y = sy + (ey - sy) * 0.52
-
+        toe = 1.0 if stride >= -3.0 else -1.0
+        boot = [
+            (foot_x - 4.9, foot_y - 5.8),
+            (foot_x + 4.2, foot_y - 5.4),
+            (foot_x + 8.6 * toe, foot_y - 2.1),
+            (foot_x + 7.2 * toe, foot_y + 0.2),
+            (foot_x - 5.7, foot_y - 0.4),
+        ]
         out.append(
-            f'<circle cx="{offset_x + sx:.2f}" cy="{offset_y + sy:.2f}" r="3.9" '
-            f'fill="{team["torso_light"]}" stroke="{OUTLINE}" stroke-width="1.0"/>'
+            f'<path d="{_path(boot, offset_x, offset_y)}" '
+            f'fill="{BOOT}" stroke="{OUTLINE}" stroke-width="1.15" opacity="{opacity}"/>'
         )
         out.append(
-            f'<line x1="{offset_x + sx:.2f}" y1="{offset_y + sy:.2f}" '
-            f'x2="{offset_x + elbow_x:.2f}" y2="{offset_y + elbow_y:.2f}" '
-            f'stroke="{OUTLINE}" stroke-width="6.6" stroke-linecap="round"/>'
-        )
-        out.append(
-            f'<line x1="{offset_x + sx:.2f}" y1="{offset_y + sy:.2f}" '
-            f'x2="{offset_x + elbow_x:.2f}" y2="{offset_y + elbow_y:.2f}" '
-            f'stroke="{team["torso_light"]}" stroke-width="4.45" stroke-linecap="round"/>'
-        )
-        out.append(
-            f'<circle cx="{offset_x + elbow_x:.2f}" cy="{offset_y + elbow_y:.2f}" '
-            f'r="2.8" fill="{team["head"]}" stroke="{OUTLINE}" stroke-width=".9"/>'
-        )
-        out.append(
-            f'<line x1="{offset_x + elbow_x:.2f}" y1="{offset_y + elbow_y:.2f}" '
-            f'x2="{offset_x + ex:.2f}" y2="{offset_y + ey:.2f}" '
-            f'stroke="{OUTLINE}" stroke-width="5.6" stroke-linecap="round"/>'
-        )
-        out.append(
-            f'<line x1="{offset_x + elbow_x:.2f}" y1="{offset_y + elbow_y:.2f}" '
-            f'x2="{offset_x + ex:.2f}" y2="{offset_y + ey:.2f}" '
-            f'stroke="{team["head"]}" stroke-width="3.7" stroke-linecap="round"/>'
-        )
-        out.append(
-            f'<circle cx="{offset_x + ex:.2f}" cy="{offset_y + ey:.2f}" '
-            f'r="{4.4 if keeper else 3.3}" '
-            f'fill="{team.get("glove", team["head"]) if keeper else team["head"]}" '
-            f'stroke="{OUTLINE}" stroke-width="1.0"/>'
+            f'<path d="M {offset_x + foot_x - 0.8:.2f} {offset_y + foot_y - 3.1:.2f} '
+            f'L {offset_x + foot_x + 4.4 * toe:.2f} {offset_y + foot_y - 2.4:.2f}" '
+            f'stroke="{GOLD}" stroke-width=".95" opacity="{opacity}"/>'
         )
 
-    top_y = 57.5 - bob + yoff + crouch * 0.58
-    rib_y = 69.5 - bob + yoff + crouch * 0.46
-    waist_y = 84.0 - bob + yoff + crouch * 0.30
-    base_y = 95.0 - bob + yoff + crouch * 0.18
-    body = (
-        (cx - 16.0, top_y),
-        (cx - 18.0, rib_y),
-        (cx - 12.4, waist_y),
-        (cx - 14.5, base_y),
-        (cx + 14.5, base_y),
-        (cx + 12.4, waist_y),
-        (cx + 18.0, rib_y),
-        (cx + 16.0, top_y),
+    # Back arm is drawn behind the shirt; front arm after the shirt.
+    arm_geometry: list[tuple[float, float, float, float, float, float, bool]] = []
+    for side, amount, far in (
+        (-1.0, p["arm_l"], True),
+        (1.0, p["arm_r"], False),
+    ):
+        sx = cx + side * 13.8 - p["twist"] * 0.23
+        sy = shoulder_y + (1.0 if far else -0.6)
+        hand_x = cx + side * 20.0 + amount * 0.72 + (-1.0 if far else 2.0)
+        hand_y = 79.0 - bob + yoff + crouch * 0.50 - amount * 0.48
+        elbow_x = sx + (hand_x - sx) * 0.56 - side * 3.0
+        elbow_y = sy + (hand_y - sy) * 0.50 + 4.5
+        arm_geometry.append((sx, sy, elbow_x, elbow_y, hand_x, hand_y, far))
+        if far:
+            sleeve_ratio = 0.62 if keeper else 0.34
+            sleeve_x = sx + (elbow_x - sx) * sleeve_ratio
+            sleeve_y = sy + (elbow_y - sy) * sleeve_ratio
+            sleeve = _limb_path((sx, sy), (sleeve_x, sleeve_y), 3.8, 3.35)
+            upper_skin = _limb_path((sleeve_x, sleeve_y), (elbow_x, elbow_y), 3.15, 2.8)
+            fore = _limb_path((elbow_x, elbow_y), (hand_x, hand_y), 2.9, 2.3)
+            out.append(
+                f'<path d="{_path(sleeve, offset_x, offset_y)}" '
+                f'fill="{team["torso_dark"]}" stroke="{OUTLINE}" '
+                f'stroke-width="1.15" opacity=".84"/>'
+            )
+            out.append(
+                f'<path d="{_path(upper_skin, offset_x, offset_y)}" '
+                f'fill="{team["head"]}" stroke="{OUTLINE}" '
+                f'stroke-width="1.05" opacity=".84"/>'
+            )
+            out.append(
+                f'<path d="{_path(fore, offset_x, offset_y)}" '
+                f'fill="{team["head"]}" stroke="{OUTLINE}" '
+                f'stroke-width="1.10" opacity=".84"/>'
+            )
+            out.append(
+                f'<circle cx="{offset_x + hand_x:.2f}" cy="{offset_y + hand_y:.2f}" '
+                f'r="{4.2 if keeper else 3.0}" '
+                f'fill="{team.get("glove", team["head"]) if keeper else team["head"]}" '
+                f'stroke="{OUTLINE}" stroke-width=".95" opacity=".84"/>'
+            )
+
+    # Shirt uses curves instead of the old octagonal chest. Asymmetry is
+    # intentional: the player now reads as three-quarter footballer rather than
+    # a perfectly frontal paper doll.
+    top_y = 55.8 - bob + yoff + crouch * 0.58
+    waist_y = 84.2 - bob + yoff + crouch * 0.30
+    base_y = 96.0 - bob + yoff + crouch * 0.18
+    left_sh = cx - 13.6 - torso_turn * 0.15
+    right_sh = cx + 17.3 + torso_turn * 0.20
+    torso = (
+        f"M {offset_x + left_sh:.2f} {offset_y + top_y + 3.0:.2f} "
+        f"Q {offset_x + cx - 2.0:.2f} {offset_y + top_y - 4.2:.2f} "
+        f"{offset_x + right_sh:.2f} {offset_y + top_y + 2.0:.2f} "
+        f"Q {offset_x + cx + 19.0:.2f} {offset_y + 69.0 - bob + yoff:.2f} "
+        f"{offset_x + cx + 12.4:.2f} {offset_y + waist_y:.2f} "
+        f"L {offset_x + cx + 14.0:.2f} {offset_y + base_y:.2f} "
+        f"Q {offset_x + cx + 1.8:.2f} {offset_y + base_y + 4.8:.2f} "
+        f"{offset_x + cx - 12.4:.2f} {offset_y + base_y:.2f} "
+        f"L {offset_x + cx - 10.7:.2f} {offset_y + waist_y:.2f} "
+        f"Q {offset_x + cx - 16.8:.2f} {offset_y + 69.5 - bob + yoff:.2f} "
+        f"{offset_x + left_sh:.2f} {offset_y + top_y + 3.0:.2f} Z"
     )
     out.append(
-        f'<polygon points="{" ".join(point(x, y) for x, y in body)}" '
-        f'fill="{team["torso"]}" stroke="{OUTLINE}" stroke-width="1.7" stroke-linejoin="round"/>'
+        f'<path d="{torso}" fill="{team["torso"]}" '
+        f'stroke="{OUTLINE}" stroke-width="1.75"/>'
     )
     out.append(
-        f'<polygon points="{point(cx + 1.5, top_y + 2.0)} {point(cx + 16.0, top_y + 2.0)} '
-        f'{point(cx + 12.0, waist_y)} {point(cx + 7.5, base_y - 1.0)}" '
-        f'fill="{team["torso_dark"]}" opacity=".32"/>'
+        f'<path d="M {offset_x + cx + 2.0:.2f} {offset_y + top_y + 0.8:.2f} '
+        f'Q {offset_x + cx + 16.0:.2f} {offset_y + 66.0 - bob + yoff:.2f} '
+        f'{offset_x + cx + 8.5:.2f} {offset_y + base_y - 1.0:.2f}" '
+        f'fill="none" stroke="{team["torso_light"]}" stroke-width="4.2" '
+        f'opacity=".30" stroke-linecap="round"/>'
     )
     out.append(
-        f'<polygon points="{point(cx - 13.3, waist_y + 0.5)} {point(cx + 13.3, waist_y + 0.5)} '
-        f'{point(cx + 14.3, base_y + 7.2)} {point(cx + 1.8, base_y + 6.0)} '
-        f'{point(cx, base_y + 2.6)} {point(cx - 1.8, base_y + 6.0)} '
-        f'{point(cx - 14.3, base_y + 7.2)}" fill="{team["torso_dark"]}" '
-        f'stroke="{OUTLINE}" stroke-width="1.15" stroke-linejoin="round"/>'
+        f'<path d="M {offset_x + cx - 7.0:.2f} {offset_y + top_y + 1.3:.2f} '
+        f'L {offset_x + cx - 1.0:.2f} {offset_y + top_y + 7.8:.2f} '
+        f'L {offset_x + cx + 5.6:.2f} {offset_y + top_y + 1.0:.2f}" '
+        f'fill="none" stroke="{IVORY}" stroke-width="1.7" stroke-linecap="round"/>'
     )
     out.append(
-        f'<line x1="{offset_x + cx:.2f}" y1="{offset_y + base_y + 2.8:.2f}" '
-        f'x2="{offset_x + cx:.2f}" y2="{offset_y + base_y + 6.0:.2f}" '
-        f'stroke="{OUTLINE}" stroke-width=".85" opacity=".70"/>'
+        f'<path d="M {offset_x + cx - 10.4:.2f} {offset_y + top_y + 8.0:.2f} '
+        f'L {offset_x + cx + 9.6:.2f} {offset_y + waist_y + 1.8:.2f}" '
+        f'stroke="#fff" stroke-opacity=".88" stroke-width="2.5"/>'
+    )
+
+    shorts = [
+        (cx - 12.6, waist_y - 0.5),
+        (cx + 12.0, waist_y - 0.5),
+        (cx + 14.2, base_y + 6.7),
+        (cx + 2.4, base_y + 5.6),
+        (cx, base_y + 2.4),
+        (cx - 2.4, base_y + 5.6),
+        (cx - 13.7, base_y + 6.5),
+    ]
+    out.append(
+        f'<path d="{_path(shorts, offset_x, offset_y)}" '
+        f'fill="{team["shorts"]}" stroke="{OUTLINE}" stroke-width="1.35"/>'
     )
     out.append(
-        f'<path d="M {point(cx - 5.8, top_y + 1.5)} L {point(cx, top_y + 8.5)} '
-        f'L {point(cx + 5.8, top_y + 1.5)}" fill="none" stroke="{IVORY}" '
-        f'stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>'
-    )
-    out.append(
-        f'<line x1="{offset_x + cx - 12.0:.2f}" y1="{offset_y + top_y + 7.0:.2f}" '
-        f'x2="{offset_x + cx + 10.5:.2f}" y2="{offset_y + waist_y + 2.0:.2f}" '
-        f'stroke="#fff" stroke-opacity=".90" stroke-width="3.0"/>'
-    )
-    out.append(
-        f'<line x1="{offset_x + cx - 12.3:.2f}" y1="{offset_y + waist_y + 2.5:.2f}" '
-        f'x2="{offset_x + cx + 12.3:.2f}" y2="{offset_y + waist_y + 2.5:.2f}" '
+        f'<line x1="{offset_x + cx - 11.6:.2f}" y1="{offset_y + waist_y + 1.9:.2f}" '
+        f'x2="{offset_x + cx + 10.8:.2f}" y2="{offset_y + waist_y + 1.9:.2f}" '
         f'stroke="{GOLD}" stroke-width="1.15" opacity=".82"/>'
     )
-    badge_y = 75.0 - bob + yoff + crouch * 0.40
+    badge_y = 73.8 - bob + yoff + crouch * 0.40
     out.append(
-        f'<polygon points="{point(cx, badge_y - 3.5)} {point(cx + 3.5, badge_y)} '
-        f'{point(cx, badge_y + 3.5)} {point(cx - 3.5, badge_y)}" '
+        f'<path d="M {offset_x + cx + 5.8:.2f} {offset_y + badge_y - 3.2:.2f} '
+        f'L {offset_x + cx + 9.0:.2f} {offset_y + badge_y:.2f} '
+        f'L {offset_x + cx + 5.8:.2f} {offset_y + badge_y + 3.3:.2f} '
+        f'L {offset_x + cx + 2.6:.2f} {offset_y + badge_y:.2f} Z" '
         f'fill="{GOLD}" stroke="{OUTLINE}" stroke-width=".65"/>'
     )
 
-    neck_y = 49.0 - bob + yoff + crouch * 0.45
+    for sx, sy, elbow_x, elbow_y, hand_x, hand_y, far in arm_geometry:
+        if far:
+            continue
+        sleeve_ratio = 0.64 if keeper else 0.36
+        sleeve_x = sx + (elbow_x - sx) * sleeve_ratio
+        sleeve_y = sy + (elbow_y - sy) * sleeve_ratio
+        sleeve = _limb_path((sx, sy), (sleeve_x, sleeve_y), 4.1, 3.55)
+        upper_skin = _limb_path((sleeve_x, sleeve_y), (elbow_x, elbow_y), 3.3, 3.0)
+        fore = _limb_path((elbow_x, elbow_y), (hand_x, hand_y), 3.1, 2.4)
+        out.append(
+            f'<path d="{_path(sleeve, offset_x, offset_y)}" '
+            f'fill="{team["torso_light"]}" stroke="{OUTLINE}" stroke-width="1.25"/>'
+        )
+        out.append(
+            f'<path d="{_path(upper_skin, offset_x, offset_y)}" '
+            f'fill="{team["head"]}" stroke="{OUTLINE}" stroke-width="1.12"/>'
+        )
+        out.append(
+            f'<path d="{_path(fore, offset_x, offset_y)}" '
+            f'fill="{team["head"]}" stroke="{OUTLINE}" stroke-width="1.15"/>'
+        )
+        out.append(
+            f'<circle cx="{offset_x + hand_x:.2f}" cy="{offset_y + hand_y:.2f}" '
+            f'r="{4.5 if keeper else 3.1}" '
+            f'fill="{team.get("glove", team["head"]) if keeper else team["head"]}" '
+            f'stroke="{OUTLINE}" stroke-width="1.0"/>'
+        )
+        if keeper:
+            out.append(
+                f'<path d="M {offset_x + hand_x - 3.2:.2f} {offset_y + hand_y:.2f} '
+                f'L {offset_x + hand_x + 3.0:.2f} {offset_y + hand_y:.2f}" '
+                f'stroke="{team["torso_dark"]}" stroke-width=".85" opacity=".75"/>'
+            )
+
+    # Slightly three-quarter head: one visible ear + nose bridge is much less
+    # mascot-like than the perfectly symmetrical v6 face.
+    neck_y = 49.2 - bob + yoff + crouch * 0.45
     out.append(
-        f'<rect x="{offset_x + cx - 4.7:.2f}" y="{offset_y + neck_y:.2f}" '
-        f'width="9.4" height="10.6" rx="3.8" fill="{team["head"]}" '
-        f'stroke="{OUTLINE}" stroke-width="1.0"/>'
+        f'<path d="M {offset_x + cx - 3.4:.2f} {offset_y + neck_y:.2f} '
+        f'L {offset_x + cx + 4.5:.2f} {offset_y + neck_y - 0.2:.2f} '
+        f'L {offset_x + cx + 4.8:.2f} {offset_y + neck_y + 8.0:.2f} '
+        f'L {offset_x + cx - 3.0:.2f} {offset_y + neck_y + 8.2:.2f} Z" '
+        f'fill="{team["head"]}" stroke="{OUTLINE}" stroke-width="1.0"/>'
     )
     out.append(
-        f'<circle cx="{offset_x + cx - 11.0:.2f}" cy="{offset_y + head_cy + 0.3:.2f}" '
-        f'r="2.2" fill="{team["head"]}" stroke="{OUTLINE}" stroke-width=".8"/>'
+        f'<path d="M {offset_x + cx - 5.2:.2f} {offset_y + neck_y + 5.2:.2f} '
+        f'L {offset_x + cx + 5.7:.2f} {offset_y + neck_y + 5.0:.2f} '
+        f'L {offset_x + cx + 6.4:.2f} {offset_y + neck_y + 9.2:.2f} '
+        f'L {offset_x + cx - 5.8:.2f} {offset_y + neck_y + 9.4:.2f} Z" '
+        f'fill="{team["torso_dark"]}" stroke="{OUTLINE}" stroke-width=".85"/>'
+    )
+    head = (
+        f"M {offset_x + head_cx - 8.5:.2f} {offset_y + head_cy - 10.4:.2f} "
+        f"Q {offset_x + head_cx + 0.6:.2f} {offset_y + head_cy - 15.0:.2f} "
+        f"{offset_x + head_cx + 8.7:.2f} {offset_y + head_cy - 8.4:.2f} "
+        f"Q {offset_x + head_cx + 12.4:.2f} {offset_y + head_cy - 1.0:.2f} "
+        f"{offset_x + head_cx + 8.0:.2f} {offset_y + head_cy + 9.4:.2f} "
+        f"Q {offset_x + head_cx + 0.5:.2f} {offset_y + head_cy + 14.2:.2f} "
+        f"{offset_x + head_cx - 7.1:.2f} {offset_y + head_cy + 8.8:.2f} "
+        f"Q {offset_x + head_cx - 10.8:.2f} {offset_y + head_cy + 0.1:.2f} "
+        f"{offset_x + head_cx - 8.5:.2f} {offset_y + head_cy - 10.4:.2f} Z"
     )
     out.append(
-        f'<circle cx="{offset_x + cx + 11.0:.2f}" cy="{offset_y + head_cy + 0.3:.2f}" '
-        f'r="2.2" fill="{team["head"]}" stroke="{OUTLINE}" stroke-width=".8"/>'
+        f'<path d="{head}" fill="{team["head"]}" stroke="{OUTLINE}" stroke-width="1.55"/>'
     )
     out.append(
-        f'<ellipse cx="{offset_x + cx:.2f}" cy="{offset_y + head_cy:.2f}" '
-        f'rx="11.2" ry="13.2" fill="{team["head"]}" stroke="{OUTLINE}" stroke-width="1.6"/>'
+        f'<ellipse cx="{offset_x + head_cx - 8.8:.2f}" cy="{offset_y + head_cy:.2f}" '
+        f'rx="2.0" ry="2.7" fill="{team["head"]}" stroke="{OUTLINE}" stroke-width=".75"/>'
     )
     out.append(
-        f'<path d="M {offset_x + cx - 9.8:.2f} {offset_y + head_cy - 5.1:.2f} '
-        f'Q {offset_x + cx:.2f} {offset_y + head_cy - 13.8:.2f} '
-        f'{offset_x + cx + 9.4:.2f} {offset_y + head_cy - 4.5:.2f}" '
-        f'fill="{team["hair"]}" stroke="{OUTLINE}" stroke-width="1.05"/>'
+        f'<path d="M {offset_x + head_cx + 8.1:.2f} {offset_y + head_cy - 1.2:.2f} '
+        f'L {offset_x + head_cx + 11.0:.2f} {offset_y + head_cy + 1.0:.2f} '
+        f'L {offset_x + head_cx + 8.2:.2f} {offset_y + head_cy + 2.1:.2f}" '
+        f'fill="{team["head"]}" stroke="{OUTLINE}" stroke-width=".75"/>'
     )
     out.append(
-        f'<circle cx="{offset_x + cx - 3.9:.2f}" cy="{offset_y + head_cy - 1.3:.2f}" '
-        f'r="1.05" fill="{OUTLINE}"/>'
+        f'<path d="M {offset_x + head_cx - 8.0:.2f} {offset_y + head_cy - 6.0:.2f} '
+        f'Q {offset_x + head_cx - 0.5:.2f} {offset_y + head_cy - 14.7:.2f} '
+        f'{offset_x + head_cx + 8.2:.2f} {offset_y + head_cy - 7.0:.2f} '
+        f'Q {offset_x + head_cx + 3.0:.2f} {offset_y + head_cy - 8.6:.2f} '
+        f'{offset_x + head_cx - 1.8:.2f} {offset_y + head_cy - 5.1:.2f} '
+        f'Q {offset_x + head_cx - 5.0:.2f} {offset_y + head_cy - 3.2:.2f} '
+        f'{offset_x + head_cx - 8.0:.2f} {offset_y + head_cy - 6.0:.2f} Z" '
+        f'fill="{team["hair"]}" stroke="{OUTLINE}" stroke-width=".95"/>'
     )
     out.append(
-        f'<circle cx="{offset_x + cx + 3.9:.2f}" cy="{offset_y + head_cy - 1.3:.2f}" '
-        f'r="1.05" fill="{OUTLINE}"/>'
+        f'<ellipse cx="{offset_x + head_cx + 3.5:.2f}" cy="{offset_y + head_cy - 1.8:.2f}" '
+        f'rx="1.25" ry=".95" fill="{OUTLINE}"/>'
     )
     out.append(
-        f'<path d="M {offset_x + cx - 0.8:.2f} {offset_y + head_cy + 0.4:.2f} '
-        f'L {offset_x + cx - 1.4:.2f} {offset_y + head_cy + 3.0:.2f} '
-        f'L {offset_x + cx + 0.6:.2f} {offset_y + head_cy + 3.1:.2f}" '
-        f'fill="none" stroke="{OUTLINE}" stroke-width=".75" stroke-linecap="round"/>'
+        f'<path d="M {offset_x + head_cx + 2.2:.2f} {offset_y + head_cy + 5.4:.2f} '
+        f'Q {offset_x + head_cx + 5.0:.2f} {offset_y + head_cy + 6.3:.2f} '
+        f'{offset_x + head_cx + 7.0:.2f} {offset_y + head_cy + 4.7:.2f}" '
+        f'fill="none" stroke="{OUTLINE}" stroke-width=".9" '
+        f'stroke-linecap="round" opacity=".70"/>'
     )
-    out.append(
-        f'<line x1="{offset_x + cx - 2.5:.2f}" y1="{offset_y + head_cy + 5.3:.2f}" '
-        f'x2="{offset_x + cx + 3.4:.2f}" y2="{offset_y + head_cy + 5.3:.2f}" '
-        f'stroke="{OUTLINE}" stroke-opacity=".64" stroke-width="1.05" stroke-linecap="round"/>'
-    )
+
     return "\n".join(out)
-
-
-def _refine_svg(svg: str) -> str:
-    """v5 authoring is explicit; keep the hook as a deterministic no-op."""
-    return svg
 
 
 def _atlas_svg(team: dict[str, str], keeper: bool = False) -> str:
     rows = len(ANIMATIONS)
     parts = [
-        f'<svg xmlns="http://www.w3.org/2000/svg" width="{CELL_W * COLUMNS}" height="{CELL_H * rows}" viewBox="0 0 {CELL_W * COLUMNS} {CELL_H * rows}">',
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{CELL_W * COLUMNS}" '
+        f'height="{CELL_H * rows}" viewBox="0 0 {CELL_W * COLUMNS} {CELL_H * rows}">',
         '<g shape-rendering="geometricPrecision">',
     ]
     for row, (animation, _, _) in enumerate(ANIMATIONS):
         for frame in range(COLUMNS):
-            parts.append(_frame_svg(team, animation, frame, frame * CELL_W, row * CELL_H, keeper=keeper))
+            parts.append(
+                _frame_svg(
+                    team,
+                    animation,
+                    frame,
+                    frame * CELL_W,
+                    row * CELL_H,
+                    keeper=keeper,
+                )
+            )
     parts.append("</g></svg>")
-    return _refine_svg("\n".join(parts) + "\n")
+    return "\n".join(parts) + "\n"
 
 
 def build_outputs() -> dict[str, str]:
@@ -402,16 +593,14 @@ def build_outputs() -> dict[str, str]:
     atlas_meta: dict[str, dict[str, str]] = {}
     for slug, team in TEAMS.items():
         filename = f"{slug}_atlas.svg"
-        svg = _atlas_svg(team)
-        outputs[filename] = svg
+        outputs[filename] = _atlas_svg(team)
         atlas_meta[slug] = {"name": team["name"], "file": filename}
     for slug, team in KEEPERS.items():
         filename = f"{slug}_atlas.svg"
-        svg = _atlas_svg(team, keeper=True)
-        outputs[filename] = svg
+        outputs[filename] = _atlas_svg(team, keeper=True)
         atlas_meta[slug] = {"name": team["name"], "file": filename}
     manifest = {
-        "version": 6,
+        "version": 7,
         "quality_contract": SPRITE_FORGE_CONTRACT["quality_contract"],
         "cell": {"width": CELL_W, "height": CELL_H},
         "columns": COLUMNS,
