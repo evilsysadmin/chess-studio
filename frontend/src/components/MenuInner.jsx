@@ -1,6 +1,6 @@
 import { lazy, useEffect, useMemo, useRef, useState } from 'react';
 import './HomeRoute.css';
-import { loadQuickMatchReadyRoom, preloadQuickMatchReadyRoom } from './goldenPathPrefetch.js';
+import { loadQuickMatchReadyRoom, preloadQuickMatchReadyRoom } from './quickMatchIntentLoader.js';
 const QuickMatchModal = lazy(loadQuickMatchReadyRoom);
 const PracticeMatchModal = lazy(() => import('./PracticeMatchModal.jsx'));
 const PvPLobbyModal = lazy(() => import('./PvPLobbyModal.jsx'));
