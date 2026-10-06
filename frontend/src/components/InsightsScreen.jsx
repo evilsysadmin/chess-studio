@@ -136,6 +136,10 @@ export default function InsightsScreen(props) {
     startSecondaryTransition(() => setSection('career'));
   }
 
+  function openTrainingPuzzles(source = 'curated', rush = false, filter = null, dailySlot = 'tactic') {
+    props.onOpenPuzzles?.(source, rush, filter, dailySlot, 'insights-action');
+  }
+
   return (
     <div
       className={`insights-coach-workspace insights-training-room insights-workspace-section-${section} insights-workspace-view-${diagnosisView}`}
@@ -225,7 +229,7 @@ export default function InsightsScreen(props) {
           <>
             <InsightsGuidedSession
               gameHistory={props.gameHistory}
-              onOpenPuzzles={props.onOpenPuzzles}
+              onOpenPuzzles={openTrainingPuzzles}
               onPlayFromHere={props.onPlayFromHere}
               playerModel={playerModel}
               personalPuzzles={personalPuzzles}
@@ -234,7 +238,7 @@ export default function InsightsScreen(props) {
             <InsightsOptionalPlans onIntent={preloadOptionalPlans}>
               <InsightsOptionalPlansContent
                 gameHistory={props.gameHistory}
-                onOpenPuzzles={props.onOpenPuzzles}
+                onOpenPuzzles={openTrainingPuzzles}
                 onPlayFromHere={props.onPlayFromHere}
                 playerModel={playerModel}
                 personalPuzzles={personalPuzzles}
@@ -245,7 +249,7 @@ export default function InsightsScreen(props) {
         ) : null}
 
         {!isCareer && diagnosisView === 'errors' ? (
-          <InsightsErrorsPanel onOpenPuzzles={props.onOpenPuzzles} playerModel={playerModel} />
+          <InsightsErrorsPanel onOpenPuzzles={openTrainingPuzzles} playerModel={playerModel} />
         ) : null}
 
         {!isCareer && diagnosisView === 'dossier' ? (
