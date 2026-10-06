@@ -715,7 +715,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
               </summary>
               <div className="chronicles-game-menu__panel">
                 <strong>Chronicles of Matthias</strong>
-                <small>La expedición queda guardada.</small>
+                <small>Salir conserva esta run. Nueva expedición crea otra ruta aleatoria.</small>
                 <button type="button" onClick={() => setMenuOpen(false)}>Continuar</button>
                 <button type="button" onClick={newExpedition}>Nueva expedición</button>
                 <button type="button" onClick={exitChronicles}>Salir y guardar</button>
