@@ -433,11 +433,18 @@ func _sync_player_secondary_motion(player: Footballer, sprite: AnimatedSprite3D,
 		stretch_y = 1.06
 		tilt_degrees = -facing_sign * 12.0
 	elif animation_name == "tackle":
-		bob = -0.050
-		lateral_sway = facing_sign * 0.065
-		stretch_x = 1.04
-		stretch_y = 0.94
-		tilt_degrees = -facing_sign * 17.0
+		if player.tackle_aggressive_active():
+			bob = -0.105
+			lateral_sway = facing_sign * 0.095
+			stretch_x = 1.16
+			stretch_y = 0.80
+			tilt_degrees = -facing_sign * 31.0
+		else:
+			bob = -0.050
+			lateral_sway = facing_sign * 0.065
+			stretch_x = 1.04
+			stretch_y = 0.94
+			tilt_degrees = -facing_sign * 17.0
 	elif animation_name == "celebrate":
 		bob = absf(sin(phase)) * 0.095
 		lateral_sway = sin(phase * 0.5) * 0.022
