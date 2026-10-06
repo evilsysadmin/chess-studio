@@ -82,6 +82,7 @@ TRAINING_PROGRESS_MATTHIAS_VISUAL_SURFACES = {
 }
 
 TRAINING_VISUAL_SURFACES = {
+    "frontend/src/guidedtrainingsession.js",
     "frontend/src/personalweeklygoals.js",
     "frontend/src/components/matthiasclassroom.css",
     "frontend/src/components/puzzlescreen.jsx",
@@ -668,6 +669,8 @@ def self_test() -> None:
     ])
     assert insights_matthias.capture_groups == "training"
 
+    guided_session = classify(["frontend/src/guidedTrainingSession.js"])
+    assert guided_session.capture_groups == "training"
     weekly_goals = classify(["frontend/src/personalWeeklyGoals.js"])
     assert weekly_goals.capture_groups == "training"
     game_report = classify(["frontend/src/components/GameReportModal.jsx"])

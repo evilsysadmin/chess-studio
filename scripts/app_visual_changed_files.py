@@ -33,6 +33,20 @@ LEARNING_JOURNEY_OWNER = "frontend/src/useLearningJourneyFlow.js"
 GLOBAL_SHELL_OWNER = "frontend/src/useGlobalShellUi.js"
 TOURNAMENT_FLOW_OWNER = "frontend/src/useTournamentFlow.js"
 GLOBAL_OVERLAY_OWNER = "frontend/src/components/GlobalOverlayLayer.jsx"
+GAME_SCREEN = "frontend/src/components/GameScreen.jsx"
+PUZZLE_SCREEN_OWNER = "frontend/src/components/PuzzleScreen.jsx"
+
+# These are routing-only handoffs into an already-owned PuzzleScreen surface.
+# Keep the allowlists exact and fail closed: any extra App/GameScreen line wakes
+# the normal full visual ownership again.
+TRAINING_ROUTE_APP_LINES = {
+    "<PuzzleScreen key={\`${puzzleLaunch.source}-${puzzleLaunch.rush}-${puzzleLaunch.filter?.opening || 'all'}-${puzzleLaunch.dailySlot || 'tactic'}\`} initialSource={puzzleLaunch.source} rushMode={puzzleLaunch.rush} initialFilter={puzzleLaunch.filter} dailySlot={puzzleLaunch.dailySlot} onExit={goBack} onPlayAgain={puzzleLaunch.source === 'personal' ? returnToQuickMatchFromPersonalTraining : null} points={tournament.points} onSpendPoints={handleSpendPoints} />",
+    "<PuzzleScreen key={\`${puzzleLaunch.source}-${puzzleLaunch.rush}-${puzzleLaunch.filter?.opening || 'all'}-${puzzleLaunch.dailySlot || 'tactic'}-${puzzleLaunch.origin || 'direct'}\`} initialSource={puzzleLaunch.source} rushMode={puzzleLaunch.rush} initialFilter={puzzleLaunch.filter} dailySlot={puzzleLaunch.dailySlot} trainingOrigin={puzzleLaunch.origin} onExit={goBack} onPlayAgain={puzzleLaunch.source === 'personal' ? returnToQuickMatchFromPersonalTraining : null} points={tournament.points} onSpendPoints={handleSpendPoints} />",
+}
+POSTGAME_TRAINING_GAME_LINES = {
+    "onTrainPersonal?.();",
+    "onTrainPersonal?.(null, 'postgame-error');",
+}
 
 # Exact App.jsx lines touched by the non-visual learning-journey ownership
 # extraction. This is intentionally exact and fail-closed: formatting changes,
@@ -281,6 +295,21 @@ def _changed_source_lines(diff_text: str) -> list[str]:
     ]
 
 
+def _is_exact_routing_diff(diff_text: str | None, allowed_lines: set[str]) -> bool:
+    if not diff_text:
+        return False
+    changed_lines = _changed_source_lines(diff_text)
+    return bool(changed_lines) and all(line in allowed_lines for line in changed_lines)
+
+
+def _is_training_route_app_diff(diff_text: str | None) -> bool:
+    return _is_exact_routing_diff(diff_text, TRAINING_ROUTE_APP_LINES)
+
+
+def _is_postgame_training_game_diff(diff_text: str | None) -> bool:
+    return _is_exact_routing_diff(diff_text, POSTGAME_TRAINING_GAME_LINES)
+
+
 def _is_nonvisual_learning_app_diff(diff_text: str | None) -> bool:
     if not diff_text:
         return False
@@ -323,6 +352,14 @@ def normalize(
     normalized: list[str] = []
     seen: set[str] = set()
     lower_paths = {raw.strip().replace("\\", "/").lower() for raw in paths if raw.strip()}
+    safe_training_route_app = (
+        PUZZLE_SCREEN_OWNER.lower() in lower_paths
+        and _is_training_route_app_diff(_git_diff_text(base_sha, head_sha, APP_SHELL))
+    )
+    safe_postgame_training_game = (
+        PUZZLE_SCREEN_OWNER.lower() in lower_paths
+        and _is_postgame_training_game_diff(_git_diff_text(base_sha, head_sha, GAME_SCREEN))
+    )
     safe_learning_app = (
         LEARNING_JOURNEY_OWNER.lower() in lower_paths
         and _is_nonvisual_learning_app_diff(_git_diff_text(base_sha, head_sha, APP_SHELL))
@@ -347,6 +384,12 @@ def normalize(
         if not path:
             continue
         lower = path.lower()
+        if lower == APP_SHELL.lower() and safe_training_route_app:
+            add(PUZZLE_SCREEN_OWNER)
+            continue
+        if lower == GAME_SCREEN.lower() and safe_postgame_training_game:
+            add(PUZZLE_SCREEN_OWNER)
+            continue
         if lower == APP_SHELL.lower() and (safe_learning_app or safe_global_shell_app or safe_app_decomposition):
             # App.jsx is normally a global visual owner. Suppress it only for
             # the exact, audited navigation extraction above; any extra changed
@@ -418,6 +461,19 @@ def self_test() -> None:
     assert _is_nonvisual_learning_app_diff(safe_learning_diff)
     assert not _is_nonvisual_learning_app_diff(unsafe_learning_diff)
     assert not _is_nonvisual_learning_app_diff(None)
+
+    safe_training_route_diff = "--- a/frontend/src/App.jsx\n+++ b/frontend/src/App.jsx\n@@ -1 +1 @@\n-<PuzzleScreen key={\`old\`} initialSource={puzzleLaunch.source} />\n+<PuzzleScreen key={\`new\`} initialSource={puzzleLaunch.source} trainingOrigin={puzzleLaunch.origin} />\n"
+    assert not _is_training_route_app_diff(safe_training_route_diff)
+    exact_app_lines = list(TRAINING_ROUTE_APP_LINES)
+    exact_training_route_diff = f"--- a/frontend/src/App.jsx\n+++ b/frontend/src/App.jsx\n@@ -1 +1 @@\n-{exact_app_lines[0]}\n+{exact_app_lines[1]}\n"
+    assert _is_training_route_app_diff(exact_training_route_diff)
+    unsafe_training_route_diff = exact_training_route_diff + "@@ -10 +10 @@\n-<main className=\\\"old\\\">\n+<main className=\\\"new\\\">\n"
+    assert not _is_training_route_app_diff(unsafe_training_route_diff)
+
+    exact_game_lines = list(POSTGAME_TRAINING_GAME_LINES)
+    exact_postgame_diff = f"--- a/frontend/src/components/GameScreen.jsx\n+++ b/frontend/src/components/GameScreen.jsx\n@@ -1 +1 @@\n-{exact_game_lines[0]}\n+{exact_game_lines[1]}\n"
+    assert _is_postgame_training_game_diff(exact_postgame_diff)
+    assert not _is_postgame_training_game_diff(exact_postgame_diff + "@@ -2 +2 @@\n-old visual\n+new visual\n")
 
     safe_shell_diff = "--- a/frontend/src/App.jsx\n+++ b/frontend/src/App.jsx\n@@ -1 +1 @@\n-import React, { useEffect, useRef, useState } from 'react';\n+import React, { useEffect, useState } from 'react';\n@@ -2,0 +2 @@\n+import { useGlobalShellUi } from './useGlobalShellUi.js';\n"
     unsafe_shell_diff = "--- a/frontend/src/App.jsx\n+++ b/frontend/src/App.jsx\n@@ -1 +1 @@\n-import React, { useEffect, useRef, useState } from 'react';\n+import React, { useEffect, useState } from 'react';\n@@ -2,0 +2 @@\n+import { useGlobalShellUi } from './useGlobalShellUi.js';\n@@ -10 +10 @@\n-<main className=\"old-shell\">\n+<main className=\"new-shell\">\n"
