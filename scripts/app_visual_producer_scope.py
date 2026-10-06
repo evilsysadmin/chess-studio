@@ -344,6 +344,7 @@ def classify_path(path: str) -> set[str] | None:
             "scripts/browser_quality_scope.py",
             "scripts/chess_rules_gate.mjs",
             "scripts/quality_scope.py",
+            "scripts/state_resilience_check.mjs",
             "scripts/workflow_debt_gate.py",
         }:
             return set()
