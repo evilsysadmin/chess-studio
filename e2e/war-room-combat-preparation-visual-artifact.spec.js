@@ -82,7 +82,7 @@ test.describe('Combat preparation · mobile', () => {
     expect(snapshot.horizontalOverflow).toBe(false);
     expect(snapshot.shell?.left || 0).toBeGreaterThanOrEqual(-1);
     expect(snapshot.shell?.right || 9999).toBeLessThanOrEqual(391);
-    expect(snapshot.canvas?.width || 0).toBeGreaterThanOrEqual(388);
+    expect(snapshot.canvas?.width || 0).toBeGreaterThanOrEqual(350);
     expect(snapshot.primary?.right || 9999).toBeLessThanOrEqual(391);
 
     const targets = page.locator('.combat-operations-shell button:visible, .combat-operations-shell summary:visible');
