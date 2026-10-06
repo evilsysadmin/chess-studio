@@ -352,6 +352,7 @@ function installChroniclesPremiumMaterials(scene, {
   roleForNode = chroniclesTacticsMaterialRole,
   floorRepeatScale = 1,
   wallRepeatScale = 1,
+  uniqueMaterialVariation = false,
 } = {}) {
   if (!scene?.add || !scene?.traverse) return null;
   const existing = scene.getObjectByName?.(rootName);
@@ -382,7 +383,9 @@ function installChroniclesPremiumMaterials(scene, {
   const textureSets = new Map();
 
   function textureSetFor(role, profileId, index) {
-    const cacheKey = role + ':' + profileId;
+    const cacheKey = uniqueMaterialVariation
+      ? role + ':' + profileId + ':' + index
+      : role + ':' + profileId;
     if (textureSets.has(cacheKey)) return textureSets.get(cacheKey);
     const profile = chroniclesMaterialProfile(profileId);
     const set = createMaterialTextureSet({
@@ -452,5 +455,6 @@ export function installChroniclesFirstPersonPremiumMaterials(scene, options = {}
     ...options,
     rootName: FIRST_PERSON_ROOT_NAME,
     roleForNode: chroniclesFirstPersonMaterialRole,
+    uniqueMaterialVariation: true,
   });
 }
