@@ -306,6 +306,7 @@ export function buildChroniclesDungeonAtmosphere({
     });
   }
 
+  root.userData.chroniclesLightingProfile = scenePlan?.materials?.lightingProfile || 'default';
   root.userData.chroniclesAtmosphereStats = {
     dustCount,
     mistCount: mistMaterials.length,
