@@ -1,9 +1,12 @@
 export const CHRONICLES_MINIMUM_VISIBILITY = Object.freeze({
   firstPerson: Object.freeze({
-    ambientDesktop: 0.9,
-    ambientCoarse: 0.98,
-    exposureDesktop: 1.14,
-    exposureCoarse: 1.2,
+    // First-person Chronicles should stay readable without flattening the
+    // dungeon into a uniformly lit room. Practical torches do the storytelling;
+    // these are only minimum safety floors, with a little extra help on touch.
+    ambientDesktop: 0.52,
+    ambientCoarse: 0.64,
+    exposureDesktop: 1.03,
+    exposureCoarse: 1.09,
   }),
   isometric: Object.freeze({
     exposure: 1.04,
