@@ -67,6 +67,7 @@ export default function CombatBattleView({
               <div className="game-board-3d-stage combat-warroom-stage">
               <CombatWarRoomBoard
                 cameraProfile="warroom"
+                immersive
                 warRoomMobilePerformance
                 fen={fen}
                 onSquareClick={handleSquareClick}
