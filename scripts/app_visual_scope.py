@@ -28,6 +28,7 @@ NONVISUAL_FRONTEND_PATHS = {
     "frontend/src/gamesessiondescriptor.js",
     "frontend/src/lablaunchintent.js",
     "frontend/src/uselearningjourneyflow.js",
+    "frontend/src/useglobalshellui.js",
     "frontend/src/userreleasenotes.js",
     "frontend/src/soundfx.js",
 }
@@ -712,6 +713,9 @@ def self_test() -> None:
     puzzle_launch = classify(["frontend/src/useLearningJourneyFlow.js"])
     assert puzzle_launch.capture_groups == "none"
     assert not puzzle_launch.hans and not puzzle_launch.chesscom
+    global_shell = classify(["frontend/src/useGlobalShellUi.js"])
+    assert global_shell.capture_groups == "none"
+    assert not global_shell.hans and not global_shell.chesscom
     release_notes_router = classify(["frontend/src/userReleaseNotes.js"])
     assert release_notes_router.capture_groups == "none"
     assert not release_notes_router.hans and not release_notes_router.chesscom
