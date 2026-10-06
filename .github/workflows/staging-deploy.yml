@@ -328,36 +328,34 @@ jobs:
     with:
       deploy_sha: ${{ needs.prepare.outputs.deploy_sha }}
     secrets: inherit
+  resend_bootstrap:
+    name: Resend recovery · scoped
+    needs: [prepare, backend, frontend, worker, smoke]
+    if: needs.prepare.outputs.admitted == 'true' && needs.prepare.outputs.resend_bootstrap_required == 'true' && needs.backend.outputs.superseded != 'true'
+    uses: ./.github/workflows/oci-resend-bootstrap.yml
+    with:
+      bootstrap_sha: ${{ needs.prepare.outputs.deploy_sha }}
+    secrets: inherit
+  continuity:
+    name: Live-game continuity · scoped
+    needs: [prepare, backend, frontend, worker, smoke]
+    if: needs.prepare.outputs.admitted == 'true' && needs.prepare.outputs.continuity_required == 'true' && needs.backend.outputs.superseded != 'true'
+    uses: ./.github/workflows/staging-deploy-continuity.yml
+    with:
+      deploy_sha: ${{ needs.prepare.outputs.deploy_sha }}
+    secrets: inherit
   summary:
     name: Staging generation complete
     needs: [prepare, backend, frontend, worker, smoke]
     if: needs.prepare.outputs.admitted == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 2
-    permissions:
-      contents: read
-      actions: write
     env:
       DEPLOY_SHA: ${{ needs.prepare.outputs.deploy_sha }}
       BACKEND: ${{ needs.backend.result }}
       FRONTEND: ${{ needs.frontend.result }}
       WORKER: ${{ needs.worker.result }}
       SMOKE: ${{ needs.smoke.result }}
-      RESEND_BOOTSTRAP_REQUIRED: ${{ needs.prepare.outputs.resend_bootstrap_required }}
-      CONTINUITY_REQUIRED: ${{ needs.prepare.outputs.continuity_required }}
     steps:
-      - name: Summary and scoped follow-ups
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "### Staging $DEPLOY_SHA · backend=$BACKEND · frontend=$FRONTEND · worker=$WORKER · smoke=$SMOKE" >> "$GITHUB_STEP_SUMMARY"
-          if [[ "$RESEND_BOOTSTRAP_REQUIRED" == true ]]; then
-            gh workflow run oci-resend-bootstrap.yml --ref main -f bootstrap_sha="$DEPLOY_SHA"
-            echo "::notice title=Resend recovery dispatched::$DEPLOY_SHA"
-          fi
-          if [[ "$CONTINUITY_REQUIRED" == true ]]; then
-            gh workflow run staging-deploy-continuity.yml --ref main -f deploy_sha="$DEPLOY_SHA"
-            echo "::notice title=Continuity drill dispatched::$DEPLOY_SHA"
-          fi
+      - name: Summary
+        run: echo "### Staging $DEPLOY_SHA · backend=$BACKEND · frontend=$FRONTEND · worker=$WORKER · smoke=$SMOKE" >> "$GITHUB_STEP_SUMMARY"
