@@ -1,8 +1,10 @@
 import CombatWarRoomBoard from './CombatWarRoomBoard.jsx';
+import './WarRoomImmersive.css';
 import './CombatWarRoomBattle.css';
 import WarRoomImmersiveMusicDock from './WarRoomImmersiveMusicDock.jsx';
 import WarRoomLandscapeGate from './WarRoomLandscapeGate.jsx';
 import useWarRoomLandscape from './useWarRoomLandscape.js';
+import useWarRoomImmersive from './useWarRoomImmersive.js';
 import PromotionModal from './PromotionModal.jsx';
 import PieceInfoModal from './PieceInfoModal.jsx';
 import AttackConfirmModal from './AttackConfirmModal.jsx';
@@ -26,6 +28,7 @@ export default function CombatBattleView({
     lockState: warRoomOrientationLock,
     activateLandscape,
   } = useWarRoomLandscape(true);
+  const { immersive: warRoomImmersive } = useWarRoomImmersive({ enabled: true, focusActive: false });
 
   return (
     <div
@@ -33,7 +36,8 @@ export default function CombatBattleView({
       data-combat-war-room="generic"
     >
       <div
-        className="game-layout game-layout-3d combat-game-layout combat-warroom-layout"
+        className={`game-layout game-layout-3d combat-game-layout combat-warroom-layout${warRoomImmersive ? ' game-layout-immersive' : ''}`}
+        data-war-room-immersive={warRoomImmersive ? 'true' : 'false'}
         data-war-room-orientation-lock={warRoomOrientationLock}
       >
         <WarRoomLandscapeGate
@@ -67,7 +71,7 @@ export default function CombatBattleView({
               <div className="game-board-3d-stage combat-warroom-stage">
               <CombatWarRoomBoard
                 cameraProfile="warroom"
-                immersive
+                immersive={warRoomImmersive}
                 warRoomMobilePerformance
                 fen={fen}
                 onSquareClick={handleSquareClick}
@@ -152,32 +156,37 @@ export default function CombatBattleView({
           {phase === 'battle' && (
             <div className="game-controls combat-game-controls combat-warroom-controls">
               {cpuRetryNeeded && (
-                <button type="button" className="primary-btn" onClick={retryCpuTurn}>
-                  Reintentar turno de la CPU
+                <button type="button" className="primary-btn combat-warroom-retry" onClick={retryCpuTurn}>
+                  Reintentar CPU
                 </button>
               )}
-              <button
-                className="secondary-btn"
-                onClick={combatVariant === 'roguelike' ? suspendBattleToMenu : backToSetup}
-                title={combatVariant === 'roguelike' ? 'Guarda la batalla actual y vuelve al menú. La campaña sigue activa.' : undefined}
-              >
-                {combatVariant === 'roguelike' ? 'Salir al menú' : 'Salir del combate'}
-              </button>
-              {combatVariant === 'roguelike' && (
-                <button
-                  type="button"
-                  className="secondary-btn combat-retreat-btn"
-                  title="Termina esta batalla como retirada y conserva las bajas que ya se hayan producido."
-                  onClick={() => {
-                    const confirmed = window.confirm(
-                      '¿Abandonar batalla y asumir bajas?\n\nLa batalla terminará como retirada. Las piezas ya caídas quedarán registradas como bajas y la campaña continuará con esas consecuencias.',
-                    );
-                    if (confirmed) retireBattle();
-                  }}
-                >
-                  Abandonar batalla y asumir bajas
-                </button>
-              )}
+              <details className="combat-warroom-action-menu">
+                <summary aria-label="Opciones de batalla" title="Opciones de batalla">⋯</summary>
+                <div className="combat-warroom-action-popover">
+                  <button
+                    className="secondary-btn"
+                    onClick={combatVariant === 'roguelike' ? suspendBattleToMenu : backToSetup}
+                    title={combatVariant === 'roguelike' ? 'Guarda la batalla actual y vuelve al menú. La campaña sigue activa.' : undefined}
+                  >
+                    {combatVariant === 'roguelike' ? 'Salir al menú' : 'Salir del combate'}
+                  </button>
+                  {combatVariant === 'roguelike' && (
+                    <button
+                      type="button"
+                      className="secondary-btn combat-retreat-btn"
+                      title="Termina esta batalla como retirada y conserva las bajas que ya se hayan producido."
+                      onClick={() => {
+                        const confirmed = window.confirm(
+                          '¿Abandonar batalla y asumir bajas?\n\nLa batalla terminará como retirada. Las piezas ya caídas quedarán registradas como bajas y la campaña continuará con esas consecuencias.',
+                        );
+                        if (confirmed) retireBattle();
+                      }}
+                    >
+                      Abandonar batalla y asumir bajas
+                    </button>
+                  )}
+                </div>
+              </details>
             </div>
           )}
         </div>
