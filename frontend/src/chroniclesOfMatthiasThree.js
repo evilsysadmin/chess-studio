@@ -265,7 +265,7 @@ function createDungeonScene(scene, { coarsePointer = false, scenePlan = null } =
   });
 
   (scenePlan?.content || []).forEach((entry, index) => {
-    if (!entry?.position || !['lever', 'pickup'].includes(entry.kind)) return;
+    if (!entry?.position || ['trigger', 'exit', 'trap'].includes(entry.kind)) return;
     const cell = worldForCell(entry.position.x, entry.position.y, sceneCenter);
     const root = new THREE.Group();
     root.name = `chronicles-first-person-${entry.kind}-${entry.id}`;
@@ -288,7 +288,7 @@ function createDungeonScene(scene, { coarsePointer = false, scenePlan = null } =
       pivot.add(stem, knob);
       root.add(base, pivot);
       contentProps.push({ id: entry.id, kind: entry.kind, root, pivot, phase: index * 1.17 });
-    } else {
+    } else if (entry.kind === 'pickup') {
       const cradle = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.055, 8, coarsePointer ? 16 : 24), contentMaterial);
       cradle.rotation.x = -Math.PI / 2;
       cradle.position.y = 0.16;
@@ -299,6 +299,33 @@ function createDungeonScene(scene, { coarsePointer = false, scenePlan = null } =
       glow.position.y = 0.58;
       root.add(cradle, core, glow);
       contentProps.push({ id: entry.id, kind: entry.kind, root, core, glow, phase: index * 1.17 });
+    } else if (entry.kind === 'lore') {
+      const plinth = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.16, 0.46), contentMaterial);
+      plinth.position.y = 0.08;
+      const plaque = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.72, 0.12), contentMaterial);
+      plaque.position.set(0, 0.55, 0);
+      plaque.rotation.x = -0.18;
+      plaque.castShadow = !coarsePointer;
+      root.add(plinth, plaque);
+      contentProps.push({ id: entry.id, kind: entry.kind, root, phase: index * 1.17 });
+    } else if (entry.kind === 'relic-socket') {
+      const pedestal = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.46, 0.46, 12), contentMaterial);
+      pedestal.position.y = 0.23;
+      const socket = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.055, 8, 20), pickupMaterial);
+      socket.position.y = 0.5;
+      socket.rotation.x = -Math.PI / 2;
+      const glow = new THREE.PointLight(0xd99438, coarsePointer ? 0.45 : 0.72, 3.2, 2);
+      glow.position.y = 0.55;
+      root.add(pedestal, socket, glow);
+      contentProps.push({ id: entry.id, kind: entry.kind, root, glow, phase: index * 1.17 });
+    } else {
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(0.82, 1.45, 0.18), contentMaterial);
+      frame.position.y = 0.72;
+      frame.castShadow = !coarsePointer;
+      const sigil = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.045, 8, 20), pickupMaterial);
+      sigil.position.set(0, 0.78, 0.12);
+      root.add(frame, sigil);
+      contentProps.push({ id: entry.id, kind: entry.kind, root, phase: index * 1.17 });
     }
     root.visible = Boolean(entry.visible);
     scene.add(root);
