@@ -107,9 +107,8 @@ body:has(.puzzle-screen) .global-music-dock {
  * must own the viewport. Keeping the old PreferredBoard-only selector leaves
  * phones constrained by Board3D's square-ish aspect ratio and creates a black
  * moat between board and coach. */
-.puzzle-screen .puzzle-board-column > .board3d-main-shell,
-.puzzle-screen .puzzle-board-column > .preferred-board-3d,
-.puzzle-screen .puzzle-board-column > .preferred-board-3d .board3d-main-shell {
+.puzzle-screen .puzzle-board-column .board3d-main-shell,
+.puzzle-screen .puzzle-board-column > .preferred-board-3d {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -117,7 +116,7 @@ body:has(.puzzle-screen) .global-music-dock {
   min-height: 0 !important;
 }
 
-.puzzle-screen .puzzle-board-column > .board3d-main-shell {
+.puzzle-screen .puzzle-board-column .board3d-main-shell {
   max-height: none !important;
   aspect-ratio: auto !important;
   border-radius: 0;
