@@ -59,9 +59,15 @@ describe('Chronicles Game Director frontend resolver', () => {
     const fetchManifest = vi.fn().mockResolvedValue(remoteEnvelope('crypt-eight-squares', 418, (manifest) => {
       const grid = [...manifest.grid];
       grid[2] = '#..##.#';
+      const wallGrid = [...manifest.materials.wallGrid];
+      wallGrid[2] = '2..45.4';
       return {
         ...manifest,
         grid,
+        materials: {
+          ...manifest.materials,
+          wallGrid,
+        },
         generation: {
           kind: 'seeded-layout',
           mapCode: 'CM1|theme=crypt|size=7x7|verbs=guardian|enemies=2|treasures=1|secrets=0|difficulty=2|seed=418',
