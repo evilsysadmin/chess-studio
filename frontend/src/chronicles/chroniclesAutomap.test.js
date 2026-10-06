@@ -1,12 +1,22 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { clearStorageMemoryFallback } from '../safeStorage.js';
 import {
   chroniclesAutomapCellKey,
   chroniclesAutomapFacingDegrees,
   chroniclesAutomapMarkVisited,
   chroniclesAutomapRevealedCells,
+  clearChroniclesAutomapVisited,
+  loadChroniclesAutomapVisited,
+  saveChroniclesAutomapVisited,
 } from './chroniclesAutomap.js';
 
 describe('Chronicles automap', () => {
+  const runId = 'automap-test-run';
+
+  beforeEach(() => {
+    clearStorageMemoryFallback();
+    clearChroniclesAutomapVisited(runId);
+  });
   it('tracks visited cells per map without mutating the previous ledger', () => {
     const empty = {};
     const first = chroniclesAutomapMarkVisited(empty, { mapId: 'crypt', x: 2, y: 3 });
@@ -32,6 +42,22 @@ describe('Chronicles automap', () => {
 
     expect([...revealed].sort()).toEqual(['1:1', '2:0', '2:1', '2:2', '3:1']);
     expect(revealed.has('0:0')).toBe(false);
+  });
+
+  it('survives reload through safe session storage without touching the run checkpoint', () => {
+    const visited = {
+      crypt: ['1:1', '1:2', '1:2'],
+      gallery: ['3:4'],
+    };
+
+    expect(saveChroniclesAutomapVisited(runId, visited)).toBeTypeOf('boolean');
+    expect(loadChroniclesAutomapVisited(runId)).toEqual({
+      crypt: ['1:1', '1:2'],
+      gallery: ['3:4'],
+    });
+
+    clearChroniclesAutomapVisited(runId);
+    expect(loadChroniclesAutomapVisited(runId)).toEqual({});
   });
 
   it('maps the canonical N/E/S/O direction index to arrow rotation', () => {
