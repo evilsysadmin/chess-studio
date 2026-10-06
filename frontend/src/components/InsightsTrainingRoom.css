@@ -4,14 +4,52 @@
  * coaching components; this layer changes only spatial presentation.
  */
 
+/* Core immersion: Así juegas is a room, not a room embedded in the app dashboard. */
+body:has(.insights-training-room) {
+  background: #0d0b0a;
+}
+
+body:has(.insights-training-room) .masthead {
+  display: none !important;
+}
+
+.app-shell:has(.insights-training-room) {
+  width: 100vw;
+  max-width: none;
+  min-height: 100dvh;
+  margin: 0;
+  padding: 0;
+}
+
+body:has(.insights-training-room) .global-music-dock {
+  z-index: 1300;
+  top: max(.5rem, env(safe-area-inset-top));
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+}
+
+@media (max-width: 520px) {
+  body:has(.insights-training-room) .global-music-dock {
+    top: max(.35rem, env(safe-area-inset-top));
+    left: auto;
+    right: max(.45rem, env(safe-area-inset-right));
+    transform: none;
+  }
+}
+
 .insights-training-room {
   position: relative;
   isolation: isolate;
-  width: min(100%, 1660px);
-  min-height: calc(100dvh - 7rem);
-  margin: 0 auto;
-  padding: .3rem clamp(.45rem, 1.8vw, 1.4rem) 2.4rem;
-  overflow: clip;
+  width: 100%;
+  min-height: 100dvh;
+  margin: 0;
+  padding:
+    max(.3rem, env(safe-area-inset-top))
+    clamp(.45rem, 1.8vw, 1.4rem)
+    max(2.4rem, env(safe-area-inset-bottom));
+  overflow-x: clip;
+  background: #0d0b0a;
 }
 
 .insights-training-room > :not(.insights-training-room-stage) {
@@ -24,17 +62,16 @@
   z-index: 0;
   top: 0;
   left: 50%;
-  width: min(100%, 1660px);
-  height: min(790px, calc(100dvh - 6.1rem));
+  width: 100vw;
+  height: min(820px, 100dvh);
   min-height: 640px;
   transform: translateX(-50%);
   overflow: hidden;
-  border: 1px solid rgba(194, 148, 73, .18);
-  border-radius: 18px;
+  border: 0;
+  border-bottom: 1px solid rgba(194, 148, 73, .14);
+  border-radius: 0;
   background: #12100f;
-  box-shadow:
-    0 30px 76px rgba(0, 0, 0, .38),
-    inset 0 1px rgba(255, 226, 171, .06);
+  box-shadow: inset 0 1px rgba(255, 226, 171, .05);
   pointer-events: none;
 }
 
@@ -371,15 +408,18 @@
 
 @media (max-width: 760px) {
   .insights-training-room {
-    min-height: 0;
-    padding: .25rem .45rem 1.6rem;
-    overflow: visible;
+    min-height: 100dvh;
+    padding:
+      max(.25rem, env(safe-area-inset-top))
+      .45rem
+      max(1.6rem, env(safe-area-inset-bottom));
+    overflow-x: clip;
   }
 
   .insights-training-room-stage {
-    height: 380px;
+    height: 390px;
     min-height: 0;
-    border-radius: 14px;
+    border-radius: 0;
   }
 
   .insights-training-room-stage::after {
