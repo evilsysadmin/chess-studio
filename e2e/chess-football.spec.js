@@ -57,6 +57,12 @@ test('Chess Football fills the viewport and returns only through the runtime exi
   expect(box.height).toBeGreaterThanOrEqual(718);
   expect(await page.evaluate(() => document.fullscreenElement === null)).toBe(true);
 
+  // React must not interpret Escape as "volver": while Football owns the mode,
+  // Escape belongs to Godot's pause menu.
+  await page.keyboard.press('Escape');
+  await expect(host).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toHaveCount(0);
+
   await frame.contentFrame().locator('body').evaluate(() => {
     window.parent.postMessage({ source: 'chess-football-godot', type: 'exit' }, '*');
   });
