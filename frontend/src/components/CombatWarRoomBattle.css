@@ -282,8 +282,9 @@
 }
 
 @media (max-width: 920px) {
-  .combat-battle-screen .game-layout-immersive .combat-warroom-row {
+  .game-screen.combat-battle-screen .game-layout-immersive .board-live-row.combat-warroom-row {
     padding: 0 !important;
+    border-width: 0 !important;
   }
 
   .combat-battle-screen .game-layout-immersive .combat-warroom-stage .board3d-main-shell {
