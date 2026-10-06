@@ -372,7 +372,7 @@ func _refresh_hud() -> void:
 		else:
 			help_label.text = "PENALTI RIVAL · W/S mueve al portero antes del disparo"
 	else:
-		help_label.text = "WASD · Shift sprint · Mantén Space pase · Mantén Enter tiro · E entrada · Shift+E segada · Tab cambia · V vista · ESC menú"
+		help_label.text = "WASD · Shift sprint (stamina) · Mantén Space pase · Mantén Enter tiro · E entrada · Shift+E segada · Tab cambia · V vista · ESC menú"
 	var charge_visible := shot_charging or pass_charging
 	if shot_meter != null:
 		shot_meter.visible = charge_visible

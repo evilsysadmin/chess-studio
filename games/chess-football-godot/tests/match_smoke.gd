@@ -61,6 +61,24 @@ func _initialize() -> void:
 	assert(human_home_spread > 500.0)
 	print("SMOKE_STAGE=kickoff")
 
+	# Universal stamina: sprint drains, exhaustion disables the speed boost,
+	# and rest recovers enough to sprint again. No per-player stats yet.
+	var stamina_runner: Footballer = match_node.controlled
+	stamina_runner.debug_set_stamina(100.0)
+	var stamina_start: float = stamina_runner.debug_stamina_ratio()
+	for _sprint_step in range(40):
+		stamina_runner.move_human(0.10, Vector2.RIGHT, true)
+	assert(stamina_runner.debug_stamina_ratio() < stamina_start * 0.10)
+	assert(stamina_runner.debug_stamina_exhausted())
+	var exhausted_speed: float = stamina_runner.velocity.length()
+	assert(exhausted_speed <= stamina_runner.base_speed * 1.06)
+	for _recover_step in range(10):
+		stamina_runner.move_human(0.10, Vector2.ZERO, false)
+	assert(stamina_runner.debug_stamina_ratio() >= 0.24)
+	assert(not stamina_runner.debug_stamina_exhausted())
+	stamina_runner.debug_set_stamina(100.0)
+	print("SMOKE_STAGE=stamina")
+
 	# The same shot crossing the goal plane is only a goal while the whole
 	# ball fits below the crossbar.
 	match_node.ball.release(Vector2.RIGHT, 0.0)

@@ -7,6 +7,14 @@ var role: String = "midfielder"
 var base_speed: float = 250.0
 const MOVE_ACCELERATION := 1650.0
 const MOVE_DECELERATION := 2150.0
+const SPRINT_SPEED_MULTIPLIER := 1.34
+const STAMINA_MAX := 100.0
+const STAMINA_DRAIN_PER_SECOND := 28.0
+const STAMINA_RECOVER_MOVING_PER_SECOND := 14.0
+const STAMINA_RECOVER_IDLE_PER_SECOND := 26.0
+const STAMINA_RECOVER_THRESHOLD := 24.0
+const AI_SPRINT_INTENSITY := 0.94
+const AI_EXHAUSTED_INTENSITY_CAP := 0.82
 const TACKLE_ACTIVE_SECONDS := 0.18
 const SLIDE_TACKLE_ACTIVE_SECONDS := 0.24
 var home_position: Vector2
@@ -32,6 +40,8 @@ var keeper_save_seconds: float = 0.0
 var keeper_save_total: float = 0.0
 var keeper_save_direction: float = 1.0
 var last_sprinting: bool = false
+var stamina: float = STAMINA_MAX
+var sprint_exhausted: bool = false
 
 func configure(p_team_id: int, p_index: int, p_role: String, p_position: Vector2, p_color: Color) -> void:
 	team_id = p_team_id
@@ -81,13 +91,15 @@ func move_human(delta: float, direction: Vector2, sprinting: bool) -> void:
 	if sent_off:
 		velocity = Vector2.ZERO
 		return
-	last_sprinting = sprinting
-	var speed := base_speed * (1.34 if sprinting else 1.0)
+	var moving := direction.length_squared() > 0.001
+	var actual_sprint := _update_stamina(delta, sprinting, moving)
+	last_sprinting = actual_sprint
+	var speed := base_speed * (SPRINT_SPEED_MULTIPLIER if actual_sprint else 1.0)
 	if tackle_recovery_seconds > 0.0:
 		speed *= 0.42
 	if contact_stun_seconds > 0.0:
 		speed *= 0.32
-	var desired := direction.normalized() * speed if direction.length_squared() > 0.001 else Vector2.ZERO
+	var desired := direction.normalized() * speed if moving else Vector2.ZERO
 	var acceleration := MOVE_ACCELERATION if desired.length_squared() > 0.001 else MOVE_DECELERATION
 	velocity = velocity.move_toward(desired, acceleration * delta)
 	if velocity.length() < 1.0:
@@ -95,7 +107,7 @@ func move_human(delta: float, direction: Vector2, sprinting: bool) -> void:
 	move_and_slide()
 	global_position = ChessFootballMath.clamp_to_pitch(global_position)
 	_sync_facing()
-	_sync_locomotion(sprinting)
+	_sync_locomotion(actual_sprint)
 
 func move_ai(delta: float, target: Vector2, intensity: float = 1.0) -> void:
 	if sent_off:
@@ -103,13 +115,19 @@ func move_ai(delta: float, target: Vector2, intensity: float = 1.0) -> void:
 		return
 	ai_target = target
 	var offset := target - global_position
-	last_sprinting = intensity >= 0.88
+	var moving := offset.length() >= 8.0
+	var sprint_requested := intensity >= AI_SPRINT_INTENSITY
+	var actual_sprint := _update_stamina(delta, sprint_requested, moving)
+	last_sprinting = actual_sprint
+	var effective_intensity := clampf(intensity, 0.35, 1.0)
+	if sprint_requested and not actual_sprint:
+		effective_intensity = minf(effective_intensity, AI_EXHAUSTED_INTENSITY_CAP)
 	var recovery_scale := 0.42 if tackle_recovery_seconds > 0.0 else 1.0
 	if contact_stun_seconds > 0.0:
 		recovery_scale *= 0.32
 	var desired := Vector2.ZERO
-	if offset.length() >= 8.0:
-		desired = offset.normalized() * base_speed * clampf(intensity, 0.35, 1.0) * recovery_scale
+	if moving:
+		desired = offset.normalized() * base_speed * effective_intensity * recovery_scale
 	var acceleration := MOVE_ACCELERATION if desired.length_squared() > 0.001 else MOVE_DECELERATION
 	velocity = velocity.move_toward(desired, acceleration * delta)
 	if velocity.length() < 1.0:
@@ -117,7 +135,31 @@ func move_ai(delta: float, target: Vector2, intensity: float = 1.0) -> void:
 	move_and_slide()
 	global_position = ChessFootballMath.clamp_to_pitch(global_position)
 	_sync_facing()
-	_sync_locomotion(last_sprinting)
+	_sync_locomotion(actual_sprint)
+
+func _update_stamina(delta: float, sprint_requested: bool, moving: bool) -> bool:
+	var before := stamina
+	var actual_sprint := sprint_requested and moving and not sprint_exhausted and stamina > 0.0
+	if actual_sprint:
+		stamina = maxf(0.0, stamina - STAMINA_DRAIN_PER_SECOND * delta)
+		if stamina <= 0.01:
+			stamina = 0.0
+			sprint_exhausted = true
+			actual_sprint = false
+	else:
+		var recovery_rate := STAMINA_RECOVER_MOVING_PER_SECOND if moving else STAMINA_RECOVER_IDLE_PER_SECOND
+		stamina = minf(STAMINA_MAX, stamina + recovery_rate * delta)
+		if sprint_exhausted and stamina >= STAMINA_RECOVER_THRESHOLD:
+			sprint_exhausted = false
+	if absf(stamina - before) > 0.001:
+		queue_redraw()
+	return actual_sprint
+
+func stamina_ratio() -> float:
+	return clampf(stamina / STAMINA_MAX, 0.0, 1.0)
+
+func can_sprint() -> bool:
+	return not sprint_exhausted and stamina > 0.0
 
 func play_action(animation_name: String, duration: float = 0.78) -> void:
 	if visual == null or not visual.sprite_frames.has_animation(animation_name):
@@ -281,6 +323,17 @@ func debug_keeper_save_active() -> bool:
 func debug_keeper_save_direction() -> float:
 	return keeper_save_direction
 
+func debug_stamina_ratio() -> float:
+	return stamina_ratio()
+
+func debug_stamina_exhausted() -> bool:
+	return sprint_exhausted
+
+func debug_set_stamina(value: float, exhausted: bool = false) -> void:
+	stamina = clampf(value, 0.0, STAMINA_MAX)
+	sprint_exhausted = exhausted
+	queue_redraw()
+
 func _draw() -> void:
 	if active:
 		draw_arc(Vector2(0, 2), 24.0, 0.0, TAU, 32, Color(1.0, 0.82, 0.24, 0.92), 3.0)
@@ -290,3 +343,4 @@ func _draw() -> void:
 			Vector2(0, -58),
 		])
 		draw_colored_polygon(marker, Color(1.0, 0.82, 0.24, 0.96))
+

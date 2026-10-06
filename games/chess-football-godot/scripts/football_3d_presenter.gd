@@ -16,6 +16,9 @@ const TACTICAL_PLAYER_PIXEL_SIZE := 0.0162
 const PLAYER_BASE_Y := 0.76
 const PLAYER_RUN_BOB := 0.050
 const PLAYER_SPRINT_BOB := 0.072
+const STAMINA_BAR_WIDTH := 0.76
+const STAMINA_BAR_DEPTH := 0.10
+const STAMINA_BAR_Z := 0.62
 
 var match_node: Node
 var camera: Camera3D
@@ -317,6 +320,28 @@ func _build_player_proxies() -> void:
 			active_disc.visible = false
 			root.add_child(active_disc)
 
+			var stamina_back := MeshInstance3D.new()
+			stamina_back.name = "StaminaBack"
+			var stamina_back_mesh := BoxMesh.new()
+			stamina_back_mesh.size = Vector3(STAMINA_BAR_WIDTH + 0.06, 0.028, STAMINA_BAR_DEPTH + 0.04)
+			stamina_back.mesh = stamina_back_mesh
+			stamina_back.position = Vector3(0.0, 0.040, STAMINA_BAR_Z)
+			stamina_back.material_override = _material(Color(0.025, 0.030, 0.032), 0.95)
+			stamina_back.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			stamina_back.visible = false
+			root.add_child(stamina_back)
+
+			var stamina_fill := MeshInstance3D.new()
+			stamina_fill.name = "StaminaFill"
+			var stamina_fill_mesh := BoxMesh.new()
+			stamina_fill_mesh.size = Vector3(STAMINA_BAR_WIDTH, 0.034, STAMINA_BAR_DEPTH)
+			stamina_fill.mesh = stamina_fill_mesh
+			stamina_fill.position = Vector3(0.0, 0.058, STAMINA_BAR_Z)
+			stamina_fill.material_override = _material(Color(1.0, 0.72, 0.16), 0.45)
+			stamina_fill.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			stamina_fill.visible = false
+			root.add_child(stamina_fill)
+
 			add_child(root)
 			player_nodes[player.get_instance_id()] = root
 			player_sprites[player.get_instance_id()] = sprite
@@ -407,9 +432,21 @@ func sync_presentation(delta: float, mode: String) -> void:
 				sprite.frame = player.visual.frame
 			sprite.pixel_size = TACTICAL_PLAYER_PIXEL_SIZE if mode == "tactical" else PLAYER_PIXEL_SIZE
 			_sync_player_secondary_motion(player, sprite, proxy)
+			var is_controlled: bool = player == match_node.controlled
 			var active_disc := proxy.get_node_or_null("ActiveDisc") as MeshInstance3D
 			if active_disc != null:
-				active_disc.visible = player == match_node.controlled
+				active_disc.visible = is_controlled
+			var stamina_back := proxy.get_node_or_null("StaminaBack") as MeshInstance3D
+			var stamina_fill := proxy.get_node_or_null("StaminaFill") as MeshInstance3D
+			var stamina_ratio: float = player.stamina_ratio()
+			var show_stamina: bool = is_controlled and (player.last_sprinting or stamina_ratio < 0.995)
+			if stamina_back != null:
+				stamina_back.visible = show_stamina
+			if stamina_fill != null:
+				stamina_fill.visible = show_stamina
+				var fill_ratio: float = maxf(0.015, stamina_ratio)
+				stamina_fill.scale.x = fill_ratio
+				stamina_fill.position.x = -STAMINA_BAR_WIDTH * 0.5 * (1.0 - fill_ratio)
 
 	if ball_node != null:
 		var ball_height: float = 0.18 + float(match_node.ball.flight_height) * WORLD_SCALE

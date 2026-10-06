@@ -39,6 +39,23 @@ func _initialize() -> void:
 	assert(Input.get_action_strength("move_right") < 0.01)
 	assert(not Input.is_action_pressed("sprint"))
 
+	# Quick tap, then press-and-hold in the joystick zone arms sprint without
+	# needing to shove the stick to the rim. Stamina still limits the sprint.
+	var mobile_runner: Footballer = match_node.controlled
+	mobile_runner.debug_set_stamina(100.0)
+	assert(controls.debug_touch_down(12, joystick_start))
+	assert(controls.debug_touch_up(12, joystick_start))
+	assert(controls.debug_touch_down(13, joystick_start + Vector2(3.0, 2.0)))
+	assert(controls.debug_sprint_latched())
+	assert(Input.is_action_pressed("sprint"))
+	controls.debug_touch_move(13, joystick_start + Vector2(34.0, 0.0))
+	var mobile_stamina_before: float = mobile_runner.debug_stamina_ratio()
+	match_node._handle_human(0.45)
+	assert(mobile_runner.debug_stamina_ratio() < mobile_stamina_before)
+	controls.debug_touch_up(13, joystick_start + Vector2(34.0, 0.0))
+	assert(not Input.is_action_pressed("sprint"))
+	mobile_runner.debug_set_stamina(100.0)
+
 	# A quick teammate tap is still useful, but holding charges the same visible
 	# power meter used by shots and produces a materially stronger pass.
 	var passer: Footballer = match_node.teams[0][2]
