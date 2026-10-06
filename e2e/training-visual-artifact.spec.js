@@ -534,4 +534,39 @@ scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page })
   await expect(career.locator('.career-rhythm-grid')).toBeVisible();
   await captureAt(page, 'career-rhythm', { width: 1440, height: 900, variant: 'desktop' });
   await captureAt(page, 'career-rhythm', { width: 390, height: 844, variant: 'mobile' });
+
+  // Expediente owns the daily Matthias consultation after the task-first
+  // redesign. Seed one real game only after the existing visual baselines have
+  // been captured, then reload so the app rehydrates factual consultation data
+  // without perturbing the established "Ahora"/career screenshots above.
+  await page.evaluate(() => {
+    localStorage.setItem('chess-study-game-history', JSON.stringify([
+      {
+        id: 'visual-insights-dossier-game',
+        sourceGameId: 'visual-insights-dossier-game',
+        date: '2026-10-01T18:00:00Z',
+        mode: 'casual',
+        outcome: 'loss',
+        humanColor: 'w',
+        initialFen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+        moves: [
+          { san: 'e4', from: 'e2', to: 'e4' },
+          { san: 'e5', from: 'e7', to: 'e5' },
+        ],
+      },
+    ]));
+  });
+  await page.reload();
+  const insightsHeading = page.getByRole('heading', { name: 'Así juegas', exact: true });
+  if (!await insightsHeading.isVisible().catch(() => false)) {
+    await page.getByRole('button', { name: 'Abrir menú de cuenta', exact: true }).click();
+    await page.getByRole('menuitem', { name: /Mi progreso/ }).click();
+  }
+  await expect(insightsHeading).toBeVisible();
+  await page.getByRole('button', { name: 'Expediente', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Expediente', exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Consulta diaria con Matthias' })).toBeVisible();
+  await expect(page.locator('[data-insights-matthias-motion="true"]')).toBeVisible();
+  await captureAt(page, 'insights-dossier', { width: 1440, height: 900, variant: 'desktop' });
+  await captureAt(page, 'insights-dossier', { width: 390, height: 844, variant: 'mobile' });
 });
