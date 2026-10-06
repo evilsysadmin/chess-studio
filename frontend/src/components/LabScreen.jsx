@@ -8,6 +8,7 @@ import experimentsRoomCanonical from '../assets/experiments-room-canonical.webp'
 import PreferredBoard from './PreferredBoard.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
+import { requestWarRoomLandscapeFullscreen } from './useWarRoomImmersive.js';
 import './LabScreen.css';
 import './LabArcade.css';
 import './LabWorkshop.css';
@@ -102,31 +103,8 @@ export default function LabScreen({ onExit, onStart }){
       && window.matchMedia('(pointer: coarse)').matches;
 
     if (coarsePointer) {
-      const root = document.documentElement;
-      root.dataset.chessFootballImmersive = 'requested';
-
-      const lockLandscape = () => {
-        const orientation = window.screen?.orientation;
-        if (typeof orientation?.lock !== 'function') return;
-        try {
-          const lock = orientation.lock('landscape');
-          if (lock?.catch) lock.catch(() => {});
-        } catch {
-          // iOS and older browsers do not expose a usable orientation lock.
-        }
-      };
-
-      if (!document.fullscreenElement && typeof root.requestFullscreen === 'function') {
-        try {
-          const fullscreen = root.requestFullscreen();
-          if (fullscreen?.then) fullscreen.then(lockLandscape).catch(() => {});
-          else lockLandscape();
-        } catch {
-          lockLandscape();
-        }
-      } else {
-        lockLandscape();
-      }
+      document.documentElement.dataset.chessFootballImmersive = 'requested';
+      void requestWarRoomLandscapeFullscreen();
     }
 
     setLabMode('chess-football-godot');
