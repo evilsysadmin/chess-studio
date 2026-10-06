@@ -12,7 +12,7 @@ const GOAL_TOUCH_HALF_WIDTH := 118.0
 const GOAL_TOUCH_HALF_HEIGHT := 150.0
 const AGGRESSIVE_TACKLE_HOLD_SECONDS := 0.34
 const SHOT_AIM_SCREEN_SPAN := 132.0
-const MOBILE_HELP := "TÁCTIL · arrastra a la izquierda para moverte · toca compañero para pase/cambio · rival para entrada · portería para tirar"
+const MOBILE_HELP := "TÁCTIL · arrastra para moverte · mantén compañero para cargar pase · rival entrada · portería tiro"
 
 var touch_root: Control
 var joystick_base: Panel
@@ -144,9 +144,24 @@ func _touch_down(index: int, position: Vector2) -> bool:
 					"started_msec": Time.get_ticks_msec(),
 				}
 				return true
-		elif kind in ["teammate", "opponent"]:
+		elif kind == "teammate":
+			var player = target.get("player")
+			if match_node.mobile_begin_context_pass(player):
+				context_touches[index] = {
+					"kind": "pass",
+					"player": player,
+					"started_msec": Time.get_ticks_msec(),
+				}
+			else:
+				context_touches[index] = {
+					"kind": "teammate",
+					"player": player,
+					"started_msec": Time.get_ticks_msec(),
+				}
+			return true
+		elif kind == "opponent":
 			context_touches[index] = {
-				"kind": kind,
+				"kind": "opponent",
 				"player": target.get("player"),
 				"started_msec": Time.get_ticks_msec(),
 			}
@@ -188,6 +203,9 @@ func _touch_up(index: int, position: Vector2) -> bool:
 	if kind == "goal":
 		match_node.mobile_update_context_shot(_shot_aim_from_position(position))
 		match_node.mobile_release_context_shot()
+		return true
+	if kind == "pass":
+		match_node.mobile_release_context_pass()
 		return true
 
 	var player = context.get("player")
@@ -286,9 +304,11 @@ func _release_all_inputs() -> void:
 		var match_node = get_parent()
 		if match_node != null:
 			for context in context_touches.values():
-				if String(context.get("kind", "")) == "goal":
+				var kind := String(context.get("kind", ""))
+				if kind == "goal":
 					match_node.mobile_cancel_context_shot()
-					break
+				elif kind == "pass":
+					match_node.mobile_cancel_context_pass()
 	context_touches.clear()
 	_release_joystick()
 
