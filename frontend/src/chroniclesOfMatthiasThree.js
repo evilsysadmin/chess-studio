@@ -6,6 +6,7 @@ import {
 } from './chroniclesOfMatthias.js';
 import { chroniclesFirstPersonScenePlan } from './chronicles/chroniclesFirstPersonScenePlan.js';
 import { chroniclesContentVisualStates } from './chronicles/chroniclesContentVisualState.js';
+import { chroniclesContentWallMount } from './chronicles/chroniclesContentRuntime.js';
 import { CHRONICLES_MINIMUM_VISIBILITY } from './chronicles/chroniclesLightingPolicy.js';
 import { buildChroniclesDungeonDressing } from './chroniclesOfMatthiasDungeonArt.js';
 import { buildChroniclesDungeonAtmosphere } from './chroniclesOfMatthiasAtmosphere.js';
@@ -18,6 +19,8 @@ const CELL = 4;
 const CAMERA_Y = 1.62;
 const TORCH_WALL_OFFSET = 1.9;
 const EXIT_GATE_WALL_OFFSET = 1.45;
+const CONTENT_WALL_OFFSET = 1.74;
+const CONTENT_FREESTANDING_OFFSET = 1.08;
 const DEFAULT_SCENE_CENTER = Object.freeze({ x: 3, y: 3 });
 const EXIT_GATE_SIDES = Object.freeze([
   Object.freeze({ side: 'north', dx: 0, dy: -1, yaw: 0 }),
@@ -85,6 +88,51 @@ export function chroniclesExitGateTransform(grid, entry, center = DEFAULT_SCENE_
     ),
     yaw: wallSide.yaw,
     side: wallSide.side,
+  };
+}
+
+export function chroniclesContentPropTransform(grid, entry, center = DEFAULT_SCENE_CENTER) {
+  const x = Number(entry?.x ?? entry?.position?.x);
+  const y = Number(entry?.y ?? entry?.position?.y);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+  const cell = worldForCell(x, y, center);
+  const mount = chroniclesContentWallMount({ grid }, entry);
+  const faces = {
+    north: { dx: 0, dz: -1, yaw: 0 },
+    east: { dx: 1, dz: 0, yaw: -Math.PI / 2 },
+    south: { dx: 0, dz: 1, yaw: Math.PI },
+    west: { dx: -1, dz: 0, yaw: Math.PI / 2 },
+  };
+  if (mount) {
+    const face = faces[mount.key];
+    return {
+      position: new THREE.Vector3(
+        cell.x + face.dx * CONTENT_WALL_OFFSET,
+        0,
+        cell.z + face.dz * CONTENT_WALL_OFFSET,
+      ),
+      yaw: face.yaw,
+      side: mount.key,
+      wallMounted: true,
+    };
+  }
+
+  const hash = String(entry?.id || '').split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  const fallback = [
+    { dx: 0, dz: -1, yaw: Math.PI },
+    { dx: 1, dz: 0, yaw: Math.PI / 2 },
+    { dx: 0, dz: 1, yaw: 0 },
+    { dx: -1, dz: 0, yaw: -Math.PI / 2 },
+  ][hash % 4];
+  return {
+    position: new THREE.Vector3(
+      cell.x + fallback.dx * CONTENT_FREESTANDING_OFFSET,
+      0,
+      cell.z + fallback.dz * CONTENT_FREESTANDING_OFFSET,
+    ),
+    yaw: fallback.yaw,
+    side: null,
+    wallMounted: false,
   };
 }
 
@@ -266,64 +314,95 @@ function createDungeonScene(scene, { coarsePointer = false, scenePlan = null } =
 
   (scenePlan?.content || []).forEach((entry, index) => {
     if (!entry?.position || ['trigger', 'exit', 'trap'].includes(entry.kind)) return;
-    const cell = worldForCell(entry.position.x, entry.position.y, sceneCenter);
+    const transform = chroniclesContentPropTransform(grid, entry, sceneCenter);
+    if (!transform) return;
     const root = new THREE.Group();
     root.name = `chronicles-first-person-${entry.kind}-${entry.id}`;
     root.userData.chroniclesContentId = entry.id;
-    root.position.set(cell.x, 0, cell.z);
+    root.userData.chroniclesWallSide = transform.side;
+    root.position.copy(transform.position);
+    root.rotation.y = transform.yaw;
 
     if (entry.kind === 'lever') {
-      const base = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.24, 0.48), contentMaterial);
-      base.position.set(0, 0.12, 0);
-      base.castShadow = !coarsePointer;
-      base.receiveShadow = true;
+      const plate = new THREE.Mesh(
+        new THREE.BoxGeometry(0.46, 0.62, 0.08),
+        new THREE.MeshStandardMaterial({ color: 0x4c3a24, roughness: 0.72, metalness: 0.42 }),
+      );
+      plate.position.set(0, 0.78, -0.025);
+      plate.castShadow = !coarsePointer;
+      plate.receiveShadow = true;
+
+      const inset = new THREE.Mesh(
+        new THREE.BoxGeometry(0.31, 0.45, 0.035),
+        new THREE.MeshStandardMaterial({ color: 0x17130f, roughness: 0.9, metalness: 0.08 }),
+      );
+      inset.position.set(0, 0.78, 0.03);
+
       const pivot = new THREE.Group();
-      pivot.position.set(0, 0.28, 0);
-      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.065, 0.86, 10), contentMaterial);
-      stem.position.y = 0.4;
+      pivot.position.set(0, 0.72, 0.08);
+      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.042, 0.42, 10), contentMaterial);
+      stem.position.y = 0.15;
+      stem.rotation.x = -0.18;
       stem.castShadow = !coarsePointer;
-      const knob = new THREE.Mesh(new THREE.SphereGeometry(0.13, 12, 10), contentMaterial);
-      knob.position.y = 0.84;
+      const knob = new THREE.Mesh(new THREE.SphereGeometry(0.085, 12, 10), pickupMaterial);
+      knob.position.y = 0.38;
       knob.castShadow = !coarsePointer;
       pivot.add(stem, knob);
-      root.add(base, pivot);
+      root.add(plate, inset, pivot);
       contentProps.push({ id: entry.id, kind: entry.kind, root, pivot, phase: index * 1.17 });
-    } else if (entry.kind === 'pickup') {
-      const cradle = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.055, 8, coarsePointer ? 16 : 24), contentMaterial);
-      cradle.rotation.x = -Math.PI / 2;
-      cradle.position.y = 0.16;
+    } else if (entry.kind === 'pickup' && transform.wallMounted) {
+      const recess = new THREE.Mesh(
+        new THREE.BoxGeometry(0.92, 1.12, 0.18),
+        new THREE.MeshStandardMaterial({ color: 0x17130f, roughness: 0.96, metalness: 0.02 }),
+      );
+      recess.position.set(0, 0.72, -0.04);
+      const frame = new THREE.Mesh(new THREE.TorusGeometry(0.48, 0.055, 8, 4), contentMaterial);
+      frame.position.set(0, 0.72, 0.08);
+      frame.rotation.z = Math.PI / 4;
       const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.27, 0), pickupMaterial);
-      core.position.y = 0.58;
+      core.position.set(0, 0.72, 0.2);
       core.castShadow = !coarsePointer;
       const glow = new THREE.PointLight(0xe49b39, coarsePointer ? 0.72 : 1.05, 4.2, 2);
-      glow.position.y = 0.58;
-      root.add(cradle, core, glow);
-      contentProps.push({ id: entry.id, kind: entry.kind, root, core, glow, phase: index * 1.17 });
-    } else if (entry.kind === 'lore') {
-      const plinth = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.16, 0.46), contentMaterial);
-      plinth.position.y = 0.08;
-      const plaque = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.72, 0.12), contentMaterial);
-      plaque.position.set(0, 0.55, 0);
-      plaque.rotation.x = -0.18;
-      plaque.castShadow = !coarsePointer;
-      root.add(plinth, plaque);
-      contentProps.push({ id: entry.id, kind: entry.kind, root, phase: index * 1.17 });
-    } else if (entry.kind === 'relic-socket') {
+      glow.position.set(0, 0.72, 0.32);
+      root.add(recess, frame, core, glow);
+      contentProps.push({ id: entry.id, kind: entry.kind, root, core, glow, coreBaseY: 0.72, phase: index * 1.17 });
+    } else if (entry.kind === 'pickup') {
       const pedestal = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.46, 0.46, 12), contentMaterial);
       pedestal.position.y = 0.23;
+      const cradle = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.055, 8, coarsePointer ? 16 : 24), contentMaterial);
+      cradle.rotation.x = -Math.PI / 2;
+      cradle.position.y = 0.52;
+      const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.27, 0), pickupMaterial);
+      core.position.y = 0.74;
+      core.castShadow = !coarsePointer;
+      const glow = new THREE.PointLight(0xe49b39, coarsePointer ? 0.72 : 1.05, 4.2, 2);
+      glow.position.y = 0.74;
+      root.add(pedestal, cradle, core, glow);
+      contentProps.push({ id: entry.id, kind: entry.kind, root, core, glow, coreBaseY: 0.74, phase: index * 1.17 });
+    } else if (entry.kind === 'lore') {
+      const plaque = new THREE.Mesh(new THREE.BoxGeometry(0.86, 0.72, 0.12), contentMaterial);
+      plaque.position.set(0, 0.82, 0.04);
+      plaque.castShadow = !coarsePointer;
+      const sigil = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.035, 8, 20), pickupMaterial);
+      sigil.position.set(0, 0.82, 0.12);
+      root.add(plaque, sigil);
+      contentProps.push({ id: entry.id, kind: entry.kind, root, phase: index * 1.17 });
+    } else if (entry.kind === 'relic-socket') {
+      const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.14, 16), contentMaterial);
+      plate.position.set(0, 0.78, 0.02);
+      plate.rotation.x = Math.PI / 2;
       const socket = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.055, 8, 20), pickupMaterial);
-      socket.position.y = 0.5;
-      socket.rotation.x = -Math.PI / 2;
+      socket.position.set(0, 0.78, 0.12);
       const glow = new THREE.PointLight(0xd99438, coarsePointer ? 0.45 : 0.72, 3.2, 2);
-      glow.position.y = 0.55;
-      root.add(pedestal, socket, glow);
+      glow.position.set(0, 0.78, 0.24);
+      root.add(plate, socket, glow);
       contentProps.push({ id: entry.id, kind: entry.kind, root, glow, phase: index * 1.17 });
     } else {
-      const frame = new THREE.Mesh(new THREE.BoxGeometry(0.82, 1.45, 0.18), contentMaterial);
-      frame.position.y = 0.72;
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.5, 0.16), contentMaterial);
+      frame.position.set(0, 0.76, 0);
       frame.castShadow = !coarsePointer;
-      const sigil = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.045, 8, 20), pickupMaterial);
-      sigil.position.set(0, 0.78, 0.12);
+      const sigil = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.045, 8, 20), pickupMaterial);
+      sigil.position.set(0, 0.82, 0.12);
       root.add(frame, sigil);
       contentProps.push({ id: entry.id, kind: entry.kind, root, phase: index * 1.17 });
     }
@@ -671,7 +750,7 @@ export function createChroniclesOfMatthiasGame(host, { onReady, initialState = n
       dungeon.contentProps.forEach((prop) => {
         if (!prop.root.visible || prop.kind !== 'pickup' || !prop.core) return;
         prop.core.rotation.y = time * 0.75 + prop.phase;
-        prop.core.position.y = 0.58 + Math.sin(time * 2.2 + prop.phase) * 0.06;
+        prop.core.position.y = (prop.coreBaseY ?? 0.58) + Math.sin(time * 2.2 + prop.phase) * 0.06;
         if (prop.glow) prop.glow.intensity = (coarse ? 0.72 : 1.05) * (0.9 + Math.sin(time * 2.4 + prop.phase) * 0.1);
       });
 
