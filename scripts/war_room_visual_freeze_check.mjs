@@ -6,6 +6,8 @@ const requestedVariants = String(process.env.APP_VISUAL_WARROOM_VARIANTS || '')
   .split(',')
   .map((value) => value.trim())
   .filter(Boolean);
+const requestedProfileScope = String(process.env.APP_VISUAL_WARROOM_PROFILE_SCOPE || 'all').trim();
+const mobileOnlyProfileScopes = new Set(['mobile', 'mobile-entry']);
 
 const profiles = [
   {
@@ -26,7 +28,10 @@ const profiles = [
     minBoardWidthFill: 0.74,
     minBoardViewportFill: 0.82,
   },
-];
+].filter((profile) => {
+  if (!mobileOnlyProfileScopes.has(requestedProfileScope)) return true;
+  return !profile.slug.includes('-desktop-');
+});
 
 const failures = [];
 const rows = [];
@@ -80,7 +85,7 @@ for (const profile of profiles) {
   }
 }
 
-console.log('War Room visual freeze baseline');
+console.log(`War Room visual freeze baseline · profile scope ${requestedProfileScope || 'all'}`);
 for (const row of rows) {
   console.log(
     `- ${row.label}: board ${(row.boardWidthFill * 100).toFixed(1)}% wide, `
