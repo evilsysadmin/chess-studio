@@ -80,7 +80,7 @@ import { LATEST_USER_NOTE_ID, USER_RELEASE_NOTES_KEY, openReleaseNoteTarget } fr
 import { setProfileStorageItem } from './profileKeys.js';
 import { clearRememberedLabMode } from './labLaunchIntent.js';
 import { useGameLaunchController } from './useGameLaunchController.js';
-import { usePuzzleLaunchFlow } from './usePuzzleLaunchFlow.js';
+import { useLearningJourneyFlow } from './useLearningJourneyFlow.js';
 import { runLogoutLifecycle } from './logoutLifecycle.js';
 
 // 'menu' | 'game' | 'tutorial' | 'openings' | 'tournament' | 'tournamentGame' | 'puzzle' | 'combat' | 'history' | 'replay'
@@ -102,8 +102,7 @@ function AppInner({ isAdminUser }) {
     initialView: () => loadVisibleActiveGameSession()?.route || null,
   });
   const [combatBattleUiActive, setCombatBattleUiActive] = useState(false);
-  const [insightsLandingSection, setInsightsLandingSection] = useState('diagnosis');
-  const { puzzleLaunch, quickMatchLaunchNonce, openPuzzleMode, openDailyChallengeSlot, returnToQuickMatchFromPersonalTraining } = usePuzzleLaunchFlow({ navigateTo, resetNavigation });
+  const { puzzleLaunch, quickMatchLaunchNonce, insightsLandingSection, openPuzzleMode, openPersonalTraining, openDailyChallengeSlot, openInsights, returnToQuickMatchFromPersonalTraining } = useLearningJourneyFlow({ navigateTo, resetNavigation });
 
   usePresenceHeartbeat(view);
 
@@ -821,7 +820,7 @@ function AppInner({ isAdminUser }) {
                         <span aria-hidden="true">◉</span><span><b>Administración</b><small>Usuarios y operación</small></span>
                       </button>
                     )}
-                    <button type="button" role="menuitem" onClick={() => { setShowAccountMenu(false); setInsightsLandingSection('diagnosis'); navigateTo('insights'); }}>
+                    <button type="button" role="menuitem" onClick={() => { setShowAccountMenu(false); openInsights('diagnosis'); }}>
                       <span aria-hidden="true">◫</span><span><b>Mi progreso</b><small>Diagnóstico y siguiente mejora</small></span>
                     </button>
                     <button type="button" role="menuitem" onClick={() => { setShowAccountMenu(false); setShowSettings(true); }}>
@@ -881,7 +880,7 @@ function AppInner({ isAdminUser }) {
         )}
         {showSettings && <UserSettingsPanel isAdminUser={isAdminUser} onClose={() => setShowSettings(false)} onBoard3D={() => { setShowSettings(false); navigateTo('board3d'); }} />}
         {showGlobalAccount && <AccountModal rating={rating} tournament={tournament} combatOverview={combatOverview} onClose={() => setShowGlobalAccount(false)} onLogout={() => void handleGlobalLogout()} loggingOut={loggingOut} />}
-        {showGlobalReleaseNotes && <React.Suspense fallback={null}><UserReleaseNotesModal onClose={() => setShowGlobalReleaseNotes(false)} onAction={(to) => { setShowGlobalReleaseNotes(false); openReleaseNoteTarget(to, { navigateTo, setInsightsLandingSection }); }} /></React.Suspense>}
+        {showGlobalReleaseNotes && <React.Suspense fallback={null}><UserReleaseNotesModal onClose={() => setShowGlobalReleaseNotes(false)} onAction={(to) => { setShowGlobalReleaseNotes(false); openReleaseNoteTarget(to, { navigateTo, openInsights }); }} /></React.Suspense>}
         {showGlobalFeedback && <FeedbackModal context={view === 'menu' ? 'Home' : `Global · ${view}`} onClose={() => setShowGlobalFeedback(false)} />}
 
         <React.Suspense fallback={<div className="route-loading" role="status">Cargando…</div>}>
@@ -912,13 +911,13 @@ function AppInner({ isAdminUser }) {
             onOpenings={() => navigateTo('openings')}
             onPuzzle={() => openPuzzleMode('curated', false)}
             onDailyChallenge={(slot) => slot ? openDailyChallengeSlot(slot) : navigateTo('dailyChallenges')}
-            onTrainPersonal={() => openPuzzleMode('personal', false)}
+            onTrainPersonal={openPersonalTraining}
             onSpectator={() => navigateTo('spectator')}
             onCombat={() => navigateTo('combat')}
             onCombatRoguelike={() => navigateTo('roguelike')} onContinueRun={() => handleContinueRun()}
             onHistory={() => navigateTo('history')}
-            onInsights={() => { setInsightsLandingSection('diagnosis'); navigateTo('insights'); }}
-            onProgress={() => { setInsightsLandingSection('career'); navigateTo('insights'); }}
+            onInsights={() => openInsights('diagnosis')}
+            onProgress={() => openInsights('career')}
             onLab={() => navigateTo('lab')}
             hasSavedGame={hasSavedGame}
             loading={loading}
@@ -955,7 +954,7 @@ function AppInner({ isAdminUser }) {
             runState={specialRun && gameContext.runMode ? specialRun : null}
             onNextRunGame={() => handleContinueRun(specialRun)}
             memoryContext={gameContext}
-            onTrainPersonal={() => openPuzzleMode('personal', false)}
+            onTrainPersonal={openPersonalTraining}
             onPlayAgain={(!learningMode && !activeSeries && !gameContext.lab && !gameContext.rescue && !gameContext.runMode) ? async () => { const { quickMatchRematchPlan } = await import('./quickMatchRematch.js'); const plan = quickMatchRematchPlan({ game, gameContext, learningMode, activeSeries, rating, timeControlId: activeTimeControl?.id }); if (plan) await handleNewGame(plan.difficulty, plan.color, plan.options); } : null}
             postGameFeedbackEnabled={featureFlags.postGameFeedback}
           />
