@@ -213,6 +213,7 @@ def _surface_groups(path: str) -> set[str] | None:
         "scripts/browser_quality_scope.py",
         "scripts/chess_rules_gate.mjs",
         "scripts/quality_scope.py",
+        "scripts/state_resilience_check.mjs",
         "scripts/run_core_e2e_lane.py",
         "scripts/workflow_debt_gate.py",
     }:
