@@ -361,7 +361,8 @@
   }
 
   .combat-operations-shell {
-    width: 100vw;
+    width: 100%;
+    max-width: 100%;
     height: calc(100dvh - 3.4rem);
     min-height: 610px;
     border-left: 0;
