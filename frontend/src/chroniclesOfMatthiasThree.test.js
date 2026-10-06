@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CHRONICLES_MAP } from './chroniclesOfMatthias.js';
 import {
   CHRONICLES_TORCH_PLACEMENTS,
+  chroniclesContentPropTransform,
   chroniclesEnemyFacingYaw,
   chroniclesExitGateTransform,
   chroniclesTorchTransform,
@@ -70,4 +71,35 @@ describe('Chronicles of Matthias dungeon photography', () => {
     expect(chroniclesEnemyFacingYaw({ x: 3, y: 3 }, { x: 3, y: 5 })).toBeCloseTo(0);
     expect(chroniclesEnemyFacingYaw({ x: 3, y: 3 }, { x: 3, y: 1 })).toBeCloseTo(Math.PI);
   });
+  it('mounts authored content against an adjacent wall instead of the camera cell centre', () => {
+    const lever = chroniclesContentPropTransform(
+      CHRONICLES_MAP,
+      { id: 'gallery-lever', kind: 'lever', position: { x: 5, y: 5 } },
+    );
+
+    expect(lever.wallMounted).toBe(true);
+    expect(lever.side).toBe('east');
+    expect(lever.position.x).toBeGreaterThan(8);
+    expect(lever.position.z).toBeCloseTo(8);
+    expect(lever.yaw).toBeCloseTo(-Math.PI / 2);
+  });
+
+  it('keeps wall-less pickups off the camera centre on a freestanding pedestal', () => {
+    const transform = chroniclesContentPropTransform(
+      [
+        '.....',
+        '.....',
+        '.....',
+        '.....',
+        '.....',
+      ],
+      { id: 'chapel-prism', kind: 'pickup', position: { x: 2, y: 2 } },
+      { x: 2, y: 2 },
+    );
+
+    expect(transform.wallMounted).toBe(false);
+    expect(Math.hypot(transform.position.x, transform.position.z)).toBeGreaterThan(0.9);
+  });
+
+
 });
