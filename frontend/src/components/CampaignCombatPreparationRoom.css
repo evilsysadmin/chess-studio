@@ -1,0 +1,517 @@
+.combat-operations-screen {
+  width: 100%;
+  max-width: none !important;
+  margin: 0;
+  padding: .45rem;
+}
+
+.combat-operations-shell {
+  position: relative;
+  width: min(1500px, calc(100vw - .9rem));
+  height: calc(100dvh - 5rem);
+  min-height: 680px;
+  max-width: none;
+  margin: 0 auto;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid rgba(201, 162, 39, .28);
+  border-radius: 18px;
+  background: #080b10;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .42);
+}
+
+.combat-operations-shell > :not(.combat-preparation-room-stage) {
+  position: absolute;
+  z-index: 3;
+}
+
+.combat-operations-topbar {
+  inset: .72rem .72rem auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 42px;
+  align-items: center;
+  gap: .55rem;
+  pointer-events: none;
+}
+
+.combat-operations-topbar > * {
+  pointer-events: auto;
+}
+
+.combat-operations-exit {
+  justify-self: start;
+  margin: 0;
+  min-height: 40px;
+  padding: .42rem .72rem;
+  border: 1px solid rgba(224, 202, 155, .2);
+  border-radius: 999px;
+  background: rgba(6, 9, 13, .76);
+  backdrop-filter: blur(12px);
+}
+
+.combat-operations-mode-chip {
+  justify-self: center;
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  min-height: 38px;
+  padding: .35rem .68rem;
+  border: 1px solid rgba(201, 162, 39, .24);
+  border-radius: 999px;
+  background: rgba(6, 9, 13, .74);
+  backdrop-filter: blur(12px);
+  text-transform: uppercase;
+}
+
+.combat-operations-mode-chip span {
+  color: rgba(230, 211, 170, .7);
+  font: .58rem var(--font-mono);
+  letter-spacing: .11em;
+}
+
+.combat-operations-mode-chip b {
+  color: var(--parchment);
+  font: .62rem var(--font-mono);
+  letter-spacing: .05em;
+}
+
+.combat-operations-help {
+  justify-self: end;
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  margin: 0;
+  border-radius: 999px;
+  background: rgba(6, 9, 13, .76);
+  backdrop-filter: blur(12px);
+}
+
+.combat-operations-briefing {
+  top: 4.4rem;
+  left: .85rem;
+  width: min(430px, calc(100% - 1.7rem));
+  margin: 0;
+  padding: .85rem .95rem;
+  border: 1px solid rgba(215, 187, 126, .2);
+  border-radius: 14px;
+  background: linear-gradient(145deg, rgba(8, 12, 17, .9), rgba(8, 12, 17, .68));
+  box-shadow: 0 18px 44px rgba(0, 0, 0, .28);
+  backdrop-filter: blur(14px);
+}
+
+.combat-operations-briefing h2 {
+  margin: .18rem 0 .28rem;
+  font-size: clamp(1.15rem, 2vw, 1.7rem);
+}
+
+.combat-operations-briefing p {
+  margin: 0;
+  max-width: 40ch;
+  color: rgba(232, 222, 201, .76);
+  font-size: .78rem;
+  line-height: 1.45;
+}
+
+.combat-operations-boss-chip {
+  display: inline-flex;
+  margin-top: .58rem;
+  padding: .32rem .48rem;
+  border: 1px solid rgba(190, 83, 74, .34);
+  border-radius: 999px;
+  color: #efc1ba;
+  background: rgba(90, 24, 20, .24);
+  font: .62rem var(--font-mono);
+}
+
+.combat-operations-status {
+  top: 4.4rem;
+  right: .85rem;
+  width: min(520px, calc(100% - 1.7rem));
+  display: flex !important;
+  align-items: stretch;
+  justify-content: flex-end;
+  gap: .38rem;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.combat-operations-status > span,
+.combat-operations-status > button {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  gap: .32rem;
+  padding: .38rem .58rem;
+  border: 1px solid rgba(215, 187, 126, .18);
+  border-radius: 10px;
+  background: rgba(6, 9, 13, .78);
+  backdrop-filter: blur(12px);
+  color: rgba(232, 222, 201, .74);
+  font: .62rem var(--font-mono);
+}
+
+.combat-operations-status b {
+  color: var(--parchment);
+}
+
+.combat-operations-status .campaign-market-link {
+  color: #d7bf78;
+}
+
+.combat-operations-order {
+  top: 7.7rem;
+  right: .85rem;
+  width: min(520px, calc(100% - 1.7rem));
+  margin: 0;
+  padding: .55rem .72rem;
+  border: 1px solid rgba(215, 187, 126, .2);
+  border-left: 3px solid var(--gold);
+  border-radius: 10px;
+  background: rgba(6, 9, 13, .78);
+  backdrop-filter: blur(12px);
+}
+
+.combat-operations-order > span {
+  display: block;
+  margin-bottom: .16rem;
+  color: rgba(215, 191, 120, .82);
+  font: .54rem var(--font-mono);
+  letter-spacing: .1em;
+}
+
+.combat-operations-order > strong {
+  display: block;
+  color: rgba(238, 228, 208, .9);
+  font-size: .7rem;
+  line-height: 1.35;
+}
+
+.combat-operations-primary {
+  left: .85rem;
+  bottom: .85rem;
+  width: min(590px, calc(100% - 1.7rem));
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: .8rem;
+  margin: 0;
+  padding: .82rem;
+  border: 1px solid rgba(218, 190, 128, .24);
+  border-radius: 15px;
+  background: linear-gradient(145deg, rgba(7, 10, 14, .92), rgba(9, 13, 18, .76));
+  box-shadow: 0 18px 46px rgba(0, 0, 0, .34);
+  backdrop-filter: blur(15px);
+}
+
+.combat-operations-primary > div:first-child {
+  display: grid;
+  gap: .18rem;
+  min-width: 0;
+}
+
+.combat-operations-primary > div:first-child > span {
+  color: #d9bd6d;
+  font: .58rem var(--font-mono);
+  letter-spacing: .12em;
+}
+
+.combat-operations-primary > div:first-child > small {
+  color: rgba(230, 220, 199, .72);
+  font-size: .68rem;
+  line-height: 1.35;
+}
+
+.combat-operations-primary-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: .38rem;
+  min-width: min(280px, 38vw);
+}
+
+.combat-operations-primary-actions .campaign-main-cta,
+.combat-operations-primary-actions .campaign-recommended-formation {
+  width: 100%;
+  margin: 0;
+}
+
+.combat-operations-drawer {
+  right: .85rem;
+  bottom: .85rem;
+  width: min(350px, calc(100% - 1.7rem));
+  margin: 0;
+  border: 1px solid rgba(215, 187, 126, .22);
+  border-radius: 13px;
+  background: rgba(6, 9, 13, .84);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, .32);
+  backdrop-filter: blur(14px);
+  overflow: hidden;
+}
+
+.combat-operations-drawer > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  padding: .5rem .7rem;
+  cursor: pointer;
+  list-style: none;
+  color: rgba(231, 217, 184, .82);
+  font: .65rem var(--font-mono);
+  letter-spacing: .05em;
+}
+
+.combat-operations-drawer > summary::-webkit-details-marker {
+  display: none;
+}
+
+.combat-operations-drawer > summary::after {
+  content: '+';
+  margin-left: auto;
+  color: #d6bc75;
+  font-size: .9rem;
+}
+
+.combat-operations-drawer[open] > summary::after {
+  content: '−';
+}
+
+.combat-operations-drawer-body {
+  max-height: min(54dvh, 430px);
+  overflow: auto;
+  padding: 0 .7rem .7rem;
+}
+
+.combat-operations-drawer .campaign-preparation-secondary-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .4rem;
+}
+
+.combat-operations-drawer .campaign-operation-details-grid {
+  margin-top: .6rem;
+}
+
+.combat-operations-drawer .combat-service-panel,
+.combat-operations-drawer .campaign-army-glance {
+  margin-top: .6rem;
+}
+
+@media (max-width: 980px) {
+  .combat-operations-shell {
+    height: calc(100dvh - 4.5rem);
+    min-height: 660px;
+  }
+
+  .combat-operations-mode-chip {
+    display: none;
+  }
+
+  .combat-operations-topbar {
+    grid-template-columns: minmax(0, 1fr) 42px;
+  }
+
+  .combat-operations-status {
+    top: 4.1rem;
+    left: .7rem;
+    right: .7rem;
+    width: auto;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .combat-operations-status > span,
+  .combat-operations-status > button {
+    min-height: 36px;
+  }
+
+  .combat-operations-briefing {
+    top: 7.2rem;
+    left: .7rem;
+    width: min(390px, calc(100% - 1.4rem));
+  }
+
+  .combat-operations-order {
+    top: 7.2rem;
+    right: .7rem;
+    width: min(330px, calc(100% - 1.4rem));
+  }
+
+  .combat-operations-primary {
+    left: .7rem;
+    bottom: .7rem;
+    width: min(560px, calc(100% - 1.4rem));
+  }
+
+  .combat-operations-drawer {
+    right: .7rem;
+    bottom: .7rem;
+    width: min(300px, calc(100% - 1.4rem));
+  }
+}
+
+@media (max-width: 720px) {
+  .combat-operations-screen {
+    padding: 0;
+  }
+
+  .combat-operations-shell {
+    width: 100vw;
+    height: calc(100dvh - 3.4rem);
+    min-height: 610px;
+    border-left: 0;
+    border-right: 0;
+    border-radius: 0;
+  }
+
+  .combat-operations-topbar {
+    inset: .45rem .5rem auto;
+  }
+
+  .combat-operations-exit {
+    max-width: 75vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .combat-operations-status {
+    top: 3.75rem;
+    left: .5rem;
+    right: .5rem;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .combat-operations-status::-webkit-scrollbar {
+    display: none;
+  }
+
+  .combat-operations-status > span,
+  .combat-operations-status > button {
+    flex: 0 0 auto;
+  }
+
+  .combat-operations-briefing {
+    top: 6.7rem;
+    left: .5rem;
+    right: .5rem;
+    width: auto;
+    padding: .62rem .7rem;
+  }
+
+  .combat-operations-briefing p {
+    display: none;
+  }
+
+  .combat-operations-order {
+    top: auto;
+    right: .5rem;
+    bottom: 10.5rem;
+    width: min(17rem, calc(100% - 1rem));
+    padding: .45rem .56rem;
+  }
+
+  .combat-operations-order > strong {
+    font-size: .64rem;
+  }
+
+  .combat-operations-primary {
+    left: .5rem;
+    right: .5rem;
+    bottom: .5rem;
+    width: auto;
+    grid-template-columns: 1fr;
+    gap: .55rem;
+    padding: .62rem;
+  }
+
+  .combat-operations-primary > div:first-child > small {
+    display: none;
+  }
+
+  .combat-operations-primary-actions {
+    min-width: 0;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .combat-operations-primary-actions .campaign-main-cta {
+    grid-column: 1 / -1;
+  }
+
+  .combat-operations-drawer {
+    top: 6.7rem;
+    right: .5rem;
+    bottom: auto;
+    width: auto;
+    max-width: min(11rem, 42vw);
+  }
+
+  .combat-operations-drawer[open] {
+    left: .5rem;
+    width: auto;
+    max-width: none;
+    max-height: calc(100dvh - 11rem);
+  }
+
+  .combat-operations-drawer-body {
+    max-height: calc(100dvh - 15rem);
+  }
+}
+
+@media (max-width: 430px) {
+  .combat-operations-shell {
+    min-height: 590px;
+  }
+
+  .combat-operations-status {
+    top: 3.6rem;
+  }
+
+  .combat-operations-briefing {
+    top: 6.45rem;
+  }
+
+  .combat-operations-briefing h2 {
+    font-size: 1rem;
+  }
+
+  .combat-operations-boss-chip {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .combat-operations-order {
+    bottom: 10.15rem;
+    max-width: 72vw;
+  }
+
+  .combat-operations-primary-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .combat-operations-primary-actions .campaign-main-cta {
+    grid-column: auto;
+  }
+
+  .combat-operations-drawer {
+    top: 6.45rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .combat-operations-exit,
+  .combat-operations-mode-chip,
+  .combat-operations-help,
+  .combat-operations-briefing,
+  .combat-operations-status > span,
+  .combat-operations-status > button,
+  .combat-operations-order,
+  .combat-operations-primary,
+  .combat-operations-drawer {
+    backdrop-filter: none;
+  }
+}
