@@ -459,6 +459,7 @@ function chroniclesMapRenderContent(map) {
       kind: entry.kind,
       group,
       visualType: entry.visualType || entry.kind,
+      ...(entry.wallSide ? { wallSide: entry.wallSide } : {}),
       position: position ? Object.freeze(position) : null,
     });
   }));
