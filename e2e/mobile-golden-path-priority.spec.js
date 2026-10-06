@@ -275,9 +275,20 @@ test.describe('Mobile golden path · entrenar el error real en un toque', () => 
 
     await train.tap();
     await expect(endgame).toBeHidden({ timeout: 15_000 });
+    const focusedTraining = page.locator('.puzzle-screen[data-training-origin="postgame-error"]');
+    await expect(focusedTraining).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole('heading', { name: /Cuenta pendiente|Escena del crimen/ })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText(/Aquí jugaste g4 y perdiste/)).toBeVisible();
-    await expect(page.getByRole('button', { name: /Acciones inmediatas/ })).toBeVisible();
+    await expect(focusedTraining.getByRole('group', { name: 'Tipo de puzzle' })).toHaveCount(0);
+    await expect(focusedTraining.locator('> .back-link')).toHaveText('← Volver a la partida');
+
+    await clickBoardMove(page, 'e2', 'e4');
+    await expect(page.getByText('¡Resuelto!', { exact: true })).toBeVisible({ timeout: 15_000 });
+    const returnToPlay = page.getByRole('button', { name: 'Volver a jugar', exact: true });
+    await expect(returnToPlay).toBeVisible();
+    await returnToPlay.tap();
+
+    await expect(page.getByRole('dialog', { name: 'Configurar partida rápida' })).toBeVisible({ timeout: 15_000 });
   });
 });
 
