@@ -37,6 +37,7 @@ export default function CombatPreparationRoom({ roster }) {
     orientation: 'white',
     showCoordinates: false,
     cameraProfile: 'warroom',
+    immersive: true,
     warRoomMobilePerformance: true,
     pieceRankLevels,
   }), [fen, pieceRankLevels]);
