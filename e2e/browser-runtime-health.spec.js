@@ -197,30 +197,6 @@ test('Browser WebGL · Home 3D recupera el contexto perdido', async ({ page }) =
       configurable:true,
       get:() => 8,
     });
-
-    // Observe WEBGL_lose_context at the WebGL API boundary. The renderer may be
-    // recreated after context restoration, so probing one context object is not
-    // stable enough for the later unmount assertion.
-    window.__homeWebglLoseContextCalls = 0;
-    const installLoseContextProbe = (ContextCtor) => {
-      const proto = ContextCtor?.prototype;
-      const originalGetExtension = proto?.getExtension;
-      if (!proto || typeof originalGetExtension !== 'function') return;
-      proto.getExtension = function getExtensionWithCleanupProbe(name) {
-        const extension = originalGetExtension.call(this, name);
-        if (name !== 'WEBGL_lose_context' || !extension) return extension;
-        return {
-          loseContext: () => {
-            window.__homeWebglLoseContextCalls += 1;
-            return extension.loseContext();
-          },
-          restoreContext: () => extension.restoreContext(),
-        };
-      };
-    };
-    // WebGL2 first: it may inherit getExtension from WebGL1's prototype.
-    installLoseContextProbe(globalThis.WebGL2RenderingContext);
-    installLoseContextProbe(globalThis.WebGLRenderingContext);
   });
   await seedRuntimeSession(page);
   await login(page);
@@ -251,26 +227,27 @@ test('Browser WebGL · Home 3D recupera el contexto perdido', async ({ page }) =
   await expect(canvas).toHaveClass(/is-ready/, { timeout:15_000 });
   await settle(page);
 
-  // Recovery recreates the Home renderer on the same canvas. The runtime now
-  // caches WEBGL_lose_context together with that renderer generation, so the
-  // global API-boundary probe can prove teardown released the restored context
-  // without trying to rediscover Chromium's extension wrapper during unmount.
-  const cleanupProbe = await canvas.evaluate((node) => {
+  const restored = await canvas.evaluate((node) => {
     const gl = node.getContext('webgl2') || node.getContext('webgl');
-    return {
-      restored:Boolean(gl && gl.isContextLost?.() === false),
-      loseCalls:Number(window.__homeWebglLoseContextCalls || 0),
-    };
+    return Boolean(gl && gl.isContextLost?.() === false);
   });
-  expect(cleanupProbe.restored, 'Home debe exponer un contexto WebGL restaurado antes de probar el cleanup').toBe(true);
+  expect(restored, 'Home debe exponer un contexto WebGL restaurado antes de probar el teardown').toBe(true);
 
+  // Prove the lifecycle at product level: leaving Home really unmounts the
+  // recovered canvas, and returning creates a fresh renderer that reaches ready
+  // again. The unit contract separately proves teardown calls loseContext() on
+  // the cached extension, avoiding brittle interception of Chromium internals.
   const matthias = home.getByRole('button', { name:'Abrir Así juegas con Matthias', exact:true });
   await matthias.click();
   await expect(page.getByRole('heading', { name:'Así juegas', exact:true })).toBeVisible();
-  await expect.poll(
-    () => page.evaluate((baseline) => Number(window.__homeWebglLoseContextCalls || 0) > baseline, cleanupProbe.loseCalls),
-    { timeout:5_000, intervals:[50, 100, 200, 500] },
-  ).toBe(true);
+  await expect(page.locator('.illustrated-home__castle-3d')).toHaveCount(0);
+
+  await page.getByRole('button', { name:'← Volver al menú', exact:true }).click();
+  const remountedHome = page.getByRole('region', { name:'Modos principales' });
+  const remountedCanvas = remountedHome.locator('.illustrated-home__castle-3d');
+  await expect(remountedCanvas).toBeVisible();
+  await expect(remountedCanvas).toHaveAttribute('data-home-blender-runtime', 'ready', { timeout:25_000 });
+  await expect(remountedCanvas).toHaveClass(/is-ready/, { timeout:25_000 });
 
   const diagnostic = faults.map((fault) => `[${fault.type}] ${fault.message}`).join('\n\n');
   expect(faults, diagnostic).toEqual([]);
