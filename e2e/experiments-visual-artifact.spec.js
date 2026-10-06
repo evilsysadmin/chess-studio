@@ -7,7 +7,7 @@ const CAPTURES = [
   { label: 'desktop-1440x900', width: 1440, height: 900, hasTouch: false },
   { label: 'android-390x844', width: 390, height: 844, hasTouch: true },
 ];
-const VALID_SCOPES = new Set(['all', 'landing', 'chronicles', 'pawnslug']);
+const VALID_SCOPES = new Set(['all', 'landing', 'chronicles', 'pawnslug', 'football']);
 const REQUESTED_SCOPES = new Set(
   String(process.env.APP_VISUAL_EXPERIMENTS_SCOPE || 'all')
     .split(',')
@@ -82,6 +82,74 @@ async function withPawnSlugCapturePage(browser, capture, callback) {
     const portal = page.locator('.lab-workshop-portal--pawnslug-godot');
     await expect(portal).toBeVisible({ timeout: 20_000 });
     await portal.click();
+    return await callback(page);
+  } finally {
+    await context.close();
+  }
+}
+
+async function withChessFootballCapturePage(browser, capture, callback) {
+  const context = await browser.newContext({
+    viewport: { width: capture.width, height: capture.height },
+    hasTouch: true,
+    isMobile: true,
+  });
+  const page = await context.newPage();
+  try {
+    await page.addInitScript(() => {
+      const nativeMatchMedia = window.matchMedia.bind(window);
+      window.matchMedia = (query) => {
+        if (query !== '(pointer: coarse)') return nativeMatchMedia(query);
+        return {
+          matches: true,
+          media: query,
+          onchange: null,
+          addListener() {},
+          removeListener() {},
+          addEventListener() {},
+          removeEventListener() {},
+          dispatchEvent() { return true; },
+        };
+      };
+      Element.prototype.requestFullscreen = function requestFullscreen() {
+        return Promise.resolve();
+      };
+      try {
+        Object.defineProperty(Screen.prototype, 'orientation', {
+          configurable: true,
+          get() {
+            return {
+              lock() { return Promise.resolve(); },
+              unlock() {},
+            };
+          },
+        });
+      } catch {
+        // The host gate is still deterministic from viewport + coarse pointer.
+      }
+    });
+    const release = '0123456789abcdef';
+    const indexUrl = `https://assets.chess-studio.shadowops.dpdns.org/chess-football-godot/releases/${release}/index.html`;
+    await page.route('**/chess-football-godot/current.json**', (route) => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        version: 1,
+        release,
+        sourceSha: 'a'.repeat(40),
+        index: indexUrl,
+      }),
+    }));
+    await page.route(indexUrl, (route) => route.fulfill({
+      status: 200,
+      contentType: 'text/html',
+      body: '<!doctype html><html><body style="margin:0;background:#060a07;color:#eee2bd"><main>Chess Football mock runtime</main></body></html>',
+    }));
+    await openExperiments(page);
+    const portal = page.locator('.lab-workshop-portal--football');
+    await expect(portal).toBeVisible();
+    await portal.click();
+    await expect(page.locator('.chess-football-godot-host')).toBeVisible();
     return await callback(page);
   } finally {
     await context.close();
@@ -277,6 +345,82 @@ if (scopeEnabled('landing')) {
     await writeFile(
       `${ARTIFACT_DIR}/experiments-visual-health.json`,
       `${JSON.stringify({ schema: 2, scope: 'landing', captures }, null, 2)}\n`,
+      'utf8',
+    );
+  });
+}
+
+if (scopeEnabled('football')) {
+  test('Chess Football · mobile host visual portrait + landscape', async ({ browser }) => {
+    test.setTimeout(90_000);
+    await mkdir(ARTIFACT_DIR, { recursive: true });
+
+    const captures = [];
+    const footballCaptures = [
+      { label: 'android-portrait-390x844', width: 390, height: 844, portrait: true },
+      { label: 'android-landscape-844x390', width: 844, height: 390, portrait: false },
+    ];
+
+    for (const capture of footballCaptures) {
+      await withChessFootballCapturePage(browser, capture, async (page) => {
+        const host = page.locator('.chess-football-godot-host');
+        const frame = page.locator('iframe[title="Chess Football Godot"]');
+        await expect(frame).toBeVisible();
+        await expect(host).toHaveAttribute('data-runtime-ready', 'true');
+        await expect(host).toHaveAttribute('data-mobile-portrait', capture.portrait ? 'true' : 'false');
+
+        if (capture.portrait) {
+          await expect(page.getByRole('heading', { name: 'Gira el móvil' })).toBeVisible();
+          await expect(page.getByRole('button', { name: 'Activar apaisado' })).toBeVisible();
+          await expect(page.getByRole('button', { name: 'Salir de Chess Football' })).toBeVisible();
+        } else {
+          await expect(page.getByRole('heading', { name: 'Gira el móvil' })).toHaveCount(0);
+          await expect(page.getByRole('button', { name: 'Salir de Chess Football' })).toBeVisible();
+        }
+
+        const health = await page.evaluate(() => {
+          const root = document.documentElement;
+          const rect = (selector) => {
+            const node = document.querySelector(selector);
+            if (!node) return null;
+            const box = node.getBoundingClientRect();
+            return {
+              left: Number(box.left.toFixed(1)),
+              top: Number(box.top.toFixed(1)),
+              right: Number(box.right.toFixed(1)),
+              bottom: Number(box.bottom.toFixed(1)),
+              width: Number(box.width.toFixed(1)),
+              height: Number(box.height.toFixed(1)),
+            };
+          };
+          return {
+            horizontalOverflow: root.scrollWidth > root.clientWidth + 1,
+            host: rect('.chess-football-godot-host'),
+            portraitGate: rect('.chess-football-godot-host__portrait-gate'),
+            mobileExit: rect('.chess-football-godot-host__mobile-exit'),
+          };
+        });
+        captures.push({ label: capture.label, ...health });
+        expect(health.horizontalOverflow, `${capture.label}: horizontal overflow`).toBe(false);
+        expect(health.host?.width || 0, `${capture.label}: host visible`).toBeGreaterThanOrEqual(capture.width - 1);
+        expect(health.host?.height || 0, `${capture.label}: host height`).toBeGreaterThanOrEqual(capture.height - 1);
+        if (capture.portrait) {
+          expect(health.portraitGate?.width || 0, `${capture.label}: portrait gate visible`).toBeGreaterThan(0);
+        } else {
+          expect(health.mobileExit?.width || 0, `${capture.label}: landscape escape visible`).toBeGreaterThanOrEqual(44);
+          expect(health.mobileExit?.height || 0, `${capture.label}: landscape escape touch target`).toBeGreaterThanOrEqual(44);
+        }
+
+        await captureFrozenFrame(page, {
+          path: `${ARTIFACT_DIR}/chess-football-${capture.label}.png`,
+          fullPage: true,
+        });
+      });
+    }
+
+    await writeFile(
+      `${ARTIFACT_DIR}/chess-football-visual-health.json`,
+      `${JSON.stringify({ schema: 1, scope: 'football', captures }, null, 2)}\n`,
       'utf8',
     );
   });
