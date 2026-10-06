@@ -176,6 +176,10 @@ for (const capture of CAPTURES) {
       const stage = page.locator('.chronicles-stage');
       const gameMenu = page.locator('summary[aria-label="Abrir menú de Chronicles"]');
       await expect(gameRoot).toBeVisible();
+      expect(
+        await page.evaluate(() => document.fullscreenElement),
+        `${capture.label}: Chronicles must not enter browser-native fullscreen`,
+      ).toBeNull();
       await expect(chroniclesCanvas).toHaveCount(1, { timeout: 20_000 });
       await expect(chroniclesCanvas).toBeVisible();
       await expect(authoredPortrait).toHaveCount(1, { timeout: 20_000 });
@@ -203,6 +207,10 @@ for (const capture of CAPTURES) {
       await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-playing-${capture.label}.png`);
 
       await page.keyboard.press('Escape');
+      expect(
+        await page.evaluate(() => document.fullscreenElement),
+        `${capture.label}: Escape belongs to the Chronicles menu`,
+      ).toBeNull();
       const openedMenu = page.locator('.chronicles-game-menu[open]');
       await expect(openedMenu).toBeVisible();
       await expect(openedMenu.getByRole('button', { name: 'Continuar', exact: true })).toBeVisible();
