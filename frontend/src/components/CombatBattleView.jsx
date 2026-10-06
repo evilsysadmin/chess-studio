@@ -1,5 +1,7 @@
 import Board from './Board.jsx';
-import MusicPlayer from './MusicPlayer.jsx';
+import WarRoomImmersiveMusicDock from './WarRoomImmersiveMusicDock.jsx';
+import WarRoomLandscapeGate from './WarRoomLandscapeGate.jsx';
+import useWarRoomLandscape from './useWarRoomLandscape.js';
 import PromotionModal from './PromotionModal.jsx';
 import PieceInfoModal from './PieceInfoModal.jsx';
 import AttackConfirmModal from './AttackConfirmModal.jsx';
@@ -18,11 +20,29 @@ export default function CombatBattleView({
   pendingPromotion, choosePromotion, pendingAttack, confirmAttack, cancelAttack, infoPiece, infoUnitRecord,
   handleBuyStat, handleActivateTechnique, infoTechniqueTargets, setInfoSquare, suspendBattleToMenu, retireBattle, combatVariant, bossHp, bossPhase, bossConfig, cpuRetryNeeded, retryCpuTurn, battleTheme, battleThemeLabel,
 }) {
+  const {
+    needsRotation: warRoomNeedsRotation,
+    lockState: warRoomOrientationLock,
+    activateLandscape,
+  } = useWarRoomLandscape(true);
+
   return (
-    <div className={`combat-battle-screen ${battleTheme ? `combat-biome-${battleTheme.replace('combat-', '')}` : ''}`}>
-      <div className="game-layout combat-game-layout">
+    <div
+      className={`game-screen combat-battle-screen ${battleTheme ? `combat-biome-${battleTheme.replace('combat-', '')}` : ''}`}
+      data-combat-war-room="generic"
+    >
+      <div
+        className="game-layout game-layout-3d combat-game-layout combat-warroom-layout"
+        data-war-room-orientation-lock={warRoomOrientationLock}
+      >
+        <WarRoomLandscapeGate
+          active={warRoomNeedsRotation}
+          lockState={warRoomOrientationLock}
+          onActivate={activateLandscape}
+        />
+        <WarRoomImmersiveMusicDock />
         <div className="board-column">
-          <div className={`status-line ${statusClass}`}>{statusText}</div>
+          <div className={`status-line combat-warroom-status ${statusClass}`}>{statusText}</div>
 
           {bossConfig && bossHp != null && (
             <div className={`roguelike-boss-hud boss-${bossConfig.spriteId || 'classic'}`} role="status" aria-label={`${bossConfig.label}: ${bossHp} de ${bossConfig.maxHp} puntos de vida`}>
@@ -41,9 +61,13 @@ export default function CombatBattleView({
 
           {battleThemeLabel && <div className="combat-biome-label"><span>TERRENO</span><strong>{battleThemeLabel}</strong></div>}
 
-          <div className="board-live-row combat-board-live-row">
-            <div className="game-board-stack">
+          <div className="board-live-row is-3d-warroom combat-board-live-row combat-warroom-row">
+            <div className="game-board-stack game-board-stack-3d combat-warroom-stack">
+              <div className="game-board-3d-stage combat-warroom-stage">
               <Board
+                forceThreeD
+                cameraProfile="warroom"
+                warRoomMobilePerformance
                 fen={fen}
                 onSquareClick={handleSquareClick}
                 onSquareDoubleClick={handleSquareDoubleClick}
@@ -59,16 +83,16 @@ export default function CombatBattleView({
                 themeOverride={battleTheme}
                 checkSquare={checkedKingSquare(fen)}
               />
+              </div>
             </div>
 
-            <aside className="game-side-column combat-game-side-column" aria-label="Registro de batalla y estado táctico">
-              <div className="game-side-music combat-side-music" aria-label="Música de la batalla">
-                <MusicPlayer initiallyCollapsed />
-              </div>
-              <section className="notation-panel combat-tactical-panel">
+            <aside className="game-side-column combat-game-side-column combat-warroom-ops" aria-label="Registro de batalla y estado táctico">
+              <details className="notation-panel combat-tactical-panel combat-warroom-log-drawer">
+                <summary className="combat-warroom-log-summary"><h3>Registro de batalla</h3><b>{log.length}</b></summary>
+                <div className="combat-warroom-log-body">
                 <header className="combat-tactical-heading">
                   <span className="game-chat-kicker">COMBAT CHESS</span>
-                  <h3>Registro de batalla</h3>
+                  <strong>Bitácora táctica</strong>
                 </header>
 
                 <div className="combat-tactical-summary-grid">
@@ -118,12 +142,13 @@ export default function CombatBattleView({
                     </p>
                   </div>
                 </details>
-              </section>
+                </div>
+              </details>
             </aside>
           </div>
 
           {phase === 'battle' && (
-            <div className="game-controls combat-game-controls">
+            <div className="game-controls combat-game-controls combat-warroom-controls">
               {cpuRetryNeeded && (
                 <button type="button" className="primary-btn" onClick={retryCpuTurn}>
                   Reintentar turno de la CPU
@@ -157,7 +182,7 @@ export default function CombatBattleView({
       </div>
 
       {phase === 'over' && (
-        <div className="endgame-banner">
+        <div className="endgame-banner combat-warroom-debrief">
           <h2>{statusLabel}</h2>
           <p>
             {status === 'checkmate'
