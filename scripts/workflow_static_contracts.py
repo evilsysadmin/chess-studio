@@ -137,6 +137,8 @@ def validate_resend_bootstrap_topology(root: Path = ROOT) -> None:
         "types:\n      - completed",
         "workflow_dispatch:",
         "name: Detect Resend bootstrap request",
+        "github.event_name == 'workflow_dispatch' ||",
+        "github.event.workflow_run.conclusion == 'success'",
         "git diff --name-only",
         "infra/oci/runtime/resend-bootstrap-v1.txt",
         "needs: trigger",
