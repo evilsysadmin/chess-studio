@@ -79,8 +79,12 @@ describe('golden path intent prefetch', () => {
       boardRenderer: '3d',
     };
 
-    await expect(preloadWarRoomForPlayIntent(options)).resolves.toBe(true);
-    await expect(preloadWarRoomForPlayIntent(options)).resolves.toBe(true);
+    const [first, second] = await Promise.all([
+      preloadWarRoomForPlayIntent(options),
+      preloadWarRoomForPlayIntent(options),
+    ]);
+    expect(first).toBe(true);
+    expect(second).toBe(true);
 
     expect(mocks.preloadBoard3DRenderer).toHaveBeenCalledTimes(1);
     expect(mocks.loadWarRoomVariant).toHaveBeenCalledTimes(1);
