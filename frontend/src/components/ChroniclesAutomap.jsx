@@ -23,6 +23,34 @@ function discoveredMarkers(map, revealed) {
   }));
 }
 
+function automapViewport(revealed, state) {
+  const points = [...revealed].map((key) => {
+    const [x, y] = String(key).split(':').map(Number);
+    return Number.isFinite(x) && Number.isFinite(y) ? { x, y } : null;
+  }).filter(Boolean);
+
+  if (!points.length && state) points.push({ x: state.x, y: state.y });
+
+  const minX = Math.min(...points.map((point) => point.x));
+  const maxX = Math.max(...points.map((point) => point.x));
+  const minY = Math.min(...points.map((point) => point.y));
+  const maxY = Math.max(...points.map((point) => point.y));
+
+  const contentWidth = Math.max(1, maxX - minX + 1);
+  const contentHeight = Math.max(1, maxY - minY + 1);
+  const width = Math.max(5.2, contentWidth + 1.2);
+  const height = Math.max(5.2, contentHeight + 1.2);
+  const centerX = (minX + maxX + 1) / 2;
+  const centerY = (minY + maxY + 1) / 2;
+
+  return {
+    x: centerX - width / 2,
+    y: centerY - height / 2,
+    width,
+    height,
+  };
+}
+
 function MapMarker({ marker }) {
   const { x, y } = marker.position;
   const cx = x + 0.5;
@@ -44,11 +72,18 @@ function MapMarker({ marker }) {
 export default function ChroniclesAutomap({ open, state, visitedCells, onClose }) {
   const closeRef = useRef(null);
   const map = chroniclesMapForState(state);
-  const visited = useMemo(() => new Set(Array.isArray(visitedCells) ? visitedCells : []), [visitedCells]);
+  const visited = useMemo(() => {
+    const next = new Set(Array.isArray(visitedCells) ? visitedCells : []);
+    if (state?.mapId && Number.isInteger(state.x) && Number.isInteger(state.y)) {
+      next.add(chroniclesAutomapCellKey(state.x, state.y));
+    }
+    return next;
+  }, [state?.mapId, state?.x, state?.y, visitedCells]);
   const revealed = useMemo(
     () => chroniclesAutomapRevealedCells(map, Array.from(visited)),
     [map, visited],
   );
+  const viewport = useMemo(() => automapViewport(revealed, state), [revealed, state]);
   const markers = useMemo(() => discoveredMarkers(map, revealed), [map, revealed]);
 
   useEffect(() => {
@@ -57,8 +92,6 @@ export default function ChroniclesAutomap({ open, state, visitedCells, onClose }
 
   if (!open || !state || !map) return null;
 
-  const width = map.grid?.[0]?.length || 1;
-  const height = map.grid?.length || 1;
   const facing = chroniclesAutomapFacingDegrees(state.direction);
   const cx = state.x + 0.5;
   const cy = state.y + 0.5;
@@ -86,7 +119,7 @@ export default function ChroniclesAutomap({ open, state, visitedCells, onClose }
 
         <div className="chronicles-automap__canvas">
           <svg
-            viewBox={`-0.35 -0.35 ${width + 0.7} ${height + 0.7}`}
+            viewBox={`${viewport.x} ${viewport.y} ${viewport.width} ${viewport.height}`}
             role="img"
             aria-label={`Mapa explorado de ${map.title || 'la zona'}`}
             preserveAspectRatio="xMidYMid meet"
