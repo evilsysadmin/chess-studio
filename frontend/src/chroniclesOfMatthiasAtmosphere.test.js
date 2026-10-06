@@ -72,6 +72,26 @@ describe('Chronicles of Matthias dungeon atmosphere', () => {
     expect(farFill?.intensity).toBeLessThan(corridorFill?.intensity);
   });
 
+  it('dims the authored crypt lighting profile without removing local readability lights', () => {
+    const defaultAtmosphere = buildChroniclesDungeonAtmosphere({
+      scenePlan: { materials: { lightingProfile: 'default' }, floors: [{ x: 1, y: 1 }], center: { x: 1, y: 1 } },
+    });
+    const darkAtmosphere = buildChroniclesDungeonAtmosphere({
+      scenePlan: { materials: { lightingProfile: 'crypt-dark' }, floors: [{ x: 1, y: 1 }], center: { x: 1, y: 1 } },
+    });
+
+    const defaultAmbient = defaultAtmosphere.getObjectByName('chronicles-readability-ambient');
+    const darkAmbient = darkAtmosphere.getObjectByName('chronicles-readability-ambient');
+    const defaultCorridor = defaultAtmosphere.getObjectByName('chronicles-readability-corridor-fill');
+    const darkCorridor = darkAtmosphere.getObjectByName('chronicles-readability-corridor-fill');
+    const darkTorch = darkAtmosphere.getObjectByName('chronicles-party-torch-key');
+
+    expect(darkAtmosphere.userData.chroniclesLightingProfile).toBe('crypt-dark');
+    expect(darkAmbient?.intensity).toBeLessThan(defaultAmbient?.intensity || Infinity);
+    expect(darkCorridor?.intensity).toBeLessThan(defaultCorridor?.intensity || Infinity);
+    expect(darkTorch?.intensity).toBeGreaterThan(4);
+  });
+
   it('carries a warm torch with the party camera instead of relying on wall lights', () => {
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(67, 1, 0.08, 70);
