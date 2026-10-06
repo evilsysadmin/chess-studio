@@ -33,6 +33,10 @@ NONVISUAL_FRONTEND_PATHS = {
     "frontend/src/soundfx.js",
 }
 
+POSTGAME_VISUAL_SURFACES = {
+    "frontend/src/components/gamereportmodal.jsx": {"warroom"},
+}
+
 QUICK_MATCH_VISUAL_SURFACES = {
     # Quick Match configuration and immersive-entry behavior only affect the
     # launch surface and the War Room. Treating these as generic frontend
@@ -77,9 +81,13 @@ TRAINING_PROGRESS_MATTHIAS_VISUAL_SURFACES = {
 }
 
 TRAINING_VISUAL_SURFACES = {
+    "frontend/src/personalweeklygoals.js",
     "frontend/src/components/matthiasclassroom.css",
     "frontend/src/components/puzzlescreen.jsx",
     "frontend/src/components/puzzlemobilepolish.css",
+    "frontend/src/components/trainingroomboardshell.js",
+    "frontend/src/components/trainingroomboard.jsx",
+    "frontend/src/components/puzzlewarroom.css",
     "frontend/src/components/tournamentscreen.jsx",
     "frontend/src/components/tournamentmobilepolish.css",
     "frontend/src/components/dailychallengesscreen.jsx",
@@ -211,12 +219,15 @@ def _surface_groups(path: str) -> set[str] | None:
         "scripts/browser_quality_scope.py",
         "scripts/chess_rules_gate.mjs",
         "scripts/quality_scope.py",
+        "scripts/visual_ux_contract_check.mjs",
         "scripts/run_core_e2e_lane.py",
         "scripts/workflow_debt_gate.py",
     }:
         return set()
     if lower in NONVISUAL_FRONTEND_PATHS:
         return set()
+    if lower in POSTGAME_VISUAL_SURFACES:
+        return set(POSTGAME_VISUAL_SURFACES[lower])
     if lower in QUICK_MATCH_VISUAL_SURFACES:
         return set(QUICK_MATCH_VISUAL_SURFACES[lower])
     if lower == "frontend/src/components/homemobilegoldenpath.css":
@@ -654,6 +665,12 @@ def self_test() -> None:
     ])
     assert insights_matthias.capture_groups == "training"
 
+    weekly_goals = classify(["frontend/src/personalWeeklyGoals.js"])
+    assert weekly_goals.capture_groups == "training"
+    game_report = classify(["frontend/src/components/GameReportModal.jsx"])
+    assert game_report.capture_groups == "warroom"
+    assert not game_report.hans and not game_report.chesscom
+
     mobile_training = classify([
         "frontend/src/components/PuzzleScreen.jsx",
         "frontend/src/components/PuzzleMobilePolish.css",
@@ -687,6 +704,9 @@ def self_test() -> None:
     architecture_budget = classify(["scripts/architecture_debt_budget.py"])
     assert architecture_budget.capture_groups == "none"
     assert not architecture_budget.hans and not architecture_budget.chesscom
+    visual_ux_contract = classify(["scripts/visual_ux_contract_check.mjs"])
+    assert visual_ux_contract.capture_groups == "none"
+    assert not visual_ux_contract.hans and not visual_ux_contract.chesscom
     pvp_match_polling = classify([
         "backend-go/internal/pulse/pulse.go",
         "backend-go/internal/pulse/pulse_test.go",

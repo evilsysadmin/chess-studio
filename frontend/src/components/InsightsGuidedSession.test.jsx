@@ -41,18 +41,17 @@ vi.mock('../guidedTrainingCompletion.js', () => ({
 import InsightsGuidedSession from './InsightsGuidedSession.jsx';
 
 describe('InsightsGuidedSession time budgets', () => {
-  it('pone una tarea real en primer plano y deja 5/15/30 detrás de Cambiar tiempo', () => {
+  it('pone una tarea real en primer plano y muestra 5/15/30 sin esconder el tiempo', () => {
     const html = renderToStaticMarkup(<InsightsGuidedSession gameHistory={[]} />);
 
     expect(html).toContain('Tu siguiente tarea');
     expect(html).toContain('Foco real');
     expect(html).toContain('Basado en evidencia.');
-    expect(html).toContain('Empezar sesión recomendada de 15 min');
-    expect(html).toContain('Cambiar tiempo');
+    expect(html).toContain('Empezar sesión recomendada de 5 min');
+    expect(html).toContain('aria-label="Cambiar tiempo"');
     expect(html).toContain('Tengo 5 min');
     expect(html).toContain('Tengo 15 min');
     expect(html).toContain('Tengo 30 min');
-    expect(html).toContain('Sólo usa evidencia real de tu expediente y respeta el tiempo elegido.');
   });
 
   it('resume sólo los bloques que el usuario marcó como hechos y no vende mejora', () => {

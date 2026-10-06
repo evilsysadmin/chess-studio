@@ -165,9 +165,14 @@ QUICK_MATCH_EXACT_PRODUCERS = {
 }
 
 TRAINING_EXACT_PRODUCERS = {
+    "frontend/src/guidedtrainingsession.js": {"training-progress"},
+    "frontend/src/personalweeklygoals.js": {"training-progress"},
     "frontend/src/components/matthiasclassroom.css": {"training-school"},
     "frontend/src/components/puzzlescreen.jsx": {"training-puzzles"},
     "frontend/src/components/puzzlemobilepolish.css": {"training-puzzles"},
+    "frontend/src/components/trainingroomboardshell.js": {"training-puzzles"},
+    "frontend/src/components/trainingroomboard.jsx": {"training-puzzles"},
+    "frontend/src/components/puzzlewarroom.css": {"training-puzzles"},
     "frontend/src/components/tournamentscreen.jsx": {"training-tournament"},
     "frontend/src/components/tournamentmobilepolish.css": {"training-tournament"},
     "frontend/src/components/dailychallengesscreen.jsx": {"training-daily"},
@@ -175,6 +180,10 @@ TRAINING_EXACT_PRODUCERS = {
     "frontend/src/components/dailychallengecalendar.css": {"training-daily"},
 }
 
+
+POSTGAME_EXACT_PRODUCERS = {
+    "frontend/src/components/gamereportmodal.jsx": {"warroom-core"},
+}
 
 PVP_DUEL_EXACT_PRODUCERS = {
     "frontend/src/components/pvpappsurface.jsx": {"pvp-duel"},
@@ -344,6 +353,7 @@ def classify_path(path: str) -> set[str] | None:
             "scripts/browser_quality_scope.py",
             "scripts/chess_rules_gate.mjs",
             "scripts/quality_scope.py",
+            "scripts/visual_ux_contract_check.mjs",
             "scripts/workflow_debt_gate.py",
         }:
             return set()
@@ -367,6 +377,8 @@ def classify_path(path: str) -> set[str] | None:
         "frontend/src/components/warroomhomepreload.js",
     }:
         return set()
+    if lower in POSTGAME_EXACT_PRODUCERS:
+        return set(POSTGAME_EXACT_PRODUCERS[lower])
     if lower in QUICK_MATCH_EXACT_PRODUCERS:
         return set(QUICK_MATCH_EXACT_PRODUCERS[lower])
     if lower == "frontend/src/components/homemobilegoldenpath.css":
@@ -727,6 +739,7 @@ def self_test() -> None:
     assert classify(["frontend/src/components/PvPLobbyModal.jsx"]) == "pvp-lobby"
     assert classify(["frontend/src/components/PvPDuelHallRoom.css"]) == "pvp-lobby"
     assert classify(["scripts/architecture_debt_budget.py"]) == "none"
+    assert classify(["scripts/visual_ux_contract_check.mjs"]) == "none"
     assert classify(["frontend/src/components/warRoomHomePreload.js"]) == "none"
     assert classify(["e2e/pvp-lobby-visual-artifact.spec.js"]) == "pvp-lobby"
     assert classify(["frontend/src/components/PvpHandoffModal.jsx"]) == "pvp-handoff"
@@ -761,6 +774,9 @@ def self_test() -> None:
     assert classify(["frontend/src/components/DailyChallengeCalendar.css"]) == "training-daily"
     assert classify(["frontend/src/components/OpeningsScreen.jsx"]) == "training-openings"
     assert classify(["frontend/src/components/CareerScreen.jsx"]) == "training-progress"
+    assert classify(["frontend/src/guidedTrainingSession.js"]) == "training-progress"
+    assert classify(["frontend/src/personalWeeklyGoals.js"]) == "training-progress"
+    assert classify(["frontend/src/components/GameReportModal.jsx"]) == "warroom-core"
     assert classify(["frontend/src/components/MatthiasSchool.jsx"]) == "training-school"
     assert classify(["frontend/src/components/MatthiasClassRoom.css"]) == "training-school"
     assert classify(["e2e/training-visual-artifact.spec.js"]) == (

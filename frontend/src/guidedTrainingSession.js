@@ -17,8 +17,8 @@ function sessionOwner() {
 
 function normalizeDuration(value) {
   const minutes = Number(value);
-  if (minutes === 5 || minutes === 30) return minutes;
-  return 15;
+  if (minutes === 5 || minutes === 15 || minutes === 30) return minutes;
+  return 5;
 }
 
 function nonActionablePatternIncidentKeys(playerModel) {
@@ -101,7 +101,7 @@ function focusStep(puzzles, playerModel) {
   return {
     id: 'personal-errors',
     kind: 'personal-errors',
-    title: 'Tus crímenes pendientes',
+    title: 'Acciones inmediatas',
     detail: `${pending.length} ${pending.length === 1 ? 'posición real pendiente' : 'posiciones reales pendientes'} para trabajar sin inventar deberes.`,
     action: 'personal',
   };
@@ -155,7 +155,7 @@ function allocateDurations(minutes, hasFocus, hasNemesis) {
 }
 
 export function buildGuidedTrainingPlan({
-  minutes = 15,
+  minutes = 5,
   history = [],
   puzzles = loadPersonalPuzzles(),
   rivalry = loadRivalry(),

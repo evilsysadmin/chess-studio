@@ -25,4 +25,20 @@ describe('Board3D presentation profile', () => {
     expect(view.cameraData).toBe('classroom-overhead');
     expect(view.roomLabel).toBe('CLASS ROOM');
   });
+  it('uses the dedicated Training Room identity without changing the teaching camera geometry', () => {
+    const view = resolveBoard3DPresentation({
+      cameraProfile: 'classroom',
+      trainingRoom: true,
+      globalVariant: 'v3',
+      globalDomData: { 'data-board3d-variant': 'v3' },
+    });
+
+    expect(view.trainingRoom).toBe(true);
+    expect(view.classroom).toBe(true);
+    expect(view.cameraData).toBe('training-room-overhead');
+    expect(view.roomLabel).toBe('TRAINING ROOM');
+    expect(view.cameraLabel).toBe('CÁMARA DE ESTUDIO');
+    expect(view.playAriaLabel).toContain('Training Room');
+  });
+
 });

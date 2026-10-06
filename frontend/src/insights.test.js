@@ -238,7 +238,7 @@ describe('generateCoaching', () => {
 
   it('sugiere puzzles personales cuando hay poca táctica entrenada', () => {
     const tips = generateCoaching(base, { incidents: { 'cpu:KNIGHT_FORK': 2 } }, { puzzlesSolved: 1, personalPuzzles: 4 });
-    expect(tips.some((t) => t.action.includes('Tus crímenes'))).toBe(true);
+    expect(tips.some((t) => t.action.includes('Acciones inmediatas'))).toBe(true);
   });
 
   it('mantiene el coaching de rating en hechos primer-último, no en causas o trayectorias', () => {

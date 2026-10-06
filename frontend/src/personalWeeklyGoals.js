@@ -70,7 +70,7 @@ function personalPuzzleGoal(puzzles, now) {
     target,
     done: solvedThisWeek >= target,
     action: 'personal',
-    actionLabel: 'Abrir Tus crímenes →',
+    actionLabel: 'Abrir Acciones inmediatas →',
     filter: null,
   };
 }

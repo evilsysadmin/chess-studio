@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { classRoomCameraFramingProfile } from './Board3DScene.js';
+import { classRoomCameraFramingProfile, trainingRoomCameraFramingProfile } from './Board3DScene.js';
 import { resolveBoard3DCameraFov } from './Board3DConfig.js';
 
 function rawDistance(profile, aspect, { mobile = false } = {}) {
@@ -34,5 +34,15 @@ describe('Class Room full-board camera framing', () => {
       const profile = classRoomCameraFramingProfile({ aspect, coarsePointer: true, viewportWidth: width });
       expect(rawDistance(profile, aspect, { mobile: true })).toBeLessThan(profile.maxDistance);
     }
+  });
+
+  it('lets active Training Room boards sit closer than School without changing the School contract', () => {
+    const args = { aspect: 390 / 844, coarsePointer: true, viewportWidth: 390 };
+    const school = classRoomCameraFramingProfile(args);
+    const training = trainingRoomCameraFramingProfile(args);
+    expect(training.version).toBe('training-room-overhead-v1');
+    expect(training.halfSpan).toBeLessThan(school.halfSpan);
+    expect(training.targetY).toBeLessThan(school.targetY);
+    expect(rawDistance(training, args.aspect, { mobile: true })).toBeLessThan(rawDistance(school, args.aspect, { mobile: true }));
   });
 });

@@ -524,10 +524,10 @@ export function generateCoaching(insights, rivalry = null, extras = {}) {
       title: 'Menos partidas automáticas, más táctica',
       diagnosis: `${puzzlesSolved} ${puzzlesSolved === 1 ? 'puzzle resuelto' : 'puzzles resueltos'} frente a ${insights.totalGames} partidas. Estás acumulando experiencia, pero no necesariamente corrigiendo hábitos.`,
       action: personalPuzzles > 0
-        ? `Haz primero 3 de “Tus crímenes” antes de tu próxima partida. Tienes ${personalPuzzles} posiciones sacadas de errores reales tuyos.`
+        ? `Haz primero 3 de “Acciones inmediatas” antes de tu próxima partida. Tienes ${personalPuzzles} posiciones sacadas de errores reales tuyos.`
         : 'Haz 5 puzzles cortos antes de tu próxima partida y luego juega a la misma dificultad. El objetivo es reconocer patrones, no coleccionar partidas.',
       evidence: { kind: 'puzzles', count: insights.totalGames, puzzlesSolved, personalPuzzles },
-      ...(personalPuzzles > 0 ? { training: { filter: { label: 'Tus crímenes' } } } : {}),
+      ...(personalPuzzles > 0 ? { training: { filter: { label: 'Acciones inmediatas' } } } : {}),
     });
   }
 

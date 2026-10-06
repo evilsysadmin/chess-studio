@@ -70,7 +70,6 @@ test('Así juegas · una recaída real posterior devuelve el patrón a la sesió
   await buttonWithHeading(page, 'Así juegas').click();
   await expect(page.getByRole('heading', { name: 'Tu siguiente tarea', exact: true })).toBeVisible();
 
-  await page.getByRole('button', { name: 'Cambiar tiempo', exact: true }).click();
   await page.getByRole('button', { name: 'Tengo 5 min', exact: true }).click();
   const session = page.locator('.insights-guided-session.active');
   await expect(session.getByText('Sesión guiada · 5 min', { exact: true })).toBeVisible();

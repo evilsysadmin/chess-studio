@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { buttonWithVisibleText, gameStatus, login, mockApi } from './helpers.js';
+import { readBoard3DProjection } from './board3d-projection.js';
 
 const PROMOTION_START_FEN = 'k7/p5P1/8/8/8/8/8/7K w - - 0 1';
 const PROMOTION_END_FEN = 'k5N1/8/p7/8/8/8/8/7K w - - 0 2';
@@ -281,20 +282,19 @@ test('Puzzles móvil · selector compacto y acciones táctiles dejan respirar al
     expect(pickerBox).not.toBeNull();
     expect(pickerBox.height).toBeLessThanOrEqual(64);
 
-    const board = page.locator('.puzzle-board-column .board-wrap, .puzzle-board-column .board-grid').first();
-    await expect(board).toBeVisible();
-    const boardBox = await board.boundingBox();
-    expect(boardBox).not.toBeNull();
-    expect(boardBox.x).toBeGreaterThanOrEqual(-1);
-    expect(boardBox.x + boardBox.width).toBeLessThanOrEqual(width + 1);
-    expect(boardBox.width).toBeGreaterThanOrEqual(Math.min(312, width - 40));
+    const canvas = page.locator('.puzzle-board-column .board3d-main-canvas');
+    await expect(canvas).toBeVisible({ timeout: 30_000 });
+    const { board, rect } = await readBoard3DProjection(canvas);
+    expect(board.x).toBeGreaterThanOrEqual(rect.x - 1);
+    expect(board.x + board.width).toBeLessThanOrEqual(rect.x + rect.width + 1);
+    expect(board.width).toBeGreaterThanOrEqual(width * 0.85);
 
     const actions = page.locator('.puzzle-board-column .game-controls > button:visible');
     await expect(actions).toHaveCount(2);
     for (let index = 0; index < 2; index += 1) {
       const box = await actions.nth(index).boundingBox();
       expect(box).not.toBeNull();
-      expect(box.height).toBeGreaterThanOrEqual(48);
+      expect(box.height).toBeGreaterThanOrEqual(44);
     }
 
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);

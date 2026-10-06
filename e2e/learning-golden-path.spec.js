@@ -49,8 +49,7 @@ async function expectPersonalTrainingMobileContract(page, width) {
 
   for (const target of [
     page.locator('.puzzle-screen > .back-link'),
-    page.getByRole('button', { name: 'Entrenar esta deuda →', exact: true }),
-    page.locator('.personal-puzzle-history > summary'),
+    page.locator('.puzzle-context-drawer > summary'),
     page.locator('.puzzle-progress-details > summary'),
     page.getByRole('button', { name: 'Ver solución', exact: true }),
     page.getByRole('button', { name: 'Siguiente puzzle', exact: true }),
