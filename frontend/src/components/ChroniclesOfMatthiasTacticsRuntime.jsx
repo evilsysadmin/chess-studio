@@ -136,7 +136,7 @@ export default function ChroniclesOfMatthiasTactics({
   const checkpointQueueRef = useRef(Promise.resolve());
   const selectedMemberRef = useRef('matthias');
   const lastMoveAtRef = useRef(0);
-  const explorationWalkRef = useRef({ vector: null, timer: 0 });
+  const explorationWalkRef = useRef({ vector: null, timer: 0, generation: 0 });
   const lastAttackAtRef = useRef(0);
   const [runId, setRunId] = useState(() => authoritativeRun?.runId || ensureChroniclesTacticsRun());
   const [selectedMemberId, setSelectedMemberId] = useState('matthias');
@@ -288,6 +288,7 @@ export default function ChroniclesOfMatthiasTactics({
   const stopExplorationWalk = useCallback(() => {
     const walk = explorationWalkRef.current;
     walk.vector = null;
+    walk.generation += 1;
     if (walk.timer) {
       window.clearInterval(walk.timer);
       walk.timer = 0;
@@ -308,9 +309,14 @@ export default function ChroniclesOfMatthiasTactics({
       return;
     }
     if (walk.timer) return;
+
+    walk.generation += 1;
+    const generation = walk.generation;
     walk.timer = window.setInterval(() => {
+      const latestWalk = explorationWalkRef.current;
+      if (latestWalk.generation !== generation) return;
       const latest = stateRef.current;
-      const vector = explorationWalkRef.current.vector;
+      const vector = latestWalk.vector;
       if (!vector || latest?.phase !== 'explore' || latest?.initiative?.order?.length) {
         stopExplorationWalk();
         return;
