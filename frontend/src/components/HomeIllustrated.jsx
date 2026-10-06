@@ -80,7 +80,7 @@ function currentReducedMotion() {
   return reducedMotionStatus().effective;
 }
 
-export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, onContinue, onPractice, pendingModes = [], onTournament, onTrain, onCombat, onDaily, onHistory, onInsights, tools, matthiasModel, matthiasSpeaking, onMatthiasAction, onMatthiasDismiss }) {
+export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, onPlayIntent = null, onContinue, onPractice, pendingModes = [], onTournament, onTrain, onCombat, onDaily, onHistory, onInsights, tools, matthiasModel, matthiasSpeaking, onMatthiasAction, onMatthiasDismiss }) {
   const [toolsOpen, setToolsOpen] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
   const [playMenuOpen, setPlayMenuOpen] = useState(false);
@@ -170,11 +170,21 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [toolsOpen, tools, experimentsAction, matthiasModel?.action, onDaily]);
 
+  const signalPlayIntent = () => {
+    onPlayIntent?.();
+  };
+  const focusDestination = (destination) => {
+    setActiveRoom(destination);
+    if (destination === 'play' && !hasSavedGame) signalPlayIntent();
+  };
   const activateSceneDestination = (destination) => {
     if (loading) return;
     if (destination === 'tournament') onTournament();
     else if (destination === 'combat') onCombat();
-    else if (destination === 'play') (hasSavedGame ? onContinue : onPlay)();
+    else if (destination === 'play') {
+      if (!hasSavedGame) signalPlayIntent();
+      (hasSavedGame ? onContinue : onPlay)();
+    }
   };
 
   // The "Más formas de jugar" menu closes on Escape and on any press outside it.
@@ -284,7 +294,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
             artUrl={hall}
             ambient={castleLife.ambient}
             activeRoom={activeRoom}
-            onDestinationHover={setActiveRoom}
+            onDestinationHover={focusDestination}
             onDestinationActivate={activateSceneDestination}
             onAnchorLayout={handleAnchorLayout}
             matthias={{ scene: matthiasSceneKey, activity: matthiasActivity, speaking: Boolean(matthiasSpeaking) }}
@@ -331,9 +341,10 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
                 className={`illustrated-home__destination illustrated-home__destination--${id}${PRIMARY_DIEGETIC_DESTINATIONS.has(id) ? ' is-diegetic-object' : ''}${activeRoom === id ? ' is-active' : ''}`}
                 data-home-diegetic-object={PRIMARY_DIEGETIC_DESTINATIONS.has(id) ? id : undefined}
                 onClick={action}
-                onPointerEnter={() => setActiveRoom(id)}
+                onPointerEnter={() => focusDestination(id)}
+                onPointerDown={() => { if (id === 'play' && !hasSavedGame) signalPlayIntent(); }}
                 onPointerLeave={() => setActiveRoom(null)}
-                onFocus={() => setActiveRoom(id)}
+                onFocus={() => focusDestination(id)}
                 onBlur={() => setActiveRoom(null)}
                 disabled={loading}
               >
@@ -355,7 +366,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
             className={`illustrated-home__beacon illustrated-home__beacon--${id}${activeRoom === id ? ' is-active' : ''}`}
             style={{ left: `${anchors[id].x * 100}%`, top: `${anchors[id].y * 100}%` }}
             onClick={action}
-            onPointerEnter={() => setActiveRoom(id)}
+            onPointerEnter={() => focusDestination(id)}
             onPointerLeave={() => setActiveRoom(null)}
             disabled={loading}
           >
@@ -398,7 +409,15 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
                 </div>
               )}
               {hasSavedGame && (
-                <button type="button" className="illustrated-home__play-menu-item" onClick={onPlay} disabled={loading}>
+                <button
+                  type="button"
+                  className="illustrated-home__play-menu-item"
+                  onClick={onPlay}
+                  onPointerEnter={signalPlayIntent}
+                  onPointerDown={signalPlayIntent}
+                  onFocus={signalPlayIntent}
+                  disabled={loading}
+                >
                   <IconSword aria-hidden="true" />
                   <span><strong>Nueva partida rápida</strong><small>Empieza otra sin perder la guardada</small></span>
                 </button>
@@ -466,9 +485,10 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
                   type="button"
                   className={`illustrated-home__quickbar-chip illustrated-home__quickbar-chip--${id}${activeRoom === id ? ' is-active' : ''}`}
                   onClick={() => { setQuickOpen(false); action(); }}
-                  onPointerEnter={() => setActiveRoom(id)}
+                  onPointerEnter={() => focusDestination(id)}
+                  onPointerDown={() => { if (id === 'play' && !hasSavedGame) signalPlayIntent(); }}
                   onPointerLeave={() => setActiveRoom(null)}
-                  onFocus={() => setActiveRoom(id)}
+                  onFocus={() => focusDestination(id)}
                   onBlur={() => setActiveRoom(null)}
                   disabled={loading}
                 >
