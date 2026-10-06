@@ -379,7 +379,10 @@ def _surface_groups(path: str) -> set[str] | None:
         "insights", "career-dossier", "careerscreen", "rivalrydossier",
     )):
         groups.add("training")
-    if any(token in lower for token in ("war-room", "warroom", "board3d", "gameboardview", "gamesidecolumn", "game3d")):
+    if any(token in lower for token in (
+        "war-room", "warroom", "board3d", "gameboardview", "gamesidecolumn", "game3d",
+        "combatpreparation",
+    )):
         groups.add("warroom")
     # Class Room intentionally reuses the shared Board3D renderer. Any Board3D
     # visual change therefore owns both the War Room and training screenshots;
@@ -961,6 +964,13 @@ def self_test() -> None:
         "frontend/src/components/WarRoom3D.jsx",
     ])
     assert mixed_nonvisual_warroom.capture_groups == "warroom"
+    combat_preparation = classify([
+        "frontend/src/components/CampaignCombatPreparation.jsx",
+        "frontend/src/components/CombatPreparationRoom.jsx",
+        "frontend/src/components/CampaignCombatPreparationRoom.css",
+        "e2e/war-room-combat-preparation-visual-artifact.spec.js",
+    ])
+    assert combat_preparation.capture_groups == "warroom"
 
     for nonvisual_gate in ("scripts/async_resilience_gate.mjs", "scripts/chess_rules_gate.mjs", "scripts/visual_ux_contract_check.mjs"):
         gate_scope = classify([nonvisual_gate])
