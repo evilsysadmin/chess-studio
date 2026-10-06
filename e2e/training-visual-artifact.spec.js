@@ -27,17 +27,6 @@ async function settle(page) {
   await page.waitForTimeout(120);
 }
 
-async function openSchoolResource(shell, name) {
-  const resources = shell.locator('.matthias-school-resources');
-  // This is a visual artifact test, not the interaction contract for <details>.
-  // Open the authored menu deterministically so animation/overlay timing cannot
-  // make the summary temporarily non-actionable during a full visual sweep.
-  await resources.evaluate((node) => { node.open = true; });
-  const resource = resources.getByRole('button', { name, exact: true });
-  await expect(resource).toBeVisible();
-  await resource.click();
-}
-
 async function assertNoHorizontalOverflow(page, label) {
   const overflow = await page.evaluate(() => {
     const root = document.documentElement;
@@ -337,11 +326,13 @@ scopedTest('school', 'Entrenar · Escuela, Glosario y Modos especiales', async (
   await page.setViewportSize({ width: 1440, height: 900 });
   await settle(page);
 
-  await openSchoolResource(shell, 'Glosario');
+  await shell.getByText('Recursos', { exact: true }).click();
+  await shell.getByRole('button', { name: 'Glosario', exact: true }).click();
   await expect(shell.locator('.chess-glossary')).toBeVisible();
   await capture(page, 'glossary');
 
-  await openSchoolResource(shell, 'Modos especiales');
+  await shell.getByText('Recursos', { exact: true }).click();
+  await shell.getByRole('button', { name: 'Modos especiales', exact: true }).click();
   await expect(shell.locator('.mechanic-library')).toBeVisible();
   await settle(page);
   await assertSpecialModesDensity(shell);
