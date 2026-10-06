@@ -45,12 +45,12 @@ describe('atajos de novedades', () => {
   it('cada acción navega a su destino y cerrar no navega', async () => {
     const { openReleaseNoteTarget } = await import('./userReleaseNotes.js');
     const calls = [];
-    const helpers = { navigateTo: (to) => calls.push(['nav', to]), setInsightsLandingSection: (s) => calls.push(['section', s]) };
+    const helpers = { navigateTo: (to) => calls.push(['nav', to]), openInsights: (section) => calls.push(['insights', section]) };
     openReleaseNoteTarget('daily', helpers);
     openReleaseNoteTarget('history', helpers);
     openReleaseNoteTarget('progress', helpers);
     openReleaseNoteTarget('close', helpers);
     openReleaseNoteTarget(undefined, helpers);
-    expect(calls).toEqual([['nav', 'dailyChallenges'], ['nav', 'history'], ['section', 'career'], ['nav', 'insights']]);
+    expect(calls).toEqual([['nav', 'dailyChallenges'], ['nav', 'history'], ['insights', 'career']]);
   });
 });
