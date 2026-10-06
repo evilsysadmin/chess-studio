@@ -1,5 +1,47 @@
+
+
+async function captureWarRoomFrame(page, path) {
+  const staged = await page.evaluate(() => {
+    const canvases = [...document.querySelectorAll('canvas.board3d-main-canvas')];
+    return canvases.map((canvas, index) => {
+      const rect = canvas.getBoundingClientRect();
+      const shell = canvas.closest('.board3d-main-shell');
+      const shellRect = shell?.getBoundingClientRect();
+      const image = document.createElement('img');
+      image.src = canvas.toDataURL('image/png');
+      image.alt = '';
+      image.dataset.combatWarRoomCapture = String(index);
+      Object.assign(image.style, {
+        position: shell ? 'absolute' : 'fixed',
+        left: `${shellRect ? rect.left - shellRect.left : rect.left}px`,
+        top: `${shellRect ? rect.top - shellRect.top : rect.top}px`,
+        width: `${rect.width}px`,
+        height: `${rect.height}px`,
+        zIndex: '1',
+        pointerEvents: 'none',
+        objectFit: 'fill',
+      });
+      (shell || document.body).appendChild(image);
+      return image.dataset.combatWarRoomCapture;
+    });
+  });
+
+  if (staged.length) {
+    await page.waitForFunction(() => [...document.querySelectorAll('img[data-combat-war-room-capture]')]
+      .every((image) => image.complete && image.naturalWidth > 0));
+  }
+
+  try {
+    const png = await page.screenshot({ fullPage: false, animations: 'disabled', caret: 'hide' });
+    await writeFile(path, png);
+  } finally {
+    await page.evaluate(() => {
+      document.querySelectorAll('img[data-combat-war-room-capture]').forEach((image) => image.remove());
+    });
+  }
+}
 import { expect, test } from '@playwright/test';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import {
   dismissTutorialIfVisible,
   login,
@@ -65,10 +107,7 @@ test('Combat battle · desktop lives inside the generic War Room', async ({ page
   expect(health.controls?.bottom || 9999).toBeLessThanOrEqual(901);
 
   await mkdir(ARTIFACT_DIR, { recursive: true });
-  await page.screenshot({
-    path: ARTIFACT_DIR + '/combat-battle-desktop-1440x900.png',
-    animations: 'disabled',
-  });
+  await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-battle-desktop-1440x900.png');
 });
 
 test.describe('Combat battle · Android', () => {
@@ -93,10 +132,7 @@ test.describe('Combat battle · Android', () => {
     }
 
     await mkdir(ARTIFACT_DIR, { recursive: true });
-    await page.screenshot({
-      path: ARTIFACT_DIR + '/combat-battle-android-390x844.png',
-      animations: 'disabled',
-    });
+    await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-battle-android-390x844.png');
   });
 
   test('landscape keeps battle chrome away from the board edges', async ({ page }) => {
@@ -111,9 +147,6 @@ test.describe('Combat battle · Android', () => {
     expect(health.controls?.left ?? -1).toBeGreaterThanOrEqual(-1);
 
     await mkdir(ARTIFACT_DIR, { recursive: true });
-    await page.screenshot({
-      path: ARTIFACT_DIR + '/combat-battle-android-landscape-844x390.png',
-      animations: 'disabled',
-    });
+    await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-battle-android-landscape-844x390.png');
   });
 });
