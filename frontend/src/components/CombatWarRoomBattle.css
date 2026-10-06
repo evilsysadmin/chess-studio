@@ -70,6 +70,11 @@
   height: 100%;
 }
 
+.combat-battle-screen .combat-warroom-stage .board3d-parity-details,
+.combat-battle-screen .combat-warroom-stage .board3d-parity-note {
+  display: none;
+}
+
 .combat-battle-screen .combat-warroom-stage .board3d-main-shell {
   width: 100% !important;
   height: 100% !important;
