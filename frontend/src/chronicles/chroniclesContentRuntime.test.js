@@ -5,6 +5,8 @@ import {
   chroniclesApplyContentEffects,
   chroniclesContentDefinition,
   chroniclesContentInteractions,
+  chroniclesContentWallMount,
+  chroniclesFirstPersonContentInteractions,
   chroniclesContentLockedMessage,
   chroniclesInventoryEntries,
   chroniclesQuestEntries,
@@ -174,4 +176,41 @@ describe('Chronicles content runtime', () => {
       { questId: 'blind-king-key', questStatus: 'completed' },
     ])).toBe(true);
   });
+  it('keeps isometric/current-cell interactions compatible while first-person requires facing the wall fixture', () => {
+    const map = {
+      grid: [
+        '#####',
+        '#...#',
+        '#####',
+      ],
+      triggers: [],
+      traps: [],
+      exits: [],
+      treasures: [],
+      interactables: [{
+        id: 'wall-lever',
+        kind: 'lever',
+        x: 2,
+        y: 1,
+        label: 'Bajar palanca',
+        action: { effects: [{ type: 'set', key: 'pulled', value: true }] },
+      }],
+    };
+    const localTileAt = (x, y) => map.grid[y]?.[x] || '#';
+    const northMount = chroniclesContentWallMount(map, map.interactables[0]);
+
+    expect(northMount).toMatchObject({ key: 'north', direction: 0 });
+    expect(chroniclesContentInteractions({ x: 2, y: 1, direction: 2 }, map, localTileAt))
+      .toContainEqual(expect.objectContaining({ id: 'wall-lever' }));
+    expect(chroniclesFirstPersonContentInteractions({ x: 2, y: 1, direction: 2 }, map, localTileAt))
+      .toEqual([]);
+    expect(chroniclesFirstPersonContentInteractions({ x: 2, y: 1, direction: 0 }, map, localTileAt))
+      .toContainEqual(expect.objectContaining({
+        id: 'wall-lever',
+        wallSide: 'north',
+        facingDirection: 0,
+      }));
+  });
+
+
 });
