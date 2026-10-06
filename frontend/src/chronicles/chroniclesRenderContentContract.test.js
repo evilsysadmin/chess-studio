@@ -56,4 +56,21 @@ describe('Chronicles generic render content contract', () => {
     expect(content.map((entry) => entry.id)).toEqual(['north-switch', 'south-switch']);
     expect(content.every((entry) => entry.visualType === 'dwarven-switch')).toBe(true);
   });
+  it('preserves authored wall placement metadata for first-person fixtures', () => {
+    const cistern = chroniclesMapRenderPlan(chroniclesMapById('echo-cistern'));
+    const byId = Object.fromEntries(cistern.content.map((entry) => [entry.id, entry]));
+
+    expect(byId['west-sluice-wheel']).toMatchObject({
+      kind: 'lever',
+      wallSide: 'east',
+      position: { x: 3, y: 5 },
+    });
+    expect(byId['west-sluice-oil']).toMatchObject({
+      kind: 'relic-socket',
+      wallSide: 'west',
+      position: { x: 3, y: 5 },
+    });
+  });
+
+
 });
