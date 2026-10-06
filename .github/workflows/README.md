@@ -82,7 +82,7 @@ Render staging está retirado del plano de despliegue: el **release canónico y 
 
 | Workflow | Responsabilidad |
 | --- | --- |
-| `main-backend-image.yml` | Tras `Main · admission`, construye o reutiliza las imágenes ARM64 exact-SHA de FastAPI y Go API en GHCR; publica el runtime Go bajo `chess-studio-backend-go` y el alias legacy `chess-studio-pvp` al mismo contenido, y sólo el HEAD actual de `main` puede mover la señal mutable consumida por staging. |
+| `main-backend-image.yml` | Tras `Main · admission`, un clasificador x86 barato reutiliza `staging_deploy_scope.py` y corta los merges inequívocamente non-runtime antes de reservar ARM, Buildx o GHCR. Para generaciones runtime construye o reutiliza las imágenes ARM64 exact-SHA de FastAPI y Go API; publica el runtime Go bajo `chess-studio-backend-go` y el alias legacy `chess-studio-pvp` al mismo contenido, y sólo el HEAD actual de `main` puede mover la señal mutable consumida por staging. |
 | `chess-football-godot-poc.yml` | Valida y exporta el runtime web Godot de Chess Football; PR valida, `main`/manual pueden publicar su bundle. Sigue siendo una superficie experimental aislada del release principal. |
 | `blender-setup-smoke.yml` | Smoke real de Blender/EGL y helpers compartidos cuando cambia `setup-blender-canonical`; evita romper todas las lanes de arte desde una acción común. |
 | `chronicles-party-blender-art.yml` | Genera y valida party/escena canónica de Chronicles con previews deterministas; read-only en PR. |

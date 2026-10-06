@@ -82,6 +82,29 @@ def validate_staging_frontend_build_single_source(root: Path = ROOT) -> None:
     print("staging frontend build/deploy-scope contract: OK")
 
 
+
+def validate_main_backend_image_non_runtime_gate(root: Path = ROOT) -> None:
+    """Keep non-runtime merges off the ARM/GHCR backend-image path."""
+    workflow = (root / ".github" / "workflows" / "main-backend-image.yml").read_text(encoding="utf-8")
+    required = (
+        "name: Backend · classify admitted deploy surface",
+        "runs-on: ubuntu-24.04",
+        'python3 -S scripts/staging_deploy_scope.py --sha "$DEPLOY_SHA" --github-output "$GITHUB_OUTPUT"',
+        "deploy_required: ${{ steps.scope.outputs.deploy_required }}",
+        "name: Backend · publish approved linux/arm64",
+        "needs: classify",
+        "if: needs.classify.outputs.deploy_required == 'true'",
+        "runs-on: ubuntu-24.04-arm",
+        "packages: write",
+    )
+    missing = [token for token in required if token not in workflow]
+    if missing:
+        raise SystemExit("main-backend-image perdió el gate non-runtime: " + ", ".join(missing))
+    classify = workflow.split("\n  classify:\n", 1)[1].split("\n  publish:\n", 1)[0]
+    if "packages: write" in classify:
+        raise SystemExit("el clasificador barato de backend no debe tener permiso packages:write")
+    print("main backend image non-runtime gate: OK")
+
 def validate_cloudflare_auth_rate_limit(root: Path = ROOT) -> None:
     """Keep the Free-tier auth burst guard tested and wired into staging delivery."""
     subprocess.run(
@@ -137,6 +160,7 @@ def validate_workflow_static_contracts(root: Path = ROOT) -> None:
     workflow_debt_self_test()
     validate_main_admission_fallback(root)
     validate_staging_frontend_build_single_source(root)
+    validate_main_backend_image_non_runtime_gate(root)
     validate_cloudflare_auth_rate_limit(root)
     validate_resend_bootstrap_topology(root)
 

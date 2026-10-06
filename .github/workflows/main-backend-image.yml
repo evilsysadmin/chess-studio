@@ -11,18 +11,57 @@ on:
 
 permissions:
   contents: read
-  packages: write
+  pull-requests: read
 
 # Backend image publication no longer extends the admission critical path.
+# A cheap x86 classifier drops unequivocal non-runtime merges before any ARM,
+# Buildx or GHCR work. Runtime generations keep exact-SHA image publication.
 # One run is tied to one admitted SHA; immutable images may coexist safely.
 concurrency:
   group: chess-studio-main-backend-${{ github.event.workflow_run.head_sha }}
   cancel-in-progress: false
 
 jobs:
+  classify:
+    name: Backend · classify admitted deploy surface
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
+      GITHUB_TOKEN: ${{ github.token }}
+    outputs:
+      deploy_required: ${{ steps.scope.outputs.deploy_required }}
+      deploy_reason: ${{ steps.scope.outputs.deploy_reason }}
+    steps:
+      - name: Validate admitted SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::DEPLOY_SHA inválido: $DEPLOY_SHA"; exit 1; }
+
+      - name: Checkout deploy classifier
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+          fetch-depth: 2
+          sparse-checkout: |
+            scripts
+
+      - name: Classify runtime deploy surface
+        id: scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -S scripts/staging_deploy_scope.py --sha "$DEPLOY_SHA" --github-output "$GITHUB_OUTPUT"
+
   publish:
     name: Backend · publish approved linux/arm64
-    if: github.event.workflow_run.conclusion == 'success'
+    needs: classify
+    if: needs.classify.outputs.deploy_required == 'true'
+    permissions:
+      contents: read
+      packages: write
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 20
     env:
