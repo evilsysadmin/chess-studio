@@ -36,7 +36,7 @@ const AdminScreen = React.lazy(() => import('./components/AdminScreen.jsx'));
 const GlobalMusicDock = React.lazy(() => import('./components/GlobalMusicDock.jsx'));
 import SaveStatusBadge from './components/SaveStatusBadge.jsx';
 import ReleaseUpdateNotice from './components/ReleaseUpdateNotice.jsx';
-import UserSettingsPanel from './components/UserSettingsPanel.jsx';
+const UserSettingsPanel = React.lazy(() => import('./components/UserSettingsPanel.jsx'));
 import AccountModal from './components/AccountModal.jsx';
 const UserReleaseNotesModal = React.lazy(() => import('./components/UserReleaseNotesModal.jsx'));
 import FeedbackModal from './components/FeedbackModal.jsx';
@@ -759,7 +759,7 @@ function AppInner({ isAdminUser }) {
             onOpenCombat={() => { closeCombatSummary(); navigateTo('roguelike'); }}
           />
         )}
-        {showSettings && <UserSettingsPanel isAdminUser={isAdminUser} onClose={closeSettings} onBoard3D={() => { closeSettings(); navigateTo('board3d'); }} />}
+        {showSettings && <React.Suspense fallback={<div className="modal-backdrop settings-backdrop" />}><UserSettingsPanel isAdminUser={isAdminUser} onClose={closeSettings} onBoard3D={() => { closeSettings(); navigateTo('board3d'); }} /></React.Suspense>}
         {showGlobalAccount && <AccountModal rating={rating} tournament={tournament} combatOverview={combatOverview} onClose={closeGlobalAccount} onLogout={() => void handleGlobalLogout()} loggingOut={loggingOut} />}
         {showGlobalReleaseNotes && <React.Suspense fallback={null}><UserReleaseNotesModal onClose={closeReleaseNotes} onAction={(to) => { closeReleaseNotes(); openReleaseNoteTarget(to, { navigateTo, openInsights }); }} /></React.Suspense>}
         {showGlobalFeedback && <FeedbackModal context={view === 'menu' ? 'Home' : `Global · ${view}`} onClose={closeGlobalFeedback} />}
