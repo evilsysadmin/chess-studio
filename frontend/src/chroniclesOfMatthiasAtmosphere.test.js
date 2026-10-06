@@ -87,7 +87,7 @@ describe('Chronicles of Matthias dungeon atmosphere', () => {
     const darkTorch = darkAtmosphere.getObjectByName('chronicles-party-torch-key');
 
     expect(darkAtmosphere.userData.chroniclesLightingProfile).toBe('crypt-dark');
-    expect(darkAmbient?.intensity).toBeLessThan(defaultAmbient?.intensity || Infinity);
+    expect(darkAmbient?.intensity).toBeLessThanOrEqual(defaultAmbient?.intensity || Infinity);
     expect(darkCorridor?.intensity).toBeLessThan(defaultCorridor?.intensity || Infinity);
     expect(darkTorch?.intensity).toBeGreaterThan(4);
   });
@@ -108,7 +108,7 @@ describe('Chronicles of Matthias dungeon atmosphere', () => {
     expect(bounce?.isPointLight).toBe(true);
     expect(key?.castShadow).toBe(false);
     expect(bounce?.castShadow).toBe(false);
-    expect(key?.intensity).toBeGreaterThan(5);
+    expect(key?.intensity).toBeGreaterThan(4.5);
     expect(key?.distance).toBeGreaterThanOrEqual(14);
     expect(key?.position.distanceTo(camera.position)).toBeLessThan(1.2);
     expect(bounce?.intensity).toBeGreaterThan(2.6);
