@@ -6,13 +6,17 @@ const JOYSTICK_KNOB_RADIUS := 31.0
 const JOYSTICK_LEFT_ZONE_RATIO := 0.48
 const JOYSTICK_TOP_GUARD := 118.0
 const AUTO_SPRINT_THRESHOLD := 0.84
+const SPRINT_DOUBLE_TAP_MSEC := 300
+const SPRINT_QUICK_TAP_MSEC := 190
+const SPRINT_TAP_MAX_TRAVEL := 24.0
+const SPRINT_DOUBLE_TAP_MAX_DISTANCE := 56.0
 const PLAYER_TOUCH_RADIUS := 76.0
 const PLAYER_TOUCH_RADIUS_LEFT_ZONE := 58.0
 const GOAL_TOUCH_HALF_WIDTH := 118.0
 const GOAL_TOUCH_HALF_HEIGHT := 150.0
 const AGGRESSIVE_TACKLE_HOLD_SECONDS := 0.34
 const SHOT_AIM_SCREEN_SPAN := 132.0
-const MOBILE_HELP := "TÁCTIL · arrastra para moverte · mantén compañero para cargar pase · rival entrada · portería tiro"
+const MOBILE_HELP := "TÁCTIL · joystick mueve · doble toque+mantén sprint · mantén compañero pase · rival entrada · portería tiro"
 
 var touch_root: Control
 var joystick_base: Panel
@@ -20,6 +24,12 @@ var joystick_knob: Panel
 var joystick_touch_index: int = -1
 var joystick_origin: Vector2 = Vector2.ZERO
 var joystick_vector: Vector2 = Vector2.ZERO
+var joystick_started_msec: int = 0
+var joystick_start_position: Vector2 = Vector2.ZERO
+var joystick_max_travel: float = 0.0
+var last_quick_tap_msec: int = -10000
+var last_quick_tap_position: Vector2 = Vector2.ZERO
+var joystick_sprint_latched: bool = false
 var context_touches: Dictionary = {}
 var touch_capable: bool = false
 var debug_force_visible: bool = false
@@ -235,6 +245,16 @@ func _in_joystick_zone(position: Vector2) -> bool:
 
 func _begin_joystick(index: int, position: Vector2) -> void:
 	joystick_touch_index = index
+	var now := Time.get_ticks_msec()
+	joystick_sprint_latched = (
+		now - last_quick_tap_msec <= SPRINT_DOUBLE_TAP_MSEC
+		and position.distance_to(last_quick_tap_position) <= SPRINT_DOUBLE_TAP_MAX_DISTANCE
+	)
+	if joystick_sprint_latched:
+		last_quick_tap_msec = -10000
+	joystick_started_msec = now
+	joystick_start_position = position
+	joystick_max_travel = 0.0
 	var viewport_size := get_viewport().get_visible_rect().size
 	var wanted := position - JOYSTICK_SIZE * 0.5
 	joystick_base.position = Vector2(
@@ -246,6 +266,7 @@ func _begin_joystick(index: int, position: Vector2) -> void:
 	_apply_joystick(Vector2.ZERO)
 
 func _update_joystick(position: Vector2) -> void:
+	joystick_max_travel = maxf(joystick_max_travel, position.distance_to(joystick_start_position))
 	var offset := position - joystick_origin
 	if offset.length() > JOYSTICK_RADIUS:
 		offset = offset.normalized() * JOYSTICK_RADIUS
@@ -257,7 +278,7 @@ func _apply_joystick(value: Vector2) -> void:
 	_set_action_strength("move_right", maxf(0.0, joystick_vector.x))
 	_set_action_strength("move_up", maxf(0.0, -joystick_vector.y))
 	_set_action_strength("move_down", maxf(0.0, joystick_vector.y))
-	if joystick_vector.length() >= AUTO_SPRINT_THRESHOLD:
+	if joystick_sprint_latched or joystick_vector.length() >= AUTO_SPRINT_THRESHOLD:
 		Input.action_press("sprint")
 	else:
 		Input.action_release("sprint")
@@ -276,8 +297,20 @@ func _set_action_strength(action: String, strength: float) -> void:
 		Input.action_release(action)
 
 func _release_joystick() -> void:
+	var now := Time.get_ticks_msec()
+	var held_msec := now - joystick_started_msec
+	if (
+		not joystick_sprint_latched
+		and held_msec <= SPRINT_QUICK_TAP_MSEC
+		and joystick_max_travel <= SPRINT_TAP_MAX_TRAVEL
+	):
+		last_quick_tap_msec = now
+		last_quick_tap_position = joystick_start_position
 	joystick_touch_index = -1
 	joystick_vector = Vector2.ZERO
+	joystick_sprint_latched = false
+	joystick_started_msec = 0
+	joystick_max_travel = 0.0
 	for action in ["move_left", "move_right", "move_up", "move_down", "sprint"]:
 		Input.action_release(action)
 	_reset_joystick_visual()
@@ -327,6 +360,9 @@ func debug_joystick_visible() -> bool:
 
 func debug_joystick_origin() -> Vector2:
 	return joystick_origin
+
+func debug_sprint_latched() -> bool:
+	return joystick_sprint_latched
 
 func debug_touch_down(index: int, position: Vector2) -> bool:
 	return _touch_down(index, position)
