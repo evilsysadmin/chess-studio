@@ -16,10 +16,10 @@ const TACKLE_HITBOX_BACK := 12.0
 const TACKLE_HITBOX_HALF_WIDTH := 27.0
 const TACKLE_CONTACT_FORWARD_BONUS := 8.0
 const TACKLE_FOUL_BACK := 28.0
-const TACKLE_FOUL_HALF_WIDTH := 36.0
-const TACKLE_RECKLESS_SPEED_RATIO := 1.05
+const TACKLE_FOUL_HALF_WIDTH := 34.0
+const TACKLE_RECKLESS_SPEED_RATIO := 1.15
 const TACKLE_CLEAN_FORWARD := 40.0
-const TACKLE_CLEAN_HALF_WIDTH := 18.0
+const TACKLE_CLEAN_HALF_WIDTH := 22.0
 const TACKLE_STEAL_DELAY := 0.20
 const TACKLE_STEAL_POKE_POWER := 220.0
 const TACKLE_LOOSE_POKE_POWER := 310.0
@@ -53,7 +53,7 @@ const KICKOFF_RECEIVER_INDEX := 3
 const KICKOFF_TEAM_HALF_GAP := 120.0
 const KICKOFF_RIVAL_HALF_GAP := 250.0
 const GOAL_CELEBRATION_SECONDS := 1.35
-const RESTART_FREEZE_SECONDS := 0.95
+const RESTART_FREEZE_SECONDS := 0.38
 const RESTART_OUT_MARGIN := 10.0
 const RESTART_TOUCHLINE_INSET := 28.0
 const RESTART_GOAL_LINE_INSET := 34.0
@@ -787,19 +787,26 @@ func _tackle_hitbox(
 		and forward_distance <= TACKLE_CLEAN_FORWARD + TACKLE_HITBOX_FORWARD_BONUS * speed_ratio * 0.5
 		and lateral_distance <= TACKLE_CLEAN_HALF_WIDTH
 	)
-	var foul := (
-		contact
+	# Normal standing tackles are deliberately forgiving: a glancing side contact
+	# becomes a loose-ball duel instead of a whistle. Fouls are reserved for a
+	# genuinely late/rear hit, a reckless high-speed side hit, or an aggressive slide
+	# that fails to make a clean front-on challenge.
+	var late_from_behind := forward_distance < -12.0
+	var reckless_side_contact := (
+		not clean
+		and speed_ratio >= TACKLE_RECKLESS_SPEED_RATIO
+		and lateral_distance > TACKLE_CLEAN_HALF_WIDTH + 2.0
+	)
+	var aggressive_miss := (
+		aggressive
+		and not clean
 		and (
-			not inside
-			or forward_distance < -4.0
-			or (aggressive and not clean)
-			or (
-				not clean
-				and speed_ratio >= TACKLE_RECKLESS_SPEED_RATIO
-				and lateral_distance > TACKLE_CLEAN_HALF_WIDTH
-			)
+			forward_distance < 2.0
+			or lateral_distance > TACKLE_CLEAN_HALF_WIDTH
+			or forward_distance > TACKLE_CLEAN_FORWARD
 		)
 	)
+	var foul := contact and (late_from_behind or reckless_side_contact or aggressive_miss)
 	return {
 		"aggressive": aggressive,
 		"contact": contact,
@@ -1356,8 +1363,9 @@ func _update_set_piece(delta: float) -> void:
 
 	set_piece_active = false
 	last_goal_text = ""
-	if audio_fx != null:
-		audio_fx.play_whistle()
+	# The infringement already produced the referee cue. Corners, throws, goal kicks
+	# and ordinary free-kick restarts should not whistle again and pepper the match
+	# with duplicate beeps.
 	var restarter := set_piece_player
 	var receiver := _restart_receiver(set_piece_team_id, restarter, set_piece_kind)
 	var direction := ChessFootballMath.PITCH_RECT.get_center() - restarter.global_position
