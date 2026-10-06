@@ -42,6 +42,7 @@ async function chroniclesE2ERunPayload({
   seed = 417,
   currentMapId = 'crypt-eight-squares',
   status = 'active',
+  worldFlags = null,
 } = {}) {
   const manifests = await chroniclesE2EManifests();
   const areas = CHRONICLES_E2E_MAP_IDS.map((mapId, index) => {
@@ -69,15 +70,18 @@ async function chroniclesE2ERunPayload({
     worldVersion: 0,
     consumedContentIds: [],
     claimedRewards: [],
-    ...(defeated ? {
+    ...((worldFlags || defeated) ? {
       worldFlags: {
-        '__chrRuntime.version': 1,
-        '__chrRuntime.phase': 'defeated',
-        '__chrRuntime.turnPhase': 'party',
-        '__chrRuntime.party.matthias.hp': 0,
-        '__chrRuntime.party.rook.hp': 0,
-        '__chrRuntime.party.bishop.hp': 0,
-        '__chrRuntime.party.knight.hp': 0,
+        ...(worldFlags && typeof worldFlags === 'object' ? worldFlags : {}),
+        ...(defeated ? {
+          '__chrRuntime.version': 1,
+          '__chrRuntime.phase': 'defeated',
+          '__chrRuntime.turnPhase': 'party',
+          '__chrRuntime.party.matthias.hp': 0,
+          '__chrRuntime.party.rook.hp': 0,
+          '__chrRuntime.party.bishop.hp': 0,
+          '__chrRuntime.party.knight.hp': 0,
+        } : {}),
       },
     } : {}),
     area,
@@ -209,6 +213,7 @@ export async function mockApi(page, {
   chroniclesRunFailureStatus = 0,
   chroniclesCurrentMapId = 'crypt-eight-squares',
   chroniclesRunStatus = 'active',
+  chroniclesWorldFlags = null,
 } = {}) {
   // Seed tutorials as seen so overlays cannot intercept unrelated E2E clicks.
   let profileData = {
@@ -272,6 +277,7 @@ export async function mockApi(page, {
         seed: nextChroniclesSeed++,
         currentMapId: chroniclesCurrentMapId,
         status: chroniclesRunStatus,
+        worldFlags: chroniclesWorldFlags,
       });
       chroniclesRuns.set(operationKey, payload);
       return json(payload, 201);
