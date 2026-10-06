@@ -50,17 +50,55 @@ import {
 } from './helpers.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual/combat-preparation';
+const COMBAT_OPERATIONS_AUTHORED_REVISION = '1617ee7509f88cb9a3d746c55b72865e20899735';
+const COMBAT_OPERATIONS_REVISION_BASE =
+  'https://assets.chess-studio.shadowops.dpdns.org/combat/operations-room/staging/revisions';
+
+async function installCombatOperationsRevisionRoute(page) {
+  const revisionUrl = COMBAT_OPERATIONS_REVISION_BASE + '/' + COMBAT_OPERATIONS_AUTHORED_REVISION + '.glb';
+  const deadline = Date.now() + 60_000;
+  let body = null;
+  while (Date.now() < deadline) {
+    try {
+      const response = await page.request.get(revisionUrl + '?probe=' + Date.now(), {
+        headers: { 'cache-control': 'no-cache' },
+        timeout: 10_000,
+      });
+      if (response.ok()) {
+        body = await response.body();
+        break;
+      }
+    } catch {
+      // The authored review object is immutable; tolerate transient edge fetches.
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1_000));
+  }
+  if (!body) throw new Error('Combat Operations Room authored revision unavailable: ' + COMBAT_OPERATIONS_AUTHORED_REVISION);
+
+  await page.route('**/combat/operations-room/runtime/current.glb*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'model/gltf-binary',
+      body,
+      headers: { 'cache-control': 'no-store' },
+    });
+  });
+}
 
 async function openOperationsRoom(page) {
+  await installCombatOperationsRevisionRoute(page);
   await mockApi(page);
   await login(page);
   await openCampaignBriefing(page);
   await page.getByRole('button', { name: /PREPARAR EJÉRCITO/i }).click();
   await dismissTutorialIfVisible(page);
 
-  const room = page.locator('[data-combat-preparation-room="generic-war-room"]');
+  const room = page.locator('[data-combat-preparation-room="combat-operations-room"]');
   await expect(room).toBeVisible({ timeout: 45_000 });
-  await expect(room.locator('[data-board3d-war-room="true"]')).toBeVisible({ timeout: 45_000 });
+  const board3d = room.locator('[data-board3d-war-room="true"]');
+  await expect(board3d).toBeVisible({ timeout: 45_000 });
+  await expect(board3d).toHaveAttribute('data-board3d-variant', 'combat-ops');
+  await expect(board3d).toHaveAttribute('data-board3d-variant-status', 'ready', { timeout: 45_000 });
   await expect(room.locator('.board3d-main-canvas')).toBeVisible({ timeout: 45_000 });
   await expect(page.getByLabel('Resumen de preparación')).toBeVisible();
   await expect(page.getByRole('button', { name: /Personalizar despliegue/i })).toBeVisible();

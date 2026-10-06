@@ -232,8 +232,10 @@ test('Combat Chess · Campaña permite jugar con defaults en un clic y deja el d
   await page.getByRole('button', { name: /PREPARAR EJÉRCITO/i }).click();
   await dismissTutorialIfVisible(page);
   await expect(page.getByLabel('Resumen de preparación')).toBeVisible();
-  await expect(page.locator('[data-combat-preparation-room="generic-war-room"] [data-board3d-war-room="true"]')).toBeVisible({ timeout: 45_000 });
-  await expect(page.locator('[data-combat-preparation-room="generic-war-room"] .board3d-main-canvas')).toBeVisible({ timeout: 45_000 });
+  await expect(page.locator('[data-combat-preparation-room="combat-operations-room"] [data-board3d-war-room="true"]')).toBeVisible({ timeout: 45_000 });
+  await expect(page.locator('[data-combat-preparation-room="combat-operations-room"] [data-board3d-war-room="true"]'))
+    .toHaveAttribute('data-board3d-variant', 'combat-ops');
+  await expect(page.locator('[data-combat-preparation-room="combat-operations-room"] .board3d-main-canvas')).toBeVisible({ timeout: 45_000 });
   await expect(page.getByRole('button', { name: /Personalizar despliegue/i })).toBeVisible();
 
   const quick = page.getByRole('button', { name: /JUGAR CON (ESTA|FORMACIÓN RECOMENDADA)/i });

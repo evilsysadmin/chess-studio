@@ -414,9 +414,10 @@
   .combat-operations-briefing {
     top: 6.7rem;
     left: .5rem;
-    right: .5rem;
-    width: auto;
-    padding: .62rem .7rem;
+    right: auto;
+    width: min(13.5rem, calc(100% - 11.5rem));
+    min-width: 12rem;
+    padding: .55rem .62rem;
   }
 
   .combat-operations-briefing p {
@@ -459,22 +460,23 @@
   }
 
   .combat-operations-drawer {
-    top: 11rem;
+    top: 6.7rem;
     right: .5rem;
     bottom: auto;
-    width: auto;
-    max-width: min(11rem, 42vw);
+    width: min(10.5rem, 42vw);
+    max-width: 10.5rem;
   }
 
   .combat-operations-drawer[open] {
+    top: 6.7rem;
     left: .5rem;
     width: auto;
     max-width: none;
-    max-height: calc(100dvh - 11rem);
+    max-height: calc(100dvh - 7.2rem);
   }
 
   .combat-operations-drawer-body {
-    max-height: calc(100dvh - 15rem);
+    max-height: calc(100dvh - 11rem);
   }
 }
 
@@ -489,6 +491,8 @@
 
   .combat-operations-briefing {
     top: 6.45rem;
+    width: min(12.8rem, calc(100% - 11.1rem));
+    min-width: 11.5rem;
   }
 
   .combat-operations-briefing h2 {
@@ -516,7 +520,9 @@
   }
 
   .combat-operations-drawer {
-    top: 10.6rem;
+    top: 6.45rem;
+    width: min(10rem, 41vw);
+    max-width: 10rem;
   }
 }
 

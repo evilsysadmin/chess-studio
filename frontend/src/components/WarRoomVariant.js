@@ -4,6 +4,7 @@ import {
 } from '../safeStorage.js';
 import { setProfileStorageItem } from '../profileKeys.js';
 import { PVP_DUEL_ROOM_RUNTIME_MODEL_URL } from './PvpDuelRoomAsset.js';
+import { COMBAT_OPERATIONS_ROOM_RUNTIME_MODEL_URL } from './CombatOperationsRoomAsset.js';
 import { r2AssetUrl } from '../r2Assets.js';
 
 export const WAR_ROOM_VARIANT_STORAGE_KEY = 'chess-study-war-room-variant-v1';
@@ -56,9 +57,19 @@ const INTERNAL_WAR_ROOM_VARIANTS = Object.freeze([
     id: 'duel',
     label: 'Duel Room',
     shell: 'blender',
+    internal: true,
     runtimeModelUrl: PVP_DUEL_ROOM_RUNTIME_MODEL_URL,
     cacheBustBuild: false,
     loadInstaller: () => import('./PvpDuelRoomShell.js').then(({ installPvpDuelRoomShell }) => installPvpDuelRoomShell),
+  }),
+  Object.freeze({
+    id: 'combat-ops',
+    label: 'Combat Operations Room',
+    shell: 'blender',
+    internal: true,
+    runtimeModelUrl: COMBAT_OPERATIONS_ROOM_RUNTIME_MODEL_URL,
+    cacheBustBuild: false,
+    loadInstaller: () => import('./CombatOperationsRoomShell.js').then(({ installCombatOperationsRoomShell }) => installCombatOperationsRoomShell),
   }),
 ]);
 
@@ -114,7 +125,8 @@ export function warRoomVariantDefinition(value) {
 }
 
 export function isClassicWarRoomVariant({ selectable = false, variant = 'classic' } = {}) {
-  return !selectable || warRoomVariantDefinition(variant)?.shell === 'procedural';
+  const definition = warRoomVariantDefinition(variant);
+  return (!selectable && definition?.internal !== true) || definition?.shell === 'procedural';
 }
 
 export function loadWarRoomVariantInstaller(value) {
