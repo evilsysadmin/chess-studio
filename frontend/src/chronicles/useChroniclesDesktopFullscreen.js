@@ -3,8 +3,7 @@ import { useEffect } from 'react';
 export function chroniclesDesktopFullscreenEligible(win = window) {
   if (!win?.matchMedia) return false;
   const finePointer = win.matchMedia('(pointer: fine)').matches;
-  const touchPoints = Number(win.navigator?.maxTouchPoints || 0);
-  return finePointer && touchPoints === 0 && Number(win.innerWidth || 0) >= 801;
+  return finePointer && Number(win.innerWidth || 0) >= 801;
 }
 
 export function useChroniclesDesktopFullscreen(active = true) {
