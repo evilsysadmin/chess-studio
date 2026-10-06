@@ -1,0 +1,331 @@
+/* Temporary canonical Dungeon / Experiments Room pass.
+   Direction: the games are physical stations inside a hostile castle dungeon,
+   not a dashboard floating over a dark background. Keep the semantic DOM as the
+   interaction layer while aligning it to the authored room. */
+
+@media (min-width: 821px) {
+  .lab-screen .lab-workshop {
+    min-height: clamp(670px, calc(100vh - 190px), 830px);
+    border-radius: 8px;
+    border-color: rgba(117, 83, 42, .56);
+    background-color: #050607;
+    box-shadow:
+      0 36px 96px rgba(0, 0, 0, .72),
+      0 0 0 1px rgba(226, 169, 78, .035),
+      inset 0 0 120px rgba(0, 0, 0, .28);
+  }
+
+  /* The room should feel colder and more dangerous than the rest of the castle.
+     Torch pockets stay warm; ambient stone falls toward blue-black. */
+  .lab-screen .lab-workshop-art {
+    object-position: 50% 50%;
+    filter: brightness(.69) saturate(.88) contrast(1.12);
+    transform: scale(1.012);
+  }
+
+  .lab-screen .lab-workshop::before {
+    opacity: .18;
+    filter: brightness(.52) saturate(.78) contrast(1.16);
+  }
+
+  .lab-screen .lab-workshop::after {
+    background:
+      linear-gradient(90deg,
+        rgba(2, 4, 6, .88) 0%,
+        rgba(3, 5, 7, .78) 18%,
+        rgba(3, 5, 7, .33) 30%,
+        rgba(3, 5, 7, .04) 46%,
+        transparent 66%),
+      linear-gradient(180deg,
+        rgba(1, 3, 5, .36) 0%,
+        rgba(2, 4, 6, .03) 27%,
+        transparent 56%,
+        rgba(1, 2, 3, .25) 76%,
+        rgba(1, 2, 3, .62) 100%),
+      radial-gradient(ellipse at 50% 45%,
+        transparent 0 44%,
+        rgba(0, 2, 4, .18) 67%,
+        rgba(0, 1, 2, .55) 100%);
+    box-shadow:
+      inset 0 0 92px rgba(0, 0, 0, .38),
+      inset 0 -70px 80px rgba(0, 0, 0, .28);
+  }
+
+  /* Title is part of the room, not a separate hero panel. */
+  .lab-screen .lab-workshop-masthead {
+    top: 9.2%;
+    left: 4.1%;
+    width: min(385px, 27%);
+  }
+
+  .lab-screen .lab-workshop-kicker {
+    margin-bottom: 8px;
+    color: #c69a4d;
+    font-size: .59rem;
+    letter-spacing: .2em;
+  }
+
+  .lab-screen .lab-workshop-masthead h2 {
+    max-width: 340px;
+    font-size: clamp(2.75rem, 3.65vw, 4rem);
+    line-height: .88;
+    color: #eadcba;
+    text-shadow: 0 6px 22px #000, 0 1px rgba(255,255,255,.08);
+  }
+
+  .lab-screen .lab-workshop-masthead p {
+    max-width: 360px;
+    margin-top: 14px;
+    color: rgba(229, 220, 202, .72);
+    font-size: clamp(.78rem, .85vw, .9rem);
+    line-height: 1.48;
+  }
+
+  /* Physical destination plaque. The room/pedestal remains visually dominant. */
+  .lab-screen .lab-workshop-portal,
+  .lab-screen .lab-workshop-map-table,
+  .lab-screen .lab-workshop-tool {
+    --hotspot-accent: 194, 145, 69;
+    gap: 4px;
+    min-height: 86px;
+    padding: 11px 14px 10px;
+    border: 1px solid rgba(155, 111, 55, .38);
+    border-top-color: rgba(215, 164, 81, .46);
+    border-left: 1px solid rgba(155, 111, 55, .38);
+    border-radius: 3px;
+    background:
+      linear-gradient(180deg, rgba(13, 13, 12, .91), rgba(5, 7, 8, .91)),
+      radial-gradient(circle at 50% 0, rgba(var(--hotspot-accent), .08), transparent 62%);
+    box-shadow:
+      0 10px 22px rgba(0, 0, 0, .42),
+      inset 0 1px rgba(255, 232, 174, .055),
+      inset 0 -1px rgba(0, 0, 0, .78);
+    backdrop-filter: blur(1.5px);
+    -webkit-backdrop-filter: blur(1.5px);
+    transform-origin: 50% 100%;
+  }
+
+  .lab-screen .lab-workshop-portal > small,
+  .lab-screen .lab-workshop-map-table > small,
+  .lab-screen .lab-workshop-tool-meta {
+    color: rgba(var(--hotspot-accent), .9);
+    font-size: .51rem;
+    letter-spacing: .14em;
+  }
+
+  .lab-screen .lab-workshop-portal > strong,
+  .lab-screen .lab-workshop-map-table > strong,
+  .lab-screen .lab-workshop-tool strong {
+    color: #efe1bf;
+    font-size: clamp(.93rem, 1.08vw, 1.18rem);
+    line-height: 1.02;
+    text-shadow: 0 3px 12px #000;
+  }
+
+  .lab-screen .lab-workshop-portal > b,
+  .lab-screen .lab-workshop-map-table > b {
+    margin-top: 1px;
+    color: rgba(214, 169, 87, .82);
+    font-size: .5rem;
+    letter-spacing: .08em;
+  }
+
+  .lab-screen .lab-workshop-portal:hover,
+  .lab-screen .lab-workshop-portal:focus-visible,
+  .lab-screen .lab-workshop-map-table:hover,
+  .lab-screen .lab-workshop-map-table:focus-visible,
+  .lab-screen .lab-workshop-tool:hover,
+  .lab-screen .lab-workshop-tool:focus-visible {
+    transform: translateY(-4px) scale(1.012);
+    border-color: rgba(226, 174, 83, .72);
+    background:
+      linear-gradient(180deg, rgba(28, 22, 14, .95), rgba(7, 8, 8, .94)),
+      radial-gradient(circle at 50% 0, rgba(var(--hotspot-accent), .13), transparent 65%);
+    box-shadow:
+      0 17px 32px rgba(0, 0, 0, .58),
+      0 0 22px rgba(var(--hotspot-accent), .08),
+      inset 0 1px rgba(255, 232, 174, .08);
+  }
+
+  /* Canon composition: a row of dungeon stations/pedestals across the chamber. */
+  .lab-screen .lab-workshop-portal--pawnslug-godot {
+    --hotspot-accent: 89, 161, 190;
+    left: 5.2%;
+    top: 57%;
+    bottom: auto;
+    width: 14.2%;
+  }
+
+  .lab-screen .lab-workshop-portal--football {
+    --hotspot-accent: 105, 160, 91;
+    left: 20.6%;
+    top: 55.5%;
+    bottom: auto;
+    width: 14.6%;
+  }
+
+  .lab-screen .lab-workshop-portal--chronicles {
+    --hotspot-accent: 209, 164, 79;
+    left: 37.1%;
+    top: 53%;
+    width: 16.4%;
+  }
+
+  .lab-screen .lab-workshop-portal--tactics {
+    --hotspot-accent: 201, 151, 72;
+    left: 54.2%;
+    right: auto;
+    top: 53%;
+    width: 16.2%;
+  }
+
+  .lab-screen .lab-workshop-map-table {
+    --hotspot-accent: 103, 145, 166;
+    left: 71.5%;
+    right: auto;
+    top: 55.5%;
+    bottom: auto;
+    width: 13.8%;
+  }
+
+  /* Trailblazer is the extra contraband crate in the left foreground. */
+  .lab-screen .lab-workshop-portal--trailblazer {
+    --hotspot-accent: 142, 154, 119;
+    left: 6.2%;
+    bottom: 5.3%;
+    top: auto;
+    width: 15.5%;
+    min-height: 72px;
+  }
+
+  .lab-screen .lab-workshop-wing--hangar .lab-workshop-portal {
+    padding: 11px 14px 10px;
+    background:
+      linear-gradient(180deg, rgba(13, 13, 12, .91), rgba(5, 7, 8, .91)),
+      radial-gradient(circle at 50% 0, rgba(var(--hotspot-accent), .08), transparent 62%);
+  }
+
+  .lab-screen .lab-workshop-bench {
+    display: contents;
+  }
+
+  .lab-screen .lab-workshop-tool {
+    position: absolute;
+    z-index: 6;
+    width: 13.2%;
+    min-height: 72px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    pointer-events: auto;
+  }
+
+  .lab-screen .lab-workshop-tool:not(.lab-workshop-tool--arena) {
+    --hotspot-accent: 197, 151, 74;
+    right: 1.8%;
+    top: 57.5%;
+  }
+
+  .lab-screen .lab-workshop-tool--arena {
+    --hotspot-accent: 202, 143, 60;
+    right: 4.3%;
+    bottom: 6.2%;
+    width: 17%;
+  }
+
+  .lab-screen .lab-workshop-tool strong {
+    font-size: clamp(.86rem, .96vw, 1.03rem);
+  }
+
+  .lab-screen .lab-workshop-tool > b {
+    font-size: 1.05rem;
+  }
+
+  /* The physical scene should read before the labels. */
+  .lab-screen .lab-workshop-portal,
+  .lab-screen .lab-workshop-map-table,
+  .lab-screen .lab-workshop-tool {
+    opacity: .92;
+  }
+
+  .lab-screen .lab-workshop-portal:hover,
+  .lab-screen .lab-workshop-portal:focus-visible,
+  .lab-screen .lab-workshop-map-table:hover,
+  .lab-screen .lab-workshop-map-table:focus-visible,
+  .lab-screen .lab-workshop-tool:hover,
+  .lab-screen .lab-workshop-tool:focus-visible {
+    opacity: 1;
+  }
+}
+
+@media (min-width: 821px) and (max-width: 1180px) {
+  .lab-screen .lab-workshop-masthead {
+    width: 31%;
+  }
+
+  .lab-screen .lab-workshop-masthead p {
+    max-width: 320px;
+    font-size: .77rem;
+  }
+
+  .lab-screen .lab-workshop-portal,
+  .lab-screen .lab-workshop-map-table,
+  .lab-screen .lab-workshop-tool {
+    min-height: 78px;
+    padding: 9px 11px;
+  }
+
+  .lab-screen .lab-workshop-portal > b,
+  .lab-screen .lab-workshop-map-table > b {
+    display: none;
+  }
+}
+
+@media (max-width: 820px) {
+  /* Mobile cannot faithfully show the full wide chamber. Treat the same room as
+     a vertical descent: cold upper vault, torchlit interactive plaques below. */
+  .lab-screen .lab-workshop {
+    min-height: 1110px;
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+    background-color: #050607;
+  }
+
+  .lab-screen .lab-workshop-art {
+    object-position: 49% center;
+    filter: brightness(.58) saturate(.82) contrast(1.12);
+    transform: scale(1.02);
+  }
+
+  .lab-screen .lab-workshop::after {
+    background:
+      linear-gradient(180deg,
+        rgba(2, 4, 6, .68) 0 20%,
+        rgba(2, 4, 6, .22) 36%,
+        rgba(2, 4, 6, .4) 62%,
+        rgba(1, 2, 3, .78) 100%),
+      radial-gradient(ellipse at 50% 47%, transparent 0 35%, rgba(0, 1, 2, .42) 86%);
+  }
+
+  .lab-screen .lab-workshop-masthead {
+    top: 56px;
+  }
+
+  .lab-screen .lab-workshop-masthead h2 {
+    color: #ebddbc;
+  }
+
+  .lab-screen .lab-workshop-portal,
+  .lab-screen .lab-workshop-map-table,
+  .lab-screen .lab-workshop-tool {
+    border-radius: 4px;
+    border-color: rgba(183, 135, 65, .38);
+    background: linear-gradient(180deg, rgba(10, 11, 11, .91), rgba(5, 7, 8, .94));
+    box-shadow: 0 12px 28px rgba(0, 0, 0, .48);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lab-screen .lab-workshop-art {
+    transform: none;
+  }
+}
