@@ -1889,7 +1889,9 @@ for ((attempt=1; attempt<=24; attempt++)); do
     lock_acquired=true
     break
   fi
-  if ! supersede_if_stale; then
+  if supersede_if_stale; then
+    :
+  else
     status=$?
     [[ "$status" == 42 ]] && exit 0
     exit "$status"
@@ -1903,7 +1905,9 @@ fi
 # GitHub Actions cancellation cannot retract a Run Command already accepted by
 # OCI. Re-check main after acquiring the host mutation lock so a late, obsolete
 # staging command can never overwrite a newer generation.
-if ! supersede_if_stale; then
+if supersede_if_stale; then
+  :
+else
   status=$?
   [[ "$status" == 42 ]] && exit 0
   exit "$status"
