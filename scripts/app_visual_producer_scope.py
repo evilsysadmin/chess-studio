@@ -209,6 +209,7 @@ PUBLIC_NONCANONICAL_PATHS = {
     "frontend/public/favicon-32.png",
     "frontend/public/favicon.svg",
     "frontend/public/manifest.webmanifest",
+    "frontend/public/moduleRecovery.js",
     "frontend/public/release.json",
     "frontend/public/sw.js",
 }
