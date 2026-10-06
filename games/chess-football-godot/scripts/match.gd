@@ -1096,16 +1096,16 @@ func _arrange_set_piece_formation(kind: String) -> void:
 		for teammate in teams[set_piece_team_id]:
 			if teammate == set_piece_player or teammate.role == "keeper":
 				continue
-			var teammate_offset := teammate.global_position - set_piece_spot
+			var teammate_offset: Vector2 = teammate.global_position - set_piece_spot
 			if teammate_offset.length() < 105.0:
-				var teammate_away := teammate_offset.normalized() if teammate_offset.length_squared() > 0.001 else Vector2(-direction, 0.0)
+				var teammate_away: Vector2 = teammate_offset.normalized() if teammate_offset.length_squared() > 0.001 else Vector2(-direction, 0.0)
 				_place_restart_player(teammate, set_piece_spot + teammate_away * 105.0)
 		for opponent in teams[opponent_id]:
 			if opponent.role == "keeper":
 				continue
-			var opponent_offset := opponent.global_position - set_piece_spot
+			var opponent_offset: Vector2 = opponent.global_position - set_piece_spot
 			if opponent_offset.length() < 165.0:
-				var opponent_away := opponent_offset.normalized() if opponent_offset.length_squared() > 0.001 else Vector2(-direction, 0.0)
+				var opponent_away: Vector2 = opponent_offset.normalized() if opponent_offset.length_squared() > 0.001 else Vector2(-direction, 0.0)
 				_place_restart_player(opponent, set_piece_spot + opponent_away * 165.0)
 		return
 
