@@ -36,6 +36,8 @@ export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, o
   const [personalPuzzles, setPersonalPuzzles] = useState(() => loadPersonalPuzzles());
   const filteredInitialPersonalTotal = personalPuzzles.filter((item) => matchesPersonalPuzzleFilter(item, initialFilter)).length;
   const focusedInsightsTraining = trainingOrigin === 'insights-action';
+  const focusedPostGameTraining = trainingOrigin === 'postgame-error';
+  const focusedTrainingJourney = focusedInsightsTraining || focusedPostGameTraining;
   const personalSourceFallback = initialSource === 'personal' && filteredInitialPersonalTotal === 0;
   const resolvedInitialSource = personalSourceFallback ? 'curated' : initialSource;
   const [source, setSource] = useState(resolvedInitialSource); // curated | personal | daily
@@ -432,8 +434,8 @@ export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, o
       className={`tutorial-shell puzzle-screen ${source === 'personal' ? 'puzzle-screen-personal' : ''}`}
       data-training-origin={trainingOrigin || undefined}
     >
-      <button className="back-link" onClick={onExit}>{focusedInsightsTraining ? '← Volver a Así juegas' : '← Volver al menú'}</button>
-      {!rushMode && !focusedInsightsTraining && <div className="puzzle-source-picker friendly-tabs" role="group" aria-label="Tipo de puzzle">
+      <button className="back-link" onClick={onExit}>{focusedInsightsTraining ? '← Volver a Así juegas' : focusedPostGameTraining ? '← Volver a la partida' : '← Volver al menú'}</button>
+      {!rushMode && !focusedTrainingJourney && <div className="puzzle-source-picker friendly-tabs" role="group" aria-label="Tipo de puzzle">
         <button aria-label="Puzzles clásicos" className={source === 'curated' ? 'primary-btn' : 'secondary-btn'} onClick={() => changeSource('curated')}>
           <span className="puzzle-source-label-full">Puzzles clásicos</span><span className="puzzle-source-label-compact" aria-hidden="true">Clásicos</span>
         </button>
