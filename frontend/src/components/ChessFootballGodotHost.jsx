@@ -22,6 +22,23 @@ export default function ChessFootballGodotHost({ onExit }) {
     return () => {
       html.style.overflow = previousHtmlOverflow;
       body.style.overflow = previousBodyOverflow;
+
+      if (html.dataset.chessFootballImmersive === 'requested') {
+        delete html.dataset.chessFootballImmersive;
+        try {
+          window.screen?.orientation?.unlock?.();
+        } catch {
+          // Orientation unlock is not available on every browser.
+        }
+        if (document.fullscreenElement && typeof document.exitFullscreen === 'function') {
+          try {
+            const exitFullscreen = document.exitFullscreen();
+            if (exitFullscreen?.catch) exitFullscreen.catch(() => {});
+          } catch {
+            // Leaving the host must never be blocked by fullscreen cleanup.
+          }
+        }
+      }
     };
   }, []);
 
