@@ -13,6 +13,8 @@ import { setWarRoomHansCrouchIntent } from './WarRoomHansTransformOwner.js';
 const QUICK_ITERATION_VERSION = 'always-quick-v10-slow-obstacle-safe';
 const QUICK_ENTRY_SECONDS = 7;
 const HANS_PRESENTATION_TIME_SCALE = 0.54;
+const CLASSIC_DOOR_OPENING_PRELUDE_MS = 600;
+const AUTHORED_STAGE_DOOR_OPENING_PRELUDE_MS = 1000;
 const MOBILE_QUICK_ENTRY_VISIBLE_PROGRESS = 0.766;
 const QUICK_DOOR_X = 2.65;
 const HEARTH_BASKET_X = -1.50;
@@ -589,6 +591,7 @@ function applyQuickIterationFrame(refs, frame, towardBoard) {
   if (basketTopLog) basketTopLog.visible = !frame.removeBasketLog;
   if (addedLog) addedLog.visible = frame.showAddedLog;
   setWarRoomHansServiceDoorOpen(doorRefs, frame.doorOpen ?? 0);
+  hans.userData.warRoomHansDoorOpen = Number(frame.doorOpen ?? 0);
 
   hans.visible = frame.hansVisible;
   if (frame.hansVisible) {
@@ -705,9 +708,14 @@ function armQuickIteration(root, towardBoard, doorRefs, { coarsePointer = false 
     const delta = startedAt == null ? 0 : Math.max(0, frameNow - startedAt);
     startedAt = frameNow;
     if (awaitCall && root.userData.warRoomHansCallReleased !== true) return;
+    const doorOpeningMs = awaitCall
+      ? (stage.corridor ? AUTHORED_STAGE_DOOR_OPENING_PRELUDE_MS : CLASSIC_DOOR_OPENING_PRELUDE_MS)
+      : 0;
     // A late render or a hidden tab must never skip the entrance choreography.
-    presentationMs += awaitCall ? Math.min(delta, presentationMs < 600 ? 100 : 1000) : delta;
-    const doorOpeningMs = awaitCall ? 600 : 0;
+    // Clamp against this stage's real door prelude, not V1's historical 600 ms.
+    presentationMs += awaitCall
+      ? Math.min(delta, presentationMs < doorOpeningMs ? 100 : 1000)
+      : delta;
     const presentationElapsed = Math.max(0, presentationMs - doorOpeningMs) / 1000 * HANS_PRESENTATION_TIME_SCALE;
     const frame = writeHansQuickIterationFrame(frameScratch, presentationElapsed, useCoarseEntry, stage);
     if (presentationMs < doorOpeningMs) {
