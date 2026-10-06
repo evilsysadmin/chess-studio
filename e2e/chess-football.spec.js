@@ -56,6 +56,7 @@ test('Chess Football opens fullscreen and returns only through the runtime exit'
   await expect(frame).toBeVisible();
   await expect(frame).toHaveAttribute('src', INDEX_URL);
   await expect(host).toHaveAttribute('data-runtime-ready', 'true');
+  await expect(page.locator('.chess-football-godot-host__status')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Volver a Experimentos' })).toHaveCount(0);
 
   await frame.contentFrame().locator('body').evaluate(() => {
