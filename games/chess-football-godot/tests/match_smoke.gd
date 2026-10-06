@@ -203,6 +203,10 @@ func _initialize() -> void:
 
 	var tackler: Footballer = match_node.controlled
 	var victim: Footballer = match_node.teams[1][2]
+	# Tackle assertions are a separate contract from the goal-frame block above.
+	# Clear any action/cooldown residue so this section never depends on which
+	# player happened to be controlled by an earlier restart.
+	tackler._process(2.0)
 	tackler.global_position = Vector2(640.0, 500.0)
 	tackler.velocity = Vector2.RIGHT * tackler.base_speed
 
