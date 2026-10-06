@@ -9,7 +9,7 @@ import {
   chroniclesPartyCellOccupied,
 } from './chroniclesPartyFootprint.js';
 
-export const CHRONICLES_TURN_ENGINE_VERSION = 'map-ai-v6';
+export const CHRONICLES_TURN_ENGINE_VERSION = 'map-ai-v7';
 
 const KNIGHT_STEPS = Object.freeze([
   Object.freeze({ dx: -2, dy: -1 }), Object.freeze({ dx: -2, dy: 1 }),
@@ -232,6 +232,21 @@ function moveEnemy(state, enemy, to, events) {
   return { ...state, enemyPositions };
 }
 
+function resolveEnemyActivation(state, enemy, enemyIndex, events) {
+  const position = chroniclesRuntimeEnemyPosition(state, enemy);
+  const target = chroniclesEnemyAttackTarget(state, enemy, position);
+  if (target) return damageParty(state, enemy, enemyIndex, events, target);
+
+  const moved = moveEnemy(state, enemy, chroniclesChooseEnemyStep(state, enemy), events);
+  if (moved === state) return state;
+
+  const movedPosition = chroniclesRuntimeEnemyPosition(moved, enemy);
+  const movedTarget = chroniclesEnemyAttackTarget(moved, enemy, movedPosition);
+  return movedTarget
+    ? damageParty(moved, enemy, enemyIndex, events, movedTarget)
+    : moved;
+}
+
 function partyDefeated(state) {
   return state.party.every((member) => member.hp <= 0);
 }
@@ -252,13 +267,7 @@ export function chroniclesResolveEnemyActor(state, enemyId) {
   const enemy = activeEnemies[enemyIndex];
   const events = [];
   let next = { ...state, turnPhase: 'enemy', enemyTurnEvents: events };
-  const position = chroniclesRuntimeEnemyPosition(next, enemy);
-  const target = chroniclesEnemyAttackTarget(next, enemy, position);
-  if (target) {
-    next = damageParty(next, enemy, enemyIndex, events, target);
-  } else {
-    next = moveEnemy(next, enemy, chroniclesChooseEnemyStep(next, enemy), events);
-  }
+  next = resolveEnemyActivation(next, enemy, enemyIndex, events);
   const defeated = partyDefeated(next);
   return {
     ...next,
@@ -290,13 +299,7 @@ export function chroniclesResolveEnemyTurn(state) {
 
   activeEnemies.forEach((enemy, enemyIndex) => {
     if (partyDefeated(next)) return;
-    const position = chroniclesRuntimeEnemyPosition(next, enemy);
-    const target = chroniclesEnemyAttackTarget(next, enemy, position);
-    if (target) {
-      next = damageParty(next, enemy, enemyIndex, events, target);
-      return;
-    }
-    next = moveEnemy(next, enemy, chroniclesChooseEnemyStep(next, enemy), events);
+    next = resolveEnemyActivation(next, enemy, enemyIndex, events);
   });
 
   const defeated = partyDefeated(next);
