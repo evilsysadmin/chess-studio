@@ -1,4 +1,5 @@
-import Board from './Board.jsx';
+import CombatWarRoomBoard from './CombatWarRoomBoard.jsx';
+import './CombatWarRoomBattle.css';
 import WarRoomImmersiveMusicDock from './WarRoomImmersiveMusicDock.jsx';
 import WarRoomLandscapeGate from './WarRoomLandscapeGate.jsx';
 import useWarRoomLandscape from './useWarRoomLandscape.js';
@@ -64,8 +65,7 @@ export default function CombatBattleView({
           <div className="board-live-row is-3d-warroom combat-board-live-row combat-warroom-row">
             <div className="game-board-stack game-board-stack-3d combat-warroom-stack">
               <div className="game-board-3d-stage combat-warroom-stage">
-              <Board
-                forceThreeD
+              <CombatWarRoomBoard
                 cameraProfile="warroom"
                 warRoomMobilePerformance
                 fen={fen}
