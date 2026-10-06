@@ -27,6 +27,15 @@ async function settle(page) {
   await page.waitForTimeout(120);
 }
 
+async function openSchoolResource(shell, name) {
+  const resources = shell.locator('.matthias-school-resources');
+  const isOpen = await resources.evaluate((node) => node.open);
+  if (!isOpen) await resources.locator('summary').click();
+  const resource = resources.getByRole('button', { name, exact: true });
+  await expect(resource).toBeVisible();
+  await resource.click();
+}
+
 async function assertNoHorizontalOverflow(page, label) {
   const overflow = await page.evaluate(() => {
     const root = document.documentElement;
@@ -326,13 +335,11 @@ scopedTest('school', 'Entrenar · Escuela, Glosario y Modos especiales', async (
   await page.setViewportSize({ width: 1440, height: 900 });
   await settle(page);
 
-  await shell.getByText('Recursos', { exact: true }).click();
-  await shell.getByRole('button', { name: 'Glosario', exact: true }).click();
+  await openSchoolResource(shell, 'Glosario');
   await expect(shell.locator('.chess-glossary')).toBeVisible();
   await capture(page, 'glossary');
 
-  await shell.getByText('Recursos', { exact: true }).click();
-  await shell.getByRole('button', { name: 'Modos especiales', exact: true }).click();
+  await openSchoolResource(shell, 'Modos especiales');
   await expect(shell.locator('.mechanic-library')).toBeVisible();
   await settle(page);
   await assertSpecialModesDensity(shell);
