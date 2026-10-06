@@ -193,7 +193,7 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
             {aiAutopsyStatus === 'loading' && <div className="ai-task-card is-loading"><small>MATTHIAS // DEBRIEF</small><p>Revisando las pruebas sin inventarme cadáveres adicionales…</p></div>}
             {aiAutopsy && <div className="ai-task-card"><small>MATTHIAS // DEBRIEF</small><p>{aiAutopsy}</p></div>}
 
-            {personalPuzzleInfo?.added > 0 && <div className="autopsy-training-note">🧠 He archivado {personalPuzzleInfo.added} {personalPuzzleInfo.added === 1 ? 'error tuyo' : 'errores tuyos'} como {personalPuzzleInfo.added === 1 ? 'puzzle personal' : 'puzzles personales'} en <b>Tus crímenes</b>.</div>}
+            {personalPuzzleInfo?.added > 0 && <div className="autopsy-training-note">🧠 He archivado {personalPuzzleInfo.added} {personalPuzzleInfo.added === 1 ? 'error tuyo' : 'errores tuyos'} como {personalPuzzleInfo.added === 1 ? 'puzzle personal' : 'puzzles personales'} en <b>Acciones inmediatas</b>.</div>}
 
             <PostGameExam history={history} humanColor={humanColor} report={report} meta={meta} />
 

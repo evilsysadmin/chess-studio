@@ -137,8 +137,18 @@ body:has(.insights-training-room) .global-music-dock {
 }
 
 .insights-training-room .insights-workspace-back {
+  min-height: 44px;
   margin-bottom: 1rem;
-  color: #ead6ae;
+  padding: .52rem .78rem;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(220, 172, 86, .42);
+  border-radius: 8px;
+  background: rgba(16, 12, 10, .5);
+  color: #f1dfb9;
+  font-size: .82rem;
+  font-weight: 760;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, .18);
 }
 
 .insights-training-room .insights-workspace-title-row {
@@ -730,5 +740,36 @@ body:has(.insights-training-room) .global-music-dock {
   .insights-training-room .insights-guided-focus > .primary-btn {
     width: 100%;
     min-width: 0;
+  }
+}
+
+.insights-training-room .insights-duration-quick {
+  display: flex;
+  align-items: center;
+  gap: .38rem;
+  margin-top: .58rem;
+  flex-wrap: wrap;
+}
+.insights-training-room .insights-duration-quick > span {
+  margin-right: .12rem;
+  color: #bcae94;
+  font-size: .72rem;
+  font-weight: 760;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.insights-training-room .insights-duration-chip {
+  min-height: 40px;
+  padding: .4rem .68rem;
+  border-radius: 999px;
+  font-size: .78rem;
+}
+@media (max-width: 760px) {
+  .insights-training-room .insights-duration-quick {
+    gap: .3rem;
+  }
+  .insights-training-room .insights-duration-chip {
+    min-height: 44px;
+    flex: 1 1 0;
   }
 }

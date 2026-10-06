@@ -223,10 +223,9 @@ test('Así juegas · sesión automática respeta 5/15/30 y sobrevive a refresh',
   await expect(page.getByRole('heading', { name: 'Tu siguiente tarea', exact: true })).toBeVisible();
 
   for (const minutes of [5, 15, 30]) {
-    if (minutes === 15) {
-      await page.getByRole('button', { name: 'Empezar sesión recomendada de 15 min', exact: true }).click();
+    if (minutes === 5) {
+      await page.getByRole('button', { name: 'Empezar sesión recomendada de 5 min', exact: true }).click();
     } else {
-      await page.getByRole('button', { name: 'Cambiar tiempo', exact: true }).click();
       await page.getByRole('button', { name: `Tengo ${minutes} min`, exact: true }).click();
     }
     let session = page.locator('.insights-guided-session.active');

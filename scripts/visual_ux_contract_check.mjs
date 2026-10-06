@@ -26,6 +26,7 @@ const gameFeatureFiles = [
 // feature instead of forcing implementation details back into the top-level component.
 const game = gameFeatureFiles.map(read).join('\n');
 const puzzle = read('frontend/src/components/PuzzleScreen.jsx');
+const puzzleWarRoomCss = read('frontend/src/components/PuzzleWarRoom.css');
 const app = read('frontend/src/App.jsx');
 const adminInbox = read('frontend/src/useAdminFeedbackInbox.js');
 const chat = read('frontend/src/components/GameChat.jsx');
@@ -160,7 +161,7 @@ const checks = [
   [/desktop 1440x900 · Combat mantiene mesa y acciones coherentes/.test(smoke), 'falta regresión desktop de Combat'],
   [/Combat Chess · mapa conserva art y todos los nodos dentro del lienzo/.test(smoke), 'falta regresión visual del mapa de campaña'],
   [/Math\.max\(\.\.\.heights\) - Math\.min\(\.\.\.heights\)/.test(smoke), 'los E2E deben comprobar geometría coherente de botones'],
-  [/puzzle-training-workspace/.test(puzzle) && /puzzle-coach-panel/.test(puzzle) && /\.puzzle-training-workspace[\s\S]*grid-template-columns/.test(finalCss), 'Entrena tus errores debe usar tablero + coach lateral'],
+  [/TrainingRoomBoard/.test(puzzle) && /PuzzleWarRoom\.css/.test(puzzle) && /\.puzzle-training-workspace\s*\{[\s\S]*?position:\s*absolute;/.test(puzzleWarRoomCss) && /\.puzzle-coach-panel\s*\{[\s\S]*?position:\s*absolute;/.test(puzzleWarRoomCss), 'Entrenamiento con tablero debe vivir en Training Room fullscreen con coach overlay'],
   [/REPLAY \/\/ ANÁLISIS/.test(puzzle) && /puzzle-coach-solution/.test(puzzle), 'la explicación del replay debe vivir en el panel coach'],
   [/AdminFeedbackInboxButton/.test(app) && /fetchAdminFeedbackSummary/.test(adminInbox), 'Home admin debe avisar de feedback nuevo sin esconderlo en Mi cuenta'],
   [/\.admin-feedback-card\.status-resolved \{ opacity: 1; \}/.test(finalCss) && /admin-feedback-delete/.test(finalCss), 'las acciones de feedback resuelto deben seguir visibles'],

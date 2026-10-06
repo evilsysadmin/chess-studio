@@ -151,7 +151,10 @@ async function startScenario(page, scenario, requestLog) {
   await expect(dialog).toBeVisible();
   const settings = dialog.locator('details.quick-match-settings');
   if (!(await settings.evaluate((node) => node.open))) {
-    await settings.locator(':scope > summary').click();
+    await settings.evaluate((node) => {
+      node.open = true;
+      node.dispatchEvent(new Event('toggle', { bubbles: true }));
+    });
   }
   const twoD = dialog.getByRole('group', { name: 'Tipo de tablero' }).getByRole('button', { name: '2D', exact: true });
   if (await twoD.getAttribute('aria-pressed') !== 'true') await twoD.click();

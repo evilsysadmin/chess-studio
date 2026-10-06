@@ -256,7 +256,7 @@ test('Home · el avatar residente de Matthias abre Así juegas · entrenamiento 
   await clickBoardMove(page, 'a1', 'a8');
   await expect(page.getByText('¡Resuelto!', { exact: true })).toBeVisible();
 
-  await page.getByRole('button', { name: '← Volver al menú', exact: true }).click();
+  await page.getByRole('button', { name: '← Volver a Así juegas', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
   await page.getByRole('button', { name: '← Volver al menú', exact: true }).click();
   await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible();

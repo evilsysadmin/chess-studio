@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
-import Board from './Board.jsx';
+import TrainingRoomBoard from './TrainingRoomBoard.jsx';
 import PersonalTrainingDebtPanel from './PersonalTrainingDebtPanel.jsx';
 import { PUZZLES, PUZZLE_DIFFICULTY_LABELS, randomPuzzle } from '../puzzles.js';
 import { isPersonalPuzzleMastered, loadPersonalPuzzles, matchesPersonalPuzzleFilter, personalPuzzleHistory, personalTrainingSummary, randomPersonalPuzzle, recordPersonalPuzzleResult } from '../personalPuzzles.js';
@@ -22,6 +22,7 @@ import PromotionModal from './PromotionModal.jsx';
 import { PUZZLE_STATE, puzzleTransition } from '../puzzleStateMachine.js';
 import { reportStateInvariant } from '../stateMachine.js';
 import './PuzzleMobilePolish.css';
+import './PuzzleWarRoom.css';
 
 const KIND_LABELS = { mate1: 'Mate en 1', mate2: 'Mate en 2', mate3: 'Mate en 3', material: 'Gana material', combination: 'Combinación', personal: 'Error de tu partida' };
 const RECENT_CURATED_LIMIT = 5;
@@ -30,10 +31,13 @@ const RECENT_CURATED_LIMIT = 5;
 // rival, para que se note que hubo dos jugadas separadas.
 const REPLY_DELAY_MS = 550;
 
-export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, onSpendPoints, initialSource = 'curated', rushMode = false, initialFilter = null, dailySlot = 'tactic' }) {
+export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, onSpendPoints, initialSource = 'curated', rushMode = false, initialFilter = null, dailySlot = 'tactic', trainingOrigin = null }) {
   useEscapeToClose(onExit);
   const [personalPuzzles, setPersonalPuzzles] = useState(() => loadPersonalPuzzles());
   const filteredInitialPersonalTotal = personalPuzzles.filter((item) => matchesPersonalPuzzleFilter(item, initialFilter)).length;
+  const focusedInsightsTraining = trainingOrigin === 'insights-action';
+  const focusedPostGameTraining = trainingOrigin === 'postgame-error';
+  const focusedTrainingJourney = focusedInsightsTraining || focusedPostGameTraining;
   const personalSourceFallback = initialSource === 'personal' && filteredInitialPersonalTotal === 0;
   const resolvedInitialSource = personalSourceFallback ? 'curated' : initialSource;
   const [source, setSource] = useState(resolvedInitialSource); // curated | personal | daily
@@ -87,10 +91,10 @@ export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, o
   const currentPersonalMastered = source === 'personal' && isPersonalPuzzleMastered(puzzle);
   const offerAiGeneration = source === 'personal' && shouldOfferAiPersonalPuzzleGeneration({ ...personalStats, active: filteredPersonalActiveCount, total: filteredPersonalTotalCount });
   const personalSourceLabel = initialFilter?.label
-    ? `Tus errores · ${initialFilter.label} (${filteredPersonalActiveCount} pendientes)`
+    ? `Acciones inmediatas · ${initialFilter.label} (${filteredPersonalActiveCount} pendientes)`
     : initialFilter?.opening
-      ? `Tus errores · ${initialFilter.opening} (${filteredPersonalActiveCount} pendientes)`
-      : `Tus errores (${filteredPersonalActiveCount} pendientes)`;
+      ? `Acciones inmediatas · ${initialFilter.opening} (${filteredPersonalActiveCount} pendientes)`
+      : `Acciones inmediatas (${filteredPersonalActiveCount} pendientes)`;
   const dailyCells = useMemo(() => lastDailyCells(dailyStats.solvedDates, 28), [dailyStats]);
   const dailyBrief = useMemo(() => dailyChallengeBrief(dailyStats, puzzle.dailyKey), [dailyStats, puzzle.dailyKey]);
   const revealGuide = useMemo(() => buildPuzzleReveal(puzzle), [puzzle]);
@@ -426,14 +430,17 @@ export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, o
     : KIND_LABELS[puzzle.kind] || null;
 
   return (
-    <div className={`tutorial-shell puzzle-screen ${source === 'personal' ? 'puzzle-screen-personal' : ''}`}>
-      <button className="back-link" onClick={onExit}>← Volver al menú</button>
-      {!rushMode && <div className="puzzle-source-picker friendly-tabs" role="group" aria-label="Tipo de puzzle">
+    <div
+      className={`tutorial-shell puzzle-screen ${source === 'personal' ? 'puzzle-screen-personal' : ''}`}
+      data-training-origin={trainingOrigin || undefined}
+    >
+      <button className="back-link" onClick={onExit}>{focusedInsightsTraining ? '← Volver a Así juegas' : focusedPostGameTraining ? '← Volver a la partida' : '← Volver al menú'}</button>
+      {!rushMode && !focusedTrainingJourney && <div className="puzzle-source-picker friendly-tabs" role="group" aria-label="Tipo de puzzle">
         <button aria-label="Puzzles clásicos" className={source === 'curated' ? 'primary-btn' : 'secondary-btn'} onClick={() => changeSource('curated')}>
           <span className="puzzle-source-label-full">Puzzles clásicos</span><span className="puzzle-source-label-compact" aria-hidden="true">Clásicos</span>
         </button>
         <button aria-label={personalSourceLabel} className={source === 'personal' ? 'primary-btn' : 'secondary-btn'} disabled={filteredPersonalTotalCount === 0} onClick={() => changeSource('personal')}>
-          <span className="puzzle-source-label-full">{personalSourceLabel}</span><span className="puzzle-source-label-compact" aria-hidden="true">Tus errores{filteredPersonalActiveCount > 0 ? ` · ${filteredPersonalActiveCount}` : ''}</span>
+          <span className="puzzle-source-label-full">{personalSourceLabel}</span><span className="puzzle-source-label-compact" aria-hidden="true">Acciones{filteredPersonalActiveCount > 0 ? ` · ${filteredPersonalActiveCount}` : ''}</span>
         </button>
         <button aria-label="Desafío diario" className={source === 'daily' ? 'primary-btn' : 'secondary-btn'} onClick={() => changeSource('daily')}>
           <span className="puzzle-source-label-full">Desafío diario</span><span className="puzzle-source-label-compact" aria-hidden="true">Diario</span>
@@ -453,7 +460,7 @@ export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, o
             {status === 'revealed' && 'Esta era la solución'}
             {status === 'playing' && (rushEnded ? `Tiempo. ${solvedCount} aciertos.` : busy ? 'El rival responde…' : boardObjective ? `Tu turno · ${boardObjective}` : 'Tu turno')}
           </div>
-          <Board
+          <TrainingRoomBoard
             fen={localChess ? fen : 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'}
             onSquareClick={handleSquareClick}
             selectedSquare={selected}
@@ -540,27 +547,32 @@ export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, o
               <p className="hint-text personal-puzzle-note">{puzzle.source === 'workers-ai-validated' ? 'Escenario inspirado en tus errores y validado tácticamente antes de entrar en tu cola.' : 'Caso reconstruido desde una de tus partidas.'}{initialFilter?.opening ? ` Apertura: ${initialFilter.opening}.` : ''}</p>
               {currentPersonalMastered && <p className="hint-text friendly-inline-note">✓ Este caso ya está superado y vive en tu histórico. Lo estás revisando a propósito; no vuelve a la cola normal.</p>}
               {!currentPersonalMastered && filteredPersonalActiveCount > 0 && <p className="hint-text friendly-inline-note"><b>{filteredPersonalActiveCount}</b> error{filteredPersonalActiveCount === 1 ? '' : 'es'} pendiente{filteredPersonalActiveCount === 1 ? '' : 's'} de entrenar.</p>}
-              <PersonalTrainingDebtPanel summary={personalDebtSummary} puzzles={personalPuzzles} onTrain={reviewPersonalPuzzle} />
-              {offerAiGeneration && (
-                <div className="personal-puzzle-ai-action">
-                  <button type="button" className="secondary-btn" disabled={aiGenerating} onClick={generateAiPersonalVariants}>{aiGenerating ? 'Validando propuestas…' : 'Generar variantes desde mis errores'}</button>
-                  <small>Las variantes se generan por lotes y cada candidato debe superar validación legal y táctica antes de entrar en tu cola.</small>
+              <details className="friendly-disclosure puzzle-context-drawer">
+                <summary>Contexto y archivo</summary>
+                <div className="friendly-disclosure-body">
+                  <PersonalTrainingDebtPanel summary={personalDebtSummary} puzzles={personalPuzzles} onTrain={reviewPersonalPuzzle} />
+                  {offerAiGeneration && (
+                    <div className="personal-puzzle-ai-action">
+                      <button type="button" className="secondary-btn" disabled={aiGenerating} onClick={generateAiPersonalVariants}>{aiGenerating ? 'Validando propuestas…' : 'Generar variantes desde mis errores'}</button>
+                      <small>Las variantes se generan por lotes y cada candidato debe superar validación legal y táctica antes de entrar en tu cola.</small>
+                    </div>
+                  )}
+                  {aiGenerationStatus && <p className="hint-text" role="status">{aiGenerationStatus}</p>}
+                  {personalHistory.length > 0 && (
+                    <details className="friendly-disclosure personal-puzzle-history">
+                      <summary>Histórico superado ({personalHistory.length})</summary>
+                      <div className="friendly-disclosure-body personal-puzzle-history-list">
+                        {personalHistory.slice(0, 10).map((item) => (
+                          <button type="button" className="personal-puzzle-history-row" key={item.id} onClick={() => reviewPersonalPuzzle(item)}>
+                            <span><b>{item.title || 'Caso personal'}</b><small>{item.source === 'workers-ai-validated' ? 'Variante IA validada' : 'Autopsia real'}{item.opening ? ` · ${item.opening}` : ''}</small></span>
+                            <span>Revisar →</span>
+                          </button>
+                        ))}
+                      </div>
+                    </details>
+                  )}
                 </div>
-              )}
-              {aiGenerationStatus && <p className="hint-text" role="status">{aiGenerationStatus}</p>}
-              {personalHistory.length > 0 && (
-                <details className="friendly-disclosure personal-puzzle-history">
-                  <summary>Histórico superado ({personalHistory.length})</summary>
-                  <div className="friendly-disclosure-body personal-puzzle-history-list">
-                    {personalHistory.slice(0, 10).map((item) => (
-                      <button type="button" className="personal-puzzle-history-row" key={item.id} onClick={() => reviewPersonalPuzzle(item)}>
-                        <span><b>{item.title || 'Caso personal'}</b><small>{item.source === 'workers-ai-validated' ? 'Variante IA validada' : 'Autopsia real'}{item.opening ? ` · ${item.opening}` : ''}</small></span>
-                        <span>Revisar →</span>
-                      </button>
-                    ))}
-                  </div>
-                </details>
-              )}
+              </details>
             </div>
           )}
 

@@ -759,7 +759,7 @@ export default function GameScreen({
   const trainingOpportunity = usePostGameTrainingOpportunity({ game, humanColor, finished: Boolean(game.isGameOver || flagFallen || forcedOutcome) && finalOutcome === 'loss', meta: reportMeta });
   function handleTrainCurrentError() {
     if (!focusPostGameTrainingOpportunity(trainingOpportunity)) return;
-    onTrainPersonal?.();
+    onTrainPersonal?.(null, 'postgame-error');
   }
 
   return (

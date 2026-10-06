@@ -212,6 +212,20 @@ export function classRoomCameraFramingProfile({ aspect = 1, coarsePointer = fals
   });
 }
 
+export function trainingRoomCameraFramingProfile(args = {}) {
+  const base = classRoomCameraFramingProfile(args);
+  return Object.freeze({
+    ...base,
+    version: 'training-room-overhead-v1',
+    mode: base.mode === 'classroom-portrait' ? 'training-room-portrait' : 'training-room-desktop',
+    // Training is an active board-first surface rather than a teaching
+    // composition with room for curriculum chrome. Pull the camera in just
+    // enough to clear the >=85% mobile board contract without cropping files.
+    halfSpan: Number((base.halfSpan * 0.96).toFixed(3)),
+    targetY: 0.05,
+  });
+}
+
 export function fitBoardCamera(camera, width, height, whiteSide, { profile: requestedProfile = 'tactical', immersive = false } = {}) {
   const aspect = Math.max(0.35, width / Math.max(1, height));
   const coarsePointer = typeof window !== 'undefined'
@@ -220,18 +234,21 @@ export function fitBoardCamera(camera, width, height, whiteSide, { profile: requ
     ? Number(window.innerWidth) || width
     : width;
   const duelRoomProfile = requestedProfile === 'duel';
+  const teachingProfile = requestedProfile === 'classroom' || requestedProfile === 'training-room';
   const usesWarRoomContract = requestedProfile === 'warroom' || duelRoomProfile;
   const canonicalMobileProfile = usesWarRoomContract
     ? getWarRoomMobileFramingProfile({ aspect, coarsePointer, viewportWidth })
     : null;
-  const legacyMobileProfile = !usesWarRoomContract && requestedProfile !== 'classroom'
+  const legacyMobileProfile = !usesWarRoomContract && !teachingProfile
     ? getLegacyBoard3DMobileFramingProfile({ aspect, coarsePointer, viewportWidth })
     : null;
   const mobileProfile = canonicalMobileProfile || legacyMobileProfile;
 
-  const baseProfile = requestedProfile === 'classroom'
-    ? classRoomCameraFramingProfile({ aspect, coarsePointer, viewportWidth })
-    : usesWarRoomContract
+  const baseProfile = requestedProfile === 'training-room'
+    ? trainingRoomCameraFramingProfile({ aspect, coarsePointer, viewportWidth })
+    : requestedProfile === 'classroom'
+      ? classRoomCameraFramingProfile({ aspect, coarsePointer, viewportWidth })
+      : usesWarRoomContract
       ? mobileProfile || canonicalWarRoomCameraFramingProfile({ aspect })
       : mobileProfile || (requestedProfile === 'classic'
         ? classicWarRoomCameraFramingProfile(aspect)
@@ -240,7 +257,7 @@ export function fitBoardCamera(camera, width, height, whiteSide, { profile: requ
   // Existing non-WarRoom Board3D surfaces retain their prior desktop pitch.
   // Playable War Rooms do not need this shim: the v4 canonical profile already
   // owns both lens and pitch as one explicit contract.
-  const profile = !usesWarRoomContract && !mobileProfile && requestedProfile !== 'classroom'
+  const profile = !usesWarRoomContract && !mobileProfile && !teachingProfile
     ? {
         ...baseProfile,
         version: `${baseProfile.version || requestedProfile}-shared-play-pitch-v1`,
@@ -250,13 +267,13 @@ export function fitBoardCamera(camera, width, height, whiteSide, { profile: requ
     : baseProfile;
 
   camera.fov = profile.fov ?? resolveBoard3DCameraFov(aspect, {
-    mobile: Boolean(mobileProfile || (requestedProfile === 'classroom' && (coarsePointer || aspect < 1.12))),
+    mobile: Boolean(mobileProfile || (teachingProfile && (coarsePointer || aspect < 1.12))),
   });
   const verticalFov = THREE.MathUtils.degToRad(camera.fov);
   const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * aspect);
   const limitingFov = Math.min(verticalFov, horizontalFov);
-  const desktopImmersiveScale = immersive && !mobileProfile && requestedProfile !== 'classroom' ? 0.91 : 1;
-  const sharedPitchDistanceScale = !mobileProfile && requestedProfile !== 'classroom' ? 1.115 : 1;
+  const desktopImmersiveScale = immersive && !mobileProfile && !teachingProfile ? 0.91 : 1;
+  const sharedPitchDistanceScale = !mobileProfile && !teachingProfile ? 1.115 : 1;
   // Duel Room keeps the canonical War Room lens/pitch but moves the camera a
   // little closer so the board, not the peripheral dungeon dressing, owns the
   // composition. Mobile gets a smaller crop to preserve all pieces and HUD.
@@ -266,7 +283,7 @@ export function fitBoardCamera(camera, width, height, whiteSide, { profile: requ
     * desktopImmersiveScale
     * sharedPitchDistanceScale
     * duelRoomDistanceScale;
-  const maxDistance = requestedProfile === 'classroom' ? profile.maxDistance : mobileProfile ? profile.maxDistance : 88;
+  const maxDistance = teachingProfile ? profile.maxDistance : mobileProfile ? profile.maxDistance : 88;
   const distance = THREE.MathUtils.clamp(rawDistance, profile.minDistance, maxDistance);
   const target = new THREE.Vector3(0, profile.targetY, whiteSide ? -profile.targetZ : profile.targetZ);
   const direction = new THREE.Vector3(0, profile.cameraY, whiteSide ? profile.cameraZ : -profile.cameraZ).normalize();

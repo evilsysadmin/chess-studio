@@ -72,7 +72,9 @@ Canon visual aprobado:
 - Matthias puede existir como identidad del producto en texto/avatar canónico, pero no se sustituye por un humano renderizado;
 - el contenido factual y las acciones siguen perteneciendo a los componentes de coaching existentes; la sala sólo cambia presentación y jerarquía;
 - “Mi progreso” puede usar la misma estancia como contexto atenuado, pero los datos densos conservan legibilidad y progressive disclosure;
-- móvil puede simplificar o retirar el 3D y conservar una versión diegética 2D si mejora rendimiento/lectura.
+- móvil puede simplificar o retirar el 3D y conservar una versión diegética 2D si mejora rendimiento/lectura;
+- **todo tablero interactivo de entrenamiento debe ser board-first y diegético**: ocupa la sala/viewport como superficie protagonista, reutiliza la Training Room/War Room canónica y presenta coaching/estado/acciones como overlays; no volver a layouts dashboard de tablero pequeño + columna lateral;
+- archivo, deuda, histórico, generación de variantes y métricas densas son contexto secundario y deben quedar tras progressive disclosure cuando hay un tablero activo.
 
 El mock nocturno aprobado en la conversación del 2026-10-04 es la referencia de composición. No generar variaciones conceptuales nuevas para sustituirla durante esta línea de trabajo; las siguientes iteraciones se comparan contra ese canon y contra PNG runtime reales.
 

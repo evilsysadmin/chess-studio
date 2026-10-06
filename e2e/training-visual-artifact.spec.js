@@ -39,7 +39,7 @@ async function assertNoHorizontalOverflow(page, label) {
 }
 
 async function assertInsightsActionableFold(room, label) {
-  await expect(room.getByRole('button', { name: 'Empezar sesión recomendada de 15 min', exact: true })).toBeVisible();
+  await expect(room.getByRole('button', { name: /^Empezar sesión recomendada de (5|15|30) min$/ })).toBeVisible();
   const geometry = await room.evaluate((root) => {
     const tools = root.querySelector('.insights-room-tools')?.getBoundingClientRect();
     const session = root.querySelector('.insights-guided-session:not(.active)')?.getBoundingClientRect();
@@ -331,6 +331,8 @@ scopedTest('school', 'Entrenar · Escuela, Glosario y Modos especiales', async (
   await expect(shell.locator('.chess-glossary')).toBeVisible();
   await capture(page, 'glossary');
 
+  await page.keyboard.press('Escape');
+  await expect(shell.locator('.chess-glossary')).toBeHidden();
   await shell.getByText('Recursos', { exact: true }).click();
   await shell.getByRole('button', { name: 'Modos especiales', exact: true }).click();
   await expect(shell.locator('.mechanic-library')).toBeVisible();
@@ -355,7 +357,7 @@ scopedTest('openings', 'Entrenar · Aperturas', async ({ page }) => {
 });
 
 scopedTest('puzzles', 'Entrenar · Puzzles', async ({ page }) => {
-  test.setTimeout(45_000);
+  test.setTimeout(55_000);
   await prepare(page);
   await openDungeon(page);
   await page.getByRole('button', { name: 'Puzzles clásicos', exact: true }).click();
@@ -363,11 +365,56 @@ scopedTest('puzzles', 'Entrenar · Puzzles', async ({ page }) => {
   const puzzles = page.locator('.puzzle-screen');
   await expect(puzzles).toBeVisible();
   await expect(puzzles.locator('.puzzle-training-workspace')).toBeVisible();
+  await expect(puzzles.locator('[data-board3d-camera="training-room-overhead"]')).toBeVisible({ timeout: 20_000 });
+  await expect(puzzles.locator('[data-board3d-room-profile="insights-training-room"]')).toBeVisible();
+  await expect(puzzles.locator('[data-board3d-war-room="true"]')).toHaveAttribute('data-board3d-variant', 'classic');
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('chess-study-war-room-variant-v1'))).toBe('v2');
+  await expect(puzzles.locator('.board3d-main-canvas')).toHaveAttribute('data-training-room-scene', 'insights-training-room-v3-copy-safe-study');
+  await expect(puzzles.locator('.board3d-main-canvas')).toHaveAttribute('data-school-room-scene', 'off');
+
+  async function assertPuzzleRoom(label) {
+    const geometry = await puzzles.evaluate((root) => {
+      const room = root.getBoundingClientRect();
+      const board = root.querySelector('.puzzle-board-column')?.getBoundingClientRect();
+      const board3d = root.querySelector('.puzzle-board-column .board3d-main-shell')?.getBoundingClientRect();
+      const coach = root.querySelector('.puzzle-coach-panel');
+      const actions = root.querySelector('.puzzle-board-column > .game-controls');
+      return {
+        viewportWidth: window.innerWidth,
+        viewportHeight: window.innerHeight,
+        room: { left: room.left, top: room.top, right: room.right, bottom: room.bottom, width: room.width, height: room.height },
+        board: board ? { left: board.left, top: board.top, right: board.right, bottom: board.bottom, width: board.width, height: board.height } : null,
+        board3d: board3d ? { left: board3d.left, top: board3d.top, right: board3d.right, bottom: board3d.bottom, width: board3d.width, height: board3d.height } : null,
+        coachPosition: coach ? getComputedStyle(coach).position : '',
+        actionsPosition: actions ? getComputedStyle(actions).position : '',
+      };
+    });
+    expect(geometry.room.left, `${label}: room starts at left edge`).toBeLessThanOrEqual(1);
+    expect(geometry.room.top, `${label}: room starts at top edge`).toBeLessThanOrEqual(1);
+    expect(geometry.room.width, `${label}: room owns viewport width`).toBeGreaterThanOrEqual(geometry.viewportWidth * .98);
+    expect(geometry.room.height, `${label}: room owns viewport height`).toBeGreaterThanOrEqual(geometry.viewportHeight * .98);
+    expect(geometry.board?.width || 0, `${label}: board surface owns viewport width`).toBeGreaterThanOrEqual(geometry.viewportWidth * .98);
+    expect(geometry.board?.height || 0, `${label}: board surface owns viewport height`).toBeGreaterThanOrEqual(geometry.viewportHeight * .98);
+    expect(geometry.board3d?.width || 0, `${label}: 3D room owns viewport width`).toBeGreaterThanOrEqual(geometry.viewportWidth * .98);
+    expect(geometry.board3d?.height || 0, `${label}: 3D room owns viewport height`).toBeGreaterThanOrEqual(geometry.viewportHeight * .98);
+    expect(geometry.board3d?.bottom || 0, `${label}: 3D room reaches viewport bottom`).toBeGreaterThanOrEqual(geometry.viewportHeight - 2);
+    expect(geometry.coachPosition, `${label}: coach is overlay, not dashboard column`).toBe('absolute');
+    expect(geometry.actionsPosition, `${label}: actions float over the room`).toBe('absolute');
+  }
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await settle(page);
+  await assertPuzzleRoom('puzzles-desktop');
+  await captureAt(page, 'puzzles', { width: 1440, height: 900, variant: 'desktop' });
+
   for (const viewport of [
     { width: 360, height: 800 },
     { width: 390, height: 844 },
     { width: 430, height: 932 },
   ]) {
+    await page.setViewportSize(viewport);
+    await settle(page);
+    await assertPuzzleRoom(`puzzles-mobile-${viewport.width}`);
     await captureAt(page, 'puzzles', {
       ...viewport,
       variant: `mobile-${viewport.width}`,
@@ -435,6 +482,30 @@ scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page })
   await captureAt(page, 'insights', { width: 1800, height: 900, variant: 'wide' });
   await captureAt(page, 'insights', { width: 390, height: 844, variant: 'mobile' });
   await assertInsightsActionableFold(trainingRoom, 'insights-mobile');
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await settle(page);
+
+  const recommendedSession = trainingRoom.getByRole('button', { name: /^Empezar sesión recomendada de (5|15|30) min$/ });
+  await expect(recommendedSession).toBeVisible();
+  await recommendedSession.click();
+
+  const immediateAction = trainingRoom.getByRole('button', { name: /Abrir Acciones inmediatas|Entrenar esta deuda/ }).first();
+  await expect(immediateAction).toBeVisible();
+  await immediateAction.click();
+
+  const focusedTraining = page.locator('.puzzle-screen[data-training-origin="insights-action"]');
+  await expect(focusedTraining).toBeVisible();
+  await expect(focusedTraining.getByRole('group', { name: 'Tipo de puzzle' })).toHaveCount(0);
+  await expect(focusedTraining.getByRole('button', { name: '← Volver a Así juegas', exact: true })).toBeVisible();
+  await expect(focusedTraining.locator('[data-board3d-room-profile="insights-training-room"]')).toBeVisible({ timeout: 20_000 });
+  await expect(focusedTraining.locator('.board3d-main-canvas')).toHaveAttribute('data-training-room-scene', 'insights-training-room-v3-copy-safe-study');
+  await captureAt(page, 'immediate-actions', { width: 1440, height: 900, variant: 'desktop' });
+  await captureAt(page, 'immediate-actions', { width: 390, height: 844, variant: 'mobile' });
+
+  const focusedBack = page.locator('.puzzle-screen > .back-link');
+  await expect(focusedBack).toHaveText('← Volver a Así juegas');
+  await focusedBack.click();
+  await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
   await page.setViewportSize({ width: 1440, height: 900 });
   await settle(page);
   await page.getByRole('button', { name: 'Mi progreso', exact: true }).click();

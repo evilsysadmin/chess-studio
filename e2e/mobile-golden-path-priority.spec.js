@@ -275,9 +275,20 @@ test.describe('Mobile golden path · entrenar el error real en un toque', () => 
 
     await train.tap();
     await expect(endgame).toBeHidden({ timeout: 15_000 });
+    const focusedTraining = page.locator('.puzzle-screen[data-training-origin="postgame-error"]');
+    await expect(focusedTraining).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole('heading', { name: /Cuenta pendiente|Escena del crimen/ })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText(/Aquí jugaste g4 y perdiste/)).toBeVisible();
-    await expect(page.getByRole('button', { name: /Tus errores/ })).toBeVisible();
+    await expect(focusedTraining.getByRole('group', { name: 'Tipo de puzzle' })).toHaveCount(0);
+    await expect(focusedTraining.locator('> .back-link')).toHaveText('← Volver a la partida');
+
+    await clickBoardMove(page, 'e2', 'e4');
+    await expect(page.getByText('¡Resuelto!', { exact: true })).toBeVisible({ timeout: 15_000 });
+    const returnToPlay = page.getByRole('button', { name: 'Volver a jugar', exact: true });
+    await expect(returnToPlay).toBeVisible();
+    await returnToPlay.tap();
+
+    await expect(page.getByRole('dialog', { name: 'Configurar partida rápida' })).toBeVisible({ timeout: 15_000 });
   });
 });
 
@@ -343,14 +354,16 @@ test.describe('Mobile golden path · entrenar el error con el tablero mandando',
       expect(board.y + board.height, 'board inside canvas (bottom)').toBeLessThanOrEqual(rect.y + rect.height + 1);
       expect(board.y + board.height, 'whole board above the fold').toBeLessThanOrEqual(viewport.height);
       await expect(page.locator('.navigation-back-hint')).toBeHidden();
-      // El título queda bajo el tablero en móvil: el objetivo va con el turno,
-      // encima del canvas, y saltar el puzzle no es el CTA principal.
+      // En Training Room el objetivo es HUD sobre la escena, no una fila que
+      // empuje el tablero hacia abajo. Debe quedarse compacto en la franja
+      // superior y nunca invadir el centro jugable.
       const turn = page.locator('.puzzle-screen .puzzle-board-column > .status-line');
       await expect(turn).toContainText('Tu turno · Jugaste Rb1: busca algo mejor');
       const turnBox = await turn.boundingBox();
       expect(turnBox.x, 'objective inside viewport (left)').toBeGreaterThanOrEqual(0);
       expect(turnBox.x + turnBox.width, 'objective inside viewport (right)').toBeLessThanOrEqual(viewport.width + 1);
-      expect(turnBox.y + turnBox.height, 'objective above the board').toBeLessThanOrEqual(rect.y + 1);
+      expect(turnBox.height, 'objective stays compact').toBeLessThanOrEqual(48);
+      expect(turnBox.y + turnBox.height, 'objective stays in top HUD zone').toBeLessThanOrEqual(viewport.height * 0.16);
       await expect(page.getByRole('button', { name: 'Siguiente puzzle', exact: true })).not.toHaveClass(/primary-btn/);
       await page.screenshot({ path: testInfo.outputPath(`after-training-${viewport.width}x${viewport.height}.png`) });
     });

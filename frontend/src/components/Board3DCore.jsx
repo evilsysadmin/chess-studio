@@ -32,7 +32,7 @@ import { applyBoard3DProjectionDiagnostics } from './Board3DProjectionDiagnostic
 import { board3DForensicGhost, board3DTechniqueTargetCount, board3DTerrainSquares, buildBoard3DLegalMap } from './Board3DParityVisuals.js';
 import useWarRoomVariant from './useWarRoomVariant.js';
 import { resolveBoard3DPresentation } from './Board3DPresentation.js';
-import { createClassicWarRoomShellController } from './WarRoomClassicShell.js';
+import { createClassicWarRoomShellController } from './WarRoomClassicShell.js'; import { buildTrainingRoomBoardShell } from './TrainingRoomBoardShell.js';
 import { shouldShowClassicWarRoomShell, startWarRoomVariantScene } from './WarRoomSceneVariant.js';
 import './Board3D.css';
 import './Board3DViewportTuning.css';
@@ -80,7 +80,7 @@ function Board3DCanvas({
   themeOverride = null, hansDiagnosticsMarkerRef = null,
   hansDiagnosticsRequested = false, hansFireCallEnabled = false,
   cameraProfile = 'tactical', warRoomVariantOverride = null, immersive = false,
-  warRoomMobilePerformance = false,
+  trainingRoom = false, warRoomMobilePerformance = false,
   onRendererFailure,
 }) {
   const hostRef = useRef(null);
@@ -98,7 +98,7 @@ function Board3DCanvas({
   const [focusedSquare, setFocusedSquare] = useState(() => orientation === 'black' ? 'e8' : 'e1');
   const [hoveredSquare, setHoveredSquare] = useState(null);
   const { selectable: warRoomVariantSelectable, variant: globalWarRoomVariant, status: warRoomVariantStatus, domData: globalWarRoomVariantDomData, setStatus: setWarRoomVariantStatus } = useWarRoomVariant();
-  const presentation = resolveBoard3DPresentation({ cameraProfile, variantOverride: warRoomVariantOverride, globalVariant: globalWarRoomVariant, globalDomData: globalWarRoomVariantDomData, variantStatus: warRoomVariantStatus });
+  const presentation = resolveBoard3DPresentation({ cameraProfile, variantOverride: warRoomVariantOverride, globalVariant: globalWarRoomVariant, globalDomData: globalWarRoomVariantDomData, variantStatus: warRoomVariantStatus, trainingRoom });
   const { classroom: classroomCamera, variant: warRoomVariant, domData: warRoomVariantDomData, playAriaLabel } = presentation;
   const effectiveThemeId = resolveBoard3DThemeId(themeOverride, boardTheme);
   const currentPieces = useMemo(() => parseFen(fen), [fen]);
@@ -243,10 +243,9 @@ function Board3DCanvas({
     warm.position.set(-4.6, 4.4, whiteSide ? -5.8 : 5.8);
     scene.add(warm);
 
-    const classicShellController = createClassicWarRoomShellController(
-      { scene, boardGroup, theme, whiteSide, renderLite: sceneLite, classroom: classroomCamera },
-      shouldShowClassicWarRoomShell({ selectable: warRoomVariantSelectable, variant: warRoomVariant }),
-    ); renderer.domElement.dataset.schoolRoomScene = classicShellController.current().find((object) => object?.userData?.schoolRoomCanonical)?.userData?.schoolRoomSceneVersion || 'off';
+    const trainingRoomShell = trainingRoom ? buildTrainingRoomBoardShell({ scene, boardGroup, coarsePointer: sceneLite }) : null;
+    const classicShellController = createClassicWarRoomShellController({ scene, boardGroup, theme, whiteSide, renderLite: sceneLite, classroom: classroomCamera }, !trainingRoom && shouldShowClassicWarRoomShell({ selectable: warRoomVariantSelectable, variant: warRoomVariant }));
+    renderer.domElement.dataset.schoolRoomScene = classicShellController.current().find((object) => object?.userData?.schoolRoomCanonical)?.userData?.schoolRoomSceneVersion || 'off'; renderer.domElement.dataset.trainingRoomScene = trainingRoomShell?.sceneVersion || 'off';
 
     const lightTileMaterial = makePremiumTileMaterial({ color: theme.light, light: true, coarsePointer: sceneLite, seed: 0x531f });
     const darkTileMaterial = makePremiumTileMaterial({ color: theme.dark, light: false, coarsePointer: sceneLite, seed: 0xa72d });
@@ -356,7 +355,7 @@ function Board3DCanvas({
 
     function resize() {
       const viewport = resolveStableBoardViewportForHost(host, { immersive, viewport: window }); renderer.setSize(viewport.width, viewport.height, false);
-      fitBoardCamera(camera, viewport.width, viewport.height, whiteSide, { profile: cameraProfile === 'classroom' || cameraProfile === 'warroom' || (latestPropsRef.current.warRoomVariant || 'classic') !== 'classic' ? cameraProfile : 'classic', immersive });
+      fitBoardCamera(camera, viewport.width, viewport.height, whiteSide, { profile: trainingRoom ? 'training-room' : cameraProfile === 'classroom' || cameraProfile === 'warroom' || (latestPropsRef.current.warRoomVariant || 'classic') !== 'classic' ? cameraProfile : 'classic', immersive });
       render();
     }
     resize();
@@ -580,11 +579,11 @@ function Board3DCanvas({
       if (renderer.domElement.parentNode === host) host.removeChild(renderer.domElement);
       sceneStateRef.current = null;
     };
-  }, [effectiveThemeId, orientation, showCoordinates, cameraProfile, playAriaLabel]);
+  }, [effectiveThemeId, orientation, showCoordinates, cameraProfile, playAriaLabel, trainingRoom]);
 
   useEffect(() => {
     const state = sceneStateRef.current;
-    if (!state) return undefined;
+    if (!state || trainingRoom) return undefined;
     return startWarRoomVariantScene({
       scene: state.scene,
       classicShellController: state.classicShellController,
@@ -596,14 +595,14 @@ function Board3DCanvas({
       onStatus: setWarRoomVariantStatus,
       onPaint: state.render,
     });
-  }, [warRoomVariant, warRoomVariantSelectable, setWarRoomVariantStatus, effectiveThemeId, orientation, showCoordinates]);
+  }, [warRoomVariant, warRoomVariantSelectable, setWarRoomVariantStatus, effectiveThemeId, orientation, showCoordinates, trainingRoom]);
 
   useEffect(() => {
     const state = sceneStateRef.current, host = hostRef.current;
     if (!state || !host) return;
-    const viewport = resolveStableBoardViewportForHost(host, { immersive, viewport: window }); fitBoardCamera(state.camera, viewport.width, viewport.height, state.whiteSide, { profile: cameraProfile === 'classroom' || cameraProfile === 'warroom' || warRoomVariant !== 'classic' ? cameraProfile : 'classic', immersive });
+    const viewport = resolveStableBoardViewportForHost(host, { immersive, viewport: window }); fitBoardCamera(state.camera, viewport.width, viewport.height, state.whiteSide, { profile: trainingRoom ? 'training-room' : cameraProfile === 'classroom' || cameraProfile === 'warroom' || warRoomVariant !== 'classic' ? cameraProfile : 'classic', immersive });
     state.render();
-  }, [warRoomVariant, cameraProfile, immersive]);
+  }, [warRoomVariant, cameraProfile, immersive, trainingRoom]);
 
   useEffect(() => {
     const state = sceneStateRef.current;
@@ -984,7 +983,7 @@ function Board3DCanvas({
       className="board3d-main-shell"
       data-board3d-war-room="true"
       {...warRoomVariantDomData}
-      data-board3d-scene="premium"
+      data-board3d-scene={trainingRoom ? 'training-room' : 'premium'} data-board3d-room-profile={trainingRoom ? 'insights-training-room' : classroomCamera ? 'school-room' : 'war-room'}
       data-board3d-surface="premium-v2"
       data-board3d-motion="physical-v1"
       data-board3d-interaction-fx="brass-ember-v1"

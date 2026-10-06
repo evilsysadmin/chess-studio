@@ -16,7 +16,7 @@ function actionLabel(step) {
   if (step?.action === 'nemesis-position') return 'Abrir posición Némesis →';
   if (step?.action === 'short-game') return 'Abrir partida de práctica →';
   if (step?.action === 'personal-filter') return 'Entrenar esta deuda →';
-  if (step?.action === 'personal') return 'Abrir Tus crímenes →';
+  if (step?.action === 'personal') return 'Abrir Acciones inmediatas →';
   return 'Cerrar sesión';
 }
 
@@ -95,7 +95,7 @@ export default function InsightsGuidedSession({
   }
 
   if (!session) {
-    const recommendedMinutes = plans[15].available ? 15 : plans[5].available ? 5 : plans[30].available ? 30 : null;
+    const recommendedMinutes = plans[5].available ? 5 : plans[15].available ? 15 : plans[30].available ? 30 : null;
     const recommendedPlan = recommendedMinutes ? plans[recommendedMinutes] : null;
     const focus = recommendedPlan?.steps?.[0] || null;
     const available = Boolean(recommendedPlan?.available);
@@ -133,25 +133,21 @@ export default function InsightsGuidedSession({
         )}
 
         {available ? (
-          <details className="friendly-disclosure insights-duration-disclosure">
-            <summary>Cambiar tiempo</summary>
-            <div className="coaching-action insights-duration-picker" role="group" aria-label="Duración de la sesión guiada">
-              {[5, 15, 30].map((minutes) => (
-                <button
-                  key={minutes}
-                  type="button"
-                  className={minutes === recommendedMinutes ? 'primary-btn insights-duration-option insights-duration-option-recommended' : 'secondary-btn insights-duration-option'}
-                  aria-label={`Tengo ${minutes} min`}
-                  disabled={!plans[minutes].available}
-                  onClick={() => begin(minutes)}
-                >
-                  <strong>{minutes} min</strong>
-                  <span>{minutes === 5 ? 'Un foco' : minutes === 15 ? 'Foco + práctica' : 'Sesión completa'}</span>
-                </button>
-              ))}
-              <span className="insights-duration-note">Sólo usa evidencia real de tu expediente y respeta el tiempo elegido.</span>
-            </div>
-          </details>
+          <div className="insights-duration-quick" role="group" aria-label="Cambiar tiempo">
+            <span>Tiempo</span>
+            {[5, 15, 30].map((minutes) => (
+              <button
+                key={minutes}
+                type="button"
+                className={minutes === recommendedMinutes ? 'primary-btn insights-duration-chip' : 'secondary-btn insights-duration-chip'}
+                aria-label={`Tengo ${minutes} min`}
+                disabled={!plans[minutes].available}
+                onClick={() => begin(minutes)}
+              >
+                {minutes} min
+              </button>
+            ))}
+          </div>
         ) : null}
 
         {completion ? (

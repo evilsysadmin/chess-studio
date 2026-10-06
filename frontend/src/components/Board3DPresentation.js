@@ -2,6 +2,7 @@ import { normalizeWarRoomVariant, warRoomVariantDomData } from './WarRoomVariant
 
 const TACTICAL_PLAY = 'Tablero de ajedrez 3D en Sala de guerra. Cámara táctica fija desde tu lado. Usa flechas y Enter para jugar con teclado.';
 const CLASSROOM_PLAY = 'Tablero de ajedrez 3D en Class Room. Cámara docente fija y cercana. Usa flechas y Enter para jugar con teclado.';
+const TRAINING_ROOM_PLAY = 'Tablero de ajedrez 3D en Training Room. Cámara de estudio fija y cercana. Usa flechas y Enter para jugar con teclado.';
 
 export function resolveBoard3DPresentation({
   cameraProfile = 'tactical',
@@ -9,16 +10,19 @@ export function resolveBoard3DPresentation({
   globalVariant = 'classic',
   globalDomData = {},
   variantStatus = 'idle',
+  trainingRoom = false,
 } = {}) {
   const classroom = cameraProfile === 'classroom';
+  const trainingStudy = Boolean(trainingRoom);
   const variant = variantOverride ? normalizeWarRoomVariant(variantOverride) : globalVariant;
   return Object.freeze({
     classroom,
+    trainingRoom: trainingStudy,
     variant,
     domData: variantOverride ? warRoomVariantDomData(variant, variantStatus) : globalDomData,
-    playAriaLabel: classroom ? CLASSROOM_PLAY : TACTICAL_PLAY,
-    cameraData: classroom ? 'classroom-overhead' : 'fixed-tactical',
-    roomLabel: classroom ? 'CLASS ROOM' : 'SALA DE GUERRA',
-    cameraLabel: classroom ? 'CÁMARA DOCENTE' : 'CÁMARA TÁCTICA',
+    playAriaLabel: trainingStudy ? TRAINING_ROOM_PLAY : classroom ? CLASSROOM_PLAY : TACTICAL_PLAY,
+    cameraData: trainingStudy ? 'training-room-overhead' : classroom ? 'classroom-overhead' : 'fixed-tactical',
+    roomLabel: trainingStudy ? 'TRAINING ROOM' : classroom ? 'CLASS ROOM' : 'SALA DE GUERRA',
+    cameraLabel: trainingStudy ? 'CÁMARA DE ESTUDIO' : classroom ? 'CÁMARA DOCENTE' : 'CÁMARA TÁCTICA',
   });
 }
