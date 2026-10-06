@@ -289,7 +289,7 @@
 
 @media (max-width: 820px) {
   .quick-match-ready-room-backdrop {
-    padding: 6px;
+    padding: 0;
     align-items: center;
   }
 
@@ -344,21 +344,7 @@
     order: 1;
     width: 100%;
     padding: .82rem .82rem .62rem;
-    border-bottom-width: 4px;
     backdrop-filter: none;
-  }
-
-  .quick-match-ready-room__defaults {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: .35rem;
-  }
-
-  .quick-match-ready-room__defaults > span {
-    padding-right: .35rem;
-  }
-
-  .quick-match-ready-room__defaults b {
-    font-size: .66rem;
   }
 
   .friendly-modal.quick-match-ready-room[aria-label='Configurar partida rápida'] .quick-match-ready-room__play {
@@ -390,14 +376,6 @@
 }
 
 @media (max-width: 390px) {
-  .quick-match-ready-room__defaults {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .quick-match-ready-room__defaults > span:nth-child(2) {
-    border-right: 0;
-  }
-
   .friendly-modal.quick-match-ready-room[aria-label='Configurar partida rápida'] .quick-match-secondary-row {
     grid-template-columns: 1fr;
   }
