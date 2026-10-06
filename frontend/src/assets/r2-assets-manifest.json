@@ -146,6 +146,13 @@
       "key": "war-room/v4/runtime/war-room-v4-shell-58e5243dcf0b39d7.glb",
       "sha256": "58e5243dcf0b39d7df3b0f8ba35e4f0745ac7a587917e254eada750af6b22584",
       "url": "https://assets.chess-studio.shadowops.dpdns.org/war-room/v4/runtime/war-room-v4-shell-58e5243dcf0b39d7.glb"
+    },
+    "combat.operationsRoom.runtime": {
+      "bytes": 2476092,
+      "contentType": "model/gltf-binary",
+      "key": "combat/operations-room/runtime/combat-operations-room-shell-7d248a340d8153ed.glb",
+      "sha256": "7d248a340d8153ed0da1152e1a56ee745615e37e5f032de28d9b5096815f20bc",
+      "url": "https://assets.chess-studio.shadowops.dpdns.org/combat/operations-room/runtime/combat-operations-room-shell-7d248a340d8153ed.glb"
     }
   },
   "baseUrl": "https://assets.chess-studio.shadowops.dpdns.org",
