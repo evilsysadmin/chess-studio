@@ -4,6 +4,7 @@ import {
   chroniclesChooseEnemyStep,
   chroniclesEnemyAttackTarget,
   chroniclesEnemyCanAttackParty,
+  chroniclesResolveEnemyActor,
   chroniclesResolveEnemyTurn,
   chroniclesRuntimeEnemyPosition,
 } from './chroniclesOfMatthiasTurns.js';
@@ -13,21 +14,37 @@ function enemy(id) {
 }
 
 describe('Chronicles alternating creature turns', () => {
-  it('moves a melee creature one cell, then attacks on its following turn', () => {
+  it('lets a melee creature close distance and attack in the same activation', () => {
     const pawn = enemy('corrupted-pawn');
-    let state = createChroniclesState();
+    const state = chroniclesResolveEnemyTurn(createChroniclesState());
 
-    state = chroniclesResolveEnemyTurn(state);
     expect(chroniclesRuntimeEnemyPosition(state, pawn)).toEqual({ x: 2, y: 5 });
     expect(state.enemyTurnEvents).toEqual([
       { type: 'move', enemyId: 'corrupted-pawn', from: { x: 3, y: 5 }, to: { x: 2, y: 5 } },
+      expect.objectContaining({
+        type: 'attack',
+        enemyId: 'corrupted-pawn',
+        targetId: 'rook',
+        damage: 1,
+      }),
     ]);
-    expect(state.party.find((member) => member.id === 'matthias')?.hp).toBe(7);
+    expect(state.party.find((member) => member.id === 'rook')?.hp).toBe(9);
+  });
 
-    state = chroniclesResolveEnemyTurn(state);
+  it('applies the same move-then-attack rule to initiative actor resolution', () => {
+    const pawn = enemy('corrupted-pawn');
+    const state = chroniclesResolveEnemyActor(createChroniclesState(), pawn.id);
+
     expect(chroniclesRuntimeEnemyPosition(state, pawn)).toEqual({ x: 2, y: 5 });
-    expect(state.enemyTurnEvents[0]).toMatchObject({ type: 'attack', enemyId: 'corrupted-pawn', damage: 1 });
-    expect(state.party.find((member) => member.id === 'matthias')?.hp).toBe(7);
+    expect(state.enemyTurnEvents).toEqual([
+      { type: 'move', enemyId: 'corrupted-pawn', from: { x: 3, y: 5 }, to: { x: 2, y: 5 } },
+      expect.objectContaining({
+        type: 'attack',
+        enemyId: 'corrupted-pawn',
+        targetId: 'rook',
+        damage: 1,
+      }),
+    ]);
     expect(state.party.find((member) => member.id === 'rook')?.hp).toBe(9);
   });
 
