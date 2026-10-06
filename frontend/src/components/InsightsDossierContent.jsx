@@ -28,15 +28,11 @@ import { generateRoast, generateCoaching, selectTrainingNow, trainingTargetForCo
 import { formatLongMove } from '../notation.js';
 import { loadUnlocked, ACHIEVEMENTS } from '../achievements.js';
 import { loadPuzzlesSolved } from '../puzzleStats.js';
-import { loadPersonalPuzzles } from '../personalPuzzles.js';
-import { loadCleanGameRecords } from '../cleanGames.js';
-import { buildPlayerModel } from '../playerModel.js';
 import { loadWorstMoveCache, saveWorstMoveCache } from '../worstMoveCache.js';
 import RatingChart from './RatingChart.jsx';
 import MatthiasDailyConsult from './MatthiasDailyConsult.jsx';
 import { loadRivalry } from '../rivalry.js';
 import { loadSeriesHistory, seriesHeadline, seriesHistoryStats } from '../series.js';
-import CareerScreen from './CareerScreen.jsx';
 import { GAME_MODE_LABELS, gameModeLabel } from '../gameModes.js';
 import { isAbortError } from '../asyncControl.js';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
@@ -58,8 +54,7 @@ function WinBar({ stats }) {
   );
 }
 
-export default function InsightsScreen({ insights, gameHistory, combatHistory, ratingHistory, onExit, onJumpToMove, onOpenRecord, onMovie, onPlayFromHere, onOpenPuzzles, onStartRun, onContinueRun, isAdminUser = false, initialSection = 'diagnosis', playerModel: sharedPlayerModel = null, personalPuzzles: sharedPersonalPuzzles = null, cleanGameRecords: sharedCleanGameRecords = null }) {
-  const section = initialSection === 'career' ? 'career' : 'diagnosis';
+export default function InsightsDossierContent({ insights, gameHistory, combatHistory, ratingHistory, onJumpToMove, onOpenPuzzles, isAdminUser = false, playerModel, personalPuzzles = [], cleanGameRecords = {} }) {
   const matthiasVisual = matthiasTimeVisual();
 
   const [searchStatus, setSearchStatus] = useState('idle'); // 'idle' | 'running' | 'done'
@@ -101,27 +96,6 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
       .slice(0, 8);
   }, [rivalry]);
 
-  // Se recalcula si cambian los insights o si aparece un resultado nuevo
-  // de "Buscar mi peor jugada de siempre" — sin volver a llamar al
-  // backend, todo esto ya está calculado.
-  const personalPuzzles = useMemo(
-    () => Array.isArray(sharedPersonalPuzzles) ? sharedPersonalPuzzles : loadPersonalPuzzles(),
-    [sharedPersonalPuzzles, gameHistory.length],
-  );
-  const cleanGameRecords = useMemo(
-    () => sharedCleanGameRecords && typeof sharedCleanGameRecords === 'object' && !Array.isArray(sharedCleanGameRecords)
-      ? sharedCleanGameRecords
-      : loadCleanGameRecords(),
-    [sharedCleanGameRecords, gameHistory.length],
-  );
-  const playerModel = useMemo(() => sharedPlayerModel?.samples
-    ? sharedPlayerModel
-    : buildPlayerModel({
-      insights,
-      personalPuzzles,
-      cleanGameRecords,
-      timeControlStats: rivalry?.record?.byTimeControl,
-    }), [sharedPlayerModel, insights, personalPuzzles, cleanGameRecords, rivalry]);
   const personalPuzzleCount = personalPuzzles.length;
   const roastExtras = useMemo(() => ({
     achievementsUnlocked: loadUnlocked().size,
@@ -375,24 +349,6 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
     searchAbortRef.current = null;
   }, []);
 
-  if (section === 'career') {
-    return (
-      <div className="menu tournament-panel insights-hub">
-        <CareerScreen
-          embedded
-          history={gameHistory}
-          ratingHistory={ratingHistory}
-          onExit={onExit}
-          onOpenRecord={onOpenRecord}
-          onMovie={onMovie}
-          onPlayFromHere={onPlayFromHere}
-          onOpenPuzzles={onOpenPuzzles}
-          onStartRun={onStartRun}
-          onContinueRun={onContinueRun}
-        />
-      </div>
-    );
-  }
 
   if (insights.totalGames === 0) {
     return (

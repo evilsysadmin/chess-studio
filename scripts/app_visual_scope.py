@@ -211,6 +211,7 @@ def _surface_groups(path: str) -> set[str] | None:
     if lower in {
         "scripts/architecture_debt_budget.py",
         "scripts/async_resilience_gate.mjs",
+        "scripts/visual_ux_contract_check.mjs",
         "scripts/blender_required_scope.py",
         "scripts/browser_quality_scope.py",
         "scripts/chess_rules_gate.mjs",
@@ -936,7 +937,7 @@ def self_test() -> None:
     ])
     assert mixed_nonvisual_warroom.capture_groups == "warroom"
 
-    for nonvisual_gate in ("scripts/async_resilience_gate.mjs", "scripts/chess_rules_gate.mjs"):
+    for nonvisual_gate in ("scripts/async_resilience_gate.mjs", "scripts/chess_rules_gate.mjs", "scripts/visual_ux_contract_check.mjs"):
         gate_scope = classify([nonvisual_gate])
         assert gate_scope.capture_groups == "none"
 

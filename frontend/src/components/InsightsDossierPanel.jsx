@@ -1,5 +1,5 @@
 import InsightsCleanGames from './InsightsCleanGames.jsx';
-import InsightsDashboardContent from './InsightsDashboardContent.jsx';
+import InsightsDossierContent from './InsightsDossierContent.jsx';
 
 export default function InsightsDossierPanel({
   screenProps,
@@ -10,9 +10,14 @@ export default function InsightsDossierPanel({
   return (
     <>
       <InsightsCleanGames playerModel={playerModel} />
-      <InsightsDashboardContent
-        {...screenProps}
-        initialSection="diagnosis"
+      <InsightsDossierContent
+        insights={screenProps.insights}
+        gameHistory={screenProps.gameHistory}
+        combatHistory={screenProps.combatHistory}
+        ratingHistory={screenProps.ratingHistory}
+        onJumpToMove={screenProps.onJumpToMove}
+        onOpenPuzzles={screenProps.onOpenPuzzles}
+        isAdminUser={screenProps.isAdminUser}
         playerModel={playerModel}
         personalPuzzles={personalPuzzles}
         cleanGameRecords={cleanGameRecords}
