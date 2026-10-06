@@ -27,6 +27,51 @@ describe('Chronicles first-person authored content', () => {
     expect(chroniclesObjective(afterRelic)).toBe('Abrir salida de la galería');
   });
 
+  it('lets first-person use a reachable front-cell mechanism before stepping onto its tile', () => {
+    const beforeLever = clearedGallery({ x: 4, y: 5, direction: 1 });
+
+    expect(chroniclesContextualContentAction(beforeLever)).toMatchObject({
+      id: 'gallery-lever',
+      kind: 'lever',
+      label: 'Bajar contrapeso',
+    });
+
+    const pulled = chroniclesReduce(beforeLever, 'interact');
+    expect(pulled.galleryLeverPulled).toBe(true);
+    expect(pulled.x).toBe(4);
+    expect(pulled.y).toBe(5);
+  });
+
+  it('requires the mechanism tile to be both in front and legally walkable', () => {
+    const wrongFacing = clearedGallery({ x: 4, y: 5, direction: 3 });
+    expect(chroniclesContextualContentAction(wrongFacing)).toBeNull();
+
+    const blocked = clearedGallery({
+      x: 4,
+      y: 5,
+      direction: 1,
+      enemyHp: 3,
+      enemyPositions: { 'fork-stalker': { x: 5, y: 5 } },
+    });
+    expect(chroniclesContextualContentAction(blocked)).toBeNull();
+  });
+
+  it('does not extend front-cell reach to pickups', () => {
+    const beforeRelic = clearedGallery({
+      x: 5,
+      y: 5,
+      direction: 0,
+      galleryLeverPulled: true,
+    });
+    expect(chroniclesContextualContentAction(beforeRelic)).toBeNull();
+
+    const onRelic = { ...beforeRelic, x: 5, y: 4 };
+    expect(chroniclesContextualContentAction(onRelic)).toMatchObject({
+      id: 'gallery-relic',
+      kind: 'pickup',
+    });
+  });
+
   it('lets first-person activate the Gallery lever and collect the revealed relic', () => {
     const atLever = clearedGallery({ x: 5, y: 5 });
     expect(chroniclesContextualContentAction(atLever)).toMatchObject({
