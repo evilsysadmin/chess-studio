@@ -20,7 +20,6 @@
   background: #060a07;
 }
 
-.chess-football-godot-host__exit,
 .chess-football-godot-host__status {
   position: absolute;
   z-index: 3;
@@ -29,16 +28,6 @@
   background: rgba(5, 8, 6, .78);
   color: #eee2bd;
   backdrop-filter: blur(10px);
-}
-
-.chess-football-godot-host__exit {
-  left: max(.65rem, env(safe-area-inset-left));
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 999px;
-  font: inherit;
-  font-size: 1.15rem;
-  cursor: pointer;
 }
 
 .chess-football-godot-host__status {
@@ -63,13 +52,6 @@
 .chess-football-godot-host__status span.is-ready {
   background: #73c77d;
   box-shadow: 0 0 .7rem rgba(115, 199, 125, .62);
-}
-
-.chess-football-godot-host__exit:hover,
-.chess-football-godot-host__exit:focus-visible {
-  border-color: rgba(238, 226, 189, .78);
-  background: rgba(14, 22, 16, .94);
-  outline: none;
 }
 
 .chess-football-godot-host__fallback {
