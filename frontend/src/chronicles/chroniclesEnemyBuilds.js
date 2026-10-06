@@ -43,6 +43,16 @@ function nonNegativeInteger(value, fallback = 0) {
 }
 
 export function chroniclesEnemyFallbackAgility(enemy) {
+  const archetype = String(enemy?.visualType || enemy?.id || '').trim();
+  const archetypeAgility = {
+    'fork-stalker': 5,
+    'crypt-spider': 5,
+    'ember-wisp': 5,
+    'bone-hound': 4,
+    'ash-goblin': 4,
+  }[archetype];
+  if (archetypeAgility) return archetypeAgility;
+
   const movement = enemy?.ai?.movement || 'cardinal-chase';
   if (movement === 'knight-chase') return 4;
   if (movement === 'cardinal-roam' || movement === 'patrol-route') return 3;
