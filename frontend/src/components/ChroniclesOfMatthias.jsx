@@ -44,7 +44,14 @@ import {
   saveChroniclesProgression,
   setChroniclesCharacterBuild,
 } from '../chroniclesOfMatthiasProgression.js';
+import {
+  chroniclesAutomapMarkVisited,
+  clearChroniclesAutomapVisited,
+  loadChroniclesAutomapVisited,
+  saveChroniclesAutomapVisited,
+} from '../chronicles/chroniclesAutomap.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
+import ChroniclesAutomap from './ChroniclesAutomap.jsx';
 import ChroniclesBookOneEpilogue from './ChroniclesBookOneEpilogue.jsx';
 import ChroniclesCharacterSetup from './ChroniclesCharacterSetup.jsx';
 import ChroniclesDefeatOverlay from './ChroniclesDefeatOverlay.jsx';
@@ -129,11 +136,24 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const [retaliationCue, setRetaliationCue] = useState(null);
   const [partyBark, setPartyBark] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [automapOpen, setAutomapOpen] = useState(false);
+  const [automapVisitedByMap, setAutomapVisitedByMap] = useState({});
   const touchHoldRef = useRef({ delayId: null, repeatId: null });
 
   useEffect(() => {
     selectedMemberIdRef.current = selectedMemberId;
   }, [selectedMemberId]);
+
+  useEffect(() => {
+    if (!state?.mapId) return;
+    setAutomapVisitedByMap((visited) => chroniclesAutomapMarkVisited(visited, state));
+  }, [state?.mapId, state?.x, state?.y]);
+
+  useEffect(() => {
+    const runId = activeRunIdRef.current;
+    if (!ready || !runId) return;
+    saveChroniclesAutomapVisited(runId, automapVisitedByMap);
+  }, [automapVisitedByMap, ready]);
 
   useEffect(() => {
     const html = document.documentElement;
@@ -152,14 +172,23 @@ export default function ChroniclesOfMatthias({ onExit }) {
     const current = stateRef.current;
     const runId = activeRunIdRef.current;
     const terminal = current?.phase === 'defeated' || current?.phase === 'escaped';
-    if (terminal && runId) finishChroniclesRun(FIRST_PERSON_RUN_SCOPE, runId);
+    if (terminal && runId) {
+      finishChroniclesRun(FIRST_PERSON_RUN_SCOPE, runId);
+      clearChroniclesAutomapVisited(runId);
+    }
     // Active runs remain resumable across first-person/Tactics. Terminal runs
     // are explicitly retired locally so re-entry starts a fresh expedition.
     activeRunIdRef.current = null;
     onExit?.();
   }, [onExit]);
 
-  useEscapeToClose(() => setMenuOpen((open) => !open), { contextMenu: false });
+  useEscapeToClose(() => {
+    if (automapOpen) {
+      setAutomapOpen(false);
+      return;
+    }
+    setMenuOpen((open) => !open);
+  }, { contextMenu: false });
 
   const confirmCharacterBuild = useCallback((build) => {
     const selected = setChroniclesCharacterBuild(progression, build);
@@ -173,6 +202,8 @@ export default function ChroniclesOfMatthias({ onExit }) {
     setReady(false);
     setBootstrapError(null);
     setRendererError('');
+    setAutomapOpen(false);
+    setAutomapVisitedByMap({});
     setCharacterSetupDone(true);
     setBootstrapRevision((revision) => revision + 1);
   }, [progression]);
@@ -354,6 +385,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
 
   const restart = useCallback(() => {
     if (activeRunIdRef.current) {
+      clearChroniclesAutomapVisited(activeRunIdRef.current);
       finishChroniclesRun(FIRST_PERSON_RUN_SCOPE, activeRunIdRef.current);
       activeRunIdRef.current = null;
     }
@@ -363,6 +395,8 @@ export default function ChroniclesOfMatthias({ onExit }) {
     setReady(false);
     setBootstrapError(null);
     setRendererError('');
+    setAutomapOpen(false);
+    setAutomapVisitedByMap({});
     staleRunRecoveryAttemptedRef.current = false;
     if (retaliationTimerRef.current) clearTimeout(retaliationTimerRef.current);
     retaliationTimerRef.current = null;
@@ -405,6 +439,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
         );
         authoritativeRunRef.current = world;
         checkpointFingerprintRef.current = chroniclesRunCheckpointFingerprint(next);
+        setAutomapVisitedByMap(loadChroniclesAutomapVisited(operationId));
         stateRef.current = next;
         staleRunRecoveryAttemptedRef.current = false;
         setSelectedMemberId('matthias');
@@ -417,6 +452,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
         if (!active || error?.code === CHRONICLES_BOOTSTRAP_ERROR_CODES.aborted) return;
         if (error?.status === 409 && !staleRunRecoveryAttemptedRef.current) {
           staleRunRecoveryAttemptedRef.current = true;
+          clearChroniclesAutomapVisited(operationId);
           const replacementRunId = renewChroniclesRun(FIRST_PERSON_RUN_SCOPE, operationId);
           activeRunIdRef.current = replacementRunId;
           setReady(false);
@@ -500,7 +536,15 @@ export default function ChroniclesOfMatthias({ onExit }) {
     if (!ready || !stateRef.current) return undefined;
     const onKeyDown = (event) => {
       const current = stateRef.current;
-      if (!current || current.phase === 'defeated' || current.phase === 'escaped') return;
+      if (!current) return;
+      if (event.key === 'm' || event.key === 'M') {
+        event.preventDefault();
+        clearTouchHold();
+        setMenuOpen(false);
+        setAutomapOpen((open) => !open);
+        return;
+      }
+      if (automapOpen || current.phase === 'defeated' || current.phase === 'escaped') return;
       if (/^[1-4]$/.test(event.key)) {
         const member = current.party[Number(event.key) - 1];
         if (member) {
@@ -521,7 +565,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     };
     window.addEventListener('keydown', onKeyDown, { passive: false });
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [attackWithSelected, dispatch, ready]);
+  }, [attackWithSelected, automapOpen, clearTouchHold, dispatch, ready]);
 
   if (!characterSetupDone) {
     return (
@@ -612,6 +656,20 @@ export default function ChroniclesOfMatthias({ onExit }) {
             <span>RUMBO <b>{direction.label}</b></span>
             <span>ACTIVO <b>{selectedMember?.name}</b></span>
             <span>OBJETIVO <b>{objective}</b></span>
+            <button
+              type="button"
+              className="chronicles-map-trigger"
+              aria-label={automapOpen ? 'Cerrar automapa' : 'Abrir automapa'}
+              aria-expanded={automapOpen}
+              aria-controls="chronicles-automap"
+              onClick={() => {
+                clearTouchHold();
+                setMenuOpen(false);
+                setAutomapOpen((open) => !open);
+              }}
+            >
+              <i aria-hidden="true">⌖</i><b>MAPA</b>
+            </button>
             <details
               className="chronicles-game-menu"
               open={menuOpen}
@@ -709,12 +767,19 @@ export default function ChroniclesOfMatthias({ onExit }) {
                 <span><kbd>A</kbd><kbd>D</kbd> girar</span>
                 <span><kbd>1</kbd>–<kbd>4</kbd> pieza</span>
                 <span><kbd>ESPACIO</kbd> atacar</span>
+                <span><kbd>M</kbd> mapa</span>
               </div>
             </>
           )}
         </main>
       </div>
 
+      <ChroniclesAutomap
+        open={automapOpen}
+        state={state}
+        visitedCells={automapVisitedByMap[state.mapId] || []}
+        onClose={() => setAutomapOpen(false)}
+      />
     </div>
   );
 }

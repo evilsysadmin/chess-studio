@@ -129,6 +129,7 @@ async function captureChroniclesHealth(page) {
       authoredPortraitCount: document.querySelectorAll('[data-chronicles-party-renderer="authored"]').length,
       gameRoot: rect('[data-chronicles="true"]'),
       gameMenu: rect('summary[aria-label="Abrir menú de Chronicles"]'),
+      automapButton: rect('button[aria-label="Abrir automapa"]'),
       stage: rect('.chronicles-stage'),
       gameCanvas: rect('[data-chronicles-renderer="three"] canvas'),
       authoredPortrait: rect('[data-chronicles-party-renderer="authored"]'),
@@ -206,6 +207,8 @@ for (const capture of CAPTURES) {
       expect(health.gameRoot?.height || 0, `${capture.label}: fullscreen root height`).toBeGreaterThanOrEqual(capture.height - 2);
       expect(health.gameMenu?.width || 0, `${capture.label}: in-game menu visible`).toBeGreaterThan(0);
       expect(health.gameMenu?.height || 0, `${capture.label}: in-game menu height`).toBeGreaterThanOrEqual(30);
+      expect(health.automapButton?.width || 0, `${capture.label}: automap button visible`).toBeGreaterThan(0);
+      expect(health.automapButton?.height || 0, `${capture.label}: automap button height`).toBeGreaterThanOrEqual(capture.hasTouch ? 44 : 30);
       expect(health.stage?.width || 0, `${capture.label}: Chronicles stage visible`).toBeGreaterThan(0);
       expect(health.gameCanvas?.width || 0, `${capture.label}: Chronicles dungeon canvas visible`).toBeGreaterThan(0);
       expect(health.gameCanvas?.height || 0, `${capture.label}: Chronicles dungeon canvas height`).toBeGreaterThan(0);
@@ -227,6 +230,34 @@ for (const capture of CAPTURES) {
 
       await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-playing-${capture.label}.png`);
 
+      await page.keyboard.press('m');
+      const automap = page.getByRole('dialog', { name: 'Automapa de Chronicles', exact: true });
+      await expect(automap).toBeVisible();
+      const automapCells = automap.locator('.chronicles-automap__cell');
+      const automapMarker = automap.locator('[data-chronicles-map-facing]');
+      await expect(automapCells.first()).toBeVisible();
+      await expect(automapMarker).toBeVisible();
+      expect(await automapCells.count(), `${capture.label}: automap reveals geometry`).toBeGreaterThanOrEqual(3);
+      const markerBox = await automapMarker.boundingBox();
+      const automapCanvas = automap.locator('.chronicles-automap__canvas');
+      const canvasBox = await automapCanvas.boundingBox();
+      expect(markerBox?.width || 0, `${capture.label}: automap marker width`).toBeGreaterThan(0);
+      expect(markerBox?.height || 0, `${capture.label}: automap marker height`).toBeGreaterThan(0);
+      expect(canvasBox?.height || 0, `${capture.label}: automap canvas height`).toBeGreaterThan(80);
+      const markerCenterX = (markerBox?.x || 0) + (markerBox?.width || 0) / 2;
+      const markerCenterY = (markerBox?.y || 0) + (markerBox?.height || 0) / 2;
+      expect(markerCenterX, `${capture.label}: automap marker inside canvas horizontally`).toBeGreaterThan((canvasBox?.x || 0) + 8);
+      expect(markerCenterX, `${capture.label}: automap marker inside canvas horizontally`).toBeLessThan((canvasBox?.x || 0) + (canvasBox?.width || 0) - 8);
+      expect(markerCenterY, `${capture.label}: automap marker inside canvas vertically`).toBeGreaterThan((canvasBox?.y || 0) + 8);
+      expect(markerCenterY, `${capture.label}: automap marker inside canvas vertically`).toBeLessThan((canvasBox?.y || 0) + (canvasBox?.height || 0) - 8);
+      await captureElement(
+        page,
+        automap.locator('.chronicles-automap__panel'),
+        `${ARTIFACT_DIR}/chronicles-automap-${capture.label}.png`,
+      );
+      await page.keyboard.press('m');
+      await expect(automap).toHaveCount(0);
+
       await page.keyboard.press('Escape');
       expect(
         await page.evaluate(() => document.fullscreenElement),
@@ -236,7 +267,6 @@ for (const capture of CAPTURES) {
       await expect(openedMenu).toBeVisible();
       await expect(openedMenu.getByRole('button', { name: 'Continuar', exact: true })).toBeVisible();
       await expect(openedMenu.getByRole('button', { name: 'Salir', exact: true })).toBeVisible();
-      await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-menu-open-${capture.label}.png`);
       await page.keyboard.press('Escape');
       await expect(page.locator('.chronicles-game-menu[open]')).toHaveCount(0);
 

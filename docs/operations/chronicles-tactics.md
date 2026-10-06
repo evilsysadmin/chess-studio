@@ -147,6 +147,27 @@ El mismo asset/contrato debe mantenerse coherente entre tarjeta grande, thumbnai
 - cambios visuales tienen PNG desktop/móvil cuando procede;
 - Matthias conserva avatar/identidad canónica.
 
+## Automap y ownership de viewport
+
+Chronicles first-person es una superficie **viewport-owned**: durante la expedición no existe un modo windowed interno.
+
+- El root de Chronicles ocupa siempre el viewport completo con layout propio (`100vw` + `100dvh`) en desktop, móvil vertical y móvil apaisado.
+- Chronicles **no** usa la Fullscreen API nativa del navegador. `document.fullscreenElement` debe permanecer vacío; así `Escape` pertenece al runtime y abre/cierra UI contextual en vez de sacar al navegador de fullscreen.
+- `Escape` cierra primero el automap si está abierto. Sólo cuando no hay automap abierto alterna el menú de Chronicles.
+- El automap es un overlay diegético de la expedición, accesible con `M` y con un control táctil/desktop visible. Mientras está abierto, los controles de locomoción/combate no actúan por debajo.
+- La posición y orientación del marcador del grupo derivan exclusivamente de `state.x`, `state.y` y `state.direction`; el automap no mantiene una segunda posición ni una segunda lógica de facing.
+- El grupo se representa como una flecha/chevron orientada con la dirección canónica N/E/S/O. Girar el grupo rota inmediatamente ese marcador.
+- La cartografía se descubre al explorar. Una casilla visitada revela su celda y la geometría cardinal inmediata; contenido relevante sólo puede aparecer cuando su posición ya está revelada.
+- La memoria de celdas exploradas es estado de presentación de la run y no debe convertir cada paso de exploración en un checkpoint remoto. Los checkpoints semánticos y la autoridad del mundo conservan su política existente.
+
+Acceptance adicional:
+
+- automap visible y usable en 390×844 y 844×390 sin overflow;
+- marcador único del grupo y facing coherente tras giros;
+- abrir automap no cambia posición, turnos ni combate;
+- `Escape` desde automap no abre simultáneamente el menú;
+- Chronicles continúa cubriendo el viewport completo con automap abierto o cerrado y nunca entra en browser-native fullscreen.
+
 ## Initiative combat contract
 
 Chronicles exploration remains free and real-time until an encounter begins. Holding a movement direction walks the compact party continuously through the grid; ordinary exploration locomotion does not consume tactical turns or emit remote checkpoints per cell. Entering an enemy engagement radius, or explicitly attacking a reachable enemy, stops free locomotion, deploys combatants onto the tactical grid and switches the run into turn-based combat behind the initiative scheduler.
