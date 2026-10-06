@@ -27,6 +27,8 @@ PAWN_SLUG_POW_BUILDER = "scripts/blender/build_pawn_slug_pows.py"
 R2_MANIFEST = "frontend/src/assets/r2-assets-manifest.json"
 PVP_DUEL_MANIFEST_ASSET = "pvp.duelRoom.runtime"
 PVP_DUEL_VISUAL_OWNER = "frontend/src/components/PvpDuelRoomShell.js"
+COMBAT_OPERATIONS_MANIFEST_ASSET = "combat.operationsRoom.runtime"
+COMBAT_OPERATIONS_VISUAL_OWNER = "frontend/src/components/CombatPreparationRoom.jsx"
 
 APP_SHELL = "frontend/src/App.jsx"
 LEARNING_JOURNEY_OWNER = "frontend/src/useLearningJourneyFlow.js"
@@ -734,6 +736,11 @@ def normalize(
             # runtime consumption is pinned to the promoted immutable object, so
             # changing this logical asset must wake the PvP Duel Room browser proof.
             add(PVP_DUEL_VISUAL_OWNER)
+            continue
+        if lower == R2_MANIFEST and _manifest_asset_changed(base_sha, head_sha, COMBAT_OPERATIONS_MANIFEST_ASSET):
+            # Combat preparation consumes a dedicated Blender shell. Promoting
+            # its logical asset must prove the exact room in the browser.
+            add(COMBAT_OPERATIONS_VISUAL_OWNER)
             continue
         # A push may contain functional E2E changes alongside one real visual
         # owner. Those functional specs are not part of this workflow's trigger
