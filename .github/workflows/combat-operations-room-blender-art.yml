@@ -1,0 +1,133 @@
+name: Combat Operations Room · Blender art
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/blender/build_combat_operations_room.py'
+      - 'scripts/blender/configure_eevee_premium.py'
+      - 'scripts/blender/publish_combat_operations_room.py'
+      - '.github/workflows/combat-operations-room-blender-art.yml'
+      - 'scripts/blender_required_scope.py'
+  push:
+    branches:
+      - main
+    paths:
+      - 'scripts/blender/build_combat_operations_room.py'
+      - 'scripts/blender/configure_eevee_premium.py'
+      - 'scripts/blender/publish_combat_operations_room.py'
+      - '.github/workflows/combat-operations-room-blender-art.yml'
+      - 'scripts/blender_required_scope.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: combat-operations-room-blender-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  render:
+    name: Render Combat Operations Room
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+
+      - uses: ./.github/actions/setup-blender-canonical
+
+      - name: Build editable scene + runtime shell + preview
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          BLENDER_EEVEE_PREMIUM: '1'
+          BLENDER_PREVIEW_SAMPLES: ${{ github.event_name == 'workflow_dispatch' && '64' || (github.event_name == 'pull_request' && '20' || '32') }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/combat-operations-room
+          blender --background --python-exit-code 1             --python scripts/blender/configure_eevee_premium.py             --python scripts/blender/build_combat_operations_room.py --             --blend /tmp/combat-operations-room/combat-operations-room.blend             --glb /tmp/combat-operations-room/combat-operations-room-shell.glb             --preview /tmp/combat-operations-room/combat-operations-room-preview.png             --manifest /tmp/combat-operations-room/combat-operations-room-manifest.json
+
+      - name: Validate Combat Operations Room artifact envelope
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          import struct
+          from PIL import Image
+
+          root = Path('/tmp/combat-operations-room')
+          blend = root / 'combat-operations-room.blend'
+          glb = root / 'combat-operations-room-shell.glb'
+          preview = root / 'combat-operations-room-preview.png'
+          manifest = root / 'combat-operations-room-manifest.json'
+
+          assert blend.stat().st_size > 100_000, blend.stat().st_size
+          assert glb.stat().st_size > 40_000, glb.stat().st_size
+
+          image = Image.open(preview).convert('RGB')
+          assert image.size == (1600, 900), image.size
+          extrema = image.getextrema()
+          assert max(channel[1] for channel in extrema) > 95, extrema
+          assert min(channel[0] for channel in extrema) < 35, extrema
+
+          data = json.loads(manifest.read_text())
+          assert data['contract'] == 'combat-operations-room-v1'
+          assert data['board_anchor']['name'] == 'WR_ANCHOR_board_origin'
+          names = {row['name'] for row in data['objects']}
+          required = {
+              'COMBAT_ROOM_dais',
+              'COMBAT_ROOM_board_table_top',
+              'COMBAT_MAP_frame',
+              'COMBAT_MAP_parchment',
+              'COMBAT_BARRACKS_back',
+              'COMBAT_MEMORIAL_panel',
+              'COMBAT_QM_desk',
+              'COMBAT_STANDARD_banner_olive',
+              'COMBAT_STANDARD_banner_burgundy',
+              'COMBAT_ANCHOR_campaign_map',
+              'COMBAT_ANCHOR_barracks',
+              'COMBAT_ANCHOR_memorial',
+              'COMBAT_ANCHOR_quartermaster',
+              'COMBAT_ANCHOR_board_fill',
+              'COMBAT_ANCHOR_map_fill',
+          }
+          assert not (required - names), sorted(required - names)
+          assert not any(name.startswith(('WR_ARCH_', 'WR_CANON_', 'WR3_OBS_', 'PVP_')) for name in names)
+
+          raw = glb.read_bytes()
+          assert raw[:4] == b'glTF'
+          chunk_length, chunk_type = struct.unpack_from('<II', raw, 12)
+          assert chunk_type == 0x4E4F534A
+          gltf = json.loads(raw[20:20 + chunk_length].decode('utf-8').rstrip('\x00 \t\r\n'))
+          assert 'EXT_meshopt_compression' in gltf.get('extensionsUsed', [])
+          node_names = {row.get('name') for row in gltf.get('nodes', [])}
+          for anchor in (
+              'COMBAT_ANCHOR_campaign_map',
+              'COMBAT_ANCHOR_barracks',
+              'COMBAT_ANCHOR_memorial',
+              'COMBAT_ANCHOR_quartermaster',
+              'COMBAT_ANCHOR_board_fill',
+              'COMBAT_ANCHOR_map_fill',
+          ):
+              assert anchor in node_names, anchor
+          PY
+
+      - name: Publish Combat Operations Room shell
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          python3 -S scripts/blender/publish_combat_operations_room.py             /tmp/combat-operations-room/combat-operations-room-shell.glb             --revision '${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}'             --channel '${{ github.event_name == 'push' && 'runtime' || 'staging' }}'
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: combat-operations-room-${{ github.event.pull_request.number || github.run_number }}
+          path: /tmp/combat-operations-room/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
