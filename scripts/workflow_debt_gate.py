@@ -24,6 +24,7 @@ INVENTORY = {
     'capacity-staging.yml': 'capacity-readiness',
     'capacity-virtual-players.yml': 'capacity-readiness',
     'chronicles-party-blender-art.yml': 'art-generation',
+    'combat-operations-room-blender-art.yml': 'art-generation',
     'chess-football-godot-poc.yml': 'game-runtime-experiment',
     'cicd.yml': 'quality-required',
     'security-llm-lab.yml': 'security-experimental',

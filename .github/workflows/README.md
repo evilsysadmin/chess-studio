@@ -86,6 +86,7 @@ Render staging está retirado del plano de despliegue: el **release canónico y 
 | `chess-football-godot-poc.yml` | Valida y exporta el runtime web Godot de Chess Football; PR valida, `main`/manual pueden publicar su bundle. Sigue siendo una superficie experimental aislada del release principal. |
 | `blender-setup-smoke.yml` | Smoke real de Blender/EGL y helpers compartidos cuando cambia `setup-blender-canonical`; evita romper todas las lanes de arte desde una acción común. |
 | `chronicles-party-blender-art.yml` | Genera y valida party/escena canónica de Chronicles con previews deterministas; read-only en PR. |
+| `combat-operations-room-blender-art.yml` | Genera, valida y publica a staging/revisión exacta la Combat Operations Room; `main` puede publicar su canal runtime sin tocar War Room. |
 | `home-matthias-blender-art.yml` | Genera y valida el Matthias canónico de Home desde sus fuentes Blender; lane read-only y path-aware. |
 | `home-matthias-materialize.yml` | Materialización explícita de binarios canónicos de Matthias al etiquetar una PR interna; separa build read-only y commit write con guard de SHA. |
 | `pvp-duel-room-blender-art.yml` | Genera/valida/publica el shell Blender de la Sala de Duelos en su superficie path-aware. |
