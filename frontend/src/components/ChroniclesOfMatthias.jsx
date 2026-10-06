@@ -3,6 +3,7 @@ import {
   CHRONICLES_DIRECTIONS,
   chroniclesActiveEnemies,
   chroniclesEnemyTargetAhead,
+  chroniclesContextualContentAction,
   chroniclesJournalEntries,
   chroniclesObjective,
   chroniclesReduce,
@@ -367,6 +368,12 @@ export default function ChroniclesOfMatthias({ onExit }) {
     setSelectedMemberId(actor.id);
   }, [state?.initiative?.cursor, state?.initiative?.round]);
 
+  const interactWithContext = useCallback(() => {
+    const current = stateRef.current;
+    if (!current || current.phase === 'defeated' || current.phase === 'escaped') return;
+    dispatch('interact');
+  }, [dispatch]);
+
   const attackWithSelected = useCallback(() => {
     const current = stateRef.current;
     if (!current || current.phase === 'defeated' || current.phase === 'escaped') return;
@@ -382,6 +389,26 @@ export default function ChroniclesOfMatthias({ onExit }) {
     if (!startsCombat) engineRef.current?.playAttack?.(memberId);
     dispatch({ type: 'attack', memberId });
   }, [dispatch]);
+
+  const newExpedition = useCallback(() => {
+    const runId = activeRunIdRef.current;
+    if (runId) {
+      clearChroniclesAutomapVisited(runId);
+      finishChroniclesRun(FIRST_PERSON_RUN_SCOPE, runId);
+      activeRunIdRef.current = null;
+    }
+    stateRef.current = null;
+    setState(null);
+    setSelectedMemberId('matthias');
+    setReady(false);
+    setBootstrapError(null);
+    setRendererError('');
+    setAutomapOpen(false);
+    setAutomapVisitedByMap({});
+    staleRunRecoveryAttemptedRef.current = false;
+    setMenuOpen(false);
+    setBootstrapRevision((revision) => revision + 1);
+  }, []);
 
   const restart = useCallback(() => {
     if (activeRunIdRef.current) {
@@ -553,6 +580,13 @@ export default function ChroniclesOfMatthias({ onExit }) {
         }
         return;
       }
+      if (event.key === 'e' || event.key === 'E') {
+        if (chroniclesContextualContentAction(current)) {
+          event.preventDefault();
+          interactWithContext();
+          return;
+        }
+      }
       if (event.key === ' ') {
         event.preventDefault();
         attackWithSelected();
@@ -565,7 +599,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     };
     window.addEventListener('keydown', onKeyDown, { passive: false });
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [attackWithSelected, automapOpen, clearTouchHold, dispatch, ready]);
+  }, [attackWithSelected, automapOpen, clearTouchHold, dispatch, interactWithContext, ready]);
 
   if (!characterSetupDone) {
     return (
@@ -592,6 +626,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const journalEntries = chroniclesJournalEntries(state);
   const latestJournalEntry = journalEntries[journalEntries.length - 1];
   const expeditionOver = state.phase === 'defeated' || state.phase === 'escaped';
+  const contextualAction = chroniclesContextualContentAction(state);
 
   return (
     <div
@@ -682,7 +717,8 @@ export default function ChroniclesOfMatthias({ onExit }) {
                 <strong>Chronicles of Matthias</strong>
                 <small>La expedición queda guardada.</small>
                 <button type="button" onClick={() => setMenuOpen(false)}>Continuar</button>
-                <button type="button" onClick={exitChronicles}>Salir</button>
+                <button type="button" onClick={newExpedition}>Nueva expedición</button>
+                <button type="button" onClick={exitChronicles}>Salir y guardar</button>
               </div>
             </details>
           </div>
@@ -738,7 +774,12 @@ export default function ChroniclesOfMatthias({ onExit }) {
                   onClick={(event) => activateTouchAction('forward', event)}
                   aria-label="Avanzar"
                 >↑<small>AVANZAR</small></button>
-                <button type="button" className="is-attack" onClick={attackWithSelected} aria-label="Atacar">⚔<small>{selectedMember?.name?.toUpperCase() || 'ATACAR'}</small></button>
+                <button
+                  type="button"
+                  className={contextualAction ? 'is-contextual' : 'is-attack'}
+                  onClick={contextualAction ? interactWithContext : attackWithSelected}
+                  aria-label={contextualAction?.label || 'Atacar'}
+                >{contextualAction ? '✦' : '⚔'}<small>{contextualAction ? contextualAction.label.toUpperCase() : (selectedMember?.name?.toUpperCase() || 'ATACAR')}</small></button>
                 <button
                   type="button"
                   data-chronicles-touch-action="backward"
@@ -767,6 +808,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
                 <span><kbd>A</kbd><kbd>D</kbd> girar</span>
                 <span><kbd>1</kbd>–<kbd>4</kbd> pieza</span>
                 <span><kbd>ESPACIO</kbd> atacar</span>
+                <span><kbd>E</kbd> usar/recoger</span>
                 <span><kbd>M</kbd> mapa</span>
               </div>
             </>
