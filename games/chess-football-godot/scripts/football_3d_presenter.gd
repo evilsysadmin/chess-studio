@@ -3,6 +3,8 @@ extends Node3D
 
 const WORLD_SCALE := 0.014
 const CAMERA_LERP_SPEED := 4.8
+const SET_PIECE_CAMERA_PAN_SECONDS := 0.38
+const SET_PIECE_CAMERA_PAN_DISTANCE := 1.15
 const BROADCAST_HEIGHT := 9.8
 const BROADCAST_DEPTH := 17.8
 const TACTICAL_HEIGHT := 27.0
@@ -18,6 +20,7 @@ var player_nodes: Dictionary = {}
 var player_sprites: Dictionary = {}
 var ball_node: MeshInstance3D
 var ball_shadow: MeshInstance3D
+var penalty_aim_marker: MeshInstance3D
 var field_width: float
 var field_depth: float
 
@@ -332,6 +335,18 @@ func _build_ball() -> void:
 	ball_shadow.position.y = 0.010
 	add_child(ball_shadow)
 
+	penalty_aim_marker = MeshInstance3D.new()
+	penalty_aim_marker.name = "PenaltyAimMarker"
+	var aim_mesh := TorusMesh.new()
+	aim_mesh.inner_radius = 0.12
+	aim_mesh.outer_radius = 0.20
+	penalty_aim_marker.mesh = aim_mesh
+	penalty_aim_marker.material_override = _material(Color(1.0, 0.73, 0.16), 0.28)
+	penalty_aim_marker.position.y = 0.040
+	penalty_aim_marker.visible = false
+	penalty_aim_marker.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(penalty_aim_marker)
+
 func _build_camera() -> void:
 	camera = Camera3D.new()
 	camera.current = true
@@ -370,6 +385,9 @@ func sync_presentation(delta: float, mode: String) -> void:
 			var sprite: AnimatedSprite3D = player_sprites.get(key)
 			if proxy == null or sprite == null:
 				continue
+			proxy.visible = not player.sent_off
+			if player.sent_off:
+				continue
 			proxy.position = world_to_stage(player.global_position)
 			if player.visual != null:
 				var wanted_animation := StringName(player.visual.animation)
@@ -396,6 +414,14 @@ func sync_presentation(delta: float, mode: String) -> void:
 		ball_shadow.position = world_to_stage(match_node.ball.global_position, 0.010)
 		var shadow_scale: float = lerpf(1.0, 0.62, clampf(float(match_node.ball.flight_height) / 90.0, 0.0, 1.0))
 		ball_shadow.scale = Vector3(shadow_scale, 1.0, shadow_scale)
+
+	if penalty_aim_marker != null:
+		penalty_aim_marker.visible = match_node.penalty_preview_visible()
+		if penalty_aim_marker.visible:
+			penalty_aim_marker.position = world_to_stage(
+				match_node.penalty_preview_target(),
+				0.045,
+			)
 
 	_sync_camera(delta, mode)
 
@@ -501,7 +527,24 @@ func _sync_camera(delta: float, mode: String) -> void:
 		wanted_fov = 43.0
 	else:
 		var lead := clampf(match_node.ball.velocity.x * WORLD_SCALE * 0.26, -2.2, 2.2)
-		wanted_position = Vector3(focus.x + lead, BROADCAST_HEIGHT, BROADCAST_DEPTH)
+		var set_piece_pan := 0.0
+		if (
+			match_node.set_piece_active
+			and match_node.set_piece_kind != "PENALTI"
+			and match_node.set_piece_seconds_remaining > 0.0
+		):
+			var restart_progress := 1.0 - clampf(
+				float(match_node.set_piece_seconds_remaining) / SET_PIECE_CAMERA_PAN_SECONDS,
+				0.0,
+				1.0,
+			)
+			var attacking_sign := 1.0 if int(match_node.set_piece_team_id) == 0 else -1.0
+			set_piece_pan = (
+				attacking_sign
+				* smoothstep(0.0, 1.0, restart_progress)
+				* SET_PIECE_CAMERA_PAN_DISTANCE
+			)
+		wanted_position = Vector3(focus.x + lead + set_piece_pan, BROADCAST_HEIGHT, BROADCAST_DEPTH)
 		wanted_position.x = clampf(wanted_position.x, -field_width * 0.32, field_width * 0.32)
 		wanted_look = Vector3(wanted_position.x, 0.0, -0.85)
 		wanted_fov = 37.5
@@ -516,6 +559,16 @@ func debug_camera_is_3d() -> bool:
 
 func debug_animated_players() -> int:
 	return player_sprites.size()
+
+func debug_visible_players() -> int:
+	var visible_count := 0
+	for proxy in player_nodes.values():
+		if proxy != null and proxy.visible:
+			visible_count += 1
+	return visible_count
+
+func debug_penalty_aim_visible() -> bool:
+	return penalty_aim_marker != null and penalty_aim_marker.visible
 
 func debug_ball_render_height() -> float:
 	return ball_node.position.y if ball_node != null else -1.0

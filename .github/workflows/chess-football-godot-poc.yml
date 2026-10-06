@@ -100,7 +100,10 @@ jobs:
           set -euo pipefail
           godot="$GITHUB_WORKSPACE/.godot-ci/$GODOT_VERSION/godot"
           log="$RUNNER_TEMP/chess-football-visual.log"
-          timeout 60s xvfb-run -a "$godot" --path games/chess-football-godot --script res://tests/visual_capture.gd | tee "$log"
+          # Production/runtime is fullscreen. Review capture is deliberately
+          # pinned windowed at 1280x720 so Xvfb screen defaults cannot change
+          # framing or make PNG evidence nondeterministic.
+          timeout 60s xvfb-run -a "$godot" --windowed --resolution 1280x720 --path games/chess-football-godot --script res://tests/visual_capture.gd | tee "$log"
           kickoff="$(sed -n 's/^VISUAL_CAPTURE_KICKOFF=//p' "$log" | tail -1)"
           kickoff_touch="$(sed -n 's/^VISUAL_CAPTURE_KICKOFF_TOUCH=//p' "$log" | tail -1)"
           broadcast="$(sed -n 's/^VISUAL_CAPTURE_BROADCAST=//p' "$log" | tail -1)"
@@ -114,6 +117,7 @@ jobs:
           contact="$(sed -n 's/^VISUAL_CAPTURE_CONTACT=//p' "$log" | tail -1)"
           slide_tackle="$(sed -n 's/^VISUAL_CAPTURE_SLIDE_TACKLE=//p' "$log" | tail -1)"
           penalty="$(sed -n 's/^VISUAL_CAPTURE_PENALTY=//p' "$log" | tail -1)"
+          penalty_aim="$(sed -n 's/^VISUAL_CAPTURE_PENALTY_AIM=//p' "$log" | tail -1)"
           goal="$(sed -n 's/^VISUAL_CAPTURE_GOAL=//p' "$log" | tail -1)"
           restart="$(sed -n 's/^VISUAL_CAPTURE_RESTART=//p' "$log" | tail -1)"
           throw_in="$(sed -n 's/^VISUAL_CAPTURE_THROW_IN=//p' "$log" | tail -1)"
@@ -136,6 +140,7 @@ jobs:
           test -n "$contact" && test -s "$contact"
           test -n "$slide_tackle" && test -s "$slide_tackle"
           test -n "$penalty" && test -s "$penalty"
+          test -n "$penalty_aim" && test -s "$penalty_aim"
           test -n "$goal" && test -s "$goal"
           test -n "$restart" && test -s "$restart"
           test -n "$throw_in" && test -s "$throw_in"
@@ -159,6 +164,7 @@ jobs:
           cp "$contact" "$RUNNER_TEMP/chess-football-review/contact.png"
           cp "$slide_tackle" "$RUNNER_TEMP/chess-football-review/slide-tackle.png"
           cp "$penalty" "$RUNNER_TEMP/chess-football-review/penalty.png"
+          cp "$penalty_aim" "$RUNNER_TEMP/chess-football-review/penalty-aim.png"
           cp "$goal" "$RUNNER_TEMP/chess-football-review/goal.png"
           cp "$restart" "$RUNNER_TEMP/chess-football-review/restart.png"
           cp "$throw_in" "$RUNNER_TEMP/chess-football-review/throw-in.png"
@@ -182,6 +188,7 @@ jobs:
           grep -q 'platform="Web"' games/chess-football-godot/export_presets.cfg
           grep -q 'variant/thread_support=false' games/chess-football-godot/export_presets.cfg
           grep -q 'renderer/rendering_method="gl_compatibility"' games/chess-football-godot/project.godot
+          grep -q '^window/size/mode=3$' games/chess-football-godot/project.godot
           grep -q '^boot_splash/show_image=false$' games/chess-football-godot/project.godot
       - name: Bundle publisher self-test
         run: python3 -S scripts/pawn_slug_godot_bundle.py self-test

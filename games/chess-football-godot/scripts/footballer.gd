@@ -22,6 +22,8 @@ var tackle_recovery_seconds: float = 0.0
 var tackle_active_seconds: float = 0.0
 var tackle_launch_speed_ratio: float = 0.0
 var tackle_aggressive: bool = false
+var yellow_cards: int = 0
+var sent_off: bool = false
 var contact_stun_seconds: float = 0.0
 var contact_stun_total: float = 0.0
 var contact_sway_sign: float = 1.0
@@ -76,6 +78,9 @@ func set_active(value: bool) -> void:
 	queue_redraw()
 
 func move_human(delta: float, direction: Vector2, sprinting: bool) -> void:
+	if sent_off:
+		velocity = Vector2.ZERO
+		return
 	last_sprinting = sprinting
 	var speed := base_speed * (1.34 if sprinting else 1.0)
 	if tackle_recovery_seconds > 0.0:
@@ -93,6 +98,9 @@ func move_human(delta: float, direction: Vector2, sprinting: bool) -> void:
 	_sync_locomotion(sprinting)
 
 func move_ai(delta: float, target: Vector2, intensity: float = 1.0) -> void:
+	if sent_off:
+		velocity = Vector2.ZERO
+		return
 	ai_target = target
 	var offset := target - global_position
 	last_sprinting = intensity >= 0.88
@@ -119,7 +127,12 @@ func play_action(animation_name: String, duration: float = 0.78) -> void:
 	visual.play(animation_name)
 
 func can_tackle() -> bool:
-	return not has_ball and tackle_cooldown_seconds <= 0.0 and action_lock_seconds <= 0.0
+	return (
+		not sent_off
+		and not has_ball
+		and tackle_cooldown_seconds <= 0.0
+		and action_lock_seconds <= 0.0
+	)
 
 func start_tackle(aggressive: bool = false) -> bool:
 	if not can_tackle():
@@ -145,6 +158,39 @@ func tackle_aggressive_active() -> bool:
 
 func tackle_momentum_ratio() -> float:
 	return tackle_launch_speed_ratio if tackle_active() else 0.0
+
+func receive_yellow_card() -> bool:
+	if sent_off:
+		return true
+	yellow_cards += 1
+	if yellow_cards >= 2:
+		send_off()
+		return true
+	return false
+
+func receive_red_card() -> void:
+	send_off()
+
+func send_off() -> void:
+	if sent_off:
+		return
+	sent_off = true
+	active = false
+	has_ball = false
+	velocity = Vector2.ZERO
+	tackle_cooldown_seconds = 0.0
+	tackle_recovery_seconds = 0.0
+	tackle_active_seconds = 0.0
+	tackle_launch_speed_ratio = 0.0
+	tackle_aggressive = false
+	action_lock_seconds = 0.0
+	contact_stun_seconds = 0.0
+	collision_layer = 0
+	collision_mask = 0
+	queue_redraw()
+
+func available_for_play() -> bool:
+	return not sent_off
 
 func receive_tackle_contact(push_direction: Vector2, duration: float = 0.30) -> void:
 	contact_stun_total = maxf(duration, 0.05)
@@ -219,6 +265,12 @@ func debug_tackle_active() -> bool:
 
 func debug_tackle_aggressive() -> bool:
 	return tackle_aggressive_active()
+
+func debug_yellow_cards() -> int:
+	return yellow_cards
+
+func debug_sent_off() -> bool:
+	return sent_off
 
 func debug_keeper_hold_active() -> bool:
 	return keeper_hold_active()

@@ -17,7 +17,8 @@ func _ready() -> void:
 	_build_streams()
 
 func play_whistle() -> void:
-	_play("whistle", -5.0, 1.0)
+	# Referee cue, not an alarm: short, slightly lower and tucked behind the ball audio.
+	_play("whistle", -9.0, 0.94)
 
 func play_pass() -> void:
 	_play("pass", -4.0, 1.0)
@@ -63,7 +64,7 @@ func _build_streams() -> void:
 	_streams["shot"] = _make_ball_strike(0.135, 150.0, 62.0, 0.82, 0.31, 211)
 	_streams["tackle"] = _make_impact(0.105, 94.0, 48.0, 0.72, 0.52, 307)
 	_streams["save"] = _make_impact(0.082, 260.0, 105.0, 0.52, 0.66, 401)
-	_streams["whistle"] = _make_whistle(0.34)
+	_streams["whistle"] = _make_whistle(0.20)
 	_streams["post"] = _make_metal_ring(0.46)
 	_streams["goal"] = _make_goal_swell(1.10, 503)
 
