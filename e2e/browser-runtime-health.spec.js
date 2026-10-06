@@ -230,24 +230,41 @@ test('Browser WebGL · Home 3D recupera el contexto perdido', async ({ page }) =
   // Recovery recreates the Home renderer on the same canvas. Rebind the probe
   // to the currently active GL context instead of polling the stale pre-restore
   // object after navigation.
-  const restoredContextReady = await canvas.evaluate((node) => {
+  const cleanupProbeReady = await canvas.evaluate((node) => {
     const gl = node.getContext('webgl2') || node.getContext('webgl');
-    if (!gl) return false;
-    window.__homeWebglContext = gl;
-    return gl.isContextLost?.() === false;
+    if (!gl || gl.isContextLost?.() !== false) return false;
+
+    // Chromium does not reliably flip isContextLost() after the canvas has
+    // already been detached, even when WEBGL_lose_context was invoked during
+    // React cleanup. Probe the cleanup call itself on the restored active
+    // context so this gate measures our lifecycle contract, not browser GC.
+    window.__homeCleanupLoseContextCalled = false;
+    const originalGetExtension = gl.getExtension.bind(gl);
+    gl.getExtension = (name) => {
+      const extension = originalGetExtension(name);
+      if (name !== 'WEBGL_lose_context' || !extension) return extension;
+      return {
+        loseContext: () => {
+          window.__homeCleanupLoseContextCalled = true;
+          return extension.loseContext();
+        },
+        restoreContext: () => extension.restoreContext(),
+      };
+    };
+    return true;
   });
-  expect(restoredContextReady, 'Home debe exponer un contexto WebGL restaurado antes de probar el cleanup').toBe(true);
+  expect(cleanupProbeReady, 'Home debe exponer un contexto WebGL restaurado antes de probar el cleanup').toBe(true);
 
   // The old global soak mounted Home ⇄ War Room ⇄ Pawn Slug twice merely to
   // catch HomeBlenderScene3D keeping its WebGL context alive after unmount. We
-  // can assert that invariant directly on the exact context already exercised
-  // above, so the required smoke gate stays cheap while the full soak remains
-  // available in the monthly/manual browser sweep.
+  // can assert that invariant directly on the exact restored context above, so
+  // the required smoke gate stays cheap while the full soak remains available
+  // in the monthly/manual browser sweep.
   const matthias = home.getByRole('button', { name:'Abrir Así juegas con Matthias', exact:true });
   await matthias.click();
   await expect(page.getByRole('heading', { name:'Así juegas', exact:true })).toBeVisible();
   await expect.poll(
-    () => page.evaluate(() => window.__homeWebglContext?.isContextLost?.() === true),
+    () => page.evaluate(() => window.__homeCleanupLoseContextCalled === true),
     { timeout:5_000, intervals:[50, 100, 200, 500] },
   ).toBe(true);
 
