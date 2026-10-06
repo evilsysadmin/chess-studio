@@ -7,6 +7,12 @@ on:
         description: Exact staging SHA whose marker requested the recovery bootstrap
         required: false
         type: string
+  workflow_call:
+    inputs:
+      bootstrap_sha:
+        description: Exact staging SHA whose marker requested the recovery bootstrap
+        required: true
+        type: string
 
 permissions:
   contents: read
