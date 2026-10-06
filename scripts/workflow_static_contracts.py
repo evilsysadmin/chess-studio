@@ -94,8 +94,17 @@ def validate_main_backend_image_non_runtime_gate(root: Path = ROOT) -> None:
         "runs-on: ubuntu-24.04",
         'python3 -S scripts/staging_deploy_scope.py --sha "$DEPLOY_SHA" --github-output "$GITHUB_OUTPUT"',
         "deploy_required: ${{ steps.scope.outputs.deploy_required }}",
+        "backend_tree: ${{ steps.image_scope.outputs.backend_tree }}",
+        "pvp_tree: ${{ steps.image_scope.outputs.pvp_tree }}",
         "backend_needs_build: ${{ steps.image_scope.outputs.backend_needs_build }}",
         "pvp_needs_build: ${{ steps.image_scope.outputs.pvp_needs_build }}",
+        'git rev-parse "${DEPLOY_SHA}:backend-python"',
+        'git rev-parse "${DEPLOY_SHA}:backend-go"',
+        "chess-studio-backend:tree-${BACKEND_TREE}",
+        "chess-studio-backend-go:tree-${PVP_TREE}",
+        "Backend image content reuse",
+        "Go API image content reuse",
+        "parent-bootstrap",
         'git diff --quiet "$parent" "$DEPLOY_SHA" -- backend-python',
         'git diff --quiet "$parent" "$DEPLOY_SHA" -- backend-go',
         "name: Backend · publish exact-SHA images",
@@ -121,6 +130,8 @@ def validate_main_backend_image_non_runtime_gate(root: Path = ROOT) -> None:
         raise SystemExit("publish no debe reservar ARM incondicionalmente; runner depende de cambios backend")
     if "scripts/staging_deploy_scope.py" not in classify or "backend-python" not in classify or "backend-go" not in classify:
         raise SystemExit("el clasificador x86 debe resolver deploy y cambios backend antes de elegir runner")
+    if ":tree-" not in publish:
+        raise SystemExit("publish debe reutilizar imágenes por identidad estable del árbol backend")
     print("main backend image cost gate: OK")
 
 def validate_app_visual_product_trigger(root: Path = ROOT) -> None:
