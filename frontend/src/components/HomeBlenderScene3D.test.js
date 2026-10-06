@@ -50,10 +50,19 @@ import {
   homeBlenderKlausPawPose,
   prepareHomeBlenderKlausRig,
   applyHomeBlenderKlausMotion,
+  releaseHomeBlenderWebglContext,
 } from './HomeBlenderScene3D.jsx';
 import { tighterRuntimeLodCap } from './HomeCastle3DRenderPolicy.js';
 
 describe('HomeBlenderScene3D GLTF lifecycle', () => {
+  it('releases the cached WebGL context exactly once when teardown owns it', () => {
+    const loseContext = vi.fn();
+    expect(releaseHomeBlenderWebglContext({ loseContext })).toBe(true);
+    expect(loseContext).toHaveBeenCalledTimes(1);
+    expect(releaseHomeBlenderWebglContext(null)).toBe(false);
+    expect(releaseHomeBlenderWebglContext({})).toBe(false);
+  });
+
   it('disposes a Matthias GLTF that finishes after the Home scene is stale', () => {
     const texture = new THREE.Texture();
     const material = new THREE.MeshBasicMaterial({ map: texture });

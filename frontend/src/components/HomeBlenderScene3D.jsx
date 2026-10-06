@@ -23,6 +23,12 @@ export const HOME_BLENDER_RUNTIME_LOGICAL_ID = 'home.scene.runtime';
 export const HOME_BLENDER_RUNTIME_MIN_WIDTH = HOME_CASTLE_3D_MOBILE_ENABLE_MIN_WIDTH;
 export const HOME_BLENDER_CAMERA_FOV = 22.9;
 
+export function releaseHomeBlenderWebglContext(extension) {
+  if (typeof extension?.loseContext !== 'function') return false;
+  extension.loseContext();
+  return true;
+}
+
 const CAMERA_BASE = Object.freeze({ x: 0, y: 4.85, z: 16 });
 const CAMERA_TARGET = Object.freeze({ x: 0, y: 1.55, z: -2.3 });
 
@@ -1288,6 +1294,7 @@ export default function HomeBlenderScene3D({
   matthiasPropsRef.current = matthias;
   matthiasLayoutRef.current = onMatthiasLayout;
   const glContextRef = useRef(null);
+  const glLoseContextRef = useRef(null);
   const [contextGeneration, setContextGeneration] = useState(0);
 
   useEffect(() => {
@@ -1465,7 +1472,9 @@ export default function HomeBlenderScene3D({
       return undefined;
     }
 
-    glContextRef.current = renderer.getContext();
+    const gl = renderer.getContext();
+    glContextRef.current = gl;
+    glLoseContextRef.current = gl?.getExtension?.('WEBGL_lose_context') || null;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.shadowMap.enabled = initialPolicy.lod === 'full';
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -1870,9 +1879,10 @@ export default function HomeBlenderScene3D({
   // (ambient, recuperación de contexto) y necesita que el contexto siga vivo.
   // Declarado después, su limpieza corre tras la del efecto de render.
   useEffect(() => () => {
-    const gl = glContextRef.current;
+    const loseContext = glLoseContextRef.current;
+    glLoseContextRef.current = null;
     glContextRef.current = null;
-    gl?.getExtension?.('WEBGL_lose_context')?.loseContext?.();
+    releaseHomeBlenderWebglContext(loseContext);
   }, []);
 
   return (
