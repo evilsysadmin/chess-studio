@@ -40,8 +40,8 @@ PUZZLE_SCREEN_OWNER = "frontend/src/components/PuzzleScreen.jsx"
 # Keep the allowlists exact and fail closed: any extra App/GameScreen line wakes
 # the normal full visual ownership again.
 TRAINING_ROUTE_APP_LINES = {
-    "<PuzzleScreen key={\`${puzzleLaunch.source}-${puzzleLaunch.rush}-${puzzleLaunch.filter?.opening || 'all'}-${puzzleLaunch.dailySlot || 'tactic'}\`} initialSource={puzzleLaunch.source} rushMode={puzzleLaunch.rush} initialFilter={puzzleLaunch.filter} dailySlot={puzzleLaunch.dailySlot} onExit={goBack} onPlayAgain={puzzleLaunch.source === 'personal' ? returnToQuickMatchFromPersonalTraining : null} points={tournament.points} onSpendPoints={handleSpendPoints} />",
-    "<PuzzleScreen key={\`${puzzleLaunch.source}-${puzzleLaunch.rush}-${puzzleLaunch.filter?.opening || 'all'}-${puzzleLaunch.dailySlot || 'tactic'}-${puzzleLaunch.origin || 'direct'}\`} initialSource={puzzleLaunch.source} rushMode={puzzleLaunch.rush} initialFilter={puzzleLaunch.filter} dailySlot={puzzleLaunch.dailySlot} trainingOrigin={puzzleLaunch.origin} onExit={goBack} onPlayAgain={puzzleLaunch.source === 'personal' ? returnToQuickMatchFromPersonalTraining : null} points={tournament.points} onSpendPoints={handleSpendPoints} />",
+    "<PuzzleScreen key={`${puzzleLaunch.source}-${puzzleLaunch.rush}-${puzzleLaunch.filter?.opening || 'all'}-${puzzleLaunch.dailySlot || 'tactic'}`} initialSource={puzzleLaunch.source} rushMode={puzzleLaunch.rush} initialFilter={puzzleLaunch.filter} dailySlot={puzzleLaunch.dailySlot} onExit={goBack} onPlayAgain={puzzleLaunch.source === 'personal' ? returnToQuickMatchFromPersonalTraining : null} points={tournament.points} onSpendPoints={handleSpendPoints} />",
+    "<PuzzleScreen key={`${puzzleLaunch.source}-${puzzleLaunch.rush}-${puzzleLaunch.filter?.opening || 'all'}-${puzzleLaunch.dailySlot || 'tactic'}-${puzzleLaunch.origin || 'direct'}`} initialSource={puzzleLaunch.source} rushMode={puzzleLaunch.rush} initialFilter={puzzleLaunch.filter} dailySlot={puzzleLaunch.dailySlot} trainingOrigin={puzzleLaunch.origin} onExit={goBack} onPlayAgain={puzzleLaunch.source === 'personal' ? returnToQuickMatchFromPersonalTraining : null} points={tournament.points} onSpendPoints={handleSpendPoints} />",
 }
 POSTGAME_TRAINING_GAME_LINES = {
     "onTrainPersonal?.();",
@@ -462,7 +462,7 @@ def self_test() -> None:
     assert not _is_nonvisual_learning_app_diff(unsafe_learning_diff)
     assert not _is_nonvisual_learning_app_diff(None)
 
-    safe_training_route_diff = "--- a/frontend/src/App.jsx\n+++ b/frontend/src/App.jsx\n@@ -1 +1 @@\n-<PuzzleScreen key={\`old\`} initialSource={puzzleLaunch.source} />\n+<PuzzleScreen key={\`new\`} initialSource={puzzleLaunch.source} trainingOrigin={puzzleLaunch.origin} />\n"
+    safe_training_route_diff = "--- a/frontend/src/App.jsx\n+++ b/frontend/src/App.jsx\n@@ -1 +1 @@\n-<PuzzleScreen key={`old`} initialSource={puzzleLaunch.source} />\n+<PuzzleScreen key={`new`} initialSource={puzzleLaunch.source} trainingOrigin={puzzleLaunch.origin} />\n"
     assert not _is_training_route_app_diff(safe_training_route_diff)
     exact_app_lines = list(TRAINING_ROUTE_APP_LINES)
     exact_training_route_diff = f"--- a/frontend/src/App.jsx\n+++ b/frontend/src/App.jsx\n@@ -1 +1 @@\n-{exact_app_lines[0]}\n+{exact_app_lines[1]}\n"
