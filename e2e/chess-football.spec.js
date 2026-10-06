@@ -76,6 +76,7 @@ test('Chess Football requests landscape immersion from the launch gesture and re
     window.__footballFullscreenRequests = 0;
     window.__footballLandscapeLocks = 0;
     window.__footballOrientationUnlocks = 0;
+    window.__footballOrientationStubbed = false;
 
     const nativeMatchMedia = window.matchMedia.bind(window);
     window.matchMedia = (query) => {
@@ -112,6 +113,7 @@ test('Chess Football requests landscape immersion from the launch gesture and re
           };
         },
       });
+      window.__footballOrientationStubbed = true;
     } catch {
       // The runtime contract is still covered by fullscreen + immersive marker
       // on engines where Screen.prototype.orientation cannot be redefined.
@@ -126,10 +128,7 @@ test('Chess Football requests landscape immersion from the launch gesture and re
   await expect.poll(() => page.evaluate(() => window.__footballFullscreenRequests)).toBe(1);
   await expect(page.locator('html')).toHaveAttribute('data-chess-football-immersive', 'requested');
 
-  const orientationWasStubbed = await page.evaluate(() => (
-    typeof Screen !== 'undefined'
-      && Object.getOwnPropertyDescriptor(Screen.prototype, 'orientation')?.configurable === true
-  ));
+  const orientationWasStubbed = await page.evaluate(() => window.__footballOrientationStubbed === true);
   if (orientationWasStubbed) {
     await expect.poll(() => page.evaluate(() => window.__footballLandscapeLocks)).toBe(1);
   }
