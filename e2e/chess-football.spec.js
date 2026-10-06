@@ -34,8 +34,9 @@ async function openExperiments(page) {
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
 }
 
-test('Chess Football opens through the experiments hub and returns cleanly', async ({ page }) => {
+test('Chess Football fills the viewport and returns only through the runtime exit', async ({ page }) => {
   await openExperiments(page);
+  await page.setViewportSize({ width: 1280, height: 720 });
 
   await page.locator('.lab-workshop-portal--football').click();
 
@@ -45,8 +46,26 @@ test('Chess Football opens through the experiments hub and returns cleanly', asy
   await expect(frame).toBeVisible();
   await expect(frame).toHaveAttribute('src', INDEX_URL);
   await expect(host).toHaveAttribute('data-runtime-ready', 'true');
+  await expect(page.locator('.chess-football-godot-host__status')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Volver a Experimentos' })).toHaveCount(0);
 
-  await page.getByRole('button', { name: 'Volver a Experimentos' }).click();
+  const box = await host.boundingBox();
+  expect(box).not.toBeNull();
+  expect(box.left).toBeLessThanOrEqual(1);
+  expect(box.top).toBeLessThanOrEqual(1);
+  expect(box.width).toBeGreaterThanOrEqual(1278);
+  expect(box.height).toBeGreaterThanOrEqual(718);
+  expect(await page.evaluate(() => document.fullscreenElement === null)).toBe(true);
+
+  // React must not interpret Escape as "volver": while Football owns the mode,
+  // Escape belongs to Godot's pause menu.
+  await page.keyboard.press('Escape');
+  await expect(host).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toHaveCount(0);
+
+  await frame.contentFrame().locator('body').evaluate(() => {
+    window.parent.postMessage({ source: 'chess-football-godot', type: 'exit' }, '*');
+  });
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
   await expect(host).toHaveCount(0);
 });
