@@ -177,7 +177,6 @@ case "$mode" in
         ./node_modules/.bin/playwright test \
         war-room-visual-artifact.spec.js \
         --workers=2 \
-        --pass-with-no-tests \
         "${warroom_core_args[@]}"
     fi
     ;;
