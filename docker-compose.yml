@@ -5,22 +5,27 @@ services:
       - mongo-data:/data/db
     restart: unless-stopped
 
+  # The API is the Go edge on its own (GO_PYTHON_RETIRED): every route is
+  # native, there is no Python behind it.
   backend:
     build:
-      context: ./backend-python
+      context: ./backend-go
     ports:
-      - "${BACKEND_PORT:-4000}:4000"
+      - "${BACKEND_PORT:-4000}:8080"
     environment:
-      PORT: 4000
+      PORT: "8080"
+      GO_PYTHON_RETIRED: "true"
       MONGO_URL: mongodb://mongo:27017
       MONGO_DB_NAME: chess_study
       ENVIRONMENT: development
+      # Local only: the same default Python used, so existing local sessions
+      # keep working. Staging and production set their own secret.
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-cambiar-en-produccion}
       ENABLE_EMAIL_RECOVERY: "false"
       # Sin RESEND_API_KEY, el backend imprime el enlace de recuperación en logs.
       PASSWORD_RESET_URL: http://localhost:${FRONTEND_PORT:-5173}/
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       PASSWORD_RESET_FROM: "${PASSWORD_RESET_FROM:-Chess Studio <onboarding@resend.dev>}"
-      EXPOSE_API_DOCS: "false"
       ALLOW_REGISTRATION: "true"
       INVITE_CODE: ${INVITE_CODE:-}
       CORS_ORIGINS: http://localhost:${FRONTEND_PORT:-5173},http://127.0.0.1:${FRONTEND_PORT:-5173}
@@ -30,7 +35,7 @@ services:
       - mongo
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4000/api/ready')"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/api/ready"]
       interval: 10s
       timeout: 3s
       retries: 5

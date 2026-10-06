@@ -82,11 +82,47 @@ type nativeRuntime struct {
 	// history is Admin's observability history (nil when disabled).
 	history *obshistory.Recorder
 	mongo   *mongoruntime.Runtime
+	// identity serves Python's own routes once Python is retired.
+	identity *gamesapi.IdentityHandler
 	// window is Admin's in-memory request window over everything the edge
 	// answers (observability.py's).
 	window         *httpwindow.Window
 	virtualPlayers bool
 	residentMove   bool
+}
+
+// retirePython builds the identity routes Python used to answer for itself
+// (its database was opened because every native route needs it).
+func (r *nativeRuntime) retirePython() error {
+	if r.mongo == nil {
+		return fmt.Errorf("a retired-Python edge needs MongoDB")
+	}
+	telemetryCfg := telemetry.ConfigFromEnv(os.LookupEnv)
+	database := r.mongo.Database()
+	window := r.window
+	identity, err := gamesapi.NewIdentity(gamesapi.IdentityConfig{
+		Config: gamesapi.Config{
+			Accounts:        accountstore.New(database, envDurationMS("PVP_MONGO_TIMEOUT_MS", 2000*time.Millisecond)),
+			Presence:        presence.New(database, telemetryCfg.TrustCloudflare, 2*time.Second),
+			JWTSecret:       strings.TrimSpace(os.Getenv("JWT_SECRET")),
+			AllowedOrigins:  splitCSV(os.Getenv("CORS_ORIGINS")),
+			TrustCloudflare: telemetryCfg.TrustCloudflare,
+		},
+		Release: release.AppRelease,
+		Build:   release.BuildCommit(os.Getenv),
+		Ping:    r.mongo.Ping,
+		Ready: func() {
+			if ms, first := window.RecordReady(); first {
+				log.Printf("backend_first_ready_observed cold_start_ms=%.2f storage=mongo", ms)
+			}
+		},
+		Env: os.Getenv,
+	})
+	if err != nil {
+		return fmt.Errorf("identity routes: %w", err)
+	}
+	r.identity = identity
+	return nil
 }
 
 // processStarted is PROCESS_STARTED_AT: the deployment annotation's time.
@@ -778,12 +814,13 @@ func (r nativeRuntime) edgeConfig(upstream, release string, requestTelemetry *te
 		ReadyChecks:               readyChecks,
 		Telemetry:                 requestTelemetry,
 		HTTPWindow:                r.window,
+		Identity:                  r.identity,
 	}
 }
 
 func (r nativeRuntime) logStartup(port, upstream string) {
 	log.Printf(
-		"go-api listening on :%s -> %s native_pulse=%t native_lobby_read=%t native_roster=%t native_chat=%t native_challenge_resolution=%t native_challenge_accept=%t native_challenge_create=%t native_match_handoff_cancel=%t native_match_ready=%t native_match_resign=%t native_match_read=%t native_match_move=%t native_resident_move=%t native_games_read=%t native_games_write=%t native_games_hint=%t native_games_analyze=%t native_system=%t native_profile=%t native_auth_session=%t native_login=%t native_account=%t native_recovery=%t native_feedback=%t native_matthias_read=%t native_narrative=%t native_pawn_slug=%t native_chronicles=%t native_chronicles_runs=%t native_admin_feedback=%t native_admin_users=%t native_admin_observability=%t",
+		"go-api listening on :%s -> %s native_pulse=%t native_lobby_read=%t native_roster=%t native_chat=%t native_challenge_resolution=%t native_challenge_accept=%t native_challenge_create=%t native_match_handoff_cancel=%t native_match_ready=%t native_match_resign=%t native_match_read=%t native_match_move=%t native_resident_move=%t native_games_read=%t native_games_write=%t native_games_hint=%t native_games_analyze=%t native_system=%t native_profile=%t native_auth_session=%t native_login=%t native_account=%t native_recovery=%t native_feedback=%t native_matthias_read=%t native_narrative=%t native_pawn_slug=%t native_chronicles=%t native_chronicles_runs=%t native_admin_feedback=%t native_admin_users=%t native_admin_observability=%t python_retired=%t",
 		port,
 		upstream,
 		r.pulse != nil,
@@ -818,6 +855,7 @@ func (r nativeRuntime) logStartup(port, upstream string) {
 		r.adminFeedback != nil,
 		r.adminUsers != nil,
 		r.adminObservability != nil,
+		r.identity != nil,
 	)
 }
 

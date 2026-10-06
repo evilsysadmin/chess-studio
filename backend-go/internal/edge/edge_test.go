@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/evilsysadmin/chess-studio/backend-go/internal/gamesapi"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/httpwindow"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/pydoc"
 	"io"
@@ -1704,5 +1705,66 @@ func TestNativeAdminObservabilityServesOnlyItsRoutes(t *testing.T) {
 	h.ServeHTTP(rec, httptest.NewRequest("GET", "http://api.chess.test/healthz", nil))
 	if !strings.Contains(rec.Body.String(), `"nativeAdminObservability":true`) {
 		t.Fatalf("health %s", rec.Body)
+	}
+}
+
+type retiredAccounts struct{}
+
+func (retiredAccounts) AuthState(context.Context, string) (bool, int64, error) { return true, 0, nil }
+
+func TestRetiredPythonEdgeAnswersEverythingItself(t *testing.T) {
+	identity, err := gamesapi.NewIdentity(gamesapi.IdentityConfig{
+		Config:  gamesapi.Config{Accounts: retiredAccounts{}, JWTSecret: "s"},
+		Release: "v1",
+		Ping:    func(context.Context) error { return nil },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var served []string
+	native := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		served = append(served, r.Method+" "+r.URL.Path)
+	})
+	if _, err := New(Config{UpstreamURL: "http://python:4000", Identity: identity}); err == nil {
+		t.Fatal("a retired-Python edge must refuse an upstream")
+	}
+	window := httpwindow.New()
+	h, err := New(Config{Identity: identity, NativeProfile: native, HTTPWindow: window})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range []struct {
+		method, path string
+		status       int
+		body         string
+	}{
+		{"GET", "/api/health", 200, `{"ok":true}`},
+		{"GET", "/api/release", 200, `{"release":"v1"}`},
+		{"GET", "/api/ready", 200, `{"ok":true,"storage":"mongo"}`},
+		{"GET", "/api/profile", 200, ``},
+		{"DELETE", "/api/profile", 405, `{"detail":"Method Not Allowed"}`},
+		{"GET", "/api/whatever", 404, `{"detail":"Not Found"}`},
+		{"POST", "/api/pvp/_internal/resident-move", 404, `{"detail":"Not Found"}`},
+	} {
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, httptest.NewRequest(c.method, "http://api.test"+c.path, nil))
+		if w.Code != c.status || strings.TrimSpace(w.Body.String()) != c.body || w.Header().Get("X-Chess-Edge") != "go" {
+			t.Errorf("%s %s: %d %q", c.method, c.path, w.Code, w.Body)
+		}
+		if c.method == "DELETE" && w.Header().Get("Allow") != "GET, PATCH, PUT" {
+			t.Errorf("allow %q", w.Header().Get("Allow"))
+		}
+	}
+	if strings.Join(served, ",") != "GET /api/profile" {
+		t.Fatalf("served %v", served)
+	}
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, httptest.NewRequest("GET", "http://api.test/readyz", nil))
+	if w.Code != 200 || !strings.Contains(w.Body.String(), `"pythonRetired":true`) {
+		t.Fatalf("readyz without Python: %d %s", w.Code, w.Body)
+	}
+	got, _ := pydoc.Encode(window.Metrics())
+	if !strings.Contains(string(got), `"route":"GET unmatched"`) || strings.Contains(string(got), "proxy:python") {
+		t.Fatalf("window %s", got)
 	}
 }

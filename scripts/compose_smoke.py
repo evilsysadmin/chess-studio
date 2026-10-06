@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Smoke real del stack Docker Compose usando sólo stdlib.
 
-Valida que frontend nginx + FastAPI + Mongo + auth + persistencia de perfil
+Valida que frontend nginx + API Go (sin Python) + Mongo + auth + persistencia de perfil
 funcionan juntos. No sustituye unit/E2E; cubre el hueco entre ambos.
 """
 from __future__ import annotations

@@ -433,10 +433,39 @@ assert '/bin/bash "$tunnel_connector" --self-test >/dev/null' in deploy
 assert 'docker pull --quiet "$target_image" >/dev/null' in deploy
 assert 'candidate_service="$(slot_service "$candidate_color")"' in deploy
 assert 'candidate_port="$(slot_port "$candidate_color")"' in deploy
-assert 'compose "$sha" up -d --no-build --force-recreate "$candidate_service"' in deploy
 assert 'candidate_pvp_service="$(pvp_service "$candidate_color")"' in deploy
-assert 'compose "$sha" up -d --no-build --force-recreate "$candidate_service" "$candidate_pvp_service"' in deploy
-assert 'if attest "$sha" "$candidate_port" && pvp_attest "$candidate_pvp_service" "$target"; then' in deploy
+assert 'candidate_services=("$candidate_service" "$candidate_pvp_service")' in deploy
+assert 'compose "$sha" up -d --no-build --force-recreate "${candidate_services[@]}"' in deploy
+assert 'attest "$sha" "$candidate_port"' in deploy
+assert 'if candidate_attest && pvp_attest "$candidate_pvp_service" "$target"; then' in deploy
+# Python retirement: on in staging, off in production; when on, only the Go
+# sidecar runs, Go proves /api/ready and /api/release, Go mints the owner
+# token, nginx never names a backend_* slot and rollback stays on Go.
+assert 'staging) python_retired="${CHESS_STUDIO_PYTHON_RETIRED:-true}" ;;' in deploy
+assert '*) python_retired="${CHESS_STUDIO_PYTHON_RETIRED:-false}" ;;' in deploy
+assert 'CHESS_STUDIO_PYTHON_RETIRED=true requires CHESS_STUDIO_API_EDGE_MODE=go' in deploy
+assert 'CHESS_STUDIO_PYTHON_RETIRED="$python_retired"' in deploy
+assert compose.count('GO_PYTHON_RETIRED: "${CHESS_STUDIO_PYTHON_RETIRED:-false}"') == 2
+assert "payload.get('pythonRetired')" in deploy
+assert '  candidate_services=("$candidate_pvp_service")' in deploy
+assert '  active_backend_service="$candidate_pvp_service"' in deploy
+assert 'go_attest "$sha" "$candidate_pvp_service"' in deploy
+assert 'wget -q -O - http://127.0.0.1:8080/api/ready' in deploy
+assert 'wget -q -O - http://127.0.0.1:8080/api/release' in deploy
+assert '/app/api-edge mint-token' in deploy
+assert 'go_owner_token "$candidate_pvp_service" PVP_BROWSER_AUTH' in deploy
+assert 'go_virtual_roster_attest "$pvp_service"' in deploy
+go_roster = deploy.split("go_virtual_roster_attest() {", 1)[1].split("\npvp_browser_token() {", 1)[0]
+assert '-e "PVP_ATTEST_TOKEN=$token"' in go_roster
+assert 'Bearer $PVP_ATTEST_TOKEN' in go_roster  # expanded inside the container
+assert 'python - ' not in go_roster
+assert 'if [[ "$python_retired" == "true" ]] && ! wait_pvp_browser_attest cors_attest "$port"; then' in deploy
+assert 'exit 84' in deploy
+assert 'if [[ "$python_retired" != "true" ]] && ! docker pull --quiet "$target_image" >/dev/null; then' in deploy
+assert '[[ "${python_retired:-false}" != "true" ]] || rollback_api_mode=go' in deploy
+assert 'render_edge "$previous_color" go "$previous_sha" "$rollback_api_mode"' in deploy
+assert 'if [[ "${python_retired:-false}" != "true" && "${switch_complete:-0}" == "1"' in deploy
+assert 'python_retired=$python_retired games_native' in deploy
 assert "payload.get('nativePulse')" in deploy
 assert "payload.get('nativeLobbyRead')" in deploy
 assert "payload.get('nativeRoster')" in deploy

@@ -19,6 +19,37 @@ describe('War Room v3 authored stove fire', () => {
     });
   });
 
+  it('honors Hans cold-hearth zero scale instead of treating zero as a missing multiplier', () => {
+    const root = new THREE.Group();
+    const material = new THREE.MeshStandardMaterial({ emissive: 0xff4b12 });
+    material.emissiveIntensity = 1.4;
+    const flame = new THREE.Mesh(new THREE.SphereGeometry(0.2), material);
+    flame.name = 'WR3_ARM_hearth_flame_body';
+    root.add(flame);
+
+    const anchor = new THREE.Group();
+    anchor.name = 'WR_ANCHOR_fireplace_practical';
+    const practical = new THREE.PointLight(0xff8a38, 2.3);
+    anchor.add(practical);
+    root.add(anchor);
+
+    root.userData.warRoomHansFireDimmer = {
+      core: {
+        visible: false,
+        scale: new THREE.Vector3(0.42, 0, 0.42),
+      },
+      light: { intensity: 0.035 },
+    };
+
+    const release = installWarRoomV3FireAnimation(root);
+    flame.onBeforeRender({ userData: { board3DMotionNowMs: 840 } });
+
+    expect(flame.scale.y).toBe(0);
+    expect(practical.intensity).toBeLessThan(0.1);
+
+    release();
+  });
+
   it('animates preserved flame nodes and restores them on cleanup', () => {
     const root = new THREE.Group();
     const material = new THREE.MeshStandardMaterial({ emissive: 0xff4b12 });

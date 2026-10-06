@@ -70,7 +70,10 @@ func tick_ball(delta: float) -> void:
 			else:
 				vertical_velocity = 0.0
 
-	move_and_slide()
+	# Ball collision/restarts are resolved explicitly by match.gd. Move with the
+	# delta passed into this simulation step instead of CharacterBody2D's hidden
+	# physics delta so runtime and deterministic smoke use identical kinematics.
+	global_position += velocity * delta
 	rotation += velocity.length() * delta * 0.012 * spin_direction
 	var active_friction := AIR_FRICTION if flight_height > 0.0 else (fast_ball_friction if velocity.length() >= FAST_BALL_THRESHOLD else friction)
 	velocity *= pow(active_friction, delta * 60.0)

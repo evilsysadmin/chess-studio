@@ -96,7 +96,7 @@ e2e/               Playwright y journeys de navegador
 scripts/           quality gates, auditorías, budgets y tooling
 docs/              contratos de diseño, experimentos y operaciones
 .github/            workflows de CI/deploy
-docker-compose.yml stack local frontend + backend + MongoDB
+docker-compose.yml stack local frontend + API Go + MongoDB
 Makefile            entrypoints canónicos de desarrollo y tests
 RELEASE.txt         identificador de release actual
 ```

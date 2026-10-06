@@ -82,6 +82,8 @@ services:
       GIT_COMMIT_SHA: ${CHESS_STUDIO_BLUE_SHA:?CHESS_STUDIO_BLUE_SHA is required}
       PORT: "8080"
       GO_PYTHON_UPSTREAM: "http://backend_blue:4000"
+      # true: no backend_* slot runs; Go serves every route (deploy-owned).
+      GO_PYTHON_RETIRED: "${CHESS_STUDIO_PYTHON_RETIRED:-false}"
       PVP_PYTHON_UPSTREAM: "http://backend_blue:4000"
       PVP_NATIVE_PULSE_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_PULSE_ENABLED:-true}"
       PVP_NATIVE_LOBBY_READ_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_LOBBY_READ_ENABLED:-true}"
@@ -128,6 +130,8 @@ services:
       GIT_COMMIT_SHA: ${CHESS_STUDIO_GREEN_SHA:?CHESS_STUDIO_GREEN_SHA is required}
       PORT: "8080"
       GO_PYTHON_UPSTREAM: "http://backend_green:4000"
+      # true: no backend_* slot runs; Go serves every route (deploy-owned).
+      GO_PYTHON_RETIRED: "${CHESS_STUDIO_PYTHON_RETIRED:-false}"
       PVP_PYTHON_UPSTREAM: "http://backend_green:4000"
       PVP_NATIVE_PULSE_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_PULSE_ENABLED:-true}"
       PVP_NATIVE_LOBBY_READ_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_LOBBY_READ_ENABLED:-true}"

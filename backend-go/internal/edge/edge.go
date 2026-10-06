@@ -107,6 +107,11 @@ type Config struct {
 	// proxied as httpwindow.ProxiedRoute, plus the first observed readiness.
 	// Nil disables it.
 	HTTPWindow *httpwindow.Window
+	// Identity serves Python's own routes (/, /api/health, /api/release,
+	// /api/ready) and answers what no route matches. Set only once Python is
+	// retired: then there is no upstream, nothing is proxied and readiness
+	// no longer asks Python.
+	Identity *gamesapi.IdentityHandler
 }
 
 type Handler struct {
@@ -150,10 +155,18 @@ type Handler struct {
 	readyChecks               map[string]func(context.Context) error
 	telemetry                 *telemetry.Recorder
 	window                    *httpwindow.Window
+	routes                    []nativeRoute
+	identity                  *gamesapi.IdentityHandler
 }
 
 func New(cfg Config) (*Handler, error) {
 	raw := strings.TrimSpace(cfg.UpstreamURL)
+	if cfg.Identity != nil {
+		if raw != "" {
+			return nil, errors.New("a retired-Python edge takes no upstream URL")
+		}
+		raw = "http://python.retired.invalid"
+	}
 	if raw == "" {
 		return nil, errors.New("upstream URL is required")
 	}
@@ -227,7 +240,7 @@ func New(cfg Config) (*Handler, error) {
 		})
 	}
 
-	return &Handler{
+	h := &Handler{
 		upstream:                  upstream,
 		proxy:                     proxy,
 		client:                    &http.Client{Timeout: timeout},
@@ -268,7 +281,48 @@ func New(cfg Config) (*Handler, error) {
 		readyChecks:               cfg.ReadyChecks,
 		telemetry:                 cfg.Telemetry,
 		window:                    cfg.HTTPWindow,
-	}, nil
+		identity:                  cfg.Identity,
+	}
+	h.routes = h.nativeRoutes()
+	return h, nil
+}
+
+// nativeRoute is one native handler and the matcher of the routes it owns.
+type nativeRoute struct {
+	handler http.Handler
+	match   func(*http.Request) (string, bool)
+}
+
+// nativeRoutes lists the enabled native handlers in dispatch order.
+func (h *Handler) nativeRoutes() []nativeRoute {
+	all := []nativeRoute{
+		{h.nativeGamesRead, func(r *http.Request) (string, bool) { p, _, ok := gamesapi.Route(r); return p, ok }},
+		{h.nativeGamesWrite, func(r *http.Request) (string, bool) { p, _, ok := gamesapi.WriteRoute(r); return p, ok }},
+		{h.nativeGamesHint, func(r *http.Request) (string, bool) { p, _, ok := gamesapi.HintRoute(r); return p, ok }},
+		{h.nativeGamesAnalyze, gamesapi.AnalyzeRoute},
+		{h.nativeSystem, gamesapi.SystemRoute},
+		{h.nativeProfile, gamesapi.ProfileRoute},
+		{h.nativeSession, gamesapi.SessionRoute},
+		{h.nativeLogin, gamesapi.LoginRoute},
+		{h.nativeAccount, gamesapi.AccountRoute},
+		{h.nativeRecovery, gamesapi.RecoveryRoute},
+		{h.nativeFeedback, func(r *http.Request) (string, bool) { p, _, ok := gamesapi.FeedbackRoute(r); return p, ok }},
+		{h.nativeMatthias, gamesapi.MatthiasRoute},
+		{h.nativeNarrative, gamesapi.NarrativeRoute},
+		{h.nativePawnSlug, gamesapi.PawnSlugRoute},
+		{h.nativeChronicles, gamesapi.ChroniclesRoute},
+		{h.nativeChroniclesRuns, func(r *http.Request) (string, bool) { p, _, ok := gamesapi.ChroniclesRunsRoute(r); return p, ok }},
+		{h.nativeAdminFeedback, gamesapi.AdminFeedbackRoute},
+		{h.nativeAdminUsers, func(r *http.Request) (string, bool) { p, _, ok := gamesapi.AdminUsersRoute(r); return p, ok }},
+		{h.nativeAdminObservability, gamesapi.AdminObservabilityRoute},
+	}
+	routes := all[:0]
+	for _, route := range all {
+		if route.handler != nil {
+			routes = append(routes, route)
+		}
+	}
+	return routes
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -280,136 +334,17 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.ready(w, r)
 		return
 	}
-	if h.nativeGamesRead != nil {
-		if pattern, _, ok := gamesapi.Route(r); ok {
+	if h.identity != nil {
+		if pattern, ok := gamesapi.IdentityRoute(r); ok {
 			w.Header().Set("X-Chess-Edge", "go")
-			h.serveNative(pattern, h.nativeGamesRead, w, r)
+			h.serveNative(pattern, h.identity, w, r)
 			return
 		}
 	}
-	if h.nativeGamesWrite != nil {
-		if pattern, _, ok := gamesapi.WriteRoute(r); ok {
+	for _, route := range h.routes {
+		if pattern, ok := route.match(r); ok {
 			w.Header().Set("X-Chess-Edge", "go")
-			h.serveNative(pattern, h.nativeGamesWrite, w, r)
-			return
-		}
-	}
-	if h.nativeGamesHint != nil {
-		if pattern, _, ok := gamesapi.HintRoute(r); ok {
-			w.Header().Set("X-Chess-Edge", "go")
-			h.serveNative(pattern, h.nativeGamesHint, w, r)
-			return
-		}
-	}
-	if h.nativeGamesAnalyze != nil {
-		if pattern, ok := gamesapi.AnalyzeRoute(r); ok {
-			w.Header().Set("X-Chess-Edge", "go")
-			h.serveNative(pattern, h.nativeGamesAnalyze, w, r)
-			return
-		}
-	}
-	if h.nativeSystem != nil {
-		if pattern, ok := gamesapi.SystemRoute(r); ok {
-			w.Header().Set("X-Chess-Edge", "go")
-			h.serveNative(pattern, h.nativeSystem, w, r)
-			return
-		}
-	}
-	if h.nativeProfile != nil {
-		if pattern, ok := gamesapi.ProfileRoute(r); ok {
-			w.Header().Set("X-Chess-Edge", "go")
-			h.serveNative(pattern, h.nativeProfile, w, r)
-			return
-		}
-	}
-	if h.nativeSession != nil {
-		if pattern, ok := gamesapi.SessionRoute(r); ok {
-			w.Header().Set("X-Chess-Edge", "go")
-			h.serveNative(pattern, h.nativeSession, w, r)
-			return
-		}
-	}
-	if h.nativeLogin != nil {
-		if pattern, ok := gamesapi.LoginRoute(r); ok {
-			w.Header().Set("X-Chess-Edge", "go")
-			h.serveNative(pattern, h.nativeLogin, w, r)
-			return
-		}
-	}
-	if h.nativeAccount != nil {
-		if pattern, ok := gamesapi.AccountRoute(r); ok {
-			w.Header().Set("X-Chess-Edge", "go")
-			h.serveNative(pattern, h.nativeAccount, w, r)
-			return
-		}
-	}
-	if h.nativeRecovery != nil {
-		if pattern, ok := gamesapi.RecoveryRoute(r); ok {
-			w.Header().Set("X-Chess-Edge", "go")
-			h.serveNative(pattern, h.nativeRecovery, w, r)
-			return
-		}
-	}
-	if h.nativeFeedback != nil {
-		if pattern, _, ok := gamesapi.FeedbackRoute(r); ok {
-			w.Header().Set("X-Chess-Edge", "go")
-			h.serveNative(pattern, h.nativeFeedback, w, r)
-			return
-		}
-	}
-	if h.nativeMatthias != nil {
-		if pattern, ok := gamesapi.MatthiasRoute(r); ok {
-			w.Header().Set("X-Chess-Edge", "go")
-			h.serveNative(pattern, h.nativeMatthias, w, r)
-			return
-		}
-	}
-	if h.nativeNarrative != nil {
-		if pattern, ok := gamesapi.NarrativeRoute(r); ok {
-			w.Header().Set("X-Chess-Edge", "go")
-			h.serveNative(pattern, h.nativeNarrative, w, r)
-			return
-		}
-	}
-	if h.nativePawnSlug != nil {
-		if pattern, ok := gamesapi.PawnSlugRoute(r); ok {
-			w.Header().Set("X-Chess-Edge", "go")
-			h.serveNative(pattern, h.nativePawnSlug, w, r)
-			return
-		}
-	}
-	if h.nativeChronicles != nil {
-		if pattern, ok := gamesapi.ChroniclesRoute(r); ok {
-			w.Header().Set("X-Chess-Edge", "go")
-			h.serveNative(pattern, h.nativeChronicles, w, r)
-			return
-		}
-	}
-	if h.nativeChroniclesRuns != nil {
-		if pattern, _, ok := gamesapi.ChroniclesRunsRoute(r); ok {
-			w.Header().Set("X-Chess-Edge", "go")
-			h.serveNative(pattern, h.nativeChroniclesRuns, w, r)
-			return
-		}
-	}
-	if h.nativeAdminFeedback != nil {
-		if pattern, ok := gamesapi.AdminFeedbackRoute(r); ok {
-			w.Header().Set("X-Chess-Edge", "go")
-			h.serveNative(pattern, h.nativeAdminFeedback, w, r)
-			return
-		}
-	}
-	if h.nativeAdminUsers != nil {
-		if pattern, _, ok := gamesapi.AdminUsersRoute(r); ok {
-			w.Header().Set("X-Chess-Edge", "go")
-			h.serveNative(pattern, h.nativeAdminUsers, w, r)
-			return
-		}
-	}
-	if h.nativeAdminObservability != nil {
-		if pattern, ok := gamesapi.AdminObservabilityRoute(r); ok {
-			w.Header().Set("X-Chess-Edge", "go")
-			h.serveNative(pattern, h.nativeAdminObservability, w, r)
+			h.serveNative(pattern, route.handler, w, r)
 			return
 		}
 	}
@@ -439,7 +374,39 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// whole API); in the default mode it never arrives.
 		r.Header.Del("X-Chess-Pvp-Fallback")
 	}
+	if h.identity != nil {
+		w.Header().Set("X-Chess-Edge", "go")
+		methods := h.knownMethods(r)
+		h.serveNative(gamesapi.UnmatchedRoute, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			h.identity.Unmatched(w, r, methods)
+		}), w, r)
+		return
+	}
 	h.serveProxied(w, r)
+}
+
+// knownMethods lists the methods some native route answers for r's path.
+func (h *Handler) knownMethods(r *http.Request) []string {
+	var methods []string
+	for _, method := range []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete} {
+		probe := r.Clone(r.Context())
+		probe.Method = method
+		probe.Header = http.Header{}
+		matched := false
+		if _, ok := gamesapi.IdentityRoute(probe); ok {
+			matched = true
+		}
+		for _, route := range h.routes {
+			if _, ok := route.match(probe); ok {
+				matched = true
+				break
+			}
+		}
+		if matched {
+			methods = append(methods, method)
+		}
+	}
+	return methods
 }
 
 // serveNative runs a native handler under request telemetry and the
@@ -588,6 +555,7 @@ func (h *Handler) statusPayload(status string) map[string]any {
 		"nativeAdminFeedback":       h.nativeAdminFeedback != nil,
 		"nativeAdminUsers":          h.nativeAdminUsers != nil,
 		"nativeAdminObservability":  h.nativeAdminObservability != nil,
+		"pythonRetired":             h.identity != nil,
 	}
 	if h.release != "" {
 		payload["release"] = h.release
@@ -596,6 +564,10 @@ func (h *Handler) statusPayload(status string) map[string]any {
 }
 
 func (h *Handler) ready(w http.ResponseWriter, r *http.Request) {
+	if h.identity != nil {
+		h.readyChecksOnly(w, r)
+		return
+	}
 	readyURL := *h.upstream
 	readyURL.Path = "/api/ready"
 	readyURL.RawQuery = ""
@@ -615,6 +587,11 @@ func (h *Handler) ready(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]any{"status": "not_ready", "service": serviceName})
 		return
 	}
+	h.readyChecksOnly(w, r)
+}
+
+// readyChecksOnly finishes readiness with the edge's own dependencies.
+func (h *Handler) readyChecksOnly(w http.ResponseWriter, r *http.Request) {
 	for name, check := range h.readyChecks {
 		checkCtx, cancel := context.WithTimeout(r.Context(), h.client.Timeout)
 		err := check(checkCtx)
