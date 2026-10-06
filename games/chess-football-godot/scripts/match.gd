@@ -14,6 +14,10 @@ const TACKLE_HITBOX_FORWARD := 48.0
 const TACKLE_HITBOX_FORWARD_BONUS := 16.0
 const TACKLE_HITBOX_BACK := 12.0
 const TACKLE_HITBOX_HALF_WIDTH := 27.0
+const TACKLE_CONTACT_FORWARD_BONUS := 8.0
+const TACKLE_FOUL_BACK := 28.0
+const TACKLE_FOUL_HALF_WIDTH := 36.0
+const TACKLE_RECKLESS_SPEED_RATIO := 1.05
 const TACKLE_CLEAN_FORWARD := 40.0
 const TACKLE_CLEAN_HALF_WIDTH := 18.0
 const TACKLE_STEAL_DELAY := 0.20
@@ -326,7 +330,7 @@ func _exit_to_host() -> void:
 
 func _refresh_hud() -> void:
 	score_label.text = "FC Matthias %d - %d Real Enroque" % [score[0], score[1]]
-	help_label.text = "WASD · Shift sprint · Space pase · Mantén Enter para cargar tiro · E entrada · Tab cambia · V vista · ESC menú"
+	help_label.text = "WASD · Shift sprint · Space pase · Mantén Enter para cargar tiro · E entrada (mal perfil = falta) · Tab cambia · V vista · ESC menú"
 	if shot_meter != null:
 		shot_meter.visible = shot_charging
 		shot_meter.value = _shot_charge_ratio()
@@ -742,15 +746,34 @@ func _tackle_hitbox(tackler: Footballer, target_position: Vector2) -> Dictionary
 		and forward_distance <= forward_reach
 		and lateral_distance <= TACKLE_HITBOX_HALF_WIDTH
 	)
+	var contact := (
+		forward_distance >= -TACKLE_FOUL_BACK
+		and forward_distance <= forward_reach + TACKLE_CONTACT_FORWARD_BONUS
+		and lateral_distance <= TACKLE_FOUL_HALF_WIDTH
+	)
 	var clean := (
 		inside
 		and forward_distance >= -4.0
 		and forward_distance <= TACKLE_CLEAN_FORWARD + TACKLE_HITBOX_FORWARD_BONUS * speed_ratio * 0.5
 		and lateral_distance <= TACKLE_CLEAN_HALF_WIDTH
 	)
+	var foul := (
+		contact
+		and (
+			not inside
+			or forward_distance < -4.0
+			or (
+				not clean
+				and speed_ratio >= TACKLE_RECKLESS_SPEED_RATIO
+				and lateral_distance > TACKLE_CLEAN_HALF_WIDTH
+			)
+		)
+	)
 	return {
+		"contact": contact,
 		"inside": inside,
 		"clean": clean,
+		"foul": foul,
 		"forward_distance": forward_distance,
 		"lateral_distance": lateral_distance,
 		"forward_reach": forward_reach,
@@ -770,7 +793,7 @@ func _try_tackle(tackler: Footballer) -> bool:
 	var hitbox := _tackle_hitbox(tackler, victim.global_position)
 	if not tackler.start_tackle():
 		return false
-	if not bool(hitbox.get("inside", false)):
+	if not bool(hitbox.get("contact", hitbox.get("inside", false))):
 		return false
 	return _resolve_tackle_contact(tackler, victim, hitbox)
 
@@ -788,13 +811,23 @@ func _resolve_tackle_contact(
 	if offset.length() > TACKLE_ATTEMPT_RANGE:
 		return false
 	var resolved_hitbox := hitbox if not hitbox.is_empty() else _tackle_hitbox(tackler, victim.global_position)
-	if not bool(resolved_hitbox.get("inside", false)):
+	if not bool(resolved_hitbox.get("contact", resolved_hitbox.get("inside", false))):
 		return false
 
 	var push_direction := offset.normalized() if offset.length_squared() > 0.001 else _tackle_forward(tackler)
+	var foul_spot := victim.global_position
 	victim.receive_tackle_contact(push_direction)
 	if audio_fx != null:
 		audio_fx.play_tackle()
+
+	if bool(resolved_hitbox.get("foul", false)):
+		tackler.tackle_recovery_seconds = maxf(tackler.tackle_recovery_seconds, 0.85)
+		pending_tackle_player = null
+		pending_tackle_seconds = 0.0
+		if audio_fx != null:
+			audio_fx.play_whistle()
+		_prepare_set_piece("FALTA", victim.team_id, foul_spot)
+		return true
 
 	if bool(resolved_hitbox.get("clean", false)):
 		# Deflect the ball out of the collision instead of straight underneath
@@ -1057,6 +1090,25 @@ func _arrange_set_piece_formation(kind: String) -> void:
 			)
 		return
 
+	if kind == "FALTA":
+		# Keep the free kick close to the real foul spot. Teammates only clear
+		# enough room for the taker while opponents must retreat from the ball.
+		for teammate in teams[set_piece_team_id]:
+			if teammate == set_piece_player or teammate.role == "keeper":
+				continue
+			var teammate_offset: Vector2 = teammate.global_position - set_piece_spot
+			if teammate_offset.length() < 105.0:
+				var teammate_away: Vector2 = teammate_offset.normalized() if teammate_offset.length_squared() > 0.001 else Vector2(-direction, 0.0)
+				_place_restart_player(teammate, set_piece_spot + teammate_away * 105.0)
+		for opponent in teams[opponent_id]:
+			if opponent.role == "keeper":
+				continue
+			var opponent_offset: Vector2 = opponent.global_position - set_piece_spot
+			if opponent_offset.length() < 165.0:
+				var opponent_away: Vector2 = opponent_offset.normalized() if opponent_offset.length_squared() > 0.001 else Vector2(-direction, 0.0)
+				_place_restart_player(opponent, set_piece_spot + opponent_away * 165.0)
+		return
+
 	if kind == "SAQUE DE PUERTA":
 		var own_goal := ChessFootballMath.goal_center(opponent_id)
 		for player in teams[set_piece_team_id]:
@@ -1274,14 +1326,21 @@ func _update_3d_presentation(delta: float) -> void:
 		presentation_3d.sync_presentation(delta, camera_mode)
 
 func _spawn_match() -> void:
-	var left_x := [150.0, 420.0, 660.0, 760.0, 960.0]
-	var lane_y := [500.0, 300.0, 500.0, 700.0, 500.0]
+	var pitch := ChessFootballMath.PITCH_RECT
+	# Formation is stored in normalized pitch coordinates so enlarging the field
+	# creates actual playable space instead of leaving both teams clustered in
+	# the old 1640x860 footprint.
+	var home_x_ratio := [0.09, 0.26, 0.40, 0.46, 0.58]
+	var home_y_ratio := [0.48, 0.29, 0.48, 0.67, 0.48]
 	for team_id in range(2):
 		for index in range(TEAM_SIZE):
-			var x: float = ChessFootballMath.PITCH_RECT.position.x + float(left_x[index])
+			var x: float = pitch.position.x + pitch.size.x * float(home_x_ratio[index])
 			if team_id == 1:
-				x = ChessFootballMath.PITCH_RECT.end.x - left_x[index]
-			var position := Vector2(x, ChessFootballMath.PITCH_RECT.position.y + lane_y[index] * 0.82)
+				x = pitch.end.x - pitch.size.x * float(home_x_ratio[index])
+			var position := Vector2(
+				x,
+				pitch.position.y + pitch.size.y * float(home_y_ratio[index]),
+			)
 			var player := Footballer.new()
 			add_child(player)
 			player.configure(team_id, index, ROLES[index], position, TEAM_COLORS[team_id])

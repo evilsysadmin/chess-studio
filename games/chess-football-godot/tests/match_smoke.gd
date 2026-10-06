@@ -11,6 +11,8 @@ func _initialize() -> void:
 	assert(counts == [5, 5])
 	assert(match_node.debug_ball_exists())
 	assert(match_node.debug_pitch_exists())
+	assert(ChessFootballMath.PITCH_RECT.size.x >= 2000.0)
+	assert(ChessFootballMath.PITCH_RECT.size.y >= 1000.0)
 	assert(match_node.debug_3d_ready())
 	assert(match_node.debug_audio_ready())
 	var audio_names: Array[String] = match_node.debug_audio_stream_names()
@@ -209,6 +211,8 @@ func _initialize() -> void:
 	assert(float(forward_hitbox["lateral_distance"]) <= 27.0)
 	var behind_hitbox: Dictionary = match_node.debug_tackle_hitbox(tackler, Vector2(616.0, 500.0))
 	assert(not bool(behind_hitbox["inside"]))
+	assert(bool(behind_hitbox["contact"]))
+	assert(bool(behind_hitbox["foul"]))
 	var wide_hitbox: Dictionary = match_node.debug_tackle_hitbox(tackler, Vector2(676.0, 536.0))
 	assert(not bool(wide_hitbox["inside"]))
 
@@ -242,6 +246,25 @@ func _initialize() -> void:
 	match_node.debug_update_active_tackle_contacts()
 	assert(match_node.ball.carrier == null)
 	assert(victim.contact_stun_active())
+
+	# A late/rear contact is a foul rather than a free steal. The opponent gets
+	# a proper dead-ball restart at the contact spot.
+	tackler._process(2.0)
+	tackler.global_position = Vector2(640.0, 620.0)
+	tackler.velocity = Vector2.RIGHT * tackler.base_speed
+	victim.global_position = Vector2(620.0, 620.0)
+	match_node.ball.attach_to(victim)
+	var foul_hitbox: Dictionary = match_node.debug_tackle_hitbox(tackler, victim.global_position)
+	assert(bool(foul_hitbox["contact"]))
+	assert(bool(foul_hitbox["foul"]))
+	assert(match_node.debug_try_tackle(tackler))
+	assert(match_node.debug_set_piece_active())
+	assert(match_node.debug_set_piece_kind() == "FALTA")
+	assert(match_node.debug_set_piece_team() == victim.team_id)
+	assert(match_node.ball.carrier != null)
+	assert(match_node.ball.carrier.team_id == victim.team_id)
+	match_node.debug_force_set_piece_ready()
+	assert(not match_node.debug_set_piece_active())
 
 	var keeper: Footballer = match_node.teams[0][0]
 	assert(keeper.role == "keeper")
