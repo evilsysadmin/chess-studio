@@ -25,9 +25,6 @@ const TACKLE_STEAL_POKE_POWER := 220.0
 const TACKLE_LOOSE_POKE_POWER := 310.0
 const SLIDE_TACKLE_FORWARD_BONUS := 26.0
 const SLIDE_TACKLE_HALF_WIDTH_BONUS := 4.0
-const PENALTY_AREA_DEPTH := 265.0
-const PENALTY_AREA_HALF_WIDTH := 215.0
-const PENALTY_SPOT_DEPTH := 175.0
 const PENALTY_SHOT_POWER := 930.0
 const PENALTY_SHOT_LIFT := 150.0
 
@@ -1051,18 +1048,18 @@ func _in_penalty_area(attacking_team_id: int, point: Vector2) -> bool:
 	var pitch := ChessFootballMath.PITCH_RECT
 	var center_y := pitch.get_center().y
 	var inside_depth := (
-		point.x >= pitch.end.x - PENALTY_AREA_DEPTH
+		point.x >= pitch.end.x - ChessFootballMath.PENALTY_AREA_DEPTH
 		if attacking_team_id == 0
-		else point.x <= pitch.position.x + PENALTY_AREA_DEPTH
+		else point.x <= pitch.position.x + ChessFootballMath.PENALTY_AREA_DEPTH
 	)
-	return inside_depth and absf(point.y - center_y) <= PENALTY_AREA_HALF_WIDTH
+	return inside_depth and absf(point.y - center_y) <= ChessFootballMath.PENALTY_AREA_HALF_WIDTH
 
 func _penalty_spot(attacking_team_id: int) -> Vector2:
 	var pitch := ChessFootballMath.PITCH_RECT
 	var x := (
-		pitch.end.x - PENALTY_SPOT_DEPTH
+		pitch.end.x - ChessFootballMath.PENALTY_SPOT_DEPTH
 		if attacking_team_id == 0
-		else pitch.position.x + PENALTY_SPOT_DEPTH
+		else pitch.position.x + ChessFootballMath.PENALTY_SPOT_DEPTH
 	)
 	return Vector2(x, pitch.get_center().y)
 
@@ -1112,20 +1109,35 @@ func _arrange_set_piece_formation(kind: String) -> void:
 			defending_keeper,
 			Vector2(target_goal.x - direction * 42.0, target_goal.y),
 		)
-		var outside_x := target_goal.x - direction * (PENALTY_AREA_DEPTH + 70.0)
+		var outside_x := target_goal.x - direction * (ChessFootballMath.PENALTY_AREA_DEPTH + 145.0)
+		var attack_slots: Array[Vector2] = [
+			Vector2(outside_x - direction * 45.0, center.y - 260.0),
+			Vector2(outside_x - direction * 95.0, center.y),
+			Vector2(outside_x - direction * 45.0, center.y + 260.0),
+		]
+		var defend_slots: Array[Vector2] = [
+			Vector2(outside_x + direction * 25.0, center.y - 285.0),
+			Vector2(outside_x - direction * 15.0, center.y - 90.0),
+			Vector2(outside_x - direction * 15.0, center.y + 90.0),
+			Vector2(outside_x + direction * 25.0, center.y + 285.0),
+		]
+		var attack_slot_index := 0
 		for teammate in teams[set_piece_team_id]:
 			if teammate == set_piece_player:
 				continue
 			if teammate.role == "keeper":
 				_place_restart_player(teammate, teammate.home_position)
 				continue
-			var teammate_y := center.y + float([-150.0, -55.0, 70.0, 155.0][clampi(teammate.squad_index - 1, 0, 3)])
-			_place_restart_player(teammate, Vector2(outside_x - direction * 35.0, teammate_y))
+			var attack_slot: Vector2 = attack_slots[mini(attack_slot_index, attack_slots.size() - 1)]
+			_place_restart_player(teammate, attack_slot)
+			attack_slot_index += 1
+		var defend_slot_index := 0
 		for opponent in teams[opponent_id]:
 			if opponent == defending_keeper:
 				continue
-			var opponent_y := center.y + float([-135.0, -45.0, 55.0, 140.0][clampi(opponent.squad_index - 1, 0, 3)])
-			_place_restart_player(opponent, Vector2(outside_x, opponent_y))
+			var defend_slot: Vector2 = defend_slots[mini(defend_slot_index, defend_slots.size() - 1)]
+			_place_restart_player(opponent, defend_slot)
+			defend_slot_index += 1
 		return
 
 	if kind == "CÓRNER":
