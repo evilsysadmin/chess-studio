@@ -493,6 +493,7 @@ func _initialize() -> void:
 	print("SMOKE_STAGE=shots")
 
 	assert(not match_node.debug_pause_menu_open())
+	assert(match_node.debug_pause_button_text() == "MENÚ")
 	assert(match_node.debug_pause_first_option() == "SALIR")
 	var escape_event := InputEventKey.new()
 	escape_event.keycode = KEY_ESCAPE
@@ -507,6 +508,27 @@ func _initialize() -> void:
 	assert(match_node.debug_camera_mode() == "tactical")
 	match_node.debug_toggle_camera_mode()
 	assert(match_node.debug_camera_mode() == "broadcast")
+
+	# Broadcast follow must absorb a sudden ball relocation instead of snapping
+	# its focal target in a single frame.
+	var presenter: ChessFootball3DPresenter = match_node.presentation_3d
+	var previous_focus_x := presenter.debug_camera_smoothed_focus_x()
+	var camera_probe_world_x := (
+		ChessFootballMath.PITCH_RECT.end.x - 80.0
+		if previous_focus_x <= 0.0
+		else ChessFootballMath.PITCH_RECT.position.x + 80.0
+	)
+	match_node.ball.global_position = Vector2(
+		camera_probe_world_x,
+		ChessFootballMath.PITCH_RECT.get_center().y,
+	)
+	match_node.ball.velocity = Vector2.ZERO
+	var raw_focus_x := presenter.world_to_stage(match_node.ball.global_position).x
+	presenter.sync_presentation(1.0 / 60.0, "broadcast")
+	var smoothed_focus_step := absf(presenter.debug_camera_smoothed_focus_x() - previous_focus_x)
+	var raw_focus_step := absf(raw_focus_x - previous_focus_x)
+	assert(raw_focus_step > 1.0)
+	assert(smoothed_focus_step < raw_focus_step * 0.20)
 
 	# Discipline contract: aggressive foul => yellow; second yellow dismisses;
 	# aggressive contact clearly from behind => straight red. Dismissed players
