@@ -50,8 +50,16 @@ import {
 } from './helpers.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual/combat-battle';
+const WAR_ROOM_VARIANT_STORAGE_KEY = 'chess-study-war-room-variant-v1';
+
+async function pinCanonicalBattleWarRoom(page) {
+  await page.addInitScript(({ key }) => {
+    window.localStorage.setItem(key, 'v3');
+  }, { key: WAR_ROOM_VARIANT_STORAGE_KEY });
+}
 
 async function openCombatBattle(page) {
+  await pinCanonicalBattleWarRoom(page);
   await mockApi(page);
   await login(page);
   await openCampaignBriefing(page);
@@ -64,7 +72,10 @@ async function openCombatBattle(page) {
 
   const battle = page.locator('[data-combat-war-room="generic"]');
   await expect(battle).toBeVisible({ timeout: 45_000 });
-  await expect(battle.locator('[data-board3d-war-room="true"]')).toBeVisible({ timeout: 45_000 });
+  const board3d = battle.locator('[data-board3d-war-room="true"]');
+  await expect(board3d).toBeVisible({ timeout: 45_000 });
+  await expect(board3d).toHaveAttribute('data-board3d-variant', 'v3');
+  await expect(board3d).toHaveAttribute('data-board3d-variant-status', 'ready', { timeout: 45_000 });
   await expect(battle.locator('.board3d-main-canvas')).toBeVisible({ timeout: 45_000 });
   return battle;
 }
