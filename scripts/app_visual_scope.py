@@ -238,6 +238,12 @@ def _surface_groups(path: str) -> set[str] | None:
         return {"home"}
     if lower in POSTGAME_VISUAL_SURFACES:
         return set(POSTGAME_VISUAL_SURFACES[lower])
+    if lower in {
+        "frontend/src/components/combatbattleview.jsx",
+        "frontend/src/components/combatwarroombattle.css",
+        "frontend/src/components/combatwarroomboard.jsx",
+    }:
+        return {"warroom"}
     if lower in QUICK_MATCH_VISUAL_SURFACES:
         return set(QUICK_MATCH_VISUAL_SURFACES[lower])
     if lower == "frontend/src/components/homemobilegoldenpath.css":
@@ -308,6 +314,8 @@ def _surface_groups(path: str) -> set[str] | None:
         if name in {"pvp-lobby-visual-artifact.spec.js", "pvp-handoff-visual-artifact.spec.js"}:
             return {"home"}
         if name in {"war-room-pvp.spec.js", "pvp-background-roster.spec.js"}:
+            return {"warroom"}
+        if name == "war-room-combat-battle-visual-artifact.spec.js":
             return {"warroom"}
         if "chesscom" in name:
             return set()
@@ -961,6 +969,13 @@ def self_test() -> None:
         "frontend/src/components/WarRoom3D.jsx",
     ])
     assert mixed_nonvisual_warroom.capture_groups == "warroom"
+    combat_battle = classify([
+        "frontend/src/components/CombatBattleView.jsx",
+        "frontend/src/components/CombatWarRoomBoard.jsx",
+        "frontend/src/components/CombatWarRoomBattle.css",
+        "e2e/war-room-combat-battle-visual-artifact.spec.js",
+    ])
+    assert combat_battle.capture_groups == "warroom"
 
     for nonvisual_gate in ("scripts/async_resilience_gate.mjs", "scripts/chess_rules_gate.mjs", "scripts/visual_ux_contract_check.mjs"):
         gate_scope = classify([nonvisual_gate])
