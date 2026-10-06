@@ -1,7 +1,7 @@
 class_name ChessFootballMath
 extends RefCounted
 
-const PITCH_RECT := Rect2(80.0, 70.0, 2480.0, 1240.0)
+const PITCH_RECT := Rect2(80.0, 70.0, 2480.0, 1440.0)
 const GOAL_HALF_HEIGHT := 105.0
 const PENALTY_AREA_DEPTH := 265.0
 const PENALTY_AREA_HALF_WIDTH := 215.0

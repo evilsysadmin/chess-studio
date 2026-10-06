@@ -125,6 +125,10 @@ var shot_aim_y_input: float = 0.0
 var pass_charging: bool = false
 var pass_charge_seconds: float = 0.0
 var pass_target: Footballer = null
+var pass_aim_direction: Vector2 = Vector2.RIGHT
+var pass_directional_charge: bool = false
+var pass_select_receiver_on_release: bool = true
+var desktop_pass_input_active: bool = false
 var pending_tackle_player: Footballer = null
 var pending_tackle_seconds: float = 0.0
 
@@ -368,7 +372,7 @@ func _refresh_hud() -> void:
 		else:
 			help_label.text = "PENALTI RIVAL · W/S mueve al portero antes del disparo"
 	else:
-		help_label.text = "WASD · Shift sprint · Space pase · Mantén Enter tiro · E entrada · Shift+E segada · Tab cambia · V vista · ESC menú"
+		help_label.text = "WASD · Shift sprint · Mantén Space pase · Mantén Enter tiro · E entrada · Shift+E segada · Tab cambia · V vista · ESC menú"
 	var charge_visible := shot_charging or pass_charging
 	if shot_meter != null:
 		shot_meter.visible = charge_visible
@@ -401,10 +405,15 @@ func _handle_human(delta: float) -> void:
 		_select_player(_best_switch_candidate())
 	if Input.is_action_just_pressed("tackle") and not controlled.has_ball:
 		_try_tackle(controlled, Input.is_action_pressed("sprint"))
-	if Input.is_action_just_pressed("pass_ball") and ball.carrier == controlled:
-		_cancel_shot_charge()
-		_cancel_pass_charge()
-		_pass_from(controlled, direction)
+	var pass_pressed := Input.is_action_pressed("pass_ball")
+	if pass_pressed and not desktop_pass_input_active:
+		desktop_pass_input_active = true
+		if ball.carrier == controlled:
+			_begin_directional_pass_charge(direction)
+	elif not pass_pressed and desktop_pass_input_active:
+		desktop_pass_input_active = false
+		if pass_charging and pass_directional_charge:
+			_release_charged_pass()
 
 	if Input.is_action_just_pressed("shoot_ball") and ball.carrier == controlled:
 		_cancel_pass_charge()
@@ -417,14 +426,17 @@ func _handle_human(delta: float) -> void:
 			_release_charged_shot()
 
 	if pass_charging:
-		if (
-			ball.carrier != controlled
-			or pass_target == null
-			or not is_instance_valid(pass_target)
-			or pass_target.sent_off
-		):
+		if ball.carrier != controlled:
 			_cancel_pass_charge()
 		else:
+			if pass_directional_charge and direction.length_squared() > 0.0324:
+				pass_aim_direction = direction.normalized()
+				pass_target = _best_pass_target(controlled, direction)
+			if (
+				pass_target != null
+				and (not is_instance_valid(pass_target) or pass_target.sent_off)
+			):
+				pass_target = null
 			pass_charge_seconds = minf(PASS_CHARGE_SECONDS, pass_charge_seconds + delta)
 
 func _begin_shot_charge(initial_aim_y: float = 0.0) -> void:
@@ -479,12 +491,33 @@ func _begin_pass_charge(target: Footballer) -> bool:
 	pass_charging = true
 	pass_charge_seconds = 0.0
 	pass_target = target
+	pass_aim_direction = (target.global_position - controlled.global_position).normalized()
+	pass_directional_charge = false
+	pass_select_receiver_on_release = true
+	return true
+
+func _begin_directional_pass_charge(input_direction: Vector2) -> bool:
+	if controlled == null or ball.carrier != controlled:
+		return false
+	_cancel_shot_charge()
+	var wanted := input_direction
+	if wanted.length_squared() < 0.001:
+		wanted = Vector2.RIGHT if controlled.team_id == 0 else Vector2.LEFT
+	pass_charging = true
+	pass_charge_seconds = 0.0
+	pass_aim_direction = wanted.normalized()
+	pass_target = _best_pass_target(controlled, pass_aim_direction)
+	pass_directional_charge = true
+	pass_select_receiver_on_release = false
 	return true
 
 func _cancel_pass_charge() -> void:
 	pass_charging = false
 	pass_charge_seconds = 0.0
 	pass_target = null
+	pass_aim_direction = Vector2.RIGHT
+	pass_directional_charge = false
+	pass_select_receiver_on_release = true
 
 func _pass_charge_ratio() -> float:
 	if not pass_charging:
@@ -508,22 +541,31 @@ func _release_charged_pass() -> bool:
 		return false
 	var passer := controlled
 	var target := pass_target
+	var aim_direction := pass_aim_direction
+	var select_receiver := pass_select_receiver_on_release
 	var ratio := _pass_charge_ratio()
 	var power := _pass_power_from_ratio(ratio)
 	_cancel_pass_charge()
-	if (
-		passer == null
-		or target == null
-		or not is_instance_valid(target)
-		or target.sent_off
-		or ball.carrier != passer
-	):
+	if passer == null or ball.carrier != passer:
 		return false
+	var release_direction := aim_direction
+	var valid_target := (
+		target != null
+		and is_instance_valid(target)
+		and not target.sent_off
+		and target.team_id == passer.team_id
+		and target != passer
+	)
+	if valid_target:
+		release_direction = target.global_position - passer.global_position
+	if release_direction.length_squared() < 0.001:
+		release_direction = Vector2.RIGHT if passer.team_id == 0 else Vector2.LEFT
 	passer.play_action("pass", lerpf(0.58, 0.80, ratio))
 	if audio_fx != null:
 		audio_fx.play_pass()
-	ball.release(target.global_position - passer.global_position, power)
-	_select_player(target)
+	ball.release(release_direction, power)
+	if select_receiver and valid_target:
+		_select_player(target)
 	return true
 
 func _assisted_shot_target(player: Footballer, aim_y: float) -> Vector2:
@@ -666,7 +708,7 @@ func _ai_support_target(player: Footballer) -> Vector2:
 	if ball.carrier == null:
 		return player.home_position
 	var forward := 1.0 if player.team_id == 0 else -1.0
-	var lane_offset := float(player.squad_index - 2) * 72.0
+	var lane_offset := float(player.squad_index - 2) * 92.0
 	var target := Vector2(
 		ball.carrier.global_position.x + forward * (AI_SUPPORT_FORWARD + absf(lane_offset) * 0.22),
 		player.home_position.y + lane_offset * 0.35
@@ -1768,13 +1810,13 @@ func _kickoff_position(team_id: int, player: Footballer) -> Vector2:
 		0:
 			return player.home_position
 		1:
-			return Vector2(center.x + side * 390.0, center.y - 170.0)
+			return Vector2(center.x + side * 390.0, center.y - 205.0)
 		2:
 			return Vector2(center.x + side * (gap + 80.0), center.y)
 		3:
-			return Vector2(center.x + side * (gap + 230.0), center.y + 180.0)
+			return Vector2(center.x + side * (gap + 230.0), center.y + 215.0)
 		4:
-			return Vector2(center.x + side * gap, center.y - 150.0)
+			return Vector2(center.x + side * gap, center.y - 185.0)
 	return player.home_position
 
 func _prepare_kickoff(team_id: int, is_initial: bool) -> void:
@@ -2086,6 +2128,15 @@ func debug_pass_charge_ratio() -> float:
 
 func debug_pass_power_for_ratio(ratio: float) -> float:
 	return _pass_power_from_ratio(ratio)
+
+func debug_begin_directional_pass_charge(direction: Vector2) -> bool:
+	return _begin_directional_pass_charge(direction)
+
+func debug_release_charged_pass() -> bool:
+	return _release_charged_pass()
+
+func debug_pass_target() -> Footballer:
+	return pass_target
 
 func debug_pause_menu_open() -> bool:
 	return pause_menu_open
