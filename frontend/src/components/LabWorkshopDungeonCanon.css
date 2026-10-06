@@ -24,6 +24,9 @@
   }
 
   .lab-screen .lab-workshop::before {
+    background-image: url('../assets/experiments-room-dungeon-canon.avif');
+    background-position: center;
+    background-size: cover;
     opacity: .18;
     filter: brightness(.52) saturate(.78) contrast(1.16);
   }
