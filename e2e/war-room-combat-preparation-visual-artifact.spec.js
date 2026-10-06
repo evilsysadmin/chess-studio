@@ -1,5 +1,47 @@
+
+
+async function captureWarRoomFrame(page, path) {
+  const staged = await page.evaluate(() => {
+    const canvases = [...document.querySelectorAll('canvas.board3d-main-canvas')];
+    return canvases.map((canvas, index) => {
+      const rect = canvas.getBoundingClientRect();
+      const shell = canvas.closest('.board3d-main-shell');
+      const shellRect = shell?.getBoundingClientRect();
+      const image = document.createElement('img');
+      image.src = canvas.toDataURL('image/png');
+      image.alt = '';
+      image.dataset.combatWarRoomCapture = String(index);
+      Object.assign(image.style, {
+        position: shell ? 'absolute' : 'fixed',
+        left: `${shellRect ? rect.left - shellRect.left : rect.left}px`,
+        top: `${shellRect ? rect.top - shellRect.top : rect.top}px`,
+        width: `${rect.width}px`,
+        height: `${rect.height}px`,
+        zIndex: '1',
+        pointerEvents: 'none',
+        objectFit: 'fill',
+      });
+      (shell || document.body).appendChild(image);
+      return image.dataset.combatWarRoomCapture;
+    });
+  });
+
+  if (staged.length) {
+    await page.waitForFunction(() => [...document.querySelectorAll('img[data-combat-war-room-capture]')]
+      .every((image) => image.complete && image.naturalWidth > 0));
+  }
+
+  try {
+    const png = await page.screenshot({ fullPage: false, animations: 'disabled', caret: 'hide' });
+    await writeFile(path, png);
+  } finally {
+    await page.evaluate(() => {
+      document.querySelectorAll('img[data-combat-war-room-capture]').forEach((image) => image.remove());
+    });
+  }
+}
 import { expect, test } from '@playwright/test';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import {
   dismissTutorialIfVisible,
   login,
@@ -65,10 +107,7 @@ test('Combat preparation · desktop is a board-first operations room', async ({ 
   expect(snapshot.drawer?.bottom || 9999).toBeLessThanOrEqual((snapshot.shell?.bottom || 0) + 1);
 
   await mkdir(ARTIFACT_DIR, { recursive: true });
-  await page.screenshot({
-    path: ARTIFACT_DIR + '/combat-preparation-desktop-1440x900.png',
-    animations: 'disabled',
-  });
+  await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-preparation-desktop-1440x900.png');
 });
 
 test.describe('Combat preparation · mobile', () => {
@@ -94,9 +133,6 @@ test.describe('Combat preparation · mobile', () => {
     }
 
     await mkdir(ARTIFACT_DIR, { recursive: true });
-    await page.screenshot({
-      path: ARTIFACT_DIR + '/combat-preparation-android-390x844.png',
-      animations: 'disabled',
-    });
+    await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-preparation-android-390x844.png');
   });
 });
