@@ -5,7 +5,6 @@ import { acknowledgeLabLaunch, clearRememberedLabMode, loadLabLaunch, loadRememb
 import { EXPERIMENT_MATURITY, experimentMaturityLabel } from '../experimentMaturity.js';
 import { LAB_START_FEN, assertLegalLabPosition, fenFromLabState, parseLabPosition } from '../labPosition.js';
 import { exitChroniclesBrowserFullscreen, requestChroniclesBrowserFullscreen } from '../chronicles/chroniclesBrowserFullscreen.js';
-import { exitChessFootballBrowserFullscreen, requestChessFootballBrowserFullscreen } from '../chessFootballBrowserFullscreen.js';
 import experimentsRoomCanonical from '../assets/experiments-room-canonical.webp';
 import PreferredBoard from './PreferredBoard.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
@@ -103,18 +102,6 @@ export default function LabScreen({ onExit, onStart }){
     setLabMode('hub');
   }
 
-  function enterChessFootball() {
-    // Like Chronicles, browser fullscreen has to originate in the trusted
-    // click that enters the mode; requesting it after iframe mount is too late.
-    void requestChessFootballBrowserFullscreen();
-    setLabMode('chess-football-godot');
-  }
-
-  function exitChessFootball() {
-    void exitChessFootballBrowserFullscreen();
-    setLabMode('hub');
-  }
-
   function launch(){
     try{const legal=assertLegalLabPosition(fen,turn); const c=new Chess(legal.fen); setError(''); onStart(c.fen(),c.turn(),difficulty,{lab:true});}
     catch(e){setError(`Posición inválida: ${e.message}`);}
@@ -122,7 +109,7 @@ export default function LabScreen({ onExit, onStart }){
 
   if (labMode==='trailblazer') return <Suspense fallback={<LabModeFallback />}><PawnTrailblazer onExit={()=>setLabMode('hub')} /></Suspense>;
   if (labMode==='pawnslug-godot') return <Suspense fallback={<LabModeFallback />}><PawnSlugGodotHost onExit={()=>setLabMode('hub')} /></Suspense>;
-  if (labMode==='chess-football-godot') return <Suspense fallback={<LabModeFallback />}><ChessFootballGodotHost onExit={exitChessFootball} /></Suspense>;
+  if (labMode==='chess-football-godot') return <Suspense fallback={<LabModeFallback />}><ChessFootballGodotHost onExit={()=>setLabMode('hub')} /></Suspense>;
   if (labMode==='chesscom') return <Suspense fallback={<LabModeFallback />}><Chesscom onExit={()=>setLabMode('hub')} /></Suspense>;
   if (labMode==='chronicles') return <Suspense fallback={<LabModeFallback />}><ChroniclesOfMatthias onExit={exitChronicles} /></Suspense>;
   if (labMode==='chronicles-tactics') return <Suspense fallback={<LabModeFallback />}><ChroniclesOfMatthiasTactics onExit={()=>setLabMode('hub')} /></Suspense>;
@@ -177,7 +164,7 @@ export default function LabScreen({ onExit, onStart }){
               <span>Runtime canónico con motor propio: Godot manda; React sólo abre la puerta.</span>
               <b>Entrar en operación</b>
             </button>
-            <button type="button" className="lab-workshop-portal lab-workshop-portal--shutter lab-workshop-portal--football" data-glyph="⚽" onClick={enterChessFootball}>
+            <button type="button" className="lab-workshop-portal lab-workshop-portal--shutter lab-workshop-portal--football" data-glyph="⚽" onClick={()=>setLabMode('chess-football-godot')}>
               <small>{experimentMaturityLabel(EXPERIMENT_MATURITY.POC, 'Godot Web')}</small>
               <strong>Chess Football</strong>
               <span>Fútbol arcade 5 contra 5 con piezas de ajedrez, pases, tiros, sprint y cambio de jugador.</span>
