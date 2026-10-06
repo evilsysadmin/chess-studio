@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { createThreeRenderer } from '../threeRenderer.js';
 import { buildPiece, disposeObject as disposeBoard3DObject } from './Board3DPieces.js';
 
@@ -29,6 +30,17 @@ export const QUICK_MATCH_READY_ROOM_STARTING_POSITION = Object.freeze([
 
 function mat(color, metalness = 0.04, roughness = 0.8, extra = {}) {
   return new THREE.MeshStandardMaterial({ color, metalness, roughness, ...extra });
+}
+
+function premiumMat(color, metalness, roughness, extra = {}) {
+  return new THREE.MeshPhysicalMaterial({
+    color,
+    metalness,
+    roughness,
+    clearcoat: .16,
+    clearcoatRoughness: .46,
+    ...extra,
+  });
 }
 
 function box(root, size, material, position, name = '') {
@@ -91,7 +103,23 @@ function addChessPiece(board, descriptor, { lite = false } = {}) {
     .255,
     (descriptor.rank - 3.5) * .76,
   );
-  piece.scale.multiplyScalar(.76);
+  piece.scale.multiplyScalar(.75);
+
+  if (descriptor.color === 'black') {
+    piece.traverse((node) => {
+      const materials = Array.isArray(node.material) ? node.material : [node.material];
+      for (const material of materials) {
+        if (!material?.color) continue;
+        const { r, g, b } = material.color;
+        if (r > .25 && r > g * 1.6 && r > b * 1.25) {
+          material.color.setHex(0xb48743);
+          material.metalness = Math.max(material.metalness ?? 0, .42);
+          material.roughness = Math.min(material.roughness ?? .42, .34);
+        }
+      }
+    });
+  }
+
   piece.userData.readyRoomCanonicalPiece = true;
   piece.userData.readyRoomSquare = `${descriptor.file}:${descriptor.rank}`;
   board.add(piece);
@@ -210,15 +238,15 @@ function buildRoom({ lite = false } = {}) {
 
   const stone = mat(0x3d3936, .03, .90);
   const stoneEdge = mat(0x665d54, .05, .78);
-  const wood = mat(0x452516, .10, .42);
-  const woodDark = mat(0x24130d, .10, .54);
-  const brass = mat(0xb98542, .76, .23);
-  const leather = mat(0x441517, .12, .48);
-  const clockBody = mat(0x171513, .24, .34);
-  const lightSquare = mat(0xd5cec2, .07, .42);
-  const darkSquare = mat(0x35373a, .12, .34);
-  const clockFace = mat(0xe5d6b7, .02, .52);
-  const clockHand = mat(0x251a12, .26, .34);
+  const wood = premiumMat(0x452516, .10, .38, { clearcoat: .42, clearcoatRoughness: .34 });
+  const woodDark = premiumMat(0x24130d, .08, .50, { clearcoat: .30, clearcoatRoughness: .42 });
+  const brass = premiumMat(0xb98542, .82, .22, { clearcoat: .24, clearcoatRoughness: .28 });
+  const leather = premiumMat(0x441517, .08, .50, { clearcoat: .12, clearcoatRoughness: .62 });
+  const clockBody = premiumMat(0x171513, .30, .30, { clearcoat: .38, clearcoatRoughness: .34 });
+  const lightSquare = premiumMat(0xd5cec2, .05, .40, { clearcoat: .18, clearcoatRoughness: .38 });
+  const darkSquare = premiumMat(0x35373a, .10, .32, { clearcoat: .22, clearcoatRoughness: .32 });
+  const clockFace = premiumMat(0xe5d6b7, .02, .48, { clearcoat: .10 });
+  const clockHand = premiumMat(0x251a12, .28, .30, { clearcoat: .18 });
   const night = new THREE.MeshBasicMaterial({ color: 0x0b2d50 });
   const moon = new THREE.MeshBasicMaterial({ color: 0xe7f1ff });
   const sconceGlow = new THREE.MeshStandardMaterial({
@@ -310,6 +338,7 @@ export default function QuickMatchReadyRoomScene3D() {
     let room;
     let observer;
     let onResize;
+    let environmentTarget;
 
     try {
       renderer = createThreeRenderer({
@@ -320,7 +349,7 @@ export default function QuickMatchReadyRoomScene3D() {
       });
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 1.98;
+      renderer.toneMappingExposure = 1.62;
       renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio || 1, coarsePointer ? 1 : 1.35));
       renderer.shadowMap.enabled = !coarsePointer;
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -328,29 +357,51 @@ export default function QuickMatchReadyRoomScene3D() {
       scene = new THREE.Scene();
       scene.fog = new THREE.FogExp2(0x0b0908, .0064);
 
+      const pmrem = new THREE.PMREMGenerator(renderer);
+      environmentTarget = pmrem.fromScene(new RoomEnvironment(), .04);
+      scene.environment = environmentTarget.texture;
+      scene.environmentIntensity = coarsePointer ? .20 : .32;
+      pmrem.dispose();
+
       const camera = new THREE.PerspectiveCamera(QUICK_MATCH_READY_ROOM_CAMERA.fov, 1, .1, 70);
       camera.position.set(...QUICK_MATCH_READY_ROOM_CAMERA.position);
       camera.lookAt(...QUICK_MATCH_READY_ROOM_CAMERA.target);
 
-      const hemi = new THREE.HemisphereLight(0x9ab6d5, 0x3b2417, coarsePointer ? 1.12 : 1.58);
+      const hemi = new THREE.HemisphereLight(0x9ab6d5, 0x2c190f, coarsePointer ? .82 : 1.02);
       scene.add(hemi);
 
-      const warmLeft = new THREE.PointLight(0xffa654, coarsePointer ? 2.05 : 3.45, 20, 2);
+      const warmLeft = new THREE.PointLight(0xffa654, coarsePointer ? 1.75 : 2.85, 20, 2);
       warmLeft.position.set(-5.55, 4.2, -4.6);
       warmLeft.castShadow = false;
       scene.add(warmLeft);
 
-      const warmRight = new THREE.PointLight(0xffc06b, coarsePointer ? 1.48 : 2.55, 19, 2);
+      const warmRight = new THREE.PointLight(0xffc06b, coarsePointer ? 1.28 : 2.05, 19, 2);
       warmRight.position.set(5.55, 4.0, -4.4);
       warmRight.castShadow = false;
       scene.add(warmRight);
 
-      const moonFill = new THREE.DirectionalLight(0xa1c7f2, 1.42);
+      const softKey = new THREE.DirectionalLight(0xffca91, coarsePointer ? .42 : .76);
+      softKey.position.set(-3.8, 7.6, 5.7);
+      softKey.target.position.set(-.3, 1.45, -1.3);
+      softKey.castShadow = !coarsePointer;
+      if (softKey.castShadow) {
+        softKey.shadow.mapSize.set(1024, 1024);
+        softKey.shadow.camera.left = -6;
+        softKey.shadow.camera.right = 6;
+        softKey.shadow.camera.top = 5;
+        softKey.shadow.camera.bottom = -5;
+        softKey.shadow.camera.near = 1;
+        softKey.shadow.camera.far = 20;
+        softKey.shadow.bias = -.0004;
+      }
+      scene.add(softKey, softKey.target);
+
+      const moonFill = new THREE.DirectionalLight(0xa1c7f2, 1.08);
       moonFill.position.set(1.5, 6.5, -4.8);
       moonFill.target.position.set(0, 1.1, -1.4);
       scene.add(moonFill, moonFill.target);
 
-      const cameraFill = new THREE.PointLight(0xffd7aa, coarsePointer ? .68 : 1.20, 25, 2);
+      const cameraFill = new THREE.PointLight(0xffd7aa, coarsePointer ? .46 : .72, 25, 2);
       cameraFill.position.set(-.35, 4.95, 7.8);
       cameraFill.castShadow = false;
       scene.add(cameraFill);
@@ -378,6 +429,7 @@ export default function QuickMatchReadyRoomScene3D() {
       observer?.disconnect?.();
       if (onResize) globalThis.removeEventListener?.('resize', onResize);
       if (room) scene?.remove?.(room);
+      environmentTarget?.dispose?.();
       renderer?.dispose?.();
       disposeBoard3DObject(room);
     };
