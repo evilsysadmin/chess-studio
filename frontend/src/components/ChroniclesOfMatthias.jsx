@@ -52,6 +52,7 @@ import {
   saveChroniclesAutomapVisited,
 } from '../chronicles/chroniclesAutomap.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
+import { useChroniclesDesktopFullscreen } from '../chronicles/useChroniclesDesktopFullscreen.js';
 import ChroniclesAutomap from './ChroniclesAutomap.jsx';
 import ChroniclesMinimap from './ChroniclesMinimap.jsx';
 import ChroniclesBookOneEpilogue from './ChroniclesBookOneEpilogue.jsx';
@@ -142,6 +143,8 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const [automapVisitedByMap, setAutomapVisitedByMap] = useState({});
   const touchHoldRef = useRef({ delayId: null, repeatId: null });
 
+  useChroniclesDesktopFullscreen(true);
+
   useEffect(() => {
     selectedMemberIdRef.current = selectedMemberId;
   }, [selectedMemberId]);
@@ -185,6 +188,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   }, [onExit]);
 
   useEscapeToClose(() => {
+    if (document.fullscreenElement) return;
     if (automapOpen) {
       setAutomapOpen(false);
       return;
