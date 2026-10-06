@@ -32,16 +32,18 @@ const PENALTY_TARGET_MARGIN := 22.0
 const RED_CARD_BEHIND_THRESHOLD := -10.0
 
 const KEEPER_LINE_OFFSET := 96.0
-const KEEPER_PRESS_MAX_OFFSET := 170.0
-const KEEPER_PRESS_TRIGGER_DISTANCE := 360.0
-const KEEPER_TRACK_Y_RATIO := 0.78
-const KEEPER_SAVE_RANGE := 74.0
+const KEEPER_PRESS_MAX_OFFSET := 150.0
+const KEEPER_PRESS_TRIGGER_DISTANCE := 300.0
+const KEEPER_TRACK_Y_RATIO := 0.68
+const KEEPER_TRACK_INTENSITY := 0.64
+const KEEPER_SAVE_RANGE := 58.0
 const KEEPER_SAVE_MIN_SPEED := 280.0
-const KEEPER_SAVE_Y_MARGIN := 62.0
+const KEEPER_SAVE_Y_MARGIN := 36.0
+const KEEPER_SAVE_MAX_HEIGHT := 44.0
 const KEEPER_HOLD_SECONDS := 0.72
 
-const AI_DECISION_INTERVAL := 0.42
-const AI_SHOOT_DISTANCE := 430.0
+const AI_DECISION_INTERVAL := 0.34
+const AI_SHOOT_DISTANCE := 650.0
 const AI_PRESSURE_RADIUS := 165.0
 const AI_FORWARD_PASS_GAIN := 170.0
 const AI_DRIBBLE_LOOKAHEAD := 280.0
@@ -715,7 +717,7 @@ func _update_keeper_ai(player: Footballer, delta: float) -> void:
 		line_offset = lerpf(KEEPER_LINE_OFFSET, KEEPER_PRESS_MAX_OFFSET, clampf(pressure, 0.0, 1.0))
 
 	var target := Vector2(own_goal.x + away_from_goal.x * line_offset, wanted_y)
-	player.move_ai(delta, target, 0.78)
+	player.move_ai(delta, target, KEEPER_TRACK_INTENSITY)
 
 func _update_keeper_saves() -> void:
 	if ball.carrier != null:
@@ -741,6 +743,8 @@ func _keeper_try_save(keeper: Footballer) -> bool:
 
 	var own_goal := ChessFootballMath.goal_center(1 - keeper.team_id)
 	if absf(ball.global_position.y - own_goal.y) > ChessFootballMath.GOAL_HALF_HEIGHT + KEEPER_SAVE_Y_MARGIN:
+		return false
+	if ball.flight_height > KEEPER_SAVE_MAX_HEIGHT:
 		return false
 	if keeper.global_position.distance_to(ball.global_position) > KEEPER_SAVE_RANGE:
 		return false

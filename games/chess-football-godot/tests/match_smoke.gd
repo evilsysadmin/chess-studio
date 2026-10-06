@@ -346,10 +346,22 @@ func _initialize() -> void:
 	var keeper: Footballer = match_node.teams[0][0]
 	assert(keeper.role == "keeper")
 	keeper.global_position = Vector2(200.0, ChessFootballMath.PITCH_RECT.get_center().y)
-	match_node.ball.release(Vector2.RIGHT, 760.0)
-	match_node.ball.global_position = keeper.global_position + Vector2(48.0, 34.0)
+
+	match_node.ball.release(Vector2.LEFT, 760.0)
+	match_node.ball.global_position = keeper.global_position + Vector2(52.0, 30.0)
+	match_node.ball.flight_height = 16.0
 	assert(not match_node.debug_try_keeper_save(keeper))
+	assert(match_node.ball.carrier == null)
+
+	match_node.ball.global_position = keeper.global_position + Vector2(38.0, 20.0)
+	match_node.ball.velocity = Vector2.LEFT * 920.0
+	match_node.ball.flight_height = 48.0
+	assert(not match_node.debug_try_keeper_save(keeper))
+	assert(match_node.ball.carrier == null)
+
+	match_node.ball.global_position = keeper.global_position + Vector2(42.0, 26.0)
 	match_node.ball.velocity = Vector2.LEFT * 760.0
+	match_node.ball.flight_height = 18.0
 	assert(match_node.debug_try_keeper_save(keeper))
 	assert(match_node.ball.carrier == keeper)
 	assert(keeper.debug_keeper_hold_active())
@@ -381,11 +393,15 @@ func _initialize() -> void:
 	match_node.debug_step_ai(1.0 / 60.0)
 	assert(rival.global_position.x < rival_x_before)
 
-	rival.global_position = Vector2(ChessFootballMath.PITCH_RECT.position.x + 300.0, ChessFootballMath.PITCH_RECT.get_center().y)
+	rival.global_position = Vector2(
+		ChessFootballMath.PITCH_RECT.position.x + 590.0,
+		ChessFootballMath.PITCH_RECT.get_center().y
+	)
 	match_node.ball.attach_to(rival)
 	match_node.debug_force_ai_attack(rival)
 	assert(match_node.ball.carrier == null)
 	assert(match_node.ball.velocity.x < 0.0)
+	assert(match_node.ball.velocity.length() >= 700.0)
 	print("SMOKE_STAGE=ai")
 
 	var tap_power: float = match_node.debug_shot_power_for_ratio(0.0)
