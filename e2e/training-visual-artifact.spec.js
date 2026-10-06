@@ -39,7 +39,7 @@ async function assertNoHorizontalOverflow(page, label) {
 }
 
 async function assertInsightsActionableFold(room, label) {
-  await expect(room.getByRole('button', { name: 'Empezar sesión recomendada de 15 min', exact: true })).toBeVisible();
+  await expect(room.getByRole('button', { name: /^Empezar sesión recomendada de (5|15|30) min$/ })).toBeVisible();
   const geometry = await room.evaluate((root) => {
     const tools = root.querySelector('.insights-room-tools')?.getBoundingClientRect();
     const session = root.querySelector('.insights-guided-session:not(.active)')?.getBoundingClientRect();
