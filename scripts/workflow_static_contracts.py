@@ -123,6 +123,27 @@ def validate_main_backend_image_non_runtime_gate(root: Path = ROOT) -> None:
         raise SystemExit("el clasificador x86 debe resolver deploy y cambios backend antes de elegir runner")
     print("main backend image cost gate: OK")
 
+def validate_app_visual_product_trigger(root: Path = ROOT) -> None:
+    """Only product-owned pixel changes may wake the expensive app visual lane."""
+    workflow = (root / ".github" / "workflows" / "app-visual-artifact.yml").read_text(encoding="utf-8")
+    forbidden = (
+        "scripts/*visual*",
+        ".github/actions/app-visual-pipeline/**",
+    )
+    leaked = [token for token in forbidden if token in workflow]
+    if leaked:
+        raise SystemExit("app-visual vuelve a despertar por tooling: " + ", ".join(leaked))
+    for required in (
+        "frontend/src/**/*.jsx",
+        "frontend/src/**/*.css",
+        "frontend/public/**",
+        "e2e/*visual*.spec.js",
+    ):
+        if required not in workflow:
+            raise SystemExit("app-visual perdió trigger de producto: " + required)
+    print("app visual product trigger: OK")
+
+
 def validate_cloudflare_auth_rate_limit(root: Path = ROOT) -> None:
     """Keep the Free-tier auth burst guard tested and wired into staging delivery."""
     subprocess.run(
@@ -181,6 +202,7 @@ def validate_workflow_static_contracts(root: Path = ROOT) -> None:
     validate_main_admission_fallback(root)
     validate_staging_frontend_build_single_source(root)
     validate_main_backend_image_non_runtime_gate(root)
+    validate_app_visual_product_trigger(root)
     validate_cloudflare_auth_rate_limit(root)
     validate_resend_bootstrap_topology(root)
 
