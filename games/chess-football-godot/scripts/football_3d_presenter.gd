@@ -18,6 +18,7 @@ var player_nodes: Dictionary = {}
 var player_sprites: Dictionary = {}
 var ball_node: MeshInstance3D
 var ball_shadow: MeshInstance3D
+var penalty_aim_marker: MeshInstance3D
 var field_width: float
 var field_depth: float
 
@@ -332,6 +333,18 @@ func _build_ball() -> void:
 	ball_shadow.position.y = 0.010
 	add_child(ball_shadow)
 
+	penalty_aim_marker = MeshInstance3D.new()
+	penalty_aim_marker.name = "PenaltyAimMarker"
+	var aim_mesh := TorusMesh.new()
+	aim_mesh.inner_radius = 0.12
+	aim_mesh.outer_radius = 0.20
+	penalty_aim_marker.mesh = aim_mesh
+	penalty_aim_marker.material_override = _material(Color(1.0, 0.73, 0.16), 0.28)
+	penalty_aim_marker.position.y = 0.040
+	penalty_aim_marker.visible = false
+	penalty_aim_marker.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(penalty_aim_marker)
+
 func _build_camera() -> void:
 	camera = Camera3D.new()
 	camera.current = true
@@ -370,6 +383,9 @@ func sync_presentation(delta: float, mode: String) -> void:
 			var sprite: AnimatedSprite3D = player_sprites.get(key)
 			if proxy == null or sprite == null:
 				continue
+			proxy.visible = not player.sent_off
+			if player.sent_off:
+				continue
 			proxy.position = world_to_stage(player.global_position)
 			if player.visual != null:
 				var wanted_animation := StringName(player.visual.animation)
@@ -396,6 +412,14 @@ func sync_presentation(delta: float, mode: String) -> void:
 		ball_shadow.position = world_to_stage(match_node.ball.global_position, 0.010)
 		var shadow_scale: float = lerpf(1.0, 0.62, clampf(float(match_node.ball.flight_height) / 90.0, 0.0, 1.0))
 		ball_shadow.scale = Vector3(shadow_scale, 1.0, shadow_scale)
+
+	if penalty_aim_marker != null:
+		penalty_aim_marker.visible = match_node.penalty_preview_visible()
+		if penalty_aim_marker.visible:
+			penalty_aim_marker.position = world_to_stage(
+				match_node.penalty_preview_target(),
+				0.045,
+			)
 
 	_sync_camera(delta, mode)
 
@@ -516,6 +540,16 @@ func debug_camera_is_3d() -> bool:
 
 func debug_animated_players() -> int:
 	return player_sprites.size()
+
+func debug_visible_players() -> int:
+	var visible_count := 0
+	for proxy in player_nodes.values():
+		if proxy != null and proxy.visible:
+			visible_count += 1
+	return visible_count
+
+func debug_penalty_aim_visible() -> bool:
+	return penalty_aim_marker != null and penalty_aim_marker.visible
 
 func debug_ball_render_height() -> float:
 	return ball_node.position.y if ball_node != null else -1.0
