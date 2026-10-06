@@ -23,6 +23,12 @@ export const HOME_BLENDER_RUNTIME_LOGICAL_ID = 'home.scene.runtime';
 export const HOME_BLENDER_RUNTIME_MIN_WIDTH = HOME_CASTLE_3D_MOBILE_ENABLE_MIN_WIDTH;
 export const HOME_BLENDER_CAMERA_FOV = 22.9;
 
+export function releaseHomeBlenderWebglContext(extension) {
+  if (typeof extension?.loseContext !== 'function') return false;
+  extension.loseContext();
+  return true;
+}
+
 const CAMERA_BASE = Object.freeze({ x: 0, y: 4.85, z: 16 });
 const CAMERA_TARGET = Object.freeze({ x: 0, y: 1.55, z: -2.3 });
 
@@ -1880,7 +1886,7 @@ export default function HomeBlenderScene3D({
     const loseContext = glLoseContextRef.current;
     glLoseContextRef.current = null;
     glContextRef.current = null;
-    loseContext?.loseContext?.();
+    releaseHomeBlenderWebglContext(loseContext);
   }, []);
 
   return (
