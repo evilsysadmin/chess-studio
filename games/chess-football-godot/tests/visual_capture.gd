@@ -21,9 +21,13 @@ func _initialize() -> void:
 	var mobile_controls = match_node.get_node_or_null("MobileControls")
 	assert(mobile_controls != null)
 	mobile_controls.debug_force_controls_visible(true)
+	var joystick_origin := Vector2(135.0, 605.0)
+	assert(mobile_controls.debug_touch_down(91, joystick_origin))
+	mobile_controls.debug_touch_move(91, joystick_origin + Vector2(52.0, -18.0))
 	await process_frame
 	match_node.debug_sync_presentation()
 	await _save_capture(match_node, "kickoff-touch", "VISUAL_CAPTURE_KICKOFF_TOUCH")
+	mobile_controls.debug_touch_up(91, joystick_origin + Vector2(52.0, -18.0))
 	mobile_controls.debug_force_controls_visible(false)
 	await process_frame
 	match_node.ball.attach_to(match_node.controlled)

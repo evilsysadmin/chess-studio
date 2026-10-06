@@ -1497,6 +1497,139 @@ func penalty_preview_visible() -> bool:
 func penalty_preview_target() -> Vector2:
 	return _penalty_target(0, penalty_aim_y)
 
+func mobile_attack_goal_screen_position() -> Vector2:
+	if presentation_3d == null:
+		return Vector2(-10000.0, -10000.0)
+	return presentation_3d.attack_goal_screen_position(0)
+
+func mobile_player_screen_position(player: Footballer) -> Vector2:
+	if presentation_3d == null or player == null:
+		return Vector2(-10000.0, -10000.0)
+	return presentation_3d.screen_position_for_player(player)
+
+func mobile_touch_target(
+	screen_position: Vector2,
+	player_radius: float = 76.0,
+	goal_half_width: float = 118.0,
+	goal_half_height: float = 150.0,
+) -> Dictionary:
+	if presentation_3d == null or pause_menu_open:
+		return {}
+
+	var can_shoot := (
+		ball.carrier == controlled
+		or (
+			set_piece_active
+			and set_piece_kind == "PENALTI"
+			and set_piece_team_id == 0
+			and penalty_human_ready
+		)
+	)
+	if can_shoot:
+		var goal_position := mobile_attack_goal_screen_position()
+		if (
+			absf(screen_position.x - goal_position.x) <= goal_half_width
+			and absf(screen_position.y - goal_position.y) <= goal_half_height
+		):
+			return {"kind": "goal"}
+
+	var best_player: Footballer = null
+	var best_distance := player_radius
+	for team in teams:
+		for player in team:
+			if player.sent_off:
+				continue
+			var player_screen := mobile_player_screen_position(player)
+			var distance := screen_position.distance_to(player_screen)
+			var magnet_radius := player_radius
+			if player == ball.carrier and player.team_id == 1:
+				magnet_radius *= 1.24
+			if distance <= magnet_radius and distance < best_distance:
+				best_distance = distance
+				best_player = player
+
+	if best_player == null:
+		return {}
+	return {
+		"kind": "teammate" if best_player.team_id == 0 else "opponent",
+		"player": best_player,
+	}
+
+func mobile_activate_teammate(player: Footballer) -> bool:
+	if player == null or player.sent_off or player.team_id != 0:
+		return false
+	_cancel_shot_charge()
+	if ball.carrier == controlled and controlled != null and controlled.has_ball and player != controlled:
+		var passer := controlled
+		passer.play_action("pass", 0.72)
+		if audio_fx != null:
+			audio_fx.play_pass()
+		ball.release(player.global_position - passer.global_position, 540.0)
+		_select_player(player)
+		return true
+	_select_player(player)
+	return controlled == player
+
+func mobile_activate_opponent(player: Footballer, aggressive: bool = false) -> bool:
+	if player == null or player.sent_off or player.team_id != 1:
+		return false
+	_cancel_shot_charge()
+	var nearest := _nearest_player_to_ball(0)
+	if nearest != null and (
+		controlled == null
+		or controlled.sent_off
+		or controlled.global_position.distance_to(player.global_position)
+			> nearest.global_position.distance_to(player.global_position) + 18.0
+	):
+		_select_player(nearest)
+	if player != ball.carrier:
+		return false
+	return _try_tackle(controlled, aggressive)
+
+func mobile_begin_context_shot(aim_y: float = 0.0) -> bool:
+	var wanted_aim := clampf(aim_y, -1.0, 1.0)
+	if (
+		set_piece_active
+		and set_piece_kind == "PENALTI"
+		and set_piece_team_id == 0
+		and penalty_human_ready
+	):
+		penalty_aim_y = wanted_aim
+		_begin_shot_charge(wanted_aim)
+		return true
+	if ball.carrier != controlled or controlled == null:
+		return false
+	_begin_shot_charge(wanted_aim)
+	return true
+
+func mobile_update_context_shot(aim_y: float) -> void:
+	var wanted_aim := clampf(aim_y, -1.0, 1.0)
+	if (
+		set_piece_active
+		and set_piece_kind == "PENALTI"
+		and set_piece_team_id == 0
+		and penalty_human_ready
+	):
+		penalty_aim_y = wanted_aim
+	shot_aim_y_input = wanted_aim
+
+func mobile_release_context_shot() -> bool:
+	if not shot_charging:
+		return false
+	if (
+		set_piece_active
+		and set_piece_kind == "PENALTI"
+		and set_piece_team_id == 0
+		and penalty_human_ready
+	):
+		_release_human_penalty()
+		return true
+	_release_charged_shot()
+	return true
+
+func mobile_cancel_context_shot() -> void:
+	_cancel_shot_charge()
+
 func _check_ball_out() -> void:
 	if goal_restart_active or kickoff_active or set_piece_active or ball.carrier != null:
 		return

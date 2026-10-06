@@ -1,18 +1,26 @@
 extends CanvasLayer
 
-const JOYSTICK_RECT := Rect2(28.0, 486.0, 204.0, 204.0)
-const JOYSTICK_RADIUS := 88.0
-const JOYSTICK_KNOB_RADIUS := 34.0
-const MOBILE_HELP := "TÁCTIL · joystick mueve · SPRINT · PASE · mantén TIRO · ENTRADA · CAMBIO · MENÚ arriba"
+const JOYSTICK_SIZE := Vector2(184.0, 184.0)
+const JOYSTICK_RADIUS := 72.0
+const JOYSTICK_KNOB_RADIUS := 31.0
+const JOYSTICK_LEFT_ZONE_RATIO := 0.48
+const JOYSTICK_TOP_GUARD := 118.0
+const AUTO_SPRINT_THRESHOLD := 0.84
+const PLAYER_TOUCH_RADIUS := 76.0
+const PLAYER_TOUCH_RADIUS_LEFT_ZONE := 58.0
+const GOAL_TOUCH_HALF_WIDTH := 118.0
+const GOAL_TOUCH_HALF_HEIGHT := 150.0
+const AGGRESSIVE_TACKLE_HOLD_SECONDS := 0.34
+const SHOT_AIM_SCREEN_SPAN := 132.0
+const MOBILE_HELP := "TÁCTIL · arrastra a la izquierda para moverte · toca compañero para pase/cambio · rival para entrada · portería para tirar"
 
 var touch_root: Control
 var joystick_base: Panel
 var joystick_knob: Panel
-var action_buttons: Dictionary = {}
-var action_rects: Dictionary = {}
 var joystick_touch_index: int = -1
-var action_touches: Dictionary = {}
+var joystick_origin: Vector2 = Vector2.ZERO
 var joystick_vector: Vector2 = Vector2.ZERO
+var context_touches: Dictionary = {}
 var touch_capable: bool = false
 var debug_force_visible: bool = false
 var last_controls_active: bool = false
@@ -29,7 +37,6 @@ func _process(_delta: float) -> void:
 		var match_node = get_parent()
 		if match_node != null and match_node.help_label != null:
 			match_node.help_label.text = MOBILE_HELP
-	_sync_button_feedback()
 
 func _exit_tree() -> void:
 	_release_all_inputs()
@@ -37,11 +44,16 @@ func _exit_tree() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if touch_root == null or not touch_root.visible:
 		return
+	var handled := false
 	if event is InputEventScreenTouch:
-		_handle_touch(event.index, event.position, event.pressed)
-		get_viewport().set_input_as_handled()
-	elif event is InputEventScreenDrag and event.index == joystick_touch_index:
-		_update_joystick(event.position)
+		handled = (
+			_touch_down(event.index, event.position)
+			if event.pressed
+			else _touch_up(event.index, event.position)
+		)
+	elif event is InputEventScreenDrag:
+		handled = _touch_drag(event.index, event.position)
+	if handled:
 		get_viewport().set_input_as_handled()
 
 func _detect_touch_capability() -> bool:
@@ -63,33 +75,27 @@ func _build_touch_hud() -> void:
 	add_child(touch_root)
 
 	joystick_base = Panel.new()
-	joystick_base.name = "JoystickBase"
-	joystick_base.position = JOYSTICK_RECT.position
-	joystick_base.size = JOYSTICK_RECT.size
+	joystick_base.name = "FloatingJoystick"
+	joystick_base.size = JOYSTICK_SIZE
+	joystick_base.visible = false
 	joystick_base.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	joystick_base.add_theme_stylebox_override(
 		"panel",
-		_circle_style(Color(0.03, 0.07, 0.10, 0.42), Color(0.86, 0.76, 0.42, 0.58), 2)
+		_circle_style(Color(0.03, 0.07, 0.10, 0.34), Color(0.86, 0.76, 0.42, 0.48), 2)
 	)
 	touch_root.add_child(joystick_base)
 
 	joystick_knob = Panel.new()
-	joystick_knob.name = "JoystickKnob"
+	joystick_knob.name = "FloatingJoystickKnob"
 	var knob_size := JOYSTICK_KNOB_RADIUS * 2.0
 	joystick_knob.size = Vector2(knob_size, knob_size)
 	joystick_knob.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	joystick_knob.add_theme_stylebox_override(
 		"panel",
-		_circle_style(Color(0.89, 0.76, 0.32, 0.78), Color(1.0, 0.93, 0.68, 0.82), 2)
+		_circle_style(Color(0.89, 0.76, 0.32, 0.70), Color(1.0, 0.93, 0.68, 0.78), 2)
 	)
 	joystick_base.add_child(joystick_knob)
 	_reset_joystick_visual()
-
-	_add_action_button("sprint", "SPRINT", Rect2(910.0, 500.0, 116.0, 58.0))
-	_add_action_button("pass_ball", "PASE", Rect2(910.0, 568.0, 116.0, 58.0))
-	_add_action_button("shoot_ball", "TIRO", Rect2(1040.0, 486.0, 126.0, 66.0), true)
-	_add_action_button("tackle", "ENTRADA", Rect2(1040.0, 564.0, 126.0, 58.0))
-	_add_action_button("change_player", "CAMBIO", Rect2(965.0, 636.0, 126.0, 56.0))
 
 func _circle_style(fill: Color, border: Color, border_width: int) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
@@ -101,44 +107,6 @@ func _circle_style(fill: Color, border: Color, border_width: int) -> StyleBoxFla
 	style.corner_radius_bottom_left = 120
 	style.corner_radius_bottom_right = 120
 	return style
-
-func _button_style(fill: Color, border: Color) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = fill
-	style.border_color = border
-	style.set_border_width_all(2)
-	style.corner_radius_top_left = 14
-	style.corner_radius_top_right = 14
-	style.corner_radius_bottom_left = 14
-	style.corner_radius_bottom_right = 14
-	return style
-
-func _add_action_button(action: String, label: String, rect: Rect2, primary: bool = false) -> void:
-	var button := Button.new()
-	button.name = "Touch_" + action
-	button.text = label
-	button.position = rect.position
-	button.size = rect.size
-	button.focus_mode = Control.FOCUS_NONE
-	button.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	button.add_theme_font_size_override("font_size", 17 if not primary else 19)
-	var fill := Color(0.06, 0.09, 0.12, 0.72)
-	var border := Color(0.80, 0.72, 0.48, 0.68)
-	if primary:
-		fill = Color(0.29, 0.18, 0.03, 0.78)
-		border = Color(1.0, 0.74, 0.20, 0.92)
-	button.add_theme_stylebox_override("normal", _button_style(fill, border))
-	button.add_theme_stylebox_override(
-		"pressed",
-		_button_style(fill.lightened(0.15), border.lightened(0.06))
-	)
-	button.add_theme_stylebox_override(
-		"hover",
-		_button_style(fill.lightened(0.08), border)
-	)
-	touch_root.add_child(button)
-	action_buttons[action] = button
-	action_rects[action] = rect
 
 func _sync_visibility() -> void:
 	if touch_root == null:
@@ -153,36 +121,114 @@ func _sync_visibility() -> void:
 	touch_root.visible = should_show
 	last_controls_active = should_show
 
-func _handle_touch(index: int, position: Vector2, pressed: bool) -> void:
-	if pressed:
-		if joystick_touch_index == -1 and JOYSTICK_RECT.has_point(position):
-			joystick_touch_index = index
-			_update_joystick(position)
-			return
-		var action := _action_at(position)
-		if action != "":
-			action_touches[index] = action
-			Input.action_press(action)
-			return
-	if index == joystick_touch_index:
-		joystick_touch_index = -1
-		_apply_joystick(Vector2.ZERO)
-		return
-	if action_touches.has(index):
-		var action := String(action_touches[index])
-		action_touches.erase(index)
-		Input.action_release(action)
+func _touch_down(index: int, position: Vector2) -> bool:
+	var match_node = get_parent()
+	if match_node == null:
+		return false
 
-func _action_at(position: Vector2) -> String:
-	for action in action_rects:
-		var rect: Rect2 = action_rects[action]
-		if rect.has_point(position):
-			return String(action)
-	return ""
+	var left_zone := _in_joystick_zone(position)
+	var player_radius := PLAYER_TOUCH_RADIUS_LEFT_ZONE if left_zone else PLAYER_TOUCH_RADIUS
+	var target: Dictionary = match_node.mobile_touch_target(
+		position,
+		player_radius,
+		GOAL_TOUCH_HALF_WIDTH,
+		GOAL_TOUCH_HALF_HEIGHT,
+	)
+	if not target.is_empty():
+		var kind := String(target.get("kind", ""))
+		if kind == "goal":
+			var aim_y := _shot_aim_from_position(position)
+			if match_node.mobile_begin_context_shot(aim_y):
+				context_touches[index] = {
+					"kind": "goal",
+					"started_msec": Time.get_ticks_msec(),
+				}
+				return true
+		elif kind in ["teammate", "opponent"]:
+			context_touches[index] = {
+				"kind": kind,
+				"player": target.get("player"),
+				"started_msec": Time.get_ticks_msec(),
+			}
+			return true
+
+	if joystick_touch_index == -1 and left_zone:
+		_begin_joystick(index, position)
+		return true
+	return false
+
+func _touch_drag(index: int, position: Vector2) -> bool:
+	if index == joystick_touch_index:
+		_update_joystick(position)
+		return true
+	if not context_touches.has(index):
+		return false
+	var context: Dictionary = context_touches[index]
+	if String(context.get("kind", "")) == "goal":
+		var match_node = get_parent()
+		if match_node != null:
+			match_node.mobile_update_context_shot(_shot_aim_from_position(position))
+		return true
+	return true
+
+func _touch_up(index: int, position: Vector2) -> bool:
+	if index == joystick_touch_index:
+		_release_joystick()
+		return true
+	if not context_touches.has(index):
+		return false
+
+	var context: Dictionary = context_touches[index]
+	context_touches.erase(index)
+	var match_node = get_parent()
+	if match_node == null:
+		return true
+
+	var kind := String(context.get("kind", ""))
+	if kind == "goal":
+		match_node.mobile_update_context_shot(_shot_aim_from_position(position))
+		match_node.mobile_release_context_shot()
+		return true
+
+	var player = context.get("player")
+	if not is_instance_valid(player):
+		return true
+	if kind == "teammate":
+		match_node.mobile_activate_teammate(player)
+		return true
+	if kind == "opponent":
+		var held_seconds := (
+			float(Time.get_ticks_msec() - int(context.get("started_msec", Time.get_ticks_msec())))
+			/ 1000.0
+		)
+		match_node.mobile_activate_opponent(
+			player,
+			held_seconds >= AGGRESSIVE_TACKLE_HOLD_SECONDS,
+		)
+		return true
+	return true
+
+func _in_joystick_zone(position: Vector2) -> bool:
+	var viewport_size := get_viewport().get_visible_rect().size
+	return (
+		position.x <= viewport_size.x * JOYSTICK_LEFT_ZONE_RATIO
+		and position.y >= JOYSTICK_TOP_GUARD
+	)
+
+func _begin_joystick(index: int, position: Vector2) -> void:
+	joystick_touch_index = index
+	var viewport_size := get_viewport().get_visible_rect().size
+	var wanted := position - JOYSTICK_SIZE * 0.5
+	joystick_base.position = Vector2(
+		clampf(wanted.x, 10.0, maxf(10.0, viewport_size.x - JOYSTICK_SIZE.x - 10.0)),
+		clampf(wanted.y, 10.0, maxf(10.0, viewport_size.y - JOYSTICK_SIZE.y - 10.0)),
+	)
+	joystick_origin = joystick_base.position + JOYSTICK_SIZE * 0.5
+	joystick_base.visible = true
+	_apply_joystick(Vector2.ZERO)
 
 func _update_joystick(position: Vector2) -> void:
-	var center := JOYSTICK_RECT.get_center()
-	var offset := position - center
+	var offset := position - joystick_origin
 	if offset.length() > JOYSTICK_RADIUS:
 		offset = offset.normalized() * JOYSTICK_RADIUS
 	_apply_joystick(offset / JOYSTICK_RADIUS)
@@ -193,13 +239,16 @@ func _apply_joystick(value: Vector2) -> void:
 	_set_action_strength("move_right", maxf(0.0, joystick_vector.x))
 	_set_action_strength("move_up", maxf(0.0, -joystick_vector.y))
 	_set_action_strength("move_down", maxf(0.0, joystick_vector.y))
+	if joystick_vector.length() >= AUTO_SPRINT_THRESHOLD:
+		Input.action_press("sprint")
+	else:
+		Input.action_release("sprint")
 	if joystick_knob != null:
-		var base_center := JOYSTICK_RECT.size * 0.5
-		var knob_size := joystick_knob.size
+		var base_center := JOYSTICK_SIZE * 0.5
 		joystick_knob.position = (
 			base_center
 			+ joystick_vector * JOYSTICK_RADIUS
-			- knob_size * 0.5
+			- joystick_knob.size * 0.5
 		)
 
 func _set_action_strength(action: String, strength: float) -> void:
@@ -208,30 +257,40 @@ func _set_action_strength(action: String, strength: float) -> void:
 	else:
 		Input.action_release(action)
 
+func _release_joystick() -> void:
+	joystick_touch_index = -1
+	joystick_vector = Vector2.ZERO
+	for action in ["move_left", "move_right", "move_up", "move_down", "sprint"]:
+		Input.action_release(action)
+	_reset_joystick_visual()
+	if joystick_base != null:
+		joystick_base.visible = false
+
 func _reset_joystick_visual() -> void:
 	if joystick_knob == null:
 		return
-	var base_center := JOYSTICK_RECT.size * 0.5
+	var base_center := JOYSTICK_SIZE * 0.5
 	joystick_knob.position = base_center - joystick_knob.size * 0.5
 
-func _release_all_inputs() -> void:
-	joystick_touch_index = -1
-	action_touches.clear()
-	joystick_vector = Vector2.ZERO
-	for action in ["move_left", "move_right", "move_up", "move_down"]:
-		Input.action_release(action)
-	for action in action_buttons:
-		Input.action_release(String(action))
-	_reset_joystick_visual()
+func _shot_aim_from_position(position: Vector2) -> float:
+	var match_node = get_parent()
+	if match_node == null:
+		return 0.0
+	var goal_position: Vector2 = match_node.mobile_attack_goal_screen_position()
+	if goal_position.x < 0.0:
+		return 0.0
+	return clampf((position.y - goal_position.y) / SHOT_AIM_SCREEN_SPAN, -1.0, 1.0)
 
-func _sync_button_feedback() -> void:
-	for action in action_buttons:
-		var button: Button = action_buttons[action]
-		button.modulate = (
-			Color(1.0, 0.92, 0.70, 1.0)
-			if Input.is_action_pressed(String(action))
-			else Color.WHITE
-		)
+func _release_all_inputs() -> void:
+	if context_touches.size() > 0:
+		var match_node = get_parent()
+		if match_node != null:
+			for context in context_touches.values():
+				if String(context.get("kind", "")) == "goal":
+					match_node.mobile_cancel_context_shot()
+					break
+	context_touches.clear()
+	_release_joystick()
 
 func debug_force_controls_visible(enabled: bool) -> void:
 	debug_force_visible = enabled
@@ -240,31 +299,20 @@ func debug_force_controls_visible(enabled: bool) -> void:
 func debug_controls_visible() -> bool:
 	return touch_root != null and touch_root.visible
 
-func debug_joystick_rect() -> Rect2:
-	return JOYSTICK_RECT
+func debug_fixed_action_count() -> int:
+	return 0
 
-func debug_joystick_center() -> Vector2:
-	return JOYSTICK_RECT.get_center()
+func debug_joystick_visible() -> bool:
+	return joystick_base != null and joystick_base.visible
 
-func debug_action_names() -> Array[String]:
-	var names: Array[String] = []
-	for action in action_rects:
-		names.append(String(action))
-	names.sort()
-	return names
+func debug_joystick_origin() -> Vector2:
+	return joystick_origin
 
-func debug_action_rect(action: String) -> Rect2:
-	return action_rects.get(action, Rect2())
+func debug_touch_down(index: int, position: Vector2) -> bool:
+	return _touch_down(index, position)
 
-func debug_action_center(action: String) -> Vector2:
-	return debug_action_rect(action).get_center()
+func debug_touch_move(index: int, position: Vector2) -> bool:
+	return _touch_drag(index, position)
 
-func debug_touch_down(index: int, position: Vector2) -> void:
-	_handle_touch(index, position, true)
-
-func debug_touch_move(index: int, position: Vector2) -> void:
-	if index == joystick_touch_index:
-		_update_joystick(position)
-
-func debug_touch_up(index: int, position: Vector2) -> void:
-	_handle_touch(index, position, false)
+func debug_touch_up(index: int, position: Vector2) -> bool:
+	return _touch_up(index, position)
