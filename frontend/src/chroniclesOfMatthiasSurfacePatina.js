@@ -100,7 +100,7 @@ function wallTransform({ x, y, side }, index, center) {
 }
 
 function addWallPatches(root, faces, materials, coarsePointer, center) {
-  const budget = coarsePointer ? 4 : 9;
+  const budget = coarsePointer ? 6 : 14;
   const selected = faces.slice(0, budget);
   selected.forEach((face, index) => {
     const transform = wallTransform(face, index, center);
@@ -121,7 +121,7 @@ function addWallPatches(root, faces, materials, coarsePointer, center) {
 }
 
 function addFloorPatches(root, cells, material, coarsePointer, center) {
-  const budget = coarsePointer ? 3 : 7;
+  const budget = coarsePointer ? 5 : 10;
   const selected = cells.slice(0, budget);
   selected.forEach((cell, index) => {
     const mesh = new THREE.Mesh(
@@ -143,6 +143,52 @@ function addFloorPatches(root, cells, material, coarsePointer, center) {
   return selected.length;
 }
 
+function addDebrisClusters(root, cells, stoneMaterial, rustMaterial, coarsePointer, center) {
+  const budget = coarsePointer ? 2 : 5;
+  const selected = cells.slice(0, budget);
+  selected.forEach((cell, index) => {
+    const wx = (cell.x - center.x) * CELL;
+    const wz = (cell.y - center.y) * CELL;
+    const group = new THREE.Group();
+    group.name = `chronicles-debris-cluster-${index}`;
+
+    const pieces = coarsePointer ? 2 : 3;
+    for (let piece = 0; piece < pieces; piece += 1) {
+      const seed = index * 7 + piece;
+      const size = 0.08 + noise(seed, 53) * 0.13;
+      const shard = new THREE.Mesh(
+        new THREE.DodecahedronGeometry(size, 0),
+        piece === pieces - 1 && index % 2 ? rustMaterial : stoneMaterial,
+      );
+      shard.name = `chronicles-debris-${index}-${piece}`;
+      shard.position.set(
+        (noise(seed, 59) - 0.5) * 1.2,
+        size * 0.56,
+        (noise(seed, 61) - 0.5) * 1.1,
+      );
+      shard.rotation.set(
+        noise(seed, 67) * 1.1,
+        noise(seed, 71) * Math.PI,
+        noise(seed, 73) * 0.9,
+      );
+      shard.scale.y = 0.55 + noise(seed, 79) * 0.5;
+      shard.castShadow = !coarsePointer;
+      shard.receiveShadow = true;
+      group.add(shard);
+    }
+
+    // Keep clutter visually near the wall edges of a cell, never as gameplay
+    // collision or an invisible blocker in the walkable centre.
+    group.position.set(
+      wx + (index % 2 ? 1.22 : -1.18),
+      0.02,
+      wz + (index % 3 === 0 ? 1.05 : -0.96),
+    );
+    root.add(group);
+  });
+  return selected.length;
+}
+
 export function buildChroniclesSurfacePatina({
   coarsePointer = false,
   scenePlan = chroniclesIsometricScenePlan(),
@@ -157,21 +203,35 @@ export function buildChroniclesSurfacePatina({
     roughness: 0.34,
     clearcoat: 0.58,
     clearcoatRoughness: 0.22,
-    opacity: coarsePointer ? 0.24 : 0.36,
+    opacity: coarsePointer ? 0.32 : 0.52,
   });
   const mineral = patinaMaterial(0x9a8b72, mineralMask, {
     roughness: 0.96,
-    opacity: coarsePointer ? 0.14 : 0.23,
+    opacity: coarsePointer ? 0.2 : 0.33,
+  });
+  const soot = patinaMaterial(0x21150f, dampMask, {
+    roughness: 0.88,
+    opacity: coarsePointer ? 0.23 : 0.4,
   });
   const floor = patinaMaterial(0x211b17, floorMask, {
     roughness: 0.66,
     clearcoat: 0.16,
     clearcoatRoughness: 0.44,
-    opacity: coarsePointer ? 0.19 : 0.3,
+    opacity: coarsePointer ? 0.25 : 0.4,
+  });
+  const debrisStone = new THREE.MeshStandardMaterial({
+    color: 0x2d2923,
+    roughness: 1,
+    metalness: 0,
+  });
+  const debrisRust = new THREE.MeshStandardMaterial({
+    color: 0x4b2b1d,
+    roughness: 0.9,
+    metalness: 0.34,
   });
 
   let texturesDisposed = false;
-  [damp, mineral, floor].forEach((material) => {
+  [damp, mineral, soot, floor].forEach((material) => {
     material.addEventListener('dispose', () => {
       if (texturesDisposed) return;
       texturesDisposed = true;
@@ -185,7 +245,7 @@ export function buildChroniclesSurfacePatina({
   const wallPatchCount = addWallPatches(
     root,
     prioritizedWallFaces(scenePlan),
-    [damp, mineral],
+    [damp, mineral, soot],
     coarsePointer,
     center,
   );
@@ -196,10 +256,19 @@ export function buildChroniclesSurfacePatina({
     coarsePointer,
     center,
   );
+  const debrisClusterCount = addDebrisClusters(
+    root,
+    prioritizedFloorCells(scenePlan),
+    debrisStone,
+    debrisRust,
+    coarsePointer,
+    center,
+  );
   root.userData.chroniclesSurfacePatinaStats = {
     wallPatchCount,
     floorPatchCount,
-    materialCount: 3,
+    debrisClusterCount,
+    materialCount: 6,
   };
   return root;
 }
