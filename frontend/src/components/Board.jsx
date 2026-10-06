@@ -63,8 +63,7 @@ function board3DCanvas(root) {
 
 export default function Board(props) {
   const inheritedRenderer = useContext(BoardRendererContext);
-  const { isThreeD: preferredThreeD } = useGameBoardRenderer();
-  const isThreeD = props.forceThreeD === true || preferredThreeD;
+  const { isThreeD } = useGameBoardRenderer();
   const rootRef = useRef(null);
   const threeDHoveredSquareRef = useRef('');
   const pieces = useMemo(() => safePieces(props.fen), [props.fen]);
