@@ -370,15 +370,16 @@ function disposeScene(scene) {
   disposeObject(scene);
 }
 
-function configureRenderer(renderer, { coarsePointer, alpha = false }) {
+function configureRenderer(renderer, { coarsePointer, alpha = false, lightingProfile = 'default' }) {
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   const exposureFloor = CHRONICLES_MINIMUM_VISIBILITY.firstPerson;
+  const profileExposure = lightingProfile === 'crypt-dark' ? 0.88 : 1;
   renderer.toneMappingExposure = alpha
     ? 1.02
-    : coarsePointer
+    : (coarsePointer
       ? Math.max(1.14, exposureFloor.exposureCoarse)
-      : Math.max(1.08, exposureFloor.exposureDesktop);
+      : Math.max(1.08, exposureFloor.exposureDesktop)) * profileExposure;
   renderer.setClearColor(0x080706, alpha ? 0 : 1);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, coarsePointer ? 1.2 : 1.65));
   renderer.shadowMap.enabled = !coarsePointer;
@@ -409,8 +410,12 @@ export function createChroniclesOfMatthiasGame(host, { onReady, initialState = n
 
   const coarse = Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
   const reducedMotion = Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches);
+  const scenePlan = chroniclesFirstPersonScenePlan(initialState);
   const renderer = createExperimentalThreeRenderer({ antialias: !coarse, alpha: false, powerPreference: 'high-performance' });
-  configureRenderer(renderer, { coarsePointer: coarse });
+  configureRenderer(renderer, {
+    coarsePointer: coarse,
+    lightingProfile: scenePlan?.materials?.lightingProfile,
+  });
   host.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
@@ -421,7 +426,6 @@ export function createChroniclesOfMatthiasGame(host, { onReady, initialState = n
   scene.add(camera);
   const combatFx = createCombatFx(camera);
 
-  const scenePlan = chroniclesFirstPersonScenePlan(initialState);
   const dungeon = createDungeonScene(scene, { coarsePointer: coarse, scenePlan });
   const dressing = scenePlan?.useAuthoredCryptDressing
     ? buildChroniclesDungeonDressing({ coarsePointer: coarse })
