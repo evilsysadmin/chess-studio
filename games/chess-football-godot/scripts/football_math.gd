@@ -3,6 +3,9 @@ extends RefCounted
 
 const PITCH_RECT := Rect2(80.0, 70.0, 2040.0, 1040.0)
 const GOAL_HALF_HEIGHT := 105.0
+const PENALTY_AREA_DEPTH := 265.0
+const PENALTY_AREA_HALF_WIDTH := 215.0
+const PENALTY_SPOT_DEPTH := 175.0
 
 # Vertical simulation uses pitch-space units. With the current 3D contract
 # (WORLD_SCALE 0.014, ground ball centre 0.18, radius 0.16, 1.25 crossbar
