@@ -103,7 +103,7 @@ describe('InsightsScreen Matthias-led coaching workspace', () => {
         '5+0': { games: 5, wins: 3, draws: 0, losses: 2 },
       },
     });
-    expect(html.match(/data-player-model="7"/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(html.match(/data-player-model="7"/g)?.length).toBe(1);
     expect(html).toContain('data-puzzle-snapshot="1"');
     expect(html).toContain('data-clean-snapshot="1"');
     expect(html).not.toContain('data-dashboard-puzzle-snapshot="1"');
