@@ -53,6 +53,7 @@ import {
 } from '../chronicles/chroniclesAutomap.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import ChroniclesAutomap from './ChroniclesAutomap.jsx';
+import ChroniclesMinimap from './ChroniclesMinimap.jsx';
 import ChroniclesBookOneEpilogue from './ChroniclesBookOneEpilogue.jsx';
 import ChroniclesCharacterSetup from './ChroniclesCharacterSetup.jsx';
 import ChroniclesDefeatOverlay from './ChroniclesDefeatOverlay.jsx';
@@ -729,6 +730,16 @@ export default function ChroniclesOfMatthias({ onExit }) {
             <div ref={hostRef} className="chronicles-three" data-chronicles-renderer="three" aria-label="Mazmorra 3D en primera persona de Chronicles of Matthias" />
             <div className="chronicles-vignette" aria-hidden="true" />
             <div className="chronicles-crosshair" aria-hidden="true">·</div>
+            <ChroniclesMinimap
+              state={state}
+              visitedCells={automapVisitedByMap[state.mapId] || []}
+              hidden={automapOpen || expeditionOver}
+              onExpand={() => {
+                clearTouchHold();
+                setMenuOpen(false);
+                setAutomapOpen(true);
+              }}
+            />
             <ChroniclesNarratorOverlay message={state.message} />
             <ChroniclesPartyBark key={partyBark?.token || 'none'} bark={partyBark} />
             <ChroniclesTacticalMargin target={tacticalTarget} />
