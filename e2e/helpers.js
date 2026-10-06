@@ -588,7 +588,19 @@ export async function dismissTutorialIfVisible(page) {
 }
 
 export async function openCampaignMap(page) {
-  await buttonWithVisibleText(page, 'Combat Chess · Campaña').click();
+  const campaignEntry = buttonWithVisibleText(page, 'Combat Chess · Campaña');
+  if (await campaignEntry.isVisible().catch(() => false)) {
+    await campaignEntry.click();
+  } else {
+    // Portrait Home folds secondary modes under “Más”. Keep the shared
+    // campaign helper valid for real touch/mobile visual tests too.
+    const more = page.getByRole('button', { name: /^(Más|Más formas de jugar)$/i });
+    await expect(more).toBeVisible();
+    await more.click();
+    const portraitCombat = page.getByRole('button', { name: /Combat Chess.*campaña/i });
+    await expect(portraitCombat).toBeVisible();
+    await portraitCombat.click();
+  }
 
   // The campaign landing is deliberately simple: start first, then the
   // strategic map appears. Keep this flow centralized so UI copy changes do
