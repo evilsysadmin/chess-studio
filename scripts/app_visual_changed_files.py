@@ -513,7 +513,8 @@ def normalize(
         TOURNAMENT_FLOW_OWNER.lower() in lower_paths
         and GLOBAL_OVERLAY_OWNER.lower() in lower_paths
         and _is_nonvisual_app_decomposition_diff(_git_diff_text(base_sha, head_sha, APP_SHELL))
-    )    safe_game_start_app = (
+    )
+    safe_game_start_app = (
         GAME_START_FLOW_OWNER.lower() in lower_paths
         and _is_nonvisual_game_start_app_diff(_git_diff_text(base_sha, head_sha, APP_SHELL))
     )
