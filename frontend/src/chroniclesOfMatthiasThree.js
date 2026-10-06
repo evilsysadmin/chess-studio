@@ -5,6 +5,7 @@ import {
   chroniclesEnemyPosition,
 } from './chroniclesOfMatthias.js';
 import { chroniclesFirstPersonScenePlan } from './chronicles/chroniclesFirstPersonScenePlan.js';
+import { chroniclesContentVisualStates } from './chronicles/chroniclesContentVisualState.js';
 import { CHRONICLES_MINIMUM_VISIBILITY } from './chronicles/chroniclesLightingPolicy.js';
 import { buildChroniclesDungeonDressing } from './chroniclesOfMatthiasDungeonArt.js';
 import { buildChroniclesDungeonAtmosphere } from './chroniclesOfMatthiasAtmosphere.js';
@@ -248,6 +249,61 @@ function createDungeonScene(scene, { coarsePointer = false, scenePlan = null } =
     gateRunes.push(gateRune);
   });
 
+
+  const contentProps = [];
+  const contentMaterial = new THREE.MeshStandardMaterial({
+    color: 0x8b6a35,
+    roughness: 0.58,
+    metalness: 0.52,
+  });
+  const pickupMaterial = new THREE.MeshStandardMaterial({
+    color: 0xd7aa54,
+    roughness: 0.28,
+    metalness: 0.18,
+    emissive: 0x7a3e0d,
+    emissiveIntensity: 1.35,
+  });
+
+  (scenePlan?.content || []).forEach((entry, index) => {
+    if (!entry?.position || !['lever', 'pickup'].includes(entry.kind)) return;
+    const cell = worldForCell(entry.position.x, entry.position.y, sceneCenter);
+    const root = new THREE.Group();
+    root.name = `chronicles-first-person-${entry.kind}-${entry.id}`;
+    root.userData.chroniclesContentId = entry.id;
+    root.position.set(cell.x, 0, cell.z);
+
+    if (entry.kind === 'lever') {
+      const base = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.24, 0.48), contentMaterial);
+      base.position.set(0, 0.12, 0);
+      base.castShadow = !coarsePointer;
+      base.receiveShadow = true;
+      const pivot = new THREE.Group();
+      pivot.position.set(0, 0.28, 0);
+      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.065, 0.86, 10), contentMaterial);
+      stem.position.y = 0.4;
+      stem.castShadow = !coarsePointer;
+      const knob = new THREE.Mesh(new THREE.SphereGeometry(0.13, 12, 10), contentMaterial);
+      knob.position.y = 0.84;
+      knob.castShadow = !coarsePointer;
+      pivot.add(stem, knob);
+      root.add(base, pivot);
+      contentProps.push({ id: entry.id, kind: entry.kind, root, pivot, phase: index * 1.17 });
+    } else {
+      const cradle = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.055, 8, coarsePointer ? 16 : 24), contentMaterial);
+      cradle.rotation.x = -Math.PI / 2;
+      cradle.position.y = 0.16;
+      const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.27, 0), pickupMaterial);
+      core.position.y = 0.58;
+      core.castShadow = !coarsePointer;
+      const glow = new THREE.PointLight(0xe49b39, coarsePointer ? 0.72 : 1.05, 4.2, 2);
+      glow.position.y = 0.58;
+      root.add(cradle, core, glow);
+      contentProps.push({ id: entry.id, kind: entry.kind, root, core, glow, phase: index * 1.17 });
+    }
+    root.visible = Boolean(entry.visible);
+    scene.add(root);
+  });
+
   const torchMaterial = new THREE.MeshStandardMaterial({ color: 0x3b2618, roughness: 0.7, metalness: 0.45 });
   const flameMaterial = new THREE.MeshStandardMaterial({ color: 0xff9b35, roughness: 0.42, emissive: 0xff5414, emissiveIntensity: 2.8 });
   const flameCoreMaterial = new THREE.MeshBasicMaterial({
@@ -353,6 +409,7 @@ function createDungeonScene(scene, { coarsePointer = false, scenePlan = null } =
     gateMaterial,
     gateRunes,
     torches,
+    contentProps,
     sceneCenter,
     materialArt,
   };
@@ -519,6 +576,16 @@ export function createChroniclesOfMatthiasGame(host, { onReady, initialState = n
       gateRune.material.emissive.setHex(state.sigilAwake ? 0xcc6a16 : 0x241300);
       gateRune.material.emissiveIntensity = state.sigilAwake ? 2.2 : 0.25;
     });
+    const contentVisualById = new Map(
+      chroniclesContentVisualStates(state).map((entry) => [entry.id, entry]),
+    );
+    dungeon.contentProps.forEach((prop) => {
+      const visual = contentVisualById.get(prop.id);
+      prop.root.visible = Boolean(visual?.visible);
+      if (prop.kind === 'lever' && prop.pivot) {
+        prop.pivot.rotation.z = visual?.activated ? -0.86 : 0.48;
+      }
+    });
     (dressing.userData.chroniclesRuneMaterials || []).forEach((runeMaterial) => {
       runeMaterial.emissive.setHex(state.sigilAwake ? 0x9d410b : 0x4b1d05);
       runeMaterial.emissiveIntensity = state.sigilAwake ? 1.35 : 0.55;
@@ -573,6 +640,14 @@ export function createChroniclesOfMatthiasGame(host, { onReady, initialState = n
         );
         torch.flameCore.position.y = 0.18 + Math.sin(time * 9.4 + torch.phase) * 0.008;
       });
+
+      dungeon.contentProps.forEach((prop) => {
+        if (!prop.root.visible || prop.kind !== 'pickup' || !prop.core) return;
+        prop.core.rotation.y = time * 0.75 + prop.phase;
+        prop.core.position.y = 0.58 + Math.sin(time * 2.2 + prop.phase) * 0.06;
+        if (prop.glow) prop.glow.intensity = (coarse ? 0.72 : 1.05) * (0.9 + Math.sin(time * 2.4 + prop.phase) * 0.1);
+      });
+
       dungeon.enemyDefinitions.forEach((enemyDefinition, index) => {
         const enemy = dungeon.enemies[enemyDefinition.id];
         if (!enemy) return;
