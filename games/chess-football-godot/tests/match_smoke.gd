@@ -266,6 +266,48 @@ func _initialize() -> void:
 	match_node.debug_force_set_piece_ready()
 	assert(not match_node.debug_set_piece_active())
 
+	# Shift+E contract: an aggressive slide reaches farther than the normal
+	# tackle, but a non-clean hit is automatically a foul.
+	tackler._process(2.0)
+	tackler.global_position = Vector2(760.0, 720.0)
+	tackler.velocity = Vector2.RIGHT * tackler.base_speed
+	victim.global_position = Vector2(842.0, 720.0)
+	match_node.ball.attach_to(victim)
+	var normal_long_hitbox: Dictionary = match_node.debug_tackle_hitbox(tackler, victim.global_position)
+	assert(not bool(normal_long_hitbox["contact"]))
+	assert(match_node.debug_try_tackle(tackler, true))
+	assert(tackler.debug_tackle_aggressive())
+	assert(match_node.debug_set_piece_active())
+	assert(match_node.debug_set_piece_kind() == "FALTA")
+	match_node.debug_force_set_piece_ready()
+	assert(not match_node.debug_set_piece_active())
+
+	# A foul inside the defending penalty area becomes a penalty at the fixed
+	# spot, not an arbitrary free kick from the collision coordinates.
+	var penalty_tackler: Footballer = match_node.teams[1][1]
+	var penalty_victim: Footballer = match_node.teams[0][4]
+	var penalty_goal := ChessFootballMath.goal_center(0)
+	var foul_point := Vector2(penalty_goal.x - 120.0, penalty_goal.y)
+	assert(match_node.debug_penalty_area_contains(0, foul_point))
+	penalty_tackler._process(2.0)
+	penalty_tackler.global_position = foul_point + Vector2(20.0, 0.0)
+	penalty_tackler.velocity = Vector2.RIGHT * penalty_tackler.base_speed
+	penalty_victim.global_position = foul_point
+	match_node.ball.attach_to(penalty_victim)
+	assert(match_node.debug_try_tackle(penalty_tackler))
+	assert(match_node.debug_set_piece_active())
+	assert(match_node.debug_set_piece_kind() == "PENALTI")
+	assert(match_node.debug_set_piece_team() == 0)
+	assert(
+		match_node.debug_set_piece_spot().distance_to(
+			match_node.debug_penalty_spot(0)
+		) < 0.01
+	)
+	match_node.debug_force_set_piece_ready()
+	assert(not match_node.debug_set_piece_active())
+	assert(match_node.ball.carrier == null)
+	assert(match_node.ball.velocity.x > 0.0)
+
 	var keeper: Footballer = match_node.teams[0][0]
 	assert(keeper.role == "keeper")
 	keeper.global_position = Vector2(200.0, ChessFootballMath.PITCH_RECT.get_center().y)
