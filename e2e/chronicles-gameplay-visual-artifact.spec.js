@@ -129,6 +129,7 @@ async function captureChroniclesHealth(page) {
       authoredPortraitCount: document.querySelectorAll('[data-chronicles-party-renderer="authored"]').length,
       gameRoot: rect('[data-chronicles="true"]'),
       gameMenu: rect('summary[aria-label="Abrir menú de Chronicles"]'),
+      automapButton: rect('button[aria-label="Abrir automapa"]'),
       stage: rect('.chronicles-stage'),
       gameCanvas: rect('[data-chronicles-renderer="three"] canvas'),
       authoredPortrait: rect('[data-chronicles-party-renderer="authored"]'),
@@ -206,6 +207,8 @@ for (const capture of CAPTURES) {
       expect(health.gameRoot?.height || 0, `${capture.label}: fullscreen root height`).toBeGreaterThanOrEqual(capture.height - 2);
       expect(health.gameMenu?.width || 0, `${capture.label}: in-game menu visible`).toBeGreaterThan(0);
       expect(health.gameMenu?.height || 0, `${capture.label}: in-game menu height`).toBeGreaterThanOrEqual(30);
+      expect(health.automapButton?.width || 0, `${capture.label}: automap button visible`).toBeGreaterThan(0);
+      expect(health.automapButton?.height || 0, `${capture.label}: automap button height`).toBeGreaterThanOrEqual(capture.hasTouch ? 44 : 30);
       expect(health.stage?.width || 0, `${capture.label}: Chronicles stage visible`).toBeGreaterThan(0);
       expect(health.gameCanvas?.width || 0, `${capture.label}: Chronicles dungeon canvas visible`).toBeGreaterThan(0);
       expect(health.gameCanvas?.height || 0, `${capture.label}: Chronicles dungeon canvas height`).toBeGreaterThan(0);
@@ -226,6 +229,14 @@ for (const capture of CAPTURES) {
       }
 
       await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-playing-${capture.label}.png`);
+
+      await page.keyboard.press('m');
+      const automap = page.getByRole('dialog', { name: 'Automapa de Chronicles', exact: true });
+      await expect(automap).toBeVisible();
+      await expect(automap.locator('[data-chronicles-map-facing]')).toHaveCount(1);
+      await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-automap-${capture.label}.png`);
+      await page.keyboard.press('m');
+      await expect(automap).toHaveCount(0);
 
       await page.keyboard.press('Escape');
       expect(
