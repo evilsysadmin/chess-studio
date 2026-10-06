@@ -19,6 +19,8 @@ MATTHIAS_BLEND = "frontend/art-source/matthias-home-canonical.blend"
 CHRONICLES_PARTY_MODEL = "frontend/public/models/chronicles-tactics-party.glb"
 CHRONICLES_PARTY_BUILDER = "scripts/blender/build_chronicles_tactics_party.py"
 PAWN_SLUG_OWNER = "frontend/src/components/PawnSlugGodotHost.jsx"
+CHESS_FOOTBALL_OWNER = "frontend/src/components/ChessFootballGodotHost.jsx"
+CHESS_FOOTBALL_GAME_ROOT = "games/chess-football-godot/"
 PAWN_SLUG_POW_MODEL = "frontend/public/models/pawn-slug/pawn_slug_pow_squad_v1.glb"
 PAWN_SLUG_POW_BLEND = "art/blender/pawn-slug/pawn_slug_pow_squad_v1.blend"
 PAWN_SLUG_POW_BUILDER = "scripts/blender/build_pawn_slug_pows.py"
@@ -179,6 +181,11 @@ def normalize(
         # visual suite. Visual/health E2E files remain explicit owners.
         if lower.startswith("e2e/") and not _is_app_visual_e2e(path):
             continue
+        if lower.startswith(CHESS_FOOTBALL_GAME_ROOT):
+            # Godot owns its own parse/smoke/PNG evidence. App visual only needs
+            # the experiments host surface, never Home/Training/War Room.
+            add(CHESS_FOOTBALL_OWNER)
+            continue
         if _is_matthias_canonical_owner(path):
             # Canonical Home Matthias changes are validated by the dedicated
             # Home Matthias visual producer. Chronicles owns its authored avatar
@@ -252,6 +259,11 @@ def self_test() -> None:
         "frontend/src/chroniclesTacticsTurnMode.js",
     ]) == ["frontend/src/chroniclesTacticsTurnMode.js"]
     assert normalize(["e2e/regression-journeys.spec.js"]) == []
+    assert normalize([
+        "games/chess-football-godot/scripts/match.gd",
+        "games/chess-football-godot/scripts/football_3d_presenter.gd",
+        "games/chess-football-godot/tests/match_smoke.gd",
+    ]) == [CHESS_FOOTBALL_OWNER]
 
     # Visual artifacts and browser-health specs are explicit workflow owners and
     # therefore must survive normalization unchanged.
