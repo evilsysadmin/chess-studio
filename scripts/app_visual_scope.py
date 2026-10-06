@@ -311,6 +311,10 @@ def _surface_groups(path: str) -> set[str] | None:
             return {"experiments"}
         if name == "training-visual-artifact.spec.js":
             return {"training"}
+        if name == "chess-football.spec.js":
+            # Behaviour/lifecycle coverage only. The Godot workflow owns the
+            # runtime pixels; this spec must not wake unrelated app visuals.
+            return set()
         if name.startswith("war-room-") and "visual" in name:
             return {"warroom"}
         return None
@@ -342,7 +346,10 @@ def _surface_groups(path: str) -> set[str] | None:
         return {"home"}
 
     groups: set[str] = set()
-    if any(token in lower for token in ("experiment", "pawnslug", "pawn-slug", "chronicles", "trailblazer", "arcade")):
+    if any(token in lower for token in (
+        "experiment", "pawnslug", "pawn-slug", "chronicles", "trailblazer", "arcade",
+        "chessfootball", "chess-football",
+    )):
         groups.add("experiments")
     if any(token in lower for token in (
         "training", "tutorial", "glossary", "school", "mechanic-library", "openingsscreen",
@@ -387,6 +394,8 @@ def _experiment_parts(path: str) -> set[str]:
     if "pawnslug" in lower or "pawn-slug" in lower:
         return {"pawnslug"}
     if "trailblazer" in lower or "arcade" in lower:
+        return {"landing"}
+    if "chessfootball" in lower or "chess-football" in lower:
         return {"landing"}
     if lower == "frontend/src/components/labscreen.jsx":
         return {"landing", "pawnslug"}
@@ -693,6 +702,12 @@ def self_test() -> None:
 
     pawn = classify(["frontend/src/components/PawnSlugGodotHost.jsx"])
     assert pawn.capture_groups == "experiments" and pawn.experiments_scope == "pawnslug"
+    football = classify([
+        "frontend/src/components/ChessFootballGodotHost.jsx",
+        "e2e/chess-football.spec.js",
+    ])
+    assert football.capture_groups == "experiments"
+    assert football.experiments_scope == "landing"
     lab_visual = classify([
         "frontend/src/components/LabScreen.jsx",
         "frontend/src/labLaunchIntent.js",
