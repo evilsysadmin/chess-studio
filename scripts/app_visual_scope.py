@@ -31,6 +31,8 @@ NONVISUAL_FRONTEND_PATHS = {
     "frontend/src/useglobalshellui.js",
     "frontend/src/usetournamentflow.js",
     "frontend/src/usegamestartflow.js",
+    "frontend/src/uselogoutflow.js",
+    "frontend/src/usepublicfeatureflags.js",
     "frontend/src/userreleasenotes.js",
     "frontend/src/soundfx.js",
 }
@@ -738,6 +740,8 @@ def self_test() -> None:
     assert global_shell.capture_groups == "none"
     assert classify(["frontend/src/useTournamentFlow.js"]).capture_groups == "none"
     assert classify(["frontend/src/useGameStartFlow.js"]).capture_groups == "none"
+    assert classify(["frontend/src/useLogoutFlow.js"]).capture_groups == "none"
+    assert classify(["frontend/src/usePublicFeatureFlags.js"]).capture_groups == "none"
     assert classify(["frontend/src/components/GlobalOverlayLayer.jsx"]).capture_groups == "home"
     assert not global_shell.hans and not global_shell.chesscom
     release_notes_router = classify(["frontend/src/userReleaseNotes.js"])
