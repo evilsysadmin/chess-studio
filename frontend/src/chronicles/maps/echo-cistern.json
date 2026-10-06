@@ -236,7 +236,8 @@
           "body": "El mecanismo occidental queda abierto por la fuerza tras despejar a su guardián.",
           "sigil": "W"
         }
-      }
+      },
+      "wallSide": "east"
     },
     {
       "id": "west-sluice-oil",
@@ -282,7 +283,8 @@
           "body": "El Aceite de Campanero permite abrir la compuerta oeste sin derrotar a su guardián.",
           "sigil": "⚙"
         }
-      }
+      },
+      "wallSide": "west"
     },
     {
       "id": "east-sluice-wheel",
