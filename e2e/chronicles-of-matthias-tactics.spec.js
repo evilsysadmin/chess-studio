@@ -112,6 +112,7 @@ test('Chronicles Tactics · arranca como RPG táctico isométrico · locomoción
   await expect(rendererHost).toHaveAttribute('data-chronicles-party-motion', 'walking');
   await page.keyboard.up('ArrowUp');
   await expect(narrator).toContainText(/La compañía avanza hacia norte/i);
+  await expect(rendererHost).toHaveAttribute('data-chronicles-party-motion', 'idle');
 
   const releasedCell = await mode.evaluate((node) => ({
     x: node.getAttribute('data-party-x'),
