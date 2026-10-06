@@ -303,10 +303,13 @@ def _surface_groups(path: str) -> set[str] | None:
         # Visual orchestration owns no product surface. Its classifier self-tests
         # prove routing; product captures are selected only by product owners.
         return set()
-    if lower == "scripts/war_room_visual_freeze_check.mjs":
-        return {"warroom"}
+    if lower in {
+        "scripts/war_room_visual_freeze_check.mjs",
+        "scripts/hans_visual_artifact_summary.mjs",
+    }:
+        return set()
     if lower.startswith("scripts/app_visual_"):
-        return None
+        return set()
     if lower.startswith("e2e/"):
         if name in {"pvp-lobby-visual-artifact.spec.js", "pvp-handoff-visual-artifact.spec.js"}:
             return {"home"}
@@ -445,6 +448,11 @@ HANS_ROUTINE_SHARED_OWNERS = {
 def _needs_hans_routines(path: str) -> bool:
     """Deep Hans videos are reserved for Hans choreography/event ownership."""
     lower = path.lower().replace("\\", "/")
+    if lower.startswith("scripts/app_visual_") or lower in {
+        "scripts/hans_visual_artifact_summary.mjs",
+        "scripts/war_room_visual_freeze_check.mjs",
+    }:
+        return False
     if "hans" in lower:
         return True
     return lower in HANS_ROUTINE_SHARED_OWNERS
@@ -999,7 +1007,9 @@ def self_test() -> None:
     assert producer_scope.capture_groups == "none"
     assert not producer_scope.hans and not producer_scope.chesscom
     assert classify(["scripts/app_visual_capture.sh"]) == Scope(())
-    assert classify(["scripts/app_visual_summary.mjs"]) == full_scope()
+    assert classify(["scripts/app_visual_summary.mjs"]) == Scope(())
+    assert classify(["scripts/war_room_visual_freeze_check.mjs"]) == Scope(())
+    assert classify(["scripts/hans_visual_artifact_summary.mjs"]) == Scope(())
     global_css = classify(["frontend/src/App.css"])
     assert global_css.capture_groups == ",".join(GROUP_ORDER)
     assert global_css.experiments_scope == ",".join(EXPERIMENT_ORDER)

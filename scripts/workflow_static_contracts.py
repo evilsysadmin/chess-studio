@@ -141,7 +141,13 @@ def validate_app_visual_product_trigger(root: Path = ROOT) -> None:
     ):
         if required not in workflow:
             raise SystemExit("app-visual perdió trigger de producto: " + required)
-    print("app visual product trigger: OK")
+    for script in (
+        "scripts/app_visual_scope.py",
+        "scripts/app_visual_producer_scope.py",
+        "scripts/app_visual_changed_files.py",
+    ):
+        subprocess.run([sys.executable, "-S", script, "--self-test"], cwd=root, check=True)
+    print("app visual product trigger + tooling ownership: OK")
 
 
 def validate_cloudflare_auth_rate_limit(root: Path = ROOT) -> None:
