@@ -8,6 +8,24 @@ export const QUICK_MATCH_READY_ROOM_CAMERA = Object.freeze({
   target: Object.freeze([0, 1.5, -1.7]),
 });
 
+const READY_ROOM_BACK_RANK = Object.freeze([
+  'rook',
+  'knight',
+  'bishop',
+  'queen',
+  'king',
+  'bishop',
+  'knight',
+  'rook',
+]);
+
+export const QUICK_MATCH_READY_ROOM_STARTING_POSITION = Object.freeze([
+  ...READY_ROOM_BACK_RANK.map((type, file) => Object.freeze({ color: 'black', type, file, rank: 0 })),
+  ...Array.from({ length: 8 }, (_, file) => Object.freeze({ color: 'black', type: 'pawn', file, rank: 1 })),
+  ...Array.from({ length: 8 }, (_, file) => Object.freeze({ color: 'white', type: 'pawn', file, rank: 6 })),
+  ...READY_ROOM_BACK_RANK.map((type, file) => Object.freeze({ color: 'white', type, file, rank: 7 })),
+]);
+
 function mat(color, metalness = 0.04, roughness = 0.8, extra = {}) {
   return new THREE.MeshStandardMaterial({ color, metalness, roughness, ...extra });
 }
@@ -22,13 +40,14 @@ function box(root, size, material, position, name = '') {
   return mesh;
 }
 
-function addBoard(root, lightSquare, darkSquare, trim) {
+function addBoard(root, lightSquare, darkSquare, wood, brass) {
   const board = new THREE.Group();
   board.name = 'quick-match-ready-board';
 
-  box(board, [6.7, .22, 6.7], trim, [0, 0, 0], 'board-frame');
+  box(board, [6.92, .24, 6.92], wood, [0, 0, 0], 'board-frame');
+  box(board, [6.48, .10, 6.48], brass, [0, .13, 0], 'board-brass-inlay');
 
-  const squareGeo = new THREE.BoxGeometry(.76, .09, .76);
+  const squareGeo = new THREE.BoxGeometry(.76, .11, .76);
   const light = new THREE.InstancedMesh(squareGeo, lightSquare, 32);
   const dark = new THREE.InstancedMesh(squareGeo, darkSquare, 32);
   const matrix = new THREE.Matrix4();
@@ -37,7 +56,7 @@ function addBoard(root, lightSquare, darkSquare, trim) {
 
   for (let rank = 0; rank < 8; rank += 1) {
     for (let file = 0; file < 8; file += 1) {
-      matrix.makeTranslation((file - 3.5) * .76, .14, (rank - 3.5) * .76);
+      matrix.makeTranslation((file - 3.5) * .76, .20, (rank - 3.5) * .76);
       const target = (rank + file) % 2 === 0 ? light : dark;
       target.setMatrixAt(target === light ? lightIndex++ : darkIndex++, matrix);
     }
@@ -48,31 +67,214 @@ function addBoard(root, lightSquare, darkSquare, trim) {
   light.receiveShadow = true;
   dark.receiveShadow = true;
   board.add(light, dark);
-  board.position.set(-.55, 1.36, -1.45);
   root.add(board);
   return board;
 }
 
-function addPawn(root, x, z, material, scale = 1) {
-  const pawn = new THREE.Group();
-  pawn.name = 'ready-room-piece';
-  const base = new THREE.Mesh(new THREE.CylinderGeometry(.22 * scale, .31 * scale, .14 * scale, 18), material);
-  base.position.y = .07 * scale;
-  const body = new THREE.Mesh(new THREE.CylinderGeometry(.13 * scale, .21 * scale, .34 * scale, 18), material);
-  body.position.y = .29 * scale;
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(.12 * scale, .14 * scale, .10 * scale, 18), material);
-  neck.position.y = .50 * scale;
-  const head = new THREE.Mesh(new THREE.SphereGeometry(.17 * scale, 18, 12), material);
-  head.position.y = .69 * scale;
-  pawn.add(base, body, neck, head);
-  pawn.position.set(x, 1.53, z);
-  pawn.traverse((node) => {
-    if (node.isMesh) {
-      node.castShadow = true;
-      node.receiveShadow = true;
-    }
-  });
-  root.add(pawn);
+function addPieceMesh(group, geometry, material, position, name, rotation = null) {
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.position.set(...position);
+  if (rotation) mesh.rotation.set(...rotation);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.name = name;
+  group.add(mesh);
+  return mesh;
+}
+
+function addLathe(group, points, material, segments, name) {
+  const geometry = new THREE.LatheGeometry(
+    points.map(([radius, y]) => new THREE.Vector2(radius, y)),
+    segments,
+  );
+  return addPieceMesh(group, geometry, material, [0, 0, 0], name);
+}
+
+function addPawnShape(group, material, segments) {
+  addLathe(group, [
+    [.24, 0], [.29, .04], [.27, .11], [.19, .16],
+    [.16, .29], [.11, .43], [.15, .49],
+  ], material, segments, 'piece-pawn-body');
+  addPieceMesh(
+    group,
+    new THREE.SphereGeometry(.16, segments, Math.max(8, Math.round(segments * .7))),
+    material,
+    [0, .63, 0],
+    'piece-pawn-head',
+  );
+}
+
+function addRookShape(group, material, segments) {
+  addLathe(group, [
+    [.27, 0], [.31, .04], [.28, .12], [.20, .17],
+    [.16, .44], [.19, .58], [.26, .63],
+  ], material, segments, 'piece-rook-body');
+  addPieceMesh(
+    group,
+    new THREE.CylinderGeometry(.27, .27, .16, segments),
+    material,
+    [0, .72, 0],
+    'piece-rook-crown',
+  );
+  for (const [x, z] of [[-.17, -.17], [.17, -.17], [-.17, .17], [.17, .17]]) {
+    addPieceMesh(
+      group,
+      new THREE.BoxGeometry(.11, .12, .11),
+      material,
+      [x, .83, z],
+      'piece-rook-battlement',
+    );
+  }
+}
+
+function addKnightShape(group, material, segments) {
+  addLathe(group, [
+    [.27, 0], [.31, .04], [.28, .12], [.20, .18],
+    [.16, .34], [.15, .47],
+  ], material, segments, 'piece-knight-base');
+  addPieceMesh(
+    group,
+    new THREE.BoxGeometry(.24, .42, .20),
+    material,
+    [0, .66, -.03],
+    'piece-knight-neck',
+    [-.24, 0, 0],
+  );
+  addPieceMesh(
+    group,
+    new THREE.ConeGeometry(.19, .34, 4),
+    material,
+    [0, .88, -.11],
+    'piece-knight-head',
+    [-.50, Math.PI / 4, 0],
+  );
+  addPieceMesh(
+    group,
+    new THREE.BoxGeometry(.18, .11, .22),
+    material,
+    [0, .84, -.26],
+    'piece-knight-muzzle',
+    [-.18, 0, 0],
+  );
+}
+
+function addBishopShape(group, material, segments) {
+  addLathe(group, [
+    [.27, 0], [.31, .04], [.28, .12], [.20, .18],
+    [.15, .38], [.12, .58], [.18, .65],
+  ], material, segments, 'piece-bishop-body');
+  const head = addPieceMesh(
+    group,
+    new THREE.SphereGeometry(.15, segments, Math.max(8, Math.round(segments * .7))),
+    material,
+    [0, .80, 0],
+    'piece-bishop-head',
+  );
+  head.scale.set(.82, 1.28, .82);
+  addPieceMesh(
+    group,
+    new THREE.ConeGeometry(.07, .18, segments),
+    material,
+    [0, .99, 0],
+    'piece-bishop-tip',
+  );
+}
+
+function addQueenShape(group, material, segments) {
+  addLathe(group, [
+    [.29, 0], [.32, .04], [.29, .13], [.21, .19],
+    [.15, .43], [.13, .62], [.21, .72], [.24, .78],
+  ], material, segments, 'piece-queen-body');
+  const crown = addPieceMesh(
+    group,
+    new THREE.TorusGeometry(.19, .045, Math.max(6, Math.round(segments * .5)), segments),
+    material,
+    [0, .84, 0],
+    'piece-queen-crown',
+    [Math.PI / 2, 0, 0],
+  );
+  crown.castShadow = true;
+  addPieceMesh(
+    group,
+    new THREE.SphereGeometry(.085, segments, Math.max(8, Math.round(segments * .7))),
+    material,
+    [0, .98, 0],
+    'piece-queen-finial',
+  );
+}
+
+function addKingShape(group, material, segments) {
+  addLathe(group, [
+    [.29, 0], [.32, .04], [.29, .13], [.21, .19],
+    [.15, .45], [.13, .65], [.20, .75],
+  ], material, segments, 'piece-king-body');
+  addPieceMesh(
+    group,
+    new THREE.SphereGeometry(.10, segments, Math.max(8, Math.round(segments * .7))),
+    material,
+    [0, .88, 0],
+    'piece-king-finial',
+  );
+  addPieceMesh(
+    group,
+    new THREE.BoxGeometry(.075, .28, .075),
+    material,
+    [0, 1.06, 0],
+    'piece-king-cross-vertical',
+  );
+  addPieceMesh(
+    group,
+    new THREE.BoxGeometry(.25, .07, .075),
+    material,
+    [0, 1.08, 0],
+    'piece-king-cross-horizontal',
+  );
+}
+
+function addChessPiece(board, descriptor, material, segments) {
+  const piece = new THREE.Group();
+  piece.name = `ready-room-piece-${descriptor.color}-${descriptor.type}-${descriptor.file}-${descriptor.rank}`;
+
+  switch (descriptor.type) {
+    case 'rook':
+      addRookShape(piece, material, segments);
+      break;
+    case 'knight':
+      addKnightShape(piece, material, segments);
+      break;
+    case 'bishop':
+      addBishopShape(piece, material, segments);
+      break;
+    case 'queen':
+      addQueenShape(piece, material, segments);
+      break;
+    case 'king':
+      addKingShape(piece, material, segments);
+      break;
+    default:
+      addPawnShape(piece, material, segments);
+      break;
+  }
+
+  piece.position.set(
+    (descriptor.file - 3.5) * .76,
+    .26,
+    (descriptor.rank - 3.5) * .76,
+  );
+  if (descriptor.color === 'black') piece.rotation.y = Math.PI;
+  board.add(piece);
+}
+
+function addStartingPosition(board, ivory, ebony, { lite = false } = {}) {
+  const segments = lite ? 10 : 18;
+  for (const descriptor of QUICK_MATCH_READY_ROOM_STARTING_POSITION) {
+    addChessPiece(
+      board,
+      descriptor,
+      descriptor.color === 'white' ? ivory : ebony,
+      segments,
+    );
+  }
 }
 
 function addChair(root, wood, leather, brass) {
@@ -104,56 +306,84 @@ function addSconce(root, x, brass, glow) {
   root.add(sconce);
 }
 
-function addClock(root, brass, dark) {
+function addClock(root, brass, dark, faceMaterial, handMaterial) {
   const clock = new THREE.Group();
   clock.name = 'quick-match-ready-clock';
-  box(clock, [2.15, .72, .64], dark, [0, .36, 0], 'clock-body');
-  for (const x of [-.57, .57]) {
-    const face = new THREE.Mesh(new THREE.CylinderGeometry(.24, .24, .045, 28), brass);
+  box(clock, [2.10, .76, .68], dark, [0, .38, 0], 'clock-body');
+  box(clock, [1.98, .06, .72], brass, [0, .73, 0], 'clock-top-trim');
+  for (const [index, x] of [-.57, .57].entries()) {
+    const ring = new THREE.Mesh(new THREE.CylinderGeometry(.25, .25, .05, 28), brass);
+    ring.rotation.x = Math.PI / 2;
+    ring.position.set(x, .39, .35);
+    ring.name = 'clock-ring';
+    clock.add(ring);
+
+    const face = new THREE.Mesh(new THREE.CylinderGeometry(.205, .205, .055, 28), faceMaterial);
     face.rotation.x = Math.PI / 2;
-    face.position.set(x, .39, .34);
+    face.position.set(x, .39, .382);
     face.name = 'clock-face';
     clock.add(face);
+
+    const hand = box(clock, [.025, .19, .025], handMaterial, [x, .45, .42], 'clock-hand');
+    hand.rotation.z = index === 0 ? -.55 : .38;
+    box(clock, [.045, .045, .03], handMaterial, [x, .39, .43], 'clock-pin');
   }
-  box(clock, [.48, .10, .32], brass, [-.57, .78, 0], 'clock-button-left');
-  box(clock, [.48, .10, .32], brass, [.57, .78, 0], 'clock-button-right');
-  clock.position.set(4.25, 1.42, -1.15);
+  box(clock, [.48, .10, .34], brass, [-.57, .82, 0], 'clock-button-left');
+  box(clock, [.48, .10, .34], brass, [.57, .82, 0], 'clock-button-right');
+  clock.position.set(4.45, 1.43, -1.20);
   root.add(clock);
 }
 
 function addWindow(root, stone, brass, night, moon) {
   const windowGroup = new THREE.Group();
   windowGroup.name = 'quick-match-ready-window';
-  box(windowGroup, [5.2, 3.9, .12], night, [0, 3.25, 0], 'window-night');
-  box(windowGroup, [.22, 4.15, .3], stone, [-2.7, 3.25, .04], 'window-jamb-left');
-  box(windowGroup, [.22, 4.15, .3], stone, [2.7, 3.25, .04], 'window-jamb-right');
-  box(windowGroup, [5.6, .22, .3], stone, [0, 1.14, .04], 'window-sill');
-  box(windowGroup, [.10, 3.9, .22], brass, [0, 3.25, .12], 'window-mullion');
+  box(windowGroup, [5.6, 4.3, .12], night, [0, 3.30, 0], 'window-night');
+  box(windowGroup, [.24, 4.5, .3], stone, [-2.92, 3.30, .04], 'window-jamb-left');
+  box(windowGroup, [.24, 4.5, .3], stone, [2.92, 3.30, .04], 'window-jamb-right');
+  box(windowGroup, [6.05, .24, .3], stone, [0, 1.05, .04], 'window-sill');
+  for (const x of [-.96, .96]) {
+    box(windowGroup, [.08, 4.15, .18], brass, [x, 3.30, .12], 'window-mullion-vertical');
+  }
+  for (const y of [2.65, 3.95]) {
+    box(windowGroup, [5.45, .08, .18], brass, [0, y, .12], 'window-mullion-horizontal');
+  }
 
-  const moonMesh = new THREE.Mesh(new THREE.SphereGeometry(.36, 24, 16), moon);
-  moonMesh.position.set(1.55, 4.55, .2);
+  const moonMesh = new THREE.Mesh(new THREE.SphereGeometry(.40, 24, 16), moon);
+  moonMesh.position.set(1.45, 4.65, .2);
   windowGroup.add(moonMesh);
 
   windowGroup.position.set(0, .05, -6.23);
   root.add(windowGroup);
 }
 
+function addBanner(root, x, leather, brass) {
+  const banner = new THREE.Group();
+  banner.name = 'quick-match-ready-banner';
+  box(banner, [1.55, 2.25, .09], leather, [0, 0, 0], 'banner-cloth');
+  box(banner, [1.72, .10, .13], brass, [0, 1.15, .04], 'banner-top');
+  box(banner, [.11, 1.45, .10], brass, [0, .08, .08], 'banner-mark');
+  banner.position.set(x, 4.52, -6.02);
+  root.add(banner);
+}
+
 function buildRoom({ lite = false } = {}) {
   const root = new THREE.Group();
   root.name = 'quick-match-ready-room';
 
-  const stone = mat(0x45403a, .03, .86);
-  const stoneEdge = mat(0x71685d, .04, .78);
-  const wood = mat(0x70472c, .06, .58);
-  const woodDark = mat(0x382116, .04, .72);
-  const brass = mat(0xc8a15c, .70, .27);
-  const leather = mat(0x572a25, .08, .62);
-  const ivory = mat(0xe2d6b7, .03, .56);
-  const ebony = mat(0x1c1a19, .16, .44);
-  const lightSquare = mat(0xd3c7aa, .04, .66);
-  const darkSquare = mat(0x4b4034, .05, .62);
-  const night = new THREE.MeshBasicMaterial({ color: 0x0d2b4a });
-  const moon = new THREE.MeshBasicMaterial({ color: 0xddeafa });
+  const stone = mat(0x3d3936, .03, .90);
+  const stoneEdge = mat(0x665d54, .05, .78);
+  const wood = mat(0x4e2b19, .08, .46);
+  const woodDark = mat(0x28140d, .08, .58);
+  const brass = mat(0xb98542, .74, .25);
+  const leather = mat(0x571d1b, .10, .50);
+  const ivory = mat(0xe9dfca, .06, .42);
+  const ebony = mat(0x101010, .26, .31);
+  const lightSquare = mat(0xd7d0c4, .06, .45);
+  const darkSquare = mat(0x36383b, .10, .38);
+  const clockFace = mat(0xd8c9a9, .02, .62);
+  const clockHand = mat(0x251a12, .26, .34);
+  const night = new THREE.MeshBasicMaterial({ color: 0x0b2d50 });
+  const moon = new THREE.MeshBasicMaterial({ color: 0xe7f1ff });
   const sconceGlow = new THREE.MeshStandardMaterial({
     color: 0xffc987,
     emissive: 0xff7f2f,
@@ -176,36 +406,26 @@ function buildRoom({ lite = false } = {}) {
     box(root, [2.76, 1.92, .08], leather, [x, 1.8, -6.04], 'wall-panel-inset');
   }
   box(root, [17.0, .08, .12], brass, [0, 3.02, -6.02], 'room-brass-rail');
+  addBanner(root, -6.30, leather, brass);
+  addBanner(root, 6.30, leather, brass);
 
   addWindow(root, stoneEdge, brass, night, moon);
-  addSconce(root, -5.55, brass, sconceGlow);
-  addSconce(root, 5.55, brass, sconceGlow);
+  addSconce(root, -5.15, brass, sconceGlow);
+  addSconce(root, 5.15, brass, sconceGlow);
 
-  const table = box(root, [10.7, .62, 5.1], wood, [0, 1.02, -1.15], 'table-top');
-  table.rotation.x = -.025;
-  box(root, [9.6, .38, 4.25], woodDark, [0, .68, -1.18], 'table-apron');
-  for (const x of [-4.55, 4.55]) {
-    for (const z of [-2.5, .2]) box(root, [.46, 1.75, .46], woodDark, [x, .05, z], 'table-leg');
+  const table = box(root, [11.65, .66, 7.25], wood, [0, .98, -1.12], 'table-top');
+  table.rotation.x = -.018;
+  box(root, [10.55, .40, 6.32], woodDark, [0, .62, -1.16], 'table-apron');
+  box(root, [10.55, .055, 6.18], leather, [0, 1.335, -1.10], 'table-leather-inlay');
+  for (const x of [-4.95, 4.95]) {
+    for (const z of [-3.18, .82]) box(root, [.52, 1.72, .52], woodDark, [x, .02, z], 'table-leg');
   }
 
-  const board = addBoard(root, lightSquare, darkSquare, brass);
-  board.position.set(-.25, 1.42, -1.28);
-  addClock(root, brass, ebony);
+  const board = addBoard(root, lightSquare, darkSquare, woodDark, brass);
+  board.position.set(-.30, 1.39, -1.30);
+  addStartingPosition(board, ivory, ebony, { lite });
+  addClock(root, brass, ebony, clockFace, clockHand);
   addChair(root, woodDark, leather, brass);
-
-  if (!lite) {
-    for (let file = 0; file < 8; file += 1) {
-      const x = -.55 + (file - 3.5) * .76;
-      addPawn(root, x, -1.45 + 2.28, ivory, .72);
-      addPawn(root, x, -1.45 - 2.28, ebony, .72);
-    }
-  } else {
-    for (const file of [1, 3, 4, 6]) {
-      const x = -.55 + (file - 3.5) * .76;
-      addPawn(root, x, -1.45 + 2.28, ivory, .72);
-      addPawn(root, x, -1.45 - 2.28, ebony, .72);
-    }
-  }
 
   const rug = new THREE.Mesh(
     new THREE.PlaneGeometry(10.4, 7.2),
@@ -262,7 +482,7 @@ export default function QuickMatchReadyRoomScene3D() {
       });
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 2.12;
+      renderer.toneMappingExposure = 2.06;
       renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio || 1, coarsePointer ? 1 : 1.35));
       renderer.shadowMap.enabled = !coarsePointer;
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
