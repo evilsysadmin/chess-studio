@@ -172,8 +172,10 @@ def main() -> int:
         ("generation.current_main()", "prepare owns stale-main probe"),
         ("Staging superseded", "prepare owns stale supersede diagnostic"),
         ('values["admitted"] = "true"', "prepare owns admitted generation state"),
-        ("pawn_scope.decide(head)", "prepare owns Pawn Slug evidence scope"),
+        ("values.update(optional_scope.decide(head))", "prepare owns shared optional staging scope"),
         ('"pawn_slug_visual_required": "false"', "prepare defaults Pawn Slug evidence off before admission"),
+        ('"resend_bootstrap_required": "false"', "prepare defaults Resend recovery off before admission"),
+        ('"continuity_required": "false"', "prepare defaults continuity off before admission"),
     ):
         require(staging_deploy_prepare, needle, label, errors)
 
@@ -268,8 +270,6 @@ def main() -> int:
         "render_staging_bootstrap.py",
         "Resolve legacy Render service id read-only",
         "render_service_id:",
-        "actions: write",
-        "GH_TOKEN:",
         "/actions/runs/$GITHUB_RUN_ID/cancel",
         "while :; do",
         "Wait for OCI infrastructure mutations to quiesce",
@@ -281,6 +281,22 @@ def main() -> int:
         "Legacy contract phrase",
     ):
         forbid(staging_deploy, needle, "staging generation conserva dependencia/orchestration legado prohibido", errors)
+
+    try:
+        staging_summary = staging_deploy.split("\n  summary:\n", 1)[1]
+    except IndexError:
+        errors.append("staging perdió el summary owner de follow-ups")
+        staging_summary = ""
+    for needle, label in (
+        ("actions: write", "summary scoped dispatch permission"),
+        ("GH_TOKEN: ${{ github.token }}", "summary scoped GitHub token"),
+        ("gh workflow run oci-resend-bootstrap.yml", "summary Resend dispatch"),
+        ("gh workflow run staging-deploy-continuity.yml", "summary continuity dispatch"),
+    ):
+        require(staging_summary, needle, label, errors)
+    pre_summary = staging_deploy.split("\n  summary:\n", 1)[0]
+    for needle in ("actions: write", "GH_TOKEN:"):
+        forbid(pre_summary, needle, "staging jobs previos al summary no deben despachar workflows", errors)
 
     # Run Command owns its bounded readiness wait; orchestration does not poll it.
     for needle, label in (
