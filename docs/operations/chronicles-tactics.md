@@ -150,13 +150,26 @@ El mismo asset/contrato debe mantenerse coherente entre tarjeta grande, thumbnai
 - cambios visuales tienen PNG desktop/móvil cuando procede;
 - Matthias conserva avatar/identidad canónica.
 
+
+## Interacción first-person authored
+
+Chronicles first-person usa un lenguaje de interacción frontal inspirado en dungeon crawlers clásicos:
+
+- Las coordenadas authored de `interactables` y `treasures` siguen representando la **casilla desde la que el grupo interactúa**; no cambian saves, checkpoints ni topología.
+- Palancas, botones, placas, lore, sockets y puertas secretas se montan visualmente sobre una pared adyacente de esa casilla. Si el JSON declara `wallSide`, debe apuntar a una pared real; si no, el runtime elige determinísticamente una pared cardinal adyacente.
+- En first-person, un fixture de pared sólo ofrece `USAR/RECOGER` cuando el grupo está en su casilla authored **y mira hacia esa pared**. Tactics/isométrico conserva la interacción por casilla y no hereda esta restricción de facing.
+- Pickups con pared adyacente se presentan como hornacina/relicario mural. Pickups sin pared válida usan pedestal exento desplazado del centro de cámara; nunca comparten físicamente el punto de vista del jugador.
+- Posición lógica y posición visual están separadas: mover el prop dentro de su celda para hacerlo legible no cambia colisión, requisitos, flags, inventario ni checkpoint.
+- La evidencia visual debe demostrar al menos un fixture mural desde la propia casilla de interacción, no sólo el cambio de flag tras pulsar el CTA.
+
 ## Automap y ownership de viewport
 
 Chronicles first-person es una superficie **viewport-owned**: durante la expedición no existe un modo windowed interno.
 
 - El root de Chronicles ocupa siempre el viewport completo con layout propio (`100vw` + `100dvh`) en desktop, móvil vertical y móvil apaisado.
-- Chronicles **no** usa la Fullscreen API nativa del navegador. `document.fullscreenElement` debe permanecer vacío; así `Escape` pertenece al runtime y abre/cierra UI contextual en vez de sacar al navegador de fullscreen.
-- `Escape` cierra primero el automap si está abierto. Sólo cuando no hay automap abierto alterna el menú de Chronicles.
+- En **desktop**, Chronicles solicita la Fullscreen API nativa y mantiene la expedición en fullscreen. Si el navegador exige activación del usuario y rechaza la petición inicial, el runtime queda armado y vuelve a solicitar fullscreen en el siguiente gesto válido. Si el usuario sale de fullscreen mientras sigue dentro de Chronicles, la reentrada se rearma para el siguiente gesto.
+- En **móvil/touch**, Chronicles sigue siendo viewport-owned sin Fullscreen API nativa para no pelear con barras del sistema, orientación ni gestos del navegador.
+- En desktop con fullscreen nativo activo, `Escape` pertenece primero al navegador y puede sacar temporalmente de fullscreen; el runtime no debe abrir simultáneamente el menú. El botón diegético `MENÚ` sigue siendo la vía estable. En móvil, `Escape` conserva el contrato de cerrar primero automap y después alternar menú.
 - El automap es un overlay diegético de la expedición, accesible con `M` y con un control táctil/desktop visible. Mientras está abierto, los controles de locomoción/combate no actúan por debajo.
 - La posición y orientación del marcador del grupo derivan exclusivamente de `state.x`, `state.y` y `state.direction`; el automap no mantiene una segunda posición ni una segunda lógica de facing.
 - El grupo se representa como una flecha/chevron orientada con la dirección canónica N/E/S/O. Girar el grupo rota inmediatamente ese marcador.
@@ -169,7 +182,7 @@ Acceptance adicional:
 - marcador único del grupo y facing coherente tras giros;
 - abrir automap no cambia posición, turnos ni combate;
 - `Escape` desde automap no abre simultáneamente el menú;
-- Chronicles continúa cubriendo el viewport completo con automap abierto o cerrado y nunca entra en browser-native fullscreen.
+- Chronicles continúa cubriendo el viewport completo con automap abierto o cerrado; desktop entra en browser-native fullscreen y móvil/touch permanece fuera de la Fullscreen API.
 
 ## Initiative combat contract
 
