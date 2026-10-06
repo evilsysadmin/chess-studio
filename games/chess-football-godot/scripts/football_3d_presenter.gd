@@ -594,7 +594,12 @@ func _sync_camera(delta: float, mode: String) -> void:
 	var t := _camera_smoothing_factor(CAMERA_LERP_SPEED, delta)
 	camera.position = camera.position.lerp(wanted_position, t)
 	camera.fov = lerpf(camera.fov, wanted_fov, t)
-	camera.look_at(wanted_look, Vector3.UP)
+	var look_target := wanted_look
+	if mode == "broadcast":
+		# Follow the already-smoothed camera body instead of snapping the yaw
+		# toward the raw destination while position is still catching up.
+		look_target = Vector3(camera.position.x, 0.0, -0.85)
+	camera.look_at(look_target, Vector3.UP)
 
 func debug_camera_smoothed_focus_x() -> float:
 	return smoothed_focus_x
