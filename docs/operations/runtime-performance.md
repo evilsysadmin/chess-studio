@@ -26,6 +26,7 @@ No fijar un número universal para todas las superficies: cada baseline debe com
 Antes de atribuir una regresión al producto, comprobar qué renderer está usando el browser.
 
 - SwiftShader/software rasterizer invalida conclusiones sobre rendimiento GPU real si el objetivo es hardware acelerado.
+- Superficies 3D estáticas cuyo primer frame es caro en CPU pueden servir en software una imagen pre-renderizada de la misma escena. La sala de «Así juegas» usa `InsightsTrainingRoomStage.js` como fuente compartida: hardware WebGL dibuja la estancia en vivo y software WebGL muestra `assets/insights/training-room-still.webp` (estado `static`). El still se regenera con `node scripts/render_insights_training_room_still.mjs` y `make training-room-still-check` falla si la escena cambia sin regenerarlo.
 - La ruta software sigue siendo útil para compatibilidad, pero se reporta separadamente.
 - En local con GPU disponible, usar Chromium/renderer realmente acelerado de extremo a extremo.
 

@@ -273,6 +273,8 @@ def classify_path(path: str) -> set[str] | None:
         "scripts/app_visual_scope.py",
         "scripts/app_visual_producer_scope.py",
         "scripts/app_visual_capture.sh",
+        "scripts/insights_training_room_still_check.mjs",
+        "scripts/render_insights_training_room_still.mjs",
     }:
         return set()
     if lower == "scripts/war_room_visual_freeze_check.mjs":
@@ -681,6 +683,8 @@ def self_test() -> None:
     assert classify(["scripts/app_visual_producer_scope.py"]) == "none"
     assert classify(["scripts/app_visual_changed_files.py"]) == "none"
     assert classify(["scripts/app_visual_capture.sh"]) == "none"
+    assert classify(["scripts/insights_training_room_still_check.mjs"]) == "none"
+    assert classify(["scripts/render_insights_training_room_still.mjs"]) == "none"
     assert classify(["e2e/training-visual-artifact.spec.js"]) == "training-school,training-openings,training-puzzles,training-tournament,training-progress,training-daily"
     assert classify([
         "e2e/training-visual-artifact.spec.js",

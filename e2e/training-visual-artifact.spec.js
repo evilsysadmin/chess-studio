@@ -427,7 +427,8 @@ scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page })
   await expect(trainingRoom).toBeVisible();
   await expect(trainingRoom.locator('[data-insights-training-room-3d]')).toHaveAttribute(
     'data-insights-training-room-3d',
-    'ready',
+    // Hardware WebGL draws the room live; software WebGL (CI) shows its accredited still.
+    /^(ready|static)$/,
     { timeout: 20_000 },
   );
   await assertInsightsActionableFold(trainingRoom, 'insights-desktop');

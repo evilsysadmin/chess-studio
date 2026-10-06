@@ -854,14 +854,12 @@ export async function openSpectator(page) {
 }
 
 
-// Así juegas mounts a static WebGL study behind its controls. On the software
-// rasteriser CI uses (SwiftShader) its first frame keeps the GPU process — and
-// with it every frame of the page — busy for ~10 s, longer than a click's
-// actionability budget. Wait for that one frame to land before interacting;
-// on real GPUs this resolves within a couple of frames.
+// Así juegas mounts a static study behind its controls. Hardware WebGL draws
+// the live room; software renderers (SwiftShader/llvmpipe) switch to the
+// accredited still. Wait for either settled path before interacting.
 export async function waitForTrainingRoomSettled(page) {
   const room = page.locator('[data-insights-training-room-3d]');
-  await expect(room).toHaveAttribute('data-insights-training-room-3d', /^(ready|fallback.*)$/, { timeout: 30_000 });
+  await expect(room).toHaveAttribute('data-insights-training-room-3d', /^(ready|static|fallback.*)$/, { timeout: 30_000 });
   await page.evaluate(() => new Promise((resolve) => {
     requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
   }));
