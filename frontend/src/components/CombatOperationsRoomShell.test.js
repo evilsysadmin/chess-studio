@@ -56,4 +56,27 @@ describe('Combat Operations Room runtime variant', () => {
     expect(root.userData.combatOperationsPracticalLights).toBe(0);
     expect(root.getObjectByName('COMBAT_ANCHOR_map_fill').children).toHaveLength(0);
   });
+
+  it('does not darken the Operations Room on coarse-pointer/mobile devices', () => {
+    const root = new THREE.Group();
+    root.userData = {};
+    for (const name of [
+      'COMBAT_ANCHOR_board_fill',
+      'COMBAT_ANCHOR_map_fill',
+      'COMBAT_ANCHOR_barracks_fill',
+      'COMBAT_ANCHOR_memorial_fill',
+      'COMBAT_ANCHOR_quartermaster',
+    ]) {
+      const anchor = new THREE.Object3D();
+      anchor.name = name;
+      root.add(anchor);
+    }
+
+    const dispose = installCombatOperationsRoomPracticalLights(root, { coarsePointer: true });
+    expect(root.getObjectByName('COMBAT_ANCHOR_board_fill').children[0].intensity).toBeGreaterThanOrEqual(0.62);
+    expect(root.getObjectByName('COMBAT_ANCHOR_map_fill').children[0].intensity).toBeGreaterThanOrEqual(1.12);
+    expect(root.getObjectByName('COMBAT_ANCHOR_barracks_fill').children[0].intensity).toBeGreaterThanOrEqual(1.08);
+    expect(root.getObjectByName('COMBAT_ANCHOR_memorial_fill').children[0].intensity).toBeGreaterThanOrEqual(0.92);
+    dispose();
+  });
 });
