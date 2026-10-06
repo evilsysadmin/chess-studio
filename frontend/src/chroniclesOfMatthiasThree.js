@@ -16,7 +16,14 @@ import { createExperimentalThreeRenderer } from './experimentalThreeRenderer.js'
 const CELL = 4;
 const CAMERA_Y = 1.62;
 const TORCH_WALL_OFFSET = 1.9;
+const EXIT_GATE_WALL_OFFSET = 1.45;
 const DEFAULT_SCENE_CENTER = Object.freeze({ x: 3, y: 3 });
+const EXIT_GATE_SIDES = Object.freeze([
+  Object.freeze({ side: 'north', dx: 0, dy: -1, yaw: 0 }),
+  Object.freeze({ side: 'east', dx: 1, dy: 0, yaw: -Math.PI / 2 }),
+  Object.freeze({ side: 'south', dx: 0, dy: 1, yaw: Math.PI }),
+  Object.freeze({ side: 'west', dx: -1, dy: 0, yaw: Math.PI / 2 }),
+]);
 const ATTACK_FX = Object.freeze({
   matthias: Object.freeze({ color: 0xd5aa62, angle: -0.18, width: 0.9, ring: 0.78 }),
   rook: Object.freeze({ color: 0xc96a3e, angle: 0.04, width: 1.3, ring: 1.18 }),
@@ -52,6 +59,32 @@ export function chroniclesEnemyFacingYaw(enemyCell, partyCell) {
   const dy = Number(partyCell?.y) - Number(enemyCell?.y);
   if (!Number.isFinite(dx) || !Number.isFinite(dy) || (dx === 0 && dy === 0)) return 0;
   return Math.atan2(dx, dy);
+}
+
+export function chroniclesExitGateTransform(grid, entry, center = DEFAULT_SCENE_CENTER) {
+  const x = Number(entry?.position?.x ?? entry?.x);
+  const y = Number(entry?.position?.y ?? entry?.y);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+
+  const cell = worldForCell(x, y, center);
+  const wallSide = EXIT_GATE_SIDES.find(({ dx, dy }) => grid?.[y + dy]?.[x + dx] === '#') || null;
+  if (!wallSide) {
+    return {
+      position: new THREE.Vector3(cell.x, 0, cell.z),
+      yaw: 0,
+      side: null,
+    };
+  }
+
+  return {
+    position: new THREE.Vector3(
+      cell.x + wallSide.dx * EXIT_GATE_WALL_OFFSET,
+      0,
+      cell.z + wallSide.dy * EXIT_GATE_WALL_OFFSET,
+    ),
+    yaw: wallSide.yaw,
+    side: wallSide.side,
+  };
 }
 
 export function chroniclesTorchTransform(x, y, side, center = DEFAULT_SCENE_CENTER) {
@@ -166,18 +199,42 @@ function createDungeonScene(scene, { coarsePointer = false, scenePlan = null } =
   scene.add(spectralChapel);
 
   const gateMaterial = new THREE.MeshStandardMaterial({ color: 0x171513, roughness: 0.66, metalness: 0.72, emissive: 0x120700, emissiveIntensity: 0.15 });
-  const gate = new THREE.Group();
-  const gateCell = worldForCell(3, 1, sceneCenter);
-  const gatePanel = new THREE.Mesh(new THREE.BoxGeometry(2.6, 3.05, 0.28), gateMaterial);
-  gatePanel.position.y = 1.48;
-  gatePanel.castShadow = true;
-  gatePanel.receiveShadow = true;
-  const gateRune = new THREE.Mesh(new THREE.TorusGeometry(0.54, 0.09, 8, 24), sigilMaterial.clone());
-  gateRune.position.set(0, 1.55, -0.17);
-  gate.add(gatePanel, gateRune);
-  gate.position.set(gateCell.x, 0, gateCell.z - 1.45);
-  gate.visible = Boolean(scenePlan?.useAuthoredCryptDressing);
-  scene.add(gate);
+  const gateRunes = [];
+  const exitDefinitions = (scenePlan?.content || []).filter((entry) => (
+    entry?.kind === 'exit'
+    && entry?.visible !== false
+    && entry?.position
+  ));
+  exitDefinitions.forEach((exitDefinition) => {
+    const transform = chroniclesExitGateTransform(grid, exitDefinition, sceneCenter);
+    if (!transform) return;
+
+    const gate = new THREE.Group();
+    gate.name = `chronicles-first-person-exit-${exitDefinition.id}`;
+    gate.userData.chroniclesContentId = exitDefinition.id;
+
+    const gatePanel = new THREE.Mesh(new THREE.BoxGeometry(2.6, 3.05, 0.28), gateMaterial);
+    gatePanel.position.y = 1.48;
+    gatePanel.castShadow = true;
+    gatePanel.receiveShadow = true;
+
+    const gateRune = new THREE.Mesh(new THREE.TorusGeometry(0.54, 0.09, 8, 24), sigilMaterial.clone());
+    gateRune.position.set(0, 1.55, 0.17);
+    gateRune.name = `chronicles-first-person-exit-rune-${exitDefinition.id}`;
+
+    const leftPost = new THREE.Mesh(new THREE.BoxGeometry(0.16, 3.2, 0.36), sigilMaterial);
+    leftPost.position.set(-1.36, 1.52, 0);
+    const rightPost = leftPost.clone();
+    rightPost.position.x = 1.36;
+    const lintel = new THREE.Mesh(new THREE.BoxGeometry(2.88, 0.16, 0.36), sigilMaterial);
+    lintel.position.set(0, 3.06, 0);
+
+    gate.add(gatePanel, gateRune, leftPost, rightPost, lintel);
+    gate.position.copy(transform.position);
+    gate.rotation.y = transform.yaw;
+    scene.add(gate);
+    gateRunes.push(gateRune);
+  });
 
   const torchMaterial = new THREE.MeshStandardMaterial({ color: 0x3b2618, roughness: 0.7, metalness: 0.45 });
   const flameMaterial = new THREE.MeshStandardMaterial({ color: 0xff9b35, roughness: 0.42, emissive: 0xff5414, emissiveIntensity: 2.8 });
@@ -282,7 +339,7 @@ function createDungeonScene(scene, { coarsePointer = false, scenePlan = null } =
     spectralChapel,
     sigilMaterial,
     gateMaterial,
-    gateRune,
+    gateRunes,
     torches,
     sceneCenter,
     materialArt,
@@ -442,8 +499,10 @@ export function createChroniclesOfMatthiasGame(host, { onReady, initialState = n
     dungeon.sigilMaterial.emissiveIntensity = state.sigilAwake ? 1.8 : 0.3;
     dungeon.gateMaterial.emissive.setHex(state.sigilAwake ? 0x4e2705 : 0x120700);
     dungeon.gateMaterial.emissiveIntensity = state.sigilAwake ? 0.9 : 0.15;
-    dungeon.gateRune.material.emissive.setHex(state.sigilAwake ? 0xcc6a16 : 0x241300);
-    dungeon.gateRune.material.emissiveIntensity = state.sigilAwake ? 2.2 : 0.25;
+    dungeon.gateRunes.forEach((gateRune) => {
+      gateRune.material.emissive.setHex(state.sigilAwake ? 0xcc6a16 : 0x241300);
+      gateRune.material.emissiveIntensity = state.sigilAwake ? 2.2 : 0.25;
+    });
     (dressing.userData.chroniclesRuneMaterials || []).forEach((runeMaterial) => {
       runeMaterial.emissive.setHex(state.sigilAwake ? 0x9d410b : 0x4b1d05);
       runeMaterial.emissiveIntensity = state.sigilAwake ? 1.35 : 0.55;
