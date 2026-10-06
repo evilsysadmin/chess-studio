@@ -30,6 +30,7 @@ NONVISUAL_FRONTEND_PATHS = {
     "frontend/src/uselearningjourneyflow.js",
     "frontend/src/useglobalshellui.js",
     "frontend/src/usetournamentflow.js",
+    "frontend/src/usegamestartflow.js",
     "frontend/src/userreleasenotes.js",
     "frontend/src/soundfx.js",
 }
@@ -212,6 +213,7 @@ def _surface_groups(path: str) -> set[str] | None:
         "scripts/browser_quality_scope.py",
         "scripts/chess_rules_gate.mjs",
         "scripts/quality_scope.py",
+        "scripts/state_resilience_check.mjs",
         "scripts/run_core_e2e_lane.py",
         "scripts/workflow_debt_gate.py",
     }:
@@ -735,6 +737,7 @@ def self_test() -> None:
     global_shell = classify(["frontend/src/useGlobalShellUi.js"])
     assert global_shell.capture_groups == "none"
     assert classify(["frontend/src/useTournamentFlow.js"]).capture_groups == "none"
+    assert classify(["frontend/src/useGameStartFlow.js"]).capture_groups == "none"
     assert classify(["frontend/src/components/GlobalOverlayLayer.jsx"]).capture_groups == "home"
     assert not global_shell.hans and not global_shell.chesscom
     release_notes_router = classify(["frontend/src/userReleaseNotes.js"])

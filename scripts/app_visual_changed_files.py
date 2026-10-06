@@ -33,6 +33,7 @@ LEARNING_JOURNEY_OWNER = "frontend/src/useLearningJourneyFlow.js"
 GLOBAL_SHELL_OWNER = "frontend/src/useGlobalShellUi.js"
 TOURNAMENT_FLOW_OWNER = "frontend/src/useTournamentFlow.js"
 GLOBAL_OVERLAY_OWNER = "frontend/src/components/GlobalOverlayLayer.jsx"
+GAME_START_FLOW_OWNER = "frontend/src/useGameStartFlow.js"
 
 # Exact App.jsx lines touched by the non-visual learning-journey ownership
 # extraction. This is intentionally exact and fail-closed: formatting changes,
@@ -129,6 +130,139 @@ NONVISUAL_APP_DECOMPOSITION_LINES = {
     "{showGlobalReleaseNotes && <React.Suspense fallback={null}><UserReleaseNotesModal onClose={closeReleaseNotes} onAction={(to) => { closeReleaseNotes(); openReleaseNoteTarget(to, { navigateTo, openInsights }); }} /></React.Suspense>}",
     "{showGlobalFeedback && <FeedbackModal context={view === 'menu' ? 'Home' : `Global · ${view}`} onClose={closeGlobalFeedback} />}",
     "tournamentLevel={levelForPoints(tournament.progressPoints || 0)}", "tournamentLevel={tournamentLevel}",
+}
+
+NONVISUAL_GAME_START_APP_LINES = {
+    "import { handicapForGap } from './handicap.js';",
+    "import { timeControlById } from './clock.js';",
+    "import { loadRivalry, recordRivalryResult, reconcileRivalryHistory } from './rivalry.js';",
+    "import { recordRivalryResult, reconcileRivalryHistory } from './rivalry.js';",
+    "import { createSeries, loadActiveSeries, saveActiveSeries, clearActiveSeries, recordSeriesGame } from './series.js';",
+    "import { attachSeriesGame } from './seriesFlow.js';",
+    "import { loadActiveSeries, clearActiveSeries, recordSeriesGame } from './series.js';",
+    "import { chooseContract, clearActiveContract, loadActiveContract, loadSpecialRun, recordCareerGame, recordSpecialRunResult, reconcileCareerHistory, saveActiveContract, saveSpecialRun, startSpecialRun } from './career.js';",
+    "import { clearActiveContract, loadActiveContract, loadSpecialRun, recordCareerGame, recordSpecialRunResult, reconcileCareerHistory } from './career.js';",
+    "import { userFacingError } from './userFacingError.js';",
+    "import { isAbortError } from './asyncControl.js';",
+    "import { useGameStartFlow } from './useGameStartFlow.js';",
+    "const {",
+    "startGame: handleNewGame,",
+    "nextSeriesGame: handleNextSeriesGame,",
+    "playFromHere: handlePlayFromHere,",
+    "startRun: handleStartRun,",
+    "continueRun: handleContinueRun,",
+    "} = useGameStartFlow({",
+    "launch: gameLaunch,",
+    "navigate: navigateTo,",
+    "loading: setLoading,",
+    "error: setError,",
+    "rating,",
+    "currentGame: game,",
+    "currentSeries: activeSeries,",
+    "currentRun: specialRun,",
+    "gameCount: statisticalHistoryRecords(historyList).length,",
+    "setGame,",
+    "saved: setHasSavedGame,",
+    "learning: setLearningMode,",
+    "timeControl: setActiveTimeControl,",
+    "context: setGameContext,",
+    "contract: setActiveContract,",
+    "series: setActiveSeries,",
+    "run: setSpecialRun,",
+    "resetResult: () => { setExitNotice(null); setCasualResult(null); },",
+    "});",
+    "async function handleNewGame(difficulty, color, opts) {",
+    "const launch = gameLaunch.begin();",
+    "if (!launch) return false;",
+    "setExitNotice(null);",
+    "setCasualResult(null);",
+    "setLoading(true);",
+    "setError(null);",
+    "try {",
+    "const handicap = handicapForGap(rating.rating, difficulty);",
+    "const operationId = gameLaunch.operationId(launch, [difficulty, color, handicap?.id ?? null, null]);",
+    "const created = await api.createGame(difficulty, color, handicap?.id ?? null, null, { signal: launch.controller.signal, operationId });",
+    "if (!gameLaunch.isCurrent(launch)) { void api.deleteGame(created.id).catch(() => {}); return false; }",
+    "gameLaunch.confirmCreated(launch);",
+    "const isLearning = !!opts?.learning;",
+    "const nextContext = { rematch: !!opts?.rematch, adaptiveDifficulty: !!opts?.adaptiveDifficulty, runMode: opts?.runMode || null, lab: !!opts?.lab, rescue: !!opts?.rescue, suddenDeath: !!opts?.suddenDeath, threatCheck: !!opts?.threatCheck };",
+    "setLearningMode(isLearning);",
+    "setActiveTimeControl(timeControlById(opts?.timeControlId));",
+    "setGameContext(nextContext);",
+    "recordGameActivity({ gameId: created.id, state: 'started', mode: gameModeFromContext({ learningMode: isLearning, gameContext: nextContext }), difficulty: created.difficulty, detail: nextContext.adaptiveDifficulty ? 'adaptive-difficulty' : null });",
+    "const shouldOfferContract = !isLearning && !opts?.runMode && !opts?.lab && !opts?.rescue && Number(opts?.seriesBestOf || 1) <= 1;",
+    "const contract = shouldOfferContract ? chooseContract({ gameCount: statisticalHistoryList.length, incidents: loadRivalry().incidents }) : null;",
+    "if (contract) saveActiveContract(contract); else clearActiveContract();",
+    "setActiveContract(contract);",
+    "",
+    "if (!isLearning && Number(opts?.seriesBestOf) > 1) {",
+    "const series = createSeries({",
+    "bestOf: Number(opts.seriesBestOf),",
+    "difficulty,",
+    "firstColor: created.humanColor,",
+    "timeControlId: opts?.timeControlId || 'none', adaptiveDifficulty: nextContext.adaptiveDifficulty,",
+    "const withGame = attachSeriesGame(series, created.id);",
+    "saveActiveSeries(withGame);",
+    "setActiveSeries(withGame);",
+    "} else {",
+    "clearActiveSeries();",
+    "setActiveSeries(null);",
+    "}",
+    "setGame(created);",
+    "setHasSavedGame(true);",
+    "navigateTo('game');",
+    "return true;",
+    "} catch (e) {",
+    "if (gameLaunch.isCurrent(launch) && !isAbortError(e)) setError(userFacingError(e, 'No se pudo iniciar la partida.'));",
+    "return false;",
+    "} finally {",
+    "if (gameLaunch.owns(launch)) setLoading(false);",
+    "gameLaunch.end(launch);",
+    "async function handleNextSeriesGame() {",
+    "if (!activeSeries || activeSeries.winner) return;",
+    "if (!launch) return;",
+    "if (game?.id) clearClockSnapshot(game.id);",
+    "// La limpieza de la partida anterior no es una precondición para crear",
+    "// la siguiente. Si DELETE se atasca, la serie no debe parecer congelada.",
+    "if (game?.id) void api.deleteGame(game.id).catch(() => {});",
+    "const handicap = handicapForGap(rating.rating, activeSeries.difficulty);",
+    "const operationId = gameLaunch.operationId(launch, [activeSeries.difficulty, activeSeries.nextColor, handicap?.id ?? null, null, null]);",
+    "const created = await api.createGame(activeSeries.difficulty, activeSeries.nextColor, handicap?.id ?? null, null, { signal: launch.controller.signal, operationId });",
+    "if (!gameLaunch.isCurrent(launch)) { void api.deleteGame(created.id).catch(() => {}); return; }",
+    "recordGameActivity({ gameId: created.id, state: 'started', mode: 'casual', difficulty: created.difficulty, detail: activeSeries.adaptiveDifficulty ? 'adaptive-difficulty' : null });",
+    "const updatedSeries = attachSeriesGame(activeSeries, created.id);",
+    "saveActiveSeries(updatedSeries);",
+    "setActiveSeries(updatedSeries);",
+    "setLearningMode(false);",
+    "setActiveTimeControl(timeControlById(updatedSeries.timeControlId));",
+    "if (gameLaunch.isCurrent(launch) && !isAbortError(e)) setError(userFacingError(e, 'No se pudo crear la siguiente partida de la serie.'));",
+    "async function handlePlayFromHere(fen, humanColor, difficulty, meta = {}) {",
+    "const operationId = gameLaunch.operationId(launch, [difficulty || 50, humanColor || 'w', null, fen, null]);",
+    "const created = await api.createGame(difficulty || 50, humanColor || 'w', null, fen, { signal: launch.controller.signal, operationId });",
+    "const nextContext = { lab: true, rescue: !!meta.rescue, nemesis: !!meta.nemesis, nemesisLabel: meta.nemesisLabel || null, nemesisOpening: meta.nemesisOpening || null, sourceRecordId: meta.sourceRecord?.id || null };",
+    "recordGameActivity({ gameId: created.id, state: 'started', mode: gameModeFromContext({ learningMode: true, gameContext: nextContext }), difficulty: created.difficulty });",
+    "clearActiveContract();",
+    "setActiveContract(null);",
+    "setSpecialRun(loadSpecialRun());",
+    "setLearningMode(true);",
+    "setActiveTimeControl(null);",
+    "if (gameLaunch.isCurrent(launch) && !isAbortError(e)) setError(userFacingError(e, 'No se pudo arrancar la posición del laboratorio.'));",
+    "} finally { if (gameLaunch.owns(launch)) setLoading(false); gameLaunch.end(launch); }",
+    "async function launchRun(run) {",
+    "const operationId = gameLaunch.operationId(launch, [run.difficulty, 'random', null, null, null]);",
+    "const created = await api.createGame(run.difficulty, 'random', null, null, { signal: launch.controller.signal, operationId });",
+    "recordGameActivity({ gameId: created.id, state: 'started', mode: run.mode || 'streak', difficulty: created.difficulty });",
+    "const withGame = saveSpecialRun({ ...run, currentGameId: created.id });",
+    "setSpecialRun(withGame);",
+    "setGameContext({ runMode: run.mode });",
+    "setActiveTimeControl(timeControlById('5+0'));",
+    "if (gameLaunch.isCurrent(launch) && !isAbortError(e)) setError(userFacingError(e, 'No se pudo iniciar el desafío.'));",
+    "function handleStartRun(mode) {",
+    "if (gameLaunch.busy()) return;",
+    "const run = startSpecialRun(mode);",
+    "void launchRun(run);",
+    "function handleContinueRun(run = specialRun) {",
+    "if (run?.active && !gameLaunch.busy()) void launchRun(run);",
 }
 
 NONVISUAL_GLOBAL_SHELL_APP_LINES = {
@@ -302,6 +436,13 @@ def _is_nonvisual_app_decomposition_diff(diff_text: str | None) -> bool:
     return bool(changed_lines) and all(line in NONVISUAL_APP_DECOMPOSITION_LINES for line in changed_lines)
 
 
+def _is_nonvisual_game_start_app_diff(diff_text: str | None) -> bool:
+    if not diff_text:
+        return False
+    changed_lines = _changed_source_lines(diff_text)
+    return bool(changed_lines) and all(line in NONVISUAL_GAME_START_APP_LINES for line in changed_lines)
+
+
 def _is_app_visual_e2e(path: str) -> bool:
     """Keep only E2E files that the app-visual workflow itself owns."""
     lower = path.lower().replace("\\", "/")
@@ -336,6 +477,10 @@ def normalize(
         and GLOBAL_OVERLAY_OWNER.lower() in lower_paths
         and _is_nonvisual_app_decomposition_diff(_git_diff_text(base_sha, head_sha, APP_SHELL))
     )
+    safe_game_start_app = (
+        GAME_START_FLOW_OWNER.lower() in lower_paths
+        and _is_nonvisual_game_start_app_diff(_git_diff_text(base_sha, head_sha, APP_SHELL))
+    )
 
     def add(path: str) -> None:
         if path not in seen:
@@ -347,7 +492,7 @@ def normalize(
         if not path:
             continue
         lower = path.lower()
-        if lower == APP_SHELL.lower() and (safe_learning_app or safe_global_shell_app or safe_app_decomposition):
+        if lower == APP_SHELL.lower() and (safe_learning_app or safe_global_shell_app or safe_app_decomposition or safe_game_start_app):
             # App.jsx is normally a global visual owner. Suppress it only for
             # the exact, audited navigation extraction above; any extra changed
             # App line fails closed and restores the canonical visual sweep.
@@ -430,6 +575,12 @@ def self_test() -> None:
     assert _is_nonvisual_app_decomposition_diff(safe_decomposition_diff)
     assert not _is_nonvisual_app_decomposition_diff(unsafe_decomposition_diff)
     assert not _is_nonvisual_app_decomposition_diff(None)
+
+    safe_game_start_diff = "--- a/frontend/src/App.jsx\n+++ b/frontend/src/App.jsx\n@@ -1 +1 @@\n-import { handicapForGap } from './handicap.js';\n+import { useGameStartFlow } from './useGameStartFlow.js';\n"
+    unsafe_game_start_diff = safe_game_start_diff + "@@ -20 +20 @@\n-<main className=\"old\">\n+<main className=\"new\">\n"
+    assert _is_nonvisual_game_start_app_diff(safe_game_start_diff)
+    assert not _is_nonvisual_game_start_app_diff(unsafe_game_start_diff)
+    assert not _is_nonvisual_game_start_app_diff(None)
 
     manifest_before = json.dumps({
         "assets": {
