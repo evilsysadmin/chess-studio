@@ -168,7 +168,7 @@ for (const capture of CAPTURES) {
     // Hosted SwiftShader makes large WebGL readbacks expensive. Keep this
     // producer to one canonical readback per viewport; Tactics owns a separate
     // focused producer so neither surface can starve the other of its budget.
-    test.setTimeout(180_000);
+    test.setTimeout(240_000);
     await mkdir(ARTIFACT_DIR, { recursive: true });
 
     const context = await browser.newContext({
