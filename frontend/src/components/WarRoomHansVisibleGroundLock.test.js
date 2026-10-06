@@ -19,6 +19,49 @@ function bottomWorldY(mesh) {
 }
 
 describe('WarRoomHansVisibleGroundLock', () => {
+  it('grounds Hans on authored V3 flagstones when classic floor names do not exist', () => {
+    const root = new THREE.Group();
+    const material = new THREE.MeshBasicMaterial();
+
+    const floor = new THREE.Mesh(new THREE.BoxGeometry(18, 0.24, 16), material);
+    floor.name = 'WR3_ARM_floor';
+    floor.position.set(0, -1.24, 0);
+    root.add(floor);
+
+    const flagstones = new THREE.Mesh(new THREE.BoxGeometry(17, 0.06, 15), material);
+    flagstones.name = 'WR3_ARM_flagstones_0';
+    flagstones.position.set(0, -1.09, 0);
+    root.add(flagstones);
+
+    const hans = new THREE.Group();
+    hans.name = 'war-room-hans-butler';
+    hans.visible = true;
+    hans.scale.setScalar(0.74);
+    hans.position.set(-7.4, -0.34, -6.2);
+    root.add(hans);
+
+    const leftShoe = shoe(material, -0.17);
+    const rightShoe = shoe(material, 0.17);
+    hans.add(leftShoe, rightShoe);
+    hans.userData.refs = { leftShoe, rightShoe };
+
+    expect(installWarRoomHansVisibleGroundLock(root)).toBe(1);
+    leftShoe.onBeforeRender(
+      { info: { render: { frame: 21 } } },
+      null,
+      null,
+      leftShoe.geometry,
+      leftShoe.material,
+      null,
+    );
+
+    const flagstoneTop = -1.06;
+    expect(Math.min(bottomWorldY(leftShoe), bottomWorldY(rightShoe))).toBeCloseTo(flagstoneTop, 5);
+    expect(hans.userData.warRoomHansVisibleGroundSurface).toBe('WR3_ARM_flagstones_0');
+    expect(hans.userData.warRoomHansVisibleGroundGap).toBeCloseTo(0, 8);
+    expect(hans.userData.warRoomHansVisibleGroundLock).toBe(WAR_ROOM_HANS_VISIBLE_GROUND_LOCK_VERSION);
+  });
+
   it('wins after a late writer restores the legacy standing Y through the transform owner', () => {
     const root = new THREE.Group();
     const material = new THREE.MeshBasicMaterial();

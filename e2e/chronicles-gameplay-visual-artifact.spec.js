@@ -6,6 +6,7 @@ const ARTIFACT_DIR = '../.artifacts/app-visual';
 const CAPTURES = [
   { label: 'desktop-1440x900', width: 1440, height: 900, hasTouch: false },
   { label: 'android-390x844', width: 390, height: 844, hasTouch: true },
+  { label: 'android-landscape-844x390', width: 844, height: 390, hasTouch: true },
 ];
 
 async function openVisualMoreModes(page) {
@@ -32,6 +33,7 @@ async function openVisualMoreModes(page) {
 async function openChronicles(page, captureLabel, {
   runStatus = 'active',
   chroniclesCurrentMapId = 'crypt-eight-squares',
+  chroniclesWorldFlags = null,
 } = {}) {
   await mockApi(page, {
     profileSeed: {
@@ -40,6 +42,7 @@ async function openChronicles(page, captureLabel, {
     },
     chroniclesRunStatus: runStatus,
     chroniclesCurrentMapId,
+    chroniclesWorldFlags,
   });
   await login(page);
   const speech = page.getByRole('region', { name: 'Mensaje de Matthias', exact: true });
@@ -129,6 +132,10 @@ async function captureChroniclesHealth(page) {
       stage: rect('.chronicles-stage'),
       gameCanvas: rect('[data-chronicles-renderer="three"] canvas'),
       authoredPortrait: rect('[data-chronicles-party-renderer="authored"]'),
+      partyTarget: rect('.chronicles-party-member'),
+      forwardControl: rect('[data-chronicles-touch-action="forward"]'),
+      attackControl: rect('.chronicles-touch .is-attack'),
+      narration: rect('.chronicles-dm-overlay'),
     };
   });
 }
@@ -176,10 +183,15 @@ for (const capture of CAPTURES) {
       const stage = page.locator('.chronicles-stage');
       const gameMenu = page.locator('summary[aria-label="Abrir menú de Chronicles"]');
       await expect(gameRoot).toBeVisible();
+      expect(
+        await page.evaluate(() => document.fullscreenElement),
+        `${capture.label}: Chronicles must not enter browser-native fullscreen`,
+      ).toBeNull();
       await expect(chroniclesCanvas).toHaveCount(1, { timeout: 20_000 });
       await expect(chroniclesCanvas).toBeVisible();
       await expect(authoredPortrait).toHaveCount(1, { timeout: 20_000 });
-      await expect(authoredPortrait).toBeVisible();
+      if (capture.hasTouch) await expect(authoredPortrait).toBeHidden();
+      else await expect(authoredPortrait).toBeVisible();
       await expect(stage).toBeVisible();
       await expect(gameMenu).toBeVisible();
       await page.waitForTimeout(450);
@@ -197,12 +209,29 @@ for (const capture of CAPTURES) {
       expect(health.stage?.width || 0, `${capture.label}: Chronicles stage visible`).toBeGreaterThan(0);
       expect(health.gameCanvas?.width || 0, `${capture.label}: Chronicles dungeon canvas visible`).toBeGreaterThan(0);
       expect(health.gameCanvas?.height || 0, `${capture.label}: Chronicles dungeon canvas height`).toBeGreaterThan(0);
-      expect(health.authoredPortrait?.width || 0, `${capture.label}: Chronicles portrait visible`).toBeGreaterThan(0);
-      expect(health.authoredPortrait?.height || 0, `${capture.label}: Chronicles portrait height`).toBeGreaterThan(0);
+      if (capture.hasTouch) {
+        expect(health.stage?.height || 0, `${capture.label}: mobile stage owns viewport height`).toBeGreaterThanOrEqual(capture.height - 2);
+        expect(health.gameCanvas?.height || 0, `${capture.label}: mobile canvas owns viewport height`).toBeGreaterThanOrEqual(capture.height - 2);
+        expect(health.partyTarget?.width || 0, `${capture.label}: party touch target width`).toBeGreaterThanOrEqual(44);
+        expect(health.partyTarget?.height || 0, `${capture.label}: party touch target height`).toBeGreaterThanOrEqual(44);
+        expect(health.forwardControl?.width || 0, `${capture.label}: forward touch target width`).toBeGreaterThanOrEqual(52);
+        expect(health.forwardControl?.height || 0, `${capture.label}: forward touch target height`).toBeGreaterThanOrEqual(52);
+        expect(health.attackControl?.width || 0, `${capture.label}: attack touch target width`).toBeGreaterThanOrEqual(72);
+        expect(health.attackControl?.height || 0, `${capture.label}: attack touch target height`).toBeGreaterThanOrEqual(72);
+        expect(health.narration?.top ?? 0, `${capture.label}: narration clears compact party`).toBeGreaterThanOrEqual(health.partyTarget?.bottom ?? 0);
+        expect(health.narration?.bottom ?? capture.height, `${capture.label}: narration clears thumb controls`).toBeLessThanOrEqual(health.forwardControl?.top ?? capture.height);
+      } else {
+        expect(health.authoredPortrait?.width || 0, `${capture.label}: Chronicles portrait visible`).toBeGreaterThan(0);
+        expect(health.authoredPortrait?.height || 0, `${capture.label}: Chronicles portrait height`).toBeGreaterThan(0);
+      }
 
       await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-playing-${capture.label}.png`);
 
       await page.keyboard.press('Escape');
+      expect(
+        await page.evaluate(() => document.fullscreenElement),
+        `${capture.label}: Escape belongs to the Chronicles menu`,
+      ).toBeNull();
       const openedMenu = page.locator('.chronicles-game-menu[open]');
       await expect(openedMenu).toBeVisible();
       await expect(openedMenu.getByRole('button', { name: 'Continuar', exact: true })).toBeVisible();
@@ -232,10 +261,24 @@ test('Chronicles · Gallery of Forks first-person material proof · desktop-1440
   try {
     await openChronicles(page, 'gallery-of-forks-desktop-1440x900', {
       chroniclesCurrentMapId: 'gallery-of-forks',
+      chroniclesWorldFlags: {
+        galleryLeverPulled: true,
+        galleryRelicCollected: true,
+        enemyHp: 0,
+        jailerHp: 0,
+        '__chrRuntime.version': 1,
+        '__chrRuntime.x': 3,
+        '__chrRuntime.y': 2,
+        '__chrRuntime.direction': 0,
+        '__chrRuntime.phase': 'explore',
+        '__chrRuntime.turnPhase': 'party',
+      },
     });
     const gameRoot = page.locator('[data-chronicles="true"]');
     const canvas = page.locator('[data-chronicles-renderer="three"] canvas');
     await expect(gameRoot).toHaveAttribute('data-chronicles-map-id', 'gallery-of-forks');
+    await expect(gameRoot).toHaveAttribute('data-chronicles-phase', 'explore');
+    await expect(page.locator('.chronicles-statusbar')).toContainText('Abrir salida de la galería');
     await expect(canvas).toHaveCount(1, { timeout: 20_000 });
     await expect(canvas).toBeVisible();
     await page.waitForTimeout(450);

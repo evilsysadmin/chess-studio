@@ -68,8 +68,9 @@ test('Así juegas · una recaída real posterior devuelve el patrón a la sesió
   }, { fen: PERSONAL_MATE_FEN });
 
   await buttonWithHeading(page, 'Así juegas').click();
-  await expect(page.getByRole('heading', { name: '¿Cuánto tiempo tienes?', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Tu siguiente tarea', exact: true })).toBeVisible();
 
+  await page.getByRole('button', { name: 'Cambiar tiempo', exact: true }).click();
   await page.getByRole('button', { name: 'Tengo 5 min', exact: true }).click();
   const session = page.locator('.insights-guided-session.active');
   await expect(session.getByText('Sesión guiada · 5 min', { exact: true })).toBeVisible();
@@ -77,7 +78,7 @@ test('Así juegas · una recaída real posterior devuelve el patrón a la sesió
   await expect(session.getByText(/reapareció en 1 partida observada después del entrenamiento/)).toBeVisible();
 
   await session.getByRole('button', { name: 'Cancelar sesión', exact: true }).click();
-  await page.getByRole('tab', { name: /Errores/ }).click();
+  await page.getByRole('button', { name: 'Errores', exact: true }).click();
   await expect(page.getByText('Horquillas de caballo sufridas', { exact: true })).toBeVisible();
   await expect(page.getByText('Sigue ocurriendo · reapareció después de entrenarlo y aún no hay muestra limpia suficiente.', { exact: true })).toBeVisible();
   await expect(page.locator('[data-improvement-state="still-occurring"]')).toHaveCount(1);

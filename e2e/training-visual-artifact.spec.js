@@ -39,22 +39,22 @@ async function assertNoHorizontalOverflow(page, label) {
 }
 
 async function assertInsightsActionableFold(room, label) {
-  await expect(room.getByRole('button', { name: 'Tengo 15 min', exact: true })).toBeVisible();
+  await expect(room.getByRole('button', { name: 'Empezar sesión recomendada de 15 min', exact: true })).toBeVisible();
   const geometry = await room.evaluate((root) => {
-    const nav = root.querySelector('.insights-workspace-nav')?.getBoundingClientRect();
+    const tools = root.querySelector('.insights-room-tools')?.getBoundingClientRect();
     const session = root.querySelector('.insights-guided-session:not(.active)')?.getBoundingClientRect();
-    const recommended = root.querySelector('.insights-duration-option-recommended')?.getBoundingClientRect();
+    const recommended = root.querySelector('.insights-guided-focus .primary-btn')?.getBoundingClientRect();
     return {
       viewportHeight: window.innerHeight,
-      navBottom: nav?.bottom || 0,
+      toolsBottom: tools?.bottom || 0,
       sessionTop: session?.top || 0,
       recommendedBottom: recommended?.bottom || 0,
     };
   });
 
   expect(geometry.sessionTop, `${label}: training action starts too low`).toBeLessThan(geometry.viewportHeight * .7);
-  expect(geometry.recommendedBottom, `${label}: balanced session CTA falls below the first viewport`).toBeLessThanOrEqual(geometry.viewportHeight - 8);
-  expect(geometry.navBottom, `${label}: navigation should sit before the task`).toBeLessThanOrEqual(geometry.sessionTop + 8);
+  expect(geometry.recommendedBottom, `${label}: recommended task CTA falls below the first viewport`).toBeLessThanOrEqual(geometry.viewportHeight - 8);
+  expect(geometry.toolsBottom, `${label}: archive tools should sit before the task`).toBeLessThanOrEqual(geometry.sessionTop + 8);
 }
 
 async function assertSchoolTouchTargets(shell, label) {
@@ -437,7 +437,7 @@ scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page })
   await assertInsightsActionableFold(trainingRoom, 'insights-mobile');
   await page.setViewportSize({ width: 1440, height: 900 });
   await settle(page);
-  await page.getByRole('tab', { name: 'Mi progreso', exact: true }).click();
+  await page.getByRole('button', { name: 'Mi progreso', exact: true }).click();
 
   const career = page.locator('.career-screen');
   await expect(page.getByRole('heading', { name: 'Mi progreso', exact: true })).toBeVisible();

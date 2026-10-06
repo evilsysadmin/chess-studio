@@ -146,13 +146,13 @@ test('Home · el avatar residente de Matthias abre Así juegas · y cierra el lo
   await corner.getByRole('button', { name: 'Abrir Así juegas con Matthias', exact: true }).click();
   await waitForTrainingRoomSettled(page);
   await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
-  await page.getByRole('tab', { name: /Errores/ }).click();
+  await page.getByRole('button', { name: 'Errores', exact: true }).click();
   await expect(page.getByText('Horquillas de caballo sufridas', { exact: true })).toBeVisible();
   await expect(page.locator('[data-training-debt="active"]')).toHaveCount(1);
 
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
-  await page.getByRole('tab', { name: /Errores/ }).click();
+  await page.getByRole('button', { name: 'Errores', exact: true }).click();
   await page.getByRole('button', { name: 'Entrenar este patrón →', exact: true }).click();
 
   await expect(page.getByRole('heading', { name: 'Horquilla pendiente golden path', exact: true })).toBeVisible();

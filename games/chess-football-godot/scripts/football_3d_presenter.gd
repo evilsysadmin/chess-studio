@@ -208,14 +208,20 @@ func _add_crowd() -> void:
 			_add_box(Vector3(x, y, z), Vector3(0.17, 0.22, 0.12), color)
 
 func _add_penalty_box(right_side: bool, color: Color) -> void:
-	var width := 265.0 * WORLD_SCALE
-	var depth := 430.0 * WORLD_SCALE
+	var width := ChessFootballMath.PENALTY_AREA_DEPTH * WORLD_SCALE
+	var depth := ChessFootballMath.PENALTY_AREA_HALF_WIDTH * 2.0 * WORLD_SCALE
 	var edge_x := field_width * 0.5 if right_side else -field_width * 0.5
 	var center_x := edge_x - width * 0.5 if right_side else edge_x + width * 0.5
 	var inner_x := edge_x - width if right_side else edge_x + width
 	_add_box(Vector3(center_x, 0.022, -depth * 0.5), Vector3(width, 0.03, 0.04), color)
 	_add_box(Vector3(center_x, 0.022, depth * 0.5), Vector3(width, 0.03, 0.04), color)
 	_add_box(Vector3(inner_x, 0.022, 0.0), Vector3(0.04, 0.03, depth), color)
+	var penalty_spot_x := (
+		edge_x - ChessFootballMath.PENALTY_SPOT_DEPTH * WORLD_SCALE
+		if right_side
+		else edge_x + ChessFootballMath.PENALTY_SPOT_DEPTH * WORLD_SCALE
+	)
+	_add_box(Vector3(penalty_spot_x, 0.024, 0.0), Vector3(0.11, 0.025, 0.11), color)
 
 func _add_center_circle(color: Color) -> void:
 	var mesh := ImmediateMesh.new()
@@ -433,11 +439,18 @@ func _sync_player_secondary_motion(player: Footballer, sprite: AnimatedSprite3D,
 		stretch_y = 1.06
 		tilt_degrees = -facing_sign * 12.0
 	elif animation_name == "tackle":
-		bob = -0.050
-		lateral_sway = facing_sign * 0.065
-		stretch_x = 1.04
-		stretch_y = 0.94
-		tilt_degrees = -facing_sign * 17.0
+		if player.tackle_aggressive_active():
+			bob = -0.105
+			lateral_sway = facing_sign * 0.095
+			stretch_x = 1.16
+			stretch_y = 0.80
+			tilt_degrees = -facing_sign * 31.0
+		else:
+			bob = -0.050
+			lateral_sway = facing_sign * 0.065
+			stretch_x = 1.04
+			stretch_y = 0.94
+			tilt_degrees = -facing_sign * 17.0
 	elif animation_name == "celebrate":
 		bob = absf(sin(phase)) * 0.095
 		lateral_sway = sin(phase * 0.5) * 0.022

@@ -5,7 +5,7 @@ import {
 } from './WarRoomHansActor.js';
 import { registerWarRoomHansPostRenderStage } from './WarRoomHansPostRenderPipeline.js';
 
-export const WAR_ROOM_HANS_ACTOR_TELEMETRY_VERSION = 'war-room-hans-actor-telemetry-v3-task-diagnostics';
+export const WAR_ROOM_HANS_ACTOR_TELEMETRY_VERSION = 'war-room-hans-actor-telemetry-v4-door-state';
 
 const POST_RENDER_ORDER = 6;
 
@@ -30,6 +30,7 @@ export function installWarRoomHansActorTelemetry(root) {
       const state = getWarRoomHansRouteState(actor);
       setDatasetIfChanged(canvas, 'warRoomHansRoute', state.route || 'none');
       setDatasetIfChanged(canvas, 'warRoomHansLogicalX', Number(state.logicalX).toFixed(3));
+      setDatasetIfChanged(canvas, 'warRoomHansDoorOpen', Number(actor.hans.userData?.warRoomHansDoorOpen || 0).toFixed(3));
       setDatasetIfChanged(canvas, 'warRoomHansChoreographyPhase', driver.userData?.warRoomHansPhase || 'none');
       setDatasetIfChanged(canvas, 'warRoomHansActiveTask', actor.hans.userData?.warRoomHansActiveTask || 'none');
       setDatasetIfChanged(canvas, 'warRoomHansTaskPhase', actor.hans.userData?.warRoomHansTaskPhase || 'none');

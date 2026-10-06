@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { commitWarRoomHansGroundedY } from './WarRoomHansTransformOwner.js';
 
-export const WAR_ROOM_HANS_VISIBLE_GROUND_LOCK_VERSION = 'hans-visible-ground-lock-v3-transform-owner';
+export const WAR_ROOM_HANS_VISIBLE_GROUND_LOCK_VERSION = 'hans-visible-ground-lock-v4-authored-surfaces';
 
 const HANS_NAME = 'war-room-hans-butler';
 const CANVAS_SELECTOR = '.game-board-stack-3d .board3d-main-canvas';
@@ -9,19 +9,30 @@ const SURFACE_NAMES = Object.freeze([
   'war-room-command-carpet-inner-field',
   'war-room-command-carpet-bed',
   'war-room-castle-floor-slab',
+  'WR3_ARM_floor',
 ]);
-const HOOK_MARKER = 'war-room-hans-visible-ground-lock-v3';
+const SURFACE_PREFIXES = Object.freeze([
+  'WR3_ARM_flagstones_',
+]);
+const HOOK_MARKER = 'war-room-hans-visible-ground-lock-v4';
 const MAX_CORRECTION = 1.5;
 
 function captureSurfaces(root) {
   root?.updateMatrixWorld?.(true);
-  return SURFACE_NAMES
-    .map((name) => {
-      const object = root?.getObjectByName?.(name);
-      if (!object) return null;
+  const objects = [];
+  for (const name of SURFACE_NAMES) {
+    const object = root?.getObjectByName?.(name);
+    if (object) objects.push(object);
+  }
+  root?.traverse?.((object) => {
+    if (!object?.name || objects.includes(object)) return;
+    if (SURFACE_PREFIXES.some((prefix) => object.name.startsWith(prefix))) objects.push(object);
+  });
+  return objects
+    .map((object) => {
       const box = new THREE.Box3().setFromObject(object);
       if (box.isEmpty()) return null;
-      return { name, box };
+      return { name: object.name, box };
     })
     .filter(Boolean)
     .sort((a, b) => b.box.max.y - a.box.max.y);

@@ -95,74 +95,79 @@ export default function InsightsGuidedSession({
   }
 
   if (!session) {
-    const available = plans[5].available || plans[15].available || plans[30].available;
+    const recommendedMinutes = plans[15].available ? 15 : plans[5].available ? 5 : plans[30].available ? 30 : null;
+    const recommendedPlan = recommendedMinutes ? plans[recommendedMinutes] : null;
+    const focus = recommendedPlan?.steps?.[0] || null;
+    const available = Boolean(recommendedPlan?.available);
+
     return (
-      <section className="menu-section insights-guided-session" aria-labelledby="guided-session-title">
+      <section
+        className="menu-section insights-guided-session"
+        aria-labelledby="guided-session-title"
+        data-guided-session-home="desk-task"
+      >
         <div className="insights-guided-session-intro">
-          <span className="section-label">Entrenamiento de hoy</span>
-          <h2 id="guided-session-title">¿Cuánto tiempo tienes?</h2>
-          <p className="hint-text">Chess Studio monta el recorrido con errores personales y Némesis demostradas. Tú eliges la duración; la sesión decide el orden y te devuelve aquí entre pasos.</p>
+          <span className="section-label">Nota de Matthias</span>
+          <h2 id="guided-session-title">Tu siguiente tarea</h2>
+          <p className="hint-text">Una prioridad, elegida sólo a partir de evidencia guardada. El tiempo y el expediente completo quedan en segundo plano.</p>
         </div>
 
-        {completion ? (
-          <div className="insights-recurring-error-card" data-guided-training-completion="true">
-            <div className="insights-recurring-error-topline">
-              <strong>Última sesión cerrada</strong>
-              <span>{completion.minutes} min</span>
+        {available ? (
+          <div className="insights-guided-focus">
+            <div>
+              <small>Recomendación · {recommendedMinutes} min</small>
+              <h3>{focus?.title || 'Sesión personal'}</h3>
+              <p>{focus?.detail || 'Matthias ha preparado un recorrido con tu material de entrenamiento disponible.'}</p>
             </div>
+            <button
+              type="button"
+              className="primary-btn"
+              aria-label={`Empezar sesión recomendada de ${recommendedMinutes} min`}
+              onClick={() => begin(recommendedMinutes)}
+            >
+              Empezar · {recommendedMinutes} min →
+            </button>
+          </div>
+        ) : (
+          <p className="hint-text">{plans[5].reason || plans[15].reason || plans[30].reason}</p>
+        )}
+
+        {available ? (
+          <details className="friendly-disclosure insights-duration-disclosure">
+            <summary>Cambiar tiempo</summary>
+            <div className="coaching-action insights-duration-picker" role="group" aria-label="Duración de la sesión guiada">
+              {[5, 15, 30].map((minutes) => (
+                <button
+                  key={minutes}
+                  type="button"
+                  className={minutes === recommendedMinutes ? 'primary-btn insights-duration-option insights-duration-option-recommended' : 'secondary-btn insights-duration-option'}
+                  aria-label={`Tengo ${minutes} min`}
+                  disabled={!plans[minutes].available}
+                  onClick={() => begin(minutes)}
+                >
+                  <strong>{minutes} min</strong>
+                  <span>{minutes === 5 ? 'Un foco' : minutes === 15 ? 'Foco + práctica' : 'Sesión completa'}</span>
+                </button>
+              ))}
+              <span className="insights-duration-note">Sólo usa evidencia real de tu expediente y respeta el tiempo elegido.</span>
+            </div>
+          </details>
+        ) : null}
+
+        {completion ? (
+          <details className="friendly-disclosure insights-guided-completion">
+            <summary>Última sesión · {completion.minutes} min</summary>
             <p>Marcaste como hechos {completion.blocks.length} {completion.blocks.length === 1 ? 'bloque' : 'bloques'} de práctica. Esto resume tu recorrido; no afirma que hayas mejorado.</p>
-            <details className="friendly-disclosure">
-              <summary>Ver qué incluía</summary>
-              <ol>
-                {completion.blocks.map((block) => (
-                  <li key={block.id}><b>{block.title}</b>{block.minutes > 0 ? ` · ~${block.minutes} min` : ''}</li>
-                ))}
-              </ol>
-            </details>
+            <ol>
+              {completion.blocks.map((block) => (
+                <li key={block.id}><b>{block.title}</b>{block.minutes > 0 ? ` · ~${block.minutes} min` : ''}</li>
+              ))}
+            </ol>
             <div className="coaching-action">
               <button type="button" className="secondary-btn" onClick={hideCompletion}>Ocultar resumen</button>
             </div>
-          </div>
+          </details>
         ) : null}
-
-        {available ? (
-          <div className="coaching-action insights-duration-picker" role="group" aria-label="Duración de la sesión automática">
-            <button
-              type="button"
-              className="secondary-btn insights-duration-option"
-              aria-label="Tengo 5 min"
-              disabled={!plans[5].available}
-              onClick={() => begin(5)}
-            >
-              <strong>5 min</strong>
-              <span>Un foco</span>
-            </button>
-            <button
-              type="button"
-              className="primary-btn insights-duration-option insights-duration-option-recommended"
-              aria-label="Tengo 15 min"
-              disabled={!plans[15].available}
-              onClick={() => begin(15)}
-            >
-              <small>Equilibrado</small>
-              <strong>15 min</strong>
-              <span>Foco + práctica</span>
-            </button>
-            <button
-              type="button"
-              className="secondary-btn insights-duration-option"
-              aria-label="Tengo 30 min"
-              disabled={!plans[30].available}
-              onClick={() => begin(30)}
-            >
-              <strong>30 min</strong>
-              <span>Sesión completa</span>
-            </button>
-            <span className="insights-duration-note">Sólo usa evidencia real de tu expediente y respeta el tiempo elegido.</span>
-          </div>
-        ) : (
-          <p className="hint-text">{plans[5].reason}</p>
-        )}
       </section>
     );
   }
