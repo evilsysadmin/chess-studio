@@ -143,12 +143,19 @@ export default function QuickMatchModal({
           )}
 
           <div className="quick-match-ready-room__launch">
-            <div className="quick-match-ready-room__defaults" aria-label="Configuración actual">
-              <span><small>Rival</small><b>{opponentLabel}</b></span>
-              <span><small>Color</small><b>{colorLabel(color)}</b></span>
-              <span><small>Reloj</small><b>{timeControl?.label || 'Sin reloj'}</b></span>
-              {seriesBestOf > 1 && <span><small>Serie</small><b>{series?.label}</b></span>}
-            </div>
+            <p className="quick-match-ready-room__summary" aria-label="Configuración actual">
+              <span>{opponentLabel}</span>
+              <span aria-hidden="true">·</span>
+              <span>{colorLabel(color)}</span>
+              <span aria-hidden="true">·</span>
+              <span>{timeControl?.label || 'Sin reloj'}</span>
+              {seriesBestOf > 1 ? (
+                <>
+                  <span aria-hidden="true">·</span>
+                  <span>{series?.label}</span>
+                </>
+              ) : null}
+            </p>
 
             {error && <p className="quick-match-error" role="alert">{error}</p>}
 
