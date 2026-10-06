@@ -34,6 +34,8 @@ jobs:
       deploy_required: ${{ steps.scope.outputs.deploy_required }}
       deploy_reason: ${{ steps.scope.outputs.deploy_reason }}
       parent_sha: ${{ steps.image_scope.outputs.parent_sha }}
+      backend_tree: ${{ steps.image_scope.outputs.backend_tree }}
+      pvp_tree: ${{ steps.image_scope.outputs.pvp_tree }}
       backend_needs_build: ${{ steps.image_scope.outputs.backend_needs_build }}
       pvp_needs_build: ${{ steps.image_scope.outputs.pvp_needs_build }}
     steps:
@@ -70,11 +72,17 @@ jobs:
             git diff --quiet "$parent" "$DEPLOY_SHA" -- backend-python && backend_needs_build=false || true
             git diff --quiet "$parent" "$DEPLOY_SHA" -- backend-go && pvp_needs_build=false || true
           fi
+          backend_tree="$(git rev-parse "${DEPLOY_SHA}:backend-python" 2>/dev/null || true)"
+          pvp_tree="$(git rev-parse "${DEPLOY_SHA}:backend-go" 2>/dev/null || true)"
+          [[ "$backend_tree" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::No pude resolver árbol backend-python"; exit 1; }
+          [[ "$pvp_tree" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::No pude resolver árbol backend-go"; exit 1; }
           echo "parent_sha=$parent" >> "$GITHUB_OUTPUT"
+          echo "backend_tree=$backend_tree" >> "$GITHUB_OUTPUT"
+          echo "pvp_tree=$pvp_tree" >> "$GITHUB_OUTPUT"
           echo "backend_needs_build=$backend_needs_build" >> "$GITHUB_OUTPUT"
           echo "pvp_needs_build=$pvp_needs_build" >> "$GITHUB_OUTPUT"
-          echo "Backend image source changed: $backend_needs_build"
-          echo "PvP Go image source changed: $pvp_needs_build"
+          echo "Backend image source changed: $backend_needs_build · tree=$backend_tree"
+          echo "PvP Go image source changed: $pvp_needs_build · tree=$pvp_tree"
 
   publish:
     name: Backend · publish exact-SHA images
@@ -88,6 +96,8 @@ jobs:
     env:
       DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
       PARENT_SHA: ${{ needs.classify.outputs.parent_sha }}
+      BACKEND_TREE: ${{ needs.classify.outputs.backend_tree }}
+      PVP_TREE: ${{ needs.classify.outputs.pvp_tree }}
       BACKEND_NEEDS_BUILD: ${{ needs.classify.outputs.backend_needs_build }}
       PVP_NEEDS_BUILD: ${{ needs.classify.outputs.pvp_needs_build }}
 
@@ -98,6 +108,8 @@ jobs:
           set -euo pipefail
           [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::DEPLOY_SHA inválido: $DEPLOY_SHA"; exit 1; }
           [[ "$PARENT_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::Parent SHA inválido: $PARENT_SHA"; exit 1; }
+          [[ "$BACKEND_TREE" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::Backend tree inválido: $BACKEND_TREE"; exit 1; }
+          [[ "$PVP_TREE" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::Go tree inválido: $PVP_TREE"; exit 1; }
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v4
@@ -106,48 +118,59 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Reuse parent backend image when backend is unchanged
+      - name: Reuse content-addressed backend image
         id: reuse
-        if: env.BACKEND_NEEDS_BUILD == 'false'
         shell: bash
         run: |
           set -euo pipefail
           owner="${GITHUB_REPOSITORY_OWNER,,}"
-          source="ghcr.io/${owner}/chess-studio-backend:oci-${PARENT_SHA}"
+          tree_source="ghcr.io/${owner}/chess-studio-backend:tree-${BACKEND_TREE}"
+          parent_source="ghcr.io/${owner}/chess-studio-backend:oci-${PARENT_SHA}"
           target="ghcr.io/${owner}/chess-studio-backend:oci-${DEPLOY_SHA}"
-          if docker buildx imagetools inspect "$source" >/dev/null 2>&1; then
-            docker buildx imagetools create --tag "$target" "$source"
+          if docker buildx imagetools inspect "$tree_source" >/dev/null 2>&1; then
+            docker buildx imagetools create --tag "$target" "$tree_source"
             echo 'hit=true' >> "$GITHUB_OUTPUT"
-            echo "::notice title=Backend image fast-path::Reused ${PARENT_SHA} for ${DEPLOY_SHA}; backend-python unchanged."
+            echo 'source=tree' >> "$GITHUB_OUTPUT"
+            echo "::notice title=Backend image content reuse::Reused tree ${BACKEND_TREE} for ${DEPLOY_SHA}."
+          elif [[ "$BACKEND_NEEDS_BUILD" == false ]] && docker buildx imagetools inspect "$parent_source" >/dev/null 2>&1; then
+            docker buildx imagetools create --tag "$tree_source" --tag "$target" "$parent_source"
+            echo 'hit=true' >> "$GITHUB_OUTPUT"
+            echo 'source=parent-bootstrap' >> "$GITHUB_OUTPUT"
+            echo "::notice title=Backend image content bootstrap::Seeded tree ${BACKEND_TREE} from ${PARENT_SHA}."
           else
             echo 'hit=false' >> "$GITHUB_OUTPUT"
-            echo "::warning title=Backend image fallback::Parent image missing; falling back to arm64 build for ${DEPLOY_SHA}."
+            echo 'source=build' >> "$GITHUB_OUTPUT"
+            echo "::notice title=Backend image build required::No reusable tree image for ${BACKEND_TREE}."
           fi
 
-      - name: Reuse parent Go API image when Go edge is unchanged
+      - name: Reuse content-addressed Go API image
         id: reuse_pvp
-        if: env.PVP_NEEDS_BUILD == 'false'
         shell: bash
         run: |
           set -euo pipefail
           owner="${GITHUB_REPOSITORY_OWNER,,}"
-          source="ghcr.io/${owner}/chess-studio-pvp:oci-${PARENT_SHA}"
+          tree_source="ghcr.io/${owner}/chess-studio-backend-go:tree-${PVP_TREE}"
+          parent_source="ghcr.io/${owner}/chess-studio-pvp:oci-${PARENT_SHA}"
           legacy_target="ghcr.io/${owner}/chess-studio-pvp:oci-${DEPLOY_SHA}"
           canonical_target="ghcr.io/${owner}/chess-studio-backend-go:oci-${DEPLOY_SHA}"
-          if docker buildx imagetools inspect "$source" >/dev/null 2>&1; then
-            docker buildx imagetools create --tag "$legacy_target" "$source"
-            docker buildx imagetools create --tag "$canonical_target" "$source"
+          if docker buildx imagetools inspect "$tree_source" >/dev/null 2>&1; then
+            docker buildx imagetools create --tag "$legacy_target" --tag "$canonical_target" "$tree_source"
             echo 'hit=true' >> "$GITHUB_OUTPUT"
-            echo "::notice title=Go API image fast-path::Reused ${PARENT_SHA} for ${DEPLOY_SHA}; backend-go unchanged."
+            echo 'source=tree' >> "$GITHUB_OUTPUT"
+            echo "::notice title=Go API image content reuse::Reused tree ${PVP_TREE} for ${DEPLOY_SHA}."
+          elif [[ "$PVP_NEEDS_BUILD" == false ]] && docker buildx imagetools inspect "$parent_source" >/dev/null 2>&1; then
+            docker buildx imagetools create --tag "$tree_source" --tag "$legacy_target" --tag "$canonical_target" "$parent_source"
+            echo 'hit=true' >> "$GITHUB_OUTPUT"
+            echo 'source=parent-bootstrap' >> "$GITHUB_OUTPUT"
+            echo "::notice title=Go API image content bootstrap::Seeded tree ${PVP_TREE} from ${PARENT_SHA}."
           else
             echo 'hit=false' >> "$GITHUB_OUTPUT"
-            echo "::warning title=Go API image fallback::Parent image missing; falling back to arm64 build for ${DEPLOY_SHA}."
+            echo 'source=build' >> "$GITHUB_OUTPUT"
+            echo "::notice title=Go API image build required::No reusable tree image for ${PVP_TREE}."
           fi
 
       - name: Checkout admitted main commit when a build is required
         if: >-
-          env.BACKEND_NEEDS_BUILD == 'true' ||
-          env.PVP_NEEDS_BUILD == 'true' ||
           steps.reuse.outputs.hit == 'false' ||
           steps.reuse_pvp.outputs.hit == 'false'
         uses: actions/checkout@v7
@@ -165,21 +188,21 @@ jobs:
 
       - name: Set up Buildx only when a build is required
         if: >-
-          env.BACKEND_NEEDS_BUILD == 'true' ||
-          env.PVP_NEEDS_BUILD == 'true' ||
           steps.reuse.outputs.hit == 'false' ||
           steps.reuse_pvp.outputs.hit == 'false'
         uses: docker/setup-buildx-action@v4
 
       - name: Build and publish immutable backend image
-        if: env.BACKEND_NEEDS_BUILD == 'true' || steps.reuse.outputs.hit == 'false'
+        if: steps.reuse.outputs.hit != 'true'
         uses: docker/build-push-action@v7
         with:
           context: ./backend-python
           file: ./backend-python/Dockerfile
           platforms: linux/arm64
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/chess-studio-backend:oci-${{ env.DEPLOY_SHA }}
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/chess-studio-backend:oci-${{ env.DEPLOY_SHA }}
+            ghcr.io/${{ github.repository_owner }}/chess-studio-backend:tree-${{ env.BACKEND_TREE }}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ env.DEPLOY_SHA }}
@@ -187,7 +210,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=oci-backend-arm64
 
       - name: Build and publish immutable Go API image
-        if: env.PVP_NEEDS_BUILD == 'true' || steps.reuse_pvp.outputs.hit == 'false'
+        if: steps.reuse_pvp.outputs.hit != 'true'
         uses: docker/build-push-action@v7
         with:
           context: ./backend-go
@@ -196,6 +219,7 @@ jobs:
           push: true
           tags: |
             ghcr.io/${{ github.repository_owner }}/chess-studio-backend-go:oci-${{ env.DEPLOY_SHA }}
+            ghcr.io/${{ github.repository_owner }}/chess-studio-backend-go:tree-${{ env.PVP_TREE }}
             ghcr.io/${{ github.repository_owner }}/chess-studio-pvp:oci-${{ env.DEPLOY_SHA }}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
@@ -205,8 +229,6 @@ jobs:
 
       - name: Verify reused runtime manifests without pulling layers
         if: >-
-          env.BACKEND_NEEDS_BUILD == 'false' &&
-          env.PVP_NEEDS_BUILD == 'false' &&
           steps.reuse.outputs.hit == 'true' &&
           steps.reuse_pvp.outputs.hit == 'true'
         shell: bash
@@ -227,10 +249,8 @@ jobs:
 
       - name: Verify newly built runtime images are publicly pullable
         if: >-
-          env.BACKEND_NEEDS_BUILD == 'true' ||
-          env.PVP_NEEDS_BUILD == 'true' ||
-          steps.reuse.outputs.hit == 'false' ||
-          steps.reuse_pvp.outputs.hit == 'false'
+          steps.reuse.outputs.hit != 'true' ||
+          steps.reuse_pvp.outputs.hit != 'true'
         shell: bash
         run: |
           set -euo pipefail
