@@ -1,68 +1,26 @@
 name: OCI · bootstrap Resend recovery
 
 on:
-  workflow_run:
-    workflows:
-      - Deploy to staging
-    types:
-      - completed
-    branches:
-      - main
   workflow_dispatch:
+    inputs:
+      bootstrap_sha:
+        description: Exact staging SHA whose marker requested the recovery bootstrap
+        required: false
+        type: string
 
 permissions:
   contents: read
 
 jobs:
-  trigger:
-    name: Detect Resend bootstrap request
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      github.event.workflow_run.conclusion == 'success'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    outputs:
-      requested: ${{ steps.scope.outputs.requested }}
-      bootstrap_sha: ${{ steps.scope.outputs.bootstrap_sha }}
-    env:
-      BOOTSTRAP_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
-      MARKER_PATH: infra/oci/runtime/resend-bootstrap-v1.txt
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ env.BOOTSTRAP_SHA }}
-          fetch-depth: 2
-
-      - name: Scope one-shot bootstrap
-        id: scope
-        shell: bash
-        run: |
-          set -euo pipefail
-          [[ "$BOOTSTRAP_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::Invalid bootstrap SHA"; exit 1; }
-          requested=false
-          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
-            requested=true
-          else
-            parent="$(git rev-parse "$BOOTSTRAP_SHA^1")"
-            if git diff --name-only "$parent" "$BOOTSTRAP_SHA" -- "$MARKER_PATH" | grep -Fxq "$MARKER_PATH"; then
-              requested=true
-            fi
-          fi
-          echo "requested=$requested" >> "$GITHUB_OUTPUT"
-          echo "bootstrap_sha=$BOOTSTRAP_SHA" >> "$GITHUB_OUTPUT"
-          echo "Resend bootstrap requested=$requested sha=$BOOTSTRAP_SHA"
-
   bootstrap:
     name: Seed Resend into OCI Vault and apply runtime
-    needs: trigger
-    if: needs.trigger.outputs.requested == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     concurrency:
       group: oci-staging-mutations
       cancel-in-progress: false
     env:
-      BOOTSTRAP_SHA: ${{ needs.trigger.outputs.bootstrap_sha }}
+      BOOTSTRAP_SHA: ${{ inputs.bootstrap_sha || github.sha }}
       OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
       OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
       OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
