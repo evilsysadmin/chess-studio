@@ -847,7 +847,12 @@ assert "WantedBy=timers.target" in signal_timer
 # recreate only the inactive blue/green slot so a newly installed runtime is
 # consumed without dropping the active listener.
 assert "require flock" in deploy
-assert 'flock -w 120 8' in deploy
+assert 'flock -w 120 8' not in deploy
+assert 'for ((attempt=1; attempt<=24; attempt++))' in deploy
+assert 'flock -w 5 8' in deploy
+assert 'supersede_if_stale()' in deploy
+assert deploy.count('supersede_if_stale') >= 3
+assert '[[ "$status" == 42 ]] && exit 0' in deploy
 assert "OCI_DEPLOY_ALREADY_CURRENT" not in deploy
 assert "prepare_deploy_watcher()" in deploy
 assert "enable_deploy_watcher()" in deploy
