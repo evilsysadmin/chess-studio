@@ -16,6 +16,11 @@ const WAR_ROOM_V3_REVISION_BASE =
   'https://assets.chess-studio.shadowops.dpdns.org/war-room/v3/staging/revisions';
 const LOCAL_GPU_CAPTURE = process.env.APP_VISUAL_LOCAL_GPU === '1';
 const WAR_ROOM_PROFILE_SCOPE = String(process.env.APP_VISUAL_WARROOM_PROFILE_SCOPE || 'all').trim().toLowerCase();
+const WAR_ROOM_PROFILE_SHARD = String(process.env.APP_VISUAL_WARROOM_PROFILE_SHARD || 'all').trim().toLowerCase();
+const WAR_ROOM_PROFILE_SHARDS = new Set(['all', 'canary', 'remainder']);
+if (!WAR_ROOM_PROFILE_SHARDS.has(WAR_ROOM_PROFILE_SHARD)) {
+  throw new Error(`Unknown War Room visual profile shard: ${WAR_ROOM_PROFILE_SHARD}`);
+}
 const WAR_ROOM_VISUAL_VARIANTS = new Set(
   (process.env.APP_VISUAL_WARROOM_VARIANTS || 'classic,v2,v3')
     .split(',')
@@ -222,7 +227,7 @@ const CAPTURE_PROFILES = Object.freeze([
     variant: 'v4',
   }),
 ]);
-const ACTIVE_CAPTURE_PROFILES = Object.freeze(
+const SCOPED_CAPTURE_PROFILES = Object.freeze(
   CAPTURE_PROFILES.filter((profile) => {
     if (!WAR_ROOM_VISUAL_VARIANTS.has(profile.variant || 'classic')) return false;
     if (WAR_ROOM_PROFILE_SCOPE === 'mobile-entry') {
@@ -237,6 +242,40 @@ const ACTIVE_CAPTURE_PROFILES = Object.freeze(
     if (WAR_ROOM_PROFILE_SCOPE === 'mobile') {
       return profile.hasTouch === true || profile.label === 'war-room-desktop-1440x900';
     }
+    return true;
+  }),
+);
+
+const CANARY_PROFILE_PRIORITY = Object.freeze([
+  // v3 is the product default. Prefer its canonical phone-landscape contract
+  // so the cheap serial canary catches broken room/bootstrap/immersive framing
+  // before the more expensive parallel evidence starts.
+  'war-room-v3-android-landscape-844x390',
+  'war-room-android-landscape-844x390',
+  'war-room-v2-android-landscape-844x390',
+  'war-room-v4-android-landscape-844x390',
+  'war-room-v3-android-390x844',
+  'war-room-android-390x844',
+  'war-room-v2-android-390x844',
+  'war-room-v4-android-390x844',
+  'war-room-desktop-1440x900',
+  'war-room-v2-desktop-1440x900',
+  'war-room-v3-desktop-1440x900',
+  'war-room-v4-desktop-1440x900',
+]);
+const CANARY_PROFILE_LABEL =
+  CANARY_PROFILE_PRIORITY.find((label) => SCOPED_CAPTURE_PROFILES.some((profile) => profile.label === label))
+  || SCOPED_CAPTURE_PROFILES[0]?.label
+  || '';
+
+if (WAR_ROOM_PROFILE_SHARD !== 'all' && !CANARY_PROFILE_LABEL) {
+  throw new Error('War Room visual shard requested with no active capture profiles');
+}
+
+const ACTIVE_CAPTURE_PROFILES = Object.freeze(
+  SCOPED_CAPTURE_PROFILES.filter((profile) => {
+    if (WAR_ROOM_PROFILE_SHARD === 'canary') return profile.label === CANARY_PROFILE_LABEL;
+    if (WAR_ROOM_PROFILE_SHARD === 'remainder') return profile.label !== CANARY_PROFILE_LABEL;
     return true;
   }),
 );
