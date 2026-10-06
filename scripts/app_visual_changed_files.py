@@ -53,6 +53,11 @@ NONVISUAL_LEARNING_APP_LINES = {
 }
 
 NONVISUAL_GLOBAL_SHELL_APP_LINES = {
+    "const {",
+    "useEffect(() => {",
+    "}",
+    "};",
+    "",
     "import React, { useEffect, useRef, useState } from 'react';",
     "import { LATEST_USER_NOTE_ID, USER_RELEASE_NOTES_KEY, openReleaseNoteTarget } from './userReleaseNotes.js';",
     "import { setProfileStorageItem } from './profileKeys.js';",
