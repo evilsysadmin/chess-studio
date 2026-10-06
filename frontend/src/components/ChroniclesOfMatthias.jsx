@@ -129,6 +129,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const [retaliationCue, setRetaliationCue] = useState(null);
   const [partyBark, setPartyBark] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const touchHoldRef = useRef({ delayId: null, repeatId: null });
 
   useEffect(() => {
     selectedMemberIdRef.current = selectedMemberId;
@@ -263,6 +264,52 @@ export default function ChroniclesOfMatthias({ onExit }) {
     }
   }, [progression]);
 
+  const clearTouchHold = useCallback(() => {
+    const active = touchHoldRef.current;
+    if (active.delayId !== null) window.clearTimeout(active.delayId);
+    if (active.repeatId !== null) window.clearInterval(active.repeatId);
+    touchHoldRef.current = { delayId: null, repeatId: null };
+  }, []);
+
+  const startTouchHold = useCallback((action, event) => {
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    event.preventDefault();
+    clearTouchHold();
+
+    const current = stateRef.current;
+    if (!current || current.phase === 'defeated' || current.phase === 'escaped') return;
+
+    try {
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+    } catch {
+      // Pointer capture is a comfort feature only; input remains valid without it.
+    }
+
+    dispatch(action);
+    if (current.initiative) return;
+
+    touchHoldRef.current.delayId = window.setTimeout(() => {
+      const repeat = () => {
+        const latest = stateRef.current;
+        if (!latest || latest.initiative || latest.phase === 'defeated' || latest.phase === 'escaped') {
+          clearTouchHold();
+          return false;
+        }
+        dispatch(action);
+        return true;
+      };
+
+      if (!repeat()) return;
+      touchHoldRef.current.repeatId = window.setInterval(repeat, 150);
+    }, 280);
+  }, [clearTouchHold, dispatch]);
+
+  const activateTouchAction = useCallback((action, event) => {
+    // Pointer input already fires on pointerdown so taps feel immediate. Keyboard
+    // and assistive activation arrive as click(detail=0) and still get one action.
+    if (event.detail === 0) dispatch(action);
+  }, [dispatch]);
+
   useEffect(() => {
     const current = stateRef.current;
     const actor = chroniclesCurrentInitiativeActor(current?.initiative);
@@ -327,9 +374,10 @@ export default function ChroniclesOfMatthias({ onExit }) {
   }, []);
 
   useEffect(() => () => {
+    clearTouchHold();
     if (retaliationTimerRef.current) clearTimeout(retaliationTimerRef.current);
     if (partyBarkTimerRef.current) clearTimeout(partyBarkTimerRef.current);
-  }, []);
+  }, [clearTouchHold]);
 
   useEffect(() => {
     if (!characterSetupDone) return undefined;
@@ -612,11 +660,47 @@ export default function ChroniclesOfMatthias({ onExit }) {
           {!expeditionOver && (
             <>
               <div className="chronicles-touch" aria-label="Controles de la mazmorra">
-                <button type="button" onClick={() => dispatch('turn-left')} aria-label="Girar a la izquierda">↶<small>GIRAR</small></button>
-                <button type="button" onClick={() => dispatch('forward')} aria-label="Avanzar">↑<small>AVANZAR</small></button>
+                <button
+                  type="button"
+                  data-chronicles-touch-action="turn-left"
+                  onPointerDown={(event) => startTouchHold('turn-left', event)}
+                  onPointerUp={clearTouchHold}
+                  onPointerCancel={clearTouchHold}
+                  onLostPointerCapture={clearTouchHold}
+                  onClick={(event) => activateTouchAction('turn-left', event)}
+                  aria-label="Girar a la izquierda"
+                >↶<small>GIRAR</small></button>
+                <button
+                  type="button"
+                  data-chronicles-touch-action="forward"
+                  onPointerDown={(event) => startTouchHold('forward', event)}
+                  onPointerUp={clearTouchHold}
+                  onPointerCancel={clearTouchHold}
+                  onLostPointerCapture={clearTouchHold}
+                  onClick={(event) => activateTouchAction('forward', event)}
+                  aria-label="Avanzar"
+                >↑<small>AVANZAR</small></button>
                 <button type="button" className="is-attack" onClick={attackWithSelected} aria-label="Atacar">⚔<small>{selectedMember?.name?.toUpperCase() || 'ATACAR'}</small></button>
-                <button type="button" onClick={() => dispatch('backward')} aria-label="Retroceder">↓<small>ATRÁS</small></button>
-                <button type="button" onClick={() => dispatch('turn-right')} aria-label="Girar a la derecha">↷<small>GIRAR</small></button>
+                <button
+                  type="button"
+                  data-chronicles-touch-action="backward"
+                  onPointerDown={(event) => startTouchHold('backward', event)}
+                  onPointerUp={clearTouchHold}
+                  onPointerCancel={clearTouchHold}
+                  onLostPointerCapture={clearTouchHold}
+                  onClick={(event) => activateTouchAction('backward', event)}
+                  aria-label="Retroceder"
+                >↓<small>ATRÁS</small></button>
+                <button
+                  type="button"
+                  data-chronicles-touch-action="turn-right"
+                  onPointerDown={(event) => startTouchHold('turn-right', event)}
+                  onPointerUp={clearTouchHold}
+                  onPointerCancel={clearTouchHold}
+                  onLostPointerCapture={clearTouchHold}
+                  onClick={(event) => activateTouchAction('turn-right', event)}
+                  aria-label="Girar a la derecha"
+                >↷<small>GIRAR</small></button>
               </div>
 
               <div className="chronicles-keyboard-help">
