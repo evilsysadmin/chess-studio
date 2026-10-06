@@ -13,6 +13,7 @@ import {
   chroniclesContentDefinition,
   chroniclesContentInteractions,
   chroniclesRequirementFailure,
+  chroniclesRequirementMet,
   chroniclesRequirementsMet,
 } from './chronicles/chroniclesContentRuntime.js';
 import { resolveChroniclesCharacterParty } from './chronicles/chroniclesCharacterBuilds.js';
@@ -388,17 +389,43 @@ export function chroniclesObjective(state) {
   const pendingTrigger = (map.triggers || []).find((entry) => chroniclesRequirementsMet(state, entry.when));
   if (pendingTrigger) return pendingTrigger.explorationObjective || pendingTrigger.label || 'Activa el siguiente evento';
 
-  const pendingInteraction = [
-    ...(map.interactables || []),
-    ...(map.treasures || []),
-  ].find((entry) => chroniclesRequirementsMet(state, entry.when));
-  if (pendingInteraction) {
-    return pendingInteraction.explorationObjective
-      || pendingInteraction.label
-      || (pendingInteraction.kind === 'pickup' ? 'Recoge el objeto' : 'Interactúa con el entorno');
+  const exit = (map.exits || [])[0];
+  const exitFailure = exit ? chroniclesRequirementFailure(state, exit.requirements) : null;
+  if (exitFailure) {
+    const content = [
+      ...(map.interactables || []),
+      ...(map.treasures || []),
+    ];
+    const satisfies = (entry, requirement, sourceState = state) => {
+      if (!entry?.action?.effects?.length || chroniclesRequirementMet(sourceState, requirement)) return false;
+      const simulated = chroniclesApplyContentEffects(sourceState, entry.action.effects);
+      return chroniclesRequirementMet(simulated, requirement);
+    };
+    const available = (entry) => chroniclesRequirementsMet(state, entry.when);
+
+    let pendingInteraction = content.find((entry) => available(entry) && satisfies(entry, exitFailure));
+
+    if (!pendingInteraction) {
+      const blockedTargets = content.filter((entry) => satisfies(entry, exitFailure));
+      for (const target of blockedTargets) {
+        const unmetTargetRequirement = (target.when || []).find(
+          (requirement) => !chroniclesRequirementMet(state, requirement),
+        );
+        if (!unmetTargetRequirement) continue;
+        pendingInteraction = content.find(
+          (entry) => available(entry) && satisfies(entry, unmetTargetRequirement),
+        );
+        if (pendingInteraction) break;
+      }
+    }
+
+    if (pendingInteraction) {
+      return pendingInteraction.explorationObjective
+        || pendingInteraction.label
+        || (pendingInteraction.kind === 'pickup' ? 'Recoge el objeto' : 'Interactúa con el entorno');
+    }
   }
 
-  const exit = (map.exits || [])[0];
   if (exit) return exit.explorationObjective || exit.openLabel || 'Busca una salida';
   return map.explorationIdleObjective || 'Explora la zona';
 }
