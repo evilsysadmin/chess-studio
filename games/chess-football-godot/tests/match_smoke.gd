@@ -12,7 +12,7 @@ func _initialize() -> void:
 	assert(match_node.debug_ball_exists())
 	assert(match_node.debug_pitch_exists())
 	assert(ChessFootballMath.PITCH_RECT.size.x >= 2400.0)
-	assert(ChessFootballMath.PITCH_RECT.size.y >= 1200.0)
+	assert(ChessFootballMath.PITCH_RECT.size.y >= 1400.0)
 	assert(match_node.debug_3d_ready())
 	assert(match_node.debug_audio_ready())
 	var audio_names: Array[String] = match_node.debug_audio_stream_names()
@@ -54,6 +54,11 @@ func _initialize() -> void:
 	if initial_kickoff_team == 0:
 		assert(match_node.controlled == match_node.teams[0][3])
 	assert(InputMap.has_action("tackle"))
+	var human_home_spread := absf(
+		match_node.teams[0][3].home_position.y
+		- match_node.teams[0][1].home_position.y
+	)
+	assert(human_home_spread > 500.0)
 	print("SMOKE_STAGE=kickoff")
 
 	# The same shot crossing the goal plane is only a goal while the whole
@@ -507,6 +512,34 @@ func _initialize() -> void:
 	match_node.ball.tick_ball(1.0 / 60.0)
 	assert(match_node.ball.velocity.length() > released_full_speed * 0.97)
 	print("SMOKE_STAGE=shots")
+	# Desktop parity: the real Space action charges pass power just like touch.
+	# Press starts the meter, hold increases power, release executes the pass,
+	# and desktop keeps control on the passer as before.
+	var desktop_passer: Footballer = match_node.teams[0][2]
+	desktop_passer.global_position = Vector2(980.0, 620.0)
+	match_node._select_player(desktop_passer)
+	match_node.ball.attach_to(desktop_passer)
+	Input.action_release("pass_ball")
+	Input.action_press("pass_ball")
+	match_node._handle_human(0.01)
+	assert(match_node.debug_pass_charge_ratio() > 0.0)
+	var desktop_target: Footballer = match_node.debug_pass_target()
+	assert(desktop_target != null)
+	assert(desktop_target.team_id == 0)
+	assert(desktop_target != desktop_passer)
+	match_node._handle_human(0.68)
+	assert(match_node.debug_pass_charge_ratio() > 0.70)
+	match_node.debug_refresh_hud()
+	assert(match_node.shot_meter.visible)
+	assert(match_node.shot_meter_label.text == "PASE LARGO")
+	var desktop_passer_before: Footballer = match_node.controlled
+	Input.action_release("pass_ball")
+	match_node._handle_human(0.01)
+	assert(match_node.ball.carrier == null)
+	assert(match_node.ball.velocity.length() > 900.0)
+	assert(match_node.ball.velocity.x > 0.0)
+	assert(match_node.controlled == desktop_passer_before)
+	print("SMOKE_STAGE=desktop-pass-charge")
 
 	assert(not match_node.debug_pause_menu_open())
 	assert(match_node.debug_pause_button_text() == "MENÚ")
