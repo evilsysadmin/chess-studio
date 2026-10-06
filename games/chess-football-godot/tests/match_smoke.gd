@@ -486,9 +486,12 @@ func _initialize() -> void:
 
 	assert(not match_node.debug_pause_menu_open())
 	assert(match_node.debug_pause_first_option() == "SALIR")
-	match_node.debug_toggle_pause_menu()
+	var escape_event := InputEventKey.new()
+	escape_event.keycode = KEY_ESCAPE
+	escape_event.pressed = true
+	match_node._unhandled_input(escape_event)
 	assert(match_node.debug_pause_menu_open())
-	match_node.debug_toggle_pause_menu()
+	match_node._unhandled_input(escape_event)
 	assert(not match_node.debug_pause_menu_open())
 
 	assert(match_node.debug_camera_mode() == "broadcast")
