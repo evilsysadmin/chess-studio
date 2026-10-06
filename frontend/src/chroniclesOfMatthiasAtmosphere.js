@@ -104,8 +104,7 @@ function addReadabilityLighting(root, { coarsePointer, scenePlan }) {
   const ambientFloor = CHRONICLES_MINIMUM_VISIBILITY.firstPerson;
   const ambient = new THREE.AmbientLight(
     0x73808c,
-    (coarsePointer ? ambientFloor.ambientCoarse : ambientFloor.ambientDesktop)
-      * (lightingProfile === 'crypt-dark' ? 0.86 : 1),
+    coarsePointer ? ambientFloor.ambientCoarse : ambientFloor.ambientDesktop,
   );
   ambient.name = 'chronicles-readability-ambient';
 
