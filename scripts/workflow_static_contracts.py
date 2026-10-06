@@ -87,26 +87,41 @@ def validate_staging_frontend_build_single_source(root: Path = ROOT) -> None:
 
 
 def validate_main_backend_image_non_runtime_gate(root: Path = ROOT) -> None:
-    """Keep non-runtime merges off the ARM/GHCR backend-image path."""
+    """Keep non-runtime and unchanged-backend generations off unnecessary ARM work."""
     workflow = (root / ".github" / "workflows" / "main-backend-image.yml").read_text(encoding="utf-8")
     required = (
         "name: Backend · classify admitted deploy surface",
         "runs-on: ubuntu-24.04",
         'python3 -S scripts/staging_deploy_scope.py --sha "$DEPLOY_SHA" --github-output "$GITHUB_OUTPUT"',
         "deploy_required: ${{ steps.scope.outputs.deploy_required }}",
-        "name: Backend · publish approved linux/arm64",
+        "backend_needs_build: ${{ steps.image_scope.outputs.backend_needs_build }}",
+        "pvp_needs_build: ${{ steps.image_scope.outputs.pvp_needs_build }}",
+        'git diff --quiet "$parent" "$DEPLOY_SHA" -- backend-python',
+        'git diff --quiet "$parent" "$DEPLOY_SHA" -- backend-go',
+        "name: Backend · publish exact-SHA images",
         "needs: classify",
-        "if: needs.classify.outputs.deploy_required == 'true'",
-        "runs-on: ubuntu-24.04-arm",
+        "ubuntu-24.04-arm",
+        "ubuntu-24.04",
+        "env.BACKEND_NEEDS_BUILD == 'false'",
+        "env.PVP_NEEDS_BUILD == 'false'",
+        "Verify reused runtime manifests without pulling layers",
+        "Enable arm64 emulation for x86 fallback builds",
+        "Set up Buildx only when a build is required",
+        "docker pull --platform linux/arm64",
         "packages: write",
     )
     missing = [token for token in required if token not in workflow]
     if missing:
-        raise SystemExit("main-backend-image perdió el gate non-runtime: " + ", ".join(missing))
+        raise SystemExit("main-backend-image perdió el gate de coste/backend: " + ", ".join(missing))
     classify = workflow.split("\n  classify:\n", 1)[1].split("\n  publish:\n", 1)[0]
+    publish = workflow.split("\n  publish:\n", 1)[1]
     if "packages: write" in classify:
         raise SystemExit("el clasificador barato de backend no debe tener permiso packages:write")
-    print("main backend image non-runtime gate: OK")
+    if "runs-on: ubuntu-24.04-arm" in publish:
+        raise SystemExit("publish no debe reservar ARM incondicionalmente; runner depende de cambios backend")
+    if "scripts/staging_deploy_scope.py" not in classify or "backend-python" not in classify or "backend-go" not in classify:
+        raise SystemExit("el clasificador x86 debe resolver deploy y cambios backend antes de elegir runner")
+    print("main backend image cost gate: OK")
 
 def validate_cloudflare_auth_rate_limit(root: Path = ROOT) -> None:
     """Keep the Free-tier auth burst guard tested and wired into staging delivery."""
