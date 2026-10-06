@@ -582,10 +582,10 @@
 }
 
 .chronicles-automap__canvas {
+  --chronicles-automap-pad: clamp(12px, 3vw, 26px);
+  position: relative;
+  min-width: 0;
   min-height: 0;
-  padding: clamp(12px, 3vw, 26px);
-  display: grid;
-  place-items: center;
   overflow: hidden;
   background:
     radial-gradient(circle at 50% 50%, rgba(104, 72, 39, .1), transparent 50%),
@@ -593,10 +593,18 @@
 }
 
 .chronicles-automap__canvas svg {
-  width: 100%;
-  height: 100%;
-  max-width: 100%;
-  max-height: 100%;
+  position: absolute;
+  top: var(--chronicles-automap-pad);
+  right: var(--chronicles-automap-pad);
+  bottom: var(--chronicles-automap-pad);
+  left: var(--chronicles-automap-pad);
+  width: calc(100% - var(--chronicles-automap-pad) - var(--chronicles-automap-pad));
+  height: calc(100% - var(--chronicles-automap-pad) - var(--chronicles-automap-pad));
+  min-width: 0;
+  min-height: 0;
+  max-width: none;
+  max-height: none;
+  display: block;
   overflow: visible;
   filter: drop-shadow(0 14px 28px rgba(0, 0, 0, .45));
 }
@@ -1076,7 +1084,7 @@
     border-radius: 10px;
   }
 
-  .chronicles-automap__canvas { padding: 10px; }
+  .chronicles-automap__canvas { --chronicles-automap-pad: 10px; }
 
   .chronicles-automap__panel footer {
     min-height: 44px;
