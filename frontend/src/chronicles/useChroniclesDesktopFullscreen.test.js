@@ -14,9 +14,13 @@ describe('Chronicles desktop fullscreen policy', () => {
     expect(chroniclesDesktopFullscreenEligible(fakeWindow())).toBe(true);
   });
 
-  it('keeps native fullscreen disabled for touch/mobile surfaces', () => {
+  it('keeps native fullscreen disabled for coarse-pointer mobile surfaces', () => {
     expect(chroniclesDesktopFullscreenEligible(fakeWindow({ width: 844, fine: false, touchPoints: 1 }))).toBe(false);
     expect(chroniclesDesktopFullscreenEligible(fakeWindow({ width: 390, fine: false, touchPoints: 1 }))).toBe(false);
+  });
+
+  it('still treats a wide fine-pointer hybrid laptop as desktop', () => {
+    expect(chroniclesDesktopFullscreenEligible(fakeWindow({ width: 1440, fine: true, touchPoints: 10 }))).toBe(true);
   });
 
   it('does not classify narrow fine-pointer windows as desktop Chronicles', () => {
