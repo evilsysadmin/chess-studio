@@ -19,7 +19,7 @@ describe('Chronicles secret Ash Vault route', () => {
   it('discovers a hidden door, consumes its key and enters a distinct side map', () => {
     expect(chroniclesMapIds()).toContain('ash-vault');
     const vault = chroniclesMapById('ash-vault');
-    expect(vault.version).toBe(2);
+    expect(vault.version).toBe(3);
     expect(vault.grid).toHaveLength(7);
     expect(vault.grid[0]).toHaveLength(9);
     expect(vault.enemies.map((enemy) => enemy.id)).toEqual([
