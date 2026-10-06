@@ -1,5 +1,5 @@
-/* Generic War Room reused as the diegetic Combat preparation space.
- * Combat rules remain outside the renderer: this layer only stages the army. */
+/* Combat Operations Room stages campaign preparation around the live army.
+ * Combat rules remain outside the renderer: this layer only owns presentation. */
 
 .combat-preparation-room-stage {
   position: absolute;
@@ -47,6 +47,14 @@
   background:
     linear-gradient(180deg, rgba(5, 8, 12, .58) 0%, transparent 23%, transparent 62%, rgba(5, 8, 12, .72) 100%),
     radial-gradient(circle at 50% 42%, transparent 35%, rgba(4, 7, 11, .36) 100%);
+}
+
+@media (max-width: 720px) {
+  .combat-preparation-room-vignette {
+    background:
+      linear-gradient(180deg, rgba(5, 8, 12, .30) 0%, transparent 22%, transparent 64%, rgba(5, 8, 12, .48) 100%),
+      radial-gradient(circle at 50% 42%, transparent 38%, rgba(4, 7, 11, .18) 100%);
+  }
 }
 
 .combat-preparation-room-loading {
