@@ -1,5 +1,8 @@
-import { describe, expect, it } from 'vitest';
-import { chroniclesDesktopFullscreenEligible } from './useChroniclesDesktopFullscreen.js';
+import { describe, expect, it, vi } from 'vitest';
+import {
+  chroniclesDesktopFullscreenEligible,
+  chroniclesRequestDesktopFullscreen,
+} from './useChroniclesDesktopFullscreen.js';
 
 function fakeWindow({ width = 1440, fine = true, touchPoints = 0 } = {}) {
   return {
@@ -26,4 +29,19 @@ describe('Chronicles desktop fullscreen policy', () => {
   it('does not classify narrow fine-pointer windows as desktop Chronicles', () => {
     expect(chroniclesDesktopFullscreenEligible(fakeWindow({ width: 760 }))).toBe(false);
   });
+  it('requests native fullscreen from an eligible desktop gesture path', async () => {
+    const requestFullscreen = vi.fn(async () => {
+      fakeDoc.fullscreenElement = fakeDoc.documentElement;
+    });
+    const fakeDoc = {
+      fullscreenElement: null,
+      documentElement: { requestFullscreen },
+    };
+    const win = fakeWindow();
+
+    await expect(chroniclesRequestDesktopFullscreen(fakeDoc, win)).resolves.toBe(true);
+    expect(requestFullscreen).toHaveBeenCalledWith({ navigationUI: 'hide' });
+  });
+
+
 });
