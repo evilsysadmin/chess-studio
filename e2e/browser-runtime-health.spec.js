@@ -227,6 +227,17 @@ test('Browser WebGL · Home 3D recupera el contexto perdido', async ({ page }) =
   await expect(canvas).toHaveClass(/is-ready/, { timeout:15_000 });
   await settle(page);
 
+  // Recovery recreates the Home renderer on the same canvas. Rebind the probe
+  // to the currently active GL context instead of polling the stale pre-restore
+  // object after navigation.
+  const restoredContextReady = await canvas.evaluate((node) => {
+    const gl = node.getContext('webgl2') || node.getContext('webgl');
+    if (!gl) return false;
+    window.__homeWebglContext = gl;
+    return gl.isContextLost?.() === false;
+  });
+  expect(restoredContextReady, 'Home debe exponer un contexto WebGL restaurado antes de probar el cleanup').toBe(true);
+
   // The old global soak mounted Home ⇄ War Room ⇄ Pawn Slug twice merely to
   // catch HomeBlenderScene3D keeping its WebGL context alive after unmount. We
   // can assert that invariant directly on the exact context already exercised
