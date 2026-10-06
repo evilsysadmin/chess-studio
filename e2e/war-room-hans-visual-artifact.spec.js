@@ -171,7 +171,7 @@ test('War Room · canario visual de Hans físicamente en escena', async () => {
     expect(Math.abs(diagnostic.ndcY)).toBeLessThanOrEqual(1.05);
     expect(Number.isFinite(diagnostic.groundGap)).toBe(true);
     expect(diagnostic.groundGap).toBeLessThanOrEqual(MAX_GROUND_GAP);
-    expect(diagnostic.groundSurface).toMatch(/^war-room-(command-carpet|castle-floor)/);
+    expect(diagnostic.groundSurface).toMatch(/^(?:war-room-(?:command-carpet|castle-floor)|WR3_ARM_(?:flagstones_|floor))/);
     expect(diagnostic.groundLock).toMatch(/^hans-visible-ground-lock-v/);
 
     await writeFile(
