@@ -44,7 +44,9 @@ import {
   saveChroniclesProgression,
   setChroniclesCharacterBuild,
 } from '../chroniclesOfMatthiasProgression.js';
+import { chroniclesAutomapMarkVisited } from '../chronicles/chroniclesAutomap.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
+import ChroniclesAutomap from './ChroniclesAutomap.jsx';
 import ChroniclesBookOneEpilogue from './ChroniclesBookOneEpilogue.jsx';
 import ChroniclesCharacterSetup from './ChroniclesCharacterSetup.jsx';
 import ChroniclesDefeatOverlay from './ChroniclesDefeatOverlay.jsx';
@@ -129,11 +131,18 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const [retaliationCue, setRetaliationCue] = useState(null);
   const [partyBark, setPartyBark] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [automapOpen, setAutomapOpen] = useState(false);
+  const [automapVisitedByMap, setAutomapVisitedByMap] = useState({});
   const touchHoldRef = useRef({ delayId: null, repeatId: null });
 
   useEffect(() => {
     selectedMemberIdRef.current = selectedMemberId;
   }, [selectedMemberId]);
+
+  useEffect(() => {
+    if (!state?.mapId) return;
+    setAutomapVisitedByMap((visited) => chroniclesAutomapMarkVisited(visited, state));
+  }, [state?.mapId, state?.x, state?.y]);
 
   useEffect(() => {
     const html = document.documentElement;
@@ -159,7 +168,13 @@ export default function ChroniclesOfMatthias({ onExit }) {
     onExit?.();
   }, [onExit]);
 
-  useEscapeToClose(() => setMenuOpen((open) => !open), { contextMenu: false });
+  useEscapeToClose(() => {
+    if (automapOpen) {
+      setAutomapOpen(false);
+      return;
+    }
+    setMenuOpen((open) => !open);
+  }, { contextMenu: false });
 
   const confirmCharacterBuild = useCallback((build) => {
     const selected = setChroniclesCharacterBuild(progression, build);
@@ -173,6 +188,8 @@ export default function ChroniclesOfMatthias({ onExit }) {
     setReady(false);
     setBootstrapError(null);
     setRendererError('');
+    setAutomapOpen(false);
+    setAutomapVisitedByMap({});
     setCharacterSetupDone(true);
     setBootstrapRevision((revision) => revision + 1);
   }, [progression]);
@@ -363,6 +380,8 @@ export default function ChroniclesOfMatthias({ onExit }) {
     setReady(false);
     setBootstrapError(null);
     setRendererError('');
+    setAutomapOpen(false);
+    setAutomapVisitedByMap({});
     staleRunRecoveryAttemptedRef.current = false;
     if (retaliationTimerRef.current) clearTimeout(retaliationTimerRef.current);
     retaliationTimerRef.current = null;
@@ -500,7 +519,14 @@ export default function ChroniclesOfMatthias({ onExit }) {
     if (!ready || !stateRef.current) return undefined;
     const onKeyDown = (event) => {
       const current = stateRef.current;
-      if (!current || current.phase === 'defeated' || current.phase === 'escaped') return;
+      if (!current) return;
+      if (event.key === 'm' || event.key === 'M') {
+        event.preventDefault();
+        setMenuOpen(false);
+        setAutomapOpen((open) => !open);
+        return;
+      }
+      if (automapOpen || current.phase === 'defeated' || current.phase === 'escaped') return;
       if (/^[1-4]$/.test(event.key)) {
         const member = current.party[Number(event.key) - 1];
         if (member) {
@@ -521,7 +547,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     };
     window.addEventListener('keydown', onKeyDown, { passive: false });
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [attackWithSelected, dispatch, ready]);
+  }, [attackWithSelected, automapOpen, dispatch, ready]);
 
   if (!characterSetupDone) {
     return (
@@ -612,6 +638,19 @@ export default function ChroniclesOfMatthias({ onExit }) {
             <span>RUMBO <b>{direction.label}</b></span>
             <span>ACTIVO <b>{selectedMember?.name}</b></span>
             <span>OBJETIVO <b>{objective}</b></span>
+            <button
+              type="button"
+              className="chronicles-map-trigger"
+              aria-label={automapOpen ? 'Cerrar automapa' : 'Abrir automapa'}
+              aria-expanded={automapOpen}
+              aria-controls="chronicles-automap"
+              onClick={() => {
+                setMenuOpen(false);
+                setAutomapOpen((open) => !open);
+              }}
+            >
+              <i aria-hidden="true">⌖</i><b>MAPA</b>
+            </button>
             <details
               className="chronicles-game-menu"
               open={menuOpen}
@@ -709,12 +748,19 @@ export default function ChroniclesOfMatthias({ onExit }) {
                 <span><kbd>A</kbd><kbd>D</kbd> girar</span>
                 <span><kbd>1</kbd>–<kbd>4</kbd> pieza</span>
                 <span><kbd>ESPACIO</kbd> atacar</span>
+                <span><kbd>M</kbd> mapa</span>
               </div>
             </>
           )}
         </main>
       </div>
 
+      <ChroniclesAutomap
+        open={automapOpen}
+        state={state}
+        visitedCells={automapVisitedByMap[state.mapId] || []}
+        onClose={() => setAutomapOpen(false)}
+      />
     </div>
   );
 }
