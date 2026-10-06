@@ -3,9 +3,9 @@ import * as THREE from 'three';
 import { createThreeRenderer } from '../threeRenderer.js';
 
 export const QUICK_MATCH_READY_ROOM_CAMERA = Object.freeze({
-  fov: 33,
-  position: Object.freeze([0, 5.45, 12.15]),
-  target: Object.freeze([0, 1.5, -1.7]),
+  fov: 34,
+  position: Object.freeze([0, 5.72, 13.45]),
+  target: Object.freeze([0, 1.55, -1.82]),
 });
 
 const READY_ROOM_BACK_RANK = Object.freeze([
@@ -261,6 +261,7 @@ function addChessPiece(board, descriptor, material, segments) {
     .26,
     (descriptor.rank - 3.5) * .76,
   );
+  piece.scale.setScalar(.78);
   if (descriptor.color === 'black') piece.rotation.y = Math.PI;
   board.add(piece);
 }
@@ -341,12 +342,24 @@ function addWindow(root, stone, brass, night, moon) {
   box(windowGroup, [.24, 4.5, .3], stone, [-2.92, 3.30, .04], 'window-jamb-left');
   box(windowGroup, [.24, 4.5, .3], stone, [2.92, 3.30, .04], 'window-jamb-right');
   box(windowGroup, [6.05, .24, .3], stone, [0, 1.05, .04], 'window-sill');
-  for (const x of [-.96, .96]) {
-    box(windowGroup, [.08, 4.15, .18], brass, [x, 3.30, .12], 'window-mullion-vertical');
+  for (const x of [-.96, 0, .96]) {
+    box(windowGroup, [.07, 4.15, .18], stone, [x, 3.30, .12], 'window-mullion-vertical');
   }
   for (const y of [2.65, 3.95]) {
-    box(windowGroup, [5.45, .08, .18], brass, [0, y, .12], 'window-mullion-horizontal');
+    box(windowGroup, [5.45, .07, .18], stone, [0, y, .12], 'window-mullion-horizontal');
   }
+  box(windowGroup, [5.65, .035, .08], brass, [0, 1.14, .16], 'window-brass-sill');
+
+  const haloMaterial = new THREE.MeshBasicMaterial({
+    color: 0x9fc9ff,
+    transparent: true,
+    opacity: .13,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  });
+  const halo = new THREE.Mesh(new THREE.SphereGeometry(.62, 20, 14), haloMaterial);
+  halo.position.set(1.45, 4.65, .08);
+  windowGroup.add(halo);
 
   const moonMesh = new THREE.Mesh(new THREE.SphereGeometry(.40, 24, 16), moon);
   moonMesh.position.set(1.45, 4.65, .2);
@@ -372,15 +385,15 @@ function buildRoom({ lite = false } = {}) {
 
   const stone = mat(0x3d3936, .03, .90);
   const stoneEdge = mat(0x665d54, .05, .78);
-  const wood = mat(0x4e2b19, .08, .46);
-  const woodDark = mat(0x28140d, .08, .58);
-  const brass = mat(0xb98542, .74, .25);
-  const leather = mat(0x571d1b, .10, .50);
-  const ivory = mat(0xe9dfca, .06, .42);
-  const ebony = mat(0x101010, .26, .31);
-  const lightSquare = mat(0xd7d0c4, .06, .45);
-  const darkSquare = mat(0x36383b, .10, .38);
-  const clockFace = mat(0xd8c9a9, .02, .62);
+  const wood = mat(0x452516, .10, .42);
+  const woodDark = mat(0x24130d, .10, .54);
+  const brass = mat(0xb98542, .76, .23);
+  const leather = mat(0x441517, .12, .48);
+  const ivory = mat(0xe8ddc8, .08, .36);
+  const ebony = mat(0x252220, .38, .25);
+  const lightSquare = mat(0xd5cec2, .07, .42);
+  const darkSquare = mat(0x35373a, .12, .34);
+  const clockFace = mat(0xe5d6b7, .02, .52);
   const clockHand = mat(0x251a12, .26, .34);
   const night = new THREE.MeshBasicMaterial({ color: 0x0b2d50 });
   const moon = new THREE.MeshBasicMaterial({ color: 0xe7f1ff });
@@ -416,23 +429,24 @@ function buildRoom({ lite = false } = {}) {
   const table = box(root, [11.65, .66, 7.25], wood, [0, .98, -1.12], 'table-top');
   table.rotation.x = -.018;
   box(root, [10.55, .40, 6.32], woodDark, [0, .62, -1.16], 'table-apron');
-  box(root, [10.55, .055, 6.18], leather, [0, 1.335, -1.10], 'table-leather-inlay');
+  box(root, [9.95, .035, 5.80], brass, [0, 1.335, -1.10], 'table-leather-trim');
+  box(root, [9.68, .045, 5.53], leather, [0, 1.365, -1.10], 'table-leather-inlay');
   for (const x of [-4.95, 4.95]) {
     for (const z of [-3.18, .82]) box(root, [.52, 1.72, .52], woodDark, [x, .02, z], 'table-leg');
   }
 
   const board = addBoard(root, lightSquare, darkSquare, woodDark, brass);
-  board.position.set(-.30, 1.39, -1.30);
+  board.position.set(-.30, 1.48, -1.30);
   addStartingPosition(board, ivory, ebony, { lite });
   addClock(root, brass, ebony, clockFace, clockHand);
   addChair(root, woodDark, leather, brass);
 
   const rug = new THREE.Mesh(
-    new THREE.PlaneGeometry(10.4, 7.2),
-    mat(0x4d1718, .01, .96),
+    new THREE.PlaneGeometry(8.9, 5.6),
+    mat(0x321012, .01, .94),
   );
   rug.rotation.x = -Math.PI / 2;
-  rug.position.set(0, -.035, -1.25);
+  rug.position.set(0, -.035, -1.15);
   rug.receiveShadow = true;
   root.add(rug);
 
@@ -482,7 +496,7 @@ export default function QuickMatchReadyRoomScene3D() {
       });
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 2.06;
+      renderer.toneMappingExposure = 1.98;
       renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio || 1, coarsePointer ? 1 : 1.35));
       renderer.shadowMap.enabled = !coarsePointer;
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
