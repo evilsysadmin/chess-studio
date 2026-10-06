@@ -21,6 +21,7 @@ STAGING_WORKER_DEPLOY = ROOT / "scripts/deploy_staging_ai_worker.py"
 STAGING_RELEASE_IDENTITY = ROOT / "scripts/staging_release_identity.py"
 STAGING_DEPLOY_PROOF = ROOT / "scripts/staging_deploy_proof.py"
 STAGING_DEPLOY_SCOPE = ROOT / "scripts/staging_deploy_scope.py"
+STAGING_DEPLOY_PREPARE = ROOT / "scripts/staging_deploy_prepare.py"
 OCI_RUN_COMMAND = ROOT / "scripts/oci_run_command.py"
 OCI_RUNTIME_BUNDLE = ROOT / "scripts/oci_runtime_bundle.py"
 
@@ -70,6 +71,7 @@ def main() -> int:
         STAGING_RELEASE_IDENTITY,
         STAGING_DEPLOY_PROOF,
         STAGING_DEPLOY_SCOPE,
+        STAGING_DEPLOY_PREPARE,
         OCI_RUN_COMMAND,
         OCI_RUNTIME_BUNDLE,
     )
@@ -92,6 +94,7 @@ def main() -> int:
     staging_worker_wrapper = STAGING_WORKER_WRAPPER.read_text(encoding="utf-8")
     staging_worker_deploy = STAGING_WORKER_DEPLOY.read_text(encoding="utf-8")
     staging_release_identity = STAGING_RELEASE_IDENTITY.read_text(encoding="utf-8")
+    staging_deploy_prepare = STAGING_DEPLOY_PREPARE.read_text(encoding="utf-8")
     oci_run_command = OCI_RUN_COMMAND.read_text(encoding="utf-8")
     oci_runtime_bundle = OCI_RUNTIME_BUNDLE.read_text(encoding="utf-8")
 
@@ -130,19 +133,14 @@ def main() -> int:
         (STAGING_WRITE_MUTEX, "canonical staging non-preemptive write mutex"),
         ("running generation finishes while newer pending", "canonical anti-starvation mutex rationale"),
         ("name: Prepare coherent staging generation", "canonical generation prepare job"),
-        ("Supersede stale staging commit", "single stale guard before mutation"),
+        ("name: Prepare staging generation", "single staging admission owner"),
+        ("scripts/staging_deploy_prepare.py --self-test", "staging prepare self-test"),
+        ("scripts/staging_deploy_prepare.py --sha \"$DEPLOY_SHA\" --github-output \"$GITHUB_OUTPUT\"", "staging prepare classifier"),
         ("permissions:\n  contents: read", "read-only workflow permissions"),
         ("admitted: ${{ steps.admission.outputs.admitted }}", "admission output"),
+        ("pawn_slug_visual_required: ${{ steps.admission.outputs.pawn_slug_visual_required }}", "Pawn Slug evidence scope output"),
         ("pull-requests: read", "deploy scope PR provenance permission"),
         ("fetch-depth: 2", "deploy scope first-parent checkout"),
-        ("staging_deploy_scope.py --self-test", "deploy scope self-test"),
-        ("staging_deploy_scope.py --sha \"$DEPLOY_SHA\" --github-output \"$scope\"", "deploy scope classifier"),
-        ("if [[ \"$deploy_required\" != true ]]", "non-runtime staging no-op"),
-        ("Staging no-op", "non-runtime staging diagnostic"),
-        ("staging_generation.py main-head --sha \"$DEPLOY_SHA\"", "main head admission probe"),
-        ("admitted=false", "superseded clean exit"),
-        ("admitted=true", "admitted generation state"),
-        ("Staging superseded", "stale supersede non-error diagnostic"),
         ("Wait for zero-cost host watcher fast-path", "generation zero-cost backend fast-path"),
         # Watcher patience (48 x 1 s), the periodic stale-main probe and the
         # complete public accreditation live in staging_generation.py and are
@@ -166,6 +164,25 @@ def main() -> int:
         ("Live browser smoke against deployed staging", "generation live smoke"),
     ):
         require(staging_deploy, needle, label, errors)
+
+    for needle, label in (
+        ("deploy_scope.decide(head, source)", "prepare owns deploy scope decision"),
+        ('"admitted": "false"', "prepare defaults to non-admitted"),
+        ("Staging no-op", "prepare owns non-runtime staging diagnostic"),
+        ("generation.current_main()", "prepare owns stale-main probe"),
+        ("Staging superseded", "prepare owns stale supersede diagnostic"),
+        ('values["admitted"] = "true"', "prepare owns admitted generation state"),
+        ("pawn_scope.decide(head)", "prepare owns Pawn Slug evidence scope"),
+        ('"pawn_slug_visual_required": "false"', "prepare defaults Pawn Slug evidence off before admission"),
+    ):
+        require(staging_deploy_prepare, needle, label, errors)
+
+    prepare_selftest = subprocess.run(
+        [sys.executable, "-S", str(STAGING_DEPLOY_PREPARE), "--self-test"],
+        capture_output=True, text=True, check=False,
+    )
+    if prepare_selftest.returncode != 0:
+        errors.append("staging_deploy_prepare.py self-test falla: " + (prepare_selftest.stdout + prepare_selftest.stderr).strip()[-300:])
 
     if staging_deploy.count("python3 scripts/verify_backend_staging.py") < 2:
         errors.append("staging fast-path/fallback must reuse full public backend accreditation before skipping Run Command")
