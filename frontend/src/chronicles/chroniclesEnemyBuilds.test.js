@@ -7,6 +7,7 @@ import {
 } from './chroniclesMapCatalog.js';
 import {
   chroniclesEnemyBuildModifiers,
+  chroniclesEnemyFallbackAgility,
   createDefaultChroniclesEnemyBuild,
   deriveLegacyChroniclesEnemyBuild,
   resolveChroniclesEnemyBuildDefinition,
@@ -159,6 +160,17 @@ describe('Chronicles EnemyBuild v1', () => {
       spectralBishopHp: 5,
       scavengerHp: 6,
     }));
+  });
+
+  it('derives signature enemy agility from archetype before generic movement fallback', () => {
+    expect(chroniclesEnemyFallbackAgility({ visualType: 'fork-stalker', ai: { movement: 'cardinal-roam' } })).toBe(5);
+    expect(chroniclesEnemyFallbackAgility({ visualType: 'crypt-spider', ai: { movement: 'patrol-route' } })).toBe(5);
+    expect(chroniclesEnemyFallbackAgility({ visualType: 'ember-wisp', ai: { movement: 'hold' } })).toBe(5);
+    expect(chroniclesEnemyFallbackAgility({ visualType: 'bone-hound', ai: { movement: 'cardinal-roam' } })).toBe(4);
+    expect(chroniclesEnemyFallbackAgility({ visualType: 'ash-goblin', ai: { movement: 'cardinal-roam' } })).toBe(4);
+
+    expect(chroniclesEnemyFallbackAgility({ visualType: 'gate-jailer', ai: { movement: 'hold' } })).toBe(1);
+    expect(chroniclesEnemyFallbackAgility({ visualType: 'unknown-knight', ai: { movement: 'knight-chase' } })).toBe(4);
   });
 
   it('fails map validation closed when an authored EnemyBuild is invalid', () => {
