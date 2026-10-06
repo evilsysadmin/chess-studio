@@ -49,12 +49,12 @@ describe('Chronicles of Matthias dungeon photography', () => {
 
     const east = chroniclesExitGateTransform(
       [
-        '#####',
+        '##.##',
         '#..##',
         '#...#',
         '#####',
       ],
-      { position: { x: 3, y: 1 } },
+      { position: { x: 2, y: 1 } },
       { x: 2, y: 1.5 },
     );
     expect(east.side).toBe('east');
