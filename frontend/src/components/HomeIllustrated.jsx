@@ -80,7 +80,7 @@ function currentReducedMotion() {
   return reducedMotionStatus().effective;
 }
 
-export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, onContinue, onPractice, pendingModes = [], onTournament, onTrain, onCombat, onDaily, onHistory, onInsights, tools, matthiasModel, matthiasSpeaking, onMatthiasAction, onMatthiasDismiss }) {
+export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, onPlayIntent, onContinue, onPractice, pendingModes = [], onTournament, onTrain, onCombat, onDaily, onHistory, onInsights, tools, matthiasModel, matthiasSpeaking, onMatthiasAction, onMatthiasDismiss }) {
   const [toolsOpen, setToolsOpen] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
   const [playMenuOpen, setPlayMenuOpen] = useState(false);
@@ -170,11 +170,23 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [toolsOpen, tools, experimentsAction, matthiasModel?.action, onDaily]);
 
+  const signalPlayIntent = () => {
+    if (!loading) onPlayIntent?.();
+  };
+
+  const handleSceneDestinationHover = (destination) => {
+    setActiveRoom(destination);
+    if (destination === 'play') signalPlayIntent();
+  };
+
   const activateSceneDestination = (destination) => {
     if (loading) return;
     if (destination === 'tournament') onTournament();
     else if (destination === 'combat') onCombat();
-    else if (destination === 'play') (hasSavedGame ? onContinue : onPlay)();
+    else if (destination === 'play') {
+      signalPlayIntent();
+      (hasSavedGame ? onContinue : onPlay)();
+    }
   };
 
   // The "Más formas de jugar" menu closes on Escape and on any press outside it.
@@ -284,7 +296,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
             artUrl={hall}
             ambient={castleLife.ambient}
             activeRoom={activeRoom}
-            onDestinationHover={setActiveRoom}
+            onDestinationHover={handleSceneDestinationHover}
             onDestinationActivate={activateSceneDestination}
             onAnchorLayout={handleAnchorLayout}
             matthias={{ scene: matthiasSceneKey, activity: matthiasActivity, speaking: Boolean(matthiasSpeaking) }}
@@ -331,9 +343,10 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
                 className={`illustrated-home__destination illustrated-home__destination--${id}${PRIMARY_DIEGETIC_DESTINATIONS.has(id) ? ' is-diegetic-object' : ''}${activeRoom === id ? ' is-active' : ''}`}
                 data-home-diegetic-object={PRIMARY_DIEGETIC_DESTINATIONS.has(id) ? id : undefined}
                 onClick={action}
-                onPointerEnter={() => setActiveRoom(id)}
+                onPointerEnter={() => { setActiveRoom(id); if (id === 'play') signalPlayIntent(); }}
+                onPointerDown={() => { if (id === 'play') signalPlayIntent(); }}
                 onPointerLeave={() => setActiveRoom(null)}
-                onFocus={() => setActiveRoom(id)}
+                onFocus={() => { setActiveRoom(id); if (id === 'play') signalPlayIntent(); }}
                 onBlur={() => setActiveRoom(null)}
                 disabled={loading}
               >
@@ -355,7 +368,8 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
             className={`illustrated-home__beacon illustrated-home__beacon--${id}${activeRoom === id ? ' is-active' : ''}`}
             style={{ left: `${anchors[id].x * 100}%`, top: `${anchors[id].y * 100}%` }}
             onClick={action}
-            onPointerEnter={() => setActiveRoom(id)}
+            onPointerEnter={() => { setActiveRoom(id); if (id === 'play') signalPlayIntent(); }}
+            onPointerDown={() => { if (id === 'play') signalPlayIntent(); }}
             onPointerLeave={() => setActiveRoom(null)}
             disabled={loading}
           >

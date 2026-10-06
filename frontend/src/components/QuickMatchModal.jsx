@@ -1,4 +1,5 @@
 import { Suspense, lazy, useEffect, useState } from 'react';
+import { prefetchGameScreenRoute } from '../gameScreenRoute.js';
 import { difficultyLabel } from '../difficulty.js';
 import ColorSelector from './ColorSelector.jsx';
 import { TIME_CONTROLS } from '../clock.js';
@@ -11,8 +12,7 @@ import { fetchMatthiasBriefing } from '../matthiasDaily.js';
 import { matthiasTimeVisual } from '../matthiasVisuals.js';
 import './QuickMatchMobileGoldenPath.css';
 import './QuickMatchReadyRoom.css';
-import { preloadBoard3DRenderer } from './Board3DRegistration.js';
-import { loadWarRoomVariant, prefetchWarRoomVariant } from './WarRoomVariant.js';
+import { preloadPreferredWarRoomOnIntent } from './warRoomIntentPreload.js';
 import {
   exitWarRoomBrowserFullscreen,
   requestWarRoomLandscapeOnEntry,
@@ -62,15 +62,6 @@ export default function QuickMatchModal({
   const matthiasVisual = matthiasTimeVisual();
 
   useEffect(() => {
-    if (selectedRenderer !== '3d') return undefined;
-    void Promise.allSettled([
-      preloadBoard3DRenderer(),
-      prefetchWarRoomVariant(loadWarRoomVariant()),
-    ]);
-    return undefined;
-  }, [selectedRenderer]);
-
-  useEffect(() => {
     let active = true;
     const controller = new AbortController();
     void fetchMatthiasBriefing({ signal: controller.signal })
@@ -82,7 +73,15 @@ export default function QuickMatchModal({
     };
   }, []);
 
+  function warmWarRoomPath() {
+    void prefetchGameScreenRoute();
+    if (selectedRenderer === '3d') {
+      void preloadPreferredWarRoomOnIntent({ boardRenderer: '3d' });
+    }
+  }
+
   async function startQuickMatch() {
+    warmWarRoomPath();
     const autoRotate = selectedRenderer === '3d'
       ? await requestWarRoomLandscapeOnEntry()
       : false;
@@ -164,6 +163,9 @@ export default function QuickMatchModal({
               className="primary-btn friendly-main-cta quick-match-ready-room__play"
               style={QUICK_MATCH_TOUCH_TARGET}
               disabled={loading}
+              onPointerEnter={warmWarRoomPath}
+              onPointerDown={warmWarRoomPath}
+              onFocus={warmWarRoomPath}
               onClick={() => { void startQuickMatch(); }}
             >
               {loading ? 'Preparando la War Room…' : 'Empezar partida'}

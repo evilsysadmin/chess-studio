@@ -1,6 +1,8 @@
 import { lazy, useEffect, useMemo, useRef, useState } from 'react';
 import './HomeRoute.css';
-const QuickMatchModal = lazy(() => import('./QuickMatchModal.jsx'));
+import { QuickMatchReadyRoomRoute as QuickMatchModal, prefetchQuickMatchReadyRoom } from '../quickMatchRoute.js';
+import { prefetchGameScreenRoute } from '../gameScreenRoute.js';
+import { preloadPreferredWarRoomOnIntent } from './warRoomIntentPreload.js';
 const PracticeMatchModal = lazy(() => import('./PracticeMatchModal.jsx'));
 const PvPLobbyModal = lazy(() => import('./PvPLobbyModal.jsx'));
 import HomeIllustrated from './HomeIllustrated.jsx';
@@ -73,25 +75,6 @@ export default function Menu({
   const [matthiasVisit, setMatthiasVisit] = useState(null);
   const [matthiasMemory, setMatthiasMemory] = useState(null);
   const matthiasRollRef = useRef(Math.random());
-
-  useEffect(() => {
-    let active = true;
-    let cancelPreload = () => {};
-
-    void import('./warRoomHomePreload.js')
-      .then(({ schedulePreferredWarRoomHomePreload }) => {
-        if (!active) return;
-        cancelPreload = schedulePreferredWarRoomHomePreload();
-      })
-      .catch(() => {
-        // Speculative warming must never affect Home or the real War Room path.
-      });
-
-    return () => {
-      active = false;
-      cancelPreload();
-    };
-  }, []);
 
   const matthiasIntroPending = !matthiasOnboarded();
   const matthiasIntroBlocked = suppressHomeNudge
@@ -198,6 +181,15 @@ export default function Menu({
     return () => window.removeEventListener(USER_PREFERENCES_CHANGED_EVENT, syncDefaultClock);
   }, []);
 
+  function warmPrimaryPlayPath() {
+    if (hasSavedGame) {
+      void prefetchGameScreenRoute();
+      void preloadPreferredWarRoomOnIntent({ boardRenderer: getBoardRenderer() });
+      return;
+    }
+    void prefetchQuickMatchReadyRoom();
+  }
+
   function handleMatthiasAction() {
     const action = matthiasVisit?.action || 'insights';
     setMatthiasVisit(null);
@@ -235,6 +227,7 @@ export default function Menu({
         loading={loading}
         error={showQuickMatch || showPracticeMatch || showPvpLobby ? null : error}
         onPlay={() => setShowQuickMatch(true)}
+        onPlayIntent={warmPrimaryPlayPath}
         onContinue={onContinue}
         onPractice={() => setShowPracticeMatch(true)}
         pendingModes={pendingModes}
