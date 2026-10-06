@@ -36,42 +36,20 @@ jobs:
     outputs:
       deploy_sha: ${{ steps.admission.outputs.deploy_sha }}
       admitted: ${{ steps.admission.outputs.admitted }}
+      pawn_slug_visual_required: ${{ steps.admission.outputs.pawn_slug_visual_required }}
     steps:
-      - name: Validate staging commit
-        shell: bash
-        run: |
-          set -euo pipefail
-          [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::DEPLOY_SHA no es un commit completo: $DEPLOY_SHA"; exit 1; }
       - name: Checkout CI-approved commit
         uses: actions/checkout@v7
         with:
           ref: ${{ env.DEPLOY_SHA }}
           fetch-depth: 2
-      - name: Supersede stale staging commit
+      - name: Prepare staging generation
         id: admission
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        shell: bash
         run: |
-          set -euo pipefail
-          scope="$RUNNER_TEMP/deploy-scope.env"
-          python3 -S scripts/staging_deploy_scope.py --self-test
-          python3 -S scripts/staging_deploy_scope.py --sha "$DEPLOY_SHA" --github-output "$scope"
-          source "$scope"
-          echo "deploy_sha=$DEPLOY_SHA" >> "$GITHUB_OUTPUT"
-          if [[ "$deploy_required" != true ]]; then
-            echo 'admitted=false' >> "$GITHUB_OUTPUT"
-            echo "### Staging no-op · $DEPLOY_SHA · $deploy_reason" >> "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
-          python3 -S scripts/staging_generation.py --self-test
-          python3 -S scripts/staging_generation.py main-head --sha "$DEPLOY_SHA" --github-output "$RUNNER_TEMP/main-head.txt"
-          if grep -qx 'superseded=true' "$RUNNER_TEMP/main-head.txt"; then
-            echo 'admitted=false' >> "$GITHUB_OUTPUT"
-            echo "### Staging superseded · $DEPLOY_SHA" >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo 'admitted=true' >> "$GITHUB_OUTPUT"
-          fi
+          python3 -S scripts/staging_deploy_prepare.py --self-test
+          python3 -S scripts/staging_deploy_prepare.py --sha "$DEPLOY_SHA" --github-output "$GITHUB_OUTPUT"
   backend:
     name: Backend · exact OCI generation
     needs: prepare
@@ -340,6 +318,14 @@ jobs:
           path: e2e/test-results/
           if-no-files-found: ignore
           retention-days: 7
+  pawn_slug_visual:
+    name: Pawn Slug Godot · live visual evidence
+    needs: [prepare, backend, frontend, worker, smoke]
+    if: needs.prepare.outputs.admitted == 'true' && needs.prepare.outputs.pawn_slug_visual_required == 'true' && needs.backend.outputs.superseded != 'true'
+    uses: ./.github/workflows/staging-pawn-slug-visual.yml
+    with:
+      deploy_sha: ${{ needs.prepare.outputs.deploy_sha }}
+    secrets: inherit
   summary:
     name: Staging generation complete
     needs: [prepare, backend, frontend, worker, smoke]
