@@ -1,47 +1,45 @@
 name: Staging · Pawn Slug visual
 
 on:
-  workflow_run:
-    workflows:
-      - Deploy to staging
-    types:
-      - completed
-    branches:
-      - main
+  workflow_call:
+    inputs:
+      deploy_sha:
+        description: Exact staging generation to validate.
+        required: true
+        type: string
   workflow_dispatch:
+    inputs:
+      deploy_sha:
+        description: Exact staging SHA; blank uses current main.
+        required: false
+        type: string
 
 permissions:
-  actions: read
   contents: read
 
 concurrency:
-  group: chess-studio-staging-pawn-slug-visual
+  group: chess-studio-staging-pawn-slug-visual-${{ inputs.deploy_sha || github.sha }}
   cancel-in-progress: true
 
 env:
   STAGING_URL: https://staging.chess-studio.shadowops.dpdns.org
   STAGING_API_URL: https://api-staging.chess-studio.shadowops.dpdns.org/api
+  STAGING_AI_URL: https://ai-staging.shadowops.dpdns.org
+  DEPLOY_SHA: ${{ inputs.deploy_sha || github.sha }}
+  OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
+  OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
+  OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
+  OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
+  OCI_REGION: ${{ vars.OCI_REGION || 'eu-frankfurt-1' }}
 
 jobs:
   capture:
     name: Pawn Slug Godot · live visual evidence
-    if: >
-      github.event_name == 'workflow_dispatch' ||
-      github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-24.04
     timeout-minutes: 8
     environment:
       name: staging
       url: https://staging.chess-studio.shadowops.dpdns.org
-    env:
-      DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
-      UPSTREAM_RUN_ID: ${{ github.event.workflow_run.id || '' }}
-      OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
-      OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
-      OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
-      OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
-      OCI_REGION: ${{ vars.OCI_REGION || 'eu-frankfurt-1' }}
-
     steps:
       - name: Checkout deployed commit
         uses: actions/checkout@v7
@@ -49,66 +47,19 @@ jobs:
           ref: ${{ env.DEPLOY_SHA }}
           fetch-depth: 2
 
-      - name: Admit relevant exact staging generation
+      - name: Admit exact staging generation
         id: admission
-        env:
-          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
           echo 'run=false' >> "$GITHUB_OUTPUT"
           [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::DEPLOY_SHA inválido: $DEPLOY_SHA"; exit 1; }
-
-          # Manual runs stay fail-closed. Automatic runs compare this successful
-          # deploy with the previous successful staging generation, not merely
-          # HEAD^, so a Pawn Slug change cannot be hidden by a later unrelated
-          # merge that superseded its own deploy.
-          relevant=true
-          if [[ "$GITHUB_EVENT_NAME" == 'workflow_run' ]]; then
-            previous_sha="$(
-              gh run list --repo "$GITHUB_REPOSITORY"                 --workflow staging-deploy.yml --branch main --status success                 --limit 12 --json databaseId,headSha                 --jq ".[] | select(.databaseId != $UPSTREAM_RUN_ID) | .headSha"                 | head -n 1
-            )"
-            if [[ "$previous_sha" =~ ^[0-9a-f]{40}$ ]]; then
-              git fetch --no-tags --depth=1 origin "$previous_sha"
-              changed="$(git diff --name-only "$previous_sha" "$DEPLOY_SHA")"
-              scope="$(printf '%s\n' "$changed" | python3 -S scripts/quality_scope.py)"
-              if grep -Eq '^(run_pawn_slug_godot|run_pawn_slug_e2e)=true$' <<<"$scope" ||                  grep -Eq '^(e2e/staging-pawn-slug-godot\.spec\.js|\.github/workflows/staging-pawn-slug-visual\.yml)$' <<<"$changed"; then
-                echo "::notice title=Pawn Slug live visual::Relevant surface changed since $previous_sha."
-              else
-                relevant=false
-                echo "::notice title=Pawn Slug live visual skipped::No Pawn Slug runtime/integration change since previous successful staging generation $previous_sha."
-              fi
-            else
-              echo "::warning title=Pawn Slug visual fail-closed::No previous successful staging SHA found; live visual remains required."
-            fi
+          if python3 -S scripts/staging_generation.py wait --sha "$DEPLOY_SHA" --surfaces backend,frontend,worker --attempts 1 --interval 0 --root; then
+            echo 'run=true' >> "$GITHUB_OUTPUT"
+            echo "Pawn Slug visual admitted para $DEPLOY_SHA"
+          else
+            echo "::notice title=Pawn Slug visual superseded::Staging ya no sirve exactamente $DEPLOY_SHA; captura omitida."
           fi
-
-          [[ "$relevant" == true ]] || exit 0
-
-          # Only pay live identity/network checks when the visual surface changed.
-          backend="$RUNNER_TEMP/pawnslug-backend-release.json"
-          frontend="$RUNNER_TEMP/pawnslug-frontend-release.json"
-          backend_status="$(curl --silent --show-error --connect-timeout 5 --max-time 15 --output "$backend" --write-out '%{http_code}' -H 'Accept: application/json' -H 'Cache-Control: no-cache' "$STAGING_API_URL/release?sha=$DEPLOY_SHA" || true)"
-          frontend_status="$(curl --silent --show-error --connect-timeout 5 --max-time 15 --output "$frontend" --write-out '%{http_code}' -H 'Accept: application/json' -H 'Cache-Control: no-cache' "$STAGING_URL/release.json?sha=$DEPLOY_SHA" || true)"
-          if [[ "$backend_status" != 200 || "$frontend_status" != 200 ]] || ! python3 - "$backend" "$frontend" "$DEPLOY_SHA" <<'PY'
-          import json, pathlib, sys
-          expected = sys.argv[3].lower()
-          values = []
-          for path in sys.argv[1:3]:
-              try:
-                  payload = json.loads(pathlib.Path(path).read_text(encoding='utf-8'))
-              except (OSError, json.JSONDecodeError):
-                  raise SystemExit(1)
-              values.append(str(payload.get('build') or '').lower())
-          raise SystemExit(0 if all(value == expected for value in values) else 1)
-          PY
-          then
-            echo "Staging ya no sirve exactamente $DEPLOY_SHA; generación visual superseded, sin fallo."
-            exit 0
-          fi
-
-          echo 'run=true' >> "$GITHUB_OUTPUT"
-          echo "Pawn Slug visual admitted para $DEPLOY_SHA"
 
       - name: Restore cached OCI SDK toolchain
         if: steps.admission.outputs.run == 'true'
