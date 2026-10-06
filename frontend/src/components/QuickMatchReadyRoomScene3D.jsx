@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { createThreeRenderer } from '../threeRenderer.js';
+import { buildPiece, disposeObject as disposeBoard3DObject } from './Board3DPieces.js';
 
 export const QUICK_MATCH_READY_ROOM_CAMERA = Object.freeze({
   fov: 34,
@@ -71,210 +72,34 @@ function addBoard(root, lightSquare, darkSquare, wood, brass) {
   return board;
 }
 
-function addPieceMesh(group, geometry, material, position, name, rotation = null) {
-  const mesh = new THREE.Mesh(geometry, material);
-  mesh.position.set(...position);
-  if (rotation) mesh.rotation.set(...rotation);
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
-  mesh.name = name;
-  group.add(mesh);
-  return mesh;
-}
+const READY_ROOM_PIECE_CODE = Object.freeze({
+  pawn: 'p',
+  rook: 'r',
+  knight: 'n',
+  bishop: 'b',
+  queen: 'q',
+  king: 'k',
+});
 
-function addLathe(group, points, material, segments, name) {
-  const geometry = new THREE.LatheGeometry(
-    points.map(([radius, y]) => new THREE.Vector2(radius, y)),
-    segments,
-  );
-  return addPieceMesh(group, geometry, material, [0, 0, 0], name);
-}
-
-function addPawnShape(group, material, segments) {
-  addLathe(group, [
-    [.24, 0], [.29, .04], [.27, .11], [.19, .16],
-    [.16, .29], [.11, .43], [.15, .49],
-  ], material, segments, 'piece-pawn-body');
-  addPieceMesh(
-    group,
-    new THREE.SphereGeometry(.16, segments, Math.max(8, Math.round(segments * .7))),
-    material,
-    [0, .63, 0],
-    'piece-pawn-head',
-  );
-}
-
-function addRookShape(group, material, segments) {
-  addLathe(group, [
-    [.27, 0], [.31, .04], [.28, .12], [.20, .17],
-    [.16, .44], [.19, .58], [.26, .63],
-  ], material, segments, 'piece-rook-body');
-  addPieceMesh(
-    group,
-    new THREE.CylinderGeometry(.27, .27, .16, segments),
-    material,
-    [0, .72, 0],
-    'piece-rook-crown',
-  );
-  for (const [x, z] of [[-.17, -.17], [.17, -.17], [-.17, .17], [.17, .17]]) {
-    addPieceMesh(
-      group,
-      new THREE.BoxGeometry(.11, .12, .11),
-      material,
-      [x, .83, z],
-      'piece-rook-battlement',
-    );
-  }
-}
-
-function addKnightShape(group, material, segments) {
-  addLathe(group, [
-    [.27, 0], [.31, .04], [.28, .12], [.20, .18],
-    [.16, .34], [.15, .47],
-  ], material, segments, 'piece-knight-base');
-  addPieceMesh(
-    group,
-    new THREE.BoxGeometry(.24, .42, .20),
-    material,
-    [0, .66, -.03],
-    'piece-knight-neck',
-    [-.24, 0, 0],
-  );
-  addPieceMesh(
-    group,
-    new THREE.ConeGeometry(.19, .34, 4),
-    material,
-    [0, .88, -.11],
-    'piece-knight-head',
-    [-.50, Math.PI / 4, 0],
-  );
-  addPieceMesh(
-    group,
-    new THREE.BoxGeometry(.18, .11, .22),
-    material,
-    [0, .84, -.26],
-    'piece-knight-muzzle',
-    [-.18, 0, 0],
-  );
-}
-
-function addBishopShape(group, material, segments) {
-  addLathe(group, [
-    [.27, 0], [.31, .04], [.28, .12], [.20, .18],
-    [.15, .38], [.12, .58], [.18, .65],
-  ], material, segments, 'piece-bishop-body');
-  const head = addPieceMesh(
-    group,
-    new THREE.SphereGeometry(.15, segments, Math.max(8, Math.round(segments * .7))),
-    material,
-    [0, .80, 0],
-    'piece-bishop-head',
-  );
-  head.scale.set(.82, 1.28, .82);
-  addPieceMesh(
-    group,
-    new THREE.ConeGeometry(.07, .18, segments),
-    material,
-    [0, .99, 0],
-    'piece-bishop-tip',
-  );
-}
-
-function addQueenShape(group, material, segments) {
-  addLathe(group, [
-    [.29, 0], [.32, .04], [.29, .13], [.21, .19],
-    [.15, .43], [.13, .62], [.21, .72], [.24, .78],
-  ], material, segments, 'piece-queen-body');
-  const crown = addPieceMesh(
-    group,
-    new THREE.TorusGeometry(.19, .045, Math.max(6, Math.round(segments * .5)), segments),
-    material,
-    [0, .84, 0],
-    'piece-queen-crown',
-    [Math.PI / 2, 0, 0],
-  );
-  crown.castShadow = true;
-  addPieceMesh(
-    group,
-    new THREE.SphereGeometry(.085, segments, Math.max(8, Math.round(segments * .7))),
-    material,
-    [0, .98, 0],
-    'piece-queen-finial',
-  );
-}
-
-function addKingShape(group, material, segments) {
-  addLathe(group, [
-    [.29, 0], [.32, .04], [.29, .13], [.21, .19],
-    [.15, .45], [.13, .65], [.20, .75],
-  ], material, segments, 'piece-king-body');
-  addPieceMesh(
-    group,
-    new THREE.SphereGeometry(.10, segments, Math.max(8, Math.round(segments * .7))),
-    material,
-    [0, .88, 0],
-    'piece-king-finial',
-  );
-  addPieceMesh(
-    group,
-    new THREE.BoxGeometry(.075, .28, .075),
-    material,
-    [0, 1.06, 0],
-    'piece-king-cross-vertical',
-  );
-  addPieceMesh(
-    group,
-    new THREE.BoxGeometry(.25, .07, .075),
-    material,
-    [0, 1.08, 0],
-    'piece-king-cross-horizontal',
-  );
-}
-
-function addChessPiece(board, descriptor, material, segments) {
-  const piece = new THREE.Group();
+function addChessPiece(board, descriptor, { lite = false } = {}) {
+  const type = READY_ROOM_PIECE_CODE[descriptor.type] || 'p';
+  const side = descriptor.color === 'white' ? 'w' : 'b';
+  const piece = buildPiece(type, side, 'studio', lite);
   piece.name = `ready-room-piece-${descriptor.color}-${descriptor.type}-${descriptor.file}-${descriptor.rank}`;
-
-  switch (descriptor.type) {
-    case 'rook':
-      addRookShape(piece, material, segments);
-      break;
-    case 'knight':
-      addKnightShape(piece, material, segments);
-      break;
-    case 'bishop':
-      addBishopShape(piece, material, segments);
-      break;
-    case 'queen':
-      addQueenShape(piece, material, segments);
-      break;
-    case 'king':
-      addKingShape(piece, material, segments);
-      break;
-    default:
-      addPawnShape(piece, material, segments);
-      break;
-  }
-
   piece.position.set(
     (descriptor.file - 3.5) * .76,
-    .26,
+    .255,
     (descriptor.rank - 3.5) * .76,
   );
-  piece.scale.setScalar(.78);
-  if (descriptor.color === 'black') piece.rotation.y = Math.PI;
+  piece.scale.multiplyScalar(.76);
+  piece.userData.readyRoomCanonicalPiece = true;
+  piece.userData.readyRoomSquare = `${descriptor.file}:${descriptor.rank}`;
   board.add(piece);
 }
 
-function addStartingPosition(board, ivory, ebony, { lite = false } = {}) {
-  const segments = lite ? 10 : 18;
+function addStartingPosition(board, { lite = false } = {}) {
   for (const descriptor of QUICK_MATCH_READY_ROOM_STARTING_POSITION) {
-    addChessPiece(
-      board,
-      descriptor,
-      descriptor.color === 'white' ? ivory : ebony,
-      segments,
-    );
+    addChessPiece(board, descriptor, { lite });
   }
 }
 
@@ -389,8 +214,7 @@ function buildRoom({ lite = false } = {}) {
   const woodDark = mat(0x24130d, .10, .54);
   const brass = mat(0xb98542, .76, .23);
   const leather = mat(0x441517, .12, .48);
-  const ivory = mat(0xe8ddc8, .08, .36);
-  const ebony = mat(0x252220, .38, .25);
+  const clockBody = mat(0x171513, .24, .34);
   const lightSquare = mat(0xd5cec2, .07, .42);
   const darkSquare = mat(0x35373a, .12, .34);
   const clockFace = mat(0xe5d6b7, .02, .52);
@@ -437,8 +261,8 @@ function buildRoom({ lite = false } = {}) {
 
   const board = addBoard(root, lightSquare, darkSquare, woodDark, brass);
   board.position.set(-.30, 1.48, -1.30);
-  addStartingPosition(board, ivory, ebony, { lite });
-  addClock(root, brass, ebony, clockFace, clockHand);
+  addStartingPosition(board, { lite });
+  addClock(root, brass, clockBody, clockFace, clockHand);
   addChair(root, woodDark, leather, brass);
 
   const rug = new THREE.Mesh(
@@ -555,11 +379,7 @@ export default function QuickMatchReadyRoomScene3D() {
       if (onResize) globalThis.removeEventListener?.('resize', onResize);
       if (room) scene?.remove?.(room);
       renderer?.dispose?.();
-      room?.traverse?.((node) => {
-        node.geometry?.dispose?.();
-        if (Array.isArray(node.material)) node.material.forEach((entry) => entry?.dispose?.());
-        else node.material?.dispose?.();
-      });
+      disposeBoard3DObject(room);
     };
   }, []);
 
