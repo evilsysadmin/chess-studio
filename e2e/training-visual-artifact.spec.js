@@ -502,7 +502,9 @@ scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page })
   await captureAt(page, 'immediate-actions', { width: 1440, height: 900, variant: 'desktop' });
   await captureAt(page, 'immediate-actions', { width: 390, height: 844, variant: 'mobile' });
 
-  await focusedTraining.getByRole('button', { name: '← Volver a Así juegas', exact: true }).click();
+  const focusedBack = page.locator('.puzzle-screen > .back-link');
+  await expect(focusedBack).toHaveText('← Volver a Así juegas');
+  await focusedBack.click();
   await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
   await page.setViewportSize({ width: 1440, height: 900 });
   await settle(page);
