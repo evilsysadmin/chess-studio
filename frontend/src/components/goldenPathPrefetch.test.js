@@ -20,11 +20,13 @@ vi.mock('./WarRoomVariant.js', () => ({
 }));
 
 import {
-  loadQuickMatchReadyRoom,
-  preloadQuickMatchReadyRoom,
   preloadWarRoomForPlayIntent,
   shouldPreloadWarRoomForPlayIntent,
 } from './goldenPathPrefetch.js';
+import {
+  loadQuickMatchReadyRoom,
+  preloadQuickMatchReadyRoom,
+} from './quickMatchIntentLoader.js';
 
 function windowRef() {
   return {};
