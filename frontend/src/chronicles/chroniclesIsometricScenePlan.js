@@ -96,6 +96,7 @@ export function chroniclesIsometricScenePlan(mapOrState = null) {
   return Object.freeze({
     mapId: renderPlan.mapId,
     title: renderPlan.title,
+    materials: renderPlan.materials,
     sceneStyle: chroniclesIsometricSceneStyle(renderPlan.mapId),
     width: renderPlan.width,
     height: renderPlan.height,

@@ -1,9 +1,9 @@
 export const CHRONICLES_MINIMUM_VISIBILITY = Object.freeze({
   firstPerson: Object.freeze({
-    ambientDesktop: 0.9,
-    ambientCoarse: 0.98,
-    exposureDesktop: 1.14,
-    exposureCoarse: 1.2,
+    ambientDesktop: 0.68,
+    ambientCoarse: 0.76,
+    exposureDesktop: 1.0,
+    exposureCoarse: 1.06,
   }),
   isometric: Object.freeze({
     exposure: 1.04,

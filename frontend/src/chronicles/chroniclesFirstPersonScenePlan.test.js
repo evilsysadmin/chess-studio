@@ -17,15 +17,22 @@ describe('Chronicles first-person runtime scene plan', () => {
 
     const runtimeGrid = [...bundled.grid];
     runtimeGrid[2] = '#.....#';
+    const runtimeWallGrid = [...bundled.materials.wallGrid];
+    runtimeWallGrid[2] = '2.....4';
     chroniclesInstallRuntimeMapDefinition({
       ...bundled,
       version: Number(bundled.version || 0) + 1000,
       grid: runtimeGrid,
+      materials: {
+        ...bundled.materials,
+        wallGrid: runtimeWallGrid,
+      },
     });
 
     const plan = chroniclesFirstPersonScenePlan({ mapId: 'crypt-eight-squares' });
     expect(plan.mapId).toBe('crypt-eight-squares');
     expect(plan.grid[2]).toBe('#.....#');
+    expect(plan.materials.wallGrid[2]).toBe('2.....4');
   });
   it('keeps the canonical crypt dressing only on the canonical map', () => {
     const crypt = chroniclesFirstPersonScenePlan({ mapId: 'crypt-eight-squares' });

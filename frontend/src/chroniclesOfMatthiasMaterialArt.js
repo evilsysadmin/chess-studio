@@ -407,8 +407,14 @@ function installChroniclesPremiumMaterials(scene, {
       if (visited.has(key)) return;
       visited.add(key);
       const candidates = profileIdsByRole[role];
-      const profileIndex = roleCounters[role] % candidates.length;
-      const profileId = candidates[profileIndex];
+      const explicitProfileId = material.userData?.chroniclesMaterialProfileId;
+      const explicitProfile = explicitProfileId ? chroniclesMaterialProfile(explicitProfileId) : null;
+      const acceptsRole = explicitProfileId
+        && explicitProfile?.id === explicitProfileId
+        && explicitProfile.roles?.includes(role);
+      const fallbackIndex = roleCounters[role] % candidates.length;
+      const profileId = acceptsRole ? explicitProfileId : candidates[fallbackIndex];
+      const profileIndex = Math.max(0, candidates.indexOf(profileId));
       roleCounters[role] += 1;
       const set = textureSetFor(role, profileId, profileIndex);
       const profile = chroniclesMaterialProfile(profileId);
