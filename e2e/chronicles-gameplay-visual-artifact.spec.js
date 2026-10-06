@@ -130,6 +130,7 @@ async function captureChroniclesHealth(page) {
       gameRoot: rect('[data-chronicles="true"]'),
       gameMenu: rect('summary[aria-label="Abrir menú de Chronicles"]'),
       automapButton: rect('button[aria-label="Abrir automapa"]'),
+      localMinimap: rect('[data-chronicles-minimap="visible"]'),
       stage: rect('.chronicles-stage'),
       gameCanvas: rect('[data-chronicles-renderer="three"] canvas'),
       authoredPortrait: rect('[data-chronicles-party-renderer="authored"]'),
@@ -167,7 +168,7 @@ for (const capture of CAPTURES) {
     // Hosted SwiftShader makes large WebGL readbacks expensive. Keep this
     // producer to one canonical readback per viewport; Tactics owns a separate
     // focused producer so neither surface can starve the other of its budget.
-    test.setTimeout(180_000);
+    test.setTimeout(240_000);
     await mkdir(ARTIFACT_DIR, { recursive: true });
 
     const context = await browser.newContext({
@@ -209,6 +210,9 @@ for (const capture of CAPTURES) {
       expect(health.gameMenu?.height || 0, `${capture.label}: in-game menu height`).toBeGreaterThanOrEqual(30);
       expect(health.automapButton?.width || 0, `${capture.label}: automap button visible`).toBeGreaterThan(0);
       expect(health.automapButton?.height || 0, `${capture.label}: automap button height`).toBeGreaterThanOrEqual(capture.hasTouch ? 44 : 30);
+      expect(health.localMinimap?.width || 0, `${capture.label}: local minimap visible`).toBeGreaterThanOrEqual(capture.hasTouch ? 100 : 120);
+      expect(health.localMinimap?.height || 0, `${capture.label}: local minimap height`).toBeGreaterThanOrEqual(capture.hasTouch ? 100 : 120);
+      expect(health.localMinimap?.top ?? 0, `${capture.label}: local minimap clears top menu`).toBeGreaterThanOrEqual((health.gameMenu?.bottom ?? 0) - 2);
       expect(health.stage?.width || 0, `${capture.label}: Chronicles stage visible`).toBeGreaterThan(0);
       expect(health.gameCanvas?.width || 0, `${capture.label}: Chronicles dungeon canvas visible`).toBeGreaterThan(0);
       expect(health.gameCanvas?.height || 0, `${capture.label}: Chronicles dungeon canvas height`).toBeGreaterThan(0);
@@ -230,7 +234,7 @@ for (const capture of CAPTURES) {
 
       await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-playing-${capture.label}.png`);
 
-      await page.keyboard.press('m');
+      await page.getByRole('button', { name: 'Minimapa local. Abrir automapa completo', exact: true }).click();
       const automap = page.getByRole('dialog', { name: 'Automapa de Chronicles', exact: true });
       await expect(automap).toBeVisible();
       const automapCells = automap.locator('.chronicles-automap__cell');
