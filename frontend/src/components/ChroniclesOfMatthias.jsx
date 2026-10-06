@@ -200,6 +200,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   }, { contextMenu: false });
 
   const confirmCharacterBuild = useCallback((build) => {
+    void chroniclesRequestDesktopFullscreen();
     const selected = setChroniclesCharacterBuild(progression, build);
     if (!selected.updated) return;
     const saved = saveChroniclesProgression(selected.progression);
