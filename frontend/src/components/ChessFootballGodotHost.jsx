@@ -129,7 +129,7 @@ export default function ChessFootballGodotHost({ onExit }) {
       {mobilePortrait ? (
         <div className="chess-football-godot-host__portrait-gate" role="dialog" aria-modal="true" aria-label="Chess Football necesita apaisado">
           <div className="chess-football-godot-host__portrait-card">
-            <small>MÓVIL · APASADO</small>
+            <small>MÓVIL · APAISADO</small>
             <h2>Gira el móvil</h2>
             <p>Chess Football necesita el campo en horizontal. Puedes girarlo a mano o pedir al navegador que active el apaisado.</p>
             <div className="chess-football-godot-host__portrait-actions">
