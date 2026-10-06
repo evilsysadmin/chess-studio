@@ -168,7 +168,7 @@ for (const capture of CAPTURES) {
     // Hosted SwiftShader makes large WebGL readbacks expensive. Keep this
     // producer to one canonical readback per viewport; Tactics owns a separate
     // focused producer so neither surface can starve the other of its budget.
-    test.setTimeout(180_000);
+    test.setTimeout(240_000);
     await mkdir(ARTIFACT_DIR, { recursive: true });
 
     const context = await browser.newContext({
@@ -185,10 +185,10 @@ for (const capture of CAPTURES) {
       const stage = page.locator('.chronicles-stage');
       const gameMenu = page.locator('summary[aria-label="Abrir menú de Chronicles"]');
       await expect(gameRoot).toBeVisible();
-      expect(
-        await page.evaluate(() => document.fullscreenElement),
-        `${capture.label}: Chronicles must not enter browser-native fullscreen`,
-      ).toBeNull();
+      await expect.poll(
+        () => page.evaluate(() => Boolean(document.fullscreenElement)),
+        { timeout: 10_000, message: `${capture.label}: desktop Chronicles native fullscreen policy` },
+      ).toBe(!capture.hasTouch);
       await expect(chroniclesCanvas).toHaveCount(1, { timeout: 20_000 });
       await expect(chroniclesCanvas).toBeVisible();
       await expect(authoredPortrait).toHaveCount(1, { timeout: 20_000 });
@@ -262,17 +262,13 @@ for (const capture of CAPTURES) {
       await page.keyboard.press('m');
       await expect(automap).toHaveCount(0);
 
-      await page.keyboard.press('Escape');
-      expect(
-        await page.evaluate(() => document.fullscreenElement),
-        `${capture.label}: Escape belongs to the Chronicles menu`,
-      ).toBeNull();
+      await gameMenu.click();
       const openedMenu = page.locator('.chronicles-game-menu[open]');
       await expect(openedMenu).toBeVisible();
       await expect(openedMenu.getByRole('button', { name: 'Continuar', exact: true })).toBeVisible();
       await expect(openedMenu.getByRole('button', { name: 'Nueva expedición', exact: true })).toBeVisible();
       await expect(openedMenu.getByRole('button', { name: 'Salir y guardar', exact: true })).toBeVisible();
-      await page.keyboard.press('Escape');
+      await openedMenu.getByRole('button', { name: 'Continuar', exact: true }).click();
       await expect(page.locator('.chronicles-game-menu[open]')).toHaveCount(0);
 
       await writeFile(
@@ -297,14 +293,14 @@ test('Chronicles · Gallery of Forks first-person material proof · desktop-1440
     await openChronicles(page, 'gallery-of-forks-desktop-1440x900', {
       chroniclesCurrentMapId: 'gallery-of-forks',
       chroniclesWorldFlags: {
-        galleryLeverPulled: true,
+        galleryLeverPulled: false,
         galleryRelicCollected: false,
         enemyHp: 0,
         jailerHp: 0,
         '__chrRuntime.version': 1,
         '__chrRuntime.x': 5,
-        '__chrRuntime.y': 4,
-        '__chrRuntime.direction': 0,
+        '__chrRuntime.y': 5,
+        '__chrRuntime.direction': 1,
         '__chrRuntime.phase': 'explore',
         '__chrRuntime.turnPhase': 'party',
       },
@@ -313,9 +309,9 @@ test('Chronicles · Gallery of Forks first-person material proof · desktop-1440
     const canvas = page.locator('[data-chronicles-renderer="three"] canvas');
     await expect(gameRoot).toHaveAttribute('data-chronicles-map-id', 'gallery-of-forks');
     await expect(gameRoot).toHaveAttribute('data-chronicles-phase', 'explore');
-    await expect(page.locator('.chronicles-statusbar')).toContainText('Recoger reliquia de ceniza');
-    const contextualAction = page.getByRole('button', { name: 'Recoger reliquia de ceniza', exact: true });
-    await expect(contextualAction).toBeVisible();
+    await expect(page.locator('.chronicles-statusbar')).toContainText('Bajar contrapeso');
+    const leverAction = page.getByRole('button', { name: 'Bajar contrapeso', exact: true });
+    await expect(leverAction).toBeVisible();
     await expect(canvas).toHaveCount(1, { timeout: 20_000 });
     await expect(canvas).toBeVisible();
     await page.waitForTimeout(450);
@@ -326,9 +322,18 @@ test('Chronicles · Gallery of Forks first-person material proof · desktop-1440
     await captureElement(
       page,
       gameRoot,
-      `${ARTIFACT_DIR}/chronicles-gallery-of-forks-desktop-1440x900.png`,
+      `${ARTIFACT_DIR}/chronicles-gallery-lever-wall-fixture-desktop-1440x900.png`,
     );
-    await contextualAction.click();
+
+    await leverAction.click();
+    await expect(page.locator('.chronicles-statusbar')).toContainText('Recoger reliquia de ceniza');
+    await page.keyboard.press('ArrowLeft');
+    await page.keyboard.press('ArrowUp');
+    await page.keyboard.press('ArrowRight');
+
+    const relicAction = page.getByRole('button', { name: 'Recoger reliquia de ceniza', exact: true });
+    await expect(relicAction).toBeVisible();
+    await relicAction.click();
     await expect(page.locator('.chronicles-statusbar')).toContainText('Abrir salida de la galería');
     await expect(page.getByRole('button', { name: 'Recoger reliquia de ceniza', exact: true })).toHaveCount(0);
   } finally {
