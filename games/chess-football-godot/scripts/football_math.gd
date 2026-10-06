@@ -1,7 +1,7 @@
 class_name ChessFootballMath
 extends RefCounted
 
-const PITCH_RECT := Rect2(80.0, 70.0, 1640.0, 860.0)
+const PITCH_RECT := Rect2(80.0, 70.0, 2040.0, 1040.0)
 const GOAL_HALF_HEIGHT := 105.0
 
 # Vertical simulation uses pitch-space units. With the current 3D contract
