@@ -29,8 +29,10 @@ async function settle(page) {
 
 async function openSchoolResource(shell, name) {
   const resources = shell.locator('.matthias-school-resources');
-  const isOpen = await resources.evaluate((node) => node.open);
-  if (!isOpen) await resources.locator('summary').click();
+  // This is a visual artifact test, not the interaction contract for <details>.
+  // Open the authored menu deterministically so animation/overlay timing cannot
+  // make the summary temporarily non-actionable during a full visual sweep.
+  await resources.evaluate((node) => { node.open = true; });
   const resource = resources.getByRole('button', { name, exact: true });
   await expect(resource).toBeVisible();
   await resource.click();
