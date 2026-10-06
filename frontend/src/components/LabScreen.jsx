@@ -4,7 +4,7 @@ import { useEscapeToClose } from '../useEscapeToClose.js';
 import { acknowledgeLabLaunch, clearRememberedLabMode, loadLabLaunch, loadRememberedLabMode, rememberLabMode, subscribeLabLaunch } from '../labLaunchIntent.js';
 import { EXPERIMENT_MATURITY, experimentMaturityLabel } from '../experimentMaturity.js';
 import { LAB_START_FEN, assertLegalLabPosition, fenFromLabState, parseLabPosition } from '../labPosition.js';
-import experimentsRoomCanonical from '../assets/lab-arcade-dungeon-canon.avif';
+import experimentsRoomCanonical from '../assets/experiments-room-canonical.webp';
 import PreferredBoard from './PreferredBoard.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
@@ -13,7 +13,6 @@ import './LabScreen.css';
 import './LabArcade.css';
 import './LabWorkshop.css';
 import './LabWorkshopHotfix.css';
-import './LabArcadeDungeonCanon.css';
 
 const ArenaExperiment = lazy(() => import('./ArenaExperiment.jsx'));
 const PawnTrailblazer = lazy(() => import('./PawnTrailblazer.jsx'));
