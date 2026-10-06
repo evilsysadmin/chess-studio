@@ -380,6 +380,11 @@
     height: 44px;
   }
 
+  .combat-operations-help {
+    width: 44px;
+    min-width: 44px;
+  }
+
   .combat-operations-exit {
     max-width: 75vw;
     overflow: hidden;
