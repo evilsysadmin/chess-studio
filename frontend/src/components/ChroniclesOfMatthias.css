@@ -593,9 +593,11 @@
 }
 
 .chronicles-automap__canvas svg {
-  width: 100%;
-  height: 100%;
-  max-width: 100%;
+  /* Keep the map bounded by viewport height as well as width. A 100%×100%
+     SVG can collapse visually in very wide, short mobile viewports even when
+     its DOM box exists. The intrinsic viewBox keeps non-square maps honest. */
+  width: min(100%, 58dvh);
+  height: auto;
   max-height: 100%;
   overflow: visible;
   filter: drop-shadow(0 14px 28px rgba(0, 0, 0, .45));
