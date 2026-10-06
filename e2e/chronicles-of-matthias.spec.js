@@ -92,12 +92,64 @@ test('Chronicles of Matthias · móvil mantiene party y mandos sin overflow', as
   await page.setViewportSize({ width: 390, height: 844 });
   await openChronicles(page);
   const mode = page.locator('[data-chronicles="true"]');
+  const modeBox = await mode.boundingBox();
+  expect(modeBox?.x ?? 99).toBeLessThanOrEqual(1);
+  expect(modeBox?.y ?? 99).toBeLessThanOrEqual(1);
+  expect(modeBox?.width || 0).toBeGreaterThanOrEqual(388);
+  expect(modeBox?.height || 0).toBeGreaterThanOrEqual(842);
+  expect(await page.evaluate(() => document.fullscreenElement)).toBeNull();
+  await expect(mode.getByRole('button', { name: 'Abrir automapa', exact: true })).toBeVisible();
   await expect(mode.getByLabel('Controles de la mazmorra')).toBeVisible();
   for (const name of ['Girar a la izquierda', 'Avanzar', 'Atacar', 'Retroceder', 'Girar a la derecha']) {
     await expect(mode.getByRole('button', { name, exact: true })).toBeVisible();
   }
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
+});
+
+
+test('Chronicles of Matthias · automapa conserva fullscreen, bloquea input y orienta la flecha del grupo', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openChronicles(page);
+
+  const mode = page.locator('[data-chronicles="true"]');
+  const mapButton = mode.getByRole('button', { name: 'Abrir automapa', exact: true });
+  await expect(mapButton).toBeVisible();
+  await mapButton.click();
+
+  const automap = page.getByRole('dialog', { name: 'Automapa de Chronicles', exact: true });
+  await expect(automap).toBeVisible();
+  const marker = automap.locator('[data-chronicles-map-facing]');
+  await expect(marker).toHaveCount(1);
+  const initialFacing = Number(await marker.getAttribute('data-chronicles-map-facing'));
+  expect(initialFacing).toBeGreaterThanOrEqual(0);
+  expect(initialFacing).toBeLessThanOrEqual(3);
+  expect(await automap.locator('.chronicles-automap__cell').count()).toBeGreaterThan(0);
+
+  const turnsWhileOpen = Number(await mode.getAttribute('data-chronicles-turns'));
+  await page.keyboard.press('w');
+  await expect(mode).toHaveAttribute('data-chronicles-turns', String(turnsWhileOpen));
+
+  await page.keyboard.press('Escape');
+  await expect(automap).toHaveCount(0);
+  await expect(page.locator('.chronicles-game-menu[open]')).toHaveCount(0);
+
+  await page.keyboard.press('d');
+  await page.keyboard.press('m');
+  await expect(automap).toBeVisible();
+  await expect(automap.locator('[data-chronicles-map-facing]')).toHaveAttribute(
+    'data-chronicles-map-facing',
+    String((initialFacing + 1) % 4),
+  );
+
+  const rootBox = await mode.boundingBox();
+  expect(rootBox?.width || 0).toBeGreaterThanOrEqual(388);
+  expect(rootBox?.height || 0).toBeGreaterThanOrEqual(842);
+  expect(await page.evaluate(() => document.fullscreenElement)).toBeNull();
+
+  await page.keyboard.press('Escape');
+  await expect(automap).toHaveCount(0);
+  await expect(page.locator('.chronicles-game-menu[open]')).toHaveCount(0);
 });
 
 
