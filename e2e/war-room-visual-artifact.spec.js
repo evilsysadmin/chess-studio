@@ -17,7 +17,7 @@ const WAR_ROOM_V3_REVISION_BASE =
 const LOCAL_GPU_CAPTURE = process.env.APP_VISUAL_LOCAL_GPU === '1';
 const WAR_ROOM_PROFILE_SCOPE = String(process.env.APP_VISUAL_WARROOM_PROFILE_SCOPE || 'all').trim().toLowerCase();
 const WAR_ROOM_PROFILE_SHARD = String(process.env.APP_VISUAL_WARROOM_PROFILE_SHARD || 'all').trim().toLowerCase();
-const WAR_ROOM_PROFILE_SHARDS = new Set(['all', 'canary', 'remainder']);
+const WAR_ROOM_PROFILE_SHARDS = new Set(['all', 'canary', 'remainder', 'desktop-remainder', 'mobile-remainder']);
 if (!WAR_ROOM_PROFILE_SHARDS.has(WAR_ROOM_PROFILE_SHARD)) {
   throw new Error(`Unknown War Room visual profile shard: ${WAR_ROOM_PROFILE_SHARD}`);
 }
@@ -276,6 +276,12 @@ const ACTIVE_CAPTURE_PROFILES = Object.freeze(
   SCOPED_CAPTURE_PROFILES.filter((profile) => {
     if (WAR_ROOM_PROFILE_SHARD === 'canary') return profile.label === CANARY_PROFILE_LABEL;
     if (WAR_ROOM_PROFILE_SHARD === 'remainder') return profile.label !== CANARY_PROFILE_LABEL;
+    if (WAR_ROOM_PROFILE_SHARD === 'desktop-remainder') {
+      return profile.label !== CANARY_PROFILE_LABEL && profile.hasTouch !== true;
+    }
+    if (WAR_ROOM_PROFILE_SHARD === 'mobile-remainder') {
+      return profile.label !== CANARY_PROFILE_LABEL && profile.hasTouch === true;
+    }
     return true;
   }),
 );
@@ -302,13 +308,27 @@ async function open3DFromAppearance(page) {
 }
 
 async function freezeVisualFrame(page) {
-  await page.addStyleTag({
-    content: '*, *::before, *::after { animation: none !important; transition: none !important; caret-color: transparent !important; }',
-  });
   await page.evaluate(() => {
+    const style = document.createElement('style');
+    style.dataset.warRoomVisualFreeze = 'true';
+    style.textContent = '*, *::before, *::after { animation: none !important; transition: none !important; caret-color: transparent !important; }';
+    document.head.append(style);
+    if (!window.__chessStudioVisualOriginalRaf) {
+      window.__chessStudioVisualOriginalRaf = window.requestAnimationFrame.bind(window);
+    }
     window.requestAnimationFrame = () => 0;
   });
   await page.waitForTimeout(80);
+}
+
+async function thawVisualFrame(page) {
+  await page.evaluate(() => {
+    document.querySelectorAll('style[data-war-room-visual-freeze="true"]').forEach((style) => style.remove());
+    if (window.__chessStudioVisualOriginalRaf) {
+      window.requestAnimationFrame = window.__chessStudioVisualOriginalRaf;
+      delete window.__chessStudioVisualOriginalRaf;
+    }
+  });
 }
 
 async function captureViewportPng(page, path) {
@@ -643,105 +663,181 @@ test.afterAll(async () => {
   await sharedVisualBrowser?.close();
 });
 
-for (const profile of ACTIVE_CAPTURE_PROFILES) {
+async function createCaptureContext(profile) {
+  const context = await sharedVisualBrowser.newContext({
+    viewport: profile.viewport,
+    hasTouch: profile.hasTouch,
+  });
+  await context.addInitScript(() => {
+    Object.defineProperty(navigator, 'hardwareConcurrency', {
+      configurable: true,
+      get: () => 8,
+    });
+  });
+  return context;
+}
+
+async function assertAndCaptureProfile(page, profile, board3d) {
+  if (LOCAL_GPU_CAPTURE) {
+    const canvas = page.locator('.board3d-main-canvas');
+    await expect(canvas).toHaveAttribute('data-board3d-renderer', /.+/);
+    await expect(canvas).not.toHaveAttribute(
+      'data-board3d-renderer',
+      /swiftshader|llvmpipe|software/i,
+    );
+  }
+  if (['v2', 'v3', 'v4'].includes(profile.variant)) {
+    await expect(board3d).toHaveAttribute('data-board3d-variant', profile.variant);
+    expect(
+      await page.locator('.board3d-main-canvas').getAttribute('data-war-room-variant-error'),
+      `${profile.variant} shell must load without falling back to classic`,
+    ).toBeNull();
+    await expect(page.locator('.board3d-main-canvas'))
+      .toHaveAttribute('data-war-room-variant', profile.variant, { timeout: 30_000 });
+    await expect(page.locator('.board3d-main-canvas'))
+      .toHaveAttribute('data-war-room-variant-status', 'ready', { timeout: 30_000 });
+  }
+  if (profile.variant === 'v4') {
+    const variantMenu = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
+    await variantMenu.click();
+    await expect(page.getByRole('menuitemradio', { name: 'War Room v3', exact: true })).toBeVisible();
+    await expect(page.getByRole('menuitemradio', { name: 'War Room v4', exact: true }))
+      .toHaveAttribute('aria-checked', 'true');
+    await variantMenu.click();
+  }
+  if (profile.variant === 'v3') {
+    const variantMenu = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
+    await variantMenu.click();
+    await expect(page.getByRole('menuitemradio', { name: 'War Room v1', exact: true })).toBeVisible();
+    await expect(page.getByRole('menuitemradio', { name: 'War Room v2', exact: true })).toBeVisible();
+    await expect(page.getByRole('menuitemradio', { name: 'War Room v3', exact: true }))
+      .toHaveAttribute('aria-checked', 'true');
+    await variantMenu.click();
+  }
+
+  await expect(page.locator('.game-layout-immersive')).toBeVisible();
+  await expect(page.locator('body')).toHaveClass(/war-room-immersive-active/);
+
+  if (profile.portraitContract) {
+    await expect(page.getByRole('button', { name: 'Focus', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Salir de la partida', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Más acciones de partida', exact: true })).toBeVisible();
+  }
+
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  await page.waitForTimeout(350);
+
+  const health = await captureWarRoomHealth(page, profile.label);
+  await writeFile(
+    `${ARTIFACT_DIR}/${profile.label}-health.json`,
+    `${JSON.stringify({ schema: 3, capture: health }, null, 2)}\n`,
+    'utf8',
+  );
+
+  expectSharedHealth(health);
+  expectDefaultImmersiveShell(health);
+  if (profile.hasTouch) {
+    expect(health.coarsePointer, `${profile.title} must emulate a coarse pointer`).toBe(true);
+    expect(health.touchPoints, `${profile.title} must expose touch points`).toBeGreaterThan(0);
+  } else {
+    expect(health.coarsePointer, 'Desktop capture must retain a fine pointer').toBe(false);
+  }
+  if (profile.portraitContract) expectPortraitHealth(health);
+  if (profile.landscapeContract) expectLandscapeHealth(health);
+  if (profile.landscapeContract) {
+    await expect(
+      page.locator('.matthias-board-bubble:not(.game-mobile-focus-bubble)'),
+      'phone landscape must not cover playable squares with opening banter',
+    ).toBeHidden();
+  }
+
+  await freezeVisualFrame(page);
+  try {
+    await captureViewportPng(
+      page,
+      `${ARTIFACT_DIR}/${profile.label}.png`,
+    );
+  } finally {
+    await thawVisualFrame(page);
+  }
+}
+
+function registerIndependentCaptureProfile(profile) {
   test(`War Room · captura visual canónica ${profile.title}`, async () => {
     test.setTimeout(120_000);
     await mkdir(ARTIFACT_DIR, { recursive: true });
 
-    const context = await sharedVisualBrowser.newContext({
-      viewport: profile.viewport,
-      hasTouch: profile.hasTouch,
-    });
-    await context.addInitScript(() => {
-      Object.defineProperty(navigator, 'hardwareConcurrency', {
-        configurable: true,
-        get: () => 8,
-      });
-    });
-
+    const context = await createCaptureContext(profile);
     const page = await context.newPage();
     try {
       const board3d = await openCanonicalWarRoom(page, { variant: profile.variant || 'classic' });
-      if (LOCAL_GPU_CAPTURE) {
-        const canvas = page.locator('.board3d-main-canvas');
-        await expect(canvas).toHaveAttribute('data-board3d-renderer', /.+/);
-        await expect(canvas).not.toHaveAttribute(
-          'data-board3d-renderer',
-          /swiftshader|llvmpipe|software/i,
-        );
-      }
-      if (['v2', 'v3', 'v4'].includes(profile.variant)) {
-        await expect(board3d).toHaveAttribute('data-board3d-variant', profile.variant);
-        expect(
-          await page.locator('.board3d-main-canvas').getAttribute('data-war-room-variant-error'),
-          `${profile.variant} shell must load without falling back to classic`,
-        ).toBeNull();
-        await expect(page.locator('.board3d-main-canvas'))
-          .toHaveAttribute('data-war-room-variant', profile.variant, { timeout: 30_000 });
-        await expect(page.locator('.board3d-main-canvas'))
-          .toHaveAttribute('data-war-room-variant-status', 'ready', { timeout: 30_000 });
-      }
-      if (profile.variant === 'v4') {
-        const variantMenu = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
-        await variantMenu.click();
-        await expect(page.getByRole('menuitemradio', { name: 'War Room v3', exact: true })).toBeVisible();
-        await expect(page.getByRole('menuitemradio', { name: 'War Room v4', exact: true }))
-          .toHaveAttribute('aria-checked', 'true');
-        await variantMenu.click();
-      }
-      if (profile.variant === 'v3') {
-        const variantMenu = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
-        await variantMenu.click();
-        await expect(page.getByRole('menuitemradio', { name: 'War Room v1', exact: true })).toBeVisible();
-        await expect(page.getByRole('menuitemradio', { name: 'War Room v2', exact: true })).toBeVisible();
-        await expect(page.getByRole('menuitemradio', { name: 'War Room v3', exact: true }))
-          .toHaveAttribute('aria-checked', 'true');
-        await variantMenu.click();
-      }
-
-      await expect(page.locator('.game-layout-immersive')).toBeVisible();
-      await expect(page.locator('body')).toHaveClass(/war-room-immersive-active/);
-
-      if (profile.portraitContract) {
-        await expect(page.getByRole('button', { name: 'Focus', exact: true })).toBeVisible();
-        await expect(page.getByRole('button', { name: 'Salir de la partida', exact: true })).toBeVisible();
-        await expect(page.getByRole('button', { name: 'Más acciones de partida', exact: true })).toBeVisible();
-      }
-
-      await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-      await page.waitForTimeout(350);
-
-      const health = await captureWarRoomHealth(page, profile.label);
-      await writeFile(
-        `${ARTIFACT_DIR}/${profile.label}-health.json`,
-        `${JSON.stringify({ schema: 3, capture: health }, null, 2)}\n`,
-        'utf8',
-      );
-
-      expectSharedHealth(health);
-      expectDefaultImmersiveShell(health);
-      if (profile.hasTouch) {
-        expect(health.coarsePointer, `${profile.title} must emulate a coarse pointer`).toBe(true);
-        expect(health.touchPoints, `${profile.title} must expose touch points`).toBeGreaterThan(0);
-      } else {
-        expect(health.coarsePointer, 'Desktop capture must retain a fine pointer').toBe(false);
-      }
-      if (profile.portraitContract) expectPortraitHealth(health);
-      if (profile.landscapeContract) expectLandscapeHealth(health);
-      if (profile.landscapeContract) {
-        await expect(
-          page.locator('.matthias-board-bubble:not(.game-mobile-focus-bubble)'),
-          'phone landscape must not cover playable squares with opening banter',
-        ).toBeHidden();
-      }
-
-      await freezeVisualFrame(page);
-      await captureViewportPng(
-        page,
-        `${ARTIFACT_DIR}/${profile.label}.png`,
-      );
+      await assertAndCaptureProfile(page, profile, board3d);
     } finally {
       await context.close();
     }
   });
+}
+
+async function switchDesktopVariant(page, board3d, variant) {
+  if (variant === 'v2') await installWarRoomV2RevisionRoute(page);
+  if (variant === 'v3') await installWarRoomV3RevisionRoute(page);
+
+  const menu = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
+  await menu.click();
+  const label = variant === 'classic' ? 'War Room v1' : `War Room ${variant}`;
+  const item = page.getByRole('menuitemradio', { name: label, exact: true });
+  await expect(item).toBeVisible();
+  await item.click();
+
+  await expect(board3d).toHaveAttribute('data-board3d-variant', variant, { timeout: 30_000 });
+  if (variant === 'classic') {
+    await expect(board3d).toHaveAttribute('data-board3d-variant-status', 'idle', { timeout: 30_000 });
+  } else {
+    await expect(board3d).toHaveAttribute('data-board3d-variant-status', 'ready', { timeout: 30_000 });
+  }
+}
+
+function registerDesktopSession(profiles) {
+  test.describe('War Room · desktop evidence session', () => {
+    // Reuse one authenticated game/context across desktop variants. The costly
+    // 1440×900 bootstrap happens once; later tests switch the room shell in-place
+    // and keep the normal 120 s per-profile timeout/assertion contract.
+    test.describe.configure({ mode: 'serial' });
+
+    let context;
+    let page;
+    let board3d;
+    let currentVariant = '';
+
+    test.beforeAll(async () => {
+      context = await createCaptureContext(profiles[0]);
+      page = await context.newPage();
+    });
+
+    test.afterAll(async () => {
+      await context?.close();
+    });
+
+    profiles.forEach((profile, index) => {
+      test(`War Room · captura visual canónica ${profile.title}`, async () => {
+        test.setTimeout(120_000);
+        await mkdir(ARTIFACT_DIR, { recursive: true });
+
+        const variant = profile.variant || 'classic';
+        if (index === 0) {
+          board3d = await openCanonicalWarRoom(page, { variant });
+        } else if (variant !== currentVariant) {
+          await switchDesktopVariant(page, board3d, variant);
+        }
+        currentVariant = variant;
+        await assertAndCaptureProfile(page, profile, board3d);
+      });
+    });
+  });
+}
+
+if (WAR_ROOM_PROFILE_SHARD === 'desktop-remainder' && ACTIVE_CAPTURE_PROFILES.length > 0) {
+  registerDesktopSession(ACTIVE_CAPTURE_PROFILES);
+} else {
+  for (const profile of ACTIVE_CAPTURE_PROFILES) registerIndependentCaptureProfile(profile);
 }
