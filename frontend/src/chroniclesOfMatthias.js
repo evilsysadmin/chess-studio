@@ -11,7 +11,7 @@ import {
   chroniclesApplyContentAction,
   chroniclesApplyContentEffects,
   chroniclesContentDefinition,
-  chroniclesContentInteractions,
+  chroniclesFirstPersonContentInteractions,
   chroniclesRequirementFailure,
   chroniclesRequirementMet,
   chroniclesRequirementsMet,
@@ -184,7 +184,7 @@ function enterTile(state, x, y) {
 export function chroniclesContextualContentAction(state) {
   if (!state || state.phase === 'escaped' || state.phase === 'defeated') return null;
   const map = chroniclesMapForState(state);
-  const interaction = chroniclesContentInteractions(
+  const interaction = chroniclesFirstPersonContentInteractions(
     state,
     map,
     (x, y) => chroniclesTileAt(x, y, state),
