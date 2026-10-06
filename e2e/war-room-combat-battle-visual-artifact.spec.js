@@ -84,6 +84,14 @@ test.describe('Combat battle · Android', () => {
     expect(health.canvas?.height || 0).toBeGreaterThan(700);
     await expect(page.getByRole('button', { name: 'Activar apaisado' })).toBeVisible();
 
+    const targets = page.locator('.combat-battle-screen button:visible, .combat-battle-screen summary:visible');
+    const count = await targets.count();
+    for (let index = 0; index < count; index += 1) {
+      const box = await targets.nth(index).boundingBox();
+      if (!box) continue;
+      expect(Math.min(box.width, box.height), 'Combat battle touch target >=44px').toBeGreaterThanOrEqual(44);
+    }
+
     await mkdir(ARTIFACT_DIR, { recursive: true });
     await page.screenshot({
       path: ARTIFACT_DIR + '/combat-battle-android-390x844.png',
