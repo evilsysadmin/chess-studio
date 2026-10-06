@@ -368,6 +368,7 @@ def classify_path(path: str) -> set[str] | None:
         "frontend/src/usegamestartflow.js",
         "frontend/src/soundfx.js",
         "frontend/src/components/goldenpathprefetch.js",
+        "frontend/src/components/quickmatchintentloader.js",
     }:
         return set()
     if lower == "frontend/src/components/globaloverlaylayer.jsx":
@@ -733,6 +734,7 @@ def self_test() -> None:
     assert classify(["frontend/src/components/PvPDuelHallRoom.css"]) == "pvp-lobby"
     assert classify(["scripts/architecture_debt_budget.py"]) == "none"
     assert classify(["frontend/src/components/goldenPathPrefetch.js"]) == "none"
+    assert classify(["frontend/src/components/quickMatchIntentLoader.js"]) == "none"
     assert classify(["e2e/pvp-lobby-visual-artifact.spec.js"]) == "pvp-lobby"
     assert classify(["frontend/src/components/PvpHandoffModal.jsx"]) == "pvp-handoff"
     assert classify(["e2e/pvp-handoff-visual-artifact.spec.js"]) == "pvp-handoff"
