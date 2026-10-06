@@ -16,8 +16,6 @@ const DailyChallengesScreen = React.lazy(() => import('./components/DailyChallen
 const CombatScreen = React.lazy(() => import('./components/CombatScreen.jsx'));
 const RoguelikeScreen = React.lazy(() => import('./components/RoguelikeScreen.jsx'));
 import PlayerStatusBar from './components/PlayerStatusBar.jsx';
-const RatingDetailModal = React.lazy(() => import('./components/RatingDetailModal.jsx'));
-const CombatArmySummaryModal = React.lazy(() => import('./components/CombatArmySummaryModal.jsx'));
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { api, STORAGE_KEY } from './api.js';
 import { saveGameRecord, updateGameRecordChat, statisticalHistoryRecords } from './gameHistory.js';
@@ -34,12 +32,9 @@ import { clearClockSnapshot } from './clockPersistence.js';
 import { scheduleAchievementCheck } from './achievementBootstrap.js';
 const AdminScreen = React.lazy(() => import('./components/AdminScreen.jsx'));
 const GlobalMusicDock = React.lazy(() => import('./components/GlobalMusicDock.jsx'));
+const GlobalOverlayLayer = React.lazy(() => import('./components/GlobalOverlayLayer.jsx'));
 import SaveStatusBadge from './components/SaveStatusBadge.jsx';
 import ReleaseUpdateNotice from './components/ReleaseUpdateNotice.jsx';
-const UserSettingsPanel = React.lazy(() => import('./components/UserSettingsPanel.jsx'));
-const AccountModal = React.lazy(() => import('./components/AccountModal.jsx'));
-const UserReleaseNotesModal = React.lazy(() => import('./components/UserReleaseNotesModal.jsx'));
-const FeedbackModal = React.lazy(() => import('./components/FeedbackModal.jsx'));
 import AdminFeedbackInboxButton from './components/AdminFeedbackInboxButton.jsx';
 import { useAdminFeedbackInbox } from './useAdminFeedbackInbox.js';
 import { SAVE_STATUS } from './saveStatus.js';
@@ -75,7 +70,6 @@ import { userFacingError } from './userFacingError.js';
 import { isAbortError } from './asyncControl.js';
 import { setFrontendTelemetryContext, startFrontendTelemetry } from './frontendTelemetry.js';
 import { APP_RELEASE } from './release.js';
-import { openReleaseNoteTarget } from './userReleaseNotes.js';
 import { clearRememberedLabMode } from './labLaunchIntent.js';
 import { useGameLaunchController } from './useGameLaunchController.js';
 import { useLearningJourneyFlow } from './useLearningJourneyFlow.js';
@@ -749,14 +743,22 @@ function AppInner({ isAdminUser }) {
           </div>
         )}
 
-        <React.Suspense fallback={<div className="modal-backdrop" />}>
-          {showRatingDetail && <RatingDetailModal rating={rating} onClose={closeRatingDetail} />}
-          {showCombatSummary && <CombatArmySummaryModal roster={loadCombatRoster()} onClose={closeCombatSummary} onOpenCombat={() => { closeCombatSummary(); navigateTo('roguelike'); }} />}
-          {showSettings && <UserSettingsPanel isAdminUser={isAdminUser} onClose={closeSettings} onBoard3D={() => { closeSettings(); navigateTo('board3d'); }} />}
-          {showGlobalAccount && <AccountModal rating={rating} tournament={tournament} combatOverview={combatOverview} onClose={closeGlobalAccount} onLogout={() => void handleGlobalLogout()} loggingOut={loggingOut} />}
-          {showGlobalReleaseNotes && <UserReleaseNotesModal onClose={closeReleaseNotes} onAction={(to) => { closeReleaseNotes(); openReleaseNoteTarget(to, { navigateTo, openInsights }); }} />}
-          {showGlobalFeedback && <FeedbackModal context={view === 'menu' ? 'Home' : `Global · ${view}`} onClose={closeGlobalFeedback} />}
-        </React.Suspense>
+        {(showRatingDetail || showCombatSummary || showSettings || showGlobalAccount || showGlobalReleaseNotes || showGlobalFeedback) && (
+          <React.Suspense fallback={<div className="modal-backdrop" />}>
+            <GlobalOverlayLayer
+              shellUi={shellUi}
+              rating={rating}
+              tournament={tournament}
+              combatOverview={combatOverview}
+              isAdminUser={isAdminUser}
+              navigateTo={navigateTo}
+              openInsights={openInsights}
+              onLogout={handleGlobalLogout}
+              loggingOut={loggingOut}
+              view={view}
+            />
+          </React.Suspense>
+        )}
 
         <React.Suspense fallback={<div className="route-loading" role="status">Cargando…</div>}>
         <PvpAppSurface view={view} replaceView={replaceView} />
