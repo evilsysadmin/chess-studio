@@ -31,10 +31,11 @@ const RECENT_CURATED_LIMIT = 5;
 // rival, para que se note que hubo dos jugadas separadas.
 const REPLY_DELAY_MS = 550;
 
-export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, onSpendPoints, initialSource = 'curated', rushMode = false, initialFilter = null, dailySlot = 'tactic' }) {
+export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, onSpendPoints, initialSource = 'curated', rushMode = false, initialFilter = null, dailySlot = 'tactic', trainingOrigin = null }) {
   useEscapeToClose(onExit);
   const [personalPuzzles, setPersonalPuzzles] = useState(() => loadPersonalPuzzles());
   const filteredInitialPersonalTotal = personalPuzzles.filter((item) => matchesPersonalPuzzleFilter(item, initialFilter)).length;
+  const focusedInsightsTraining = trainingOrigin === 'insights-action';
   const personalSourceFallback = initialSource === 'personal' && filteredInitialPersonalTotal === 0;
   const resolvedInitialSource = personalSourceFallback ? 'curated' : initialSource;
   const [source, setSource] = useState(resolvedInitialSource); // curated | personal | daily
@@ -427,9 +428,12 @@ export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, o
     : KIND_LABELS[puzzle.kind] || null;
 
   return (
-    <div className={`tutorial-shell puzzle-screen ${source === 'personal' ? 'puzzle-screen-personal' : ''}`}>
-      <button className="back-link" onClick={onExit}>← Volver al menú</button>
-      {!rushMode && <div className="puzzle-source-picker friendly-tabs" role="group" aria-label="Tipo de puzzle">
+    <div
+      className={`tutorial-shell puzzle-screen ${source === 'personal' ? 'puzzle-screen-personal' : ''}`}
+      data-training-origin={trainingOrigin || undefined}
+    >
+      <button className="back-link" onClick={onExit}>{focusedInsightsTraining ? '← Volver a Así juegas' : '← Volver al menú'}</button>
+      {!rushMode && !focusedInsightsTraining && <div className="puzzle-source-picker friendly-tabs" role="group" aria-label="Tipo de puzzle">
         <button aria-label="Puzzles clásicos" className={source === 'curated' ? 'primary-btn' : 'secondary-btn'} onClick={() => changeSource('curated')}>
           <span className="puzzle-source-label-full">Puzzles clásicos</span><span className="puzzle-source-label-compact" aria-hidden="true">Clásicos</span>
         </button>
