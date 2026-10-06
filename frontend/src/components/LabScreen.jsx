@@ -97,6 +97,41 @@ export default function LabScreen({ onExit, onStart }){
     setLabMode('hub');
   }
 
+  function enterChessFootball() {
+    const coarsePointer = typeof window.matchMedia === 'function'
+      && window.matchMedia('(pointer: coarse)').matches;
+
+    if (coarsePointer) {
+      const root = document.documentElement;
+      root.dataset.chessFootballImmersive = 'requested';
+
+      const lockLandscape = () => {
+        const orientation = window.screen?.orientation;
+        if (typeof orientation?.lock !== 'function') return;
+        try {
+          const lock = orientation.lock('landscape');
+          if (lock?.catch) lock.catch(() => {});
+        } catch {
+          // iOS and older browsers do not expose a usable orientation lock.
+        }
+      };
+
+      if (!document.fullscreenElement && typeof root.requestFullscreen === 'function') {
+        try {
+          const fullscreen = root.requestFullscreen({ navigationUI: 'hide' });
+          if (fullscreen?.then) fullscreen.then(lockLandscape).catch(() => {});
+          else lockLandscape();
+        } catch {
+          lockLandscape();
+        }
+      } else {
+        lockLandscape();
+      }
+    }
+
+    setLabMode('chess-football-godot');
+  }
+
   function launch(){
     try{const legal=assertLegalLabPosition(fen,turn); const c=new Chess(legal.fen); setError(''); onStart(c.fen(),c.turn(),difficulty,{lab:true});}
     catch(e){setError(`Posición inválida: ${e.message}`);}
@@ -159,7 +194,7 @@ export default function LabScreen({ onExit, onStart }){
               <span>Runtime canónico con motor propio: Godot manda; React sólo abre la puerta.</span>
               <b>Entrar en operación</b>
             </button>
-            <button type="button" className="lab-workshop-portal lab-workshop-portal--shutter lab-workshop-portal--football" data-glyph="⚽" onClick={()=>setLabMode('chess-football-godot')}>
+            <button type="button" className="lab-workshop-portal lab-workshop-portal--shutter lab-workshop-portal--football" data-glyph="⚽" onClick={enterChessFootball}>
               <small>{experimentMaturityLabel(EXPERIMENT_MATURITY.POC, 'Godot Web')}</small>
               <strong>Chess Football</strong>
               <span>Fútbol arcade 5 contra 5 con piezas de ajedrez, pases, tiros, sprint y cambio de jugador.</span>
