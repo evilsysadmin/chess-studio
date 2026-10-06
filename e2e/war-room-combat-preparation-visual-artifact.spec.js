@@ -42,6 +42,7 @@ async function captureWarRoomFrame(page, path) {
 }
 import { expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import {
   dismissTutorialIfVisible,
   login,
@@ -50,43 +51,25 @@ import {
 } from './helpers.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual/combat-preparation';
-const COMBAT_OPERATIONS_AUTHORED_REVISION = '1617ee7509f88cb9a3d746c55b72865e20899735';
-const COMBAT_OPERATIONS_REVISION_BASE =
-  'https://assets.chess-studio.shadowops.dpdns.org/combat/operations-room/staging/revisions';
+const COMBAT_OPERATIONS_RUNTIME_URL =
+  'https://assets.chess-studio.shadowops.dpdns.org/combat/operations-room/runtime/combat-operations-room-shell-7d248a340d8153ed.glb';
+const COMBAT_OPERATIONS_RUNTIME_SHA256 =
+  '7d248a340d8153ed0da1152e1a56ee745615e37e5f032de28d9b5096815f20bc';
+const COMBAT_OPERATIONS_RUNTIME_BYTES = 2476092;
 
-async function installCombatOperationsRevisionRoute(page) {
-  const revisionUrl = COMBAT_OPERATIONS_REVISION_BASE + '/' + COMBAT_OPERATIONS_AUTHORED_REVISION + '.glb';
-  const deadline = Date.now() + 60_000;
-  let body = null;
-  while (Date.now() < deadline) {
-    try {
-      const response = await page.request.get(revisionUrl + '?probe=' + Date.now(), {
-        headers: { 'cache-control': 'no-cache' },
-        timeout: 10_000,
-      });
-      if (response.ok()) {
-        body = await response.body();
-        break;
-      }
-    } catch {
-      // The authored review object is immutable; tolerate transient edge fetches.
-    }
-    await new Promise((resolve) => setTimeout(resolve, 1_000));
-  }
-  if (!body) throw new Error('Combat Operations Room authored revision unavailable: ' + COMBAT_OPERATIONS_AUTHORED_REVISION);
-
-  await page.route('**/combat/operations-room/runtime/current.glb*', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'model/gltf-binary',
-      body,
-      headers: { 'cache-control': 'no-store' },
-    });
+async function verifyCombatOperationsRuntimeAsset(page) {
+  const response = await page.request.get(COMBAT_OPERATIONS_RUNTIME_URL + '?probe=' + Date.now(), {
+    headers: { 'cache-control': 'no-cache' },
+    timeout: 20_000,
   });
+  expect(response.ok(), 'Combat Operations Room immutable R2 object is public').toBe(true);
+  const body = await response.body();
+  expect(body.byteLength).toBe(COMBAT_OPERATIONS_RUNTIME_BYTES);
+  expect(createHash('sha256').update(body).digest('hex')).toBe(COMBAT_OPERATIONS_RUNTIME_SHA256);
 }
 
 async function openOperationsRoom(page) {
-  await installCombatOperationsRevisionRoute(page);
+  await verifyCombatOperationsRuntimeAsset(page);
   await mockApi(page);
   await login(page);
   await openCampaignBriefing(page);
