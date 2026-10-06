@@ -52,6 +52,11 @@ import {
   saveChroniclesAutomapVisited,
 } from '../chronicles/chroniclesAutomap.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
+import {
+  chroniclesDesktopFullscreenEligible,
+  chroniclesRequestDesktopFullscreen,
+  useChroniclesDesktopFullscreen,
+} from '../chronicles/useChroniclesDesktopFullscreen.js';
 import ChroniclesAutomap from './ChroniclesAutomap.jsx';
 import ChroniclesMinimap from './ChroniclesMinimap.jsx';
 import ChroniclesBookOneEpilogue from './ChroniclesBookOneEpilogue.jsx';
@@ -142,6 +147,8 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const [automapVisitedByMap, setAutomapVisitedByMap] = useState({});
   const touchHoldRef = useRef({ delayId: null, repeatId: null });
 
+  useChroniclesDesktopFullscreen(characterSetupDone);
+
   useEffect(() => {
     selectedMemberIdRef.current = selectedMemberId;
   }, [selectedMemberId]);
@@ -185,6 +192,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   }, [onExit]);
 
   useEscapeToClose(() => {
+    if (chroniclesDesktopFullscreenEligible(window)) return;
     if (automapOpen) {
       setAutomapOpen(false);
       return;
@@ -208,6 +216,10 @@ export default function ChroniclesOfMatthias({ onExit }) {
     setAutomapVisitedByMap({});
     setCharacterSetupDone(true);
     setBootstrapRevision((revision) => revision + 1);
+    // Preserve the click that confirms the party, then consume that same user
+    // activation for native fullscreen. Arming fullscreen before setup closes
+    // can interrupt the pointerdown/click sequence in Chromium.
+    void chroniclesRequestDesktopFullscreen();
   }, [progression]);
 
   const retryBootstrap = useCallback(() => {
