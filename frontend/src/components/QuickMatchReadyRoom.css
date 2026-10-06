@@ -134,17 +134,13 @@
   align-self: end;
   position: relative;
   min-width: 0;
-  padding: 1rem 1rem .78rem;
-  border: 1px solid rgba(217, 173, 93, .28);
-  border-left: 3px solid rgba(215, 164, 78, .56);
-  border-radius: 8px;
-  background:
-    radial-gradient(circle at 50% 0%, rgba(230, 183, 95, .09), transparent 45%),
-    linear-gradient(180deg, rgba(31, 23, 17, .88), rgba(13, 10, 8, .94));
-  box-shadow:
-    0 22px 48px rgba(0, 0, 0, .48),
-    inset 0 1px rgba(255, 230, 177, .06);
-  backdrop-filter: blur(6px);
+  padding: .22rem 0 0;
+  border: 0;
+  border-top: 1px solid rgba(217, 173, 93, .22);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
 }
 
 .quick-match-ready-room__summary {
@@ -343,8 +339,7 @@
   .quick-match-ready-room__launch {
     order: 1;
     width: 100%;
-    padding: .82rem .82rem .62rem;
-    backdrop-filter: none;
+    padding: .18rem 0 0;
   }
 
   .friendly-modal.quick-match-ready-room[aria-label='Configurar partida rápida'] .quick-match-ready-room__play {
