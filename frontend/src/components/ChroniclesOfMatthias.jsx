@@ -44,7 +44,12 @@ import {
   saveChroniclesProgression,
   setChroniclesCharacterBuild,
 } from '../chroniclesOfMatthiasProgression.js';
-import { chroniclesAutomapMarkVisited } from '../chronicles/chroniclesAutomap.js';
+import {
+  chroniclesAutomapMarkVisited,
+  clearChroniclesAutomapVisited,
+  loadChroniclesAutomapVisited,
+  saveChroniclesAutomapVisited,
+} from '../chronicles/chroniclesAutomap.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import ChroniclesAutomap from './ChroniclesAutomap.jsx';
 import ChroniclesBookOneEpilogue from './ChroniclesBookOneEpilogue.jsx';
@@ -145,6 +150,12 @@ export default function ChroniclesOfMatthias({ onExit }) {
   }, [state?.mapId, state?.x, state?.y]);
 
   useEffect(() => {
+    const runId = activeRunIdRef.current;
+    if (!ready || !runId) return;
+    saveChroniclesAutomapVisited(runId, automapVisitedByMap);
+  }, [automapVisitedByMap, ready]);
+
+  useEffect(() => {
     const html = document.documentElement;
     const body = document.body;
     const previousHtmlOverflow = html.style.overflow;
@@ -161,7 +172,10 @@ export default function ChroniclesOfMatthias({ onExit }) {
     const current = stateRef.current;
     const runId = activeRunIdRef.current;
     const terminal = current?.phase === 'defeated' || current?.phase === 'escaped';
-    if (terminal && runId) finishChroniclesRun(FIRST_PERSON_RUN_SCOPE, runId);
+    if (terminal && runId) {
+      finishChroniclesRun(FIRST_PERSON_RUN_SCOPE, runId);
+      clearChroniclesAutomapVisited(runId);
+    }
     // Active runs remain resumable across first-person/Tactics. Terminal runs
     // are explicitly retired locally so re-entry starts a fresh expedition.
     activeRunIdRef.current = null;
@@ -371,6 +385,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
 
   const restart = useCallback(() => {
     if (activeRunIdRef.current) {
+      clearChroniclesAutomapVisited(activeRunIdRef.current);
       finishChroniclesRun(FIRST_PERSON_RUN_SCOPE, activeRunIdRef.current);
       activeRunIdRef.current = null;
     }
@@ -424,6 +439,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
         );
         authoritativeRunRef.current = world;
         checkpointFingerprintRef.current = chroniclesRunCheckpointFingerprint(next);
+        setAutomapVisitedByMap(loadChroniclesAutomapVisited(operationId));
         stateRef.current = next;
         staleRunRecoveryAttemptedRef.current = false;
         setSelectedMemberId('matthias');
@@ -436,6 +452,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
         if (!active || error?.code === CHRONICLES_BOOTSTRAP_ERROR_CODES.aborted) return;
         if (error?.status === 409 && !staleRunRecoveryAttemptedRef.current) {
           staleRunRecoveryAttemptedRef.current = true;
+          clearChroniclesAutomapVisited(operationId);
           const replacementRunId = renewChroniclesRun(FIRST_PERSON_RUN_SCOPE, operationId);
           activeRunIdRef.current = replacementRunId;
           setReady(false);
@@ -522,6 +539,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
       if (!current) return;
       if (event.key === 'm' || event.key === 'M') {
         event.preventDefault();
+        clearTouchHold();
         setMenuOpen(false);
         setAutomapOpen((open) => !open);
         return;
@@ -547,7 +565,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     };
     window.addEventListener('keydown', onKeyDown, { passive: false });
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [attackWithSelected, automapOpen, dispatch, ready]);
+  }, [attackWithSelected, automapOpen, clearTouchHold, dispatch, ready]);
 
   if (!characterSetupDone) {
     return (
@@ -645,6 +663,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
               aria-expanded={automapOpen}
               aria-controls="chronicles-automap"
               onClick={() => {
+                clearTouchHold();
                 setMenuOpen(false);
                 setAutomapOpen((open) => !open);
               }}
