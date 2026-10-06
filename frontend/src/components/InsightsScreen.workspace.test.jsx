@@ -103,31 +103,29 @@ describe('InsightsScreen Matthias-led coaching workspace', () => {
         '5+0': { games: 5, wins: 3, draws: 0, losses: 2 },
       },
     });
-    expect(html.match(/data-player-model="7"/g)?.length).toBeGreaterThanOrEqual(3);
+    expect(html.match(/data-player-model="7"/g)?.length).toBeGreaterThanOrEqual(2);
     expect(html).toContain('data-puzzle-snapshot="1"');
     expect(html).toContain('data-clean-snapshot="1"');
-    expect(html).toContain('data-dashboard-puzzle-snapshot="1"');
-    expect(html).toContain('data-dashboard-clean-snapshot="1"');
+    expect(html).not.toContain('data-dashboard-puzzle-snapshot="1"');
+    expect(html).not.toContain('data-dashboard-clean-snapshot="1"');
   });
 
-  it('abre Así juegas en Ahora con sesión guiada, campaña personal y objetivos semanales', () => {
+  it('abre Así juegas con una sola tarea y deja archivo/progreso como acciones secundarias', () => {
     const html = renderToStaticMarkup(<InsightsScreen onExit={() => {}} initialSection="diagnosis" />);
 
     expect(html).toContain('Así juegas');
-    expect(html).toContain('Mi progreso');
-    expect(html).toContain('Matthias revisa tus datos');
-    expect(html).toContain('Ahora');
+    expect(html).toContain('Matthias · mesa de trabajo');
+    expect(html).toContain('ha dejado una tarea concreta sobre la mesa');
     expect(html).toContain('Errores');
-    expect(html).toContain('Patrones y errores recurrentes');
     expect(html).toContain('Expediente');
-    expect(html).toContain('insights-workspace-view-now');
-    expect(html).toContain('id="insights-view-now"');
-    expect(html).not.toContain('id="insights-view-matthias"');
-    expect(html).toContain('aria-selected="true"');
-    expect(html).toContain('data-insights-dashboard="diagnosis"');
+    expect(html).toContain('Mi progreso');
+    expect(html).toContain('aria-label="Material de la Training Room"');
+    expect(html).not.toContain('role="tablist"');
+    expect(html).not.toContain('role="tab"');
     expect(html).toContain('data-guided-session="true"');
     expect(html).toContain('data-matthias-campaign="true"');
     expect(html).toContain('data-weekly-goals="true"');
+    expect(html).not.toContain('data-insights-dashboard="diagnosis"');
     expect(html).not.toContain('data-recurring-errors="true"');
     expect(html).not.toContain('data-clean-games="true"');
     expect(html).not.toContain('data-career-activity-calendar="monthly-v1"');
@@ -155,14 +153,14 @@ describe('InsightsScreen Matthias-led coaching workspace', () => {
 
     expect(html).toContain('insights-workspace-view-dossier');
     expect(html).toContain('data-clean-games="true"');
-    expect(html).not.toContain('data-insights-dashboard="diagnosis"');
+    expect(html).toContain('data-insights-dashboard="diagnosis"');
     expect(html).not.toContain('data-weekly-goals="true"');
     expect(html).not.toContain('data-guided-session="true"');
     expect(html).not.toContain('data-matthias-campaign="true"');
     expect(html).not.toContain('data-recurring-errors="true"');
   });
 
-  it('mantiene Mi progreso como sección superior independiente y añade sólo allí el calendario factual', () => {
+  it('mantiene Mi progreso como cajón factual de la misma Training Room', () => {
     const html = renderToStaticMarkup(
       <InsightsScreen
         onExit={() => {}}

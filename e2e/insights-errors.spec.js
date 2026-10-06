@@ -87,7 +87,7 @@ test('Así juegas · Errores reabre una deuda cuando aparece una reincidencia re
   await buttonWithHeading(page, 'Así juegas').click();
   await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
 
-  await page.getByRole('tab', { name: /Errores/ }).click();
+  await page.getByRole('button', { name: 'Errores', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'No vuelvas a hacer esto', exact: true })).toBeVisible();
   await expect(page.getByText('Horquillas de caballo sufridas', { exact: true })).toBeVisible();
   await expect(page.getByText('3 posiciones reales · 3 partidas fuente · peor pérdida ~330 cp', { exact: true })).toBeVisible();
@@ -168,7 +168,7 @@ test('Así juegas · Errores muestra mejora probable sólo tras dos autopsias co
   }, { fen: PERSONAL_MATE_FEN });
 
   await buttonWithHeading(page, 'Así juegas').click();
-  await page.getByRole('tab', { name: /Errores/ }).click();
+  await page.getByRole('button', { name: 'Errores', exact: true }).click();
 
   await expect(page.getByText('Horquillas de caballo sufridas', { exact: true })).toBeVisible();
   await expect(page.getByText('Mejora probable · varias autopsias completas recientes sin repetir este patrón.', { exact: true })).toBeVisible();
@@ -220,10 +220,15 @@ test('Así juegas · sesión automática respeta 5/15/30 y sobrevive a refresh',
   }, { fen: PERSONAL_MATE_FEN });
 
   await buttonWithHeading(page, 'Así juegas').click();
-  await expect(page.getByRole('heading', { name: 'Sesión automática', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Tu siguiente tarea', exact: true })).toBeVisible();
 
   for (const minutes of [5, 15, 30]) {
-    await page.getByRole('button', { name: `Tengo ${minutes} min`, exact: true }).click();
+    if (minutes === 15) {
+      await page.getByRole('button', { name: 'Empezar sesión recomendada de 15 min', exact: true }).click();
+    } else {
+      await page.getByRole('button', { name: 'Cambiar tiempo', exact: true }).click();
+      await page.getByRole('button', { name: `Tengo ${minutes} min`, exact: true }).click();
+    }
     let session = page.locator('.insights-guided-session.active');
     await expect(session.getByText(`Sesión guiada · ${minutes} min`, { exact: true })).toBeVisible();
     await expect(session.getByText(`${minutes} min`, { exact: true })).toBeVisible();
@@ -243,5 +248,5 @@ test('Así juegas · sesión automática respeta 5/15/30 y sobrevive a refresh',
     await session.getByRole('button', { name: 'Cancelar sesión', exact: true }).click();
   }
 
-  await expect(page.getByRole('heading', { name: 'Sesión automática', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Tu siguiente tarea', exact: true })).toBeVisible();
 });

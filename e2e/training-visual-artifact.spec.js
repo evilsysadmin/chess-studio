@@ -38,6 +38,25 @@ async function assertNoHorizontalOverflow(page, label) {
   expect(overflow.scrollWidth, `${label}: horizontal overflow`).toBeLessThanOrEqual(overflow.clientWidth + 1);
 }
 
+async function assertInsightsActionableFold(room, label) {
+  await expect(room.getByRole('button', { name: 'Empezar sesión recomendada de 15 min', exact: true })).toBeVisible();
+  const geometry = await room.evaluate((root) => {
+    const tools = root.querySelector('.insights-room-tools')?.getBoundingClientRect();
+    const session = root.querySelector('.insights-guided-session:not(.active)')?.getBoundingClientRect();
+    const recommended = root.querySelector('.insights-guided-focus .primary-btn')?.getBoundingClientRect();
+    return {
+      viewportHeight: window.innerHeight,
+      toolsBottom: tools?.bottom || 0,
+      sessionTop: session?.top || 0,
+      recommendedBottom: recommended?.bottom || 0,
+    };
+  });
+
+  expect(geometry.sessionTop, `${label}: training action starts too low`).toBeLessThan(geometry.viewportHeight * .7);
+  expect(geometry.recommendedBottom, `${label}: recommended task CTA falls below the first viewport`).toBeLessThanOrEqual(geometry.viewportHeight - 8);
+  expect(geometry.toolsBottom, `${label}: archive tools should sit before the task`).toBeLessThanOrEqual(geometry.sessionTop + 8);
+}
+
 async function assertSchoolTouchTargets(shell, label) {
   const undersized = await shell.locator([
     '.matthias-school-toolbar .back-link',
@@ -312,7 +331,6 @@ scopedTest('school', 'Entrenar · Escuela, Glosario y Modos especiales', async (
   await expect(shell.locator('.chess-glossary')).toBeVisible();
   await capture(page, 'glossary');
 
-  await shell.locator('.matthias-school-toolbar .back-link').click();
   await shell.getByText('Recursos', { exact: true }).click();
   await shell.getByRole('button', { name: 'Modos especiales', exact: true }).click();
   await expect(shell.locator('.mechanic-library')).toBeVisible();
@@ -380,6 +398,27 @@ scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page })
         bullet: { games: 8, wins: 2, draws: 1, losses: 5 },
       },
     }));
+    // The visual contract for "Ahora" needs one real, playable personal position
+    // so the actionable 5/15/30 picker is rendered instead of the honest
+    // low-data empty state.
+    localStorage.setItem('chess-study-personal-puzzles', JSON.stringify([
+      {
+        id: 'visual-guided-session',
+        kind: 'personal',
+        source: 'autopsy',
+        title: 'Posición real pendiente',
+        description: 'Material de fixture para acreditar la sesión guiada.',
+        fen: '6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1',
+        solution: ['Ra8#'],
+        incidentKeys: ['human:MISSED_MATE'],
+        sourceGameId: 'visual-guided-source',
+        loss: 420,
+        createdAt: '2026-10-01T10:00:00Z',
+        attempts: 0,
+        solves: 0,
+        cleanSolves: 0,
+      },
+    ]));
   });
   await page.getByRole('button', { name: 'Abrir menú de cuenta', exact: true }).click();
   await page.getByRole('menuitem', { name: /Mi progreso/ }).click();
@@ -391,12 +430,14 @@ scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page })
     'ready',
     { timeout: 20_000 },
   );
+  await assertInsightsActionableFold(trainingRoom, 'insights-desktop');
   await captureAt(page, 'insights', { width: 1440, height: 900, variant: 'desktop' });
   await captureAt(page, 'insights', { width: 1800, height: 900, variant: 'wide' });
   await captureAt(page, 'insights', { width: 390, height: 844, variant: 'mobile' });
+  await assertInsightsActionableFold(trainingRoom, 'insights-mobile');
   await page.setViewportSize({ width: 1440, height: 900 });
   await settle(page);
-  await page.getByRole('tab', { name: 'Mi progreso', exact: true }).click();
+  await page.getByRole('button', { name: 'Mi progreso', exact: true }).click();
 
   const career = page.locator('.career-screen');
   await expect(page.getByRole('heading', { name: 'Mi progreso', exact: true })).toBeVisible();

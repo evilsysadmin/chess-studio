@@ -80,3 +80,16 @@
     font-size: .76rem;
   }
 }
+
+
+/* Core task-first Training Room: archive controls remain secondary but tappable. */
+@media (max-width: 760px) {
+  .insights-room-tools {
+    width: 100%;
+  }
+
+  .insights-room-tools > button {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+}

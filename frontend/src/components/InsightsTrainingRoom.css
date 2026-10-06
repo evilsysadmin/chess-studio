@@ -87,8 +87,8 @@
 
 /* The title owns a deliberate copy-safe bay in the upper-left of the study. */
 .insights-training-room .insights-workspace-header {
-  width: min(590px, 38%);
-  min-height: 340px;
+  width: min(560px, 38%);
+  min-height: 255px;
   margin: clamp(.8rem, 2.3vw, 1.7rem) 0 0 clamp(.1rem, 1.5vw, 1rem);
   padding: .55rem .8rem 1rem;
   overflow: visible;
@@ -126,8 +126,8 @@
 }
 
 .insights-training-room .insights-workspace-lead {
-  max-width: 550px;
-  margin: .8rem 0 1rem;
+  max-width: 520px;
+  margin: .68rem 0 .78rem;
   color: #d5c9b1;
   font-size: clamp(.95rem, 1.5vw, 1.08rem);
   line-height: 1.48;
@@ -165,8 +165,8 @@
   position: relative;
   top: auto;
   z-index: 5;
-  width: min(1060px, calc(100% - clamp(1rem, 6vw, 6rem)));
-  margin: -.55rem 2.4% 0 auto;
+  width: min(980px, calc(100% - clamp(1rem, 7vw, 7rem)));
+  margin: -.2rem 2.4% 0 auto;
   gap: .7rem;
   padding: 0;
   border: 0;
@@ -177,8 +177,8 @@
 }
 
 .insights-training-room .insights-workspace-nav > button {
-  min-height: 76px;
-  padding: .72rem .92rem;
+  min-height: 60px;
+  padding: .58rem .82rem;
   border: 1px solid rgba(175, 127, 64, .5);
   border-radius: 6px;
   background:
@@ -245,8 +245,8 @@
 
 /* First work block reads as the desk surface, not a SaaS card stack. */
 .insights-training-room .insights-workspace-panel {
-  margin-top: .35rem;
-  padding: .72rem clamp(.1rem, 1vw, .7rem) 0;
+  margin-top: .18rem;
+  padding: .5rem clamp(.1rem, 1vw, .7rem) 0;
 }
 
 .insights-training-room .insights-workspace-panel > .insights-hub {
@@ -260,7 +260,7 @@
   position: relative;
   width: min(1450px, 92%);
   margin: 0 0 0 2.4%;
-  padding: 1.05rem clamp(.9rem, 2.2vw, 1.9rem) 1.15rem;
+  padding: .88rem clamp(.9rem, 2.2vw, 1.7rem) .96rem;
   border: 1px solid rgba(174, 126, 63, .34);
   border-radius: 7px;
   background:
@@ -288,14 +288,69 @@
   z-index: 1;
 }
 
-.insights-training-room .insights-guided-session > h2 {
-  margin-bottom: .38rem;
+.insights-training-room .insights-guided-session-intro h2 {
+  margin: .12rem 0 .32rem;
   color: #eee0c4;
   font-family: var(--font-display, Georgia, serif);
+  font-size: clamp(1.42rem, 2.25vw, 1.82rem);
+}
+
+.insights-training-room .insights-guided-session-intro .hint-text {
+  max-width: 720px;
+  margin-bottom: 0;
+  line-height: 1.42;
 }
 
 .insights-training-room .insights-guided-session .coaching-action {
   align-items: center;
+}
+
+.insights-training-room .insights-duration-picker {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .48rem;
+}
+
+.insights-training-room .insights-duration-option {
+  position: relative;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: .08rem;
+  min-height: 68px !important;
+  padding: .48rem .58rem;
+  text-align: center;
+}
+
+.insights-training-room .insights-duration-option strong {
+  color: inherit;
+  font-family: var(--font-display, Georgia, serif);
+  font-size: 1.08rem;
+  line-height: 1.05;
+}
+
+.insights-training-room .insights-duration-option span {
+  font-size: .7rem;
+  line-height: 1.15;
+  opacity: .82;
+}
+
+.insights-training-room .insights-duration-option small {
+  position: absolute;
+  top: .22rem;
+  right: .35rem;
+  color: #f4d891;
+  font-size: .56rem;
+  font-weight: 800;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.insights-training-room .insights-duration-note {
+  grid-column: 1 / -1;
+  color: #bcae94;
+  font-size: .7rem;
+  line-height: 1.35;
 }
 
 .insights-training-room .insights-guided-session .coaching-action > button {
@@ -388,50 +443,23 @@
 @media (min-width: 1200px) {
   .insights-training-room .insights-guided-session:not(.active) {
     display: grid;
-    grid-template-columns: minmax(0, 1.3fr) minmax(430px, .9fr);
-    column-gap: clamp(1.4rem, 2.6vw, 2.7rem);
-    row-gap: .22rem;
+    grid-template-columns: minmax(0, 1.15fr) minmax(470px, .95fr);
+    column-gap: clamp(1.25rem, 2.3vw, 2.4rem);
+    row-gap: .45rem;
     align-items: center;
   }
 
-  .insights-training-room .insights-guided-session:not(.active) > .section-label,
-  .insights-training-room .insights-guided-session:not(.active) > h2,
-  .insights-training-room .insights-guided-session:not(.active) > .hint-text {
+  .insights-training-room .insights-guided-session:not(.active) > .insights-guided-session-intro {
     grid-column: 1;
+    min-width: 0;
   }
 
-  .insights-training-room .insights-guided-session:not(.active) > .section-label {
-    align-self: end;
-  }
-
-  .insights-training-room .insights-guided-session:not(.active) > h2 {
-    align-self: start;
-  }
-
-  .insights-training-room .insights-guided-session:not(.active) > .hint-text {
-    max-width: 760px;
-    margin-bottom: 0;
-  }
-
-  .insights-training-room .insights-guided-session:not(.active) > .coaching-action {
+  .insights-training-room .insights-guided-session:not(.active) > .insights-duration-picker {
     grid-column: 2;
-    grid-row: 1 / span 3;
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: .5rem;
+    align-self: stretch;
     align-content: center;
-    align-items: stretch;
-    padding-left: clamp(.8rem, 1.6vw, 1.4rem);
+    padding-left: clamp(.8rem, 1.5vw, 1.25rem);
     border-left: 1px solid rgba(198, 150, 72, .2);
-  }
-
-  .insights-training-room .insights-guided-session:not(.active) > .coaching-action > button {
-    width: 100%;
-  }
-
-  .insights-training-room .insights-guided-session:not(.active) > .coaching-action > span {
-    grid-column: 1 / -1;
-    line-height: 1.42;
   }
 
   .insights-training-room .insights-guided-session:not(.active) > .insights-recurring-error-card {
@@ -457,7 +485,7 @@
   }
 
   .insights-training-room-stage {
-    height: 440px;
+    height: 380px;
     min-height: 0;
     border-radius: 14px;
   }
@@ -482,7 +510,7 @@
 
   .insights-training-room .insights-workspace-header {
     width: auto;
-    min-height: 300px;
+    min-height: 235px;
     margin: .2rem 0 0;
     padding: .65rem .65rem .9rem;
   }
@@ -498,15 +526,15 @@
 
   .insights-training-room .insights-workspace-nav {
     width: 100%;
-    margin-top: -.5rem;
+    margin-top: -.18rem;
     grid-auto-columns: minmax(148px, 54vw);
     gap: .42rem;
     padding: .18rem;
   }
 
   .insights-training-room .insights-workspace-nav > button {
-    min-height: 72px;
-    padding: .62rem .68rem;
+    min-height: 56px;
+    padding: .48rem .56rem;
     background: rgba(20, 16, 14, .9);
     transform: none;
   }
@@ -524,9 +552,51 @@
   }
 
   .insights-training-room .insights-guided-session {
-    padding: .9rem .76rem 1rem;
+    padding: .78rem .7rem .9rem;
     backdrop-filter: none;
     transform: none;
+  }
+
+  .insights-training-room .insights-guided-session-intro h2 {
+    font-size: 1.34rem;
+  }
+
+  .insights-training-room .insights-guided-session-intro .hint-text {
+    font-size: .78rem;
+  }
+
+  .insights-training-room .insights-duration-picker {
+    grid-template-columns: 1fr;
+    gap: .36rem;
+    margin-top: .62rem;
+  }
+
+  .insights-training-room .insights-duration-option {
+    min-height: 48px !important;
+    grid-template-columns: auto 1fr;
+    justify-items: start;
+    column-gap: .55rem;
+    padding: .48rem .72rem;
+    text-align: left;
+  }
+
+  .insights-training-room .insights-duration-option strong {
+    font-size: 1rem;
+  }
+
+  .insights-training-room .insights-duration-option span {
+    font-size: .72rem;
+  }
+
+  .insights-training-room .insights-duration-option small {
+    position: static;
+    grid-column: 1 / -1;
+    justify-self: start;
+    margin-bottom: -.05rem;
+  }
+
+  .insights-training-room .insights-duration-note {
+    font-size: .68rem;
   }
 
   .insights-training-room.insights-workspace-view-now .ai-player-portrait {
@@ -555,5 +625,168 @@
 
   .insights-training-room .insights-workspace-nav > button:hover {
     transform: none;
+  }
+}
+
+
+/* Core UX · task-first Training Room.
+ * The room no longer exposes two dashboard tab bars. These compact controls
+ * behave like physical archive drawers around Matthias' task on the desk.
+ */
+.insights-training-room .insights-room-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .38rem;
+  max-width: 560px;
+  margin-top: .72rem;
+}
+
+.insights-training-room .insights-room-tool {
+  min-height: 44px;
+  padding: .46rem .78rem;
+  border: 1px solid rgba(173, 128, 70, .34);
+  border-radius: 999px;
+  background: rgba(17, 13, 11, .58);
+  color: #cdbd9f;
+  font-size: .78rem;
+  font-weight: 760;
+  letter-spacing: .015em;
+  box-shadow: inset 0 1px rgba(255, 225, 171, .045);
+  backdrop-filter: blur(6px);
+}
+
+.insights-training-room .insights-room-tool:hover,
+.insights-training-room .insights-room-tool:focus-visible {
+  border-color: rgba(220, 169, 84, .65);
+  color: #f1ddb0;
+  background: rgba(55, 35, 20, .74);
+}
+
+.insights-training-room .insights-room-tool[aria-pressed="true"] {
+  border-color: rgba(223, 172, 82, .72);
+  color: #f3d995;
+  background: rgba(95, 58, 22, .72);
+}
+
+.insights-training-room .insights-room-tool-return {
+  color: #ead6ae;
+  border-color: rgba(210, 158, 74, .52);
+}
+
+.insights-training-room .insights-guided-focus {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: clamp(.8rem, 2vw, 1.6rem);
+  align-items: center;
+  padding: .78rem .9rem;
+  border: 1px solid rgba(201, 154, 78, .38);
+  border-radius: 5px;
+  background:
+    linear-gradient(100deg, rgba(235, 220, 181, .96), rgba(189, 164, 121, .94));
+  color: #281f16;
+  box-shadow:
+    0 13px 28px rgba(0, 0, 0, .22),
+    inset 4px 0 rgba(115, 77, 34, .5);
+}
+
+.insights-training-room .insights-guided-focus :where(h3, p, small) {
+  color: inherit;
+}
+
+.insights-training-room .insights-guided-focus h3 {
+  margin: .12rem 0 .2rem;
+  font-family: var(--font-display, Georgia, serif);
+  font-size: clamp(1.15rem, 1.9vw, 1.45rem);
+}
+
+.insights-training-room .insights-guided-focus p {
+  margin: 0;
+  line-height: 1.42;
+}
+
+.insights-training-room .insights-guided-focus small {
+  color: #73572f;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.insights-training-room .insights-guided-focus > .primary-btn {
+  min-width: 190px;
+  min-height: 48px;
+}
+
+.insights-training-room .insights-duration-disclosure,
+.insights-training-room .insights-guided-completion {
+  margin-top: .62rem;
+  border-color: rgba(123, 94, 58, .42);
+  background: rgba(11, 9, 8, .54);
+}
+
+.insights-training-room .insights-duration-disclosure > summary,
+.insights-training-room .insights-guided-completion > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  color: #cbb99a;
+}
+
+@media (min-width: 1200px) {
+  .insights-training-room .insights-guided-session:not(.active) {
+    display: grid;
+    grid-template-columns: minmax(0, .85fr) minmax(520px, 1.15fr);
+    column-gap: clamp(1.25rem, 2.3vw, 2.5rem);
+    row-gap: .5rem;
+    align-items: center;
+  }
+
+  .insights-training-room .insights-guided-session:not(.active) > .insights-guided-session-intro {
+    grid-column: 1;
+    min-width: 0;
+  }
+
+  .insights-training-room .insights-guided-session:not(.active) > .insights-guided-focus {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .insights-training-room .insights-guided-session:not(.active) > .insights-duration-disclosure,
+  .insights-training-room .insights-guided-session:not(.active) > .insights-guided-completion {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 760px) {
+  .insights-training-room .insights-room-tools {
+    display: grid;
+    width: 100%;
+    max-width: none;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .32rem;
+    margin-top: .55rem;
+  }
+
+  .insights-training-room .insights-room-tool {
+    min-height: 44px;
+    padding: .44rem .38rem;
+    font-size: .72rem;
+    backdrop-filter: none;
+  }
+
+  .insights-training-room .insights-guided-focus {
+    grid-template-columns: 1fr;
+    gap: .68rem;
+    padding: .72rem;
+  }
+
+  .insights-training-room .insights-guided-focus > .primary-btn {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 430px) {
+  .insights-training-room .insights-room-tools {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
