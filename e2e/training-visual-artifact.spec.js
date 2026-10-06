@@ -536,9 +536,11 @@ scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page })
   await captureAt(page, 'career-rhythm', { width: 390, height: 844, variant: 'mobile' });
 
   // Expediente owns the daily Matthias consultation after the task-first
-  // redesign. Seed one real game only after the existing visual baselines have
-  // been captured, then reload so the app rehydrates factual consultation data
-  // without perturbing the established "Ahora"/career screenshots above.
+  // redesign. Return to desktop after the final mobile career capture, seed one
+  // real game only after the established baselines exist, then reload so the app
+  // rehydrates factual consultation data without perturbing those screenshots.
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await settle(page);
   await page.evaluate(() => {
     localStorage.setItem('chess-study-game-history', JSON.stringify([
       {
