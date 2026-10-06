@@ -124,9 +124,15 @@ function createDungeonScene(scene, { coarsePointer = false, scenePlan = null } =
   const sceneCenter = scenePlan?.center || DEFAULT_SCENE_CENTER;
   const width = Math.max(1, Number(scenePlan?.width) || Math.max(0, ...grid.map((row) => row?.length || 0)));
   const height = Math.max(1, Number(scenePlan?.height) || grid.length);
-  const stoneMaterials = Array.from({ length: 3 }, () => (
-    new THREE.MeshStandardMaterial({ color: 0x3d3a35, roughness: 0.96, metalness: 0.02 })
-  ));
+  // Six distinct material instances let the semantic dungeon atlas vary walls
+  // deterministically instead of repeating the same three surfaces forever.
+  const stoneMaterials = [
+    0x35332f, 0x3b3832, 0x302f2c, 0x3a352f, 0x2f302c, 0x403a32,
+  ].map((color) => new THREE.MeshStandardMaterial({
+    color,
+    roughness: 0.97,
+    metalness: 0.015,
+  }));
   const darkStone = new THREE.MeshStandardMaterial({ color: 0x1b1a19, roughness: 1, metalness: 0 });
   const mortar = new THREE.MeshStandardMaterial({ color: 0x272522, roughness: 1, metalness: 0 });
   const floor = new THREE.MeshStandardMaterial({ color: 0x27241f, roughness: 0.92, metalness: 0.03 });
@@ -365,8 +371,8 @@ function configureRenderer(renderer, { coarsePointer, alpha = false }) {
   renderer.toneMappingExposure = alpha
     ? 1.02
     : coarsePointer
-      ? Math.max(1.14, exposureFloor.exposureCoarse)
-      : Math.max(1.08, exposureFloor.exposureDesktop);
+      ? Math.max(1.09, exposureFloor.exposureCoarse)
+      : Math.max(1.03, exposureFloor.exposureDesktop);
   renderer.setClearColor(0x080706, alpha ? 0 : 1);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, coarsePointer ? 1.2 : 1.65));
   renderer.shadowMap.enabled = !coarsePointer;
@@ -403,7 +409,7 @@ export function createChroniclesOfMatthiasGame(host, { onReady, initialState = n
 
   const scene = new THREE.Scene();
   scene.fog = new THREE.FogExp2(0x0a0c0f, coarse ? 0.038 : 0.034);
-  scene.add(new THREE.HemisphereLight(0x6f8191, 0x1b130d, coarse ? 0.35 : 0.24));
+  scene.add(new THREE.HemisphereLight(0x647481, 0x17110d, coarse ? 0.22 : 0.14));
   const camera = new THREE.PerspectiveCamera(67, 1, 0.08, 70);
   camera.rotation.order = 'YXZ';
   scene.add(camera);
