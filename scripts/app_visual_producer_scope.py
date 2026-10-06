@@ -44,6 +44,9 @@ COMBAT_PREPARATION_FILES = {
     "frontend/src/components/combatpreparationroom.jsx",
     "frontend/src/components/combatpreparationroom.css",
     "frontend/src/components/campaigncombatpreparationroom.css",
+    "frontend/src/components/combatoperationsroomasset.js",
+    "frontend/src/components/combatoperationsroomshell.js",
+    "frontend/src/components/combatoperationsroomshell.test.js",
 }
 # Hans has its own choreography/runtime owners and should not block unrelated
 # shared-renderer camera/layout PRs. Its dedicated canary still runs whenever
@@ -741,6 +744,8 @@ def self_test() -> None:
     assert classify(["frontend/src/components/QuickMatchModal.jsx"]) == "home-base,warroom-core"
     assert classify(["frontend/src/components/CampaignCombatPreparation.jsx"]) == "combat-prep"
     assert classify(["frontend/src/components/CombatPreparationRoom.jsx"]) == "combat-prep"
+    assert classify(["frontend/src/components/CombatOperationsRoomShell.js"]) == "combat-prep"
+    assert classify(["frontend/src/components/CombatOperationsRoomAsset.js"]) == "combat-prep"
     assert classify(["e2e/war-room-combat-preparation-visual-artifact.spec.js"]) == "combat-prep"
     assert classify(["frontend/src/components/QuickMatchMobileGoldenPath.css"]) == "home-base"
     assert classify(["frontend/src/components/QuickMatchReadyRoom.css"]) == "home-base"
