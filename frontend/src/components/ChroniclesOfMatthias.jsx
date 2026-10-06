@@ -536,18 +536,20 @@ export default function ChroniclesOfMatthias({ onExit }) {
     if (!fingerprint || fingerprint === checkpointFingerprintRef.current) return;
     checkpointFingerprintRef.current = fingerprint;
     const snapshot = state;
+    const scheduledRunId = run.runId;
 
     checkpointQueueRef.current = checkpointQueueRef.current
       .catch(() => undefined)
       .then(async () => {
         const currentRun = authoritativeRunRef.current;
-        if (!currentRun?.runId) return;
+        if (!currentRun?.runId || currentRun.runId !== scheduledRunId) return;
         const updated = await chroniclesCheckpointState(
-          currentRun.runId,
+          scheduledRunId,
           snapshot,
           currentRun.worldVersion,
           { terminalStatus: snapshot.phase === 'escaped' ? 'completed' : null },
         );
+        if (authoritativeRunRef.current?.runId !== scheduledRunId) return;
         authoritativeRunRef.current = { ...currentRun, ...updated };
       })
       .catch((error) => {
