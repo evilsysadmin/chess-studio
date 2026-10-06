@@ -32,6 +32,7 @@ async function openVisualMoreModes(page) {
 async function openChronicles(page, captureLabel, {
   runStatus = 'active',
   chroniclesCurrentMapId = 'crypt-eight-squares',
+  chroniclesWorldFlags = null,
 } = {}) {
   await mockApi(page, {
     profileSeed: {
@@ -40,6 +41,7 @@ async function openChronicles(page, captureLabel, {
     },
     chroniclesRunStatus: runStatus,
     chroniclesCurrentMapId,
+    chroniclesWorldFlags,
   });
   await login(page);
   const speech = page.getByRole('region', { name: 'Mensaje de Matthias', exact: true });
@@ -240,10 +242,24 @@ test('Chronicles · Gallery of Forks first-person material proof · desktop-1440
   try {
     await openChronicles(page, 'gallery-of-forks-desktop-1440x900', {
       chroniclesCurrentMapId: 'gallery-of-forks',
+      chroniclesWorldFlags: {
+        galleryLeverPulled: true,
+        galleryRelicCollected: true,
+        enemyHp: 0,
+        jailerHp: 0,
+        '__chrRuntime.version': 1,
+        '__chrRuntime.x': 3,
+        '__chrRuntime.y': 2,
+        '__chrRuntime.direction': 0,
+        '__chrRuntime.phase': 'explore',
+        '__chrRuntime.turnPhase': 'party',
+      },
     });
     const gameRoot = page.locator('[data-chronicles="true"]');
     const canvas = page.locator('[data-chronicles-renderer="three"] canvas');
     await expect(gameRoot).toHaveAttribute('data-chronicles-map-id', 'gallery-of-forks');
+    await expect(gameRoot).toHaveAttribute('data-chronicles-phase', 'explore');
+    await expect(page.locator('.chronicles-statusbar')).toContainText('Abrir salida de la galería');
     await expect(canvas).toHaveCount(1, { timeout: 20_000 });
     await expect(canvas).toBeVisible();
     await page.waitForTimeout(450);
