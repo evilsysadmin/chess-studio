@@ -54,6 +54,7 @@ import {
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import {
   chroniclesDesktopFullscreenEligible,
+  chroniclesRequestDesktopFullscreen,
   useChroniclesDesktopFullscreen,
 } from '../chronicles/useChroniclesDesktopFullscreen.js';
 import ChroniclesAutomap from './ChroniclesAutomap.jsx';
