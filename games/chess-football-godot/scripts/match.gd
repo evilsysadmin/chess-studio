@@ -27,6 +27,9 @@ const SLIDE_TACKLE_FORWARD_BONUS := 26.0
 const SLIDE_TACKLE_HALF_WIDTH_BONUS := 4.0
 const PENALTY_SHOT_POWER := 930.0
 const PENALTY_SHOT_LIFT := 150.0
+const PENALTY_KEEPER_MOVE_SPEED := 310.0
+const PENALTY_TARGET_MARGIN := 22.0
+const RED_CARD_BEHIND_THRESHOLD := -10.0
 
 const KEEPER_LINE_OFFSET := 96.0
 const KEEPER_PRESS_MAX_OFFSET := 170.0
@@ -105,6 +108,9 @@ var set_piece_team_id: int = 0
 var set_piece_kind: String = ""
 var set_piece_spot: Vector2 = Vector2.ZERO
 var set_piece_player: Footballer = null
+var penalty_human_ready: bool = false
+var penalty_aim_y: float = 0.0
+var card_notice: String = ""
 var shot_charging: bool = false
 var shot_charge_seconds: float = 0.0
 var shot_aim_y_input: float = 0.0
@@ -334,7 +340,13 @@ func _exit_to_host() -> void:
 
 func _refresh_hud() -> void:
 	score_label.text = "FC Matthias %d - %d Real Enroque" % [score[0], score[1]]
-	help_label.text = "WASD · Shift sprint · Space pase · Mantén Enter tiro · E entrada · Shift+E segada (riesgo falta/penalti) · Tab cambia · V vista · ESC menú"
+	if set_piece_active and set_piece_kind == "PENALTI":
+		if set_piece_team_id == 0:
+			help_label.text = "PENALTI · W/S apunta · mantén Enter para cargar y suelta para tirar"
+		else:
+			help_label.text = "PENALTI RIVAL · W/S mueve al portero antes del disparo"
+	else:
+		help_label.text = "WASD · Shift sprint · Space pase · Mantén Enter tiro · E entrada · Shift+E segada · Tab cambia · V vista · ESC menú"
 	if shot_meter != null:
 		shot_meter.visible = shot_charging
 		shot_meter.value = _shot_charge_ratio()
@@ -488,6 +500,8 @@ func _update_ai(delta: float) -> void:
 		var team_has_ball := ball.carrier != null and ball.carrier.team_id == team_id
 		var presser: Footballer = _nearest_player_to_ball(team_id)
 		for player in teams[team_id]:
+			if player.sent_off:
+				continue
 			if player == controlled:
 				continue
 			if player.role == "keeper":
@@ -559,6 +573,8 @@ func _nearest_opponent_to(player: Footballer) -> Footballer:
 	var best: Footballer = null
 	var best_distance := INF
 	for opponent in opponents:
+		if opponent.sent_off:
+			continue
 		var distance := player.global_position.distance_squared_to(opponent.global_position)
 		if distance < best_distance:
 			best_distance = distance
@@ -607,7 +623,7 @@ func _update_keeper_saves() -> void:
 			return
 
 func _keeper_try_save(keeper: Footballer) -> bool:
-	if keeper.role != "keeper" or ball.carrier != null:
+	if keeper.sent_off or keeper.role != "keeper" or ball.carrier != null:
 		return false
 	if ball.velocity.length() < KEEPER_SAVE_MIN_SPEED:
 		return false
@@ -713,7 +729,7 @@ func _best_pass_target(player: Footballer, input_direction: Vector2) -> Football
 	var best: Footballer = null
 	var best_score := -99999.0
 	for teammate in teams[player.team_id]:
-		if teammate == player:
+		if teammate.sent_off or teammate == player:
 			continue
 		var offset: Vector2 = teammate.global_position - player.global_position
 		var distance: float = maxf(offset.length(), 1.0)
@@ -842,6 +858,7 @@ func _resolve_tackle_contact(
 
 	if bool(resolved_hitbox.get("foul", false)):
 		tackler.tackle_recovery_seconds = maxf(tackler.tackle_recovery_seconds, 0.85)
+		_apply_foul_card(tackler, resolved_hitbox)
 		pending_tackle_player = null
 		pending_tackle_seconds = 0.0
 		if audio_fx != null:
@@ -869,12 +886,39 @@ func _resolve_tackle_contact(
 	ball.release(lateral, TACKLE_LOOSE_POKE_POWER)
 	return true
 
+func _foul_card_for(hitbox: Dictionary) -> String:
+	if not bool(hitbox.get("aggressive", false)):
+		return ""
+	if float(hitbox.get("forward_distance", 0.0)) < RED_CARD_BEHIND_THRESHOLD:
+		return "ROJA"
+	return "AMARILLA"
+
+func _apply_foul_card(tackler: Footballer, hitbox: Dictionary) -> String:
+	var card := _foul_card_for(hitbox)
+	if card == "":
+		return ""
+	if card == "ROJA":
+		tackler.receive_red_card()
+		card_notice = "ROJA · %s" % _team_name(tackler.team_id)
+	else:
+		var dismissed := tackler.receive_yellow_card()
+		card_notice = (
+			"SEGUNDA AMARILLA · ROJA · %s" % _team_name(tackler.team_id)
+			if dismissed
+			else "AMARILLA · %s" % _team_name(tackler.team_id)
+		)
+	if tackler.sent_off and tackler == controlled:
+		_select_player(_nearest_player_to_ball(tackler.team_id))
+	return card_notice
+
 func _update_active_tackle_contacts() -> void:
 	if ball.carrier == null:
 		return
 	var victim: Footballer = ball.carrier
 	for team in teams:
 		for tackler in team:
+			if tackler.sent_off:
+				continue
 			if tackler == victim or not tackler.tackle_active():
 				continue
 			if tackler.team_id == victim.team_id:
@@ -908,6 +952,8 @@ func _try_claim_loose_ball() -> void:
 	var best_distance := 31.0
 	for team in teams:
 		for player in team:
+			if player.sent_off:
+				continue
 			if ball.reclaim_blocked_for(player):
 				continue
 			var distance: float = player.global_position.distance_to(ball.global_position)
@@ -920,14 +966,20 @@ func _try_claim_loose_ball() -> void:
 			_select_player(best)
 
 func _best_switch_candidate() -> Footballer:
-	if ball.carrier != null and ball.carrier.team_id == 0:
+	if (
+		ball.carrier != null
+		and ball.carrier.team_id == 0
+		and not ball.carrier.sent_off
+	):
 		return ball.carrier
 	return _nearest_player_to_ball(0)
 
 func _nearest_player_to_ball(team_id: int) -> Footballer:
-	var best: Footballer = teams[team_id][0]
+	var best: Footballer = null
 	var best_distance := INF
 	for player in teams[team_id]:
+		if player.sent_off:
+			continue
 		var distance: float = player.global_position.distance_squared_to(ball.global_position)
 		if distance < best_distance:
 			best_distance = distance
@@ -935,6 +987,8 @@ func _nearest_player_to_ball(team_id: int) -> Footballer:
 	return best
 
 func _select_player(player: Footballer) -> void:
+	if player == null or player.sent_off:
+		return
 	if controlled != null:
 		controlled.set_active(false)
 	controlled = player
@@ -1064,10 +1118,10 @@ func _penalty_spot(attacking_team_id: int) -> Vector2:
 	return Vector2(x, pitch.get_center().y)
 
 func _nearest_outfield_player_to_point(team_id: int, point: Vector2) -> Footballer:
-	var best: Footballer = teams[team_id][1]
+	var best: Footballer = null
 	var best_distance := INF
 	for player in teams[team_id]:
-		if player.role == "keeper":
+		if player.sent_off or player.role == "keeper":
 			continue
 		var distance: float = player.global_position.distance_squared_to(point)
 		if distance < best_distance:
@@ -1080,7 +1134,7 @@ func _restart_receiver(team_id: int, restarter: Footballer, kind: String) -> Foo
 	var best_score := INF
 	var target_goal := ChessFootballMath.goal_center(team_id)
 	for teammate in teams[team_id]:
-		if teammate == restarter:
+		if teammate.sent_off or teammate == restarter:
 			continue
 		var score_value: float = teammate.global_position.distance_squared_to(set_piece_spot)
 		if kind == "CÓRNER":
@@ -1093,6 +1147,8 @@ func _restart_receiver(team_id: int, restarter: Footballer, kind: String) -> Foo
 	return best
 
 func _place_restart_player(player: Footballer, position: Vector2) -> void:
+	if player == null or player.sent_off:
+		return
 	player.global_position = ChessFootballMath.clamp_to_pitch(position)
 	player.velocity = Vector2.ZERO
 
@@ -1235,6 +1291,8 @@ func _arrange_set_piece_formation(kind: String) -> void:
 
 func _prepare_set_piece(kind: String, team_id: int, spot: Vector2) -> void:
 	_cancel_shot_charge()
+	penalty_human_ready = false
+	penalty_aim_y = 0.0
 	pending_tackle_player = null
 	pending_tackle_seconds = 0.0
 	set_piece_active = true
@@ -1255,10 +1313,18 @@ func _prepare_set_piece(kind: String, team_id: int, spot: Vector2) -> void:
 	set_piece_player.global_position = set_piece_spot - set_piece_player.ball_anchor()
 	set_piece_player.velocity = Vector2.ZERO
 	ball.attach_to(set_piece_player)
-	last_goal_text = "%s · %s" % [kind, _team_name(set_piece_team_id)]
+	var restart_notice := "%s · %s" % [kind, _team_name(set_piece_team_id)]
+	last_goal_text = (
+		"%s · %s" % [card_notice, restart_notice]
+		if card_notice != ""
+		else restart_notice
+	)
+	card_notice = ""
 
 	if set_piece_team_id == 0:
 		_select_player(set_piece_player)
+	elif kind == "PENALTI":
+		_select_player(teams[0][0])
 	else:
 		_select_player(_nearest_player_to_ball(0))
 
@@ -1267,7 +1333,25 @@ func _update_set_piece(delta: float) -> void:
 	for id in range(2):
 		for player in teams[id]:
 			player.velocity = Vector2.ZERO
+
+	if set_piece_kind == "PENALTI" and set_piece_team_id == 1:
+		var keeper_axis := Input.get_axis("move_up", "move_down")
+		_move_human_penalty_keeper(keeper_axis, delta)
+
 	if set_piece_seconds_remaining > 0.0:
+		return
+
+	if set_piece_kind == "PENALTI":
+		if set_piece_team_id == 0:
+			penalty_human_ready = true
+			last_goal_text = "PENALTI · W/S APUNTA · ENTER CARGA"
+			_update_human_penalty_input(delta)
+			return
+		set_piece_active = false
+		last_goal_text = ""
+		if audio_fx != null:
+			audio_fx.play_whistle()
+		_release_ai_penalty()
 		return
 
 	set_piece_active = false
@@ -1275,29 +1359,6 @@ func _update_set_piece(delta: float) -> void:
 	if audio_fx != null:
 		audio_fx.play_whistle()
 	var restarter := set_piece_player
-	if set_piece_kind == "PENALTI":
-		var penalty_goal := ChessFootballMath.goal_center(set_piece_team_id)
-		var defending_keeper: Footballer = teams[1 - set_piece_team_id][0]
-		var keeper_side := signf(defending_keeper.global_position.y - penalty_goal.y)
-		if absf(keeper_side) < 0.01:
-			keeper_side = 1.0
-		var penalty_target := Vector2(
-			penalty_goal.x,
-			penalty_goal.y - keeper_side * 72.0,
-		)
-		var penalty_lift := _safe_shot_lift(
-			restarter,
-			penalty_target,
-			PENALTY_SHOT_POWER,
-			PENALTY_SHOT_LIFT,
-		)
-		restarter.play_action("shoot", 0.78)
-		if audio_fx != null:
-			audio_fx.play_shot(0.68)
-		ball.release(penalty_target - restarter.global_position, PENALTY_SHOT_POWER, penalty_lift)
-		set_piece_player = null
-		return
-
 	var receiver := _restart_receiver(set_piece_team_id, restarter, set_piece_kind)
 	var direction := ChessFootballMath.PITCH_RECT.get_center() - restarter.global_position
 	var power := RESTART_THROW_POWER
@@ -1317,6 +1378,105 @@ func _update_set_piece(delta: float) -> void:
 	if set_piece_team_id == 0 and receiver != null:
 		_select_player(receiver)
 	set_piece_player = null
+
+func _penalty_target(team_id: int, aim_y: float) -> Vector2:
+	var goal := ChessFootballMath.goal_center(team_id)
+	var safe_half_span := maxf(
+		12.0,
+		ChessFootballMath.GOAL_HALF_HEIGHT
+			- ChessFootballMath.GOAL_FRAME_POST_RADIUS
+			- PENALTY_TARGET_MARGIN
+	)
+	return Vector2(
+		goal.x,
+		goal.y + clampf(aim_y, -1.0, 1.0) * safe_half_span,
+	)
+
+func _update_human_penalty_input(delta: float) -> void:
+	var aim_axis := Input.get_axis("move_up", "move_down")
+	if absf(aim_axis) > 0.05:
+		penalty_aim_y = clampf(penalty_aim_y + aim_axis * delta * 1.45, -1.0, 1.0)
+	if Input.is_action_just_pressed("shoot_ball") and not shot_charging:
+		_begin_shot_charge(penalty_aim_y)
+	if shot_charging:
+		shot_charge_seconds = minf(SHOT_CHARGE_SECONDS, shot_charge_seconds + delta)
+		shot_aim_y_input = penalty_aim_y
+		if Input.is_action_just_released("shoot_ball"):
+			_release_human_penalty()
+
+func _release_human_penalty() -> void:
+	if not set_piece_active or set_piece_kind != "PENALTI" or set_piece_team_id != 0:
+		return
+	if not penalty_human_ready or set_piece_player == null:
+		return
+	var ratio := _shot_charge_ratio()
+	var restarter := set_piece_player
+	var target := _penalty_target(0, penalty_aim_y)
+	var power := _shot_power_from_ratio(ratio)
+	var lift := _safe_shot_lift(
+		restarter,
+		target,
+		power,
+		_shot_lift_from_ratio(ratio),
+	)
+	shot_charging = false
+	shot_charge_seconds = 0.0
+	shot_aim_y_input = 0.0
+	penalty_human_ready = false
+	set_piece_active = false
+	last_goal_text = ""
+	restarter.play_action("shoot", lerpf(0.58, 0.82, ratio))
+	if audio_fx != null:
+		audio_fx.play_whistle()
+		audio_fx.play_shot(ratio)
+	ball.release(target - restarter.global_position, power, lift)
+	set_piece_player = null
+
+func _release_ai_penalty() -> void:
+	var restarter := set_piece_player
+	if restarter == null:
+		return
+	var penalty_goal := ChessFootballMath.goal_center(set_piece_team_id)
+	var defending_keeper: Footballer = teams[1 - set_piece_team_id][0]
+	var keeper_side := signf(defending_keeper.global_position.y - penalty_goal.y)
+	if absf(keeper_side) < 0.01:
+		keeper_side = 1.0
+	var penalty_target := _penalty_target(set_piece_team_id, -keeper_side * 0.78)
+	var penalty_lift := _safe_shot_lift(
+		restarter,
+		penalty_target,
+		PENALTY_SHOT_POWER,
+		PENALTY_SHOT_LIFT,
+	)
+	restarter.play_action("shoot", 0.78)
+	if audio_fx != null:
+		audio_fx.play_shot(0.68)
+	ball.release(penalty_target - restarter.global_position, PENALTY_SHOT_POWER, penalty_lift)
+	set_piece_player = null
+
+func _move_human_penalty_keeper(axis: float, delta: float) -> void:
+	var keeper: Footballer = teams[0][0]
+	if keeper == null or keeper.sent_off:
+		return
+	var goal := ChessFootballMath.goal_center(1)
+	var y_limit := ChessFootballMath.GOAL_HALF_HEIGHT - 14.0
+	keeper.global_position.y = clampf(
+		keeper.global_position.y + clampf(axis, -1.0, 1.0) * PENALTY_KEEPER_MOVE_SPEED * delta,
+		goal.y - y_limit,
+		goal.y + y_limit,
+	)
+	keeper.velocity = Vector2.ZERO
+
+func penalty_preview_visible() -> bool:
+	return (
+		set_piece_active
+		and set_piece_kind == "PENALTI"
+		and set_piece_team_id == 0
+		and penalty_human_ready
+	)
+
+func penalty_preview_target() -> Vector2:
+	return _penalty_target(0, penalty_aim_y)
 
 func _check_ball_out() -> void:
 	if goal_restart_active or kickoff_active or set_piece_active or ball.carrier != null:
@@ -1368,6 +1528,8 @@ func _kickoff_position(team_id: int, player: Footballer) -> Vector2:
 
 func _prepare_kickoff(team_id: int, is_initial: bool) -> void:
 	_cancel_shot_charge()
+	penalty_human_ready = false
+	penalty_aim_y = 0.0
 	pending_tackle_player = null
 	pending_tackle_seconds = 0.0
 	goal_restart_active = false
@@ -1385,6 +1547,8 @@ func _prepare_kickoff(team_id: int, is_initial: bool) -> void:
 
 	var center := ChessFootballMath.PITCH_RECT.get_center()
 	var starter: Footballer = teams[kickoff_team_id][2]
+	if starter.sent_off:
+		starter = _nearest_outfield_player_to_point(kickoff_team_id, center)
 	starter.global_position = center - starter.ball_anchor()
 	starter.velocity = Vector2.ZERO
 	ball.attach_to(starter)
@@ -1480,6 +1644,12 @@ func debug_audio_stream_names() -> Array[String]:
 func debug_3d_animated_players() -> int:
 	return presentation_3d.debug_animated_players() if presentation_3d != null else 0
 
+func debug_3d_visible_players() -> int:
+	return presentation_3d.debug_visible_players() if presentation_3d != null else 0
+
+func debug_penalty_aim_visible() -> bool:
+	return presentation_3d.debug_penalty_aim_visible() if presentation_3d != null else false
+
 func debug_3d_ball_height() -> float:
 	return presentation_3d.debug_ball_render_height() if presentation_3d != null else -1.0
 
@@ -1503,6 +1673,38 @@ func debug_penalty_spot(attacking_team_id: int) -> Vector2:
 
 func debug_set_piece_spot() -> Vector2:
 	return set_piece_spot
+
+func debug_human_penalty_ready() -> bool:
+	return penalty_human_ready
+
+func debug_penalty_target(aim_y: float) -> Vector2:
+	return _penalty_target(0, aim_y)
+
+func debug_set_penalty_aim(aim_y: float) -> void:
+	penalty_aim_y = clampf(aim_y, -1.0, 1.0)
+
+func debug_force_human_penalty_shot(ratio: float, aim_y: float) -> void:
+	penalty_human_ready = true
+	penalty_aim_y = clampf(aim_y, -1.0, 1.0)
+	_begin_shot_charge(penalty_aim_y)
+	shot_charge_seconds = SHOT_CHARGE_SECONDS * clampf(ratio, 0.0, 1.0)
+	_release_human_penalty()
+
+func debug_move_penalty_keeper(axis: float, delta: float) -> void:
+	_move_human_penalty_keeper(axis, delta)
+
+func debug_apply_foul_card(
+	player: Footballer,
+	aggressive: bool = true,
+	forward_distance: float = 20.0,
+) -> String:
+	return _apply_foul_card(
+		player,
+		{
+			"aggressive": aggressive,
+			"forward_distance": forward_distance,
+		},
+	)
 
 func debug_try_keeper_save(player: Footballer) -> bool:
 	return _keeper_try_save(player)
