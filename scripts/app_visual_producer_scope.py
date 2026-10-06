@@ -29,6 +29,7 @@ PRODUCER_ORDER = (
     "training-progress",
     "training-daily",
     "pvp-duel",
+    "combat-battle",
     "warroom-core",
     "warroom-decor",
     "warroom-armor",
@@ -38,6 +39,11 @@ PRODUCER_ORDER = (
 )
 WARROOM_ALL = {"warroom-core", "warroom-decor", "warroom-armor", "warroom-hans"}
 WARROOM_RENDERER_SHARED = {"warroom-core"}
+COMBAT_BATTLE_FILES = {
+    "frontend/src/components/combatbattleview.jsx",
+    "frontend/src/components/combatwarroombattle.css",
+    "frontend/src/components/combatwarroomboard.jsx",
+}
 # Hans has its own choreography/runtime owners and should not block unrelated
 # shared-renderer camera/layout PRs. Its dedicated canary still runs whenever
 # Hans-owned code changes.
@@ -253,6 +259,7 @@ def _e2e_producer(name: str) -> set[str] | None:
         # are present; classify() falls back to TRAINING_ALL for spec-only edits.
         "training-visual-artifact.spec.js": set(),
         "war-room-pvp-duel-visual-artifact.spec.js": {"pvp-duel"},
+        "war-room-combat-battle-visual-artifact.spec.js": {"combat-battle"},
         "war-room-pvp.spec.js": {"pvp-duel"},
         "pvp-background-roster.spec.js": {"pvp-duel"},
         "mobile-golden-path-war-room-invariants.spec.js": {"warroom-core"},
@@ -386,6 +393,8 @@ def classify_path(path: str) -> set[str] | None:
         return set()
     if lower == "frontend/src/components/globaloverlaylayer.jsx":
         return {"home-base"}
+    if lower in COMBAT_BATTLE_FILES:
+        return {"combat-battle"}
     if lower in POSTGAME_EXACT_PRODUCERS:
         return set(POSTGAME_EXACT_PRODUCERS[lower])
     if lower in QUICK_MATCH_EXACT_PRODUCERS:
@@ -723,6 +732,9 @@ def self_test() -> None:
         "e2e/chess-football.spec.js",
     ]) == "experiments-hub"
     assert classify(["frontend/src/components/QuickMatchModal.jsx"]) == "home-base,warroom-core"
+    assert classify(["frontend/src/components/CombatBattleView.jsx"]) == "combat-battle"
+    assert classify(["frontend/src/components/CombatWarRoomBoard.jsx"]) == "combat-battle"
+    assert classify(["e2e/war-room-combat-battle-visual-artifact.spec.js"]) == "combat-battle"
     assert classify(["frontend/src/components/QuickMatchMobileGoldenPath.css"]) == "home-base"
     assert classify(["frontend/src/components/QuickMatchReadyRoom.css"]) == "home-base"
     assert classify(["frontend/src/components/QuickMatchReadyRoomScene3D.jsx"]) == "home-base"
