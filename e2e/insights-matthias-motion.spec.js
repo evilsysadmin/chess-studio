@@ -30,6 +30,8 @@ async function openInsights(page, { hour = 17 } = {}) {
   await login(page);
   await page.getByRole('button', { name: 'Abrir Así juegas con Matthias' }).click();
   await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Expediente', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Expediente', exact: true })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Consulta diaria con Matthias' })).toBeVisible();
 }
 
