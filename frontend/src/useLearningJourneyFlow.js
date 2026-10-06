@@ -5,6 +5,7 @@ const DEFAULT_PUZZLE_LAUNCH = Object.freeze({
   rush: false,
   filter: null,
   dailySlot: 'tactic',
+  origin: null,
 });
 
 const DEFAULT_INSIGHTS_SECTION = 'diagnosis';
@@ -18,8 +19,8 @@ export function useLearningJourneyFlow({ navigateTo, resetNavigation }) {
   const [quickMatchLaunchNonce, setQuickMatchLaunchNonce] = useState(0);
   const [insightsLandingSection, setInsightsLandingSection] = useState(DEFAULT_INSIGHTS_SECTION);
 
-  function openPuzzleMode(source = 'curated', rush = false, filter = null, dailySlot = 'tactic') {
-    setPuzzleLaunch({ source, rush, filter, dailySlot });
+  function openPuzzleMode(source = 'curated', rush = false, filter = null, dailySlot = 'tactic', origin = null) {
+    setPuzzleLaunch({ source, rush, filter, dailySlot, origin });
     navigateTo('puzzle');
   }
 
