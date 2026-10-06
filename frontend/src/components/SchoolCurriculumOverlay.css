@@ -1,0 +1,447 @@
+/* Dedicated curriculum mode.
+   The lesson and the plan are mutually exclusive interaction states: the room
+   remains visible as context, but it is not interactive while the plan is open. */
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-curriculum="open"] {
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-curriculum="open"] .matthias-school-layout,
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-curriculum="open"] .matthias-school-stage {
+  position: absolute !important;
+  inset: 0 !important;
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-curriculum="open"] .matthias-school-stage {
+  pointer-events: none;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-curriculum="open"] .matthias-school-toolbar,
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-curriculum="open"] .matthias-school-focusbar,
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-curriculum="open"] .matthias-school-coach,
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-curriculum="open"] .matthias-school-board-actions {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+body:has(.matthias-school-shell[data-school-curriculum="open"]) .global-music-dock {
+  opacity: .14;
+  pointer-events: none;
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 180;
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(3, 5, 8, .72);
+  backdrop-filter: blur(3px) saturate(.78);
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-panel {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  gap: .7rem;
+  width: min(1120px, calc(100vw - 3rem));
+  height: min(760px, calc(100dvh - 4rem));
+  padding: .9rem;
+  overflow: hidden;
+  transform: translate(-50%, -50%);
+  border: 1px solid color-mix(in srgb, var(--brass) 36%, var(--ui-border));
+  border-radius: 18px;
+  background:
+    linear-gradient(145deg, rgba(28, 24, 20, .98), rgba(9, 11, 15, .985) 52%),
+    var(--ui-panel);
+  box-shadow: 0 34px 90px rgba(0, 0, 0, .58);
+  color: var(--parchment);
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-width: 0;
+  padding: .15rem .15rem .65rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--brass) 20%, var(--ui-border));
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-header > div {
+  min-width: 0;
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-header span,
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-column-label,
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-lessons > header > span,
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-modes > span {
+  color: color-mix(in srgb, var(--brass) 82%, var(--parchment));
+  font-size: .62rem;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-header h2 {
+  margin: .08rem 0 .1rem;
+  color: var(--parchment);
+  font-size: clamp(1.2rem, 2vw, 1.62rem);
+  line-height: 1.1;
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-header p {
+  margin: 0;
+  color: color-mix(in srgb, var(--parchment) 62%, transparent);
+  font-size: .72rem;
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-header button {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: .42rem .8rem;
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-modes {
+  display: grid;
+  grid-template-columns: auto auto minmax(180px, 1fr);
+  align-items: center;
+  gap: .65rem;
+  padding: .5rem .62rem;
+  border: 1px solid color-mix(in srgb, var(--brass) 18%, var(--ui-border));
+  border-radius: 11px;
+  background: rgba(255, 255, 255, .025);
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-modes > div {
+  display: flex;
+  gap: .32rem;
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-modes button {
+  min-height: 40px;
+  padding: .36rem .7rem;
+  border: 1px solid var(--ui-border);
+  border-radius: 9px;
+  background: transparent;
+  color: color-mix(in srgb, var(--parchment) 72%, transparent);
+  cursor: pointer;
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-modes button.active {
+  border-color: color-mix(in srgb, var(--brass) 62%, var(--ui-border));
+  background: color-mix(in srgb, var(--brass) 14%, transparent);
+  color: var(--parchment);
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-modes small {
+  justify-self: end;
+  max-width: 420px;
+  color: color-mix(in srgb, var(--parchment) 58%, transparent);
+  font-size: .66rem;
+  line-height: 1.35;
+  text-align: right;
+}
+
+.tutorial-shell.matthias-school-shell[data-school-curriculum="open"] .matthias-school-curriculum-panel .matthias-school-topic-explorer {
+  position: static !important;
+  z-index: auto !important;
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  border-color: color-mix(in srgb, var(--brass) 18%, var(--ui-border));
+  background: rgba(255, 255, 255, .018);
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-browser {
+  display: grid;
+  grid-template-columns: minmax(210px, 260px) minmax(0, 1fr);
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--brass) 18%, var(--ui-border));
+  border-radius: 13px;
+  background: rgba(5, 7, 10, .3);
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-courses {
+  display: grid;
+  align-content: start;
+  gap: .34rem;
+  min-width: 0;
+  padding: .65rem;
+  overflow-y: auto;
+  border-right: 1px solid color-mix(in srgb, var(--brass) 18%, var(--ui-border));
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-column-label {
+  padding: .18rem .12rem .35rem;
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-courses button {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  align-items: center;
+  gap: .55rem;
+  min-width: 0;
+  min-height: 54px;
+  padding: .45rem .5rem;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--parchment);
+  text-align: left;
+  cursor: pointer;
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-courses button > span {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid color-mix(in srgb, var(--brass) 34%, var(--ui-border));
+  border-radius: 999px;
+  color: color-mix(in srgb, var(--brass) 84%, var(--parchment));
+  font-size: .72rem;
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-courses button div {
+  display: grid;
+  min-width: 0;
+  gap: .08rem;
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-courses button strong {
+  overflow: hidden;
+  font-size: .76rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-courses button small {
+  color: color-mix(in srgb, var(--parchment) 55%, transparent);
+  font-size: .61rem;
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-courses button:hover:not(:disabled),
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-courses button:focus-visible,
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-courses button.active {
+  border-color: color-mix(in srgb, var(--brass) 48%, var(--ui-border));
+  background: color-mix(in srgb, var(--brass) 10%, transparent);
+  outline: none;
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-courses button.passed > span {
+  border-color: rgba(91, 179, 142, .55);
+  color: #9ed7bd;
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-courses button:disabled {
+  opacity: .38;
+  cursor: not-allowed;
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-lessons {
+  min-width: 0;
+  min-height: 0;
+  padding: .72rem;
+  overflow-y: auto;
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-lessons > header {
+  margin-bottom: .65rem;
+  padding: .1rem .15rem .6rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--brass) 14%, var(--ui-border));
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-lessons > header h3 {
+  margin: .1rem 0 .18rem;
+  font-size: 1rem;
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-lessons > header p {
+  max-width: 70ch;
+  margin: 0;
+  color: color-mix(in srgb, var(--parchment) 60%, transparent);
+  font-size: .68rem;
+  line-height: 1.4;
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-lesson-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .42rem;
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-lesson-grid button {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: .58rem;
+  min-width: 0;
+  min-height: 68px;
+  padding: .55rem .62rem;
+  border: 1px solid var(--ui-border);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, .018);
+  color: var(--parchment);
+  text-align: left;
+  cursor: pointer;
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-lesson-grid button > span {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid color-mix(in srgb, var(--brass) 34%, var(--ui-border));
+  border-radius: 999px;
+  color: color-mix(in srgb, var(--brass) 82%, var(--parchment));
+  font-size: .72rem;
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-lesson-grid button div {
+  display: grid;
+  min-width: 0;
+  gap: .1rem;
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-lesson-grid button small {
+  color: color-mix(in srgb, var(--parchment) 52%, transparent);
+  font-size: .56rem;
+  letter-spacing: .04em;
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-lesson-grid button strong {
+  font-size: .73rem;
+  line-height: 1.22;
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-lesson-grid button em {
+  color: color-mix(in srgb, var(--parchment) 48%, transparent);
+  font-size: .58rem;
+  font-style: normal;
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-lesson-grid button:hover:not(:disabled),
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-lesson-grid button:focus-visible,
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-lesson-grid button.active {
+  border-color: color-mix(in srgb, var(--brass) 54%, var(--ui-border));
+  background: color-mix(in srgb, var(--brass) 9%, transparent);
+  outline: none;
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-lesson-grid button.complete > span {
+  border-color: rgba(91, 179, 142, .55);
+  color: #9ed7bd;
+}
+
+.tutorial-shell.matthias-school-shell .matthias-school-curriculum-lesson-grid button:disabled {
+  opacity: .38;
+  cursor: not-allowed;
+}
+
+@media (max-width: 760px) {
+  .tutorial-shell.matthias-school-shell .matthias-school-curriculum-panel {
+    top: 0;
+    left: 0;
+    grid-template-rows: auto auto auto auto;
+    width: 100vw;
+    height: 100dvh;
+    max-height: none;
+    gap: .55rem;
+    padding:
+      max(.7rem, env(safe-area-inset-top))
+      max(.65rem, env(safe-area-inset-right))
+      max(.7rem, env(safe-area-inset-bottom))
+      max(.65rem, env(safe-area-inset-left));
+    transform: none;
+    overflow-y: auto;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .tutorial-shell.matthias-school-shell .matthias-school-curriculum-header {
+    position: sticky;
+    top: calc(-1 * max(.7rem, env(safe-area-inset-top)));
+    z-index: 3;
+    padding-top: .7rem;
+    background: rgba(10, 11, 14, .97);
+  }
+
+  .tutorial-shell.matthias-school-shell .matthias-school-curriculum-modes {
+    grid-template-columns: 1fr;
+    gap: .4rem;
+  }
+
+  .tutorial-shell.matthias-school-shell .matthias-school-curriculum-modes > div {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .tutorial-shell.matthias-school-shell .matthias-school-curriculum-modes button {
+    min-height: 44px;
+  }
+
+  .tutorial-shell.matthias-school-shell .matthias-school-curriculum-modes small {
+    justify-self: start;
+    max-width: none;
+    text-align: left;
+  }
+
+  .tutorial-shell.matthias-school-shell .matthias-school-curriculum-browser {
+    display: block;
+    overflow: visible;
+  }
+
+  .tutorial-shell.matthias-school-shell .matthias-school-curriculum-courses {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: visible;
+    border-right: 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--brass) 18%, var(--ui-border));
+  }
+
+  .tutorial-shell.matthias-school-shell .matthias-school-curriculum-column-label {
+    grid-column: 1 / -1;
+  }
+
+  .tutorial-shell.matthias-school-shell .matthias-school-curriculum-courses button {
+    min-height: 58px;
+  }
+
+  .tutorial-shell.matthias-school-shell .matthias-school-curriculum-courses button strong {
+    white-space: normal;
+  }
+
+  .tutorial-shell.matthias-school-shell .matthias-school-curriculum-lessons {
+    overflow: visible;
+  }
+
+  .tutorial-shell.matthias-school-shell .matthias-school-curriculum-lesson-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tutorial-shell.matthias-school-shell .matthias-school-curriculum-lesson-grid button {
+    min-height: 64px;
+  }
+
+  body:has(.matthias-school-shell[data-school-curriculum="open"]) .global-music-dock {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tutorial-shell.matthias-school-shell .matthias-school-curriculum-backdrop {
+    backdrop-filter: none;
+  }
+}

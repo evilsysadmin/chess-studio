@@ -68,8 +68,12 @@ export function installWarRoomV3FireAnimation(
     // When Hans tends this hearth he dims and revives it through stand-ins
     // (WarRoomHansStage); their scale and intensity multiply the flicker.
     const dimmer = root.userData?.warRoomHansFireDimmer;
-    const dimWidth = Number(dimmer?.core?.scale?.x) || 1;
-    const dimHeight = Number(dimmer?.core?.scale?.y) || 1;
+    const dimWidthValue = Number(dimmer?.core?.scale?.x);
+    const dimHeightValue = Number(dimmer?.core?.scale?.y);
+    const dimWidth = Number.isFinite(dimWidthValue) ? dimWidthValue : 1;
+    const dimHeight = dimmer?.core?.visible === false
+      ? 0
+      : (Number.isFinite(dimHeightValue) ? dimHeightValue : 1);
     const dimLight = Number.isFinite(dimmer?.light?.intensity) ? dimmer.light.intensity : 1;
     flames.forEach((flame, index) => {
       const base = bases[index];

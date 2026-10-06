@@ -70,17 +70,15 @@ test('War Room · el número del fuego completa cotilleo, corte de Matthias y re
 
   const canvas = await openFireGame(page);
   const matthiasCall = page.getByRole('status', { name: 'Matthias llama a Hans por el fuego' });
-  await expect(matthiasCall).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
-  // The call is intentionally brief. Assert its own contract immediately: a
-  // cold 3D mount can replace the canvas while the scene reaches its ready
-  // frame, and waiting on that new canvas must not consume the whole bubble.
+  // This beat belongs to the room, not merely to React mounting the board.
+  // The scene must be fully ready (including Hans' stage and cold-hearth
+  // narrative) before Matthias is allowed to complain about the fire.
+  await expect(canvas).toHaveAttribute('data-war-room-hans-scene-ready', 'true', { timeout: WAR_ROOM_READY_TIMEOUT });
+  await expect(canvas).toHaveAttribute('data-war-room-hans-screen', 'hidden');
+  await expect(matthiasCall).toBeVisible({ timeout: 8_000 });
   await expect(matthiasCall).toContainText('MATTHIAS');
   await expect(matthiasCall).toContainText('HANS! El fuego, bitte.');
   await expect(matthiasCall).toHaveAttribute('data-matthias-square', /^[a-h][1-8]$/);
-  // The first Matthias bubble belongs to the mounted board, not to Hans' deferred
-  // actor install. The choreography clock remains frozen until sceneReady.
-  await expect(canvas).toHaveAttribute('data-war-room-hans-scene-ready', 'true', { timeout: WAR_ROOM_READY_TIMEOUT });
-  await expect(canvas).toHaveAttribute('data-war-room-hans-screen', 'hidden');
 
   await expect(page.getByRole('status', { name: 'Bravuconada de Matthias al iniciar la partida' })).toHaveCount(0);
 

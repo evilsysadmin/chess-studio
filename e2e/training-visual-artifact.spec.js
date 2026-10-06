@@ -46,8 +46,9 @@ async function assertSchoolTouchTargets(shell, label) {
     '.matthias-school-focusbar button',
     '.matthias-school-board-actions button',
     '.matthias-school-nav button',
-    '.matthias-school-study-mode button',
-    '.matthias-school-topic-filter select',
+    '.matthias-school-curriculum-panel button',
+    '.matthias-school-curriculum-panel select',
+    '.matthias-school-topic-explorer > summary',
     '.matthias-school-focus-mode-bar button',
   ].join(',')).evaluateAll((nodes) => nodes
     .filter((node) => {
@@ -98,6 +99,34 @@ async function assertSchoolMobileFold(shell, label) {
   expect(geometry.actionCount, `${label}: expected actionable lesson controls`).toBeGreaterThanOrEqual(3);
 }
 
+async function assertSchoolCurriculumLayout(shell, label) {
+  const panel = shell.locator('.matthias-school-curriculum-panel');
+  const geometry = await panel.evaluate((root) => {
+    const rect = root.getBoundingClientRect();
+    const courses = root.querySelector('.matthias-school-curriculum-courses');
+    const lessons = root.querySelector('.matthias-school-curriculum-lessons');
+    return {
+      left: rect.left,
+      top: rect.top,
+      right: rect.right,
+      bottom: rect.bottom,
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+      panelOverflow: root.scrollWidth - root.clientWidth,
+      coursesOverflow: courses ? courses.scrollWidth - courses.clientWidth : 0,
+      lessonsOverflow: lessons ? lessons.scrollWidth - lessons.clientWidth : 0,
+    };
+  });
+
+  expect(geometry.left, `${label}: curriculum stays inside left edge`).toBeGreaterThanOrEqual(-1);
+  expect(geometry.top, `${label}: curriculum stays inside top edge`).toBeGreaterThanOrEqual(-1);
+  expect(geometry.right, `${label}: curriculum stays inside right edge`).toBeLessThanOrEqual(geometry.viewportWidth + 1);
+  expect(geometry.bottom, `${label}: curriculum stays inside bottom edge`).toBeLessThanOrEqual(geometry.viewportHeight + 1);
+  expect(geometry.panelOverflow, `${label}: curriculum has no horizontal overflow`).toBeLessThanOrEqual(1);
+  expect(geometry.coursesOverflow, `${label}: course list has no horizontal overflow`).toBeLessThanOrEqual(1);
+  expect(geometry.lessonsOverflow, `${label}: lesson list has no horizontal overflow`).toBeLessThanOrEqual(1);
+}
+
 async function assertSpecialModesDensity(shell) {
   const density = await shell.locator('.mechanic-library').evaluate((root) => {
     const list = root.querySelector('.mechanic-library-list')?.getBoundingClientRect();
@@ -136,6 +165,10 @@ async function prepare(page) {
     },
   });
   await login(page);
+  const homeGuide = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
+  const dismissGuide = homeGuide.getByRole('button', { name: 'Ahora no', exact: true });
+  if (await dismissGuide.isVisible().catch(() => false)) await dismissGuide.click();
+  await expect(page.getByRole('region', { name: 'Modos principales' })).toBeVisible();
   await page.evaluate(() => {
     localStorage.setItem('chess-study-war-room-variant-v1', 'v2');
     localStorage.removeItem('chess-study-class-room-variant-v1');
@@ -168,10 +201,34 @@ scopedTest('school', 'Entrenar · Escuela, Glosario y Modos especiales', async (
   test.setTimeout(110_000);
   await prepare(page);
 
-  await buttonWithHeading(page, 'Escuela de Matthias').click();
+  await page.evaluate(() => {
+    sessionStorage.setItem('chess-study-current-view', 'tutorial');
+  });
+  await page.reload();
 
   const shell = page.locator('.tutorial-shell.matthias-school-shell');
+  if (!await shell.isVisible().catch(() => false)) {
+    await page.waitForTimeout(900);
+  }
+  if (!await shell.isVisible().catch(() => false)) {
+    const debugState = await page.evaluate(() => ({
+      view: sessionStorage.getItem('chess-study-current-view'),
+      homeVisible: Boolean(document.querySelector('.illustrated-home, .home-castle-hub')),
+      bodyPreview: document.body?.innerText?.slice(0, 260) || '',
+    }));
+    console.log('School visual bootstrap fallback:', JSON.stringify(debugState));
+    const schoolEntry = buttonWithHeading(page, 'Escuela de Matthias');
+    if (await schoolEntry.isVisible().catch(() => false)) {
+      await schoolEntry.click();
+    }
+  }
   await expect(shell).toBeVisible();
+  // The bootstrap reload may rehydrate profile storage. Seed the unrelated
+  // global War Room preference only after School is mounted, then prove the
+  // classroom never mutates it while its own renderer stays canonical.
+  await page.evaluate(() => {
+    localStorage.setItem('chess-study-war-room-variant-v1', 'v2');
+  });
   await expect(shell.locator('.matthias-school-stage')).toBeVisible();
   const retroDock = page.locator('.global-music-dock');
   const retroDeck = retroDock.locator('.music-deck');
@@ -202,12 +259,18 @@ scopedTest('school', 'Entrenar · Escuela, Glosario y Modos especiales', async (
   await settle(page);
 
   await shell.getByRole('button', { name: 'Plan de estudios', exact: true }).click();
+  const curriculum = shell.getByRole('dialog', { name: 'Plan de estudios' });
+  await expect(curriculum).toBeVisible();
   await expect(shell.getByRole('group', { name: 'Modo de estudio' })).toBeVisible();
+  await expect(shell.locator('.matthias-school-coach')).toBeHidden();
+  await assertSchoolCurriculumLayout(shell, 'school-curriculum-desktop');
   await capture(page, 'school-curriculum');
   await captureAt(page, 'school-curriculum', { width: 390, height: 844, variant: 'mobile' });
+  await assertSchoolCurriculumLayout(shell, 'school-curriculum-mobile');
+  await assertSchoolTouchTargets(shell, 'school-curriculum-mobile');
   await page.setViewportSize({ width: 1440, height: 900 });
   await settle(page);
-  await shell.getByRole('button', { name: 'Cerrar plan de estudios', exact: true }).click();
+  await curriculum.getByRole('button', { name: 'Cerrar plan de estudios', exact: true }).click();
 
   await expect(shell.getByRole('button', { name: 'Pantalla completa', exact: true })).toBeHidden();
   await expect(shell).toHaveAttribute('data-school-focus', 'normal');
