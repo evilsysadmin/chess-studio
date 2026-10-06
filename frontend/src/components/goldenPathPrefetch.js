@@ -1,26 +1,6 @@
 const SLOW_EFFECTIVE_TYPES = new Set(['slow-2g', '2g']);
 
-let quickMatchModulePromise = null;
 let warRoomIntentPromise = null;
-
-export function loadQuickMatchReadyRoom() {
-  if (!quickMatchModulePromise) {
-    quickMatchModulePromise = import('./QuickMatchModal.jsx').catch((error) => {
-      quickMatchModulePromise = null;
-      throw error;
-    });
-  }
-  return quickMatchModulePromise;
-}
-
-export async function preloadQuickMatchReadyRoom() {
-  try {
-    await loadQuickMatchReadyRoom();
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 export function shouldPreloadWarRoomForPlayIntent({
   windowRef = globalThis.window,
