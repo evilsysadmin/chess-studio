@@ -1,6 +1,6 @@
 {
   "id": "echo-cistern",
-  "version": 1,
+  "version": 2,
   "progressionKey": "echo-cistern-01",
   "title": "Cisterna de los Ecos",
   "grid": [
@@ -141,7 +141,8 @@
       "ai": {
         "movement": "hold",
         "attackReach": 2,
-        "requiresLineOfSight": true
+        "requiresLineOfSight": true,
+        "disengageRange": 1
       },
       "onDefeat": {
         "message": "{attacker} apaga la lumbre salobre con {attack}. Queda una perla de sal que zumba como si el agua tuviera opinión.",
