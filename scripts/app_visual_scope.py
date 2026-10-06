@@ -708,7 +708,7 @@ def self_test() -> None:
     lab_launch = classify(["frontend/src/labLaunchIntent.js"])
     assert lab_launch.capture_groups == "none"
     assert not lab_launch.hans and not lab_launch.chesscom
-    puzzle_launch = classify(["frontend/src/usePuzzleLaunchFlow.js"])
+    puzzle_launch = classify(["frontend/src/useLearningJourneyFlow.js"])
     assert puzzle_launch.capture_groups == "none"
     assert not puzzle_launch.hans and not puzzle_launch.chesscom
     sound_fx = classify(["frontend/src/soundFx.js"])
