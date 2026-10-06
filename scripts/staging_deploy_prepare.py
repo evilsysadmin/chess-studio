@@ -9,7 +9,7 @@ from pathlib import Path
 import main_ci_admission as admission
 import staging_deploy_scope as deploy_scope
 import staging_generation as generation
-import staging_pawn_slug_visual_scope as pawn_scope
+import staging_optional_scope as optional_scope
 from main_ci_source import SourceError
 
 
@@ -39,7 +39,10 @@ def prepare(sha: str) -> dict[str, str]:
         "deploy_sha": head,
         "admitted": "false",
         "pawn_slug_visual_required": "false",
-        "pawn_slug_visual_reason": "not-admitted",
+        "resend_bootstrap_required": "false",
+        "continuity_required": "false",
+        "optional_scope_reason": "not-admitted",
+        "optional_scope_base_sha": "",
     }
     if not required:
         append_summary(f"### Staging no-op · {head} · {reason}")
@@ -51,9 +54,7 @@ def prepare(sha: str) -> dict[str, str]:
         return values
 
     values["admitted"] = "true"
-    pawn_required, pawn_reason, _base = pawn_scope.decide(head)
-    values["pawn_slug_visual_required"] = "true" if pawn_required else "false"
-    values["pawn_slug_visual_reason"] = pawn_reason
+    values.update(optional_scope.decide(head))
     return values
 
 
@@ -68,7 +69,7 @@ def emit(path: str, values: dict[str, str]) -> None:
 def self_test() -> None:
     deploy_scope.self_test()
     generation.self_test()
-    pawn_scope.self_test()
+    optional_scope.self_test()
     print("staging-deploy-prepare self-test: OK")
 
 
