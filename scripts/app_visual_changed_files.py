@@ -34,6 +34,7 @@ GLOBAL_SHELL_OWNER = "frontend/src/useGlobalShellUi.js"
 TOURNAMENT_FLOW_OWNER = "frontend/src/useTournamentFlow.js"
 GLOBAL_OVERLAY_OWNER = "frontend/src/components/GlobalOverlayLayer.jsx"
 GAME_START_FLOW_OWNER = "frontend/src/useGameStartFlow.js"
+CASUAL_RESULT_FLOW_OWNER = "frontend/src/useCasualResultFlow.js"
 LOGOUT_FLOW_OWNER = "frontend/src/useLogoutFlow.js"
 FEATURE_FLAGS_OWNER = "frontend/src/usePublicFeatureFlags.js"
 
@@ -282,6 +283,10 @@ NONVISUAL_GAME_START_APP_LINES = {
     "if (run?.active && !gameLaunch.busy()) void launchRun(run);",
 }
 
+NONVISUAL_CASUAL_RESULT_APP_LINES = {
+
+}
+
 NONVISUAL_SESSION_SHELL_APP_LINES = {
     "import { activityForView, usePresenceHeartbeat } from './usePresenceHeartbeat.js';",
     "import { usePresenceHeartbeat } from './usePresenceHeartbeat.js';",
@@ -514,6 +519,13 @@ def _is_nonvisual_game_start_app_diff(diff_text: str | None) -> bool:
     return bool(changed_lines) and all(line in NONVISUAL_GAME_START_APP_LINES for line in changed_lines)
 
 
+def _is_nonvisual_casual_result_app_diff(diff_text: str | None) -> bool:
+    if not diff_text:
+        return False
+    changed_lines = _changed_source_lines(diff_text)
+    return bool(changed_lines) and all(line in NONVISUAL_CASUAL_RESULT_APP_LINES for line in changed_lines)
+
+
 def _is_nonvisual_session_shell_app_diff(diff_text: str | None) -> bool:
     if not diff_text:
         return False
@@ -567,6 +579,10 @@ def normalize(
         GAME_START_FLOW_OWNER.lower() in lower_paths
         and _is_nonvisual_game_start_app_diff(_git_diff_text(base_sha, head_sha, APP_SHELL))
     )
+    safe_casual_result_app = (
+        CASUAL_RESULT_FLOW_OWNER.lower() in lower_paths
+        and _is_nonvisual_casual_result_app_diff(_git_diff_text(base_sha, head_sha, APP_SHELL))
+    )
     safe_session_shell_app = (
         LOGOUT_FLOW_OWNER.lower() in lower_paths
         and FEATURE_FLAGS_OWNER.lower() in lower_paths
@@ -589,7 +605,7 @@ def normalize(
         if lower == GAME_SCREEN.lower() and safe_postgame_training_game:
             add(PUZZLE_SCREEN_OWNER)
             continue
-        if lower == APP_SHELL.lower() and (safe_learning_app or safe_global_shell_app or safe_app_decomposition or safe_game_start_app or safe_session_shell_app):
+        if lower == APP_SHELL.lower() and (safe_learning_app or safe_global_shell_app or safe_app_decomposition or safe_game_start_app or safe_casual_result_app or safe_session_shell_app):
             # App.jsx is normally a global visual owner. Suppress it only for
             # the exact, audited navigation extraction above; any extra changed
             # App line fails closed and restores the canonical visual sweep.
@@ -691,6 +707,12 @@ def self_test() -> None:
     assert _is_nonvisual_game_start_app_diff(safe_game_start_diff)
     assert not _is_nonvisual_game_start_app_diff(unsafe_game_start_diff)
     assert not _is_nonvisual_game_start_app_diff(None)
+
+    safe_casual_result_diff = "--- a/frontend/src/App.jsx\n+++ b/frontend/src/App.jsx\n@@ -1 +1 @@\n-import { recordRivalryResult, reconcileRivalryHistory } from './rivalry.js';\n+import { reconcileRivalryHistory } from './rivalry.js';\n"
+    unsafe_casual_result_diff = safe_casual_result_diff + "@@ -20 +20 @@\n-<main className=\"old\">\n+<main className=\"new\">\n"
+    assert _is_nonvisual_casual_result_app_diff(safe_casual_result_diff)
+    assert not _is_nonvisual_casual_result_app_diff(unsafe_casual_result_diff)
+    assert not _is_nonvisual_casual_result_app_diff(None)
 
     safe_session_shell_diff = "--- a/frontend/src/App.jsx\n+++ b/frontend/src/App.jsx\n@@ -1 +1 @@\n-import { activityForView, usePresenceHeartbeat } from './usePresenceHeartbeat.js';\n+import { usePresenceHeartbeat } from './usePresenceHeartbeat.js';\n"
     unsafe_session_shell_diff = safe_session_shell_diff + "@@ -20 +20 @@\n-<main className=\"old\">\n+<main className=\"new\">\n"
