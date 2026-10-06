@@ -9,11 +9,11 @@ export {
 
 export function installCombatOperationsRoomPracticalLights(root, { coarsePointer = false } = {}) {
   const specs = [
-    ['COMBAT_ANCHOR_board_fill', 0xf1c27a, coarsePointer ? 0.46 : 0.62, 9.2],
-    ['COMBAT_ANCHOR_map_fill', 0xff9b45, coarsePointer ? 0.88 : 1.12, 7.6],
-    ['COMBAT_ANCHOR_barracks_fill', 0xff7f2d, coarsePointer ? 0.82 : 1.08, 6.8],
-    ['COMBAT_ANCHOR_memorial_fill', 0xff8b38, coarsePointer ? 0.68 : 0.92, 6.4],
-    ['COMBAT_ANCHOR_quartermaster', 0xffa04a, coarsePointer ? 0.50 : 0.72, 5.8],
+    ['COMBAT_ANCHOR_board_fill', 0xf1c27a, coarsePointer ? 0.66 : 0.62, 9.2],
+    ['COMBAT_ANCHOR_map_fill', 0xff9b45, coarsePointer ? 1.22 : 1.12, 7.6],
+    ['COMBAT_ANCHOR_barracks_fill', 0xff7f2d, coarsePointer ? 1.18 : 1.08, 6.8],
+    ['COMBAT_ANCHOR_memorial_fill', 0xff8b38, coarsePointer ? 1.02 : 0.92, 6.4],
+    ['COMBAT_ANCHOR_quartermaster', 0xffa04a, coarsePointer ? 0.80 : 0.72, 5.8],
   ];
   const lights = [];
 
