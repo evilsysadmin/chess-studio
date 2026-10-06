@@ -3,6 +3,7 @@ import { clearStorageMemoryFallback } from '../safeStorage.js';
 import {
   chroniclesAutomapCellKey,
   chroniclesAutomapFacingDegrees,
+  chroniclesAutomapLocalVisibleCells,
   chroniclesAutomapMarkVisited,
   chroniclesAutomapRevealedCells,
   clearChroniclesAutomapVisited,
@@ -65,4 +66,25 @@ describe('Chronicles automap', () => {
     expect(chroniclesAutomapFacingDegrees(4)).toBe(0);
     expect(chroniclesAutomapFacingDegrees(-1)).toBe(270);
   });
+  it('reveals nearby walkable cells but does not flood through walls', () => {
+    const map = {
+      grid: [
+        '#######',
+        '#..#..#',
+        '#..#..#',
+        '#.....#',
+        '#######',
+      ],
+    };
+
+    const visible = chroniclesAutomapLocalVisibleCells(map, { x: 1, y: 1 }, 3);
+
+    expect(visible.has('1:1')).toBe(true);
+    expect(visible.has('2:1')).toBe(true);
+    expect(visible.has('3:1')).toBe(true);
+    expect(visible.has('4:1')).toBe(false);
+    expect(visible.has('4:2')).toBe(false);
+  });
+
+
 });
