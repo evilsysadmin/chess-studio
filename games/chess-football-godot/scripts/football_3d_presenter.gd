@@ -601,6 +601,22 @@ func _sync_camera(delta: float, mode: String) -> void:
 		look_target = Vector3(camera.position.x, 0.0, -0.85)
 	camera.look_at(look_target, Vector3.UP)
 
+func screen_position_for_world(world: Vector2, height: float = PLAYER_BASE_Y) -> Vector2:
+	if camera == null:
+		return Vector2(-10000.0, -10000.0)
+	var stage_position := world_to_stage(world, height)
+	if camera.is_position_behind(stage_position):
+		return Vector2(-10000.0, -10000.0)
+	return camera.unproject_position(stage_position)
+
+func screen_position_for_player(player: Footballer) -> Vector2:
+	if player == null or player.sent_off:
+		return Vector2(-10000.0, -10000.0)
+	return screen_position_for_world(player.global_position, PLAYER_BASE_Y)
+
+func attack_goal_screen_position(team_id: int) -> Vector2:
+	return screen_position_for_world(ChessFootballMath.goal_center(team_id), 0.62)
+
 func debug_camera_smoothed_focus_x() -> float:
 	return smoothed_focus_x
 
