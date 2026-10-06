@@ -28,7 +28,8 @@ describe('Chronicles first-person authored content', () => {
   });
 
   it('lets first-person activate the Gallery lever and collect the revealed relic', () => {
-    const atLever = clearedGallery({ x: 5, y: 5 });
+    const atLever = clearedGallery({ x: 5, y: 5, direction: 1 });
+    expect(chroniclesContextualContentAction({ ...atLever, direction: 0 })).toBeNull();
     expect(chroniclesContextualContentAction(atLever)).toMatchObject({
       id: 'gallery-lever',
       kind: 'lever',
@@ -39,7 +40,8 @@ describe('Chronicles first-person authored content', () => {
     expect(leverPulled.galleryLeverPulled).toBe(true);
     expect(leverPulled.message).toContain('contrapeso');
 
-    const atRelic = { ...leverPulled, x: 5, y: 4 };
+    const atRelic = { ...leverPulled, x: 5, y: 4, direction: 1 };
+    expect(chroniclesContextualContentAction({ ...atRelic, direction: 0 })).toBeNull();
     expect(chroniclesContextualContentAction(atRelic)).toMatchObject({
       id: 'gallery-relic',
       kind: 'pickup',
