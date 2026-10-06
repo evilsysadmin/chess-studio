@@ -146,7 +146,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const [automapVisitedByMap, setAutomapVisitedByMap] = useState({});
   const touchHoldRef = useRef({ delayId: null, repeatId: null });
 
-  useChroniclesDesktopFullscreen(true);
+  useChroniclesDesktopFullscreen(characterSetupDone);
 
   useEffect(() => {
     selectedMemberIdRef.current = selectedMemberId;
@@ -200,7 +200,6 @@ export default function ChroniclesOfMatthias({ onExit }) {
   }, { contextMenu: false });
 
   const confirmCharacterBuild = useCallback((build) => {
-    void chroniclesRequestDesktopFullscreen();
     const selected = setChroniclesCharacterBuild(progression, build);
     if (!selected.updated) return;
     const saved = saveChroniclesProgression(selected.progression);
@@ -216,6 +215,10 @@ export default function ChroniclesOfMatthias({ onExit }) {
     setAutomapVisitedByMap({});
     setCharacterSetupDone(true);
     setBootstrapRevision((revision) => revision + 1);
+    // Preserve the click that confirms the party, then consume that same user
+    // activation for native fullscreen. Arming fullscreen before setup closes
+    // can interrupt the pointerdown/click sequence in Chromium.
+    void chroniclesRequestDesktopFullscreen();
   }, [progression]);
 
   const retryBootstrap = useCallback(() => {
