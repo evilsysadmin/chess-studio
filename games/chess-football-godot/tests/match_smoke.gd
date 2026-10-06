@@ -497,7 +497,8 @@ func _initialize() -> void:
 	assert(match_node.debug_pause_first_option() == "SALIR")
 	assert(match_node.pause_menu_button.anchor_left == 1.0)
 	assert(match_node.pause_menu_button.anchor_right == 1.0)
-	assert(match_node.pause_menu_button.position.x < 0.0)
+	assert(match_node.pause_menu_button.offset_left < 0.0)
+	assert(match_node.pause_menu_button.offset_right <= 0.0)
 	var escape_event := InputEventKey.new()
 	escape_event.keycode = KEY_ESCAPE
 	escape_event.pressed = true
