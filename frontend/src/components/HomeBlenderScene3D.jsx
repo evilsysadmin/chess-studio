@@ -1288,6 +1288,7 @@ export default function HomeBlenderScene3D({
   matthiasPropsRef.current = matthias;
   matthiasLayoutRef.current = onMatthiasLayout;
   const glContextRef = useRef(null);
+  const glLoseContextRef = useRef(null);
   const [contextGeneration, setContextGeneration] = useState(0);
 
   useEffect(() => {
@@ -1465,7 +1466,13 @@ export default function HomeBlenderScene3D({
       return undefined;
     }
 
-    glContextRef.current = renderer.getContext();
+    const gl = renderer.getContext();
+    glContextRef.current = gl;
+    // Cache the release extension alongside the renderer generation. After a
+    // context restore Chromium/Three may rebuild extension wrappers; teardown
+    // must release the exact restored context instead of resolving the
+    // extension again at the last possible moment.
+    glLoseContextRef.current = gl?.getExtension?.('WEBGL_lose_context') || null;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.shadowMap.enabled = initialPolicy.lod === 'full';
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -1870,9 +1877,10 @@ export default function HomeBlenderScene3D({
   // (ambient, recuperación de contexto) y necesita que el contexto siga vivo.
   // Declarado después, su limpieza corre tras la del efecto de render.
   useEffect(() => () => {
-    const gl = glContextRef.current;
+    const loseContext = glLoseContextRef.current;
+    glLoseContextRef.current = null;
     glContextRef.current = null;
-    gl?.getExtension?.('WEBGL_lose_context')?.loseContext?.();
+    loseContext?.loseContext?.();
   }, []);
 
   return (
