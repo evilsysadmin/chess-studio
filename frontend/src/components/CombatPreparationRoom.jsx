@@ -38,6 +38,7 @@ export default function CombatPreparationRoom({ roster }) {
     showCoordinates: false,
     cameraProfile: 'warroom',
     immersive: true,
+    warRoomVariantOverride: 'combat-ops',
     warRoomMobilePerformance: true,
     pieceRankLevels,
   }), [fen, pieceRankLevels]);
@@ -46,7 +47,7 @@ export default function CombatPreparationRoom({ roster }) {
     <div
       className="combat-preparation-room-stage"
       aria-label="Sala de operaciones de Combat Chess"
-      data-combat-preparation-room="generic-war-room"
+      data-combat-preparation-room="combat-operations-room"
     >
       <WarRoomBoardSurface
         isThreeD
