@@ -28,6 +28,21 @@ func _initialize() -> void:
 	match_node.debug_sync_presentation()
 	await _save_capture(match_node, "kickoff-touch", "VISUAL_CAPTURE_KICKOFF_TOUCH")
 	mobile_controls.debug_touch_up(91, joystick_origin + Vector2(52.0, -18.0))
+
+	var pass_passer: Footballer = match_node.teams[0][2]
+	var pass_receiver: Footballer = match_node.teams[0][3]
+	match_node._select_player(pass_passer)
+	match_node.ball.attach_to(pass_passer)
+	match_node.debug_sync_presentation()
+	var pass_target_screen: Vector2 = match_node.mobile_player_screen_position(pass_receiver)
+	assert(mobile_controls.debug_touch_down(92, pass_target_screen))
+	match_node._handle_human(0.68)
+	match_node.debug_refresh_hud()
+	assert(match_node.shot_meter.visible)
+	assert(match_node.shot_meter_label.text == "PASE LARGO")
+	await _save_capture(match_node, "pass-charge", "VISUAL_CAPTURE_PASS_CHARGE")
+	mobile_controls.debug_touch_up(92, pass_target_screen)
+
 	mobile_controls.debug_force_controls_visible(false)
 	await process_frame
 	match_node.ball.attach_to(match_node.controlled)

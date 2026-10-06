@@ -39,7 +39,8 @@ func _initialize() -> void:
 	assert(Input.get_action_strength("move_right") < 0.01)
 	assert(not Input.is_action_pressed("sprint"))
 
-	# Tap a teammate while carrying the ball: direct contextual pass + control switch.
+	# A quick teammate tap is still useful, but holding charges the same visible
+	# power meter used by shots and produces a materially stronger pass.
 	var passer: Footballer = match_node.teams[0][2]
 	var receiver: Footballer = match_node.teams[0][3]
 	match_node._select_player(passer)
@@ -48,11 +49,31 @@ func _initialize() -> void:
 	var receiver_screen: Vector2 = match_node.mobile_player_screen_position(receiver)
 	assert(receiver_screen.x >= 0.0)
 	assert(controls.debug_touch_down(20, receiver_screen))
+	assert(match_node.debug_pass_charge_ratio() == 0.0)
 	assert(controls.debug_touch_up(20, receiver_screen))
+	var quick_pass_speed: float = match_node.ball.velocity.length()
+	assert(quick_pass_speed >= 550.0)
 	assert(match_node.ball.carrier == null)
 	assert(match_node.controlled == receiver)
-	assert(match_node.ball.velocity.length() > 0.0)
 	assert(match_node.ball.velocity.dot(receiver.global_position - passer.global_position) > 0.0)
+
+	passer._process(2.0)
+	receiver._process(2.0)
+	match_node._select_player(passer)
+	match_node.ball.attach_to(passer)
+	match_node.debug_sync_presentation()
+	receiver_screen = match_node.mobile_player_screen_position(receiver)
+	assert(controls.debug_touch_down(24, receiver_screen))
+	match_node._handle_human(0.70)
+	assert(match_node.debug_pass_charge_ratio() > 0.70)
+	match_node.debug_refresh_hud()
+	assert(match_node.shot_meter.visible)
+	assert(match_node.shot_meter_label.text == "PASE LARGO")
+	assert(controls.debug_touch_up(24, receiver_screen))
+	var charged_pass_speed: float = match_node.ball.velocity.length()
+	assert(charged_pass_speed > quick_pass_speed * 1.45)
+	assert(match_node.controlled == receiver)
+	assert(not match_node.shot_meter.visible or not match_node.pass_charging)
 
 	# Without possession, tapping a teammate simply selects them.
 	match_node.ball.attach_to(match_node.teams[1][3])
