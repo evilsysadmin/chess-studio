@@ -747,15 +747,9 @@ function AppInner({ isAdminUser }) {
           <React.Suspense fallback={<div className="modal-backdrop" />}>
             <GlobalOverlayLayer
               shellUi={shellUi}
-              rating={rating}
-              tournament={tournament}
-              combatOverview={combatOverview}
-              isAdminUser={isAdminUser}
-              navigateTo={navigateTo}
-              openInsights={openInsights}
-              onLogout={handleGlobalLogout}
-              loggingOut={loggingOut}
-              view={view}
+              rating={rating} tournament={tournament} combatOverview={combatOverview}
+              isAdminUser={isAdminUser} navigateTo={navigateTo} openInsights={openInsights}
+              onLogout={handleGlobalLogout} loggingOut={loggingOut} view={view}
             />
           </React.Suspense>
         )}
