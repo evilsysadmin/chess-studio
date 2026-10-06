@@ -117,7 +117,7 @@ func _initialize() -> void:
 		ChessFootballMath.PITCH_RECT.get_center().y,
 	)
 	match_node.ball.release(Vector2.RIGHT, 760.0)
-	match_node.ball.global_position = review_keeper.global_position + Vector2(-48.0, 34.0)
+	match_node.ball.global_position = review_keeper.global_position + Vector2(-42.0, 26.0)
 	match_node.ball.velocity = Vector2.RIGHT * 760.0
 	assert(match_node.debug_try_keeper_save(review_keeper))
 	assert(review_keeper.debug_keeper_save_active())
