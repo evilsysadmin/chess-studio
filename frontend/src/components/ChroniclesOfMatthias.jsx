@@ -52,7 +52,10 @@ import {
   saveChroniclesAutomapVisited,
 } from '../chronicles/chroniclesAutomap.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
-import { useChroniclesDesktopFullscreen } from '../chronicles/useChroniclesDesktopFullscreen.js';
+import {
+  chroniclesDesktopFullscreenEligible,
+  useChroniclesDesktopFullscreen,
+} from '../chronicles/useChroniclesDesktopFullscreen.js';
 import ChroniclesAutomap from './ChroniclesAutomap.jsx';
 import ChroniclesMinimap from './ChroniclesMinimap.jsx';
 import ChroniclesBookOneEpilogue from './ChroniclesBookOneEpilogue.jsx';
@@ -188,7 +191,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   }, [onExit]);
 
   useEscapeToClose(() => {
-    if (document.fullscreenElement) return;
+    if (chroniclesDesktopFullscreenEligible(window)) return;
     if (automapOpen) {
       setAutomapOpen(false);
       return;
