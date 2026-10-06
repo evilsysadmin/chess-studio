@@ -69,3 +69,79 @@ test('Chess Football fills the viewport and returns only through the runtime exi
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
   await expect(host).toHaveCount(0);
 });
+
+
+test('Chess Football requests landscape immersion from the launch gesture and releases it on exit', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__footballFullscreenRequests = 0;
+    window.__footballLandscapeLocks = 0;
+    window.__footballOrientationUnlocks = 0;
+
+    const nativeMatchMedia = window.matchMedia.bind(window);
+    window.matchMedia = (query) => {
+      if (query !== '(pointer: coarse)') return nativeMatchMedia(query);
+      return {
+        matches: true,
+        media: query,
+        onchange: null,
+        addListener() {},
+        removeListener() {},
+        addEventListener() {},
+        removeEventListener() {},
+        dispatchEvent() { return true; },
+      };
+    };
+
+    Element.prototype.requestFullscreen = function requestFullscreen() {
+      window.__footballFullscreenRequests += 1;
+      return Promise.resolve();
+    };
+
+    try {
+      Object.defineProperty(Screen.prototype, 'orientation', {
+        configurable: true,
+        get() {
+          return {
+            lock(mode) {
+              if (mode === 'landscape') window.__footballLandscapeLocks += 1;
+              return Promise.resolve();
+            },
+            unlock() {
+              window.__footballOrientationUnlocks += 1;
+            },
+          };
+        },
+      });
+    } catch {
+      // The runtime contract is still covered by fullscreen + immersive marker
+      // on engines where Screen.prototype.orientation cannot be redefined.
+    }
+  });
+
+  await openExperiments(page);
+  await page.locator('.lab-workshop-portal--football').click();
+
+  const host = page.locator('.chess-football-godot-host');
+  await expect(host).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.__footballFullscreenRequests)).toBe(1);
+  await expect(page.locator('html')).toHaveAttribute('data-chess-football-immersive', 'requested');
+
+  const orientationWasStubbed = await page.evaluate(() => (
+    typeof Screen !== 'undefined'
+      && Object.getOwnPropertyDescriptor(Screen.prototype, 'orientation')?.configurable === true
+  ));
+  if (orientationWasStubbed) {
+    await expect.poll(() => page.evaluate(() => window.__footballLandscapeLocks)).toBe(1);
+  }
+
+  const frame = page.locator('iframe[title="Chess Football Godot"]');
+  await frame.contentFrame().locator('body').evaluate(() => {
+    window.parent.postMessage({ source: 'chess-football-godot', type: 'exit' }, '*');
+  });
+
+  await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
+  await expect(page.locator('html')).not.toHaveAttribute('data-chess-football-immersive', 'requested');
+  if (orientationWasStubbed) {
+    await expect.poll(() => page.evaluate(() => window.__footballOrientationUnlocks)).toBe(1);
+  }
+});
