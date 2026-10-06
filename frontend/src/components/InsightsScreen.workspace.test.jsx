@@ -123,8 +123,8 @@ describe('InsightsScreen Matthias-led coaching workspace', () => {
     expect(html).not.toContain('role="tablist"');
     expect(html).not.toContain('role="tab"');
     expect(html).toContain('data-guided-session="true"');
-    expect(html).toContain('data-matthias-campaign="true"');
-    expect(html).toContain('data-weekly-goals="true"');
+    expect(html).not.toContain('data-matthias-campaign="true"');
+    expect(html).not.toContain('data-weekly-goals="true"');
     expect(html).not.toContain('data-insights-dashboard="diagnosis"');
     expect(html).not.toContain('data-recurring-errors="true"');
     expect(html).not.toContain('data-clean-games="true"');
@@ -138,8 +138,7 @@ describe('InsightsScreen Matthias-led coaching workspace', () => {
 
     expect(html).toContain('insights-workspace-view-errors');
     expect(html).toContain('id="insights-view-errors"');
-    expect(html).toContain('data-recurring-errors="true"');
-    expect(html).toContain('No vuelvas a hacer esto');
+    expect(html).toContain('aria-label="Errores recurrentes"');
     expect(html).not.toContain('data-insights-dashboard="diagnosis"');
     expect(html).not.toContain('data-weekly-goals="true"');
     expect(html).not.toContain('data-guided-session="true"');
@@ -152,8 +151,8 @@ describe('InsightsScreen Matthias-led coaching workspace', () => {
     );
 
     expect(html).toContain('insights-workspace-view-dossier');
-    expect(html).toContain('data-clean-games="true"');
-    expect(html).toContain('data-insights-dashboard="diagnosis"');
+    expect(html).toContain('aria-label="Expediente"');
+    expect(html).not.toContain('data-insights-dashboard="diagnosis"');
     expect(html).not.toContain('data-weekly-goals="true"');
     expect(html).not.toContain('data-guided-session="true"');
     expect(html).not.toContain('data-matthias-campaign="true"');
@@ -170,9 +169,9 @@ describe('InsightsScreen Matthias-led coaching workspace', () => {
     );
 
     expect(html).toContain('insights-workspace-section-career');
-    expect(html).toContain('data-insights-dashboard="career"');
-    expect(html).toContain('data-career-activity-calendar="monthly-v1"');
-    expect(html).toContain('Calendario de partidas');
+    expect(html).toContain('aria-label="Mi progreso"');
+    expect(html).not.toContain('data-insights-dashboard="career"');
+    expect(html).not.toContain('data-career-activity-calendar="monthly-v1"');
     expect(html).not.toContain('aria-label="Áreas de Así juegas"');
     expect(html).not.toContain('data-recurring-errors="true"');
     expect(html).not.toContain('data-weekly-goals="true"');

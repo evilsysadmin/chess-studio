@@ -1,14 +1,8 @@
-import { Suspense, lazy, useMemo, useState } from 'react';
+import { Suspense, lazy, useMemo, useState, useTransition } from 'react';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
-import InsightsDashboardContent from './InsightsDashboardContent.jsx';
-import InsightsRecurringErrors from './InsightsRecurringErrors.jsx';
-import InsightsCleanGames from './InsightsCleanGames.jsx';
-import InsightsWeeklyGoals from './InsightsWeeklyGoals.jsx';
 import InsightsGuidedSession from './InsightsGuidedSession.jsx';
-import InsightsMatthiasCampaign from './InsightsMatthiasCampaign.jsx';
 import InsightsMatthiasMotion from './InsightsMatthiasMotion.jsx';
-import CareerActivityCalendar from './CareerActivityCalendar.jsx';
 import { loadPersonalPuzzles } from '../personalPuzzles.js';
 import { loadCleanGameRecords } from '../cleanGames.js';
 import { loadRivalry } from '../rivalry.js';
@@ -19,6 +13,36 @@ import './InsightsMobilePolish.css';
 import '../styles/04-career-dossier.css';
 
 const InsightsTrainingRoomScene3D = lazy(() => import('./InsightsTrainingRoomScene3D.jsx'));
+
+let errorsPanelPromise;
+let dossierPanelPromise;
+let careerPanelPromise;
+let optionalPlansPromise;
+
+function loadInsightsErrorsPanel() {
+  errorsPanelPromise ||= import('./InsightsErrorsPanel.jsx');
+  return errorsPanelPromise;
+}
+
+function loadInsightsDossierPanel() {
+  dossierPanelPromise ||= import('./InsightsDossierPanel.jsx');
+  return dossierPanelPromise;
+}
+
+function loadInsightsCareerPanel() {
+  careerPanelPromise ||= import('./InsightsCareerPanel.jsx');
+  return careerPanelPromise;
+}
+
+function loadInsightsOptionalPlansContent() {
+  optionalPlansPromise ||= import('./InsightsOptionalPlansContent.jsx');
+  return optionalPlansPromise;
+}
+
+const InsightsErrorsPanel = lazy(loadInsightsErrorsPanel);
+const InsightsDossierPanel = lazy(loadInsightsDossierPanel);
+const InsightsCareerPanel = lazy(loadInsightsCareerPanel);
+const InsightsOptionalPlansContent = lazy(loadInsightsOptionalPlansContent);
 
 const DIAGNOSIS_VIEWS = [
   { id: 'now', label: 'Ahora', detail: 'Qué entrenar hoy' },
@@ -34,13 +58,22 @@ export function normalizeInsightsDiagnosisView(value) {
   return DIAGNOSIS_VIEWS.some((view) => view.id === value) ? value : 'now';
 }
 
-export function InsightsOptionalPlans({ children }) {
+export function InsightsOptionalPlans({ children, onIntent, defaultOpen = false }) {
+  const [open, setOpen] = useState(defaultOpen);
+  const warm = () => onIntent?.();
+
   return (
-    <details className="friendly-disclosure insights-optional-plans">
-      <summary>Más planes personales</summary>
-      <div className="friendly-disclosure-body friendly-stack">
-        {children}
-      </div>
+    <details
+      className="friendly-disclosure insights-optional-plans"
+      open={open}
+      onToggle={(event) => setOpen(event.currentTarget.open)}
+    >
+      <summary onPointerEnter={warm} onFocus={warm} onPointerDown={warm}>Más planes personales</summary>
+      {open ? (
+        <div className="friendly-disclosure-body friendly-stack">
+          <Suspense fallback={null}>{children}</Suspense>
+        </div>
+      ) : null}
     </details>
   );
 }
@@ -49,6 +82,7 @@ export default function InsightsScreen(props) {
   useEscapeToClose(props.onExit);
   const [section, setSection] = useState(() => normalizeInsightsSection(props.initialSection));
   const [diagnosisView, setDiagnosisView] = useState(() => normalizeInsightsDiagnosisView(props.initialDiagnosisView));
+  const [secondaryPending, startSecondaryTransition] = useTransition();
   const isCareer = section === 'career';
   const gameHistoryLength = Array.isArray(props.gameHistory) ? props.gameHistory.length : 0;
   const personalPuzzles = useMemo(() => loadPersonalPuzzles(), [gameHistoryLength]);
@@ -70,14 +104,37 @@ export default function InsightsScreen(props) {
         ? 'Expediente'
         : 'Tarea de Matthias';
 
+  function preloadDiagnosis(view) {
+    if (view === 'errors') void loadInsightsErrorsPanel();
+    if (view === 'dossier') void loadInsightsDossierPanel();
+  }
+
+  function preloadCareer() {
+    void loadInsightsCareerPanel();
+  }
+
+  function preloadOptionalPlans() {
+    void loadInsightsOptionalPlansContent();
+  }
+
   function openTask() {
-    setSection('diagnosis');
-    setDiagnosisView('now');
+    startSecondaryTransition(() => {
+      setSection('diagnosis');
+      setDiagnosisView('now');
+    });
   }
 
   function openDiagnosis(view) {
-    setSection('diagnosis');
-    setDiagnosisView(view);
+    preloadDiagnosis(view);
+    startSecondaryTransition(() => {
+      setSection('diagnosis');
+      setDiagnosisView(view);
+    });
+  }
+
+  function openCareer() {
+    preloadCareer();
+    startSecondaryTransition(() => setSection('career'));
   }
 
   return (
@@ -124,6 +181,9 @@ export default function InsightsScreen(props) {
             type="button"
             className="insights-room-tool"
             aria-pressed={!isCareer && diagnosisView === 'errors'}
+            onPointerEnter={() => preloadDiagnosis('errors')}
+            onFocus={() => preloadDiagnosis('errors')}
+            onPointerDown={() => preloadDiagnosis('errors')}
             onClick={() => openDiagnosis('errors')}
           >
             Errores
@@ -133,6 +193,9 @@ export default function InsightsScreen(props) {
             type="button"
             className="insights-room-tool"
             aria-pressed={!isCareer && diagnosisView === 'dossier'}
+            onPointerEnter={() => preloadDiagnosis('dossier')}
+            onFocus={() => preloadDiagnosis('dossier')}
+            onPointerDown={() => preloadDiagnosis('dossier')}
             onClick={() => openDiagnosis('dossier')}
           >
             Expediente
@@ -142,14 +205,23 @@ export default function InsightsScreen(props) {
             type="button"
             className="insights-room-tool"
             aria-pressed={isCareer}
-            onClick={() => setSection('career')}
+            onPointerEnter={preloadCareer}
+            onFocus={preloadCareer}
+            onPointerDown={preloadCareer}
+            onClick={openCareer}
           >
             Mi progreso
           </button>
         </div>
       </header>
 
-      <div className="insights-workspace-panel" role="region" aria-label={panelLabel}>
+      <div
+        className="insights-workspace-panel"
+        role="region"
+        aria-label={panelLabel}
+        aria-busy={secondaryPending || undefined}
+      >
+        <Suspense fallback={null}>
         {isTask ? (
           <>
             <InsightsGuidedSession
@@ -160,14 +232,11 @@ export default function InsightsScreen(props) {
               personalPuzzles={personalPuzzles}
               cleanGameRecords={cleanGameRecords}
             />
-            <InsightsOptionalPlans>
-              <InsightsMatthiasCampaign
+            <InsightsOptionalPlans onIntent={preloadOptionalPlans}>
+              <InsightsOptionalPlansContent
                 gameHistory={props.gameHistory}
                 onOpenPuzzles={props.onOpenPuzzles}
                 onPlayFromHere={props.onPlayFromHere}
-              />
-              <InsightsWeeklyGoals
-                onOpenPuzzles={props.onOpenPuzzles}
                 playerModel={playerModel}
                 personalPuzzles={personalPuzzles}
                 cleanGameRecords={cleanGameRecords}
@@ -177,36 +246,27 @@ export default function InsightsScreen(props) {
         ) : null}
 
         {!isCareer && diagnosisView === 'errors' ? (
-          <InsightsRecurringErrors onOpenPuzzles={props.onOpenPuzzles} playerModel={playerModel} />
+          <InsightsErrorsPanel onOpenPuzzles={props.onOpenPuzzles} playerModel={playerModel} />
         ) : null}
 
         {!isCareer && diagnosisView === 'dossier' ? (
-          <>
-            <InsightsCleanGames playerModel={playerModel} />
-            <InsightsDashboardContent
-              key="dossier"
-              {...props}
-              initialSection="diagnosis"
-              playerModel={playerModel}
-              personalPuzzles={personalPuzzles}
-              cleanGameRecords={cleanGameRecords}
-            />
-          </>
+          <InsightsDossierPanel
+            screenProps={props}
+            playerModel={playerModel}
+            personalPuzzles={personalPuzzles}
+            cleanGameRecords={cleanGameRecords}
+          />
         ) : null}
 
         {isCareer ? (
-          <>
-            <CareerActivityCalendar history={props.gameHistory || []} />
-            <InsightsDashboardContent
-              key="career"
-              {...props}
-              initialSection="career"
-              playerModel={playerModel}
-              personalPuzzles={personalPuzzles}
-              cleanGameRecords={cleanGameRecords}
-            />
-          </>
+          <InsightsCareerPanel
+            screenProps={props}
+            playerModel={playerModel}
+            personalPuzzles={personalPuzzles}
+            cleanGameRecords={cleanGameRecords}
+          />
         ) : null}
+        </Suspense>
       </div>
 
       {isTask ? <InsightsMatthiasMotion /> : null}
