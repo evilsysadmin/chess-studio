@@ -285,15 +285,13 @@ def classify_path(path: str) -> set[str] | None:
 
     if lower.endswith(".md"):
         return set()
+    if lower.startswith("scripts/app_visual_"):
+        return set()
     if lower in {
-        "scripts/app_visual_changed_files.py",
-        "scripts/app_visual_scope.py",
-        "scripts/app_visual_producer_scope.py",
-        "scripts/app_visual_capture.sh",
+        "scripts/war_room_visual_freeze_check.mjs",
+        "scripts/hans_visual_artifact_summary.mjs",
     }:
         return set()
-    if lower == "scripts/war_room_visual_freeze_check.mjs":
-        return {"warroom-core"}
     if (
         lower == ".github/workflows/app-visual-artifact.yml"
         or lower.startswith(".github/actions/app-visual-pipeline/")
@@ -822,7 +820,9 @@ def self_test() -> None:
     assert classify(["frontend/src/soundFx.js"]) == "none"
     assert classify(["scripts/quality_scope.py"]) == "none"
     assert classify(["scripts/browser_quality_scope.py"]) == "none"
-    assert classify(["scripts/war_room_visual_freeze_check.mjs"]) == "warroom-core"
+    assert classify(["scripts/war_room_visual_freeze_check.mjs"]) == "none"
+    assert classify(["scripts/app_visual_summary.mjs"]) == "none"
+    assert classify(["scripts/hans_visual_artifact_summary.mjs"]) == "none"
     assert classify(["frontend/src/chroniclesOfMatthiasSpectralBishop.js"]) == "chronicles-tactics,chronicles-gameplay"
     assert classify(["scripts/blender/build_war_room_premium.py"]) == "warroom-core"
     assert classify(["scripts/blender/publish_war_room_v2_staging.py"]) == "warroom-core"
