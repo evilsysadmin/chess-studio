@@ -6,8 +6,18 @@ describe('Chronicles of Matthias surface patina', () => {
     const desktop = buildChroniclesSurfacePatina();
     const coarse = buildChroniclesSurfacePatina({ coarsePointer: true });
 
-    expect(desktop.userData.chroniclesSurfacePatinaStats).toEqual({ wallPatchCount: 9, floorPatchCount: 7, materialCount: 3 });
-    expect(coarse.userData.chroniclesSurfacePatinaStats).toEqual({ wallPatchCount: 4, floorPatchCount: 3, materialCount: 3 });
+    expect(desktop.userData.chroniclesSurfacePatinaStats).toEqual({
+      wallPatchCount: 14,
+      floorPatchCount: 10,
+      debrisClusterCount: 5,
+      materialCount: 6,
+    });
+    expect(coarse.userData.chroniclesSurfacePatinaStats).toEqual({
+      wallPatchCount: 6,
+      floorPatchCount: 5,
+      debrisClusterCount: 2,
+      materialCount: 6,
+    });
   });
 
   it('adds physical transparent patina instead of opaque geometry stickers', () => {
@@ -24,6 +34,10 @@ describe('Chronicles of Matthias surface patina', () => {
     expect(floor?.position.y).toBeGreaterThan(0.04);
     expect(wall?.castShadow).toBe(false);
     expect(floor?.castShadow).toBe(false);
+    const debris = root.getObjectByName('chronicles-debris-cluster-0');
+    expect(debris).toBeTruthy();
+    expect(debris.children.length).toBeGreaterThanOrEqual(2);
+    expect(debris.position.y).toBeLessThan(0.05);
   });
 
   it('authors the first patches inside the opening sightline instead of random remote cells', () => {
@@ -62,7 +76,8 @@ describe('Chronicles of Matthias surface patina', () => {
     expect(root.userData.chroniclesSurfacePatinaStats).toEqual({
       wallPatchCount: 4,
       floorPatchCount: 4,
-      materialCount: 3,
+      debrisClusterCount: 4,
+      materialCount: 6,
     });
     expect(wall.position.x).toBeGreaterThan(-2);
     expect(wall.position.x).toBeLessThan(-1.7);
