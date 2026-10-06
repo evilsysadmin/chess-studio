@@ -393,7 +393,8 @@ export default function Tutorial({ onExit }) {
   return (
     <div
       className="tutorial-shell matthias-school-shell"
-      data-school-section={section}
+      data-school-section="school"
+      data-school-resource={section === 'school' ? 'closed' : section}
       data-school-curriculum={curriculumOpen ? 'open' : 'closed'}
       data-school-study-mode={freeStudy ? 'free' : 'guided'}
       data-school-focus={boardFocusMode ? 'board' : 'normal'}
@@ -414,9 +415,15 @@ export default function Tutorial({ onExit }) {
       </div>
 
       {section === 'glossary' ? (
-        <ChessGlossary />
+        <div className="matthias-school-resource-overlay is-glossary" role="region" aria-label="Glosario de la Escuela">
+          <div className="matthias-school-resource-surface">
+            <ChessGlossary />
+          </div>
+        </div>
       ) : section === 'mechanics' ? (
-        <div className="mechanic-library">
+        <div className="matthias-school-resource-overlay is-mechanics" role="region" aria-label="Modos especiales de la Escuela">
+          <div className="matthias-school-resource-surface">
+            <div className="mechanic-library">
           <aside className="mechanic-library-list">
             {MECHANIC_TUTORIALS.map((item) => (
               <button type="button" key={item.id} className={item.id === mechanic?.id ? 'active' : ''} onClick={() => { setMechanicId(item.id); setMechanicStep(0); }}>
@@ -443,9 +450,12 @@ export default function Tutorial({ onExit }) {
               </div>
             </article>
           )}
+            </div>
+          </div>
         </div>
-      ) : (
-        <>
+      ) : null}
+
+      <>
           {boardFocusMode && (
             <div className="matthias-school-focus-mode-bar" role="region" aria-label="Modo tablero">
               <div>
@@ -595,8 +605,7 @@ export default function Tutorial({ onExit }) {
               </article>
             </div>
           </div>
-        </>
-      )}
+      </>
     </div>
   );
 }
