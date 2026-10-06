@@ -73,6 +73,39 @@ describe('Chronicles Tactics premium materials', () => {
     wallMaterial.dispose();
   });
 
+  it('gives separate first-person wall materials deterministic texture variation', () => {
+    const scene = new THREE.Scene();
+    const leftMaterial = new THREE.MeshStandardMaterial({ color: 0x3d3a35 });
+    const rightMaterial = new THREE.MeshStandardMaterial({ color: 0x3d3a35 });
+    const left = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), leftMaterial);
+    const right = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), rightMaterial);
+    left.name = 'chronicles-first-person-wall-1-1';
+    right.name = 'chronicles-first-person-wall-2-1';
+    scene.add(left, right);
+
+    const root = installChroniclesFirstPersonPremiumMaterials(scene, {
+      coarsePointer: true,
+      scenePlan: {
+        mapId: 'crypt-eight-squares',
+        width: 7,
+        height: 7,
+        walls: [{ x: 1, y: 1 }, { x: 2, y: 1 }],
+        floors: [],
+      },
+    });
+
+    expect(root.userData.chroniclesMaterialCount).toBe(2);
+    expect(leftMaterial.map?.name).not.toBe(rightMaterial.map?.name);
+    expect(leftMaterial.map?.name).toMatch(/chronicles-material-D0[1-6]-color-/);
+    expect(rightMaterial.map?.name).toMatch(/chronicles-material-D0[1-6]-color-/);
+
+    root.userData.chroniclesArtCancel();
+    left.geometry.dispose();
+    right.geometry.dispose();
+    leftMaterial.dispose();
+    rightMaterial.dispose();
+  });
+
   it('installs deterministic semantic PBR maps and restores the source material on teardown', () => {
     const scene = new THREE.Scene();
     const sourceMaterial = new THREE.MeshStandardMaterial({ color: 0x554f47, roughness: 0.91 });
