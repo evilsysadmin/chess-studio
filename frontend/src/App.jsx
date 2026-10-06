@@ -18,13 +18,13 @@ const RoguelikeScreen = React.lazy(() => import('./components/RoguelikeScreen.js
 import PlayerStatusBar from './components/PlayerStatusBar.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { api, STORAGE_KEY } from './api.js';
-import { saveGameRecord, updateGameRecordChat, statisticalHistoryRecords } from './gameHistory.js';
-import { recordGameActivity, recordCompletedAdaptiveMatchmakingTelemetry } from './gameActivity.js';
-import { chessGameExitDisposition, isCompletedGameOutcome, shouldApplyCompetitiveProgress } from './gameOutcome.js';
+import { updateGameRecordChat, statisticalHistoryRecords } from './gameHistory.js';
+import { recordGameActivity } from './gameActivity.js';
+import { chessGameExitDisposition } from './gameOutcome.js';
 import { gameModeFromContext } from './gameModes.js';
 import { loadRoster as loadCombatRoster } from './combatRoster.js';
 import { loadCombatService, summarizeCombatService } from './combatService.js';
-import { loadRating, saveRating, ratingChangeDetails, ratingScoreForOutcome, recordRatingHistory, loadRatingHistory } from './playerRating.js';
+import { loadRating, ratingChangeDetails, loadRatingHistory } from './playerRating.js';
 const InsightsScreen = React.lazy(() => import('./components/InsightsScreen.jsx'));
 import { clearClockSnapshot } from './clockPersistence.js';
 import { scheduleAchievementCheck } from './achievementBootstrap.js';
@@ -37,14 +37,14 @@ import AdminFeedbackInboxButton from './components/AdminFeedbackInboxButton.jsx'
 import { useAdminFeedbackInbox } from './useAdminFeedbackInbox.js';
 import { SAVE_STATUS } from './saveStatus.js';
 import LoginScreen from './components/LoginScreen.jsx';
-import { recordRivalryResult, reconcileRivalryHistory } from './rivalry.js';
+import { reconcileRivalryHistory } from './rivalry.js';
 import { identifyOpening } from './openings.js';
-import { loadActiveSeries, clearActiveSeries, recordSeriesGame } from './series.js';
+import { loadActiveSeries, clearActiveSeries } from './series.js';
 const ShareResultModal = React.lazy(() => import('./components/ShareResultModal.jsx'));
 import SharedResultScreen from './components/SharedResultScreen.jsx';
 import { shareRecordFromHash } from './shareResult.js';
 const LabScreen = React.lazy(() => import('./components/LabScreen.jsx'));
-import { clearActiveContract, loadActiveContract, loadSpecialRun, recordCareerGame, recordSpecialRunResult, reconcileCareerHistory } from './career.js';
+import { clearActiveContract, loadActiveContract, loadSpecialRun, reconcileCareerHistory } from './career.js';
 import { loadActiveGameChat } from './gameChat.js';
 import { clearActiveGameSession, loadActiveGameSession, loadVisibleActiveGameSession } from './activeGameSession.js';
 import { usePresenceHeartbeat } from './usePresenceHeartbeat.js';
@@ -68,6 +68,7 @@ import { useLearningJourneyFlow } from './useLearningJourneyFlow.js';
 import { useGlobalShellUi } from './useGlobalShellUi.js';
 import { useTournamentFlow } from './useTournamentFlow.js';
 import { useGameStartFlow } from './useGameStartFlow.js';
+import { useCasualResultFlow } from './useCasualResultFlow.js';
 import { useLogoutFlow } from './useLogoutFlow.js';
 import { usePublicFeatureFlags } from './usePublicFeatureFlags.js';
 
@@ -105,7 +106,6 @@ function AppInner({ isAdminUser }) {
   const [hasSavedGame, setHasSavedGame] = useState(() => !!getStorageItem(STORAGE_LOCAL, STORAGE_KEY) || !!loadActiveGameSession());
   const [learningMode, setLearningMode] = useState(() => getStorageItem(STORAGE_LOCAL, LEARNING_STORAGE_KEY) === '1');
 
-  const [casualResult, setCasualResult] = useState(null);
   const [exitNotice, setExitNotice] = useState(null);
   const {
     historyList, setHistoryList,
@@ -199,6 +199,24 @@ function AppInner({ isAdminUser }) {
     saved: setHasSavedGame,
   });
   const {
+    result: casualResult,
+    clearResult: clearCasualResult,
+    finish: handleCasualGameEnd,
+  } = useCasualResultFlow({
+    activeSeries,
+    setActiveSeries,
+    gameContext,
+    learningMode,
+    activeTimeControl,
+    rating,
+    setRating,
+    setHistoryList,
+    activeContract,
+    setActiveContract,
+    specialRun,
+    setSpecialRun,
+  });
+  const {
     startGame: handleNewGame,
     nextSeriesGame: handleNextSeriesGame,
     playFromHere: handlePlayFromHere,
@@ -222,7 +240,7 @@ function AppInner({ isAdminUser }) {
     contract: setActiveContract,
     series: setActiveSeries,
     run: setSpecialRun,
-    resetResult: () => { setExitNotice(null); setCasualResult(null); },
+    resetResult: () => { setExitNotice(null); clearCasualResult(); },
   });
   useProfileSyncLifecycle(view);
 
@@ -333,108 +351,6 @@ function AppInner({ isAdminUser }) {
     clearActiveSeries();
     setActiveSeries(null);
     goBack();
-  }
-
-  // Las partidas normales (menú "Nueva partida") también cuentan para el
-  // rating tipo ELO — cualquier partida contra una CPU de dificultad
-  // conocida, no hace falta que sea de torneo. "Partida de práctica" queda
-  // afuera a propósito: ahí las pistas son gratis e ilimitadas, así que
-  // ganar no dice mucho de tu nivel jugando sin ayuda.
-  //
-  // También se guardan en el historial (igual que las de torneo), para que
-  // la "pista inversa" del Historial funcione acá también, no solo en
-  // Torneo — con una etiqueta de modo para distinguirlas al navegar la lista.
-  function handleCasualGameEnd(outcome, finishedGame, endMeta = {}) {
-    if (!finishedGame || !isCompletedGameOutcome(outcome)) return null;
-    clearClockSnapshot(finishedGame.id);
-    const moveSans = (finishedGame.history || []).map((m) => m.san).filter(Boolean);
-    const opening = identifyOpening(moveSans);
-    let seriesSnapshot = activeSeries;
-    const trainingPosition = !!(gameContext.lab || gameContext.rescue || gameContext.suddenDeath);
-
-    let ratingSummary = { ratingApplied: false };
-    if (shouldApplyCompetitiveProgress(outcome, { learningMode, trainingPosition })) {
-      if (activeSeries && !activeSeries.winner) {
-        seriesSnapshot = recordSeriesGame(activeSeries, outcome, {
-          gameId: finishedGame.id,
-          humanColor: finishedGame.humanColor,
-          moves: finishedGame.history?.length || 0,
-          opening,
-        });
-        setActiveSeries(seriesSnapshot);
-      }
-      recordRivalryResult(outcome, {
-        difficulty: finishedGame.difficulty,
-        humanColor: finishedGame.humanColor,
-        opening,
-        moves: finishedGame.history?.length || 0,
-        timeControlId: activeTimeControl?.id || 'none',
-        seriesId: seriesSnapshot?.id || null,
-        rematch: !!gameContext.rematch,
-        runMode: gameContext.runMode || null,
-      suddenDeath: !!gameContext.suddenDeath,
-      pressureMoves: Number(endMeta.pressureMoves || 0),
-      pressureIncidents: Number(endMeta.pressureIncidents || 0),
-      });
-      const score = ratingScoreForOutcome(outcome);
-      const details = ratingChangeDetails(rating, finishedGame.difficulty, score);
-      saveRating(details.next);
-      recordRatingHistory(details.next.rating);
-      setRating(details.next);
-      ratingSummary = {
-        ratingApplied: true,
-        eloDelta: details.delta,
-        eloBefore: rating.rating,
-        eloAfter: details.next.rating, ratingGames: details.next.games,
-      };
-    }
-    const record = {
-      id: `${finishedGame.id}-${Date.now()}`,
-      sourceGameId: finishedGame.id,
-      date: new Date().toISOString(),
-      difficulty: finishedGame.difficulty,
-      humanColor: finishedGame.humanColor,
-      outcome,
-      moves: finishedGame.history,
-      finalFen: finishedGame.fen,
-      initialFen: finishedGame.initialFen || null,
-      mode: gameContext.suddenDeath ? 'sudden' : gameContext.rescue ? 'rescue' : gameContext.nemesis ? 'nemesis-training' : gameContext.lab ? 'lab' : gameContext.runMode === 'cup' ? 'cup' : gameContext.runMode === 'boss' ? 'boss' : gameContext.runMode === 'streak' ? 'streak' : learningMode ? 'practice' : 'casual',
-      opening,
-      timeControl: activeTimeControl ? { id: activeTimeControl.id, label: activeTimeControl.label } : null,
-      rematch: !!gameContext.rematch,
-      runMode: gameContext.runMode || null,
-      suddenDeath: !!gameContext.suddenDeath,
-      pressureMoves: Number(endMeta.pressureMoves || 0),
-      pressureIncidents: Number(endMeta.pressureIncidents || 0),
-      gameChat: Array.isArray(endMeta.gameChat) ? endMeta.gameChat : loadActiveGameChat(finishedGame.id),
-      series: seriesSnapshot ? {
-        id: seriesSnapshot.id,
-        bestOf: seriesSnapshot.bestOf,
-        humanWins: seriesSnapshot.humanWins,
-        cpuWins: seriesSnapshot.cpuWins,
-        draws: seriesSnapshot.draws,
-        winner: seriesSnapshot.winner,
-      } : null,
-    };
-    setHistoryList(saveGameRecord(record));
-    recordGameActivity({ gameId: finishedGame.id, state: 'finished', mode: record.mode, outcome, difficulty: finishedGame.difficulty });
-    recordCompletedAdaptiveMatchmakingTelemetry({ gameContext, finishedGame, outcome, endMeta });
-    recordCareerGame(record, { ...endMeta, contract: activeContract });
-    clearActiveContract();
-    setActiveContract(null);
-    const title = endMeta.endReason === 'resignation'
-      ? 'Abandono registrado como derrota'
-      : outcome === 'win' ? 'Victoria' : outcome === 'draw' ? 'Tablas' : 'Derrota';
-    const detail = ratingSummary.ratingApplied
-      ? `Rating ${ratingSummary.eloDelta >= 0 ? '+' : ''}${ratingSummary.eloDelta} · ${ratingSummary.eloBefore} → ${ratingSummary.eloAfter}`
-      : 'Esta modalidad no afecta a tu rating.';
-    const summary = { gameId: finishedGame.id, outcome, title, detail, endReason: endMeta.endReason || null, adaptiveDifficulty: !!gameContext.adaptiveDifficulty, ...ratingSummary };
-    setCasualResult(summary);
-    if (specialRun?.active && gameContext.runMode) {
-      const nextRun = recordSpecialRunResult(specialRun, outcome);
-      setSpecialRun(nextRun);
-    }
-    return summary;
   }
 
   function buildLiveShareRecord(finishedGame, outcome, mode, series = null) {
