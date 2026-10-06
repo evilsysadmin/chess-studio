@@ -3,10 +3,13 @@
   max-width: none !important;
   margin: 0;
   padding: .45rem;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .combat-operations-shell {
   position: relative;
+  box-sizing: border-box;
   width: min(1500px, calc(100vw - .9rem));
   height: calc(100dvh - 5rem);
   min-height: 680px;
