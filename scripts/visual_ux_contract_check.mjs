@@ -33,7 +33,7 @@ const menu = read('frontend/src/components/MenuInner.jsx');
 const homeIllustrated = read('frontend/src/components/HomeIllustrated.jsx');
 const homeIllustratedCss = read('frontend/src/components/HomeIllustrated.css');
 const insightsShell = read('frontend/src/components/InsightsScreen.jsx');
-const insightsDashboard = read('frontend/src/components/InsightsDashboardContent.jsx');
+const insightsDossier = read('frontend/src/components/InsightsDossierContent.jsx');
 const insightsWorkspaceCss = read('frontend/src/components/InsightsWorkspace.css');
 const cpuIdentity = read('frontend/src/cpuIdentity.js');
 const matthiasVisuals = read('frontend/src/matthiasVisuals.js');
@@ -166,7 +166,7 @@ const checks = [
   [/\.admin-feedback-card\.status-resolved \{ opacity: 1; \}/.test(finalCss) && /admin-feedback-delete/.test(finalCss), 'las acciones de feedback resuelto deben seguir visibles'],
   [/CPU_IDENTITY/.test(game) && /game-player-avatar\$\{cpu \? ' has-portrait'/.test(game) && /MATTHIAS_BASE_AVATAR/.test(cpuIdentity) && /matthias-scenes\/base\.webp/.test(matthiasVisuals), 'Matthias debe ocupar el hueco de identidad existente en la tarjeta rival'],
   [/CPU_IDENTITY\.name\.toUpperCase\(\)/.test(chat) && /game-chat-matthias-avatar/.test(finalCss), 'el chat debe firmar como Matthias con presencia compacta'],
-  [/CPU_IDENTITY/.test(insightsDashboard) && /ai-player-portrait-character/.test(insightsDashboard) && /Ahora/.test(insightsShell) && /\.insights-workspace-view-now \.ai-player-portrait\s*\{/.test(insightsWorkspaceCss) && /\.insights-workspace-view-errors \.insights-hub > \.ai-player-portrait/.test(insightsWorkspaceCss) && /\.insights-workspace-view-dossier \.insights-hub > \.ai-player-portrait/.test(insightsWorkspaceCss) && /ai-player-portrait-layout/.test(finalCss), 'Así te ve la CPU debe estar firmado visualmente por Matthias, guiar Ahora y no invadir Errores/Expediente'],
+  [/CPU_IDENTITY/.test(insightsDossier) && /ai-player-portrait-character/.test(insightsDossier) && /Ahora/.test(insightsShell) && /\.insights-workspace-view-now \.ai-player-portrait\s*\{/.test(insightsWorkspaceCss) && /\.insights-workspace-view-errors \.insights-hub > \.ai-player-portrait/.test(insightsWorkspaceCss) && /\.insights-workspace-view-dossier \.insights-hub > \.ai-player-portrait/.test(insightsWorkspaceCss) && /ai-player-portrait-layout/.test(finalCss), 'Así te ve la CPU debe estar firmado visualmente por Matthias, guiar Ahora y no invadir Errores/Expediente'],
   [/resuelto mantiene Reabrir y Borrar feedback visibles/.test(feedbackE2e), 'falta E2E de borrado visible en feedback resuelto'],
   [/admin ve un sobre en Home cuando hay mensajes nuevos/.test(feedbackE2e), 'falta E2E del inbox admin de feedback'],
   [canonicalHeaderOk, 'el arte canónico de Matthias debe seguir siendo un WebP VP8X válido'],
