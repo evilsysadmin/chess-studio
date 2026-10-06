@@ -581,3 +581,20 @@ body:has(.matthias-school-shell[data-school-section="school"]) .masthead {
     border-radius: 8px 8px 0 0;
   }
 }
+
+
+.tutorial-shell.matthias-school-shell .matthias-school-resource-close {
+  position: sticky;
+  top: .65rem;
+  z-index: 4;
+  display: inline-flex;
+  min-height: 40px;
+  margin: .65rem .75rem 0;
+  padding: .4rem .7rem;
+  border: 1px solid rgba(215, 183, 111, .24);
+  border-radius: 999px;
+  background: rgba(8, 10, 14, .78);
+  color: var(--parchment);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .22);
+  backdrop-filter: blur(10px);
+}
