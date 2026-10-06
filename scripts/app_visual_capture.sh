@@ -46,6 +46,7 @@ case "$mode" in
     fi
 
     specs=()
+    warroom_core_selected=false
     # Runtime/storage health should run in a fresh browser process before the
     # heavyweight SwiftShader captures. This makes the gate fail fast and avoids
     # measuring renderer exhaustion from earlier visual producers.
@@ -91,12 +92,12 @@ case "$mode" in
     fi
     if has_group warroom; then
       has_producer pvp-duel && specs+=(war-room-pvp-duel-visual-artifact.spec.js)
-      has_producer warroom-core && specs+=(war-room-visual-artifact.spec.js)
+      has_producer warroom-core && warroom_core_selected=true
       has_producer warroom-decor && specs+=(war-room-decor-visual-artifact.spec.js)
       has_producer warroom-armor && specs+=(war-room-armor-oblique-visual-artifact.spec.js)
       has_producer warroom-hans && specs+=(war-room-hans-visual-artifact.spec.js)
     fi
-    if (( ${#specs[@]} == 0 )); then
+    if (( ${#specs[@]} == 0 )) && [[ "$warroom_core_selected" != "true" ]]; then
       echo "App visual capture: groups '$groups' + producers '$producer_scope' resolved to no canonical specs."
       exit 0
     fi
@@ -131,7 +132,12 @@ case "$mode" in
       fi
       echo "Chronicles avatar proof: $chronicles_avatar"
     fi
-    printf ' - %s\n' "${specs[@]}"
+    if (( ${#specs[@]} > 0 )); then
+      printf ' - %s\n' "${specs[@]}"
+    fi
+    if [[ "$warroom_core_selected" == "true" ]]; then
+      echo " - war-room-visual-artifact.spec.js (serial canary + 2-worker remainder)"
+    fi
 
     playwright_args=(--workers=1 --retries=0)
     if [[ "${GITHUB_EVENT_NAME:-}" == "pull_request" ]]; then
@@ -145,9 +151,34 @@ case "$mode" in
       echo "War Room visual dedupe: core owns Android landscape; decor keeps desktop inspection only."
     fi
 
-    ./node_modules/.bin/playwright test \
-      "${specs[@]}" \
-      "${playwright_args[@]}"
+    warroom_core_args=(--retries=0)
+    if [[ "${GITHUB_EVENT_NAME:-}" == "pull_request" ]]; then
+      warroom_core_args+=(--max-failures=1)
+    fi
+
+    if [[ "$warroom_core_selected" == "true" ]]; then
+      echo "War Room core canary: one cheap default-first profile, serial and fail-closed."
+      APP_VISUAL_WARROOM_PROFILE_SHARD=canary \
+        ./node_modules/.bin/playwright test \
+        war-room-visual-artifact.spec.js \
+        --workers=1 \
+        "${warroom_core_args[@]}"
+    fi
+
+    if (( ${#specs[@]} > 0 )); then
+      ./node_modules/.bin/playwright test \
+        "${specs[@]}" \
+        "${playwright_args[@]}"
+    fi
+
+    if [[ "$warroom_core_selected" == "true" ]]; then
+      echo "War Room core evidence: remaining profiles with two workers after the canary."
+      APP_VISUAL_WARROOM_PROFILE_SHARD=remainder \
+        ./node_modules/.bin/playwright test \
+        war-room-visual-artifact.spec.js \
+        --workers=2 \
+        "${warroom_core_args[@]}"
+    fi
     ;;
   hans)
     # Each Hans routine owns a full SwiftShader War Room scene + video recorder.
