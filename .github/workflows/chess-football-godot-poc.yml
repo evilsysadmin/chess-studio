@@ -94,6 +94,21 @@ jobs:
             exit 1
           fi
           grep -q 'chess-football godot smoke: OK' "$log"
+      - name: Mobile touch smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot="$GITHUB_WORKSPACE/.godot-ci/$GODOT_VERSION/godot"
+          log="$RUNNER_TEMP/chess-football-mobile-touch-smoke.log"
+          set +e
+          timeout 20s "$godot" --headless --quit-after 180 --path games/chess-football-godot --script res://tests/mobile_controls_smoke.gd 2>&1 | tee "$log"
+          status=${PIPESTATUS[0]}
+          set -e
+          if [[ "$status" -ne 0 ]] || grep -Eq 'SCRIPT ERROR:|Assertion failed|ERROR: Failed to load script|Parse Error:' "$log"; then
+            echo '::error::Chess Football mobile touch smoke failed.'
+            exit 1
+          fi
+          grep -q 'chess-football mobile touch smoke: OK' "$log"
       - name: Capture visual review
         shell: bash
         run: |

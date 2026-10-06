@@ -18,8 +18,14 @@ func _initialize() -> void:
 	match_node.debug_force_kickoff_ready()
 	assert(match_node.ball.carrier == null)
 	assert(match_node.ball.velocity.length() > 0.0)
+	var mobile_controls = match_node.get_node_or_null("MobileControls")
+	assert(mobile_controls != null)
+	mobile_controls.debug_force_controls_visible(true)
+	await process_frame
 	match_node.debug_sync_presentation()
 	await _save_capture(match_node, "kickoff-touch", "VISUAL_CAPTURE_KICKOFF_TOUCH")
+	mobile_controls.debug_force_controls_visible(false)
+	await process_frame
 	match_node.ball.attach_to(match_node.controlled)
 	match_node.debug_force_shot_charge(0.68)
 	await process_frame
