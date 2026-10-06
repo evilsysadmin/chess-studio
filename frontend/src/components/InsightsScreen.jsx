@@ -10,7 +10,6 @@ import { buildPlayerModel } from '../playerModel.js';
 import './InsightsWorkspace.css';
 import './InsightsTrainingRoom.css';
 import './InsightsMobilePolish.css';
-import '../styles/04-career-dossier.css';
 
 const InsightsTrainingRoomScene3D = lazy(() => import('./InsightsTrainingRoomScene3D.jsx'));
 

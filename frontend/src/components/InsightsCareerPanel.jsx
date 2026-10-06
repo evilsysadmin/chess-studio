@@ -1,3 +1,4 @@
+import '../styles/04-career-dossier.css';
 import CareerActivityCalendar from './CareerActivityCalendar.jsx';
 import InsightsDashboardContent from './InsightsDashboardContent.jsx';
 
