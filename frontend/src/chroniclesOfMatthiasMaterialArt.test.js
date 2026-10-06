@@ -75,13 +75,13 @@ describe('Chronicles Tactics premium materials', () => {
 
   it('gives separate first-person wall materials deterministic texture variation', () => {
     const scene = new THREE.Scene();
-    const leftMaterial = new THREE.MeshStandardMaterial({ color: 0x3d3a35 });
-    const rightMaterial = new THREE.MeshStandardMaterial({ color: 0x3d3a35 });
-    const left = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), leftMaterial);
-    const right = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), rightMaterial);
-    left.name = 'chronicles-first-person-wall-1-1';
-    right.name = 'chronicles-first-person-wall-2-1';
-    scene.add(left, right);
+    const walls = Array.from({ length: 4 }, (_, index) => {
+      const material = new THREE.MeshStandardMaterial({ color: 0x3d3a35 });
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), material);
+      mesh.name = `chronicles-first-person-wall-${index + 1}-1`;
+      scene.add(mesh);
+      return { mesh, material };
+    });
 
     const root = installChroniclesFirstPersonPremiumMaterials(scene, {
       coarsePointer: true,
@@ -89,21 +89,21 @@ describe('Chronicles Tactics premium materials', () => {
         mapId: 'crypt-eight-squares',
         width: 7,
         height: 7,
-        walls: [{ x: 1, y: 1 }, { x: 2, y: 1 }],
+        walls: walls.map((_, index) => ({ x: index + 1, y: 1 })),
         floors: [],
       },
     });
 
-    expect(root.userData.chroniclesMaterialCount).toBe(2);
-    expect(leftMaterial.map?.name).not.toBe(rightMaterial.map?.name);
-    expect(leftMaterial.map?.name).toMatch(/chronicles-material-D0[1-6]-color-/);
-    expect(rightMaterial.map?.name).toMatch(/chronicles-material-D0[1-6]-color-/);
+    const mapNames = walls.map(({ material }) => material.map?.name);
+    expect(root.userData.chroniclesMaterialCount).toBe(4);
+    expect(new Set(mapNames).size).toBe(4);
+    mapNames.forEach((name) => expect(name).toMatch(/chronicles-material-D0[1-6]-color-/));
 
     root.userData.chroniclesArtCancel();
-    left.geometry.dispose();
-    right.geometry.dispose();
-    leftMaterial.dispose();
-    rightMaterial.dispose();
+    walls.forEach(({ mesh, material }) => {
+      mesh.geometry.dispose();
+      material.dispose();
+    });
   });
 
   it('installs deterministic semantic PBR maps and restores the source material on teardown', () => {
