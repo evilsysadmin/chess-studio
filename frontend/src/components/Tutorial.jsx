@@ -18,18 +18,17 @@ import {
   schoolCoachSelectionMessage,
   schoolCoachStepMessage,
 } from './SchoolCoach.js';
-import SchoolTopicExplorer from './SchoolTopicExplorer.jsx';
+import SchoolCurriculumOverlay from './SchoolCurriculumOverlay.jsx';
 import './SchoolTopicExplorer.css';
+import './SchoolCurriculumOverlay.css';
 import { abortableDelay, isAbortError } from '../asyncControl.js';
 import ChessGlossary from './ChessGlossary.jsx';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { MECHANIC_TUTORIALS, loadMechanicTutorialProgress, markMechanicTutorialSeen } from '../mechanicTutorials.js';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
 import {
-  MATTHIAS_SCHOOL_COURSES,
   MATTHIAS_SCHOOL_LESSONS,
   incrementMatthiasSchoolAttempt,
-  isSchoolCourseAccessible,
   isSchoolLessonAccessible,
   loadMatthiasSchoolProgress,
   markMatthiasSchoolLessonComplete,
@@ -37,7 +36,6 @@ import {
   matthiasSchoolSummary,
   nextHumanSchoolStep,
   schoolLineForLesson,
-  schoolLessonsForCourse,
   schoolBoardGuideMove,
 } from '../matthiasSchool.js';
 
@@ -141,7 +139,9 @@ export default function Tutorial({ onExit }) {
     ? explanation.close
     : boardFocusMode
       ? exitBoardFocusMode
-      : section === 'school' ? onExit : () => setSection('school'));
+      : curriculumOpen
+        ? () => setCurriculumOpen(false)
+        : section === 'school' ? onExit : () => setSection('school'));
 
   function goTo(newIndex, { freeAccess = freeStudy, closeCurriculum = true } = {}) {
     const clamped = Math.max(0, Math.min(MATTHIAS_SCHOOL_LESSONS.length - 1, newIndex));
@@ -489,75 +489,19 @@ export default function Tutorial({ onExit }) {
           </div>
 
           {curriculumOpen && (
-            <>
-              <div className="matthias-school-study-mode" role="group" aria-label="Modo de estudio">
-                <div>
-                  <span>Acceso</span>
-                  <button type="button" className={!freeStudy ? 'active' : ''} aria-pressed={!freeStudy} onClick={() => setStudyMode(false)}>Ruta guiada</button>
-                  <button type="button" className={freeStudy ? 'active' : ''} aria-pressed={freeStudy} onClick={() => setStudyMode(true)}>Estudio libre</button>
-                </div>
-                <small>{freeStudy ? 'Entra directamente en cualquier curso. Tu progreso se guarda sin saltarse los requisitos de la ruta guiada.' : 'Matthias abre cada curso cuando apruebas el anterior.'}</small>
-              </div>
-              <SchoolTopicExplorer
-                progress={schoolProgress}
-                freeStudy={freeStudy}
-                currentLessonId={lesson.id}
-                onOpenLesson={(lessonId) => {
-                  const lessonIndex = MATTHIAS_SCHOOL_LESSONS.findIndex((item) => item.id === lessonId);
-                  if (lessonIndex >= 0) goTo(lessonIndex);
-                }}
-              />
-            </>
+            <SchoolCurriculumOverlay
+              progress={schoolProgress}
+              freeStudy={freeStudy}
+              currentLessonId={lesson.id}
+              onClose={() => setCurriculumOpen(false)}
+              onStudyModeChange={setStudyMode}
+              onOpenLesson={(lessonId) => {
+                const lessonIndex = MATTHIAS_SCHOOL_LESSONS.findIndex((item) => item.id === lessonId);
+                if (lessonIndex >= 0) goTo(lessonIndex);
+              }}
+            />
           )}
-
-          <div id="matthias-school-curriculum" className="matthias-school-course-strip" aria-label="Cursos de la Escuela de Matthias">
-            {MATTHIAS_SCHOOL_COURSES.map((course) => {
-              const summary = matthiasSchoolCourseSummary(course.id, schoolProgress);
-              return (
-                <button
-                  type="button"
-                  key={course.id}
-                  className={`${course.id === lesson.courseId ? 'active' : ''}${summary.passed ? ' passed' : ''}`}
-                  disabled={!isSchoolCourseAccessible(schoolProgress, course.id, { freeStudy })}
-                  onClick={() => {
-                    const lessons = schoolLessonsForCourse(course.id);
-                    const first = freeStudy
-                      ? lessons.find((item) => schoolProgress?.[item.id]?.completed !== true) || lessons[0]
-                      : lessons.find((item) => isSchoolLessonAccessible(schoolProgress, item.id) && schoolProgress?.[item.id]?.completed !== true) || lessons[0];
-                    goTo(MATTHIAS_SCHOOL_LESSONS.findIndex((item) => item.id === first.id));
-                  }}
-                >
-                  <span>{summary.passed ? '✓' : course.rank}</span><div><b>{course.label}</b><small>{freeStudy || summary.unlocked ? `${summary.completed}/${summary.total}` : 'Bloqueado · aprueba el anterior'}</small></div>
-                </button>
-              );
-            })}
-          </div>
-
           <div className="matthias-school-layout">
-            <aside className="matthias-school-lessons" aria-label={`Lecciones del curso ${courseSummary.course?.label || ''}`}>
-              <div className="matthias-school-course-intro">
-                <span className="section-label">CURSO {courseSummary.course?.rank} · {courseSummary.course?.label}</span>
-                <p>{courseSummary.course?.description}</p>
-              </div>
-              {schoolLessonsForCourse(lesson.courseId).map((item) => {
-                const lessonIndex = MATTHIAS_SCHOOL_LESSONS.findIndex((candidate) => candidate.id === item.id);
-                const complete = schoolProgress?.[item.id]?.completed === true;
-                const unlocked = isSchoolLessonAccessible(schoolProgress, item.id, { freeStudy });
-                return (
-                  <button
-                    type="button"
-                    key={item.id}
-                    className={`${lessonIndex === index ? 'active' : ''}${complete ? ' complete' : ''}${item.exam ? ' exam' : ''}`}
-                    disabled={!unlocked}
-                    onClick={() => goTo(lessonIndex)}
-                  >
-                    <span>{complete ? '✓' : item.exam ? 'E' : schoolLessonsForCourse(lesson.courseId).findIndex((row) => row.id === item.id) + 1}</span>
-                    <div><small>{item.exam ? 'EXAMEN DE PROMOCIÓN' : item.eyebrow}</small><strong>{item.title}</strong></div>
-                  </button>
-                );
-              })}
-            </aside>
-
             <div className="matthias-school-stage">
               <div
                 key={`${lesson.id}:${attemptEpoch}`}
