@@ -233,7 +233,16 @@ for (const capture of CAPTURES) {
       await page.keyboard.press('m');
       const automap = page.getByRole('dialog', { name: 'Automapa de Chronicles', exact: true });
       await expect(automap).toBeVisible();
-      await expect(automap.locator('[data-chronicles-map-facing]')).toHaveCount(1);
+      const mapCells = automap.locator('.chronicles-automap__cell');
+      const partyMarker = automap.locator('[data-chronicles-map-facing]');
+      expect(await mapCells.count(), `${capture.label}: automap reveals real geometry`).toBeGreaterThan(0);
+      await expect(partyMarker).toHaveCount(1);
+      const cellBox = await mapCells.first().boundingBox();
+      const markerBox = await partyMarker.boundingBox();
+      expect(cellBox?.width || 0, `${capture.label}: automap cell has visible width`).toBeGreaterThan(4);
+      expect(cellBox?.height || 0, `${capture.label}: automap cell has visible height`).toBeGreaterThan(4);
+      expect(markerBox?.width || 0, `${capture.label}: party arrow has visible width`).toBeGreaterThan(6);
+      expect(markerBox?.height || 0, `${capture.label}: party arrow has visible height`).toBeGreaterThan(6);
       await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-automap-${capture.label}.png`);
       await page.keyboard.press('m');
       await expect(automap).toHaveCount(0);
