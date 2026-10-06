@@ -6,6 +6,26 @@ export function chroniclesDesktopFullscreenEligible(win = window) {
   return finePointer && Number(win.innerWidth || 0) >= 801;
 }
 
+export async function chroniclesRequestDesktopFullscreen(
+  doc = document,
+  win = window,
+) {
+  if (
+    !doc
+    || !win
+    || !chroniclesDesktopFullscreenEligible(win)
+    || doc.fullscreenElement
+    || typeof doc.documentElement?.requestFullscreen !== 'function'
+  ) return Boolean(doc?.fullscreenElement);
+
+  try {
+    await doc.documentElement.requestFullscreen({ navigationUI: 'hide' });
+    return Boolean(doc.fullscreenElement);
+  } catch {
+    return false;
+  }
+}
+
 export function useChroniclesDesktopFullscreen(active = true) {
   useEffect(() => {
     if (!active || typeof document === 'undefined' || typeof window === 'undefined') return undefined;
@@ -13,8 +33,6 @@ export function useChroniclesDesktopFullscreen(active = true) {
 
     let disposed = false;
     let armed = false;
-    const target = document.documentElement;
-
     const disarm = () => {
       if (!armed) return;
       window.removeEventListener('pointerdown', onGesture, true);
@@ -23,18 +41,8 @@ export function useChroniclesDesktopFullscreen(active = true) {
     };
 
     const request = async () => {
-      if (
-        disposed
-        || !chroniclesDesktopFullscreenEligible(window)
-        || document.fullscreenElement
-        || typeof target?.requestFullscreen !== 'function'
-      ) return Boolean(document.fullscreenElement);
-      try {
-        await target.requestFullscreen({ navigationUI: 'hide' });
-        return Boolean(document.fullscreenElement);
-      } catch {
-        return false;
-      }
+      if (disposed) return false;
+      return chroniclesRequestDesktopFullscreen(document, window);
     };
 
     const arm = () => {
