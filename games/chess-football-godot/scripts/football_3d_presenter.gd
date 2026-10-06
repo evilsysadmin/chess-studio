@@ -2,7 +2,10 @@ class_name ChessFootball3DPresenter
 extends Node3D
 
 const WORLD_SCALE := 0.014
-const CAMERA_LERP_SPEED := 4.8
+const CAMERA_LERP_SPEED := 3.25
+const CAMERA_FOCUS_SMOOTH_SPEED := 2.65
+const CAMERA_LEAD_SMOOTH_SPEED := 2.10
+const CAMERA_FOCUS_DEAD_ZONE := 0.42
 const SET_PIECE_CAMERA_PAN_SECONDS := 0.38
 const SET_PIECE_CAMERA_PAN_DISTANCE := 1.15
 const BROADCAST_HEIGHT := 9.8
@@ -23,6 +26,9 @@ var ball_shadow: MeshInstance3D
 var penalty_aim_marker: MeshInstance3D
 var field_width: float
 var field_depth: float
+var smoothed_focus_x: float = 0.0
+var smoothed_lead_x: float = 0.0
+var last_camera_mode: String = "broadcast"
 
 func setup(p_match: Node) -> void:
 	match_node = p_match
@@ -355,6 +361,9 @@ func _build_camera() -> void:
 	camera.far = 90.0
 	add_child(camera)
 	var focus := world_to_stage(match_node.ball.global_position)
+	smoothed_focus_x = focus.x
+	smoothed_lead_x = 0.0
+	last_camera_mode = "broadcast"
 	camera.position = Vector3(focus.x, BROADCAST_HEIGHT, BROADCAST_DEPTH)
 	camera.look_at(Vector3(focus.x, 0.0, -0.85), Vector3.UP)
 
@@ -514,19 +523,47 @@ func _sync_player_secondary_motion(player: Footballer, sprite: AnimatedSprite3D,
 		var shadow_scale := clampf(1.0 - maxf(bob, 0.0) * 2.2, 0.76, 1.0)
 		shadow.scale = Vector3(shadow_scale, 1.0, shadow_scale)
 
+func _camera_smoothing_factor(speed: float, delta: float) -> float:
+	if delta <= 0.0:
+		return 0.0
+	return 1.0 - exp(-speed * delta)
+
 func _sync_camera(delta: float, mode: String) -> void:
 	if camera == null:
 		return
+
 	var focus := world_to_stage(match_node.ball.global_position)
 	var wanted_position: Vector3
 	var wanted_look: Vector3
 	var wanted_fov: float
+
+	if mode != last_camera_mode:
+		if mode == "broadcast":
+			smoothed_focus_x = focus.x
+			smoothed_lead_x = clampf(match_node.ball.velocity.x * WORLD_SCALE * 0.26, -2.2, 2.2)
+		last_camera_mode = mode
+
 	if mode == "tactical":
 		wanted_position = Vector3(0.0, TACTICAL_HEIGHT, 0.35)
 		wanted_look = Vector3.ZERO
 		wanted_fov = 43.0
 	else:
-		var lead := clampf(match_node.ball.velocity.x * WORLD_SCALE * 0.26, -2.2, 2.2)
+		var focus_delta := focus.x - smoothed_focus_x
+		if absf(focus_delta) > CAMERA_FOCUS_DEAD_ZONE:
+			var focus_target := focus.x - signf(focus_delta) * CAMERA_FOCUS_DEAD_ZONE
+			smoothed_focus_x = lerpf(
+				smoothed_focus_x,
+				focus_target,
+				_camera_smoothing_factor(CAMERA_FOCUS_SMOOTH_SPEED, delta),
+			)
+
+		var raw_lead := clampf(match_node.ball.velocity.x * WORLD_SCALE * 0.26, -2.2, 2.2)
+		smoothed_lead_x = lerpf(
+			smoothed_lead_x,
+			raw_lead,
+			_camera_smoothing_factor(CAMERA_LEAD_SMOOTH_SPEED, delta),
+		)
+
 		var set_piece_pan := 0.0
 		if (
 			match_node.set_piece_active
@@ -544,15 +581,31 @@ func _sync_camera(delta: float, mode: String) -> void:
 				* smoothstep(0.0, 1.0, restart_progress)
 				* SET_PIECE_CAMERA_PAN_DISTANCE
 			)
-		wanted_position = Vector3(focus.x + lead + set_piece_pan, BROADCAST_HEIGHT, BROADCAST_DEPTH)
+
+		wanted_position = Vector3(
+			smoothed_focus_x + smoothed_lead_x + set_piece_pan,
+			BROADCAST_HEIGHT,
+			BROADCAST_DEPTH,
+		)
 		wanted_position.x = clampf(wanted_position.x, -field_width * 0.32, field_width * 0.32)
 		wanted_look = Vector3(wanted_position.x, 0.0, -0.85)
 		wanted_fov = 37.5
 
-	var t := clampf(delta * CAMERA_LERP_SPEED, 0.0, 1.0)
+	var t := _camera_smoothing_factor(CAMERA_LERP_SPEED, delta)
 	camera.position = camera.position.lerp(wanted_position, t)
 	camera.fov = lerpf(camera.fov, wanted_fov, t)
-	camera.look_at(wanted_look, Vector3.UP)
+	var look_target := wanted_look
+	if mode == "broadcast":
+		# Follow the already-smoothed camera body instead of snapping the yaw
+		# toward the raw destination while position is still catching up.
+		look_target = Vector3(camera.position.x, 0.0, -0.85)
+	camera.look_at(look_target, Vector3.UP)
+
+func debug_camera_smoothed_focus_x() -> float:
+	return smoothed_focus_x
+
+func debug_camera_x() -> float:
+	return camera.position.x if camera != null else 0.0
 
 func debug_camera_is_3d() -> bool:
 	return camera != null and camera is Camera3D

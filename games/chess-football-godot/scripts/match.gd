@@ -125,6 +125,7 @@ var shot_meter: ProgressBar
 var shot_meter_label: Label
 var pause_overlay: ColorRect
 var pause_exit_button: Button
+var pause_menu_button: Button
 
 func _ready() -> void:
 	_spawn_match()
@@ -195,6 +196,15 @@ func _create_hud() -> void:
 	score_label.add_theme_font_size_override("font_size", 24)
 	score_label.add_theme_color_override("font_color", Color.WHITE)
 	hud.add_child(score_label)
+
+	pause_menu_button = Button.new()
+	pause_menu_button.text = "MENÚ"
+	pause_menu_button.position = Vector2(1060, 18)
+	pause_menu_button.size = Vector2(170, 52)
+	pause_menu_button.focus_mode = Control.FOCUS_NONE
+	pause_menu_button.add_theme_font_size_override("font_size", 17)
+	pause_menu_button.pressed.connect(_toggle_pause_menu)
+	hud.add_child(pause_menu_button)
 
 	help_label = Label.new()
 	help_label.position = Vector2(24, 52)
@@ -1845,3 +1855,6 @@ func debug_toggle_pause_menu() -> void:
 
 func debug_pause_first_option() -> String:
 	return pause_exit_button.text if pause_exit_button != null else ""
+
+func debug_pause_button_text() -> String:
+	return pause_menu_button.text if pause_menu_button != null else ""

@@ -2,6 +2,27 @@ import { useEffect, useRef, useState } from 'react';
 import { resolveChessFootballGodotUrl } from '../chessFootballGodotRuntime.js';
 import './ChessFootballGodotHost.css';
 
+function releaseChessFootballImmersiveMode() {
+  const html = document.documentElement;
+  if (html.dataset.chessFootballImmersive !== 'requested') return;
+
+  delete html.dataset.chessFootballImmersive;
+  try {
+    window.screen?.orientation?.unlock?.();
+  } catch {
+    // Orientation unlock is not available on every browser.
+  }
+
+  if (document.fullscreenElement && typeof document.exitFullscreen === 'function') {
+    try {
+      const exitFullscreen = document.exitFullscreen();
+      if (exitFullscreen?.catch) exitFullscreen.catch(() => {});
+    } catch {
+      // Leaving Football must never be blocked by fullscreen cleanup.
+    }
+  }
+}
+
 export default function ChessFootballGodotHost({ onExit }) {
   const frameRef = useRef(null);
   const [attempt, setAttempt] = useState(0);
@@ -22,6 +43,14 @@ export default function ChessFootballGodotHost({ onExit }) {
     return () => {
       html.style.overflow = previousHtmlOverflow;
       body.style.overflow = previousBodyOverflow;
+
+      // StrictMode can run an effect cleanup immediately after mount. Defer the
+      // fallback release and only apply it if Football genuinely disappeared.
+      window.setTimeout(() => {
+        if (!document.querySelector('.chess-football-godot-host')) {
+          releaseChessFootballImmersiveMode();
+        }
+      }, 0);
     };
   }, []);
 
@@ -30,7 +59,10 @@ export default function ChessFootballGodotHost({ onExit }) {
       if (event.source !== frameRef.current?.contentWindow) return;
       const message = event.data;
       if (!message || message.source !== 'chess-football-godot') return;
-      if (message.type === 'exit') onExit?.();
+      if (message.type === 'exit') {
+        releaseChessFootballImmersiveMode();
+        onExit?.();
+      }
     };
     window.addEventListener('message', handleRuntimeMessage);
     return () => window.removeEventListener('message', handleRuntimeMessage);

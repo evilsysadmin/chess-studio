@@ -226,6 +226,7 @@ def _e2e_producer(name: str) -> set[str] | None:
     exact = {
         "app-visual-artifact.spec.js": {"home-base"},
         "smoke.spec.js": set(),
+        "chess-football.spec.js": set(),
         "matthias-home-visual-artifact.spec.js": {"home-matthias"},
         "matthias-home-visual-critical.spec.js": {"home-matthias"},
         "home-3d-focus-visual.spec.js": {"home-focus"},
@@ -391,7 +392,9 @@ def classify_path(path: str) -> set[str] | None:
             return {"chronicles-gameplay"}
         return set(CHRONICLES_SHARED)
 
-    if any(token in lower for token in ("pawnslug", "pawn-slug", "trailblazer", "arcade")):
+    if any(token in lower for token in (
+        "pawnslug", "pawn-slug", "trailblazer", "arcade", "chessfootball", "chess-football",
+    )):
         return {"experiments-hub"}
     if "experimentsscreen" in lower or "/experiments" in lower:
         return {"experiments-hub"}
@@ -693,6 +696,10 @@ def self_test() -> None:
     assert classify(["frontend/src/chroniclesDungeon.js"]) == "chronicles-gameplay"
     assert classify(["frontend/src/experimentalThreeRenderer.js"]) == "chronicles-tactics,chronicles-gameplay"
     assert classify(["frontend/src/components/LabScreen.jsx"]) == "experiments-hub"
+    assert classify([
+        "frontend/src/components/ChessFootballGodotHost.jsx",
+        "e2e/chess-football.spec.js",
+    ]) == "experiments-hub"
     assert classify(["frontend/src/components/QuickMatchModal.jsx"]) == "home-base,warroom-core"
     assert classify(["frontend/src/components/QuickMatchMobileGoldenPath.css"]) == "home-base"
     assert classify(["frontend/src/components/QuickMatchReadyRoom.css"]) == "home-base"
