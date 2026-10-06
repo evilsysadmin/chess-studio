@@ -199,7 +199,8 @@ func _create_hud() -> void:
 
 	pause_menu_button = Button.new()
 	pause_menu_button.text = "MENÚ"
-	pause_menu_button.position = Vector2(1060, 18)
+	pause_menu_button.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	pause_menu_button.position = Vector2(-194, 18)
 	pause_menu_button.size = Vector2(170, 52)
 	pause_menu_button.focus_mode = Control.FOCUS_NONE
 	pause_menu_button.add_theme_font_size_override("font_size", 17)
