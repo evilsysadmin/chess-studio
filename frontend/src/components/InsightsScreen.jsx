@@ -258,12 +258,7 @@ export default function InsightsScreen(props) {
         ) : null}
 
         {isCareer ? (
-          <InsightsCareerPanel
-            screenProps={props}
-            playerModel={playerModel}
-            personalPuzzles={personalPuzzles}
-            cleanGameRecords={cleanGameRecords}
-          />
+          <InsightsCareerPanel screenProps={props} />
         ) : null}
         </Suspense>
       </div>
