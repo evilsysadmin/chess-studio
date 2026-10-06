@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { resolveChessFootballGodotUrl } from '../chessFootballGodotRuntime.js';
+import { exitWarRoomBrowserFullscreen, requestWarRoomLandscapeFullscreen, unlockWarRoomOrientation } from './useWarRoomImmersive.js';
 import './ChessFootballGodotHost.css';
 
 function releaseChessFootballImmersiveMode() {
@@ -7,31 +8,41 @@ function releaseChessFootballImmersiveMode() {
   if (html.dataset.chessFootballImmersive !== 'requested') return;
 
   delete html.dataset.chessFootballImmersive;
-  try {
-    window.screen?.orientation?.unlock?.();
-  } catch {
-    // Orientation unlock is not available on every browser.
-  }
+  unlockWarRoomOrientation();
+  void exitWarRoomBrowserFullscreen();
+}
 
-  if (document.fullscreenElement && typeof document.exitFullscreen === 'function') {
-    try {
-      const exitFullscreen = document.exitFullscreen();
-      if (exitFullscreen?.catch) exitFullscreen.catch(() => {});
-    } catch {
-      // Leaving Football must never be blocked by fullscreen cleanup.
-    }
-  }
+function readMobileViewport() {
+  if (typeof window === 'undefined') return { coarse: false, portrait: false };
+  const coarse = typeof window.matchMedia === 'function'
+    && window.matchMedia('(pointer: coarse)').matches;
+  return {
+    coarse,
+    portrait: window.innerHeight > window.innerWidth,
+  };
 }
 
 export default function ChessFootballGodotHost({ onExit }) {
   const frameRef = useRef(null);
   const [attempt, setAttempt] = useState(0);
   const [runtimeReady, setRuntimeReady] = useState(false);
+  const [mobileViewport, setMobileViewport] = useState(readMobileViewport);
   const [runtime, setRuntime] = useState({
     url: '',
     source: 'resolving',
     release: '',
   });
+
+  useEffect(() => {
+    const refreshViewport = () => setMobileViewport(readMobileViewport());
+    refreshViewport();
+    window.addEventListener('resize', refreshViewport);
+    window.addEventListener('orientationchange', refreshViewport);
+    return () => {
+      window.removeEventListener('resize', refreshViewport);
+      window.removeEventListener('orientationchange', refreshViewport);
+    };
+  }, []);
 
   useEffect(() => {
     const html = document.documentElement;
@@ -78,6 +89,18 @@ export default function ChessFootballGodotHost({ onExit }) {
     return () => { cancelled = true; };
   }, [attempt]);
 
+  const exitFootball = () => {
+    releaseChessFootballImmersiveMode();
+    onExit?.();
+  };
+
+  const requestLandscape = () => {
+    document.documentElement.dataset.chessFootballImmersive = 'requested';
+    void requestWarRoomLandscapeFullscreen();
+  };
+
+  const mobilePortrait = mobileViewport.coarse && mobileViewport.portrait;
+
   const runtimeStatus = runtimeReady
     ? 'Chess Football listo'
     : runtime.source === 'fallback'
@@ -87,7 +110,35 @@ export default function ChessFootballGodotHost({ onExit }) {
         : 'Arrancando Chess Football…';
 
   return (
-    <div className="chess-football-godot-host" data-runtime-ready={runtimeReady ? 'true' : 'false'}>
+    <div
+      className="chess-football-godot-host"
+      data-runtime-ready={runtimeReady ? 'true' : 'false'}
+      data-mobile-portrait={mobilePortrait ? 'true' : 'false'}
+    >
+      {mobileViewport.coarse && !mobilePortrait ? (
+        <button
+          type="button"
+          className="chess-football-godot-host__mobile-exit"
+          onClick={exitFootball}
+          aria-label="Salir de Chess Football"
+        >
+          Salir
+        </button>
+      ) : null}
+
+      {mobilePortrait ? (
+        <div className="chess-football-godot-host__portrait-gate" role="dialog" aria-modal="true" aria-label="Chess Football necesita apaisado">
+          <div className="chess-football-godot-host__portrait-card">
+            <small>MÓVIL · APASADO</small>
+            <h2>Gira el móvil</h2>
+            <p>Chess Football necesita el campo en horizontal. Puedes girarlo a mano o pedir al navegador que active el apaisado.</p>
+            <div className="chess-football-godot-host__portrait-actions">
+              <button type="button" onClick={requestLandscape}>Activar apaisado</button>
+              <button type="button" className="is-secondary" onClick={exitFootball}>Salir de Chess Football</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       {!runtimeReady ? (
         <div className="chess-football-godot-host__status" aria-live="polite">
           <span aria-hidden="true" />
