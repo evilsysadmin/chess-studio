@@ -1674,6 +1674,9 @@ func debug_penalty_spot(attacking_team_id: int) -> Vector2:
 func debug_set_piece_spot() -> Vector2:
 	return set_piece_spot
 
+func debug_prepare_penalty(team_id: int) -> void:
+	_prepare_set_piece("PENALTI", team_id, _penalty_spot(team_id))
+
 func debug_human_penalty_ready() -> bool:
 	return penalty_human_ready
 
