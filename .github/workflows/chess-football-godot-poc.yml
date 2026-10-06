@@ -100,7 +100,10 @@ jobs:
           set -euo pipefail
           godot="$GITHUB_WORKSPACE/.godot-ci/$GODOT_VERSION/godot"
           log="$RUNNER_TEMP/chess-football-visual.log"
-          timeout 60s xvfb-run -a "$godot" --path games/chess-football-godot --script res://tests/visual_capture.gd | tee "$log"
+          # Production/runtime is fullscreen. Review capture is deliberately
+          # pinned windowed at 1280x720 so Xvfb screen defaults cannot change
+          # framing or make PNG evidence nondeterministic.
+          timeout 60s xvfb-run -a "$godot" --windowed --resolution 1280x720 --path games/chess-football-godot --script res://tests/visual_capture.gd | tee "$log"
           kickoff="$(sed -n 's/^VISUAL_CAPTURE_KICKOFF=//p' "$log" | tail -1)"
           kickoff_touch="$(sed -n 's/^VISUAL_CAPTURE_KICKOFF_TOUCH=//p' "$log" | tail -1)"
           broadcast="$(sed -n 's/^VISUAL_CAPTURE_BROADCAST=//p' "$log" | tail -1)"
