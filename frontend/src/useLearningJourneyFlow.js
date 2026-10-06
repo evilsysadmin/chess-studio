@@ -24,8 +24,8 @@ export function useLearningJourneyFlow({ navigateTo, resetNavigation }) {
     navigateTo('puzzle');
   }
 
-  function openPersonalTraining(filter = null) {
-    openPuzzleMode('personal', false, filter);
+  function openPersonalTraining(filter = null, origin = null) {
+    openPuzzleMode('personal', false, filter, 'tactic', origin);
   }
 
   function openDailyChallengeSlot(slot = 'tactic') {
