@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prepare one coherent staging generation and its optional live evidence."""
+"""Prepare one coherent staging generation and all optional post-staging scopes."""
 from __future__ import annotations
 
 import argparse
