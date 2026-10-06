@@ -106,6 +106,36 @@ def validate_cloudflare_auth_rate_limit(root: Path = ROOT) -> None:
 
 
 
+def validate_pawn_slug_staging_visual_scope(root: Path = ROOT) -> None:
+    """Keep Pawn Slug live evidence path-aware without spawning a runner for every staging."""
+    subprocess.run(
+        [sys.executable, "-S", "scripts/staging_deploy_prepare.py", "--self-test"],
+        cwd=root,
+        check=True,
+    )
+    deploy = (root / ".github" / "workflows" / "staging-deploy.yml").read_text(encoding="utf-8")
+    visual = (root / ".github" / "workflows" / "staging-pawn-slug-visual.yml").read_text(encoding="utf-8")
+    deploy_required = (
+        "pawn_slug_visual_required:",
+        "scripts/staging_deploy_prepare.py",
+        "uses: ./.github/workflows/staging-pawn-slug-visual.yml",
+        "deploy_sha: ${{ needs.prepare.outputs.deploy_sha }}",
+    )
+    visual_required = (
+        "workflow_call:",
+        "workflow_dispatch:",
+        "deploy_sha:",
+        "scripts/staging_generation.py wait",
+    )
+    missing = [token for token in deploy_required if token not in deploy]
+    missing += [token for token in visual_required if token not in visual]
+    if missing:
+        raise SystemExit("Pawn Slug staging visual wiring incompleto: " + ", ".join(missing))
+    if "workflow_run:" in visual or "workflows:\n      - Deploy to staging" in visual:
+        raise SystemExit("Pawn Slug staging visual no debe despertar en cada staging; debe ser reusable/path-aware")
+    print("Pawn Slug staging visual scope contract: OK")
+
+
 def validate_resend_bootstrap_topology(root: Path = ROOT) -> None:
     """Keep the Resend one-shot behind staging so OCI mutations cannot cancel each other."""
     workflow = (root / ".github" / "workflows" / "oci-resend-bootstrap.yml").read_text(encoding="utf-8")
@@ -138,6 +168,7 @@ def validate_workflow_static_contracts(root: Path = ROOT) -> None:
     validate_main_admission_fallback(root)
     validate_staging_frontend_build_single_source(root)
     validate_cloudflare_auth_rate_limit(root)
+    validate_pawn_slug_staging_visual_scope(root)
     validate_resend_bootstrap_topology(root)
 
     unknown, missing = inventory_drift(root)
