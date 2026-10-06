@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Menu from './components/Menu.jsx';
 const GameScreen = React.lazy(() => import('./components/GameScreen.jsx'));
 const Tutorial = React.lazy(() => import('./components/Tutorial.jsx'));
@@ -76,11 +76,11 @@ import { userFacingError } from './userFacingError.js';
 import { isAbortError } from './asyncControl.js';
 import { setFrontendTelemetryContext, startFrontendTelemetry } from './frontendTelemetry.js';
 import { APP_RELEASE } from './release.js';
-import { LATEST_USER_NOTE_ID, USER_RELEASE_NOTES_KEY, openReleaseNoteTarget } from './userReleaseNotes.js';
-import { setProfileStorageItem } from './profileKeys.js';
+import { openReleaseNoteTarget } from './userReleaseNotes.js';
 import { clearRememberedLabMode } from './labLaunchIntent.js';
 import { useGameLaunchController } from './useGameLaunchController.js';
 import { useLearningJourneyFlow } from './useLearningJourneyFlow.js';
+import { useGlobalShellUi } from './useGlobalShellUi.js';
 import { runLogoutLifecycle } from './logoutLifecycle.js';
 
 // 'menu' | 'game' | 'tutorial' | 'openings' | 'tournament' | 'tournamentGame' | 'puzzle' | 'combat' | 'history' | 'replay'
@@ -179,16 +179,14 @@ function AppInner({ isAdminUser }) {
   const [activeContract, setActiveContract] = useState(() => loadActiveContract());
   const [specialRun, setSpecialRun] = useState(() => loadSpecialRun());
   const [gameContext, setGameContext] = useState({});
-  const [showRatingDetail, setShowRatingDetail] = useState(false);
-  const [showCombatSummary, setShowCombatSummary] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [showGlobalAccount, setShowGlobalAccount] = useState(false);
-  const [showGlobalReleaseNotes, setShowGlobalReleaseNotes] = useState(false);
-  const [releaseNotesSeen, setReleaseNotesSeen] = useState(() => getStorageItem(STORAGE_LOCAL, USER_RELEASE_NOTES_KEY) === LATEST_USER_NOTE_ID);
-  const [showGlobalFeedback, setShowGlobalFeedback] = useState(false);
-  const [showAccountMenu, setShowAccountMenu] = useState(false);
-  const accountMenuRef = useRef(null);
-  const accountMenuButtonRef = useRef(null);
+  const shellUi = useGlobalShellUi();
+  const {
+    showRatingDetail, openRatingDetail, closeRatingDetail, showCombatSummary, openCombatSummary, closeCombatSummary,
+    showSettings, openSettings, closeSettings, showGlobalAccount, openGlobalAccount, closeGlobalAccount,
+    showGlobalReleaseNotes, releaseNotesSeen, openReleaseNotes, closeReleaseNotes, showGlobalFeedback,
+    openGlobalFeedback, closeGlobalFeedback, showAccountMenu, toggleAccountMenu, closeAccountMenu,
+    accountMenuRef, accountMenuButtonRef, suppressHomeNudge,
+  } = shellUi;
   const [gameSaveState, setGameSaveState] = useState(SAVE_STATUS.SAVED);
   const [loggingOut, setLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState(null);
@@ -203,24 +201,6 @@ function AppInner({ isAdminUser }) {
       .catch(() => { /* defaults mantienen el producto operativo con backend antiguo/offline */ });
     return () => { active = false; };
   }, []);
-
-  useEffect(() => {
-    if (!showAccountMenu) return undefined;
-    function closeOnOutsidePointer(event) {
-      if (!accountMenuRef.current?.contains(event.target)) setShowAccountMenu(false);
-    }
-    function closeOnEscape(event) {
-      if (event.key !== 'Escape') return;
-      setShowAccountMenu(false);
-      accountMenuButtonRef.current?.focus();
-    }
-    document.addEventListener('pointerdown', closeOnOutsidePointer);
-    document.addEventListener('keydown', closeOnEscape);
-    return () => {
-      document.removeEventListener('pointerdown', closeOnOutsidePointer);
-      document.removeEventListener('keydown', closeOnEscape);
-    };
-  }, [showAccountMenu]);
 
   async function handleGlobalLogout() {
     setLogoutError(null);
@@ -787,7 +767,7 @@ function AppInner({ isAdminUser }) {
               <button
                 type="button"
                 className="masthead-feedback-trigger"
-                onClick={() => setShowGlobalFeedback(true)}
+                onClick={openGlobalFeedback}
                 aria-label="Enviar feedback"
                 title="Enviar feedback"
               >
@@ -801,7 +781,7 @@ function AppInner({ isAdminUser }) {
                     ref={accountMenuButtonRef}
                     type="button"
                     className="masthead-account-trigger"
-                    onClick={() => setShowAccountMenu((open) => !open)}
+                    onClick={toggleAccountMenu}
                     aria-label="Abrir menú de cuenta"
                     aria-haspopup="menu"
                     aria-expanded={showAccountMenu}
@@ -812,22 +792,22 @@ function AppInner({ isAdminUser }) {
                   </button>
                   {showAccountMenu && (
                     <div className="masthead-account-popover" role="menu" aria-label="Cuenta">
-                      <button type="button" role="menuitem" onClick={() => { setShowAccountMenu(false); setShowGlobalAccount(true); }}>
+                      <button type="button" role="menuitem" onClick={openGlobalAccount}>
                         <span aria-hidden="true">♙</span><span><b>Mi cuenta</b><small>Perfil y preferencias</small></span>
                       </button>
                     {isAdminUser && (
-                      <button type="button" role="menuitem" className="masthead-account-menu-admin" onClick={() => { setShowAccountMenu(false); navigateTo('admin'); }}>
+                      <button type="button" role="menuitem" className="masthead-account-menu-admin" onClick={() => { closeAccountMenu(); navigateTo('admin'); }}>
                         <span aria-hidden="true">◉</span><span><b>Administración</b><small>Usuarios y operación</small></span>
                       </button>
                     )}
-                    <button type="button" role="menuitem" onClick={() => { setShowAccountMenu(false); openInsights('diagnosis'); }}>
+                    <button type="button" role="menuitem" onClick={() => { closeAccountMenu(); openInsights('diagnosis'); }}>
                       <span aria-hidden="true">◫</span><span><b>Mi progreso</b><small>Diagnóstico y siguiente mejora</small></span>
                     </button>
-                    <button type="button" role="menuitem" onClick={() => { setShowAccountMenu(false); setShowSettings(true); }}>
+                    <button type="button" role="menuitem" onClick={openSettings}>
                       <span aria-hidden="true">⚙</span><span><b>Personalizar</b><small>Tablero, piezas y sonido</small></span>
                     </button>
                     <div className="masthead-account-menu-separator" role="separator" />
-                    <button type="button" role="menuitem" className="masthead-account-menu-logout" onClick={() => { setShowAccountMenu(false); void handleGlobalLogout(); }} disabled={loggingOut}>
+                    <button type="button" role="menuitem" className="masthead-account-menu-logout" onClick={() => { closeAccountMenu(); void handleGlobalLogout(); }} disabled={loggingOut}>
                       <span aria-hidden="true">↪</span><span><b>{loggingOut ? 'Guardando…' : 'Cerrar sesión'}</b><small>Guarda antes de salir</small></span>
                     </button>
                     </div>
@@ -836,7 +816,7 @@ function AppInner({ isAdminUser }) {
                 <button
                   type="button"
                   className={`masthead-release-trigger ${releaseNotesSeen ? '' : 'is-new'}`}
-                  onClick={() => { setProfileStorageItem(USER_RELEASE_NOTES_KEY, LATEST_USER_NOTE_ID); setReleaseNotesSeen(true); setShowGlobalReleaseNotes(true); }}
+                  onClick={openReleaseNotes}
                   aria-label={releaseNotesSeen ? 'Abrir novedades' : 'Abrir novedades nuevas'}
                 >
                   <span aria-hidden="true">✦</span>
@@ -852,8 +832,8 @@ function AppInner({ isAdminUser }) {
               combatOverview={combatOverview}
               rating={rating}
               onTournamentClick={() => navigateTo('tournament')}
-              onCombatClick={() => setShowCombatSummary(true)}
-              onRatingClick={() => setShowRatingDetail(true)}
+              onCombatClick={openCombatSummary}
+              onRatingClick={openRatingDetail}
             />
           )}
           {!isBoardGameView && view !== 'menu' && view !== 'insights' && (
@@ -869,19 +849,19 @@ function AppInner({ isAdminUser }) {
         )}
 
         {showRatingDetail && (
-          <RatingDetailModal rating={rating} onClose={() => setShowRatingDetail(false)} />
+          <RatingDetailModal rating={rating} onClose={closeRatingDetail} />
         )}
         {showCombatSummary && (
           <CombatArmySummaryModal
             roster={loadCombatRoster()}
-            onClose={() => setShowCombatSummary(false)}
-            onOpenCombat={() => { setShowCombatSummary(false); navigateTo('roguelike'); }}
+            onClose={closeCombatSummary}
+            onOpenCombat={() => { closeCombatSummary(); navigateTo('roguelike'); }}
           />
         )}
-        {showSettings && <UserSettingsPanel isAdminUser={isAdminUser} onClose={() => setShowSettings(false)} onBoard3D={() => { setShowSettings(false); navigateTo('board3d'); }} />}
-        {showGlobalAccount && <AccountModal rating={rating} tournament={tournament} combatOverview={combatOverview} onClose={() => setShowGlobalAccount(false)} onLogout={() => void handleGlobalLogout()} loggingOut={loggingOut} />}
-        {showGlobalReleaseNotes && <React.Suspense fallback={null}><UserReleaseNotesModal onClose={() => setShowGlobalReleaseNotes(false)} onAction={(to) => { setShowGlobalReleaseNotes(false); openReleaseNoteTarget(to, { navigateTo, openInsights }); }} /></React.Suspense>}
-        {showGlobalFeedback && <FeedbackModal context={view === 'menu' ? 'Home' : `Global · ${view}`} onClose={() => setShowGlobalFeedback(false)} />}
+        {showSettings && <UserSettingsPanel isAdminUser={isAdminUser} onClose={closeSettings} onBoard3D={() => { closeSettings(); navigateTo('board3d'); }} />}
+        {showGlobalAccount && <AccountModal rating={rating} tournament={tournament} combatOverview={combatOverview} onClose={closeGlobalAccount} onLogout={() => void handleGlobalLogout()} loggingOut={loggingOut} />}
+        {showGlobalReleaseNotes && <React.Suspense fallback={null}><UserReleaseNotesModal onClose={closeReleaseNotes} onAction={(to) => { closeReleaseNotes(); openReleaseNoteTarget(to, { navigateTo, openInsights }); }} /></React.Suspense>}
+        {showGlobalFeedback && <FeedbackModal context={view === 'menu' ? 'Home' : `Global · ${view}`} onClose={closeGlobalFeedback} />}
 
         <React.Suspense fallback={<div className="route-loading" role="status">Cargando…</div>}>
         <PvpAppSurface view={view} replaceView={replaceView} />
@@ -925,7 +905,7 @@ function AppInner({ isAdminUser }) {
             tournament={tournament}
             rating={rating}
             combatProgress={combatOverview}
-            suppressHomeNudge={showSettings || showGlobalAccount || showGlobalReleaseNotes || showGlobalFeedback}
+            suppressHomeNudge={suppressHomeNudge}
             features={featureFlags}
             quickMatchLaunchNonce={quickMatchLaunchNonce}
           />
@@ -938,7 +918,7 @@ function AppInner({ isAdminUser }) {
             onExit={handleExitGame}
             onError={setError}
             onPersistenceState={setGameSaveState}
-            onCustomize={() => setShowSettings(true)}
+            onCustomize={openSettings}
             onGameEnd={handleCasualGameEnd}
             resultSummary={casualResult?.gameId === game.id ? casualResult : null}
             abandonRatingPreview={!learningMode && !gameContext.lab && !gameContext.rescue && !gameContext.suddenDeath ? (() => { const preview = ratingChangeDetails(rating, game.difficulty, 0); return { delta: preview.delta, before: rating.rating, after: preview.next.rating }; })() : null}
@@ -988,7 +968,7 @@ function AppInner({ isAdminUser }) {
             combatSessionId="free"
             onBattleUiActive={setCombatBattleUiActive}
             onPersistenceState={setGameSaveState}
-            onCustomize={() => setShowSettings(true)}
+            onCustomize={openSettings}
             onBattleStart={(meta = {}) => {
               if (meta.gameId) recordGameActivity({ gameId: meta.gameId, state: 'started', mode: 'combat', modeRecord: meta.modeRecord, difficulty: meta.difficulty });
             }}

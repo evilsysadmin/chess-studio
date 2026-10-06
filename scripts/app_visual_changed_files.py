@@ -28,6 +28,7 @@ PVP_DUEL_VISUAL_OWNER = "frontend/src/components/PvpDuelRoomShell.js"
 
 APP_SHELL = "frontend/src/App.jsx"
 LEARNING_JOURNEY_OWNER = "frontend/src/useLearningJourneyFlow.js"
+GLOBAL_SHELL_OWNER = "frontend/src/useGlobalShellUi.js"
 
 # Exact App.jsx lines touched by the non-visual learning-journey ownership
 # extraction. This is intentionally exact and fail-closed: formatting changes,
@@ -49,6 +50,88 @@ NONVISUAL_LEARNING_APP_LINES = {
     "onInsights={() => openInsights('diagnosis')}",
     "onProgress={() => { setInsightsLandingSection('career'); navigateTo('insights'); }}",
     "onProgress={() => openInsights('career')}",
+}
+
+NONVISUAL_GLOBAL_SHELL_APP_LINES = {
+    "const {",
+    "useEffect(() => {",
+    "}",
+    "};",
+    "",
+    "import React, { useEffect, useRef, useState } from 'react';",
+    "import { LATEST_USER_NOTE_ID, USER_RELEASE_NOTES_KEY, openReleaseNoteTarget } from './userReleaseNotes.js';",
+    "import { setProfileStorageItem } from './profileKeys.js';",
+    "const [showRatingDetail, setShowRatingDetail] = useState(false);",
+    "const [showCombatSummary, setShowCombatSummary] = useState(false);",
+    "const [showSettings, setShowSettings] = useState(false);",
+    "const [showGlobalAccount, setShowGlobalAccount] = useState(false);",
+    "const [showGlobalReleaseNotes, setShowGlobalReleaseNotes] = useState(false);",
+    "const [releaseNotesSeen, setReleaseNotesSeen] = useState(() => getStorageItem(STORAGE_LOCAL, USER_RELEASE_NOTES_KEY) === LATEST_USER_NOTE_ID);",
+    "const [showGlobalFeedback, setShowGlobalFeedback] = useState(false);",
+    "const [showAccountMenu, setShowAccountMenu] = useState(false);",
+    "const accountMenuRef = useRef(null);",
+    "const accountMenuButtonRef = useRef(null);",
+    "if (!showAccountMenu) return undefined;",
+    "function closeOnOutsidePointer(event) {",
+    "if (!accountMenuRef.current?.contains(event.target)) setShowAccountMenu(false);",
+    "function closeOnEscape(event) {",
+    "if (event.key !== 'Escape') return;",
+    "setShowAccountMenu(false);",
+    "accountMenuButtonRef.current?.focus();",
+    "document.addEventListener('pointerdown', closeOnOutsidePointer);",
+    "document.addEventListener('keydown', closeOnEscape);",
+    "return () => {",
+    "document.removeEventListener('pointerdown', closeOnOutsidePointer);",
+    "document.removeEventListener('keydown', closeOnEscape);",
+    "}, [showAccountMenu]);",
+    "onClick={() => setShowGlobalFeedback(true)}",
+    "onClick={() => setShowAccountMenu((open) => !open)}",
+    "<button type=\"button\" role=\"menuitem\" onClick={() => { setShowAccountMenu(false); setShowGlobalAccount(true); }}>",
+    "<button type=\"button\" role=\"menuitem\" className=\"masthead-account-menu-admin\" onClick={() => { setShowAccountMenu(false); navigateTo('admin'); }}>",
+    "<button type=\"button\" role=\"menuitem\" onClick={() => { setShowAccountMenu(false); openInsights('diagnosis'); }}>",
+    "<button type=\"button\" role=\"menuitem\" onClick={() => { setShowAccountMenu(false); setShowSettings(true); }}>",
+    "<button type=\"button\" role=\"menuitem\" className=\"masthead-account-menu-logout\" onClick={() => { setShowAccountMenu(false); void handleGlobalLogout(); }} disabled={loggingOut}>",
+    "onClick={() => { setProfileStorageItem(USER_RELEASE_NOTES_KEY, LATEST_USER_NOTE_ID); setReleaseNotesSeen(true); setShowGlobalReleaseNotes(true); }}",
+    "onCombatClick={() => setShowCombatSummary(true)}",
+    "onRatingClick={() => setShowRatingDetail(true)}",
+    "<RatingDetailModal rating={rating} onClose={() => setShowRatingDetail(false)} />",
+    "onClose={() => setShowCombatSummary(false)}",
+    "onOpenCombat={() => { setShowCombatSummary(false); navigateTo('roguelike'); }}",
+    "{showSettings && <UserSettingsPanel isAdminUser={isAdminUser} onClose={() => setShowSettings(false)} onBoard3D={() => { setShowSettings(false); navigateTo('board3d'); }} />}",
+    "{showGlobalAccount && <AccountModal rating={rating} tournament={tournament} combatOverview={combatOverview} onClose={() => setShowGlobalAccount(false)} onLogout={() => void handleGlobalLogout()} loggingOut={loggingOut} />}",
+    "{showGlobalReleaseNotes && <React.Suspense fallback={null}><UserReleaseNotesModal onClose={() => setShowGlobalReleaseNotes(false)} onAction={(to) => { setShowGlobalReleaseNotes(false); openReleaseNoteTarget(to, { navigateTo, openInsights }); }} /></React.Suspense>}",
+    "{showGlobalFeedback && <FeedbackModal context={view === 'menu' ? 'Home' : `Global · ${view}`} onClose={() => setShowGlobalFeedback(false)} />}",
+    "suppressHomeNudge={showSettings || showGlobalAccount || showGlobalReleaseNotes || showGlobalFeedback}",
+    "onCustomize={() => setShowSettings(true)}",
+    "import React, { useEffect, useState } from 'react';",
+    "import { openReleaseNoteTarget } from './userReleaseNotes.js';",
+    "import { useGlobalShellUi } from './useGlobalShellUi.js';",
+    "const shellUi = useGlobalShellUi();",
+    "showRatingDetail, openRatingDetail, closeRatingDetail, showCombatSummary, openCombatSummary, closeCombatSummary,",
+    "showSettings, openSettings, closeSettings, showGlobalAccount, openGlobalAccount, closeGlobalAccount,",
+    "showGlobalReleaseNotes, releaseNotesSeen, openReleaseNotes, closeReleaseNotes, showGlobalFeedback,",
+    "openGlobalFeedback, closeGlobalFeedback, showAccountMenu, toggleAccountMenu, closeAccountMenu,",
+    "accountMenuRef, accountMenuButtonRef, suppressHomeNudge,",
+    "} = shellUi;",
+    "onClick={openGlobalFeedback}",
+    "onClick={toggleAccountMenu}",
+    "<button type=\"button\" role=\"menuitem\" onClick={openGlobalAccount}>",
+    "<button type=\"button\" role=\"menuitem\" className=\"masthead-account-menu-admin\" onClick={() => { closeAccountMenu(); navigateTo('admin'); }}>",
+    "<button type=\"button\" role=\"menuitem\" onClick={() => { closeAccountMenu(); openInsights('diagnosis'); }}>",
+    "<button type=\"button\" role=\"menuitem\" onClick={openSettings}>",
+    "<button type=\"button\" role=\"menuitem\" className=\"masthead-account-menu-logout\" onClick={() => { closeAccountMenu(); void handleGlobalLogout(); }} disabled={loggingOut}>",
+    "onClick={openReleaseNotes}",
+    "onCombatClick={openCombatSummary}",
+    "onRatingClick={openRatingDetail}",
+    "<RatingDetailModal rating={rating} onClose={closeRatingDetail} />",
+    "onClose={closeCombatSummary}",
+    "onOpenCombat={() => { closeCombatSummary(); navigateTo('roguelike'); }}",
+    "{showSettings && <UserSettingsPanel isAdminUser={isAdminUser} onClose={closeSettings} onBoard3D={() => { closeSettings(); navigateTo('board3d'); }} />}",
+    "{showGlobalAccount && <AccountModal rating={rating} tournament={tournament} combatOverview={combatOverview} onClose={closeGlobalAccount} onLogout={() => void handleGlobalLogout()} loggingOut={loggingOut} />}",
+    "{showGlobalReleaseNotes && <React.Suspense fallback={null}><UserReleaseNotesModal onClose={closeReleaseNotes} onAction={(to) => { closeReleaseNotes(); openReleaseNoteTarget(to, { navigateTo, openInsights }); }} /></React.Suspense>}",
+    "{showGlobalFeedback && <FeedbackModal context={view === 'menu' ? 'Home' : `Global · ${view}`} onClose={closeGlobalFeedback} />}",
+    "suppressHomeNudge={suppressHomeNudge}",
+    "onCustomize={openSettings}",
 }
 
 
@@ -126,6 +209,13 @@ def _is_nonvisual_learning_app_diff(diff_text: str | None) -> bool:
     return bool(changed_lines) and all(line in NONVISUAL_LEARNING_APP_LINES for line in changed_lines)
 
 
+def _is_nonvisual_global_shell_app_diff(diff_text: str | None) -> bool:
+    if not diff_text:
+        return False
+    changed_lines = _changed_source_lines(diff_text)
+    return bool(changed_lines) and all(line in NONVISUAL_GLOBAL_SHELL_APP_LINES for line in changed_lines)
+
+
 def _is_app_visual_e2e(path: str) -> bool:
     """Keep only E2E files that the app-visual workflow itself owns."""
     lower = path.lower().replace("\\", "/")
@@ -151,6 +241,10 @@ def normalize(
         LEARNING_JOURNEY_OWNER.lower() in lower_paths
         and _is_nonvisual_learning_app_diff(_git_diff_text(base_sha, head_sha, APP_SHELL))
     )
+    safe_global_shell_app = (
+        GLOBAL_SHELL_OWNER.lower() in lower_paths
+        and _is_nonvisual_global_shell_app_diff(_git_diff_text(base_sha, head_sha, APP_SHELL))
+    )
 
     def add(path: str) -> None:
         if path not in seen:
@@ -162,7 +256,7 @@ def normalize(
         if not path:
             continue
         lower = path.lower()
-        if lower == APP_SHELL.lower() and safe_learning_app:
+        if lower == APP_SHELL.lower() and (safe_learning_app or safe_global_shell_app):
             # App.jsx is normally a global visual owner. Suppress it only for
             # the exact, audited navigation extraction above; any extra changed
             # App line fails closed and restores the canonical visual sweep.
@@ -228,6 +322,12 @@ def self_test() -> None:
     assert _is_nonvisual_learning_app_diff(safe_learning_diff)
     assert not _is_nonvisual_learning_app_diff(unsafe_learning_diff)
     assert not _is_nonvisual_learning_app_diff(None)
+
+    safe_shell_diff = "--- a/frontend/src/App.jsx\n+++ b/frontend/src/App.jsx\n@@ -1 +1 @@\n-import React, { useEffect, useRef, useState } from 'react';\n+import React, { useEffect, useState } from 'react';\n@@ -2,0 +2 @@\n+import { useGlobalShellUi } from './useGlobalShellUi.js';\n"
+    unsafe_shell_diff = "--- a/frontend/src/App.jsx\n+++ b/frontend/src/App.jsx\n@@ -1 +1 @@\n-import React, { useEffect, useRef, useState } from 'react';\n+import React, { useEffect, useState } from 'react';\n@@ -2,0 +2 @@\n+import { useGlobalShellUi } from './useGlobalShellUi.js';\n@@ -10 +10 @@\n-<main className=\"old-shell\">\n+<main className=\"new-shell\">\n"
+    assert _is_nonvisual_global_shell_app_diff(safe_shell_diff)
+    assert not _is_nonvisual_global_shell_app_diff(unsafe_shell_diff)
+    assert not _is_nonvisual_global_shell_app_diff(None)
 
     manifest_before = json.dumps({
         "assets": {
