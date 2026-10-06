@@ -485,7 +485,11 @@ scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page })
   await page.setViewportSize({ width: 1440, height: 900 });
   await settle(page);
 
-  const immediateAction = trainingRoom.getByRole('button', { name: /Acciones inmediatas|Entrenar esta deuda/ }).first();
+  const recommendedSession = trainingRoom.getByRole('button', { name: /^Empezar sesión recomendada de (5|15|30) min$/ });
+  await expect(recommendedSession).toBeVisible();
+  await recommendedSession.click();
+
+  const immediateAction = trainingRoom.getByRole('button', { name: /Abrir Acciones inmediatas|Entrenar esta deuda/ }).first();
   await expect(immediateAction).toBeVisible();
   await immediateAction.click();
 
