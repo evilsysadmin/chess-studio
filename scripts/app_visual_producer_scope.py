@@ -340,6 +340,7 @@ def classify_path(path: str) -> set[str] | None:
             "scripts/css_architecture_manifest.json",
             "scripts/architecture_debt_budget.py",
             "scripts/async_resilience_gate.mjs",
+            "scripts/visual_ux_contract_check.mjs",
             "scripts/blender_required_scope.py",
             "scripts/browser_quality_scope.py",
             "scripts/chess_rules_gate.mjs",
@@ -822,6 +823,7 @@ def self_test() -> None:
     assert classify(["frontend/src/components/AdminDashboardContent.jsx"]) == "none"
     assert classify(["frontend/src/App.css"]) == "all"
     assert classify(["scripts/async_resilience_gate.mjs"]) == "none"
+    assert classify(["scripts/visual_ux_contract_check.mjs"]) == "none"
     assert classify(["scripts/chess_rules_gate.mjs"]) == "none"
     assert classify(["frontend/public/audio/theme.ogg"]) == "none"
     assert classify(["frontend/public/chesscom/piece.glb"]) == "none"
