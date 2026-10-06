@@ -108,6 +108,25 @@ def validate_main_backend_image_non_runtime_gate(root: Path = ROOT) -> None:
         raise SystemExit("el clasificador barato de backend no debe tener permiso packages:write")
     print("main backend image non-runtime gate: OK")
 
+def validate_app_visual_tooling_trigger_scope(root: Path = ROOT) -> None:
+    """Visual tooling must be checked by Quality without waking product captures."""
+    workflow = (root / ".github" / "workflows" / "app-visual-artifact.yml").read_text(encoding="utf-8")
+    forbidden = (
+        "scripts/*visual*",
+        ".github/actions/app-visual-pipeline/**",
+    )
+    leaked = [token for token in forbidden if token in workflow]
+    if leaked:
+        raise SystemExit("app-visual vuelve a despertar por tooling: " + ", ".join(leaked))
+    for script in (
+        "scripts/app_visual_scope.py",
+        "scripts/app_visual_producer_scope.py",
+        "scripts/app_visual_changed_files.py",
+    ):
+        subprocess.run([sys.executable, "-S", script, "--self-test"], cwd=root, check=True)
+    print("app visual tooling trigger scope: OK")
+
+
 def validate_cloudflare_auth_rate_limit(root: Path = ROOT) -> None:
     """Keep the Free-tier auth burst guard tested and wired into staging delivery."""
     subprocess.run(
@@ -166,6 +185,7 @@ def validate_workflow_static_contracts(root: Path = ROOT) -> None:
     validate_main_admission_fallback(root)
     validate_staging_frontend_build_single_source(root)
     validate_main_backend_image_non_runtime_gate(root)
+    validate_app_visual_tooling_trigger_scope(root)
     validate_cloudflare_auth_rate_limit(root)
     validate_resend_bootstrap_topology(root)
 
