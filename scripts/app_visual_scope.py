@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 GROUP_ORDER = ("home", "experiments", "training", "warroom", "health")
-EXPERIMENT_ORDER = ("landing", "chronicles", "pawnslug")
+EXPERIMENT_ORDER = ("landing", "chronicles", "pawnslug", "football")
 
 NONVISUAL_FRONTEND_PATHS = {
     # Domain/session ownership with no canonical visual producer of its own.
@@ -401,7 +401,7 @@ def _experiment_parts(path: str) -> set[str]:
     if "trailblazer" in lower or "arcade" in lower:
         return {"landing"}
     if "chessfootball" in lower or "chess-football" in lower:
-        return {"landing"}
+        return {"football"}
     if lower == "frontend/src/components/labscreen.jsx":
         return {"landing", "pawnslug"}
     if "experiment" in lower:
@@ -712,7 +712,7 @@ def self_test() -> None:
         "e2e/chess-football.spec.js",
     ])
     assert football.capture_groups == "experiments"
-    assert football.experiments_scope == "landing"
+    assert football.experiments_scope == "football"
     lab_visual = classify([
         "frontend/src/components/LabScreen.jsx",
         "frontend/src/labLaunchIntent.js",
