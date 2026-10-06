@@ -8,6 +8,7 @@ var base_speed: float = 250.0
 const MOVE_ACCELERATION := 1650.0
 const MOVE_DECELERATION := 2150.0
 const TACKLE_ACTIVE_SECONDS := 0.18
+const SLIDE_TACKLE_ACTIVE_SECONDS := 0.24
 var home_position: Vector2
 var active: bool = false
 var has_ball: bool = false
@@ -20,6 +21,7 @@ var tackle_cooldown_seconds: float = 0.0
 var tackle_recovery_seconds: float = 0.0
 var tackle_active_seconds: float = 0.0
 var tackle_launch_speed_ratio: float = 0.0
+var tackle_aggressive: bool = false
 var contact_stun_seconds: float = 0.0
 var contact_stun_total: float = 0.0
 var contact_sway_sign: float = 1.0
@@ -59,6 +61,7 @@ func _process(delta: float) -> void:
 	tackle_active_seconds = maxf(0.0, tackle_active_seconds - delta)
 	if tackle_active_seconds <= 0.0:
 		tackle_launch_speed_ratio = 0.0
+		tackle_aggressive = false
 	contact_stun_seconds = maxf(0.0, contact_stun_seconds - delta)
 	keeper_hold_seconds = maxf(0.0, keeper_hold_seconds - delta)
 	keeper_save_seconds = maxf(0.0, keeper_save_seconds - delta)
@@ -118,23 +121,27 @@ func play_action(animation_name: String, duration: float = 0.78) -> void:
 func can_tackle() -> bool:
 	return not has_ball and tackle_cooldown_seconds <= 0.0 and action_lock_seconds <= 0.0
 
-func start_tackle() -> bool:
+func start_tackle(aggressive: bool = false) -> bool:
 	if not can_tackle():
 		return false
-	tackle_cooldown_seconds = 1.10
-	tackle_recovery_seconds = 0.38
-	tackle_active_seconds = TACKLE_ACTIVE_SECONDS
+	tackle_aggressive = aggressive
+	tackle_cooldown_seconds = 1.45 if aggressive else 1.10
+	tackle_recovery_seconds = 0.68 if aggressive else 0.38
+	tackle_active_seconds = SLIDE_TACKLE_ACTIVE_SECONDS if aggressive else TACKLE_ACTIVE_SECONDS
 	tackle_launch_speed_ratio = clampf(
 		velocity.length() / maxf(base_speed, 1.0),
 		0.0,
 		1.35,
 	)
-	velocity *= 0.35
-	play_action("tackle", 0.50)
+	velocity *= 0.68 if aggressive else 0.35
+	play_action("tackle", 0.64 if aggressive else 0.50)
 	return true
 
 func tackle_active() -> bool:
 	return tackle_active_seconds > 0.0
+
+func tackle_aggressive_active() -> bool:
+	return tackle_active() and tackle_aggressive
 
 func tackle_momentum_ratio() -> float:
 	return tackle_launch_speed_ratio if tackle_active() else 0.0
@@ -209,6 +216,9 @@ func debug_tackle_ready() -> bool:
 
 func debug_tackle_active() -> bool:
 	return tackle_active()
+
+func debug_tackle_aggressive() -> bool:
+	return tackle_aggressive_active()
 
 func debug_keeper_hold_active() -> bool:
 	return keeper_hold_active()
