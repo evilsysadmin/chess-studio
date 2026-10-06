@@ -27,7 +27,7 @@ NONVISUAL_FRONTEND_PATHS = {
     "frontend/src/spectatorsessionrunner.js",
     "frontend/src/gamesessiondescriptor.js",
     "frontend/src/lablaunchintent.js",
-    "frontend/src/usepuzzlelaunchflow.js",
+    "frontend/src/uselearningjourneyflow.js",
     "frontend/src/soundfx.js",
 }
 
