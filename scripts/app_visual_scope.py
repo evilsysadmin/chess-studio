@@ -22,6 +22,7 @@ NONVISUAL_FRONTEND_PATHS = {
     "frontend/src/components/spectatorscreen.jsx",
     "frontend/src/components/usecombatcontroller.js",
     "frontend/src/components/goldenpathprefetch.js",
+    "frontend/src/components/quickmatchintentloader.js",
     "frontend/src/usecombatsessionpersistence.js",
     "frontend/src/usecombatbattlesnapshotfactory.js",
     "frontend/src/spectatorsessionrunner.js",
