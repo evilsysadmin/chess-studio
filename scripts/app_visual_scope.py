@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 GROUP_ORDER = ("home", "experiments", "training", "warroom", "health")
-EXPERIMENT_ORDER = ("landing", "chronicles", "pawnslug")
+EXPERIMENT_ORDER = ("landing", "chronicles", "pawnslug", "football")
 
 NONVISUAL_FRONTEND_PATHS = {
     # Domain/session ownership with no canonical visual producer of its own.
@@ -31,6 +31,8 @@ NONVISUAL_FRONTEND_PATHS = {
     "frontend/src/useglobalshellui.js",
     "frontend/src/usetournamentflow.js",
     "frontend/src/usegamestartflow.js",
+    "frontend/src/uselogoutflow.js",
+    "frontend/src/usepublicfeatureflags.js",
     "frontend/src/userreleasenotes.js",
     "frontend/src/soundfx.js",
 }
@@ -222,8 +224,8 @@ def _surface_groups(path: str) -> set[str] | None:
         "scripts/browser_quality_scope.py",
         "scripts/chess_rules_gate.mjs",
         "scripts/quality_scope.py",
-        "scripts/visual_ux_contract_check.mjs",
         "scripts/state_resilience_check.mjs",
+        "scripts/visual_ux_contract_check.mjs",
         "scripts/run_core_e2e_lane.py",
         "scripts/workflow_debt_gate.py",
     }:
@@ -415,7 +417,7 @@ def _experiment_parts(path: str) -> set[str]:
     if "trailblazer" in lower or "arcade" in lower:
         return {"landing"}
     if "chessfootball" in lower or "chess-football" in lower:
-        return {"landing"}
+        return {"football"}
     if lower == "frontend/src/components/labscreen.jsx":
         return {"landing", "pawnslug"}
     if "experiment" in lower:
@@ -737,7 +739,7 @@ def self_test() -> None:
         "e2e/chess-football.spec.js",
     ])
     assert football.capture_groups == "experiments"
-    assert football.experiments_scope == "landing"
+    assert football.experiments_scope == "football"
     lab_visual = classify([
         "frontend/src/components/LabScreen.jsx",
         "frontend/src/labLaunchIntent.js",
@@ -760,8 +762,10 @@ def self_test() -> None:
     global_shell = classify(["frontend/src/useGlobalShellUi.js"])
     assert global_shell.capture_groups == "none"
     assert classify(["frontend/src/useTournamentFlow.js"]).capture_groups == "none"
-    assert classify(["frontend/src/components/GlobalOverlayLayer.jsx"]).capture_groups == "home"
     assert classify(["frontend/src/useGameStartFlow.js"]).capture_groups == "none"
+    assert classify(["frontend/src/useLogoutFlow.js"]).capture_groups == "none"
+    assert classify(["frontend/src/usePublicFeatureFlags.js"]).capture_groups == "none"
+    assert classify(["frontend/src/components/GlobalOverlayLayer.jsx"]).capture_groups == "home"
     assert not global_shell.hans and not global_shell.chesscom
     release_notes_router = classify(["frontend/src/userReleaseNotes.js"])
     assert release_notes_router.capture_groups == "none"
@@ -803,7 +807,7 @@ def self_test() -> None:
     trailblazer = classify(["frontend/src/pawnTrailblazerThree.js"])
     assert trailblazer.experiments_scope == "landing"
     hub = classify(["frontend/src/components/ExperimentsScreen.jsx"])
-    assert hub.experiments_scope == "landing,chronicles,pawnslug"
+    assert hub.experiments_scope == "landing,chronicles,pawnslug,football"
     assert not hub.chronicles_avatar
 
     pawn_visual = classify(["e2e/pawn-slug-godot-visual-artifact.spec.js"])

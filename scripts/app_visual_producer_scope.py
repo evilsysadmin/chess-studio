@@ -353,8 +353,8 @@ def classify_path(path: str) -> set[str] | None:
             "scripts/browser_quality_scope.py",
             "scripts/chess_rules_gate.mjs",
             "scripts/quality_scope.py",
-            "scripts/visual_ux_contract_check.mjs",
             "scripts/state_resilience_check.mjs",
+            "scripts/visual_ux_contract_check.mjs",
             "scripts/workflow_debt_gate.py",
         }:
             return set()
@@ -376,6 +376,8 @@ def classify_path(path: str) -> set[str] | None:
         "frontend/src/useglobalshellui.js",
         "frontend/src/usetournamentflow.js",
         "frontend/src/usegamestartflow.js",
+        "frontend/src/uselogoutflow.js",
+        "frontend/src/usepublicfeatureflags.js",
         "frontend/src/soundfx.js",
         "frontend/src/components/warroomhomepreload.js",
     }:
@@ -791,8 +793,10 @@ def self_test() -> None:
     assert classify(["frontend/src/useLearningJourneyFlow.js"]) == "none"
     assert classify(["frontend/src/useGlobalShellUi.js"]) == "none"
     assert classify(["frontend/src/useTournamentFlow.js"]) == "none"
-    assert classify(["frontend/src/components/GlobalOverlayLayer.jsx"]) == "home-base"
     assert classify(["frontend/src/useGameStartFlow.js"]) == "none"
+    assert classify(["frontend/src/useLogoutFlow.js"]) == "none"
+    assert classify(["frontend/src/usePublicFeatureFlags.js"]) == "none"
+    assert classify(["frontend/src/components/GlobalOverlayLayer.jsx"]) == "home-base"
     assert classify(["frontend/src/soundFx.js"]) == "none"
     assert classify(["scripts/quality_scope.py"]) == "none"
     assert classify(["scripts/browser_quality_scope.py"]) == "none"

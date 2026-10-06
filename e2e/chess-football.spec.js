@@ -34,44 +34,7 @@ async function openExperiments(page) {
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
 }
 
-test('Chess Football fills the viewport and returns only through the runtime exit', async ({ page }) => {
-  await openExperiments(page);
-  await page.setViewportSize({ width: 1280, height: 720 });
-
-  await page.locator('.lab-workshop-portal--football').click();
-
-  const host = page.locator('.chess-football-godot-host');
-  await expect(host).toBeVisible();
-  const frame = page.locator('iframe[title="Chess Football Godot"]');
-  await expect(frame).toBeVisible();
-  await expect(frame).toHaveAttribute('src', INDEX_URL);
-  await expect(host).toHaveAttribute('data-runtime-ready', 'true');
-  await expect(page.locator('.chess-football-godot-host__status')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Volver a Experimentos' })).toHaveCount(0);
-
-  const box = await host.boundingBox();
-  expect(box).not.toBeNull();
-  expect(box.left).toBeLessThanOrEqual(1);
-  expect(box.top).toBeLessThanOrEqual(1);
-  expect(box.width).toBeGreaterThanOrEqual(1278);
-  expect(box.height).toBeGreaterThanOrEqual(718);
-  expect(await page.evaluate(() => document.fullscreenElement === null)).toBe(true);
-
-  // React must not interpret Escape as "volver": while Football owns the mode,
-  // Escape belongs to Godot's pause menu.
-  await page.keyboard.press('Escape');
-  await expect(host).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toHaveCount(0);
-
-  await frame.contentFrame().locator('body').evaluate(() => {
-    window.parent.postMessage({ source: 'chess-football-godot', type: 'exit' }, '*');
-  });
-  await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
-  await expect(host).toHaveCount(0);
-});
-
-
-test('Chess Football requests landscape immersion from the launch gesture and releases it on exit', async ({ page }) => {
+async function installMobileImmersiveStubs(page) {
   await page.addInitScript(() => {
     window.__footballFullscreenRequests = 0;
     window.__footballLandscapeLocks = 0;
@@ -115,10 +78,51 @@ test('Chess Football requests landscape immersion from the launch gesture and re
       });
       window.__footballOrientationStubbed = true;
     } catch {
-      // The runtime contract is still covered by fullscreen + immersive marker
-      // on engines where Screen.prototype.orientation cannot be redefined.
+      // Fullscreen + the portrait escape hatch still cover engines where
+      // Screen.prototype.orientation cannot be replaced.
     }
   });
+}
+
+test('Chess Football fills the viewport and returns only through the runtime exit', async ({ page }) => {
+  await openExperiments(page);
+  await page.setViewportSize({ width: 1280, height: 720 });
+
+  await page.locator('.lab-workshop-portal--football').click();
+
+  const host = page.locator('.chess-football-godot-host');
+  await expect(host).toBeVisible();
+  const frame = page.locator('iframe[title="Chess Football Godot"]');
+  await expect(frame).toBeVisible();
+  await expect(frame).toHaveAttribute('src', INDEX_URL);
+  await expect(host).toHaveAttribute('data-runtime-ready', 'true');
+  await expect(page.locator('.chess-football-godot-host__status')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Volver a Experimentos' })).toHaveCount(0);
+
+  const box = await host.boundingBox();
+  expect(box).not.toBeNull();
+  expect(box.left).toBeLessThanOrEqual(1);
+  expect(box.top).toBeLessThanOrEqual(1);
+  expect(box.width).toBeGreaterThanOrEqual(1278);
+  expect(box.height).toBeGreaterThanOrEqual(718);
+  expect(await page.evaluate(() => document.fullscreenElement === null)).toBe(true);
+
+  // React must not interpret Escape as "volver": while Football owns the mode,
+  // Escape belongs to Godot's pause menu.
+  await page.keyboard.press('Escape');
+  await expect(host).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toHaveCount(0);
+
+  await frame.contentFrame().locator('body').evaluate(() => {
+    window.parent.postMessage({ source: 'chess-football-godot', type: 'exit' }, '*');
+  });
+  await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
+  await expect(host).toHaveCount(0);
+});
+
+
+test('Chess Football requests landscape immersion from the launch gesture and releases it on exit', async ({ page }) => {
+  await installMobileImmersiveStubs(page);
 
   await openExperiments(page);
   await page.locator('.lab-workshop-portal--football').click();
@@ -143,4 +147,36 @@ test('Chess Football requests landscape immersion from the launch gesture and re
   if (orientationWasStubbed) {
     await expect.poll(() => page.evaluate(() => window.__footballOrientationUnlocks)).toBe(1);
   }
+});
+
+
+test('Chess Football mobile portrait never traps the session and retries landscape on demand', async ({ page }) => {
+  await installMobileImmersiveStubs(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openExperiments(page);
+
+  await page.locator('.lab-workshop-portal--football').click();
+
+  const host = page.locator('.chess-football-godot-host');
+  await expect(host).toBeVisible();
+  await expect(host).toHaveAttribute('data-mobile-portrait', 'true');
+  await expect(page.getByRole('heading', { name: 'Gira el móvil' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Activar apaisado' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Salir de Chess Football' })).toBeVisible();
+
+  const orientationWasStubbed = await page.evaluate(() => window.__footballOrientationStubbed === true);
+  if (orientationWasStubbed) {
+    const locksBeforeRetry = await page.evaluate(() => window.__footballLandscapeLocks);
+    await page.getByRole('button', { name: 'Activar apaisado' }).click();
+    await expect.poll(() => page.evaluate(() => window.__footballLandscapeLocks)).toBeGreaterThan(locksBeforeRetry);
+  }
+
+  await page.setViewportSize({ width: 844, height: 390 });
+  await expect(host).toHaveAttribute('data-mobile-portrait', 'false');
+  await expect(page.getByRole('heading', { name: 'Gira el móvil' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Salir de Chess Football' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Salir de Chess Football' }).click();
+  await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
+  await expect(host).toHaveCount(0);
 });

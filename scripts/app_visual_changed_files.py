@@ -34,6 +34,9 @@ GLOBAL_SHELL_OWNER = "frontend/src/useGlobalShellUi.js"
 TOURNAMENT_FLOW_OWNER = "frontend/src/useTournamentFlow.js"
 GLOBAL_OVERLAY_OWNER = "frontend/src/components/GlobalOverlayLayer.jsx"
 GAME_START_FLOW_OWNER = "frontend/src/useGameStartFlow.js"
+LOGOUT_FLOW_OWNER = "frontend/src/useLogoutFlow.js"
+FEATURE_FLAGS_OWNER = "frontend/src/usePublicFeatureFlags.js"
+
 GAME_SCREEN = "frontend/src/components/GameScreen.jsx"
 PUZZLE_SCREEN_OWNER = "frontend/src/components/PuzzleScreen.jsx"
 
@@ -279,6 +282,45 @@ NONVISUAL_GAME_START_APP_LINES = {
     "if (run?.active && !gameLaunch.busy()) void launchRun(run);",
 }
 
+NONVISUAL_SESSION_SHELL_APP_LINES = {
+    "import { activityForView, usePresenceHeartbeat } from './usePresenceHeartbeat.js';",
+    "import { usePresenceHeartbeat } from './usePresenceHeartbeat.js';",
+    "import { logout, reportLogoutPresence, touchActivity } from './auth.js';",
+    "import { pushProfileToServer } from './profileBackup.js';",
+    "import { DEFAULT_FEATURE_FLAGS, normalizeFeatureFlags } from './featureFlags.js';",
+    "import { runLogoutLifecycle } from './logoutLifecycle.js';",
+    "import { useLogoutFlow } from './useLogoutFlow.js';",
+    "import { usePublicFeatureFlags } from './usePublicFeatureFlags.js';",
+    "const [loggingOut, setLoggingOut] = useState(false);",
+    "const [logoutError, setLogoutError] = useState(null);",
+    "const [featureFlags, setFeatureFlags] = useState(() => ({ ...DEFAULT_FEATURE_FLAGS }));",
+    "const featureFlags = usePublicFeatureFlags();",
+    "const { loggingOut, logoutError, logout: handleGlobalLogout } = useLogoutFlow(view);",
+    "useEffect(() => {",
+    "let active = true;",
+    "api.getFeatures()",
+    ".then((payload) => { if (active) setFeatureFlags(normalizeFeatureFlags(payload)); })",
+    ".catch(() => { /* defaults mantienen el producto operativo con backend antiguo/offline */ });",
+    "return () => { active = false; };",
+    "}, []);",
+    "",
+    "async function handleGlobalLogout() {",
+    "setLogoutError(null);",
+    "setLoggingOut(true);",
+    "try {",
+    "await runLogoutLifecycle({",
+    "saveProfile: () => pushProfileToServer({ throwOnError: true }),",
+    "closePresence: () => reportLogoutPresence(),",
+    "restorePresence: () => touchActivity(activityForView(view), document.visibilityState === 'visible'),",
+    "clearSession: logout,",
+    "});",
+    "window.location.reload();",
+    "} catch {",
+    "setLogoutError('No se pudo guardar tu progreso. Reintenta cuando vuelva la conexión.');",
+    "setLoggingOut(false);",
+    "}",
+}
+
 NONVISUAL_GLOBAL_SHELL_APP_LINES = {
     "const {",
     "useEffect(() => {",
@@ -472,6 +514,13 @@ def _is_nonvisual_game_start_app_diff(diff_text: str | None) -> bool:
     return bool(changed_lines) and all(line in NONVISUAL_GAME_START_APP_LINES for line in changed_lines)
 
 
+def _is_nonvisual_session_shell_app_diff(diff_text: str | None) -> bool:
+    if not diff_text:
+        return False
+    changed_lines = _changed_source_lines(diff_text)
+    return bool(changed_lines) and all(line in NONVISUAL_SESSION_SHELL_APP_LINES for line in changed_lines)
+
+
 def _is_app_visual_e2e(path: str) -> bool:
     """Keep only E2E files that the app-visual workflow itself owns."""
     lower = path.lower().replace("\\", "/")
@@ -518,6 +567,11 @@ def normalize(
         GAME_START_FLOW_OWNER.lower() in lower_paths
         and _is_nonvisual_game_start_app_diff(_git_diff_text(base_sha, head_sha, APP_SHELL))
     )
+    safe_session_shell_app = (
+        LOGOUT_FLOW_OWNER.lower() in lower_paths
+        and FEATURE_FLAGS_OWNER.lower() in lower_paths
+        and _is_nonvisual_session_shell_app_diff(_git_diff_text(base_sha, head_sha, APP_SHELL))
+    )
 
     def add(path: str) -> None:
         if path not in seen:
@@ -535,7 +589,7 @@ def normalize(
         if lower == GAME_SCREEN.lower() and safe_postgame_training_game:
             add(PUZZLE_SCREEN_OWNER)
             continue
-        if lower == APP_SHELL.lower() and (safe_learning_app or safe_global_shell_app or safe_app_decomposition or safe_game_start_app):
+        if lower == APP_SHELL.lower() and (safe_learning_app or safe_global_shell_app or safe_app_decomposition or safe_game_start_app or safe_session_shell_app):
             # App.jsx is normally a global visual owner. Suppress it only for
             # the exact, audited navigation extraction above; any extra changed
             # App line fails closed and restores the canonical visual sweep.
@@ -637,6 +691,12 @@ def self_test() -> None:
     assert _is_nonvisual_game_start_app_diff(safe_game_start_diff)
     assert not _is_nonvisual_game_start_app_diff(unsafe_game_start_diff)
     assert not _is_nonvisual_game_start_app_diff(None)
+
+    safe_session_shell_diff = "--- a/frontend/src/App.jsx\n+++ b/frontend/src/App.jsx\n@@ -1 +1 @@\n-import { activityForView, usePresenceHeartbeat } from './usePresenceHeartbeat.js';\n+import { usePresenceHeartbeat } from './usePresenceHeartbeat.js';\n"
+    unsafe_session_shell_diff = safe_session_shell_diff + "@@ -20 +20 @@\n-<main className=\"old\">\n+<main className=\"new\">\n"
+    assert _is_nonvisual_session_shell_app_diff(safe_session_shell_diff)
+    assert not _is_nonvisual_session_shell_app_diff(unsafe_session_shell_diff)
+    assert not _is_nonvisual_session_shell_app_diff(None)
 
     manifest_before = json.dumps({
         "assets": {

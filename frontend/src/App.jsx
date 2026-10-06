@@ -47,7 +47,7 @@ const LabScreen = React.lazy(() => import('./components/LabScreen.jsx'));
 import { clearActiveContract, loadActiveContract, loadSpecialRun, recordCareerGame, recordSpecialRunResult, reconcileCareerHistory } from './career.js';
 import { loadActiveGameChat } from './gameChat.js';
 import { clearActiveGameSession, loadActiveGameSession, loadVisibleActiveGameSession } from './activeGameSession.js';
-import { activityForView, usePresenceHeartbeat } from './usePresenceHeartbeat.js';
+import { usePresenceHeartbeat } from './usePresenceHeartbeat.js';
 import { useActiveGameSessionPersistence } from './useActiveGameSessionPersistence.js';
 import { useGameReconnect } from './useGameReconnect.js';
 import { useViewNavigation } from './useViewNavigation.js';
@@ -59,10 +59,7 @@ import { usePlayerPortraitRefresh } from './usePlayerPortraitRefresh.js';
 import { buildGameCrimeReplayRecord } from './crimeReplay.js';
 import { useProfileSyncLifecycle } from './useProfileSyncLifecycle.js';
 import { useReplayLibrary } from './useReplayLibrary.js';
-import { logout, reportLogoutPresence, touchActivity } from './auth.js';
-import { pushProfileToServer } from './profileBackup.js';
 import { setAdminPreviewAccess } from './adminPreview.js';
-import { DEFAULT_FEATURE_FLAGS, normalizeFeatureFlags } from './featureFlags.js';
 import { setFrontendTelemetryContext, startFrontendTelemetry } from './frontendTelemetry.js';
 import { APP_RELEASE } from './release.js';
 import { clearRememberedLabMode } from './labLaunchIntent.js';
@@ -71,7 +68,8 @@ import { useLearningJourneyFlow } from './useLearningJourneyFlow.js';
 import { useGlobalShellUi } from './useGlobalShellUi.js';
 import { useTournamentFlow } from './useTournamentFlow.js';
 import { useGameStartFlow } from './useGameStartFlow.js';
-import { runLogoutLifecycle } from './logoutLifecycle.js';
+import { useLogoutFlow } from './useLogoutFlow.js';
+import { usePublicFeatureFlags } from './usePublicFeatureFlags.js';
 
 // 'menu' | 'game' | 'tutorial' | 'openings' | 'tournament' | 'tournamentGame' | 'puzzle' | 'combat' | 'history' | 'replay'
 function AppInner({ isAdminUser }) {
@@ -175,9 +173,8 @@ function AppInner({ isAdminUser }) {
     accountMenuRef, accountMenuButtonRef, suppressHomeNudge,
   } = shellUi;
   const [gameSaveState, setGameSaveState] = useState(SAVE_STATUS.SAVED);
-  const [loggingOut, setLoggingOut] = useState(false);
-  const [logoutError, setLogoutError] = useState(null);
-  const [featureFlags, setFeatureFlags] = useState(() => ({ ...DEFAULT_FEATURE_FLAGS }));
+  const featureFlags = usePublicFeatureFlags();
+  const { loggingOut, logoutError, logout: handleGlobalLogout } = useLogoutFlow(view);
   const gameLaunch = useGameLaunchController(view, { onCancelled: () => setLoading(false) });
   const {
     state: tournament,
@@ -228,31 +225,6 @@ function AppInner({ isAdminUser }) {
     resetResult: () => { setExitNotice(null); setCasualResult(null); },
   });
   useProfileSyncLifecycle(view);
-
-  useEffect(() => {
-    let active = true;
-    api.getFeatures()
-      .then((payload) => { if (active) setFeatureFlags(normalizeFeatureFlags(payload)); })
-      .catch(() => { /* defaults mantienen el producto operativo con backend antiguo/offline */ });
-    return () => { active = false; };
-  }, []);
-
-  async function handleGlobalLogout() {
-    setLogoutError(null);
-    setLoggingOut(true);
-    try {
-      await runLogoutLifecycle({
-        saveProfile: () => pushProfileToServer({ throwOnError: true }),
-        closePresence: () => reportLogoutPresence(),
-        restorePresence: () => touchActivity(activityForView(view), document.visibilityState === 'visible'),
-        clearSession: logout,
-      });
-      window.location.reload();
-    } catch {
-      setLogoutError('No se pudo guardar tu progreso. Reintenta cuando vuelva la conexión.');
-      setLoggingOut(false);
-    }
-  }
 
   // V15.1: usuarios veteranos pueden tener decenas de partidas anteriores a
   // Centro de Operaciones. Reconciliamos los contadores demostrables desde
