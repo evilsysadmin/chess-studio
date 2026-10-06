@@ -23,50 +23,52 @@ import { isAbortError } from './asyncControl.js';
 import { userFacingError } from './userFacingError.js';
 
 export function useTournamentFlow({
-  gameLaunch,
-  navigateTo,
-  goBack,
-  setLoading,
-  setError,
-  setRating,
-  setHistoryList,
-  setHasSavedGame,
+  launch,
+  navigate,
+  back,
+  loading,
+  error,
+  rating,
+  history,
+  saved,
 }) {
   const [tournament, setTournament] = useState(() => loadTournament());
   const [tournamentGame, setTournamentGame] = useState(null);
   const [lastResult, setLastResult] = useState(null);
+  const tournamentLevel = levelForPoints(tournament.progressPoints || 0);
 
   async function handlePlayTournament(color) {
-    const launch = gameLaunch.begin();
-    if (!launch) return;
-    setLoading(true);
-    setError(null);
+    const operation = launch.begin();
+    if (!operation) return;
+    loading(true);
+    error(null);
     try {
-      const level = levelForPoints(tournament.progressPoints || 0);
-      const cpuDifficulty = difficultyForLevel(level);
-      const operationId = gameLaunch.operationId(launch, [cpuDifficulty, color, null, null, null]);
-      const created = await api.createGame(cpuDifficulty, color, null, null, { signal: launch.controller.signal, operationId });
-      if (!gameLaunch.isCurrent(launch)) { void api.deleteGame(created.id).catch(() => {}); return; }
-      gameLaunch.confirmCreated(launch);
+      const cpuDifficulty = difficultyForLevel(tournamentLevel);
+      const operationId = launch.operationId(operation, [cpuDifficulty, color, null, null, null]);
+      const created = await api.createGame(cpuDifficulty, color, null, null, { signal: operation.controller.signal, operationId });
+      if (!launch.isCurrent(operation)) { void api.deleteGame(created.id).catch(() => {}); return; }
+      launch.confirmCreated(operation);
       recordGameActivity({ gameId: created.id, state: 'started', mode: 'tournament', difficulty: created.difficulty });
       setTournamentGame(created);
-      navigateTo('tournamentGame');
-    } catch (error) {
-      if (gameLaunch.isCurrent(launch) && !isAbortError(error)) setError(userFacingError(error, 'No se pudo iniciar la partida.'));
+      navigate('tournamentGame');
+    } catch (caught) {
+      if (launch.isCurrent(operation) && !isAbortError(caught)) error(userFacingError(caught, 'No se pudo iniciar la partida.'));
     } finally {
-      if (gameLaunch.owns(launch)) setLoading(false);
-      gameLaunch.end(launch);
+      if (launch.owns(operation)) loading(false);
+      launch.end(operation);
     }
   }
 
   function handleTournamentGameEnd(outcome, finishedGame, endMeta = {}) {
     if (!isCompletedGameOutcome(outcome)) return;
+    let opening = null;
     if (finishedGame) {
       const moveSans = (finishedGame.history || []).map((move) => move.san).filter(Boolean);
+      opening = identifyOpening(moveSans);
       recordRivalryResult(outcome, {
         difficulty: finishedGame.difficulty,
         humanColor: finishedGame.humanColor,
-        opening: identifyOpening(moveSans),
+        opening,
         moves: finishedGame.history?.length || 0,
         timeControlId: null,
       });
@@ -82,7 +84,7 @@ export function useTournamentFlow({
     if (!finishedGame) return;
 
     const score = ratingScoreForOutcome(outcome);
-    setRating((previous) => {
+    rating((previous) => {
       const details = ratingChangeDetails(previous, finishedGame.difficulty, score);
       saveRating(details.next);
       recordRatingHistory(details.next.rating);
@@ -107,12 +109,12 @@ export function useTournamentFlow({
       moves: finishedGame.history,
       finalFen: finishedGame.fen,
       mode: 'tournament',
-      opening: identifyOpening((finishedGame.history || []).map((move) => move.san).filter(Boolean)),
+      opening,
       timeControl: null,
       gameChat: Array.isArray(endMeta.gameChat) ? endMeta.gameChat : loadActiveGameChat(finishedGame.id),
       series: null,
     };
-    setHistoryList(saveGameRecord(record));
+    history(saveGameRecord(record));
     recordGameActivity({ gameId: finishedGame.id, state: 'finished', mode: 'tournament', outcome, difficulty: finishedGame.difficulty });
     recordCareerGame(record, {});
   }
@@ -140,9 +142,9 @@ export function useTournamentFlow({
       else recordGameActivity({ gameId: tournamentGame.id, state: 'cancelled', mode: 'tournament', difficulty: tournamentGame.difficulty });
     }
     clearActiveGameSession();
-    setHasSavedGame(!!getStorageItem(STORAGE_LOCAL, STORAGE_KEY));
+    saved(!!getStorageItem(STORAGE_LOCAL, STORAGE_KEY));
     setTournamentGame(null);
-    goBack();
+    back();
   }
 
   function handleResetTournament() {
@@ -151,16 +153,16 @@ export function useTournamentFlow({
   }
 
   return {
-    tournament,
-    tournamentGame,
-    setTournamentGame,
-    lastResult,
-    tournamentLevel: levelForPoints(tournament.progressPoints || 0),
-    handlePlayTournament,
-    handleTournamentGameEnd,
-    handleSpendPoints,
-    handleCapturePoints,
-    handleExitTournamentGame,
-    handleResetTournament,
+    state: tournament,
+    game: tournamentGame,
+    setGame: setTournamentGame,
+    result: lastResult,
+    level: tournamentLevel,
+    play: handlePlayTournament,
+    finish: handleTournamentGameEnd,
+    spend: handleSpendPoints,
+    capture: handleCapturePoints,
+    exit: handleExitTournamentGame,
+    reset: handleResetTournament,
   };
 }
