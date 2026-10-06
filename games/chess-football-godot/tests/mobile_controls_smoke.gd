@@ -29,7 +29,7 @@ func _initialize() -> void:
 	match_node.debug_force_kickoff_ready()
 	match_node.controlled._process(2.0)
 
-	var before := match_node.controlled.global_position
+	var before: Vector2 = match_node.controlled.global_position
 	var joystick_center: Vector2 = controls.debug_joystick_center()
 	controls.debug_touch_down(11, joystick_center + Vector2(72.0, 0.0))
 	assert(Input.get_action_strength("move_right") > 0.70)
