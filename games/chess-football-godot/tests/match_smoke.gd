@@ -501,11 +501,11 @@ func _initialize() -> void:
 	# aggressive contact clearly from behind => straight red. Dismissed players
 	# remain in the roster but disappear from runtime play and presentation.
 	var booked_player: Footballer = match_node.teams[1][3]
-	var first_card := match_node.debug_apply_foul_card(booked_player, true, 22.0)
+	var first_card: String = match_node.debug_apply_foul_card(booked_player, true, 22.0)
 	assert(first_card.begins_with("AMARILLA"))
 	assert(booked_player.debug_yellow_cards() == 1)
 	assert(not booked_player.debug_sent_off())
-	var second_card := match_node.debug_apply_foul_card(booked_player, true, 18.0)
+	var second_card: String = match_node.debug_apply_foul_card(booked_player, true, 18.0)
 	assert(second_card.begins_with("SEGUNDA AMARILLA"))
 	assert(booked_player.debug_yellow_cards() == 2)
 	assert(booked_player.debug_sent_off())
@@ -514,7 +514,7 @@ func _initialize() -> void:
 	assert(match_node.debug_3d_visible_players() == 9)
 
 	var red_player: Footballer = match_node.teams[1][2]
-	var straight_red := match_node.debug_apply_foul_card(red_player, true, -18.0)
+	var straight_red: String = match_node.debug_apply_foul_card(red_player, true, -18.0)
 	assert(straight_red.begins_with("ROJA"))
 	assert(red_player.debug_sent_off())
 	match_node.debug_sync_presentation()
