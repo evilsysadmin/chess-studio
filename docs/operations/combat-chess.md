@@ -89,6 +89,19 @@ Combat usa progressive disclosure:
 - dossier profundo detrás de acción explícita;
 - cualquier mecánica no estándar se explica de forma contextual, breve, skippable y reabrible.
 
+## Sala de operaciones 3D
+
+La preparación de campaña tiene una identidad espacial propia y separada de la War Room de batalla.
+
+- La **Combat Operations Room** es el hogar diegético de briefing, despliegue, veteranos, intel, Memorial e intendencia.
+- El tablero/mesa táctica sigue siendo el elemento dominante y nunca se sacrifica jugabilidad por decoración.
+- El arte 3D se genera de forma determinista con `scripts/blender/build_combat_operations_room.py`.
+- Anchors estables reservan zonas semánticas para mapa, barracón, Memorial e intendencia; el renderer no adquiere lógica de dominio.
+- La sala usa su propio namespace R2 `combat/operations-room/`; nunca sobrescribe assets de War Room.
+- La preparación puede caer de forma segura a la War Room genérica mientras el asset propio no esté disponible o no haya sido promovido.
+- La War Room de batalla permanece separada: usar la Operations Room como escenario de preparación no convierte esa sala en una variante de partida.
+- Toda iteración exige preview Blender revisado y, una vez integrada en runtime, captura real desktop/móvil del GLB exacto.
+
 ## Acceptance
 
 Una iteración Combat está lista cuando:
