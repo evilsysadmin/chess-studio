@@ -376,6 +376,7 @@ scopedTest('puzzles', 'Entrenar · Puzzles', async ({ page }) => {
     const geometry = await puzzles.evaluate((root) => {
       const room = root.getBoundingClientRect();
       const board = root.querySelector('.puzzle-board-column')?.getBoundingClientRect();
+      const board3d = root.querySelector('.puzzle-board-column > .board3d-main-shell')?.getBoundingClientRect();
       const coach = root.querySelector('.puzzle-coach-panel');
       const actions = root.querySelector('.puzzle-board-column > .game-controls');
       return {
@@ -383,6 +384,7 @@ scopedTest('puzzles', 'Entrenar · Puzzles', async ({ page }) => {
         viewportHeight: window.innerHeight,
         room: { left: room.left, top: room.top, right: room.right, bottom: room.bottom, width: room.width, height: room.height },
         board: board ? { left: board.left, top: board.top, right: board.right, bottom: board.bottom, width: board.width, height: board.height } : null,
+        board3d: board3d ? { left: board3d.left, top: board3d.top, right: board3d.right, bottom: board3d.bottom, width: board3d.width, height: board3d.height } : null,
         coachPosition: coach ? getComputedStyle(coach).position : '',
         actionsPosition: actions ? getComputedStyle(actions).position : '',
       };
@@ -393,6 +395,9 @@ scopedTest('puzzles', 'Entrenar · Puzzles', async ({ page }) => {
     expect(geometry.room.height, `${label}: room owns viewport height`).toBeGreaterThanOrEqual(geometry.viewportHeight * .98);
     expect(geometry.board?.width || 0, `${label}: board surface owns viewport width`).toBeGreaterThanOrEqual(geometry.viewportWidth * .98);
     expect(geometry.board?.height || 0, `${label}: board surface owns viewport height`).toBeGreaterThanOrEqual(geometry.viewportHeight * .98);
+    expect(geometry.board3d?.width || 0, `${label}: 3D room owns viewport width`).toBeGreaterThanOrEqual(geometry.viewportWidth * .98);
+    expect(geometry.board3d?.height || 0, `${label}: 3D room owns viewport height`).toBeGreaterThanOrEqual(geometry.viewportHeight * .98);
+    expect(geometry.board3d?.bottom || 0, `${label}: 3D room reaches viewport bottom`).toBeGreaterThanOrEqual(geometry.viewportHeight - 2);
     expect(geometry.coachPosition, `${label}: coach is overlay, not dashboard column`).toBe('absolute');
     expect(geometry.actionsPosition, `${label}: actions float over the room`).toBe('absolute');
   }
