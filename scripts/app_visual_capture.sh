@@ -136,7 +136,7 @@ case "$mode" in
       printf ' - %s\n' "${specs[@]}"
     fi
     if [[ "$warroom_core_selected" == "true" ]]; then
-      echo " - war-room-visual-artifact.spec.js (serial canary + 2-worker remainder; desktop profiles serialized)"
+      echo " - war-room-visual-artifact.spec.js (serial canary + shared desktop session + 2-worker mobile remainder)"
     fi
 
     playwright_args=(--workers=1 --retries=0)
@@ -172,8 +172,15 @@ case "$mode" in
     fi
 
     if [[ "$warroom_core_selected" == "true" ]]; then
-      echo "War Room core evidence: remaining profiles with two workers; desktop profiles stay serial while mobile evidence drains in parallel."
-      APP_VISUAL_WARROOM_PROFILE_SHARD=remainder \
+      echo "War Room core desktop evidence: reuse one authenticated 1440x900 game across active variants."
+      APP_VISUAL_WARROOM_PROFILE_SHARD=desktop-remainder \
+        ./node_modules/.bin/playwright test \
+        war-room-visual-artifact.spec.js \
+        --workers=1 \
+        "${warroom_core_args[@]}"
+
+      echo "War Room core mobile evidence: remaining touch profiles with two workers after desktop proof."
+      APP_VISUAL_WARROOM_PROFILE_SHARD=mobile-remainder \
         ./node_modules/.bin/playwright test \
         war-room-visual-artifact.spec.js \
         --workers=2 \
