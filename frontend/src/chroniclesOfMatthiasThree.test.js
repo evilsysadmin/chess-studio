@@ -3,6 +3,7 @@ import { CHRONICLES_MAP } from './chroniclesOfMatthias.js';
 import {
   CHRONICLES_TORCH_PLACEMENTS,
   chroniclesEnemyFacingYaw,
+  chroniclesExitGateTransform,
   chroniclesTorchTransform,
 } from './chroniclesOfMatthiasThree.js';
 
@@ -34,6 +35,30 @@ describe('Chronicles of Matthias dungeon photography', () => {
     expect(east.yaw).toBe(Math.PI);
     expect(north.position.z).toBeLessThan(-8);
     expect(north.yaw).toBe(-Math.PI / 2);
+  });
+
+  it('places an authored exit against the adjacent wall with its face toward the corridor', () => {
+    const north = chroniclesExitGateTransform(
+      CHRONICLES_MAP,
+      { position: { x: 3, y: 1 } },
+    );
+    expect(north.side).toBe('north');
+    expect(north.position.x).toBeCloseTo(0);
+    expect(north.position.z).toBeLessThan(-9);
+    expect(north.yaw).toBe(0);
+
+    const east = chroniclesExitGateTransform(
+      [
+        '#####',
+        '#..##',
+        '#...#',
+        '#####',
+      ],
+      { position: { x: 3, y: 1 } },
+      { x: 2, y: 1.5 },
+    );
+    expect(east.side).toBe('east');
+    expect(east.yaw).toBeCloseTo(-Math.PI / 2);
   });
 
   it('rejects unknown wall sides instead of silently placing a floating torch', () => {
