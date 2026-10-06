@@ -33,6 +33,9 @@ jobs:
     outputs:
       deploy_required: ${{ steps.scope.outputs.deploy_required }}
       deploy_reason: ${{ steps.scope.outputs.deploy_reason }}
+      parent_sha: ${{ steps.image_scope.outputs.parent_sha }}
+      backend_needs_build: ${{ steps.image_scope.outputs.backend_needs_build }}
+      pvp_needs_build: ${{ steps.image_scope.outputs.pvp_needs_build }}
     steps:
       - name: Validate admitted SHA
         shell: bash
@@ -55,33 +58,8 @@ jobs:
           set -euo pipefail
           python3 -S scripts/staging_deploy_scope.py --sha "$DEPLOY_SHA" --github-output "$GITHUB_OUTPUT"
 
-  publish:
-    name: Backend · publish approved linux/arm64
-    needs: classify
-    if: needs.classify.outputs.deploy_required == 'true'
-    permissions:
-      contents: read
-      packages: write
-    runs-on: ubuntu-24.04-arm
-    timeout-minutes: 20
-    env:
-      DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
-
-    steps:
-      - name: Validate admitted SHA
-        shell: bash
-        run: |
-          set -euo pipefail
-          [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::DEPLOY_SHA inválido: $DEPLOY_SHA"; exit 1; }
-
-      - name: Checkout admitted main commit
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ env.DEPLOY_SHA }}
-          fetch-depth: 2
-
       - name: Classify backend image inputs
-        id: scope
+        id: image_scope
         shell: bash
         run: |
           set -euo pipefail
@@ -89,12 +67,8 @@ jobs:
           backend_needs_build=true
           pvp_needs_build=true
           if [[ "$parent" =~ ^[0-9a-f]{40}$ ]]; then
-            if git diff --quiet "$parent" "$DEPLOY_SHA" -- backend-python; then
-              backend_needs_build=false
-            fi
-            if git diff --quiet "$parent" "$DEPLOY_SHA" -- backend-go; then
-              pvp_needs_build=false
-            fi
+            git diff --quiet "$parent" "$DEPLOY_SHA" -- backend-python && backend_needs_build=false || true
+            git diff --quiet "$parent" "$DEPLOY_SHA" -- backend-go && pvp_needs_build=false || true
           fi
           echo "parent_sha=$parent" >> "$GITHUB_OUTPUT"
           echo "backend_needs_build=$backend_needs_build" >> "$GITHUB_OUTPUT"
@@ -102,7 +76,28 @@ jobs:
           echo "Backend image source changed: $backend_needs_build"
           echo "PvP Go image source changed: $pvp_needs_build"
 
-      - uses: docker/setup-buildx-action@v4
+  publish:
+    name: Backend · publish exact-SHA images
+    needs: classify
+    if: needs.classify.outputs.deploy_required == 'true'
+    permissions:
+      contents: read
+      packages: write
+    runs-on: ${{ (needs.classify.outputs.backend_needs_build == 'true' || needs.classify.outputs.pvp_needs_build == 'true') && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
+    timeout-minutes: 20
+    env:
+      DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
+      PARENT_SHA: ${{ needs.classify.outputs.parent_sha }}
+      BACKEND_NEEDS_BUILD: ${{ needs.classify.outputs.backend_needs_build }}
+      PVP_NEEDS_BUILD: ${{ needs.classify.outputs.pvp_needs_build }}
+
+    steps:
+      - name: Validate admitted SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::DEPLOY_SHA inválido: $DEPLOY_SHA"; exit 1; }
+          [[ "$PARENT_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::Parent SHA inválido: $PARENT_SHA"; exit 1; }
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v4
@@ -113,10 +108,8 @@ jobs:
 
       - name: Reuse parent backend image when backend is unchanged
         id: reuse
-        if: steps.scope.outputs.backend_needs_build == 'false'
+        if: env.BACKEND_NEEDS_BUILD == 'false'
         shell: bash
-        env:
-          PARENT_SHA: ${{ steps.scope.outputs.parent_sha }}
         run: |
           set -euo pipefail
           owner="${GITHUB_REPOSITORY_OWNER,,}"
@@ -128,30 +121,13 @@ jobs:
             echo "::notice title=Backend image fast-path::Reused ${PARENT_SHA} for ${DEPLOY_SHA}; backend-python unchanged."
           else
             echo 'hit=false' >> "$GITHUB_OUTPUT"
-            echo "::warning title=Backend image fallback::Parent image missing; building ${DEPLOY_SHA}."
+            echo "::warning title=Backend image fallback::Parent image missing; falling back to arm64 build for ${DEPLOY_SHA}."
           fi
-
-      - name: Build and publish immutable backend image
-        if: steps.scope.outputs.backend_needs_build == 'true' || steps.reuse.outputs.hit != 'true'
-        uses: docker/build-push-action@v7
-        with:
-          context: ./backend-python
-          file: ./backend-python/Dockerfile
-          platforms: linux/arm64
-          push: true
-          tags: ghcr.io/${{ github.repository_owner }}/chess-studio-backend:oci-${{ env.DEPLOY_SHA }}
-          labels: |
-            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.revision=${{ env.DEPLOY_SHA }}
-          cache-from: type=gha,scope=oci-backend-arm64
-          cache-to: type=gha,mode=max,scope=oci-backend-arm64
 
       - name: Reuse parent Go API image when Go edge is unchanged
         id: reuse_pvp
-        if: steps.scope.outputs.pvp_needs_build == 'false'
+        if: env.PVP_NEEDS_BUILD == 'false'
         shell: bash
-        env:
-          PARENT_SHA: ${{ steps.scope.outputs.parent_sha }}
         run: |
           set -euo pipefail
           owner="${GITHUB_REPOSITORY_OWNER,,}"
@@ -165,11 +141,53 @@ jobs:
             echo "::notice title=Go API image fast-path::Reused ${PARENT_SHA} for ${DEPLOY_SHA}; backend-go unchanged."
           else
             echo 'hit=false' >> "$GITHUB_OUTPUT"
-            echo "::warning title=Go API image fallback::Parent image missing; building ${DEPLOY_SHA}."
+            echo "::warning title=Go API image fallback::Parent image missing; falling back to arm64 build for ${DEPLOY_SHA}."
           fi
 
+      - name: Checkout admitted main commit when a build is required
+        if: >-
+          env.BACKEND_NEEDS_BUILD == 'true' ||
+          env.PVP_NEEDS_BUILD == 'true' ||
+          steps.reuse.outputs.hit == 'false' ||
+          steps.reuse_pvp.outputs.hit == 'false'
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+          fetch-depth: 1
+
+      - name: Enable arm64 emulation for x86 fallback builds
+        if: >-
+          runner.arch == 'X64' &&
+          (steps.reuse.outputs.hit == 'false' || steps.reuse_pvp.outputs.hit == 'false')
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Set up Buildx only when a build is required
+        if: >-
+          env.BACKEND_NEEDS_BUILD == 'true' ||
+          env.PVP_NEEDS_BUILD == 'true' ||
+          steps.reuse.outputs.hit == 'false' ||
+          steps.reuse_pvp.outputs.hit == 'false'
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build and publish immutable backend image
+        if: env.BACKEND_NEEDS_BUILD == 'true' || steps.reuse.outputs.hit == 'false'
+        uses: docker/build-push-action@v7
+        with:
+          context: ./backend-python
+          file: ./backend-python/Dockerfile
+          platforms: linux/arm64
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/chess-studio-backend:oci-${{ env.DEPLOY_SHA }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ env.DEPLOY_SHA }}
+          cache-from: type=gha,scope=oci-backend-arm64
+          cache-to: type=gha,mode=max,scope=oci-backend-arm64
+
       - name: Build and publish immutable Go API image
-        if: steps.scope.outputs.pvp_needs_build == 'true' || steps.reuse_pvp.outputs.hit != 'true'
+        if: env.PVP_NEEDS_BUILD == 'true' || steps.reuse_pvp.outputs.hit == 'false'
         uses: docker/build-push-action@v7
         with:
           context: ./backend-go
@@ -185,7 +203,34 @@ jobs:
           cache-from: type=gha,scope=oci-pvp-go-arm64
           cache-to: type=gha,mode=max,scope=oci-pvp-go-arm64
 
-      - name: Verify immutable runtime images are publicly pullable
+      - name: Verify reused runtime manifests without pulling layers
+        if: >-
+          env.BACKEND_NEEDS_BUILD == 'false' &&
+          env.PVP_NEEDS_BUILD == 'false' &&
+          steps.reuse.outputs.hit == 'true' &&
+          steps.reuse_pvp.outputs.hit == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          backend="ghcr.io/${owner}/chess-studio-backend:oci-${DEPLOY_SHA}"
+          go_api="ghcr.io/${owner}/chess-studio-backend-go:oci-${DEPLOY_SHA}"
+          pvp="ghcr.io/${owner}/chess-studio-pvp:oci-${DEPLOY_SHA}"
+          docker logout ghcr.io >/dev/null 2>&1 || true
+          backend_digest="$(docker buildx imagetools inspect "$backend" | awk '$1 == "Digest:" && digest == "" {digest=$2} END {print digest}')"
+          go_digest="$(docker buildx imagetools inspect "$go_api" | awk '$1 == "Digest:" && digest == "" {digest=$2} END {print digest}')"
+          pvp_digest="$(docker buildx imagetools inspect "$pvp" | awk '$1 == "Digest:" && digest == "" {digest=$2} END {print digest}')"
+          [[ "$backend_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "::error::Backend manifest público inválido"; exit 1; }
+          [[ "$go_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "::error::Go manifest público inválido"; exit 1; }
+          [[ "$go_digest" == "$pvp_digest" ]] || { echo "::error::Canonical and legacy Go image aliases diverged"; exit 1; }
+          echo "::notice title=Backend image x86 fast-path::Exact-SHA manifests verified without ARM runner or layer pulls."
+
+      - name: Verify newly built runtime images are publicly pullable
+        if: >-
+          env.BACKEND_NEEDS_BUILD == 'true' ||
+          env.PVP_NEEDS_BUILD == 'true' ||
+          steps.reuse.outputs.hit == 'false' ||
+          steps.reuse_pvp.outputs.hit == 'false'
         shell: bash
         run: |
           set -euo pipefail
@@ -195,9 +240,9 @@ jobs:
           pvp="ghcr.io/${owner}/chess-studio-pvp:oci-${DEPLOY_SHA}"
           docker logout ghcr.io >/dev/null 2>&1 || true
           docker image rm "$backend" "$go_api" "$pvp" >/dev/null 2>&1 || true
-          docker pull "$backend"
-          docker pull "$go_api"
-          docker pull "$pvp"
+          docker pull --platform linux/arm64 "$backend"
+          docker pull --platform linux/arm64 "$go_api"
+          docker pull --platform linux/arm64 "$pvp"
           go_api_id="$(docker image inspect --format='{{.Id}}' "$go_api")"
           pvp_id="$(docker image inspect --format='{{.Id}}' "$pvp")"
           [[ "$go_api_id" == "$pvp_id" ]] || { echo "::error::Canonical and legacy Go image aliases diverged"; exit 1; }
@@ -214,7 +259,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          current_main="$(git ls-remote origin refs/heads/main | awk 'NR == 1 {print $1}')"
+          current_main="$(git ls-remote "https://github.com/${GITHUB_REPOSITORY}.git" refs/heads/main | awk 'NR == 1 {print $1}')"
           [[ "$current_main" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::No pude resolver main HEAD"; exit 1; }
           if [[ "$DEPLOY_SHA" != "$current_main" ]]; then
             echo 'publish=false' >> "$GITHUB_OUTPUT"
