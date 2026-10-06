@@ -312,6 +312,7 @@ scopedTest('school', 'Entrenar · Escuela, Glosario y Modos especiales', async (
   await expect(shell.locator('.chess-glossary')).toBeVisible();
   await capture(page, 'glossary');
 
+  await shell.getByRole('button', { name: 'Volver a la Escuela', exact: true }).click();
   await shell.getByText('Recursos', { exact: true }).click();
   await shell.getByRole('button', { name: 'Modos especiales', exact: true }).click();
   await expect(shell.locator('.mechanic-library')).toBeVisible();
