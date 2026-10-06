@@ -51,4 +51,16 @@ describe('Chronicles first-person authored content', () => {
     expect(chroniclesContextualContentAction(collected)).toBeNull();
     expect(chroniclesObjective(collected)).toBe('Abrir salida de la galería');
   });
+  it('does not promote optional Menagerie lore over an already-open exit', () => {
+    const state = {
+      ...createChroniclesState('menagerie-of-ash'),
+      ashGoblinHp: 0,
+      cryptSpiderHp: 0,
+      boneHoundHp: 0,
+    };
+
+    expect(chroniclesObjective(state)).toBe('Cruzar hacia el Archivo del Rey Ciego');
+  });
+
+
 });
