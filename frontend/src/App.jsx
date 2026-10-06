@@ -948,7 +948,7 @@ function AppInner({ isAdminUser }) {
         )}
 
         {view === 'puzzle' && (
-          <PuzzleScreen key={`${puzzleLaunch.source}-${puzzleLaunch.rush}-${puzzleLaunch.filter?.opening || 'all'}-${puzzleLaunch.dailySlot || 'tactic'}`} initialSource={puzzleLaunch.source} rushMode={puzzleLaunch.rush} initialFilter={puzzleLaunch.filter} dailySlot={puzzleLaunch.dailySlot} onExit={goBack} onPlayAgain={puzzleLaunch.source === 'personal' ? returnToQuickMatchFromPersonalTraining : null} points={tournament.points} onSpendPoints={handleSpendPoints} />
+          <PuzzleScreen key={`${puzzleLaunch.source}-${puzzleLaunch.rush}-${puzzleLaunch.filter?.opening || 'all'}-${puzzleLaunch.dailySlot || 'tactic'}-${puzzleLaunch.origin || 'direct'}`} initialSource={puzzleLaunch.source} rushMode={puzzleLaunch.rush} initialFilter={puzzleLaunch.filter} dailySlot={puzzleLaunch.dailySlot} trainingOrigin={puzzleLaunch.origin} onExit={goBack} onPlayAgain={puzzleLaunch.source === 'personal' ? returnToQuickMatchFromPersonalTraining : null} points={tournament.points} onSpendPoints={handleSpendPoints} />
         )}
 
         {view === 'spectator' && <SpectatorScreen onExit={goBack} />}
