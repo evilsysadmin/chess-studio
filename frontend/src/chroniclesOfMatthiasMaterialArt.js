@@ -410,10 +410,11 @@ function installChroniclesPremiumMaterials(scene, {
       if (visited.has(key)) return;
       visited.add(key);
       const candidates = profileIdsByRole[role];
-      const profileIndex = roleCounters[role] % candidates.length;
+      const materialIndex = roleCounters[role];
+      const profileIndex = materialIndex % candidates.length;
       const profileId = candidates[profileIndex];
       roleCounters[role] += 1;
-      const set = textureSetFor(role, profileId, profileIndex);
+      const set = textureSetFor(role, profileId, materialIndex);
       const profile = chroniclesMaterialProfile(profileId);
       const restore = applyTextureSet(material, set, roleStrength[role] * profile.normalScale, profile, role);
       if (restore) restores.push(restore);
