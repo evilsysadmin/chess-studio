@@ -34,6 +34,7 @@ GLOBAL_SHELL_OWNER = "frontend/src/useGlobalShellUi.js"
 TOURNAMENT_FLOW_OWNER = "frontend/src/useTournamentFlow.js"
 GLOBAL_OVERLAY_OWNER = "frontend/src/components/GlobalOverlayLayer.jsx"
 GAME_START_FLOW_OWNER = "frontend/src/useGameStartFlow.js"
+CASUAL_RESULT_FLOW_OWNER = "frontend/src/useCasualResultFlow.js"
 LOGOUT_FLOW_OWNER = "frontend/src/useLogoutFlow.js"
 FEATURE_FLAGS_OWNER = "frontend/src/usePublicFeatureFlags.js"
 
@@ -282,6 +283,129 @@ NONVISUAL_GAME_START_APP_LINES = {
     "if (run?.active && !gameLaunch.busy()) void launchRun(run);",
 }
 
+NONVISUAL_CASUAL_RESULT_APP_LINES = {
+    "import { updateGameRecordChat, statisticalHistoryRecords } from './gameHistory.js';",
+    "import { recordGameActivity } from './gameActivity.js';",
+    "import { chessGameExitDisposition } from './gameOutcome.js';",
+    "import { saveGameRecord, updateGameRecordChat, statisticalHistoryRecords } from './gameHistory.js';",
+    "import { recordGameActivity, recordCompletedAdaptiveMatchmakingTelemetry } from './gameActivity.js';",
+    "import { chessGameExitDisposition, isCompletedGameOutcome, shouldApplyCompetitiveProgress } from './gameOutcome.js';",
+    "import { loadRating, ratingChangeDetails, loadRatingHistory } from './playerRating.js';",
+    "import { loadRating, saveRating, ratingChangeDetails, ratingScoreForOutcome, recordRatingHistory, loadRatingHistory } from './playerRating.js';",
+    "import { reconcileRivalryHistory } from './rivalry.js';",
+    "import { recordRivalryResult, reconcileRivalryHistory } from './rivalry.js';",
+    "import { loadActiveSeries, clearActiveSeries } from './series.js';",
+    "import { loadActiveSeries, clearActiveSeries, recordSeriesGame } from './series.js';",
+    "import { clearActiveContract, loadActiveContract, loadSpecialRun, reconcileCareerHistory } from './career.js';",
+    "import { clearActiveContract, loadActiveContract, loadSpecialRun, recordCareerGame, recordSpecialRunResult, reconcileCareerHistory } from './career.js';",
+    "import { useCasualResultFlow } from './useCasualResultFlow.js';",
+    "const [casualResult, setCasualResult] = useState(null);",
+    "result: casualResult,",
+    "clearResult: clearCasualResult,",
+    "finish: handleCasualGameEnd,",
+    "} = useCasualResultFlow({",
+    "activeSeries,",
+    "setActiveSeries,",
+    "gameContext,",
+    "learningMode,",
+    "activeTimeControl,",
+    "rating,",
+    "setRating,",
+    "setHistoryList,",
+    "activeContract,",
+    "setActiveContract,",
+    "specialRun,",
+    "setSpecialRun,",
+    "});",
+    "const {",
+    "resetResult: () => { setExitNotice(null); clearCasualResult(); },",
+    "resetResult: () => { setExitNotice(null); setCasualResult(null); },",
+    "// Las partidas normales (menú \"Nueva partida\") también cuentan para el",
+    "// rating tipo ELO — cualquier partida contra una CPU de dificultad",
+    "// conocida, no hace falta que sea de torneo. \"Partida de práctica\" queda",
+    "// afuera a propósito: ahí las pistas son gratis e ilimitadas, así que",
+    "// ganar no dice mucho de tu nivel jugando sin ayuda.",
+    "//",
+    "// También se guardan en el historial (igual que las de torneo), para que",
+    "// la \"pista inversa\" del Historial funcione acá también, no solo en",
+    "// Torneo — con una etiqueta de modo para distinguirlas al navegar la lista.",
+    "function handleCasualGameEnd(outcome, finishedGame, endMeta = {}) {",
+    "if (!finishedGame || !isCompletedGameOutcome(outcome)) return null;",
+    "clearClockSnapshot(finishedGame.id);",
+    "const moveSans = (finishedGame.history || []).map((m) => m.san).filter(Boolean);",
+    "const opening = identifyOpening(moveSans);",
+    "let seriesSnapshot = activeSeries;",
+    "const trainingPosition = !!(gameContext.lab || gameContext.rescue || gameContext.suddenDeath);",
+    "",
+    "let ratingSummary = { ratingApplied: false };",
+    "if (shouldApplyCompetitiveProgress(outcome, { learningMode, trainingPosition })) {",
+    "if (activeSeries && !activeSeries.winner) {",
+    "seriesSnapshot = recordSeriesGame(activeSeries, outcome, {",
+    "gameId: finishedGame.id,",
+    "humanColor: finishedGame.humanColor,",
+    "moves: finishedGame.history?.length || 0,",
+    "opening,",
+    "setActiveSeries(seriesSnapshot);",
+    "}",
+    "recordRivalryResult(outcome, {",
+    "difficulty: finishedGame.difficulty,",
+    "timeControlId: activeTimeControl?.id || 'none',",
+    "seriesId: seriesSnapshot?.id || null,",
+    "rematch: !!gameContext.rematch,",
+    "runMode: gameContext.runMode || null,",
+    "suddenDeath: !!gameContext.suddenDeath,",
+    "pressureMoves: Number(endMeta.pressureMoves || 0),",
+    "pressureIncidents: Number(endMeta.pressureIncidents || 0),",
+    "const score = ratingScoreForOutcome(outcome);",
+    "const details = ratingChangeDetails(rating, finishedGame.difficulty, score);",
+    "saveRating(details.next);",
+    "recordRatingHistory(details.next.rating);",
+    "setRating(details.next);",
+    "ratingSummary = {",
+    "ratingApplied: true,",
+    "eloDelta: details.delta,",
+    "eloBefore: rating.rating,",
+    "eloAfter: details.next.rating, ratingGames: details.next.games,",
+    "};",
+    "const record = {",
+    "id: `${finishedGame.id}-${Date.now()}`,",
+    "sourceGameId: finishedGame.id,",
+    "date: new Date().toISOString(),",
+    "outcome,",
+    "moves: finishedGame.history,",
+    "finalFen: finishedGame.fen,",
+    "initialFen: finishedGame.initialFen || null,",
+    "mode: gameContext.suddenDeath ? 'sudden' : gameContext.rescue ? 'rescue' : gameContext.nemesis ? 'nemesis-training' : gameContext.lab ? 'lab' : gameContext.runMode === 'cup' ? 'cup' : gameContext.runMode === 'boss' ? 'boss' : gameContext.runMode === 'streak' ? 'streak' : learningMode ? 'practice' : 'casual',",
+    "timeControl: activeTimeControl ? { id: activeTimeControl.id, label: activeTimeControl.label } : null,",
+    "gameChat: Array.isArray(endMeta.gameChat) ? endMeta.gameChat : loadActiveGameChat(finishedGame.id),",
+    "series: seriesSnapshot ? {",
+    "id: seriesSnapshot.id,",
+    "bestOf: seriesSnapshot.bestOf,",
+    "humanWins: seriesSnapshot.humanWins,",
+    "cpuWins: seriesSnapshot.cpuWins,",
+    "draws: seriesSnapshot.draws,",
+    "winner: seriesSnapshot.winner,",
+    "} : null,",
+    "setHistoryList(saveGameRecord(record));",
+    "recordGameActivity({ gameId: finishedGame.id, state: 'finished', mode: record.mode, outcome, difficulty: finishedGame.difficulty });",
+    "recordCompletedAdaptiveMatchmakingTelemetry({ gameContext, finishedGame, outcome, endMeta });",
+    "recordCareerGame(record, { ...endMeta, contract: activeContract });",
+    "clearActiveContract();",
+    "setActiveContract(null);",
+    "const title = endMeta.endReason === 'resignation'",
+    "? 'Abandono registrado como derrota'",
+    ": outcome === 'win' ? 'Victoria' : outcome === 'draw' ? 'Tablas' : 'Derrota';",
+    "const detail = ratingSummary.ratingApplied",
+    "? `Rating ${ratingSummary.eloDelta >= 0 ? '+' : ''}${ratingSummary.eloDelta} · ${ratingSummary.eloBefore} → ${ratingSummary.eloAfter}`",
+    ": 'Esta modalidad no afecta a tu rating.';",
+    "const summary = { gameId: finishedGame.id, outcome, title, detail, endReason: endMeta.endReason || null, adaptiveDifficulty: !!gameContext.adaptiveDifficulty, ...ratingSummary };",
+    "setCasualResult(summary);",
+    "if (specialRun?.active && gameContext.runMode) {",
+    "const nextRun = recordSpecialRunResult(specialRun, outcome);",
+    "setSpecialRun(nextRun);",
+    "return summary;",
+}
+
 NONVISUAL_SESSION_SHELL_APP_LINES = {
     "import { activityForView, usePresenceHeartbeat } from './usePresenceHeartbeat.js';",
     "import { usePresenceHeartbeat } from './usePresenceHeartbeat.js';",
@@ -514,6 +638,13 @@ def _is_nonvisual_game_start_app_diff(diff_text: str | None) -> bool:
     return bool(changed_lines) and all(line in NONVISUAL_GAME_START_APP_LINES for line in changed_lines)
 
 
+def _is_nonvisual_casual_result_app_diff(diff_text: str | None) -> bool:
+    if not diff_text:
+        return False
+    changed_lines = _changed_source_lines(diff_text)
+    return bool(changed_lines) and all(line in NONVISUAL_CASUAL_RESULT_APP_LINES for line in changed_lines)
+
+
 def _is_nonvisual_session_shell_app_diff(diff_text: str | None) -> bool:
     if not diff_text:
         return False
@@ -567,6 +698,10 @@ def normalize(
         GAME_START_FLOW_OWNER.lower() in lower_paths
         and _is_nonvisual_game_start_app_diff(_git_diff_text(base_sha, head_sha, APP_SHELL))
     )
+    safe_casual_result_app = (
+        CASUAL_RESULT_FLOW_OWNER.lower() in lower_paths
+        and _is_nonvisual_casual_result_app_diff(_git_diff_text(base_sha, head_sha, APP_SHELL))
+    )
     safe_session_shell_app = (
         LOGOUT_FLOW_OWNER.lower() in lower_paths
         and FEATURE_FLAGS_OWNER.lower() in lower_paths
@@ -589,7 +724,7 @@ def normalize(
         if lower == GAME_SCREEN.lower() and safe_postgame_training_game:
             add(PUZZLE_SCREEN_OWNER)
             continue
-        if lower == APP_SHELL.lower() and (safe_learning_app or safe_global_shell_app or safe_app_decomposition or safe_game_start_app or safe_session_shell_app):
+        if lower == APP_SHELL.lower() and (safe_learning_app or safe_global_shell_app or safe_app_decomposition or safe_game_start_app or safe_casual_result_app or safe_session_shell_app):
             # App.jsx is normally a global visual owner. Suppress it only for
             # the exact, audited navigation extraction above; any extra changed
             # App line fails closed and restores the canonical visual sweep.
@@ -691,6 +826,12 @@ def self_test() -> None:
     assert _is_nonvisual_game_start_app_diff(safe_game_start_diff)
     assert not _is_nonvisual_game_start_app_diff(unsafe_game_start_diff)
     assert not _is_nonvisual_game_start_app_diff(None)
+
+    safe_casual_result_diff = "--- a/frontend/src/App.jsx\n+++ b/frontend/src/App.jsx\n@@ -1 +1 @@\n-import { recordRivalryResult, reconcileRivalryHistory } from './rivalry.js';\n+import { reconcileRivalryHistory } from './rivalry.js';\n"
+    unsafe_casual_result_diff = safe_casual_result_diff + "@@ -20 +20 @@\n-<main className=\"old\">\n+<main className=\"new\">\n"
+    assert _is_nonvisual_casual_result_app_diff(safe_casual_result_diff)
+    assert not _is_nonvisual_casual_result_app_diff(unsafe_casual_result_diff)
+    assert not _is_nonvisual_casual_result_app_diff(None)
 
     safe_session_shell_diff = "--- a/frontend/src/App.jsx\n+++ b/frontend/src/App.jsx\n@@ -1 +1 @@\n-import { activityForView, usePresenceHeartbeat } from './usePresenceHeartbeat.js';\n+import { usePresenceHeartbeat } from './usePresenceHeartbeat.js';\n"
     unsafe_session_shell_diff = safe_session_shell_diff + "@@ -20 +20 @@\n-<main className=\"old\">\n+<main className=\"new\">\n"
