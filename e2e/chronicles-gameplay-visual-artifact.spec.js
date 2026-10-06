@@ -233,7 +233,14 @@ for (const capture of CAPTURES) {
       await page.keyboard.press('m');
       const automap = page.getByRole('dialog', { name: 'Automapa de Chronicles', exact: true });
       await expect(automap).toBeVisible();
-      await expect(automap.locator('[data-chronicles-map-facing]')).toHaveCount(1);
+      const automapCells = automap.locator('.chronicles-automap__cell');
+      const automapMarker = automap.locator('[data-chronicles-map-facing]');
+      await expect(automapCells.first()).toBeVisible();
+      await expect(automapMarker).toBeVisible();
+      expect(await automapCells.count(), `${capture.label}: automap reveals geometry`).toBeGreaterThanOrEqual(3);
+      const markerBox = await automapMarker.boundingBox();
+      expect(markerBox?.width || 0, `${capture.label}: automap marker width`).toBeGreaterThan(0);
+      expect(markerBox?.height || 0, `${capture.label}: automap marker height`).toBeGreaterThan(0);
       await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-automap-${capture.label}.png`);
       await page.keyboard.press('m');
       await expect(automap).toHaveCount(0);
