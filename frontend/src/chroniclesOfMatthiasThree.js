@@ -324,21 +324,31 @@ function createDungeonScene(scene, { coarsePointer = false, scenePlan = null } =
     root.rotation.y = transform.yaw;
 
     if (entry.kind === 'lever') {
-      const plate = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.92, 0.12), contentMaterial);
-      plate.position.set(0, 0.72, -0.02);
+      const plate = new THREE.Mesh(
+        new THREE.BoxGeometry(0.46, 0.62, 0.08),
+        new THREE.MeshStandardMaterial({ color: 0x4c3a24, roughness: 0.72, metalness: 0.42 }),
+      );
+      plate.position.set(0, 0.78, -0.025);
       plate.castShadow = !coarsePointer;
       plate.receiveShadow = true;
+
+      const inset = new THREE.Mesh(
+        new THREE.BoxGeometry(0.31, 0.45, 0.035),
+        new THREE.MeshStandardMaterial({ color: 0x17130f, roughness: 0.9, metalness: 0.08 }),
+      );
+      inset.position.set(0, 0.78, 0.03);
+
       const pivot = new THREE.Group();
-      pivot.position.set(0, 0.68, 0.12);
-      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.07, 0.72, 10), contentMaterial);
-      stem.position.y = 0.28;
+      pivot.position.set(0, 0.72, 0.08);
+      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.042, 0.42, 10), contentMaterial);
+      stem.position.y = 0.15;
       stem.rotation.x = -0.18;
       stem.castShadow = !coarsePointer;
-      const knob = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 10), pickupMaterial);
-      knob.position.y = 0.66;
+      const knob = new THREE.Mesh(new THREE.SphereGeometry(0.085, 12, 10), pickupMaterial);
+      knob.position.y = 0.38;
       knob.castShadow = !coarsePointer;
       pivot.add(stem, knob);
-      root.add(plate, pivot);
+      root.add(plate, inset, pivot);
       contentProps.push({ id: entry.id, kind: entry.kind, root, pivot, phase: index * 1.17 });
     } else if (entry.kind === 'pickup' && transform.wallMounted) {
       const recess = new THREE.Mesh(
