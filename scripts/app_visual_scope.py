@@ -448,6 +448,11 @@ HANS_ROUTINE_SHARED_OWNERS = {
 def _needs_hans_routines(path: str) -> bool:
     """Deep Hans videos are reserved for Hans choreography/event ownership."""
     lower = path.lower().replace("\\", "/")
+    if lower.startswith("scripts/app_visual_") or lower in {
+        "scripts/hans_visual_artifact_summary.mjs",
+        "scripts/war_room_visual_freeze_check.mjs",
+    }:
+        return False
     if "hans" in lower:
         return True
     return lower in HANS_ROUTINE_SHARED_OWNERS
