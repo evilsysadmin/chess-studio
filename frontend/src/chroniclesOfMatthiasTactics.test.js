@@ -278,10 +278,16 @@ describe('Chronicles of Matthias Tactics · player turns', () => {
     const afterEnemy = chroniclesTacticsFinishTurn(afterAttack);
     expect(afterEnemy.round).toBe(2);
     expect(afterEnemy.turnPhase).toBe('party');
-    expect(afterEnemy.party.map((member) => member.hp)).toEqual(state.party.map((member) => member.hp));
+    expect(afterEnemy.party.reduce((total, member) => total + member.hp, 0))
+      .toBeLessThan(state.party.reduce((total, member) => total + member.hp, 0));
     expect(afterEnemy.enemyTurnEvents).toContainEqual(expect.objectContaining({
       type: 'move',
       enemyId: 'corrupted-pawn',
+    }));
+    expect(afterEnemy.enemyTurnEvents).toContainEqual(expect.objectContaining({
+      type: 'attack',
+      enemyId: 'corrupted-pawn',
+      damage: 1,
     }));
     expect(afterEnemy.message).toMatch(/Hildegard usa embestida de torre/i);
   });
