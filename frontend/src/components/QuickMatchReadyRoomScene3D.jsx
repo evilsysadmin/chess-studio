@@ -246,25 +246,33 @@ function addChair(root, wood, leather, brass) {
   const chair = new THREE.Group();
   chair.name = 'quick-match-ready-opponent-chair';
 
-  box(chair, [2.30, .28, 1.36], leather, [0, .68, 0], 'chair-seat');
-  box(chair, [2.16, .12, 1.22], wood, [0, .50, 0], 'chair-seat-frame');
+  box(chair, [2.12, .26, 1.28], leather, [0, .64, 0], 'chair-seat');
+  box(chair, [2.02, .12, 1.16], wood, [0, .48, 0], 'chair-seat-frame');
 
-  const back = box(chair, [1.96, 2.06, .24], leather, [0, 1.80, -.64], 'chair-back');
-  back.rotation.x = -.04;
-  box(chair, [2.18, .15, .18], wood, [0, 2.86, -.67], 'chair-top-rail');
-  box(chair, [1.76, .055, .06], brass, [0, 2.38, -.50], 'chair-brass-inlay');
+  const back = box(chair, [1.58, 1.56, .20], leather, [0, 1.68, -.61], 'chair-back');
+  back.rotation.x = -.035;
+  box(chair, [1.90, .12, .18], wood, [0, 2.51, -.65], 'chair-top-rail');
+  box(chair, [1.42, .045, .055], brass, [0, 2.16, -.48], 'chair-brass-inlay');
 
-  for (const x of [-1.05, 1.05]) {
-    cylinder(chair, [.095, .12], 2.76, wood, [x, 1.43, -.68], 'chair-post', 18);
-    cylinder(chair, [.10, .13], .98, wood, [x, .05, .46], 'chair-leg', 18);
+  for (const x of [-.92, .92]) {
+    cylinder(chair, [.085, .11], 2.36, wood, [x, 1.32, -.66], 'chair-post', 18);
+    sphere(chair, .12, brass, [x, 2.58, -.66], 'chair-post-finial', 18, 12);
+    cylinder(chair, [.09, .12], .92, wood, [x, .04, .43], 'chair-leg', 18);
   }
 
-  for (const x of [-.91, .91]) {
-    box(chair, [.13, .13, 1.22], wood, [x, .96, .12], 'chair-arm');
-    sphere(chair, .12, brass, [x, 1.02, .67], 'chair-brass-cap', 18, 12);
+  const crest = new THREE.Mesh(new THREE.ConeGeometry(.17, .30, 3), brass);
+  crest.rotation.z = Math.PI;
+  crest.position.set(0, 2.69, -.64);
+  crest.castShadow = true;
+  crest.name = 'chair-crest';
+  chair.add(crest);
+
+  for (const x of [-.82, .82]) {
+    box(chair, [.12, .12, 1.12], wood, [x, .92, .10], 'chair-arm');
+    sphere(chair, .105, brass, [x, .98, .62], 'chair-brass-cap', 18, 12);
   }
 
-  chair.position.set(0, .00, -5.02);
+  chair.position.set(0, .00, -5.04);
   root.add(chair);
 }
 
@@ -320,16 +328,16 @@ function addWindow(root, stone, brass, night, moon, glow) {
     cylinder(windowGroup, [.20, .25], .28, brass, [x, 5.55, .18], 'window-brass-cap', 22);
   }
 
-  const moonMesh = new THREE.Mesh(new THREE.SphereGeometry(.42, 28, 18), moon);
-  moonMesh.position.set(1.62, 4.70, .18);
+  const moonMesh = new THREE.Mesh(new THREE.SphereGeometry(.35, 28, 18), moon);
+  moonMesh.position.set(1.52, 4.76, .18);
   moonMesh.name = 'window-moon';
   windowGroup.add(moonMesh);
 
   const halo = new THREE.Mesh(
-    new THREE.RingGeometry(.48, .72, 36),
+    new THREE.CircleGeometry(.66, 36),
     glow,
   );
-  halo.position.set(1.62, 4.70, .16);
+  halo.position.set(1.52, 4.76, .16);
   halo.name = 'window-moon-halo';
   windowGroup.add(halo);
 
@@ -344,7 +352,7 @@ function addWindow(root, stone, brass, night, moon, glow) {
   for (let i = 0; i < 54; i += 1) {
     const px = -2.45 + ((i * 37) % 97) / 96 * 4.9;
     const py = 1.55 + ((i * 61) % 101) / 100 * 3.55;
-    if (Math.hypot(px - 1.62, py - 4.70) > .68) {
+    if (Math.hypot(px - 1.52, py - 4.76) > .68) {
       starPositions.push(px, py, .20);
     }
   }
@@ -383,7 +391,7 @@ function buildRoom({ lite = false } = {}) {
   const brass = mat(0xb68b43, .82, .24);
   const leather = mat(0x4a201d, .05, .70);
   const ivory = mat(0xd8cfba, .06, .42);
-  const ebony = mat(0x171616, .26, .36);
+  const ebony = mat(0x252526, .30, .31);
   const lightSquare = mat(0xcfc7b3, .04, .66);
   const darkSquare = mat(0x4a4843, .05, .58);
   const night = new THREE.MeshBasicMaterial({ color: 0x0b3156 });
@@ -526,7 +534,7 @@ export default function QuickMatchReadyRoomScene3D() {
       });
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 2.12;
+      renderer.toneMappingExposure = 2.20;
       renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio || 1, coarsePointer ? 1 : 1.35));
       renderer.shadowMap.enabled = !coarsePointer;
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -556,10 +564,15 @@ export default function QuickMatchReadyRoomScene3D() {
       moonFill.target.position.set(0, 1.1, -1.4);
       scene.add(moonFill, moonFill.target);
 
-      const cameraFill = new THREE.PointLight(0xffd7aa, coarsePointer ? .68 : 1.20, 25, 2);
-      cameraFill.position.set(-.35, 4.95, 7.8);
+      const cameraFill = new THREE.PointLight(0xffd7aa, coarsePointer ? .74 : 1.36, 25, 2);
+      cameraFill.position.set(-.35, 5.15, 7.8);
       cameraFill.castShadow = false;
       scene.add(cameraFill);
+
+      const boardFill = new THREE.PointLight(0xffe2bd, coarsePointer ? .44 : .88, 17, 2);
+      boardFill.position.set(0, 6.2, -1.1);
+      boardFill.castShadow = false;
+      scene.add(boardFill);
 
       room = buildRoom({ lite: coarsePointer });
       scene.add(room);
