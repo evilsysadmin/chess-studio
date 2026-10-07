@@ -1,0 +1,36 @@
+name: tmp · chronicles contracts 5091
+on:
+  push:
+    branches:
+      - track-rescue/chronicles-authored-hazards-v3
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  regenerate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Regenerate canonical Chronicles corpora
+        run: make chronicles-contracts
+      - name: Commit generated corpora and remove temporary workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend-go/internal/chronicles/testdata/python_chronicles_area_corpus.json
+          git add backend-go/internal/gamesapi/testdata/python_chronicles_runs_corpus.json
+          git rm ".github/workflows/tmp-chronicles-contracts-5091.yml"
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "test(chronicles): regenerate hazard parity corpora"
+          git push
