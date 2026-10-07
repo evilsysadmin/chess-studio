@@ -253,7 +253,7 @@
 
 @media (max-width: 430px) {
   .campaign-mission-room-map {
-    inset-top: 10.2rem;
+    top: 10.2rem;
   }
 
   .campaign-mission-room-map .campaign-map-toolbar strong {
