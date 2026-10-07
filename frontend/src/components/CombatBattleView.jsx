@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import CombatWarRoomBoard from './CombatWarRoomBoard.jsx';
 import './WarRoomImmersive.css';
 import './CombatWarRoomBattle.css';
@@ -29,6 +30,7 @@ export default function CombatBattleView({
     activateLandscape,
   } = useWarRoomLandscape(true);
   const { immersive: warRoomImmersive } = useWarRoomImmersive({ enabled: true, focusActive: false });
+  const [exitChoiceOpen, setExitChoiceOpen] = useState(false);
 
   return (
     <div
@@ -155,46 +157,18 @@ export default function CombatBattleView({
 
           {phase === 'battle' && (
             <div className="game-controls combat-game-controls combat-warroom-controls">
-              {combatVariant === 'roguelike' ? (
-                <details className="combat-warroom-action-menu combat-warroom-exit-menu">
-                  <summary aria-label="Salir" title="Salir de Combat Chess">
-                    <span aria-hidden="true">←</span> Salir
-                  </summary>
-                  <div className="combat-warroom-action-popover">
-                    <button
-                      type="button"
-                      className="secondary-btn"
-                      onClick={suspendBattleToMenu}
-                      title="Guarda la batalla actual y vuelve al castillo. La campaña sigue activa."
-                    >
-                      Salir al castillo
-                    </button>
-                    <button
-                      type="button"
-                      className="secondary-btn combat-retreat-btn"
-                      title="Termina esta batalla como retirada y conserva las bajas que ya se hayan producido."
-                      onClick={() => {
-                        const confirmed = window.confirm(
-                          '¿Abandonar partida y asumir bajas?\n\nLa batalla terminará como retirada. Las piezas ya caídas quedarán registradas como bajas y la campaña continuará con esas consecuencias.',
-                        );
-                        if (confirmed) retireBattle();
-                      }}
-                    >
-                      Abandonar partida y asumir bajas
-                    </button>
-                  </div>
-                </details>
-              ) : (
-                <button
-                  type="button"
-                  className="secondary-btn combat-warroom-exit"
-                  aria-label="Salir"
-                  onClick={backToSetup}
-                  title="Salir del combate."
-                >
-                  <span aria-hidden="true">←</span> Salir
-                </button>
-              )}
+              <button
+                type="button"
+                className="secondary-btn combat-warroom-exit"
+                aria-label="Salir"
+                onClick={() => {
+                  if (combatVariant === 'roguelike') setExitChoiceOpen(true);
+                  else backToSetup();
+                }}
+                title={combatVariant === 'roguelike' ? 'Elegir cómo salir de Combat Chess.' : 'Salir del combate.'}
+              >
+                <span aria-hidden="true">←</span> Salir
+              </button>
               {cpuRetryNeeded && (
                 <button type="button" className="primary-btn combat-warroom-retry" onClick={retryCpuTurn}>
                   Reintentar CPU
@@ -232,6 +206,53 @@ export default function CombatBattleView({
               Ver análisis de esta batalla →
             </button>
           )}
+        </div>
+      )}
+
+      {exitChoiceOpen && phase === 'battle' && combatVariant === 'roguelike' && (
+        <div
+          className="modal-backdrop combat-exit-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setExitChoiceOpen(false);
+          }}
+        >
+          <section
+            className="army-card combat-exit-card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="combat-exit-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <span className="eyebrow">COMBAT CHESS · BATALLA EN CURSO</span>
+            <h3 id="combat-exit-title">¿Qué quieres hacer?</h3>
+            <p>Puedes volver al castillo conservando esta batalla, o abandonarla y asumir las bajas ya sufridas.</p>
+            <div className="combat-exit-actions">
+              <button type="button" className="secondary-btn" onClick={() => setExitChoiceOpen(false)}>
+                Seguir jugando
+              </button>
+              <button
+                type="button"
+                className="primary-btn"
+                onClick={() => {
+                  setExitChoiceOpen(false);
+                  suspendBattleToMenu();
+                }}
+              >
+                Salir al castillo
+              </button>
+              <button
+                type="button"
+                className="secondary-btn combat-retreat-btn"
+                onClick={() => {
+                  setExitChoiceOpen(false);
+                  retireBattle();
+                }}
+              >
+                Abandonar partida y asumir bajas
+              </button>
+            </div>
+          </section>
         </div>
       )}
 
