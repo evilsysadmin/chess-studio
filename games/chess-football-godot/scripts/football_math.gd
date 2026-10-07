@@ -2,20 +2,20 @@ class_name ChessFootballMath
 extends RefCounted
 
 const PITCH_RECT := Rect2(80.0, 70.0, 2480.0, 1440.0)
-# 5v5 arcade mouth: 290 pitch units. The 210-unit legacy goal became too
-# narrow after the pitch was widened, making otherwise good shots unrewarding.
-const GOAL_HALF_HEIGHT := 145.0
+# 5v5 arcade mouth: 360 pitch units. The 290-unit first enlargement still
+# looked undersized against the widened pitch and left too little real target.
+const GOAL_HALF_HEIGHT := 180.0
 const PENALTY_AREA_DEPTH := 265.0
 const PENALTY_AREA_HALF_WIDTH := 215.0
 const PENALTY_SPOT_DEPTH := 175.0
 
 # Vertical simulation uses pitch-space units. With the current 3D contract
-# (WORLD_SCALE 0.014, ground ball centre 0.18, radius 0.16, 1.25 crossbar
-# centre and 0.075 bar thickness), about 62 units is the highest ball centre
+# (WORLD_SCALE 0.014, ground ball centre 0.18, radius 0.16, 1.50 crossbar
+# centre and 0.075 bar thickness), about 80 units is the highest ball centre
 # trajectory that still fits entirely below the bar.
-const GOAL_MAX_FLIGHT_HEIGHT := 62.0
+const GOAL_MAX_FLIGHT_HEIGHT := 80.0
 const GOAL_FRAME_POST_RADIUS := 16.0
-const GOAL_FRAME_CROSSBAR_HEIGHT := 76.0
+const GOAL_FRAME_CROSSBAR_HEIGHT := 94.0
 const GOAL_FRAME_CROSSBAR_RADIUS := 10.0
 
 static func clamp_to_pitch(position: Vector2) -> Vector2:
