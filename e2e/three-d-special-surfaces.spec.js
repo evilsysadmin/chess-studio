@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import {
+  dismissTutorialIfVisible,
   login,
   mockApi,
   openCampaignBriefing,
@@ -82,14 +83,19 @@ async function openDeploymentForSpecialSurface(page) {
   const deployment = page.getByRole('region', { name: 'Preparar despliegue de Combat Chess' });
   if (await deployment.isVisible().catch(() => false)) return deployment;
 
+  const preparation = page.locator('[data-combat-preparation-room="combat-operations-room"]');
   const enterPreparation = page.getByRole('button', { name: /PREPARAR EJÉRCITO/i });
   if (await enterPreparation.isVisible().catch(() => false)) {
-    await openHeavy3DSurface(enterPreparation, page.getByLabel('Resumen de preparación').or(deployment));
-    if (await deployment.isVisible().catch(() => false)) return deployment;
+    await enterPreparation.click();
+    await dismissTutorialIfVisible(page);
+    await expect(preparation).toBeVisible({ timeout: READY });
   }
 
-  const reviewDeployment = page.getByRole('button', { name: /PREPARAR DESPLIEGUE|REVISAR Y CONFIRMAR|Personalizar despliegue/i });
-  await openHeavy3DSurface(reviewDeployment, deployment);
+  const reviewDeployment = page.getByRole('button', { name: /Personalizar despliegue|PREPARAR DESPLIEGUE|REVISAR Y CONFIRMAR/i });
+  await expect(reviewDeployment).toBeVisible({ timeout: READY });
+  await expect(reviewDeployment).toBeEnabled();
+  await reviewDeployment.click();
+  await expect(deployment).toBeVisible({ timeout: READY });
   return deployment;
 }
 
