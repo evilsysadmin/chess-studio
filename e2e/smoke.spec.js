@@ -411,7 +411,7 @@ test('móvil 390px · Admin sigue legible y sin overflow global', async ({ page 
 });
 
 
-test('Combat Chess · Salir ofrece castillo o abandono con bajas', async ({ page }) => {
+test('Combat Chess · salir al menú conserva campaña y batalla activas · Salir ofrece castillo o abandono con bajas', async ({ page }) => {
   await mockApi(page);
   await login(page);
   await openCampaignBriefing(page);
