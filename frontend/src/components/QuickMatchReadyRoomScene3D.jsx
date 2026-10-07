@@ -336,28 +336,62 @@ function addWindow(root, stone, brass, night, moon, glow) {
   const windowGroup = new THREE.Group();
   windowGroup.name = 'quick-match-ready-window';
 
-  box(windowGroup, [5.35, 4.12, .10], night, [0, 3.34, 0], 'window-night');
-  box(windowGroup, [.28, 4.44, .34], stone, [-2.83, 3.34, .04], 'window-jamb-left');
-  box(windowGroup, [.28, 4.44, .34], stone, [2.83, 3.34, .04], 'window-jamb-right');
-  box(windowGroup, [5.96, .28, .34], stone, [0, 1.08, .04], 'window-sill');
-  box(windowGroup, [.10, 4.06, .20], brass, [0, 3.34, .12], 'window-mullion');
-  box(windowGroup, [5.28, .08, .20], brass, [0, 3.34, .12], 'window-transom');
+  const paneShape = new THREE.Shape();
+  paneShape.moveTo(-2.46, 1.30);
+  paneShape.lineTo(-2.46, 4.48);
+  paneShape.lineTo(0, 5.43);
+  paneShape.lineTo(2.46, 4.48);
+  paneShape.lineTo(2.46, 1.30);
+  paneShape.closePath();
 
-  for (const x of [-2.78, 2.78]) {
-    cylinder(windowGroup, [.20, .25], .28, brass, [x, 1.08, .18], 'window-brass-cap', 22);
-    cylinder(windowGroup, [.20, .25], .28, brass, [x, 5.55, .18], 'window-brass-cap', 22);
+  const pane = new THREE.Mesh(new THREE.ShapeGeometry(paneShape), night);
+  pane.position.z = 0;
+  pane.name = 'window-night';
+  windowGroup.add(pane);
+
+  box(windowGroup, [.30, 3.42, .34], stone, [-2.69, 2.79, .05], 'window-jamb-left');
+  box(windowGroup, [.30, 3.42, .34], stone, [2.69, 2.79, .05], 'window-jamb-right');
+  box(windowGroup, [5.74, .28, .34], stone, [0, 1.09, .05], 'window-sill');
+
+  const archBeam = (fromX, fromY, toX, toY, width, depth, material, name) => {
+    const dx = toX - fromX;
+    const dy = toY - fromY;
+    const length = Math.hypot(dx, dy);
+    const beam = box(
+      windowGroup,
+      [width, length, depth],
+      material,
+      [(fromX + toX) / 2, (fromY + toY) / 2, .06],
+      name,
+    );
+    beam.rotation.z = -Math.atan2(dx, dy);
+    return beam;
+  };
+
+  archBeam(-2.69, 4.46, 0, 5.68, .31, .34, stone, 'window-arch-left');
+  archBeam(2.69, 4.46, 0, 5.68, .31, .34, stone, 'window-arch-right');
+
+  box(windowGroup, [.10, 4.12, .20], brass, [0, 3.24, .14], 'window-mullion');
+  box(windowGroup, [5.00, .08, .20], brass, [0, 3.30, .14], 'window-transom');
+  archBeam(-2.47, 4.46, 0, 5.47, .07, .16, brass, 'window-brass-arch-left');
+  archBeam(2.47, 4.46, 0, 5.47, .07, .16, brass, 'window-brass-arch-right');
+
+  for (const x of [-2.69, 2.69]) {
+    cylinder(windowGroup, [.18, .24], .26, brass, [x, 1.09, .18], 'window-brass-cap', 22);
+    cylinder(windowGroup, [.14, .18], .22, brass, [x, 4.47, .18], 'window-brass-cap', 22);
   }
+  cylinder(windowGroup, [.16, .22], .24, brass, [0, 5.67, .18], 'window-apex-cap', 22);
 
-  const moonMesh = new THREE.Mesh(new THREE.SphereGeometry(.35, 28, 18), moon);
-  moonMesh.position.set(1.52, 4.76, .18);
+  const moonMesh = new THREE.Mesh(new THREE.SphereGeometry(.34, 28, 18), moon);
+  moonMesh.position.set(1.22, 4.55, .17);
   moonMesh.name = 'window-moon';
   windowGroup.add(moonMesh);
 
   const halo = new THREE.Mesh(
-    new THREE.CircleGeometry(.66, 36),
+    new THREE.CircleGeometry(.62, 36),
     glow,
   );
-  halo.position.set(1.52, 4.76, .16);
+  halo.position.set(1.22, 4.55, .15);
   halo.name = 'window-moon-halo';
   windowGroup.add(halo);
 
@@ -370,10 +404,11 @@ function addWindow(root, stone, brass, night, moon, glow) {
   });
   const starPositions = [];
   for (let i = 0; i < 54; i += 1) {
-    const px = -2.45 + ((i * 37) % 97) / 96 * 4.9;
-    const py = 1.55 + ((i * 61) % 101) / 100 * 3.55;
-    if (Math.hypot(px - 1.52, py - 4.76) > .68) {
-      starPositions.push(px, py, .20);
+    const px = -2.30 + ((i * 37) % 97) / 96 * 4.60;
+    const py = 1.46 + ((i * 61) % 101) / 100 * 3.84;
+    const archTop = 4.48 + (1 - Math.abs(px) / 2.46) * .95;
+    if (py <= archTop && Math.hypot(px - 1.22, py - 4.55) > .64) {
+      starPositions.push(px, py, .19);
     }
   }
   const starsGeo = new THREE.BufferGeometry();
