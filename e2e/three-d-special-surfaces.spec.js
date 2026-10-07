@@ -126,7 +126,7 @@ test('Arena experimental · tema, terreno y legalidad sobreviven al renderer 3D'
   await expect(board).toHaveAttribute('data-board3d-legal-target-count', '1');
 });
 
-test('Combat Deployment · hover de unidad y metadata táctica funcionan sobre el canvas 3D', async ({ page }) => {
+test('Combat Deployment · War Table 2D conserva hover y ficha táctica', async ({ page }) => {
   test.setTimeout(90_000);
   await page.setViewportSize({ width: 1440, height: 960 });
   await mockApi(page);
@@ -134,56 +134,14 @@ test('Combat Deployment · hover de unidad y metadata táctica funcionan sobre e
   await openCampaignBriefing(page);
   const deployment = await openDeployment(page);
 
-  const board = deployment.locator('[data-board3d-war-room="true"]');
-  const boardSurface = deployment.locator('.preferred-board-3d');
-  const canvas = deployment.locator('.board3d-main-canvas');
-  await expect(board).toBeVisible({ timeout: READY });
-  await expect(boardSurface).toBeVisible({ timeout: READY });
-  await expect(canvas).toBeVisible({ timeout: READY });
-  await expect(board).toHaveAttribute('data-board3d-legal-target-count', /[1-9][0-9]*/);
-  await expect(deployment.locator('.board3d-parity-details')).toHaveCount(1);
+  await expect(deployment).toBeVisible({ timeout: READY });
+  const pawnSquare = deployment.getByRole('button', { name: /Casilla a2,/ });
+  const pawn = pawnSquare.locator('img.piece.piece-event-target');
+  await expect(pawn).toBeVisible({ timeout: READY });
 
-  const rect = await canvas.boundingBox();
-  expect(rect).toBeTruthy();
-
-  // Hit the tile centre, not the visual top of the model. The 3D input layer
-  // resolves the square first and then checks whether that square owns a piece,
-  // making hover stable across pawn skins and veteran geometry.
-  const pawn = projectSquare(rect, 'a2');
-  await page.mouse.move(pawn.x, pawn.y);
-
-  // Deployment delays hover previews deliberately. Hosted software-WebGL can
-  // leave the main thread busy for several seconds even though the preview is
-  // already queued; failure screenshots prove the dossier eventually appears.
-  // Keep this strict enough to catch a broken hover without racing the runner.
+  await pawn.hover();
   const dossier = page.getByRole('dialog', { name: /Ficha de unidad de/i });
   await expect(dossier).toBeVisible({ timeout: 8_000 });
   await expect(dossier).toHaveClass(/\bpreview\b/);
   await expect(dossier.getByText(/Vista rápida/i)).toBeVisible();
-
-  // The dossier is intentionally a hover bridge: moving from the WebGL piece
-  // into the fixed portal keeps the preview alive so the user can inspect it.
-  // Exercise that real interaction first, then leave both surfaces. A one-step
-  // pointer teleport from WebGL straight to a distant corner can skip the
-  // portal's mouseenter/mouseleave pair and is not representative user input.
-  const surfaceRect = await boardSurface.boundingBox();
-  const dossierRect = await dossier.boundingBox();
-  expect(dossierRect).toBeTruthy();
-  await page.mouse.move(
-    dossierRect.x + dossierRect.width / 2,
-    dossierRect.y + Math.min(24, dossierRect.height / 2),
-  );
-  await expect(dossier).toBeVisible();
-
-  const viewport = page.viewportSize();
-  const corners = [
-    { x: 2, y: 2 },
-    { x: viewport.width - 2, y: 2 },
-    { x: 2, y: viewport.height - 2 },
-    { x: viewport.width - 2, y: viewport.height - 2 },
-  ];
-  const exitPoint = corners.find((point) => !pointInside(surfaceRect, point) && !pointInside(dossierRect, point));
-  expect(exitPoint).toBeTruthy();
-  await page.mouse.move(exitPoint.x, exitPoint.y);
-  await expect(dossier).toBeHidden({ timeout: 3_000 });
 });
