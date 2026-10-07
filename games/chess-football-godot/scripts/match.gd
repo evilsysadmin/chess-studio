@@ -35,6 +35,7 @@ const KEEPER_LINE_OFFSET := 96.0
 const KEEPER_PRESS_MAX_OFFSET := 150.0
 const KEEPER_PRESS_TRIGGER_DISTANCE := 300.0
 const KEEPER_TRACK_Y_RATIO := 0.68
+const KEEPER_TRACK_MAX_Y := 94.0
 const KEEPER_TRACK_INTENSITY := 0.64
 const KEEPER_SAVE_RANGE := 58.0
 const KEEPER_SAVE_MIN_SPEED := 280.0
@@ -757,7 +758,10 @@ func _update_keeper_ai(player: Footballer, delta: float) -> void:
 	if ball.carrier != null:
 		reference_position = ball.carrier.global_position
 
-	var y_limit := ChessFootballMath.GOAL_HALF_HEIGHT * KEEPER_TRACK_Y_RATIO
+	var y_limit := minf(
+		ChessFootballMath.GOAL_HALF_HEIGHT * KEEPER_TRACK_Y_RATIO,
+		KEEPER_TRACK_MAX_Y,
+	)
 	var wanted_y := clampf(reference_position.y, own_goal.y - y_limit, own_goal.y + y_limit)
 	var line_offset := KEEPER_LINE_OFFSET
 	var danger_distance := absf(reference_position.x - own_goal.x)
@@ -2044,6 +2048,12 @@ func debug_try_tackle(player: Footballer, aggressive: bool = false) -> bool:
 
 func debug_try_dribble(direction: Vector2) -> bool:
 	return _try_dribble(direction)
+
+func debug_keeper_track_y_limit() -> float:
+	return minf(
+		ChessFootballMath.GOAL_HALF_HEIGHT * KEEPER_TRACK_Y_RATIO,
+		KEEPER_TRACK_MAX_Y,
+	)
 
 func debug_auto_dribble_direction(player: Footballer) -> Vector2:
 	return _auto_dribble_direction(player)

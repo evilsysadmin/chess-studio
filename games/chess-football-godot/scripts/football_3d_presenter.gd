@@ -2,6 +2,7 @@ class_name ChessFootball3DPresenter
 extends Node3D
 
 const WORLD_SCALE := 0.014
+const GOAL_POST_HEIGHT := 1.50
 const CAMERA_LERP_SPEED := 3.25
 const CAMERA_FOCUS_SMOOTH_SPEED := 2.65
 const CAMERA_LEAD_SMOOTH_SPEED := 2.10
@@ -253,10 +254,10 @@ func _add_center_circle(color: Color) -> void:
 
 func _build_goals() -> void:
 	var goal_half := ChessFootballMath.GOAL_HALF_HEIGHT * WORLD_SCALE
-	var post_height := 1.25
+	var post_height := GOAL_POST_HEIGHT
 	var post := 0.075
 	var net_thin := 0.022
-	var depth := 0.82
+	var depth := 1.00
 	var white := Color(0.95, 0.96, 0.94)
 	var net_color := Color(0.58, 0.63, 0.66)
 	for side_value in [-1.0, 1.0]:
