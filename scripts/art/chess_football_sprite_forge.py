@@ -152,9 +152,9 @@ def _pose(animation: str, frame: int) -> dict[str, float]:
             leg_r=stride * 15.0,
             lift_l=max(0.0, stride) * 8.4 + max(0.0, math.cos(phase)) * 1.2,
             lift_r=max(0.0, -stride) * 8.4 + max(0.0, -math.cos(phase)) * 1.2,
-            twist=stride * 2.7,
-            head=-1.2,
-            sway=math.cos(phase) * 1.15,
+            twist=stride * 3.0,
+            head=-1.2 + math.cos(phase) * 0.35,
+            sway=math.cos(phase) * 1.30,
         )
     elif animation == "sprint":
         pose.update(
@@ -166,9 +166,9 @@ def _pose(animation: str, frame: int) -> dict[str, float]:
             leg_r=stride * 20.0,
             lift_l=max(0.0, stride) * 11.2 + max(0.0, math.cos(phase)) * 1.7,
             lift_r=max(0.0, -stride) * 11.2 + max(0.0, -math.cos(phase)) * 1.7,
-            twist=stride * 3.6,
-            head=-2.0,
-            sway=math.cos(phase) * 1.55,
+            twist=stride * 4.1,
+            head=-2.0 + math.cos(phase) * 0.45,
+            sway=math.cos(phase) * 1.75,
         )
     else:
         t = frame / max(COLUMNS - 1, 1)
@@ -299,24 +299,34 @@ def _frame_svg(
         f'rx="{shadow_width:.1f}" ry="2.4" fill="#000" opacity=".20"/>'
     )
 
-    # Back leg first, then front leg: deliberate overlap creates depth and keeps
-    # run/sprint from reading like a frontal jumping-jack pose.
-    legs = (
-        (-1.0, p["leg_l"], p["lift_l"], True),
-        (1.0, p["leg_r"], p["lift_r"], False),
-    )
+    # V9 alternates which leg is in front during locomotion. V8 kept the same
+    # screen-side leg in front for the whole cycle, which made run/sprint read
+    # like a flat puppet even when the stride itself was asymmetric.
+    locomotion = animation in ("run", "sprint")
+    right_leg_near = p["leg_r"] >= p["leg_l"] if locomotion else True
+    legs = [
+        (-1.0, p["leg_l"], p["lift_l"], right_leg_near),
+        (1.0, p["leg_r"], p["lift_r"], not right_leg_near),
+    ]
+    legs.sort(key=lambda item: 0 if item[3] else 1)
     for side, stride, lift_amount, far in legs:
-        hip_x = cx + side * 6.6 + p["twist"] * (0.14 if far else 0.24)
-        foot_x = cx + side * 7.4 + stride
+        hip_spread = 5.5 if locomotion else 6.6
+        foot_spread = 5.9 if locomotion else 7.4
+        hip_x = cx + side * hip_spread + p["twist"] * (0.13 if far else 0.25)
+        foot_x = cx + side * foot_spread + stride
         foot_y = foot - lift_amount
-        knee_x = hip_x + stride * 0.44 + (-0.8 if far else 1.8)
+        knee_x = (
+            hip_x
+            + stride * (0.50 if locomotion else 0.44)
+            + (-0.45 if far else 0.75)
+        )
         knee_y = (
             hip_y
             + 16.5
             - min(abs(stride) * 0.15, 5.0)
             - lift_amount * 0.42
         )
-        opacity = ".84" if far else "1"
+        opacity = ".76" if far and locomotion else (".84" if far else "1")
         thigh = _limb_path(
             (hip_x, hip_y + 1.0),
             (knee_x, knee_y),
@@ -368,16 +378,26 @@ def _frame_svg(
             f'stroke="{GOLD}" stroke-width=".95" opacity="{opacity}"/>'
         )
 
-    # Back arm is drawn behind the shirt; front arm after the shirt.
+    # Arms alternate depth opposite the leading leg. This is the main V9
+    # parallax cue: as one knee comes forward, the counter-swinging arm also
+    # crosses in front instead of both limb layers staying permanently fixed.
     arm_geometry: list[tuple[float, float, float, float, float, float, bool]] = []
-    for side, amount, far in (
-        (-1.0, p["arm_l"], True),
-        (1.0, p["arm_r"], False),
-    ):
+    left_arm_near = right_leg_near if locomotion else False
+    arms = [
+        (-1.0, p["arm_l"], not left_arm_near),
+        (1.0, p["arm_r"], left_arm_near),
+    ]
+    arms.sort(key=lambda item: 0 if item[2] else 1)
+    for side, amount, far in arms:
         shoulder_span = 15.0 if keeper else 13.8
         sx = cx + side * shoulder_span - p["twist"] * 0.23
         sy = shoulder_y + (1.0 if far else -0.6)
-        hand_x = cx + side * 20.0 + amount * 0.72 + (-1.0 if far else 2.0)
+        hand_x = (
+            cx
+            + side * (18.7 if locomotion else 20.0)
+            + amount * (0.78 if locomotion else 0.72)
+            + (-1.0 if far else 2.0)
+        )
         hand_y = 79.0 - bob + yoff + crouch * 0.50 - amount * 0.48
         elbow_x = sx + (hand_x - sx) * 0.56 - side * 3.0
         elbow_y = sy + (hand_y - sy) * 0.50 + 4.5
@@ -516,8 +536,8 @@ def _frame_svg(
                 f'stroke="{team["torso_dark"]}" stroke-width=".85" opacity=".75"/>'
             )
 
-    # V8 keeps the three-quarter read but reduces mascot proportions. The
-    # head is smaller, the jaw tighter, and each team gets a distinct hairline.
+    # V9 retains the V8 face proportions while locomotion gets the major
+    # upgrade: alternating near/far limbs and stronger counter-rotation.
     neck_y = 49.4 - bob + yoff + crouch * 0.45
     out.append(
         f'<path d="M {offset_x + cx - 3.1:.2f} {offset_y + neck_y:.2f} '
@@ -646,7 +666,7 @@ def build_outputs() -> dict[str, str]:
         outputs[filename] = _atlas_svg(team, keeper=True)
         atlas_meta[slug] = {"name": team["name"], "file": filename}
     manifest = {
-        "version": 8,
+        "version": 9,
         "quality_contract": SPRITE_FORGE_CONTRACT["quality_contract"],
         "cell": {"width": CELL_W, "height": CELL_H},
         "columns": COLUMNS,
