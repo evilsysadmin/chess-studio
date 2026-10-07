@@ -353,11 +353,16 @@ body:has(.combat-quartermaster-screen) .combat-quartermaster-screen {
 
   .combat-quartermaster-shell .combat-market-grid,
   .combat-quartermaster-shell .combat-market-grid.equipment-grid {
-    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
     gap: .45rem;
   }
 
   .combat-quartermaster-shell .combat-market-card {
+    flex: 0 0 auto;
+    width: 100%;
+    height: auto;
     padding: .62rem;
   }
 
