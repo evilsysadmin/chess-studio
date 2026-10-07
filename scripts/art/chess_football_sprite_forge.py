@@ -83,6 +83,7 @@ TEAMS = {
 FIELD_VARIANT_PROFILES = [
     {
         "body_profile": "defender",
+        "motion_profile": "grounded",
         "shoulder_scale": 1.08,
         "torso_scale": 1.06,
         "hip_scale": 1.04,
@@ -90,6 +91,7 @@ FIELD_VARIANT_PROFILES = [
     },
     {
         "body_profile": "midfielder",
+        "motion_profile": "balanced",
         "shoulder_scale": 1.00,
         "torso_scale": 1.00,
         "hip_scale": 1.00,
@@ -97,6 +99,7 @@ FIELD_VARIANT_PROFILES = [
     },
     {
         "body_profile": "wing",
+        "motion_profile": "explosive",
         "shoulder_scale": 0.93,
         "torso_scale": 0.94,
         "hip_scale": 0.95,
@@ -104,6 +107,7 @@ FIELD_VARIANT_PROFILES = [
     },
     {
         "body_profile": "forward",
+        "motion_profile": "driven",
         "shoulder_scale": 1.05,
         "torso_scale": 1.03,
         "hip_scale": 0.99,
@@ -204,40 +208,40 @@ def _pose(animation: str, frame: int) -> dict[str, float]:
     elif animation == "run":
         pose.update(
             bob=lift * 1.45,
-            lean=5.2,
-            crouch=0.8 + lift * 0.75,
-            arm_l=stride * 14.2,
-            arm_r=-stride * 14.2,
-            leg_l=-stride * 16.0,
-            leg_r=stride * 16.0,
+            lean=6.2,
+            crouch=0.8 + lift * 0.85,
+            arm_l=stride * 15.6,
+            arm_r=-stride * 15.6,
+            leg_l=-stride * 17.8,
+            leg_r=stride * 17.8,
             # V14: the forward swing leg lifts. V13 lifted the opposite leg,
             # which produced a mechanically hinged gait in several frames.
             lift_l=max(0.0, -stride) * 8.8 + max(0.0, math.cos(phase)) * 1.1,
             lift_r=max(0.0, stride) * 8.8 + max(0.0, -math.cos(phase)) * 1.1,
-            twist=stride * 3.8,
-            head=-1.0 - math.cos(phase) * 0.25,
-            sway=math.cos(phase) * 1.05,
-            pelvis_roll=stride * 1.85,
-            shoulder_roll=-stride * 1.55,
-            arm_flex=6.2 + lift * 1.8,
+            twist=stride * 4.6,
+            head=-1.2 - math.cos(phase) * 0.32,
+            sway=math.cos(phase) * 1.28,
+            pelvis_roll=stride * 2.35,
+            shoulder_roll=-stride * 2.05,
+            arm_flex=7.0 + lift * 2.1,
         )
     elif animation == "sprint":
         pose.update(
             bob=lift * 1.95,
-            lean=8.4,
-            crouch=1.4 + lift * 1.0,
-            arm_l=stride * 18.2,
-            arm_r=-stride * 18.2,
-            leg_l=-stride * 21.0,
-            leg_r=stride * 21.0,
+            lean=9.8,
+            crouch=1.5 + lift * 1.15,
+            arm_l=stride * 20.0,
+            arm_r=-stride * 20.0,
+            leg_l=-stride * 23.2,
+            leg_r=stride * 23.2,
             lift_l=max(0.0, -stride) * 12.6 + max(0.0, math.cos(phase)) * 1.4,
             lift_r=max(0.0, stride) * 12.6 + max(0.0, -math.cos(phase)) * 1.4,
-            twist=stride * 5.0,
-            head=-2.1 - math.cos(phase) * 0.30,
-            sway=math.cos(phase) * 1.35,
-            pelvis_roll=stride * 2.55,
-            shoulder_roll=-stride * 2.10,
-            arm_flex=8.0 + lift * 2.2,
+            twist=stride * 6.0,
+            head=-2.4 - math.cos(phase) * 0.38,
+            sway=math.cos(phase) * 1.58,
+            pelvis_roll=stride * 3.05,
+            shoulder_roll=-stride * 2.65,
+            arm_flex=8.8 + lift * 2.5,
         )
     else:
         t = frame / max(COLUMNS - 1, 1)
@@ -247,14 +251,14 @@ def _pose(animation: str, frame: int) -> dict[str, float]:
         if animation == "pass":
             pose.update(
                 bob=1.0 * k,
-                lean=2.0 * wind + 4.2 * follow,
+                lean=2.6 * wind + 5.2 * follow,
                 crouch=2.4 * k,
                 leg_l=-4.0 * k,
                 leg_r=-16.0 * wind + 29.0 * follow,
                 lift_r=7.5 * wind + 5.0 * follow,
-                arm_l=-13.0 * wind + 7.0 * follow,
-                arm_r=15.0 * wind - 10.0 * follow,
-                twist=-3.5 * wind + 6.0 * follow,
+                arm_l=-15.0 * wind + 8.5 * follow,
+                arm_r=17.5 * wind - 11.5 * follow,
+                twist=-4.3 * wind + 7.4 * follow,
                 head=-0.5 * wind - 1.3 * follow,
                 sway=-1.8 * wind + 1.2 * follow,
                 support_bend=4.0 * k,
@@ -266,14 +270,14 @@ def _pose(animation: str, frame: int) -> dict[str, float]:
         elif animation == "shoot":
             pose.update(
                 bob=1.8 * k,
-                lean=3.0 * wind + 10.0 * follow,
+                lean=3.8 * wind + 12.0 * follow,
                 crouch=4.2 * k,
                 leg_l=-6.0 * k,
                 leg_r=-24.0 * wind + 44.0 * follow,
                 lift_r=11.0 * wind + 8.0 * follow,
-                arm_l=-18.0 * wind + 10.0 * follow,
-                arm_r=22.0 * wind - 15.0 * follow,
-                twist=-5.5 * wind + 9.0 * follow,
+                arm_l=-21.0 * wind + 12.0 * follow,
+                arm_r=25.0 * wind - 17.0 * follow,
+                twist=-6.8 * wind + 10.8 * follow,
                 head=-0.8 * wind - 2.2 * follow,
                 sway=-3.0 * wind + 1.5 * follow,
                 support_bend=6.0 * k,
@@ -288,14 +292,14 @@ def _pose(animation: str, frame: int) -> dict[str, float]:
             pose.update(
                 yoff=6.5 * k,
                 crouch=18.0 * k,
-                lean=15.5 * k,
+                lean=17.5 * k,
                 leg_l=-8.0 * k + 4.0 * recover,
                 leg_r=44.0 * entry - 9.0 * recover,
                 lift_l=10.5 * k,
                 lift_r=1.8 * k,
-                arm_l=-26.0 * k + 8.0 * recover,
-                arm_r=21.0 * k - 5.0 * recover,
-                twist=7.0 * k,
+                arm_l=-29.0 * k + 9.0 * recover,
+                arm_r=24.0 * k - 6.0 * recover,
+                twist=8.4 * k,
                 head=-3.1 * k,
                 sway=3.0 * k,
                 tackle_fold=11.0 * k,
@@ -324,6 +328,73 @@ def _pose(animation: str, frame: int) -> dict[str, float]:
                 arm_flex=4.2 * pump,
             )
     return pose
+
+
+def _apply_motion_profile(
+    pose: dict[str, float],
+    team: dict[str, str],
+    animation: str,
+) -> dict[str, float]:
+    """Apply restrained role personality without moving the canonical footline/pivot."""
+    profile = str(team.get("motion_profile", "balanced"))
+    if profile == "balanced":
+        return pose
+
+    p = dict(pose)
+    if profile == "grounded":
+        if animation == "idle":
+            p["crouch"] += 1.25
+            p["sway"] *= 0.72
+            p["arm_l"] *= 0.88
+            p["arm_r"] *= 0.88
+        elif animation in ("run", "sprint"):
+            p["lean"] *= 0.91
+            p["leg_l"] *= 0.93
+            p["leg_r"] *= 0.93
+            p["lift_l"] *= 0.90
+            p["lift_r"] *= 0.90
+            p["shoulder_roll"] *= 0.90
+            p["pelvis_roll"] *= 0.88
+        elif animation == "tackle":
+            p["lean"] *= 1.10
+            p["crouch"] *= 1.08
+            p["tackle_fold"] *= 1.10
+    elif profile == "explosive":
+        if animation == "idle":
+            p["crouch"] -= 0.55
+            p["sway"] *= 1.16
+            p["shoulder_roll"] *= 1.10
+        elif animation in ("run", "sprint"):
+            p["lean"] *= 1.12
+            p["leg_l"] *= 1.08
+            p["leg_r"] *= 1.08
+            p["lift_l"] *= 1.10
+            p["lift_r"] *= 1.10
+            p["arm_l"] *= 1.06
+            p["arm_r"] *= 1.06
+            p["shoulder_roll"] *= 1.14
+            p["pelvis_roll"] *= 1.12
+        elif animation in ("pass", "shoot"):
+            p["twist"] *= 1.07
+            p["sway"] *= 1.08
+    elif profile == "driven":
+        if animation == "idle":
+            p["lean"] += 0.85
+            p["crouch"] += 0.20
+            p["head"] -= 0.35
+        elif animation in ("run", "sprint"):
+            p["lean"] *= 1.07
+            p["arm_l"] *= 1.04
+            p["arm_r"] *= 1.04
+            p["twist"] *= 1.10
+            p["shoulder_roll"] *= 1.08
+        elif animation == "shoot":
+            p["lean"] *= 1.10
+            p["twist"] *= 1.12
+            p["leg_r"] *= 1.08
+            p["arm_l"] *= 1.06
+            p["arm_r"] *= 1.06
+    return p
 
 
 def _path(points: list[tuple[float, float]], offset_x: int, offset_y: int, close: bool = True) -> str:
@@ -367,6 +438,8 @@ def _frame_svg(
     keeper: bool = False,
 ) -> str:
     p = _pose(animation, frame)
+    if not keeper:
+        p = _apply_motion_profile(p, team, animation)
     if keeper and animation == "idle":
         p = dict(p)
         p["crouch"] += 3.2
@@ -880,6 +953,7 @@ def build_outputs() -> dict[str, str]:
                 "name": display_name,
                 "file": filename,
                 "body_profile": str(variant_team["body_profile"]),
+                "motion_profile": str(variant_team["motion_profile"]),
             }
             variant_keys.append(variant_slug)
         field_variants[slug] = variant_keys
@@ -888,7 +962,7 @@ def build_outputs() -> dict[str, str]:
         outputs[filename] = _atlas_svg(team, keeper=True)
         atlas_meta[slug] = {"name": team["name"], "file": filename}
     manifest = {
-        "version": 15,
+        "version": 16,
         "quality_contract": SPRITE_FORGE_CONTRACT["quality_contract"],
         "cell": {"width": CELL_W, "height": CELL_H},
         "columns": COLUMNS,
