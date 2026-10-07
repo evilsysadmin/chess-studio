@@ -59,30 +59,13 @@ jobs:
             fi
 
             served_sha="$(
-              python3 - "$release_url" <<'PY' || true
-import json
-import re
-import sys
-import urllib.request
-
-url = sys.argv[1]
-try:
-    request = urllib.request.Request(
-        url,
-        headers={
-            "Accept": "application/json",
-            "Cache-Control": "no-cache",
-            "User-Agent": "ChessStudio-MongoBackupLineage/1",
-        },
-    )
-    with urllib.request.urlopen(request, timeout=10) as response:
-        payload = json.loads(response.read().decode("utf-8"))
-    build = str(payload.get("build") or "").strip().lower()
-    if re.fullmatch(r"[0-9a-f]{40}", build):
-        print(build)
-except Exception:
-    pass
-PY
+              curl --fail --silent --show-error --max-time 10 \
+                -H 'Accept: application/json' \
+                -H 'Cache-Control: no-cache' \
+                -H 'User-Agent: ChessStudio-MongoBackupLineage/1' \
+                "$release_url" 2>/dev/null \
+                | jq -r '.build // empty' 2>/dev/null \
+                || true
             )"
 
             if [[ "$served_sha" =~ ^[0-9a-f]{40}$ ]]; then
