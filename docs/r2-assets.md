@@ -47,7 +47,7 @@ The repository owns an automatic retention policy for the public asset bucket.
 
 - Target footprint: **7.0 GB**.
 - Soft ceiling: **7.5 GB**.
-- Immutable assets receive a **14-day** grace period.
+- Immutable assets receive a **7-day** grace period.
 - Keep one rollback generation per ordinary content-addressed family.
 - Fully unreferenced content-addressed families age out completely after **45 days**.
 - Keep one staging revision and two runtime revisions per revision journal.
