@@ -621,7 +621,6 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
       {showMarket && <CombatMarket roster={roster} serviceSummary={serviceSummary} onHire={handleHireMercenary} onBuyEquipment={handleBuyEquipment} onClose={() => setShowMarket(false)} />}
     </CombatCampaignMissionRoom>;
   }
-
   if (!run.inRun && campaign.active) {
     const selected = selectedCampaignNode;
     const rewardOptions = campaignRewardOptions(campaign);
