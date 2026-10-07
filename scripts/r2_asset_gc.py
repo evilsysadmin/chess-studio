@@ -26,6 +26,7 @@ from typing import Any
 import r2_asset_publisher as core
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
+ORPHAN_FAMILY_MAX_AGE_DAYS = 45
 HASHED_OBJECT_RE = re.compile(r"-([0-9a-f]{16})(?=\.[A-Za-z0-9]+$)")
 R2_URL_KEY_RE = re.compile(r"([A-Za-z0-9._/-]+)")
 PIN_SUFFIXES = {
@@ -82,7 +83,6 @@ def load_policy(config: dict[str, Any]) -> dict[str, Any]:
 
     _positive_int(policy, "minimumAgeDays", minimum=1)
     _positive_int(policy, "ephemeralMaxAgeDays", minimum=1)
-    _positive_int(policy, "orphanFamilyMaxAgeDays", minimum=1)
     _positive_int(policy, "keepRollbackPerFamily")
     _positive_int(policy, "keepStagingRevisions")
     _positive_int(policy, "keepRuntimeRevisions")
@@ -340,7 +340,7 @@ def plan_cleanup(
         if sha_token(key) and not is_revision(key) and key not in protected:
             hashed_families[family_for(key)].append(item)
     rollback_keep = int(policy["keepRollbackPerFamily"])
-    orphan_age = int(policy["orphanFamilyMaxAgeDays"])
+    orphan_age = ORPHAN_FAMILY_MAX_AGE_DAYS
     protected_families = {family_for(key) for key in protected}
     for family, group in hashed_families.items():
         ordered = sorted(
@@ -518,7 +518,6 @@ def self_test() -> None:
         "softLimitBytes": 8_500,
         "minimumAgeDays": 14,
         "ephemeralMaxAgeDays": 1,
-        "orphanFamilyMaxAgeDays": 45,
         "keepRollbackPerFamily": 1,
         "keepStagingRevisions": 1,
         "keepRuntimeRevisions": 2,
