@@ -1,6 +1,6 @@
 {
-  "version": 16,
-  "quality_contract": "chess-football-vector-v16",
+  "version": 17,
+  "quality_contract": "chess-football-vector-v17",
   "cell": {
     "width": 128,
     "height": 144
@@ -28,49 +28,65 @@
       "name": "FC Matthias",
       "file": "fc_matthias_atlas.svg",
       "body_profile": "defender",
-      "motion_profile": "grounded"
+      "motion_profile": "grounded",
+      "face_profile": "square-balanced",
+      "hair_style": "swept"
     },
     "fc_matthias_v2": {
       "name": "FC Matthias · Variante 2",
       "file": "fc_matthias_v2_atlas.svg",
       "body_profile": "midfielder",
-      "motion_profile": "balanced"
+      "motion_profile": "balanced",
+      "face_profile": "compact-jaw",
+      "hair_style": "crop"
     },
     "fc_matthias_v3": {
       "name": "FC Matthias · Variante 3",
       "file": "fc_matthias_v3_atlas.svg",
       "body_profile": "wing",
-      "motion_profile": "explosive"
+      "motion_profile": "explosive",
+      "face_profile": "broad-fade",
+      "hair_style": "fade"
     },
     "fc_matthias_v4": {
       "name": "FC Matthias · Variante 4",
       "file": "fc_matthias_v4_atlas.svg",
       "body_profile": "forward",
-      "motion_profile": "driven"
+      "motion_profile": "driven",
+      "face_profile": "narrow-textured",
+      "hair_style": "textured"
     },
     "real_enroque": {
       "name": "Real Enroque",
       "file": "real_enroque_atlas.svg",
       "body_profile": "defender",
-      "motion_profile": "grounded"
+      "motion_profile": "grounded",
+      "face_profile": "broad-angular",
+      "hair_style": "crop"
     },
     "real_enroque_v2": {
       "name": "Real Enroque · Variante 2",
       "file": "real_enroque_v2_atlas.svg",
       "body_profile": "midfielder",
-      "motion_profile": "balanced"
+      "motion_profile": "balanced",
+      "face_profile": "lean-textured",
+      "hair_style": "textured"
     },
     "real_enroque_v3": {
       "name": "Real Enroque · Variante 3",
       "file": "real_enroque_v3_atlas.svg",
       "body_profile": "wing",
-      "motion_profile": "explosive"
+      "motion_profile": "explosive",
+      "face_profile": "square-fade",
+      "hair_style": "fade"
     },
     "real_enroque_v4": {
       "name": "Real Enroque · Variante 4",
       "file": "real_enroque_v4_atlas.svg",
       "body_profile": "forward",
-      "motion_profile": "driven"
+      "motion_profile": "driven",
+      "face_profile": "compact-swept",
+      "hair_style": "swept"
     },
     "fc_matthias_keeper": {
       "name": "FC Matthias · Portero",
