@@ -220,7 +220,7 @@ STAGING_ONLY_E2E = {
 FRONTEND_TEST_RE = re.compile(r"^frontend/src/.*\.(?:test|spec)\.(?:js|jsx|ts|tsx)$")
 CHRONICLES_MANIFEST_RE = re.compile(
     r"^(?:frontend/src/chronicles/maps|backend-python/chronicles_maps|"
-    r"backend-go/internal/chronicles/content/maps)/[^/]+\\.json$"
+    r"backend-go/internal/chronicles/content/maps)/[^/]+\.json$"
 )
 CORE_E2E_RE = re.compile(
     r"^frontend/src/.*\.(?:js|jsx|ts|tsx)$|"
