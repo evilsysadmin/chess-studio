@@ -377,12 +377,6 @@
     letter-spacing: .13em;
   }
 
-  .lab-screen.lab-screen .lab-workshop-wing--hangar .lab-workshop-portal {
-    left: 18px;
-    right: 18px;
-    width: auto;
-  }
-
   .lab-screen.lab-screen .lab-workshop-portal > strong,
   .lab-screen.lab-screen .lab-workshop-map-table > strong,
   .lab-screen.lab-screen .lab-workshop-tool strong {
@@ -624,6 +618,12 @@
   .lab-screen.lab-screen .lab-workshop-portal > b,
   .lab-screen.lab-screen .lab-workshop-map-table > b {
     font-size: .48rem;
+  }
+
+  .lab-screen.lab-screen .lab-workshop-wing--hangar .lab-workshop-portal {
+    left: 18px;
+    right: 18px;
+    width: auto;
   }
 
   .lab-screen.lab-screen .lab-workshop-portal--chronicles {
