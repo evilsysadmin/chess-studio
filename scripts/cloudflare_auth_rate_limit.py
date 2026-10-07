@@ -83,6 +83,8 @@ def request_json(method: str, path: str, payload: dict | None = None) -> tuple[i
         try:
             status, body = _request_json_once(method, path, payload)
         except (urllib.error.URLError, TimeoutError) as exc:
+            if method != "GET":
+                raise
             if attempt >= len(retries):
                 raise CloudflareTransientReadUnavailable(
                     f"{type(exc).__name__} consultando {safe_path} tras {len(retries) + 1} intentos"
@@ -95,7 +97,7 @@ def request_json(method: str, path: str, payload: dict | None = None) -> tuple[i
             )
             time.sleep(delay)
             continue
-        if status not in READ_RETRY_STATUSES:
+        if method != "GET" or status not in READ_RETRY_STATUSES:
             return status, body
         if attempt >= len(retries):
             raise CloudflareTransientReadUnavailable(
