@@ -1054,6 +1054,16 @@ def _frame_svg(
     def hy(delta: float) -> float:
         return offset_y + head_cy + delta * head_scale
 
+    # V20: reduce the oversized-head/chibi read while keeping the jaw/neck
+    # junction stable. The transform is deliberately presentation-only.
+    head_pivot_x = offset_x + CELL_W * 0.5 + 3.0
+    head_pivot_y = offset_y + 46.0
+    out.append(
+        f'<g transform="translate({head_pivot_x:.2f} {head_pivot_y:.2f}) '
+        f'scale(.940 .940) '
+        f'translate({-head_pivot_x:.2f} {-head_pivot_y:.2f})">'
+    )
+
     head = (
         f"M {hx(-8.1 * face_width):.2f} {hy(-9.9):.2f} "
         f"Q {hx(0.5):.2f} {hy(-13.7):.2f} "
@@ -1149,6 +1159,7 @@ def _frame_svg(
         f'fill="none" stroke="{team["torso_dark"]}" stroke-width=".72" '
         f'stroke-linecap="round" opacity=".32"/>'
     )
+    out.append("</g>")
 
     return "\n".join(out)
 
@@ -1162,16 +1173,29 @@ def _atlas_svg(team: dict[str, str], keeper: bool = False) -> str:
     ]
     for row, (animation, _, _) in enumerate(ANIMATIONS):
         for frame in range(COLUMNS):
-            parts.append(
-                _frame_svg(
-                    team,
-                    animation,
-                    frame,
-                    frame * CELL_W,
-                    row * CELL_H,
-                    keeper=keeper,
-                )
+            offset_x = frame * CELL_W
+            offset_y = row * CELL_H
+            frame_svg = _frame_svg(
+                team,
+                animation,
+                frame,
+                offset_x,
+                offset_y,
+                keeper=keeper,
             )
+            shadow, body = frame_svg.split("\n", 1)
+            pivot_x = offset_x + CELL_W * 0.5
+            pivot_y = offset_y + FOOTLINE
+            parts.append(shadow)
+            # V20: taller, leaner footballer proportions around the canonical
+            # foot anchor. World pivot, footline, cell and display scale stay fixed.
+            parts.append(
+                f'<g transform="translate({pivot_x:.2f} {pivot_y:.2f}) '
+                f'scale(.960 1.065) '
+                f'translate({-pivot_x:.2f} {-pivot_y:.2f})">'
+            )
+            parts.append(body)
+            parts.append("</g>")
     parts.append("</g></svg>")
     return "\n".join(parts) + "\n"
 
@@ -1198,15 +1222,20 @@ def build_outputs() -> dict[str, str]:
                 "face_profile": str(variant_team["face_profile"]),
                 "hair_style": str(variant_team.get("hair_style", "swept")),
                 "kit_profile": "organic-v19",
+                "silhouette_profile": "athletic-v20",
             }
             variant_keys.append(variant_slug)
         field_variants[slug] = variant_keys
     for slug, team in KEEPERS.items():
         filename = f"{slug}_atlas.svg"
         outputs[filename] = _atlas_svg(team, keeper=True)
-        atlas_meta[slug] = {"name": team["name"], "file": filename}
+        atlas_meta[slug] = {
+            "name": team["name"],
+            "file": filename,
+            "silhouette_profile": "athletic-v20",
+        }
     manifest = {
-        "version": 19,
+        "version": 20,
         "quality_contract": SPRITE_FORGE_CONTRACT["quality_contract"],
         "cell": {"width": CELL_W, "height": CELL_H},
         "columns": COLUMNS,
