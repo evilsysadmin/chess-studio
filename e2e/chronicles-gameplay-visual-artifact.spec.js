@@ -319,6 +319,25 @@ for (const capture of CAPTURES) {
 }
 
 
+test('Chronicles · initiative rail visual · desktop-1440x900', async ({ browser }) => {
+  test.setTimeout(180_000);
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await context.newPage();
+  try {
+    await openChronicles(page, 'initiative-desktop-1440x900');
+    const gameRoot = page.locator('[data-chronicles="true"]');
+    await page.keyboard.press('w');
+    await expect(gameRoot).toHaveAttribute('data-chronicles-phase', 'combat');
+    const rail = page.locator('[data-chronicles-initiative="visible"]');
+    await expect(rail).toBeVisible();
+    await expect(rail.locator('li').first()).toHaveAttribute('aria-current', 'step');
+    await captureElement(page, gameRoot, ARTIFACT_DIR + '/chronicles-initiative-desktop-1440x900.png');
+  } finally {
+    await context.close();
+  }
+});
+
 test('Chronicles · initiative rail visual · android-390x844', async ({ browser }) => {
   test.setTimeout(180_000);
   await mkdir(ARTIFACT_DIR, { recursive: true });
