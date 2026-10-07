@@ -312,7 +312,7 @@ test('Combat quartermaster · desktop keeps contracts and arsenal inside the Ope
   await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-quartermaster-mercenaries-desktop-1440x900.png');
 
   await quartermaster.getByRole('tab', { name: 'Armas y equipo', exact: true }).click();
-  await expect(quartermaster).toHaveAttribute('data-quartermaster-tab', 'equipment');
+  await expect(quartermaster.locator('.combat-quartermaster-shell')).toHaveAttribute('data-quartermaster-tab', 'equipment');
   const arsenal = await quartermasterHealth(page);
   expect(arsenal.cardCount).toBeGreaterThanOrEqual(2);
   await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-quartermaster-arsenal-desktop-1440x900.png');
@@ -346,7 +346,7 @@ test.describe('Combat preparation · mobile', () => {
     await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-quartermaster-mercenaries-android-390x844.png');
 
     await quartermaster.getByRole('tab', { name: 'Armas y equipo', exact: true }).click();
-    await expect(quartermaster).toHaveAttribute('data-quartermaster-tab', 'equipment');
+    await expect(quartermaster.locator('.combat-quartermaster-shell')).toHaveAttribute('data-quartermaster-tab', 'equipment');
 
     const equipmentTargets = quartermaster.locator('button:visible, select:visible');
     const equipmentCount = await equipmentTargets.count();
