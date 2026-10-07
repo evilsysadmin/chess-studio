@@ -248,6 +248,7 @@ test('Home · el avatar residente de Matthias abre Así juegas · entrenamiento 
   const corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
   await corner.getByRole('button', { name: 'Abrir Así juegas con Matthias', exact: true }).click();
   await waitForTrainingRoomSettled(page);
+  await page.locator('.insights-room-archive-drawer > summary').click();
   await page.getByRole('button', { name: 'Errores', exact: true }).click();
   await expect(page.getByText('Horquillas de caballo sufridas', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Entrenar este patrón →', exact: true }).click();
@@ -302,6 +303,7 @@ test('Home · el avatar residente de Matthias abre Así juegas · entrenamiento 
   const homeCorner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
   await homeCorner.getByRole('button', { name: 'Abrir Así juegas con Matthias', exact: true }).click();
   await waitForTrainingRoomSettled(page);
+  await page.locator('.insights-room-archive-drawer > summary').click();
   await page.getByRole('button', { name: 'Errores', exact: true }).click();
 
   const pattern = page.locator('.insights-recurring-error-card').filter({ hasText: 'Horquillas de caballo sufridas' });

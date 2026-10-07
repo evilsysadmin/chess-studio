@@ -87,6 +87,7 @@ test('Así juegas · Errores reabre una deuda cuando aparece una reincidencia re
   await buttonWithHeading(page, 'Así juegas').click();
   await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
 
+  await page.locator('.insights-room-archive-drawer > summary').click();
   await page.getByRole('button', { name: 'Errores', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'No vuelvas a hacer esto', exact: true })).toBeVisible();
   await expect(page.getByText('Horquillas de caballo sufridas', { exact: true })).toBeVisible();
@@ -168,6 +169,7 @@ test('Así juegas · Errores muestra mejora probable sólo tras dos autopsias co
   }, { fen: PERSONAL_MATE_FEN });
 
   await buttonWithHeading(page, 'Así juegas').click();
+  await page.locator('.insights-room-archive-drawer > summary').click();
   await page.getByRole('button', { name: 'Errores', exact: true }).click();
 
   await expect(page.getByText('Horquillas de caballo sufridas', { exact: true })).toBeVisible();

@@ -29,6 +29,7 @@ async function openInsights(page, { hour = null } = {}) {
   await login(page);
   await page.locator('.illustrated-home__matthias').click();
   await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
+  await page.locator('.insights-room-archive-drawer > summary').click();
   await page.getByRole('button', { name: 'Expediente', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Expediente', exact: true })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Consulta diaria con Matthias' })).toBeVisible();

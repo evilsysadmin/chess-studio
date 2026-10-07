@@ -64,7 +64,8 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     await mockApi(page, { profileSeed: { 'chess-study-game-history': JSON.stringify(LAYOUT_HISTORY) } });
     await login(page);
     await page.locator('.illustrated-home__matthias').click();
-    await page.getByRole('button', { name: 'Expediente', exact: true }).click();
+    await page.locator('.insights-room-archive-drawer > summary').click();
+  await page.getByRole('button', { name: 'Expediente', exact: true }).click();
     const portrait = page.locator('.insights-coach-workspace .ai-player-portrait');
     await expect(portrait).toBeVisible();
     const eyebrow = portrait.locator('.section-label').first();

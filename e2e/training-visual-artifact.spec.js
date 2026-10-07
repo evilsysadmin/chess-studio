@@ -519,6 +519,17 @@ scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page })
   await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
   const trainingRoom = page.locator('[data-insights-room="training-room-v1"]');
   await expect(trainingRoom).toBeVisible();
+  const archive = trainingRoom.locator('[data-insights-archive="room-objects-v2"]');
+  await expect(archive).toBeVisible();
+  const archiveSummary = archive.locator('> summary');
+  await expect(archiveSummary).toHaveText('Abrir archivo de Matthias');
+  await expect(archive.locator('.insights-room-tool')).toHaveCount(3);
+  await expect(archive.getByRole('button', { name: 'Errores', exact: true })).toHaveCount(0);
+  await archiveSummary.click();
+  await expect(archive.getByRole('button', { name: 'Errores', exact: true })).toBeVisible();
+  await expect(archive.getByRole('button', { name: 'Expediente', exact: true })).toBeVisible();
+  await expect(archive.getByRole('button', { name: 'Mi progreso', exact: true })).toBeVisible();
+  await archiveSummary.click();
   await expect(trainingRoom.locator('[data-insights-training-room-3d]')).toHaveAttribute(
     'data-insights-training-room-3d',
     'ready',
@@ -555,6 +566,7 @@ scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page })
   await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
   await page.setViewportSize({ width: 1440, height: 900 });
   await settle(page);
+  await page.locator('.insights-room-archive-drawer > summary').click();
   await page.getByRole('button', { name: 'Mi progreso', exact: true }).click();
 
   const career = page.locator('.career-screen');
@@ -596,6 +608,7 @@ scopedTest('progress', 'Entrenar · Expediente de Matthias', async ({ page }) =>
 
   await page.locator('.illustrated-home__matthias').click();
   await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
+  await page.locator('.insights-room-archive-drawer > summary').click();
   await page.getByRole('button', { name: 'Expediente', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Expediente', exact: true })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Consulta diaria con Matthias' })).toBeVisible();
