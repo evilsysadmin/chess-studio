@@ -106,26 +106,9 @@ export function buildWarRoom(theme, whiteSide, coarsePointer = false) {
     addBox(room, [0.16, 4.7, 0.5], wood, [x, 2.55, wallZ + towardBoard * 0.16], { roughness: 0.75 });
   }
 
-  const windowX = whiteSide ? 4.2 : -4.2;
-  addBox(room, [4.3, 3.1, 0.16], 0x0a2334, [windowX, 3.3, wallZ + towardBoard * 0.27], { emissive: 0x0c3551, roughness: 0.42 });
-  addBox(room, [4.55, 0.15, 0.35], wood, [windowX, 1.72, wallZ + towardBoard * 0.34]);
-  addBox(room, [4.55, 0.15, 0.35], wood, [windowX, 4.88, wallZ + towardBoard * 0.34]);
-  addBox(room, [0.15, 3.3, 0.35], wood, [windowX - 2.23, 3.3, wallZ + towardBoard * 0.34]);
-  addBox(room, [0.15, 3.3, 0.35], wood, [windowX + 2.23, 3.3, wallZ + towardBoard * 0.34]);
-  addBox(room, [0.11, 3.05, 0.28], 0x1f2f3a, [windowX, 3.3, wallZ + towardBoard * 0.38]);
-  addBox(room, [4.3, 0.1, 0.28], 0x1f2f3a, [windowX, 3.3, wallZ + towardBoard * 0.38]);
-
-  const moon = new THREE.Mesh(
-    new THREE.SphereGeometry(0.28, 20, 14),
-    new THREE.MeshBasicMaterial({ color: 0xb9d9f0 }),
-  );
-  moon.position.set(windowX + 1.15, 4.05, wallZ + towardBoard * 0.43);
-  room.add(moon);
-
-  for (const [offset, height] of [[-1.1, 1.2], [-0.6, 1.65], [0, 1.4], [0.55, 2.0], [1.05, 1.45]]) {
-    const tower = addBox(room, [0.4, height, 0.24], 0x09131b, [windowX + offset, 1.72 + height / 2, wallZ + towardBoard * 0.46], { roughness: 1, castShadow: false });
-    tower.castShadow = false;
-  }
+  // The premium layer owns the canonical weather window. The retired rectangular
+  // base-window vignette used to allocate 13 meshes underneath it.
+  room.userData.warRoomLegacyBaseWindowMeshesOmitted = 13;
 
   const bannerX = whiteSide ? -0.6 : 0.6;
   addBox(room, [2.25, 3.25, 0.12], decor.banner, [bannerX, 3.25, wallZ + towardBoard * 0.31], { roughness: 0.88 });
