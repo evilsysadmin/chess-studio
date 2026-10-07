@@ -74,6 +74,7 @@ func _configure_visual() -> void:
 	visual.position = Vector2(0.0, -(ChessFootballSpriteBank.footline() - cell.y * 0.5) * visual_scale)
 	visual.flip_h = team_id == 1
 	visual.play("idle")
+	_apply_loop_phase(&"idle")
 
 func _process(delta: float) -> void:
 	tackle_cooldown_seconds = maxf(0.0, tackle_cooldown_seconds - delta)
@@ -354,6 +355,23 @@ func _sync_locomotion(sprinting: bool) -> void:
 	visual.speed_scale = 1.16 if wanted == "sprint" else (1.05 if wanted == "run" else 1.0)
 	if String(visual.animation) != wanted or not visual.is_playing():
 		visual.play(wanted)
+		_apply_loop_phase(StringName(wanted))
+
+func _loop_phase_frame(animation_name: StringName) -> int:
+	if visual == null or visual.sprite_frames == null:
+		return 0
+	var count := visual.sprite_frames.get_frame_count(animation_name)
+	if count <= 1:
+		return 0
+	# Deterministic per-player phase offsets stop a five-a-side lineup from
+	# breathing/running in lockstep like cloned mannequins.
+	var seed := team_id * 5 + squad_index * 3
+	return ((seed % count) + count) % count
+
+func _apply_loop_phase(animation_name: StringName) -> void:
+	if visual == null or not (animation_name in [&"idle", &"run", &"sprint"]):
+		return
+	visual.frame = _loop_phase_frame(animation_name)
 
 func debug_visual_ready() -> bool:
 	return visual != null and visual.sprite_frames != null
@@ -363,6 +381,9 @@ func debug_animation_names() -> PackedStringArray:
 
 func debug_visual_variant_key() -> String:
 	return ChessFootballSpriteBank.atlas_key(team_id, role, squad_index)
+
+func debug_loop_phase_frame(animation_name: StringName) -> int:
+	return _loop_phase_frame(animation_name)
 
 func debug_tackle_ready() -> bool:
 	return can_tackle()

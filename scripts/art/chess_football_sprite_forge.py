@@ -184,20 +184,22 @@ def _pose(animation: str, frame: int) -> dict[str, float]:
     }
     if animation == "idle":
         pose.update(
-            bob=stride * 0.34,
-            crouch=2.0 + lift * 0.62,
-            arm_l=-3.2 + stride * 2.2,
-            arm_r=4.4 - stride * 2.4,
-            leg_l=-3.8 - stride * 1.5,
-            leg_r=3.2 + stride * 1.6,
-            lift_l=max(0.0, -stride) * 0.85,
-            lift_r=max(0.0, stride) * 0.85,
-            twist=stride * 1.35,
-            head=-stride * 0.38,
-            sway=math.cos(phase) * 0.92,
-            pelvis_roll=stride * 1.18,
-            shoulder_roll=-stride * 0.94,
-            arm_flex=4.2,
+            bob=stride * 0.30,
+            crouch=2.2 + lift * 0.70,
+            # V15 rests the hands slightly inboard with flexed elbows. V14
+            # pushed both hands away from the torso and read like a mannequin.
+            arm_l=4.2 + stride * 1.6,
+            arm_r=-3.6 - stride * 1.8,
+            leg_l=-4.2 - stride * 1.7,
+            leg_r=3.8 + stride * 1.8,
+            lift_l=max(0.0, -stride) * 1.15,
+            lift_r=max(0.0, stride) * 1.15,
+            twist=stride * 1.45,
+            head=-stride * 0.42,
+            sway=math.cos(phase) * 1.02,
+            pelvis_roll=stride * 1.30,
+            shoulder_roll=-stride * 1.05,
+            arm_flex=5.6,
         )
     elif animation == "run":
         pose.update(
@@ -534,18 +536,30 @@ def _frame_svg(
         sx = cx + side * shoulder_span - p["twist"] * 0.23
         sy = shoulder_y + side * p["shoulder_roll"] + (1.0 if far else -0.6)
         if locomotion:
-            hand_x = cx + side * 14.8 + amount * 0.56 + (-0.8 if far else 1.4)
-            hand_y = 80.0 - bob + yoff + crouch * 0.46 - amount * 0.30
+            # V15 derives arm drive directly from the opposite leg. This makes
+            # contralateral gait explicit: right leg forward -> left arm
+            # forward, and vice versa. Positive drive always means "toward the
+            # running direction" before runtime flip_h mirrors the whole actor.
+            opposite_leg = p["leg_r"] if side < 0.0 else p["leg_l"]
+            arm_drive = opposite_leg * (0.90 if animation == "run" else 0.86)
+            hand_x = sx + arm_drive * 0.58 + side * (1.2 if far else 0.4)
+            hand_y = (
+                79.4
+                - bob
+                + yoff
+                + crouch * 0.44
+                - arm_drive * 0.24
+            )
             elbow_x = (
                 sx
-                + (hand_x - sx) * 0.44
-                - side * (3.8 + p["arm_flex"] * 0.16)
+                + arm_drive * 0.24
+                - side * (4.6 + p["arm_flex"] * 0.18)
             )
             elbow_y = (
                 sy
-                + (hand_y - sy) * 0.42
-                + 5.2
-                + p["arm_flex"] * 0.12
+                + (hand_y - sy) * 0.44
+                + 5.4
+                + p["arm_flex"] * 0.14
             )
         else:
             hand_x = (
@@ -730,7 +744,9 @@ def _frame_svg(
     # V13 keeps the deterministic V12 identities and adds restrained
     # role-shaped silhouettes: defender broader, midfielder neutral, wing
     # leaner and forward athletic. Pivots, footline and gameplay stay fixed.
-    neck_y = 49.4 - bob + yoff + crouch * 0.45
+    # V15 pulls the neck up under the jaw. V14 left a literal 2-3 px gap
+    # between head and neck that became very obvious at broadcast scale.
+    neck_y = 46.1 - bob + yoff + crouch * 0.43
     out.append(
         f'<path d="M {offset_x + cx - 3.1:.2f} {offset_y + neck_y:.2f} '
         f'L {offset_x + cx + 4.1:.2f} {offset_y + neck_y - 0.2:.2f} '
@@ -872,7 +888,7 @@ def build_outputs() -> dict[str, str]:
         outputs[filename] = _atlas_svg(team, keeper=True)
         atlas_meta[slug] = {"name": team["name"], "file": filename}
     manifest = {
-        "version": 14,
+        "version": 15,
         "quality_contract": SPRITE_FORGE_CONTRACT["quality_contract"],
         "cell": {"width": CELL_W, "height": CELL_H},
         "columns": COLUMNS,
