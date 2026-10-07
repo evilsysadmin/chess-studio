@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import './ArmyRoute.css';
+import './CombatBarracksRoom.css';
 import {
   BASE_STATS,
   statsFor,
@@ -456,8 +457,8 @@ export function ArmyRosterPanel({ roster, onBuy, onRevive, onRename, onMetamorph
 export default function ArmyScreen({ roster, onBuy, onRevive, onRename, onMetamorphose, onUnlockTechnique, onEquipTechnique, onClose }) {
   useEscapeToClose(onClose);
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="army-card army-roster-card" onClick={(e) => e.stopPropagation()}>
+    <div className="modal-backdrop combat-barracks-screen" data-combat-barracks="room" onClick={onClose}>
+      <div className="army-card army-roster-card combat-barracks-shell" onClick={(e) => e.stopPropagation()}>
         <button className="piece-info-close" onClick={onClose} aria-label="Cerrar">×</button>
         <ArmyRosterPanel
           roster={roster}
