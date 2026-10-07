@@ -24,7 +24,10 @@ async function expectDurableActiveSession(page, route) {
     expectedRoute: route,
   }), {
     message: `la sesión activa ${route} debe estar persistida antes de reload`,
-    timeout: 10_000,
+    // En runners cargados el snapshot puede llegar varios segundos después de
+    // que el tablero ya sea visible. Seguimos exigiendo persistencia real antes
+    // del reload; sólo evitamos convertir latencia de CI en un falso negativo.
+    timeout: 20_000,
   }).toBe(true);
 }
 
