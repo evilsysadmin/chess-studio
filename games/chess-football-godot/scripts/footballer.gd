@@ -17,6 +17,11 @@ const AI_SPRINT_INTENSITY := 0.94
 const AI_EXHAUSTED_INTENSITY_CAP := 0.82
 const TACKLE_ACTIVE_SECONDS := 0.18
 const SLIDE_TACKLE_ACTIVE_SECONDS := 0.24
+const DRIBBLE_BURST_SECONDS := 0.22
+const DRIBBLE_COOLDOWN_SECONDS := 0.68
+const DRIBBLE_SPEED_MULTIPLIER := 1.52
+const DRIBBLE_ACCELERATION := 3900.0
+const DRIBBLE_TOUCH_DISTANCE := 24.0
 var home_position: Vector2
 var active: bool = false
 var has_ball: bool = false
@@ -30,6 +35,9 @@ var tackle_recovery_seconds: float = 0.0
 var tackle_active_seconds: float = 0.0
 var tackle_launch_speed_ratio: float = 0.0
 var tackle_aggressive: bool = false
+var dribble_cooldown_seconds: float = 0.0
+var dribble_burst_seconds: float = 0.0
+var dribble_direction: Vector2 = Vector2.RIGHT
 var yellow_cards: int = 0
 var sent_off: bool = false
 var contact_stun_seconds: float = 0.0
@@ -69,6 +77,8 @@ func _configure_visual() -> void:
 
 func _process(delta: float) -> void:
 	tackle_cooldown_seconds = maxf(0.0, tackle_cooldown_seconds - delta)
+	dribble_cooldown_seconds = maxf(0.0, dribble_cooldown_seconds - delta)
+	dribble_burst_seconds = maxf(0.0, dribble_burst_seconds - delta)
 	tackle_recovery_seconds = maxf(0.0, tackle_recovery_seconds - delta)
 	tackle_active_seconds = maxf(0.0, tackle_active_seconds - delta)
 	if tackle_active_seconds <= 0.0:
@@ -91,23 +101,33 @@ func move_human(delta: float, direction: Vector2, sprinting: bool) -> void:
 	if sent_off:
 		velocity = Vector2.ZERO
 		return
-	var moving := direction.length_squared() > 0.001
-	var actual_sprint := _update_stamina(delta, sprinting, moving)
-	last_sprinting = actual_sprint
-	var speed := base_speed * (SPRINT_SPEED_MULTIPLIER if actual_sprint else 1.0)
+	var dribbling := dribble_active()
+	var wanted_direction := dribble_direction if dribbling else direction
+	var moving := wanted_direction.length_squared() > 0.001
+	var actual_sprint := _update_stamina(delta, sprinting and not dribbling, moving)
+	last_sprinting = actual_sprint or dribbling
+	var speed := (
+		base_speed * DRIBBLE_SPEED_MULTIPLIER
+		if dribbling
+		else base_speed * (SPRINT_SPEED_MULTIPLIER if actual_sprint else 1.0)
+	)
 	if tackle_recovery_seconds > 0.0:
 		speed *= 0.42
 	if contact_stun_seconds > 0.0:
 		speed *= 0.32
-	var desired := direction.normalized() * speed if moving else Vector2.ZERO
-	var acceleration := MOVE_ACCELERATION if desired.length_squared() > 0.001 else MOVE_DECELERATION
+	var desired := wanted_direction.normalized() * speed if moving else Vector2.ZERO
+	var acceleration := (
+		DRIBBLE_ACCELERATION
+		if dribbling
+		else (MOVE_ACCELERATION if desired.length_squared() > 0.001 else MOVE_DECELERATION)
+	)
 	velocity = velocity.move_toward(desired, acceleration * delta)
 	if velocity.length() < 1.0:
 		velocity = Vector2.ZERO
 	move_and_slide()
 	global_position = ChessFootballMath.clamp_to_pitch(global_position)
 	_sync_facing()
-	_sync_locomotion(actual_sprint)
+	_sync_locomotion(actual_sprint or dribbling)
 
 func move_ai(delta: float, target: Vector2, intensity: float = 1.0) -> void:
 	if sent_off:
@@ -201,6 +221,39 @@ func tackle_aggressive_active() -> bool:
 func tackle_momentum_ratio() -> float:
 	return tackle_launch_speed_ratio if tackle_active() else 0.0
 
+func can_dribble() -> bool:
+	return (
+		not sent_off
+		and has_ball
+		and dribble_cooldown_seconds <= 0.0
+		and dribble_burst_seconds <= 0.0
+		and action_lock_seconds <= 0.0
+		and contact_stun_seconds <= 0.0
+		and tackle_recovery_seconds <= 0.0
+	)
+
+func start_dribble(direction: Vector2) -> bool:
+	if not can_dribble():
+		return false
+	var wanted := direction
+	if wanted.length_squared() < 0.001:
+		var facing := -1.0 if visual != null and visual.flip_h else 1.0
+		wanted = Vector2(facing, 0.0)
+	dribble_direction = wanted.normalized()
+	dribble_burst_seconds = DRIBBLE_BURST_SECONDS
+	dribble_cooldown_seconds = DRIBBLE_COOLDOWN_SECONDS
+	velocity = dribble_direction * base_speed * 0.72
+	return true
+
+func dribble_active() -> bool:
+	return dribble_burst_seconds > 0.0
+
+func dribble_touch_ratio() -> float:
+	if not dribble_active():
+		return 0.0
+	var progress := 1.0 - clampf(dribble_burst_seconds / DRIBBLE_BURST_SECONDS, 0.0, 1.0)
+	return sin(PI * progress)
+
 func receive_yellow_card() -> bool:
 	if sent_off:
 		return true
@@ -225,6 +278,9 @@ func send_off() -> void:
 	tackle_active_seconds = 0.0
 	tackle_launch_speed_ratio = 0.0
 	tackle_aggressive = false
+	dribble_cooldown_seconds = 0.0
+	dribble_burst_seconds = 0.0
+	dribble_direction = Vector2.RIGHT
 	action_lock_seconds = 0.0
 	contact_stun_seconds = 0.0
 	collision_layer = 0
@@ -276,7 +332,10 @@ func keeper_save_ratio() -> float:
 
 func ball_anchor() -> Vector2:
 	var facing := -1.0 if visual != null and visual.flip_h else 1.0
-	return Vector2(18.0 * facing * scale.x, -5.0)
+	var anchor := Vector2(18.0 * facing * scale.x, -5.0)
+	if dribble_active():
+		anchor += dribble_direction * DRIBBLE_TOUCH_DISTANCE * dribble_touch_ratio()
+	return anchor
 
 func _sync_facing() -> void:
 	if visual == null or absf(velocity.x) < 4.0:
@@ -310,6 +369,15 @@ func debug_tackle_active() -> bool:
 
 func debug_tackle_aggressive() -> bool:
 	return tackle_aggressive_active()
+
+func debug_dribble_ready() -> bool:
+	return can_dribble()
+
+func debug_dribble_active() -> bool:
+	return dribble_active()
+
+func debug_dribble_direction() -> Vector2:
+	return dribble_direction
 
 func debug_yellow_cards() -> int:
 	return yellow_cards
