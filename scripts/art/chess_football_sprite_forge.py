@@ -230,6 +230,7 @@ GOLD = "#d4aa4c"
 IVORY = "#ece6cf"
 BOOT = "#15181d"
 OUTLINE = "#171b23"
+LIMB_OUTLINE = "#28323d"
 
 
 def _pose(animation: str, frame: int) -> dict[str, float]:
@@ -647,7 +648,7 @@ def _frame_svg(
         out.append(
             f'<path d="{_path(thigh, offset_x, offset_y)}" '
             f'fill="{team["head"]}" '
-            f'stroke="{OUTLINE}" stroke-width="1.12" stroke-linejoin="round" opacity="{opacity}"/>'
+            f'stroke="{LIMB_OUTLINE}" stroke-width="1.12" stroke-linejoin="round" opacity="{opacity}"/>'
         )
         if not far:
             out.append(
@@ -659,12 +660,12 @@ def _frame_svg(
             )
         out.append(
             f'<circle cx="{offset_x + knee_x:.2f}" cy="{offset_y + knee_y:.2f}" '
-            f'r="{2.62 * limb_scale:.2f}" fill="{team["head"]}" stroke="{OUTLINE}" '
+            f'r="{2.62 * limb_scale:.2f}" fill="{team["head"]}" stroke="{LIMB_OUTLINE}" '
             f'stroke-width=".16" opacity="{opacity}"/>'
         )
         out.append(
             f'<path d="{_path(shin, offset_x, offset_y)}" '
-            f'fill="{team["sock"]}" stroke="{OUTLINE}" '
+            f'fill="{team["sock"]}" stroke="{LIMB_OUTLINE}" '
             f'stroke-width="1.04" stroke-linejoin="round" opacity="{opacity}"/>'
         )
         if not far:
@@ -807,7 +808,7 @@ def _frame_svg(
             )
             out.append(
                 f'<path d="{_path(sleeve, offset_x, offset_y)}" '
-                f'fill="{team["torso_dark"]}" stroke="{OUTLINE}" '
+                f'fill="{team["torso_dark"]}" stroke="{LIMB_OUTLINE}" '
                 f'stroke-width="1.15" opacity=".84"/>'
             )
             out.append(
@@ -817,12 +818,12 @@ def _frame_svg(
             )
             out.append(
                 f'<path d="{_path(upper_skin, offset_x, offset_y)}" '
-                f'fill="{team["head"]}" stroke="{OUTLINE}" '
+                f'fill="{team["head"]}" stroke="{LIMB_OUTLINE}" '
                 f'stroke-width=".74" stroke-linejoin="round" opacity=".84"/>'
             )
             out.append(
                 f'<path d="{_path(fore, offset_x, offset_y)}" '
-                f'fill="{team["head"]}" stroke="{OUTLINE}" '
+                f'fill="{team["head"]}" stroke="{LIMB_OUTLINE}" '
                 f'stroke-width=".74" stroke-linejoin="round" opacity=".84"/>'
             )
             if keeper:
@@ -835,7 +836,7 @@ def _frame_svg(
                 far_hand = _hand_path((elbow_x, elbow_y), (hand_x, hand_y), 1.0)
                 out.append(
                     f'<path d="{_path(far_hand, offset_x, offset_y)}" '
-                    f'fill="{team["head"]}" stroke="{OUTLINE}" stroke-width=".90" stroke-linejoin="round" opacity=".84"/>'
+                    f'fill="{team["head"]}" stroke="{LIMB_OUTLINE}" stroke-width=".90" stroke-linejoin="round" opacity=".84"/>'
                 )
 
     # Shirt uses curves instead of the old octagonal chest. Asymmetry is
@@ -988,7 +989,7 @@ def _frame_svg(
         )
         out.append(
             f'<path d="{_path(sleeve, offset_x, offset_y)}" '
-            f'fill="{team["torso_light"]}" stroke="{OUTLINE}" stroke-width=".84" stroke-linejoin="round"/>'
+            f'fill="{team["torso_light"]}" stroke="{LIMB_OUTLINE}" stroke-width=".84" stroke-linejoin="round"/>'
         )
         out.append(
             f'<line x1="{offset_x + sleeve_x - 2.8:.2f}" y1="{offset_y + sleeve_y - 1.1:.2f}" '
@@ -997,11 +998,11 @@ def _frame_svg(
         )
         out.append(
             f'<path d="{_path(upper_skin, offset_x, offset_y)}" '
-            f'fill="{team["head"]}" stroke="{OUTLINE}" stroke-width=".74" stroke-linejoin="round"/>'
+            f'fill="{team["head"]}" stroke="{LIMB_OUTLINE}" stroke-width=".74" stroke-linejoin="round"/>'
         )
         out.append(
             f'<path d="{_path(fore, offset_x, offset_y)}" '
-            f'fill="{team["head"]}" stroke="{OUTLINE}" stroke-width=".76" stroke-linejoin="round"/>'
+            f'fill="{team["head"]}" stroke="{LIMB_OUTLINE}" stroke-width=".76" stroke-linejoin="round"/>'
         )
         if keeper:
             out.append(
@@ -1013,7 +1014,7 @@ def _frame_svg(
             near_hand = _hand_path((elbow_x, elbow_y), (hand_x, hand_y), 1.06)
             out.append(
                 f'<path d="{_path(near_hand, offset_x, offset_y)}" '
-                f'fill="{team["head"]}" stroke="{OUTLINE}" stroke-width=".84" stroke-linejoin="round"/>'
+                f'fill="{team["head"]}" stroke="{LIMB_OUTLINE}" stroke-width=".84" stroke-linejoin="round"/>'
             )
         if keeper:
             out.append(
@@ -1276,6 +1277,7 @@ def build_outputs() -> dict[str, str]:
                 "kit_profile": "organic-v19",
                 "silhouette_profile": "athletic-v23",
                 "joint_profile": "organic-joints-v24",
+                "limb_outline_profile": "tonal-limbs-v25",
                 "kinetics_profile": "weight-transfer-v21",
             }
             variant_keys.append(variant_slug)
@@ -1288,10 +1290,11 @@ def build_outputs() -> dict[str, str]:
             "file": filename,
             "silhouette_profile": "athletic-v23",
                 "joint_profile": "organic-joints-v24",
+                "limb_outline_profile": "tonal-limbs-v25",
             "kinetics_profile": "weight-transfer-v21",
         }
     manifest = {
-        "version": 24,
+        "version": 25,
         "quality_contract": SPRITE_FORGE_CONTRACT["quality_contract"],
         "cell": {"width": CELL_W, "height": CELL_H},
         "columns": COLUMNS,
