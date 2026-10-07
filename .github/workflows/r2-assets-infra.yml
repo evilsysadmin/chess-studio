@@ -146,6 +146,16 @@ jobs:
               print(f"- Actual footprint after apply: {gb(report['actualAfterBytes']):.3f} GB / {report['actualAfterObjects']} objects")
           print(f"- Soft ceiling: {gb(report['softLimitBytes']):.1f} GB; target: {gb(report['targetBytes']):.1f} GB")
           print(f"- Retained but unprotected: {gb(report['retainedUnprotectedBytes']):.3f} GB")
+          for item in report.get('retainedUnprotectedByReason', []):
+              print(f"  - {item['reason']}: {item['objects']} objects / {gb(item['bytes']):.3f} GB")
+          if report.get('topRetainedUnprotectedPrefixes'):
+              print("- Largest retained unprotected prefixes:")
+              for item in report['topRetainedUnprotectedPrefixes'][:8]:
+                  reason_text = ", ".join(
+                      f"{reason['reason']} {gb(reason['bytes']):.3f} GB"
+                      for reason in item.get('reasons', [])[:3]
+                  )
+                  print(f"  - {item['prefix']}: {gb(item['bytes']):.3f} GB ({reason_text})")
           print("- Largest retained prefixes:")
           for item in report.get('topRetainedPrefixes', [])[:8]:
               print(f"  - {item['prefix']}: {gb(item['bytes']):.3f} GB")
