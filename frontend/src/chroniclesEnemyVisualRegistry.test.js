@@ -19,7 +19,7 @@ describe('Chronicles enemy visual registry', () => {
     ];
 
     expectations.forEach(([visualType, artTier, primaryPart, signaturePart]) => {
-      const visual = buildChroniclesEnemyVisual(visualType, { coarsePointer: false, reducedMotion: true });
+      const visual = buildChroniclesEnemyVisual(visualType, { coarsePointer: false, reducedMotion: true, authoredArt: false });
       expect(visual?.model?.userData?.chroniclesArtTier, visualType).toBe(artTier);
       expect(visual?.model?.getObjectByName(primaryPart), visualType).toBeTruthy();
       expect(visual?.model?.getObjectByName(signaturePart), visualType).toBeTruthy();
@@ -27,7 +27,7 @@ describe('Chronicles enemy visual registry', () => {
   });
 
   it('builds the Fork Stalker with its authored silhouette parts', () => {
-    const visual = buildChroniclesEnemyVisual('fork-stalker', { reducedMotion: true });
+    const visual = buildChroniclesEnemyVisual('fork-stalker', { reducedMotion: true, authoredArt: false });
 
     expect(visual?.model?.name).toBe('chronicles-fork-stalker');
     expect(visual?.model?.getObjectByName('fork-stalker-fork-crown')).toBeTruthy();
