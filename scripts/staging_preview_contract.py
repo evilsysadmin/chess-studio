@@ -172,8 +172,10 @@ def main() -> int:
         ("generation.current_main()", "prepare owns stale-main probe"),
         ("Staging superseded", "prepare owns stale supersede diagnostic"),
         ('values["admitted"] = "true"', "prepare owns admitted generation state"),
-        ("pawn_scope.decide(head)", "prepare owns Pawn Slug evidence scope"),
+        ("values.update(optional_scope.decide(head))", "prepare owns shared optional staging scope"),
         ('"pawn_slug_visual_required": "false"', "prepare defaults Pawn Slug evidence off before admission"),
+        ('"resend_bootstrap_required": "false"', "prepare defaults Resend recovery off before admission"),
+        ('"continuity_required": "false"', "prepare defaults continuity off before admission"),
     ):
         require(staging_deploy_prepare, needle, label, errors)
 
@@ -204,18 +206,30 @@ def main() -> int:
 
     forbid(
         staging_deploy,
-        "staging-deploy-continuity.yml",
-        "staging critical path must not force the blue-green continuity drill on every release",
+        "uses: ./.github/workflows/staging-deploy-continuity.yml",
+        "continuity must stay outside the staging critical path",
         errors,
     )
     for needle, label in (
-        ("workflow_run:\n    workflows:\n      - Deploy to staging", "continuity post-deploy trigger"),
-        ("Continuity drill · scope", "continuity path-aware scope"),
-        ("backend-python/*|backend-go/*|infra/oci/runtime/*|scripts/oci_*", "continuity backend/runtime path scope"),
-        ("Continuity skipped", "continuity cheap skip diagnostic"),
-        ("attempts=12", "post-deploy convergence budget"),
+        ("continuity_required:", "staging prepare continuity scope output"),
+        ("gh workflow run staging-deploy-continuity.yml", "scoped continuity dispatch"),
+    ):
+        require(staging_deploy, needle, label, errors)
+    for needle, label in (
+        ("workflow_dispatch:", "continuity explicit dispatch"),
+        ("workflow_call:", "continuity reusable escape hatch"),
+        ("deploy_sha:", "continuity exact SHA input"),
+        ("Continuity drill · scope", "continuity current-main guard"),
+        ("current_main=", "continuity supersede guard"),
+        ("attempts=12", "scoped convergence budget"),
     ):
         require(staging_continuity, needle, label, errors)
+    forbid(
+        staging_continuity,
+        "workflow_run:",
+        "continuity must not wake on every staging generation",
+        errors,
+    )
 
     # Staging has one Pages deployment owner. The retired fast lane duplicated\n    # checkout/build/deploy/verify logic and must not return as a second mutation path.\n    if RETIRED_STAGING_PAGES_FAST.exists():\n        errors.append("staging Pages fast lane resurrected; canonical staging owns Pages deployment")\n\n    # Backend image publication is decoupled from admission/Pages. It may build
     # immutable images in parallel, but only current main may move the mutable
@@ -256,8 +270,6 @@ def main() -> int:
         "render_staging_bootstrap.py",
         "Resolve legacy Render service id read-only",
         "render_service_id:",
-        "actions: write",
-        "GH_TOKEN:",
         "/actions/runs/$GITHUB_RUN_ID/cancel",
         "while :; do",
         "Wait for OCI infrastructure mutations to quiesce",
@@ -269,6 +281,22 @@ def main() -> int:
         "Legacy contract phrase",
     ):
         forbid(staging_deploy, needle, "staging generation conserva dependencia/orchestration legado prohibido", errors)
+
+    try:
+        staging_summary = staging_deploy.split("\n  summary:\n", 1)[1]
+    except IndexError:
+        errors.append("staging perdió el summary owner de follow-ups")
+        staging_summary = ""
+    for needle, label in (
+        ("actions: write", "summary scoped dispatch permission"),
+        ("GH_TOKEN: ${{ github.token }}", "summary scoped GitHub token"),
+        ("gh workflow run oci-resend-bootstrap.yml", "summary Resend dispatch"),
+        ("gh workflow run staging-deploy-continuity.yml", "summary continuity dispatch"),
+    ):
+        require(staging_summary, needle, label, errors)
+    pre_summary = staging_deploy.split("\n  summary:\n", 1)[0]
+    for needle in ("actions: write", "GH_TOKEN:"):
+        forbid(pre_summary, needle, "staging jobs previos al summary no deben despachar workflows", errors)
 
     # Run Command owns its bounded readiness wait; orchestration does not poll it.
     for needle, label in (
