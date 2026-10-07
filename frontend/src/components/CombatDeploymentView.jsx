@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import './CombatDeploymentRoute.css';
+import './CombatDeploymentWarTable.css';
 import { createPortal } from 'react-dom';
 import Board from './Board.jsx';
 import { pieceRankForLevel } from '../combatRanks.js';
@@ -662,14 +663,14 @@ export default function CombatDeploymentView({
 
   return (
     <div className="modal-backdrop combat-deployment-backdrop" onClick={onClose}>
-      <section className="combat-deployment-shell" onClick={(e) => e.stopPropagation()} aria-label="Preparar despliegue de Combat Chess">
+      <section className="combat-deployment-shell combat-war-table" data-combat-deployment="war-table" onClick={(e) => e.stopPropagation()} aria-label="Mesa de Guerra de Combat Chess">
         <button className="piece-info-close" onClick={onClose} aria-label="Cerrar">×</button>
 
         <header className="combat-deployment-header">
           <div>
             <span className="army-memorial-kicker">COMBAT CHESS · MESA DE GUERRA</span>
-            <div className="deployment-title-row"><h2>Preparar despliegue</h2><button type="button" className="context-help-btn" onClick={() => setShowTutorial(true)}>?</button></div>
-            <p className="combat-operational-hint" title="Cada slot valida el tipo de origen. Un peón metamorfoseado sigue ocupando un slot de peón.">Arrastra, coloca y confirma.</p>
+            <div className="deployment-title-row"><h2>Mesa de Guerra</h2><button type="button" className="context-help-btn" onClick={() => setShowTutorial(true)}>?</button></div>
+            <p className="combat-operational-hint" title="Cada slot valida el tipo de origen. Un peón metamorfoseado sigue ocupando un slot de peón.">Forma la escuadra sobre el tablero. La reserva queda fuera de peligro.</p>
           </div>
           <div className={`deployment-readiness ${summary.ready ? 'ready' : 'incomplete'}`}>
             <strong>{summary.assignedCount}/{summary.totalSlots}</strong>
@@ -757,8 +758,9 @@ export default function CombatDeploymentView({
               </section>
             )}
 
-            <div className="deployment-presets" aria-label="Presets de escuadra">
-              <span className="deployment-presets-label">ESCUADRAS</span>
+            <details className="deployment-presets deployment-war-table-presets" aria-label="Presets de escuadra">
+              <summary><span className="deployment-presets-label">ESCUADRAS GUARDADAS</span><b>{presets.filter(Boolean).length}/3</b></summary>
+              <div className="deployment-war-table-presets-body">
               {[0, 1, 2].map((index) => {
                 const preset = presets[index];
                 return (
@@ -770,7 +772,8 @@ export default function CombatDeploymentView({
                   </div>
                 );
               })}
-            </div>
+              </div>
+            </details>
 
             <div className="deployment-list-heading">
               <div><span>UNIDADES EN RESERVA</span><b>{summary.reserveCount}</b></div>
@@ -850,13 +853,14 @@ export default function CombatDeploymentView({
           </main>
 
           <aside className="deployment-right-rail">
-            <section className="deployment-deployed-panel">
-              <div className="deployment-panel-heading">
+            <details className="deployment-deployed-panel deployment-war-table-deployed">
+              <summary className="deployment-panel-heading">
                 <div><span>DESPLEGADOS</span><strong>{summary.assignedCount}/{summary.totalSlots}</strong></div>
-                <small>Formación actual</small>
-              </div>
-              <p className="deployment-rail-hint">Selecciona una unidad para localizarla en el tablero o arrástrala a otro slot compatible.</p>
-              <div className="deployment-unit-list deployment-deployed-list" aria-label="Unidades desplegadas">
+                <small>Ver escuadra</small>
+              </summary>
+              <div className="deployment-war-table-deployed-body">
+                <p className="deployment-rail-hint">Selecciona una unidad para localizarla en el tablero o arrástrala a otro slot compatible.</p>
+                <div className="deployment-unit-list deployment-deployed-list" aria-label="Unidades desplegadas">
                 {deployedUnits.map((unitKey) => (
                   <UnitCard
                     key={unitKey}
@@ -872,10 +876,9 @@ export default function CombatDeploymentView({
                     onDragEnd={handleDragEnd}
                   />
                 ))}
+                </div>
               </div>
-            </section>
-
-
+            </details>
           </aside>
         </div>
 
