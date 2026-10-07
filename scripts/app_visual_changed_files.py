@@ -40,6 +40,7 @@ CASUAL_RESULT_FLOW_OWNER = "frontend/src/useCasualResultFlow.js"
 LOGOUT_FLOW_OWNER = "frontend/src/useLogoutFlow.js"
 FEATURE_FLAGS_OWNER = "frontend/src/usePublicFeatureFlags.js"
 GAME_EXIT_FLOW_OWNER = "frontend/src/useGameExitFlow.js"
+SHARE_RESULT_OWNER = "frontend/src/shareResult.js"
 
 GAME_SCREEN = "frontend/src/components/GameScreen.jsx"
 PUZZLE_SCREEN_OWNER = "frontend/src/components/PuzzleScreen.jsx"
@@ -409,6 +410,33 @@ NONVISUAL_CASUAL_RESULT_APP_LINES = {
     "return summary;",
 }
 
+NONVISUAL_SHARE_RESULT_APP_LINES = {
+    "import { identifyOpening } from './openings.js';",
+    "import { shareRecordFromHash } from './shareResult.js';",
+    "import { buildLiveShareRecord, shareRecordFromHash } from './shareResult.js';",
+    "function buildLiveShareRecord(finishedGame, outcome, mode, series = null) {",
+    "const moves = finishedGame?.history || [];",
+    "return {",
+    "id: `share-${finishedGame?.id || Date.now()}`,",
+    "date: new Date().toISOString(),",
+    "difficulty: finishedGame?.difficulty || 0,",
+    "humanColor: finishedGame?.humanColor || 'w',",
+    "outcome,", "moves,", "finalFen: finishedGame?.fen || null,", "mode,",
+    "opening: identifyOpening(moves.map((m) => m.san).filter(Boolean)),",
+    "timeControl: activeTimeControl ? { id: activeTimeControl.id, label: activeTimeControl.label } : null,",
+    "series: series ? {", "id: series.id,", "bestOf: series.bestOf,",
+    "humanWins: series.humanWins,", "cpuWins: series.cpuWins,", "draws: series.draws,",
+    "winner: series.winner,", "} : null,", "};", "}", "",
+    "onShareResult={(outcome) => setShareRecord(buildLiveShareRecord(game, outcome, learningMode ? 'practice' : 'casual', activeSeries))}",
+    "onShareResult={(outcome) => setShareRecord(buildLiveShareRecord(game, outcome, learningMode ? 'practice' : 'casual', activeSeries, activeTimeControl))}",
+    "onShareIncident={(moveReport, _report, outcome) => setShareRecord({ ...buildLiveShareRecord(game, outcome, learningMode ? 'practice' : 'casual', activeSeries), incident: { moveNumber: moveReport.moveNumber, played: moveReport.played, suggested: moveReport.suggested, loss: moveReport.loss } })}",
+    "onShareIncident={(moveReport, _report, outcome) => setShareRecord({ ...buildLiveShareRecord(game, outcome, learningMode ? 'practice' : 'casual', activeSeries, activeTimeControl), incident: { moveNumber: moveReport.moveNumber, played: moveReport.played, suggested: moveReport.suggested, loss: moveReport.loss } })}",
+    "onShareResult={(outcome) => setShareRecord(buildLiveShareRecord(tournamentGame, outcome, 'tournament', null))}",
+    "onShareResult={(outcome) => setShareRecord(buildLiveShareRecord(tournamentGame, outcome, 'tournament', null, activeTimeControl))}",
+    "onShareIncident={(moveReport, _report, outcome) => setShareRecord({ ...buildLiveShareRecord(tournamentGame, outcome, 'tournament', null), incident: { moveNumber: moveReport.moveNumber, played: moveReport.played, suggested: moveReport.suggested, loss: moveReport.loss } })}",
+    "onShareIncident={(moveReport, _report, outcome) => setShareRecord({ ...buildLiveShareRecord(tournamentGame, outcome, 'tournament', null, activeTimeControl), incident: { moveNumber: moveReport.moveNumber, played: moveReport.played, suggested: moveReport.suggested, loss: moveReport.loss } })}",
+}
+
 NONVISUAL_GAME_EXIT_APP_LINES = {
     "import { chessGameExitDisposition } from './gameOutcome.js';",
     "import { gameModeFromContext } from './gameModes.js';",
@@ -681,6 +709,10 @@ def _is_nonvisual_casual_result_app_diff(diff_text: str | None) -> bool:
     return bool(changed_lines) and all(line in NONVISUAL_CASUAL_RESULT_APP_LINES for line in changed_lines)
 
 
+def _is_nonvisual_share_result_app_diff(diff_text: str | None) -> bool:
+    return _is_exact_routing_diff(diff_text, NONVISUAL_SHARE_RESULT_APP_LINES)
+
+
 def _is_nonvisual_game_exit_app_diff(diff_text: str | None) -> bool:
     return _is_exact_routing_diff(diff_text, NONVISUAL_GAME_EXIT_APP_LINES)
 
@@ -742,6 +774,10 @@ def normalize(
         CASUAL_RESULT_FLOW_OWNER.lower() in lower_paths
         and _is_nonvisual_casual_result_app_diff(_git_diff_text(base_sha, head_sha, APP_SHELL))
     )
+    safe_share_result_app = (
+        SHARE_RESULT_OWNER.lower() in lower_paths
+        and _is_nonvisual_share_result_app_diff(_git_diff_text(base_sha, head_sha, APP_SHELL))
+    )
     safe_game_exit_app = (
         GAME_EXIT_FLOW_OWNER.lower() in lower_paths
         and _is_nonvisual_game_exit_app_diff(_git_diff_text(base_sha, head_sha, APP_SHELL))
@@ -768,7 +804,7 @@ def normalize(
         if lower == GAME_SCREEN.lower() and safe_postgame_training_game:
             add(PUZZLE_SCREEN_OWNER)
             continue
-        if lower == APP_SHELL.lower() and (safe_learning_app or safe_global_shell_app or safe_app_decomposition or safe_game_start_app or safe_casual_result_app or safe_game_exit_app or safe_session_shell_app):
+        if lower == APP_SHELL.lower() and (safe_learning_app or safe_global_shell_app or safe_app_decomposition or safe_game_start_app or safe_casual_result_app or safe_share_result_app or safe_game_exit_app or safe_session_shell_app):
             # App.jsx is normally a global visual owner. Suppress it only for
             # the exact, audited navigation extraction above; any extra changed
             # App line fails closed and restores the canonical visual sweep.
@@ -881,6 +917,12 @@ def self_test() -> None:
     assert _is_nonvisual_casual_result_app_diff(safe_casual_result_diff)
     assert not _is_nonvisual_casual_result_app_diff(unsafe_casual_result_diff)
     assert not _is_nonvisual_casual_result_app_diff(None)
+
+    safe_share_result_diff = "--- a/frontend/src/App.jsx\n+++ b/frontend/src/App.jsx\n@@ -1 +1 @@\n-import { shareRecordFromHash } from './shareResult.js';\n+import { buildLiveShareRecord, shareRecordFromHash } from './shareResult.js';\n"
+    unsafe_share_result_diff = safe_share_result_diff + "@@ -20 +20 @@\n-<main className=\"old\">\n+<main className=\"new\">\n"
+    assert _is_nonvisual_share_result_app_diff(safe_share_result_diff)
+    assert not _is_nonvisual_share_result_app_diff(unsafe_share_result_diff)
+    assert not _is_nonvisual_share_result_app_diff(None)
 
     safe_game_exit_diff = "--- a/frontend/src/App.jsx\n+++ b/frontend/src/App.jsx\n@@ -1 +1 @@\n-import { clearClockSnapshot } from './clockPersistence.js';\n+import { useGameExitFlow } from './useGameExitFlow.js';\n"
     unsafe_game_exit_diff = safe_game_exit_diff + "@@ -20 +20 @@\n-<main className=\"old\">\n+<main className=\"new\">\n"

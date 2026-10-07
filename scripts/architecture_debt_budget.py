@@ -9,7 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 BUDGETS = {
-    "frontend/src/App.jsx": 764,
+    "frontend/src/App.jsx": 739,
     "frontend/src/useGameLaunchController.js": 95,
     "frontend/src/components/GameScreen.jsx": 865,
     "frontend/src/components/Board3DCore.jsx": 1023,
