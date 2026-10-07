@@ -1,4 +1,5 @@
 import { api } from './api.js';
+import { saveActiveGameSession, setActiveGameSessionVisible } from './activeGameSession.js';
 import { isAbortError } from './asyncControl.js';
 import {
   chooseContract,
@@ -90,8 +91,9 @@ export function useGameStartFlow({
 
       const isLearning = !!options.learning;
       const nextContext = gameContextFromOptions(options);
+      const nextTimeControl = timeControlById(options.timeControlId);
       learning(isLearning);
-      timeControl(timeControlById(options.timeControlId));
+      timeControl(nextTimeControl);
       context(nextContext);
       recordGameActivity({
         gameId: created.id,
@@ -124,6 +126,14 @@ export function useGameStartFlow({
         series(null);
       }
 
+      const persistedSession = saveActiveGameSession({
+        route: 'game',
+        game: created,
+        learningMode: isLearning,
+        gameContext: nextContext,
+        timeControlId: nextTimeControl.id,
+      });
+      setActiveGameSessionVisible(persistedSession ? 'game' : null);
       setGame(created);
       saved(true);
       navigate('game');
