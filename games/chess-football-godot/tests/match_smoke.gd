@@ -150,7 +150,7 @@ func _initialize() -> void:
 	dribbler.velocity = Vector2.ZERO
 	press_defender.global_position = dribbler.global_position + Vector2(72.0, -42.0)
 	match_node.ball.attach_to(dribbler)
-	var auto_lane := match_node.debug_auto_dribble_direction(dribbler)
+	var auto_lane: Vector2 = match_node.debug_auto_dribble_direction(dribbler)
 	assert(auto_lane.x > 0.60)
 	assert(auto_lane.y > 0.45)
 	assert(match_node.debug_try_dribble(Vector2.ZERO))
