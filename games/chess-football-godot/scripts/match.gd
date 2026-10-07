@@ -49,6 +49,10 @@ const AI_FORWARD_PASS_GAIN := 170.0
 const AI_DRIBBLE_LOOKAHEAD := 280.0
 const AI_SUPPORT_FORWARD := 190.0
 
+const DRIBBLE_AUTO_EVADE_RADIUS := 190.0
+const DRIBBLE_AUTO_LOOKAHEAD := 132.0
+const DRIBBLE_AUTO_SIDELINE_WEIGHT := 0.34
+
 const KICKOFF_FREEZE_SECONDS := 1.10
 const KICKOFF_AI_PASS_POWER := 430.0
 const KICKOFF_RECEIVER_INDEX := 3
@@ -974,12 +978,63 @@ func _tackle_attempt_range(tackler: Footballer, aggressive_override: bool = fals
 	var aggressive := aggressive_override or tackler.tackle_aggressive_active()
 	return TACKLE_ATTEMPT_RANGE + (SLIDE_TACKLE_FORWARD_BONUS if aggressive else 0.0)
 
+func _auto_dribble_direction(player: Footballer) -> Vector2:
+	var forward := Vector2.RIGHT if player.team_id == 0 else Vector2.LEFT
+	var pressure_nearby := false
+	for opponent in teams[1 - player.team_id]:
+		if opponent.sent_off:
+			continue
+		if opponent.global_position.distance_to(player.global_position) <= DRIBBLE_AUTO_EVADE_RADIUS:
+			pressure_nearby = true
+			break
+	if not pressure_nearby:
+		return forward
+
+	var pitch := ChessFootballMath.PITCH_RECT
+	var candidates: Array[Vector2] = [
+		(forward * 0.72 + Vector2.UP * 0.69).normalized(),
+		(forward * 0.72 + Vector2.DOWN * 0.69).normalized(),
+	]
+	var best_direction := forward
+	var best_score := -INF
+	for candidate in candidates:
+		var raw_target := player.global_position + candidate * DRIBBLE_AUTO_LOOKAHEAD
+		var target := ChessFootballMath.clamp_to_pitch(raw_target)
+		var unclamped_ratio := (
+			target.distance_to(player.global_position)
+			/ maxf(DRIBBLE_AUTO_LOOKAHEAD, 1.0)
+		)
+		var nearest_rival := INF
+		for opponent in teams[1 - player.team_id]:
+			if opponent.sent_off:
+				continue
+			nearest_rival = minf(
+				nearest_rival,
+				target.distance_to(opponent.global_position),
+			)
+		var sideline_clearance := minf(
+			target.y - pitch.position.y,
+			pitch.end.y - target.y,
+		)
+		var score := (
+			minf(nearest_rival, 320.0)
+			+ minf(sideline_clearance, 220.0) * DRIBBLE_AUTO_SIDELINE_WEIGHT
+			+ unclamped_ratio * 80.0
+		)
+		if score > best_score:
+			best_score = score
+			best_direction = candidate
+	return best_direction
+
 func _try_dribble(direction: Vector2) -> bool:
 	if controlled == null or ball.carrier != controlled:
 		return false
 	_cancel_shot_charge()
 	_cancel_pass_charge()
-	return controlled.start_dribble(direction)
+	var wanted := direction
+	if wanted.length_squared() < 0.0324:
+		wanted = _auto_dribble_direction(controlled)
+	return controlled.start_dribble(wanted)
 
 func _try_tackle(tackler: Footballer, aggressive: bool = false) -> bool:
 	if ball.carrier == null or ball.carrier == tackler:
@@ -1989,6 +2044,9 @@ func debug_try_tackle(player: Footballer, aggressive: bool = false) -> bool:
 
 func debug_try_dribble(direction: Vector2) -> bool:
 	return _try_dribble(direction)
+
+func debug_auto_dribble_direction(player: Footballer) -> Vector2:
+	return _auto_dribble_direction(player)
 
 func debug_penalty_area_contains(attacking_team_id: int, point: Vector2) -> bool:
 	return _in_penalty_area(attacking_team_id, point)

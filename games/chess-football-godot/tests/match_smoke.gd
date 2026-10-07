@@ -137,6 +137,38 @@ func _initialize() -> void:
 	assert(match_node.ball.global_position.distance_to(dribbler.global_position) > 28.0)
 	dribbler._process(0.70)
 	assert(dribbler.debug_dribble_ready())
+
+	# No-input desktop dribble should choose the safer diagonal when a rival is
+	# pressing. Explicit directional dribbles above remain authoritative.
+	for opponent in match_node.teams[1]:
+		opponent.global_position = Vector2(
+			ChessFootballMath.PITCH_RECT.end.x - 120.0,
+			ChessFootballMath.PITCH_RECT.end.y - 120.0,
+		)
+	var press_defender: Footballer = match_node.teams[1][1]
+	dribbler.global_position = ChessFootballMath.PITCH_RECT.get_center()
+	dribbler.velocity = Vector2.ZERO
+	press_defender.global_position = dribbler.global_position + Vector2(72.0, -42.0)
+	match_node.ball.attach_to(dribbler)
+	var auto_lane: Vector2 = match_node.debug_auto_dribble_direction(dribbler)
+	assert(auto_lane.x > 0.60)
+	assert(auto_lane.y > 0.45)
+	assert(match_node.debug_try_dribble(Vector2.ZERO))
+	assert(dribbler.debug_dribble_direction().y > 0.45)
+	dribbler._process(0.70)
+
+	# With no nearby pressure, the same no-input action should stay simple and
+	# carry the player straight toward the attacking goal.
+	for opponent in match_node.teams[1]:
+		opponent.global_position = Vector2(
+			ChessFootballMath.PITCH_RECT.end.x - 120.0,
+			ChessFootballMath.PITCH_RECT.position.y + 100.0 + opponent.squad_index * 180.0,
+		)
+	match_node.ball.attach_to(dribbler)
+	assert(dribbler.debug_dribble_ready())
+	auto_lane = match_node.debug_auto_dribble_direction(dribbler)
+	assert(auto_lane.x > 0.99)
+	assert(absf(auto_lane.y) < 0.01)
 	print("SMOKE_STAGE=dribble")
 
 	# The same shot crossing the goal plane is only a goal while the whole
