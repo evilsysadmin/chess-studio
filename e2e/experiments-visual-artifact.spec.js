@@ -230,7 +230,8 @@ async function stageChroniclesSigilAwake(page) {
   const attack = page.getByRole('button', { name: 'Atacar', exact: true });
 
   await forward.click();
-  await page.getByRole('button', { name: 'Seleccionar Hildegard', exact: true }).click();
+  await page.keyboard.press('2');
+  await expect(page.getByRole('button', { name: 'Seleccionar Hildegard', exact: true })).toHaveAttribute('aria-pressed', 'true');
   for (let hit = 0; hit < 3; hit += 1) await attack.click();
   await forward.click();
   await page.getByRole('button', { name: 'Girar a la izquierda', exact: true }).click();
