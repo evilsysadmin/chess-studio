@@ -436,6 +436,7 @@ body:has(.lab-screen .lab-workshop) .lab-screen:has(.lab-workshop) > .back-link 
 
   .lab-screen.lab-screen .lab-workshop-masthead {
     top: 7.1%;
+    pointer-events: none;
     left: 4.1%;
     width: min(390px, 28%);
     padding: 8px 18px 10px 0;
@@ -530,15 +531,18 @@ body:has(.lab-screen .lab-workshop) .lab-screen:has(.lab-workshop) > .back-link 
   .lab-screen.lab-screen .lab-workshop-map-table,
   .lab-screen.lab-screen .lab-workshop-tool:not(.lab-workshop-tool--arena) {
     align-content: end;
-    min-height: 72px;
-    padding: 7px 9px 8px;
+    justify-items: center;
+    gap: 3px;
+    min-height: 92px;
+    padding: 7px 9px 9px;
     border-color: transparent;
     border-top-color: transparent;
     background: linear-gradient(180deg,
-      transparent 0 42%,
-      rgba(3, 4, 5, .14) 58%,
-      rgba(3, 4, 5, .58) 100%);
+      transparent 0 34%,
+      rgba(3, 4, 5, .1) 52%,
+      rgba(3, 4, 5, .52) 100%);
     box-shadow: none;
+    text-align: center;
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
   }
@@ -548,13 +552,14 @@ body:has(.lab-screen .lab-workshop) .lab-screen:has(.lab-workshop) > .back-link 
   .lab-screen.lab-screen .lab-workshop-portal--chronicles > small,
   .lab-screen.lab-screen .lab-workshop-portal--tactics > small,
   .lab-screen.lab-screen .lab-workshop-map-table > small,
-  .lab-screen.lab-screen .lab-workshop-tool:not(.lab-workshop-tool--arena) .lab-workshop-tool-meta,
-  .lab-screen.lab-screen .lab-workshop-portal--pawnslug-godot > b,
-  .lab-screen.lab-screen .lab-workshop-portal--football > b,
-  .lab-screen.lab-screen .lab-workshop-portal--chronicles > b,
-  .lab-screen.lab-screen .lab-workshop-portal--tactics > b,
-  .lab-screen.lab-screen .lab-workshop-map-table > b {
-    display: none;
+  .lab-screen.lab-screen .lab-workshop-tool:not(.lab-workshop-tool--arena) .lab-workshop-tool-meta {
+    display: block;
+    width: 100%;
+    color: rgba(var(--hotspot-accent), .82);
+    font-size: .42rem;
+    line-height: 1;
+    text-align: center;
+    letter-spacing: .13em;
   }
 
   .lab-screen.lab-screen .lab-workshop-portal--pawnslug-godot > strong,
@@ -563,14 +568,45 @@ body:has(.lab-screen .lab-workshop) .lab-screen:has(.lab-workshop) > .back-link 
   .lab-screen.lab-screen .lab-workshop-portal--tactics > strong,
   .lab-screen.lab-screen .lab-workshop-map-table > strong,
   .lab-screen.lab-screen .lab-workshop-tool:not(.lab-workshop-tool--arena) strong {
-    width: fit-content;
+    width: 100%;
     max-width: 100%;
-    padding: 4px 7px 3px;
-    border-bottom: 1px solid rgba(var(--hotspot-accent), .48);
-    border-radius: 2px;
-    background: rgba(3, 4, 5, .18);
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
     box-shadow: none;
+    text-align: center;
+    text-wrap: balance;
     text-shadow: 0 2px 7px #000;
+  }
+
+  .lab-screen.lab-screen .lab-workshop-portal--pawnslug-godot > b,
+  .lab-screen.lab-screen .lab-workshop-portal--football > b,
+  .lab-screen.lab-screen .lab-workshop-portal--chronicles > b,
+  .lab-screen.lab-screen .lab-workshop-portal--tactics > b,
+  .lab-screen.lab-screen .lab-workshop-map-table > b {
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    margin: 2px auto 0;
+    padding: 0;
+    border: 1px solid rgba(223, 177, 88, .72);
+    border-radius: 50%;
+    color: transparent;
+    font-size: 0;
+    line-height: 1;
+  }
+
+  .lab-screen.lab-screen .lab-workshop-portal--pawnslug-godot > b::after,
+  .lab-screen.lab-screen .lab-workshop-portal--football > b::after,
+  .lab-screen.lab-screen .lab-workshop-portal--chronicles > b::after,
+  .lab-screen.lab-screen .lab-workshop-portal--tactics > b::after,
+  .lab-screen.lab-screen .lab-workshop-map-table > b::after {
+    content: '→';
+    color: rgba(238, 200, 119, .92);
+    font-size: .68rem;
+    transform: none;
   }
 
   .lab-screen.lab-screen .lab-workshop-portal--pawnslug-godot:hover,
