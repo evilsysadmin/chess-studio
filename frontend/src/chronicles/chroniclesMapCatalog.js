@@ -139,6 +139,7 @@ function normalizeEnemy(enemy) {
       movement: enemy?.ai?.movement || 'cardinal-chase',
       engagedMovement: enemy?.ai?.engagedMovement || undefined,
       engageRange: effectiveEngageRange,
+      disengageRange: enemy?.ai?.disengageRange == null ? undefined : Number(enemy.ai.disengageRange),
       attackReach: effectiveReach,
       requiresLineOfSight: Boolean(enemy?.ai?.requiresLineOfSight),
       patrolRoute: Object.freeze((enemy?.ai?.patrolRoute || []).map((point) => Object.freeze(clonePoint(point)))),
@@ -233,6 +234,16 @@ function assertEnemyContract(map, enemy) {
   }
   if (!enemy.ai?.engagedMovement && Number.isFinite(enemy.ai?.engageRange)) {
     throw new Error(`Chronicles map ${map.id} enemy ${enemy.id} engageRange requires engagedMovement`);
+  }
+  if (enemy.ai?.disengageRange !== undefined) {
+    const disengageRange = Number(enemy.ai.disengageRange);
+    const attackReach = Math.max(1, Number(enemy.ai?.attackReach ?? enemy.retaliationReach ?? 1));
+    if (!Number.isInteger(disengageRange) || disengageRange < 1) {
+      throw new Error(`Chronicles map ${map.id} enemy ${enemy.id} disengageRange must be a positive integer`);
+    }
+    if (disengageRange >= attackReach) {
+      throw new Error(`Chronicles map ${map.id} enemy ${enemy.id} disengageRange must be smaller than attackReach`);
+    }
   }
   assertPatrolRoute(map, enemy);
 
