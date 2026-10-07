@@ -529,13 +529,13 @@ function buildRoom({ lite = false } = {}) {
   const root = new THREE.Group();
   root.name = 'quick-match-ready-room';
 
-  const stone = mat(0x46403b, .02, .90);
-  const stoneEdge = mat(0x736a60, .03, .76);
-  const stoneHighlight = mat(0x948878, .04, .68);
-  const wood = mat(0x6a3e24, .08, .54);
-  const woodDark = mat(0x2a1710, .05, .72);
-  const brass = mat(0xb68b43, .82, .24);
-  const leather = mat(0x4a201d, .05, .70);
+  const stone = mat(0x514a43, .02, .86);
+  const stoneEdge = mat(0x7b7166, .03, .72);
+  const stoneHighlight = mat(0x9c8f7e, .04, .64);
+  const wood = mat(0x75472a, .08, .50);
+  const woodDark = mat(0x321c13, .05, .68);
+  const brass = mat(0xc09449, .82, .22);
+  const leather = mat(0x542521, .05, .66);
   const steel = mat(0x8d9396, .74, .27);
   const ivory = mat(0xd8cfba, .06, .42);
   const ebony = mat(0x2d2b2b, .30, .30);
@@ -695,7 +695,7 @@ export default function QuickMatchReadyRoomScene3D() {
       });
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 2.20;
+      renderer.toneMappingExposure = 2.28;
       renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio || 1, coarsePointer ? .88 : 1.35));
       renderer.shadowMap.enabled = !coarsePointer;
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -707,7 +707,7 @@ export default function QuickMatchReadyRoomScene3D() {
       camera.position.set(...QUICK_MATCH_READY_ROOM_CAMERA.position);
       camera.lookAt(...QUICK_MATCH_READY_ROOM_CAMERA.target);
 
-      const hemi = new THREE.HemisphereLight(0x9ab6d5, 0x3b2417, coarsePointer ? 1.12 : 1.58);
+      const hemi = new THREE.HemisphereLight(0xa3bdd7, 0x432719, coarsePointer ? 1.16 : 1.72);
       scene.add(hemi);
 
       const warmLeft = new THREE.PointLight(0xffa654, coarsePointer ? 2.05 : 3.45, 20, 2);
@@ -731,10 +731,27 @@ export default function QuickMatchReadyRoomScene3D() {
       cameraFill.castShadow = false;
       scene.add(cameraFill);
 
-      const boardFill = new THREE.PointLight(0xffe2bd, coarsePointer ? .38 : .72, 17, 2);
+      const boardFill = new THREE.PointLight(0xffe2bd, coarsePointer ? .40 : .80, 17, 2);
       boardFill.position.set(0, 6.2, -1.1);
       boardFill.castShadow = false;
       scene.add(boardFill);
+
+      if (!coarsePointer) {
+        for (const x of [-5.8, 5.8]) {
+          const wallWash = new THREE.SpotLight(
+            0xffb86a,
+            1.05,
+            13,
+            Math.PI / 4.8,
+            .72,
+            1.9,
+          );
+          wallWash.position.set(x, 5.1, -2.9);
+          wallWash.target.position.set(x, 2.0, -6.0);
+          wallWash.castShadow = false;
+          scene.add(wallWash, wallWash.target);
+        }
+      }
 
       const boardKey = new THREE.SpotLight(
         0xffd7a0,
