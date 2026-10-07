@@ -96,6 +96,37 @@ test('Chronicles of Matthias · abre una cripta Three.js real y usa combate posi
   await expect(mode).toHaveAttribute('data-chronicles-initiative-die', '1d8');
 });
 
+test('Chronicles of Matthias · clic en un PJ abre una ficha RPG con retrato authored y pausa el mundo', async ({ page }) => {
+  await openChronicles(page);
+  const mode = page.locator('[data-chronicles="true"]');
+  const matthias = mode.getByRole('button', { name: 'Seleccionar Matthias', exact: true });
+  const turnsBefore = await mode.getAttribute('data-chronicles-turns');
+
+  await matthias.click();
+  const sheet = page.getByRole('dialog', { name: 'Matthias', exact: true });
+  await expect(sheet).toBeVisible();
+  await expect(sheet.getByText('PROGRESIÓN', { exact: true })).toBeVisible();
+  await expect(sheet.getByText('EQUIPO Y OBJETOS', { exact: true })).toBeVisible();
+  await expect(sheet.getByText('ATRIBUTOS', { exact: true })).toBeVisible();
+  await expect(sheet.getByText('TÉCNICAS Y GRIMORIO', { exact: true })).toBeVisible();
+
+  const portrait = sheet.locator('.chronicles-character-sheet__portrait img');
+  await expect(portrait).toBeVisible();
+  const authoredPortrait = await portrait.evaluate((image) => (
+    image.complete
+    && image.naturalWidth >= 128
+    && image.naturalHeight >= 128
+    && !image.src.startsWith('data:')
+  ));
+  expect(authoredPortrait).toBe(true);
+
+  await page.keyboard.press('w');
+  await expect(mode).toHaveAttribute('data-chronicles-turns', turnsBefore || '0');
+
+  await sheet.getByRole('button', { name: 'Cerrar ficha', exact: true }).click();
+  await expect(sheet).toHaveCount(0);
+});
+
 test('Chronicles of Matthias · móvil mantiene party y mandos sin overflow', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await openChronicles(page);

@@ -122,6 +122,36 @@ test('Chronicles Tactics · arranca como RPG táctico isométrico · locomoción
   await expect(mode).toHaveAttribute('data-party-y', releasedCell.y);
 });
 
+test('Chronicles Tactics · la ficha pausa locomoción continua', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await openTactics(page);
+
+  const mode = page.locator('[data-chronicles-tactics="true"]');
+  const partyHud = mode.locator('.chronicles-party-hud');
+  await expect(mode).toHaveAttribute('data-party-y', '5');
+
+  await page.keyboard.down('ArrowUp');
+  await page.waitForFunction(() => (
+    document.querySelector('[data-chronicles-tactics="true"]')?.getAttribute('data-party-y') !== '5'
+  ));
+
+  await partyHud.getByRole('button', { name: 'Abrir ficha de Matthias', exact: true }).click();
+  const sheet = page.getByRole('dialog', { name: 'Matthias', exact: true });
+  await expect(sheet).toBeVisible();
+
+  const pausedCell = await mode.evaluate((node) => ({
+    x: node.getAttribute('data-party-x'),
+    y: node.getAttribute('data-party-y'),
+  }));
+  await page.waitForTimeout(360);
+  await expect(mode).toHaveAttribute('data-party-x', pausedCell.x);
+  await expect(mode).toHaveAttribute('data-party-y', pausedCell.y);
+
+  await page.keyboard.up('ArrowUp');
+  await sheet.getByRole('button', { name: 'Cerrar ficha', exact: true }).click();
+  await expect(sheet).toHaveCount(0);
+});
+
 test('Chronicles Tactics · arranca como RPG táctico isométrico · exploración a combate', async ({ page }) => {
   await openTactics(page);
   const mode = page.locator('[data-chronicles-tactics="true"]');

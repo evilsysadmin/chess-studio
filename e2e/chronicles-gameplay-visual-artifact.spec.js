@@ -69,7 +69,8 @@ async function openChronicles(page, captureLabel, {
   }
   await tools.getByRole('button').filter({ hasText: 'Experimentos geniales' }).evaluate((button) => button.click());
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
-  const chroniclesEntry = page.getByRole('button', { name: /BOOK I.*Chronicles of Matthias/i });
+  const chroniclesEntry = page.locator('.lab-workshop-portal--chronicles');
+  await expect(chroniclesEntry).toBeVisible();
   await chroniclesEntry.click();
   const setup = page.locator('[data-chronicles-character-setup]');
   try {
@@ -168,7 +169,7 @@ for (const capture of CAPTURES) {
     // Hosted SwiftShader makes large WebGL readbacks expensive. Keep this
     // producer to one canonical readback per viewport; Tactics owns a separate
     // focused producer so neither surface can starve the other of its budget.
-    test.setTimeout(240_000);
+    test.setTimeout(360_000);
     await mkdir(ARTIFACT_DIR, { recursive: true });
 
     const context = await browser.newContext({
@@ -205,6 +206,27 @@ for (const capture of CAPTURES) {
       await expect(stage).toBeVisible();
       await expect(gameMenu).toBeVisible();
       await page.waitForTimeout(450);
+
+      if (capture.label === 'desktop-1440x900') {
+        const matthias = gameRoot.getByRole('button', { name: 'Seleccionar Matthias', exact: true });
+        await matthias.click();
+        const sheet = page.getByRole('dialog', { name: 'Matthias', exact: true });
+        await expect(sheet).toBeVisible();
+        const sheetPortrait = sheet.locator('.chronicles-character-sheet__portrait img');
+        const authoredSheetPortrait = await sheetPortrait.evaluate((image) => (
+          image.complete
+          && image.naturalWidth >= 128
+          && image.naturalHeight >= 128
+          && !image.src.startsWith('data:')
+        ));
+        expect(authoredSheetPortrait, 'desktop sheet uses canonical authored portrait').toBe(true);
+        await captureElement(
+          page,
+          sheet,
+          `${ARTIFACT_DIR}/chronicles-character-sheet-desktop-1440x900.png`,
+        );
+        await sheet.getByRole('button', { name: 'Cerrar ficha', exact: true }).click();
+      }
 
       const health = await captureChroniclesHealth(page);
       expect(health.horizontalOverflow, `${capture.label}: Chronicles overflow`).toBe(false);

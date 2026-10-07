@@ -4,6 +4,7 @@ import {
   chroniclesActiveEnemies,
   chroniclesEnemyTargetAhead,
   chroniclesContextualContentAction,
+  chroniclesPartyAttackStats,
   chroniclesJournalEntries,
   chroniclesObjective,
   chroniclesReduce,
@@ -40,10 +41,15 @@ import { chroniclesRetaliationCue } from '../chroniclesOfMatthiasRetaliation.js'
 import { chroniclesTargetAhead } from '../chroniclesOfMatthiasTargeting.js';
 import { CHRONICLES_TURN_ENGINE_VERSION } from '../chroniclesOfMatthiasTurns.js';
 import {
+  applyChroniclesProgressionToTacticsState,
+  applyChroniclesTacticsProgression,
   chroniclesHeroProgress,
   loadChroniclesProgression,
+  reconcileChroniclesProgressionInTacticsState,
   saveChroniclesProgression,
   setChroniclesCharacterBuild,
+  spendChroniclesAttributePoint,
+  unlockChroniclesSkill,
 } from '../chroniclesOfMatthiasProgression.js';
 import {
   chroniclesAutomapMarkVisited,
@@ -53,6 +59,7 @@ import {
 } from '../chronicles/chroniclesAutomap.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import ChroniclesAutomap from './ChroniclesAutomap.jsx';
+import ChroniclesCharacterSheet from './ChroniclesCharacterSheet.jsx';
 import ChroniclesMinimap from './ChroniclesMinimap.jsx';
 import ChroniclesBookOneEpilogue from './ChroniclesBookOneEpilogue.jsx';
 import ChroniclesCharacterSetup from './ChroniclesCharacterSetup.jsx';
@@ -66,6 +73,7 @@ import useChroniclesLandscape, {
   requestChroniclesLandscapeOnEntry,
 } from './useChroniclesLandscape.js';
 import './ChroniclesOfMatthias.css';
+import './ChroniclesCharacterSheet.css';
 import './ChroniclesOfMatthiasArt.css';
 import './ChroniclesOfMatthiasJournal.css';
 import './ChroniclesPartyCondition.css';
@@ -125,6 +133,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const partyBarkTimerRef = useRef(null);
   const partyBarkSequenceRef = useRef(0);
   const [progression, setProgression] = useState(() => loadChroniclesProgression());
+  const progressionRef = useRef(progression);
   const [characterSetupDone, setCharacterSetupDone] = useState(false);
   const [ready, setReady] = useState(false);
   const [bootstrapError, setBootstrapError] = useState(null);
@@ -137,6 +146,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const stateRef = useRef(null);
   const [state, setState] = useState(null);
   const [selectedMemberId, setSelectedMemberId] = useState('matthias');
+  const [sheetMemberId, setSheetMemberId] = useState(null);
   const selectedMemberIdRef = useRef(selectedMemberId);
   const [rendererError, setRendererError] = useState('');
   const [retaliationCue, setRetaliationCue] = useState(null);
@@ -150,6 +160,10 @@ export default function ChroniclesOfMatthias({ onExit }) {
   useEffect(() => {
     selectedMemberIdRef.current = selectedMemberId;
   }, [selectedMemberId]);
+
+  useEffect(() => {
+    progressionRef.current = progression;
+  }, []);
 
   useEffect(() => {
     if (!state?.mapId) return;
@@ -203,10 +217,12 @@ export default function ChroniclesOfMatthias({ onExit }) {
     const selected = setChroniclesCharacterBuild(progression, build);
     if (!selected.updated) return;
     const saved = saveChroniclesProgression(selected.progression);
+    progressionRef.current = saved;
     stateRef.current = null;
     staleRunRecoveryAttemptedRef.current = false;
     setProgression(saved);
     setSelectedMemberId('matthias');
+    setSheetMemberId(null);
     setState(null);
     setReady(false);
     setBootstrapError(null);
@@ -249,12 +265,12 @@ export default function ChroniclesOfMatthias({ onExit }) {
         ? current.party.find((member) => member.id === action.memberId)
         : null;
       const forcedTarget = attackingMember
-        ? chroniclesEnemyTargetAhead(current, attackingMember.reach)
+        ? chroniclesEnemyTargetAhead(current, chroniclesPartyAttackStats(current, attackingMember.id).reach)
         : null;
       const partyAgilityBonuses = Object.fromEntries(
         (current.party || []).map((member) => [
           member.id,
-          Number(chroniclesHeroProgress(progression, member.id).attributes?.agility || 0),
+          Number(chroniclesHeroProgress(progressionRef.current, member.id).attributes?.agility || 0),
         ]),
       );
       const started = chroniclesStartInitiativeCombat(
@@ -275,6 +291,28 @@ export default function ChroniclesOfMatthias({ onExit }) {
       if (next !== current && next.phase !== 'defeated' && next.phase !== 'escaped') {
         next = chroniclesAdvanceCombatInitiative(next, chroniclesActiveEnemies(next));
       }
+    }
+
+    const actorMemberId = typeof action === 'object' && action?.memberId
+      ? action.memberId
+      : activeActor?.kind === 'party'
+        ? activeActor.id
+        : selectedMemberIdRef.current;
+    const progressResult = applyChroniclesTacticsProgression(
+      progressionRef.current,
+      current,
+      next,
+      {
+        actorMemberId,
+        actionKind: actionType,
+        runId: activeRunIdRef.current,
+      },
+    );
+    if (progressResult.awards.length || progressResult.levelUps.length) {
+      const saved = saveChroniclesProgression(progressResult.progression);
+      progressionRef.current = saved;
+      setProgression(saved);
+      next = reconcileChroniclesProgressionInTacticsState(next, saved);
     }
 
     playChroniclesActionSound(current, next, action);
@@ -353,7 +391,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   useEffect(() => {
     const current = stateRef.current;
     const actor = chroniclesCurrentInitiativeActor(current?.initiative);
-    if (!current?.initiative || actor?.kind !== 'enemy' || current.phase === 'defeated') return undefined;
+    if (sheetMemberId || !current?.initiative || actor?.kind !== 'enemy' || current.phase === 'defeated') return undefined;
 
     const timer = window.setTimeout(() => {
       const latest = stateRef.current;
@@ -367,7 +405,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
       setState(advanced);
     }, 280);
     return () => window.clearTimeout(timer);
-  }, [state?.initiative?.cursor, state?.initiative?.round, state?.phase]);
+  }, [sheetMemberId, state?.initiative?.cursor, state?.initiative?.round, state?.phase]);
 
   useEffect(() => {
     const actor = chroniclesCurrentInitiativeActor(state?.initiative);
@@ -393,10 +431,45 @@ export default function ChroniclesOfMatthias({ onExit }) {
     const member = current.party.find((candidate) => candidate.id === memberId);
     const startsCombat = !current.initiative
       && member
-      && chroniclesEnemyTargetAhead(current, member.reach);
+      && chroniclesEnemyTargetAhead(current, chroniclesPartyAttackStats(current, member.id).reach);
     if (!startsCombat) engineRef.current?.playAttack?.(memberId);
     dispatch({ type: 'attack', memberId });
   }, [dispatch]);
+
+  const applyLiveProgression = useCallback((nextProgression) => {
+    const saved = saveChroniclesProgression(nextProgression);
+    progressionRef.current = saved;
+    setProgression(saved);
+    const current = stateRef.current;
+    if (!current) return;
+    const reconciled = reconcileChroniclesProgressionInTacticsState(current, saved);
+    stateRef.current = reconciled;
+    setState(reconciled);
+  }, []);
+
+  const allocateAttribute = useCallback((memberId, attributeKey) => {
+    const result = spendChroniclesAttributePoint(progressionRef.current, memberId, attributeKey);
+    if (!result.spent) return;
+    applyLiveProgression(result.progression);
+  }, [applyLiveProgression]);
+
+  const learnSkill = useCallback((memberId, skillId) => {
+    const result = unlockChroniclesSkill(progressionRef.current, memberId, skillId);
+    if (!result.unlocked) return;
+    applyLiveProgression(result.progression);
+  }, [applyLiveProgression]);
+
+  const openMemberSheet = useCallback((memberId) => {
+    clearTouchHold();
+    setAutomapOpen(false);
+    setMenuOpen(false);
+    const actor = chroniclesCurrentInitiativeActor(stateRef.current?.initiative);
+    if (actor?.kind !== 'party' || actor.id === memberId) {
+      selectedMemberIdRef.current = memberId;
+      setSelectedMemberId(memberId);
+    }
+    setSheetMemberId(memberId);
+  }, [clearTouchHold]);
 
   const newExpedition = useCallback(() => {
     const runId = activeRunIdRef.current;
@@ -408,6 +481,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     stateRef.current = null;
     setState(null);
     setSelectedMemberId('matthias');
+    setSheetMemberId(null);
     setReady(false);
     setBootstrapError(null);
     setRendererError('');
@@ -427,6 +501,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     stateRef.current = null;
     setState(null);
     setSelectedMemberId('matthias');
+    setSheetMemberId(null);
     setReady(false);
     setBootstrapError(null);
     setRendererError('');
@@ -461,17 +536,19 @@ export default function ChroniclesOfMatthias({ onExit }) {
     // Gameplay still stays fail-closed until the backend bundle validates.
     void loadChroniclesFirstPersonRenderer().catch(() => {});
 
+    const activeProgression = progressionRef.current;
     chroniclesBootstrapWorld({
       signal: controller.signal,
       operationId,
-      partyLevel: chroniclesDeployedPartyLevel(progression),
+      partyLevel: chroniclesDeployedPartyLevel(activeProgression),
     })
       .then((world) => {
         if (!active) return;
-        const next = chroniclesApplyRunCheckpoint(
-          createChroniclesState(null, progression.characterBuild),
-          world,
+        const progressed = applyChroniclesProgressionToTacticsState(
+          createChroniclesState(null, activeProgression.characterBuild),
+          activeProgression,
         );
+        const next = chroniclesApplyRunCheckpoint(progressed, world);
         authoritativeRunRef.current = world;
         checkpointFingerprintRef.current = chroniclesRunCheckpointFingerprint(next);
         setAutomapVisitedByMap(loadChroniclesAutomapVisited(operationId));
@@ -506,7 +583,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
       controller.abort();
       chroniclesClearRuntimeMapDefinitions();
     };
-  }, [bootstrapRevision, characterSetupDone, progression]);
+  }, [bootstrapRevision, characterSetupDone]);
 
   useEffect(() => {
     let cancelled = false;
@@ -581,7 +658,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
         setAutomapOpen((open) => !open);
         return;
       }
-      if (automapOpen || current.phase === 'defeated' || current.phase === 'escaped') return;
+      if (automapOpen || sheetMemberId || current.phase === 'defeated' || current.phase === 'escaped') return;
       if (/^[1-4]$/.test(event.key)) {
         const member = current.party[Number(event.key) - 1];
         if (member) {
@@ -609,7 +686,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     };
     window.addEventListener('keydown', onKeyDown, { passive: false });
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [attackWithSelected, automapOpen, clearTouchHold, dispatch, interactWithContext, ready]);
+  }, [attackWithSelected, automapOpen, clearTouchHold, dispatch, interactWithContext, ready, sheetMemberId]);
 
   if (!characterSetupDone) {
     return (
@@ -632,7 +709,11 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const selectedMember = state.party.find((member) => member.id === selectedMemberId) || state.party[0];
   const selectedCondition = chroniclesPartyCondition(selectedMember);
   const selectedRelic = chroniclesPartyRelic(state, selectedMember?.id);
-  const tacticalTarget = chroniclesTargetAhead(state, selectedMember?.reach || 1);
+  const selectedAttackStats = chroniclesPartyAttackStats(state, selectedMember?.id);
+  const tacticalTarget = chroniclesTargetAhead(state, selectedAttackStats.reach || 1);
+  const sheetMember = sheetMemberId
+    ? state.party.find((member) => member.id === sheetMemberId) || null
+    : null;
   const journalEntries = chroniclesJournalEntries(state);
   const latestJournalEntry = journalEntries[journalEntries.length - 1];
   const expeditionOver = state.phase === 'defeated' || state.phase === 'escaped';
@@ -665,7 +746,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
             <div className="chronicles-party-preview-copy">
               <span>{selectedMember?.role}</span>
               <strong>{selectedMember?.name}</strong>
-              <small>{selectedMember?.attackName} · alcance {selectedMember?.reach}</small>
+              <small>{selectedMember?.attackName} · daño {selectedAttackStats.damage} · alcance {selectedAttackStats.reach}</small>
             </div>
           </div>
           {state.party.map((member, index) => {
@@ -674,9 +755,10 @@ export default function ChroniclesOfMatthias({ onExit }) {
                 type="button"
                 key={member.id}
                 className={`chronicles-party-member ${member.id === 'matthias' ? 'is-leader' : ''} ${member.id === selectedMemberId ? 'is-selected' : ''} ${member.hp <= 0 ? 'is-down' : ''}`}
-                onClick={() => setSelectedMemberId(member.id)}
+                onClick={() => openMemberSheet(member.id)}
                 disabled={expeditionOver}
                 aria-label={`Seleccionar ${member.name}`}
+                title={`Seleccionar y abrir ficha de ${member.name}`}
                 aria-pressed={member.id === selectedMemberId}
               >
                 <span className="chronicles-party-glyph has-authored-portrait" aria-hidden="true">
@@ -688,7 +770,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
                     data-chronicles-party-thumbnail={member.id}
                   />
                 </span>
-                <span><strong>{index + 1}. {member.name}</strong><small>{member.row === 'front' ? 'FRENTE' : 'RETAGUARDIA'} · {member.attackName} · alcance {member.reach}</small></span>
+                <span><strong>{index + 1}. {member.name}</strong><small>Nv {chroniclesHeroProgress(progression, member.id).level} · {member.row === 'front' ? 'FRENTE' : 'RETAGUARDIA'} · clic · ficha</small></span>
                 <b>{member.hp}/{member.maxHp}</b>
               </button>
             );
@@ -847,6 +929,18 @@ export default function ChroniclesOfMatthias({ onExit }) {
           )}
         </main>
       </div>
+
+      {sheetMember && (
+        <ChroniclesCharacterSheet
+          state={state}
+          progression={progression}
+          member={sheetMember}
+          mode="first-person"
+          onClose={() => setSheetMemberId(null)}
+          onAllocateAttribute={allocateAttribute}
+          onLearnSkill={learnSkill}
+        />
+      )}
 
       <ChroniclesAutomap
         open={automapOpen}

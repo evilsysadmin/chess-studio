@@ -141,6 +141,7 @@ export default function ChroniclesOfMatthiasTactics({
   const [runId, setRunId] = useState(() => authoritativeRun?.runId || ensureChroniclesTacticsRun());
   const [selectedMemberId, setSelectedMemberId] = useState('matthias');
   const [sheetRequest, setSheetRequest] = useState(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [rendererName, setRendererName] = useState('CARGANDO');
   const [rendererError, setRendererError] = useState('');
   const [progressionFeedback, setProgressionFeedback] = useState('');
@@ -433,10 +434,16 @@ export default function ChroniclesOfMatthiasTactics({
     setSelectedMemberId(memberId);
   }, []);
 
+  const handleSheetOpenChange = useCallback((open) => {
+    if (open) stopExplorationWalk();
+    setSheetOpen(Boolean(open));
+  }, [stopExplorationWalk]);
+
   const openMemberSheet = useCallback((memberId) => {
+    handleSheetOpenChange(true);
     selectMember(memberId);
     setSheetRequest({ memberId });
-  }, [selectMember]);
+  }, [handleSheetOpenChange, selectMember]);
 
   const restart = useCallback(() => {
     finishChroniclesTacticsRun(runId);
@@ -454,6 +461,7 @@ export default function ChroniclesOfMatthiasTactics({
     setRunId(nextRunId);
     setSelectedMemberId('matthias');
     setSheetRequest(null);
+    setSheetOpen(false);
     setProgressionFeedback('');
     stateRef.current = next;
     setState(next);
@@ -472,7 +480,7 @@ export default function ChroniclesOfMatthiasTactics({
 
   useEffect(() => {
     const actor = chroniclesTacticsCurrentActor(state);
-    if (!state.initiative?.order?.length || actor?.kind !== 'enemy' || state.phase === 'defeated') return undefined;
+    if (sheetOpen || !state.initiative?.order?.length || actor?.kind !== 'enemy' || state.phase === 'defeated') return undefined;
 
     const timer = window.setTimeout(() => {
       const latest = stateRef.current;
@@ -488,7 +496,7 @@ export default function ChroniclesOfMatthiasTactics({
     }, 280);
 
     return () => window.clearTimeout(timer);
-  }, [state]);
+  }, [sheetOpen, state]);
 
   useEffect(() => {
     let cancelled = false;
@@ -570,6 +578,7 @@ export default function ChroniclesOfMatthiasTactics({
     let heldMovementKey = null;
 
     const onKeyDown = (event) => {
+      if (sheetOpen) return;
       if (/^[1-4]$/.test(event.key)) {
         const member = stateRef.current.party[Number(event.key) - 1];
         if (member) {
@@ -637,6 +646,7 @@ export default function ChroniclesOfMatthiasTactics({
     };
   }, [
     attackEnemy,
+    sheetOpen,
     moveParty,
     passTurn,
     selectMember,
@@ -880,6 +890,7 @@ export default function ChroniclesOfMatthiasTactics({
           selectedMemberId={effectiveSelectedMemberId}
           sheetRequest={sheetRequest}
           onSelectMember={selectMember}
+          onSheetOpenChange={handleSheetOpenChange}
           onAllocateAttribute={allocateAttribute}
           onLearnSkill={learnSkill}
         />

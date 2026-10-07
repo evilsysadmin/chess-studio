@@ -56,6 +56,22 @@ XP, niveles, atributos, skills y la build compartida de Chronicles/Tactics perte
 - El checkpoint de run conserva estado **de la expedición actual** (mundo, posición, HP, cargas, enemigos, ledgers). La progresión entre expediciones sigue perteneciendo al perfil.
 - Un cambio de dispositivo o una caché local vacía debe poder rehidratar XP/atributos/skills desde el perfil remoto antes de usar esa progresión como base de juego.
 
+## Ficha canónica de personaje y progresión visible
+
+Chronicles first-person y Tactics comparten una única ficha RPG. No deben divergir en retrato, XP, atributos, skills ni reglas de gasto.
+
+- Clic/tap sobre un miembro del grupo selecciona ese PJ y abre su ficha; los atajos 1–4 siguen permitiendo seleccionar sin abrirla.
+- La ficha usa los retratos authored canónicos de Matthias, Hildegard, Aziz y Faust. No sustituirlos por glyphs, emojis, avatares CSS ni placeholders generados.
+- La ficha muestra únicamente estado real: nivel/XP de perfil, HP/cargas de la run, daño/alcance efectivos, atributos, skills, reliquia vinculada cuando exista e inventario compartido de expedición.
+- El inventario de run es de la compañía mientras el modelo de datos no declare ownership por PJ. La UI no debe fingir que una llave, consumible o botín pertenece a un héroe concreto.
+- Los puntos de atributo y skill pueden gastarse desde la ficha mediante las mismas funciones de progresión que Tactics; no crear reglas paralelas.
+- Abrir la ficha pausa input, locomoción y resolución automática de turnos enemigos por debajo del overlay.
+- First-person aplica los modificadores persistentes relevantes para su modelo de combate: HP, daño, alcance y Agilidad/iniciativa. Las skills exclusivas de habilidades tácticas siguen visibles como progreso del personaje, pero la ficha las rotula como tácticas y no finge cargas utilizables en first-person.
+- El XP ganado en first-person usa el mismo ledger/idempotencia de applyChroniclesTacticsProgression(): daño útil, bajas, objetivos y supervivencia se conceden una sola vez aunque haya F5/replay.
+- Guardar progresión de perfil durante una expedición no reinicia ni re-bootstrappea la run activa.
+
+Acceptance visual: la ficha debe conservar retrato authored nítido, jerarquía RPG legible y targets táctiles útiles en desktop y móvil; su aceptación requiere artifact PNG real.
+
 ## Dificultad autoritativa de encuentro
 
 La amenaza de una expedición se fija al crear la run y forma parte del mundo autoritativo.

@@ -5,31 +5,23 @@ import {
   chroniclesQuestEntries,
 } from '../chronicles/chroniclesContentRuntime.js';
 import {
-  CHRONICLES_ATTRIBUTE_CAP,
-  CHRONICLES_ATTRIBUTE_DEFINITIONS,
-  chroniclesAllowedAttributes,
   chroniclesHasUnspentProgression,
   chroniclesHeroProgress,
-  chroniclesSkillsForMember,
-  chroniclesXpToNextLevel,
 } from '../chroniclesOfMatthiasProgression.js';
 import {
   chroniclesTacticsAbilityStatus,
   chroniclesTacticsProfile,
 } from '../chroniclesOfMatthiasTactics.js';
+import ChroniclesCharacterSheet from './ChroniclesCharacterSheet.jsx';
 import { chroniclesPartyPortraitUrl } from '../chronicles/chroniclesPartyPortraitAssets.js';
 import './ChroniclesTacticsPartyHud.css';
+import './ChroniclesCharacterSheet.css';
 import './ChroniclesTacticsAdventureSummary.css';
 
 const PARTY_ORDER = Object.freeze(['matthias', 'rook', 'bishop', 'knight']);
 
 function clampRatio(value) {
   return Math.max(0, Math.min(1, Number(value) || 0));
-}
-
-function xpLabel(progress, xpWindow) {
-  if (xpWindow.maxLevel) return `Nv ${progress.level} · MAX · ${progress.xp} XP`;
-  return `Nv ${progress.level} · ${progress.xp}/${xpWindow.next} XP`;
 }
 
 function abilityResource(state, memberId) {
@@ -60,6 +52,7 @@ export default function ChroniclesTacticsPartyHud({
   selectedMemberId,
   sheetRequest = null,
   onSelectMember,
+  onSheetOpenChange = null,
   onAllocateAttribute,
   onLearnSkill,
 }) {
@@ -76,34 +69,24 @@ export default function ChroniclesTacticsPartyHud({
   const sheetMember = sheetMemberId
     ? party.find((member) => member.id === sheetMemberId) || null
     : null;
-  const sheetProfile = sheetMember ? chroniclesTacticsProfile(sheetMember.id) : null;
-  const sheetProgress = sheetMember ? chroniclesHeroProgress(progression, sheetMember.id) : null;
-  const sheetXpWindow = sheetMember ? chroniclesXpToNextLevel(progression, sheetMember.id) : null;
-  const sheetAbility = sheetMember ? abilityResource(state, sheetMember.id) : null;
-  const sheetAttributes = sheetMember ? chroniclesAllowedAttributes(sheetMember.id) : [];
-  const sheetSkills = sheetMember ? chroniclesSkillsForMember(sheetMember.id) : [];
-  const sheetModifiers = sheetMember ? state.rpgModifiers?.[sheetMember.id] || {} : {};
-  const sheetReach = sheetProfile ? sheetProfile.reach + Number(sheetModifiers.reachBonus || 0) : 0;
 
   useEffect(() => {
     const memberId = sheetRequest?.memberId;
     if (!memberId) return;
     onSelectMember(memberId);
+    onSheetOpenChange?.(true);
     setSheetMemberId(memberId);
-  }, [onSelectMember, sheetRequest]);
+  }, [onSelectMember, onSheetOpenChange, sheetRequest]);
 
   const openSheet = (memberId) => {
     onSelectMember(memberId);
+    onSheetOpenChange?.(true);
     setSheetMemberId(memberId);
   };
 
-  const closeSheet = () => setSheetMemberId(null);
-
-  const onSheetKeyDown = (event) => {
-    if (event.key !== 'Escape') return;
-    event.preventDefault();
-    event.stopPropagation();
-    closeSheet();
+  const closeSheet = () => {
+    onSheetOpenChange?.(false);
+    setSheetMemberId(null);
   };
 
   return (
@@ -195,134 +178,15 @@ export default function ChroniclesTacticsPartyHud({
         )}
       </aside>
 
-      {sheetMember && sheetProfile && sheetProgress && sheetXpWindow && sheetAbility && (
-        <div
-          className="chronicles-character-sheet__backdrop"
-          role="presentation"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) closeSheet();
-          }}
-        >
-          <section
-            className="chronicles-character-sheet"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="chronicles-character-sheet-title"
-            onKeyDown={onSheetKeyDown}
-          >
-            <header className="chronicles-character-sheet__head">
-              <div className="chronicles-character-sheet__portrait" aria-hidden="true">
-                <img src={chroniclesPartyPortraitUrl(sheetMember.id)} alt="" />
-              </div>
-              <div>
-                <span>EXPEDIENTE DE CAMPAÑA</span>
-                <h3 id="chronicles-character-sheet-title">{sheetMember.name}</h3>
-                <p>{sheetProfile.className} · {sheetProfile.weaponName}</p>
-              </div>
-              <button type="button" autoFocus onClick={closeSheet} aria-label="Cerrar ficha">×</button>
-            </header>
-
-            <div className="chronicles-character-sheet__vitals">
-              <VitalBar
-                kind="hp"
-                label="HP"
-                value={sheetMember.hp}
-                max={sheetMember.maxHp}
-                ratio={sheetMember.hp / sheetMember.maxHp}
-              />
-              <VitalBar
-                kind="mp"
-                label="MP"
-                value={sheetAbility.charges}
-                max={sheetAbility.max}
-                ratio={sheetAbility.ratio}
-              />
-              <div className="chronicles-character-sheet__xp">
-                <span>PROGRESIÓN</span>
-                <b>{xpLabel(sheetProgress, sheetXpWindow)}</b>
-              </div>
-            </div>
-
-            <div className="chronicles-character-sheet__combat">
-              <div><span>Clase</span><b>{sheetProfile.className}</b></div>
-              <div><span>Arma</span><b>{sheetProfile.weaponName}</b></div>
-              <div><span>Ataque</span><b>{sheetProfile.attackName}</b></div>
-              <div><span>Geometría</span><b>{sheetProfile.kindLabel}</b></div>
-              <div><span>Alcance</span><b>{sheetReach}</b></div>
-              <div><span>Habilidad</span><b>{sheetAbility.abilityName}</b></div>
-            </div>
-
-            <div className="chronicles-character-sheet__section">
-              <div className="chronicles-character-sheet__section-head">
-                <div><span>ATRIBUTOS</span><small>Impacto mecánico real</small></div>
-                <b>{sheetProgress.attributePoints} punto{sheetProgress.attributePoints === 1 ? '' : 's'} libre{sheetProgress.attributePoints === 1 ? '' : 's'}</b>
-              </div>
-              <div className="chronicles-character-sheet__attribute-grid">
-                {sheetAttributes.map((attributeKey) => {
-                  const definition = CHRONICLES_ATTRIBUTE_DEFINITIONS[attributeKey];
-                  const value = Number(sheetProgress.attributes?.[attributeKey] || 0);
-                  const disabled = sheetProgress.attributePoints <= 0 || value >= CHRONICLES_ATTRIBUTE_CAP;
-                  return (
-                    <button
-                      type="button"
-                      key={attributeKey}
-                      disabled={disabled}
-                      title={definition.effect}
-                      onClick={() => onAllocateAttribute(sheetMember.id, attributeKey)}
-                    >
-                      <span><b>{definition.label}</b><small>{definition.effect}</small></span>
-                      <strong>{value}/{CHRONICLES_ATTRIBUTE_CAP}</strong>
-                      <i aria-hidden="true">+</i>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="chronicles-character-sheet__section">
-              <div className="chronicles-character-sheet__section-head">
-                <div><span>TÉCNICAS Y GRIMORIO</span><small>Doctrinas y hechizos con ramas excluyentes</small></div>
-                <b>{sheetProgress.skillPoints} punto{sheetProgress.skillPoints === 1 ? '' : 's'} libre{sheetProgress.skillPoints === 1 ? '' : 's'}</b>
-              </div>
-              <div className="chronicles-character-sheet__skill-grid">
-                {sheetSkills.map((skill) => {
-                  const learned = sheetProgress.skills.includes(skill.id);
-                  const competing = sheetSkills.some((candidate) => (
-                    candidate.id !== skill.id
-                    && candidate.group === skill.group
-                    && sheetProgress.skills.includes(candidate.id)
-                  ));
-                  const levelLocked = sheetProgress.level < skill.requiredLevel;
-                  const disabled = learned || competing || levelLocked || sheetProgress.skillPoints < skill.cost;
-                  const status = learned
-                    ? 'Aprendida'
-                    : competing
-                      ? 'Rama cerrada'
-                      : levelLocked
-                        ? `Requiere Nv ${skill.requiredLevel}`
-                        : `${skill.cost} punto`;
-                  return (
-                    <button
-                      type="button"
-                      key={skill.id}
-                      className={learned ? 'is-learned' : ''}
-                      disabled={disabled}
-                      onClick={() => onLearnSkill(sheetMember.id, skill.id)}
-                    >
-                      <span><b>{skill.label}</b><small>{skill.description}</small></span>
-                      <strong>{status}</strong>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <footer className="chronicles-character-sheet__foot">
-              <span>{sheetMember.hp > 0 ? `${sheetProfile.attackName} · alcance ${sheetReach}` : 'Fuera de combate'}</span>
-              <span>Esc · cerrar</span>
-            </footer>
-          </section>
-        </div>
+      {sheetMember && (
+        <ChroniclesCharacterSheet
+          state={state}
+          progression={progression}
+          member={sheetMember}
+          onClose={closeSheet}
+          onAllocateAttribute={onAllocateAttribute}
+          onLearnSkill={onLearnSkill}
+        />
       )}
     </>
   );
