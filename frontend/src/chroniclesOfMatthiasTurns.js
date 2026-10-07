@@ -258,6 +258,9 @@ export function chroniclesResolveEnemyActor(state, enemyId) {
     next = damageParty(next, enemy, enemyIndex, events, target);
   } else {
     next = moveEnemy(next, enemy, chroniclesChooseEnemyStep(next, enemy), events);
+    const movedPosition = chroniclesRuntimeEnemyPosition(next, enemy);
+    const movedTarget = chroniclesEnemyAttackTarget(next, enemy, movedPosition);
+    if (movedTarget) next = damageParty(next, enemy, enemyIndex, events, movedTarget);
   }
   const defeated = partyDefeated(next);
   return {
@@ -297,6 +300,9 @@ export function chroniclesResolveEnemyTurn(state) {
       return;
     }
     next = moveEnemy(next, enemy, chroniclesChooseEnemyStep(next, enemy), events);
+    const movedPosition = chroniclesRuntimeEnemyPosition(next, enemy);
+    const movedTarget = chroniclesEnemyAttackTarget(next, enemy, movedPosition);
+    if (movedTarget) next = damageParty(next, enemy, enemyIndex, events, movedTarget);
   });
 
   const defeated = partyDefeated(next);
@@ -348,34 +354,44 @@ export function chroniclesPreviewEnemyTurn(state) {
   if (!activeEnemies.length) return empty;
 
   const resolved = chroniclesResolveEnemyTurn(state);
-  const eventByEnemy = new Map((resolved.enemyTurnEvents || []).map((event) => [event.enemyId, event]));
+  const eventsByEnemy = new Map();
+  (resolved.enemyTurnEvents || []).forEach((event) => {
+    const events = eventsByEnemy.get(event.enemyId) || [];
+    events.push(event);
+    eventsByEnemy.set(event.enemyId, events);
+  });
   const intents = activeEnemies.map((enemy) => {
     const position = chroniclesRuntimeEnemyPosition(state, enemy);
     const from = { x: position.x, y: position.y };
-    const event = eventByEnemy.get(enemy.id);
-    if (!event) return { enemyId: enemy.id, kind: 'hold', from };
-    if (event.type === 'attack') {
+    const events = eventsByEnemy.get(enemy.id) || [];
+    if (!events.length) return { enemyId: enemy.id, kind: 'hold', from };
+
+    const move = events.find((event) => event.type === 'move') || null;
+    const attack = events.find((event) => event.type === 'attack') || null;
+    if (attack) {
       return {
         enemyId: enemy.id,
-        kind: 'attack',
+        kind: move ? 'move-attack' : 'attack',
         from,
-        targetId: event.targetId,
-        damage: event.damage,
-        hpLost: event.fromHp - event.toHp,
-        lethal: event.toHp === 0,
+        ...(move ? { to: { x: move.to.x, y: move.to.y } } : {}),
+        targetId: attack.targetId,
+        damage: attack.damage,
+        hpLost: attack.fromHp - attack.toHp,
+        lethal: attack.toHp === 0,
       };
     }
+
     return {
       enemyId: enemy.id,
       kind: 'move',
       from,
-      to: { x: event.to.x, y: event.to.y },
+      to: { x: move.to.x, y: move.to.y },
     };
   });
   const attackedMemberIds = [
     ...new Set(
       intents
-        .filter((intent) => intent.kind === 'attack')
+        .filter((intent) => intent.kind === 'attack' || intent.kind === 'move-attack')
         .map((intent) => intent.targetId),
     ),
   ];
