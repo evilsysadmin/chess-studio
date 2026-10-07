@@ -213,6 +213,32 @@ for (const capture of CAPTURES) {
       await partyHud.getByRole('button', { name: 'Abrir ficha de Matthias', exact: true }).click();
       const sheet = page.getByRole('dialog', { name: 'Matthias', exact: true });
       await expect(sheet).toBeVisible();
+      const sheetOcclusion = await page.evaluate(() => {
+        const backdrop = document.querySelector('.chronicles-character-sheet__backdrop');
+        const portrait = document.querySelector('.chronicles-character-sheet__portrait');
+        const backdropBox = backdrop?.getBoundingClientRect();
+        const portraitBox = portrait?.getBoundingClientRect();
+        if (!backdropBox || !portraitBox) return null;
+        const sampleX = portraitBox.left + Math.min(10, portraitBox.width / 4);
+        const sampleY = portraitBox.top + Math.min(10, portraitBox.height / 4);
+        const topNode = document.elementFromPoint(sampleX, sampleY);
+        return {
+          backdrop: {
+            left: backdropBox.left,
+            top: backdropBox.top,
+            right: backdropBox.right,
+            bottom: backdropBox.bottom,
+          },
+          viewport: { width: window.innerWidth, height: window.innerHeight },
+          portraitOwnedBySheet: Boolean(topNode?.closest?.('.chronicles-character-sheet')),
+        };
+      });
+      expect(sheetOcclusion, `${capture.label}: character sheet overlay health`).not.toBeNull();
+      expect(Math.abs(sheetOcclusion.backdrop.left), `${capture.label}: sheet reaches viewport left`).toBeLessThanOrEqual(1);
+      expect(Math.abs(sheetOcclusion.backdrop.top), `${capture.label}: sheet reaches viewport top`).toBeLessThanOrEqual(1);
+      expect(sheetOcclusion.backdrop.right, `${capture.label}: sheet reaches viewport right`).toBeGreaterThanOrEqual(sheetOcclusion.viewport.width - 1);
+      expect(sheetOcclusion.backdrop.bottom, `${capture.label}: sheet reaches viewport bottom`).toBeGreaterThanOrEqual(sheetOcclusion.viewport.height - 1);
+      expect(sheetOcclusion.portraitOwnedBySheet, `${capture.label}: no global chrome may cover the character portrait`).toBe(true);
       await page.keyboard.down('ArrowUp');
       await page.waitForTimeout(180);
       await page.keyboard.up('ArrowUp');
