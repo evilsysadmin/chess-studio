@@ -116,7 +116,11 @@ test('Combat battle · desktop lives inside the generic War Room', async ({ page
   expect(health.canvas?.height || 0).toBeGreaterThan(650);
   expect(health.log?.right || 9999).toBeLessThanOrEqual(1441);
   expect(health.controls?.bottom || 9999).toBeLessThanOrEqual(901);
-  await expect(page.locator('summary[aria-label="Salir"]')).toBeVisible();
+  const exitMenu = page.locator('summary[aria-label="Salir"]');
+  await expect(exitMenu).toBeVisible();
+  await exitMenu.click();
+  await expect(page.getByRole('button', { name: 'Salir al castillo', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Abandonar partida y asumir bajas', exact: true })).toBeVisible();
 
   await mkdir(ARTIFACT_DIR, { recursive: true });
   await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-battle-desktop-1440x900.png');
@@ -134,7 +138,11 @@ test.describe('Combat battle · Android', () => {
     expect(health.canvas?.width || 0).toBeGreaterThanOrEqual(388);
     expect(health.canvas?.height || 0).toBeGreaterThan(700);
     await expect(page.getByRole('button', { name: 'Activar apaisado' })).toBeVisible();
-    await expect(page.locator('summary[aria-label="Salir"]')).toBeVisible();
+    const exitMenu = page.locator('summary[aria-label="Salir"]');
+    await expect(exitMenu).toBeVisible();
+    await exitMenu.click();
+    await expect(page.getByRole('button', { name: 'Salir al castillo', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Abandonar partida y asumir bajas', exact: true })).toBeVisible();
 
     const targets = page.locator('.combat-battle-screen button:visible, .combat-battle-screen summary:visible');
     const count = await targets.count();
@@ -158,7 +166,11 @@ test.describe('Combat battle · Android', () => {
     expect(health.canvas?.height || 0).toBeGreaterThan(360);
     expect(health.log?.right || 9999).toBeLessThanOrEqual(845);
     expect(health.controls?.left ?? -1).toBeGreaterThanOrEqual(-1);
-    await expect(page.locator('summary[aria-label="Salir"]')).toBeVisible();
+    const exitMenu = page.locator('summary[aria-label="Salir"]');
+    await expect(exitMenu).toBeVisible();
+    await exitMenu.click();
+    await expect(page.getByRole('button', { name: 'Salir al castillo', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Abandonar partida y asumir bajas', exact: true })).toBeVisible();
 
     await mkdir(ARTIFACT_DIR, { recursive: true });
     await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-battle-android-landscape-844x390.png');
