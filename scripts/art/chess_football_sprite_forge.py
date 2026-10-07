@@ -229,7 +229,7 @@ KEEPERS = {
 GOLD = "#d4aa4c"
 IVORY = "#ece6cf"
 BOOT = "#15181d"
-OUTLINE = "#11151b"
+OUTLINE = "#171b23"
 
 
 def _pose(animation: str, frame: int) -> dict[str, float]:
@@ -647,7 +647,7 @@ def _frame_svg(
         out.append(
             f'<path d="{_path(thigh, offset_x, offset_y)}" '
             f'fill="{team["head"]}" '
-            f'stroke="{OUTLINE}" stroke-width="1.35" opacity="{opacity}"/>'
+            f'stroke="{OUTLINE}" stroke-width="1.12" stroke-linejoin="round" opacity="{opacity}"/>'
         )
         if not far:
             out.append(
@@ -660,12 +660,12 @@ def _frame_svg(
         out.append(
             f'<circle cx="{offset_x + knee_x:.2f}" cy="{offset_y + knee_y:.2f}" '
             f'r="{2.15 * limb_scale:.2f}" fill="{team["head"]}" stroke="{OUTLINE}" '
-            f'stroke-width=".55" opacity="{opacity}"/>'
+            f'stroke-width=".28" opacity="{opacity}"/>'
         )
         out.append(
             f'<path d="{_path(shin, offset_x, offset_y)}" '
             f'fill="{team["sock"]}" stroke="{OUTLINE}" '
-            f'stroke-width="1.25" opacity="{opacity}"/>'
+            f'stroke-width="1.04" stroke-linejoin="round" opacity="{opacity}"/>'
         )
         if not far:
             out.append(
@@ -818,12 +818,12 @@ def _frame_svg(
             out.append(
                 f'<path d="{_path(upper_skin, offset_x, offset_y)}" '
                 f'fill="{team["head"]}" stroke="{OUTLINE}" '
-                f'stroke-width="1.05" opacity=".84"/>'
+                f'stroke-width=".90" stroke-linejoin="round" opacity=".84"/>'
             )
             out.append(
                 f'<path d="{_path(fore, offset_x, offset_y)}" '
                 f'fill="{team["head"]}" stroke="{OUTLINE}" '
-                f'stroke-width="1.10" opacity=".84"/>'
+                f'stroke-width=".92" stroke-linejoin="round" opacity=".84"/>'
             )
             if keeper:
                 out.append(
@@ -835,7 +835,7 @@ def _frame_svg(
                 far_hand = _hand_path((elbow_x, elbow_y), (hand_x, hand_y), 1.0)
                 out.append(
                     f'<path d="{_path(far_hand, offset_x, offset_y)}" '
-                    f'fill="{team["head"]}" stroke="{OUTLINE}" stroke-width=".90" opacity=".84"/>'
+                    f'fill="{team["head"]}" stroke="{OUTLINE}" stroke-width=".90" stroke-linejoin="round" opacity=".84"/>'
                 )
 
     # Shirt uses curves instead of the old octagonal chest. Asymmetry is
@@ -863,9 +863,11 @@ def _frame_svg(
     )
     out.append(
         f'<path d="{torso}" fill="{team["torso"]}" '
-        f'stroke="{OUTLINE}" stroke-width="1.75"/>'
+        f'stroke="{OUTLINE}" stroke-width="1.48" stroke-linejoin="round"/>'
     )
     # V18 gives the shirt readable volume at broadcast scale: one shaded side
+    # V19 softens joint/outline transitions so limbs read as one footballer
+    # instead of stacked cut-outs, while preserving every gameplay anchor.
     # and a short fold that follows the torso twist. These overlays stay inside
     # the canonical silhouette, so gameplay anchors and pivots are untouched.
     side_shadow_x = cx - 7.8 * torso_scale - p["twist"] * 0.16
@@ -928,7 +930,7 @@ def _frame_svg(
     ]
     out.append(
         f'<path d="{_path(shorts, offset_x, offset_y)}" '
-        f'fill="{team["shorts"]}" stroke="{OUTLINE}" stroke-width="1.35"/>'
+        f'fill="{team["shorts"]}" stroke="{OUTLINE}" stroke-width="1.14" stroke-linejoin="round"/>'
     )
     shorts_mid_y = base_y + 3.7
     out.append(
@@ -986,7 +988,7 @@ def _frame_svg(
         )
         out.append(
             f'<path d="{_path(sleeve, offset_x, offset_y)}" '
-            f'fill="{team["torso_light"]}" stroke="{OUTLINE}" stroke-width="1.25"/>'
+            f'fill="{team["torso_light"]}" stroke="{OUTLINE}" stroke-width="1.00" stroke-linejoin="round"/>'
         )
         out.append(
             f'<line x1="{offset_x + sleeve_x - 2.8:.2f}" y1="{offset_y + sleeve_y - 1.1:.2f}" '
@@ -995,11 +997,11 @@ def _frame_svg(
         )
         out.append(
             f'<path d="{_path(upper_skin, offset_x, offset_y)}" '
-            f'fill="{team["head"]}" stroke="{OUTLINE}" stroke-width="1.12"/>'
+            f'fill="{team["head"]}" stroke="{OUTLINE}" stroke-width=".94" stroke-linejoin="round"/>'
         )
         out.append(
             f'<path d="{_path(fore, offset_x, offset_y)}" '
-            f'fill="{team["head"]}" stroke="{OUTLINE}" stroke-width="1.15"/>'
+            f'fill="{team["head"]}" stroke="{OUTLINE}" stroke-width=".96" stroke-linejoin="round"/>'
         )
         if keeper:
             out.append(
@@ -1011,7 +1013,7 @@ def _frame_svg(
             near_hand = _hand_path((elbow_x, elbow_y), (hand_x, hand_y), 1.06)
             out.append(
                 f'<path d="{_path(near_hand, offset_x, offset_y)}" '
-                f'fill="{team["head"]}" stroke="{OUTLINE}" stroke-width=".98"/>'
+                f'fill="{team["head"]}" stroke="{OUTLINE}" stroke-width=".98" stroke-linejoin="round"/>'
             )
         if keeper:
             out.append(
@@ -1064,7 +1066,7 @@ def _frame_svg(
         f"{hx(-8.1 * face_width):.2f} {hy(-9.9):.2f} Z"
     )
     out.append(
-        f'<path d="{head}" fill="{team["head"]}" stroke="{OUTLINE}" stroke-width="1.45"/>'
+        f'<path d="{head}" fill="{team["head"]}" stroke="{OUTLINE}" stroke-width="1.20" stroke-linejoin="round"/>'
     )
     out.append(
         f'<ellipse cx="{hx(-8.0 * face_width):.2f}" cy="{hy(0.0):.2f}" '
@@ -1195,7 +1197,7 @@ def build_outputs() -> dict[str, str]:
                 "motion_profile": str(variant_team["motion_profile"]),
                 "face_profile": str(variant_team["face_profile"]),
                 "hair_style": str(variant_team.get("hair_style", "swept")),
-                "kit_profile": "sculpted-v18",
+                "kit_profile": "organic-v19",
             }
             variant_keys.append(variant_slug)
         field_variants[slug] = variant_keys
@@ -1204,7 +1206,7 @@ def build_outputs() -> dict[str, str]:
         outputs[filename] = _atlas_svg(team, keeper=True)
         atlas_meta[slug] = {"name": team["name"], "file": filename}
     manifest = {
-        "version": 18,
+        "version": 19,
         "quality_contract": SPRITE_FORGE_CONTRACT["quality_contract"],
         "cell": {"width": CELL_W, "height": CELL_H},
         "columns": COLUMNS,
