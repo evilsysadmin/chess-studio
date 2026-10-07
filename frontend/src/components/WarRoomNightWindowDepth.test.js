@@ -16,45 +16,6 @@ function roomWithFireplace(x = -4.95, z = -6.67) {
   return { group, fireplace };
 }
 
-function addLegacyBaseWindow(group, { wallZ = -7.6, towardBoard = 1 } = {}) {
-  const legacyX = towardBoard * 4.2;
-  const addBox = (size, color, position) => {
-    const mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(...size),
-      new THREE.MeshPhysicalMaterial({ color }),
-    );
-    mesh.position.set(...position);
-    group.add(mesh);
-    return mesh;
-  };
-
-  const legacy = [
-    addBox([4.3, 3.1, 0.16], 0x0a2334, [legacyX, 3.3, wallZ + towardBoard * 0.27]),
-    addBox([4.55, 0.15, 0.35], 0x2a160d, [legacyX, 1.72, wallZ + towardBoard * 0.34]),
-    addBox([4.55, 0.15, 0.35], 0x2a160d, [legacyX, 4.88, wallZ + towardBoard * 0.34]),
-    addBox([0.15, 3.3, 0.35], 0x2a160d, [legacyX - 2.23, 3.3, wallZ + towardBoard * 0.34]),
-    addBox([0.15, 3.3, 0.35], 0x2a160d, [legacyX + 2.23, 3.3, wallZ + towardBoard * 0.34]),
-    addBox([0.11, 3.05, 0.28], 0x1f2f3a, [legacyX, 3.3, wallZ + towardBoard * 0.38]),
-    addBox([4.3, 0.1, 0.28], 0x1f2f3a, [legacyX, 3.3, wallZ + towardBoard * 0.38]),
-  ];
-
-  const moon = new THREE.Mesh(
-    new THREE.SphereGeometry(0.28, 20, 14),
-    new THREE.MeshBasicMaterial({ color: 0xb9d9f0 }),
-  );
-  moon.position.set(legacyX + 1.15, 4.05, wallZ + towardBoard * 0.43);
-  group.add(moon);
-  legacy.push(moon);
-
-  for (const [offset, height] of [[-1.1, 1.2], [-0.6, 1.65], [0, 1.4], [0.55, 2.0], [1.05, 1.45]]) {
-    legacy.push(addBox(
-      [0.4, height, 0.24],
-      0x09131b,
-      [legacyX + offset, 1.72 + height / 2, wallZ + towardBoard * 0.46],
-    ));
-  }
-  return legacy;
-}
 
 describe('War Room weather window', () => {
   it('builds the canonical far-right rainy window without disturbing the hearth vignette', () => {
@@ -105,17 +66,20 @@ describe('War Room weather window', () => {
     expect(group.userData.warRoomCanonicalComposition).toBe('hearth-left-gallery-right-window-plant-v4');
   });
 
-  it('retires the old rectangular base window instead of drawing the arch on top of it', () => {
+  it('does not mutate unrelated pre-existing room meshes while installing the canonical window', () => {
     const { group } = roomWithFireplace();
-    const legacy = addLegacyBaseWindow(group);
+    const sentinel = new THREE.Mesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      new THREE.MeshPhysicalMaterial({ color: 0x334455 }),
+    );
+    sentinel.name = 'unrelated-room-decor';
+    group.add(sentinel);
 
     installWarRoomNightWindowDepth(group, { wallZ: -7.6, towardBoard: 1, weather: 'rain' });
 
-    expect(group.userData.warRoomLegacyWindowRetiredCount).toBe(legacy.length);
-    for (const mesh of legacy) {
-      expect(mesh.visible).toBe(false);
-      expect(mesh.userData.warRoomLegacyWindowRetired).toBe(WAR_ROOM_NIGHT_WINDOW_VERSION);
-    }
+    expect(sentinel.visible).toBe(true);
+    expect(sentinel.userData.warRoomLegacyWindowRetired).toBeUndefined();
+    expect(group.userData.warRoomLegacyWindowRetiredCount).toBeUndefined();
     expect(group.getObjectByName('war-room-weather-window').visible).toBe(true);
   });
 
@@ -151,8 +115,6 @@ describe('War Room weather window', () => {
 
   it('renders the same canonical arched window on coarse/mobile with a lighter mesh profile', () => {
     const { group, fireplace } = roomWithFireplace();
-    const legacy = addLegacyBaseWindow(group);
-
     expect(installWarRoomNightWindowDepth(group, {
       wallZ: -7.6,
       towardBoard: 1,
@@ -172,7 +134,6 @@ describe('War Room weather window', () => {
     expect(sky.material.map.userData.resolution).toEqual([112, 128]);
     expect(precipitation.material.map.userData.resolution).toEqual([112, 128]);
     expect(fireplace.position.x).toBeCloseTo(-4.95, 5);
-    expect(legacy.every((mesh) => mesh.visible === false)).toBe(true);
   });
 
   it('remains idempotent on desktop and mobile', () => {
