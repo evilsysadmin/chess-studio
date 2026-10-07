@@ -317,13 +317,18 @@
   }
 
   .quick-match-ready-room__scene {
-    display: none;
+    display: block;
+    opacity: .78;
+    filter: saturate(.88) brightness(.78);
   }
 
   .quick-match-ready-room__shade {
-    position: fixed;
-    inset: auto;
-    display: none;
+    display: block;
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(180deg, rgba(8, 5, 4, .88) 0%, rgba(8, 5, 4, .66) 24%, rgba(8, 5, 4, .22) 47%, rgba(8, 5, 4, .38) 68%, rgba(8, 5, 4, .88) 100%),
+      radial-gradient(ellipse at 50% 55%, rgba(190, 128, 52, .08), transparent 44%);
   }
 
   .quick-match-ready-room__content {
@@ -331,7 +336,7 @@
     flex-direction: column;
     gap: .75rem;
     height: auto;
-    min-height: 0;
+    min-height: 100dvh;
     padding: 1.15rem 1rem .9rem;
   }
 
@@ -377,9 +382,12 @@
   .friendly-modal.quick-match-ready-room[aria-label='Configurar partida rápida'] .quick-match-ready-room__briefing {
     order: 2;
     width: 100%;
+    margin-top: auto;
+    margin-bottom: .15rem;
     padding: .55rem .65rem;
-    background: rgba(13, 10, 8, .58);
-    backdrop-filter: none;
+    background: rgba(13, 10, 8, .70);
+    box-shadow: 0 16px 36px rgba(0, 0, 0, .22);
+    backdrop-filter: blur(3px);
   }
 }
 
