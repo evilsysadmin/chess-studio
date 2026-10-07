@@ -139,7 +139,13 @@ jobs:
           print(f"- Protected: {report['protectedObjects']} objects")
           print(f"- Deleted/planned: {report['deleteObjects']} objects / {gb(report['deleteBytes']):.3f} GB")
           print(f"- Projected footprint: {gb(report['projectedBytes']):.3f} GB")
+          if 'actualAfterBytes' in report:
+              print(f"- Actual footprint after apply: {gb(report['actualAfterBytes']):.3f} GB / {report['actualAfterObjects']} objects")
           print(f"- Soft ceiling: {gb(report['softLimitBytes']):.1f} GB; target: {gb(report['targetBytes']):.1f} GB")
+          print(f"- Retained but unprotected: {gb(report['retainedUnprotectedBytes']):.3f} GB")
+          print("- Largest retained prefixes:")
+          for item in report.get('topRetainedPrefixes', [])[:8]:
+              print(f"  - {item['prefix']}: {gb(item['bytes']):.3f} GB")
           print(f"- Guard truncated: {report['truncatedByGuard']}")
           print(f"- Blocked over soft limit: {report['blockedOverSoftLimit']}")
           PY
