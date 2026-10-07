@@ -1,0 +1,476 @@
+/* Combat Barracks presentation.
+ * Domain authority stays in ArmyScreen/combat modules; this file only changes spatial presentation.
+ */
+
+.combat-barracks-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  align-items: stretch;
+  justify-content: stretch;
+  padding: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 44%, rgba(49, 39, 24, .18), rgba(4, 6, 8, .76) 74%),
+    rgba(3, 5, 7, .86);
+  backdrop-filter: blur(2px) saturate(.86) brightness(.78);
+}
+
+.combat-operations-screen:has(.combat-barracks-screen) .combat-operations-shell > :not(.combat-preparation-room-stage) {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+.combat-operations-screen:has(.combat-barracks-screen) .combat-barracks-screen {
+  background:
+    radial-gradient(circle at 50% 52%, rgba(5, 8, 11, .12), rgba(3, 5, 8, .38) 72%, rgba(2, 4, 7, .64));
+  backdrop-filter: saturate(.9) brightness(.84);
+}
+
+.combat-barracks-shell.army-card.army-roster-card {
+  position: relative;
+  width: min(1320px, calc(100vw - 2rem));
+  height: calc(100dvh - 1.5rem);
+  max-height: none;
+  margin: .75rem auto;
+  padding: 4.7rem 1rem 1rem;
+  overflow: hidden auto;
+  border: 1px solid rgba(212, 181, 112, .24);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(7, 10, 13, .76), rgba(7, 9, 12, .58)),
+    radial-gradient(circle at 50% 10%, rgba(179, 137, 72, .06), transparent 45%);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, .44);
+  backdrop-filter: blur(13px);
+  scrollbar-width: thin;
+}
+
+.combat-barracks-shell > .piece-info-close {
+  position: fixed;
+  z-index: 8;
+  top: 1.1rem;
+  right: max(1.1rem, calc((100vw - min(1320px, calc(100vw - 2rem))) / 2 + 1rem));
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(221, 193, 132, .28);
+  border-radius: 999px;
+  background: rgba(7, 10, 14, .88);
+  color: rgba(242, 230, 204, .9);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, .3);
+}
+
+.combat-barracks-shell .army-roster-panel {
+  max-width: none;
+}
+
+.combat-barracks-shell .army-roster-heading {
+  position: absolute;
+  z-index: 5;
+  top: .8rem;
+  left: 1rem;
+  right: 4.8rem;
+  min-height: 3.25rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .7rem;
+  padding: .5rem .72rem;
+  border: 1px solid rgba(217, 184, 113, .18);
+  border-radius: 13px;
+  background: rgba(6, 9, 12, .72);
+  backdrop-filter: blur(12px);
+}
+
+.combat-barracks-shell .army-roster-heading > div {
+  min-width: 0;
+}
+
+.combat-barracks-shell .army-roster-heading .army-memorial-kicker {
+  color: rgba(210, 188, 139, .62);
+  font-size: .52rem;
+  letter-spacing: .13em;
+}
+
+.combat-barracks-shell .army-roster-heading h3 {
+  margin: .05rem 0 0;
+  font-size: clamp(1.05rem, 1.8vw, 1.35rem);
+  line-height: 1;
+  font-style: normal;
+}
+
+.combat-barracks-shell .army-roster-count {
+  border-color: rgba(202, 169, 93, .28);
+  background: rgba(202, 169, 93, .05);
+}
+
+.combat-barracks-shell .army-roster-intro,
+.combat-barracks-shell .army-combat-xp {
+  display: none;
+}
+
+.combat-barracks-shell .army-command-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: .45rem;
+  margin: 0 0 .75rem;
+  padding: 0;
+}
+
+.combat-barracks-shell .army-command-strip > span {
+  min-height: 54px;
+  display: grid;
+  place-items: center;
+  gap: .06rem;
+  padding: .42rem .5rem;
+  border: 1px solid rgba(218, 189, 126, .15);
+  border-radius: 8px;
+  background:
+    linear-gradient(145deg, rgba(27, 23, 18, .72), rgba(7, 10, 13, .58));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.025);
+  text-align: center;
+}
+
+.combat-barracks-shell .army-command-strip b {
+  color: #e0c47c;
+  font: 800 1rem/1 var(--font-mono);
+}
+
+.combat-barracks-shell .army-command-strip small {
+  color: rgba(229, 218, 196, .52);
+  font: .52rem/1 var(--font-mono);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.combat-barracks-shell .army-roster-grid {
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: .45rem;
+  margin-top: 0;
+}
+
+.combat-barracks-shell .army-roster-grid > :nth-child(13) {
+  grid-column: auto;
+}
+
+.combat-barracks-shell .army-unit-tile {
+  min-height: 118px;
+  padding: .55rem .56rem .5rem;
+  gap: .2rem;
+  border-color: rgba(222, 192, 128, .13);
+  border-radius: 5px;
+  background:
+    linear-gradient(160deg, rgba(95, 70, 39, .13), transparent 45%),
+    linear-gradient(180deg, rgba(14, 16, 17, .92), rgba(8, 10, 12, .92));
+  box-shadow:
+    inset 3px 0 0 rgba(169, 132, 70, .18),
+    inset 0 1px 0 rgba(255,255,255,.025),
+    0 8px 18px rgba(0,0,0,.12);
+}
+
+.combat-barracks-shell .army-unit-tile::before,
+.combat-barracks-shell .army-unit-tile::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgba(198, 169, 108, .28);
+  pointer-events: none;
+}
+
+.combat-barracks-shell .army-unit-tile::before { left: 6px; }
+.combat-barracks-shell .army-unit-tile::after { right: 6px; }
+
+.combat-barracks-shell .army-unit-tile:hover,
+.combat-barracks-shell .army-unit-tile:focus-visible {
+  transform: translateY(-2px);
+  border-color: rgba(215, 181, 108, .44);
+  background:
+    linear-gradient(160deg, rgba(118, 86, 45, .18), transparent 48%),
+    linear-gradient(180deg, rgba(18, 20, 21, .94), rgba(8, 10, 12, .94));
+}
+
+.combat-barracks-shell .army-unit-tile.dead {
+  border-color: rgba(167, 70, 61, .35);
+  box-shadow: inset 3px 0 0 rgba(178, 68, 59, .36);
+}
+
+.combat-barracks-shell .army-unit-tile.command {
+  box-shadow:
+    inset 3px 0 0 rgba(211, 177, 97, .5),
+    0 8px 18px rgba(0,0,0,.14);
+}
+
+.combat-barracks-shell .army-unit-glyph {
+  font-size: 1.95rem;
+  color: #d5b86d;
+}
+
+.combat-barracks-shell .army-unit-state {
+  font-size: .43rem;
+  letter-spacing: .075em;
+}
+
+.combat-barracks-shell .army-unit-alias {
+  font-size: .92rem;
+  font-style: normal;
+  line-height: 1.05;
+}
+
+.combat-barracks-shell .army-unit-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .14rem .28rem;
+  align-items: center;
+  font-size: .52rem;
+}
+
+.combat-barracks-shell .army-unit-quickstats {
+  font-size: .53rem;
+  line-height: 1.25;
+}
+
+.combat-barracks-shell .army-unit-deploy-badge {
+  width: fit-content;
+  margin-top: .08rem;
+  padding: .1rem .28rem;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 999px;
+  color: rgba(232, 220, 196, .52);
+  font: 800 .43rem/1.25 var(--font-mono);
+  letter-spacing: .07em;
+}
+
+.combat-barracks-shell .army-unit-deploy-badge.deployed {
+  border-color: rgba(92, 146, 104, .32);
+  color: rgba(157, 198, 163, .82);
+}
+
+.combat-barracks-shell .army-unit-medal-count {
+  right: .48rem;
+  bottom: .44rem;
+  font-size: .52rem;
+}
+
+.combat-barracks-shell .army-reserve-section {
+  margin-top: .85rem;
+  padding: .72rem;
+  border: 1px solid rgba(213, 183, 118, .15);
+  border-radius: 9px;
+  background: rgba(4, 7, 9, .44);
+}
+
+.combat-barracks-shell .army-reserve-heading {
+  margin-bottom: .5rem;
+}
+
+.combat-barracks-shell .army-reserve-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: .42rem;
+}
+
+.combat-barracks-shell .army-memorial {
+  margin-top: .85rem;
+  padding: .72rem;
+  border: 1px solid rgba(149, 64, 58, .20);
+  border-radius: 9px;
+  background: rgba(56, 16, 15, .13);
+}
+
+/* Unit file becomes a service folder docked to the right, not a modal-on-modal. */
+.combat-barracks-screen .army-unit-detail-backdrop {
+  z-index: 150;
+  justify-content: flex-end;
+  align-items: stretch;
+  padding: 0;
+  background: rgba(2, 4, 6, .38);
+  backdrop-filter: blur(2px) brightness(.82);
+}
+
+.combat-barracks-screen .army-unit-detail {
+  width: min(560px, 43vw);
+  max-height: none;
+  height: 100dvh;
+  margin: 0;
+  padding: 1rem 1rem 1.4rem;
+  border-width: 0 0 0 1px;
+  border-radius: 0;
+  background:
+    linear-gradient(180deg, rgba(18, 17, 14, .985), rgba(8, 10, 12, .99));
+  box-shadow: -24px 0 70px rgba(0,0,0,.5);
+}
+
+.combat-barracks-screen .army-unit-detail > .piece-info-close {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+}
+
+.combat-barracks-screen .army-unit-detail-heading {
+  min-height: 72px;
+  margin-bottom: .6rem;
+  padding-right: 3rem;
+  border-bottom: 1px solid rgba(214, 184, 111, .14);
+  padding-bottom: .65rem;
+}
+
+.combat-barracks-screen .army-unit-detail-glyph {
+  border-color: rgba(215, 184, 111, .22);
+  background: rgba(0, 0, 0, .22);
+}
+
+.combat-barracks-screen .army-unit-legacy,
+.combat-barracks-screen .army-dossier-facts > div,
+.combat-barracks-screen .army-dossier-service,
+.combat-barracks-screen .army-dossier-actions,
+.combat-barracks-screen .army-command-note,
+.combat-barracks-screen .army-unit-equipment,
+.combat-barracks-screen .army-unit-bio {
+  border-color: rgba(217, 187, 124, .12);
+  background: rgba(0, 0, 0, .15);
+}
+
+@media (max-width: 1180px) {
+  .combat-barracks-shell .army-roster-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .combat-barracks-shell .army-reserve-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 780px) {
+  .combat-barracks-screen {
+    overflow: hidden;
+    backdrop-filter: saturate(.88) brightness(.78);
+  }
+
+  .combat-barracks-shell.army-card.army-roster-card {
+    width: 100vw;
+    height: 100dvh;
+    margin: 0;
+    padding: 4.5rem .5rem 1rem;
+    border: 0;
+    border-radius: 0;
+    background:
+      linear-gradient(180deg, rgba(7, 10, 13, .78), rgba(7, 9, 12, .64));
+  }
+
+  .combat-barracks-shell > .piece-info-close {
+    top: .55rem;
+    right: .5rem;
+  }
+
+  .combat-barracks-shell .army-roster-heading {
+    position: absolute;
+    top: .48rem;
+    left: .5rem;
+    right: 3.5rem;
+    min-height: 3.25rem;
+    padding: .42rem .55rem;
+    border-radius: 10px;
+  }
+
+  .combat-barracks-shell .army-roster-heading h3 {
+    font-size: 1rem;
+  }
+
+  .combat-barracks-shell .army-roster-count {
+    display: none;
+  }
+
+  .combat-barracks-shell .army-command-strip {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: .28rem;
+    margin-bottom: .55rem;
+  }
+
+  .combat-barracks-shell .army-command-strip > span {
+    min-height: 48px;
+    padding: .3rem .2rem;
+  }
+
+  .combat-barracks-shell .army-command-strip b {
+    font-size: .88rem;
+  }
+
+  .combat-barracks-shell .army-command-strip small {
+    font-size: .43rem;
+  }
+
+  .combat-barracks-shell .army-roster-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .36rem;
+  }
+
+  .combat-barracks-shell .army-unit-tile {
+    min-height: 112px;
+    padding: .48rem;
+  }
+
+  .combat-barracks-shell .army-unit-glyph {
+    font-size: 1.7rem;
+  }
+
+  .combat-barracks-shell .army-unit-alias {
+    font-size: .86rem;
+  }
+
+  .combat-barracks-shell .army-reserve-section,
+  .combat-barracks-shell .army-memorial {
+    margin-top: .65rem;
+    padding: .5rem;
+  }
+
+  .combat-barracks-shell .army-reserve-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .combat-barracks-screen .army-unit-detail-backdrop {
+    align-items: flex-end;
+  }
+
+  .combat-barracks-screen .army-unit-detail {
+    width: 100vw;
+    height: min(92dvh, 760px);
+    max-height: 92dvh;
+    border-width: 1px 0 0;
+    border-radius: 14px 14px 0 0;
+    padding: .8rem .72rem 1rem;
+  }
+
+  .combat-barracks-screen .army-unit-detail-heading {
+    padding-right: 3.2rem;
+  }
+}
+
+@media (max-width: 430px) {
+  .combat-barracks-shell.army-card.army-roster-card {
+    padding-inline: .35rem;
+  }
+
+  .combat-barracks-shell .army-command-strip {
+    gap: .2rem;
+  }
+
+  .combat-barracks-shell .army-unit-tile {
+    min-height: 108px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .combat-barracks-screen,
+  .combat-barracks-shell.army-card.army-roster-card,
+  .combat-barracks-shell .army-roster-heading,
+  .combat-barracks-screen .army-unit-detail-backdrop {
+    backdrop-filter: none;
+  }
+
+  .combat-barracks-shell .army-unit-tile:hover,
+  .combat-barracks-shell .army-unit-tile:focus-visible {
+    transform: none;
+  }
+}

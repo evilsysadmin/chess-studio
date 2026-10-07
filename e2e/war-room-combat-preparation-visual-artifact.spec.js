@@ -97,6 +97,47 @@ async function openWarTable(page) {
   return table;
 }
 
+async function openBarracks(page) {
+  await openOperationsRoom(page);
+  const logistics = page.locator('.combat-operations-drawer');
+  await logistics.locator('summary').click();
+  await page.getByRole('button', { name: /Ejército y veteranos/i }).click();
+
+  const barracks = page.locator('[data-combat-barracks="room"]');
+  await expect(barracks).toBeVisible();
+  await expect(barracks.getByRole('heading', { name: 'Barracón' })).toBeVisible();
+  return barracks;
+}
+
+async function barracksHealth(page) {
+  return page.evaluate(() => {
+    const rect = (selector) => {
+      const node = document.querySelector(selector);
+      if (!node) return null;
+      const box = node.getBoundingClientRect();
+      return {
+        left: Number(box.left.toFixed(1)),
+        top: Number(box.top.toFixed(1)),
+        right: Number(box.right.toFixed(1)),
+        bottom: Number(box.bottom.toFixed(1)),
+        width: Number(box.width.toFixed(1)),
+        height: Number(box.height.toFixed(1)),
+      };
+    };
+    return {
+      horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth + 1,
+      screen: rect('[data-combat-barracks="room"]'),
+      shell: rect('.combat-barracks-shell'),
+      firstUnit: rect('.combat-barracks-shell .army-unit-tile'),
+      unitCount: document.querySelectorAll('.combat-barracks-shell .army-unit-tile').length,
+      dossier: rect('.combat-barracks-screen .army-unit-detail'),
+      operationsCanvasVisible: Boolean(document.querySelector('.combat-preparation-room-stage .board3d-main-canvas')?.getClientRects().length),
+      prepChromeVisible: [...document.querySelectorAll('.combat-operations-shell > :not(.combat-preparation-room-stage)')]
+        .some((node) => node.getClientRects().length && getComputedStyle(node).visibility !== 'hidden'),
+    };
+  });
+}
+
 async function deploymentHealth(page) {
   return page.evaluate(() => {
     const rect = (selector) => {
@@ -190,8 +231,67 @@ test('Combat deployment · desktop is a diegetic War Table over the Operations R
   await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-deployment-war-table-desktop-1440x900.png');
 });
 
+test('Combat barracks · desktop reads as a veteran roster inside the Operations Room', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const barracks = await openBarracks(page);
+
+  const snapshot = await barracksHealth(page);
+  expect(snapshot.horizontalOverflow).toBe(false);
+  expect(snapshot.screen?.width || 0).toBeGreaterThanOrEqual(1438);
+  expect(snapshot.screen?.height || 0).toBeGreaterThanOrEqual(898);
+  expect(snapshot.shell?.width || 0).toBeGreaterThan(1100);
+  expect(snapshot.unitCount).toBeGreaterThanOrEqual(16);
+  expect(snapshot.firstUnit?.width || 0).toBeGreaterThan(100);
+  expect(snapshot.operationsCanvasVisible).toBe(true);
+  expect(snapshot.prepChromeVisible).toBe(false);
+
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-barracks-desktop-1440x900.png');
+
+  await barracks.locator('.army-unit-tile').nth(1).click();
+  await expect(page.locator('.combat-barracks-screen .army-unit-detail')).toBeVisible();
+  const dossier = await barracksHealth(page);
+  expect(Math.abs((dossier.dossier?.right || 0) - (dossier.shell?.right || 0))).toBeLessThanOrEqual(1);
+  expect(dossier.dossier?.width || 0).toBeGreaterThan(480);
+  await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-barracks-dossier-desktop-1440x900.png');
+});
+
 test.describe('Combat preparation · mobile', () => {
   test.use({ hasTouch: true, isMobile: true });
+
+  test('390x844 keeps the Barracks readable and touch-safe', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    const barracks = await openBarracks(page);
+
+    const snapshot = await barracksHealth(page);
+    expect(snapshot.horizontalOverflow).toBe(false);
+    expect(snapshot.screen?.left || 0).toBeGreaterThanOrEqual(-1);
+    expect(snapshot.screen?.right || 9999).toBeLessThanOrEqual(391);
+    expect(snapshot.shell?.width || 0).toBeGreaterThanOrEqual(388);
+    expect(snapshot.unitCount).toBeGreaterThanOrEqual(16);
+    expect(snapshot.firstUnit?.width || 0).toBeGreaterThan(160);
+    expect(snapshot.operationsCanvasVisible).toBe(true);
+    expect(snapshot.prepChromeVisible).toBe(false);
+
+    const targets = barracks.locator('.combat-barracks-shell > .piece-info-close, .combat-barracks-shell .army-unit-tile');
+    const count = await targets.count();
+    for (let index = 0; index < count; index += 1) {
+      const box = await targets.nth(index).boundingBox();
+      if (!box) continue;
+      expect(Math.min(box.width, box.height), 'Combat Barracks touch target >=44px').toBeGreaterThanOrEqual(44);
+    }
+
+    await mkdir(ARTIFACT_DIR, { recursive: true });
+    await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-barracks-android-390x844.png');
+
+    await barracks.locator('.army-unit-tile').nth(1).click();
+    const dossier = page.locator('.combat-barracks-screen .army-unit-detail');
+    await expect(dossier).toBeVisible();
+    const dossierBox = await dossier.boundingBox();
+    expect(dossierBox?.width || 0).toBeGreaterThanOrEqual(388);
+    expect((dossierBox?.y || 0) + (dossierBox?.height || 0)).toBeLessThanOrEqual(845);
+    await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-barracks-dossier-android-390x844.png');
+  });
 
   test('390x844 keeps the War Table board-first and touch-safe', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
