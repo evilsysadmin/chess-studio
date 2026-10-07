@@ -80,6 +80,36 @@ TEAMS = {
         "hair_style": "crop",
     },
 }
+FIELD_VARIANT_PROFILES = [
+    {
+        "body_profile": "defender",
+        "shoulder_scale": 1.08,
+        "torso_scale": 1.06,
+        "hip_scale": 1.04,
+        "limb_scale": 1.07,
+    },
+    {
+        "body_profile": "midfielder",
+        "shoulder_scale": 1.00,
+        "torso_scale": 1.00,
+        "hip_scale": 1.00,
+        "limb_scale": 1.00,
+    },
+    {
+        "body_profile": "wing",
+        "shoulder_scale": 0.93,
+        "torso_scale": 0.94,
+        "hip_scale": 0.95,
+        "limb_scale": 0.94,
+    },
+    {
+        "body_profile": "forward",
+        "shoulder_scale": 1.05,
+        "torso_scale": 1.03,
+        "hip_scale": 0.99,
+        "limb_scale": 1.02,
+    },
+]
 FIELD_VARIANTS = {
     "fc_matthias": [
         {},
@@ -324,10 +354,16 @@ def _frame_svg(
     torso_turn = 2.6 + p["twist"] * 0.28
     head_cx = cx + 2.8 + p["head"]
     head_cy = 34.8 - bob + yoff + crouch * 0.40
+    shoulder_scale = float(team.get("shoulder_scale", 1.0))
+    torso_scale = float(team.get("torso_scale", 1.0))
+    hip_scale = float(team.get("hip_scale", 1.0))
+    limb_scale = float(team.get("limb_scale", 1.0))
 
     out: list[str] = []
 
-    shadow_width = 19.0 if animation in ("sprint", "shoot", "tackle") else 17.2
+    shadow_width = (19.0 if animation in ("sprint", "shoot", "tackle") else 17.2) * (
+        0.96 + (torso_scale - 0.94) * 0.55
+    )
     shadow_x = cx + (4.0 if animation in ("run", "sprint", "shoot") else 1.0)
     out.append(
         f'<ellipse cx="{offset_x + shadow_x:.2f}" cy="{offset_y + foot + 1.0:.2f}" '
@@ -348,8 +384,10 @@ def _frame_svg(
     ]
     legs.sort(key=lambda item: 0 if item[3] else 1)
     for side, stride, lift_amount, far in legs:
-        hip_spread = 5.5 if locomotion else (6.0 if ball_action else 6.6)
-        foot_spread = 5.9 if locomotion else (6.4 if ball_action else 7.4)
+        hip_spread = (5.5 if locomotion else (6.0 if ball_action else 6.6)) * hip_scale
+        foot_spread = (5.9 if locomotion else (6.4 if ball_action else 7.4)) * (
+            0.94 + hip_scale * 0.06
+        )
         hip_x = cx + side * hip_spread + p["twist"] * (0.13 if far else 0.25)
         foot_x = cx + side * foot_spread + stride
         foot_y = foot - lift_amount
@@ -388,14 +426,14 @@ def _frame_svg(
         thigh = _limb_path(
             (hip_x, hip_y + 1.0),
             (knee_x, knee_y),
-            4.5 if far else 5.1,
-            3.8 if far else 4.2,
+            (4.5 if far else 5.1) * limb_scale,
+            (3.8 if far else 4.2) * limb_scale,
         )
         shin = _limb_path(
             (knee_x, knee_y + 1.0),
             (foot_x, foot_y - 5.6),
-            3.4 if far else 3.8,
-            2.7 if far else 3.0,
+            (3.4 if far else 3.8) * limb_scale,
+            (2.7 if far else 3.0) * limb_scale,
         )
         out.append(
             f'<path d="{_path(thigh, offset_x, offset_y)}" '
@@ -404,7 +442,7 @@ def _frame_svg(
         )
         out.append(
             f'<circle cx="{offset_x + knee_x:.2f}" cy="{offset_y + knee_y:.2f}" '
-            f'r="2.8" fill="{team["head"]}" stroke="{OUTLINE}" '
+            f'r="{2.8 * limb_scale:.2f}" fill="{team["head"]}" stroke="{OUTLINE}" '
             f'stroke-width=".85" opacity="{opacity}"/>'
         )
         out.append(
@@ -456,7 +494,7 @@ def _frame_svg(
     ]
     arms.sort(key=lambda item: 0 if item[2] else 1)
     for side, amount, far in arms:
-        shoulder_span = 15.0 if keeper else 13.8
+        shoulder_span = (15.0 if keeper else 13.8) * shoulder_scale
         sx = cx + side * shoulder_span - p["twist"] * 0.23
         sy = shoulder_y + (1.0 if far else -0.6)
         hand_x = (
@@ -473,9 +511,21 @@ def _frame_svg(
             sleeve_ratio = 0.62 if keeper else 0.34
             sleeve_x = sx + (elbow_x - sx) * sleeve_ratio
             sleeve_y = sy + (elbow_y - sy) * sleeve_ratio
-            sleeve = _limb_path((sx, sy), (sleeve_x, sleeve_y), 3.8, 3.35)
-            upper_skin = _limb_path((sleeve_x, sleeve_y), (elbow_x, elbow_y), 3.15, 2.8)
-            fore = _limb_path((elbow_x, elbow_y), (hand_x, hand_y), 2.9, 2.3)
+            sleeve = _limb_path(
+                (sx, sy), (sleeve_x, sleeve_y), 3.8 * limb_scale, 3.35 * limb_scale
+            )
+            upper_skin = _limb_path(
+                (sleeve_x, sleeve_y),
+                (elbow_x, elbow_y),
+                3.15 * limb_scale,
+                2.8 * limb_scale,
+            )
+            fore = _limb_path(
+                (elbow_x, elbow_y),
+                (hand_x, hand_y),
+                2.9 * limb_scale,
+                2.3 * limb_scale,
+            )
             out.append(
                 f'<path d="{_path(sleeve, offset_x, offset_y)}" '
                 f'fill="{team["torso_dark"]}" stroke="{OUTLINE}" '
@@ -504,19 +554,19 @@ def _frame_svg(
     top_y = 55.8 - bob + yoff + crouch * 0.58
     waist_y = 84.2 - bob + yoff + crouch * 0.30
     base_y = 96.0 - bob + yoff + crouch * 0.18
-    left_sh = cx - (14.8 if keeper else 13.6) - torso_turn * 0.15
-    right_sh = cx + (18.5 if keeper else 17.3) + torso_turn * 0.20
+    left_sh = cx - (14.8 if keeper else 13.6) * shoulder_scale - torso_turn * 0.15
+    right_sh = cx + (18.5 if keeper else 17.3) * shoulder_scale + torso_turn * 0.20
     torso = (
         f"M {offset_x + left_sh:.2f} {offset_y + top_y + 3.0:.2f} "
         f"Q {offset_x + cx - 2.0:.2f} {offset_y + top_y - 4.2:.2f} "
         f"{offset_x + right_sh:.2f} {offset_y + top_y + 2.0:.2f} "
-        f"Q {offset_x + cx + 19.0:.2f} {offset_y + 69.0 - bob + yoff:.2f} "
-        f"{offset_x + cx + 12.4:.2f} {offset_y + waist_y:.2f} "
-        f"L {offset_x + cx + 14.0:.2f} {offset_y + base_y:.2f} "
+        f"Q {offset_x + cx + 19.0 * shoulder_scale:.2f} {offset_y + 69.0 - bob + yoff:.2f} "
+        f"{offset_x + cx + 12.4 * torso_scale:.2f} {offset_y + waist_y:.2f} "
+        f"L {offset_x + cx + 14.0 * hip_scale:.2f} {offset_y + base_y:.2f} "
         f"Q {offset_x + cx + 1.8:.2f} {offset_y + base_y + 4.8:.2f} "
-        f"{offset_x + cx - 12.4:.2f} {offset_y + base_y:.2f} "
-        f"L {offset_x + cx - 10.7:.2f} {offset_y + waist_y:.2f} "
-        f"Q {offset_x + cx - 16.8:.2f} {offset_y + 69.5 - bob + yoff:.2f} "
+        f"{offset_x + cx - 12.4 * torso_scale:.2f} {offset_y + base_y:.2f} "
+        f"L {offset_x + cx - 10.7 * torso_scale:.2f} {offset_y + waist_y:.2f} "
+        f"Q {offset_x + cx - 16.8 * shoulder_scale:.2f} {offset_y + 69.5 - bob + yoff:.2f} "
         f"{offset_x + left_sh:.2f} {offset_y + top_y + 3.0:.2f} Z"
     )
     out.append(
@@ -543,13 +593,13 @@ def _frame_svg(
     )
 
     shorts = [
-        (cx - 12.6, waist_y - 0.5),
-        (cx + 12.0, waist_y - 0.5),
-        (cx + 14.2, base_y + 6.7),
+        (cx - 12.6 * torso_scale, waist_y - 0.5),
+        (cx + 12.0 * torso_scale, waist_y - 0.5),
+        (cx + 14.2 * hip_scale, base_y + 6.7),
         (cx + 2.4, base_y + 5.6),
         (cx, base_y + 2.4),
         (cx - 2.4, base_y + 5.6),
-        (cx - 13.7, base_y + 6.5),
+        (cx - 13.7 * hip_scale, base_y + 6.5),
     ]
     out.append(
         f'<path d="{_path(shorts, offset_x, offset_y)}" '
@@ -575,9 +625,21 @@ def _frame_svg(
         sleeve_ratio = 0.64 if keeper else 0.36
         sleeve_x = sx + (elbow_x - sx) * sleeve_ratio
         sleeve_y = sy + (elbow_y - sy) * sleeve_ratio
-        sleeve = _limb_path((sx, sy), (sleeve_x, sleeve_y), 4.1, 3.55)
-        upper_skin = _limb_path((sleeve_x, sleeve_y), (elbow_x, elbow_y), 3.3, 3.0)
-        fore = _limb_path((elbow_x, elbow_y), (hand_x, hand_y), 3.1, 2.4)
+        sleeve = _limb_path(
+            (sx, sy), (sleeve_x, sleeve_y), 4.1 * limb_scale, 3.55 * limb_scale
+        )
+        upper_skin = _limb_path(
+            (sleeve_x, sleeve_y),
+            (elbow_x, elbow_y),
+            3.3 * limb_scale,
+            3.0 * limb_scale,
+        )
+        fore = _limb_path(
+            (elbow_x, elbow_y),
+            (hand_x, hand_y),
+            3.1 * limb_scale,
+            2.4 * limb_scale,
+        )
         out.append(
             f'<path d="{_path(sleeve, offset_x, offset_y)}" '
             f'fill="{team["torso_light"]}" stroke="{OUTLINE}" stroke-width="1.25"/>'
@@ -603,9 +665,9 @@ def _frame_svg(
                 f'stroke="{team["torso_dark"]}" stroke-width=".85" opacity=".75"/>'
             )
 
-    # V12 preserves the V8-v11 animation work while allowing deterministic
-    # squad-index variants to change skin tone, hair and subtle head scale
-    # without touching pivots, kit identity or gameplay.
+    # V13 keeps the deterministic V12 identities and adds restrained
+    # role-shaped silhouettes: defender broader, midfielder neutral, wing
+    # leaner and forward athletic. Pivots, footline and gameplay stay fixed.
     neck_y = 49.4 - bob + yoff + crouch * 0.45
     out.append(
         f'<path d="M {offset_x + cx - 3.1:.2f} {offset_y + neck_y:.2f} '
@@ -731,11 +793,16 @@ def build_outputs() -> dict[str, str]:
         for index, overrides in enumerate(FIELD_VARIANTS[slug]):
             variant_slug = slug if index == 0 else f"{slug}_v{index + 1}"
             variant_team = dict(team)
+            variant_team.update(FIELD_VARIANT_PROFILES[index])
             variant_team.update(overrides)
             filename = f"{variant_slug}_atlas.svg"
             outputs[filename] = _atlas_svg(variant_team)
             display_name = team["name"] if index == 0 else f"{team['name']} · Variante {index + 1}"
-            atlas_meta[variant_slug] = {"name": display_name, "file": filename}
+            atlas_meta[variant_slug] = {
+                "name": display_name,
+                "file": filename,
+                "body_profile": str(variant_team["body_profile"]),
+            }
             variant_keys.append(variant_slug)
         field_variants[slug] = variant_keys
     for slug, team in KEEPERS.items():
@@ -743,7 +810,7 @@ def build_outputs() -> dict[str, str]:
         outputs[filename] = _atlas_svg(team, keeper=True)
         atlas_meta[slug] = {"name": team["name"], "file": filename}
     manifest = {
-        "version": 12,
+        "version": 13,
         "quality_contract": SPRITE_FORGE_CONTRACT["quality_contract"],
         "cell": {"width": CELL_W, "height": CELL_H},
         "columns": COLUMNS,
