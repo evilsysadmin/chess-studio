@@ -39,3 +39,21 @@ The publisher should use content-addressed object names and immutable cache head
 `images/home/castle-a82d761c.avif`
 
 with `Cache-Control: public, max-age=31536000, immutable`. A small manifest in Git can then map logical asset names to immutable R2 objects.
+
+
+## Storage budget and retention
+
+The repository owns an automatic retention policy for the public asset bucket.
+
+- Target footprint: **8.0 GB**.
+- Soft ceiling: **8.5 GB**.
+- Immutable assets receive a **14-day** grace period.
+- Keep one rollback generation per ordinary content-addressed family.
+- Keep one staging revision and two runtime revisions per revision journal.
+- Old `_smoke/` objects expire after one day.
+- Prefixes explicitly marked `deprecated/` or `_deprecated/` age out after the grace period unless they are still runtime-pinned.
+- A single pass is limited to 1,000 objects and 70% of observed bucket bytes.
+
+`scripts/r2_asset_gc.py` inventories R2, protects the reviewed manifest, hard-coded runtime R2 URLs and stable `current.*` aliases, then prunes only safely classified stale objects. Capacity pressure may prune old rollback copies, but never active pins.
+
+`Infra · R2 assets` runs the retention pass daily and when the R2 surface changes on `main`, and publishes a JSON audit report. If the bucket remains above the soft ceiling after safe candidates are exhausted, the job fails closed rather than guessing.
