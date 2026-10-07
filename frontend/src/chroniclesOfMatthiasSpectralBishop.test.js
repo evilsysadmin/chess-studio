@@ -5,19 +5,21 @@ describe('Chronicles spectral bishop art', () => {
   it('keeps a bishop silhouette and a readable diagonal spectral identity', () => {
     const bishop = buildSpectralBishop();
     expect(bishop.userData.chroniclesEnemyId).toBe('spectral-bishop');
-    expect(bishop.userData.chroniclesSilhouette).toBe('spectral-bishop-diagonal-seer');
+    expect(bishop.userData.chroniclesSilhouette).toBe('spectral-bishop-armoured-wraith');
+    expect(bishop.userData.chroniclesArtTier).toBe('premium-threat-v3');
     expect(bishop.getObjectByName('spectral-bishop-mitre')).toBeTruthy();
     expect(bishop.getObjectByName('spectral-bishop-diagonal-rift')).toBeTruthy();
     expect(bishop.getObjectByName('spectral-bishop-lantern-core')).toBeTruthy();
     expect(bishop.userData.chroniclesGlowMaterials).toHaveLength(1);
   });
 
-  it('reduces decorative diagonal rifts on coarse pointers', () => {
+  it('reduces curved surface geometry on coarse pointers', () => {
     const desktop = buildSpectralBishop();
     const coarse = buildSpectralBishop({ coarsePointer: true });
-    const count = (root) => root.children.filter((child) => child.name.startsWith('spectral-bishop-robe-rift-')).length;
-    expect(count(desktop)).toBe(4);
-    expect(count(coarse)).toBe(2);
+    const desktopMitre = desktop.getObjectByName('spectral-bishop-mitre');
+    const coarseMitre = coarse.getObjectByName('spectral-bishop-mitre');
+    expect(desktopMitre.geometry.attributes.position.count)
+      .toBeGreaterThan(coarseMitre.geometry.attributes.position.count);
   });
 
   it('builds a restrained side chapel and trims floor inlays on coarse pointers', () => {
