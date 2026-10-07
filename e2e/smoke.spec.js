@@ -396,7 +396,7 @@ test('Combat Chess · salir al menú conserva campaña y batalla activas', async
   await quick.click();
   await expect(page.getByRole('complementary', { name: 'Registro de batalla y estado táctico' })).toBeVisible();
 
-  const optionsTrigger = page.getByRole('button', { name: 'Opciones de batalla' });
+  const optionsTrigger = page.locator('summary[aria-label="Opciones de batalla"]');
   await expect(optionsTrigger).toBeVisible();
   await optionsTrigger.click();
 
