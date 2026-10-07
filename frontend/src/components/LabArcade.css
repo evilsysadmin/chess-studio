@@ -279,7 +279,7 @@
   }
 
   .lab-screen.lab-screen .lab-workshop::before {
-    background-image: url('../assets/lab-arcade-dungeon-canon.avif');
+    background-image: url('../assets/lab-arcade-dungeon-canon-q70.webp');
     background-position: 50% 51%;
     background-size: cover;
     opacity: .06;
@@ -540,10 +540,10 @@
 }
 
 @media (max-width: 820px) {
-  /* Phone layout is a vertical descent through the same dungeon. Explicit
-     coordinates prevent the inherited desktop/bottom rules from colliding. */
+  /* On phones the dungeon remains one room, not a vertical settings list.
+     Compact paired plaques sit over the scene like physical destinations. */
   .lab-screen.lab-screen .lab-workshop {
-    min-height: 1190px;
+    min-height: 850px;
     border: 1px solid rgba(117, 83, 42, .4);
     border-radius: 0;
     background: #050607;
@@ -551,119 +551,88 @@
 
   .lab-screen.lab-screen .lab-workshop-art {
     object-position: 50% 50%;
-    filter: brightness(.75) saturate(.9) contrast(1.08);
-    transform: scale(1.005);
+    filter: brightness(.82) saturate(.96) contrast(1.1);
+    transform: scale(1.002);
   }
 
   .lab-screen.lab-screen .lab-workshop::before {
-    background-image: url('../assets/lab-arcade-dungeon-canon.avif');
+    background-image: url('../assets/lab-arcade-dungeon-canon-q70.webp');
     background-position: 50% 50%;
     background-size: cover;
-    opacity: .04;
-    filter: brightness(.72) saturate(.86);
+    opacity: .025;
+    filter: brightness(.78) saturate(.9);
   }
 
   .lab-screen.lab-screen .lab-workshop::after {
     background:
       linear-gradient(180deg,
-        rgba(2, 4, 6, .63) 0 18%,
-        rgba(2, 4, 6, .2) 34%,
-        rgba(2, 4, 6, .28) 64%,
-        rgba(1, 2, 3, .58) 100%),
-      radial-gradient(ellipse at 50% 45%, transparent 0 35%, rgba(0, 1, 2, .28) 88%);
-    box-shadow: inset 0 0 54px rgba(0,0,0,.22);
+        rgba(2, 4, 6, .72) 0 20%,
+        rgba(2, 4, 6, .22) 34%,
+        rgba(2, 4, 6, .18) 63%,
+        rgba(1, 2, 3, .5) 100%),
+      radial-gradient(ellipse at 50% 47%, transparent 0 36%, rgba(0, 1, 2, .22) 90%);
+    box-shadow: inset 0 0 48px rgba(0,0,0,.2);
   }
 
   .lab-screen.lab-screen .lab-workshop-masthead {
-    top: 58px;
+    top: 56px;
     left: 18px;
     right: 18px;
     width: auto;
+    padding-right: 8px;
+    background: linear-gradient(90deg, rgba(2,3,4,.82), rgba(2,3,4,.45) 76%, transparent);
   }
 
   .lab-screen.lab-screen .lab-workshop-masthead h2 {
     color: #efe0bd;
-    font-size: clamp(2.45rem, 10.6vw, 3.25rem);
+    font-size: clamp(2.35rem, 10vw, 3.15rem);
     line-height: .9;
   }
 
   .lab-screen.lab-screen .lab-workshop-masthead p {
-    max-width: 340px;
-    margin-top: 13px;
+    max-width: 330px;
+    margin-top: 11px;
     color: rgba(235, 226, 208, .8);
-    font-size: .82rem;
-    line-height: 1.55;
+    font-size: .8rem;
+    line-height: 1.48;
   }
 
   .lab-screen.lab-screen .lab-workshop-portal,
   .lab-screen.lab-screen .lab-workshop-map-table,
   .lab-screen.lab-screen .lab-workshop-tool {
-    left: 18px;
-    right: 18px;
-    width: auto;
-    min-height: 70px;
-    padding: 9px 13px;
-    border: 1px solid rgba(181, 132, 62, .45);
-    border-left: 2px solid rgba(var(--hotspot-accent, 194,145,69), .78);
+    right: auto;
+    width: calc(50% - 23px);
+    min-height: 84px;
+    padding: 9px 10px;
+    border: 1px solid rgba(181, 132, 62, .46);
+    border-top-color: rgba(221, 169, 82, .56);
     border-radius: 3px;
-    background: linear-gradient(180deg, rgba(10, 11, 11, .88), rgba(5, 7, 8, .93));
-    box-shadow: 0 10px 24px rgba(0, 0, 0, .4), inset 0 1px rgba(255,235,188,.04);
+    background:
+      linear-gradient(180deg, rgba(11, 11, 10, .84), rgba(5, 7, 8, .91)),
+      radial-gradient(circle at 50% 0, rgba(var(--hotspot-accent, 194,145,69), .08), transparent 70%);
+    box-shadow:
+      0 10px 22px rgba(0, 0, 0, .43),
+      inset 0 1px rgba(255,235,188,.05);
     backdrop-filter: blur(1px);
     -webkit-backdrop-filter: blur(1px);
-  }
-
-  .lab-screen.lab-screen .lab-workshop-portal > strong,
-  .lab-screen.lab-screen .lab-workshop-map-table > strong,
-  .lab-screen.lab-screen .lab-workshop-tool strong {
-    font-size: 1rem;
-    line-height: 1.05;
   }
 
   .lab-screen.lab-screen .lab-workshop-portal > small,
   .lab-screen.lab-screen .lab-workshop-map-table > small,
   .lab-screen.lab-screen .lab-workshop-tool-meta {
-    font-size: .48rem;
+    display: none;
+  }
+
+  .lab-screen.lab-screen .lab-workshop-portal > strong,
+  .lab-screen.lab-screen .lab-workshop-map-table > strong,
+  .lab-screen.lab-screen .lab-workshop-tool strong {
+    font-size: clamp(.86rem, 3.6vw, .98rem);
+    line-height: 1.04;
   }
 
   .lab-screen.lab-screen .lab-workshop-portal > b,
   .lab-screen.lab-screen .lab-workshop-map-table > b {
-    font-size: .48rem;
-  }
-
-  .lab-screen.lab-screen .lab-workshop-wing--hangar .lab-workshop-portal {
-    left: 18px;
-    right: 18px;
-    width: auto;
-  }
-
-  .lab-screen.lab-screen .lab-workshop-portal--chronicles {
-    top: 430px;
-    bottom: auto;
-  }
-
-  .lab-screen.lab-screen .lab-workshop-portal--tactics {
-    top: 514px;
-    bottom: auto;
-  }
-
-  .lab-screen.lab-screen .lab-workshop-portal--pawnslug-godot {
-    top: 598px;
-    bottom: auto;
-  }
-
-  .lab-screen.lab-screen .lab-workshop-portal--football {
-    top: 682px;
-    bottom: auto;
-  }
-
-  .lab-screen.lab-screen .lab-workshop-portal--trailblazer {
-    top: 766px;
-    bottom: auto;
-  }
-
-  .lab-screen.lab-screen .lab-workshop-map-table {
-    top: 850px;
-    bottom: auto;
+    display: none;
   }
 
   .lab-screen.lab-screen .lab-workshop-bench {
@@ -677,34 +646,103 @@
     pointer-events: auto;
   }
 
+  .lab-screen.lab-screen .lab-workshop-portal--chronicles {
+    left: 18px;
+    top: 390px;
+    bottom: auto;
+  }
+
+  .lab-screen.lab-screen .lab-workshop-portal--tactics {
+    left: auto;
+    right: 18px;
+    top: 390px;
+    bottom: auto;
+  }
+
+  .lab-screen.lab-screen .lab-workshop-portal--pawnslug-godot {
+    left: 18px;
+    top: 486px;
+    bottom: auto;
+  }
+
+  .lab-screen.lab-screen .lab-workshop-portal--football {
+    left: auto;
+    right: 18px;
+    top: 486px;
+    bottom: auto;
+  }
+
+  .lab-screen.lab-screen .lab-workshop-portal--trailblazer {
+    left: 18px;
+    top: 582px;
+    bottom: auto;
+  }
+
+  .lab-screen.lab-screen .lab-workshop-map-table {
+    left: auto;
+    right: 18px;
+    top: 582px;
+    bottom: auto;
+  }
+
   .lab-screen.lab-screen .lab-workshop-tool:not(.lab-workshop-tool--arena) {
-    top: 934px;
+    left: 18px;
+    top: 678px;
     bottom: auto;
   }
 
   .lab-screen.lab-screen .lab-workshop-tool--arena {
-    top: 1018px;
+    left: auto;
+    right: 18px;
+    top: 678px;
     bottom: auto;
+  }
+
+  .lab-screen.lab-screen .lab-workshop-portal:active,
+  .lab-screen.lab-screen .lab-workshop-map-table:active,
+  .lab-screen.lab-screen .lab-workshop-tool:active {
+    transform: translateY(1px);
   }
 }
 
 @media (max-width: 430px) {
   .lab-screen.lab-screen .lab-workshop {
-    min-height: 1160px;
+    min-height: 830px;
   }
 
   .lab-screen.lab-screen .lab-workshop-masthead {
-    top: 54px;
+    top: 52px;
   }
 
-  .lab-screen.lab-screen .lab-workshop-portal--chronicles { top: 410px; }
-  .lab-screen.lab-screen .lab-workshop-portal--tactics { top: 492px; }
-  .lab-screen.lab-screen .lab-workshop-portal--pawnslug-godot { top: 574px; }
-  .lab-screen.lab-screen .lab-workshop-portal--football { top: 656px; }
-  .lab-screen.lab-screen .lab-workshop-portal--trailblazer { top: 738px; }
-  .lab-screen.lab-screen .lab-workshop-map-table { top: 820px; }
-  .lab-screen.lab-screen .lab-workshop-tool:not(.lab-workshop-tool--arena) { top: 902px; }
-  .lab-screen.lab-screen .lab-workshop-tool--arena { top: 984px; }
+  .lab-screen.lab-screen .lab-workshop-portal,
+  .lab-screen.lab-screen .lab-workshop-map-table,
+  .lab-screen.lab-screen .lab-workshop-tool {
+    width: calc(50% - 21px);
+    min-height: 82px;
+  }
+
+  .lab-screen.lab-screen .lab-workshop-portal--chronicles,
+  .lab-screen.lab-screen .lab-workshop-portal--pawnslug-godot,
+  .lab-screen.lab-screen .lab-workshop-portal--trailblazer,
+  .lab-screen.lab-screen .lab-workshop-tool:not(.lab-workshop-tool--arena) {
+    left: 16px;
+  }
+
+  .lab-screen.lab-screen .lab-workshop-portal--tactics,
+  .lab-screen.lab-screen .lab-workshop-portal--football,
+  .lab-screen.lab-screen .lab-workshop-map-table,
+  .lab-screen.lab-screen .lab-workshop-tool--arena {
+    right: 16px;
+  }
+
+  .lab-screen.lab-screen .lab-workshop-portal--chronicles,
+  .lab-screen.lab-screen .lab-workshop-portal--tactics { top: 372px; }
+  .lab-screen.lab-screen .lab-workshop-portal--pawnslug-godot,
+  .lab-screen.lab-screen .lab-workshop-portal--football { top: 464px; }
+  .lab-screen.lab-screen .lab-workshop-portal--trailblazer,
+  .lab-screen.lab-screen .lab-workshop-map-table { top: 556px; }
+  .lab-screen.lab-screen .lab-workshop-tool:not(.lab-workshop-tool--arena),
+  .lab-screen.lab-screen .lab-workshop-tool--arena { top: 648px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
