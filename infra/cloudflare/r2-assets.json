@@ -26,7 +26,7 @@
     "enabled": true,
     "targetBytes": 7000000000,
     "softLimitBytes": 7500000000,
-    "minimumAgeDays": 14,
+    "minimumAgeDays": 7,
     "ephemeralMaxAgeDays": 1,
     "keepRollbackPerFamily": 1,
     "keepStagingRevisions": 1,
