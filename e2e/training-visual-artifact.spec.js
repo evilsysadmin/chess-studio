@@ -3,6 +3,18 @@ import { mkdir } from 'node:fs/promises';
 import { buttonWithHeading, login, mockApi } from './helpers.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
+
+const INSIGHTS_HISTORY = Array.from({ length: 4 }, (_, index) => ({
+  id: `insights-motion-${index}`,
+  sourceGameId: `insights-motion-${index}`,
+  date: new Date(Date.UTC(2026, 8, 20 + index)).toISOString(),
+  outcome: index % 2 ? 'loss' : 'win',
+  mode: 'casual',
+  difficulty: 10,
+  humanColor: 'w',
+  moves: ['e4', 'e5', 'Nf3', 'Nc6'],
+  captured: [],
+}));
 const TRAINING_SCOPE = new Set(
   (process.env.APP_VISUAL_TRAINING_SCOPE || 'all')
     .split(',')
@@ -175,12 +187,13 @@ async function capture(page, label) {
   await captureAt(page, label);
 }
 
-async function prepare(page) {
+async function prepare(page, { profileSeed = {} } = {}) {
   await mkdir(ARTIFACT_DIR, { recursive: true });
   await mockApi(page, {
     profileSeed: {
       'matthias.onboarded': '2',
       'chess-study-home-guide-dismissed-v1': '1',
+      ...profileSeed,
     },
   });
   await login(page);
@@ -535,36 +548,21 @@ scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page })
   await captureAt(page, 'career-rhythm', { width: 1440, height: 900, variant: 'desktop' });
   await captureAt(page, 'career-rhythm', { width: 390, height: 844, variant: 'mobile' });
 
-  // Expediente owns the daily Matthias consultation after the task-first
-  // redesign. Return to desktop after the final mobile career capture, seed one
-  // real game only after the established baselines exist, then reload so the app
-  // rehydrates factual consultation data without perturbing those screenshots.
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await settle(page);
-  await page.evaluate(() => {
-    localStorage.setItem('chess-study-game-history', JSON.stringify([
-      {
-        id: 'visual-insights-dossier-game',
-        sourceGameId: 'visual-insights-dossier-game',
-        date: '2026-10-01T18:00:00Z',
-        mode: 'casual',
-        outcome: 'loss',
-        humanColor: 'w',
-        initialFen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
-        moves: [
-          { san: 'e4', from: 'e2', to: 'e4' },
-          { san: 'e5', from: 'e7', to: 'e5' },
-        ],
-      },
-    ]));
+
+});
+
+scopedTest('progress', 'Entrenar · Expediente de Matthias', async ({ page }) => {
+  test.setTimeout(45_000);
+  await prepare(page, {
+    profileSeed: {
+      'chess-study-game-history': JSON.stringify(INSIGHTS_HISTORY),
+      'chess-study-reduced-motion': '0',
+    },
   });
-  await page.reload();
-  const insightsHeading = page.getByRole('heading', { name: 'Así juegas', exact: true });
-  if (!await insightsHeading.isVisible().catch(() => false)) {
-    await page.getByRole('button', { name: 'Abrir menú de cuenta', exact: true }).click();
-    await page.getByRole('menuitem', { name: /Mi progreso/ }).click();
-  }
-  await expect(insightsHeading).toBeVisible();
+
+  await page.getByRole('button', { name: 'Abrir menú de cuenta', exact: true }).click();
+  await page.getByRole('menuitem', { name: /Mi progreso/ }).click();
+  await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Expediente', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Expediente', exact: true })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Consulta diaria con Matthias' })).toBeVisible();
@@ -572,3 +570,4 @@ scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page })
   await captureAt(page, 'insights-dossier', { width: 1440, height: 900, variant: 'desktop' });
   await captureAt(page, 'insights-dossier', { width: 390, height: 844, variant: 'mobile' });
 });
+
