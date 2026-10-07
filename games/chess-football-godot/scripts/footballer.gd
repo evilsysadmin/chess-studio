@@ -366,10 +366,10 @@ func _loop_phase_frame(animation_name: StringName) -> int:
 	# Deterministic per-player phase offsets stop a five-a-side lineup from
 	# breathing/running in lockstep like cloned mannequins.
 	var seed := team_id * 5 + squad_index * 3
-	return posmod(seed, count)
+	return ((seed % count) + count) % count
 
 func _apply_loop_phase(animation_name: StringName) -> void:
-	if visual == null or animation_name not in [&"idle", &"run", &"sprint"]:
+	if visual == null or not (animation_name in [&"idle", &"run", &"sprint"]):
 		return
 	visual.frame = _loop_phase_frame(animation_name)
 
