@@ -136,11 +136,16 @@ jobs:
           print("### R2 retention")
           print()
           print(f"- Inventory: {report['totalObjects']} objects / {gb(report['totalBytes']):.3f} GB")
-          print(f"- Protected: {report['protectedObjects']} objects")
+          print(f"- Protected: {report['protectedObjects']} objects / {gb(report['protectedBytes']):.3f} GB")
+          print(f"- Retained unknown: {report['retainedUnknownObjects']} objects / {gb(report['retainedUnknownBytes']):.3f} GB")
           print(f"- Deleted/planned: {report['deleteObjects']} objects / {gb(report['deleteBytes']):.3f} GB")
           print(f"- Projected footprint: {gb(report['projectedBytes']):.3f} GB")
           print(f"- Soft ceiling: {gb(report['softLimitBytes']):.1f} GB; target: {gb(report['targetBytes']):.1f} GB")
           print(f"- Guard truncated: {report['truncatedByGuard']}")
           print(f"- Blocked over soft limit: {report['blockedOverSoftLimit']}")
+          print()
+          print("#### Largest retained unknown prefixes")
+          for item in report.get("largestUnknownFamilies", [])[:12]:
+              print(f"- \`{item['prefix']}\`: {item['objects']} objects / {gb(item['bytes']):.3f} GB")
           PY
           fi
