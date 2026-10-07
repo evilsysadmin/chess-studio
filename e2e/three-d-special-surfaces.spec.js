@@ -3,6 +3,7 @@ import {
   login,
   mockApi,
   openCampaignBriefing,
+  openDeployment,
   openMoreGameModes,
   scheduleDomClick,
 } from './helpers.js';
@@ -78,21 +79,6 @@ async function openHeavy3DSurface(button, readySurface) {
   await expect(readySurface).toBeVisible({ timeout: READY });
 }
 
-async function openDeploymentForSpecialSurface(page) {
-  const deployment = page.getByRole('region', { name: 'Preparar despliegue de Combat Chess' });
-  if (await deployment.isVisible().catch(() => false)) return deployment;
-
-  const enterPreparation = page.getByRole('button', { name: /PREPARAR EJÉRCITO/i });
-  if (await enterPreparation.isVisible().catch(() => false)) {
-    await openHeavy3DSurface(enterPreparation, page.getByLabel('Resumen de preparación').or(deployment));
-    if (await deployment.isVisible().catch(() => false)) return deployment;
-  }
-
-  const reviewDeployment = page.getByRole('button', { name: /PREPARAR DESPLIEGUE|REVISAR Y CONFIRMAR|Personalizar despliegue/i });
-  await openHeavy3DSurface(reviewDeployment, deployment);
-  return deployment;
-}
-
 test('Arena experimental · tema, terreno y legalidad sobreviven al renderer 3D', async ({ page }) => {
   test.setTimeout(90_000);
   await page.setViewportSize({ width: 1440, height: 960 });
@@ -146,7 +132,7 @@ test('Combat Deployment · hover de unidad y metadata táctica funcionan sobre e
   await mockApi(page);
   await login(page);
   await openCampaignBriefing(page);
-  const deployment = await openDeploymentForSpecialSurface(page);
+  const deployment = await openDeployment(page);
 
   const board = deployment.locator('[data-board3d-war-room="true"]');
   const boardSurface = deployment.locator('.preferred-board-3d');
