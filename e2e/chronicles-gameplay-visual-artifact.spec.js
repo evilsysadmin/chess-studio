@@ -315,7 +315,7 @@ test('Chronicles · corrupted pawn premium close-up · desktop-1440x900', async 
     await expect(gameRoot).toHaveAttribute('data-chronicles-map-id', 'crypt-eight-squares');
     await expect(canvas).toHaveCount(1, { timeout: 20_000 });
     await expect(canvas).toBeVisible();
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(1400);
     await captureElement(
       page,
       gameRoot,
@@ -356,7 +356,7 @@ test('Chronicles · gate jailer premium close-up · desktop-1440x900', async ({ 
     await expect(gameRoot).toHaveAttribute('data-chronicles-map-id', 'crypt-eight-squares');
     await expect(canvas).toHaveCount(1, { timeout: 20_000 });
     await expect(canvas).toBeVisible();
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(1400);
     await captureElement(
       page,
       gameRoot,
