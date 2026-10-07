@@ -7,6 +7,7 @@ on:
       - scripts/cloudflare_r2_assets.py
       - scripts/r2_asset_publisher.py
       - scripts/r2_asset_publish.py
+      - scripts/r2_asset_gc.py
       - frontend/src/assets/r2-assets-manifest.json
       - .github/workflows/r2-assets-infra.yml
       - docs/r2-assets.md
@@ -18,10 +19,13 @@ on:
       - scripts/cloudflare_r2_assets.py
       - scripts/r2_asset_publisher.py
       - scripts/r2_asset_publish.py
+      - scripts/r2_asset_gc.py
       - frontend/src/assets/r2-assets-manifest.json
       - .github/workflows/r2-assets-infra.yml
       - docs/r2-assets.md
       - docs/r2-asset-publisher.md
+  schedule:
+    - cron: '17 4 * * *'
   workflow_dispatch:
 
 permissions:
@@ -44,12 +48,14 @@ jobs:
         run: python3 -S scripts/cloudflare_r2_assets.py validate
       - name: Static publisher contract
         run: python3 -S scripts/r2_asset_publish.py self-test
+      - name: Static retention contract
+        run: python3 -S scripts/r2_asset_gc.py self-test
       - name: Validate asset manifest
         run: python3 -S scripts/r2_asset_publish.py check-manifest
 
   reconcile:
     name: Reconcile · R2 assets
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && github.event_name != 'schedule'
     needs: validate
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -88,3 +94,53 @@ jobs:
             echo '- Pawn Slug Matthias: immutable objects stay referenced by the reviewed manifest'
             echo '- Pawn Slug enemies: immutable premium/action atlases stay referenced by the reviewed manifest; new blobs are published explicitly with the generic publisher'
           } >> "$GITHUB_STEP_SUMMARY"
+
+
+  retention:
+    name: Retention · R2 assets
+    if: github.event_name != 'pull_request'
+    needs: validate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Require Cloudflare credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+      - name: Apply conservative R2 retention
+        run: python3 -S scripts/r2_asset_gc.py apply --report /tmp/r2-retention-report.json
+      - name: Upload retention audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r2-retention-${{ github.sha }}
+          path: /tmp/r2-retention-report.json
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Summary
+        if: always()
+        shell: bash
+        run: |
+          if [[ -f /tmp/r2-retention-report.json ]]; then
+            python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+          report = json.loads(Path("/tmp/r2-retention-report.json").read_text())
+          gb = lambda value: value / 1_000_000_000
+          print("### R2 retention")
+          print()
+          print(f"- Inventory: {report['totalObjects']} objects / {gb(report['totalBytes']):.3f} GB")
+          print(f"- Protected: {report['protectedObjects']} objects")
+          print(f"- Deleted/planned: {report['deleteObjects']} objects / {gb(report['deleteBytes']):.3f} GB")
+          print(f"- Projected footprint: {gb(report['projectedBytes']):.3f} GB")
+          print(f"- Soft ceiling: {gb(report['softLimitBytes']):.1f} GB; target: {gb(report['targetBytes']):.1f} GB")
+          print(f"- Guard truncated: {report['truncatedByGuard']}")
+          print(f"- Blocked over soft limit: {report['blockedOverSoftLimit']}")
+          PY
+          fi

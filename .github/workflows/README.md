@@ -94,7 +94,7 @@ Render staging está retirado del plano de despliegue: el **release canónico y 
 | `pawn-slug-enemy-cast-v2.yml` | Regenera, prueba y publica el cast enemigo v2 de Pawn Slug; conserva evidencia visual e identidad R2 verificable. |
 | `staging-pawn-slug-visual.yml` | Reusable/manual de evidencia live de Pawn Slug. Comparte con Resend/continuity el baseline durable calculado una vez por `staging_deploy_prepare.py`; sólo se invoca cuando ese diff contiene superficie Pawn Slug y vuelve a exigir backend/frontend/worker en el SHA solicitado. |
 | `home-r2-assets.yml` | Valida y publica a R2 los assets 3D específicos de Home; PR sólo valida y `main`/manual publican. |
-| `r2-assets-infra.yml` | Contrato/reconciliación de bucket, dominio, CORS y manifiesto R2 compartido; muta sólo fuera de PR. |
+| `r2-assets-infra.yml` | Contrato/reconciliación de bucket, dominio, CORS y manifiesto R2 compartido. Además ejecuta GC conservador diario: protege manifest/runtime/aliases `current.*`, poda duplicados y generaciones/revisiones obsoletas, y presiona hacia 8.0 GB al superar 8.5 GB; muta sólo fuera de PR. |
 | `security-llm-lab.yml` | Laboratorio manual y acotado para revisión LLM de backend; nunca forma parte de los required checks ni de la entrega. |
 
 ## Calidad especializada

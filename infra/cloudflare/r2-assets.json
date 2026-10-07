@@ -7,9 +7,39 @@
   "minTls": "1.2",
   "disableR2Dev": true,
   "cors": {
-    "origins": ["*"],
-    "methods": ["GET", "HEAD"],
-    "exposeHeaders": ["ETag", "Content-Length", "Content-Type", "Cache-Control"],
+    "origins": [
+      "*"
+    ],
+    "methods": [
+      "GET",
+      "HEAD"
+    ],
+    "exposeHeaders": [
+      "ETag",
+      "Content-Length",
+      "Content-Type",
+      "Cache-Control"
+    ],
     "maxAgeSeconds": 86400
+  },
+  "retention": {
+    "enabled": true,
+    "targetBytes": 8000000000,
+    "softLimitBytes": 8500000000,
+    "minimumAgeDays": 14,
+    "ephemeralMaxAgeDays": 1,
+    "keepRollbackPerFamily": 1,
+    "keepStagingRevisions": 1,
+    "keepRuntimeRevisions": 2,
+    "maxDeleteObjectsPerRun": 1000,
+    "maxDeleteFractionPerRun": 0.7,
+    "ephemeralPrefixes": [
+      "_smoke/"
+    ],
+    "deprecatedPrefixes": [
+      "deprecated/",
+      "_deprecated/"
+    ],
+    "protectedPrefixes": []
   }
 }

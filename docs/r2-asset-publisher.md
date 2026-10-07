@@ -9,7 +9,7 @@ Chess Studio stores large derived binary assets in Cloudflare R2 instead of Git 
 - Storage class: `Standard`
 - Object names are content-addressed with the first 16 hex characters of SHA-256.
 - Git keeps only code and the small `frontend/src/assets/r2-assets-manifest.json` mapping logical IDs to immutable URLs.
-- No automatic garbage collection. Old hashed objects remain available for rollback until an explicit retention policy is added.
+- Automatic garbage collection is governed by the retention policy in `infra/cloudflare/r2-assets.json`. Active manifest objects, hard-coded runtime R2 URLs and stable `current.*` aliases are protected; old immutable generations are bounded instead of accumulating forever.
 - The REST publisher accepts assets up to 300 MB. Larger objects must use the S3-compatible multipart path.
 
 The publisher reuses the existing `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`; no R2 S3 access key is required for the normal path.
@@ -43,6 +43,22 @@ python3 -S scripts/r2_asset_publish.py publish ./asset.webp \
 ```
 
 The command uploads the immutable object first and only then updates the local manifest. Commit the manifest as the small textual change consumed by the application.
+
+## Retention / garbage collection
+
+`scripts/r2_asset_gc.py` owns conservative bucket cleanup.
+
+```bash
+python3 -S scripts/r2_asset_gc.py self-test
+python3 -S scripts/r2_asset_gc.py plan --report /tmp/r2-retention-plan.json
+python3 -S scripts/r2_asset_gc.py apply --report /tmp/r2-retention-report.json
+```
+
+The collector is fail-closed. It never deletes a key referenced by the reviewed manifest, a hard-coded runtime R2 URL found in application/runtime source, a stable `current.*` alias, or a configured protected prefix. Objects younger than the grace window or objects it cannot classify safely are also retained.
+
+Eligible cleanup includes expired smoke objects, explicitly deprecated prefixes, duplicate content-addressed payloads, excess staging/runtime revision history, old immutable generations beyond the rollback window, fully unreferenced hash families older than 45 days, and finally old rollback copies when bucket pressure exceeds the configured soft ceiling.
+
+The current policy targets 8.0 GB and starts pressure cleanup at 8.5 GB, below the 10 GB-month free-storage allowance. Each run is guarded by a maximum object count and maximum fraction of the bucket so one bad classification cannot empty the bucket in a single execution.
 
 ## Matthias Pawn Slug canonical master
 
