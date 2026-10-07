@@ -39,6 +39,7 @@ GAME_START_FLOW_OWNER = "frontend/src/useGameStartFlow.js"
 CASUAL_RESULT_FLOW_OWNER = "frontend/src/useCasualResultFlow.js"
 LOGOUT_FLOW_OWNER = "frontend/src/useLogoutFlow.js"
 FEATURE_FLAGS_OWNER = "frontend/src/usePublicFeatureFlags.js"
+GAME_EXIT_FLOW_OWNER = "frontend/src/useGameExitFlow.js"
 
 GAME_SCREEN = "frontend/src/components/GameScreen.jsx"
 PUZZLE_SCREEN_OWNER = "frontend/src/components/PuzzleScreen.jsx"
@@ -408,6 +409,39 @@ NONVISUAL_CASUAL_RESULT_APP_LINES = {
     "return summary;",
 }
 
+NONVISUAL_GAME_EXIT_APP_LINES = {
+    "import { chessGameExitDisposition } from './gameOutcome.js';",
+    "import { gameModeFromContext } from './gameModes.js';",
+    "import { clearClockSnapshot } from './clockPersistence.js';",
+    "import { loadActiveSeries, clearActiveSeries } from './series.js';",
+    "import { loadActiveSeries } from './series.js';",
+    "import { clearActiveContract, loadActiveContract, loadSpecialRun, reconcileCareerHistory } from './career.js';",
+    "import { loadActiveContract, loadSpecialRun, reconcileCareerHistory } from './career.js';",
+    "import { clearActiveGameSession, loadActiveGameSession, loadVisibleActiveGameSession } from './activeGameSession.js';",
+    "import { loadActiveGameSession, loadVisibleActiveGameSession } from './activeGameSession.js';",
+    "import { useGameExitFlow } from './useGameExitFlow.js';",
+    "const handleExitGame = useGameExitFlow({",
+    "game,", "casualResult,", "gameContext,", "learningMode,",
+    "finish: handleCasualGameEnd,", "notice: setExitNotice,", "saved: setHasSavedGame,",
+    "setGame,", "learning: setLearningMode,", "contract: setActiveContract,",
+    "context: setGameContext,", "series: setActiveSeries,", "back: goBack,", "});",
+    "function handleExitGame() {", "if (game?.id) {",
+    "if (casualResult?.gameId === game.id) {", "setExitNotice(casualResult);", "} else {",
+    "const trainingPosition = !!(gameContext.lab || gameContext.rescue || gameContext.suddenDeath);",
+    "const exitDisposition = chessGameExitDisposition(game, { learningMode, trainingPosition, explicitAction: true });",
+    "if (exitDisposition === 'forfeit') {",
+    "const summary = handleCasualGameEnd('loss', game, { endReason: 'resignation' });",
+    "setExitNotice(summary);",
+    "recordGameActivity({ gameId: game.id, state: 'cancelled', mode: gameModeFromContext({ learningMode, gameContext }), difficulty: game.difficulty });",
+    "setExitNotice({ outcome: 'cancelled', title: 'Partida cancelada', detail: 'No habías perdido ninguna pieza. Tu rating no cambia.', ratingApplied: false });",
+    "}", "if (game?.id) clearClockSnapshot(game.id);", "clearActiveGameSession();",
+    "removeStorageItem(STORAGE_LOCAL, STORAGE_KEY);",
+    "removeStorageItem(STORAGE_LOCAL, LEARNING_STORAGE_KEY);",
+    "setHasSavedGame(false);", "setGame(null);", "setLearningMode(false);",
+    "clearActiveContract();", "setActiveContract(null);", "setGameContext({});",
+    "clearActiveSeries();", "setActiveSeries(null);", "goBack();", "",
+}
+
 NONVISUAL_SESSION_SHELL_APP_LINES = {
     "import { activityForView, usePresenceHeartbeat } from './usePresenceHeartbeat.js';",
     "import { usePresenceHeartbeat } from './usePresenceHeartbeat.js';",
@@ -647,6 +681,10 @@ def _is_nonvisual_casual_result_app_diff(diff_text: str | None) -> bool:
     return bool(changed_lines) and all(line in NONVISUAL_CASUAL_RESULT_APP_LINES for line in changed_lines)
 
 
+def _is_nonvisual_game_exit_app_diff(diff_text: str | None) -> bool:
+    return _is_exact_routing_diff(diff_text, NONVISUAL_GAME_EXIT_APP_LINES)
+
+
 def _is_nonvisual_session_shell_app_diff(diff_text: str | None) -> bool:
     if not diff_text:
         return False
@@ -704,6 +742,10 @@ def normalize(
         CASUAL_RESULT_FLOW_OWNER.lower() in lower_paths
         and _is_nonvisual_casual_result_app_diff(_git_diff_text(base_sha, head_sha, APP_SHELL))
     )
+    safe_game_exit_app = (
+        GAME_EXIT_FLOW_OWNER.lower() in lower_paths
+        and _is_nonvisual_game_exit_app_diff(_git_diff_text(base_sha, head_sha, APP_SHELL))
+    )
     safe_session_shell_app = (
         LOGOUT_FLOW_OWNER.lower() in lower_paths
         and FEATURE_FLAGS_OWNER.lower() in lower_paths
@@ -726,7 +768,7 @@ def normalize(
         if lower == GAME_SCREEN.lower() and safe_postgame_training_game:
             add(PUZZLE_SCREEN_OWNER)
             continue
-        if lower == APP_SHELL.lower() and (safe_learning_app or safe_global_shell_app or safe_app_decomposition or safe_game_start_app or safe_casual_result_app or safe_session_shell_app):
+        if lower == APP_SHELL.lower() and (safe_learning_app or safe_global_shell_app or safe_app_decomposition or safe_game_start_app or safe_casual_result_app or safe_game_exit_app or safe_session_shell_app):
             # App.jsx is normally a global visual owner. Suppress it only for
             # the exact, audited navigation extraction above; any extra changed
             # App line fails closed and restores the canonical visual sweep.
@@ -839,6 +881,12 @@ def self_test() -> None:
     assert _is_nonvisual_casual_result_app_diff(safe_casual_result_diff)
     assert not _is_nonvisual_casual_result_app_diff(unsafe_casual_result_diff)
     assert not _is_nonvisual_casual_result_app_diff(None)
+
+    safe_game_exit_diff = "--- a/frontend/src/App.jsx\n+++ b/frontend/src/App.jsx\n@@ -1 +1 @@\n-import { clearClockSnapshot } from './clockPersistence.js';\n+import { useGameExitFlow } from './useGameExitFlow.js';\n"
+    unsafe_game_exit_diff = safe_game_exit_diff + "@@ -20 +20 @@\n-<main className=\"old\">\n+<main className=\"new\">\n"
+    assert _is_nonvisual_game_exit_app_diff(safe_game_exit_diff)
+    assert not _is_nonvisual_game_exit_app_diff(unsafe_game_exit_diff)
+    assert not _is_nonvisual_game_exit_app_diff(None)
 
     safe_session_shell_diff = "--- a/frontend/src/App.jsx\n+++ b/frontend/src/App.jsx\n@@ -1 +1 @@\n-import { activityForView, usePresenceHeartbeat } from './usePresenceHeartbeat.js';\n+import { usePresenceHeartbeat } from './usePresenceHeartbeat.js';\n"
     unsafe_session_shell_diff = safe_session_shell_diff + "@@ -20 +20 @@\n-<main className=\"old\">\n+<main className=\"new\">\n"

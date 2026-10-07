@@ -19,13 +19,10 @@ import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { api, STORAGE_KEY } from './api.js';
 import { updateGameRecordChat, statisticalHistoryRecords } from './gameHistory.js';
 import { recordGameActivity } from './gameActivity.js';
-import { chessGameExitDisposition } from './gameOutcome.js';
-import { gameModeFromContext } from './gameModes.js';
 import { loadRoster as loadCombatRoster } from './combatRoster.js';
 import { loadCombatService, summarizeCombatService } from './combatService.js';
 import { loadRating, ratingChangeDetails, loadRatingHistory } from './playerRating.js';
 const InsightsScreen = React.lazy(() => import('./components/InsightsScreen.jsx'));
-import { clearClockSnapshot } from './clockPersistence.js';
 import { scheduleAchievementCheck } from './achievementBootstrap.js';
 const AdminScreen = React.lazy(() => import('./components/AdminScreen.jsx'));
 const GlobalMusicDock = React.lazy(() => import('./components/GlobalMusicDock.jsx'));
@@ -38,14 +35,14 @@ import { SAVE_STATUS } from './saveStatus.js';
 import LoginScreen from './components/LoginScreen.jsx';
 import { reconcileRivalryHistory } from './rivalry.js';
 import { identifyOpening } from './openings.js';
-import { loadActiveSeries, clearActiveSeries } from './series.js';
+import { loadActiveSeries } from './series.js';
 const ShareResultModal = React.lazy(() => import('./components/ShareResultModal.jsx'));
 import SharedResultScreen from './components/SharedResultScreen.jsx';
 import { shareRecordFromHash } from './shareResult.js';
 const LabScreen = React.lazy(() => import('./components/LabScreen.jsx'));
-import { clearActiveContract, loadActiveContract, loadSpecialRun, reconcileCareerHistory } from './career.js';
+import { loadActiveContract, loadSpecialRun, reconcileCareerHistory } from './career.js';
 import { loadActiveGameChat } from './gameChat.js';
-import { clearActiveGameSession, loadActiveGameSession, loadVisibleActiveGameSession } from './activeGameSession.js';
+import { loadActiveGameSession, loadVisibleActiveGameSession } from './activeGameSession.js';
 import { usePresenceHeartbeat } from './usePresenceHeartbeat.js';
 import { useActiveGameSessionPersistence } from './useActiveGameSessionPersistence.js';
 import { useGameReconnect } from './useGameReconnect.js';
@@ -70,6 +67,7 @@ import { useGameStartFlow } from './useGameStartFlow.js';
 import { useCasualResultFlow } from './useCasualResultFlow.js';
 import { useLogoutFlow } from './useLogoutFlow.js';
 import { usePublicFeatureFlags } from './usePublicFeatureFlags.js';
+import { useGameExitFlow } from './useGameExitFlow.js';
 
 // 'menu' | 'game' | 'tutorial' | 'openings' | 'tournament' | 'tournamentGame' | 'puzzle' | 'combat' | 'history' | 'replay'
 function AppInner({ isAdminUser }) {
@@ -241,6 +239,21 @@ function AppInner({ isAdminUser }) {
     run: setSpecialRun,
     resetResult: () => { setExitNotice(null); clearCasualResult(); },
   });
+  const handleExitGame = useGameExitFlow({
+    game,
+    casualResult,
+    gameContext,
+    learningMode,
+    finish: handleCasualGameEnd,
+    notice: setExitNotice,
+    saved: setHasSavedGame,
+    setGame,
+    learning: setLearningMode,
+    contract: setActiveContract,
+    context: setGameContext,
+    series: setActiveSeries,
+    back: goBack,
+  });
   useProfileSyncLifecycle(view);
 
   // V15.1: usuarios veteranos pueden tener decenas de partidas anteriores a
@@ -320,37 +333,6 @@ function AppInner({ isAdminUser }) {
     setCombatHistoryList(loadCombatHistory());
     void scheduleAchievementCheck();
   }, [view]);
-
-  function handleExitGame() {
-    if (game?.id) {
-      if (casualResult?.gameId === game.id) {
-        setExitNotice(casualResult);
-      } else {
-      const trainingPosition = !!(gameContext.lab || gameContext.rescue || gameContext.suddenDeath);
-      const exitDisposition = chessGameExitDisposition(game, { learningMode, trainingPosition, explicitAction: true });
-      if (exitDisposition === 'forfeit') {
-        const summary = handleCasualGameEnd('loss', game, { endReason: 'resignation' });
-        setExitNotice(summary);
-      } else {
-        recordGameActivity({ gameId: game.id, state: 'cancelled', mode: gameModeFromContext({ learningMode, gameContext }), difficulty: game.difficulty });
-        setExitNotice({ outcome: 'cancelled', title: 'Partida cancelada', detail: 'No habías perdido ninguna pieza. Tu rating no cambia.', ratingApplied: false });
-      }
-      }
-    }
-    if (game?.id) clearClockSnapshot(game.id);
-    clearActiveGameSession();
-    removeStorageItem(STORAGE_LOCAL, STORAGE_KEY);
-    removeStorageItem(STORAGE_LOCAL, LEARNING_STORAGE_KEY);
-    setHasSavedGame(false);
-    setGame(null);
-    setLearningMode(false);
-    clearActiveContract();
-    setActiveContract(null);
-    setGameContext({});
-    clearActiveSeries();
-    setActiveSeries(null);
-    goBack();
-  }
 
   function buildLiveShareRecord(finishedGame, outcome, mode, series = null) {
     const moves = finishedGame?.history || [];
