@@ -1,0 +1,36 @@
+name: TMP · Chess Football v15 canonicalize
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/tmp-chess-football-v15-sync.yml
+      - scripts/art/chess_football_sprite_forge.py
+      - scripts/art/contracts/chess_football_players_v1.json
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.head_ref }}
+      - name: Regenerate canonical Football art
+        run: python3 -S scripts/art/chess_football_sprite_forge.py generate --assets-dir games/chess-football-godot/assets/players
+      - name: Commit canonical outputs when needed
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add games/chess-football-godot/assets/players
+          if git diff --cached --quiet; then
+            echo "Canonical outputs already match."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "art(football): canonicalize v15 broadcast readability"
+          git push origin HEAD:${{ github.head_ref }}
