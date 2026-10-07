@@ -178,7 +178,11 @@ body.war-room-immersive-active .game-screen {
     gap: 0 !important;
   }
 
-  .game-layout-immersive .game-side-column.game-side-column-3d {
+  /* Must outrank WarRoomDesktopRailLayout.css even when that deferred sheet
+   * loads later. Its display:contents !important previously resurrected the
+   * chat/notebook rail and created an implicit second grid track, splitting the
+   * immersive room roughly 50/50. Immersion always owns this descendant. */
+  .game-screen .game-layout-immersive .game-side-column.game-side-column-3d {
     display: none !important;
   }
 
@@ -259,7 +263,7 @@ body.war-room-immersive-active .game-screen {
 
   .game-layout-immersive .game-board-stack-3d > .game-player-rail.is-human,
   .game-layout-immersive .game-board-stack-3d > .game-command-deck,
-  .game-layout-immersive .game-side-column.game-side-column-3d {
+  .game-screen .game-layout-immersive .game-side-column.game-side-column-3d {
     display: none !important;
   }
 
@@ -385,7 +389,7 @@ body.war-room-immersive-active .game-screen {
 
   .game-layout-immersive .game-board-stack-3d > .game-player-rail.is-human,
   .game-layout-immersive .game-board-stack-3d > .game-command-deck,
-  .game-layout-immersive .game-side-column.game-side-column-3d {
+  .game-screen .game-layout-immersive .game-side-column.game-side-column-3d {
     display: none !important;
   }
 

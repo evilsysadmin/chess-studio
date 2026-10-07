@@ -111,6 +111,8 @@ test('War Room · canario visual de Hans físicamente en escena', async () => {
     await expect(quickDialog).toBeVisible();
     await quickDialog.getByRole('button', { name: 'Empezar partida', exact: true }).press('Enter');
     const warRoom = page.locator('.board-live-row.is-3d-warroom');
+    const layout = page.locator('.game-layout.game-layout-3d');
+    const sideRail = page.locator('.game-side-column.game-side-column-3d');
     const canvas = page.locator('.board3d-main-canvas');
     const fireOverlay = page.getByTestId('warroom-hans-fire-call-overlay');
     const hansBubble = page.locator('.warroom-fire-call-bubble-hans');
@@ -122,6 +124,9 @@ test('War Room · canario visual de Hans físicamente en escena', async () => {
     // remains fail-closed.
     await Promise.all([
       expect(warRoom).toBeVisible({ timeout: MOUNT_BUDGET_MS }),
+      expect(layout).toHaveClass(/game-layout-immersive/, { timeout: MOUNT_BUDGET_MS }),
+      expect(layout).toHaveAttribute('data-war-room-immersive', 'true', { timeout: MOUNT_BUDGET_MS }),
+      expect(page.locator('body')).toHaveClass(/war-room-immersive-active/, { timeout: MOUNT_BUDGET_MS }),
       expect(canvas).toBeVisible({ timeout: MOUNT_BUDGET_MS }),
       expect(canvas).toHaveAttribute('data-war-room-variant', 'v3', { timeout: MOUNT_BUDGET_MS }),
       expect(canvas).toHaveAttribute('data-war-room-hans-scene-ready', 'true', { timeout: hansBudget(15_000) }),
@@ -142,6 +147,37 @@ test('War Room · canario visual de Hans físicamente en escena', async () => {
 
     const replyBubbleVisible = await hansBubble.isVisible().catch(() => false);
     const fireCallPhase = await fireOverlay.getAttribute('data-fire-call-phase');
+    const immersiveGeometry = await page.evaluate(() => {
+      const layoutNode = document.querySelector('.game-layout.game-layout-3d');
+      const roomNode = document.querySelector('.board-live-row.is-3d-warroom');
+      const sideNode = document.querySelector('.game-side-column.game-side-column-3d');
+      const layoutRect = layoutNode?.getBoundingClientRect();
+      const roomRect = roomNode?.getBoundingClientRect();
+      return {
+        sideDisplay: sideNode ? getComputedStyle(sideNode).display : 'missing',
+        layout: layoutRect ? {
+          left: layoutRect.left,
+          top: layoutRect.top,
+          width: layoutRect.width,
+          height: layoutRect.height,
+        } : null,
+        room: roomRect ? {
+          left: roomRect.left,
+          top: roomRect.top,
+          width: roomRect.width,
+          height: roomRect.height,
+        } : null,
+      };
+    });
+    expect(immersiveGeometry.sideDisplay).toBe('none');
+    expect(immersiveGeometry.layout).not.toBeNull();
+    expect(immersiveGeometry.room).not.toBeNull();
+    expect(immersiveGeometry.layout.left).toBeLessThanOrEqual(1);
+    expect(immersiveGeometry.layout.top).toBeLessThanOrEqual(1);
+    expect(immersiveGeometry.layout.width).toBeGreaterThanOrEqual(1438);
+    expect(immersiveGeometry.layout.height).toBeGreaterThanOrEqual(898);
+    expect(immersiveGeometry.room.width).toBeGreaterThanOrEqual(1438);
+
     const diagnostic = await canvas.evaluate((node, extra) => ({
       schema: 2,
       viewport: { width: window.innerWidth, height: window.innerHeight },
@@ -157,7 +193,8 @@ test('War Room · canario visual de Hans físicamente en escena', async () => {
       replySeen: node.dataset.warRoomHansReplySeen === 'true',
       replyBubbleVisible: extra.replyBubbleVisible,
       fireCallPhase: extra.fireCallPhase || '',
-    }), { replyBubbleVisible, fireCallPhase });
+      immersiveGeometry: extra.immersiveGeometry,
+    }), { replyBubbleVisible, fireCallPhase, immersiveGeometry });
 
     expect(diagnostic.sceneReady).toBe(true);
     expect(diagnostic.callReleased).toBe(true);
