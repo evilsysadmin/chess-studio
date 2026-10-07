@@ -272,31 +272,91 @@ function addChair(root, wood, leather, brass) {
   const chair = new THREE.Group();
   chair.name = 'quick-match-ready-opponent-chair';
 
-  box(chair, [2.12, .26, 1.28], leather, [0, .64, 0], 'chair-seat');
-  box(chair, [2.02, .12, 1.16], wood, [0, .48, 0], 'chair-seat-frame');
+  box(chair, [2.16, .26, 1.30], leather, [0, .64, 0], 'chair-seat');
+  box(chair, [2.08, .13, 1.18], wood, [0, .47, 0], 'chair-seat-frame');
 
-  const back = box(chair, [1.58, 1.56, .20], leather, [0, 1.68, -.61], 'chair-back');
-  back.rotation.x = -.035;
-  box(chair, [1.90, .12, .18], wood, [0, 2.51, -.65], 'chair-top-rail');
-  box(chair, [1.42, .045, .055], brass, [0, 2.16, -.48], 'chair-brass-inlay');
+  const outerBackShape = new THREE.Shape();
+  outerBackShape.moveTo(-1.02, 0);
+  outerBackShape.lineTo(-1.02, 1.08);
+  outerBackShape.quadraticCurveTo(-.96, 1.57, -.58, 1.75);
+  outerBackShape.quadraticCurveTo(0, 2.05, .58, 1.75);
+  outerBackShape.quadraticCurveTo(.96, 1.57, 1.02, 1.08);
+  outerBackShape.lineTo(1.02, 0);
+  outerBackShape.closePath();
 
-  for (const x of [-.92, .92]) {
-    cylinder(chair, [.085, .11], 2.36, wood, [x, 1.32, -.66], 'chair-post', 18);
-    sphere(chair, .12, brass, [x, 2.58, -.66], 'chair-post-finial', 18, 12);
-    cylinder(chair, [.09, .12], .92, wood, [x, .04, .43], 'chair-leg', 18);
+  const outerBack = new THREE.Mesh(
+    new THREE.ExtrudeGeometry(outerBackShape, {
+      depth: .18,
+      bevelEnabled: true,
+      bevelSegments: 2,
+      bevelSize: .045,
+      bevelThickness: .035,
+    }),
+    wood,
+  );
+  outerBack.position.set(0, .86, -.76);
+  outerBack.castShadow = true;
+  outerBack.receiveShadow = true;
+  outerBack.name = 'chair-arched-back-frame';
+  chair.add(outerBack);
+
+  const leatherBackShape = new THREE.Shape();
+  leatherBackShape.moveTo(-.78, .13);
+  leatherBackShape.lineTo(-.78, 1.02);
+  leatherBackShape.quadraticCurveTo(-.72, 1.38, -.43, 1.52);
+  leatherBackShape.quadraticCurveTo(0, 1.76, .43, 1.52);
+  leatherBackShape.quadraticCurveTo(.72, 1.38, .78, 1.02);
+  leatherBackShape.lineTo(.78, .13);
+  leatherBackShape.closePath();
+
+  const leatherBack = new THREE.Mesh(
+    new THREE.ExtrudeGeometry(leatherBackShape, {
+      depth: .10,
+      bevelEnabled: true,
+      bevelSegments: 2,
+      bevelSize: .025,
+      bevelThickness: .02,
+    }),
+    leather,
+  );
+  leatherBack.position.set(0, .89, -.54);
+  leatherBack.castShadow = true;
+  leatherBack.receiveShadow = true;
+  leatherBack.name = 'chair-leather-back';
+  chair.add(leatherBack);
+
+  for (const [x, y] of [
+    [-.34, 1.42], [.34, 1.42],
+    [-.52, 1.82], [0, 1.72], [.52, 1.82],
+    [-.28, 2.16], [.28, 2.16],
+  ]) {
+    const button = sphere(chair, .045, brass, [x, y, -.405], 'chair-tuft-button', 14, 10);
+    button.scale.z = .42;
   }
 
-  const crest = new THREE.Mesh(new THREE.ConeGeometry(.17, .30, 3), brass);
-  crest.rotation.z = Math.PI;
-  crest.position.set(0, 2.69, -.64);
-  crest.castShadow = true;
-  crest.name = 'chair-crest';
-  chair.add(crest);
-
-  for (const x of [-.82, .82]) {
-    box(chair, [.12, .12, 1.12], wood, [x, .92, .10], 'chair-arm');
-    sphere(chair, .105, brass, [x, .98, .62], 'chair-brass-cap', 18, 12);
+  for (const x of [-.98, .98]) {
+    cylinder(chair, [.085, .115], 2.44, wood, [x, 1.33, -.67], 'chair-post', 20);
+    sphere(chair, .13, brass, [x, 2.61, -.67], 'chair-post-finial', 18, 12);
+    cylinder(chair, [.09, .12], .94, wood, [x, .04, .43], 'chair-leg', 18);
   }
+
+  const crown = new THREE.Mesh(new THREE.ConeGeometry(.16, .30, 4), brass);
+  crown.rotation.y = Math.PI / 4;
+  crown.position.set(0, 2.91, -.65);
+  crown.castShadow = true;
+  crown.name = 'chair-crown-finial';
+  chair.add(crown);
+
+  box(chair, [1.56, .045, .05], brass, [0, 2.42, -.41], 'chair-brass-inlay');
+
+  for (const x of [-.84, .84]) {
+    const arm = box(chair, [.13, .13, 1.12], wood, [x, .92, .10], 'chair-arm');
+    arm.rotation.x = -.035;
+    sphere(chair, .11, brass, [x, .98, .63], 'chair-brass-cap', 18, 12);
+  }
+
+  box(chair, [1.58, .10, .10], wood, [0, .12, .52], 'chair-front-stretcher');
+  box(chair, [1.68, .055, .065], brass, [0, .18, .58], 'chair-front-stretcher-inlay');
 
   chair.position.set(0, .00, -5.04);
   root.add(chair);
