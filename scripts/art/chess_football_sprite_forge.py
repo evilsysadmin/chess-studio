@@ -487,6 +487,7 @@ def _limb_path(
     start_half_width: float,
     end_half_width: float,
     organic: bool = False,
+    anatomy_profile: str | None = None,
 ) -> list[tuple[float, float]]:
     ax, ay = start
     bx, by = end
@@ -541,7 +542,42 @@ def _limb_path(
                 center_y - contour_ny * negative_width,
             )
         )
-    return positive + list(reversed(negative))
+    organic_points = positive + list(reversed(negative))
+    if anatomy_profile is None:
+        return organic_points
+
+    # V27 keeps the exact authored centerline/end anchors from V26, but gives
+    # each segment its own footballer-like volume distribution. Quantize the
+    # V26 contour before reshaping so checked-in atlases can be deterministically
+    # regenerated from the same two-decimal authored geometry.
+    rounded_points = [
+        (float(f"{x:.2f}"), float(f"{y:.2f}"))
+        for x, y in organic_points
+    ]
+    profile_scales = {
+        "thigh": (1.00, 1.10, 1.18, 1.10, 0.92, 0.94),
+        "shin": (0.98, 1.16, 1.22, 1.06, 0.84, 0.88),
+        "arm": (1.00, 1.14, 1.18, 1.08, 0.91, 0.95),
+    }
+    scales = profile_scales.get(anatomy_profile)
+    if scales is None:
+        raise ValueError(f"unknown limb anatomy profile: {anatomy_profile}")
+    shaped = list(rounded_points)
+    for index, scale in enumerate(scales):
+        opposite = len(rounded_points) - 1 - index
+        px, py = rounded_points[index]
+        qx, qy = rounded_points[opposite]
+        center_x = (px + qx) * 0.5
+        center_y = (py + qy) * 0.5
+        shaped[index] = (
+            center_x + (px - center_x) * scale,
+            center_y + (py - center_y) * scale,
+        )
+        shaped[opposite] = (
+            center_x + (qx - center_x) * scale,
+            center_y + (qy - center_y) * scale,
+        )
+    return shaped
 
 
 def _hand_path(
@@ -681,6 +717,7 @@ def _frame_svg(
             (4.5 if far else 5.1) * limb_scale,
             (3.8 if far else 4.2) * limb_scale,
             organic=True,
+            anatomy_profile="thigh",
         )
         shin = _limb_path(
             (knee_x, knee_y + 1.0),
@@ -688,6 +725,7 @@ def _frame_svg(
             (3.4 if far else 3.8) * limb_scale,
             (2.7 if far else 3.0) * limb_scale,
             organic=True,
+            anatomy_profile="shin",
         )
         out.append(
             f'<path d="{_path(thigh, offset_x, offset_y)}" '
@@ -844,6 +882,7 @@ def _frame_svg(
                 3.15 * limb_scale,
                 2.8 * limb_scale,
                 organic=True,
+                anatomy_profile="arm",
             )
             fore = _limb_path(
                 (elbow_x, elbow_y),
@@ -851,6 +890,7 @@ def _frame_svg(
                 2.9 * limb_scale,
                 2.3 * limb_scale,
                 organic=True,
+                anatomy_profile="arm",
             )
             out.append(
                 f'<path d="{_path(sleeve, offset_x, offset_y)}" '
@@ -1027,6 +1067,7 @@ def _frame_svg(
             3.3 * limb_scale,
             3.0 * limb_scale,
             organic=True,
+            anatomy_profile="arm",
         )
         fore = _limb_path(
             (elbow_x, elbow_y),
@@ -1034,6 +1075,7 @@ def _frame_svg(
             3.1 * limb_scale,
             2.4 * limb_scale,
             organic=True,
+            anatomy_profile="arm",
         )
         out.append(
             f'<path d="{_path(sleeve, offset_x, offset_y)}" '
@@ -1326,7 +1368,7 @@ def build_outputs() -> dict[str, str]:
                 "silhouette_profile": "athletic-v23",
                 "joint_profile": "organic-joints-v24",
                 "limb_outline_profile": "tonal-limbs-v25",
-                "limb_geometry_profile": "organic-taper-v26",
+                "limb_geometry_profile": "anatomical-contour-v27",
                 "kinetics_profile": "weight-transfer-v21",
             }
             variant_keys.append(variant_slug)
@@ -1340,11 +1382,11 @@ def build_outputs() -> dict[str, str]:
             "silhouette_profile": "athletic-v23",
                 "joint_profile": "organic-joints-v24",
                 "limb_outline_profile": "tonal-limbs-v25",
-            "limb_geometry_profile": "organic-taper-v26",
+            "limb_geometry_profile": "anatomical-contour-v27",
             "kinetics_profile": "weight-transfer-v21",
         }
     manifest = {
-        "version": 26,
+        "version": 27,
         "quality_contract": SPRITE_FORGE_CONTRACT["quality_contract"],
         "cell": {"width": CELL_W, "height": CELL_H},
         "columns": COLUMNS,
@@ -1376,8 +1418,21 @@ def verify_outputs(target: Path) -> None:
         if not path.exists():
             errors.append(f"missing {path}")
             continue
-        if path.read_text(encoding="utf-8") != content:
-            errors.append(f"drift {path}")
+        actual = path.read_text(encoding="utf-8")
+        if actual != content:
+            expected_lines = content.splitlines()
+            actual_lines = actual.splitlines()
+            max_lines = max(len(expected_lines), len(actual_lines))
+            for index in range(max_lines):
+                expected_line = expected_lines[index] if index < len(expected_lines) else "<EOF>"
+                actual_line = actual_lines[index] if index < len(actual_lines) else "<EOF>"
+                if expected_line == actual_line:
+                    continue
+                line_number = index + 1
+                errors.append(f"drift-file::{path}")
+                errors.append(f"drift-line::{line_number}")
+                errors.append(f"drift-expected::{expected_line}")
+                errors.append(f"drift-actual::{actual_line}")
     if errors:
         raise SystemExit("\n".join(errors))
     print(
