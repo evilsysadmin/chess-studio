@@ -85,11 +85,15 @@ func _initialize() -> void:
 	var mobile_dribble_before := mobile_dribbler.global_position
 	assert(controls.debug_touch_down(14, dribble_screen_target))
 	assert(mobile_dribbler.debug_dribble_active())
+	mobile_dribbler._process(0.10)
 	mobile_dribbler.move_human(0.10, Vector2.ZERO, false)
 	match_node.ball.tick_ball(0.0)
-	assert(mobile_dribbler.global_position.x > mobile_dribble_before.x + 15.0)
-	assert(mobile_dribbler.global_position.y < mobile_dribble_before.y - 8.0)
+	assert(mobile_dribbler.velocity.x > mobile_dribbler.base_speed)
+	assert(mobile_dribbler.velocity.y < -mobile_dribbler.base_speed * 0.45)
+	assert(mobile_dribbler.global_position.x > mobile_dribble_before.x)
+	assert(mobile_dribbler.global_position.y < mobile_dribble_before.y)
 	assert(match_node.ball.carrier == mobile_dribbler)
+	assert(match_node.ball.global_position.distance_to(mobile_dribbler.global_position) > 28.0)
 	assert(controls.debug_touch_up(14, dribble_screen_target))
 	mobile_dribbler._process(0.70)
 
