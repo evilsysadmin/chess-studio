@@ -276,6 +276,19 @@
   display: none;
 }
 
+.combat-battle-screen .combat-warroom-action-menu.combat-warroom-exit-menu > summary {
+  width: auto;
+  min-width: 96px;
+  display: inline-flex;
+  place-items: unset;
+  align-items: center;
+  justify-content: center;
+  gap: .35rem;
+  padding: 0 .8rem;
+  white-space: nowrap;
+  font-size: .78rem;
+}
+
 .combat-battle-screen .combat-warroom-action-popover {
   position: absolute;
   left: 50%;
@@ -395,6 +408,11 @@
   .combat-battle-screen .combat-warroom-action-popover {
     left: 0;
     transform: none;
+  }
+
+  .combat-battle-screen .combat-warroom-exit-menu .combat-warroom-action-popover {
+    left: 50%;
+    transform: translateX(-50%);
   }
 
   .combat-battle-screen .combat-warroom-log-body {
