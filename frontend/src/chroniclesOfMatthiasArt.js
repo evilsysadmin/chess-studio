@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
 function material(color, options = {}) {
   const result = new THREE.MeshPhysicalMaterial({
@@ -26,6 +27,19 @@ function add(group, geometry, mat, position = [0, 0, 0], rotation = [0, 0, 0], s
   node.receiveShadow = true;
   group.add(node);
   return node;
+}
+
+function roundedBox(group, width, height, depth, radius, mat, position, rotation = [0, 0, 0], scale = null, name = '', bevelSegments = 4) {
+  const safeRadius = Math.min(radius, width / 2, height / 2, depth / 2);
+  return add(
+    group,
+    new RoundedBoxGeometry(width, height, depth, Math.max(2, bevelSegments), safeRadius),
+    mat,
+    position,
+    rotation,
+    scale,
+    name,
+  );
 }
 
 function capsule(group, radius, length, mat, position, rotation = [0, 0, 0], scale = null, name = '', segments = 16) {
@@ -240,7 +254,7 @@ export function buildChroniclesCharacter(memberId, { coarsePointer = false } = {
 }
 
 export function buildCorruptedPawn({ coarsePointer = false } = {}) {
-  const segments = coarsePointer ? 14 : 24;
+  const segments = coarsePointer ? 18 : 32;
   const root = new THREE.Group();
   root.name = 'chronicles-corrupted-pawn';
   root.userData.chroniclesEnemy = 'corrupted-pawn';
@@ -254,24 +268,27 @@ export function buildCorruptedPawn({ coarsePointer = false } = {}) {
   // Grounded humanoid mass: overlapping volumes remove the old stacked-chess-piece look.
   capsule(root, 0.105, 0.24, blackIron, [-0.17, 0.22, 0.02], [0, 0, -0.05], [1.05, 1, 0.9], 'corrupted-pawn-leg-left', segments);
   capsule(root, 0.105, 0.24, blackIron, [0.17, 0.22, 0.02], [0, 0, 0.05], [1.05, 1, 0.9], 'corrupted-pawn-leg-right', segments);
-  add(root, new THREE.BoxGeometry(0.25, 0.14, 0.34), wornSteel, [-0.17, 0.07, 0.08], [0.03, 0, -0.02], null, 'corrupted-pawn-boot-left');
-  add(root, new THREE.BoxGeometry(0.25, 0.14, 0.34), wornSteel, [0.17, 0.07, 0.08], [0.03, 0, 0.02], null, 'corrupted-pawn-boot-right');
-  capsule(root, 0.29, 0.42, leather, [0, 0.74, -0.015], [0, 0, 0], [1.08, 1, 0.78], 'corrupted-pawn-mail-core', segments);
-  add(root, new THREE.SphereGeometry(0.34, segments, Math.max(10, Math.floor(segments * 0.55))), blackIron, [0, 0.94, 0.03], [0, 0, 0], [1.14, 1.08, 0.72], 'corrupted-pawn-breastplate');
-  add(root, new THREE.BoxGeometry(0.3, 0.54, 0.035), cloth, [0, 0.68, 0.285], [0, 0, 0], null, 'corrupted-pawn-tabard');
+  roundedBox(root, 0.25, 0.14, 0.34, 0.05, wornSteel, [-0.17, 0.07, 0.08], [0.03, 0, -0.02], null, 'corrupted-pawn-boot-left', 5);
+  roundedBox(root, 0.25, 0.14, 0.34, 0.05, wornSteel, [0.17, 0.07, 0.08], [0.03, 0, 0.02], null, 'corrupted-pawn-boot-right', 5);
+  capsule(root, 0.27, 0.34, leather, [0, 0.72, -0.015], [0, 0, 0], [1.03, 1, 0.82], 'corrupted-pawn-mail-core', segments);
+  lathe(root, [
+    [0.23, 0.54], [0.3, 0.62], [0.34, 0.78], [0.355, 0.95],
+    [0.33, 1.08], [0.28, 1.18], [0.22, 1.23],
+  ], blackIron, segments, 'corrupted-pawn-breastplate');
+  roundedBox(root, 0.3, 0.52, 0.05, 0.025, cloth, [0, 0.68, 0.292], [0, 0, 0], null, 'corrupted-pawn-tabard', 4);
   add(root, new THREE.TorusGeometry(0.29, 0.035, 7, segments), wornSteel, [0, 0.64, 0], [Math.PI / 2, 0, 0], null, 'corrupted-pawn-belt');
 
   capsule(root, 0.095, 0.34, blackIron, [-0.39, 0.87, 0.015], [0, 0, -0.22], [1, 1, 0.92], 'corrupted-pawn-arm-left', segments);
   capsule(root, 0.095, 0.34, blackIron, [0.39, 0.87, 0.015], [0, 0, 0.22], [1, 1, 0.92], 'corrupted-pawn-arm-right', segments);
-  add(root, new THREE.DodecahedronGeometry(0.19, 1), wornSteel, [-0.34, 1.08, 0], [0.08, 0, -0.28], [1.22, 0.62, 1], 'corrupted-pawn-pauldron-left');
-  add(root, new THREE.DodecahedronGeometry(0.19, 1), wornSteel, [0.34, 1.08, 0], [-0.08, 0, 0.28], [1.22, 0.62, 1], 'corrupted-pawn-pauldron-right');
+  add(root, new THREE.SphereGeometry(0.19, segments, Math.max(12, Math.floor(segments * 0.55))), wornSteel, [-0.34, 1.08, 0], [0.08, 0, -0.28], [1.26, 0.64, 1], 'corrupted-pawn-pauldron-left');
+  add(root, new THREE.SphereGeometry(0.19, segments, Math.max(12, Math.floor(segments * 0.55))), wornSteel, [0.34, 1.08, 0], [-0.08, 0, 0.28], [1.26, 0.64, 1], 'corrupted-pawn-pauldron-right');
 
   const head = new THREE.Group();
   head.name = 'corrupted-pawn-head';
   head.position.set(0, 1.39, 0.015);
   root.add(head);
   add(head, new THREE.SphereGeometry(0.255, segments, Math.max(10, Math.floor(segments * 0.55))), blackIron, [0, 0, 0], [0, 0, 0], [1, 0.94, 0.92], 'corrupted-pawn-helmet');
-  add(head, new THREE.BoxGeometry(0.42, 0.12, 0.095), wornSteel, [0, -0.01, 0.205], [0.02, 0, 0], null, 'corrupted-pawn-visor');
+  roundedBox(head, 0.42, 0.12, 0.095, 0.028, wornSteel, [0, -0.01, 0.205], [0.02, 0, 0], null, 'corrupted-pawn-visor', 4);
   add(head, new THREE.BoxGeometry(0.28, 0.036, 0.022), glow, [0, 0.005, 0.26], [0, 0, 0], null, 'corrupted-pawn-eye-slit');
 
   add(root, new THREE.TorusGeometry(0.31, 0.048, 8, segments), wornSteel, [0, 1.18, 0], [Math.PI / 2, 0, 0], null, 'corrupted-pawn-broken-collar');
@@ -281,9 +298,9 @@ export function buildCorruptedPawn({ coarsePointer = false } = {}) {
   // Shield + short sword give the pawn a readable footsoldier silhouette.
   add(root, new THREE.CylinderGeometry(0.31, 0.31, 0.065, segments), blackIron, [-0.5, 0.72, 0.18], [Math.PI / 2, 0, 0.08], [1, 1.08, 1], 'corrupted-pawn-shield');
   add(root, new THREE.TorusGeometry(0.255, 0.025, 8, segments), wornSteel, [-0.5, 0.72, 0.217], [0, 0, 0.08], null, 'corrupted-pawn-shield-rim');
-  add(root, new THREE.BoxGeometry(0.075, 0.52, 0.055), wornSteel, [0.48, 0.73, 0.06], [0, 0, -0.18], null, 'corrupted-pawn-sword-grip');
-  add(root, new THREE.BoxGeometry(0.075, 0.64, 0.025), wornSteel, [0.56, 1.15, 0.07], [0, 0, -0.18], [0.72, 1, 1], 'corrupted-pawn-sword-blade');
-  add(root, new THREE.BoxGeometry(0.27, 0.04, 0.04), wornSteel, [0.49, 0.95, 0.065], [0, 0, -0.18], null, 'corrupted-pawn-sword-guard');
+  capsule(root, 0.038, 0.43, wornSteel, [0.48, 0.73, 0.06], [0, 0, -0.18], [1, 1, 1], 'corrupted-pawn-sword-grip', segments);
+  roundedBox(root, 0.07, 0.64, 0.025, 0.008, wornSteel, [0.56, 1.15, 0.07], [0, 0, -0.18], [0.72, 1, 1], 'corrupted-pawn-sword-blade', 3);
+  roundedBox(root, 0.27, 0.04, 0.04, 0.014, wornSteel, [0.49, 0.95, 0.065], [0, 0, -0.18], null, 'corrupted-pawn-sword-guard', 3);
 
   add(root, new THREE.BoxGeometry(0.045, 0.42, 0.025), glow, [-0.07, 0.92, 0.275], [0, 0, -0.16], null, 'corrupted-pawn-chest-fissure');
   add(root, new THREE.BoxGeometry(0.2, 0.032, 0.025), glow, [0.09, 0.78, 0.286], [0, 0, 0.42], null, 'corrupted-pawn-fissure-ring');
@@ -297,7 +314,7 @@ export function buildCorruptedPawn({ coarsePointer = false } = {}) {
 }
 
 export function buildGateJailer({ coarsePointer = false } = {}) {
-  const segments = coarsePointer ? 14 : 24;
+  const segments = coarsePointer ? 18 : 32;
   const root = new THREE.Group();
   root.name = 'chronicles-gate-jailer';
   root.userData.chroniclesEnemy = 'gate-jailer';
@@ -311,16 +328,19 @@ export function buildGateJailer({ coarsePointer = false } = {}) {
   // Massive planted stance, but still recognisably humanoid.
   capsule(root, 0.145, 0.3, blackIron, [-0.22, 0.24, 0], [0, 0, -0.03], [1.08, 1, 0.95], 'gate-jailer-leg-left', segments);
   capsule(root, 0.145, 0.3, blackIron, [0.22, 0.24, 0], [0, 0, 0.03], [1.08, 1, 0.95], 'gate-jailer-leg-right', segments);
-  add(root, new THREE.BoxGeometry(0.34, 0.18, 0.42), oldSteel, [-0.22, 0.07, 0.08], [0.02, 0, 0], null, 'gate-jailer-boot-left');
-  add(root, new THREE.BoxGeometry(0.34, 0.18, 0.42), oldSteel, [0.22, 0.07, 0.08], [0.02, 0, 0], null, 'gate-jailer-boot-right');
+  roundedBox(root, 0.34, 0.18, 0.42, 0.06, oldSteel, [-0.22, 0.07, 0.08], [0.02, 0, 0], null, 'gate-jailer-boot-left', 5);
+  roundedBox(root, 0.34, 0.18, 0.42, 0.06, oldSteel, [0.22, 0.07, 0.08], [0.02, 0, 0], null, 'gate-jailer-boot-right', 5);
 
-  capsule(root, 0.39, 0.58, leather, [0, 0.82, -0.03], [0, 0, 0], [1.18, 1, 0.82], 'gate-jailer-mail-core', segments);
-  add(root, new THREE.SphereGeometry(0.47, segments, Math.max(10, Math.floor(segments * 0.55))), blackIron, [0, 1.0, 0], [0, 0, 0], [1.18, 1.06, 0.72], 'gate-jailer-breastplate');
-  add(root, new THREE.BoxGeometry(0.38, 0.72, 0.04), tabard, [0, 0.67, 0.39], [0, 0, 0], null, 'gate-jailer-tabard');
+  capsule(root, 0.35, 0.48, leather, [0, 0.8, -0.03], [0, 0, 0], [1.12, 1, 0.84], 'gate-jailer-mail-core', segments);
+  lathe(root, [
+    [0.3, 0.5], [0.4, 0.6], [0.47, 0.78], [0.5, 0.98],
+    [0.47, 1.16], [0.39, 1.28], [0.31, 1.34],
+  ], blackIron, segments, 'gate-jailer-breastplate');
+  roundedBox(root, 0.38, 0.7, 0.055, 0.03, tabard, [0, 0.67, 0.405], [0, 0, 0], null, 'gate-jailer-tabard', 4);
   add(root, new THREE.TorusGeometry(0.4, 0.052, 8, segments), oldSteel, [0, 0.67, 0], [Math.PI / 2, 0, 0], null, 'gate-jailer-belt');
 
-  add(root, new THREE.DodecahedronGeometry(0.27, 1), oldSteel, [-0.46, 1.12, 0], [0.06, 0, -0.2], [1.34, 0.65, 1.08], 'gate-jailer-pauldron-left');
-  add(root, new THREE.DodecahedronGeometry(0.27, 1), oldSteel, [0.46, 1.12, 0], [-0.06, 0, 0.2], [1.34, 0.65, 1.08], 'gate-jailer-pauldron-right');
+  add(root, new THREE.SphereGeometry(0.27, segments, Math.max(12, Math.floor(segments * 0.55))), oldSteel, [-0.46, 1.12, 0], [0.06, 0, -0.2], [1.38, 0.66, 1.08], 'gate-jailer-pauldron-left');
+  add(root, new THREE.SphereGeometry(0.27, segments, Math.max(12, Math.floor(segments * 0.55))), oldSteel, [0.46, 1.12, 0], [-0.06, 0, 0.2], [1.38, 0.66, 1.08], 'gate-jailer-pauldron-right');
   capsule(root, 0.12, 0.42, blackIron, [-0.52, 0.84, 0.01], [0, 0, -0.16], [1.05, 1, 0.94], 'gate-jailer-arm-left', segments);
   capsule(root, 0.12, 0.42, blackIron, [0.52, 0.84, 0.01], [0, 0, 0.16], [1.05, 1, 0.94], 'gate-jailer-arm-right', segments);
 
@@ -329,7 +349,7 @@ export function buildGateJailer({ coarsePointer = false } = {}) {
   crown.position.set(0, 1.48, 0);
   root.add(crown);
   add(crown, new THREE.CylinderGeometry(0.34, 0.38, 0.38, segments), blackIron, [0, 0, 0], [0, 0, 0], null, 'gate-jailer-helm');
-  add(crown, new THREE.BoxGeometry(0.52, 0.13, 0.1), oldSteel, [0, -0.02, 0.335], [0, 0, 0], null, 'gate-jailer-visor');
+  roundedBox(crown, 0.52, 0.13, 0.1, 0.03, oldSteel, [0, -0.02, 0.335], [0, 0, 0], null, 'gate-jailer-visor', 4);
   add(crown, new THREE.BoxGeometry(0.31, 0.038, 0.024), glow, [0, -0.015, 0.39], [0, 0, 0], null, 'gate-jailer-eye-slit');
   for (let i = 0; i < 6; i += 1) {
     const angle = (i / 6) * Math.PI * 2;
@@ -357,8 +377,8 @@ export function buildGateJailer({ coarsePointer = false } = {}) {
   keyBlade.rotation.z = -0.12;
   root.add(keyBlade);
   add(keyBlade, new THREE.CylinderGeometry(0.055, 0.065, 0.78, 8), oldSteel, [0, 0.06, 0], [0, 0, 0], null, 'gate-jailer-cleaver-haft');
-  add(keyBlade, new THREE.BoxGeometry(0.24, 0.56, 0.08), oldSteel, [-0.04, 0.54, 0], [0, 0, -0.06], null, 'gate-jailer-cleaver-blade');
-  add(keyBlade, new THREE.BoxGeometry(0.18, 0.16, 0.09), blackIron, [0.09, 0.72, 0], [0, 0, 0], null, 'gate-jailer-cleaver-tooth');
+  roundedBox(keyBlade, 0.24, 0.56, 0.08, 0.025, oldSteel, [-0.04, 0.54, 0], [0, 0, -0.06], null, 'gate-jailer-cleaver-blade', 4);
+  roundedBox(keyBlade, 0.18, 0.16, 0.09, 0.022, blackIron, [0.09, 0.72, 0], [0, 0, 0], null, 'gate-jailer-cleaver-tooth', 3);
 
   const cage = new THREE.Group();
   cage.position.set(0.58, 0.68, 0.08);
