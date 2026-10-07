@@ -63,6 +63,9 @@ jobs:
             chmod +x "$godot"
           fi
           "$godot" --version
+      - name: Generate candidate player art
+        if: github.event_name == 'pull_request'
+        run: python3 -S scripts/art/chess_football_sprite_forge.py generate --assets-dir games/chess-football-godot/assets/players
       - name: Verify deterministic player art
         run: python3 -S scripts/art/chess_football_sprite_forge.py verify --assets-dir games/chess-football-godot/assets/players
       - name: Parse project
@@ -220,6 +223,14 @@ jobs:
           path: ${{ runner.temp }}/chess-football-review/
           if-no-files-found: error
           retention-days: 7
+      - name: Upload generated player art candidate
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v7
+        with:
+          name: chess-football-generated-player-art
+          path: games/chess-football-godot/assets/players/
+          if-no-files-found: error
+          retention-days: 2
       - name: Web export contract
         shell: bash
         run: |
