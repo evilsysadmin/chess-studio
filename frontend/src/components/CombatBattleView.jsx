@@ -1,5 +1,10 @@
-import Board from './Board.jsx';
-import MusicPlayer from './MusicPlayer.jsx';
+import CombatWarRoomBoard from './CombatWarRoomBoard.jsx';
+import './WarRoomImmersive.css';
+import './CombatWarRoomBattle.css';
+import WarRoomImmersiveMusicDock from './WarRoomImmersiveMusicDock.jsx';
+import WarRoomLandscapeGate from './WarRoomLandscapeGate.jsx';
+import useWarRoomLandscape from './useWarRoomLandscape.js';
+import useWarRoomImmersive from './useWarRoomImmersive.js';
 import PromotionModal from './PromotionModal.jsx';
 import PieceInfoModal from './PieceInfoModal.jsx';
 import AttackConfirmModal from './AttackConfirmModal.jsx';
@@ -18,11 +23,31 @@ export default function CombatBattleView({
   pendingPromotion, choosePromotion, pendingAttack, confirmAttack, cancelAttack, infoPiece, infoUnitRecord,
   handleBuyStat, handleActivateTechnique, infoTechniqueTargets, setInfoSquare, suspendBattleToMenu, retireBattle, combatVariant, bossHp, bossPhase, bossConfig, cpuRetryNeeded, retryCpuTurn, battleTheme, battleThemeLabel,
 }) {
+  const {
+    needsRotation: warRoomNeedsRotation,
+    lockState: warRoomOrientationLock,
+    activateLandscape,
+  } = useWarRoomLandscape(true);
+  const { immersive: warRoomImmersive } = useWarRoomImmersive({ enabled: true, focusActive: false });
+
   return (
-    <div className={`combat-battle-screen ${battleTheme ? `combat-biome-${battleTheme.replace('combat-', '')}` : ''}`}>
-      <div className="game-layout combat-game-layout">
+    <div
+      className={`game-screen combat-battle-screen ${battleTheme ? `combat-biome-${battleTheme.replace('combat-', '')}` : ''}`}
+      data-combat-war-room="generic"
+    >
+      <div
+        className={`game-layout game-layout-3d combat-game-layout combat-warroom-layout${warRoomImmersive ? ' game-layout-immersive' : ''}`}
+        data-war-room-immersive={warRoomImmersive ? 'true' : 'false'}
+        data-war-room-orientation-lock={warRoomOrientationLock}
+      >
+        <WarRoomLandscapeGate
+          active={warRoomNeedsRotation}
+          lockState={warRoomOrientationLock}
+          onActivate={activateLandscape}
+        />
+        <WarRoomImmersiveMusicDock />
         <div className="board-column">
-          <div className={`status-line ${statusClass}`}>{statusText}</div>
+          <div className={`status-line combat-warroom-status ${statusClass}`}>{statusText}</div>
 
           {bossConfig && bossHp != null && (
             <div className={`roguelike-boss-hud boss-${bossConfig.spriteId || 'classic'}`} role="status" aria-label={`${bossConfig.label}: ${bossHp} de ${bossConfig.maxHp} puntos de vida`}>
@@ -41,9 +66,13 @@ export default function CombatBattleView({
 
           {battleThemeLabel && <div className="combat-biome-label"><span>TERRENO</span><strong>{battleThemeLabel}</strong></div>}
 
-          <div className="board-live-row combat-board-live-row">
-            <div className="game-board-stack">
-              <Board
+          <div className="board-live-row is-3d-warroom combat-board-live-row combat-warroom-row">
+            <div className="game-board-stack game-board-stack-3d combat-warroom-stack">
+              <div className="game-board-3d-stage combat-warroom-stage">
+              <CombatWarRoomBoard
+                cameraProfile="warroom"
+                immersive={warRoomImmersive}
+                warRoomMobilePerformance
                 fen={fen}
                 onSquareClick={handleSquareClick}
                 onSquareDoubleClick={handleSquareDoubleClick}
@@ -51,6 +80,7 @@ export default function CombatBattleView({
                 legalTargets={legalTargets}
                 animate={pendingAnim}
                 pieceLevels={pieceLevels}
+                pieceRankLevels={pieceLevels}
                 pieceXp={pieceXp}
                 pieceVeteranMarks={pieceVeteranMarks}
                 squareClassName={(square) => roster?.pieces?.[registry?.[square]?.rosterKey]?.mercenary ? 'combat-square-mercenary' : ''}
@@ -59,16 +89,16 @@ export default function CombatBattleView({
                 themeOverride={battleTheme}
                 checkSquare={checkedKingSquare(fen)}
               />
+              </div>
             </div>
 
-            <aside className="game-side-column combat-game-side-column" aria-label="Registro de batalla y estado táctico">
-              <div className="game-side-music combat-side-music" aria-label="Música de la batalla">
-                <MusicPlayer initiallyCollapsed />
-              </div>
-              <section className="notation-panel combat-tactical-panel">
+            <aside className="game-side-column combat-game-side-column combat-warroom-ops" aria-label="Registro de batalla y estado táctico">
+              <details className="notation-panel combat-tactical-panel combat-warroom-log-drawer">
+                <summary className="combat-warroom-log-summary"><h3>Registro de batalla</h3><b>{log.length}</b></summary>
+                <div className="combat-warroom-log-body">
                 <header className="combat-tactical-heading">
                   <span className="game-chat-kicker">COMBAT CHESS</span>
-                  <h3>Registro de batalla</h3>
+                  <strong>Bitácora táctica</strong>
                 </header>
 
                 <div className="combat-tactical-summary-grid">
@@ -118,46 +148,52 @@ export default function CombatBattleView({
                     </p>
                   </div>
                 </details>
-              </section>
+                </div>
+              </details>
             </aside>
           </div>
 
           {phase === 'battle' && (
-            <div className="game-controls combat-game-controls">
+            <div className="game-controls combat-game-controls combat-warroom-controls">
               {cpuRetryNeeded && (
-                <button type="button" className="primary-btn" onClick={retryCpuTurn}>
-                  Reintentar turno de la CPU
+                <button type="button" className="primary-btn combat-warroom-retry" onClick={retryCpuTurn}>
+                  Reintentar CPU
                 </button>
               )}
-              <button
-                className="secondary-btn"
-                onClick={combatVariant === 'roguelike' ? suspendBattleToMenu : backToSetup}
-                title={combatVariant === 'roguelike' ? 'Guarda la batalla actual y vuelve al menú. La campaña sigue activa.' : undefined}
-              >
-                {combatVariant === 'roguelike' ? 'Salir al menú' : 'Salir del combate'}
-              </button>
-              {combatVariant === 'roguelike' && (
-                <button
-                  type="button"
-                  className="secondary-btn combat-retreat-btn"
-                  title="Termina esta batalla como retirada y conserva las bajas que ya se hayan producido."
-                  onClick={() => {
-                    const confirmed = window.confirm(
-                      '¿Abandonar batalla y asumir bajas?\n\nLa batalla terminará como retirada. Las piezas ya caídas quedarán registradas como bajas y la campaña continuará con esas consecuencias.',
-                    );
-                    if (confirmed) retireBattle();
-                  }}
-                >
-                  Abandonar batalla y asumir bajas
-                </button>
-              )}
+              <details className="combat-warroom-action-menu">
+                <summary aria-label="Opciones de batalla" title="Opciones de batalla">⋯</summary>
+                <div className="combat-warroom-action-popover">
+                  <button
+                    className="secondary-btn"
+                    onClick={combatVariant === 'roguelike' ? suspendBattleToMenu : backToSetup}
+                    title={combatVariant === 'roguelike' ? 'Guarda la batalla actual y vuelve al menú. La campaña sigue activa.' : undefined}
+                  >
+                    {combatVariant === 'roguelike' ? 'Salir al menú' : 'Salir del combate'}
+                  </button>
+                  {combatVariant === 'roguelike' && (
+                    <button
+                      type="button"
+                      className="secondary-btn combat-retreat-btn"
+                      title="Termina esta batalla como retirada y conserva las bajas que ya se hayan producido."
+                      onClick={() => {
+                        const confirmed = window.confirm(
+                          '¿Abandonar batalla y asumir bajas?\n\nLa batalla terminará como retirada. Las piezas ya caídas quedarán registradas como bajas y la campaña continuará con esas consecuencias.',
+                        );
+                        if (confirmed) retireBattle();
+                      }}
+                    >
+                      Abandonar batalla y asumir bajas
+                    </button>
+                  )}
+                </div>
+              </details>
             </div>
           )}
         </div>
       </div>
 
       {phase === 'over' && (
-        <div className="endgame-banner">
+        <div className="endgame-banner combat-warroom-debrief">
           <h2>{statusLabel}</h2>
           <p>
             {status === 'checkmate'

@@ -20,6 +20,8 @@ test.describe('Combat Chess · jugadas críticas reales', () => {
 
     const rail = page.getByRole('complementary', { name: 'Registro de batalla y estado táctico' });
     await expect(rail).toBeVisible();
+    await expect(page.locator('[data-combat-war-room="generic"] [data-board3d-war-room="true"]')).toBeVisible({ timeout: 45_000 });
+    await expect(page.locator('.board3d-main-canvas')).toBeVisible({ timeout: 45_000 });
     await clickBoardMove(page, 'e2', 'e4');
 
     await expect(page.locator('.combat-battle-screen .status-line')).toHaveText('Tu turno', { timeout: 5_000 });
@@ -28,7 +30,7 @@ test.describe('Combat Chess · jugadas críticas reales', () => {
     await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toHaveCount(0);
   });
 
-  test('jaque se mantiene visible durante el pensamiento de CPU y marca el rey', async ({ page }) => {
+  test('jaque se mantiene visible durante el pensamiento de CPU dentro de la War Room', async ({ page }) => {
     await mockApi(page);
     await login(page);
     await seedCombatBattleSnapshot(page, { fen: CHECK_START_FEN });
@@ -36,7 +38,7 @@ test.describe('Combat Chess · jugadas críticas reales', () => {
 
     await clickBoardMove(page, 'e2', 'e8');
     await expect(page.locator('.combat-battle-screen .status-line')).toContainText('Jaque');
-    await expect(page.getByRole('button', { name: /Casilla h8, rey negro, rey en jaque/i })).toBeVisible();
+    await expect(page.locator('[data-combat-war-room="generic"] [data-board3d-war-room="true"]')).toBeVisible({ timeout: 45_000 });
     await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
   });
 
@@ -74,6 +76,7 @@ test('Combat Chess · Campaña · primera jugada completa un ciclo humano/CPU si
   await expect(quick).toBeVisible();
   await quick.click();
   await expect(page.getByRole('complementary', { name: 'Registro de batalla y estado táctico' })).toBeVisible();
+  await expect(page.locator('[data-combat-war-room="generic"] [data-board3d-war-room="true"]')).toBeVisible({ timeout: 45_000 });
 
   await clickBoardMove(page, 'e2', 'e4');
   await expect(page.locator('.combat-battle-screen .status-line')).toHaveText('Tu turno', { timeout: 5_000 });

@@ -241,6 +241,12 @@ def _surface_groups(path: str) -> set[str] | None:
         return set()
     if lower == "frontend/src/components/globaloverlaylayer.jsx":
         return {"home"}
+    if lower in {
+        "frontend/src/components/combatbattleview.jsx",
+        "frontend/src/components/combatwarroombattle.css",
+        "frontend/src/components/combatwarroomboard.jsx",
+    }:
+        return {"warroom"}
     if lower in POSTGAME_VISUAL_SURFACES:
         return set(POSTGAME_VISUAL_SURFACES[lower])
     if lower in QUICK_MATCH_VISUAL_SURFACES:
@@ -979,6 +985,13 @@ def self_test() -> None:
         "frontend/src/components/WarRoom3D.jsx",
     ])
     assert mixed_nonvisual_warroom.capture_groups == "warroom"
+    combat_battle = classify([
+        "frontend/src/components/CombatBattleView.jsx",
+        "frontend/src/components/CombatWarRoomBoard.jsx",
+        "frontend/src/components/CombatWarRoomBattle.css",
+        "e2e/war-room-combat-battle-visual-artifact.spec.js",
+    ])
+    assert combat_battle.capture_groups == "warroom"
     combat_preparation = classify([
         "frontend/src/components/CampaignCombatPreparation.jsx",
         "frontend/src/components/CombatPreparationRoom.jsx",
