@@ -267,7 +267,7 @@ export default function InsightsScreen(props) {
         </Suspense>
       </div>
 
-      {isTask ? <InsightsMatthiasMotion /> : null}
+      {!isCareer && diagnosisView === 'dossier' ? <InsightsMatthiasMotion /> : null}
     </div>
   );
 }
