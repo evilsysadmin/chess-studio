@@ -19,7 +19,7 @@ def successful_runs(repository: str, token: str) -> list[dict]:
     api = os.environ.get("GITHUB_API_URL", "https://api.github.com").rstrip("/")
     request = Request(
         f"{api}/repos/{repository}/actions/workflows/{WORKFLOW_FILE}/runs"
-        "?branch=main&status=success&per_page=20",
+        "?branch=main&status=success&per_page=100",
         headers={
             "Accept": "application/vnd.github+json",
             "Authorization": f"Bearer {token}",
