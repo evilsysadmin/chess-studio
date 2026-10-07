@@ -1418,8 +1418,27 @@ def verify_outputs(target: Path) -> None:
         if not path.exists():
             errors.append(f"missing {path}")
             continue
-        if path.read_text(encoding="utf-8") != content:
-            errors.append(f"drift {path}")
+        actual = path.read_text(encoding="utf-8")
+        if actual != content:
+            expected_lines = content.splitlines()
+            actual_lines = actual.splitlines()
+            first_diff = next(
+                (
+                    index
+                    for index, (expected_line, actual_line) in enumerate(
+                        zip(expected_lines, actual_lines),
+                        start=1,
+                    )
+                    if expected_line != actual_line
+                ),
+                min(len(expected_lines), len(actual_lines)) + 1,
+            )
+            expected_line = expected_lines[first_diff - 1] if first_diff <= len(expected_lines) else "<EOF>"
+            actual_line = actual_lines[first_diff - 1] if first_diff <= len(actual_lines) else "<EOF>"
+            errors.append(
+                f"drift {path} line {first_diff}: "
+                f"expected={expected_line!r} actual={actual_line!r}"
+            )
     if errors:
         raise SystemExit("\n".join(errors))
     print(
