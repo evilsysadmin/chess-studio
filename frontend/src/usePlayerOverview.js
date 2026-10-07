@@ -5,7 +5,9 @@ import { loadRoster as loadCombatRoster } from './combatRoster.js';
 import { loadCombatService, summarizeCombatService } from './combatService.js';
 import { loadRating } from './playerRating.js';
 
-export function combatOverviewFrom(roster, service) {
+function loadCombatOverview() {
+  const roster = loadCombatRoster();
+  const service = summarizeCombatService(loadCombatService());
   return {
     credits: roster.credits || 0,
     rank: service.rank,
@@ -13,16 +15,9 @@ export function combatOverviewFrom(roster, service) {
   };
 }
 
-function loadCombatOverview() {
-  return combatOverviewFrom(
-    loadCombatRoster(),
-    summarizeCombatService(loadCombatService()),
-  );
-}
-
 export function usePlayerOverview(view, onCombatHistory) {
-  const [rating, setRating] = useState(() => loadRating());
-  const [combatOverview, setCombatOverview] = useState(() => loadCombatOverview());
+  const [rating, setRating] = useState(loadRating);
+  const [combatOverview, setCombatOverview] = useState(loadCombatOverview);
 
   useEffect(() => {
     setRating(loadRating());
