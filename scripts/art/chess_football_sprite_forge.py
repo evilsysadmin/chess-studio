@@ -481,6 +481,31 @@ def _path(points: list[tuple[float, float]], offset_x: int, offset_y: int, close
     return f"{head} {tail}{' Z' if close else ''}"
 
 
+def _smooth_closed_path(
+    points: list[tuple[float, float]],
+    offset_x: int,
+    offset_y: int,
+) -> str:
+    """Render a soft closed contour from authored points without faceted edges."""
+    if len(points) < 3:
+        return _path(points, offset_x, offset_y)
+    shifted = [(offset_x + x, offset_y + y) for x, y in points]
+    first_mid = (
+        (shifted[-1][0] + shifted[0][0]) * 0.5,
+        (shifted[-1][1] + shifted[0][1]) * 0.5,
+    )
+    parts = [f"M {first_mid[0]:.2f} {first_mid[1]:.2f}"]
+    for index, point in enumerate(shifted):
+        nxt = shifted[(index + 1) % len(shifted)]
+        mid_x = (point[0] + nxt[0]) * 0.5
+        mid_y = (point[1] + nxt[1]) * 0.5
+        parts.append(
+            f"Q {point[0]:.2f} {point[1]:.2f} {mid_x:.2f} {mid_y:.2f}"
+        )
+    parts.append("Z")
+    return " ".join(parts)
+
+
 def _limb_path(
     start: tuple[float, float],
     end: tuple[float, float],
@@ -735,7 +760,7 @@ def _frame_svg(
             anatomy_profile="shin",
         )
         out.append(
-            f'<path d="{_path(thigh, offset_x, offset_y)}" '
+            f'<path d="{_smooth_closed_path(thigh, offset_x, offset_y)}" '
             f'fill="{team["head"]}" '
             f'stroke="{LIMB_OUTLINE}" stroke-width="1.12" stroke-linejoin="round" opacity="{opacity}"/>'
         )
@@ -762,7 +787,7 @@ def _frame_svg(
             f'stroke-linecap="round"/>'
         )
         out.append(
-            f'<path d="{_path(shin, offset_x, offset_y)}" '
+            f'<path d="{_smooth_closed_path(shin, offset_x, offset_y)}" '
             f'fill="{team["sock"]}" stroke="{LIMB_OUTLINE}" '
             f'stroke-width="1.04" stroke-linejoin="round" opacity="{opacity}"/>'
         )
@@ -909,7 +934,7 @@ def _frame_svg(
                 anatomy_profile="forearm",
             )
             out.append(
-                f'<path d="{_path(sleeve, offset_x, offset_y)}" '
+                f'<path d="{_smooth_closed_path(sleeve, offset_x, offset_y)}" '
                 f'fill="{team["torso_dark"]}" stroke="{LIMB_OUTLINE}" '
                 f'stroke-width="1.15" opacity=".84"/>'
             )
@@ -919,12 +944,12 @@ def _frame_svg(
                 f'stroke="{team["torso_light"]}" stroke-width=".82" opacity=".58"/>'
             )
             out.append(
-                f'<path d="{_path(upper_skin, offset_x, offset_y)}" '
+                f'<path d="{_smooth_closed_path(upper_skin, offset_x, offset_y)}" '
                 f'fill="{team["head"]}" stroke="{LIMB_OUTLINE}" '
                 f'stroke-width=".74" stroke-linejoin="round" opacity=".84"/>'
             )
             out.append(
-                f'<path d="{_path(fore, offset_x, offset_y)}" '
+                f'<path d="{_smooth_closed_path(fore, offset_x, offset_y)}" '
                 f'fill="{team["head"]}" stroke="{LIMB_OUTLINE}" '
                 f'stroke-width=".74" stroke-linejoin="round" opacity=".84"/>'
             )
@@ -1094,7 +1119,7 @@ def _frame_svg(
             anatomy_profile="forearm",
         )
         out.append(
-            f'<path d="{_path(sleeve, offset_x, offset_y)}" '
+            f'<path d="{_smooth_closed_path(sleeve, offset_x, offset_y)}" '
             f'fill="{team["torso_light"]}" stroke="{LIMB_OUTLINE}" stroke-width=".84" stroke-linejoin="round"/>'
         )
         out.append(
@@ -1103,11 +1128,11 @@ def _frame_svg(
             f'stroke="{IVORY}" stroke-width=".82" opacity=".62"/>'
         )
         out.append(
-            f'<path d="{_path(upper_skin, offset_x, offset_y)}" '
+            f'<path d="{_smooth_closed_path(upper_skin, offset_x, offset_y)}" '
             f'fill="{team["head"]}" stroke="{LIMB_OUTLINE}" stroke-width=".74" stroke-linejoin="round"/>'
         )
         out.append(
-            f'<path d="{_path(fore, offset_x, offset_y)}" '
+            f'<path d="{_smooth_closed_path(fore, offset_x, offset_y)}" '
             f'fill="{team["head"]}" stroke="{LIMB_OUTLINE}" stroke-width=".76" stroke-linejoin="round"/>'
         )
         if keeper:
