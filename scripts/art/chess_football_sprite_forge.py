@@ -366,7 +366,7 @@ def _frame_svg(
             knee_x += p["tackle_fold"] * 0.92
             knee_y -= p["tackle_fold"] * 0.72
         elif tackle_action and side > 0.0:
-            knee_y += 2.8 * k
+            knee_y += p["tackle_fold"] * 0.25
         elif celebration_action and side > 0.0:
             knee_x += p["celebrate_knee"] * 0.68
             knee_y -= p["celebrate_knee"] * 0.62
@@ -411,9 +411,9 @@ def _frame_svg(
         if ball_action and side > 0.0:
             boot_tilt = max(-3.5, min(4.5, stride * 0.10))
         elif tackle_action and side > 0.0:
-            boot_tilt = -2.8 * k
+            boot_tilt = -p["tackle_fold"] * 0.25
         elif celebration_action and side > 0.0:
-            boot_tilt = 3.2 * k
+            boot_tilt = p["celebrate_knee"] * 0.40
         boot = [
             (foot_x - 4.9, foot_y - 5.8),
             (foot_x + 4.2, foot_y - 5.4),
