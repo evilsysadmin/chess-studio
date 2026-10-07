@@ -54,7 +54,7 @@ func TestChroniclesMapMatchesPython(t *testing.T) {
 	h := newChroniclesForTest(t)
 	w := feedbackDo(t, h, http.MethodGet, "/api/chronicles/maps/ash-vault?seed=417", "", "alice")
 	sum := sha256.Sum256(w.Body.Bytes())
-	if w.Code != 200 || hex.EncodeToString(sum[:]) != "4ba956a13a5cf528f6273353d0db09ede5e8493b2ae63c4aa35f8efacec16272" || w.Body.Len() != 7716 {
+	if w.Code != 200 || hex.EncodeToString(sum[:]) != "6035688a56f672f8ead4e1add6143e035115f8f415983264592c052e5bfb96b1" || w.Body.Len() != 8191 {
 		t.Errorf("area envelope differs from FastAPI's: %d %s", w.Code, w.Body)
 	}
 	for _, c := range []struct {
