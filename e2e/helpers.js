@@ -628,7 +628,7 @@ export async function openCampaignBriefing(page) {
 }
 
 export async function openDeployment(page) {
-  const deployment = page.getByRole('region', { name: 'Preparar despliegue de Combat Chess' });
+  const deployment = page.locator('[data-combat-deployment="war-table"]');
 
   // La ruta normal de campaña usa defaults en un clic y ya no abre la Mesa
   // de Guerra automáticamente. Este helper entra explícitamente por la ruta
