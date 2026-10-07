@@ -1164,6 +1164,52 @@ def _frame_svg(
     return "\n".join(out)
 
 
+def _kinetic_transform(animation: str, frame: int, pivot_x: float, pivot_y: float) -> str:
+    """V21 presentation-only weight transfer around the canonical foot anchor."""
+    phase = 2.0 * math.pi * frame / COLUMNS
+    t = frame / max(COLUMNS - 1, 1)
+    k = math.sin(math.pi * t)
+    wind = math.sin(math.pi * min(t * 1.22, 1.0))
+    follow = math.sin(math.pi * max((t - 0.34) / 0.66, 0.0))
+    rotate = 0.0
+    skew = 0.0
+
+    if animation == "idle":
+        rotate = math.sin(phase) * 0.32
+        skew = math.cos(phase) * 0.38
+    elif animation == "run":
+        rotate = math.sin(phase) * 1.10
+        skew = -1.35 + math.cos(phase) * 0.72
+    elif animation == "sprint":
+        rotate = math.sin(phase) * 1.75
+        skew = -2.25 + math.cos(phase) * 0.95
+    elif animation == "pass":
+        rotate = -1.25 * wind + 2.10 * follow
+        skew = -1.20 * wind - 2.10 * follow
+    elif animation == "shoot":
+        rotate = -2.10 * wind + 3.80 * follow
+        skew = -2.20 * wind - 4.40 * follow
+    elif animation == "tackle":
+        rotate = 4.80 * k
+        skew = -3.60 * k
+    elif animation == "celebrate":
+        pump = math.sin(math.pi * min(t * 1.18, 1.0))
+        settle = math.sin(math.pi * max((t - 0.52) / 0.48, 0.0))
+        rotate = -1.90 * pump + 0.90 * settle
+        skew = -1.30 * pump + 0.55 * settle
+
+    def clean(value: float) -> float:
+        return 0.0 if abs(value) < 0.005 else value
+
+    rotate = clean(rotate)
+    skew = clean(skew)
+    return (
+        f"translate({pivot_x:.2f} {pivot_y:.2f}) "
+        f"rotate({rotate:.2f}) skewX({skew:.2f}) "
+        f"translate({-pivot_x:.2f} {-pivot_y:.2f})"
+    )
+
+
 def _atlas_svg(team: dict[str, str], keeper: bool = False) -> str:
     rows = len(ANIMATIONS)
     parts = [
@@ -1194,7 +1240,13 @@ def _atlas_svg(team: dict[str, str], keeper: bool = False) -> str:
                 f'scale(.960 1.065) '
                 f'translate({-pivot_x:.2f} {-pivot_y:.2f})">'
             )
+            # V21 layers a small animation-specific weight-transfer arc around
+            # the same foot anchor. It changes only presentation, never physics.
+            parts.append(
+                f'<g transform="{_kinetic_transform(animation, frame, pivot_x, pivot_y)}">'
+            )
             parts.append(body)
+            parts.append("</g>")
             parts.append("</g>")
     parts.append("</g></svg>")
     return "\n".join(parts) + "\n"
@@ -1223,6 +1275,7 @@ def build_outputs() -> dict[str, str]:
                 "hair_style": str(variant_team.get("hair_style", "swept")),
                 "kit_profile": "organic-v19",
                 "silhouette_profile": "athletic-v20",
+                "kinetics_profile": "weight-transfer-v21",
             }
             variant_keys.append(variant_slug)
         field_variants[slug] = variant_keys
@@ -1233,9 +1286,10 @@ def build_outputs() -> dict[str, str]:
             "name": team["name"],
             "file": filename,
             "silhouette_profile": "athletic-v20",
+            "kinetics_profile": "weight-transfer-v21",
         }
     manifest = {
-        "version": 20,
+        "version": 21,
         "quality_contract": SPRITE_FORGE_CONTRACT["quality_contract"],
         "cell": {"width": CELL_W, "height": CELL_H},
         "columns": COLUMNS,
