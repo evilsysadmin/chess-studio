@@ -4,7 +4,7 @@ import CombatScreen from './CombatScreen.jsx';
 import CombatServicePanel from './CombatServicePanel.jsx';
 import CampaignArmyGlance from './CampaignArmyGlance.jsx';
 import { ArmyRosterPanel } from './ArmyScreen.jsx';
-import CombatCampaignMap from './CombatCampaignMap.jsx';
+import CombatCampaignMissionRoom from './CombatCampaignMissionRoom.jsx';
 import CampaignBriefing from './CampaignBriefing.jsx';
 import MechanicTutorialModal from './MechanicTutorialModal.jsx';
 import CombatDebrief from './CombatDebrief.jsx';
@@ -611,11 +611,32 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
     );
   }
 
+  if (!run.inRun && campaign.active && campaign.phase === 'map' && campaignMapState) {
+    const rosterDeployment = deploymentSummary(roster);
+    return (
+      <CombatCampaignMissionRoom
+        campaign={campaign}
+        map={campaignMapState}
+        availableNodes={campaignAvailable}
+        roster={roster}
+        armySummary={rosterDeployment}
+        onSelect={handleCampaignNodeSelect}
+        onExit={onExit}
+        onOpenMarket={() => setShowMarket(true)}
+        onRestart={handleRestartCampaign}
+        onRetire={() => finishCampaign('retired')}
+        onHelp={() => setShowCampaignTutorial(true)}
+      >
+        {showCampaignTutorial && <MechanicTutorialModal tutorialId="combat-campaign" onClose={() => setShowCampaignTutorial(false)} />}
+        {showMarket && <CombatMarket roster={roster} serviceSummary={serviceSummary} onHire={handleHireMercenary} onBuyEquipment={handleBuyEquipment} onClose={() => setShowMarket(false)} />}
+      </CombatCampaignMissionRoom>
+    );
+  }
+
   if (!run.inRun && campaign.active) {
     const selected = selectedCampaignNode;
     const rewardOptions = campaignRewardOptions(campaign);
     const eventOptions = campaignEventOptions(campaign);
-    const map = campaignMapState;
     const rosterDeployment = deploymentSummary(roster);
     return (
       <div className="menu combat-workspace">
@@ -660,15 +681,6 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
           })()}
 
           {battleDebrief && <CombatDebrief debrief={battleDebrief} onViewBattle={onViewBattle} nextAction={campaign.phase === 'reward' ? 'Elige una recompensa para cerrar el sector.' : null} />}
-
-          {campaign.phase === 'map' && map && (
-            <>
-              <CombatCampaignMap map={map} campaign={campaign} availableNodes={campaignAvailable} onSelect={handleCampaignNodeSelect} />
-              <div className="game-controls">
-                <button type="button" className="secondary-btn" onClick={() => finishCampaign('retired')}>Retirar la operación</button>
-              </div>
-            </>
-          )}
 
           {campaign.phase === 'briefing' && selected && (
             <CampaignBriefing
