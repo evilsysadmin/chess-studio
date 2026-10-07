@@ -688,7 +688,7 @@ def self_test() -> None:
     assert classify_warroom_variants(["frontend/src/components/PremiumWarRoomScene.js"]) == "classic"
     assert classify_warroom_variants(["frontend/src/components/WarRoomV2Shell.js"]) == "v2"
     assert classify_warroom_variants(["frontend/src/components/WarRoomFireSprites.js"]) == "v2,v3,v4"
-    assert classify(["frontend/src/components/WarRoomFireSprites.js"]) == "warroom-decor"
+    assert classify(["frontend/src/components/WarRoomFireSprites.js"]) == "warroom-decor,warroom-hans"
     assert classify_warroom_variants(["frontend/src/components/WarRoomV3Shell.js"]) == "v3"
     assert classify_warroom_variants(["frontend/src/components/WarRoomBlenderShellRuntime.js"]) == "v2,v3,v4"
     assert classify_warroom_variants(["scripts/blender/build_war_room_premium.py"]) == "v2,v3,v4"
