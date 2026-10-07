@@ -325,7 +325,7 @@ remote_restore_archive="$final_dir/.remote-restore.archive.gz"
 [[ -s "$remote_restore_archive" ]] || { echo 'remote restore drill archive missing after download' >&2; exit 65; }
 printf '%s  %s\n' "$checksum" "$remote_restore_archive" | sha256sum -c - >/dev/null
 
-scratch_suffix="$(printf '%s-%s' "$stamp" "$$" | tr '[:upper:]' '[:lower:]')"
+scratch_suffix="$(printf '%s' "$stamp" | tr '[:upper:]' '[:lower:]')"
 scratch_network="chess-studio-restore-$scratch_suffix"
 scratch_container="chess-studio-restore-$scratch_suffix"
 backup_phase="scratch-network"
