@@ -592,6 +592,38 @@
   .lab-screen.lab-screen .lab-workshop-tool > b {
     font-size: 1rem;
   }
+
+  /* The two destinations without authored plinths become literal dungeon signs,
+     not leftover dashboard cards. */
+  .lab-screen.lab-screen .lab-workshop-portal--trailblazer,
+  .lab-screen.lab-screen .lab-workshop-tool--arena {
+    border: 0;
+    border-radius: 0;
+    background:
+      linear-gradient(180deg, rgba(20, 18, 14, .9), rgba(6, 7, 8, .94)),
+      radial-gradient(circle at 50% 0, rgba(var(--hotspot-accent), .09), transparent 72%);
+    box-shadow:
+      0 13px 28px rgba(0, 0, 0, .5),
+      inset 0 0 0 1px rgba(167, 120, 55, .48),
+      inset 0 1px rgba(255, 232, 174, .055);
+    clip-path: polygon(6px 0, calc(100% - 6px) 0, 100% 6px, 100% calc(100% - 6px), calc(100% - 6px) 100%, 6px 100%, 0 calc(100% - 6px), 0 6px);
+  }
+
+  .lab-screen.lab-screen .lab-workshop-portal--trailblazer::after,
+  .lab-screen.lab-screen .lab-workshop-tool--arena::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    display: block;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 8px 8px, rgba(212, 164, 78, .6) 0 1.25px, transparent 1.8px),
+      radial-gradient(circle at calc(100% - 8px) 8px, rgba(212, 164, 78, .6) 0 1.25px, transparent 1.8px),
+      radial-gradient(circle at 8px calc(100% - 8px), rgba(76, 59, 38, .8) 0 1.25px, transparent 1.8px),
+      radial-gradient(circle at calc(100% - 8px) calc(100% - 8px), rgba(76, 59, 38, .8) 0 1.25px, transparent 1.8px);
+    opacity: .78;
+  }
+
 }
 
 @media (min-width: 821px) and (max-width: 1180px) {
