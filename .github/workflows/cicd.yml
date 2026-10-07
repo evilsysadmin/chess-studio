@@ -155,15 +155,6 @@ jobs:
         run: make test-backend-smoke
       - name: Backend integration/API
         run: make test-backend-integration
-      - name: Generate Chronicles parity corpus for rescue
-        run: .venv/bin/python scripts/chronicles_area_parity_corpus.py
-      - name: Upload generated Chronicles parity corpus
-        uses: actions/upload-artifact@v7
-        with:
-          name: chronicles-area-parity-corpus-${{ github.event.pull_request.head.sha || github.sha }}
-          path: backend-go/internal/chronicles/testdata/python_chronicles_area_corpus.json
-          if-no-files-found: error
-          retention-days: 1
       - name: Python dependency consistency
         run: make backend-check
       - name: Prepare security report
