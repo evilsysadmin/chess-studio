@@ -10,7 +10,7 @@ staging_key="chess-studio/staging/terraform.tfstate"
 die() { echo "OCI staging lifecycle: FAIL · $*" >&2; exit 1; }
 
 valid_operation() {
-  case "${1:-}" in probe|bootstrap|plan|apply|destroy) return 0 ;; *) return 1 ;; esac
+  case "${1:-}" in probe|bootstrap|plan|apply|apply-backup-storage|destroy) return 0 ;; *) return 1 ;; esac
 }
 
 valid_sha() { [[ "${1:-}" =~ ^[0-9a-f]{40}$ ]]; }
@@ -277,6 +277,46 @@ run_staging() {
       terraform -chdir="$staging" apply -no-color -auto-approve "$plan"
       terraform -chdir="$staging" output -no-color
       ;;
+    apply-backup-storage)
+      terraform -chdir="$staging" plan -no-color \
+        -target=oci_objectstorage_bucket.production_backups \
+        -target=oci_identity_policy.staging_runtime_config \
+        -out="$plan"
+      terraform -chdir="$staging" show -json "$plan" | python3 -c '
+import json, sys
+payload = json.load(sys.stdin)
+allowed = {
+    "oci_objectstorage_bucket.production_backups",
+    "oci_identity_policy.staging_runtime_config",
+}
+unexpected = []
+destructive = []
+for row in payload.get("resource_changes", []):
+    address = str(row.get("address") or "")
+    actions = list((row.get("change") or {}).get("actions") or [])
+    if actions in ([], ["no-op"], ["read"]):
+        continue
+    if address not in allowed:
+        unexpected.append(f"{address}:{actions}")
+    if "delete" in actions:
+        destructive.append(f"{address}:{actions}")
+if unexpected:
+    raise SystemExit("unexpected resources in backup-storage bootstrap plan: " + ", ".join(unexpected))
+if destructive:
+    raise SystemExit("destructive action forbidden in backup-storage bootstrap plan: " + ", ".join(destructive))
+print("OCI backup-storage plan guard OK")
+'
+      require_current_main
+      terraform -chdir="$staging" apply -no-color -auto-approve "$plan"
+      set +e
+      terraform -chdir="$staging" plan -no-color -detailed-exitcode \
+        -target=oci_objectstorage_bucket.production_backups \
+        -target=oci_identity_policy.staging_runtime_config >/dev/null
+      rc=$?
+      set -e
+      [[ "$rc" -eq 0 ]] || die "backup-storage bootstrap is not zero-drift after apply (terraform rc=$rc)"
+      echo "OCI production backup storage bootstrap applied and zero-drift verified"
+      ;;
     destroy)
       [[ "${OCI_CONFIRM_DESTROY:-false}" == "true" ]] || die "destroy requires confirm_destroy=true"
       terraform -chdir="$staging" plan -destroy -no-color -out="$plan"
@@ -287,7 +327,7 @@ run_staging() {
 }
 
 self_test() {
-  for op in probe bootstrap plan apply destroy; do valid_operation "$op" || exit 1; done
+  for op in probe bootstrap plan apply apply-backup-storage destroy; do valid_operation "$op" || exit 1; done
   ! valid_operation explode || exit 1
   valid_sha 0123456789abcdef0123456789abcdef01234567 || exit 1
   ! valid_sha main || exit 1
@@ -306,7 +346,7 @@ if [[ "${1:-}" == "--self-test" ]]; then
 fi
 
 operation="${1:-}"
-valid_operation "$operation" || die "operation must be probe, bootstrap, plan, apply or destroy"
+valid_operation "$operation" || die "operation must be probe, bootstrap, plan, apply, apply-backup-storage or destroy"
 [[ -n "${OCI_REGION:-}" ]] || export OCI_REGION="eu-frankfurt-1"
 [[ -n "${OCI_TFSTATE_BUCKET:-}" ]] || export OCI_TFSTATE_BUCKET="chess-studio-tfstate"
 validate_backend_value "$OCI_REGION"
