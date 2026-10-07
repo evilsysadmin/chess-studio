@@ -86,3 +86,27 @@ def test_cloudflare_transient_reads_retry_but_mutations_do_not(monkeypatch):
     assert status == 502
     assert len(calls) == 1
     assert sleeps == [0.5]
+
+
+def test_cloudflare_transient_read_exhaustion_is_distinct_from_mutation_failure(monkeypatch):
+    attempts = []
+    sleeps = []
+
+    def always_502(method, path, payload=None):
+        attempts.append((method, path, payload))
+        return 502, {"errors": [{"message": "bad gateway"}]}
+
+    monkeypatch.setattr(rate_limit, "_request_json_once", always_502)
+    monkeypatch.setattr(rate_limit.time, "sleep", sleeps.append)
+
+    try:
+        rate_limit.request_json("GET", "/zones?account.id=secret-ish")
+    except rate_limit.CloudflareTransientReadUnavailable as exc:
+        assert "HTTP 502" in str(exc)
+        assert "/zones" in str(exc)
+        assert "secret-ish" not in str(exc)
+    else:
+        raise AssertionError("GET transient exhaustion must raise a distinct availability error")
+
+    assert len(attempts) == 4
+    assert sleeps == [0.5, 1.0, 2.0]
