@@ -69,7 +69,7 @@ export default function CampaignCombatPreparation({
         : 'Todo listo. Puedes iniciar el combate.';
 
   return (
-    <div className="menu combat-setup campaign-preparation-screen combat-operations-screen">
+    <div className={`menu combat-setup campaign-preparation-screen combat-operations-screen${showDeployment ? ' combat-deployment-active' : ''}`}>
       <section className="campaign-preparation-shell simplified-stage combat-operations-shell" aria-label="Preparación de Combat Chess">
         <CombatPreparationRoom roster={roster} />
 
