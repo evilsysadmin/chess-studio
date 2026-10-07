@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createChroniclesState } from '../chroniclesOfMatthias.js';
-import { chroniclesMapById } from './chroniclesMapCatalog.js';
-import { chroniclesMapTransitionState, chroniclesTacticsMove } from '../chroniclesOfMatthiasTactics.js';
+import { chroniclesMapById, chroniclesMapTransitionState } from './chroniclesMapCatalog.js';
+import { chroniclesTacticsMove } from '../chroniclesOfMatthiasTactics.js';
 
 describe('Chronicles authored environmental hazards', () => {
   it('keeps Ash Vault and Chain Basilica hazards one-shot and damaging', () => {
