@@ -731,7 +731,7 @@ body:has(.lab-screen .lab-workshop) .lab-screen:has(.lab-workshop) > .back-link 
     min-height: 64px;
   }
 
-  .lab-screen.lab-screen .lab-workshop-wing--hangar .lab-workshop-portal {
+  .lab-screen.lab-screen .lab-workshop-wing--hangar .lab-workshop-portal--trailblazer {
     padding: 9px 12px 8px;
     background:
       linear-gradient(180deg, rgba(13, 13, 12, .86), rgba(5, 7, 8, .9)),
@@ -856,16 +856,16 @@ body:has(.lab-screen .lab-workshop) .lab-screen:has(.lab-workshop) > .back-link 
 
   .lab-screen.lab-screen .lab-workshop-masthead h2 {
     color: #efe0bd;
-    font-size: clamp(2.35rem, 10vw, 3.15rem);
-    line-height: .9;
+    font-size: clamp(2.05rem, 8.7vw, 2.75rem);
+    line-height: .92;
   }
 
   .lab-screen.lab-screen .lab-workshop-masthead p {
-    max-width: 330px;
-    margin-top: 11px;
-    color: rgba(235, 226, 208, .8);
-    font-size: .8rem;
-    line-height: 1.48;
+    max-width: 315px;
+    margin-top: 9px;
+    color: rgba(235, 226, 208, .78);
+    font-size: .75rem;
+    line-height: 1.42;
   }
 
   .lab-screen.lab-screen .lab-workshop-portal,
@@ -873,20 +873,20 @@ body:has(.lab-screen .lab-workshop) .lab-screen:has(.lab-workshop) > .back-link 
   .lab-screen.lab-screen .lab-workshop-tool {
     right: auto;
     width: calc(50% - 23px);
-    min-height: 84px;
-    padding: 9px 10px;
+    min-height: 74px;
+    padding: 8px 10px;
     border: 0;
     border-radius: 0;
     background:
-      linear-gradient(180deg, rgba(17, 16, 13, .84), rgba(5, 7, 8, .9)),
-      radial-gradient(circle at 50% 0, rgba(var(--hotspot-accent, 194,145,69), .08), transparent 70%);
+      linear-gradient(180deg, rgba(11, 11, 10, .6), rgba(4, 6, 7, .78)),
+      radial-gradient(circle at 50% 0, rgba(var(--hotspot-accent, 194,145,69), .07), transparent 72%);
     box-shadow:
-      0 11px 24px rgba(0, 0, 0, .46),
-      inset 0 0 0 1px rgba(181, 132, 62, .48),
-      inset 0 1px rgba(255,235,188,.06);
+      0 9px 19px rgba(0, 0, 0, .36),
+      inset 0 0 0 1px rgba(181, 132, 62, .38),
+      inset 0 1px rgba(255,235,188,.045);
     clip-path: polygon(5px 0, calc(100% - 5px) 0, 100% 5px, 100% calc(100% - 5px), calc(100% - 5px) 100%, 5px 100%, 0 calc(100% - 5px), 0 5px);
-    backdrop-filter: blur(1px);
-    -webkit-backdrop-filter: blur(1px);
+    backdrop-filter: blur(.5px);
+    -webkit-backdrop-filter: blur(.5px);
     transform: rotate(var(--mobile-plaque-rotate, 0deg));
   }
 
@@ -953,54 +953,54 @@ body:has(.lab-screen .lab-workshop) .lab-screen:has(.lab-workshop) > .back-link 
   }
 
   .lab-screen.lab-screen .lab-workshop-portal--chronicles {
-    left: 18px;
-    top: 390px;
+    left: 16px;
+    top: 344px;
     bottom: auto;
   }
 
   .lab-screen.lab-screen .lab-workshop-portal--tactics {
     left: auto;
-    right: 18px;
-    top: 390px;
+    right: 14px;
+    top: 386px;
     bottom: auto;
   }
 
   .lab-screen.lab-screen .lab-workshop-portal--pawnslug-godot {
     left: 18px;
-    top: 486px;
+    top: 452px;
     bottom: auto;
   }
 
   .lab-screen.lab-screen .lab-workshop-portal--football {
     left: auto;
     right: 18px;
-    top: 486px;
+    top: 494px;
     bottom: auto;
   }
 
   .lab-screen.lab-screen .lab-workshop-portal--trailblazer {
-    left: 18px;
-    top: 582px;
+    left: 14px;
+    top: 560px;
     bottom: auto;
   }
 
   .lab-screen.lab-screen .lab-workshop-map-table {
     left: auto;
-    right: 18px;
-    top: 582px;
+    right: 14px;
+    top: 602px;
     bottom: auto;
   }
 
   .lab-screen.lab-screen .lab-workshop-tool:not(.lab-workshop-tool--arena) {
     left: 18px;
-    top: 678px;
+    top: 668px;
     bottom: auto;
   }
 
   .lab-screen.lab-screen .lab-workshop-tool--arena {
     left: auto;
     right: 18px;
-    top: 678px;
+    top: 710px;
     bottom: auto;
   }
 
@@ -1041,14 +1041,14 @@ body:has(.lab-screen .lab-workshop) .lab-screen:has(.lab-workshop) > .back-link 
     right: 16px;
   }
 
-  .lab-screen.lab-screen .lab-workshop-portal--chronicles,
-  .lab-screen.lab-screen .lab-workshop-portal--tactics { top: 372px; }
-  .lab-screen.lab-screen .lab-workshop-portal--pawnslug-godot,
-  .lab-screen.lab-screen .lab-workshop-portal--football { top: 464px; }
-  .lab-screen.lab-screen .lab-workshop-portal--trailblazer,
-  .lab-screen.lab-screen .lab-workshop-map-table { top: 556px; }
-  .lab-screen.lab-screen .lab-workshop-tool:not(.lab-workshop-tool--arena),
-  .lab-screen.lab-screen .lab-workshop-tool--arena { top: 648px; }
+  .lab-screen.lab-screen .lab-workshop-portal--chronicles { top: 330px; }
+  .lab-screen.lab-screen .lab-workshop-portal--tactics { top: 370px; }
+  .lab-screen.lab-screen .lab-workshop-portal--pawnslug-godot { top: 434px; }
+  .lab-screen.lab-screen .lab-workshop-portal--football { top: 474px; }
+  .lab-screen.lab-screen .lab-workshop-portal--trailblazer { top: 538px; }
+  .lab-screen.lab-screen .lab-workshop-map-table { top: 578px; }
+  .lab-screen.lab-screen .lab-workshop-tool:not(.lab-workshop-tool--arena) { top: 642px; }
+  .lab-screen.lab-screen .lab-workshop-tool--arena { top: 682px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
