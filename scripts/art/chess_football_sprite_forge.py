@@ -674,9 +674,14 @@ def _frame_svg(
                 f'stroke="#fff" stroke-width=".85" opacity=".20" stroke-linecap="round"/>'
             )
         out.append(
-            f'<line x1="{offset_x + knee_x - 2.2:.2f}" y1="{offset_y + knee_y + 5.3:.2f}" '
-            f'x2="{offset_x + knee_x + 2.4:.2f}" y2="{offset_y + knee_y + 5.1:.2f}" '
-            f'stroke="{team["torso_light"]}" stroke-width="1.25" opacity="{opacity}"/>'
+            f'<line x1="{offset_x + knee_x - 2.8:.2f}" y1="{offset_y + knee_y + 5.4:.2f}" '
+            f'x2="{offset_x + knee_x + 3.0:.2f}" y2="{offset_y + knee_y + 5.1:.2f}" '
+            f'stroke="{team["torso_dark"]}" stroke-width="1.65" opacity="{opacity}"/>'
+        )
+        out.append(
+            f'<line x1="{offset_x + knee_x - 2.2:.2f}" y1="{offset_y + knee_y + 6.5:.2f}" '
+            f'x2="{offset_x + knee_x + 2.5:.2f}" y2="{offset_y + knee_y + 6.2:.2f}" '
+            f'stroke="{team["torso_light"]}" stroke-width=".78" opacity="{opacity}"/>'
         )
 
         # V14: football boots keep pointing broadly forward during locomotion.
@@ -806,6 +811,11 @@ def _frame_svg(
                 f'stroke-width="1.15" opacity=".84"/>'
             )
             out.append(
+                f'<line x1="{offset_x + sleeve_x - 2.6:.2f}" y1="{offset_y + sleeve_y - 1.2:.2f}" '
+                f'x2="{offset_x + sleeve_x + 2.4:.2f}" y2="{offset_y + sleeve_y + 1.0:.2f}" '
+                f'stroke="{team["torso_light"]}" stroke-width=".82" opacity=".58"/>'
+            )
+            out.append(
                 f'<path d="{_path(upper_skin, offset_x, offset_y)}" '
                 f'fill="{team["head"]}" stroke="{OUTLINE}" '
                 f'stroke-width="1.05" opacity=".84"/>'
@@ -855,6 +865,27 @@ def _frame_svg(
         f'<path d="{torso}" fill="{team["torso"]}" '
         f'stroke="{OUTLINE}" stroke-width="1.75"/>'
     )
+    # V18 gives the shirt readable volume at broadcast scale: one shaded side
+    # and a short fold that follows the torso twist. These overlays stay inside
+    # the canonical silhouette, so gameplay anchors and pivots are untouched.
+    side_shadow_x = cx - 7.8 * torso_scale - p["twist"] * 0.16
+    out.append(
+        f'<path d="M {offset_x + left_sh + 1.4:.2f} {offset_y + left_sh_y + 1.2:.2f} '
+        f'Q {offset_x + side_shadow_x - 3.0:.2f} {offset_y + 69.5 - bob + yoff:.2f} '
+        f'{offset_x + cx - 7.4 * torso_scale:.2f} {offset_y + waist_y + 1.0:.2f} '
+        f'L {offset_x + cx - 10.3 * torso_scale:.2f} {offset_y + base_y - 0.6:.2f} '
+        f'Q {offset_x + cx - 14.5 * shoulder_scale:.2f} {offset_y + 72.0 - bob + yoff:.2f} '
+        f'{offset_x + left_sh + 1.4:.2f} {offset_y + left_sh_y + 1.2:.2f} Z" '
+        f'fill="{team["torso_dark"]}" opacity=".22"/>'
+    )
+    fold_y = 72.5 - bob + yoff + crouch * 0.40
+    out.append(
+        f'<path d="M {offset_x + cx - 6.5:.2f} {offset_y + fold_y - p["twist"] * 0.12:.2f} '
+        f'Q {offset_x + cx + 0.5:.2f} {offset_y + fold_y + 2.8:.2f} '
+        f'{offset_x + cx + 7.4:.2f} {offset_y + fold_y + 5.0 + p["twist"] * 0.10:.2f}" '
+        f'fill="none" stroke="{team["torso_dark"]}" stroke-width="1.05" '
+        f'opacity=".34" stroke-linecap="round"/>'
+    )
     out.append(
         f'<path d="M {offset_x + cx + 2.0:.2f} {offset_y + top_y + 0.8:.2f} '
         f'Q {offset_x + cx + 16.0:.2f} {offset_y + 66.0 - bob + yoff:.2f} '
@@ -867,6 +898,18 @@ def _frame_svg(
         f'L {offset_x + cx - 1.0:.2f} {offset_y + top_y + 7.8:.2f} '
         f'L {offset_x + cx + 5.6:.2f} {offset_y + top_y + 1.0:.2f}" '
         f'fill="none" stroke="{IVORY}" stroke-width="1.7" stroke-linecap="round"/>'
+    )
+    out.append(
+        f'<path d="M {offset_x + left_sh + 2.2:.2f} {offset_y + left_sh_y + 1.8:.2f} '
+        f'Q {offset_x + cx - 10.0:.2f} {offset_y + top_y + 1.6:.2f} '
+        f'{offset_x + cx - 7.4:.2f} {offset_y + top_y + 4.4:.2f}" '
+        f'fill="none" stroke="{team["torso_light"]}" stroke-width=".82" opacity=".54"/>'
+    )
+    out.append(
+        f'<path d="M {offset_x + cx + 8.2:.2f} {offset_y + top_y + 3.9:.2f} '
+        f'Q {offset_x + cx + 12.0:.2f} {offset_y + top_y + 1.5:.2f} '
+        f'{offset_x + right_sh - 2.0:.2f} {offset_y + right_sh_y + 1.5:.2f}" '
+        f'fill="none" stroke="{team["torso_light"]}" stroke-width=".82" opacity=".50"/>'
     )
     out.append(
         f'<path d="M {offset_x + cx - 10.4:.2f} {offset_y + top_y + 8.0:.2f} '
@@ -886,6 +929,25 @@ def _frame_svg(
     out.append(
         f'<path d="{_path(shorts, offset_x, offset_y)}" '
         f'fill="{team["shorts"]}" stroke="{OUTLINE}" stroke-width="1.35"/>'
+    )
+    shorts_mid_y = base_y + 3.7
+    out.append(
+        f'<path d="M {offset_x + cx - 0.8:.2f} {offset_y + waist_y + 0.7:.2f} '
+        f'Q {offset_x + cx - 1.8:.2f} {offset_y + shorts_mid_y:.2f} '
+        f'{offset_x + cx - 3.0:.2f} {offset_y + base_y + 5.8:.2f}" '
+        f'fill="none" stroke="#05070a" stroke-width="1.05" opacity=".34"/>'
+    )
+    out.append(
+        f'<path d="M {offset_x + cx + 2.0:.2f} {offset_y + waist_y + 1.4:.2f} '
+        f'Q {offset_x + cx + 7.8 * hip_scale:.2f} {offset_y + shorts_mid_y + 0.8:.2f} '
+        f'{offset_x + cx + 12.0 * hip_scale:.2f} {offset_y + base_y + 4.8 + p["pelvis_roll"] * 0.6:.2f}" '
+        f'fill="none" stroke="{team["torso_light"]}" stroke-width=".85" opacity=".28"/>'
+    )
+    out.append(
+        f'<path d="M {offset_x + cx - 2.0:.2f} {offset_y + waist_y + 1.2:.2f} '
+        f'Q {offset_x + cx - 7.6 * hip_scale:.2f} {offset_y + shorts_mid_y + 0.6:.2f} '
+        f'{offset_x + cx - 11.6 * hip_scale:.2f} {offset_y + base_y + 4.7 - p["pelvis_roll"] * 0.6:.2f}" '
+        f'fill="none" stroke="#fff" stroke-width=".72" opacity=".14"/>'
     )
     out.append(
         f'<line x1="{offset_x + cx - 11.6:.2f}" y1="{offset_y + waist_y + 1.9 - p["pelvis_roll"] * 0.55:.2f}" '
@@ -925,6 +987,11 @@ def _frame_svg(
         out.append(
             f'<path d="{_path(sleeve, offset_x, offset_y)}" '
             f'fill="{team["torso_light"]}" stroke="{OUTLINE}" stroke-width="1.25"/>'
+        )
+        out.append(
+            f'<line x1="{offset_x + sleeve_x - 2.8:.2f}" y1="{offset_y + sleeve_y - 1.1:.2f}" '
+            f'x2="{offset_x + sleeve_x + 2.7:.2f}" y2="{offset_y + sleeve_y + 1.1:.2f}" '
+            f'stroke="{IVORY}" stroke-width=".82" opacity=".62"/>'
         )
         out.append(
             f'<path d="{_path(upper_skin, offset_x, offset_y)}" '
@@ -1128,6 +1195,7 @@ def build_outputs() -> dict[str, str]:
                 "motion_profile": str(variant_team["motion_profile"]),
                 "face_profile": str(variant_team["face_profile"]),
                 "hair_style": str(variant_team.get("hair_style", "swept")),
+                "kit_profile": "sculpted-v18",
             }
             variant_keys.append(variant_slug)
         field_variants[slug] = variant_keys
@@ -1136,7 +1204,7 @@ def build_outputs() -> dict[str, str]:
         outputs[filename] = _atlas_svg(team, keeper=True)
         atlas_meta[slug] = {"name": team["name"], "file": filename}
     manifest = {
-        "version": 17,
+        "version": 18,
         "quality_contract": SPRITE_FORGE_CONTRACT["quality_contract"],
         "cell": {"width": CELL_W, "height": CELL_H},
         "columns": COLUMNS,
