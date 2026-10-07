@@ -3,6 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { shouldShowChroniclesNarration } from './ChroniclesNarratorOverlay.jsx';
 
 describe('ChroniclesNarratorOverlay', () => {
+  it('deja el resumen rutinario del turno a la iniciativa y evita solapar overlays', () => {
+    expect(shouldShowChroniclesNarration('Turno de las criaturas: un impacto encuentra carne, piedra o dignidad.')).toBe(false);
+  });
   it('suppresses obvious navigation and low-signal combat feedback', () => {
     expect(shouldShowChroniclesNarration('Giras a la izquierda.')).toBe(false);
     expect(shouldShowChroniclesNarration('Giras a la derecha.')).toBe(false);
