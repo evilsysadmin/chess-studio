@@ -1,6 +1,6 @@
 {
-  "version": 21,
-  "quality_contract": "chess-football-vector-v21",
+  "version": 23,
+  "quality_contract": "chess-football-vector-v23",
   "cell": {
     "width": 128,
     "height": 144
@@ -32,7 +32,7 @@
       "face_profile": "square-balanced",
       "hair_style": "swept",
       "kit_profile": "organic-v19",
-      "silhouette_profile": "athletic-v20",
+      "silhouette_profile": "athletic-v23",
       "kinetics_profile": "weight-transfer-v21"
     },
     "fc_matthias_v2": {
@@ -43,7 +43,7 @@
       "face_profile": "compact-jaw",
       "hair_style": "crop",
       "kit_profile": "organic-v19",
-      "silhouette_profile": "athletic-v20",
+      "silhouette_profile": "athletic-v23",
       "kinetics_profile": "weight-transfer-v21"
     },
     "fc_matthias_v3": {
@@ -54,7 +54,7 @@
       "face_profile": "broad-fade",
       "hair_style": "fade",
       "kit_profile": "organic-v19",
-      "silhouette_profile": "athletic-v20",
+      "silhouette_profile": "athletic-v23",
       "kinetics_profile": "weight-transfer-v21"
     },
     "fc_matthias_v4": {
@@ -65,7 +65,7 @@
       "face_profile": "narrow-textured",
       "hair_style": "textured",
       "kit_profile": "organic-v19",
-      "silhouette_profile": "athletic-v20",
+      "silhouette_profile": "athletic-v23",
       "kinetics_profile": "weight-transfer-v21"
     },
     "real_enroque": {
@@ -76,7 +76,7 @@
       "face_profile": "broad-angular",
       "hair_style": "crop",
       "kit_profile": "organic-v19",
-      "silhouette_profile": "athletic-v20",
+      "silhouette_profile": "athletic-v23",
       "kinetics_profile": "weight-transfer-v21"
     },
     "real_enroque_v2": {
@@ -87,7 +87,7 @@
       "face_profile": "lean-textured",
       "hair_style": "textured",
       "kit_profile": "organic-v19",
-      "silhouette_profile": "athletic-v20",
+      "silhouette_profile": "athletic-v23",
       "kinetics_profile": "weight-transfer-v21"
     },
     "real_enroque_v3": {
@@ -98,7 +98,7 @@
       "face_profile": "square-fade",
       "hair_style": "fade",
       "kit_profile": "organic-v19",
-      "silhouette_profile": "athletic-v20",
+      "silhouette_profile": "athletic-v23",
       "kinetics_profile": "weight-transfer-v21"
     },
     "real_enroque_v4": {
@@ -109,19 +109,19 @@
       "face_profile": "compact-swept",
       "hair_style": "swept",
       "kit_profile": "organic-v19",
-      "silhouette_profile": "athletic-v20",
+      "silhouette_profile": "athletic-v23",
       "kinetics_profile": "weight-transfer-v21"
     },
     "fc_matthias_keeper": {
       "name": "FC Matthias · Portero",
       "file": "fc_matthias_keeper_atlas.svg",
-      "silhouette_profile": "athletic-v20",
+      "silhouette_profile": "athletic-v23",
       "kinetics_profile": "weight-transfer-v21"
     },
     "real_enroque_keeper": {
       "name": "Real Enroque · Portero",
       "file": "real_enroque_keeper_atlas.svg",
-      "silhouette_profile": "athletic-v20",
+      "silhouette_profile": "athletic-v23",
       "kinetics_profile": "weight-transfer-v21"
     }
   },
