@@ -47,7 +47,7 @@ The repository owns an automatic retention policy for the public asset bucket.
 
 - Target footprint: **7.0 GB**.
 - Soft ceiling: **7.5 GB**.
-- Immutable assets receive a **14-day** grace period.
+- Immutable assets receive a **7-day** grace period.
 - Keep one rollback generation per ordinary content-addressed family.
 - Fully unreferenced content-addressed families age out completely after **45 days**.
 - Keep one staging revision and two runtime revisions per revision journal.
@@ -66,4 +66,4 @@ The audit report also separates hard-coded URL pins that are referenced by runti
 
 `pawn-slug-godot/current.json` and `chess-football-godot/current.json` are authoritative pointers for their current Web exports. Before deleting release directories, the GC reads and validates those pointers directly from R2.
 
-The active release directory is protected in full, and one previous release is retained for rollback. Older releases become eligible after two days. If a pointer cannot be fetched or validated, the entire corresponding release root is protected for that run instead of guessing.
+The active release directory is protected in full, and one previous release is retained for rollback. Older releases become eligible after one day. If a pointer cannot be fetched or validated, the entire corresponding release root is protected for that run instead of guessing.
