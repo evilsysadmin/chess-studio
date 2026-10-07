@@ -16,13 +16,13 @@
   backdrop-filter: blur(2px) saturate(.86) brightness(.8);
 }
 
-.combat-operations-screen:has(.combat-quartermaster-screen) .combat-operations-shell > :not(.combat-preparation-room-stage) {
+body:has(.combat-quartermaster-screen) .combat-operations-shell > :not(.combat-preparation-room-stage) {
   opacity: 0 !important;
   visibility: hidden !important;
   pointer-events: none !important;
 }
 
-.combat-operations-screen:has(.combat-quartermaster-screen) .combat-quartermaster-screen {
+body:has(.combat-quartermaster-screen) .combat-quartermaster-screen {
   background:
     radial-gradient(circle at 52% 48%, rgba(4, 7, 10, .10), rgba(3, 5, 8, .40) 76%, rgba(2, 4, 7, .66));
   backdrop-filter: saturate(.9) brightness(.84);
