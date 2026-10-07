@@ -34,11 +34,10 @@ import { useAdminFeedbackInbox } from './useAdminFeedbackInbox.js';
 import { SAVE_STATUS } from './saveStatus.js';
 import LoginScreen from './components/LoginScreen.jsx';
 import { reconcileRivalryHistory } from './rivalry.js';
-import { identifyOpening } from './openings.js';
 import { loadActiveSeries } from './series.js';
 const ShareResultModal = React.lazy(() => import('./components/ShareResultModal.jsx'));
 import SharedResultScreen from './components/SharedResultScreen.jsx';
-import { shareRecordFromHash } from './shareResult.js';
+import { buildLiveShareRecord, shareRecordFromHash } from './shareResult.js';
 const LabScreen = React.lazy(() => import('./components/LabScreen.jsx'));
 import { loadActiveContract, loadSpecialRun, reconcileCareerHistory } from './career.js';
 import { loadActiveGameChat } from './gameChat.js';
@@ -334,30 +333,6 @@ function AppInner({ isAdminUser }) {
     void scheduleAchievementCheck();
   }, [view]);
 
-  function buildLiveShareRecord(finishedGame, outcome, mode, series = null) {
-    const moves = finishedGame?.history || [];
-    return {
-      id: `share-${finishedGame?.id || Date.now()}`,
-      date: new Date().toISOString(),
-      difficulty: finishedGame?.difficulty || 0,
-      humanColor: finishedGame?.humanColor || 'w',
-      outcome,
-      moves,
-      finalFen: finishedGame?.fen || null,
-      mode,
-      opening: identifyOpening(moves.map((m) => m.san).filter(Boolean)),
-      timeControl: activeTimeControl ? { id: activeTimeControl.id, label: activeTimeControl.label } : null,
-      series: series ? {
-        id: series.id,
-        bestOf: series.bestOf,
-        humanWins: series.humanWins,
-        cpuWins: series.cpuWins,
-        draws: series.draws,
-        winner: series.winner,
-      } : null,
-    };
-  }
-
   function handleGameChatUpdate(gameId, transcript) {
     const updated = updateGameRecordChat(gameId, transcript);
     // Evita renders extra mientras la partida sigue viva: solo hay que
@@ -556,8 +531,8 @@ function AppInner({ isAdminUser }) {
             timeControl={activeTimeControl}
             seriesState={activeSeries}
             onNextSeriesGame={handleNextSeriesGame}
-            onShareResult={(outcome) => setShareRecord(buildLiveShareRecord(game, outcome, learningMode ? 'practice' : 'casual', activeSeries))}
-            onShareIncident={(moveReport, _report, outcome) => setShareRecord({ ...buildLiveShareRecord(game, outcome, learningMode ? 'practice' : 'casual', activeSeries), incident: { moveNumber: moveReport.moveNumber, played: moveReport.played, suggested: moveReport.suggested, loss: moveReport.loss } })}
+            onShareResult={(outcome) => setShareRecord(buildLiveShareRecord(game, outcome, learningMode ? 'practice' : 'casual', activeSeries, activeTimeControl))}
+            onShareIncident={(moveReport, _report, outcome) => setShareRecord({ ...buildLiveShareRecord(game, outcome, learningMode ? 'practice' : 'casual', activeSeries, activeTimeControl), incident: { moveNumber: moveReport.moveNumber, played: moveReport.played, suggested: moveReport.suggested, loss: moveReport.loss } })}
             onOpenCrimeScene={(moveReport, _report, meta) => openGameCrimeScene(game, moveReport, gameContext.rescue ? 'rescue' : gameContext.lab ? 'lab' : learningMode ? 'practice' : 'casual', meta?.outcome)}
             activeContract={activeContract}
             runState={specialRun && gameContext.runMode ? specialRun : null}
@@ -694,8 +669,8 @@ function AppInner({ isAdminUser }) {
             points={tournament.points}
             onSpendPoints={handleSpendPoints}
             onCapturePoints={handleCapturePoints}
-            onShareResult={(outcome) => setShareRecord(buildLiveShareRecord(tournamentGame, outcome, 'tournament', null))}
-            onShareIncident={(moveReport, _report, outcome) => setShareRecord({ ...buildLiveShareRecord(tournamentGame, outcome, 'tournament', null), incident: { moveNumber: moveReport.moveNumber, played: moveReport.played, suggested: moveReport.suggested, loss: moveReport.loss } })}
+            onShareResult={(outcome) => setShareRecord(buildLiveShareRecord(tournamentGame, outcome, 'tournament', null, activeTimeControl))}
+            onShareIncident={(moveReport, _report, outcome) => setShareRecord({ ...buildLiveShareRecord(tournamentGame, outcome, 'tournament', null, activeTimeControl), incident: { moveNumber: moveReport.moveNumber, played: moveReport.played, suggested: moveReport.suggested, loss: moveReport.loss } })}
             onOpenCrimeScene={(moveReport, _report, meta) => openGameCrimeScene(tournamentGame, moveReport, 'tournament', meta?.outcome)}
             postGameFeedbackEnabled={featureFlags.postGameFeedback}
           />
