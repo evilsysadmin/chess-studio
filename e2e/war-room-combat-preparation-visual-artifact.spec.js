@@ -176,6 +176,17 @@ async function quartermasterHealth(page) {
   });
 }
 
+async function expectQuartermasterCardsDoNotOverlap(quartermaster) {
+  const boxes = await quartermaster.locator('.combat-market-card:visible').evaluateAll((cards) => cards.map((card) => {
+    const box = card.getBoundingClientRect();
+    return { top: box.top, bottom: box.bottom };
+  }));
+  for (let index = 1; index < boxes.length; index += 1) {
+    expect(boxes[index].top, `Quartermaster card ${index + 1} starts after the previous card`)
+      .toBeGreaterThanOrEqual(boxes[index - 1].bottom - 1);
+  }
+}
+
 async function deploymentHealth(page) {
   return page.evaluate(() => {
     const rect = (selector) => {
@@ -333,6 +344,7 @@ test.describe('Combat preparation · mobile', () => {
     expect(contracts.firstCard?.width || 0).toBeGreaterThan(360);
     expect(contracts.operationsCanvasVisible).toBe(true);
     expect(contracts.prepChromeVisible).toBe(false);
+    await expectQuartermasterCardsDoNotOverlap(quartermaster);
 
     const targets = quartermaster.locator('button:visible, select:visible');
     const count = await targets.count();
@@ -347,6 +359,7 @@ test.describe('Combat preparation · mobile', () => {
 
     await quartermaster.getByRole('tab', { name: 'Armas y equipo', exact: true }).click();
     await expect(quartermaster.locator('.combat-quartermaster-shell')).toHaveAttribute('data-quartermaster-tab', 'equipment');
+    await expectQuartermasterCardsDoNotOverlap(quartermaster);
 
     const equipmentTargets = quartermaster.locator('button:visible, select:visible');
     const equipmentCount = await equipmentTargets.count();
