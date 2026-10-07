@@ -10,6 +10,22 @@ describe('Chronicles enemy visual registry', () => {
     expect(chroniclesEnemyVisualSpec('fork-stalker')).toEqual({ visualType: 'fork-stalker', scale: 1.02 });
   });
 
+  it('builds the four canonical threats with cohesive premium-v3 silhouettes', () => {
+    const expectations = [
+      ['corrupted-pawn', 'premium-threat-v3', 'corrupted-pawn-head', 'corrupted-pawn-shield'],
+      ['gate-jailer', 'premium-threat-v3', 'gate-jailer-crown', 'gate-jailer-portcullis'],
+      ['spectral-bishop', 'premium-threat-v3', 'spectral-bishop-head-halo', 'spectral-bishop-crozier'],
+      ['scavenger-knight', 'premium-threat-v3', 'scavenger-knight-neck-rig', 'scavenger-knight-sword-blade'],
+    ];
+
+    expectations.forEach(([visualType, artTier, primaryPart, signaturePart]) => {
+      const visual = buildChroniclesEnemyVisual(visualType, { coarsePointer: false, reducedMotion: true });
+      expect(visual?.model?.userData?.chroniclesArtTier, visualType).toBe(artTier);
+      expect(visual?.model?.getObjectByName(primaryPart), visualType).toBeTruthy();
+      expect(visual?.model?.getObjectByName(signaturePart), visualType).toBeTruthy();
+    });
+  });
+
   it('builds the Fork Stalker with its authored silhouette parts', () => {
     const visual = buildChroniclesEnemyVisual('fork-stalker', { reducedMotion: true });
 
