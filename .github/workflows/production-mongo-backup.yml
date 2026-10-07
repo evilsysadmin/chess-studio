@@ -42,22 +42,66 @@ jobs:
           python3 -S scripts/oci_production_mongo_backup.py --self-test
           bash -n scripts/oci_production_mongo_backup.sh
 
-      - name: Wait for exact staging wrapper generation
+      - name: Wait for staging wrapper generation containing this SHA
         if: github.event_name == 'push'
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          release_url=https://api-staging.chess-studio.shadowops.dpdns.org/api/release
           for attempt in $(seq 1 40); do
             if python3 scripts/staging_release_identity.py \
               --kind backend \
-              --url https://api-staging.chess-studio.shadowops.dpdns.org/api/release \
+              --url "$release_url" \
               --sha "$GITHUB_SHA"; then
               exit 0
             fi
-            echo "::notice::waiting for staging to install backup wrapper from $GITHUB_SHA ($attempt/40)"
+
+            served_sha="$(
+              python3 - "$release_url" <<'PY' || true
+import json
+import re
+import sys
+import urllib.request
+
+url = sys.argv[1]
+try:
+    request = urllib.request.Request(
+        url,
+        headers={
+            "Accept": "application/json",
+            "Cache-Control": "no-cache",
+            "User-Agent": "ChessStudio-MongoBackupLineage/1",
+        },
+    )
+    with urllib.request.urlopen(request, timeout=10) as response:
+        payload = json.loads(response.read().decode("utf-8"))
+    build = str(payload.get("build") or "").strip().lower()
+    if re.fullmatch(r"[0-9a-f]{40}", build):
+        print(build)
+except Exception:
+    pass
+PY
+            )"
+
+            if [[ "$served_sha" =~ ^[0-9a-f]{40}$ ]]; then
+              compare_status="$(
+                gh api \
+                  -H 'Accept: application/vnd.github+json' \
+                  "/repos/$GITHUB_REPOSITORY/compare/$GITHUB_SHA...$served_sha" \
+                  --jq '.status' 2>/dev/null || true
+              )"
+              if [[ "$compare_status" == "ahead" || "$compare_status" == "identical" ]]; then
+                echo "::notice::staging serves $served_sha, which contains backup wrapper change $GITHUB_SHA"
+                exit 0
+              fi
+            fi
+
+            echo "::notice::waiting for staging to install a generation containing backup wrapper $GITHUB_SHA ($attempt/40)"
             sleep 15
           done
-          echo "::error::staging never converged to the backup/restore wrapper SHA"
+          echo "::error::staging never converged to a generation containing the backup/restore wrapper change"
           exit 1
 
       - name: Refresh production runtime from OCI Vault
