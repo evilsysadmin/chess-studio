@@ -69,7 +69,8 @@ async function openChronicles(page, captureLabel, {
   }
   await tools.getByRole('button').filter({ hasText: 'Experimentos geniales' }).evaluate((button) => button.click());
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
-  const chroniclesEntry = page.getByRole('button', { name: /BOOK I.*Chronicles of Matthias/i });
+  const chroniclesEntry = page.locator('.lab-workshop-portal--chronicles');
+  await expect(chroniclesEntry).toBeVisible();
   await chroniclesEntry.click();
   const setup = page.locator('[data-chronicles-character-setup]');
   try {
