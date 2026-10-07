@@ -5,7 +5,7 @@ import { loadRoster as loadCombatRoster } from './combatRoster.js';
 import { loadCombatService, summarizeCombatService } from './combatService.js';
 import { loadRating } from './playerRating.js';
 
-export function combatOverviewFrom(roster = {}, service = {}) {
+export function combatOverviewFrom(roster, service) {
   return {
     credits: roster.credits || 0,
     rank: service.rank,
@@ -20,14 +20,14 @@ function loadCombatOverview() {
   );
 }
 
-export function usePlayerOverview(view, { onCombatHistory } = {}) {
+export function usePlayerOverview(view, onCombatHistory) {
   const [rating, setRating] = useState(() => loadRating());
   const [combatOverview, setCombatOverview] = useState(() => loadCombatOverview());
 
   useEffect(() => {
     setRating(loadRating());
     setCombatOverview(loadCombatOverview());
-    onCombatHistory?.(loadCombatHistory());
+    onCombatHistory(loadCombatHistory());
     void scheduleAchievementCheck();
   }, [view, onCombatHistory]);
 
