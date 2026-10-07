@@ -80,7 +80,7 @@ async function openHeavy3DSurface(button, readySurface) {
 }
 
 async function openDeploymentForSpecialSurface(page) {
-  const deployment = page.getByRole('region', { name: 'Preparar despliegue de Combat Chess' });
+  const deployment = page.locator('[data-combat-deployment="war-table"]');
   if (await deployment.isVisible().catch(() => false)) return deployment;
 
   const preparation = page.locator('[data-combat-preparation-room="combat-operations-room"]');
