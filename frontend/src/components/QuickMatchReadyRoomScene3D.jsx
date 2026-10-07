@@ -8,6 +8,21 @@ export const QUICK_MATCH_READY_ROOM_CAMERA = Object.freeze({
   target: Object.freeze([0, 1.42, -1.72]),
 });
 
+export const QUICK_MATCH_READY_ROOM_BOARD_LAYOUT = Object.freeze({
+  centerX: -.28,
+  centerY: 1.40,
+  centerZ: -1.33,
+  squareSize: .76,
+});
+
+export function quickMatchReadyRoomSquareCenter(file, rank) {
+  const { centerX, centerZ, squareSize } = QUICK_MATCH_READY_ROOM_BOARD_LAYOUT;
+  return Object.freeze([
+    centerX + (file - 3.5) * squareSize,
+    centerZ + (rank - 3.5) * squareSize,
+  ]);
+}
+
 function mat(color, metalness = 0.04, roughness = 0.8, extra = {}) {
   return new THREE.MeshPhysicalMaterial({
     color,
@@ -64,7 +79,8 @@ function addBoard(root, lightSquare, darkSquare, trim, woodDark) {
   box(board, [6.66, .17, 6.66], trim, [0, .035, 0], 'board-frame');
   box(board, [6.20, .10, 6.20], woodDark, [0, .12, 0], 'board-bed');
 
-  const squareGeo = new THREE.BoxGeometry(.76, .095, .76);
+  const { centerX, centerY, centerZ, squareSize } = QUICK_MATCH_READY_ROOM_BOARD_LAYOUT;
+  const squareGeo = new THREE.BoxGeometry(squareSize, .095, squareSize);
   const light = new THREE.InstancedMesh(squareGeo, lightSquare, 32);
   const dark = new THREE.InstancedMesh(squareGeo, darkSquare, 32);
   const matrix = new THREE.Matrix4();
@@ -73,7 +89,7 @@ function addBoard(root, lightSquare, darkSquare, trim, woodDark) {
 
   for (let rank = 0; rank < 8; rank += 1) {
     for (let file = 0; file < 8; file += 1) {
-      matrix.makeTranslation((file - 3.5) * .76, .205, (rank - 3.5) * .76);
+      matrix.makeTranslation((file - 3.5) * squareSize, .205, (rank - 3.5) * squareSize);
       const target = (rank + file) % 2 === 0 ? light : dark;
       target.setMatrixAt(target === light ? lightIndex++ : darkIndex++, matrix);
     }
@@ -92,7 +108,7 @@ function addBoard(root, lightSquare, darkSquare, trim, woodDark) {
     box(board, [.065, .055, 6.54], trim, [x, .20, 0], 'board-brass-fillet');
   }
 
-  board.position.set(-.28, 1.40, -1.33);
+  board.position.set(centerX, centerY, centerZ);
   root.add(board);
   return board;
 }
@@ -213,14 +229,11 @@ function addRoyalPiece(root, x, z, material, scale = 1, king = false) {
 }
 
 function addChessSet(root, ivory, ebony, lite = false) {
-  const squareSize = .76;
-  const boardCenterX = -.28;
-  const boardCenterZ = -1.33;
-  const squareX = (file) => boardCenterX + (file - 3.5) * squareSize;
-  const squareZ = (rank) => boardCenterZ + (rank - 3.5) * squareSize;
+  const squareX = (file) => quickMatchReadyRoomSquareCenter(file, 0)[0];
+  const squareZ = (rank) => quickMatchReadyRoomSquareCenter(0, rank)[1];
 
-  // Camera side = White. Every piece is anchored to the exact same square
-  // centers used by addBoard(), so art changes cannot drift the set off-grid.
+  // Camera side = White. Piece anchors and rendered squares share one layout
+  // contract, so neither can drift independently.
   const whiteBackRankZ = squareZ(7);
   const whitePawnRankZ = squareZ(6);
   const blackPawnRankZ = squareZ(1);
