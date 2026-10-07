@@ -434,12 +434,16 @@ export default function ChroniclesOfMatthiasTactics({
     setSelectedMemberId(memberId);
   }, []);
 
+  const handleSheetOpenChange = useCallback((open) => {
+    if (open) stopExplorationWalk();
+    setSheetOpen(Boolean(open));
+  }, [stopExplorationWalk]);
+
   const openMemberSheet = useCallback((memberId) => {
-    stopExplorationWalk();
-    setSheetOpen(true);
+    handleSheetOpenChange(true);
     selectMember(memberId);
     setSheetRequest({ memberId });
-  }, [selectMember, stopExplorationWalk]);
+  }, [handleSheetOpenChange, selectMember]);
 
   const restart = useCallback(() => {
     finishChroniclesTacticsRun(runId);
@@ -886,7 +890,7 @@ export default function ChroniclesOfMatthiasTactics({
           selectedMemberId={effectiveSelectedMemberId}
           sheetRequest={sheetRequest}
           onSelectMember={selectMember}
-          onSheetOpenChange={setSheetOpen}
+          onSheetOpenChange={handleSheetOpenChange}
           onAllocateAttribute={allocateAttribute}
           onLearnSkill={learnSkill}
         />
