@@ -91,6 +91,19 @@ def self_test() -> None:
     assert wrapper_source.index("CHESS_STUDIO_MONGO_BACKUP_OFFHOST_STAGED") < wrapper_source.index("CHESS_STUDIO_MONGO_RESTORE_DRILL_OK")
     assert wrapper_source.index("CHESS_STUDIO_MONGO_RESTORE_DRILL_OK") < wrapper_source.index("CHESS_STUDIO_MONGO_BACKUP_OFFHOST_OK")
     assert wrapper_source.index("CHESS_STUDIO_MONGO_BACKUP_OFFHOST_OK") < wrapper_source.index("mapfile -t backups")
+
+    workflow_source = (
+        Path(__file__).resolve().parents[1] / ".github/workflows/production-mongo-backup.yml"
+    ).read_text(encoding="utf-8")
+    for marker in (
+        "Wait for staging wrapper generation containing this SHA",
+        "/compare/$GITHUB_SHA...$served_sha",
+        '[[ "$compare_status" == "ahead" || "$compare_status" == "identical" ]]',
+        "which contains backup wrapper change $GITHUB_SHA",
+    ):
+        assert marker in workflow_source, marker
+    assert "Wait for exact staging wrapper generation" not in workflow_source
+
     assert_nonsecret_command(command)
     print("OCI production Mongo backup self-test: OK")
 
