@@ -100,9 +100,12 @@ def self_test() -> None:
         "/compare/$GITHUB_SHA...$served_sha",
         '[[ "$compare_status" == "ahead" || "$compare_status" == "identical" ]]',
         "which contains backup wrapper change $GITHUB_SHA",
+        "curl --fail --silent --show-error --max-time 10",
+        "| jq -r '.build // empty'",
     ):
         assert marker in workflow_source, marker
     assert "Wait for exact staging wrapper generation" not in workflow_source
+    assert "<<'PY'" not in workflow_source
 
     assert_nonsecret_command(command)
     print("OCI production Mongo backup self-test: OK")
