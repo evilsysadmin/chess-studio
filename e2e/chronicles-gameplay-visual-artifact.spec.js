@@ -327,6 +327,47 @@ test('Chronicles · corrupted pawn premium close-up · desktop-1440x900', async 
 });
 
 
+test('Chronicles · gate jailer premium close-up · desktop-1440x900', async ({ browser }) => {
+  test.setTimeout(150_000);
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await context.newPage();
+  try {
+    await openChronicles(page, 'enemy-jailer-closeup-desktop-1440x900', {
+      chroniclesCurrentMapId: 'crypt-eight-squares',
+      chroniclesWorldFlags: {
+        enemyHp: 0,
+        jailerHp: 6,
+        spectralBishopHp: 0,
+        scavengerHp: 0,
+        sigilAwake: true,
+        blackGateKey: false,
+        '__chrRuntime.version': 1,
+        '__chrRuntime.x': 2,
+        '__chrRuntime.y': 1,
+        '__chrRuntime.direction': 1,
+        '__chrRuntime.phase': 'explore',
+        '__chrRuntime.turnPhase': 'party',
+      },
+    });
+    const gameRoot = page.locator('[data-chronicles="true"]');
+    const canvas = page.locator('[data-chronicles-renderer="three"] canvas');
+    await expect(gameRoot).toHaveAttribute('data-chronicles-map-id', 'crypt-eight-squares');
+    await expect(canvas).toHaveCount(1, { timeout: 20_000 });
+    await expect(canvas).toBeVisible();
+    await page.waitForTimeout(500);
+    await captureElement(
+      page,
+      gameRoot,
+      `${ARTIFACT_DIR}/chronicles-gate-jailer-v3-closeup-desktop-1440x900.png`,
+    );
+  } finally {
+    await context.close();
+  }
+});
+
+
 test('Chronicles · Gallery of Forks first-person material proof · desktop-1440x900', async ({ browser }) => {
   test.setTimeout(180_000);
   await mkdir(ARTIFACT_DIR, { recursive: true });
