@@ -17,7 +17,7 @@ describe('Chronicles Chain Basilica', () => {
     expect(chroniclesMapIds()).toContain('chain-basilica');
     const basilica = chroniclesMapById('chain-basilica');
 
-    expect(basilica.version).toBe(4);
+    expect(basilica.version).toBe(5);
     expect(basilica.grid).toHaveLength(9);
     expect(basilica.grid[0]).toHaveLength(13);
     expect(basilica.enemies.map((enemy) => enemy.id)).toEqual([
