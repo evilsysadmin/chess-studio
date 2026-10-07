@@ -71,6 +71,13 @@ La foundation tiene `prevent_destroy` en ambos compartments y en el bucket de tf
 
 `.github/workflows/oci-staging-lab.yml` es manual (`workflow_dispatch`) y nunca toca Render. Serializa todas las operaciones del laboratorio y usa siempre el SHA seleccionado como `repo_ref`; `bootstrap`, `apply` y `destroy` vuelven a comprobar inmediatamente antes de mutar que ese SHA sigue siendo el `main` actual.
 
+El apply production-grade vive separado en `.github/workflows/oci-staging-deploy.yml` y también es manual. Su input `scope` evita usar un full apply cuando sólo falta infraestructura durable de backups:
+
+- `full`: comportamiento histórico; aplica todo el state de staging y después revalida Run Command + egress.
+- `backup-storage`: usa el mismo backend remoto, mutex y anti-stale exact-SHA, pero planifica/aplica únicamente `oci_objectstorage_bucket.production_backups` y `oci_identity_policy.staging_runtime_config` (más su dependency closure declarada). No apunta a compute, VCN, subnet, load balancer ni KMS.
+
+Este scope existe para recuperar el contrato off-host de Mongo sin reciclar la A1 por un recurso durable que quedó declarado en Terraform pero no materializado. Tras el apply debe quedar zero-drift en esos targets antes de considerarse verde.
+
 Operaciones:
 
 - `probe`: data-only; no state remoto y cero mutaciones.
