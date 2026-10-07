@@ -436,7 +436,10 @@ def plan_cleanup(
         protected_releases = {
             release
             for release, group in groups.items()
-            if any(item["key"] in protected for item in group)
+            if any(
+                protected.get(item["key"]) in {"active-release", "release-fail-closed"}
+                for item in group
+            )
         }
         ordered_releases = sorted(
             groups,
