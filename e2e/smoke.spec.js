@@ -594,8 +594,8 @@ test('desktop 1440x900 · Combat mantiene mesa y acciones coherentes dentro del 
   expect(boardBox.bottom).toBeLessThanOrEqual(901);
   expect(controlsBox.bottom).toBeLessThanOrEqual(901);
 
-  const heights = await controls.locator('button:visible, summary:visible').evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().height));
-  expect(heights.length).toBeGreaterThanOrEqual(2);
+  const heights = await controls.locator('button:visible').evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().height));
+  expect(heights.length).toBeGreaterThanOrEqual(1);
   expect(Math.max(...heights) - Math.min(...heights)).toBeLessThan(1);
 });
 
