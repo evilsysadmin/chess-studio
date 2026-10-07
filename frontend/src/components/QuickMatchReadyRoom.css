@@ -101,7 +101,14 @@
   color: rgba(221, 177, 92, .9);
 }
 
+.friendly-modal.quick-match-ready-room[aria-label='Configurar partida rápida'] .quick-match-ready-room__heading .combat-heading-row {
+  justify-content: flex-start;
+  width: fit-content;
+  max-width: 100%;
+}
+
 .friendly-modal.quick-match-ready-room[aria-label='Configurar partida rápida'] .quick-match-ready-room__heading .combat-heading-row h3 {
+  flex: 0 1 auto;
   color: #f3e3c6;
   font-size: clamp(2rem, 4.2vw, 4.1rem);
   line-height: .98;
