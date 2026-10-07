@@ -116,16 +116,80 @@ FIELD_VARIANT_PROFILES = [
 ]
 FIELD_VARIANTS = {
     "fc_matthias": [
-        {},
-        {"head": "#d8b18d", "hair": "#2e221b", "hair_style": "crop", "head_scale": 0.93},
-        {"head": "#9f6d4d", "hair": "#171515", "hair_style": "crop", "head_scale": 0.90},
-        {"head": "#f0c7a1", "hair": "#4b3022", "hair_style": "swept", "head_scale": 0.88},
+        {
+            "face_width": 1.00,
+            "jaw_scale": 1.02,
+            "nose_scale": 1.00,
+            "brow_tilt": -0.20,
+        },
+        {
+            "head": "#d8b18d",
+            "hair": "#2e221b",
+            "hair_style": "crop",
+            "head_scale": 0.93,
+            "face_width": 0.96,
+            "jaw_scale": 1.06,
+            "nose_scale": 0.93,
+            "brow_tilt": 0.42,
+        },
+        {
+            "head": "#9f6d4d",
+            "hair": "#171515",
+            "hair_style": "fade",
+            "head_scale": 0.90,
+            "face_width": 1.04,
+            "jaw_scale": 0.98,
+            "nose_scale": 1.08,
+            "brow_tilt": -0.52,
+        },
+        {
+            "head": "#f0c7a1",
+            "hair": "#4b3022",
+            "hair_style": "textured",
+            "head_scale": 0.88,
+            "face_width": 0.93,
+            "jaw_scale": 0.91,
+            "nose_scale": 0.96,
+            "brow_tilt": 0.62,
+        },
     ],
     "real_enroque": [
-        {},
-        {"head": "#d2a17a", "hair": "#211916", "hair_style": "swept", "head_scale": 0.92},
-        {"head": "#6f4937", "hair": "#151313", "hair_style": "crop", "head_scale": 0.89},
-        {"head": "#efc9a8", "hair": "#70452d", "hair_style": "swept", "head_scale": 0.94},
+        {
+            "face_width": 1.03,
+            "jaw_scale": 1.04,
+            "nose_scale": 1.06,
+            "brow_tilt": -0.38,
+        },
+        {
+            "head": "#d2a17a",
+            "hair": "#211916",
+            "hair_style": "textured",
+            "head_scale": 0.92,
+            "face_width": 0.95,
+            "jaw_scale": 0.94,
+            "nose_scale": 0.94,
+            "brow_tilt": 0.50,
+        },
+        {
+            "head": "#6f4937",
+            "hair": "#151313",
+            "hair_style": "fade",
+            "head_scale": 0.89,
+            "face_width": 1.02,
+            "jaw_scale": 1.00,
+            "nose_scale": 1.10,
+            "brow_tilt": -0.60,
+        },
+        {
+            "head": "#efc9a8",
+            "hair": "#70452d",
+            "hair_style": "swept",
+            "head_scale": 0.94,
+            "face_width": 0.97,
+            "jaw_scale": 1.08,
+            "nose_scale": 0.98,
+            "brow_tilt": 0.28,
+        },
     ],
 }
 KEEPERS = {
@@ -429,6 +493,34 @@ def _limb_path(
     ]
 
 
+def _hand_path(
+    elbow: tuple[float, float],
+    hand: tuple[float, float],
+    scale: float = 1.0,
+) -> list[tuple[float, float]]:
+    """Small directional palm silhouette; avoids the old circular mitten hand."""
+    ex, ey = elbow
+    hx, hy = hand
+    dx = hx - ex
+    dy = hy - ey
+    length = max(math.hypot(dx, dy), 0.001)
+    ux = dx / length
+    uy = dy / length
+    nx = -uy
+    ny = ux
+    wrist_x = hx - ux * 1.35 * scale
+    wrist_y = hy - uy * 1.35 * scale
+    tip_x = hx + ux * 2.20 * scale
+    tip_y = hy + uy * 2.20 * scale
+    return [
+        (wrist_x + nx * 1.55 * scale, wrist_y + ny * 1.55 * scale),
+        (tip_x + nx * 1.18 * scale, tip_y + ny * 1.18 * scale),
+        (tip_x - nx * 0.62 * scale, tip_y - ny * 0.62 * scale),
+        (hx - nx * 2.05 * scale, hy - ny * 2.05 * scale),
+        (wrist_x - nx * 1.35 * scale, wrist_y - ny * 1.35 * scale),
+    ]
+
+
 def _frame_svg(
     team: dict[str, str],
     animation: str,
@@ -549,6 +641,14 @@ def _frame_svg(
             f'fill="{team["head"]}" '
             f'stroke="{OUTLINE}" stroke-width="1.35" opacity="{opacity}"/>'
         )
+        if not far:
+            out.append(
+                f'<path d="M {offset_x + hip_x + 1.2:.2f} {offset_y + leg_hip_y + 4.0:.2f} '
+                f'Q {offset_x + (hip_x + knee_x) * 0.5 + 1.1:.2f} {offset_y + (leg_hip_y + knee_y) * 0.5:.2f} '
+                f'{offset_x + knee_x + 0.7:.2f} {offset_y + knee_y - 2.0:.2f}" '
+                f'fill="none" stroke="#fff" stroke-width="1.05" opacity=".12" '
+                f'stroke-linecap="round"/>'
+            )
         out.append(
             f'<circle cx="{offset_x + knee_x:.2f}" cy="{offset_y + knee_y:.2f}" '
             f'r="{2.15 * limb_scale:.2f}" fill="{team["head"]}" stroke="{OUTLINE}" '
@@ -559,6 +659,12 @@ def _frame_svg(
             f'fill="{team["sock"]}" stroke="{OUTLINE}" '
             f'stroke-width="1.25" opacity="{opacity}"/>'
         )
+        if not far:
+            out.append(
+                f'<path d="M {offset_x + knee_x + 1.1:.2f} {offset_y + knee_y + 4.0:.2f} '
+                f'L {offset_x + foot_x + 1.3:.2f} {offset_y + foot_y - 7.0:.2f}" '
+                f'stroke="#fff" stroke-width=".85" opacity=".20" stroke-linecap="round"/>'
+            )
         out.append(
             f'<line x1="{offset_x + knee_x - 2.2:.2f}" y1="{offset_y + knee_y + 5.3:.2f}" '
             f'x2="{offset_x + knee_x + 2.4:.2f}" y2="{offset_y + knee_y + 5.1:.2f}" '
@@ -578,11 +684,12 @@ def _frame_svg(
         elif celebration_action and side > 0.0:
             boot_tilt = p["celebrate_knee"] * 0.40
         boot = [
-            (foot_x - 4.9, foot_y - 5.8),
-            (foot_x + 4.2, foot_y - 5.4),
-            (foot_x + 8.6 * toe, foot_y - 2.1 - boot_tilt),
-            (foot_x + 7.2 * toe, foot_y + 0.2 - boot_tilt * 0.60),
-            (foot_x - 5.7, foot_y - 0.4),
+            (foot_x - 5.0, foot_y - 5.9),
+            (foot_x + 4.0, foot_y - 5.5),
+            (foot_x + 9.2 * toe, foot_y - 2.3 - boot_tilt),
+            (foot_x + 8.1 * toe, foot_y + 0.2 - boot_tilt * 0.60),
+            (foot_x + 1.2 * toe, foot_y + 0.8),
+            (foot_x - 5.9, foot_y - 0.2),
         ]
         out.append(
             f'<path d="{_path(boot, offset_x, offset_y)}" '
@@ -592,6 +699,18 @@ def _frame_svg(
             f'<path d="M {offset_x + foot_x - 0.8:.2f} {offset_y + foot_y - 3.1:.2f} '
             f'L {offset_x + foot_x + 4.4 * toe:.2f} {offset_y + foot_y - 2.4:.2f}" '
             f'stroke="{GOLD}" stroke-width=".95" opacity="{opacity}"/>'
+        )
+        out.append(
+            f'<path d="M {offset_x + foot_x - 4.8:.2f} {offset_y + foot_y - 0.55:.2f} '
+            f'Q {offset_x + foot_x + 1.8 * toe:.2f} {offset_y + foot_y + 0.45:.2f} '
+            f'{offset_x + foot_x + 7.3 * toe:.2f} {offset_y + foot_y - 0.05 - boot_tilt * 0.42:.2f}" '
+            f'fill="none" stroke="#7f8792" stroke-width=".75" opacity="{opacity}" '
+            f'stroke-linecap="round"/>'
+        )
+        out.append(
+            f'<path d="M {offset_x + foot_x + 1.1 * toe:.2f} {offset_y + foot_y - 4.0:.2f} '
+            f'L {offset_x + foot_x + 5.2 * toe:.2f} {offset_y + foot_y - 2.9 - boot_tilt * 0.22:.2f}" '
+            f'stroke="#d7dbe0" stroke-width=".62" opacity=".68"/>'
         )
 
     # Arms alternate depth opposite the leading leg. This is the main V9
@@ -688,12 +807,18 @@ def _frame_svg(
                 f'fill="{team["head"]}" stroke="{OUTLINE}" '
                 f'stroke-width="1.10" opacity=".84"/>'
             )
-            out.append(
-                f'<circle cx="{offset_x + hand_x:.2f}" cy="{offset_y + hand_y:.2f}" '
-                f'r="{4.2 if keeper else 3.0}" '
-                f'fill="{team.get("glove", team["head"]) if keeper else team["head"]}" '
-                f'stroke="{OUTLINE}" stroke-width=".95" opacity=".84"/>'
-            )
+            if keeper:
+                out.append(
+                    f'<circle cx="{offset_x + hand_x:.2f}" cy="{offset_y + hand_y:.2f}" '
+                    f'r="4.2" fill="{team.get("glove", team["head"])}" '
+                    f'stroke="{OUTLINE}" stroke-width=".95" opacity=".84"/>'
+                )
+            else:
+                far_hand = _hand_path((elbow_x, elbow_y), (hand_x, hand_y), 1.0)
+                out.append(
+                    f'<path d="{_path(far_hand, offset_x, offset_y)}" '
+                    f'fill="{team["head"]}" stroke="{OUTLINE}" stroke-width=".90" opacity=".84"/>'
+                )
 
     # Shirt uses curves instead of the old octagonal chest. Asymmetry is
     # intentional: the player now reads as three-quarter footballer rather than
@@ -801,12 +926,18 @@ def _frame_svg(
             f'<path d="{_path(fore, offset_x, offset_y)}" '
             f'fill="{team["head"]}" stroke="{OUTLINE}" stroke-width="1.15"/>'
         )
-        out.append(
-            f'<circle cx="{offset_x + hand_x:.2f}" cy="{offset_y + hand_y:.2f}" '
-            f'r="{4.5 if keeper else 3.1}" '
-            f'fill="{team.get("glove", team["head"]) if keeper else team["head"]}" '
-            f'stroke="{OUTLINE}" stroke-width="1.0"/>'
-        )
+        if keeper:
+            out.append(
+                f'<circle cx="{offset_x + hand_x:.2f}" cy="{offset_y + hand_y:.2f}" '
+                f'r="4.5" fill="{team.get("glove", team["head"])}" '
+                f'stroke="{OUTLINE}" stroke-width="1.0"/>'
+            )
+        else:
+            near_hand = _hand_path((elbow_x, elbow_y), (hand_x, hand_y), 1.06)
+            out.append(
+                f'<path d="{_path(near_hand, offset_x, offset_y)}" '
+                f'fill="{team["head"]}" stroke="{OUTLINE}" stroke-width=".98"/>'
+            )
         if keeper:
             out.append(
                 f'<path d="M {offset_x + hand_x - 3.2:.2f} {offset_y + hand_y:.2f} '
@@ -836,6 +967,10 @@ def _frame_svg(
     )
 
     head_scale = float(team.get("head_scale", 0.91))
+    face_width = float(team.get("face_width", 1.0))
+    jaw_scale = float(team.get("jaw_scale", 1.0))
+    nose_scale = float(team.get("nose_scale", 1.0))
+    brow_tilt = float(team.get("brow_tilt", 0.0))
     def hx(delta: float) -> float:
         return offset_x + head_cx + delta * head_scale
 
@@ -843,53 +978,82 @@ def _frame_svg(
         return offset_y + head_cy + delta * head_scale
 
     head = (
-        f"M {hx(-8.1):.2f} {hy(-9.9):.2f} "
+        f"M {hx(-8.1 * face_width):.2f} {hy(-9.9):.2f} "
         f"Q {hx(0.5):.2f} {hy(-13.7):.2f} "
-        f"{hx(8.0):.2f} {hy(-7.8):.2f} "
-        f"Q {hx(10.7):.2f} {hy(-0.6):.2f} "
-        f"{hx(7.4):.2f} {hy(8.5):.2f} "
+        f"{hx(8.0 * face_width):.2f} {hy(-7.8):.2f} "
+        f"Q {hx(10.7 * face_width):.2f} {hy(-0.6):.2f} "
+        f"{hx(7.4 * jaw_scale):.2f} {hy(8.5):.2f} "
         f"Q {hx(0.3):.2f} {hy(12.6):.2f} "
-        f"{hx(-6.4):.2f} {hy(8.1):.2f} "
-        f"Q {hx(-9.5):.2f} {hy(0.2):.2f} "
-        f"{hx(-8.1):.2f} {hy(-9.9):.2f} Z"
+        f"{hx(-6.4 * jaw_scale):.2f} {hy(8.1):.2f} "
+        f"Q {hx(-9.5 * face_width):.2f} {hy(0.2):.2f} "
+        f"{hx(-8.1 * face_width):.2f} {hy(-9.9):.2f} Z"
     )
     out.append(
         f'<path d="{head}" fill="{team["head"]}" stroke="{OUTLINE}" stroke-width="1.45"/>'
     )
     out.append(
-        f'<ellipse cx="{hx(-8.0):.2f}" cy="{hy(0.0):.2f}" '
-        f'rx="1.65" ry="2.35" fill="{team["head"]}" stroke="{OUTLINE}" stroke-width=".7"/>'
+        f'<ellipse cx="{hx(-8.0 * face_width):.2f}" cy="{hy(0.0):.2f}" '
+        f'rx="{1.55 + abs(face_width - 1.0) * 1.4:.2f}" ry="2.35" '
+        f'fill="{team["head"]}" stroke="{OUTLINE}" stroke-width=".7"/>'
     )
     out.append(
-        f'<path d="M {hx(7.3):.2f} {hy(-1.0):.2f} '
-        f'L {hx(9.9):.2f} {hy(1.0):.2f} '
-        f'L {hx(7.4):.2f} {hy(1.9):.2f}" '
+        f'<path d="M {hx(7.3 * face_width):.2f} {hy(-1.0):.2f} '
+        f'L {hx((9.9 + (nose_scale - 1.0) * 2.4) * face_width):.2f} {hy(1.0):.2f} '
+        f'L {hx(7.4 * face_width):.2f} {hy(1.9):.2f}" '
         f'fill="{team["head"]}" stroke="{OUTLINE}" stroke-width=".7"/>'
     )
 
     hair_style = team.get("hair_style", "swept")
     if hair_style == "crop":
         out.append(
-            f'<path d="M {hx(-7.6):.2f} {hy(-5.9):.2f} '
-            f'Q {hx(-2.2):.2f} {hy(-12.3):.2f} {hx(6.8):.2f} {hy(-8.2):.2f} '
-            f'L {hx(7.2):.2f} {hy(-5.7):.2f} '
+            f'<path d="M {hx(-7.6 * face_width):.2f} {hy(-5.9):.2f} '
+            f'Q {hx(-2.2):.2f} {hy(-12.3):.2f} {hx(6.8 * face_width):.2f} {hy(-8.2):.2f} '
+            f'L {hx(7.2 * face_width):.2f} {hy(-5.7):.2f} '
             f'Q {hx(1.7):.2f} {hy(-7.2):.2f} {hx(-3.8):.2f} {hy(-4.6):.2f} '
-            f'Q {hx(-6.2):.2f} {hy(-3.5):.2f} {hx(-7.6):.2f} {hy(-5.9):.2f} Z" '
+            f'Q {hx(-6.2 * face_width):.2f} {hy(-3.5):.2f} {hx(-7.6 * face_width):.2f} {hy(-5.9):.2f} Z" '
             f'fill="{team["hair"]}" stroke="{OUTLINE}" stroke-width=".9"/>'
+        )
+    elif hair_style == "fade":
+        out.append(
+            f'<path d="M {hx(-7.3 * face_width):.2f} {hy(-4.1):.2f} '
+            f'Q {hx(-4.8):.2f} {hy(-10.7):.2f} {hx(0.2):.2f} {hy(-12.1):.2f} '
+            f'Q {hx(4.8):.2f} {hy(-11.0):.2f} {hx(7.0 * face_width):.2f} {hy(-7.0):.2f} '
+            f'L {hx(6.7 * face_width):.2f} {hy(-4.8):.2f} '
+            f'Q {hx(2.0):.2f} {hy(-6.3):.2f} {hx(-2.8):.2f} {hy(-4.8):.2f} '
+            f'L {hx(-7.3 * face_width):.2f} {hy(-2.7):.2f} Z" '
+            f'fill="{team["hair"]}" stroke="{OUTLINE}" stroke-width=".9"/>'
+        )
+        out.append(
+            f'<path d="M {hx(-7.0 * face_width):.2f} {hy(-2.4):.2f} '
+            f'L {hx(-4.8 * face_width):.2f} {hy(1.0):.2f}" '
+            f'stroke="{team["hair"]}" stroke-width="1.35" opacity=".62"/>'
+        )
+    elif hair_style == "textured":
+        out.append(
+            f'<path d="M {hx(-7.4 * face_width):.2f} {hy(-5.1):.2f} '
+            f'L {hx(-5.0):.2f} {hy(-10.2):.2f} '
+            f'L {hx(-2.2):.2f} {hy(-12.7):.2f} '
+            f'L {hx(0.3):.2f} {hy(-10.9):.2f} '
+            f'L {hx(3.0):.2f} {hy(-13.0):.2f} '
+            f'L {hx(5.2):.2f} {hy(-9.8):.2f} '
+            f'L {hx(7.1 * face_width):.2f} {hy(-7.0):.2f} '
+            f'Q {hx(2.8):.2f} {hy(-7.1):.2f} {hx(-2.7):.2f} {hy(-4.4):.2f} '
+            f'Q {hx(-5.4 * face_width):.2f} {hy(-3.5):.2f} {hx(-7.4 * face_width):.2f} {hy(-5.1):.2f} Z" '
+            f'fill="{team["hair"]}" stroke="{OUTLINE}" stroke-width=".9" stroke-linejoin="round"/>'
         )
     else:
         out.append(
-            f'<path d="M {hx(-7.5):.2f} {hy(-5.6):.2f} '
-            f'Q {hx(-1.8):.2f} {hy(-13.3):.2f} {hx(7.2):.2f} {hy(-7.4):.2f} '
+            f'<path d="M {hx(-7.5 * face_width):.2f} {hy(-5.6):.2f} '
+            f'Q {hx(-1.8):.2f} {hy(-13.3):.2f} {hx(7.2 * face_width):.2f} {hy(-7.4):.2f} '
             f'Q {hx(3.8):.2f} {hy(-8.4):.2f} {hx(0.6):.2f} {hy(-6.0):.2f} '
             f'L {hx(3.0):.2f} {hy(-3.9):.2f} '
-            f'Q {hx(-2.0):.2f} {hy(-5.3):.2f} {hx(-7.5):.2f} {hy(-5.6):.2f} Z" '
+            f'Q {hx(-2.0):.2f} {hy(-5.3):.2f} {hx(-7.5 * face_width):.2f} {hy(-5.6):.2f} Z" '
             f'fill="{team["hair"]}" stroke="{OUTLINE}" stroke-width=".9"/>'
         )
 
     out.append(
-        f'<path d="M {hx(1.3):.2f} {hy(-3.8):.2f} '
-        f'Q {hx(4.2):.2f} {hy(-4.6):.2f} {hx(6.0):.2f} {hy(-3.4):.2f}" '
+        f'<path d="M {hx(1.3):.2f} {hy(-3.8 - brow_tilt):.2f} '
+        f'Q {hx(4.2):.2f} {hy(-4.6):.2f} {hx(6.0):.2f} {hy(-3.4 + brow_tilt):.2f}" '
         f'fill="none" stroke="{OUTLINE}" stroke-width=".95" stroke-linecap="round" opacity=".78"/>'
     )
     out.append(
@@ -962,7 +1126,7 @@ def build_outputs() -> dict[str, str]:
         outputs[filename] = _atlas_svg(team, keeper=True)
         atlas_meta[slug] = {"name": team["name"], "file": filename}
     manifest = {
-        "version": 16,
+        "version": 17,
         "quality_contract": SPRITE_FORGE_CONTRACT["quality_contract"],
         "cell": {"width": CELL_W, "height": CELL_H},
         "columns": COLUMNS,
