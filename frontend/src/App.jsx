@@ -10,7 +10,6 @@ const CombatReplayScreen = React.lazy(() => import('./components/CombatReplayScr
 const SpectatorScreen = React.lazy(() => import('./components/SpectatorScreen.jsx'));
 const Board3DExperiment = React.lazy(() => import('./components/Board3DExperiment.jsx'));
 const PvpAppSurface = React.lazy(() => import('./components/PvpAppSurface.jsx'));
-import { loadCombatHistory } from './combatHistory.js';
 const DailyChallengesScreen = React.lazy(() => import('./components/DailyChallengesScreen.jsx'));
 const CombatScreen = React.lazy(() => import('./components/CombatScreen.jsx'));
 const RoguelikeScreen = React.lazy(() => import('./components/RoguelikeScreen.jsx'));
@@ -19,11 +18,8 @@ import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { api, STORAGE_KEY } from './api.js';
 import { updateGameRecordChat, statisticalHistoryRecords } from './gameHistory.js';
 import { recordGameActivity } from './gameActivity.js';
-import { loadRoster as loadCombatRoster } from './combatRoster.js';
-import { loadCombatService, summarizeCombatService } from './combatService.js';
-import { loadRating, ratingChangeDetails, loadRatingHistory } from './playerRating.js';
+import { ratingChangeDetails, loadRatingHistory } from './playerRating.js';
 const InsightsScreen = React.lazy(() => import('./components/InsightsScreen.jsx'));
-import { scheduleAchievementCheck } from './achievementBootstrap.js';
 const AdminScreen = React.lazy(() => import('./components/AdminScreen.jsx'));
 const GlobalMusicDock = React.lazy(() => import('./components/GlobalMusicDock.jsx'));
 const GlobalOverlayLayer = React.lazy(() => import('./components/GlobalOverlayLayer.jsx'));
@@ -67,6 +63,7 @@ import { useCasualResultFlow } from './useCasualResultFlow.js';
 import { useLogoutFlow } from './useLogoutFlow.js';
 import { usePublicFeatureFlags } from './usePublicFeatureFlags.js';
 import { useGameExitFlow } from './useGameExitFlow.js';
+import { usePlayerOverview } from './usePlayerOverview.js';
 
 // 'menu' | 'game' | 'tutorial' | 'openings' | 'tournament' | 'tournamentGame' | 'puzzle' | 'combat' | 'history' | 'replay'
 function AppInner({ isAdminUser }) {
@@ -144,15 +141,8 @@ function AppInner({ isAdminUser }) {
     navigateTo('replay');
   }
 
-  // Estos dos viven en localStorage manejados por otras pantallas (el
-  // Modo Combate tiene su propio roster, independiente) — los releemos acá
-  // cada vez que cambia la vista, así la cabecera se mantiene al día sin
-  // tener que levantar ese estado hasta acá arriba.
-  const [rating, setRating] = useState(() => loadRating());
-  const [combatOverview, setCombatOverview] = useState(() => {
-    const roster = loadCombatRoster();
-    const service = summarizeCombatService(loadCombatService());
-    return { credits: roster.credits || 0, rank: service.rank, nextProgress: service.nextProgress };
+  const { rating, setRating, combatOverview } = usePlayerOverview(view, {
+    onCombatHistory: setCombatHistoryList,
   });
   const [activeTimeControl, setActiveTimeControl] = useState(null);
   const [activeSeries, setActiveSeries] = useState(() => loadActiveSeries());
@@ -323,15 +313,6 @@ function AppInner({ isAdminUser }) {
     setLoading,
     setError,
   });
-
-  useEffect(() => {
-    setRating(loadRating());
-    const combatRoster = loadCombatRoster();
-    const combatService = summarizeCombatService(loadCombatService());
-    setCombatOverview({ credits: combatRoster.credits || 0, rank: combatService.rank, nextProgress: combatService.nextProgress });
-    setCombatHistoryList(loadCombatHistory());
-    void scheduleAchievementCheck();
-  }, [view]);
 
   function handleGameChatUpdate(gameId, transcript) {
     const updated = updateGameRecordChat(gameId, transcript);
