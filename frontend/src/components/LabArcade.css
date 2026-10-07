@@ -396,6 +396,78 @@
     letter-spacing: .075em;
   }
 
+  /* Flagship destinations are hit areas over physical dungeon stations, not cards.
+     Keep only a narrow semantic nameplate so the authored plinths remain visible. */
+  .lab-screen.lab-screen .lab-workshop-portal--pawnslug-godot,
+  .lab-screen.lab-screen .lab-workshop-portal--football,
+  .lab-screen.lab-screen .lab-workshop-portal--chronicles,
+  .lab-screen.lab-screen .lab-workshop-portal--tactics,
+  .lab-screen.lab-screen .lab-workshop-map-table,
+  .lab-screen.lab-screen .lab-workshop-tool:not(.lab-workshop-tool--arena) {
+    align-content: end;
+    min-height: 72px;
+    padding: 7px 9px 8px;
+    border-color: transparent;
+    border-top-color: transparent;
+    background: linear-gradient(180deg,
+      transparent 0 44%,
+      rgba(3, 4, 5, .08) 67%,
+      rgba(3, 4, 5, .42) 100%);
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .lab-screen.lab-screen .lab-workshop-portal--pawnslug-godot > small,
+  .lab-screen.lab-screen .lab-workshop-portal--football > small,
+  .lab-screen.lab-screen .lab-workshop-portal--chronicles > small,
+  .lab-screen.lab-screen .lab-workshop-portal--tactics > small,
+  .lab-screen.lab-screen .lab-workshop-map-table > small,
+  .lab-screen.lab-screen .lab-workshop-tool:not(.lab-workshop-tool--arena) .lab-workshop-tool-meta,
+  .lab-screen.lab-screen .lab-workshop-portal--pawnslug-godot > b,
+  .lab-screen.lab-screen .lab-workshop-portal--football > b,
+  .lab-screen.lab-screen .lab-workshop-portal--chronicles > b,
+  .lab-screen.lab-screen .lab-workshop-portal--tactics > b,
+  .lab-screen.lab-screen .lab-workshop-map-table > b {
+    display: none;
+  }
+
+  .lab-screen.lab-screen .lab-workshop-portal--pawnslug-godot > strong,
+  .lab-screen.lab-screen .lab-workshop-portal--football > strong,
+  .lab-screen.lab-screen .lab-workshop-portal--chronicles > strong,
+  .lab-screen.lab-screen .lab-workshop-portal--tactics > strong,
+  .lab-screen.lab-screen .lab-workshop-map-table > strong,
+  .lab-screen.lab-screen .lab-workshop-tool:not(.lab-workshop-tool--arena) strong {
+    width: fit-content;
+    max-width: 100%;
+    padding: 4px 7px 3px;
+    border-bottom: 1px solid rgba(var(--hotspot-accent), .48);
+    border-radius: 2px;
+    background: rgba(3, 4, 5, .48);
+    box-shadow: 0 5px 12px rgba(0, 0, 0, .26);
+    text-shadow: 0 2px 7px #000;
+  }
+
+  .lab-screen.lab-screen .lab-workshop-portal--pawnslug-godot:hover,
+  .lab-screen.lab-screen .lab-workshop-portal--pawnslug-godot:focus-visible,
+  .lab-screen.lab-screen .lab-workshop-portal--football:hover,
+  .lab-screen.lab-screen .lab-workshop-portal--football:focus-visible,
+  .lab-screen.lab-screen .lab-workshop-portal--chronicles:hover,
+  .lab-screen.lab-screen .lab-workshop-portal--chronicles:focus-visible,
+  .lab-screen.lab-screen .lab-workshop-portal--tactics:hover,
+  .lab-screen.lab-screen .lab-workshop-portal--tactics:focus-visible,
+  .lab-screen.lab-screen .lab-workshop-map-table:hover,
+  .lab-screen.lab-screen .lab-workshop-map-table:focus-visible,
+  .lab-screen.lab-screen .lab-workshop-tool:not(.lab-workshop-tool--arena):hover,
+  .lab-screen.lab-screen .lab-workshop-tool:not(.lab-workshop-tool--arena):focus-visible {
+    border-color: rgba(var(--hotspot-accent), .34);
+    background: linear-gradient(180deg,
+      rgba(var(--hotspot-accent), .025) 0 38%,
+      rgba(5, 6, 7, .18) 62%,
+      rgba(7, 7, 6, .6) 100%);
+    box-shadow: 0 12px 25px rgba(0, 0, 0, .38), 0 0 20px rgba(var(--hotspot-accent), .045);
+  }
+
   .lab-screen.lab-screen .lab-workshop-portal:hover,
   .lab-screen.lab-screen .lab-workshop-portal:focus-visible,
   .lab-screen.lab-screen .lab-workshop-map-table:hover,
