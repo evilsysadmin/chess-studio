@@ -245,9 +245,15 @@ function addChessSet(root, ivory, ebony, lite = false) {
     addPawnPiece(root, squareX(file), blackPawnRankZ, ebony, .66);
   }
 
-  if (lite) return;
+  const addBackRank = (z, material, facing, compact = false) => {
+    if (compact) {
+      addRookPiece(root, squareX(0), z, material, .66);
+      addKnightPiece(root, squareX(2), z, material, .66, facing);
+      addRoyalPiece(root, squareX(4), z, material, .66, true);
+      addRoyalPiece(root, squareX(6), z, material, .66, false);
+      return;
+    }
 
-  const addBackRank = (z, material, facing) => {
     addRookPiece(root, squareX(0), z, material, .66);
     addKnightPiece(root, squareX(1), z, material, .66, facing);
     addBishopPiece(root, squareX(2), z, material, .66);
@@ -258,8 +264,8 @@ function addChessSet(root, ivory, ebony, lite = false) {
     addRookPiece(root, squareX(7), z, material, .66);
   };
 
-  addBackRank(whiteBackRankZ, ivory, -1);
-  addBackRank(blackBackRankZ, ebony, 1);
+  addBackRank(whiteBackRankZ, ivory, -1, lite);
+  addBackRank(blackBackRankZ, ebony, 1, lite);
 }
 
 function addChair(root, wood, leather, brass) {
