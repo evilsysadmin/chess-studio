@@ -117,6 +117,7 @@ FIELD_VARIANT_PROFILES = [
 FIELD_VARIANTS = {
     "fc_matthias": [
         {
+            "face_profile": "square-balanced",
             "face_width": 1.00,
             "jaw_scale": 1.02,
             "nose_scale": 1.00,
@@ -125,6 +126,7 @@ FIELD_VARIANTS = {
         {
             "head": "#d8b18d",
             "hair": "#2e221b",
+            "face_profile": "compact-jaw",
             "hair_style": "crop",
             "head_scale": 0.93,
             "face_width": 0.96,
@@ -135,6 +137,7 @@ FIELD_VARIANTS = {
         {
             "head": "#9f6d4d",
             "hair": "#171515",
+            "face_profile": "broad-fade",
             "hair_style": "fade",
             "head_scale": 0.90,
             "face_width": 1.04,
@@ -145,6 +148,7 @@ FIELD_VARIANTS = {
         {
             "head": "#f0c7a1",
             "hair": "#4b3022",
+            "face_profile": "narrow-textured",
             "hair_style": "textured",
             "head_scale": 0.88,
             "face_width": 0.93,
@@ -155,6 +159,7 @@ FIELD_VARIANTS = {
     ],
     "real_enroque": [
         {
+            "face_profile": "broad-angular",
             "face_width": 1.03,
             "jaw_scale": 1.04,
             "nose_scale": 1.06,
@@ -163,6 +168,7 @@ FIELD_VARIANTS = {
         {
             "head": "#d2a17a",
             "hair": "#211916",
+            "face_profile": "lean-textured",
             "hair_style": "textured",
             "head_scale": 0.92,
             "face_width": 0.95,
@@ -173,6 +179,7 @@ FIELD_VARIANTS = {
         {
             "head": "#6f4937",
             "hair": "#151313",
+            "face_profile": "square-fade",
             "hair_style": "fade",
             "head_scale": 0.89,
             "face_width": 1.02,
@@ -183,6 +190,7 @@ FIELD_VARIANTS = {
         {
             "head": "#efc9a8",
             "hair": "#70452d",
+            "face_profile": "compact-swept",
             "hair_style": "swept",
             "head_scale": 0.94,
             "face_width": 0.97,
@@ -1118,6 +1126,8 @@ def build_outputs() -> dict[str, str]:
                 "file": filename,
                 "body_profile": str(variant_team["body_profile"]),
                 "motion_profile": str(variant_team["motion_profile"]),
+                "face_profile": str(variant_team["face_profile"]),
+                "hair_style": str(variant_team.get("hair_style", "swept")),
             }
             variant_keys.append(variant_slug)
         field_variants[slug] = variant_keys
