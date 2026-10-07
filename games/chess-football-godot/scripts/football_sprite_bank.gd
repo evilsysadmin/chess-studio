@@ -16,13 +16,22 @@ static func manifest() -> Dictionary:
 	_cached_manifest = parsed
 	return _cached_manifest
 
-static func atlas_key(team_id: int, role: String = "") -> String:
+static func atlas_key(team_id: int, role: String = "", squad_index: int = -1) -> String:
 	var key: String = TEAM_KEYS[clampi(team_id, 0, TEAM_KEYS.size() - 1)]
-	return key + "_keeper" if role == "keeper" else key
+	if role == "keeper":
+		return key + "_keeper"
+	if squad_index < 1:
+		return key
+	var variant_map: Dictionary = manifest().get("field_variants", {})
+	var variants: Array = variant_map.get(key, [])
+	if variants.is_empty():
+		return key
+	var field_slot := clampi(squad_index - 1, 0, variants.size() - 1)
+	return String(variants[field_slot])
 
-static func build_frames(team_id: int, role: String = "") -> SpriteFrames:
+static func build_frames(team_id: int, role: String = "", squad_index: int = -1) -> SpriteFrames:
 	var data := manifest()
-	var key: String = atlas_key(team_id, role)
+	var key: String = atlas_key(team_id, role, squad_index)
 	var atlas_meta: Dictionary = data["atlases"][key]
 	var texture := load(ASSET_ROOT + String(atlas_meta["file"])) as Texture2D
 	assert(texture != null, "No se pudo cargar el atlas de Chess Football")
