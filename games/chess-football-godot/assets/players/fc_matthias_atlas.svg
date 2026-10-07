@@ -185,7 +185,7 @@
 <path d="M 571.08 25.79 Q 578.91 22.33 585.73 27.70 Q 588.19 34.25 585.18 42.53 Q 578.72 46.27 572.63 42.17 Q 569.81 34.98 571.08 25.79 Z" fill="#e7dec4" stroke="#11151b" stroke-width="1.45"/>
 <ellipse cx="571.17" cy="34.80" rx="1.65" ry="2.35" fill="#e7dec4" stroke="#11151b" stroke-width=".7"/>
 <path d="M 585.09 33.89 L 587.46 35.71 L 585.18 36.53" fill="#e7dec4" stroke="#11151b" stroke-width=".7"/>
-<path d="M 571.63 29.70 Q 576.81 22.70 585.00 28.07 Q 581.91 27.16 579.00 29.34 L 581.18 31.25 Q 576.63 29.98 571.63 29.70 Z" fill="#6d4b31" stroke="#11151b" stroke-width=".9"/>
+<path d="M 571.62 29.70 Q 576.81 22.70 585.00 28.07 Q 581.91 27.16 579.00 29.34 L 581.18 31.25 Q 576.63 29.98 571.62 29.70 Z" fill="#6d4b31" stroke="#11151b" stroke-width=".9"/>
 <path d="M 579.63 31.34 Q 582.27 30.61 583.91 31.71" fill="none" stroke="#11151b" stroke-width=".95" stroke-linecap="round" opacity=".78"/>
 <ellipse cx="581.91" cy="33.62" rx="1.05" ry=".82" fill="#11151b"/>
 <path d="M 580.73 39.08 Q 582.73 39.80 584.27 38.44" fill="none" stroke="#11151b" stroke-width=".82" stroke-linecap="round" opacity=".68"/>
@@ -264,7 +264,7 @@
 <path d="M 827.52 30.45 Q 832.71 23.45 840.90 28.82 Q 837.81 27.91 834.90 30.09 L 837.08 32.00 Q 832.53 30.73 827.52 30.45 Z" fill="#6d4b31" stroke="#11151b" stroke-width=".9"/>
 <path d="M 835.53 32.09 Q 838.17 31.36 839.81 32.46" fill="none" stroke="#11151b" stroke-width=".95" stroke-linecap="round" opacity=".78"/>
 <ellipse cx="837.81" cy="34.37" rx="1.05" ry=".82" fill="#11151b"/>
-<path d="M 836.63 39.83 Q 838.63 40.55 840.17 39.19" fill="none" stroke="#11151b" stroke-width=".82" stroke-linecap="round" opacity=".68"/>
+<path d="M 836.62 39.83 Q 838.63 40.55 840.17 39.19" fill="none" stroke="#11151b" stroke-width=".82" stroke-linecap="round" opacity=".68"/>
 <path d="M 832.53 42.19 Q 835.62 43.74 838.99 42.01" fill="none" stroke="#102f70" stroke-width=".72" stroke-linecap="round" opacity=".32"/>
 <ellipse cx="961.25" cy="131.00" rx="17.2" ry="2.4" fill="#000" opacity=".20"/>
 <path d="M 949.08 94.39 L 949.29 109.80 L 956.88 110.04 L 958.07 94.67 Z" fill="#e7dec4" stroke="#11151b" stroke-width="1.35" opacity=".84"/>
@@ -337,7 +337,7 @@
 <path d="M 64.08 169.79 Q 71.91 166.33 78.73 171.70 Q 81.19 178.25 78.18 186.54 Q 71.72 190.27 65.63 186.17 Q 62.81 178.98 64.08 169.79 Z" fill="#e7dec4" stroke="#11151b" stroke-width="1.45"/>
 <ellipse cx="64.17" cy="178.80" rx="1.65" ry="2.35" fill="#e7dec4" stroke="#11151b" stroke-width=".7"/>
 <path d="M 78.09 177.89 L 80.46 179.71 L 78.18 180.53" fill="#e7dec4" stroke="#11151b" stroke-width=".7"/>
-<path d="M 64.63 173.70 Q 69.81 166.70 78.00 172.07 Q 74.91 171.16 72.00 173.34 L 74.18 175.25 Q 69.63 173.98 64.63 173.70 Z" fill="#6d4b31" stroke="#11151b" stroke-width=".9"/>
+<path d="M 64.62 173.70 Q 69.81 166.70 78.00 172.07 Q 74.91 171.16 72.00 173.34 L 74.18 175.25 Q 69.63 173.98 64.62 173.70 Z" fill="#6d4b31" stroke="#11151b" stroke-width=".9"/>
 <path d="M 72.63 175.34 Q 75.27 174.61 76.91 175.71" fill="none" stroke="#11151b" stroke-width=".95" stroke-linecap="round" opacity=".78"/>
 <ellipse cx="74.91" cy="177.62" rx="1.05" ry=".82" fill="#11151b"/>
 <path d="M 73.73 183.08 Q 75.73 183.81 77.27 182.44" fill="none" stroke="#11151b" stroke-width=".82" stroke-linecap="round" opacity=".68"/>
@@ -796,7 +796,7 @@
 <path d="M 576.02 317.70 Q 581.21 310.70 589.40 316.07 Q 586.31 315.16 583.40 317.34 L 585.58 319.25 Q 581.03 317.98 576.02 317.70 Z" fill="#6d4b31" stroke="#11151b" stroke-width=".9"/>
 <path d="M 584.03 319.34 Q 586.67 318.61 588.31 319.71" fill="none" stroke="#11151b" stroke-width=".95" stroke-linecap="round" opacity=".78"/>
 <ellipse cx="586.31" cy="321.62" rx="1.05" ry=".82" fill="#11151b"/>
-<path d="M 585.13 327.08 Q 587.13 327.81 588.67 326.44" fill="none" stroke="#11151b" stroke-width=".82" stroke-linecap="round" opacity=".68"/>
+<path d="M 585.12 327.08 Q 587.13 327.81 588.67 326.44" fill="none" stroke="#11151b" stroke-width=".82" stroke-linecap="round" opacity=".68"/>
 <path d="M 581.03 329.44 Q 584.12 330.99 587.49 329.26" fill="none" stroke="#102f70" stroke-width=".72" stroke-linecap="round" opacity=".32"/>
 <ellipse cx="714.50" cy="419.00" rx="19.0" ry="2.4" fill="#000" opacity=".20"/>
 <path d="M 699.38 382.10 L 705.45 395.22 L 712.49 392.36 L 707.72 378.72 Z" fill="#e7dec4" stroke="#11151b" stroke-width="1.35" opacity=".84"/>

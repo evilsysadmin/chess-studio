@@ -264,7 +264,7 @@
 <path d="M 827.43 30.18 Q 832.35 24.36 840.54 28.09 L 840.90 30.36 Q 835.90 29.00 830.89 31.36 Q 828.71 32.36 827.43 30.18 Z" fill="#251b19" stroke="#11151b" stroke-width=".9"/>
 <path d="M 835.53 32.09 Q 838.17 31.36 839.81 32.46" fill="none" stroke="#11151b" stroke-width=".95" stroke-linecap="round" opacity=".78"/>
 <ellipse cx="837.81" cy="34.37" rx="1.05" ry=".82" fill="#11151b"/>
-<path d="M 836.63 39.83 Q 838.63 40.55 840.17 39.19" fill="none" stroke="#11151b" stroke-width=".82" stroke-linecap="round" opacity=".68"/>
+<path d="M 836.62 39.83 Q 838.63 40.55 840.17 39.19" fill="none" stroke="#11151b" stroke-width=".82" stroke-linecap="round" opacity=".68"/>
 <path d="M 832.53 42.19 Q 835.62 43.74 838.99 42.01" fill="none" stroke="#5a121e" stroke-width=".72" stroke-linecap="round" opacity=".32"/>
 <ellipse cx="961.25" cy="131.00" rx="17.2" ry="2.4" fill="#000" opacity=".20"/>
 <path d="M 949.08 94.39 L 949.29 109.80 L 956.88 110.04 L 958.07 94.67 Z" fill="#885f45" stroke="#11151b" stroke-width="1.35" opacity=".84"/>
@@ -796,7 +796,7 @@
 <path d="M 575.93 317.43 Q 580.85 311.61 589.04 315.34 L 589.40 317.61 Q 584.40 316.25 579.39 318.61 Q 577.21 319.62 575.93 317.43 Z" fill="#251b19" stroke="#11151b" stroke-width=".9"/>
 <path d="M 584.03 319.34 Q 586.67 318.61 588.31 319.71" fill="none" stroke="#11151b" stroke-width=".95" stroke-linecap="round" opacity=".78"/>
 <ellipse cx="586.31" cy="321.62" rx="1.05" ry=".82" fill="#11151b"/>
-<path d="M 585.13 327.08 Q 587.13 327.81 588.67 326.44" fill="none" stroke="#11151b" stroke-width=".82" stroke-linecap="round" opacity=".68"/>
+<path d="M 585.12 327.08 Q 587.13 327.81 588.67 326.44" fill="none" stroke="#11151b" stroke-width=".82" stroke-linecap="round" opacity=".68"/>
 <path d="M 581.03 329.44 Q 584.12 330.99 587.49 329.26" fill="none" stroke="#5a121e" stroke-width=".72" stroke-linecap="round" opacity=".32"/>
 <ellipse cx="714.50" cy="419.00" rx="19.0" ry="2.4" fill="#000" opacity=".20"/>
 <path d="M 699.38 382.10 L 705.45 395.22 L 712.49 392.36 L 707.72 378.72 Z" fill="#885f45" stroke="#11151b" stroke-width="1.35" opacity=".84"/>
