@@ -101,7 +101,9 @@ func move_human(delta: float, direction: Vector2, sprinting: bool) -> void:
 	if sent_off:
 		velocity = Vector2.ZERO
 		return
-	var dribbling := dribble_active()
+	if dribble_active() and not has_ball:
+		dribble_burst_seconds = 0.0
+	var dribbling := dribble_active() and has_ball
 	var wanted_direction := dribble_direction if dribbling else direction
 	var moving := wanted_direction.length_squared() > 0.001
 	var actual_sprint := _update_stamina(delta, sprinting and not dribbling, moving)
@@ -291,6 +293,7 @@ func available_for_play() -> bool:
 	return not sent_off
 
 func receive_tackle_contact(push_direction: Vector2, duration: float = 0.30) -> void:
+	dribble_burst_seconds = 0.0
 	contact_stun_total = maxf(duration, 0.05)
 	contact_stun_seconds = contact_stun_total
 	tackle_recovery_seconds = maxf(tackle_recovery_seconds, duration + 0.08)
