@@ -387,6 +387,15 @@ for operation in ("k3s-start", "k3s-status", "k3s-rollback", "k3s-staging2-deplo
 assert "run: make -C infra/oci apply" in infra_apply, (
     "dedicated OCI infrastructure workflow must own Terraform apply"
 )
+assert ".github/ops/oci-backup-storage-bootstrap-20261007.once" in infra_apply, (
+    "armed one-shot backup storage marker must remain explicit"
+)
+assert "if: github.event_name == 'push' || inputs.scope == 'backup-storage'" in infra_apply, (
+    "one-shot push must be restricted to the backup-storage reconcile"
+)
+assert "if: github.event_name == 'workflow_dispatch' && inputs.scope == 'full'" in infra_apply, (
+    "full infrastructure apply must remain manual"
+)
 assert "Wait for OCI Run Command registration after infrastructure change" in infra_apply, (
     "canonical OCI apply must keep post-apply agent convergence"
 )
