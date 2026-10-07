@@ -35,6 +35,7 @@ NONVISUAL_FRONTEND_PATHS = {
     "frontend/src/uselogoutflow.js",
     "frontend/src/usepublicfeatureflags.js",
     "frontend/src/usegameexitflow.js",
+    "frontend/src/usegameexitflow.js",
     "frontend/src/userreleasenotes.js",
     "frontend/src/soundfx.js",
 }
@@ -779,6 +780,7 @@ def self_test() -> None:
     global_shell = classify(["frontend/src/useGlobalShellUi.js"])
     assert global_shell.capture_groups == "none"
     assert classify(["frontend/src/useTournamentFlow.js"]).capture_groups == "none"
+    assert classify(["frontend/src/useGameExitFlow.js"]).capture_groups == "none"
     assert classify(["frontend/src/useGameExitFlow.js"]).capture_groups == "none"
     assert classify(["frontend/src/useGameStartFlow.js"]).capture_groups == "none"
     assert classify(["frontend/src/useCasualResultFlow.js"]).capture_groups == "none"
