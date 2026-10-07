@@ -1,6 +1,6 @@
 {
   "id": "iron-foundry",
-  "version": 2,
+  "version": 3,
   "progressionKey": "foundry-01",
   "title": "Fundición de Hierro Negro",
   "grid": [
@@ -134,7 +134,7 @@
       "retaliation": 1,
       "retaliationReach": 3,
       "activation": "always",
-      "ai": { "movement": "hold", "attackReach": 3, "requiresLineOfSight": true }
+      "ai": { "movement": "hold", "attackReach": 3, "requiresLineOfSight": true, "disengageRange": 1 }
     },
     {
       "id": "scrap-goblin",
