@@ -419,7 +419,7 @@ def _frame_svg(
         )
         hip_x = cx + side * hip_spread + p["twist"] * (0.13 if far else 0.25)
         leg_hip_y = hip_y + side * p["pelvis_roll"]
-        swing_ratio = clamp(lift_amount / (12.6 if animation == "sprint" else 8.8), 0.0, 1.0) if locomotion else 0.0
+        swing_ratio = min(1.0, max(0.0, lift_amount / (12.6 if animation == "sprint" else 8.8))) if locomotion else 0.0
         foot_x = cx + side * foot_spread + stride * (1.0 - swing_ratio * 0.10)
         foot_y = foot - lift_amount
         if tackle_action and side < 0.0:
