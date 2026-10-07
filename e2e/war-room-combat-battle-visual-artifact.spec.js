@@ -116,7 +116,17 @@ test('Combat battle · desktop lives inside the generic War Room', async ({ page
   expect(health.canvas?.height || 0).toBeGreaterThan(650);
   expect(health.log?.right || 9999).toBeLessThanOrEqual(1441);
   expect(health.controls?.bottom || 9999).toBeLessThanOrEqual(901);
-  await expect(page.getByRole('button', { name: 'Salir', exact: true })).toBeVisible();
+  const exit = page.getByRole('button', { name: 'Salir', exact: true });
+  await expect(exit).toBeVisible();
+  await exit.click();
+  const exitDialog = page.getByRole('dialog', { name: '¿Qué quieres hacer?' });
+  await expect(exitDialog).toBeVisible();
+  await expect(exitDialog.getByRole('button', { name: 'Salir al castillo', exact: true })).toBeVisible();
+  await expect(exitDialog.getByRole('button', { name: 'Abandonar partida y asumir bajas', exact: true })).toBeVisible();
+
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-battle-exit-desktop-1440x900.png');
+  await exitDialog.getByRole('button', { name: 'Seguir jugando', exact: true }).click();
 
   await mkdir(ARTIFACT_DIR, { recursive: true });
   await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-battle-desktop-1440x900.png');
@@ -134,7 +144,16 @@ test.describe('Combat battle · Android', () => {
     expect(health.canvas?.width || 0).toBeGreaterThanOrEqual(388);
     expect(health.canvas?.height || 0).toBeGreaterThan(700);
     await expect(page.getByRole('button', { name: 'Activar apaisado' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Salir', exact: true })).toBeVisible();
+    const exit = page.getByRole('button', { name: 'Salir', exact: true });
+    await expect(exit).toBeVisible();
+    await exit.click();
+    const exitDialog = page.getByRole('dialog', { name: '¿Qué quieres hacer?' });
+    await expect(exitDialog).toBeVisible();
+    await expect(exitDialog.getByRole('button', { name: 'Salir al castillo', exact: true })).toBeVisible();
+    await expect(exitDialog.getByRole('button', { name: 'Abandonar partida y asumir bajas', exact: true })).toBeVisible();
+    await mkdir(ARTIFACT_DIR, { recursive: true });
+    await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-battle-exit-android-390x844.png');
+    await exitDialog.getByRole('button', { name: 'Seguir jugando', exact: true }).click();
 
     const targets = page.locator('.combat-battle-screen button:visible, .combat-battle-screen summary:visible');
     const count = await targets.count();
