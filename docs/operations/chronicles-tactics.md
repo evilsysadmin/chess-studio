@@ -88,6 +88,16 @@ El estado persistente de una run se hidrata antes del primer frame jugable y se 
 - Un `409` por versión/mundo obsoleto detiene el writer y fuerza rebootstrap de **la misma run**. No se resuelve sobrescribiendo a ciegas estado remoto.
 - No persistir el árbol React completo. Inventario y quests son campos explícitos del checkpoint de run; otros dominios se añaden mediante contratos explícitos/versionados cuando les toque, no colándolos como blobs opacos en `worldFlags`.
 
+## Materialización de manifests y paridad cross-runtime
+
+Los manifests authored de `backend-python/chronicles_maps/` son la copia canónica. El frontend conserva mirrors byte-for-byte para fallback/offline y Go embebe los mismos bytes para su runtime nativo. Los corpus derivados de áreas y runs/API se generan siempre después de sincronizar esos manifests.
+
+- Tras editar, añadir o retirar un mapa authored, ejecutar `make chronicles-contracts`.
+- Ese comando sincroniza los mirrors de `frontend/src/chronicles/maps/` y `backend-go/internal/chronicles/content/maps/`, y regenera tanto `python_chronicles_area_corpus.json` como `python_chronicles_runs_corpus.json`.
+- `make chronicles-contracts-check` es read-only y falla si hay un mirror o corpus stale.
+- El gate Go/Python consume ese contrato único. No copiar manifests o hashes manualmente entre árboles como procedimiento normal.
+- Una diferencia en nombres de archivos también es drift: altas/bajas del catálogo deben materializarse en las tres superficies en el mismo cambio.
+
 ## Generación procedural y replay
 
 La topología y el contenido variable de una expedición se derivan de la seed y de contratos de generación versionados.

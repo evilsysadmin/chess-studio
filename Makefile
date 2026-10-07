@@ -32,7 +32,7 @@ CRITICAL_E2E_GREP := login → menú|Partida rápida · una partida activa|Torne
 	test tests test-fe test-be tests-fe tests-be tests/fe tests/be e2e e2e-combat-dom e2e-install compose-smoke coverage coverage-fe coverage-be release-gate \
 	test-frontend test-frontend-smoke test-frontend-unit test-frontend-contract test-backend test-backend-smoke test-backend-integration backend-check quality-gate gate-core \
 	gate-frontend-critical gate-critical combat-smoke frontend-build bundle-report puzzles-check audio-check data-ux-check pwa-check campaign-map-check copy-check release-check test-suite-audit test-suite-audit-ci static-contract-risk-audit css-check css-debt-check visual-ux-check state-resilience-check idempotency-check npm-audit-parser-check architecture-debt-check workflow-debt-check dependency-cycle-check dead-code-check session-continuity-check safe-storage-check async-resilience-check chess-rules-check grafana-check render-staging-check static-preflight \
-	security security-full security-images security-fe security-be security-trivy security-api ensure-trivy deps-status doctor worker-test load-probe synthetic-check bootstrap-test test-all-local test-in-docker ensure-e2e-deps e2e-critical test-parity-check \
+	security security-full security-images security-fe security-be security-trivy security-api ensure-trivy deps-status doctor worker-test load-probe synthetic-check bootstrap-test test-all-local test-in-docker ensure-e2e-deps e2e-critical test-parity-check chronicles-contracts chronicles-contracts-check \
 	oci-login oci-session oci-a1-info oci-a1-status oci-a1-ip oci-a1-authorize-ssh oci-a1-ssh-check oci-a1-ssh
 
 ## Diagnóstico local sin instalar nada: runtimes, lockfiles, CI y tooling opcional.
@@ -302,6 +302,14 @@ test-backend: test-backend-integration
 
 backend-check: ensure-backend-deps
 	$(VENV_PY) -m pip check
+
+## Chronicles authored manifests live in backend-python. Materialize the exact
+## frontend/Go mirrors and both Go parity corpora with one deterministic command.
+chronicles-contracts: ensure-backend-deps
+	$(VENV_PY) scripts/chronicles_contracts.py
+
+chronicles-contracts-check: ensure-backend-deps
+	$(VENV_PY) scripts/chronicles_contracts.py --check
 
 frontend-build: ensure-frontend-deps
 	cd frontend && npm run build
