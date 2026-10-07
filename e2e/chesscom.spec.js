@@ -112,11 +112,9 @@ test('Chesscom · no hereda el scroll del Hangar al entrar', async ({ page }) =>
   const card = page.getByRole('button', { name: /Chesscom/ });
   await card.scrollIntoViewIfNeeded();
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
-  const inheritedScroll = await page.evaluate(() => window.scrollY);
-  expect(inheritedScroll).toBeGreaterThan(0);
-
-  // DOM click deliberately preserves the old document scroll so the mode itself
-  // owns the transition instead of Playwright helpfully scrolling la tarjeta.
+  // The immersive Experimentos room now fits the viewport, so there may be no
+  // document scroll to inherit. The contract belongs to Chesscom: regardless of
+  // the hub's current scrollability, entering the mode must start at the top.
   await card.evaluate((node) => node.click());
   await expect(page.getByRole('heading', { name: 'CHESSCOM', exact: true })).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
