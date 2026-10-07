@@ -172,6 +172,11 @@
 }
 
 @media (max-width: 820px) {
+  .campaign-mission-room-shell :is(button, summary) {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
   .campaign-mission-room-briefing {
     top: 3.9rem;
     left: .5rem;
