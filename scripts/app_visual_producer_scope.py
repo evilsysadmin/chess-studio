@@ -58,6 +58,8 @@ COMBAT_PREPARATION_FILES = {
     "frontend/src/components/combatdeploymentwartablechrome.jsx",
     "frontend/src/components/armyscreen.jsx",
     "frontend/src/components/combatbarracksroom.css",
+    "frontend/src/components/combatmarket.jsx",
+    "frontend/src/components/combatquartermasterroom.css",
 }
 # Hans has its own choreography/runtime owners and should not block unrelated
 # shared-renderer camera/layout PRs. Its dedicated canary still runs whenever
@@ -768,6 +770,8 @@ def self_test() -> None:
     assert classify(["frontend/src/components/CombatDeploymentWarTableChrome.jsx"]) == "combat-prep"
     assert classify(["frontend/src/components/ArmyScreen.jsx"]) == "combat-prep"
     assert classify(["frontend/src/components/CombatBarracksRoom.css"]) == "combat-prep"
+    assert classify(["frontend/src/components/CombatMarket.jsx"]) == "combat-prep"
+    assert classify(["frontend/src/components/CombatQuartermasterRoom.css"]) == "combat-prep"
     assert classify(["e2e/war-room-combat-preparation-visual-artifact.spec.js"]) == "combat-prep"
     assert classify(["frontend/src/components/QuickMatchMobileGoldenPath.css"]) == "home-base"
     assert classify(["frontend/src/components/QuickMatchReadyRoom.css"]) == "home-base"
