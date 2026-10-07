@@ -484,36 +484,38 @@ func _sync_player_secondary_motion(player: Footballer, sprite: AnimatedSprite3D,
 	var moving_weight := clampf(speed_ratio, 0.0, 1.0)
 	var bob := sin(phase) * 0.012
 	var lateral_sway := sin(phase) * 0.010
-	# v6 already carries more anatomical volume in the atlas. Keep runtime
-	# deformation subtler so the player reads as a footballer, not a rubber card.
-	var stretch_x := 0.90
-	var stretch_y := 1.08
+	# V22 stops undoing the authored anatomy in the 3D presenter. The old
+	# 0.90x/1.08y baseline made every improved atlas read tall and paper-thin
+	# at broadcast scale. Keep the idle silhouette close to authored proportions;
+	# reserve stronger deformation for genuinely explosive actions.
+	var stretch_x := 0.98
+	var stretch_y := 1.02
 	var tilt_degrees := sin(phase) * 0.7
 	var facing_sign := -1.0 if sprite.flip_h else 1.0
 
 	if animation_name == "run":
 		bob = absf(sin(phase)) * (PLAYER_RUN_BOB + 0.014) * moving_weight
 		lateral_sway = sin(phase) * 0.029 * moving_weight
-		stretch_x = 0.90 + absf(cos(phase)) * 0.024
-		stretch_y = 1.08 - absf(cos(phase)) * 0.018
+		stretch_x = 0.97 + absf(cos(phase)) * 0.018
+		stretch_y = 1.025 - absf(cos(phase)) * 0.012
 		tilt_degrees = -facing_sign * (4.5 + sin(phase) * 1.5) * moving_weight
 	elif animation_name == "sprint":
 		bob = absf(sin(phase)) * (PLAYER_SPRINT_BOB + 0.020) * moving_weight
 		lateral_sway = sin(phase) * 0.038 * moving_weight
-		stretch_x = 0.88 + absf(cos(phase)) * 0.034
-		stretch_y = 1.10 - absf(cos(phase)) * 0.024
+		stretch_x = 0.95 + absf(cos(phase)) * 0.028
+		stretch_y = 1.04 - absf(cos(phase)) * 0.018
 		tilt_degrees = -facing_sign * (7.5 + sin(phase) * 1.8) * moving_weight
 	elif animation_name == "pass":
 		bob = absf(sin(phase)) * 0.025
 		lateral_sway = -facing_sign * 0.026 * sin(phase)
-		stretch_x = 0.91
-		stretch_y = 1.07
+		stretch_x = 0.98
+		stretch_y = 1.02
 		tilt_degrees = -facing_sign * 6.0
 	elif animation_name == "shoot":
 		bob = absf(sin(phase)) * 0.038
 		lateral_sway = -facing_sign * 0.036 * sin(phase)
-		stretch_x = 0.94
-		stretch_y = 1.06
+		stretch_x = 1.00
+		stretch_y = 1.01
 		tilt_degrees = -facing_sign * 12.0
 	elif animation_name == "tackle":
 		if player.tackle_aggressive_active():
@@ -531,8 +533,8 @@ func _sync_player_secondary_motion(player: Footballer, sprite: AnimatedSprite3D,
 	elif animation_name == "celebrate":
 		bob = absf(sin(phase)) * 0.095
 		lateral_sway = sin(phase * 0.5) * 0.022
-		stretch_x = 0.91
-		stretch_y = 1.10
+		stretch_x = 0.98
+		stretch_y = 1.05
 
 	if player.keeper_save_active():
 		var save_progress := 1.0 - player.keeper_save_ratio()
