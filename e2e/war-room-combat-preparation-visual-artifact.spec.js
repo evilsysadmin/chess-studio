@@ -88,6 +88,40 @@ async function openOperationsRoom(page) {
   return room;
 }
 
+async function openWarTable(page) {
+  await openOperationsRoom(page);
+  await page.getByRole('button', { name: /Personalizar despliegue/i }).click();
+  const table = page.locator('[data-combat-deployment="war-table"]');
+  await expect(table).toBeVisible();
+  await expect(table.getByRole('heading', { name: 'Mesa de Guerra', exact: true })).toBeVisible();
+  return table;
+}
+
+async function deploymentHealth(page) {
+  return page.evaluate(() => {
+    const rect = (selector) => {
+      const node = document.querySelector(selector);
+      if (!node) return null;
+      const box = node.getBoundingClientRect();
+      return {
+        left: Number(box.left.toFixed(1)),
+        top: Number(box.top.toFixed(1)),
+        right: Number(box.right.toFixed(1)),
+        bottom: Number(box.bottom.toFixed(1)),
+        width: Number(box.width.toFixed(1)),
+        height: Number(box.height.toFixed(1)),
+      };
+    };
+    return {
+      horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth + 1,
+      shell: rect('[data-combat-deployment="war-table"]'),
+      board: rect('[data-combat-deployment="war-table"] .deployment-board-zone .board-wrap'),
+      reserve: rect('[data-combat-deployment="war-table"] .deployment-reserve-panel'),
+      footer: rect('[data-combat-deployment="war-table"] .combat-deployment-footer'),
+    };
+  });
+}
+
 async function health(page) {
   return page.evaluate(() => {
     const rect = (selector) => {
@@ -131,8 +165,47 @@ test('Combat preparation · desktop is a board-first operations room', async ({ 
   await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-preparation-desktop-1440x900.png');
 });
 
+test('Combat deployment · desktop is a diegetic War Table over the Operations Room', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await openWarTable(page);
+
+  const snapshot = await deploymentHealth(page);
+  expect(snapshot.horizontalOverflow).toBe(false);
+  expect(snapshot.shell?.width || 0).toBeGreaterThanOrEqual(1438);
+  expect(snapshot.shell?.height || 0).toBeGreaterThanOrEqual(898);
+  expect(snapshot.board?.width || 0).toBeGreaterThan(500);
+  expect(snapshot.reserve?.left || -1).toBeGreaterThanOrEqual(-1);
+  expect(snapshot.footer?.bottom || 9999).toBeLessThanOrEqual(901);
+
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-deployment-war-table-desktop-1440x900.png');
+});
+
 test.describe('Combat preparation · mobile', () => {
   test.use({ hasTouch: true, isMobile: true });
+
+  test('390x844 keeps the War Table board-first and touch-safe', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    const table = await openWarTable(page);
+
+    const snapshot = await deploymentHealth(page);
+    expect(snapshot.horizontalOverflow).toBe(false);
+    expect(snapshot.shell?.left || 0).toBeGreaterThanOrEqual(-1);
+    expect(snapshot.shell?.right || 9999).toBeLessThanOrEqual(391);
+    expect(snapshot.board?.width || 0).toBeGreaterThanOrEqual(350);
+    expect(snapshot.footer?.right || 9999).toBeLessThanOrEqual(391);
+
+    const targets = table.locator('button:visible, summary:visible');
+    const count = await targets.count();
+    for (let index = 0; index < count; index += 1) {
+      const box = await targets.nth(index).boundingBox();
+      if (!box) continue;
+      expect(Math.min(box.width, box.height), 'Combat War Table touch target >=44px').toBeGreaterThanOrEqual(44);
+    }
+
+    await mkdir(ARTIFACT_DIR, { recursive: true });
+    await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-deployment-war-table-android-390x844.png');
+  });
 
   test('390x844 keeps the operations room touchable and inside the viewport', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
