@@ -150,10 +150,11 @@ export function MemorialDossier({ entry }) {
   );
 }
 
-export default function CombatHonoursRoom({ roster, onOpenUnit }) {
+export default function CombatHonoursRoom({ roster, onOpenUnit, showMemorial = true }) {
   const model = useMemo(() => buildCombatHonoursModel(roster), [roster]);
   const [selectedMemorialId, setSelectedMemorialId] = useState(null);
-  if (!model.hasHonours) return null;
+  const hasVisibleContent = model.trophies.length > 0 || (showMemorial && model.memorial.length > 0);
+  if (!hasVisibleContent) return null;
 
   const selectedMemorial = model.memorial.find((entry) => entry.identityId === selectedMemorialId) || null;
 
@@ -211,7 +212,7 @@ export default function CombatHonoursRoom({ roster, onOpenUnit }) {
         </div>
       )}
 
-      {model.memorial.length > 0 && (
+      {showMemorial && model.memorial.length > 0 && (
         <div className="combat-memorial-wall" data-memorial-depth="architectural-v2">
           <div className="combat-memorial-heading">
             <div>
