@@ -5,6 +5,7 @@ import { shouldShowChroniclesNarration } from './ChroniclesNarratorOverlay.jsx';
 describe('ChroniclesNarratorOverlay', () => {
   it('deja el resumen rutinario del turno a la iniciativa y evita solapar overlays', () => {
     expect(shouldShowChroniclesNarration('Turno de las criaturas: un impacto encuentra carne, piedra o dignidad.')).toBe(false);
+    expect(shouldShowChroniclesNarration('Combate por turnos · iniciativa = AGI + 1d8: Matthias 10 · Hildegard 9.')).toBe(false);
   });
   it('suppresses obvious navigation and low-signal combat feedback', () => {
     expect(shouldShowChroniclesNarration('Giras a la izquierda.')).toBe(false);
