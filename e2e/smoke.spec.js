@@ -419,7 +419,9 @@ test('Combat Chess · salir al menú conserva campaña y batalla activas', async
   await dismissTutorialIfVisible(page);
   const quick = page.getByRole('button', { name: /JUGAR CON (ESTA|FORMACIÓN RECOMENDADA)/i });
   await expect(quick).toBeVisible();
-  await quick.click();
+  // The CTA starts the War Room immediately; do not let Playwright keep waiting
+  // on unrelated app navigation/lifecycle work after the successful transition.
+  await quick.click({ noWaitAfter: true });
   await expect(page.getByRole('complementary', { name: 'Registro de batalla y estado táctico' })).toBeVisible();
 
   const exit = page.getByRole('button', { name: 'Salir', exact: true });
