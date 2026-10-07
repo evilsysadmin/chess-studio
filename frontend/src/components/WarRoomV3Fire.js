@@ -56,6 +56,11 @@ export function installWarRoomV3FireAnimation(
   const practicalBase = practical?.intensity;
   const practicalColorBase = practical?.color?.clone?.();
   const disposeSprites = installWarRoomV3StoveFireSprites(flames, { coarsePointer, reducedMotion, shape: spriteShape });
+  const fireSprites = root.getObjectByName?.('war-room-v3-stove-fire-sprites') || null;
+  const spriteUniforms = fireSprites?.material?.uniforms || null;
+  const spriteBaseHeight = Number(spriteUniforms?.uHeight?.value);
+  const spriteBaseSize = Number(spriteUniforms?.uSize?.value);
+  const spriteBaseOpacity = Number(spriteUniforms?.uOpacity?.value);
   const driver = flames[0];
   const previous = driver.onBeforeRender;
 
@@ -75,6 +80,17 @@ export function installWarRoomV3FireAnimation(
       ? 0
       : (Number.isFinite(dimHeightValue) ? dimHeightValue : 1);
     const dimLight = Number.isFinite(dimmer?.light?.intensity) ? dimmer.light.intensity : 1;
+    // The visible V3/V4 flame is a shader-particle sibling of the authored
+    // flame meshes, not their child. It therefore must consume Hans' dimmer
+    // explicitly; scaling the transparent authored meshes alone leaves an
+    // apparently healthy fire burning while Matthias calls Hans to relight it.
+    if (fireSprites && spriteUniforms) {
+      const spriteLife = Math.max(0, Math.min(1, dimHeight));
+      fireSprites.visible = spriteLife > 0.001;
+      if (Number.isFinite(spriteBaseHeight)) spriteUniforms.uHeight.value = spriteBaseHeight * spriteLife;
+      if (Number.isFinite(spriteBaseSize)) spriteUniforms.uSize.value = spriteBaseSize * Math.max(0.25, dimWidth);
+      if (Number.isFinite(spriteBaseOpacity)) spriteUniforms.uOpacity.value = spriteBaseOpacity * spriteLife;
+    }
     flames.forEach((flame, index) => {
       const base = bases[index];
       const frame = warRoomV3FireFrame({
@@ -107,7 +123,7 @@ export function installWarRoomV3FireAnimation(
     previous?.(...args);
     animate(args[0]);
   };
-  root.userData.warRoomV3FireAnimation = reducedMotion ? 'static-reduced-motion' : 'authored-flicker-v1';
+  root.userData.warRoomV3FireAnimation = reducedMotion ? 'static-reduced-motion' : 'authored-flicker-v2-hans-dimmer';
 
   return () => {
     disposeSprites();
