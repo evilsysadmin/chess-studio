@@ -206,6 +206,27 @@ for (const capture of CAPTURES) {
       await expect(gameMenu).toBeVisible();
       await page.waitForTimeout(450);
 
+      if (capture.label === 'desktop-1440x900') {
+        const matthias = gameRoot.getByRole('button', { name: 'Seleccionar Matthias', exact: true });
+        await matthias.click();
+        const sheet = page.getByRole('dialog', { name: 'Matthias', exact: true });
+        await expect(sheet).toBeVisible();
+        const sheetPortrait = sheet.locator('.chronicles-character-sheet__portrait img');
+        const authoredSheetPortrait = await sheetPortrait.evaluate((image) => (
+          image.complete
+          && image.naturalWidth >= 128
+          && image.naturalHeight >= 128
+          && !image.src.startsWith('data:')
+        ));
+        expect(authoredSheetPortrait, 'desktop sheet uses canonical authored portrait').toBe(true);
+        await captureElement(
+          page,
+          sheet,
+          `${ARTIFACT_DIR}/chronicles-character-sheet-desktop-1440x900.png`,
+        );
+        await sheet.getByRole('button', { name: 'Cerrar ficha', exact: true }).click();
+      }
+
       const health = await captureChroniclesHealth(page);
       expect(health.horizontalOverflow, `${capture.label}: Chronicles overflow`).toBe(false);
       expect(health.gameCanvasCount, `${capture.label}: Chronicles dungeon canvas`).toBe(1);
