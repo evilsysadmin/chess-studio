@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { scheduleAchievementCheck } from './achievementBootstrap.js';
 import { loadCombatHistory } from './combatHistory.js';
 import { loadRoster as loadCombatRoster } from './combatRoster.js';
 import { loadCombatService, summarizeCombatService } from './combatService.js';
@@ -23,7 +22,7 @@ export function usePlayerOverview(view, onCombatHistory) {
     setRating(loadRating());
     setCombatOverview(loadCombatOverview());
     onCombatHistory(loadCombatHistory());
-    void scheduleAchievementCheck();
+    void import('./achievementBootstrap.js').then(({ scheduleAchievementCheck }) => scheduleAchievementCheck());
   }, [view, onCombatHistory]);
 
   return { rating, setRating, combatOverview };
