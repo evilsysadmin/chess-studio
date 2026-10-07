@@ -285,18 +285,18 @@ def _pose(animation: str, frame: int) -> dict[str, float]:
             crouch=0.8 + lift * 0.85,
             arm_l=stride * 15.6,
             arm_r=-stride * 15.6,
-            leg_l=-stride * 17.8,
-            leg_r=stride * 17.8,
-            # V14: the forward swing leg lifts. V13 lifted the opposite leg,
-            # which produced a mechanically hinged gait in several frames.
-            lift_l=max(0.0, -stride) * 8.8 + max(0.0, math.cos(phase)) * 1.1,
-            lift_r=max(0.0, stride) * 8.8 + max(0.0, -math.cos(phase)) * 1.1,
-            twist=stride * 4.6,
+            leg_l=-stride * 20.0,
+            leg_r=stride * 20.0,
+            # V28 pushes the locomotion key poses toward the supplied football
+            # reference: clearer extension, higher knee lift and more torso twist.
+            lift_l=max(0.0, -stride) * 10.0 + max(0.0, math.cos(phase)) * 1.2,
+            lift_r=max(0.0, stride) * 10.0 + max(0.0, -math.cos(phase)) * 1.2,
+            twist=stride * 5.3,
             head=-1.2 - math.cos(phase) * 0.32,
             sway=math.cos(phase) * 1.28,
-            pelvis_roll=stride * 2.35,
-            shoulder_roll=-stride * 2.05,
-            arm_flex=7.0 + lift * 2.1,
+            pelvis_roll=stride * 2.70,
+            shoulder_roll=-stride * 2.45,
+            arm_flex=7.8 + lift * 2.0,
         )
     elif animation == "sprint":
         pose.update(
@@ -305,16 +305,16 @@ def _pose(animation: str, frame: int) -> dict[str, float]:
             crouch=1.5 + lift * 1.15,
             arm_l=stride * 20.0,
             arm_r=-stride * 20.0,
-            leg_l=-stride * 23.2,
-            leg_r=stride * 23.2,
-            lift_l=max(0.0, -stride) * 12.6 + max(0.0, math.cos(phase)) * 1.4,
-            lift_r=max(0.0, stride) * 12.6 + max(0.0, -math.cos(phase)) * 1.4,
-            twist=stride * 6.0,
+            leg_l=-stride * 26.5,
+            leg_r=stride * 26.5,
+            lift_l=max(0.0, -stride) * 14.0 + max(0.0, math.cos(phase)) * 1.6,
+            lift_r=max(0.0, stride) * 14.0 + max(0.0, -math.cos(phase)) * 1.6,
+            twist=stride * 7.0,
             head=-2.4 - math.cos(phase) * 0.38,
             sway=math.cos(phase) * 1.58,
-            pelvis_roll=stride * 3.05,
-            shoulder_roll=-stride * 2.65,
-            arm_flex=8.8 + lift * 2.5,
+            pelvis_roll=stride * 3.45,
+            shoulder_roll=-stride * 3.10,
+            arm_flex=9.4 + lift * 2.3,
         )
     else:
         t = frame / max(COLUMNS - 1, 1)
@@ -327,11 +327,11 @@ def _pose(animation: str, frame: int) -> dict[str, float]:
                 lean=2.6 * wind + 5.2 * follow,
                 crouch=2.4 * k,
                 leg_l=-4.0 * k,
-                leg_r=-16.0 * wind + 29.0 * follow,
-                lift_r=7.5 * wind + 5.0 * follow,
-                arm_l=-15.0 * wind + 8.5 * follow,
-                arm_r=17.5 * wind - 11.5 * follow,
-                twist=-4.3 * wind + 7.4 * follow,
+                leg_r=-18.0 * wind + 32.0 * follow,
+                lift_r=9.0 * wind + 6.0 * follow,
+                arm_l=-17.0 * wind + 10.0 * follow,
+                arm_r=19.0 * wind - 13.0 * follow,
+                twist=-5.0 * wind + 8.5 * follow,
                 head=-0.5 * wind - 1.3 * follow,
                 sway=-1.8 * wind + 1.2 * follow,
                 support_bend=4.0 * k,
@@ -346,11 +346,11 @@ def _pose(animation: str, frame: int) -> dict[str, float]:
                 lean=3.8 * wind + 12.0 * follow,
                 crouch=4.2 * k,
                 leg_l=-6.0 * k,
-                leg_r=-24.0 * wind + 44.0 * follow,
-                lift_r=11.0 * wind + 8.0 * follow,
-                arm_l=-21.0 * wind + 12.0 * follow,
-                arm_r=25.0 * wind - 17.0 * follow,
-                twist=-6.8 * wind + 10.8 * follow,
+                leg_r=-27.0 * wind + 48.0 * follow,
+                lift_r=13.0 * wind + 9.0 * follow,
+                arm_l=-24.0 * wind + 14.0 * follow,
+                arm_r=28.0 * wind - 19.0 * follow,
+                twist=-7.5 * wind + 12.0 * follow,
                 head=-0.8 * wind - 2.2 * follow,
                 sway=-3.0 * wind + 1.5 * follow,
                 support_bend=6.0 * k,
@@ -386,8 +386,8 @@ def _pose(animation: str, frame: int) -> dict[str, float]:
             pose.update(
                 yoff=-7.5 * k,
                 bob=1.3 * k,
-                arm_l=-14.0 * pump + 7.0 * settle,
-                arm_r=36.0 * pump - 8.0 * settle + 8.0,
+                arm_l=-18.0 * pump + 8.0 * settle,
+                arm_r=42.0 * pump - 9.0 * settle + 8.0,
                 leg_l=-4.0 * k,
                 leg_r=9.0 * pump - 4.0 * settle,
                 lift_l=1.5 * k,
@@ -395,7 +395,7 @@ def _pose(animation: str, frame: int) -> dict[str, float]:
                 twist=4.8 * pump - 2.0 * settle,
                 head=-2.0 * pump + 0.8 * settle,
                 sway=2.4 * pump - 1.0 * settle,
-                celebrate_knee=8.0 * pump,
+                celebrate_knee=10.0 * pump,
                 pelvis_roll=-1.6 * pump + 0.8 * settle,
                 shoulder_roll=2.2 * pump - 1.0 * settle,
                 arm_flex=4.2 * pump,
@@ -870,25 +870,25 @@ def _frame_svg(
             # forward, and vice versa. Positive drive always means "toward the
             # running direction" before runtime flip_h mirrors the whole actor.
             opposite_leg = p["leg_r"] if side < 0.0 else p["leg_l"]
-            arm_drive = opposite_leg * (0.90 if animation == "run" else 0.86)
+            arm_drive = opposite_leg * (0.98 if animation == "run" else 0.94)
             hand_x = sx + arm_drive * 0.58 + side * (1.2 if far else 0.4)
             hand_y = (
                 79.4
                 - bob
                 + yoff
                 + crouch * 0.44
-                - arm_drive * 0.24
+                - arm_drive * 0.27
             )
             elbow_x = (
                 sx
                 + arm_drive * 0.24
-                - side * (4.6 + p["arm_flex"] * 0.18)
+                - side * (3.7 + p["arm_flex"] * 0.14)
             )
             elbow_y = (
                 sy
                 + (hand_y - sy) * 0.44
-                + 5.4
-                + p["arm_flex"] * 0.14
+                + 4.4
+                + p["arm_flex"] * 0.11
             )
         else:
             hand_x = (
