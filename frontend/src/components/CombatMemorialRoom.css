@@ -11,9 +11,9 @@
   padding: 0;
   overflow: hidden;
   background:
-    radial-gradient(circle at 50% 42%, rgba(71, 55, 34, .13), rgba(3, 5, 8, .72) 72%),
-    rgba(2, 4, 6, .88);
-  backdrop-filter: blur(2px) saturate(.8) brightness(.74);
+    radial-gradient(circle at 50% 42%, rgba(71, 55, 34, .08), rgba(3, 5, 8, .36) 74%),
+    rgba(2, 4, 6, .48);
+  backdrop-filter: blur(1px) saturate(.82) brightness(.72);
 }
 
 body:has(.combat-memorial-screen) .combat-operations-shell > :not(.combat-preparation-room-stage) {
@@ -33,13 +33,12 @@ body:has(.combat-memorial-screen) .combat-preparation-room-stage {
   margin: .75rem auto;
   padding: 5.35rem 1rem 4.4rem;
   overflow: hidden;
-  border: 1px solid rgba(205, 169, 91, .25);
+  border: 0;
   border-radius: 18px;
   background:
-    radial-gradient(circle at 50% -14%, rgba(201, 162, 87, .12), transparent 34%),
-    linear-gradient(180deg, rgba(15, 15, 14, .82), rgba(5, 7, 9, .86));
-  box-shadow: 0 30px 96px rgba(0,0,0,.58);
-  backdrop-filter: blur(13px);
+    radial-gradient(circle at 50% 0, rgba(201, 162, 87, .05), transparent 34%);
+  box-shadow: none;
+  backdrop-filter: none;
 }
 
 .combat-memorial-room-shell::before {
@@ -57,7 +56,7 @@ body:has(.combat-memorial-screen) .combat-preparation-room-stage {
     radial-gradient(ellipse at 50% 100%, rgba(205,169,91,.065), transparent 64%),
     repeating-linear-gradient(0deg, transparent 0 47px, rgba(255,255,255,.012) 48px, transparent 49px),
     repeating-linear-gradient(90deg, transparent 0 96px, rgba(255,255,255,.011) 97px, transparent 98px);
-  opacity: .9;
+  opacity: .58;
 }
 
 .combat-memorial-close {
@@ -87,8 +86,8 @@ body:has(.combat-memorial-screen) .combat-preparation-room-stage {
   padding: .52rem .68rem;
   border: 1px solid rgba(205, 169, 91, .18);
   border-radius: 12px;
-  background: rgba(7, 9, 11, .76);
-  backdrop-filter: blur(12px);
+  background: linear-gradient(180deg, rgba(8, 10, 12, .86), rgba(8, 10, 12, .68));
+  backdrop-filter: blur(9px);
 }
 
 .combat-memorial-room-heading > div:first-child {
@@ -161,11 +160,11 @@ body:has(.combat-memorial-screen) .combat-preparation-room-stage {
   border: 1px solid rgba(205, 169, 91, .11);
   border-radius: 7px 7px 14px 14px;
   background:
-    radial-gradient(ellipse at 50% 0, rgba(205,169,91,.09), transparent 34%),
+    radial-gradient(ellipse at 50% 0, rgba(205,169,91,.11), transparent 34%),
     repeating-linear-gradient(0deg, transparent 0 38px, rgba(255,255,255,.012) 39px, transparent 40px),
     repeating-linear-gradient(90deg, transparent 0 110px, rgba(255,255,255,.01) 111px, transparent 112px),
-    linear-gradient(100deg, rgba(255,255,255,.024), transparent 20% 80%, rgba(0,0,0,.21)),
-    rgba(14,16,17,.94);
+    linear-gradient(100deg, rgba(255,255,255,.024), transparent 20% 80%, rgba(0,0,0,.17)),
+    rgba(11,13,14,.82);
   box-shadow:
     inset 0 0 58px rgba(0,0,0,.4),
     0 16px 30px rgba(0,0,0,.18);
@@ -311,8 +310,8 @@ body:has(.combat-memorial-screen) .combat-preparation-room-stage {
   border: 1px solid rgba(205,169,91,.11);
   border-radius: 5px;
   background:
-    linear-gradient(90deg, rgba(205,169,91,.035), transparent 18% 82%, rgba(0,0,0,.12)),
-    linear-gradient(180deg, rgba(26,23,19,.82), rgba(6,8,10,.78));
+    linear-gradient(90deg, rgba(205,169,91,.035), transparent 18% 82%, rgba(0,0,0,.08)),
+    linear-gradient(180deg, rgba(26,23,19,.76), rgba(6,8,10,.7));
   box-shadow: 0 14px 30px rgba(0,0,0,.22);
 }
 
@@ -379,8 +378,8 @@ body:has(.combat-memorial-screen) .combat-preparation-room-stage {
   padding: .5rem .64rem;
   border: 1px solid rgba(205,169,91,.12);
   border-radius: 7px;
-  background: rgba(6,8,9,.75);
-  backdrop-filter: blur(10px);
+  background: rgba(6,8,9,.66);
+  backdrop-filter: blur(8px);
 }
 
 .combat-memorial-room-footnote strong {
