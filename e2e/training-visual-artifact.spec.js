@@ -442,7 +442,37 @@ scopedTest('tournament', 'Entrenar · Torneo', async ({ page }) => {
   await page.locator('.illustrated-home__destination--tournament').click();
   const tournament = page.locator('.tournament-panel');
   await expect(tournament).toBeVisible();
-  await expect(tournament.getByRole('button', { name: 'Jugar siguiente partida', exact: true })).toBeVisible();
+  await expect(tournament).toHaveAttribute('data-tournament-hall', 'true');
+  await expect(tournament.getByRole('heading', { name: 'Siguiente rival', exact: true })).toBeVisible();
+  const play = tournament.getByRole('button', { name: 'Jugar siguiente partida', exact: true });
+  await expect(play).toBeVisible();
+  await expect(tournament.locator('.tournament-hall-rival .primary-btn')).toHaveCount(1);
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await settle(page);
+  const desktop = await tournament.evaluate((root) => {
+    const box = root.getBoundingClientRect();
+    const rival = root.querySelector('.tournament-hall-rival')?.getBoundingClientRect();
+    return {
+      width: box.width,
+      height: box.height,
+      rivalWidth: rival?.width || 0,
+      overflow: document.documentElement.scrollWidth > window.innerWidth + 1,
+      mastheadVisible: Boolean(document.querySelector('.masthead:not(.masthead-game-compact)')?.getClientRects().length),
+    };
+  });
+  expect(desktop.overflow).toBe(false);
+  expect(desktop.width).toBeGreaterThanOrEqual(1438);
+  expect(desktop.height).toBeGreaterThanOrEqual(898);
+  expect(desktop.rivalWidth).toBeGreaterThan(500);
+  expect(desktop.mastheadVisible).toBe(false);
+  await captureAt(page, 'tournament', { width: 1440, height: 900, variant: 'desktop' });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await settle(page);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+  const playBox = await play.boundingBox();
+  expect(playBox?.height || 0).toBeGreaterThanOrEqual(44);
   await captureAt(page, 'tournament', { width: 390, height: 844, variant: 'mobile' });
 });
 
