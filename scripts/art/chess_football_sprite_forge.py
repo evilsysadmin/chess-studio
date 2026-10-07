@@ -670,7 +670,7 @@ def _frame_svg(
     shoulder_y = 56.2 - bob + yoff + crouch * 0.58
     torso_turn = 2.6 + p["twist"] * 0.32
     head_cx = cx + 2.8 + p["head"] - p["shoulder_roll"] * 0.18
-    head_cy = 33.8 - bob + yoff + crouch * 0.40
+    head_cy = 34.5 - bob + yoff + crouch * 0.40
     shoulder_scale = float(team.get("shoulder_scale", 1.0))
     torso_scale = float(team.get("torso_scale", 1.0))
     hip_scale = float(team.get("hip_scale", 1.0))
@@ -761,8 +761,7 @@ def _frame_svg(
         )
         out.append(
             f'<path d="{_smooth_closed_path(thigh, offset_x, offset_y)}" '
-            f'fill="{team["head"]}" '
-            f'stroke="{LIMB_OUTLINE}" stroke-width="1.12" stroke-linejoin="round" opacity="{opacity}"/>'
+            f'fill="{team["head"]}" stroke="none" opacity="{opacity}"/>'
         )
         if not far:
             out.append(
@@ -789,7 +788,7 @@ def _frame_svg(
         out.append(
             f'<path d="{_smooth_closed_path(shin, offset_x, offset_y)}" '
             f'fill="{team["sock"]}" stroke="{LIMB_OUTLINE}" '
-            f'stroke-width="1.04" stroke-linejoin="round" opacity="{opacity}"/>'
+            f'stroke-width=".64" stroke-linejoin="round" opacity="{opacity}"/>'
         )
         if not far:
             out.append(
@@ -934,9 +933,8 @@ def _frame_svg(
                 anatomy_profile="forearm",
             )
             out.append(
-                f'<path d="{_smooth_closed_path(sleeve, offset_x, offset_y)}" '
-                f'fill="{team["torso_dark"]}" stroke="{LIMB_OUTLINE}" '
-                f'stroke-width="1.15" opacity=".84"/>'
+                f'<path d="{_path(sleeve, offset_x, offset_y)}" '
+                f'fill="{team["torso_dark"]}" stroke="none" opacity=".84"/>'
             )
             out.append(
                 f'<line x1="{offset_x + sleeve_x - 2.6:.2f}" y1="{offset_y + sleeve_y - 1.2:.2f}" '
@@ -945,13 +943,11 @@ def _frame_svg(
             )
             out.append(
                 f'<path d="{_smooth_closed_path(upper_skin, offset_x, offset_y)}" '
-                f'fill="{team["head"]}" stroke="{LIMB_OUTLINE}" '
-                f'stroke-width=".74" stroke-linejoin="round" opacity=".84"/>'
+                f'fill="{team["head"]}" stroke="none" opacity=".84"/>'
             )
             out.append(
                 f'<path d="{_smooth_closed_path(fore, offset_x, offset_y)}" '
-                f'fill="{team["head"]}" stroke="{LIMB_OUTLINE}" '
-                f'stroke-width=".74" stroke-linejoin="round" opacity=".84"/>'
+                f'fill="{team["head"]}" stroke="none" opacity=".84"/>'
             )
             if keeper:
                 out.append(
@@ -963,7 +959,7 @@ def _frame_svg(
                 far_hand = _hand_path((elbow_x, elbow_y), (hand_x, hand_y), 1.0)
                 out.append(
                     f'<path d="{_path(far_hand, offset_x, offset_y)}" '
-                    f'fill="{team["head"]}" stroke="{LIMB_OUTLINE}" stroke-width=".90" stroke-linejoin="round" opacity=".84"/>'
+                    f'fill="{team["head"]}" stroke="{LIMB_OUTLINE}" stroke-width=".55" stroke-linejoin="round" opacity=".84"/>'
                 )
 
     # Shirt uses curves instead of the old octagonal chest. Asymmetry is
@@ -972,28 +968,28 @@ def _frame_svg(
     top_y = 53.7 - bob + yoff + crouch * 0.58
     waist_y = 80.8 - bob + yoff + crouch * 0.30
     base_y = 92.8 - bob + yoff + crouch * 0.18
-    left_sh = cx - (15.1 if keeper else 14.2) * shoulder_scale - torso_turn * 0.15
-    right_sh = cx + (17.7 if keeper else 16.5) * shoulder_scale + torso_turn * 0.20
+    left_sh = cx - (14.5 if keeper else 13.5) * shoulder_scale - torso_turn * 0.15
+    right_sh = cx + (16.8 if keeper else 15.6) * shoulder_scale + torso_turn * 0.20
     left_sh_y = top_y + 3.0 - p["shoulder_roll"]
     right_sh_y = top_y + 2.0 + p["shoulder_roll"]
     torso = (
         f"M {offset_x + left_sh:.2f} {offset_y + left_sh_y:.2f} "
         f"Q {offset_x + cx - 2.0:.2f} {offset_y + top_y - 4.2:.2f} "
         f"{offset_x + right_sh:.2f} {offset_y + right_sh_y:.2f} "
-        f"Q {offset_x + cx + 18.1 * shoulder_scale:.2f} {offset_y + 66.6 - bob + yoff:.2f} "
-        f"{offset_x + cx + 10.6 * torso_scale:.2f} {offset_y + waist_y:.2f} "
-        f"Q {offset_x + cx + 12.4 * hip_scale:.2f} {offset_y + base_y - 0.3:.2f} "
-        f"{offset_x + cx + 10.7 * hip_scale:.2f} {offset_y + base_y + 3.5:.2f} "
+        f"Q {offset_x + cx + 17.0 * shoulder_scale:.2f} {offset_y + 66.8 - bob + yoff:.2f} "
+        f"{offset_x + cx + 11.4 * torso_scale:.2f} {offset_y + waist_y:.2f} "
+        f"Q {offset_x + cx + 12.0 * hip_scale:.2f} {offset_y + base_y - 0.3:.2f} "
+        f"{offset_x + cx + 10.8 * hip_scale:.2f} {offset_y + base_y + 3.5:.2f} "
         f"Q {offset_x + cx + 1.0:.2f} {offset_y + base_y + 5.3:.2f} "
-        f"{offset_x + cx - 10.3 * hip_scale:.2f} {offset_y + base_y + 3.4:.2f} "
+        f"{offset_x + cx - 10.5 * hip_scale:.2f} {offset_y + base_y + 3.4:.2f} "
         f"Q {offset_x + cx - 11.8 * hip_scale:.2f} {offset_y + base_y - 0.2:.2f} "
-        f"{offset_x + cx - 9.8 * torso_scale:.2f} {offset_y + waist_y:.2f} "
-        f"Q {offset_x + cx - 16.4 * shoulder_scale:.2f} {offset_y + 67.0 - bob + yoff:.2f} "
+        f"{offset_x + cx - 10.8 * torso_scale:.2f} {offset_y + waist_y:.2f} "
+        f"Q {offset_x + cx - 15.5 * shoulder_scale:.2f} {offset_y + 67.2 - bob + yoff:.2f} "
         f"{offset_x + left_sh:.2f} {offset_y + left_sh_y:.2f} Z"
     )
     out.append(
         f'<path d="{torso}" fill="{team["torso"]}" '
-        f'stroke="{OUTLINE}" stroke-width="1.28" stroke-linejoin="round"/>'
+        f'stroke="{OUTLINE}" stroke-width=".88" stroke-linejoin="round"/>'
     )
     # V18 gives the shirt readable volume at broadcast scale: one shaded side
     # V19 softens joint/outline transitions so limbs read as one footballer
@@ -1060,7 +1056,7 @@ def _frame_svg(
     ]
     out.append(
         f'<path d="{_path(shorts, offset_x, offset_y)}" '
-        f'fill="{team["shorts"]}" stroke="{OUTLINE}" stroke-width=".98" stroke-linejoin="round"/>'
+        f'fill="{team["shorts"]}" stroke="{OUTLINE}" stroke-width=".68" stroke-linejoin="round"/>'
     )
     shorts_mid_y = base_y + 3.7
     out.append(
@@ -1121,8 +1117,8 @@ def _frame_svg(
             anatomy_profile="forearm",
         )
         out.append(
-            f'<path d="{_smooth_closed_path(sleeve, offset_x, offset_y)}" '
-            f'fill="{team["torso_light"]}" stroke="{LIMB_OUTLINE}" stroke-width=".84" stroke-linejoin="round"/>'
+            f'<path d="{_path(sleeve, offset_x, offset_y)}" '
+            f'fill="{team["torso_light"]}" stroke="none"/>'
         )
         out.append(
             f'<line x1="{offset_x + sleeve_x - 2.8:.2f}" y1="{offset_y + sleeve_y - 1.1:.2f}" '
@@ -1147,7 +1143,7 @@ def _frame_svg(
             near_hand = _hand_path((elbow_x, elbow_y), (hand_x, hand_y), 1.06)
             out.append(
                 f'<path d="{_path(near_hand, offset_x, offset_y)}" '
-                f'fill="{team["head"]}" stroke="{LIMB_OUTLINE}" stroke-width=".84" stroke-linejoin="round"/>'
+                f'fill="{team["head"]}" stroke="{LIMB_OUTLINE}" stroke-width=".52" stroke-linejoin="round"/>'
             )
         if keeper:
             out.append(
@@ -1161,7 +1157,7 @@ def _frame_svg(
     # leaner and forward athletic. Pivots, footline and gameplay stay fixed.
     # V15 pulls the neck up under the jaw. V14 left a literal 2-3 px gap
     # between head and neck that became very obvious at broadcast scale.
-    neck_y = 44.9 - bob + yoff + crouch * 0.43
+    neck_y = 45.2 - bob + yoff + crouch * 0.43
     out.append(
         f'<path d="M {offset_x + cx - 2.8:.2f} {offset_y + neck_y:.2f} '
         f'Q {offset_x + cx - 3.1:.2f} {offset_y + neck_y + 3.8:.2f} '
@@ -1200,7 +1196,7 @@ def _frame_svg(
     head_pivot_y = offset_y + 46.0
     out.append(
         f'<g transform="translate({head_pivot_x:.2f} {head_pivot_y:.2f}) '
-        f'scale(.885 .885) '
+        f'scale(.840 .840) '
         f'translate({-head_pivot_x:.2f} {-head_pivot_y:.2f})">'
     )
 
@@ -1216,7 +1212,7 @@ def _frame_svg(
         f"{hx(-8.1 * face_width):.2f} {hy(-9.9):.2f} Z"
     )
     out.append(
-        f'<path d="{head}" fill="{team["head"]}" stroke="{OUTLINE}" stroke-width="1.08" stroke-linejoin="round"/>'
+        f'<path d="{head}" fill="{team["head"]}" stroke="{OUTLINE}" stroke-width=".80" stroke-linejoin="round"/>'
     )
     out.append(
         f'<ellipse cx="{hx(-8.0 * face_width):.2f}" cy="{hy(0.0):.2f}" '
@@ -1238,7 +1234,7 @@ def _frame_svg(
             f'L {hx(7.2 * face_width):.2f} {hy(-5.7):.2f} '
             f'Q {hx(1.7):.2f} {hy(-7.2):.2f} {hx(-3.8):.2f} {hy(-4.6):.2f} '
             f'Q {hx(-6.2 * face_width):.2f} {hy(-3.5):.2f} {hx(-7.6 * face_width):.2f} {hy(-5.9):.2f} Z" '
-            f'fill="{team["hair"]}" stroke="{OUTLINE}" stroke-width=".9"/>'
+            f'fill="{team["hair"]}" stroke="{OUTLINE}" stroke-width=".66"/>'
         )
     elif hair_style == "fade":
         out.append(
@@ -1248,7 +1244,7 @@ def _frame_svg(
             f'L {hx(6.7 * face_width):.2f} {hy(-4.8):.2f} '
             f'Q {hx(2.0):.2f} {hy(-6.3):.2f} {hx(-2.8):.2f} {hy(-4.8):.2f} '
             f'L {hx(-7.3 * face_width):.2f} {hy(-2.7):.2f} Z" '
-            f'fill="{team["hair"]}" stroke="{OUTLINE}" stroke-width=".9"/>'
+            f'fill="{team["hair"]}" stroke="{OUTLINE}" stroke-width=".66"/>'
         )
         out.append(
             f'<path d="M {hx(-7.0 * face_width):.2f} {hy(-2.4):.2f} '
@@ -1266,7 +1262,7 @@ def _frame_svg(
             f'L {hx(7.1 * face_width):.2f} {hy(-7.0):.2f} '
             f'Q {hx(2.8):.2f} {hy(-7.1):.2f} {hx(-2.7):.2f} {hy(-4.4):.2f} '
             f'Q {hx(-5.4 * face_width):.2f} {hy(-3.5):.2f} {hx(-7.4 * face_width):.2f} {hy(-5.1):.2f} Z" '
-            f'fill="{team["hair"]}" stroke="{OUTLINE}" stroke-width=".9" stroke-linejoin="round"/>'
+            f'fill="{team["hair"]}" stroke="{OUTLINE}" stroke-width=".66" stroke-linejoin="round"/>'
         )
     else:
         out.append(
@@ -1275,7 +1271,7 @@ def _frame_svg(
             f'Q {hx(3.8):.2f} {hy(-8.4):.2f} {hx(0.6):.2f} {hy(-6.0):.2f} '
             f'L {hx(3.0):.2f} {hy(-3.9):.2f} '
             f'Q {hx(-2.0):.2f} {hy(-5.3):.2f} {hx(-7.5 * face_width):.2f} {hy(-5.6):.2f} Z" '
-            f'fill="{team["hair"]}" stroke="{OUTLINE}" stroke-width=".9"/>'
+            f'fill="{team["hair"]}" stroke="{OUTLINE}" stroke-width=".66"/>'
         )
 
     out.append(
