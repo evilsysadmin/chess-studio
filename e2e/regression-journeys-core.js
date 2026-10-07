@@ -159,9 +159,10 @@ test('recuperación · Desafío diario conserva su pantalla tras F5', async ({ p
   await dismissHomeGuide(page);
   const today = page.getByRole('region', { name: 'Hoy en Chess Studio' });
   await today.getByRole('button', { name: /Jugar ahora|Seguir|Revisar 3\/3/ }).click();
-  await expect(page.getByRole('button', { name: 'Desafío diario', exact: true })).toHaveClass(/primary-btn/);
+  const sourcePicker = page.locator('.puzzle-source-picker');
+  await expect(sourcePicker.locator('> summary')).toContainText('Desafío diario');
   await page.reload();
-  await expect(page.getByRole('button', { name: 'Desafío diario', exact: true })).toHaveClass(/primary-btn/);
+  await expect(sourcePicker.locator('> summary')).toContainText('Desafío diario');
   await expect(page.getByRole('region', { name: 'Modos principales' })).toHaveCount(0);
 });
 

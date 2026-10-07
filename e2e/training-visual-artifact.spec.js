@@ -378,6 +378,10 @@ scopedTest('puzzles', 'Entrenar · Puzzles', async ({ page }) => {
   const puzzles = page.locator('.puzzle-screen');
   await expect(puzzles).toBeVisible();
   await expect(puzzles.locator('.puzzle-training-workspace')).toBeVisible();
+  const sourcePicker = puzzles.locator('.puzzle-source-picker');
+  await expect(sourcePicker).toBeVisible();
+  await expect(sourcePicker).not.toHaveAttribute('open', '');
+  await expect(sourcePicker.locator('> summary')).toContainText('Puzzles clásicos');
   await expect(puzzles.locator('[data-board3d-camera="training-room-overhead"]')).toBeVisible({ timeout: 20_000 });
   await expect(puzzles.locator('[data-board3d-room-profile="insights-training-room"]')).toBeVisible();
   await expect(puzzles.locator('[data-board3d-war-room="true"]')).toHaveAttribute('data-board3d-variant', 'classic');

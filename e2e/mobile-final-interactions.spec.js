@@ -264,11 +264,16 @@ test('Puzzles móvil · selector compacto y acciones táctiles dejan respirar al
   const tools = page.getByRole('navigation', { name: 'Más modos y herramientas' });
   await tools.getByRole('button', { name: 'Puzzles clásicos', exact: true }).click();
 
-  await expect(page.locator('.puzzle-screen')).toBeVisible();
-  const tabs = page.locator('.puzzle-source-picker button');
+  const puzzleScreen = page.locator('.puzzle-screen');
+  await expect(puzzleScreen).toBeVisible();
+  const sourcePicker = puzzleScreen.locator('.puzzle-source-picker');
+  const sourceSummary = sourcePicker.locator('> summary');
+  await expect(sourceSummary).toBeVisible();
+  await sourceSummary.click();
+  const tabs = sourcePicker.getByRole('group', { name: 'Tipo de puzzle' }).getByRole('button');
   await expect(tabs).toHaveCount(3);
 
-  for (const width of [360, 390, 430]) {
+  for (const [index, width] of [360, 390, 430].entries()) {
     await page.setViewportSize({ width, height: 844 });
 
     const tabMetrics = await tabs.evaluateAll((nodes) => nodes.map((node) => {
@@ -278,7 +283,8 @@ test('Puzzles móvil · selector compacto y acciones táctiles dejan respirar al
     expect(tabMetrics.every((metric) => metric.height >= 44)).toBe(true);
     expect(Math.max(...tabMetrics.map((metric) => metric.top)) - Math.min(...tabMetrics.map((metric) => metric.top))).toBeLessThanOrEqual(2);
 
-    const pickerBox = await page.locator('.puzzle-source-picker').boundingBox();
+    await sourceSummary.click();
+    const pickerBox = await sourcePicker.boundingBox();
     expect(pickerBox).not.toBeNull();
     expect(pickerBox.height).toBeLessThanOrEqual(64);
 
@@ -298,6 +304,7 @@ test('Puzzles móvil · selector compacto y acciones táctiles dejan respirar al
     }
 
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+    if (index < 2) await sourceSummary.click();
   }
 });
 
