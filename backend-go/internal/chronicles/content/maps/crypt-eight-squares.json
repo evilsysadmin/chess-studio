@@ -1,6 +1,6 @@
 {
   "id": "crypt-eight-squares",
-  "version": 10,
+  "version": 11,
   "proceduralDifficulty": 2,
   "progressionKey": "crypt-01",
   "title": "Cripta de las Ocho Casillas",
@@ -451,5 +451,24 @@
     "body": "Cuatro piezas entran. Matthias insiste en llamarlo expedición y no una serie de decisiones evitables.",
     "sigil": "I"
   },
-  "introMessage": "La Cripta de las Ocho Casillas. Huele a humedad y a una decisión cuestionable."
+  "introMessage": "La Cripta de las Ocho Casillas. Huele a humedad y a una decisión cuestionable.",
+  "materials": {
+    "lightingProfile": "crypt-dark",
+    "wallLegend": {
+      "1": "D01",
+      "2": "D02",
+      "3": "D03",
+      "4": "D04",
+      "5": "D05"
+    },
+    "wallGrid": [
+      "1234512",
+      "1.....3",
+      "2.345.4",
+      "3...2.5",
+      "4.1.3.1",
+      "5.....2",
+      "2345123"
+    ]
+  }
 }
