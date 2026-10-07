@@ -48,7 +48,6 @@ const STATIC_INSTANCE_GEOMETRY_TYPES = new Set([
   'TorusGeometry',
 ]);
 
-const NOOP_RENDER_HOOK = () => {};
 
 function belongsToChessPiece(object) {
   let current = object;
@@ -57,12 +56,6 @@ function belongsToChessPiece(object) {
     current = current.parent;
   }
   return false;
-}
-
-function sceneRoot(object) {
-  let current = object;
-  while (current?.parent) current = current.parent;
-  return current;
 }
 
 function geometrySignature(geometry) {
@@ -171,76 +164,6 @@ export function batchWarRoomStaticDecor(root) {
   return applyStaticBatches(root, buckets);
 }
 
-function matchesLateLegacyPractical(light) {
-  if (!light?.isPointLight || light.name) return false;
-  const distance = Number(light.distance || 0);
-  const y = Number(light.position?.y || 0);
-  const x = Math.abs(Number(light.position?.x || 0));
-
-  const rearSconce = Math.abs(distance - 7.2) < 0.05
-    && Math.abs(y - 4.17) < 0.08
-    && Math.abs(x - 3.18) < 0.08;
-  const bankerLamp = Math.abs(distance - 5.6) < 0.05
-    && Math.abs(y - 2.5) < 0.08;
-  return rearSconce || bankerLamp;
-}
-
-function lightCensus(root) {
-  const census = { total: 0, point: 0, spot: 0, directional: 0, hemisphere: 0 };
-  root?.traverse?.((object) => {
-    if (!object?.isLight) return;
-    census.total += 1;
-    if (object.isPointLight) census.point += 1;
-    else if (object.isSpotLight) census.spot += 1;
-    else if (object.isDirectionalLight) census.directional += 1;
-    else if (object.isHemisphereLight) census.hemisphere += 1;
-  });
-  return census;
-}
-
-export function retireWarRoomLatePracticalLights(root) {
-  const premium = root?.name === 'premium-war-room-layer'
-    ? root
-    : root?.getObjectByName?.('premium-war-room-layer');
-  if (!premium) return 0;
-
-  const retired = premium.children.filter(matchesLateLegacyPractical);
-  for (const light of retired) {
-    light.visible = false;
-    light.userData ||= {};
-    light.userData.warRoomPerformanceLight = 'late-practical-emissive-owned-retired';
-    premium.remove(light);
-  }
-
-  premium.userData ||= {};
-  premium.userData.warRoomLatePracticalLightsRetired = retired.length;
-  premium.userData.warRoomLatePracticalLightBudget = 'rear-sconces-banker-v1';
-  premium.userData.warRoomFinalLightCensus = lightCensus(premium);
-  return retired.length;
-}
-
-function armLatePracticalLightRetirement(root) {
-  if (!root || root.userData?.warRoomLatePracticalLightRetirementArmed) return 0;
-  const driver = root.getObjectByName?.('war-room-castle-floor-slab')
-    || root.getObjectByName?.('war-room-castle-wall-left');
-  if (!driver) return 0;
-
-  const previous = driver.onAfterRender;
-  let completed = false;
-  driver.onAfterRender = (...args) => {
-    previous?.(...args);
-    if (completed) return;
-    completed = true;
-    const liveRoot = sceneRoot(driver) || root;
-    retireWarRoomLatePracticalLights(liveRoot);
-    driver.userData.warRoomLatePracticalLightRetirementCompleted = true;
-    driver.onAfterRender = previous || NOOP_RENDER_HOOK;
-  };
-  driver.userData.warRoomLatePracticalLightRetirement = 'first-frame-v1';
-  root.userData.warRoomLatePracticalLightRetirementArmed = true;
-  return 1;
-}
-
 export function applyWarRoomPerformanceBudget(root, { coarsePointer = false } = {}) {
   const stats = {
     pointLightsKept: 0,
@@ -290,12 +213,11 @@ export function applyWarRoomPerformanceBudget(root, { coarsePointer = false } = 
   applyStaticBatches(root, buckets);
   for (const light of retiredLights) light.parent?.remove(light);
   for (const target of retiredTargets) target.parent?.remove(target);
-  armLatePracticalLightRetirement(root);
 
   root.userData ||= {};
   root.userData.warRoomPerformanceBudget = coarsePointer
     ? 'mobile-hard-cut-v1-static-shadow-retirement'
-    : 'desktop-hard-cut-v4-late-practical-retirement';
+    : 'desktop-hard-cut-v5-source-retirement';
   root.userData.warRoomPerformanceTraversal = 'single-pass-v1';
   root.userData.warRoomPointLightsKept = stats.pointLightsKept;
   root.userData.warRoomPointLightsCulled = stats.pointLightsCulled;

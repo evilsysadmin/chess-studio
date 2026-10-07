@@ -81,19 +81,13 @@ describe('PremiumWarRoomScene', () => {
     expect(desktop.getObjectByName('war-room-fire-bounce-light')).toBeInstanceOf(THREE.PointLight);
     expect(sceneStats(desktop).lights).toBe(7);
 
-    // The old retirement pass remains as a safety net for future legacy lights,
-    // but in the canonical desktop scene there is now nothing left to bury.
-    driver.onAfterRender();
+    // Source ownership is now authoritative: there is no first-frame cleanup
+    // pass, no late-light census and no legacy retirement metadata to maintain.
     const finalStats = sceneStats(desktop);
-    expect(desktop.userData.warRoomLatePracticalLightsRetired).toBe(0);
-    expect(desktop.userData.warRoomLatePracticalLightBudget).toBe('rear-sconces-banker-v1');
-    expect(desktop.userData.warRoomFinalLightCensus).toEqual({
-      total: 7,
-      point: 6,
-      spot: 1,
-      directional: 0,
-      hemisphere: 0,
-    });
+    expect(desktop.userData.warRoomLatePracticalLightsRetired).toBeUndefined();
+    expect(desktop.userData.warRoomLatePracticalLightBudget).toBeUndefined();
+    expect(desktop.userData.warRoomFinalLightCensus).toBeUndefined();
+    expect(desktop.userData.warRoomLatePracticalLightRetirementArmed).toBeUndefined();
     expect(finalStats.lights).toBe(7);
     expect(finalStats.pointLights).toBe(6);
     expect(finalStats.spotLights).toBe(1);
