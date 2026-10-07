@@ -217,9 +217,18 @@ export function chroniclesPartyAttackStats(state, memberId) {
   const member = partyMember(state, memberId);
   if (!member) return { damage: 0, reach: 0 };
   const modifiers = state?.rpgModifiers?.[memberId] || {};
+  const creator = member.characterBuild?.creatorModifiers || {};
+  const persistentDamageBonus = Math.max(
+    0,
+    Number(modifiers.attackDamageBonus || 0) - Number(creator.attackDamageBonus || 0),
+  );
+  const persistentReachBonus = Math.max(
+    0,
+    Number(modifiers.reachBonus || 0) - Number(creator.reachBonus || 0),
+  );
   return {
-    damage: Math.max(0, Number(member.damage || 0) + Number(modifiers.attackDamageBonus || 0)),
-    reach: Math.max(1, Number(member.reach || 1) + Number(modifiers.reachBonus || 0)),
+    damage: Math.max(0, Number(member.damage || 0) + persistentDamageBonus),
+    reach: Math.max(1, Number(member.reach || 1) + persistentReachBonus),
   };
 }
 
