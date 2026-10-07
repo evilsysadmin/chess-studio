@@ -228,6 +228,20 @@
   padding: 0 .72rem;
 }
 
+.combat-battle-screen .combat-warroom-exit {
+  min-width: 84px;
+  padding: 0 .78rem;
+  border-color: rgba(220, 187, 123, .32);
+  color: rgba(244, 232, 206, .96);
+  background: linear-gradient(180deg, rgba(19, 24, 31, .92), rgba(7, 11, 16, .88));
+}
+
+.combat-battle-screen .combat-warroom-exit:hover,
+.combat-battle-screen .combat-warroom-exit:focus-visible {
+  border-color: rgba(224, 194, 132, .56);
+  background: linear-gradient(180deg, rgba(28, 34, 42, .95), rgba(9, 13, 18, .92));
+}
+
 .combat-battle-screen .combat-warroom-action-menu {
   position: relative;
 }
