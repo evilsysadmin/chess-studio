@@ -1422,23 +1422,17 @@ def verify_outputs(target: Path) -> None:
         if actual != content:
             expected_lines = content.splitlines()
             actual_lines = actual.splitlines()
-            first_diff = next(
-                (
-                    index
-                    for index, (expected_line, actual_line) in enumerate(
-                        zip(expected_lines, actual_lines),
-                        start=1,
-                    )
-                    if expected_line != actual_line
-                ),
-                min(len(expected_lines), len(actual_lines)) + 1,
-            )
-            expected_line = expected_lines[first_diff - 1] if first_diff <= len(expected_lines) else "<EOF>"
-            actual_line = actual_lines[first_diff - 1] if first_diff <= len(actual_lines) else "<EOF>"
-            errors.append(
-                f"drift {path} line {first_diff}: "
-                f"expected={expected_line!r} actual={actual_line!r}"
-            )
+            max_lines = max(len(expected_lines), len(actual_lines))
+            for index in range(max_lines):
+                expected_line = expected_lines[index] if index < len(expected_lines) else "<EOF>"
+                actual_line = actual_lines[index] if index < len(actual_lines) else "<EOF>"
+                if expected_line == actual_line:
+                    continue
+                line_number = index + 1
+                errors.append(f"drift-file::{path}")
+                errors.append(f"drift-line::{line_number}")
+                errors.append(f"drift-expected::{expected_line}")
+                errors.append(f"drift-actual::{actual_line}")
     if errors:
         raise SystemExit("\n".join(errors))
     print(
