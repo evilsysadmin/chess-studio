@@ -11,6 +11,7 @@ import {
   chroniclesXpToNextLevel,
 } from '../chroniclesOfMatthiasProgression.js';
 import { chroniclesPartyRelic } from '../chroniclesOfMatthiasRelics.js';
+import { chroniclesPartyAttackStats } from '../chroniclesOfMatthias.js';
 import { chroniclesTacticsEffectiveProfile } from '../chroniclesOfMatthiasTactics.js';
 import { chroniclesPartyPortraitUrl } from '../chronicles/chroniclesPartyPortraitAssets.js';
 
@@ -74,8 +75,14 @@ export default function ChroniclesCharacterSheet({
   const attributes = chroniclesAllowedAttributes(member.id);
   const skills = chroniclesSkillsForMember(member.id);
   const modifiers = state.rpgModifiers?.[member.id] || {};
-  const reach = Number(member.reach ?? profile.reach ?? 1) + Number(modifiers.reachBonus || 0);
-  const damage = Number(member.damage ?? profile.damage ?? 1) + Number(modifiers.attackDamageBonus || 0);
+  const firstPersonStats = chroniclesPartyAttackStats(state, member.id);
+  const reach = tacticsMode
+    ? Number(profile.reach || 1) + Number(modifiers.reachBonus || 0)
+    : firstPersonStats.reach;
+  const damage = tacticsMode
+    ? Number(profile.damage || 1) + Number(modifiers.attackDamageBonus || 0)
+    : firstPersonStats.damage;
+  const effectiveAgility = Number(member.agility || 0) + Number(modifiers.initiativeBonus || 0);
   const relic = relicDetails(state, member.id);
   const inventory = chroniclesInventoryEntries(state);
 
@@ -128,7 +135,7 @@ export default function ChroniclesCharacterSheet({
           <div><span>HP</span><b>{member.hp}/{member.maxHp}</b></div>
           {tacticsMode
             ? <div><span>RECURSO</span><b>{ability.charges}/{ability.max}</b></div>
-            : <div><span>AGILIDAD</span><b>{Number(progress.attributes?.agility || 0)}</b></div>}
+            : <div><span>AGILIDAD</span><b>{effectiveAgility}</b></div>}
           <div><span>DAÑO</span><b>{damage}</b></div>
           <div><span>ALCANCE</span><b>{reach}</b></div>
         </div>
