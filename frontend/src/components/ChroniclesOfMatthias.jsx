@@ -463,8 +463,11 @@ export default function ChroniclesOfMatthias({ onExit }) {
     clearTouchHold();
     setAutomapOpen(false);
     setMenuOpen(false);
-    selectedMemberIdRef.current = memberId;
-    setSelectedMemberId(memberId);
+    const actor = chroniclesCurrentInitiativeActor(stateRef.current?.initiative);
+    if (actor?.kind !== 'party' || actor.id === memberId) {
+      selectedMemberIdRef.current = memberId;
+      setSelectedMemberId(memberId);
+    }
     setSheetMemberId(memberId);
   }, [clearTouchHold]);
 
