@@ -431,12 +431,18 @@ test('Chronicles · initiative rail visual · android-390x844', async ({ browser
     await expect(rail.locator('li').first()).toHaveAttribute('aria-current', 'step');
     const activeActor = await rail.getAttribute('data-active-actor');
     expect(activeActor).toBeTruthy();
+    const tactical = page.locator('.chronicles-target-margin');
+    await expect(tactical).toBeVisible();
     const railBox = await rail.boundingBox();
     const minimapBox = await minimap.boundingBox();
+    const tacticalBox = await tactical.boundingBox();
     expect(railBox).not.toBeNull();
     expect(minimapBox).not.toBeNull();
+    expect(tacticalBox).not.toBeNull();
     const overlaps = !(railBox.x + railBox.width <= minimapBox.x || minimapBox.x + minimapBox.width <= railBox.x || railBox.y + railBox.height <= minimapBox.y || minimapBox.y + minimapBox.height <= railBox.y);
     expect(overlaps).toBe(false);
+    const tacticalOverlap = !(railBox.x + railBox.width <= tacticalBox.x || tacticalBox.x + tacticalBox.width <= railBox.x || railBox.y + railBox.height <= tacticalBox.y || tacticalBox.y + tacticalBox.height <= railBox.y);
+    expect(tacticalOverlap, 'initiative rail must not cover the tactical target margin').toBe(false);
     await captureElement(page, gameRoot, ARTIFACT_DIR + '/chronicles-initiative-android-390x844.png');
   } finally {
     await context.close();
