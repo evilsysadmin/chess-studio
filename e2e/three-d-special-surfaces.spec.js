@@ -10,64 +10,6 @@ import {
 
 const READY = 45_000;
 
-function normalized(vector) {
-  const length = Math.hypot(...vector);
-  return vector.map((value) => value / length);
-}
-
-function cross(a, b) {
-  return [
-    a[1] * b[2] - a[2] * b[1],
-    a[2] * b[0] - a[0] * b[2],
-    a[0] * b[1] - a[1] * b[0],
-  ];
-}
-
-function dot(a, b) {
-  return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-}
-
-function pointInside(rect, point) {
-  if (!rect) return false;
-  return point.x >= rect.x
-    && point.x <= rect.x + rect.width
-    && point.y >= rect.y
-    && point.y <= rect.y + rect.height;
-}
-
-// Deployment hover still needs one pointer coordinate. The gameplay assertions
-// below use Board3D's keyboard contract instead of guessing pixels.
-function projectSquare(rect, square, worldY = 0.12) {
-  const aspect = Math.max(0.35, rect.width / Math.max(1, rect.height));
-  const profile = aspect >= 1.42
-    ? { halfSpan: 5.38, padding: 1.07, minDistance: 13.2, maxDistance: 22.6, targetY: 1.08, targetZ: -0.16, cameraY: 7.35, cameraZ: 10.6 }
-    : { halfSpan: 5.78, padding: 1.13, minDistance: 14.5, maxDistance: 25.6, targetY: 0.92, targetZ: -0.08, cameraY: 8.2, cameraZ: 10.72 };
-  const verticalFov = 40 * Math.PI / 180;
-  const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * aspect);
-  const limitingFov = Math.min(verticalFov, horizontalFov);
-  const distance = Math.max(
-    profile.minDistance,
-    Math.min(profile.maxDistance, (profile.halfSpan / Math.tan(limitingFov / 2)) * profile.padding),
-  );
-  const target = [0, profile.targetY, -profile.targetZ];
-  const direction = normalized([0, profile.cameraY, profile.cameraZ]);
-  const camera = target.map((value, index) => value + direction[index] * distance);
-  const fileIndex = square.charCodeAt(0) - 97;
-  const rank = Number(square[1]);
-  const point = [fileIndex - 3.5, worldY, 4.5 - rank];
-  const forward = normalized(target.map((value, index) => value - camera[index]));
-  const right = normalized(cross(forward, [0, 1, 0]));
-  const up = cross(right, forward);
-  const relative = point.map((value, index) => value - camera[index]);
-  const depth = dot(relative, forward);
-  const ndcX = dot(relative, right) / (depth * Math.tan(verticalFov / 2) * aspect);
-  const ndcY = dot(relative, up) / (depth * Math.tan(verticalFov / 2));
-  return {
-    x: rect.x + ((ndcX + 1) / 2) * rect.width,
-    y: rect.y + ((1 - ndcY) / 2) * rect.height,
-  };
-}
-
 async function openHeavy3DSurface(button, readySurface) {
   // Hosted software-WebGL can make the React commit behind these transitions
   // expensive enough that Playwright's user-action click waits on the mount and
