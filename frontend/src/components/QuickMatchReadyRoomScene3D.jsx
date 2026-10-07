@@ -366,6 +366,71 @@ function addWindow(root, stone, brass, night, moon, glow) {
   root.add(windowGroup);
 }
 
+function addHeraldicTrophy(root, x, leather, brass, steel) {
+  const trophy = new THREE.Group();
+  trophy.name = 'quick-match-ready-heraldry';
+
+  for (const direction of [-1, 1]) {
+    const blade = box(
+      trophy,
+      [.105, 1.66, .055],
+      steel,
+      [direction * .24, .03, .04],
+      'wall-sword-blade',
+    );
+    blade.rotation.z = direction * .61;
+    const guard = box(
+      trophy,
+      [.46, .075, .085],
+      brass,
+      [direction * .62, -.58, .08],
+      'wall-sword-guard',
+    );
+    guard.rotation.z = direction * .61;
+    sphere(
+      trophy,
+      .085,
+      brass,
+      [direction * .70, -.76, .09],
+      'wall-sword-pommel',
+      16,
+      10,
+    );
+  }
+
+  const shieldShape = new THREE.Shape();
+  shieldShape.moveTo(0, .70);
+  shieldShape.lineTo(.58, .43);
+  shieldShape.lineTo(.49, -.28);
+  shieldShape.quadraticCurveTo(.32, -.73, 0, -.96);
+  shieldShape.quadraticCurveTo(-.32, -.73, -.49, -.28);
+  shieldShape.lineTo(-.58, .43);
+  shieldShape.closePath();
+
+  const shield = new THREE.Mesh(
+    new THREE.ExtrudeGeometry(shieldShape, {
+      depth: .09,
+      bevelEnabled: true,
+      bevelSegments: 2,
+      bevelSize: .035,
+      bevelThickness: .025,
+    }),
+    leather,
+  );
+  shield.position.z = .13;
+  shield.castShadow = true;
+  shield.receiveShadow = true;
+  shield.name = 'wall-heater-shield';
+  trophy.add(shield);
+
+  box(trophy, [.095, 1.18, .055], brass, [0, -.02, .27], 'wall-shield-cross-vertical');
+  box(trophy, [.82, .095, .055], brass, [0, .20, .27], 'wall-shield-cross-horizontal');
+
+  trophy.position.set(x, 1.88, -5.90);
+  trophy.scale.setScalar(.82);
+  root.add(trophy);
+}
+
 function addConsole(root, x, wood, brass, leather) {
   const console = new THREE.Group();
   console.name = 'quick-match-ready-console';
@@ -383,15 +448,16 @@ function buildRoom({ lite = false } = {}) {
   const root = new THREE.Group();
   root.name = 'quick-match-ready-room';
 
-  const stone = mat(0x3d3935, .02, .92);
-  const stoneEdge = mat(0x6c655d, .03, .78);
-  const stoneHighlight = mat(0x8a8174, .04, .70);
+  const stone = mat(0x46403b, .02, .90);
+  const stoneEdge = mat(0x736a60, .03, .76);
+  const stoneHighlight = mat(0x948878, .04, .68);
   const wood = mat(0x6a3e24, .08, .54);
   const woodDark = mat(0x2a1710, .05, .72);
   const brass = mat(0xb68b43, .82, .24);
   const leather = mat(0x4a201d, .05, .70);
+  const steel = mat(0x8d9396, .74, .27);
   const ivory = mat(0xd8cfba, .06, .42);
-  const ebony = mat(0x252526, .30, .31);
+  const ebony = mat(0x2d2b2b, .30, .30);
   const lightSquare = mat(0xcfc7b3, .04, .66);
   const darkSquare = mat(0x4a4843, .05, .58);
   const night = new THREE.MeshBasicMaterial({ color: 0x0b3156 });
@@ -449,6 +515,8 @@ function buildRoom({ lite = false } = {}) {
   addWindow(root, stoneEdge, brass, night, moon, moonHalo);
   addSconce(root, -5.55, brass, sconceGlow, warmGlass);
   addSconce(root, 5.55, brass, sconceGlow, warmGlass);
+  addHeraldicTrophy(root, -5.95, leather, brass, steel);
+  addHeraldicTrophy(root, 5.95, leather, brass, steel);
   addConsole(root, -6.15, woodDark, brass, leather);
   addConsole(root, 6.15, woodDark, brass, leather);
 
@@ -477,16 +545,13 @@ function buildRoom({ lite = false } = {}) {
   rug.name = 'quick-match-ready-rug';
   root.add(rug);
 
-  const rugBorder = new THREE.Mesh(
-    new THREE.RingGeometry(3.55, 3.78, 4),
-    mat(0x9b6e2f, .38, .64),
-  );
-  rugBorder.rotation.x = -Math.PI / 2;
-  rugBorder.rotation.z = Math.PI / 4;
-  rugBorder.scale.set(1.18, 1, 1.58);
-  rugBorder.position.set(0, -.025, -1.28);
-  rugBorder.name = 'quick-match-ready-rug-border';
-  root.add(rugBorder);
+  const rugTrim = mat(0x9b6e2f, .38, .64);
+  for (const z of [-5.02, 2.46]) {
+    box(root, [10.62, .025, .055], rugTrim, [0, -.02, z], 'quick-match-ready-rug-border');
+  }
+  for (const x of [-5.28, 5.28]) {
+    box(root, [.055, .025, 7.44], rugTrim, [x, -.02, -1.28], 'quick-match-ready-rug-border');
+  }
 
   return root;
 }
