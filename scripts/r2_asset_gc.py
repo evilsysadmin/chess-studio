@@ -519,6 +519,8 @@ def self_test() -> None:
         "protectedPrefixes": [],
     }
     load_policy({"retention": policy})
+    load_policy(core.load_config(core.DEFAULT_CONFIG))
+    assert sha_token("scene/runtime/scene-aaaaaaaaaaaaaaaa.glb") == "aaaaaaaaaaaaaaaa"
     rows = [
         row("scene/runtime/scene-aaaaaaaaaaaaaaaa.glb", 100, 2),
         row("scene/runtime/scene-bbbbbbbbbbbbbbbb.glb", 100, 30),
