@@ -60,6 +60,44 @@
   box-shadow: 0 12px 34px rgba(0, 0, 0, .3);
 }
 
+.combat-barracks-memorial-entry {
+  position: fixed;
+  z-index: 9;
+  top: 1.1rem;
+  right: max(4.7rem, calc((100vw - min(1320px, calc(100vw - 2rem))) / 2 + 4.6rem));
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  padding: .42rem .62rem;
+  border: 1px solid rgba(205, 169, 91, .25);
+  border-radius: 999px;
+  color: rgba(235, 224, 201, .82);
+  background: rgba(7, 10, 14, .88);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, .28);
+  backdrop-filter: blur(10px);
+  font: 700 .59rem/1 var(--font-mono);
+  letter-spacing: .04em;
+}
+
+.combat-barracks-memorial-entry b {
+  display: grid;
+  place-items: center;
+  min-width: 1.45rem;
+  min-height: 1.45rem;
+  border: 1px solid rgba(205, 169, 91, .2);
+  border-radius: 50%;
+  color: #d1b878;
+  background: rgba(0,0,0,.18);
+}
+
+.combat-barracks-memorial-entry:hover,
+.combat-barracks-memorial-entry:focus-visible {
+  border-color: rgba(215, 181, 108, .48);
+  color: var(--parchment);
+  outline: none;
+}
+
 .combat-barracks-shell .army-roster-panel {
   max-width: none;
 }
@@ -364,6 +402,17 @@
     right: .5rem;
   }
 
+  .combat-barracks-memorial-entry {
+    top: .55rem;
+    right: 3.65rem;
+    min-width: 44px;
+    padding: .42rem .5rem;
+  }
+
+  .combat-barracks-memorial-entry > span {
+    display: none;
+  }
+
   .combat-barracks-shell .army-roster-heading {
     position: absolute;
     top: .48rem;
@@ -466,6 +515,10 @@
   .combat-barracks-shell.army-card.army-roster-card,
   .combat-barracks-shell .army-roster-heading,
   .combat-barracks-screen .army-unit-detail-backdrop {
+    backdrop-filter: none;
+  }
+
+  .combat-barracks-memorial-entry {
     backdrop-filter: none;
   }
 
