@@ -612,9 +612,8 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
   }
 
   if (!run.inRun && campaign.active && campaign.phase === 'map' && campaignMapState) {
-    const rosterDeployment = deploymentSummary(roster);
     return <CombatCampaignMissionRoom
-      campaign={campaign} map={campaignMapState} availableNodes={campaignAvailable} roster={roster} armySummary={rosterDeployment}
+      campaign={campaign} map={campaignMapState} availableNodes={campaignAvailable} roster={roster} armySummary={deploymentSummary(roster)}
       onSelect={handleCampaignNodeSelect} onExit={onExit} onOpenMarket={() => setShowMarket(true)} onRestart={handleRestartCampaign}
       onRetire={() => finishCampaign('retired')} onHelp={() => setShowCampaignTutorial(true)}
     >
@@ -624,9 +623,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
   }
 
   if (!run.inRun && campaign.active) {
-    const selected = selectedCampaignNode;
-    const rewardOptions = campaignRewardOptions(campaign);
-    const eventOptions = campaignEventOptions(campaign);
+    const selected = selectedCampaignNode, rewardOptions = campaignRewardOptions(campaign), eventOptions = campaignEventOptions(campaign);
     const rosterDeployment = deploymentSummary(roster);
     return (
       <div className="menu combat-workspace">
