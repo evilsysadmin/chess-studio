@@ -64,6 +64,21 @@ func _initialize() -> void:
 
 	mobile_controls.debug_force_controls_visible(false)
 	await process_frame
+	# Keep the shot-review tableau deterministic. The dribble review leaves the
+	# selected attacker near midfield; without isolating opponents here, a real
+	# AI tackle may legitimately cancel the charged shot during _save_capture's
+	# process frame and make visual evidence timing-dependent.
+	for opponent in match_node.teams[1]:
+		opponent.global_position = Vector2(
+			ChessFootballMath.PITCH_RECT.end.x - 180.0,
+			ChessFootballMath.PITCH_RECT.position.y + 150.0 + opponent.squad_index * 190.0,
+		)
+		opponent.velocity = Vector2.ZERO
+	match_node.controlled.global_position = Vector2(
+		ChessFootballMath.PITCH_RECT.get_center().x - 420.0,
+		ChessFootballMath.PITCH_RECT.get_center().y,
+	)
+	match_node.controlled.velocity = Vector2.ZERO
 	match_node.ball.attach_to(match_node.controlled)
 	match_node.debug_force_shot_charge(0.68)
 	await process_frame
