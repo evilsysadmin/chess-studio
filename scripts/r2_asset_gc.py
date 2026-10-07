@@ -44,6 +44,9 @@ PIN_SUFFIXES = {
 PIN_ROOTS = (
     ROOT / "frontend",
     ROOT / "games",
+    ROOT / "e2e",
+    ROOT / "scripts",
+    ROOT / ".github",
     ROOT / "backend-python",
     ROOT / "backend-go",
     ROOT / "workers",
