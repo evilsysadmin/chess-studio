@@ -154,7 +154,7 @@ test('Partida rápida · un 503 al restaurar conserva la ruta y permite reintent
   await login(page);
 
   await buttonWithVisibleText(page, 'Partida rápida').click();
-  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click({ noWaitAfter: true });
   await expect(gameTurn(page)).toBeVisible();
   // Bajo carga CI el tablero 3D puede pintar antes de que el efecto de
   // continuidad haya terminado. Sincronizamos con la señal de producto que
