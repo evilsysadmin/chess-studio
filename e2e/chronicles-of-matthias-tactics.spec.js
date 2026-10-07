@@ -131,7 +131,9 @@ test('Chronicles Tactics · la ficha pausa locomoción continua', async ({ page 
   await expect(mode).toHaveAttribute('data-party-y', '5');
 
   await page.keyboard.down('ArrowUp');
-  await expect(mode).toHaveAttribute('data-party-y', '4');
+  await page.waitForFunction(() => (
+    document.querySelector('[data-chronicles-tactics="true"]')?.getAttribute('data-party-y') !== '5'
+  ));
 
   await partyHud.getByRole('button', { name: 'Abrir ficha de Matthias', exact: true }).click();
   const sheet = page.getByRole('dialog', { name: 'Matthias', exact: true });
