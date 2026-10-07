@@ -3,6 +3,18 @@ import { mkdir } from 'node:fs/promises';
 import { buttonWithHeading, login, mockApi } from './helpers.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
+const INSIGHTS_DOSSIER_HISTORY = Array.from({ length: 4 }, (_, index) => ({
+  id: `visual-insights-dossier-${index}`,
+  sourceGameId: `visual-insights-dossier-${index}`,
+  date: new Date(Date.UTC(2026, 8, 20 + index)).toISOString(),
+  outcome: index % 2 ? 'loss' : 'win',
+  mode: 'casual',
+  difficulty: 10,
+  humanColor: 'w',
+  moves: ['e4', 'e5', 'Nf3', 'Nc6'],
+  captured: [],
+}));
+
 const TRAINING_SCOPE = new Set(
   (process.env.APP_VISUAL_TRAINING_SCOPE || 'all')
     .split(',')
@@ -175,12 +187,13 @@ async function capture(page, label) {
   await captureAt(page, label);
 }
 
-async function prepare(page) {
+async function prepare(page, { profileSeed = {} } = {}) {
   await mkdir(ARTIFACT_DIR, { recursive: true });
   await mockApi(page, {
     profileSeed: {
       'matthias.onboarded': '2',
       'chess-study-home-guide-dismissed-v1': '1',
+      ...profileSeed,
     },
   });
   await login(page);
@@ -534,4 +547,26 @@ scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page })
   await expect(career.locator('.career-rhythm-grid')).toBeVisible();
   await captureAt(page, 'career-rhythm', { width: 1440, height: 900, variant: 'desktop' });
   await captureAt(page, 'career-rhythm', { width: 390, height: 844, variant: 'mobile' });
+});
+
+
+scopedTest('progress', 'Entrenar · Expediente de Matthias', async ({ page }) => {
+  test.setTimeout(45_000);
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await prepare(page, {
+    profileSeed: {
+      'chess-study-game-history': JSON.stringify(INSIGHTS_DOSSIER_HISTORY),
+      'chess-study-reduced-motion': '0',
+    },
+  });
+
+  await page.locator('.illustrated-home__matthias').click();
+  await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Expediente', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Expediente', exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Consulta diaria con Matthias' })).toBeVisible();
+  await expect(page.locator('[data-insights-matthias-motion="true"]')).toBeVisible();
+
+  await captureAt(page, 'insights-dossier', { width: 1440, height: 900, variant: 'desktop' });
+  await captureAt(page, 'insights-dossier', { width: 390, height: 844, variant: 'mobile' });
 });
