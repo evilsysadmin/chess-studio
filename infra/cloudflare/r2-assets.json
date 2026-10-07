@@ -40,6 +40,20 @@
       "deprecated/",
       "_deprecated/"
     ],
-    "protectedPrefixes": []
+    "protectedPrefixes": [],
+    "releaseBundles": [
+      {
+        "pointerKey": "pawn-slug-godot/current.json",
+        "releasePrefix": "pawn-slug-godot/releases",
+        "keepPreviousReleases": 1,
+        "minimumAgeDays": 2
+      },
+      {
+        "pointerKey": "chess-football-godot/current.json",
+        "releasePrefix": "chess-football-godot/releases",
+        "keepPreviousReleases": 1,
+        "minimumAgeDays": 2
+      }
+    ]
   }
 }
