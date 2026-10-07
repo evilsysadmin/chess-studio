@@ -10,7 +10,7 @@ staging_key="chess-studio/staging/terraform.tfstate"
 die() { echo "OCI staging lifecycle: FAIL · $*" >&2; exit 1; }
 
 valid_operation() {
-  case "${1:-}" in probe|bootstrap|plan|apply|destroy) return 0 ;; *) return 1 ;; esac
+  case "${1:-}" in probe|bootstrap|plan|apply|backup-storage|destroy) return 0 ;; *) return 1 ;; esac
 }
 
 valid_sha() { [[ "${1:-}" =~ ^[0-9a-f]{40}$ ]]; }
@@ -286,8 +286,40 @@ run_staging() {
   esac
 }
 
+backup_storage_targets() {
+  printf '%s\n' \
+    '-target=oci_objectstorage_bucket.production_backups' \
+    '-target=oci_identity_policy.staging_runtime_config'
+}
+
+run_backup_storage() {
+  local namespace="$1" compartment="$2" plan rc
+  local -a targets
+  validate_staging_overrides
+  prepare_staging "$namespace" "$compartment"
+  mapfile -t targets < <(backup_storage_targets)
+  [[ "${#targets[@]}" -eq 2 ]] || die "backup-storage target contract is incomplete"
+  plan="${RUNNER_TEMP:-/tmp}/oci-backup-storage.tfplan"
+
+  # This rescue path intentionally reconciles only the dedicated backup bucket
+  # and the IAM policy that grants the A1 object access. Terraform may include
+  # their declared dependency closure, but no compute/network/LB resource is a
+  # target. Keep the same exact-main anti-stale guard as a full infrastructure apply.
+  require_current_main
+  terraform -chdir="$staging" plan -no-color "${targets[@]}" -out="$plan"
+  require_current_main
+  terraform -chdir="$staging" apply -no-color -auto-approve "$plan"
+
+  set +e
+  terraform -chdir="$staging" plan -no-color "${targets[@]}" -detailed-exitcode >/dev/null
+  rc=$?
+  set -e
+  [[ "$rc" -eq 0 ]] || die "backup-storage resources are not zero-drift after apply (terraform rc=$rc)"
+  echo "OCI backup storage reconciled and zero-drift verified"
+}
+
 self_test() {
-  for op in probe bootstrap plan apply destroy; do valid_operation "$op" || exit 1; done
+  for op in probe bootstrap plan apply backup-storage destroy; do valid_operation "$op" || exit 1; done
   ! valid_operation explode || exit 1
   valid_sha 0123456789abcdef0123456789abcdef01234567 || exit 1
   ! valid_sha main || exit 1
@@ -297,6 +329,11 @@ self_test() {
     grep -Fq "$marker" <<<"$text" || exit 1
   done
   ! grep -Eq 'private_key|fingerprint|user_ocid|tenancy_ocid' <<<"$text" || exit 1
+  local backup_targets
+  backup_targets="$(backup_storage_targets)"
+  grep -Fq 'oci_objectstorage_bucket.production_backups' <<<"$backup_targets" || exit 1
+  grep -Fq 'oci_identity_policy.staging_runtime_config' <<<"$backup_targets" || exit 1
+  ! grep -Eq 'oci_core_|oci_load_balancer_|oci_kms_' <<<"$backup_targets" || exit 1
   echo "OCI staging lifecycle self-test: OK"
 }
 
@@ -306,7 +343,7 @@ if [[ "${1:-}" == "--self-test" ]]; then
 fi
 
 operation="${1:-}"
-valid_operation "$operation" || die "operation must be probe, bootstrap, plan, apply or destroy"
+valid_operation "$operation" || die "operation must be probe, bootstrap, plan, apply, backup-storage or destroy"
 [[ -n "${OCI_REGION:-}" ]] || export OCI_REGION="eu-frankfurt-1"
 [[ -n "${OCI_TFSTATE_BUCKET:-}" ]] || export OCI_TFSTATE_BUCKET="chess-studio-tfstate"
 validate_backend_value "$OCI_REGION"
@@ -328,4 +365,8 @@ fi
 
 connect_bootstrap_remote "$namespace"
 compartment="$(staging_compartment)"
+if [[ "$operation" == "backup-storage" ]]; then
+  run_backup_storage "$namespace" "$compartment"
+  exit 0
+fi
 run_staging "$operation" "$namespace" "$compartment"

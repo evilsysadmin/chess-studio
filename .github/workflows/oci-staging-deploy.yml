@@ -2,6 +2,15 @@ name: OCI staging · infrastructure apply
 
 on:
   workflow_dispatch:
+    inputs:
+      scope:
+        description: Infrastructure scope to reconcile
+        required: true
+        default: full
+        type: choice
+        options:
+          - full
+          - backup-storage
 
 permissions:
   contents: read
@@ -14,7 +23,7 @@ concurrency:
 
 jobs:
   apply:
-    name: OCI staging · apply infrastructure
+    name: OCI staging · apply infrastructure · ${{ inputs.scope }}
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
@@ -37,7 +46,11 @@ jobs:
       - name: Validate OCI credential contract
         run: make -C infra/oci auth
 
+      - name: Validate lifecycle scope contract
+        run: bash scripts/oci_staging_lifecycle.sh --self-test
+
       - name: Validate reserved egress reconciler
+        if: inputs.scope == 'full'
         run: python3 -S scripts/oci_reserved_egress.py --self-test
 
       - uses: hashicorp/setup-terraform@v4
@@ -52,12 +65,18 @@ jobs:
           python-version: '3.13'
 
       - name: Apply exact main infrastructure state
+        if: inputs.scope == 'full'
         run: make -C infra/oci apply
+
+      - name: Reconcile production backup storage only
+        if: inputs.scope == 'backup-storage'
+        run: make -C infra/oci backup-storage
 
       # A newly-created/replaced A1 can take a few minutes to register the
       # Compute Instance Run Command plugin. This belongs to infrastructure
       # convergence, not to every application release.
       - name: Wait for OCI Run Command registration after infrastructure change
+        if: inputs.scope == 'full'
         shell: bash
         run: |
           set -euo pipefail
@@ -81,4 +100,5 @@ jobs:
           done
 
       - name: Attach and verify existing reserved staging egress
+        if: inputs.scope == 'full'
         run: python3 scripts/oci_reserved_egress.py
