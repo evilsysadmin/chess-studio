@@ -130,6 +130,8 @@ def _pose(animation: str, frame: int) -> dict[str, float]:
         "twist": 0.0,
         "head": 0.0,
         "sway": 0.0,
+        "support_bend": 0.0,
+        "strike_fold": 0.0,
     }
     if animation == "idle":
         pose.update(
@@ -177,27 +179,35 @@ def _pose(animation: str, frame: int) -> dict[str, float]:
         follow = math.sin(math.pi * max((t - 0.34) / 0.66, 0.0))
         if animation == "pass":
             pose.update(
-                bob=1.3 * k,
-                lean=3.5 * k,
-                leg_l=-5.0 * k,
-                leg_r=-10.0 * wind + 24.0 * follow,
-                lift_r=5.5 * k,
-                arm_l=-9.0 * k,
-                arm_r=13.0 * k,
-                twist=3.0 * k,
-                head=-1.0 * k,
+                bob=1.0 * k,
+                lean=2.0 * wind + 4.2 * follow,
+                crouch=2.4 * k,
+                leg_l=-4.0 * k,
+                leg_r=-16.0 * wind + 29.0 * follow,
+                lift_r=7.5 * wind + 5.0 * follow,
+                arm_l=-13.0 * wind + 7.0 * follow,
+                arm_r=15.0 * wind - 10.0 * follow,
+                twist=-3.5 * wind + 6.0 * follow,
+                head=-0.5 * wind - 1.3 * follow,
+                sway=-1.8 * wind + 1.2 * follow,
+                support_bend=4.0 * k,
+                strike_fold=5.0 * wind,
             )
         elif animation == "shoot":
             pose.update(
-                bob=2.0 * k,
-                lean=7.2 * k,
-                leg_l=-9.0 * k,
-                leg_r=-17.0 * wind + 39.0 * follow,
-                lift_r=8.5 * k,
-                arm_l=-15.0 * k,
-                arm_r=19.0 * k,
-                twist=4.5 * k,
-                head=-1.7 * k,
+                bob=1.8 * k,
+                lean=3.0 * wind + 10.0 * follow,
+                crouch=4.2 * k,
+                leg_l=-6.0 * k,
+                leg_r=-24.0 * wind + 44.0 * follow,
+                lift_r=11.0 * wind + 8.0 * follow,
+                arm_l=-18.0 * wind + 10.0 * follow,
+                arm_r=22.0 * wind - 15.0 * follow,
+                twist=-5.5 * wind + 9.0 * follow,
+                head=-0.8 * wind - 2.2 * follow,
+                sway=-3.0 * wind + 1.5 * follow,
+                support_bend=6.0 * k,
+                strike_fold=7.0 * wind,
             )
         elif animation == "tackle":
             pose.update(
@@ -303,6 +313,7 @@ def _frame_svg(
     # screen-side leg in front for the whole cycle, which made run/sprint read
     # like a flat puppet even when the stride itself was asymmetric.
     locomotion = animation in ("run", "sprint")
+    ball_action = animation in ("pass", "shoot")
     right_leg_near = p["leg_r"] >= p["leg_l"] if locomotion else True
     legs = [
         (-1.0, p["leg_l"], p["lift_l"], right_leg_near),
@@ -310,8 +321,8 @@ def _frame_svg(
     ]
     legs.sort(key=lambda item: 0 if item[3] else 1)
     for side, stride, lift_amount, far in legs:
-        hip_spread = 5.5 if locomotion else 6.6
-        foot_spread = 5.9 if locomotion else 7.4
+        hip_spread = 5.5 if locomotion else (6.0 if ball_action else 6.6)
+        foot_spread = 5.9 if locomotion else (6.4 if ball_action else 7.4)
         hip_x = cx + side * hip_spread + p["twist"] * (0.13 if far else 0.25)
         foot_x = cx + side * foot_spread + stride
         foot_y = foot - lift_amount
@@ -326,6 +337,12 @@ def _frame_svg(
             - min(abs(stride) * 0.15, 5.0)
             - lift_amount * 0.42
         )
+        if ball_action and side < 0.0:
+            knee_x += p["support_bend"] * 0.72
+            knee_y -= p["support_bend"] * 0.18
+        elif ball_action and side > 0.0:
+            knee_x += p["strike_fold"] * 0.78
+            knee_y -= p["strike_fold"] * 0.52
         opacity = ".76" if far and locomotion else (".84" if far else "1")
         thigh = _limb_path(
             (hip_x, hip_y + 1.0),
@@ -361,11 +378,16 @@ def _frame_svg(
         )
 
         toe = 1.0 if stride >= -3.0 else -1.0
+        if ball_action and side < 0.0:
+            toe = 1.0
+        boot_tilt = 0.0
+        if ball_action and side > 0.0:
+            boot_tilt = max(-3.5, min(4.5, stride * 0.10))
         boot = [
             (foot_x - 4.9, foot_y - 5.8),
             (foot_x + 4.2, foot_y - 5.4),
-            (foot_x + 8.6 * toe, foot_y - 2.1),
-            (foot_x + 7.2 * toe, foot_y + 0.2),
+            (foot_x + 8.6 * toe, foot_y - 2.1 - boot_tilt),
+            (foot_x + 7.2 * toe, foot_y + 0.2 - boot_tilt * 0.60),
             (foot_x - 5.7, foot_y - 0.4),
         ]
         out.append(
@@ -536,8 +558,8 @@ def _frame_svg(
                 f'stroke="{team["torso_dark"]}" stroke-width=".85" opacity=".75"/>'
             )
 
-    # V9 retains the V8 face proportions while locomotion gets the major
-    # upgrade: alternating near/far limbs and stronger counter-rotation.
+    # V10 retains the V8 face proportions and V9 locomotion. This iteration
+    # concentrates on planted support, strike-leg folding and follow-through.
     neck_y = 49.4 - bob + yoff + crouch * 0.45
     out.append(
         f'<path d="M {offset_x + cx - 3.1:.2f} {offset_y + neck_y:.2f} '
@@ -666,7 +688,7 @@ def build_outputs() -> dict[str, str]:
         outputs[filename] = _atlas_svg(team, keeper=True)
         atlas_meta[slug] = {"name": team["name"], "file": filename}
     manifest = {
-        "version": 9,
+        "version": 10,
         "quality_contract": SPRITE_FORGE_CONTRACT["quality_contract"],
         "cell": {"width": CELL_W, "height": CELL_H},
         "columns": COLUMNS,
