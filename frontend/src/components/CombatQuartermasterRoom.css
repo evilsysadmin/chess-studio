@@ -34,7 +34,7 @@ body:has(.combat-quartermaster-screen) .combat-quartermaster-screen {
   height: calc(100dvh - 1.5rem);
   max-height: none;
   margin: .75rem auto;
-  padding: 5rem 1rem 4.3rem;
+  padding: 8rem 1rem 4.3rem;
   overflow: hidden;
   border: 1px solid rgba(214, 183, 113, .23);
   border-radius: 18px;
