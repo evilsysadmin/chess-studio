@@ -156,8 +156,13 @@ test('Partida rápida · un 503 al restaurar conserva la ruta y permite reintent
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
   await expect(gameTurn(page)).toBeVisible();
-  // Igual que el reload normal: recovery sólo se prueba después de que la
-  // sesión durable exista. Ver el tablero por sí solo no acredita persistencia.
+  // Bajo carga CI el tablero 3D puede pintar antes de que el efecto de
+  // continuidad haya terminado. Sincronizamos con la señal de producto que
+  // sólo aparece tras guardar el sobre local y después acreditamos las claves
+  // concretas que necesita el restore.
+  await expect(page.getByRole('status', {
+    name: 'La última posición confirmada está guardada.',
+  })).toBeVisible({ timeout: 20_000 });
   await expectDurableActiveSession(page, 'game');
 
   // Arm the failures only after the game is fully mounted. Supplying GET
