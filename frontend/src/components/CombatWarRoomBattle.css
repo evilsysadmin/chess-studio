@@ -453,3 +453,46 @@
 .combat-battle-screen .game-layout-immersive .board-column > .combat-warroom-controls {
   display: flex !important;
 }
+
+.combat-battle-screen .combat-exit-backdrop {
+  z-index: 140;
+}
+
+.combat-battle-screen .combat-exit-card {
+  width: min(470px, calc(100vw - 1.5rem));
+}
+
+.combat-battle-screen .combat-exit-card h3 {
+  margin: .28rem 0 .55rem;
+}
+
+.combat-battle-screen .combat-exit-card p {
+  margin: 0;
+  color: var(--studio-muted);
+  line-height: 1.55;
+}
+
+.combat-battle-screen .combat-exit-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .55rem;
+  margin-top: 1rem;
+}
+
+.combat-battle-screen .combat-exit-actions button {
+  min-height: 44px;
+}
+
+.combat-battle-screen .combat-exit-actions .combat-retreat-btn {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 520px) {
+  .combat-battle-screen .combat-exit-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .combat-battle-screen .combat-exit-actions .combat-retreat-btn {
+    grid-column: auto;
+  }
+}
