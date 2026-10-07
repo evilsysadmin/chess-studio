@@ -36,8 +36,8 @@ body:has(.combat-memorial-screen) .combat-preparation-room-stage {
   border: 1px solid rgba(205, 169, 91, .25);
   border-radius: 18px;
   background:
-    radial-gradient(circle at 50% -14%, rgba(201, 162, 87, .09), transparent 34%),
-    linear-gradient(180deg, rgba(17, 17, 16, .92), rgba(6, 8, 10, .94));
+    radial-gradient(circle at 50% -14%, rgba(201, 162, 87, .12), transparent 34%),
+    linear-gradient(180deg, rgba(15, 15, 14, .82), rgba(5, 7, 9, .86));
   box-shadow: 0 30px 96px rgba(0,0,0,.58);
   backdrop-filter: blur(13px);
 }
@@ -45,12 +45,19 @@ body:has(.combat-memorial-screen) .combat-preparation-room-stage {
 .combat-memorial-room-shell::before {
   content: '';
   position: absolute;
-  inset: 0;
+  left: 7%;
+  right: 7%;
+  top: 4.7rem;
+  height: 16rem;
   pointer-events: none;
+  border: 1px solid rgba(205,169,91,.07);
+  border-bottom: 0;
+  border-radius: 50% 50% 0 0 / 88% 88% 0 0;
   background:
+    radial-gradient(ellipse at 50% 100%, rgba(205,169,91,.065), transparent 64%),
     repeating-linear-gradient(0deg, transparent 0 47px, rgba(255,255,255,.012) 48px, transparent 49px),
     repeating-linear-gradient(90deg, transparent 0 96px, rgba(255,255,255,.011) 97px, transparent 98px);
-  opacity: .7;
+  opacity: .9;
 }
 
 .combat-memorial-close {
@@ -137,28 +144,31 @@ body:has(.combat-memorial-screen) .combat-preparation-room-stage {
   position: relative;
   z-index: 2;
   height: 100%;
-  display: grid;
-  grid-template-columns: minmax(0, .92fr) minmax(390px, 1.08fr);
-  gap: .75rem;
+  overflow: auto;
+  padding: .1rem .25rem .75rem;
+  scrollbar-width: thin;
 }
 
 .combat-memorial-room-wall,
 .combat-memorial-room-dossier {
   min-height: 0;
-  overflow: auto;
-  scrollbar-width: thin;
 }
 
 .combat-memorial-room-wall {
   position: relative;
-  padding: .75rem;
-  border: 1px solid rgba(205, 169, 91, .12);
-  border-radius: 8px;
+  min-height: 17rem;
+  padding: 1rem 1rem 1.2rem;
+  border: 1px solid rgba(205, 169, 91, .11);
+  border-radius: 7px 7px 14px 14px;
   background:
-    radial-gradient(ellipse at 50% 0, rgba(205,169,91,.07), transparent 32%),
-    linear-gradient(100deg, rgba(255,255,255,.022), transparent 22% 78%, rgba(0,0,0,.18)),
-    #111315;
-  box-shadow: inset 0 0 42px rgba(0,0,0,.38);
+    radial-gradient(ellipse at 50% 0, rgba(205,169,91,.09), transparent 34%),
+    repeating-linear-gradient(0deg, transparent 0 38px, rgba(255,255,255,.012) 39px, transparent 40px),
+    repeating-linear-gradient(90deg, transparent 0 110px, rgba(255,255,255,.01) 111px, transparent 112px),
+    linear-gradient(100deg, rgba(255,255,255,.024), transparent 20% 80%, rgba(0,0,0,.21)),
+    rgba(14,16,17,.94);
+  box-shadow:
+    inset 0 0 58px rgba(0,0,0,.4),
+    0 16px 30px rgba(0,0,0,.18);
 }
 
 .combat-memorial-room-wall::before,
@@ -204,8 +214,10 @@ body:has(.combat-memorial-screen) .combat-preparation-room-stage {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: .44rem;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 285px));
+  justify-content: center;
+  gap: .58rem;
+  padding: .75rem 1rem 1rem;
 }
 
 .combat-memorial-room-plaques button {
@@ -293,26 +305,29 @@ body:has(.combat-memorial-screen) .combat-preparation-room-stage {
 }
 
 .combat-memorial-room-dossier {
-  padding: .75rem;
+  width: min(940px, calc(100% - 1rem));
+  margin: .78rem auto 0;
+  padding: .55rem;
   border: 1px solid rgba(205,169,91,.11);
-  border-radius: 8px;
+  border-radius: 5px;
   background:
-    linear-gradient(90deg, rgba(205,169,91,.03), transparent 24%),
-    rgba(4,6,8,.52);
+    linear-gradient(90deg, rgba(205,169,91,.035), transparent 18% 82%, rgba(0,0,0,.12)),
+    linear-gradient(180deg, rgba(26,23,19,.82), rgba(6,8,10,.78));
+  box-shadow: 0 14px 30px rgba(0,0,0,.22);
 }
 
 .combat-memorial-room-dossier .combat-memorial-dossier {
-  min-height: 100%;
+  min-height: 0;
   align-content: start;
-  padding: .9rem;
+  padding: .85rem;
   border-left-width: 2px;
   background:
     radial-gradient(circle at 85% 10%, rgba(205,169,91,.055), transparent 28%),
-    rgba(0,0,0,.16);
+    rgba(0,0,0,.14);
 }
 
 .combat-memorial-room-dossier .combat-memorial-dossier dl {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .combat-memorial-room-empty {
@@ -417,19 +432,17 @@ body:has(.combat-memorial-screen) .combat-preparation-room-stage {
   }
 
   .combat-memorial-room-body {
-    grid-template-columns: 1fr;
-    grid-template-rows: minmax(0, .92fr) minmax(250px, 1.08fr);
-    gap: .42rem;
     overflow: auto;
+    padding-inline: 0;
   }
 
-  .combat-memorial-room-wall,
-  .combat-memorial-room-dossier {
-    overflow: visible;
+  .combat-memorial-room-wall {
+    min-height: 0;
   }
 
   .combat-memorial-room-plaques {
     grid-template-columns: 1fr;
+    padding: .45rem 0 .65rem;
   }
 
   .combat-memorial-room-plaques button {
@@ -437,7 +450,9 @@ body:has(.combat-memorial-screen) .combat-preparation-room-stage {
   }
 
   .combat-memorial-room-dossier {
-    padding: .45rem;
+    width: 100%;
+    margin-top: .45rem;
+    padding: .4rem;
   }
 
   .combat-memorial-room-dossier .combat-memorial-dossier {
@@ -470,10 +485,6 @@ body:has(.combat-memorial-screen) .combat-preparation-room-stage {
 
   .combat-memorial-room-heading {
     left: .35rem;
-  }
-
-  .combat-memorial-room-body {
-    grid-template-rows: auto auto;
   }
 
   .combat-memorial-room-wall {
