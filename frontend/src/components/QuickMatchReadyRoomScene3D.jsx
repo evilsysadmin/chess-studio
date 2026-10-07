@@ -624,9 +624,10 @@ export default function QuickMatchReadyRoomScene3D() {
       warmRight.castShadow = false;
       scene.add(warmRight);
 
-      const moonFill = new THREE.DirectionalLight(0xa1c7f2, 1.42);
+      const moonFill = new THREE.DirectionalLight(0xa1c7f2, 1.18);
       moonFill.position.set(1.5, 6.5, -4.8);
       moonFill.target.position.set(0, 1.1, -1.4);
+      moonFill.castShadow = false;
       scene.add(moonFill, moonFill.target);
 
       const cameraFill = new THREE.PointLight(0xffd7aa, coarsePointer ? .74 : 1.36, 25, 2);
@@ -634,10 +635,30 @@ export default function QuickMatchReadyRoomScene3D() {
       cameraFill.castShadow = false;
       scene.add(cameraFill);
 
-      const boardFill = new THREE.PointLight(0xffe2bd, coarsePointer ? .44 : .88, 17, 2);
+      const boardFill = new THREE.PointLight(0xffe2bd, coarsePointer ? .38 : .72, 17, 2);
       boardFill.position.set(0, 6.2, -1.1);
       boardFill.castShadow = false;
       scene.add(boardFill);
+
+      const boardKey = new THREE.SpotLight(
+        0xffd7a0,
+        coarsePointer ? .72 : 2.15,
+        22,
+        Math.PI / 5.2,
+        .58,
+        1.7,
+      );
+      boardKey.position.set(-1.4, 7.4, 3.4);
+      boardKey.target.position.set(-.2, 1.35, -1.35);
+      boardKey.castShadow = !coarsePointer;
+      if (boardKey.castShadow) {
+        boardKey.shadow.mapSize.set(1024, 1024);
+        boardKey.shadow.bias = -.00045;
+        boardKey.shadow.normalBias = .018;
+        boardKey.shadow.camera.near = 1.5;
+        boardKey.shadow.camera.far = 22;
+      }
+      scene.add(boardKey, boardKey.target);
 
       room = buildRoom({ lite: coarsePointer });
       scene.add(room);
