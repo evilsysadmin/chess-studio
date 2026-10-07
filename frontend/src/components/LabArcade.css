@@ -533,14 +533,14 @@ body:has(.lab-screen .lab-workshop) .lab-screen:has(.lab-workshop) > .back-link 
     align-content: end;
     justify-items: center;
     gap: 3px;
-    min-height: 92px;
-    padding: 7px 9px 9px;
+    min-height: 84px;
+    padding: 6px 9px 8px;
     border-color: transparent;
     border-top-color: transparent;
     background: linear-gradient(180deg,
       transparent 0 34%,
-      rgba(3, 4, 5, .1) 52%,
-      rgba(3, 4, 5, .52) 100%);
+      rgba(3, 4, 5, .08) 54%,
+      rgba(3, 4, 5, .42) 100%);
     box-shadow: none;
     text-align: center;
     backdrop-filter: none;
@@ -1042,6 +1042,47 @@ body:has(.lab-screen .lab-workshop) .lab-screen:has(.lab-workshop) > .back-link 
     right: 18px;
     top: 710px;
     bottom: auto;
+  }
+
+  /* The remaining utility destinations are still physical signs, but not cards.
+     Trailblazer is a battered lower-wall plate; Laboratorio is painted onto a
+     workbench lip. Arena keeps the heavier warning plaque treatment. */
+  .lab-screen.lab-screen .lab-workshop-portal--trailblazer {
+    min-height: 62px;
+    padding: 7px 9px;
+    border: 0;
+    border-bottom: 1px solid rgba(var(--hotspot-accent), .5);
+    background: linear-gradient(180deg, transparent 0 24%, rgba(3,4,5,.18) 58%, rgba(3,4,5,.62) 100%);
+    box-shadow: 0 7px 16px rgba(0,0,0,.24);
+    clip-path: none;
+  }
+
+  .lab-screen.lab-screen .lab-workshop-portal--trailblazer::after {
+    display: none;
+  }
+
+  .lab-screen.lab-screen .lab-workshop-tool:not(.lab-workshop-tool--arena) {
+    min-height: 62px;
+    padding: 7px 9px;
+    border: 0;
+    border-bottom: 1px solid rgba(var(--hotspot-accent), .5);
+    background: linear-gradient(180deg, transparent 0 24%, rgba(3,4,5,.18) 58%, rgba(3,4,5,.62) 100%);
+    box-shadow: 0 7px 16px rgba(0,0,0,.24);
+    clip-path: none;
+  }
+
+  .lab-screen.lab-screen .lab-workshop-tool:not(.lab-workshop-tool--arena)::after {
+    display: none;
+  }
+
+  .lab-screen.lab-screen .lab-workshop-tool--arena {
+    min-height: 68px;
+    background:
+      linear-gradient(180deg, rgba(16, 14, 11, .68), rgba(5, 6, 7, .82)),
+      radial-gradient(circle at 50% 0, rgba(var(--hotspot-accent), .07), transparent 72%);
+    box-shadow:
+      0 9px 18px rgba(0,0,0,.34),
+      inset 0 0 0 1px rgba(181,132,62,.4);
   }
 
   .lab-screen.lab-screen .lab-workshop-portal:active,
