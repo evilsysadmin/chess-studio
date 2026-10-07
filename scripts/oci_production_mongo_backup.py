@@ -91,6 +91,10 @@ def self_test() -> None:
     assert wrapper_source.index("CHESS_STUDIO_MONGO_BACKUP_OFFHOST_STAGED") < wrapper_source.index("CHESS_STUDIO_MONGO_RESTORE_DRILL_OK")
     assert wrapper_source.index("CHESS_STUDIO_MONGO_RESTORE_DRILL_OK") < wrapper_source.index("CHESS_STUDIO_MONGO_BACKUP_OFFHOST_OK")
     assert wrapper_source.index("CHESS_STUDIO_MONGO_BACKUP_OFFHOST_OK") < wrapper_source.index("mapfile -t backups")
+    assert 'CHESS_BACKUP_DIR="$final_dir" \\\nCHESS_BACKUP_BUCKET="$backup_bucket" \\' in wrapper_source
+    assert 'CHESS_BACKUP_DIR="$final_dir" \\\nbackup_phase=' not in wrapper_source
+    assert wrapper_source.index('backup_phase="remote-prune"') > wrapper_source.index("CHESS_STUDIO_MONGO_RESTORE_DRILL_OK")
+    assert ".mongodump.log" in wrapper_source
 
     workflow_source = (
         Path(__file__).resolve().parents[1] / ".github/workflows/production-mongo-backup.yml"

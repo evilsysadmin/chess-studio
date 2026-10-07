@@ -132,7 +132,7 @@ docker run --rm --pull=never \
   --env-file "$runtime_env" \
   -v "$incoming:/backup" \
   "$backup_image" \
-  sh -ec 'mongodump --uri="$MONGO_URL" --db="$MONGO_DB_NAME" --archive=/backup/dump.archive.gz --gzip'
+  sh -ec 'log=/backup/.mongodump.log; if ! mongodump --uri="$MONGO_URL" --db="$MONGO_DB_NAME" --archive=/backup/dump.archive.gz --gzip >"$log" 2>&1; then cat "$log" >&2; exit 1; fi; rm -f "$log"'
 
 [[ -s "$incoming/dump.archive.gz" ]] || { echo 'mongodump produced an empty archive' >&2; exit 65; }
 
@@ -176,7 +176,6 @@ runtime_python="${runtime_home}/.cache/chess-studio-oci-runtime/bin/python"
 
 backup_phase="offhost-upload-download"
 CHESS_BACKUP_DIR="$final_dir" \
-backup_phase="remote-prune"
 CHESS_BACKUP_BUCKET="$backup_bucket" \
 CHESS_BACKUP_STAMP="$stamp" \
 CHESS_BACKUP_SHA256="$checksum" \
@@ -345,6 +344,7 @@ scratch_network=''
 rm -f -- "$remote_restore_archive"
 remote_restore_archive=''
 
+backup_phase="remote-prune"
 CHESS_BACKUP_BUCKET="$backup_bucket" \
 CHESS_BACKUP_REMOTE_KEEP="$remote_keep_count" \
 "$runtime_python" - <<'PY'
