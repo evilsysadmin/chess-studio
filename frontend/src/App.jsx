@@ -145,9 +145,7 @@ function AppInner({ isAdminUser }) {
   // Modo Combate tiene su propio roster, independiente) — los releemos acá
   // cada vez que cambia la vista, así la cabecera se mantiene al día sin
   // tener que levantar ese estado hasta acá arriba.
-  const { rating, setRating, combatOverview } = usePlayerOverview(view, {
-    onCombatHistory: setCombatHistoryList,
-  });
+  const { rating, setRating, combatOverview } = usePlayerOverview(view, setCombatHistoryList);
   const [activeTimeControl, setActiveTimeControl] = useState(null);
   const [activeSeries, setActiveSeries] = useState(() => loadActiveSeries());
   const [shareRecord, setShareRecord] = useState(null);
