@@ -9,6 +9,7 @@ import {
   buildForkStalker,
 } from './chroniclesFantasyEnemyArt.js';
 import { installChroniclesEnemyMotionArt } from './chroniclesEnemyMotionArt.js';
+import { installChroniclesEnemyAuthoredArt } from './chroniclesEnemyBlenderArt.js';
 
 const VISUALS = Object.freeze({
   'corrupted-pawn': Object.freeze({ build: buildCorruptedPawn, scale: 0.92 }),
@@ -33,6 +34,12 @@ export function buildChroniclesEnemyVisual(visualType, options = {}) {
   if (!visual) return null;
   const model = visual.build(options);
   installChroniclesEnemyMotionArt(model, visualType, options);
+  const cancelMotion = model.userData.chroniclesEnemyMotionCancel || null;
+  const cancelAuthored = installChroniclesEnemyAuthoredArt(model, visualType, options);
+  model.userData.chroniclesArtCancel = () => {
+    cancelAuthored?.();
+    cancelMotion?.();
+  };
   return Object.freeze({
     model,
     scale: visual.scale,
