@@ -214,15 +214,22 @@ export function classRoomCameraFramingProfile({ aspect = 1, coarsePointer = fals
 
 export function trainingRoomCameraFramingProfile(args = {}) {
   const base = classRoomCameraFramingProfile(args);
+  const portrait = base.mode === 'classroom-portrait';
   return Object.freeze({
     ...base,
-    version: 'training-room-overhead-v1',
-    mode: base.mode === 'classroom-portrait' ? 'training-room-portrait' : 'training-room-desktop',
+    version: 'training-room-overhead-v2',
+    mode: portrait ? 'training-room-portrait' : 'training-room-desktop',
     // Training is an active board-first surface rather than a teaching
-    // composition with room for curriculum chrome. Pull the camera in just
-    // enough to clear the >=85% mobile board contract without cropping files.
-    halfSpan: Number((base.halfSpan * 0.96).toFixed(3)),
+    // composition with room for curriculum chrome. Portrait gets a more
+    // overhead, slightly higher crop so the board fills the useful phone
+    // viewport instead of leaving a dark ceiling between HUD and play.
+    halfSpan: Number((base.halfSpan * (portrait ? 0.953 : 0.96)).toFixed(3)),
     targetY: 0.05,
+    ...(portrait ? {
+      targetZ: -1.0,
+      cameraY: 12.6,
+      cameraZ: 6.7,
+    } : null),
   });
 }
 
