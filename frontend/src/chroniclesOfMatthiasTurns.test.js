@@ -4,6 +4,7 @@ import {
   chroniclesChooseEnemyStep,
   chroniclesEnemyAttackTarget,
   chroniclesEnemyCanAttackParty,
+  chroniclesResolveEnemyActor,
   chroniclesResolveEnemyTurn,
   chroniclesRuntimeEnemyPosition,
 } from './chroniclesOfMatthiasTurns.js';
@@ -13,22 +14,32 @@ function enemy(id) {
 }
 
 describe('Chronicles alternating creature turns', () => {
-  it('moves a melee creature one cell, then attacks on its following turn', () => {
+  it('lets a melee enemy move into reach and attack in the same actor turn', () => {
     const pawn = enemy('corrupted-pawn');
-    let state = createChroniclesState();
+    const state = createChroniclesState();
 
-    state = chroniclesResolveEnemyTurn(state);
-    expect(chroniclesRuntimeEnemyPosition(state, pawn)).toEqual({ x: 2, y: 5 });
-    expect(state.enemyTurnEvents).toEqual([
+    const next = chroniclesResolveEnemyActor(state, pawn.id);
+
+    expect(chroniclesRuntimeEnemyPosition(next, pawn)).toEqual({ x: 2, y: 5 });
+    expect(next.enemyTurnEvents).toEqual([
       { type: 'move', enemyId: 'corrupted-pawn', from: { x: 3, y: 5 }, to: { x: 2, y: 5 } },
+      expect.objectContaining({
+        type: 'attack',
+        enemyId: 'corrupted-pawn',
+        targetId: 'matthias',
+        damage: 1,
+      }),
     ]);
-    expect(state.party.find((member) => member.id === 'matthias')?.hp).toBe(7);
+    expect(next.party.find((member) => member.id === 'matthias')?.hp).toBe(6);
+  });
 
-    state = chroniclesResolveEnemyTurn(state);
-    expect(chroniclesRuntimeEnemyPosition(state, pawn)).toEqual({ x: 2, y: 5 });
-    expect(state.enemyTurnEvents[0]).toMatchObject({ type: 'attack', enemyId: 'corrupted-pawn', damage: 1 });
-    expect(state.party.find((member) => member.id === 'matthias')?.hp).toBe(7);
-    expect(state.party.find((member) => member.id === 'rook')?.hp).toBe(9);
+  it('keeps aggregate enemy turns on the same move-then-attack contract', () => {
+    const pawn = enemy('corrupted-pawn');
+    const next = chroniclesResolveEnemyTurn(createChroniclesState());
+
+    expect(chroniclesRuntimeEnemyPosition(next, pawn)).toEqual({ x: 2, y: 5 });
+    expect(next.enemyTurnEvents.map((event) => event.type)).toEqual(['move', 'attack']);
+    expect(next.party.some((member) => member.hp < member.maxHp)).toBe(true);
   });
 
   it('targets the reachable combatant cell instead of the exploration anchor', () => {
