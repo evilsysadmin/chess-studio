@@ -288,7 +288,11 @@ func _build_player_proxies() -> void:
 
 			var sprite := AnimatedSprite3D.new()
 			sprite.name = "Sprite"
-			sprite.sprite_frames = ChessFootballSpriteBank.build_frames(player.team_id, player.role)
+			sprite.sprite_frames = ChessFootballSpriteBank.build_frames(
+				player.team_id,
+				player.role,
+				player.squad_index,
+			)
 			sprite.centered = true
 			sprite.pixel_size = PLAYER_PIXEL_SIZE
 			sprite.position.y = PLAYER_BASE_Y

@@ -80,6 +80,20 @@ TEAMS = {
         "hair_style": "crop",
     },
 }
+FIELD_VARIANTS = {
+    "fc_matthias": [
+        {},
+        {"head": "#d8b18d", "hair": "#2e221b", "hair_style": "crop", "head_scale": 0.93},
+        {"head": "#9f6d4d", "hair": "#171515", "hair_style": "crop", "head_scale": 0.90},
+        {"head": "#f0c7a1", "hair": "#4b3022", "hair_style": "swept", "head_scale": 0.88},
+    ],
+    "real_enroque": [
+        {},
+        {"head": "#d2a17a", "hair": "#211916", "hair_style": "swept", "head_scale": 0.92},
+        {"head": "#6f4937", "hair": "#151313", "hair_style": "crop", "head_scale": 0.89},
+        {"head": "#efc9a8", "hair": "#70452d", "hair_style": "swept", "head_scale": 0.94},
+    ],
+}
 KEEPERS = {
     "fc_matthias_keeper": {
         "name": "FC Matthias · Portero",
@@ -589,9 +603,9 @@ def _frame_svg(
                 f'stroke="{team["torso_dark"]}" stroke-width=".85" opacity=".75"/>'
             )
 
-    # V11 retains the V8 face, V9 locomotion and V10 ball actions. This pass
-    # upgrades contact/celebration silhouettes with a tucked tackle leg and
-    # an asymmetric fist-pump celebration.
+    # V12 preserves the V8-v11 animation work while allowing deterministic
+    # squad-index variants to change skin tone, hair and subtle head scale
+    # without touching pivots, kit identity or gameplay.
     neck_y = 49.4 - bob + yoff + crouch * 0.45
     out.append(
         f'<path d="M {offset_x + cx - 3.1:.2f} {offset_y + neck_y:.2f} '
@@ -608,7 +622,7 @@ def _frame_svg(
         f'fill="{team["torso_dark"]}" stroke="{OUTLINE}" stroke-width=".8"/>'
     )
 
-    head_scale = 0.91
+    head_scale = float(team.get("head_scale", 0.91))
     def hx(delta: float) -> float:
         return offset_x + head_cx + delta * head_scale
 
@@ -711,22 +725,32 @@ def _atlas_svg(team: dict[str, str], keeper: bool = False) -> str:
 def build_outputs() -> dict[str, str]:
     outputs: dict[str, str] = {}
     atlas_meta: dict[str, dict[str, str]] = {}
+    field_variants: dict[str, list[str]] = {}
     for slug, team in TEAMS.items():
-        filename = f"{slug}_atlas.svg"
-        outputs[filename] = _atlas_svg(team)
-        atlas_meta[slug] = {"name": team["name"], "file": filename}
+        variant_keys: list[str] = []
+        for index, overrides in enumerate(FIELD_VARIANTS[slug]):
+            variant_slug = slug if index == 0 else f"{slug}_v{index + 1}"
+            variant_team = dict(team)
+            variant_team.update(overrides)
+            filename = f"{variant_slug}_atlas.svg"
+            outputs[filename] = _atlas_svg(variant_team)
+            display_name = team["name"] if index == 0 else f"{team['name']} · Variante {index + 1}"
+            atlas_meta[variant_slug] = {"name": display_name, "file": filename}
+            variant_keys.append(variant_slug)
+        field_variants[slug] = variant_keys
     for slug, team in KEEPERS.items():
         filename = f"{slug}_atlas.svg"
         outputs[filename] = _atlas_svg(team, keeper=True)
         atlas_meta[slug] = {"name": team["name"], "file": filename}
     manifest = {
-        "version": 11,
+        "version": 12,
         "quality_contract": SPRITE_FORGE_CONTRACT["quality_contract"],
         "cell": {"width": CELL_W, "height": CELL_H},
         "columns": COLUMNS,
         "rows": len(ANIMATIONS),
         "footline": FOOTLINE,
         "display_scale": DISPLAY_SCALE,
+        "field_variants": field_variants,
         "atlases": atlas_meta,
         "animations": [
             {"name": name, "row": row, "frames": COLUMNS, "fps": fps, "loop": loop}

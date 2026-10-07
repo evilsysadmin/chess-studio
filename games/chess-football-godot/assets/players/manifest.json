@@ -1,6 +1,6 @@
 {
-  "version": 11,
-  "quality_contract": "chess-football-vector-v11",
+  "version": 12,
+  "quality_contract": "chess-football-vector-v12",
   "cell": {
     "width": 128,
     "height": 144
@@ -9,14 +9,52 @@
   "rows": 7,
   "footline": 130,
   "display_scale": 0.72,
+  "field_variants": {
+    "fc_matthias": [
+      "fc_matthias",
+      "fc_matthias_v2",
+      "fc_matthias_v3",
+      "fc_matthias_v4"
+    ],
+    "real_enroque": [
+      "real_enroque",
+      "real_enroque_v2",
+      "real_enroque_v3",
+      "real_enroque_v4"
+    ]
+  },
   "atlases": {
     "fc_matthias": {
       "name": "FC Matthias",
       "file": "fc_matthias_atlas.svg"
     },
+    "fc_matthias_v2": {
+      "name": "FC Matthias · Variante 2",
+      "file": "fc_matthias_v2_atlas.svg"
+    },
+    "fc_matthias_v3": {
+      "name": "FC Matthias · Variante 3",
+      "file": "fc_matthias_v3_atlas.svg"
+    },
+    "fc_matthias_v4": {
+      "name": "FC Matthias · Variante 4",
+      "file": "fc_matthias_v4_atlas.svg"
+    },
     "real_enroque": {
       "name": "Real Enroque",
       "file": "real_enroque_atlas.svg"
+    },
+    "real_enroque_v2": {
+      "name": "Real Enroque · Variante 2",
+      "file": "real_enroque_v2_atlas.svg"
+    },
+    "real_enroque_v3": {
+      "name": "Real Enroque · Variante 3",
+      "file": "real_enroque_v3_atlas.svg"
+    },
+    "real_enroque_v4": {
+      "name": "Real Enroque · Variante 4",
+      "file": "real_enroque_v4_atlas.svg"
     },
     "fc_matthias_keeper": {
       "name": "FC Matthias · Portero",

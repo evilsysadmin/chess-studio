@@ -58,7 +58,7 @@ func _configure_visual() -> void:
 	if visual == null:
 		visual = AnimatedSprite2D.new()
 		add_child(visual)
-	visual.sprite_frames = ChessFootballSpriteBank.build_frames(team_id, role)
+	visual.sprite_frames = ChessFootballSpriteBank.build_frames(team_id, role, squad_index)
 	visual.centered = true
 	var cell := ChessFootballSpriteBank.cell_size()
 	var visual_scale := ChessFootballSpriteBank.display_scale()
@@ -298,6 +298,9 @@ func debug_visual_ready() -> bool:
 
 func debug_animation_names() -> PackedStringArray:
 	return ChessFootballSpriteBank.animation_names()
+
+func debug_visual_variant_key() -> String:
+	return ChessFootballSpriteBank.atlas_key(team_id, role, squad_index)
 
 func debug_tackle_ready() -> bool:
 	return can_tackle()
