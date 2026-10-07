@@ -52,6 +52,7 @@ export default function ChroniclesTacticsPartyHud({
   selectedMemberId,
   sheetRequest = null,
   onSelectMember,
+  onSheetOpenChange = null,
   onAllocateAttribute,
   onLearnSkill,
 }) {
@@ -73,15 +74,20 @@ export default function ChroniclesTacticsPartyHud({
     const memberId = sheetRequest?.memberId;
     if (!memberId) return;
     onSelectMember(memberId);
+    onSheetOpenChange?.(true);
     setSheetMemberId(memberId);
-  }, [onSelectMember, sheetRequest]);
+  }, [onSelectMember, onSheetOpenChange, sheetRequest]);
 
   const openSheet = (memberId) => {
     onSelectMember(memberId);
+    onSheetOpenChange?.(true);
     setSheetMemberId(memberId);
   };
 
-  const closeSheet = () => setSheetMemberId(null);
+  const closeSheet = () => {
+    onSheetOpenChange?.(false);
+    setSheetMemberId(null);
+  };
 
   return (
     <>
