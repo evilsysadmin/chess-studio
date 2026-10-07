@@ -63,7 +63,6 @@ import { useCasualResultFlow } from './useCasualResultFlow.js';
 import { useLogoutFlow } from './useLogoutFlow.js';
 import { usePublicFeatureFlags } from './usePublicFeatureFlags.js';
 import { useGameExitFlow } from './useGameExitFlow.js';
-import { usePlayerOverview } from './usePlayerOverview.js';
 
 // 'menu' | 'game' | 'tutorial' | 'openings' | 'tournament' | 'tournamentGame' | 'puzzle' | 'combat' | 'history' | 'replay'
 function AppInner({ isAdminUser }) {
@@ -145,15 +144,15 @@ function AppInner({ isAdminUser }) {
   // Modo Combate tiene su propio roster, independiente) — los releemos acá
   // cada vez que cambia la vista, así la cabecera se mantiene al día sin
   // tener que levantar ese estado hasta acá arriba.
-  const { rating, setRating, combatOverview } = usePlayerOverview(view, setCombatHistoryList);
   const [activeTimeControl, setActiveTimeControl] = useState(null);
   const [activeSeries, setActiveSeries] = useState(() => loadActiveSeries());
   const [shareRecord, setShareRecord] = useState(null);
   const [activeContract, setActiveContract] = useState(() => loadActiveContract());
   const [specialRun, setSpecialRun] = useState(() => loadSpecialRun());
   const [gameContext, setGameContext] = useState({});
-  const shellUi = useGlobalShellUi();
+  const shellUi = useGlobalShellUi(view, setCombatHistoryList);
   const {
+    rating, setRating, combatOverview,
     showRatingDetail, openRatingDetail, closeRatingDetail, showCombatSummary, openCombatSummary, closeCombatSummary,
     showSettings, openSettings, closeSettings, showGlobalAccount, openGlobalAccount, closeGlobalAccount,
     showGlobalReleaseNotes, releaseNotesSeen, openReleaseNotes, closeReleaseNotes, showGlobalFeedback,
