@@ -342,20 +342,72 @@ function addWindow(root, stone, brass, night, moon, glow) {
   const windowGroup = new THREE.Group();
   windowGroup.name = 'quick-match-ready-window';
 
-  box(windowGroup, [5.35, 4.12, .10], night, [0, 3.34, 0], 'window-night');
-  box(windowGroup, [.28, 4.44, .34], stone, [-2.83, 3.34, .04], 'window-jamb-left');
-  box(windowGroup, [.28, 4.44, .34], stone, [2.83, 3.34, .04], 'window-jamb-right');
-  box(windowGroup, [5.96, .28, .34], stone, [0, 1.08, .04], 'window-sill');
-  box(windowGroup, [.10, 4.06, .20], brass, [0, 3.34, .12], 'window-mullion');
-  box(windowGroup, [5.28, .08, .20], brass, [0, 3.34, .12], 'window-transom');
+  const sillY = 1.08;
+  const archCenterY = 3.62;
+  const archRadius = 2.56;
+
+  box(
+    windowGroup,
+    [archRadius * 2, archCenterY - sillY, .10],
+    night,
+    [0, (sillY + archCenterY) / 2, 0],
+    'window-night-lower',
+  );
+
+  const upperNight = new THREE.Mesh(
+    new THREE.CircleGeometry(archRadius, 48, 0, Math.PI),
+    night,
+  );
+  upperNight.position.set(0, archCenterY, .01);
+  upperNight.name = 'window-night-arch';
+  windowGroup.add(upperNight);
+
+  const jambHeight = archCenterY - sillY;
+  for (const x of [-2.78, 2.78]) {
+    box(
+      windowGroup,
+      [.28, jambHeight + .10, .34],
+      stone,
+      [x, sillY + jambHeight / 2, .04],
+      x < 0 ? 'window-jamb-left' : 'window-jamb-right',
+    );
+  }
+
+  box(windowGroup, [5.96, .28, .34], stone, [0, sillY, .04], 'window-sill');
+
+  const stoneArch = new THREE.Mesh(
+    new THREE.TorusGeometry(2.69, .15, 14, 56, Math.PI),
+    stone,
+  );
+  stoneArch.position.set(0, archCenterY, .04);
+  stoneArch.castShadow = true;
+  stoneArch.receiveShadow = true;
+  stoneArch.name = 'window-stone-arch';
+  windowGroup.add(stoneArch);
+
+  const brassArch = new THREE.Mesh(
+    new THREE.TorusGeometry(2.49, .045, 10, 56, Math.PI),
+    brass,
+  );
+  brassArch.position.set(0, archCenterY, .13);
+  brassArch.name = 'window-brass-arch';
+  windowGroup.add(brassArch);
+
+  box(
+    windowGroup,
+    [.10, (archCenterY - sillY) + archRadius * .92, .20],
+    brass,
+    [0, sillY + ((archCenterY - sillY) + archRadius * .92) / 2, .12],
+    'window-mullion',
+  );
+  box(windowGroup, [5.10, .08, .20], brass, [0, archCenterY, .12], 'window-transom');
 
   for (const x of [-2.78, 2.78]) {
-    cylinder(windowGroup, [.20, .25], .28, brass, [x, 1.08, .18], 'window-brass-cap', 22);
-    cylinder(windowGroup, [.20, .25], .28, brass, [x, 5.55, .18], 'window-brass-cap', 22);
+    cylinder(windowGroup, [.20, .25], .28, brass, [x, sillY, .18], 'window-brass-cap', 22);
   }
 
   const moonMesh = new THREE.Mesh(new THREE.SphereGeometry(.35, 28, 18), moon);
-  moonMesh.position.set(1.52, 4.76, .18);
+  moonMesh.position.set(1.22, 4.72, .18);
   moonMesh.name = 'window-moon';
   windowGroup.add(moonMesh);
 
@@ -363,7 +415,7 @@ function addWindow(root, stone, brass, night, moon, glow) {
     new THREE.CircleGeometry(.66, 36),
     glow,
   );
-  halo.position.set(1.52, 4.76, .16);
+  halo.position.set(1.22, 4.72, .16);
   halo.name = 'window-moon-halo';
   windowGroup.add(halo);
 
@@ -375,10 +427,13 @@ function addWindow(root, stone, brass, night, moon, glow) {
     sizeAttenuation: true,
   });
   const starPositions = [];
-  for (let i = 0; i < 54; i += 1) {
-    const px = -2.45 + ((i * 37) % 97) / 96 * 4.9;
-    const py = 1.55 + ((i * 61) % 101) / 100 * 3.55;
-    if (Math.hypot(px - 1.52, py - 4.76) > .68) {
+  for (let i = 0; i < 72; i += 1) {
+    const px = -2.42 + ((i * 37) % 101) / 100 * 4.84;
+    const py = 1.34 + ((i * 61) % 107) / 106 * 4.72;
+    const inLower = py <= archCenterY && Math.abs(px) <= 2.42;
+    const inArch = py > archCenterY
+      && Math.hypot(px, py - archCenterY) <= archRadius - .12;
+    if ((inLower || inArch) && Math.hypot(px - 1.22, py - 4.72) > .66) {
       starPositions.push(px, py, .20);
     }
   }
