@@ -58,6 +58,7 @@ export default function ChroniclesCharacterSheet({
   state,
   progression,
   member,
+  mode = 'tactics',
   onClose,
   onAllocateAttribute = null,
   onLearnSkill = null,
@@ -65,6 +66,7 @@ export default function ChroniclesCharacterSheet({
   if (!state || !progression || !member) return null;
 
   const profile = chroniclesTacticsEffectiveProfile(state, member.id);
+  const tacticsMode = mode === 'tactics';
   const progress = chroniclesHeroProgress(progression, member.id);
   const xpWindow = chroniclesXpToNextLevel(progression, member.id);
   const xp = xpProgress(progress, xpWindow);
@@ -124,7 +126,9 @@ export default function ChroniclesCharacterSheet({
 
         <div className="chronicles-character-sheet__vitals">
           <div><span>HP</span><b>{member.hp}/{member.maxHp}</b></div>
-          <div><span>RECURSO</span><b>{ability.charges}/{ability.max}</b></div>
+          {tacticsMode
+            ? <div><span>RECURSO</span><b>{ability.charges}/{ability.max}</b></div>
+            : <div><span>AGILIDAD</span><b>{Number(progress.attributes?.agility || 0)}</b></div>}
           <div><span>DAÑO</span><b>{damage}</b></div>
           <div><span>ALCANCE</span><b>{reach}</b></div>
         </div>
@@ -134,7 +138,7 @@ export default function ChroniclesCharacterSheet({
           <div><span>Arma</span><b>{profile.weaponName}</b></div>
           <div><span>Ataque</span><b>{member.attackName || profile.attackName}</b></div>
           <div><span>Geometría</span><b>{profile.kindLabel}</b></div>
-          <div><span>Habilidad</span><b>{profile.abilityName}</b></div>
+          <div><span>{tacticsMode ? 'Habilidad' : 'Habilidad táctica'}</span><b>{profile.abilityName}</b></div>
           <div><span>Estado</span><b>{member.hp > 0 ? 'Operativo' : 'Fuera de combate'}</b></div>
         </div>
 
