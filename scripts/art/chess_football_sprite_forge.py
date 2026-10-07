@@ -66,6 +66,7 @@ TEAMS = {
         "sock": "#e9edf7",
         "head": "#e7dec4",
         "hair": "#6d4b31",
+        "hair_style": "swept",
     },
     "real_enroque": {
         "name": "Real Enroque",
@@ -76,6 +77,7 @@ TEAMS = {
         "sock": "#f0e7d3",
         "head": "#885f45",
         "hair": "#251b19",
+        "hair_style": "crop",
     },
 }
 KEEPERS = {
@@ -88,6 +90,7 @@ KEEPERS = {
         "sock": "#eaf0e7",
         "head": "#e7dec4",
         "hair": "#6d4b31",
+        "hair_style": "swept",
         "glove": "#f2f0df",
     },
     "real_enroque_keeper": {
@@ -99,6 +102,7 @@ KEEPERS = {
         "sock": "#efe8d1",
         "head": "#885f45",
         "hair": "#251b19",
+        "hair_style": "crop",
         "glove": "#f4d86a",
     },
 }
@@ -125,6 +129,7 @@ def _pose(animation: str, frame: int) -> dict[str, float]:
         "crouch": 0.0,
         "twist": 0.0,
         "head": 0.0,
+        "sway": 0.0,
     }
     if animation == "idle":
         pose.update(
@@ -135,6 +140,7 @@ def _pose(animation: str, frame: int) -> dict[str, float]:
             leg_r=stride * 1.0,
             twist=stride * 0.75,
             head=stride * 0.45,
+            sway=math.cos(phase) * 0.35,
         )
     elif animation == "run":
         pose.update(
@@ -144,10 +150,11 @@ def _pose(animation: str, frame: int) -> dict[str, float]:
             arm_r=-stride * 16.0,
             leg_l=-stride * 15.0,
             leg_r=stride * 15.0,
-            lift_l=max(0.0, stride) * 7.5,
-            lift_r=max(0.0, -stride) * 7.5,
-            twist=stride * 2.5,
+            lift_l=max(0.0, stride) * 8.4 + max(0.0, math.cos(phase)) * 1.2,
+            lift_r=max(0.0, -stride) * 8.4 + max(0.0, -math.cos(phase)) * 1.2,
+            twist=stride * 2.7,
             head=-1.2,
+            sway=math.cos(phase) * 1.15,
         )
     elif animation == "sprint":
         pose.update(
@@ -157,10 +164,11 @@ def _pose(animation: str, frame: int) -> dict[str, float]:
             arm_r=-stride * 21.0,
             leg_l=-stride * 20.0,
             leg_r=stride * 20.0,
-            lift_l=max(0.0, stride) * 10.0,
-            lift_r=max(0.0, -stride) * 10.0,
-            twist=stride * 3.2,
+            lift_l=max(0.0, stride) * 11.2 + max(0.0, math.cos(phase)) * 1.7,
+            lift_r=max(0.0, -stride) * 11.2 + max(0.0, -math.cos(phase)) * 1.7,
+            twist=stride * 3.6,
             head=-2.0,
+            sway=math.cos(phase) * 1.55,
         )
     else:
         t = frame / max(COLUMNS - 1, 1)
@@ -261,12 +269,20 @@ def _frame_svg(
     keeper: bool = False,
 ) -> str:
     p = _pose(animation, frame)
+    if keeper and animation == "idle":
+        p = dict(p)
+        p["crouch"] += 3.2
+        p["arm_l"] -= 5.0
+        p["arm_r"] += 5.0
+        p["leg_l"] -= 3.4
+        p["leg_r"] += 3.4
+        p["yoff"] += 0.8
     bob = p["bob"]
     lean = p["lean"]
     yoff = p["yoff"]
     crouch = p["crouch"]
 
-    cx = CELL_W * 0.5 + lean
+    cx = CELL_W * 0.5 + lean + p["sway"]
     foot = float(FOOTLINE) + yoff
     hip_y = 93.0 - bob + yoff + crouch * 0.34
     shoulder_y = 58.4 - bob + yoff + crouch * 0.58
@@ -358,7 +374,8 @@ def _frame_svg(
         (-1.0, p["arm_l"], True),
         (1.0, p["arm_r"], False),
     ):
-        sx = cx + side * 13.8 - p["twist"] * 0.23
+        shoulder_span = 15.0 if keeper else 13.8
+        sx = cx + side * shoulder_span - p["twist"] * 0.23
         sy = shoulder_y + (1.0 if far else -0.6)
         hand_x = cx + side * 20.0 + amount * 0.72 + (-1.0 if far else 2.0)
         hand_y = 79.0 - bob + yoff + crouch * 0.50 - amount * 0.48
@@ -400,8 +417,8 @@ def _frame_svg(
     top_y = 55.8 - bob + yoff + crouch * 0.58
     waist_y = 84.2 - bob + yoff + crouch * 0.30
     base_y = 96.0 - bob + yoff + crouch * 0.18
-    left_sh = cx - 13.6 - torso_turn * 0.15
-    right_sh = cx + 17.3 + torso_turn * 0.20
+    left_sh = cx - (14.8 if keeper else 13.6) - torso_turn * 0.15
+    right_sh = cx + (18.5 if keeper else 17.3) + torso_turn * 0.20
     torso = (
         f"M {offset_x + left_sh:.2f} {offset_y + top_y + 3.0:.2f} "
         f"Q {offset_x + cx - 2.0:.2f} {offset_y + top_y - 4.2:.2f} "
@@ -499,67 +516,96 @@ def _frame_svg(
                 f'stroke="{team["torso_dark"]}" stroke-width=".85" opacity=".75"/>'
             )
 
-    # Slightly three-quarter head: one visible ear + nose bridge is much less
-    # mascot-like than the perfectly symmetrical v6 face.
-    neck_y = 49.2 - bob + yoff + crouch * 0.45
+    # V8 keeps the three-quarter read but reduces mascot proportions. The
+    # head is smaller, the jaw tighter, and each team gets a distinct hairline.
+    neck_y = 49.4 - bob + yoff + crouch * 0.45
     out.append(
-        f'<path d="M {offset_x + cx - 3.4:.2f} {offset_y + neck_y:.2f} '
-        f'L {offset_x + cx + 4.5:.2f} {offset_y + neck_y - 0.2:.2f} '
-        f'L {offset_x + cx + 4.8:.2f} {offset_y + neck_y + 8.0:.2f} '
-        f'L {offset_x + cx - 3.0:.2f} {offset_y + neck_y + 8.2:.2f} Z" '
-        f'fill="{team["head"]}" stroke="{OUTLINE}" stroke-width="1.0"/>'
+        f'<path d="M {offset_x + cx - 3.1:.2f} {offset_y + neck_y:.2f} '
+        f'L {offset_x + cx + 4.1:.2f} {offset_y + neck_y - 0.2:.2f} '
+        f'L {offset_x + cx + 4.4:.2f} {offset_y + neck_y + 7.1:.2f} '
+        f'L {offset_x + cx - 2.8:.2f} {offset_y + neck_y + 7.3:.2f} Z" '
+        f'fill="{team["head"]}" stroke="{OUTLINE}" stroke-width=".95"/>'
     )
     out.append(
-        f'<path d="M {offset_x + cx - 5.2:.2f} {offset_y + neck_y + 5.2:.2f} '
-        f'L {offset_x + cx + 5.7:.2f} {offset_y + neck_y + 5.0:.2f} '
-        f'L {offset_x + cx + 6.4:.2f} {offset_y + neck_y + 9.2:.2f} '
-        f'L {offset_x + cx - 5.8:.2f} {offset_y + neck_y + 9.4:.2f} Z" '
-        f'fill="{team["torso_dark"]}" stroke="{OUTLINE}" stroke-width=".85"/>'
+        f'<path d="M {offset_x + cx - 5.0:.2f} {offset_y + neck_y + 4.8:.2f} '
+        f'L {offset_x + cx + 5.5:.2f} {offset_y + neck_y + 4.6:.2f} '
+        f'L {offset_x + cx + 6.2:.2f} {offset_y + neck_y + 8.7:.2f} '
+        f'L {offset_x + cx - 5.6:.2f} {offset_y + neck_y + 8.9:.2f} Z" '
+        f'fill="{team["torso_dark"]}" stroke="{OUTLINE}" stroke-width=".8"/>'
     )
+
+    head_scale = 0.91
+    def hx(delta: float) -> float:
+        return offset_x + head_cx + delta * head_scale
+
+    def hy(delta: float) -> float:
+        return offset_y + head_cy + delta * head_scale
+
     head = (
-        f"M {offset_x + head_cx - 8.5:.2f} {offset_y + head_cy - 10.4:.2f} "
-        f"Q {offset_x + head_cx + 0.6:.2f} {offset_y + head_cy - 15.0:.2f} "
-        f"{offset_x + head_cx + 8.7:.2f} {offset_y + head_cy - 8.4:.2f} "
-        f"Q {offset_x + head_cx + 12.4:.2f} {offset_y + head_cy - 1.0:.2f} "
-        f"{offset_x + head_cx + 8.0:.2f} {offset_y + head_cy + 9.4:.2f} "
-        f"Q {offset_x + head_cx + 0.5:.2f} {offset_y + head_cy + 14.2:.2f} "
-        f"{offset_x + head_cx - 7.1:.2f} {offset_y + head_cy + 8.8:.2f} "
-        f"Q {offset_x + head_cx - 10.8:.2f} {offset_y + head_cy + 0.1:.2f} "
-        f"{offset_x + head_cx - 8.5:.2f} {offset_y + head_cy - 10.4:.2f} Z"
+        f"M {hx(-8.1):.2f} {hy(-9.9):.2f} "
+        f"Q {hx(0.5):.2f} {hy(-13.7):.2f} "
+        f"{hx(8.0):.2f} {hy(-7.8):.2f} "
+        f"Q {hx(10.7):.2f} {hy(-0.6):.2f} "
+        f"{hx(7.4):.2f} {hy(8.5):.2f} "
+        f"Q {hx(0.3):.2f} {hy(12.6):.2f} "
+        f"{hx(-6.4):.2f} {hy(8.1):.2f} "
+        f"Q {hx(-9.5):.2f} {hy(0.2):.2f} "
+        f"{hx(-8.1):.2f} {hy(-9.9):.2f} Z"
     )
     out.append(
-        f'<path d="{head}" fill="{team["head"]}" stroke="{OUTLINE}" stroke-width="1.55"/>'
+        f'<path d="{head}" fill="{team["head"]}" stroke="{OUTLINE}" stroke-width="1.45"/>'
     )
     out.append(
-        f'<ellipse cx="{offset_x + head_cx - 8.8:.2f}" cy="{offset_y + head_cy:.2f}" '
-        f'rx="2.0" ry="2.7" fill="{team["head"]}" stroke="{OUTLINE}" stroke-width=".75"/>'
+        f'<ellipse cx="{hx(-8.0):.2f}" cy="{hy(0.0):.2f}" '
+        f'rx="1.65" ry="2.35" fill="{team["head"]}" stroke="{OUTLINE}" stroke-width=".7"/>'
     )
     out.append(
-        f'<path d="M {offset_x + head_cx + 8.1:.2f} {offset_y + head_cy - 1.2:.2f} '
-        f'L {offset_x + head_cx + 11.0:.2f} {offset_y + head_cy + 1.0:.2f} '
-        f'L {offset_x + head_cx + 8.2:.2f} {offset_y + head_cy + 2.1:.2f}" '
-        f'fill="{team["head"]}" stroke="{OUTLINE}" stroke-width=".75"/>'
+        f'<path d="M {hx(7.3):.2f} {hy(-1.0):.2f} '
+        f'L {hx(9.9):.2f} {hy(1.0):.2f} '
+        f'L {hx(7.4):.2f} {hy(1.9):.2f}" '
+        f'fill="{team["head"]}" stroke="{OUTLINE}" stroke-width=".7"/>'
+    )
+
+    hair_style = team.get("hair_style", "swept")
+    if hair_style == "crop":
+        out.append(
+            f'<path d="M {hx(-7.6):.2f} {hy(-5.9):.2f} '
+            f'Q {hx(-2.2):.2f} {hy(-12.3):.2f} {hx(6.8):.2f} {hy(-8.2):.2f} '
+            f'L {hx(7.2):.2f} {hy(-5.7):.2f} '
+            f'Q {hx(1.7):.2f} {hy(-7.2):.2f} {hx(-3.8):.2f} {hy(-4.6):.2f} '
+            f'Q {hx(-6.2):.2f} {hy(-3.5):.2f} {hx(-7.6):.2f} {hy(-5.9):.2f} Z" '
+            f'fill="{team["hair"]}" stroke="{OUTLINE}" stroke-width=".9"/>'
+        )
+    else:
+        out.append(
+            f'<path d="M {hx(-7.5):.2f} {hy(-5.6):.2f} '
+            f'Q {hx(-1.8):.2f} {hy(-13.3):.2f} {hx(7.2):.2f} {hy(-7.4):.2f} '
+            f'Q {hx(3.8):.2f} {hy(-8.4):.2f} {hx(0.6):.2f} {hy(-6.0):.2f} '
+            f'L {hx(3.0):.2f} {hy(-3.9):.2f} '
+            f'Q {hx(-2.0):.2f} {hy(-5.3):.2f} {hx(-7.5):.2f} {hy(-5.6):.2f} Z" '
+            f'fill="{team["hair"]}" stroke="{OUTLINE}" stroke-width=".9"/>'
+        )
+
+    out.append(
+        f'<path d="M {hx(1.3):.2f} {hy(-3.8):.2f} '
+        f'Q {hx(4.2):.2f} {hy(-4.6):.2f} {hx(6.0):.2f} {hy(-3.4):.2f}" '
+        f'fill="none" stroke="{OUTLINE}" stroke-width=".95" stroke-linecap="round" opacity=".78"/>'
     )
     out.append(
-        f'<path d="M {offset_x + head_cx - 8.0:.2f} {offset_y + head_cy - 6.0:.2f} '
-        f'Q {offset_x + head_cx - 0.5:.2f} {offset_y + head_cy - 14.7:.2f} '
-        f'{offset_x + head_cx + 8.2:.2f} {offset_y + head_cy - 7.0:.2f} '
-        f'Q {offset_x + head_cx + 3.0:.2f} {offset_y + head_cy - 8.6:.2f} '
-        f'{offset_x + head_cx - 1.8:.2f} {offset_y + head_cy - 5.1:.2f} '
-        f'Q {offset_x + head_cx - 5.0:.2f} {offset_y + head_cy - 3.2:.2f} '
-        f'{offset_x + head_cx - 8.0:.2f} {offset_y + head_cy - 6.0:.2f} Z" '
-        f'fill="{team["hair"]}" stroke="{OUTLINE}" stroke-width=".95"/>'
+        f'<ellipse cx="{hx(3.8):.2f}" cy="{hy(-1.3):.2f}" '
+        f'rx="1.05" ry=".82" fill="{OUTLINE}"/>'
     )
     out.append(
-        f'<ellipse cx="{offset_x + head_cx + 3.5:.2f}" cy="{offset_y + head_cy - 1.8:.2f}" '
-        f'rx="1.25" ry=".95" fill="{OUTLINE}"/>'
+        f'<path d="M {hx(2.5):.2f} {hy(4.7):.2f} '
+        f'Q {hx(4.7):.2f} {hy(5.5):.2f} {hx(6.4):.2f} {hy(4.0):.2f}" '
+        f'fill="none" stroke="{OUTLINE}" stroke-width=".82" '
+        f'stroke-linecap="round" opacity=".68"/>'
     )
     out.append(
-        f'<path d="M {offset_x + head_cx + 2.2:.2f} {offset_y + head_cy + 5.4:.2f} '
-        f'Q {offset_x + head_cx + 5.0:.2f} {offset_y + head_cy + 6.3:.2f} '
-        f'{offset_x + head_cx + 7.0:.2f} {offset_y + head_cy + 4.7:.2f}" '
-        f'fill="none" stroke="{OUTLINE}" stroke-width=".9" '
-        f'stroke-linecap="round" opacity=".70"/>'
+        f'<path d="M {hx(-2.0):.2f} {hy(7.3):.2f} '
+        f'Q {hx(1.4):.2f} {hy(9.0):.2f} {hx(5.1):.2f} {hy(7.1):.2f}" '
+        f'fill="none" stroke="{team["torso_dark"]}" stroke-width=".72" '
+        f'stroke-linecap="round" opacity=".32"/>'
     )
 
     return "\n".join(out)
@@ -600,7 +646,7 @@ def build_outputs() -> dict[str, str]:
         outputs[filename] = _atlas_svg(team, keeper=True)
         atlas_meta[slug] = {"name": team["name"], "file": filename}
     manifest = {
-        "version": 7,
+        "version": 8,
         "quality_contract": SPRITE_FORGE_CONTRACT["quality_contract"],
         "cell": {"width": CELL_W, "height": CELL_H},
         "columns": COLUMNS,
