@@ -78,7 +78,8 @@ func _initialize() -> void:
 	match_node.debug_focus_presentation()
 	var dribble_world_target := mobile_dribbler.global_position + Vector2(180.0, -120.0)
 	var dribble_screen_target: Vector2 = match_node.presentation_3d.screen_position_for_world(
-		dribble_world_target
+		dribble_world_target,
+		0.0,
 	)
 	assert(dribble_screen_target.x > 1280.0 * 0.48)
 	assert(match_node.mobile_touch_target(dribble_screen_target).is_empty())
