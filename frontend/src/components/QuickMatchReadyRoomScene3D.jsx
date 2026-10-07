@@ -213,33 +213,40 @@ function addRoyalPiece(root, x, z, material, scale = 1, king = false) {
 }
 
 function addChessSet(root, ivory, ebony, lite = false) {
-  const fileX = (file) => -.28 + (file - 3.5) * .76;
-  const nearPawnZ = -1.33 + 2.28;
-  const farPawnZ = -1.33 - 2.28;
-  const nearBackZ = -1.33 + 3.04;
-  const farBackZ = -1.33 - 3.04;
+  const squareSize = .76;
+  const boardCenterX = -.28;
+  const boardCenterZ = -1.33;
+  const squareX = (file) => boardCenterX + (file - 3.5) * squareSize;
+  const squareZ = (rank) => boardCenterZ + (rank - 3.5) * squareSize;
+
+  // Camera side = White. Every piece is anchored to the exact same square
+  // centers used by addBoard(), so art changes cannot drift the set off-grid.
+  const whiteBackRankZ = squareZ(7);
+  const whitePawnRankZ = squareZ(6);
+  const blackPawnRankZ = squareZ(1);
+  const blackBackRankZ = squareZ(0);
 
   const pawnFiles = lite ? [0, 2, 4, 6] : [0, 1, 2, 3, 4, 5, 6, 7];
   for (const file of pawnFiles) {
-    addPawnPiece(root, fileX(file), nearPawnZ, ivory, .66);
-    addPawnPiece(root, fileX(file), farPawnZ, ebony, .66);
+    addPawnPiece(root, squareX(file), whitePawnRankZ, ivory, .66);
+    addPawnPiece(root, squareX(file), blackPawnRankZ, ebony, .66);
   }
 
   if (lite) return;
 
   const addBackRank = (z, material, facing) => {
-    addRookPiece(root, fileX(0), z, material, .66);
-    addKnightPiece(root, fileX(1), z, material, .66, facing);
-    addBishopPiece(root, fileX(2), z, material, .66);
-    addRoyalPiece(root, fileX(3), z, material, .66, false);
-    addRoyalPiece(root, fileX(4), z, material, .66, true);
-    addBishopPiece(root, fileX(5), z, material, .66);
-    addKnightPiece(root, fileX(6), z, material, .66, facing);
-    addRookPiece(root, fileX(7), z, material, .66);
+    addRookPiece(root, squareX(0), z, material, .66);
+    addKnightPiece(root, squareX(1), z, material, .66, facing);
+    addBishopPiece(root, squareX(2), z, material, .66);
+    addRoyalPiece(root, squareX(3), z, material, .66, false);
+    addRoyalPiece(root, squareX(4), z, material, .66, true);
+    addBishopPiece(root, squareX(5), z, material, .66);
+    addKnightPiece(root, squareX(6), z, material, .66, facing);
+    addRookPiece(root, squareX(7), z, material, .66);
   };
 
-  addBackRank(nearBackZ, ivory, -1);
-  addBackRank(farBackZ, ebony, 1);
+  addBackRank(whiteBackRankZ, ivory, -1);
+  addBackRank(blackBackRankZ, ebony, 1);
 }
 
 function addChair(root, wood, leather, brass) {
