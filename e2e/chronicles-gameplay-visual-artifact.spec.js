@@ -386,6 +386,54 @@ test('Chronicles · mobile keeps Use separate from Attack · 390x844', async ({ 
 });
 
 
+test('Chronicles · initiative rail visual · desktop-1440x900', async ({ browser }) => {
+  test.setTimeout(180_000);
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await context.newPage();
+  try {
+    await openChronicles(page, 'initiative-desktop-1440x900');
+    const gameRoot = page.locator('[data-chronicles="true"]');
+    await page.keyboard.press('w');
+    await expect(gameRoot).toHaveAttribute('data-chronicles-phase', 'combat');
+    const rail = page.locator('[data-chronicles-initiative="visible"]');
+    await expect(rail).toBeVisible();
+    await expect(rail.locator('li').first()).toHaveAttribute('aria-current', 'step');
+    await captureElement(page, gameRoot, ARTIFACT_DIR + '/chronicles-initiative-desktop-1440x900.png');
+  } finally {
+    await context.close();
+  }
+});
+
+test('Chronicles · initiative rail visual · android-390x844', async ({ browser }) => {
+  test.setTimeout(180_000);
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  const page = await context.newPage();
+  try {
+    await openChronicles(page, 'initiative-android-390x844');
+    const gameRoot = page.locator('[data-chronicles="true"]');
+    await page.keyboard.press('w');
+    await expect(gameRoot).toHaveAttribute('data-chronicles-phase', 'combat');
+    await expect(gameRoot).toHaveAttribute('data-chronicles-initiative-die', '1d8');
+    const rail = page.locator('[data-chronicles-initiative="visible"]');
+    const minimap = page.locator('[data-chronicles-minimap="visible"]');
+    await expect(rail).toBeVisible();
+    await expect(rail.locator('li').first()).toHaveAttribute('aria-current', 'step');
+    const activeActor = await rail.getAttribute('data-active-actor');
+    expect(activeActor).toBeTruthy();
+    const railBox = await rail.boundingBox();
+    const minimapBox = await minimap.boundingBox();
+    expect(railBox).not.toBeNull();
+    expect(minimapBox).not.toBeNull();
+    const overlaps = !(railBox.x + railBox.width <= minimapBox.x || minimapBox.x + minimapBox.width <= railBox.x || railBox.y + railBox.height <= minimapBox.y || minimapBox.y + minimapBox.height <= railBox.y);
+    expect(overlaps).toBe(false);
+    await captureElement(page, gameRoot, ARTIFACT_DIR + '/chronicles-initiative-android-390x844.png');
+  } finally {
+    await context.close();
+  }
+});
+
 test('Chronicles · Gallery of Forks first-person material proof · desktop-1440x900', async ({ browser }) => {
   test.setTimeout(180_000);
   await mkdir(ARTIFACT_DIR, { recursive: true });
