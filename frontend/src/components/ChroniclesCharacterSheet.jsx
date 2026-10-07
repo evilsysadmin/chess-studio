@@ -151,7 +151,7 @@ export default function ChroniclesCharacterSheet({
 
         <div className="chronicles-character-sheet__section">
           <div className="chronicles-character-sheet__section-head">
-            <div><span>EQUIPO Y OBJETOS</span><small>Sin inventar propiedad que el juego no guarda</small></div>
+            <div><span>EQUIPO Y OBJETOS</span><small>Equipo personal y botín de la expedición</small></div>
           </div>
           <div className="chronicles-character-sheet__loadout">
             <article className={relic ? 'has-relic' : ''}>
@@ -207,7 +207,7 @@ export default function ChroniclesCharacterSheet({
 
         <div className="chronicles-character-sheet__section">
           <div className="chronicles-character-sheet__section-head">
-            <div><span>TÉCNICAS Y GRIMORIO</span><small>Doctrinas persistentes; las ramas excluyentes siguen siendo excluyentes</small></div>
+            <div><span>TÉCNICAS Y GRIMORIO</span><small>Doctrinas aprendidas y caminos de especialización</small></div>
             <b>{progress.skillPoints} punto{progress.skillPoints === 1 ? '' : 's'} libre{progress.skillPoints === 1 ? '' : 's'}</b>
           </div>
           <div className="chronicles-character-sheet__skill-grid">
