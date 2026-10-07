@@ -12,7 +12,6 @@ permissions:
   contents: read
   actions: read
   pull-requests: read
-# running generation finishes while newer pending.
 concurrency:
   group: chess-studio-staging-deploy
   cancel-in-progress: false
@@ -346,6 +345,7 @@ jobs:
       RESEND_BOOTSTRAP_REQUIRED: ${{ needs.prepare.outputs.resend_bootstrap_required }}
       CONTINUITY_REQUIRED: ${{ needs.prepare.outputs.continuity_required }}
       GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
     steps:
       - name: Summary
         run: echo "### Staging $DEPLOY_SHA · backend=$BACKEND · frontend=$FRONTEND · worker=$WORKER · smoke=$SMOKE" >> "$GITHUB_STEP_SUMMARY"
@@ -354,11 +354,11 @@ jobs:
         run: |
           set -euo pipefail
           if [[ "$RESEND_BOOTSTRAP_REQUIRED" == true ]]; then
-            gh workflow run oci-resend-bootstrap.yml --repo "$GITHUB_REPOSITORY" --ref main -f bootstrap_sha="$DEPLOY_SHA"
+            gh workflow run oci-resend-bootstrap.yml --ref main -f bootstrap_sha="$DEPLOY_SHA"
             echo "::notice title=Resend recovery dispatched::$DEPLOY_SHA"
           fi
           if [[ "$CONTINUITY_REQUIRED" == true ]]; then
-            gh workflow run staging-deploy-continuity.yml --repo "$GITHUB_REPOSITORY" --ref main -f deploy_sha="$DEPLOY_SHA"
+            gh workflow run staging-deploy-continuity.yml --ref main -f deploy_sha="$DEPLOY_SHA"
             echo "::notice title=Continuity drill dispatched::$DEPLOY_SHA"
           fi
           if [[ "$RESEND_BOOTSTRAP_REQUIRED" != true && "$CONTINUITY_REQUIRED" != true ]]; then
