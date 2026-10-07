@@ -395,7 +395,7 @@ def _surface_groups(path: str) -> set[str] | None:
         groups.add("training")
     if any(token in lower for token in (
         "war-room", "warroom", "board3d", "gameboardview", "gamesidecolumn", "game3d",
-        "combatpreparation", "combatoperations", "combatdeployment", "combatbarracks",
+        "combatpreparation", "combatoperations", "combatdeployment", "combatbarracks", "armyscreen",
     )):
         groups.add("warroom")
     # Class Room intentionally reuses the shared Board3D renderer. Any Board3D
