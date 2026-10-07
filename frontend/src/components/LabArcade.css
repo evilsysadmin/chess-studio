@@ -410,9 +410,9 @@
     border-color: transparent;
     border-top-color: transparent;
     background: linear-gradient(180deg,
-      transparent 0 44%,
-      rgba(3, 4, 5, .08) 67%,
-      rgba(3, 4, 5, .42) 100%);
+      transparent 0 42%,
+      rgba(3, 4, 5, .14) 58%,
+      rgba(3, 4, 5, .78) 100%);
     box-shadow: none;
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
@@ -443,8 +443,8 @@
     padding: 4px 7px 3px;
     border-bottom: 1px solid rgba(var(--hotspot-accent), .48);
     border-radius: 2px;
-    background: rgba(3, 4, 5, .48);
-    box-shadow: 0 5px 12px rgba(0, 0, 0, .26);
+    background: rgba(3, 4, 5, .18);
+    box-shadow: none;
     text-shadow: 0 2px 7px #000;
   }
 
@@ -676,23 +676,41 @@
     width: calc(50% - 23px);
     min-height: 84px;
     padding: 9px 10px;
-    border: 1px solid rgba(181, 132, 62, .46);
-    border-top-color: rgba(221, 169, 82, .56);
-    border-radius: 3px;
+    border: 0;
+    border-radius: 0;
     background:
-      linear-gradient(180deg, rgba(11, 11, 10, .84), rgba(5, 7, 8, .91)),
+      linear-gradient(180deg, rgba(17, 16, 13, .84), rgba(5, 7, 8, .9)),
       radial-gradient(circle at 50% 0, rgba(var(--hotspot-accent, 194,145,69), .08), transparent 70%);
     box-shadow:
-      0 10px 22px rgba(0, 0, 0, .43),
-      inset 0 1px rgba(255,235,188,.05);
+      0 11px 24px rgba(0, 0, 0, .46),
+      inset 0 0 0 1px rgba(181, 132, 62, .48),
+      inset 0 1px rgba(255,235,188,.06);
+    clip-path: polygon(5px 0, calc(100% - 5px) 0, 100% 5px, 100% calc(100% - 5px), calc(100% - 5px) 100%, 5px 100%, 0 calc(100% - 5px), 0 5px);
     backdrop-filter: blur(1px);
     -webkit-backdrop-filter: blur(1px);
+    transform: rotate(var(--mobile-plaque-rotate, 0deg));
   }
 
   .lab-screen.lab-screen .lab-workshop-portal > small,
   .lab-screen.lab-screen .lab-workshop-map-table > small,
   .lab-screen.lab-screen .lab-workshop-tool-meta {
     display: none;
+  }
+
+  .lab-screen.lab-screen .lab-workshop-portal::after,
+  .lab-screen.lab-screen .lab-workshop-map-table::after,
+  .lab-screen.lab-screen .lab-workshop-tool::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    display: block;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 7px 7px, rgba(205, 158, 76, .62) 0 1.2px, transparent 1.7px),
+      radial-gradient(circle at calc(100% - 7px) 7px, rgba(205, 158, 76, .62) 0 1.2px, transparent 1.7px),
+      radial-gradient(circle at 7px calc(100% - 7px), rgba(85, 65, 39, .72) 0 1.2px, transparent 1.7px),
+      radial-gradient(circle at calc(100% - 7px) calc(100% - 7px), rgba(85, 65, 39, .72) 0 1.2px, transparent 1.7px);
+    opacity: .72;
   }
 
   .lab-screen.lab-screen .lab-workshop-portal > strong,
@@ -717,6 +735,15 @@
     grid-template-columns: minmax(0, 1fr) auto;
     pointer-events: auto;
   }
+
+  .lab-screen.lab-screen .lab-workshop-portal--chronicles { --mobile-plaque-rotate: -.45deg; }
+  .lab-screen.lab-screen .lab-workshop-portal--tactics { --mobile-plaque-rotate: .4deg; }
+  .lab-screen.lab-screen .lab-workshop-portal--pawnslug-godot { --mobile-plaque-rotate: .35deg; }
+  .lab-screen.lab-screen .lab-workshop-portal--football { --mobile-plaque-rotate: -.4deg; }
+  .lab-screen.lab-screen .lab-workshop-portal--trailblazer { --mobile-plaque-rotate: -.3deg; }
+  .lab-screen.lab-screen .lab-workshop-map-table { --mobile-plaque-rotate: .35deg; }
+  .lab-screen.lab-screen .lab-workshop-tool:not(.lab-workshop-tool--arena) { --mobile-plaque-rotate: .25deg; }
+  .lab-screen.lab-screen .lab-workshop-tool--arena { --mobile-plaque-rotate: -.35deg; }
 
   .lab-screen.lab-screen .lab-workshop-portal--chronicles {
     left: 18px;
@@ -773,7 +800,7 @@
   .lab-screen.lab-screen .lab-workshop-portal:active,
   .lab-screen.lab-screen .lab-workshop-map-table:active,
   .lab-screen.lab-screen .lab-workshop-tool:active {
-    transform: translateY(1px);
+    transform: translateY(1px) rotate(var(--mobile-plaque-rotate, 0deg));
   }
 }
 
