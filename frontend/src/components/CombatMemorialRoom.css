@@ -1,0 +1,511 @@
+/* Combat Chess · Memorial de Caídos
+ * Presentation only. The persistent source of truth remains roster.memorial.
+ */
+
+.combat-memorial-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 260;
+  align-items: stretch;
+  justify-content: stretch;
+  padding: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(71, 55, 34, .13), rgba(3, 5, 8, .72) 72%),
+    rgba(2, 4, 6, .88);
+  backdrop-filter: blur(2px) saturate(.8) brightness(.74);
+}
+
+body:has(.combat-memorial-screen) .combat-operations-shell > :not(.combat-preparation-room-stage) {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+body:has(.combat-memorial-screen) .combat-preparation-room-stage {
+  filter: saturate(.7) brightness(.58);
+}
+
+.combat-memorial-room-shell {
+  position: relative;
+  width: min(1240px, calc(100vw - 2rem));
+  height: calc(100dvh - 1.5rem);
+  margin: .75rem auto;
+  padding: 5.35rem 1rem 4.4rem;
+  overflow: hidden;
+  border: 1px solid rgba(205, 169, 91, .25);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 50% -14%, rgba(201, 162, 87, .09), transparent 34%),
+    linear-gradient(180deg, rgba(17, 17, 16, .92), rgba(6, 8, 10, .94));
+  box-shadow: 0 30px 96px rgba(0,0,0,.58);
+  backdrop-filter: blur(13px);
+}
+
+.combat-memorial-room-shell::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 47px, rgba(255,255,255,.012) 48px, transparent 49px),
+    repeating-linear-gradient(90deg, transparent 0 96px, rgba(255,255,255,.011) 97px, transparent 98px);
+  opacity: .7;
+}
+
+.combat-memorial-close {
+  position: absolute;
+  z-index: 8;
+  top: .8rem;
+  right: .8rem;
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(221, 193, 132, .28);
+  border-radius: 999px;
+  background: rgba(7, 10, 14, .9);
+  color: rgba(242, 230, 204, .9);
+}
+
+.combat-memorial-room-heading {
+  position: absolute;
+  z-index: 5;
+  top: .72rem;
+  left: 1rem;
+  right: 4.6rem;
+  min-height: 3.8rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .8rem;
+  padding: .52rem .68rem;
+  border: 1px solid rgba(205, 169, 91, .18);
+  border-radius: 12px;
+  background: rgba(7, 9, 11, .76);
+  backdrop-filter: blur(12px);
+}
+
+.combat-memorial-room-heading > div:first-child {
+  min-width: 0;
+}
+
+.combat-memorial-room-heading span,
+.combat-memorial-room-wall-title > span {
+  color: rgba(210, 185, 127, .68);
+  font: 800 .53rem/1.2 var(--font-mono);
+  letter-spacing: .13em;
+}
+
+.combat-memorial-room-heading h2 {
+  margin: .04rem 0 0;
+  color: var(--parchment);
+  font-size: clamp(1.08rem, 1.8vw, 1.42rem);
+  line-height: 1;
+}
+
+.combat-memorial-room-heading p {
+  margin: .16rem 0 0;
+  max-width: 72ch;
+  color: rgba(230, 220, 199, .62);
+  font-size: .61rem;
+  line-height: 1.3;
+}
+
+.combat-memorial-count {
+  min-width: 86px;
+  display: grid;
+  place-items: center;
+  gap: .06rem;
+  padding: .36rem .52rem;
+  border: 1px solid rgba(205, 169, 91, .22);
+  border-radius: 7px;
+  background: rgba(0,0,0,.22);
+}
+
+.combat-memorial-count strong {
+  color: #d2ba7e;
+  font: 800 1.05rem/1 var(--font-mono);
+}
+
+.combat-memorial-count small {
+  color: rgba(230, 220, 199, .48);
+  font: .46rem/1 var(--font-mono);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.combat-memorial-room-body {
+  position: relative;
+  z-index: 2;
+  height: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, .92fr) minmax(390px, 1.08fr);
+  gap: .75rem;
+}
+
+.combat-memorial-room-wall,
+.combat-memorial-room-dossier {
+  min-height: 0;
+  overflow: auto;
+  scrollbar-width: thin;
+}
+
+.combat-memorial-room-wall {
+  position: relative;
+  padding: .75rem;
+  border: 1px solid rgba(205, 169, 91, .12);
+  border-radius: 8px;
+  background:
+    radial-gradient(ellipse at 50% 0, rgba(205,169,91,.07), transparent 32%),
+    linear-gradient(100deg, rgba(255,255,255,.022), transparent 22% 78%, rgba(0,0,0,.18)),
+    #111315;
+  box-shadow: inset 0 0 42px rgba(0,0,0,.38);
+}
+
+.combat-memorial-room-wall::before,
+.combat-memorial-room-wall::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+}
+
+.combat-memorial-room-wall::before {
+  left: 8%;
+  right: 8%;
+  top: -4.4rem;
+  height: 7rem;
+  border: 1px solid rgba(205,169,91,.08);
+  border-radius: 50% 50% 0 0 / 85% 85% 0 0;
+}
+
+.combat-memorial-room-wall::after {
+  left: 1rem;
+  right: 1rem;
+  bottom: .7rem;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(205,169,91,.15), transparent);
+}
+
+.combat-memorial-room-wall-title {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: .14rem;
+  margin-bottom: .62rem;
+  padding-bottom: .48rem;
+  border-bottom: 1px solid rgba(205,169,91,.09);
+}
+
+.combat-memorial-room-wall-title small {
+  color: rgba(230,220,199,.53);
+  font-size: .58rem;
+}
+
+.combat-memorial-room-plaques {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .44rem;
+}
+
+.combat-memorial-room-plaques button {
+  min-width: 0;
+  min-height: 86px;
+  display: grid;
+  grid-template-columns: 2.55rem minmax(0, 1fr);
+  align-items: center;
+  gap: .52rem;
+  padding: .52rem .58rem;
+  border: 1px solid rgba(137, 129, 113, .36);
+  border-radius: 4px;
+  color: var(--parchment);
+  text-align: left;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.038), transparent 24%),
+    linear-gradient(180deg, #2b2a26, #141618);
+  box-shadow:
+    inset 0 1px rgba(255,255,255,.035),
+    0 8px 16px rgba(0,0,0,.24);
+}
+
+.combat-memorial-room-plaques button:hover,
+.combat-memorial-room-plaques button:focus-visible,
+.combat-memorial-room-plaques button.is-selected {
+  border-color: rgba(205,169,91,.48);
+  background:
+    linear-gradient(135deg, rgba(205,169,91,.075), transparent 30%),
+    linear-gradient(180deg, #302d27, #151719);
+}
+
+.combat-memorial-room-plaques button:focus-visible {
+  outline: 2px solid rgba(220,188,111,.7);
+  outline-offset: 2px;
+}
+
+.combat-memorial-room-sigil {
+  display: grid;
+  place-items: center;
+  width: 2.4rem;
+  height: 3.1rem;
+  border: 1px solid rgba(158,153,140,.16);
+  border-radius: 50% 50% 36% 36%;
+  color: #a6a197;
+  background: linear-gradient(180deg, rgba(255,255,255,.025), rgba(0,0,0,.18));
+  font-size: 1.4rem;
+}
+
+.is-selected .combat-memorial-room-sigil {
+  color: #ceb879;
+  border-color: rgba(205,169,91,.3);
+}
+
+.combat-memorial-room-plaque-copy {
+  min-width: 0;
+  display: grid;
+  gap: .12rem;
+}
+
+.combat-memorial-room-plaque-copy strong {
+  overflow: hidden;
+  color: var(--parchment);
+  font-size: .8rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.combat-memorial-room-plaque-copy small {
+  color: rgba(230,220,199,.62);
+  font-size: .58rem;
+  line-height: 1.25;
+}
+
+.combat-memorial-room-plaque-copy em {
+  color: rgba(205,169,91,.64);
+  font: normal .52rem/1.25 var(--font-mono);
+}
+
+.combat-memorial-room-archive-note {
+  position: relative;
+  z-index: 1;
+  margin: .6rem 0 0;
+  color: rgba(230,220,199,.48);
+  font-size: .56rem;
+}
+
+.combat-memorial-room-dossier {
+  padding: .75rem;
+  border: 1px solid rgba(205,169,91,.11);
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, rgba(205,169,91,.03), transparent 24%),
+    rgba(4,6,8,.52);
+}
+
+.combat-memorial-room-dossier .combat-memorial-dossier {
+  min-height: 100%;
+  align-content: start;
+  padding: .9rem;
+  border-left-width: 2px;
+  background:
+    radial-gradient(circle at 85% 10%, rgba(205,169,91,.055), transparent 28%),
+    rgba(0,0,0,.16);
+}
+
+.combat-memorial-room-dossier .combat-memorial-dossier dl {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.combat-memorial-room-empty {
+  position: relative;
+  z-index: 2;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: .35rem;
+  padding: 2rem;
+  border: 1px solid rgba(205,169,91,.11);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle, rgba(205,169,91,.06), transparent 34%),
+    rgba(5,7,9,.48);
+  text-align: center;
+}
+
+.combat-memorial-room-empty > span {
+  color: rgba(205,169,91,.42);
+  font-size: 4rem;
+}
+
+.combat-memorial-room-empty strong {
+  color: var(--parchment);
+  font-size: 1rem;
+}
+
+.combat-memorial-room-empty p {
+  max-width: 54ch;
+  margin: 0;
+  color: rgba(230,220,199,.58);
+  font-size: .68rem;
+  line-height: 1.45;
+}
+
+.combat-memorial-room-footnote {
+  position: absolute;
+  z-index: 4;
+  left: 1rem;
+  right: 1rem;
+  bottom: .75rem;
+  min-height: 3rem;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: .65rem;
+  padding: .5rem .64rem;
+  border: 1px solid rgba(205,169,91,.12);
+  border-radius: 7px;
+  background: rgba(6,8,9,.75);
+  backdrop-filter: blur(10px);
+}
+
+.combat-memorial-room-footnote strong {
+  color: #d0b777;
+  font-size: .62rem;
+}
+
+.combat-memorial-room-footnote span {
+  color: rgba(230,220,199,.54);
+  font-size: .57rem;
+  line-height: 1.3;
+}
+
+@media (max-width: 780px) {
+  .combat-memorial-room-shell {
+    width: 100vw;
+    height: 100dvh;
+    margin: 0;
+    padding: 4.9rem .42rem 4.5rem;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .combat-memorial-close {
+    top: .45rem;
+    right: .42rem;
+  }
+
+  .combat-memorial-room-heading {
+    top: .4rem;
+    left: .42rem;
+    right: 3.45rem;
+    min-height: 3.7rem;
+    padding: .42rem .5rem;
+    border-radius: 9px;
+  }
+
+  .combat-memorial-room-heading p {
+    display: none;
+  }
+
+  .combat-memorial-count {
+    min-width: 58px;
+    padding: .28rem .34rem;
+  }
+
+  .combat-memorial-count small {
+    display: none;
+  }
+
+  .combat-memorial-room-body {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, .92fr) minmax(250px, 1.08fr);
+    gap: .42rem;
+    overflow: auto;
+  }
+
+  .combat-memorial-room-wall,
+  .combat-memorial-room-dossier {
+    overflow: visible;
+  }
+
+  .combat-memorial-room-plaques {
+    grid-template-columns: 1fr;
+  }
+
+  .combat-memorial-room-plaques button {
+    min-height: 76px;
+  }
+
+  .combat-memorial-room-dossier {
+    padding: .45rem;
+  }
+
+  .combat-memorial-room-dossier .combat-memorial-dossier {
+    min-height: 0;
+    padding: .65rem;
+  }
+
+  .combat-memorial-room-dossier .combat-memorial-dossier dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .combat-memorial-room-footnote {
+    left: .42rem;
+    right: .42rem;
+    bottom: .42rem;
+    grid-template-columns: 1fr;
+    gap: .08rem;
+    min-height: 3.45rem;
+  }
+
+  .combat-memorial-room-footnote span {
+    font-size: .54rem;
+  }
+}
+
+@media (max-width: 430px) {
+  .combat-memorial-room-shell {
+    padding-inline: .35rem;
+  }
+
+  .combat-memorial-room-heading {
+    left: .35rem;
+  }
+
+  .combat-memorial-room-body {
+    grid-template-rows: auto auto;
+  }
+
+  .combat-memorial-room-wall {
+    padding: .58rem;
+  }
+
+  .combat-memorial-room-plaques button {
+    min-height: 72px;
+    grid-template-columns: 2.25rem minmax(0, 1fr);
+    gap: .42rem;
+  }
+
+  .combat-memorial-room-sigil {
+    width: 2.1rem;
+    height: 2.8rem;
+  }
+
+  .combat-memorial-room-footnote {
+    left: .35rem;
+    right: .35rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .combat-memorial-screen,
+  .combat-memorial-room-shell,
+  .combat-memorial-room-heading,
+  .combat-memorial-room-footnote {
+    backdrop-filter: none;
+  }
+
+  body:has(.combat-memorial-screen) .combat-preparation-room-stage {
+    filter: brightness(.62);
+  }
+}
