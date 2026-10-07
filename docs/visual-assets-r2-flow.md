@@ -81,7 +81,7 @@ Before changing a runtime manifest pointer:
 - prove the public R2 object exists;
 - record byte size and SHA-256;
 - when practical, download/read it back and verify the SHA matches the manifest;
-- keep the old content-addressed object for rollback;
+- keep the previous content-addressed object for the bounded rollback window; the R2 retention job prunes older unreferenced generations after the grace period;
 - update integrity tests that pin the logical ID/hash;
 - capture the real application after promotion.
 
