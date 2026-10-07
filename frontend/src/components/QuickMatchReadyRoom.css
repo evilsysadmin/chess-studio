@@ -372,15 +372,14 @@
     position: static;
     width: auto;
     max-height: none;
-    margin-top: .4rem;
-    padding: .8rem .15rem .2rem;
+    margin-top: .45rem;
+    padding: .85rem .75rem .65rem;
     overflow: visible;
-    border: 0;
-    border-top: 1px solid rgba(219, 173, 87, .16);
-    border-radius: 0;
-    background: transparent;
-    box-shadow: none;
-    backdrop-filter: none;
+    border: 1px solid rgba(219, 173, 87, .18);
+    border-radius: 10px;
+    background: linear-gradient(180deg, rgba(19, 14, 10, .90), rgba(10, 8, 7, .94));
+    box-shadow: 0 18px 40px rgba(0, 0, 0, .30);
+    backdrop-filter: blur(6px);
   }
 
   .friendly-modal.quick-match-ready-room[aria-label='Configurar partida rápida'] .quick-match-ready-room__briefing {
