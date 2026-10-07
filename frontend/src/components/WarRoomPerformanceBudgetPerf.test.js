@@ -45,31 +45,20 @@ describe('War Room performance budget hot path', () => {
     expect(batch.castShadow).toBe(false);
   });
 
-  it('retires the late-practical outer hook after the first rendered frame', () => {
+  it('does not arm a second render traversal for retired legacy practicals', () => {
     const scene = new THREE.Scene();
     const floor = mesh('war-room-castle-floor-slab');
     const previous = vi.fn();
     floor.onAfterRender = previous;
-    const premium = new THREE.Group();
-    premium.name = 'premium-war-room-layer';
-    scene.add(floor, premium);
+    scene.add(floor);
 
     applyWarRoomPerformanceBudget(scene);
-    const armed = floor.onAfterRender;
-    expect(armed).not.toBe(previous);
 
-    const banker = new THREE.PointLight(0xffc76b, 3.45, 5.6, 2);
-    banker.position.set(4.4, 2.5, -6.5);
-    premium.add(banker);
-
-    armed();
-
-    expect(previous).toHaveBeenCalledTimes(1);
-    expect(banker.parent).toBeNull();
-    expect(floor.userData.warRoomLatePracticalLightRetirementCompleted).toBe(true);
     expect(floor.onAfterRender).toBe(previous);
+    expect(scene.userData.warRoomLatePracticalLightRetirementArmed).toBeUndefined();
+    expect(floor.userData.warRoomLatePracticalLightRetirementCompleted).toBeUndefined();
 
     floor.onAfterRender();
-    expect(previous).toHaveBeenCalledTimes(2);
+    expect(previous).toHaveBeenCalledTimes(1);
   });
 });
