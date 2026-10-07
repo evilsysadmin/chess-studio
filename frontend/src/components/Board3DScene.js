@@ -223,7 +223,7 @@ export function trainingRoomCameraFramingProfile(args = {}) {
     // composition with room for curriculum chrome. Portrait gets a more
     // overhead, slightly higher crop so the board fills the useful phone
     // viewport instead of leaving a dark ceiling between HUD and play.
-    halfSpan: Number((base.halfSpan * (portrait ? 0.955 : 0.96)).toFixed(3)),
+    halfSpan: Number((base.halfSpan * (portrait ? 0.953 : 0.96)).toFixed(3)),
     targetY: 0.05,
     ...(portrait ? {
       targetZ: -1.0,
