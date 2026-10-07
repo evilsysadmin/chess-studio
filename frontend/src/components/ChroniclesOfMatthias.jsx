@@ -340,7 +340,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
         setRetaliationCue((active) => active?.token === token ? null : active);
       }, 320);
     }
-  }, [progression]);
+  }, []);
 
   const clearTouchHold = useCallback(() => {
     const active = touchHoldRef.current;
