@@ -457,7 +457,7 @@ function buildRoom({ lite = false } = {}) {
   const leather = mat(0x4a201d, .05, .70);
   const steel = mat(0x8d9396, .74, .27);
   const ivory = mat(0xd8cfba, .06, .42);
-  const ebony = mat(0x252526, .30, .31);
+  const ebony = mat(0x2d2b2b, .30, .30);
   const lightSquare = mat(0xcfc7b3, .04, .66);
   const darkSquare = mat(0x4a4843, .05, .58);
   const night = new THREE.MeshBasicMaterial({ color: 0x0b3156 });
