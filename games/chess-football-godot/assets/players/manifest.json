@@ -1,6 +1,6 @@
 {
-  "version": 15,
-  "quality_contract": "chess-football-vector-v15",
+  "version": 16,
+  "quality_contract": "chess-football-vector-v16",
   "cell": {
     "width": 128,
     "height": 144
@@ -27,42 +27,50 @@
     "fc_matthias": {
       "name": "FC Matthias",
       "file": "fc_matthias_atlas.svg",
-      "body_profile": "defender"
+      "body_profile": "defender",
+      "motion_profile": "grounded"
     },
     "fc_matthias_v2": {
       "name": "FC Matthias · Variante 2",
       "file": "fc_matthias_v2_atlas.svg",
-      "body_profile": "midfielder"
+      "body_profile": "midfielder",
+      "motion_profile": "balanced"
     },
     "fc_matthias_v3": {
       "name": "FC Matthias · Variante 3",
       "file": "fc_matthias_v3_atlas.svg",
-      "body_profile": "wing"
+      "body_profile": "wing",
+      "motion_profile": "explosive"
     },
     "fc_matthias_v4": {
       "name": "FC Matthias · Variante 4",
       "file": "fc_matthias_v4_atlas.svg",
-      "body_profile": "forward"
+      "body_profile": "forward",
+      "motion_profile": "driven"
     },
     "real_enroque": {
       "name": "Real Enroque",
       "file": "real_enroque_atlas.svg",
-      "body_profile": "defender"
+      "body_profile": "defender",
+      "motion_profile": "grounded"
     },
     "real_enroque_v2": {
       "name": "Real Enroque · Variante 2",
       "file": "real_enroque_v2_atlas.svg",
-      "body_profile": "midfielder"
+      "body_profile": "midfielder",
+      "motion_profile": "balanced"
     },
     "real_enroque_v3": {
       "name": "Real Enroque · Variante 3",
       "file": "real_enroque_v3_atlas.svg",
-      "body_profile": "wing"
+      "body_profile": "wing",
+      "motion_profile": "explosive"
     },
     "real_enroque_v4": {
       "name": "Real Enroque · Variante 4",
       "file": "real_enroque_v4_atlas.svg",
-      "body_profile": "forward"
+      "body_profile": "forward",
+      "motion_profile": "driven"
     },
     "fc_matthias_keeper": {
       "name": "FC Matthias · Portero",
