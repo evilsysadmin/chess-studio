@@ -486,6 +486,7 @@ def _limb_path(
     end: tuple[float, float],
     start_half_width: float,
     end_half_width: float,
+    organic: bool = False,
 ) -> list[tuple[float, float]]:
     ax, ay = start
     bx, by = end
@@ -494,12 +495,53 @@ def _limb_path(
     length = max(math.hypot(dx, dy), 0.001)
     nx = -dy / length
     ny = dx / length
-    return [
+    base = [
         (ax + nx * start_half_width, ay + ny * start_half_width),
         (bx + nx * end_half_width, by + ny * end_half_width),
         (bx - nx * end_half_width, by - ny * end_half_width),
         (ax - nx * start_half_width, ay - ny * start_half_width),
     ]
+    if not organic:
+        return base
+
+    # V26 derives the organic contour from the same two-decimal base quad that
+    # is already authored into the atlas. This keeps generation deterministic
+    # while replacing straight trapezoids with a restrained muscle/taper arc.
+    a, b, c, d = [
+        (float(f"{x:.2f}"), float(f"{y:.2f}"))
+        for x, y in base
+    ]
+    start_cx = (a[0] + d[0]) * 0.5
+    start_cy = (a[1] + d[1]) * 0.5
+    end_cx = (b[0] + c[0]) * 0.5
+    end_cy = (b[1] + c[1]) * 0.5
+    start_width = max(math.hypot(a[0] - d[0], a[1] - d[1]) * 0.5, 0.001)
+    end_width = max(math.hypot(b[0] - c[0], b[1] - c[1]) * 0.5, 0.001)
+    contour_nx = (a[0] - d[0]) / (2.0 * start_width)
+    contour_ny = (a[1] - d[1]) / (2.0 * start_width)
+    max_width = max(start_width, end_width)
+    positive: list[tuple[float, float]] = []
+    negative: list[tuple[float, float]] = []
+    for t in (0.0, 0.22, 0.44, 0.66, 0.84, 1.0):
+        center_x = start_cx + (end_cx - start_cx) * t
+        center_y = start_cy + (end_cy - start_cy) * t
+        width = start_width + (end_width - start_width) * t
+        swell = math.sin(math.pi * t) * max_width * 0.12
+        positive_width = width + swell * (1.0 - 0.10 * t)
+        negative_width = width + swell * 0.72
+        positive.append(
+            (
+                center_x + contour_nx * positive_width,
+                center_y + contour_ny * positive_width,
+            )
+        )
+        negative.append(
+            (
+                center_x - contour_nx * negative_width,
+                center_y - contour_ny * negative_width,
+            )
+        )
+    return positive + list(reversed(negative))
 
 
 def _hand_path(
@@ -638,12 +680,14 @@ def _frame_svg(
             (knee_x, knee_y),
             (4.5 if far else 5.1) * limb_scale,
             (3.8 if far else 4.2) * limb_scale,
+            organic=True,
         )
         shin = _limb_path(
             (knee_x, knee_y + 1.0),
             (foot_x, foot_y - 5.6),
             (3.4 if far else 3.8) * limb_scale,
             (2.7 if far else 3.0) * limb_scale,
+            organic=True,
         )
         out.append(
             f'<path d="{_path(thigh, offset_x, offset_y)}" '
@@ -799,12 +843,14 @@ def _frame_svg(
                 (elbow_x, elbow_y),
                 3.15 * limb_scale,
                 2.8 * limb_scale,
+                organic=True,
             )
             fore = _limb_path(
                 (elbow_x, elbow_y),
                 (hand_x, hand_y),
                 2.9 * limb_scale,
                 2.3 * limb_scale,
+                organic=True,
             )
             out.append(
                 f'<path d="{_path(sleeve, offset_x, offset_y)}" '
@@ -980,12 +1026,14 @@ def _frame_svg(
             (elbow_x, elbow_y),
             3.3 * limb_scale,
             3.0 * limb_scale,
+            organic=True,
         )
         fore = _limb_path(
             (elbow_x, elbow_y),
             (hand_x, hand_y),
             3.1 * limb_scale,
             2.4 * limb_scale,
+            organic=True,
         )
         out.append(
             f'<path d="{_path(sleeve, offset_x, offset_y)}" '
@@ -1278,6 +1326,7 @@ def build_outputs() -> dict[str, str]:
                 "silhouette_profile": "athletic-v23",
                 "joint_profile": "organic-joints-v24",
                 "limb_outline_profile": "tonal-limbs-v25",
+                "limb_geometry_profile": "organic-taper-v26",
                 "kinetics_profile": "weight-transfer-v21",
             }
             variant_keys.append(variant_slug)
@@ -1291,10 +1340,11 @@ def build_outputs() -> dict[str, str]:
             "silhouette_profile": "athletic-v23",
                 "joint_profile": "organic-joints-v24",
                 "limb_outline_profile": "tonal-limbs-v25",
+            "limb_geometry_profile": "organic-taper-v26",
             "kinetics_profile": "weight-transfer-v21",
         }
     manifest = {
-        "version": 25,
+        "version": 26,
         "quality_contract": SPRITE_FORGE_CONTRACT["quality_contract"],
         "cell": {"width": CELL_W, "height": CELL_H},
         "columns": COLUMNS,
