@@ -319,6 +319,73 @@ for (const capture of CAPTURES) {
 }
 
 
+test('Chronicles · mobile keeps Use separate from Attack · 390x844', async ({ browser }) => {
+  test.setTimeout(180_000);
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    hasTouch: true,
+    isMobile: true,
+  });
+  const page = await context.newPage();
+  try {
+    await openChronicles(page, 'mobile-use-control-390x844', {
+      chroniclesCurrentMapId: 'gallery-of-forks',
+      chroniclesWorldFlags: {
+        galleryLeverPulled: false,
+        galleryRelicCollected: false,
+        enemyHp: 0,
+        jailerHp: 0,
+        '__chrRuntime.version': 1,
+        '__chrRuntime.x': 4,
+        '__chrRuntime.y': 5,
+        '__chrRuntime.direction': 1,
+        '__chrRuntime.phase': 'explore',
+        '__chrRuntime.turnPhase': 'party',
+      },
+    });
+
+    const gameRoot = page.locator('[data-chronicles="true"]');
+    const attack = page.locator('[data-chronicles-touch-action="attack"]');
+    const use = page.locator('[data-chronicles-touch-action="interact"]');
+
+    await expect(gameRoot).toHaveAttribute('data-chronicles-map-id', 'gallery-of-forks');
+    await expect(attack).toBeVisible();
+    await expect(attack).toHaveAttribute('aria-label', 'Atacar');
+    await expect(use).toBeVisible();
+    await expect(use).toHaveAttribute('aria-label', 'Bajar contrapeso');
+    await expect(use).toContainText('USAR');
+
+    const attackBox = await attack.boundingBox();
+    const useBox = await use.boundingBox();
+    expect(attackBox?.width || 0, 'mobile Attack width').toBeGreaterThanOrEqual(44);
+    expect(attackBox?.height || 0, 'mobile Attack height').toBeGreaterThanOrEqual(44);
+    expect(useBox?.width || 0, 'mobile Use width').toBeGreaterThanOrEqual(44);
+    expect(useBox?.height || 0, 'mobile Use height').toBeGreaterThanOrEqual(44);
+    const attackRight = (attackBox?.x || 0) + (attackBox?.width || 0);
+    const useRight = (useBox?.x || 0) + (useBox?.width || 0);
+    expect(
+      Math.min(attackRight, useRight) - Math.max(attackBox?.x || 0, useBox?.x || 0),
+      'mobile Attack and Use horizontal overlap',
+    ).toBeLessThanOrEqual(0);
+
+    await captureElement(
+      page,
+      gameRoot,
+      `${ARTIFACT_DIR}/chronicles-mobile-use-control-390x844.png`,
+    );
+
+    await use.click();
+    await expect(page.locator('.chronicles-statusbar')).toContainText('Recoger reliquia de ceniza');
+    await expect(page.locator('[data-chronicles-touch-action="interact"]')).toHaveCount(0);
+    await expect(attack).toBeVisible();
+  } finally {
+    await context.close();
+  }
+});
+
+
 test('Chronicles · Gallery of Forks first-person material proof · desktop-1440x900', async ({ browser }) => {
   test.setTimeout(180_000);
   await mkdir(ARTIFACT_DIR, { recursive: true });

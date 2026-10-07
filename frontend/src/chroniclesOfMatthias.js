@@ -40,6 +40,14 @@ export const CHRONICLES_ENEMIES = DEFAULT_MAP.enemies;
 
 const INITIAL_JOURNAL = DEFAULT_MAP.initialJournal;
 
+const FIRST_PERSON_ADJACENT_INTERACTION_KINDS = new Set([
+  'lever',
+  'button',
+  'lore',
+  'relic-socket',
+  'secret-door',
+]);
+
 function enemiesFor(state) {
   return chroniclesMapForState(state).enemies;
 }
@@ -184,11 +192,33 @@ function enterTile(state, x, y) {
 export function chroniclesContextualContentAction(state) {
   if (!state || state.phase === 'escaped' || state.phase === 'defeated') return null;
   const map = chroniclesMapForState(state);
-  const interaction = chroniclesContentInteractions(
+  let interaction = chroniclesContentInteractions(
     state,
     map,
     (x, y) => chroniclesTileAt(x, y, state),
   ).find((entry) => !['exit', 'trigger', 'trap'].includes(entry.kind));
+
+  if (!interaction) {
+    const front = chroniclesFrontCell(state);
+    if (!explorationCellBlocker(state, front.x, front.y)) {
+      const definition = (map?.interactables || []).find((entry) => {
+        if (!FIRST_PERSON_ADJACENT_INTERACTION_KINDS.has(entry.kind)) return false;
+        if (!chroniclesRequirementsMet(state, entry.when)) return false;
+        const position = chroniclesMapContentPosition(map, entry);
+        return position?.x === front.x && position?.y === front.y;
+      });
+      if (definition) {
+        interaction = {
+          id: definition.id,
+          kind: definition.kind,
+          label: definition.label,
+          x: front.x,
+          y: front.y,
+        };
+      }
+    }
+  }
+
   if (!interaction) return null;
   const definition = chroniclesContentDefinition(map, interaction.id);
   if (!definition?.action) return null;
@@ -369,6 +399,23 @@ function blockingEnemyMessage(enemy) {
   return `${enemy.name[0].toUpperCase()}${enemy.name.slice(1)} bloquea el paso. Convéncelo con violencia reglamentaria.`;
 }
 
+function explorationCellBlocker(state, x, y) {
+  const tile = chroniclesTileAt(x, y, state);
+  if (tile === '#') {
+    return { message: 'Hay una pared. Incluso Matthias concede que atravesarla sería excesivo.' };
+  }
+  const blockingEnemy = chroniclesEnemyAt(state, x, y);
+  if (blockingEnemy) return { message: blockingEnemyMessage(blockingEnemy) };
+  const exit = contentEntryAt(state, 'exits', x, y);
+  const exitFailure = exit ? chroniclesRequirementFailure(state, exit.requirements) : null;
+  if (exitFailure) {
+    return {
+      message: exitFailure.explorationMessage || exitFailure.message || 'El paso sigue cerrado.',
+    };
+  }
+  return null;
+}
+
 export function chroniclesReduce(state, action) {
   if (!state || state.phase === 'escaped' || state.phase === 'defeated') return state;
   const actionType = typeof action === 'string' ? action : action?.type;
@@ -382,19 +429,8 @@ export function chroniclesReduce(state, action) {
   if (!sign) return state;
   const x = state.x + direction.dx * sign;
   const y = state.y + direction.dy * sign;
-  const tile = chroniclesTileAt(x, y, state);
-
-  if (tile === '#') return withMessage(state, 'Hay una pared. Incluso Matthias concede que atravesarla sería excesivo.');
-  const blockingEnemy = chroniclesEnemyAt(state, x, y);
-  if (blockingEnemy) return withMessage(state, blockingEnemyMessage(blockingEnemy));
-  const exit = contentEntryAt(state, 'exits', x, y);
-  const exitFailure = exit ? chroniclesRequirementFailure(state, exit.requirements) : null;
-  if (exitFailure) {
-    return withMessage(
-      state,
-      exitFailure.explorationMessage || exitFailure.message || 'El paso sigue cerrado.',
-    );
-  }
+  const blocker = explorationCellBlocker(state, x, y);
+  if (blocker) return withMessage(state, blocker.message);
   return enterTile(state, x, y);
 }
 

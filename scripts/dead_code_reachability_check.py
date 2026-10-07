@@ -48,7 +48,6 @@ FRONTEND_DEAD_EXPORT_BASELINE = {
     "frontend/src/chronicles/chroniclesMapCatalog.js::chroniclesMapEnemyById",
     "frontend/src/chronicles/chroniclesMapCatalog.js::chroniclesMapInteractable",
     "frontend/src/chroniclesOfMatthias.js::chroniclesEnemyAlive",
-    "frontend/src/chroniclesOfMatthias.js::chroniclesFrontCell",
     "frontend/src/chroniclesOfMatthiasProgression.js::resetChroniclesCharacterBuild",
     "frontend/src/combatEconomyBalance.js::COMBAT_CAMPAIGN_ECONOMY",
     "frontend/src/components/WarRoomCampaignArt.js::WAR_ROOM_CAMPAIGN_ART_KEYS",

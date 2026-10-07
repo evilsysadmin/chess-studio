@@ -594,7 +594,15 @@ export default function ChroniclesOfMatthias({ onExit }) {
     void loadChroniclesFirstPersonRenderer()
       .then(({ createChroniclesOfMatthiasGame }) => {
         if (cancelled) return;
-        engine = createChroniclesOfMatthiasGame(host, { initialState: stateRef.current });
+        engine = createChroniclesOfMatthiasGame(host, {
+          initialState: stateRef.current,
+          onContentClick: (contentId) => {
+            const current = stateRef.current;
+            const contextual = chroniclesContextualContentAction(current);
+            if (contextual?.id !== contentId) return;
+            dispatch('interact');
+          },
+        });
         engineRef.current = engine;
         engine.renderState(stateRef.current);
       })
@@ -610,7 +618,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
       engine?.destroy();
       if (engineRef.current === engine) engineRef.current = null;
     };
-  }, [ready, state?.mapId]);
+  }, [dispatch, ready, state?.mapId]);
 
   useEffect(() => { engineRef.current?.renderState(state); }, [state]);
 
@@ -890,10 +898,20 @@ export default function ChroniclesOfMatthias({ onExit }) {
                 >↑<small>AVANZAR</small></button>
                 <button
                   type="button"
-                  className={contextualAction ? 'is-contextual' : 'is-attack'}
-                  onClick={contextualAction ? interactWithContext : attackWithSelected}
-                  aria-label={contextualAction?.label || 'Atacar'}
-                >{contextualAction ? '✦' : '⚔'}<small>{contextualAction ? contextualAction.label.toUpperCase() : (selectedMember?.name?.toUpperCase() || 'ATACAR')}</small></button>
+                  className="is-attack"
+                  data-chronicles-touch-action="attack"
+                  onClick={attackWithSelected}
+                  aria-label="Atacar"
+                >⚔<small>{selectedMember?.name?.toUpperCase() || 'ATACAR'}</small></button>
+                {contextualAction && (
+                  <button
+                    type="button"
+                    className="is-contextual"
+                    data-chronicles-touch-action="interact"
+                    onClick={interactWithContext}
+                    aria-label={contextualAction.label}
+                  >✦<small>USAR</small></button>
+                )}
                 <button
                   type="button"
                   data-chronicles-touch-action="backward"

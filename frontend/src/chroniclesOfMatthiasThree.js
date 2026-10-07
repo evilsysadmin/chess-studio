@@ -470,6 +470,16 @@ function configureRenderer(renderer, { coarsePointer, alpha = false, lightingPro
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 }
 
+export function chroniclesContentIdFromObject(object) {
+  let current = object || null;
+  while (current) {
+    const id = current.userData?.chroniclesContentId;
+    if (id) return id;
+    current = current.parent || null;
+  }
+  return null;
+}
+
 function createCombatFx(camera) {
   const group = new THREE.Group();
   group.name = 'chronicles-combat-fx';
@@ -489,7 +499,11 @@ function createCombatFx(camera) {
   return { group, slash, ring, slashMaterial, ringMaterial };
 }
 
-export function createChroniclesOfMatthiasGame(host, { onReady, initialState = null } = {}) {
+export function createChroniclesOfMatthiasGame(host, {
+  onReady,
+  initialState = null,
+  onContentClick = null,
+} = {}) {
   if (!host) throw new Error('Chronicles of Matthias requires a host element');
 
   const coarse = Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
@@ -511,6 +525,8 @@ export function createChroniclesOfMatthiasGame(host, { onReady, initialState = n
   const combatFx = createCombatFx(camera);
 
   const dungeon = createDungeonScene(scene, { coarsePointer: coarse, scenePlan });
+  const contentRaycaster = new THREE.Raycaster();
+  const contentPointer = new THREE.Vector2();
   const dressing = scenePlan?.useAuthoredCryptDressing
     ? buildChroniclesDungeonDressing({ coarsePointer: coarse })
     : new THREE.Group();
@@ -742,6 +758,23 @@ export function createChroniclesOfMatthiasGame(host, { onReady, initialState = n
     renderer.render(scene, camera);
   }
 
+  const onContentPointerUp = (event) => {
+    if (typeof onContentClick !== 'function') return;
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    const rect = renderer.domElement.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    contentPointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    contentPointer.y = -(((event.clientY - rect.top) / rect.height) * 2 - 1);
+    contentRaycaster.setFromCamera(contentPointer, camera);
+    const roots = dungeon.contentProps
+      .map((entry) => entry.root)
+      .filter((root) => root?.visible);
+    const hit = contentRaycaster.intersectObjects(roots, true)[0];
+    const contentId = chroniclesContentIdFromObject(hit?.object);
+    if (contentId) onContentClick(contentId);
+  };
+  renderer.domElement.addEventListener('pointerup', onContentPointerUp);
+
   const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(resize) : null;
   observer?.observe(host);
   const onWindowResize = () => resize();
@@ -762,6 +795,7 @@ export function createChroniclesOfMatthiasGame(host, { onReady, initialState = n
       observer?.disconnect();
       if (!observer) window.removeEventListener('resize', onWindowResize);
       document.removeEventListener('visibilitychange', onVisibility);
+      renderer.domElement.removeEventListener('pointerup', onContentPointerUp);
       dungeon.materialArt?.userData.chroniclesArtCancel?.();
       disposeScene(scene);
       renderer.dispose();
