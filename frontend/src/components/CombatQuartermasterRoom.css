@@ -5,7 +5,7 @@
 .combat-quartermaster-screen {
   position: fixed;
   inset: 0;
-  z-index: 120;
+  z-index: 220;
   align-items: stretch;
   justify-content: stretch;
   padding: 0;
