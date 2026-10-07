@@ -11,6 +11,12 @@ on:
         options:
           - full
           - backup-storage
+  # One-shot P0 bootstrap for the currently missing production backup bucket.
+  # Remove this trigger and marker immediately after one successful reconcile.
+  push:
+    branches: [main]
+    paths:
+      - ".github/ops/oci-backup-storage-bootstrap-20261007.once"
 
 permissions:
   contents: read
@@ -23,7 +29,7 @@ concurrency:
 
 jobs:
   apply:
-    name: OCI staging · apply infrastructure · ${{ inputs.scope }}
+    name: OCI staging · apply infrastructure · ${{ github.event_name == 'push' && 'backup-storage' || inputs.scope }}
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
@@ -50,7 +56,7 @@ jobs:
         run: bash scripts/oci_staging_lifecycle.sh --self-test
 
       - name: Validate reserved egress reconciler
-        if: inputs.scope == 'full'
+        if: github.event_name == 'workflow_dispatch' && inputs.scope == 'full'
         run: python3 -S scripts/oci_reserved_egress.py --self-test
 
       - uses: hashicorp/setup-terraform@v4
@@ -65,18 +71,18 @@ jobs:
           python-version: '3.13'
 
       - name: Apply exact main infrastructure state
-        if: inputs.scope == 'full'
+        if: github.event_name == 'workflow_dispatch' && inputs.scope == 'full'
         run: make -C infra/oci apply
 
       - name: Reconcile production backup storage only
-        if: inputs.scope == 'backup-storage'
+        if: github.event_name == 'push' || inputs.scope == 'backup-storage'
         run: make -C infra/oci backup-storage
 
       # A newly-created/replaced A1 can take a few minutes to register the
       # Compute Instance Run Command plugin. This belongs to infrastructure
       # convergence, not to every application release.
       - name: Wait for OCI Run Command registration after infrastructure change
-        if: inputs.scope == 'full'
+        if: github.event_name == 'workflow_dispatch' && inputs.scope == 'full'
         shell: bash
         run: |
           set -euo pipefail
@@ -100,5 +106,5 @@ jobs:
           done
 
       - name: Attach and verify existing reserved staging egress
-        if: inputs.scope == 'full'
+        if: github.event_name == 'workflow_dispatch' && inputs.scope == 'full'
         run: python3 scripts/oci_reserved_egress.py
