@@ -56,7 +56,7 @@ python3 -S scripts/r2_asset_gc.py apply --report /tmp/r2-retention-report.json
 
 The collector is fail-closed. It never deletes a key referenced by the reviewed manifest, a hard-coded runtime R2 URL found in application/runtime source, a stable `current.*` alias, or a configured protected prefix. Objects younger than the grace window or objects it cannot classify safely are also retained.
 
-Eligible cleanup includes expired smoke objects, explicitly deprecated prefixes, duplicate content-addressed payloads, excess staging/runtime revision history, old immutable generations beyond the rollback window, and finally old rollback copies when bucket pressure exceeds the configured soft ceiling.
+Eligible cleanup includes expired smoke objects, explicitly deprecated prefixes, duplicate content-addressed payloads, excess staging/runtime revision history, old immutable generations beyond the rollback window, fully unreferenced hash families older than 45 days, and finally old rollback copies when bucket pressure exceeds the configured soft ceiling.
 
 The current policy targets 8.0 GB and starts pressure cleanup at 8.5 GB, below the 10 GB-month free-storage allowance. Each run is guarded by a maximum object count and maximum fraction of the bucket so one bad classification cannot empty the bucket in a single execution.
 
