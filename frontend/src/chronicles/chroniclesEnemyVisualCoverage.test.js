@@ -23,7 +23,7 @@ describe('Chronicles authored enemy visual coverage', () => {
 
     visualTypes.forEach((visualType) => {
       expect(chroniclesEnemyVisualSpec(visualType), visualType).toBeTruthy();
-      const built = buildChroniclesEnemyVisual(visualType, { coarsePointer: true, reducedMotion: true });
+      const built = buildChroniclesEnemyVisual(visualType, { coarsePointer: true, reducedMotion: true, authoredArt: false });
       expect(built?.model, visualType).toBeTruthy();
       expect(built.model.children.length, visualType).toBeGreaterThan(0);
       disposeModel(built.model);
@@ -39,7 +39,7 @@ describe('Chronicles authored enemy visual coverage', () => {
     };
 
     Object.entries(expected).forEach(([visualType, silhouette]) => {
-      const built = buildChroniclesEnemyVisual(visualType, { coarsePointer: true, reducedMotion: true });
+      const built = buildChroniclesEnemyVisual(visualType, { coarsePointer: true, reducedMotion: true, authoredArt: false });
       expect(built.model.userData.chroniclesSilhouette).toBe(silhouette);
       expect(built.model.userData.chroniclesArtTier).toBe('fantasy-bestiary-v1');
       disposeModel(built.model);
