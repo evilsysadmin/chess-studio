@@ -48,7 +48,7 @@ function normalizeContentEntry(entry) {
   });
 }
 
-function normalizeMapMaterials(materials, grid, mapId) {
+function normalizeMapMaterials(materials, grid, mapId, { procedural = false } = {}) {
   if (!materials) return null;
   const width = grid[0]?.length || 0;
   const wallLegend = Object.fromEntries(Object.entries(materials.wallLegend || {}).map(([token, profileId]) => {
@@ -65,21 +65,34 @@ function normalizeMapMaterials(materials, grid, mapId) {
   if (!Array.isArray(wallGrid) || wallGrid.length !== grid.length || wallGrid.some((row) => typeof row !== 'string' || row.length !== width)) {
     throw new Error(`Chronicles map ${mapId} materials.wallGrid must match the map grid dimensions`);
   }
-  wallGrid.forEach((row, y) => {
-    [...row].forEach((token, x) => {
-      const isWall = grid[y][x] === '#';
-      if (isWall && !wallLegend[token]) {
+
+  const wallTokens = Object.keys(wallLegend).sort();
+  const normalizedWallGrid = wallGrid.map((row, y) => [...row].map((token, x) => {
+    const isWall = grid[y][x] === '#';
+    if (isWall && wallLegend[token]) return token;
+    if (!isWall && token === '.') return token;
+
+    // Seeded layout generation legitimately changes which cells are walls.
+    // Older authoritative envelopes kept the authored material mask, so repair
+    // only that known procedural drift while preserving strict authored checks.
+    if (procedural) {
+      if (!isWall) return '.';
+      if (!wallTokens.length) {
         throw new Error(`Chronicles map ${mapId} wall ${x},${y} requires a material token from wallLegend`);
       }
-      if (!isWall && token !== '.') {
-        throw new Error(`Chronicles map ${mapId} non-wall ${x},${y} cannot declare wall material ${token}`);
-      }
-    });
-  });
+      return wallTokens[Math.abs((x * 31) + (y * 17)) % wallTokens.length];
+    }
+
+    if (isWall) {
+      throw new Error(`Chronicles map ${mapId} wall ${x},${y} requires a material token from wallLegend`);
+    }
+    throw new Error(`Chronicles map ${mapId} non-wall ${x},${y} cannot declare wall material ${token}`);
+  }).join(''));
+
   return Object.freeze({
     lightingProfile: String(materials.lightingProfile || 'default'),
     wallLegend: Object.freeze({ ...wallLegend }),
-    wallGrid: Object.freeze([...wallGrid]),
+    wallGrid: Object.freeze(normalizedWallGrid),
   });
 }
 
@@ -288,7 +301,9 @@ function normalizeMap(source) {
   const map = {
     ...source,
     grid,
-    materials: normalizeMapMaterials(source.materials, grid, source.id),
+    materials: normalizeMapMaterials(source.materials, grid, source.id, {
+      procedural: source?.generation?.kind === 'seeded-layout',
+    }),
     partyStart: Object.freeze({
       x: Number(source.partyStart?.x || 0),
       y: Number(source.partyStart?.y || 0),
