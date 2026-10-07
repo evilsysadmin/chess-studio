@@ -4,6 +4,30 @@ import { buttonWithHeading, buttonWithVisibleText, clickBoardMove, dismissTutori
 const ACTIVE_GAME_SESSION_KEY = 'chess-study-active-game-session-v1';
 const ACTIVE_GAME_VISIBLE_ROUTE_KEY = 'chess-study-active-game-visible-route-v1';
 
+async function expectDurableActiveSession(page, route) {
+  await expect.poll(() => page.evaluate(({ sessionKey, visibleRouteKey, expectedRoute }) => {
+    const rawSnapshot = window.localStorage.getItem(sessionKey);
+    const visibleRoute = window.sessionStorage.getItem(visibleRouteKey);
+    if (!rawSnapshot) return false;
+    try {
+      const snapshot = JSON.parse(rawSnapshot);
+      return snapshot?.route === expectedRoute
+        && typeof snapshot?.gameId === 'string'
+        && snapshot.gameId.length > 0
+        && visibleRoute === expectedRoute;
+    } catch {
+      return false;
+    }
+  }, {
+    sessionKey: ACTIVE_GAME_SESSION_KEY,
+    visibleRouteKey: ACTIVE_GAME_VISIBLE_ROUTE_KEY,
+    expectedRoute: route,
+  }), {
+    message: `la sesión activa ${route} debe estar persistida antes de reload`,
+    timeout: 5_000,
+  }).toBe(true);
+}
+
 test('login → menú → Así juegas → refresh → ESC conserva navegación', async ({ page }) => {
   await mockApi(page);
   await login(page);
@@ -27,6 +51,7 @@ test('Partida rápida · una partida activa sobrevive a reload/deploy y vuelve a
   await expect(page.getByRole('dialog', { name: 'Configurar partida rápida' })).toBeVisible();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
   await expect(gameTurn(page)).toBeVisible();
+  await expectDurableActiveSession(page, 'game');
 
   const warRoomMatthias = page.locator('.game-3d-turn-pill[data-matthias-war-room-presence="king-piece"]');
   const matthiasAvatar = page.locator('.game-player-rail.is-cpu .game-player-avatar.has-portrait img');
@@ -97,6 +122,11 @@ test('Torneo · una partida activa sobrevive a reload y no vuelve al menú', asy
   await expect(page.getByRole('heading', { name: 'Siguiente rival', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Jugar siguiente partida', exact: true }).click();
   await expect(gameTurn(page)).toBeVisible();
+  // El tablero puede aparecer antes de que el efecto de continuidad haya
+  // persistido el sobre de torneo y su marcador de ruta. Recargar en ese hueco
+  // compite con el montaje/desmontaje inicial y convierte el smoke en una
+  // carrera del navegador en vez de validar recovery.
+  await expectDurableActiveSession(page, 'tournamentGame');
 
   await page.reload();
   await expect(gameTurn(page)).toBeVisible();
@@ -112,27 +142,9 @@ test('Partida rápida · un 503 al restaurar conserva la ruta y permite reintent
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
   await expect(gameTurn(page)).toBeVisible();
-  // El tablero puede pintar antes de que React persista el sobre de sesión y
-  // su marcador de ruta. Esperar ambos datos durables evita que el reload
-  // compita con ese efecto y convierte este contrato en una comprobación real
-  // de recuperación, sin depender del estado inicial del indicador visual.
-  await expect.poll(() => page.evaluate(({ sessionKey, visibleRouteKey }) => {
-    const rawSnapshot = window.localStorage.getItem(sessionKey);
-    const visibleRoute = window.sessionStorage.getItem(visibleRouteKey);
-    if (!rawSnapshot) return false;
-    try {
-      const snapshot = JSON.parse(rawSnapshot);
-      return snapshot?.route === 'game'
-        && typeof snapshot?.gameId === 'string'
-        && snapshot.gameId.length > 0
-        && visibleRoute === snapshot.route;
-    } catch {
-      return false;
-    }
-  }, {
-    sessionKey: ACTIVE_GAME_SESSION_KEY,
-    visibleRouteKey: ACTIVE_GAME_VISIBLE_ROUTE_KEY,
-  })).toBe(true);
+  // Igual que el reload normal: recovery sólo se prueba después de que la
+  // sesión durable exista. Ver el tablero por sí solo no acredita persistencia.
+  await expectDurableActiveSession(page, 'game');
 
   // Arm the failures only after the game is fully mounted. Supplying GET
   // failures to mockApi up front lets an eager post-create reconciliation
