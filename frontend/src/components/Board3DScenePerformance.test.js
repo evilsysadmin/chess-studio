@@ -37,6 +37,27 @@ describe('War Room base scene performance', () => {
     dispose(room);
   });
 
+  it('omits the retired rectangular base window now owned by the premium layer', () => {
+    const room = buildWarRoom(theme, true, false);
+    const retiredBackdrop = room.children.find((object) => (
+      object.isMesh
+      && object.material?.color?.getHex?.() === 0x0a2334
+      && object.geometry?.type === 'BoxGeometry'
+      && object.geometry.parameters?.width === 4.3
+    ));
+    const retiredMoon = room.children.find((object) => (
+      object.isMesh
+      && object.material?.color?.getHex?.() === 0xb9d9f0
+      && object.geometry?.type === 'SphereGeometry'
+      && object.geometry.parameters?.radius === 0.28
+    ));
+
+    expect(room.userData.warRoomLegacyBaseWindowMeshesOmitted).toBe(13);
+    expect(retiredBackdrop).toBeUndefined();
+    expect(retiredMoon).toBeUndefined();
+    dispose(room);
+  });
+
   it('removes the static base-room geometry from the directional shadow caster pass', () => {
     const room = buildWarRoom(theme, true, false);
     const casters = [];
