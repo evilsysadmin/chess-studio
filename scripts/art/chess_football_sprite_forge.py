@@ -132,6 +132,8 @@ def _pose(animation: str, frame: int) -> dict[str, float]:
         "sway": 0.0,
         "support_bend": 0.0,
         "strike_fold": 0.0,
+        "tackle_fold": 0.0,
+        "celebrate_knee": 0.0,
     }
     if animation == "idle":
         pose.update(
@@ -210,30 +212,39 @@ def _pose(animation: str, frame: int) -> dict[str, float]:
                 strike_fold=7.0 * wind,
             )
         elif animation == "tackle":
+            entry = math.sin(math.pi * min(t * 1.25, 1.0))
+            recover = math.sin(math.pi * max((t - 0.58) / 0.42, 0.0))
             pose.update(
-                yoff=4.0 * k,
-                crouch=12.0 * k,
-                lean=12.0 * k,
-                leg_l=-17.0 * k,
-                leg_r=35.0 * k,
-                lift_l=2.0 * k,
-                arm_l=-20.0 * k,
-                arm_r=14.0 * k,
-                twist=5.0 * k,
-                head=-2.4 * k,
+                yoff=6.5 * k,
+                crouch=18.0 * k,
+                lean=15.5 * k,
+                leg_l=-8.0 * k + 4.0 * recover,
+                leg_r=44.0 * entry - 9.0 * recover,
+                lift_l=10.5 * k,
+                lift_r=1.8 * k,
+                arm_l=-26.0 * k + 8.0 * recover,
+                arm_r=21.0 * k - 5.0 * recover,
+                twist=7.0 * k,
+                head=-3.1 * k,
+                sway=3.0 * k,
+                tackle_fold=11.0 * k,
             )
         elif animation == "celebrate":
+            pump = math.sin(math.pi * min(t * 1.18, 1.0))
+            settle = math.sin(math.pi * max((t - 0.52) / 0.48, 0.0))
             pose.update(
-                yoff=-10.0 * k,
-                bob=1.0 * k,
-                arm_l=-31.0 * k - 8.0,
-                arm_r=31.0 * k + 8.0,
-                leg_l=-6.0 * math.sin(2.0 * phase),
-                leg_r=6.0 * math.sin(2.0 * phase),
-                lift_l=3.0 * k,
-                lift_r=3.0 * k,
-                twist=math.sin(phase) * 1.6,
-                head=-1.0 * k,
+                yoff=-7.5 * k,
+                bob=1.3 * k,
+                arm_l=-14.0 * pump + 7.0 * settle,
+                arm_r=36.0 * pump - 8.0 * settle + 8.0,
+                leg_l=-4.0 * k,
+                leg_r=9.0 * pump - 4.0 * settle,
+                lift_l=1.5 * k,
+                lift_r=11.0 * pump - 4.0 * settle,
+                twist=4.8 * pump - 2.0 * settle,
+                head=-2.0 * pump + 0.8 * settle,
+                sway=2.4 * pump - 1.0 * settle,
+                celebrate_knee=8.0 * pump,
             )
     return pose
 
@@ -314,6 +325,8 @@ def _frame_svg(
     # like a flat puppet even when the stride itself was asymmetric.
     locomotion = animation in ("run", "sprint")
     ball_action = animation in ("pass", "shoot")
+    tackle_action = animation == "tackle"
+    celebration_action = animation == "celebrate"
     right_leg_near = p["leg_r"] >= p["leg_l"] if locomotion else True
     legs = [
         (-1.0, p["leg_l"], p["lift_l"], right_leg_near),
@@ -326,6 +339,12 @@ def _frame_svg(
         hip_x = cx + side * hip_spread + p["twist"] * (0.13 if far else 0.25)
         foot_x = cx + side * foot_spread + stride
         foot_y = foot - lift_amount
+        if tackle_action and side < 0.0:
+            foot_x += p["tackle_fold"] * 0.42
+            foot_y -= p["tackle_fold"] * 0.50
+        elif celebration_action and side > 0.0:
+            foot_x += p["celebrate_knee"] * 0.18
+            foot_y -= p["celebrate_knee"] * 0.18
         knee_x = (
             hip_x
             + stride * (0.50 if locomotion else 0.44)
@@ -343,6 +362,14 @@ def _frame_svg(
         elif ball_action and side > 0.0:
             knee_x += p["strike_fold"] * 0.78
             knee_y -= p["strike_fold"] * 0.52
+        elif tackle_action and side < 0.0:
+            knee_x += p["tackle_fold"] * 0.92
+            knee_y -= p["tackle_fold"] * 0.72
+        elif tackle_action and side > 0.0:
+            knee_y += p["tackle_fold"] * 0.25
+        elif celebration_action and side > 0.0:
+            knee_x += p["celebrate_knee"] * 0.68
+            knee_y -= p["celebrate_knee"] * 0.62
         opacity = ".76" if far and locomotion else (".84" if far else "1")
         thigh = _limb_path(
             (hip_x, hip_y + 1.0),
@@ -383,6 +410,10 @@ def _frame_svg(
         boot_tilt = 0.0
         if ball_action and side > 0.0:
             boot_tilt = max(-3.5, min(4.5, stride * 0.10))
+        elif tackle_action and side > 0.0:
+            boot_tilt = -p["tackle_fold"] * 0.25
+        elif celebration_action and side > 0.0:
+            boot_tilt = p["celebrate_knee"] * 0.40
         boot = [
             (foot_x - 4.9, foot_y - 5.8),
             (foot_x + 4.2, foot_y - 5.4),
@@ -558,8 +589,9 @@ def _frame_svg(
                 f'stroke="{team["torso_dark"]}" stroke-width=".85" opacity=".75"/>'
             )
 
-    # V10 retains the V8 face proportions and V9 locomotion. This iteration
-    # concentrates on planted support, strike-leg folding and follow-through.
+    # V11 retains the V8 face, V9 locomotion and V10 ball actions. This pass
+    # upgrades contact/celebration silhouettes with a tucked tackle leg and
+    # an asymmetric fist-pump celebration.
     neck_y = 49.4 - bob + yoff + crouch * 0.45
     out.append(
         f'<path d="M {offset_x + cx - 3.1:.2f} {offset_y + neck_y:.2f} '
@@ -688,7 +720,7 @@ def build_outputs() -> dict[str, str]:
         outputs[filename] = _atlas_svg(team, keeper=True)
         atlas_meta[slug] = {"name": team["name"], "file": filename}
     manifest = {
-        "version": 10,
+        "version": 11,
         "quality_contract": SPRITE_FORGE_CONTRACT["quality_contract"],
         "cell": {"width": CELL_W, "height": CELL_H},
         "columns": COLUMNS,
