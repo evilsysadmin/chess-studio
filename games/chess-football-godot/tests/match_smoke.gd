@@ -55,6 +55,8 @@ func _initialize() -> void:
 	assert(match_node.teams[0][3].debug_visual_variant_key() == "fc_matthias_v3")
 	assert(match_node.teams[0][4].debug_visual_variant_key() == "fc_matthias_v4")
 	var sprite_manifest: Dictionary = ChessFootballSpriteBank.manifest()
+	assert(int(sprite_manifest["version"]) == 14)
+	assert(String(sprite_manifest["quality_contract"]) == "chess-football-vector-v14")
 	assert(sprite_manifest["atlases"]["fc_matthias"]["body_profile"] == "defender")
 	assert(sprite_manifest["atlases"]["fc_matthias_v2"]["body_profile"] == "midfielder")
 	assert(sprite_manifest["atlases"]["fc_matthias_v3"]["body_profile"] == "wing")
