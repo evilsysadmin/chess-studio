@@ -24,8 +24,8 @@
   },
   "retention": {
     "enabled": true,
-    "targetBytes": 8000000000,
-    "softLimitBytes": 8500000000,
+    "targetBytes": 7000000000,
+    "softLimitBytes": 7500000000,
     "minimumAgeDays": 14,
     "ephemeralMaxAgeDays": 1,
     "keepRollbackPerFamily": 1,

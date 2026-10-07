@@ -136,7 +136,10 @@ jobs:
           print("### R2 retention")
           print()
           print(f"- Inventory: {report['totalObjects']} objects / {gb(report['totalBytes']):.3f} GB")
-          print(f"- Protected: {report['protectedObjects']} objects")
+          print(f"- Protected: {report['protectedObjects']} objects / {gb(report.get('protectedBytes', 0)):.3f} GB")
+          print(f"- Repo URL pins: runtime {gb(report.get('repoPinRuntimeBytes', 0)):.3f} GB; tooling-only {gb(report.get('repoPinOperationalOnlyBytes', 0)):.3f} GB")
+          for item in report.get('repoPinOperationalOnlyByScope', []):
+              print(f"  - tooling {item['scope']}: {item['objects']} objects / {gb(item['bytes']):.3f} GB")
           print(f"- Deleted/planned: {report['deleteObjects']} objects / {gb(report['deleteBytes']):.3f} GB")
           print(f"- Projected footprint: {gb(report['projectedBytes']):.3f} GB")
           if 'actualAfterBytes' in report:
@@ -146,6 +149,10 @@ jobs:
           print("- Largest retained prefixes:")
           for item in report.get('topRetainedPrefixes', [])[:8]:
               print(f"  - {item['prefix']}: {gb(item['bytes']):.3f} GB")
+          if report.get('topOperationalOnlyPinPrefixes'):
+              print("- Largest tooling-only pinned prefixes:")
+              for item in report['topOperationalOnlyPinPrefixes'][:8]:
+                  print(f"  - {item['prefix']}: {gb(item['bytes']):.3f} GB")
           print(f"- Guard truncated: {report['truncatedByGuard']}")
           print(f"- Blocked over soft limit: {report['blockedOverSoftLimit']}")
           PY
