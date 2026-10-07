@@ -119,6 +119,8 @@ async function deploymentHealth(page) {
         || rect('[data-combat-deployment="war-table"] .deployment-board-zone .board3d-main-shell'),
       reserve: rect('[data-combat-deployment="war-table"] .deployment-reserve-panel'),
       footer: rect('[data-combat-deployment="war-table"] .combat-deployment-footer'),
+      mastheadVisible: Boolean(document.querySelector('.masthead')?.getClientRects().length),
+      globalMusicVisible: Boolean(document.querySelector('.global-music-dock')?.getClientRects().length),
     };
   });
 }
@@ -146,6 +148,8 @@ async function health(page) {
       briefing: rect('.combat-operations-briefing'),
       primary: rect('.combat-operations-primary'),
       drawer: rect('.combat-operations-drawer'),
+      mastheadVisible: Boolean(document.querySelector('.masthead')?.getClientRects().length),
+      globalMusicVisible: Boolean(document.querySelector('.global-music-dock')?.getClientRects().length),
     };
   });
 }
@@ -156,7 +160,11 @@ test('Combat preparation · desktop is a board-first operations room', async ({ 
 
   const snapshot = await health(page);
   expect(snapshot.horizontalOverflow).toBe(false);
-  expect(snapshot.shell?.height || 0).toBeGreaterThanOrEqual(680);
+  expect(snapshot.shell?.top ?? 9999).toBeLessThanOrEqual(1);
+  expect(snapshot.shell?.bottom || 0).toBeGreaterThanOrEqual(899);
+  expect(snapshot.shell?.height || 0).toBeGreaterThanOrEqual(898);
+  expect(snapshot.mastheadVisible).toBe(false);
+  expect(snapshot.globalMusicVisible).toBe(false);
   expect(snapshot.canvas?.width || 0).toBeGreaterThan(900);
   expect(snapshot.canvas?.height || 0).toBeGreaterThan(600);
   expect(snapshot.primary?.bottom || 9999).toBeLessThanOrEqual((snapshot.shell?.bottom || 0) + 1);
@@ -192,7 +200,11 @@ test.describe('Combat preparation · mobile', () => {
     const snapshot = await deploymentHealth(page);
     expect(snapshot.horizontalOverflow).toBe(false);
     expect(snapshot.shell?.left || 0).toBeGreaterThanOrEqual(-1);
+    expect(snapshot.shell?.top ?? 9999).toBeLessThanOrEqual(1);
     expect(snapshot.shell?.right || 9999).toBeLessThanOrEqual(391);
+    expect(snapshot.shell?.bottom || 0).toBeGreaterThanOrEqual(843);
+    expect(snapshot.mastheadVisible).toBe(false);
+    expect(snapshot.globalMusicVisible).toBe(false);
     expect(snapshot.board?.width || 0).toBeGreaterThanOrEqual(350);
     expect(snapshot.footer?.right || 9999).toBeLessThanOrEqual(391);
 

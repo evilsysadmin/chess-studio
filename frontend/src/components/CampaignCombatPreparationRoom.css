@@ -539,3 +539,48 @@
     backdrop-filter: none;
   }
 }
+
+
+/* Combat Operations Room owns the viewport.
+ * Preparation is a place, not a card below the global Chess Studio masthead. */
+body:has(.combat-operations-screen) {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body:has(.combat-operations-screen) .app-shell {
+  width: 100%;
+  height: 100dvh;
+  min-height: 0;
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+body:has(.combat-operations-screen) .masthead:not(.masthead-game-compact),
+body:has(.combat-operations-screen) .global-music-dock {
+  display: none !important;
+}
+
+.menu.combat-operations-screen {
+  position: fixed;
+  z-index: 150;
+  inset: 0;
+  width: 100vw;
+  max-width: none !important;
+  height: 100dvh;
+  min-height: 0;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+.combat-operations-screen .combat-operations-shell {
+  width: 100vw !important;
+  max-width: none !important;
+  height: 100dvh !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
