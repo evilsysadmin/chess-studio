@@ -66,4 +66,4 @@ The audit report also separates hard-coded URL pins that are referenced by runti
 
 `pawn-slug-godot/current.json` and `chess-football-godot/current.json` are authoritative pointers for their current Web exports. Before deleting release directories, the GC reads and validates those pointers directly from R2.
 
-The active release directory is protected in full, and one previous release is retained for rollback. Older releases become eligible after two days. If a pointer cannot be fetched or validated, the entire corresponding release root is protected for that run instead of guessing.
+The active release directory is protected in full, and one previous release is retained for rollback. Older releases become eligible after one day. If a pointer cannot be fetched or validated, the entire corresponding release root is protected for that run instead of guessing.
