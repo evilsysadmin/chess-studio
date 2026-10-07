@@ -10,9 +10,6 @@ function loadCombatOverview() {
   const roster = loadCombatRoster();
   const service = summarizeCombatService(loadCombatService());
   return {
-    rating,
-    setRating,
-    combatOverview,
     credits: roster.credits || 0,
     rank: service.rank,
     nextProgress: service.nextProgress,
@@ -82,6 +79,9 @@ export function useGlobalShellUi(view, onCombatHistory) {
   }
 
   return {
+    rating,
+    setRating,
+    combatOverview,
     showRatingDetail,
     openRatingDetail: () => setShowRatingDetail(true),
     closeRatingDetail: () => setShowRatingDetail(false),
