@@ -412,7 +412,7 @@
     background: linear-gradient(180deg,
       transparent 0 42%,
       rgba(3, 4, 5, .14) 58%,
-      rgba(3, 4, 5, .78) 100%);
+      rgba(3, 4, 5, .58) 100%);
     box-shadow: none;
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
@@ -490,7 +490,7 @@
   .lab-screen.lab-screen .lab-workshop-portal--pawnslug-godot {
     --hotspot-accent: 89, 161, 190;
     --plaque-rotate: -.45deg;
-    --plaque-lift: -35px;
+    --plaque-lift: -15px;
     left: 5.2%;
     top: 51%;
     bottom: auto;
@@ -500,7 +500,7 @@
   .lab-screen.lab-screen .lab-workshop-portal--football {
     --hotspot-accent: 105, 160, 91;
     --plaque-rotate: .32deg;
-    --plaque-lift: -26px;
+    --plaque-lift: -10px;
     left: 20.7%;
     top: 49.8%;
     bottom: auto;
@@ -510,7 +510,7 @@
   .lab-screen.lab-screen .lab-workshop-portal--chronicles {
     --hotspot-accent: 209, 164, 79;
     --plaque-rotate: -.18deg;
-    --plaque-lift: -25px;
+    --plaque-lift: -10px;
     left: 37.2%;
     top: 48.2%;
     width: 16.4%;
@@ -519,7 +519,7 @@
   .lab-screen.lab-screen .lab-workshop-portal--tactics {
     --hotspot-accent: 201, 151, 72;
     --plaque-rotate: .22deg;
-    --plaque-lift: -25px;
+    --plaque-lift: -10px;
     left: 54.3%;
     right: auto;
     top: 48.4%;
@@ -529,7 +529,7 @@
   .lab-screen.lab-screen .lab-workshop-map-table {
     --hotspot-accent: 103, 145, 166;
     --plaque-rotate: -.32deg;
-    --plaque-lift: -16px;
+    --plaque-lift: -5px;
     left: 71.5%;
     right: auto;
     top: 50%;
@@ -553,7 +553,7 @@
   .lab-screen.lab-screen .lab-workshop-tool:not(.lab-workshop-tool--arena) {
     --hotspot-accent: 197, 151, 74;
     --plaque-rotate: .45deg;
-    --plaque-lift: -14px;
+    --plaque-lift: -5px;
     right: 1.8%;
     top: 51%;
   }
