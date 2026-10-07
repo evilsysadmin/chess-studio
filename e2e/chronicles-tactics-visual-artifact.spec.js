@@ -205,9 +205,21 @@ for (const capture of CAPTURES) {
         `${ARTIFACT_DIR}/chronicles-tactics-party-portraits-${capture.label}.png`,
       );
 
+      const pausedCell = await mode.evaluate((node) => ({
+        x: node.getAttribute('data-party-x'),
+        y: node.getAttribute('data-party-y'),
+        actor: node.getAttribute('data-initiative-actor'),
+      }));
       await partyHud.getByRole('button', { name: 'Abrir ficha de Matthias', exact: true }).click();
       const sheet = page.getByRole('dialog', { name: 'Matthias', exact: true });
       await expect(sheet).toBeVisible();
+      await page.keyboard.down('ArrowUp');
+      await page.waitForTimeout(180);
+      await page.keyboard.up('ArrowUp');
+      await page.waitForTimeout(180);
+      await expect(mode).toHaveAttribute('data-party-x', pausedCell.x);
+      await expect(mode).toHaveAttribute('data-party-y', pausedCell.y);
+      await expect(mode).toHaveAttribute('data-initiative-actor', pausedCell.actor);
       const sheetPortrait = sheet.locator('.chronicles-character-sheet__portrait img');
       await expect(sheetPortrait).toBeVisible();
       await captureElement(
