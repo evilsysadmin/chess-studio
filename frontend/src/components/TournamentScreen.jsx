@@ -63,61 +63,78 @@ export default function TournamentScreen({ tournament, onPlay, onExit, onReset, 
   function pickSkin(id) { saveSelectedSkin(id); setSelectedSkin(id); }
 
   return (
-    <div className="menu tournament-panel tournament-friendly">
-      <button className="back-link" onClick={onExit}>← Volver al menú</button>
+    <div className="menu tournament-panel tournament-friendly tournament-hall-screen" data-tournament-hall="true">
+      <button className="back-link tournament-hall-exit" onClick={onExit}>← Salir del torneo</button>
+
+      <div className="tournament-hall-heading">
+        <span className="eyebrow">SALÓN DE TORNEOS</span>
+        <MechanicTutorialHelp tutorialId="tournament" />
+      </div>
 
       {lastResult && (
-        <div className={`tournament-result ${lastResult.leveledUp ? 'level-up' : ''}`}>
-          {lastResult.outcome === 'win' && <p>Última partida: victoria · +{lastResult.gained} XP</p>}
-          {lastResult.outcome === 'draw' && <p>Última partida: tablas · +{lastResult.gained} XP</p>}
-          {lastResult.outcome === 'loss' && <p>Última partida: derrota · puedes reintentar</p>}
-          {Number.isFinite(lastResult.eloDelta) && <p>Rating {lastResult.eloDelta >= 0 ? '+' : ''}{lastResult.eloDelta} · {lastResult.eloBefore} → {lastResult.eloAfter}</p>}
-          {lastResult.leveledUp && <p className="level-up-text">¡Subiste al nivel {lastResult.newLevel}!</p>}
-        </div>
+        <aside className={`tournament-hall-last-result ${lastResult.leveledUp ? 'level-up' : ''}`} role="status" aria-label="Resultado de la última partida">
+          <strong>
+            {lastResult.outcome === 'win' ? `Victoria · +${lastResult.gained} XP` : lastResult.outcome === 'draw' ? `Tablas · +${lastResult.gained} XP` : 'Derrota · puedes reintentar'}
+          </strong>
+          {Number.isFinite(lastResult.eloDelta) && <span>Rating {lastResult.eloDelta >= 0 ? '+' : ''}{lastResult.eloDelta} · {lastResult.eloBefore} → {lastResult.eloAfter}</span>}
+          {lastResult.leveledUp && <b>Nuevo nivel {lastResult.newLevel}</b>}
+        </aside>
       )}
 
-      <div className="menu-section tournament-next-card friendly-primary-zone">
-        <div className="combat-heading-row"><span className="eyebrow">Torneo · Nivel {level}</span><MechanicTutorialHelp tutorialId="tournament" /></div>
+      <main className="tournament-hall-rival" aria-label="Siguiente rival">
+        <span className="section-label">TORNEO · NIVEL {level}</span>
         <span className="level-heading-wrap">
-          <h2 className={`level-heading ${justLeveledUp ? 'level-up-heading' : ''}`} style={{ marginTop: '0.35rem' }}>Siguiente rival</h2>
+          <h2 className={`level-heading ${justLeveledUp ? 'level-up-heading' : ''}`}>Siguiente rival</h2>
           {justLeveledUp && <LevelUpBurst />}
         </span>
-        <p className="friendly-big-summary">CPU nivel <b>{cpuLevel}</b> · {difficultyLabel(cpuLevel)}{maxedOut ? ' · máximo' : ''}</p>
-        <div className="tournament-progress-track" aria-label={`Progreso del nivel ${level}`}>
-          <div className="tournament-progress-fill" style={{ width: `${progressPct}%` }} />
-          <span className="tournament-progress-label">{into} / {POINTS_PER_LEVEL} XP</span>
-        </div>
-        {!maxedOut && <p className="hint-text friendly-inline-note">{POINTS_PER_LEVEL - into} XP para subir al nivel {level + 1}.</p>}
 
-        <details className="friendly-disclosure tournament-color-choice">
+        <div className="tournament-hall-opponent-seal" aria-label={`CPU nivel ${cpuLevel}, ${difficultyLabel(cpuLevel)}`}>
+          <small>CPU</small>
+          <strong>{cpuLevel}</strong>
+          <span>{difficultyLabel(cpuLevel)}</span>
+        </div>
+
+        <p className="tournament-hall-rival-copy">
+          {maxedOut ? 'Has llegado al techo del circuito. El siguiente rival ya no va a ponerse más amable.' : `Supera este rival para seguir escalando hacia el nivel ${level + 1}.`}
+        </p>
+
+        <div className="tournament-hall-progress-plaque">
+          <div className="tournament-progress-track" aria-label={`Progreso del nivel ${level}`}>
+            <div className="tournament-progress-fill" style={{ width: `${progressPct}%` }} />
+          </div>
+          <span>{into} / {POINTS_PER_LEVEL} XP</span>
+          {!maxedOut && <small>{POINTS_PER_LEVEL - into} XP para subir</small>}
+        </div>
+
+        <details className="friendly-disclosure tournament-color-choice tournament-hall-color">
           <summary>Color · {colorLabel(color)}</summary>
           <div className="friendly-disclosure-body"><ColorSelector value={color} onChange={setColor} minTargetSize={44} /></div>
         </details>
 
-        <button className="primary-btn friendly-main-cta" disabled={loading} onClick={() => onPlay(color)}>
-          {loading ? 'Creando partida…' : 'Jugar siguiente partida'}
+        <button className="primary-btn friendly-main-cta tournament-hall-play" disabled={loading} onClick={() => onPlay(color)}>
+          {loading ? 'Abriendo la War Room…' : 'Jugar siguiente partida'}
         </button>
-      </div>
+      </main>
 
-      <details className="friendly-disclosure tournament-more">
-        <summary>Ver progreso, recompensas y opciones</summary>
-        <div className="friendly-disclosure-body friendly-stack">
-          <section className="friendly-subsection">
-            <h3>Tu torneo</h3>
+      <details className="friendly-disclosure tournament-more tournament-hall-archive">
+        <summary>Abrir vitrina y expediente</summary>
+        <div className="friendly-disclosure-body tournament-hall-archive-body">
+          <section className="tournament-hall-archive-section">
+            <h3>Expediente del torneo</h3>
             <p className="hint-text">
-              {tournament.wins} victorias · {tournament.draws} tablas · {tournament.losses} derrotas · saldo para pistas: {tournament.points} puntos
+              {tournament.wins} victorias · {tournament.draws} tablas · {tournament.losses} derrotas · {tournament.points} puntos para pistas
             </p>
             {(tournament.winStreak > 0 || tournament.bestWinStreak > 0) && (
               <p className="hint-text">Racha actual: <b>{tournament.winStreak || 0}</b> · mejor: <b>{tournament.bestWinStreak || 0}</b></p>
             )}
-            <button className="secondary-btn" style={{ width: '100%', marginTop: '0.5rem' }} onClick={onHistory}>Ver historial de partidas</button>
+            <button className="secondary-btn" aria-label="Ver historial de partidas" onClick={onHistory}>Abrir archivo de partidas</button>
           </section>
 
-          <section className="friendly-subsection">
-            <h3>Recompensas</h3>
-            <p className="hint-text">{isAdminUser ? 'Catálogo completo abierto para pruebas de administración.' : 'Se desbloquean solas al subir de nivel.'} Título actual: <b>{currentTitle.label}</b>.</p>
-            <p className="hint-text" style={{ marginTop: '0.65rem', marginBottom: '0.25rem' }}>Título</p>
-            <div className="rewards-grid">
+          <section className="tournament-hall-archive-section tournament-hall-trophy-case">
+            <h3>Vitrina</h3>
+            <p className="hint-text">{isAdminUser ? 'Catálogo completo abierto para pruebas.' : 'Las piezas de la vitrina se desbloquean al subir de nivel.'} Título actual: <b>{currentTitle.label}</b>.</p>
+            <span className="tournament-hall-shelf-label">Título</span>
+            <div className="rewards-grid tournament-hall-reward-rack">
               {TITLES.map((t) => {
                 const isUnlocked = unlockedTitleIds.has(t.id);
                 return (
@@ -128,8 +145,8 @@ export default function TournamentScreen({ tournament, onPlay, onExit, onReset, 
               })}
             </div>
 
-            <p className="hint-text" style={{ marginTop: '0.8rem', marginBottom: '0.25rem' }}>Piezas</p>
-            <div className="rewards-grid">
+            <span className="tournament-hall-shelf-label">Piezas</span>
+            <div className="rewards-grid tournament-hall-reward-rack">
               {PIECE_SKINS.map((s) => {
                 const isUnlocked = unlockedSkinIds.has(s.id);
                 return (
@@ -140,7 +157,7 @@ export default function TournamentScreen({ tournament, onPlay, onExit, onReset, 
               })}
             </div>
             {(nextTitle || nextSkin) && (
-              <p className="hint-text" style={{ marginTop: '0.65rem' }}>
+              <p className="hint-text tournament-hall-next-reward">
                 {nextTitle && `Próximo título: nivel ${nextTitle.level}`}{nextTitle && nextSkin && ' · '}{nextSkin && `Próximas piezas: nivel ${nextSkin.level}`}
               </p>
             )}
