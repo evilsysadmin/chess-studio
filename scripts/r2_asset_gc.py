@@ -251,6 +251,11 @@ def _is_current_alias(key: str) -> bool:
     return name.startswith("current.") and len(name) > len("current.")
 
 
+def audit_prefix_for(key: str, depth: int = 4) -> str:
+    parts = [part for part in key.split("/") if part]
+    return "/".join(parts[:depth]) if parts else key
+
+
 def plan_cleanup(
     rows: list[dict[str, Any]],
     *,
@@ -418,12 +423,44 @@ def plan_cleanup(
     projected_bytes = total_bytes - selected_bytes
     blocked_over_soft = projected_bytes > int(policy["softLimitBytes"]) and not truncated
 
+    unknown = [
+        item for item in inventory
+        if item["key"] not in protected and item["key"] not in reasons
+    ]
+    unknown.sort(key=lambda item: item["size"], reverse=True)
+    unknown_families: dict[str, dict[str, int]] = defaultdict(lambda: {"objects": 0, "bytes": 0})
+    for item in unknown:
+        bucket = unknown_families[audit_prefix_for(item["key"])]
+        bucket["objects"] += 1
+        bucket["bytes"] += item["size"]
+    largest_unknown_families = [
+        {"prefix": prefix, **stats}
+        for prefix, stats in sorted(
+            unknown_families.items(),
+            key=lambda pair: pair[1]["bytes"],
+            reverse=True,
+        )[:50]
+    ]
+    largest_unknown = [
+        {
+            "key": item["key"],
+            "bytes": item["size"],
+            "ageDays": round(_age_days(item, now), 2) if _age_days(item, now) is not None else None,
+        }
+        for item in unknown[:100]
+    ]
+
     return {
         "version": 1,
         "generatedAt": now.isoformat(),
         "totalObjects": len(inventory),
         "totalBytes": total_bytes,
         "protectedObjects": len(protected),
+        "protectedBytes": sum(by_key[key]["size"] for key in protected),
+        "retainedUnknownObjects": len(unknown),
+        "retainedUnknownBytes": sum(item["size"] for item in unknown),
+        "largestUnknownFamilies": largest_unknown_families,
+        "largestUnknown": largest_unknown,
         "candidateObjects": len(all_candidates),
         "candidateBytes": sum(item["bytes"] for item in all_candidates),
         "deleteObjects": len(selected),
@@ -567,6 +604,15 @@ def self_test() -> None:
     assert reasons["retired/atlas/old-eeeeeeeeeeeeeeee.webp"] == "orphaned-family"
     assert "room/runtime/current.glb" not in reasons
     assert "young/runtime/young-dddddddddddddddd.glb" not in reasons
+    assert report["retainedUnknownObjects"] >= 1
+    assert any(
+        row["key"] == "young/runtime/young-dddddddddddddddd.glb"
+        for row in report["largestUnknown"]
+    )
+    assert any(
+        row["prefix"].startswith("young/runtime")
+        for row in report["largestUnknownFamilies"]
+    )
     print("OK r2 retention self-test")
 
 
