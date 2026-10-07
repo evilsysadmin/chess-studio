@@ -355,12 +355,12 @@ jobs:
           set -euo pipefail
           if [[ "$RESEND_BOOTSTRAP_REQUIRED" == true ]]; then
             gh workflow run oci-resend-bootstrap.yml --repo "$GITHUB_REPOSITORY" --ref main -f bootstrap_sha="$DEPLOY_SHA"
-            echo "::notice title=Resend recovery dispatched::$DEPLOY_SHA"
+            echo "::notice::Resend dispatched $DEPLOY_SHA"
           fi
           if [[ "$CONTINUITY_REQUIRED" == true ]]; then
             gh workflow run staging-deploy-continuity.yml --repo "$GITHUB_REPOSITORY" --ref main -f deploy_sha="$DEPLOY_SHA"
-            echo "::notice title=Continuity drill dispatched::$DEPLOY_SHA"
+            echo "::notice::Continuity dispatched $DEPLOY_SHA"
           fi
           if [[ "$RESEND_BOOTSTRAP_REQUIRED" != true && "$CONTINUITY_REQUIRED" != true ]]; then
-            echo "::notice title=Post-staging no-op::No Resend/continuity follow-up required for $DEPLOY_SHA."
+            echo "::notice::No post-staging follow-up for $DEPLOY_SHA"
           fi
