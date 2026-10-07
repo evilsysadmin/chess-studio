@@ -327,7 +327,11 @@ if (scopeEnabled('landing')) {
 
         if (capture.hasTouch) {
           expect(health.trailblazer.top, `${capture.label}: Trailblazer stacked below Pawn Slug`).toBeGreaterThan(health.pawnSlug.top);
-          expect(Math.abs(health.pawnSlug.width - health.trailblazer.width), `${capture.label}: stacked Arcade widths`).toBeLessThanOrEqual(2);
+          // Mobile dungeon plaques deliberately vary in width so the room does not
+          // collapse back into a symmetric dashboard grid. Keep both comfortably
+          // larger than the minimum touch target instead of enforcing equality.
+          expect(health.pawnSlug.width, `${capture.label}: Pawn Slug mobile plaque width`).toBeGreaterThanOrEqual(120);
+          expect(health.trailblazer.width, `${capture.label}: Trailblazer mobile plaque width`).toBeGreaterThanOrEqual(120);
           expect(health.pawnSlug.height, `${capture.label}: Pawn Slug touch target`).toBeGreaterThanOrEqual(44);
           expect(health.trailblazer.height, `${capture.label}: Trailblazer touch target`).toBeGreaterThanOrEqual(44);
         } else {
