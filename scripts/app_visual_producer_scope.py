@@ -396,6 +396,7 @@ def classify_path(path: str) -> set[str] | None:
         "frontend/src/uselogoutflow.js",
         "frontend/src/usepublicfeatureflags.js",
         "frontend/src/usegameexitflow.js",
+        "frontend/src/shareresult.js",
         "frontend/src/soundfx.js",
         "frontend/src/components/warroomhomepreload.js",
     }:
@@ -819,6 +820,7 @@ def self_test() -> None:
     assert classify(["frontend/src/useGlobalShellUi.js"]) == "none"
     assert classify(["frontend/src/useTournamentFlow.js"]) == "none"
     assert classify(["frontend/src/useGameExitFlow.js"]) == "none"
+    assert classify(["frontend/src/shareResult.js"]) == "none"
     assert classify(["frontend/src/useGameStartFlow.js"]) == "none"
     assert classify(["frontend/src/useCasualResultFlow.js"]) == "none"
     assert classify(["frontend/src/useLogoutFlow.js"]) == "none"
