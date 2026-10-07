@@ -935,14 +935,22 @@ body:has(.lab-screen .lab-workshop) .lab-screen:has(.lab-workshop) > .back-link 
     pointer-events: auto;
   }
 
-  .lab-screen.lab-screen .lab-workshop-portal--chronicles { --mobile-plaque-rotate: -.45deg; }
-  .lab-screen.lab-screen .lab-workshop-portal--tactics { --mobile-plaque-rotate: .4deg; }
-  .lab-screen.lab-screen .lab-workshop-portal--pawnslug-godot { --mobile-plaque-rotate: .35deg; }
-  .lab-screen.lab-screen .lab-workshop-portal--football { --mobile-plaque-rotate: -.4deg; }
-  .lab-screen.lab-screen .lab-workshop-portal--trailblazer { --mobile-plaque-rotate: -.3deg; }
-  .lab-screen.lab-screen .lab-workshop-map-table { --mobile-plaque-rotate: .35deg; }
-  .lab-screen.lab-screen .lab-workshop-tool:not(.lab-workshop-tool--arena) { --mobile-plaque-rotate: .25deg; }
-  .lab-screen.lab-screen .lab-workshop-tool--arena { --mobile-plaque-rotate: -.35deg; }
+  .lab-screen.lab-screen .lab-workshop-portal--chronicles { --mobile-plaque-rotate: -.45deg; width: 44%; }
+  .lab-screen.lab-screen .lab-workshop-portal--tactics { --mobile-plaque-rotate: .4deg; width: 44%; }
+  .lab-screen.lab-screen .lab-workshop-portal--pawnslug-godot { --mobile-plaque-rotate: .35deg; width: 42%; }
+  .lab-screen.lab-screen .lab-workshop-portal--football { --mobile-plaque-rotate: -.4deg; width: 42%; }
+  .lab-screen.lab-screen .lab-workshop-portal--trailblazer { --mobile-plaque-rotate: -.3deg; width: 38%; }
+  .lab-screen.lab-screen .lab-workshop-map-table { --mobile-plaque-rotate: .35deg; width: 46%; }
+  .lab-screen.lab-screen .lab-workshop-tool:not(.lab-workshop-tool--arena) { --mobile-plaque-rotate: .25deg; width: 44%; }
+  .lab-screen.lab-screen .lab-workshop-tool--arena { --mobile-plaque-rotate: -.35deg; width: 44%; }
+
+  .lab-screen.lab-screen .lab-workshop-wing--hangar .lab-workshop-portal {
+    width: var(--mobile-dungeon-width, 42%);
+  }
+
+  .lab-screen.lab-screen .lab-workshop-portal--trailblazer {
+    --mobile-dungeon-width: 38%;
+  }
 
   .lab-screen.lab-screen .lab-workshop-portal--chronicles {
     left: 18px;
