@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import './CombatDeploymentRoute.css';
+import './CombatDeploymentWarTable.css';
+import { CombatDeploymentPresetDrawer, CombatDeploymentWarTableHeader } from './CombatDeploymentWarTableChrome.jsx';
 import { createPortal } from 'react-dom';
-import Board from './Board.jsx';
+import Board2D from './Board2D.jsx';
 import { pieceRankForLevel } from '../combatRanks.js';
 import RankInsignia from './RankInsignia.jsx';
 import { costForNextPoint, reviveCost, SPEED_POINT_VALUE, STRENGTH_POINT_VALUE, statsFor } from '../combat.js';
@@ -662,21 +664,17 @@ export default function CombatDeploymentView({
 
   return (
     <div className="modal-backdrop combat-deployment-backdrop" onClick={onClose}>
-      <section className="combat-deployment-shell" onClick={(e) => e.stopPropagation()} aria-label="Preparar despliegue de Combat Chess">
+      <section className="combat-deployment-shell combat-war-table" data-combat-deployment="war-table" onClick={(e) => e.stopPropagation()} aria-label="Mesa de Guerra de Combat Chess">
         <button className="piece-info-close" onClick={onClose} aria-label="Cerrar">×</button>
 
-        <header className="combat-deployment-header">
-          <div>
-            <span className="army-memorial-kicker">COMBAT CHESS · MESA DE GUERRA</span>
-            <div className="deployment-title-row"><h2>Preparar despliegue</h2><button type="button" className="context-help-btn" onClick={() => setShowTutorial(true)}>?</button></div>
-            <p className="combat-operational-hint" title="Cada slot valida el tipo de origen. Un peón metamorfoseado sigue ocupando un slot de peón.">Arrastra, coloca y confirma.</p>
-          </div>
-          <div className={`deployment-readiness ${summary.ready ? 'ready' : 'incomplete'}`}>
-            <strong>{summary.assignedCount}/{summary.totalSlots}</strong>
-            <span>{summary.ready ? 'Formación lista' : 'Formación incompleta'}</span>
-          </div>
-          {onOpenMarket && <button type="button" className="secondary-btn deployment-market-btn" onClick={onOpenMarket}>Mercado · {Number(roster.credits || 0)} cr</button>}
-        </header>
+        <CombatDeploymentWarTableHeader
+          assignedCount={summary.assignedCount}
+          totalSlots={summary.totalSlots}
+          ready={summary.ready}
+          credits={roster.credits}
+          onOpenMarket={onOpenMarket}
+          onOpenTutorial={() => setShowTutorial(true)}
+        />
 
         <div className="combat-deployment-layout">
           <aside className="deployment-barracks deployment-reserve-panel">
@@ -757,37 +755,24 @@ export default function CombatDeploymentView({
               </section>
             )}
 
-            <div className="deployment-presets" aria-label="Presets de escuadra">
-              <span className="deployment-presets-label">ESCUADRAS</span>
-              {[0, 1, 2].map((index) => {
-                const preset = presets[index];
-                return (
-                  <div className="deployment-preset-row" key={index}>
-                    <button type="button" className="secondary-btn" disabled={!preset} onClick={() => loadPreset(index)} title={preset ? `Cargar ${preset.name}` : 'Preset vacío'}>
-                      {preset?.name || `Escuadra ${index + 1}`}
-                    </button>
-                    <button type="button" className="deployment-preset-save" onClick={() => savePreset(index)} title="Guardar la formación actual">＋</button>
-                  </div>
-                );
-              })}
-            </div>
+            <CombatDeploymentPresetDrawer presets={presets} onLoad={loadPreset} onSave={savePreset} />
 
             <div className="deployment-list-heading">
               <div><span>UNIDADES EN RESERVA</span><b>{summary.reserveCount}</b></div>
               <small>Arrastra una unidad a un slot compatible.</small>
             </div>
-            <div className="deployment-filters">
-              <input aria-label="Buscar unidad en reserva" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar en reserva…" />
-              <div className="deployment-filter-row">
-                <select aria-label="Filtrar reserva por tipo" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
-                  <option value="all">Todos los tipos</option>
-                  <option value="p">Peones</option><option value="n">Caballos</option><option value="b">Alfiles</option><option value="r">Torres</option><option value="q">Damas</option><option value="k">Rey</option>
-                </select>
-                <select aria-label="Ordenar reserva" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-                  <option value="rank">Rango ↓</option><option value="level">Nivel ↓</option><option value="type">Tipo</option><option value="name">Nombre A–Z</option>
-                </select>
-              </div>
-            </div>
+            {summary.reserveCount > 0 && <div className="deployment-filters">
+                <input aria-label="Buscar unidad en reserva" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar en reserva…" />
+                <div className="deployment-filter-row">
+                  <select aria-label="Filtrar reserva por tipo" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+                    <option value="all">Todos los tipos</option>
+                    <option value="p">Peones</option><option value="n">Caballos</option><option value="b">Alfiles</option><option value="r">Torres</option><option value="q">Damas</option><option value="k">Rey</option>
+                  </select>
+                  <select aria-label="Ordenar reserva" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+                    <option value="rank">Rango ↓</option><option value="level">Nivel ↓</option><option value="type">Tipo</option><option value="name">Nombre A–Z</option>
+                  </select>
+                </div>
+              </div>}
             <div className="deployment-unit-list deployment-reserve-list" aria-label="Unidades en reserva">
               {reserveUnits.length === 0 && (
                 <p className="hint-text deployment-empty-filter">
@@ -812,13 +797,12 @@ export default function CombatDeploymentView({
               ))}
             </div>
           </aside>
-
           <main className="deployment-board-zone">
             <div className="deployment-board-caption">
               <span>FORMACIÓN PROPIA</span>
               <small title="Fila superior: piezas mayores. Fila inferior: ocho slots de peón.">16 slots</small>
             </div>
-            <Board
+            <Board2D
               fen={fen}
               orientation="white"
               onSquareClick={handleBoardClick}
@@ -850,13 +834,14 @@ export default function CombatDeploymentView({
           </main>
 
           <aside className="deployment-right-rail">
-            <section className="deployment-deployed-panel">
-              <div className="deployment-panel-heading">
+            <details className="deployment-deployed-panel deployment-war-table-deployed">
+              <summary className="deployment-panel-heading">
                 <div><span>DESPLEGADOS</span><strong>{summary.assignedCount}/{summary.totalSlots}</strong></div>
-                <small>Formación actual</small>
-              </div>
-              <p className="deployment-rail-hint">Selecciona una unidad para localizarla en el tablero o arrástrala a otro slot compatible.</p>
-              <div className="deployment-unit-list deployment-deployed-list" aria-label="Unidades desplegadas">
+                <small>Ver escuadra</small>
+              </summary>
+              <div className="deployment-war-table-deployed-body">
+                <p className="deployment-rail-hint">Selecciona una unidad para localizarla en el tablero o arrástrala a otro slot compatible.</p>
+                <div className="deployment-unit-list deployment-deployed-list" aria-label="Unidades desplegadas">
                 {deployedUnits.map((unitKey) => (
                   <UnitCard
                     key={unitKey}
@@ -872,10 +857,9 @@ export default function CombatDeploymentView({
                     onDragEnd={handleDragEnd}
                   />
                 ))}
+                </div>
               </div>
-            </section>
-
-
+            </details>
           </aside>
         </div>
 
