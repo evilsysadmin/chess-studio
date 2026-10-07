@@ -13,6 +13,23 @@ func _initialize() -> void:
 	assert(match_node.debug_pitch_exists())
 	assert(ChessFootballMath.PITCH_RECT.size.x >= 2400.0)
 	assert(ChessFootballMath.PITCH_RECT.size.y >= 1400.0)
+	assert(ChessFootballMath.GOAL_HALF_HEIGHT >= 140.0)
+	assert(
+		ChessFootballMath.GOAL_HALF_HEIGHT * 2.0
+		/ ChessFootballMath.PITCH_RECT.size.y
+		>= 0.19
+	)
+	var goal_probe_center := ChessFootballMath.PITCH_RECT.get_center()
+	assert(
+		ChessFootballMath.in_goal_mouth(
+			Vector2(ChessFootballMath.PITCH_RECT.end.x, goal_probe_center.y + 125.0)
+		)
+	)
+	assert(
+		not ChessFootballMath.in_goal_mouth(
+			Vector2(ChessFootballMath.PITCH_RECT.end.x, goal_probe_center.y + 150.0)
+		)
+	)
 	assert(match_node.debug_3d_ready())
 	assert(match_node.debug_audio_ready())
 	var audio_names: Array[String] = match_node.debug_audio_stream_names()
@@ -467,6 +484,7 @@ func _initialize() -> void:
 		- ChessFootballMath.GOAL_FRAME_POST_RADIUS
 		- 26.0
 	)
+	assert(safe_span >= 100.0)
 	assert(absf(auto_target.y - ChessFootballMath.PITCH_RECT.get_center().y) <= safe_span + 0.01)
 	assert(absf(upper_target.y - ChessFootballMath.PITCH_RECT.get_center().y) <= safe_span + 0.01)
 	assert(absf(lower_target.y - ChessFootballMath.PITCH_RECT.get_center().y) <= safe_span + 0.01)

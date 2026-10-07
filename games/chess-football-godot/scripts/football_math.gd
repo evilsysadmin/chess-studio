@@ -2,7 +2,9 @@ class_name ChessFootballMath
 extends RefCounted
 
 const PITCH_RECT := Rect2(80.0, 70.0, 2480.0, 1440.0)
-const GOAL_HALF_HEIGHT := 105.0
+# 5v5 arcade mouth: 290 pitch units. The 210-unit legacy goal became too
+# narrow after the pitch was widened, making otherwise good shots unrewarding.
+const GOAL_HALF_HEIGHT := 145.0
 const PENALTY_AREA_DEPTH := 265.0
 const PENALTY_AREA_HALF_WIDTH := 215.0
 const PENALTY_SPOT_DEPTH := 175.0
