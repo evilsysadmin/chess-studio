@@ -58,3 +58,10 @@ The repository owns an automatic retention policy for the public asset bucket.
 `scripts/r2_asset_gc.py` inventories R2, protects the reviewed manifest, hard-coded runtime R2 URLs and stable `current.*` aliases, then prunes only safely classified stale objects. Capacity pressure may prune old rollback copies, but never active pins.
 
 `Infra · R2 assets` runs the retention pass daily and when the R2 surface changes on `main`, and publishes a JSON audit report. If the bucket remains above the soft ceiling after safe candidates are exhausted, the job fails closed rather than guessing.
+
+
+### Immutable Godot Web bundles
+
+`pawn-slug-godot/current.json` and `chess-football-godot/current.json` are authoritative pointers for their current Web exports. Before deleting release directories, the GC reads and validates those pointers directly from R2.
+
+The active release directory is protected in full, and one previous release is retained for rollback. Older releases become eligible after two days. If a pointer cannot be fetched or validated, the entire corresponding release root is protected for that run instead of guessing.
