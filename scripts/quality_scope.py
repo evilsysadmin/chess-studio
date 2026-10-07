@@ -219,6 +219,10 @@ STAGING_ONLY_E2E = {
     "e2e/staging-pawn-slug-godot.spec.js",
 }
 FRONTEND_TEST_RE = re.compile(r"^frontend/src/.*\.(?:test|spec)\.(?:js|jsx|ts|tsx)$")
+CHRONICLES_MANIFEST_RE = re.compile(
+    r"^(?:frontend/src/chronicles/maps|backend-python/chronicles_maps|"
+    r"backend-go/internal/chronicles/content/maps)/[^/]+\.json$"
+)
 CORE_E2E_RE = re.compile(
     r"^frontend/src/.*\.(?:js|jsx|ts|tsx)$|"
     r"^frontend/(?:index\.html|vite\.config\.(?:js|mjs|ts)|package-lock\.json)$"
@@ -356,6 +360,15 @@ def classify(paths: Iterable[str]) -> Scope:
 
         if SECURITY_RE.search(path):
             scope.run_security = True
+
+        # Chronicles map manifests are one cross-runtime contract. A change in
+        # any copy must exercise every authority lane so frontend-only edits
+        # cannot ship ahead of Python/Go and break authoritative bootstrap.
+        if CHRONICLES_MANIFEST_RE.search(path):
+            scope.run_frontend = True
+            scope.run_backend = True
+            scope.run_go = True
+            scope.run_go_parity = True
 
         if path.startswith("backend-go/") or path in GO_AUTHORITY_PATHS:
             scope.run_go = True
@@ -502,7 +515,6 @@ def self_test() -> None:
     for chronicles_path in (
         "frontend/src/chronicles/chroniclesMapCatalog.js",
         "frontend/src/chronicles/chroniclesContentRuntime.js",
-        "frontend/src/chronicles/maps/crypt-eight-squares.json",
         "frontend/src/chroniclesOfMatthias.js",
         "frontend/src/chroniclesOfMatthiasDungeonArt.js",
         "frontend/src/chroniclesPartyFootprint.js",
@@ -511,6 +523,28 @@ def self_test() -> None:
         "frontend/src/components/ChroniclesTacticalMargin.jsx",
     ):
         _expect_core([chronicles_path], lanes=("app-boot",), run_frontend=True)
+    _expect_core(
+        ["frontend/src/chronicles/maps/crypt-eight-squares.json"],
+        lanes=("app-boot",),
+        run_frontend=True,
+        run_backend=True,
+        run_go=True,
+        run_go_parity=True,
+    )
+    _expect(
+        ["backend-python/chronicles_maps/crypt-eight-squares.json"],
+        run_frontend=True,
+        run_backend=True,
+        run_go=True,
+        run_go_parity=True,
+    )
+    _expect(
+        ["backend-go/internal/chronicles/content/maps/crypt-eight-squares.json"],
+        run_frontend=True,
+        run_backend=True,
+        run_go=True,
+        run_go_parity=True,
+    )
     _expect_core(["frontend/src/components/ChroniclesOfMatthias.jsx", "frontend/src/App.jsx"], run_frontend=True)
     _expect_core(["frontend/src/combatBosses.js"], lanes=("combat",), run_frontend=True)
     _expect_core(["frontend/src/combatDeployment.js"], lanes=("combat",), run_frontend=True)
