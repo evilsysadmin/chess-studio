@@ -66,7 +66,7 @@ Chronicles first-person y Tactics comparten una única ficha RPG. No deben diver
 - El inventario de run es de la compañía mientras el modelo de datos no declare ownership por PJ. La UI no debe fingir que una llave, consumible o botín pertenece a un héroe concreto.
 - Los puntos de atributo y skill pueden gastarse desde la ficha mediante las mismas funciones de progresión que Tactics; no crear reglas paralelas.
 - Abrir la ficha pausa input, locomoción y resolución automática de turnos enemigos por debajo del overlay.
-- First-person aplica los mismos modificadores persistentes de HP, daño, alcance, Agilidad y skills que el sistema RPG compartido. Una estadística mostrada en la ficha no puede ser decorativa.
+- First-person aplica los modificadores persistentes relevantes para su modelo de combate: HP, daño, alcance y Agilidad/iniciativa. Las skills exclusivas de habilidades tácticas siguen visibles como progreso del personaje, pero la ficha las rotula como tácticas y no finge cargas utilizables en first-person.
 - El XP ganado en first-person usa el mismo ledger/idempotencia de applyChroniclesTacticsProgression(): daño útil, bajas, objetivos y supervivencia se conceden una sola vez aunque haya F5/replay.
 - Guardar progresión de perfil durante una expedición no reinicia ni re-bootstrappea la run activa.
 
