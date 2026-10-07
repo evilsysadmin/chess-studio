@@ -9,6 +9,7 @@ import PreferredBoard from './PreferredBoard.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 import { requestWarRoomLandscapeFullscreen } from './useWarRoomImmersive.js';
+import { requestChroniclesLandscapeOnEntry } from './useChroniclesLandscape.js';
 import './LabScreen.css';
 import './LabArcade.css';
 import './LabWorkshop.css';
@@ -91,6 +92,7 @@ export default function LabScreen({ onExit, onStart }){
   }
 
   function enterChronicles() {
+    void requestChroniclesLandscapeOnEntry();
     setLabMode('chronicles');
   }
 

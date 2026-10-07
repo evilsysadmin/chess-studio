@@ -155,8 +155,10 @@ El mismo asset/contrato debe mantenerse coherente entre tarjeta grande, thumbnai
 Chronicles first-person es una superficie **viewport-owned**: durante la expedición no existe un modo windowed interno.
 
 - El root de Chronicles ocupa siempre el viewport completo con layout propio (`100vw` + `100dvh`) en desktop, móvil vertical y móvil apaisado.
-- Chronicles **no** usa la Fullscreen API nativa del navegador. `document.fullscreenElement` debe permanecer vacío; así `Escape` pertenece al runtime y abre/cierra UI contextual en vez de sacar al navegador de fullscreen.
-- `Escape` cierra primero el automap si está abierto. Sólo cuando no hay automap abierto alterna el menú de Chronicles.
+- En desktop, Chronicles no entra en fullscreen nativo: el runtime sigue siendo viewport-owned y `Escape` pertenece a la UI del juego.
+- En móvil/coarse pointer, la entrada a Chronicles y la confirmación del grupo aprovechan el gesto real para pedir `fullscreen + screen.orientation.lock('landscape')`. El navegador puede rechazar cualquiera de las dos APIs; el juego debe seguir siendo usable y ofrecer un control compacto «Apaisado» mientras siga en portrait.
+- Al salir de Chronicles se libera el lock de orientación y se abandona únicamente el fullscreen nativo que haya abierto el propio runtime.
+- `Escape` cierra primero el automap si está abierto. Sólo cuando no hay automap abierto alterna el menú de Chronicles en desktop/no-fullscreen.
 - El automap es un overlay diegético de la expedición, accesible con `M` y con un control táctil/desktop visible. Mientras está abierto, los controles de locomoción/combate no actúan por debajo.
 - La posición y orientación del marcador del grupo derivan exclusivamente de `state.x`, `state.y` y `state.direction`; el automap no mantiene una segunda posición ni una segunda lógica de facing.
 - El grupo se representa como una flecha/chevron orientada con la dirección canónica N/E/S/O. Girar el grupo rota inmediatamente ese marcador.
@@ -169,7 +171,7 @@ Acceptance adicional:
 - marcador único del grupo y facing coherente tras giros;
 - abrir automap no cambia posición, turnos ni combate;
 - `Escape` desde automap no abre simultáneamente el menú;
-- Chronicles continúa cubriendo el viewport completo con automap abierto o cerrado y nunca entra en browser-native fullscreen.
+- Chronicles continúa cubriendo el viewport completo con automap abierto o cerrado; desktop permanece fuera de browser-native fullscreen y móvil intenta entrar en landscape/fullscreen sólo desde un gesto válido, con fallback explícito cuando el navegador lo rechaza.
 
 ## Initiative combat contract
 

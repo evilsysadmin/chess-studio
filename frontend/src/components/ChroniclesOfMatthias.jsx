@@ -61,6 +61,10 @@ import ChroniclesEnemyRetaliationFx from './ChroniclesEnemyRetaliationFx.jsx';
 import ChroniclesNarratorOverlay from './ChroniclesNarratorOverlay.jsx';
 import ChroniclesPartyBark from './ChroniclesPartyBark.jsx';
 import ChroniclesTacticalMargin from './ChroniclesTacticalMargin.jsx';
+import useChroniclesLandscape, {
+  releaseChroniclesLandscape,
+  requestChroniclesLandscapeOnEntry,
+} from './useChroniclesLandscape.js';
 import './ChroniclesOfMatthias.css';
 import './ChroniclesOfMatthiasArt.css';
 import './ChroniclesOfMatthiasJournal.css';
@@ -141,6 +145,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const [automapOpen, setAutomapOpen] = useState(false);
   const [automapVisitedByMap, setAutomapVisitedByMap] = useState({});
   const touchHoldRef = useRef({ delayId: null, repeatId: null });
+  const { needsRotation, lockState, activateLandscape } = useChroniclesLandscape(characterSetupDone);
 
   useEffect(() => {
     selectedMemberIdRef.current = selectedMemberId;
@@ -171,6 +176,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   }, []);
 
   const exitChronicles = useCallback(() => {
+    void releaseChroniclesLandscape();
     const current = stateRef.current;
     const runId = activeRunIdRef.current;
     const terminal = current?.phase === 'defeated' || current?.phase === 'escaped';
@@ -193,6 +199,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   }, { contextMenu: false });
 
   const confirmCharacterBuild = useCallback((build) => {
+    void requestChroniclesLandscapeOnEntry();
     const selected = setChroniclesCharacterBuild(progression, build);
     if (!selected.updated) return;
     const saved = saveChroniclesProgression(selected.progression);
@@ -694,6 +701,18 @@ export default function ChroniclesOfMatthias({ onExit }) {
             <span>RUMBO <b>{direction.label}</b></span>
             <span>ACTIVO <b>{selectedMember?.name}</b></span>
             <span>OBJETIVO <b>{objective}</b></span>
+            {needsRotation && (
+              <button
+                type="button"
+                className="chronicles-landscape-trigger"
+                data-lock-state={lockState}
+                aria-label="Activar apaisado"
+                title={lockState === 'rejected' ? 'El navegador necesita otro toque para girar Chronicles.' : 'Girar Chronicles a apaisado'}
+                onClick={() => { void activateLandscape(); }}
+              >
+                <span aria-hidden="true">↻</span>
+              </button>
+            )}
             <button
               type="button"
               className="chronicles-map-trigger"

@@ -194,6 +194,10 @@
 }
 
 
+.chronicles-landscape-trigger {
+  display: none;
+}
+
 .chronicles-map-trigger {
   appearance: none;
   min-width: 68px;
@@ -899,6 +903,42 @@
     font-size: .72rem;
   }
 
+  .chronicles-landscape-trigger {
+    appearance: none;
+    display: grid;
+    place-items: center;
+    width: 48px;
+    min-width: 48px;
+    height: 48px;
+    min-height: 48px;
+    margin-left: auto;
+    padding: 0;
+    border: 1px solid rgba(207, 168, 108, .34);
+    border-radius: 12px;
+    background: rgba(9, 8, 7, .78);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .32);
+    backdrop-filter: blur(8px);
+    color: #e5c78f;
+    font: inherit;
+    font-size: 1.15rem;
+    pointer-events: auto;
+    touch-action: manipulation;
+  }
+
+  .chronicles-landscape-trigger:hover,
+  .chronicles-landscape-trigger:focus-visible {
+    border-color: rgba(232, 185, 105, .78);
+    color: #f7dfb2;
+    outline: none;
+  }
+
+  .chronicles-landscape-trigger[data-lock-state="rejected"] {
+    border-color: rgba(226, 149, 72, .72);
+    box-shadow: 0 0 0 1px rgba(226, 149, 72, .16), 0 8px 24px rgba(0, 0, 0, .32);
+  }
+
+  .chronicles-landscape-trigger + .chronicles-map-trigger { margin-left: 0; }
+
   .chronicles-map-trigger {
     width: 48px;
     min-width: 48px;
@@ -1172,6 +1212,7 @@
 
 @media (max-width: 520px) {
   .chronicles-statusbar > span:nth-child(4) { max-width: calc(100vw - 136px); }
+  .chronicles-statusbar:has(.chronicles-landscape-trigger) > span:nth-child(4) { max-width: calc(100vw - 192px); }
 
   .chronicles-party {
     grid-template-columns: repeat(4, 46px);
