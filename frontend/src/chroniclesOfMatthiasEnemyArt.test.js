@@ -14,19 +14,19 @@ function materials(root) {
 describe('Chronicles Tactics premium enemy art', () => {
   it('gives the scavenger knight a readable armored threat silhouette', () => {
     const model = buildScavengerKnight();
-    expect(model.userData.chroniclesArtTier).toBe('premium-threat-v2');
-    expect(model.getObjectByName('scavenger-knight-amber-eye-left')).toBeTruthy();
-    expect(model.getObjectByName('scavenger-knight-amber-eye')).toBeTruthy();
-    expect(model.getObjectByName('scavenger-knight-muzzle-spike')).toBeTruthy();
+    expect(model.userData.chroniclesArtTier).toBe('premium-threat-v3');
+    expect(model.getObjectByName('scavenger-knight-eye-slit')).toBeTruthy();
+    expect(model.getObjectByName('scavenger-knight-horse-crest')).toBeTruthy();
+    expect(model.getObjectByName('scavenger-knight-sword-blade')).toBeTruthy();
     expect(model.getObjectByName('scavenger-knight-scrap-chest')).toBeTruthy();
     expect(materials(model).every((entry) => entry.userData.chroniclesOwnedMaterial)).toBe(true);
   });
 
   it('gives the spectral bishop a restrained halo/core silhouette and owned materials', () => {
     const model = buildSpectralBishop();
-    expect(model.userData.chroniclesArtTier).toBe('premium-threat-v2');
+    expect(model.userData.chroniclesArtTier).toBe('premium-threat-v3');
     expect(model.getObjectByName('spectral-bishop-head-halo')).toBeTruthy();
-    expect(model.getObjectByName('spectral-bishop-chest-core')).toBeTruthy();
+    expect(model.getObjectByName('spectral-bishop-stole-rune')).toBeTruthy();
     expect(model.getObjectByName('spectral-bishop-wisp-left')).toBeTruthy();
     expect(model.getObjectByName('spectral-bishop-wisp-right')).toBeTruthy();
     expect(materials(model).every((entry) => entry.userData.chroniclesOwnedMaterial)).toBe(true);
