@@ -8,6 +8,21 @@ export const QUICK_MATCH_READY_ROOM_CAMERA = Object.freeze({
   target: Object.freeze([0, 1.42, -1.72]),
 });
 
+export const QUICK_MATCH_READY_ROOM_BOARD_LAYOUT = Object.freeze({
+  centerX: -.28,
+  centerY: 1.40,
+  centerZ: -1.33,
+  squareSize: .76,
+});
+
+export function quickMatchReadyRoomSquareCenter(file, rank) {
+  const { centerX, centerZ, squareSize } = QUICK_MATCH_READY_ROOM_BOARD_LAYOUT;
+  return Object.freeze([
+    centerX + (file - 3.5) * squareSize,
+    centerZ + (rank - 3.5) * squareSize,
+  ]);
+}
+
 function mat(color, metalness = 0.04, roughness = 0.8, extra = {}) {
   return new THREE.MeshPhysicalMaterial({
     color,
@@ -64,7 +79,8 @@ function addBoard(root, lightSquare, darkSquare, trim, woodDark) {
   box(board, [6.66, .17, 6.66], trim, [0, .035, 0], 'board-frame');
   box(board, [6.20, .10, 6.20], woodDark, [0, .12, 0], 'board-bed');
 
-  const squareGeo = new THREE.BoxGeometry(.76, .095, .76);
+  const { centerX, centerY, centerZ, squareSize } = QUICK_MATCH_READY_ROOM_BOARD_LAYOUT;
+  const squareGeo = new THREE.BoxGeometry(squareSize, .095, squareSize);
   const light = new THREE.InstancedMesh(squareGeo, lightSquare, 32);
   const dark = new THREE.InstancedMesh(squareGeo, darkSquare, 32);
   const matrix = new THREE.Matrix4();
@@ -73,7 +89,7 @@ function addBoard(root, lightSquare, darkSquare, trim, woodDark) {
 
   for (let rank = 0; rank < 8; rank += 1) {
     for (let file = 0; file < 8; file += 1) {
-      matrix.makeTranslation((file - 3.5) * .76, .205, (rank - 3.5) * .76);
+      matrix.makeTranslation((file - 3.5) * squareSize, .205, (rank - 3.5) * squareSize);
       const target = (rank + file) % 2 === 0 ? light : dark;
       target.setMatrixAt(target === light ? lightIndex++ : darkIndex++, matrix);
     }
@@ -92,7 +108,7 @@ function addBoard(root, lightSquare, darkSquare, trim, woodDark) {
     box(board, [.065, .055, 6.54], trim, [x, .20, 0], 'board-brass-fillet');
   }
 
-  board.position.set(-.28, 1.40, -1.33);
+  board.position.set(centerX, centerY, centerZ);
   root.add(board);
   return board;
 }
@@ -213,33 +229,37 @@ function addRoyalPiece(root, x, z, material, scale = 1, king = false) {
 }
 
 function addChessSet(root, ivory, ebony, lite = false) {
-  const fileX = (file) => -.28 + (file - 3.5) * .76;
-  const nearPawnZ = -1.33 + 2.28;
-  const farPawnZ = -1.33 - 2.28;
-  const nearBackZ = -1.33 + 3.04;
-  const farBackZ = -1.33 - 3.04;
+  const squareX = (file) => quickMatchReadyRoomSquareCenter(file, 0)[0];
+  const squareZ = (rank) => quickMatchReadyRoomSquareCenter(0, rank)[1];
+
+  // Camera side = White. Piece anchors and rendered squares share one layout
+  // contract, so neither can drift independently.
+  const whiteBackRankZ = squareZ(7);
+  const whitePawnRankZ = squareZ(6);
+  const blackPawnRankZ = squareZ(1);
+  const blackBackRankZ = squareZ(0);
 
   const pawnFiles = lite ? [0, 2, 4, 6] : [0, 1, 2, 3, 4, 5, 6, 7];
   for (const file of pawnFiles) {
-    addPawnPiece(root, fileX(file), nearPawnZ, ivory, .66);
-    addPawnPiece(root, fileX(file), farPawnZ, ebony, .66);
+    addPawnPiece(root, squareX(file), whitePawnRankZ, ivory, .66);
+    addPawnPiece(root, squareX(file), blackPawnRankZ, ebony, .66);
   }
 
   if (lite) return;
 
   const addBackRank = (z, material, facing) => {
-    addRookPiece(root, fileX(0), z, material, .66);
-    addKnightPiece(root, fileX(1), z, material, .66, facing);
-    addBishopPiece(root, fileX(2), z, material, .66);
-    addRoyalPiece(root, fileX(3), z, material, .66, false);
-    addRoyalPiece(root, fileX(4), z, material, .66, true);
-    addBishopPiece(root, fileX(5), z, material, .66);
-    addKnightPiece(root, fileX(6), z, material, .66, facing);
-    addRookPiece(root, fileX(7), z, material, .66);
+    addRookPiece(root, squareX(0), z, material, .66);
+    addKnightPiece(root, squareX(1), z, material, .66, facing);
+    addBishopPiece(root, squareX(2), z, material, .66);
+    addRoyalPiece(root, squareX(3), z, material, .66, false);
+    addRoyalPiece(root, squareX(4), z, material, .66, true);
+    addBishopPiece(root, squareX(5), z, material, .66);
+    addKnightPiece(root, squareX(6), z, material, .66, facing);
+    addRookPiece(root, squareX(7), z, material, .66);
   };
 
-  addBackRank(nearBackZ, ivory, -1);
-  addBackRank(farBackZ, ebony, 1);
+  addBackRank(whiteBackRankZ, ivory, -1);
+  addBackRank(blackBackRankZ, ebony, 1);
 }
 
 function addChair(root, wood, leather, brass) {
@@ -624,9 +644,10 @@ export default function QuickMatchReadyRoomScene3D() {
       warmRight.castShadow = false;
       scene.add(warmRight);
 
-      const moonFill = new THREE.DirectionalLight(0xa1c7f2, 1.42);
+      const moonFill = new THREE.DirectionalLight(0xa1c7f2, 1.18);
       moonFill.position.set(1.5, 6.5, -4.8);
       moonFill.target.position.set(0, 1.1, -1.4);
+      moonFill.castShadow = false;
       scene.add(moonFill, moonFill.target);
 
       const cameraFill = new THREE.PointLight(0xffd7aa, coarsePointer ? .74 : 1.36, 25, 2);
@@ -634,10 +655,30 @@ export default function QuickMatchReadyRoomScene3D() {
       cameraFill.castShadow = false;
       scene.add(cameraFill);
 
-      const boardFill = new THREE.PointLight(0xffe2bd, coarsePointer ? .44 : .88, 17, 2);
+      const boardFill = new THREE.PointLight(0xffe2bd, coarsePointer ? .38 : .72, 17, 2);
       boardFill.position.set(0, 6.2, -1.1);
       boardFill.castShadow = false;
       scene.add(boardFill);
+
+      const boardKey = new THREE.SpotLight(
+        0xffd7a0,
+        coarsePointer ? .72 : 2.15,
+        22,
+        Math.PI / 5.2,
+        .58,
+        1.7,
+      );
+      boardKey.position.set(-1.4, 7.4, 3.4);
+      boardKey.target.position.set(-.2, 1.35, -1.35);
+      boardKey.castShadow = !coarsePointer;
+      if (boardKey.castShadow) {
+        boardKey.shadow.mapSize.set(1024, 1024);
+        boardKey.shadow.bias = -.00045;
+        boardKey.shadow.normalBias = .018;
+        boardKey.shadow.camera.near = 1.5;
+        boardKey.shadow.camera.far = 22;
+      }
+      scene.add(boardKey, boardKey.target);
 
       room = buildRoom({ lite: coarsePointer });
       scene.add(room);
