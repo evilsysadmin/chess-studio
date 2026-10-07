@@ -372,7 +372,7 @@ func _refresh_hud() -> void:
 		else:
 			help_label.text = "PENALTI RIVAL · W/S mueve al portero antes del disparo"
 	else:
-		help_label.text = "WASD · Shift sprint (stamina) · Mantén Space pase · Mantén Enter tiro · E entrada · Shift+E segada · Tab cambia · V vista · ESC menú"
+		help_label.text = "WASD · Shift sprint · Mantén Space pase · Mantén Enter tiro · E regate/entrada · Shift+E segada · Tab cambia · V vista · ESC menú"
 	var charge_visible := shot_charging or pass_charging
 	if shot_meter != null:
 		shot_meter.visible = charge_visible
@@ -403,8 +403,11 @@ func _handle_human(delta: float) -> void:
 		_cancel_shot_charge()
 		_cancel_pass_charge()
 		_select_player(_best_switch_candidate())
-	if Input.is_action_just_pressed("tackle") and not controlled.has_ball:
-		_try_tackle(controlled, Input.is_action_pressed("sprint"))
+	if Input.is_action_just_pressed("tackle"):
+		if controlled.has_ball:
+			_try_dribble(direction)
+		else:
+			_try_tackle(controlled, Input.is_action_pressed("sprint"))
 	var pass_pressed := Input.is_action_pressed("pass_ball")
 	if pass_pressed and not desktop_pass_input_active:
 		desktop_pass_input_active = true
@@ -970,6 +973,13 @@ func _tackle_hitbox(
 func _tackle_attempt_range(tackler: Footballer, aggressive_override: bool = false) -> float:
 	var aggressive := aggressive_override or tackler.tackle_aggressive_active()
 	return TACKLE_ATTEMPT_RANGE + (SLIDE_TACKLE_FORWARD_BONUS if aggressive else 0.0)
+
+func _try_dribble(direction: Vector2) -> bool:
+	if controlled == null or ball.carrier != controlled:
+		return false
+	_cancel_shot_charge()
+	_cancel_pass_charge()
+	return controlled.start_dribble(direction)
 
 func _try_tackle(tackler: Footballer, aggressive: bool = false) -> bool:
 	if ball.carrier == null or ball.carrier == tackler:
@@ -1641,6 +1651,24 @@ func mobile_attack_goal_screen_position() -> Vector2:
 		return Vector2(-10000.0, -10000.0)
 	return presentation_3d.attack_goal_screen_position(0)
 
+func mobile_activate_dribble(screen_position: Vector2) -> bool:
+	if (
+		presentation_3d == null
+		or controlled == null
+		or ball.carrier != controlled
+		or set_piece_active
+		or kickoff_active
+		or goal_restart_active
+	):
+		return false
+	var target_world := presentation_3d.world_position_for_screen(screen_position)
+	if target_world.x < -9000.0:
+		return false
+	var direction := target_world - controlled.global_position
+	if direction.length() < 32.0:
+		return false
+	return _try_dribble(direction)
+
 func mobile_player_screen_position(player: Footballer) -> Vector2:
 	if presentation_3d == null or player == null:
 		return Vector2(-10000.0, -10000.0)
@@ -1958,6 +1986,9 @@ func debug_refresh_hud() -> void:
 
 func debug_try_tackle(player: Footballer, aggressive: bool = false) -> bool:
 	return _try_tackle(player, aggressive)
+
+func debug_try_dribble(direction: Vector2) -> bool:
+	return _try_dribble(direction)
 
 func debug_penalty_area_contains(attacking_team_id: int, point: Vector2) -> bool:
 	return _in_penalty_area(attacking_team_id, point)

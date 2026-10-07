@@ -31,6 +31,23 @@ func _initialize() -> void:
 	match_node.controlled.debug_set_stamina(100.0)
 	mobile_controls.debug_touch_up(91, joystick_origin + Vector2(52.0, -18.0))
 
+	# Pin the peak of a real contextual dribble: possession remains attached but
+	# the ball is visibly touched outside the ordinary running anchor.
+	var review_dribbler: Footballer = match_node.teams[0][3]
+	match_node._select_player(review_dribbler)
+	review_dribbler.global_position = ChessFootballMath.PITCH_RECT.get_center()
+	review_dribbler.velocity = Vector2.ZERO
+	match_node.ball.attach_to(review_dribbler)
+	assert(match_node.debug_try_dribble(Vector2(1.0, -0.55)))
+	review_dribbler._process(0.10)
+	review_dribbler.move_human(0.08, Vector2.ZERO, false)
+	match_node.ball.tick_ball(0.0)
+	assert(review_dribbler.debug_dribble_active())
+	assert(match_node.ball.carrier == review_dribbler)
+	match_node.debug_focus_presentation()
+	await _save_capture(match_node, "dribble", "VISUAL_CAPTURE_DRIBBLE")
+	review_dribbler._process(0.70)
+
 	var pass_passer: Footballer = match_node.teams[0][2]
 	var pass_receiver: Footballer = match_node.teams[0][3]
 	match_node._select_player(pass_passer)

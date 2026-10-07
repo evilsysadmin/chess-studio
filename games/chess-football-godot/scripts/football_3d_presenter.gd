@@ -650,6 +650,25 @@ func screen_position_for_world(world: Vector2, height: float = PLAYER_BASE_Y) ->
 		return Vector2(-10000.0, -10000.0)
 	return camera.unproject_position(stage_position)
 
+func world_position_for_screen(screen_position: Vector2) -> Vector2:
+	if camera == null:
+		return Vector2(-10000.0, -10000.0)
+	var ray_origin := camera.project_ray_origin(screen_position)
+	var ray_direction := camera.project_ray_normal(screen_position)
+	if absf(ray_direction.y) < 0.0001:
+		return Vector2(-10000.0, -10000.0)
+	var distance := -ray_origin.y / ray_direction.y
+	if distance <= 0.0:
+		return Vector2(-10000.0, -10000.0)
+	var stage_position := ray_origin + ray_direction * distance
+	var center := ChessFootballMath.PITCH_RECT.get_center()
+	return ChessFootballMath.clamp_to_pitch(
+		Vector2(
+			stage_position.x / WORLD_SCALE + center.x,
+			stage_position.z / WORLD_SCALE + center.y,
+		)
+	)
+
 func screen_position_for_player(player: Footballer) -> Vector2:
 	if player == null or player.sent_off:
 		return Vector2(-10000.0, -10000.0)

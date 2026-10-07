@@ -114,6 +114,31 @@ func _initialize() -> void:
 	stamina_runner.debug_set_stamina(100.0)
 	print("SMOKE_STAGE=stamina")
 
+	# Context dribble: with possession the tackle key becomes a short directional
+	# touch/burst. It keeps possession, changes direction immediately and cannot
+	# be spammed while its cooldown is active.
+	var dribbler: Footballer = match_node.teams[0][3]
+	match_node._select_player(dribbler)
+	dribbler.global_position = ChessFootballMath.PITCH_RECT.get_center()
+	dribbler.velocity = Vector2.ZERO
+	match_node.ball.attach_to(dribbler)
+	assert(dribbler.debug_dribble_ready())
+	var dribble_before := dribbler.global_position
+	assert(match_node.debug_try_dribble(Vector2(0.35, -1.0)))
+	assert(dribbler.debug_dribble_active())
+	assert(dribbler.debug_dribble_direction().y < -0.90)
+	assert(not match_node.debug_try_dribble(Vector2.DOWN))
+	dribbler._process(0.10)
+	dribbler.move_human(0.10, Vector2.ZERO, false)
+	match_node.ball.tick_ball(0.0)
+	assert(dribbler.velocity.y < -dribbler.base_speed * 1.20)
+	assert(dribbler.global_position.y < dribble_before.y)
+	assert(match_node.ball.carrier == dribbler)
+	assert(match_node.ball.global_position.distance_to(dribbler.global_position) > 28.0)
+	dribbler._process(0.70)
+	assert(dribbler.debug_dribble_ready())
+	print("SMOKE_STAGE=dribble")
+
 	# The same shot crossing the goal plane is only a goal while the whole
 	# ball fits below the crossbar.
 	match_node.ball.release(Vector2.RIGHT, 0.0)
