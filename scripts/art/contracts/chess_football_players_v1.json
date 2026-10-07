@@ -1,9 +1,9 @@
 {
   "schema": 2,
-  "quality_contract": "chess-football-vector-v23",
+  "quality_contract": "chess-football-vector-v24",
   "surface": "chess-football",
   "actor": "footballer",
-  "variant": "vector-v23",
+  "variant": "vector-v24",
   "composition": "integrated",
   "cell": {
     "width": 128,
