@@ -26,7 +26,11 @@ async function openInsights(page, { hour = 17 } = {}) {
     },
   });
   await login(page);
-  await page.getByRole('button', { name: 'Abrir Así juegas con Matthias' }).click();
+  await expect.poll(() => page.evaluate(() => {
+    try { return JSON.parse(localStorage.getItem('chess-study-game-history') || '[]').length; }
+    catch { return 0; }
+  })).toBe(INSIGHTS_HISTORY.length);
+  await page.locator('.illustrated-home__matthias').click();
   await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Expediente', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Expediente', exact: true })).toBeVisible();
