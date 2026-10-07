@@ -17,6 +17,6 @@ describe('global shell player overview', () => {
     const html = renderToStaticMarkup(createElement(Probe));
     expect(html).toContain('data-rating-type="object"');
     expect(html).toContain('data-credits-type="number"');
-    expect(html).toContain('data-rank-type="string"');
+    expect(html).toContain('data-rank-type="object"');
   });
 });
