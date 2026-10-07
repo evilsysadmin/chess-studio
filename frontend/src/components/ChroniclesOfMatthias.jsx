@@ -932,6 +932,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
           state={state}
           progression={progression}
           member={sheetMember}
+          mode="first-person"
           onClose={() => setSheetMemberId(null)}
           onAllocateAttribute={allocateAttribute}
           onLearnSkill={learnSkill}
