@@ -346,6 +346,7 @@ jobs:
       RESEND_BOOTSTRAP_REQUIRED: ${{ needs.prepare.outputs.resend_bootstrap_required }}
       CONTINUITY_REQUIRED: ${{ needs.prepare.outputs.continuity_required }}
       GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
     steps:
       - name: Summary
         run: echo "### Staging $DEPLOY_SHA · backend=$BACKEND · frontend=$FRONTEND · worker=$WORKER · smoke=$SMOKE" >> "$GITHUB_STEP_SUMMARY"
@@ -362,5 +363,5 @@ jobs:
             echo "::notice title=Continuity drill dispatched::$DEPLOY_SHA"
           fi
           if [[ "$RESEND_BOOTSTRAP_REQUIRED" != true && "$CONTINUITY_REQUIRED" != true ]]; then
-            echo "::notice title=Post-staging no-op::No Resend/continuity follow-up required for $DEPLOY_SHA."
+            echo "::notice::No post-staging follow-up for $DEPLOY_SHA"
           fi

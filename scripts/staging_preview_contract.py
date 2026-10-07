@@ -290,6 +290,7 @@ def main() -> int:
     for needle, label in (
         ("actions: write", "summary scoped dispatch permission"),
         ("GH_TOKEN: ${{ github.token }}", "summary scoped GitHub token"),
+        ("GH_REPO: ${{ github.repository }}", "summary pins repository without checkout"),
         ("gh workflow run oci-resend-bootstrap.yml", "summary Resend dispatch"),
         ("gh workflow run staging-deploy-continuity.yml", "summary continuity dispatch"),
     ):
