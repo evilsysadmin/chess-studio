@@ -168,7 +168,7 @@
   display: none !important;
 }
 
-.insights-workspace-view-now .ai-player-portrait {
+.insights-workspace-view-dossier .ai-player-portrait {
   position: relative;
   overflow: hidden;
   /* Inline padding: without it the eyebrow ("Matthias // veredicto") sits on the
@@ -181,7 +181,7 @@
   box-shadow: 0 16px 38px rgba(0,0,0,.13);
 }
 
-.insights-workspace-view-now .ai-player-portrait::after {
+.insights-workspace-view-dossier .ai-player-portrait::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -190,27 +190,27 @@
   box-shadow: inset 3px 0 0 rgba(198,164,93,.52);
 }
 
-.insights-workspace-view-now .ai-player-portrait-heading h2 {
+.insights-workspace-view-dossier .ai-player-portrait-heading h2 {
   font-size: clamp(1.25rem, 2.4vw, 1.65rem);
 }
 
-.insights-workspace-view-now .ai-player-portrait-character img {
+.insights-workspace-view-dossier .ai-player-portrait-character img {
   width: clamp(82px, 10vw, 116px);
   height: clamp(82px, 10vw, 116px);
   object-fit: contain;
 }
 
-.insights-workspace-view-now .ai-player-portrait-commentary {
+.insights-workspace-view-dossier .ai-player-portrait-commentary {
   position: relative;
 }
 
-.insights-workspace-view-now .ai-player-portrait-text {
+.insights-workspace-view-dossier .ai-player-portrait-text {
   margin-top: 0;
   font-size: clamp(1rem, 1.8vw, 1.15rem);
   line-height: 1.52;
 }
 
-.insights-workspace-view-now .ai-player-portrait-text::before {
+.insights-workspace-view-dossier .ai-player-portrait-text::before {
   content: '“';
   margin-right: .12rem;
   color: rgba(198,164,93,.76);
@@ -220,7 +220,7 @@
 }
 
 .insights-workspace-view-now .coaching-section,
-.insights-workspace-view-now .matthias-daily {
+.insights-workspace-view-dossier .matthias-daily {
   min-width: 0;
 }
 
@@ -231,17 +231,17 @@
 }
 
 /* Daily consultation is a secondary conversation, not another hero. */
-.insights-workspace-view-now .matthias-daily {
+.insights-workspace-view-dossier .matthias-daily {
   border-color: rgba(198,164,93,.18);
   background: rgba(255,255,255,.018);
 }
 
-.insights-workspace-view-now .matthias-daily-heading img {
+.insights-workspace-view-dossier .matthias-daily-heading img {
   width: 48px;
   height: 48px;
 }
 
-.insights-workspace-view-now .matthias-daily-heading h3 {
+.insights-workspace-view-dossier .matthias-daily-heading h3 {
   font-size: 1rem;
 }
 
@@ -288,9 +288,9 @@
   line-height: 1.4;
 }
 
-/* DOSSIER · opening this view is already the explicit disclosure action. */
-.insights-workspace-view-dossier .insights-hub > .ai-player-portrait,
-.insights-workspace-view-dossier .insights-hub > .matthias-daily,
+/* DOSSIER · opening this view is already the explicit disclosure action.
+   The factual portrait + daily consultation belong here; tactical spotlights
+   stay out because the primary assignment already lives in Ahora. */
 .insights-workspace-view-dossier .insights-hub > .worst-move-spotlight,
 .insights-workspace-view-dossier .insights-hub > .personal-training-spotlight,
 .insights-workspace-view-dossier .insights-hub > .insights-roast-details,
@@ -341,7 +341,7 @@
     grid-column: 1 / -1;
   }
 
-  .insights-workspace-view-now .ai-player-portrait {
+  .insights-workspace-view-dossier .ai-player-portrait {
     grid-column: 1 / -1;
     grid-row: 1;
   }
@@ -351,7 +351,7 @@
     grid-row: 2;
   }
 
-  .insights-workspace-view-now .matthias-daily {
+  .insights-workspace-view-dossier .matthias-daily {
     grid-column: 1 / -1;
     grid-row: 3;
   }
@@ -403,11 +403,11 @@
     padding: .5rem .56rem;
   }
 
-  .insights-workspace-view-now .ai-player-portrait-layout {
+  .insights-workspace-view-dossier .ai-player-portrait-layout {
     align-items: start;
   }
 
-  .insights-workspace-view-now .ai-player-portrait-character img {
+  .insights-workspace-view-dossier .ai-player-portrait-character img {
     width: 76px;
     height: 76px;
   }
@@ -431,12 +431,12 @@
     font-size: .68rem;
   }
 
-  .insights-workspace-view-now .ai-player-portrait-layout {
+  .insights-workspace-view-dossier .ai-player-portrait-layout {
     display: grid;
     grid-template-columns: 1fr;
   }
 
-  .insights-workspace-view-now .ai-player-portrait-character {
+  .insights-workspace-view-dossier .ai-player-portrait-character {
     display: flex;
     flex-direction: row;
     align-items: center;

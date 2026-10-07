@@ -1,35 +1,36 @@
 import { expect, test } from '@playwright/test';
 import { login, mockApi } from './helpers.js';
 
-const PLAYED_GAME = {
-  id: 'e2e-insights-motion-game',
-  sourceGameId: 'e2e-insights-motion-game',
-  date: '2026-08-30T20:00:00Z',
+const INSIGHTS_HISTORY = Array.from({ length: 4 }, (_, index) => ({
+  id: `insights-motion-${index}`,
+  sourceGameId: `insights-motion-${index}`,
+  date: new Date(Date.UTC(2026, 8, 20 + index)).toISOString(),
+  outcome: index % 2 ? 'loss' : 'win',
   mode: 'casual',
-  outcome: 'loss',
+  difficulty: 10,
   humanColor: 'w',
-  initialFen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
-  moves: [
-    { san: 'e4', from: 'e2', to: 'e4' },
-    { san: 'e5', from: 'e7', to: 'e5' },
-  ],
-};
+  moves: ['e4', 'e5', 'Nf3', 'Nc6'],
+  captured: [],
+}));
 
-async function openInsights(page, { hour = 17 } = {}) {
-  await page.addInitScript((fixedHour) => {
-    Math.random = () => 0;
-    Date.prototype.getHours = () => fixedHour;
-  }, hour);
+async function openInsights(page, { hour = null } = {}) {
+  if (hour !== null) {
+    await page.addInitScript((fixedHour) => {
+      Date.prototype.getHours = () => fixedHour;
+    }, hour);
+  }
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await mockApi(page, {
     profileSeed: {
-      'chess-study-game-history': JSON.stringify([PLAYED_GAME]),
+      'chess-study-game-history': JSON.stringify(INSIGHTS_HISTORY),
       'chess-study-reduced-motion': '0',
     },
   });
   await login(page);
-  await page.getByRole('button', { name: 'Abrir Así juegas con Matthias' }).click();
+  await page.locator('.illustrated-home__matthias').click();
   await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Expediente', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Expediente', exact: true })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Consulta diaria con Matthias' })).toBeVisible();
 }
 
