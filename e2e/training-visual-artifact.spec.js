@@ -569,4 +569,19 @@ scopedTest('progress', 'Entrenar · Expediente de Matthias', async ({ page }) =>
 
   await captureAt(page, 'insights-dossier', { width: 1440, height: 900, variant: 'desktop' });
   await captureAt(page, 'insights-dossier', { width: 390, height: 844, variant: 'mobile' });
+
+  // The overall mobile frame proves the room hierarchy, but the consultation
+  // intentionally sits below the first fold. Capture the repaired surface too:
+  // this is the visual acceptance proof for the 48px Matthias rig on mobile.
+  const consultation = page.getByRole('region', { name: 'Consulta diaria con Matthias' });
+  await consultation.scrollIntoViewIfNeeded();
+  await expect(consultation).toBeVisible();
+  await expect(page.locator('[data-insights-matthias-motion="true"]')).toBeVisible();
+  await settle(page);
+  await assertNoHorizontalOverflow(page, 'insights-dossier-consult-mobile');
+  await page.screenshot({
+    path: `${ARTIFACT_DIR}/training-insights-dossier-consult-mobile-390x844.png`,
+    fullPage: false,
+    animations: 'disabled',
+  });
 });
