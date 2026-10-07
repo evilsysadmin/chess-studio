@@ -273,8 +273,9 @@
      crushed too much detail and turned the room back into a black backdrop. */
   .lab-screen.lab-screen .lab-workshop-art {
     object-position: 50% 51%;
-    filter: brightness(.9) saturate(.94) contrast(1.08);
-    transform: scale(1.004);
+    filter: brightness(.94) saturate(.98) contrast(1.12);
+    image-rendering: -webkit-optimize-contrast;
+    transform: scale(1.002);
   }
 
   .lab-screen.lab-screen .lab-workshop::before {
@@ -366,6 +367,7 @@
     backdrop-filter: blur(1px);
     -webkit-backdrop-filter: blur(1px);
     transform-origin: 50% 100%;
+    transform: rotate(var(--plaque-rotate, 0deg));
     opacity: .94;
   }
 
@@ -400,7 +402,7 @@
   .lab-screen.lab-screen .lab-workshop-map-table:focus-visible,
   .lab-screen.lab-screen .lab-workshop-tool:hover,
   .lab-screen.lab-screen .lab-workshop-tool:focus-visible {
-    transform: translateY(-3px) scale(1.01);
+    transform: translateY(-3px) rotate(var(--plaque-rotate, 0deg)) scale(1.01);
     opacity: 1;
     border-color: rgba(232, 181, 91, .8);
     background:
@@ -415,6 +417,7 @@
   /* Align the DOM nameplates with the six physical plinths in the room. */
   .lab-screen.lab-screen .lab-workshop-portal--pawnslug-godot {
     --hotspot-accent: 89, 161, 190;
+    --plaque-rotate: -.45deg;
     left: 5.2%;
     top: 51%;
     bottom: auto;
@@ -423,6 +426,7 @@
 
   .lab-screen.lab-screen .lab-workshop-portal--football {
     --hotspot-accent: 105, 160, 91;
+    --plaque-rotate: .32deg;
     left: 20.7%;
     top: 49.8%;
     bottom: auto;
@@ -431,6 +435,7 @@
 
   .lab-screen.lab-screen .lab-workshop-portal--chronicles {
     --hotspot-accent: 209, 164, 79;
+    --plaque-rotate: -.18deg;
     left: 37.2%;
     top: 48.2%;
     width: 16.4%;
@@ -438,6 +443,7 @@
 
   .lab-screen.lab-screen .lab-workshop-portal--tactics {
     --hotspot-accent: 201, 151, 72;
+    --plaque-rotate: .22deg;
     left: 54.3%;
     right: auto;
     top: 48.4%;
@@ -446,6 +452,7 @@
 
   .lab-screen.lab-screen .lab-workshop-map-table {
     --hotspot-accent: 103, 145, 166;
+    --plaque-rotate: -.32deg;
     left: 71.5%;
     right: auto;
     top: 50%;
@@ -468,6 +475,7 @@
 
   .lab-screen.lab-screen .lab-workshop-tool:not(.lab-workshop-tool--arena) {
     --hotspot-accent: 197, 151, 74;
+    --plaque-rotate: .45deg;
     right: 1.8%;
     top: 51%;
   }
@@ -476,6 +484,7 @@
      contraband plaque bolted to a foreground crate rather than inventing one. */
   .lab-screen.lab-screen .lab-workshop-portal--trailblazer {
     --hotspot-accent: 142, 154, 119;
+    --plaque-rotate: -.7deg;
     left: 6.2%;
     top: auto;
     bottom: 5.8%;
@@ -492,6 +501,7 @@
 
   .lab-screen.lab-screen .lab-workshop-tool--arena {
     --hotspot-accent: 202, 143, 60;
+    --plaque-rotate: .55deg;
     right: 4.4%;
     bottom: 11.2%;
     width: 17%;
