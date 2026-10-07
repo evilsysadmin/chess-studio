@@ -728,7 +728,7 @@ def _frame_svg(
             anatomy_profile="shin",
         )
         out.append(
-            f'<path d="{_path(thigh, offset_x, offset_y)}" 
+            f'<path d="{_path(thigh, offset_x, offset_y)}" '
             f'fill="{team["head"]}" '
             f'stroke="{LIMB_OUTLINE}" stroke-width="1.12" stroke-linejoin="round" opacity="{opacity}"/>'
         )
