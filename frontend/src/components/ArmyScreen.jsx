@@ -21,6 +21,7 @@ import { veteranLegacy } from '../combatVeteranLegacy.js';
 import { deploymentSummary } from '../combatDeployment.js';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 import CombatHonoursRoom from './CombatHonoursRoom.jsx';
+import CombatMemorialRoom from './CombatMemorialRoom.jsx';
 import { equipmentBonus, equipmentById } from '../combatEconomy.js';
 
 const PIECE_GLYPH = Object.freeze({ k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟' });
@@ -433,7 +434,7 @@ export function ArmyRosterPanel({ roster, onBuy, onRevive, onRename, onMetamorph
         </section>
       )}
 
-      {showMemorial && <CombatHonoursRoom roster={roster} onOpenUnit={setSelectedKey} />}
+      <CombatHonoursRoom roster={roster} onOpenUnit={setSelectedKey} showMemorial={showMemorial} />
 
       {selectedKey && (
         <UnitDossier
@@ -455,15 +456,30 @@ export function ArmyRosterPanel({ roster, onBuy, onRevive, onRename, onMetamorph
 }
 
 export default function ArmyScreen({ roster, onBuy, onRevive, onRename, onMetamorphose, onUnlockTechnique, onEquipTechnique, onClose }) {
-  useEscapeToClose(onClose);
+  const [showMemorialRoom, setShowMemorialRoom] = useState(false);
+  useEscapeToClose(onClose, { disabled: showMemorialRoom });
+  const memorialCount = Array.isArray(roster?.memorial) ? roster.memorial.length : 0;
+
   return (
     <div className="modal-backdrop combat-barracks-screen" data-combat-barracks="room" onClick={onClose}>
+      <button
+        type="button"
+        className="combat-barracks-memorial-entry"
+        onClick={(event) => {
+          event.stopPropagation();
+          setShowMemorialRoom(true);
+        }}
+        aria-label={`Abrir Memorial de Caídos, ${memorialCount} archivados`}
+      >
+        <span>Memorial</span><b>{memorialCount}</b>
+      </button>
       <div className="army-card army-roster-card combat-barracks-shell" onClick={(e) => e.stopPropagation()}>
         <button className="piece-info-close" onClick={onClose} aria-label="Cerrar">×</button>
         <ArmyRosterPanel
           roster={roster}
           heading="Barracón"
           kicker="COMBAT CHESS · BARRACÓN"
+          showMemorial={false}
           onBuy={onBuy}
           onRevive={onRevive}
           onRename={onRename}
@@ -472,6 +488,7 @@ export default function ArmyScreen({ roster, onBuy, onRevive, onRename, onMetamo
           onEquipTechnique={onEquipTechnique}
         />
       </div>
+      {showMemorialRoom && <CombatMemorialRoom roster={roster} onClose={() => setShowMemorialRoom(false)} />}
     </div>
   );
 }
