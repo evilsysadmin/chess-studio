@@ -373,6 +373,7 @@ def plan_cleanup(
     ephemeral_prefixes = list(policy.get("ephemeralPrefixes", []))
     deprecated_prefixes = list(policy.get("deprecatedPrefixes", []))
     reasons: dict[str, str] = {}
+    retained_hints: dict[str, str] = {}
 
     def old_enough(item: dict[str, Any], days: int = minimum_age) -> bool:
         age = _age_days(item, now)
@@ -382,6 +383,11 @@ def plan_cleanup(
         if key in protected or key in reasons:
             return
         reasons[key] = reason
+
+    def retain_hint(key: str, reason: str) -> None:
+        if key in protected or key in reasons:
+            return
+        retained_hints.setdefault(key, reason)
 
     for item in inventory:
         key = item["key"]
@@ -424,10 +430,14 @@ def plan_cleanup(
             key=lambda item: item["last_modified"] or dt.datetime.min.replace(tzinfo=dt.timezone.utc),
             reverse=True,
         )
+        for item in ordered[:keep]:
+            retain_hint(item["key"], "revision-rollback")
         for item in ordered[keep:]:
             if old_enough(item):
                 reason = "stale-staging-revision" if "/staging/revisions" in family else "stale-runtime-revision"
                 mark(item["key"], reason)
+            else:
+                retain_hint(item["key"], "minimum-age-grace")
 
     for bundle in policy.get("releaseBundles", []):
         release_prefix = str(bundle["releasePrefix"]).rstrip("/")
@@ -472,6 +482,9 @@ def plan_cleanup(
 
         for release, group in groups.items():
             if release in keep_releases:
+                if release != active_release:
+                    for item in group:
+                        retain_hint(item["key"], "release-rollback")
                 continue
             newest = max(
                 (
@@ -481,7 +494,13 @@ def plan_cleanup(
                 ),
                 default=None,
             )
-            if newest is None or (now - newest).total_seconds() / 86400.0 < int(bundle["minimumAgeDays"]):
+            if newest is None:
+                for item in group:
+                    retain_hint(item["key"], "missing-age")
+                continue
+            if (now - newest).total_seconds() / 86400.0 < int(bundle["minimumAgeDays"]):
+                for item in group:
+                    retain_hint(item["key"], "release-minimum-age")
                 continue
             for item in group:
                 mark(item["key"], "stale-release-bundle")
@@ -500,15 +519,22 @@ def plan_cleanup(
             key=lambda item: item["last_modified"] or dt.datetime.min.replace(tzinfo=dt.timezone.utc),
             reverse=True,
         )
-        if family not in protected_families and ordered and old_enough(ordered[0], orphan_age):
+        if family not in protected_families and ordered:
+            if old_enough(ordered[0], orphan_age):
+                for item in ordered:
+                    if old_enough(item, orphan_age):
+                        mark(item["key"], "orphaned-family")
+                continue
             for item in ordered:
-                if old_enough(item, orphan_age):
-                    mark(item["key"], "orphaned-family")
-            continue
+                retain_hint(item["key"], "orphan-family-grace")
         keep = max(1, rollback_keep)
+        for item in ordered[:keep]:
+            retain_hint(item["key"], "version-rollback")
         for item in ordered[keep:]:
             if old_enough(item):
                 mark(item["key"], "obsolete-version")
+            else:
+                retain_hint(item["key"], "minimum-age-grace")
 
     planned_bytes = sum(by_key[key]["size"] for key in reasons)
     projected_after_policy = total_bytes - planned_bytes
@@ -570,16 +596,64 @@ def plan_cleanup(
     selected_keys = {item["key"] for item in selected}
     retained_prefix_bytes: dict[str, int] = defaultdict(int)
     retained_unprotected_bytes = 0
+    retained_unprotected_by_reason: dict[str, dict[str, int]] = defaultdict(
+        lambda: {"objects": 0, "bytes": 0}
+    )
+    retained_unprotected_prefixes: dict[str, dict[str, Any]] = defaultdict(
+        lambda: {"bytes": 0, "reasons": defaultdict(int)}
+    )
     for item in inventory:
-        if item["key"] in selected_keys:
+        key = item["key"]
+        if key in selected_keys:
             continue
-        retained_prefix_bytes[_prefix_bucket(item["key"])] += item["size"]
-        if item["key"] not in protected:
-            retained_unprotected_bytes += item["size"]
+        prefix = _prefix_bucket(key)
+        retained_prefix_bytes[prefix] += item["size"]
+        if key in protected:
+            continue
+
+        retained_unprotected_bytes += item["size"]
+        if key in reasons:
+            reason = "guard-deferred"
+        elif key in retained_hints:
+            reason = retained_hints[key]
+        elif _age_days(item, now) is None:
+            reason = "missing-age"
+        elif not old_enough(item):
+            reason = "minimum-age-grace"
+        else:
+            reason = "unclassified-safe-retention"
+
+        retained_unprotected_by_reason[reason]["objects"] += 1
+        retained_unprotected_by_reason[reason]["bytes"] += item["size"]
+        retained_unprotected_prefixes[prefix]["bytes"] += item["size"]
+        retained_unprotected_prefixes[prefix]["reasons"][reason] += item["size"]
+
     top_retained = [
         {"prefix": prefix, "bytes": size}
         for prefix, size in sorted(retained_prefix_bytes.items(), key=lambda pair: (-pair[1], pair[0]))[:20]
     ]
+    retained_reason_rows = [
+        {"reason": reason, "objects": values["objects"], "bytes": values["bytes"]}
+        for reason, values in sorted(
+            retained_unprotected_by_reason.items(),
+            key=lambda pair: (-pair[1]["bytes"], pair[0]),
+        )
+    ]
+    top_retained_unprotected = []
+    for prefix, values in sorted(
+        retained_unprotected_prefixes.items(),
+        key=lambda pair: (-pair[1]["bytes"], pair[0]),
+    )[:20]:
+        reasons_by_bytes = [
+            {"reason": reason, "bytes": size}
+            for reason, size in sorted(
+                values["reasons"].items(),
+                key=lambda pair: (-pair[1], pair[0]),
+            )
+        ]
+        top_retained_unprotected.append(
+            {"prefix": prefix, "bytes": values["bytes"], "reasons": reasons_by_bytes}
+        )
 
     protected_bytes_by_reason: dict[str, int] = defaultdict(int)
     protected_bytes = 0
@@ -657,6 +731,8 @@ def plan_cleanup(
         "truncatedByGuard": truncated,
         "blockedOverSoftLimit": blocked_over_soft,
         "retainedUnprotectedBytes": retained_unprotected_bytes,
+        "retainedUnprotectedByReason": retained_reason_rows,
+        "topRetainedUnprotectedPrefixes": top_retained_unprotected,
         "topRetainedPrefixes": top_retained,
         "deletions": selected,
     }
@@ -797,6 +873,8 @@ def self_test() -> None:
         row("retired/atlas/old-eeeeeeeeeeeeeeee.webp", 100, 60),
         row("runtime/live/runtime-ffffffffffffffff.webp", 300, 60),
         row("tooling/legacy/script-only-9999999999999999.webp", 250, 60),
+        row("loose/young.bin", 125, 2),
+        row("loose/old.bin", 175, 60),
         row("game/current.json", 10, 0),
         row("game/releases/1111111111111111/index.html", 100, 0),
         row("game/releases/1111111111111111/index.pck", 500, 0),
@@ -843,6 +921,19 @@ def self_test() -> None:
     assert report["repoPinOperationalOnlyByScope"] == [{"scope": "scripts", "objects": 1, "bytes": 250}]
     assert report["topOperationalOnlyPinPrefixes"][0] == {"prefix": "tooling/legacy", "bytes": 250}
     assert report["protectedBytes"] >= 550
+    retained_by_reason = {
+        item["reason"]: item
+        for item in report["retainedUnprotectedByReason"]
+    }
+    assert retained_by_reason["release-rollback"]["bytes"] == 600
+    assert retained_by_reason["revision-rollback"]["bytes"] == 300
+    assert retained_by_reason["minimum-age-grace"]["bytes"] >= 125
+    assert retained_by_reason["unclassified-safe-retention"]["bytes"] == 175
+    assert any(
+        item["prefix"] == "loose/old.bin"
+        and item["reasons"][0]["reason"] == "unclassified-safe-retention"
+        for item in report["topRetainedUnprotectedPrefixes"]
+    )
     assert report["topRetainedPrefixes"]
     print("OK r2 retention self-test")
 
