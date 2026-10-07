@@ -928,6 +928,46 @@ body:has(.lab-screen .lab-workshop) .lab-screen:has(.lab-workshop) > .back-link 
     display: contents;
   }
 
+  /* Authored stations should read as labels sitting on scenery, not as a
+     two-column mobile card grid. Keep only a dark foot and a fine brass edge. */
+  .lab-screen.lab-screen .lab-workshop-portal--chronicles,
+  .lab-screen.lab-screen .lab-workshop-portal--tactics,
+  .lab-screen.lab-screen .lab-workshop-portal--pawnslug-godot,
+  .lab-screen.lab-screen .lab-workshop-portal--football,
+  .lab-screen.lab-screen .lab-workshop-map-table,
+  .lab-screen.lab-screen .lab-workshop-tool:not(.lab-workshop-tool--arena) {
+    align-content: end;
+    min-height: 72px;
+    border: 0;
+    border-bottom: 1px solid rgba(var(--hotspot-accent, 194,145,69), .48);
+    background: linear-gradient(180deg,
+      transparent 0 26%,
+      rgba(3, 4, 5, .12) 56%,
+      rgba(3, 4, 5, .62) 100%);
+    box-shadow: 0 8px 16px rgba(0,0,0,.22);
+    clip-path: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .lab-screen.lab-screen .lab-workshop-portal--chronicles::after,
+  .lab-screen.lab-screen .lab-workshop-portal--tactics::after,
+  .lab-screen.lab-screen .lab-workshop-portal--pawnslug-godot::after,
+  .lab-screen.lab-screen .lab-workshop-portal--football::after,
+  .lab-screen.lab-screen .lab-workshop-map-table::after,
+  .lab-screen.lab-screen .lab-workshop-tool:not(.lab-workshop-tool--arena)::after {
+    display: none;
+  }
+
+  .lab-screen.lab-screen .lab-workshop-portal--chronicles > strong,
+  .lab-screen.lab-screen .lab-workshop-portal--tactics > strong,
+  .lab-screen.lab-screen .lab-workshop-portal--pawnslug-godot > strong,
+  .lab-screen.lab-screen .lab-workshop-portal--football > strong,
+  .lab-screen.lab-screen .lab-workshop-map-table > strong,
+  .lab-screen.lab-screen .lab-workshop-tool:not(.lab-workshop-tool--arena) strong {
+    text-shadow: 0 2px 8px #000, 0 0 14px rgba(0,0,0,.8);
+  }
+
   .lab-screen.lab-screen .lab-workshop-tool {
     position: absolute;
     z-index: 6;
