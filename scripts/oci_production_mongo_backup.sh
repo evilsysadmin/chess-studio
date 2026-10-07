@@ -136,7 +136,7 @@ docker run --rm --pull=never \
 
 [[ -s "$incoming/dump.archive.gz" ]] || { echo 'mongodump produced an empty archive' >&2; exit 65; }
 
-validation_suffix="$(printf '%s-%s' "$stamp" "$" | tr '[:upper:]' '[:lower:]')"
+validation_suffix="$(printf '%s' "$stamp" | tr '[:upper:]' '[:lower:]')"
 scratch_network="chess-studio-validate-$validation_suffix"
 scratch_container="chess-studio-validate-$validation_suffix"
 
