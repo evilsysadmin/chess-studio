@@ -386,6 +386,18 @@ test('Chronicles · mobile keeps Use separate from Attack · 390x844', async ({ 
 });
 
 
+async function enterCanonicalInitiativeCombat(page, gameRoot) {
+  // Match the functional Chronicles contract: Hildegard attacks once from the
+  // canonical start, then advances into the pawn engagement radius.
+  await page.keyboard.press('2');
+  await page.keyboard.press('Space');
+  await expect(gameRoot).toHaveAttribute('data-chronicles-phase', 'explore');
+  await page.keyboard.press('w');
+  await expect(gameRoot).toHaveAttribute('data-chronicles-phase', 'combat');
+  await expect(gameRoot).toHaveAttribute('data-chronicles-initiative-die', '1d8');
+}
+
+
 test('Chronicles · initiative rail visual · desktop-1440x900', async ({ browser }) => {
   test.setTimeout(180_000);
   await mkdir(ARTIFACT_DIR, { recursive: true });
@@ -394,8 +406,7 @@ test('Chronicles · initiative rail visual · desktop-1440x900', async ({ browse
   try {
     await openChronicles(page, 'initiative-desktop-1440x900');
     const gameRoot = page.locator('[data-chronicles="true"]');
-    await page.keyboard.press('w');
-    await expect(gameRoot).toHaveAttribute('data-chronicles-phase', 'combat');
+    await enterCanonicalInitiativeCombat(page, gameRoot);
     const rail = page.locator('[data-chronicles-initiative="visible"]');
     await expect(rail).toBeVisible();
     await expect(rail.locator('li').first()).toHaveAttribute('aria-current', 'step');
@@ -413,9 +424,7 @@ test('Chronicles · initiative rail visual · android-390x844', async ({ browser
   try {
     await openChronicles(page, 'initiative-android-390x844');
     const gameRoot = page.locator('[data-chronicles="true"]');
-    await page.keyboard.press('w');
-    await expect(gameRoot).toHaveAttribute('data-chronicles-phase', 'combat');
-    await expect(gameRoot).toHaveAttribute('data-chronicles-initiative-die', '1d8');
+    await enterCanonicalInitiativeCombat(page, gameRoot);
     const rail = page.locator('[data-chronicles-initiative="visible"]');
     const minimap = page.locator('[data-chronicles-minimap="visible"]');
     await expect(rail).toBeVisible();
