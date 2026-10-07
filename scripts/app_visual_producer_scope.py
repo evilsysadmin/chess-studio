@@ -60,6 +60,9 @@ COMBAT_PREPARATION_FILES = {
     "frontend/src/components/combatbarracksroom.css",
     "frontend/src/components/combatmarket.jsx",
     "frontend/src/components/combatquartermasterroom.css",
+    "frontend/src/components/combatoperationsmissionroom.jsx",
+    "frontend/src/components/combatoperationsmissionroom.css",
+    "frontend/src/components/combatoperationscampaignmissionroute.jsx",
 }
 # Hans has its own choreography/runtime owners and should not block unrelated
 # shared-renderer camera/layout PRs. Its dedicated canary still runs whenever
@@ -421,6 +424,8 @@ def classify_path(path: str) -> set[str] | None:
         return set()
     if lower == "frontend/src/components/globaloverlaylayer.jsx":
         return {"home-base"}
+    if lower == "frontend/src/components/roguelikescreen.jsx":
+        return set()
     if lower in COMBAT_BATTLE_FILES:
         return {"combat-battle"}
     if lower in COMBAT_PREPARATION_FILES:
@@ -776,6 +781,8 @@ def self_test() -> None:
     assert classify(["frontend/src/components/CombatBarracksRoom.css"]) == "combat-prep"
     assert classify(["frontend/src/components/CombatMarket.jsx"]) == "combat-prep"
     assert classify(["frontend/src/components/CombatQuartermasterRoom.css"]) == "combat-prep"
+    assert classify(["frontend/src/components/CombatOperationsMissionRoom.jsx"]) == "combat-prep"
+    assert classify(["frontend/src/components/CombatOperationsCampaignMissionRoute.jsx"]) == "combat-prep"
     assert classify(["e2e/war-room-combat-preparation-visual-artifact.spec.js"]) == "combat-prep"
     assert classify(["frontend/src/components/QuickMatchMobileGoldenPath.css"]) == "home-base"
     assert classify(["frontend/src/components/QuickMatchReadyRoom.css"]) == "home-base"

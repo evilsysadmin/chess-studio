@@ -48,6 +48,7 @@ import {
   login,
   mockApi,
   openCampaignBriefing,
+  openCampaignMap,
 } from './helpers.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual/combat-preparation';
@@ -66,6 +67,52 @@ async function verifyCombatOperationsRuntimeAsset(page) {
   const body = await response.body();
   expect(body.byteLength).toBe(COMBAT_OPERATIONS_RUNTIME_BYTES);
   expect(createHash('sha256').update(body).digest('hex')).toBe(COMBAT_OPERATIONS_RUNTIME_SHA256);
+}
+
+async function openMissionRoom(page) {
+  await verifyCombatOperationsRuntimeAsset(page);
+  await mockApi(page);
+  await login(page);
+  await openCampaignMap(page);
+  await dismissTutorialIfVisible(page);
+
+  const room = page.locator('[data-combat-campaign-room="mission-map"]');
+  await expect(room).toBeVisible({ timeout: 45_000 });
+  const board3d = room.locator('[data-board3d-war-room="true"]');
+  await expect(board3d).toBeVisible({ timeout: 45_000 });
+  await expect(board3d).toHaveAttribute('data-board3d-variant', 'combat-ops');
+  await expect(board3d).toHaveAttribute('data-board3d-variant-status', 'ready', { timeout: 45_000 });
+  await expect(room.getByRole('region', { name: 'Mapa completo de campaña Combat Chess' })).toBeVisible();
+  return room;
+}
+
+async function missionHealth(page) {
+  return page.evaluate(() => {
+    const rect = (selector) => {
+      const node = document.querySelector(selector);
+      if (!node) return null;
+      const box = node.getBoundingClientRect();
+      return {
+        left: Number(box.left.toFixed(1)),
+        top: Number(box.top.toFixed(1)),
+        right: Number(box.right.toFixed(1)),
+        bottom: Number(box.bottom.toFixed(1)),
+        width: Number(box.width.toFixed(1)),
+        height: Number(box.height.toFixed(1)),
+      };
+    };
+    return {
+      horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth + 1,
+      shell: rect('[data-combat-campaign-room="mission-map"]'),
+      briefing: rect('.campaign-mission-room-briefing'),
+      status: rect('.campaign-mission-room-status'),
+      mapHost: rect('.campaign-mission-room-map'),
+      map: rect('.campaign-mission-room-map .combat-campaign-map'),
+      actions: rect('.campaign-mission-room-actions'),
+      mastheadVisible: Boolean(document.querySelector('.masthead')?.getClientRects().length),
+      globalMusicVisible: Boolean(document.querySelector('.global-music-dock')?.getClientRects().length),
+    };
+  });
 }
 
 async function openOperationsRoom(page) {
@@ -264,6 +311,24 @@ test('Combat preparation · desktop is a board-first operations room', async ({ 
   await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-preparation-desktop-1440x900.png');
 });
 
+test('Combat campaign map · desktop is a diegetic Operations Room instrument', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await openMissionRoom(page);
+
+  const snapshot = await missionHealth(page);
+  expect(snapshot.horizontalOverflow).toBe(false);
+  expect(snapshot.shell?.top ?? 9999).toBeLessThanOrEqual(1);
+  expect(snapshot.shell?.bottom || 0).toBeGreaterThanOrEqual(899);
+  expect(snapshot.map?.width || 0).toBeGreaterThan(900);
+  expect(snapshot.map?.height || 0).toBeGreaterThan(480);
+  expect(snapshot.actions?.bottom || 9999).toBeLessThanOrEqual(901);
+  expect(snapshot.mastheadVisible).toBe(false);
+  expect(snapshot.globalMusicVisible).toBe(false);
+
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-campaign-mission-room-desktop-1440x900.png');
+});
+
 test('Combat deployment · desktop is a diegetic War Table over the Operations Room', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await openWarTable(page);
@@ -403,6 +468,31 @@ test.describe('Combat preparation · mobile', () => {
     expect(dossierBox?.width || 0).toBeGreaterThanOrEqual(388);
     expect((dossierBox?.y || 0) + (dossierBox?.height || 0)).toBeLessThanOrEqual(845);
     await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-barracks-dossier-android-390x844.png');
+  });
+
+  test('390x844 keeps the campaign mission room contained and touch-safe', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    const room = await openMissionRoom(page);
+
+    const snapshot = await missionHealth(page);
+    expect(snapshot.horizontalOverflow).toBe(false);
+    expect(snapshot.shell?.left || 0).toBeGreaterThanOrEqual(-1);
+    expect(snapshot.shell?.right || 9999).toBeLessThanOrEqual(391);
+    expect(snapshot.map?.width || 0).toBeGreaterThanOrEqual(350);
+    expect(snapshot.briefing?.bottom || 9999).toBeLessThanOrEqual((snapshot.status?.top || 0) + 1);
+    expect(snapshot.status?.bottom || 9999).toBeLessThanOrEqual((snapshot.mapHost?.top || 0) + 1);
+    expect(snapshot.actions?.right || 9999).toBeLessThanOrEqual(391);
+
+    const controls = room.locator('button:visible, summary:visible');
+    const count = await controls.count();
+    for (let index = 0; index < count; index += 1) {
+      const box = await controls.nth(index).boundingBox();
+      if (!box) continue;
+      expect(Math.min(box.width, box.height), 'Campaign mission touch target >=44px').toBeGreaterThanOrEqual(44);
+    }
+
+    await mkdir(ARTIFACT_DIR, { recursive: true });
+    await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-campaign-mission-room-android-390x844.png');
   });
 
   test('390x844 keeps the War Table board-first and touch-safe', async ({ page }) => {

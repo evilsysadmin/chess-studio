@@ -23,7 +23,7 @@ BUDGETS = {
     "frontend/src/ambientCatalog.js": 179,
     "frontend/src/ambientProfilesLegacy.js": 630,
     # Mode/render hotspots not covered by the original orchestration budget.
-    "frontend/src/components/RoguelikeScreen.jsx": 982,
+    "frontend/src/components/RoguelikeScreen.jsx": 976,
     "frontend/src/components/CombatDeploymentView.jsx": 912,
     "frontend/src/chroniclesOfMatthiasIsometric.js": 1056,
     # Godot runtime hotspots: keep behavior stable while responsibilities are extracted.
