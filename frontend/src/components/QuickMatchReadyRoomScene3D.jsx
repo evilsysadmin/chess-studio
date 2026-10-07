@@ -752,7 +752,7 @@ function buildRoom({ lite = false } = {}) {
 
   addBoard(root, lightSquare, darkSquare, brass, woodDark);
   addChessSet(root, ivory, ebony, lite);
-  addClock(root, brass, ebony, woodDark, ivory);
+  if (!lite) addClock(root, brass, ebony, woodDark, ivory);
   addChair(root, woodDark, leather, brass);
 
   const rugMaterial = mat(0x421416, .01, .98);
