@@ -34,6 +34,7 @@ describe('Chronicles ranged disengagement', () => {
       }),
     ]);
     expect(hpById(resolved)).toEqual(hpBefore);
+    expect(resolved.enemyTurnEvents.some((event) => event.type === 'attack')).toBe(false);
   });
 
   it('keeps firing from its intended range once the party is no longer adjacent', () => {
