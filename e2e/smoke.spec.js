@@ -396,8 +396,15 @@ test('Combat Chess · salir al menú conserva campaña y batalla activas', async
   await quick.click();
   await expect(page.getByRole('complementary', { name: 'Registro de batalla y estado táctico' })).toBeVisible();
 
+  const optionsTrigger = page.getByRole('button', { name: 'Opciones de batalla' });
+  await expect(optionsTrigger).toBeVisible();
+  await optionsTrigger.click();
+
   const abandon = page.getByRole('button', { name: 'Abandonar batalla y asumir bajas', exact: true });
+  const exitToMenu = page.getByRole('button', { name: 'Salir al menú', exact: true });
   await expect(abandon).toBeVisible();
+  await expect(exitToMenu).toBeVisible();
+
   page.once('dialog', async (dialog) => {
     expect(dialog.message()).toContain('¿Abandonar batalla y asumir bajas?');
     await dialog.dismiss();
@@ -405,7 +412,7 @@ test('Combat Chess · salir al menú conserva campaña y batalla activas', async
   await abandon.click();
   await expect(page.getByRole('complementary', { name: 'Registro de batalla y estado táctico' })).toBeVisible();
 
-  await page.getByRole('button', { name: 'Salir al menú', exact: true }).click();
+  await exitToMenu.click();
   await expect(page.getByRole('region', { name: 'Modos principales' })).toBeVisible();
 
   // SPA transition: the click completes before an unrelated scheduled navigation.
