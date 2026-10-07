@@ -9,7 +9,7 @@ import {
   chroniclesPartyCellOccupied,
 } from './chroniclesPartyFootprint.js';
 
-export const CHRONICLES_TURN_ENGINE_VERSION = 'map-ai-v7';
+export const CHRONICLES_TURN_ENGINE_VERSION = 'map-ai-v8';
 
 const KNIGHT_STEPS = Object.freeze([
   Object.freeze({ dx: -2, dy: -1 }), Object.freeze({ dx: -2, dy: 1 }),
@@ -117,12 +117,53 @@ function candidateScore(position, targets, index) {
   return nearest * 100 + index;
 }
 
-function chooseCardinalStep(state, enemy, from) {
+function positionKey(position) {
+  return `${position.x}:${position.y}`;
+}
+
+function canAttackAnyPartyFrom(state, enemy, position) {
+  return livingPartyTargetsWithPositions(state)
+    .some(({ position: partyPosition }) => enemyCanAttackCell(state, enemy, position, partyPosition));
+}
+
+function chooseGreedyCardinalStep(state, enemy, from) {
   const targets = partyTargetPositions(state);
   return CHRONICLES_DIRECTIONS
     .map((step, index) => ({ x: from.x + step.dx, y: from.y + step.dy, index }))
     .filter((position) => canOccupy(state, enemy, position))
     .sort((left, right) => candidateScore(left, targets, left.index) - candidateScore(right, targets, right.index))[0] || null;
+}
+
+function chooseCardinalStep(state, enemy, from) {
+  const queue = [{ position: from, firstStep: null }];
+  const visited = new Set([positionKey(from)]);
+
+  while (queue.length) {
+    const current = queue.shift();
+    if (current.firstStep && canAttackAnyPartyFrom(state, enemy, current.position)) {
+      return current.firstStep;
+    }
+
+    for (const step of CHRONICLES_DIRECTIONS) {
+      const position = {
+        x: current.position.x + step.dx,
+        y: current.position.y + step.dy,
+      };
+      const key = positionKey(position);
+      if (visited.has(key) || !canOccupy(state, enemy, position)) continue;
+      visited.add(key);
+      queue.push({
+        position,
+        firstStep: current.firstStep || position,
+      });
+    }
+  }
+
+  // Authored/generated maps are expected to remain connected, but legacy or
+  // temporarily blocked rooms may not offer a route to an attack cell. Keep
+  // the old deterministic local move as a bounded fallback instead of jittering
+  // or teleporting through geometry.
+  return chooseGreedyCardinalStep(state, enemy, from);
 }
 
 function chooseKnightStep(state, enemy, from) {
