@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { activateSetupControl, buttonWithHeading, buttonWithVisibleText, clickBoardMove, dismissTutorialIfVisible, gameTurn, login, mockApi, openCampaignBriefing, openCampaignMap, openDeployment } from './helpers.js';
+import { buttonWithHeading, buttonWithVisibleText, clickBoardMove, dismissTutorialIfVisible, gameTurn, login, mockApi, openCampaignBriefing, openCampaignMap, openDeployment } from './helpers.js';
 
 const ACTIVE_GAME_SESSION_KEY = 'chess-study-active-game-session-v1';
 const ACTIVE_GAME_VISIBLE_ROUTE_KEY = 'chess-study-active-game-visible-route-v1';
@@ -154,7 +154,7 @@ test('Partida rápida · un 503 al restaurar conserva la ruta y permite reintent
   await login(page);
 
   await buttonWithVisibleText(page, 'Partida rápida').click();
-  await activateSetupControl(page.getByRole('button', { name: 'Empezar partida', exact: true }));
+  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click({ noWaitAfter: true });
   await expect(gameTurn(page)).toBeVisible();
   // Bajo carga CI el tablero 3D puede pintar antes de que el efecto de
   // continuidad haya terminado. Sincronizamos con la señal de producto que
