@@ -126,6 +126,7 @@ GO_AUTHORITY_PATHS = {
     "backend-python/admin_insights.py",
     "scripts/pawn_slug_parity_corpus.py",
     "scripts/chronicles_area_parity_corpus.py",
+    "scripts/chronicles_contracts.py",
     "backend-python/feedback_store.py",
     "backend-python/admin_api.py",
     "scripts/admin_feedback_parity_corpus.py",
