@@ -16,7 +16,7 @@ const GOAL_TOUCH_HALF_WIDTH := 118.0
 const GOAL_TOUCH_HALF_HEIGHT := 150.0
 const AGGRESSIVE_TACKLE_HOLD_SECONDS := 0.34
 const SHOT_AIM_SCREEN_SPAN := 132.0
-const MOBILE_HELP := "TÁCTIL · joystick mueve · doble toque+mantén sprint · mantén compañero pase · rival entrada · portería tiro"
+const MOBILE_HELP := "TÁCTIL · joystick mueve · doble toque+mantén sprint · césped libre regate · compañero pase · rival entrada · portería tiro"
 
 var touch_root: Control
 var joystick_base: Panel
@@ -177,6 +177,8 @@ func _touch_down(index: int, position: Vector2) -> bool:
 			}
 			return true
 
+	if not left_zone and match_node.mobile_activate_dribble(position):
+		return true
 	if joystick_touch_index == -1 and left_zone:
 		_begin_joystick(index, position)
 		return true
