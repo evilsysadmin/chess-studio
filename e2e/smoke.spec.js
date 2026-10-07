@@ -411,7 +411,7 @@ test('móvil 390px · Admin sigue legible y sin overflow global', async ({ page 
 });
 
 
-test('Combat Chess · salir al menú conserva campaña y batalla activas', async ({ page }) => {
+test('Combat Chess · Salir ofrece castillo o abandono con bajas', async ({ page }) => {
   await mockApi(page);
   await login(page);
   await openCampaignBriefing(page);
@@ -422,33 +422,29 @@ test('Combat Chess · salir al menú conserva campaña y batalla activas', async
   await quick.click();
   await expect(page.getByRole('complementary', { name: 'Registro de batalla y estado táctico' })).toBeVisible();
 
-  const exitToMenu = page.getByRole('button', { name: 'Salir', exact: true });
-  await expect(exitToMenu).toBeVisible();
+  const exit = page.getByRole('button', { name: 'Salir', exact: true });
+  await expect(exit).toBeVisible();
+  await exit.click();
 
-  const optionsTrigger = page.locator('summary[aria-label="Opciones de batalla"]');
-  await expect(optionsTrigger).toBeVisible();
-  await optionsTrigger.click();
+  const dialog = page.getByRole('dialog', { name: '¿Qué quieres hacer?' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Salir al castillo', exact: true })).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Abandonar partida y asumir bajas', exact: true })).toBeVisible();
 
-  const abandon = page.getByRole('button', { name: 'Abandonar batalla y asumir bajas', exact: true });
-  await expect(abandon).toBeVisible();
-
-  page.once('dialog', async (dialog) => {
-    expect(dialog.message()).toContain('¿Abandonar batalla y asumir bajas?');
-    await dialog.dismiss();
-  });
-  await abandon.click();
+  await dialog.getByRole('button', { name: 'Seguir jugando', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
   await expect(page.getByRole('complementary', { name: 'Registro de batalla y estado táctico' })).toBeVisible();
 
-  await exitToMenu.click();
+  await exit.click();
+  const reopened = page.getByRole('dialog', { name: '¿Qué quieres hacer?' });
+  await reopened.getByRole('button', { name: 'Salir al castillo', exact: true }).click();
   await expect(page.getByRole('region', { name: 'Modos principales' })).toBeVisible();
 
-  // SPA transition: the click completes before an unrelated scheduled navigation.
-  // Do not let Playwright's implicit navigation wait turn a successful re-entry into a false failure.
+  // La salida segura conserva la campaña y la batalla suspendida.
   await buttonWithVisibleText(page, 'Combat Chess · Campaña').click({ noWaitAfter: true });
   await expect(page.getByRole('complementary', { name: 'Registro de batalla y estado táctico' })).toBeVisible({ timeout: 20000 });
   await expect(page.getByRole('button', { name: /Empezar campaña/i })).toHaveCount(0);
 });
-
 test('Partida rápida · las 64 casillas mantienen una geometría uniforme y el chat acompaña la mesa', async ({ page }) => {
   await mockApi(page);
   await login(page);
