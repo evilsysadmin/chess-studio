@@ -229,8 +229,8 @@ KEEPERS = {
 GOLD = "#d4aa4c"
 IVORY = "#ece6cf"
 BOOT = "#15181d"
-OUTLINE = "#171b23"
-LIMB_OUTLINE = "#28323d"
+OUTLINE = "#202831"
+LIMB_OUTLINE = "#3a4652"
 
 
 def _pose(animation: str, frame: int) -> dict[str, float]:
@@ -555,9 +555,12 @@ def _limb_path(
         for x, y in organic_points
     ]
     profile_scales = {
-        "thigh": (1.00, 1.10, 1.18, 1.10, 0.92, 0.94),
-        "shin": (0.98, 1.16, 1.22, 1.06, 0.84, 0.88),
-        "arm": (1.00, 1.14, 1.18, 1.08, 0.91, 0.95),
+        # V28 follows the user-supplied generic footballer canon: long athletic
+        # limbs, obvious calf/forearm taper, and no tube-like distal segments.
+        "thigh": (1.00, 1.08, 1.15, 1.05, 0.90, 0.92),
+        "shin": (1.00, 1.14, 1.20, 1.03, 0.78, 0.80),
+        "upper_arm": (1.00, 1.10, 1.14, 1.05, 0.90, 0.92),
+        "forearm": (1.00, 1.10, 1.15, 1.02, 0.76, 0.80),
     }
     scales = profile_scales.get(anatomy_profile)
     if scales is None:
@@ -595,16 +598,17 @@ def _hand_path(
     uy = dy / length
     nx = -uy
     ny = ux
-    wrist_x = hx - ux * 1.35 * scale
-    wrist_y = hy - uy * 1.35 * scale
-    tip_x = hx + ux * 2.20 * scale
-    tip_y = hy + uy * 2.20 * scale
+    wrist_x = hx - ux * 1.20 * scale
+    wrist_y = hy - uy * 1.20 * scale
+    tip_x = hx + ux * 2.45 * scale
+    tip_y = hy + uy * 2.45 * scale
     return [
-        (wrist_x + nx * 1.55 * scale, wrist_y + ny * 1.55 * scale),
-        (tip_x + nx * 1.18 * scale, tip_y + ny * 1.18 * scale),
-        (tip_x - nx * 0.62 * scale, tip_y - ny * 0.62 * scale),
-        (hx - nx * 2.05 * scale, hy - ny * 2.05 * scale),
-        (wrist_x - nx * 1.35 * scale, wrist_y - ny * 1.35 * scale),
+        (wrist_x + nx * 1.02 * scale, wrist_y + ny * 1.02 * scale),
+        (hx + ux * 0.72 * scale + nx * 1.38 * scale, hy + uy * 0.72 * scale + ny * 1.38 * scale),
+        (tip_x + nx * 0.72 * scale, tip_y + ny * 0.72 * scale),
+        (tip_x - nx * 0.48 * scale, tip_y - ny * 0.48 * scale),
+        (hx + ux * 0.20 * scale - nx * 1.18 * scale, hy + uy * 0.20 * scale - ny * 1.18 * scale),
+        (wrist_x - nx * 0.82 * scale, wrist_y - ny * 0.82 * scale),
     ]
 
 
@@ -634,11 +638,14 @@ def _frame_svg(
 
     cx = CELL_W * 0.5 + lean + p["sway"]
     foot = float(FOOTLINE) + yoff
-    hip_y = 93.0 - bob + yoff + crouch * 0.34
-    shoulder_y = 58.4 - bob + yoff + crouch * 0.58
-    torso_turn = 2.6 + p["twist"] * 0.28
+    # V28 adopts the supplied generic footballer reference as the global body
+    # canon: slightly smaller head, higher pelvis and longer legs while keeping
+    # the canonical footline/pivot untouched.
+    hip_y = 90.0 - bob + yoff + crouch * 0.34
+    shoulder_y = 56.2 - bob + yoff + crouch * 0.58
+    torso_turn = 2.6 + p["twist"] * 0.32
     head_cx = cx + 2.8 + p["head"] - p["shoulder_roll"] * 0.18
-    head_cy = 34.8 - bob + yoff + crouch * 0.40
+    head_cy = 33.8 - bob + yoff + crouch * 0.40
     shoulder_scale = float(team.get("shoulder_scale", 1.0))
     torso_scale = float(team.get("torso_scale", 1.0))
     hip_scale = float(team.get("hip_scale", 1.0))
@@ -692,7 +699,7 @@ def _frame_svg(
         )
         knee_y = (
             leg_hip_y
-            + 16.5
+            + 18.0
             - min(abs(stride) * (0.18 if locomotion else 0.15), 5.5)
             - lift_amount * (0.74 if locomotion else 0.42)
         )
@@ -740,10 +747,19 @@ def _frame_svg(
                 f'fill="none" stroke="#fff" stroke-width="1.05" opacity=".12" '
                 f'stroke-linecap="round"/>'
             )
+        # V28 removes the outlined circular "ball joint". A low-profile skin
+        # bridge keeps the exposed knee readable without looking articulated.
         out.append(
-            f'<circle cx="{offset_x + knee_x:.2f}" cy="{offset_y + knee_y:.2f}" '
-            f'r="{2.62 * limb_scale:.2f}" fill="{team["head"]}" stroke="{LIMB_OUTLINE}" '
-            f'stroke-width=".16" opacity="{opacity}"/>'
+            f'<ellipse cx="{offset_x + knee_x:.2f}" cy="{offset_y + knee_y + 0.8:.2f}" '
+            f'rx="{2.35 * limb_scale:.2f}" ry="{1.65 * limb_scale:.2f}" '
+            f'fill="{team["head"]}" opacity="{opacity}"/>'
+        )
+        out.append(
+            f'<path d="M {offset_x + knee_x - 1.7:.2f} {offset_y + knee_y + 0.5:.2f} '
+            f'Q {offset_x + knee_x + 0.1:.2f} {offset_y + knee_y + 1.3:.2f} '
+            f'{offset_x + knee_x + 1.8:.2f} {offset_y + knee_y + 0.4:.2f}" '
+            f'fill="none" stroke="{LIMB_OUTLINE}" stroke-width=".48" opacity=".24" '
+            f'stroke-linecap="round"/>'
         )
         out.append(
             f'<path d="{_path(shin, offset_x, offset_y)}" '
@@ -780,12 +796,12 @@ def _frame_svg(
         elif celebration_action and side > 0.0:
             boot_tilt = p["celebrate_knee"] * 0.40
         boot = [
-            (foot_x - 5.0, foot_y - 5.9),
-            (foot_x + 4.0, foot_y - 5.5),
-            (foot_x + 9.2 * toe, foot_y - 2.3 - boot_tilt),
-            (foot_x + 8.1 * toe, foot_y + 0.2 - boot_tilt * 0.60),
-            (foot_x + 1.2 * toe, foot_y + 0.8),
-            (foot_x - 5.9, foot_y - 0.2),
+            (foot_x - 4.5, foot_y - 5.7),
+            (foot_x + 3.7, foot_y - 5.4),
+            (foot_x + 8.35 * toe, foot_y - 2.35 - boot_tilt),
+            (foot_x + 7.35 * toe, foot_y + 0.05 - boot_tilt * 0.60),
+            (foot_x + 1.0 * toe, foot_y + 0.65),
+            (foot_x - 5.1, foot_y - 0.15),
         ]
         out.append(
             f'<path d="{_path(boot, offset_x, offset_y)}" '
@@ -882,7 +898,7 @@ def _frame_svg(
                 3.15 * limb_scale,
                 2.8 * limb_scale,
                 organic=True,
-                anatomy_profile="arm",
+                anatomy_profile="upper_arm",
             )
             fore = _limb_path(
                 (elbow_x, elbow_y),
@@ -890,7 +906,7 @@ def _frame_svg(
                 2.9 * limb_scale,
                 2.3 * limb_scale,
                 organic=True,
-                anatomy_profile="arm",
+                anatomy_profile="forearm",
             )
             out.append(
                 f'<path d="{_path(sleeve, offset_x, offset_y)}" '
@@ -928,24 +944,24 @@ def _frame_svg(
     # Shirt uses curves instead of the old octagonal chest. Asymmetry is
     # intentional: the player now reads as three-quarter footballer rather than
     # a perfectly frontal paper doll.
-    top_y = 55.8 - bob + yoff + crouch * 0.58
-    waist_y = 84.2 - bob + yoff + crouch * 0.30
-    base_y = 96.0 - bob + yoff + crouch * 0.18
-    left_sh = cx - (14.8 if keeper else 13.6) * shoulder_scale - torso_turn * 0.15
-    right_sh = cx + (18.5 if keeper else 17.3) * shoulder_scale + torso_turn * 0.20
+    top_y = 53.7 - bob + yoff + crouch * 0.58
+    waist_y = 80.8 - bob + yoff + crouch * 0.30
+    base_y = 92.8 - bob + yoff + crouch * 0.18
+    left_sh = cx - (15.1 if keeper else 14.2) * shoulder_scale - torso_turn * 0.15
+    right_sh = cx + (17.7 if keeper else 16.5) * shoulder_scale + torso_turn * 0.20
     left_sh_y = top_y + 3.0 - p["shoulder_roll"]
     right_sh_y = top_y + 2.0 + p["shoulder_roll"]
     torso = (
         f"M {offset_x + left_sh:.2f} {offset_y + left_sh_y:.2f} "
         f"Q {offset_x + cx - 2.0:.2f} {offset_y + top_y - 4.2:.2f} "
         f"{offset_x + right_sh:.2f} {offset_y + right_sh_y:.2f} "
-        f"Q {offset_x + cx + 19.0 * shoulder_scale:.2f} {offset_y + 69.0 - bob + yoff:.2f} "
-        f"{offset_x + cx + 12.4 * torso_scale:.2f} {offset_y + waist_y:.2f} "
-        f"L {offset_x + cx + 14.0 * hip_scale:.2f} {offset_y + base_y:.2f} "
-        f"Q {offset_x + cx + 1.8:.2f} {offset_y + base_y + 4.8:.2f} "
-        f"{offset_x + cx - 12.4 * torso_scale:.2f} {offset_y + base_y:.2f} "
-        f"L {offset_x + cx - 10.7 * torso_scale:.2f} {offset_y + waist_y:.2f} "
-        f"Q {offset_x + cx - 16.8 * shoulder_scale:.2f} {offset_y + 69.5 - bob + yoff:.2f} "
+        f"Q {offset_x + cx + 17.8 * shoulder_scale:.2f} {offset_y + 67.2 - bob + yoff:.2f} "
+        f"{offset_x + cx + 10.6 * torso_scale:.2f} {offset_y + waist_y:.2f} "
+        f"L {offset_x + cx + 12.6 * hip_scale:.2f} {offset_y + base_y:.2f} "
+        f"Q {offset_x + cx + 1.4:.2f} {offset_y + base_y + 3.8:.2f} "
+        f"{offset_x + cx - 11.8 * torso_scale:.2f} {offset_y + base_y:.2f} "
+        f"L {offset_x + cx - 9.8 * torso_scale:.2f} {offset_y + waist_y:.2f} "
+        f"Q {offset_x + cx - 16.1 * shoulder_scale:.2f} {offset_y + 67.6 - bob + yoff:.2f} "
         f"{offset_x + left_sh:.2f} {offset_y + left_sh_y:.2f} Z"
     )
     out.append(
@@ -967,7 +983,7 @@ def _frame_svg(
         f'{offset_x + left_sh + 1.4:.2f} {offset_y + left_sh_y + 1.2:.2f} Z" '
         f'fill="{team["torso_dark"]}" opacity=".22"/>'
     )
-    fold_y = 72.5 - bob + yoff + crouch * 0.40
+    fold_y = 70.2 - bob + yoff + crouch * 0.40
     out.append(
         f'<path d="M {offset_x + cx - 6.5:.2f} {offset_y + fold_y - p["twist"] * 0.12:.2f} '
         f'Q {offset_x + cx + 0.5:.2f} {offset_y + fold_y + 2.8:.2f} '
@@ -977,7 +993,7 @@ def _frame_svg(
     )
     out.append(
         f'<path d="M {offset_x + cx + 2.0:.2f} {offset_y + top_y + 0.8:.2f} '
-        f'Q {offset_x + cx + 16.0:.2f} {offset_y + 66.0 - bob + yoff:.2f} '
+        f'Q {offset_x + cx + 15.0:.2f} {offset_y + 64.5 - bob + yoff:.2f} '
         f'{offset_x + cx + 8.5:.2f} {offset_y + base_y - 1.0:.2f}" '
         f'fill="none" stroke="{team["torso_light"]}" stroke-width="4.2" '
         f'opacity=".30" stroke-linecap="round"/>'
@@ -1007,13 +1023,13 @@ def _frame_svg(
     )
 
     shorts = [
-        (cx - 12.6 * torso_scale, waist_y - 0.5 - p["pelvis_roll"] * 0.55),
-        (cx + 12.0 * torso_scale, waist_y - 0.5 + p["pelvis_roll"] * 0.55),
-        (cx + 14.2 * hip_scale, base_y + 6.7 + p["pelvis_roll"]),
-        (cx + 2.4, base_y + 5.6),
-        (cx, base_y + 2.4),
-        (cx - 2.4, base_y + 5.6),
-        (cx - 13.7 * hip_scale, base_y + 6.5 - p["pelvis_roll"]),
+        (cx - 11.6 * torso_scale, waist_y - 0.4 - p["pelvis_roll"] * 0.55),
+        (cx + 11.1 * torso_scale, waist_y - 0.4 + p["pelvis_roll"] * 0.55),
+        (cx + 12.8 * hip_scale, base_y + 5.9 + p["pelvis_roll"]),
+        (cx + 2.1, base_y + 5.0),
+        (cx, base_y + 2.2),
+        (cx - 2.1, base_y + 5.0),
+        (cx - 12.5 * hip_scale, base_y + 5.8 - p["pelvis_roll"]),
     ]
     out.append(
         f'<path d="{_path(shorts, offset_x, offset_y)}" '
@@ -1043,7 +1059,7 @@ def _frame_svg(
         f'x2="{offset_x + cx + 10.8:.2f}" y2="{offset_y + waist_y + 1.9 + p["pelvis_roll"] * 0.55:.2f}" '
         f'stroke="{GOLD}" stroke-width="1.15" opacity=".82"/>'
     )
-    badge_y = 73.8 - bob + yoff + crouch * 0.40
+    badge_y = 71.2 - bob + yoff + crouch * 0.40
     out.append(
         f'<path d="M {offset_x + cx + 5.8:.2f} {offset_y + badge_y - 3.2:.2f} '
         f'L {offset_x + cx + 9.0:.2f} {offset_y + badge_y:.2f} '
@@ -1067,7 +1083,7 @@ def _frame_svg(
             3.3 * limb_scale,
             3.0 * limb_scale,
             organic=True,
-            anatomy_profile="arm",
+            anatomy_profile="upper_arm",
         )
         fore = _limb_path(
             (elbow_x, elbow_y),
@@ -1075,7 +1091,7 @@ def _frame_svg(
             3.1 * limb_scale,
             2.4 * limb_scale,
             organic=True,
-            anatomy_profile="arm",
+            anatomy_profile="forearm",
         )
         out.append(
             f'<path d="{_path(sleeve, offset_x, offset_y)}" '
@@ -1118,7 +1134,7 @@ def _frame_svg(
     # leaner and forward athletic. Pivots, footline and gameplay stay fixed.
     # V15 pulls the neck up under the jaw. V14 left a literal 2-3 px gap
     # between head and neck that became very obvious at broadcast scale.
-    neck_y = 46.1 - bob + yoff + crouch * 0.43
+    neck_y = 44.9 - bob + yoff + crouch * 0.43
     out.append(
         f'<path d="M {offset_x + cx - 3.1:.2f} {offset_y + neck_y:.2f} '
         f'L {offset_x + cx + 4.1:.2f} {offset_y + neck_y - 0.2:.2f} '
@@ -1151,7 +1167,7 @@ def _frame_svg(
     head_pivot_y = offset_y + 46.0
     out.append(
         f'<g transform="translate({head_pivot_x:.2f} {head_pivot_y:.2f}) '
-        f'scale(.925 .925) '
+        f'scale(.885 .885) '
         f'translate({-head_pivot_x:.2f} {-head_pivot_y:.2f})">'
     )
 
@@ -1328,7 +1344,7 @@ def _atlas_svg(team: dict[str, str], keeper: bool = False) -> str:
             # foot anchor. World pivot, footline, cell and display scale stay fixed.
             parts.append(
                 f'<g transform="translate({pivot_x:.2f} {pivot_y:.2f}) '
-                f'scale(.985 1.035) '
+                f'scale(.982 1.040) '
                 f'translate({-pivot_x:.2f} {-pivot_y:.2f})">'
             )
             # V21 layers a small animation-specific weight-transfer arc around
@@ -1365,11 +1381,17 @@ def build_outputs() -> dict[str, str]:
                 "face_profile": str(variant_team["face_profile"]),
                 "hair_style": str(variant_team.get("hair_style", "swept")),
                 "kit_profile": "organic-v19",
-                "silhouette_profile": "athletic-v23",
-                "joint_profile": "organic-joints-v24",
+                "silhouette_profile": "reference-athlete-v28",
+                "joint_profile": "integrated-knees-v28",
                 "limb_outline_profile": "tonal-limbs-v25",
-                "limb_geometry_profile": "anatomical-contour-v27",
-                "kinetics_profile": "weight-transfer-v21",
+                "limb_geometry_profile": "reference-anatomy-v28",
+                "proportion_profile": "generic-football-canon-v28",
+                "hand_profile": "tapered-palm-v28",
+                "footwear_profile": "compact-boot-v28",
+                "proportion_profile": "generic-football-canon-v28",
+            "hand_profile": "tapered-palm-v28",
+            "footwear_profile": "compact-boot-v28",
+            "kinetics_profile": "weight-transfer-v21",
             }
             variant_keys.append(variant_slug)
         field_variants[slug] = variant_keys
@@ -1379,14 +1401,14 @@ def build_outputs() -> dict[str, str]:
         atlas_meta[slug] = {
             "name": team["name"],
             "file": filename,
-            "silhouette_profile": "athletic-v23",
-                "joint_profile": "organic-joints-v24",
+            "silhouette_profile": "reference-athlete-v28",
+                "joint_profile": "integrated-knees-v28",
                 "limb_outline_profile": "tonal-limbs-v25",
-            "limb_geometry_profile": "anatomical-contour-v27",
+            "limb_geometry_profile": "reference-anatomy-v28",
             "kinetics_profile": "weight-transfer-v21",
         }
     manifest = {
-        "version": 27,
+        "version": 28,
         "quality_contract": SPRITE_FORGE_CONTRACT["quality_contract"],
         "cell": {"width": CELL_W, "height": CELL_H},
         "columns": COLUMNS,
