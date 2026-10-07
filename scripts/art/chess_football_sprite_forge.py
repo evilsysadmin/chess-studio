@@ -980,13 +980,15 @@ def _frame_svg(
         f"M {offset_x + left_sh:.2f} {offset_y + left_sh_y:.2f} "
         f"Q {offset_x + cx - 2.0:.2f} {offset_y + top_y - 4.2:.2f} "
         f"{offset_x + right_sh:.2f} {offset_y + right_sh_y:.2f} "
-        f"Q {offset_x + cx + 17.8 * shoulder_scale:.2f} {offset_y + 67.2 - bob + yoff:.2f} "
+        f"Q {offset_x + cx + 18.1 * shoulder_scale:.2f} {offset_y + 66.6 - bob + yoff:.2f} "
         f"{offset_x + cx + 10.6 * torso_scale:.2f} {offset_y + waist_y:.2f} "
-        f"L {offset_x + cx + 12.6 * hip_scale:.2f} {offset_y + base_y:.2f} "
-        f"Q {offset_x + cx + 1.4:.2f} {offset_y + base_y + 3.8:.2f} "
-        f"{offset_x + cx - 11.8 * torso_scale:.2f} {offset_y + base_y:.2f} "
-        f"L {offset_x + cx - 9.8 * torso_scale:.2f} {offset_y + waist_y:.2f} "
-        f"Q {offset_x + cx - 16.1 * shoulder_scale:.2f} {offset_y + 67.6 - bob + yoff:.2f} "
+        f"Q {offset_x + cx + 12.4 * hip_scale:.2f} {offset_y + base_y - 0.3:.2f} "
+        f"{offset_x + cx + 10.7 * hip_scale:.2f} {offset_y + base_y + 3.5:.2f} "
+        f"Q {offset_x + cx + 1.0:.2f} {offset_y + base_y + 5.3:.2f} "
+        f"{offset_x + cx - 10.3 * hip_scale:.2f} {offset_y + base_y + 3.4:.2f} "
+        f"Q {offset_x + cx - 11.8 * hip_scale:.2f} {offset_y + base_y - 0.2:.2f} "
+        f"{offset_x + cx - 9.8 * torso_scale:.2f} {offset_y + waist_y:.2f} "
+        f"Q {offset_x + cx - 16.4 * shoulder_scale:.2f} {offset_y + 67.0 - bob + yoff:.2f} "
         f"{offset_x + left_sh:.2f} {offset_y + left_sh_y:.2f} Z"
     )
     out.append(
@@ -1161,18 +1163,24 @@ def _frame_svg(
     # between head and neck that became very obvious at broadcast scale.
     neck_y = 44.9 - bob + yoff + crouch * 0.43
     out.append(
-        f'<path d="M {offset_x + cx - 3.1:.2f} {offset_y + neck_y:.2f} '
-        f'L {offset_x + cx + 4.1:.2f} {offset_y + neck_y - 0.2:.2f} '
-        f'L {offset_x + cx + 4.4:.2f} {offset_y + neck_y + 7.1:.2f} '
-        f'L {offset_x + cx - 2.8:.2f} {offset_y + neck_y + 7.3:.2f} Z" '
-        f'fill="{team["head"]}" stroke="{OUTLINE}" stroke-width=".95"/>'
+        f'<path d="M {offset_x + cx - 2.8:.2f} {offset_y + neck_y:.2f} '
+        f'Q {offset_x + cx - 3.1:.2f} {offset_y + neck_y + 3.8:.2f} '
+        f'{offset_x + cx - 2.4:.2f} {offset_y + neck_y + 7.2:.2f} '
+        f'Q {offset_x + cx + 0.6:.2f} {offset_y + neck_y + 8.0:.2f} '
+        f'{offset_x + cx + 3.8:.2f} {offset_y + neck_y + 7.0:.2f} '
+        f'Q {offset_x + cx + 4.1:.2f} {offset_y + neck_y + 3.5:.2f} '
+        f'{offset_x + cx + 3.7:.2f} {offset_y + neck_y - 0.1:.2f} Z" '
+        f'fill="{team["head"]}" stroke="{OUTLINE}" stroke-width=".72"/>'
     )
     out.append(
-        f'<path d="M {offset_x + cx - 5.0:.2f} {offset_y + neck_y + 4.8:.2f} '
-        f'L {offset_x + cx + 5.5:.2f} {offset_y + neck_y + 4.6:.2f} '
-        f'L {offset_x + cx + 6.2:.2f} {offset_y + neck_y + 8.7:.2f} '
-        f'L {offset_x + cx - 5.6:.2f} {offset_y + neck_y + 8.9:.2f} Z" '
-        f'fill="{team["torso_dark"]}" stroke="{OUTLINE}" stroke-width=".8"/>'
+        f'<path d="M {offset_x + cx - 5.4:.2f} {offset_y + neck_y + 5.2:.2f} '
+        f'Q {offset_x + cx - 1.0:.2f} {offset_y + neck_y + 8.5:.2f} '
+        f'{offset_x + cx + 5.8:.2f} {offset_y + neck_y + 5.0:.2f} '
+        f'Q {offset_x + cx + 5.4:.2f} {offset_y + neck_y + 7.8:.2f} '
+        f'{offset_x + cx + 4.9:.2f} {offset_y + neck_y + 8.5:.2f} '
+        f'Q {offset_x + cx:.2f} {offset_y + neck_y + 10.3:.2f} '
+        f'{offset_x + cx - 5.0:.2f} {offset_y + neck_y + 8.6:.2f} Z" '
+        f'fill="{team["torso_dark"]}" stroke="{OUTLINE}" stroke-width=".66"/>'
     )
 
     head_scale = float(team.get("head_scale", 0.91))
