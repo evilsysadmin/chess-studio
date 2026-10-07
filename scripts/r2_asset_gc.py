@@ -57,9 +57,10 @@ REASON_PRIORITY = {
     "duplicate-content": 2,
     "stale-staging-revision": 3,
     "stale-runtime-revision": 4,
-    "orphaned-family": 5,
-    "obsolete-version": 6,
-    "capacity-pressure": 7,
+    "stale-release-bundle": 5,
+    "orphaned-family": 6,
+    "obsolete-version": 7,
+    "capacity-pressure": 8,
 }
 
 
@@ -101,6 +102,23 @@ def load_policy(config: dict[str, Any]) -> dict[str, Any]:
             isinstance(item, str) and item and not item.startswith("/") for item in values
         ):
             raise RetentionError(f"retention.{name} debe ser una lista de prefijos relativos")
+
+    bundles = policy.get("releaseBundles", [])
+    if not isinstance(bundles, list):
+        raise RetentionError("retention.releaseBundles debe ser una lista")
+    for bundle in bundles:
+        if not isinstance(bundle, dict):
+            raise RetentionError("cada release bundle debe ser un objeto")
+        for name in ("pointerKey", "releasePrefix"):
+            value = bundle.get(name)
+            if not isinstance(value, str) or not value or value.startswith("/"):
+                raise RetentionError(f"releaseBundles.{name} inválido")
+        keep = bundle.get("keepPreviousReleases")
+        age = bundle.get("minimumAgeDays")
+        if not isinstance(keep, int) or keep < 0:
+            raise RetentionError("releaseBundles.keepPreviousReleases debe ser entero >= 0")
+        if not isinstance(age, int) or age < 1:
+            raise RetentionError("releaseBundles.minimumAgeDays debe ser entero >= 1")
     return policy
 
 
@@ -251,15 +269,77 @@ def _is_current_alias(key: str) -> bool:
     return name.startswith("current.") and len(name) > len("current.")
 
 
+def _under_prefix(key: str, prefix: str) -> bool:
+    root = prefix.rstrip("/")
+    return key == root or key.startswith(root + "/")
+
+
+def _release_id_for(key: str, release_prefix: str) -> str | None:
+    root = release_prefix.rstrip("/") + "/"
+    if not key.startswith(root):
+        return None
+    release, separator, _rest = key[len(root):].partition("/")
+    if not separator or not re.fullmatch(r"[0-9a-f]{16}", release):
+        return None
+    return release
+
+
+def resolve_release_bundles(
+    token: str,
+    account_id: str,
+    bucket: str,
+    policy: dict[str, Any],
+) -> tuple[dict[str, str], set[str]]:
+    active: dict[str, str] = {}
+    blocked: set[str] = set()
+    for bundle in policy.get("releaseBundles", []):
+        pointer_key = str(bundle["pointerKey"])
+        release_prefix = str(bundle["releasePrefix"]).rstrip("/")
+        try:
+            payload = json.loads(core.get_object(token, account_id, bucket, pointer_key).decode("utf-8"))
+            release = payload.get("release")
+            files = payload.get("files")
+            if not isinstance(release, str) or not re.fullmatch(r"[0-9a-f]{16}", release):
+                raise RetentionError(f"{pointer_key}: release inválido")
+            active_prefix = f"{release_prefix}/{release}"
+            if not isinstance(files, dict) or not files:
+                raise RetentionError(f"{pointer_key}: files inválido")
+            for entry in files.values():
+                if not isinstance(entry, dict) or not isinstance(entry.get("key"), str):
+                    raise RetentionError(f"{pointer_key}: entry inválida")
+                if not _under_prefix(entry["key"], active_prefix):
+                    raise RetentionError(f"{pointer_key}: key fuera del release activo")
+            active[release_prefix] = active_prefix
+        except Exception as exc:
+            blocked.add(release_prefix)
+            print(
+                f"WARN {pointer_key}: no se pudo resolver el release activo; "
+                f"se protege todo {release_prefix}/ ({exc})",
+                file=sys.stderr,
+            )
+    return active, blocked
+
+
+def _prefix_bucket(key: str) -> str:
+    parts = key.split("/")
+    if len(parts) >= 2:
+        return "/".join(parts[:2])
+    return parts[0] if parts else "(root)"
+
+
 def plan_cleanup(
     rows: list[dict[str, Any]],
     *,
     manifest_keys: set[str],
     repo_pins: set[str],
     policy: dict[str, Any],
+    active_release_prefixes: dict[str, str] | None = None,
+    blocked_release_prefixes: set[str] | None = None,
     now: dt.datetime | None = None,
 ) -> dict[str, Any]:
     now = (now or dt.datetime.now(dt.timezone.utc)).astimezone(dt.timezone.utc)
+    active_release_prefixes = active_release_prefixes or {}
+    blocked_release_prefixes = blocked_release_prefixes or set()
     inventory = normalize_inventory(rows)
     by_key = {item["key"]: item for item in inventory}
     total_bytes = sum(item["size"] for item in inventory)
@@ -273,6 +353,10 @@ def plan_cleanup(
             protected[key] = "runtime-pin"
         elif _is_current_alias(key):
             protected[key] = "current-alias"
+        elif any(_under_prefix(key, prefix) for prefix in active_release_prefixes.values()):
+            protected[key] = "active-release"
+        elif any(_under_prefix(key, prefix) for prefix in blocked_release_prefixes):
+            protected[key] = "release-fail-closed"
         elif _starts_with_any(key, protected_prefixes):
             protected[key] = "protected-prefix"
 
@@ -336,6 +420,60 @@ def plan_cleanup(
             if old_enough(item):
                 reason = "stale-staging-revision" if "/staging/revisions" in family else "stale-runtime-revision"
                 mark(item["key"], reason)
+
+    for bundle in policy.get("releaseBundles", []):
+        release_prefix = str(bundle["releasePrefix"]).rstrip("/")
+        if release_prefix in blocked_release_prefixes:
+            continue
+        groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        for item in inventory:
+            release = _release_id_for(item["key"], release_prefix)
+            if release:
+                groups[release].append(item)
+
+        active_prefix = active_release_prefixes.get(release_prefix)
+        active_release = active_prefix.rsplit("/", 1)[-1] if active_prefix else None
+        protected_releases = {
+            release
+            for release, group in groups.items()
+            if any(item["key"] in protected for item in group)
+        }
+        ordered_releases = sorted(
+            groups,
+            key=lambda release: max(
+                (
+                    item["last_modified"]
+                    for item in groups[release]
+                    if isinstance(item["last_modified"], dt.datetime)
+                ),
+                default=dt.datetime.min.replace(tzinfo=dt.timezone.utc),
+            ),
+            reverse=True,
+        )
+        previous = [
+            release
+            for release in ordered_releases
+            if release != active_release and release not in protected_releases
+        ][: int(bundle["keepPreviousReleases"])]
+        keep_releases = protected_releases | set(previous)
+        if active_release:
+            keep_releases.add(active_release)
+
+        for release, group in groups.items():
+            if release in keep_releases:
+                continue
+            newest = max(
+                (
+                    item["last_modified"]
+                    for item in group
+                    if isinstance(item["last_modified"], dt.datetime)
+                ),
+                default=None,
+            )
+            if newest is None or (now - newest).total_seconds() / 86400.0 < int(bundle["minimumAgeDays"]):
+                continue
+            for item in group:
+                mark(item["key"], "stale-release-bundle")
 
     hashed_families: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for item in inventory:
@@ -418,6 +556,20 @@ def plan_cleanup(
     projected_bytes = total_bytes - selected_bytes
     blocked_over_soft = projected_bytes > int(policy["softLimitBytes"]) and not truncated
 
+    selected_keys = {item["key"] for item in selected}
+    retained_prefix_bytes: dict[str, int] = defaultdict(int)
+    retained_unprotected_bytes = 0
+    for item in inventory:
+        if item["key"] in selected_keys:
+            continue
+        retained_prefix_bytes[_prefix_bucket(item["key"])] += item["size"]
+        if item["key"] not in protected:
+            retained_unprotected_bytes += item["size"]
+    top_retained = [
+        {"prefix": prefix, "bytes": size}
+        for prefix, size in sorted(retained_prefix_bytes.items(), key=lambda pair: (-pair[1], pair[0]))[:20]
+    ]
+
     return {
         "version": 1,
         "generatedAt": now.isoformat(),
@@ -433,6 +585,8 @@ def plan_cleanup(
         "targetBytes": int(policy["targetBytes"]),
         "truncatedByGuard": truncated,
         "blockedOverSoftLimit": blocked_over_soft,
+        "retainedUnprotectedBytes": retained_unprotected_bytes,
+        "topRetainedPrefixes": top_retained,
         "deletions": selected,
     }
 
@@ -475,17 +629,29 @@ def run_remote(
     }
     repo_pins = collect_repo_pins(base_url)
     token, account_id = core.require_env()
+    active_release_prefixes, blocked_release_prefixes = resolve_release_bundles(
+        token,
+        account_id,
+        config["bucket"],
+        policy,
+    )
     rows = list_objects(token, account_id, config["bucket"])
     report = plan_cleanup(
         rows,
         manifest_keys=manifest_keys,
         repo_pins=repo_pins,
         policy=policy,
+        active_release_prefixes=active_release_prefixes,
+        blocked_release_prefixes=blocked_release_prefixes,
     )
     write_report(report_path, report)
 
     if command == "apply" and report["deletions"]:
         apply_plan(report, token=token, account_id=account_id, bucket=config["bucket"])
+        actual_inventory = normalize_inventory(list_objects(token, account_id, config["bucket"]))
+        report["actualAfterObjects"] = len(actual_inventory)
+        report["actualAfterBytes"] = sum(item["size"] for item in actual_inventory)
+        write_report(report_path, report)
 
     if report["blockedOverSoftLimit"]:
         print(
@@ -529,6 +695,14 @@ def self_test() -> None:
         "ephemeralPrefixes": ["_smoke/"],
         "deprecatedPrefixes": ["deprecated/"],
         "protectedPrefixes": [],
+        "releaseBundles": [
+            {
+                "pointerKey": "game/current.json",
+                "releasePrefix": "game/releases",
+                "keepPreviousReleases": 1,
+                "minimumAgeDays": 2,
+            }
+        ],
     }
     load_policy({"retention": policy})
     load_policy(core.load_config(core.DEFAULT_CONFIG))
@@ -548,12 +722,21 @@ def self_test() -> None:
         row("deprecated/atlas-old.webp", 100, 30),
         row("young/runtime/young-dddddddddddddddd.glb", 100, 2),
         row("retired/atlas/old-eeeeeeeeeeeeeeee.webp", 100, 60),
+        row("game/current.json", 10, 0),
+        row("game/releases/1111111111111111/index.html", 100, 0),
+        row("game/releases/1111111111111111/index.pck", 500, 0),
+        row("game/releases/2222222222222222/index.html", 100, 3),
+        row("game/releases/2222222222222222/index.pck", 500, 3),
+        row("game/releases/3333333333333333/index.html", 100, 5),
+        row("game/releases/3333333333333333/index.pck", 500, 5),
     ]
     report = plan_cleanup(
         rows,
         manifest_keys={"scene/runtime/scene-aaaaaaaaaaaaaaaa.glb"},
         repo_pins=set(),
         policy=policy,
+        active_release_prefixes={"game/releases": "game/releases/1111111111111111"},
+        blocked_release_prefixes=set(),
         now=now,
     )
     reasons = {item["key"]: item["reason"] for item in report["deletions"]}
@@ -567,6 +750,10 @@ def self_test() -> None:
     assert reasons["retired/atlas/old-eeeeeeeeeeeeeeee.webp"] == "orphaned-family"
     assert "room/runtime/current.glb" not in reasons
     assert "young/runtime/young-dddddddddddddddd.glb" not in reasons
+    assert "game/releases/1111111111111111/index.pck" not in reasons
+    assert "game/releases/2222222222222222/index.pck" not in reasons
+    assert reasons["game/releases/3333333333333333/index.pck"] == "stale-release-bundle"
+    assert report["topRetainedPrefixes"]
     print("OK r2 retention self-test")
 
 
