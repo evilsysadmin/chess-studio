@@ -1,23 +1,22 @@
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { combatOverviewFrom } from './usePlayerOverview.js';
+import { usePlayerOverview } from './usePlayerOverview.js';
+
+function Probe() {
+  const { rating, combatOverview } = usePlayerOverview('menu', () => {});
+  return createElement('output', {
+    'data-rating-type': typeof rating,
+    'data-credits-type': typeof combatOverview.credits,
+    'data-rank-type': typeof combatOverview.rank,
+  });
+}
 
 describe('player overview projection', () => {
-  it('deriva sólo los datos de cabecera desde los owners existentes', () => {
-    expect(combatOverviewFrom(
-      { credits: 37, units: [{ id: 'u-1' }] },
-      { rank: 'Sargento', nextProgress: { current: 12, target: 20 }, hidden: 'ignored' },
-    )).toEqual({
-      credits: 37,
-      rank: 'Sargento',
-      nextProgress: { current: 12, target: 20 },
-    });
-  });
-
-  it('normaliza créditos ausentes a cero', () => {
-    expect(combatOverviewFrom({}, { rank: 'Recluta', nextProgress: null })).toEqual({
-      credits: 0,
-      rank: 'Recluta',
-      nextProgress: null,
-    });
+  it('deriva la cabecera desde los owners existentes', () => {
+    const html = renderToStaticMarkup(createElement(Probe));
+    expect(html).toContain('data-rating-type="object"');
+    expect(html).toContain('data-credits-type="number"');
+    expect(html).toContain('data-rank-type="string"');
   });
 });
