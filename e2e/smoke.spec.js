@@ -422,14 +422,15 @@ test('Combat Chess · salir al menú conserva campaña y batalla activas', async
   await quick.click();
   await expect(page.getByRole('complementary', { name: 'Registro de batalla y estado táctico' })).toBeVisible();
 
+  const exitToMenu = page.getByRole('button', { name: 'Salir', exact: true });
+  await expect(exitToMenu).toBeVisible();
+
   const optionsTrigger = page.locator('summary[aria-label="Opciones de batalla"]');
   await expect(optionsTrigger).toBeVisible();
   await optionsTrigger.click();
 
   const abandon = page.getByRole('button', { name: 'Abandonar batalla y asumir bajas', exact: true });
-  const exitToMenu = page.getByRole('button', { name: 'Salir al menú', exact: true });
   await expect(abandon).toBeVisible();
-  await expect(exitToMenu).toBeVisible();
 
   page.once('dialog', async (dialog) => {
     expect(dialog.message()).toContain('¿Abandonar batalla y asumir bajas?');
@@ -597,7 +598,7 @@ test('desktop 1440x900 · Combat mantiene mesa y acciones coherentes dentro del 
   expect(boardBox.bottom).toBeLessThanOrEqual(901);
   expect(controlsBox.bottom).toBeLessThanOrEqual(901);
 
-  const heights = await controls.locator('button:visible').evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().height));
+  const heights = await controls.locator('button:visible, summary:visible').evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().height));
   expect(heights.length).toBeGreaterThanOrEqual(2);
   expect(Math.max(...heights) - Math.min(...heights)).toBeLessThan(1);
 });
