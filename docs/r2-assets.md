@@ -45,8 +45,8 @@ with `Cache-Control: public, max-age=31536000, immutable`. A small manifest in G
 
 The repository owns an automatic retention policy for the public asset bucket.
 
-- Target footprint: **8.0 GB**.
-- Soft ceiling: **8.5 GB**.
+- Target footprint: **7.0 GB**.
+- Soft ceiling: **7.5 GB**.
 - Immutable assets receive a **14-day** grace period.
 - Keep one rollback generation per ordinary content-addressed family.
 - Fully unreferenced content-addressed families age out completely after **45 days**.
@@ -56,6 +56,8 @@ The repository owns an automatic retention policy for the public asset bucket.
 - A single pass is limited to 1,000 objects and 70% of observed bucket bytes.
 
 `scripts/r2_asset_gc.py` inventories R2, protects the reviewed manifest, hard-coded runtime R2 URLs and stable `current.*` aliases, then prunes only safely classified stale objects. Capacity pressure may prune old rollback copies, but never active pins.
+
+The audit report also separates hard-coded URL pins that are referenced by runtime source from objects kept alive only by operational surfaces such as `scripts/`, `e2e/` or `.github/`. That classification is observational only: tooling-only pins remain protected until a dedicated reviewed cleanup explicitly retires them.
 
 `Infra · R2 assets` runs the retention pass daily and when the R2 surface changes on `main`, and publishes a JSON audit report. If the bucket remains above the soft ceiling after safe candidates are exhausted, the job fails closed rather than guessing.
 
