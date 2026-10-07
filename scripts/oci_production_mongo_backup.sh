@@ -221,6 +221,15 @@ import re
 
 import oci
 
+def fail_service(phase, exc):
+    status = getattr(exc, "status", "?")
+    code = str(getattr(exc, "code", "") or "unknown")
+    message = " ".join(str(getattr(exc, "message", "") or exc).split())[:240]
+    request_id = str(getattr(exc, "request_id", "") or "unknown")
+    raise SystemExit(
+        f"OBJECT_STORAGE_FAIL phase={phase} status={status} code={code} request_id={request_id} message={message}"
+    )
+
 root = Path(os.environ["CHESS_BACKUP_DIR"])
 bucket = os.environ["CHESS_BACKUP_BUCKET"]
 stamp = os.environ["CHESS_BACKUP_STAMP"]
@@ -240,6 +249,10 @@ retry = oci.retry.DEFAULT_RETRY_STRATEGY
 namespace = str(client.get_namespace(retry_strategy=retry).data or "")
 if not namespace:
     raise SystemExit("empty OCI Object Storage namespace")
+try:
+    client.get_bucket(namespace, bucket, retry_strategy=retry)
+except oci.exceptions.ServiceError as exc:
+    fail_service("bucket-preflight", exc)
 
 prefix = f"mongo/backup-{stamp}/"
 files = ("dump.archive.gz", "SHA256SUMS", "manifest.json")
@@ -258,8 +271,11 @@ for name in files:
             "opc_content_sha256": base64.b64encode(bytes.fromhex(expected_sha)).decode("ascii"),
             "opc_meta": {"sha256": expected_sha, "backup-stamp": stamp},
         })
-    with path.open("rb") as handle:
-        client.put_object(namespace, bucket, prefix + name, handle, **kwargs)
+    try:
+        with path.open("rb") as handle:
+            client.put_object(namespace, bucket, prefix + name, handle, **kwargs)
+    except oci.exceptions.ServiceError as exc:
+        fail_service(f"put-{name}", exc)
 
 head = client.head_object(namespace, bucket, prefix + "dump.archive.gz", retry_strategy=retry)
 remote_length = int(head.headers.get("content-length", "-1"))

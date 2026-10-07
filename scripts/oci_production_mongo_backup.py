@@ -86,6 +86,9 @@ def self_test() -> None:
         "docker network create",
         ".remote-restore.archive.gz",
         "CHESS_STUDIO_MONGO_BACKUP_OFFHOST_OK",
+        "OBJECT_STORAGE_FAIL phase=",
+        'fail_service("bucket-preflight", exc)',
+        'fail_service(f"put-{name}", exc)',
     ):
         assert marker in wrapper_source, marker
     assert wrapper_source.index("CHESS_STUDIO_MONGO_BACKUP_OFFHOST_STAGED") < wrapper_source.index("CHESS_STUDIO_MONGO_RESTORE_DRILL_OK")
