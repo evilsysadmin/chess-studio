@@ -4,7 +4,7 @@ import { useEscapeToClose } from '../useEscapeToClose.js';
 import { acknowledgeLabLaunch, clearRememberedLabMode, loadLabLaunch, loadRememberedLabMode, rememberLabMode, subscribeLabLaunch } from '../labLaunchIntent.js';
 import { EXPERIMENT_MATURITY, experimentMaturityLabel } from '../experimentMaturity.js';
 import { LAB_START_FEN, assertLegalLabPosition, fenFromLabState, parseLabPosition } from '../labPosition.js';
-import experimentsRoomCanonical from '../assets/lab-arcade-dungeon-canon.avif';
+import experimentsRoomCanonical from '../assets/lab-arcade-dungeon-canon-q70.webp';
 import PreferredBoard from './PreferredBoard.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
