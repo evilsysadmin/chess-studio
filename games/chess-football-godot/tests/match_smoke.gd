@@ -13,23 +13,26 @@ func _initialize() -> void:
 	assert(match_node.debug_pitch_exists())
 	assert(ChessFootballMath.PITCH_RECT.size.x >= 2400.0)
 	assert(ChessFootballMath.PITCH_RECT.size.y >= 1400.0)
-	assert(ChessFootballMath.GOAL_HALF_HEIGHT >= 140.0)
+	assert(ChessFootballMath.GOAL_HALF_HEIGHT >= 180.0)
 	assert(
 		ChessFootballMath.GOAL_HALF_HEIGHT * 2.0
 		/ ChessFootballMath.PITCH_RECT.size.y
-		>= 0.19
+		>= 0.25
 	)
 	var goal_probe_center := ChessFootballMath.PITCH_RECT.get_center()
 	assert(
 		ChessFootballMath.in_goal_mouth(
-			Vector2(ChessFootballMath.PITCH_RECT.end.x, goal_probe_center.y + 125.0)
+			Vector2(ChessFootballMath.PITCH_RECT.end.x, goal_probe_center.y + 165.0)
 		)
 	)
 	assert(
 		not ChessFootballMath.in_goal_mouth(
-			Vector2(ChessFootballMath.PITCH_RECT.end.x, goal_probe_center.y + 150.0)
+			Vector2(ChessFootballMath.PITCH_RECT.end.x, goal_probe_center.y + 190.0)
 		)
 	)
+	assert(match_node.debug_keeper_track_y_limit() <= 94.01)
+	assert(match_node.debug_keeper_track_y_limit() < ChessFootballMath.GOAL_HALF_HEIGHT * 0.60)
+	assert(ChessFootballMath.GOAL_MAX_FLIGHT_HEIGHT >= 80.0)
 	assert(match_node.debug_3d_ready())
 	assert(match_node.debug_audio_ready())
 	var audio_names: Array[String] = match_node.debug_audio_stream_names()
