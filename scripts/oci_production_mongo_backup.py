@@ -95,6 +95,10 @@ def self_test() -> None:
     assert 'CHESS_BACKUP_DIR="$final_dir" \\\nbackup_phase=' not in wrapper_source
     assert wrapper_source.index('backup_phase="remote-prune"') > wrapper_source.index("CHESS_STUDIO_MONGO_RESTORE_DRILL_OK")
     assert ".mongodump.log" in wrapper_source
+    assert 'scratch_network="chess-studio-validate-$validation_suffix"' in wrapper_source
+    assert 'backup_phase="dry-run-ready"' in wrapper_source
+    assert 'mongorestore --host="$SCRATCH_HOST" --archive=/backup/dump.archive.gz --gzip --dryRun' in wrapper_source
+    assert "isolated Mongo dry-run target did not become ready" in wrapper_source
 
     workflow_source = (
         Path(__file__).resolve().parents[1] / ".github/workflows/production-mongo-backup.yml"

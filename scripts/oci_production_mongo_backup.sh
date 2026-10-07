@@ -136,12 +136,43 @@ docker run --rm --pull=never \
 
 [[ -s "$incoming/dump.archive.gz" ]] || { echo 'mongodump produced an empty archive' >&2; exit 65; }
 
+validation_suffix="$(printf '%s-%s' "$stamp" "$" | tr '[:upper:]' '[:lower:]')"
+scratch_network="chess-studio-validate-$validation_suffix"
+scratch_container="chess-studio-validate-$validation_suffix"
+
+backup_phase="dry-run-network"
+docker network create "$scratch_network" >/dev/null
+docker run -d --rm --pull=never \
+  --name "$scratch_container" \
+  --network "$scratch_network" \
+  "$backup_image" --bind_ip_all --quiet >/dev/null
+
+backup_phase="dry-run-ready"
+scratch_ready=0
+for _dry_run_wait in $(seq 1 30); do
+  if docker run --rm --pull=never --network "$scratch_network" "$backup_image" \
+      mongosh --quiet "mongodb://$scratch_container:27017/admin" \
+      --eval 'quit(db.adminCommand({ping: 1}).ok === 1 ? 0 : 1)' >/dev/null 2>&1; then
+    scratch_ready=1
+    break
+  fi
+  sleep 1
+done
+[[ "$scratch_ready" -eq 1 ]] || { echo 'isolated Mongo dry-run target did not become ready' >&2; exit 68; }
+
 backup_phase="dry-run"
 docker run --rm --pull=never \
-  --env-file "$runtime_env" \
+  --network "$scratch_network" \
+  -e SCRATCH_HOST="$scratch_container" \
+  -e EXPECTED_DB="$expected_db" \
   -v "$incoming:/backup:ro" \
   "$backup_image" \
-  sh -ec 'mongorestore --archive=/backup/dump.archive.gz --gzip --dryRun --nsInclude="$MONGO_DB_NAME.*" >/dev/null'
+  sh -ec 'mongorestore --host="$SCRATCH_HOST" --archive=/backup/dump.archive.gz --gzip --dryRun --nsInclude="$EXPECTED_DB.*" >/dev/null'
+
+docker rm -f "$scratch_container" >/dev/null
+scratch_container=''
+docker network rm "$scratch_network" >/dev/null
+scratch_network=''
 
 checksum="$(sha256sum "$incoming/dump.archive.gz" | awk '{print $1}')"
 bytes="$(stat -c '%s' "$incoming/dump.archive.gz")"
