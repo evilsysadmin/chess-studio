@@ -581,8 +581,23 @@ function renderScene(renderer, scene, camera, host) {
   const rect = host.getBoundingClientRect();
   const width = Math.max(1, Math.round(rect.width));
   const height = Math.max(1, Math.round(rect.height));
+  const portrait = width / height < .78;
+
   renderer.setSize(width, height, false);
   camera.aspect = width / height;
+
+  if (portrait) {
+    // The mobile canvas is a deliberate mid-screen stage rather than the whole
+    // viewport, so use a tighter board-first camera and avoid exposing dead floor.
+    camera.fov = 38;
+    camera.position.set(0, 6.75, 11.15);
+    camera.lookAt(0, 2.15, -1.42);
+  } else {
+    camera.fov = QUICK_MATCH_READY_ROOM_CAMERA.fov;
+    camera.position.set(...QUICK_MATCH_READY_ROOM_CAMERA.position);
+    camera.lookAt(...QUICK_MATCH_READY_ROOM_CAMERA.target);
+  }
+
   camera.updateProjectionMatrix();
   renderer.render(scene, camera);
 }
@@ -598,7 +613,7 @@ export default function QuickMatchReadyRoomScene3D() {
     const width = Math.max(0, Number(globalThis.innerWidth) || host?.clientWidth || 0);
     const height = Math.max(0, Number(globalThis.innerHeight) || host?.clientHeight || 0);
 
-    if (width < 720 || height < 520) {
+    if (width < 340 || height < 520) {
       setStatus('fallback-mobile');
       return undefined;
     }
@@ -620,7 +635,7 @@ export default function QuickMatchReadyRoomScene3D() {
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
       renderer.toneMappingExposure = 2.20;
-      renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio || 1, coarsePointer ? 1 : 1.35));
+      renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio || 1, coarsePointer ? .88 : 1.35));
       renderer.shadowMap.enabled = !coarsePointer;
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
