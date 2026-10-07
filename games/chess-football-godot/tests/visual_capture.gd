@@ -290,6 +290,17 @@ func _initialize() -> void:
 		"atlas-real-enroque",
 		"VISUAL_CAPTURE_ATLAS_REAL_ENROQUE",
 	)
+	for variant_index in range(2, 5):
+		await _save_texture_preview(
+			"res://assets/players/fc_matthias_v%d_atlas.svg" % variant_index,
+			"atlas-fc-matthias-v%d" % variant_index,
+			"VISUAL_CAPTURE_ATLAS_FC_MATTHIAS_V%d" % variant_index,
+		)
+		await _save_texture_preview(
+			"res://assets/players/real_enroque_v%d_atlas.svg" % variant_index,
+			"atlas-real-enroque-v%d" % variant_index,
+			"VISUAL_CAPTURE_ATLAS_REAL_ENROQUE_V%d" % variant_index,
+		)
 	await _save_texture_preview(
 		"res://assets/players/fc_matthias_keeper_atlas.svg",
 		"atlas-fc-matthias-keeper",
