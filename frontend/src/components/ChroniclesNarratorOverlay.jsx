@@ -8,6 +8,7 @@ const LOW_SIGNAL_NARRATION = Object.freeze([
   / impacta con .* responde/i,
   / alcanza .* con /i,
   / castiga a la torre carcelero desde la retaguardia /i,
+  /^Turno de las criaturas:/i,
 ]);
 
 const PARTY_OWNED_MILESTONES = Object.freeze([
