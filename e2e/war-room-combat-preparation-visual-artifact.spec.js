@@ -138,6 +138,55 @@ async function barracksHealth(page) {
   });
 }
 
+async function openQuartermaster(page) {
+  await openOperationsRoom(page);
+  await page.locator('.combat-operations-status .campaign-market-link').click();
+
+  const quartermaster = page.locator('[data-combat-quartermaster="room"]');
+  await expect(quartermaster).toBeVisible();
+  await expect(quartermaster.getByRole('heading', { name: 'Intendencia' })).toBeVisible();
+  return quartermaster;
+}
+
+async function quartermasterHealth(page) {
+  return page.evaluate(() => {
+    const rect = (selector) => {
+      const node = document.querySelector(selector);
+      if (!node) return null;
+      const box = node.getBoundingClientRect();
+      return {
+        left: Number(box.left.toFixed(1)),
+        top: Number(box.top.toFixed(1)),
+        right: Number(box.right.toFixed(1)),
+        bottom: Number(box.bottom.toFixed(1)),
+        width: Number(box.width.toFixed(1)),
+        height: Number(box.height.toFixed(1)),
+      };
+    };
+    return {
+      horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth + 1,
+      screen: rect('[data-combat-quartermaster="room"]'),
+      shell: rect('.combat-quartermaster-shell'),
+      firstCard: rect('.combat-quartermaster-shell .combat-market-card'),
+      cardCount: document.querySelectorAll('.combat-quartermaster-shell .combat-market-card').length,
+      operationsCanvasVisible: Boolean(document.querySelector('.combat-preparation-room-stage .board3d-main-canvas')?.getClientRects().length),
+      prepChromeVisible: [...document.querySelectorAll('.combat-operations-shell > :not(.combat-preparation-room-stage)')]
+        .some((node) => node.getClientRects().length && getComputedStyle(node).visibility !== 'hidden'),
+    };
+  });
+}
+
+async function expectQuartermasterCardsDoNotOverlap(quartermaster) {
+  const boxes = await quartermaster.locator('.combat-market-card:visible').evaluateAll((cards) => cards.map((card) => {
+    const box = card.getBoundingClientRect();
+    return { top: box.top, bottom: box.bottom };
+  }));
+  for (let index = 1; index < boxes.length; index += 1) {
+    expect(boxes[index].top, `Quartermaster card ${index + 1} starts after the previous card`)
+      .toBeGreaterThanOrEqual(boxes[index - 1].bottom - 1);
+  }
+}
+
 async function deploymentHealth(page) {
   return page.evaluate(() => {
     const rect = (selector) => {
@@ -256,8 +305,71 @@ test('Combat barracks · desktop reads as a veteran roster inside the Operations
   await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-barracks-dossier-desktop-1440x900.png');
 });
 
+test('Combat quartermaster · desktop keeps contracts and arsenal inside the Operations Room', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const quartermaster = await openQuartermaster(page);
+
+  const contracts = await quartermasterHealth(page);
+  expect(contracts.horizontalOverflow).toBe(false);
+  expect(contracts.screen?.width || 0).toBeGreaterThanOrEqual(1438);
+  expect(contracts.screen?.height || 0).toBeGreaterThanOrEqual(898);
+  expect(contracts.shell?.width || 0).toBeGreaterThan(1050);
+  expect(contracts.cardCount).toBeGreaterThanOrEqual(2);
+  expect(contracts.firstCard?.width || 0).toBeGreaterThan(250);
+  expect(contracts.operationsCanvasVisible).toBe(true);
+  expect(contracts.prepChromeVisible).toBe(false);
+
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-quartermaster-mercenaries-desktop-1440x900.png');
+
+  await quartermaster.getByRole('tab', { name: 'Armas y equipo', exact: true }).click();
+  await expect(quartermaster.locator('.combat-quartermaster-shell')).toHaveAttribute('data-quartermaster-tab', 'equipment');
+  const arsenal = await quartermasterHealth(page);
+  expect(arsenal.cardCount).toBeGreaterThanOrEqual(2);
+  await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-quartermaster-arsenal-desktop-1440x900.png');
+});
+
 test.describe('Combat preparation · mobile', () => {
   test.use({ hasTouch: true, isMobile: true });
+
+  test('390x844 keeps Quartermaster contracts and arsenal touch-safe', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    const quartermaster = await openQuartermaster(page);
+
+    const contracts = await quartermasterHealth(page);
+    expect(contracts.horizontalOverflow).toBe(false);
+    expect(contracts.screen?.left || 0).toBeGreaterThanOrEqual(-1);
+    expect(contracts.screen?.right || 9999).toBeLessThanOrEqual(391);
+    expect(contracts.shell?.width || 0).toBeGreaterThanOrEqual(388);
+    expect(contracts.firstCard?.width || 0).toBeGreaterThan(360);
+    expect(contracts.operationsCanvasVisible).toBe(true);
+    expect(contracts.prepChromeVisible).toBe(false);
+    await expectQuartermasterCardsDoNotOverlap(quartermaster);
+
+    const targets = quartermaster.locator('button:visible, select:visible');
+    const count = await targets.count();
+    for (let index = 0; index < count; index += 1) {
+      const box = await targets.nth(index).boundingBox();
+      if (!box) continue;
+      expect(Math.min(box.width, box.height), 'Combat Quartermaster touch target >=44px').toBeGreaterThanOrEqual(44);
+    }
+
+    await mkdir(ARTIFACT_DIR, { recursive: true });
+    await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-quartermaster-mercenaries-android-390x844.png');
+
+    await quartermaster.getByRole('tab', { name: 'Armas y equipo', exact: true }).click();
+    await expect(quartermaster.locator('.combat-quartermaster-shell')).toHaveAttribute('data-quartermaster-tab', 'equipment');
+    await expectQuartermasterCardsDoNotOverlap(quartermaster);
+
+    const equipmentTargets = quartermaster.locator('button:visible, select:visible');
+    const equipmentCount = await equipmentTargets.count();
+    for (let index = 0; index < equipmentCount; index += 1) {
+      const box = await equipmentTargets.nth(index).boundingBox();
+      if (!box) continue;
+      expect(Math.min(box.width, box.height), 'Combat Quartermaster equipment target >=44px').toBeGreaterThanOrEqual(44);
+    }
+    await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-quartermaster-arsenal-android-390x844.png');
+  });
 
   test('390x844 keeps the Barracks readable and touch-safe', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });

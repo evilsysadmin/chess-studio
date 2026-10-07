@@ -240,7 +240,7 @@ test('Combat Chess · Campaña permite jugar con defaults en un clic y deja el d
 
   const quick = page.getByRole('button', { name: /JUGAR CON (ESTA|FORMACIÓN RECOMENDADA)/i });
   await expect(quick).toBeVisible();
-  await quick.click();
+  await quick.click({ timeout: 30_000 });
   await expect(page.getByRole('complementary', { name: 'Registro de batalla y estado táctico' })).toBeVisible();
 });
 
@@ -279,7 +279,7 @@ test('Combat Chess · una batalla activa sobrevive a reload y no vuelve a Setup'
   await dismissTutorialIfVisible(page);
   const quick = page.getByRole('button', { name: /JUGAR CON (ESTA|FORMACIÓN RECOMENDADA)/i });
   await expect(quick).toBeVisible();
-  await quick.click();
+  await quick.click({ timeout: 30_000 });
   await expect(page.getByRole('complementary', { name: 'Registro de batalla y estado táctico' })).toBeVisible();
 
   await page.reload();

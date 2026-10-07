@@ -1,0 +1,416 @@
+/* Combat Chess · Intendencia
+ * Presentation-only layer over the existing market/economy domain.
+ */
+
+.combat-quartermaster-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 220;
+  align-items: stretch;
+  justify-content: stretch;
+  padding: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 52% 46%, rgba(65, 48, 27, .16), rgba(3, 5, 8, .72) 72%),
+    rgba(3, 5, 7, .84);
+  backdrop-filter: blur(2px) saturate(.86) brightness(.8);
+}
+
+body:has(.combat-quartermaster-screen) .combat-operations-shell > :not(.combat-preparation-room-stage) {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+body:has(.combat-quartermaster-screen) .combat-quartermaster-screen {
+  background:
+    radial-gradient(circle at 52% 48%, rgba(4, 7, 10, .10), rgba(3, 5, 8, .40) 76%, rgba(2, 4, 7, .66));
+  backdrop-filter: saturate(.9) brightness(.84);
+}
+
+.combat-quartermaster-shell.army-card.combat-market {
+  position: relative;
+  width: min(1240px, calc(100vw - 2rem));
+  height: calc(100dvh - 1.5rem);
+  max-height: none;
+  margin: .75rem auto;
+  padding: 8rem 1rem 4.3rem;
+  overflow: hidden;
+  border: 1px solid rgba(214, 183, 113, .23);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(7, 10, 13, .77), rgba(7, 9, 12, .60)),
+    radial-gradient(circle at 78% 18%, rgba(186, 137, 65, .055), transparent 34%);
+  box-shadow: 0 30px 90px rgba(0,0,0,.46);
+  backdrop-filter: blur(13px);
+}
+
+.combat-quartermaster-shell > .piece-info-close {
+  position: absolute;
+  z-index: 12;
+  top: .8rem;
+  right: .8rem;
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(221, 193, 132, .28);
+  border-radius: 999px;
+  background: rgba(7, 10, 14, .88);
+  color: rgba(242, 230, 204, .9);
+}
+
+.combat-quartermaster-shell .combat-market-heading {
+  position: absolute;
+  z-index: 8;
+  top: .75rem;
+  left: 1rem;
+  right: 4.2rem;
+  min-height: 3.45rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .8rem;
+  margin: 0;
+  padding: .48rem .62rem;
+  border: 1px solid rgba(217, 184, 113, .18);
+  border-radius: 13px;
+  background: rgba(6, 9, 12, .72);
+  backdrop-filter: blur(12px);
+}
+
+.combat-quartermaster-shell .combat-market-heading > div:first-child {
+  min-width: 0;
+}
+
+.combat-quartermaster-shell .combat-market-heading .section-label {
+  color: rgba(210, 188, 139, .62);
+  font-size: .52rem;
+  letter-spacing: .13em;
+}
+
+.combat-quartermaster-shell .combat-market-heading h2 {
+  margin: .03rem 0 0;
+  font-size: clamp(1.05rem, 1.8vw, 1.35rem);
+  line-height: 1;
+}
+
+.combat-quartermaster-shell .combat-market-heading p {
+  margin: .16rem 0 0;
+  max-width: 68ch;
+  color: rgba(230, 220, 199, .64);
+  font-size: .62rem;
+  line-height: 1.28;
+}
+
+.combat-quartermaster-shell .combat-market-wallet {
+  min-width: 112px;
+  padding: .38rem .58rem;
+  border-color: rgba(208, 171, 88, .3);
+  border-radius: 7px;
+  background:
+    linear-gradient(145deg, rgba(72, 54, 30, .27), rgba(10, 12, 13, .5));
+  box-shadow: inset 0 1px rgba(255,255,255,.03);
+}
+
+.combat-quartermaster-shell .combat-market-wallet strong {
+  font-size: 1.08rem;
+}
+
+.combat-quartermaster-shell .combat-market-tabs {
+  position: absolute;
+  z-index: 8;
+  top: 4.65rem;
+  left: 1rem;
+  width: min(380px, calc(100% - 2rem));
+  margin: 0;
+  padding: .2rem;
+  gap: .22rem;
+  border: 1px solid rgba(215, 185, 119, .14);
+  border-radius: 8px;
+  background: rgba(4, 7, 9, .58);
+}
+
+.combat-quartermaster-shell .combat-market-tabs button {
+  min-height: 44px;
+  border-radius: 6px;
+  font-size: .68rem;
+  letter-spacing: .02em;
+}
+
+.combat-quartermaster-shell .combat-market-tabs button.active {
+  border-color: rgba(211, 177, 99, .3);
+  background:
+    linear-gradient(180deg, rgba(81, 60, 32, .30), rgba(12, 14, 15, .52));
+  color: #ead8ad;
+  box-shadow: inset 0 1px rgba(255,255,255,.03);
+}
+
+.combat-quartermaster-shell .combat-market-notice {
+  position: absolute;
+  z-index: 9;
+  top: 4.85rem;
+  right: 1rem;
+  width: min(430px, calc(100% - 2rem));
+  margin: 0;
+  background: rgba(7, 17, 11, .88);
+  backdrop-filter: blur(10px);
+}
+
+.combat-quartermaster-shell .combat-market-grid {
+  height: 100%;
+  max-height: none;
+  align-content: start;
+  gap: .62rem;
+  padding: .25rem .12rem .6rem;
+  overflow: auto;
+  scrollbar-width: thin;
+}
+
+.combat-quartermaster-shell .combat-market-card {
+  position: relative;
+  min-height: 0;
+  padding: .74rem;
+  gap: .42rem;
+  border-color: rgba(218, 187, 123, .14);
+  border-radius: 5px;
+  background:
+    linear-gradient(160deg, rgba(93, 68, 37, .12), transparent 44%),
+    linear-gradient(180deg, rgba(15, 17, 18, .94), rgba(8, 10, 12, .94));
+  box-shadow:
+    inset 3px 0 0 rgba(170, 132, 70, .2),
+    inset 0 1px rgba(255,255,255,.025),
+    0 10px 22px rgba(0,0,0,.14);
+}
+
+.combat-quartermaster-shell .combat-market-card::before,
+.combat-quartermaster-shell .combat-market-card::after {
+  content: '';
+  position: absolute;
+  top: 7px;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgba(198, 169, 108, .3);
+  pointer-events: none;
+}
+
+.combat-quartermaster-shell .combat-market-card::before { left: 7px; }
+.combat-quartermaster-shell .combat-market-card::after { right: 7px; }
+
+.combat-quartermaster-shell .combat-market-card.veterano {
+  border-color: rgba(210, 171, 88, .34);
+  box-shadow:
+    inset 3px 0 0 rgba(211, 169, 83, .54),
+    inset 0 1px rgba(255,255,255,.03),
+    0 10px 22px rgba(0,0,0,.15);
+}
+
+.combat-quartermaster-shell .combat-market-card-top > span {
+  width: 42px;
+  height: 42px;
+  border-color: rgba(214, 184, 111, .22);
+  border-radius: 4px;
+  background: rgba(0,0,0,.2);
+  font-size: 1.5rem;
+}
+
+.combat-quartermaster-shell .combat-market-card-top i {
+  padding: .15rem .3rem;
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 999px;
+  font-size: .46rem;
+}
+
+.combat-quartermaster-shell .combat-market-card h3 {
+  margin: 0;
+  font-size: 1.02rem;
+  font-style: normal;
+}
+
+.combat-quartermaster-shell .combat-market-card > p {
+  min-height: 0;
+  font-size: .64rem;
+  line-height: 1.38;
+}
+
+.combat-quartermaster-shell .mercenary-value-card {
+  padding: .52rem;
+  border: 1px solid rgba(214, 184, 111, .11);
+  border-left: 2px solid rgba(198, 160, 77, .45);
+  border-radius: 3px;
+  background: rgba(0,0,0,.14);
+}
+
+.combat-quartermaster-shell .combat-market-contracts {
+  gap: .3rem;
+}
+
+.combat-quartermaster-shell .combat-market-contracts button {
+  min-height: 44px;
+  padding: .42rem .5rem;
+  border-color: rgba(214, 184, 111, .14);
+  border-radius: 4px;
+  background: rgba(0,0,0,.17);
+}
+
+.combat-quartermaster-shell .combat-market-contracts button:not(:disabled):hover,
+.combat-quartermaster-shell .combat-market-contracts button:not(:disabled):focus-visible {
+  border-color: rgba(215, 179, 98, .42);
+  background: rgba(111, 79, 38, .14);
+  outline: none;
+}
+
+.combat-quartermaster-shell .combat-quartermaster-arsenal .combat-market-card {
+  box-shadow:
+    inset 0 3px 0 rgba(130, 146, 135, .17),
+    inset 0 1px rgba(255,255,255,.025),
+    0 10px 22px rgba(0,0,0,.14);
+}
+
+.combat-quartermaster-shell .combat-market-card label {
+  gap: .26rem;
+}
+
+.combat-quartermaster-shell .combat-market-card select {
+  min-height: 44px;
+  border-color: rgba(214, 184, 111, .15);
+  border-radius: 4px;
+  background: rgba(3, 6, 8, .82);
+}
+
+.combat-quartermaster-shell .combat-market-buy {
+  min-height: 44px;
+  border-radius: 4px;
+}
+
+.combat-quartermaster-shell .combat-market-balance-note {
+  position: absolute;
+  z-index: 8;
+  left: 1rem;
+  right: 1rem;
+  bottom: .75rem;
+  min-height: 3rem;
+  margin: 0;
+  padding: .5rem .62rem;
+  border: 1px solid rgba(95, 144, 107, .16);
+  border-radius: 7px;
+  background: rgba(5, 12, 8, .70);
+  backdrop-filter: blur(9px);
+}
+
+@media (max-width: 780px) {
+  .combat-quartermaster-screen {
+    overflow: hidden;
+    backdrop-filter: saturate(.88) brightness(.78);
+  }
+
+  .combat-quartermaster-shell.army-card.combat-market {
+    width: 100vw;
+    height: 100dvh;
+    margin: 0;
+    padding: 8.1rem .42rem 4.8rem;
+    border: 0;
+    border-radius: 0;
+    background: linear-gradient(180deg, rgba(7, 10, 13, .80), rgba(7, 9, 12, .67));
+  }
+
+  .combat-quartermaster-shell > .piece-info-close {
+    top: .48rem;
+    right: .45rem;
+  }
+
+  .combat-quartermaster-shell .combat-market-heading {
+    top: .42rem;
+    left: .42rem;
+    right: 3.45rem;
+    min-height: 3.55rem;
+    padding: .42rem .5rem;
+    border-radius: 9px;
+  }
+
+  .combat-quartermaster-shell .combat-market-heading p {
+    display: none;
+  }
+
+  .combat-quartermaster-shell .combat-market-heading h2 {
+    font-size: 1rem;
+  }
+
+  .combat-quartermaster-shell .combat-market-wallet {
+    min-width: 72px;
+    padding: .3rem .38rem;
+  }
+
+  .combat-quartermaster-shell .combat-market-wallet span {
+    display: none;
+  }
+
+  .combat-quartermaster-shell .combat-market-tabs {
+    top: 4.45rem;
+    left: .42rem;
+    right: .42rem;
+    width: auto;
+  }
+
+  .combat-quartermaster-shell .combat-market-grid,
+  .combat-quartermaster-shell .combat-market-grid.equipment-grid {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: .45rem;
+  }
+
+  .combat-quartermaster-shell .combat-market-card {
+    flex: 0 0 auto;
+    width: 100%;
+    height: auto;
+    padding: .62rem;
+  }
+
+  .combat-quartermaster-shell .combat-market-notice {
+    top: 7.7rem;
+    left: .42rem;
+    right: .42rem;
+    width: auto;
+  }
+
+  .combat-quartermaster-shell .combat-market-balance-note {
+    left: .42rem;
+    right: .42rem;
+    bottom: .42rem;
+    grid-template-columns: 1fr;
+    gap: .1rem;
+    min-height: 3.6rem;
+    font-size: .57rem;
+    line-height: 1.25;
+  }
+
+  .combat-quartermaster-shell .combat-market-balance-note strong {
+    font-size: .6rem;
+  }
+}
+
+@media (max-width: 430px) {
+  .combat-quartermaster-shell.army-card.combat-market {
+    padding-inline: .35rem;
+  }
+
+  .combat-quartermaster-shell .combat-market-heading {
+    left: .35rem;
+  }
+
+  .combat-quartermaster-shell .combat-market-tabs,
+  .combat-quartermaster-shell .combat-market-balance-note {
+    left: .35rem;
+    right: .35rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .combat-quartermaster-screen,
+  .combat-quartermaster-shell.army-card.combat-market,
+  .combat-quartermaster-shell .combat-market-heading,
+  .combat-quartermaster-shell .combat-market-notice,
+  .combat-quartermaster-shell .combat-market-balance-note {
+    backdrop-filter: none;
+  }
+}
