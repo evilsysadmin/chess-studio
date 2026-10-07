@@ -56,6 +56,47 @@ const COMBAT_OPERATIONS_RUNTIME_URL =
 const COMBAT_OPERATIONS_RUNTIME_SHA256 =
   '7d248a340d8153ed0da1152e1a56ee745615e37e5f032de28d9b5096815f20bc';
 const COMBAT_OPERATIONS_RUNTIME_BYTES = 2476092;
+const MEMORIAL_PROFILE_SEED = Object.freeze({
+  'chess-study-combat-roster': JSON.stringify({
+    pieces: {},
+    identities: {},
+    unitRecords: {},
+    credits: 140,
+    revivesUsed: 1,
+    memorial: [{
+      identityId: 'memorial-e2e-hilde',
+      alias: 'Hilde',
+      originType: 'n',
+      slotKey: 'n-1',
+      createdAt: '2026-09-01T08:00:00.000Z',
+      lastBattleAt: '2026-10-01T19:20:00.000Z',
+      diedAt: '2026-10-01T19:20:00.000Z',
+      permanentDeathAt: '2026-10-01T19:25:00.000Z',
+      finalLevel: 5,
+      finalRankId: 'sergeant',
+      finalRankLabel: 'Sargento',
+      stats: {
+        battles: 9,
+        wins: 6,
+        draws: 0,
+        losses: 3,
+        retirements: 0,
+        survivals: 7,
+        deaths: 2,
+        revives: 1,
+        kills: 4,
+        bossDamage: 2,
+        bossFinishes: 0,
+        bossVictories: 0,
+        currentSurvivalStreak: 0,
+        bestSurvivalStreak: 5,
+        lastDeathAt: '2026-10-01T19:20:00.000Z',
+      },
+      decorations: [],
+    }],
+  }),
+});
+
 
 async function verifyCombatOperationsRuntimeAsset(page) {
   const response = await page.request.get(COMBAT_OPERATIONS_RUNTIME_URL + '?probe=' + Date.now(), {
@@ -68,9 +109,9 @@ async function verifyCombatOperationsRuntimeAsset(page) {
   expect(createHash('sha256').update(body).digest('hex')).toBe(COMBAT_OPERATIONS_RUNTIME_SHA256);
 }
 
-async function openOperationsRoom(page) {
+async function openOperationsRoom(page, { profileSeed = {} } = {}) {
   await verifyCombatOperationsRuntimeAsset(page);
-  await mockApi(page);
+  await mockApi(page, { profileSeed });
   await login(page);
   await openCampaignBriefing(page);
   await page.getByRole('button', { name: /PREPARAR EJÉRCITO/i }).click();
@@ -107,6 +148,53 @@ async function openBarracks(page) {
   await expect(barracks).toBeVisible();
   await expect(barracks.getByRole('heading', { name: 'Barracón' })).toBeVisible();
   return barracks;
+}
+
+async function openMemorial(page) {
+  await openOperationsRoom(page, { profileSeed: MEMORIAL_PROFILE_SEED });
+  const logistics = page.locator('.combat-operations-drawer');
+  await logistics.locator('summary').click();
+  await page.getByRole('button', { name: /Ejército y veteranos/i }).click();
+
+  const barracks = page.locator('[data-combat-barracks="room"]');
+  await expect(barracks).toBeVisible();
+  await barracks.getByRole('button', { name: /Abrir Memorial de Caídos/i }).click();
+
+  const memorial = page.locator('[data-combat-memorial="room"]');
+  await expect(memorial).toBeVisible();
+  await expect(memorial.getByRole('heading', { name: 'Memorial', exact: true })).toBeVisible();
+  await expect(memorial.locator('[data-memorial-entry="memorial-e2e-hilde"]')).toBeVisible();
+  await expect(memorial.locator('[data-memorial-dossier="memorial-e2e-hilde"]')).toBeVisible();
+  return memorial;
+}
+
+async function memorialHealth(page) {
+  return page.evaluate(() => {
+    const rect = (selector) => {
+      const node = document.querySelector(selector);
+      if (!node) return null;
+      const box = node.getBoundingClientRect();
+      return {
+        left: Number(box.left.toFixed(1)),
+        top: Number(box.top.toFixed(1)),
+        right: Number(box.right.toFixed(1)),
+        bottom: Number(box.bottom.toFixed(1)),
+        width: Number(box.width.toFixed(1)),
+        height: Number(box.height.toFixed(1)),
+      };
+    };
+    return {
+      horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth + 1,
+      screen: rect('[data-combat-memorial="room"]'),
+      shell: rect('.combat-memorial-room-shell'),
+      firstEntry: rect('.combat-memorial-room-plaques button'),
+      dossier: rect('.combat-memorial-room-dossier .combat-memorial-dossier'),
+      entryCount: document.querySelectorAll('.combat-memorial-room-plaques button').length,
+      operationsCanvasVisible: Boolean(document.querySelector('.combat-preparation-room-stage .board3d-main-canvas')?.getClientRects().length),
+      prepChromeVisible: [...document.querySelectorAll('.combat-operations-shell > :not(.combat-preparation-room-stage)')]
+        .some((node) => node.getClientRects().length && getComputedStyle(node).visibility !== 'hidden'),
+    };
+  });
 }
 
 async function barracksHealth(page) {
@@ -305,6 +393,25 @@ test('Combat barracks · desktop reads as a veteran roster inside the Operations
   await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-barracks-dossier-desktop-1440x900.png');
 });
 
+test('Combat Memorial · desktop is a dedicated wall inside the Operations Room', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await openMemorial(page);
+
+  const snapshot = await memorialHealth(page);
+  expect(snapshot.horizontalOverflow).toBe(false);
+  expect(snapshot.screen?.width || 0).toBeGreaterThanOrEqual(1438);
+  expect(snapshot.screen?.height || 0).toBeGreaterThanOrEqual(898);
+  expect(snapshot.shell?.width || 0).toBeGreaterThan(1050);
+  expect(snapshot.entryCount).toBe(1);
+  expect(snapshot.firstEntry?.width || 0).toBeGreaterThan(220);
+  expect(snapshot.dossier?.width || 0).toBeGreaterThan(380);
+  expect(snapshot.operationsCanvasVisible).toBe(true);
+  expect(snapshot.prepChromeVisible).toBe(false);
+
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-memorial-desktop-1440x900.png');
+});
+
 test('Combat quartermaster · desktop keeps contracts and arsenal inside the Operations Room', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   const quartermaster = await openQuartermaster(page);
@@ -369,6 +476,32 @@ test.describe('Combat preparation · mobile', () => {
       expect(Math.min(box.width, box.height), 'Combat Quartermaster equipment target >=44px').toBeGreaterThanOrEqual(44);
     }
     await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-quartermaster-arsenal-android-390x844.png');
+  });
+
+  test('390x844 keeps the Memorial readable and touch-safe', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    const memorial = await openMemorial(page);
+
+    const snapshot = await memorialHealth(page);
+    expect(snapshot.horizontalOverflow).toBe(false);
+    expect(snapshot.screen?.left || 0).toBeGreaterThanOrEqual(-1);
+    expect(snapshot.screen?.right || 9999).toBeLessThanOrEqual(391);
+    expect(snapshot.shell?.width || 0).toBeGreaterThanOrEqual(388);
+    expect(snapshot.entryCount).toBe(1);
+    expect(snapshot.firstEntry?.width || 0).toBeGreaterThan(350);
+    expect(snapshot.operationsCanvasVisible).toBe(true);
+    expect(snapshot.prepChromeVisible).toBe(false);
+
+    const targets = memorial.locator('button:visible');
+    const count = await targets.count();
+    for (let index = 0; index < count; index += 1) {
+      const box = await targets.nth(index).boundingBox();
+      if (!box) continue;
+      expect(Math.min(box.width, box.height), 'Combat Memorial touch target >=44px').toBeGreaterThanOrEqual(44);
+    }
+
+    await mkdir(ARTIFACT_DIR, { recursive: true });
+    await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-memorial-android-390x844.png');
   });
 
   test('390x844 keeps the Barracks readable and touch-safe', async ({ page }) => {
