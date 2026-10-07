@@ -613,24 +613,14 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
 
   if (!run.inRun && campaign.active && campaign.phase === 'map' && campaignMapState) {
     const rosterDeployment = deploymentSummary(roster);
-    return (
-      <CombatCampaignMissionRoom
-        campaign={campaign}
-        map={campaignMapState}
-        availableNodes={campaignAvailable}
-        roster={roster}
-        armySummary={rosterDeployment}
-        onSelect={handleCampaignNodeSelect}
-        onExit={onExit}
-        onOpenMarket={() => setShowMarket(true)}
-        onRestart={handleRestartCampaign}
-        onRetire={() => finishCampaign('retired')}
-        onHelp={() => setShowCampaignTutorial(true)}
-      >
-        {showCampaignTutorial && <MechanicTutorialModal tutorialId="combat-campaign" onClose={() => setShowCampaignTutorial(false)} />}
-        {showMarket && <CombatMarket roster={roster} serviceSummary={serviceSummary} onHire={handleHireMercenary} onBuyEquipment={handleBuyEquipment} onClose={() => setShowMarket(false)} />}
-      </CombatCampaignMissionRoom>
-    );
+    return <CombatCampaignMissionRoom
+      campaign={campaign} map={campaignMapState} availableNodes={campaignAvailable} roster={roster} armySummary={rosterDeployment}
+      onSelect={handleCampaignNodeSelect} onExit={onExit} onOpenMarket={() => setShowMarket(true)} onRestart={handleRestartCampaign}
+      onRetire={() => finishCampaign('retired')} onHelp={() => setShowCampaignTutorial(true)}
+    >
+      {showCampaignTutorial && <MechanicTutorialModal tutorialId="combat-campaign" onClose={() => setShowCampaignTutorial(false)} />}
+      {showMarket && <CombatMarket roster={roster} serviceSummary={serviceSummary} onHire={handleHireMercenary} onBuyEquipment={handleBuyEquipment} onClose={() => setShowMarket(false)} />}
+    </CombatCampaignMissionRoom>;
   }
 
   if (!run.inRun && campaign.active) {
