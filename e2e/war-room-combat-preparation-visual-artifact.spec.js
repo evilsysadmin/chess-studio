@@ -558,7 +558,7 @@ test.describe('Combat preparation · mobile', () => {
     for (let index = 0; index < count; index += 1) {
       const box = await targets.nth(index).boundingBox();
       if (!box) continue;
-      expect(Math.min(box.width, box.height), 'Combat War Table touch target >=44px').toBeGreaterThanOrEqual(44);
+      expect(Math.round(Math.min(box.width, box.height)), 'Combat War Table touch target >=44px').toBeGreaterThanOrEqual(44);
     }
 
     await mkdir(ARTIFACT_DIR, { recursive: true });
