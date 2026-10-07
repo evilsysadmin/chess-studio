@@ -930,7 +930,7 @@ def self_test() -> None:
     assert retained_by_reason["minimum-age-grace"]["bytes"] >= 125
     assert retained_by_reason["unclassified-safe-retention"]["bytes"] == 175
     assert any(
-        item["prefix"] == "loose/old"
+        item["prefix"] == "loose/old.bin"
         and item["reasons"][0]["reason"] == "unclassified-safe-retention"
         for item in report["topRetainedUnprotectedPrefixes"]
     )
