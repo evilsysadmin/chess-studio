@@ -26,7 +26,7 @@ from typing import Any
 import r2_asset_publisher as core
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-HASHED_OBJECT_RE = re.compile(r"-([0-9a-f]{16})(?=\\.[A-Za-z0-9]+$)")
+HASHED_OBJECT_RE = re.compile(r"-([0-9a-f]{16})(?=\.[A-Za-z0-9]+$)")
 R2_URL_KEY_RE = re.compile(r"([A-Za-z0-9._/-]+)")
 PIN_SUFFIXES = {
     ".css",
