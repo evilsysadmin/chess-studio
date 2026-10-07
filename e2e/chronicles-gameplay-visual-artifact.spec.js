@@ -331,8 +331,10 @@ test('Chronicles · mobile keeps Use separate from Attack · 390x844', async ({ 
     expect(attackBox?.height || 0, 'mobile Attack height').toBeGreaterThanOrEqual(44);
     expect(useBox?.width || 0, 'mobile Use width').toBeGreaterThanOrEqual(44);
     expect(useBox?.height || 0, 'mobile Use height').toBeGreaterThanOrEqual(44);
+    const attackRight = (attackBox?.x || 0) + (attackBox?.width || 0);
+    const useRight = (useBox?.x || 0) + (useBox?.width || 0);
     expect(
-      Math.min(attackBox?.right ?? 0, useBox?.right ?? 0) - Math.max(attackBox?.x ?? 0, useBox?.x ?? 0),
+      Math.min(attackRight, useRight) - Math.max(attackBox?.x || 0, useBox?.x || 0),
       'mobile Attack and Use horizontal overlap',
     ).toBeLessThanOrEqual(0);
 
