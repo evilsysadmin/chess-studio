@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { loadCombatHistory } from './combatHistory.js';
 import { loadRoster as loadCombatRoster } from './combatRoster.js';
 import { loadCombatService, summarizeCombatService } from './combatService.js';
 import { loadRating } from './playerRating.js';
@@ -21,7 +20,7 @@ export function usePlayerOverview(view, onCombatHistory) {
   useEffect(() => {
     setRating(loadRating());
     setCombatOverview(loadCombatOverview());
-    onCombatHistory(loadCombatHistory());
+    void import('./combatHistory.js').then(({ loadCombatHistory }) => onCombatHistory(loadCombatHistory()));
     void import('./achievementBootstrap.js').then(({ scheduleAchievementCheck }) => scheduleAchievementCheck());
   }, [view, onCombatHistory]);
 
