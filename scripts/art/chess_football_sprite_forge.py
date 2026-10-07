@@ -178,45 +178,62 @@ def _pose(animation: str, frame: int) -> dict[str, float]:
         "strike_fold": 0.0,
         "tackle_fold": 0.0,
         "celebrate_knee": 0.0,
+        "pelvis_roll": 0.0,
+        "shoulder_roll": 0.0,
+        "arm_flex": 0.0,
     }
     if animation == "idle":
         pose.update(
-            bob=stride * 0.75,
-            arm_l=stride * 1.3,
-            arm_r=-stride * 1.3,
-            leg_l=-stride * 1.0,
-            leg_r=stride * 1.0,
-            twist=stride * 0.75,
-            head=stride * 0.45,
-            sway=math.cos(phase) * 0.35,
+            bob=stride * 0.42,
+            crouch=1.15 + lift * 0.55,
+            arm_l=2.8 + stride * 2.2,
+            arm_r=-1.8 - stride * 1.8,
+            leg_l=-2.4 - stride * 1.6,
+            leg_r=2.0 + stride * 1.4,
+            twist=stride * 1.15,
+            head=-stride * 0.30,
+            sway=math.cos(phase) * 0.78,
+            pelvis_roll=stride * 0.85,
+            shoulder_roll=-stride * 0.68,
+            arm_flex=2.8,
         )
     elif animation == "run":
         pose.update(
-            bob=lift * 1.65,
-            lean=4.7,
-            arm_l=stride * 16.0,
-            arm_r=-stride * 16.0,
-            leg_l=-stride * 15.0,
-            leg_r=stride * 15.0,
-            lift_l=max(0.0, stride) * 8.4 + max(0.0, math.cos(phase)) * 1.2,
-            lift_r=max(0.0, -stride) * 8.4 + max(0.0, -math.cos(phase)) * 1.2,
-            twist=stride * 3.0,
-            head=-1.2 + math.cos(phase) * 0.35,
-            sway=math.cos(phase) * 1.30,
+            bob=lift * 1.45,
+            lean=5.2,
+            crouch=0.8 + lift * 0.75,
+            arm_l=stride * 14.2,
+            arm_r=-stride * 14.2,
+            leg_l=-stride * 16.0,
+            leg_r=stride * 16.0,
+            # V14: the forward swing leg lifts. V13 lifted the opposite leg,
+            # which produced a mechanically hinged gait in several frames.
+            lift_l=max(0.0, -stride) * 8.8 + max(0.0, math.cos(phase)) * 1.1,
+            lift_r=max(0.0, stride) * 8.8 + max(0.0, -math.cos(phase)) * 1.1,
+            twist=stride * 3.8,
+            head=-1.0 - math.cos(phase) * 0.25,
+            sway=math.cos(phase) * 1.05,
+            pelvis_roll=stride * 1.85,
+            shoulder_roll=-stride * 1.55,
+            arm_flex=6.2 + lift * 1.8,
         )
     elif animation == "sprint":
         pose.update(
-            bob=lift * 2.25,
-            lean=7.6,
-            arm_l=stride * 21.0,
-            arm_r=-stride * 21.0,
-            leg_l=-stride * 20.0,
-            leg_r=stride * 20.0,
-            lift_l=max(0.0, stride) * 11.2 + max(0.0, math.cos(phase)) * 1.7,
-            lift_r=max(0.0, -stride) * 11.2 + max(0.0, -math.cos(phase)) * 1.7,
-            twist=stride * 4.1,
-            head=-2.0 + math.cos(phase) * 0.45,
-            sway=math.cos(phase) * 1.75,
+            bob=lift * 1.95,
+            lean=8.4,
+            crouch=1.4 + lift * 1.0,
+            arm_l=stride * 18.2,
+            arm_r=-stride * 18.2,
+            leg_l=-stride * 21.0,
+            leg_r=stride * 21.0,
+            lift_l=max(0.0, -stride) * 12.6 + max(0.0, math.cos(phase)) * 1.4,
+            lift_r=max(0.0, stride) * 12.6 + max(0.0, -math.cos(phase)) * 1.4,
+            twist=stride * 5.0,
+            head=-2.1 - math.cos(phase) * 0.30,
+            sway=math.cos(phase) * 1.35,
+            pelvis_roll=stride * 2.55,
+            shoulder_roll=-stride * 2.10,
+            arm_flex=8.0 + lift * 2.2,
         )
     else:
         t = frame / max(COLUMNS - 1, 1)
@@ -238,6 +255,9 @@ def _pose(animation: str, frame: int) -> dict[str, float]:
                 sway=-1.8 * wind + 1.2 * follow,
                 support_bend=4.0 * k,
                 strike_fold=5.0 * wind,
+                pelvis_roll=1.4 * k,
+                shoulder_roll=-1.8 * wind + 0.8 * follow,
+                arm_flex=4.0 * k,
             )
         elif animation == "shoot":
             pose.update(
@@ -254,6 +274,9 @@ def _pose(animation: str, frame: int) -> dict[str, float]:
                 sway=-3.0 * wind + 1.5 * follow,
                 support_bend=6.0 * k,
                 strike_fold=7.0 * wind,
+                pelvis_roll=2.4 * k,
+                shoulder_roll=-2.8 * wind + 1.3 * follow,
+                arm_flex=5.0 * k,
             )
         elif animation == "tackle":
             entry = math.sin(math.pi * min(t * 1.25, 1.0))
@@ -272,6 +295,9 @@ def _pose(animation: str, frame: int) -> dict[str, float]:
                 head=-3.1 * k,
                 sway=3.0 * k,
                 tackle_fold=11.0 * k,
+                pelvis_roll=2.8 * k,
+                shoulder_roll=-2.0 * k,
+                arm_flex=4.8 * k,
             )
         elif animation == "celebrate":
             pump = math.sin(math.pi * min(t * 1.18, 1.0))
@@ -289,6 +315,9 @@ def _pose(animation: str, frame: int) -> dict[str, float]:
                 head=-2.0 * pump + 0.8 * settle,
                 sway=2.4 * pump - 1.0 * settle,
                 celebrate_knee=8.0 * pump,
+                pelvis_roll=-1.6 * pump + 0.8 * settle,
+                shoulder_roll=2.2 * pump - 1.0 * settle,
+                arm_flex=4.2 * pump,
             )
     return pose
 
@@ -352,7 +381,7 @@ def _frame_svg(
     hip_y = 93.0 - bob + yoff + crouch * 0.34
     shoulder_y = 58.4 - bob + yoff + crouch * 0.58
     torso_turn = 2.6 + p["twist"] * 0.28
-    head_cx = cx + 2.8 + p["head"]
+    head_cx = cx + 2.8 + p["head"] - p["shoulder_roll"] * 0.18
     head_cy = 34.8 - bob + yoff + crouch * 0.40
     shoulder_scale = float(team.get("shoulder_scale", 1.0))
     torso_scale = float(team.get("torso_scale", 1.0))
@@ -389,7 +418,9 @@ def _frame_svg(
             0.94 + hip_scale * 0.06
         )
         hip_x = cx + side * hip_spread + p["twist"] * (0.13 if far else 0.25)
-        foot_x = cx + side * foot_spread + stride
+        leg_hip_y = hip_y + side * p["pelvis_roll"]
+        swing_ratio = clamp(lift_amount / (12.6 if animation == "sprint" else 8.8), 0.0, 1.0) if locomotion else 0.0
+        foot_x = cx + side * foot_spread + stride * (1.0 - swing_ratio * 0.10)
         foot_y = foot - lift_amount
         if tackle_action and side < 0.0:
             foot_x += p["tackle_fold"] * 0.42
@@ -399,14 +430,15 @@ def _frame_svg(
             foot_y -= p["celebrate_knee"] * 0.18
         knee_x = (
             hip_x
-            + stride * (0.50 if locomotion else 0.44)
+            + stride * (0.62 if locomotion else 0.44)
             + (-0.45 if far else 0.75)
+            + (math.copysign(lift_amount * 0.18, stride) if locomotion and abs(stride) > 0.01 else 0.0)
         )
         knee_y = (
-            hip_y
+            leg_hip_y
             + 16.5
-            - min(abs(stride) * 0.15, 5.0)
-            - lift_amount * 0.42
+            - min(abs(stride) * (0.18 if locomotion else 0.15), 5.5)
+            - lift_amount * (0.66 if locomotion else 0.42)
         )
         if ball_action and side < 0.0:
             knee_x += p["support_bend"] * 0.72
@@ -424,7 +456,7 @@ def _frame_svg(
             knee_y -= p["celebrate_knee"] * 0.62
         opacity = ".76" if far and locomotion else (".84" if far else "1")
         thigh = _limb_path(
-            (hip_x, hip_y + 1.0),
+            (hip_x, leg_hip_y + 1.0),
             (knee_x, knee_y),
             (4.5 if far else 5.1) * limb_scale,
             (3.8 if far else 4.2) * limb_scale,
@@ -456,10 +488,12 @@ def _frame_svg(
             f'stroke="{team["torso_light"]}" stroke-width="1.25" opacity="{opacity}"/>'
         )
 
-        toe = 1.0 if stride >= -3.0 else -1.0
+        # V14: football boots keep pointing broadly forward during locomotion.
+        # Reversing the trailing boot in V13 made the ankle look dislocated.
+        toe = 1.0 if locomotion else (1.0 if stride >= -3.0 else -1.0)
         if ball_action and side < 0.0:
             toe = 1.0
-        boot_tilt = 0.0
+        boot_tilt = min(3.4, lift_amount * 0.24) if locomotion else 0.0
         if ball_action and side > 0.0:
             boot_tilt = max(-3.5, min(4.5, stride * 0.10))
         elif tackle_action and side > 0.0:
@@ -496,16 +530,40 @@ def _frame_svg(
     for side, amount, far in arms:
         shoulder_span = (15.0 if keeper else 13.8) * shoulder_scale
         sx = cx + side * shoulder_span - p["twist"] * 0.23
-        sy = shoulder_y + (1.0 if far else -0.6)
-        hand_x = (
-            cx
-            + side * (18.7 if locomotion else 20.0)
-            + amount * (0.78 if locomotion else 0.72)
-            + (-1.0 if far else 2.0)
-        )
-        hand_y = 79.0 - bob + yoff + crouch * 0.50 - amount * 0.48
-        elbow_x = sx + (hand_x - sx) * 0.56 - side * 3.0
-        elbow_y = sy + (hand_y - sy) * 0.50 + 4.5
+        sy = shoulder_y + side * p["shoulder_roll"] + (1.0 if far else -0.6)
+        if locomotion:
+            hand_x = cx + side * 14.8 + amount * 0.56 + (-0.8 if far else 1.4)
+            hand_y = 80.0 - bob + yoff + crouch * 0.46 - amount * 0.30
+            elbow_x = (
+                sx
+                + (hand_x - sx) * 0.44
+                - side * (3.8 + p["arm_flex"] * 0.16)
+            )
+            elbow_y = (
+                sy
+                + (hand_y - sy) * 0.42
+                + 5.2
+                + p["arm_flex"] * 0.12
+            )
+        else:
+            hand_x = (
+                cx
+                + side * 20.0
+                + amount * 0.72
+                + (-1.0 if far else 2.0)
+            )
+            hand_y = 79.0 - bob + yoff + crouch * 0.50 - amount * 0.48
+            elbow_x = (
+                sx
+                + (hand_x - sx) * 0.56
+                - side * (3.0 + p["arm_flex"] * 0.12)
+            )
+            elbow_y = (
+                sy
+                + (hand_y - sy) * 0.50
+                + 4.5
+                + p["arm_flex"] * 0.10
+            )
         arm_geometry.append((sx, sy, elbow_x, elbow_y, hand_x, hand_y, far))
         if far:
             sleeve_ratio = 0.62 if keeper else 0.34
@@ -556,10 +614,12 @@ def _frame_svg(
     base_y = 96.0 - bob + yoff + crouch * 0.18
     left_sh = cx - (14.8 if keeper else 13.6) * shoulder_scale - torso_turn * 0.15
     right_sh = cx + (18.5 if keeper else 17.3) * shoulder_scale + torso_turn * 0.20
+    left_sh_y = top_y + 3.0 - p["shoulder_roll"]
+    right_sh_y = top_y + 2.0 + p["shoulder_roll"]
     torso = (
-        f"M {offset_x + left_sh:.2f} {offset_y + top_y + 3.0:.2f} "
+        f"M {offset_x + left_sh:.2f} {offset_y + left_sh_y:.2f} "
         f"Q {offset_x + cx - 2.0:.2f} {offset_y + top_y - 4.2:.2f} "
-        f"{offset_x + right_sh:.2f} {offset_y + top_y + 2.0:.2f} "
+        f"{offset_x + right_sh:.2f} {offset_y + right_sh_y:.2f} "
         f"Q {offset_x + cx + 19.0 * shoulder_scale:.2f} {offset_y + 69.0 - bob + yoff:.2f} "
         f"{offset_x + cx + 12.4 * torso_scale:.2f} {offset_y + waist_y:.2f} "
         f"L {offset_x + cx + 14.0 * hip_scale:.2f} {offset_y + base_y:.2f} "
@@ -567,7 +627,7 @@ def _frame_svg(
         f"{offset_x + cx - 12.4 * torso_scale:.2f} {offset_y + base_y:.2f} "
         f"L {offset_x + cx - 10.7 * torso_scale:.2f} {offset_y + waist_y:.2f} "
         f"Q {offset_x + cx - 16.8 * shoulder_scale:.2f} {offset_y + 69.5 - bob + yoff:.2f} "
-        f"{offset_x + left_sh:.2f} {offset_y + top_y + 3.0:.2f} Z"
+        f"{offset_x + left_sh:.2f} {offset_y + left_sh_y:.2f} Z"
     )
     out.append(
         f'<path d="{torso}" fill="{team["torso"]}" '
@@ -595,11 +655,11 @@ def _frame_svg(
     shorts = [
         (cx - 12.6 * torso_scale, waist_y - 0.5),
         (cx + 12.0 * torso_scale, waist_y - 0.5),
-        (cx + 14.2 * hip_scale, base_y + 6.7),
+        (cx + 14.2 * hip_scale, base_y + 6.7 + p["pelvis_roll"]),
         (cx + 2.4, base_y + 5.6),
         (cx, base_y + 2.4),
         (cx - 2.4, base_y + 5.6),
-        (cx - 13.7 * hip_scale, base_y + 6.5),
+        (cx - 13.7 * hip_scale, base_y + 6.5 - p["pelvis_roll"]),
     ]
     out.append(
         f'<path d="{_path(shorts, offset_x, offset_y)}" '
@@ -810,7 +870,7 @@ def build_outputs() -> dict[str, str]:
         outputs[filename] = _atlas_svg(team, keeper=True)
         atlas_meta[slug] = {"name": team["name"], "file": filename}
     manifest = {
-        "version": 13,
+        "version": 14,
         "quality_contract": SPRITE_FORGE_CONTRACT["quality_contract"],
         "cell": {"width": CELL_W, "height": CELL_H},
         "columns": COLUMNS,
