@@ -105,7 +105,7 @@ async function openBarracks(page) {
 
   const barracks = page.locator('[data-combat-barracks="room"]');
   await expect(barracks).toBeVisible();
-  await expect(barracks.getByRole('heading', { name: 'Tu ejército' })).toBeVisible();
+  await expect(barracks.getByRole('heading', { name: 'Barracón' })).toBeVisible();
   return barracks;
 }
 
@@ -289,7 +289,7 @@ test.describe('Combat preparation · mobile', () => {
     await expect(dossier).toBeVisible();
     const dossierBox = await dossier.boundingBox();
     expect(dossierBox?.width || 0).toBeGreaterThanOrEqual(388);
-    expect(dossierBox?.bottom || 9999).toBeLessThanOrEqual(845);
+    expect((dossierBox?.y || 0) + (dossierBox?.height || 0)).toBeLessThanOrEqual(845);
     await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-barracks-dossier-android-390x844.png');
   });
 
