@@ -35,7 +35,9 @@ export function buildChroniclesEnemyVisual(visualType, options = {}) {
   const model = visual.build(options);
   installChroniclesEnemyMotionArt(model, visualType, options);
   const cancelMotion = model.userData.chroniclesEnemyMotionCancel || null;
-  const cancelAuthored = installChroniclesEnemyAuthoredArt(model, visualType, options);
+  const cancelAuthored = options.authoredArt === false
+    ? null
+    : installChroniclesEnemyAuthoredArt(model, visualType, options);
   model.userData.chroniclesArtCancel = () => {
     cancelAuthored?.();
     cancelMotion?.();
