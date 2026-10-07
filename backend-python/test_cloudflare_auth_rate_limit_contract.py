@@ -50,3 +50,39 @@ def test_auth_burst_guard_ignores_cloudflare_metadata_but_detects_contract_drift
     actual["ratelimit"]["requests_per_period"] = 99
     assert not rate_limit.rule_matches(actual)
 
+
+
+def test_cloudflare_transient_reads_retry_but_mutations_do_not(monkeypatch):
+    calls = []
+    responses = iter(
+        [
+            (502, {"errors": [{"message": "bad gateway"}]}),
+            (200, {"success": True, "result": []}),
+        ]
+    )
+
+    def fake_once(method, path, payload=None):
+        calls.append((method, path, payload))
+        return next(responses)
+
+    sleeps = []
+    monkeypatch.setattr(rate_limit, "_request_json_once", fake_once)
+    monkeypatch.setattr(rate_limit.time, "sleep", sleeps.append)
+
+    status, body = rate_limit.request_json("GET", "/zones?name=shadowops.dpdns.org")
+    assert status == 200
+    assert body["success"] is True
+    assert len(calls) == 2
+    assert sleeps == [0.5]
+
+    calls.clear()
+
+    def mutation_once(method, path, payload=None):
+        calls.append((method, path, payload))
+        return 502, {"errors": [{"message": "bad gateway"}]}
+
+    monkeypatch.setattr(rate_limit, "_request_json_once", mutation_once)
+    status, _ = rate_limit.request_json("POST", "/zones/zone/rulesets", {"name": "guard"})
+    assert status == 502
+    assert len(calls) == 1
+    assert sleeps == [0.5]

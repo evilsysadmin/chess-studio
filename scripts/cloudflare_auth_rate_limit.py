@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -28,6 +29,8 @@ AUTH_PATHS = (
 REQUESTS_PER_PERIOD = 8
 PERIOD_SECONDS = 10
 MITIGATION_SECONDS = 10
+READ_RETRY_STATUSES = frozenset({429, 500, 502, 503, 504})
+READ_RETRY_DELAYS = (0.5, 1.0, 2.0)
 
 
 class RulesetPermissionUnavailable(RuntimeError):
@@ -41,7 +44,7 @@ def required(name: str) -> str:
     return value
 
 
-def request_json(method: str, path: str, payload: dict | None = None) -> tuple[int, object]:
+def _request_json_once(method: str, path: str, payload: dict | None = None) -> tuple[int, object]:
     data = None if payload is None else json.dumps(payload, separators=(",", ":")).encode("utf-8")
     request = urllib.request.Request(
         f"{API}{path}",
@@ -64,6 +67,33 @@ def request_json(method: str, path: str, payload: dict | None = None) -> tuple[i
         except json.JSONDecodeError:
             body = {"errors": [{"message": raw.decode("utf-8", "replace")[:500]}]}
         return exc.code, body
+
+
+def request_json(method: str, path: str, payload: dict | None = None) -> tuple[int, object]:
+    method = method.upper()
+    retries = READ_RETRY_DELAYS if method == "GET" else ()
+    for attempt in range(len(retries) + 1):
+        try:
+            status, body = _request_json_once(method, path, payload)
+        except (urllib.error.URLError, TimeoutError) as exc:
+            if attempt >= len(retries):
+                raise
+            delay = retries[attempt]
+            print(
+                "::warning title=Cloudflare transient read::"
+                f"{type(exc).__name__} consultando {path}; reintento {attempt + 2}/{len(retries) + 1} en {delay:g}s"
+            )
+            time.sleep(delay)
+            continue
+        if status not in READ_RETRY_STATUSES or attempt >= len(retries):
+            return status, body
+        delay = retries[attempt]
+        print(
+            "::warning title=Cloudflare transient read::"
+            f"HTTP {status} consultando {path}; reintento {attempt + 2}/{len(retries) + 1} en {delay:g}s"
+        )
+        time.sleep(delay)
+    raise AssertionError("unreachable Cloudflare read retry loop")
 
 
 def error_messages(body: object) -> set[str]:
@@ -284,6 +314,10 @@ def self_test() -> None:
     assert not ruleset_permission_unavailable(
         500, {"errors": [{"message": "Authentication error"}]}
     )
+    assert 502 in READ_RETRY_STATUSES
+    assert 429 in READ_RETRY_STATUSES
+    assert 403 not in READ_RETRY_STATUSES
+    assert READ_RETRY_DELAYS == (0.5, 1.0, 2.0)
     print("Cloudflare auth rate-limit self-test: OK")
 
 
