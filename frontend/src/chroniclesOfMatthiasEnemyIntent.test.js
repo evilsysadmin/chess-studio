@@ -35,13 +35,23 @@ describe('Chronicles enemy intent preview', () => {
         expect(preview.intents.map((intent) => intent.enemyId)).toEqual(active);
 
         for (const intent of preview.intents) {
-          const event = events.find((entry) => entry.enemyId === intent.enemyId);
-          if (!event) {
+          const enemyEvents = events.filter((entry) => entry.enemyId === intent.enemyId);
+          const move = enemyEvents.find((entry) => entry.type === 'move');
+          const attack = enemyEvents.find((entry) => entry.type === 'attack');
+          if (!enemyEvents.length) {
             expect(intent.kind).toBe('hold');
-          } else if (event.type === 'attack') {
-            expect(intent).toMatchObject({ kind: 'attack', targetId: event.targetId, damage: event.damage });
+          } else if (move && attack) {
+            expect(intent).toMatchObject({
+              kind: 'move-attack',
+              from: move.from,
+              to: move.to,
+              targetId: attack.targetId,
+              damage: attack.damage,
+            });
+          } else if (attack) {
+            expect(intent).toMatchObject({ kind: 'attack', targetId: attack.targetId, damage: attack.damage });
           } else {
-            expect(intent).toMatchObject({ kind: 'move', from: event.from, to: event.to });
+            expect(intent).toMatchObject({ kind: 'move', from: move.from, to: move.to });
           }
         }
         checked += 1;
@@ -57,26 +67,21 @@ describe('Chronicles enemy intent preview', () => {
     expect(JSON.stringify(state)).toBe(before);
   });
 
-  it('telegraphs a melee creature stepping toward the party, then attacking', () => {
+  it('telegraphs a melee creature moving into range and attacking in the same turn', () => {
     const pawn = enemy('corrupted-pawn');
     const state = createChroniclesState();
-    const first = chroniclesPreviewEnemyTurn(state);
-    expect(first.intents.find((intent) => intent.enemyId === pawn.id)).toEqual({
+    const preview = chroniclesPreviewEnemyTurn(state);
+    expect(preview.intents.find((intent) => intent.enemyId === pawn.id)).toEqual({
       enemyId: 'corrupted-pawn',
-      kind: 'move',
+      kind: 'move-attack',
       from: { x: 3, y: 5 },
       to: { x: 2, y: 5 },
-    });
-    expect(first.attackedMemberIds).toEqual([]);
-
-    const moved = chroniclesResolveEnemyTurn(state);
-    const second = chroniclesPreviewEnemyTurn(moved);
-    expect(second.intents.find((intent) => intent.enemyId === pawn.id)).toMatchObject({
-      kind: 'attack',
+      targetId: 'matthias',
       damage: 1,
       hpLost: 1,
+      lethal: false,
     });
-    expect(second.attackedMemberIds.length).toBe(1);
+    expect(preview.attackedMemberIds).toEqual(['matthias']);
   });
 
   it('telegraphs the spectral bishop attacking down a clear lane without moving', () => {
