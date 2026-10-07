@@ -450,6 +450,11 @@ HANS_ROUTINE_SHARED_OWNERS = {
     # changes there are already covered by canonical War Room capture and must
     # not wake the expensive Hans routine-video sidecar.
     "frontend/src/components/warroomambientdirector.js",
+    # These own the visible hearth that the Hans fire routine dims/reignites.
+    # A regression here can make the dialogue claim a cold hearth while shader
+    # particles remain visibly ablaze, so generic room PNGs are insufficient.
+    "frontend/src/components/warroomv3fire.js",
+    "frontend/src/components/warroomfiresprites.js",
 }
 
 
@@ -904,6 +909,10 @@ def self_test() -> None:
     assert game_board.capture_groups == "warroom" and not game_board.hans
     ambient_director = classify(["frontend/src/components/WarRoomAmbientDirector.js"])
     assert ambient_director.capture_groups == "warroom" and ambient_director.hans
+    v3_fire = classify(["frontend/src/components/WarRoomV3Fire.js"])
+    assert v3_fire.capture_groups == "warroom" and v3_fire.hans
+    fire_sprites = classify(["frontend/src/components/WarRoomFireSprites.js"])
+    assert fire_sprites.capture_groups == "warroom" and fire_sprites.hans
     hans_actor = classify(["frontend/src/components/WarRoomHansActor.js"])
     assert hans_actor.capture_groups == "warroom" and hans_actor.hans
     warroom_ui = classify(["frontend/src/components/WarRoomRain.css"])
