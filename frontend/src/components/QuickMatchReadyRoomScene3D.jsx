@@ -567,11 +567,11 @@ function renderScene(renderer, scene, camera, host) {
   camera.aspect = width / height;
 
   if (portrait) {
-    // Mobile needs a steeper, board-first composition: the previous long-lens
-    // framing left a large dead strip of floor below the table.
-    camera.fov = 47;
-    camera.position.set(0, 8.1, 13.9);
-    camera.lookAt(0, 1.08, -1.32);
+    // The mobile canvas is a deliberate mid-screen stage rather than the whole
+    // viewport, so use a tighter board-first camera and avoid exposing dead floor.
+    camera.fov = 39;
+    camera.position.set(0, 7.45, 12.25);
+    camera.lookAt(0, 1.30, -1.34);
   } else {
     camera.fov = QUICK_MATCH_READY_ROOM_CAMERA.fov;
     camera.position.set(...QUICK_MATCH_READY_ROOM_CAMERA.position);
