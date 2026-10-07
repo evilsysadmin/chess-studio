@@ -1,6 +1,6 @@
 {
   "id": "ash-vault",
-  "version": 2,
+  "version": 3,
   "progressionKey": "ash-vault-01",
   "title": "Cámara de Ceniza",
   "grid": [
@@ -14,7 +14,8 @@
   ],
   "partyStart": { "x": 1, "y": 5, "direction": 1 },
   "initialFlags": {
-    "vaultReliquaryOpened": false
+    "vaultReliquaryOpened": false,
+    "vaultSlagVentSpent": false
   },
   "enemies": [
     {
@@ -185,7 +186,26 @@
       }
     }
   ],
-  "traps": [],
+  "traps": [
+    {
+      "id": "vault-slag-vent",
+      "kind": "trap",
+      "visualType": "slag-vent",
+      "x": 5,
+      "y": 5,
+      "label": "Respiradero de ceniza",
+      "when": [
+        { "key": "vaultSlagVentSpent", "equals": false }
+      ],
+      "action": {
+        "effects": [
+          { "type": "set", "key": "vaultSlagVentSpent", "value": true },
+          { "type": "damage-party", "amount": 1 }
+        ],
+        "message": "Una junta del suelo respira ceniza incandescente. Un punto de daño para toda la compañía y una nota mental para dejar de pisar arquitectura que fuma."
+      }
+    }
+  ],
   "exits": [
     {
       "id": "ash-vault-exit",
