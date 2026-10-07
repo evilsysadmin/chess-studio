@@ -205,29 +205,37 @@ def validate_pawn_slug_staging_visual_scope(root: Path = ROOT) -> None:
 
 
 def validate_resend_bootstrap_topology(root: Path = ROOT) -> None:
-    """Keep the Resend one-shot behind staging so OCI mutations cannot cancel each other."""
+    """Keep Resend recovery scoped by the already-paid staging prepare runner."""
     workflow = (root / ".github" / "workflows" / "oci-resend-bootstrap.yml").read_text(encoding="utf-8")
+    staging = (root / ".github" / "workflows" / "staging-deploy.yml").read_text(encoding="utf-8")
     required = (
-        "workflows:\n      - Deploy to staging",
-        "types:\n      - completed",
         "workflow_dispatch:",
-        "name: Detect Resend bootstrap request",
-        "github.event_name == 'workflow_dispatch' ||",
-        "github.event.workflow_run.conclusion == 'success'",
-        "git diff --name-only",
-        "infra/oci/runtime/resend-bootstrap-v1.txt",
-        "needs: trigger",
+        "bootstrap_sha:",
         "group: oci-staging-mutations",
         "api-staging.chess-studio.shadowops.dpdns.org/api/release",
         "python3 scripts/oci_vault_sync.py sync-current",
         'python3 scripts/oci_release_deploy.py deploy --repo-ref "$staging_sha"',
     )
     missing = [token for token in required if token not in workflow]
+    for token in (
+        "resend_bootstrap_required:",
+        "gh workflow run oci-resend-bootstrap.yml",
+        "scripts/staging_deploy_prepare.py",
+    ):
+        if token not in staging:
+            missing.append(token)
     if missing:
         raise SystemExit("Resend bootstrap topology incompleta: " + ", ".join(missing))
+    if "workflow_run:" in workflow or "workflows:\n      - Deploy to staging" in workflow:
+        raise SystemExit("Resend bootstrap no debe despertar en cada staging")
     if "\n  push:" in workflow:
         raise SystemExit("Resend bootstrap no debe competir con staging desde push directo")
-    print("Resend bootstrap post-staging topology: OK")
+    subprocess.run(
+        [sys.executable, "-S", "scripts/staging_optional_scope.py", "--self-test"],
+        cwd=root,
+        check=True,
+    )
+    print("Resend bootstrap scoped dispatch topology: OK")
 
 def validate_workflow_static_contracts(root: Path = ROOT) -> None:
     """Run always-on static contracts; OCI integration stays conditional on the CI PR surface."""
