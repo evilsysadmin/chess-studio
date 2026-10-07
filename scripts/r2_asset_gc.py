@@ -41,16 +41,17 @@ PIN_SUFFIXES = {
     ".ts",
     ".tsx",
 }
-PIN_ROOTS = (
-    ROOT / "frontend",
-    ROOT / "games",
-    ROOT / "e2e",
-    ROOT / "scripts",
-    ROOT / ".github",
-    ROOT / "backend-python",
-    ROOT / "backend-go",
-    ROOT / "workers",
+PIN_ROOT_SCOPES = (
+    (ROOT / "frontend", "runtime"),
+    (ROOT / "games", "runtime"),
+    (ROOT / "backend-python", "runtime"),
+    (ROOT / "backend-go", "runtime"),
+    (ROOT / "workers", "runtime"),
+    (ROOT / "scripts", "scripts"),
+    (ROOT / "e2e", "e2e"),
+    (ROOT / ".github", "workflows"),
 )
+OPERATIONAL_PIN_SCOPES = frozenset({"scripts", "e2e", "workflows"})
 REASON_PRIORITY = {
     "ephemeral-expired": 0,
     "deprecated-prefix": 1,
@@ -208,11 +209,11 @@ def normalize_inventory(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return inventory
 
 
-def collect_repo_pins(base_url: str) -> set[str]:
-    """Protect hard-coded runtime R2 URLs outside docs."""
+def collect_repo_pin_sources(base_url: str) -> dict[str, set[str]]:
+    """Map hard-coded R2 object keys to the repo surfaces that reference them."""
     prefix = base_url.rstrip("/") + "/"
-    pins: set[str] = set()
-    for root in PIN_ROOTS:
+    sources: dict[str, set[str]] = defaultdict(set)
+    for root, scope in PIN_ROOT_SCOPES:
         if not root.exists():
             continue
         for path in root.rglob("*"):
@@ -231,11 +232,16 @@ def collect_repo_pins(base_url: str) -> set[str]:
                     break
                 match = R2_URL_KEY_RE.match(text, index + len(prefix))
                 if match:
-                    pins.add(match.group(1))
+                    sources[match.group(1)].add(scope)
                     start = match.end()
                 else:
                     start = index + len(prefix)
-    return pins
+    return dict(sources)
+
+
+def collect_repo_pins(base_url: str) -> set[str]:
+    """Protect every hard-coded R2 URL exactly as before."""
+    return set(collect_repo_pin_sources(base_url))
 
 
 def sha_token(key: str) -> str | None:
@@ -333,6 +339,7 @@ def plan_cleanup(
     manifest_keys: set[str],
     repo_pins: set[str],
     policy: dict[str, Any],
+    repo_pin_scopes: dict[str, set[str]] | None = None,
     active_release_prefixes: dict[str, str] | None = None,
     blocked_release_prefixes: set[str] | None = None,
     now: dt.datetime | None = None,
@@ -340,6 +347,7 @@ def plan_cleanup(
     now = (now or dt.datetime.now(dt.timezone.utc)).astimezone(dt.timezone.utc)
     active_release_prefixes = active_release_prefixes or {}
     blocked_release_prefixes = blocked_release_prefixes or set()
+    repo_pin_scopes = repo_pin_scopes or {}
     inventory = normalize_inventory(rows)
     by_key = {item["key"]: item for item in inventory}
     total_bytes = sum(item["size"] for item in inventory)
@@ -573,12 +581,72 @@ def plan_cleanup(
         for prefix, size in sorted(retained_prefix_bytes.items(), key=lambda pair: (-pair[1], pair[0]))[:20]
     ]
 
+    protected_bytes_by_reason: dict[str, int] = defaultdict(int)
+    protected_bytes = 0
+    for key, reason in protected.items():
+        item = by_key.get(key)
+        if item is None:
+            continue
+        protected_bytes += item["size"]
+        protected_bytes_by_reason[reason] += item["size"]
+
+    repo_pin_bytes = 0
+    repo_pin_runtime_bytes = 0
+    repo_pin_unclassified_bytes = 0
+    operational_only: list[dict[str, Any]] = []
+    operational_by_scope: dict[str, dict[str, int]] = defaultdict(lambda: {"objects": 0, "bytes": 0})
+    for key in repo_pins:
+        item = by_key.get(key)
+        if item is None:
+            continue
+        size = item["size"]
+        repo_pin_bytes += size
+        scopes = set(repo_pin_scopes.get(key, set()))
+        if "runtime" in scopes:
+            repo_pin_runtime_bytes += size
+            continue
+        if not scopes:
+            repo_pin_unclassified_bytes += size
+            continue
+        # Only call it tooling-only when the repo URL pin is the authority that
+        # keeps the object alive. Manifest/current/release protections win above.
+        if protected.get(key) != "runtime-pin":
+            continue
+        operational_scopes = sorted(scopes & OPERATIONAL_PIN_SCOPES)
+        bucket = operational_scopes[0] if len(operational_scopes) == 1 else "mixed"
+        if not operational_scopes:
+            bucket = "other"
+        operational_by_scope[bucket]["objects"] += 1
+        operational_by_scope[bucket]["bytes"] += size
+        operational_only.append(item)
+
+    operational_prefix_bytes: dict[str, int] = defaultdict(int)
+    for item in operational_only:
+        operational_prefix_bytes[_prefix_bucket(item["key"])] += item["size"]
+    top_operational_pins = [
+        {"prefix": prefix, "bytes": size}
+        for prefix, size in sorted(operational_prefix_bytes.items(), key=lambda pair: (-pair[1], pair[0]))[:20]
+    ]
+    operational_scope_rows = [
+        {"scope": scope, "objects": values["objects"], "bytes": values["bytes"]}
+        for scope, values in sorted(operational_by_scope.items(), key=lambda pair: (-pair[1]["bytes"], pair[0]))
+    ]
+
     return {
         "version": 1,
         "generatedAt": now.isoformat(),
         "totalObjects": len(inventory),
         "totalBytes": total_bytes,
         "protectedObjects": len(protected),
+        "protectedBytes": protected_bytes,
+        "protectedBytesByReason": dict(sorted(protected_bytes_by_reason.items())),
+        "repoPinBytes": repo_pin_bytes,
+        "repoPinRuntimeBytes": repo_pin_runtime_bytes,
+        "repoPinOperationalOnlyObjects": len(operational_only),
+        "repoPinOperationalOnlyBytes": sum(item["size"] for item in operational_only),
+        "repoPinOperationalOnlyByScope": operational_scope_rows,
+        "repoPinUnclassifiedBytes": repo_pin_unclassified_bytes,
+        "topOperationalOnlyPinPrefixes": top_operational_pins,
         "candidateObjects": len(all_candidates),
         "candidateBytes": sum(item["bytes"] for item in all_candidates),
         "deleteObjects": len(selected),
@@ -630,7 +698,8 @@ def run_remote(
         for entry in manifest["assets"].values()
         if isinstance(entry, dict) and isinstance(entry.get("key"), str)
     }
-    repo_pins = collect_repo_pins(base_url)
+    repo_pin_scopes = collect_repo_pin_sources(base_url)
+    repo_pins = set(repo_pin_scopes)
     token, account_id = core.require_env()
     active_release_prefixes, blocked_release_prefixes = resolve_release_bundles(
         token,
@@ -644,6 +713,7 @@ def run_remote(
         manifest_keys=manifest_keys,
         repo_pins=repo_pins,
         policy=policy,
+        repo_pin_scopes=repo_pin_scopes,
         active_release_prefixes=active_release_prefixes,
         blocked_release_prefixes=blocked_release_prefixes,
     )
@@ -725,6 +795,8 @@ def self_test() -> None:
         row("deprecated/atlas-old.webp", 100, 30),
         row("young/runtime/young-dddddddddddddddd.glb", 100, 2),
         row("retired/atlas/old-eeeeeeeeeeeeeeee.webp", 100, 60),
+        row("runtime/live/runtime-ffffffffffffffff.webp", 300, 60),
+        row("tooling/legacy/script-only-9999999999999999.webp", 250, 60),
         row("game/current.json", 10, 0),
         row("game/releases/1111111111111111/index.html", 100, 0),
         row("game/releases/1111111111111111/index.pck", 500, 0),
@@ -736,8 +808,15 @@ def self_test() -> None:
     report = plan_cleanup(
         rows,
         manifest_keys={"scene/runtime/scene-aaaaaaaaaaaaaaaa.glb"},
-        repo_pins=set(),
+        repo_pins={
+            "runtime/live/runtime-ffffffffffffffff.webp",
+            "tooling/legacy/script-only-9999999999999999.webp",
+        },
         policy=policy,
+        repo_pin_scopes={
+            "runtime/live/runtime-ffffffffffffffff.webp": {"runtime", "scripts"},
+            "tooling/legacy/script-only-9999999999999999.webp": {"scripts"},
+        },
         active_release_prefixes={"game/releases": "game/releases/1111111111111111"},
         blocked_release_prefixes=set(),
         now=now,
@@ -756,6 +835,14 @@ def self_test() -> None:
     assert "game/releases/1111111111111111/index.pck" not in reasons
     assert "game/releases/2222222222222222/index.pck" not in reasons
     assert reasons["game/releases/3333333333333333/index.pck"] == "stale-release-bundle"
+    assert "runtime/live/runtime-ffffffffffffffff.webp" not in reasons
+    assert "tooling/legacy/script-only-9999999999999999.webp" not in reasons
+    assert report["repoPinRuntimeBytes"] == 300
+    assert report["repoPinOperationalOnlyBytes"] == 250
+    assert report["repoPinOperationalOnlyObjects"] == 1
+    assert report["repoPinOperationalOnlyByScope"] == [{"scope": "scripts", "objects": 1, "bytes": 250}]
+    assert report["topOperationalOnlyPinPrefixes"][0] == {"prefix": "tooling/legacy", "bytes": 250}
+    assert report["protectedBytes"] >= 550
     assert report["topRetainedPrefixes"]
     print("OK r2 retention self-test")
 
