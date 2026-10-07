@@ -1388,10 +1388,7 @@ def build_outputs() -> dict[str, str]:
                 "proportion_profile": "generic-football-canon-v28",
                 "hand_profile": "tapered-palm-v28",
                 "footwear_profile": "compact-boot-v28",
-                "proportion_profile": "generic-football-canon-v28",
-            "hand_profile": "tapered-palm-v28",
-            "footwear_profile": "compact-boot-v28",
-            "kinetics_profile": "weight-transfer-v21",
+                "kinetics_profile": "weight-transfer-v21",
             }
             variant_keys.append(variant_slug)
         field_variants[slug] = variant_keys
@@ -1405,6 +1402,9 @@ def build_outputs() -> dict[str, str]:
                 "joint_profile": "integrated-knees-v28",
                 "limb_outline_profile": "tonal-limbs-v25",
             "limb_geometry_profile": "reference-anatomy-v28",
+            "proportion_profile": "generic-football-canon-v28",
+            "hand_profile": "tapered-palm-v28",
+            "footwear_profile": "compact-boot-v28",
             "kinetics_profile": "weight-transfer-v21",
         }
     manifest = {
