@@ -178,6 +178,7 @@ func _touch_down(index: int, position: Vector2) -> bool:
 			return true
 
 	if not left_zone and match_node.mobile_activate_dribble(position):
+		context_touches[index] = {"kind": "dribble"}
 		return true
 	if joystick_touch_index == -1 and left_zone:
 		_begin_joystick(index, position)
