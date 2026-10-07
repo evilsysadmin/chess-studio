@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import {
   chroniclesInventoryEntries,
 } from '../chronicles/chroniclesContentRuntime.js';
@@ -93,7 +94,7 @@ export default function ChroniclesCharacterSheet({
     onClose?.();
   };
 
-  return (
+  const sheet = (
     <div
       className="chronicles-character-sheet__backdrop"
       role="presentation"
@@ -254,4 +255,7 @@ export default function ChroniclesCharacterSheet({
       </section>
     </div>
   );
+
+  if (typeof document === 'undefined') return sheet;
+  return createPortal(sheet, document.body);
 }
