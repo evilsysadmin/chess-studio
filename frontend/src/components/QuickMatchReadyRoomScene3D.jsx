@@ -567,9 +567,11 @@ function renderScene(renderer, scene, camera, host) {
   camera.aspect = width / height;
 
   if (portrait) {
-    camera.fov = 46;
-    camera.position.set(0, 6.2, 16.6);
-    camera.lookAt(0, 1.52, -1.45);
+    // Mobile needs a steeper, board-first composition: the previous long-lens
+    // framing left a large dead strip of floor below the table.
+    camera.fov = 47;
+    camera.position.set(0, 8.1, 13.9);
+    camera.lookAt(0, 1.08, -1.32);
   } else {
     camera.fov = QUICK_MATCH_READY_ROOM_CAMERA.fov;
     camera.position.set(...QUICK_MATCH_READY_ROOM_CAMERA.position);
