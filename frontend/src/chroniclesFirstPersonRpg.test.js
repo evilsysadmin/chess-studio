@@ -31,6 +31,35 @@ describe('Chronicles first-person RPG progression', () => {
     });
   });
 
+  it('does not double-count creator damage and reach bonuses in first-person', () => {
+    const progression = createChroniclesProgression();
+    progression.characterBuild = {
+      version: 1,
+      mode: 'custom',
+      characters: [
+        {
+          slotId: 'matthias',
+          classId: 'matthias',
+          name: 'Matthias',
+          attributes: { vigor: 0, power: 0, precision: 0, will: 0 },
+          startingSkillId: 'matthias-keen-point',
+        },
+        { slotId: 'rook', classId: 'rook', name: 'Hildegard', attributes: {}, startingSkillId: null },
+        { slotId: 'bishop', classId: 'bishop', name: 'Aziz', attributes: {}, startingSkillId: null },
+        { slotId: 'knight', classId: 'knight', name: 'Faust', attributes: {}, startingSkillId: null },
+      ],
+    };
+
+    const base = createChroniclesState(null, progression.characterBuild);
+    expect(base.party.find((member) => member.id === 'matthias')?.damage).toBe(2);
+
+    const state = applyChroniclesProgressionToTacticsState(base, progression);
+    expect(chroniclesPartyAttackStats(state, 'matthias')).toEqual({
+      damage: 2,
+      reach: 1,
+    });
+  });
+
   it('keeps XP across maps and refuses to award the same kill twice', () => {
     const progression = createChroniclesProgression();
     const previous = createChroniclesState();
