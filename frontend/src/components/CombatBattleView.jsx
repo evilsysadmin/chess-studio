@@ -174,7 +174,7 @@ export default function CombatBattleView({
                 </button>
               )}
             </div>
-          )}}
+          )}
         </div>
       </div>
 
