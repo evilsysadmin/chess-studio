@@ -228,6 +228,31 @@
   padding: 0 .72rem;
 }
 
+.combat-battle-screen .combat-warroom-exit,
+.combat-battle-screen .combat-warroom-exit-menu > summary {
+  min-width: 84px;
+  padding: 0 .78rem;
+  border-color: rgba(220, 187, 123, .32);
+  color: rgba(244, 232, 206, .96);
+  background: linear-gradient(180deg, rgba(19, 24, 31, .92), rgba(7, 11, 16, .88));
+}
+
+.combat-battle-screen .combat-warroom-exit:hover,
+.combat-battle-screen .combat-warroom-exit:focus-visible,
+.combat-battle-screen .combat-warroom-exit-menu > summary:hover,
+.combat-battle-screen .combat-warroom-exit-menu > summary:focus-visible {
+  border-color: rgba(224, 194, 132, .56);
+  background: linear-gradient(180deg, rgba(28, 34, 42, .95), rgba(9, 13, 18, .92));
+}
+
+.combat-battle-screen .combat-warroom-exit-menu > summary {
+  width: auto;
+  display: flex;
+  align-items: center;
+  gap: .3rem;
+  font-size: .78rem;
+}
+
 .combat-battle-screen .combat-warroom-action-menu {
   position: relative;
 }
@@ -249,6 +274,19 @@
 
 .combat-battle-screen .combat-warroom-action-menu > summary::-webkit-details-marker {
   display: none;
+}
+
+.combat-battle-screen .combat-warroom-action-menu.combat-warroom-exit-menu > summary {
+  width: auto;
+  min-width: 96px;
+  display: inline-flex;
+  place-items: unset;
+  align-items: center;
+  justify-content: center;
+  gap: .35rem;
+  padding: 0 .8rem;
+  white-space: nowrap;
+  font-size: .78rem;
 }
 
 .combat-battle-screen .combat-warroom-action-popover {
@@ -370,6 +408,11 @@
   .combat-battle-screen .combat-warroom-action-popover {
     left: 0;
     transform: none;
+  }
+
+  .combat-battle-screen .combat-warroom-exit-menu .combat-warroom-action-popover {
+    left: 50%;
+    transform: translateX(-50%);
   }
 
   .combat-battle-screen .combat-warroom-log-body {

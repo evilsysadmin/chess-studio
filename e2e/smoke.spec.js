@@ -422,23 +422,23 @@ test('Combat Chess · salir al menú conserva campaña y batalla activas', async
   await quick.click();
   await expect(page.getByRole('complementary', { name: 'Registro de batalla y estado táctico' })).toBeVisible();
 
-  const optionsTrigger = page.locator('summary[aria-label="Opciones de batalla"]');
-  await expect(optionsTrigger).toBeVisible();
-  await optionsTrigger.click();
+  const exitMenu = page.locator('summary[aria-label="Salir"]');
+  await expect(exitMenu).toBeVisible();
+  await exitMenu.click();
 
-  const abandon = page.getByRole('button', { name: 'Abandonar batalla y asumir bajas', exact: true });
-  const exitToMenu = page.getByRole('button', { name: 'Salir al menú', exact: true });
+  const exitToCastle = page.getByRole('button', { name: 'Salir al castillo', exact: true });
+  const abandon = page.getByRole('button', { name: 'Abandonar partida y asumir bajas', exact: true });
+  await expect(exitToCastle).toBeVisible();
   await expect(abandon).toBeVisible();
-  await expect(exitToMenu).toBeVisible();
 
   page.once('dialog', async (dialog) => {
-    expect(dialog.message()).toContain('¿Abandonar batalla y asumir bajas?');
+    expect(dialog.message()).toContain('¿Abandonar partida y asumir bajas?');
     await dialog.dismiss();
   });
   await abandon.click();
   await expect(page.getByRole('complementary', { name: 'Registro de batalla y estado táctico' })).toBeVisible();
 
-  await exitToMenu.click();
+  await exitToCastle.click();
   await expect(page.getByRole('region', { name: 'Modos principales' })).toBeVisible();
 
   // SPA transition: the click completes before an unrelated scheduled navigation.

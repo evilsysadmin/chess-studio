@@ -155,38 +155,51 @@ export default function CombatBattleView({
 
           {phase === 'battle' && (
             <div className="game-controls combat-game-controls combat-warroom-controls">
-              {cpuRetryNeeded && (
-                <button type="button" className="primary-btn combat-warroom-retry" onClick={retryCpuTurn}>
-                  Reintentar CPU
-                </button>
-              )}
-              <details className="combat-warroom-action-menu">
-                <summary aria-label="Opciones de batalla" title="Opciones de batalla">⋯</summary>
-                <div className="combat-warroom-action-popover">
-                  <button
-                    className="secondary-btn"
-                    onClick={combatVariant === 'roguelike' ? suspendBattleToMenu : backToSetup}
-                    title={combatVariant === 'roguelike' ? 'Guarda la batalla actual y vuelve al menú. La campaña sigue activa.' : undefined}
-                  >
-                    {combatVariant === 'roguelike' ? 'Salir al menú' : 'Salir del combate'}
-                  </button>
-                  {combatVariant === 'roguelike' && (
+              {combatVariant === 'roguelike' ? (
+                <details className="combat-warroom-action-menu combat-warroom-exit-menu">
+                  <summary aria-label="Salir" title="Salir de Combat Chess">
+                    <span aria-hidden="true">←</span> Salir
+                  </summary>
+                  <div className="combat-warroom-action-popover">
+                    <button
+                      type="button"
+                      className="secondary-btn"
+                      onClick={suspendBattleToMenu}
+                      title="Guarda la batalla actual y vuelve al castillo. La campaña sigue activa."
+                    >
+                      Salir al castillo
+                    </button>
                     <button
                       type="button"
                       className="secondary-btn combat-retreat-btn"
                       title="Termina esta batalla como retirada y conserva las bajas que ya se hayan producido."
                       onClick={() => {
                         const confirmed = window.confirm(
-                          '¿Abandonar batalla y asumir bajas?\n\nLa batalla terminará como retirada. Las piezas ya caídas quedarán registradas como bajas y la campaña continuará con esas consecuencias.',
+                          '¿Abandonar partida y asumir bajas?\n\nLa batalla terminará como retirada. Las piezas ya caídas quedarán registradas como bajas y la campaña continuará con esas consecuencias.',
                         );
                         if (confirmed) retireBattle();
                       }}
                     >
-                      Abandonar batalla y asumir bajas
+                      Abandonar partida y asumir bajas
                     </button>
-                  )}
-                </div>
-              </details>
+                  </div>
+                </details>
+              ) : (
+                <button
+                  type="button"
+                  className="secondary-btn combat-warroom-exit"
+                  aria-label="Salir"
+                  onClick={backToSetup}
+                  title="Salir del combate."
+                >
+                  <span aria-hidden="true">←</span> Salir
+                </button>
+              )}
+              {cpuRetryNeeded && (
+                <button type="button" className="primary-btn combat-warroom-retry" onClick={retryCpuTurn}>
+                  Reintentar CPU
+                </button>
+              )}
             </div>
           )}
         </div>
