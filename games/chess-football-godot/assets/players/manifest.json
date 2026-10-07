@@ -1,6 +1,6 @@
 {
-  "version": 8,
-  "quality_contract": "chess-football-vector-v8",
+  "version": 9,
+  "quality_contract": "chess-football-vector-v9",
   "cell": {
     "width": 128,
     "height": 144
