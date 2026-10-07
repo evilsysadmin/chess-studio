@@ -133,10 +133,15 @@ WARROOM_V4_VARIANT_FILES = {
     "frontend/src/components/warroomv4shell.js",
 }
 # Shared fire-sprite ownership: v2 installs its own hearth sprites, while
-# WarRoomV3Fire consumes the same helper for v3 and v4. This is decor-only:
-# it cannot alter board composition, armor inspection or Hans choreography.
+# WarRoomV3Fire consumes the same helper for v3 and v4.
 WARROOM_FIRE_SPRITE_FILES = {
     "frontend/src/components/warroomfiresprites.js",
+}
+# These files own the visible hearth during Hans' fire routine as well as the
+# room's ordinary decor, so both evidence producers are required.
+WARROOM_HANS_FIRE_FILES = {
+    "frontend/src/components/warroomv3fire.js",
+    *WARROOM_FIRE_SPRITE_FILES,
 }
 WARROOM_BLENDER_SHARED_VARIANT_FILES = {
     "frontend/src/components/warroomblendershellruntime.js",
@@ -163,7 +168,6 @@ WARROOM_VARIANT_CORE_FILES = {
     "frontend/src/components/warroomblendermaterials.js",
     "frontend/src/components/warroomv2shell.js",
     "frontend/src/components/warroomv3shell.js",
-    "frontend/src/components/warroomv3fire.js",
     "frontend/src/components/warroomv4shell.js",
     "frontend/src/components/warroomvariant.js",
 }
@@ -456,8 +460,8 @@ def classify_path(path: str) -> set[str] | None:
     if "experimentsscreen" in lower or "/experiments" in lower:
         return {"experiments-hub"}
 
-    if lower in WARROOM_FIRE_SPRITE_FILES:
-        return {"warroom-decor"}
+    if lower in WARROOM_HANS_FIRE_FILES:
+        return {"warroom-decor", "warroom-hans"}
     if lower in WARROOM_VARIANT_CORE_FILES or lower in WARROOM_CORE_ONLY_FILES or lower in WARROOM_MOBILE_ONLY_FILES or lower in WARROOM_MATTHIAS_ONLY_FILES:
         return {"warroom-core"}
     if lower in BOARD3D_MATTHIAS_SHARED_FILES:
@@ -885,6 +889,8 @@ def self_test() -> None:
     for training_matthias_file in TRAINING_PROGRESS_MATTHIAS_FILES:
         assert classify([training_matthias_file]) == "training-progress"
     assert classify(["frontend/src/components/WarRoomCatDecor.js"]) == "warroom-decor"
+    assert classify(["frontend/src/components/WarRoomV3Fire.js"]) == "warroom-decor,warroom-hans"
+    assert classify(["frontend/src/components/WarRoomFireSprites.js"]) == "warroom-decor,warroom-hans"
     assert classify(["frontend/src/components/WarRoomArmorDisplay.js"]) == "warroom-armor"
     assert classify(["frontend/src/components/WarRoomHansPerGame.jsx"]) == "warroom-hans"
     assert classify(["e2e/war-room-hans-routines-visual.spec.js"]) == "warroom-hans"
