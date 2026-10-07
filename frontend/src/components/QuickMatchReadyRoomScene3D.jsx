@@ -569,9 +569,9 @@ function renderScene(renderer, scene, camera, host) {
   if (portrait) {
     // The mobile canvas is a deliberate mid-screen stage rather than the whole
     // viewport, so use a tighter board-first camera and avoid exposing dead floor.
-    camera.fov = 39;
-    camera.position.set(0, 7.45, 12.25);
-    camera.lookAt(0, 1.30, -1.34);
+    camera.fov = 38;
+    camera.position.set(0, 6.75, 11.15);
+    camera.lookAt(0, 2.15, -1.42);
   } else {
     camera.fov = QUICK_MATCH_READY_ROOM_CAMERA.fov;
     camera.position.set(...QUICK_MATCH_READY_ROOM_CAMERA.position);
