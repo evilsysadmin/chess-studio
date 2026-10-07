@@ -20,6 +20,30 @@ function sans(record) {
   return (record?.moves || []).map((m) => typeof m === 'string' ? m : m?.san).filter(Boolean);
 }
 
+export function buildLiveShareRecord(finishedGame, outcome, mode, series = null, timeControl = null) {
+  const moves = finishedGame?.history || [];
+  return {
+    id: `share-${finishedGame?.id || Date.now()}`,
+    date: new Date().toISOString(),
+    difficulty: finishedGame?.difficulty || 0,
+    humanColor: finishedGame?.humanColor || 'w',
+    outcome,
+    moves,
+    finalFen: finishedGame?.fen || null,
+    mode,
+    opening: identifyOpening(moves.map((move) => move.san).filter(Boolean)),
+    timeControl: timeControl ? { id: timeControl.id, label: timeControl.label } : null,
+    series: series ? {
+      id: series.id,
+      bestOf: series.bestOf,
+      humanWins: series.humanWins,
+      cpuWins: series.cpuWins,
+      draws: series.draws,
+      winner: series.winner,
+    } : null,
+  };
+}
+
 export function normalizeShareRecord(record, extras = {}) {
   const moves = sans(record);
   return {
