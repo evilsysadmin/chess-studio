@@ -290,8 +290,8 @@ def main() -> int:
     for needle, label in (
         ("actions: write", "summary scoped dispatch permission"),
         ("GH_TOKEN: ${{ github.token }}", "summary scoped GitHub token"),
-        ("gh workflow run oci-resend-bootstrap.yml", "summary Resend dispatch"),
-        ("gh workflow run staging-deploy-continuity.yml", "summary continuity dispatch"),
+        ("gh workflow run oci-resend-bootstrap.yml --repo \"$GITHUB_REPOSITORY\"", "summary Resend dispatch repo scope"),
+        ("gh workflow run staging-deploy-continuity.yml --repo \"$GITHUB_REPOSITORY\"", "summary continuity dispatch repo scope"),
     ):
         require(staging_summary, needle, label, errors)
     pre_summary = staging_deploy.split("\n  summary:\n", 1)[0]
