@@ -111,9 +111,9 @@ for (const capture of CAPTURES) {
       )));
       expect(thumbnailsDecoded, `${capture.label}: authored roster portraits decoded`).toBe(true);
 
-      for (const member of CAPTURE_PARTY) {
+      for (const [index, member] of CAPTURE_PARTY.entries()) {
         const memberButton = page.getByRole('button', { name: `Seleccionar ${member.name}`, exact: true });
-        await memberButton.click();
+        await page.keyboard.press(String(index + 1));
         await expect(memberButton).toHaveAttribute('aria-pressed', 'true');
 
         if (capture.hasTouch) {
