@@ -65,13 +65,64 @@ body:has(.puzzle-screen) .global-music-dock {
   z-index: 132;
   top: max(4rem, calc(env(safe-area-inset-top) + 3.3rem));
   left: 50%;
-  width: min(620px, calc(100vw - 2rem));
+  width: min(330px, calc(100vw - 7rem));
   margin: 0;
   transform: translateX(-50%);
-  border-color: rgba(218, 177, 99, .25) !important;
-  background: rgba(8, 9, 12, .64) !important;
+  border: 1px solid rgba(218, 177, 99, .25);
+  border-radius: 999px;
+  background: rgba(8, 9, 12, .68);
   box-shadow: 0 10px 30px rgba(0, 0, 0, .22);
   backdrop-filter: blur(10px);
+}
+
+.puzzle-source-disclosure > summary {
+  min-height: 44px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .46rem;
+  padding: .35rem .58rem;
+  box-sizing: border-box;
+  cursor: pointer;
+  list-style: none;
+}
+
+.puzzle-source-disclosure > summary::-webkit-details-marker { display: none; }
+.puzzle-source-disclosure > summary > span,
+.puzzle-source-disclosure > summary > small {
+  color: rgba(219, 198, 158, .64);
+  font: .54rem var(--font-mono);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.puzzle-source-disclosure > summary > b {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #f0deb7;
+  font-size: .72rem;
+  text-align: center;
+}
+.puzzle-source-disclosure > summary > small { color: #d8b86b; }
+
+.puzzle-source-disclosure[open] {
+  width: min(620px, calc(100vw - 2rem));
+  border-radius: 12px;
+  background: rgba(8, 9, 12, .88);
+}
+
+.puzzle-source-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .34rem;
+  padding: .35rem;
+  border-top: 1px solid rgba(218, 177, 99, .14);
+}
+
+.puzzle-source-options > button {
+  min-width: 0;
+  min-height: 44px;
 }
 
 .puzzle-screen > :is(.personal-puzzle-empty-notice, .puzzle-rush-banner, .error-text) {
@@ -296,7 +347,11 @@ body:has(.puzzle-screen) .global-music-dock {
 
   .puzzle-screen > .puzzle-source-picker {
     top: max(3.7rem, calc(env(safe-area-inset-top) + 3rem));
-    width: min(76vw, 420px);
+    width: min(80vw, 300px);
+  }
+
+  .puzzle-screen > .puzzle-source-picker[open] {
+    width: min(92vw, 420px);
   }
 
   .puzzle-screen .puzzle-board-column > .status-line {

@@ -34,6 +34,7 @@ const REPLY_DELAY_MS = 550;
 export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, onSpendPoints, initialSource = 'curated', rushMode = false, initialFilter = null, dailySlot = 'tactic', trainingOrigin = null }) {
   useEscapeToClose(onExit);
   const [personalPuzzles, setPersonalPuzzles] = useState(() => loadPersonalPuzzles());
+  const [sourcePickerOpen, setSourcePickerOpen] = useState(false);
   const filteredInitialPersonalTotal = personalPuzzles.filter((item) => matchesPersonalPuzzleFilter(item, initialFilter)).length;
   const focusedInsightsTraining = trainingOrigin === 'insights-action';
   const focusedPostGameTraining = trainingOrigin === 'postgame-error';
@@ -429,23 +430,42 @@ export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, o
     ? `Jugaste ${puzzle.played}: busca algo mejor`
     : KIND_LABELS[puzzle.kind] || null;
 
+  const currentSourceLabel = source === 'personal'
+    ? personalSourceLabel
+    : source === 'daily'
+      ? 'Desafío diario'
+      : 'Puzzles clásicos';
+
   return (
     <div
       className={`tutorial-shell puzzle-screen ${source === 'personal' ? 'puzzle-screen-personal' : ''}`}
       data-training-origin={trainingOrigin || undefined}
     >
       <button className="back-link" onClick={onExit}>{focusedInsightsTraining ? '← Volver a Así juegas' : focusedPostGameTraining ? '← Volver a la partida' : '← Volver al menú'}</button>
-      {!rushMode && !focusedTrainingJourney && <div className="puzzle-source-picker friendly-tabs" role="group" aria-label="Tipo de puzzle">
-        <button aria-label="Puzzles clásicos" className={source === 'curated' ? 'primary-btn' : 'secondary-btn'} onClick={() => changeSource('curated')}>
-          <span className="puzzle-source-label-full">Puzzles clásicos</span><span className="puzzle-source-label-compact" aria-hidden="true">Clásicos</span>
-        </button>
-        <button aria-label={personalSourceLabel} className={source === 'personal' ? 'primary-btn' : 'secondary-btn'} disabled={filteredPersonalTotalCount === 0} onClick={() => changeSource('personal')}>
-          <span className="puzzle-source-label-full">{personalSourceLabel}</span><span className="puzzle-source-label-compact" aria-hidden="true">Acciones{filteredPersonalActiveCount > 0 ? ` · ${filteredPersonalActiveCount}` : ''}</span>
-        </button>
-        <button aria-label="Desafío diario" className={source === 'daily' ? 'primary-btn' : 'secondary-btn'} onClick={() => changeSource('daily')}>
-          <span className="puzzle-source-label-full">Desafío diario</span><span className="puzzle-source-label-compact" aria-hidden="true">Diario</span>
-        </button>
-      </div>}
+      {!rushMode && !focusedTrainingJourney && (
+        <details
+          className="puzzle-source-picker puzzle-source-disclosure"
+          open={sourcePickerOpen}
+          onToggle={(event) => setSourcePickerOpen(event.currentTarget.open)}
+        >
+          <summary aria-label={`Cambiar entrenamiento. Actual: ${currentSourceLabel}`}>
+            <span>Entrenamiento</span>
+            <b>{currentSourceLabel}</b>
+            <small>Cambiar</small>
+          </summary>
+          <div className="puzzle-source-options" role="group" aria-label="Tipo de puzzle">
+            <button aria-label="Puzzles clásicos" className={source === 'curated' ? 'primary-btn' : 'secondary-btn'} onClick={() => { changeSource('curated'); setSourcePickerOpen(false); }}>
+              <span className="puzzle-source-label-full">Puzzles clásicos</span><span className="puzzle-source-label-compact" aria-hidden="true">Clásicos</span>
+            </button>
+            <button aria-label={personalSourceLabel} className={source === 'personal' ? 'primary-btn' : 'secondary-btn'} disabled={filteredPersonalTotalCount === 0} onClick={() => { changeSource('personal'); setSourcePickerOpen(false); }}>
+              <span className="puzzle-source-label-full">{personalSourceLabel}</span><span className="puzzle-source-label-compact" aria-hidden="true">Acciones{filteredPersonalActiveCount > 0 ? ` · ${filteredPersonalActiveCount}` : ''}</span>
+            </button>
+            <button aria-label="Desafío diario" className={source === 'daily' ? 'primary-btn' : 'secondary-btn'} onClick={() => { changeSource('daily'); setSourcePickerOpen(false); }}>
+              <span className="puzzle-source-label-full">Desafío diario</span><span className="puzzle-source-label-compact" aria-hidden="true">Diario</span>
+            </button>
+          </div>
+        </details>
+      )}
       {personalSourceFallback && (
         <p className="personal-puzzle-empty-notice friendly-inline-note" role="status">
           Aún no tienes puzzles personales guardados. Juega alguna partida y Chess Studio convertirá errores reales en entrenamiento; mientras tanto te dejamos un puzzle clásico para no mandarte a una sala vacía.

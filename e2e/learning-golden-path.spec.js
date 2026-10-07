@@ -45,13 +45,18 @@ async function expectPersonalTrainingMobileContract(page, width) {
 
   const puzzleScreen = page.locator('.puzzle-screen');
   const focusedFromInsights = await puzzleScreen.getAttribute('data-training-origin') === 'insights-action';
-  const sourceButtons = page.getByRole('group', { name: 'Tipo de puzzle' }).getByRole('button');
+  const sourcePicker = puzzleScreen.locator('.puzzle-source-picker');
   if (focusedFromInsights) {
-    await expect(sourceButtons).toHaveCount(0);
+    await expect(sourcePicker).toHaveCount(0);
     await expect(puzzleScreen.locator('> .back-link')).toHaveText('← Volver a Así juegas');
   } else {
+    const summary = sourcePicker.locator('> summary');
+    await expectTouchTarget(summary);
+    await summary.click();
+    const sourceButtons = sourcePicker.getByRole('group', { name: 'Tipo de puzzle' }).getByRole('button');
     await expect(sourceButtons).toHaveCount(3);
     for (let index = 0; index < 3; index += 1) await expectTouchTarget(sourceButtons.nth(index));
+    await summary.click();
   }
 
   for (const target of [
