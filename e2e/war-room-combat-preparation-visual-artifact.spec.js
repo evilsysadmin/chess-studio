@@ -119,6 +119,8 @@ async function deploymentHealth(page) {
         || rect('[data-combat-deployment="war-table"] .deployment-board-zone .board3d-main-shell'),
       reserve: rect('[data-combat-deployment="war-table"] .deployment-reserve-panel'),
       footer: rect('[data-combat-deployment="war-table"] .combat-deployment-footer'),
+      mastheadVisible: Boolean(document.querySelector('.masthead')?.getClientRects().length),
+      globalMusicVisible: Boolean(document.querySelector('.global-music-dock')?.getClientRects().length),
     };
   });
 }
