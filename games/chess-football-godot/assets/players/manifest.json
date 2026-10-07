@@ -1,6 +1,6 @@
 {
-  "version": 24,
-  "quality_contract": "chess-football-vector-v24",
+  "version": 25,
+  "quality_contract": "chess-football-vector-v25",
   "cell": {
     "width": 128,
     "height": 144
@@ -34,6 +34,7 @@
       "kit_profile": "organic-v19",
       "silhouette_profile": "athletic-v23",
       "joint_profile": "organic-joints-v24",
+      "limb_outline_profile": "tonal-limbs-v25",
       "kinetics_profile": "weight-transfer-v21"
     },
     "fc_matthias_v2": {
@@ -46,6 +47,7 @@
       "kit_profile": "organic-v19",
       "silhouette_profile": "athletic-v23",
       "joint_profile": "organic-joints-v24",
+      "limb_outline_profile": "tonal-limbs-v25",
       "kinetics_profile": "weight-transfer-v21"
     },
     "fc_matthias_v3": {
@@ -58,6 +60,7 @@
       "kit_profile": "organic-v19",
       "silhouette_profile": "athletic-v23",
       "joint_profile": "organic-joints-v24",
+      "limb_outline_profile": "tonal-limbs-v25",
       "kinetics_profile": "weight-transfer-v21"
     },
     "fc_matthias_v4": {
@@ -70,6 +73,7 @@
       "kit_profile": "organic-v19",
       "silhouette_profile": "athletic-v23",
       "joint_profile": "organic-joints-v24",
+      "limb_outline_profile": "tonal-limbs-v25",
       "kinetics_profile": "weight-transfer-v21"
     },
     "real_enroque": {
@@ -82,6 +86,7 @@
       "kit_profile": "organic-v19",
       "silhouette_profile": "athletic-v23",
       "joint_profile": "organic-joints-v24",
+      "limb_outline_profile": "tonal-limbs-v25",
       "kinetics_profile": "weight-transfer-v21"
     },
     "real_enroque_v2": {
@@ -94,6 +99,7 @@
       "kit_profile": "organic-v19",
       "silhouette_profile": "athletic-v23",
       "joint_profile": "organic-joints-v24",
+      "limb_outline_profile": "tonal-limbs-v25",
       "kinetics_profile": "weight-transfer-v21"
     },
     "real_enroque_v3": {
@@ -106,6 +112,7 @@
       "kit_profile": "organic-v19",
       "silhouette_profile": "athletic-v23",
       "joint_profile": "organic-joints-v24",
+      "limb_outline_profile": "tonal-limbs-v25",
       "kinetics_profile": "weight-transfer-v21"
     },
     "real_enroque_v4": {
@@ -118,6 +125,7 @@
       "kit_profile": "organic-v19",
       "silhouette_profile": "athletic-v23",
       "joint_profile": "organic-joints-v24",
+      "limb_outline_profile": "tonal-limbs-v25",
       "kinetics_profile": "weight-transfer-v21"
     },
     "fc_matthias_keeper": {
@@ -125,6 +133,7 @@
       "file": "fc_matthias_keeper_atlas.svg",
       "silhouette_profile": "athletic-v23",
       "joint_profile": "organic-joints-v24",
+      "limb_outline_profile": "tonal-limbs-v25",
       "kinetics_profile": "weight-transfer-v21"
     },
     "real_enroque_keeper": {
@@ -132,6 +141,7 @@
       "file": "real_enroque_keeper_atlas.svg",
       "silhouette_profile": "athletic-v23",
       "joint_profile": "organic-joints-v24",
+      "limb_outline_profile": "tonal-limbs-v25",
       "kinetics_profile": "weight-transfer-v21"
     }
   },
