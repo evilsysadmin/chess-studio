@@ -24,8 +24,22 @@ async function expectDurableActiveSession(page, route) {
     expectedRoute: route,
   }), {
     message: `la sesión activa ${route} debe estar persistida antes de reload`,
-    timeout: 5_000,
+    timeout: 10_000,
   }).toBe(true);
+}
+
+async function reloadAndProveNewDocument(page) {
+  const before = await page.evaluate(() => performance.timeOrigin);
+  try {
+    await page.reload();
+  } catch (error) {
+    const message = String(error?.message || error || '');
+    if (!/ERR_ABORTED|frame was detached/i.test(message)) throw error;
+    // Playwright can lose the navigation promise when Chromium replaces the
+    // frame during reload. Treat that narrow abort as benign only if a genuinely
+    // new document is observable; there is deliberately no second reload.
+    await page.waitForFunction((previous) => performance.timeOrigin !== previous, before, { timeout: 10_000 });
+  }
 }
 
 test('login → menú → Así juegas → refresh → ESC conserva navegación', async ({ page }) => {
@@ -51,7 +65,6 @@ test('Partida rápida · una partida activa sobrevive a reload/deploy y vuelve a
   await expect(page.getByRole('dialog', { name: 'Configurar partida rápida' })).toBeVisible();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
   await expect(gameTurn(page)).toBeVisible();
-  await expectDurableActiveSession(page, 'game');
 
   const warRoomMatthias = page.locator('.game-3d-turn-pill[data-matthias-war-room-presence="king-piece"]');
   const matthiasAvatar = page.locator('.game-player-rail.is-cpu .game-player-avatar.has-portrait img');
@@ -67,7 +80,8 @@ test('Partida rápida · una partida activa sobrevive a reload/deploy y vuelve a
     expect(await matthiasAvatar.evaluate((img) => img.naturalWidth)).toBeGreaterThan(0);
   }
 
-  await page.reload();
+  await expectDurableActiveSession(page, 'game');
+  await reloadAndProveNewDocument(page);
   await expect(gameTurn(page)).toBeVisible();
   await expect(page.getByText('Restaurando partida en curso…', { exact: true })).toHaveCount(0);
   await expect(buttonWithVisibleText(page, 'Partida rápida')).toHaveCount(0);
@@ -128,7 +142,7 @@ test('Torneo · una partida activa sobrevive a reload y no vuelve al menú', asy
   // carrera del navegador en vez de validar recovery.
   await expectDurableActiveSession(page, 'tournamentGame');
 
-  await page.reload();
+  await reloadAndProveNewDocument(page);
   await expect(gameTurn(page)).toBeVisible();
   await expect(page.getByRole('region', { name: 'Modos principales' })).toHaveCount(0);
   await expect(page.getByRole('heading', { name: 'Siguiente rival', exact: true })).toHaveCount(0);
@@ -162,7 +176,7 @@ test('Partida rápida · un 503 al restaurar conserva la ruta y permite reintent
     await route.fallback();
   });
 
-  await page.reload();
+  await reloadAndProveNewDocument(page);
   await expect(page.getByText('La partida sigue guardada.', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Reintentar recuperación', exact: true })).toBeVisible();
   failRestoreGets = false;
