@@ -368,7 +368,7 @@ function UnitDossier({ roster, slot, unitKey, onBuy, onRevive, onRename, onMetam
   );
 }
 
-export function ArmyRosterPanel({ roster, onBuy, onRevive, onRename, onMetamorphose, onUnlockTechnique, onEquipTechnique, onRequestBio, embedded = false, showMemorial = true }) {
+export function ArmyRosterPanel({ roster, onBuy, onRevive, onRename, onMetamorphose, onUnlockTechnique, onEquipTechnique, onRequestBio, embedded = false, showMemorial = true, heading = 'Tu ejército', kicker = 'COMBAT CHESS · ORDEN DE BATALLA' }) {
   const [selectedKey, setSelectedKey] = useState(null);
   const deploy = deploymentSummary(roster);
   useEscapeToClose(() => setSelectedKey(null), { disabled: !selectedKey });
@@ -396,8 +396,8 @@ export function ArmyRosterPanel({ roster, onBuy, onRevive, onRename, onMetamorph
     <section className={`army-roster-panel ${embedded ? 'embedded' : ''}`} aria-label="Orden de batalla de Combat Chess">
       <div className="army-roster-heading">
         <div>
-          <span className="army-memorial-kicker">COMBAT CHESS · ORDEN DE BATALLA</span>
-          <h3>Tu ejército</h3>
+          <span className="army-memorial-kicker">{kicker}</span>
+          <h3>{heading}</h3>
         </div>
         <span className="army-roster-count">{deploy.totalRoster} unidades · {deploy.reserveCount} reservas</span>
       </div>
@@ -462,6 +462,8 @@ export default function ArmyScreen({ roster, onBuy, onRevive, onRename, onMetamo
         <button className="piece-info-close" onClick={onClose} aria-label="Cerrar">×</button>
         <ArmyRosterPanel
           roster={roster}
+          heading="Barracón"
+          kicker="COMBAT CHESS · BARRACÓN"
           onBuy={onBuy}
           onRevive={onRevive}
           onRename={onRename}
