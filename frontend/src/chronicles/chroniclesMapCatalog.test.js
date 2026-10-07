@@ -221,6 +221,34 @@ describe('Chronicles declarative map catalog', () => {
     })).toThrow(/invalid wall material V01/i);
   });
 
+  it('repairs stale authored wall masks only for authoritative seeded layouts', () => {
+    const remote = chroniclesValidateMapDefinition({
+      id: 'procedural-room',
+      title: 'Procedural room',
+      grid: ['#####', '#...#', '#.#.#', '#####'],
+      partyStart: { x: 1, y: 1, direction: 1 },
+      initialFlags: {},
+      enemies: [],
+      triggers: [],
+      interactables: [],
+      treasures: [],
+      traps: [],
+      exits: [],
+      initialJournal: { id: 'entry', title: 'Entry', body: 'Entry', sigil: 'I' },
+      introMessage: 'Entry',
+      generation: { kind: 'seeded-layout' },
+      materials: {
+        wallLegend: { 1: 'D01', 2: 'D02' },
+        // The procedural grid grew a wall at 2,2 while this mask still reflects
+        // the authored topology returned by older authoritative envelopes.
+        wallGrid: ['11111', '1...1', '1...1', '11111'],
+      },
+    });
+
+    expect(remote.materials.wallGrid[2][2]).not.toBe('.');
+    expect(['D01', 'D02']).toContain(chroniclesMapWallMaterialIdAt(remote, 2, 2));
+  });
+
   it('rejects transitions to maps that are not part of the catalog contract', () => {
     const source = {
       id: 'transition-room',
