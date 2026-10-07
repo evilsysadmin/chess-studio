@@ -213,6 +213,16 @@ function partyMember(state, memberId) {
   return state.party.find((member) => member.id === memberId) || null;
 }
 
+export function chroniclesPartyAttackStats(state, memberId) {
+  const member = partyMember(state, memberId);
+  if (!member) return { damage: 0, reach: 0 };
+  const modifiers = state?.rpgModifiers?.[memberId] || {};
+  return {
+    damage: Math.max(0, Number(member.damage || 0) + Number(modifiers.attackDamageBonus || 0)),
+    reach: Math.max(1, Number(member.reach || 1) + Number(modifiers.reachBonus || 0)),
+  };
+}
+
 function partyDefeated(state) {
   return state.party.length > 0 && state.party.every((member) => member.hp <= 0);
 }
@@ -296,11 +306,12 @@ function resolveAttack(state, memberId) {
   if (!attacker) return state;
   if (attacker.hp <= 0) return withMessage(state, `${attacker.name} está fuera de combate. Incluso la épica tiene límites médicos.`);
 
-  const target = chroniclesEnemyTargetAhead(state, attacker.reach);
+  const attackStats = chroniclesPartyAttackStats(state, attacker.id);
+  const target = chroniclesEnemyTargetAhead(state, attackStats.reach);
   if (!target) return withMessage(state, `${attacker.name} ejecuta ${attacker.attackName.toLowerCase()} contra absolutamente nada. La nada resiste.`);
 
   const { enemy, distance } = target;
-  const nextHp = Math.max(0, Number(state[enemy.hpKey] || 0) - attacker.damage);
+  const nextHp = Math.max(0, Number(state[enemy.hpKey] || 0) - attackStats.damage);
   if (nextHp === 0) {
     const defeated = rewardForDefeat({ ...state, [enemy.hpKey]: 0, turns: state.turns + 1, message: defeatMessage(attacker, enemy) }, enemy);
     return journalForDefeat(defeated, attacker, enemy);
