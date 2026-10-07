@@ -251,7 +251,7 @@ test('Combat barracks · desktop reads as a veteran roster inside the Operations
   await barracks.locator('.army-unit-tile').nth(1).click();
   await expect(page.locator('.combat-barracks-screen .army-unit-detail')).toBeVisible();
   const dossier = await barracksHealth(page);
-  expect(dossier.dossier?.right || 0).toBeGreaterThanOrEqual(1439);
+  expect(Math.abs((dossier.dossier?.right || 0) - (dossier.shell?.right || 0))).toBeLessThanOrEqual(1);
   expect(dossier.dossier?.width || 0).toBeGreaterThan(480);
   await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-barracks-dossier-desktop-1440x900.png');
 });
