@@ -28,6 +28,18 @@ function add(group, geometry, mat, position = [0, 0, 0], rotation = [0, 0, 0], s
   return node;
 }
 
+function capsule(group, radius, length, mat, position, rotation = [0, 0, 0], scale = null, name = '', segments = 16) {
+  return add(
+    group,
+    new THREE.CapsuleGeometry(radius, length, Math.max(4, Math.round(segments * 0.35)), Math.max(8, segments)),
+    mat,
+    position,
+    rotation,
+    scale,
+    name,
+  );
+}
+
 function lathe(group, profile, mat, segments, name) {
   return add(
     group,
@@ -228,55 +240,149 @@ export function buildChroniclesCharacter(memberId, { coarsePointer = false } = {
 }
 
 export function buildCorruptedPawn({ coarsePointer = false } = {}) {
-  const segments = coarsePointer ? 18 : 30;
+  const segments = coarsePointer ? 14 : 24;
   const root = new THREE.Group();
   root.name = 'chronicles-corrupted-pawn';
   root.userData.chroniclesEnemy = 'corrupted-pawn';
-  const iron = material(0x232629, { metalness: 0.54, roughness: 0.35, clearcoat: 0.18, envMapIntensity: 0.52, specularIntensity: 0.44 });
-  const crust = material(0x322421, { metalness: 0.2, roughness: 0.72 });
-  const scarMetal = material(0x596166, { metalness: 0.72, roughness: 0.34, clearcoat: 0.08 });
-  const glow = material(0x3a0708, { metalness: 0.08, roughness: 0.42, emissive: 0xd0161b, emissiveIntensity: 1.55 });
-  basePlinth(root, crust, iron, segments);
-  lathe(root, [[0.35, 0.34], [0.29, 0.54], [0.27, 0.82], [0.35, 1.06], [0.29, 1.18]], iron, segments, 'corrupted-pawn-body');
-  // Keep corruption on the pawn's visible front instead of wrapping it in a
-  // glowing belt. Three short, uneven fractures make the damage read as broken
-  // armour at gameplay distance. The legacy object name remains on the main
-  // fracture so existing probes/tests keep their stable contract.
-  add(root, new THREE.BoxGeometry(0.3, 0.035, 0.032), glow, [-0.055, 0.77, 0.29], [0, 0, -0.38], null, 'corrupted-pawn-fissure-ring');
-  add(root, new THREE.BoxGeometry(0.18, 0.03, 0.03), glow, [0.12, 0.69, 0.285], [0, 0, 0.62], null, 'corrupted-pawn-waist-fissure-right');
-  add(root, new THREE.BoxGeometry(0.14, 0.028, 0.028), glow, [-0.16, 0.64, 0.275], [0, 0, 0.18], null, 'corrupted-pawn-waist-fissure-left');
-  add(root, new THREE.SphereGeometry(0.31, segments, Math.max(12, segments / 2)), iron, [0, 1.44, 0], [0, 0, 0], [1, 0.92, 0.92], 'corrupted-pawn-head');
-  add(root, new THREE.BoxGeometry(0.08, 0.035, 0.035), glow, [-0.095, 1.47, 0.29], [0, 0, -0.24], null, 'corrupted-pawn-eye-left');
-  add(root, new THREE.BoxGeometry(0.08, 0.035, 0.035), glow, [0.095, 1.47, 0.29], [0, 0, 0.24], null, 'corrupted-pawn-eye-right');
-  add(root, new THREE.ConeGeometry(0.1, 0.44, 7), crust, [-0.26, 1.2, -0.04], [0.1, 0, -0.72], null, 'corrupted-pawn-spike-left');
-  add(root, new THREE.ConeGeometry(0.08, 0.36, 7), crust, [0.28, 1.12, -0.08], [-0.1, 0, 0.82], null, 'corrupted-pawn-spike-right');
-  add(root, new THREE.BoxGeometry(0.05, 0.58, 0.03), glow, [0.03, 0.91, 0.28], [0, 0, -0.12], null, 'corrupted-pawn-chest-fissure');
-  add(root, new THREE.TorusGeometry(0.33, 0.04, 7, segments), scarMetal, [0, 1.08, 0], [Math.PI / 2, 0, 0], null, 'corrupted-pawn-broken-collar');
-  add(root, new THREE.DodecahedronGeometry(0.17, 0), scarMetal, [-0.29, 1.08, 0.01], [0.18, 0, -0.38], [1.25, 0.5, 0.92], 'corrupted-pawn-pauldron-left');
-  add(root, new THREE.DodecahedronGeometry(0.14, 0), scarMetal, [0.3, 1.03, -0.03], [-0.12, 0, 0.44], [1.15, 0.45, 0.85], 'corrupted-pawn-pauldron-right');
-  add(root, new THREE.BoxGeometry(0.28, 0.055, 0.04), glow, [-0.08, 1.2, 0.275], [0, 0, -0.44], null, 'corrupted-pawn-neck-fissure');
-  add(root, new THREE.BoxGeometry(0.38, 0.075, 0.05), scarMetal, [0, 1.34, 0.26], [0, 0, 0], null, 'corrupted-pawn-jaw-guard');
 
-  // A very short cold rim travels with the pawn so the dark iron body has a
-  // readable contour against the crypt. It is deliberately non-shadowing and
-  // restrained: corruption remains red, this light only reveals volume.
-  const silhouetteRim = new THREE.PointLight(
-    0x7899b2,
-    coarsePointer ? 0.5 : 0.78,
-    3.2,
-    2,
-  );
-  silhouetteRim.name = 'corrupted-pawn-silhouette-rim';
-  silhouetteRim.position.set(-0.62, 1.42, -0.42);
-  silhouetteRim.castShadow = false;
-  root.add(silhouetteRim);
+  const blackIron = material(0x171a1d, { metalness: 0.68, roughness: 0.32, clearcoat: 0.12, envMapIntensity: 0.58 });
+  const wornSteel = material(0x4b5358, { metalness: 0.74, roughness: 0.3, clearcoat: 0.08 });
+  const leather = material(0x38261e, { metalness: 0.05, roughness: 0.86 });
+  const cloth = material(0x4a2424, { metalness: 0.02, roughness: 0.9 });
+  const glow = material(0x3a0607, { metalness: 0.05, roughness: 0.36, emissive: 0xe11920, emissiveIntensity: 1.95 });
+
+  // Grounded humanoid mass: overlapping volumes remove the old stacked-chess-piece look.
+  capsule(root, 0.105, 0.24, blackIron, [-0.17, 0.22, 0.02], [0, 0, -0.05], [1.05, 1, 0.9], 'corrupted-pawn-leg-left', segments);
+  capsule(root, 0.105, 0.24, blackIron, [0.17, 0.22, 0.02], [0, 0, 0.05], [1.05, 1, 0.9], 'corrupted-pawn-leg-right', segments);
+  add(root, new THREE.BoxGeometry(0.25, 0.14, 0.34), wornSteel, [-0.17, 0.07, 0.08], [0.03, 0, -0.02], null, 'corrupted-pawn-boot-left');
+  add(root, new THREE.BoxGeometry(0.25, 0.14, 0.34), wornSteel, [0.17, 0.07, 0.08], [0.03, 0, 0.02], null, 'corrupted-pawn-boot-right');
+  capsule(root, 0.29, 0.42, leather, [0, 0.74, -0.015], [0, 0, 0], [1.08, 1, 0.78], 'corrupted-pawn-mail-core', segments);
+  add(root, new THREE.SphereGeometry(0.34, segments, Math.max(10, Math.floor(segments * 0.55))), blackIron, [0, 0.94, 0.03], [0, 0, 0], [1.14, 1.08, 0.72], 'corrupted-pawn-breastplate');
+  add(root, new THREE.BoxGeometry(0.3, 0.54, 0.035), cloth, [0, 0.68, 0.285], [0, 0, 0], null, 'corrupted-pawn-tabard');
+  add(root, new THREE.TorusGeometry(0.29, 0.035, 7, segments), wornSteel, [0, 0.64, 0], [Math.PI / 2, 0, 0], null, 'corrupted-pawn-belt');
+
+  capsule(root, 0.095, 0.34, blackIron, [-0.39, 0.87, 0.015], [0, 0, -0.22], [1, 1, 0.92], 'corrupted-pawn-arm-left', segments);
+  capsule(root, 0.095, 0.34, blackIron, [0.39, 0.87, 0.015], [0, 0, 0.22], [1, 1, 0.92], 'corrupted-pawn-arm-right', segments);
+  add(root, new THREE.DodecahedronGeometry(0.19, 1), wornSteel, [-0.34, 1.08, 0], [0.08, 0, -0.28], [1.22, 0.62, 1], 'corrupted-pawn-pauldron-left');
+  add(root, new THREE.DodecahedronGeometry(0.19, 1), wornSteel, [0.34, 1.08, 0], [-0.08, 0, 0.28], [1.22, 0.62, 1], 'corrupted-pawn-pauldron-right');
+
+  const head = new THREE.Group();
+  head.name = 'corrupted-pawn-head';
+  head.position.set(0, 1.39, 0.015);
+  root.add(head);
+  add(head, new THREE.SphereGeometry(0.255, segments, Math.max(10, Math.floor(segments * 0.55))), blackIron, [0, 0, 0], [0, 0, 0], [1, 0.94, 0.92], 'corrupted-pawn-helmet');
+  add(head, new THREE.BoxGeometry(0.42, 0.12, 0.095), wornSteel, [0, -0.01, 0.205], [0.02, 0, 0], null, 'corrupted-pawn-visor');
+  add(head, new THREE.BoxGeometry(0.28, 0.036, 0.022), glow, [0, 0.005, 0.26], [0, 0, 0], null, 'corrupted-pawn-eye-slit');
+
+  add(root, new THREE.TorusGeometry(0.31, 0.048, 8, segments), wornSteel, [0, 1.18, 0], [Math.PI / 2, 0, 0], null, 'corrupted-pawn-broken-collar');
+  add(root, new THREE.ConeGeometry(0.075, 0.34, 9), wornSteel, [-0.36, 1.18, -0.03], [0.12, 0, -0.7], null, 'corrupted-pawn-spike-left');
+  add(root, new THREE.ConeGeometry(0.075, 0.34, 9), wornSteel, [0.36, 1.18, -0.03], [-0.12, 0, 0.7], null, 'corrupted-pawn-spike-right');
+
+  // Shield + short sword give the pawn a readable footsoldier silhouette.
+  add(root, new THREE.CylinderGeometry(0.31, 0.31, 0.065, segments), blackIron, [-0.5, 0.72, 0.18], [Math.PI / 2, 0, 0.08], [1, 1.08, 1], 'corrupted-pawn-shield');
+  add(root, new THREE.TorusGeometry(0.255, 0.025, 8, segments), wornSteel, [-0.5, 0.72, 0.217], [0, 0, 0.08], null, 'corrupted-pawn-shield-rim');
+  add(root, new THREE.BoxGeometry(0.075, 0.52, 0.055), wornSteel, [0.48, 0.73, 0.06], [0, 0, -0.18], null, 'corrupted-pawn-sword-grip');
+  add(root, new THREE.BoxGeometry(0.075, 0.64, 0.025), wornSteel, [0.56, 1.15, 0.07], [0, 0, -0.18], [0.72, 1, 1], 'corrupted-pawn-sword-blade');
+  add(root, new THREE.BoxGeometry(0.27, 0.04, 0.04), wornSteel, [0.49, 0.95, 0.065], [0, 0, -0.18], null, 'corrupted-pawn-sword-guard');
+
+  add(root, new THREE.BoxGeometry(0.045, 0.42, 0.025), glow, [-0.07, 0.92, 0.275], [0, 0, -0.16], null, 'corrupted-pawn-chest-fissure');
+  add(root, new THREE.BoxGeometry(0.2, 0.032, 0.025), glow, [0.09, 0.78, 0.286], [0, 0, 0.42], null, 'corrupted-pawn-fissure-ring');
 
   root.userData.chroniclesGlowMaterials = [glow];
-  root.userData.chroniclesBaseGlow = 1.7;
+  root.userData.chroniclesBaseGlow = 1.95;
+  root.userData.chroniclesSilhouette = 'corrupted-pawn-armoured-footman';
+  root.userData.chroniclesArtTier = 'premium-threat-v3';
+  root.userData.chroniclesEnemyId = 'corrupted-pawn';
   return root;
 }
 
 export function buildGateJailer({ coarsePointer = false } = {}) {
+  const segments = coarsePointer ? 14 : 24;
+  const root = new THREE.Group();
+  root.name = 'chronicles-gate-jailer';
+  root.userData.chroniclesEnemy = 'gate-jailer';
+
+  const blackIron = material(0x14171a, { metalness: 0.72, roughness: 0.3, clearcoat: 0.12, envMapIntensity: 0.62 });
+  const oldSteel = material(0x555b5f, { metalness: 0.76, roughness: 0.3 });
+  const leather = material(0x33251f, { roughness: 0.86, metalness: 0.03 });
+  const tabard = material(0x4a2222, { roughness: 0.9, metalness: 0.02 });
+  const glow = material(0x3e0706, { roughness: 0.34, emissive: 0xe53622, emissiveIntensity: 2.15 });
+
+  // Massive planted stance, but still recognisably humanoid.
+  capsule(root, 0.145, 0.3, blackIron, [-0.22, 0.24, 0], [0, 0, -0.03], [1.08, 1, 0.95], 'gate-jailer-leg-left', segments);
+  capsule(root, 0.145, 0.3, blackIron, [0.22, 0.24, 0], [0, 0, 0.03], [1.08, 1, 0.95], 'gate-jailer-leg-right', segments);
+  add(root, new THREE.BoxGeometry(0.34, 0.18, 0.42), oldSteel, [-0.22, 0.07, 0.08], [0.02, 0, 0], null, 'gate-jailer-boot-left');
+  add(root, new THREE.BoxGeometry(0.34, 0.18, 0.42), oldSteel, [0.22, 0.07, 0.08], [0.02, 0, 0], null, 'gate-jailer-boot-right');
+
+  capsule(root, 0.39, 0.58, leather, [0, 0.82, -0.03], [0, 0, 0], [1.18, 1, 0.82], 'gate-jailer-mail-core', segments);
+  add(root, new THREE.SphereGeometry(0.47, segments, Math.max(10, Math.floor(segments * 0.55))), blackIron, [0, 1.0, 0], [0, 0, 0], [1.18, 1.06, 0.72], 'gate-jailer-breastplate');
+  add(root, new THREE.BoxGeometry(0.38, 0.72, 0.04), tabard, [0, 0.67, 0.39], [0, 0, 0], null, 'gate-jailer-tabard');
+  add(root, new THREE.TorusGeometry(0.4, 0.052, 8, segments), oldSteel, [0, 0.67, 0], [Math.PI / 2, 0, 0], null, 'gate-jailer-belt');
+
+  add(root, new THREE.DodecahedronGeometry(0.27, 1), oldSteel, [-0.46, 1.12, 0], [0.06, 0, -0.2], [1.34, 0.65, 1.08], 'gate-jailer-pauldron-left');
+  add(root, new THREE.DodecahedronGeometry(0.27, 1), oldSteel, [0.46, 1.12, 0], [-0.06, 0, 0.2], [1.34, 0.65, 1.08], 'gate-jailer-pauldron-right');
+  capsule(root, 0.12, 0.42, blackIron, [-0.52, 0.84, 0.01], [0, 0, -0.16], [1.05, 1, 0.94], 'gate-jailer-arm-left', segments);
+  capsule(root, 0.12, 0.42, blackIron, [0.52, 0.84, 0.01], [0, 0, 0.16], [1.05, 1, 0.94], 'gate-jailer-arm-right', segments);
+
+  const crown = new THREE.Group();
+  crown.name = 'gate-jailer-crown';
+  crown.position.set(0, 1.48, 0);
+  root.add(crown);
+  add(crown, new THREE.CylinderGeometry(0.34, 0.38, 0.38, segments), blackIron, [0, 0, 0], [0, 0, 0], null, 'gate-jailer-helm');
+  add(crown, new THREE.BoxGeometry(0.52, 0.13, 0.1), oldSteel, [0, -0.02, 0.335], [0, 0, 0], null, 'gate-jailer-visor');
+  add(crown, new THREE.BoxGeometry(0.31, 0.038, 0.024), glow, [0, -0.015, 0.39], [0, 0, 0], null, 'gate-jailer-eye-slit');
+  for (let i = 0; i < 6; i += 1) {
+    const angle = (i / 6) * Math.PI * 2;
+    add(crown, new THREE.BoxGeometry(0.14, 0.24, 0.14), oldSteel,
+      [Math.cos(angle) * 0.29, 0.27, Math.sin(angle) * 0.29],
+      [0, -angle, 0], null, 'gate-jailer-crenel-' + i);
+  }
+
+  // Chest grate reads as prison-warden iconography, not floating bars.
+  const portcullis = new THREE.Group();
+  portcullis.name = 'gate-jailer-portcullis';
+  portcullis.position.set(0, 0, 0);
+  root.add(portcullis);
+  [-0.16, 0, 0.16].forEach((x, index) => {
+    add(portcullis, new THREE.BoxGeometry(0.045, 0.5, 0.04), oldSteel, [x, 0.94, 0.405], [0, 0, 0], null, 'gate-jailer-grate-bar-' + index);
+  });
+  add(portcullis, new THREE.BoxGeometry(0.4, 0.045, 0.04), oldSteel, [0, 0.78, 0.405], [0, 0, 0], null, 'gate-jailer-grate-low');
+  add(portcullis, new THREE.BoxGeometry(0.4, 0.045, 0.04), oldSteel, [0, 1.07, 0.405], [0, 0, 0], null, 'gate-jailer-grate-high');
+  add(portcullis, new THREE.SphereGeometry(0.075, 10, 7), glow, [0, 0.92, 0.41], [0, 0, 0], [1.2, 1.55, 0.4], 'gate-jailer-core');
+
+  // Brutal key-cleaver and hanging cage-lantern form the asymmetrical silhouette.
+  const keyBlade = new THREE.Group();
+  keyBlade.name = 'gate-jailer-key-blade';
+  keyBlade.position.set(-0.58, 0.76, 0.02);
+  keyBlade.rotation.z = -0.12;
+  root.add(keyBlade);
+  add(keyBlade, new THREE.CylinderGeometry(0.055, 0.065, 0.78, 8), oldSteel, [0, 0.06, 0], [0, 0, 0], null, 'gate-jailer-cleaver-haft');
+  add(keyBlade, new THREE.BoxGeometry(0.24, 0.56, 0.08), oldSteel, [-0.04, 0.54, 0], [0, 0, -0.06], null, 'gate-jailer-cleaver-blade');
+  add(keyBlade, new THREE.BoxGeometry(0.18, 0.16, 0.09), blackIron, [0.09, 0.72, 0], [0, 0, 0], null, 'gate-jailer-cleaver-tooth');
+
+  const cage = new THREE.Group();
+  cage.position.set(0.58, 0.68, 0.08);
+  root.add(cage);
+  add(cage, new THREE.BoxGeometry(0.34, 0.42, 0.28), blackIron, [0, 0, 0], [0, 0, 0], null, 'gate-jailer-cage-core');
+  [-0.12, 0.12].forEach((x, index) => {
+    add(cage, new THREE.BoxGeometry(0.035, 0.5, 0.035), oldSteel, [x, 0, 0.155], [0, 0, 0], null, 'gate-jailer-cage-bar-' + index);
+  });
+  add(cage, new THREE.SphereGeometry(0.075, 10, 7), glow, [0, 0, 0.18], [0, 0, 0], null, 'gate-jailer-cage-ember');
+
+  for (let i = 0; i < (coarsePointer ? 2 : 4); i += 1) {
+    const link = add(root, new THREE.TorusGeometry(0.1, 0.024, 6, coarsePointer ? 10 : 14), oldSteel,
+      [0.36 + i * 0.055, 1.2 - i * 0.16, -0.16],
+      [Math.PI / 2, 0, i % 2 ? Math.PI / 2 : 0], null, 'gate-jailer-chain-' + i);
+    link.scale.y = 1.25;
+  }
+
+  root.userData.chroniclesGlowMaterials = [glow];
+  root.userData.chroniclesBaseGlow = 2.15;
+  root.userData.chroniclesSilhouette = 'rook-jailer-armoured-warden';
+  root.userData.chroniclesArtTier = 'premium-threat-v3';
+  root.userData.chroniclesEnemyId = 'gate-jailer';
+  return root;
+} = {}) {
   const segments = coarsePointer ? 18 : 30;
   const root = new THREE.Group();
   root.name = 'chronicles-gate-jailer';
