@@ -3,6 +3,7 @@ import { equipmentMarketOffers, mercenaryMarketOffers, unitLevel } from '../comb
 import { BASE_STATS } from '../combat.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { hasAdminPreviewAccess } from '../adminPreview.js';
+import './CombatQuartermasterRoom.css';
 
 const CONTRACTS = Object.freeze([
   { id: 'one', label: '1 batalla', hint: 'refuerzo puntual' },
@@ -36,11 +37,11 @@ export default function CombatMarket({ roster, serviceSummary, onHire, onBuyEqui
   }
 
   return (
-    <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <section className="army-card combat-market" role="dialog" aria-modal="true" aria-labelledby="combat-market-title" onMouseDown={(event) => event.stopPropagation()}>
+    <div className="modal-backdrop combat-quartermaster-screen" data-combat-quartermaster="room" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      <section className="army-card combat-market combat-quartermaster-shell" data-quartermaster-tab={tab} role="dialog" aria-modal="true" aria-labelledby="combat-market-title" onMouseDown={(event) => event.stopPropagation()}>
         <button type="button" className="piece-info-close" onClick={onClose} aria-label="Cerrar mercado">×</button>
         <header className="combat-market-heading">
-          <div><span className="section-label">COMBAT CHESS · ABASTECIMIENTO</span><h2 id="combat-market-title">Mercado táctico</h2><p>{adminPreview ? 'Modo admin: catálogo y compras de prueba abiertos.' : 'Compra una ventaja concreta. Nada de llenar el inventario por llenar.'}</p></div>
+          <div><span className="section-label">COMBAT CHESS · INTENDENCIA</span><h2 id="combat-market-title">Intendencia</h2><p>{adminPreview ? 'Modo admin: contratos y suministros de prueba abiertos.' : 'Contrata refuerzos o equipa una unidad. Pocas decisiones, pero que importen.'}</p></div>
           <div className="combat-market-wallet"><small>{adminPreview ? 'PRUEBA ADMIN' : 'SALDO'}</small><strong>{credits}</strong><span>{adminPreview ? 'sin coste' : 'créditos'}</span></div>
         </header>
 
@@ -52,7 +53,7 @@ export default function CombatMarket({ roster, serviceSummary, onHire, onBuyEqui
         {notice && <p className="combat-market-notice" role="status">✓ {notice}</p>}
 
         {tab === 'mercenaries' ? (
-          <div className="combat-market-grid">
+          <div className="combat-market-grid combat-quartermaster-contract-board">
             {offers.map((offer) => {
               const pieceName = BASE_STATS[offer.type]?.name || 'Unidad';
               const training = offer.strengthPoints || offer.speedPoints
@@ -80,7 +81,7 @@ export default function CombatMarket({ roster, serviceSummary, onHire, onBuyEqui
             })}
           </div>
         ) : (
-          <div className="combat-market-grid equipment-grid">
+          <div className="combat-market-grid equipment-grid combat-quartermaster-arsenal">
             {equipmentOffers.map((item) => {
               const units = eligibleUnits(roster, item, adminPreview);
               const selected = assignment[item.id] || '';
