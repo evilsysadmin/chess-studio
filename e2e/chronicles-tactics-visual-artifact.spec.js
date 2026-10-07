@@ -397,6 +397,8 @@ const AUTHORED_ROOM_VISUAL_CAPTURES = Object.freeze([
   Object.freeze({ mapId: 'gallery-of-forks', slug: 'gallery-of-forks' }),
   Object.freeze({ mapId: 'menagerie-of-ash', slug: 'menagerie-of-ash' }),
   Object.freeze({ mapId: 'echo-cistern', slug: 'echo-cistern' }),
+  Object.freeze({ mapId: 'ash-vault', slug: 'ash-vault' }),
+  Object.freeze({ mapId: 'chain-basilica', slug: 'chain-basilica' }),
 ]);
 
 for (const room of AUTHORED_ROOM_VISUAL_CAPTURES) {
