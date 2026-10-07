@@ -26,7 +26,7 @@
     "enabled": true,
     "targetBytes": 7000000000,
     "softLimitBytes": 7500000000,
-    "minimumAgeDays": 14,
+    "minimumAgeDays": 7,
     "ephemeralMaxAgeDays": 1,
     "keepRollbackPerFamily": 1,
     "keepStagingRevisions": 1,
@@ -46,13 +46,13 @@
         "pointerKey": "pawn-slug-godot/current.json",
         "releasePrefix": "pawn-slug-godot/releases",
         "keepPreviousReleases": 1,
-        "minimumAgeDays": 2
+        "minimumAgeDays": 1
       },
       {
         "pointerKey": "chess-football-godot/current.json",
         "releasePrefix": "chess-football-godot/releases",
         "keepPreviousReleases": 1,
-        "minimumAgeDays": 2
+        "minimumAgeDays": 1
       }
     ]
   }
