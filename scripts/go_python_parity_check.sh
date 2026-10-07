@@ -25,8 +25,7 @@ python scripts/matthias_memory_writes_parity_corpus.py --check
 python scripts/narrative_parity_corpus.py --check
 python scripts/admin_insights_parity_corpus.py --check
 python scripts/pawn_slug_parity_corpus.py --check
-python scripts/chronicles_area_parity_corpus.py --check
-python scripts/chronicles_runs_parity_corpus.py --check
+python scripts/chronicles_contracts.py --check
 python scripts/admin_feedback_parity_corpus.py --check
 python scripts/admin_users_parity_corpus.py --check
 python scripts/admin_observability_parity_corpus.py --check
