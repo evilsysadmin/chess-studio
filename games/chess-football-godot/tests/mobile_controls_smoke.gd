@@ -56,6 +56,43 @@ func _initialize() -> void:
 	assert(not Input.is_action_pressed("sprint"))
 	mobile_runner.debug_set_stamina(100.0)
 
+	# With possession, a tap on open grass on the right half is a contextual
+	# dribble. No extra button: teammate/pass, rival/tackle and goal/shot keep
+	# their existing meanings.
+	var mobile_dribbler: Footballer = match_node.teams[0][3]
+	match_node._select_player(mobile_dribbler)
+	mobile_dribbler.global_position = ChessFootballMath.PITCH_RECT.get_center()
+	mobile_dribbler.velocity = Vector2.ZERO
+	for teammate in match_node.teams[0]:
+		if teammate != mobile_dribbler:
+			teammate.global_position = Vector2(
+				ChessFootballMath.PITCH_RECT.position.x + 180.0,
+				ChessFootballMath.PITCH_RECT.position.y + 180.0 + teammate.squad_index * 90.0,
+			)
+	for opponent in match_node.teams[1]:
+		opponent.global_position = Vector2(
+			ChessFootballMath.PITCH_RECT.end.x - 180.0,
+			ChessFootballMath.PITCH_RECT.end.y - 180.0 - opponent.squad_index * 90.0,
+		)
+	match_node.ball.attach_to(mobile_dribbler)
+	match_node.debug_focus_presentation()
+	var dribble_world_target := mobile_dribbler.global_position + Vector2(180.0, -120.0)
+	var dribble_screen_target: Vector2 = match_node.presentation_3d.screen_position_for_world(
+		dribble_world_target
+	)
+	assert(dribble_screen_target.x > 1280.0 * 0.48)
+	assert(match_node.mobile_touch_target(dribble_screen_target).is_empty())
+	var mobile_dribble_before := mobile_dribbler.global_position
+	assert(controls.debug_touch_down(14, dribble_screen_target))
+	assert(mobile_dribbler.debug_dribble_active())
+	mobile_dribbler.move_human(0.10, Vector2.ZERO, false)
+	match_node.ball.tick_ball(0.0)
+	assert(mobile_dribbler.global_position.x > mobile_dribble_before.x + 15.0)
+	assert(mobile_dribbler.global_position.y < mobile_dribble_before.y - 8.0)
+	assert(match_node.ball.carrier == mobile_dribbler)
+	assert(controls.debug_touch_up(14, dribble_screen_target))
+	mobile_dribbler._process(0.70)
+
 	# A quick teammate tap is still useful, but holding charges the same visible
 	# power meter used by shots and produces a materially stronger pass.
 	var passer: Footballer = match_node.teams[0][2]
