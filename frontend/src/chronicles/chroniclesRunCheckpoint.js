@@ -111,6 +111,24 @@ function normalizedInitiative(value) {
   };
 }
 
+
+function normalizedExplorationAwareness(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value)
+      .slice(0, 64)
+      .flatMap(([enemyId, memory]) => {
+        const id = shortStringOrNull(enemyId, 64);
+        const mode = memory?.mode === 'chase' || memory?.mode === 'search' ? memory.mode : null;
+        const x = integerOrNull(Number(memory?.lastKnown?.x), 0, 9999);
+        const y = integerOrNull(Number(memory?.lastKnown?.y), 0, 9999);
+        const remaining = integerOrNull(Number(memory?.remaining), 0, 8);
+        if (!id || !mode || x === null || y === null || remaining === null) return [];
+        return [[id, { mode, lastKnown: { x, y }, remaining }]];
+      }),
+  );
+}
+
 function runtimeCheckpointFlags(state) {
   const source = state && typeof state === 'object' ? state : {};
   const flags = { [RUNTIME_VERSION_KEY]: RUNTIME_VERSION };
@@ -134,6 +152,10 @@ function runtimeCheckpointFlags(state) {
   if (turnPhase !== null) flags[runtimeKey('turnPhase')] = turnPhase;
   const initiative = normalizedInitiative(source.initiative);
   if (initiative) flags[runtimeKey('initiative')] = JSON.stringify(initiative);
+  const enemyAwareness = normalizedExplorationAwareness(source.enemyExplorationAwareness);
+  if (Object.keys(enemyAwareness).length) {
+    flags[runtimeKey('enemyAwareness')] = JSON.stringify(enemyAwareness);
+  }
 
   (source.party || []).forEach((member) => {
     const memberId = shortStringOrNull(member?.id, 40);
@@ -209,6 +231,16 @@ function applyRuntimeCheckpoint(state, flags) {
       next.initiative = normalizedInitiative(JSON.parse(serializedInitiative));
     } catch {
       next.initiative = null;
+    }
+  }
+  const serializedEnemyAwareness = flags[runtimeKey('enemyAwareness')];
+  if (typeof serializedEnemyAwareness === 'string' && serializedEnemyAwareness.length <= 16384) {
+    try {
+      next.enemyExplorationAwareness = normalizedExplorationAwareness(
+        JSON.parse(serializedEnemyAwareness),
+      );
+    } catch {
+      next.enemyExplorationAwareness = {};
     }
   }
 
