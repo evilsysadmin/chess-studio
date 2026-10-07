@@ -413,10 +413,14 @@
   }
 
   .combat-war-table .deployment-title-row .context-help-btn {
-    width: 36px;
-    min-width: 36px;
-    height: 36px;
-    min-height: 36px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+  }
+
+  .combat-war-table .deployment-war-table-presets > summary {
+    min-height: 44px;
   }
 
   .combat-war-table .deployment-readiness {
