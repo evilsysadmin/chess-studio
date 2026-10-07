@@ -49,6 +49,7 @@ The repository owns an automatic retention policy for the public asset bucket.
 - Soft ceiling: **8.5 GB**.
 - Immutable assets receive a **14-day** grace period.
 - Keep one rollback generation per ordinary content-addressed family.
+- Fully unreferenced content-addressed families age out completely after **45 days**.
 - Keep one staging revision and two runtime revisions per revision journal.
 - Old `_smoke/` objects expire after one day.
 - Prefixes explicitly marked `deprecated/` or `_deprecated/` age out after the grace period unless they are still runtime-pinned.
