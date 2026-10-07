@@ -219,7 +219,7 @@ def validate_resend_bootstrap_topology(root: Path = ROOT) -> None:
     missing = [token for token in required if token not in workflow]
     for token in (
         "resend_bootstrap_required:",
-        "gh workflow run oci-resend-bootstrap.yml",
+        "gh workflow run oci-resend-bootstrap.yml --repo \"$GITHUB_REPOSITORY\"",
         "scripts/staging_deploy_prepare.py",
     ):
         if token not in staging:
