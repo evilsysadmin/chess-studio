@@ -378,22 +378,99 @@ function addSconce(root, x, brass, glow, warmGlass) {
   root.add(sconce);
 }
 
-function addClock(root, brass, dark, wood) {
+function addClock(root, brass, dark, wood, faceMaterial) {
   const clock = new THREE.Group();
   clock.name = 'quick-match-ready-clock';
-  box(clock, [2.12, .74, .66], wood, [0, .38, 0], 'clock-body');
-  box(clock, [1.96, .58, .70], dark, [0, .38, .05], 'clock-face-panel');
-  for (const x of [-.54, .54]) {
-    const face = new THREE.Mesh(new THREE.CylinderGeometry(.25, .25, .05, 32), brass);
+
+  const bodyShape = new THREE.Shape();
+  bodyShape.moveTo(-1.12, 0);
+  bodyShape.lineTo(-1.12, .58);
+  bodyShape.quadraticCurveTo(-1.05, .78, -.82, .82);
+  bodyShape.lineTo(-.30, .82);
+  bodyShape.quadraticCurveTo(0, .92, .30, .82);
+  bodyShape.lineTo(.82, .82);
+  bodyShape.quadraticCurveTo(1.05, .78, 1.12, .58);
+  bodyShape.lineTo(1.12, 0);
+  bodyShape.closePath();
+
+  const housing = new THREE.Mesh(
+    new THREE.ExtrudeGeometry(bodyShape, {
+      depth: .62,
+      bevelEnabled: true,
+      bevelSegments: 2,
+      bevelSize: .045,
+      bevelThickness: .035,
+    }),
+    wood,
+  );
+  housing.position.set(0, .02, -.31);
+  housing.castShadow = true;
+  housing.receiveShadow = true;
+  housing.name = 'clock-walnut-housing';
+  clock.add(housing);
+
+  box(clock, [1.88, .48, .035], dark, [0, .40, .335], 'clock-face-inset');
+
+  for (const [index, x] of [-.54, .54].entries()) {
+    const bezel = new THREE.Mesh(new THREE.CylinderGeometry(.285, .285, .055, 36), brass);
+    bezel.rotation.x = Math.PI / 2;
+    bezel.position.set(x, .41, .375);
+    bezel.name = 'clock-bezel';
+    bezel.castShadow = true;
+    clock.add(bezel);
+
+    const face = new THREE.Mesh(new THREE.CylinderGeometry(.235, .235, .032, 36), faceMaterial);
     face.rotation.x = Math.PI / 2;
-    face.position.set(x, .40, .39);
+    face.position.set(x, .41, .414);
     face.name = 'clock-face';
     clock.add(face);
-    sphere(clock, .025, dark, [x, .40, .425], 'clock-hand-hub', 12, 8);
+
+    sphere(clock, .026, brass, [x, .41, .437], 'clock-hand-hub', 14, 10);
+
+    const minuteHand = box(
+      clock,
+      [.028, .17, .022],
+      dark,
+      [x, .48, .438],
+      'clock-minute-hand',
+    );
+    minuteHand.rotation.z = index === 0 ? -.18 : .14;
+
+    const hourHand = box(
+      clock,
+      [.026, .12, .023],
+      dark,
+      [x + (index === 0 ? .035 : -.03), .40, .439],
+      'clock-hour-hand',
+    );
+    hourHand.rotation.z = index === 0 ? .92 : -.78;
+
+    for (let tick = 0; tick < 12; tick += 1) {
+      const angle = (tick / 12) * Math.PI * 2;
+      const marker = box(
+        clock,
+        [tick % 3 === 0 ? .018 : .012, tick % 3 === 0 ? .050 : .032, .012],
+        dark,
+        [x + Math.sin(angle) * .185, .41 + Math.cos(angle) * .185, .438],
+        'clock-hour-marker',
+      );
+      marker.rotation.z = -angle;
+    }
   }
-  box(clock, [.48, .10, .32], brass, [-.54, .81, 0], 'clock-button-left');
-  box(clock, [.48, .10, .32], brass, [.54, .81, 0], 'clock-button-right');
-  clock.position.set(4.18, 1.48, -1.10);
+
+  box(clock, [1.92, .045, .055], brass, [0, .12, .345], 'clock-brass-line');
+
+  for (const x of [-.54, .54]) {
+    const buttonStem = cylinder(clock, [.055, .065], .16, brass, [x, .89, -.02], 'clock-button-stem', 18);
+    buttonStem.rotation.z = Math.PI / 2;
+    box(clock, [.44, .095, .30], brass, [x, .95, -.02], x < 0 ? 'clock-button-left' : 'clock-button-right');
+  }
+
+  for (const x of [-.86, .86]) {
+    sphere(clock, .075, brass, [x, -.03, .18], 'clock-foot', 16, 10);
+  }
+
+  clock.position.set(4.18, 1.42, -1.10);
   clock.rotation.y = -.09;
   root.add(clock);
 }
@@ -675,7 +752,7 @@ function buildRoom({ lite = false } = {}) {
 
   addBoard(root, lightSquare, darkSquare, brass, woodDark);
   addChessSet(root, ivory, ebony, lite);
-  addClock(root, brass, ebony, woodDark);
+  addClock(root, brass, ebony, woodDark, ivory);
   addChair(root, woodDark, leather, brass);
 
   const rugMaterial = mat(0x421416, .01, .98);
