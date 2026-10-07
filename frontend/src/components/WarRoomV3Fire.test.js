@@ -44,8 +44,13 @@ describe('War Room v3 authored stove fire', () => {
     const release = installWarRoomV3FireAnimation(root);
     flame.onBeforeRender({ userData: { board3DMotionNowMs: 840 } });
 
+    const sprites = root.getObjectByName('war-room-v3-stove-fire-sprites');
     expect(flame.scale.y).toBe(0);
     expect(practical.intensity).toBeLessThan(0.1);
+    expect(sprites).toBeTruthy();
+    expect(sprites.visible).toBe(false);
+    expect(sprites.material.uniforms.uHeight.value).toBe(0);
+    expect(sprites.material.uniforms.uOpacity.value).toBe(0);
 
     release();
   });
@@ -78,7 +83,7 @@ describe('War Room v3 authored stove fire', () => {
     expect(driver.userData.warRoomV3FireDriver).toBe(true);
     expect(driver.scale.y).not.toBe(1);
     expect(practical.intensity).not.toBe(2.3);
-    expect(root.userData.warRoomV3FireAnimation).toBe('authored-flicker-v1');
+    expect(root.userData.warRoomV3FireAnimation).toBe('authored-flicker-v2-hans-dimmer');
 
     release();
     expect(driver.scale.toArray()).toEqual([1, 1, 1]);
