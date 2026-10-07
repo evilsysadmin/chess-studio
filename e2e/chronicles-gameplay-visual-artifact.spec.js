@@ -185,10 +185,18 @@ for (const capture of CAPTURES) {
       const stage = page.locator('.chronicles-stage');
       const gameMenu = page.locator('summary[aria-label="Abrir menú de Chronicles"]');
       await expect(gameRoot).toBeVisible();
-      expect(
-        await page.evaluate(() => document.fullscreenElement),
-        `${capture.label}: Chronicles must not enter browser-native fullscreen`,
-      ).toBeNull();
+      if (!capture.hasTouch) {
+        expect(
+          await page.evaluate(() => document.fullscreenElement),
+          `${capture.label}: desktop Chronicles must not enter browser-native fullscreen`,
+        ).toBeNull();
+      }
+      const landscapeTrigger = page.getByRole('button', { name: 'Activar apaisado', exact: true });
+      if (capture.hasTouch && capture.width < capture.height) {
+        await expect(landscapeTrigger).toBeVisible();
+      } else {
+        await expect(landscapeTrigger).toHaveCount(0);
+      }
       await expect(chroniclesCanvas).toHaveCount(1, { timeout: 20_000 });
       await expect(chroniclesCanvas).toBeVisible();
       await expect(authoredPortrait).toHaveCount(1, { timeout: 20_000 });
@@ -263,10 +271,12 @@ for (const capture of CAPTURES) {
       await expect(automap).toHaveCount(0);
 
       await page.keyboard.press('Escape');
-      expect(
-        await page.evaluate(() => document.fullscreenElement),
-        `${capture.label}: Escape belongs to the Chronicles menu`,
-      ).toBeNull();
+      if (!capture.hasTouch) {
+        expect(
+          await page.evaluate(() => document.fullscreenElement),
+          `${capture.label}: desktop Escape belongs to the Chronicles menu`,
+        ).toBeNull();
+      }
       const openedMenu = page.locator('.chronicles-game-menu[open]');
       await expect(openedMenu).toBeVisible();
       await expect(openedMenu.getByRole('button', { name: 'Continuar', exact: true })).toBeVisible();
