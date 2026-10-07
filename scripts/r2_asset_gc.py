@@ -53,8 +53,9 @@ REASON_PRIORITY = {
     "duplicate-content": 2,
     "stale-staging-revision": 3,
     "stale-runtime-revision": 4,
-    "obsolete-version": 5,
-    "capacity-pressure": 6,
+    "orphaned-family": 5,
+    "obsolete-version": 6,
+    "capacity-pressure": 7,
 }
 
 
@@ -81,6 +82,7 @@ def load_policy(config: dict[str, Any]) -> dict[str, Any]:
 
     _positive_int(policy, "minimumAgeDays", minimum=1)
     _positive_int(policy, "ephemeralMaxAgeDays", minimum=1)
+    _positive_int(policy, "orphanFamilyMaxAgeDays", minimum=1)
     _positive_int(policy, "keepRollbackPerFamily")
     _positive_int(policy, "keepStagingRevisions")
     _positive_int(policy, "keepRuntimeRevisions")
@@ -338,12 +340,19 @@ def plan_cleanup(
         if sha_token(key) and not is_revision(key) and key not in protected:
             hashed_families[family_for(key)].append(item)
     rollback_keep = int(policy["keepRollbackPerFamily"])
-    for group in hashed_families.values():
+    orphan_age = int(policy["orphanFamilyMaxAgeDays"])
+    protected_families = {family_for(key) for key in protected}
+    for family, group in hashed_families.items():
         ordered = sorted(
             group,
             key=lambda item: item["last_modified"] or dt.datetime.min.replace(tzinfo=dt.timezone.utc),
             reverse=True,
         )
+        if family not in protected_families and ordered and old_enough(ordered[0], orphan_age):
+            for item in ordered:
+                if old_enough(item, orphan_age):
+                    mark(item["key"], "orphaned-family")
+            continue
         keep = max(1, rollback_keep)
         for item in ordered[keep:]:
             if old_enough(item):
@@ -509,6 +518,7 @@ def self_test() -> None:
         "softLimitBytes": 8_500,
         "minimumAgeDays": 14,
         "ephemeralMaxAgeDays": 1,
+        "orphanFamilyMaxAgeDays": 45,
         "keepRollbackPerFamily": 1,
         "keepStagingRevisions": 1,
         "keepRuntimeRevisions": 2,
@@ -535,6 +545,7 @@ def self_test() -> None:
         row("_smoke/orphan.txt", 10, 2),
         row("deprecated/atlas-old.webp", 100, 30),
         row("young/runtime/young-dddddddddddddddd.glb", 100, 2),
+        row("retired/atlas/old-eeeeeeeeeeeeeeee.webp", 100, 60),
     ]
     report = plan_cleanup(
         rows,
@@ -551,6 +562,7 @@ def self_test() -> None:
     assert reasons["room/runtime/revisions/sha-3.glb"] == "stale-runtime-revision"
     assert reasons["_smoke/orphan.txt"] == "ephemeral-expired"
     assert reasons["deprecated/atlas-old.webp"] == "deprecated-prefix"
+    assert reasons["retired/atlas/old-eeeeeeeeeeeeeeee.webp"] == "orphaned-family"
     assert "room/runtime/current.glb" not in reasons
     assert "young/runtime/young-dddddddddddddddd.glb" not in reasons
     print("OK r2 retention self-test")
