@@ -395,7 +395,7 @@ def _surface_groups(path: str) -> set[str] | None:
         groups.add("training")
     if any(token in lower for token in (
         "war-room", "warroom", "board3d", "gameboardview", "gamesidecolumn", "game3d",
-        "combatpreparation", "combatoperations", "combatdeployment", "combatbarracks", "armyscreen", "combatmarket", "combatquartermaster",
+        "combatpreparation", "combatoperations", "combatdeployment", "combatbarracks", "armyscreen", "combatmarket", "combatquartermaster", "combatmemorial", "combathonours",
     )):
         groups.add("warroom")
     # Class Room intentionally reuses the shared Board3D renderer. Any Board3D
@@ -1003,6 +1003,10 @@ def self_test() -> None:
         "frontend/src/components/CombatDeploymentWarTable.css",
         "frontend/src/components/ArmyScreen.jsx",
         "frontend/src/components/CombatBarracksRoom.css",
+        "frontend/src/components/CombatHonoursRoom.jsx",
+        "frontend/src/components/CombatHonoursRoom.css",
+        "frontend/src/components/CombatMemorialRoom.jsx",
+        "frontend/src/components/CombatMemorialRoom.css",
         "frontend/src/components/CombatMarket.jsx",
         "frontend/src/components/CombatQuartermasterRoom.css",
         "e2e/war-room-combat-preparation-visual-artifact.spec.js",
