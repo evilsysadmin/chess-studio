@@ -184,18 +184,20 @@ def _pose(animation: str, frame: int) -> dict[str, float]:
     }
     if animation == "idle":
         pose.update(
-            bob=stride * 0.42,
-            crouch=1.15 + lift * 0.55,
-            arm_l=2.8 + stride * 2.2,
-            arm_r=-1.8 - stride * 1.8,
-            leg_l=-2.4 - stride * 1.6,
-            leg_r=2.0 + stride * 1.4,
-            twist=stride * 1.15,
-            head=-stride * 0.30,
-            sway=math.cos(phase) * 0.78,
-            pelvis_roll=stride * 0.85,
-            shoulder_roll=-stride * 0.68,
-            arm_flex=2.8,
+            bob=stride * 0.34,
+            crouch=2.0 + lift * 0.62,
+            arm_l=-3.2 + stride * 2.2,
+            arm_r=4.4 - stride * 2.4,
+            leg_l=-3.8 - stride * 1.5,
+            leg_r=3.2 + stride * 1.6,
+            lift_l=max(0.0, -stride) * 0.85,
+            lift_r=max(0.0, stride) * 0.85,
+            twist=stride * 1.35,
+            head=-stride * 0.38,
+            sway=math.cos(phase) * 0.92,
+            pelvis_roll=stride * 1.18,
+            shoulder_roll=-stride * 0.94,
+            arm_flex=4.2,
         )
     elif animation == "run":
         pose.update(
@@ -420,7 +422,7 @@ def _frame_svg(
         hip_x = cx + side * hip_spread + p["twist"] * (0.13 if far else 0.25)
         leg_hip_y = hip_y + side * p["pelvis_roll"]
         swing_ratio = min(1.0, max(0.0, lift_amount / (12.6 if animation == "sprint" else 8.8))) if locomotion else 0.0
-        foot_x = cx + side * foot_spread + stride * (1.0 - swing_ratio * 0.10)
+        foot_x = cx + side * foot_spread + stride * (1.0 - swing_ratio * 0.16)
         foot_y = foot - lift_amount
         if tackle_action and side < 0.0:
             foot_x += p["tackle_fold"] * 0.42
@@ -432,13 +434,13 @@ def _frame_svg(
             hip_x
             + stride * (0.62 if locomotion else 0.44)
             + (-0.45 if far else 0.75)
-            + (math.copysign(lift_amount * 0.18, stride) if locomotion and abs(stride) > 0.01 else 0.0)
+            + (math.copysign(lift_amount * 0.22, stride) if locomotion and abs(stride) > 0.01 else 0.0)
         )
         knee_y = (
             leg_hip_y
             + 16.5
             - min(abs(stride) * (0.18 if locomotion else 0.15), 5.5)
-            - lift_amount * (0.66 if locomotion else 0.42)
+            - lift_amount * (0.74 if locomotion else 0.42)
         )
         if ball_action and side < 0.0:
             knee_x += p["support_bend"] * 0.72
@@ -474,8 +476,8 @@ def _frame_svg(
         )
         out.append(
             f'<circle cx="{offset_x + knee_x:.2f}" cy="{offset_y + knee_y:.2f}" '
-            f'r="{2.8 * limb_scale:.2f}" fill="{team["head"]}" stroke="{OUTLINE}" '
-            f'stroke-width=".85" opacity="{opacity}"/>'
+            f'r="{2.15 * limb_scale:.2f}" fill="{team["head"]}" stroke="{OUTLINE}" '
+            f'stroke-width=".55" opacity="{opacity}"/>'
         )
         out.append(
             f'<path d="{_path(shin, offset_x, offset_y)}" '
@@ -653,8 +655,8 @@ def _frame_svg(
     )
 
     shorts = [
-        (cx - 12.6 * torso_scale, waist_y - 0.5),
-        (cx + 12.0 * torso_scale, waist_y - 0.5),
+        (cx - 12.6 * torso_scale, waist_y - 0.5 - p["pelvis_roll"] * 0.55),
+        (cx + 12.0 * torso_scale, waist_y - 0.5 + p["pelvis_roll"] * 0.55),
         (cx + 14.2 * hip_scale, base_y + 6.7 + p["pelvis_roll"]),
         (cx + 2.4, base_y + 5.6),
         (cx, base_y + 2.4),
@@ -666,8 +668,8 @@ def _frame_svg(
         f'fill="{team["shorts"]}" stroke="{OUTLINE}" stroke-width="1.35"/>'
     )
     out.append(
-        f'<line x1="{offset_x + cx - 11.6:.2f}" y1="{offset_y + waist_y + 1.9:.2f}" '
-        f'x2="{offset_x + cx + 10.8:.2f}" y2="{offset_y + waist_y + 1.9:.2f}" '
+        f'<line x1="{offset_x + cx - 11.6:.2f}" y1="{offset_y + waist_y + 1.9 - p["pelvis_roll"] * 0.55:.2f}" '
+        f'x2="{offset_x + cx + 10.8:.2f}" y2="{offset_y + waist_y + 1.9 + p["pelvis_roll"] * 0.55:.2f}" '
         f'stroke="{GOLD}" stroke-width="1.15" opacity=".82"/>'
     )
     badge_y = 73.8 - bob + yoff + crouch * 0.40
