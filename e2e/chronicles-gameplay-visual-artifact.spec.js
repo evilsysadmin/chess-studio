@@ -436,6 +436,45 @@ test('Chronicles · Gallery of Forks first-person material proof · desktop-1440
 });
 
 
+test('Chronicles · attack keeps first-person scene visible · desktop-1440x900', async ({ browser }) => {
+  test.setTimeout(180_000);
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await context.newPage();
+  await page.addInitScript(() => {
+    Math.random = () => 0.5;
+  });
+  try {
+    await openChronicles(page, 'attack-stability-desktop-1440x900');
+    const gameRoot = page.locator('[data-chronicles="true"]');
+    const canvas = page.locator('[data-chronicles-renderer="three"] canvas');
+    await expect(canvas).toHaveCount(1, { timeout: 20_000 });
+    await expect(canvas).toBeVisible();
+
+    await page.keyboard.press('2');
+    await page.keyboard.press('Space');
+    await page.keyboard.press('w');
+    await expect(gameRoot).toHaveAttribute('data-chronicles-phase', 'combat');
+    await canvas.evaluate((node) => {
+      node.dataset.chroniclesRendererSentinel = 'stable-before-xp';
+    });
+
+    await page.keyboard.press('Space');
+    await expect(gameRoot).toHaveAttribute('data-chronicles-turns', '3');
+    await expect(canvas).toHaveAttribute('data-chronicles-renderer-sentinel', 'stable-before-xp');
+    await page.waitForTimeout(180);
+    await captureElement(
+      page,
+      gameRoot,
+      `${ARTIFACT_DIR}/chronicles-attack-after-hit-desktop-1440x900.png`,
+    );
+  } finally {
+    await context.close();
+  }
+});
+
+
 for (const capture of CAPTURES) {
   test(`Chronicles · terminal defeat visual · ${capture.label}`, async ({ browser }) => {
     test.setTimeout(180_000);

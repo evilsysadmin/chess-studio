@@ -57,6 +57,11 @@ test('Chronicles creator · recupera el borrador tras F5 sin confirmar progreso'
 });
 
 test('Chronicles of Matthias · abre una cripta Three.js real y usa combate posicional de grupo', async ({ page }) => {
+  // Deterministic initiative: identical d8 rolls leave authored agility in
+  // charge, so Faust acts first once combat starts.
+  await page.addInitScript(() => {
+    Math.random = () => 0.5;
+  });
   await openChronicles(page);
   const mode = page.locator('[data-chronicles="true"]');
   const stage = mode.locator('[data-chronicles-renderer="three"]');
@@ -94,6 +99,18 @@ test('Chronicles of Matthias · abre una cripta Three.js real y usa combate posi
   await expect(mode).toHaveAttribute('data-chronicles-turns', '2');
   await expect(mode).toHaveAttribute('data-chronicles-phase', 'combat');
   await expect(mode).toHaveAttribute('data-chronicles-initiative-die', '1d8');
+
+  // A real damaging attack awards persistent XP. That progression update must
+  // not tear down/recreate the Three.js renderer: doing so blanks the viewport.
+  const canvas = stage.locator('canvas');
+  await canvas.evaluate((node) => {
+    node.dataset.chroniclesRendererSentinel = 'stable-before-xp';
+  });
+  await page.keyboard.press('Space');
+  await expect(mode).toHaveAttribute('data-chronicles-turns', '3');
+  await expect(canvas).toHaveCount(1);
+  await expect(canvas).toHaveAttribute('data-chronicles-renderer-sentinel', 'stable-before-xp');
+  await expect(mode.locator('.chronicles-renderer-error')).toHaveCount(0);
 });
 
 test('Chronicles of Matthias · clic en un PJ abre una ficha RPG con retrato authored y pausa el mundo', async ({ page }) => {
