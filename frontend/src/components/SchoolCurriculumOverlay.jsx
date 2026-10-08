@@ -1,3 +1,5 @@
+import './SchoolTopicExplorer.css';
+import './SchoolCurriculumOverlay.css';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import SchoolTopicExplorer from './SchoolTopicExplorer.jsx';
 import {
