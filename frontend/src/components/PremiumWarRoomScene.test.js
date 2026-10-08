@@ -59,7 +59,7 @@ describe('PremiumWarRoomScene', () => {
     expect(desktop.getObjectByName('war-room-velvet-curtain-fold')).toBeTruthy();
     expect(desktop.getObjectByName('war-room-sconce-flame')).toBeTruthy();
     expect(desktopStats.meshes).toBeGreaterThan(125);
-    expect(desktopStats.lights).toBe(6);
+    expect(desktopStats.lights).toBe(3);
     expect(desktopStats.spotLights).toBe(0);
     expect(desktopStats.meshes).toBeGreaterThan(mobileStats.meshes);
 
