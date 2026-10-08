@@ -51,13 +51,22 @@ static func _canonical_run_texture(team_id: int) -> Texture2D:
 	assert(not encoded.is_empty(), "Canonical run atlas vacío")
 	var bytes := Marshalls.base64_to_raw(encoded)
 	var hash := HashingContext.new()
-	assert(hash.start(HashingContext.HASH_SHA256) == OK, "No se pudo iniciar SHA-256")
-	assert(hash.update(bytes) == OK, "No se pudo hashear canonical run")
-	assert(hash.finish().hex_encode() == String(meta["sha256"]), "Canonical run SHA-256 inválido")
+	# Never perform required work inside assert(): release Web exports strip assertions.
+	var hash_start := hash.start(HashingContext.HASH_SHA256)
+	assert(hash_start == OK, "No se pudo iniciar SHA-256")
+	var hash_update := hash.update(bytes)
+	assert(hash_update == OK, "No se pudo hashear canonical run")
+	var digest := hash.finish().hex_encode()
+	assert(digest == String(meta["sha256"]), "Canonical run SHA-256 inválido")
 	var image := Image.new()
-	assert(image.load_png_from_buffer(bytes) == OK, "Canonical run PNG inválido")
+	var decode_result := image.load_png_from_buffer(bytes)
+	assert(decode_result == OK, "Canonical run PNG inválido")
+	if decode_result != OK:
+		push_error("Chess Football: cannot decode canonical run PNG; Web export may be missing .b64 assets")
+		return null
 	_recolor_canonical_run(image, team_id)
-	assert(image.generate_mipmaps() == OK, "No se pudieron generar mipmaps del canonical run")
+	var mipmap_result := image.generate_mipmaps()
+	assert(mipmap_result == OK, "No se pudieron generar mipmaps del canonical run")
 	var texture := ImageTexture.create_from_image(image)
 	_cached_run_textures[key] = texture
 	return texture
