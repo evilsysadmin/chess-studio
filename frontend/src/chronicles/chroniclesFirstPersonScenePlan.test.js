@@ -39,6 +39,8 @@ describe('Chronicles first-person runtime scene plan', () => {
     const gallery = chroniclesFirstPersonScenePlan({ mapId: 'gallery-of-forks' });
 
     expect(crypt.useAuthoredCryptDressing).toBe(true);
+    expect(crypt.regionKind).toBe('dungeon');
+    expect(crypt.isSafeZone).toBe(false);
     expect(gallery.useAuthoredCryptDressing).toBe(false);
   });
 
