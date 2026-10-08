@@ -293,6 +293,7 @@ func _build_player_proxies() -> void:
 				player.team_id,
 				player.role,
 				player.squad_index,
+				true,
 			)
 			sprite.centered = true
 			sprite.pixel_size = PLAYER_PIXEL_SIZE
