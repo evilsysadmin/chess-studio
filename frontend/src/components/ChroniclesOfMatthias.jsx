@@ -21,6 +21,7 @@ import { chroniclesDeployedPartyLevel } from '../chronicles/chroniclesDifficulty
 import { playChroniclesActionSound } from '../chronicles/chroniclesActionAudio.js';
 import { chroniclesPartyPortraitUrl } from '../chronicles/chroniclesPartyPortraitAssets.js';
 import { chroniclesClearRuntimeMapDefinitions } from '../chronicles/chroniclesMapCatalog.js';
+import { chroniclesGridExplorationStep } from '../chronicles/chroniclesGridExplorationStep.js';
 import { chroniclesCheckpointState } from '../chronicles/chroniclesRunClient.js';
 import {
   chroniclesApplyRunCheckpoint,
@@ -260,7 +261,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
 
     let next;
     if (!current.initiative) {
-      const exploratoryNext = actionType === 'attack' ? current : chroniclesReduce(current, action);
+      const exploratoryNext = actionType === 'attack' ? current : chroniclesGridExplorationStep(current, action);
       const attackingMember = actionType === 'attack' && typeof action === 'object'
         ? current.party.find((member) => member.id === action.memberId)
         : null;
@@ -366,20 +367,6 @@ export default function ChroniclesOfMatthias({ onExit }) {
     dispatch(action);
     if (current.initiative) return;
 
-    touchHoldRef.current.delayId = window.setTimeout(() => {
-      const repeat = () => {
-        const latest = stateRef.current;
-        if (!latest || latest.initiative || latest.phase === 'defeated' || latest.phase === 'escaped') {
-          clearTouchHold();
-          return false;
-        }
-        dispatch(action);
-        return true;
-      };
-
-      if (!repeat()) return;
-      touchHoldRef.current.repeatId = window.setInterval(repeat, 150);
-    }, 280);
   }, [clearTouchHold, dispatch]);
 
   const activateTouchAction = useCallback((action, event) => {
@@ -690,6 +677,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
       const action = KEY_ACTIONS[event.key];
       if (!action) return;
       event.preventDefault();
+      if (event.repeat) return; // discrete grid step, independent of OS repeat rate
       dispatch(action);
     };
     window.addEventListener('keydown', onKeyDown, { passive: false });
