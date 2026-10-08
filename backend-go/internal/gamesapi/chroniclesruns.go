@@ -558,6 +558,14 @@ func dungeonLevelOf(run bson.D) int64 {
 	return n
 }
 
+func dungeonTopologyVersionOf(run bson.D) int64 {
+	n, err := pyval.Int(lookupOr(run, "dungeonTopologyVersion", int64(0)))
+	if err != nil || n < 0 {
+		return 0
+	}
+	return n
+}
+
 // areaErr maps chronicles_area_envelope's HTTPExceptions.
 func areaErr(err error) error {
 	switch {
@@ -582,7 +590,7 @@ func routeStore(route *chronicles.RouteSnapshot) *chroniclesrun.Route {
 func bootstrap(run bson.D, route *chronicles.RouteSnapshot) (bson.D, error) {
 	opts := chronicles.AreaOptions{
 		Route: route, PlannerSnapshot: lookupOr(run, "plannerSnapshot", nil),
-		PartyLevel: int64Ptr(lookupOr(run, "partyLevel", nil)), DungeonLevel: dungeonLevelOf(run), PlacementVersion: placementOf(run),
+		PartyLevel: int64Ptr(lookupOr(run, "partyLevel", nil)), DungeonLevel: dungeonLevelOf(run), TopologyVersion: dungeonTopologyVersionOf(run), PlacementVersion: placementOf(run),
 	}
 	currentMapID := lookupOr(run, "currentMapId", nil)
 	areas := bson.A{}
@@ -686,7 +694,8 @@ func (h *ChroniclesRunsHandler) create(ctx context.Context, r *http.Request, use
 		selected = *mapID
 	}
 	placement := int64(chronicles.ContentPlacementVersion)
-	area, err := chronicles.AreaEnvelope(selected, seed, chronicles.AreaOptions{Route: route, PartyLevel: partyLevel, DungeonLevel: dungeonLevel, PlacementVersion: int(placement)})
+	topologyVersion := int64(chronicles.DungeonTopologyVersion)
+	area, err := chronicles.AreaEnvelope(selected, seed, chronicles.AreaOptions{Route: route, PartyLevel: partyLevel, DungeonLevel: dungeonLevel, TopologyVersion: topologyVersion, PlacementVersion: int(placement)})
 	if err != nil {
 		return nil, areaErr(err)
 	}
@@ -695,7 +704,7 @@ func (h *ChroniclesRunsHandler) create(ctx context.Context, r *http.Request, use
 	run, err := h.runs.Create(ctx, chroniclesrun.NewRun{
 		RunID: runID, Owner: username, Seed: seed, MapID: selected, ContentVersion: contentVersion,
 		ManifestRevision: revision, Fingerprint: fingerprint, Route: routeStore(route),
-		PartyLevel: partyLevel, DungeonLevel: &dungeonLevel, PlacementVersion: &placement, Now: h.base.now().UTC(),
+		PartyLevel: partyLevel, DungeonLevel: &dungeonLevel, DungeonTopologyVersion: &topologyVersion, PlacementVersion: &placement, Now: h.base.now().UTC(),
 	})
 	if err != nil {
 		return nil, conflict(err)
@@ -720,7 +729,7 @@ func (h *ChroniclesRunsHandler) checkpoint(ctx context.Context, username, runID 
 		return nil, err
 	}
 	planner := lookupOr(run, "plannerSnapshot", nil)
-	opts := chronicles.AreaOptions{Route: route, PlannerSnapshot: planner, PartyLevel: int64Ptr(lookupOr(run, "partyLevel", nil)), DungeonLevel: dungeonLevelOf(run), PlacementVersion: placementOf(run)}
+	opts := chronicles.AreaOptions{Route: route, PlannerSnapshot: planner, PartyLevel: int64Ptr(lookupOr(run, "partyLevel", nil)), DungeonLevel: dungeonLevelOf(run), TopologyVersion: dungeonTopologyVersionOf(run), PlacementVersion: placementOf(run)}
 	currentMapID, _ := lookupOr(run, "currentMapId", "").(string)
 	current, err := chronicles.AreaEnvelope(currentMapID, runSeed(run), opts)
 	if err != nil {
