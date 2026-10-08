@@ -1184,6 +1184,31 @@ function buildRoom({ lite = false } = {}) {
     box(root, [.055, .025, 7.44], rugTrim, [x, -.02, -1.28], 'quick-match-ready-rug-border');
   }
 
+  if (!lite) {
+    const medallion = new THREE.Mesh(
+      new THREE.RingGeometry(.66, .73, 4),
+      rugTrim,
+    );
+    medallion.rotation.x = -Math.PI / 2;
+    medallion.rotation.z = Math.PI / 4;
+    medallion.scale.set(1.42, 1, .92);
+    medallion.position.set(0, -.014, 1.63);
+    medallion.name = 'quick-match-ready-rug-medallion';
+    root.add(medallion);
+
+    const innerMedallion = new THREE.Mesh(
+      new THREE.RingGeometry(.26, .31, 4),
+      rugTrim,
+    );
+    innerMedallion.rotation.x = -Math.PI / 2;
+    innerMedallion.rotation.z = Math.PI / 4;
+    innerMedallion.scale.set(1.42, 1, .92);
+    innerMedallion.position.set(0, -.013, 1.63);
+    innerMedallion.name = 'quick-match-ready-rug-medallion-inner';
+    root.add(innerMedallion);
+
+  }
+
   return root;
 }
 

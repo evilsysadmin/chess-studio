@@ -144,26 +144,32 @@
   grid-column: 2;
   grid-row: 3;
   align-self: end;
+  justify-self: start;
   position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 136px;
+  align-items: center;
+  gap: 0 .55rem;
+  width: min(100%, 430px);
   min-width: 0;
-  padding: .68rem .18rem .12rem;
+  padding: 0;
   border: 0;
-  border-top: 1px solid rgba(226, 184, 103, .34);
-  border-radius: 0;
-  background:
-    linear-gradient(180deg, rgba(32, 21, 13, .18), transparent 72%);
+  background: transparent;
   box-shadow: none;
   backdrop-filter: none;
+  transform: translateX(clamp(-6rem, -6vw, -3.2rem));
 }
 
 .quick-match-ready-room__summary {
   pointer-events: none;
+  grid-column: 1 / -1;
   display: flex;
   flex-wrap: wrap;
-  gap: .28rem .42rem;
-  margin: 0 0 .72rem;
-  color: rgba(244, 229, 202, .86);
-  font: 600 .78rem/1.35 var(--font-body);
+  gap: .24rem .38rem;
+  margin: 0 0 .48rem;
+  padding-left: .25rem;
+  color: rgba(244, 229, 202, .76);
+  font: 600 .72rem/1.35 var(--font-body);
 }
 
 .quick-match-ready-room__summary > span:nth-child(even) {
@@ -176,19 +182,20 @@
 
 .friendly-modal.quick-match-ready-room[aria-label='Configurar partida rápida'] .quick-match-ready-room__play {
   width: 100%;
-  min-height: 62px !important;
+  min-height: 52px !important;
   margin: 0;
-  border-color: rgba(244, 205, 122, .84);
-  border-radius: 8px;
+  border: 1px solid rgba(236, 194, 108, .74);
+  border-radius: 4px;
   background:
-    linear-gradient(180deg, rgba(187, 137, 53, .99), rgba(101, 61, 23, .99));
-  color: #fff2d2;
+    linear-gradient(90deg, rgba(86, 52, 18, .98), rgba(158, 108, 37, .98) 22%, rgba(183, 132, 49, .98) 52%, rgba(112, 69, 22, .98));
+  color: #fff0ce;
   box-shadow:
-    0 13px 30px rgba(0, 0, 0, .38),
-    inset 0 1px rgba(255, 240, 195, .26),
-    0 0 30px rgba(211, 151, 52, .11);
-  font: 700 1.08rem/1 Georgia, 'Times New Roman', serif;
-  letter-spacing: .025em;
+    0 9px 18px rgba(0, 0, 0, .32),
+    inset 0 1px rgba(255, 239, 194, .28),
+    inset 0 -1px rgba(44, 25, 8, .48);
+  text-shadow: 0 1px 2px rgba(38, 21, 6, .78);
+  font: 700 1rem/1 Georgia, 'Times New Roman', serif;
+  letter-spacing: .02em;
 }
 
 .friendly-modal.quick-match-ready-room[aria-label='Configurar partida rápida'] .quick-match-ready-room__play:hover:not(:disabled) {
@@ -197,17 +204,25 @@
 }
 
 .friendly-modal.quick-match-ready-room[aria-label='Configurar partida rápida'] .quick-match-ready-room__settings {
-  margin: .35rem 0 0;
+  margin: 0;
   border: 0;
   background: transparent;
 }
 
 .friendly-modal.quick-match-ready-room[aria-label='Configurar partida rápida'] .quick-match-ready-room__settings > summary {
   justify-content: center;
-  min-height: 44px !important;
-  padding: .25rem .2rem 0;
-  color: rgba(238, 218, 179, .78);
-  font-size: .76rem;
+  min-height: 52px !important;
+  padding: .35rem .72rem;
+  border: 1px solid rgba(220, 174, 89, .28);
+  border-radius: 4px;
+  background: rgba(19, 13, 9, .56);
+  color: rgba(245, 224, 185, .92);
+  box-shadow: inset 0 1px rgba(255, 236, 192, .04);
+  font-size: .8rem;
+  font-weight: 650;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
   text-align: center;
 }
 
@@ -360,8 +375,14 @@
 
   .quick-match-ready-room__launch {
     order: 1;
+    display: block;
     width: 100%;
     padding: .18rem 0 0;
+    transform: none;
+  }
+
+  .friendly-modal.quick-match-ready-room[aria-label='Configurar partida rápida'] .quick-match-ready-room__settings {
+    margin-top: .35rem;
   }
 
   .friendly-modal.quick-match-ready-room[aria-label='Configurar partida rápida'] .quick-match-ready-room__play {
@@ -425,5 +446,15 @@
   .quick-match-ready-room__scene {
     top: 28dvh;
     height: 59dvh;
+  }
+}
+
+@media (min-width: 821px) {
+  .friendly-modal.quick-match-ready-room[aria-label='Configurar partida rápida'] .quick-match-ready-room__settings > summary {
+    width: 136px;
+  }
+
+  .friendly-modal.quick-match-ready-room[aria-label='Configurar partida rápida'] .quick-match-ready-room__settings > summary::marker {
+    font-size: .7em;
   }
 }
