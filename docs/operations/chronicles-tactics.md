@@ -81,7 +81,7 @@ Chronicles usa niveles explícitos de mazmorra, no “Books”, como progresión
 - La longitud de ruta aumenta de forma acotada: Nivel 1 = 3 áreas, Nivel 2 = 4, Nivel 3 = 5 y Nivel 4+ = 6 áreas como máximo con el catálogo actual.
 - El nivel añade profundidad efectiva de dificultad desde la primera zona, además del incremento natural por avanzar dentro de la ruta. La dificultad authored y EnemyBuild siguen mandando sobre identidad y reglas.
 - La UI debe hablar de “Nivel 1”, “Nivel 2”, etc. No exponer “Book I” ni acciones del tipo “Reabrir Book I”.
-- Un nivel posterior ya es más largo y más difícil en este corte. La complejidad procedural de topología se conectará al mismo `dungeonLevel` en su PR propietaria; no debe inventar un segundo sistema de progresión.
+- Un nivel posterior usa el mismo `dungeonLevel` para ruta, combate y topología. La run fija también `dungeonTopologyVersion`: las runs legacy conservan la topología anterior y las nuevas endurecen de forma acotada la dificultad procedural.
 
 ## Dificultad autoritativa de encuentro
 
