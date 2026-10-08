@@ -1044,7 +1044,7 @@ function buildRoom({ lite = false } = {}) {
   const leather = mat(0x542521, .05, .66);
   const steel = mat(0x8d9396, .74, .27);
   const ivory = mat(0xd8cfba, .06, .42);
-  const ebony = mat(0x2d2b2b, .30, .30);
+  const ebony = mat(0x3c3734, .22, .36);
   const lightSquare = mat(0xd7ccb6, .04, .62);
   const darkSquare = mat(0x4b4037, .06, .56);
 
