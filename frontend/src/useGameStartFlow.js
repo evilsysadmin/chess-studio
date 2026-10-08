@@ -1,4 +1,4 @@
-import { saveActiveGameSession, setActiveGameSessionVisible } from './activeGameSession.js';
+import { primeActiveGameSession } from './activeGameSession.js';
 import { api } from './api.js';
 import { isAbortError } from './asyncControl.js';
 import {
@@ -48,17 +48,6 @@ export function labContextFromMeta(meta = {}) {
     nemesisOpening: meta.nemesisOpening || null,
     sourceRecordId: meta.sourceRecord?.id || null,
   };
-}
-
-function primeGameSession(game, gameContext, learningMode = false, timeControlId = null) {
-  const saved = saveActiveGameSession({
-    route: 'game',
-    game,
-    learningMode,
-    gameContext,
-    timeControlId,
-  });
-  setActiveGameSessionVisible(saved ? 'game' : null);
 }
 
 export function useGameStartFlow({
@@ -137,7 +126,7 @@ export function useGameStartFlow({
         series(null);
       }
 
-      primeGameSession(created, nextContext, isLearning, nextTimeControl.id);
+      primeActiveGameSession(created, nextContext, isLearning, nextTimeControl.id);
       setGame(created);
       saved(true);
       navigate('game');
@@ -195,7 +184,7 @@ export function useGameStartFlow({
       learning(false);
       const nextTimeControl = timeControlById(updatedSeries.timeControlId);
       timeControl(nextTimeControl);
-      primeGameSession(
+      primeActiveGameSession(
         created,
         gameContextFromOptions({ adaptiveDifficulty: updatedSeries.adaptiveDifficulty }),
         false,
@@ -247,7 +236,7 @@ export function useGameStartFlow({
       context(nextContext);
       learning(true);
       timeControl(null);
-      primeGameSession(created, nextContext, true);
+      primeActiveGameSession(created, nextContext, true);
       setGame(created);
       saved(true);
       navigate('game');
@@ -295,7 +284,7 @@ export function useGameStartFlow({
       learning(false);
       const nextTimeControl = timeControlById('5+0');
       timeControl(nextTimeControl);
-      primeGameSession(created, nextContext, false, nextTimeControl.id);
+      primeActiveGameSession(created, nextContext, false, nextTimeControl.id);
       setGame(created);
       saved(true);
       navigate('game');
