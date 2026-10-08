@@ -4,7 +4,9 @@ import { chroniclesGridExplorationStep } from './chroniclesGridExplorationStep.j
 vi.mock('../chroniclesOfMatthias.js', () => ({
   chroniclesReduce: vi.fn((state, action) => action === 'forward'
     ? { ...state, x: state.x + 1 }
-    : { ...state, direction: (state.direction + 1) % 4 }),
+    : action === 'blocked'
+      ? { ...state, message: 'pared' }
+      : { ...state, direction: (state.direction + 1) % 4 }),
   chroniclesActiveEnemies: vi.fn(() => [{ id: 'sentinel' }]),
 }));
 vi.mock('../chroniclesOfMatthiasTurns.js', () => ({
@@ -25,6 +27,11 @@ describe('one party tile, one enemy move', () => {
   });
   it('does not activate an enemy for turning in place', () => {
     expect(chroniclesGridExplorationStep(state, 'turn-right').enemyPositions).toEqual(state.enemyPositions);
+  });
+  it('never moves an enemy after a blocked step', () => {
+    const blocked = chroniclesGridExplorationStep(state, 'blocked');
+    expect(blocked.enemyPositions).toEqual(state.enemyPositions);
+    expect(blocked.message).toBe('pared');
   });
   it('does not grant exploration movement during initiative combat', () => {
     const combat = { ...state, phase: 'combat' };
