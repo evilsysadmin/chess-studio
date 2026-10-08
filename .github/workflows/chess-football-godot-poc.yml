@@ -75,7 +75,15 @@ jobs:
           from pathlib import Path
 
           manifest = Path("games/chess-football-godot/assets/players/manifest.json").read_text(encoding="utf-8")
-          encoded = Path("games/chess-football-godot/assets/players/run_canon/canonical_run_v1.png.b64").read_text(encoding="utf-8").strip()
+          root = Path("games/chess-football-godot/assets/players/run_canon")
+          encoded = "".join(
+              (root / name).read_text(encoding="utf-8").strip()
+              for name in (
+                  "canonical_run_v1.part00.b64",
+                  "canonical_run_v1.part01.b64",
+                  "canonical_run_v1.part02.b64",
+              )
+          )
           payload = base64.b64decode(encoded, validate=True)
           digest = hashlib.sha256(payload).hexdigest()
           expected = "62e6b26f5cfc11ccf94ae93c643659a51695baf53c4511366bddfdd6692d234c"
