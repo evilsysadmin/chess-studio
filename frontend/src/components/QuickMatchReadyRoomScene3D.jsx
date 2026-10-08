@@ -177,18 +177,60 @@ function addBoard(root, lightSquare, darkSquare, trim, woodDark) {
   return board;
 }
 
+function lathePiecePart(group, points, material, scale, position, name, segments = 28) {
+  const geometry = new THREE.LatheGeometry(
+    points.map(([radius, y]) => new THREE.Vector2(radius * scale, y * scale)),
+    segments,
+  );
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.position.set(...position);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.name = name;
+  group.add(mesh);
+  return mesh;
+}
+
 function addPieceBase(group, material, scale) {
-  cylinder(group, [.29 * scale, .36 * scale], .09 * scale, material, [0, .045 * scale, 0], 'piece-base', 28);
-  cylinder(group, [.24 * scale, .29 * scale], .08 * scale, material, [0, .125 * scale, 0], 'piece-plinth', 28);
+  lathePiecePart(
+    group,
+    [
+      [.36, 0],
+      [.37, .035],
+      [.35, .075],
+      [.30, .115],
+      [.29, .155],
+      [.24, .19],
+    ],
+    material,
+    scale,
+    [0, 0, 0],
+    'piece-turned-base',
+    30,
+  );
 }
 
 function addPawnPiece(root, x, z, material, scale = 1) {
   const piece = new THREE.Group();
   piece.name = 'ready-room-piece pawn';
   addPieceBase(piece, material, scale);
-  cylinder(piece, [.13 * scale, .20 * scale], .30 * scale, material, [0, .31 * scale, 0], 'piece-body', 24);
-  cylinder(piece, [.12 * scale, .14 * scale], .08 * scale, material, [0, .49 * scale, 0], 'piece-collar', 24);
-  sphere(piece, .16 * scale, material, [0, .66 * scale, 0], 'piece-head', 24, 16);
+  lathePiecePart(
+    piece,
+    [
+      [.20, .18],
+      [.18, .24],
+      [.145, .34],
+      [.13, .43],
+      [.145, .50],
+      [.12, .54],
+    ],
+    material,
+    scale,
+    [0, 0, 0],
+    'piece-pawn-stem',
+    28,
+  );
+  sphere(piece, .165 * scale, material, [0, .69 * scale, 0], 'piece-head', 28, 18);
   piece.position.set(x, 1.61, z);
   root.add(piece);
 }
@@ -197,13 +239,33 @@ function addRookPiece(root, x, z, material, scale = 1) {
   const piece = new THREE.Group();
   piece.name = 'ready-room-piece rook';
   addPieceBase(piece, material, scale);
-  cylinder(piece, [.18 * scale, .23 * scale], .36 * scale, material, [0, .36 * scale, 0], 'piece-body', 24);
-  cylinder(piece, [.27 * scale, .20 * scale], .12 * scale, material, [0, .60 * scale, 0], 'piece-rook-crown', 24);
-  for (let i = 0; i < 4; i += 1) {
-    const battlement = box(piece, [.13 * scale, .12 * scale, .14 * scale], material, [0, .71 * scale, .20 * scale], 'piece-rook-battlement');
-    battlement.rotation.y = i * Math.PI / 2;
-    battlement.position.x = Math.sin(i * Math.PI / 2) * .20 * scale;
-    battlement.position.z = Math.cos(i * Math.PI / 2) * .20 * scale;
+  lathePiecePart(
+    piece,
+    [
+      [.23, .18],
+      [.20, .25],
+      [.16, .38],
+      [.17, .50],
+      [.21, .58],
+      [.25, .62],
+    ],
+    material,
+    scale,
+    [0, 0, 0],
+    'piece-rook-body',
+    28,
+  );
+  cylinder(piece, [.29 * scale, .25 * scale], .13 * scale, material, [0, .68 * scale, 0], 'piece-rook-crown', 28);
+  for (let i = 0; i < 6; i += 1) {
+    const angle = (i / 6) * Math.PI * 2;
+    const battlement = box(
+      piece,
+      [.105 * scale, .14 * scale, .12 * scale],
+      material,
+      [Math.sin(angle) * .225 * scale, .80 * scale, Math.cos(angle) * .225 * scale],
+      'piece-rook-battlement',
+    );
+    battlement.rotation.y = angle;
   }
   piece.position.set(x, 1.61, z);
   root.add(piece);
@@ -213,14 +275,26 @@ function addBishopPiece(root, x, z, material, scale = 1) {
   const piece = new THREE.Group();
   piece.name = 'ready-room-piece bishop';
   addPieceBase(piece, material, scale);
-  cylinder(piece, [.12 * scale, .23 * scale], .43 * scale, material, [0, .38 * scale, 0], 'piece-body', 28);
-  cylinder(piece, [.16 * scale, .12 * scale], .08 * scale, material, [0, .62 * scale, 0], 'piece-collar', 28);
-  const mitre = new THREE.Mesh(new THREE.ConeGeometry(.18 * scale, .34 * scale, 28), material);
-  mitre.position.y = .82 * scale;
-  mitre.castShadow = true;
-  mitre.name = 'piece-bishop-mitre';
-  piece.add(mitre);
-  sphere(piece, .055 * scale, material, [0, 1.00 * scale, 0], 'piece-bishop-finial', 18, 12);
+  lathePiecePart(
+    piece,
+    [
+      [.23, .18],
+      [.20, .27],
+      [.145, .43],
+      [.13, .56],
+      [.17, .64],
+      [.14, .70],
+      [.11, .78],
+      [.07, .91],
+      [.018, 1.02],
+    ],
+    material,
+    scale,
+    [0, 0, 0],
+    'piece-bishop-profile',
+    30,
+  );
+  sphere(piece, .05 * scale, material, [0, 1.055 * scale, 0], 'piece-bishop-finial', 18, 12);
   piece.position.set(x, 1.61, z);
   root.add(piece);
 }
@@ -229,36 +303,75 @@ function addKnightPiece(root, x, z, material, scale = 1, facing = 1) {
   const piece = new THREE.Group();
   piece.name = 'ready-room-piece knight';
   addPieceBase(piece, material, scale);
-  cylinder(piece, [.15 * scale, .23 * scale], .28 * scale, material, [0, .32 * scale, 0], 'piece-body', 24);
 
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(.12 * scale, .18 * scale, .42 * scale, 20), material);
-  neck.rotation.z = -.40 * facing;
-  neck.position.set(.055 * facing * scale, .62 * scale, 0);
-  neck.castShadow = true;
-  neck.name = 'piece-knight-neck';
-  piece.add(neck);
+  const neckBase = lathePiecePart(
+    piece,
+    [
+      [.22, .18],
+      [.19, .27],
+      [.15, .37],
+      [.14, .46],
+    ],
+    material,
+    scale,
+    [0, 0, 0],
+    'piece-knight-base-neck',
+    24,
+  );
+  neckBase.scale.x = .95;
 
-  const head = new THREE.Mesh(new THREE.SphereGeometry(.17 * scale, 22, 14), material);
-  head.scale.set(1.15, .86, .72);
-  head.position.set(.22 * facing * scale, .82 * scale, 0);
-  head.castShadow = true;
-  head.name = 'piece-knight-head';
-  piece.add(head);
+  const profile = new THREE.Shape();
+  profile.moveTo(-.10 * scale, .40 * scale);
+  profile.bezierCurveTo(
+    -.02 * scale, .60 * scale,
+    .05 * scale, .78 * scale,
+    .17 * scale, .96 * scale,
+  );
+  profile.bezierCurveTo(
+    .25 * scale, 1.08 * scale,
+    .40 * scale, 1.07 * scale,
+    .47 * scale, .96 * scale,
+  );
+  profile.bezierCurveTo(
+    .51 * scale, .88 * scale,
+    .47 * scale, .80 * scale,
+    .39 * scale, .76 * scale,
+  );
+  profile.lineTo(.31 * scale, .72 * scale);
+  profile.bezierCurveTo(
+    .25 * scale, .60 * scale,
+    .21 * scale, .48 * scale,
+    .12 * scale, .40 * scale,
+  );
+  profile.closePath();
 
-  const muzzle = new THREE.Mesh(new THREE.BoxGeometry(.20 * scale, .13 * scale, .18 * scale), material);
-  muzzle.position.set(.34 * facing * scale, .76 * scale, 0);
-  muzzle.rotation.z = -.08 * facing;
-  muzzle.castShadow = true;
-  muzzle.name = 'piece-knight-muzzle';
-  piece.add(muzzle);
+  const depth = .22 * scale;
+  const geometry = new THREE.ExtrudeGeometry(profile, {
+    depth,
+    bevelEnabled: true,
+    bevelSegments: 2,
+    bevelSize: .025 * scale,
+    bevelThickness: .022 * scale,
+    curveSegments: 10,
+  });
+  geometry.translate(0, 0, -depth / 2);
+  const horse = new THREE.Mesh(geometry, material);
+  horse.scale.x = facing;
+  horse.castShadow = true;
+  horse.receiveShadow = true;
+  horse.name = 'piece-knight-horse-profile';
+  piece.add(horse);
 
-  for (const zOffset of [-.08, .08]) {
-    const ear = new THREE.Mesh(new THREE.ConeGeometry(.055 * scale, .18 * scale, 12), material);
-    ear.position.set(.15 * facing * scale, 1.00 * scale, zOffset * scale);
-    ear.rotation.z = -.15 * facing;
+  for (const zOffset of [-.075, .075]) {
+    const ear = new THREE.Mesh(new THREE.ConeGeometry(.045 * scale, .15 * scale, 14), material);
+    ear.position.set(.22 * facing * scale, 1.06 * scale, zOffset * scale);
+    ear.rotation.z = -.22 * facing;
     ear.castShadow = true;
+    ear.name = 'piece-knight-ear';
     piece.add(ear);
   }
+
+  sphere(piece, .027 * scale, material, [.36 * facing * scale, .94 * scale, .12 * scale], 'piece-knight-eye', 12, 8);
 
   piece.position.set(x, 1.61, z);
   root.add(piece);
@@ -268,24 +381,43 @@ function addRoyalPiece(root, x, z, material, scale = 1, king = false) {
   const piece = new THREE.Group();
   piece.name = `ready-room-piece ${king ? 'king' : 'queen'}`;
   addPieceBase(piece, material, scale);
-  cylinder(piece, [.14 * scale, .25 * scale], .48 * scale, material, [0, .41 * scale, 0], 'piece-body', 28);
-  cylinder(piece, [.21 * scale, .14 * scale], .09 * scale, material, [0, .69 * scale, 0], 'piece-collar', 28);
+  lathePiecePart(
+    piece,
+    [
+      [.25, .18],
+      [.21, .27],
+      [.16, .42],
+      [.14, .56],
+      [.19, .67],
+      [.16, .74],
+      [.13, .80],
+    ],
+    material,
+    scale,
+    [0, 0, 0],
+    king ? 'piece-king-body' : 'piece-queen-body',
+    30,
+  );
 
   if (king) {
-    sphere(piece, .15 * scale, material, [0, .86 * scale, 0], 'piece-king-crown', 22, 14);
-    box(piece, [.07 * scale, .29 * scale, .07 * scale], material, [0, 1.10 * scale, 0], 'piece-king-cross');
-    box(piece, [.23 * scale, .07 * scale, .07 * scale], material, [0, 1.12 * scale, 0], 'piece-king-cross');
+    sphere(piece, .145 * scale, material, [0, .91 * scale, 0], 'piece-king-crown', 24, 16);
+    box(piece, [.065 * scale, .28 * scale, .065 * scale], material, [0, 1.13 * scale, 0], 'piece-king-cross');
+    box(piece, [.225 * scale, .065 * scale, .065 * scale], material, [0, 1.14 * scale, 0], 'piece-king-cross');
   } else {
-    cylinder(piece, [.23 * scale, .19 * scale], .12 * scale, material, [0, .86 * scale, 0], 'piece-queen-crown', 20);
-    sphere(piece, .075 * scale, material, [0, 1.02 * scale, 0], 'piece-queen-finial', 18, 12);
-    for (let i = 0; i < 6; i += 1) {
-      const gem = sphere(piece, .045 * scale, material, [
-        Math.cos((i / 6) * Math.PI * 2) * .19 * scale,
-        .96 * scale,
-        Math.sin((i / 6) * Math.PI * 2) * .19 * scale,
-      ], 'piece-queen-crown-point', 12, 8);
-      gem.scale.y = 1.35;
+    cylinder(piece, [.23 * scale, .18 * scale], .11 * scale, material, [0, .89 * scale, 0], 'piece-queen-crown', 24);
+    for (let i = 0; i < 8; i += 1) {
+      const angle = (i / 8) * Math.PI * 2;
+      const point = new THREE.Mesh(new THREE.ConeGeometry(.045 * scale, .16 * scale, 12), material);
+      point.position.set(
+        Math.sin(angle) * .19 * scale,
+        1.01 * scale,
+        Math.cos(angle) * .19 * scale,
+      );
+      point.castShadow = true;
+      point.name = 'piece-queen-crown-point';
+      piece.add(point);
     }
+    sphere(piece, .067 * scale, material, [0, 1.10 * scale, 0], 'piece-queen-finial', 18, 12);
   }
 
   piece.position.set(x, 1.61, z);
