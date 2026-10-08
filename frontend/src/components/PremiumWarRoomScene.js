@@ -592,25 +592,9 @@ function addCommandCabinet(group, x, y, z, towardBoard, segments, compact = fals
   group.add(cabinet);
 }
 
-function addCinematicAccentLights(group, theme, wallZ, towardBoard, coarsePointer) {
-  const decor = warRoomDecorProfile(coarsePointer);
-  const target = new THREE.Object3D();
-  target.position.set(0, 3.25, wallZ + towardBoard * 0.62);
-  group.add(target);
-
-  const crestSpot = new THREE.SpotLight(0xffd08a, decor.crest, 15, Math.PI / 7, 0.6, 2);
-  crestSpot.position.set(0, 6.25, wallZ + towardBoard * 3.5);
-  crestSpot.target = target;
-  crestSpot.castShadow = false;
-  group.add(crestSpot);
-
-  const moonFill = new THREE.PointLight(0x6ca7c7, decor.moon, 10.5, 2);
-  moonFill.position.set(whiteSideSign(towardBoard) * 5.2, 4.2, wallZ + towardBoard * 1.7);
-  group.add(moonFill);
-
-  const paletteFill = new THREE.PointLight(theme?.felt ?? COLORS.teal, decor.palette, 10.5, 2);
-  paletteFill.position.set(-whiteSideSign(towardBoard) * 4.6, 3.15, wallZ + towardBoard * 1.45);
-  group.add(paletteFill);
+function omitRetiredCinematicAccentLights(group) {
+  group.userData ||= {};
+  group.userData.warRoomRetiredCinematicAccentLightsOmitted = 3;
 }
 
 function whiteSideSign(towardBoard) {
@@ -664,7 +648,7 @@ export function buildPremiumWarRoomLayer(theme, whiteSide, coarsePointer = false
     addBookStack(group, leftX + (whiteSide ? -0.76 : 0.76), 3.03, wallZ + towardBoard * 0.58, !whiteSide, false);
   }
 
-  addCinematicAccentLights(group, theme, wallZ, towardBoard, coarsePointer);
+  omitRetiredCinematicAccentLights(group);
   return group;
 }
 
