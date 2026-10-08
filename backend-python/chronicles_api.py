@@ -59,6 +59,7 @@ class ChroniclesManifestError(ValueError):
 
 class CreateChroniclesRunRequest(BaseModel):
     map_id: str | None = Field(default=None, alias="mapId")
+    dungeon_level: int | None = Field(default=None, alias="dungeonLevel", ge=1, le=99)
 
     model_config = {"populate_by_name": True, "extra": "forbid"}
 
@@ -422,7 +423,7 @@ def chronicles_entry_map_for_seed(seed: int) -> str:
     return map_ids[index]
 
 
-def chronicles_route_plan_for_seed(seed: int) -> tuple[str, ...]:
+def chronicles_route_plan_for_seed(seed: int, dungeon_level: int = 1) -> tuple[str, ...]:
     """Build a deterministic multi-area route ending in the configured finale."""
     policy = chronicles_route_policy()
     version = policy["version"]
@@ -432,18 +433,18 @@ def chronicles_route_plan_for_seed(seed: int) -> tuple[str, ...]:
             f"chronicles-route-v{version}:{int(seed)}:{map_id}".encode("utf-8")
         ).digest(),
     )
-    length_digest = hashlib.sha256(
-        f"chronicles-route-length-v{version}:{int(seed)}".encode("utf-8")
-    ).digest()
-    route_span = policy["maxRouteLength"] - policy["minRouteLength"] + 1
-    route_length = policy["minRouteLength"] + int.from_bytes(length_digest[:4], "big") % route_span
+    safe_level = max(1, int(dungeon_level))
+    route_length = min(
+        policy["maxRouteLength"],
+        policy["minRouteLength"] + safe_level - 1,
+    )
     prefinal_count = route_length - 1
     return tuple(ranked[:prefinal_count]) + (policy["finalMapId"],)
 
 
-def chronicles_route_snapshot_for_seed(seed: int) -> dict[str, Any]:
+def chronicles_route_snapshot_for_seed(seed: int, dungeon_level: int = 1) -> dict[str, Any]:
     policy = chronicles_route_policy()
-    route_plan = chronicles_route_plan_for_seed(seed)
+    route_plan = chronicles_route_plan_for_seed(seed, dungeon_level)
     return {
         "policyVersion": policy["version"],
         "mapIds": route_plan,
@@ -593,14 +594,15 @@ def _normalize_planner_snapshot(
     }
 
 
-def _run_depth(map_id: str, route_snapshot: dict[str, Any] | None) -> int:
+def _run_depth(map_id: str, route_snapshot: dict[str, Any] | None, dungeon_level: int = 1) -> int:
     snapshot = _normalize_route_snapshot(route_snapshot)
     if snapshot is None:
-        return 0
+        return max(0, int(dungeon_level) - 1)
     try:
-        return list(snapshot["mapIds"]).index(map_id)
+        route_depth = list(snapshot["mapIds"]).index(map_id)
     except ValueError:
-        return 0
+        route_depth = 0
+    return route_depth + max(0, int(dungeon_level) - 1)
 
 
 def chronicles_area_envelope(
@@ -612,6 +614,7 @@ def chronicles_area_envelope(
     planner_snapshot: dict[str, Any] | None = None,
     party_level: int | None = None,
     content_placement_version: int = 0,
+    dungeon_level: int = 1,
 ) -> dict[str, Any]:
     authored_manifest, _authored_revision = load_chronicles_manifest(map_id, root=root)
     stable_planner_snapshot = _normalize_planner_snapshot(planner_snapshot)
@@ -636,7 +639,7 @@ def chronicles_area_envelope(
         routed_manifest, difficulty = apply_chronicles_combat_difficulty(
             routed_manifest,
             party_level=party_level,
-            depth=_run_depth(map_id, route_snapshot),
+            depth=_run_depth(map_id, route_snapshot, dungeon_level),
         )
     manifest = _validate_manifest(routed_manifest, expected_map_id=authored_manifest["id"])
     revision = hashlib.sha256(_canonical_bytes(manifest)).hexdigest()
@@ -685,6 +688,7 @@ def _run_bootstrap_payload(
             planner_snapshot=stable_planner_snapshot,
             party_level=run.get("partyLevel"),
             content_placement_version=content_placement_version,
+            dungeon_level=int(run.get("dungeonLevel", 1) or 1),
         )
         for map_id in chronicles_shipped_map_ids()
     ]
@@ -748,11 +752,15 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
         except InvalidIdempotencyKey as exc:
             raise HTTPException(400, str(exc)) from exc
 
-        fingerprint = operation_fingerprint({"mapId": body.map_id})
+        fingerprint_payload = {"mapId": body.map_id}
+        if body.dungeon_level is not None:
+            fingerprint_payload["dungeonLevel"] = body.dungeon_level
+        fingerprint = operation_fingerprint(fingerprint_payload)
         # Old clients did not send a party snapshot. Keep those runs unscaled so
         # rolling deploys preserve the exact manifest revision they already know.
         # Current Chronicles clients always send the bounded party level header.
         starting_party_level = party_level
+        dungeon_level = body.dungeon_level or 1
         run_id = _run_id(username, idempotency_key)
         try:
             if idempotency_key:
@@ -764,7 +772,7 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
                 if existing is not None:
                     stable_route_snapshot = _normalize_route_snapshot(existing.get("route"))
                     if body.map_id is None and stable_route_snapshot is None:
-                        stable_route_snapshot = chronicles_route_snapshot_for_seed(existing["seed"])
+                        stable_route_snapshot = chronicles_route_snapshot_for_seed(existing["seed"], int(existing.get("dungeonLevel", 1) or 1))
                     return _run_bootstrap_payload(
                         existing,
                         route_snapshot=stable_route_snapshot,
@@ -772,7 +780,7 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
 
             seed = secrets.randbelow(_MAX_SEED + 1)
             if body.map_id is None:
-                route_snapshot = chronicles_route_snapshot_for_seed(seed)
+                route_snapshot = chronicles_route_snapshot_for_seed(seed, dungeon_level)
                 selected_map_id = route_snapshot["mapIds"][0]
             else:
                 route_snapshot = None
@@ -790,6 +798,7 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
                 route_snapshot=route_snapshot,
                 planner_snapshot=planner_snapshot,
                 party_level=starting_party_level,
+                dungeon_level=dungeon_level,
                 content_placement_version=CHRONICLES_CONTENT_PLACEMENT_VERSION,
             )
             run = await chronicles_run_store.create_or_replay_run(
@@ -803,11 +812,12 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
                 route_snapshot=route_snapshot,
                 planner_snapshot=planner_snapshot,
                 party_level=starting_party_level,
+                dungeon_level=dungeon_level,
                 content_placement_version=CHRONICLES_CONTENT_PLACEMENT_VERSION,
             )
             stable_route_snapshot = _normalize_route_snapshot(run.get("route"))
             if body.map_id is None and stable_route_snapshot is None:
-                stable_route_snapshot = chronicles_route_snapshot_for_seed(run["seed"])
+                stable_route_snapshot = chronicles_route_snapshot_for_seed(run["seed"], int(run.get("dungeonLevel", 1) or 1))
             return _run_bootstrap_payload(
                 run,
                 route_snapshot=stable_route_snapshot,
@@ -837,6 +847,7 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
             planner_snapshot=planner_snapshot,
             party_level=run.get("partyLevel"),
             content_placement_version=content_placement_version,
+            dungeon_level=int(run.get("dungeonLevel", 1) or 1),
         )
         if (
             current_area["contentVersion"] != run["contentVersion"]
@@ -864,6 +875,7 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
                 planner_snapshot=planner_snapshot,
                 party_level=run.get("partyLevel"),
                 content_placement_version=content_placement_version,
+                dungeon_level=int(run.get("dungeonLevel", 1) or 1),
             )
         )
         world_flags = _normalize_checkpoint_flags(body.world_flags)

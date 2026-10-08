@@ -22,6 +22,7 @@ export { CHRONICLES_RUN_STORAGE_KEY, CHRONICLES_TACTICS_RUN_STORAGE_KEY } from '
 export const CHRONICLES_PROGRESSION_STORAGE_KEY = 'chess-study-chronicles-progression-v1';
 export const CHRONICLES_PROGRESSION_VERSION = 1;
 export const CHRONICLES_MAX_LEVEL = 12;
+export const CHRONICLES_MAX_DUNGEON_LEVEL = 99;
 export const CHRONICLES_ATTRIBUTE_CAP = 5;
 
 const HERO_IDS = Object.freeze(['matthias', 'rook', 'bishop', 'knight']);
@@ -377,6 +378,7 @@ export function createChroniclesProgression() {
   return {
     version: CHRONICLES_PROGRESSION_VERSION,
     characterBuild: createCanonicalChroniclesCharacterBuild(CHRONICLES_PARTY),
+    dungeonLevel: 1,
     heroes: Object.fromEntries(HERO_IDS.map((id) => [id, defaultHero()])),
     claimedAwards: [],
   };
@@ -391,6 +393,7 @@ export function normalizeChroniclesProgression(raw) {
   return {
     version: CHRONICLES_PROGRESSION_VERSION,
     characterBuild: normalizeChroniclesCharacterBuild(source.characterBuild, CHRONICLES_PARTY),
+    dungeonLevel: Math.max(1, Math.min(CHRONICLES_MAX_DUNGEON_LEVEL, nonNegativeInteger(source.dungeonLevel, 1))),
     heroes,
     claimedAwards,
   };
@@ -408,6 +411,17 @@ export function saveChroniclesProgression(progression) {
 
 export function chroniclesCharacterBuild(progression) {
   return normalizeChroniclesProgression(progression).characterBuild;
+}
+
+export function chroniclesDungeonLevel(progression) {
+  return normalizeChroniclesProgression(progression).dungeonLevel;
+}
+
+export function advanceChroniclesDungeonLevel(progression, completedLevel) {
+  const current = normalizeChroniclesProgression(progression);
+  const completed = Math.max(1, Math.min(CHRONICLES_MAX_DUNGEON_LEVEL, nonNegativeInteger(completedLevel, current.dungeonLevel)));
+  const dungeonLevel = Math.min(CHRONICLES_MAX_DUNGEON_LEVEL, Math.max(current.dungeonLevel, completed + 1));
+  return dungeonLevel === current.dungeonLevel ? current : { ...current, dungeonLevel };
 }
 
 export function setChroniclesCharacterBuild(progression, rawBuild) {

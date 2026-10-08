@@ -1,5 +1,5 @@
 {
-  "version": 4,
+  "version": 5,
   "mapIds": [
     "crypt-eight-squares",
     "gallery-of-forks",
@@ -8,7 +8,7 @@
     "hollow-bell-tower"
   ],
   "minRouteLength": 3,
-  "maxRouteLength": 4,
+  "maxRouteLength": 6,
   "finalMapId": "echo-cistern",
   "primaryExitIds": {
     "crypt-eight-squares": "black-gate",

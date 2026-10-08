@@ -8,6 +8,8 @@ import {
   chroniclesBootstrapTacticsWorld,
 } from '../chronicles/chroniclesGameBootstrap.js';
 import {
+  advanceChroniclesDungeonLevel,
+  chroniclesDungeonLevel,
   ensureChroniclesTacticsRun,
   finishChroniclesTacticsRun,
   loadChroniclesProgression,
@@ -104,8 +106,10 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
     setBootstrapRevision((revision) => revision + 1);
   }, []);
 
-  const finishExpedition = useCallback(() => {
+  const finishExpedition = useCallback((completedLevel = 1) => {
     if (!activeRunIdRef.current) return;
+    const advanced = advanceChroniclesDungeonLevel(loadChroniclesProgression(), completedLevel);
+    saveChroniclesProgression(advanced);
     finishChroniclesTacticsRun(activeRunIdRef.current);
     activeRunIdRef.current = null;
   }, []);
@@ -115,6 +119,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
       finishChroniclesTacticsRun(activeRunIdRef.current);
       activeRunIdRef.current = null;
     }
+    setProgression(loadChroniclesProgression());
     retryBootstrap();
   }, [retryBootstrap]);
 
@@ -136,6 +141,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
       signal: controller.signal,
       operationId,
       partyLevel: chroniclesDeployedPartyLevel(progression),
+      dungeonLevel: chroniclesDungeonLevel(progression),
     })
       .then((world) => {
         if (!active) return;

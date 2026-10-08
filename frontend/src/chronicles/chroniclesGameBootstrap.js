@@ -85,6 +85,9 @@ function validateRunBootstrap(payload, requestedMapId) {
   if (payload.partyLevel !== undefined && (!Number.isInteger(payload.partyLevel) || payload.partyLevel < 1 || payload.partyLevel > 12)) {
     throw new Error('invalid-party-level');
   }
+  if (payload.dungeonLevel !== undefined && (!Number.isInteger(payload.dungeonLevel) || payload.dungeonLevel < 1 || payload.dungeonLevel > 99)) {
+    throw new Error('invalid-dungeon-level');
+  }
   if (!['active', 'completed', 'defeated'].includes(payload.status)) throw new Error('invalid-run-status');
   // During rolling deploys the previous backend can still return the pre-checkpoint
   // run shape, which did not expose worldFlags. Treat omission as the empty durable
@@ -137,6 +140,7 @@ function validateRunBootstrap(payload, requestedMapId) {
     currentMapId,
     worldVersion: payload.worldVersion,
     partyLevel: payload.partyLevel ?? null,
+    dungeonLevel: payload.dungeonLevel ?? 1,
     worldFlags: Object.freeze({ ...worldFlags }),
     inventory: Object.freeze({ ...inventory }),
     quests: Object.freeze({ ...quests }),
@@ -152,6 +156,7 @@ export async function chroniclesBootstrapWorld({
   signal,
   operationId = null,
   partyLevel = null,
+  dungeonLevel = null,
   createRun = chroniclesCreateRun,
 } = {}) {
   chroniclesClearRuntimeMapDefinitions();
@@ -192,6 +197,7 @@ export async function chroniclesBootstrapWorld({
     operationId,
     signal: requestController.signal,
     ...(Number.isInteger(partyLevel) ? { partyLevel } : {}),
+    ...(Number.isInteger(dungeonLevel) ? { dungeonLevel } : {}),
   };
   const request = Promise.resolve()
     .then(() => createRun(mapId, requestOptions))

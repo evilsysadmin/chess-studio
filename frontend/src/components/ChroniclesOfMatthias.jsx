@@ -41,8 +41,10 @@ import { chroniclesRetaliationCue } from '../chroniclesOfMatthiasRetaliation.js'
 import { chroniclesTargetAhead } from '../chroniclesOfMatthiasTargeting.js';
 import { CHRONICLES_TURN_ENGINE_VERSION } from '../chroniclesOfMatthiasTurns.js';
 import {
+  advanceChroniclesDungeonLevel,
   applyChroniclesProgressionToTacticsState,
   applyChroniclesTacticsProgression,
+  chroniclesDungeonLevel,
   chroniclesHeroProgress,
   loadChroniclesProgression,
   reconcileChroniclesProgressionInTacticsState,
@@ -541,6 +543,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
       signal: controller.signal,
       operationId,
       partyLevel: chroniclesDeployedPartyLevel(activeProgression),
+      dungeonLevel: chroniclesDungeonLevel(activeProgression),
     })
       .then((world) => {
         if (!active) return;
@@ -644,6 +647,15 @@ export default function ChroniclesOfMatthias({ onExit }) {
         );
         if (authoritativeRunRef.current?.runId !== scheduledRunId) return;
         authoritativeRunRef.current = { ...currentRun, ...updated };
+        if (updated?.status === 'completed') {
+          const advanced = advanceChroniclesDungeonLevel(
+            progressionRef.current,
+            currentRun.dungeonLevel || updated.dungeonLevel || 1,
+          );
+          const saved = saveChroniclesProgression(advanced);
+          progressionRef.current = saved;
+          setProgression(saved);
+        }
       })
       .catch((error) => {
         console.error('Chronicles checkpoint failed', error);
@@ -855,7 +867,13 @@ export default function ChroniclesOfMatthias({ onExit }) {
             <ChroniclesEnemyRetaliationFx key={retaliationCue?.token || 'none'} cue={retaliationCue} />
             {rendererError && <div className="chronicles-renderer-error" role="alert">{rendererError}</div>}
             {state.phase === 'defeated' && <ChroniclesDefeatOverlay onRestart={restart} onExit={exitChronicles} />}
-            {state.phase === 'escaped' && <ChroniclesBookOneEpilogue state={state} onRestart={restart} />}
+            {state.phase === 'escaped' && (
+              <ChroniclesBookOneEpilogue
+                state={state}
+                dungeonLevel={authoritativeRunRef.current?.dungeonLevel || chroniclesDungeonLevel(progression)}
+                onRestart={restart}
+              />
+            )}
           </div>
 
           <details className="chronicles-journal" aria-label="Crónica de expedición">

@@ -43,7 +43,7 @@ type NewRun struct {
 	Seed, ContentVersion                               int64
 	Route                                              *Route
 	PlannerSnapshot                                    any
-	PartyLevel, PlacementVersion                       *int64
+	PartyLevel, DungeonLevel, PlacementVersion         *int64
 	Now                                                time.Time
 }
 
@@ -88,6 +88,9 @@ func document(run NewRun) bson.D {
 	doc := bson.D{{Key: "_id", Value: run.RunID}, {Key: "owner", Value: run.Owner}, {Key: "seed", Value: pydoc.Int(run.Seed)}}
 	if run.PartyLevel != nil {
 		doc = append(doc, bson.E{Key: "partyLevel", Value: pydoc.Int(*run.PartyLevel)})
+	}
+	if run.DungeonLevel != nil {
+		doc = append(doc, bson.E{Key: "dungeonLevel", Value: pydoc.Int(*run.DungeonLevel)})
 	}
 	if run.PlacementVersion != nil {
 		doc = append(doc, bson.E{Key: "contentPlacementVersion", Value: pydoc.Int(*run.PlacementVersion)})
@@ -186,6 +189,9 @@ func Public(row bson.D) bson.D {
 	out := bson.D{{Key: "runId", Value: pyval.Str(runID)}, {Key: "seed", Value: intOf(get(row, "seed"))}}
 	if v := get(row, "partyLevel"); v != nil {
 		out = append(out, bson.E{Key: "partyLevel", Value: intOf(v)})
+	}
+	if v := get(row, "dungeonLevel"); v != nil {
+		out = append(out, bson.E{Key: "dungeonLevel", Value: intOf(v)})
 	}
 	if v := get(row, "contentPlacementVersion"); v != nil {
 		out = append(out, bson.E{Key: "contentPlacementVersion", Value: intOf(v)})

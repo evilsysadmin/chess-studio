@@ -4,10 +4,12 @@ import {
   CHRONICLES_PROGRESSION_STORAGE_KEY,
   CHRONICLES_RUN_STORAGE_KEY,
   CHRONICLES_TACTICS_RUN_STORAGE_KEY,
+  advanceChroniclesDungeonLevel,
   applyChroniclesProgressionToTacticsState,
   applyChroniclesTacticsProgression,
   beginChroniclesTacticsRun,
   chroniclesCharacterBuild,
+  chroniclesDungeonLevel,
   chroniclesHeroProgress,
   chroniclesXpThresholdForLevel,
   createChroniclesProgression,
@@ -40,6 +42,18 @@ function tacticsState(overrides = {}) {
 }
 
 describe('Chronicles Tactics · progression', () => {
+  it('starts at dungeon level 1 and advances idempotently after a completed level', () => {
+    const base = createChroniclesProgression();
+    expect(chroniclesDungeonLevel(base)).toBe(1);
+
+    const level2 = advanceChroniclesDungeonLevel(base, 1);
+    expect(chroniclesDungeonLevel(level2)).toBe(2);
+    expect(chroniclesDungeonLevel(advanceChroniclesDungeonLevel(level2, 1))).toBe(2);
+
+    const level4 = advanceChroniclesDungeonLevel(level2, 3);
+    expect(chroniclesDungeonLevel(level4)).toBe(4);
+  });
+
   it('migrates legacy progression to the exact canonical character build', () => {
     const legacy = {
       version: 1,

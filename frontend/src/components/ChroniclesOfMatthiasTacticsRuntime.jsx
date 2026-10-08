@@ -566,7 +566,7 @@ export default function ChroniclesOfMatthiasTactics({
           { terminalStatus: completesRun ? 'completed' : null },
         );
         authoritativeRunRef.current = { ...currentRun, ...updated };
-        if (updated?.status === 'completed') onFinishRun?.();
+        if (updated?.status === 'completed') onFinishRun?.(updated.dungeonLevel || currentRun.dungeonLevel || 1);
       })
       .catch((error) => {
         console.error('Chronicles Tactics checkpoint failed', error);

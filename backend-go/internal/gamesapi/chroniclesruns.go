@@ -201,25 +201,41 @@ func modelObject(body any) (bson.D, bson.A) {
 }
 
 // createRunBody mirrors CreateChroniclesRunRequest.
-func createRunBody(body any) (*string, bson.A) {
+func createRunBody(body any) (*string, *int64, bson.A) {
 	object, problems := modelObject(body)
 	if problems != nil {
-		return nil, problems
+		return nil, nil, problems
 	}
 	used := map[string]bool{}
 	key, value, present := aliasField{"mapId", "map_id"}.pick(object)
 	var mapID *string
 	if present {
 		used[key] = true
-		switch s := value.(type) {
+		switch value := value.(type) {
 		case nil:
 		case string:
-			mapID = &s
+			mapID = &value
 		default:
 			problems = append(problems, problemDoc("string_type", bson.A{"body", key}, "Input should be a valid string", value, nil))
 		}
 	}
-	return mapID, append(problems, extras(object, used)...)
+	key, value, present = aliasField{"dungeonLevel", "dungeon_level"}.pick(object)
+	var dungeonLevel *int64
+	if present {
+		used[key] = true
+		if value != nil {
+			if level, problem := pydanticInt(value, bson.A{"body", key}); problem != nil {
+				problems = append(problems, problem)
+			} else if level < 1 {
+				problems = append(problems, problemDoc("greater_than_equal", bson.A{"body", key}, "Input should be greater than or equal to 1", value, bson.D{{Key: "ge", Value: int64(1)}}))
+			} else if level > 99 {
+				problems = append(problems, problemDoc("less_than_equal", bson.A{"body", key}, "Input should be less than or equal to 99", value, bson.D{{Key: "le", Value: int64(99)}}))
+			} else {
+				dungeonLevel = &level
+			}
+		}
+	}
+	return mapID, dungeonLevel, append(problems, extras(object, used)...)
 }
 
 type checkpointBody struct {
@@ -534,6 +550,14 @@ func runSeed(run bson.D) int64 {
 	return n
 }
 
+func dungeonLevelOf(run bson.D) int64 {
+	n, err := pyval.Int(lookupOr(run, "dungeonLevel", int64(1)))
+	if err != nil || n < 1 {
+		return 1
+	}
+	return n
+}
+
 // areaErr maps chronicles_area_envelope's HTTPExceptions.
 func areaErr(err error) error {
 	switch {
@@ -558,7 +582,7 @@ func routeStore(route *chronicles.RouteSnapshot) *chroniclesrun.Route {
 func bootstrap(run bson.D, route *chronicles.RouteSnapshot) (bson.D, error) {
 	opts := chronicles.AreaOptions{
 		Route: route, PlannerSnapshot: lookupOr(run, "plannerSnapshot", nil),
-		PartyLevel: int64Ptr(lookupOr(run, "partyLevel", nil)), PlacementVersion: placementOf(run),
+		PartyLevel: int64Ptr(lookupOr(run, "partyLevel", nil)), DungeonLevel: dungeonLevelOf(run), PlacementVersion: placementOf(run),
 	}
 	currentMapID := lookupOr(run, "currentMapId", nil)
 	areas := bson.A{}
@@ -595,7 +619,7 @@ func bootstrap(run bson.D, route *chronicles.RouteSnapshot) (bson.D, error) {
 	return payload, nil
 }
 
-func (h *ChroniclesRunsHandler) create(ctx context.Context, r *http.Request, username string, mapID *string, partyLevel *int64) (bson.D, error) {
+func (h *ChroniclesRunsHandler) create(ctx context.Context, r *http.Request, username string, mapID *string, partyLevel, requestedDungeonLevel *int64) (bson.D, error) {
 	var rawKey *string
 	if values := r.Header.Values("Idempotency-Key"); len(values) > 0 {
 		rawKey = &values[0]
@@ -608,9 +632,17 @@ func (h *ChroniclesRunsHandler) create(ctx context.Context, r *http.Request, use
 	if mapID != nil {
 		mapValue = *mapID
 	}
-	fingerprint, err := gameops.Fingerprint(map[string]any{"mapId": mapValue})
+	fingerprintInput := map[string]any{"mapId": mapValue}
+	if requestedDungeonLevel != nil {
+		fingerprintInput["dungeonLevel"] = *requestedDungeonLevel
+	}
+	fingerprint, err := gameops.Fingerprint(fingerprintInput)
 	if err != nil {
 		return nil, err
+	}
+	dungeonLevel := int64(1)
+	if requestedDungeonLevel != nil {
+		dungeonLevel = *requestedDungeonLevel
 	}
 	runID := h.newRunID()
 	if key != nil {
@@ -627,7 +659,7 @@ func (h *ChroniclesRunsHandler) create(ctx context.Context, r *http.Request, use
 		if err != nil || route != nil || mapID != nil {
 			return route, err
 		}
-		return chronicles.RouteSnapshotForSeed(runSeed(run))
+		return chronicles.RouteSnapshotForLevel(runSeed(run), dungeonLevelOf(run))
 	}
 	if key != nil {
 		existing, err := h.runs.Replay(ctx, runID, username, fingerprint)
@@ -646,7 +678,7 @@ func (h *ChroniclesRunsHandler) create(ctx context.Context, r *http.Request, use
 	var route *chronicles.RouteSnapshot
 	selected := ""
 	if mapID == nil {
-		if route, err = chronicles.RouteSnapshotForSeed(seed); err != nil {
+		if route, err = chronicles.RouteSnapshotForLevel(seed, dungeonLevel); err != nil {
 			return nil, err
 		}
 		selected = route.MapIDs[0]
@@ -654,7 +686,7 @@ func (h *ChroniclesRunsHandler) create(ctx context.Context, r *http.Request, use
 		selected = *mapID
 	}
 	placement := int64(chronicles.ContentPlacementVersion)
-	area, err := chronicles.AreaEnvelope(selected, seed, chronicles.AreaOptions{Route: route, PartyLevel: partyLevel, PlacementVersion: int(placement)})
+	area, err := chronicles.AreaEnvelope(selected, seed, chronicles.AreaOptions{Route: route, PartyLevel: partyLevel, DungeonLevel: dungeonLevel, PlacementVersion: int(placement)})
 	if err != nil {
 		return nil, areaErr(err)
 	}
@@ -663,7 +695,7 @@ func (h *ChroniclesRunsHandler) create(ctx context.Context, r *http.Request, use
 	run, err := h.runs.Create(ctx, chroniclesrun.NewRun{
 		RunID: runID, Owner: username, Seed: seed, MapID: selected, ContentVersion: contentVersion,
 		ManifestRevision: revision, Fingerprint: fingerprint, Route: routeStore(route),
-		PartyLevel: partyLevel, PlacementVersion: &placement, Now: h.base.now().UTC(),
+		PartyLevel: partyLevel, DungeonLevel: &dungeonLevel, PlacementVersion: &placement, Now: h.base.now().UTC(),
 	})
 	if err != nil {
 		return nil, conflict(err)
@@ -688,7 +720,7 @@ func (h *ChroniclesRunsHandler) checkpoint(ctx context.Context, username, runID 
 		return nil, err
 	}
 	planner := lookupOr(run, "plannerSnapshot", nil)
-	opts := chronicles.AreaOptions{Route: route, PlannerSnapshot: planner, PartyLevel: int64Ptr(lookupOr(run, "partyLevel", nil)), PlacementVersion: placementOf(run)}
+	opts := chronicles.AreaOptions{Route: route, PlannerSnapshot: planner, PartyLevel: int64Ptr(lookupOr(run, "partyLevel", nil)), DungeonLevel: dungeonLevelOf(run), PlacementVersion: placementOf(run)}
 	currentMapID, _ := lookupOr(run, "currentMapId", "").(string)
 	current, err := chronicles.AreaEnvelope(currentMapID, runSeed(run), opts)
 	if err != nil {
@@ -839,7 +871,7 @@ func (h *ChroniclesRunsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		}
 	case ChroniclesRunCreatePattern:
 		level, headerProblem := partyLevelFromHeader(r)
-		mapID, problems := createRunBody(body)
+		mapID, dungeonLevel, problems := createRunBody(body)
 		if headerProblem != nil {
 			problems = append(bson.A{headerProblem}, problems...)
 		}
@@ -848,7 +880,7 @@ func (h *ChroniclesRunsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 			return
 		}
 		code = http.StatusCreated
-		payload, err = h.create(ctx, r, username, mapID, level)
+		payload, err = h.create(ctx, r, username, mapID, level, dungeonLevel)
 	default:
 		req, problems := checkpointRunBody(body)
 		if problems != nil {
