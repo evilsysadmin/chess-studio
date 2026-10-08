@@ -162,6 +162,15 @@ for (const capture of CAPTURES) {
     try {
       await openTactics(page);
       if (capture.hasTouch) {
+        // The production entry correctly requests fullscreen from the user gesture.
+        // The visual harness must leave fullscreen before resizing its synthetic
+        // desktop browser window to a mobile viewport.
+        await page.evaluate(async () => {
+          if (document.fullscreenElement && document.exitFullscreen) {
+            await document.exitFullscreen();
+          }
+        });
+        await expect.poll(() => page.evaluate(() => Boolean(document.fullscreenElement))).toBe(false);
         await page.setViewportSize({ width: capture.width, height: capture.height });
         await page.waitForTimeout(180);
       }
