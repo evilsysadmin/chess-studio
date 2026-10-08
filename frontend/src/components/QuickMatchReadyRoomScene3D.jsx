@@ -1145,15 +1145,15 @@ function buildRoom({ lite = false } = {}) {
   addConsole(root, -6.15, woodDark, brass, leather);
   addConsole(root, 6.15, woodDark, brass, leather);
 
-  const table = box(root, [10.65, .28, 5.12], wood, [0, 1.14, -1.16], 'table-top');
+  const table = box(root, [10.95, .28, 7.45], wood, [0, 1.14, -1.25], 'table-top');
   table.rotation.x = -.012;
-  box(root, [10.45, .10, 4.94], brass, [0, .98, -1.16], 'table-brass-edge');
-  box(root, [10.22, .16, 4.72], woodDark, [0, .87, -1.16], 'table-lower-edge');
-  box(root, [9.98, .055, 4.50], brass, [0, .765, -1.16], 'table-brass-skirt');
-  box(root, [9.78, .28, 4.34], woodDark, [0, .60, -1.16], 'table-apron');
+  box(root, [10.75, .10, 7.25], brass, [0, .98, -1.25], 'table-brass-edge');
+  box(root, [10.50, .16, 7.02], woodDark, [0, .87, -1.25], 'table-lower-edge');
+  box(root, [10.24, .055, 6.80], brass, [0, .765, -1.25], 'table-brass-skirt');
+  box(root, [10.02, .28, 6.58], woodDark, [0, .60, -1.25], 'table-apron');
 
-  for (const x of [-4.56, 4.56]) {
-    for (const z of [-2.50, .18]) {
+  for (const x of [-4.70, 4.70]) {
+    for (const z of [-4.38, 1.88]) {
       cylinder(root, [.22, .27], .24, brass, [x, .73, z], 'table-leg-cap', 22);
       cylinder(root, [.17, .23], .36, woodDark, [x, .48, z], 'table-leg-upper', 22);
       sphere(root, .22, wood, [x, .24, z], 'table-leg-knot', 20, 14);
@@ -1182,31 +1182,6 @@ function buildRoom({ lite = false } = {}) {
   }
   for (const x of [-5.28, 5.28]) {
     box(root, [.055, .025, 7.44], rugTrim, [x, -.02, -1.28], 'quick-match-ready-rug-border');
-  }
-
-  if (!lite) {
-    const medallion = new THREE.Mesh(
-      new THREE.RingGeometry(.66, .73, 4),
-      rugTrim,
-    );
-    medallion.rotation.x = -Math.PI / 2;
-    medallion.rotation.z = Math.PI / 4;
-    medallion.scale.set(1.42, 1, .92);
-    medallion.position.set(0, -.014, 1.63);
-    medallion.name = 'quick-match-ready-rug-medallion';
-    root.add(medallion);
-
-    const innerMedallion = new THREE.Mesh(
-      new THREE.RingGeometry(.26, .31, 4),
-      rugTrim,
-    );
-    innerMedallion.rotation.x = -Math.PI / 2;
-    innerMedallion.rotation.z = Math.PI / 4;
-    innerMedallion.scale.set(1.42, 1, .92);
-    innerMedallion.position.set(0, -.013, 1.63);
-    innerMedallion.name = 'quick-match-ready-rug-medallion-inner';
-    root.add(innerMedallion);
-
   }
 
   return root;
