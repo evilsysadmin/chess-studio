@@ -1177,12 +1177,34 @@ function buildRoom({ lite = false } = {}) {
   root.add(rug);
 
   const rugTrim = mat(0x9b6e2f, .38, .64);
+  const rugShadowTrim = mat(0x2a0e10, .02, .96);
   for (const z of [-5.02, 2.46]) {
     box(root, [10.62, .025, .055], rugTrim, [0, -.02, z], 'quick-match-ready-rug-border');
   }
   for (const x of [-5.28, 5.28]) {
     box(root, [.055, .025, 7.44], rugTrim, [x, -.02, -1.28], 'quick-match-ready-rug-border');
   }
+
+  for (const z of [-4.72, 2.16]) {
+    box(root, [9.98, .018, .035], rugShadowTrim, [0, -.015, z], 'quick-match-ready-rug-inner-shadow');
+    box(root, [9.72, .020, .030], rugTrim, [0, -.012, z], 'quick-match-ready-rug-inner-fillet');
+  }
+  for (const x of [-4.96, 4.96]) {
+    box(root, [.035, .018, 6.86], rugShadowTrim, [x, -.015, -1.28], 'quick-match-ready-rug-inner-shadow');
+    box(root, [.030, .020, 6.58], rugTrim, [x, -.012, -1.28], 'quick-match-ready-rug-inner-fillet');
+  }
+
+  const rugMedallion = new THREE.Mesh(
+    new THREE.RingGeometry(.78, .94, 4),
+    rugTrim,
+  );
+  rugMedallion.rotation.x = -Math.PI / 2;
+  rugMedallion.rotation.z = Math.PI / 4;
+  rugMedallion.scale.set(1.55, 1, 1);
+  rugMedallion.position.set(0, -.010, 1.02);
+  rugMedallion.name = 'quick-match-ready-rug-medallion';
+  rugMedallion.receiveShadow = true;
+  root.add(rugMedallion);
 
   return root;
 }
