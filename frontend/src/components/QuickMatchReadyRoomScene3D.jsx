@@ -198,18 +198,20 @@ function addPieceBase(group, material, scale) {
   lathePiecePart(
     group,
     [
-      [.36, 0],
-      [.37, .035],
-      [.35, .075],
-      [.30, .115],
-      [.29, .155],
-      [.24, .19],
+      [.35, 0],
+      [.38, .025],
+      [.39, .055],
+      [.36, .085],
+      [.32, .11],
+      [.33, .135],
+      [.29, .165],
+      [.25, .19],
     ],
     material,
     scale,
     [0, 0, 0],
     'piece-turned-base',
-    30,
+    34,
   );
 }
 
@@ -1043,8 +1045,14 @@ function buildRoom({ lite = false } = {}) {
   const brass = mat(0xc09449, .82, .22);
   const leather = mat(0x542521, .05, .66);
   const steel = mat(0x8d9396, .74, .27);
-  const ivory = mat(0xd8cfba, .06, .42);
-  const ebony = mat(0x3c3734, .22, .36);
+  const ivory = mat(0xe2d8c2, .04, .30, {
+    clearcoat: .34,
+    clearcoatRoughness: .24,
+  });
+  const ebony = mat(0x302b29, .14, .28, {
+    clearcoat: .44,
+    clearcoatRoughness: .22,
+  });
   const lightSquare = mat(0xd7ccb6, .04, .62);
   const darkSquare = mat(0x4b4037, .06, .56);
 
