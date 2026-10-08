@@ -309,7 +309,10 @@ test('admin · presencia distingue primer plano, segundo plano, idle y offline',
 test('admin · evidencia visual de cinco áreas en desktop y móvil', async ({ page }, testInfo) => {
   await mockApi(page, {
     isAdmin: true,
-    adminUsers: [{ username: 'visual-user', presence: 'online', foreground: true }],
+    adminUsers: [
+      { username: 'visual-user', presence: 'online', foreground: true },
+      { username: 'visual-user-2', presence: 'online', foreground: true },
+    ],
     initialFeedback: [{ id: 'admin-visual-feedback', message: 'Mensaje de revisión visual', status: 'new' }],
   });
   await login(page);
