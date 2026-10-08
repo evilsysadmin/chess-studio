@@ -595,7 +595,7 @@ body:has(.combat-operations-screen) .global-music-dock {
 }
 
 .combat-operations-primary-actions .campaign-recommended-formation {
-  min-height: 40px;
+  min-height: 44px;
   border: 0;
   background: transparent;
   box-shadow: none;
