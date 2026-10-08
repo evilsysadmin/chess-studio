@@ -1,3 +1,4 @@
+import { request } from '../http.js';
 import { useCallback, useEffect, useState } from 'react';
 
 // Grafana owns historical observability. Admin only checks API reachability
@@ -13,10 +14,9 @@ export default function ObservabilityPanel() {
   useEffect(() => {
     const controller = new AbortController();
     let active = true;
-    const timeout = setTimeout(() => controller.abort(), HEALTH_TIMEOUT_MS);
     const started = performance.now();
     setStatus({ kind: 'loading', latencyMs: null, checkedAt: null });
-    fetch(HEALTH_URL, { signal: controller.signal, cache: 'no-store' })
+    request(HEALTH_URL, { signal: controller.signal, cache: 'no-store', timeoutMs: HEALTH_TIMEOUT_MS })
       .then((response) => {
         if (!active) return;
         setStatus({
@@ -27,11 +27,9 @@ export default function ObservabilityPanel() {
       })
       .catch(() => {
         if (active) setStatus({ kind: 'unavailable', latencyMs: null, checkedAt: new Date().toLocaleTimeString('es-ES') });
-      })
-      .finally(() => clearTimeout(timeout));
+      });
     return () => {
       active = false;
-      clearTimeout(timeout);
       controller.abort();
     };
   }, [revision]);
