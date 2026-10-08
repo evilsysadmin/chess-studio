@@ -28,6 +28,7 @@ import { useGameClock } from '../useGameClock.js';
 import { focusPostGameTrainingOpportunity, usePostGameTrainingOpportunity } from '../usePostGameTrainingOpportunity.js';
 import { buildPostGameReportMeta } from '../postGameReportMeta.js';
 import { getBoardCoordinates, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
+import { cpuPresentationDelayMs } from '../cpuPresentationTiming.js';
 import { humanHasLostPiece } from '../gameOutcome.js';
 import { checkedKingSquare } from '../boardState.js';
 import { gameStatusView } from '../gameStatusView.js';
@@ -43,10 +44,6 @@ const PIECE_NAMES_ES = { p: 'un peón', n: 'un caballo', b: 'un alfil', r: 'una 
 // su jugada, aunque el servidor responda antes. Sin esto, en dificultad baja
 // la respuesta puede llegar tan rápido que la animación del jugador ni
 // alcanza a verse antes de que se dispare la de la CPU encima.
-const MIN_CPU_THINK_MS = 2000;
-const CPU_THINK_VARIANCE_MS = 1000;
-// Under time pressure, do not force Matthias to lose on a theatrical pause.
-const CPU_LOW_TIME_SECONDS = 8;
 // El control táctico es una pausa pedagógica, no un semáforo crítico. Si el
 // usuario no pulsa el CTA (por ejemplo porque quedó fuera del viewport), la
 // partida continúa sola y nunca aparenta haberse congelado.
@@ -539,9 +536,7 @@ export default function GameScreen({
 
     const cpuColor = humanColor === 'w' ? 'b' : 'w';
     const cpuTime = getTime(cpuColor);
-    const thinkMs = hasClock && cpuTime !== null && cpuTime <= CPU_LOW_TIME_SECONDS
-      ? 350
-      : MIN_CPU_THINK_MS + Math.floor(Math.random() * (CPU_THINK_VARIANCE_MS + 1));
+    const thinkMs = cpuPresentationDelayMs({ cpuTime: hasClock ? cpuTime : null });
     const minThink = abortableDelay(thinkMs, controller.signal);
 
     try {
