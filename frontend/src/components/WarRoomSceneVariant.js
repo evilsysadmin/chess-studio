@@ -2,7 +2,6 @@ import {
   isClassicWarRoomVariant,
   loadWarRoomVariantInstaller,
 } from './WarRoomVariant.js';
-import { installWarRoomHansVariantStage, warRoomHansRoom } from './WarRoomHansStage.js';
 
 export function shouldShowClassicWarRoomShell(options = {}) {
   return isClassicWarRoomVariant(options);
@@ -23,6 +22,10 @@ function setClassicShellVisible(objects, visible) {
 
 function isPromiseLike(value) {
   return Boolean(value && typeof value.then === 'function');
+}
+
+export function warRoomVariantHostsHans(variant) {
+  return variant === 'v2' || variant === 'v3' || variant === 'v4';
 }
 
 export function startWarRoomVariantScene({
@@ -100,31 +103,40 @@ export function startWarRoomVariantScene({
     .then((release) => {
       if (cancelled) return release?.();
       releaseShell = release;
-      if (warRoomHansRoom(variant)) {
-        // Hans lives in every War Room (never the Duel Room). Blender rooms get
-        // him once their shell exports his anchors and door leaf; a failure
-        // here must never cost the room.
-        try {
-          const hans = installWarRoomHansVariantStage(scene, {
-            variant,
-            coarsePointer: shellCoarsePointer,
-            shellRoot: scene.children.find((child) => child?.userData?.warRoomVariant === variant) || null,
-          });
-          releaseHans = hans.release;
-          if (canvas) canvas.dataset.warRoomHansStage = hans.status;
-          // The board marks Hans' scene ready after two real paints with his
-          // driver in place (v1 installs him inside a render); give it the
-          // extra paint so the fire-call narrative can start.
-          onPaint?.();
-        } catch (error) {
-          if (canvas) canvas.dataset.warRoomHansStageError = String(error?.message || error).slice(0, 200);
-        }
-      }
       setClassicShellVisible(classicShellController?.current?.() || classicShellObjects, false);
       scene.userData ||= {};
       scene.userData.warRoomRenderedVariant = variant;
       setStatus('ready', variant);
       onPaint?.();
+
+      if (warRoomVariantHostsHans(variant)) {
+        // The room is already visible and marked ready. Hans is ambient flavor,
+        // so load his stage afterwards instead of making the first War Room
+        // paint pay for the whole actor/service graph.
+        void import('./WarRoomHansStage.js')
+          .then(({ installWarRoomHansVariantStage }) => {
+            if (cancelled) return;
+            try {
+              const hans = installWarRoomHansVariantStage(scene, {
+                variant,
+                coarsePointer: shellCoarsePointer,
+                shellRoot: scene.children.find((child) => child?.userData?.warRoomVariant === variant) || null,
+              });
+              if (cancelled) return hans.release?.();
+              releaseHans = hans.release;
+              if (canvas) canvas.dataset.warRoomHansStage = hans.status;
+              // Hans' fire-call narrative needs one paint after his driver lands.
+              onPaint?.();
+            } catch (error) {
+              if (canvas) canvas.dataset.warRoomHansStageError = String(error?.message || error).slice(0, 200);
+            }
+          })
+          .catch((error) => {
+            if (!cancelled && canvas) {
+              canvas.dataset.warRoomHansStageError = String(error?.message || error || 'hans-stage-load-error').slice(0, 200);
+            }
+          });
+      }
     })
     .catch((error) => {
       if (cancelled) return;
