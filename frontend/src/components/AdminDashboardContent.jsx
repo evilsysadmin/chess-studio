@@ -21,7 +21,7 @@ import useAdminFeedbackController from './useAdminFeedbackController.js';
 
 const BUILD_SHA = import.meta.env.VITE_BUILD_SHA || 'local';
 
-export default function AdminDashboardContent({ section = 'overview' }) {
+export default function AdminDashboardContent({ section = 'overview', onNavigate = () => {} }) {
   const {
     users,
     setUsers,
@@ -178,7 +178,7 @@ export default function AdminDashboardContent({ section = 'overview' }) {
 
   return (
     <div className="menu admin-screen">
-      {feedbackDeleteCandidate && (
+      {section === 'feedback' && feedbackDeleteCandidate && (
         <div className="modal-backdrop admin-confirm-backdrop" role="presentation" onMouseDown={dismissFeedbackDelete}>
           <section className="army-card admin-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="feedback-delete-title" onMouseDown={(event) => event.stopPropagation()}>
             <span className="section-label">Feedback · acción irreversible</span>
@@ -193,7 +193,7 @@ export default function AdminDashboardContent({ section = 'overview' }) {
       )}
       <div className="menu-section">
         {section === 'overview' && <p className="hint-text admin-build-id">Release: <code>{APP_RELEASE}</code> · Build: <code>{BUILD_SHA === 'local' ? 'local' : BUILD_SHA.slice(0, 8)}</code></p>}
-        {section === 'overview' && <AdminObservabilitySummary token={getToken()} users={users || []} currentAdmin={currentAdmin} onOpen={() => document.getElementById('admin-tab-observability')?.click()} />}
+        {section === 'overview' && <AdminObservabilitySummary token={getToken()} users={users || []} currentAdmin={currentAdmin} onOpen={() => onNavigate('observability')} />}
 
         {section === 'matthias' && <AdminMatthiasStatusSection
           status={matthiasStatus}
