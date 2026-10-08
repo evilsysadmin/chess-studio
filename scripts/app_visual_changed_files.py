@@ -968,18 +968,18 @@ def self_test() -> None:
     assert not _is_nonvisual_casual_result_app_diff(None)
 
     shared_lazy_diff = (
-        "--- a/frontend/src/App.jsx\\n+++ b/frontend/src/App.jsx\\n"
-        "@@ -1 +1 @@\\n"
-        "-import SharedResultScreen from './components/SharedResultScreen.jsx';\\n"
-        "+const SharedResultScreen = React.lazy(() => import('./components/SharedResultScreen.jsx'));\\n"
-        "@@ -5 +5 @@\\n"
-        "-      <>\\n"
-        '+      <React.Suspense fallback={<div className="route-loading" role="status">Cargando resultado compartido…</div>}>\\n'
-        "-      </>\\n"
-        "+      </React.Suspense>\\n"
+        "--- a/frontend/src/App.jsx\n+++ b/frontend/src/App.jsx\n"
+        "@@ -1 +1 @@\n"
+        "-import SharedResultScreen from './components/SharedResultScreen.jsx';\n"
+        "+const SharedResultScreen = React.lazy(() => import('./components/SharedResultScreen.jsx'));\n"
+        "@@ -5 +5 @@\n"
+        "-      <>\n"
+        '+      <React.Suspense fallback={<div className="route-loading" role="status">Cargando resultado compartido…</div>}>\n'
+        "-      </>\n"
+        "+      </React.Suspense>\n"
     )
     assert _is_shared_result_lazy_app_diff(shared_lazy_diff)
-    assert not _is_shared_result_lazy_app_diff(shared_lazy_diff + "+<main>another change</main>\\n")
+    assert not _is_shared_result_lazy_app_diff(shared_lazy_diff + "+<main>another change</main>\n")
     original_diff = globals()["_git_diff_text"]
     try:
         globals()["_git_diff_text"] = lambda base, head, path: shared_lazy_diff if path == APP_SHELL else None
