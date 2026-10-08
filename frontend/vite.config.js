@@ -115,7 +115,6 @@ export default defineConfig({
         'src/backNavigationStack.js',
         'src/homePlayNudge.js',
         'src/adminFormatting.js',
-        'src/observability.js',
         'src/profileKeys.js',
         'src/safeStorage.js',
         'src/storageMigrations.js',
