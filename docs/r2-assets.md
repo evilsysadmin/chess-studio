@@ -54,6 +54,7 @@ The repository owns an automatic retention policy for the public asset bucket.
 - Keep one staging revision and two runtime revisions per revision journal.
 - Old `_smoke/` objects expire after one day.
 - Prefixes explicitly marked `deprecated/` or `_deprecated/` age out after the grace period unless they are still runtime-pinned.
+- Matthias repair source families (`pose-semantics-v1/` and the `machinegun/run13/` continuity input) have explicit protected prefixes. These older source URLs are composed through Python constants, so a scanner that only recognizes complete literal URLs may miss them. This protects existing objects from future GC runs; it **cannot restore** an object already missing from R2.
 - A single pass is limited to 1,000 objects and 70% of observed bucket bytes.
 
 `scripts/r2_asset_gc.py` inventories R2, protects the reviewed manifest, hard-coded runtime R2 URLs and stable `current.*` aliases, then prunes only safely classified stale objects. Capacity pressure may prune old rollback copies, but never active pins.
