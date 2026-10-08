@@ -360,6 +360,11 @@ for (const capture of CAPTURES) {
     try {
       await openTactics(page);
       if (capture.hasTouch) {
+        // Desktop fullscreen needs to be released before reusing this context at mobile size.
+        await page.evaluate(async () => {
+          if (document.fullscreenElement) await document.exitFullscreen();
+        });
+        await expect.poll(() => page.evaluate(() => document.fullscreenElement === null)).toBe(true);
         await page.setViewportSize({ width: capture.width, height: capture.height });
         await page.waitForTimeout(180);
       }
