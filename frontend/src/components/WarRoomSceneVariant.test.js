@@ -96,6 +96,88 @@ describe('War Room shared scene variants', () => {
     release();
   });
 
+  it('marks a Blender room ready before loading Hans and installs him asynchronously', async () => {
+    const scene = {
+      userData: {},
+      children: [{ userData: { warRoomVariant: 'v3' } }],
+    };
+    const canvas = { dataset: {} };
+    const statuses = [];
+    let resolveHansModule;
+    let installs = 0;
+    const pendingHans = new Promise((resolve) => { resolveHansModule = resolve; });
+
+    const release = startWarRoomVariantScene({
+      scene,
+      classicShellController: { current: () => [] },
+      variant: 'v3',
+      selectable: true,
+      canvas,
+      onStatus: (status) => statuses.push(status),
+      loadVariantInstaller: async () => () => () => {},
+      loadHansStage: () => pendingHans,
+    });
+
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(statuses).toEqual(['loading', 'ready']);
+    expect(scene.userData.warRoomRenderedVariant).toBe('v3');
+    expect(canvas.dataset.warRoomHansStage).toBe('loading');
+    expect(installs).toBe(0);
+
+    resolveHansModule({
+      installWarRoomHansVariantStage: () => {
+        installs += 1;
+        return { status: 'v3-armory-hall:idle', release: () => {} };
+      },
+    });
+    await pendingHans;
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(installs).toBe(1);
+    expect(canvas.dataset.warRoomHansStage).toBe('v3-armory-hall:idle');
+    release();
+  });
+
+  it('does not install a late Hans stage after the Blender room unmounts', async () => {
+    const scene = {
+      userData: {},
+      children: [{ userData: { warRoomVariant: 'v3' } }],
+    };
+    let resolveHansModule;
+    let installs = 0;
+    const pendingHans = new Promise((resolve) => { resolveHansModule = resolve; });
+
+    const release = startWarRoomVariantScene({
+      scene,
+      classicShellController: { current: () => [] },
+      variant: 'v3',
+      selectable: true,
+      loadVariantInstaller: async () => () => () => {},
+      loadHansStage: () => pendingHans,
+    });
+
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    release();
+
+    resolveHansModule({
+      installWarRoomHansVariantStage: () => {
+        installs += 1;
+        return { status: 'unexpected', release: () => {} };
+      },
+    });
+    await pendingHans;
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(installs).toBe(0);
+  });
+
   it('keeps classic eager behavior when the classic variant is actually active', () => {
     let builds = 0;
     const controller = createWarRoomClassicShellController({

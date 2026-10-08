@@ -1,8 +1,8 @@
 import {
   isClassicWarRoomVariant,
   loadWarRoomVariantInstaller,
+  warRoomVariantSupportsHans,
 } from './WarRoomVariant.js';
-import { installWarRoomHansVariantStage, warRoomHansRoom } from './WarRoomHansStage.js';
 
 export function shouldShowClassicWarRoomShell(options = {}) {
   return isClassicWarRoomVariant(options);
@@ -45,7 +45,17 @@ function syncBlenderShadowTelemetry(scene, variant, canvas) {
 }
 
 export function startWarRoomVariantScene({
-  scene, classicShellController, variant, selectable, whiteSide, renderLite, canvas, onStatus, onPaint,
+  scene,
+  classicShellController,
+  variant,
+  selectable,
+  whiteSide,
+  renderLite,
+  canvas,
+  onStatus,
+  onPaint,
+  loadVariantInstaller = loadWarRoomVariantInstaller,
+  loadHansStage = () => import('./WarRoomHansStage.js'),
 }) {
   let cancelled = false;
   let releaseShell = null;
@@ -114,7 +124,7 @@ export function startWarRoomVariantScene({
     syncBlenderShadowTelemetry(scene, variant, canvas);
     onPaint?.();
   };
-  void loadWarRoomVariantInstaller(variant)
+  void loadVariantInstaller(variant)
     .then((installShell) => installShell(scene, {
       whiteSide,
       coarsePointer: shellCoarsePointer,
@@ -124,25 +134,38 @@ export function startWarRoomVariantScene({
       if (cancelled) return release?.();
       releaseShell = release;
       syncBlenderShadowTelemetry(scene, variant, canvas);
-      if (warRoomHansRoom(variant)) {
-        // Hans lives in every War Room (never the Duel Room). Blender rooms get
-        // him once their shell exports his anchors and door leaf; a failure
-        // here must never cost the room.
-        try {
-          const hans = installWarRoomHansVariantStage(scene, {
-            variant,
-            coarsePointer: shellCoarsePointer,
-            shellRoot: scene.children.find((child) => child?.userData?.warRoomVariant === variant) || null,
+      if (warRoomVariantSupportsHans(variant)) {
+        // Hans is decorative/narrative rather than a prerequisite for board
+        // interaction. Keep his sizeable stage/routine graph off the initial
+        // Blender-room path and load it only after the shell itself is ready.
+        if (canvas) canvas.dataset.warRoomHansStage = 'loading';
+        void Promise.resolve()
+          .then(() => loadHansStage())
+          .then(({ installWarRoomHansVariantStage }) => {
+            if (cancelled) return;
+            const hans = installWarRoomHansVariantStage(scene, {
+              variant,
+              coarsePointer: shellCoarsePointer,
+              shellRoot: scene.children.find((child) => child?.userData?.warRoomVariant === variant) || null,
+            });
+            if (cancelled) {
+              hans.release?.();
+              return;
+            }
+            releaseHans = hans.release;
+            if (canvas) canvas.dataset.warRoomHansStage = hans.status;
+            // The board marks Hans' scene ready after two real paints with his
+            // driver in place (v1 installs him inside a render); give it the
+            // extra paint so the fire-call narrative can start.
+            onPaint?.();
+          })
+          .catch((error) => {
+            if (cancelled) return;
+            if (canvas) {
+              canvas.dataset.warRoomHansStage = 'error';
+              canvas.dataset.warRoomHansStageError = String(error?.message || error).slice(0, 200);
+            }
           });
-          releaseHans = hans.release;
-          if (canvas) canvas.dataset.warRoomHansStage = hans.status;
-          // The board marks Hans' scene ready after two real paints with his
-          // driver in place (v1 installs him inside a render); give it the
-          // extra paint so the fire-call narrative can start.
-          onPaint?.();
-        } catch (error) {
-          if (canvas) canvas.dataset.warRoomHansStageError = String(error?.message || error).slice(0, 200);
-        }
       }
       setClassicShellVisible(classicShellController?.current?.() || classicShellObjects, false);
       scene.userData ||= {};
