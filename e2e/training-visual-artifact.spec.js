@@ -555,6 +555,11 @@ scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page })
   await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
   await page.setViewportSize({ width: 1440, height: 900 });
   await settle(page);
+  const archive1 = page.locator('details[data-insights-archive]');
+  await expect(archive1).toBeVisible();
+  if (await archive1.getAttribute('open') === null) {
+    await archive1.locator('summary').click();
+  }
   await page.getByRole('button', { name: 'Mi progreso', exact: true }).click();
 
   const career = page.locator('.career-screen');
