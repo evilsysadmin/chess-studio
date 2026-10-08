@@ -37,7 +37,7 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 
 | Tarea | Documentos que hay que leer |
 | --- | --- |
-| Sprites, frames, atlases o animaciones de Pawn Slug/Godot | [`docs/pawnslug-sprites.md`](docs/pawnslug-sprites.md), [`skills/godot-spritesheets/SKILL.md`](skills/godot-spritesheets/SKILL.md), [`scripts/art/README.md`](scripts/art/README.md), [`frontend/src/assets/pawnSlug/README.md`](frontend/src/assets/pawnSlug/README.md) |
+| Sprites, frames, atlases o animaciones de Pawn Slug/Godot/Chess Football | [`docs/pawnslug-sprites.md`](docs/pawnslug-sprites.md), [`skills/godot-spritesheets/SKILL.md`](skills/godot-spritesheets/SKILL.md), [`scripts/art/README.md`](scripts/art/README.md), [`frontend/src/assets/pawnSlug/README.md`](frontend/src/assets/pawnSlug/README.md), [`games/chess-football-godot/assets/players/run_canon/README.md`](games/chess-football-godot/assets/players/run_canon/README.md) |
 | Pawn Slug runtime, Web export, Playwright smoke o input real | [`skills/pawn-slug-runtime-smoke/SKILL.md`](skills/pawn-slug-runtime-smoke/SKILL.md) |
 | Música / radio de sesión / Pawn Slug OST / composición y mezcla | [`docs/music.md`](docs/music.md), [`skills/pawn-slug-synthwave/SKILL.md`](skills/pawn-slug-synthwave/SKILL.md) |
 | Publicación/migración de assets a R2 | [`docs/r2-asset-publisher.md`](docs/r2-asset-publisher.md), [`docs/r2-assets.md`](docs/r2-assets.md), [`docs/visual-assets-r2-flow.md`](docs/visual-assets-r2-flow.md) |
