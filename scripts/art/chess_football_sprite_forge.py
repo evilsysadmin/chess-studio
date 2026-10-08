@@ -1395,16 +1395,12 @@ def build_outputs() -> dict[str, str]:
         "display_scale": DISPLAY_SCALE,
         "canonical_run": {
             "quality_contract": "chess-football-run-canon-v1",
-            "teams": {
-                "fc_matthias": {
-                    "manifest": "run_canon/fc_matthias/manifest.json",
-                    "atlas": "run_canon/fc_matthias/main.png",
-                },
-                "real_enroque": {
-                    "manifest": "run_canon/real_enroque/manifest.json",
-                    "atlas": "run_canon/real_enroque/main.png",
-                },
-            },
+            "encoded_atlas": "run_canon/canonical_run_v1.png.b64",
+            "sha256": "62e6b26f5cfc11ccf94ae93c643659a51695baf53c4511366bddfdd6692d234c",
+            "cell": {"width": CELL_W, "height": CELL_H},
+            "frames": COLUMNS,
+            "fps": 12,
+            "footline": FOOTLINE,
         },
         "field_variants": field_variants,
         "atlases": atlas_meta,
