@@ -14,6 +14,7 @@ type AreaOptions struct {
 	PlannerSnapshot  any // raw document, nil without one
 	PartyLevel       *int64
 	DungeonLevel     int64
+	TopologyVersion  int64
 	PlacementVersion int
 }
 
@@ -38,7 +39,7 @@ func AreaEnvelope(mapID string, seed int64, opts AreaOptions) (bson.D, error) {
 	if p, ok := proposals[mapID]; ok {
 		proposal = p
 	}
-	generated, mapCode, layoutRevision, err := proceduralize(authored, seed, proposal, opts.PlacementVersion)
+	generated, mapCode, layoutRevision, err := proceduralize(authored, seed, proposal, opts.PlacementVersion, opts.DungeonLevel, opts.TopologyVersion)
 	if err != nil {
 		return nil, err
 	}
