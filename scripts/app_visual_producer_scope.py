@@ -443,6 +443,10 @@ def classify_path(path: str) -> set[str] | None:
         return set(POSTGAME_EXACT_PRODUCERS[lower])
     if lower in QUICK_MATCH_EXACT_PRODUCERS:
         return set(QUICK_MATCH_EXACT_PRODUCERS[lower])
+    if lower == "frontend/src/components/shareresultmodal.jsx":
+        return {"warroom-core"}
+    if lower == "frontend/src/components/profilebackupmodal.jsx":
+        return {"home-base"}
     if lower == "frontend/src/components/homemobilegoldenpath.css":
         return {"home-base"}
     if lower in PVP_DUEL_EXACT_PRODUCERS:
@@ -667,6 +671,23 @@ POSTGAME_WARROOM_FAST_PATH = {
     "scripts/app_visual_producer_scope.py",
 }
 
+CPU_PRESENTATION_WARROOM_PATHS = {
+    "frontend/src/components/gamescreen.jsx",
+    "frontend/src/cpupresentationtiming.js",
+    "frontend/src/cpupresentationtiming.test.js",
+    "scripts/architecture_debt_budget.py",
+}
+
+
+def _is_cpu_presentation_warroom_fast_path(paths: list[str]) -> bool:
+    normalized = {path.strip().replace("\\", "/").lower() for path in paths if path.strip()}
+    return (
+        {"frontend/src/components/gamescreen.jsx", "frontend/src/cpupresentationtiming.js"}
+        .issubset(normalized)
+        and normalized.issubset(CPU_PRESENTATION_WARROOM_PATHS)
+    )
+
+
 def _is_postgame_warroom_fast_path(paths: list[str]) -> bool:
     normalized = {path.strip().replace("\\", "/").lower() for path in paths if path.strip()}
     return (
@@ -682,7 +703,7 @@ def classify(paths: list[str]) -> str:
         return "all"
     if _is_home_mobile_tools_fast_path(cleaned):
         return "home-base"
-    if _is_postgame_warroom_fast_path(cleaned):
+    if _is_postgame_warroom_fast_path(cleaned) or _is_cpu_presentation_warroom_fast_path(cleaned):
         return "warroom-core"
     training_visual_spec_touched = any(
         Path(path.lower().replace("\\", "/")).name == "training-visual-artifact.spec.js"
@@ -703,6 +724,19 @@ def classify(paths: list[str]) -> str:
 
 
 def self_test() -> None:
+    assert classify([
+        "frontend/src/components/GameScreen.jsx",
+        "frontend/src/cpuPresentationTiming.js",
+        "frontend/src/cpuPresentationTiming.test.js",
+        "scripts/architecture_debt_budget.py",
+    ]) == "warroom-core"
+    assert classify(["frontend/src/components/ShareResultModal.jsx"]) == "warroom-core"
+    assert classify(["frontend/src/components/ProfileBackupModal.jsx"]) == "home-base"
+    assert classify([
+        "frontend/src/components/GameScreen.jsx",
+        "frontend/src/cpuPresentationTiming.js",
+        "frontend/src/components/HomeIllustrated.jsx",
+    ]) != "warroom-core"
     assert classify(["frontend/src/components/WarRoomClassicShellLoader.js"]) == "training-school,warroom-core"
     assert classify_warroom_variants(["frontend/src/components/WarRoomClassicShell.js"]) == "classic"
     assert classify_warroom_variants(["frontend/src/components/PremiumWarRoomScene.js"]) == "classic"
