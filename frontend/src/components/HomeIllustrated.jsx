@@ -80,7 +80,7 @@ function currentReducedMotion() {
   return reducedMotionStatus().effective;
 }
 
-export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, onPlayIntent, onContinue, onPractice, pendingModes = [], onTournament, onTrain, onCombat, onDaily, onHistory, onInsights, tools, matthiasModel, matthiasSpeaking, onMatthiasAction, onMatthiasDismiss }) {
+export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, onPlayIntent, onContinue, onPractice, pendingModes = [], onTournament, onTrain, onCombat, onDaily, onHistory, onInsights, tools, matthiasModel, matthiasSpeaking, onMatthiasAction, onMatthiasDismiss, pvpMenuEntry = null }) {
   const [toolsOpen, setToolsOpen] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
   const [playMenuOpen, setPlayMenuOpen] = useState(false);
@@ -411,6 +411,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
                   ))}
                 </div>
               )}
+              {pvpMenuEntry && <div className="illustrated-home__play-mobile-pvp">{pvpMenuEntry}</div>}
               {hasSavedGame && (
                 <button type="button" className="illustrated-home__play-menu-item" onClick={onPlay} disabled={loading}>
                   <IconSword aria-hidden="true" />

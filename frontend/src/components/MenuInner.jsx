@@ -202,8 +202,9 @@ export default function Menu({
   const pvpEntryVisible = !showQuickMatch && !showPracticeMatch && !showPvpLobby;
   // One canonical 1 vs 1 entry on Home. Its state comes from the PvP runtime
   // owner; Home only projects it and navigates to lobby or the active match.
-  const renderPvpRosterLink = () => (
+  const renderPvpRosterLink = ({ placement = 'floating' } = {}) => (
     <HomePvpRosterLink
+      placement={placement}
       onOpen={() => {
         if (pvpFlow?.activeMatch) {
           pvpFlow?.enterMatch?.(pvpFlow.activeMatch);
@@ -241,6 +242,7 @@ export default function Menu({
         matthiasSpeaking={Boolean(matthiasVisit) && !matthiasCornerBlocked}
         onMatthiasAction={handleMatthiasAction}
         onMatthiasDismiss={() => setMatthiasVisit(null)}
+        pvpMenuEntry={pvpEntryVisible ? renderPvpRosterLink({ placement: 'menu' }) : null}
         tools={[
           ['Puzzles personales', onTrainPersonal],
           ['Puzzles clásicos', onPuzzle],

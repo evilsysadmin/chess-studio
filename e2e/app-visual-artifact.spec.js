@@ -271,6 +271,36 @@ test('App · captura visual canónica desktop + Android normal/desktop-site', as
     }
 
     if (HOME_PROFILE_SCOPE !== 'quickmatch') {
+      const moreContext = await visualBrowser.newContext({
+        viewport:{ width:390, height:844 },
+        hasTouch:true,
+      });
+      const morePage = await moreContext.newPage();
+      try {
+        await mockApi(morePage, {
+          profileSeed: {
+            'matthias.onboarded': '2',
+            'chess-study-home-guide-dismissed-v1': '1',
+          },
+        });
+        await login(morePage);
+        const more = morePage.locator('.illustrated-home__play-more');
+        await expect(more).toBeVisible();
+        await more.click();
+        const mobilePvp = morePage.locator('.illustrated-home__play-mobile-pvp .home-pvp-roster-link--menu');
+        await expect(mobilePvp).toBeVisible();
+        await morePage.waitForTimeout(100);
+        await captureViewportPng(
+          moreContext,
+          morePage,
+          `${ARTIFACT_DIR}/home-more-android-390x844.png`,
+        );
+      } finally {
+        await moreContext.close();
+      }
+    }
+
+    if (HOME_PROFILE_SCOPE !== 'quickmatch') {
       const dungeonContext = await visualBrowser.newContext({
         viewport:{ width:390, height:844 },
         hasTouch:true,

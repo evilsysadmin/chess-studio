@@ -8,6 +8,7 @@ export default function HomePvpRosterLink({
   incomingCount = 0,
   unreadMessageCount = 0,
   activeMatch = null,
+  placement = 'floating',
 }) {
   const active = Boolean(activeMatch);
   const challenged = Number(incomingCount) > 0;
@@ -40,7 +41,7 @@ export default function HomePvpRosterLink({
   return (
     <button
       type="button"
-      className={`home-pvp-roster-link${enrolled ? ' is-enrolled' : ''}${active ? ' has-active-match' : ''}${challenged ? ' has-challenge' : ''}${hasRivals ? ' has-rivals' : ''}${hasUnread ? ' has-unread-chat' : ''}`}
+      className={`home-pvp-roster-link${placement === 'menu' ? ' home-pvp-roster-link--menu' : ''}${enrolled ? ' is-enrolled' : ''}${active ? ' has-active-match' : ''}${challenged ? ' has-challenge' : ''}${hasRivals ? ' has-rivals' : ''}${hasUnread ? ' has-unread-chat' : ''}`}
       onClick={onOpen}
       disabled={disabled}
       aria-label="Abrir Sala de Duelos 1 contra 1"

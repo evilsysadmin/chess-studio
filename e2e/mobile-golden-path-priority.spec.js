@@ -111,8 +111,8 @@ test.describe('Mobile golden path · Partida rápida cabe en alto útil real', (
   }
 });
 
-// GP-4 (#4405): en la Home móvil el aviso de Matthias no tapa navegación ni la
-// barra fija de «Jugar 1 vs 1», y su texto no queda cortado.
+// GP-4 (#4405): Home móvil mantiene el golden path limpio; 1v1 vive bajo “Más”
+// en vez de reservar una franja fija, y Matthias no tapa la navegación.
 test.describe('Mobile golden path · Home portrait mantiene el camino principal limpio', () => {
   test.use({ isMobile: true, hasTouch: true });
 
@@ -153,16 +153,19 @@ test.describe('Mobile golden path · Home portrait mantiene el camino principal 
         expect(box.y + box.height, `${label} inside bottom`).toBeLessThanOrEqual(viewport.height + 1);
       }
 
-      const bar = page.locator('.home-pvp-roster-link');
-      if (await bar.isVisible().catch(() => false)) {
-        const barBox = await bar.boundingBox();
-        const playBox = await play.boundingBox();
-        const overlap = barBox.x < playBox.x + playBox.width
-          && barBox.x + barBox.width > playBox.x
-          && barBox.y < playBox.y + playBox.height
-          && barBox.y + barBox.height > playBox.y;
-        expect(overlap, 'fixed 1v1 bar must not cover JUGAR/CONTINUAR').toBe(false);
-      }
+      await expect(page.locator('.home-pvp-roster-link:not(.home-pvp-roster-link--menu)')).toBeHidden();
+      await more.click();
+      const playMenu = home.getByRole('group', { name: 'Más formas de jugar' });
+      const menuPvp = home.locator('.illustrated-home__play-mobile-pvp .home-pvp-roster-link--menu');
+      await expect(playMenu).toBeVisible();
+      await expect(menuPvp).toBeVisible();
+      await expect(menuPvp).toContainText('Jugar 1 vs 1');
+      const [menuBox, pvpBox] = await Promise.all([playMenu.boundingBox(), menuPvp.boundingBox()]);
+      expect(menuBox.x, 'Más drawer stays inside left edge').toBeGreaterThanOrEqual(10);
+      expect(menuBox.x + menuBox.width, 'Más drawer stays inside right edge').toBeLessThanOrEqual(viewport.width - 10);
+      expect(menuBox.width, 'Más drawer uses the phone width').toBeGreaterThanOrEqual(viewport.width - 26);
+      expect(pvpBox.height, '1v1 under Más remains touch-safe').toBeGreaterThanOrEqual(44);
+      await more.click();
     });
   }
 });

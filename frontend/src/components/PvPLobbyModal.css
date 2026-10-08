@@ -468,13 +468,16 @@
   border: 1px solid rgba(199, 165, 110, .07);
   border-radius: 12px;
   background: rgba(255, 255, 255, .022);
-  transition: border-color .16s ease, background .16s ease, transform .16s ease;
+  /* Keep the hit geometry stationary. Moving the row itself on :hover can
+     oscillate pointer hit-testing at the edge and makes direct challenge CTAs
+     fail actionability even though they are visible and enabled. */
+  transition: border-color .16s ease, background .16s ease, box-shadow .16s ease;
 }
 
 .pvp-lobby__player:not(.is-self):hover {
-  transform: translateY(-1px);
   border-color: rgba(209, 171, 101, .19);
   background: rgba(205, 163, 93, .045);
+  box-shadow: 0 5px 14px rgba(0, 0, 0, .14);
 }
 
 .pvp-lobby__player:focus-visible {

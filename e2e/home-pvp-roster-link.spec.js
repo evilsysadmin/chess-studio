@@ -210,7 +210,10 @@ test('Roster 1v1 móvil · abre arriba, sin título amputado ni estado vacío du
   }));
 
   await login(page);
-  await page.getByRole('button', { name: 'Abrir Sala de Duelos 1 contra 1' }).click();
+  const more = page.locator('.illustrated-home__play-more');
+  await expect(page.locator('.home-pvp-roster-link:not(.home-pvp-roster-link--menu)')).toBeHidden();
+  await more.click();
+  await page.locator('.illustrated-home__play-mobile-pvp').getByRole('button', { name: 'Abrir Sala de Duelos 1 contra 1' }).click();
 
   const lobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room' });
   const heading = lobby.getByRole('heading', { name: 'Sala de Duelos' });
