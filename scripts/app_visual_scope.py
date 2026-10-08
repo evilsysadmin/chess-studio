@@ -273,7 +273,10 @@ def _surface_groups(path: str) -> set[str] | None:
         # Backend changes have no browser pixels of their own. Any accompanying
         # frontend visual owner determines the capture scope.
         return set()
-    if lower == "frontend/src/components/labscreen.jsx":
+    if lower in {
+        "frontend/src/components/labscreen.jsx",
+        "frontend/src/components/labworkshopmobile.css",
+    }:
         return {"experiments"}
     if lower in DEDICATED_WAR_ROOM_BLENDER_PATHS:
         # Dedicated Blender workflows already build, render, validate, upload
@@ -427,6 +430,8 @@ def _experiment_parts(path: str) -> set[str]:
         or lower.startswith(".github/actions/app-visual-pipeline/")
     ):
         return {"chronicles"}
+    if name == "labworkshopmobile.css":
+        return {"landing"}
     if name == "experiments-visual-artifact.spec.js":
         return {"landing", "pawnslug"}
     if name == "chronicles-avatar-visual-artifact.spec.js" or "chronicles" in lower:
@@ -769,6 +774,9 @@ def self_test() -> None:
     ])
     assert football.capture_groups == "experiments"
     assert football.experiments_scope == "football"
+    mobile_workshop = classify(["frontend/src/components/LabWorkshopMobile.css"])
+    assert mobile_workshop.capture_groups == "experiments"
+    assert mobile_workshop.experiments_scope == "landing"
     lab_visual = classify([
         "frontend/src/components/LabScreen.jsx",
         "frontend/src/labLaunchIntent.js",
