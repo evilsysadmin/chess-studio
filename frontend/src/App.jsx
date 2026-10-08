@@ -32,7 +32,7 @@ import LoginScreen from './components/LoginScreen.jsx';
 import { reconcileRivalryHistory } from './rivalry.js';
 import { loadActiveSeries } from './series.js';
 const ShareResultModal = React.lazy(() => import('./components/ShareResultModal.jsx'));
-import SharedResultScreen from './components/SharedResultScreen.jsx';
+const SharedResultScreen = React.lazy(() => import('./components/SharedResultScreen.jsx'));
 import { buildLiveShareRecord, shareRecordFromHash } from './shareResult.js';
 const LabScreen = React.lazy(() => import('./components/LabScreen.jsx'));
 import { loadActiveContract, loadSpecialRun, reconcileCareerHistory } from './career.js';
@@ -677,12 +677,12 @@ function App() {
 
   if (sharedRecord) {
     return (
-      <>
+      <React.Suspense fallback={<div className="route-loading" role="status">Cargando resultado compartido…</div>}>
         <SharedResultScreen record={sharedRecord} onOpenApp={() => {
           window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
           window.location.reload();
         }} />
-      </>
+      </React.Suspense>
     );
   }
 
