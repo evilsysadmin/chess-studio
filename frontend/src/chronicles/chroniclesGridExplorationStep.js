@@ -1,6 +1,7 @@
 import { chroniclesReduce, chroniclesActiveEnemies } from '../chroniclesOfMatthias.js';
 import {
   chroniclesChooseEnemyStep,
+  chroniclesEnemyCanAttackParty,
   chroniclesRuntimeEnemyPosition,
 } from '../chroniclesOfMatthiasTurns.js';
 
@@ -11,6 +12,9 @@ export function chroniclesGridExplorationStep(state, action) {
   const next = chroniclesReduce(before, action);
   if (!before || !next || before.phase !== 'explore' || next.phase !== 'explore') return next;
   if (next.x === before.x && next.y === before.y) return next;
+  // Engagement takes precedence over exploration movement: an enemy already
+  // in reach must enter initiative, not escape the encounter on this tick.
+  if (chroniclesActiveEnemies(next).some((enemy) => chroniclesEnemyCanAttackParty(next, enemy))) return next;
   // Reuse the authored occupancy/AI predicates; this scheduler never calls attack or damage APIs.
 
   let current = next;
