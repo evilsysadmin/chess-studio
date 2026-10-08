@@ -6,6 +6,7 @@ const VIEWPORTS = [
   { width: 390, height: 844, name: 'portrait alto' },
   { width: 780, height: 360, name: 'landscape estrecho' },
   { width: 915, height: 412, name: 'landscape ancho' },
+  { width: 1536, height: 709, name: 'landscape sitio de escritorio' },
 ];
 
 for (const viewport of VIEWPORTS) {
