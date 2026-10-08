@@ -5,6 +5,7 @@ from pathlib import Path
 import chronicles_api
 from chronicles_manifest_procedural import (
     CHRONICLES_CONTENT_PLACEMENT_VERSION,
+    CHRONICLES_DUNGEON_TOPOLOGY_VERSION,
     CHRONICLES_EXIT_PLACEMENT_VERSION,
     CHRONICLES_OPTIONAL_ENEMY_PLACEMENT_VERSION,
     chronicles_map_code_for_manifest,
