@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from collections import deque
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import hashlib
 from typing import Any
 
@@ -46,6 +46,7 @@ _CARDINAL = ((1, 0), (-1, 0), (0, 1), (0, -1))
 CHRONICLES_OPTIONAL_ENEMY_PLACEMENT_VERSION = 1
 CHRONICLES_EXIT_PLACEMENT_VERSION = 2
 CHRONICLES_CONTENT_PLACEMENT_VERSION = CHRONICLES_EXIT_PLACEMENT_VERSION
+CHRONICLES_DUNGEON_TOPOLOGY_VERSION = 1
 
 
 @dataclass(frozen=True, slots=True)
@@ -124,6 +125,21 @@ def chronicles_map_code_for_manifest(manifest: dict[str, Any], seed: int) -> Chr
         difficulty=chronicles_authored_difficulty(manifest),
         seed=int(seed),
     )
+
+
+def _dungeon_topology_recipe(
+    recipe: ChroniclesMapCode,
+    *,
+    dungeon_level: int = 1,
+    dungeon_topology_version: int = 0,
+) -> ChroniclesMapCode:
+    if int(dungeon_topology_version or 0) < CHRONICLES_DUNGEON_TOPOLOGY_VERSION:
+        return recipe
+    safe_level = max(1, int(dungeon_level or 1))
+    difficulty = min(5, max(1, int(recipe.difficulty) + safe_level - 1))
+    if difficulty == recipe.difficulty:
+        return recipe
+    return replace(recipe, difficulty=difficulty)
 
 
 def _base_marker_positions(
@@ -511,6 +527,8 @@ def proceduralize_chronicles_manifest(
     *,
     planner_proposal: Any = None,
     content_placement_version: int = 0,
+    dungeon_level: int = 1,
+    dungeon_topology_version: int = 0,
 ) -> ChroniclesProceduralManifest:
     module_variation = apply_chronicles_seeded_modules(manifest, seed)
     composition = apply_chronicles_seeded_composition(
@@ -522,8 +540,22 @@ def proceduralize_chronicles_manifest(
         seed,
     )
     composed_manifest = treasure_variation.manifest
-    base_recipe = chronicles_map_code_for_manifest(composed_manifest, seed)
+    authored_recipe = chronicles_map_code_for_manifest(composed_manifest, seed)
+    base_recipe = _dungeon_topology_recipe(
+        authored_recipe,
+        dungeon_level=dungeon_level,
+        dungeon_topology_version=dungeon_topology_version,
+    )
     planner = resolve_chronicles_planner_recipe(base_recipe, planner_proposal)
+    if planner.accepted:
+        planner = replace(
+            planner,
+            recipe=_dungeon_topology_recipe(
+                planner.recipe,
+                dungeon_level=dungeon_level,
+                dungeon_topology_version=dungeon_topology_version,
+            ),
+        )
 
     (
         local_generated,
@@ -600,6 +632,10 @@ def proceduralize_chronicles_manifest(
         "plannerReason": planner_reason,
         "plannerQualityFallback": planner_quality_fallback,
         "plannerQualityRejectedReasons": list(planner_quality_reasons),
+        **({
+            "dungeonTopologyVersion": CHRONICLES_DUNGEON_TOPOLOGY_VERSION,
+            "dungeonLevel": max(1, int(dungeon_level or 1)),
+        } if int(dungeon_topology_version or 0) >= CHRONICLES_DUNGEON_TOPOLOGY_VERSION else {}),
         "moduleVariationVersion": CHRONICLES_MODULE_VARIATION_VERSION,
         "moduleVariationRevision": module_variation.plan.revision,
         "activeProceduralModuleIds": list(module_variation.plan.active_module_ids),
