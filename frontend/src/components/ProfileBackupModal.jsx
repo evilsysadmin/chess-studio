@@ -126,7 +126,7 @@ export default function ProfileBackupModal({ onClose }) {
             {busy ? 'Guardando…' : 'Elegir archivo para importar'}
           </button>
           {importMessage && (
-            <p role="status" aria-live="polite" className={`hint-text ${importMessage.tone === 'bad' ? 'import-error' : 'import-success'}`} style={{ marginTop: '0.6rem' }}>
+            <p role="status" aria-live="polite" aria-atomic="true" className={`hint-text ${importMessage.tone === 'bad' ? 'import-error' : 'import-success'}`} style={{ marginTop: '0.6rem' }}>
               {importMessage.text}
             </p>
           )}
