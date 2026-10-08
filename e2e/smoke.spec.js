@@ -154,8 +154,14 @@ test('Partida rápida · un 503 al restaurar conserva la ruta y permite reintent
   await login(page);
 
   await buttonWithVisibleText(page, 'Partida rápida').click();
-  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click({ noWaitAfter: true });
-  await expect(gameTurn(page)).toBeVisible();
+  const startQuickMatch = page.getByRole('button', { name: 'Empezar partida', exact: true });
+  await expect(startQuickMatch).toBeVisible({ timeout: 20_000 });
+  await expect(startQuickMatch).toBeEnabled();
+  // Este smoke valida recovery, no la mecánica de pointer. El render 3D puede
+  // mantener el bounding box moviéndose durante unos frames bajo carga CI y
+  // Playwright se queda esperando "stable" aunque el CTA ya sea accionable.
+  await startQuickMatch.evaluate((button) => button.click());
+  await expect(gameTurn(page)).toBeVisible({ timeout: 20_000 });
   // Bajo carga CI el tablero 3D puede pintar antes de que el efecto de
   // continuidad haya terminado. Sincronizamos con la señal de producto que
   // sólo aparece tras guardar el sobre local y después acreditamos las claves
