@@ -232,6 +232,9 @@ def publish(source: pathlib.Path, logical_id: str, prefix: str, manifest_path: p
         return entry
 
     token, account_id = require_env()
+    from r2_storage_governance import admission_check
+
+    admission_check(config, token=token, account_id=account_id, key=key, size=size)
     result = upload_object(token, account_id, config["bucket"], key, source.read_bytes(), entry["contentType"])
     if result.get("key") not in (None, key):
         raise PublishError(f"Cloudflare devolvió key inesperada: {result!r}")
