@@ -147,17 +147,17 @@
   justify-self: start;
   position: relative;
   display: grid;
-  grid-template-columns: minmax(250px, 310px) auto;
+  grid-template-columns: minmax(0, 1fr) 136px;
   align-items: center;
   gap: 0 .55rem;
-  width: min(100%, 410px);
+  width: min(100%, 430px);
   min-width: 0;
   padding: 0;
   border: 0;
   background: transparent;
   box-shadow: none;
   backdrop-filter: none;
-  transform: translateX(clamp(-5rem, -5vw, -2.5rem));
+  transform: translateX(clamp(-6rem, -6vw, -3.2rem));
 }
 
 .quick-match-ready-room__summary {
@@ -221,6 +221,8 @@
   font-size: .8rem;
   font-weight: 650;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
   text-align: center;
 }
 
@@ -444,5 +446,15 @@
   .quick-match-ready-room__scene {
     top: 28dvh;
     height: 59dvh;
+  }
+}
+
+@media (min-width: 821px) {
+  .friendly-modal.quick-match-ready-room[aria-label='Configurar partida rápida'] .quick-match-ready-room__settings > summary {
+    width: 136px;
+  }
+
+  .friendly-modal.quick-match-ready-room[aria-label='Configurar partida rápida'] .quick-match-ready-room__settings > summary::marker {
+    font-size: .7em;
   }
 }
