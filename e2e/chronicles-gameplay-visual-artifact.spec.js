@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { confirmChroniclesCharacterSetup, login, mockApi, openMoreGameModes } from './helpers.js';
+import { createSwordhavenWalkGrid, SWORDHAVEN_INTERACTION_CELLS, SWORDHAVEN_SPAWN } from '../frontend/src/chronicles/chroniclesSwordhaven3D.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const CAPTURES = [
@@ -593,23 +594,15 @@ test('Chronicles · Swordhaven 3D visual prototype · desktop', async ({ browser
       chroniclesCurrentMapId: 'gallery-of-forks',
       chroniclesAreaTransform(mapId, manifest) {
         if (mapId !== 'gallery-of-forks') return manifest;
-        const grid = Array.from({ length: 19 }, (_, y) => (
-          y === 0 || y === 18 ? '#'.repeat(19) : '#' + '.'.repeat(17) + '#'
-        ));
-        const shops = [
-          ['swordhaven-forge', 4, 7],
-          ['swordhaven-armor', 14, 7],
-          ['swordhaven-tavern', 4, 15],
-          ['swordhaven-magic', 14, 15],
-          ['swordhaven-temple', 9, 5],
-        ];
+        const grid = createSwordhavenWalkGrid();
+        const shops = SWORDHAVEN_INTERACTION_CELLS.map(({ id, x, y }) => [id, x, y]);
         return {
           ...manifest,
           title: 'Swordhaven · visual prototype',
           regionKind: 'settlement',
           grid,
           materials: null,
-          partyStart: { x: 9, y: 16, direction: 0 },
+          partyStart: SWORDHAVEN_SPAWN,
           enemies: [],
           initialFlags: {},
           triggers: [],
