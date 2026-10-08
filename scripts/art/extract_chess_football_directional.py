@@ -16,11 +16,15 @@ VIEWS = ('front', 'back', 'back_diagonal', 'front_diagonal')
 CELL = (128, 144)
 FOOTLINE = 130
 FRAMES_PER_VIEW = 8
+EXPECTED_SOURCE_SHA256 = 'f4102df3dff9620606ddb3c2ff8fb234b150f255562561e2b1b7a8fc3802dee7'
+EXPECTED_ATLAS_SHA256 = '7d23e79dd5f9b23d1a04cf27f4d725d249e37f528c23d696ea260cd498644e70'
 
 def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 def extract(source: Path, destination: Path) -> dict:
+    if sha256(source) != EXPECTED_SOURCE_SHA256:
+        raise RuntimeError('Source differs from the approved supplemental Football canon')
     rgba = Image.open(source).convert('RGBA')
     assert rgba.size == (1448, 1086), f'unexpected approved canonical source: {rgba.size}'
     arr = np.asarray(rgba)
@@ -62,6 +66,8 @@ def extract(source: Path, destination: Path) -> dict:
                             dither=Image.Dither.NONE)
     destination.parent.mkdir(parents=True,exist_ok=True)
     indexed.save(destination,optimize=True,compress_level=9)
+    if sha256(destination) != EXPECTED_ATLAS_SHA256:
+        raise RuntimeError('Generated atlas differs from reviewed canonical bytes')
     decoded=Image.open(destination).convert('RGBA')
     for row in range(4):
         for col in range(8):
