@@ -387,7 +387,7 @@ func _sync_locomotion(sprinting: bool) -> void:
 	var wanted := "idle"
 	if velocity.length() >= 12.0:
 		wanted = "sprint" if sprinting else "run"
-	visual.speed_scale = _locomotion_speed_scale(wanted)
+	var wanted_speed_scale := _locomotion_speed_scale(wanted)
 	if String(visual.animation) != wanted or not visual.is_playing():
 		var previous := String(visual.animation)
 		var preserve_raster_phase := previous in ["run", "sprint"] and wanted in ["run", "sprint"]
@@ -409,12 +409,15 @@ func _sync_locomotion(sprinting: bool) -> void:
 		else:
 			_cancel_visual_crossfade()
 		visual.play(wanted)
+		visual.speed_scale = wanted_speed_scale
 		if preserve_raster_phase:
 			var frame_count := visual.sprite_frames.get_frame_count(StringName(wanted))
 			visual.frame = previous_frame % maxi(frame_count, 1)
 			visual.frame_progress = previous_progress
 		else:
 			_apply_loop_phase(StringName(wanted))
+	else:
+		visual.speed_scale = wanted_speed_scale
 
 
 func _begin_visual_crossfade(duration: float) -> void:
@@ -490,6 +493,10 @@ func debug_visual_crossfade_total() -> float:
 
 func debug_transition_visual_playing() -> bool:
 	return transition_visual != null and transition_visual.is_playing()
+
+
+func debug_transition_visual_speed_scale() -> float:
+	return transition_visual.speed_scale if transition_visual != null else 1.0
 
 
 func debug_locomotion_speed_scale(wanted: String) -> float:
