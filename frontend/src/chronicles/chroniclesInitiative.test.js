@@ -230,6 +230,18 @@ describe('Chronicles initiative', () => {
     expect(next.initiative.round).toBe(4);
   });
 
+  it('treats nullable legacy agility as missing rather than overriding the enemy build with zero', () => {
+    const enemy = {
+      id: 'horse-thing',
+      maxHp: 3,
+      retaliation: 1,
+      ai: { movement: 'knight-chase' },
+    };
+    expect(chroniclesEnemyInitiativeAgility({ ...enemy, agility: null })).toBe(4);
+    expect(chroniclesEnemyInitiativeAgility({ ...enemy, agility: '' })).toBe(4);
+    expect(chroniclesEnemyInitiativeAgility({ ...enemy, agility: 0 })).toBe(0);
+  });
+
   it('derives legacy enemy AGI from movement when no authored AGI exists', () => {
     expect(chroniclesEnemyInitiativeAgility({
       id: 'horse-thing',
