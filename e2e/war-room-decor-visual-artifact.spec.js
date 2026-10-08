@@ -246,11 +246,11 @@ for (const profile of PROFILES) {
       // A visible WebGL canvas can still be an unrendered black buffer: refuse
       // golden evidence unless the board region contains actual scene pixels.
       const sceneCoverage = await renderedBoardCoverage(page, scenePng);
-      expect(sceneCoverage, 'War Room board must render visible pixels before the golden capture').toBeGreaterThan(0.08);
       await writeFile(
         `${ARTIFACT_DIR}/war-room-${profile.label}-scene.png`,
         Buffer.from(scenePng, 'base64'),
       );
+      expect(sceneCoverage, 'War Room board must render visible pixels before the golden capture').toBeGreaterThan(0.08);
 
       const cropCaptures = captures.filter(({ name }) => name !== 'scene');
       const derived = await deriveCropsFromScene(page, scenePng, sceneCapture.clip, cropCaptures);
