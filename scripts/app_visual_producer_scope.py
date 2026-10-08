@@ -273,6 +273,10 @@ def _e2e_producer(name: str) -> set[str] | None:
     exact = {
         "app-visual-artifact.spec.js": {"home-base"},
         "smoke.spec.js": set(),
+        # Dedicated staging browser gate owns these: not app visual artifacts.
+        "staging-live.spec.js": set(),
+        "staging-war-room-restore.spec.js": set(),
+        "staging-pawn-slug-godot.spec.js": set(),
         "chess-football.spec.js": set(),
         "matthias-home-visual-artifact.spec.js": {"home-matthias"},
         "matthias-home-visual-critical.spec.js": {"home-matthias"},
@@ -731,6 +735,8 @@ def classify(paths: list[str]) -> str:
 
 
 def self_test() -> None:
+    assert classify(["e2e/staging-live.spec.js"]) == "none"
+    assert classify(["e2e/staging-live.spec.js", "frontend/src/components/PvpHandoffModal.jsx"]) == "pvp-handoff"
     assert classify([
         "frontend/src/components/GameScreen.jsx",
         "frontend/src/cpuPresentationTiming.js",

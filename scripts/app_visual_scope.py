@@ -333,6 +333,10 @@ def _surface_groups(path: str) -> set[str] | None:
     if lower.startswith("scripts/app_visual_"):
         return set()
     if lower.startswith("e2e/"):
+        # Staging has its own exact-SHA real-backend browser smoke. It is not
+        # a canonical app-PNG producer and must not trigger all visual rooms.
+        if name in {"staging-live.spec.js", "staging-war-room-restore.spec.js", "staging-pawn-slug-godot.spec.js"}:
+            return set()
         if name in {"pvp-lobby-visual-artifact.spec.js", "pvp-handoff-visual-artifact.spec.js"}:
             return {"home"}
         if name in {"war-room-pvp.spec.js", "pvp-background-roster.spec.js"}:
@@ -685,6 +689,8 @@ def write_outputs(scope: Scope, output_path: str) -> None:
 
 
 def self_test() -> None:
+    assert classify(["e2e/staging-live.spec.js"]).capture_groups == "none"
+    assert classify(["e2e/staging-live.spec.js", "frontend/src/components/PvpHandoffModal.jsx"]).capture_groups == "home"
     cpu_scope = classify([
         "frontend/src/components/GameScreen.jsx",
         "frontend/src/cpuPresentationTiming.js",
