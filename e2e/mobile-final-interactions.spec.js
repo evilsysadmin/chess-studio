@@ -293,7 +293,10 @@ test('Puzzles móvil · selector compacto y acciones táctiles dejan respirar al
     const { board, rect } = await readBoard3DProjection(canvas);
     expect(board.x).toBeGreaterThanOrEqual(rect.x - 1);
     expect(board.x + board.width).toBeLessThanOrEqual(rect.x + rect.width + 1);
-    expect(board.width).toBeGreaterThanOrEqual(width * 0.85);
+    // Canvas/WebGL projection can land on a fractional CSS pixel; keep the
+    // 85% product contract while allowing the same ±1px physical tolerance used
+    // by the containment assertions immediately above.
+    expect(board.width + 1).toBeGreaterThanOrEqual(width * 0.85);
 
     const actions = page.locator('.puzzle-board-column .game-controls > button:visible');
     await expect(actions).toHaveCount(2);
