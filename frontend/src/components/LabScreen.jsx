@@ -14,6 +14,7 @@ import './LabScreen.css';
 import './LabArcade.css';
 import './LabWorkshop.css';
 import './LabWorkshopHotfix.css';
+import './LabWorkshopMobile.css';
 
 const ArenaExperiment = lazy(() => import('./ArenaExperiment.jsx'));
 const PawnTrailblazer = lazy(() => import('./PawnTrailblazer.jsx'));
