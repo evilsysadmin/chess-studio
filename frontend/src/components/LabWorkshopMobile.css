@@ -296,3 +296,142 @@
     transition: none;
   }
 }
+
+/* Desktop-site mobile landscape: plenty of horizontal space and enough height
+   to use the physical dungeon stations. The compact grid remains the fallback
+   for real phone-width/short landscape viewports. */
+@media (min-width: 1100px) and (min-height: 600px) and (max-height: 760px) and (orientation: landscape) {
+  body:has(.lab-screen .lab-workshop) .lab-screen .lab-workshop {
+    display: block;
+    min-height: 100dvh;
+    padding: 0;
+  }
+
+  .lab-screen.lab-screen .lab-workshop-masthead {
+    inset: 58px auto auto 3%;
+    width: auto;
+    max-width: 40%;
+    pointer-events: none;
+  }
+
+  .lab-screen.lab-screen .lab-workshop-masthead h2 {
+    font-size: clamp(1.65rem, 2.3vw, 2.1rem);
+  }
+
+  .lab-screen.lab-screen .lab-workshop-wing {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    min-height: 0;
+    margin: 0;
+    pointer-events: none;
+  }
+
+  .lab-screen.lab-screen .lab-workshop-portals,
+  .lab-screen.lab-screen .lab-workshop-ops,
+  .lab-screen.lab-screen .lab-workshop-bench {
+    display: contents;
+  }
+
+  .lab-screen.lab-screen .lab-workshop-portal,
+  .lab-screen.lab-screen .lab-workshop-map-table,
+  .lab-screen.lab-screen .lab-workshop-tool,
+  .lab-screen.lab-screen .lab-workshop-tool:not(.lab-workshop-tool--arena),
+  .lab-screen.lab-screen .lab-workshop-wing--hangar .lab-workshop-portal {
+    position: absolute;
+    display: flex;
+    inset: auto;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 2px;
+    width: auto;
+    min-height: 62px;
+    padding: 6px 8px;
+    border: 0;
+    border-bottom: 1px solid rgba(215, 167, 79, .63);
+    border-radius: 0;
+    background: linear-gradient(180deg, transparent 0%, rgba(4, 5, 6, .3) 34%, rgba(4, 5, 6, .79) 100%);
+    box-shadow: 0 7px 13px rgba(0, 0, 0, .25);
+    text-align: center;
+    clip-path: none;
+    transform: none;
+    pointer-events: auto;
+  }
+
+  .lab-screen.lab-screen .lab-workshop-portal > strong,
+  .lab-screen.lab-screen .lab-workshop-map-table > strong,
+  .lab-screen.lab-screen .lab-workshop-tool strong {
+    width: 100%;
+    max-width: 100%;
+    font-size: clamp(.76rem, 1vw, 1rem);
+    line-height: 1.12;
+    text-align: center;
+    text-shadow: 0 2px 8px #000;
+  }
+
+  .lab-screen.lab-screen .lab-workshop-portal--chronicles {
+    left: 37.2%;
+    top: 46%;
+    width: 16.4%;
+  }
+  .lab-screen.lab-screen .lab-workshop-portal--tactics {
+    left: 54.3%;
+    top: 46%;
+    width: 16.2%;
+  }
+  .lab-screen.lab-screen .lab-workshop-wing--hangar .lab-workshop-portal--pawnslug-godot {
+    left: 5.2%;
+    top: 49%;
+    width: 14.2%;
+  }
+  .lab-screen.lab-screen .lab-workshop-wing--hangar .lab-workshop-portal--football {
+    left: 20.7%;
+    top: 48%;
+    width: 14.7%;
+  }
+  .lab-screen.lab-screen .lab-workshop-map-table {
+    left: 71.5%;
+    top: 48%;
+    width: 13.8%;
+  }
+  .lab-screen.lab-screen .lab-workshop-tool:not(.lab-workshop-tool--arena) {
+    left: 86.7%;
+    top: 49%;
+    right: auto;
+    bottom: auto;
+    width: 12.8%;
+  }
+  .lab-screen.lab-screen .lab-workshop-wing--hangar .lab-workshop-portal--trailblazer {
+    left: 6.2%;
+    top: auto;
+    bottom: 5.8%;
+    width: 15.4%;
+  }
+  .lab-screen.lab-screen .lab-workshop-tool--arena {
+    left: auto;
+    top: auto;
+    right: 4.4%;
+    bottom: 11.2%;
+    width: 17%;
+  }
+
+  .lab-screen.lab-screen .lab-workshop-tool > b,
+  .lab-screen.lab-screen .lab-workshop-portal > b,
+  .lab-screen.lab-screen .lab-workshop-map-table > b {
+    display: none;
+  }
+
+  .lab-screen.lab-screen .lab-workshop-portal:hover,
+  .lab-screen.lab-screen .lab-workshop-portal:focus-visible,
+  .lab-screen.lab-screen .lab-workshop-map-table:hover,
+  .lab-screen.lab-screen .lab-workshop-map-table:focus-visible,
+  .lab-screen.lab-screen .lab-workshop-tool:hover,
+  .lab-screen.lab-screen .lab-workshop-tool:focus-visible {
+    transform: none;
+    background: linear-gradient(180deg, rgba(65, 45, 18, .14), rgba(15, 12, 8, .91));
+    border-color: rgba(242, 202, 117, .94);
+  }
+}
