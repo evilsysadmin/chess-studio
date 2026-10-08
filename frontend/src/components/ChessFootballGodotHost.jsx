@@ -105,12 +105,26 @@ export default function ChessFootballGodotHost({ onExit }) {
     onExit?.();
   };
 
+  useEffect(() => {
+    if (runtimeReady) return undefined;
+    const escapeDuringBoot = (event) => {
+      if (event.key === 'Escape') {
+        event.stopImmediatePropagation();
+        event.preventDefault();
+        exitFootball();
+      }
+    };
+    window.addEventListener('keydown', escapeDuringBoot, true);
+    return () => window.removeEventListener('keydown', escapeDuringBoot, true);
+  }, [runtimeReady, onExit]);
+
   const requestLandscape = () => {
     document.documentElement.dataset.chessFootballImmersive = 'requested';
     void requestWarRoomLandscapeFullscreen();
   };
 
   const mobilePortrait = mobileViewport.coarse && mobileViewport.portrait;
+
 
   const runtimeStatus = bootFailed
     ? 'Chess Football no ha podido arrancar'
@@ -128,7 +142,7 @@ export default function ChessFootballGodotHost({ onExit }) {
       data-runtime-ready={runtimeReady ? 'true' : 'false'}
       data-mobile-portrait={mobilePortrait ? 'true' : 'false'}
     >
-      {mobileViewport.coarse && !mobilePortrait ? (
+      {!mobilePortrait ? (
         <button
           type="button"
           className="chess-football-godot-host__mobile-exit"
@@ -167,7 +181,7 @@ export default function ChessFootballGodotHost({ onExit }) {
           <button type="button" onClick={exitFootball}>Salir de Chess Football</button>
         </div>
       ) : null}
-      {runtime.url ? (
+      {runtime.url && !bootFailed ? (
         <iframe
           ref={frameRef}
           key={runtime.url}
@@ -176,7 +190,7 @@ export default function ChessFootballGodotHost({ onExit }) {
           title="Chess Football Godot"
           allow="autoplay; fullscreen; gamepad"
           allowFullScreen
-          onLoad={() => { /* iframe loaded != Godot ready; wait for the scene handshake. */ }}
+          
         />
       ) : runtime.source === 'fallback' ? (
         <div className="chess-football-godot-host__fallback">
