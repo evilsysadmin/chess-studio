@@ -66,6 +66,7 @@ import ChroniclesBookOneEpilogue from './ChroniclesBookOneEpilogue.jsx';
 import ChroniclesCharacterSetup from './ChroniclesCharacterSetup.jsx';
 import ChroniclesDefeatOverlay from './ChroniclesDefeatOverlay.jsx';
 import ChroniclesEnemyRetaliationFx from './ChroniclesEnemyRetaliationFx.jsx';
+import ChroniclesInitiativeRail from './ChroniclesInitiativeRail.jsx';
 import ChroniclesNarratorOverlay from './ChroniclesNarratorOverlay.jsx';
 import ChroniclesPartyBark from './ChroniclesPartyBark.jsx';
 import ChroniclesTacticalMargin from './ChroniclesTacticalMargin.jsx';
@@ -869,6 +870,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
                 setAutomapOpen(true);
               }}
             />
+            <ChroniclesInitiativeRail initiative={state.initiative} />
             <ChroniclesNarratorOverlay message={state.message} />
             <ChroniclesPartyBark key={partyBark?.token || 'none'} bark={partyBark} />
             <ChroniclesTacticalMargin target={tacticalTarget} />

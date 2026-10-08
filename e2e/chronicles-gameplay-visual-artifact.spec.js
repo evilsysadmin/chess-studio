@@ -386,6 +386,69 @@ test('Chronicles · mobile keeps Use separate from Attack · 390x844', async ({ 
 });
 
 
+async function enterCanonicalInitiativeCombat(page, gameRoot) {
+  // Match the functional Chronicles contract: Hildegard attacks once from the
+  // canonical start, then advances into the pawn engagement radius.
+  await page.keyboard.press('2');
+  await page.keyboard.press('Space');
+  await expect(gameRoot).toHaveAttribute('data-chronicles-phase', 'explore');
+  await page.keyboard.press('w');
+  await expect(gameRoot).toHaveAttribute('data-chronicles-phase', 'combat');
+  await expect(gameRoot).toHaveAttribute('data-chronicles-initiative-die', '1d8');
+}
+
+
+test('Chronicles · initiative rail visual · desktop-1440x900', async ({ browser }) => {
+  test.setTimeout(180_000);
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await context.newPage();
+  try {
+    await openChronicles(page, 'initiative-desktop-1440x900');
+    const gameRoot = page.locator('[data-chronicles="true"]');
+    await enterCanonicalInitiativeCombat(page, gameRoot);
+    const rail = page.locator('[data-chronicles-initiative="visible"]');
+    await expect(rail).toBeVisible();
+    await expect(rail.locator('li').first()).toHaveAttribute('aria-current', 'step');
+    await captureElement(page, gameRoot, ARTIFACT_DIR + '/chronicles-initiative-desktop-1440x900.png');
+  } finally {
+    await context.close();
+  }
+});
+
+test('Chronicles · initiative rail visual · android-390x844', async ({ browser }) => {
+  test.setTimeout(180_000);
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  const page = await context.newPage();
+  try {
+    await openChronicles(page, 'initiative-android-390x844');
+    const gameRoot = page.locator('[data-chronicles="true"]');
+    await enterCanonicalInitiativeCombat(page, gameRoot);
+    const rail = page.locator('[data-chronicles-initiative="visible"]');
+    const minimap = page.locator('[data-chronicles-minimap="visible"]');
+    await expect(rail).toBeVisible();
+    await expect(rail.locator('li').first()).toHaveAttribute('aria-current', 'step');
+    const activeActor = await rail.getAttribute('data-active-actor');
+    expect(activeActor).toBeTruthy();
+    const tactical = page.locator('.chronicles-target-margin');
+    await expect(tactical).toBeVisible();
+    const railBox = await rail.boundingBox();
+    const minimapBox = await minimap.boundingBox();
+    const tacticalBox = await tactical.boundingBox();
+    expect(railBox).not.toBeNull();
+    expect(minimapBox).not.toBeNull();
+    expect(tacticalBox).not.toBeNull();
+    const overlaps = !(railBox.x + railBox.width <= minimapBox.x || minimapBox.x + minimapBox.width <= railBox.x || railBox.y + railBox.height <= minimapBox.y || minimapBox.y + minimapBox.height <= railBox.y);
+    expect(overlaps).toBe(false);
+    const tacticalOverlap = !(railBox.x + railBox.width <= tacticalBox.x || tacticalBox.x + tacticalBox.width <= railBox.x || railBox.y + railBox.height <= tacticalBox.y || tacticalBox.y + tacticalBox.height <= railBox.y);
+    expect(tacticalOverlap, 'initiative rail must not cover the tactical target margin').toBe(false);
+    await captureElement(page, gameRoot, ARTIFACT_DIR + '/chronicles-initiative-android-390x844.png');
+  } finally {
+    await context.close();
+  }
+});
+
 test('Chronicles · Gallery of Forks first-person material proof · desktop-1440x900', async ({ browser }) => {
   test.setTimeout(180_000);
   await mkdir(ARTIFACT_DIR, { recursive: true });
