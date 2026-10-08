@@ -11,16 +11,15 @@
   "display_scale": 0.72,
   "canonical_run": {
     "quality_contract": "chess-football-run-canon-v1",
-    "teams": {
-      "fc_matthias": {
-        "manifest": "run_canon/fc_matthias/manifest.json",
-        "atlas": "run_canon/fc_matthias/main.png"
-      },
-      "real_enroque": {
-        "manifest": "run_canon/real_enroque/manifest.json",
-        "atlas": "run_canon/real_enroque/main.png"
-      }
-    }
+    "encoded_atlas": "run_canon/canonical_run_v1.png.b64",
+    "sha256": "62e6b26f5cfc11ccf94ae93c643659a51695baf53c4511366bddfdd6692d234c",
+    "cell": {
+      "width": 128,
+      "height": 144
+    },
+    "frames": 8,
+    "fps": 12,
+    "footline": 130
   },
   "field_variants": {
     "fc_matthias": [
