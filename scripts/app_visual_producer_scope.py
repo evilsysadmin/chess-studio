@@ -297,7 +297,7 @@ def _e2e_producer(name: str) -> set[str] | None:
         "pvp-background-roster.spec.js": {"pvp-duel"},
         "mobile-golden-path-war-room-invariants.spec.js": {"warroom-core"},
         "war-room-visual-artifact.spec.js": {"warroom-core"},
-        "war-room-entry-latency.spec.js": {"warroom-core"},
+        "war-room-entry-latency-visual.spec.js": {"warroom-core"},
         "war-room-decor-visual-artifact.spec.js": {"warroom-decor"},
         "war-room-armor-oblique-visual-artifact.spec.js": {"warroom-armor"},
         "war-room-hans-visual-artifact.spec.js": {"warroom-hans"},
@@ -922,7 +922,7 @@ def self_test() -> None:
     assert classify(["frontend/src/components/GameBoardView.jsx"]) == "warroom-core"
     assert classify(["frontend/src/components/WarRoomCastleArchitecture.js"]) == "warroom-core,warroom-decor,warroom-armor,warroom-hans"
     assert classify(["e2e/war-room-decor-visual-artifact.spec.js"]) == "warroom-decor"
-    assert classify(["e2e/war-room-entry-latency.spec.js"]) == "warroom-core"
+    assert classify(["e2e/war-room-entry-latency-visual.spec.js"]) == "warroom-core"
     assert classify(["e2e/browser-storage-health.spec.js"]) == "health-storage"
     assert classify(["e2e/pawn-slug-godot-visual-artifact.spec.js"]) == "experiments-hub"
     assert classify(["frontend/src/components/LabWorkshopMobile.css"]) == "experiments-hub"
