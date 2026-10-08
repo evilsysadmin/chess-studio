@@ -187,6 +187,12 @@ case "$mode" in
         war-room-visual-artifact.spec.js \
         --workers=2 \
         "${warroom_core_args[@]}"
+
+      echo "War Room variant lifecycle soak: rotate v1/v2/v3/v4 twice after warm-up."
+      ./node_modules/.bin/playwright test \
+        war-room-variant-lifecycle-soak.spec.js \
+        --workers=1 \
+        --retries=0
     fi
     ;;
   hans)
