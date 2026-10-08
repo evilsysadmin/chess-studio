@@ -266,12 +266,18 @@ test('Chronicles Tactics · arranca como RPG táctico isométrico · exploració
     pump();
   }, hpBeforeCombat);
 
+  // HP loss is durable game state. The short CSS damage-hit cue may have
+  // cleared before the next Playwright poll, despite a real enemy attack.
+  // Keep the gameplay invariant (enemy deals actual damage), without coupling
+  // it to a transient animation frame.
   await page.waitForFunction((hpBefore) => {
     const root = document.querySelector('[data-chronicles-tactics="true"]');
-    const hp = Number(root?.getAttribute('data-party-hp-total') || 0);
-    const hitCue = root?.querySelector('.chronicles-party-hud__member[data-damage-hit="true"]');
-    return hp < hpBefore && Boolean(hitCue);
+    return Number(root?.getAttribute('data-party-hp-total') || 0) < hpBefore;
   }, hpBeforeCombat, { timeout: 30_000, polling: 100 });
+  await page.evaluate(() => {
+    window.clearInterval(window.__chroniclesEnemyDamagePump);
+    window.__chroniclesEnemyDamagePump = null;
+  });
 
 });
 test('Chronicles · Tactics → primera persona conserva una única expedición autoritativa', async ({ page }) => {
