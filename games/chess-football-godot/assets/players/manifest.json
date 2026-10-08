@@ -18,9 +18,11 @@
       "action_canon/canonical_idle_celebrate_v1.part01.b64",
       "action_canon/canonical_idle_celebrate_v1.part02.b64",
       "action_canon/canonical_idle_celebrate_v1.part03.b64",
-      "action_canon/canonical_idle_celebrate_v1.part04.b64",
+      "action_canon/canonical_idle_celebrate_v1.part04a.b64",
+      "action_canon/canonical_idle_celebrate_v1.part04b.b64",
       "action_canon/canonical_idle_celebrate_v1.part05.b64",
-      "action_canon/canonical_idle_celebrate_v1.part06.b64"
+      "action_canon/canonical_idle_celebrate_v1.part06a.b64",
+      "action_canon/canonical_idle_celebrate_v1.part06b.b64"
     ],
     "sha256": "56dc4d9d0bb2c90210d477c5f2d52f83d2e74dd2a65339c12c258cdf44ce2e56",
     "cell": {
