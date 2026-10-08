@@ -119,6 +119,24 @@ func mapCodeForManifest(manifest bson.D, seed int64) (chroniclesmap.Recipe, erro
 	}, nil
 }
 
+func dungeonTopologyRecipe(recipe chroniclesmap.Recipe, dungeonLevel, topologyVersion int64) chroniclesmap.Recipe {
+	if topologyVersion < DungeonTopologyVersion {
+		return recipe
+	}
+	if dungeonLevel < 1 {
+		dungeonLevel = 1
+	}
+	difficulty := recipe.Difficulty + int(dungeonLevel) - 1
+	if difficulty > 5 {
+		difficulty = 5
+	}
+	if difficulty < 1 {
+		difficulty = 1
+	}
+	recipe.Difficulty = difficulty
+	return recipe
+}
+
 func baseMarkerPositions(grid []string, includeExit bool) map[point]rune {
 	markers := map[point]rune{}
 	for y, row := range grid {
