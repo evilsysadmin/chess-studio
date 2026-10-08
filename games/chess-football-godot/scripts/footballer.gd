@@ -369,13 +369,25 @@ func _sync_facing() -> void:
 	if transition_visual != null:
 		transition_visual.flip_h = visual.flip_h
 
+func _locomotion_speed_scale(wanted: String) -> float:
+	if wanted == "idle":
+		return 1.0
+	var reference_speed := base_speed
+	if wanted == "sprint":
+		reference_speed *= SPRINT_SPEED_MULTIPLIER
+	var speed_ratio := clampf(velocity.length() / maxf(reference_speed, 1.0), 0.0, 1.15)
+	if wanted == "sprint":
+		return lerpf(0.82, 1.12, speed_ratio)
+	return lerpf(0.78, 1.06, speed_ratio)
+
+
 func _sync_locomotion(sprinting: bool) -> void:
 	if visual == null or action_lock_seconds > 0.0:
 		return
 	var wanted := "idle"
 	if velocity.length() >= 12.0:
 		wanted = "sprint" if sprinting else "run"
-	visual.speed_scale = 1.16 if wanted == "sprint" else (1.05 if wanted == "run" else 1.0)
+	visual.speed_scale = _locomotion_speed_scale(wanted)
 	if String(visual.animation) != wanted or not visual.is_playing():
 		var previous := String(visual.animation)
 		var preserve_raster_phase := previous in ["run", "sprint"] and wanted in ["run", "sprint"]
@@ -473,6 +485,10 @@ func debug_locomotion_crossfade_alpha() -> float:
 
 func debug_visual_crossfade_total() -> float:
 	return visual_crossfade_total
+
+
+func debug_locomotion_speed_scale(wanted: String) -> float:
+	return _locomotion_speed_scale(wanted)
 
 
 func debug_texture_filter_linear() -> bool:
