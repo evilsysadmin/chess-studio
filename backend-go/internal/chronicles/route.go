@@ -152,8 +152,13 @@ func EntryMapForSeed(seed int64) (string, error) {
 	return p.MapIDs[binary.BigEndian.Uint32(d[:4])%uint32(len(p.MapIDs))], nil
 }
 
-// RoutePlanForSeed mirrors chronicles_route_plan_for_seed.
+// RoutePlanForSeed preserves the legacy level-1 entry point.
 func RoutePlanForSeed(seed int64) ([]string, error) {
+	return RoutePlanForLevel(seed, 1)
+}
+
+// RoutePlanForLevel mirrors chronicles_route_plan_for_seed(seed, dungeon_level).
+func RoutePlanForLevel(seed, dungeonLevel int64) ([]string, error) {
 	p, err := Policy()
 	if err != nil {
 		return nil, err
@@ -164,9 +169,13 @@ func RoutePlanForSeed(seed int64) ([]string, error) {
 		keys[id] = digest(fmt.Sprintf("chronicles-route-v%d:%d:%s", p.Version, seed, id))
 	}
 	sort.SliceStable(ranked, func(i, j int) bool { return lessBytes(keys[ranked[i]], keys[ranked[j]]) })
-	d := digest(fmt.Sprintf("chronicles-route-length-v%d:%d", p.Version, seed))
-	span := uint32(p.MaxRouteLength - p.MinRouteLength + 1)
-	length := p.MinRouteLength + int64(binary.BigEndian.Uint32(d[:4])%span)
+	if dungeonLevel < 1 {
+		dungeonLevel = 1
+	}
+	length := p.MinRouteLength + dungeonLevel - 1
+	if length > p.MaxRouteLength {
+		length = p.MaxRouteLength
+	}
 	return append(ranked[:length-1:length-1], p.FinalMapID), nil
 }
 
@@ -192,11 +201,15 @@ func (r *RouteSnapshot) Doc() bson.D {
 
 // RouteSnapshotForSeed mirrors chronicles_route_snapshot_for_seed.
 func RouteSnapshotForSeed(seed int64) (*RouteSnapshot, error) {
+	return RouteSnapshotForLevel(seed, 1)
+}
+
+func RouteSnapshotForLevel(seed, dungeonLevel int64) (*RouteSnapshot, error) {
 	p, err := Policy()
 	if err != nil {
 		return nil, err
 	}
-	plan, err := RoutePlanForSeed(seed)
+	plan, err := RoutePlanForLevel(seed, dungeonLevel)
 	if err != nil {
 		return nil, err
 	}
