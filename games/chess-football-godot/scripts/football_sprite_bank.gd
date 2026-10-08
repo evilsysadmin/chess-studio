@@ -3,6 +3,8 @@ extends RefCounted
 
 const MANIFEST_PATH := "res://assets/players/manifest.json"
 const ASSET_ROOT := "res://assets/players/"
+const RASTER_RUN_ROOT := "res://assets/players/raster_run/"
+const RASTER_RUN_SIZE := Vector2(1024.0, 144.0)
 const TEAM_KEYS := ["fc_matthias", "real_enroque"]
 
 static var _cached_manifest: Dictionary = {}
@@ -29,6 +31,11 @@ static func atlas_key(team_id: int, role: String = "", squad_index: int = -1) ->
 	var field_slot := clampi(squad_index - 1, 0, variants.size() - 1)
 	return String(variants[field_slot])
 
+static func raster_run_path(team_id: int) -> String:
+	var team_key: String = TEAM_KEYS[clampi(team_id, 0, TEAM_KEYS.size() - 1)]
+	return RASTER_RUN_ROOT + team_key + ".png"
+
+
 static func build_frames(team_id: int, role: String = "", squad_index: int = -1) -> SpriteFrames:
 	var data := manifest()
 	var key: String = atlas_key(team_id, role, squad_index)
@@ -40,6 +47,12 @@ static func build_frames(team_id: int, role: String = "", squad_index: int = -1)
 	var cell := Vector2(float(cell_data["width"]), float(cell_data["height"]))
 	var expected_size := Vector2(cell.x * int(data["columns"]), cell.y * int(data["rows"]))
 	assert(texture.get_size() == expected_size, "Dimensiones de atlas incompatibles con manifest")
+
+	var raster_run: Texture2D = null
+	if role != "keeper":
+		raster_run = load(raster_run_path(team_id)) as Texture2D
+		assert(raster_run != null, "No se pudo cargar el atlas raster canónico de carrera")
+		assert(raster_run.get_size() == RASTER_RUN_SIZE, "Dimensiones de raster run incompatibles")
 
 	var frames := SpriteFrames.new()
 	if frames.has_animation("default"):
@@ -53,8 +66,12 @@ static func build_frames(team_id: int, role: String = "", squad_index: int = -1)
 		var row := int(animation["row"])
 		for column in range(int(animation["frames"])):
 			var region := AtlasTexture.new()
-			region.atlas = texture
-			region.region = Rect2(Vector2(float(column) * cell.x, float(row) * cell.y), cell)
+			if raster_run != null and animation_name in [&"run", &"sprint"]:
+				region.atlas = raster_run
+				region.region = Rect2(Vector2(float(column) * cell.x, 0.0), cell)
+			else:
+				region.atlas = texture
+				region.region = Rect2(Vector2(float(column) * cell.x, float(row) * cell.y), cell)
 			frames.add_frame(animation_name, region)
 	return frames
 
