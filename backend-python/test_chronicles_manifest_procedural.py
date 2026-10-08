@@ -167,6 +167,24 @@ def test_all_shipped_manifests_keep_semantics_and_become_connected_seeded_layout
             assert len(manifest["generation"]["treasureBoons"]) <= 1
 
 
+def test_dungeon_topology_v0_keeps_legacy_layout_exactly():
+    base, _revision = chronicles_api.load_chronicles_manifest("crypt-eight-squares")
+    legacy = proceduralize_chronicles_manifest(
+        base, 417,
+        content_placement_version=CHRONICLES_CONTENT_PLACEMENT_VERSION,
+    )
+    v0 = proceduralize_chronicles_manifest(
+        base, 417,
+        content_placement_version=CHRONICLES_CONTENT_PLACEMENT_VERSION,
+        dungeon_level=4,
+        dungeon_topology_version=0,
+    )
+
+    assert v0 == legacy
+    assert "dungeonTopologyVersion" not in v0.manifest["generation"]
+
+
+
 def test_explicit_procedural_difficulty_is_stable_across_enemy_rpg_storage_changes():
     base, _revision = chronicles_api.load_chronicles_manifest("crypt-eight-squares")
     assert base["proceduralDifficulty"] == 2
