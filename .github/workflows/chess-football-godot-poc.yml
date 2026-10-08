@@ -65,6 +65,28 @@ jobs:
           "$godot" --version
       - name: Verify deterministic player art
         run: python3 -S scripts/art/chess_football_sprite_forge.py verify --assets-dir games/chess-football-godot/assets/players
+      - name: Verify approved canonical run atlas
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -S - <<'PY'
+          import base64
+          import hashlib
+          from pathlib import Path
+
+          manifest = Path("games/chess-football-godot/assets/players/manifest.json").read_text(encoding="utf-8")
+          encoded = Path("games/chess-football-godot/assets/players/run_canon/canonical_run_v1.png.b64").read_text(encoding="utf-8").strip()
+          payload = base64.b64decode(encoded, validate=True)
+          digest = hashlib.sha256(payload).hexdigest()
+          expected = "62e6b26f5cfc11ccf94ae93c643659a51695baf53c4511366bddfdd6692d234c"
+          if digest != expected:
+              raise SystemExit(f"canonical run sha mismatch: {digest} != {expected}")
+          if not payload.startswith(b"\x89PNG\r\n\x1a\n"):
+              raise SystemExit("canonical run payload is not PNG")
+          if expected not in manifest:
+              raise SystemExit("canonical run hash missing from runtime manifest")
+          print("canonical run atlas: OK", digest)
+          PY
       - name: Parse project
         shell: bash
         run: |
