@@ -95,6 +95,27 @@ describe('PremiumWarRoomScene', () => {
     dispose(desktop);
   });
 
+  it('reports the real classic performance budget census', () => {
+    const desktop = buildPremiumWarRoomLayer(theme, true, false);
+    const census = {
+      pointLightsKept: desktop.userData.warRoomPointLightsKept ?? 0,
+      pointLightsCulled: desktop.userData.warRoomPointLightsCulled ?? 0,
+      spotLightsCulled: desktop.userData.warRoomSpotLightsCulled ?? 0,
+      shadowCastersRetired: desktop.userData.warRoomStaticShadowCastersRetired ?? 0,
+      instanceBatches: desktop.userData.warRoomStaticInstanceBatches ?? 0,
+      drawCallsRetired: desktop.userData.warRoomStaticDrawCallsRetired ?? 0,
+    };
+
+    console.info('[war-room-classic-budget-census]', JSON.stringify(census));
+    expect(census.pointLightsKept).toBeGreaterThanOrEqual(1);
+    expect(census.pointLightsCulled).toBeGreaterThanOrEqual(0);
+    expect(census.spotLightsCulled).toBeGreaterThanOrEqual(0);
+    expect(census.shadowCastersRetired).toBeGreaterThanOrEqual(0);
+    expect(census.instanceBatches).toBeGreaterThanOrEqual(0);
+    expect(census.drawCallsRetired).toBeGreaterThanOrEqual(0);
+    dispose(desktop);
+  });
+
   it('usa un fuego multicapa irregular con núcleo, brasas, luz cálida y un ancla renderizable', () => {
     const room = buildPremiumWarRoomLayer(theme, false, false);
     const fire = room.getObjectByName('war-room-fireplace');
