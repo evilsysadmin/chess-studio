@@ -180,6 +180,8 @@ func _ready() -> void:
 	_create_3d_presentation()
 	_create_hud()
 	_refresh_hud()
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("window.parent.postMessage({source:'chess-football-godot', type:'ready'}, '*');")
 
 func _physics_process(delta: float) -> void:
 	if pause_menu_open:
