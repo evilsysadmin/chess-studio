@@ -1,6 +1,7 @@
 package chronicles
 
 import (
+	"strings"
 	"testing"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -69,5 +70,32 @@ func TestDungeonTopologyV1EmitsVersionedMetadata(t *testing.T) {
 	level, _ := intValue(get(generation, "dungeonLevel"))
 	if version != DungeonTopologyVersion || level != 3 {
 		t.Fatalf("unexpected topology metadata: version=%d level=%d", version, level)
+	}
+}
+
+
+func TestDungeonTopologyIsPlannerDifficultyFloor(t *testing.T) {
+	manifest, _, err := LoadManifest("crypt-eight-squares")
+	if err != nil {
+		t.Fatal(err)
+	}
+	proposal := bson.D{
+		{Key: "version", Value: int64(1)},
+		{Key: "source", Value: "test"},
+		{Key: "difficulty", Value: int64(1)},
+	}
+	_, mapCode, _, err := proceduralize(
+		manifest,
+		417,
+		proposal,
+		ContentPlacementVersion,
+		3,
+		DungeonTopologyVersion,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(mapCode, "difficulty=4") {
+		t.Fatalf("dungeon topology floor missing from map code: %s", mapCode)
 	}
 }
