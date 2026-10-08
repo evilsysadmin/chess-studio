@@ -75,6 +75,8 @@ func _configure_visual() -> void:
 		add_child(transition_visual)
 	visual.sprite_frames = ChessFootballSpriteBank.build_frames(team_id, role, squad_index)
 	transition_visual.sprite_frames = visual.sprite_frames
+	visual.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	transition_visual.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	visual.centered = true
 	var cell := ChessFootballSpriteBank.cell_size()
 	var visual_scale := ChessFootballSpriteBank.display_scale()
@@ -444,6 +446,15 @@ func debug_locomotion_crossfade_active() -> bool:
 
 func debug_locomotion_crossfade_alpha() -> float:
 	return visual.modulate.a if visual != null else 1.0
+
+
+func debug_texture_filter_linear() -> bool:
+	return (
+		visual != null
+		and transition_visual != null
+		and visual.texture_filter == CanvasItem.TEXTURE_FILTER_LINEAR
+		and transition_visual.texture_filter == CanvasItem.TEXTURE_FILTER_LINEAR
+	)
 
 
 func debug_visual_ready() -> bool:
