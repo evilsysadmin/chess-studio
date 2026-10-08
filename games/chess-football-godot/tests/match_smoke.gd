@@ -62,7 +62,7 @@ func _initialize() -> void:
 	assert(String(sprite_manifest["quality_contract"]) == "chess-football-vector-v27")
 	assert(String(sprite_manifest["canonical_pose_bank"]["quality_contract"]) == "chess-football-action-canon-v1")
 	assert(String(sprite_manifest["canonical_pose_bank"]["source_sheet_sha256"]) == "cb6a069d383946fd5c0525c38356f3aea5183158a1c76241b95ad89a3a9f0c13")
-	assert(String(sprite_manifest["canonical_pose_bank"]["sha256"]) == "56dc4d9d0bb2c90210d477c5f2d52f83d2e74dd2a65339c12c258cdf44ce2e56")
+	assert(String(sprite_manifest["canonical_pose_bank"]["sha256"]) == "cdf3ab2fddfa21018a656f9444af54e233f30eb189bf83999303759c1b81a829")
 	assert(int(sprite_manifest["canonical_pose_bank"]["columns"]) == 2)
 	assert(int(sprite_manifest["canonical_pose_bank"]["rows"]) == 2)
 	assert(int(sprite_manifest["canonical_pose_bank"]["footline"]) == 130)
