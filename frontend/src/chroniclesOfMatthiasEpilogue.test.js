@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chroniclesBookOneEpilogue } from './chroniclesOfMatthiasEpilogue.js';
+import { chroniclesDungeonEpilogue } from './chroniclesOfMatthiasEpilogue.js';
 import { createChroniclesState } from './chroniclesOfMatthias.js';
 
 function escapedState(overrides = {}) {
@@ -14,9 +14,9 @@ function escapedState(overrides = {}) {
   };
 }
 
-describe('Chronicles of Matthias Book I epilogue', () => {
+describe('Chronicles of Matthias dungeon epilogue', () => {
   it('reports a clean extraction without inventing losses or optional relics', () => {
-    const epilogue = chroniclesBookOneEpilogue(escapedState());
+    const epilogue = chroniclesDungeonEpilogue(escapedState());
 
     expect(epilogue.title).toBe('La compañía completa');
     expect(epilogue.survivors.map((member) => member.name)).toEqual(['Matthias', 'Hildegard', 'Aziz', 'Faust']);
@@ -31,7 +31,7 @@ describe('Chronicles of Matthias Book I epilogue', () => {
   it('names real casualties and the spectral lantern only when they exist in state', () => {
     const base = escapedState({ spectralLantern: true });
     const party = base.party.map((member) => member.id === 'rook' ? { ...member, hp: 0 } : member);
-    const epilogue = chroniclesBookOneEpilogue({ ...base, party });
+    const epilogue = chroniclesDungeonEpilogue({ ...base, party });
 
     expect(epilogue.title).toBe('Una silla queda vacía');
     expect(epilogue.fallen.map((member) => member.name)).toEqual(['Hildegard']);
@@ -45,7 +45,7 @@ describe('Chronicles of Matthias Book I epilogue', () => {
   it('changes the closing line for a heavily damaged expedition without fabricating scoring', () => {
     const base = escapedState();
     const party = base.party.map((member) => ['rook', 'bishop'].includes(member.id) ? { ...member, hp: 0 } : member);
-    const epilogue = chroniclesBookOneEpilogue({ ...base, party });
+    const epilogue = chroniclesDungeonEpilogue({ ...base, party });
 
     expect(epilogue.title).toBe('La cripta cobra su peaje');
     expect(epilogue.survivors).toHaveLength(2);
