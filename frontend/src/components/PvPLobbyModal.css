@@ -2336,3 +2336,35 @@
     min-height: 44px;
   }
 }
+
+/* Duel Hall hierarchy: availability is status, not a KPI dashboard. */
+.pvp-lobby__header-status {
+  align-items: center;
+  justify-content: end;
+}
+
+.pvp-lobby__room-counts {
+  color: rgba(236, 228, 209, .48);
+  font: 600 .64rem/1.25 var(--font-mono);
+  letter-spacing: .045em;
+  white-space: nowrap;
+}
+
+.pvp-lobby__room-counts.has-attention {
+  color: rgba(239, 206, 142, .86);
+}
+
+.pvp-lobby__side:has(.pvp-lobby__chat-disclosure:only-child) {
+  align-self: start;
+}
+
+@media (max-width: 660px) {
+  .pvp-lobby__header-status {
+    align-items: center;
+    justify-content: flex-start;
+  }
+
+  .pvp-lobby__room-counts {
+    font-size: .6rem;
+  }
+}
