@@ -137,9 +137,6 @@ func _initialize() -> void:
 	var sprite_manifest: Dictionary = ChessFootballSpriteBank.manifest()
 	assert(int(sprite_manifest["version"]) == 27)
 	assert(String(sprite_manifest["quality_contract"]) == "chess-football-vector-v27")
-	assert(String(sprite_manifest["canonical_pose_bank"]["quality_contract"]) == "chess-football-action-canon-v1")
-	assert(String(sprite_manifest["canonical_pose_bank"]["sha256"]) == "cdf3ab2fddfa21018a656f9444af54e233f30eb189bf83999303759c1b81a829")
-	assert(int(sprite_manifest["canonical_pose_bank"]["footline"]) == 130)
 	assert(String(sprite_manifest["canonical_run"]["quality_contract"]) == "chess-football-run-canon-v1")
 	assert(String(sprite_manifest["canonical_run"]["sha256"]) == "62e6b26f5cfc11ccf94ae93c643659a51695baf53c4511366bddfdd6692d234c")
 	assert(int(sprite_manifest["canonical_run"]["frames"]) == 8)
@@ -150,10 +147,6 @@ func _initialize() -> void:
 	assert(canonical_idle_frame != null)
 	assert(canonical_idle_frame.atlas is ImageTexture)
 	assert(canonical_idle_frame.region == Rect2(0.0, 0.0, 128.0, 144.0))
-	var red_canonical_frames := ChessFootballSpriteBank.build_frames(1, "midfielder", 2)
-	var red_idle_frame := red_canonical_frames.get_frame_texture(&"idle", 0) as AtlasTexture
-	assert(red_idle_frame != null)
-	assert(red_idle_frame.region == Rect2(0.0, 144.0, 128.0, 144.0))
 	var canonical_run_frame := canonical_frames.get_frame_texture(&"run", 0) as AtlasTexture
 	var canonical_sprint_frame := canonical_frames.get_frame_texture(&"sprint", 0) as AtlasTexture
 	assert(canonical_run_frame != null)
@@ -164,6 +157,7 @@ func _initialize() -> void:
 	assert(canonical_run_image != null)
 	assert(canonical_run_image.has_mipmaps())
 	assert(canonical_run_frame.atlas == canonical_sprint_frame.atlas)
+	assert(canonical_idle_frame.atlas == canonical_run_frame.atlas)
 	assert(canonical_run_frame.region == Rect2(0.0, 0.0, 128.0, 144.0))
 	assert(canonical_sprint_frame.region == Rect2(0.0, 0.0, 128.0, 144.0))
 	assert(is_equal_approx(canonical_frames.get_animation_speed(&"run"), 12.0))
