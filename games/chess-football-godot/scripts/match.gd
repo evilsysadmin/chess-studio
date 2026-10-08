@@ -51,12 +51,16 @@ const KEEPER_SHORT_PASS_POWER := 520.0
 const KEEPER_CLEAR_POWER := 840.0
 const KEEPER_CLEAR_LIFT := 210.0
 
-const AI_DECISION_INTERVAL := 0.34
+const AI_DECISION_INTERVAL := 0.28
 const AI_SHOOT_DISTANCE := 650.0
-const AI_PRESSURE_RADIUS := 165.0
-const AI_FORWARD_PASS_GAIN := 170.0
-const AI_DRIBBLE_LOOKAHEAD := 280.0
-const AI_SUPPORT_FORWARD := 190.0
+const AI_PRESSURE_RADIUS := 180.0
+const AI_FORWARD_PASS_GAIN := 145.0
+const AI_DRIBBLE_LOOKAHEAD := 290.0
+const AI_SUPPORT_FORWARD := 225.0
+const AI_COVER_DISTANCE := 150.0
+const AI_DEFENSIVE_SHIFT_RATIO := 0.27
+const AI_COVER_INTENSITY := 0.86
+const AI_TEAM_PRESS_INTENSITY := 0.75
 
 const DRIBBLE_AUTO_EVADE_RADIUS := 190.0
 const DRIBBLE_AUTO_LOOKAHEAD := 132.0
@@ -661,8 +665,9 @@ func _release_charged_shot() -> void:
 
 func _update_ai(delta: float) -> void:
 	for team_id in range(2):
-		var team_has_ball := ball.carrier != null and ball.carrier.team_id == team_id
-		var presser: Footballer = _nearest_player_to_ball(team_id)
+		var team_has_ball: bool = ball.carrier != null and ball.carrier.team_id == team_id
+		var presser: Footballer = _ai_primary_presser(team_id)
+		var cover: Footballer = _ai_secondary_presser(team_id, presser)
 		for player in teams[team_id]:
 			if player.sent_off:
 				continue
@@ -673,33 +678,101 @@ func _update_ai(delta: float) -> void:
 				continue
 
 			var target: Vector2 = player.home_position
-			var intensity := 0.64
+			var intensity: float = 0.66
 			if ball.carrier == null:
 				if player == presser:
 					target = ball.global_position
-					intensity = 0.98
+					intensity = 1.0
+				elif player == cover:
+					target = _ai_cover_target(player, ball.global_position)
+					intensity = AI_COVER_INTENSITY
 			elif team_has_ball:
 				if ball.carrier == player:
 					target = _ai_dribble_target(player)
-					intensity = 0.94
+					intensity = 0.98
 				else:
 					target = _ai_support_target(player)
-					intensity = 0.78
+					intensity = 0.83
 			else:
 				if player == presser:
 					target = ball.carrier.global_position
-					intensity = 0.98
+					intensity = 1.0
+				elif player == cover:
+					target = _ai_cover_target(player, ball.carrier.global_position)
+					intensity = AI_COVER_INTENSITY
 				else:
-					target = player.home_position.lerp(ball.carrier.global_position, 0.18)
-					intensity = 0.70
+					target = ChessFootballMath.clamp_to_pitch(
+						player.home_position.lerp(
+							ball.carrier.global_position,
+							AI_DEFENSIVE_SHIFT_RATIO,
+						)
+					)
+					intensity = AI_TEAM_PRESS_INTENSITY
 
 			player.move_ai(delta, target, intensity)
 
-			if not team_has_ball and ball.carrier != null and ball.carrier.team_id != team_id and player == presser:
-				_try_tackle(player)
+			if (
+				not team_has_ball
+				and ball.carrier != null
+				and ball.carrier.team_id != team_id
+			):
+				if player == presser:
+					_try_tackle(player)
+				elif (
+					player == cover
+					and player.global_position.distance_to(ball.carrier.global_position)
+						< TACKLE_ATTEMPT_RANGE * 0.72
+				):
+					_try_tackle(player)
 
 			if ball.carrier == player and team_id == 1 and _ai_decision_ready(player):
 				_ai_attack(player)
+
+func _ai_primary_presser(team_id: int) -> Footballer:
+	var point: Vector2 = ball.global_position
+	if ball.carrier != null:
+		point = ball.carrier.global_position
+	var best: Footballer = null
+	var best_distance: float = INF
+	for player in teams[team_id]:
+		if player.sent_off or player == controlled or player.role == "keeper":
+			continue
+		var distance: float = player.global_position.distance_squared_to(point)
+		if distance < best_distance:
+			best_distance = distance
+			best = player
+	return best
+
+func _ai_secondary_presser(team_id: int, primary: Footballer) -> Footballer:
+	var point: Vector2 = ball.global_position
+	if ball.carrier != null:
+		point = ball.carrier.global_position
+	var best: Footballer = null
+	var best_distance: float = INF
+	for player in teams[team_id]:
+		if (
+			player.sent_off
+			or player == controlled
+			or player.role == "keeper"
+			or player == primary
+		):
+			continue
+		var distance: float = player.global_position.distance_squared_to(point)
+		if distance < best_distance:
+			best_distance = distance
+			best = player
+	return best
+
+func _ai_cover_target(player: Footballer, threat_position: Vector2) -> Vector2:
+	var own_goal: Vector2 = ChessFootballMath.goal_center(1 - player.team_id)
+	var goal_side: Vector2 = own_goal - threat_position
+	if goal_side.length_squared() < 1.0:
+		goal_side = Vector2.RIGHT if player.team_id == 1 else Vector2.LEFT
+	else:
+		goal_side = goal_side.normalized()
+	var target: Vector2 = threat_position + goal_side * AI_COVER_DISTANCE
+	target.y = lerpf(target.y, player.home_position.y, 0.32)
+	return ChessFootballMath.clamp_to_pitch(target)
 
 func _ai_decision_ready(player: Footballer) -> bool:
 	var key: int = int(player.get_instance_id())
@@ -725,10 +798,18 @@ func _ai_support_target(player: Footballer) -> Vector2:
 	if ball.carrier == null:
 		return player.home_position
 	var forward: float = 1.0 if player.team_id == 0 else -1.0
-	var lane_offset := float(player.squad_index - 2) * 92.0
+	var lane_offset: float = float(player.squad_index - 2) * 104.0
+	var role_push: float = 0.0
+	if player.role == "defender":
+		role_push = -55.0
+	elif player.role == "wing":
+		role_push = 65.0
+	elif player.role == "forward":
+		role_push = 95.0
 	var target := Vector2(
-		ball.carrier.global_position.x + forward * (AI_SUPPORT_FORWARD + absf(lane_offset) * 0.22),
-		player.home_position.y + lane_offset * 0.35
+		ball.carrier.global_position.x
+			+ forward * (AI_SUPPORT_FORWARD + role_push + absf(lane_offset) * 0.18),
+		lerpf(player.home_position.y, ball.carrier.global_position.y + lane_offset, 0.42)
 	)
 	return ChessFootballMath.clamp_to_pitch(target)
 
@@ -2221,6 +2302,18 @@ func debug_try_claim_loose_ball() -> void:
 
 func debug_ai_dribble_target(player: Footballer) -> Vector2:
 	return _ai_dribble_target(player)
+
+func debug_ai_primary_presser(team_id: int) -> Footballer:
+	return _ai_primary_presser(team_id)
+
+func debug_ai_secondary_presser(team_id: int) -> Footballer:
+	return _ai_secondary_presser(team_id, _ai_primary_presser(team_id))
+
+func debug_ai_cover_target(player: Footballer, threat_position: Vector2) -> Vector2:
+	return _ai_cover_target(player, threat_position)
+
+func debug_ai_support_target(player: Footballer) -> Vector2:
+	return _ai_support_target(player)
 
 func debug_force_ai_attack(player: Footballer) -> void:
 	_ai_attack(player)
