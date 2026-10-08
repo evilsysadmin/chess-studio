@@ -77,7 +77,9 @@ for (const variant of ['v3', 'v4']) {
         [VARIANT_KEY]: variant,
         'matthias.onboarded': '2',
         'chess-study-home-guide-dismissed-v1': '1',
-        'chess-study-war-room-first-run-v1': 'done',
+        'chess-study-mechanic-tutorial-progress-v1': JSON.stringify({
+          'war-room-basics': { seen: true },
+        }),
       },
     });
     await login(page);
