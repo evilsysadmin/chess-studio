@@ -15,7 +15,6 @@ import { buildAdminInsights } from '../adminDashboardInsights.js';
 import { createAsyncCommitGuard } from '../asyncLifecycle.js';
 import AdminFeedbackSection from './AdminFeedbackSection.jsx';
 import AdminMatthiasStatusSection from './AdminMatthiasStatusSection.jsx';
-import AdminObservabilitySummary from './AdminObservabilitySummary.jsx';
 import AdminUserDirectory from './AdminUserDirectory.jsx';
 import ObservabilityPanel from './ObservabilityPanel.jsx';
 import useAdminDashboardData from './useAdminDashboardData.js';
@@ -189,7 +188,7 @@ export default function AdminScreen({ onExit }) {
             <div><span className="section-label">Admin</span><h2>Observabilidad</h2></div>
             <button type="button" className="secondary-btn" onClick={onExit}>Salir al menú</button>
           </div>
-          <p className="hint-text">Dashboards operativos, histórico temporal, Workers AI y diagnóstico SRE.</p>
+          <p className="hint-text">Estado puntual de la API. Para históricos, alertas y trazas usa Grafana.</p>
           <ObservabilityPanel token={getToken()} users={users || []} currentAdmin={currentAdmin} />
         </div>
       </div>
@@ -217,7 +216,7 @@ export default function AdminScreen({ onExit }) {
         <h2>Administración</h2>
         <p className="hint-text">Salud y feedback primero; usuarios y actividad quedan debajo.</p>
         <p className="hint-text admin-build-id">Release: <code>{APP_RELEASE}</code> · Build: <code>{BUILD_SHA === 'local' ? 'local' : BUILD_SHA.slice(0, 8)}</code></p>
-        <AdminObservabilitySummary token={getToken()} users={users || []} currentAdmin={currentAdmin} onOpen={() => setAdminView('observability')} />
+        <button type="button" className="secondary-btn" onClick={() => setAdminView('observability')}>Comprobar estado y latencia de API</button>
 
         <AdminMatthiasStatusSection
           status={matthiasStatus}
