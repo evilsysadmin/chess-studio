@@ -3,6 +3,7 @@ import { createWarRoomClassicShellController } from './WarRoomClassicShell.js';
 import {
   shouldShowClassicWarRoomShell,
   startWarRoomVariantScene,
+  warRoomVariantHostsHans,
   warRoomVariantShellCoarsePointer,
 } from './WarRoomSceneVariant.js';
 
@@ -13,6 +14,13 @@ describe('War Room shared scene variants', () => {
     expect(shouldShowClassicWarRoomShell({ selectable: true, variant: 'v3' })).toBe(false);
     expect(shouldShowClassicWarRoomShell({ selectable: true, variant: 'classic' })).toBe(true);
     expect(shouldShowClassicWarRoomShell({ selectable: false, variant: 'v2' })).toBe(true);
+  });
+
+  it('only stages Hans in the three player War Room Blender variants', () => {
+    expect(['v2', 'v3', 'v4'].map(warRoomVariantHostsHans)).toEqual([true, true, true]);
+    expect(warRoomVariantHostsHans('classic')).toBe(false);
+    expect(warRoomVariantHostsHans('duel')).toBe(false);
+    expect(warRoomVariantHostsHans('combat-ops')).toBe(false);
   });
 
   it('treats real coarse-pointer devices as the cheap Blender-shell profile', () => {
