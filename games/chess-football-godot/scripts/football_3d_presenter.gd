@@ -25,6 +25,7 @@ var match_node: Node
 var camera: Camera3D
 var player_nodes: Dictionary = {}
 var player_sprites: Dictionary = {}
+var player_run_views: Dictionary = {}
 var ball_node: MeshInstance3D
 var ball_shadow: MeshInstance3D
 var penalty_aim_marker: MeshInstance3D
@@ -436,6 +437,15 @@ func sync_presentation(delta: float, mode: String) -> void:
 			proxy.position = world_to_stage(player.global_position)
 			if player.visual != null:
 				var wanted_animation := StringName(player.visual.animation)
+				# Keep locomotion animations in phase with the authoritative 2D actor.
+				# Non-locomotion actions preserve their established side-facing frames.
+				var run_view := ChessFootballRunDirection.view_for_velocity(
+					player.velocity, String(player_run_views.get(key, "side"))
+				)
+				player_run_views[key] = run_view
+				var directional_animation := ChessFootballRunDirection.animation_for(wanted_animation, run_view)
+				if sprite.sprite_frames.has_animation(directional_animation):
+					wanted_animation = directional_animation
 				if sprite.animation != wanted_animation:
 					sprite.play(wanted_animation)
 				sprite.flip_h = player.visual.flip_h
@@ -499,13 +509,13 @@ func _sync_player_secondary_motion(player: Footballer, sprite: AnimatedSprite3D,
 	var tilt_degrees := sin(phase) * 0.7
 	var facing_sign := -1.0 if sprite.flip_h else 1.0
 
-	if animation_name == "run":
+	if animation_name == "run" or animation_name.begins_with("run_"):
 		bob = absf(sin(phase)) * (PLAYER_RUN_BOB + 0.014) * moving_weight
 		lateral_sway = sin(phase) * 0.029 * moving_weight
 		stretch_x = 0.97 + absf(cos(phase)) * 0.018
 		stretch_y = 1.025 - absf(cos(phase)) * 0.012
 		tilt_degrees = -facing_sign * (4.5 + sin(phase) * 1.5) * moving_weight
-	elif animation_name == "sprint":
+	elif animation_name == "sprint" or animation_name.begins_with("sprint_"):
 		bob = absf(sin(phase)) * (PLAYER_SPRINT_BOB + 0.020) * moving_weight
 		lateral_sway = sin(phase) * 0.038 * moving_weight
 		stretch_x = 0.95 + absf(cos(phase)) * 0.028
