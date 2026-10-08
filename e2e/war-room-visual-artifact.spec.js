@@ -507,6 +507,12 @@ async function captureWarRoomHealth(page, label) {
       renderer: canvas?.dataset.board3dRenderer || null,
       rendererClass: canvas?.dataset.board3dRendererClass || null,
       renderPath: canvas?.dataset.board3dRenderPath || null,
+      blenderShadow: canvas ? {
+        budget: Number(canvas.dataset.warRoomShadowCasterBudget || 0),
+        candidates: Number(canvas.dataset.warRoomShadowCasterCandidates || 0),
+        count: Number(canvas.dataset.warRoomShadowCasterCount || 0),
+        warmup: canvas.dataset.warRoomShadowWarmup || null,
+      } : null,
       horizontalOverflowPx: Math.max(0, root.scrollWidth - viewport.width),
       verticalOverflowPx: Math.max(0, root.scrollHeight - viewport.height),
       overflowOffenders,
