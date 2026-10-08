@@ -368,8 +368,8 @@ jobs:
         env:
           CRITICAL_E2E_LANE: ${{ matrix.lane }}
         run: python3 -S scripts/run_core_e2e_lane.py "$CRITICAL_E2E_LANE"
-      - name: Upload Playwright diagnostics on failure
-        if: failure()
+      - name: Upload Playwright evidence for Admin and diagnostics on failure
+        if: failure() || matrix.lane == 'admin'
         uses: actions/upload-artifact@v7
         with:
           name: playwright-test-results-${{ matrix.lane }}
