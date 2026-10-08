@@ -304,13 +304,13 @@ function addKnightPiece(root, x, z, material, scale = 1, facing = 1) {
   piece.name = 'ready-room-piece knight';
   addPieceBase(piece, material, scale);
 
-  const neckBase = lathePiecePart(
+  lathePiecePart(
     piece,
     [
       [.22, .18],
       [.19, .27],
-      [.15, .37],
-      [.14, .46],
+      [.16, .37],
+      [.14, .47],
     ],
     material,
     scale,
@@ -318,62 +318,78 @@ function addKnightPiece(root, x, z, material, scale = 1, facing = 1) {
     'piece-knight-base-neck',
     24,
   );
-  neckBase.scale.x = .95;
 
-  const profile = new THREE.Shape();
-  profile.moveTo(-.10 * scale, .40 * scale);
-  profile.bezierCurveTo(
-    -.02 * scale, .60 * scale,
-    .05 * scale, .78 * scale,
-    .17 * scale, .96 * scale,
+  const neck = new THREE.Mesh(
+    new THREE.CylinderGeometry(.105 * scale, .17 * scale, .48 * scale, 24),
+    material,
   );
-  profile.bezierCurveTo(
-    .25 * scale, 1.08 * scale,
-    .40 * scale, 1.07 * scale,
-    .47 * scale, .96 * scale,
-  );
-  profile.bezierCurveTo(
-    .51 * scale, .88 * scale,
-    .47 * scale, .80 * scale,
-    .39 * scale, .76 * scale,
-  );
-  profile.lineTo(.31 * scale, .72 * scale);
-  profile.bezierCurveTo(
-    .25 * scale, .60 * scale,
-    .21 * scale, .48 * scale,
-    .12 * scale, .40 * scale,
-  );
-  profile.closePath();
+  neck.rotation.z = -.34 * facing;
+  neck.position.set(.055 * facing * scale, .66 * scale, 0);
+  neck.scale.z = 1.08;
+  neck.castShadow = true;
+  neck.receiveShadow = true;
+  neck.name = 'piece-knight-neck';
+  piece.add(neck);
 
-  const depth = .22 * scale;
-  const geometry = new THREE.ExtrudeGeometry(profile, {
-    depth,
-    bevelEnabled: true,
-    bevelSegments: 2,
-    bevelSize: .025 * scale,
-    bevelThickness: .022 * scale,
-    curveSegments: 10,
-  });
-  geometry.translate(0, 0, -depth / 2);
-  const horse = new THREE.Mesh(geometry, material);
-  horse.scale.x = facing;
-  horse.castShadow = true;
-  horse.receiveShadow = true;
-  horse.name = 'piece-knight-horse-profile';
-  piece.add(horse);
+  const head = new THREE.Mesh(
+    new THREE.SphereGeometry(.18 * scale, 28, 18),
+    material,
+  );
+  head.scale.set(1.14, .88, .82);
+  head.position.set(.20 * facing * scale, .91 * scale, 0);
+  head.castShadow = true;
+  head.receiveShadow = true;
+  head.name = 'piece-knight-head';
+  piece.add(head);
 
-  for (const zOffset of [-.075, .075]) {
-    const ear = new THREE.Mesh(new THREE.ConeGeometry(.045 * scale, .15 * scale, 14), material);
-    ear.position.set(.22 * facing * scale, 1.06 * scale, zOffset * scale);
-    ear.rotation.z = -.22 * facing;
+  const muzzle = new THREE.Mesh(
+    new THREE.SphereGeometry(.125 * scale, 24, 16),
+    material,
+  );
+  muzzle.scale.set(1.32, .68, .72);
+  muzzle.position.set(.36 * facing * scale, .84 * scale, 0);
+  muzzle.castShadow = true;
+  muzzle.receiveShadow = true;
+  muzzle.name = 'piece-knight-muzzle';
+  piece.add(muzzle);
+
+  const jaw = new THREE.Mesh(
+    new THREE.SphereGeometry(.095 * scale, 20, 14),
+    material,
+  );
+  jaw.scale.set(1.05, .74, .78);
+  jaw.position.set(.26 * facing * scale, .76 * scale, 0);
+  jaw.castShadow = true;
+  jaw.name = 'piece-knight-jaw';
+  piece.add(jaw);
+
+  for (const zOffset of [-.072, .072]) {
+    const ear = new THREE.Mesh(new THREE.ConeGeometry(.046 * scale, .17 * scale, 14), material);
+    ear.position.set(.11 * facing * scale, 1.105 * scale, zOffset * scale);
+    ear.rotation.z = -.18 * facing;
     ear.castShadow = true;
     ear.name = 'piece-knight-ear';
     piece.add(ear);
   }
 
-  sphere(piece, .027 * scale, material, [.36 * facing * scale, .94 * scale, .12 * scale], 'piece-knight-eye', 12, 8);
+  for (let i = 0; i < 4; i += 1) {
+    const mane = new THREE.Mesh(
+      new THREE.ConeGeometry(.048 * scale, .15 * scale, 10),
+      material,
+    );
+    mane.rotation.z = Math.PI / 2;
+    mane.position.set(
+      (-.055 + i * .035) * facing * scale,
+      (.86 - i * .10) * scale,
+      -.15 * scale,
+    );
+    mane.castShadow = true;
+    mane.name = 'piece-knight-mane';
+    piece.add(mane);
+  }
 
   piece.position.set(x, 1.61, z);
+  piece.rotation.y = facing > 0 ? -.12 : .12;
   root.add(piece);
 }
 
