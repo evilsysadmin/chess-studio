@@ -2400,3 +2400,12 @@
     margin-top: 0;
   }
 }
+
+
+@media (max-width: 820px) {
+  /* Generic lobby CSS replaces the leave label with a compact ::after "Salir".
+     Duel Hall owns a full-width textual action, so suppress that extra label. */
+  .pvp-duel-hall .pvp-lobby__leave::after {
+    content: none;
+  }
+}
