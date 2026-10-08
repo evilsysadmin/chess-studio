@@ -1207,17 +1207,6 @@ function buildRoom({ lite = false } = {}) {
     innerMedallion.name = 'quick-match-ready-rug-medallion-inner';
     root.add(innerMedallion);
 
-    for (const x of [-2.65, 2.65]) {
-      const cornerMark = new THREE.Mesh(
-        new THREE.RingGeometry(.18, .22, 4),
-        rugTrim,
-      );
-      cornerMark.rotation.x = -Math.PI / 2;
-      cornerMark.rotation.z = Math.PI / 4;
-      cornerMark.position.set(x, -.013, 1.86);
-      cornerMark.name = 'quick-match-ready-rug-corner-mark';
-      root.add(cornerMark);
-    }
   }
 
   return root;
