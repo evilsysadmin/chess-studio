@@ -570,6 +570,11 @@ for (const capture of CAPTURES) {
         expectReady: false,
       });
       if (capture.hasTouch) {
+        // The bootstrap-error flow can also leave Chromium in native fullscreen.
+        await page.evaluate(async () => {
+          if (document.fullscreenElement) await document.exitFullscreen();
+        });
+        await expect.poll(() => page.evaluate(() => document.fullscreenElement === null)).toBe(true);
         await page.setViewportSize({ width: capture.width, height: capture.height });
         await page.waitForTimeout(120);
       }
