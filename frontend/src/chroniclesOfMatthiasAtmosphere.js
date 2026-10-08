@@ -173,17 +173,17 @@ function addReadabilityLighting(root, { coarsePointer, scenePlan }) {
   // leaving the authored cold fills enough room to model the middle distance.
   const partyTorchKey = new THREE.PointLight(
     0xffad67,
-    (coarsePointer ? 6.45 : 6.8) * (lightingProfile === 'crypt-dark' ? 0.78 : 1),
-    coarsePointer ? 14.8 : 15.8,
-    1.58,
+    (coarsePointer ? 13.5 : 11.5) * (lightingProfile === 'crypt-dark' ? 0.9 : 1),
+    coarsePointer ? 11.5 : 12.5,
+    1.82,
   );
   partyTorchKey.name = 'chronicles-party-torch-key';
   partyTorchKey.castShadow = false;
 
   const partyTorchBounce = new THREE.PointLight(
     0xd47b3f,
-    (coarsePointer ? 4.1 : 3.8) * (lightingProfile === 'crypt-dark' ? 0.76 : 1),
-    coarsePointer ? 7.2 : 7.8,
+    (coarsePointer ? 9 : 8) * (lightingProfile === 'crypt-dark' ? 0.9 : 1),
+    coarsePointer ? 7.5 : 8,
     2.0,
   );
   partyTorchBounce.name = 'chronicles-party-torch-bounce';
@@ -279,9 +279,9 @@ export function buildChroniclesDungeonAtmosphere({
     readabilityLighting.partyTorchKey.position.copy(partyKeyPosition);
 
     partyBouncePosition.copy(partyCamera.position)
-      .addScaledVector(partyForward, 1.28)
+      .addScaledVector(partyForward, 0.68)
       .addScaledVector(partyRight, -0.12);
-    partyBouncePosition.y = 0.34;
+    partyBouncePosition.y = 1.05;
     readabilityLighting.partyTorchBounce.position.copy(partyBouncePosition);
 
     const flicker = reducedMotion
