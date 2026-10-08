@@ -1,7 +1,7 @@
 /* Compact, actionable dungeon on small and short screens.
    Desktop keeps its authored, positioned plaques. Mobile cannot inherit the
    920px/1040px stage and percentage hotspots: that pushes every game offscreen. */
-@media (max-width: 820px), (orientation: landscape) and (max-height: 640px) {
+@media (max-width: 820px), (orientation: landscape) and (max-height: 760px) {
   body:has(.lab-screen .lab-workshop) .lab-screen .lab-workshop {
     box-sizing: border-box;
     display: flex;
@@ -64,6 +64,11 @@
     height: auto;
     min-height: 0;
     pointer-events: auto;
+  }
+
+  .lab-screen.lab-screen .lab-workshop-wing {
+    max-width: 960px;
+    margin-inline: auto;
   }
 
   .lab-screen.lab-screen .lab-workshop-portals,
@@ -216,7 +221,7 @@
 
 /* A phone held sideways has very little height, even at >820 CSS px wide.
    Keep all three rows of game entrances above the first fold. */
-@media (orientation: landscape) and (max-height: 640px) {
+@media (orientation: landscape) and (max-height: 760px) {
   body:has(.lab-screen .lab-workshop) .lab-screen .lab-workshop {
     gap: 7px;
     padding: 97px 14px 12px;
