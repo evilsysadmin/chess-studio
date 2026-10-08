@@ -50,7 +50,7 @@ export function labContextFromMeta(meta = {}) {
   };
 }
 
-function primeGameSession(game, { learningMode = false, gameContext = {}, timeControlId = null } = {}) {
+function primeGameSession(game, gameContext, learningMode = false, timeControlId = null) {
   const saved = saveActiveGameSession({ route: 'game', game, learningMode, gameContext, timeControlId });
   setActiveGameSessionVisible(saved ? 'game' : null);
 }
@@ -131,7 +131,7 @@ export function useGameStartFlow({
         series(null);
       }
 
-      primeGameSession(created, { learningMode: isLearning, gameContext: nextContext, timeControlId: nextTimeControl.id });
+      primeGameSession(created, nextContext, isLearning, nextTimeControl.id);
       setGame(created);
       saved(true);
       navigate('game');
@@ -189,7 +189,7 @@ export function useGameStartFlow({
       learning(false);
       const nextTimeControl = timeControlById(updatedSeries.timeControlId);
       timeControl(nextTimeControl);
-      primeGameSession(created, { gameContext: gameContextFromOptions({ adaptiveDifficulty: updatedSeries.adaptiveDifficulty }), timeControlId: nextTimeControl.id });
+      primeGameSession(created, gameContextFromOptions({ adaptiveDifficulty: updatedSeries.adaptiveDifficulty }), false, nextTimeControl.id);
       setGame(created);
       saved(true);
       navigate('game');
@@ -236,7 +236,7 @@ export function useGameStartFlow({
       context(nextContext);
       learning(true);
       timeControl(null);
-      primeGameSession(created, { learningMode: true, gameContext: nextContext });
+      primeGameSession(created, nextContext, true);
       setGame(created);
       saved(true);
       navigate('game');
@@ -283,7 +283,7 @@ export function useGameStartFlow({
       learning(false);
       const nextTimeControl = timeControlById('5+0');
       timeControl(nextTimeControl);
-      primeGameSession(created, { gameContext: { runMode: nextRun.mode }, timeControlId: nextTimeControl.id });
+      primeGameSession(created, { runMode: nextRun.mode }, false, nextTimeControl.id);
       setGame(created);
       saved(true);
       navigate('game');
