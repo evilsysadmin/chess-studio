@@ -520,7 +520,7 @@ func materializeRecipe(composed bson.D, recipe chroniclesmap.Recipe, version int
 
 // proceduralize is proceduralize_chronicles_manifest; it returns the
 // generated manifest, its MapCode and layout revision.
-func proceduralize(manifest bson.D, seed int64, proposal any, version int) (bson.D, string, string, error) {
+func proceduralize(manifest bson.D, seed int64, proposal any, version int, dungeonLevel, topologyVersion int64) (bson.D, string, string, error) {
 	varied, modules := applyModules(manifest, seed)
 	composed, composition := applyComposition(varied, seed)
 	composed, treasure := applyTreasure(composed, seed)
