@@ -72,6 +72,32 @@ function surfaceTexture(kind, size = 64) {
   return texture;
 }
 
+function nightSkyTexture(width = 32, height = 64) {
+  const data = new Uint8Array(width * height * 4);
+  for (let y = 0; y < height; y += 1) {
+    const t = y / Math.max(1, height - 1);
+    const horizon = 1 - t;
+    for (let x = 0; x < width; x += 1) {
+      const index = (y * width + x) * 4;
+      const ripple = Math.sin((x * .8) + (y * .18)) * 3;
+      const r = Math.round(6 + horizon * 7 + ripple * .18);
+      const g = Math.round(20 + horizon * 25 + ripple * .32);
+      const b = Math.round(42 + horizon * 48 + ripple);
+      data[index] = Math.max(0, Math.min(255, r));
+      data[index + 1] = Math.max(0, Math.min(255, g));
+      data[index + 2] = Math.max(0, Math.min(255, b));
+      data[index + 3] = 255;
+    }
+  }
+
+  const texture = new THREE.DataTexture(data, width, height, THREE.RGBAFormat);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.LinearFilter;
+  texture.needsUpdate = true;
+  return texture;
+}
+
 function box(root, size, material, position, name = '') {
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(...size), material);
   mesh.position.set(...position);
@@ -866,8 +892,13 @@ function buildRoom({ lite = false } = {}) {
     leather.needsUpdate = true;
   }
 
+  const nightTexture = nightSkyTexture();
+  surfaceTextures.push(nightTexture);
   root.userData.surfaceTextures = surfaceTextures;
-  const night = new THREE.MeshBasicMaterial({ color: 0x0b3156 });
+  const night = new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    map: nightTexture,
+  });
   const moon = new THREE.MeshBasicMaterial({ color: 0xe8eef3 });
   const moonHalo = new THREE.MeshBasicMaterial({
     color: 0x9ec8ee,
