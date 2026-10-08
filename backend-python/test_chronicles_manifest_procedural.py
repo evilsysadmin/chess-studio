@@ -185,6 +185,31 @@ def test_dungeon_topology_v0_keeps_legacy_layout_exactly():
 
 
 
+def test_dungeon_topology_v1_increases_bounded_pressure():
+    base, _revision = chronicles_api.load_chronicles_manifest("crypt-eight-squares")
+    authored = chronicles_map_code_for_manifest(base, 417)
+    low = proceduralize_chronicles_manifest(
+        base, 417,
+        content_placement_version=CHRONICLES_CONTENT_PLACEMENT_VERSION,
+        dungeon_level=1,
+        dungeon_topology_version=CHRONICLES_DUNGEON_TOPOLOGY_VERSION,
+    )
+    high = proceduralize_chronicles_manifest(
+        base, 417,
+        content_placement_version=CHRONICLES_CONTENT_PLACEMENT_VERSION,
+        dungeon_level=3,
+        dungeon_topology_version=CHRONICLES_DUNGEON_TOPOLOGY_VERSION,
+    )
+
+    assert parse_chronicles_map_code(low.map_code).difficulty == authored.difficulty
+    assert parse_chronicles_map_code(high.map_code).difficulty == min(5, authored.difficulty + 2)
+    assert high.manifest["generation"]["dungeonTopologyVersion"] == 1
+    assert high.manifest["generation"]["dungeonLevel"] == 3
+    assert high.manifest["generation"]["topologyQuality"]["accepted"] is True
+    assert high.layout_revision != low.layout_revision
+
+
+
 def test_explicit_procedural_difficulty_is_stable_across_enemy_rpg_storage_changes():
     base, _revision = chronicles_api.load_chronicles_manifest("crypt-eight-squares")
     assert base["proceduralDifficulty"] == 2
