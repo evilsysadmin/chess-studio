@@ -1395,7 +1395,13 @@ def build_outputs() -> dict[str, str]:
         "display_scale": DISPLAY_SCALE,
         "canonical_run": {
             "quality_contract": "chess-football-run-canon-v1",
-            "encoded_parts": ["run_canon/canonical_run_v1.part00.b64", "run_canon/canonical_run_v1.part01.b64", "run_canon/canonical_run_v1.part02.b64"],
+            "encoded_parts": [
+                "run_canon/canonical_run_v1.exact00.b64",
+                "run_canon/canonical_run_v1.exact01.b64",
+                "run_canon/canonical_run_v1.exact02.b64",
+                "run_canon/canonical_run_v1.exact03.b64",
+                "run_canon/canonical_run_v1.exact04.b64"
+            ],
             "sha256": "62e6b26f5cfc11ccf94ae93c643659a51695baf53c4511366bddfdd6692d234c",
             "cell": {"width": CELL_W, "height": CELL_H},
             "frames": COLUMNS,
