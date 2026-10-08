@@ -636,6 +636,7 @@ export function createChroniclesOfMatthiasGame(host, {
     if (reducedMotion) {
       camera.position.copy(desiredPosition);
       camera.rotation.y = desiredYaw;
+      atmosphere.userData.updateChroniclesAtmosphere?.(now);
       renderer.render(scene, camera);
     }
   }
@@ -667,7 +668,6 @@ export function createChroniclesOfMatthiasGame(host, {
     if (!reducedMotion) {
       camera.position.lerp(desiredPosition, 0.16);
       camera.rotation.y += wrapAngle(desiredYaw - camera.rotation.y) * 0.18;
-      atmosphere.userData.updateChroniclesAtmosphere?.(time);
       dungeon.torches.forEach((torch) => {
         const pulse = 0.9 + Math.sin(time * 8.5 + torch.phase) * 0.08 + Math.sin(time * 17 + torch.phase) * 0.04;
         torch.light.intensity = torch.baseIntensity * pulse;
@@ -755,6 +755,9 @@ export function createChroniclesOfMatthiasGame(host, {
         combatFx.group.visible = false;
       }
     }
+    // Party-carried light is gameplay visibility, not a decorative animation.
+    // Keep it synced on every frame, including prefers-reduced-motion.
+    atmosphere.userData.updateChroniclesAtmosphere?.(time);
     renderer.render(scene, camera);
   }
 
