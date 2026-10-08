@@ -33,6 +33,7 @@ from chronicles_map_generator import (
 )
 from chronicles_manifest_procedural import (
     CHRONICLES_CONTENT_PLACEMENT_VERSION,
+    CHRONICLES_DUNGEON_TOPOLOGY_VERSION,
     proceduralize_chronicles_manifest,
 )
 from chronicles_map_planner import normalize_chronicles_planner_proposal
@@ -615,6 +616,7 @@ def chronicles_area_envelope(
     party_level: int | None = None,
     content_placement_version: int = 0,
     dungeon_level: int = 1,
+    dungeon_topology_version: int = 0,
 ) -> dict[str, Any]:
     authored_manifest, _authored_revision = load_chronicles_manifest(map_id, root=root)
     stable_planner_snapshot = _normalize_planner_snapshot(planner_snapshot)
@@ -628,6 +630,8 @@ def chronicles_area_envelope(
         seed,
         planner_proposal=planner_proposal,
         content_placement_version=content_placement_version,
+        dungeon_level=dungeon_level,
+        dungeon_topology_version=dungeon_topology_version,
     )
     routed_manifest = _apply_route_plan(
         generated.manifest,
@@ -689,6 +693,7 @@ def _run_bootstrap_payload(
             party_level=run.get("partyLevel"),
             content_placement_version=content_placement_version,
             dungeon_level=int(run.get("dungeonLevel", 1) or 1),
+            dungeon_topology_version=int(run.get("dungeonTopologyVersion", 0) or 0),
         )
         for map_id in chronicles_shipped_map_ids()
     ]
@@ -799,6 +804,7 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
                 planner_snapshot=planner_snapshot,
                 party_level=starting_party_level,
                 dungeon_level=dungeon_level,
+                dungeon_topology_version=CHRONICLES_DUNGEON_TOPOLOGY_VERSION,
                 content_placement_version=CHRONICLES_CONTENT_PLACEMENT_VERSION,
             )
             run = await chronicles_run_store.create_or_replay_run(
@@ -813,6 +819,7 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
                 planner_snapshot=planner_snapshot,
                 party_level=starting_party_level,
                 dungeon_level=dungeon_level,
+                dungeon_topology_version=CHRONICLES_DUNGEON_TOPOLOGY_VERSION,
                 content_placement_version=CHRONICLES_CONTENT_PLACEMENT_VERSION,
             )
             stable_route_snapshot = _normalize_route_snapshot(run.get("route"))
@@ -848,6 +855,7 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
             party_level=run.get("partyLevel"),
             content_placement_version=content_placement_version,
             dungeon_level=int(run.get("dungeonLevel", 1) or 1),
+            dungeon_topology_version=int(run.get("dungeonTopologyVersion", 0) or 0),
         )
         if (
             current_area["contentVersion"] != run["contentVersion"]
@@ -876,6 +884,7 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
                 party_level=run.get("partyLevel"),
                 content_placement_version=content_placement_version,
                 dungeon_level=int(run.get("dungeonLevel", 1) or 1),
+                dungeon_topology_version=int(run.get("dungeonTopologyVersion", 0) or 0),
             )
         )
         world_flags = _normalize_checkpoint_flags(body.world_flags)
