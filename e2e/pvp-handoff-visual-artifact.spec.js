@@ -90,7 +90,7 @@ async function prepareHandoff(page, { holdReady = false } = {}) {
   await login(page);
   const duelEntry = page.getByRole('button', { name: 'Abrir Sala de Duelos 1 contra 1' });
   if (!await duelEntry.isVisible().catch(() => false)) {
-    const more = page.getByRole('button', { name: /^Más(?: formas de jugar)?$/ });
+    const more = page.locator('.illustrated-home__play-more');
     await expect(more).toBeVisible();
     if ((await more.getAttribute('aria-expanded')) !== 'true') await more.click();
   }
