@@ -1,10 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { createWarRoomClassicShellController } from './WarRoomClassicShell.js';
 import {
   shouldShowClassicWarRoomShell,
   startWarRoomVariantScene,
   warRoomVariantShellCoarsePointer,
 } from './WarRoomSceneVariant.js';
+
+function createWarRoomClassicShellController({ build, eager = false } = {}) {
+  let objects = [];
+  let built = false;
+  const ensure = () => {
+    if (!built) {
+      const result = build();
+      objects = Array.isArray(result) ? result : result?.classicShellObjects || [];
+      built = true;
+    }
+    return objects;
+  };
+  if (eager) ensure();
+  return { ensure, current: () => objects, isBuilt: () => built };
+}
 
 describe('War Room shared scene variants', () => {
   it('never paints classic first when persisted v2 is available', () => {
