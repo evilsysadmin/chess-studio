@@ -1,7 +1,5 @@
 import {
   isClassicWarRoomVariant,
-  isWarRoomVariantSelectable,
-  loadWarRoomVariant,
   loadWarRoomVariantInstaller,
 } from './WarRoomVariant.js';
 import { installWarRoomHansVariantStage, warRoomHansRoom } from './WarRoomHansStage.js';
@@ -23,6 +21,10 @@ function setClassicShellVisible(objects, visible) {
   }
 }
 
+function isPromiseLike(value) {
+  return Boolean(value && typeof value.then === 'function');
+}
+
 export function startWarRoomVariantScene({
   scene, classicShellController, variant, selectable, whiteSide, renderLite, canvas, onStatus, onPaint,
 }) {
@@ -42,6 +44,37 @@ export function startWarRoomVariantScene({
 
   if (shouldShowClassicWarRoomShell({ selectable, variant })) {
     const visibleClassicShell = ensureClassicShell?.() || classicShellObjects;
+    if (isPromiseLike(visibleClassicShell)) {
+      scene.userData ||= {};
+      scene.userData.warRoomRenderedVariant = 'classic-loading';
+      setStatus('loading', 'classic-loading');
+      onPaint?.();
+      void Promise.resolve(visibleClassicShell)
+        .then((objects) => {
+          if (cancelled) {
+            setClassicShellVisible(objects, false);
+            return;
+          }
+          setClassicShellVisible(objects, true);
+          scene.userData ||= {};
+          scene.userData.warRoomRenderedVariant = 'classic';
+          setStatus('idle', 'classic');
+          onPaint?.();
+        })
+        .catch((error) => {
+          if (cancelled) return;
+          if (canvas) canvas.dataset.warRoomVariantError = String(error?.message || error || 'classic-shell-error').slice(0, 240);
+          scene.userData ||= {};
+          scene.userData.warRoomRenderedVariant = 'classic-error';
+          setStatus('fallback', 'classic-fallback');
+          onPaint?.();
+        });
+      return () => {
+        cancelled = true;
+        setClassicShellVisible(classicShellController?.current?.() || [], false);
+      };
+    }
+
     setClassicShellVisible(visibleClassicShell, true);
     scene.userData ||= {};
     scene.userData.warRoomRenderedVariant = 'classic';
@@ -87,7 +120,7 @@ export function startWarRoomVariantScene({
           if (canvas) canvas.dataset.warRoomHansStageError = String(error?.message || error).slice(0, 200);
         }
       }
-      setClassicShellVisible(classicShellObjects, false);
+      setClassicShellVisible(classicShellController?.current?.() || classicShellObjects, false);
       scene.userData ||= {};
       scene.userData.warRoomRenderedVariant = variant;
       setStatus('ready', variant);
@@ -99,11 +132,33 @@ export function startWarRoomVariantScene({
         canvas.dataset.warRoomVariantError = String(error?.message || error || 'unknown-shell-error').slice(0, 240);
       }
       const fallbackClassicShell = ensureClassicShell?.() || classicShellObjects;
-      setClassicShellVisible(fallbackClassicShell, true);
-      scene.userData ||= {};
-      scene.userData.warRoomRenderedVariant = 'classic';
-      setStatus('fallback', 'classic-fallback');
-      onPaint?.();
+      const revealFallback = (objects) => {
+        if (cancelled) {
+          setClassicShellVisible(objects, false);
+          return;
+        }
+        setClassicShellVisible(objects, true);
+        scene.userData ||= {};
+        scene.userData.warRoomRenderedVariant = 'classic';
+        setStatus('fallback', 'classic-fallback');
+        onPaint?.();
+      };
+      if (isPromiseLike(fallbackClassicShell)) {
+        void Promise.resolve(fallbackClassicShell)
+          .then(revealFallback)
+          .catch((fallbackError) => {
+            if (cancelled) return;
+            if (canvas) {
+              canvas.dataset.warRoomVariantError = `${canvas.dataset.warRoomVariantError || 'shell-error'}; classic: ${String(fallbackError?.message || fallbackError).slice(0, 160)}`;
+            }
+            scene.userData ||= {};
+            scene.userData.warRoomRenderedVariant = 'classic-fallback-error';
+            setStatus('fallback', 'classic-fallback');
+            onPaint?.();
+          });
+        return;
+      }
+      revealFallback(fallbackClassicShell);
     });
 
   return () => {
