@@ -54,6 +54,7 @@ export function startWarRoomVariantScene({
   canvas,
   onStatus,
   onPaint,
+  loadVariantInstaller = loadWarRoomVariantInstaller,
   loadHansStage = () => import('./WarRoomHansStage.js'),
 }) {
   let cancelled = false;
@@ -123,7 +124,7 @@ export function startWarRoomVariantScene({
     syncBlenderShadowTelemetry(scene, variant, canvas);
     onPaint?.();
   };
-  void loadWarRoomVariantInstaller(variant)
+  void loadVariantInstaller(variant)
     .then((installShell) => installShell(scene, {
       whiteSide,
       coarsePointer: shellCoarsePointer,
