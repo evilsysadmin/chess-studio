@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { ACTIVE_GAME_SESSION_KEY, ACTIVE_GAME_VISIBLE_ROUTE_KEY, clearActiveGameSession, loadActiveGameSession, loadVisibleActiveGameSession, saveActiveGameSession, setActiveGameSessionVisible } from './activeGameSession.js';
+import { ACTIVE_GAME_SESSION_KEY, ACTIVE_GAME_VISIBLE_ROUTE_KEY, clearActiveGameSession, loadActiveGameSession, loadVisibleActiveGameSession, primeActiveGameSession, saveActiveGameSession, setActiveGameSessionVisible } from './activeGameSession.js';
 import { loadClockSnapshot, saveClockSnapshot } from './clockPersistence.js';
 import { clearLocalUserState } from './profileKeys.js';
 
@@ -34,6 +34,27 @@ describe('continuidad de partida activa', () => {
     setActiveGameSessionVisible(null);
     expect(loadVisibleActiveGameSession()).toBeNull();
     expect(loadActiveGameSession()).toMatchObject({ gameId: 'g-visible' });
+  });
+
+  it('prima el snapshot y la ruta visible en una sola operación antes de navegar', () => {
+    primeActiveGameSession(
+      { id: 'g-prime', history: [], status: 'active' },
+      { suddenDeath: true },
+      true,
+      '5+0',
+    );
+
+    expect(loadActiveGameSession()).toMatchObject({
+      route: 'game',
+      gameId: 'g-prime',
+      learningMode: true,
+      gameContext: { suddenDeath: true },
+      timeControlId: '5+0',
+    });
+    expect(loadVisibleActiveGameSession()).toMatchObject({
+      route: 'game',
+      gameId: 'g-prime',
+    });
   });
 
   it('también identifica una partida de torneo para poder reconstruir su pantalla', () => {
