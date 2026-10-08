@@ -165,6 +165,42 @@ export function buildSwordhavenScene(scene, { scenePlan = {}, coarsePointer = fa
     mats.stone, 'fountain-pedestal', [0, 1.25, 0]);
   root.add(fountain);
 
+  // Cloud banks are genuine low-detail 3D volume silhouettes, not a flat sky texture.
+  // Basic materials keep the clouds bright without costly per-cloud lighting.
+  const cloudMaterial = new THREE.MeshBasicMaterial({
+    color: 0xf6f8f4, transparent: true, opacity: 0.87, depthWrite: false,
+  });
+  for (let cluster = 0; cluster < (coarsePointer ? 3 : 5); cluster += 1) {
+    const cloud = new THREE.Group();
+    cloud.name = 'swordhaven-cloud-' + cluster;
+    const direction = cluster % 2 === 0 ? -1 : 1;
+    cloud.position.set(direction * (16 + cluster * 2.7), 16 + (cluster % 3) * 2, -38 + cluster * 3);
+    for (let puff = 0; puff < 3; puff += 1) {
+      mesh(cloud, new THREE.SphereGeometry(2.35 - puff * 0.26, 9, 6),
+        cloudMaterial, 'cloud-puff', [(puff - 1) * 2.0, puff % 2 ? 0.65 : 0, 0]);
+    }
+    root.add(cloud);
+  }
+
+  // Low walls define the silhouette but never replace grid-authoritative collision.
+  for (const sign of [-1, 1]) {
+    mesh(root, new THREE.BoxGeometry(0.6, 1.55, 24), mats.stone,
+      'perimeter-stone-wall-' + sign, [sign * (width * CELL / 2 - 1.4), 0.78, 0]);
+    mesh(root, new THREE.BoxGeometry(19, 1.0, 0.6), mats.stone,
+      'garden-boundary-' + sign, [sign * 24, 0.5, -height * CELL / 2 + 5.0]);
+  }
+  const flower = material(0xb95f76);
+  for (const sign of [-1, 1]) {
+    for (let i = 0; i < 4; i += 1) {
+      const bx = sign * (11.3 + i * 2.1);
+      const bz = 10.5;
+      mesh(root, new THREE.IcosahedronGeometry(0.52, 0), mats.grass,
+        'flower-bush-leaves', [bx, 0.47, bz]);
+      mesh(root, new THREE.IcosahedronGeometry(0.2, 0), flower,
+        'flower-bush-blossom', [bx + 0.18, 0.85, bz - 0.13]);
+    }
+  }
+
   const authoredContent = new Set((scenePlan.content || []).filter(e => e.visible !== false).map(e => e.id));
   const contentProps = [];
   SWORDHAVEN_BUILDINGS.forEach(spec => {
