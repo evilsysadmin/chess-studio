@@ -34,6 +34,44 @@ function mat(color, metalness = 0.04, roughness = 0.8, extra = {}) {
   });
 }
 
+function surfaceTexture(kind, size = 64) {
+  const data = new Uint8Array(size * size * 4);
+  const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
+
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      const index = (y * size + x) * 4;
+      const hash = (x * 37 + y * 71 + ((x * y + 17) * 13)) & 31;
+      let value = 224;
+
+      if (kind === 'stone') {
+        const broad = Math.sin(x * .42) * 7 + Math.cos(y * .31) * 6;
+        value = Math.max(184, Math.min(248, 218 + broad + hash - 15));
+      } else if (kind === 'wood') {
+        const grain = Math.sin((x + Math.sin(y * .32) * 3) * .72) * 17;
+        value = Math.max(176, Math.min(252, 218 + grain + (hash * .45) - 7));
+      } else {
+        const weave = ((x + y) % 4 === 0 ? 7 : -3) + ((x - y) % 7 === 0 ? 5 : 0);
+        value = Math.max(190, Math.min(246, 220 + weave + (hash * .35) - 5));
+      }
+
+      data[index] = value;
+      data[index + 1] = value;
+      data[index + 2] = value;
+      data[index + 3] = 255;
+    }
+  }
+
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.generateMipmaps = true;
+  texture.repeat.set(kind === 'wood' ? 3.5 : 2.5, kind === 'wood' ? 1.5 : 2.5);
+  texture.needsUpdate = true;
+  return texture;
+}
+
 function box(root, size, material, position, name = '') {
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(...size), material);
   mesh.position.set(...position);
@@ -800,6 +838,35 @@ function buildRoom({ lite = false } = {}) {
   const ebony = mat(0x2d2b2b, .30, .30);
   const lightSquare = mat(0xcfc7b3, .04, .66);
   const darkSquare = mat(0x4a4843, .05, .58);
+
+  const surfaceTextures = [];
+  if (!lite) {
+    const stoneTexture = surfaceTexture('stone');
+    const woodTexture = surfaceTexture('wood');
+    const leatherTexture = surfaceTexture('leather');
+    surfaceTextures.push(stoneTexture, woodTexture, leatherTexture);
+
+    for (const material of [stone, stoneEdge, stoneHighlight]) {
+      material.bumpMap = stoneTexture;
+      material.bumpScale = material === stone ? .045 : .028;
+      material.roughnessMap = stoneTexture;
+      material.needsUpdate = true;
+    }
+
+    for (const material of [wood, woodDark]) {
+      material.bumpMap = woodTexture;
+      material.bumpScale = .025;
+      material.roughnessMap = woodTexture;
+      material.needsUpdate = true;
+    }
+
+    leather.bumpMap = leatherTexture;
+    leather.bumpScale = .018;
+    leather.roughnessMap = leatherTexture;
+    leather.needsUpdate = true;
+  }
+
+  root.userData.surfaceTextures = surfaceTextures;
   const night = new THREE.MeshBasicMaterial({ color: 0x0b3156 });
   const moon = new THREE.MeshBasicMaterial({ color: 0xe8eef3 });
   const moonHalo = new THREE.MeshBasicMaterial({
@@ -1059,6 +1126,7 @@ export default function QuickMatchReadyRoomScene3D() {
       if (onResize) globalThis.removeEventListener?.('resize', onResize);
       if (room) scene?.remove?.(room);
       renderer?.dispose?.();
+      room?.userData?.surfaceTextures?.forEach((texture) => texture?.dispose?.());
       room?.traverse?.((node) => {
         node.geometry?.dispose?.();
         if (Array.isArray(node.material)) node.material.forEach((entry) => entry?.dispose?.());
