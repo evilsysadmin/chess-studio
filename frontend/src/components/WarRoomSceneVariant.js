@@ -25,6 +25,24 @@ function isPromiseLike(value) {
   return Boolean(value && typeof value.then === 'function');
 }
 
+function syncBlenderShadowTelemetry(scene, variant, canvas) {
+  if (!canvas?.dataset || !scene?.children) return;
+  const root = scene.children.find((child) => child?.userData?.warRoomVariant === variant);
+  if (!root?.userData) return;
+  const { userData } = root;
+  const rows = [
+    ['warRoomBlenderShadowCasterBudget', 'warRoomShadowCasterBudget'],
+    ['warRoomBlenderShadowCasterCandidates', 'warRoomShadowCasterCandidates'],
+    ['warRoomBlenderShadowCasterCount', 'warRoomShadowCasterCount'],
+    ['warRoomBlenderShadowWarmup', 'warRoomShadowWarmup'],
+  ];
+  for (const [source, target] of rows) {
+    const value = userData[source];
+    if (value === undefined || value === null) continue;
+    canvas.dataset[target] = String(value);
+  }
+}
+
 export function startWarRoomVariantScene({
   scene, classicShellController, variant, selectable, whiteSide, renderLite, canvas, onStatus, onPaint,
 }) {
@@ -91,15 +109,20 @@ export function startWarRoomVariantScene({
   setStatus('loading', `${variant}-loading`);
   onPaint?.();
   const shellCoarsePointer = warRoomVariantShellCoarsePointer({ renderLite });
+  const onShellRefine = () => {
+    syncBlenderShadowTelemetry(scene, variant, canvas);
+    onPaint?.();
+  };
   void loadWarRoomVariantInstaller(variant)
     .then((installShell) => installShell(scene, {
       whiteSide,
       coarsePointer: shellCoarsePointer,
-      onRefine: onPaint,
+      onRefine: onShellRefine,
     }))
     .then((release) => {
       if (cancelled) return release?.();
       releaseShell = release;
+      syncBlenderShadowTelemetry(scene, variant, canvas);
       if (warRoomHansRoom(variant)) {
         // Hans lives in every War Room (never the Duel Room). Blender rooms get
         // him once their shell exports his anchors and door leaf; a failure
