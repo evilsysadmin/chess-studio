@@ -10,6 +10,40 @@ export const SWORDHAVEN_BUILDINGS = Object.freeze([
 ]);
 
 const CELL = 4;
+
+export const SWORDHAVEN_INTERACTION_CELLS = Object.freeze([
+  Object.freeze({ id: 'swordhaven-forge', x: 4, y: 7 }),
+  Object.freeze({ id: 'swordhaven-armor', x: 14, y: 7 }),
+  Object.freeze({ id: 'swordhaven-tavern', x: 4, y: 15 }),
+  Object.freeze({ id: 'swordhaven-magic', x: 14, y: 15 }),
+  Object.freeze({ id: 'swordhaven-temple', x: 9, y: 5 }),
+]);
+
+export const SWORDHAVEN_SPAWN = Object.freeze({ x: 9, y: 16, direction: 0 });
+export const SWORDHAVEN_GATE_CELL = Object.freeze({ x: 9, y: 17 });
+
+// Grid is the collision contract for the eventually-authored manifest:
+// no visual houses/trees/fountain may occupy a walkable tile.
+export function createSwordhavenWalkGrid() {
+  const size = 19;
+  const grid = Array.from({ length: size }, (_, y) => (
+    Array.from({ length: size }, (_, x) => (
+      x === 0 || y === 0 || x === size - 1 || y === size - 1 ? '#' : '.'
+    ))
+  ));
+  SWORDHAVEN_BUILDINGS.forEach(({ x, y }) => {
+    for (let dy = -1; dy <= 1; dy += 1) {
+      for (let dx = -1; dx <= 1; dx += 1) grid[y + dy][x + dx] = '#';
+    }
+  });
+  // The fountain and tree-trunks are real obstacles, not hidden hitboxes.
+  grid[9][9] = '#';
+  for (const [x, y] of [[1,1],[17,1],[1,17],[17,17],[3,9],[15,9],[7,16],[12,16]]) {
+    grid[y][x] = '#';
+  }
+  return Object.freeze(grid.map(row => row.join('')));
+}
+
 const material = (color, extra = {}) => new THREE.MeshStandardMaterial({
   color, roughness: 0.86, metalness: 0.03, ...extra,
 });
