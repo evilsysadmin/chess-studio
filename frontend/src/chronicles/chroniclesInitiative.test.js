@@ -177,6 +177,59 @@ describe('Chronicles initiative', () => {
     expect(next.initiative).toBeNull();
   });
 
+  it('preserves enemy turns after a living party member and rolls into the next round', () => {
+    const state = {
+      phase: 'combat',
+      party: [{ id: 'matthias', hp: 5 }],
+      enemyHp: 4,
+      initiative: {
+        version: 1,
+        die: '1d8',
+        round: 2,
+        cursor: 0,
+        order: [
+          { id: 'matthias', kind: 'party', initiative: 9 },
+          { id: 'enemy', kind: 'enemy', initiative: 7 },
+        ],
+      },
+    };
+    const enemies = [{ id: 'enemy', hpKey: 'enemyHp' }];
+    const enemyTurn = chroniclesAdvanceCombatInitiative(state, enemies);
+    expect(chroniclesCurrentInitiativeActor(enemyTurn.initiative)?.id).toBe('enemy');
+    expect(enemyTurn.initiative.round).toBe(2);
+    const partyTurn = chroniclesAdvanceCombatInitiative(enemyTurn, enemies);
+    expect(chroniclesCurrentInitiativeActor(partyTurn.initiative)?.id).toBe('matthias');
+    expect(partyTurn.initiative.round).toBe(3);
+  });
+
+  it('skips a defeated enemy without forfeiting the next living enemy turn', () => {
+    const state = {
+      phase: 'combat',
+      party: [{ id: 'matthias', hp: 5 }],
+      defeatedHp: 0,
+      survivingHp: 3,
+      initiative: {
+        version: 1,
+        die: '1d8',
+        round: 4,
+        cursor: 0,
+        order: [
+          { id: 'matthias', kind: 'party', initiative: 9 },
+          { id: 'defeated', kind: 'enemy', initiative: 8 },
+          { id: 'surviving', kind: 'enemy', initiative: 7 },
+        ],
+      },
+    };
+    const next = chroniclesAdvanceCombatInitiative(state, [
+      { id: 'defeated', hpKey: 'defeatedHp' },
+      { id: 'surviving', hpKey: 'survivingHp' },
+    ]);
+    expect(next.phase).toBe('combat');
+    expect(next.initiative.order.map((actor) => actor.id)).toEqual(['matthias', 'surviving']);
+    expect(chroniclesCurrentInitiativeActor(next.initiative)?.id).toBe('surviving');
+    expect(next.initiative.round).toBe(4);
+  });
+
   it('derives legacy enemy AGI from movement when no authored AGI exists', () => {
     expect(chroniclesEnemyInitiativeAgility({
       id: 'horse-thing',
