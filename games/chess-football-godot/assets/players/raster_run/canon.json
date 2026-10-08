@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "surface": "chess-football",
+  "kind": "canonical-raster-locomotion",
+  "source": "approved eight-frame running sheet from the current conversation",
+  "source_sha256": "e728f9a48d86f6b5aded20ece00f2d35f4e4f72191bf67fc57c7f3ceabd7278a",
+  "frames": 8,
+  "cell": { "width": 128, "height": 144 },
+  "footline": 130,
+  "body_height": 118,
+  "usage": ["run", "sprint"],
+  "teams": {
+    "fc_matthias": {
+      "file": "fc_matthias.png",
+      "sha256": "163f06dab67e1ca6300cbdd11bab8a7d22831dd96a651dd5027e4d5facd315a5"
+    },
+    "real_enroque": {
+      "file": "real_enroque.png",
+      "sha256": "718eb6af34bfdcf619022fb809b9aea07243ec3b476e217beb360e2374d9c76b"
+    }
+  },
+  "notes": [
+    "The player silhouette, anatomy and run poses are canonical and must not be procedurally redrawn.",
+    "Team derivation changes kit colour only; skin, face, silhouette and pose geometry remain unchanged.",
+    "Other animations stay on the previous bank until an accepted canonical source exists."
+  ]
+}
