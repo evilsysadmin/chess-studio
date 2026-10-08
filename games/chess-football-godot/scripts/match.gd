@@ -61,6 +61,14 @@ const AI_COVER_DISTANCE := 150.0
 const AI_DEFENSIVE_SHIFT_RATIO := 0.27
 const AI_COVER_INTENSITY := 0.86
 const AI_TEAM_PRESS_INTENSITY := 0.75
+const AI_ADAPT_SAMPLE_SECONDS := 1.0
+const AI_ADAPT_EVAL_SECONDS := 24.0
+const AI_ADAPT_DOMINANCE_THRESHOLD := 5.0
+const AI_ADAPT_SETTLE_THRESHOLD := 2.0
+const AI_ADAPT_DECISION_STEP := 0.12
+const AI_ADAPT_PRESSURE_STEP := 0.06
+const AI_ADAPT_SUPPORT_STEP := 22.0
+const AI_ADAPT_PASS_GAIN_STEP := 18.0
 
 const DRIBBLE_AUTO_EVADE_RADIUS := 190.0
 const DRIBBLE_AUTO_LOOKAHEAD := 132.0
@@ -121,6 +129,11 @@ var presentation_3d: ChessFootball3DPresenter
 var audio_fx: ChessFootballAudio
 var ai_next_decision: Dictionary = {}
 var keeper_distribution_started_at: Dictionary = {}
+var ai_adaptive_level: int = 0
+var ai_adapt_human_pressure: float = 0.0
+var ai_adapt_cpu_pressure: float = 0.0
+var ai_adapt_next_sample: float = AI_ADAPT_SAMPLE_SECONDS
+var ai_adapt_next_eval: float = AI_ADAPT_EVAL_SECONDS
 var pause_menu_open: bool = false
 var kickoff_team_id: int = 0
 var kickoff_active: bool = false
@@ -190,6 +203,7 @@ func _physics_process(delta: float) -> void:
 		_update_3d_presentation(delta)
 		_refresh_hud()
 		return
+	_update_ai_adaptation()
 	_handle_human(delta)
 	_update_ai(delta)
 	_update_active_tackle_contacts()
@@ -373,6 +387,7 @@ func _menu_change_view() -> void:
 func _restart_match() -> void:
 	score = [0, 0]
 	last_goal_text = ""
+	_reset_ai_adaptation()
 	_prepare_kickoff(randi_range(0, 1), true)
 	_toggle_pause_menu()
 
@@ -661,6 +676,7 @@ func _release_charged_shot() -> void:
 	controlled.play_action("shoot", lerpf(0.58, 0.82, ratio))
 	if audio_fx != null:
 		audio_fx.play_shot(ratio)
+	_record_ai_pressure(0, 2.0)
 	ball.release(target - controlled.global_position, power, lift)
 
 func _update_ai(delta: float) -> void:
@@ -682,24 +698,24 @@ func _update_ai(delta: float) -> void:
 			if ball.carrier == null:
 				if player == presser:
 					target = ball.global_position
-					intensity = 1.0
+					intensity = _ai_adaptive_intensity(1.0)
 				elif player == cover:
 					target = _ai_cover_target(player, ball.global_position)
-					intensity = AI_COVER_INTENSITY
+					intensity = _ai_adaptive_intensity(AI_COVER_INTENSITY)
 			elif team_has_ball:
 				if ball.carrier == player:
 					target = _ai_dribble_target(player)
-					intensity = 0.98
+					intensity = _ai_adaptive_intensity(0.98)
 				else:
 					target = _ai_support_target(player)
-					intensity = 0.83
+					intensity = _ai_adaptive_intensity(0.83)
 			else:
 				if player == presser:
 					target = ball.carrier.global_position
-					intensity = 1.0
+					intensity = _ai_adaptive_intensity(1.0)
 				elif player == cover:
 					target = _ai_cover_target(player, ball.carrier.global_position)
-					intensity = AI_COVER_INTENSITY
+					intensity = _ai_adaptive_intensity(AI_COVER_INTENSITY)
 				else:
 					target = ChessFootballMath.clamp_to_pitch(
 						player.home_position.lerp(
@@ -707,7 +723,7 @@ func _update_ai(delta: float) -> void:
 							AI_DEFENSIVE_SHIFT_RATIO,
 						)
 					)
-					intensity = AI_TEAM_PRESS_INTENSITY
+					intensity = _ai_adaptive_intensity(AI_TEAM_PRESS_INTENSITY)
 
 			player.move_ai(delta, target, intensity)
 
@@ -774,12 +790,78 @@ func _ai_cover_target(player: Footballer, threat_position: Vector2) -> Vector2:
 	target.y = lerpf(target.y, player.home_position.y, 0.32)
 	return ChessFootballMath.clamp_to_pitch(target)
 
+func _reset_ai_adaptation() -> void:
+	ai_adaptive_level = 0
+	ai_adapt_human_pressure = 0.0
+	ai_adapt_cpu_pressure = 0.0
+	ai_adapt_next_sample = match_seconds + AI_ADAPT_SAMPLE_SECONDS
+	ai_adapt_next_eval = match_seconds + AI_ADAPT_EVAL_SECONDS
+
+func _record_ai_pressure(team_id: int, amount: float = 1.0) -> void:
+	if team_id == 0:
+		ai_adapt_human_pressure += maxf(amount, 0.0)
+	elif team_id == 1:
+		ai_adapt_cpu_pressure += maxf(amount, 0.0)
+
+func _sample_ai_adaptation() -> void:
+	if ball.carrier == null:
+		return
+	var pitch := ChessFootballMath.PITCH_RECT
+	var center_x := pitch.get_center().x
+	var danger_offset := pitch.size.x * 0.15
+	if ball.carrier.team_id == 0 and ball.global_position.x > center_x + danger_offset:
+		_record_ai_pressure(0, 1.0)
+	elif ball.carrier.team_id == 1 and ball.global_position.x < center_x - danger_offset:
+		_record_ai_pressure(1, 1.0)
+
+func _evaluate_ai_adaptation() -> void:
+	var score_dominance := float(score[0] - score[1]) * 4.0
+	var dominance := ai_adapt_human_pressure - ai_adapt_cpu_pressure + score_dominance
+	if dominance >= AI_ADAPT_DOMINANCE_THRESHOLD:
+		ai_adaptive_level = mini(1, ai_adaptive_level + 1)
+	elif dominance <= -AI_ADAPT_DOMINANCE_THRESHOLD:
+		ai_adaptive_level = maxi(-1, ai_adaptive_level - 1)
+	elif absf(dominance) <= AI_ADAPT_SETTLE_THRESHOLD:
+		if ai_adaptive_level > 0:
+			ai_adaptive_level -= 1
+		elif ai_adaptive_level < 0:
+			ai_adaptive_level += 1
+	ai_adapt_human_pressure = 0.0
+	ai_adapt_cpu_pressure = 0.0
+
+func _update_ai_adaptation() -> void:
+	if match_seconds >= ai_adapt_next_sample:
+		_sample_ai_adaptation()
+		ai_adapt_next_sample = match_seconds + AI_ADAPT_SAMPLE_SECONDS
+	if match_seconds >= ai_adapt_next_eval:
+		_evaluate_ai_adaptation()
+		ai_adapt_next_eval = match_seconds + AI_ADAPT_EVAL_SECONDS
+
+func _ai_adaptive_decision_interval() -> float:
+	return AI_DECISION_INTERVAL * (1.0 - float(ai_adaptive_level) * AI_ADAPT_DECISION_STEP)
+
+func _ai_adaptive_pressure_radius() -> float:
+	return AI_PRESSURE_RADIUS * (1.0 + float(ai_adaptive_level) * AI_ADAPT_PRESSURE_STEP)
+
+func _ai_adaptive_support_forward() -> float:
+	return AI_SUPPORT_FORWARD + float(ai_adaptive_level) * AI_ADAPT_SUPPORT_STEP
+
+func _ai_adaptive_forward_pass_gain() -> float:
+	return AI_FORWARD_PASS_GAIN - float(ai_adaptive_level) * AI_ADAPT_PASS_GAIN_STEP
+
+func _ai_adaptive_intensity(base: float) -> float:
+	return clampf(
+		base * (1.0 + float(ai_adaptive_level) * AI_ADAPT_PRESSURE_STEP),
+		0.58,
+		1.0,
+	)
+
 func _ai_decision_ready(player: Footballer) -> bool:
 	var key: int = int(player.get_instance_id())
 	var next_time := float(ai_next_decision.get(key, 0.0))
 	if match_seconds < next_time:
 		return false
-	ai_next_decision[key] = match_seconds + AI_DECISION_INTERVAL
+	ai_next_decision[key] = match_seconds + _ai_adaptive_decision_interval()
 	return true
 
 func _ai_dribble_target(player: Footballer) -> Vector2:
@@ -789,9 +871,10 @@ func _ai_dribble_target(player: Footballer) -> Vector2:
 	var threat := _nearest_opponent_to(player)
 	if threat != null:
 		var distance := player.global_position.distance_to(threat.global_position)
-		if distance < AI_PRESSURE_RADIUS:
+		var pressure_radius := _ai_adaptive_pressure_radius()
+		if distance < pressure_radius:
 			var escape := (player.global_position - threat.global_position).normalized()
-			target += escape * (AI_PRESSURE_RADIUS - distance) * 0.9
+			target += escape * (pressure_radius - distance) * 0.9
 	return ChessFootballMath.clamp_to_pitch(target)
 
 func _ai_support_target(player: Footballer) -> Vector2:
@@ -808,7 +891,7 @@ func _ai_support_target(player: Footballer) -> Vector2:
 		role_push = 95.0
 	var target := Vector2(
 		ball.carrier.global_position.x
-			+ forward * (AI_SUPPORT_FORWARD + role_push + absf(lane_offset) * 0.18),
+			+ forward * (_ai_adaptive_support_forward() + role_push + absf(lane_offset) * 0.18),
 		lerpf(player.home_position.y, ball.carrier.global_position.y + lane_offset, 0.42)
 	)
 	return ChessFootballMath.clamp_to_pitch(target)
@@ -1019,11 +1102,12 @@ func _ai_attack(player: Footballer) -> void:
 		var shot_lift := _shot_lift_from_ratio(profile_ratio)
 		if audio_fx != null:
 			audio_fx.play_shot(profile_ratio)
+		_record_ai_pressure(player.team_id, 2.0)
 		ball.release(shot_target - player.global_position, shot_power, shot_lift)
 		return
 
 	var threat := _nearest_opponent_to(player)
-	var pressure_distance := INF
+	var pressure_distance: float = INF
 	if threat != null:
 		pressure_distance = player.global_position.distance_to(threat.global_position)
 
@@ -1032,7 +1116,10 @@ func _ai_attack(player: Footballer) -> void:
 		return
 	var forward := 1.0 if player.team_id == 0 else -1.0
 	var forward_gain := (target.global_position.x - player.global_position.x) * forward
-	if pressure_distance < AI_PRESSURE_RADIUS or forward_gain > AI_FORWARD_PASS_GAIN:
+	if (
+		pressure_distance < _ai_adaptive_pressure_radius()
+		or forward_gain > _ai_adaptive_forward_pass_gain()
+	):
 		player.play_action("pass", 0.72)
 		if audio_fx != null:
 			audio_fx.play_pass()
@@ -2302,6 +2389,19 @@ func debug_try_claim_loose_ball() -> void:
 
 func debug_ai_dribble_target(player: Footballer) -> Vector2:
 	return _ai_dribble_target(player)
+
+func debug_ai_adaptive_level() -> int:
+	return ai_adaptive_level
+
+func debug_ai_adaptive_decision_interval() -> float:
+	return _ai_adaptive_decision_interval()
+
+func debug_set_ai_adaptation_window(human_pressure: float, cpu_pressure: float) -> void:
+	ai_adapt_human_pressure = human_pressure
+	ai_adapt_cpu_pressure = cpu_pressure
+
+func debug_evaluate_ai_adaptation() -> void:
+	_evaluate_ai_adaptation()
 
 func debug_ai_primary_presser(team_id: int) -> Footballer:
 	return _ai_primary_presser(team_id)
