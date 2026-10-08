@@ -40,6 +40,21 @@ for (const viewport of VIEWPORTS) {
       expect(check.size, `${check.title} demasiado pequeño para touch`).toBeGreaterThanOrEqual(44);
     }
 
+    const headerControls = await page.locator('.masthead-feedback-trigger, .masthead-account-trigger')
+      .evaluateAll((buttons) => buttons.map((button) => {
+        const { left, right, top, bottom, width, height } = button.getBoundingClientRect();
+        return { left, right, top, bottom, width, height };
+      }));
+    expect(headerControls).toHaveLength(2);
+    const [feedback, account] = headerControls;
+    expect(feedback.right <= account.left || account.right <= feedback.left
+      || feedback.bottom <= account.top || account.bottom <= feedback.top,
+    'Feedback y Mi cuenta no pueden solaparse').toBe(true);
+    for (const button of headerControls) {
+      expect(button.width, 'control global demasiado pequeño').toBeGreaterThanOrEqual(44);
+      expect(button.height, 'control global demasiado pequeño').toBeGreaterThanOrEqual(44);
+    }
+
     const horizontalOverflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
