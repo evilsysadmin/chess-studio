@@ -109,7 +109,7 @@ describe('Chronicles of Matthias dungeon atmosphere', () => {
     expect(key?.castShadow).toBe(false);
     expect(bounce?.castShadow).toBe(false);
     expect(key?.intensity).toBeGreaterThan(4.5);
-    expect(key?.distance).toBeGreaterThanOrEqual(14);
+    expect(key?.distance).toBeLessThanOrEqual(13);
     expect(key?.position.distanceTo(camera.position)).toBeLessThan(1.2);
     expect(bounce?.intensity).toBeGreaterThan(2.6);
     expect(bounce?.position.y).toBeGreaterThan(0.8);
