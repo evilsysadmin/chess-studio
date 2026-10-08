@@ -142,6 +142,11 @@ func _initialize() -> void:
 	assert(int(sprite_manifest["canonical_run"]["frames"]) == 8)
 	assert(int(sprite_manifest["canonical_run"]["footline"]) == 130)
 	var canonical_frames := ChessFootballSpriteBank.build_frames(0, "midfielder", 2)
+	assert(canonical_frames.get_frame_count(&"idle") == 1)
+	var canonical_idle_frame := canonical_frames.get_frame_texture(&"idle", 0) as AtlasTexture
+	assert(canonical_idle_frame != null)
+	assert(canonical_idle_frame.atlas is ImageTexture)
+	assert(canonical_idle_frame.region == Rect2(0.0, 0.0, 128.0, 144.0))
 	var canonical_run_frame := canonical_frames.get_frame_texture(&"run", 0) as AtlasTexture
 	var canonical_sprint_frame := canonical_frames.get_frame_texture(&"sprint", 0) as AtlasTexture
 	assert(canonical_run_frame != null)
@@ -152,6 +157,7 @@ func _initialize() -> void:
 	assert(canonical_run_image != null)
 	assert(canonical_run_image.has_mipmaps())
 	assert(canonical_run_frame.atlas == canonical_sprint_frame.atlas)
+	assert(canonical_idle_frame.atlas == canonical_run_frame.atlas)
 	assert(canonical_run_frame.region == Rect2(0.0, 0.0, 128.0, 144.0))
 	assert(canonical_sprint_frame.region == Rect2(0.0, 0.0, 128.0, 144.0))
 	assert(is_equal_approx(canonical_frames.get_animation_speed(&"run"), 12.0))
@@ -198,7 +204,8 @@ func _initialize() -> void:
 	assert(sprite_manifest["atlases"]["real_enroque"]["kinetics_profile"] == "weight-transfer-v21")
 	assert(sprite_manifest["atlases"]["real_enroque_keeper"]["kinetics_profile"] == "weight-transfer-v21")
 	assert(match_node.teams[0][0].debug_loop_phase_frame(&"idle") == 0)
-	assert(match_node.teams[0][1].debug_loop_phase_frame(&"idle") == 3)
+	# Raster idle has a single intentional hold; run still keeps per-player phase staggering.
+	assert(match_node.teams[0][1].debug_loop_phase_frame(&"idle") == 0)
 	assert(
 		match_node.teams[0][0].debug_loop_phase_frame(&"run")
 		!= match_node.teams[0][1].debug_loop_phase_frame(&"run")

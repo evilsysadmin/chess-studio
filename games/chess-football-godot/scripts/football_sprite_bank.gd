@@ -108,6 +108,12 @@ static func build_frames(team_id: int, role: String = "", squad_index: int = -1)
 			animation_fps = maxf(animation_fps, 15.0)
 		frames.set_animation_speed(animation_name, animation_fps)
 		frames.set_animation_loop(animation_name, bool(animation["loop"]))
+		if animation_name == &"idle":
+			var idle_region := AtlasTexture.new()
+			idle_region.atlas = run_texture
+			idle_region.region = Rect2(Vector2.ZERO, run_cell)
+			frames.add_frame(animation_name, idle_region)
+			continue
 		if animation_name in [&"run", &"sprint"]:
 			assert(run_frames == int(animation["frames"]), "Canonical locomotion frame count inválido")
 			for column in range(run_frames):
