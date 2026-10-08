@@ -40,6 +40,12 @@ export function saveActiveGameSession({ route, game, learningMode = false, gameC
   return writeJsonStorage(STORAGE_LOCAL, ACTIVE_GAME_SESSION_KEY, snapshot) ? snapshot : null;
 }
 
+export function primeActiveGameSession(game, gameContext, learningMode = false, timeControlId = null) {
+  const saved = saveActiveGameSession({ route: 'game', game, learningMode, gameContext, timeControlId });
+  setActiveGameSessionVisible(saved ? 'game' : null);
+  return saved;
+}
+
 export function loadActiveGameSession() {
   const snapshot = readJsonStorage(STORAGE_LOCAL, ACTIVE_GAME_SESSION_KEY, { fallback: null, removeMalformed: true });
   if (!snapshot || snapshot.version !== VERSION) return null;
