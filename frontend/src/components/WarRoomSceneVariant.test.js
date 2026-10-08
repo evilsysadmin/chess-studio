@@ -65,6 +65,37 @@ describe('War Room shared scene variants', () => {
     expect(typeof release).toBe('function');
   });
 
+  it('reveals an asynchronously loaded classic shell without constructing it on the Blender path', async () => {
+    const shell = { visible: false };
+    const scene = { userData: {} };
+    const statuses = [];
+    let resolveShell;
+    const pending = new Promise((resolve) => { resolveShell = resolve; });
+    const controller = {
+      current: () => [],
+      ensure: () => pending,
+    };
+
+    const release = startWarRoomVariantScene({
+      scene,
+      classicShellController: controller,
+      variant: 'classic',
+      selectable: true,
+      onStatus: (status) => statuses.push(status),
+    });
+
+    expect(scene.userData.warRoomRenderedVariant).toBe('classic-loading');
+    expect(statuses).toEqual(['loading']);
+    resolveShell([shell]);
+    await pending;
+    await Promise.resolve();
+
+    expect(shell.visible).toBe(true);
+    expect(scene.userData.warRoomRenderedVariant).toBe('classic');
+    expect(statuses).toEqual(['loading', 'idle']);
+    release();
+  });
+
   it('keeps classic eager behavior when the classic variant is actually active', () => {
     let builds = 0;
     const controller = createWarRoomClassicShellController({
