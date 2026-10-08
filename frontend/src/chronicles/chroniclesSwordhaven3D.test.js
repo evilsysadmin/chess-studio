@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { buildSwordhavenScene, SWORDHAVEN_BUILDINGS } from './chroniclesSwordhaven3D.js';
+import {
+  buildSwordhavenScene, createSwordhavenWalkGrid, SWORDHAVEN_BUILDINGS,
+  SWORDHAVEN_INTERACTION_CELLS, SWORDHAVEN_GATE_CELL, SWORDHAVEN_SPAWN,
+} from './chroniclesSwordhaven3D.js';
 
 describe('Swordhaven modular real-time 3D', () => {
   it('has exactly the five canonical town services with unique content ids', () => {
@@ -9,6 +12,28 @@ describe('Swordhaven modular real-time 3D', () => {
       'swordhaven-magic', 'swordhaven-temple',
     ]);
     expect(new Set(SWORDHAVEN_BUILDINGS.map(b => b.id)).size).toBe(5);
+  });
+
+  it('keeps all five shop approaches and the southern gate reachable on the real collision grid', () => {
+    const grid = createSwordhavenWalkGrid();
+    expect(grid).toHaveLength(19);
+    expect(grid.every(row => row.length === 19)).toBe(true);
+    expect(grid[9][9]).toBe('#'); // Fountain, not an invisible obstruction.
+    for (const { x, y } of SWORDHAVEN_BUILDINGS) expect(grid[y][x]).toBe('#');
+    const destinations = [...SWORDHAVEN_INTERACTION_CELLS, SWORDHAVEN_GATE_CELL];
+    const seen = new Set();
+    const queue = [[SWORDHAVEN_SPAWN.x, SWORDHAVEN_SPAWN.y]];
+    while (queue.length) {
+      const [x, y] = queue.shift();
+      const id = x + ':' + y;
+      if (seen.has(id) || grid[y]?.[x] !== '.') continue;
+      seen.add(id);
+      queue.push([x + 1,y],[x - 1,y],[x,y + 1],[x,y - 1]);
+    }
+    for (const { x, y } of destinations) {
+      expect(grid[y][x]).toBe('.');
+      expect(seen.has(x + ':' + y)).toBe(true);
+    }
   });
 
   it('builds a sunny outdoor mesh scene and selectable authored storefronts', () => {
