@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { chroniclesGridExplorationStep } from './chroniclesGridExplorationStep.js';
+import { chroniclesEnemyCanAttackParty } from '../chroniclesOfMatthiasTurns.js';
 
 vi.mock('../chroniclesOfMatthias.js', () => ({
   chroniclesReduce: vi.fn((state, action) => action === 'forward'
@@ -10,6 +11,7 @@ vi.mock('../chroniclesOfMatthias.js', () => ({
   chroniclesActiveEnemies: vi.fn(() => [{ id: 'sentinel' }]),
 }));
 vi.mock('../chroniclesOfMatthiasTurns.js', () => ({
+  chroniclesEnemyCanAttackParty: vi.fn(() => false),
   chroniclesRuntimeEnemyPosition: vi.fn((state) => state.enemyPositions?.sentinel || { x: 4, y: 2 }),
   chroniclesChooseEnemyStep: vi.fn((state) => {
     const p = state.enemyPositions?.sentinel || { x: 4, y: 2 };
@@ -24,6 +26,12 @@ describe('one party tile, one enemy move', () => {
     expect(first.enemyPositions.sentinel).toEqual({ x: 3, y: 2 });
     const second = chroniclesGridExplorationStep(first, 'forward');
     expect(second.enemyPositions.sentinel).toEqual({ x: 2, y: 2 });
+  });
+  it('enters initiative without giving an in-reach enemy a free escape move', () => {
+    chroniclesEnemyCanAttackParty.mockReturnValueOnce(true);
+    const next = chroniclesGridExplorationStep(state, 'forward');
+    expect(next.x).toBe(2);
+    expect(next.enemyPositions).toEqual(state.enemyPositions);
   });
   it('does not activate an enemy for turning in place', () => {
     expect(chroniclesGridExplorationStep(state, 'turn-right').enemyPositions).toEqual(state.enemyPositions);
