@@ -74,8 +74,7 @@ function AdminWorkspaceTabs({ section, onChange }) {
   );
 }
 
-function AdminObservabilityWorkspace({ onExit }) {
-  useEscapeToClose(onExit);
+function AdminObservabilityWorkspace() {
   const [users, setUsers] = useState([]);
   const [usersError, setUsersError] = useState(null);
 
@@ -125,7 +124,7 @@ export default function AdminScreen({ onExit }) {
       <AdminWorkspaceTabs section={section} onChange={setSection} />
 
       {section === 'observability' ? (
-        <AdminObservabilityWorkspace onExit={onExit} />
+        <AdminObservabilityWorkspace />
       ) : (
         <div
           className="admin-workspace-content-slot"
@@ -138,7 +137,7 @@ export default function AdminScreen({ onExit }) {
               <AdminRatingEditor />
             </Suspense>
           )}
-          <AdminDashboardContent section={section} />
+          <AdminDashboardContent section={section} onNavigate={setSection} />
         </div>
       )}
     </div>
