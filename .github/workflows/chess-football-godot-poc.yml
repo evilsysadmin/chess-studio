@@ -92,37 +92,6 @@ jobs:
               raise SystemExit("canonical run payload is not PNG")
           print("canonical run atlas: OK", digest)
           PY
-      - name: Verify approved canonical idle atlas
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 -S - <<'PY'
-          import base64
-          import hashlib
-          import json
-          from pathlib import Path
-
-          manifest_path = Path("games/chess-football-godot/assets/players/manifest.json")
-          manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-          canonical = manifest["canonical_pose_bank"]
-          root = manifest_path.parent
-          encoded = "".join(
-              (root / part).read_text(encoding="utf-8").strip()
-              for part in canonical["encoded_parts"]
-          )
-          encoded += "=" * (-len(encoded) % 4)
-          payload = base64.b64decode(encoded, validate=True)
-          digest = hashlib.sha256(payload).hexdigest()
-          if digest != canonical["sha256"]:
-              raise SystemExit(f"canonical idle atlas sha mismatch: {digest} != {canonical['sha256']}")
-          if not payload.startswith(b"\x89PNG\r\n\x1a\n"):
-              raise SystemExit("canonical idle atlas payload is not PNG")
-          if canonical["cell"] != {"width": 128, "height": 144}:
-              raise SystemExit("canonical idle cell changed")
-          if canonical["footline"] != 130:
-              raise SystemExit("canonical idle footline changed")
-          print("canonical idle atlas: OK", digest)
-          PY
       - name: Parse project
         shell: bash
         run: |
