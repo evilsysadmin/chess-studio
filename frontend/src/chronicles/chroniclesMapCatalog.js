@@ -9,6 +9,7 @@ import hollowBellTower from './maps/hollow-bell-tower.json';
 import blackGlassChapel from './maps/black-glass-chapel.json';
 import echoCistern from './maps/echo-cistern.json';
 import { CHRONICLES_MATERIAL_ATLAS } from './chroniclesMaterialAtlas.js';
+import { chroniclesAssertWorldReturnLinks } from './chroniclesWorldReturnLinks.js';
 import {
   chroniclesEnemyBuildModifiers,
   resolveChroniclesEnemyBuildDefinition,
@@ -353,6 +354,7 @@ const MAP_IDS = new Set(Object.keys(MAPS));
 const RUNTIME_MAPS = new Map();
 let runtimeEntryMapId = DEFAULT_CHRONICLES_MAP_ID;
 Object.values(MAPS).forEach((map) => assertKnownTransitions(map, MAP_IDS));
+chroniclesAssertWorldReturnLinks(Object.values(MAPS));
 
 export function chroniclesInstallRuntimeMapDefinition(source) {
   if (!MAP_IDS.has(source?.id)) {
