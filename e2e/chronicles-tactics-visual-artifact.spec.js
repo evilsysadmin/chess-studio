@@ -162,6 +162,15 @@ for (const capture of CAPTURES) {
     try {
       await openTactics(page);
       if (capture.hasTouch) {
+        // The production entry correctly requests fullscreen from the user gesture.
+        // The visual harness must leave fullscreen before resizing its synthetic
+        // desktop browser window to a mobile viewport.
+        await page.evaluate(async () => {
+          if (document.fullscreenElement && document.exitFullscreen) {
+            await document.exitFullscreen();
+          }
+        });
+        await expect.poll(() => page.evaluate(() => Boolean(document.fullscreenElement))).toBe(false);
         await page.setViewportSize({ width: capture.width, height: capture.height });
         await page.waitForTimeout(180);
       }
@@ -352,6 +361,11 @@ for (const capture of CAPTURES) {
     try {
       await openTactics(page);
       if (capture.hasTouch) {
+        // Desktop fullscreen needs to be released before reusing this context at mobile size.
+        await page.evaluate(async () => {
+          if (document.fullscreenElement) await document.exitFullscreen();
+        });
+        await expect.poll(() => page.evaluate(() => document.fullscreenElement === null)).toBe(true);
         await page.setViewportSize({ width: capture.width, height: capture.height });
         await page.waitForTimeout(180);
       }
@@ -543,6 +557,12 @@ for (const room of AUTHORED_ROOM_VISUAL_CAPTURES) {
       );
 
       if (room.mapId === 'echo-cistern') {
+        // Desktop Chronicles owns native fullscreen. Exit it before resizing the
+        // same Chromium window for the separate mobile-layout proof.
+        await page.evaluate(async () => {
+          if (document.fullscreenElement) await document.exitFullscreen();
+        });
+        await expect.poll(() => page.evaluate(() => document.fullscreenElement === null)).toBe(true);
         await page.setViewportSize({ width: 390, height: 844 });
         await page.waitForTimeout(420);
         const mobileHealth = await captureTacticsHealth(page);
@@ -616,6 +636,11 @@ for (const capture of CAPTURES) {
         expectReady: false,
       });
       if (capture.hasTouch) {
+        // The bootstrap-error flow can also leave Chromium in native fullscreen.
+        await page.evaluate(async () => {
+          if (document.fullscreenElement) await document.exitFullscreen();
+        });
+        await expect.poll(() => page.evaluate(() => document.fullscreenElement === null)).toBe(true);
         await page.setViewportSize({ width: capture.width, height: capture.height });
         await page.waitForTimeout(120);
       }

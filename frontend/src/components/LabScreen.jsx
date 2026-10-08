@@ -9,7 +9,10 @@ import PreferredBoard from './PreferredBoard.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 import { requestWarRoomLandscapeFullscreen } from './useWarRoomImmersive.js';
-import { requestChroniclesLandscapeOnEntry } from './useChroniclesLandscape.js';
+import {
+  releaseChroniclesLandscape,
+  requestChroniclesLandscapeOnEntry,
+} from './useChroniclesLandscape.js';
 import './LabScreen.css';
 import './LabArcade.css';
 import './LabWorkshop.css';
@@ -97,7 +100,13 @@ export default function LabScreen({ onExit, onStart }){
     setLabMode('chronicles');
   }
 
+  function enterChroniclesTactics() {
+    void requestChroniclesLandscapeOnEntry();
+    setLabMode('chronicles-tactics');
+  }
+
   function exitChronicles() {
+    void releaseChroniclesLandscape();
     setLabMode('hub');
   }
 
@@ -123,7 +132,7 @@ export default function LabScreen({ onExit, onStart }){
   if (labMode==='chess-football-godot') return <Suspense fallback={<LabModeFallback />}><ChessFootballGodotHost onExit={()=>setLabMode('hub')} /></Suspense>;
   if (labMode==='chesscom') return <Suspense fallback={<LabModeFallback />}><Chesscom onExit={()=>setLabMode('hub')} /></Suspense>;
   if (labMode==='chronicles') return <Suspense fallback={<LabModeFallback />}><ChroniclesOfMatthias onExit={exitChronicles} /></Suspense>;
-  if (labMode==='chronicles-tactics') return <Suspense fallback={<LabModeFallback />}><ChroniclesOfMatthiasTactics onExit={()=>setLabMode('hub')} /></Suspense>;
+  if (labMode==='chronicles-tactics') return <Suspense fallback={<LabModeFallback />}><ChroniclesOfMatthiasTactics onExit={exitChronicles} /></Suspense>;
 
   return <div className="menu tournament-panel lab-screen">
     <button className="back-link" onClick={labMode==='hub'?onExit:()=>setLabMode('hub')}>← {labMode==='hub'?'Volver al menú':'Experimentos geniales'}</button>
@@ -153,7 +162,7 @@ export default function LabScreen({ onExit, onStart }){
               <span>Dungeon crawler 3D en primera persona. Grupo de cuatro, combate por casillas y una cripta que piensa como un tablero.</span>
               <b>Descender a la cripta</b>
             </button>
-            <button type="button" className="lab-workshop-portal lab-workshop-portal--arch lab-workshop-portal--tactics" data-glyph="♞" aria-label="Abrir Tactics RPG isométrico" onClick={()=>setLabMode('chronicles-tactics')}>
+            <button type="button" className="lab-workshop-portal lab-workshop-portal--arch lab-workshop-portal--tactics" data-glyph="♞" aria-label="Abrir Tactics RPG isométrico" onClick={enterChroniclesTactics}>
               <small>{experimentMaturityLabel(EXPERIMENT_MATURITY.POC, 'táctico por turnos')}</small>
               <strong>Chronicles of Matthias Tactics</strong>
               <span>La compañía sale al tablero: vista isométrica, formación visible y criaturas con su propio turno.</span>

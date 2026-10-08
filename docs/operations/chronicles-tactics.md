@@ -181,8 +181,8 @@ El mismo asset/contrato debe mantenerse coherente entre tarjeta grande, thumbnai
 Chronicles first-person es una superficie **viewport-owned**: durante la expedición no existe un modo windowed interno.
 
 - El root de Chronicles ocupa siempre el viewport completo con layout propio (`100vw` + `100dvh`) en desktop, móvil vertical y móvil apaisado.
-- En desktop, Chronicles no entra en fullscreen nativo: el runtime sigue siendo viewport-owned y `Escape` pertenece a la UI del juego.
-- En móvil/coarse pointer, la entrada a Chronicles y la confirmación del grupo aprovechan el gesto real para pedir `fullscreen + screen.orientation.lock('landscape')`. El navegador puede rechazar cualquiera de las dos APIs; el juego debe seguir siendo usable y ofrecer un control compacto «Apaisado» mientras siga en portrait.
+- En desktop, la entrada a Chronicles y Tactics aprovecha el gesto real del jugador para pedir browser-native fullscreen. El navegador puede rechazar la API; el runtime sigue siendo viewport-owned y usable sin ella.
+- En móvil/coarse pointer, la entrada a Chronicles y Tactics aprovecha el gesto real para pedir `fullscreen + screen.orientation.lock('landscape')`. El navegador puede rechazar cualquiera de las dos APIs; el juego debe seguir siendo usable y ofrecer un control compacto «Apaisado» mientras siga en portrait.
 - Al salir de Chronicles se libera el lock de orientación y se abandona únicamente el fullscreen nativo que haya abierto el propio runtime.
 - `Escape` cierra primero el automap si está abierto. Sólo cuando no hay automap abierto alterna el menú de Chronicles en desktop/no-fullscreen.
 - El automap es un overlay diegético de la expedición, accesible con `M` y con un control táctil/desktop visible. Mientras está abierto, los controles de locomoción/combate no actúan por debajo.
@@ -197,7 +197,7 @@ Acceptance adicional:
 - marcador único del grupo y facing coherente tras giros;
 - abrir automap no cambia posición, turnos ni combate;
 - `Escape` desde automap no abre simultáneamente el menú;
-- Chronicles continúa cubriendo el viewport completo con automap abierto o cerrado; desktop permanece fuera de browser-native fullscreen y móvil intenta entrar en landscape/fullscreen sólo desde un gesto válido, con fallback explícito cuando el navegador lo rechaza.
+- Chronicles continúa cubriendo el viewport completo con automap abierto o cerrado; desktop intenta browser-native fullscreen desde un gesto válido y móvil intenta además landscape lock, con fallback explícito cuando el navegador rechaza cualquiera de las APIs.
 
 ## Initiative combat contract
 

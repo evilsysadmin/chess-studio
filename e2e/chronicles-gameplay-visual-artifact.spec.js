@@ -188,9 +188,9 @@ for (const capture of CAPTURES) {
       await expect(gameRoot).toBeVisible();
       if (!capture.hasTouch) {
         expect(
-          await page.evaluate(() => document.fullscreenElement),
-          `${capture.label}: desktop Chronicles must not enter browser-native fullscreen`,
-        ).toBeNull();
+          await page.evaluate(() => Boolean(document.fullscreenElement)),
+          `${capture.label}: desktop Chronicles enters browser-native fullscreen`,
+        ).toBe(true);
       }
       const landscapeTrigger = page.getByRole('button', { name: 'Activar apaisado', exact: true });
       if (capture.hasTouch && capture.width < capture.height) {
@@ -293,12 +293,6 @@ for (const capture of CAPTURES) {
       await expect(automap).toHaveCount(0);
 
       await page.keyboard.press('Escape');
-      if (!capture.hasTouch) {
-        expect(
-          await page.evaluate(() => document.fullscreenElement),
-          `${capture.label}: desktop Escape belongs to the Chronicles menu`,
-        ).toBeNull();
-      }
       const openedMenu = page.locator('.chronicles-game-menu[open]');
       await expect(openedMenu).toBeVisible();
       await expect(openedMenu.getByRole('button', { name: 'Continuar', exact: true })).toBeVisible();
