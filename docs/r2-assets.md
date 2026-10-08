@@ -45,8 +45,9 @@ with `Cache-Control: public, max-age=31536000, immutable`. A small manifest in G
 
 The repository owns an automatic retention policy for the public asset bucket.
 
-- Target footprint: **7.0 GB**.
-- Soft ceiling: **7.5 GB**.
+- Early-warning threshold: **5.0 GB** (GitHub issue + Actions warning).
+- Cleanup target after pressure: **5.5 GB**.
+- Soft ceiling / new CLI publication guard: **7.0 GB**.
 - Immutable assets receive a **7-day** grace period.
 - Keep one rollback generation per ordinary content-addressed family.
 - Fully unreferenced content-addressed families age out completely after **45 days**.
@@ -59,7 +60,11 @@ The repository owns an automatic retention policy for the public asset bucket.
 
 The audit report also separates hard-coded URL pins that are referenced by runtime source from objects kept alive only by operational surfaces such as `scripts/`, `e2e/` or `.github/`. That classification is observational only: tooling-only pins remain protected until a dedicated reviewed cleanup explicitly retires them.
 
-`Infra · R2 assets` runs the retention pass daily and when the R2 surface changes on `main`, and publishes a JSON audit report. If the bucket remains above the soft ceiling after safe candidates are exhausted, the job fails closed rather than guessing.
+`Infra · R2 assets` runs the retention pass daily and when the R2 surface changes on `main`, and publishes a JSON audit report and a measured-storage summary. From 5 GB it opens/updates one deduplicated GitHub issue (`[R2] Storage capacity warning`), auto-closing it below 5 GB. At 7 GB remaining after the cleanup pass the governance check fails. The collector always protects active assets and will fail closed if safe candidates are exhausted.
+
+Normal `scripts/r2_asset_publish.py publish` checks the live R2 inventory **before PUT** and rejects uploads projected above 7 GB. Re-uploading an existing content-addressed object counts only the net size difference. In a local emergency, an operator may explicitly use `R2_STORAGE_BUDGET_OVERRIDE=1`; this prints a warning and should never be enabled as a CI default. The check does **not** cover other publication paths that upload directly (for example Godot Web bundles), so the scheduled inventory alert remains essential. A malformed/unavailable inventory blocks the guarded publication rather than assuming free space.
+
+**Billing note:** Cloudflare GB-months are calculated from daily storage measurements, not the instantaneous bucket size; a later cleanup cannot undo an earlier day's high-water mark. The live 5/7 GB thresholds control future growth but cannot guarantee that an already-accumulated billing period remains inside the free allowance.
 
 
 ### Immutable Godot Web bundles
