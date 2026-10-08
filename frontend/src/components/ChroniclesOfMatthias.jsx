@@ -21,6 +21,7 @@ import { chroniclesDeployedPartyLevel } from '../chronicles/chroniclesDifficulty
 import { playChroniclesActionSound } from '../chronicles/chroniclesActionAudio.js';
 import { chroniclesPartyPortraitUrl } from '../chronicles/chroniclesPartyPortraitAssets.js';
 import { chroniclesClearRuntimeMapDefinitions } from '../chronicles/chroniclesMapCatalog.js';
+import { chroniclesGridExplorationStep } from '../chronicles/chroniclesGridExplorationStep.js';
 import { chroniclesCheckpointState } from '../chronicles/chroniclesRunClient.js';
 import {
   chroniclesApplyRunCheckpoint,
@@ -260,7 +261,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
 
     let next;
     if (!current.initiative) {
-      const exploratoryNext = actionType === 'attack' ? current : chroniclesReduce(current, action);
+      const exploratoryNext = actionType === 'attack' ? current : chroniclesGridExplorationStep(current, action);
       const attackingMember = actionType === 'attack' && typeof action === 'object'
         ? current.party.find((member) => member.id === action.memberId)
         : null;
