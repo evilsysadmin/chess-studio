@@ -41,6 +41,7 @@ func _initialize() -> void:
 	assert(match_node.debug_3d_animated_players() == 10)
 	assert(match_node.controlled != null)
 	assert(match_node.controlled.debug_visual_ready())
+	assert(match_node.controlled.debug_texture_filter_linear())
 	assert(match_node.controlled.debug_animation_names().size() == 7)
 	assert(match_node.controlled.debug_animation_names().has("shoot"))
 	var transition_runner: Footballer = match_node.controlled
