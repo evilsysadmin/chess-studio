@@ -510,6 +510,7 @@ async function captureWarRoomHealth(page, label) {
       blenderShadow: canvas ? {
         budget: Number(canvas.dataset.warRoomShadowCasterBudget || 0),
         candidates: Number(canvas.dataset.warRoomShadowCasterCandidates || 0),
+        projectedCount: Number(canvas.dataset.warRoomShadowProjectedCount || 0),
         count: Number(canvas.dataset.warRoomShadowCasterCount || 0),
         warmup: canvas.dataset.warRoomShadowWarmup || null,
       } : null,
