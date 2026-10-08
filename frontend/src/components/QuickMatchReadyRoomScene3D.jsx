@@ -1049,9 +1049,10 @@ function buildRoom({ lite = false } = {}) {
     clearcoat: .34,
     clearcoatRoughness: .24,
   });
-  const ebony = mat(0x302b29, .14, .28, {
-    clearcoat: .44,
-    clearcoatRoughness: .22,
+  // Ebony should remain dark without disappearing into the rear rank shadows.
+  const ebony = mat(0x4a4039, .10, .34, {
+    clearcoat: .31,
+    clearcoatRoughness: .30,
   });
   const lightSquare = mat(0xd7ccb6, .04, .62);
   const darkSquare = mat(0x4b4037, .06, .56);
@@ -1315,6 +1316,21 @@ export default function QuickMatchReadyRoomScene3D() {
       boardFill.position.set(0, 6.2, -1.1);
       boardFill.castShadow = false;
       scene.add(boardFill);
+
+      // Narrow, shadow-free moonlit bounce across the ebony ranks: reveal the
+      // carved silhouettes without raising the exposure of the entire room.
+      const ebonyFill = new THREE.SpotLight(
+        0xc7d7e9,
+        coarsePointer ? .66 : 1.02,
+        9,
+        Math.PI / 6.4,
+        .8,
+        1.8,
+      );
+      ebonyFill.position.set(-.55, 4.35, -.45);
+      ebonyFill.target.position.set(-.28, 1.88, -3.22);
+      ebonyFill.castShadow = false;
+      scene.add(ebonyFill, ebonyFill.target);
 
       if (!coarsePointer) {
         for (const x of [-5.8, 5.8]) {
