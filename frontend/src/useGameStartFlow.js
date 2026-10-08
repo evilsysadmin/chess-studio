@@ -50,6 +50,11 @@ export function labContextFromMeta(meta = {}) {
   };
 }
 
+function primeGameSession(game, { learningMode = false, gameContext = {}, timeControlId = null } = {}) {
+  const saved = saveActiveGameSession({ route: 'game', game, learningMode, gameContext, timeControlId });
+  setActiveGameSessionVisible(saved ? 'game' : null);
+}
+
 export function useGameStartFlow({
   launch,
   navigate,
@@ -126,14 +131,7 @@ export function useGameStartFlow({
         series(null);
       }
 
-      const persistedSession = saveActiveGameSession({
-        route: 'game',
-        game: created,
-        learningMode: isLearning,
-        gameContext: nextContext,
-        timeControlId: nextTimeControl.id,
-      });
-      setActiveGameSessionVisible(persistedSession ? 'game' : null);
+      primeGameSession(created, { learningMode: isLearning, gameContext: nextContext, timeControlId: nextTimeControl.id });
       setGame(created);
       saved(true);
       navigate('game');
@@ -191,12 +189,7 @@ export function useGameStartFlow({
       learning(false);
       const nextTimeControl = timeControlById(updatedSeries.timeControlId);
       timeControl(nextTimeControl);
-      const persistedSession = saveActiveGameSession({
-        route: 'game', game: created, learningMode: false,
-        gameContext: gameContextFromOptions({ adaptiveDifficulty: updatedSeries.adaptiveDifficulty }),
-        timeControlId: nextTimeControl.id,
-      });
-      setActiveGameSessionVisible(persistedSession ? 'game' : null);
+      primeGameSession(created, { gameContext: gameContextFromOptions({ adaptiveDifficulty: updatedSeries.adaptiveDifficulty }), timeControlId: nextTimeControl.id });
       setGame(created);
       saved(true);
       navigate('game');
@@ -243,11 +236,7 @@ export function useGameStartFlow({
       context(nextContext);
       learning(true);
       timeControl(null);
-      const persistedSession = saveActiveGameSession({
-        route: 'game', game: created, learningMode: true,
-        gameContext: nextContext, timeControlId: null,
-      });
-      setActiveGameSessionVisible(persistedSession ? 'game' : null);
+      primeGameSession(created, { learningMode: true, gameContext: nextContext });
       setGame(created);
       saved(true);
       navigate('game');
@@ -294,11 +283,7 @@ export function useGameStartFlow({
       learning(false);
       const nextTimeControl = timeControlById('5+0');
       timeControl(nextTimeControl);
-      const persistedSession = saveActiveGameSession({
-        route: 'game', game: created, learningMode: false,
-        gameContext: { runMode: nextRun.mode }, timeControlId: nextTimeControl.id,
-      });
-      setActiveGameSessionVisible(persistedSession ? 'game' : null);
+      primeGameSession(created, { gameContext: { runMode: nextRun.mode }, timeControlId: nextTimeControl.id });
       setGame(created);
       saved(true);
       navigate('game');
