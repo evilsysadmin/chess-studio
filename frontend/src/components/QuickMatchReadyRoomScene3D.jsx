@@ -625,6 +625,69 @@ function addWindow(root, stone, brass, night, moon, glow) {
   root.add(windowGroup);
 }
 
+function addWallPanel(root, x, wood, leather, brass) {
+  const panel = new THREE.Group();
+  panel.name = 'quick-match-ready-wall-panel';
+
+  const outerShape = new THREE.Shape();
+  outerShape.moveTo(-1.58, -1.18);
+  outerShape.lineTo(1.58, -1.18);
+  outerShape.lineTo(1.58, .72);
+  outerShape.quadraticCurveTo(1.36, 1.18, .92, 1.28);
+  outerShape.quadraticCurveTo(0, 1.46, -.92, 1.28);
+  outerShape.quadraticCurveTo(-1.36, 1.18, -1.58, .72);
+  outerShape.closePath();
+
+  const frame = new THREE.Mesh(
+    new THREE.ExtrudeGeometry(outerShape, {
+      depth: .15,
+      bevelEnabled: true,
+      bevelSegments: 2,
+      bevelSize: .045,
+      bevelThickness: .03,
+    }),
+    wood,
+  );
+  frame.position.set(0, 0, 0);
+  frame.castShadow = true;
+  frame.receiveShadow = true;
+  frame.name = 'wall-panel-arched-frame';
+  panel.add(frame);
+
+  const insetShape = new THREE.Shape();
+  insetShape.moveTo(-1.30, -1.00);
+  insetShape.lineTo(1.30, -1.00);
+  insetShape.lineTo(1.30, .62);
+  insetShape.quadraticCurveTo(1.10, .96, .72, 1.05);
+  insetShape.quadraticCurveTo(0, 1.19, -.72, 1.05);
+  insetShape.quadraticCurveTo(-1.10, .96, -1.30, .62);
+  insetShape.closePath();
+
+  const inset = new THREE.Mesh(
+    new THREE.ExtrudeGeometry(insetShape, {
+      depth: .055,
+      bevelEnabled: true,
+      bevelSegments: 1,
+      bevelSize: .018,
+      bevelThickness: .012,
+    }),
+    leather,
+  );
+  inset.position.set(0, 0, .16);
+  inset.receiveShadow = true;
+  inset.name = 'wall-panel-leather-inset';
+  panel.add(inset);
+
+  box(panel, [2.70, .055, .055], brass, [0, -.90, .245], 'wall-panel-fillet-bottom');
+  box(panel, [2.34, .045, .05], brass, [0, .83, .245], 'wall-panel-fillet-top');
+  for (const accentX of [-1.36, 1.36]) {
+    box(panel, [.05, 1.68, .05], brass, [accentX, -.08, .245], 'wall-panel-side-fillet');
+  }
+
+  panel.position.set(x, 1.82, -6.06);
+  root.add(panel);
+}
+
 function addHeraldicTrophy(root, x, leather, brass, steel) {
   const trophy = new THREE.Group();
   trophy.name = 'quick-match-ready-heraldry';
@@ -779,10 +842,7 @@ function buildRoom({ lite = false } = {}) {
   }
 
   for (const x of [-5.95, 5.95]) {
-    box(root, [3.15, 2.45, .16], woodDark, [x, 1.82, -6.13], 'wall-panel');
-    box(root, [2.72, 2.02, .08], leather, [x, 1.82, -6.02], 'wall-panel-inset');
-    box(root, [2.86, .06, .10], brass, [x, 2.72, -5.96], 'wall-panel-fillet');
-    box(root, [2.86, .06, .10], brass, [x, .92, -5.96], 'wall-panel-fillet');
+    addWallPanel(root, x, woodDark, leather, brass);
   }
 
   for (const x of [-6.65, -2.2, 2.2, 6.65]) {
