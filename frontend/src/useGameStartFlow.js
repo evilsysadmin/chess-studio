@@ -1,3 +1,4 @@
+import { saveActiveGameSession, setActiveGameSessionVisible } from './activeGameSession.js';
 import { api } from './api.js';
 import { isAbortError } from './asyncControl.js';
 import {
@@ -49,6 +50,17 @@ export function labContextFromMeta(meta = {}) {
   };
 }
 
+function primeGameSession(game, gameContext, learningMode = false, timeControlId = null) {
+  const saved = saveActiveGameSession({
+    route: 'game',
+    game,
+    learningMode,
+    gameContext,
+    timeControlId,
+  });
+  setActiveGameSessionVisible(saved ? 'game' : null);
+}
+
 export function useGameStartFlow({
   launch,
   navigate,
@@ -90,8 +102,9 @@ export function useGameStartFlow({
 
       const isLearning = !!options.learning;
       const nextContext = gameContextFromOptions(options);
+      const nextTimeControl = timeControlById(options.timeControlId);
       learning(isLearning);
-      timeControl(timeControlById(options.timeControlId));
+      timeControl(nextTimeControl);
       context(nextContext);
       recordGameActivity({
         gameId: created.id,
@@ -124,6 +137,7 @@ export function useGameStartFlow({
         series(null);
       }
 
+      primeGameSession(created, nextContext, isLearning, nextTimeControl.id);
       setGame(created);
       saved(true);
       navigate('game');
@@ -179,7 +193,14 @@ export function useGameStartFlow({
       saveActiveSeries(updatedSeries);
       series(updatedSeries);
       learning(false);
-      timeControl(timeControlById(updatedSeries.timeControlId));
+      const nextTimeControl = timeControlById(updatedSeries.timeControlId);
+      timeControl(nextTimeControl);
+      primeGameSession(
+        created,
+        gameContextFromOptions({ adaptiveDifficulty: updatedSeries.adaptiveDifficulty }),
+        false,
+        nextTimeControl.id,
+      );
       setGame(created);
       saved(true);
       navigate('game');
@@ -226,6 +247,7 @@ export function useGameStartFlow({
       context(nextContext);
       learning(true);
       timeControl(null);
+      primeGameSession(created, nextContext, true);
       setGame(created);
       saved(true);
       navigate('game');
@@ -268,9 +290,12 @@ export function useGameStartFlow({
       contract(null);
       const withGame = saveSpecialRun({ ...nextRun, currentGameId: created.id });
       run(withGame);
-      context({ runMode: nextRun.mode });
+      const nextContext = { runMode: nextRun.mode };
+      context(nextContext);
       learning(false);
-      timeControl(timeControlById('5+0'));
+      const nextTimeControl = timeControlById('5+0');
+      timeControl(nextTimeControl);
+      primeGameSession(created, nextContext, false, nextTimeControl.id);
       setGame(created);
       saved(true);
       navigate('game');
