@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { buildPremiumTableLayer, buildPremiumWarRoomLayer } from './PremiumWarRoomScene.js';
 import { addMesh, buildWarRoom } from './Board3DScene.js';
-import { buildSchoolRoomLayer } from './SchoolRoomShell.js';
 
 export function buildClassicWarRoomShell({
   scene,
@@ -9,7 +8,6 @@ export function buildClassicWarRoomShell({
   theme,
   whiteSide,
   renderLite,
-  classroom = false,
   visible = true,
 }) {
   const warRoom = buildWarRoom(theme, whiteSide, renderLite);
@@ -30,9 +28,6 @@ export function buildClassicWarRoomShell({
 
   const premiumTableLayer = buildPremiumTableLayer(theme, renderLite);
   scene.add(premiumTableLayer);
-
-  const schoolRoomLayer = classroom ? buildSchoolRoomLayer(theme, whiteSide, renderLite) : null;
-  if (schoolRoomLayer) scene.add(schoolRoomLayer);
 
   const legacyBoardFrameGroup = new THREE.Group();
   legacyBoardFrameGroup.name = 'war-room-classic-board-frame';
@@ -68,7 +63,7 @@ export function buildClassicWarRoomShell({
     [4.16, 0, 0.055, 8.55], [-4.16, 0, 0.055, 8.55],
   ]) addMesh(legacyBoardFrameGroup, new THREE.BoxGeometry(sx, 0.08, sz), frameGold, [x, 0.135, z]);
 
-  const classicShellObjects = [warRoom, premiumWarRoomLayer, table, premiumTableLayer, schoolRoomLayer, legacyBoardFrameGroup].filter(Boolean);
+  const classicShellObjects = [warRoom, premiumWarRoomLayer, table, premiumTableLayer, legacyBoardFrameGroup];
   classicShellObjects.forEach((object) => { if (object) object.visible = visible; });
   return { classicShellObjects };
 }
@@ -97,13 +92,13 @@ export function createWarRoomClassicShellController({ build, eager = false } = {
 }
 
 export function createClassicWarRoomShellController(
-  { scene, boardGroup, theme, whiteSide, renderLite, classroom = false } = {},
+  { scene, boardGroup, theme, whiteSide, renderLite } = {},
   eager = false,
 ) {
   return createWarRoomClassicShellController({
     eager,
     build: () => buildClassicWarRoomShell({
-      scene, boardGroup, theme, whiteSide, renderLite, classroom,
+      scene, boardGroup, theme, whiteSide, renderLite,
     }).classicShellObjects,
   });
 }
