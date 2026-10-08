@@ -109,6 +109,19 @@ func _initialize() -> void:
 	assert(canonical_sprint_frame.region == Rect2(0.0, 0.0, 128.0, 144.0))
 	assert(is_equal_approx(canonical_frames.get_animation_speed(&"run"), 12.0))
 	assert(is_equal_approx(canonical_frames.get_animation_speed(&"sprint"), 15.0))
+	var phase_runner: Footballer = match_node.teams[0][2]
+	phase_runner.velocity = Vector2(120.0, 0.0)
+	phase_runner.visual.play(&"run")
+	phase_runner.visual.frame = 5
+	phase_runner.visual.frame_progress = 0.37
+	phase_runner._sync_locomotion(true)
+	assert(phase_runner.visual.animation == &"sprint")
+	assert(phase_runner.visual.frame == 5)
+	assert(is_equal_approx(phase_runner.visual.frame_progress, 0.37))
+	phase_runner._sync_locomotion(false)
+	assert(phase_runner.visual.animation == &"run")
+	assert(phase_runner.visual.frame == 5)
+	assert(is_equal_approx(phase_runner.visual.frame_progress, 0.37))
 	assert(sprite_manifest["atlases"]["fc_matthias"]["body_profile"] == "defender")
 	assert(sprite_manifest["atlases"]["fc_matthias_v2"]["body_profile"] == "midfielder")
 	assert(sprite_manifest["atlases"]["fc_matthias_v3"]["body_profile"] == "wing")
