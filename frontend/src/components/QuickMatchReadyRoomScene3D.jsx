@@ -779,15 +779,21 @@ function buildRoom({ lite = false } = {}) {
   addConsole(root, -6.15, woodDark, brass, leather);
   addConsole(root, 6.15, woodDark, brass, leather);
 
-  const table = box(root, [10.65, .42, 5.12], wood, [0, 1.08, -1.16], 'table-top');
-  table.rotation.x = -.018;
-  box(root, [10.05, .17, 4.55], brass, [0, .86, -1.16], 'table-brass-skirt');
-  box(root, [9.86, .28, 4.38], woodDark, [0, .69, -1.16], 'table-apron');
+  const table = box(root, [10.65, .28, 5.12], wood, [0, 1.14, -1.16], 'table-top');
+  table.rotation.x = -.012;
+  box(root, [10.45, .10, 4.94], brass, [0, .98, -1.16], 'table-brass-edge');
+  box(root, [10.22, .16, 4.72], woodDark, [0, .87, -1.16], 'table-lower-edge');
+  box(root, [9.98, .055, 4.50], brass, [0, .765, -1.16], 'table-brass-skirt');
+  box(root, [9.78, .28, 4.34], woodDark, [0, .60, -1.16], 'table-apron');
 
-  for (const x of [-4.58, 4.58]) {
-    for (const z of [-2.52, .18]) {
-      cylinder(root, [.19, .25], 1.66, woodDark, [x, .02, z], 'table-leg', 20);
-      cylinder(root, [.25, .31], .12, brass, [x, .78, z], 'table-leg-cap', 20);
+  for (const x of [-4.56, 4.56]) {
+    for (const z of [-2.50, .18]) {
+      cylinder(root, [.22, .27], .24, brass, [x, .73, z], 'table-leg-cap', 22);
+      cylinder(root, [.17, .23], .36, woodDark, [x, .48, z], 'table-leg-upper', 22);
+      sphere(root, .22, wood, [x, .24, z], 'table-leg-knot', 20, 14);
+      cylinder(root, [.13, .18], .56, woodDark, [x, -.05, z], 'table-leg-stem', 20);
+      cylinder(root, [.20, .14], .22, brass, [x, -.44, z], 'table-leg-foot-collar', 20);
+      cylinder(root, [.25, .20], .16, woodDark, [x, -.63, z], 'table-leg-foot', 20);
     }
   }
 
