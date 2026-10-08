@@ -189,7 +189,14 @@ export function useGameStartFlow({
       saveActiveSeries(updatedSeries);
       series(updatedSeries);
       learning(false);
-      timeControl(timeControlById(updatedSeries.timeControlId));
+      const nextTimeControl = timeControlById(updatedSeries.timeControlId);
+      timeControl(nextTimeControl);
+      const persistedSession = saveActiveGameSession({
+        route: 'game', game: created, learningMode: false,
+        gameContext: gameContextFromOptions({ adaptiveDifficulty: updatedSeries.adaptiveDifficulty }),
+        timeControlId: nextTimeControl.id,
+      });
+      setActiveGameSessionVisible(persistedSession ? 'game' : null);
       setGame(created);
       saved(true);
       navigate('game');
@@ -236,6 +243,11 @@ export function useGameStartFlow({
       context(nextContext);
       learning(true);
       timeControl(null);
+      const persistedSession = saveActiveGameSession({
+        route: 'game', game: created, learningMode: true,
+        gameContext: nextContext, timeControlId: null,
+      });
+      setActiveGameSessionVisible(persistedSession ? 'game' : null);
       setGame(created);
       saved(true);
       navigate('game');
@@ -280,7 +292,13 @@ export function useGameStartFlow({
       run(withGame);
       context({ runMode: nextRun.mode });
       learning(false);
-      timeControl(timeControlById('5+0'));
+      const nextTimeControl = timeControlById('5+0');
+      timeControl(nextTimeControl);
+      const persistedSession = saveActiveGameSession({
+        route: 'game', game: created, learningMode: false,
+        gameContext: { runMode: nextRun.mode }, timeControlId: nextTimeControl.id,
+      });
+      setActiveGameSessionVisible(persistedSession ? 'game' : null);
       setGame(created);
       saved(true);
       navigate('game');
