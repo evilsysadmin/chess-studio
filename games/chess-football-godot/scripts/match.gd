@@ -724,7 +724,7 @@ func _ai_dribble_target(player: Footballer) -> Vector2:
 func _ai_support_target(player: Footballer) -> Vector2:
 	if ball.carrier == null:
 		return player.home_position
-	var forward := 1.0 if player.team_id == 0 else -1.0
+	var forward: float = 1.0 if player.team_id == 0 else -1.0
 	var lane_offset := float(player.squad_index - 2) * 92.0
 	var target := Vector2(
 		ball.carrier.global_position.x + forward * (AI_SUPPORT_FORWARD + absf(lane_offset) * 0.22),
@@ -807,16 +807,16 @@ func _update_keeper_ai(player: Footballer, delta: float) -> void:
 	player.move_ai(delta, target, KEEPER_TRACK_INTENSITY)
 
 func _keeper_pass_lane_clear(player: Footballer, teammate: Footballer) -> bool:
-	var segment := teammate.global_position - player.global_position
-	var segment_len_sq := segment.length_squared()
+	var segment: Vector2 = teammate.global_position - player.global_position
+	var segment_len_sq: float = segment.length_squared()
 	if segment_len_sq <= 1.0:
 		return false
 	for opponent in teams[1 - player.team_id]:
 		if opponent.sent_off:
 			continue
-		var relative := opponent.global_position - player.global_position
-		var t := clampf(relative.dot(segment) / segment_len_sq, 0.0, 1.0)
-		var closest := player.global_position + segment * t
+		var relative: Vector2 = opponent.global_position - player.global_position
+		var t: float = clampf(relative.dot(segment) / segment_len_sq, 0.0, 1.0)
+		var closest: Vector2 = player.global_position + segment * t
 		if opponent.global_position.distance_to(closest) < KEEPER_SHORT_PASS_LANE_CLEARANCE:
 			return false
 	return true
@@ -824,24 +824,24 @@ func _keeper_pass_lane_clear(player: Footballer, teammate: Footballer) -> bool:
 func _keeper_safe_outlet(player: Footballer) -> Footballer:
 	var forward := 1.0 if player.team_id == 0 else -1.0
 	var best: Footballer = null
-	var best_score := -INF
+	var best_score: float = -INF
 	for teammate in teams[player.team_id]:
 		if teammate == player or teammate.sent_off or teammate.role == "keeper":
 			continue
-		var offset := teammate.global_position - player.global_position
-		var distance := offset.length()
+		var offset: Vector2 = teammate.global_position - player.global_position
+		var distance: float = offset.length()
 		if distance < 85.0 or distance > KEEPER_SHORT_PASS_MAX_DISTANCE:
 			continue
-		var nearest_opponent := _nearest_opponent_to(teammate)
-		var separation := INF
+		var nearest_opponent: Footballer = _nearest_opponent_to(teammate)
+		var separation: float = INF
 		if nearest_opponent != null:
 			separation = teammate.global_position.distance_to(nearest_opponent.global_position)
 		if separation < KEEPER_SHORT_PASS_MIN_SEPARATION:
 			continue
 		if not _keeper_pass_lane_clear(player, teammate):
 			continue
-		var progress := offset.x * forward
-		var score := separation * 1.35 + progress * 0.55 - distance * 0.28 - absf(offset.y) * 0.10
+		var progress: float = offset.x * forward
+		var score: float = separation * 1.35 + progress * 0.55 - distance * 0.28 - absf(offset.y) * 0.10
 		if score > best_score:
 			best_score = score
 			best = teammate
@@ -856,8 +856,8 @@ func _keeper_under_pressure(player: Footballer) -> bool:
 	return false
 
 func _keeper_clear_y_bias(player: Footballer) -> float:
-	var safest_y := 0.0
-	var safest_score := -INF
+	var safest_y: float = 0.0
+	var safest_score: float = -INF
 	for teammate in teams[player.team_id]:
 		if teammate == player or teammate.sent_off or teammate.role == "keeper":
 			continue
@@ -865,15 +865,15 @@ func _keeper_clear_y_bias(player: Footballer) -> float:
 		var separation := 180.0
 		if nearest_opponent != null:
 			separation = teammate.global_position.distance_to(nearest_opponent.global_position)
-		var vertical := teammate.global_position.y - player.global_position.y
-		var score := separation - absf(vertical) * 0.08
+		var vertical: float = teammate.global_position.y - player.global_position.y
+		var score: float = separation - absf(vertical) * 0.08
 		if score > safest_score:
 			safest_score = score
 			safest_y = clampf(vertical / 520.0, -0.48, 0.48)
 	return safest_y
 
 func _keeper_distribution_plan(player: Footballer, distribution_age: float) -> Dictionary:
-	var outlet := _keeper_safe_outlet(player)
+	var outlet: Footballer = _keeper_safe_outlet(player)
 	if outlet != null:
 		return {"kind": "short", "target": outlet}
 	if _keeper_under_pressure(player) or distribution_age >= KEEPER_DISTRIBUTION_WAIT_SECONDS:
