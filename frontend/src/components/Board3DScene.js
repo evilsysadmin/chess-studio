@@ -35,8 +35,8 @@ export function addMesh(group, geometry, material, position = [0, 0, 0], rotatio
   const mesh = new THREE.Mesh(geometry, material);
   mesh.position.set(...position);
   mesh.rotation.set(...rotation);
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
+  mesh.castShadow = group?.userData?.board3dDefaultCastShadow ?? true;
+  mesh.receiveShadow = group?.userData?.board3dDefaultReceiveShadow ?? true;
   group.add(mesh);
   return mesh;
 }
@@ -72,8 +72,8 @@ function addBox(group, size, color, position, options = {}) {
     opacity: options.opacity ?? 1,
   });
   const mesh = addMesh(group, sharedBoxGeometry(group, size), material, position, options.rotation || [0, 0, 0]);
-  mesh.castShadow = options.castShadow ?? true;
-  mesh.receiveShadow = options.receiveShadow ?? true;
+  if (options.castShadow != null) mesh.castShadow = options.castShadow;
+  if (options.receiveShadow != null) mesh.receiveShadow = options.receiveShadow;
   return mesh;
 }
 
@@ -88,6 +88,8 @@ function buildTrophy(group, x, y, z, goldMaterial) {
 
 export function buildWarRoom(theme, whiteSide, coarsePointer = false) {
   const room = new THREE.Group();
+  room.userData.board3dDefaultCastShadow = false;
+  room.userData.board3dDefaultReceiveShadow = true;
   const far = whiteSide ? -1 : 1;
   const wallZ = far * 7.6;
   const towardBoard = -far;
@@ -140,16 +142,8 @@ export function buildWarRoom(theme, whiteSide, coarsePointer = false) {
   if (whiteSide) ambientPanel.rotation.y = Math.PI;
   room.add(ambientPanel);
 
-  let retiredCasters = 0;
-  room.traverse((object) => {
-    if (!object?.isMesh || !object.castShadow) return;
-    object.castShadow = false;
-    object.userData ||= {};
-    object.userData.warRoomStaticShadowCasterRetired = true;
-    retiredCasters += 1;
-  });
-  room.userData.warRoomBaseStaticShadowCastersRetired = retiredCasters;
-  room.userData.warRoomBaseShadowMode = 'receive-only-v1';
+  room.userData.warRoomBaseStaticShadowCastersCreated = 0;
+  room.userData.warRoomBaseShadowMode = 'receive-only-source-v2';
 
   return room;
 }
