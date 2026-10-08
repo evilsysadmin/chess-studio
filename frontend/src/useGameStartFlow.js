@@ -1,3 +1,4 @@
+import { saveActiveGameSession, setActiveGameSessionVisible } from './activeGameSession.js';
 import { api } from './api.js';
 import { isAbortError } from './asyncControl.js';
 import {
@@ -49,9 +50,7 @@ export function labContextFromMeta(meta = {}) {
   };
 }
 
-async function primeGameSession(game, gameContext, learningMode = false, timeControlId = null) {
-  // The session persistence module belongs to the game route, not Home's initial bundle.
-  const { saveActiveGameSession, setActiveGameSessionVisible } = await import('./activeGameSession.js');
+function primeGameSession(game, gameContext, learningMode = false, timeControlId = null) {
   const saved = saveActiveGameSession({ route: 'game', game, learningMode, gameContext, timeControlId });
   setActiveGameSessionVisible(saved ? 'game' : null);
 }
@@ -132,7 +131,7 @@ export function useGameStartFlow({
         series(null);
       }
 
-      await primeGameSession(created, nextContext, isLearning, nextTimeControl.id);
+      primeGameSession(created, nextContext, isLearning, nextTimeControl.id);
       setGame(created);
       saved(true);
       navigate('game');
@@ -190,7 +189,7 @@ export function useGameStartFlow({
       learning(false);
       const nextTimeControl = timeControlById(updatedSeries.timeControlId);
       timeControl(nextTimeControl);
-      await primeGameSession(created, gameContextFromOptions({ adaptiveDifficulty: updatedSeries.adaptiveDifficulty }), false, nextTimeControl.id);
+      primeGameSession(created, gameContextFromOptions({ adaptiveDifficulty: updatedSeries.adaptiveDifficulty }), false, nextTimeControl.id);
       setGame(created);
       saved(true);
       navigate('game');
@@ -237,7 +236,7 @@ export function useGameStartFlow({
       context(nextContext);
       learning(true);
       timeControl(null);
-      await primeGameSession(created, nextContext, true);
+      primeGameSession(created, nextContext, true);
       setGame(created);
       saved(true);
       navigate('game');
@@ -284,7 +283,7 @@ export function useGameStartFlow({
       learning(false);
       const nextTimeControl = timeControlById('5+0');
       timeControl(nextTimeControl);
-      await primeGameSession(created, { runMode: nextRun.mode }, false, nextTimeControl.id);
+      primeGameSession(created, { runMode: nextRun.mode }, false, nextTimeControl.id);
       setGame(created);
       saved(true);
       navigate('game');
