@@ -2,10 +2,10 @@ import { expect, test } from '@playwright/test';
 import {
   activateSetupControl,
   buttonWithVisibleText,
-  clickBoardMove,
   login,
   mockApi,
 } from './helpers.js';
+import { readBoard3DProjection } from './board3d-projection.js';
 
 const VARIANT_KEY = 'chess-study-war-room-variant-v1';
 const READY_TIMEOUT = 90_000;
@@ -37,7 +37,12 @@ async function enterAndMeasure(page, requestLog, variant, visit) {
   const shellReady = await page.evaluate((t0) => performance.now() - t0, start);
 
   const beforeMoves = movePosts(requestLog).length;
-  await clickBoardMove(page, 'e2', 'e4');
+  const projection = await readBoard3DProjection(canvas);
+  const from = projection.square('e2');
+  const to = projection.square('e4');
+  await page.mouse.click(from.x, from.y);
+  await expect(board).toHaveAttribute('data-board3d-selected', 'e2', { timeout: 5_000 });
+  await page.mouse.click(to.x, to.y);
   await expect.poll(() => movePosts(requestLog).length, { timeout: 15_000 }).toBe(beforeMoves + 1);
   const interactive = await page.evaluate((t0) => performance.now() - t0, start);
 
