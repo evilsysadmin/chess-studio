@@ -293,12 +293,18 @@ func _build_player_proxies() -> void:
 				player.team_id,
 				player.role,
 				player.squad_index,
+				true,
 			)
 			sprite.centered = true
 			sprite.pixel_size = PLAYER_PIXEL_SIZE
 			sprite.position.y = PLAYER_BASE_Y
 			sprite.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-			sprite.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+			# Avoid blended transparent quads looking like ghosts in WebGL.
+			# Raster footballers should render opaque body pixels, without pitch lighting.
+			sprite.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
+			sprite.alpha_scissor_threshold = 0.12
+			sprite.shaded = false
+			sprite.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			sprite.flip_h = player.team_id == 1
 			sprite.play("idle")
 			root.add_child(sprite)

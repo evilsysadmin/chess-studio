@@ -158,6 +158,14 @@ func _initialize() -> void:
 	assert(canonical_run_image.has_mipmaps())
 	assert(canonical_run_frame.atlas == canonical_sprint_frame.atlas)
 	assert(canonical_idle_frame.atlas == canonical_run_frame.atlas)
+	# The 3D WebGL presenter must receive actual ImageTextures, not atlas subregions.
+	for team_id in [0, 1]:
+		var flat_frames := ChessFootballSpriteBank.build_frames(team_id, "midfielder", 2, true)
+		for animation_name in [&"idle", &"run", &"sprint"]:
+			for frame_id in range(flat_frames.get_frame_count(animation_name)):
+				var frame_texture := flat_frames.get_frame_texture(animation_name, frame_id)
+				assert(frame_texture is ImageTexture)
+				assert(frame_texture.get_size() == Vector2(128.0, 144.0))
 	assert(canonical_run_frame.region == Rect2(0.0, 0.0, 128.0, 144.0))
 	assert(canonical_sprint_frame.region == Rect2(0.0, 0.0, 128.0, 144.0))
 	assert(is_equal_approx(canonical_frames.get_animation_speed(&"run"), 12.0))
