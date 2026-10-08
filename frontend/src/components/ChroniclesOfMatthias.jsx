@@ -367,6 +367,9 @@ export default function ChroniclesOfMatthias({ onExit }) {
     dispatch(action);
     if (current.initiative) return;
 
+    // Grid exploration is one accepted action per press, never a timed walk.
+    return;
+
     touchHoldRef.current.delayId = window.setTimeout(() => {
       const repeat = () => {
         const latest = stateRef.current;
@@ -691,6 +694,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
       const action = KEY_ACTIONS[event.key];
       if (!action) return;
       event.preventDefault();
+      if (event.repeat) return; // discrete grid step, independent of OS repeat rate
       dispatch(action);
     };
     window.addEventListener('keydown', onKeyDown, { passive: false });
