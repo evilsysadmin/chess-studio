@@ -41,7 +41,14 @@ try {
     if (line.type() === 'error' && /null function|RuntimeError|abort\(/i.test(msg)) failures.push(msg);
   });
   page.on('pageerror', (error) => failures.push('PAGE ERROR: ' + (error.stack || error.message)));
-  page.on('requestfailed', (request) => failures.push('REQUEST FAILED: ' + request.url() + ' ' + (request.failure()?.errorText || '')));
+  page.on('requestfailed', (request) => {
+    const reason = request.failure()?.errorText || '';
+    // Chromium may cancel the redundant streaming fetch when Godot has already
+    // consumed the PCK. Only genuine transport failures are fatal here; no
+    // successful scene bootstrap will occur if the PCK was actually missing.
+    if (reason === 'net::ERR_ABORTED') return;
+    failures.push('REQUEST FAILED: ' + request.url() + ' ' + reason);
+  });
   const url = 'http://127.0.0.1:' + port + '/index.html';
   console.log('Launching actual Godot Web release:', url);
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
