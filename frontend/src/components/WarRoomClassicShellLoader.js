@@ -48,15 +48,27 @@ export function createLazyClassicWarRoomShellController(
   };
 }
 
+export function classicShellModuleKind({ classroom = false } = {}) {
+  return classroom ? 'school-room-dedicated-v1' : 'war-room-classic-v1';
+}
+
 export function createClassicWarRoomShellController(
   { canvas = null, ...buildOptions } = {},
   eager = false,
   { loadModule } = {},
 ) {
-  if (canvas?.dataset) canvas.dataset.schoolRoomScene = 'off';
+  if (canvas?.dataset) {
+    canvas.dataset.schoolRoomScene = 'off';
+    canvas.dataset.classicShellModule = classicShellModuleKind(buildOptions);
+  }
+  const resolvedLoadModule = loadModule || (() => (
+    buildOptions.classroom
+      ? import('./SchoolRoomClassicShell.js')
+      : import('./WarRoomClassicShell.js')
+  ));
   return createLazyClassicWarRoomShellController(buildOptions, {
     eager,
-    loadModule,
+    loadModule: resolvedLoadModule,
     isActive: () => !canvas || canvas.isConnected !== false,
     onBuilt: (objects) => {
       if (!canvas?.dataset) return;

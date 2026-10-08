@@ -194,6 +194,13 @@ QUICK_MATCH_EXACT_PRODUCERS = {
     "frontend/src/components/usewarroomimmersive.js": {"warroom-core"},
 }
 
+SHARED_BOOTSTRAP_EXACT_PRODUCERS = {
+    # The lazy classic-shell router can decide whether School or classic War Room
+    # mounts at all, but it does not own room decor, armor or Hans choreography.
+    # Core War Room + School proof are sufficient and avoid unrelated long canaries.
+    "frontend/src/components/warroomclassicshellloader.js": {"training-school", "warroom-core"},
+}
+
 TRAINING_EXACT_PRODUCERS = {
     "frontend/src/guidedtrainingsession.js": {"training-progress"},
     "frontend/src/personalweeklygoals.js": {"training-progress"},
@@ -442,6 +449,8 @@ def classify_path(path: str) -> set[str] | None:
         return set(PVP_EXACT_PRODUCERS[lower])
     if lower == "frontend/src/components/labscreen.jsx":
         return {"experiments-hub"}
+    if lower in SHARED_BOOTSTRAP_EXACT_PRODUCERS:
+        return set(SHARED_BOOTSTRAP_EXACT_PRODUCERS[lower])
     if lower in TRAINING_EXACT_PRODUCERS:
         return set(TRAINING_EXACT_PRODUCERS[lower])
 
@@ -689,6 +698,7 @@ def classify(paths: list[str]) -> str:
 
 
 def self_test() -> None:
+    assert classify(["frontend/src/components/WarRoomClassicShellLoader.js"]) == "training-school,warroom-core"
     assert classify_warroom_variants(["frontend/src/components/WarRoomClassicShell.js"]) == "classic"
     assert classify_warroom_variants(["frontend/src/components/PremiumWarRoomScene.js"]) == "classic"
     assert classify_warroom_variants(["frontend/src/components/WarRoomV2Shell.js"]) == "v2"
