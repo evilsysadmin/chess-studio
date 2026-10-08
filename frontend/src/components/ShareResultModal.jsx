@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { buildShareText, buildShareUrl, normalizeShareRecord } from '../shareResult.js';
+import { buildShareText, buildShareUrl, normalizeShareRecord, countFullMoves } from '../shareResult.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import { withTimeout } from '../asyncControl.js';
@@ -13,7 +13,7 @@ export default function ShareResultModal({ record, onClose }) {
   const text = useMemo(() => buildShareText(record), [record]);
   const url = useMemo(() => buildShareUrl(record), [record]);
   // Stored moves are half-moves (plies); a displayed chess move is a full turn.
-  const moveCount = Math.ceil(data.moves.length / 2);
+  const moveCount = countFullMoves(data.moves);
 
   async function copy(value, message) {
     try { await navigator.clipboard.writeText(value); setFeedback(message); }
