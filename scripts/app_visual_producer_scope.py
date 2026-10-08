@@ -274,6 +274,7 @@ def _e2e_producer(name: str) -> set[str] | None:
         "pvp-handoff-visual-artifact.spec.js": {"pvp-handoff"},
         "home-lab-visibility.spec.js": {"home-base"},
         "experiments-visual-artifact.spec.js": {"experiments-hub"},
+        "lab-mobile-room.spec.js": {"experiments-hub"},
         "pawn-slug-godot-visual-artifact.spec.js": {"experiments-hub"},
         "chronicles-tactics-visual-artifact.spec.js": {"chronicles-tactics"},
         "chronicles-gameplay-visual-artifact.spec.js": {"chronicles-gameplay"},
@@ -440,7 +441,10 @@ def classify_path(path: str) -> set[str] | None:
         return set(PVP_DUEL_EXACT_PRODUCERS[lower])
     if lower in PVP_EXACT_PRODUCERS:
         return set(PVP_EXACT_PRODUCERS[lower])
-    if lower == "frontend/src/components/labscreen.jsx":
+    if lower in {
+        "frontend/src/components/labscreen.jsx",
+        "frontend/src/components/labworkshopmobile.css",
+    }:
         return {"experiments-hub"}
     if lower in TRAINING_EXACT_PRODUCERS:
         return set(TRAINING_EXACT_PRODUCERS[lower])
@@ -909,6 +913,8 @@ def self_test() -> None:
     assert classify(["e2e/war-room-decor-visual-artifact.spec.js"]) == "warroom-decor"
     assert classify(["e2e/browser-storage-health.spec.js"]) == "health-storage"
     assert classify(["e2e/pawn-slug-godot-visual-artifact.spec.js"]) == "experiments-hub"
+    assert classify(["frontend/src/components/LabWorkshopMobile.css"]) == "experiments-hub"
+    assert classify(["e2e/lab-mobile-room.spec.js"]) == "experiments-hub"
     assert classify(["frontend/src/components/AdminDashboardContent.jsx"]) == "none"
     assert classify(["frontend/src/App.css"]) == "all"
     assert classify(["scripts/async_resilience_gate.mjs"]) == "none"
