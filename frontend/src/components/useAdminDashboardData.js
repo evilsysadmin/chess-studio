@@ -69,6 +69,7 @@ export default function useAdminDashboardData(section = 'overview') {
     document.addEventListener('visibilitychange', handleVisibility);
     return () => {
       mounted = false;
+      adminRefreshInFlightRef.current = null;
       window.clearInterval(timer);
       window.clearInterval(ageTimer);
       document.removeEventListener('visibilitychange', handleVisibility);
