@@ -1138,8 +1138,8 @@ function buildRoom({ lite = false } = {}) {
   }
 
   addWindow(root, stoneEdge, brass, night, moon, moonHalo);
-  addSconce(root, -6.05, brass, sconceGlow, warmGlass);
-  addSconce(root, 6.05, brass, sconceGlow, warmGlass);
+  addSconce(root, -7.02, brass, sconceGlow, warmGlass);
+  addSconce(root, 7.02, brass, sconceGlow, warmGlass);
   addHeraldicTrophy(root, -5.95, leather, brass, steel);
   addHeraldicTrophy(root, 5.95, leather, brass, steel);
   addConsole(root, -6.15, woodDark, brass, leather);
