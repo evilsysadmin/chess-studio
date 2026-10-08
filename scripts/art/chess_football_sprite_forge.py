@@ -1408,6 +1408,21 @@ def build_outputs() -> dict[str, str]:
             "fps": 12,
             "footline": FOOTLINE,
         },
+        "directional_run": {
+            "quality_contract": "football-directional-run-canon-v1",
+            "encoded_parts": ["run_directions_v1/directional_run_v1.b64"],
+            "sha256": "7d23e79dd5f9b23d1a04cf27f4d725d249e37f528c23d696ea260cd498644e70",
+            "source_sha256": "f4102df3dff9620606ddb3c2ff8fb234b150f255562561e2b1b7a8fc3802dee7",
+            "cell": {"width": CELL_W, "height": CELL_H},
+            "frames": COLUMNS,
+            "footline": FOOTLINE,
+            "views": {
+                "front": 0,
+                "back": 1,
+                "back_diagonal": 2,
+                "front_diagonal": 3,
+            },
+        },
         "field_variants": field_variants,
         "atlases": atlas_meta,
         "animations": [
