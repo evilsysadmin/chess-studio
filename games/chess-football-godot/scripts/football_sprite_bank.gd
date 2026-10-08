@@ -56,6 +56,7 @@ static func _canonical_run_texture(team_id: int) -> Texture2D:
 	var image := Image.new()
 	assert(image.load_png_from_buffer(bytes) == OK, "Canonical run PNG inválido")
 	_recolor_canonical_run(image, team_id)
+	assert(image.generate_mipmaps() == OK, "No se pudieron generar mipmaps del canonical run")
 	var texture := ImageTexture.create_from_image(image)
 	_cached_run_textures[key] = texture
 	return texture
