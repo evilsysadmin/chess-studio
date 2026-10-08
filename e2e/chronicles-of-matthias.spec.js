@@ -82,8 +82,16 @@ test('Chronicles of Matthias · abre una cripta Three.js real y usa combate posi
   // even though the visible button is enabled and stable.
   const hildegard = mode.getByRole('button', { name: 'Seleccionar Hildegard', exact: true });
   await expect(mode).toHaveAttribute('data-chronicles-turns', '0');
-  await page.keyboard.press('2');
+  await page.evaluate(() => {
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: '2', bubbles: true, cancelable: true }));
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: '2', bubbles: true, cancelable: true }));
+  });
   await expect(hildegard).toHaveAttribute('aria-pressed', 'true');
+  const hildegardSheet = page.getByRole('dialog', { name: 'Hildegard', exact: true });
+  await expect(hildegardSheet).toBeVisible();
+  await hildegardSheet.getByRole('button', { name: 'Cerrar ficha', exact: true })
+    .evaluate((button) => button.click());
+  await expect(hildegardSheet).toHaveCount(0);
 
   // At the canonical start Hildegard is still one square short of the pawn:
   // prove the keyboard attack path without starting combat yet.
@@ -111,6 +119,37 @@ test('Chronicles of Matthias · abre una cripta Three.js real y usa combate posi
   await expect(canvas).toHaveCount(1);
   await expect(canvas).toHaveAttribute('data-chronicles-renderer-sentinel', 'stable-before-xp');
   await expect(mode.locator('.chronicles-renderer-error')).toHaveCount(0);
+
+  const hpBeforeEnemyHit = Number(await mode.getAttribute('data-party-hp-total'));
+  await page.evaluate((hpBefore) => {
+    const root = document.querySelector('[data-chronicles="true"]');
+    if (!root) throw new Error('Chronicles root missing');
+    const partyIds = new Set(['matthias', 'rook', 'bishop', 'knight']);
+    const pump = () => {
+      if (Number(root.getAttribute('data-party-hp-total') || 0) < hpBefore) {
+        window.clearInterval(window.__chroniclesFirstPersonDamagePump);
+        window.__chroniclesFirstPersonDamagePump = null;
+        return;
+      }
+      const actorId = root.getAttribute('data-chronicles-initiative-actor') || '';
+      if (!partyIds.has(actorId)) return;
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'd', bubbles: true, cancelable: true }));
+    };
+    window.__chroniclesFirstPersonDamagePump = window.setInterval(pump, 120);
+    pump();
+  }, hpBeforeEnemyHit);
+
+  await page.waitForFunction((hpBefore) => {
+    const root = document.querySelector('[data-chronicles="true"]');
+    const hp = Number(root?.getAttribute('data-party-hp-total') || 0);
+    const hitCue = root?.querySelector('.chronicles-party-member[data-damage-hit="true"]');
+    return hp < hpBefore && Boolean(hitCue);
+  }, hpBeforeEnemyHit, { timeout: 30_000, polling: 100 });
+
+  await page.evaluate(() => {
+    if (window.__chroniclesFirstPersonDamagePump) window.clearInterval(window.__chroniclesFirstPersonDamagePump);
+    window.__chroniclesFirstPersonDamagePump = null;
+  });
 });
 
 test('Chronicles of Matthias · clic en un PJ abre una ficha RPG con retrato authored y pausa el mundo', async ({ page }) => {
