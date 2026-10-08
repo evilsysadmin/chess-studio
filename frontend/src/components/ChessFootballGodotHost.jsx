@@ -26,6 +26,7 @@ export default function ChessFootballGodotHost({ onExit }) {
   const frameRef = useRef(null);
   const [attempt, setAttempt] = useState(0);
   const [runtimeReady, setRuntimeReady] = useState(false);
+  const [bootFailed, setBootFailed] = useState(false);
   const [mobileViewport, setMobileViewport] = useState(readMobileViewport);
   const [runtime, setRuntime] = useState({
     url: '',
@@ -70,7 +71,10 @@ export default function ChessFootballGodotHost({ onExit }) {
       if (event.source !== frameRef.current?.contentWindow) return;
       const message = event.data;
       if (!message || message.source !== 'chess-football-godot') return;
-      if (message.type === 'exit') {
+      if (message.type === 'ready') {
+        setBootFailed(false);
+        setRuntimeReady(true);
+      } else if (message.type === 'exit') {
         releaseChessFootballImmersiveMode();
         onExit?.();
       }
@@ -82,6 +86,7 @@ export default function ChessFootballGodotHost({ onExit }) {
   useEffect(() => {
     let cancelled = false;
     setRuntimeReady(false);
+    setBootFailed(false);
     setRuntime({ url: '', source: 'resolving', release: '' });
     resolveChessFootballGodotUrl().then((resolved) => {
       if (!cancelled) setRuntime(resolved);
@@ -89,10 +94,29 @@ export default function ChessFootballGodotHost({ onExit }) {
     return () => { cancelled = true; };
   }, [attempt]);
 
+  useEffect(() => {
+    if (!runtime.url || runtimeReady) return undefined;
+    const timeout = window.setTimeout(() => setBootFailed(true), 20000);
+    return () => window.clearTimeout(timeout);
+  }, [runtime.url, runtimeReady]);
+
   const exitFootball = () => {
     releaseChessFootballImmersiveMode();
     onExit?.();
   };
+
+  useEffect(() => {
+    if (runtimeReady) return undefined;
+    const escapeDuringBoot = (event) => {
+      if (event.key === 'Escape') {
+        event.stopImmediatePropagation();
+        event.preventDefault();
+        exitFootball();
+      }
+    };
+    window.addEventListener('keydown', escapeDuringBoot, true);
+    return () => window.removeEventListener('keydown', escapeDuringBoot, true);
+  }, [runtimeReady, onExit]);
 
   const requestLandscape = () => {
     document.documentElement.dataset.chessFootballImmersive = 'requested';
@@ -101,7 +125,10 @@ export default function ChessFootballGodotHost({ onExit }) {
 
   const mobilePortrait = mobileViewport.coarse && mobileViewport.portrait;
 
-  const runtimeStatus = runtimeReady
+
+  const runtimeStatus = bootFailed
+    ? 'Chess Football no ha podido arrancar'
+    : runtimeReady
     ? 'Chess Football listo'
     : runtime.source === 'fallback'
       ? 'POC Web todavía no publicado'
@@ -115,7 +142,7 @@ export default function ChessFootballGodotHost({ onExit }) {
       data-runtime-ready={runtimeReady ? 'true' : 'false'}
       data-mobile-portrait={mobilePortrait ? 'true' : 'false'}
     >
-      {mobileViewport.coarse && !mobilePortrait ? (
+      {!mobilePortrait ? (
         <button
           type="button"
           className="chess-football-godot-host__mobile-exit"
@@ -146,7 +173,15 @@ export default function ChessFootballGodotHost({ onExit }) {
         </div>
       ) : null}
 
-      {runtime.url ? (
+      {bootFailed ? (
+        <div className="chess-football-godot-host__fallback" role="alert">
+          <h2>Chess Football no ha arrancado</h2>
+          <p>El juego no confirmó que estuviera listo. Puedes reintentar o salir sin quedar atrapado en una pantalla negra.</p>
+          <button type="button" onClick={() => setAttempt((value) => value + 1)}>Reintentar</button>
+          <button type="button" onClick={exitFootball}>Salir de Chess Football</button>
+        </div>
+      ) : null}
+      {runtime.url && !bootFailed ? (
         <iframe
           ref={frameRef}
           key={runtime.url}
@@ -155,7 +190,7 @@ export default function ChessFootballGodotHost({ onExit }) {
           title="Chess Football Godot"
           allow="autoplay; fullscreen; gamepad"
           allowFullScreen
-          onLoad={() => setRuntimeReady(true)}
+          
         />
       ) : runtime.source === 'fallback' ? (
         <div className="chess-football-godot-host__fallback">
