@@ -95,6 +95,7 @@ test('Chess Football fills the viewport and returns only through the runtime exi
   const frame = page.locator('iframe[title="Chess Football Godot"]');
   await expect(frame).toBeVisible();
   await expect(frame).toHaveAttribute('src', INDEX_URL);
+  await expect(page.getByRole('button', { name: 'Salir de Chess Football' })).toBeVisible();
   await expect(host).toHaveAttribute('data-runtime-ready', 'true');
   // A frame load alone is never proof that the actual Godot scene booted.
   await expect(page.locator('.chess-football-godot-host__status')).toHaveCount(0);
