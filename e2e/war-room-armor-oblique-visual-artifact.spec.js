@@ -66,29 +66,16 @@ async function captureCanvas(context, page, scene) {
   }
 }
 
-async function cropArmor(page, scenePng, side) {
-  return page.evaluate(async ({ png, cropSide }) => {
-    const image = new Image();
-    image.src = `data:image/png;base64,${png}`;
-    await image.decode();
-
-    const ratio = cropSide === 'left'
-      ? { x: 0.015, y: 0.18, width: 0.27, height: 0.44 }
-      : { x: 0.715, y: 0.18, width: 0.27, height: 0.44 };
-    const sx = Math.round(image.naturalWidth * ratio.x);
-    const sy = Math.round(image.naturalHeight * ratio.y);
-    const sw = Math.round(image.naturalWidth * ratio.width);
-    const sh = Math.round(image.naturalHeight * ratio.height);
-    const output = document.createElement('canvas');
-    output.width = sw * 3;
-    output.height = sh * 3;
-    const ctx = output.getContext('2d');
-    if (!ctx) throw new Error('2D canvas unavailable for armor oblique crop');
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(image, sx, sy, sw, sh, 0, 0, output.width, output.height);
-    return output.toDataURL('image/png').replace(/^data:image\/png;base64,/, '');
-  }, { png: scenePng, cropSide: side });
+function armorClip(scene, side) {
+  const ratio = side === 'left'
+    ? { x: 0.015, y: 0.18, width: 0.27, height: 0.44 }
+    : { x: 0.715, y: 0.18, width: 0.27, height: 0.44 };
+  return {
+    x: Math.round(scene.x + scene.width * ratio.x),
+    y: Math.round(scene.y + scene.height * ratio.y),
+    width: Math.round(scene.width * ratio.width),
+    height: Math.round(scene.height * ratio.height),
+  };
 }
 
 test('War Room armor · artifacts expose sword grip on both armors from the player camera', async () => {
@@ -130,7 +117,7 @@ test('War Room armor · artifacts expose sword grip on both armors from the play
         Buffer.from(png, 'base64'),
       );
       for (const side of ['left', 'right']) {
-        const crop = await cropArmor(page, png, side);
+        const crop = await captureCanvas(context, page, armorClip(scene, side));
         await writeFile(
           `${ARTIFACT_DIR}/war-room-desktop-inspection-1600x1000-${capture.label}-armor-${side}.png`,
           Buffer.from(crop, 'base64'),
