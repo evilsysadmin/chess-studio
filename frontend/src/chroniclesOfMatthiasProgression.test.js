@@ -52,6 +52,10 @@ describe('Chronicles Tactics · progression', () => {
 
     const level4 = advanceChroniclesDungeonLevel(level2, 3);
     expect(chroniclesDungeonLevel(level4)).toBe(4);
+
+    const veteran = { ...level4, dungeonLevel: 5 };
+    expect(chroniclesDungeonLevel(advanceChroniclesDungeonLevel(veteran, 2))).toBe(5);
+    expect(chroniclesDungeonLevel(advanceChroniclesDungeonLevel(veteran, 99))).toBe(99);
   });
 
   it('migrates legacy progression to the exact canonical character build', () => {
