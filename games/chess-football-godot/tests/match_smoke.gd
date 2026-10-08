@@ -43,6 +43,17 @@ func _initialize() -> void:
 	assert(match_node.controlled.debug_visual_ready())
 	assert(match_node.controlled.debug_animation_names().size() == 7)
 	assert(match_node.controlled.debug_animation_names().has("shoot"))
+	var raster_frames := ChessFootballSpriteBank.build_frames(0, "midfielder", 2)
+	var run_frame := raster_frames.get_frame_texture(&"run", 0) as AtlasTexture
+	var sprint_frame := raster_frames.get_frame_texture(&"sprint", 0) as AtlasTexture
+	var idle_frame := raster_frames.get_frame_texture(&"idle", 0) as AtlasTexture
+	assert(run_frame != null and sprint_frame != null and idle_frame != null)
+	assert(run_frame.atlas.get_size() == Vector2(1024.0, 144.0))
+	assert(sprint_frame.atlas.get_size() == Vector2(1024.0, 144.0))
+	assert(idle_frame.atlas.get_size().y > 144.0)
+	assert(run_frame.region.position.y == 0.0)
+	assert(ChessFootballSpriteBank.raster_run_path(0).ends_with("fc_matthias.png"))
+	assert(ChessFootballSpriteBank.raster_run_path(1).ends_with("real_enroque.png"))
 	assert(ChessFootballSpriteBank.atlas_key(0, "keeper") == "fc_matthias_keeper")
 	assert(ChessFootballSpriteBank.atlas_key(1, "keeper") == "real_enroque_keeper")
 	assert(ChessFootballSpriteBank.atlas_key(0, "forward") == "fc_matthias")
