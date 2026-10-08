@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildLiveShareRecord, encodeShareRecord, decodeShareRecord, buildShareText } from './shareResult.js';
+import { buildLiveShareRecord, encodeShareRecord, decodeShareRecord, buildShareText, countFullMoves } from './shareResult.js';
 
 describe('partidas compartidas', () => {
   const record = {
@@ -34,6 +34,13 @@ describe('partidas compartidas', () => {
     expect(decoded.outcome).toBe('win');
     expect(decoded.moves).toEqual(['e4', 'c5', 'Nf3']);
     expect(JSON.stringify(decoded)).not.toContain('token');
+  });
+
+  it('cuenta jugadas completas en el resumen, no medias jugadas', () => {
+    expect(countFullMoves(record.moves)).toBe(2);
+    expect(countFullMoves([{ san: 'e4' }, { san: 'e5' }])).toBe(1);
+    expect(countFullMoves([])).toBe(0);
+    expect(buildShareText(record)).toContain('2 jugadas');
   });
 
   it('genera un resumen para presumir', () => {
