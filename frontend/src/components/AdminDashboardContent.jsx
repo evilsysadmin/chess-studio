@@ -37,7 +37,7 @@ export default function AdminDashboardContent({ section = 'overview', onNavigate
     matthiasStatusError,
     setMatthiasStatusError,
     invalidateAdminData,
-  } = useAdminDashboardData();
+  } = useAdminDashboardData(section);
   const {
     feedbackUpdating,
     feedbackTestCreating,
