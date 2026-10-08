@@ -28,23 +28,31 @@ function startingMatch() {
   };
 }
 
-function activeMatch() {
+function activeMatch(startsAt) {
   return {
     ...startingMatch(),
     status: 'active',
     youReady: true,
     opponentReady: true,
     yourTurn: true,
-    startsAt: new Date(Date.now() + 5000).toISOString(),
+    startsAt,
     clock: { id: '30+0', whiteMs: 1800000, blackMs: 1800000, incrementMs: 0, runningColor: null },
   };
 }
 
 async function prepareHandoff(page, { holdReady = false } = {}) {
   await mockApi(page);
-  let released = !holdReady;
+  let released = false;
+  let activationStartsAt = null;
+  const authoritativeActiveMatch = () => activeMatch(activationStartsAt);
+  const commitReadiness = () => {
+    released = true;
+    // A single server timestamp for the entire simulated match: polling must
+    // never re-arm the countdown. Leave room for slow CI screenshots.
+    activationStartsAt ||= new Date(Date.now() + 45_000).toISOString();
+  };
   let releaseReady = () => {};
-  const readyGate = new Promise((resolve) => { releaseReady = () => { released = true; resolve(); }; });
+  const readyGate = new Promise((resolve) => { releaseReady = resolve; });
 
   await page.route('**/api/pvp/lobby', (route) => route.fulfill({
     status: 200,
@@ -74,17 +82,18 @@ async function prepareHandoff(page, { holdReady = false } = {}) {
     body: JSON.stringify({ match: startingMatch() }),
   }));
   await page.route('**/api/pvp/matches/pvp-handoff-visual-1/ready', async (route) => {
-    if (holdReady && !released) await readyGate;
+    if (holdReady) await readyGate;
+    commitReadiness();
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ match: activeMatch() }),
+      body: JSON.stringify({ match: authoritativeActiveMatch() }),
     });
   });
   await page.route('**/api/pvp/matches/pvp-handoff-visual-1', (route) => route.fulfill({
     status: 200,
     contentType: 'application/json',
-    body: JSON.stringify({ match: released ? activeMatch() : startingMatch(), pollAfterMs: 3000 }),
+    body: JSON.stringify({ match: released ? authoritativeActiveMatch() : startingMatch(), pollAfterMs: 3000 }),
   }));
 
   await login(page);
