@@ -40,10 +40,6 @@ import './WarRoomMobileLandscape.css';
 
 const PIECE_NAMES_ES = { p: 'un peón', n: 'un caballo', b: 'un alfil', r: 'una torre', q: 'la dama' };
 
-// Tiempo mínimo (ms) que se muestra "La CPU está pensando…" antes de aplicar
-// su jugada, aunque el servidor responda antes. Sin esto, en dificultad baja
-// la respuesta puede llegar tan rápido que la animación del jugador ni
-// alcanza a verse antes de que se dispare la de la CPU encima.
 // El control táctico es una pausa pedagógica, no un semáforo crítico. Si el
 // usuario no pulsa el CTA (por ejemplo porque quedó fuera del viewport), la
 // partida continúa sola y nunca aparenta haberse congelado.
