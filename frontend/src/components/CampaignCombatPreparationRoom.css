@@ -193,18 +193,21 @@
 .combat-operations-primary {
   left: .85rem;
   bottom: .85rem;
-  width: min(590px, calc(100% - 1.7rem));
+  width: min(600px, calc(100% - 1.7rem));
   display: grid !important;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: end;
-  gap: .8rem;
+  gap: .9rem;
   margin: 0;
-  padding: .82rem;
-  border: 1px solid rgba(218, 190, 128, .24);
-  border-radius: 15px;
-  background: linear-gradient(145deg, rgba(7, 10, 14, .92), rgba(9, 13, 18, .76));
-  box-shadow: 0 18px 46px rgba(0, 0, 0, .34);
-  backdrop-filter: blur(15px);
+  padding: .7rem .2rem .62rem .9rem;
+  border: 0;
+  border-left: 3px solid rgba(215, 184, 96, .78);
+  border-top: 1px solid rgba(218, 190, 128, .20);
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  border-radius: 0;
+  background: linear-gradient(90deg, rgba(7, 10, 14, .90), rgba(7, 10, 14, .60) 76%, transparent);
+  box-shadow: 0 16px 34px rgba(0, 0, 0, .24);
+  backdrop-filter: blur(8px);
 }
 
 .combat-operations-primary > div:first-child {
@@ -583,4 +586,25 @@ body:has(.combat-operations-screen) .global-music-dock {
   border: 0;
   border-radius: 0;
   box-shadow: none;
+}
+
+.combat-operations-primary-actions .campaign-main-cta {
+  min-height: 48px;
+  border-radius: 3px;
+  box-shadow: 0 9px 20px rgba(0,0,0,.28), inset 0 1px rgba(255,255,255,.05);
+}
+
+.combat-operations-primary-actions .campaign-recommended-formation {
+  min-height: 40px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: rgba(232, 220, 192, .82);
+  text-align: left;
+}
+
+.combat-operations-primary-actions .campaign-recommended-formation:hover:not(:disabled) {
+  background: transparent;
+  color: var(--parchment);
+  transform: translateX(2px);
 }
