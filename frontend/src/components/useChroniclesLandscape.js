@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   exitWarRoomBrowserFullscreen,
+  requestWarRoomBrowserFullscreen,
   requestWarRoomLandscapeFullscreen,
   unlockWarRoomOrientation,
 } from './useWarRoomImmersive.js';
@@ -22,7 +23,8 @@ export async function requestChroniclesLandscapeOnEntry({
   screenApi = globalThis.screen,
 } = {}) {
   if (!shouldAutoRotateChroniclesOnEntry({ win })) {
-    return { requested: false, fullscreen: false, landscape: false };
+    const fullscreen = await requestWarRoomBrowserFullscreen(doc);
+    return { requested: true, fullscreen, landscape: false };
   }
   const result = await requestWarRoomLandscapeFullscreen({ doc, screenApi });
   return { requested: true, ...result };
