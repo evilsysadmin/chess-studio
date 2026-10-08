@@ -7,6 +7,10 @@ const CAPTURES = [
   { label: 'desktop-1440x900', width: 1440, height: 900, hasTouch: false },
   { label: 'android-390x844', width: 390, height: 844, hasTouch: true },
 ];
+const LANDING_CAPTURES = [
+  ...CAPTURES,
+  { label: 'android-landscape-915x412', width: 915, height: 412, hasTouch: true },
+];
 const VALID_SCOPES = new Set(['all', 'landing', 'chronicles', 'pawnslug', 'football']);
 const REQUESTED_SCOPES = new Set(
   String(process.env.APP_VISUAL_EXPERIMENTS_SCOPE || 'all')
@@ -306,7 +310,7 @@ if (scopeEnabled('landing')) {
     await mkdir(ARTIFACT_DIR, { recursive: true });
 
     const captures = [];
-    for (const capture of CAPTURES) {
+    for (const capture of LANDING_CAPTURES) {
       await withCapturePage(browser, capture, async (page) => {
         const chronicles = page.locator('.lab-workshop-portal--chronicles');
         const arcade = page.locator('.lab-workshop-wing--hangar');
@@ -327,7 +331,14 @@ if (scopeEnabled('landing')) {
         expect(health.trailblazer?.width || 0, `${capture.label}: Trailblazer visible width`).toBeGreaterThan(0);
 
         if (capture.hasTouch) {
-          expect(health.trailblazer.top, `${capture.label}: Trailblazer stacked below Pawn Slug`).toBeGreaterThan(health.pawnSlug.top);
+          if (capture.height > capture.width) {
+            expect(health.trailblazer.top, `${capture.label}: Trailblazer stacked below Pawn Slug`).toBeGreaterThan(health.pawnSlug.top);
+          } else {
+            for (const [name, rect] of [['Pawn Slug', health.pawnSlug], ['Trailblazer', health.trailblazer]]) {
+              expect(rect?.top, `${capture.label}: ${name} should start onscreen`).toBeGreaterThanOrEqual(-1);
+              expect(rect?.bottom, `${capture.label}: ${name} should fit first screen`).toBeLessThanOrEqual(capture.height + 1);
+            }
+          }
           // Mobile dungeon plaques deliberately vary in width so the room does not
           // collapse back into a symmetric dashboard grid. Keep both comfortably
           // larger than the minimum touch target instead of enforcing equality.
