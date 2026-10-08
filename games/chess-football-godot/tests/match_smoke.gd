@@ -204,7 +204,8 @@ func _initialize() -> void:
 	assert(sprite_manifest["atlases"]["real_enroque"]["kinetics_profile"] == "weight-transfer-v21")
 	assert(sprite_manifest["atlases"]["real_enroque_keeper"]["kinetics_profile"] == "weight-transfer-v21")
 	assert(match_node.teams[0][0].debug_loop_phase_frame(&"idle") == 0)
-	assert(match_node.teams[0][1].debug_loop_phase_frame(&"idle") == 3)
+	# Raster idle has a single intentional hold; run still keeps per-player phase staggering.
+	assert(match_node.teams[0][1].debug_loop_phase_frame(&"idle") == 0)
 	assert(
 		match_node.teams[0][0].debug_loop_phase_frame(&"run")
 		!= match_node.teams[0][1].debug_loop_phase_frame(&"run")
