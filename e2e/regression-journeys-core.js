@@ -306,6 +306,31 @@ test('admin · presencia distingue primer plano, segundo plano, idle y offline',
   await expect(offline.getByText(/Segundo plano/)).toHaveCount(0);
 });
 
+test('admin · evidencia visual de cinco áreas en desktop y móvil', async ({ page }, testInfo) => {
+  await mockApi(page, {
+    isAdmin: true,
+    adminUsers: [{ username: 'visual-user', presence: 'online', foreground: true }],
+    initialFeedback: [{ id: 'admin-visual-feedback', message: 'Mensaje de revisión visual', status: 'new' }],
+  });
+  await login(page);
+  await page.getByRole('button', { name: '2 usuarios online', exact: true }).click();
+  for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport);
+    for (const section of ['overview', 'observability', 'users', 'feedback', 'matthias']) {
+      await page.locator(`#admin-tab-${section}`).click();
+      const panel = page.locator(`#admin-panel-${section}`);
+      await expect(panel).toBeVisible();
+      await expect(page.locator('.admin-workspace-shell')).toHaveAttribute('data-admin-section', section);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      await page.screenshot({
+        path: testInfo.outputPath(`admin-${section}-${viewport.width}.png`),
+        fullPage: true,
+        animations: 'disabled',
+      });
+    }
+  }
+});
+
 test('Matthias · el briefing persistente aparece antes de una partida rápida', async ({ page }) => {
   await mockApi(page);
   await login(page);
