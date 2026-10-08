@@ -533,8 +533,8 @@ func proceduralize(manifest bson.D, seed int64, proposal any, version int, dunge
 	if err != nil {
 		return nil, "", "", err
 	}
-	if planner.accepted {
-		planner.recipe = dungeonTopologyRecipe(planner.recipe, dungeonLevel, topologyVersion)
+	if planner.accepted && planner.recipe.Difficulty < base.Difficulty {
+		planner.recipe.Difficulty = base.Difficulty
 	}
 	local, err := materializeRecipe(composed, base, version)
 	if err != nil {
