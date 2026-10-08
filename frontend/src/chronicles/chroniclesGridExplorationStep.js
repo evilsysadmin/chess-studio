@@ -11,6 +11,7 @@ export function chroniclesGridExplorationStep(state, action) {
   const next = chroniclesReduce(before, action);
   if (!before || !next || before.phase !== 'explore' || next.phase !== 'explore') return next;
   if (next.x === before.x && next.y === before.y) return next;
+  // Reuse the authored occupancy/AI predicates; this scheduler never calls attack or damage APIs.
 
   let current = next;
   for (const enemy of chroniclesActiveEnemies(next)) {
