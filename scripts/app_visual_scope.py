@@ -265,6 +265,13 @@ def _surface_groups(path: str) -> set[str] | None:
         return {"training", "warroom"}
     if lower in TRAINING_PROGRESS_MATTHIAS_VISUAL_SURFACES:
         return {"training"}
+    if lower in {
+        "frontend/src/tutorialroute.js",
+        "frontend/src/components/trainingschoolintentpreload.js",
+    }:
+        return {"training"}
+    if lower == "frontend/src/components/homeillustrated.jsx":
+        return {"home"}
     if lower in TRAINING_VISUAL_SURFACES:
         return {"training"}
     if lower == "frontend/src/usepvpappflow.js":
@@ -1103,6 +1110,9 @@ def self_test() -> None:
     assert visual_pipeline.capture_groups == "none"
     assert visual_pipeline.experiments_scope == "none"
     assert not visual_pipeline.chronicles_avatar
+    assert classify(["frontend/src/tutorialRoute.js"]).capture_groups == "training"
+    assert classify(["frontend/src/components/trainingSchoolIntentPreload.js"]).capture_groups == "training"
+    assert classify(["frontend/src/components/HomeIllustrated.jsx"]).capture_groups == "home"
     print("app visual scope self-test: OK")
 
 
