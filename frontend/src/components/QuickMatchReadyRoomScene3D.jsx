@@ -693,13 +693,31 @@ function addHeraldicTrophy(root, x, leather, brass, steel) {
 function addConsole(root, x, wood, brass, leather) {
   const console = new THREE.Group();
   console.name = 'quick-match-ready-console';
-  box(console, [2.35, .18, .72], wood, [0, 1.18, 0], 'console-top');
-  box(console, [2.05, .62, .52], leather, [0, .82, -.03], 'console-front');
-  for (const legX of [-.91, .91]) {
-    cylinder(console, [.075, .10], 1.04, wood, [legX, .55, 0], 'console-leg', 16);
+
+  box(console, [2.42, .16, .76], wood, [0, 1.22, 0], 'console-top');
+  box(console, [2.18, .10, .68], brass, [0, 1.10, 0], 'console-top-trim');
+
+  const cabinet = box(console, [2.02, .66, .54], wood, [0, .78, -.03], 'console-cabinet');
+  cabinet.castShadow = true;
+  box(console, [1.82, .49, .055], leather, [0, .79, .26], 'console-front-inset');
+  box(console, [1.92, .045, .06], brass, [0, 1.00, .30], 'console-brass-line-top');
+  box(console, [1.92, .045, .06], brass, [0, .57, .30], 'console-brass-line-bottom');
+
+  for (const panelX of [-.47, .47]) {
+    box(console, [.055, .44, .06], brass, [panelX, .79, .30], 'console-panel-divider');
+    sphere(console, .055, brass, [panelX * .55, .79, .345], 'console-handle', 16, 10);
   }
-  box(console, [1.84, .055, .055], brass, [0, .96, .38], 'console-brass-line');
-  console.position.set(x, 0, -4.92);
+
+  for (const legX of [-.88, .88]) {
+    cylinder(console, [.085, .12], .46, wood, [legX, .39, 0], 'console-leg-upper', 18);
+    sphere(console, .12, wood, [legX, .17, 0], 'console-leg-knot', 18, 12);
+    cylinder(console, [.07, .10], .34, wood, [legX, -.03, 0], 'console-leg-lower', 18);
+    cylinder(console, [.11, .075], .10, brass, [legX, -.25, 0], 'console-foot-collar', 16);
+    sphere(console, .10, wood, [legX, -.34, 0], 'console-foot', 16, 10);
+  }
+
+  box(console, [1.56, .08, .08], wood, [0, .12, .02], 'console-stretcher');
+  console.position.set(x, .32, -4.92);
   root.add(console);
 }
 
