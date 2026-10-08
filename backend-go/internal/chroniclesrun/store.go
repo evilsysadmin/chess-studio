@@ -92,6 +92,9 @@ func document(run NewRun) bson.D {
 	if run.DungeonLevel != nil {
 		doc = append(doc, bson.E{Key: "dungeonLevel", Value: pydoc.Int(*run.DungeonLevel)})
 	}
+	if run.DungeonTopologyVersion != nil {
+		doc = append(doc, bson.E{Key: "dungeonTopologyVersion", Value: pydoc.Int(*run.DungeonTopologyVersion)})
+	}
 	if run.PlacementVersion != nil {
 		doc = append(doc, bson.E{Key: "contentPlacementVersion", Value: pydoc.Int(*run.PlacementVersion)})
 	}
@@ -192,6 +195,9 @@ func Public(row bson.D) bson.D {
 	}
 	if v := get(row, "dungeonLevel"); v != nil {
 		out = append(out, bson.E{Key: "dungeonLevel", Value: intOf(v)})
+	}
+	if v := get(row, "dungeonTopologyVersion"); v != nil {
+		out = append(out, bson.E{Key: "dungeonTopologyVersion", Value: intOf(v)})
 	}
 	if v := get(row, "contentPlacementVersion"); v != nil {
 		out = append(out, bson.E{Key: "contentPlacementVersion", Value: intOf(v)})
