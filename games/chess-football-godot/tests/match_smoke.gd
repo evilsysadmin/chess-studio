@@ -274,6 +274,39 @@ func _initialize() -> void:
 	assert(String(keeper_plan["kind"]) == "clear")
 	print("SMOKE_STAGE=keeper-distribution")
 
+	# Layered pressing: one AI player attacks the carrier, a second takes the
+	# goal-side cover lane, while supporting runners advance beyond possession.
+	var press_carrier: Footballer = match_node.teams[0][4]
+	press_carrier.global_position = ChessFootballMath.PITCH_RECT.get_center()
+	match_node.ball.attach_to(press_carrier)
+	var rival_defender: Footballer = match_node.teams[1][1]
+	var rival_midfielder: Footballer = match_node.teams[1][2]
+	var rival_wing: Footballer = match_node.teams[1][3]
+	var rival_forward: Footballer = match_node.teams[1][4]
+	rival_defender.global_position = press_carrier.global_position + Vector2(210.0, 25.0)
+	rival_midfielder.global_position = press_carrier.global_position + Vector2(255.0, -85.0)
+	rival_wing.global_position = press_carrier.global_position + Vector2(470.0, 180.0)
+	rival_forward.global_position = press_carrier.global_position + Vector2(610.0, -210.0)
+	var primary_presser: Footballer = match_node.debug_ai_primary_presser(1)
+	var secondary_presser: Footballer = match_node.debug_ai_secondary_presser(1)
+	assert(primary_presser == rival_defender)
+	assert(secondary_presser == rival_midfielder)
+	var cover_target: Vector2 = match_node.debug_ai_cover_target(
+		secondary_presser,
+		press_carrier.global_position,
+	)
+	var rival_own_goal: Vector2 = ChessFootballMath.goal_center(0)
+	assert(cover_target.distance_to(rival_own_goal) < press_carrier.global_position.distance_to(rival_own_goal))
+
+	var ai_ball_carrier: Footballer = rival_forward
+	ai_ball_carrier.global_position = ChessFootballMath.PITCH_RECT.get_center()
+	match_node.ball.attach_to(ai_ball_carrier)
+	rival_wing.home_position = ai_ball_carrier.global_position + Vector2(120.0, 220.0)
+	var support_target: Vector2 = match_node.debug_ai_support_target(rival_wing)
+	assert(support_target.x < ai_ball_carrier.global_position.x - 180.0)
+	assert(absf(support_target.y - ai_ball_carrier.global_position.y) > 40.0)
+	print("SMOKE_STAGE=ai-pressure-support")
+
 	# The same shot crossing the goal plane is only a goal while the whole
 	# ball fits below the crossbar.
 	match_node.ball.release(Vector2.RIGHT, 0.0)
