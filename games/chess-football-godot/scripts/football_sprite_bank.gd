@@ -102,10 +102,13 @@ static func build_frames(team_id: int, role: String = "", squad_index: int = -1)
 		var animation: Dictionary = item
 		var animation_name := StringName(animation["name"])
 		frames.add_animation(animation_name)
-		frames.set_animation_speed(animation_name, float(animation["fps"]))
+		var animation_fps := float(animation["fps"])
+		if animation_name == &"sprint":
+			animation_fps = maxf(animation_fps, 15.0)
+		frames.set_animation_speed(animation_name, animation_fps)
 		frames.set_animation_loop(animation_name, bool(animation["loop"]))
-		if animation_name == &"run":
-			assert(run_frames == int(animation["frames"]), "Canonical run frame count inválido")
+		if animation_name in [&"run", &"sprint"]:
+			assert(run_frames == int(animation["frames"]), "Canonical locomotion frame count inválido")
 			for column in range(run_frames):
 				var run_region := AtlasTexture.new()
 				run_region.atlas = run_texture
