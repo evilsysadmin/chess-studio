@@ -1098,9 +1098,16 @@ function buildRoom({ lite = false } = {}) {
   box(root, [17.3, .36, .34], stoneEdge, [0, 6.45, -6.12], 'room-cornice');
 
   for (const x of [-7.8, -3.2, 3.2, 7.8]) {
-    box(root, [.34, 6.72, .54], stoneEdge, [x, 3.18, -6.11], 'pilaster');
-    box(root, [.54, .18, .72], stoneHighlight, [x, .37, -5.98], 'pilaster-base');
-    box(root, [.58, .20, .72], stoneHighlight, [x, 6.36, -5.98], 'pilaster-cap');
+    box(root, [.42, 6.30, .50], stoneEdge, [x, 3.20, -6.10], 'pilaster-shaft');
+    box(root, [.22, 5.74, .08], stoneHighlight, [x, 3.20, -5.80], 'pilaster-face-relief');
+
+    box(root, [.70, .18, .78], stoneHighlight, [x, .40, -5.98], 'pilaster-base-plinth');
+    box(root, [.58, .17, .68], stoneEdge, [x, .56, -5.99], 'pilaster-base-step');
+    box(root, [.48, .13, .59], stoneHighlight, [x, .70, -6.02], 'pilaster-base-neck');
+
+    box(root, [.48, .13, .59], stoneHighlight, [x, 5.72, -6.02], 'pilaster-cap-neck');
+    box(root, [.60, .17, .70], stoneEdge, [x, 5.86, -5.99], 'pilaster-cap-step');
+    box(root, [.76, .22, .82], stoneHighlight, [x, 6.04, -5.96], 'pilaster-cap-abacus');
   }
 
   for (const x of [-5.95, 5.95]) {
