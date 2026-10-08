@@ -1,0 +1,33 @@
+name: Chronicles · temporary parity fixtures
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/chronicles-contracts-artifact.yml'
+      - 'backend-python/chronicles*'
+      - 'backend-go/internal/chronicles/**'
+      - 'scripts/chronicles*'
+permissions:
+  contents: read
+jobs:
+  generate:
+    name: Generate Python-authoritative contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+      - uses: ./.github/actions/cache-python-venv
+      - name: Generate and deterministically verify contracts
+        run: |
+          .venv/bin/python scripts/chronicles_contracts.py
+          .venv/bin/python scripts/chronicles_contracts.py --check
+      - uses: actions/upload-artifact@v7
+        with:
+          name: chronicles-regenerated-python-corpora
+          if-no-files-found: error
+          path: |
+            backend-go/internal/chronicles/testdata/python_chronicles_area_corpus.json
+            backend-go/internal/gamesapi/testdata/python_chronicles_runs_corpus.json
+          retention-days: 1
