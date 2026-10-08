@@ -782,6 +782,16 @@ function addHeraldicTrophy(root, x, leather, brass, steel) {
       16,
       10,
     );
+    const grip = cylinder(
+      trophy,
+      [.045, .055],
+      .34,
+      leather,
+      [direction * .66, -.68, .08],
+      'wall-sword-grip',
+      14,
+    );
+    grip.rotation.z = direction * .61;
   }
 
   const shieldShape = new THREE.Shape();
@@ -793,6 +803,23 @@ function addHeraldicTrophy(root, x, leather, brass, steel) {
   shieldShape.lineTo(-.58, .43);
   shieldShape.closePath();
 
+  const shieldRim = new THREE.Mesh(
+    new THREE.ExtrudeGeometry(shieldShape, {
+      depth: .07,
+      bevelEnabled: true,
+      bevelSegments: 2,
+      bevelSize: .055,
+      bevelThickness: .035,
+    }),
+    brass,
+  );
+  shieldRim.scale.set(1.08, 1.08, 1);
+  shieldRim.position.z = .09;
+  shieldRim.castShadow = true;
+  shieldRim.receiveShadow = true;
+  shieldRim.name = 'wall-heater-shield-rim';
+  trophy.add(shieldRim);
+
   const shield = new THREE.Mesh(
     new THREE.ExtrudeGeometry(shieldShape, {
       depth: .09,
@@ -803,14 +830,19 @@ function addHeraldicTrophy(root, x, leather, brass, steel) {
     }),
     leather,
   );
-  shield.position.z = .13;
+  shield.position.z = .16;
   shield.castShadow = true;
   shield.receiveShadow = true;
   shield.name = 'wall-heater-shield';
   trophy.add(shield);
 
-  box(trophy, [.095, 1.18, .055], brass, [0, -.02, .27], 'wall-shield-cross-vertical');
-  box(trophy, [.82, .095, .055], brass, [0, .20, .27], 'wall-shield-cross-horizontal');
+  box(trophy, [.095, 1.18, .055], brass, [0, -.02, .30], 'wall-shield-cross-vertical');
+  box(trophy, [.82, .095, .055], brass, [0, .20, .30], 'wall-shield-cross-horizontal');
+  sphere(trophy, .105, brass, [0, .13, .35], 'wall-shield-boss', 20, 12);
+
+  for (const [rx, ry] of [[-.36,.40],[.36,.40],[-.32,-.34],[.32,-.34]]) {
+    sphere(trophy, .035, brass, [rx, ry, .31], 'wall-shield-rivet', 12, 8);
+  }
 
   trophy.position.set(x, 1.88, -5.90);
   trophy.scale.setScalar(.82);
