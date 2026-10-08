@@ -43,8 +43,10 @@ static func _canonical_run_texture(team_id: int) -> Texture2D:
 		return _cached_run_textures[key]
 	var meta := _canonical_run_meta()
 	assert(not meta.is_empty(), "Falta canonical run meta para Chess Football")
-	var encoded_path := ASSET_ROOT + String(meta["encoded_atlas"])
-	var encoded := FileAccess.get_file_as_string(encoded_path).strip_edges()
+	var encoded := ""
+	for part_variant in meta["encoded_parts"]:
+		var encoded_path := ASSET_ROOT + String(part_variant)
+		encoded += FileAccess.get_file_as_string(encoded_path).strip_edges()
 	assert(not encoded.is_empty(), "Canonical run atlas vacío")
 	var bytes := Marshalls.base64_to_raw(encoded)
 	var hash := HashingContext.new()
