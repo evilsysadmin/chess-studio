@@ -10,6 +10,7 @@ const CAPTURES = [
 const LANDING_CAPTURES = [
   ...CAPTURES,
   { label: 'android-landscape-915x412', width: 915, height: 412, hasTouch: true },
+  { label: 'android-desktop-site-1536x709', width: 1536, height: 709, hasTouch: true },
 ];
 const VALID_SCOPES = new Set(['all', 'landing', 'chronicles', 'pawnslug', 'football']);
 const REQUESTED_SCOPES = new Set(
@@ -194,6 +195,16 @@ async function captureHealth(page, label) {
       viewport: { width: window.innerWidth, height: window.innerHeight },
       horizontalOverflow: root.scrollWidth > root.clientWidth + 1,
       arcadeZone: rect('.lab-workshop-wing--hangar'),
+      entrances: [...document.querySelectorAll('.lab-workshop-portal, .lab-workshop-map-table, .lab-workshop-tool')].map((button) => {
+        const box = button.getBoundingClientRect();
+        const node = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+        return {
+          name: button.textContent.trim().replace(/\\s+/g, ' ').slice(0, 40),
+          left: box.left, top: box.top, right: box.right, bottom: box.bottom,
+          width: box.width, height: box.height,
+          centerClickable: Boolean(node && (node === button || button.contains(node))),
+        };
+      }),
       pawnSlug: rect('.lab-workshop-portal--pawnslug-godot'),
       trailblazer: rect('.lab-workshop-portal--trailblazer'),
       tacticalDeck: rect('.lab-workshop-wing--ops'),
@@ -331,6 +342,16 @@ if (scopeEnabled('landing')) {
         expect(health.trailblazer?.width || 0, `${capture.label}: Trailblazer visible width`).toBeGreaterThan(0);
 
         if (capture.hasTouch) {
+          expect(health.entrances, `${capture.label}: eight actionable experiments`).toHaveLength(8);
+          for (const entry of health.entrances) {
+            expect(entry.left, `${capture.label}: ${entry.name} left`).toBeGreaterThanOrEqual(-1);
+            expect(entry.right, `${capture.label}: ${entry.name} right`).toBeLessThanOrEqual(capture.width + 1);
+            expect(entry.top, `${capture.label}: ${entry.name} top`).toBeGreaterThanOrEqual(-1);
+            expect(entry.bottom, `${capture.label}: ${entry.name} first-screen bottom`).toBeLessThanOrEqual(capture.height + 1);
+            expect(entry.width, `${capture.label}: ${entry.name} width for touch`).toBeGreaterThanOrEqual(44);
+            expect(entry.height, `${capture.label}: ${entry.name} height for touch`).toBeGreaterThanOrEqual(44);
+            expect(entry.centerClickable, `${capture.label}: ${entry.name} hit test`).toBe(true);
+          }
           if (capture.height > capture.width) {
             expect(health.trailblazer.top, `${capture.label}: Trailblazer stacked below Pawn Slug`).toBeGreaterThan(health.pawnSlug.top);
           } else {
