@@ -7,6 +7,7 @@ const TEAM_KEYS := ["fc_matthias", "real_enroque"]
 
 static var _cached_manifest: Dictionary = {}
 static var _cached_run_textures: Dictionary = {}
+static var _cached_pose_textures: Dictionary = {}
 
 static func manifest() -> Dictionary:
 	if not _cached_manifest.is_empty():
@@ -19,6 +20,31 @@ static func manifest() -> Dictionary:
 
 static func _team_key(team_id: int) -> String:
 	return TEAM_KEYS[clampi(team_id, 0, TEAM_KEYS.size() - 1)]
+
+static func _canonical_pose_meta() -> Dictionary:
+	return manifest().get("canonical_pose_bank", {})
+
+static func _canonical_pose_texture(team_id: int) -> Texture2D:
+	var key := _team_key(team_id)
+	if _cached_pose_textures.has(key):
+		return _cached_pose_textures[key]
+	var meta := _canonical_pose_meta()
+	assert(not meta.is_empty(), "Falta canonical pose bank para Chess Football")
+	var encoded := ""
+	for part_variant in meta["encoded_parts"]:
+		var encoded_path := ASSET_ROOT + String(part_variant)
+		encoded += FileAccess.get_file_as_string(encoded_path).strip_edges()
+	assert(not encoded.is_empty(), "Canonical pose bank vacío")
+	var bytes := Marshalls.base64_to_raw(encoded)
+	var hash := HashingContext.new()
+	assert(hash.start(HashingContext.HASH_SHA256) == OK, "No se pudo iniciar SHA-256 de canonical pose bank")
+	assert(hash.update(bytes) == OK, "No se pudo hashear canonical pose bank")
+	assert(hash.finish().hex_encode() == String(meta["sha256"]), "Canonical pose bank SHA-256 inválido")
+	var image := Image.new()
+	assert(image.load_png_from_buffer(bytes) == OK, "Canonical pose bank PNG inválido")
+	var texture := ImageTexture.create_from_image(image)
+	_cached_pose_textures[key] = texture
+	return texture
 
 static func _canonical_run_meta() -> Dictionary:
 	return manifest().get("canonical_run", {})
@@ -85,6 +111,18 @@ static func build_frames(team_id: int, role: String = "", squad_index: int = -1)
 	var expected_size := Vector2(cell.x * int(data["columns"]), cell.y * int(data["rows"]))
 	assert(texture.get_size() == expected_size, "Dimensiones de atlas incompatibles con manifest")
 
+	var pose_meta := _canonical_pose_meta()
+	var pose_texture := _canonical_pose_texture(team_id)
+	var pose_cell_data: Dictionary = pose_meta["cell"]
+	var pose_cell := Vector2(float(pose_cell_data["width"]), float(pose_cell_data["height"]))
+	assert(
+		pose_texture.get_size() == Vector2(
+			pose_cell.x * int(pose_meta["columns"]),
+			pose_cell.y * int(pose_meta["rows"])
+		),
+		"Dimensiones de canonical pose bank incompatibles con manifest"
+	)
+
 	var run_meta := _canonical_run_meta()
 	var run_texture := _canonical_run_texture(team_id)
 	var run_cell_data: Dictionary = run_meta["cell"]
@@ -104,6 +142,19 @@ static func build_frames(team_id: int, role: String = "", squad_index: int = -1)
 		frames.add_animation(animation_name)
 		frames.set_animation_speed(animation_name, float(animation["fps"]))
 		frames.set_animation_loop(animation_name, bool(animation["loop"]))
+		if animation_name in [&"idle", &"celebrate"]:
+			var team_rows: Dictionary = pose_meta["team_rows"]
+			var pose_columns: Dictionary = pose_meta["animations"]
+			var pose_row := int(team_rows[_team_key(team_id)])
+			var pose_column := int(pose_columns[String(animation_name)])
+			var pose_region := AtlasTexture.new()
+			pose_region.atlas = pose_texture
+			pose_region.region = Rect2(
+				Vector2(float(pose_column) * pose_cell.x, float(pose_row) * pose_cell.y),
+				pose_cell
+			)
+			frames.add_frame(animation_name, pose_region)
+			continue
 		if animation_name == &"run":
 			assert(run_frames == int(animation["frames"]), "Canonical run frame count inválido")
 			for column in range(run_frames):
