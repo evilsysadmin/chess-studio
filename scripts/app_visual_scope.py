@@ -251,6 +251,10 @@ def _surface_groups(path: str) -> set[str] | None:
         return set(POSTGAME_VISUAL_SURFACES[lower])
     if lower in QUICK_MATCH_VISUAL_SURFACES:
         return set(QUICK_MATCH_VISUAL_SURFACES[lower])
+    if lower == "frontend/src/components/shareresultmodal.jsx":
+        return {"warroom"}
+    if lower == "frontend/src/components/profilebackupmodal.jsx":
+        return {"home"}
     if lower == "frontend/src/components/homemobilegoldenpath.css":
         return {"home"}
     if lower in WARROOM_MOBILE_VISUAL_SURFACES:
@@ -568,6 +572,23 @@ POSTGAME_WARROOM_FAST_PATH = {
     "scripts/app_visual_producer_scope.py",
 }
 
+CPU_PRESENTATION_WARROOM_PATHS = {
+    "frontend/src/components/gamescreen.jsx",
+    "frontend/src/cpupresentationtiming.js",
+    "frontend/src/cpupresentationtiming.test.js",
+    "scripts/architecture_debt_budget.py",
+}
+
+
+def _is_cpu_presentation_warroom_fast_path(paths: list[str]) -> bool:
+    normalized = {path.strip().replace("\\", "/").lower() for path in paths if path.strip()}
+    return (
+        {"frontend/src/components/gamescreen.jsx", "frontend/src/cpupresentationtiming.js"}
+        .issubset(normalized)
+        and normalized.issubset(CPU_PRESENTATION_WARROOM_PATHS)
+    )
+
+
 def _is_postgame_warroom_fast_path(paths: list[str]) -> bool:
     normalized = {path.strip().replace("\\", "/").lower() for path in paths if path.strip()}
     return (
@@ -583,7 +604,7 @@ def classify(paths: list[str]) -> Scope:
         return full_scope()
     if _is_home_mobile_tools_fast_path(cleaned):
         return Scope(("home",))
-    if _is_postgame_warroom_fast_path(cleaned):
+    if _is_postgame_warroom_fast_path(cleaned) or _is_cpu_presentation_warroom_fast_path(cleaned):
         return Scope(("warroom",))
 
     groups: set[str] = set()
@@ -657,6 +678,20 @@ def write_outputs(scope: Scope, output_path: str) -> None:
 
 
 def self_test() -> None:
+    cpu_scope = classify([
+        "frontend/src/components/GameScreen.jsx",
+        "frontend/src/cpuPresentationTiming.js",
+        "frontend/src/cpuPresentationTiming.test.js",
+        "scripts/architecture_debt_budget.py",
+    ])
+    assert cpu_scope.capture_groups == "warroom"
+    assert classify(["frontend/src/components/ShareResultModal.jsx"]).capture_groups == "warroom"
+    assert classify(["frontend/src/components/ProfileBackupModal.jsx"]).capture_groups == "home"
+    assert classify([
+        "frontend/src/components/GameScreen.jsx",
+        "frontend/src/cpuPresentationTiming.js",
+        "frontend/src/components/HomeIllustrated.jsx",
+    ]).capture_groups != "warroom"
     assert classify(["e2e/smoke.spec.js"]).capture_groups == "none"
     quick_match = classify([
         "frontend/src/components/QuickMatchModal.jsx",
