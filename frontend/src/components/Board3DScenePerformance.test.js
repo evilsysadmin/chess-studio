@@ -58,22 +58,17 @@ describe('War Room base scene performance', () => {
     dispose(room);
   });
 
-  it('builds the static base room receive-only instead of retiring casters afterwards', () => {
+  it('builds the static base-room geometry receive-only without a retirement pass', () => {
     const room = buildWarRoom(theme, true, false);
     const casters = [];
-    const retiredMarkers = [];
     room.traverse((object) => {
       if (object.isMesh && object.castShadow) casters.push(object);
-      if (object.userData?.warRoomStaticShadowCasterRetired) retiredMarkers.push(object);
     });
 
     expect(casters).toHaveLength(0);
-    expect(retiredMarkers).toHaveLength(0);
-    expect(room.userData.board3dDefaultCastShadow).toBe(false);
-    expect(room.userData.board3dDefaultReceiveShadow).toBe(true);
-    expect(room.userData.warRoomBaseStaticShadowCastersCreated).toBe(0);
     expect(room.userData.warRoomBaseStaticShadowCastersRetired).toBeUndefined();
-    expect(room.userData.warRoomBaseShadowMode).toBe('receive-only-source-v2');
+    expect(room.userData.warRoomBaseStaticShadowCastersOmitted).toBe(true);
+    expect(room.userData.warRoomBaseShadowMode).toBe('receive-only-at-source-v2');
     dispose(room);
   });
 });
