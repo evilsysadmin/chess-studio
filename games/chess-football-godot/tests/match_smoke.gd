@@ -66,9 +66,16 @@ func _initialize() -> void:
 	assert(int(sprite_manifest["canonical_run"]["footline"]) == 130)
 	var canonical_frames := ChessFootballSpriteBank.build_frames(0, "midfielder", 2)
 	var canonical_run_frame := canonical_frames.get_frame_texture(&"run", 0) as AtlasTexture
+	var canonical_sprint_frame := canonical_frames.get_frame_texture(&"sprint", 0) as AtlasTexture
 	assert(canonical_run_frame != null)
+	assert(canonical_sprint_frame != null)
 	assert(canonical_run_frame.atlas is ImageTexture)
+	assert(canonical_sprint_frame.atlas is ImageTexture)
+	assert(canonical_run_frame.atlas == canonical_sprint_frame.atlas)
 	assert(canonical_run_frame.region == Rect2(0.0, 0.0, 128.0, 144.0))
+	assert(canonical_sprint_frame.region == Rect2(0.0, 0.0, 128.0, 144.0))
+	assert(is_equal_approx(canonical_frames.get_animation_speed(&"run"), 12.0))
+	assert(is_equal_approx(canonical_frames.get_animation_speed(&"sprint"), 15.0))
 	assert(sprite_manifest["atlases"]["fc_matthias"]["body_profile"] == "defender")
 	assert(sprite_manifest["atlases"]["fc_matthias_v2"]["body_profile"] == "midfielder")
 	assert(sprite_manifest["atlases"]["fc_matthias_v3"]["body_profile"] == "wing")
