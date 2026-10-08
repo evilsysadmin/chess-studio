@@ -156,6 +156,34 @@ def self_test() -> None:
     measured = status_for_report({"totalBytes": 8 * GB, "actualAfterBytes": 3 * GB}, config)
     assert measured["level"] == "ok"
     assert "projected" not in issue_body(status_for_report({"totalBytes": 6 * GB}, config))
+    # Admission tests use a fake inventory: no Cloudflare credentials/network.
+    import r2_asset_gc as collector
+
+    previous_list = collector.list_objects
+    try:
+        collector.list_objects = lambda *_args: [
+            {"key": "scene-a.glb", "size": 6_900_000_000,
+             "last_modified": "2026-10-08T00:00:00Z"}
+        ]
+        admission_check(config, token="test", account_id="test", key="scene-a.glb",
+                        size=6_900_000_000)
+        try:
+            admission_check(config, token="test", account_id="test", key="scene-b.glb",
+                            size=200_000_000)
+        except publisher.PublishError as exc:
+            assert "admission blocked" in str(exc)
+        else:
+            raise AssertionError("Over-budget upload must be denied")
+        collector.list_objects = lambda *_args: [{"key": "bad", "size": "unknown"}]
+        try:
+            admission_check(config, token="test", account_id="test",
+                            key="scene-c.glb", size=100)
+        except publisher.PublishError as exc:
+            assert "incomplete/invalid" in str(exc)
+        else:
+            raise AssertionError("Invalid inventory must fail closed")
+    finally:
+        collector.list_objects = previous_list
     print("OK R2 storage governance self-test")
 
 
