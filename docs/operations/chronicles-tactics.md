@@ -215,3 +215,19 @@ Chronicles exploration remains free and real-time until an encounter begins. Hol
 
 Any future haste/slow/surprise mechanic should modify the initiative contract explicitly rather than adding a parallel speed stat. `Agility` is the canonical initiative stat.
 
+
+## Campaign overworld and narrative contract (CH-W1 foundation)
+
+**Product direction, 2026-10-08:** Chronicles of Matthias is a party-based first-person RPG with a connected overworld, towns, discoveries and hand-authored narrative. Dungeons are locations within the realm, not the whole progression. The campaign begins when the Queen tasks Matthias, the King's trusted pawn, with finding the missing King.
+
+- Keep the current dungeon-level flow operational as a legacy entry and preserve old saves; the new campaign is introduced incrementally, with explicit migration/versioning rather than silently repurposing the current run's mapId, seed, or level depth.
+- World topology uses stable location IDs and explicit traversable exits connecting authored regions (capital, village, road/forest, dungeon). Travel transitions must be reversible unless story state explicitly closes a path. No invisible movement blockers.
+- The current region ID, entry anchor, visited/discovered locations, main quest stage, factual clue ledger and completed objective IDs are durable campaign/run data. Define a versioned checkpoint schema and bootstrap support before writing these values; never hide state in an undocumented worldFlags blob.
+- Character XP, attributes, skill points and character progression stay with the profile, as specified above. Story-state transitions, run inventory, location and quest clues belong in authoritative versioned campaign checkpoints. Rewards must be idempotent across retries, F5 and multiple devices.
+- Main quest «El rey desaparecido»: the Queen's briefing opens a journal goal to follow a real lead; the first visit to town supplies NPC information and a route to an exterior point of interest. Future acts reveal the larger mystery. Player-facing clues must correspond to actual state and locations.
+- Cities are explorable scenes, not commerce dashboards: services, NPC dialogue and transactions are accessed through spatially/contextually discoverable interactions. The journal and inventory are secondary overlays, with no blocking modal forced during ordinary exploration.
+- Overworld geography is spatial and connected. A level-1 player may encounter dangers too strong to fight and retreat; region threat is authored and legible instead of universally auto-scaling to the party.
+- Maintain canonical full-viewport desktop and touch/landscape mobile contracts, and preserve exploration/combat phase ownership with initiative = Agility + 1d8.
+- First implementation slice must prove an actual loop (Queen briefing → capital → traversable exterior → enter/exit dungeon → return to capital) with E2E tests for transitions, journal, F5 and idempotent saves. Visual changes demand inspected PNGs at desktop and mobile sizes. Keep Chronicles Tactics compatibility explicit in tests.
+- Do not couple narrative to the current depth label: «Nivel 1, 2, 3…» represents floors of a dungeon only, not the overworld, character level or story chapter.
+
