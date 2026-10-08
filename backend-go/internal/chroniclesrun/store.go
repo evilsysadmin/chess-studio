@@ -43,7 +43,7 @@ type NewRun struct {
 	Seed, ContentVersion                               int64
 	Route                                              *Route
 	PlannerSnapshot                                    any
-	PartyLevel, DungeonLevel, PlacementVersion         *int64
+	PartyLevel, DungeonLevel, DungeonTopologyVersion, PlacementVersion *int64
 	Now                                                time.Time
 }
 
