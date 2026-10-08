@@ -173,7 +173,7 @@ function addReadabilityLighting(root, { coarsePointer, scenePlan }) {
   // leaving the authored cold fills enough room to model the middle distance.
   const partyTorchKey = new THREE.PointLight(
     0xffad67,
-    (coarsePointer ? 6.45 : 6.8) * (lightingProfile === 'crypt-dark' ? 0.78 : 1),
+    (coarsePointer ? 13.5 : 11.5) * (lightingProfile === 'crypt-dark' ? 0.9 : 1),
     coarsePointer ? 14.8 : 15.8,
     1.58,
   );
