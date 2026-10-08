@@ -90,6 +90,8 @@ async function captureTacticsHealth(page) {
       party: rect('.chronicles-tactics__party'),
       actions: rect('.chronicles-tactics__actions'),
       narrator: rect('.chronicles-tactics__narrator'),
+      activityLog: rect('[data-chronicles-activity-log="true"]'),
+      activityLogOpen: document.querySelector('[data-chronicles-activity-log="true"]')?.hasAttribute('open') || false,
     };
   });
 }
@@ -187,6 +189,13 @@ for (const capture of CAPTURES) {
       expect(health.canvas?.width || 0, `${capture.label}: Tactics canvas width`).toBeGreaterThan(0);
       expect(health.canvas?.height || 0, `${capture.label}: Tactics canvas height`).toBeGreaterThan(0);
       expectCanvasFillsViewport(health, capture.label);
+      expect(health.activityLog?.width || 0, `${capture.label}: activity log is present`).toBeGreaterThan(0);
+      if (capture.hasTouch) {
+        expect(health.activityLogOpen, `${capture.label}: mobile log starts collapsed`).toBe(false);
+        expect(health.activityLog?.height || 0, `${capture.label}: activity log touch target height`).toBeGreaterThanOrEqual(44);
+      } else {
+        expect(health.activityLogOpen, `${capture.label}: desktop log starts open`).toBe(true);
+      }
       if (capture.width >= 1180) expectDesktopCanonicalComposition(health, capture.label);
 
       const partyHud = mode.locator('.chronicles-party-hud');

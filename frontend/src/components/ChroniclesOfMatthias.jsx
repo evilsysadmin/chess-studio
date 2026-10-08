@@ -58,6 +58,8 @@ import {
   saveChroniclesAutomapVisited,
 } from '../chronicles/chroniclesAutomap.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
+import { useChroniclesActivityLog } from '../useChroniclesActivityLog.js';
+import ChroniclesActivityLog from './ChroniclesActivityLog.jsx';
 import ChroniclesAutomap from './ChroniclesAutomap.jsx';
 import ChroniclesCharacterSheet from './ChroniclesCharacterSheet.jsx';
 import ChroniclesMinimap from './ChroniclesMinimap.jsx';
@@ -145,6 +147,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const checkpointQueueRef = useRef(Promise.resolve());
   const stateRef = useRef(null);
   const [state, setState] = useState(null);
+  const activityLog = useChroniclesActivityLog(state);
   const [selectedMemberId, setSelectedMemberId] = useState('matthias');
   const [sheetMemberId, setSheetMemberId] = useState(null);
   const selectedMemberIdRef = useRef(selectedMemberId);
@@ -882,6 +885,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
               }}
             />
             <ChroniclesNarratorOverlay message={state.message} />
+            <ChroniclesActivityLog entries={activityLog} />
             <ChroniclesPartyBark key={partyBark?.token || 'none'} bark={partyBark} />
             <ChroniclesTacticalMargin target={tacticalTarget} />
             <ChroniclesEnemyRetaliationFx key={retaliationCue?.token || 'none'} cue={retaliationCue} />

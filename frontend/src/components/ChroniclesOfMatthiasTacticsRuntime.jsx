@@ -69,6 +69,8 @@ import {
   chroniclesTacticsMoveAvailability,
 } from '../chronicles/chroniclesTacticsPresentation.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
+import { useChroniclesActivityLog } from '../useChroniclesActivityLog.js';
+import ChroniclesActivityLog from './ChroniclesActivityLog.jsx';
 import ChroniclesTacticsPartyHud from './ChroniclesTacticsPartyHud.jsx';
 import './ChroniclesOfMatthiasTactics.css';
 import './ChroniclesOfMatthiasProgression.css';
@@ -130,6 +132,8 @@ export default function ChroniclesOfMatthiasTactics({
   const [progression, setProgression] = useState(() => loadChroniclesProgression());
   const progressionRef = useRef(progression);
   const [state, setState] = useState(() => createActionState(progression, authoritativeRun));
+  const [runId, setRunId] = useState(() => authoritativeRun?.runId || ensureChroniclesTacticsRun());
+  const activityLog = useChroniclesActivityLog(state, runId);
   const stateRef = useRef(state);
   const authoritativeRunRef = useRef(authoritativeRun);
   const checkpointFingerprintRef = useRef(chroniclesTacticsCheckpointFingerprint(state));
@@ -139,7 +143,6 @@ export default function ChroniclesOfMatthiasTactics({
   const lastMoveAtRef = useRef(0);
   const explorationWalkRef = useRef({ vector: null, timer: 0 });
   const lastAttackAtRef = useRef(0);
-  const [runId, setRunId] = useState(() => authoritativeRun?.runId || ensureChroniclesTacticsRun());
   const [selectedMemberId, setSelectedMemberId] = useState('matthias');
   const [sheetRequest, setSheetRequest] = useState(null);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -750,6 +753,7 @@ export default function ChroniclesOfMatthiasTactics({
                 <strong data-chronicles-progression-feedback="true">{progressionFeedback}</strong>
               ) : null}
             </div>
+            <ChroniclesActivityLog entries={activityLog} />
             {rewardDraft.length > 0 ? (
               <section className="chronicles-tactics__reward" aria-label="Recompensa de extracción">
                 <span>EXTRACCIÓN · UNA ELECCIÓN</span>

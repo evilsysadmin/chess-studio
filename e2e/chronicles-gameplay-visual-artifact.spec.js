@@ -139,6 +139,8 @@ async function captureChroniclesHealth(page) {
       forwardControl: rect('[data-chronicles-touch-action="forward"]'),
       attackControl: rect('.chronicles-touch .is-attack'),
       narration: rect('.chronicles-dm-overlay'),
+      activityLog: rect('[data-chronicles-activity-log="true"]'),
+      activityLogOpen: document.querySelector('[data-chronicles-activity-log="true"]')?.hasAttribute('open') || false,
     };
   });
 }
@@ -246,7 +248,10 @@ for (const capture of CAPTURES) {
       expect(health.stage?.width || 0, `${capture.label}: Chronicles stage visible`).toBeGreaterThan(0);
       expect(health.gameCanvas?.width || 0, `${capture.label}: Chronicles dungeon canvas visible`).toBeGreaterThan(0);
       expect(health.gameCanvas?.height || 0, `${capture.label}: Chronicles dungeon canvas height`).toBeGreaterThan(0);
+      expect(health.activityLog?.width || 0, `${capture.label}: activity log is present`).toBeGreaterThan(0);
       if (capture.hasTouch) {
+        expect(health.activityLogOpen, `${capture.label}: mobile activity log starts collapsed`).toBe(false);
+        expect(health.activityLog?.height || 0, `${capture.label}: activity log touch target height`).toBeGreaterThanOrEqual(44);
         expect(health.stage?.height || 0, `${capture.label}: mobile stage owns viewport height`).toBeGreaterThanOrEqual(capture.height - 2);
         expect(health.gameCanvas?.height || 0, `${capture.label}: mobile canvas owns viewport height`).toBeGreaterThanOrEqual(capture.height - 2);
         expect(health.partyTarget?.width || 0, `${capture.label}: party touch target width`).toBeGreaterThanOrEqual(44);
@@ -258,6 +263,7 @@ for (const capture of CAPTURES) {
         expect(health.narration?.top ?? 0, `${capture.label}: narration clears compact party`).toBeGreaterThanOrEqual(health.partyTarget?.bottom ?? 0);
         expect(health.narration?.bottom ?? capture.height, `${capture.label}: narration clears thumb controls`).toBeLessThanOrEqual(health.forwardControl?.top ?? capture.height);
       } else {
+        expect(health.activityLogOpen, `${capture.label}: desktop activity log starts open`).toBe(true);
         expect(health.authoredPortrait?.width || 0, `${capture.label}: Chronicles portrait visible`).toBeGreaterThan(0);
         expect(health.authoredPortrait?.height || 0, `${capture.label}: Chronicles portrait height`).toBeGreaterThan(0);
       }

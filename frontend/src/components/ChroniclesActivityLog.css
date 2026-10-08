@@ -1,0 +1,138 @@
+.chronicles-activity-log {
+  position: absolute;
+  z-index: 12;
+  right: 12px;
+  bottom: 12px;
+  width: min(360px, 42vw);
+  max-width: calc(100% - 24px);
+  color: #ddcfb8;
+  border: 1px solid rgba(204, 160, 96, .38);
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, rgba(31, 23, 17, .94), rgba(10, 8, 7, .96)),
+    rgba(10, 8, 7, .95);
+  box-shadow: 0 16px 46px rgba(0, 0, 0, .48), inset 0 0 24px rgba(135, 83, 35, .05);
+  backdrop-filter: blur(8px);
+  overflow: hidden;
+}
+
+.chronicles-activity-log > summary {
+  min-height: 38px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 9px;
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+}
+
+.chronicles-activity-log > summary::-webkit-details-marker { display: none; }
+
+.chronicles-activity-log > summary > span {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.chronicles-activity-log > summary b {
+  color: #d7b475;
+  font-size: .64rem;
+  letter-spacing: .14em;
+}
+
+.chronicles-activity-log > summary small {
+  overflow: hidden;
+  color: #9f917c;
+  font-size: .66rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chronicles-activity-log > summary em {
+  min-width: 22px;
+  padding: 2px 5px;
+  border: 1px solid rgba(193, 153, 94, .24);
+  border-radius: 999px;
+  color: #a99473;
+  font: normal .5rem/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  text-align: center;
+}
+
+.chronicles-activity-log__body {
+  max-height: 190px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  border-top: 1px solid rgba(193, 153, 94, .16);
+  background: rgba(5, 4, 3, .3);
+}
+
+.chronicles-activity-log ol {
+  margin: 0;
+  padding: 5px 8px 8px;
+  display: grid;
+  gap: 2px;
+  list-style: none;
+}
+
+.chronicles-activity-log li {
+  display: grid;
+  grid-template-columns: 66px minmax(0, 1fr);
+  gap: 7px;
+  padding: 5px 3px;
+  border-bottom: 1px solid rgba(193, 153, 94, .08);
+}
+
+.chronicles-activity-log li:last-child { border-bottom: 0; }
+
+.chronicles-activity-log li > span {
+  color: #8f7755;
+  font: .47rem/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: .06em;
+}
+
+.chronicles-activity-log li[data-kind="enemy-attack"] > span,
+.chronicles-activity-log li[data-kind="defeat"] > span { color: #d16d5b; }
+
+.chronicles-activity-log li[data-kind="heal"] > span { color: #76a888; }
+
+.chronicles-activity-log li p,
+.chronicles-activity-log__empty {
+  margin: 0;
+  color: #c8baa3;
+  font-size: .68rem;
+  line-height: 1.35;
+}
+
+.chronicles-activity-log__empty { padding: 9px; color: #807462; }
+
+@media (max-width: 800px), (max-width: 1024px) and (max-height: 600px) {
+  .chronicles-activity-log {
+    right: max(8px, env(safe-area-inset-right));
+    bottom: calc(max(8px, env(safe-area-inset-bottom)) + 92px);
+    left: auto;
+    width: min(310px, calc(100vw - 16px));
+    max-width: min(310px, calc(100vw - 16px));
+    backdrop-filter: none;
+  }
+
+  .chronicles-activity-log:not([open]) {
+    width: min(250px, calc(100vw - 16px));
+  }
+
+  .chronicles-activity-log > summary { min-height: 44px; }
+  .chronicles-activity-log > summary b,
+  .chronicles-activity-log > summary small { font-size: .7rem; }
+  .chronicles-activity-log li p,
+  .chronicles-activity-log__empty { font-size: .72rem; }
+  .chronicles-activity-log__body { max-height: min(32vh, 160px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chronicles-activity-log,
+  .chronicles-activity-log * { scroll-behavior: auto !important; }
+}
