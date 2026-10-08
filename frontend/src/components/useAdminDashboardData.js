@@ -3,7 +3,7 @@ import { fetchAdminMatthiasStatus, fetchAdminUsers } from '../admin.js';
 import { fetchAdminFeedback } from '../feedback.js';
 import { ADMIN_REFRESH_MS, shouldRefreshAdminPresence } from '../presenceCadence.js';
 
-export default function useAdminDashboardData() {
+export default function useAdminDashboardData(section = 'overview') {
   const [users, setUsers] = useState(null);
   const [error, setError] = useState(null);
   const [feedback, setFeedback] = useState(null);
@@ -21,29 +21,33 @@ export default function useAdminDashboardData() {
       if (adminRefreshInFlightRef.current) return adminRefreshInFlightRef.current.pending;
       const epoch = adminDataEpochRef.current;
       const requestToken = Symbol('admin-refresh');
-      const pending = Promise.allSettled([fetchAdminUsers(), fetchAdminFeedback(), fetchAdminMatthiasStatus()]);
+      const pending = Promise.allSettled([
+        ['overview', 'users'].includes(section) ? fetchAdminUsers() : Promise.resolve(null),
+        section === 'feedback' ? fetchAdminFeedback() : Promise.resolve(null),
+        section === 'matthias' ? fetchAdminMatthiasStatus() : Promise.resolve(null),
+      ]);
       adminRefreshInFlightRef.current = { requestToken, pending };
       try {
         const [usersResult, feedbackResult, matthiasResult] = await pending;
         if (!mounted || adminDataEpochRef.current !== epoch || adminRefreshInFlightRef.current?.requestToken !== requestToken) return;
-        if (usersResult.status === 'fulfilled') {
+        if (['overview', 'users'].includes(section) && usersResult.status === 'fulfilled') {
           setUsers(usersResult.value);
           setLastAdminRefreshAt(Date.now());
           setAdminNow(Date.now());
           setError(null);
-        } else if (!silent) {
+        } else if (['overview', 'users'].includes(section) && !silent) {
           setError(usersResult.reason?.message || 'No se pudieron cargar los usuarios.');
         }
-        if (feedbackResult.status === 'fulfilled') {
+        if (section === 'feedback' && feedbackResult.status === 'fulfilled') {
           setFeedback(feedbackResult.value.feedback || []);
           setFeedbackError(null);
-        } else if (!silent) {
+        } else if (section === 'feedback' && !silent) {
           setFeedbackError(feedbackResult.reason?.message || 'No se pudo cargar el feedback.');
         }
-        if (matthiasResult.status === 'fulfilled') {
+        if (section === 'matthias' && matthiasResult.status === 'fulfilled') {
           setMatthiasStatus(matthiasResult.value || null);
           setMatthiasStatusError(null);
-        } else if (!silent) {
+        } else if (section === 'matthias' && !silent) {
           setMatthiasStatusError(matthiasResult.reason?.message || 'No se pudo cargar el estado de Matthias.');
         }
       } finally {
@@ -69,7 +73,7 @@ export default function useAdminDashboardData() {
       window.clearInterval(ageTimer);
       document.removeEventListener('visibilitychange', handleVisibility);
     };
-  }, []);
+  }, [section]);
 
   const invalidateAdminData = () => {
     adminDataEpochRef.current += 1;
