@@ -362,19 +362,60 @@ function addChair(root, wood, leather, brass) {
   root.add(chair);
 }
 
-function addSconce(root, x, brass, glow, warmGlass) {
+function addSconce(root, x, brass, glow, ember) {
   const sconce = new THREE.Group();
   sconce.name = 'quick-match-ready-sconce';
-  cylinder(sconce, [.22, .22], .08, brass, [0, .12, 0], 'sconce-boss', 24);
-  box(sconce, [.11, .48, .11], brass, [0, -.18, .18], 'sconce-arm');
-  const cup = cylinder(sconce, [.18, .12], .18, brass, [0, -.42, .35], 'sconce-cup', 20);
-  cup.rotation.x = Math.PI / 2;
-  sphere(sconce, .19, warmGlass, [0, -.50, .42], 'sconce-glass', 22, 14);
-  const flame = new THREE.Mesh(new THREE.ConeGeometry(.075, .24, 16), glow);
-  flame.position.set(0, -.36, .43);
+
+  box(sconce, [.34, .72, .10], brass, [0, .02, 0], 'sconce-wall-plate');
+  sphere(sconce, .095, brass, [0, -.30, .09], 'sconce-wall-boss', 18, 12);
+
+  const arm = cylinder(
+    sconce,
+    [.055, .075],
+    .72,
+    brass,
+    [0, -.48, .36],
+    'sconce-torch-arm',
+    18,
+  );
+  arm.rotation.x = -1.02;
+
+  sphere(sconce, .085, brass, [0, -.64, .62], 'sconce-arm-joint', 16, 10);
+
+  const bowl = cylinder(
+    sconce,
+    [.30, .16],
+    .20,
+    brass,
+    [0, -.54, .69],
+    'sconce-brazier-bowl',
+    28,
+  );
+  bowl.scale.y = .78;
+
+  const lip = new THREE.Mesh(new THREE.TorusGeometry(.295, .035, 10, 32), brass);
+  lip.rotation.x = Math.PI / 2;
+  lip.position.set(0, -.46, .69);
+  lip.name = 'sconce-brazier-lip';
+  sconce.add(lip);
+
+  const coals = sphere(sconce, .19, ember, [0, -.42, .69], 'sconce-coals', 20, 12);
+  coals.scale.set(1, .30, 1);
+
+  const flame = new THREE.Mesh(new THREE.ConeGeometry(.115, .46, 20), glow);
+  flame.position.set(0, -.12, .69);
+  flame.scale.set(.92, 1.14, .82);
   flame.name = 'sconce-flame';
   sconce.add(flame);
-  sconce.position.set(x, 4.48, -6.03);
+
+  const flameCoreMaterial = new THREE.MeshBasicMaterial({ color: 0xff9a3d });
+  const flameCore = new THREE.Mesh(new THREE.ConeGeometry(.060, .30, 18), flameCoreMaterial);
+  flameCore.position.set(0, -.17, .705);
+  flameCore.scale.set(.90, 1.06, .78);
+  flameCore.name = 'sconce-flame-core';
+  sconce.add(flameCore);
+
+  sconce.position.set(x, 4.58, -6.02);
   root.add(sconce);
 }
 
@@ -731,8 +772,8 @@ function buildRoom({ lite = false } = {}) {
   }
 
   addWindow(root, stoneEdge, brass, night, moon, moonHalo);
-  addSconce(root, -5.55, brass, sconceGlow, warmGlass);
-  addSconce(root, 5.55, brass, sconceGlow, warmGlass);
+  addSconce(root, -6.05, brass, sconceGlow, warmGlass);
+  addSconce(root, 6.05, brass, sconceGlow, warmGlass);
   addHeraldicTrophy(root, -5.95, leather, brass, steel);
   addHeraldicTrophy(root, 5.95, leather, brass, steel);
   addConsole(root, -6.15, woodDark, brass, leather);
@@ -848,12 +889,12 @@ export default function QuickMatchReadyRoomScene3D() {
       scene.add(hemi);
 
       const warmLeft = new THREE.PointLight(0xffa654, coarsePointer ? 2.05 : 3.45, 20, 2);
-      warmLeft.position.set(-5.55, 4.2, -4.6);
+      warmLeft.position.set(-6.05, 4.25, -4.6);
       warmLeft.castShadow = false;
       scene.add(warmLeft);
 
       const warmRight = new THREE.PointLight(0xffc06b, coarsePointer ? 1.48 : 2.55, 19, 2);
-      warmRight.position.set(5.55, 4.0, -4.4);
+      warmRight.position.set(6.05, 4.10, -4.4);
       warmRight.castShadow = false;
       scene.add(warmRight);
 
