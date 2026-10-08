@@ -135,13 +135,16 @@ function sphere(root, radius, material, position, name = '', widthSegments = 24,
   return mesh;
 }
 
-function addBoard(root, lightSquare, darkSquare, trim, woodDark) {
+function addBoard(root, lightSquare, darkSquare, brass, woodDark, wood) {
   const board = new THREE.Group();
   board.name = 'quick-match-ready-board';
 
-  box(board, [6.86, .20, 6.86], woodDark, [0, -.035, 0], 'board-underlay');
-  box(board, [6.66, .17, 6.66], trim, [0, .035, 0], 'board-frame');
-  box(board, [6.20, .10, 6.20], woodDark, [0, .12, 0], 'board-bed');
+  // Layered wooden frame with a restrained brass inlay instead of one large
+  // metallic slab. This reads more like crafted furniture at play distance.
+  box(board, [6.92, .20, 6.92], woodDark, [0, -.035, 0], 'board-underlay');
+  box(board, [6.76, .17, 6.76], wood, [0, .035, 0], 'board-wood-frame');
+  box(board, [6.48, .12, 6.48], brass, [0, .090, 0], 'board-brass-inlay');
+  box(board, [6.30, .10, 6.30], woodDark, [0, .145, 0], 'board-bed');
 
   const { centerX, centerY, centerZ, squareSize } = QUICK_MATCH_READY_ROOM_BOARD_LAYOUT;
   const squareGeo = new THREE.BoxGeometry(squareSize, .095, squareSize);
@@ -165,11 +168,11 @@ function addBoard(root, lightSquare, darkSquare, trim, woodDark) {
   dark.receiveShadow = true;
   board.add(light, dark);
 
-  for (const z of [-3.23, 3.23]) {
-    box(board, [6.54, .055, .065], trim, [0, .20, z], 'board-brass-fillet');
+  for (const z of [-3.17, 3.17]) {
+    box(board, [6.34, .040, .045], brass, [0, .205, z], 'board-brass-fillet');
   }
-  for (const x of [-3.23, 3.23]) {
-    box(board, [.065, .055, 6.54], trim, [x, .20, 0], 'board-brass-fillet');
+  for (const x of [-3.17, 3.17]) {
+    box(board, [.045, .040, 6.34], brass, [x, .205, 0], 'board-brass-fillet');
   }
 
   board.position.set(centerX, centerY, centerZ);
@@ -1042,8 +1045,8 @@ function buildRoom({ lite = false } = {}) {
   const steel = mat(0x8d9396, .74, .27);
   const ivory = mat(0xd8cfba, .06, .42);
   const ebony = mat(0x2d2b2b, .30, .30);
-  const lightSquare = mat(0xcfc7b3, .04, .66);
-  const darkSquare = mat(0x4a4843, .05, .58);
+  const lightSquare = mat(0xd7ccb6, .04, .62);
+  const darkSquare = mat(0x4b4037, .06, .56);
 
   const surfaceTextures = [];
   if (!lite) {
@@ -1160,7 +1163,7 @@ function buildRoom({ lite = false } = {}) {
     }
   }
 
-  addBoard(root, lightSquare, darkSquare, brass, woodDark);
+  addBoard(root, lightSquare, darkSquare, brass, woodDark, wood);
   addChessSet(root, ivory, ebony, lite);
   if (!lite) addClock(root, brass, ebony, woodDark, ivory);
   addChair(root, woodDark, leather, brass);
