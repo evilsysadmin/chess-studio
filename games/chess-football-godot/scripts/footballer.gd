@@ -422,7 +422,7 @@ func _begin_visual_crossfade(duration: float) -> void:
 		return
 	_cancel_visual_crossfade()
 	transition_visual.sprite_frames = visual.sprite_frames
-	transition_visual.animation = visual.animation
+	transition_visual.play(visual.animation)
 	transition_visual.frame = visual.frame
 	transition_visual.frame_progress = visual.frame_progress
 	transition_visual.speed_scale = visual.speed_scale
@@ -454,6 +454,7 @@ func _cancel_visual_crossfade() -> void:
 	if visual != null:
 		visual.modulate = Color.WHITE
 	if transition_visual != null:
+		transition_visual.stop()
 		transition_visual.visible = false
 		transition_visual.modulate = Color.WHITE
 
@@ -485,6 +486,10 @@ func debug_locomotion_crossfade_alpha() -> float:
 
 func debug_visual_crossfade_total() -> float:
 	return visual_crossfade_total
+
+
+func debug_transition_visual_playing() -> bool:
+	return transition_visual != null and transition_visual.is_playing()
 
 
 func debug_locomotion_speed_scale(wanted: String) -> float:
