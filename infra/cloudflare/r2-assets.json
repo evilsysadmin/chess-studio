@@ -41,7 +41,10 @@
       "deprecated/",
       "_deprecated/"
     ],
-    "protectedPrefixes": [],
+    "protectedPrefixes": [
+      "pawn-slug-godot/matthias/pose-semantics-v1/",
+      "pawn-slug-godot/matthias/continuity-repair/machinegun/run13/"
+    ],
     "releaseBundles": [
       {
         "pointerKey": "pawn-slug-godot/current.json",
