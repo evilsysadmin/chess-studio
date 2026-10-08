@@ -27,6 +27,8 @@ describe('Swordhaven modular real-time 3D', () => {
     expect(scene.getObjectByName('chronicles-swordhaven-town')).toBeTruthy();
     expect(scene.getObjectByName('chronicles-first-person-ceiling')).toBeFalsy();
     expect(scene.getObjectByName('swordhaven-fountain')).toBeTruthy();
+    expect(scene.getObjectByName('swordhaven-cloud-0')).toBeTruthy();
+    expect(scene.getObjectByName('perimeter-stone-wall--1')).toBeTruthy();
     expect(SWORDHAVEN_BUILDINGS.every(b => scene.getObjectByName('swordhaven-building-' + b.id))).toBe(true);
     expect(state.contentProps.map(p => p.id).sort())
       .toEqual(SWORDHAVEN_BUILDINGS.map(b => b.id).sort());
