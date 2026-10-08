@@ -528,6 +528,7 @@ func proceduralize(manifest bson.D, seed int64, proposal any, version int, dunge
 	if err != nil {
 		return nil, "", "", err
 	}
+	base = dungeonTopologyRecipe(base, dungeonLevel, topologyVersion)
 	planner, err := resolvePlannerRecipe(base, proposal)
 	if err != nil {
 		return nil, "", "", err
