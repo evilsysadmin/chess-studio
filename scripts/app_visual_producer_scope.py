@@ -460,6 +460,13 @@ def classify_path(path: str) -> set[str] | None:
         return {"experiments-hub"}
     if lower in SHARED_BOOTSTRAP_EXACT_PRODUCERS:
         return set(SHARED_BOOTSTRAP_EXACT_PRODUCERS[lower])
+    if lower in {
+        "frontend/src/tutorialroute.js",
+        "frontend/src/components/trainingschoolintentpreload.js",
+    }:
+        return {"training-school"}
+    if lower == "frontend/src/components/homeillustrated.jsx":
+        return {"home-base"}
     if lower in TRAINING_EXACT_PRODUCERS:
         return set(TRAINING_EXACT_PRODUCERS[lower])
 
@@ -986,6 +993,9 @@ def self_test() -> None:
         "frontend/src/chroniclesOfMatthiasIsometric.js",
         "frontend/src/chroniclesDungeon.js",
     ]) == "chronicles-tactics,chronicles-gameplay"
+    assert classify(["frontend/src/tutorialRoute.js"]) == "training-school"
+    assert classify(["frontend/src/components/trainingSchoolIntentPreload.js"]) == "training-school"
+    assert classify(["frontend/src/components/HomeIllustrated.jsx"]) == "home-base"
     print("app visual producer scope self-test: OK")
 
 
