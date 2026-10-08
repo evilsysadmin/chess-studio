@@ -33,6 +33,7 @@ function syncBlenderShadowTelemetry(scene, variant, canvas) {
   const rows = [
     ['warRoomBlenderShadowCasterBudget', 'warRoomShadowCasterBudget'],
     ['warRoomBlenderShadowCasterCandidates', 'warRoomShadowCasterCandidates'],
+    ['warRoomBlenderShadowProjectedCount', 'warRoomShadowProjectedCount'],
     ['warRoomBlenderShadowCasterCount', 'warRoomShadowCasterCount'],
     ['warRoomBlenderShadowWarmup', 'warRoomShadowWarmup'],
   ];

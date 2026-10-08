@@ -120,6 +120,26 @@ describe('War Room shared Blender runtime', () => {
     expect(selectWarRoomBlenderShadowCasters(meshes, { limit: 0 })).toEqual([]);
   });
 
+  it('can census projected shadow casters without enabling shadows on lite/coarse profiles', () => {
+    const meshes = Array.from({ length: 48 }, (_, index) => ({
+      isMesh: true,
+      geometry: { boundingSphere: { radius: 0.5 + (index === 0 ? 0.5 : 0) } },
+      material: { transparent: false, opacity: 1 },
+      getWorldPosition(target) {
+        target.set(index * 0.25, 1, 0);
+        return target;
+      },
+      getWorldScale(target) {
+        target.set(1, 1, 1);
+        return target;
+      },
+    }));
+
+    const projected = selectWarRoomBlenderShadowCasters(meshes);
+    expect(projected).toHaveLength(WAR_ROOM_BLENDER_SHADOW_CASTER_LIMIT);
+    expect(projected).toContain(meshes[0]);
+  });
+
   it('keeps authored practicals cinematic and cheaper on coarse pointers', () => {
     const desktop = warRoomBlenderPracticalLightProfile();
     const coarse = warRoomBlenderPracticalLightProfile({ coarsePointer: true });
