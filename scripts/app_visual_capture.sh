@@ -193,6 +193,12 @@ case "$mode" in
         war-room-variant-lifecycle-soak.spec.js \
         --workers=1 \
         --retries=0
+
+      echo "War Room entry latency baseline: v3/v4 cold and warm through first accepted move."
+      ./node_modules/.bin/playwright test \
+        war-room-entry-latency-visual.spec.js \
+        --workers=1 \
+        --retries=0
     fi
     ;;
   hans)
