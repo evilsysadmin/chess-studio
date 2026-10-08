@@ -597,9 +597,6 @@ function omitRetiredCinematicAccentLights(group) {
   group.userData.warRoomRetiredCinematicAccentLightsOmitted = 3;
 }
 
-function whiteSideSign(towardBoard) {
-  return towardBoard < 0 ? 1 : -1;
-}
 
 export function buildPremiumWarRoomLayer(theme, whiteSide, coarsePointer = false) {
   const group = new THREE.Group();
