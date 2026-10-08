@@ -20,6 +20,7 @@ const (
 	OptionalEnemyPlacementVersion = 1
 	ExitPlacementVersion          = 2
 	ContentPlacementVersion       = ExitPlacementVersion
+	DungeonTopologyVersion        = 1
 )
 
 func themeForMapID(mapID string) string {
