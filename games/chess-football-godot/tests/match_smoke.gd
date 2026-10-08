@@ -57,6 +57,17 @@ func _initialize() -> void:
 	transition_runner._process(0.06)
 	assert(not transition_runner.debug_locomotion_crossfade_active())
 	assert(is_equal_approx(transition_runner.debug_locomotion_crossfade_alpha(), 1.0))
+	transition_runner.visual.frame = 5
+	transition_runner.visual.frame_progress = 0.42
+	transition_runner.velocity = Vector2.RIGHT * transition_runner.base_speed
+	transition_runner._sync_locomotion(true)
+	assert(String(transition_runner.visual.animation) == "sprint")
+	assert(transition_runner.visual.frame == 5)
+	assert(absf(transition_runner.visual.frame_progress - 0.42) < 0.02)
+	transition_runner._sync_locomotion(false)
+	assert(String(transition_runner.visual.animation) == "run")
+	assert(transition_runner.visual.frame == 5)
+	assert(absf(transition_runner.visual.frame_progress - 0.42) < 0.02)
 	assert(ChessFootballSpriteBank.atlas_key(0, "keeper") == "fc_matthias_keeper")
 	assert(ChessFootballSpriteBank.atlas_key(1, "keeper") == "real_enroque_keeper")
 	assert(ChessFootballSpriteBank.atlas_key(0, "forward") == "fc_matthias")
