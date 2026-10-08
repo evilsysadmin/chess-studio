@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { runWarRoomHansPostInstall } from './WarRoomDeferredFinalizer.js';
+import { runWarRoomHansBlenderPostInstall } from './WarRoomHansBlenderPostInstall.js';
 import { WAR_ROOM_HANS_CLASSIC_STAGE, installWarRoomHansSceneRoutine } from './WarRoomHansIteration.js';
 
 export const WAR_ROOM_HANS_STAGE_VERSION = 'hans-variant-stage-v2-anchors';
@@ -26,21 +26,10 @@ export const WAR_ROOM_HANS_ANCHORS = Object.freeze({
   doorLeaf: 'WR_HANS_door_leaf',
 });
 
-const DEFAULT_EXCLUDE = Object.freeze([
-  // v1 post-install steps that look for v1-only furniture (plant, service
-  // desk, mop anchors). Blender rooms opt into them as they gain the anchors.
-  'hans:service-infrastructure',
-  'hans:plant',
-  'hans:mop-routine',
-  'hans:service-routine',
-  'hans:ambient-chore-routine',
-  'hans:canonical-plant-lock',
-]);
-
 export const WAR_ROOM_HANS_ROOMS = Object.freeze({
-  v2: Object.freeze({ id: 'v2-blender-hall', excludePostInstall: DEFAULT_EXCLUDE }),
-  v3: Object.freeze({ id: 'v3-armory-hall', excludePostInstall: DEFAULT_EXCLUDE }),
-  v4: Object.freeze({ id: 'v4-tower-study', excludePostInstall: DEFAULT_EXCLUDE }),
+  v2: Object.freeze({ id: 'v2-blender-hall' }),
+  v3: Object.freeze({ id: 'v3-armory-hall' }),
+  v4: Object.freeze({ id: 'v4-tower-study' }),
 });
 
 // v1's fireplace origin sits this high above its floor; Hans hangs from it.
@@ -195,7 +184,7 @@ export function installWarRoomHansVariantStage(scene, {
   if (shellRoot?.userData) shellRoot.userData.warRoomHansFireDimmer = { core: fireCore, light: fireLight };
 
   installWarRoomHansSceneRoutine(scene, { towardBoard, coarsePointer, doorRefs: door.refs });
-  runWarRoomHansPostInstall(scene, { exclude: room.excludePostInstall });
+  runWarRoomHansBlenderPostInstall(scene);
   const driver = scene.getObjectByName?.('war-room-hans-fireplace-driver');
   const armed = Boolean(driver?.userData?.warRoomHansQuickIteration);
 

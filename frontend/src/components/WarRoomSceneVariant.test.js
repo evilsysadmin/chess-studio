@@ -105,6 +105,8 @@ describe('War Room shared scene variants', () => {
     const statuses = [];
     let resolveHansModule;
     let installs = 0;
+    let paints = 0;
+    const paintsAfterHans = () => paints;
     const pendingHans = new Promise((resolve) => { resolveHansModule = resolve; });
 
     const release = startWarRoomVariantScene({
@@ -114,6 +116,7 @@ describe('War Room shared scene variants', () => {
       selectable: true,
       canvas,
       onStatus: (status) => statuses.push(status),
+      onPaint: () => { if (installs > 0) paints += 1; },
       loadVariantInstaller: async () => () => () => {},
       loadHansStage: () => pendingHans,
     });
@@ -139,6 +142,9 @@ describe('War Room shared scene variants', () => {
 
     expect(installs).toBe(1);
     expect(canvas.dataset.warRoomHansStage).toBe('v3-armory-hall:idle');
+    // Hans readiness requires two paints after his lazy driver exists; never
+    // rely on unrelated post-install modules to trigger the second one.
+    expect(paintsAfterHans()).toBeGreaterThanOrEqual(2);
     release();
   });
 
