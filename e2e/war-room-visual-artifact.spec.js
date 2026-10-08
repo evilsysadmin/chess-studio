@@ -1,6 +1,6 @@
 import { chromium, expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { buttonWithVisibleText, gameStatus, login, mockApi } from './helpers.js';
+import { buttonWithVisibleText, clickBoardMove, gameStatus, login, mockApi } from './helpers.js';
 import { WAR_ROOM_CAT_VERSION } from '../frontend/src/components/WarRoomCatDecor.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
@@ -847,4 +847,52 @@ if (WAR_ROOM_PROFILE_SHARD === 'desktop-remainder' && ACTIVE_CAPTURE_PROFILES.le
   registerDesktopSession(ACTIVE_CAPTURE_PROFILES);
 } else {
   for (const profile of ACTIVE_CAPTURE_PROFILES) registerIndependentCaptureProfile(profile);
+}
+
+
+if (WAR_ROOM_PROFILE_SHARD === 'desktop-remainder') {
+  test('War Room · desktop post-game debrief visual proof', async () => {
+    test.setTimeout(120_000);
+    await mkdir(ARTIFACT_DIR, { recursive: true });
+
+    const context = await sharedVisualBrowser.newContext({
+      viewport: { width: 1440, height: 900 },
+      hasTouch: false,
+    });
+    const page = await context.newPage();
+
+    try {
+      await page.addInitScript(({ key, value }) => {
+        window.localStorage.setItem(key, value);
+      }, { key: WAR_ROOM_VARIANT_STORAGE_KEY, value: 'classic' });
+
+      await mockApi(page, {
+        gameScenario: 'mate',
+        profileSeed: {
+          ...SEEN_WAR_ROOM_TUTORIAL_PROFILE,
+          [WAR_ROOM_VARIANT_STORAGE_KEY]: 'classic',
+          'matthias.onboarded': '2',
+          'chess-study-home-guide-dismissed-v1': '1',
+        },
+      });
+      await login(page);
+      await buttonWithVisibleText(page, 'Partida rápida').click();
+      await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+      await expect(gameStatus(page)).toBeVisible({ timeout: 60_000 });
+      await open3DFromAppearance(page);
+
+      await clickBoardMove(page, 'g6', 'g7');
+      const debrief = page.getByRole('dialog').filter({
+        has: page.getByRole('heading', { name: 'Jaque mate', exact: true }),
+      });
+      await expect(debrief).toBeVisible({ timeout: 30_000 });
+      await expect(debrief.getByText('¡Has ganado la partida!', { exact: true })).toBeVisible();
+
+      await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      await page.waitForTimeout(250);
+      await captureViewportPng(page, `${ARTIFACT_DIR}/war-room-postgame-desktop-1440x900.png`);
+    } finally {
+      await context.close();
+    }
+  });
 }
