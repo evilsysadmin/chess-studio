@@ -226,6 +226,54 @@ func _initialize() -> void:
 	assert(absf(auto_lane.y) < 0.01)
 	print("SMOKE_STAGE=dribble")
 
+	# Keeper distribution should not donate the ball back to a nearby attacker:
+	# wait briefly when no safe outlet exists, use a short pass once a teammate
+	# is genuinely free, and clear long when pressed or the waiting window expires.
+	var ai_keeper: Footballer = match_node.teams[1][0]
+	ai_keeper.global_position = Vector2(
+		ChessFootballMath.PITCH_RECT.end.x - 110.0,
+		ChessFootballMath.PITCH_RECT.get_center().y,
+	)
+	for teammate in match_node.teams[1]:
+		if teammate == ai_keeper:
+			continue
+		teammate.global_position = Vector2(
+			ChessFootballMath.PITCH_RECT.get_center().x,
+			ChessFootballMath.PITCH_RECT.position.y + 140.0 + teammate.squad_index * 180.0,
+		)
+	for opponent in match_node.teams[0]:
+		opponent.global_position = Vector2(
+			ChessFootballMath.PITCH_RECT.position.x + 140.0,
+			ChessFootballMath.PITCH_RECT.position.y + 120.0 + opponent.squad_index * 190.0,
+		)
+	var outlet_candidate: Footballer = match_node.teams[1][1]
+	outlet_candidate.global_position = ai_keeper.global_position + Vector2(-250.0, 40.0)
+	var outlet_marker: Footballer = match_node.teams[0][1]
+	outlet_marker.global_position = outlet_candidate.global_position + Vector2(38.0, 0.0)
+	var keeper_plan: Dictionary = match_node.debug_keeper_distribution_plan(ai_keeper, 0.8)
+	assert(String(keeper_plan["kind"]) == "hold")
+
+	outlet_marker.global_position = ChessFootballMath.PITCH_RECT.position + Vector2(180.0, 180.0)
+	keeper_plan = match_node.debug_keeper_distribution_plan(ai_keeper, 0.8)
+	assert(String(keeper_plan["kind"]) == "short")
+	assert(keeper_plan["target"] == outlet_candidate)
+
+	for teammate in match_node.teams[1]:
+		if teammate == ai_keeper:
+			continue
+		teammate.global_position = Vector2(
+			ChessFootballMath.PITCH_RECT.get_center().x - 160.0,
+			ChessFootballMath.PITCH_RECT.position.y + 120.0 + teammate.squad_index * 210.0,
+		)
+	var keeper_presser: Footballer = match_node.teams[0][4]
+	keeper_presser.global_position = ai_keeper.global_position + Vector2(-120.0, 10.0)
+	keeper_plan = match_node.debug_keeper_distribution_plan(ai_keeper, 0.4)
+	assert(String(keeper_plan["kind"]) == "clear")
+	keeper_presser.global_position = ChessFootballMath.PITCH_RECT.position + Vector2(160.0, 120.0)
+	keeper_plan = match_node.debug_keeper_distribution_plan(ai_keeper, 2.3)
+	assert(String(keeper_plan["kind"]) == "clear")
+	print("SMOKE_STAGE=keeper-distribution")
+
 	# The same shot crossing the goal plane is only a goal while the whole
 	# ball fits below the crossbar.
 	match_node.ball.release(Vector2.RIGHT, 0.0)
@@ -543,6 +591,13 @@ func _initialize() -> void:
 
 	var rival_keeper: Footballer = match_node.teams[1][0]
 	rival_keeper.global_position = Vector2(ChessFootballMath.PITCH_RECT.end.x - 120.0, ChessFootballMath.PITCH_RECT.get_center().y)
+	var rival_keeper_outlet: Footballer = match_node.teams[1][1]
+	rival_keeper_outlet.global_position = rival_keeper.global_position + Vector2(-250.0, 55.0)
+	for human_player in match_node.teams[0]:
+		human_player.global_position = Vector2(
+			ChessFootballMath.PITCH_RECT.position.x + 140.0,
+			ChessFootballMath.PITCH_RECT.position.y + 120.0 + human_player.squad_index * 190.0,
+		)
 	match_node.ball.attach_to(rival_keeper)
 	rival_keeper.begin_keeper_hold(0.0)
 	match_node.debug_step_ai(1.0 / 60.0)
