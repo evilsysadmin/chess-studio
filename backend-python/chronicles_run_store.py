@@ -92,6 +92,11 @@ def _public(row: dict[str, Any] | None) -> dict[str, Any] | None:
         **({"partyLevel": int(row["partyLevel"])} if row.get("partyLevel") is not None else {}),
         **({"dungeonLevel": int(row["dungeonLevel"])} if row.get("dungeonLevel") is not None else {}),
         **(
+            {"dungeonTopologyVersion": int(row["dungeonTopologyVersion"])}
+            if row.get("dungeonTopologyVersion") is not None
+            else {}
+        ),
+        **(
             {"contentPlacementVersion": int(row["contentPlacementVersion"])}
             if row.get("contentPlacementVersion") is not None
             else {}
@@ -129,6 +134,7 @@ async def create_or_replay_run(
     planner_snapshot: dict[str, Any] | None = None,
     party_level: int | None = None,
     dungeon_level: int | None = None,
+    dungeon_topology_version: int | None = None,
     content_placement_version: int | None = None,
 ) -> dict[str, Any]:
     now = utcnow()
@@ -138,6 +144,11 @@ async def create_or_replay_run(
         "seed": int(seed),
         **({"partyLevel": int(party_level)} if party_level is not None else {}),
         **({"dungeonLevel": int(dungeon_level)} if dungeon_level is not None else {}),
+        **(
+            {"dungeonTopologyVersion": int(dungeon_topology_version)}
+            if dungeon_topology_version is not None
+            else {}
+        ),
         **(
             {"contentPlacementVersion": int(content_placement_version)}
             if content_placement_version is not None
