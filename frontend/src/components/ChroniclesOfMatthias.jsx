@@ -367,23 +367,6 @@ export default function ChroniclesOfMatthias({ onExit }) {
     dispatch(action);
     if (current.initiative) return;
 
-    // Grid exploration is one accepted action per press, never a timed walk.
-    return;
-
-    touchHoldRef.current.delayId = window.setTimeout(() => {
-      const repeat = () => {
-        const latest = stateRef.current;
-        if (!latest || latest.initiative || latest.phase === 'defeated' || latest.phase === 'escaped') {
-          clearTouchHold();
-          return false;
-        }
-        dispatch(action);
-        return true;
-      };
-
-      if (!repeat()) return;
-      touchHoldRef.current.repeatId = window.setInterval(repeat, 150);
-    }, 280);
   }, [clearTouchHold, dispatch]);
 
   const activateTouchAction = useCallback((action, event) => {
