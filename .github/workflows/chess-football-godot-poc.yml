@@ -110,6 +110,7 @@ jobs:
               (root / part).read_text(encoding="utf-8").strip()
               for part in canonical["encoded_parts"]
           )
+          encoded += "=" * (-len(encoded) % 4)
           payload = base64.b64decode(encoded, validate=True)
           digest = hashlib.sha256(payload).hexdigest()
           if digest != canonical["sha256"]:
