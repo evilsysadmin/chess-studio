@@ -188,9 +188,9 @@ for (const capture of CAPTURES) {
       await expect(gameRoot).toBeVisible();
       if (!capture.hasTouch) {
         expect(
-          await page.evaluate(() => document.fullscreenElement),
-          `${capture.label}: desktop Chronicles must not enter browser-native fullscreen`,
-        ).toBeNull();
+          await page.evaluate(() => Boolean(document.fullscreenElement)),
+          `${capture.label}: desktop Chronicles enters browser-native fullscreen`,
+        ).toBe(true);
       }
       const landscapeTrigger = page.getByRole('button', { name: 'Activar apaisado', exact: true });
       if (capture.hasTouch && capture.width < capture.height) {
