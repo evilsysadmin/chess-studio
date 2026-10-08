@@ -188,6 +188,26 @@
     white-space: nowrap;
   }
 
+  /* On wide landscape phones the >700px desktop account button still shows
+     its full text. Compact it too, or it overlaps the feedback icon. */
+  body:has(.lab-screen .lab-workshop) .masthead-account-trigger {
+    display: inline-flex;
+    width: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  body:has(.lab-screen .lab-workshop) .masthead-account-trigger > span:not(.masthead-account-avatar) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
   body:has(.lab-screen .lab-workshop) .masthead-account-menu {
     top: max(8px, env(safe-area-inset-top)) !important;
     right: max(8px, env(safe-area-inset-right)) !important;
