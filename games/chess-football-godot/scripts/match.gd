@@ -42,6 +42,14 @@ const KEEPER_SAVE_MIN_SPEED := 280.0
 const KEEPER_SAVE_Y_MARGIN := 36.0
 const KEEPER_SAVE_MAX_HEIGHT := 44.0
 const KEEPER_HOLD_SECONDS := 0.72
+const KEEPER_DISTRIBUTION_WAIT_SECONDS := 2.20
+const KEEPER_DISTRIBUTION_PRESSURE_RADIUS := 185.0
+const KEEPER_SHORT_PASS_MAX_DISTANCE := 430.0
+const KEEPER_SHORT_PASS_MIN_SEPARATION := 128.0
+const KEEPER_SHORT_PASS_LANE_CLEARANCE := 72.0
+const KEEPER_SHORT_PASS_POWER := 520.0
+const KEEPER_CLEAR_POWER := 840.0
+const KEEPER_CLEAR_LIFT := 210.0
 
 const AI_DECISION_INTERVAL := 0.34
 const AI_SHOOT_DISTANCE := 650.0
@@ -108,6 +116,7 @@ var camera_hint_seconds: float = 4.5
 var presentation_3d: ChessFootball3DPresenter
 var audio_fx: ChessFootballAudio
 var ai_next_decision: Dictionary = {}
+var keeper_distribution_started_at: Dictionary = {}
 var pause_menu_open: bool = false
 var kickoff_team_id: int = 0
 var kickoff_active: bool = false
@@ -739,21 +748,46 @@ func _nearest_opponent_to(player: Footballer) -> Footballer:
 func _update_keeper_ai(player: Footballer, delta: float) -> void:
 	var own_goal := ChessFootballMath.goal_center(1 - player.team_id)
 	var away_from_goal := Vector2.RIGHT if player.team_id == 0 else Vector2.LEFT
+	var keeper_key: int = int(player.get_instance_id())
 
 	if ball.carrier == player:
 		player.move_ai(delta, player.global_position, 0.5)
 		if player.keeper_hold_active():
+			keeper_distribution_started_at.erase(keeper_key)
 			return
-		var outlet := _best_teammate_ahead(player)
+		if not keeper_distribution_started_at.has(keeper_key):
+			keeper_distribution_started_at[keeper_key] = match_seconds
+		var distribution_age := maxf(
+			0.0,
+			match_seconds - float(keeper_distribution_started_at.get(keeper_key, match_seconds)),
+		)
+		var plan := _keeper_distribution_plan(player, distribution_age)
+		var kind := String(plan.get("kind", "hold"))
+		if kind == "hold":
+			return
 		player.play_action("pass", 0.72)
 		if audio_fx != null:
 			audio_fx.play_pass()
-		if outlet != null:
-			ball.release(outlet.global_position - player.global_position, 520.0)
+		if kind == "short":
+			var outlet: Footballer = plan.get("target")
+			if outlet != null:
+				ball.release(
+					outlet.global_position - player.global_position,
+					KEEPER_SHORT_PASS_POWER,
+				)
 		else:
-			ball.release(away_from_goal, 500.0)
+			ball.release(
+				Vector2(
+					away_from_goal.x,
+					float(plan.get("clear_y", 0.0)),
+				),
+				KEEPER_CLEAR_POWER,
+				KEEPER_CLEAR_LIFT,
+			)
+		keeper_distribution_started_at.erase(keeper_key)
 		return
 
+	keeper_distribution_started_at.erase(keeper_key)
 	var reference_position := ball.global_position
 	if ball.carrier != null:
 		reference_position = ball.carrier.global_position
@@ -771,6 +805,80 @@ func _update_keeper_ai(player: Footballer, delta: float) -> void:
 
 	var target := Vector2(own_goal.x + away_from_goal.x * line_offset, wanted_y)
 	player.move_ai(delta, target, KEEPER_TRACK_INTENSITY)
+
+func _keeper_pass_lane_clear(player: Footballer, teammate: Footballer) -> bool:
+	var segment := teammate.global_position - player.global_position
+	var segment_len_sq := segment.length_squared()
+	if segment_len_sq <= 1.0:
+		return false
+	for opponent in teams[1 - player.team_id]:
+		if opponent.sent_off:
+			continue
+		var relative := opponent.global_position - player.global_position
+		var t := clampf(relative.dot(segment) / segment_len_sq, 0.0, 1.0)
+		var closest := player.global_position + segment * t
+		if opponent.global_position.distance_to(closest) < KEEPER_SHORT_PASS_LANE_CLEARANCE:
+			return false
+	return true
+
+func _keeper_safe_outlet(player: Footballer) -> Footballer:
+	var forward := 1.0 if player.team_id == 0 else -1.0
+	var best: Footballer = null
+	var best_score := -INF
+	for teammate in teams[player.team_id]:
+		if teammate == player or teammate.sent_off or teammate.role == "keeper":
+			continue
+		var offset := teammate.global_position - player.global_position
+		var distance := offset.length()
+		if distance < 85.0 or distance > KEEPER_SHORT_PASS_MAX_DISTANCE:
+			continue
+		var nearest_opponent := _nearest_opponent_to(teammate)
+		var separation := INF
+		if nearest_opponent != null:
+			separation = teammate.global_position.distance_to(nearest_opponent.global_position)
+		if separation < KEEPER_SHORT_PASS_MIN_SEPARATION:
+			continue
+		if not _keeper_pass_lane_clear(player, teammate):
+			continue
+		var progress := offset.x * forward
+		var score := separation * 1.35 + progress * 0.55 - distance * 0.28 - absf(offset.y) * 0.10
+		if score > best_score:
+			best_score = score
+			best = teammate
+	return best
+
+func _keeper_under_pressure(player: Footballer) -> bool:
+	for opponent in teams[1 - player.team_id]:
+		if opponent.sent_off:
+			continue
+		if player.global_position.distance_to(opponent.global_position) <= KEEPER_DISTRIBUTION_PRESSURE_RADIUS:
+			return true
+	return false
+
+func _keeper_clear_y_bias(player: Footballer) -> float:
+	var safest_y := 0.0
+	var safest_score := -INF
+	for teammate in teams[player.team_id]:
+		if teammate == player or teammate.sent_off or teammate.role == "keeper":
+			continue
+		var nearest_opponent := _nearest_opponent_to(teammate)
+		var separation := 180.0
+		if nearest_opponent != null:
+			separation = teammate.global_position.distance_to(nearest_opponent.global_position)
+		var vertical := teammate.global_position.y - player.global_position.y
+		var score := separation - absf(vertical) * 0.08
+		if score > safest_score:
+			safest_score = score
+			safest_y = clampf(vertical / 520.0, -0.48, 0.48)
+	return safest_y
+
+func _keeper_distribution_plan(player: Footballer, distribution_age: float) -> Dictionary:
+	var outlet := _keeper_safe_outlet(player)
+	if outlet != null:
+		return {"kind": "short", "target": outlet}
+	if _keeper_under_pressure(player) or distribution_age >= KEEPER_DISTRIBUTION_WAIT_SECONDS:
+		return {"kind": "clear", "clear_y": _keeper_clear_y_bias(player)}
+	return {"kind": "hold"}
 
 func _update_keeper_saves() -> void:
 	if ball.carrier != null:
@@ -2104,6 +2212,9 @@ func debug_apply_foul_card(
 
 func debug_try_keeper_save(player: Footballer) -> bool:
 	return _keeper_try_save(player)
+
+func debug_keeper_distribution_plan(player: Footballer, distribution_age: float) -> Dictionary:
+	return _keeper_distribution_plan(player, distribution_age)
 
 func debug_try_claim_loose_ball() -> void:
 	_try_claim_loose_ball()
