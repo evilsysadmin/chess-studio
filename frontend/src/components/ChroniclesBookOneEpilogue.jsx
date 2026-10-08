@@ -1,8 +1,8 @@
-import { chroniclesBookOneEpilogue } from '../chroniclesOfMatthiasEpilogue.js';
+import { chroniclesDungeonEpilogue } from '../chroniclesOfMatthiasEpilogue.js';
 import './ChroniclesBookOneEpilogue.css';
 
 export default function ChroniclesBookOneEpilogue({ state, dungeonLevel = 1, onRestart }) {
-  const epilogue = chroniclesBookOneEpilogue(state);
+  const epilogue = chroniclesDungeonEpilogue(state);
 
   return (
     <div className="chronicles-epilogue" role="status" aria-label="Epílogo de Book I">
