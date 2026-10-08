@@ -16,7 +16,7 @@ PLAYWRIGHT = './node_modules/.bin/playwright'
 
 REGRESSION_STATE_GREP = (
     'sesión · dos contextos de navegador|deploy · una release nueva no fuerza reload|'
-    'admin · presencia distingue|Matthias · saluda una vez tras login y no repite el saludo con F5|'
+    'admin · presencia distingue|admin · evidencia visual de cinco áreas|Matthias · saluda una vez tras login y no repite el saludo con F5|'
     'Home · el avatar residente de Matthias abre Así juegas|'
     'Matthias · el briefing persistente aparece antes de una partida rápida|'
     'Matthias · banco de personalidad Admin usa sólo datos sintéticos'
