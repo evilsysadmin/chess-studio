@@ -216,6 +216,18 @@ Chronicles exploration remains free and real-time until an encounter begins. Hol
 Any future haste/slow/surprise mechanic should modify the initiative contract explicitly rather than adding a parallel speed stat. `Agility` is the canonical initiative stat.
 
 
+## Movement contract — MM3-style grid turns (2026-10-08)
+
+**Player decision:** The world is perceived and traversed as discrete first-person tiles, in the spirit of Might & Magic III, not free locomotion. Each tile can hold terrain, a prop, NPC, clue, loot, encounter, interactive object or mere scenery. Rendering may animate a step smoothly, but the authoritative position moves exactly one cardinal tile per accepted movement action.
+
+- Exploration scheduler: **one successful party tile step → exactly one enemy movement activation**. All eligible enemies choose/resolve their one action in a deterministic order using actual runtime positions; never move twice per step. Player-facing turns are not dictated by elapsed time.
+- Turning the camera/facing in place, opening UI, failed moves into walls, interactions that do not move, or idling do **not** advance enemy movement. A held direction may enqueue one step at a time, never jump or skip simulation ticks.
+- Enemy movement is movement, **not a free attack**. When proximity triggers combat, exploration stops and existing initiative (Agility + 1d8) takes over; combat attacks resolve only on scheduled combat turns. Never both an exploration attack and a combat turn from the same player step.
+- World tiles have explicit visible walkability/occupancy. Persistent story/loot flags and runtime entity positions remain authoritative; decorations may never produce invisible blockers.
+- Applies to both new overworld/towns and existing first-person dungeon exploration. Keep Tactics as a separate runtime unless deliberately migrated, without sharing incompatible tick semantics.
+- Reconcile existing hold-to-walk realtime and the pending '1 enemy activation per 3 steps' exploration PR before implementation. Supersede these rules for the new MM3-mode; do not silently combine cadences.
+- Tests: one step → one enemy movement; two steps → two activations; wall, rotate, idle, UI → zero; enemy reaching engagement → initiative only; F5 restores positions and scheduler counters; mobile touch repeat cannot skip ticks.
+
 ## Campaign overworld and narrative contract (CH-W1 foundation)
 
 **Product direction, 2026-10-08:** Chronicles of Matthias is a party-based first-person RPG with a connected overworld, towns, discoveries and hand-authored narrative. Dungeons are locations within the realm, not the whole progression. The campaign begins when the Queen tasks Matthias, the King's trusted pawn, with finding the missing King.
