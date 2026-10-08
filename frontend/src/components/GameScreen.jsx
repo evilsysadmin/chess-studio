@@ -43,7 +43,10 @@ const PIECE_NAMES_ES = { p: 'un peón', n: 'un caballo', b: 'un alfil', r: 'una 
 // su jugada, aunque el servidor responda antes. Sin esto, en dificultad baja
 // la respuesta puede llegar tan rápido que la animación del jugador ni
 // alcanza a verse antes de que se dispare la de la CPU encima.
-const MIN_CPU_THINK_MS = 350;
+const MIN_CPU_THINK_MS = 2000;
+const CPU_THINK_VARIANCE_MS = 1000;
+// Under time pressure, do not force Matthias to lose on a theatrical pause.
+const CPU_LOW_TIME_SECONDS = 8;
 // El control táctico es una pausa pedagógica, no un semáforo crítico. Si el
 // usuario no pulsa el CTA (por ejemplo porque quedó fuera del viewport), la
 // partida continúa sola y nunca aparenta haberse congelado.
@@ -534,7 +537,12 @@ export default function GameScreen({
       if (!mutationCoordinator.isCurrent(operation)) return;
     }
 
-    const minThink = abortableDelay(MIN_CPU_THINK_MS, controller.signal);
+    const cpuColor = humanColor === 'w' ? 'b' : 'w';
+    const cpuTime = getTime(cpuColor);
+    const thinkMs = hasClock && cpuTime !== null && cpuTime <= CPU_LOW_TIME_SECONDS
+      ? 350
+      : MIN_CPU_THINK_MS + Math.floor(Math.random() * (CPU_THINK_VARIANCE_MS + 1));
+    const minThink = abortableDelay(thinkMs, controller.signal);
 
     try {
       const operationId = mutationCoordinator.operationId('move', [game.id, from, to, promotion || 'q']);
