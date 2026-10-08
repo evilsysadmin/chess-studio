@@ -457,3 +457,37 @@ body:has(.tournament-hall-screen) .global-music-dock {
     animation-iteration-count: 1 !important;
   }
 }
+
+
+/* Tournament Hall challenge controls should read as part of the ceremonial
+   room, not as a stacked settings card. Keep mobile's existing touch layout. */
+@media (min-width: 761px) {
+  .tournament-hall-color {
+    width: min(340px, 72vw);
+    border: 0;
+    border-top: 1px solid rgba(199, 164, 90, .18);
+    border-bottom: 1px solid rgba(199, 164, 90, .10);
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .tournament-hall-color > summary {
+    justify-content: center;
+    color: rgba(232, 218, 188, .74);
+  }
+
+  .tournament-hall-play {
+    width: min(340px, 72vw);
+    min-height: 52px;
+    border-radius: 3px;
+    border-color: rgba(221, 181, 91, .68);
+    background:
+      linear-gradient(90deg, #604019, #a8762d 22%, #c1923d 50%, #80551f 82%, #543616);
+    box-shadow:
+      0 10px 24px rgba(0,0,0,.28),
+      inset 0 1px rgba(255, 239, 195, .22),
+      inset 0 -1px rgba(41, 24, 8, .48);
+    text-shadow: 0 1px 2px rgba(40, 22, 6, .68);
+  }
+}
