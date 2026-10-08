@@ -40,6 +40,8 @@ describe('partidas compartidas', () => {
     expect(countFullMoves(record.moves)).toBe(2);
     expect(countFullMoves([{ san: 'e4' }, { san: 'e5' }])).toBe(1);
     expect(countFullMoves([])).toBe(0);
+    expect(countFullMoves([{ san: 'e4' }])).toBe(1);
+    expect(countFullMoves([{ san: 'e4' }, { san: 'e5' }, { san: 'Nf3' }, { san: 'Nc6' }])).toBe(2);
     expect(buildShareText(record)).toContain('2 jugadas');
   });
 
