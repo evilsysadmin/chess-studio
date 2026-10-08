@@ -35,6 +35,8 @@ static func _canonical_pose_texture() -> Texture2D:
 		var encoded_path := ASSET_ROOT + String(part_variant)
 		encoded += FileAccess.get_file_as_string(encoded_path).strip_edges()
 	assert(not encoded.is_empty(), "Canonical pose bank vacío")
+	while encoded.length() % 4 != 0:
+		encoded += "="
 	var bytes := Marshalls.base64_to_raw(encoded)
 	var hash := HashingContext.new()
 	assert(hash.start(HashingContext.HASH_SHA256) == OK, "No se pudo iniciar SHA-256 de canonical pose bank")
