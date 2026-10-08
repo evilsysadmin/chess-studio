@@ -94,7 +94,7 @@ export default function ProfileBackupModal({ onClose }) {
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="army-card" role="dialog" aria-modal="true" aria-label="Copia de seguridad del perfil" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 440 }}>
+      <div className="army-card" role="dialog" aria-modal="true" aria-label="Copia de seguridad del perfil" aria-busy={busy} onClick={(e) => e.stopPropagation()} style={{ maxWidth: 440 }}>
         <button className="piece-info-close" onClick={onClose} aria-label="Cerrar">×</button>
         <h3>Exportar / importar progreso</h3>
         <p className="hint-text" style={{ marginBottom: '1rem' }}>
@@ -118,6 +118,7 @@ export default function ProfileBackupModal({ onClose }) {
             type="file"
             accept="application/json,.json"
             ref={fileInputRef}
+            aria-label="Seleccionar archivo JSON de copia de seguridad"
             onChange={handleFileChange}
             style={{ display: 'none' }}
           />
@@ -125,7 +126,7 @@ export default function ProfileBackupModal({ onClose }) {
             {busy ? 'Guardando…' : 'Elegir archivo para importar'}
           </button>
           {importMessage && (
-            <p className={`hint-text ${importMessage.tone === 'bad' ? 'import-error' : 'import-success'}`} style={{ marginTop: '0.6rem' }}>
+            <p role="status" aria-live="polite" className={`hint-text ${importMessage.tone === 'bad' ? 'import-error' : 'import-success'}`} style={{ marginTop: '0.6rem' }}>
               {importMessage.text}
             </p>
           )}
@@ -159,10 +160,10 @@ export default function ProfileBackupModal({ onClose }) {
             </div>
           )}
           {resetMessage && (
-            <p className="hint-text import-error" style={{ marginTop: '0.6rem' }}>{resetMessage}</p>
+            <p role="alert" className="hint-text import-error" style={{ marginTop: '0.6rem' }}>{resetMessage}</p>
           )}
           {resetDone && (
-            <p className="hint-text import-success" style={{ marginTop: '0.6rem' }}>
+            <p role="status" aria-live="polite" className="hint-text import-success" style={{ marginTop: '0.6rem' }}>
               Listo — tu progreso volvió a cero, Matthias olvidó tu expediente y el cambio quedó guardado en MongoDB. Recarga para refrescar todos los contadores visibles.
             </p>
           )}
