@@ -1398,9 +1398,13 @@ def build_outputs() -> dict[str, str]:
             "source_sheet_sha256": "cb6a069d383946fd5c0525c38356f3aea5183158a1c76241b95ad89a3a9f0c13",
             "encoded_parts": [
                 "action_canon/canonical_idle_celebrate_v1.part00.b64",
+                "action_canon/canonical_idle_celebrate_v1.part00b.b64",
                 "action_canon/canonical_idle_celebrate_v1.part01.b64",
                 "action_canon/canonical_idle_celebrate_v1.part02.b64",
-                "action_canon/canonical_idle_celebrate_v1.part03.b64"
+                "action_canon/canonical_idle_celebrate_v1.part03.b64",
+                "action_canon/canonical_idle_celebrate_v1.part04.b64",
+                "action_canon/canonical_idle_celebrate_v1.part05.b64",
+                "action_canon/canonical_idle_celebrate_v1.part06.b64"
             ],
             "sha256": "56dc4d9d0bb2c90210d477c5f2d52f83d2e74dd2a65339c12c258cdf44ce2e56",
             "cell": {"width": CELL_W, "height": CELL_H},
