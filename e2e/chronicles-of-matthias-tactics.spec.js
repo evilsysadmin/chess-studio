@@ -113,6 +113,9 @@ test('Chronicles Tactics · arranca como RPG táctico isométrico · locomoción
   await page.keyboard.up('ArrowUp');
   await expect(narrator).toContainText(/La compañía avanza hacia norte/i);
 
+  // A move committed just before keyup may still be waiting for React's paint.
+  // Let that already-dispatched step settle before asserting no further walking.
+  await page.waitForTimeout(80);
   const releasedCell = await mode.evaluate((node) => ({
     x: node.getAttribute('data-party-x'),
     y: node.getAttribute('data-party-y'),
