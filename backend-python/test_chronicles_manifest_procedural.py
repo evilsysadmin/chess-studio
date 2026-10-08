@@ -210,6 +210,25 @@ def test_dungeon_topology_v1_increases_bounded_pressure():
 
 
 
+def test_dungeon_topology_is_a_floor_for_optional_planner_difficulty():
+    base, _revision = chronicles_api.load_chronicles_manifest("crypt-eight-squares")
+    generated = proceduralize_chronicles_manifest(
+        base,
+        417,
+        planner_proposal={
+            "version": 1,
+            "source": "test",
+            "difficulty": 1,
+        },
+        content_placement_version=CHRONICLES_CONTENT_PLACEMENT_VERSION,
+        dungeon_level=3,
+        dungeon_topology_version=CHRONICLES_DUNGEON_TOPOLOGY_VERSION,
+    )
+
+    assert parse_chronicles_map_code(generated.map_code).difficulty >= 4
+
+
+
 def test_explicit_procedural_difficulty_is_stable_across_enemy_rpg_storage_changes():
     base, _revision = chronicles_api.load_chronicles_manifest("crypt-eight-squares")
     assert base["proceduralDifficulty"] == 2
