@@ -88,7 +88,14 @@ async function prepareHandoff(page, { holdReady = false } = {}) {
   }));
 
   await login(page);
-  await page.getByRole('button', { name: 'Abrir Sala de Duelos 1 contra 1' }).click();
+  const duelEntry = page.getByRole('button', { name: 'Abrir Sala de Duelos 1 contra 1' });
+  if (!await duelEntry.isVisible().catch(() => false)) {
+    const more = page.getByRole('button', { name: /^Más(?: formas de jugar)?$/ });
+    await expect(more).toBeVisible();
+    if ((await more.getAttribute('aria-expanded')) !== 'true') await more.click();
+  }
+  await expect(duelEntry).toBeVisible();
+  await duelEntry.click();
   const lobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room' });
   await expect(lobby).toBeVisible();
   await lobby.getByRole('button', { name: 'Aceptar', exact: true }).click();
