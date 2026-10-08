@@ -2312,6 +2312,9 @@ func debug_ai_secondary_presser(team_id: int) -> Footballer:
 func debug_ai_cover_target(player: Footballer, threat_position: Vector2) -> Vector2:
 	return _ai_cover_target(player, threat_position)
 
+func debug_ai_support_target(player: Footballer) -> Vector2:
+	return _ai_support_target(player)
+
 func debug_force_ai_attack(player: Footballer) -> void:
 	_ai_attack(player)
 
