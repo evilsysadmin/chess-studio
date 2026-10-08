@@ -1,4 +1,4 @@
-import { chroniclesMapTransitionState } from './chroniclesMapCatalog.js';
+import { chroniclesMapContentPosition, chroniclesMapForState, chroniclesMapTransitionState } from './chroniclesMapCatalog.js';
 
 const CARDINAL_DIRECTIONS = Object.freeze([
   Object.freeze({ key: 'north', dx: 0, dy: -1 }),
@@ -201,7 +201,17 @@ function damageParty(state, effect) {
 export function chroniclesApplyContentEffects(state, effects, adapters = {}) {
   return (effects || []).reduce((next, effect) => {
     if (effect.type === 'set' && effect.key) return { ...next, [effect.key]: effect.value };
-    if (effect.type === 'transition-map' && effect.mapId) return chroniclesMapTransitionState(next, effect.mapId);
+    if (effect.type === 'transition-map' && effect.mapId) {
+      const arrived = chroniclesMapTransitionState(next, effect.mapId);
+      if (!effect.entryExitId) return arrived;
+      const destination = chroniclesMapForState(arrived);
+      const entry = destination.exits.find((candidate) => candidate.id === effect.entryExitId);
+      const point = chroniclesMapContentPosition(destination, entry);
+      if (!point) {
+        throw new Error(`Chronicles transition to ${destination.id} has missing entry exit ${effect.entryExitId}`);
+      }
+      return { ...arrived, x: point.x, y: point.y };
+    }
     if (effect.type === 'grant-item') return grantItem(next, effect);
     if (effect.type === 'consume-item') return consumeItem(next, effect);
     if (effect.type === 'start-quest') return updateQuest(next, effect, 'active');
