@@ -112,6 +112,7 @@ def test_run_creation_persists_dungeon_level_and_raises_initial_difficulty(monke
     assert response.status_code == 201
     payload = response.json()
     assert payload["dungeonLevel"] == 3
+    assert payload["dungeonTopologyVersion"] == 1
     assert len(payload["route"]["mapIds"]) == 5
     first_map = payload["route"]["mapIds"][0]
     first_area = next(area for area in payload["areas"] if area["mapId"] == first_map)
@@ -447,7 +448,9 @@ def test_legacy_run_without_placement_version_rehydrates_legacy_manifest():
     assert payload["area"]["manifestRevision"] == legacy_area["manifestRevision"]
     assert payload["area"]["manifest"] == legacy_area["manifest"]
     assert "contentPlacementVersion" not in payload
+    assert "dungeonTopologyVersion" not in payload
     assert "contentPlacementVersion" not in payload["area"]["manifest"]["generation"]
+    assert "dungeonTopologyVersion" not in payload["area"]["manifest"]["generation"]
 
 
 
