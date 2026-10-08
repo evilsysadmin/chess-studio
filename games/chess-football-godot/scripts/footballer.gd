@@ -31,7 +31,9 @@ var team_color: Color = Color(0.2, 0.45, 0.95)
 var visual: AnimatedSprite2D
 var transition_visual: AnimatedSprite2D
 const LOCOMOTION_CROSSFADE_SECONDS := 0.10
-var locomotion_crossfade_seconds: float = 0.0
+const ACTION_CROSSFADE_SECONDS := 0.08
+var visual_crossfade_seconds: float = 0.0
+var visual_crossfade_total: float = 0.0
 var action_lock_seconds: float = 0.0
 var tackle_cooldown_seconds: float = 0.0
 var tackle_recovery_seconds: float = 0.0
@@ -90,7 +92,7 @@ func _configure_visual() -> void:
 	_apply_loop_phase(&"idle")
 
 func _process(delta: float) -> void:
-	_tick_locomotion_crossfade(delta)
+	_tick_visual_crossfade(delta)
 	tackle_cooldown_seconds = maxf(0.0, tackle_cooldown_seconds - delta)
 	dribble_cooldown_seconds = maxf(0.0, dribble_cooldown_seconds - delta)
 	dribble_burst_seconds = maxf(0.0, dribble_burst_seconds - delta)
@@ -201,7 +203,11 @@ func can_sprint() -> bool:
 func play_action(animation_name: String, duration: float = 0.78) -> void:
 	if visual == null or not visual.sprite_frames.has_animation(animation_name):
 		return
-	_cancel_locomotion_crossfade()
+	var previous := String(visual.animation)
+	if previous in ["run", "sprint"]:
+		_begin_visual_crossfade(ACTION_CROSSFADE_SECONDS)
+	else:
+		_cancel_visual_crossfade()
 	action_lock_seconds = maxf(duration, 0.05)
 	visual.speed_scale = 1.0
 	visual.play(animation_name)
@@ -377,17 +383,24 @@ func _sync_locomotion(sprinting: bool) -> void:
 		) or (
 			wanted == "idle" and previous in ["run", "sprint"]
 		)
+		var returns_from_action := (
+			previous in ["pass", "shoot", "tackle", "celebrate"]
+			and wanted in ["run", "sprint"]
+		)
 		if crosses_idle_boundary:
-			_begin_locomotion_crossfade()
+			_begin_visual_crossfade(LOCOMOTION_CROSSFADE_SECONDS)
+		elif returns_from_action:
+			_begin_visual_crossfade(ACTION_CROSSFADE_SECONDS)
 		else:
-			_cancel_locomotion_crossfade()
+			_cancel_visual_crossfade()
 		visual.play(wanted)
 		_apply_loop_phase(StringName(wanted))
 
 
-func _begin_locomotion_crossfade() -> void:
+func _begin_visual_crossfade(duration: float) -> void:
 	if transition_visual == null or visual == null or visual.sprite_frames == null:
 		return
+	_cancel_visual_crossfade()
 	transition_visual.sprite_frames = visual.sprite_frames
 	transition_visual.animation = visual.animation
 	transition_visual.frame = visual.frame
@@ -397,25 +410,27 @@ func _begin_locomotion_crossfade() -> void:
 	transition_visual.visible = true
 	transition_visual.modulate = Color(1.0, 1.0, 1.0, 1.0)
 	visual.modulate = Color(1.0, 1.0, 1.0, 0.0)
-	locomotion_crossfade_seconds = LOCOMOTION_CROSSFADE_SECONDS
+	visual_crossfade_total = maxf(duration, 0.01)
+	visual_crossfade_seconds = visual_crossfade_total
 
 
-func _tick_locomotion_crossfade(delta: float) -> void:
-	if locomotion_crossfade_seconds <= 0.0:
+func _tick_visual_crossfade(delta: float) -> void:
+	if visual_crossfade_seconds <= 0.0:
 		return
-	locomotion_crossfade_seconds = maxf(0.0, locomotion_crossfade_seconds - delta)
-	var progress := 1.0 - locomotion_crossfade_seconds / LOCOMOTION_CROSSFADE_SECONDS
+	visual_crossfade_seconds = maxf(0.0, visual_crossfade_seconds - delta)
+	var progress := 1.0 - visual_crossfade_seconds / maxf(visual_crossfade_total, 0.01)
 	progress = clampf(progress, 0.0, 1.0)
 	if visual != null:
 		visual.modulate = Color(1.0, 1.0, 1.0, progress)
 	if transition_visual != null:
 		transition_visual.modulate = Color(1.0, 1.0, 1.0, 1.0 - progress)
-	if locomotion_crossfade_seconds <= 0.0:
-		_cancel_locomotion_crossfade()
+	if visual_crossfade_seconds <= 0.0:
+		_cancel_visual_crossfade()
 
 
-func _cancel_locomotion_crossfade() -> void:
-	locomotion_crossfade_seconds = 0.0
+func _cancel_visual_crossfade() -> void:
+	visual_crossfade_seconds = 0.0
+	visual_crossfade_total = 0.0
 	if visual != null:
 		visual.modulate = Color.WHITE
 	if transition_visual != null:
@@ -441,11 +456,15 @@ func _apply_loop_phase(animation_name: StringName) -> void:
 
 
 func debug_locomotion_crossfade_active() -> bool:
-	return locomotion_crossfade_seconds > 0.0
+	return visual_crossfade_seconds > 0.0
 
 
 func debug_locomotion_crossfade_alpha() -> float:
 	return visual.modulate.a if visual != null else 1.0
+
+
+func debug_visual_crossfade_total() -> float:
+	return visual_crossfade_total
 
 
 func debug_texture_filter_linear() -> bool:
