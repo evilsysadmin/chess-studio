@@ -1406,7 +1406,7 @@ def build_outputs() -> dict[str, str]:
                 "action_canon/canonical_idle_celebrate_v1.part05.b64",
                 "action_canon/canonical_idle_celebrate_v1.part06.b64"
             ],
-            "sha256": "56dc4d9d0bb2c90210d477c5f2d52f83d2e74dd2a65339c12c258cdf44ce2e56",
+            "sha256": "cdf3ab2fddfa21018a656f9444af54e233f30eb189bf83999303759c1b81a829",
             "cell": {"width": CELL_W, "height": CELL_H},
             "columns": 2,
             "rows": 2,
