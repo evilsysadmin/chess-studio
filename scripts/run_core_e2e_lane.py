@@ -30,7 +30,7 @@ REGRESSION_SCHOOL_GREP = (
     'Escuela de Matthias · el examen básico bloquea la promoción hasta aprobar'
 )
 APP_BOOT_GREP = 'login → menú'
-ADMIN_GREP = 'admin · presencia distingue|Matthias · banco de personalidad Admin usa sólo datos sintéticos'
+ADMIN_GREP = 'admin · presencia distingue|admin · evidencia visual de cinco áreas|Matthias · banco de personalidad Admin usa sólo datos sintéticos'
 TOURNAMENT_GREP = 'Torneo · una partida activa'
 COMBAT_GREP = (
     'Combat Chess · Campaña permite jugar con defaults|'
