@@ -547,14 +547,10 @@ def proceduralize_chronicles_manifest(
         dungeon_topology_version=dungeon_topology_version,
     )
     planner = resolve_chronicles_planner_recipe(base_recipe, planner_proposal)
-    if planner.accepted:
+    if planner.accepted and planner.recipe.difficulty < base_recipe.difficulty:
         planner = replace(
             planner,
-            recipe=_dungeon_topology_recipe(
-                planner.recipe,
-                dungeon_level=dungeon_level,
-                dungeon_topology_version=dungeon_topology_version,
-            ),
+            recipe=replace(planner.recipe, difficulty=base_recipe.difficulty),
         )
 
     (
