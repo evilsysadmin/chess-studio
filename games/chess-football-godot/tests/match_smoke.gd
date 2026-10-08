@@ -179,6 +179,31 @@ func _initialize() -> void:
 				var frame_texture := flat_frames.get_frame_texture(animation_name, frame_id)
 				assert(frame_texture is ImageTexture)
 				assert(frame_texture.get_size() == Vector2(128.0, 144.0))
+	# Supplementary directional rows are genuinely distinct frames from the
+	# reviewed atlas, in both kits and in WebGL-safe standalone textures.
+	var directional_meta: Dictionary = sprite_manifest["directional_run"]
+	assert(String(directional_meta["quality_contract"]) == "football-directional-run-canon-v1")
+	assert(String(directional_meta["sha256"]) == "7d23e79dd5f9b23d1a04cf27f4d725d249e37f528c23d696ea260cd498644e70")
+	assert(int(directional_meta["frames"]) == 8)
+	assert((directional_meta["views"] as Dictionary).size() == 4)
+	for team_id in [0, 1]:
+		var directional_frames := ChessFootballSpriteBank.build_frames(team_id, "midfielder", 2, true)
+		for view_name in ["front", "back", "back_diagonal", "front_diagonal"]:
+			for base_animation in ["run", "sprint"]:
+				var directional_name := StringName(base_animation + "_" + view_name)
+				assert(directional_frames.has_animation(directional_name))
+				assert(directional_frames.get_frame_count(directional_name) == 8)
+				assert(directional_frames.get_animation_loop(directional_name))
+				assert(is_equal_approx(
+					directional_frames.get_animation_speed(directional_name),
+					15.0 if base_animation == "sprint" else 12.0
+				))
+				for frame_index in range(8):
+					var frame_texture := directional_frames.get_frame_texture(directional_name, frame_index)
+					assert(frame_texture is ImageTexture)
+					assert(frame_texture.get_size() == Vector2(128.0, 144.0))
+					var used_rect := (frame_texture as ImageTexture).get_image().get_used_rect()
+					assert(used_rect.size.x >= 40 and used_rect.size.y >= 90)
 	assert(canonical_run_frame.region == Rect2(0.0, 0.0, 128.0, 144.0))
 	assert(canonical_sprint_frame.region == Rect2(0.0, 0.0, 128.0, 144.0))
 	assert(is_equal_approx(canonical_frames.get_animation_speed(&"run"), 12.0))
