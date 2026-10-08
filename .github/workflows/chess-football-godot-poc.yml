@@ -313,13 +313,12 @@ jobs:
           cd games/chess-football-godot
           "$GITHUB_WORKSPACE/.godot-ci/$GODOT_VERSION/godot" --headless --editor --quit
           "$GITHUB_WORKSPACE/.godot-ci/$GODOT_VERSION/godot" --headless --export-release Web build/web/index.html
-      - uses: actions/setup-node@v6
+      - name: Restore exact browser runtime from shared CI action
+        uses: ./.github/actions/setup-browser-e2e
         with:
-          node-version: '22'
-      - name: Install browser-smoke dependencies
-        run: |
-          npm ci --prefix e2e --ignore-scripts --no-audit --no-fund
-          ./e2e/node_modules/.bin/playwright install --with-deps chromium
+          browser-scope: chromium
+          restore-frontend-deps: 'false'
+          build-frontend: 'false'
       - name: Boot real WebAssembly in Chromium
         run: node e2e/football-godot-real-web.mjs
       - name: Upload real Web browser evidence
