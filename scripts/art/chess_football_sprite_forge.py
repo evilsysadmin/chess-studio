@@ -1393,27 +1393,6 @@ def build_outputs() -> dict[str, str]:
         "rows": len(ANIMATIONS),
         "footline": FOOTLINE,
         "display_scale": DISPLAY_SCALE,
-        "canonical_pose_bank": {
-            "quality_contract": "chess-football-action-canon-v1",
-            "source_sheet_sha256": "cb6a069d383946fd5c0525c38356f3aea5183158a1c76241b95ad89a3a9f0c13",
-            "encoded_parts": [
-                "action_canon/canonical_idle_celebrate_v1.part00.b64",
-                "action_canon/canonical_idle_celebrate_v1.part00b.b64",
-                "action_canon/canonical_idle_celebrate_v1.part01.b64",
-                "action_canon/canonical_idle_celebrate_v1.part02.b64",
-                "action_canon/canonical_idle_celebrate_v1.part03.b64",
-                "action_canon/canonical_idle_celebrate_v1.part04.b64",
-                "action_canon/canonical_idle_celebrate_v1.part05.b64",
-                "action_canon/canonical_idle_celebrate_v1.part06.b64"
-            ],
-            "sha256": "cdf3ab2fddfa21018a656f9444af54e233f30eb189bf83999303759c1b81a829",
-            "cell": {"width": CELL_W, "height": CELL_H},
-            "columns": 2,
-            "rows": 2,
-            "footline": FOOTLINE,
-            "team_rows": {"fc_matthias": 0, "real_enroque": 1},
-            "animations": {"idle": 0, "celebrate": 1},
-        },
         "canonical_run": {
             "quality_contract": "chess-football-run-canon-v1",
             "encoded_parts": [
