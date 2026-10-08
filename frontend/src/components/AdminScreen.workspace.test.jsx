@@ -16,7 +16,8 @@ describe('AdminScreen workspace', () => {
 
     expect(html).toContain('Centro de control');
     expect(html).toContain('Resumen');
-    expect(html).toContain('Observabilidad');
+    expect(html).toContain('Estado API');
+    expect(html).not.toContain('SRE y servicio');
     expect(html).toContain('Usuarios');
     expect(html).toContain('Feedback');
     expect(html).toContain('Matthias');

@@ -9,12 +9,11 @@ import {
   reanalyzeAdminUser,
   resetAdminMatthiasMemory,
 } from '../admin.js';
-import { getToken, getUsername } from '../auth.js';
+import { getUsername } from '../auth.js';
 import { buildAdminInsights } from '../adminDashboardInsights.js';
 import { createAsyncCommitGuard } from '../asyncLifecycle.js';
 import AdminFeedbackSection from './AdminFeedbackSection.jsx';
 import AdminMatthiasStatusSection from './AdminMatthiasStatusSection.jsx';
-import AdminObservabilitySummary from './AdminObservabilitySummary.jsx';
 import AdminUserDirectory from './AdminUserDirectory.jsx';
 import useAdminDashboardData from './useAdminDashboardData.js';
 import useAdminFeedbackController from './useAdminFeedbackController.js';
@@ -193,7 +192,14 @@ export default function AdminDashboardContent({ section = 'overview', onNavigate
       )}
       <div className="menu-section">
         {section === 'overview' && <p className="hint-text admin-build-id">Release: <code>{APP_RELEASE}</code> · Build: <code>{BUILD_SHA === 'local' ? 'local' : BUILD_SHA.slice(0, 8)}</code></p>}
-        {section === 'overview' && <AdminObservabilitySummary token={getToken()} users={users || []} currentAdmin={currentAdmin} onOpen={() => onNavigate('observability')} />}
+        {section === 'overview' && (
+          <nav className="admin-workspace-shortcuts" aria-label="Herramientas de administración">
+            <button type="button" className="secondary-btn" onClick={() => onNavigate('users')}>Gestionar usuarios</button>
+            <button type="button" className="secondary-btn" onClick={() => onNavigate('feedback')}>Revisar feedback</button>
+            <button type="button" className="secondary-btn" onClick={() => onNavigate('matthias')}>Administrar Matthias</button>
+            <button type="button" className="secondary-btn" onClick={() => onNavigate('observability')}>Estado y latencia de API</button>
+          </nav>
+        )}
 
         {section === 'matthias' && <AdminMatthiasStatusSection
           status={matthiasStatus}
