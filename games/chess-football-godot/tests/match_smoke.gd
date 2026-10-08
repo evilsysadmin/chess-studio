@@ -39,6 +39,30 @@ func _initialize() -> void:
 	for expected_audio in ["goal", "pass", "post", "save", "shot", "tackle", "whistle"]:
 		assert(audio_names.has(expected_audio))
 	assert(match_node.debug_3d_animated_players() == 10)
+	# All ten 3D proxies must have renderable raster idle textures, not merely shadows.
+	var stage: ChessFootball3DPresenter = match_node.presentation_3d
+	assert(stage.player_sprites.size() == 10)
+	for team in match_node.teams:
+		for player in team:
+			var sprite: AnimatedSprite3D = stage.player_sprites.get(player.get_instance_id())
+			assert(sprite != null and sprite.visible)
+			assert(sprite.alpha_cut == SpriteBase3D.ALPHA_CUT_DISCARD)
+			assert(not sprite.shaded)
+			var idle_texture := sprite.sprite_frames.get_frame_texture(&"idle", 0)
+			assert(idle_texture is ImageTexture)
+			assert(idle_texture.get_size() == Vector2(128, 144))
+			var pixels := idle_texture.get_image()
+			assert(pixels != null and not pixels.is_empty())
+			var occupied := false
+			for y in range(0, pixels.get_height(), 4):
+				for x in range(0, pixels.get_width(), 4):
+					if pixels.get_pixel(x, y).a > sprite.alpha_scissor_threshold:
+						occupied = true
+						break
+				if occupied:
+					break
+			assert(occupied)
+
 	assert(match_node.controlled != null)
 	assert(match_node.controlled.debug_visual_ready())
 	assert(match_node.controlled.debug_texture_filter_linear())
