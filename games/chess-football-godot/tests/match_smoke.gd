@@ -591,6 +591,13 @@ func _initialize() -> void:
 
 	var rival_keeper: Footballer = match_node.teams[1][0]
 	rival_keeper.global_position = Vector2(ChessFootballMath.PITCH_RECT.end.x - 120.0, ChessFootballMath.PITCH_RECT.get_center().y)
+	var rival_keeper_outlet: Footballer = match_node.teams[1][1]
+	rival_keeper_outlet.global_position = rival_keeper.global_position + Vector2(-250.0, 55.0)
+	for human_player in match_node.teams[0]:
+		human_player.global_position = Vector2(
+			ChessFootballMath.PITCH_RECT.position.x + 140.0,
+			ChessFootballMath.PITCH_RECT.position.y + 120.0 + human_player.squad_index * 190.0,
+		)
 	match_node.ball.attach_to(rival_keeper)
 	rival_keeper.begin_keeper_hold(0.0)
 	match_node.debug_step_ai(1.0 / 60.0)
