@@ -85,3 +85,20 @@ Si la evidencia muestra una regresión:
 ## Acceptance
 
 Un cambio visual está listo cuando existe evidencia suficiente para la fase tocada, está ligada a la revisión exacta, fue comparada con baseline y no deja una regresión conocida sin explicar.
+
+## Auditoría entre salas: coherencia, no uniformidad
+
+Además de comparar una sala consigo misma, comprobar el recorrido completo **Home → Jugar → War Room → postpartida → Entrenar → volver a jugar**. La identidad de cada entorno puede diferir, pero sus convenciones funcionales no deben sorprender al jugador.
+
+La evidencia de aceptación reúne una tira de capturas runtime del **mismo SHA** y perfil de usuario (nuevo/recurrente), en escritorio y vertical 360, 390 y 430 px cuando el cambio afecte al core móvil. Anotar si hay overlays reales: Guardado, nueva versión y bocadillo/tutorial de Matthias.
+
+Revisar específicamente:
+- **Entrada y salida:** puerta/volver/cerrar inequívocos, accesibles por teclado y touch, sin trampas de pantalla completa ni menús sin escape.
+- **Escala y cámara:** protagonista/juego legibles frente al decorado; ninguna ornamentación reduce de modo injustificado la superficie interactiva.
+- **HUD y overlays:** prioridades de z-index consistentes; el aviso de guardado no tapa Ayuda, «…» ni botones primarios; CTA útil visible en 360 px.
+- **Iluminación:** coherente con fuentes diegéticas pero suficiente en móvil; no compensar con paneles sólidos tipo dashboard.
+- **Interacción:** targets táctiles ≥44×44 px donde corresponda, foco perceptible, ausencia de scroll horizontal; overlays no interceptan el primer toque del juego.
+- **Audio/movimiento:** continuidad entre transiciones, reduced-motion respetado y ausencia de reproducción antes de autenticarse.
+- **Reentrada:** una escena puede cerrarse y volver a abrirse sin duplicar canvases, audio ni pérdida de partida.
+
+Para una PR que altera una sola sala, la tira transversal no obliga a rediseñar todas las demás: basta inspeccionar los puntos de contacto afectados. Si la comprobación depende de dispositivos físicos, reportar explícitamente que está pendiente; no sustituir su firma por Playwright. Un documento de intención o mockup no acredita ninguna de estas condiciones.
