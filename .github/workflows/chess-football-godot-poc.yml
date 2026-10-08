@@ -68,6 +68,34 @@ jobs:
         run: python3 -S scripts/art/chess_football_sprite_forge.py generate --assets-dir games/chess-football-godot/assets/players
       - name: Verify deterministic player art
         run: python3 -S scripts/art/chess_football_sprite_forge.py verify --assets-dir games/chess-football-godot/assets/players
+      - name: Verify canonical raster locomotion
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import struct
+          from pathlib import Path
+
+          root = Path("games/chess-football-godot/assets/players/raster_run")
+          canon = json.loads((root / "canon.json").read_text(encoding="utf-8"))
+          assert canon["kind"] == "canonical-raster-locomotion"
+          assert canon["frames"] == 8
+          assert canon["cell"] == {"width": 128, "height": 144}
+          assert canon["footline"] == 130
+          assert canon["usage"] == ["run", "sprint"]
+
+          for team in ("fc_matthias", "real_enroque"):
+              meta = canon["teams"][team]
+              path = root / meta["file"]
+              payload = path.read_bytes()
+              assert hashlib.sha256(payload).hexdigest() == meta["sha256"]
+              assert payload[:8] == b"\x89PNG\r\n\x1a\n"
+              width, height = struct.unpack(">II", payload[16:24])
+              assert (width, height) == (1024, 144)
+          print("chess-football canonical raster locomotion: OK")
+          PY
       - name: Parse project
         shell: bash
         run: |
