@@ -182,6 +182,27 @@ def test_distinct_run_keys_create_fresh_seed_route_and_world(monkeypatch):
     assert first_payload["area"]["layoutRevision"] != second_payload["area"]["layoutRevision"]
 
 
+def test_same_idempotency_key_rejects_a_different_dungeon_level(monkeypatch):
+    async def no_collection():
+        return None
+
+    chronicles_run_store._memory_runs.clear()
+    monkeypatch.setattr(chronicles_run_store, "_collection", no_collection)
+    client = _client()
+    headers = {
+        "Authorization": "Bearer test-token",
+        "Idempotency-Key": "chronicles-level-idempotency-0001",
+    }
+
+    first = client.post("/api/chronicles/runs", headers=headers, json={"dungeonLevel": 2})
+    conflict = client.post("/api/chronicles/runs", headers=headers, json={"dungeonLevel": 3})
+
+    assert first.status_code == 201
+    assert first.json()["dungeonLevel"] == 2
+    assert conflict.status_code == 409
+
+
+
 def test_seeded_route_rewrites_only_primary_exits_and_finishes_in_cistern():
     seed = 20260918
     route_snapshot = chronicles_api.chronicles_route_snapshot_for_seed(seed)
