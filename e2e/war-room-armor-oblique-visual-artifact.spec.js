@@ -66,45 +66,6 @@ async function captureCanvas(context, page, scene) {
   }
 }
 
-async function cropArmorPair(context, scenePng) {
-  const cropPage = await context.newPage();
-  try {
-    return await cropPage.evaluate(async (png) => {
-      const image = new Image();
-      const loaded = new Promise((resolve, reject) => {
-        const timer = setTimeout(() => reject(new Error('armor crop image decode timed out')), 10_000);
-        image.onload = () => { clearTimeout(timer); resolve(); };
-        image.onerror = () => { clearTimeout(timer); reject(new Error('armor crop image decode failed')); };
-      });
-      image.src = `data:image/png;base64,${png}`;
-      await loaded;
-
-      const crop = (ratio) => {
-        const sx = Math.round(image.naturalWidth * ratio.x);
-        const sy = Math.round(image.naturalHeight * ratio.y);
-        const sw = Math.round(image.naturalWidth * ratio.width);
-        const sh = Math.round(image.naturalHeight * ratio.height);
-        const output = document.createElement('canvas');
-        output.width = sw * 3;
-        output.height = sh * 3;
-        const ctx = output.getContext('2d');
-        if (!ctx) throw new Error('2D canvas unavailable for armor crop');
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(image, sx, sy, sw, sh, 0, 0, output.width, output.height);
-        return output.toDataURL('image/png').replace(/^data:image\/png;base64,/, '');
-      };
-
-      return {
-        left: crop({ x: 0.015, y: 0.18, width: 0.27, height: 0.44 }),
-        right: crop({ x: 0.715, y: 0.18, width: 0.27, height: 0.44 }),
-      };
-    }, scenePng);
-  } finally {
-    await cropPage.close().catch(() => {});
-  }
-}
-
 test('War Room armor · artifacts expose sword grip on both armors from the player camera', async () => {
   test.setTimeout(150_000);
   await mkdir(ARTIFACT_DIR, { recursive: true });
@@ -143,13 +104,6 @@ test('War Room armor · artifacts expose sword grip on both armors from the play
         `${ARTIFACT_DIR}/war-room-desktop-inspection-1600x1000-${capture.label}-scene.png`,
         Buffer.from(png, 'base64'),
       );
-      const crops = await cropArmorPair(context, png);
-      for (const side of ['left', 'right']) {
-        await writeFile(
-          `${ARTIFACT_DIR}/war-room-desktop-inspection-1600x1000-${capture.label}-armor-${side}.png`,
-          Buffer.from(crops[side], 'base64'),
-        );
-      }
     }
 
     await writeFile(
@@ -158,7 +112,11 @@ test('War Room armor · artifacts expose sword grip on both armors from the play
         schema: 1,
         purpose: 'user-reachable armor and sword-grip review (fixed tactical camera)',
         source: 'Board3D fixed tactical camera',
-        crops: ['armor-left', 'armor-right'],
+        inspectionRegions: {
+          armorLeft: { x: 0.015, y: 0.18, width: 0.27, height: 0.44 },
+          armorRight: { x: 0.715, y: 0.18, width: 0.27, height: 0.44 },
+        },
+        capture: 'single-full-resolution-scene-v2',
       }, null, 2)}\n`,
       'utf8',
     );
