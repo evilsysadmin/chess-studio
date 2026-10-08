@@ -307,6 +307,27 @@ func _initialize() -> void:
 	assert(absf(support_target.y - ai_ball_carrier.global_position.y) > 40.0)
 	print("SMOKE_STAGE=ai-pressure-support")
 
+	# Adaptive difficulty is bounded and changes intelligence rather than physics.
+	# Human dominance can raise the CPU by one notch, opposite dominance walks it
+	# back through neutral, and it never jumps beyond the [-1, +1] band.
+	assert(match_node.debug_ai_adaptive_level() == 0)
+	var normal_decision_interval: float = match_node.debug_ai_adaptive_decision_interval()
+	match_node.debug_set_ai_adaptation_window(8.0, 0.0)
+	match_node.debug_evaluate_ai_adaptation()
+	assert(match_node.debug_ai_adaptive_level() == 1)
+	assert(match_node.debug_ai_adaptive_decision_interval() < normal_decision_interval)
+	match_node.debug_set_ai_adaptation_window(0.0, 8.0)
+	match_node.debug_evaluate_ai_adaptation()
+	assert(match_node.debug_ai_adaptive_level() == 0)
+	match_node.debug_set_ai_adaptation_window(0.0, 8.0)
+	match_node.debug_evaluate_ai_adaptation()
+	assert(match_node.debug_ai_adaptive_level() == -1)
+	assert(match_node.debug_ai_adaptive_decision_interval() > normal_decision_interval)
+	match_node.debug_set_ai_adaptation_window(0.0, 0.0)
+	match_node.debug_evaluate_ai_adaptation()
+	assert(match_node.debug_ai_adaptive_level() == 0)
+	print("SMOKE_STAGE=ai-adaptive")
+
 	# The same shot crossing the goal plane is only a goal while the whole
 	# ball fits below the crossbar.
 	match_node.ball.release(Vector2.RIGHT, 0.0)
