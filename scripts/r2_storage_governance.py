@@ -182,6 +182,11 @@ def self_test() -> None:
             assert "admission blocked" in str(exc)
         else:
             raise AssertionError("Over-budget upload must be denied")
+        # Existing objects in a republished bundle are charged only their
+        # net replacement bytes rather than their full sizes a second time.
+        admission_check_batch(config, token="test", account_id="test",
+                              additions={"scene-a.glb": 6_850_000_000,
+                                         "new/index.html": 20_000_000})
         # A bundle must fail as a whole when individually small files exceed
         # the ceiling in aggregate; the pointer and files share one preflight.
         try:
