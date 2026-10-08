@@ -1,7 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createLazyClassicWarRoomShellController } from './WarRoomClassicShellLoader.js';
+import { classicShellModuleKind, createLazyClassicWarRoomShellController } from './WarRoomClassicShellLoader.js';
 
 describe('lazy classic War Room shell controller', () => {
+  it('routes classroom bootstrap to the dedicated School Room module', () => {
+    expect(classicShellModuleKind({ classroom: true })).toBe('school-room-dedicated-v1');
+    expect(classicShellModuleKind({ classroom: false })).toBe('war-room-classic-v1');
+  });
+
   it('does not load the procedural shell until classic or fallback actually needs it', async () => {
     const shell = { name: 'classic-shell' };
     const buildClassicWarRoomShell = vi.fn(() => ({ classicShellObjects: [shell] }));
