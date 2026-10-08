@@ -7,6 +7,7 @@ const TEAM_KEYS := ["fc_matthias", "real_enroque"]
 
 static var _cached_manifest: Dictionary = {}
 static var _cached_run_textures: Dictionary = {}
+static var _cached_3d_run_frames: Dictionary = {}
 
 static func manifest() -> Dictionary:
 	if not _cached_manifest.is_empty():
@@ -61,6 +62,18 @@ static func _canonical_run_texture(team_id: int) -> Texture2D:
 	_cached_run_textures[key] = texture
 	return texture
 
+static func _run_frame_3d(team_id: int, column: int, atlas: Texture2D, cell: Vector2) -> Texture2D:
+	var key := "%d:%d" % [team_id, column]
+	if _cached_3d_run_frames.has(key):
+		return _cached_3d_run_frames[key]
+	# Sprite3D needs a standalone texture: AtlasTexture regions can vanish on WebGL.
+	var source := atlas.get_image()
+	var region := source.get_region(Rect2i(column * int(cell.x), 0, int(cell.x), int(cell.y)))
+	assert(not region.is_empty(), "Empty 3D football frame")
+	var texture := ImageTexture.create_from_image(region)
+	_cached_3d_run_frames[key] = texture
+	return texture
+
 static func atlas_key(team_id: int, role: String = "", squad_index: int = -1) -> String:
 	var key: String = TEAM_KEYS[clampi(team_id, 0, TEAM_KEYS.size() - 1)]
 	if role == "keeper":
@@ -74,7 +87,7 @@ static func atlas_key(team_id: int, role: String = "", squad_index: int = -1) ->
 	var field_slot := clampi(squad_index - 1, 0, variants.size() - 1)
 	return String(variants[field_slot])
 
-static func build_frames(team_id: int, role: String = "", squad_index: int = -1) -> SpriteFrames:
+static func build_frames(team_id: int, role: String = "", squad_index: int = -1, for_3d: bool = false) -> SpriteFrames:
 	var data := manifest()
 	var key: String = atlas_key(team_id, role, squad_index)
 	var atlas_meta: Dictionary = data["atlases"][key]
@@ -112,7 +125,7 @@ static func build_frames(team_id: int, role: String = "", squad_index: int = -1)
 			var idle_region := AtlasTexture.new()
 			idle_region.atlas = run_texture
 			idle_region.region = Rect2(Vector2.ZERO, run_cell)
-			frames.add_frame(animation_name, idle_region)
+			frames.add_frame(animation_name, _run_frame_3d(team_id, 0, run_texture, run_cell) if for_3d else idle_region)
 			continue
 		if animation_name in [&"run", &"sprint"]:
 			assert(run_frames == int(animation["frames"]), "Canonical locomotion frame count inválido")
@@ -120,7 +133,7 @@ static func build_frames(team_id: int, role: String = "", squad_index: int = -1)
 				var run_region := AtlasTexture.new()
 				run_region.atlas = run_texture
 				run_region.region = Rect2(Vector2(float(column) * run_cell.x, 0.0), run_cell)
-				frames.add_frame(animation_name, run_region)
+				frames.add_frame(animation_name, _run_frame_3d(team_id, column, run_texture, run_cell) if for_3d else run_region)
 			continue
 		var row := int(animation["row"])
 		for column in range(int(animation["frames"])):
