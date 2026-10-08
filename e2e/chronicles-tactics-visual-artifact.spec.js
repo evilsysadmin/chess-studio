@@ -486,6 +486,12 @@ for (const room of AUTHORED_ROOM_VISUAL_CAPTURES) {
       );
 
       if (room.mapId === 'echo-cistern') {
+        // Desktop Chronicles owns native fullscreen. Exit it before resizing the
+        // same Chromium window for the separate mobile-layout proof.
+        await page.evaluate(async () => {
+          if (document.fullscreenElement) await document.exitFullscreen();
+        });
+        await expect.poll(() => page.evaluate(() => document.fullscreenElement === null)).toBe(true);
         await page.setViewportSize({ width: 390, height: 844 });
         await page.waitForTimeout(420);
         const mobileHealth = await captureTacticsHealth(page);
