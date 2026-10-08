@@ -44,7 +44,7 @@ describe('Chronicles enemy retaliation cues', () => {
     const previous = chroniclesReduce(start, 'forward');
     const next = attack(previous, 'rook');
 
-    expect(chroniclesRetaliationCue(previous, next)).toEqual({
+    expect(chroniclesRetaliationCue(previous, next)).toMatchObject({
       enemyId: 'corrupted-pawn',
       targetId: 'rook',
       targetName: 'Hildegard',
@@ -93,4 +93,35 @@ describe('Chronicles enemy retaliation cues', () => {
     expect(next.enemyHp).toBe(0);
     expect(chroniclesRetaliationCue(previous, next)).toBeNull();
   });
+  it('recognizes initiative enemy attacks even when enemy HP does not change', () => {
+    const previous = {
+      ...createChroniclesState(),
+      party: createChroniclesState().party.map((member) => (
+        member.id === 'matthias' ? { ...member, hp: 7 } : member
+      )),
+      enemyTurnEvents: [],
+    };
+    const next = {
+      ...previous,
+      party: previous.party.map((member) => (
+        member.id === 'matthias' ? { ...member, hp: 6 } : member
+      )),
+      enemyTurnEvents: [{
+        type: 'attack',
+        enemyId: 'corrupted-pawn',
+        targetId: 'matthias',
+        damage: 1,
+        fromHp: 7,
+        toHp: 6,
+      }],
+    };
+
+    expect(chroniclesRetaliationCue(previous, next)).toMatchObject({
+      enemyId: 'corrupted-pawn',
+      targetId: 'matthias',
+      targetName: 'Matthias',
+      damage: 1,
+    });
+  });
+
 });

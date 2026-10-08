@@ -111,11 +111,9 @@ test('Chronicles Tactics · arranca como RPG táctico isométrico · locomoción
   await page.keyboard.down('ArrowUp');
   await expect(rendererHost).toHaveAttribute('data-chronicles-party-motion', 'walking');
   await page.keyboard.up('ArrowUp');
+  await expect(rendererHost).toHaveAttribute('data-chronicles-party-motion', 'idle');
   await expect(narrator).toContainText(/La compañía avanza hacia norte/i);
 
-  // A move committed just before keyup may still be waiting for React's paint.
-  // Let that already-dispatched step settle before asserting no further walking.
-  await page.waitForTimeout(80);
   const releasedCell = await mode.evaluate((node) => ({
     x: node.getAttribute('data-party-x'),
     y: node.getAttribute('data-party-y'),
@@ -156,9 +154,21 @@ test('Chronicles Tactics · la ficha pausa locomoción continua', async ({ page 
 });
 
 test('Chronicles Tactics · arranca como RPG táctico isométrico · exploración a combate', async ({ page }) => {
+  test.setTimeout(120_000);
   await openTactics(page);
   const mode = page.locator('[data-chronicles-tactics="true"]');
   await expect(mode.locator('[data-chronicles-tactics-renderer="three"] canvas')).toHaveCount(1, { timeout: 30_000 });
+
+  // Single 1-4 selects; a second press on the same hero opens the shared RPG sheet.
+  await page.evaluate(() => {
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: '2', bubbles: true, cancelable: true }));
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: '2', bubbles: true, cancelable: true }));
+  });
+  const hildegardSheet = page.getByRole('dialog', { name: 'Hildegard', exact: true });
+  await expect(hildegardSheet).toBeVisible();
+  await hildegardSheet.getByRole('button', { name: 'Cerrar ficha', exact: true })
+    .evaluate((button) => button.click());
+  await expect(hildegardSheet).toHaveCount(0);
   await expect(mode).toHaveAttribute('data-engagement', 'exploration');
   await expect(mode).toHaveAttribute('data-party-x', '1');
   await expect(mode).toHaveAttribute('data-party-y', '5');
@@ -173,6 +183,8 @@ test('Chronicles Tactics · arranca como RPG táctico isométrico · exploració
   await expect(moveNorth).toBeEnabled();
   await moveNorth.evaluate((button) => button.click());
   await expect(mode).toHaveAttribute('data-engagement', 'exploration');
+
+  const hpBeforeCombat = Number(await mode.getAttribute('data-party-hp-total'));
 
   await page.waitForTimeout(140);
   const moveEast = mode.getByRole('button', { name: 'Mover al este', exact: true });
@@ -235,6 +247,31 @@ test('Chronicles Tactics · arranca como RPG táctico isométrico · exploració
     const actorId = document.querySelector('[data-chronicles-tactics="true"]')?.dataset.initiativeActor || '';
     return Boolean(actorId && actorId !== previousActorId);
   }, beforePass.actorId, { timeout: 10_000 });
+
+  await page.evaluate((hpBefore) => {
+    const root = document.querySelector('[data-chronicles-tactics="true"]');
+    if (!root) throw new Error('Chronicles Tactics root missing');
+    const pump = () => {
+      if (Number(root.getAttribute('data-party-hp-total') || 0) < hpBefore) {
+        window.clearInterval(window.__chroniclesEnemyDamagePump);
+        window.__chroniclesEnemyDamagePump = null;
+        return;
+      }
+      if (root.getAttribute('data-turn-phase') !== 'party') return;
+      const pass = [...root.querySelectorAll('button')]
+        .find((node) => node.getAttribute('aria-label') === 'Pasar turno');
+      if (pass && !pass.disabled) pass.click();
+    };
+    window.__chroniclesEnemyDamagePump = window.setInterval(pump, 120);
+    pump();
+  }, hpBeforeCombat);
+
+  await page.waitForFunction((hpBefore) => {
+    const root = document.querySelector('[data-chronicles-tactics="true"]');
+    const hp = Number(root?.getAttribute('data-party-hp-total') || 0);
+    const hitCue = root?.querySelector('.chronicles-party-hud__member[data-damage-hit="true"]');
+    return hp < hpBefore && Boolean(hitCue);
+  }, hpBeforeCombat, { timeout: 30_000, polling: 100 });
 
 });
 test('Chronicles · Tactics → primera persona conserva una única expedición autoritativa', async ({ page }) => {

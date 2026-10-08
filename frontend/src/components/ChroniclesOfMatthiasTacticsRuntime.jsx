@@ -135,6 +135,7 @@ export default function ChroniclesOfMatthiasTactics({
   const checkpointFingerprintRef = useRef(chroniclesTacticsCheckpointFingerprint(state));
   const checkpointQueueRef = useRef(Promise.resolve());
   const selectedMemberRef = useRef('matthias');
+  const partyHotkeyRef = useRef({ key: '', at: 0 });
   const lastMoveAtRef = useRef(0);
   const explorationWalkRef = useRef({ vector: null, timer: 0 });
   const lastAttackAtRef = useRef(0);
@@ -580,10 +581,16 @@ export default function ChroniclesOfMatthiasTactics({
     const onKeyDown = (event) => {
       if (sheetOpen) return;
       if (/^[1-4]$/.test(event.key)) {
+        if (event.repeat) return;
         const member = stateRef.current.party[Number(event.key) - 1];
         if (member) {
           event.preventDefault();
-          selectMember(member.id);
+          const now = performance.now();
+          const previous = partyHotkeyRef.current;
+          const doubleTap = previous.key === event.key && now - previous.at <= 900;
+          partyHotkeyRef.current = doubleTap ? { key: '', at: 0 } : { key: event.key, at: now };
+          if (doubleTap) openMemberSheet(member.id);
+          else selectMember(member.id);
         }
         return;
       }
@@ -648,6 +655,7 @@ export default function ChroniclesOfMatthiasTactics({
     attackEnemy,
     sheetOpen,
     moveParty,
+    openMemberSheet,
     passTurn,
     selectMember,
     startExplorationWalk,
@@ -666,6 +674,7 @@ export default function ChroniclesOfMatthiasTactics({
       data-exploration-control="hold-to-walk"
       data-party-x={state.x}
       data-party-y={state.y}
+      data-party-hp-total={state.party.reduce((total, member) => total + Number(member.hp || 0), 0)}
       data-difficulty-target={difficultyBand.targetLevel}
       data-difficulty-min={difficultyBand.minLevel}
       data-difficulty-max={difficultyBand.maxLevel}

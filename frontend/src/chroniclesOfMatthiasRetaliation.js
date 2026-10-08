@@ -12,7 +12,25 @@ export function chroniclesRetaliationCue(previousState, nextState) {
   if (!damagedMember) return null;
 
   const previousMember = previousParty.find((member) => member.id === damagedMember.id);
-  const enemy = chroniclesMapForState(previousState).enemies.find((candidate) => {
+  const hpLost = Math.max(0, Number(previousMember?.hp || 0) - Number(damagedMember.hp || 0));
+  const map = chroniclesMapForState(previousState);
+  const attackEvent = (nextState.enemyTurnEvents || [])
+    .find((event) => event?.type === 'attack' && event.targetId === damagedMember.id);
+
+  if (attackEvent) {
+    const enemy = map.enemies.find((candidate) => candidate.id === attackEvent.enemyId);
+    return {
+      enemyId: attackEvent.enemyId,
+      enemyName: enemy?.name || attackEvent.enemyId,
+      targetId: damagedMember.id,
+      targetName: damagedMember.name,
+      damage: Math.max(0, Number(attackEvent.damage || hpLost)),
+    };
+  }
+
+  // Legacy immediate-retaliation states changed both enemy and party HP in one
+  // reducer pass. Keep that fallback while initiative combat migrates fully.
+  const enemy = map.enemies.find((candidate) => {
     const previousHp = Number(previousState[candidate.hpKey] || 0);
     const nextHp = Number(nextState[candidate.hpKey] || 0);
     return nextHp > 0 && nextHp < previousHp;
@@ -21,8 +39,9 @@ export function chroniclesRetaliationCue(previousState, nextState) {
 
   return {
     enemyId: enemy.id,
+    enemyName: enemy.name,
     targetId: damagedMember.id,
     targetName: damagedMember.name,
-    damage: Math.max(0, Number(previousMember?.hp || 0) - Number(damagedMember.hp || 0)),
+    damage: hpLost,
   };
 }

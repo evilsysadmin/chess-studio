@@ -149,6 +149,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const [selectedMemberId, setSelectedMemberId] = useState('matthias');
   const [sheetMemberId, setSheetMemberId] = useState(null);
   const selectedMemberIdRef = useRef(selectedMemberId);
+  const partyHotkeyRef = useRef({ key: '', at: 0 });
   const [rendererError, setRendererError] = useState('');
   const [retaliationCue, setRetaliationCue] = useState(null);
   const [partyBark, setPartyBark] = useState(null);
@@ -339,7 +340,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
       setRetaliationCue({ ...cue, token });
       retaliationTimerRef.current = setTimeout(() => {
         setRetaliationCue((active) => active?.token === token ? null : active);
-      }, 320);
+      }, 1800);
     }
   }, []);
 
@@ -385,6 +386,16 @@ export default function ChroniclesOfMatthias({ onExit }) {
       const latestActor = chroniclesCurrentInitiativeActor(latest?.initiative);
       if (!latest?.initiative || latestActor?.kind !== 'enemy' || latestActor.id !== actor.id) return;
       const acted = chroniclesResolveEnemyActor(latest, actor.id);
+      const cue = chroniclesRetaliationCue(latest, acted);
+      if (cue) {
+        const token = retaliationSequenceRef.current + 1;
+        retaliationSequenceRef.current = token;
+        if (retaliationTimerRef.current) clearTimeout(retaliationTimerRef.current);
+        setRetaliationCue({ ...cue, token });
+        retaliationTimerRef.current = setTimeout(() => {
+          setRetaliationCue((active) => active?.token === token ? null : active);
+        }, 1800);
+      }
       const advanced = acted.phase === 'defeated'
         ? acted
         : chroniclesAdvanceCombatInitiative(acted, chroniclesActiveEnemies(acted));
@@ -655,10 +666,19 @@ export default function ChroniclesOfMatthias({ onExit }) {
       }
       if (automapOpen || sheetMemberId || current.phase === 'defeated' || current.phase === 'escaped') return;
       if (/^[1-4]$/.test(event.key)) {
+        if (event.repeat) return;
         const member = current.party[Number(event.key) - 1];
         if (member) {
           event.preventDefault();
-          setSelectedMemberId(member.id);
+          const now = performance.now();
+          const previous = partyHotkeyRef.current;
+          const doubleTap = previous.key === event.key && now - previous.at <= 900;
+          partyHotkeyRef.current = doubleTap ? { key: '', at: 0 } : { key: event.key, at: now };
+          if (doubleTap) openMemberSheet(member.id);
+          else {
+            selectedMemberIdRef.current = member.id;
+            setSelectedMemberId(member.id);
+          }
         }
         return;
       }
@@ -682,7 +702,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     };
     window.addEventListener('keydown', onKeyDown, { passive: false });
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [attackWithSelected, automapOpen, clearTouchHold, dispatch, interactWithContext, ready, sheetMemberId]);
+  }, [attackWithSelected, automapOpen, clearTouchHold, dispatch, interactWithContext, openMemberSheet, ready, sheetMemberId]);
 
   if (!characterSetupDone) {
     return (
@@ -714,6 +734,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const latestJournalEntry = journalEntries[journalEntries.length - 1];
   const expeditionOver = state.phase === 'defeated' || state.phase === 'escaped';
   const contextualAction = chroniclesContextualContentAction(state);
+  const activeInitiativeActor = chroniclesCurrentInitiativeActor(state.initiative);
 
   return (
     <div
@@ -724,12 +745,15 @@ export default function ChroniclesOfMatthias({ onExit }) {
       data-chronicles-phase={state.phase}
       data-chronicles-turn-engine={CHRONICLES_TURN_ENGINE_VERSION}
       data-chronicles-initiative-die={state.initiative?.die || undefined}
+      data-chronicles-initiative-actor={activeInitiativeActor?.id || ''}
+      data-turn-phase={state.turnPhase || 'party'}
+      data-party-hp-total={state.party.reduce((total, member) => total + Number(member.hp || 0), 0)}
       role="region"
       aria-label="Chronicles of Matthias"
     >
       <div className="chronicles-shell">
         <aside className="chronicles-party" aria-label="Grupo de Matthias">
-          <span className="chronicles-panel-kicker">GRUPO · 1–4 SELECCIONAR</span>
+          <span className="chronicles-panel-kicker">GRUPO · 1–4 SELECCIONAR · DOBLE FICHA</span>
           <div className="chronicles-party-preview" data-condition={selectedCondition} data-relic={selectedRelic || undefined}>
             <img
               className="chronicles-party-preview-image"
@@ -756,6 +780,8 @@ export default function ChroniclesOfMatthias({ onExit }) {
                 aria-label={`Seleccionar ${member.name}`}
                 title={`Seleccionar y abrir ficha de ${member.name}`}
                 aria-pressed={member.id === selectedMemberId}
+                data-member-hp={member.hp}
+                data-damage-hit={retaliationCue?.targetId === member.id ? 'true' : undefined}
               >
                 <span className="chronicles-party-glyph has-authored-portrait" aria-hidden="true">
                   <img
@@ -765,6 +791,12 @@ export default function ChroniclesOfMatthias({ onExit }) {
                     draggable="false"
                     data-chronicles-party-thumbnail={member.id}
                   />
+                  {retaliationCue?.targetId === member.id ? (
+                    <span
+                      key={retaliationCue.token}
+                      className="chronicles-party-damage-slash"
+                    />
+                  ) : null}
                 </span>
                 <span><strong>{index + 1}. {member.name}</strong><small>Nv {chroniclesHeroProgress(progression, member.id).level} · {member.row === 'front' ? 'FRENTE' : 'RETAGUARDIA'} · clic · ficha</small></span>
                 <b>{member.hp}/{member.maxHp}</b>
