@@ -84,6 +84,20 @@ func _initialize() -> void:
 	assert(String(transition_runner.visual.animation) == "run")
 	assert(transition_runner.visual.frame == 5)
 	assert(absf(transition_runner.visual.frame_progress - 0.42) < 0.02)
+	transition_runner.velocity = Vector2.RIGHT * transition_runner.base_speed * 0.50
+	var half_run_cadence := transition_runner.debug_locomotion_speed_scale("run")
+	transition_runner.velocity = Vector2.RIGHT * transition_runner.base_speed
+	var full_run_cadence := transition_runner.debug_locomotion_speed_scale("run")
+	assert(half_run_cadence < full_run_cadence)
+	assert(half_run_cadence >= 0.90 and half_run_cadence <= 0.94)
+	assert(full_run_cadence >= 1.05 and full_run_cadence <= 1.07)
+	transition_runner.velocity = Vector2.RIGHT * transition_runner.base_speed * transition_runner.SPRINT_SPEED_MULTIPLIER * 0.50
+	var half_sprint_cadence := transition_runner.debug_locomotion_speed_scale("sprint")
+	transition_runner.velocity = Vector2.RIGHT * transition_runner.base_speed * transition_runner.SPRINT_SPEED_MULTIPLIER
+	var full_sprint_cadence := transition_runner.debug_locomotion_speed_scale("sprint")
+	assert(half_sprint_cadence < full_sprint_cadence)
+	assert(half_sprint_cadence >= 0.96 and half_sprint_cadence <= 0.98)
+	assert(full_sprint_cadence >= 1.11 and full_sprint_cadence <= 1.13)
 	assert(ChessFootballSpriteBank.atlas_key(0, "keeper") == "fc_matthias_keeper")
 	assert(ChessFootballSpriteBank.atlas_key(1, "keeper") == "real_enroque_keeper")
 	assert(ChessFootballSpriteBank.atlas_key(0, "forward") == "fc_matthias")
