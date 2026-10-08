@@ -591,6 +591,16 @@ func proceduralize(manifest bson.D, seed int64, proposal any, version int, dunge
 		{Key: "treasureVariationRevision", Value: treasure.revision},
 		{Key: "treasureBoons", Value: boonDocs(treasure.boons)},
 	}
+	if topologyVersion >= DungeonTopologyVersion {
+		level := dungeonLevel
+		if level < 1 {
+			level = 1
+		}
+		generation = append(generation,
+			bson.E{Key: "dungeonTopologyVersion", Value: int64(DungeonTopologyVersion)},
+			bson.E{Key: "dungeonLevel", Value: level},
+		)
+	}
 	if version >= OptionalEnemyPlacementVersion {
 		relocated := bson.A{}
 		for _, p := range chosen.placements {
