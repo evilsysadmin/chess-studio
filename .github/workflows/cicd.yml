@@ -310,7 +310,11 @@ jobs:
           set -euo pipefail
           cleanup() { docker compose down -v || true; }
           trap cleanup EXIT
-          docker compose up -d --build
+          if ! docker compose up -d --build; then
+            docker compose ps -a || true
+            docker compose logs --no-color --tail=120 backend mongo || true
+            exit 1
+          fi
           python3 scripts/compose_smoke.py
   e2e_build:
     name: Build browser artifact once
@@ -368,8 +372,8 @@ jobs:
         env:
           CRITICAL_E2E_LANE: ${{ matrix.lane }}
         run: python3 -S scripts/run_core_e2e_lane.py "$CRITICAL_E2E_LANE"
-      - name: Upload Playwright diagnostics on failure
-        if: failure()
+      - name: Upload Playwright evidence for Admin and diagnostics on failure
+        if: failure() || matrix.lane == 'regression-state+regression-school'
         uses: actions/upload-artifact@v7
         with:
           name: playwright-test-results-${{ matrix.lane }}

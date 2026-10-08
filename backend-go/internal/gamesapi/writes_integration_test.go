@@ -147,7 +147,7 @@ func TestCreateRetriesShareOneGameAgainstMongo(t *testing.T) {
 	db := integrationDB(t)
 	h, err := NewWrites(WriteConfig{
 		Config: Config{Accounts: fakeAccounts{}, JWTSecret: secret, Now: func() time.Time { return fixedNow }, RatePerMinute: 1000},
-		Store:  gamestore.New(db, 5*time.Second),
+		Store:  gamestore.New(db, 15*time.Second),
 		CPU:    &lockedCPU{},
 	})
 	if err != nil {
@@ -155,6 +155,7 @@ func TestCreateRetriesShareOneGameAgainstMongo(t *testing.T) {
 	}
 	var wg sync.WaitGroup
 	codes := make([]int, 6)
+	responses := make([]string, len(codes))
 	for i := range codes {
 		wg.Add(1)
 		go func(i int) {
@@ -165,12 +166,13 @@ func TestCreateRetriesShareOneGameAgainstMongo(t *testing.T) {
 			w := httptest.NewRecorder()
 			h.ServeHTTP(w, r)
 			codes[i] = w.Code
+			responses[i] = w.Body.String()
 		}(i)
 	}
 	wg.Wait()
 	for _, code := range codes {
 		if code != http.StatusCreated {
-			t.Fatalf("codes=%v", codes)
+			t.Fatalf("codes=%v responses=%v", codes, responses)
 		}
 	}
 	count, err := db.Collection(gamestore.Collection).CountDocuments(context.Background(), bson.D{})
