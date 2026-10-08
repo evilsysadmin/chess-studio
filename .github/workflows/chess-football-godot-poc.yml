@@ -252,6 +252,7 @@ jobs:
         run: |
           set -euo pipefail
           grep -q 'platform="Web"' games/chess-football-godot/export_presets.cfg
+          grep -Fq 'include_filter="assets/players/run_canon/*.b64"' games/chess-football-godot/export_presets.cfg
           grep -q 'variant/thread_support=false' games/chess-football-godot/export_presets.cfg
           grep -q 'renderer/rendering_method="gl_compatibility"' games/chess-football-godot/project.godot
           grep -q '^window/size/mode=3$' games/chess-football-godot/project.godot
