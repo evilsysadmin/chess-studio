@@ -3,6 +3,7 @@ import {
   CHRONICLES_MATERIAL_ATLAS,
   CHRONICLES_MATERIAL_ENVIRONMENTS,
   chroniclesMaterialEnvironmentForMapId,
+  chroniclesMaterialEnvironmentForScene,
   chroniclesMaterialPlanForScene,
   chroniclesMaterialProfile,
 } from './chroniclesMaterialAtlas.js';
@@ -33,6 +34,18 @@ describe('Chronicles semantic material atlas', () => {
     [...CHRONICLES_MATERIAL_ENVIRONMENTS['cave-water'].wall, ...CHRONICLES_MATERIAL_ENVIRONMENTS['cave-water'].floor]
       .forEach((id) => expect(id.startsWith('N')).toBe(true));
     expect(CHRONICLES_MATERIAL_ENVIRONMENTS['cave-water'].floor).toEqual(['N01', 'N05', 'N06']);
+  });
+
+  it('uses exterior materials for authored settlements and wilderness instead of crypt stone', () => {
+    expect(chroniclesMaterialEnvironmentForMapId('village-square')).toBe('exterior');
+    expect(chroniclesMaterialEnvironmentForMapId('forest-road')).toBe('exterior');
+    expect(chroniclesMaterialEnvironmentForScene({ mapId: 'ash-vault', regionKind: 'settlement' })).toBe('exterior');
+    expect(chroniclesMaterialEnvironmentForScene({ mapId: 'unknown-location', regionKind: 'wilderness' })).toBe('exterior');
+    expect(chroniclesMaterialEnvironmentForScene({ mapId: 'crypt-eight-squares', regionKind: 'dungeon' })).toBe('dungeon');
+    const plan = chroniclesMaterialPlanForScene({ mapId: 'village-square', regionKind: 'settlement', walls: [], floors: [] });
+    expect(plan.environmentId).toBe('exterior');
+    plan.wallProfileIds.forEach((id) => expect(CHRONICLES_MATERIAL_ENVIRONMENTS.exterior.wall).toContain(id));
+    plan.floorProfileIds.forEach((id) => expect(CHRONICLES_MATERIAL_ENVIRONMENTS.exterior.floor).toContain(id));
   });
 
   it('derives deterministic profile variation from the actual procedural layout', () => {

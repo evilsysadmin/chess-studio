@@ -99,6 +99,7 @@ export function chroniclesMaterialEnvironment(environmentId) {
 export function chroniclesMaterialEnvironmentForMapId(mapId = '') {
   const id = String(mapId || '').trim().toLowerCase();
   if (MAP_ENVIRONMENT[id]) return MAP_ENVIRONMENT[id];
+  if (/(village|hamlet|town|settlement|outskirts|forest|road|meadow|woodland)/.test(id)) return 'exterior';
   if (/(cistern|sewer|water|flood|canal)/.test(id)) return 'cave-water';
   if (/(cave|cavern|grotto|mine|mountain|tunnel|underground)/.test(id)) return 'cave';
   if (/(foundry|forge|iron|smelter)/.test(id)) return 'iron-foundry';
@@ -108,6 +109,13 @@ export function chroniclesMaterialEnvironmentForMapId(mapId = '') {
   if (/(archive|basilica|gallery|castle|palace|chapel|keep|hall|library)/.test(id)) return 'castle-interior';
   if (/(crypt|dungeon|vault|tomb|catacomb)/.test(id)) return 'dungeon';
   return 'dungeon';
+}
+
+// Authored region identity beats legacy map-name heuristics. The latter remain
+// for dungeon environments shipped before Chronicles had an overworld.
+export function chroniclesMaterialEnvironmentForScene(scenePlan = null) {
+  if (scenePlan?.regionKind === 'settlement' || scenePlan?.regionKind === 'wilderness') return 'exterior';
+  return chroniclesMaterialEnvironmentForMapId(scenePlan?.mapId);
 }
 
 function hashText(text) {
@@ -161,7 +169,7 @@ function pickProfiles(values, count, seed, salt) {
 }
 
 export function chroniclesMaterialPlanForScene(scenePlan = null) {
-  const environmentId = chroniclesMaterialEnvironmentForMapId(scenePlan?.mapId);
+  const environmentId = chroniclesMaterialEnvironmentForScene(scenePlan);
   const environment = chroniclesMaterialEnvironment(environmentId);
   const seed = chroniclesMaterialSceneSeed(scenePlan);
   const authoredWalls = Object.values(scenePlan?.materials?.wallLegend || {})
