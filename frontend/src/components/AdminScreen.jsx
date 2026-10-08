@@ -117,6 +117,7 @@ function AdminObservabilityWorkspace({ onExit }) {
 
 export default function AdminScreen({ onExit }) {
   const [section, setSection] = useState('overview');
+  useEscapeToClose(onExit);
 
   return (
     <div className="admin-workspace-shell" data-admin-section={section}>
@@ -137,7 +138,7 @@ export default function AdminScreen({ onExit }) {
               <AdminRatingEditor />
             </Suspense>
           )}
-          <AdminDashboardContent onExit={onExit} />
+          <AdminDashboardContent section={section} />
         </div>
       )}
     </div>
