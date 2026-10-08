@@ -34,6 +34,7 @@ async function openChronicles(page, captureLabel, {
   runStatus = 'active',
   chroniclesCurrentMapId = 'crypt-eight-squares',
   chroniclesWorldFlags = null,
+  chroniclesAreaTransform = null,
 } = {}) {
   await mockApi(page, {
     profileSeed: {
@@ -43,6 +44,7 @@ async function openChronicles(page, captureLabel, {
     chroniclesRunStatus: runStatus,
     chroniclesCurrentMapId,
     chroniclesWorldFlags,
+    chroniclesAreaTransform,
   });
   await login(page);
   const speech = page.getByRole('region', { name: 'Mensaje de Matthias', exact: true });
@@ -577,3 +579,61 @@ for (const capture of CAPTURES) {
     }
   });
 }
+
+
+test('Chronicles · Swordhaven 3D visual prototype · desktop', async ({ browser }) => {
+  // This runs the REAL first-person renderer with an authored-like area envelope
+  // but uses a known legacy area ID so no production run/catalog is modified.
+  test.setTimeout(240_000);
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await context.newPage();
+  try {
+    await openChronicles(page, 'swordhaven-preview', {
+      chroniclesCurrentMapId: 'gallery-of-forks',
+      chroniclesAreaTransform(mapId, manifest) {
+        if (mapId !== 'gallery-of-forks') return manifest;
+        const grid = Array.from({ length: 19 }, (_, y) => (
+          y === 0 || y === 18 ? '#'.repeat(19) : '#' + '.'.repeat(17) + '#'
+        ));
+        const shops = [
+          ['swordhaven-forge', 4, 7],
+          ['swordhaven-armor', 14, 7],
+          ['swordhaven-tavern', 4, 15],
+          ['swordhaven-magic', 14, 15],
+          ['swordhaven-temple', 9, 5],
+        ];
+        return {
+          ...manifest,
+          title: 'Swordhaven · visual prototype',
+          regionKind: 'settlement',
+          grid,
+          materials: null,
+          partyStart: { x: 9, y: 16, direction: 0 },
+          enemies: [],
+          initialFlags: {},
+          triggers: [],
+          treasures: [],
+          traps: [],
+          exits: [],
+          interactables: shops.map(([id, x, y]) => ({
+            id, kind: 'lore', label: 'Visitar establecimiento', x, y,
+            action: { effects: [], message: 'Swordhaven se prepara para recibir viajeros.' },
+          })),
+          initialJournal: { id: 'swordhaven-arrival', title: 'Swordhaven', body: 'Un nuevo comienzo.', sigil: 'I' },
+          introMessage: 'Las puertas de Swordhaven están abiertas.',
+        };
+      },
+    });
+    const stage = page.locator('[data-chronicles-renderer="three"]');
+    await expect(stage.locator('canvas')).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator('.chronicles-renderer-error')).toHaveCount(0);
+    await page.screenshot({
+      path: ARTIFACT_DIR + '/chronicles-swordhaven-3d-prototype-desktop.png',
+      animations: 'disabled',
+      timeout: 60_000,
+    });
+  } finally {
+    await context.close();
+  }
+});
