@@ -27,7 +27,7 @@
     "fps": 12,
     "footline": 130
   },
-    "directional_run": {
+  "directional_run": {
     "quality_contract": "football-directional-run-canon-v1",
     "encoded_parts": [
       "run_directions_v1/directional_run_v1.b64"
