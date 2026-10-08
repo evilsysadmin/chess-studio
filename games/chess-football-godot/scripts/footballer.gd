@@ -22,6 +22,7 @@ const DRIBBLE_COOLDOWN_SECONDS := 0.68
 const DRIBBLE_SPEED_MULTIPLIER := 1.52
 const DRIBBLE_ACCELERATION := 3900.0
 const DRIBBLE_TOUCH_DISTANCE := 24.0
+const FACING_SWITCH_SPEED := 18.0
 var home_position: Vector2
 var active: bool = false
 var has_ball: bool = false
@@ -363,11 +364,14 @@ func ball_anchor() -> Vector2:
 	return anchor
 
 func _sync_facing() -> void:
-	if visual == null or absf(velocity.x) < 4.0:
+	if visual == null or absf(velocity.x) < FACING_SWITCH_SPEED:
 		return
-	visual.flip_h = velocity.x < 0.0
+	var face_left := velocity.x < 0.0
+	if visual.flip_h == face_left:
+		return
+	visual.flip_h = face_left
 	if transition_visual != null:
-		transition_visual.flip_h = visual.flip_h
+		transition_visual.flip_h = face_left
 
 func _locomotion_speed_scale(wanted: String) -> float:
 	if wanted == "idle":
@@ -510,6 +514,10 @@ func debug_texture_filter_linear() -> bool:
 		and visual.texture_filter == CanvasItem.TEXTURE_FILTER_LINEAR
 		and transition_visual.texture_filter == CanvasItem.TEXTURE_FILTER_LINEAR
 	)
+
+
+func debug_visual_flip_h() -> bool:
+	return visual != null and visual.flip_h
 
 
 func debug_visual_ready() -> bool:
