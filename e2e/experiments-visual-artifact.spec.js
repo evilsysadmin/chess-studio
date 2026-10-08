@@ -148,7 +148,7 @@ async function withChessFootballCapturePage(browser, capture, callback) {
     await page.route(indexUrl, (route) => route.fulfill({
       status: 200,
       contentType: 'text/html',
-      body: '<!doctype html><html><body style="margin:0;background:#060a07;color:#eee2bd"><main>Chess Football mock runtime</main></body></html>',
+      body: '<!doctype html><html><body style="margin:0;background:#060a07;color:#eee2bd"><main>Chess Football mock runtime</main><script>window.parent.postMessage({source:'chess-football-godot',type:'ready'},'*')</script></body></html>',
     }));
     await openExperiments(page);
     const portal = page.locator('.lab-workshop-portal--football');
