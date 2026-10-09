@@ -163,7 +163,6 @@ func TestChroniclesRunsRoute(t *testing.T) {
 	}
 }
 
-
 func TestChroniclesSavesAreOwnerScopedAndDeleteOnlyOne(t *testing.T) {
 	store := chroniclesrun.NewMemory()
 	now := time.Date(2026, 10, 9, 15, 0, 0, 0, time.UTC)
