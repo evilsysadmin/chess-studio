@@ -195,14 +195,14 @@ export async function chroniclesRecoverLegacySavedRunIds(scope, remoteRuns, {
   const serverIds = new Set(remoteRuns.filter((row) => !row.status || row.status === 'active')
     .map((row) => row.runId).filter((id) => typeof id === 'string'));
   let recovered = 0;
-  const candidates = readSaveCatalog().filter((row) => row.remote && !row.pending && !serverIds.has(row.id));
+  const candidates = readSaveCatalog().filter((row) => !row.pending && !serverIds.has(row.id));
   for (const candidate of candidates) {
     if (signal?.aborted || expectedOwner !== currentOwner()) break;
     const canonicalId = await chroniclesCanonicalRunIdForKey(expectedOwner, candidate.id);
     if (!canonicalId || !serverIds.has(canonicalId) || signal?.aborted || expectedOwner !== currentOwner()) continue;
     const latest = readSaveCatalog();
     const stale = latest.find((row) => row.id === candidate.id);
-    if (!stale || !stale.remote || stale.pending) continue;
+    if (!stale || stale.pending) continue;
     const serverRow = latest.find((row) => row.id === canonicalId);
     const repaired = {
       ...(serverRow || {}), ...stale,
@@ -210,7 +210,7 @@ export async function chroniclesRecoverLegacySavedRunIds(scope, remoteRuns, {
     };
     writeSaveCatalog([repaired, ...latest.filter((row) => row.id !== candidate.id && row.id !== canonicalId)]);
     const active = readRunState(scope);
-    if (active?.id === candidate.id && !active.ended && active.remote && !active.pending) {
+    if (active?.id === candidate.id && !active.ended && !active.pending) {
       writeRunState({ ...active, id: canonicalId, remote: true, pending: false });
     }
     recovered += 1;
