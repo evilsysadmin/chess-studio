@@ -3,7 +3,11 @@ import {
   chroniclesClearRuntimeMapDefinitions,
 } from '../chronicles/chroniclesMapCatalog.js';
 import { chroniclesDeployedPartyLevel } from '../chronicles/chroniclesDifficultyPolicy.js';
-import { chroniclesRunEntryMapId } from '../chronicles/chroniclesRunIdentity.js';
+import {
+  chroniclesRunEntryMapId,
+  chroniclesSelectedRunIsRemote,
+  chroniclesMarkSavedRunRemote,
+} from '../chronicles/chroniclesRunIdentity.js';
 import {
   CHRONICLES_BOOTSTRAP_ERROR_CODES,
   chroniclesBootstrapTacticsWorld,
@@ -126,6 +130,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
 
     setBootstrapError(null);
     const operationId = ensureChroniclesTacticsRun();
+    const remoteSelection = chroniclesSelectedRunIsRemote('tactics', operationId);
     activeRunIdRef.current = operationId;
 
     // Preload the mode code and renderer while the authoritative run resolves.
@@ -137,18 +142,20 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
       mapId: chroniclesRunEntryMapId('tactics'),
       signal: controller.signal,
       operationId,
+      resumeRunId: remoteSelection ? operationId : null,
       partyLevel: chroniclesDeployedPartyLevel(progression),
     })
       .then((world) => {
         if (!active) return;
         setBootstrapWorld(world);
+        chroniclesMarkSavedRunRemote('tactics', operationId);
         staleRunRecoveryAttemptedRef.current = false;
         setBootstrapError(null);
         setReady(true);
       })
       .catch((error) => {
         if (!active || error?.code === CHRONICLES_BOOTSTRAP_ERROR_CODES.aborted) return;
-        if (error?.status === 409 && !staleRunRecoveryAttemptedRef.current) {
+        if (error?.status === 409 && !remoteSelection && !staleRunRecoveryAttemptedRef.current) {
           staleRunRecoveryAttemptedRef.current = true;
           const replacementRunId = renewChroniclesTacticsRun(operationId);
           activeRunIdRef.current = replacementRunId;
