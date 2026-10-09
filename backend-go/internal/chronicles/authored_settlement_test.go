@@ -2,13 +2,22 @@ package chronicles
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 func TestAuthoredSettlementKeepsRoadsAndDoorways(t *testing.T) {
-	grid := bson.A{"#######", "#.....#", "#.###.#", "#..P..#", "#######"}
+	grid := bson.A{strings.Repeat("#", 19)}
+	for i := 0; i < 17; i++ {
+		grid = append(grid, "#"+strings.Repeat(".", 17)+"#")
+	}
+	grid = append(grid, strings.Repeat("#", 19))
+	expected := make([]string, 0, len(grid))
+	for _, value := range grid {
+		expected = append(expected, value.(string))
+	}
 	manifest := bson.D{
 		{Key: "id", Value: "swordhaven-square"},
 		{Key: "version", Value: int64(1)},
@@ -16,8 +25,8 @@ func TestAuthoredSettlementKeepsRoadsAndDoorways(t *testing.T) {
 		{Key: "layoutMode", Value: "authored"},
 		{Key: "grid", Value: grid},
 		{Key: "partyStart", Value: bson.D{
-			{Key: "x", Value: int64(3)},
-			{Key: "y", Value: int64(3)},
+			{Key: "x", Value: int64(9)},
+			{Key: "y", Value: int64(16)},
 			{Key: "direction", Value: int64(0)},
 		}},
 		{Key: "enemies", Value: bson.A{}},
@@ -32,9 +41,7 @@ func TestAuthoredSettlementKeepsRoadsAndDoorways(t *testing.T) {
 		if err != nil {
 			t.Fatalf("seed %d: %v", seed, err)
 		}
-		if !reflect.DeepEqual(gridRows(generated), []string{
-			"#######", "#.....#", "#.###.#", "#..P..#", "#######",
-		}) {
+		if !reflect.DeepEqual(gridRows(generated), expected) {
 			t.Fatalf("seed %d changed authored settlement grid", seed)
 		}
 		metadata, ok := get(generated, "generation").(bson.D)
