@@ -1,0 +1,95 @@
+{
+  "id": "banner-road",
+  "version": 1,
+  "progressionKey": "campaign-banner-road-v1",
+  "title": "Camino de los Estandartes",
+  "regionKind": "wilderness",
+  "layoutMode": "authored",
+  "grid": [
+    "#####################",
+    "#...................#",
+    "#...................#",
+    "#...................#",
+    "#.##..#.##.###.####.#",
+    "#...................#",
+    "#...................#",
+    "#...................#",
+    "#...................#",
+    "#...................#",
+    "#...................#",
+    "#...................#",
+    "#...................#",
+    "#...................#",
+    "#####################"
+  ],
+  "partyStart": {
+    "x": 10,
+    "y": 7,
+    "direction": 0
+  },
+  "initialFlags": {},
+  "enemies": [],
+  "triggers": [],
+  "interactables": [
+    {
+      "id": "stone-milestone",
+      "kind": "lore",
+      "x": 8,
+      "y": 5,
+      "label": "El mojón sin nombre",
+      "when": [
+        {
+          "key": "milestone-erased",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "milestone-erased",
+            "value": true
+          }
+        ],
+        "message": "Camino de los Estandartes: El mojón sin nombre.",
+        "journal": {
+          "id": "campaign-milestone-erased",
+          "title": "El mojón sin nombre",
+          "body": "Calzada real que conecta los mercados con la capital.",
+          "sigil": "✦"
+        }
+      }
+    }
+  ],
+  "treasures": [],
+  "traps": [],
+  "exits": [
+    {
+      "id": "to-swordhaven-square",
+      "kind": "exit",
+      "x": 10,
+      "y": 1,
+      "requiresReturn": true,
+      "openLabel": "Ir a Swordhaven",
+      "lockedLabel": "El paso está sellado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "swordhaven-campaign",
+            "entryExitId": "to-banner-road"
+          }
+        ],
+        "message": "La compañía llega a Swordhaven."
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "campaign-arrival-banner-road",
+    "title": "Camino de los Estandartes",
+    "body": "Calzada real que conecta los mercados con la capital.",
+    "sigil": "I"
+  },
+  "introMessage": "Calzada real que conecta los mercados con la capital."
+}

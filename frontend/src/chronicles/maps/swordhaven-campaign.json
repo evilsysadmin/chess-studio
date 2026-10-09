@@ -1,0 +1,127 @@
+{
+  "id": "swordhaven-campaign",
+  "version": 1,
+  "progressionKey": "campaign-swordhaven-square-v1",
+  "title": "Swordhaven",
+  "regionKind": "settlement",
+  "layoutMode": "authored",
+  "grid": [
+    "###################",
+    "#.................#",
+    "#.................#",
+    "#..###.......###..#",
+    "#..###.......###..#",
+    "#.................#",
+    "#.................#",
+    "#.................#",
+    "#.................#",
+    "#.................#",
+    "#..###.......###..#",
+    "#..###.......###..#",
+    "#.................#",
+    "#.................#",
+    "###################"
+  ],
+  "partyStart": {
+    "x": 9,
+    "y": 7,
+    "direction": 0
+  },
+  "initialFlags": {
+    "swordhavenArrived": true,
+    "campaignRouteV1": true
+  },
+  "enemies": [],
+  "triggers": [],
+  "interactables": [
+    {
+      "id": "sealed-order",
+      "kind": "lore",
+      "x": 7,
+      "y": 5,
+      "label": "El sobre de la Dama",
+      "when": [
+        {
+          "key": "commission-received",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "commission-received",
+            "value": true
+          }
+        ],
+        "message": "Swordhaven: El sobre de la Dama.",
+        "journal": {
+          "id": "campaign-commission-received",
+          "title": "El sobre de la Dama",
+          "body": "Aldea de origen y centro de la primera expedición.",
+          "sigil": "✦"
+        }
+      }
+    },
+    {
+      "id": "missing-board",
+      "kind": "lore",
+      "x": 11,
+      "y": 9,
+      "label": "Tablón de los caballeros perdidos",
+      "when": [
+        {
+          "key": "missing-knights-notice",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "missing-knights-notice",
+            "value": true
+          }
+        ],
+        "message": "Swordhaven: Tablón de los caballeros perdidos.",
+        "journal": {
+          "id": "campaign-missing-knights-notice",
+          "title": "Tablón de los caballeros perdidos",
+          "body": "Aldea de origen y centro de la primera expedición.",
+          "sigil": "✦"
+        }
+      }
+    }
+  ],
+  "treasures": [],
+  "traps": [],
+  "exits": [
+    {
+      "id": "to-banner-road",
+      "kind": "exit",
+      "x": 9,
+      "y": 1,
+      "requiresReturn": true,
+      "openLabel": "Ir a Camino de los Estandartes",
+      "lockedLabel": "El paso está sellado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "banner-road",
+            "entryExitId": "to-swordhaven-square"
+          }
+        ],
+        "message": "La compañía llega a Camino de los Estandartes."
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "campaign-arrival-swordhaven-square",
+    "title": "Swordhaven",
+    "body": "Aldea de origen y centro de la primera expedición.",
+    "sigil": "I"
+  },
+  "introMessage": "Aldea de origen y centro de la primera expedición."
+}
