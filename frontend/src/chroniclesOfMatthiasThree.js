@@ -64,6 +64,14 @@ export function chroniclesEnemyFacingYaw(enemyCell, partyCell) {
   return Math.atan2(dx, dy);
 }
 
+// The entrance seal is mounted only 1.45m from the player's eye. At a
+// portrait phone aspect ratio, perspective magnifies even a 72cm plaque.
+// Keep a consistent eye-level centre while fitting the narrow camera frustum.
+export function chroniclesReturnSealFraming(coarsePointer = false) {
+  const scale = coarsePointer ? 0.30 : 0.62;
+  return { scale, lift: CAMERA_Y * (1 - scale) };
+}
+
 export function chroniclesExitGateTransform(grid, entry, center = DEFAULT_SCENE_CENTER) {
   const x = Number(entry?.position?.x ?? entry?.x);
   const y = Number(entry?.position?.y ?? entry?.y);
@@ -290,6 +298,13 @@ function createDungeonScene(scene, { coarsePointer = false, scenePlan = null } =
     }
     gate.position.copy(transform.position);
     gate.rotation.y = transform.yaw;
+    if (isSwordhavenReturn) {
+      const framing = chroniclesReturnSealFraming(coarsePointer);
+      gate.scale.setScalar(framing.scale);
+      // Scale around camera eye height, not floor level: otherwise a small
+      // plaque ends up at the player's feet and behind the touch controls.
+      gate.position.y += framing.lift;
+    }
     scene.add(gate);
 
   });
