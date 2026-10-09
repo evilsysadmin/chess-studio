@@ -231,6 +231,7 @@ def _surface_groups(path: str) -> set[str] | None:
         "scripts/browser_quality_scope.py",
         "scripts/chess_rules_gate.mjs",
         "scripts/quality_scope.py",
+        "scripts/pwa_check.mjs",
         "scripts/state_resilience_check.mjs",
         "scripts/visual_ux_contract_check.mjs",
         "scripts/run_core_e2e_lane.py",
@@ -698,6 +699,7 @@ def self_test() -> None:
         "scripts/architecture_debt_budget.py",
     ])
     assert cpu_scope.capture_groups == "warroom"
+    assert classify(["frontend/public/sw.js", "scripts/pwa_check.mjs"]).capture_groups == "none"
     assert classify(["frontend/src/components/ShareResultModal.jsx"]).capture_groups == "warroom"
     assert classify(["frontend/src/components/ProfileBackupModal.jsx"]).capture_groups == "home"
     assert classify([
