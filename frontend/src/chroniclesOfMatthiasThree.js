@@ -14,6 +14,7 @@ import { buildChroniclesEnemyVisual } from './chroniclesEnemyVisualRegistry.js';
 import { buildSpectralChapel } from './chroniclesOfMatthiasSpectralBishop.js';
 import { createExperimentalThreeRenderer } from './experimentalThreeRenderer.js';
 import { buildSwordhavenScene } from './chronicles/chroniclesSwordhaven3D.js';
+import { buildChroniclesCampaignExterior } from './chronicles/chroniclesCampaignExterior3D.js';
 import { CHRONICLES_SWORDHAVEN_RETURN_PORTAL_ID } from './chronicles/chroniclesSwordhavenReturnPortal.js';
 
 const CELL = 4;
@@ -577,23 +578,27 @@ export function createChroniclesOfMatthiasGame(host, {
   host.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
-  if (scenePlan?.regionKind !== 'settlement') scene.fog = new THREE.FogExp2(0x0a0c0f, coarse ? 0.038 : 0.034);
-  if (scenePlan?.regionKind !== 'settlement') scene.add(new THREE.HemisphereLight(0x6f8191, 0x1b130d, coarse ? 0.35 : 0.24));
+  const outdoors = scenePlan?.regionKind === 'settlement' || scenePlan?.regionKind === 'wilderness';
+  if (!outdoors) scene.fog = new THREE.FogExp2(0x0a0c0f, coarse ? 0.038 : 0.034);
+  if (!outdoors) scene.add(new THREE.HemisphereLight(0x6f8191, 0x1b130d, coarse ? 0.35 : 0.24));
   const camera = new THREE.PerspectiveCamera(67, 1, 0.08, 70);
   camera.rotation.order = 'YXZ';
   scene.add(camera);
   const combatFx = createCombatFx(camera);
 
-  const dungeon = scenePlan?.regionKind === 'settlement'
-    ? buildSwordhavenScene(scene, { coarsePointer: coarse, scenePlan })
-    : createDungeonScene(scene, { coarsePointer: coarse, scenePlan });
+  const campaignExterior = scenePlan?.mapId === 'swordhaven-campaign' || scenePlan?.mapId === 'banner-road';
+  const dungeon = campaignExterior
+    ? buildChroniclesCampaignExterior(scene, { coarsePointer: coarse, scenePlan })
+    : scenePlan?.regionKind === 'settlement'
+      ? buildSwordhavenScene(scene, { coarsePointer: coarse, scenePlan })
+      : createDungeonScene(scene, { coarsePointer: coarse, scenePlan });
   const contentRaycaster = new THREE.Raycaster();
   const contentPointer = new THREE.Vector2();
   const dressing = scenePlan?.useAuthoredCryptDressing
     ? buildChroniclesDungeonDressing({ coarsePointer: coarse })
     : new THREE.Group();
   dressing.name ||= 'chronicles-map-specific-dressing';
-  const atmosphere = scenePlan?.regionKind === 'settlement'
+  const atmosphere = outdoors
     ? new THREE.Group()
     : buildChroniclesDungeonAtmosphere({ coarsePointer: coarse, reducedMotion, scenePlan });
   scene.add(dressing, atmosphere);
