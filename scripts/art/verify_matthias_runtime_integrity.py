@@ -12,6 +12,7 @@ import os
 import pathlib
 import re
 import sys
+import tempfile
 
 import numpy as np
 from PIL import Image
@@ -79,6 +80,29 @@ def self_test() -> None:
     repair_self_test()
     assert HASH_SUFFIX.search("matthias-pistol-head-integrity-v1-24872d1905a9e759.png")
     assert not HASH_SUFFIX.search("asset-current.png")
+    with tempfile.TemporaryDirectory() as temporary:
+        root = pathlib.Path(temporary)
+        sample = {
+            "weapon": "pistol",
+            "source": "canonical-" + ("a" * 16) + ".png",
+            "sourceSha256": "a" * 64,
+            "atlasSize": [CELL * COLUMNS, CELL * ROWS],
+            "cellSize": CELL,
+            "visibleFrames": COLUMNS * ROWS,
+            "edgeTouches": [],
+        }
+        payload = {"atlases": [{**sample, "weapon": w} for w in sorted(WEAPONS)]}
+        path = root / "matthias_sprite_smoke.json"
+        path.write_text(json.dumps(payload), encoding="utf-8")
+        assert set(assert_manifest(root)) == WEAPONS
+        payload["atlases"][0]["sourceSha256"] = "b" * 64
+        path.write_text(json.dumps(payload), encoding="utf-8")
+        try:
+            assert_manifest(root)
+        except ValueError as exc:
+            assert "SHA mismatch" in str(exc)
+        else:
+            raise AssertionError("Hash drift was not blocked")
     print("OK published Matthias integrity audit self-test")
 
 
