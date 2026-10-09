@@ -142,6 +142,7 @@ func TestChroniclesRunsRoute(t *testing.T) {
 		{"GET", "/api/chronicles/runs", ChroniclesRunListPattern, ""},
 		{"DELETE", "/api/chronicles/runs/r1", ChroniclesRunDeletePattern, "r1"},
 		{"GET", "/api/chronicles/runs/r1", ChroniclesRunReadPattern, "r1"},
+		{"GET", "/api/chronicles/runs/r1/bootstrap", ChroniclesRunBootstrapPattern, "r1"},
 		{"PUT", "/api/chronicles/runs/r1/checkpoint", ChroniclesRunCheckpointPattern, "r1"},
 		{"PUT", "/api/chronicles/runs", "", ""},
 		{"PUT", "/api/chronicles/runs/r1", "", ""},
