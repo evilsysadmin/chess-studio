@@ -21,7 +21,7 @@ func _initialize() -> void:
 		var keeper: Footballer = game.teams[team_id][0]
 		var goal := ChessFootballMath.goal_center(1 - team_id)
 		var toward_field := 1.0 if team_id == 0 else -1.0
-		var keeper_x := goal.x + toward_field * game.KEEPER_LINE_OFFSET
+		var keeper_x: float = goal.x + toward_field * float(game.KEEPER_LINE_OFFSET)
 		keeper.global_position = Vector2(keeper_x, goal.y)
 		keeper.velocity = Vector2.ZERO
 		keeper.action_lock_seconds = 0.0
