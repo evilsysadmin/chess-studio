@@ -142,7 +142,9 @@ func (s *Mongo) Get(ctx context.Context, runID, owner string) (bson.D, error) {
 func (s *Mongo) ListActive(ctx context.Context, owner string, limit int) ([]bson.D, error) {
 	ctx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
-	if limit < 1 || limit > 30 { limit = 30 }
+	if limit < 1 || limit > 30 {
+		limit = 30
+	}
 	cursor, err := s.col.Find(ctx,
 		bson.D{{Key: "owner", Value: owner}, {Key: "$or", Value: bson.A{
 			bson.D{{Key: "status", Value: "active"}},
@@ -153,15 +155,21 @@ func (s *Mongo) ListActive(ctx context.Context, owner string, limit int) ([]bson
 			{Key: "status", Value: 1}, {Key: "worldVersion", Value: 1}, {Key: "updatedAt", Value: 1},
 		}).SetSort(bson.D{{Key: "updatedAt", Value: -1}}).SetLimit(int64(limit)),
 	)
-	if err != nil { return nil, ErrUnavailable }
+	if err != nil {
+		return nil, ErrUnavailable
+	}
 	defer cursor.Close(ctx)
 	out := []bson.D{}
 	for cursor.Next(ctx) {
 		var row bson.D
-		if err := cursor.Decode(&row); err != nil { return nil, ErrUnavailable }
+		if err := cursor.Decode(&row); err != nil {
+			return nil, ErrUnavailable
+		}
 		out = append(out, Summary(pydoc.Normalize(row).(bson.D)))
 	}
-	if err := cursor.Err(); err != nil { return nil, ErrUnavailable }
+	if err := cursor.Err(); err != nil {
+		return nil, ErrUnavailable
+	}
 	return out, nil
 }
 
@@ -169,6 +177,8 @@ func (s *Mongo) DeleteOwned(ctx context.Context, runID, owner string) (bool, err
 	ctx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
 	result, err := s.col.DeleteOne(ctx, owned(runID, owner))
-	if err != nil { return false, ErrUnavailable }
+	if err != nil {
+		return false, ErrUnavailable
+	}
 	return result.DeletedCount == 1, nil
 }
