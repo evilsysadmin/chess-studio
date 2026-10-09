@@ -152,6 +152,36 @@ describe('Swordhaven modular real-time 3D', () => {
     expect(() => swordhavenSurfaceTexture('unknown')).toThrow(/Unsupported/);
   });
 
+
+  it('adds instanced road shoulders and grass tufts without introducing collision geometry', () => {
+    const scene = new THREE.Scene();
+    buildSwordhavenScene(scene, {
+      scenePlan: { width: 19, height: 19, center: { x: 9, y: 9 }, content: [] },
+      coarsePointer: true,
+    });
+    const shoulders = scene.getObjectByName('swordhaven-roadside-stone-edging');
+    const meadow = scene.getObjectByName('swordhaven-low-meadow-tufts');
+    expect(shoulders).toBeInstanceOf(THREE.InstancedMesh);
+    expect(shoulders.count).toBeGreaterThan(60);
+    expect(meadow).toBeInstanceOf(THREE.InstancedMesh);
+    expect(meadow.count).toBeGreaterThan(40);
+    expect(meadow.count).toBeLessThanOrEqual(250);
+    const matrix = new THREE.Matrix4();
+    const point = new THREE.Vector3();
+    for (let i = 0; i < meadow.count; i += 1) {
+      meadow.getMatrixAt(i, matrix);
+      point.setFromMatrixPosition(matrix);
+      expect(Math.abs(point.x)).toBeGreaterThanOrEqual(5);
+      expect(Math.abs(point.z)).toBeGreaterThanOrEqual(5);
+      expect(SWORDHAVEN_BUILDINGS.some(spec => (
+        Math.abs(point.x - (spec.x - 9) * 4) < 5.2
+        && Math.abs(point.z - (spec.y - 9) * 4) < 5.2
+      ))).toBe(false);
+    }
+    expect(createSwordhavenWalkGrid()[9][9]).toBe('#');
+    expect(createSwordhavenWalkGrid()[SWORDHAVEN_SPAWN.y][SWORDHAVEN_SPAWN.x]).toBe('.');
+  });
+
   it('renders storefronts without exposing fake shop interactions before they are authored', () => {
     const scene = new THREE.Scene();
     const state = buildSwordhavenScene(scene, { scenePlan: { content: [] } });
