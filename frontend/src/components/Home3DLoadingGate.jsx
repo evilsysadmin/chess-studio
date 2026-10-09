@@ -9,6 +9,8 @@ export default function Home3DLoadingGate({ stageRef, onUseStaticHome }) {
   const [ready, setReady] = useState(false);
   const [stalled, setStalled] = useState(false);
   const visibleRef = useRef(false);
+  const onUseStaticHomeRef = useRef(onUseStaticHome);
+  onUseStaticHomeRef.current = onUseStaticHome;
 
   useLayoutEffect(() => {
     const stage = stageRef.current;
@@ -57,15 +59,22 @@ export default function Home3DLoadingGate({ stageRef, onUseStaticHome }) {
       attributes: true,
       attributeFilter: ['class', 'data-home-blender-runtime'],
     });
-    const timeout = window.setTimeout(() => {
+    // User can choose the already-decoded illustration without waiting for a
+    // slow phone GPU; after a hard limit we choose it automatically rather
+    // than trapping the Home behind an eternal overlay.
+    const helpTimer = window.setTimeout(() => {
       if (!visibleRef.current) setStalled(true);
+    }, 6_000);
+    const fallbackTimer = window.setTimeout(() => {
+      if (!visibleRef.current) onUseStaticHomeRef.current?.();
     }, 30_000);
     inspect();
     return () => {
       cancelled = true;
       observer.disconnect();
       cancelFrames();
-      window.clearTimeout(timeout);
+      window.clearTimeout(helpTimer);
+      window.clearTimeout(fallbackTimer);
     };
   }, [stageRef]);
 
