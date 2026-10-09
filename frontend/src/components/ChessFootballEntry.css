@@ -184,6 +184,34 @@
   .chess-football-entry__choice { min-height: 185px; }
 }
 
+/* Short landscape handsets: both main actions must be visible without
+   scrolling past a cinematic masthead. Portrait retains its spacious layout. */
+@media (min-width: 681px) and (max-height: 480px) {
+  .chess-football-entry__content {
+    justify-content: flex-start;
+    gap: .55rem;
+    padding-top: .5rem;
+    padding-bottom: .6rem;
+  }
+  .chess-football-entry__back { min-height: 34px; padding: .3rem .65rem; font-size: .8rem; }
+  .chess-football-entry__eyebrow { font-size: .62rem; }
+  .chess-football-entry__masthead h1 { font-size: clamp(2rem, 7vh, 3rem); margin: .1rem 0 .2rem; }
+  .chess-football-entry__masthead p { font-size: .82rem; line-height: 1.25; }
+  .chess-football-entry__choice {
+    min-height: 160px;
+    padding: .7rem 1rem;
+    gap: .3rem;
+  }
+  .chess-football-entry__choice-icon { font-size: 1.4rem; }
+  .chess-football-entry__choice strong { font-size: 1.4rem; }
+  .chess-football-entry__choice small { font-size: .66rem; }
+  .chess-football-entry__choice > span:not(.chess-football-entry__choice-icon) {
+    font-size: .76rem;
+    line-height: 1.25;
+  }
+  .chess-football-entry__choice b { font-size: .8rem; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .chess-football-entry__choice { transition: none; }
   .chess-football-entry__choice:hover,
