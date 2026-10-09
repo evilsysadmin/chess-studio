@@ -75,6 +75,7 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 - [`README.md`](README.md) — entrada al proyecto, estructura y comandos canónicos.
 - [`.github/workflows/README.md`](.github/workflows/README.md) — documentación de workflows.
 - [`docs/auto-merge-delivery.md`](docs/auto-merge-delivery.md) — native automerge y cadena de entrega.
+- [`docs/ci/football-required-merge-gate.md`](docs/ci/football-required-merge-gate.md) — activar el gate visual obligatorio de Football y comprobar su alcance.
 
 ### AGENTS por subsistema
 
