@@ -797,7 +797,8 @@ func legacySwordhavenReturnAllowed(run bson.D, sourceID, targetID string) bool {
 	}
 	flags, _ := lookupOr(run, "worldFlags", nil).(bson.D)
 	arrived, ok := lookupOr(flags, "swordhavenArrived", false).(bool)
-	return ok && arrived
+	campaign, _ := lookupOr(flags, "campaignRouteV1", false).(bool)
+	return ok && arrived && !campaign
 }
 
 func chroniclesMapID(id string) bool {
