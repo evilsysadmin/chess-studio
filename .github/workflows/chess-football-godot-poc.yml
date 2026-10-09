@@ -1,15 +1,9 @@
 name: Build · Chess Football Godot Web
 
+# Required Football gate exists on every PR. Cheap path detection below
+# skips Godot for unrelated changes; no path-filtered missing check.
 on:
   pull_request:
-    paths:
-      - games/chess-football-godot/**
-      - scripts/art/chess_football_sprite_forge.py
-      - scripts/art/sprite_forge.py
-      - scripts/art/sprite_forge_contract_v2.schema.json
-      - scripts/art/contracts/chess_football_players_v1.json
-      - scripts/pawn_slug_godot_bundle.py
-      - .github/workflows/chess-football-godot-poc.yml
   push:
     branches: [main]
     paths:
@@ -24,6 +18,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 concurrency:
   group: chess-football-godot-${{ github.event.pull_request.number || github.ref }}
@@ -37,7 +32,53 @@ env:
   GODOT_TEMPLATES_SHA256: 'f298490b8d44d934be425a5a65a51bf15f422428b229a06a6e11d9ffea248011'
 
 jobs:
+  affected_paths:
+    name: Football · affected paths
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    outputs:
+      changed: ${{ steps.scope.outputs.changed }}
+    steps:
+      - name: Discover affected PR files (fail closed)
+        uses: actions/github-script@v8
+        id: scope
+        with:
+          script: |
+            if (context.eventName !== 'pull_request') {
+              core.setOutput('changed', 'true');
+              return;
+            }
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              ...context.repo,
+              pull_number: context.issue.number,
+              per_page: 100,
+            });
+            // GitHub's PR file API truncates large PRs at 3000 files.
+            if (files.length >= 3000) {
+              core.setFailed('PR file list truncated; cannot safely skip Football');
+              return;
+            }
+            const specific = new Set([
+              'scripts/art/chess_football_sprite_forge.py',
+              'scripts/art/sprite_forge.py',
+              'scripts/art/sprite_forge_contract_v2.schema.json',
+              'scripts/art/contracts/chess_football_players_v1.json',
+              'scripts/pawn_slug_godot_bundle.py',
+              '.github/workflows/chess-football-godot-poc.yml',
+            ]);
+            const changed = files.some(file =>
+              file.filename.startsWith('games/chess-football-godot/') ||
+              specific.has(file.filename) ||
+              (file.previous_filename && (
+                file.previous_filename.startsWith('games/chess-football-godot/') ||
+                specific.has(file.previous_filename)
+              ))
+            );
+            core.setOutput('changed', String(changed));
+
   validate:
+    needs: affected_paths
+    if: needs.affected_paths.outputs.changed == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 8
     steps:
@@ -475,6 +516,46 @@ jobs:
           path: .artifacts/football-web/
           if-no-files-found: warn
           retention-days: 7
+
+  required_gate:
+    name: Football · required visual gate
+    # Always emit a check even if detection or Godot fails or skips.
+    if: always()
+    needs: [affected_paths, validate, web_runtime]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Enforce Godot visual evidence and Chromium before merge
+        shell: bash
+        env:
+          DETECT_RESULT: ${{ needs.affected_paths.result }}
+          FOOTBALL_CHANGED: ${{ needs.affected_paths.outputs.changed }}
+          GODOT_RESULT: ${{ needs.validate.result }}
+          CHROMIUM_RESULT: ${{ needs.web_runtime.result }}
+        run: |
+          set -euo pipefail
+          gate_ok() {
+            local detection="$1" changed="$2" godot="$3" chromium="$4"
+            [[ "$detection" == success ]] || return 1
+            case "$changed" in
+              true) [[ "$godot" == success && "$chromium" == success ]] ;;
+              false) [[ "$godot" == skipped && "$chromium" == skipped ]] ;;
+              *) return 1 ;;
+            esac
+          }
+          # Both green and red fixtures ensure fail-closed merge semantics.
+          gate_ok success true success success
+          gate_ok success false skipped skipped
+          ! gate_ok success true success failure
+          ! gate_ok success true skipped skipped
+          ! gate_ok success true success cancelled
+          ! gate_ok failure false skipped skipped
+          ! gate_ok success false success success
+          if ! gate_ok "$DETECT_RESULT" "$FOOTBALL_CHANGED" "$GODOT_RESULT" "$CHROMIUM_RESULT"; then
+            echo "::error::Football CI incomplete or failed: detector=$DETECT_RESULT scope=$FOOTBALL_CHANGED Godot=$GODOT_RESULT Chromium=$CHROMIUM_RESULT"
+            exit 1
+          fi
+          echo "Football required visual gate: OK (affected=$FOOTBALL_CHANGED)" >> "$GITHUB_STEP_SUMMARY"
 
   build_publish:
     name: Export + publish · Chess Football Godot Web
