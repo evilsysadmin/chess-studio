@@ -1,13 +1,13 @@
-import { chroniclesBookOneEpilogue } from '../chroniclesOfMatthiasEpilogue.js';
+import { chroniclesDungeonEpilogue } from '../chroniclesOfMatthiasEpilogue.js';
 import './ChroniclesBookOneEpilogue.css';
 
-export default function ChroniclesBookOneEpilogue({ state, onRestart }) {
-  const epilogue = chroniclesBookOneEpilogue(state);
+export default function ChroniclesBookOneEpilogue({ state, dungeonLevel = 1, onRestart }) {
+  const epilogue = chroniclesDungeonEpilogue(state);
 
   return (
     <div className="chronicles-epilogue" role="status" aria-label="Epílogo de Book I">
       <div className="chronicles-epilogue-leaf">
-        <span className="chronicles-epilogue-kicker">BOOK I · CERRADO</span>
+        <span className="chronicles-epilogue-kicker">{`NIVEL ${level} · COMPLETADO`}</span>
         <strong>{epilogue.title}</strong>
         <p className="chronicles-epilogue-lead">{epilogue.departure}</p>
         <div className="chronicles-epilogue-rule" aria-hidden="true">✦</div>
@@ -18,7 +18,7 @@ export default function ChroniclesBookOneEpilogue({ state, onRestart }) {
           <span>Matthias</span>
           “{epilogue.verdict}”
         </blockquote>
-        <button type="button" className="primary-btn" onClick={onRestart}>Reabrir Book I</button>
+        <button type="button" className="primary-btn" onClick={onRestart}>{`Descender al Nivel ${nextLevel}`}</button>
       </div>
     </div>
   );

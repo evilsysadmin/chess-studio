@@ -157,7 +157,7 @@ export default function LabScreen({ onExit, onStart }){
           </div>
           <div className="lab-workshop-portals">
             <button type="button" className="lab-workshop-portal lab-workshop-portal--arch lab-workshop-portal--chronicles" data-glyph="♟" onClick={enterChronicles}>
-              <small>{experimentMaturityLabel(EXPERIMENT_MATURITY.POC, 'Book I')}</small>
+              <small>{experimentMaturityLabel(EXPERIMENT_MATURITY.POC, 'Nivel 1+')}</small>
               <strong>Chronicles of Matthias</strong>
               <span>Dungeon crawler 3D en primera persona. Grupo de cuatro, combate por casillas y una cripta que piensa como un tablero.</span>
               <b>Descender a la cripta</b>

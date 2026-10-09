@@ -5,7 +5,7 @@ function joinNames(names) {
   return `${names.slice(0, -1).join(', ')} y ${names.at(-1)}`;
 }
 
-export function chroniclesBookOneEpilogue(state) {
+export function chroniclesDungeonEpilogue(state) {
   const party = Array.isArray(state?.party) ? state.party : [];
   const survivors = party.filter((member) => Number(member.hp || 0) > 0);
   const fallen = party.filter((member) => Number(member.hp || 0) <= 0);

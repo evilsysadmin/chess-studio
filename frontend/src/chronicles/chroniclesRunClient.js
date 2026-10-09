@@ -4,7 +4,7 @@ import { chroniclesRunCheckpointPayload } from './chroniclesRunCheckpoint.js';
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
-export function chroniclesCreateRun(mapId, { operationId = null, partyLevel = null, signal } = {}) {
+export function chroniclesCreateRun(mapId, { operationId = null, partyLevel = null, dungeonLevel = null, signal } = {}) {
   return requestJson(`${BASE_URL}/chronicles/runs`, {
     method: 'POST',
     headers: {
@@ -13,7 +13,10 @@ export function chroniclesCreateRun(mapId, { operationId = null, partyLevel = nu
       ...(Number.isInteger(partyLevel) ? { 'X-Chronicles-Party-Level': String(partyLevel) } : {}),
       ...authHeader(),
     },
-    body: JSON.stringify(mapId ? { mapId } : {}),
+    body: JSON.stringify({
+      ...(mapId ? { mapId } : {}),
+      ...(Number.isInteger(dungeonLevel) ? { dungeonLevel } : {}),
+    }),
     signal,
   });
 }

@@ -72,6 +72,17 @@ Chronicles first-person y Tactics comparten una única ficha RPG. No deben diver
 
 Acceptance visual: la ficha debe conservar retrato authored nítido, jerarquía RPG legible y targets táctiles útiles en desktop y móvil; su aceptación requiere artifact PNG real.
 
+## Progresión por niveles de mazmorra
+
+Chronicles usa niveles explícitos de mazmorra, no “Books”, como progresión de expedición.
+
+- El perfil persistente guarda el próximo `dungeonLevel` desbloqueado; una victoria avanza exactamente al siguiente nivel y una derrota no reduce progreso.
+- La run autoritativa fija su propio `dungeonLevel` al crearse. F5, cambio de dispositivo y cambio entre first-person/Tactics deben conservar ese mismo nivel durante toda la expedición.
+- La longitud de ruta aumenta de forma acotada: Nivel 1 = 3 áreas, Nivel 2 = 4, Nivel 3 = 5 y Nivel 4+ = 6 áreas como máximo con el catálogo actual.
+- El nivel añade profundidad efectiva de dificultad desde la primera zona, además del incremento natural por avanzar dentro de la ruta. La dificultad authored y EnemyBuild siguen mandando sobre identidad y reglas.
+- La UI debe hablar de “Nivel 1”, “Nivel 2”, etc. No exponer “Book I” ni acciones del tipo “Reabrir Book I”.
+- Un nivel posterior ya es más largo y más difícil en este corte. La complejidad procedural de topología se conectará al mismo `dungeonLevel` en su PR propietaria; no debe inventar un segundo sistema de progresión.
+
 ## Dificultad autoritativa de encuentro
 
 La amenaza de una expedición se fija al crear la run y forma parte del mundo autoritativo.

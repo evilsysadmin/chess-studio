@@ -565,7 +565,7 @@ export function buildChroniclesDungeonDressing({ coarsePointer = false } = {}) {
 
   // The opening east-west corridor now uses true transverse ribs: the arch
   // crosses the passage instead of stretching along the player's sightline.
-  // Three shallow bays give Book I a crypt silhouette without narrowing the
+  // Three shallow bays give the opening level a crypt silhouette without narrowing the
   // walkable volume or changing collision/gameplay.
   if (coarsePointer) {
     addTransverseVaultRib(root, edgeMat, 3, 5, 0, true);

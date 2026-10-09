@@ -49,7 +49,7 @@ async function openFirstPerson(page, {
   const experiments = moreModes.getByRole('button').filter({ hasText: 'Experimentos geniales' });
   await expect(experiments).toBeVisible();
   await experiments.click();
-  const bookOne = page.getByRole('button', { name: /BOOK I.*Chronicles of Matthias/i });
+  const bookOne = page.getByRole('button', { name: /NIVEL 1\+.*Chronicles of Matthias/i });
   await expect(bookOne).toBeVisible();
   await bookOne.click();
   await confirmChroniclesCharacterSetup(page);
@@ -305,7 +305,7 @@ test('Chronicles · Tactics → primera persona conserva una única expedición 
   await exit.evaluate((button) => button.click());
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
 
-  const bookOne = page.getByRole('button', { name: /BOOK I.*Chronicles of Matthias/i });
+  const bookOne = page.getByRole('button', { name: /NIVEL 1\+.*Chronicles of Matthias/i });
   await expect(bookOne).toBeVisible();
   await bookOne.click();
   await confirmChroniclesCharacterSetup(page);

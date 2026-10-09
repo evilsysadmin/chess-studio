@@ -60,7 +60,7 @@ def test_run_creation_returns_bound_area_in_same_response(monkeypatch):
 def test_entry_catalog_is_versioned_and_references_shipped_maps():
     version, map_ids = chronicles_api.chronicles_entry_catalog()
 
-    assert version == 4
+    assert version == 5
     assert map_ids == (
         "crypt-eight-squares",
         "gallery-of-forks",
@@ -72,26 +72,50 @@ def test_entry_catalog_is_versioned_and_references_shipped_maps():
 
 
 def test_expanded_route_pool_can_select_archive_and_tower():
-    archive_route = chronicles_api.chronicles_route_plan_for_seed(2)
-    tower_route = chronicles_api.chronicles_route_plan_for_seed(0)
+    route = chronicles_api.chronicles_route_plan_for_seed(2, 3)
 
-    assert "blind-king-archive" in archive_route[:-1]
-    assert "hollow-bell-tower" in tower_route[:-1]
-    assert archive_route[-1] == "echo-cistern"
-    assert tower_route[-1] == "echo-cistern"
+    assert "blind-king-archive" in route[:-1]
+    assert "hollow-bell-tower" in route[:-1]
+    assert route[-1] == "echo-cistern"
 
 
-def test_seeded_route_length_varies_between_three_and_four_areas():
-    short_route = chronicles_api.chronicles_route_plan_for_seed(0)
-    long_route = chronicles_api.chronicles_route_plan_for_seed(2)
+def test_dungeon_level_route_length_scales_from_three_to_six_areas():
+    routes = {
+        level: chronicles_api.chronicles_route_plan_for_seed(20261008, level)
+        for level in (1, 2, 3, 4, 8)
+    }
 
-    assert len(short_route) == 3
-    assert len(long_route) == 4
-    assert short_route[-1] == "echo-cistern"
-    assert long_route[-1] == "echo-cistern"
-    assert len(set(short_route)) == len(short_route)
-    assert len(set(long_route)) == len(long_route)
+    assert [len(routes[level]) for level in (1, 2, 3, 4)] == [3, 4, 5, 6]
+    assert len(routes[8]) == 6
+    assert all(route[-1] == "echo-cistern" for route in routes.values())
+    assert all(len(set(route)) == len(route) for route in routes.values())
 
+
+
+def test_run_creation_persists_dungeon_level_and_raises_initial_difficulty(monkeypatch):
+    async def no_collection():
+        return None
+
+    chronicles_run_store._memory_runs.clear()
+    monkeypatch.setattr(chronicles_run_store, "_collection", no_collection)
+    monkeypatch.setattr(chronicles_api.secrets, "randbelow", lambda _limit: 20261008)
+
+    response = _client().post(
+        "/api/chronicles/runs",
+        headers={
+            "Authorization": "Bearer test-token",
+            "X-Chronicles-Party-Level": "4",
+        },
+        json={"dungeonLevel": 3},
+    )
+
+    assert response.status_code == 201
+    payload = response.json()
+    assert payload["dungeonLevel"] == 3
+    assert len(payload["route"]["mapIds"]) == 5
+    first_map = payload["route"]["mapIds"][0]
+    first_area = next(area for area in payload["areas"] if area["mapId"] == first_map)
+    assert first_area["difficulty"]["depth"] == 2
 
 def test_run_creation_without_map_uses_seeded_safe_entry(monkeypatch):
     async def no_collection():
@@ -116,7 +140,7 @@ def test_run_creation_without_map_uses_seeded_safe_entry(monkeypatch):
     assert expected_map_id in chronicles_api.chronicles_entry_map_ids()
     assert payload["area"]["mapId"] == expected_map_id
     assert payload["area"]["mapCode"].endswith("|seed=918273")
-    assert payload["route"]["policyVersion"] == 4
+    assert payload["route"]["policyVersion"] == 5
     assert payload["route"]["mapIds"] == list(route_plan)
     assert route_plan[-1] == "echo-cistern"
 
@@ -156,6 +180,27 @@ def test_distinct_run_keys_create_fresh_seed_route_and_world(monkeypatch):
     assert first_payload["route"]["mapIds"] != second_payload["route"]["mapIds"]
     assert first_payload["area"]["mapCode"] != second_payload["area"]["mapCode"]
     assert first_payload["area"]["layoutRevision"] != second_payload["area"]["layoutRevision"]
+
+
+def test_same_idempotency_key_rejects_a_different_dungeon_level(monkeypatch):
+    async def no_collection():
+        return None
+
+    chronicles_run_store._memory_runs.clear()
+    monkeypatch.setattr(chronicles_run_store, "_collection", no_collection)
+    client = _client()
+    headers = {
+        "Authorization": "Bearer test-token",
+        "Idempotency-Key": "chronicles-level-idempotency-0001",
+    }
+
+    first = client.post("/api/chronicles/runs", headers=headers, json={"dungeonLevel": 2})
+    conflict = client.post("/api/chronicles/runs", headers=headers, json={"dungeonLevel": 3})
+
+    assert first.status_code == 201
+    assert first.json()["dungeonLevel"] == 2
+    assert conflict.status_code == 409
+
 
 
 def test_seeded_route_rewrites_only_primary_exits_and_finishes_in_cistern():
@@ -227,7 +272,7 @@ def test_idempotent_seeded_route_replays_persisted_snapshot_across_policy_change
     )
     assert stored.status_code == 200
     stored_route = stored.json()["route"]
-    assert stored_route["policyVersion"] == 4
+    assert stored_route["policyVersion"] == 5
     assert stored_route["mapIds"] == first_route
     assert set(stored_route["primaryExitIds"]) == set(first_route[:-1])
 
@@ -244,7 +289,7 @@ def test_idempotent_seeded_route_replays_persisted_snapshot_across_policy_change
     assert repeated.status_code == 201
     assert repeated.json() == first_payload
     assert repeated.json()["seed"] == 111
-    assert repeated.json()["route"]["policyVersion"] == 4
+    assert repeated.json()["route"]["policyVersion"] == 5
     assert repeated.json()["route"]["mapIds"] == first_route
 
 

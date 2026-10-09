@@ -13,7 +13,15 @@ type AreaOptions struct {
 	Route            *RouteSnapshot
 	PlannerSnapshot  any // raw document, nil without one
 	PartyLevel       *int64
+	DungeonLevel     int64
 	PlacementVersion int
+}
+
+func max64(left, right int64) int64 {
+	if left > right {
+		return left
+	}
+	return right
 }
 
 // AreaEnvelope is chronicles_area_envelope.
@@ -40,7 +48,8 @@ func AreaEnvelope(mapID string, seed int64, opts AreaOptions) (bson.D, error) {
 	}
 	var difficulty bson.D
 	if opts.PartyLevel != nil {
-		if routed, difficulty, err = applyDifficulty(routed, *opts.PartyLevel, opts.Route.depth(mapID)); err != nil {
+		depth := opts.Route.depth(mapID) + max64(0, opts.DungeonLevel-1)
+		if routed, difficulty, err = applyDifficulty(routed, *opts.PartyLevel, depth); err != nil {
 			return nil, err
 		}
 	}
