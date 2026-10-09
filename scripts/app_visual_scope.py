@@ -221,6 +221,9 @@ def _surface_groups(path: str) -> set[str] | None:
 
     if lower.endswith(".md"):
         return set()
+    if lower in {"makefile", ".github/workflows/staging-deploy.yml", ".github/workflows/production-promote.yml"}:
+        # Delivery/test orchestration changes do not alter a canonical UI.
+        return set()
     if lower == "scripts/css_architecture_manifest.json":
         return set()
     if lower in {
@@ -690,6 +693,7 @@ def write_outputs(scope: Scope, output_path: str) -> None:
 
 
 def self_test() -> None:
+    assert classify(["Makefile", ".github/workflows/staging-deploy.yml", ".github/workflows/production-promote.yml"]).capture_groups == "none"
     assert classify(["e2e/staging-live.spec.js"]).capture_groups == "none"
     assert classify(["scripts/pages_runtime_asset_grace.py"]).capture_groups == "none"
     assert classify(["e2e/staging-live.spec.js", "frontend/src/components/PvpHandoffModal.jsx"]).capture_groups == "home"
