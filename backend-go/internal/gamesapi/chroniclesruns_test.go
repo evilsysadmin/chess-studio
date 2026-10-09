@@ -173,12 +173,16 @@ func TestChroniclesSavesAreOwnerScopedAndDeleteOnlyOne(t *testing.T) {
 			ContentVersion: 1, ManifestRevision: "rev", Fingerprint: "test",
 			Now: now,
 		})
-		if err != nil { t.Fatal(err) }
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 	h, err := NewChroniclesRuns(ChroniclesRunsConfig{Config: Config{
 		Accounts: fakeAccounts{}, Presence: &fakePresence{}, JWTSecret: secret,
 	}, Runs: store})
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	request := func(method, path string) *httptest.ResponseRecorder {
 		r := httptest.NewRequest(method, path, nil)
 		r.Header.Set("Authorization", "Bearer "+longToken("alice"))
