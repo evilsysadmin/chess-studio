@@ -199,6 +199,14 @@ jobs:
           sha: ${{ env.DEPLOY_SHA }}
           api-url: ${{ env.STAGING_API_URL }}
           repo-vars: ${{ toJSON(vars) }}
+      - name: Retain immutable JS/CSS across Pages generations
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -S scripts/pages_runtime_asset_grace.py --self-test
+          python3 -S scripts/pages_runtime_asset_grace.py \
+            --dist frontend/dist \
+            --origin "https://staging.chess-studio.shadowops.dpdns.org"
       - name: Deploy tested frontend to Cloudflare Pages
         working-directory: frontend
         shell: bash
