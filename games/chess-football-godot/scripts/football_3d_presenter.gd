@@ -18,11 +18,11 @@ const PLAYER_BASE_Y := 0.76
 # The approved front/back atlas bodies are about 120px tall. Normalize the
 # approved side run to the same perceived height without changing PNG bytes.
 const CANONICAL_BODY_HEIGHT_PIXELS := 120.0
-# Perceptual parity for oblique views: their authored shoulders/limbs occupy a
-# broader silhouette than the frontal and side atlases at the same pixel height.
-# These runtime-only factors keep the 32 approved diagonal frames untouched.
+# Diagonal artwork has broader shoulders but comparable body height.
+# The canonical scale already equalizes each view to 120px; a second vertical
+# multiplier made *every* diagonal smaller than front/back and side.
+# Correct the width only. Do not modify any approved PNG.
 const DIAGONAL_WIDTH_COMPENSATION := 0.91
-const DIAGONAL_HEIGHT_COMPENSATION := 0.94
 const PLAYER_RUN_BOB := 0.050
 const PLAYER_SPRINT_BOB := 0.072
 const STAMINA_BAR_WIDTH := 0.76
@@ -507,7 +507,7 @@ static func view_compensation(animation_name: StringName) -> Vector2:
 		"run_front_diagonal", "run_back_diagonal",
 		"sprint_front_diagonal", "sprint_back_diagonal",
 	]:
-		return Vector2(DIAGONAL_WIDTH_COMPENSATION, DIAGONAL_HEIGHT_COMPENSATION)
+		return Vector2(DIAGONAL_WIDTH_COMPENSATION, 1.0)
 	return Vector2.ONE
 
 
