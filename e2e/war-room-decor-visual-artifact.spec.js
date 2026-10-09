@@ -75,10 +75,33 @@ async function freezeVisualFrame(page) {
   await page.addStyleTag({
     content: '*, *::before, *::after { animation: none !important; transition: none !important; caret-color: transparent !important; }',
   });
-  await page.evaluate(() => {
-    window.requestAnimationFrame = () => 0;
-  });
+  // One WebGL capture replaces the old per-crop renders: don't disable RAF.
+  // The renderer may still be building its first visible scene under SwiftShader.
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   await page.waitForTimeout(80);
+}
+
+async function renderedBoardCoverage(page, encodedPng) {
+  return page.evaluate(async (png) => {
+    const image = new Image();
+    image.src = `data:image/png;base64,${png}`;
+    await image.decode();
+    const probe = document.createElement('canvas');
+    probe.width = 32;
+    probe.height = 24;
+    const ctx = probe.getContext('2d', { willReadFrequently: true });
+    if (!ctx) throw new Error('War Room PNG sampling canvas unavailable');
+    ctx.drawImage(image,
+      image.naturalWidth * 0.2, image.naturalHeight * 0.45,
+      image.naturalWidth * 0.6, image.naturalHeight * 0.45,
+      0, 0, probe.width, probe.height);
+    const pixels = ctx.getImageData(0, 0, probe.width, probe.height).data;
+    let visible = 0;
+    for (let i = 0; i < pixels.length; i += 4) {
+      if (Math.max(pixels[i], pixels[i + 1], pixels[i + 2]) > 55) visible++;
+    }
+    return visible / (probe.width * probe.height);
+  }, encodedPng);
 }
 
 function clamp(value, min, max) {
@@ -99,18 +122,55 @@ function clipFromRatio(scene, viewport, { x, y, width, height, scale = 1 }) {
   };
 }
 
-async function captureSceneOnce(context, page, clip) {
-  const session = await context.newCDPSession(page);
-  try {
-    const { data } = await session.send('Page.captureScreenshot', {
-      format: 'png',
-      fromSurface: true,
-      captureBeyondViewport: false,
-      clip: { ...clip, scale: 1 },
+async function captureSceneOnce(page, clip) {
+  // CDP's direct Page.captureScreenshot can omit a live WebGL layer under
+  // headless SwiftShader while still capturing HUD/overlays. Match the proven
+  // War Room core visual path: snapshot the preserved drawing buffer into a
+  // temporary DOM image INSIDE the 3D shell, then capture one composed frame.
+  // Keep the pixel-coverage assertion below: an actually black canvas is a
+  // hard failure, never an acceptable visual artifact.
+  const staged = await page.evaluate(() => {
+    const canvases = [...document.querySelectorAll('canvas.board3d-main-canvas')];
+    return canvases.map((canvas, index) => {
+      const rect = canvas.getBoundingClientRect();
+      const shell = canvas.closest('.board3d-main-shell');
+      const shellRect = shell?.getBoundingClientRect();
+      const image = document.createElement('img');
+      image.src = canvas.toDataURL('image/png');
+      image.alt = '';
+      image.dataset.warRoomWebglCapture = String(index);
+      Object.assign(image.style, {
+        position: shell ? 'absolute' : 'fixed',
+        left: `${shellRect ? rect.left - shellRect.left : rect.left}px`,
+        top: `${shellRect ? rect.top - shellRect.top : rect.top}px`,
+        width: `${rect.width}px`,
+        height: `${rect.height}px`,
+        zIndex: '1',
+        pointerEvents: 'none',
+        objectFit: 'fill',
+      });
+      (shell || document.body).appendChild(image);
+      return image.dataset.warRoomWebglCapture;
     });
-    return data;
+  });
+  try {
+    if (staged.length) {
+      await page.waitForFunction(
+        () => [...document.querySelectorAll('img[data-war-room-webgl-capture]')]
+          .every((image) => image.complete && image.naturalWidth > 0),
+      );
+    }
+    const png = await page.screenshot({
+      clip: { x: clip.x, y: clip.y, width: clip.width, height: clip.height },
+      animations: 'disabled',
+      caret: 'hide',
+      fullPage: false,
+    });
+    return png.toString('base64');
   } finally {
-    await session.detach();
+    await page.evaluate(() => {
+      document.querySelectorAll('img[data-war-room-webgl-capture]').forEach((image) => image.remove());
+    });
   }
 }
 
@@ -219,11 +279,15 @@ for (const profile of PROFILES) {
 
       const sceneCapture = captures.find(({ name }) => name === 'scene');
       if (!sceneCapture) throw new Error('War Room scene capture definition missing');
-      const scenePng = await captureSceneOnce(context, page, sceneCapture.clip);
+      const scenePng = await captureSceneOnce(page, sceneCapture.clip);
+      // A visible WebGL canvas can still be an unrendered black buffer: refuse
+      // golden evidence unless the board region contains actual scene pixels.
+      const sceneCoverage = await renderedBoardCoverage(page, scenePng);
       await writeFile(
         `${ARTIFACT_DIR}/war-room-${profile.label}-scene.png`,
         Buffer.from(scenePng, 'base64'),
       );
+      expect(sceneCoverage, 'War Room board must render visible pixels before the golden capture').toBeGreaterThan(0.08);
 
       const cropCaptures = captures.filter(({ name }) => name !== 'scene');
       const derived = await deriveCropsFromScene(page, scenePng, sceneCapture.clip, cropCaptures);
