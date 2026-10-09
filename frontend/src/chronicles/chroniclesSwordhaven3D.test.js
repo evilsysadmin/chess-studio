@@ -166,6 +166,16 @@ describe('Swordhaven modular real-time 3D', () => {
     expect(meadow).toBeInstanceOf(THREE.InstancedMesh);
     expect(meadow.count).toBeGreaterThan(40);
     expect(meadow.count).toBeLessThanOrEqual(250);
+    // Avoid the old traffic-cone triangles and chunky raised kerbstones.
+    expect(shoulders.geometry.parameters.height).toBeLessThan(0.09);
+    const blades = meadow.geometry.getAttribute('position');
+    expect(blades.count).toBe(18); // Six slim blades per tuft.
+    let top = 0;
+    for (let vertex = 0; vertex < blades.count; vertex += 1) {
+      top = Math.max(top, blades.getY(vertex));
+    }
+    expect(top).toBeGreaterThan(0.10);
+    expect(top).toBeLessThan(0.17);
     const matrix = new THREE.Matrix4();
     const point = new THREE.Vector3();
     for (let i = 0; i < meadow.count; i += 1) {
